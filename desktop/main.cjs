@@ -96,6 +96,8 @@ function createWindow() {
     if (isMain && !String(url).startsWith('file:')) showLauncher(`couldn't reach ${url} (${desc})`);
   });
   win.webContents.on('page-title-updated', (e) => e.preventDefault());
+  // start in the display mode you picked last time
+  try { const m = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'display.json'), 'utf8')).mode; if (m && m !== 'windowed') setTimeout(() => applyDisplay(m), 50); } catch { /* first run */ }
   showLauncher();
 }
 
@@ -117,6 +119,31 @@ ipcMain.handle('jf:join', async (_e, addr) => {
 });
 ipcMain.handle('jf:launcher', () => showLauncher());
 ipcMain.handle('jf:fullscreen', () => win.setFullScreen(!win.isFullScreen()));
+// display mode: 'windowed' | 'maximized' (windowed fullscreen) | 'fullscreen'. remembered for next launch.
+const displayFile = () => path.join(app.getPath('userData'), 'display.json');
+let windowedBounds = null, displayMode = 'windowed';
+function applyDisplay(mode) {
+  if (!win) return;
+  const { screen } = require('electron');
+  if (displayMode === 'windowed' && mode !== 'windowed') windowedBounds = win.getBounds(); // remember the normal size
+  displayMode = mode;
+  if (mode === 'fullscreen') { win.setFullScreen(true); return; }
+  win.setFullScreen(false);
+  if (mode === 'maximized') { // windowed fullscreen: a normal window that fills the screen (taskbar stays)
+    win.maximize();
+    setTimeout(() => { if (!win.isMaximized()) win.setBounds(screen.getDisplayMatching(win.getBounds()).workArea); }, 150);
+  } else {
+    if (win.isMaximized()) win.unmaximize();
+    if (windowedBounds) win.setBounds(windowedBounds);
+  }
+}
+ipcMain.handle('jf:display', (_e, mode) => {
+  mode = ['windowed', 'maximized', 'fullscreen'].includes(mode) ? mode : 'windowed';
+  applyDisplay(mode);
+  try { fs.writeFileSync(displayFile(), JSON.stringify({ mode })); } catch { /* not important */ }
+  return mode;
+});
+ipcMain.handle('jf:displayGet', () => { try { return JSON.parse(fs.readFileSync(displayFile(), 'utf8')).mode || 'windowed'; } catch { return 'windowed'; } });
 ipcMain.handle('jf:quit', () => app.quit());
 
 app.on('before-quit', () => { try { if (local && local.mod.shutdown) local.mod.shutdown(); } catch { /* closing anyway */ } });
@@ -134,6 +161,14 @@ app.whenReady().then(() => {
         await new Promise((r) => setTimeout(r, 3000));
         await shot('desktop_game.png');
         const r = await win.webContents.executeJavaScript('({ url: location.href, desktop: !!window.jf, title: document.title, btn: !!document.getElementById("desktopRow") && getComputedStyle(document.getElementById("desktopRow")).display })');
+        const disp = {};
+        for (const mode of ['maximized', 'fullscreen', 'windowed']) {
+          await win.webContents.executeJavaScript(`window.jf.display('${mode}')`);
+          await new Promise((res) => setTimeout(res, 600));
+          const bb = win.getBounds();
+          disp[mode] = { full: win.isFullScreen(), max: win.isMaximized(), w: bb.width, h: bb.height };
+        }
+        r.display = disp;
         fs.writeFileSync(path.join(process.env.JF_DESKTOP_TEST, 'desktop_result.json'), JSON.stringify({ ok: true, ...r, local: { port: local.port, lan: local.lan } }));
       } catch (e) {
         fs.writeFileSync(path.join(process.env.JF_DESKTOP_TEST, 'desktop_result.json'), JSON.stringify({ ok: false, error: String(e && e.stack || e) }));

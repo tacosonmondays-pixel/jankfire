@@ -127,6 +127,7 @@ function resume() {
 // ------------------------------------------------------------ playing
 let connecting = false;
 function startMode(mode, cfg) {
+  if (S.display === 'fullscreen' && !(window.jf && window.jf.display)) applyDisplay('fullscreen');
   G.settings.name = $('name').value.trim().slice(0, 16);
   saveSettings();
   initAudio(G.settings.vol);
@@ -282,6 +283,19 @@ bindCheck('blood', 'blood');
 bindCheck('killcam', 'killcam', () => { if (G.joined) net.send({ t: 'kc', on: S.killcam }); });
 bindCheck('showCards', 'showCards');
 bindCheck('speedLines', 'speedLines');
+// display: windowed / windowed fullscreen (maximized, desktop app only) / fullscreen
+const DISPLAY = window.jf && window.jf.display
+  ? [['windowed', 'Windowed'], ['maximized', 'Windowed fullscreen'], ['fullscreen', 'Fullscreen']]
+  : [['windowed', 'Windowed'], ['fullscreen', 'Fullscreen']];
+fillSelect($('displayMode'), DISPLAY, S.display && DISPLAY.some(([k]) => k === S.display) ? S.display : 'windowed');
+function applyDisplay(mode) {
+  if (window.jf && window.jf.display) { window.jf.display(mode); return; }
+  // browser: real fullscreen needs a click, so this runs from the settings menu or the PLAY buttons
+  if (mode === 'fullscreen' && !document.fullscreenElement) document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+  if (mode !== 'fullscreen' && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+}
+$('displayMode').addEventListener('change', () => { S.display = $('displayMode').value; saveSettings(); applyDisplay(S.display); });
+if (window.jf && window.jf.displayGet) window.jf.displayGet().then((m) => { if (m) { S.display = m; $('displayMode').value = m; } });
 
 // ------------------------------------------------------------ loadout screen
 function buildLoadoutUI() {
@@ -1755,7 +1769,13 @@ $('installBtn').addEventListener('click', async () => {
 if (window.jf && window.jf.desktop) {
   $('desktopRow').classList.remove('hidden');
   $('dChange').addEventListener('click', () => { quitToMenu(true); window.jf.launcher(); });
-  $('dFull').addEventListener('click', () => window.jf.fullscreen());
+  $('dFull').addEventListener('click', () => {
+    if (!window.jf.display) { window.jf.fullscreen(); return; }
+    const order = ['windowed', 'maximized', 'fullscreen'];
+    S.display = order[(order.indexOf(S.display || 'windowed') + 1) % 3];
+    $('displayMode').value = S.display; saveSettings(); applyDisplay(S.display);
+    toast({ windowed: 'windowed', maximized: 'windowed fullscreen', fullscreen: 'fullscreen' }[S.display]);
+  });
   $('dQuit').addEventListener('click', () => window.jf.quit());
   window.jf.info().then((info) => {
     if (!info.hosting) return;

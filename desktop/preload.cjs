@@ -7,5 +7,7 @@ contextBridge.exposeInMainWorld('jf', {
   join: (url) => ipcRenderer.invoke('jf:join', String(url)),
   launcher: () => ipcRenderer.invoke('jf:launcher'),
   fullscreen: () => ipcRenderer.invoke('jf:fullscreen'),
+  display: (mode) => ipcRenderer.invoke('jf:display', String(mode)),
+  displayGet: () => ipcRenderer.invoke('jf:displayGet'),
   quit: () => ipcRenderer.invoke('jf:quit'),
 });
