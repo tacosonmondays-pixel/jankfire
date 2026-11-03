@@ -1342,7 +1342,10 @@ async function submitAccount() {
     onLoggedIn(me, signup);
     show('main');
     toast(signup ? `welcome ${me.name}. you got a free crate, duffel bag and box: open them in COSMETICS` : `welcome back ${me.name}`);
-  } catch (e) { $('acctErr').textContent = e.message; }
+  } catch (e) {
+    // on a host-on-this-PC server, your online account doesn't exist here
+    $('acctErr').textContent = e.message + (G.localHost && /wrong/.test(e.message) ? '. (you are hosting on this PC: accounts here are separate from your online one. use PLAY ONLINE to log in with it)' : '');
+  }
 }
 $('acctGo').addEventListener('click', submitAccount);
 for (const id of ['acctName', 'acctPass', 'acctPass2']) $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') submitAccount(); });
@@ -1625,7 +1628,11 @@ if (window.jf && window.jf.desktop) {
   $('dChange').addEventListener('click', () => { quitToMenu(true); window.jf.launcher(); });
   $('dFull').addEventListener('click', () => window.jf.fullscreen());
   $('dQuit').addEventListener('click', () => window.jf.quit());
-  window.jf.info().then((info) => { if (info.hosting && info.hosting.lan.length) $('status').textContent = `you're hosting. friends on your wifi join: ${info.hosting.lan.join('  or  ')}`; });
+  window.jf.info().then((info) => {
+    if (!info.hosting) return;
+    G.localHost = true; // accounts on a host-on-this-PC server only exist on this PC
+    $('status').textContent = `you're hosting${info.hosting.lan.length ? `. friends on your wifi join: ${info.hosting.lan.join('  or  ')}` : ''}. accounts here are local to this PC (play online for your real account)`;
+  });
 } else if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 
 // ------------------------------------------------------------ boot
