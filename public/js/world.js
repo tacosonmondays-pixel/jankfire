@@ -1,6 +1,7 @@
 // Renderer, low-res pixel crunch, the map, the sky, the void.
 import * as THREE from 'three';
-import { BOXES, MAP, setMap } from '/shared/map.js';
+import { buildScenery } from './scenery.js';
+import { BOXES, MAP, setMap, MAPS } from '/shared/map.js';
 import { resetGrid } from '/shared/physics.js';
 import { jankify, jankUniforms } from './jank.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -257,6 +258,7 @@ export function loadMap(id) {
   G.scene.fog.near = MAP.fogNear;
   G.scene.fog.far = MAP.fogFar;
   voidMesh.position.y = MAP.killY - 25;
+  buildScenery(G.scene, MAPS[MAP.id], MAP.id, voidMesh);
 }
 
 export function resize() {
