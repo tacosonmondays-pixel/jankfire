@@ -302,6 +302,11 @@ function applyDisplay(mode) {
 }
 $('displayMode').addEventListener('change', () => { S.display = $('displayMode').value; saveSettings(); applyDisplay(S.display); });
 if (window.jf && window.jf.displayGet) window.jf.displayGet().then((m) => { if (m) { S.display = m; $('displayMode').value = m; } });
+// hotbar: weapons, item and killstreaks in one bar, along the bottom or down the right side
+const applyHotbar = () => document.body.classList.toggle('hotbar-right', S.hotbar === 'right');
+fillSelect($('hotbarPos'), [['bottom', 'Bottom'], ['right', 'Right side']], S.hotbar === 'right' ? 'right' : 'bottom');
+$('hotbarPos').addEventListener('change', () => { S.hotbar = $('hotbarPos').value; saveSettings(); applyHotbar(); });
+applyHotbar();
 
 // ------------------------------------------------------------ loadout screen
 function buildLoadoutUI() {

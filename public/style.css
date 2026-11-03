@@ -32,7 +32,8 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color:
 #meter { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); width: 180px; height: 12px; border: 2px solid #fff; background: rgba(0, 0, 0, 0.5); display: none; }
 #meterFill { height: 100%; width: 0; }
 #meterLabel { position: absolute; top: 12px; left: 0; right: 0; text-align: center; font-size: 12px; }
-#weapons { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; gap: 6px; align-items: flex-end; }
+#hotbar { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; gap: 14px; align-items: flex-end; }
+#weapons { display: flex; gap: 6px; align-items: flex-end; }
 .hslot { position: relative; width: 96px; height: 60px; border-radius: 7px; background: rgba(10, 0, 20, 0.55); border: 2px solid rgba(255, 255, 255, 0.22); opacity: 0.72; transition: transform 0.08s, opacity 0.08s; }
 .hslot img { position: absolute; inset: 2px 2px 12px; width: calc(100% - 4px); height: calc(100% - 14px); object-fit: contain; image-rendering: pixelated; }
 .hslot .key { position: absolute; left: 4px; top: 1px; font-size: 13px; color: #fff; text-shadow: 1px 1px 0 #000; }
@@ -312,19 +313,28 @@ body.replaying #teamBar, body.replaying #objective { visibility: hidden; }
 #freezeFx { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.2s; box-shadow: inset 0 0 160px 40px rgba(190, 235, 255, 0.85); background: repeating-linear-gradient(45deg, rgba(255,255,255,0.06) 0 6px, transparent 6px 14px); }
 
 /* killstreaks */
-#streakTray { position: absolute; right: 16px; bottom: 140px; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
-.kstreak { position: relative; display: flex; align-items: center; gap: 6px; padding: 3px 8px 3px 4px; background: rgba(10, 0, 20, 0.55); border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 6px; opacity: 0.6; font-size: 13px; }
-.kstreak img { width: 34px; height: 34px; image-rendering: pixelated; filter: grayscale(0.8); }
-.kstreak b { position: absolute; left: 2px; top: -2px; font-size: 12px; color: #fff; text-shadow: 1px 1px 0 #000; }
+#streakTray { display: flex; gap: 5px; align-items: flex-end; }
+.kstreak { position: relative; width: 62px; height: 60px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 1px; background: rgba(10, 0, 20, 0.55); border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 7px; opacity: 0.6; font-size: 11px; }
+.kstreak img { position: absolute; left: 50%; top: 4px; transform: translateX(-50%); width: 34px; height: 34px; image-rendering: pixelated; filter: grayscale(0.8); }
+.kstreak b { position: absolute; left: 4px; top: 1px; font-size: 13px; color: #fff; text-shadow: 1px 1px 0 #000; }
 .kstreak.ready { opacity: 1; border-color: #ffe14d; box-shadow: 0 0 12px rgba(255, 225, 77, 0.6); animation: kready 0.9s steps(2) infinite; }
 .kstreak.ready img { filter: none; }
 .kstreak.ready span { color: #ffe14d; }
-@keyframes kready { 50% { transform: translateX(-3px); } }
+@keyframes kready { 50% { transform: translateY(-4px); } }
 #lo-streaks { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
 .kpick { display: flex; align-items: center; gap: 6px; font-family: var(--font); font-size: 14px; padding: 3px 8px 3px 3px; background: rgba(255, 255, 255, 0.08); color: #fff; border: 2px solid transparent; cursor: pointer; }
 .kpick img { width: 30px; height: 30px; image-rendering: pixelated; }
 .kpick.on { border-color: #ffe14d; color: #ffe14d; }
-body.replaying #streakTray { visibility: hidden; }
+body.replaying #streakTray, body.replaying #hotbar { visibility: hidden; }
+/* hotbar down the right side (settings) */
+body.hotbar-right #hotbar { left: auto; right: 12px; bottom: auto; top: 50%; transform: translateY(-50%); flex-direction: column; align-items: flex-end; gap: 12px; }
+body.hotbar-right #weapons, body.hotbar-right #streakTray { flex-direction: column; align-items: flex-end; }
+body.hotbar-right .hslot.on { transform: translateX(-9px) scale(1.08); }
+body.hotbar-right .hslot.item { margin-left: 0; margin-top: 8px; }
+body.hotbar-right #ammo { right: 50%; transform: translateX(50%); bottom: 14px; }
+body.hotbar-right #weaponName { bottom: 62px; }
+@keyframes kreadyR { 50% { transform: translateX(-4px); } }
+body.hotbar-right .kstreak.ready { animation-name: kreadyR; }
 
 /* containers screen */
 .cratecards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 10px 0; }
@@ -336,3 +346,13 @@ body.replaying #streakTray { visibility: hidden; }
 .cratecard span { font-size: 14px; color: #ddd; }
 .cratecard small { color: #9ad; }
 button.mid.glow { background: var(--yellow); }
+/* small windows: shrink the hotbar so it never runs into the HP box or off the screen */
+@media (max-width: 1000px) {
+  body:not(.hotbar-right) #hotbar { left: auto; right: 10px; transform: scale(0.72); transform-origin: bottom right; }
+}
+@media (max-height: 640px) {
+  body.hotbar-right #hotbar { transform: translateY(-50%) scale(0.78); transform-origin: right center; }
+}
+@media (max-height: 480px) {
+  body.hotbar-right #hotbar { transform: translateY(-50%) scale(0.66); }
+}
