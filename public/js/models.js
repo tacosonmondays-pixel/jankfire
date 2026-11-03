@@ -437,7 +437,170 @@ const HAT_AT = {
 };
 
 // weapon skins: a different model for the same weapon
+let skipTexture = null;
+function skipTex() {
+  if (skipTexture) return skipTexture;
+  const c = document.createElement('canvas'); c.width = 32; c.height = 48;
+  const x = c.getContext('2d');
+  x.fillStyle = '#2a7a3a'; x.fillRect(0, 0, 32, 48); x.fillStyle = '#fff'; x.fillRect(3, 3, 26, 42);
+  x.fillStyle = '#2a7a3a'; x.fillRect(5, 5, 22, 38);
+  x.strokeStyle = '#fff'; x.lineWidth = 4; x.beginPath(); x.arc(16, 24, 8, 0, Math.PI * 2); x.stroke();
+  x.beginPath(); x.moveTo(10, 30); x.lineTo(22, 18); x.stroke();
+  skipTexture = new THREE.CanvasTexture(c); skipTexture.magFilter = THREE.NearestFilter;
+  return skipTexture;
+}
+// skins for every weapon: alternate models. each belongs to its weapon and keeps that weapon's muzzle / moving parts
+const SKIN_BUILD = {
+  ar_bullpup(g) { // magazine behind the grip, everything stubby
+    g.add(bx(0.075, 0.12, 0.62, 0x2a2a30, 0, 0, 0.02));
+    g.add(cylZ(0.019, 0.26, 0x111111, 0, 0.015, -0.4));
+    g.add(bx(0.05, 0.2, 0.08, 0x222222, 0, -0.15, 0.18));
+    g.add(bx(0.05, 0.13, 0.06, 0x222222, 0, -0.12, -0.06));
+    g.add(bx(0.05, 0.05, 0.3, 0x444450, 0, 0.09, -0.02));
+    g.userData.muzzle = new THREE.Vector3(0, 0.015, -0.72); g.userData.len = 1.0;
+  },
+  ar_toy(g) { // a foam dart blaster: bright, chunky, orange tip
+    g.add(bx(0.09, 0.14, 0.5, 0x4fd8ff, 0, 0, -0.05));
+    g.add(cylZ(0.035, 0.36, 0xffe14d, 0, 0.02, -0.46));
+    g.add(cylZ(0.04, 0.06, 0xff7a1a, 0, 0.02, -0.66, 8, true));
+    g.add(bx(0.06, 0.18, 0.07, 0xff4fd8, 0, -0.14, 0.06));
+    g.add(bx(0.07, 0.12, 0.26, 0xff4fd8, 0, -0.02, 0.32));
+    g.add(bx(0.05, 0.06, 0.16, 0xffe14d, 0, 0.1, -0.08));
+    g.userData.muzzle = new THREE.Vector3(0, 0.02, -0.72); g.userData.len = 1.0;
+  },
+  smg_uzi(g) {
+    g.add(bx(0.07, 0.13, 0.26, 0x222228, 0, 0, -0.06));
+    g.add(cylZ(0.018, 0.12, 0x111111, 0, 0.02, -0.26));
+    g.add(bx(0.045, 0.3, 0.05, 0x111111, 0, -0.18, -0.02));
+    g.add(bx(0.06, 0.03, 0.2, 0x444450, 0, 0.08, -0.06));
+    g.userData.muzzle = new THREE.Vector3(0, 0.02, -0.37); g.userData.len = 0.6;
+  },
+  shotgun_double(g) { // side by side, all wood and brass
+    for (const sx of [-1, 1]) g.add(cylZ(0.024, 0.62, 0x2a2a2a, sx * 0.026, 0.02, -0.36));
+    g.add(bx(0.11, 0.08, 0.16, 0xb08a3a, 0, 0, -0.02));
+    g.add(bx(0.08, 0.13, 0.32, 0x6b3a1a, 0, -0.04, 0.22));
+    g.add(bx(0.1, 0.05, 0.3, 0x6b3a1a, 0, -0.035, -0.26));
+    g.userData.muzzle = new THREE.Vector3(0, 0.02, -0.74); g.userData.len = 1.1;
+  },
+  minigun_gatling(g) { // old brass gatling with a crank
+    const barrels = new THREE.Group(); barrels.position.set(0, 0, -0.35);
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; barrels.add(cylZ(0.014, 0.62, 0xb08a3a, Math.cos(a) * 0.055, Math.sin(a) * 0.055, -0.1, 5)); }
+    barrels.add(cylZ(0.08, 0.05, 0x8a6a2a, 0, 0, -0.34, 8)); barrels.add(cylZ(0.08, 0.05, 0x8a6a2a, 0, 0, 0.12, 8));
+    g.add(barrels); g.userData.barrels = barrels;
+    g.add(bx(0.16, 0.18, 0.3, 0x5a4a2a, 0, 0, 0.06));
+    g.add(bx(0.03, 0.03, 0.16, 0xb08a3a, 0.12, 0.02, 0.1)); g.add(bx(0.03, 0.12, 0.03, 0xb08a3a, 0.14, -0.04, 0.16)); // crank
+    g.add(bx(0.06, 0.14, 0.08, 0x3a2a1a, 0, 0.14, 0.04));
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.75); g.userData.len = 1.0;
+  },
+  sniper_musket(g) { // long wooden musket with a bayonet
+    g.add(bx(0.06, 0.09, 1.0, 0x6b3a1a, 0, -0.01, -0.3));
+    g.add(cylZ(0.02, 1.2, 0x555555, 0, 0.04, -0.85));
+    g.add(bx(0.07, 0.16, 0.34, 0x6b3a1a, 0, -0.05, 0.38));
+    g.add(bx(0.008, 0.02, 0.28, 0xdddddd, 0, -0.02, -1.55, true));
+    g.add(bx(0.04, 0.05, 0.06, 0xb08a3a, 0, 0.06, 0.05));
+    g.userData.muzzle = new THREE.Vector3(0, 0.04, -1.48); g.userData.len = 1.8;
+  },
+  revolver_flint(g) { // flintlock pistol
+    g.add(cylZ(0.022, 0.26, 0x555555, 0, 0.03, -0.17));
+    g.add(bx(0.05, 0.06, 0.24, 0x6b3a1a, 0, 0.01, -0.1));
+    g.add(bx(0.02, 0.05, 0.04, 0x888888, 0, 0.07, 0.02));
+    const grip = bx(0.05, 0.15, 0.07, 0x6b3a1a, 0, -0.06, 0.08); grip.rotation.x = 0.6; g.add(grip);
+    g.add(ball(0.03, 0xb08a3a, 0, -0.12, 0.13));
+    g.userData.muzzle = new THREE.Vector3(0, 0.03, -0.29); g.userData.len = 0.35;
+  },
+  chicken_turkey(g) {
+    g.add(cylZ(0.1, 0.8, 0x6b4a2a, 0, 0, -0.1, 8));
+    g.add(cylZ(0.11, 0.05, 0xb08a3a, 0, 0, -0.5, 8));
+    for (let i = 0; i < 5; i++) { const f = bx(0.05, 0.2, 0.02, [0xc02030, 0xff7a1a, 0x8a5a2b, 0xffe14d, 0xc02030][i], (i - 2) * 0.05, 0.16, 0.28); f.rotation.z = (i - 2) * 0.25; g.add(f); }
+    g.add(bx(0.06, 0.14, 0.06, 0x333333, 0, -0.14, 0.05));
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.62); g.userData.len = 0.9;
+  },
+  bowling_cannon(g) { // pirate hand cannon
+    g.add(cylZ(0.12, 0.7, 0x2a2a2a, 0, 0, -0.18, 8));
+    g.add(cylZ(0.14, 0.06, 0x2a2a2a, 0, 0, -0.52, 8));
+    g.add(ball(0.12, 0x2a2a2a, 0, 0, 0.16));
+    g.add(bx(0.06, 0.18, 0.06, 0x6b3a1a, 0, -0.16, 0.02));
+    g.add(bx(0.02, 0.02, 0.06, 0xff7a1a, 0, 0.12, 0.12, true)); // fuse
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.6); g.userData.len = 0.9;
+  },
+  banana_bunch(g) {
+    g.add(cylZ(0.05, 0.5, 0x6b4a2a, 0, 0, -0.1, 6));
+    for (let i = 0; i < 4; i++) { const b = cylZ(0.03, 0.26, 0xffe135, (i - 1.5) * 0.04, 0.07, -0.25); b.rotation.x = -0.3 - i * 0.05; g.add(b); }
+    g.add(bx(0.05, 0.14, 0.06, 0x333333, 0, -0.1, 0.05));
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.36); g.userData.len = 0.6;
+  },
+  bow_compound(g) { // cams, cables, a sight. same string + arrow as the normal bow
+    g.add(bx(0.035, 0.22, 0.05, 0x2a2a30, 0, 0, 0));
+    for (const sy of [1, -1]) {
+      const limb = bx(0.03, 0.26, 0.03, 0x111111, 0, sy * 0.24, 0.05); limb.rotation.x = sy * 0.35; g.add(limb);
+      const cam = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.02, 10), M(0xb0b0b8)); cam.rotation.z = Math.PI / 2; cam.position.set(0, sy * 0.36, 0.1); g.add(cam);
+    }
+    g.add(bx(0.01, 0.06, 0.08, 0x7dff4f, 0.03, 0.06, -0.05, true));
+    const string = new THREE.Group();
+    for (const sy of [1, -1]) { const st = bx(0.004, 0.36, 0.004, 0xeeeeee, 0, sy * 0.18, 0.14, true); st.rotation.x = -sy * 0.12; string.add(st); }
+    g.add(string);
+    const arrow = new THREE.Group();
+    arrow.add(cylZ(0.006, 0.7, 0x333333, 0, 0, -0.18, 4));
+    const tip = bx(0.02, 0.02, 0.05, 0xdddddd, 0, 0, -0.55, true); tip.userData.noWrap = true; arrow.add(tip);
+    arrow.add(bx(0.002, 0.03, 0.06, 0x4fd8ff, 0, 0, 0.14));
+    g.add(arrow);
+    g.userData.arrow = arrow; g.userData.arrowTip = tip; g.userData.string = string;
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.6); g.userData.len = 0.9;
+  },
+  cig_cigar(g) {
+    g.add(cylZ(0.022, 0.22, 0x6b3a1a, 0, 0, 0, 8));
+    g.add(cylZ(0.024, 0.03, 0xc02030, 0, 0, 0.06, 8));
+    const tip = cylZ(0.023, 0.02, 0xff4a1a, 0, 0, -0.115, 8, true);
+    tip.userData.noWrap = true; g.add(tip); g.userData.tip = tip;
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.11); g.userData.len = 0.18;
+  },
+  blower_dryer(g) { // a hair dryer, obviously
+    g.add(cylZ(0.08, 0.36, 0xff9ad5, 0, 0, -0.2, 10));
+    g.add(cylZ(0.06, 0.12, 0xff4fd8, 0, 0, -0.42, 10));
+    g.add(bx(0.06, 0.24, 0.07, 0xff9ad5, 0, -0.16, 0.0));
+    g.add(bx(0.07, 0.03, 0.04, 0xffffff, 0, -0.06, -0.06));
+    g.userData.muzzle = new THREE.Vector3(0, -0.03, -0.87); g.userData.len = 1.0;
+  },
+  popper_bottle(g) { // champagne
+    g.add(cylZ(0.05, 0.2, 0x2a5a2a, 0, 0, 0, 10));
+    g.add(cylZ(0.025, 0.1, 0x2a5a2a, 0, 0, -0.14, 8));
+    g.add(cylZ(0.028, 0.05, 0xffd21a, 0, 0, -0.18, 8));
+    g.add(bx(0.07, 0.07, 0.08, 0xffffff, 0, 0, 0.02));
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.21); g.userData.len = 0.3;
+  },
+  reverse_skip(g) {
+    const card = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.18, 0.004), new THREE.MeshBasicMaterial({ map: skipTex() }));
+    card.rotation.x = -0.2; g.add(card); g.userData.card = card;
+    g.userData.muzzle = new THREE.Vector3(0, 0.05, -0.05); g.userData.len = 0.2;
+  },
+  snowball_ice(g) {
+    const c = bx(0.12, 0.12, 0.12, 0xbfe8ff, 0, 0.02, -0.08); c.rotation.set(0.4, 0.6, 0.2); g.add(c);
+    g.userData.muzzle = new THREE.Vector3(0, 0.02, -0.16); g.userData.len = 0.18;
+  },
+  spoon_ladle(g) {
+    g.add(cylZ(0.01, 0.2, 0xc8c8d0, 0, 0, -0.02, 5));
+    const bowl = ball(0.06, 0xd8d8e0, 0, -0.02, -0.15); bowl.scale.set(1, 0.6, 1); g.add(bowl);
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.17); g.userData.len = 0.22;
+  },
+  slipper_croc(g) { // a croc, holes and all
+    g.add(bx(0.13, 0.07, 0.3, 0x7dff4f, 0, 0, -0.02));
+    g.add(ball(0.07, 0x7dff4f, 0, 0.03, -0.14));
+    for (let i = 0; i < 6; i++) g.add(bx(0.02, 0.01, 0.02, 0x3a8a2a, (i % 3 - 1) * 0.04, 0.04, -0.12 + Math.floor(i / 3) * 0.06));
+    g.add(bx(0.13, 0.02, 0.04, 0x3a8a2a, 0, 0.04, 0.1));
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.15); g.userData.len = 0.3;
+  },
+  scythe_reaper(g) { // black wood, a bone-white blade
+    g.add(cylZ(0.022, 1.6, 0x1a1a1a, 0, 0, -0.3, 6));
+    const blade = new THREE.Group(); blade.position.set(0, 0.05, -1.05);
+    for (let i = 0; i < 6; i++) { const seg = bx(0.015, 0.08 - i * 0.008, 0.16, 0xe8e4d8, 0, 0.06 + i * 0.07, 0.02 + i * i * 0.012); seg.rotation.x = -0.25 - i * 0.18; blade.add(seg); }
+    g.add(blade); g.userData.blade = blade;
+    g.add(ball(0.05, 0xe8e4d8, 0, 0, 0.5));
+    g.userData.muzzle = new THREE.Vector3(0, 0, -1.12); g.userData.len = 1.7;
+  },
+};
+
 const MODEL_BUILD = {
+  ...SKIN_BUILD,
   knife_kitchen(g) {
     g.add(bx(0.03, 0.045, 0.12, 0x2a1a10, 0, 0, 0.02));
     g.add(bx(0.008, 0.06, 0.24, 0xe8ecef, 0, 0.012, -0.16));
