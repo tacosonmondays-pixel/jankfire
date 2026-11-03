@@ -222,6 +222,18 @@ class Room {
     for (const p of this.fighters()) if (p.team) c[p.team]++;
     return c[1] <= c[2] ? 1 : 2;
   }
+  // randomizer: a fresh random loadout every life (null = back to your own)
+  randomLoadout() {
+    const lo = {};
+    for (const slot of ['primary', 'secondary', 'melee']) lo[slot] = pick(Object.keys(WEAPONS).filter((id) => WEAPONS[id].slot === slot));
+    return lo;
+  }
+  sendLoadout(p) {
+    if (p.isBot) { if (GAMES[this.game].random && !p.ai.dummy) { p.w = pick(BOT_GUNS); p.ai.ammo = WEAPONS[p.w].mag || 1; } return; }
+    const rnd = (this.mode === 'ffa' || this.mode === 'bots') && GAMES[this.game].random;
+    if (rnd) { p.forced = true; send(p, { t: 'loadout', lo: this.randomLoadout() }); }
+    else if (p.forced) { p.forced = false; send(p, { t: 'loadout', lo: null }); }
+  }
   joinTeam(p) {
     if (!p.ownColor) p.ownColor = p.color;
     if (!this.teamsOn()) { p.team = 0; return; }
@@ -295,6 +307,7 @@ class Room {
     this.broadcast({ t: 'pj', ...this.info(p) }, p.id);
     send(p, { t: 'tip', tip: p.tip });
     deal(p);
+    this.sendLoadout(p);
     if (this.mode === 'ffa' || this.mode === 'coop') this.broadcast({ t: 'chat', id: 0, m: `${name} joined` });
     if (this.mode === 'bots') this.fillBots();
     if (this.mode === 'bots' && this.humans().length === 1 && this.game !== 'dm') this.startRound();
@@ -1212,6 +1225,7 @@ class Room {
       p.alive = true; p.hp = 100; p.vel = [0, 0, 0]; p.spawnT = now(); p.seq++;
       p.pos = this.pickSpawn(p.isBot, p);
       send(p, { t: 'spawn', p: p.pos, q: p.seq });
+      this.sendLoadout(p);
     }
     if (this.mode === 'training') { this.removeBots(); this.spawnDummies(); }
   }
@@ -1577,6 +1591,7 @@ class Room {
         p.pos = p.isBot && p.ai.dummy ? p.ai.dummy.home.slice() : this.pickSpawn(p.isBot, p);
         p.slipUntil = 0; p.burnUntil = 0; p.sleepUntil = 0;
         send(p, { t: 'spawn', p: p.pos, q: p.seq });
+        this.sendLoadout(p);
         if (!p.isBot) deal(p);
       }
     }

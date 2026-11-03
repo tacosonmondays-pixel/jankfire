@@ -161,6 +161,7 @@ function resetWorldState() {
   endKillcam();
   stopReplay(true);
   hideReplayUI();
+  if (G.forcedLoadout) { G.forcedLoadout = null; setLoadout(S.loadout); }
   clearRec();
   clearKillFx();
   G.roundOver = false;
@@ -308,6 +309,7 @@ function buildLoadoutUI() {
   }
 }
 function applyLoadout(force) {
+  if (G.forcedLoadout) { $('loNote').textContent = 'randomizer is on: you get a random loadout every life'; return; }
   const canNow = force || !G.joined || !ME.alive || performance.now() - (G.spawnT || 0) < 5000;
   if (canNow) { setLoadout(S.loadout); G.pendingLoadout = false; $('loNote').textContent = ''; }
   else { G.pendingLoadout = true; $('loNote').textContent = 'loadout switches when you respawn'; }
@@ -873,6 +875,13 @@ function castVote(i) { if (!G.vote || i >= G.vote.options.length) return; myVote
 net.on('vote', (m) => { myVote = -1; showVote(m); });
 net.on('votes', (m) => { if (G.vote) { G.vote.counts = m.counts; showVote(G.vote); } });
 
+// randomizer mode: the server hands you a loadout each life (null = use your own again)
+net.on('loadout', (m) => {
+  G.forcedLoadout = m.lo || null;
+  setLoadout(m.lo || S.loadout);
+  refillAmmo();
+  if (m.lo) hud.msg(`${wname(m.lo.primary)} · ${wname(m.lo.secondary)} · ${wname(m.lo.melee)}`, 2.2, 'brag');
+});
 net.on('kb', (m) => applyKb(m.v));
 net.on('slip', () => slip(performance.now()));
 net.on('dmg', (m) => {

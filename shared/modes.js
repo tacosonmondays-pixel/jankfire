@@ -4,11 +4,12 @@ export const GAMES = {
   tdm: { name: 'Team Deathmatch', desc: 'red vs blue. first team to the kill limit', teams: true },
   tags: { name: 'Tags', desc: "kills drop tags. grab enemy tags to score, grab your own team's to deny them", teams: true },
   bomb: { name: 'Plant & Defuse', desc: 'attackers plant the bomb at A or B (hold F). defenders stop them or defuse it', teams: true, sites: true },
+  rand: { name: 'Randomizer', desc: 'everyone gets a random loadout every life. first to the kill limit', teams: false, random: true },
 };
-export const GAME_ORDER = ['dm', 'tdm', 'tags', 'bomb'];
+export const GAME_ORDER = ['dm', 'tdm', 'tags', 'bomb', 'rand'];
 export const TEAMS = { 1: { name: 'RED', color: '#ff4f4f' }, 2: { name: 'BLUE', color: '#4fa8ff' } };
 // kill / point limits per room type
-export const TARGETS = { ffa: { dm: 20, tdm: 40, tags: 25 }, bots: { dm: 15, tdm: 30, tags: 20 } };
+export const TARGETS = { ffa: { dm: 20, tdm: 40, tags: 25, rand: 20 }, bots: { dm: 15, tdm: 30, tags: 20, rand: 15 } };
 export const BOMB = {
   plant: 3, defuse: 5, fuse: 35, // seconds
   roundTime: 110, wins: 4, swapAfter: 3, // first to 4 rounds, sides swap after round 3
