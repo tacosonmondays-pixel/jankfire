@@ -1,7 +1,7 @@
 // JANKFIRE client entry: menus, modes, input, net handlers and the main loop.
 import * as THREE from 'three';
 import { BOXES, MAPS, MAP_ORDER } from '/shared/map.js';
-import { WEAPONS, ORDER, SLOTS, FLAGS, SLIP_TIME, HIPFIRE, BOT_DIFF, MODES, STREAKS, validLoadout } from '/shared/weapons.js';
+import { WEAPONS, ORDER, SLOTS, FLAGS, SLIP_TIME, HIPFIRE, BOT_DIFF, MODES, STREAKS, ITEMS, ITEM_ORDER, validLoadout } from '/shared/weapons.js';
 import { stepProjectile, raycast } from '/shared/physics.js';
 import { G } from './ctx.js';
 import { initWorld, renderFrame, setJank, updateWorld, loadMap } from './world.js';
@@ -14,6 +14,7 @@ import { ME, stepPlayer, tryHook, releaseHook, applyKb, slip, eye, hookPoint, hs
 import {
   W, initWeapons, rebuildViewmodels, rebuildOne, setLoadout, refillAmmo, switchSlot, lastSlot, cycleSlot, reload,
   fireDown, fireUp, updateWeapons, muzzleWorld, onSlipperBack, inspect, grantScythe, loseScythe, toggleScythe, cycleCard, heavyAttack,
+  useItem, syncItem, resetItems,
 } from './weapons.js';
 import { Remote, updateGibs } from './remote.js';
 import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN } from './skins.js';
@@ -163,6 +164,8 @@ function resetWorldState() {
   stopReplay(true);
   hideReplayUI();
   if (G.forcedLoadout) { G.forcedLoadout = null; setLoadout(S.loadout); }
+  for (const b of G.bubbles.values()) G.scene.remove(b.mesh);
+  G.bubbles.clear(); G.smokes.length = 0; ME.frozenUntil = 0; G.frost = 0;
   clearRec();
   clearKillFx();
   G.roundOver = false;
@@ -320,6 +323,19 @@ function buildLoadoutUI() {
       });
       col.append(b);
     }
+  }
+  // items
+  const ic = $('lo-item');
+  ic.innerHTML = '';
+  for (const id of ITEM_ORDER) {
+    const it = ITEMS[id];
+    const b = document.createElement('button');
+    b.className = 'wpick' + ((S.loadout.item || 'frag') === id ? ' on' : '');
+    b.textContent = `${it.name} x${it.charges}`;
+    b.style.setProperty('--c', it.color);
+    b.addEventListener('mouseenter', () => { $('loDesc').textContent = `${it.name}: ${it.desc} (${it.charges} charge${it.charges > 1 ? 's' : ''}, ${it.recharge}s to refill)`; });
+    b.addEventListener('click', () => { S.loadout.item = id; saveSettings(); buildLoadoutUI(); applyLoadout(false); });
+    ic.append(b);
   }
 }
 function applyLoadout(force) {
@@ -642,7 +658,8 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyF' && !e.repeat) { if (canUse(G.round, ME.pos)) startUse(); else inspect(); }
   if (e.code === 'KeyV') W.dashHeld = true;
   if (e.code === 'KeyX' && !e.repeat) toggleScythe();
-  if (e.code === 'KeyG' && !e.repeat) deployStreak();
+  if (e.code === 'KeyG' && !e.repeat) useItem();
+  if (e.code === 'KeyH' && !e.repeat) deployStreak();
   if (e.code === 'Digit4') switchSlot(3);
   if ((e.code === 'KeyC' || e.code === 'ControlLeft' || e.code === 'ControlRight') && !e.repeat) {
     if (e.code !== 'KeyC') e.preventDefault();
@@ -885,6 +902,30 @@ net.on('bombev', (m) => {
     if (mine) sfx.kill();
   }
 });
+// ------------------------------------------------------------ items: charges, bubbles, smoke, frost
+net.on('ic', (m) => syncItem(m.i, m.n, m.next));
+G.bubbles = new Map();
+function addBubble(m) {
+  const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(m.r, 2), new THREE.MeshBasicMaterial({ color: 0x4fd8ff, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide }));
+  const wire = new THREE.Mesh(mesh.geometry, new THREE.MeshBasicMaterial({ color: 0xbff4ff, wireframe: true, transparent: true, opacity: 0.35 }));
+  mesh.add(wire);
+  mesh.position.set(...m.p);
+  G.scene.add(mesh);
+  G.bubbles.set(m.id, { mesh, until: performance.now() + (m.left || 7000) });
+}
+net.on('bub+', (m) => { addBubble(m); sfx.reverse(m.p); });
+net.on('bubx', (m) => { const b = G.bubbles.get(m.id); if (b) { G.scene.remove(b.mesh); G.bubbles.delete(m.id); sfx.pop(b.mesh.position.toArray()); } });
+G.smokes = [];
+net.on('smoke', (m) => { G.smokes.push({ p: m.p, r: m.r, until: performance.now() + m.dur }); sfx.blow(m.p); });
+net.on('frost', (m) => {
+  if (m.id === G.myId) { G.frost = m.n; hud.msg(`${'❄'.repeat(m.n)} FROSTY`, 0.8); }
+  const r = G.remotes.get(m.id); if (r) fx.spray([r.pos[0], r.pos[1] + 1.2, r.pos[2]], 10, [0xffffff, 0xbfe8ff], 3, 0.6, 0.1, 2, 1);
+});
+net.on('freeze', (m) => {
+  if (m.id === G.myId) { ME.frozenUntil = performance.now() + m.dur; G.frost = 0; releaseHook(); hud.msg('FROZEN SOLID', m.dur / 1000, 'slip'); sfx.ting(); }
+  const r = G.remotes.get(m.id); if (r) { r.frozenUntil = performance.now() + m.dur; sfx.ting(r.pos); }
+});
+
 // hold F to plant / defuse: keep telling the server while it's held, and stand still
 let useTimer = 0;
 function startUse() {
@@ -1004,6 +1045,7 @@ net.on('kill', (m) => {
 });
 net.on('spawn', (m) => {
   endKillcam();
+  resetItems(); ME.frozenUntil = 0; G.frost = 0;
   ME.pos = m.p.slice(); ME.vel = [0, 0, 0]; ME.alive = true; ME.hp = 100; ME.seq = m.q;
   ME.slipUntil = 0; ME.combo = 0; ME.sleepUntil = 0;
   G.spawnT = performance.now();
@@ -1036,7 +1078,10 @@ net.on('pd', (m) => {
     const d = Math.hypot(m.p[0] - ME.pos[0], m.p[1] - ME.pos[1], m.p[2] - ME.pos[2]);
     G.shake = Math.max(G.shake, Math.max(0, 1 - d / 30));
   }
-  if (m.b) { fx.splat(m.p); sfx.bonk(m.p); }
+  if (m.b) {
+    if (pr && pr.k === 'snowball') { fx.spray(m.p, 18, [0xffffff, 0xdff4ff], 5, 0.6, 0.12, 8, 1); sfx.thwack(m.p); }
+    else { fx.splat(m.p); sfx.bonk(m.p); }
+  }
   if (m.st && pr) { // arrow stuck in a wall: leave it there for a while
     const mesh = buildProjectile('bow');
     if (mesh.userData.tip) mesh.userData.tip.material = M(tipColor(m.tip), true);
@@ -1099,6 +1144,15 @@ net.on('fx', (m) => {
       fx.tracer(a, s.slice(3), color(), w.thick || (fast ? 0.03 : 0.045), fast ? 0.07 : 0.2);
     });
     if (m.s.length) sfx.gun(m.w, m.s[0].slice(0, 3));
+  } else if (m.k === 'shatter') {
+    fx.spray(m.p, 70, [0xffffff, 0xbfe8ff, 0x7fd0ff], 11, 1.4, 0.2, 14, 0.5);
+    sfx.crunch(m.p); sfx.ting(m.p);
+    if (r) r.frozenUntil = 0;
+  } else if (m.k === 'medkit') {
+    const src = m.id === G.myId ? ME.pos : r ? r.pos : null;
+    if (src) fx.spray([src[0], src[1] + 1.2, src[2]], 16, [0x7dff4f, 0xffffff], 3, 1.0, 0.14, -2, 1);
+  } else if (m.k === 'bubhit') {
+    fx.spray(m.p, 8, [0x4fd8ff, 0xffffff], 4, 0.3, 0.1, 0, 2); sfx.ricochet(m.p);
   } else if (m.k === 'burn') {
     if (r) r.burnUntil = performance.now() + 600;
     if (m.id === G.myId) G.burnUntil = performance.now() + 600;
@@ -1157,7 +1211,9 @@ function frame(t) {
   const now = performance.now();
 
   if (G.joined) {
-    const playing = $('menu').classList.contains('hidden') && !chatOpen && now >= (ME.sleepUntil || 0) && !RP.active && !G.using;
+    const frozen = now < (ME.frozenUntil || 0);
+    if (frozen) { ME.vel[0] = 0; ME.vel[2] = 0; }
+    const playing = $('menu').classList.contains('hidden') && !chatOpen && now >= (ME.sleepUntil || 0) && !RP.active && !G.using && !frozen;
     const inp = playing ? {
       f: keys.KeyW, b: keys.KeyS, l: keys.KeyA, r: keys.KeyD, jump: keys.Space, jumpPressed,
       sprint: keys.ShiftLeft || keys.ShiftRight,
@@ -1210,6 +1266,13 @@ function frame(t) {
   else for (const r of G.remotes.values()) { r.ch.root.visible = false; r.rope.visible = false; r.shadow.visible = false; } // the replay has its own copies
   updateGibs(dt);
   updateKillFx(dt);
+  for (const [id, b] of G.bubbles) { if (now > b.until + 500) { G.scene.remove(b.mesh); G.bubbles.delete(id); continue; } b.mesh.rotation.y += dt * 0.3; b.mesh.material.opacity = 0.18 + Math.sin(now * 0.006) * 0.05; }
+  for (let i = G.smokes.length - 1; i >= 0; i--) {
+    const s2 = G.smokes[i];
+    if (now > s2.until) { G.smokes.splice(i, 1); continue; }
+    for (let k = 0; k < 11; k++) { const a = Math.random() * 6.28, rr = Math.sqrt(Math.random()) * s2.r; fx.smoke([s2.p[0] + Math.cos(a) * rr, s2.p[1] + Math.random() * 3.5, s2.p[2] + Math.sin(a) * rr], 1, 0.4); }
+  }
+  $('freezeFx').style.opacity = now < (ME.frozenUntil || 0) ? 1 : Math.min(0.6, (G.frost || 0) * 0.15);
   if (G.joined) {
     updateObjectives(dt, now, G.round, ME.pos);
     const a = G.round && G.round.bomb && G.round.bomb.act;

@@ -16,7 +16,7 @@ import { validLook, achievementsFrom, ACHIEVEMENTS } from './shared/looks.js';
 import { STAT_KEYS } from './server/store.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor } from './shared/modes.js';
-import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS } from './shared/weapons.js';
+import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -190,6 +190,7 @@ class Room {
     this.tags = new Map(); this.nextTag = 1;
     this.bomb = null;
     this.vote = null;
+    this.bubbles = new Map(); this.nextBub = 1;
     this.cfg = { map: mode === 'training' ? 'range' : mode === 'coop' ? 'warehouse' : 'islands', hip: 'normal', bots: 5, diff: 'normal' };
     this.wave = 0; this.toSpawn = 0; this.interUntil = 0;
     this.round = ROUND[mode] ? { target: ROUND[mode].kills, ends: now() + ROUND[mode].time * 1000, over: false, next: 0 } : null;
@@ -302,6 +303,7 @@ class Room {
       projs: [...this.projectiles.values()].map((pr) => ({ id: pr.id, k: pr.k, p: pr.p, v: pr.v, o: pr.o })),
       holes: [...this.holes.values()].map((h) => ({ id: h.id, p: h.p, o: h.o, big: h.big, age: (now() - h.born) / 1000 })),
       wave: this.waveInfo(), level: p.level, account: !!p.acct, round: this.roundInfo(),
+      bubbles: [...this.bubbles.values()].map((b) => ({ id: b.id, p: b.p, r: b.r, left: b.until - now() })),
       game: this.game, team: p.team || 0, tags: [...this.tags.values()].map((g) => ({ id: g.id, p: g.p, team: g.team })), vote: this.voteInfo(),
     });
     this.broadcast({ t: 'pj', ...this.info(p) }, p.id);
@@ -560,7 +562,9 @@ class Room {
 
   stepBot(b, dt) {
     const n = now();
-    const think = this.botThink(b, dt);
+    const frozen = n < (b.frozenUntil || 0);
+    const think = frozen ? { wx: 0, wz: 0, jump: false } : this.botThink(b, dt);
+    if (frozen) { b.vel[0] = 0; b.vel[2] = 0; }
     const v = b.vel;
     const slipping = n < b.slipUntil;
     if (!b.ai.dummy || !b.ai.dummy.move) {
@@ -605,6 +609,75 @@ class Room {
     if (b.pos[1] < this.map.killY) this.kill(b, null, 'void');
   }
 
+  // ---------------------------------------------------------- items (G): charges refill over time
+  itemCharges(p, id) {
+    const it = ITEMS[id];
+    p.ic ||= {};
+    let c = p.ic[id];
+    if (!c) c = p.ic[id] = { n: it.charges, next: 0 };
+    const n = now();
+    while (c.n < it.charges && c.next && n >= c.next) { c.n++; c.next = c.n < it.charges ? c.next + it.recharge * 1000 : 0; }
+    return c;
+  }
+  useItem(p, m) {
+    const it = ITEMS[m.i];
+    if (!it || !p.alive) return;
+    const c = this.itemCharges(p, m.i);
+    if (c.n <= 0 || now() - (p.itemT || 0) < 400) return;
+    p.itemT = now();
+    c.n--;
+    if (!c.next) c.next = now() + it.recharge * 1000;
+    send(p, { t: 'ic', i: m.i, n: c.n, next: c.next ? c.next - now() : 0 });
+    let o = vec3(m.o);
+    if (!o || dist3(o, eyeOf(p)) > 4) o = eyeOf(p);
+    const d = norm(vec3(m.d)) || [0, 0, -1];
+    if (it.proj) {
+      const w = WEAPONS[it.proj];
+      const pr = this.makeProj(p, it.proj, [o[0] + d[0] * 0.7, o[1] + d[1] * 0.7, o[2] + d[2] * 0.7],
+        [d[0] * w.speed + p.vel[0] * 0.35, d[1] * w.speed + 3 + p.vel[1] * 0.35, d[2] * w.speed + p.vel[2] * 0.35]);
+      pr.born = now();
+    } else if (m.i === 'medkit') {
+      p.healLeft = it.heal;
+      this.broadcast({ t: 'fx', k: 'medkit', id: p.id });
+    } else if (m.i === 'bubble') {
+      const b = { id: this.nextBub++, p: [r2(p.pos[0]), r2(p.pos[1] + 1), r2(p.pos[2])], r: it.r, until: now() + it.dur * 1000, o: p.id };
+      this.bubbles.set(b.id, b);
+      this.broadcast({ t: 'bub+', id: b.id, p: b.p, r: b.r, left: it.dur * 1000 });
+    }
+  }
+  inBubble(b, t) { return Math.hypot(t.pos[0] - b.p[0], t.pos[1] + 1 - b.p[1], t.pos[2] - b.p[2]) < b.r; }
+  // a bubble protects whoever is inside from anyone outside it
+  bubbleBlocks(attacker, t) {
+    if (!attacker || attacker === t || !this.bubbles.size) return false;
+    for (const b of this.bubbles.values()) if (this.inBubble(b, t) && !this.inBubble(b, attacker)) return true;
+    return false;
+  }
+  // snowballs: frost builds up, enough of it freezes you, a snowball to a frozen target shatters them
+  frost(t, owner) {
+    const w = WEAPONS.snowball, n = now();
+    if (t.frozenUntil > n) {
+      t.frozenUntil = 0;
+      this.broadcast({ t: 'fx', k: 'shatter', id: t.id, p: center(t).map(r2) });
+      this.kill(t, owner, 'snowball');
+      return;
+    }
+    t.frost = Math.max(0, (t.frost || 0) - Math.floor((n - (t.frostT || 0)) / (w.frostDecay * 1000))) + 1;
+    t.frostT = n;
+    if (t.frost >= w.freezeAt) {
+      t.frost = 0;
+      t.frozenUntil = n + w.freeze * 1000;
+      t.vel[0] = 0; t.vel[2] = 0;
+      this.broadcast({ t: 'freeze', id: t.id, dur: w.freeze * 1000 });
+    } else this.broadcast({ t: 'frost', id: t.id, n: t.frost });
+  }
+  tickItems(dt) {
+    const n = now();
+    for (const b of [...this.bubbles.values()]) if (n >= b.until) { this.bubbles.delete(b.id); this.broadcast({ t: 'bubx', id: b.id }); }
+    for (const p of this.players.values()) {
+      if (p.healLeft > 0 && p.alive) { const a = Math.min(p.healLeft, 26 * dt); p.healLeft -= a; p.hp = Math.min(100, p.hp + a); }
+    }
+  }
+
   // ---------------------------------------------------------- combat
   tag(t, attacker, w) {
     if (!attacker || attacker === t) return;
@@ -633,6 +706,7 @@ class Room {
     if (this.round && this.round.over && w !== 'void') return;
     if (attacker && attacker !== t && now() - t.spawnT < 1200 && !t.isBot) return; // spawn protection
     if (this.friendly(attacker, t)) return;
+    if (this.bubbleBlocks(attacker, t)) return;
     if (attacker && attacker.isBot && !t.isBot && this.mode !== 'bots') amt *= 0.6; // coop bots hit softer
     t.hp -= amt;
     t.lastHs = !!hs;
@@ -685,6 +759,7 @@ class Room {
   hurt(t, attacker, w, dmg, kb, opts = {}) {
     if (!t || !t.alive) return;
     if (this.friendly(attacker, t)) return;
+    if (this.bubbleBlocks(attacker, t)) { this.broadcast({ t: 'fx', k: 'bubhit', p: center(t).map(r2) }); return; }
     if (attacker && attacker !== t && attacker.alive && t.reverseUntil > now()) {
       this.broadcast({ t: 'fx', k: 'reflect', id: t.id, by: attacker.id });
       const victim = attacker;
@@ -1079,11 +1154,31 @@ class Room {
       }
       if (pr.k === 'duck') {
         if (age >= w.fuse) { this.removeProj(pr); this.makeHole(pr.p, pr.o); continue; }
+      } else if (pr.k === 'frag' || pr.k === 'smokegren') {
+        if (age >= w.fuse) {
+          this.removeProj(pr);
+          if (pr.k === 'frag') this.explodeAt(pr.p, owner, 'frag', w.radius, w.dmg, w.kb);
+          else this.broadcast({ t: 'smoke', p: pr.p.map(r2), r: ITEMS.smoke.r, dur: ITEMS.smoke.dur * 1000 });
+          continue;
+        }
       } else {
         const ownerImmune = pr.k === 'slipper' ? Infinity : pr.k === 'bowling' ? 0.5 : 0.25;
         const victims = this.sweep(prev, pr.p, pr.r, (t) => (t.id === pr.o && age < ownerImmune) || (pr.hit.has(t.id) && n - pr.hit.get(t.id) < 700) || this.friendly(owner, t));
         if (victims.length) {
           if (pr.k === 'chicken') { pr.p = victims[0].at; this.projectiles.delete(pr.id); this.explode(pr); continue; }
+          if (pr.k === 'snowball') {
+            const v = victims[0];
+            pr.p = v.at;
+            this.removeProj(pr, { b: 1 });
+            if (v.t.id === pr.o) continue;
+            const d = norm(pr.v) || [0, 0, 1];
+            if (!this.bubbleBlocks(owner, v.t) && !this.friendly(owner, v.t)) {
+              const frozen = v.t.frozenUntil > now();
+              if (!frozen) this.hurt(v.t, owner, 'snowball', w.dmg, [d[0] * w.kb, w.kbUp, d[2] * w.kb]);
+              if (v.t.alive) this.frost(v.t, owner);
+            }
+            continue;
+          }
         if (pr.k === 'bow' || pr.k === 'card') { pr.p = victims[0].at; this.arrowHit(pr, owner, victims[0].t); continue; }
           if (pr.k === 'banana') {
             const v = victims[0];
@@ -1108,6 +1203,7 @@ class Room {
       }
       if (hit) {
         if (pr.k === 'bow' || pr.k === 'card') { this.arrowHit(pr, owner, null, hit); continue; }
+        if (pr.k === 'snowball') { this.removeProj(pr, { b: 1 }); continue; }
         if (pr.k === 'chicken') { this.projectiles.delete(pr.id); this.explode(pr); continue; }
         if (pr.k === 'banana' && hit.axis === 1 && hit.sign === 1) {
           this.removeProj(pr);
@@ -1315,6 +1411,7 @@ class Room {
         break;
       case 'kc': p.kc = !!m.on; break;
       case 'use': this.tryUse(p); break;
+      case 'item': this.useItem(p, m); break;
       case 'vote':
         if (this.vote && Number.isInteger(m.i) && m.i >= 0 && m.i < this.vote.options.length) {
           this.vote.votes.set(p.id, m.i);
@@ -1578,6 +1675,7 @@ class Room {
     const n = now();
     this.tickRound();
     this.tickTags(n);
+    this.tickItems(dt);
     for (const b of this.players.values()) if (b.isBot && b.alive) this.stepBot(b, dt);
     this.tickProjectiles(dt);
     this.tickHoles(dt);
@@ -1589,7 +1687,7 @@ class Room {
         if (p.isBot && this.mode === 'coop') continue;
         p.alive = true; p.hp = 100; p.vel = [0, 0, 0]; p.spawnT = n; p.seq++;
         p.pos = p.isBot && p.ai.dummy ? p.ai.dummy.home.slice() : this.pickSpawn(p.isBot, p);
-        p.slipUntil = 0; p.burnUntil = 0; p.sleepUntil = 0;
+        p.slipUntil = 0; p.burnUntil = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.ic = {}; p.healLeft = 0;
         send(p, { t: 'spawn', p: p.pos, q: p.seq });
         this.sendLoadout(p);
         if (!p.isBot) deal(p);

@@ -92,7 +92,7 @@ h1 {
 #reverseFx { position: absolute; inset: 0; opacity: 0; transition: opacity 0.15s; box-shadow: inset 0 0 80px 20px rgba(255, 40, 40, 0.65); }
 #center.reverse { color: #ff3b3b; font-size: 54px; }
 .lohead { color: var(--yellow); text-align: center; margin: 14px 0 6px; }
-#loadout { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+#loadout { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .lcol { display: flex; flex-direction: column; gap: 4px; }
 .lt { color: #aaa; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
 .wpick {
@@ -304,3 +304,9 @@ body.replaying #teamBar, body.replaying #objective { visibility: hidden; }
 /* character screen: keep the preview in view while you scroll through the options */
 #charSlot { position: sticky; top: -18px; z-index: 3; background: rgba(18, 8, 24, 0.96); padding-bottom: 4px; }
 #charSlot #preview { height: 240px; }
+
+.hslot.item { margin-left: 10px; opacity: 1; border-color: #9ab04a; }
+.hslot.item.empty img { filter: grayscale(1) brightness(0.6); }
+.hslot .pie { position: absolute; inset: 0; border-radius: 6px; pointer-events: none; }
+
+#freezeFx { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.2s; box-shadow: inset 0 0 160px 40px rgba(190, 235, 255, 0.85); background: repeating-linear-gradient(45deg, rgba(255,255,255,0.06) 0 6px, transparent 6px 14px); }

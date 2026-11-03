@@ -100,11 +100,19 @@ export const WEAPONS = {
     cd: 6, dur: 1.2,
   },
   duck: {
-    slot: 'secondary', kind: 'proj', name: 'Rubber Duck', color: '#ffd23b',
+    slot: 'item', kind: 'proj', name: 'Rubber Duck', color: '#ffd23b',
     desc: 'Throw it. It turns into a black hole that sucks everyone in, then pops.',
     cd: 5, speed: 22, grav: 22, r: 0.3, bounce: 0.45, fuse: 1.0,
     holeTime: 2.5, holeR: 15, pull: 45, blastR: 9, blastKb: 30, blastDmg: 25,
   },
+  snowball: {
+    slot: 'secondary', kind: 'proj', name: 'Snowball', color: '#dff4ff',
+    desc: 'Barely hurts. Every hit adds frost; 4 hits freezes them solid. Hit a frozen target and they shatter.',
+    cd: 0.3, speed: 46, grav: 10, r: 0.13, dmg: 9, kb: 3, kbUp: 1.5, life: 3, freezeAt: 4, freeze: 2.4, frostDecay: 3,
+  },
+  // thrown items (not in a weapon slot; the item slot fires these)
+  frag: { slot: 'hidden', kind: 'proj', name: 'Frag Grenade', color: '#7a8a3a', speed: 24, grav: 22, r: 0.15, bounce: 0.42, fuse: 2.2, radius: 7.5, dmg: 105, kb: 34, life: 6 },
+  smokegren: { slot: 'hidden', kind: 'proj', name: 'Smoke Bomb', color: '#9aa0a8', speed: 22, grav: 22, r: 0.15, bounce: 0.35, fuse: 1.3, life: 5 },
 
   // ------------------------------------------------------------ melee
   bread: {
@@ -161,11 +169,22 @@ export const STREAKS = {
   satellite: { kills: 7, name: 'Spy Satellite', desc: 'see every enemy through walls for 20s', auto: true, dur: 20 },
   giantduck: { kills: 10, name: 'Giant Duck', desc: 'G: a giant black hole that pulls in everyone but you', deploy: true },
 };
-export const DEFAULT_LOADOUT = { primary: 'ar', secondary: 'cig', melee: 'bread' };
+export const DEFAULT_LOADOUT = { primary: 'ar', secondary: 'cig', melee: 'bread', item: 'frag' };
+
+// items: one per loadout, G to use. charges come back over time (recharge = seconds per charge)
+export const ITEMS = {
+  frag: { name: 'Frag Grenade', desc: 'Bounces, blows up after 2s. Knocks people (and you) flying.', charges: 2, recharge: 16, color: '#9ab04a', proj: 'frag' },
+  medkit: { name: 'Medkit', desc: 'Heals 60 over a couple of seconds.', charges: 1, recharge: 22, color: '#ff4f4f', heal: 60 },
+  bubble: { name: 'Shield Bubble', desc: 'A dome for 7s. Nothing from outside can hurt anyone inside.', charges: 1, recharge: 28, color: '#4fd8ff', dur: 7, r: 4.4 },
+  duck: { name: 'Rubber Duck', desc: 'Turns into a black hole that sucks everyone in, then pops.', charges: 1, recharge: 20, color: '#ffd23b', proj: 'duck' },
+  smoke: { name: 'Smoke Bomb', desc: 'A thick cloud nobody can see through for 10s.', charges: 2, recharge: 18, color: '#9aa0a8', proj: 'smokegren', dur: 10, r: 6.5 },
+};
+export const ITEM_ORDER = ['frag', 'medkit', 'bubble', 'duck', 'smoke'];
 
 export function validLoadout(lo) {
   const out = { ...DEFAULT_LOADOUT };
   if (lo) for (const s of SLOTS) if (WEAPONS[lo[s]] && WEAPONS[lo[s]].slot === s) out[s] = lo[s];
+  if (lo && ITEMS[lo.item]) out.item = lo.item;
   return out;
 }
 

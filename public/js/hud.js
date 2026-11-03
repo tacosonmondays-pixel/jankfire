@@ -117,6 +117,30 @@ export const hud = {
     $('speed').style.fontSize = Math.min(64, 26 + kmh / 25) + 'px';
   },
   combo(n) { $('combo').textContent = n >= 2 ? `BHOP x${n}` : ''; },
+  // the item box at the end of the hotbar: picture, G key, charges, refill pie
+  itemSlot(id, icon) {
+    let el = $('itemSlot');
+    if (!el) { el = document.createElement('div'); el.id = 'itemSlot'; el.className = 'hslot item'; }
+    $('weapons').append(el);
+    el.innerHTML = '';
+    if (!id) { el.remove(); return; }
+    const im = document.createElement('img'); im.src = icon; im.alt = '';
+    const k = document.createElement('span'); k.className = 'key'; k.textContent = 'G';
+    const n = document.createElement('span'); n.className = 'nm'; n.id = 'itemN';
+    const pie = document.createElement('div'); pie.className = 'pie'; pie.id = 'itemPie';
+    el.append(pie, im, k, n);
+    el.dataset.key = '';
+  },
+  item(n, max, frac) {
+    const el = $('itemN');
+    if (!el) return;
+    const key = n + '/' + max + '/' + Math.round(frac * 20);
+    if (el.dataset.key === key) return;
+    el.dataset.key = key;
+    el.textContent = `x${n}`;
+    $('itemSlot').classList.toggle('empty', n <= 0);
+    $('itemPie').style.background = frac < 1 ? `conic-gradient(rgba(255,255,255,0.28) ${frac * 360}deg, transparent 0)` : 'transparent';
+  },
   slotOn(slot) { for (let i = 0; i < 6; i++) { const el = $('slot-' + i); if (el) el.classList.toggle('on', i === slot); } },
   weapon(id, slot) {
     for (let i = 0; i < 6; i++) { const el = $('slot-' + i); if (el) el.classList.toggle('on', i === slot); }

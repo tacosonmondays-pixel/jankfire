@@ -1,6 +1,6 @@
 // Local weapon logic, loadouts, ammo + first-person viewmodels.
 import * as THREE from 'three';
-import { WEAPONS, ORDER, SLOTS, FLAGS, HIPFIRE, ARROW_TIPS, SUITS, RANKS, validLoadout, DEFAULT_LOADOUT } from '/shared/weapons.js';
+import { WEAPONS, ORDER, SLOTS, FLAGS, HIPFIRE, ARROW_TIPS, SUITS, RANKS, validLoadout, DEFAULT_LOADOUT, ITEMS } from '/shared/weapons.js';
 import { BOXES } from '/shared/map.js';
 import { raycast, rayBox } from '/shared/physics.js';
 import { G } from './ctx.js';
@@ -12,7 +12,7 @@ import { net } from './net.js';
 import { hud } from './hud.js';
 import { tracerColor, emitSkinFx } from './skins.js';
 import { ANIMS, sample, sampleCh, eventsBetween, inspectFor, drawFor } from './anim.js';
-import { weaponIcon, clearIcons } from './icons.js';
+import { weaponIcon, clearIcons, itemIcon } from './icons.js';
 
 export const W = {
   slots: [DEFAULT_LOADOUT.primary, DEFAULT_LOADOUT.secondary, DEFAULT_LOADOUT.melee],
@@ -234,6 +234,33 @@ function adsPose(id, m) {
   return pose;
 }
 
+// ------------------------------------------------------------ items (G)
+W.item = DEFAULT_LOADOUT.item;
+W.ic = {}; // id -> { n, next (performance.now ms) }
+export function setItem(id) { if (ITEMS[id]) W.item = id; }
+export function resetItems() { W.ic = {}; }
+function charges(id) {
+  const it = ITEMS[id];
+  let c = W.ic[id];
+  if (!c) c = W.ic[id] = { n: it.charges, next: 0 };
+  const n = performance.now();
+  while (c.n < it.charges && c.next && n >= c.next) { c.n++; c.next = c.n < it.charges ? c.next + it.recharge * 1000 : 0; }
+  return c;
+}
+export function syncItem(id, n, nextMs) { if (!ITEMS[id]) return; W.ic[id] = { n, next: nextMs ? performance.now() + nextMs : 0 }; }
+export function useItem() {
+  const id = W.item, it = ITEMS[id];
+  if (!it || !ME.alive) return;
+  const c = charges(id);
+  if (performance.now() - (W.itemT || 0) < 420) return; // same spam limit as the server
+  if (c.n <= 0) { sfx.empty(); hud.msg(`${it.name}: recharging`, 0.8); return; }
+  W.itemT = performance.now();
+  c.n--; if (!c.next) c.next = performance.now() + it.recharge * 1000;
+  net.send({ t: 'item', i: id, o: eye().map(r2), d: look().map(r2) });
+  if (!W.anim || W.anim.kind === 'inspect' || W.anim.kind === 'draw') playAnim('toss_item', 'item');
+  if (id === 'medkit') sfx.heal(); else if (id === 'bubble') sfx.reverse(); else sfx.swing();
+}
+
 // knife right click: CS-style heavy stab. returns false when this weapon has no heavy attack
 export function heavyAttack() {
   const id = W.cur, w = WEAPONS[id], now = performance.now();
@@ -277,6 +304,7 @@ const VM = {
   duck: { p: [0.17, -0.18, -0.4], r: [0.1, 0.5, 0], s: 0.55 },
   bread: { p: [0.3, -0.3, -0.42], r: [0.35, 0.2, -0.25], s: 0.55 },
   slipper: { p: [0.17, -0.18, -0.36], r: [0.2, 0.3, 0.3], s: 0.7 },
+  snowball: { p: [0.17, -0.19, -0.33], r: [0.2, 0.2, 0.1], s: 0.75 },
   spoon: { p: [0.15, -0.15, -0.3], r: [0.2, 0.25, 0.1], s: 1.3 },
   knife: { p: [0.16, -0.17, -0.3], r: [0.15, 0.2, 0.15], s: 1.3 },
   bow: { p: [0.1, -0.12, -0.36], r: [0, 0.05, 0.3], s: 1.0 },
@@ -356,6 +384,7 @@ export function refillAmmo() {
 
 export function setLoadout(lo) {
   const v = validLoadout(lo);
+  W.item = v.item;
   const streakSlot = W.hasScythe ? (W.slots[3] || 'scythe') : null;
   W.slots = SLOTS.map((s) => v[s]);
   if (streakSlot) W.slots[3] = streakSlot;
@@ -374,6 +403,7 @@ export function rebuildOne(id) {
 export function showSlots() {
   hud.slots(W.slots, W.slots.map((id) => weaponIcon(id, (G.equipped || {})[id])));
   hud.slotOn(W.slot);
+  hud.itemSlot(W.item, itemIcon(W.item));
 }
 
 function equip(i) {
@@ -548,6 +578,7 @@ function fireProj(id, now, fromAnim) {
   }
   if (!fromAnim) setCd(id, now);
   net.send({ t: 'fire', w: id, o: eye().map(r2), d: look().map(r2) });
+  if (id === 'snowball') { playAnim('throw_snowball', 'throw'); sfx.swing(); W.kick = 0.2; return; }
   if (id === 'chicken') sfx.squawk();
   else if (id === 'duck') sfx.squeak();
   else if (id === 'bowling') sfx.thunk();
@@ -834,6 +865,7 @@ export function updateWeapons(dt, now) {
   W.flags = (smoking ? FLAGS.SMOKE : 0) | (firing ? FLAGS.FIRE : 0) | (blowing ? FLAGS.BLOW : 0) | (spinning ? FLAGS.SPIN : 0) | (reversed ? FLAGS.REVERSE : 0) | (ME.dashing ? FLAGS.DASH : 0);
 
   // ---- HUD
+  if (ITEMS[W.item]) { const c = charges(W.item), it = ITEMS[W.item]; hud.item(c.n, it.charges, c.next ? 1 - Math.max(0, c.next - now) / (it.recharge * 1000) : 1); }
   if (w.mag) hud.ammo(W.ammo[id], w.mag, !!W.reloadId);
   else hud.ammo(null);
   if (W.reloadId) hud.meter(1 - (W.reloadUntil - now) / (w.reload * 1000), 'RELOADING', '#ffffff');

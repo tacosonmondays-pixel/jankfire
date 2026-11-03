@@ -53,3 +53,36 @@ export function weaponIcon(id, skin) {
     return '';
   }
 }
+
+// item pictures (drawn, not rendered): grenade, medkit, bubble, duck, smoke
+const itemCache = new Map();
+export function itemIcon(id) {
+  if (itemCache.has(id)) return itemCache.get(id);
+  const c = document.createElement('canvas'); c.width = 96; c.height = 60;
+  const x = c.getContext('2d');
+  x.lineWidth = 3; x.strokeStyle = '#000';
+  const circle = (cx, cy, r, fill) => { x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fillStyle = fill; x.fill(); x.stroke(); };
+  if (id === 'frag') {
+    x.beginPath(); x.ellipse(48, 34, 16, 20, 0, 0, Math.PI * 2); x.fillStyle = '#5a6a2a'; x.fill(); x.stroke();
+    x.fillStyle = '#3a4a1a'; for (let i = -1; i <= 1; i++) x.fillRect(34, 32 + i * 9, 28, 2);
+    x.fillStyle = '#444'; x.fillRect(42, 10, 12, 8); x.strokeRect(42, 10, 12, 8);
+    x.beginPath(); x.arc(62, 12, 6, 0, Math.PI * 2); x.strokeStyle = '#ddd'; x.stroke();
+  } else if (id === 'medkit') {
+    x.fillStyle = '#ffffff'; x.fillRect(24, 14, 48, 36); x.strokeRect(24, 14, 48, 36);
+    x.fillStyle = '#ff3030'; x.fillRect(43, 20, 10, 24); x.fillRect(36, 27, 24, 10);
+    x.fillStyle = '#ddd'; x.fillRect(40, 8, 16, 6); x.strokeRect(40, 8, 16, 6);
+  } else if (id === 'bubble') {
+    x.beginPath(); x.arc(48, 32, 22, 0, Math.PI * 2); x.fillStyle = 'rgba(79,216,255,0.35)'; x.fill(); x.strokeStyle = '#4fd8ff'; x.lineWidth = 4; x.stroke();
+    x.beginPath(); x.arc(40, 24, 7, Math.PI, Math.PI * 1.6); x.strokeStyle = '#fff'; x.lineWidth = 3; x.stroke();
+  } else if (id === 'duck') {
+    circle(44, 38, 16, '#ffd23b'); circle(58, 22, 10, '#ffd23b');
+    x.fillStyle = '#ff7a1a'; x.beginPath(); x.moveTo(66, 22); x.lineTo(78, 25); x.lineTo(66, 28); x.fill();
+    x.fillStyle = '#000'; x.fillRect(58, 18, 3, 3);
+  } else if (id === 'smoke') {
+    x.fillStyle = '#9aa0a8'; x.fillRect(40, 26, 16, 26); x.strokeRect(40, 26, 16, 26);
+    for (const [cx, cy, r] of [[40, 18, 9], [52, 14, 10], [62, 20, 8], [30, 22, 7]]) circle(cx, cy, r, '#d8dce0');
+  }
+  const url = c.toDataURL();
+  itemCache.set(id, url);
+  return url;
+}

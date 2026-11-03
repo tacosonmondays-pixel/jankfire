@@ -96,6 +96,7 @@ export class Remote {
 
   setLook(look, color) {
     this.outfit = look; if (color) this.color = color;
+    this.ice = null;
     const keep = { pos: this.pos.slice() };
     this.shells = []; this.glow = 0;
     G.scene.remove(this.ch.root);
@@ -212,6 +213,15 @@ export class Remote {
     const sw = Math.sin(this.walk);
     ch.legL.rotation.x = sw * amp;
     ch.legR.rotation.x = -sw * amp;
+    // frozen by snowballs: an ice block, no walking
+    const frozen = now < (this.frozenUntil || 0);
+    if (frozen && !this.ice) {
+      this.ice = new THREE.Mesh(new THREE.BoxGeometry(1.0, 2.3, 1.0), new THREE.MeshBasicMaterial({ color: 0xbfe8ff, transparent: true, opacity: 0.45, depthWrite: false }));
+      this.ice.position.y = 1.15;
+      ch.root.add(this.ice);
+    }
+    if (this.ice) this.ice.visible = frozen;
+    if (frozen) this.walk -= dt * Math.min(hs, 14) * 1.5;
     // cape streams out behind you the faster you go; wings flap in the air
     if (ch.cape) { const tgt = 0.1 + Math.min(1.15, hs * 0.035) + (hs > 2 ? Math.sin(now * 0.014) * 0.07 : 0); ch.cape.rotation.x += (tgt - ch.cape.rotation.x) * Math.min(1, dt * 8); }
     if (ch.wings) { const f = grounded ? 0 : Math.sin(now * 0.02) * 0.6; ch.wings[0].rotation.y = 0.25 + f; ch.wings[1].rotation.y = -0.25 - f; }

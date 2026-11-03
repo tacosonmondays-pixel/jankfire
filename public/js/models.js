@@ -310,6 +310,12 @@ const WB = {
     g.userData.muzzle = new THREE.Vector3(0, 0, -1.45);
     g.userData.len = 1.6;
   },
+  snowball(g) {
+    const b = ball(0.07, 0xf2f8ff, 0, 0.02, -0.08); b.scale.set(1, 0.92, 1); g.add(b);
+    g.add(ball(0.03, 0xffffff, 0.03, 0.06, -0.1));
+    g.userData.muzzle = new THREE.Vector3(0, 0.02, -0.16);
+    g.userData.len = 0.18;
+  },
   slipper(g) {
     slipper(g, 1);
     g.userData.muzzle = new THREE.Vector3(0, 0, -0.15);
@@ -787,6 +793,15 @@ function buildProjectileRaw(k) {
     g.add(cylZ(0.012, 0.9, 0xc8a070, 0, 0, 0, 4));
     const tip = bx(0.04, 0.04, 0.08, 0xdddddd, 0, 0, -0.48, true); g.add(tip); g.userData.tip = tip;
     g.add(bx(0.004, 0.06, 0.1, 0xff4fd8, 0, 0, 0.4)); g.add(bx(0.06, 0.004, 0.1, 0xff4fd8, 0, 0, 0.4));
+  } else if (k === 'snowball') {
+    const b = ball(0.13, 0xf2f8ff); g.add(b); g.add(ball(0.06, 0xffffff, 0.05, 0.06, 0));
+  } else if (k === 'frag') {
+    const b = ball(0.12, 0x4a5a2a); b.scale.set(1, 1.2, 1); g.add(b);
+    g.add(bx(0.05, 0.06, 0.05, 0x333333, 0, 0.15, 0));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.008, 4, 8), M(0xcccccc)); ring.position.set(0.05, 0.17, 0); g.add(ring);
+  } else if (k === 'smokegren') {
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.22, 8), M(0x9aa0a8)); g.add(c);
+    g.add(bx(0.15, 0.03, 0.15, 0x555a60, 0, 0.12, 0));
   } else if (k === 'card') {
     const c = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.26), cardFace('back'));
     c.material.side = THREE.DoubleSide;
