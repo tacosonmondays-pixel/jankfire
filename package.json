@@ -1,0 +1,79 @@
+{
+  "name": "jankfire",
+  "productName": "JANKFIRE",
+  "version": "1.0.0",
+  "description": "Low quality multiplayer FPS with infinite momentum and stupid weapons",
+  "author": "JANKFIRE",
+  "type": "module",
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "start": "node server.js",
+    "models": "node tools/tripo-gen.js",
+    "check-supabase": "node tools/check-supabase.js",
+    "desktop": "electron .",
+    "dist:win": "electron-builder --win nsis portable",
+    "dist:linux": "electron-builder --linux AppImage",
+    "dist:win:zip": "electron-builder --win zip"
+  },
+  "engines": {
+    "node": ">=20.12"
+  },
+  "dependencies": {
+    "three": "0.170.0",
+    "ws": "8.18.0"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "com.jankfire.game",
+    "productName": "JANKFIRE",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "server.js",
+      "server/**",
+      "shared/**",
+      "public/**",
+      "desktop/**",
+      "package.json",
+      "!**/*.map",
+      "!public/models/*.tmp",
+      "!node_modules/three/src/**",
+      "!node_modules/three/build/three.cjs",
+      "!node_modules/three/build/three.webgpu*",
+      "!node_modules/three/build/*.min.js",
+      "!node_modules/three/examples/jsm/libs/**",
+      "!node_modules/three/examples/fonts/**"
+    ],
+    "asar": false,
+    "win": {
+      "target": [
+        "nsis",
+        "portable",
+        "zip"
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false,
+      "artifactName": "JANKFIRE-${version}-win.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "artifactName": "JANKFIRE-Setup-${version}.exe",
+      "shortcutName": "JANKFIRE",
+      "createDesktopShortcut": true
+    },
+    "portable": {
+      "artifactName": "JANKFIRE-${version}-portable.exe"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "build/icon.png",
+      "category": "Game"
+    }
+  }
+}

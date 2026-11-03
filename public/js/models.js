@@ -1,0 +1,717 @@
+// Programmer art. If you generated Tripo models (npm run models), they replace these automatically.
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { jankify } from './jank.js';
+import { applySkin } from './skins.js';
+import { COSMETICS } from '/shared/cosmetics.js';
+import { SUITS, RANKS, ARROW_TIPS } from '/shared/weapons.js';
+
+// ------------------------------------------------------------ playing card faces (canvas, cached)
+const cardFaces = new Map();
+export function cardFace(id) {
+  if (cardFaces.has(id)) return cardFaces.get(id);
+  const c = document.createElement('canvas'); c.width = 32; c.height = 48;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, 32, 48);
+  g.strokeStyle = '#222'; g.lineWidth = 2; g.strokeRect(1, 1, 30, 46);
+  if (id === 'back') {
+    g.fillStyle = '#c02040'; g.fillRect(4, 4, 24, 40);
+    g.fillStyle = '#ffe14d'; for (let y = 6; y < 44; y += 6) for (let x = 6; x < 28; x += 6) g.fillRect(x, y, 2, 2);
+  } else {
+    const suit = SUITS[id[0]], rank = RANKS[Number(id.slice(1))] || 'JOKER';
+    g.fillStyle = suit.color;
+    g.font = 'bold 11px sans-serif'; g.textAlign = 'left'; g.textBaseline = 'top';
+    g.fillText(id[0] === 'j' ? 'J' : rank, 3, 3);
+    g.font = 'bold 22px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(suit.sym, 16, 27);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.MeshBasicMaterial({ map: t });
+  cardFaces.set(id, m);
+  return m;
+}
+
+// ------------------------------------------------------------ Tripo GLB overrides
+export const GLB = {};
+
+export async function loadTripoModels() {
+  let list = [];
+  try { list = await (await fetch('/models/list')).json(); } catch { return 0; }
+  if (!list.length) return 0;
+  const loader = new GLTFLoader();
+  await Promise.all(list.map((it) => new Promise((res) => {
+    loader.load(it.url, (gltf) => { GLB[it.id] = prep(gltf.scene, it); res(); }, undefined, (e) => { console.warn('tripo model failed', it.id, e); res(); });
+  })));
+  return Object.keys(GLB).length;
+}
+
+function prep(scene, it) {
+  scene.traverse((o) => {
+    if (!o.isMesh) return;
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+      for (const k of ['map', 'emissiveMap', 'normalMap', 'roughnessMap', 'metalnessMap']) {
+        if (m[k]) { m[k].magFilter = THREE.NearestFilter; m[k].minFilter = THREE.NearestFilter; m[k].generateMipmaps = false; m[k].needsUpdate = true; }
+      }
+      if ('roughness' in m) m.roughness = Math.max(0.6, m.roughness ?? 1);
+      if ('metalness' in m) m.metalness = Math.min(0.2, m.metalness ?? 0);
+      m.flatShading = true;
+      jankify(m);
+      m.needsUpdate = true;
+    }
+  });
+  return { scene, size: it.size || 1, rot: (it.rot || [0, 0, 0]).map((d) => (d * Math.PI) / 180) };
+}
+
+// opts: { size, feet: bool, byHeight: bool, alignZ: bool, zOffset }
+export function fitted(id, opts = {}) {
+  const e = GLB[id];
+  if (!e) return null;
+  const holder = new THREE.Group(), inner = new THREE.Group();
+  inner.add(e.scene.clone(true));
+  holder.add(inner);
+  inner.rotation.set(e.rot[0], e.rot[1], e.rot[2]);
+  const measure = () => { holder.updateMatrixWorld(true); return new THREE.Box3().setFromObject(inner); };
+  let box = measure();
+  const sz = box.getSize(new THREE.Vector3());
+  if (opts.alignZ && sz.x > sz.z && sz.x >= sz.y && !e.rot.some((r) => r)) {
+    inner.rotation.y += Math.PI / 2;
+    box = measure(); box.getSize(sz);
+  }
+  const target = opts.size ?? e.size;
+  const s = target / Math.max(1e-6, opts.byHeight ? sz.y : Math.max(sz.x, sz.y, sz.z));
+  inner.scale.setScalar(s);
+  box = measure();
+  const c = box.getCenter(new THREE.Vector3());
+  if (opts.feet) inner.position.set(-c.x, -box.min.y, -c.z);
+  else inner.position.set(-c.x, -c.y, -c.z + (opts.zOffset || 0));
+  return holder;
+}
+
+// ------------------------------------------------------------ primitive helpers
+const matCache = new Map();
+export function M(color, basic = false) {
+  const key = color + (basic ? 'b' : 'l');
+  if (!matCache.has(key)) {
+    matCache.set(key, jankify(basic
+      ? new THREE.MeshBasicMaterial({ color })
+      : new THREE.MeshLambertMaterial({ color, flatShading: true })));
+  }
+  return matCache.get(key);
+}
+function bx(w, h, d, color, x = 0, y = 0, z = 0, basic = false) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), M(color, basic));
+  m.position.set(x, y, z);
+  return m;
+}
+function cylZ(r, len, color, x = 0, y = 0, z = 0, seg = 6, basic = false) {
+  const g = new THREE.CylinderGeometry(r, r, len, seg);
+  g.rotateX(Math.PI / 2);
+  const m = new THREE.Mesh(g, M(color, basic));
+  m.position.set(x, y, z);
+  return m;
+}
+function ball(r, color, x = 0, y = 0, z = 0, basic = false) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(r, 6, 4), M(color, basic));
+  m.position.set(x, y, z);
+  return m;
+}
+
+// ------------------------------------------------------------ weapons (forward = -Z, grip at origin)
+function cardTexture() {
+  const c = document.createElement('canvas');
+  c.width = 32; c.height = 48;
+  const g = c.getContext('2d');
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, 32, 48);
+  g.fillStyle = '#e8262b'; g.fillRect(2, 2, 28, 44);
+  g.save(); g.translate(16, 24); g.rotate(-0.5);
+  g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(0, 0, 10, 17, 0, 0, Math.PI * 2); g.fill();
+  g.restore();
+  g.strokeStyle = '#e8262b'; g.lineWidth = 3;
+  g.beginPath(); g.arc(16, 24, 6, Math.PI * 0.9, Math.PI * 1.9); g.stroke();
+  g.beginPath(); g.arc(16, 24, 6, -Math.PI * 0.1, Math.PI * 0.9); g.stroke();
+  g.fillStyle = '#e8262b';
+  g.fillRect(19, 14, 5, 3); g.fillRect(8, 31, 5, 3);
+  const t = new THREE.CanvasTexture(c);
+  t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+let _cardTex = null;
+export function cardTex() { return _cardTex || (_cardTex = cardTexture()); }
+
+function duck(g, s = 1) {
+  const b = ball(0.12 * s, 0xffd23b, 0, 0, 0); b.scale.set(1, 0.85, 1.25); g.add(b);
+  g.add(ball(0.08 * s, 0xffd23b, 0, 0.11 * s, -0.09 * s));
+  g.add(bx(0.07 * s, 0.025 * s, 0.07 * s, 0xff8a00, 0, 0.1 * s, -0.17 * s));
+  g.add(ball(0.015 * s, 0x000000, 0.045 * s, 0.14 * s, -0.14 * s, true));
+  g.add(ball(0.015 * s, 0x000000, -0.045 * s, 0.14 * s, -0.14 * s, true));
+  g.add(bx(0.05 * s, 0.04 * s, 0.06 * s, 0xffd23b, 0, 0.04 * s, 0.15 * s));
+}
+function slipper(g, s = 1) {
+  g.add(bx(0.11 * s, 0.03 * s, 0.28 * s, 0xc85a8a, 0, 0, 0));
+  const toe = ball(0.07 * s, 0xff9ad5, 0, 0.03 * s, -0.07 * s); toe.scale.set(0.85, 0.55, 1.4); g.add(toe);
+  g.add(ball(0.025 * s, 0xffffff, 0, 0.07 * s, -0.12 * s));
+}
+function bowlingBall(g, r) {
+  g.add(ball(r, 0x2a3aa8));
+  for (const [x, y] of [[-0.25, 0.5], [0.25, 0.5], [0, 0.22]]) g.add(ball(r * 0.13, 0x000000, x * r, y * r, -0.85 * r, true));
+}
+
+const WB = {
+  ar(g) {
+    g.add(bx(0.07, 0.11, 0.5, 0x3b4a2a, 0, 0, -0.05));
+    g.add(cylZ(0.018, 0.4, 0x111111, 0, 0.015, -0.5));
+    g.add(bx(0.05, 0.05, 0.1, 0x222222, 0, 0.015, -0.42));
+    const mag = bx(0.05, 0.2, 0.08, 0x222222, 0, -0.14, -0.12); mag.rotation.x = -0.25; g.add(mag);
+    g.add(bx(0.05, 0.14, 0.06, 0x222222, 0, -0.12, 0.08));
+    g.add(bx(0.06, 0.1, 0.25, 0x3b4a2a, 0, -0.02, 0.32));
+    g.add(bx(0.03, 0.04, 0.12, 0x111111, 0, 0.08, -0.05));
+    g.userData.muzzle = new THREE.Vector3(0, 0.015, -0.72);
+    g.userData.len = 1.0;
+  },
+  smg(g) {
+    g.add(bx(0.07, 0.11, 0.32, 0x2a2a35, 0, 0, -0.05));
+    g.add(cylZ(0.02, 0.16, 0x111111, 0, 0.01, -0.28));
+    g.add(bx(0.04, 0.26, 0.05, 0x111111, 0, -0.17, -0.12));
+    g.add(bx(0.05, 0.14, 0.06, 0x111111, 0, -0.11, 0.06));
+    g.add(bx(0.04, 0.03, 0.2, 0x555566, 0, 0.0, 0.2));
+    g.userData.muzzle = new THREE.Vector3(0, 0.01, -0.37);
+    g.userData.len = 0.6;
+  },
+  shotgun(g) {
+    g.add(cylZ(0.025, 0.7, 0x1a1a1a, 0, 0.025, -0.38));
+    g.add(cylZ(0.02, 0.55, 0x333333, 0, -0.025, -0.3));
+    g.add(bx(0.07, 0.07, 0.14, 0x8a5a2b, 0, -0.025, -0.32));
+    g.add(bx(0.07, 0.1, 0.2, 0x222222, 0, 0, 0.0));
+    g.add(bx(0.06, 0.14, 0.3, 0x8a5a2b, 0, -0.04, 0.24));
+    g.userData.muzzle = new THREE.Vector3(0, 0.025, -0.74);
+    g.userData.len = 1.1;
+  },
+  minigun(g) {
+    const barrels = new THREE.Group();
+    barrels.position.set(0, 0, -0.35);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      barrels.add(cylZ(0.016, 0.6, 0x333333, Math.cos(a) * 0.045, Math.sin(a) * 0.045, -0.1, 5));
+    }
+    barrels.add(cylZ(0.07, 0.04, 0x555555, 0, 0, -0.32, 6));
+    barrels.add(cylZ(0.07, 0.04, 0x555555, 0, 0, 0.1, 6));
+    g.add(barrels);
+    g.userData.barrels = barrels;
+    g.add(bx(0.16, 0.16, 0.3, 0x4a4a4a, 0, 0, 0.05));
+    g.add(bx(0.05, 0.08, 0.2, 0x222222, 0, 0.13, 0.05));
+    g.add(bx(0.1, 0.12, 0.14, 0x6b5a2a, 0.12, -0.05, 0.08));
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.75);
+    g.userData.len = 1.0;
+  },
+  revolver(g) {
+    g.add(cylZ(0.02, 0.22, 0x888888, 0, 0.03, -0.17));
+    g.add(cylZ(0.045, 0.07, 0x666666, 0, 0.02, -0.02, 6));
+    g.add(bx(0.04, 0.06, 0.1, 0x777777, 0, 0.03, 0.04));
+    const grip = bx(0.045, 0.13, 0.06, 0x6b3a1a, 0, -0.06, 0.08); grip.rotation.x = 0.35; g.add(grip);
+    g.userData.muzzle = new THREE.Vector3(0, 0.03, -0.29);
+    g.userData.len = 0.35;
+  },
+  sniper(g) {
+    g.add(bx(0.07, 0.12, 0.55, 0x2b2b2b));
+    g.add(cylZ(0.022, 1.2, 0x111111, 0, 0.02, -0.85));
+    g.add(cylZ(0.05, 0.32, 0x333333, 0, 0.11, -0.05));
+    g.add(bx(0.06, 0.16, 0.32, 0x5a3a1a, 0, -0.03, 0.42));
+    g.add(bx(0.05, 0.14, 0.06, 0x222222, 0, -0.12, 0.1));
+    g.add(bx(0.075, 0.05, 0.14, 0xff4fd8, 0, 0.03, -0.15));
+    g.add(bx(0.05, 0.05, 0.09, 0xff4fd8, 0, 0.02, -1.42));
+    g.userData.muzzle = new THREE.Vector3(0, 0.02, -1.48);
+    g.userData.len = 1.8;
+  },
+  chicken(g) {
+    g.add(cylZ(0.09, 0.75, 0x3d7a2a, 0, 0, -0.1, 8));
+    g.add(bx(0.05, 0.16, 0.08, 0x222222, 0, -0.12, 0.05));
+    g.add(ball(0.075, 0xffe14d, 0, 0, -0.5));
+    g.add(bx(0.03, 0.03, 0.07, 0xff8a00, 0, -0.005, -0.59));
+    g.add(bx(0.015, 0.05, 0.07, 0xff2222, 0, 0.075, -0.5));
+    g.add(ball(0.014, 0x000000, 0.05, 0.02, -0.54));
+    g.add(ball(0.014, 0x000000, -0.05, 0.02, -0.54));
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.62);
+    g.userData.len = 0.9;
+  },
+  bowling(g) {
+    g.add(cylZ(0.17, 0.8, 0x2a2a3a, 0, 0, -0.15, 8));
+    g.add(cylZ(0.19, 0.06, 0x6b7bff, 0, 0, -0.53, 8));
+    g.add(bx(0.06, 0.18, 0.08, 0x222222, 0, -0.22, 0.05));
+    const b = new THREE.Group(); b.position.set(0, 0, -0.42); bowlingBall(b, 0.15); g.add(b);
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.6);
+    g.userData.len = 0.9;
+  },
+  banana(g) {
+    g.add(bx(0.08, 0.12, 0.38, 0x8a5a2b));
+    g.add(bx(0.05, 0.14, 0.07, 0x5a3a1a, 0, -0.12, 0.08));
+    const t = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.035, 4, 8, Math.PI * 0.9), M(0xffe135));
+    t.rotation.y = Math.PI / 2; t.position.set(0, 0.0, 0.02);
+    g.add(t);
+    g.add(cylZ(0.03, 0.15, 0xffe135, 0, 0, -0.25));
+    g.add(bx(0.03, 0.03, 0.03, 0x3a2a10, 0, 0, -0.33));
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.36);
+    g.userData.len = 0.6;
+  },
+  cig(g) {
+    g.add(cylZ(0.012, 0.13, 0xf4f4f4, 0, 0, -0.03));
+    g.add(cylZ(0.0125, 0.045, 0xd98b3a, 0, 0, 0.055));
+    const tip = cylZ(0.0135, 0.014, 0xff4400, 0, 0, -0.1, 6, true);
+    tip.userData.noWrap = true;
+    g.add(tip);
+    g.userData.tip = tip;
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.11);
+    g.userData.len = 0.18;
+  },
+  blower(g) {
+    g.add(bx(0.2, 0.24, 0.3, 0xff7a00, 0, 0, 0.05));
+    g.add(bx(0.06, 0.1, 0.18, 0x222222, 0, 0.17, 0.05));
+    g.add(bx(0.21, 0.08, 0.12, 0x333333, 0, -0.06, 0.12));
+    g.add(cylZ(0.05, 0.75, 0x9a9a9a, 0, -0.03, -0.45, 8));
+    g.add(cylZ(0.065, 0.06, 0xff7a00, 0, -0.03, -0.83, 8));
+    g.userData.muzzle = new THREE.Vector3(0, -0.03, -0.87);
+    g.userData.len = 1.0;
+  },
+  popper(g) {
+    const c = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.24, 6).rotateX(-Math.PI / 2), M(0xff6bd0));
+    c.position.set(0, 0, -0.08); g.add(c);
+    for (let i = 0; i < 3; i++) {
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.02 + i * 0.018, 0.02 + i * 0.018, 0.02, 6).rotateX(Math.PI / 2), M([0xffe14d, 0x4fd8ff, 0x7dff4f][i]));
+      band.position.set(0, 0, -0.01 - i * 0.07); g.add(band);
+    }
+    g.add(bx(0.01, 0.01, 0.12, 0xffffff, 0, -0.01, 0.1));
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.21);
+    g.userData.len = 0.3;
+  },
+  reverse(g) {
+    const card = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.18, 0.004), new THREE.MeshBasicMaterial({ map: cardTex() }));
+    card.rotation.x = -0.2;
+    g.add(card);
+    g.userData.card = card;
+    g.userData.muzzle = new THREE.Vector3(0, 0.05, -0.05);
+    g.userData.len = 0.2;
+  },
+  duck(g) {
+    duck(g, 0.8);
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.15);
+    g.userData.len = 0.25;
+  },
+  bread(g) {
+    // a huge loaf. hold it like a bat.
+    const loaf = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 1.5, 7), M(0xd9a35b));
+    loaf.geometry.rotateX(Math.PI / 2);
+    loaf.position.set(0, 0, -0.65); g.add(loaf);
+    for (const z of [0.1, -1.4]) { const end = ball(0.11, 0xc8904a, 0, 0, z); end.scale.set(1, 1, 1.3); g.add(end); }
+    for (let i = 0; i < 6; i++) {
+      const s = bx(0.13, 0.025, 0.08, 0xa8732f, 0, 0.095, -0.1 - i * 0.22);
+      s.rotation.y = 0.6;
+      g.add(s);
+    }
+    g.userData.muzzle = new THREE.Vector3(0, 0, -1.45);
+    g.userData.len = 1.6;
+  },
+  slipper(g) {
+    slipper(g, 1);
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.15);
+    g.userData.len = 0.3;
+  },
+  knife(g) { // standard combat knife
+    g.add(bx(0.035, 0.05, 0.13, 0x2a2a2a, 0, 0, 0.02));
+    g.add(bx(0.07, 0.015, 0.02, 0x555555, 0, 0.01, -0.05));
+    const blade = bx(0.012, 0.045, 0.2, 0xd8dde4, 0, 0.012, -0.16); g.add(blade);
+    g.add(bx(0.012, 0.02, 0.05, 0xd8dde4, 0, 0.03, -0.27));
+    g.userData.muzzle = new THREE.Vector3(0, 0.01, -0.3);
+    g.userData.len = 0.35;
+  },
+  slapper(g) { // toy hand on a stick
+    g.add(cylZ(0.015, 0.6, 0xffe14d, 0, 0, -0.2, 6));
+    const hand = new THREE.Group(); hand.position.set(0, 0, -0.55);
+    hand.add(bx(0.16, 0.025, 0.14, 0xff7ab8, 0, 0, 0));
+    for (let i = 0; i < 4; i++) hand.add(bx(0.03, 0.022, 0.1, 0xff7ab8, -0.06 + i * 0.04, 0, -0.11));
+    const thumb = bx(0.03, 0.022, 0.08, 0xff7ab8, 0.1, 0, -0.02); thumb.rotation.y = -0.6; hand.add(thumb);
+    g.add(hand);
+    g.userData.hand = hand;
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.7);
+    g.userData.len = 0.8;
+  },
+  scythe(g) { // gunmetal pole with a rifle built in and a big glowing blade
+    g.add(cylZ(0.022, 1.5, 0x3a3e46, 0, 0, -0.35, 6));
+    g.add(bx(0.06, 0.09, 0.3, 0x2a2e34, 0, -0.02, 0.05)); // receiver
+    g.add(bx(0.04, 0.1, 0.05, 0x1a1a1a, 0, -0.1, 0.12)); // grip
+    g.add(cylZ(0.035, 0.18, 0x222222, 0, 0.07, 0, 6)); // scope
+    g.add(bx(0.05, 0.03, 0.4, 0xc8a070, 0, 0, 0.3)); // tan wrap
+    const blade = new THREE.Group(); blade.position.set(0, 0.03, -1.1);
+    for (let i = 0; i < 6; i++) {
+      const seg = bx(0.015, 0.08 - i * 0.008, 0.16, 0x9aa4b0, 0, 0.06 + i * 0.07, 0.02 + i * i * 0.012);
+      seg.rotation.x = -0.25 - i * 0.18;
+      blade.add(seg);
+      const edge = bx(0.018, 0.012, 0.16, 0x3ee6c8, 0, 0.1 + i * 0.07, 0.02 + i * i * 0.012, true);
+      edge.userData.noWrap = true;
+      edge.rotation.x = -0.25 - i * 0.18;
+      blade.add(edge);
+    }
+    g.add(blade);
+    g.userData.blade = blade;
+    g.userData.muzzle = new THREE.Vector3(0, 0, -1.12);
+    g.userData.len = 1.7;
+  },
+  scythe_rifle(g) { // same thing folded: blade tucked back along the barrel
+    g.add(cylZ(0.022, 1.1, 0x3a3e46, 0, 0, -0.45, 6));
+    g.add(bx(0.06, 0.1, 0.35, 0x2a2e34, 0, -0.02, 0.0));
+    g.add(bx(0.04, 0.1, 0.05, 0x1a1a1a, 0, -0.11, 0.08));
+    g.add(cylZ(0.04, 0.26, 0x222222, 0, 0.09, -0.05, 6));
+    g.add(bx(0.05, 0.12, 0.25, 0xc8a070, 0, -0.03, 0.28));
+    const folded = bx(0.015, 0.06, 0.7, 0x9aa4b0, 0, -0.06, -0.45); g.add(folded);
+    g.add(bx(0.018, 0.012, 0.7, 0x3ee6c8, 0, -0.09, -0.45, true));
+    g.userData.muzzle = new THREE.Vector3(0, 0, -1.02);
+    g.userData.len = 1.4;
+  },
+  bow(g) {
+    // riser + two limbs bending back + string + a nocked arrow
+    g.add(bx(0.03, 0.16, 0.04, 0x5a3a1a, 0, 0, 0));
+    for (const sy of [1, -1]) {
+      for (let i = 0; i < 3; i++) {
+        const seg = bx(0.022, 0.13, 0.025, 0x8a5a2b, 0, sy * (0.12 + i * 0.12), 0.02 + i * i * 0.025);
+        seg.rotation.x = sy * (0.25 + i * 0.25);
+        g.add(seg);
+      }
+    }
+    const string = new THREE.Group();
+    for (const sy of [1, -1]) {
+      const st = bx(0.004, 0.42, 0.004, 0xeeeeee, 0, sy * 0.2, 0.14, true);
+      st.rotation.x = -sy * 0.22;
+      string.add(st);
+    }
+    g.add(string);
+    const arrow = new THREE.Group();
+    arrow.add(cylZ(0.006, 0.7, 0xc8a070, 0, 0, -0.18, 4));
+    const tip = bx(0.02, 0.02, 0.05, 0xdddddd, 0, 0, -0.55, true); tip.userData.noWrap = true; arrow.add(tip);
+    arrow.add(bx(0.002, 0.03, 0.06, 0xff4fd8, 0, 0, 0.14));
+    g.add(arrow);
+    g.userData.arrow = arrow; g.userData.arrowTip = tip; g.userData.string = string;
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.6);
+    g.userData.len = 0.9;
+  },
+  cards(g) {
+    // a fanned hand of five cards; faces get set from your actual hand
+    const fan = [];
+    for (let i = 0; i < 5; i++) {
+      const c = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 0.12), cardFace('back'));
+      c.userData.noWrap = true;
+      const a = (i - 2) * 0.22;
+      c.position.set(Math.sin(a) * 0.09, Math.cos(a) * 0.09 - 0.07, -0.002 * i);
+      c.rotation.z = -a;
+      g.add(c);
+      fan.push(c);
+    }
+    g.userData.fan = fan;
+    g.userData.muzzle = new THREE.Vector3(0, 0.05, -0.1);
+    g.userData.len = 0.2;
+  },
+  spoon(g) {
+    g.add(cylZ(0.008, 0.16, 0xd8d8e0, 0, 0, -0.02, 5));
+    const bowl = ball(0.035, 0xe8e8f0, 0, 0.005, -0.13); bowl.scale.set(0.8, 0.35, 1.2); g.add(bowl);
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.17);
+    g.userData.len = 0.22;
+  },
+};
+
+// where a hat sits on each weapon (local position) and how tall it is. hand placed so every hat fits every weapon.
+const HAT_AT = {
+  ar: [[0, 0.1, 0.02], 0.12], smg: [[0, 0.055, 0.0], 0.1], shotgun: [[0, 0.05, 0.0], 0.11], minigun: [[0, 0.17, 0.05], 0.14],
+  sniper: [[0, 0.16, -0.05], 0.13], chicken: [[0, 0.075, -0.5], 0.09], bowling: [[0, 0.17, -0.1], 0.15], banana: [[0, 0.185, 0.02], 0.1],
+  revolver: [[0, 0.065, -0.02], 0.08], cig: [[0, 0.0125, 0.055], 0.04], blower: [[0, 0.22, 0.05], 0.14], popper: [[0, 0.07, 0.02], 0.07],
+  reverse: [[0, 0.09, 0.02], 0.07], duck: [[0, 0.152, -0.072], 0.06], bread: [[0, 0.11, -0.3], 0.16], slipper: [[0, 0.068, -0.08], 0.07],
+  spoon: [[0, 0.017, -0.13], 0.04], knife: [[0, 0.025, 0.04], 0.05], slapper: [[0, 0.0125, -0.55], 0.09], scythe: [[0, 0.47, -0.8], 0.14],
+  scythe_rifle: [[0, 0.13, -0.05], 0.12], bow: [[0, 0.08, 0.0], 0.08], cards: [[0, 0.07, -0.004], 0.07],
+  knife_kitchen: [[0, 0.0225, 0.04], 0.05], knife_bowie: [[0, 0.025, 0.04], 0.05], knife_cleaver: [[0, 0.1, -0.12], 0.07],
+  knife_switch: [[0, 0.02, 0.03], 0.05], knife_karambit: [[0, 0.02, 0.01], 0.05], knife_butterfly: [[0, 0.016, 0.02], 0.05],
+  slapper_foam: [[0, 0.03, -0.5], 0.1], slapper_paw: [[0, 0.06, -0.5], 0.1], bread_croissant: [[0, 0.15, -0.6], 0.15],
+  p_chicken: [[0, 0.31, -0.28], 0.15], p_bowling: [[0, 0.45, 0], 0.3], p_duck: [[0, 0.418, -0.2], 0.2], p_slipper: [[0, 0.11, -0.13], 0.1], p_banana: [[0, 0.24, 0], 0.12],
+};
+
+// weapon skins: a different model for the same weapon
+const MODEL_BUILD = {
+  knife_kitchen(g) {
+    g.add(bx(0.03, 0.045, 0.12, 0x2a1a10, 0, 0, 0.02));
+    g.add(bx(0.008, 0.06, 0.24, 0xe8ecef, 0, 0.012, -0.16));
+    g.userData.muzzle = new THREE.Vector3(0, 0.01, -0.29); g.userData.len = 0.36;
+  },
+  knife_bowie(g) {
+    g.add(bx(0.04, 0.05, 0.13, 0x6b3a1a, 0, 0, 0.03));
+    g.add(bx(0.09, 0.02, 0.025, 0xc8a050, 0, 0.01, -0.05));
+    g.add(bx(0.014, 0.06, 0.27, 0xd0d6dc, 0, 0.015, -0.19));
+    const tipB = bx(0.014, 0.03, 0.06, 0xd0d6dc, 0, 0.035, -0.34); tipB.rotation.x = 0.5; g.add(tipB);
+    g.userData.muzzle = new THREE.Vector3(0, 0.02, -0.36); g.userData.len = 0.45;
+  },
+  knife_cleaver(g) {
+    g.add(cylZ(0.02, 0.12, 0x2a1a10, 0, 0, 0.03, 6));
+    g.add(bx(0.01, 0.12, 0.2, 0xc8ccd0, 0, 0.04, -0.12));
+    g.userData.muzzle = new THREE.Vector3(0, 0.05, -0.22); g.userData.len = 0.33;
+  },
+  knife_switch(g) {
+    g.add(bx(0.03, 0.04, 0.13, 0x111111, 0, 0, 0.02));
+    g.add(bx(0.032, 0.012, 0.13, 0xc8a050, 0, 0.022, 0.02));
+    const blade = bx(0.01, 0.035, 0.15, 0xe0e4ea, 0, 0.01, -0.12); g.add(blade);
+    g.userData.blade = blade;
+    g.userData.muzzle = new THREE.Vector3(0, 0.01, -0.2); g.userData.len = 0.3;
+  },
+  knife_karambit(g) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.008, 4, 8), M(0x222222)); ring.rotation.y = Math.PI / 2; ring.position.set(0, 0, 0.09); g.add(ring);
+    g.add(bx(0.03, 0.04, 0.11, 0x2a2a2a, 0, 0, 0.01));
+    for (let i = 0; i < 5; i++) { const s2 = bx(0.01, 0.03, 0.045, 0xd8dde4, 0, -0.01 - i * i * 0.006, -0.06 - i * 0.04); s2.rotation.x = 0.15 + i * 0.22; g.add(s2); }
+    g.userData.muzzle = new THREE.Vector3(0, -0.1, -0.25); g.userData.len = 0.33;
+  },
+  knife_butterfly(g) {
+    const h1 = bx(0.014, 0.03, 0.13, 0x8a8f99, 0.012, 0, 0.02), h2 = bx(0.014, 0.03, 0.13, 0x8a8f99, -0.012, 0, 0.02);
+    g.add(h1, h2);
+    for (let i = 0; i < 4; i++) g.add(bx(0.04, 0.004, 0.01, 0x333333, 0, 0.016, -0.02 + i * 0.03));
+    g.add(bx(0.008, 0.035, 0.15, 0xe8ecf0, 0, 0.005, -0.12));
+    g.userData.handles = [h1, h2];
+    g.userData.muzzle = new THREE.Vector3(0, 0.005, -0.2); g.userData.len = 0.33;
+  },
+  slapper_foam(g) {
+    g.add(cylZ(0.015, 0.5, 0x4fd8ff, 0, 0, -0.18, 6));
+    g.add(bx(0.2, 0.06, 0.18, 0x3070ff, 0, 0, -0.5));
+    g.add(bx(0.05, 0.05, 0.22, 0x3070ff, 0, 0, -0.69));
+    g.add(bx(0.18, 0.005, 0.1, 0xffffff, 0, 0.033, -0.5, true));
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.8); g.userData.len = 0.85;
+  },
+  slapper_paw(g) {
+    g.add(cylZ(0.018, 0.55, 0x6b3a1a, 0, 0, -0.18, 6));
+    const palm = ball(0.11, 0x5a3a20, 0, 0, -0.52); palm.scale.set(1.2, 0.5, 1); g.add(palm);
+    for (let i = 0; i < 4; i++) { const claw = ball(0.03, 0x2a1a10, -0.07 + i * 0.045, 0, -0.64); claw.scale.set(1, 0.6, 1.4); g.add(claw); }
+    const pad = ball(0.05, 0xd8b090, 0, 0.03, -0.5); pad.scale.set(1.3, 0.4, 1); g.add(pad);
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.7); g.userData.len = 0.8;
+  },
+  bread_croissant(g) {
+    for (let i = 0; i < 7; i++) {
+      const r = 0.09 + Math.sin((i / 6) * Math.PI) * 0.08;
+      const seg = ball(r, i % 2 ? 0xd9a35b : 0xc8904a, Math.sin((i / 6) * Math.PI) * -0.18, 0, -0.1 - i * 0.2);
+      seg.scale.set(1, 0.8, 1.3);
+      g.add(seg);
+    }
+    g.userData.muzzle = new THREE.Vector3(0, 0, -1.3); g.userData.len = 1.4;
+  },
+};
+
+export function buildWeapon(id, skin) {
+  const g = new THREE.Group();
+  const model = skin && skin[3];
+  const variant = model && MODEL_BUILD[model] && COSMETICS.model[model] && COSMETICS.model[model].weapon === id;
+  (variant ? MODEL_BUILD[model] : WB[id] || WB.cig)(g);
+  g.userData.model = variant ? model : 'default';
+  g.userData.hatAt = HAT_AT[variant ? model : id];
+  const glb = variant ? null : fitted('w_' + id, { alignZ: true, size: g.userData.len, zOffset: g.userData.muzzle.z / 2 });
+  if (glb) delete g.userData.hatAt; // a generated model has its own shape: fall back to measuring it
+  if (glb) {
+    for (const c of [...g.children]) if (c !== g.userData.tip) g.remove(c);
+    if (g.userData.tip) g.userData.tip.visible = true;
+    g.add(glb);
+  }
+  applySkin(g, skin);
+  return g;
+}
+
+// ------------------------------------------------------------ characters: janky mannequins
+const SKIN = 0xe6cba2, JOINT = 0xbf9f74;
+function limb(r0, r1, len, color, y) { // vertical cylinder hanging down from its pivot
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r0, r1, len, 6), M(color));
+  m.position.y = y;
+  return m;
+}
+// ------------------------------------------------------------ character accessories (head / face / back)
+function addAccessories(ch, look, c) {
+  if (!look) return;
+  const H = ch.head, Bd = ch.body;
+  const at = (parent, m) => { parent.add(m); return m; };
+  const y0 = 0.3; // top of the egg head (head group local)
+  switch (look.head) {
+    case 'cap': { const d = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), M(c)); d.position.y = y0 - 0.06; H.add(d); at(H, bx(0.22, 0.02, 0.14, c, 0, y0 - 0.06, -0.15)); break; }
+    case 'beanie': { const d = new THREE.Mesh(new THREE.SphereGeometry(0.155, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), M(0x2a4a8a)); d.position.y = y0 - 0.07; d.scale.y = 1.3; H.add(d); at(H, ball(0.045, 0xffffff, 0, y0 + 0.13, 0)); break; }
+    case 'cowboy': { const b = cylZ(0.26, 0.02, 0x8a5a2b, 0, y0 - 0.04, 0, 10); b.rotation.x = 0; b.geometry.rotateX(Math.PI / 2); H.add(b); at(H, new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 0.14, 8), M(0x8a5a2b))).position.y = y0 + 0.04; break; }
+    case 'party': { const k = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 8), M(0xff4fd8)); k.position.y = y0 + 0.1; H.add(k); at(H, ball(0.035, 0xffe14d, 0, y0 + 0.26, 0)); break; }
+    case 'headphones': { const t = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.02, 4, 10, Math.PI), M(0x222222)); t.position.y = 0.16; H.add(t); for (const sx of [-1, 1]) at(H, bx(0.06, 0.1, 0.1, c, sx * 0.15, 0.13, 0)); break; }
+    case 'bucket': { H.add(new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.16, 0.12, 8), M(0xc8b48a))).children; const m = H.children[H.children.length - 1]; m.position.y = y0 - 0.02; at(H, new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.015, 10), M(0xc8b48a))).position.y = y0 - 0.08; break; }
+    case 'crown': { const r = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.08, 10, 1, true), M(0xffc21a)); r.position.y = y0; H.add(r); for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; const sp = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.09, 4), M(0xffc21a)); sp.position.set(Math.cos(a) * 0.11, y0 + 0.08, Math.sin(a) * 0.11); H.add(sp); } break; }
+    case 'helmet': { const d = ball(0.2, c, 0, 0.16, 0); d.scale.set(1, 1.05, 1.05); H.add(d); at(H, bx(0.26, 0.07, 0.03, 0x111122, 0, 0.17, -0.19, true)); break; }
+    case 'hardhat': { const d = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), M(0xffd21a)); d.position.y = y0 - 0.05; H.add(d); at(H, new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.015, 10), M(0xffd21a))).position.y = y0 - 0.05; break; }
+    case 'icepack': at(H, bx(0.14, 0.04, 0.14, 0x6ad0ff, 0, y0 + 0.01, 0)); break;
+  }
+  const fz = -0.15; // front of the face
+  switch (look.face) {
+    case 'shades': at(H, bx(0.22, 0.05, 0.02, 0x111111, 0, 0.17, fz, true)); at(H, bx(0.26, 0.015, 0.015, 0x111111, 0, 0.19, fz)); break;
+    case 'mustache': at(H, bx(0.12, 0.025, 0.02, 0x4a2a10, 0, 0.09, fz + 0.01)); break;
+    case 'clown': at(H, ball(0.035, 0xff2020, 0, 0.12, fz - 0.01, true)); break;
+    case 'eyepatch': at(H, bx(0.06, 0.05, 0.02, 0x111111, 0.05, 0.17, fz, true)); at(H, bx(0.28, 0.012, 0.012, 0x111111, 0, 0.19, fz + 0.01)); break;
+    case 'bandana': at(H, bx(0.22, 0.09, 0.03, 0xc02030, 0, 0.07, fz + 0.01)); break;
+    case 'visor': at(H, bx(0.24, 0.05, 0.02, 0x3ee6c8, 0, 0.17, fz - 0.005, true)); break;
+  }
+  const by = 1.35, bz = 0.18;
+  switch (look.back) {
+    case 'backpack': at(Bd, bx(0.3, 0.38, 0.16, c, 0, by - 0.05, bz + 0.06)); at(Bd, bx(0.26, 0.1, 0.17, 0x222222, 0, by + 0.1, bz + 0.07)); break;
+    case 'cape': { const cp = bx(0.5, 0.9, 0.03, 0xc02030, 0, by - 0.35, bz + 0.03); cp.rotation.x = 0.12; Bd.add(cp); break; }
+    case 'voidcape': { const cp = bx(0.5, 0.95, 0.03, 0x000000, 0, by - 0.37, bz + 0.03); cp.material = M(0x2a002a); cp.rotation.x = 0.12; Bd.add(cp); at(Bd, bx(0.52, 0.06, 0.035, 0xff00dc, 0, by + 0.08, bz + 0.03, true)); break; }
+    case 'wings': for (const sx of [-1, 1]) { const w = bx(0.5, 0.25, 0.03, 0xffffff, sx * 0.32, by, bz + 0.05); w.rotation.z = sx * 0.4; w.rotation.y = sx * 0.3; Bd.add(w); } break;
+    case 'jetpack': for (const sx of [-1, 1]) { const t = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.4, 8), M(0x8a8f99)); t.position.set(sx * 0.1, by - 0.05, bz + 0.08); Bd.add(t); at(Bd, new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.1, 8), M(0xff6a1a, true))).position.set(sx * 0.1, by - 0.3, bz + 0.08); } break;
+  }
+}
+
+export function buildCharacter(color, look) {
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  root.add(body);
+  const c = new THREE.Color(color).getHex();
+  const legL = new THREE.Group(), legR = new THREE.Group(), kneeL = new THREE.Group(), kneeR = new THREE.Group();
+  const head = new THREE.Group(), arm = new THREE.Group(), armL = new THREE.Group(), slot = new THREE.Group();
+  const jank = { tilt: (Math.random() - 0.5) * 0.5, shoulder: (Math.random() - 0.5) * 0.12, lean: (Math.random() - 0.5) * 0.12, wrongKnee: Math.random() < 0.25 };
+  const glb = fitted('player', { feet: true, byHeight: true, size: 1.85 });
+  if (glb) {
+    body.add(glb);
+    body.add(bx(0.5, 0.15, 0.5, c, 0, 1.95, 0));
+  } else {
+    // legs: hip -> thigh -> knee -> shin -> foot
+    for (const [leg, knee, sx] of [[legL, kneeL, -1], [legR, kneeR, 1]]) {
+      leg.position.set(0.1 * sx, 0.92, 0);
+      leg.add(ball(0.075, JOINT));
+      leg.add(limb(0.07, 0.058, 0.42, SKIN, -0.22));
+      knee.position.y = -0.44;
+      knee.add(ball(0.062, JOINT));
+      knee.add(limb(0.056, 0.045, 0.4, SKIN, -0.21));
+      knee.add(bx(0.1, 0.06, 0.22, SKIN, 0, -0.43, -0.05));
+      leg.add(knee);
+      body.add(leg);
+    }
+    body.add(bx(0.34, 0.18, 0.23, c, 0, 0.98, 0)); // shorts in your color
+    body.add(limb(0.1, 0.12, 0.16, SKIN, 1.13)); // skinny mannequin waist
+    const chest = ball(0.2, SKIN, 0, 1.34, 0); chest.scale.set(1.2, 1.1, 0.72); body.add(chest);
+    const sash = bx(0.09, 0.56, 0.31, c, 0, 1.31, 0); sash.rotation.z = 0.65; body.add(sash);
+    body.add(limb(0.045, 0.05, 0.12, SKIN, 1.57));
+    head.position.set(0, 1.62, 0);
+    const egg = ball(0.14, SKIN, 0, 0.14, 0); egg.scale.set(0.85, 1.22, 0.95); head.add(egg);
+    head.add(bx(0.005, 0.2, 0.3, JOINT, 0, 0.14, 0)); // seam where the mold met
+    head.rotation.z = jank.tilt;
+    body.add(head);
+    for (const sx of [-1, 1]) body.add(ball(0.068, JOINT, 0.25 * sx, 1.45 + (sx > 0 ? jank.shoulder : 0), 0));
+    // right arm holds the gun
+    arm.add(cylZ(0.048, 0.28, SKIN, 0, 0, -0.14));
+    arm.add(ball(0.05, JOINT, 0, 0, -0.29));
+    arm.add(cylZ(0.042, 0.24, SKIN, -0.03, -0.01, -0.42));
+    arm.add(ball(0.045, SKIN, -0.04, -0.02, -0.55));
+    const tag = bx(0.05, 0.07, 0.005, 0xffffff, 0.05, -0.06, -0.2); tag.rotation.z = 0.5; arm.add(tag); // price tag still on
+    // left arm reaches for the front of the gun, badly
+    armL.position.set(-0.25, 1.45, 0);
+    const upper = cylZ(0.048, 0.3, SKIN, 0.07, -0.02, -0.14); upper.rotation.y = -0.45; armL.add(upper);
+    armL.add(ball(0.05, JOINT, 0.14, -0.04, -0.28));
+    const fore = cylZ(0.042, 0.3, SKIN, 0.27, -0.04, -0.4); fore.rotation.y = -0.9; armL.add(fore);
+    body.add(armL);
+  }
+  arm.position.set(0.25, 1.45 + jank.shoulder, 0);
+  slot.position.set(-0.03, -0.03, -0.56);
+  arm.add(slot);
+  body.add(arm);
+  body.rotation.z = jank.lean * 0.3;
+  const out = { root, body, legL, legR, kneeL, kneeR, head, arm, armL, slot, pupils: [], jank };
+  if (!glb) addAccessories(out, look, c);
+  return out;
+}
+
+export function makeNameTag(name, color) {
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 32;
+  const g = c.getContext('2d');
+  g.font = 'bold 18px "Comic Sans MS", "Comic Neue", cursive';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineWidth = 4; g.strokeStyle = '#000';
+  g.strokeText(name, 64, 16);
+  g.fillStyle = color;
+  g.fillText(name, 64, 16);
+  const t = new THREE.CanvasTexture(c);
+  t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter;
+  t.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true }));
+  s.scale.set(1.8, 0.45, 1);
+  return s;
+}
+
+export function makeShadow() {
+  const m = new THREE.Mesh(new THREE.CircleGeometry(0.45, 8).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+  m.renderOrder = 1;
+  return m;
+}
+
+// ------------------------------------------------------------ projectiles
+export function buildProjectile(k, skin) {
+  const g = buildProjectileRaw(k);
+  if (!g.userData.glb) g.userData.hatAt = HAT_AT['p_' + k];
+  return applySkin(g, skin);
+}
+function buildProjectileRaw(k) {
+  const g = new THREE.Group();
+  const sizes = { chicken: 0.7, banana: 0.4, bowling: 0.9, duck: 0.5, slipper: 0.45, bow: 0.9, card: 0.25 };
+  const glb = fitted('p_' + k, { size: sizes[k] || 0.5, alignZ: true });
+  if (glb) { g.add(glb); g.userData.glb = true; return g; }
+  if (k === 'chicken') {
+    const b = ball(0.2, 0xffe14d); b.scale.set(1, 0.9, 1.5); g.add(b);
+    g.add(ball(0.13, 0xffe14d, 0, 0.18, -0.28));
+    g.add(bx(0.06, 0.05, 0.12, 0xff8a00, 0, 0.16, -0.43));
+    g.add(bx(0.03, 0.1, 0.12, 0xff2222, 0, 0.32, -0.27));
+    g.add(ball(0.025, 0x000000, 0.09, 0.22, -0.36, true));
+    g.add(ball(0.025, 0x000000, -0.09, 0.22, -0.36, true));
+    g.add(bx(0.04, 0.2, 0.04, 0xff8a00, 0.08, -0.22, 0.05));
+    g.add(bx(0.04, 0.2, 0.04, 0xff8a00, -0.08, -0.22, 0.05));
+  } else if (k === 'bow') {
+    g.add(cylZ(0.012, 0.9, 0xc8a070, 0, 0, 0, 4));
+    const tip = bx(0.04, 0.04, 0.08, 0xdddddd, 0, 0, -0.48, true); g.add(tip); g.userData.tip = tip;
+    g.add(bx(0.004, 0.06, 0.1, 0xff4fd8, 0, 0, 0.4)); g.add(bx(0.06, 0.004, 0.1, 0xff4fd8, 0, 0, 0.4));
+  } else if (k === 'card') {
+    const c = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.26), cardFace('back'));
+    c.material.side = THREE.DoubleSide;
+    c.rotation.x = -Math.PI / 2;
+    g.add(c);
+  } else if (k === 'bowling') {
+    bowlingBall(g, 0.45);
+  } else if (k === 'duck') {
+    duck(g, 2.2);
+  } else if (k === 'slipper') {
+    slipper(g, 1.6);
+  } else {
+    const t = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.06, 4, 8, Math.PI * 0.8), M(0xffe135));
+    g.add(t);
+    g.add(bx(0.04, 0.04, 0.06, 0x3a2a10, 0.18, 0, 0));
+  }
+  return g;
+}
+
+export function buildHole() {
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0x000000 })));
+  const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(1.5, 1), new THREE.MeshBasicMaterial({ color: 0x9a3bff, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
+  g.add(shell);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.12, 4, 16), new THREE.MeshBasicMaterial({ color: 0xff7aff, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false }));
+  ring.rotation.x = Math.PI / 2;
+  g.add(ring);
+  const d = new THREE.Group(); duck(d, 1.6); d.position.set(2.2, 0, 0);
+  const orbit = new THREE.Group(); orbit.add(d); g.add(orbit);
+  g.userData = { shell, ring, orbit };
+  return g;
+}
+
+export function buildPeel() {
+  const g = new THREE.Group();
+  const glb = fitted('peel', { size: 0.6, feet: true });
+  if (glb) { g.add(glb); return g; }
+  g.add(bx(0.16, 0.08, 0.16, 0xffe135, 0, 0.04, 0));
+  for (let i = 0; i < 4; i++) {
+    const arm = bx(0.12, 0.03, 0.34, i % 2 ? 0xffe135 : 0xf2d02a, 0, 0.02, 0);
+    arm.geometry.translate(0, 0, 0.17);
+    arm.rotation.y = (i / 4) * Math.PI * 2 + 0.4;
+    arm.rotation.x = -0.15;
+    g.add(arm);
+  }
+  g.add(bx(0.04, 0.12, 0.04, 0x5a3a1a, 0, 0.1, 0));
+  return g;
+}
+
+export function tipColor(tip) { return new THREE.Color((ARROW_TIPS[tip] || ARROW_TIPS.regular).color).getHex(); }

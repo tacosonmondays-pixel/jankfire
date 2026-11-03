@@ -1,0 +1,122 @@
+[
+  {
+    "id": "w_ar",
+    "size": 1.0,
+    "prompt": "an assault rifle, side view, low poly game asset"
+  },
+  {
+    "id": "w_smg",
+    "size": 0.6,
+    "prompt": "a compact submachine gun, side view, low poly game asset"
+  },
+  {
+    "id": "w_shotgun",
+    "size": 1.1,
+    "prompt": "a pump action shotgun with a wooden stock, side view, low poly game asset"
+  },
+  {
+    "id": "w_minigun",
+    "size": 1.0,
+    "prompt": "a handheld six barrel minigun, side view, low poly game asset"
+  },
+  {
+    "id": "w_sniper",
+    "size": 1.8,
+    "prompt": "a very long sniper rifle, side view, low poly game asset"
+  },
+  {
+    "id": "w_chicken",
+    "size": 0.9,
+    "prompt": "a green rocket launcher tube with a rubber chicken poking out of the front, low poly game asset"
+  },
+  {
+    "id": "w_bowling",
+    "size": 0.9,
+    "prompt": "a wide launcher tube with a bowling ball loaded in the front, low poly game asset"
+  },
+  {
+    "id": "w_banana",
+    "size": 0.6,
+    "prompt": "a toy gun made out of bananas with a banana shaped magazine, low poly game asset"
+  },
+  {
+    "id": "w_revolver",
+    "size": 0.35,
+    "prompt": "a six shot revolver with a wooden grip, side view, low poly game asset"
+  },
+  {
+    "id": "w_cig",
+    "size": 0.18,
+    "prompt": "a single lit cigarette, horizontal, low poly game asset"
+  },
+  {
+    "id": "w_blower",
+    "size": 1.0,
+    "prompt": "an orange leaf blower with a long nozzle, low poly game asset"
+  },
+  {
+    "id": "w_popper",
+    "size": 0.3,
+    "prompt": "a striped party popper cone, low poly game asset"
+  },
+  {
+    "id": "w_reverse",
+    "size": 0.2,
+    "prompt": "a red playing card with two circular arrows on it, low poly game asset"
+  },
+  {
+    "id": "w_duck",
+    "size": 0.25,
+    "prompt": "a yellow rubber duck bath toy, low poly game asset"
+  },
+  {
+    "id": "w_bread",
+    "size": 1.6,
+    "prompt": "a huge long french bread baguette loaf, low poly game asset"
+  },
+  {
+    "id": "w_slipper",
+    "size": 0.3,
+    "prompt": "a single fluffy pink house slipper, low poly game asset"
+  },
+  {
+    "id": "w_spoon",
+    "size": 0.22,
+    "prompt": "a metal spoon, low poly game asset"
+  },
+  {
+    "id": "p_chicken",
+    "size": 0.7,
+    "prompt": "a yellow rubber chicken toy, low poly game asset"
+  },
+  {
+    "id": "p_banana",
+    "size": 0.4,
+    "prompt": "a single banana, low poly game asset"
+  },
+  {
+    "id": "p_bowling",
+    "size": 0.9,
+    "prompt": "a dark blue bowling ball, low poly game asset"
+  },
+  {
+    "id": "p_duck",
+    "size": 0.5,
+    "prompt": "a yellow rubber duck bath toy, low poly game asset"
+  },
+  {
+    "id": "p_slipper",
+    "size": 0.45,
+    "prompt": "a single fluffy pink house slipper, low poly game asset"
+  },
+  {
+    "id": "peel",
+    "size": 0.6,
+    "prompt": "a banana peel lying flat on the floor, low poly game asset"
+  },
+  {
+    "id": "player",
+    "size": 1.85,
+    "prompt": "a featureless store mannequin, beige plastic, visible ball joints, full body, standing, low poly game character"
+  }
+]

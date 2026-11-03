@@ -1,0 +1,240 @@
+// Keyframed viewmodel animations: melee swings, throws, inspects.
+// A key is { t: seconds, p: [x,y,z] offset, r: [x,y,z] radians offset, s: scale, e: easing into this key }.
+// Offsets are added on top of the weapon's normal pose. Spins can go past 2π and end on a multiple of 2π so
+// there's no pop when the animation finishes. Principles used: short anticipation, snappy strike,
+// held follow-through for weight, slower recovery for heavy stuff.
+
+const PI2 = Math.PI * 2;
+const EASE = {
+  linear: (u) => u,
+  smooth: (u) => u * u * (3 - 2 * u),
+  snap: (u) => 1 - Math.pow(1 - u, 3), // fast out of the gate: strikes
+  in: (u) => u * u * u, // accelerating: falling, wind-ups
+  back: (u) => { const c = 1.9; return 1 + (c + 1) * Math.pow(u - 1, 3) + c * Math.pow(u - 1, 2); }, // overshoot
+};
+const K = (t, p = [0, 0, 0], r = [0, 0, 0], e = 'smooth', s = 1) => ({ t, p, r, e, s });
+
+export const ANIMS = {
+  // ------------------------------------------------------------ melee
+  swing_bread: { hit: 0.19, keys: [
+    K(0), K(0.13, [0.12, 0.08, 0.1], [0.25, -0.9, -0.3]),
+    K(0.24, [-0.38, -0.02, -0.12], [-0.15, 1.9, 0.5], 'snap'),
+    K(0.38, [-0.42, -0.06, -0.08], [-0.2, 2.1, 0.6]),
+    K(0.62),
+  ], events: [[0.15, 'whoosh']] },
+  swing_bread2: { hit: 0.19, keys: [ // backhand for the combo
+    K(0), K(0.13, [-0.3, 0.06, 0.05], [0.2, 1.4, 0.4]),
+    K(0.24, [0.14, -0.05, -0.12], [-0.1, -0.9, -0.5], 'snap'),
+    K(0.38, [0.18, -0.08, -0.08], [-0.15, -1.1, -0.55]),
+    K(0.62),
+  ], events: [[0.15, 'whoosh']] },
+  swing_spoon: { hit: 0.1, keys: [
+    K(0), K(0.06, [0.02, 0.02, 0.08], [0.2, 0, 0]),
+    K(0.12, [-0.08, 0.04, -0.22], [-0.3, -0.25, 0], 'snap'),
+    K(0.22, [-0.08, 0.04, -0.2], [-0.3, -0.25, 0]),
+    K(0.4),
+  ], events: [[0.07, 'whoosh']] },
+  swing_spoon2: { hit: 0.11, keys: [ // overhead stab
+    K(0), K(0.07, [0, 0.14, 0.05], [0.9, 0, 0]),
+    K(0.13, [-0.05, -0.05, -0.18], [-0.6, 0, 0], 'snap'),
+    K(0.24, [-0.05, -0.06, -0.16], [-0.65, 0, 0]),
+    K(0.42),
+  ], events: [[0.08, 'whoosh']] },
+  throw_slipper: { hit: 0.16, keys: [
+    K(0), K(0.12, [0.05, 0.2, 0.15], [1.0, 0, 0.4], 'in'),
+    K(0.2, [-0.05, -0.05, -0.25], [-0.8, 0, -0.2], 'snap'),
+    K(0.3, [-0.05, -0.12, -0.2], [-0.9, 0, -0.2]),
+  ], events: [[0.14, 'whoosh']] },
+  catch_slipper: { keys: [K(0, [0.05, -0.25, -0.1], [-0.6, 0, 0]), K(0.18, [0, 0.02, 0], [0.1, 0, 0], 'back'), K(0.3)], events: [[0.12, 'thwack']] },
+  yank_popper: { keys: [K(0), K(0.05, [0, 0.02, 0.12], [0.5, 0, 0.1], 'snap'), K(0.32)] },
+
+  swing_knife: { hit: 0.09, keys: [
+    K(0), K(0.05, [0.05, 0.03, 0.05], [0.1, -0.5, -0.3]),
+    K(0.12, [-0.12, -0.02, -0.12], [-0.1, 0.8, 0.5], 'snap'), K(0.2, [-0.13, -0.03, -0.11], [-0.12, 0.85, 0.55]), K(0.36),
+  ], events: [[0.06, 'whoosh']] },
+  swing_knife2: { hit: 0.08, keys: [
+    K(0), K(0.05, [0.02, 0.0, 0.07], [0.15, 0, 0]),
+    K(0.11, [-0.06, 0.02, -0.2], [-0.2, -0.2, 0], 'snap'), K(0.2, [-0.06, 0.02, -0.19], [-0.2, -0.2, 0]), K(0.34),
+  ], events: [[0.06, 'whoosh']] },
+  swing_slapper: { hit: 0.17, keys: [
+    K(0), K(0.1, [0.05, 0.12, 0.15], [0.9, 0, 0.2], 'in'),
+    K(0.18, [-0.05, -0.05, -0.25], [-0.9, 0, 0], 'snap'), K(0.32, [-0.05, -0.07, -0.22], [-0.95, 0, 0]), K(0.52),
+  ], events: [[0.12, 'whoosh']] },
+  swing_scythe: { hit: 0.24, keys: [ // heavy: slower wind-up, long follow-through
+    K(0), K(0.16, [0.2, 0.15, 0.15], [0.4, -1.2, -0.6]),
+    K(0.3, [-0.45, -0.1, -0.2], [-0.3, 2.2, 0.9], 'snap'), K(0.48, [-0.5, -0.14, -0.15], [-0.35, 2.4, 1.0]), K(0.78),
+  ], events: [[0.2, 'whoosh']] },
+  swing_scythe2: { hit: 0.24, keys: [
+    K(0), K(0.16, [-0.35, 0.18, 0.1], [0.5, 1.6, 0.6]),
+    K(0.3, [0.15, -0.12, -0.2], [-0.3, -1.4, -0.8], 'snap'), K(0.48, [0.18, -0.16, -0.15], [-0.35, -1.5, -0.85]), K(0.78),
+  ], events: [[0.2, 'whoosh']] },
+  fold_scythe: { keys: [K(0), K(0.15, [0, -0.18, 0.06], [0.7, 0, 0.9], 'snap'), K(0.4)], events: [[0.12, 'click'], [0.2, 'click']] },
+
+  // ------------------------------------------------------------ melee inspects (the good ones)
+  inspect_bread: { keys: [
+    K(0), K(0.35, [-0.2, 0.15, 0.05], [0.3, 0.5, 0.2]),
+    K(0.55, [-0.2, 0.7, -0.2], [0.3 + PI2, 0.5, 0.2], 'snap'), // toss it
+    K(0.85, [-0.2, 0.85, -0.25], [0.3 + PI2 * 1.5, 0.5, 0.2], 'linear'),
+    K(1.15, [-0.2, 0.12, 0.05], [0.3 + PI2 * 2, 0.5, 0.2], 'in'), // catch
+    K(1.3, [-0.2, 0.06, 0.05], [0.3 + PI2 * 2, 0.5, 0.2]),
+    K(1.7, [-0.3, 0.12, 0.2], [0.1 + PI2 * 2, 1.4, 0.3]), // up to the mouth
+    K(1.85, [-0.3, 0.1, 0.24], [0.1 + PI2 * 2, 1.4, 0.3]),
+    K(2.0, [-0.3, 0.12, 0.2], [0.1 + PI2 * 2, 1.4, 0.3]),
+    K(2.15, [-0.3, 0.1, 0.24], [0.1 + PI2 * 2, 1.4, 0.3]),
+    K(2.5, [-0.15, 0.1, 0], [0.6 + PI2 * 2, 0.3, 0.6]), // hold it up, proud
+    K(3.2, [0, 0, 0], [PI2 * 2, 0, 0]),
+  ], events: [[0.5, 'whoosh'], [1.15, 'thwack'], [1.82, 'crunch'], [1.86, 'crumbs'], [2.12, 'crunch'], [2.16, 'crumbs']] },
+  inspect_slipper: { keys: [
+    K(0), K(0.3, [-0.15, 0.12, 0], [-1.2, 0, 0]),
+    K(2.0, [-0.15, 0.14, 0], [-1.2, PI2 * 3, 0], 'linear'), // spin it on one finger
+    K(2.2, [-0.22, 0.02, 0.05], [-0.4, PI2 * 3, 0.6], 'snap'), // slap your own hand
+    K(2.8, [0, 0, 0], [0, PI2 * 3, 0]),
+  ], events: [[2.18, 'thwack']] },
+  inspect_spoon: { keys: [
+    K(0), K(0.25, [-0.1, 0.1, 0.02]),
+    K(1.3, [-0.1, 0.12, 0.02], [0, 0, PI2 * 2], 'linear'), // baton twirl
+    K(1.6, [-0.12, 0.08, 0.12], [1.2, 0.4, PI2 * 2]), // check your reflection
+    K(2.0, [-0.12, 0.08, 0.12], [1.2, 0.4, PI2 * 2]),
+    K(2.1, [-0.1, 0.08, 0.12], [1.2, 0.5, PI2 * 2]), // polish polish
+    K(2.2, [-0.14, 0.08, 0.12], [1.2, 0.3, PI2 * 2]),
+    K(2.3, [-0.1, 0.08, 0.12], [1.2, 0.5, PI2 * 2]),
+    K(2.4, [-0.14, 0.08, 0.12], [1.2, 0.3, PI2 * 2]),
+    K(3.0, [0, 0, 0], [0, 0, PI2 * 2]),
+  ], events: [[1.65, 'ting'], [2.15, 'squeak'], [2.35, 'squeak']] },
+
+  inspect_knife: { keys: [
+    K(0), K(0.3, [-0.06, 0.05, 0.05], [0.1, 0.7, 0.2]),
+    K(0.8, [-0.06, 0.06, 0.05], [0.1 + PI2, 0.7, 0.2], 'linear'), // flip it
+    K(1.1, [-0.07, 0.06, 0.08], [0.3 + PI2, 1.2, 0.5], 'back'), K(1.6, [0, 0, 0], [PI2, 0, 0]),
+  ], events: [[0.8, 'click']] },
+  inspect_knife_butterfly: { keys: [ // the flip: handles swing round one after the other
+    K(0), K(0.25, [-0.06, 0.06, 0.05]),
+    K(0.45, [-0.06, 0.06, 0.05], [0, Math.PI, 0], 'snap'), K(0.65, [-0.06, 0.06, 0.05], [0, Math.PI, Math.PI], 'snap'),
+    K(0.85, [-0.06, 0.06, 0.05], [0, PI2, Math.PI], 'snap'), K(1.05, [-0.06, 0.06, 0.05], [0, PI2, PI2], 'snap'),
+    K(1.25, [-0.06, 0.07, 0.05], [Math.PI, PI2, PI2], 'snap'), K(1.45, [-0.06, 0.07, 0.05], [PI2, PI2, PI2], 'snap'),
+    K(1.8, [-0.07, 0.07, 0.08], [PI2 + 0.3, PI2 + 1.0, PI2 + 0.4], 'back'), K(2.3, [0, 0, 0], [PI2, PI2, PI2]),
+  ], events: [[0.45, 'click'], [0.65, 'click'], [0.85, 'click'], [1.05, 'click'], [1.25, 'click'], [1.45, 'click']] },
+  inspect_knife_karambit: { keys: [ // spin it round your finger through the ring
+    K(0), K(0.25, [-0.06, 0.06, 0.04]),
+    K(1.1, [-0.06, 0.06, 0.04], [0, 0, PI2 * 3], 'linear'),
+    K(1.4, [-0.07, 0.07, 0.07], [0.3, 0.9, PI2 * 3 + 0.3], 'back'), K(1.9, [0, 0, 0], [0, 0, PI2 * 3]),
+  ], events: [[1.1, 'ting']] },
+  inspect_knife_switch: { keys: [ // flick it shut and open again
+    K(0), K(0.2, [-0.05, 0.04, 0.04], [0, 0.6, 0]),
+    K(0.3, [-0.05, 0.04, 0.04], [0, 0.6, -1.3], 'snap'), K(0.45, [-0.05, 0.05, 0.04], [0, 0.6, 0.2], 'back'),
+    K(0.6, [-0.05, 0.04, 0.04], [0, 0.6, -1.3], 'snap'), K(0.75, [-0.05, 0.05, 0.04], [0, 0.6, 0.2], 'back'),
+    K(1.2, [-0.05, 0.05, 0.05], [PI2, 0.6, 0], 'linear'), K(1.6, [0, 0, 0], [PI2, 0, 0]),
+  ], events: [[0.3, 'click'], [0.45, 'click'], [0.6, 'click'], [0.75, 'click']] },
+  inspect_slapper: { keys: [ // wave hello, then clap
+    K(0), K(0.3, [-0.1, 0.12, 0.05], [0.3, 0, 0]),
+    K(0.5, [-0.1, 0.12, 0.05], [0.3, 0, 0.6]), K(0.7, [-0.1, 0.12, 0.05], [0.3, 0, -0.6]),
+    K(0.9, [-0.1, 0.12, 0.05], [0.3, 0, 0.6]), K(1.1, [-0.1, 0.12, 0.05], [0.3, 0, -0.6]),
+    K(1.3, [-0.14, 0.05, 0.02], [-0.3, 0.9, 0], 'snap'), K(1.45, [-0.08, 0.08, 0.04], [0.2, 0.3, 0]),
+    K(1.6, [-0.14, 0.05, 0.02], [-0.3, 0.9, 0], 'snap'), K(2.1),
+  ], events: [[1.3, 'thwack'], [1.6, 'thwack']] },
+  inspect_scythe: { keys: [
+    K(0), K(0.4, [-0.15, 0.12, 0.05], [0.4, 0.6, 0]),
+    K(1.6, [-0.15, 0.14, 0.05], [0.4, 0.6, PI2], 'linear'), // twirl it
+    K(1.85, [-0.1, -0.12, -0.05], [0.9, 0.3, PI2], 'snap'), // plant the blade
+    K(2.4, [-0.1, -0.12, -0.05], [0.9, 0.3, PI2]), K(2.9, [0, 0, 0], [0, 0, PI2]),
+  ], events: [[0.4, 'whoosh'], [1.85, 'thwack']] },
+
+  // ------------------------------------------------------------ everything else
+  inspect_gun: { keys: [
+    K(0), K(0.35, [-0.08, 0.05, 0.04], [0.15, 0.9, 0.5]),
+    K(1.1, [-0.09, 0.06, 0.04], [0.2, 0.95, 0.55]),
+    K(1.5, [-0.05, 0.06, 0.02], [0.6, -0.5, -0.6]),
+    K(2.0, [-0.05, 0.07, 0.02], [0.62, -0.55, -0.62]),
+    K(2.4),
+  ] },
+  inspect_revolver: { keys: [
+    K(0), K(0.2, [-0.05, 0.04, 0]),
+    K(1.0, [-0.05, 0.04, 0], [-PI2 * 2, 0, 0], 'linear'), // spin it around the trigger finger
+    K(1.3, [-0.06, 0.05, 0.03], [-PI2 * 2, 0.9, 0.3], 'back'),
+    K(1.9, [0, 0, 0], [-PI2 * 2, 0, 0]),
+  ], events: [[1.0, 'click']] },
+  inspect_shotgun: { keys: [
+    K(0), K(0.25, [-0.04, 0.04, 0], [0.2, 0.4, 0.3]),
+    K(0.4, [-0.04, 0.04, 0.07], [0.2, 0.4, 0.3], 'snap'), K(0.52, [-0.04, 0.04, 0], [0.2, 0.4, 0.3], 'snap'),
+    K(0.7, [-0.04, 0.04, 0.07], [0.2, 0.4, 0.3], 'snap'), K(0.82, [-0.04, 0.04, 0], [0.2, 0.4, 0.3], 'snap'),
+    K(1.4, [-0.03, 0.05, 0], [0.4, -0.3, -0.3]), K(1.9),
+  ], events: [[0.4, 'click'], [0.52, 'click'], [0.7, 'click'], [0.82, 'click']] },
+  inspect_minigun: { keys: [
+    K(0), K(0.4, [-0.04, 0.06, 0.03], [0.25, 0.4, 0]),
+    K(1.6, [-0.05, 0.06, 0.03], [0.25, 0.5, 0.05]),
+    K(2.0, [-0.04, 0.04, 0], [-0.1, -0.3, -0.2]), K(2.5),
+  ], events: [[0.4, 'spin']] },
+  inspect_sniper: { keys: [
+    K(0), K(0.45, [-0.1, 0.05, 0.08], [0.1, 1.2, 0.2]),
+    K(1.0, [-0.12, 0.05, 0.12], [0.1, 1.25, 0.2]), K(1.6, [-0.1, 0.05, 0.08], [0.1, 1.2, 0.2]),
+    K(2.2),
+  ], events: [[0.8, 'blow']] },
+  inspect_cig: { keys: [
+    K(0), K(0.4, [-0.13, 0.04, 0.1], [0, 1.0, 0]), // long drag
+    K(1.3, [-0.13, 0.04, 0.11], [0, 1.0, 0]),
+    K(1.55, [-0.02, 0, 0], [0, 0.3, 0]),
+    K(1.68, [0, 0.02, 0], [0, 0.3, -0.9], 'snap'), // flick the ash
+    K(2.1),
+  ], events: [[1.35, 'smoke'], [1.68, 'spark']] },
+  inspect_duck: { keys: [
+    K(0), K(0.25, [-0.06, 0.06, 0.04], [0, 0.6, 0]),
+    K(0.4, [-0.06, 0.04, 0.04], [0, 0.6, 0], 'snap', 0.65), K(0.6, [-0.06, 0.06, 0.04], [0, 0.6, 0], 'back', 1),
+    K(0.85, [-0.06, 0.04, 0.04], [0, 0.6, 0], 'snap', 0.6), K(1.05, [-0.06, 0.06, 0.04], [0, 0.6, 0], 'back', 1),
+    K(1.5),
+  ], events: [[0.4, 'squeak'], [0.85, 'squeak']] },
+  inspect_reverse: { keys: [
+    K(0), K(0.25, [-0.06, 0.06, 0.04]),
+    K(1.1, [-0.06, 0.08, 0.04], [Math.PI, PI2 * 2, 0], 'linear'),
+    K(1.5, [-0.06, 0.08, 0.06], [PI2, PI2 * 2, 0], 'back'),
+    K(2.0, [0, 0, 0], [PI2, PI2 * 2, 0]),
+  ], events: [[1.5, 'ting']] },
+  inspect_popper: { keys: [
+    K(0), K(0.4, [-0.1, 0.05, 0.05], [0, Math.PI, 0]), K(1.2, [-0.1, 0.06, 0.07], [0.1, Math.PI, 0]),
+    K(1.7, [0, 0, 0], [0, PI2, 0]),
+  ] },
+  inspect_chicken: { keys: [
+    K(0), K(0.3, [-0.05, 0.05, 0.03], [0.1, 0.5, 0.2]),
+    K(0.45, [-0.03, 0.06, 0.03], [0.1, 0.5, 0.45], 'snap'), K(0.6, [-0.05, 0.05, 0.03], [0.1, 0.5, 0.0], 'snap'),
+    K(0.75, [-0.03, 0.06, 0.03], [0.1, 0.5, 0.45], 'snap'), K(1.3),
+  ], events: [[0.45, 'squawk']] },
+  inspect_blower: { keys: [
+    K(0), K(0.3, [-0.04, 0.05, 0.02], [0.2, 0.3, 0.1]),
+    K(0.5, [-0.03, 0.06, 0.02], [0.25, 0.3, 0.15], 'snap'), K(0.7, [-0.04, 0.05, 0.02], [0.2, 0.3, 0.1]),
+    K(1.4),
+  ], events: [[0.45, 'rev']] },
+};
+
+const SPECIAL = new Set(['bread', 'slipper', 'spoon', 'revolver', 'shotgun', 'minigun', 'sniper', 'cig', 'duck', 'reverse', 'popper', 'chicken', 'blower', 'knife', 'slapper', 'scythe']);
+// weapon skins get their own inspect when they have one (butterfly flips, karambit spins...)
+export function inspectFor(id, model) {
+  if (model && ANIMS['inspect_' + model]) return 'inspect_' + model;
+  if (id === 'scythe_rifle') return 'inspect_sniper';
+  return SPECIAL.has(id) ? 'inspect_' + id : 'inspect_gun';
+}
+
+for (const a of Object.values(ANIMS)) a.dur = a.keys[a.keys.length - 1].t;
+
+// returns { p, r, s } at time t, or null when finished
+export function sample(name, t) {
+  const a = ANIMS[name];
+  if (!a || t >= a.dur) return null;
+  const k = a.keys;
+  let i = 0;
+  while (i < k.length - 2 && t >= k[i + 1].t) i++;
+  const k0 = k[i], k1 = k[i + 1];
+  const u = Math.max(0, Math.min(1, (t - k0.t) / Math.max(1e-6, k1.t - k0.t)));
+  const e = (EASE[k1.e] || EASE.smooth)(u);
+  const L = (a0, a1) => a0 + (a1 - a0) * e;
+  return {
+    p: [L(k0.p[0], k1.p[0]), L(k0.p[1], k1.p[1]), L(k0.p[2], k1.p[2])],
+    r: [L(k0.r[0], k1.r[0]), L(k0.r[1], k1.r[1]), L(k0.r[2], k1.r[2])],
+    s: L(k0.s, k1.s),
+  };
+}
+
+// events crossed between t0 (exclusive) and t1 (inclusive)
+export function eventsBetween(name, t0, t1) {
+  const a = ANIMS[name];
+  if (!a || !a.events) return [];
+  return a.events.filter(([t]) => t > t0 && t <= t1).map(([, ev]) => ev);
+}

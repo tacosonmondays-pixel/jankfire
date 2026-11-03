@@ -1,0 +1,15 @@
+# One-click hosting on Render: push this folder to GitHub, then Render -> New -> Blueprint -> pick the repo.
+# Free plan sleeps after 15 min with nobody on it; "starter" stays online 24/7.
+services:
+  - type: web
+    name: jankfire
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: SUPABASE_URL
+        value: https://pzpcwkkvlcgoynibozko.supabase.co
+      - key: SUPABASE_SERVICE_KEY
+        sync: false

@@ -1,0 +1,307 @@
+// Other players (and bots): snapshot interpolation, janky mannequin animation, skins, ropes, effects.
+import * as THREE from 'three';
+import { BOXES } from '/shared/map.js';
+import { raycast, playerBoxes } from '/shared/physics.js';
+import { FLAGS } from '/shared/weapons.js';
+import { G } from './ctx.js';
+import { buildCharacter, buildWeapon, makeNameTag, makeShadow, cardTex } from './models.js';
+import { fx, makeBeam, setBeam } from './fx.js';
+import { emitSkinFx } from './skins.js';
+import { jankify } from './jank.js';
+
+// players ignore fog, glow a bit, and get an outline in their colour so you can spot them across the map
+const noFog = new Map();
+function visibleMat(m) {
+  if (!m || m.isShaderMaterial || m.isSpriteMaterial) return m;
+  if (!noFog.has(m)) {
+    const c = m.clone();
+    c.fog = false;
+    if (c.emissive && c.color) c.emissive.copy(c.color).multiplyScalar(0.28);
+    c.onBeforeCompile = () => {}; // no vertex wobble on players: it mushes them at a distance
+    c.customProgramCacheKey = () => 'player';
+    noFog.set(m, c);
+  }
+  return noFog.get(m);
+}
+const outlineMats = new Map();
+function outlineMat(color) {
+  if (!outlineMats.has(color)) outlineMats.set(color, new THREE.MeshBasicMaterial({ color, side: THREE.BackSide, fog: false }));
+  return outlineMats.get(color);
+}
+let markerTex = null;
+function markerTexture() {
+  if (markerTex) return markerTex;
+  const c = document.createElement('canvas'); c.width = c.height = 16;
+  const g = c.getContext('2d');
+  g.fillStyle = '#000'; g.beginPath(); g.moveTo(1, 2); g.lineTo(15, 2); g.lineTo(8, 14); g.fill();
+  g.fillStyle = '#fff'; g.beginPath(); g.moveTo(3, 3); g.lineTo(13, 3); g.lineTo(8, 11); g.fill();
+  markerTex = new THREE.CanvasTexture(c);
+  markerTex.magFilter = THREE.NearestFilter; markerTex.minFilter = THREE.NearestFilter;
+  return markerTex;
+}
+const camPos = new THREE.Vector3();
+
+const tmpV = new THREE.Vector3(), tmpQ = new THREE.Quaternion(), tmpS = new THREE.Vector3();
+function lerpAngle(a, b, t) {
+  let d = b - a;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return a + d * t;
+}
+
+export class Remote {
+  constructor(id, name, color, skins = {}, bot = false, look = null) {
+    Object.assign(this, {
+      id, name, color, skins, bot, outfit: look, buf: [], pos: [0, -999, 0], vel: [0, 0, 0], yaw: 0, pitch: 0,
+      w: null, hp: 100, alive: true, g: null, f: 0, k: 0, d: 0, walk: 0, burnUntil: 0,
+      rope: null, shadow: null, ch: null, twitchUntil: 0, twitchNext: 2000 + Math.random() * 5000, twitch: null,
+    });
+    this.build();
+  }
+
+  build() {
+    if (this.ch) G.scene.remove(this.ch.root);
+    this.ch = buildCharacter(this.color, this.outfit);
+    this.ch.root.scale.setScalar(1.2); // a bit bigger than you so they read at crusty resolutions
+    const outline = outlineMat(new THREE.Color(this.color).getHex());
+    const parts = [];
+    this.ch.body.traverse((o) => { if (o.isMesh) parts.push(o); });
+    for (const o of parts) {
+      o.material = visibleMat(o.material);
+      const shell = new THREE.Mesh(o.geometry, outline);
+      shell.scale.setScalar(1.12);
+      shell.userData.outline = true;
+      o.add(shell);
+      (this.shells ||= []).push(shell);
+    }
+    this.marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: markerTexture(), color: this.color, sizeAttenuation: false, fog: false, transparent: true }));
+    this.marker.scale.set(0.035, 0.035, 1);
+    this.marker.position.y = 2.75;
+    this.ch.root.add(this.marker);
+    this.tag = makeNameTag(this.name, this.color);
+    this.tag.material.fog = false;
+    this.tag.position.y = 2.3;
+    this.ch.root.add(this.tag);
+    G.scene.add(this.ch.root);
+    if (!this.rope) { this.rope = makeBeam(0x3a2a1a); this.rope.visible = false; G.scene.add(this.rope); }
+    if (!this.shadow) { this.shadow = makeShadow(); G.scene.add(this.shadow); }
+    this.card = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 1.05), new THREE.MeshBasicMaterial({ map: cardTex(), side: THREE.DoubleSide }));
+    this.card.position.y = 2.9;
+    this.card.visible = false;
+    this.ch.root.add(this.card);
+    const w = this.w;
+    this.w = null;
+    if (w) this.setWeapon(w);
+  }
+
+  setLook(look, color) {
+    this.outfit = look; if (color) this.color = color;
+    const keep = { pos: this.pos.slice() };
+    this.shells = []; this.glow = 0;
+    G.scene.remove(this.ch.root);
+    this.build();
+    this.pos = keep.pos;
+  }
+
+  setSkins(s) { this.skins = s || {}; const w = this.w; this.w = null; if (w) this.setWeapon(w); }
+
+  setWeapon(w) {
+    this.w = w;
+    this.ch.slot.clear();
+    this.weaponMesh = null;
+    if (w) {
+      this.weaponMesh = buildWeapon(w, this.skins[w]);
+      this.weaponMesh.traverse((o) => { if (o.isMesh && !o.material.transparent) o.material = visibleMat(o.material); });
+      this.weaponMesh.scale.setScalar(w === 'bread' ? 1.0 : 1.5);
+      this.ch.slot.add(this.weaponMesh);
+    }
+  }
+
+  snap(t, e) {
+    const [, x, y, z, vx, vy, vz, yaw, pitch, w, hp, alive, g, f, k, d] = e;
+    if (alive && !this.alive) this.buf.length = 0; // respawned: don't interpolate across the map
+    this.buf.push({ t, p: [x, y, z], v: [vx, vy, vz], yaw, pitch });
+    if (this.buf.length > 60) this.buf.shift();
+    this.vel = [vx, vy, vz];
+    this.hp = hp; this.alive = !!alive; this.g = g || null; this.f = f; this.k = k; this.d = d;
+    if (w !== this.w) this.setWeapon(w);
+  }
+
+  // what you can hit matches what you see: far-away players are drawn (and hit-tested) bigger on your screen
+  hitboxes() {
+    const k = (this.distScale || 1);
+    const boxes = playerBoxes(this.pos);
+    if (k === 1) return boxes;
+    const [x, y, z] = this.pos;
+    return boxes.map((b) => ({
+      head: b.head,
+      min: [x + (b.min[0] - x) * k, y + (b.min[1] - y) * k, z + (b.min[2] - z) * k],
+      max: [x + (b.max[0] - x) * k, y + (b.max[1] - y) * k, z + (b.max[2] - z) * k],
+    }));
+  }
+
+  look() {
+    const cp = Math.cos(this.pitch);
+    return [-Math.sin(this.yaw) * cp, Math.sin(this.pitch), -Math.cos(this.yaw) * cp];
+  }
+
+  muzzle() {
+    if (!this.weaponMesh) return [this.pos[0], this.pos[1] + 1.2, this.pos[2]];
+    this.ch.root.updateMatrixWorld(true);
+    tmpV.copy(this.weaponMesh.userData.muzzle);
+    this.weaponMesh.localToWorld(tmpV);
+    return [tmpV.x, tmpV.y, tmpV.z];
+  }
+
+  // the mannequin comes apart. pieces get flung and bounce around for a few seconds.
+  breakApart(vel) {
+    if (!this.ch.root.visible) return;
+    this.ch.root.updateMatrixWorld(true);
+    const parts = [];
+    this.ch.body.traverse((o) => { if (o.isMesh && !o.userData.outline) parts.push(o); });
+    const floor = raycast([this.pos[0], this.pos[1] + 1, this.pos[2]], [0, -1, 0], 30, BOXES);
+    const floorY = floor ? floor.point[1] : -1e9;
+    for (const o of parts) {
+      const m = new THREE.Mesh(o.geometry, o.material);
+      o.matrixWorld.decompose(m.position, m.quaternion, m.scale);
+      G.scene.add(m);
+      G.gibs.push({
+        m, floorY, life: 4 + Math.random(),
+        v: [vel[0] * 0.6 + (Math.random() - 0.5) * 7, vel[1] * 0.5 + 3 + Math.random() * 5, vel[2] * 0.6 + (Math.random() - 0.5) * 7],
+        av: [(Math.random() - 0.5) * 14, (Math.random() - 0.5) * 14, (Math.random() - 0.5) * 14],
+      });
+    }
+    this.ch.root.visible = false;
+  }
+
+  update(rt, dt, now) {
+    const b = this.buf, ch = this.ch;
+    const show = this.alive && b.length > 0;
+    const dashing = !!(this.f & FLAGS.DASH);
+    ch.root.visible = show && !dashing;
+    this.shadow.visible = show;
+    if (!show) { this.rope.visible = false; return; }
+    if (dashing) { fx.glitch(this.pos, this.vel, 6); this.shadow.visible = false; }
+
+    let i = b.length - 1;
+    while (i > 0 && b[i].t > rt) i--;
+    const s0 = b[i], s1 = b[i + 1];
+    if (s1 && rt >= s0.t) {
+      const a = Math.min(1, (rt - s0.t) / Math.max(1, s1.t - s0.t));
+      for (let k = 0; k < 3; k++) this.pos[k] = s0.p[k] + (s1.p[k] - s0.p[k]) * a;
+      this.yaw = lerpAngle(s0.yaw, s1.yaw, a);
+      this.pitch = s0.pitch + (s1.pitch - s0.pitch) * a;
+    } else {
+      const ex = Math.min(0.25, Math.max(0, (rt - s0.t) / 1000));
+      for (let k = 0; k < 3; k++) this.pos[k] = s0.p[k] + s0.v[k] * ex;
+      this.yaw = s0.yaw; this.pitch = s0.pitch;
+    }
+    if (i > 3) b.splice(0, i - 3);
+
+    const [x, y, z] = this.pos;
+    ch.root.position.set(x, y, z);
+    ch.root.rotation.y = this.yaw;
+    ch.arm.rotation.x = this.pitch;
+    ch.armL.rotation.x = this.pitch;
+
+    // stiff mannequin walk: hips swing, knees only bend one way (unless this one is broken)
+    const hs = Math.hypot(this.vel[0], this.vel[2]);
+    const grounded = Math.abs(this.vel[1]) < 1;
+    this.walk += dt * Math.min(hs, 14) * 1.5;
+    const amp = grounded ? Math.min(1, hs / 8) * 0.8 : 0.35;
+    const sw = Math.sin(this.walk);
+    ch.legL.rotation.x = sw * amp;
+    ch.legR.rotation.x = -sw * amp;
+    const bend = ch.jank.wrongKnee ? -1 : 1;
+    ch.kneeL.rotation.x = Math.max(0, -sw) * amp * 1.2 * bend + (grounded ? 0 : 0.8);
+    ch.kneeR.rotation.x = Math.max(0, sw) * amp * 1.2 * bend + (grounded ? 0 : 0.8);
+
+    // random twitches: head snaps, arm glitches out for a moment
+    if (now > this.twitchNext) {
+      this.twitch = Math.random() < 0.6 ? 'head' : 'arm';
+      this.twitchUntil = now + 90 + Math.random() * 160;
+      this.twitchNext = now + 1500 + Math.random() * 5000;
+    }
+    const tw = now < this.twitchUntil;
+    ch.head.rotation.x = this.pitch * 0.5;
+    ch.head.rotation.y = tw && this.twitch === 'head' ? 1.4 : 0;
+    ch.head.rotation.z = ch.jank.tilt + (tw && this.twitch === 'head' ? 0.6 : 0);
+    if (tw && this.twitch === 'arm') ch.armL.rotation.z = 1.8; else ch.armL.rotation.z = 0;
+
+    const slipping = this.f & FLAGS.SLIP;
+    const sliding = this.f & FLAGS.SLIDE;
+    const crouching = this.f & FLAGS.CROUCH;
+    // crouch: sink the body and bend the knees
+    const sink = crouching ? 0.45 : 0;
+    ch.body.position.y += (-sink - ch.body.position.y) * Math.min(1, dt * 14);
+    if (crouching) { ch.legL.rotation.x = -0.9; ch.legR.rotation.x = -0.9; ch.kneeL.rotation.x = 1.6; ch.kneeR.rotation.x = 1.6; }
+    // melee swing everyone else can see
+    const st = (now - (this.swingT || 0)) / 380;
+    if (st >= 0 && st < 1) {
+      const k = Math.sin(st * Math.PI);
+      ch.arm.rotation.y = (st < 0.35 ? -1 : 1) * k * 1.3;
+      ch.arm.rotation.x = this.pitch + k * 0.5;
+    } else ch.arm.rotation.y = 0;
+    // marker + name tag stay readable far away
+    G.camera.getWorldPosition(camPos);
+    const dist = camPos.distanceTo(ch.root.position);
+    const sat = now < (G.satUntil || 0);
+    this.distScale = 1 + Math.max(0, Math.min(1, (dist - 25) / 60)) * 0.8;
+    ch.root.scale.setScalar(1.2 * this.distScale);
+    this.marker.visible = dist > 18 || sat;
+    this.marker.material.depthTest = !sat; // spy satellite: see them through walls
+    this.marker.renderOrder = sat ? 10 : 0;
+    this.marker.scale.setScalar((sat ? 0.05 : 0.042) / (1.2 * this.distScale));
+    // thicker outline the further away they are, so they still read as a person at crusty resolution
+    const glow = 1.12 + Math.max(0, Math.min(1, (dist - 15) / 60)) * 0.6;
+    if (this.shells && Math.abs((this.glow || 0) - glow) > 0.01) { this.glow = glow; for (const sh of this.shells) sh.scale.setScalar(glow); }
+    this.tag.scale.set(1.8 * Math.max(1, dist / 22), 0.45 * Math.max(1, dist / 22), 1);
+    this.tag.position.y = 2.3 + Math.max(0, dist / 22 - 1) * 0.25;
+    const targetTilt = slipping ? -1.3 + Math.sin(now * 0.02) * 0.3 : sliding ? -0.6 : 0;
+    ch.body.rotation.x += (targetTilt - ch.body.rotation.x) * Math.min(1, dt * 12);
+    ch.body.rotation.z = slipping ? Math.sin(now * 0.013) * 0.6 : ch.jank.lean * 0.3;
+
+    if (this.g) {
+      this.rope.visible = true;
+      setBeam(this.rope, this.muzzle(), this.g, 0.05);
+    } else this.rope.visible = false;
+
+    const sh = raycast([x, y + 0.1, z], [0, -1, 0], 80, BOXES);
+    if (sh) { this.shadow.visible = true; this.shadow.position.set(x, sh.point[1] + 0.03, z); } else this.shadow.visible = false;
+
+    const ld = this.look();
+    const head = [x + ld[0] * 0.45, y + 1.5, z + ld[2] * 0.45];
+    if ((this.f & FLAGS.SMOKE) && Math.random() < dt * 25) fx.smoke(head, 1);
+    if (this.f & FLAGS.FIRE) fx.fireCone(head, ld, this.vel, 5);
+    if (this.f & FLAGS.BLOW) fx.leaves(this.muzzle(), ld, this.vel);
+    if (this.weaponMesh && this.weaponMesh.userData.barrels && (this.f & FLAGS.SPIN)) this.weaponMesh.userData.barrels.rotation.z += dt * 40;
+    this.card.visible = !!(this.f & FLAGS.REVERSE) || now < (this.reverseUntil || 0);
+    if (this.card.visible) this.card.rotation.y += dt * 9;
+    if (now < this.burnUntil && Math.random() < 0.7) fx.burn(this.pos);
+    if (this.weaponMesh) { ch.root.updateMatrixWorld(true); emitSkinFx(G.skinFxWorld, this.weaponMesh, dt, this.w === 'bread' ? 1 : 1.5); }
+  }
+
+  dispose() {
+    G.scene.remove(this.ch.root);
+    G.scene.remove(this.rope);
+    G.scene.remove(this.shadow);
+  }
+}
+
+// flying mannequin pieces
+export function updateGibs(dt) {
+  for (let i = G.gibs.length - 1; i >= 0; i--) {
+    const g = G.gibs[i];
+    g.life -= dt;
+    g.v[1] -= 22 * dt;
+    g.m.position.x += g.v[0] * dt; g.m.position.y += g.v[1] * dt; g.m.position.z += g.v[2] * dt;
+    if (g.m.position.y < g.floorY + 0.05) {
+      g.m.position.y = g.floorY + 0.05;
+      g.v[1] = Math.abs(g.v[1]) * 0.35; g.v[0] *= 0.6; g.v[2] *= 0.6;
+      g.av = g.av.map((a) => a * 0.6);
+    }
+    g.m.rotation.x += g.av[0] * dt; g.m.rotation.y += g.av[1] * dt; g.m.rotation.z += g.av[2] * dt;
+    if (g.life < 0.5) g.m.scale.multiplyScalar(Math.max(0, 1 - dt * 6));
+    if (g.life <= 0) { G.scene.remove(g.m); G.gibs.splice(i, 1); }
+  }
+}

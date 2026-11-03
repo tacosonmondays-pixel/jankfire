@@ -1,0 +1,1579 @@
+// JANKFIRE client entry: menus, modes, input, net handlers and the main loop.
+import * as THREE from 'three';
+import { BOXES, MAPS, MAP_ORDER } from '/shared/map.js';
+import { WEAPONS, ORDER, SLOTS, FLAGS, SLIP_TIME, HIPFIRE, BOT_DIFF, MODES, STREAKS, validLoadout } from '/shared/weapons.js';
+import { stepProjectile, raycast } from '/shared/physics.js';
+import { G } from './ctx.js';
+import { initWorld, renderFrame, setJank, updateWorld, loadMap } from './world.js';
+import { loadTripoModels, buildProjectile, buildPeel, buildHole, makeShadow, tipColor, buildCharacter, M } from './models.js';
+import { net } from './net.js';
+import { hud } from './hud.js';
+import { fx, makeBeam, setBeam, scaleU } from './fx.js';
+import { initAudio, sfx, setVolume, setListener, stopLoops } from './audio.js';
+import { ME, stepPlayer, tryHook, releaseHook, applyKb, slip, eye, hookPoint, hspeed, crouchTap } from './player.js';
+import {
+  W, initWeapons, rebuildViewmodels, rebuildOne, setLoadout, refillAmmo, switchSlot, lastSlot, cycleSlot, reload,
+  fireDown, fireUp, updateWeapons, muzzleWorld, onSlipperBack, inspect, grantScythe, loseScythe, toggleScythe, cycleCard,
+} from './weapons.js';
+import { Remote, updateGibs } from './remote.js';
+import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN } from './skins.js';
+import { initPreview, showPreview, showCharacter, renderPreview, resizePreview } from './preview.js';
+import { playKillFx, updateKillFx, clearKillFx } from './killfx.js';
+import { defaultCard, cardEl, initCardEditor } from './cards.js';
+import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
+import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook } from '/shared/looks.js';
+import { account, restore, login, register, logout, saveProfile, leaderboard as fetchLeaders } from './account.js';
+import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
+
+const $ = (id) => document.getElementById(id);
+const canvas = $('game');
+const INTERP_MS = 110;
+const wname = (id) => (WEAPONS[id] ? WEAPONS[id].name : id === 'hook' ? 'Grapple' : id === 'tbag' ? 'T-Bag' : id);
+const wcolor = (id) => (WEAPONS[id] ? WEAPONS[id].color : '#ccc');
+
+// ------------------------------------------------------------ settings
+try {
+  const saved = JSON.parse(localStorage.getItem('jankfire') || '{}');
+  Object.assign(G.settings, saved);
+} catch { /* private mode */ }
+G.settings.loadout = validLoadout(G.settings.loadout);
+if (!G.settings.skins || typeof G.settings.skins !== 'object') G.settings.skins = {};
+if (!G.settings.look || typeof G.settings.look !== 'object') G.settings.look = { ...DEFAULT_LOOK };
+const SYNC_KEYS = ['jank', 'sens', 'adsSens', 'vol', 'fov', 'swapAim', 'toggleAim', 'blood', 'shake', 'fovKick', 'showFps', 'killcam', 'showCards'];
+function profileData() {
+  const settings = {};
+  for (const k of SYNC_KEYS) settings[k] = G.settings[k];
+  return { loadout: G.settings.loadout, skins: G.settings.skins, look: G.settings.look, card: G.settings.card || '', kfx: G.settings.kfx || 'none', settings };
+}
+function saveSettings() {
+  try { localStorage.setItem('jankfire', JSON.stringify(G.settings)); } catch { /* whatever */ }
+  saveProfile(profileData());
+}
+// what you actually wear = what you picked, minus anything you haven't unlocked
+G.inv = {};
+G.equipped = {};
+function recomputeEquipped() {
+  G.equipped = {};
+  for (const [id, sk] of Object.entries(G.settings.skins || {})) {
+    const o = ownedSkin(sk, G.inv, id);
+    if (o[0] !== 'default' || o[1] !== 'none' || o[2] !== 'none' || o[3] !== 'default') G.equipped[id] = o;
+  }
+}
+recomputeEquipped();
+
+// ------------------------------------------------------------ setup
+initWorld(canvas);
+setJank(G.settings.jank);
+fx.init(G.scene);
+const vmScaleU = { value: 300 };
+G.skinFxWorld = makeSkinSystems(G.scene, scaleU);
+G.skinFxVM = makeSkinSystems(G.vmScene, vmScaleU);
+hud.init();
+initWeapons();
+setLoadout(G.settings.loadout);
+hud.show(false);
+initPreview($('preview'));
+
+const myShadow = makeShadow();
+G.scene.add(myShadow);
+const myRope = makeBeam(0x3a2a1a);
+myRope.visible = false;
+G.scene.add(myRope);
+
+loadTripoModels().then((n) => {
+  if (!n) return;
+  console.log(`loaded ${n} tripo models`);
+  rebuildViewmodels();
+  setLoadout(G.settings.loadout);
+  for (const r of G.remotes.values()) r.build();
+  $('status').textContent = `${n} Tripo model(s) loaded`;
+});
+
+// ------------------------------------------------------------ screens
+let screen = 'main';
+function show(id) {
+  screen = id;
+  for (const el of document.querySelectorAll('.screen')) el.classList.toggle('hidden', el.id !== 'scr-' + id);
+  $('menu').classList.remove('hidden');
+  hud.show(false);
+  if (id === 'cosmetics') { $('cosSlot').append($('preview')); buildCosmeticsUI(); setTimeout(resizePreview, 0); }
+  if (id === 'character') { $('charSlot').append($('preview')); buildCharacterUI(); setTimeout(resizePreview, 0); }
+  if (id === 'namecard') cardEditor.open();
+  if (id === 'loadout') buildLoadoutUI();
+  if (id === 'match') syncMatchUI();
+  if (id === 'profile') { renderProfile(); restore().then((me) => { if (me && screen === 'profile') { renderProfile(); renderAcctBar(); } }); }
+  if (id === 'leaders') renderLeaders();
+  if (id === 'main') renderAcctBar();
+}
+function hideMenu() {
+  $('menu').classList.add('hidden');
+  hud.show(true);
+}
+for (const b of document.querySelectorAll('[data-go]')) b.addEventListener('click', () => show(b.dataset.go));
+for (const b of document.querySelectorAll('.back')) b.addEventListener('click', () => show(G.joined ? 'pause' : 'main'));
+for (const b of document.querySelectorAll('[data-mode]')) b.addEventListener('click', () => startMode(b.dataset.mode));
+$('resume').addEventListener('click', resume);
+$('quit').addEventListener('click', quitToMenu);
+
+function resume() {
+  hideMenu();
+  lock();
+}
+
+// ------------------------------------------------------------ playing
+let connecting = false;
+function startMode(mode, cfg) {
+  G.settings.name = $('name').value.trim().slice(0, 16);
+  saveSettings();
+  initAudio(G.settings.vol);
+  setVolume(G.settings.vol);
+  if (connecting) return;
+  if (G.joined) quitToMenu(true);
+  connecting = true;
+  $('status').textContent = 'connecting...';
+  net.connect({ name: G.settings.name, mode, skins: G.equipped, look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), kc: G.settings.killcam !== false, cfg, token: account.loggedIn ? account.token : undefined }, () => {
+    connecting = false;
+    resetWorldState();
+    show('main');
+    $('status').textContent = 'Disconnected. Server is down or restarted.';
+  });
+  hideMenu();
+  lock();
+}
+
+function resetWorldState() {
+  G.joined = false;
+  ME.alive = false;
+  releaseHook();
+  stopLoops();
+  for (const r of G.remotes.values()) r.dispose();
+  G.remotes.clear(); G.names.clear(); G.skins.clear();
+  clearEntities();
+  for (const g of G.gibs) G.scene.remove(g.m);
+  G.gibs.length = 0;
+  hud.dead(false);
+  hud.wave(null);
+  hud.scope(false);
+  endKillcam();
+  stopReplay(true);
+  hideReplayUI();
+  clearRec();
+  clearKillFx();
+  G.roundOver = false;
+  renderRound(null);
+  $('roundEnd').classList.add('hidden');
+  if (account.loggedIn) setTimeout(() => restore().then((me) => { if (me) renderAcctBar(); }), 900); // server saves stats when you leave
+}
+function clearEntities() {
+  for (const pr of G.projs.values()) G.scene.remove(pr.mesh);
+  for (const pl of G.peels.values()) G.scene.remove(pl);
+  for (const h of G.holes.values()) G.scene.remove(h.mesh);
+  G.projs.clear(); G.peels.clear(); G.holes.clear();
+}
+function quitToMenu(silent) {
+  net.close();
+  connecting = false;
+  resetWorldState();
+  if (document.pointerLockElement) document.exitPointerLock();
+  if (silent !== true) show('main');
+  $('status').textContent = '';
+}
+
+function lock() {
+  try {
+    const p = canvas.requestPointerLock({ unadjustedMovement: true });
+    if (p && p.catch) p.catch(() => { try { const q = canvas.requestPointerLock(); if (q && q.catch) q.catch(() => {}); } catch { /* no lock */ } });
+  } catch { /* headless or denied */ }
+}
+function pause() {
+  show('pause');
+  $('pauseTitle').textContent = `${MODES[G.mode] ? MODES[G.mode].name.toUpperCase() : 'PAUSED'} · ${MAPS[G.cfg.map] ? MAPS[G.cfg.map].name : ''}`;
+  W.held = false; W.aimHeld = false;
+  for (const k in keys) keys[k] = false;
+  stopLoops();
+}
+let wasLocked = false, lockedAt = 0, mouseAvg = 8;
+document.addEventListener('pointerlockchange', () => {
+  const locked = document.pointerLockElement === canvas;
+  if (locked) lockedAt = performance.now();
+  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden')) pause();
+  wasLocked = locked;
+});
+canvas.addEventListener('click', () => { if (G.joined && document.pointerLockElement !== canvas && $('menu').classList.contains('hidden')) lock(); });
+
+// ------------------------------------------------------------ bots setup + match settings
+function fillSelect(sel, entries, value) {
+  sel.innerHTML = '';
+  for (const [k, label] of entries) {
+    const o = document.createElement('option');
+    o.value = k; o.textContent = label;
+    sel.append(o);
+  }
+  if (value != null) sel.value = value;
+}
+const mapEntries = MAP_ORDER.map((k) => [k, `${MAPS[k].name} (${MAPS[k].size})`]);
+const hipEntries = Object.entries(HIPFIRE).map(([k, v]) => [k, v.name]);
+const diffEntries = Object.entries(BOT_DIFF).map(([k, v]) => [k, v.name]);
+fillSelect($('setupMap'), mapEntries, 'islands');
+fillSelect($('setupDiff'), diffEntries, 'normal');
+fillSelect($('setupHip'), hipEntries, 'normal');
+fillSelect($('cfgMap'), mapEntries);
+fillSelect($('cfgHip'), hipEntries);
+fillSelect($('cfgDiff'), diffEntries);
+$('setupBots').addEventListener('input', () => { $('setupBotsN').textContent = $('setupBots').value; });
+$('setupGo').addEventListener('click', () => startMode('bots', {
+  map: $('setupMap').value, bots: Number($('setupBots').value), diff: $('setupDiff').value, hip: $('setupHip').value,
+}));
+function syncMatchUI() {
+  $('cfgMap').value = G.cfg.map;
+  $('cfgMap').disabled = G.mode === 'training';
+  $('cfgHip').value = G.cfg.hip;
+  $('cfgDiff').value = G.cfg.diff;
+  $('cfgBots').value = G.cfg.bots;
+  $('cfgBotsN').textContent = G.cfg.bots;
+  for (const el of document.querySelectorAll('.botsOnly')) el.style.display = G.mode === 'bots' || G.mode === 'coop' ? '' : 'none';
+  $('cfgBots').parentElement.style.display = G.mode === 'bots' ? '' : 'none';
+}
+$('cfgMap').addEventListener('change', () => net.send({ t: 'cfg', map: $('cfgMap').value }));
+$('cfgHip').addEventListener('change', () => net.send({ t: 'cfg', hip: $('cfgHip').value }));
+$('cfgDiff').addEventListener('change', () => net.send({ t: 'cfg', diff: $('cfgDiff').value }));
+$('cfgBots').addEventListener('input', () => { $('cfgBotsN').textContent = $('cfgBots').value; });
+$('cfgBots').addEventListener('change', () => net.send({ t: 'cfg', bots: Number($('cfgBots').value) }));
+
+// ------------------------------------------------------------ settings screen
+const S = G.settings;
+$('name').value = S.name || '';
+function bindRange(id, key, fmt, apply) {
+  const el = $(id);
+  el.value = String(S[key]);
+  const out = $(id + 'N');
+  const upd = () => { S[key] = Number(el.value); if (out) out.textContent = fmt ? fmt(S[key]) : S[key]; if (apply) apply(); saveSettings(); };
+  el.addEventListener('input', upd);
+  if (out) out.textContent = fmt ? fmt(S[key]) : S[key];
+}
+function bindCheck(id, key, apply) {
+  const el = $(id);
+  el.checked = !!S[key];
+  el.addEventListener('change', () => { S[key] = el.checked; if (apply) apply(); saveSettings(); });
+}
+$('jank').value = String(S.jank);
+$('jank').addEventListener('change', () => { S.jank = Number($('jank').value); setJank(S.jank); saveSettings(); });
+bindRange('fov', 'fov');
+bindRange('vol', 'vol', null, () => setVolume(S.vol));
+bindRange('sens', 'sens', (v) => v.toFixed(1));
+bindRange('adsSens', 'adsSens', (v) => v.toFixed(2));
+bindCheck('fovKick', 'fovKick');
+bindCheck('shake', 'shake');
+bindCheck('showFps', 'showFps');
+bindCheck('swapAim', 'swapAim');
+bindCheck('toggleAim', 'toggleAim');
+bindCheck('blood', 'blood');
+bindCheck('killcam', 'killcam', () => { if (G.joined) net.send({ t: 'kc', on: S.killcam }); });
+bindCheck('showCards', 'showCards');
+
+// ------------------------------------------------------------ loadout screen
+function buildLoadoutUI() {
+  for (const slot of SLOTS) {
+    const col = $('lo-' + slot);
+    col.innerHTML = '';
+    for (const id of ORDER) {
+      const w = WEAPONS[id];
+      if (w.slot !== slot) continue;
+      const b = document.createElement('button');
+      b.className = 'wpick' + (S.loadout[slot] === id ? ' on' : '');
+      b.textContent = w.name;
+      b.style.setProperty('--c', w.color);
+      b.addEventListener('mouseenter', () => { $('loDesc').textContent = `${w.name}: ${w.desc}`; });
+      b.addEventListener('click', () => {
+        S.loadout[slot] = id;
+        G.cosSel = id;
+        saveSettings();
+        buildLoadoutUI();
+        applyLoadout(false);
+        $('loDesc').textContent = `${w.name}: ${w.desc}`;
+      });
+      col.append(b);
+    }
+  }
+}
+function applyLoadout(force) {
+  const canNow = force || !G.joined || !ME.alive || performance.now() - (G.spawnT || 0) < 5000;
+  if (canNow) { setLoadout(S.loadout); G.pendingLoadout = false; $('loNote').textContent = ''; }
+  else { G.pendingLoadout = true; $('loNote').textContent = 'loadout switches when you respawn'; }
+}
+
+// ------------------------------------------------------------ cosmetics screen
+G.cosSel = S.loadout.primary;
+let skinSendT = null;
+function sendSkins() {
+  clearTimeout(skinSendT);
+  skinSendT = setTimeout(() => { if (G.joined) net.send({ t: 'skin', s: G.equipped }); }, 250);
+}
+function setSkin(id, skin) {
+  if (skin[0] === 'default' && skin[1] === 'none' && skin[2] === 'none' && (skin[3] || 'default') === 'default') delete S.skins[id];
+  else S.skins[id] = skin;
+  saveSettings();
+  recomputeEquipped();
+  sendSkins();
+  rebuildOne(id);
+}
+// ------------------------------------------------------------ character customizer
+function myAchs() { return new Set((account.me && account.me.achs) || []); }
+function rewardsFor(achId) {
+  const out = [];
+  for (const s2 of LOOK_SLOTS) for (const [k, v] of Object.entries(ACCESSORIES[s2])) if (v.ach === achId) out.push({ slot: s2, id: k, name: v.name });
+  return out;
+}
+function setLook(look) {
+  G.settings.look = look;
+  saveSettings();
+  if (G.joined) net.send({ t: 'look', look: validLook(look, myAchs()) });
+}
+function buildCharacterUI() {
+  const achs = myAchs();
+  const look = { ...DEFAULT_LOOK, ...G.settings.look };
+  const shown = validLook(look, achs);
+  showCharacter(buildCharacter, shown.color || G.myColor || '#ff4fd8', shown);
+  // colour swatches (first one = whatever the server hands you)
+  const cel = $('lk-color');
+  cel.innerHTML = '';
+  for (const c of ['', ...LOOK_COLORS]) {
+    const b = document.createElement('button');
+    b.className = 'swatch' + (c ? '' : ' auto') + (look.color === c ? ' on' : '');
+    if (c) b.style.background = c;
+    b.title = c ? c : 'random every match';
+    b.addEventListener('click', () => { setLook({ ...look, color: c }); buildCharacterUI(); });
+    cel.append(b);
+  }
+  for (const slot of LOOK_SLOTS) {
+    const el = $('lk-' + slot);
+    el.innerHTML = '';
+    for (const [k, v] of Object.entries(ACCESSORIES[slot])) {
+      const have = !v.ach || achs.has(v.ach);
+      const c = document.createElement('button');
+      c.className = 'chip' + (look[slot] === k ? ' on' : '') + (have ? '' : ' locked');
+      c.textContent = v.name;
+      if (v.ach) c.style.setProperty('--rc', '#ffe14d');
+      c.title = v.ach ? `${ACHIEVEMENTS[v.ach].name}: ${ACHIEVEMENTS[v.ach].desc}` : 'free';
+      c.addEventListener('click', () => {
+        if (!have) { toast(`${v.name}: unlock "${ACHIEVEMENTS[v.ach].name}" (${ACHIEVEMENTS[v.ach].desc})${account.loggedIn ? '' : '. log in so it counts'}`, 3200); return; }
+        setLook({ ...look, [slot]: k }); buildCharacterUI();
+      });
+      el.append(c);
+    }
+  }
+  // kill effect (rolled from duffel bags)
+  const kel = $('lk-kill');
+  kel.innerHTML = '';
+  const curK = myKfx();
+  for (const [k, v] of Object.entries(COSMETICS.kill)) {
+    const have = owns(G.inv, 'kill', k);
+    const c = document.createElement('button');
+    c.className = 'chip' + (curK === k ? ' on' : '') + (have ? '' : ' locked');
+    c.textContent = v.name;
+    c.style.setProperty('--rc', RARITY[v.rarity].color);
+    c.title = `${RARITY[v.rarity].name}: ${v.desc}`;
+    c.addEventListener('click', () => {
+      if (!have) { toast(`${v.name} (${RARITY[v.rarity].name}): ${v.desc}. find it in duffel bags`, 3000); return; }
+      setKfx(k); toast(`${v.name}: ${v.desc}. try it on the dummies in TRAINING`);
+    });
+    kel.append(c);
+  }
+  $('lkCard').innerHTML = '';
+  $('lkCard').append(cardEl(cardUrlFor('me'), (account.me && account.me.name) || S.name || 'you', S.card ? 'your name card' : 'generated card (make your own!)', shown.color || '#ff4fd8'));
+  // achievements list with progress
+  const list = $('achList');
+  list.innerHTML = '';
+  const h = document.createElement('div'); h.className = 'lt'; h.textContent = `achievements ${achs.size}/${Object.keys(ACHIEVEMENTS).length}`;
+  list.append(h);
+  const st = (account.me && account.me.stats) || {};
+  for (const [id, a] of Object.entries(ACHIEVEMENTS)) {
+    const d = document.createElement('div');
+    const done = achs.has(id);
+    d.className = 'ach' + (done ? ' done' : '');
+    const b = document.createElement('b'); b.textContent = (done ? '★ ' : '') + a.name;
+    const t = document.createElement('div'); t.textContent = a.desc;
+    const have = Math.min(a.goal, st[a.stat] || 0);
+    const bar = document.createElement('div'); bar.className = 'bar';
+    const fill = document.createElement('i'); fill.style.width = (done ? 100 : (have / a.goal) * 100) + '%'; bar.append(fill);
+    const rw = document.createElement('div'); rw.className = 'rw';
+    rw.textContent = 'unlocks ' + rewardsFor(id).map((x) => x.name).join(', ');
+    d.append(b, t, bar, rw);
+    list.append(d);
+  }
+  $('lkNote').textContent = account.loggedIn ? 'other players see this. locked stuff unlocks from achievements.' : 'guest: free accessories only. log in to earn the achievement ones.';
+}
+const cardEditor = initCardEditor({
+  get: () => S.card || '',
+  save: (url) => { S.card = url; saveSettings(); if (G.joined) net.send({ t: 'card', card: url }); },
+  toast: (t) => toast(t),
+});
+$('lkRandom').addEventListener('click', () => {
+  const achs = myAchs();
+  const pick = (arr) => arr[(Math.random() * arr.length) | 0];
+  const look = { color: pick(LOOK_COLORS) };
+  for (const s2 of LOOK_SLOTS) look[s2] = pick(Object.entries(ACCESSORIES[s2]).filter(([, v]) => !v.ach || achs.has(v.ach)).map(([k]) => k));
+  setLook(look); buildCharacterUI();
+});
+$('lkReset').addEventListener('click', () => { setLook({ ...DEFAULT_LOOK }); buildCharacterUI(); });
+
+function buildCosmeticsUI() {
+  const list = $('cosWeapons');
+  list.innerHTML = '';
+  for (const slot of SLOTS) {
+    const h = document.createElement('div');
+    h.className = 'lt'; h.textContent = slot;
+    list.append(h);
+    for (const id of ORDER) {
+      const w = WEAPONS[id];
+      if (w.slot !== slot) continue;
+      const b = document.createElement('button');
+      b.className = 'wpick' + (G.cosSel === id ? ' on' : '');
+      if (modelsFor(id).length > 1) b.title = 'has skins';
+      b.textContent = w.name + (S.skins[id] ? ' *' : '');
+      b.style.setProperty('--c', w.color);
+      b.addEventListener('click', () => { G.cosSel = id; buildCosmeticsUI(); });
+      list.append(b);
+    }
+  }
+  const id = G.cosSel;
+  const sk = validSkin(S.skins[id]);
+  $('cosName').innerHTML = '';
+  const n = document.createElement('span');
+  n.textContent = WEAPONS[id].name;
+  n.style.color = WEAPONS[id].color;
+  $('cosName').append(n);
+  const chips = (elId, type, idx) => {
+    const el = $(elId);
+    el.innerHTML = '';
+    for (const [k, v] of Object.entries(COSMETICS[type])) {
+      const c = document.createElement('button');
+      const have = owns(G.inv, type, k);
+      c.className = 'chip' + (sk[idx] === k ? ' on' : '') + (have ? '' : ' locked');
+      c.textContent = v.name;
+      c.style.setProperty('--rc', RARITY[v.rarity].color);
+      c.title = `${RARITY[v.rarity].name}${have ? '' : ' (locked: roll to unlock)'}`;
+      c.addEventListener('click', () => {
+        if (!have) { toast(`${v.name} is ${RARITY[v.rarity].name}. win rounds to get rolls.`); return; }
+        const s2 = sk.slice(); s2[idx] = k; setSkin(id, s2); buildCosmeticsUI();
+      });
+      el.append(c);
+    }
+  };
+  chips('sk-finish', 'finish', 0);
+  chips('sk-hat', 'hat', 1);
+  chips('sk-effect', 'effect', 2);
+  // skins = different models for this weapon (knives, slappers, bread...)
+  const models = modelsFor(id);
+  $('sk-model').innerHTML = '';
+  $('skModelRow').style.display = models.length > 1 ? '' : 'none';
+  for (const k of models) {
+    const v = COSMETICS.model[k];
+    const have = owns(G.inv, 'model', k);
+    const c = document.createElement('button');
+    c.className = 'chip' + ((sk[3] || 'default') === k ? ' on' : '') + (have ? '' : ' locked');
+    c.textContent = v.name;
+    c.style.setProperty('--rc', RARITY[v.rarity].color);
+    c.addEventListener('click', () => {
+      if (!have) { toast(`${v.name} is ${RARITY[v.rarity].name}. win rounds to get rolls.`); return; }
+      const s2 = sk.slice(); s2[3] = k; setSkin(id, s2); buildCosmeticsUI();
+    });
+    $('sk-model').append(c);
+  }
+  renderRollBar();
+  showPreview(id, ownedSkin(sk, G.inv, id));
+}
+$('skRandom').addEventListener('click', () => {
+  const pick = (t) => { const ks = Object.keys(COSMETICS[t]).filter((k) => owns(G.inv, t, k)); return ks[(Math.random() * ks.length) | 0]; };
+  setSkin(G.cosSel, TYPES.map(pick)); buildCosmeticsUI();
+});
+$('skReset').addEventListener('click', () => { setSkin(G.cosSel, DEFAULT_SKIN.slice()); buildCosmeticsUI(); });
+$('skAll').addEventListener('click', () => {
+  const sk = validSkin(S.skins[G.cosSel]);
+  for (const id of ORDER) { const s2 = sk.slice(); s2[3] = 'default'; S.skins[id] = s2; }
+  saveSettings(); recomputeEquipped(); sendSkins(); rebuildViewmodels(); setLoadout(S.loadout); buildCosmeticsUI();
+});
+
+// ------------------------------------------------------------ input
+const keys = {};
+let jumpPressed = false, chatOpen = false, scoresOpen = false;
+const inGame = () => G.joined && !chatOpen && $('menu').classList.contains('hidden');
+
+function openChat() {
+  chatOpen = true;
+  for (const k in keys) keys[k] = false;
+  $('chatin').classList.remove('hidden');
+  $('chatin').value = '';
+  setTimeout(() => $('chatin').focus(), 0);
+}
+function closeChat(sendIt) {
+  const v = $('chatin').value.trim();
+  if (sendIt && v) net.send({ t: 'chat', m: v });
+  chatOpen = false;
+  $('chatin').classList.add('hidden');
+  $('chatin').blur();
+}
+$('chatin').addEventListener('keydown', (e) => {
+  e.stopPropagation();
+  if (e.key === 'Enter') closeChat(true);
+  else if (e.key === 'Escape') closeChat(false);
+});
+
+function aimDown() {
+  if (W.cur === 'cards') { cycleCard(); return; }
+  if (S.toggleAim) W.aimHeld = !W.aimHeld; else W.aimHeld = true;
+}
+function aimUp() { if (!S.toggleAim) W.aimHeld = false; }
+
+addEventListener('keydown', (e) => {
+  if (!inGame() || document.activeElement === $('name')) return;
+  if ((RP.active || G.killcamPending) && (e.code === 'Space' || e.code === 'Enter')) { e.preventDefault(); skipReplay(); return; }
+  if (e.code === 'Tab') { e.preventDefault(); scoresOpen = true; renderScores(); return; }
+  if (e.code === 'KeyT' || e.code === 'Enter') { e.preventDefault(); openChat(); return; }
+  if (e.code === 'KeyB') { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
+  if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) jumpPressed = true; }
+  if (e.code === 'KeyE' && !e.repeat) { if (S.swapAim) aimDown(); else tryHook(); }
+  if (e.code === 'Digit1') switchSlot(0);
+  if (e.code === 'Digit2') switchSlot(1);
+  if (e.code === 'Digit3') switchSlot(2);
+  if (e.code === 'KeyQ') lastSlot();
+  if (e.code === 'KeyR') reload();
+  if (e.code === 'KeyF') inspect();
+  if (e.code === 'KeyV') W.dashHeld = true;
+  if (e.code === 'KeyX' && !e.repeat) toggleScythe();
+  if (e.code === 'KeyG' && !e.repeat) deployStreak();
+  if (e.code === 'Digit4') switchSlot(3);
+  if ((e.code === 'KeyC' || e.code === 'ControlLeft' || e.code === 'ControlRight') && !e.repeat) {
+    if (e.code !== 'KeyC') e.preventDefault();
+    const t = crouchTap(performance.now());
+    if (t === 2) { net.send({ t: 'tbag' }); G.shake = 1; }
+    else if (t === 1) G.shake = Math.max(G.shake, 0.25);
+  }
+  keys[e.code] = true;
+});
+addEventListener('keyup', (e) => {
+  keys[e.code] = false;
+  if (e.code === 'KeyV') W.dashHeld = false;
+  if (e.code === 'Tab') { scoresOpen = false; hud.scores(false); }
+  if (e.code === 'KeyE') { if (S.swapAim) aimUp(); else releaseHook(); }
+});
+addEventListener('mousedown', (e) => {
+  if (!inGame()) return;
+  if (RP.mode === 'killcam' || G.killcamPending) { skipReplay(); return; }
+  if (e.button === 0) fireDown();
+  if (e.button === 2) { if (S.swapAim) tryHook(); else aimDown(); }
+  if (e.button === 3 || e.button === 4) tryHook();
+});
+addEventListener('mouseup', (e) => {
+  if (e.button === 0) fireUp();
+  if (e.button === 2) { if (S.swapAim) releaseHook(); else aimUp(); }
+  if (e.button === 3 || e.button === 4) releaseHook();
+});
+addEventListener('contextmenu', (e) => e.preventDefault());
+addEventListener('wheel', (e) => { if (inGame()) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true });
+addEventListener('mousemove', (e) => {
+  if (document.pointerLockElement !== canvas) return;
+  if (performance.now() < (G.spinUntil || 0)) return; // the aimbot has the wheel
+  const s = 0.0022 * S.sens * (W.aim > 0.5 ? S.adsSens / W.zoom : 1);
+  const mx = e.movementX, my = e.movementY;
+  // Chrome's pointer lock sometimes reports one giant fake jump (often the wrong way) when you move far or fast.
+  // drop any single event that is way bigger than how you've actually been moving the mouse.
+  const mag = Math.abs(mx) + Math.abs(my);
+  const now = performance.now();
+  if (now - lockedAt < 120) return; // first events after locking are often garbage
+  if (mag > 90 && mag > mouseAvg * 6) { mouseAvg = Math.max(mouseAvg, mag / 6) * 0.5 + mouseAvg * 0.5; return; }
+  mouseAvg = mouseAvg * 0.85 + mag * 0.15;
+  ME.yaw -= mx * s;
+  ME.pitch = Math.max(-1.55, Math.min(1.55, ME.pitch - my * s));
+});
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; W.held = false; W.aimHeld = false; });
+addEventListener('resize', resizePreview);
+
+function renderScores() {
+  const rows = [{ name: G.myName, color: G.myColor, k: G.kills, d: G.deaths, me: true, card: cardUrlFor(G.myId) }];
+  for (const r of G.remotes.values()) if (!(r.bot && r.name === 'Dummy')) rows.push({ name: r.name, color: r.color, k: r.k, d: r.d, card: cardUrlFor(r.id) });
+  rows.sort((a, b) => b.k - a.k || a.d - b.d);
+  hud.scores(true, rows);
+}
+function nameOf(id) {
+  if (id === G.myId) return [G.myName, G.myColor];
+  const n = G.names.get(id);
+  return n ? [n.name, n.color] : ['???', '#aaa'];
+}
+function updateLabel() { hud.label(`${MODES[G.mode] ? MODES[G.mode].name : ''} · ${MAPS[G.cfg.map] ? MAPS[G.cfg.map].name : ''}${G.mode === 'training' ? ' · infinite ammo' : ''}`); }
+
+// ------------------------------------------------------------ world entities
+function skinOf(owner, wid) { return (owner === G.myId ? G.equipped : (G.skins.get(owner) || {}))[wid]; }
+function spawnProj(m) {
+  const w = WEAPONS[m.k];
+  if (!w) return;
+  const mesh = buildProjectile(m.k, skinOf(m.o, m.k));
+  G.scene.add(mesh);
+  const pr = { id: m.id, k: m.k, o: m.o, p: m.p.slice(), v: m.v.slice(), r: w.r, bounce: w.bounce || 0, mesh, spin: 0, tip: m.tip || 0 };
+  if (m.k === 'bow' && mesh.userData.tip) mesh.userData.tip.material = M(tipColor(m.tip), true);
+  if (m.k === 'bow' && m.o !== G.myId) sfx.bowShot(m.p);
+  mesh.position.set(...pr.p);
+  G.projs.set(m.id, pr);
+}
+function addPeel(m) {
+  const mesh = buildPeel();
+  mesh.position.set(m.p[0], m.p[1], m.p[2]);
+  mesh.rotation.y = Math.random() * 6.28;
+  G.scene.add(mesh);
+  G.peels.set(m.id, mesh);
+}
+function addHole(m) {
+  const mesh = buildHole();
+  mesh.position.set(...m.p);
+  if (m.big) mesh.userData.big = true;
+  G.scene.add(mesh);
+  G.holes.set(m.id, { mesh, p: m.p, born: performance.now() - (m.age || 0) * 1000 });
+  sfx.hole(m.p);
+}
+function addRemoteInfo(p) {
+  G.names.set(p.id, { name: p.name, color: p.color, bot: p.bot, level: p.level, look: p.look, card: p.card || '', skins: p.skins || {} });
+  G.skins.set(p.id, p.skins || {});
+}
+
+// ------------------------------------------------------------ net handlers
+net.on('welcome', (m) => {
+  G.myId = m.id; G.myName = m.name; G.myColor = m.color; G.joined = true; connecting = false;
+  G.mode = m.mode; G.cfg = m.cfg;
+  loadMap(m.cfg.map);
+  ME.pos = m.pos.slice(); ME.vel = [0, 0, 0]; ME.alive = true; ME.hp = 100; ME.seq = m.q;
+  ME.yaw = Math.atan2(m.pos[0], m.pos[2]);
+  if (m.mode === 'training') ME.yaw = 0;
+  G.spawnT = performance.now();
+  for (const p of m.players) addRemoteInfo(p);
+  for (const pl of m.peels) addPeel(pl);
+  for (const pr of m.projs) spawnProj(pr);
+  for (const h of m.holes || []) addHole(h);
+  hud.wave(m.wave);
+  renderRound(m.round);
+  $('roundEnd').classList.add('hidden');
+  refillAmmo();
+  applyLoadout(true);
+  updateLabel();
+  $('status').textContent = '';
+  const tips = {
+    ffa: 'T to chat, B for menu. Change the map or hipfire in Match Settings.',
+    bots: 'bots are dumb but there are a lot of them. B for menu.',
+    coop: 'survive the waves. bots only hurt humans, no friendly fire.',
+    training: 'dummies respawn instantly. knock the ones on the left ledge off. movement playground on the right.',
+  };
+  hud.chat(null, null, `you are ${m.name}. ${tips[m.mode] || ''}`);
+});
+net.on('cfg', (m) => {
+  const mapChanged = m.cfg.map !== G.cfg.map;
+  G.cfg = m.cfg;
+  if (mapChanged) { loadMap(m.cfg.map); clearEntities(); }
+  updateLabel();
+  if (screen === 'match') syncMatchUI();
+});
+net.on('clear', () => clearEntities());
+net.on('wave', (m) => {
+  hud.wave(m);
+  if (m.start) { hud.msg(`WAVE ${m.n}`, 2, 'brag'); sfx.kill(); }
+  if (m.done) hud.msg(`WAVE ${m.n} CLEARED`, 2, 'brag');
+});
+net.on('pj', (m) => addRemoteInfo(m));
+net.on('pl', (m) => {
+  const r = G.remotes.get(m.id);
+  if (r) { r.dispose(); G.remotes.delete(m.id); }
+  G.names.delete(m.id);
+  G.skins.delete(m.id);
+  if (ME.hook && ME.hook.target === m.id) releaseHook();
+});
+net.on('sk', (m) => {
+  G.skins.set(m.id, m.s || {});
+  const r = G.remotes.get(m.id);
+  if (r) r.setSkins(m.s);
+});
+net.on('lk', (m) => {
+  if (m.id === G.myId) { G.myColor = m.color; return; }
+  const n = G.names.get(m.id);
+  if (n) { n.look = m.look; n.color = m.color; }
+  const r = G.remotes.get(m.id);
+  if (r) r.setLook(m.look, m.color);
+});
+// an achievement just popped mid-match
+net.on('ach', (m) => {
+  const a = ACHIEVEMENTS[m.id];
+  if (!a) return;
+  if (account.me) { account.me.achs = [...new Set([...(account.me.achs || []), m.id])]; }
+  const rewards = rewardsFor(m.id).map((x) => x.name).join(', ');
+  hud.msg(`ACHIEVEMENT: ${a.name}`, 3, 'brag');
+  hud.chat(null, null, `achievement unlocked: ${a.name} (${a.desc})${rewards ? ' · unlocked ' + rewards + ' in CHARACTER' : ''}`);
+  sfx.kill();
+});
+net.on('sn', (m) => {
+  recordSnap(m);
+  const off = m.s - performance.now();
+  if (!G.offsetInit || Math.abs(off - G.offset) > 1000) { G.offset = off; G.offsetInit = true; }
+  else G.offset += (off - G.offset) * 0.05;
+  for (const e of m.p) {
+    const id = e[0];
+    if (id === G.myId) { ME.hp = e[10]; G.kills = e[14]; G.deaths = e[15]; continue; }
+    let r = G.remotes.get(id);
+    if (!r) {
+      const n = G.names.get(id) || { name: '???', color: '#ffffff' };
+      r = new Remote(id, n.level ? `${n.name} [${n.level}]` : n.name, n.color, G.skins.get(id) || {}, n.bot, n.look);
+      G.remotes.set(id, r);
+    }
+    r.snap(m.s, e);
+  }
+  if (m.wave) hud.wave(m.wave);
+  renderRound(m.round);
+  if (scoresOpen) renderScores();
+});
+net.on('kb', (m) => applyKb(m.v));
+net.on('slip', () => slip(performance.now()));
+net.on('dmg', (m) => {
+  const target = m.to === G.myId ? null : G.remotes.get(m.to);
+  if (m.to === G.myId) {
+    ME.hp -= m.a;
+    hud.hp(ME.hp);
+    hud.hurt(m.a);
+    sfx.hurt();
+    if (m.w === 'cig') G.burnUntil = performance.now() + 600;
+  }
+  if (target) {
+    if (m.w === 'cig') target.burnUntil = performance.now() + 700;
+    // pixel blood: everyone sees it except the person bleeding
+    if (S.blood && m.a > 0) {
+      const src = m.from === G.myId ? ME.pos : G.remotes.get(m.from) ? G.remotes.get(m.from).pos : null;
+      const c = [target.pos[0], target.pos[1] + (m.hs ? 1.7 : 1.1), target.pos[2]];
+      let dir = [0, 0, 0];
+      if (src) { const dx = c[0] - src[0], dz = c[2] - src[2], l = Math.hypot(dx, dz) || 1; dir = [dx / l, 0, dz / l]; }
+      const fl = raycast([target.pos[0], target.pos[1] + 0.5, target.pos[2]], [0, -1, 0], 6, BOXES);
+      fx.blood(c, dir, Math.min(100, m.a), fl ? fl.point[1] : null);
+    }
+  }
+  if (m.from === G.myId && m.to !== G.myId) {
+    hud.hit(m.hs);
+    if (m.hs) sfx.headshot(); else sfx.hit();
+    if (target) {
+      const v = new THREE.Vector3(target.pos[0], target.pos[1] + 2, target.pos[2]).project(G.camera);
+      if (v.z < 1) hud.dmgNum((v.x * 0.5 + 0.5) * innerWidth + (Math.random() - 0.5) * 30, (-v.y * 0.5 + 0.5) * innerHeight, m.a, m.hs);
+    }
+  }
+});
+net.on('kill', (m) => {
+  recordEv(m);
+  const [kn, kc] = nameOf(m.k), [vn, vc] = nameOf(m.v);
+  const via = m.w === 'void' || m.w === 'cough' ? m.via : m.w;
+  const victim = G.remotes.get(m.v);
+  const kfx = m.fx && m.fx !== 'none' ? m.fx : null;
+  if (victim) {
+    const vi = G.names.get(m.v) || {};
+    const replaced = kfx && playKillFx(kfx, { pos: victim.pos.slice(), vel: m.vel || victim.vel, yaw: victim.yaw, color: victim.color, look: vi.look, name: vi.name });
+    if (replaced) victim.ch.root.visible = false; else victim.breakApart(m.vel || victim.vel);
+  } else if (m.v === G.myId && kfx) playKillFx(kfx, { pos: ME.pos.slice(), vel: m.vel || ME.vel, yaw: ME.yaw, color: G.myColor, look: validLook(G.settings.look, myAchs()), name: G.myName });
+  const dummy = victim && victim.bot && victim.name === 'Dummy';
+  let parts;
+  if (m.w === 'void') {
+    parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], ['  into the void', '#aaa']] : [[vn, vc], ['  fell into the void', '#aaa']];
+  } else if (m.w === 'tbag' && m.k === 0) {
+    parts = [[vn, vc], ['  t-bagged too hard and exploded', '#ff9a3a']];
+  } else if (m.w === 'cough') {
+    parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], ['  (coughed)', '#aaa']] : [[vn, vc], ['  smoked too much', '#aaa']];
+  } else if (!m.k) {
+    parts = [[vn, vc], ['  died', '#aaa']];
+  } else {
+    parts = [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc]];
+  }
+  if (!dummy) hud.feed(parts);
+  if (m.v === G.myId) {
+    ME.alive = false;
+    releaseHook();
+    W.held = false; W.aimHeld = false;
+    stopLoops();
+    G.deadAt = performance.now();
+    sfx.death();
+    deathCard(m.k && m.k !== G.myId ? m.k : 0, via);
+    if (m.k && m.k !== G.myId && S.killcam !== false && G.mode !== 'training') queueKillcam(m.k, via);
+    if (m.k) {
+      hud.dead(true, m.w === 'void'
+        ? [[kn, kc], [' knocked you into the void', '#fff'], [`  (${wname(via)})`, wcolor(via)]]
+        : [['killed by ', '#fff'], [kn, kc], [`  (${wname(via)})`, wcolor(via)]]);
+    } else hud.dead(true, [[m.w === 'void' ? 'you fell into the void' : m.w === 'tbag' ? 'you t-bagged too hard. your knees exploded.' : 'you smoked too much', '#fff']]);
+  }
+  if (m.k === G.myId && m.v !== G.myId) {
+    sfx.kill();
+    hud.msg(dummy ? 'dummy down' : `killed ${vn}`, 1.4, 'brag');
+  }
+});
+net.on('spawn', (m) => {
+  endKillcam();
+  ME.pos = m.p.slice(); ME.vel = [0, 0, 0]; ME.alive = true; ME.hp = 100; ME.seq = m.q;
+  ME.slipUntil = 0; ME.combo = 0; ME.sleepUntil = 0;
+  G.spawnT = performance.now();
+  refillAmmo();
+  if (G.pendingLoadout) applyLoadout(true);
+  hud.dead(false);
+});
+net.on('ps', (m) => {
+  spawnProj(m);
+  if (m.o !== G.myId) {
+    const s = { chicken: 'squawk', duck: 'squeak', bowling: 'thunk', slipper: 'swing' }[m.k] || 'pew';
+    sfx[s](m.p);
+  }
+});
+net.on('pu', (m) => {
+  const pr = G.projs.get(m.id);
+  if (pr) { pr.p = m.p.slice(); pr.v = m.v.slice(); }
+});
+net.on('pd', (m) => {
+  const pr = G.projs.get(m.id);
+  if (pr) {
+    G.scene.remove(pr.mesh);
+    G.projs.delete(m.id);
+    if (pr.k === 'slipper' && pr.o === G.myId) onSlipperBack();
+  }
+  if (m.x) {
+    recordEv(m);
+    fx.explosion(m.p, WEAPONS.chicken.radius);
+    sfx.boom(m.p);
+    const d = Math.hypot(m.p[0] - ME.pos[0], m.p[1] - ME.pos[1], m.p[2] - ME.pos[2]);
+    G.shake = Math.max(G.shake, Math.max(0, 1 - d / 30));
+  }
+  if (m.b) { fx.splat(m.p); sfx.bonk(m.p); }
+  if (m.st && pr) { // arrow stuck in a wall: leave it there for a while
+    const mesh = buildProjectile('bow');
+    if (mesh.userData.tip) mesh.userData.tip.material = M(tipColor(m.tip), true);
+    mesh.position.set(...m.p);
+    mesh.lookAt(m.p[0] - m.d[0], m.p[1] - m.d[1], m.p[2] - m.d[2]);
+    G.scene.add(mesh);
+    setTimeout(() => G.scene.remove(mesh), 8000);
+    sfx.thwack(m.p);
+  }
+});
+net.on('tip', (m) => { G.tip = m.tip; });
+net.on('hand', (m) => { G.hand = m.hand || []; });
+net.on('tp', (m) => { ME.pos = m.p.slice(); fx.glitch(ME.pos, [0, 0, 0], 20); sfx.reverse(); });
+net.on('heal', (m) => {
+  if (m.id === G.myId) { ME.hp = m.hp; hud.msg(`+${m.a} HP`, 0.8); sfx.heal(); }
+  const r = G.remotes.get(m.id);
+  if (r) for (let i = 0; i < 12; i++) fx.burn([r.pos[0], r.pos[1], r.pos[2]]);
+});
+net.on('sleep', (m) => { ME.sleepUntil = performance.now() + m.dur * 1000; releaseHook(); hud.msg('zzz...', m.dur, 'slip'); sfx.snore(); });
+net.on('boom', (m) => {
+  recordEv(m);
+  fx.explosion(m.p, m.r); sfx.boom(m.p);
+  const d = Math.hypot(m.p[0] - ME.pos[0], m.p[1] - ME.pos[1], m.p[2] - ME.pos[2]);
+  G.shake = Math.max(G.shake, Math.max(0, 1 - d / 25));
+});
+G.clouds = new Map();
+net.on('cloud', (m) => { G.clouds.set(m.id, { p: m.p, born: performance.now() }); });
+net.on('cloudx', (m) => { G.clouds.delete(m.id); });
+net.on('pe', (m) => { addPeel(m); sfx.splat(m.p); });
+net.on('pr', (m) => {
+  const mesh = G.peels.get(m.id);
+  if (mesh) {
+    const p = [mesh.position.x, mesh.position.y, mesh.position.z];
+    if (m.s) { fx.splat(p); sfx.whoops(p); }
+    G.scene.remove(mesh);
+    G.peels.delete(m.id);
+  }
+});
+net.on('hs', (m) => addHole(m));
+net.on('he', (m) => {
+  recordEv(m);
+  const h = G.holes.get(m.id);
+  if (h) { G.scene.remove(h.mesh); G.holes.delete(m.id); }
+  fx.blast(m.p, WEAPONS.duck.blastR);
+  sfx.holePop(m.p);
+  const d = Math.hypot(m.p[0] - ME.pos[0], m.p[1] - ME.pos[1], m.p[2] - ME.pos[2]);
+  G.shake = Math.max(G.shake, Math.max(0, 1 - d / 25));
+});
+net.on('fx', (m) => {
+  if (m.k === 'shot' || m.k === 'swing' || m.k === 'tbag') recordEv(m);
+  const r = G.remotes.get(m.id);
+  if (m.k === 'shot') {
+    const w = WEAPONS[m.w];
+    if (!w) return;
+    const fast = w.rate > 8;
+    const mz = r ? r.muzzle() : null;
+    const color = () => tracerColor((G.skins.get(m.id) || {})[m.w], w.tracer || 0xfff0a0);
+    m.s.forEach((s, i) => {
+      const a = mz && (i === 0 || w.pellets) ? mz : s.slice(0, 3);
+      fx.tracer(a, s.slice(3), color(), w.thick || (fast ? 0.03 : 0.045), fast ? 0.07 : 0.2);
+    });
+    if (m.s.length) sfx.gun(m.w, m.s[0].slice(0, 3));
+  } else if (m.k === 'burn') {
+    if (r) r.burnUntil = performance.now() + 600;
+    if (m.id === G.myId) G.burnUntil = performance.now() + 600;
+  } else if (m.k === 'card') {
+    const who = m.id === G.myId ? 'you' : nameOf(m.id)[0];
+    if (m.joker) { sfx.laugh(r ? r.pos : null); hud.chat(null, null, `${who} played a joker`); }
+    if (m.suit === 'h' && r) sfx.heal(r.pos);
+    if (m.suit === 'c') { const src = m.id === G.myId ? ME.pos : r ? r.pos : null; if (src) fx.confetti([src[0], src[1] + 1.2, src[2]], [0, 1, 0], [0, 0, 0]); sfx.popper(src); }
+    if (m.suit === 'd') sfx.pad(r ? r.pos : null);
+    if (m.ult && m.id === G.myId) hud.msg(m.joker ? 'JOKER!' : 'ULTIMATE', 1.2, 'brag');
+  } else if (m.k === 'strikeCall') {
+    sfx.squawk(m.p); hud.chat(null, null, `${nameOf(m.id)[0]} called in a chicken strike`);
+  } else if (m.k === 'tbag') {
+    fx.explosion(m.p, 6);
+    sfx.boom(m.p); sfx.tbag(m.p);
+    const d = Math.hypot(m.p[0] - ME.pos[0], m.p[1] - ME.pos[1], m.p[2] - ME.pos[2]);
+    G.shake = Math.max(G.shake, Math.max(0, 1 - d / 25));
+  } else if (m.k === 'swing') {
+    if (r) r.swingT = performance.now();
+    if (m.w === 'popper') {
+      if (r) fx.confetti(r.muzzle(), r.look(), r.vel);
+      sfx.popper(m.a);
+    } else sfx.swing(m.a);
+  } else if (m.k === 'reverse') {
+    if (r) r.reverseUntil = performance.now() + m.dur * 1000;
+    if (m.id !== G.myId) sfx.reverse(r ? r.pos : null);
+  } else if (m.k === 'reflect') {
+    if (m.by === G.myId) { hud.msg('REVERSED', 1.2, 'reverse'); sfx.reverse(); }
+    if (m.id === G.myId) hud.msg('REVERSED THEM', 1.0, 'reverse');
+  } else if (m.k === 'strike') {
+    sfx.strike(m.p);
+    if (m.n >= 2) hud.msg(m.n >= 3 ? 'STRIKE' : 'SPARE', 1.2, 'brag');
+  } else if (m.k === 'thwack') {
+    sfx.thwack(m.p);
+  }
+});
+net.on('chat', (m) => {
+  if (!m.id) { hud.chat(null, null, m.m); return; }
+  const [n, c] = nameOf(m.id);
+  hud.chat(n, c, m.m);
+});
+net.on('po', (m) => { G.ping = Math.round(performance.now() - m.c); hud.ping(G.ping); });
+
+// ------------------------------------------------------------ main loop
+let last = performance.now(), acc = 0, sendT = 0, pingT = 0, fovNow = S.fov, fpsAcc = 0, fpsN = 0;
+const STEP = 1 / 120;
+
+const tmpDir = new THREE.Vector3();
+function frame(t) {
+  requestAnimationFrame(frame);
+  let dt = (t - last) / 1000;
+  last = t;
+  if (dt > 0.1) dt = 0.1;
+  if (dt <= 0) return;
+  const now = performance.now();
+
+  if (G.joined) {
+    const playing = $('menu').classList.contains('hidden') && !chatOpen && now >= (ME.sleepUntil || 0) && !RP.active;
+    const inp = playing ? {
+      f: keys.KeyW, b: keys.KeyS, l: keys.KeyA, r: keys.KeyD, jump: keys.Space, jumpPressed,
+      sprint: keys.ShiftLeft || keys.ShiftRight,
+      crouch: keys.KeyC || keys.ControlLeft || keys.ControlRight,
+    } : {};
+    jumpPressed = false;
+    acc += dt;
+    while (acc >= STEP) { stepPlayer(STEP, inp, now); inp.jumpPressed = false; acc -= STEP; }
+    // spinbot killstreak: lock onto the nearest enemy you can see
+    const spinning = ME.alive && now < (G.spinUntil || 0);
+    if (spinning) {
+      const e = eye();
+      let best = null, bd = 1e9;
+      for (const r of G.remotes.values()) {
+        if (!r.alive || (r.bot && r.name === 'Dummy' && G.mode !== 'training')) continue;
+        const tx = r.pos[0] - e[0], ty = r.pos[1] + 2.0 - e[1], tz = r.pos[2] - e[2], d = Math.hypot(tx, ty, tz);
+        if (d > 150 || d < 0.5 || d >= bd) continue;
+        if (raycast(e, [tx / d, ty / d, tz / d], d, BOXES)) continue;
+        best = [tx, ty, tz]; bd = d;
+      }
+      if (best) {
+        const yaw = Math.atan2(-best[0], -best[2]), pitch = Math.atan2(best[1], Math.hypot(best[0], best[2]));
+        let dy = yaw - ME.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2;
+        ME.yaw += dy * Math.min(1, dt * 25); ME.pitch += (pitch - ME.pitch) * Math.min(1, dt * 25);
+      }
+    }
+    $('cheat').style.display = spinning ? 'block' : 'none';
+    if (spinning) $('cheat').textContent = `JANKHAX v6.9\n[x] AIMBOT\n[x] SPINBOT\n[x] NO SPREAD\n${((G.spinUntil - now) / 1000).toFixed(1)}s left`;
+    G.spinning = spinning;
+    updateWeapons(dt, now);
+
+    sendT -= dt;
+    if (sendT <= 0 && ME.alive) {
+      sendT = 1 / 30;
+      const r2 = (x) => Math.round(x * 100) / 100;
+      const hp = hookPoint();
+      net.send({
+        t: 's', q: ME.seq, p: ME.pos.map(r2), v: ME.vel.map(r2), y: r2(G.spinning ? (now * 0.03) % (Math.PI * 2) : ME.yaw), x: r2(G.spinning ? Math.sin(now * 0.02) * 1.2 : ME.pitch), w: W.cur,
+        g: hp ? hp.map(r2) : 0,
+        f: W.flags | (now < ME.slipUntil ? FLAGS.SLIP : 0) | (ME.sliding ? FLAGS.SLIDE : 0) | (ME.crouching ? FLAGS.CROUCH : 0),
+      });
+    }
+    pingT -= dt;
+    if (pingT <= 0) { pingT = 2; net.send({ t: 'pi', c: performance.now() }); }
+    if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = 'killcam... (space to skip)'; else hud.deadTimer(Math.max(0, 2.5 - (now - (G.deadAt || now)) / 1000)); }
+  }
+
+  const rt = now + G.offset - INTERP_MS;
+  if (!RP.active) for (const r of G.remotes.values()) r.update(rt, dt, now);
+  else for (const r of G.remotes.values()) { r.ch.root.visible = false; r.rope.visible = false; r.shadow.visible = false; } // the replay has its own copies
+  updateGibs(dt);
+  updateKillFx(dt);
+
+  for (const pr of G.projs.values()) {
+    if (pr.k === 'slipper') {
+      for (let k = 0; k < 3; k++) pr.p[k] += pr.v[k] * dt;
+      pr.spin += dt * 20;
+      pr.mesh.position.set(...pr.p);
+      pr.mesh.rotation.set(0, pr.spin, 0.3);
+    } else {
+      stepProjectile(pr, dt, BOXES, WEAPONS[pr.k].grav);
+      pr.mesh.position.set(pr.p[0], pr.p[1], pr.p[2]);
+      if (pr.k === 'chicken') {
+        pr.mesh.lookAt(pr.p[0] - pr.v[0], pr.p[1] - pr.v[1], pr.p[2] - pr.v[2]);
+        pr.mesh.rotateZ(now * 0.02);
+        if (Math.random() < dt * 8) fx.feathers(pr.p, 1);
+      } else if (pr.k === 'bowling') {
+        const hs = Math.hypot(pr.v[0], pr.v[2]);
+        pr.spin += (hs / 0.45) * dt;
+        pr.mesh.rotation.set(-pr.spin, Math.atan2(pr.v[0], pr.v[2]), 0, 'YXZ');
+      } else if (pr.k === 'duck') {
+        pr.spin += dt * 10;
+        pr.mesh.rotation.set(pr.spin * 0.5, pr.spin, 0);
+      } else {
+        pr.spin += dt * 18;
+        pr.mesh.rotation.set(pr.spin, pr.spin * 0.7, 0);
+      }
+    }
+    pr.mesh.visible = !RP.active;
+    pr.mesh.updateMatrixWorld(true);
+    if (!RP.active) emitSkinFx(G.skinFxWorld, pr.mesh, dt, 1);
+  }
+  for (const c of G.clouds.values()) for (let i = 0; i < 3; i++) {
+    const a = Math.random() * 6.28, rr = Math.random() * 5;
+    fx.smoke([c.p[0] + Math.cos(a) * rr, c.p[1] + Math.random() * 2, c.p[2] + Math.sin(a) * rr], 1, 0.3);
+  }
+  for (const h of G.holes.values()) {
+    const age = (now - h.born) / 1000;
+    const k = Math.min(1, age / 0.3);
+    h.mesh.scale.setScalar(k * (1 + Math.sin(age * 20) * 0.08) * (h.mesh.userData.big ? 4 : 1));
+    h.mesh.userData.orbit.rotation.y += dt * 6;
+    h.mesh.userData.ring.rotation.z += dt * 3;
+    fx.vortex(h.p, WEAPONS.duck.holeR * (h.mesh.userData.big ? 1.6 : 0.6));
+  }
+
+  // camera
+  const cam = G.camera;
+  const e = eye();
+  cam.position.set(e[0], e[1], e[2]);
+  let roll = 0, pOff = 0;
+  if (now < ME.slipUntil) {
+    const k = 1 - (ME.slipUntil - now) / (SLIP_TIME * 1000);
+    roll = Math.sin(k * Math.PI * 4) * 0.5 * (1 - k);
+    pOff = Math.sin(k * Math.PI) * 1.1;
+  }
+  if (now < (ME.sleepUntil || 0)) { pOff = -0.5 + Math.sin(now * 0.002) * 0.1; roll = 0.3; }
+  $('sleepFx').style.opacity = now < (ME.sleepUntil || 0) ? 1 : 0;
+  if (G.joined && !ME.alive) { pOff = -0.6; roll = 0.4; cam.position.y += Math.min(4, (now - (G.deadAt || now)) / 600); }
+  if (!G.joined) { // menu backdrop: slow orbit over the current map
+    const a = now * 0.00005;
+    cam.position.set(Math.sin(a) * 40, 18, Math.cos(a) * 40);
+    ME.yaw = a; ME.pitch = -0.35;
+  }
+
+  G.shake = S.shake ? Math.max(0, G.shake - dt * 2.2) : 0;
+  const sh = G.shake * G.shake * 0.08;
+  cam.rotation.set(Math.max(-1.57, Math.min(1.57, ME.pitch + pOff)) + (Math.random() - 0.5) * sh, ME.yaw + (Math.random() - 0.5) * sh, roll);
+  const hs = hspeed();
+  const fovTarget = (S.fov + (S.fovKick ? Math.min(35, hs * 0.3) + (ME.sprinting ? 6 : 0) : 0)) / (W.zoom || 1);
+  fovNow += (fovTarget - fovNow) * Math.min(1, dt * (W.aim > 0 ? 14 : 6));
+  if (Math.abs(cam.fov - fovNow) > 0.05) { cam.fov = fovNow; cam.updateProjectionMatrix(); }
+  if (RP.active) updateReplay(dt, now, cam); // killcam / play of the round owns the camera
+  cam.updateMatrixWorld();
+  const rh = G.renderer.domElement.height;
+  fx.setScale(rh / (2 * Math.tan((cam.fov * Math.PI) / 360)));
+  vmScaleU.value = rh / (2 * Math.tan((G.vmCamera.fov * Math.PI) / 360));
+  if (RP.active) { cam.getWorldDirection(tmpDir); setListener([cam.position.x, cam.position.y, cam.position.z], Math.atan2(-tmpDir.x, -tmpDir.z)); } else setListener(e, ME.yaw);
+
+  const hp = hookPoint();
+  if (hp && ME.alive && !RP.active) { myRope.visible = true; setBeam(myRope, muzzleWorld(), hp, 0.05); } else myRope.visible = false;
+  const shHit = G.joined ? raycast([ME.pos[0], ME.pos[1] + 0.1, ME.pos[2]], [0, -1, 0], 120, BOXES) : null;
+  myShadow.visible = !!shHit && ME.alive && !ME.onGround && !RP.active;
+  if (shHit) myShadow.position.set(ME.pos[0], shHit.point[1] + 0.03, ME.pos[2]);
+  if (now < (G.burnUntil || 0)) fx.burn([ME.pos[0] + Math.sin(ME.yaw) * -0.8, ME.pos[1], ME.pos[2] - Math.cos(ME.yaw) * 0.8]);
+  $('reverseFx').style.opacity = now < W.reverseUntil ? 1 : 0;
+
+  if (G.joined) {
+    hud.hp(ME.hp);
+    hud.speed(hs);
+    hud.combo(ME.combo);
+  }
+  fpsAcc += dt; fpsN++;
+  if (fpsAcc > 0.5) { $('fps').textContent = S.showFps ? Math.round(fpsN / fpsAcc) + ' fps' : ''; fpsAcc = 0; fpsN = 0; }
+  hud.update(dt);
+  fx.update(dt);
+  G.skinFxWorld.update(dt);
+  G.skinFxVM.update(dt);
+  skinTick(dt, now);
+  updateWorld(dt);
+  G.vmScene.visible = G.joined && !RP.active;
+  renderFrame();
+  if ((screen === 'cosmetics' || screen === 'character') && !$('menu').classList.contains('hidden')) renderPreview(dt);
+}
+
+// ------------------------------------------------------------ killstreaks
+G.pocket = [];
+function renderStreak(n) {
+  const el = $('streak');
+  const parts = [];
+  if (n >= 2) parts.push(`streak ${n}`);
+  if (G.pocket.length) parts.push(`G: ${STREAKS[G.pocket[0]].name}${G.pocket.length > 1 ? ` (+${G.pocket.length - 1})` : ''}`);
+  const next = Object.values(STREAKS).find((st) => st.kills > n);
+  if (n >= 1 && next) parts.push(`next: ${next.name} at ${next.kills}`);
+  el.textContent = parts.join(' · ');
+}
+function deployStreak() {
+  if (!G.joined || !ME.alive || !G.pocket.length) return;
+  const e = eye(), d = lookDir();
+  const h = raycast(e, d, 300, BOXES);
+  const at = h ? h.point : [e[0] + d[0] * 60, e[1] + d[1] * 60, e[2] + d[2] * 60];
+  const r = G.pocket.shift();
+  net.send({ t: 'deploy', r, at: at.map((x) => Math.round(x * 100) / 100) });
+  hud.msg(STREAKS[r].name.toUpperCase(), 1.4, 'brag');
+  renderStreak(G.streakN || 0);
+}
+function lookDir() { const cp = Math.cos(ME.pitch); return [-Math.sin(ME.yaw) * cp, Math.sin(ME.pitch), -Math.cos(ME.yaw) * cp]; }
+net.on('streak', (m) => {
+  if (m.reset) {
+    G.streakN = 0; G.pocket = []; G.satUntil = 0; G.spinUntil = 0; ME.moonUntil = 0;
+    loseScythe();
+    renderStreak(0);
+    return;
+  }
+  G.streakN = m.n;
+  const st = STREAKS[m.reward];
+  if (!st) return;
+  if (m.reward === 'moonboots') ME.moonUntil = performance.now() + st.dur * 1000;
+  if (m.reward === 'satellite') G.satUntil = performance.now() + st.dur * 1000;
+  if (m.reward === 'spinbot') G.spinUntil = performance.now() + st.dur * 1000;
+  if (m.reward === 'scythe') grantScythe();
+  if (st.deploy) G.pocket.push(m.reward);
+  hud.msg(`${m.n} KILL STREAK: ${st.name.toUpperCase()}`, 2.4, 'brag');
+  toast(st.desc, 3000);
+  sfx.kill();
+  renderStreak(m.n);
+});
+
+// ------------------------------------------------------------ toast
+let toastT = null;
+function toast(text, ms = 2200) {
+  const t = $('toast');
+  t.textContent = text;
+  t.style.opacity = 1;
+  clearTimeout(toastT);
+  toastT = setTimeout(() => { t.style.opacity = 0; }, ms);
+  if (!$('menu').classList.contains('hidden')) $('status').textContent = text;
+}
+
+// ------------------------------------------------------------ name cards, kill effects, killcam
+function cardUrlFor(id) {
+  if (id === G.myId || id === 'me') return S.card || defaultCard(G.myName || S.name || (account.me && account.me.name) || 'you', G.myColor || (S.look && S.look.color) || '#ff4fd8');
+  const n = G.names.get(id) || {};
+  return (S.showCards !== false && n.card) || defaultCard(n.name || '???', n.color || '#ffffff');
+}
+function myKfx() { return ownedKill(S.kfx || 'none', G.inv); }
+function setKfx(id) {
+  S.kfx = id;
+  saveSettings();
+  if (G.joined) net.send({ t: 'kfx', id });
+  if (screen === 'character') buildCharacterUI();
+}
+net.on('cd', (m) => { const n = G.names.get(m.id); if (n) n.card = m.card || ''; });
+function infoOf(id) {
+  if (id === G.myId) return { name: G.myName, color: G.myColor, skins: G.equipped, look: validLook(S.look, myAchs()), bot: false };
+  const n = G.names.get(id) || {};
+  return { name: n.name || '???', color: n.color || '#ffffff', skins: G.skins.get(id) || {}, look: n.look || null, bot: !!n.bot, level: n.level };
+}
+// the death screen shows whoever killed you, on their name card
+function deathCard(killer, via) {
+  const el = $('deadCard');
+  el.innerHTML = '';
+  if (!killer) return;
+  const [kn, kc] = nameOf(killer);
+  el.append(cardEl(cardUrlFor(killer), kn, wname(via), kc));
+}
+function showReplayUI(title, url, name, color, sub, hint) {
+  $('rpTitle').textContent = title;
+  $('rpCard').innerHTML = '';
+  $('rpCard').append(cardEl(url, name, sub, color));
+  $('rpHint').textContent = hint || '';
+  $('rpFeed').innerHTML = '';
+  $('replay').classList.remove('hidden');
+}
+function hideReplayUI() { $('replay').classList.add('hidden'); }
+function replayFeed(k, info) {
+  const nm = (id) => (info && info[id] ? [info[id].name, info[id].color] : nameOf(id));
+  const d = document.createElement('div');
+  const [a, ac] = nm(k.k), [b, bc] = nm(k.v);
+  const via = k.w === 'void' || k.w === 'cough' ? k.via : k.w;
+  for (const [t, c] of k.k ? [[a, ac], [`  [${wname(via)}]  `, wcolor(via)], [b, bc]] : [[b, bc], ['  died', '#aaa']]) {
+    const sp = document.createElement('span'); sp.textContent = t; sp.style.color = c; d.append(sp);
+  }
+  $('rpFeed').append(d);
+}
+let killcamT = 0;
+function queueKillcam(killer, via) {
+  clearTimeout(killcamT);
+  const deathS = serverNow();
+  G.killcamPending = true;
+  killcamT = setTimeout(() => {
+    if (ME.alive || !G.joined || RP.active) { G.killcamPending = false; return; }
+    const clip = localClip(deathS - 4500, deathS + 1200, infoOf);
+    const [kn, kc] = nameOf(killer);
+    showReplayUI('KILLCAM', cardUrlFor(killer), kn, kc, `got you with ${wname(via)}`, 'SPACE / CLICK to skip');
+    $('dead').classList.add('hidden');
+    playClip(clip, {
+      focus: killer, mode: 'killcam', slow: [[deathS - 380, deathS + 220]], end: deathS + 1000,
+      onKill: (k) => replayFeed(k, clip.info),
+      onEnd: () => { G.killcamPending = false; hideReplayUI(); if (!ME.alive) $('dead').classList.remove('hidden'); net.send({ t: 'respawn' }); },
+      onAbort: () => { G.killcamPending = false; hideReplayUI(); },
+    });
+  }, 900);
+}
+function endKillcam() {
+  clearTimeout(killcamT);
+  G.killcamPending = false;
+  if (RP.mode === 'killcam') stopReplay(true);
+}
+function skipReplay() {
+  if (RP.active) { stopReplay(false); return; }
+  if (G.killcamPending) { clearTimeout(killcamT); G.killcamPending = false; net.send({ t: 'respawn' }); }
+}
+
+// ------------------------------------------------------------ accounts
+function totalRolls(me) { const r = (me && me.rolls) || {}; return (r.crate || 0) + (r.bag || 0) + (r.box || 0); }
+function fmtTime(sec) { const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60); return h ? `${h}h ${m}m` : `${m}m`; }
+function renderAcctBar() {
+  const bar = $('acctBar');
+  bar.innerHTML = '';
+  const span = (t, cls) => { const e = document.createElement('span'); e.textContent = t; if (cls) e.className = cls; return e; };
+  const btn = (t, fn) => { const b = document.createElement('button'); b.textContent = t; b.addEventListener('click', fn); return b; };
+  if (account.loggedIn) {
+    const me = account.me;
+    const tr = totalRolls(me);
+    bar.append(span(`Lv ${me.level}`, 'lv'), span(me.name), span(`${tr} to open`, 'rolls'),
+      btn('PROFILE', () => show('profile')), btn('LOG OUT', doLogout));
+    $('nameRow').classList.add('hidden');
+  } else {
+    bar.append(span('playing as guest'), btn('LOG IN', () => openAccount(false)), btn('SIGN UP', () => openAccount(true)));
+    $('nameRow').classList.remove('hidden');
+  }
+}
+let signup = false;
+function openAccount(isSignup) {
+  signup = isSignup;
+  $('acctTitle').textContent = signup ? 'SIGN UP' : 'LOG IN';
+  $('acctGo').innerHTML = `<b>${signup ? 'CREATE ACCOUNT' : 'LOG IN'}</b>`;
+  $('acctPass2').classList.toggle('hidden', !signup);
+  $('acctSwap').textContent = signup ? 'have an account? log in' : 'no account? sign up';
+  $('acctErr').textContent = '';
+  show('account');
+  setTimeout(() => $('acctName').focus(), 0);
+}
+$('acctSwap').addEventListener('click', (e) => { e.preventDefault(); openAccount(!signup); });
+async function submitAccount() {
+  const name = $('acctName').value.trim(), pass = $('acctPass').value;
+  if (signup && pass !== $('acctPass2').value) { $('acctErr').textContent = "passwords don't match"; return; }
+  $('acctErr').textContent = '...';
+  try {
+    const me = signup ? await register(name, pass) : await login(name, pass);
+    $('acctPass').value = ''; $('acctPass2').value = '';
+    onLoggedIn(me, signup);
+    show('main');
+    toast(signup ? `welcome ${me.name}. you got a free crate, duffel bag and box: open them in COSMETICS` : `welcome back ${me.name}`);
+  } catch (e) { $('acctErr').textContent = e.message; }
+}
+$('acctGo').addEventListener('click', submitAccount);
+for (const id of ['acctName', 'acctPass', 'acctPass2']) $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') submitAccount(); });
+
+// a fresh account adopts what you already set up as a guest; an existing one brings its own setup to this device
+function onLoggedIn(me, fresh) {
+  const prof = me.profile || {};
+  if (!fresh && prof.loadout) {
+    G.settings.loadout = validLoadout(prof.loadout);
+    G.settings.skins = prof.skins && typeof prof.skins === 'object' ? prof.skins : {};
+    if (prof.look && typeof prof.look === 'object') G.settings.look = { ...DEFAULT_LOOK, ...prof.look };
+    if (typeof prof.card === 'string') G.settings.card = prof.card;
+    if (typeof prof.kfx === 'string') G.settings.kfx = prof.kfx;
+    Object.assign(G.settings, prof.settings || {});
+    try { localStorage.setItem('jankfire', JSON.stringify(G.settings)); } catch { /* fine */ }
+    applySettingsToUI();
+  } else saveSettings();
+  G.inv = me.inv || {};
+  recomputeEquipped();
+  rebuildViewmodels();
+  setLoadout(G.settings.loadout);
+  renderAcctBar();
+}
+function doLogout() {
+  logout();
+  G.inv = {};
+  recomputeEquipped();
+  rebuildViewmodels();
+  setLoadout(G.settings.loadout);
+  renderAcctBar();
+  show('main');
+  toast('logged out. locked cosmetics are hidden until you log back in.');
+}
+$('logoutBtn').addEventListener('click', doLogout);
+function applySettingsToUI() {
+  $('jank').value = String(S.jank); setJank(S.jank);
+  for (const id of ['fov', 'vol', 'sens', 'adsSens']) { $(id).value = String(S[id]); $(id).dispatchEvent(new Event('input')); }
+  for (const id of ['fovKick', 'shake', 'showFps', 'swapAim', 'toggleAim', 'blood', 'killcam', 'showCards']) $(id).checked = !!S[id];
+  setVolume(S.vol);
+}
+
+function renderProfile() {
+  const me = account.me;
+  if (!me) { show('main'); return; }
+  $('profName').textContent = me.name;
+  const cur = (me.level - 1) * (me.level - 1) * 40, next = me.level * me.level * 40;
+  const k = Math.max(0, Math.min(1, (me.xp - cur) / (next - cur)));
+  $('profLevel').innerHTML = '';
+  const t = document.createElement('div'); t.textContent = `Level ${me.level} · ${me.xp} xp · ${next - me.xp} to next`;
+  const bar = document.createElement('div'); bar.className = 'xpbar'; const fill = document.createElement('div'); fill.style.width = k * 100 + '%'; bar.append(fill);
+  $('profLevel').append(t, bar);
+  const st = me.stats;
+  const owned = LOOT_TYPES.reduce((a, ty) => a + Object.keys(COSMETICS[ty]).filter((id) => owns(me.inv, ty, id)).length, 0);
+  const total = LOOT_TYPES.reduce((a, ty) => a + Object.keys(COSMETICS[ty]).length, 0);
+  const rows = [
+    ['wins', st.wins], ['kills', st.kills], ['deaths', st.deaths], ['k/d', st.deaths ? (st.kills / st.deaths).toFixed(2) : st.kills],
+    ['bot kills', st.bot_kills], ['best coop wave', st.best_wave], ['top speed', `${st.top_speed} km/h`], ['played', fmtTime(st.playtime)],
+    ['cosmetics', `${owned}/${total}`], ['crates / bags / boxes', `${me.rolls.crate || 0} / ${me.rolls.bag || 0} / ${me.rolls.box || 0}`],
+  ];
+  $('profStats').innerHTML = '';
+  for (const [label, v] of rows) {
+    const d = document.createElement('div'); d.className = 'stat';
+    const b = document.createElement('b'); b.textContent = v;
+    const sp = document.createElement('span'); sp.textContent = label;
+    d.append(b, sp); $('profStats').append(d);
+  }
+}
+
+async function renderLeaders() {
+  const el = $('leaders');
+  el.textContent = 'loading...';
+  try {
+    const lb = await fetchLeaders();
+    el.innerHTML = '';
+    const cols = [['wins', 'Most wins', (v) => v], ['kills', 'Most kills', (v) => v], ['speed', 'Fastest ever', (v) => `${v} km/h`], ['wave', 'Best coop wave', (v) => `wave ${v}`], ['xp', 'Highest level', (v, r) => `Lv ${r.level}`]];
+    for (const [key, title, fmt] of cols) {
+      const c = document.createElement('div');
+      const h = document.createElement('h4'); h.textContent = title; c.append(h);
+      const ol = document.createElement('ol');
+      for (const r of lb[key] || []) {
+        const li = document.createElement('li');
+        li.textContent = r.name + ' ';
+        const sp = document.createElement('span'); sp.textContent = fmt(r.value, r); li.append(sp);
+        ol.append(li);
+      }
+      if (!(lb[key] || []).length) { const li = document.createElement('li'); li.textContent = 'nobody yet'; ol.append(li); }
+      c.append(ol); el.append(c);
+    }
+  } catch { el.textContent = 'could not load the leaderboard'; }
+}
+
+// ------------------------------------------------------------ cosmetic rolls
+function renderRollBar() {
+  const bar = $('rollBar');
+  bar.innerHTML = '';
+  if (!account.loggedIn) {
+    const s1 = document.createElement('span'); s1.textContent = 'guests only get the free stuff. log in to earn crates, duffel bags and boxes.';
+    const b = document.createElement('button'); b.className = 'mid'; b.textContent = 'LOG IN'; b.addEventListener('click', () => openAccount(false));
+    bar.append(s1, b);
+    return;
+  }
+  for (const [kind, c] of Object.entries(CONTAINERS)) {
+    const n = account.me.rolls[kind] || 0;
+    const b = document.createElement('button');
+    b.className = 'mid';
+    b.textContent = `OPEN ${c.name.toUpperCase()} (${n})`;
+    b.title = c.desc;
+    b.disabled = n <= 0;
+    b.addEventListener('click', () => doRoll(kind));
+    bar.append(b);
+  }
+  const hint = document.createElement('span'); hint.style.color = '#aaa'; hint.style.fontSize = '12px';
+  hint.textContent = 'crates: skins · duffel bags: hats + effects · boxes: wraps. win rounds to get more.';
+  bar.append(hint);
+}
+let rolling = false;
+function randomCard(kind) {
+  const types = CONTAINERS[kind].types;
+  const pool = [];
+  for (const t of types) for (const [id, c] of Object.entries(COSMETICS[t])) if (c.rarity !== 'free') pool.push({ type: t, id, name: c.name, rarity: c.rarity });
+  const r = Math.random() * 100;
+  const want = r < 55 ? 'common' : r < 83 ? 'rare' : r < 96 ? 'epic' : 'legendary';
+  const pref = pool.filter((p) => p.rarity === want);
+  const from = pref.length ? pref : pool;
+  return from[(Math.random() * from.length) | 0];
+}
+function card(item) {
+  const d = document.createElement('div');
+  d.className = 'rcard';
+  d.style.setProperty('--rc', RARITY[item.rarity].color);
+  const b = document.createElement('b'); b.textContent = item.name;
+  const sm = document.createElement('small'); sm.textContent = `${TYPE_NAMES[item.type]} · ${RARITY[item.rarity].name}`;
+  d.append(b, sm);
+  return d;
+}
+async function doRoll(kind) {
+  if (rolling || !account.loggedIn) return;
+  rolling = true;
+  initAudio(S.vol);
+  let r;
+  try {
+    const res = await fetch('/api/roll', { method: 'POST', headers: { authorization: 'Bearer ' + account.token, 'content-type': 'application/json' }, body: JSON.stringify({ kind }) });
+    r = await res.json();
+    if (!res.ok) throw new Error(r.error || 'roll failed');
+  } catch (e) { toast(e.message); rolling = false; return; }
+  account.me = r.me;
+  const item = r.item;
+  const strip = $('rollStrip');
+  strip.innerHTML = '';
+  const WIN = 38;
+  $('rollbox').querySelector('.rolltitle').textContent = `OPENING A ${CONTAINERS[kind].name.toUpperCase()}`;
+  for (let i = 0; i < 46; i++) strip.append(card(i === WIN && item ? item : randomCard(kind)));
+  $('rollResult').innerHTML = '';
+  $('rollBtns').innerHTML = '';
+  $('rollbox').classList.remove('hidden');
+  strip.style.transition = 'none';
+  strip.style.transform = 'translateX(0px)';
+  const cw = 120; // card + gap
+  const view = strip.parentElement.clientWidth;
+  const target = WIN * cw - view / 2 + 56 + (Math.random() - 0.5) * 80;
+  let lastIdx = -1;
+  const ticker = () => {
+    if (!rolling) return;
+    const m = new DOMMatrixReadOnly(getComputedStyle(strip).transform);
+    const idx = Math.floor((-m.m41 + view / 2) / cw);
+    if (idx !== lastIdx) { lastIdx = idx; sfx.click(); }
+    requestAnimationFrame(ticker);
+  };
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    strip.style.transition = 'transform 4.6s cubic-bezier(0.05, 0.7, 0.1, 1)';
+    strip.style.transform = `translateX(${-target}px)`;
+    ticker();
+  }));
+  setTimeout(() => {
+    rolling = false;
+    G.inv = account.me.inv || {};
+    recomputeEquipped();
+    renderAcctBar();
+    const res = $('rollResult');
+    const btn = (t, fn) => { const b = document.createElement('button'); b.className = 'mid'; b.textContent = t; b.addEventListener('click', fn); $('rollBtns').append(b); };
+    if (item) {
+      const big = document.createElement('span'); big.className = 'big'; big.textContent = item.name; big.style.color = item.color;
+      const sub = document.createElement('span'); sub.textContent = `${item.rarityName} ${TYPE_NAMES[item.type].toLowerCase()} unlocked`;
+      res.append(big, sub);
+      if (item.rarity === 'legendary' || item.rarity === 'epic') sfx.kill(); else sfx.ting();
+      if (item.type === 'kill') {
+        btn('EQUIP KILL EFFECT', () => { setKfx(item.id); closeRoll(); toast(`kill effect: ${item.name}`); });
+      } else {
+      // skins belong to one weapon; everything else can go on whatever you're looking at
+      const target = item.type === 'model' ? COSMETICS.model[item.id].weapon : G.cosSel;
+      btn(`PUT IT ON ${WEAPONS[target].name.toUpperCase()}`, () => {
+        const sk = validSkin(S.skins[target]).slice();
+        sk[TYPES.indexOf(item.type)] = item.id;
+        G.cosSel = target;
+        setSkin(target, sk);
+        closeRoll();
+      });
+      }
+    } else {
+      const big = document.createElement('span'); big.className = 'big'; big.textContent = `you own everything from ${CONTAINERS[kind].plural.toLowerCase()}`; res.append(big);
+      const sub = document.createElement('span'); sub.textContent = '+100 xp instead'; res.append(sub);
+    }
+    const left = account.me.rolls[kind] || 0;
+    if (left > 0) btn(`OPEN ANOTHER (${left})`, () => { closeRoll(); doRoll(kind); });
+    btn('OK', closeRoll);
+  }, 4800);
+}
+function closeRoll() { $('rollbox').classList.add('hidden'); if (screen === 'cosmetics') buildCosmeticsUI(); }
+
+// ------------------------------------------------------------ rounds
+function fmtClock(ms) { const s2 = Math.ceil(ms / 1000); return `${Math.floor(s2 / 60)}:${String(s2 % 60).padStart(2, '0')}`; }
+function renderRound(r) {
+  const el = $('round');
+  if (!r) { el.textContent = ''; return; }
+  el.textContent = r.over ? `next round in ${Math.ceil(r.left / 1000)}` : `first to ${r.target} · ${fmtClock(r.left)}`;
+}
+net.on('round', (m) => {
+  const box = $('roundEnd');
+  if (m.start) { G.roundOver = false; if (RP.mode === 'hl') stopReplay(true); box.classList.add('hidden'); hud.msg('ROUND START', 1.5, 'brag'); return; }
+  if (!m.over) return;
+  G.roundOver = true;
+  box.innerHTML = '';
+  const h = document.createElement('h3');
+  const [wn] = m.winner ? nameOf(m.winner) : ['nobody'];
+  h.textContent = m.winner === G.myId ? 'YOU WIN' : `${wn} wins`;
+  box.append(h);
+  for (const [id, name, k, d] of m.top) {
+    const row = document.createElement('div');
+    row.textContent = `${name}  ·  ${k} / ${d}`;
+    if (id === G.myId) row.style.color = '#ffe14d';
+    box.append(row);
+  }
+  box.classList.remove('hidden');
+  if (m.winner === G.myId) sfx.kill();
+});
+// play of the round: the server picked the best moment and sent the recording
+net.on('hl', (m) => {
+  if (!G.joined || !m.clip) return;
+  if (RP.mode === 'killcam' || G.killcamPending) skipReplay();
+  const box = $('roundEnd');
+  box.classList.add('hidden');
+  const url = m.id === G.myId ? cardUrlFor(G.myId) : (S.showCards !== false && m.card) || defaultCard(m.name, m.color);
+  showReplayUI('PLAY OF THE ROUND', url, m.name, m.color, m.label, 'SPACE to skip');
+  const slow = (m.clip.ev || []).filter((e) => e.m && e.m.t === 'kill' && e.m.k === m.id).map((e) => [e.s - 260, e.s + 220]);
+  playClip(m.clip, {
+    focus: m.id, mode: 'hl', slow,
+    onKill: (k) => replayFeed(k, m.clip.info),
+    onEnd: () => { hideReplayUI(); if (G.roundOver) box.classList.remove('hidden'); },
+    onAbort: () => hideReplayUI(),
+  });
+  sfx.kill();
+});
+net.on('roll+', (m) => {
+  const box = $('roundEnd');
+  const d = document.createElement('div');
+  d.className = 'roll';
+  if (m.n > 0) {
+    const c = CONTAINERS[m.kind] || CONTAINERS.box;
+    d.textContent = `+${m.n} ${c.name.toUpperCase()} (${c.desc})${m.why ? `: ${m.why}` : ''}. open it in COSMETICS`;
+    if (account.me) { account.me.rolls[m.kind] = (account.me.rolls[m.kind] || 0) + m.n; renderAcctBar(); }
+    toast(`+${m.n} ${c.name}`);
+  } else if (m.guest) d.textContent = 'you would have earned a crate, bag or box. log in to keep them.';
+  else d.textContent = m.why || '';
+  if (!box.classList.contains('hidden')) box.append(d); else toast(d.textContent, 3500);
+});
+
+// ------------------------------------------------------------ install as an app (PWA)
+let installEvt = null;
+addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; if (!window.jf) $('installBtn').classList.remove('hidden'); });
+$('installBtn').addEventListener('click', async () => {
+  if (!installEvt) return;
+  installEvt.prompt();
+  await installEvt.userChoice.catch(() => {});
+  installEvt = null;
+  $('installBtn').classList.add('hidden');
+});
+// desktop app (exe): it has its own window, so no "install app"; show server/quit buttons instead
+if (window.jf && window.jf.desktop) {
+  $('desktopRow').classList.remove('hidden');
+  $('dChange').addEventListener('click', () => { quitToMenu(true); window.jf.launcher(); });
+  $('dFull').addEventListener('click', () => window.jf.fullscreen());
+  $('dQuit').addEventListener('click', () => window.jf.quit());
+  window.jf.info().then((info) => { if (info.hosting && info.hosting.lan.length) $('status').textContent = `you're hosting. friends on your wifi join: ${info.hosting.lan.join('  or  ')}`; });
+} else if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+
+// ------------------------------------------------------------ boot
+renderAcctBar();
+restore().then((me) => { if (me) onLoggedIn(me, false); });
+
+show('main');
+requestAnimationFrame(frame);
+
+// debug handle for poking at things from the console
+window.JANK = { G, ME, W, net, switchSlot, setLoadout, fireDown, fireUp, tryHook, releaseHook, reload, startMode, quitToMenu, show };

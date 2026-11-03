@@ -1,0 +1,287 @@
+// Renderer, low-res pixel crunch, the map, the sky, the void.
+import * as THREE from 'three';
+import { BOXES, MAP, setMap } from '/shared/map.js';
+import { resetGrid } from '/shared/physics.js';
+import { jankify, jankUniforms } from './jank.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { G } from './ctx.js';
+
+// scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
+export const JANK = [
+  { name: 'Potato', scale: 0.22, snap: 160 },
+  { name: 'Crusty', scale: 0.36, snap: 220 },
+  { name: 'Mid', scale: 0.6, snap: 360 },
+  { name: 'Too HD', scale: 1, snap: 0 },
+];
+let jank = JANK[1];
+const clouds = [];
+let sun;
+
+function canvasTex(size, draw, w) {
+  const c = document.createElement('canvas');
+  c.width = w || size; c.height = size;
+  draw(c.getContext('2d'), size, w || size);
+  const t = new THREE.CanvasTexture(c);
+  // crunchy up close, but mipmapped far away so floors don't shimmer and give you a headache
+  t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestMipmapLinearFilter; t.generateMipmaps = true;
+  t.anisotropy = 4;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+function speckle(g, s, rgb, vary, px = 2, w) {
+  for (let y = 0; y < s; y += px) for (let x = 0; x < (w || s); x += px) {
+    const k = (Math.random() - 0.5) * vary;
+    g.fillStyle = `rgb(${rgb[0] + k | 0},${rgb[1] + k | 0},${rgb[2] + k | 0})`;
+    g.fillRect(x, y, px, px);
+  }
+}
+const rnd = (n) => (Math.random() * n) | 0;
+
+// [texture, metres per tile] — UVs come from world position so neighbouring boxes line up perfectly
+function makeMaterials() {
+  const siding = (rgb, line) => (g, s) => { speckle(g, s, rgb, 8, 2); g.fillStyle = line; for (let y = 3; y < s; y += 4) g.fillRect(0, y, s, 1); };
+  const container = (rgb) => (g, s) => { g.fillStyle = `rgb(${rgb})`; g.fillRect(0, 0, s, s); g.fillStyle = 'rgba(0,0,0,0.25)'; for (let x = 0; x < s; x += 4) g.fillRect(x, 0, 2, s); };
+  const T = {
+    grass: [canvasTex(16, (g, s) => { speckle(g, s, [86, 170, 64], 40, 2); }), 2],
+    dirt: [canvasTex(16, (g, s) => { speckle(g, s, [130, 92, 58], 34, 2); }), 2],
+    stone: [canvasTex(16, (g, s) => {
+      speckle(g, s, [140, 140, 150], 24, 2);
+      g.fillStyle = '#555'; g.fillRect(0, 7, s, 1); g.fillRect(0, 15, s, 1); g.fillRect(7, 0, 1, 7); g.fillRect(3, 8, 1, 7); g.fillRect(12, 8, 1, 7);
+    }), 2],
+    wood: [canvasTex(16, (g, s) => { speckle(g, s, [160, 110, 60], 20, 1); g.fillStyle = '#5a3a1a'; for (let y = 3; y < s; y += 4) g.fillRect(0, y, s, 1); }), 2],
+    crate: [canvasTex(16, (g, s) => {
+      speckle(g, s, [176, 128, 70], 20, 1);
+      g.fillStyle = '#5a3a1a'; g.fillRect(0, 0, s, 2); g.fillRect(0, s - 2, s, 2); g.fillRect(0, 0, 2, s); g.fillRect(s - 2, 0, 2, s);
+      for (let i = 0; i < s; i++) { g.fillRect(i, i, 2, 1); g.fillRect(s - 1 - i, i, 2, 1); }
+    }), 2],
+    missing: [canvasTex(32, (g) => { for (let y = 0; y < 2; y++) for (let x = 0; x < 2; x++) { g.fillStyle = (x + y) % 2 ? '#000' : '#ff00dc'; g.fillRect(x * 16, y * 16, 16, 16); } }), 4],
+    pad: [canvasTex(16, (g, s) => { g.fillStyle = '#00e5ff'; g.fillRect(0, 0, s, s); g.fillStyle = '#fff'; g.fillRect(7, 3, 2, 10); g.fillRect(5, 5, 6, 2); g.fillRect(4, 6, 8, 1); }), 2],
+    pink: [canvasTex(16, (g, s) => { speckle(g, s, [255, 120, 200], 30, 2); }), 2],
+    gold: [canvasTex(16, (g, s) => { speckle(g, s, [240, 200, 60], 40, 2); }), 2],
+    sand: [canvasTex(16, (g, s) => { speckle(g, s, [222, 190, 130], 22, 1); }), 2],
+    adobe: [canvasTex(16, (g, s) => { speckle(g, s, [214, 176, 128], 14, 2); g.fillStyle = '#a8845a'; g.fillRect(3, 4, 1, 5); g.fillRect(4, 8, 3, 1); g.fillRect(11, 2, 1, 3); g.fillRect(9, 12, 4, 1); }), 3],
+    cloth: [canvasTex(16, (g, s) => { for (let x = 0; x < s; x += 4) { g.fillStyle = (x / 4) % 2 ? '#e8e0d0' : '#c8302a'; g.fillRect(x, 0, 4, s); } }), 2],
+    concrete: [canvasTex(16, (g, s) => { speckle(g, s, [150, 150, 152], 16, 2); }), 3],
+    grid: [canvasTex(16, (g, s) => { speckle(g, s, [128, 128, 132], 8, 4); g.fillStyle = '#6a6a70'; g.fillRect(0, 0, s, 1); g.fillRect(0, 0, 1, s); }), 2],
+    helipad: [canvasTex(32, (g) => {
+      speckle(g, 32, [60, 60, 64], 10, 2);
+      g.strokeStyle = '#ffd21a'; g.lineWidth = 2; g.beginPath(); g.arc(16, 16, 12, 0, Math.PI * 2); g.stroke();
+      g.fillStyle = '#fff'; g.fillRect(11, 9, 2, 14); g.fillRect(19, 9, 2, 14); g.fillRect(11, 15, 10, 2);
+    }), 11],
+    roadx: [canvasTex(32, (g, s) => { speckle(g, s, [58, 58, 62], 10, 2); g.fillStyle = '#e8c020'; for (let x = 0; x < s; x += 16) g.fillRect(x, 0, 8, 1); g.fillRect(0, s - 1, 0, 0); }), 12],
+    roadz: [canvasTex(32, (g, s) => { speckle(g, s, [58, 58, 62], 10, 2); g.fillStyle = '#e8c020'; for (let y = 0; y < s; y += 16) g.fillRect(0, y, 1, 8); }), 12],
+    road: [canvasTex(16, (g, s) => { speckle(g, s, [58, 58, 62], 10, 2); }), 3],
+    sidewalk: [canvasTex(16, (g, s) => { speckle(g, s, [180, 178, 172], 12, 2); g.fillStyle = '#8a8884'; g.fillRect(0, 0, s, 1); g.fillRect(0, 0, 1, s); }), 2],
+    white: [canvasTex(16, siding([235, 232, 225], '#b8b4aa')), 1.2],
+    blue: [canvasTex(16, siding([120, 160, 205], '#5a7aa0')), 1.2],
+    yellow: [canvasTex(16, siding([235, 210, 120], '#a89050')), 1.2],
+    mint: [canvasTex(16, siding([150, 215, 180], '#6a9a80')), 1.2],
+    brick: [canvasTex(16, (g, s) => {
+      speckle(g, s, [160, 70, 50], 20, 2); g.fillStyle = '#d8cfc0';
+      for (let y = 0; y < s; y += 4) { g.fillRect(0, y, s, 1); for (let x = (y / 4) % 2 ? 0 : 4; x < s; x += 8) g.fillRect(x, y, 1, 4); }
+    }), 1.5],
+    plaster: [canvasTex(16, (g, s) => { speckle(g, s, [226, 218, 200], 8, 4); }), 2],
+    carpet: [canvasTex(16, (g, s) => { speckle(g, s, [140, 70, 80], 18, 1); }), 2],
+    tile: [canvasTex(16, (g, s) => { speckle(g, s, [220, 230, 235], 6, 4); g.fillStyle = '#9ab'; for (let i = 0; i < s; i += 4) { g.fillRect(i, 0, 1, s); g.fillRect(0, i, s, 1); } }), 1],
+    roof: [canvasTex(16, (g, s) => { speckle(g, s, [140, 52, 44], 20, 2); g.fillStyle = '#5a1a14'; for (let y = 3; y < s; y += 4) g.fillRect(0, y, s, 1); }), 1.5],
+    roofg: [canvasTex(16, (g, s) => { speckle(g, s, [80, 82, 88], 14, 2); g.fillStyle = '#3a3a40'; for (let y = 3; y < s; y += 4) g.fillRect(0, y, s, 1); }), 1.5],
+    metal: [canvasTex(16, (g, s) => { speckle(g, s, [150, 155, 160], 10, 2); g.fillStyle = '#7a7e84'; for (let x = 0; x < s; x += 4) g.fillRect(x, 0, 1, s); }), 1.5],
+    hazard: [canvasTex(16, (g, s) => { for (let i = -s; i < s * 2; i += 8) { g.fillStyle = '#ffd21a'; g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 4, 0); g.lineTo(i + 4 - s, s); g.lineTo(i - s, s); g.fill(); } }), 1],
+    office: [canvasTex(32, (g) => { // a 2-bay x 1-floor chunk of skyscraper facade
+      g.fillStyle = '#8a8e96'; g.fillRect(0, 0, 32, 32);
+      for (const x of [2, 18]) { const lit = Math.random() < 0.35; g.fillStyle = lit ? '#ffe9a0' : '#2a3a5a'; g.fillRect(x, 6, 12, 20); g.fillStyle = lit ? '#fff6d0' : '#4a6a9a'; g.fillRect(x + 1, 7, 4, 6); }
+      g.fillStyle = '#6a6e76'; g.fillRect(0, 0, 32, 2);
+    }), 4],
+    glassblock: [canvasTex(16, (g, s) => { g.fillStyle = '#3a5a80'; g.fillRect(0, 0, s, s); g.fillStyle = '#5a80b0'; for (let i = 0; i < s; i += 8) { g.fillRect(i, 0, 1, s); g.fillRect(0, i, s, 1); } g.fillStyle = '#9fc4ea'; g.fillRect(2, 2, 3, 3); }), 3],
+    leaves: [canvasTex(16, (g, s) => { speckle(g, s, [60, 140, 50], 50, 2); }), 2],
+    hedge: [canvasTex(16, (g, s) => { speckle(g, s, [50, 110, 45], 40, 2); }), 1.5],
+    containerr: [canvasTex(16, container('170,52,40')), 2],
+    containerb: [canvasTex(16, container('40,80,150')), 2],
+    containerg: [canvasTex(16, container('50,120,70')), 2],
+    billboard: [canvasTex(64, (g, s, w) => {
+      g.fillStyle = '#ff4fd8'; g.fillRect(0, 0, w, s); g.fillStyle = '#ffe14d'; g.fillRect(4, 4, w - 8, s - 8);
+      g.fillStyle = '#120818'; g.font = 'bold 26px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(['JANK COLA', 'BUY BREAD', 'GRAPPLE INC', 'SPOON BANK'][rnd(4)], w / 2, s / 2);
+    }, 192), 12],
+  };
+  const out = {};
+  const basic = new Set(['pad', 'water', 'office', 'light', 'tail', 'glass', 'billboard', 'missing']);
+  for (const [k, [t, tile]] of Object.entries(T)) {
+    out[k] = { mat: basic.has(k) ? new THREE.MeshBasicMaterial({ map: t }) : new THREE.MeshLambertMaterial({ map: t }), tile };
+  }
+  out.water = { mat: new THREE.MeshBasicMaterial({ color: 0x3a9ae8, transparent: true, opacity: 0.75 }), tile: 2 };
+  out.glass = { mat: new THREE.MeshLambertMaterial({ color: 0x223448, emissive: 0x0a1420 }), tile: 2 };
+  out.tire = { mat: new THREE.MeshLambertMaterial({ color: 0x1a1a1c }), tile: 1 };
+  out.light = { mat: new THREE.MeshBasicMaterial({ color: 0xfff2b0 }), tile: 1 };
+  out.tail = { mat: new THREE.MeshBasicMaterial({ color: 0xff2a2a }), tile: 1 };
+  for (const [k, hex] of Object.entries({ carred: 0xc8202c, carblue: 0x2050b0, carwhite: 0xe8e8e8, carblack: 0x26262a, cargreen: 0x2a8a4a, caryellow: 0xe8c020, chrome: 0xc8ccd2 })) {
+    out[k] = { mat: new THREE.MeshLambertMaterial({ color: hex }), tile: 1 };
+  }
+  return out;
+}
+
+// world-space UVs: each face picks the two axes it spans, so textures continue across boxes
+function worldUV(geo, cx, cy, cz, tile) {
+  const pos = geo.attributes.position, nrm = geo.attributes.normal, uv = geo.attributes.uv;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i) + cx, y = pos.getY(i) + cy, z = pos.getZ(i) + cz;
+    const ax = Math.abs(nrm.getX(i)), ay = Math.abs(nrm.getY(i));
+    if (ax > 0.5) uv.setXY(i, z / tile, y / tile);
+    else if (ay > 0.5) uv.setXY(i, x / tile, z / tile);
+    else uv.setXY(i, x / tile, y / tile);
+  }
+}
+
+let MAT = null;
+const mapMeshes = [];
+// one merged mesh per material: thousands of boxes, a couple dozen draw calls
+function buildMap(scene) {
+  if (!MAT) MAT = makeMaterials();
+  for (const m of mapMeshes) { scene.remove(m); m.geometry.dispose(); }
+  mapMeshes.length = 0;
+  const groups = new Map();
+  const push = (k, g) => { if (!groups.has(k)) groups.set(k, []); groups.get(k).push(g); };
+  for (const b of BOXES) {
+    const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
+    const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
+    const mk = MAT[b.mat] ? b.mat : 'stone';
+    if (b.mat === 'grass' && sy > 0.6) { // grass on top, dirt on the sides
+      const g = new THREE.BoxGeometry(sx, sy, sz);
+      const top = g.clone();
+      // split the box faces: index groups 2 = +y
+      const keep = (geo, faces) => { const idx = []; for (const f of faces) for (let i = 0; i < 6; i++) idx.push(geo.index.array[f * 6 + i]); geo.setIndex(idx); return geo; };
+      keep(top, [2]); keep(g, [0, 1, 3, 4, 5]);
+      worldUV(top, cx, cy, cz, MAT.grass.tile); worldUV(g, cx, cy, cz, MAT.dirt.tile);
+      top.translate(cx, cy, cz); g.translate(cx, cy, cz);
+      push('grass', top.toNonIndexed()); push('dirt', g.toNonIndexed());
+      continue;
+    }
+    const g = new THREE.BoxGeometry(sx, sy, sz);
+    worldUV(g, cx, cy, cz, MAT[mk].tile);
+    g.translate(cx, cy, cz);
+    push(mk, g.toNonIndexed());
+  }
+  for (const [k, list] of groups) {
+    const merged = mergeGeometries(list, false);
+    for (const g of list) g.dispose();
+    if (!merged) continue;
+    const m = new THREE.Mesh(merged, MAT[k].mat);
+    if (k === 'water') m.renderOrder = 2;
+    scene.add(m);
+    mapMeshes.push(m);
+  }
+}
+
+let skyGeo, voidMesh;
+function paintSky(sky) {
+  const top = new THREE.Color(sky.top), mid = new THREE.Color(sky.mid), bot = new THREE.Color(sky.bot);
+  const pos = skyGeo.attributes.position, c = new THREE.Color(), cols = [];
+  for (let i = 0; i < pos.count; i++) {
+    const y = pos.getY(i) / 900;
+    if (y > 0) c.copy(mid).lerp(top, Math.min(1, y * 1.6)); else c.copy(mid).lerp(bot, Math.min(1, -y * 2.5));
+    cols.push(c.r, c.g, c.b);
+  }
+  skyGeo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+}
+function buildSky(scene) {
+  skyGeo = new THREE.SphereGeometry(900, 10, 8);
+  paintSky(MAP.sky);
+  scene.add(new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false })));
+
+  sun = new THREE.Mesh(new THREE.BoxGeometry(40, 40, 40), new THREE.MeshBasicMaterial({ color: 0xffe14d, fog: false }));
+  sun.position.set(300, 220, -420);
+  scene.add(sun);
+
+  const cloudMat = jankify(new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x996688 }));
+  for (let i = 0; i < 28; i++) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(10 + Math.random() * 25, 3 + Math.random() * 4, 8 + Math.random() * 16), cloudMat);
+    m.position.set((Math.random() - 0.5) * 600, 75 + Math.random() * 50, (Math.random() - 0.5) * 600);
+    m.userData.speed = 1 + Math.random() * 3;
+    scene.add(m);
+    clouds.push(m);
+  }
+
+  // the void
+  const voidMat = new THREE.MeshBasicMaterial({ color: 0x2a0018 });
+  voidMesh = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000).rotateX(-Math.PI / 2), voidMat);
+  voidMesh.position.y = MAP.killY - 25;
+  scene.add(voidMesh);
+  // floating rocks for ambiance
+  const rockMat = jankify(new THREE.MeshLambertMaterial({ color: 0x6b4a3a, flatShading: true }));
+  for (let i = 0; i < 40; i++) {
+    const r = new THREE.Mesh(new THREE.IcosahedronGeometry(1 + Math.random() * 3, 0), rockMat);
+    const a = Math.random() * Math.PI * 2, d = 40 + Math.random() * 140;
+    r.position.set(Math.cos(a) * d, -25 - Math.random() * 30, Math.sin(a) * d);
+    r.rotation.set(Math.random() * 3, Math.random() * 3, 0);
+    scene.add(r);
+  }
+}
+
+export function initWorld(canvas) {
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(1);
+  renderer.autoClear = false;
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0xf7a1c4, 90, 330);
+  const camera = new THREE.PerspectiveCamera(95, 1, 0.1, 1500);
+  camera.rotation.order = 'YXZ';
+  const vmScene = new THREE.Scene();
+  const vmCamera = new THREE.PerspectiveCamera(65, 1, 0.01, 10);
+  Object.assign(G, { renderer, scene, camera, vmScene, vmCamera });
+
+  scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x7a4a6a, 1.6));
+  const sunLight = new THREE.DirectionalLight(0xfff0dd, 1.8);
+  sunLight.position.set(0.6, 1, -0.7);
+  scene.add(sunLight);
+  vmScene.add(new THREE.HemisphereLight(0xcfe8ff, 0x7a4a6a, 1.8));
+  const vmSun = new THREE.DirectionalLight(0xffffff, 1.5);
+  vmSun.position.set(0.5, 1, 0.8);
+  vmScene.add(vmSun);
+
+  buildSky(scene);
+  buildMap(scene);
+  addEventListener('resize', resize);
+  resize();
+}
+
+export function setJank(i) { jank = JANK[i] || JANK[1]; resize(); }
+
+// swap the whole level (called when the server says the map changed)
+export function loadMap(id) {
+  setMap(id);
+  resetGrid(BOXES);
+  buildMap(G.scene);
+  paintSky(MAP.sky);
+  G.scene.fog.color.setHex(MAP.sky.fog);
+  G.scene.fog.near = MAP.fogNear;
+  G.scene.fog.far = MAP.fogFar;
+  voidMesh.position.y = MAP.killY - 25;
+}
+
+export function resize() {
+  const w = innerWidth, h = innerHeight;
+  const rw = Math.max(80, Math.floor(w * jank.scale)), rh = Math.max(60, Math.floor(h * jank.scale));
+  G.renderer.setSize(rw, rh, false);
+  G.camera.aspect = w / h; G.camera.updateProjectionMatrix();
+  G.vmCamera.aspect = w / h; G.vmCamera.updateProjectionMatrix();
+  if (jank.snap) jankUniforms.uSnap.value.set((jank.snap * (w / h)) / 2, jank.snap / 2);
+  else jankUniforms.uSnap.value.set(1e5, 1e5);
+}
+
+export function updateWorld(dt) {
+  for (const c of clouds) {
+    c.position.x += c.userData.speed * dt;
+    if (c.position.x > 320) c.position.x = -320;
+  }
+  sun.rotation.y += dt * 0.3;
+  sun.rotation.x += dt * 0.17;
+}
+
+export function renderFrame() {
+  const r = G.renderer;
+  r.clear();
+  r.render(G.scene, G.camera);
+  r.clearDepth();
+  r.render(G.vmScene, G.vmCamera);
+}

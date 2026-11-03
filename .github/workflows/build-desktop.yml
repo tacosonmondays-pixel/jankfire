@@ -1,0 +1,29 @@
+# Builds the Windows installer + portable exe on GitHub's own Windows machines.
+# Push a tag like v1.0.1 (or run it by hand from the Actions tab) and download the files from the run / release.
+name: build desktop app
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx electron-builder --win nsis portable zip --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JANKFIRE-windows
+          path: |
+            dist/*.exe
+            dist/*.zip
+      - if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.exe
+            dist/*.zip

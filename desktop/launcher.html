@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:">
+<title>JANKFIRE</title>
+<style>
+  @font-face { font-family: 'Comic Neue'; src: url('../public/fonts/comic-neue-latin-400-normal.woff2') format('woff2'); font-weight: 400; }
+  @font-face { font-family: 'Comic Neue'; src: url('../public/fonts/comic-neue-latin-700-normal.woff2') format('woff2'); font-weight: 700; }
+  :root { --pink: #ff4fd8; --yellow: #ffe14d; --cyan: #4fd8ff; --font: "Comic Sans MS", "Comic Neue", "Chalkboard SE", cursive; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #120818; color: #fff; font-family: var(--font); overflow: hidden; user-select: none; }
+  body {
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+    background: repeating-conic-gradient(#1c0e26 0 25%, #120818 0 50%) 0 0 / 48px 48px;
+  }
+  .panel { width: min(640px, 100%); background: rgba(18, 8, 24, 0.94); border: 4px solid var(--pink); box-shadow: 8px 8px 0 var(--cyan); padding: 22px 26px; }
+  h1 {
+    margin: 0; font-size: 72px; text-align: center; transform: rotate(-3deg) skewX(-8deg);
+    background: linear-gradient(180deg, #fff200 0%, #ff7a1a 45%, #ff1f6a 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+    -webkit-text-stroke: 2px #000; filter: drop-shadow(5px 5px 0 #4fd8ff);
+  }
+  .sub { text-align: center; color: #ccc; margin: 4px 0 18px; }
+  button {
+    font-family: var(--font); cursor: pointer; color: #000; border: 3px solid #000; box-shadow: 4px 4px 0 var(--pink);
+    width: 100%; padding: 12px; margin: 8px 0; font-size: 24px; text-align: left; display: flex; flex-direction: column;
+  }
+  button small { font-size: 13px; color: #333; }
+  button:hover:not(:disabled) { transform: rotate(-1deg) scale(1.02); }
+  button:disabled { opacity: 0.45; cursor: default; }
+  #online { background: var(--yellow); }
+  #host { background: #7dff4f; }
+  .join { display: flex; gap: 8px; align-items: stretch; margin-top: 8px; }
+  .join input { flex: 1; font-family: var(--font); font-size: 18px; padding: 8px 10px; background: #000; color: #fff; border: 2px solid #fff; }
+  .join button { width: auto; margin: 0; font-size: 18px; background: var(--cyan); padding: 8px 18px; }
+  #recent { margin-top: 6px; font-size: 13px; color: #aaa; min-height: 18px; }
+  #recent a { color: var(--cyan); margin-right: 10px; cursor: pointer; }
+  #err { color: #ff6060; text-align: center; min-height: 20px; margin-top: 8px; }
+  .foot { display: flex; justify-content: space-between; margin-top: 14px; font-size: 12px; color: #888; }
+  .foot a { color: #aaa; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="panel">
+  <h1>JANKFIRE</h1>
+  <div class="sub">pick where to play</div>
+  <button id="online"><span>PLAY ONLINE</span><small id="onlineSub">the official server: accounts, rolls, leaderboards</small></button>
+  <button id="host"><span>HOST ON THIS PC</span><small>bots, training, coop, or let friends on your wifi join you</small></button>
+  <div class="join">
+    <input id="addr" placeholder="join an address, e.g. 192.168.1.5 or myserver.onrender.com" spellcheck="false">
+    <button id="joinBtn">JOIN</button>
+  </div>
+  <div id="recent"></div>
+  <div id="err"></div>
+  <div class="foot"><span id="ver"></span><span><a id="fs">fullscreen (F11)</a> · <a id="quit">quit</a></span></div>
+</div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const err = new URLSearchParams(location.search).get('err');
+  if (err) $('err').textContent = err;
+  let recent = [];
+  try { recent = JSON.parse(localStorage.getItem('jf_recent') || '[]'); } catch {}
+  function remember(a) {
+    recent = [a, ...recent.filter((x) => x !== a)].slice(0, 4);
+    try { localStorage.setItem('jf_recent', JSON.stringify(recent)); } catch {}
+  }
+  function renderRecent() {
+    $('recent').innerHTML = '';
+    if (!recent.length) return;
+    $('recent').append('recent: ');
+    for (const a of recent) {
+      const l = document.createElement('a');
+      l.textContent = a.replace(/^https?:\/\//, '');
+      l.onclick = () => join(a);
+      $('recent').append(l);
+    }
+  }
+  async function join(a) {
+    $('err').textContent = 'connecting...';
+    try { const url = await window.jf.join(a); remember(url); } catch (e) { $('err').textContent = String(e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, ''); }
+  }
+  window.jf.info().then((info) => {
+    $('ver').textContent = 'v' + info.version;
+    if (info.official) $('online').onclick = () => join(info.official);
+    else { $('online').disabled = true; $('onlineSub').textContent = 'no official server set yet (see README: desktop/config.json)'; }
+  });
+  $('host').onclick = async () => {
+    $('err').textContent = 'starting your server...';
+    try { await window.jf.host(); } catch (e) { $('err').textContent = 'could not start: ' + (e.message || e); }
+  };
+  $('joinBtn').onclick = () => join($('addr').value);
+  $('addr').addEventListener('keydown', (e) => { if (e.key === 'Enter') join($('addr').value); });
+  $('fs').onclick = () => window.jf.fullscreen();
+  $('quit').onclick = () => window.jf.quit();
+  renderRecent();
+</script>
+</body>
+</html>

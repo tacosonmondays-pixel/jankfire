@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JANKFIRE</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#ff4fd8">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<script type="importmap">
+{ "imports": { "three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/" } }
+</script>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="scope"><div class="lens"></div><div class="hair h"></div><div class="hair v"></div></div>
+  <div id="crosshair">+</div>
+  <div id="hitmarker">x</div>
+  <div id="vignette"></div>
+  <div id="reverseFx"></div>
+  <div id="modeLabel"></div>
+  <div id="wave"></div>
+  <div id="round"></div>
+  <div id="roundEnd" class="hidden"></div>
+  <div id="toast"></div>
+  <div id="speed"><span id="speedNum">0</span><small> km/h</small><div id="speedLabel"></div></div>
+  <div id="combo"></div>
+  <div id="streak"></div>
+  <div id="cheat"></div>
+  <div id="hand"></div>
+  <div id="sleepFx">z z z</div>
+  <div id="hpbox"><div id="hpbar"></div><div id="hpLost"></div><span id="hptext">100 HP</span><div id="hpGlitch"></div></div>
+  <div id="meter"><div id="meterFill"></div><span id="meterLabel"></span></div>
+  <div id="ammo"></div>
+  <div id="weapons"></div>
+  <div id="weaponName"></div>
+  <div id="feed"></div>
+  <div id="center"></div>
+  <div id="dead" class="hidden"><div id="deadText"></div><div id="deadCard"></div><div id="deadTimer"></div></div>
+  <div id="replay" class="hidden">
+    <div class="scan"></div>
+    <div class="rtop"><span class="rec">&#9679;</span> <span id="rpTitle">KILLCAM</span></div>
+    <div id="rpFeed"></div>
+    <div class="rbot"><div id="rpCard"></div><div id="rpHint"></div></div>
+  </div>
+  <div id="scores" class="hidden"></div>
+  <div id="chatlog"></div>
+  <input id="chatin" class="hidden" maxlength="120" placeholder="say something..." autocomplete="off">
+  <div id="nums"></div>
+  <div id="ping"></div>
+  <div id="fps"></div>
+</div>
+
+<div id="menu">
+  <!-- main -->
+  <div class="screen panel" id="scr-main">
+    <div id="acctBar"></div>
+    <h1>JANKFIRE</h1>
+    <div class="sub">low quality shooter. infinite momentum. bad decisions.</div>
+    <label class="namerow" id="nameRow">name <input id="name" maxlength="16" placeholder="guest name" autocomplete="off"></label>
+    <div class="modes">
+      <button class="big mode" data-mode="ffa"><b>PLAY</b><span>online with real people</span></button>
+      <button class="big mode" data-go="setup"><b>BOTS</b><span>you vs bots</span></button>
+      <button class="big mode" data-mode="coop"><b>COOP</b><span>friends vs waves of bots</span></button>
+      <button class="big mode" data-mode="training"><b>TRAINING</b><span>dummies + infinite ammo</span></button>
+    </div>
+    <div class="row">
+      <button class="mid" data-go="loadout">LOADOUT</button>
+      <button class="mid" data-go="character">CHARACTER</button>
+      <button class="mid" data-go="cosmetics">COSMETICS</button>
+      <button class="mid" data-go="leaders">LEADERBOARD</button>
+      <button class="mid" data-go="settings">SETTINGS</button>
+      <button class="mid hidden" id="installBtn">INSTALL APP</button>
+    </div>
+    <div class="row hidden" id="desktopRow">
+      <button class="mid" id="dChange">CHANGE SERVER</button>
+      <button class="mid" id="dFull">FULLSCREEN</button>
+      <button class="mid danger" id="dQuit">QUIT GAME</button>
+    </div>
+    <div id="status"></div>
+    <div class="hint">WASD move · SHIFT run · C / CTRL crouch (slide when fast) · SPACE jump (hold to bhop, jump while grappling to launch) · RIGHT CLICK aim · E grapple · R reload · F inspect · 1 2 3 switch · G use killstreak · V/X scythe · B menu · TAB scores · T chat</div>
+  </div>
+
+  <!-- pause (in game) -->
+  <div class="screen panel hidden" id="scr-pause">
+    <h2 id="pauseTitle">PAUSED</h2>
+    <div class="col">
+      <button class="big" id="resume"><b>RESUME</b></button>
+      <button class="mid" data-go="loadout">LOADOUT</button>
+      <button class="mid" data-go="character">CHARACTER</button>
+      <button class="mid" data-go="cosmetics">COSMETICS</button>
+      <button class="mid" data-go="match">MATCH SETTINGS</button>
+      <button class="mid" data-go="settings">SETTINGS</button>
+      <button class="mid danger" id="quit">QUIT TO MENU</button>
+    </div>
+  </div>
+
+  <!-- bots setup -->
+  <div class="screen panel hidden" id="scr-setup">
+    <h2>BOTS</h2>
+    <div class="form">
+      <label>map <select id="setupMap"></select></label>
+      <label>bots <input id="setupBots" type="range" min="1" max="12" step="1" value="5"><span id="setupBotsN">5</span></label>
+      <label>difficulty <select id="setupDiff"></select></label>
+      <label>hipfire <select id="setupHip"></select></label>
+    </div>
+    <button class="big" id="setupGo"><b>START</b></button>
+    <button class="mid back">BACK</button>
+  </div>
+
+  <!-- match settings (lobby, shared with everyone in the room) -->
+  <div class="screen panel hidden" id="scr-match">
+    <h2>MATCH SETTINGS</h2>
+    <div class="note">these change the match for everyone in this room</div>
+    <div class="form">
+      <label>map <select id="cfgMap"></select></label>
+      <label>hipfire accuracy <select id="cfgHip"></select></label>
+      <label class="botsOnly">bot difficulty <select id="cfgDiff"></select></label>
+      <label class="botsOnly">bots <input id="cfgBots" type="range" min="0" max="12" step="1"><span id="cfgBotsN"></span></label>
+    </div>
+    <button class="mid back">BACK</button>
+  </div>
+
+  <!-- loadout -->
+  <div class="screen panel hidden" id="scr-loadout">
+    <h2>LOADOUT</h2>
+    <div id="loadout">
+      <div class="lcol"><div class="lt">primary</div><div id="lo-primary"></div></div>
+      <div class="lcol"><div class="lt">secondary</div><div id="lo-secondary"></div></div>
+      <div class="lcol"><div class="lt">melee</div><div id="lo-melee"></div></div>
+    </div>
+    <div id="loDesc">hover a weapon to see what it does</div>
+    <div id="loNote"></div>
+    <button class="mid back">BACK</button>
+  </div>
+
+  <!-- account: log in / sign up -->
+  <div class="screen panel hidden" id="scr-account">
+    <h2 id="acctTitle">LOG IN</h2>
+    <div class="acctform">
+      <input id="acctName" maxlength="16" placeholder="username" autocomplete="username">
+      <input id="acctPass" type="password" maxlength="100" placeholder="password" autocomplete="current-password">
+      <input id="acctPass2" type="password" maxlength="100" placeholder="password again" autocomplete="new-password" class="hidden">
+      <button class="big" id="acctGo"><b>LOG IN</b></button>
+      <div id="acctErr"></div>
+      <a href="#" id="acctSwap">no account? sign up</a>
+      <div class="note">accounts save your loadout, cosmetics, settings, stats and unlocks. you get 3 free cosmetic rolls when you sign up.</div>
+    </div>
+    <button class="mid back">BACK</button>
+  </div>
+
+  <!-- profile -->
+  <div class="screen panel hidden" id="scr-profile">
+    <h2 id="profName">PROFILE</h2>
+    <div id="profLevel"></div>
+    <div id="profStats" class="statgrid"></div>
+    <div class="row"><button class="mid" data-go="cosmetics">COSMETICS</button><button class="mid danger" id="logoutBtn">LOG OUT</button></div>
+    <button class="mid back">BACK</button>
+  </div>
+
+  <!-- leaderboard -->
+  <div class="screen panel hidden" id="scr-leaders">
+    <h2>LEADERBOARD</h2>
+    <div id="leaders" class="leadgrid">loading...</div>
+    <button class="mid back">BACK</button>
+  </div>
+
+  <!-- cosmetics -->
+  <div class="screen panel hidden" id="scr-cosmetics">
+    <h2>COSMETICS</h2>
+    <div id="rollBar"></div>
+    <div class="cos">
+      <div class="coslist" id="cosWeapons"></div>
+      <div class="cosmain">
+        <div id="cosSlot"><canvas id="preview"></canvas></div>
+        <div id="cosName"></div>
+        <div id="skModelRow"><div class="lt">skin (weapon model)</div><div class="chips" id="sk-model"></div></div>
+        <div class="lt">wrap</div><div class="chips" id="sk-finish"></div>
+        <div class="lt">hat</div><div class="chips" id="sk-hat"></div>
+        <div class="lt">effect</div><div class="chips" id="sk-effect"></div>
+        <div class="row"><button class="mid" id="skRandom">RANDOMIZE</button><button class="mid" id="skReset">RESET</button><button class="mid" id="skAll">APPLY TO ALL WEAPONS</button></div>
+      </div>
+    </div>
+    <button class="mid back">BACK</button>
+  </div>
+
+  <!-- character customizer -->
+  <div class="screen panel hidden" id="scr-character">
+    <h2>CHARACTER</h2>
+    <div class="cos">
+      <div class="coslist" id="achList"></div>
+      <div class="cosmain">
+        <div id="charSlot"></div>
+        <div class="lt">colour</div><div class="chips" id="lk-color"></div>
+        <div class="lt">head</div><div class="chips" id="lk-head"></div>
+        <div class="lt">face</div><div class="chips" id="lk-face"></div>
+        <div class="lt">back</div><div class="chips" id="lk-back"></div>
+        <div class="lt">kill effect (what happens to people you kill)</div><div class="chips" id="lk-kill"></div>
+        <div class="lt">name card (people see it when you kill them)</div>
+        <div class="cardrow"><div id="lkCard"></div><button class="mid" data-go="namecard">EDIT NAME CARD</button></div>
+        <div class="row"><button class="mid" id="lkRandom">RANDOMIZE</button><button class="mid" id="lkReset">RESET</button></div>
+        <div class="sub" id="lkNote"></div>
+      </div>
+    </div>
+    <button class="mid back">BACK</button>
+  </div>
+
+  <!-- name card editor -->
+  <div class="screen panel hidden" id="scr-namecard">
+    <h2>NAME CARD</h2>
+    <div class="sub">people see this when you kill them, in killcams and in the play of the round. draw something or upload a picture.</div>
+    <canvas id="ncCanvas" width="256" height="64"></canvas>
+    <div class="row" id="ncTools">
+      <button class="chip on" data-tool="brush">BRUSH</button><button class="chip" data-tool="spray">SPRAY</button>
+      <button class="chip" data-tool="fill">FILL</button><button class="chip" data-tool="text">TEXT</button><button class="chip" data-tool="erase">ERASE</button>
+      <label class="ncsize">size <input type="range" id="ncSize" min="1" max="12" value="3"></label>
+      <input type="color" id="ncColor" value="#ffe14d" title="pick any colour">
+    </div>
+    <div class="chips" id="ncPalette"></div>
+    <div class="row"><input id="ncText" maxlength="24" placeholder="text tool: type here, then click the card" autocomplete="off"></div>
+    <div class="lt">start from</div><div class="chips" id="ncBgs"></div>
+    <div class="row">
+      <button class="mid" id="ncUpload">UPLOAD IMAGE</button><input type="file" id="ncFile" accept="image/*" class="hidden">
+      <button class="mid" id="ncUndo">UNDO</button><button class="mid" id="ncClear">CLEAR</button>
+      <button class="mid" id="ncReset">USE GENERATED</button><button class="mid" id="ncSave">SAVE</button>
+    </div>
+    <button class="mid" data-go="character">BACK</button>
+  </div>
+
+  <!-- settings -->
+  <div class="screen panel hidden" id="scr-settings">
+    <h2>SETTINGS</h2>
+    <div class="setgrid">
+      <div class="setcol">
+        <h3>video</h3>
+        <label>quality <select id="jank"><option value="0">Potato</option><option value="1">Crusty</option><option value="2">Mid</option><option value="3">HD</option></select></label>
+        <label>fov <input id="fov" type="range" min="70" max="120" step="1"><span id="fovN"></span></label>
+        <label><input type="checkbox" id="fovKick"> fov stretches with speed</label>
+        <label><input type="checkbox" id="shake"> screen shake</label>
+        <label><input type="checkbox" id="showFps"> show fps</label>
+        <h3>audio</h3>
+        <label>volume <input id="vol" type="range" min="0" max="1" step="0.05"></label>
+      </div>
+      <div class="setcol">
+        <h3>controls</h3>
+        <label>mouse sens <input id="sens" type="range" min="0.2" max="4" step="0.1"><span id="sensN"></span></label>
+        <label>aim sens <input id="adsSens" type="range" min="0.2" max="2" step="0.05"><span id="adsSensN"></span></label>
+        <label><input type="checkbox" id="swapAim"> right click grapples (E aims)</label>
+        <label><input type="checkbox" id="toggleAim"> toggle aim instead of hold</label>
+        <h3>gameplay</h3>
+        <label><input type="checkbox" id="blood"> pixel blood</label>
+        <label><input type="checkbox" id="killcam"> killcam (replay of your death)</label>
+        <label><input type="checkbox" id="showCards"> show other players' uploaded name cards</label>
+      </div>
+    </div>
+    <button class="mid back">BACK</button>
+  </div>
+</div>
+
+<div id="rollbox" class="hidden">
+  <div class="rollinner">
+    <div class="rolltitle">COSMETIC ROLL</div>
+    <div class="rollwin"><div id="rollStrip"></div><div class="rollmark"></div></div>
+    <div id="rollResult"></div>
+    <div class="row" id="rollBtns"></div>
+  </div>
+</div>
+
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>

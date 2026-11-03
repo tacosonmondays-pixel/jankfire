@@ -1,0 +1,204 @@
+// Weapon tuning. Unbalanced on purpose.
+// kind: hitscan | proj | cone | melee | reverse
+// hitscan guns use rate (shots/sec), mag, reload. Everything else uses cd (seconds).
+export const SLOTS = ['primary', 'secondary', 'melee'];
+
+export const WEAPONS = {
+  // ------------------------------------------------------------ primary
+  ar: {
+    slot: 'primary', kind: 'hitscan', name: 'Assault Rifle', color: '#9fd36b',
+    desc: 'Full auto. Every bullet shoves them a little, a whole mag shoves them a lot.',
+    auto: true, rate: 10, mag: 30, reload: 1.7, dmg: 11, head: 2, spread: 0.01, bloom: 0.004, maxBloom: 0.04,
+    kb: 3, kbUp: 0.3, recoil: 0.4, kick: 0.008, range: 300,
+    ads: { zoom: 1.5, spread: 0.2, p: [0, -0.11, -0.3] },
+  },
+  smg: {
+    slot: 'primary', kind: 'hitscan', name: 'SMG', color: '#6bd3c8',
+    desc: 'Sprays fast. Light, so you run faster with it out.',
+    auto: true, rate: 16, mag: 45, reload: 1.5, dmg: 7, head: 1.5, spread: 0.03, bloom: 0.002, maxBloom: 0.05,
+    kb: 1.5, recoil: 0.2, kick: 0.005, range: 200, speedMul: 1.2,
+    ads: { zoom: 1.3, spread: 0.4, p: [0, -0.1, -0.28] },
+  },
+  shotgun: {
+    slot: 'primary', kind: 'hitscan', name: 'Shotgun', color: '#e0a060',
+    desc: '10 pellets. Shoot the floor to launch yourself.',
+    rate: 1 / 0.75, mag: 6, reload: 2.0, pellets: 10, dmg: 8, head: 1.5, spread: 0.075,
+    kb: 4.5, kbUp: 1, recoil: 17, kick: 0.08, range: 80,
+    ads: { zoom: 1.2, spread: 0.65, p: [0, -0.1, -0.3] },
+  },
+  minigun: {
+    slot: 'primary', kind: 'hitscan', name: 'Minigun', color: '#c8c8c8',
+    desc: 'Spins up then never stops. The recoil is strong enough to fly on. Aim down.',
+    auto: true, rate: 25, mag: 250, reload: 3.5, spinup: 0.6, dmg: 6, head: 1.5, spread: 0.045,
+    kb: 1.3, recoil: 1.25, kick: 0.004, range: 200,
+    ads: { zoom: 1.15, spread: 0.6, p: [0.08, -0.2, -0.36] },
+  },
+  sniper: {
+    slot: 'primary', kind: 'hitscan', name: 'Sniper', color: '#ff4fd8',
+    desc: 'Right click to scope. Hit someone and they leave the map. Hipfire is a gamble.',
+    rate: 1 / 1.1, mag: 5, reload: 2.2, dmg: 45, head: 2, spread: 0.05,
+    kb: 75, kbUp: 14, recoil: 12, kick: 0.06, range: 500, tracer: 0xff4fd8, thick: 0.09,
+    ads: { zoom: 4, spread: 0, scope: true, p: [0, -0.1, -0.25] },
+  },
+  chicken: {
+    slot: 'primary', kind: 'proj', name: 'Chicken Rocket', color: '#ffe14d',
+    desc: 'Rubber chickens that explode. Shoot your feet to rocket jump.',
+    cd: 0.85, speed: 36, grav: 6, r: 0.35, radius: 7.5, dmg: 55, kb: 34, selfKb: 1.0,
+    ads: { zoom: 1.25, p: [0.06, -0.15, -0.38] },
+  },
+  bowling: {
+    slot: 'primary', kind: 'proj', name: 'Bowling Ball Launcher', color: '#6b7bff',
+    desc: 'Rolls along the floor and bowls over everyone in the way.',
+    cd: 1.3, speed: 30, grav: 30, r: 0.45, bounce: 0.25, dmg: 45, kb: 40, kbUp: 10, life: 6,
+    ads: { zoom: 1.25, p: [0.06, -0.18, -0.38] },
+  },
+  bow: {
+    slot: 'primary', kind: 'bow', name: 'Bow', color: '#c88a4a',
+    desc: 'Hold to draw, let go to fire. Every arrow gets a random tip: regular, power, knockback, flame, explosion, gas or sleep.',
+    cd: 0.35, draw: 0.9, speed: 34, speedMax: 85, grav: 9, r: 0.12, dmg: 20, dmgMax: 60,
+    ads: { zoom: 1.6, p: [0, -0.1, -0.3] },
+  },
+  banana: {
+    slot: 'primary', kind: 'proj', name: 'Peel Shooter', color: '#ffe135',
+    desc: 'Hard bananas that bonk and make them slip. Misses stay on the floor as peels.',
+    auto: true, cd: 0.3, speed: 42, grav: 18, r: 0.25, dmg: 14, kb: 9, bounce: 0.35,
+    ads: { zoom: 1.25, p: [0, -0.12, -0.32] },
+  },
+
+  // ------------------------------------------------------------ secondary
+  revolver: {
+    slot: 'secondary', kind: 'hitscan', name: 'Revolver', color: '#e0c070',
+    desc: '6 shots. Bullets ricochet off walls twice. Headshots basically kill.',
+    rate: 1 / 0.4, mag: 6, reload: 2.0, dmg: 40, head: 2.5, spread: 0.003,
+    kb: 8, kbUp: 2, recoil: 3, kick: 0.07, range: 250, ricochet: 2, tracer: 0xffd060,
+    ads: { zoom: 1.4, spread: 0.2, p: [0, -0.085, -0.28] },
+  },
+  cig: {
+    slot: 'secondary', kind: 'cone', name: 'Cigarette', color: '#ff7a1a',
+    desc: 'Hold to smoke. Let go to breathe fire for as long as you inhaled. Too long and you cough.',
+    range: 13, cone: 0.42, dmg: 5, tick: 0.09, maxCharge: 3, coughAt: 4.5, exhaleMul: 1.2, jet: 6,
+  },
+  blower: {
+    slot: 'secondary', kind: 'cone', name: 'Leaf Blower', color: '#ff9a3a',
+    desc: 'Pushes people off the map. Point it at the floor to hover.',
+    range: 16, cone: 0.42, tick: 0.09, push: 5.5, self: 34, fuel: 4, regen: 0.8,
+  },
+  cards: {
+    slot: 'secondary', kind: 'cards', name: 'Card Deck', color: '#ffffff',
+    desc: 'Hold 5 cards. Right click picks one, left click plays it, R redraws. Hearts heal, spades throw cards, clubs blast, diamonds dash, aces teleport, face cards go ultimate, jokers are random.',
+    cd: 0.35,
+  },
+  card: { slot: null, kind: 'proj', name: 'Card', color: '#ffffff', cd: 0, speed: 55, grav: 4, r: 0.12, dmg: 9, kb: 4 },
+  popper: {
+    slot: 'secondary', kind: 'melee', name: 'Party Popper', color: '#ff6bd0',
+    desc: 'Zero damage. Ridiculous knockback.',
+    cd: 1.0, range: 9, cone: 0.6, dmg: 0, kb: 50, kbUp: 12, recoil: 12, radial: true,
+  },
+  reverse: {
+    slot: 'secondary', kind: 'reverse', name: 'Reverse Card', color: '#ff3b3b',
+    desc: 'For 1.2s, any damage or knockback aimed at you goes back to whoever sent it.',
+    cd: 6, dur: 1.2,
+  },
+  duck: {
+    slot: 'secondary', kind: 'proj', name: 'Rubber Duck', color: '#ffd23b',
+    desc: 'Throw it. It turns into a black hole that sucks everyone in, then pops.',
+    cd: 5, speed: 22, grav: 22, r: 0.3, bounce: 0.45, fuse: 1.0,
+    holeTime: 2.5, holeR: 15, pull: 45, blastR: 9, blastKb: 30, blastDmg: 25,
+  },
+
+  // ------------------------------------------------------------ melee
+  bread: {
+    slot: 'melee', kind: 'melee', name: 'Bread', color: '#d9a35b',
+    desc: 'A huge loaf. Home run hits. Smack the floor or a wall to pogo off it.',
+    cd: 0.55, range: 4.2, cone: 0.8, dmg: 40, kb: 38, kbUp: 10, pogo: 16, delay: 0.07,
+  },
+  slipper: {
+    slot: 'melee', kind: 'proj', name: 'Slipper', color: '#ff9ad5',
+    desc: 'Thrown like a boomerang. Hits on the way out and on the way back.',
+    cd: 0.5, speed: 32, grav: 0, r: 0.3, out: 0.45, back: 38, dmg: 30, kb: 22, kbUp: 6, life: 3,
+  },
+  knife: {
+    slot: 'melee', kind: 'melee', name: 'Knife', color: '#c8d0dc',
+    desc: 'Fast stabs. Get them from behind for a backstab (triple damage). Comes in a lot of skins.',
+    cd: 0.42, range: 2.6, cone: 0.75, dmg: 55, kb: 9, kbUp: 3, delay: 0.08, backstab: 3, speedMul: 1.1,
+  },
+  slapper: {
+    slot: 'melee', kind: 'melee', name: 'Hand Slapper', color: '#ff7ab8',
+    desc: 'A big toy hand on a stick. Point blank only. Launches them and makes them slip.',
+    cd: 0.8, range: 1.9, cone: 0.8, dmg: 15, kb: 55, kbUp: 14, delay: 0.1, slip: true, radial: true,
+  },
+  spoon: {
+    slot: 'melee', kind: 'melee', name: 'Spoon', color: '#e8e8f0',
+    desc: 'Kills in one hit, but only point blank. You run way faster holding it.',
+    cd: 0.7, range: 2.0, cone: 0.9, dmg: 999, kb: 12, kbUp: 6, delay: 0.05, speedMul: 1.8,
+  },
+
+  // ------------------------------------------------------------ killstreak reward (not in loadouts)
+  scythe: {
+    slot: 'streak', kind: 'melee', name: 'Scythe Rifle', color: '#3ee6c8',
+    desc: 'Killstreak reward. Wide reaping swings. X turns it into a rifle. Hold V to glitch dash.',
+    cd: 0.6, range: 4.6, cone: 1.1, dmg: 65, kb: 30, kbUp: 9, delay: 0.16,
+  },
+  scythe_rifle: {
+    slot: 'streak', kind: 'hitscan', name: 'Scythe Rifle (rifle)', color: '#3ee6c8',
+    desc: 'The same scythe, folded into a sniper. X to flip back.',
+    rate: 1 / 0.9, mag: 4, reload: 1.8, dmg: 60, head: 2, spread: 0.03, kb: 45, kbUp: 10, recoil: 20, kick: 0.07,
+    range: 500, tracer: 0x3ee6c8, thick: 0.08,
+    ads: { zoom: 3, spread: 0, scope: true, p: [0, -0.1, -0.25] },
+  },
+  dash: { slot: null, kind: 'dash', name: 'Glitch Dash', color: '#ff00dc', dmg: 30, kb: 28, kbUp: 8, range: 3.5, speed: 38, max: 5, regen: 1.2 },
+};
+
+export const ORDER = Object.keys(WEAPONS);
+// killstreaks: kills in a row without dying. "deploy" ones go in your pocket and you press G to use them.
+export const STREAKS = {
+  moonboots: { kills: 3, name: 'Moon Boots', desc: 'low gravity + huge jumps for 25s', auto: true, dur: 25 },
+  chickenstrike: { kills: 4, name: 'Chicken Strike', desc: 'G: rain exploding chickens where you aim', deploy: true },
+  scythe: { kills: 5, name: 'Scythe Rifle', desc: 'X: rifle mode · hold V: glitch dash', auto: true },
+  spinbot: { kills: 6, name: 'Spinbot', desc: 'aimbot + spinbot for 10s. you are now a cheater.', auto: true, dur: 10 },
+  satellite: { kills: 7, name: 'Spy Satellite', desc: 'see every enemy through walls for 20s', auto: true, dur: 20 },
+  giantduck: { kills: 10, name: 'Giant Duck', desc: 'G: a giant black hole that pulls in everyone but you', deploy: true },
+};
+export const DEFAULT_LOADOUT = { primary: 'ar', secondary: 'cig', melee: 'bread' };
+
+export function validLoadout(lo) {
+  const out = { ...DEFAULT_LOADOUT };
+  if (lo) for (const s of SLOTS) if (WEAPONS[lo[s]] && WEAPONS[lo[s]].slot === s) out[s] = lo[s];
+  return out;
+}
+
+// hipfire spread multiplier (lobby setting). aiming down sights always tightens it further.
+export const HIPFIRE = {
+  laser: { name: 'Laser (perfect)', mul: 0 },
+  tight: { name: 'Tight', mul: 0.5 },
+  normal: { name: 'Normal', mul: 1 },
+  sloppy: { name: 'Sloppy', mul: 2 },
+  storm: { name: 'Stormtrooper', mul: 4 },
+};
+export const BOT_DIFF = {
+  easy: { name: 'Easy', react: 750, err: 0.09, rate: 0.45, turn: 4, speed: 0.75 },
+  normal: { name: 'Normal', react: 420, err: 0.045, rate: 0.7, turn: 7, speed: 0.9 },
+  hard: { name: 'Hard', react: 200, err: 0.018, rate: 1, turn: 12, speed: 1 },
+};
+export const MODES = {
+  ffa: { name: 'Online', desc: 'Free for all with real people.' },
+  bots: { name: 'Bots', desc: 'Free for all against bots. Just you.' },
+  coop: { name: 'Coop', desc: 'You and your friends against waves of bots.' },
+  training: { name: 'Training', desc: 'Target dummies, infinite ammo, a movement playground.' },
+};
+
+export const ARROW_TIPS = {
+  regular: { name: 'Regular', color: '#dddddd' },
+  power: { name: 'Power', color: '#ffe14d' },
+  knockback: { name: 'Knockback', color: '#4fd8ff' },
+  flame: { name: 'Flame', color: '#ff6a1a' },
+  explosion: { name: 'Explosion', color: '#ff3030' },
+  gas: { name: 'Gas', color: '#7dff4f' },
+  sleep: { name: 'Sleep', color: '#b07dff' },
+};
+export const SUITS = { h: { name: 'Hearts', sym: '♥', color: '#e0202a' }, s: { name: 'Spades', sym: '♠', color: '#111111' }, c: { name: 'Clubs', sym: '♣', color: '#111111' }, d: { name: 'Diamonds', sym: '♦', color: '#e0202a' }, j: { name: 'Joker', sym: '★', color: '#b07dff' } };
+export const RANKS = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+export const FLAGS = { SMOKE: 1, FIRE: 2, BLOW: 4, SPIN: 8, SLIP: 16, SLIDE: 32, REVERSE: 64, CROUCH: 128, DASH: 256 };
+export const SLIP_TIME = 1.7;
+export const HOOK = { range: 90, pull: 42, tug: 16 };
