@@ -275,3 +275,6 @@ button.big:hover, button.mid:hover { transform: rotate(-1.5deg) scale(1.04); }
 body.replaying #game { filter: saturate(0.75) contrast(1.15) sepia(0.15); }
 body.replaying #crosshair, body.replaying #hpbox, body.replaying #ammo, body.replaying #weapons, body.replaying #speed, body.replaying #combo,
 body.replaying #weaponName, body.replaying #meter, body.replaying #hand, body.replaying #streak, body.replaying #scope, body.replaying #dead, body.replaying #vignette { visibility: hidden; }
+
+#speedLines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; image-rendering: pixelated; }
+body.replaying #speedLines { visibility: hidden; }

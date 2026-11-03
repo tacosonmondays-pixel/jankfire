@@ -657,15 +657,18 @@ class Room {
       if (!this.pairOk(p, t, 'hs' + m.w, (1000 / w.rate) * 0.6) || !this.rangeOk(p, t, w.range)) return;
       this.applyHitscan(p, t, m.w, n, h, d);
     } else if (w.kind === 'melee') {
-      if (!this.pairOk(p, t, 'm' + m.w, w.cd * 750) || !this.rangeOk(p, t, w.range)) return;
+      const hv = m.heavy && w.heavy ? w.heavy : null; // knife right click
+      if (hv) { if (!this.pairOk(p, t, 'mh' + m.w, hv.cd * 750) || !this.rangeOk(p, t, hv.range)) return; }
+      else if (!this.pairOk(p, t, 'm' + m.w, w.cd * 750) || !this.rangeOk(p, t, w.range)) return;
       const dir = w.radial ? toT : d;
-      let dmg = w.dmg, back = false;
+      let dmg = hv ? hv.dmg : w.dmg, back = false;
       if (w.backstab) { // they're facing away from you -> backstab
         const fwd = [-Math.sin(t.yaw), -Math.cos(t.yaw)];
         const hl = Math.hypot(toT[0], toT[2]) || 1;
         if (fwd[0] * (toT[0] / hl) + fwd[1] * (toT[2] / hl) > 0.45) { dmg *= w.backstab; back = true; }
       }
-      this.hurt(t, p, m.w, dmg, [dir[0] * w.kb, dir[1] * w.kb + w.kbUp, dir[2] * w.kb], { slip: !!w.slip, hs: back });
+      const kb = hv ? hv.kb : w.kb, kbUp = hv ? hv.kbUp : w.kbUp;
+      this.hurt(t, p, m.w, dmg, [dir[0] * kb, dir[1] * kb + kbUp, dir[2] * kb], { slip: !!w.slip, hs: back });
     } else if (m.w === 'cig') {
       if (!this.pairOk(p, t, 'cig', 75) || !this.rangeOk(p, t, w.range)) return;
       this.hurt(t, p, 'cig', w.dmg, [d[0] * 1.5, 0.6, d[2] * 1.5]);
@@ -693,7 +696,7 @@ class Room {
     let o = vec3(m.o);
     if (!o || dist3(o, eyeOf(p)) > 4) o = eyeOf(p);
     if (w.kind === 'hitscan') { this.broadcast({ t: 'fx', k: 'shot', w: m.w, id: p.id, s: segs(m.s) }, p.id); return; }
-    if (w.kind === 'melee') { this.broadcast({ t: 'fx', k: 'swing', w: m.w, id: p.id, a: o.map(r2) }, p.id); return; }
+    if (w.kind === 'melee') { this.broadcast({ t: 'fx', k: 'swing', w: m.w, id: p.id, a: o.map(r2), h: m.heavy ? 1 : undefined }, p.id); return; }
     if (w.kind === 'reverse') {
       const n = now();
       if (n - (p.lastFire.reverse || 0) < w.cd * 900) return;

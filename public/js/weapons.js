@@ -11,7 +11,7 @@ import { sfx, loopSfx, stopLoops } from './audio.js';
 import { net } from './net.js';
 import { hud } from './hud.js';
 import { tracerColor, emitSkinFx } from './skins.js';
-import { ANIMS, sample, eventsBetween, inspectFor } from './anim.js';
+import { ANIMS, sample, sampleCh, eventsBetween, inspectFor, drawFor } from './anim.js';
 
 export const W = {
   slots: [DEFAULT_LOADOUT.primary, DEFAULT_LOADOUT.secondary, DEFAULT_LOADOUT.melee],
@@ -24,7 +24,172 @@ export const W = {
   anim: null, lastSwingT: 0, combo: 0, pendingThrow: 0, inspectSpin: 0,
   hasScythe: false, dashHeld: false, dashFuel: WEAPONS.dash.max, dashHitT: new Map(),
   draw: 0, cardSel: 0,
+  hitStop: 0, heavy: false, cycle: null, flashT: 0, playing: null, hideCard: null, hideUntil: 0, handKey: '',
+  lastYaw: 0, lastPitch: 0, swayX: 0, swayY: 0, runK: 0, wasGround: true, lastVy: 0,
 };
+
+// ------------------------------------------------------------ oomph: springs, recoil, punch
+// Recoil and bumps are springs, not straight lines: the gun snaps back, overshoots a hair and settles.
+// The camera gets its own "view punch" spring (visual only, your aim doesn't move).
+const rec = { p: [0, 0, 0], pv: [0, 0, 0], r: [0, 0, 0], rv: [0, 0, 0] };
+const punch = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 };
+G.punch = punch;
+const RECOIL = {
+  ar: { back: 0.9, up: 3, roll: 1.5, side: 0.15, punch: 0.012 },
+  smg: { back: 0.6, up: 2.2, roll: 1.4, side: 0.2, punch: 0.008 },
+  shotgun: { back: 2.4, up: 9, roll: 3, side: 0.3, punch: 0.05 },
+  minigun: { back: 0.35, up: 0.9, roll: 1.2, side: 0.25, punch: 0.004 },
+  sniper: { back: 3, up: 11, roll: 2, side: 0.2, punch: 0.075 },
+  revolver: { back: 1.6, up: 13, roll: 2.5, side: 0.2, punch: 0.045 },
+  scythe_rifle: { back: 2.6, up: 9, roll: 2, side: 0.2, punch: 0.06 },
+  chicken: { back: 2.8, up: 6, roll: 1.5, side: 0.3, punch: 0.045 },
+  bowling: { back: 3.2, up: 5, roll: 2, side: 0.3, punch: 0.05 },
+  banana: { back: 1.2, up: 3.5, roll: 2, side: 0.3, punch: 0.015 },
+  duck: { back: 1.2, up: 4, roll: 3, side: 0.3, punch: 0.015 },
+  bow: { back: -1.4, up: 2.5, roll: 1, side: 0.1, punch: 0.012 },
+};
+const rnd = () => (Math.random() < 0.5 ? -1 : 1) * (0.5 + Math.random() * 0.5);
+function kickVM(id, mul = 1) {
+  const k = RECOIL[id] || { back: 0.8, up: 2.5, roll: 1, side: 0.2, punch: 0.01 };
+  rec.pv[2] += k.back * mul; rec.rv[0] += k.up * mul; rec.rv[2] += k.roll * rnd() * mul; rec.pv[0] += k.side * rnd() * mul;
+  punchCam(k.punch * mul, k.punch * 0.35 * rnd() * mul, k.punch * 0.5 * rnd() * mul);
+}
+export function punchCam(pitch, yaw = 0, roll = 0) { punch.vx += pitch * 21; punch.vy += yaw * 21; punch.vz += roll * 21; }
+function stepSprings(dt) {
+  const n = Math.min(40, Math.max(1, Math.ceil(dt * 240))), h = dt / n;
+  for (let s = 0; s < n; s++) {
+    for (let i = 0; i < 3; i++) {
+      rec.pv[i] += (-220 * rec.p[i] - 20 * rec.pv[i]) * h; rec.p[i] += rec.pv[i] * h;
+      rec.rv[i] += (-200 * rec.r[i] - 18 * rec.rv[i]) * h; rec.r[i] += rec.rv[i] * h;
+    }
+    punch.vx += (-160 * punch.x - 18 * punch.vx) * h; punch.x += punch.vx * h;
+    punch.vy += (-160 * punch.y - 18 * punch.vy) * h; punch.y += punch.vy * h;
+    punch.vz += (-160 * punch.z - 18 * punch.vz) * h; punch.z += punch.vz * h;
+  }
+}
+
+// muzzle flash: a crunchy star + two side spikes, shown for a couple of frames
+let flashTexture = null;
+function flashTex() {
+  if (flashTexture) return flashTexture;
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const x = c.getContext('2d');
+  const g = x.createRadialGradient(16, 16, 0, 16, 16, 16);
+  g.addColorStop(0, '#ffffff'); g.addColorStop(0.25, '#fff2a0'); g.addColorStop(0.6, '#ff9a1a'); g.addColorStop(1, 'rgba(255,80,0,0)');
+  x.fillStyle = g;
+  x.beginPath();
+  for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2, r = i % 2 ? 6 : 16; x.lineTo(16 + Math.cos(a) * r, 16 + Math.sin(a) * r); }
+  x.fill();
+  flashTexture = new THREE.CanvasTexture(c);
+  flashTexture.magFilter = THREE.NearestFilter; flashTexture.minFilter = THREE.NearestFilter;
+  return flashTexture;
+}
+const FLASH_IDS = new Set(['ar', 'smg', 'shotgun', 'minigun', 'sniper', 'revolver', 'scythe_rifle', 'chicken', 'bowling', 'banana']);
+function makeFlash(big) {
+  const grp = new THREE.Group();
+  const mat = new THREE.MeshBasicMaterial({ map: flashTex(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+  const s = big ? 1.6 : 1;
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.24 * s, 0.24 * s), mat);
+  const side1 = new THREE.Mesh(new THREE.PlaneGeometry(0.4 * s, 0.14 * s), mat);
+  side1.rotation.y = Math.PI / 2; side1.position.z = -0.12 * s;
+  const side2 = new THREE.Mesh(new THREE.PlaneGeometry(0.4 * s, 0.14 * s), mat);
+  side2.rotation.set(-Math.PI / 2, 0, Math.PI / 2); side2.position.z = -0.12 * s;
+  grp.add(face, side1, side2);
+  grp.userData.face = face;
+  grp.visible = false;
+  return grp;
+}
+// brass flying out of the ejection port (square particles in the viewmodel scene)
+function ejectShell(g, color = 0xd9a53a, big = false) {
+  if (!G.skinFxVM || !g.userData.muzzle) return;
+  g.updateMatrixWorld(true);
+  tmpV.set(0.03, 0.035, g.userData.muzzle.z * 0.35);
+  g.localToWorld(tmpV);
+  const sz = big ? 0.03 : 0.018;
+  G.skinFxVM.norm.spawn(tmpV.x, tmpV.y, tmpV.z, 0.6 + Math.random() * 0.5, 0.75 + Math.random() * 0.5, 0.1 + Math.random() * 0.25,
+    0.55, sz, sz * 0.9, color, color, 1, 4.5, 0.4);
+}
+const SHELL_ON_FIRE = new Set(['ar', 'smg', 'minigun', 'scythe_rifle']);
+
+// smear trail: a fading ribbon behind the tip of whatever you swing
+const TRAIL_N = 26;
+const TRAIL_COLOR = { knife: 0xbfe8ff, bread: 0xffd9a0, spoon: 0xffffff, slapper: 0xffb0d0, scythe: 0xff3ad8, slipper: 0xb0ffb0, cards: 0xffffff };
+const trailPts = [];
+let trail = null;
+const tmpV2 = new THREE.Vector3(), tcol = new THREE.Color();
+function initTrail() {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(TRAIL_N * 6), 3).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(TRAIL_N * 6), 3).setUsage(THREE.DynamicDrawUsage));
+  const idx = [];
+  for (let i = 0; i < TRAIL_N - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+  geo.setIndex(idx);
+  trail = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+  trail.frustumCulled = false;
+  trail.renderOrder = 5;
+  G.vmScene.add(trail);
+}
+function updateTrail(now, m, active, color) {
+  if (!trail) return;
+  if (active && m) {
+    m.wrap.updateMatrixWorld(true);
+    const mz = m.g.userData.muzzle;
+    tmpV.copy(mz); m.g.localToWorld(tmpV);
+    tmpV2.copy(mz).multiplyScalar(0.45); m.g.localToWorld(tmpV2);
+    trailPts.unshift({ t: now, a: [tmpV.x, tmpV.y, tmpV.z], b: [tmpV2.x, tmpV2.y, tmpV2.z] });
+  }
+  while (trailPts.length > TRAIL_N || (trailPts.length && now - trailPts[trailPts.length - 1].t > 120)) trailPts.pop();
+  const n = trailPts.length;
+  trail.visible = n >= 3;
+  if (!trail.visible) return;
+  const pos = trail.geometry.attributes.position.array, col = trail.geometry.attributes.color.array;
+  tcol.setHex(color);
+  for (let i = 0; i < n; i++) {
+    const q = trailPts[i], k = Math.max(0, 1 - (now - q.t) / 120) * (1 - i / n) * 0.9;
+    pos.set(q.a, i * 6); pos.set(q.b, i * 6 + 3);
+    col[i * 6] = tcol.r * k; col[i * 6 + 1] = tcol.g * k; col[i * 6 + 2] = tcol.b * k;
+    col[i * 6 + 3] = tcol.r * k * 0.15; col[i * 6 + 4] = tcol.g * k * 0.15; col[i * 6 + 5] = tcol.b * k * 0.15;
+  }
+  trail.geometry.setDrawRange(0, (n - 1) * 6);
+  trail.geometry.attributes.position.needsUpdate = true;
+  trail.geometry.attributes.color.needsUpdate = true;
+}
+
+// cards you flick fly off the fan, spinning flat like a real thrown card
+const flying = [];
+const CARD_GEO = new THREE.PlaneGeometry(0.08, 0.12);
+function throwCards(m) {
+  const pl = W.playing;
+  if (!pl || !m) return;
+  const fan = m.g.userData.fan;
+  const src = fan && fan[Math.min(pl.sel, fan.length - 1)];
+  m.wrap.updateMatrixWorld(true);
+  if (src) src.getWorldPosition(tmpV); else m.g.getWorldPosition(tmpV);
+  const n = pl.n;
+  for (let i = 0; i < n; i++) {
+    const mesh = new THREE.Mesh(CARD_GEO, cardFace(pl.card));
+    mesh.material.side = THREE.DoubleSide;
+    mesh.position.copy(tmpV);
+    mesh.rotation.set(-1.25, 0, 0);
+    mesh.visible = false;
+    G.vmScene.add(mesh);
+    const spread = n > 1 ? (i / (n - 1) - 0.5) * (pl.ult ? 2.4 : 1.2) : 0;
+    flying.push({ mesh, delay: i * 0.035, life: 0.42, v: [spread * 1.2 - 0.2, 0.5 + Math.random() * 0.2, -3.6 - Math.random() * 1.2], spin: 28 + Math.random() * 10 });
+  }
+  W.hideCard = pl.card; W.hideUntil = performance.now() + 1200;
+}
+function updateFlying(dt) {
+  for (let i = flying.length - 1; i >= 0; i--) {
+    const f = flying[i];
+    if (f.delay > 0) { f.delay -= dt; continue; }
+    f.mesh.visible = true;
+    f.life -= dt;
+    if (f.life <= 0) { G.vmScene.remove(f.mesh); flying.splice(i, 1); continue; }
+    f.mesh.position.x += f.v[0] * dt; f.mesh.position.y += f.v[1] * dt; f.mesh.position.z += f.v[2] * dt;
+    f.v[1] -= 1.5 * dt;
+    f.mesh.rotateZ(f.spin * dt);
+  }
+}
 
 // ------------------------------------------------------------ card deck
 export function cycleCard() { const n = (G.hand || []).length; if (n) { W.cardSel = (W.cardSel + 1) % n; sfx.click(); } }
@@ -35,10 +200,30 @@ function playCard(now) {
   setCd('cards', now);
   const i = Math.min(W.cardSel, hand.length - 1);
   net.send({ t: 'fire', w: 'cards', i, o: eye().map(r2), d: look().map(r2) });
-  W.kick = 0.6;
-  sfx.swing();
+  const card = hand[i], suit = card[0], rank = Number(card.slice(1));
+  const ult = suit === 'j' || rank >= 11;
+  W.playing = { card, suit, rank, ult, sel: i, n: suit === 's' ? (ult ? 8 : Math.max(1, Math.min(6, rank))) : 1 };
+  cancelInspect();
+  playAnim(suit === 'h' || rank === 1 ? 'raise_card' : ult ? 'throw_card_ult' : 'throw_card', 'throw');
 }
 const isScythe = (id) => id === 'scythe' || id === 'scythe_rifle';
+
+// knife right click: CS-style heavy stab. returns false when this weapon has no heavy attack
+export function heavyAttack() {
+  const id = W.cur, w = WEAPONS[id], now = performance.now();
+  if (!w || !w.heavy || !ANIMS['stab_' + id]) return false;
+  const model = models[id] && models[id].g.userData.model;
+  const stab = model && ANIMS['stab_' + model] ? 'stab_' + model : 'stab_' + id;
+  if (!ME.alive || !ready(id, now) || now < (W.cd[id + 'H'] || 0)) return true;
+  cancelInspect();
+  W.cd[id] = now + w.heavy.cd * 1000; // no slashing in the middle of a stab
+  W.cd[id + 'H'] = now + w.heavy.cd * 1000;
+  W.swingId = id; W.swing = 1; W.heavy = true;
+  net.send({ t: 'fire', w: id, o: eye().map(r2), d: look().map(r2), heavy: 1 });
+  playAnim(stab, 'swing');
+  W.pendingSwing = ANIMS[stab].hit;
+  return true;
+}
 
 function playAnim(name, kind) { if (ANIMS[name]) W.anim = { name, kind, t: 0 }; }
 function cancelInspect() { if (W.anim && W.anim.kind === 'inspect') W.anim = null; }
@@ -95,15 +280,18 @@ export function rebuildViewmodels() {
     const cfg = VM[id];
     g.scale.setScalar(cfg.s);
     wrap.add(g);
-    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.08, 0.12), M(0xf1c27d));
-    hand.position.set(0.005, -0.05, 0.04);
+    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.062, 0.09), M(0xf1c27d)); // a fist, not a brick
+    hand.position.set(0.004, -0.042, 0.03);
     wrap.add(hand);
     wrap.position.set(...cfg.p);
     wrap.rotation.set(...cfg.r);
     wrap.visible = id === W.cur;
     vmRoot.add(wrap);
-    models[id] = { wrap, g, cfg };
+    let flash = null;
+    if (FLASH_IDS.has(id) && g.userData.muzzle) { flash = makeFlash(id === 'shotgun' || id === 'sniper'); flash.position.copy(g.userData.muzzle); g.add(flash); }
+    models[id] = { wrap, g, cfg, flash };
   }
+  if (!trail) initTrail();
 }
 
 // ------------------------------------------------------------ killstreak scythe (4th slot)
@@ -164,7 +352,10 @@ function equip(i) {
   W.swing = 0; W.pendingSwing = 0;
   W.cur = id;
   W.slot = i;
-  W.swap = 1;
+  W.swap = 0.2;
+  W.heavy = false; W.cycle = null; W.hitStop = 0;
+  trailPts.length = 0;
+  playAnim(drawFor(id, models[id] && models[id].g.userData.model), 'draw');
   for (const k of ORDER) if (models[k]) models[k].wrap.visible = k === id;
   hud.weapon(id, i);
   sfx.click();
@@ -300,6 +491,12 @@ function fireHitscan(id, now) {
   ME.yaw += (Math.random() - 0.5) * (w.kick || 0) * 0.5;
   W.bloom = Math.min(w.maxBloom || 0, W.bloom + (w.bloom || 0));
   W.kick = Math.min(1, W.kick + (fast ? 0.25 : 1));
+  if (W.anim && W.anim.kind === 'draw') W.anim = null;
+  kickVM(id, W.aim > 0.5 ? 0.6 : 1);
+  W.flashT = fast ? 0.035 : 0.05;
+  if (SHELL_ON_FIRE.has(id) && models[id]) ejectShell(models[id].g);
+  if (id === 'shotgun') W.cycle = { name: 'pump_shotgun', t: 0.22 };
+  if (id === 'sniper' || id === 'scythe_rifle') W.cycle = { name: 'bolt_sniper', t: 0.32 };
   if (id === 'sniper' || id === 'shotgun') G.shake = Math.max(G.shake, 0.6);
   sfx.gun(id);
   if (w.mag && W.ammo[id] <= 0) reload();
@@ -321,6 +518,11 @@ function fireProj(id, now, fromAnim) {
   else if (id === 'slipper') { /* the throw animation already whooshed */ }
   else sfx.pew();
   W.kick = id === 'chicken' || id === 'bowling' ? 0.8 : 0.35;
+  if (id !== 'slipper') {
+    if (W.anim && W.anim.kind === 'draw') W.anim = null;
+    kickVM(id);
+    if (FLASH_IDS.has(id)) W.flashT = 0.05;
+  }
 }
 
 function swing(id, now) {
@@ -339,21 +541,34 @@ function swing(id, now) {
     return;
   }
   // chain swings: click again quickly and you get the backhand / second stab
+  W.heavy = false;
   W.combo = now - W.lastSwingT < 750 ? W.combo + 1 : 0;
   W.lastSwingT = now;
-  const name = `swing_${id}${W.combo % 2 ? '2' : ''}`;
+  const suffix = W.combo % 2 ? '2' : '';
+  const model = models[id] && models[id].g.userData.model;
+  const name = model && ANIMS[`swing_${model}${suffix}`] ? `swing_${model}${suffix}` : `swing_${id}${suffix}`;
   if (ANIMS[name]) { playAnim(name, 'swing'); W.pendingSwing = ANIMS[name].hit; }
   else { sfx.swing(); W.pendingSwing = w.delay || 0.05; }
 }
 
 function resolveSwing(id) {
   const w = WEAPONS[id];
+  const hv = W.heavy && w.heavy ? w.heavy : null;
+  W.heavy = false;
   const o = eye(), d = look();
-  const targets = conePlayers(o, d, w.range, w.cone);
+  const targets = conePlayers(o, d, hv ? hv.range : w.range, hv ? hv.cone : w.cone);
   if (targets.length) {
-    for (const tg of targets) net.send({ t: 'hit', to: tg.r.id, w: id, d: d.map(r2) });
+    for (const tg of targets) {
+      net.send({ t: 'hit', to: tg.r.id, w: id, d: d.map(r2), heavy: hv ? 1 : undefined });
+      const p = tg.r.pos;
+      fx.blast([p[0], p[1] + 1.4, p[2]], hv ? 1.1 : 0.6, 0xffffff, 0xffe14d); // impact flash
+    }
     if (id === 'spoon') sfx.ting(); else if (id !== 'popper') sfx.bonk();
-    G.shake = Math.max(G.shake, 0.35);
+    if (hv) sfx.crunch();
+    // hit stop: the swing freezes for a few frames on contact so it feels like it connected
+    W.hitStop = hv ? 0.11 : 0.06;
+    punchCam(hv ? -0.05 : -0.025, 0.015 * rnd(), 0.03 * rnd());
+    G.shake = Math.max(G.shake, hv ? 0.6 : 0.35);
     return;
   }
   if (w.pogo) {
@@ -390,6 +605,7 @@ export function fireDown() {
   cancelInspect();
   const id = W.cur, w = WEAPONS[id], now = performance.now();
   if (!ME.alive || W.reloadId === id || !ready(id, now)) return;
+  if (W.anim && W.anim.kind === 'draw') W.anim = null;
   if (w.kind === 'hitscan' && !w.auto && !w.spinup) {
     if (W.ammo[id] > 0) fireHitscan(id, now); else { sfx.empty(); reload(); }
   } else if (w.kind === 'melee') swing(id, now);
@@ -406,7 +622,7 @@ export function fireUp() {
     if (W.draw >= 0.15 && ME.alive && ready('bow', now)) {
       setCd('bow', now);
       net.send({ t: 'fire', w: 'bow', o: eye().map(r2), d: look().map(r2), c: Math.round(W.draw * 100) / 100 });
-      sfx.bowShot(); W.kick = 0.5;
+      sfx.bowShot(); W.kick = 0.5; kickVM('bow', 0.5 + W.draw);
     }
     W.draw = 0;
   }
@@ -428,6 +644,21 @@ function animEvent(ev, g) {
   const R = (k) => (Math.random() - 0.5) * k;
   switch (ev) {
     case 'whoosh': sfx.swing(); break;
+    case 'whooshBig': sfx.swing(); sfx.blow(); break;
+    case 'shing': sfx.ting(); break;
+    case 'clunk': sfx.thunk(); break;
+    case 'riffle': for (let i = 0; i < 4; i++) setTimeout(() => sfx.click(), i * 35); break;
+    case 'shell': ejectShell(g); break;
+    case 'shellRed': ejectShell(g, 0xc02020, true); break;
+    case 'flick': throwCards(models.cards); sfx.swing(); punchCam(-0.006); break;
+    case 'ultcharge': sfx.reverse(); for (let i = 0; i < 16; i++) sys.add.spawn(evPos.x + R(0.12), evPos.y + R(0.1), evPos.z + R(0.06), R(0.4), 0.2 + Math.random() * 0.4, R(0.3), 0.5, 0.025, 0, 0xffe14d, 0xff4fd8, 1, -0.5); break;
+    case 'burst': {
+      const pl = W.playing || {};
+      const c = pl.suit === 'h' ? 0xff4f7a : pl.rank === 1 ? 0xff00dc : 0xffffff;
+      for (let i = 0; i < 26; i++) sys.add.spawn(evPos.x + R(0.04), evPos.y + 0.04 + R(0.04), evPos.z + R(0.04), R(1.2), R(1.2) + 0.2, R(1.2), 0.45, 0.03, 0.005, c, 0xffffff, 1, 1);
+      W.hideCard = pl.card; W.hideUntil = performance.now() + 1200;
+      sfx.pop(); break;
+    }
     case 'thwack': sfx.thwack(); break;
     case 'crunch': sfx.crunch(); break;
     case 'crumbs': for (let i = 0; i < 14; i++) sys.norm.spawn(evPos.x + R(0.08), evPos.y + R(0.05), evPos.z + R(0.08), R(0.6), 0.2 + Math.random() * 0.5, R(0.6), 0.7, 0.025, 0.02, 0xd9a35b, 0x8a5a2b, 1, 2.5); break;
@@ -522,8 +753,12 @@ export function updateWeapons(dt, now) {
     const hand = G.hand || [];
     if (W.cardSel >= hand.length) W.cardSel = Math.max(0, hand.length - 1);
     const fan = models.cards && models.cards.g.userData.fan;
+    const key = hand.join(',');
+    if (key !== W.handKey || now > W.hideUntil) { if (key !== W.handKey) W.handKey = key; if (now > W.hideUntil || W.hideCard) W.hideCard = W.hideCard && now <= W.hideUntil && key === W.handKey ? W.hideCard : null; }
+    let hidOne = false;
     if (fan) fan.forEach((c, i) => {
       c.visible = i < hand.length;
+      if (W.hideCard && !hidOne && hand[i] === W.hideCard && i === Math.min(W.playing ? W.playing.sel : -1, hand.length - 1)) { c.visible = false; hidOne = true; }
       if (i < hand.length) c.material = cardFace(hand[i]);
       const a = (i - (hand.length - 1) / 2) * 0.22;
       const up = i === W.cardSel ? 0.035 : 0;
@@ -532,7 +767,9 @@ export function updateWeapons(dt, now) {
     });
     hud.cards(hand, W.cardSel);
   } else hud.cards(null);
-  if (W.pendingSwing > 0) { W.pendingSwing -= dt; if (W.pendingSwing <= 0 && alive) resolveSwing(W.swingId); }
+  if (W.pendingSwing > 0 && W.hitStop <= 0) { W.pendingSwing -= dt; if (W.pendingSwing <= 0 && alive) resolveSwing(W.swingId); }
+  if (W.cycle) { W.cycle.t -= dt; if (W.cycle.t <= 0) { if (W.cycle.name && id === (W.cycle.name === 'pump_shotgun' ? 'shotgun' : id)) playAnim(W.cycle.name, 'cycle'); W.cycle = null; } }
+  updateFlying(dt);
   if (W.pendingThrow > 0) { W.pendingThrow -= dt; if (W.pendingThrow <= 0 && alive && id === 'slipper') fireProj('slipper', now, true); }
   if (W.aimHeld) cancelInspect();
   // glitch dash: hold V with the scythe out. you turn into pixels and rush where you look, hitting everyone you pass
@@ -586,8 +823,30 @@ export function updateWeapons(dt, now) {
   W.kick = Math.max(0, W.kick - dt * 6);
   W.swap = Math.max(0, W.swap - dt * 5);
   W.swing = Math.max(0, W.swing - dt * 3.5);
-  let px = cfg.p[0] + Math.sin(W.bob) * bobA, py = cfg.p[1] + Math.abs(Math.cos(W.bob)) * bobA - W.swap * 0.3, pz = cfg.p[2] + W.kick * 0.08;
-  let rx = cfg.r[0] + W.kick * 0.25, ry = cfg.r[1], rz = cfg.r[2];
+  stepSprings(dt);
+  // landing thump + jump lift
+  if (ME.onGround && !W.wasGround) { const imp = Math.min(1.3, Math.abs(W.lastVy) / 14); rec.pv[1] -= imp * 0.9; rec.rv[0] -= imp * 2.2; punchCam(-imp * 0.012); }
+  if (!ME.onGround && W.wasGround && ME.vel[1] > 2) rec.pv[1] += 0.35;
+  W.wasGround = ME.onGround; W.lastVy = ME.vel[1];
+  // the gun lags behind where you look, then catches up (weight)
+  let dyaw = ME.yaw - W.lastYaw; while (dyaw > Math.PI) dyaw -= Math.PI * 2; while (dyaw < -Math.PI) dyaw += Math.PI * 2;
+  const dp = ME.pitch - W.lastPitch;
+  W.lastYaw = ME.yaw; W.lastPitch = ME.pitch;
+  const cl = (v) => Math.max(-0.07, Math.min(0.07, v));
+  const lagK = G.spinning || dt <= 0 ? 0 : 1;
+  W.swayX += (cl(dyaw * 0.6) * lagK - W.swayX) * Math.min(1, dt * 9);
+  W.swayY += (cl(dp * 0.6) * lagK - W.swayY) * Math.min(1, dt * 9);
+  // run pose: tilt the gun when sprinting on the ground
+  const running = ME.sprinting && ME.onGround && hs > 4 && W.aim < 0.1 && !W.anim;
+  W.runK += ((running ? 1 : 0) - W.runK) * Math.min(1, dt * 8);
+  const breathe = now * 0.001;
+  const ra = 1 - W.aim * 0.65;
+  let px = cfg.p[0] + Math.sin(W.bob) * bobA + W.swayX * 0.2 + Math.sin(breathe * 1.3) * 0.0025 + rec.p[0] * ra,
+    py = cfg.p[1] + Math.abs(Math.cos(W.bob)) * bobA - W.swap * 0.3 - W.swayY * 0.12 + Math.sin(breathe * 2.1) * 0.0018 - W.runK * 0.03 + rec.p[1],
+    pz = cfg.p[2] + W.kick * 0.04 + rec.p[2] * ra;
+  let rx = cfg.r[0] + W.kick * 0.12 + rec.r[0] * ra - W.swayY * 0.8 - W.runK * 0.25,
+    ry = cfg.r[1] + W.swayX * 1.3 + W.runK * 0.35,
+    rz = cfg.r[2] + rec.r[2] * ra + Math.sin(breathe * 1.1) * 0.008 + W.swayX * 0.6 + W.runK * 0.2 + (ME.sliding ? 0.3 : 0);
   if (w.ads && W.aim > 0) {
     const a = W.aim * W.aim * (3 - 2 * W.aim);
     px += (w.ads.p[0] - px) * a; py += (w.ads.p[1] - py) * a; pz += (w.ads.p[2] - pz) * a;
@@ -606,13 +865,27 @@ export function updateWeapons(dt, now) {
   }
   // keyframed animation on top of everything (swings, throws, inspects)
   let scale = 1;
+  const adt = W.hitStop > 0 ? 0 : dt; // hit stop freezes the swing for a moment
+  W.hitStop = Math.max(0, W.hitStop - dt);
+  let trailOn = false;
   if (W.anim) {
     const t0 = W.anim.t;
-    W.anim.t += dt;
+    W.anim.t += adt;
     for (const ev of eventsBetween(W.anim.name, t0, W.anim.t)) animEvent(ev, m.g);
     const a = sample(W.anim.name, W.anim.t);
+    const tw = ANIMS[W.anim.name] && ANIMS[W.anim.name].trail;
+    if (tw && W.anim.t >= tw[0] && W.anim.t <= tw[1]) trailOn = true;
     if (!a) W.anim = null;
     else { px += a.p[0]; py += a.p[1]; pz += a.p[2]; rx += a.r[0]; ry += a.r[1]; rz += a.r[2]; scale = a.s; }
+  }
+  // moving parts: balisong handles, switchblade blade, karambit spinning round the ring
+  const ud = m.g.userData, an = W.anim && W.anim.name, at = W.anim ? W.anim.t : 0;
+  if (ud.handles) { const h = an && sampleCh(an, 'handles', at); ud.handles[0].rotation.x = h ? h[0] : 0; ud.handles[1].rotation.x = h ? h[1] : 0; }
+  if (ud.flipBlade) { const b = an && sampleCh(an, 'blade', at); ud.flipBlade.rotation.x = b ? b[0] : 0; }
+  if (ud.pivot) {
+    const sp = an && sampleCh(an, 'spin', at), a = sp ? sp[0] : 0, pz = ud.pivot.z * cfg.s;
+    m.g.rotation.x = a;
+    m.g.position.set(0, Math.sin(a) * pz, pz - Math.cos(a) * pz);
   }
   if (W.inspectSpin > 0) { W.inspectSpin = Math.max(0, W.inspectSpin - dt * 0.8); if (m.g.userData.barrels) m.g.userData.barrels.rotation.z += W.inspectSpin * dt * 30; }
   m.wrap.scale.setScalar(scale);
@@ -622,5 +895,10 @@ export function updateWeapons(dt, now) {
   m.wrap.visible = !(id === 'slipper' && W.slipperOut) && !W.scoped && !ME.dashing;
   m.wrap.position.set(px, py, pz);
   m.wrap.rotation.set(rx, ry, rz);
+  // muzzle flash
+  W.flashT = Math.max(0, W.flashT - dt);
+  for (const k of ORDER) { const mm = models[k]; if (mm && mm.flash) mm.flash.visible = k === id && W.flashT > 0 && m.wrap.visible; }
+  if (m.flash && m.flash.visible) { m.flash.userData.face.rotation.z = Math.random() * 6.28; m.flash.scale.setScalar(0.8 + Math.random() * 0.6); }
+  updateTrail(now, m, trailOn && m.wrap.visible, TRAIL_COLOR[id] || 0xffffff);
   if (m.wrap.visible && G.skinFxVM) { m.wrap.updateMatrixWorld(true); emitSkinFx(G.skinFxVM, m.g, dt, 0.3 * cfg.s); }
 }

@@ -119,8 +119,10 @@ export const WEAPONS = {
   },
   knife: {
     slot: 'melee', kind: 'melee', name: 'Knife', color: '#c8d0dc',
-    desc: 'Fast stabs. Get them from behind for a backstab (triple damage). Comes in a lot of skins.',
+    desc: 'Left click: fast slashes. Right click: heavy stab (from behind = dead). Comes in a lot of skins.',
     cd: 0.42, range: 2.6, cone: 0.75, dmg: 55, kb: 9, kbUp: 3, delay: 0.08, backstab: 3, speedMul: 1.1,
+    // right click: CS-style heavy stab. slower, shorter reach, hits harder; from behind it's a kill
+    heavy: { dmg: 90, cd: 0.95, range: 2.2, cone: 0.6, kb: 16, kbUp: 4 },
   },
   slapper: {
     slot: 'melee', kind: 'melee', name: 'Hand Slapper', color: '#ff7ab8',

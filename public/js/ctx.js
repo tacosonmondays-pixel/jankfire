@@ -12,6 +12,6 @@ export const G = {
   renderer: null, scene: null, camera: null, vmScene: null, vmCamera: null,
   settings: {
     name: '', jank: 1, sens: 1.2, adsSens: 1, vol: 0.5, fov: 95, swapAim: false, toggleAim: false,
-    blood: true, shake: true, fovKick: true, showFps: false, skins: {}, killcam: true, showCards: true, card: '', kfx: 'none',
+    blood: true, shake: true, fovKick: true, showFps: false, skins: {}, killcam: true, showCards: true, speedLines: true, card: '', kfx: 'none',
   },
 };

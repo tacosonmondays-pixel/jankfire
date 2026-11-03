@@ -452,22 +452,28 @@ const MODEL_BUILD = {
   knife_switch(g) {
     g.add(bx(0.03, 0.04, 0.13, 0x111111, 0, 0, 0.02));
     g.add(bx(0.032, 0.012, 0.13, 0xc8a050, 0, 0.022, 0.02));
-    const blade = bx(0.01, 0.035, 0.15, 0xe0e4ea, 0, 0.01, -0.12); g.add(blade);
-    g.userData.blade = blade;
+    // the blade pivots on a pin at the front of the handle so it can flick out
+    const pin = new THREE.Group(); pin.position.set(0, 0.01, -0.045); g.add(pin);
+    pin.add(bx(0.01, 0.035, 0.15, 0xe0e4ea, 0, 0, -0.075));
+    g.userData.flipBlade = pin;
     g.userData.muzzle = new THREE.Vector3(0, 0.01, -0.2); g.userData.len = 0.3;
   },
   knife_karambit(g) {
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.008, 4, 8), M(0x222222)); ring.rotation.y = Math.PI / 2; ring.position.set(0, 0, 0.09); g.add(ring);
+    g.userData.pivot = new THREE.Vector3(0, 0, 0.09); // your finger goes through the ring: it spins round this
     g.add(bx(0.03, 0.04, 0.11, 0x2a2a2a, 0, 0, 0.01));
     for (let i = 0; i < 5; i++) { const s2 = bx(0.01, 0.03, 0.045, 0xd8dde4, 0, -0.01 - i * i * 0.006, -0.06 - i * 0.04); s2.rotation.x = 0.15 + i * 0.22; g.add(s2); }
     g.userData.muzzle = new THREE.Vector3(0, -0.1, -0.25); g.userData.len = 0.33;
   },
   knife_butterfly(g) {
-    const h1 = bx(0.014, 0.03, 0.13, 0x8a8f99, 0.012, 0, 0.02), h2 = bx(0.014, 0.03, 0.13, 0x8a8f99, -0.012, 0, 0.02);
-    g.add(h1, h2);
-    for (let i = 0; i < 4; i++) g.add(bx(0.04, 0.004, 0.01, 0x333333, 0, 0.016, -0.02 + i * 0.03));
+    // each handle hangs off a hinge pin at the base of the blade, so it can swing round the blade like a real balisong
+    const hinge = (x) => { const p = new THREE.Group(); p.position.set(x, 0, -0.045); g.add(p); return p; };
+    const p1 = hinge(0.012), p2 = hinge(-0.012);
+    p1.add(bx(0.014, 0.03, 0.13, 0x8a8f99, 0, 0, 0.065));
+    p2.add(bx(0.014, 0.03, 0.13, 0x8a8f99, 0, 0, 0.065));
+    for (let i = 0; i < 4; i++) p1.add(bx(0.018, 0.004, 0.01, 0x333333, 0.004, 0.016, 0.025 + i * 0.03)); // holes in the safe handle
     g.add(bx(0.008, 0.035, 0.15, 0xe8ecf0, 0, 0.005, -0.12));
-    g.userData.handles = [h1, h2];
+    g.userData.handles = [p1, p2];
     g.userData.muzzle = new THREE.Vector3(0, 0.005, -0.2); g.userData.len = 0.33;
   },
   slapper_foam(g) {

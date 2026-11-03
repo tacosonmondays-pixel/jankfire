@@ -13,12 +13,13 @@ import { initAudio, sfx, setVolume, setListener, stopLoops } from './audio.js';
 import { ME, stepPlayer, tryHook, releaseHook, applyKb, slip, eye, hookPoint, hspeed, crouchTap } from './player.js';
 import {
   W, initWeapons, rebuildViewmodels, rebuildOne, setLoadout, refillAmmo, switchSlot, lastSlot, cycleSlot, reload,
-  fireDown, fireUp, updateWeapons, muzzleWorld, onSlipperBack, inspect, grantScythe, loseScythe, toggleScythe, cycleCard,
+  fireDown, fireUp, updateWeapons, muzzleWorld, onSlipperBack, inspect, grantScythe, loseScythe, toggleScythe, cycleCard, heavyAttack,
 } from './weapons.js';
 import { Remote, updateGibs } from './remote.js';
 import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN } from './skins.js';
 import { initPreview, showPreview, showCharacter, renderPreview, resizePreview } from './preview.js';
 import { playKillFx, updateKillFx, clearKillFx } from './killfx.js';
+import { updateSpeedLines } from './speedlines.js';
 import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
 import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook } from '/shared/looks.js';
@@ -39,7 +40,7 @@ try {
 G.settings.loadout = validLoadout(G.settings.loadout);
 if (!G.settings.skins || typeof G.settings.skins !== 'object') G.settings.skins = {};
 if (!G.settings.look || typeof G.settings.look !== 'object') G.settings.look = { ...DEFAULT_LOOK };
-const SYNC_KEYS = ['jank', 'sens', 'adsSens', 'vol', 'fov', 'swapAim', 'toggleAim', 'blood', 'shake', 'fovKick', 'showFps', 'killcam', 'showCards'];
+const SYNC_KEYS = ['jank', 'sens', 'adsSens', 'vol', 'fov', 'swapAim', 'toggleAim', 'blood', 'shake', 'fovKick', 'showFps', 'killcam', 'showCards', 'speedLines'];
 function profileData() {
   const settings = {};
   for (const k of SYNC_KEYS) settings[k] = G.settings[k];
@@ -270,6 +271,7 @@ bindCheck('toggleAim', 'toggleAim');
 bindCheck('blood', 'blood');
 bindCheck('killcam', 'killcam', () => { if (G.joined) net.send({ t: 'kc', on: S.killcam }); });
 bindCheck('showCards', 'showCards');
+bindCheck('speedLines', 'speedLines');
 
 // ------------------------------------------------------------ loadout screen
 function buildLoadoutUI() {
@@ -521,6 +523,7 @@ $('chatin').addEventListener('keydown', (e) => {
 
 function aimDown() {
   if (W.cur === 'cards') { cycleCard(); return; }
+  if (heavyAttack()) return; // knife: right click is the heavy stab
   if (S.toggleAim) W.aimHeld = !W.aimHeld; else W.aimHeld = true;
 }
 function aimUp() { if (!S.toggleAim) W.aimHeld = false; }
@@ -904,6 +907,7 @@ net.on('fx', (m) => {
     if (r) r.burnUntil = performance.now() + 600;
     if (m.id === G.myId) G.burnUntil = performance.now() + 600;
   } else if (m.k === 'card') {
+    if (r) r.swingT = performance.now();
     const who = m.id === G.myId ? 'you' : nameOf(m.id)[0];
     if (m.joker) { sfx.laugh(r ? r.pos : null); hud.chat(null, null, `${who} played a joker`); }
     if (m.suit === 'h' && r) sfx.heal(r.pos);
@@ -1020,7 +1024,12 @@ function frame(t) {
     } else {
       stepProjectile(pr, dt, BOXES, WEAPONS[pr.k].grav);
       pr.mesh.position.set(pr.p[0], pr.p[1], pr.p[2]);
-      if (pr.k === 'chicken') {
+      if (pr.k === 'bow') { // point first along the flight path, no tumbling
+        pr.mesh.lookAt(pr.p[0] - pr.v[0], pr.p[1] - pr.v[1], pr.p[2] - pr.v[2]);
+      } else if (pr.k === 'card') { // flat and spinning like a thrown playing card
+        pr.spin += dt * 30;
+        pr.mesh.rotation.set(0, pr.spin, 0); // the model is already lying flat
+      } else if (pr.k === 'chicken') {
         pr.mesh.lookAt(pr.p[0] - pr.v[0], pr.p[1] - pr.v[1], pr.p[2] - pr.v[2]);
         pr.mesh.rotateZ(now * 0.02);
         if (Math.random() < dt * 8) fx.feathers(pr.p, 1);
@@ -1037,6 +1046,11 @@ function frame(t) {
       }
     }
     pr.mesh.visible = !RP.active;
+    // speed streaks behind fast stuff
+    if ((pr.k === 'bow' || pr.k === 'card') && !RP.active && S.speedLines !== false) {
+      if (pr.lastP && Math.hypot(pr.p[0] - pr.lastP[0], pr.p[1] - pr.lastP[1], pr.p[2] - pr.lastP[2]) > 0.25) fx.tracer(pr.lastP, pr.p.slice(), pr.k === 'bow' ? tipColor(pr.tip) : 0xffffff, 0.02, 0.1);
+      pr.lastP = pr.p.slice();
+    }
     pr.mesh.updateMatrixWorld(true);
     if (!RP.active) emitSkinFx(G.skinFxWorld, pr.mesh, dt, 1);
   }
@@ -1074,13 +1088,15 @@ function frame(t) {
 
   G.shake = S.shake ? Math.max(0, G.shake - dt * 2.2) : 0;
   const sh = G.shake * G.shake * 0.08;
-  cam.rotation.set(Math.max(-1.57, Math.min(1.57, ME.pitch + pOff)) + (Math.random() - 0.5) * sh, ME.yaw + (Math.random() - 0.5) * sh, roll);
+  const pu = G.punch || { x: 0, y: 0, z: 0 };
+  cam.rotation.set(Math.max(-1.57, Math.min(1.57, ME.pitch + pOff + pu.x)) + (Math.random() - 0.5) * sh, ME.yaw + pu.y + (Math.random() - 0.5) * sh, roll + pu.z);
   const hs = hspeed();
   const fovTarget = (S.fov + (S.fovKick ? Math.min(35, hs * 0.3) + (ME.sprinting ? 6 : 0) : 0)) / (W.zoom || 1);
   fovNow += (fovTarget - fovNow) * Math.min(1, dt * (W.aim > 0 ? 14 : 6));
   if (Math.abs(cam.fov - fovNow) > 0.05) { cam.fov = fovNow; cam.updateProjectionMatrix(); }
   if (RP.active) updateReplay(dt, now, cam); // killcam / play of the round owns the camera
   cam.updateMatrixWorld();
+  updateSpeedLines(dt, G.joined && ME.alive && !RP.active ? Math.hypot(ME.vel[0], ME.vel[1], ME.vel[2]) : 0, ME.vel, cam, ME.dashing ? 0.9 : 0, S.speedLines !== false);
   const rh = G.renderer.domElement.height;
   fx.setScale(rh / (2 * Math.tan((cam.fov * Math.PI) / 360)));
   vmScaleU.value = rh / (2 * Math.tan((G.vmCamera.fov * Math.PI) / 360));
@@ -1320,7 +1336,7 @@ $('logoutBtn').addEventListener('click', doLogout);
 function applySettingsToUI() {
   $('jank').value = String(S.jank); setJank(S.jank);
   for (const id of ['fov', 'vol', 'sens', 'adsSens']) { $(id).value = String(S[id]); $(id).dispatchEvent(new Event('input')); }
-  for (const id of ['fovKick', 'shake', 'showFps', 'swapAim', 'toggleAim', 'blood', 'killcam', 'showCards']) $(id).checked = !!S[id];
+  for (const id of ['fovKick', 'shake', 'showFps', 'swapAim', 'toggleAim', 'blood', 'killcam', 'showCards', 'speedLines']) $(id).checked = !!S[id];
   setVolume(S.vol);
 }
 
