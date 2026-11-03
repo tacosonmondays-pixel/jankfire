@@ -48,6 +48,8 @@ export const COSMETICS = {
     spoon_ladle: { name: 'Ladle', rarity: 'common', weapon: 'spoon' },
     slipper_croc: { name: 'Croc', rarity: 'epic', weapon: 'slipper' },
     scythe_reaper: { name: 'Reaper', rarity: 'legendary', weapon: 'scythe' },
+    katana_bokken: { name: 'Bokken', rarity: 'common', weapon: 'katana' },
+    katana_shirasaya: { name: 'Shirasaya', rarity: 'rare', weapon: 'katana' },
   },
   hat: {
     none: { name: 'None', rarity: 'free' }, party: { name: 'Party Hat', rarity: 'free' }, cone: { name: 'Traffic Cone', rarity: 'free' },

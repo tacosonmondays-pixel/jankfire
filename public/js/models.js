@@ -5,6 +5,7 @@ import { jankify } from './jank.js';
 import { applySkin } from './skins.js';
 import { COSMETICS } from '/shared/cosmetics.js';
 import { SUITS, RANKS, ARROW_TIPS } from '/shared/weapons.js';
+import { BLADES } from './blades/index.js';
 
 // ------------------------------------------------------------ playing card faces (canvas, cached)
 const cardFaces = new Map();
@@ -321,26 +322,6 @@ const WB = {
     g.userData.muzzle = new THREE.Vector3(0, 0, -0.15);
     g.userData.len = 0.3;
   },
-  katana(g) { // wrapped handle, round guard, a long thin blade (in its own group so it can grow)
-    g.add(cylZ(0.022, 0.24, 0x1a1a1a, 0, 0, 0.06, 6));
-    for (let i = 0; i < 5; i++) g.add(bx(0.05, 0.012, 0.012, 0xc02030, 0, 0, 0.16 - i * 0.045));
-    g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.015, 10), M(0xb08a3a)).rotateX(Math.PI / 2).translateY(0.0).translateZ(0));
-    const blade = new THREE.Group(); blade.position.z = -0.07;
-    blade.add(bx(0.012, 0.04, 0.72, 0xe8ecf2, 0, 0.005, -0.36));
-    blade.add(bx(0.014, 0.008, 0.72, 0xffffff, 0, 0.026, -0.36, true)); // the edge catches the light
-    const tip = bx(0.012, 0.03, 0.06, 0xe8ecf2, 0, 0.012, -0.74); tip.rotation.x = 0.3; blade.add(tip);
-    g.add(blade);
-    g.userData.katBlade = blade; g.userData.katLen = 0.72;
-    g.userData.muzzle = new THREE.Vector3(0, 0.01, -0.82); g.userData.len = 0.95;
-  },
-  knife(g) { // standard combat knife
-    g.add(bx(0.035, 0.05, 0.13, 0x2a2a2a, 0, 0, 0.02));
-    g.add(bx(0.07, 0.015, 0.02, 0x555555, 0, 0.01, -0.05));
-    const blade = bx(0.012, 0.045, 0.2, 0xd8dde4, 0, 0.012, -0.16); g.add(blade);
-    g.add(bx(0.012, 0.02, 0.05, 0xd8dde4, 0, 0.03, -0.27));
-    g.userData.muzzle = new THREE.Vector3(0, 0.01, -0.3);
-    g.userData.len = 0.35;
-  },
   slapper(g) { // toy hand on a stick
     g.add(cylZ(0.015, 0.6, 0xffe14d, 0, 0, -0.2, 6));
     const hand = new THREE.Group(); hand.position.set(0, 0, -0.55);
@@ -440,10 +421,8 @@ const HAT_AT = {
   sniper: [[0, 0.16, -0.05], 0.13], chicken: [[0, 0.075, -0.5], 0.09], bowling: [[0, 0.17, -0.1], 0.15], banana: [[0, 0.185, 0.02], 0.1],
   revolver: [[0, 0.065, -0.02], 0.08], cig: [[0, 0.0125, 0.055], 0.04], blower: [[0, 0.22, 0.05], 0.14], popper: [[0, 0.07, 0.02], 0.07],
   reverse: [[0, 0.09, 0.02], 0.07], duck: [[0, 0.152, -0.072], 0.06], bread: [[0, 0.11, -0.3], 0.16], slipper: [[0, 0.068, -0.08], 0.07],
-  spoon: [[0, 0.017, -0.13], 0.04], knife: [[0, 0.025, 0.04], 0.05], slapper: [[0, 0.0125, -0.55], 0.09], scythe: [[0, 0.47, -0.8], 0.14],
+  spoon: [[0, 0.017, -0.13], 0.04], slapper: [[0, 0.0125, -0.55], 0.09], scythe: [[0, 0.47, -0.8], 0.14],
   scythe_rifle: [[0, 0.13, -0.05], 0.12], bow: [[0, 0.08, 0.0], 0.08], cards: [[0, 0.07, -0.004], 0.07],
-  knife_kitchen: [[0, 0.0225, 0.04], 0.05], knife_bowie: [[0, 0.025, 0.04], 0.05], knife_cleaver: [[0, 0.1, -0.12], 0.07],
-  knife_switch: [[0, 0.02, 0.03], 0.05], knife_karambit: [[0, 0.02, 0.01], 0.05], knife_butterfly: [[0, 0.016, 0.02], 0.05],
   slapper_foam: [[0, 0.03, -0.5], 0.1], slapper_paw: [[0, 0.06, -0.5], 0.1], bread_croissant: [[0, 0.15, -0.6], 0.15],
   p_chicken: [[0, 0.31, -0.28], 0.15], p_bowling: [[0, 0.45, 0], 0.3], p_duck: [[0, 0.418, -0.2], 0.2], p_slipper: [[0, 0.11, -0.13], 0.1], p_banana: [[0, 0.24, 0], 0.12],
 };
@@ -613,50 +592,6 @@ const SKIN_BUILD = {
 
 const MODEL_BUILD = {
   ...SKIN_BUILD,
-  knife_kitchen(g) {
-    g.add(bx(0.03, 0.045, 0.12, 0x2a1a10, 0, 0, 0.02));
-    g.add(bx(0.008, 0.06, 0.24, 0xe8ecef, 0, 0.012, -0.16));
-    g.userData.muzzle = new THREE.Vector3(0, 0.01, -0.29); g.userData.len = 0.36;
-  },
-  knife_bowie(g) {
-    g.add(bx(0.04, 0.05, 0.13, 0x6b3a1a, 0, 0, 0.03));
-    g.add(bx(0.09, 0.02, 0.025, 0xc8a050, 0, 0.01, -0.05));
-    g.add(bx(0.014, 0.06, 0.27, 0xd0d6dc, 0, 0.015, -0.19));
-    const tipB = bx(0.014, 0.03, 0.06, 0xd0d6dc, 0, 0.035, -0.34); tipB.rotation.x = 0.5; g.add(tipB);
-    g.userData.muzzle = new THREE.Vector3(0, 0.02, -0.36); g.userData.len = 0.45;
-  },
-  knife_cleaver(g) {
-    g.add(cylZ(0.02, 0.12, 0x2a1a10, 0, 0, 0.03, 6));
-    g.add(bx(0.01, 0.12, 0.2, 0xc8ccd0, 0, 0.04, -0.12));
-    g.userData.muzzle = new THREE.Vector3(0, 0.05, -0.22); g.userData.len = 0.33;
-  },
-  knife_switch(g) {
-    g.add(bx(0.03, 0.04, 0.13, 0x111111, 0, 0, 0.02));
-    g.add(bx(0.032, 0.012, 0.13, 0xc8a050, 0, 0.022, 0.02));
-    // the blade pivots on a pin at the front of the handle so it can flick out
-    const pin = new THREE.Group(); pin.position.set(0, 0.01, -0.045); g.add(pin);
-    pin.add(bx(0.01, 0.035, 0.15, 0xe0e4ea, 0, 0, -0.075));
-    g.userData.flipBlade = pin;
-    g.userData.muzzle = new THREE.Vector3(0, 0.01, -0.2); g.userData.len = 0.3;
-  },
-  knife_karambit(g) {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.008, 4, 8), M(0x222222)); ring.rotation.y = Math.PI / 2; ring.position.set(0, 0, 0.09); g.add(ring);
-    g.userData.pivot = new THREE.Vector3(0, 0, 0.09); // your finger goes through the ring: it spins round this
-    g.add(bx(0.03, 0.04, 0.11, 0x2a2a2a, 0, 0, 0.01));
-    for (let i = 0; i < 5; i++) { const s2 = bx(0.01, 0.03, 0.045, 0xd8dde4, 0, -0.01 - i * i * 0.006, -0.06 - i * 0.04); s2.rotation.x = 0.15 + i * 0.22; g.add(s2); }
-    g.userData.muzzle = new THREE.Vector3(0, -0.1, -0.25); g.userData.len = 0.33;
-  },
-  knife_butterfly(g) {
-    // each handle hangs off a hinge pin at the base of the blade, so it can swing round the blade like a real balisong
-    const hinge = (x) => { const p = new THREE.Group(); p.position.set(x, 0, -0.045); g.add(p); return p; };
-    const p1 = hinge(0.012), p2 = hinge(-0.012);
-    p1.add(bx(0.014, 0.03, 0.13, 0x8a8f99, 0, 0, 0.065));
-    p2.add(bx(0.014, 0.03, 0.13, 0x8a8f99, 0, 0, 0.065));
-    for (let i = 0; i < 4; i++) p1.add(bx(0.018, 0.004, 0.01, 0x333333, 0.004, 0.016, 0.025 + i * 0.03)); // holes in the safe handle
-    g.add(bx(0.008, 0.035, 0.15, 0xe8ecf0, 0, 0.005, -0.12));
-    g.userData.handles = [p1, p2];
-    g.userData.muzzle = new THREE.Vector3(0, 0.005, -0.2); g.userData.len = 0.33;
-  },
   slapper_foam(g) {
     g.add(cylZ(0.015, 0.5, 0x4fd8ff, 0, 0, -0.18, 6));
     g.add(bx(0.2, 0.06, 0.18, 0x3070ff, 0, 0, -0.5));
@@ -681,6 +616,11 @@ const MODEL_BUILD = {
     g.userData.muzzle = new THREE.Vector3(0, 0, -1.3); g.userData.len = 1.4;
   },
 };
+// knives + swords live in blades/ (one file each, real proportions): base weapons go in WB, skins in MODEL_BUILD
+for (const [id, mod] of Object.entries(BLADES)) {
+  (COSMETICS.model[id] ? MODEL_BUILD : WB)[id] = mod.build;
+  if (mod.hatAt) HAT_AT[id] = mod.hatAt;
+}
 
 // iron sights: a rear notch + front post (glowing tip) on top of the gun, at one height, so the line of sight
 // runs over the top of the gun. ADS puts that line on the centre of the screen and the gun hangs below it.
@@ -1030,8 +970,9 @@ export function tipColor(tip) { return new THREE.Color((ARROW_TIPS[tip] || ARROW
 
 // the katana gets longer with kills: stretch the blade (and move its tip, so trails follow)
 export function setKatana(g, n) {
-  if (!g || !g.userData.katBlade) return;
+  const ud = g && g.userData;
+  if (!ud || !ud.katBlade) return;
   const k = 1 + n * 0.55;
-  g.userData.katBlade.scale.z = k;
-  g.userData.muzzle.z = -0.07 - (g.userData.katLen + 0.03) * k;
+  ud.katBlade.scale.z = k;
+  ud.muzzle.z = ud.katBlade.position.z - (ud.katLen + 0.03) * k;
 }
