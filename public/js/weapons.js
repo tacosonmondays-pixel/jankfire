@@ -12,6 +12,7 @@ import { net } from './net.js';
 import { hud } from './hud.js';
 import { tracerColor, emitSkinFx } from './skins.js';
 import { ANIMS, sample, sampleCh, eventsBetween, inspectFor, drawFor } from './anim.js';
+import { weaponIcon, clearIcons } from './icons.js';
 
 export const W = {
   slots: [DEFAULT_LOADOUT.primary, DEFAULT_LOADOUT.secondary, DEFAULT_LOADOUT.melee],
@@ -298,6 +299,7 @@ export function initWeapons() {
 
 export function rebuildViewmodels() {
   adsCache.clear();
+  clearIcons();
   for (const id of ORDER) {
     if (!VM[id]) continue;
     if (models[id]) vmRoot.remove(models[id].wrap);
@@ -326,7 +328,7 @@ export function grantScythe() {
   W.slots[3] = 'scythe';
   W.dashFuel = WEAPONS.dash.max;
   W.ammo.scythe_rifle = WEAPONS.scythe_rifle.mag;
-  hud.slots(W.slots);
+  showSlots();
   equip(3);
 }
 export function loseScythe() {
@@ -334,7 +336,7 @@ export function loseScythe() {
   W.hasScythe = false;
   W.slots.length = 3;
   ME.dashing = false;
-  hud.slots(W.slots);
+  showSlots();
   if (W.slot === 3) { W.cur = null; equip(0); }
 }
 export function toggleScythe() {
@@ -358,7 +360,7 @@ export function setLoadout(lo) {
   W.slots = SLOTS.map((s) => v[s]);
   if (streakSlot) W.slots[3] = streakSlot;
   if (W.slot >= W.slots.length) W.slot = 0;
-  hud.slots(W.slots);
+  showSlots();
   W.cur = null;
   equip(W.slot);
 }
@@ -366,6 +368,12 @@ export function setLoadout(lo) {
 export function rebuildOne(id) {
   rebuildViewmodels();
   for (const k of ORDER) if (models[k]) models[k].wrap.visible = k === W.cur;
+  showSlots();
+}
+// hotbar: a picture of each weapon you're carrying, with your skin on it
+export function showSlots() {
+  hud.slots(W.slots, W.slots.map((id) => weaponIcon(id, (G.equipped || {})[id])));
+  hud.slotOn(W.slot);
 }
 
 function equip(i) {

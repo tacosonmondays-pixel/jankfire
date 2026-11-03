@@ -17,15 +17,21 @@ function span(text, color) {
 
 export const hud = {
   init() {},
-  slots(ids) {
+  // hotbar (bottom middle): weapon pictures in slots, the one you're holding pops up
+  slots(ids, icons = []) {
     const bar = $('weapons');
     bar.innerHTML = '';
     ids.forEach((id, i) => {
       const w = WEAPONS[id];
+      if (!w) return;
       const d = document.createElement('div');
-      d.className = 'slot';
+      d.className = 'hslot';
       d.id = 'slot-' + i;
-      d.append(span(String(i + 1), '#fff'), span(' ' + w.name, w.color));
+      d.style.setProperty('--c', w.color);
+      if (icons[i]) { const im = document.createElement('img'); im.src = icons[i]; im.alt = ''; d.append(im); }
+      const k = document.createElement('span'); k.className = 'key'; k.textContent = String(i + 1);
+      const n = document.createElement('span'); n.className = 'nm'; n.textContent = w.name;
+      d.append(k, n);
       bar.append(d);
     });
   },
@@ -111,8 +117,9 @@ export const hud = {
     $('speed').style.fontSize = Math.min(64, 26 + kmh / 25) + 'px';
   },
   combo(n) { $('combo').textContent = n >= 2 ? `BHOP x${n}` : ''; },
+  slotOn(slot) { for (let i = 0; i < 6; i++) { const el = $('slot-' + i); if (el) el.classList.toggle('on', i === slot); } },
   weapon(id, slot) {
-    for (let i = 0; i < 3; i++) { const el = $('slot-' + i); if (el) el.classList.toggle('on', i === slot); }
+    for (let i = 0; i < 6; i++) { const el = $('slot-' + i); if (el) el.classList.toggle('on', i === slot); }
     const w = WEAPONS[id];
     if (!w) return;
     $('weaponName').innerHTML = '';
