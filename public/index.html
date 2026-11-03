@@ -78,6 +78,7 @@
       <button class="mid" data-go="loadout">LOADOUT</button>
       <button class="mid" data-go="character">CHARACTER</button>
       <button class="mid" data-go="cosmetics">COSMETICS</button>
+      <button class="mid" data-go="crates" id="cratesBtn">CONTAINERS</button>
       <button class="mid" data-go="leaders">LEADERBOARD</button>
       <button class="mid" data-go="settings">SETTINGS</button>
       <button class="mid hidden" id="installBtn">INSTALL APP</button>
@@ -183,7 +184,7 @@
   <!-- cosmetics -->
   <div class="screen panel hidden" id="scr-cosmetics">
     <h2>COSMETICS</h2>
-    <div id="rollBar"></div>
+    <div class="note">crates, duffel bags and boxes are opened in <a href="#" id="toCrates">CONTAINERS</a></div>
     <div class="cos">
       <div class="coslist" id="cosWeapons"></div>
       <div class="cosmain">
@@ -223,6 +224,15 @@
         <div class="sub" id="lkNote"></div>
       </div>
     </div>
+    <button class="mid back">BACK</button>
+  </div>
+
+  <!-- containers: crates / duffel bags / boxes -->
+  <div class="screen panel hidden" id="scr-crates">
+    <h2>CONTAINERS</h2>
+    <div class="sub">win rounds (or survive 5 coop waves) to earn more. each one opens into something you don't have yet.</div>
+    <div id="crateCards" class="cratecards"></div>
+    <div class="row"><button class="mid" data-go="cosmetics">TO COSMETICS</button></div>
     <button class="mid back">BACK</button>
   </div>
 

@@ -325,3 +325,14 @@ body.replaying #teamBar, body.replaying #objective { visibility: hidden; }
 .kpick img { width: 30px; height: 30px; image-rendering: pixelated; }
 .kpick.on { border-color: #ffe14d; color: #ffe14d; }
 body.replaying #streakTray { visibility: hidden; }
+
+/* containers screen */
+.cratecards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 10px 0; }
+@media (max-width: 700px) { .cratecards { grid-template-columns: 1fr; } }
+.cratecard { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 2px solid #444; text-align: center; }
+.cratecard.has { border-color: var(--yellow); box-shadow: 0 0 14px rgba(255, 225, 77, 0.25); }
+.cratecard img { width: 120px; height: 90px; image-rendering: pixelated; }
+.cratecard b { font-size: 22px; color: var(--yellow); }
+.cratecard span { font-size: 14px; color: #ddd; }
+.cratecard small { color: #9ad; }
+button.mid.glow { background: var(--yellow); }

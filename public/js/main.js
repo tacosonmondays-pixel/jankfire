@@ -105,6 +105,7 @@ function show(id) {
   if (id === 'cosmetics') { $('cosSlot').append($('preview')); buildCosmeticsUI(); setTimeout(resizePreview, 0); }
   if (id === 'character') { $('charSlot').append($('preview')); buildCharacterUI(); setTimeout(resizePreview, 0); }
   if (id === 'namecard') cardEditor.open();
+  if (id === 'crates') renderCrates();
   if (id === 'loadout') buildLoadoutUI();
   if (id === 'match') syncMatchUI();
   if (id === 'profile') { renderProfile(); restore().then((me) => { if (me && screen === 'profile') { renderProfile(); renderAcctBar(); } }); }
@@ -606,7 +607,6 @@ function buildCosmeticsUI() {
     });
     $('sk-model').append(c);
   }
-  renderRollBar();
   showPreview(id, ownedSkin(sk, G.inv, id));
 }
 $('skRandom').addEventListener('click', () => {
@@ -1572,6 +1572,9 @@ function skipReplay() {
 function totalRolls(me) { const r = (me && me.rolls) || {}; return (r.crate || 0) + (r.bag || 0) + (r.box || 0); }
 function fmtTime(sec) { const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60); return h ? `${h}h ${m}m` : `${m}m`; }
 function renderAcctBar() {
+  const tr0 = account.loggedIn ? totalRolls(account.me) : 0;
+  $('cratesBtn').textContent = tr0 ? `CONTAINERS (${tr0})` : 'CONTAINERS';
+  $('cratesBtn').classList.toggle('glow', tr0 > 0);
   const bar = $('acctBar');
   bar.innerHTML = '';
   const span = (t, cls) => { const e = document.createElement('span'); e.textContent = t; if (cls) e.className = cls; return e; };
@@ -1704,30 +1707,42 @@ async function renderLeaders() {
   } catch { el.textContent = 'could not load the leaderboard'; }
 }
 
-// ------------------------------------------------------------ cosmetic rolls
-function renderRollBar() {
-  const bar = $('rollBar');
-  bar.innerHTML = '';
+// ------------------------------------------------------------ containers screen
+function containerArt(kind) {
+  const c = document.createElement('canvas'); c.width = 96; c.height = 72;
+  const x = c.getContext('2d'); x.lineWidth = 3; x.strokeStyle = '#000';
+  if (kind === 'crate') { x.fillStyle = '#a8743a'; x.fillRect(14, 16, 68, 48); x.strokeRect(14, 16, 68, 48); x.fillStyle = '#7a5226'; for (const y of [28, 44]) x.fillRect(14, y, 68, 4); x.fillRect(44, 16, 8, 48); x.fillStyle = '#ffe14d'; x.fillRect(40, 8, 16, 10); x.strokeRect(40, 8, 16, 10); }
+  else if (kind === 'bag') { x.fillStyle = '#3a6a2a'; x.beginPath(); x.ellipse(48, 44, 38, 20, 0, 0, Math.PI * 2); x.fill(); x.stroke(); x.strokeStyle = '#1a1a1a'; x.lineWidth = 5; x.beginPath(); x.arc(48, 30, 16, Math.PI, 0); x.stroke(); x.fillStyle = '#ffe14d'; x.fillRect(30, 40, 36, 4); }
+  else { x.fillStyle = '#c8a46a'; x.fillRect(16, 22, 64, 42); x.strokeRect(16, 22, 64, 42); x.fillStyle = '#e0c088'; x.beginPath(); x.moveTo(16, 22); x.lineTo(32, 8); x.lineTo(80, 8); x.lineTo(80, 22); x.fill(); x.stroke(); x.fillStyle = '#ff4fd8'; x.fillRect(42, 22, 12, 42); }
+  return c.toDataURL();
+}
+function renderCrates() {
+  const box = $('crateCards');
+  box.innerHTML = '';
   if (!account.loggedIn) {
-    const s1 = document.createElement('span'); s1.textContent = 'guests only get the free stuff. log in to earn crates, duffel bags and boxes.';
+    const d = document.createElement('div'); d.className = 'sub'; d.textContent = 'guests only get the free stuff. log in to earn crates, duffel bags and boxes.';
     const b = document.createElement('button'); b.className = 'mid'; b.textContent = 'LOG IN'; b.addEventListener('click', () => openAccount(false));
-    bar.append(s1, b);
+    box.append(d, b);
     return;
   }
   for (const [kind, c] of Object.entries(CONTAINERS)) {
     const n = account.me.rolls[kind] || 0;
-    const b = document.createElement('button');
-    b.className = 'mid';
-    b.textContent = `OPEN ${c.name.toUpperCase()} (${n})`;
-    b.title = c.desc;
-    b.disabled = n <= 0;
-    b.addEventListener('click', () => doRoll(kind));
-    bar.append(b);
+    const own = c.types.reduce((a, t) => a + Object.keys(COSMETICS[t]).filter((id) => owns(G.inv, t, id)).length, 0);
+    const all = c.types.reduce((a, t) => a + Object.keys(COSMETICS[t]).length, 0);
+    const card = document.createElement('div'); card.className = 'cratecard' + (n > 0 ? ' has' : '');
+    const im = document.createElement('img'); im.src = containerArt(kind); im.alt = '';
+    const h = document.createElement('b'); h.textContent = c.name;
+    const dsc = document.createElement('span'); dsc.textContent = c.desc;
+    const prog = document.createElement('small'); prog.textContent = `you own ${own} / ${all}`;
+    const btn = document.createElement('button'); btn.className = 'mid'; btn.textContent = n > 0 ? `OPEN (${n})` : 'NONE LEFT'; btn.disabled = n <= 0;
+    btn.addEventListener('click', () => doRoll(kind));
+    card.append(im, h, dsc, prog, btn);
+    box.append(card);
   }
-  const hint = document.createElement('span'); hint.style.color = '#aaa'; hint.style.fontSize = '12px';
-  hint.textContent = 'crates: skins · duffel bags: hats + effects · boxes: wraps. win rounds to get more.';
-  bar.append(hint);
 }
+$('toCrates').addEventListener('click', (e) => { e.preventDefault(); show('crates'); });
+
+// ------------------------------------------------------------ cosmetic rolls
 let rolling = false;
 function randomCard(kind) {
   const types = CONTAINERS[kind].types;
@@ -1820,7 +1835,7 @@ async function doRoll(kind) {
     btn('OK', closeRoll);
   }, 4800);
 }
-function closeRoll() { $('rollbox').classList.add('hidden'); if (screen === 'cosmetics') buildCosmeticsUI(); }
+function closeRoll() { $('rollbox').classList.add('hidden'); if (screen === 'cosmetics') buildCosmeticsUI(); if (screen === 'crates') renderCrates(); renderAcctBar(); }
 
 // ------------------------------------------------------------ rounds
 function fmtClock(ms) { const s2 = Math.ceil(ms / 1000); return `${Math.floor(s2 / 60)}:${String(s2 % 60).padStart(2, '0')}`; }
