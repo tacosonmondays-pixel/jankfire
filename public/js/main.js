@@ -10,6 +10,7 @@ import { loadTripoModels, buildProjectile, buildPeel, buildHole, makeShadow, tip
 import { net } from './net.js';
 import { hud } from './hud.js';
 import { fx, makeBeam, setBeam, scaleU } from './fx.js';
+import { marbles } from './marbles.js';
 import { initAudio, sfx, setVolume, setListener, stopLoops } from './audio.js';
 import { ME, stepPlayer, tryHook, releaseHook, applyKb, slip, eye, hookPoint, hspeed, crouchTap } from './player.js';
 import {
@@ -1173,6 +1174,12 @@ net.on('fx', (m) => {
     const fast = w.rate > 8;
     const mz = r ? r.muzzle() : null;
     const color = () => tracerColor((G.skins.get(m.id) || {})[m.w], w.tracer || 0xfff0a0);
+    if (w.marbles) {
+      const sk = (G.skins.get(m.id) || {})[m.w];
+      marbles.shootSegs(m.s, mz, sk && sk[3] === 'marbles_gumball' ? 'gumball' : 'glass');
+      if (m.s.length) sfx.gun(m.w, m.s[0].slice(0, 3));
+      return;
+    }
     m.s.forEach((s, i) => {
       const a = mz && (i === 0 || w.pellets) ? mz : s.slice(0, 3);
       fx.tracer(a, s.slice(3), color(), w.thick || (fast ? 0.03 : 0.045), fast ? 0.07 : 0.2);

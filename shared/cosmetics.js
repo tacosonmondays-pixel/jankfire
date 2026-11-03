@@ -49,6 +49,8 @@ export const COSMETICS = {
     slipper_croc: { name: 'Croc', rarity: 'epic', weapon: 'slipper' },
     scythe_reaper: { name: 'Reaper', rarity: 'legendary', weapon: 'scythe' },
     katana_bokken: { name: 'Bokken', rarity: 'common', weapon: 'katana' },
+    marbles_gumball: { name: 'Gumball Machine', rarity: 'rare', weapon: 'marbles' },
+    redline_hotrod: { name: 'Hot Rod', rarity: 'epic', weapon: 'redline' },
     katana_shirasaya: { name: 'Shirasaya', rarity: 'rare', weapon: 'katana' },
   },
   hat: {

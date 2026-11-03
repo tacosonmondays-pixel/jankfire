@@ -16,7 +16,7 @@ import { validLook, achievementsFrom, ACHIEVEMENTS } from './shared/looks.js';
 import { STAT_KEYS } from './server/store.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor } from './shared/modes.js';
-import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, validStreaks } from './shared/weapons.js';
+import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, validStreaks, fireRate } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -83,7 +83,7 @@ const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 40000, perMes
 const COLORS = ['#ff4fd8', '#4fd8ff', '#ffe14d', '#7dff4f', '#ff7a1a', '#b07dff', '#ff4f4f', '#4fffb0', '#ffffff', '#ff9ad5'];
 const DEFAULT_NAMES = ['player', 'guy', 'someone', 'nobody', 'dude', 'person'];
 const BOT_NAMES = ['Gary', 'Linda', 'Steve', 'Brenda', 'Kevin', 'Doug', 'Karen', 'Phil', 'Tina', 'Rick', 'Deb', 'Carl', 'Pam', 'Todd', 'Barb', 'Chad'];
-const BOT_GUNS = ['ar', 'ar', 'smg', 'shotgun', 'shotgun', 'sniper', 'chicken', 'banana', 'minigun', 'revolver'];
+const BOT_GUNS = ['ar', 'ar', 'smg', 'shotgun', 'shotgun', 'sniper', 'chicken', 'banana', 'minigun', 'revolver', 'redline', 'marbles'];
 const SKIN_F = ['default', 'default', 'gold', 'chrome', 'pink', 'camo', 'neon', 'rainbow', 'galaxy', 'lava', 'missing', 'tiger', 'fade', 'carbon', 'tape'];
 const SKIN_H = ['none', 'none', 'none', 'tophat', 'party', 'crown', 'cowboy', 'propeller', 'cone', 'eyes', 'duck'];
 const SKIN_E = ['none', 'none', 'none', 'sparkles', 'flames', 'money', 'smoke'];
@@ -414,7 +414,7 @@ class Room {
     const t = this.players.get(ai.target);
     let wx = 0, wz = 0, jump = false;
     const w = WEAPONS[b.w];
-    const pref = b.w === 'sniper' ? [25, 60] : b.w === 'shotgun' ? [3, 9] : b.w === 'chicken' ? [10, 30] : [7, 22];
+    const pref = b.w === 'sniper' ? [25, 60] : b.w === 'shotgun' ? [3, 9] : b.w === 'marbles' ? [1.5, 4] : b.w === 'chicken' ? [10, 30] : [7, 22];
     if (t && t.alive) {
       const e = eyeOf(b), tc = [t.pos[0], t.pos[1] + 1.1, t.pos[2]];
       const dx = tc[0] - e[0], dy = tc[1] - e[1], dz = tc[2] - e[2];
@@ -528,7 +528,7 @@ class Room {
 
   botFire(b, t, D) {
     const w = WEAPONS[b.w], n = now();
-    const iv = w.rate ? 1000 / w.rate : w.cd * 1000;
+    const iv = w.rate ? 1000 / fireRate(w, b.hp) : w.cd * 1000;
     if (w.mag) {
       b.ai.ammo--;
       if (b.ai.ammo <= 0) { b.ai.ammo = w.mag; b.ai.reloadUntil = n + w.reload * 1000; }
@@ -880,6 +880,17 @@ class Room {
     const slack = 6 + Math.hypot(...p.vel) * 0.3 + Math.hypot(...t.vel) * 0.3;
     return dist3(p.pos, t.pos) <= range + slack;
   }
+  // most pellets a shot could honestly land at this distance: the spread disc vs the (client-side, distance-scaled) hitbox, with slack.
+  // stops a hacked client claiming all 100 marbles hit from across the map.
+  maxPellets(w, p, t) {
+    const pellets = w.pellets || 1;
+    if (pellets <= 1) return pellets;
+    const dist = Math.hypot(t.pos[0] - p.pos[0], t.pos[1] - p.pos[1], t.pos[2] - p.pos[2]);
+    const R = (w.spread || 0) * dist * 0.7, ds = 1 + Math.max(0, Math.min(1, (dist - 25) / 60)) * 0.8;
+    const frac = R > 0 ? Math.min(1, (2.4 * ds * ds) / (Math.PI * R * R)) : 1;
+    return Math.max(1, Math.min(pellets, Math.ceil(pellets * frac * 1.35 + 2)));
+  }
+
   applyHitscan(p, t, wid, n, h, d, mul = 1) {
     const w = WEAPONS[wid], pellets = w.pellets || 1;
     const dmg = (w.dmg * (n - h) + w.dmg * (w.head || 1) * h) * mul;
@@ -901,8 +912,8 @@ class Room {
     const toT = norm([t.pos[0] - p.pos[0], t.pos[1] - p.pos[1], t.pos[2] - p.pos[2]]) || d;
     if (w.kind === 'hitscan') {
       const pellets = w.pellets || 1;
-      const n = clampInt(m.n, 1, pellets), h = clampInt(m.h, 0, n);
-      if (!this.pairOk(p, t, 'hs' + m.w, (1000 / w.rate) * 0.6) || !this.rangeOk(p, t, w.range)) return;
+      const n = clampInt(m.n, 1, Math.min(pellets, this.maxPellets(w, p, t))), h = clampInt(m.h, 0, n);
+      if (!this.pairOk(p, t, 'hs' + m.w, (1000 / fireRate(w, p.hp)) * 0.6) || !this.rangeOk(p, t, w.range)) return; // the Redline fires faster as you lose HP
       this.applyHitscan(p, t, m.w, n, h, d);
     } else if (w.kind === 'melee') {
       const hv = m.heavy && w.heavy ? w.heavy : null; // knife right click

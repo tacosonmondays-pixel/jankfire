@@ -6,6 +6,7 @@ import { resetGrid } from '/shared/physics.js';
 import { jankify, jankUniforms } from './jank.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { G } from './ctx.js';
+import { marbles } from './marbles.js';
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
 export const JANK = [
@@ -251,6 +252,7 @@ export function setJank(i) { jank = JANK[i] || JANK[1]; resize(); }
 // swap the whole level (called when the server says the map changed)
 export function loadMap(id) {
   setMap(id);
+  marbles.clear();
   resetGrid(BOXES);
   buildMap(G.scene);
   paintSky(MAP.sky);

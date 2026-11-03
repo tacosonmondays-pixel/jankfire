@@ -6,6 +6,7 @@ import { applySkin } from './skins.js';
 import { COSMETICS } from '/shared/cosmetics.js';
 import { SUITS, RANKS, ARROW_TIPS } from '/shared/weapons.js';
 import { BLADES } from './blades/index.js';
+import { lathe } from './blades/kit.js';
 
 // ------------------------------------------------------------ playing card faces (canvas, cached)
 const cardFaces = new Map();
@@ -118,6 +119,73 @@ function ball(r, color, x = 0, y = 0, z = 0, basic = false) {
   return m;
 }
 
+
+// ------------------------------------------------------------ Redline + Marble Shotgun bits
+let tachoMat = null;
+function tachoFace() { // tachometer dial: ticks sweep clockwise from bottom-left to bottom-right, red zone at the end
+  if (tachoMat) return tachoMat;
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const x = c.getContext('2d');
+  x.fillStyle = '#0d0d10'; x.beginPath(); x.arc(64, 64, 63, 0, Math.PI * 2); x.fill();
+  const P = (th, r) => [64 + Math.sin(th) * r, 64 - Math.cos(th) * r];
+  x.strokeStyle = '#e8281e'; x.lineWidth = 12; x.beginPath(); x.arc(64, 64, 49, 1.2 - Math.PI / 2, 2.3 - Math.PI / 2); x.stroke();
+  for (let i = 0; i <= 10; i++) {
+    const th = -2.3 + (4.6 * i) / 10, [x0, y0] = P(th, 57), [x1, y1] = P(th, i % 2 ? 47 : 40);
+    x.strokeStyle = th > 1.15 ? '#ff6a5a' : '#f2f2f2'; x.lineWidth = i % 2 ? 3 : 6;
+    x.beginPath(); x.moveTo(x0, y0); x.lineTo(x1, y1); x.stroke();
+  }
+  x.fillStyle = '#f2f2f2'; x.font = 'bold 17px sans-serif'; x.textAlign = 'center'; x.fillText('RPM', 64, 100);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter;
+  return (tachoMat = new THREE.MeshBasicMaterial({ map: t }));
+}
+function redlineBuild(g, hot) {
+  const body = hot ? 0xc8ccd4 : 0x24262d, accent = hot ? 0xff7a1a : 0xc81e1e, dark = hot ? 0x2a2a2e : 0x151515;
+  g.add(bx(0.06, 0.1, 0.3, body, 0, 0, -0.04)); // receiver
+  g.add(bx(0.062, 0.018, 0.3, accent, 0, 0.058, -0.04)); // top rail
+  g.add(bx(0.062, 0.012, 0.16, accent, 0, -0.03, -0.07)); // stripe
+  const grip = bx(0.04, 0.12, 0.05, dark, 0, -0.1, 0.05); grip.rotation.x = -0.3; g.add(grip);
+  g.add(bx(0.036, 0.16, 0.05, dark, 0, -0.12, -0.1)); // mag
+  g.add(bx(0.05, 0.08, 0.16, dark, 0, -0.01, 0.19)); // stock
+  g.add(cylZ(0.034, 0.22, hot ? 0xd8dde4 : 0x3a3d45, 0, 0.01, -0.29, 8)); // barrel shroud
+  // vents in the shroud glow hotter the lower your HP (weapons.js drives the colour)
+  const vent = jankify(new THREE.MeshBasicMaterial({ color: 0x401010 }));
+  for (let i = 0; i < 4; i++) {
+    const v = new THREE.Mesh(new THREE.BoxGeometry(0.072, 0.012, 0.022), vent);
+    v.position.set(0, 0.012, -0.21 - i * 0.045); v.userData.noWrap = true; g.add(v);
+  }
+  g.userData.vents = vent;
+  g.add(cylZ(0.016, 0.07, 0x111111, 0, 0.01, -0.43, 8)); // muzzle brake
+  for (const sx of [-1, 1]) g.add(bx(0.006, 0.02, 0.03, 0x111111, sx * 0.016, 0.01, -0.42));
+  // the tachometer on the left side, facing you: its needle is your fire rate
+  const dial = new THREE.Group(); dial.position.set(-0.034, 0.03, -0.05); g.add(dial);
+  dial.add(new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.01, 14).rotateZ(Math.PI / 2), M(hot ? 0xd8dde4 : 0x101010)));
+  const face = new THREE.Mesh(new THREE.CircleGeometry(0.031, 18), tachoFace());
+  face.rotation.y = -Math.PI / 2; face.position.x = -0.0055; face.userData.noWrap = true; dial.add(face);
+  const needle = new THREE.Group(); needle.position.x = -0.007; dial.add(needle);
+  const nm = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.026, 0.003), M(0xff2a2a, true)); nm.position.y = 0.011; nm.userData.noWrap = true; needle.add(nm);
+  needle.rotation.x = -2.3;
+  g.userData.needle = needle;
+  if (hot) { // hot rod: chrome side pipes and flame licks
+    for (const sx of [-1, 1]) {
+      g.add(cylZ(0.009, 0.24, 0xd8dde4, sx * 0.04, -0.035, -0.1, 8));
+      g.add(cylZ(0.012, 0.02, 0x333333, sx * 0.04, -0.035, -0.225, 8));
+      for (let i = 0; i < 3; i++) { const f = bx(0.003, 0.012, 0.07 - i * 0.015, i % 2 ? 0xffd23b : 0xff7a1a, sx * 0.031, 0.02 - i * 0.014, 0.02 + i * 0.01); f.rotation.x = 0.25; g.add(f); }
+    }
+  }
+  g.userData.muzzle = new THREE.Vector3(0, 0.01, -0.47);
+  g.userData.len = 0.68;
+}
+const MARBLE_COLS = [0x2f7bff, 0x19c37d, 0xff4f4f, 0xffd23b, 0xb07dff, 0xff8a1a, 0x37d6ff];
+const GUM_COLS = [0xff2e63, 0xffd400, 0x00c2ff, 0x7dff4f, 0xff7a1a, 0xffffff, 0xff4fd8];
+function glassMat() { return jankify(new THREE.MeshLambertMaterial({ color: 0xcfefff, transparent: true, opacity: 0.3, depthWrite: false })); }
+function fillWith(g, cols, n, cx, cy, cz, rx, h, r) { // marbles/gumballs piled in a container
+  for (let i = 0; i < n; i++) {
+    const a = i * 2.4, k = (i % 4) / 4;
+    const m = ball(r, cols[i % cols.length], cx + Math.cos(a) * rx * (0.3 + k), cy + Math.floor(i / 4) * r * 1.7, cz + Math.sin(a) * rx * (0.3 + k));
+    m.userData.noWrap = true; g.add(m);
+  }
+}
+
 // ------------------------------------------------------------ weapons (forward = -Z, grip at origin)
 function cardTexture() {
   const c = document.createElement('canvas');
@@ -178,6 +246,24 @@ const WB = {
     g.add(bx(0.04, 0.03, 0.2, 0x555566, 0, 0.0, 0.2));
     g.userData.muzzle = new THREE.Vector3(0, 0.01, -0.37);
     g.userData.len = 0.6;
+  },
+  redline(g) { redlineBuild(g, false); }, // a stubby carbine with a tachometer bolted on
+  marbles(g) { // a brass blunderbuss fed from a jar of marbles
+    const grip = bx(0.036, 0.12, 0.048, 0x6b3a1a, 0, -0.07, 0.07); grip.rotation.x = -0.45; g.add(grip);
+    g.add(bx(0.044, 0.06, 0.2, 0x6b3a1a, 0, -0.012, 0.0)); // walnut stock
+    g.add(bx(0.05, 0.05, 0.1, 0x34343c, 0, 0.004, -0.03)); // iron lock
+    g.add(bx(0.006, 0.035, 0.05, 0x1a1a1a, 0, -0.05, 0.02)); // trigger guard
+    g.add(bx(0.04, 0.035, 0.12, 0x6b3a1a, 0, -0.022, -0.15)); // forestock
+    g.add(lathe([[0.019, -0.08], [0.019, -0.24], [0.024, -0.3], [0.036, -0.335], [0.052, -0.36], [0.05, -0.368], [0.036, -0.35], [0.022, -0.31], [0, -0.3]], 0xc8a050, { segs: 12, y: 0.012 }));
+    g.add(cylZ(0.023, 0.016, 0xa07830, 0, 0.012, -0.1, 12)); // barrel bands
+    g.add(cylZ(0.023, 0.016, 0xa07830, 0, 0.012, -0.22, 12));
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.016, 0.03, 8), M(0xc8a050)); neck.position.set(0, 0.045, -0.06); g.add(neck);
+    const jar = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.075, 12), glassMat());
+    jar.position.set(0, 0.098, -0.06); jar.userData.noWrap = true; jar.renderOrder = 2; g.add(jar);
+    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.012, 12), M(0x2a2a2a)); lid.position.set(0, 0.141, -0.06); g.add(lid);
+    fillWith(g, MARBLE_COLS, 10, 0, 0.074, -0.06, 0.018, 0, 0.012);
+    g.userData.muzzle = new THREE.Vector3(0, 0.012, -0.37);
+    g.userData.len = 0.5;
   },
   shotgun(g) {
     g.add(cylZ(0.025, 0.7, 0x1a1a1a, 0, 0.025, -0.38));
@@ -442,6 +528,21 @@ function skipTex() {
 }
 // skins for every weapon: alternate models. each belongs to its weapon and keeps that weapon's muzzle / moving parts
 const SKIN_BUILD = {
+  redline_hotrod(g) { redlineBuild(g, true); },
+  marbles_gumball(g) { // a gumball machine you can shoot
+    const grip = bx(0.036, 0.12, 0.048, 0xd01c2a, 0, -0.07, 0.07); grip.rotation.x = -0.45; g.add(grip);
+    g.add(bx(0.062, 0.07, 0.2, 0xd01c2a, 0, -0.01, 0.0)); // red cast body
+    g.add(bx(0.064, 0.032, 0.05, 0xd8dde4, 0, -0.005, -0.065)); // chrome coin box
+    const knob = cylZ(0.014, 0.016, 0xd8dde4, 0, 0, 0, 8); knob.rotation.y = Math.PI / 2; knob.position.set(-0.04, -0.005, -0.065); g.add(knob);
+    g.add(cylZ(0.024, 0.26, 0xd8dde4, 0, 0.012, -0.2, 10)); // chute
+    g.add(cylZ(0.032, 0.03, 0xd01c2a, 0, 0.012, -0.335, 10)); // mouth ring
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.04, 0.02, 12), M(0xd01c2a)); base.position.set(0, 0.035, -0.03); g.add(base);
+    const globe = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 8), glassMat()); globe.position.set(0, 0.095, -0.03); globe.userData.noWrap = true; globe.renderOrder = 2; g.add(globe);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.02, 0.012, 10), M(0xd01c2a)); cap.position.set(0, 0.153, -0.03); g.add(cap);
+    fillWith(g, GUM_COLS, 14, 0, 0.06, -0.03, 0.026, 0, 0.014);
+    g.userData.muzzle = new THREE.Vector3(0, 0.012, -0.35);
+    g.userData.len = 0.48;
+  },
   ar_bullpup(g) { // magazine behind the grip, everything stubby
     g.add(bx(0.075, 0.12, 0.62, 0x2a2a30, 0, 0, 0.02));
     g.add(cylZ(0.019, 0.26, 0x111111, 0, 0.015, -0.4));
@@ -624,7 +725,7 @@ for (const [id, mod] of Object.entries(BLADES)) {
 
 // iron sights: a rear notch + front post (glowing tip) on top of the gun, at one height, so the line of sight
 // runs over the top of the gun. ADS puts that line on the centre of the screen and the gun hangs below it.
-const SIGHTS = { ar: 'iron', smg: 'iron', revolver: 'iron', banana: 'iron', shotgun: 'bead' };
+const SIGHTS = { ar: 'iron', smg: 'iron', redline: 'iron', revolver: 'iron', banana: 'iron', shotgun: 'bead' };
 const SIGHT_DOT = 0x7dff4f;
 function addSights(id, g) {
   const kind = SIGHTS[id];

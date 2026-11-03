@@ -1,12 +1,13 @@
 // Local weapon logic, loadouts, ammo + first-person viewmodels.
 import * as THREE from 'three';
-import { WEAPONS, ORDER, SLOTS, FLAGS, HIPFIRE, ARROW_TIPS, SUITS, RANKS, validLoadout, DEFAULT_LOADOUT, ITEMS } from '/shared/weapons.js';
+import { WEAPONS, ORDER, SLOTS, FLAGS, HIPFIRE, ARROW_TIPS, SUITS, RANKS, validLoadout, DEFAULT_LOADOUT, ITEMS, fireRate } from '/shared/weapons.js';
 import { BOXES } from '/shared/map.js';
 import { raycast, rayBox } from '/shared/physics.js';
 import { G } from './ctx.js';
 import { ME, eye, look, applyKb, hspeed } from './player.js';
 import { buildWeapon, M, cardFace, tipColor, setKatana } from './models.js';
 import { fx } from './fx.js';
+import { marbles } from './marbles.js';
 import { sfx, loopSfx, stopLoops } from './audio.js';
 import { net } from './net.js';
 import { hud } from './hud.js';
@@ -39,6 +40,8 @@ const RECOIL = {
   ar: { back: 0.9, up: 3, roll: 1.5, side: 0.15, punch: 0.012 },
   smg: { back: 0.6, up: 2.2, roll: 1.4, side: 0.2, punch: 0.008 },
   shotgun: { back: 2.4, up: 9, roll: 3, side: 0.3, punch: 0.05 },
+  marbles: { back: 2.0, up: 8, roll: 2.6, side: 0.35, punch: 0.04 },
+  redline: { back: 0.7, up: 2.4, roll: 1.6, side: 0.2, punch: 0.008 },
   minigun: { back: 0.35, up: 0.9, roll: 1.2, side: 0.25, punch: 0.004 },
   sniper: { back: 3, up: 11, roll: 2, side: 0.2, punch: 0.075 },
   revolver: { back: 1.6, up: 13, roll: 2.5, side: 0.2, punch: 0.045 },
@@ -85,7 +88,7 @@ function flashTex() {
   flashTexture.magFilter = THREE.NearestFilter; flashTexture.minFilter = THREE.NearestFilter;
   return flashTexture;
 }
-const FLASH_IDS = new Set(['ar', 'smg', 'shotgun', 'minigun', 'sniper', 'revolver', 'scythe_rifle', 'chicken', 'bowling', 'banana']);
+const FLASH_IDS = new Set(['ar', 'smg', 'redline', 'marbles', 'shotgun', 'minigun', 'sniper', 'revolver', 'scythe_rifle', 'chicken', 'bowling', 'banana']);
 function makeFlash(big) {
   const grp = new THREE.Group();
   const mat = new THREE.MeshBasicMaterial({ map: flashTex(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
@@ -110,7 +113,7 @@ function ejectShell(g, color = 0xd9a53a, big = false) {
   G.skinFxVM.norm.spawn(tmpV.x, tmpV.y, tmpV.z, 0.6 + Math.random() * 0.5, 0.75 + Math.random() * 0.5, 0.1 + Math.random() * 0.25,
     0.55, sz, sz * 0.9, color, color, 1, 4.5, 0.4);
 }
-const SHELL_ON_FIRE = new Set(['ar', 'smg', 'minigun', 'scythe_rifle']);
+const SHELL_ON_FIRE = new Set(['ar', 'smg', 'redline', 'minigun', 'scythe_rifle']);
 
 // smear trail: a fading ribbon behind the tip of whatever you swing
 const TRAIL_N = 26;
@@ -294,6 +297,8 @@ const VM = {
   ar: { p: [0.2, -0.2, -0.38], r: [0, 0.04, 0], s: 0.7 },
   smg: { p: [0.2, -0.19, -0.36], r: [0, 0.05, 0], s: 0.8 },
   shotgun: { p: [0.2, -0.2, -0.36], r: [0, 0.04, 0], s: 0.7 },
+  redline: { p: [0.2, -0.2, -0.37], r: [0, 0.04, 0], s: 0.72 },
+  marbles: { p: [0.18, -0.19, -0.34], r: [0, 0.05, 0], s: 0.8 },
   minigun: { p: [0.22, -0.26, -0.42], r: [0, 0.03, 0], s: 0.7 },
   sniper: { p: [0.2, -0.2, -0.38], r: [0, 0.03, 0], s: 0.5 },
   chicken: { p: [0.22, -0.2, -0.42], r: [0, 0.04, 0], s: 0.65 },
@@ -459,7 +464,10 @@ export function muzzleWorld() {
 }
 
 const ready = (id, now) => (W.cd[id] || 0) <= now;
-function interval(id) { const w = WEAPONS[id]; return w.rate ? 1 / w.rate : w.cd; }
+function interval(id) { const w = WEAPONS[id]; return w.rate ? 1 / fireRate(w, ME.hp) : w.cd; }
+// Redline: 0 at full HP .. 1 at death's door (drives the needle, the vents and the pitch)
+const redlineK = () => { const w = WEAPONS.redline; return (fireRate(w, ME.hp) - w.rate) / (w.rateMax - w.rate); };
+const marblePalette = (skin) => (skin && skin[3] === 'marbles_gumball' ? 'gumball' : 'glass');
 function setCd(id, now) {
   const iv = interval(id) * 1000;
   W.cd[id] = Math.max(W.cd[id] || 0, now - Math.min(40, iv * 0.5)) + iv; // keeps auto fire rate steady at low fps
@@ -521,10 +529,12 @@ function fireHitscan(id, now) {
   const w = WEAPONS[id];
   if (w.mag && G.mode !== 'training') W.ammo[id]--;
   setCd(id, now);
+  W.lastShotT = now;
   const o = eye(), base = look(), mz = muzzleWorld();
   const hits = new Map();
   const segs = [];
   const pellets = w.pellets || 1;
+  const shots = w.marbles ? [] : null; // Marble Shotgun: each pellet becomes a marble that bounces off what it hit
   for (let i = 0; i < pellets; i++) {
     let d = spreadDir(base, currentSpread(w));
     let from = o, left = w.range, bounces = w.ricochet || 0, drawFrom = mz;
@@ -535,6 +545,7 @@ function fireHitscan(id, now) {
       const t = ph ? ph.t : maxT;
       const end = [from[0] + d[0] * t, from[1] + d[1] * t, from[2] + d[2] * t];
       segs.push([...drawFrom, ...end]);
+      if (shots) shots.push({ a: drawFrom, b: end, n: !ph && mh ? mh.normal : null, player: !!ph });
       if (ph) {
         const h = hits.get(ph.r.id) || { n: 0, h: 0, d };
         h.n++; if (ph.head) h.h++; h.d = d;
@@ -542,7 +553,7 @@ function fireHitscan(id, now) {
         break;
       }
       if (!mh) break;
-      fx.impact(end, mh.normal);
+      if (!shots || i % 10 === 0) fx.impact(end, mh.normal);
       if (bounces-- <= 0) break;
       const dn = d[0] * mh.normal[0] + d[1] * mh.normal[1] + d[2] * mh.normal[2];
       d = [d[0] - 2 * dn * mh.normal[0], d[1] - 2 * dn * mh.normal[1], d[2] - 2 * dn * mh.normal[2]];
@@ -555,7 +566,8 @@ function fireHitscan(id, now) {
   for (const [rid, h] of hits) net.send({ t: 'hit', to: rid, w: id, d: h.d.map(r2), n: h.n, h: h.h });
   const fast = w.rate > 8;
   const skin = (G.equipped || {})[id];
-  for (const s of segs) fx.tracer(s.slice(0, 3), s.slice(3), tracerColor(skin, w.tracer || 0xfff0a0), w.thick || (fast ? 0.03 : 0.045), fast ? 0.07 : 0.2);
+  if (shots) marbles.shoot(shots, marblePalette(skin));
+  else for (const s of segs) fx.tracer(s.slice(0, 3), s.slice(3), tracerColor(skin, w.tracer || 0xfff0a0), w.thick || (fast ? 0.03 : 0.045), fast ? 0.07 : 0.2);
   net.send({ t: 'fire', w: id, o: o.map(r2), s: segs.slice(0, 12).map((s) => s.map(r2)) });
   if (w.recoil) applyKb([-base[0] * w.recoil, -base[1] * w.recoil, -base[2] * w.recoil]);
   ME.pitch = Math.min(1.55, ME.pitch + (w.kick || 0) * (0.6 + Math.random() * 0.8) * (1 - W.aim * 0.5));
@@ -569,7 +581,7 @@ function fireHitscan(id, now) {
   if (id === 'shotgun') W.cycle = { name: 'pump_shotgun', t: 0.22 };
   if (id === 'sniper' || id === 'scythe_rifle') W.cycle = { name: 'bolt_sniper', t: 0.32 };
   if (id === 'sniper' || id === 'shotgun') G.shake = Math.max(G.shake, 0.6);
-  sfx.gun(id);
+  sfx.gun(id, null, id === 'redline' ? redlineK() : 0);
   if (w.mag && W.ammo[id] <= 0) reload();
 }
 
@@ -961,6 +973,12 @@ export function updateWeapons(dt, now) {
   }
   // moving parts: balisong handles, switchblade blade, karambit spinning round the ring
   const ud = m.g.userData, an = W.anim && W.anim.name, at = W.anim ? W.anim.t : 0;
+  if (ud.needle) { // Redline tachometer: the needle climbs as your HP drops, and bangs off the limiter in the red
+    const k = redlineK(), firingNow = W.held && now - (W.lastShotT || 0) < 200;
+    const target = -2.3 + 4.6 * k + (k > 0.85 && firingNow ? Math.sin(now * 0.08) * 0.12 : 0);
+    ud.needle.rotation.x += (target - ud.needle.rotation.x) * Math.min(1, dt * 12);
+    if (ud.vents) ud.vents.color.setRGB(0.25 + 0.75 * k, 0.04 + 0.3 * k * k, 0.02 + (firingNow ? 0.15 * k : 0));
+  }
   if (ud.handles) { const h = an && sampleCh(an, 'handles', at); ud.handles[0].rotation.x = h ? h[0] : 0; ud.handles[1].rotation.x = h ? h[1] : 0; }
   if (ud.flipBlade) { const b = an && sampleCh(an, 'blade', at); ud.flipBlade.rotation.x = b ? b[0] : 0; }
   if (ud.pivot) {

@@ -19,6 +19,13 @@ export const WEAPONS = {
     kb: 0, recoil: 0.2, kick: 0.005, range: 200, speedMul: 1.2,
     ads: { zoom: 1.3, spread: 0.4, p: [0, -0.1, -0.28] },
   },
+  redline: {
+    slot: 'primary', kind: 'hitscan', name: 'Redline', color: '#ff3b3b',
+    desc: 'The lower your HP, the faster it fires. On full health it plods along; on 10 HP it screams. Watch the needle.',
+    auto: true, rate: 6, rateMax: 22, mag: 40, reload: 1.8, dmg: 10, head: 1.8, spread: 0.018, bloom: 0.0025, maxBloom: 0.06,
+    kb: 0, recoil: 0.3, kick: 0.006, range: 250,
+    ads: { zoom: 1.4, spread: 0.35, p: [0, -0.1, -0.3] },
+  },
   shotgun: {
     slot: 'primary', kind: 'hitscan', name: 'Shotgun', color: '#e0a060',
     desc: '10 pellets. Shoot the floor to launch yourself.',
@@ -72,6 +79,13 @@ export const WEAPONS = {
     rate: 1 / 0.4, mag: 6, reload: 2.0, dmg: 40, head: 2.5, spread: 0.003,
     kb: 0, kbUp: 0, recoil: 3, kick: 0.07, range: 250, ricochet: 2, tracer: 0xffd060,
     ads: { zoom: 1.4, spread: 0.2, p: [0, -0.085, -0.28] },
+  },
+  marbles: {
+    slot: 'secondary', kind: 'hitscan', name: 'Marble Shotgun', color: '#7fd0ff',
+    desc: 'A hundred glass marbles per shot. One marble barely tickles, but point blank they all land: one shot, one kill. They bounce round the floor after.',
+    rate: 1 / 0.9, mag: 2, reload: 1.9, pellets: 100, dmg: 1.15, head: 1.3, spread: 0.27,
+    kb: 0, kbUp: 0, recoil: 4, kick: 0.07, range: 30, marbles: true,
+    ads: { zoom: 1.15, spread: 0.8, p: [0, -0.1, -0.3] },
   },
   cig: {
     slot: 'secondary', kind: 'cone', name: 'Cigarette', color: '#ff7a1a',
@@ -165,6 +179,12 @@ export const WEAPONS = {
 };
 
 export const ORDER = Object.keys(WEAPONS);
+// shots per second right now. The Redline speeds up as your HP drops (rate at full HP -> rateMax at 0 HP).
+export function fireRate(w, hp = 100) {
+  if (!w.rateMax) return w.rate;
+  const missing = Math.max(0, Math.min(1, 1 - (Number(hp) || 0) / 100));
+  return w.rate + (w.rateMax - w.rate) * missing;
+}
 // killstreaks: kills in a row without dying. earned ones wait in your pocket (even after you die) until you press 5/6/7.
 export const STREAKS = {
   moonboots: { kills: 3, name: 'Moon Boots', desc: 'low gravity + huge jumps for 25s', auto: true, dur: 25 },

@@ -6,6 +6,7 @@ import { G } from './ctx.js';
 import { Remote } from './remote.js';
 import { buildProjectile, tipColor, M } from './models.js';
 import { fx } from './fx.js';
+import { marbles } from './marbles.js';
 import { sfx } from './audio.js';
 import { tracerColor } from './skins.js';
 import { playKillFx } from './killfx.js';
@@ -93,6 +94,7 @@ function applyEv(m) {
     if (!w || !Array.isArray(m.s)) return;
     const fast = w.rate > 8, mz = g ? g.muzzle() : null;
     const col = tracerColor(((info[m.id] || {}).skins || {})[m.w], w.tracer || 0xfff0a0);
+    if (w.marbles) { const sk = ((info[m.id] || {}).skins || {})[m.w]; marbles.shootSegs(m.s, mz, sk && sk[3] === 'marbles_gumball' ? 'gumball' : 'glass', 2); if (m.s.length) sfx.gun(m.w, m.s[0].slice(0, 3)); return; }
     m.s.forEach((s, i) => fx.tracer(mz && (i === 0 || w.pellets) ? mz : s.slice(0, 3), s.slice(3), col, w.thick || (fast ? 0.03 : 0.045), fast ? 0.07 : 0.2));
     if (m.s.length) sfx.gun(m.w, m.s[0].slice(0, 3));
   } else if (m.t === 'fx' && m.k === 'swing') {
