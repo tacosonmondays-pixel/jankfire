@@ -165,14 +165,14 @@ export const WEAPONS = {
 };
 
 export const ORDER = Object.keys(WEAPONS);
-// killstreaks: kills in a row without dying. "deploy" ones go in your pocket and you press G to use them.
+// killstreaks: kills in a row without dying. earned ones wait in your pocket (even after you die) until you press 5/6/7.
 export const STREAKS = {
   moonboots: { kills: 3, name: 'Moon Boots', desc: 'low gravity + huge jumps for 25s', auto: true, dur: 25 },
-  chickenstrike: { kills: 4, name: 'Chicken Strike', desc: 'G: rain exploding chickens where you aim', deploy: true },
+  chickenstrike: { kills: 4, name: 'Chicken Strike', desc: 'rain exploding chickens where you aim', deploy: true },
   scythe: { kills: 5, name: 'Scythe Rifle', desc: 'X: rifle mode · hold V: glitch dash', auto: true },
   spinbot: { kills: 6, name: 'Spinbot', desc: 'aimbot + spinbot for 10s. you are now a cheater.', auto: true, dur: 10 },
   satellite: { kills: 7, name: 'Spy Satellite', desc: 'see every enemy through walls for 20s', auto: true, dur: 20 },
-  giantduck: { kills: 10, name: 'Giant Duck', desc: 'G: a giant black hole that pulls in everyone but you', deploy: true },
+  giantduck: { kills: 10, name: 'Giant Duck', desc: 'a giant black hole where you aim that pulls in everyone but you', deploy: true },
 };
 export const DEFAULT_LOADOUT = { primary: 'ar', secondary: 'cig', melee: 'bread', item: 'frag', streaks: ['moonboots', 'chickenstrike', 'scythe'] };
 
