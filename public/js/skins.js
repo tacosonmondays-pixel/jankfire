@@ -264,6 +264,8 @@ export function applySkin(g, skin) {
       h.scale.setScalar(s);
       h.position.set(tmpV.x, tmpBox.max.y - s * 0.05, tmpV.z + tmpS.z * 0.15);
     }
+    h.userData.isHat = true;
+    g.userData.hat = h;
     g.add(h);
   }
   return g;

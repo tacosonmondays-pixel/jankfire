@@ -72,6 +72,7 @@ export const hud = {
     }
     if (amt >= 18) { nanT = 0.2; nanText = GARBAGE[(Math.random() * GARBAGE.length) | 0]; }
   },
+  crossFade(k) { const c = $('crosshair'); const v = String(Math.round(k * 100) / 100); if (c.style.opacity !== v) c.style.opacity = v; },
   scope(on) {
     $('scope').classList.toggle('on', on);
     $('crosshair').style.display = on ? 'none' : '';

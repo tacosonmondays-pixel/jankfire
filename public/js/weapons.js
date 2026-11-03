@@ -208,6 +208,31 @@ function playCard(now) {
 }
 const isScythe = (id) => id === 'scythe' || id === 'scythe_rifle';
 
+// where the gun sits at full ADS (viewmodel space: camera at the origin looking down -z)
+const EYE_RELIEF = 0.17; // how far in front of your eye the rear sight sits
+const adsCache = new Map();
+function adsPose(id, m) {
+  const g = m.g, s = m.cfg.s;
+  const key = id + ':' + g.uuid;
+  if (adsCache.has(key)) return adsCache.get(key);
+  let pose;
+  const sg = g.userData.sight;
+  if (sg) pose = [0, -sg.y * s, -EYE_RELIEF - sg.z * s]; // sight line exactly through the middle
+  else {
+    // no sights: keep the whole thing under (and a bit right of) the middle of the screen
+    const save = g.position.clone(), rot = g.rotation.clone();
+    g.position.set(0, 0, 0); g.rotation.set(0, 0, 0); g.updateMatrixWorld(true);
+    const box = new THREE.Box3();
+    g.traverse((o) => { if (o.isMesh && !o.userData.isHat && !(o.parent && o.parent.userData.isHat)) { o.geometry.computeBoundingBox(); box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld)); } });
+    g.position.copy(save); g.rotation.copy(rot); g.updateMatrixWorld(true);
+    const w = WEAPONS[id];
+    if (id === 'bow') pose = [-0.07, -0.03 - g.userData.muzzle.y * s, w.ads.p[2], 0.42]; // canted, riser left of the arrow
+    else pose = [Math.max(w.ads.p[0], 0.06), Math.min(w.ads.p[1], -0.03 - box.max.y * s), w.ads.p[2]];
+  }
+  adsCache.set(key, pose);
+  return pose;
+}
+
 // knife right click: CS-style heavy stab. returns false when this weapon has no heavy attack
 export function heavyAttack() {
   const id = W.cur, w = WEAPONS[id], now = performance.now();
@@ -272,6 +297,7 @@ export function initWeapons() {
 }
 
 export function rebuildViewmodels() {
+  adsCache.clear();
   for (const id of ORDER) {
     if (!VM[id]) continue;
     if (models[id]) vmRoot.remove(models[id].wrap);
@@ -840,18 +866,25 @@ export function updateWeapons(dt, now) {
   const running = ME.sprinting && ME.onGround && hs > 4 && W.aim < 0.1 && !W.anim;
   W.runK += ((running ? 1 : 0) - W.runK) * Math.min(1, dt * 8);
   const breathe = now * 0.001;
-  const ra = 1 - W.aim * 0.65;
-  let px = cfg.p[0] + Math.sin(W.bob) * bobA + W.swayX * 0.2 + Math.sin(breathe * 1.3) * 0.0025 + rec.p[0] * ra,
-    py = cfg.p[1] + Math.abs(Math.cos(W.bob)) * bobA - W.swap * 0.3 - W.swayY * 0.12 + Math.sin(breathe * 2.1) * 0.0018 - W.runK * 0.03 + rec.p[1],
-    pz = cfg.p[2] + W.kick * 0.04 + rec.p[2] * ra;
-  let rx = cfg.r[0] + W.kick * 0.12 + rec.r[0] * ra - W.swayY * 0.8 - W.runK * 0.25,
+  // base pose (hip): bob, lag, breathing, run tilt
+  let px = cfg.p[0] + Math.sin(W.bob) * bobA + W.swayX * 0.2 + Math.sin(breathe * 1.3) * 0.0025,
+    py = cfg.p[1] + Math.abs(Math.cos(W.bob)) * bobA - W.swap * 0.3 - W.swayY * 0.12 + Math.sin(breathe * 2.1) * 0.0018 - W.runK * 0.03,
+    pz = cfg.p[2];
+  let rx = cfg.r[0] - W.swayY * 0.8 - W.runK * 0.25,
     ry = cfg.r[1] + W.swayX * 1.3 + W.runK * 0.35,
-    rz = cfg.r[2] + rec.r[2] * ra + Math.sin(breathe * 1.1) * 0.008 + W.swayX * 0.6 + W.runK * 0.2 + (ME.sliding ? 0.3 : 0);
+    rz = cfg.r[2] + Math.sin(breathe * 1.1) * 0.008 + W.swayX * 0.6 + W.runK * 0.2 + (ME.sliding ? 0.3 : 0);
+  // aim down sights: line the sight up with the exact centre of the screen and let the gun hang below it.
+  // guns without sights (launchers, minigun, bow) stay low and to the side so the middle is clear.
   if (w.ads && W.aim > 0) {
     const a = W.aim * W.aim * (3 - 2 * W.aim);
-    px += (w.ads.p[0] - px) * a; py += (w.ads.p[1] - py) * a; pz += (w.ads.p[2] - pz) * a;
-    rx += (0 - rx) * a; ry += (0 - ry) * a; rz += (0 - rz) * a;
+    const t = adsPose(id, m);
+    px += (t[0] - px) * a; py += (t[1] - py) * a; pz += (t[2] - pz) * a;
+    rx += (0 - rx) * a; ry += (0 - ry) * a; rz += ((t[3] || 0) - rz) * a;
   }
+  // recoil + kick on top (smaller while aiming so the sights stay usable)
+  const ra = 1 - W.aim * 0.6;
+  px += rec.p[0] * ra; py += rec.p[1] * (1 - W.aim * 0.3); pz += (W.kick * 0.04 + rec.p[2]) * ra;
+  rx += (W.kick * 0.12 + rec.r[0]) * ra; rz += rec.r[2] * ra;
   if (W.reloadId) { const k = Math.sin(Math.min(1, 1 - (W.reloadUntil - now) / (w.reload * 1000)) * Math.PI); py -= k * 0.12; rx -= k * 0.6; rz += k * 0.4; }
   if (id === 'cig') {
     const k = smoking ? 1 : 0;
@@ -895,6 +928,8 @@ export function updateWeapons(dt, now) {
   m.wrap.visible = !(id === 'slipper' && W.slipperOut) && !W.scoped && !ME.dashing;
   m.wrap.position.set(px, py, pz);
   m.wrap.rotation.set(rx, ry, rz);
+  if (m.g.userData.hat) m.g.userData.hat.visible = W.aim < 0.3;
+  hud.crossFade(m.g.userData.sight ? Math.max(0, 1 - W.aim * 1.6) : 1);
   // muzzle flash
   W.flashT = Math.max(0, W.flashT - dt);
   for (const k of ORDER) { const mm = models[k]; if (mm && mm.flash) mm.flash.visible = k === id && W.flashT > 0 && m.wrap.visible; }

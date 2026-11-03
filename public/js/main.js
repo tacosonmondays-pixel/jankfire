@@ -59,6 +59,7 @@ function recomputeEquipped() {
     const o = ownedSkin(sk, G.inv, id);
     if (o[0] !== 'default' || o[1] !== 'none' || o[2] !== 'none' || o[3] !== 'default') G.equipped[id] = o;
   }
+  if (G.equipped.scythe) G.equipped.scythe_rifle = G.equipped.scythe.slice(0, 3).concat('default'); // both forms look the same
 }
 recomputeEquipped();
 
@@ -311,6 +312,18 @@ function sendSkins() {
   clearTimeout(skinSendT);
   skinSendT = setTimeout(() => { if (G.joined) net.send({ t: 'skin', s: G.equipped }); }, 250);
 }
+// the weapons that show up in COSMETICS (the rifle form of the scythe borrows the scythe's look)
+function skinnable() { return ORDER.filter((id) => WEAPONS[id] && (SLOTS.includes(WEAPONS[id].slot) || id === 'scythe')); }
+function storeSkin(id, skin) {
+  if (skin[0] === 'default' && skin[1] === 'none' && skin[2] === 'none' && (skin[3] || 'default') === 'default') delete S.skins[id];
+  else S.skins[id] = skin;
+}
+// wrap / hat / effect on EVERY weapon at once (each weapon keeps its own model)
+function setPartAll(idx, value) {
+  for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[idx] = value; storeSkin(id, sk); }
+  saveSettings(); recomputeEquipped(); sendSkins(); rebuildViewmodels(); setLoadout(S.loadout);
+}
+const allMode = () => S.skinAll !== false;
 function setSkin(id, skin) {
   if (skin[0] === 'default' && skin[1] === 'none' && skin[2] === 'none' && (skin[3] || 'default') === 'default') delete S.skins[id];
   else S.skins[id] = skin;
@@ -422,13 +435,13 @@ $('lkReset').addEventListener('click', () => { setLook({ ...DEFAULT_LOOK }); bui
 function buildCosmeticsUI() {
   const list = $('cosWeapons');
   list.innerHTML = '';
-  for (const slot of SLOTS) {
+  for (const slot of [...SLOTS, 'streak']) {
     const h = document.createElement('div');
-    h.className = 'lt'; h.textContent = slot;
+    h.className = 'lt'; h.textContent = slot === 'streak' ? 'killstreak' : slot;
     list.append(h);
     for (const id of ORDER) {
       const w = WEAPONS[id];
-      if (w.slot !== slot) continue;
+      if (w.slot !== slot || id === 'scythe_rifle') continue;
       const b = document.createElement('button');
       b.className = 'wpick' + (G.cosSel === id ? ' on' : '');
       if (modelsFor(id).length > 1) b.title = 'has skins';
@@ -457,11 +470,30 @@ function buildCosmeticsUI() {
       c.title = `${RARITY[v.rarity].name}${have ? '' : ' (locked: roll to unlock)'}`;
       c.addEventListener('click', () => {
         if (!have) { toast(`${v.name} is ${RARITY[v.rarity].name}. win rounds to get rolls.`); return; }
-        const s2 = sk.slice(); s2[idx] = k; setSkin(id, s2); buildCosmeticsUI();
+        if (allMode()) setPartAll(idx, k);
+        else { const s2 = sk.slice(); s2[idx] = k; setSkin(id, s2); }
+        buildCosmeticsUI();
       });
       el.append(c);
     }
   };
+  $('skAllMode').checked = allMode();
+  const kel = $('sk-kill');
+  kel.innerHTML = '';
+  const curK = myKfx();
+  for (const [k, v] of Object.entries(COSMETICS.kill)) {
+    const have = owns(G.inv, 'kill', k);
+    const c = document.createElement('button');
+    c.className = 'chip' + (curK === k ? ' on' : '') + (have ? '' : ' locked');
+    c.textContent = v.name;
+    c.style.setProperty('--rc', RARITY[v.rarity].color);
+    c.title = `${RARITY[v.rarity].name}: ${v.desc}`;
+    c.addEventListener('click', () => {
+      if (!have) { toast(`${v.name} (${RARITY[v.rarity].name}): ${v.desc}. find it in duffel bags`, 3000); return; }
+      setKfx(k); buildCosmeticsUI();
+    });
+    kel.append(c);
+  }
   chips('sk-finish', 'finish', 0);
   chips('sk-hat', 'hat', 1);
   chips('sk-effect', 'effect', 2);
@@ -487,14 +519,26 @@ function buildCosmeticsUI() {
 }
 $('skRandom').addEventListener('click', () => {
   const pick = (t) => { const ks = Object.keys(COSMETICS[t]).filter((k) => owns(G.inv, t, k)); return ks[(Math.random() * ks.length) | 0]; };
-  setSkin(G.cosSel, TYPES.map(pick)); buildCosmeticsUI();
+  if (allMode()) {
+    const parts = ['finish', 'hat', 'effect'].map(pick);
+    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = parts[0]; sk[1] = parts[1]; sk[2] = parts[2]; storeSkin(id, sk); }
+    saveSettings(); recomputeEquipped(); sendSkins(); rebuildViewmodels(); setLoadout(S.loadout);
+  } else setSkin(G.cosSel, TYPES.map(pick));
+  buildCosmeticsUI();
 });
-$('skReset').addEventListener('click', () => { setSkin(G.cosSel, DEFAULT_SKIN.slice()); buildCosmeticsUI(); });
-$('skAll').addEventListener('click', () => {
+$('skReset').addEventListener('click', () => {
+  if (allMode()) {
+    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = 'default'; sk[1] = 'none'; sk[2] = 'none'; storeSkin(id, sk); }
+    saveSettings(); recomputeEquipped(); sendSkins(); rebuildViewmodels(); setLoadout(S.loadout);
+  } else setSkin(G.cosSel, DEFAULT_SKIN.slice());
+  buildCosmeticsUI();
+});
+$('skAll').addEventListener('click', () => { // copy this weapon's wrap/hat/effect to everything (models stay)
   const sk = validSkin(S.skins[G.cosSel]);
-  for (const id of ORDER) { const s2 = sk.slice(); s2[3] = 'default'; S.skins[id] = s2; }
+  for (const id of skinnable()) { const s2 = validSkin(S.skins[id]).slice(); s2[0] = sk[0]; s2[1] = sk[1]; s2[2] = sk[2]; storeSkin(id, s2); }
   saveSettings(); recomputeEquipped(); sendSkins(); rebuildViewmodels(); setLoadout(S.loadout); buildCosmeticsUI();
 });
+$('skAllMode').addEventListener('change', () => { S.skinAll = $('skAllMode').checked; saveSettings(); buildCosmeticsUI(); });
 
 // ------------------------------------------------------------ input
 const keys = {};

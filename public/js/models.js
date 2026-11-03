@@ -501,6 +501,35 @@ const MODEL_BUILD = {
   },
 };
 
+// iron sights: a rear notch + front post (glowing tip) on top of the gun, at one height, so the line of sight
+// runs over the top of the gun. ADS puts that line on the centre of the screen and the gun hangs below it.
+const SIGHTS = { ar: 'iron', smg: 'iron', revolver: 'iron', banana: 'iron', shotgun: 'bead' };
+const SIGHT_DOT = 0x7dff4f;
+function addSights(id, g) {
+  const kind = SIGHTS[id];
+  if (!kind || !g.userData.muzzle) return;
+  g.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(g);
+  const mz = g.userData.muzzle;
+  const ys = box.max.y + 0.014; // line of sight, just above the highest part
+  const zf = mz.z + 0.05;
+  const zr = Math.max(mz.z * 0.55, Math.min(box.max.z - 0.05, mz.z * 0.08)); // over the receiver, not the stock
+  const dark = 0x1a1a1a;
+  // front post (+ the bright tip you put on the target)
+  const postH = Math.max(0.01, ys - mz.y);
+  if (kind === 'iron') g.add(bx(0.007, postH, 0.008, dark, 0, mz.y + postH / 2 - 0.004, zf));
+  const tip = bx(kind === 'bead' ? 0.012 : 0.008, kind === 'bead' ? 0.012 : 0.008, kind === 'bead' ? 0.012 : 0.008, SIGHT_DOT, 0, ys - 0.004, zf, true);
+  tip.userData.noWrap = true;
+  g.add(tip);
+  if (kind === 'iron') { // rear notch: two ears with a gap the front post sits in
+    for (const sx of [-1, 1]) g.add(bx(0.008, 0.022, 0.012, dark, sx * 0.011, ys - 0.007, zr));
+    g.add(bx(0.03, 0.007, 0.012, dark, 0, ys - 0.016, zr));
+  } else { // shotgun: a vent rib along the top to sight down
+    g.add(bx(0.012, 0.005, Math.abs(zf - zr), dark, 0, ys - 0.008, (zf + zr) / 2));
+  }
+  g.userData.sight = { y: ys - 0.004, z: zr };
+}
+
 export function buildWeapon(id, skin) {
   const g = new THREE.Group();
   const model = skin && skin[3];
@@ -515,6 +544,7 @@ export function buildWeapon(id, skin) {
     if (g.userData.tip) g.userData.tip.visible = true;
     g.add(glb);
   }
+  if (!glb) addSights(id, g);
   applySkin(g, skin);
   return g;
 }
