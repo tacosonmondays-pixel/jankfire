@@ -689,6 +689,183 @@ function skyline() {
 }
 
 // ------------------------------------------------------------ RANGE: training room
+// ground slab with rectangular holes cut out (stairwells, canals). holes: [x0, z0, x1, z1]
+function groundHoles(B, x0, z0, x1, z1, y0, y1, mat, holes) {
+  const uniq = (a) => [...new Set(a)].sort((p, q) => p - q);
+  const xs = uniq([x0, x1, ...holes.flatMap((h) => [h[0], h[2]])].filter((v) => v >= x0 && v <= x1));
+  const zs = uniq([z0, z1, ...holes.flatMap((h) => [h[1], h[3]])].filter((v) => v >= z0 && v <= z1));
+  const inHole = (x, z) => holes.some((h) => x > h[0] && x < h[2] && z > h[1] && z < h[3]);
+  for (let i = 0; i < xs.length - 1; i++) {
+    let start = null;
+    for (let j = 0; j <= zs.length - 1; j++) {
+      const open = j < zs.length - 1 && !inHole((xs[i] + xs[i + 1]) / 2, (zs[j] + zs[j + 1]) / 2);
+      if (open && start === null) start = zs[j];
+      if (!open && start !== null) { B.add(xs[i], y0, start, xs[i + 1], y1, zs[j], mat); start = null; }
+    }
+  }
+}
+
+// ------------------------------------------------------------ BAZAAR: plant & defuse. original layout built on the
+// classic bomb-map rules: three lanes (a long street to A, a covered market hall in the middle, an underground cistern to B),
+// defenders spawn ~2.5x closer to both sites than attackers, every lane ends in a chokepoint, sites have 3 ways in for retakes,
+// sightlines go long (canal street) / mixed (hall) / close (cistern), and each site has its own colours as a landmark.
+function bazaar() {
+  const B = builder();
+  const W = B.local(0, 0, 0);
+  const r = rng(777);
+  const X0 = -64, X1 = 57, Z0 = -76, Z1 = 76;
+  // ground (with the two cistern stairwells and the canal cut out) + the void below it
+  groundHoles(B, X0, Z0, X1, Z1, -0.4, 0, 'sand', [[-46, 52, -40, 56], [-50, -8, -42, -4], [50, -6, 56, 70]]);
+  // boundary walls
+  B.add(X0 - 1, -4, Z0 - 1, X0, 12, Z1 + 1, 'adobe'); B.add(X1, -4, Z0 - 1, X1 + 1, 12, Z1 + 1, 'adobe');
+  B.add(X0, -4, Z0 - 1, X1, 12, Z0, 'adobe'); B.add(X0, -4, Z1, X1, 12, Z1 + 1, 'adobe');
+  const block = (x0, z0, x1, z1, h, mat = 'adobe') => { B.add(x0, 0, z0, x1, h, z1, mat); B.add(x0 + 0.4, h, z0 + 0.4, x1 - 0.4, h + 0.5, z1 - 0.4, 'roof'); };
+
+  // ---- attacker spawn (south): an encampment with three exits (west -> cistern, north -> hall, east -> canal street)
+  wall(W, 'x', 52, -22, 22, 0, 8, 0.8, 'adobe', [{ a: -6, b: 6, y0: 0, y1: 4.5 }]);
+  wall(W, 'z', -22, 52, 76, 0, 8, 0.8, 'adobe', [{ a: 58, b: 66, y0: 0, y1: 4 }]);
+  wall(W, 'z', 22, 52, 76, 0, 8, 0.8, 'adobe', [{ a: 58, b: 66, y0: 0, y1: 4 }]);
+  for (const [x, z, c] of [[-14, 70, 'cloth'], [14, 70, 'cloth'], [0, 73, 'pink']]) { // tents
+    B.add(x - 3, 0, z - 2, x + 3, 0.1, z + 2, 'cloth');
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) B.box(x + sx * 2.8, 1.4, z + sz * 1.8, 0.2, 2.8, 0.2, 'wood');
+    B.add(x - 3.2, 2.8, z - 2.2, x + 3.2, 3.0, z + 2.2, c);
+  }
+  B.box(-10, 0.6, 60, 1.2, 1.2, 1.2, 'crate'); B.box(10, 0.6, 61, 1.2, 1.2, 1.2, 'crate'); B.box(10, 1.8, 61, 1.1, 1.1, 1.1, 'crate');
+  // ---- west corridor -> cistern stairs
+  block(-40, 52, -22, 56, 8); block(-46, 66, -22, 76, 9); block(X0, 52, -46, 76, 9);
+  // ---- east corridor -> canal street
+  block(22, 52, 34, 58, 8); block(22, 66, 34, 70, 9); block(22, 70, X1, 76, 9);
+
+  // ---- MID: the market hall (covered, stalls for cover, banners that hide your head but not your feet)
+  block(X0, -2, -9, 52, 8, 'adobe');
+  block(9, -2, 34, 52, 8, 'adobe');
+  for (const [z0, z1] of [[-2, 8], [13, 28], [33, 52]]) B.add(-9, 7, z0, 9, 7.4, z1, 'roofg'); // roof with two skylights
+  for (let z = 4; z < 48; z += 8) {
+    for (const sx of [-1, 1]) { // stalls along both walls
+      const x = sx * 6.5;
+      B.add(x - 2, 0, z - 1.5, x + 2, 1.1, z + 1.5, 'wood');
+      for (const dz of [-1.4, 1.4]) B.box(x + sx * -1.8, 1.3, z + dz, 0.15, 2.6, 0.15, 'wood');
+      B.add(x - 2.4, 2.6, z - 1.9, x + 2.4, 2.75, z + 1.9, (z / 8) % 2 ? 'cloth' : 'pink');
+    }
+  }
+  for (const z of [18, 38]) B.add(-4, 3.2, z - 0.05, 4, 7, z + 0.05, 'cloth'); // hanging banners
+  B.box(0, 0.5, 26, 2, 1, 1.2, 'crate');
+
+  // ---- mid plaza: the hall opens here. east = stairs up to the Bridge (rooftop over A's approach),
+  // west = the Spice House (door through to B), north = the narrow passage to the defenders
+  B.box(0, 0.4, -12, 3, 0.8, 3, 'stone'); B.box(0, 1.5, -12, 1, 1.4, 1, 'stone'); // a well
+  stairs(W, 16, 20, -4, -1, 0, 3.4, 'adobe', 0.55);
+  B.add(16, 0, -16, 20, 3.4, -8.4, 'adobe'); // landing
+  // Stable: its roof is the Bridge
+  B.add(20, 0, -30, 34, 3.4, -2, 'adobe');
+  B.add(20, 3.4, -30, 34, 4.4, -29.6, 'adobe'); B.add(20, 3.4, -2.4, 34, 4.4, -2, 'adobe');
+  B.add(20, 3.4, -29.6, 20.4, 4.4, -16, 'adobe'); B.add(20, 3.4, -8.4, 20.4, 4.4, -2.4, 'adobe');
+  B.add(33.6, 3.4, -26, 34, 4.4, -2.4, 'adobe'); // east parapet, gap at the A end so you can drop onto the terrace
+  for (const z of [-24, -18, -12, -6]) B.box(27, 3.4 + 0.5, z, 1.2, 1, 1.2, 'crate');
+
+  // ---- A LONG: Canal Street. long sightline, a sunken canal you can drop into as a lower lane
+  B.add(50, -1.6, -6, 56, -1.2, 70, 'water');
+  B.add(49.6, -1.2, -6, 50, -0.4, 70, 'adobe');
+  B.add(50, -1.6, -6.5, 56, 0, -6, 'adobe'); B.add(50, -1.6, 70, 56, 0, 70.4, 'adobe');
+  for (const z of [44, 14]) stairs(W, 50.2, 52.2, z, 1, -1.2, 0, 'stone', 0.6);
+  for (const [x, z, s2] of [[38, 44, 2], [44, 26, 2], [38, 8, 1.6]]) { B.box(x, s2 / 2, z, s2, s2, s2, 'crate'); }
+  B.box(44, 2.4, 26, 1.4, 1.4, 1.4, 'crate');
+  for (const z of [60, 34, 2]) tree(W, 36, z, 5 + r() * 1.5);
+  // the Gate: chokepoint into A, with a hole up high you can jump through
+  wall(W, 'x', -6, 34, 56, 0, 6, 1, 'brick', [{ a: 40, b: 46, y0: 0, y1: 4 }, { a: 51, b: 53.5, y0: 1.9, y1: 3.1 }]);
+
+  // ---- SITE A: the terrace. raised, tiled, orange canopies. ways in: gate ramp (south), Bridge drop (west), garden stairs (north)
+  B.add(34, 0, -50, 56, 1.6, -28, 'tile');
+  stairs(W, 44, 50, -24, -1, 0, 1.6, 'adobe', 1.0);
+  stairs(W, 36, 42, -54, 1, 0, 1.6, 'adobe', 1.0);
+  B.box(40, 2.6, -36, 2, 2, 2, 'crate'); B.box(50, 2.6, -44, 2, 2, 2, 'crate'); B.box(50, 4.4, -44, 1.6, 1.6, 1.6, 'crate');
+  B.add(45, 1.6, -33, 50, 2.6, -32, 'sand'); // sandbags
+  for (const [x, z] of [[44, -48], [54, -48], [44, -40], [54, -40]]) B.box(x, 3.5, z, 0.3, 3.8, 0.3, 'wood');
+  B.add(43.5, 5.4, -48.5, 54.5, 5.6, -39.5, 'pink'); // canopy
+  B.add(56 - 0.3, 1.6, -50, 56, 4.5, -28, 'yellow'); // painted wall: A is warm
+
+  // ---- defender garden east (CT side of A)
+  block(3, -58, 20, -22, 7);
+  block(20, -50, 34, -30, 7);
+  block(20, Z0, X1, -66, 9);
+  for (const x of [26, 46]) tree(W, x, -60, 5);
+  B.box(30, 0.5, -55, 3, 1, 1, 'hedge');
+
+  // ---- defender spawn (north): palace plaza
+  for (const x of [-14, -7, 7, 14]) B.box(x, 3, -74.5, 1.2, 6, 1.2, 'stone'); // colonnade on the palace front
+  B.add(-16, 6, -76, 16, 7, -73, 'stone');
+  B.box(0, 0.4, -67, 4, 0.8, 4, 'stone'); B.box(0, 2.4, -67, 1.2, 3.2, 1.2, 'gold'); // statue
+
+  // ---- west: garden + SITE B (fountain court, blue walls, an arcade along the north side)
+  block(X0, Z0, -20, -66, 9);
+  block(-20, -58, -3, -22, 7);
+  block(-30, -52, -20, -30, 7);
+  for (let x = -62; x <= -34; x += 4) B.box(x, 2.5, -53, 0.9, 5, 0.9, 'stone');
+  B.add(-63, 5, -55, -33, 5.6, -51, 'roof');
+  B.add(-64, 0, -52, -30, 0.05, -24, 'stone'); // paving
+  // fountain (octagon-ish basin), the middle of B
+  const fx = -46, fz = -38;
+  for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; B.box(fx + Math.cos(a) * 3, 0.45, fz + Math.sin(a) * 3, 2.6, 0.8, 2.6, 'stone'); }
+  B.add(fx - 2, 0.05, fz - 2, fx + 2, 0.5, fz + 2, 'water');
+  B.box(fx, 1.6, fz, 0.8, 2.2, 0.8, 'stone');
+  B.box(-56, 0.6, -46, 1.2, 1.2, 1.2, 'crate'); B.box(-36, 0.6, -32, 2, 1.2, 1.2, 'crate'); B.box(-38, 1.6, -45, 2.4, 3.2, 1.2, 'wood');
+  B.add(-64, 0, -52, -63.7, 6, -24, 'blue'); // painted wall: B is cool
+
+  // ---- the Spice House: two floors between mid plaza and B. door from the plaza, door + upstairs window onto B
+  const SX0 = -30, SX1 = -20, SZ0 = -30, SZ1 = -6, F = 3.6;
+  B.add(SX0, 0, SZ0, SX1, 0.12, SZ1, 'wood');
+  wall(W, 'z', SX1, SZ0, SZ1, 0, 2 * F, 0.4, 'plaster', [{ a: -18, b: -15, y0: 0, y1: 2.8 }, { a: -11, b: -9, y0: F + 1, y1: F + 2.2 }]);
+  wall(W, 'z', SX0, SZ0, SZ1, 0, 2 * F, 0.4, 'plaster', [{ a: -28, b: -25.5, y0: 0, y1: 2.8 }, { a: -22, b: -19, y0: F + 1, y1: F + 2.2 }]);
+  wall(W, 'x', SZ0, SX0, SX1, 0, 2 * F, 0.4, 'plaster');
+  wall(W, 'x', SZ1, SX0, SX1, 0, 2 * F, 0.4, 'plaster');
+  slab(W, SX0, SZ0, SX1, SZ1, F, F + 0.25, 'wood', [-23, -12, -21, -6.4]);
+  stairs(W, -23, -21, -12, 1, 0.12, F + 0.25, 'wood', 0.6);
+  B.add(SX0, 2 * F, SZ0, SX1, 2 * F + 0.3, SZ1, 'roof');
+  for (const [x, z] of [[-27, -20], [-24, -9]]) B.box(x, 0.6, z, 1.2, 1.2, 1.2, 'crate');
+  B.add(-29.5, F + 0.25, -24, -28, F + 1.1, -14, 'cloth'); // sacks of spice upstairs
+  block(-30, -6, -20, -2, 7);
+
+  // ---- B gate: the cistern comes up here, then an arch (chokepoint) into B
+  block(X0, -24, -52, -2, 8); block(-40, -24, -30, -2, 8);
+  wall(W, 'x', -24, -52, -40, 0, 6, 1, 'adobe', [{ a: -48, b: -44, y0: 0, y1: 3.2 }]);
+
+  // ---- the CISTERN: underground tunnel from the attacker side to B. close quarters, pillars, a flooded side chamber
+  B.add(-50, -3.9, -8, -40, -3.5, 56, 'stone');
+  wall(W, 'z', -50.2, -8, 56, -3.5, -0.4, 0.4, 'stone', [{ a: 20, b: 28, y0: -3.5, y1: -0.4 }]);
+  B.add(-40, -3.5, -8, -39.6, -0.4, 56, 'stone');
+  B.add(-50, -3.5, -8.4, -40, -0.4, -8, 'stone'); B.add(-50, -3.5, 56, -40, -0.4, 56.4, 'stone');
+  stairs(W, -50, -42, -4, -1, -3.5, 0, 'stone', 0.5);
+  stairs(W, -46, -40, 52, 1, -3.5, 0, 'stone', 0.5);
+  B.add(-58, -3.9, 18, -50.4, -3.5, 30, 'stone');
+  B.add(-58.4, -3.5, 18, -58, -0.4, 30, 'stone'); B.add(-58, -3.5, 17.6, -50.4, -0.4, 18, 'stone'); B.add(-58, -3.5, 30, -50.4, -0.4, 30.4, 'stone');
+  B.add(-56, -3.5, 21, -52, -3.45, 27, 'water');
+  for (const z of [44, 30, 14, 2]) B.box(-45, -1.95, z, 1, 3.1, 1, 'stone');
+  for (const z of [40, 20, 0]) B.box(-49.7, -1.6, z, 0.2, 0.4, 0.6, 'light');
+
+  const att = [[-12, 0.1, 66], [-6, 0.1, 70], [0, 0.1, 63], [6, 0.1, 70], [12, 0.1, 66], [-16, 0.1, 58], [16, 0.1, 58]];
+  const def = [[-12, 0.1, -70], [-6, 0.1, -63], [0, 0.1, -61], [6, 0.1, -63], [12, 0.1, -70], [-16, 0.1, -62], [16, 0.1, -62]];
+  const spawns = [...att, ...def, [0, 0.1, 20], [42, 0.1, 30], [-45, -3.4, 20], [46, 1.7, -40], [-50, 0.1, -32], [8, 0.1, -12], [27, 3.5, -16], [40, 0.1, -60], [-41, 0.1, -60], [-25, 0.2, -16]];
+  return {
+    name: 'Bazaar', size: 'large', boxes: B.boxes, killY: -30,
+    sky: { top: 0x4a8fd8, mid: 0xf2dcae, bot: 0x8a6a40, fog: 0xf0d8a8 }, fogNear: 90, fogFar: 320,
+    spawns, teamSpawns: { att, def },
+    // bot routes along the real lanes, [x, z] points ending on each site
+    nav: {
+      A: [
+        [[16, 62], [28, 62], [42, 62], [42, 30], [43, 6], [43, -3], [43, -10], [47, -21], [47, -27], [46, -38]], // canal street
+        [[0, 56], [0, 30], [0, 2], [8, -3], [18, -2.5], [18, -10], [18, -14], [24, -20], [31, -27.5], [37, -28.5], [44, -38]], // hall -> bridge
+        [[8, -64], [22, -62], [32, -58], [39, -57], [39, -52], [41, -47], [46, -40]], // defenders' garden
+      ],
+      B: [
+        [[-16, 62], [-30, 61], [-43, 60], [-43, 57], [-43, 52], [-43, 44], [-43, 30], [-43, 8], [-46, -2], [-46, -9], [-46, -18], [-46, -25], [-46, -36]], // cistern
+        [[0, 56], [0, 30], [0, 2], [-8, -8], [-17, -16.5], [-21.5, -16.5], [-25, -21], [-26, -26.7], [-31, -26.7], [-35, -28], [-44, -36]], // hall -> spice house
+        [[-8, -64], [-22, -62], [-32, -58], [-40, -56], [-44, -50], [-46, -40]], // defenders' arcade
+      ],
+    },
+    sites: [{ id: 'A', min: [36, 1.6, -50], max: [56, 1.6, -30] }, { id: 'B', min: [-60, 0, -50], max: [-34, 0, -28] }],
+  };
+}
+
 function range() {
   const { boxes, box } = builder();
   box(0, -1, -60, 40, 2, 150, 'grass');
@@ -713,9 +890,9 @@ function range() {
 
 export const MAPS = {
   crate: crate(), platform: platform(), rooftop: rooftop(), suburb: suburb(), warehouse: warehouse(),
-  desert: desert(), islands: islands(), skyline: skyline(), range: range(),
+  desert: desert(), islands: islands(), skyline: skyline(), bazaar: bazaar(), range: range(),
 };
-export const MAP_ORDER = ['crate', 'platform', 'rooftop', 'suburb', 'warehouse', 'desert', 'islands', 'skyline'];
+export const MAP_ORDER = ['crate', 'platform', 'rooftop', 'suburb', 'warehouse', 'desert', 'bazaar', 'islands', 'skyline'];
 
 // Client convenience: "the current map". These arrays/objects are mutated in place by setMap,
 // so every module that imported them sees the new map.

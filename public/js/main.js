@@ -20,6 +20,8 @@ import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSk
 import { initPreview, showPreview, showCharacter, renderPreview, resizePreview } from './preview.js';
 import { playKillFx, updateKillFx, clearKillFx } from './killfx.js';
 import { updateSpeedLines } from './speedlines.js';
+import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse } from './objective.js';
+import { GAMES, GAME_ORDER, TEAMS } from '/shared/modes.js';
 import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
 import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook } from '/shared/looks.js';
@@ -216,6 +218,10 @@ function fillSelect(sel, entries, value) {
 const mapEntries = MAP_ORDER.map((k) => [k, `${MAPS[k].name} (${MAPS[k].size})`]);
 const hipEntries = Object.entries(HIPFIRE).map(([k, v]) => [k, v.name]);
 const diffEntries = Object.entries(BOT_DIFF).map(([k, v]) => [k, v.name]);
+const gameEntries = GAME_ORDER.map((k) => [k, GAMES[k].name]);
+fillSelect($('setupGame'), gameEntries, 'dm');
+fillSelect($('cfgGame'), gameEntries, 'dm');
+$('cfgGame').addEventListener('change', () => net.send({ t: 'cfg', game: $('cfgGame').value }));
 fillSelect($('setupMap'), mapEntries, 'islands');
 fillSelect($('setupDiff'), diffEntries, 'normal');
 fillSelect($('setupHip'), hipEntries, 'normal');
@@ -224,7 +230,7 @@ fillSelect($('cfgHip'), hipEntries);
 fillSelect($('cfgDiff'), diffEntries);
 $('setupBots').addEventListener('input', () => { $('setupBotsN').textContent = $('setupBots').value; });
 $('setupGo').addEventListener('click', () => startMode('bots', {
-  map: $('setupMap').value, bots: Number($('setupBots').value), diff: $('setupDiff').value, hip: $('setupHip').value,
+  map: $('setupMap').value, bots: Number($('setupBots').value), diff: $('setupDiff').value, hip: $('setupHip').value, game: $('setupGame').value,
 }));
 function syncMatchUI() {
   $('cfgMap').value = G.cfg.map;
@@ -235,6 +241,8 @@ function syncMatchUI() {
   $('cfgBotsN').textContent = G.cfg.bots;
   for (const el of document.querySelectorAll('.botsOnly')) el.style.display = G.mode === 'bots' || G.mode === 'coop' ? '' : 'none';
   $('cfgBots').parentElement.style.display = G.mode === 'bots' ? '' : 'none';
+  $('cfgGame').parentElement.style.display = G.mode === 'bots' ? '' : 'none';
+  if (G.round && G.round.game) $('cfgGame').value = G.round.game;
 }
 $('cfgMap').addEventListener('change', () => net.send({ t: 'cfg', map: $('cfgMap').value }));
 $('cfgHip').addEventListener('change', () => net.send({ t: 'cfg', hip: $('cfgHip').value }));
@@ -580,12 +588,13 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyB') { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
   if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) jumpPressed = true; }
   if (e.code === 'KeyE' && !e.repeat) { if (S.swapAim) aimDown(); else tryHook(); }
+  if (G.vote && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) { castVote(Number(e.code.slice(5)) - 1); return; }
   if (e.code === 'Digit1') switchSlot(0);
   if (e.code === 'Digit2') switchSlot(1);
   if (e.code === 'Digit3') switchSlot(2);
   if (e.code === 'KeyQ') lastSlot();
   if (e.code === 'KeyR') reload();
-  if (e.code === 'KeyF') inspect();
+  if (e.code === 'KeyF' && !e.repeat) { if (canUse(G.round, ME.pos)) startUse(); else inspect(); }
   if (e.code === 'KeyV') W.dashHeld = true;
   if (e.code === 'KeyX' && !e.repeat) toggleScythe();
   if (e.code === 'KeyG' && !e.repeat) deployStreak();
@@ -600,6 +609,7 @@ addEventListener('keydown', (e) => {
 });
 addEventListener('keyup', (e) => {
   keys[e.code] = false;
+  if (e.code === 'KeyF') stopUse();
   if (e.code === 'KeyV') W.dashHeld = false;
   if (e.code === 'Tab') { scoresOpen = false; hud.scores(false); }
   if (e.code === 'KeyE') { if (S.swapAim) aimUp(); else releaseHook(); }
@@ -638,8 +648,19 @@ addEventListener('resize', resizePreview);
 
 function renderScores() {
   const rows = [{ name: G.myName, color: G.myColor, k: G.kills, d: G.deaths, me: true, card: cardUrlFor(G.myId) }];
-  for (const r of G.remotes.values()) if (!(r.bot && r.name === 'Dummy')) rows.push({ name: r.name, color: r.color, k: r.k, d: r.d, card: cardUrlFor(r.id) });
+  for (const r of G.remotes.values()) if (!(r.bot && r.name === 'Dummy')) rows.push({ id: r.id, name: r.name, color: r.color, k: r.k, d: r.d, card: cardUrlFor(r.id) });
   rows.sort((a, b) => b.k - a.k || a.d - b.d);
+  if (G.round && GAMES[G.round.game] && GAMES[G.round.game].teams) {
+    const team = (r) => (r.me ? G.myTeam : (G.remotes.get(r.id) || {}).team || 0);
+    const out = [];
+    for (const t of [1, 2]) {
+      const mine = rows.filter((r) => team(r) === t);
+      const sc = G.round.game === 'bomb' && G.round.bomb ? G.round.bomb.wins[t - 1] : (G.round.sc || [0, 0])[t - 1];
+      out.push({ name: `${TEAMS[t].name} · ${sc}`, color: TEAMS[t].color, k: '', d: '' }, ...mine);
+    }
+    hud.scores(true, out);
+    return;
+  }
   hud.scores(true, rows);
 }
 function nameOf(id) {
@@ -647,7 +668,10 @@ function nameOf(id) {
   const n = G.names.get(id);
   return n ? [n.name, n.color] : ['???', '#aaa'];
 }
-function updateLabel() { hud.label(`${MODES[G.mode] ? MODES[G.mode].name : ''} · ${MAPS[G.cfg.map] ? MAPS[G.cfg.map].name : ''}${G.mode === 'training' ? ' · infinite ammo' : ''}`); }
+function updateLabel() {
+  const g = G.round && G.round.game && G.round.game !== 'dm' && GAMES[G.round.game] ? ` · ${GAMES[G.round.game].name}` : '';
+  hud.label(`${MODES[G.mode] ? MODES[G.mode].name : ''}${g} · ${MAPS[G.cfg.map] ? MAPS[G.cfg.map].name : ''}${G.mode === 'training' ? ' · infinite ammo' : ''}`);
+}
 
 // ------------------------------------------------------------ world entities
 function skinOf(owner, wid) { return (owner === G.myId ? G.equipped : (G.skins.get(owner) || {}))[wid]; }
@@ -678,7 +702,7 @@ function addHole(m) {
   sfx.hole(m.p);
 }
 function addRemoteInfo(p) {
-  G.names.set(p.id, { name: p.name, color: p.color, bot: p.bot, level: p.level, look: p.look, card: p.card || '', skins: p.skins || {} });
+  G.names.set(p.id, { name: p.name, color: p.color, bot: p.bot, level: p.level, look: p.look, card: p.card || '', skins: p.skins || {}, team: p.team || 0 });
   G.skins.set(p.id, p.skins || {});
 }
 
@@ -698,6 +722,11 @@ net.on('welcome', (m) => {
   hud.wave(m.wave);
   renderRound(m.round);
   $('roundEnd').classList.add('hidden');
+  G.round = m.round; G.myTeam = m.team || 0;
+  setupObjectives(m.cfg.map);
+  clearTags();
+  for (const g of m.tags || []) addTag(g.id, g.p, g.team);
+  showVote(m.vote);
   refillAmmo();
   applyLoadout(true);
   updateLabel();
@@ -713,7 +742,7 @@ net.on('welcome', (m) => {
 net.on('cfg', (m) => {
   const mapChanged = m.cfg.map !== G.cfg.map;
   G.cfg = m.cfg;
-  if (mapChanged) { loadMap(m.cfg.map); clearEntities(); }
+  if (mapChanged) { loadMap(m.cfg.map); clearEntities(); setupObjectives(m.cfg.map); }
   updateLabel();
   if (screen === 'match') syncMatchUI();
 });
@@ -765,14 +794,85 @@ net.on('sn', (m) => {
     if (!r) {
       const n = G.names.get(id) || { name: '???', color: '#ffffff' };
       r = new Remote(id, n.level ? `${n.name} [${n.level}]` : n.name, n.color, G.skins.get(id) || {}, n.bot, n.look);
+      r.team = n.team || 0;
       G.remotes.set(id, r);
     }
     r.snap(m.s, e);
   }
   if (m.wave) hud.wave(m.wave);
+  if (m.round) { if (!G.round || G.round.game !== m.round.game) { G.round = m.round; updateLabel(); } G.round = m.round; }
   renderRound(m.round);
   if (scoresOpen) renderScores();
 });
+// ------------------------------------------------------------ modes: teams, tags, bomb, vote
+net.on('teams', (m) => {
+  for (const [id, team, color] of m.list) {
+    if (id === G.myId) { G.myTeam = team; G.myColor = color; continue; }
+    const n = G.names.get(id);
+    if (n) { n.team = team; n.color = color; }
+    const r = G.remotes.get(id);
+    if (r) { r.team = team; if (r.color !== color) r.setLook(r.outfit, color); }
+  }
+  if (G.round) G.round.game = m.game;
+  updateLabel();
+  if (GAMES[m.game] && GAMES[m.game].teams && G.myTeam) hud.msg(`YOU ARE ${TEAMS[G.myTeam].name}`, 2, 'brag');
+});
+net.on('tag+', (m) => addTag(m.id, m.p, m.team));
+net.on('tagc', () => clearTags());
+net.on('tagx', (m) => {
+  removeTag(m.id);
+  if (m.by === G.myId) { hud.msg(m.k === 'confirm' ? 'KILL CONFIRMED +1' : 'KILL DENIED', 1.2, 'brag'); if (m.k === 'confirm') sfx.cash(); else sfx.ting(); }
+});
+net.on('bombyou', () => { hud.msg('YOU HAVE THE BOMB', 2, 'brag'); hud.chat(null, null, 'you have the bomb: get to site A or B and hold F to plant'); });
+net.on('bombev', (m) => {
+  const [n] = m.id ? nameOf(m.id) : [''];
+  if (m.k === 'round') { hud.msg(`ROUND ${m.n} · ${G.myTeam === m.att ? 'ATTACK' : 'DEFEND'}`, 2.2, 'brag'); }
+  else if (m.k === 'planted') { hud.msg(`BOMB PLANTED AT ${m.site}`, 2.2, 'brag'); sfx.ting(); hud.chat(null, null, `${n} planted the bomb at ${m.site}`); }
+  else if (m.k === 'defused') { hud.msg('BOMB DEFUSED', 2.2, 'brag'); sfx.kill(); hud.chat(null, null, `${n} defused the bomb`); }
+  else if (m.k === 'boom') { G.shake = 1; }
+  else if (m.k === 'drop') hud.chat(null, null, 'the bomb was dropped');
+  else if (m.k === 'pickup') hud.chat(null, null, `${n} picked up the bomb`);
+  else if (m.k === 'win') {
+    const mine = m.team === G.myTeam;
+    const why = { defused: 'bomb defused', exploded: 'bomb went off', time: 'time ran out' }[m.why] || '';
+    hud.msg(`${TEAMS[m.team].name} WINS THE ROUND`, 3, 'brag');
+    hud.chat(null, null, `${TEAMS[m.team].name} wins the round (${why}) · ${m.wins[0]} - ${m.wins[1]}`);
+    if (mine) sfx.kill();
+  }
+});
+// hold F to plant / defuse: keep telling the server while it's held, and stand still
+let useTimer = 0;
+function startUse() {
+  stopUse();
+  G.using = true;
+  net.send({ t: 'use' });
+  useTimer = setInterval(() => { if (!G.using || !ME.alive) { stopUse(); return; } net.send({ t: 'use' }); }, 200);
+}
+function stopUse() { clearInterval(useTimer); useTimer = 0; G.using = false; }
+// vote for the next match: press 1 / 2 / 3
+let myVote = -1;
+function showVote(v) {
+  const panel = $('votePanel');
+  G.vote = v;
+  if (!v) { panel.classList.add('hidden'); myVote = -1; return; }
+  panel.classList.remove('hidden');
+  G.voteEnds = performance.now() + (v.left || 0);
+  const box = $('voteOpts');
+  box.innerHTML = '';
+  v.options.forEach((o, i) => {
+    const d = document.createElement('div');
+    d.className = 'vopt' + (i === myVote ? ' on' : '');
+    const k = document.createElement('b'); k.textContent = String(i + 1);
+    const t = document.createElement('span'); t.textContent = `${o.name} · ${o.mapName}`;
+    const c = document.createElement('i'); c.textContent = String((v.counts || [])[i] || 0);
+    d.append(k, t, c);
+    box.append(d);
+  });
+}
+function castVote(i) { if (!G.vote || i >= G.vote.options.length) return; myVote = i; net.send({ t: 'vote', i }); showVote(G.vote); sfx.click(); }
+net.on('vote', (m) => { myVote = -1; showVote(m); });
+net.on('votes', (m) => { if (G.vote) { G.vote.counts = m.counts; showVote(G.vote); } });
+
 net.on('kb', (m) => applyKb(m.v));
 net.on('slip', () => slip(performance.now()));
 net.on('dmg', (m) => {
@@ -1005,7 +1105,7 @@ function frame(t) {
   const now = performance.now();
 
   if (G.joined) {
-    const playing = $('menu').classList.contains('hidden') && !chatOpen && now >= (ME.sleepUntil || 0) && !RP.active;
+    const playing = $('menu').classList.contains('hidden') && !chatOpen && now >= (ME.sleepUntil || 0) && !RP.active && !G.using;
     const inp = playing ? {
       f: keys.KeyW, b: keys.KeyS, l: keys.KeyA, r: keys.KeyD, jump: keys.Space, jumpPressed,
       sprint: keys.ShiftLeft || keys.ShiftRight,
@@ -1020,7 +1120,7 @@ function frame(t) {
       const e = eye();
       let best = null, bd = 1e9;
       for (const r of G.remotes.values()) {
-        if (!r.alive || (r.bot && r.name === 'Dummy' && G.mode !== 'training')) continue;
+        if (!r.alive || (r.bot && r.name === 'Dummy' && G.mode !== 'training') || (G.myTeam && r.team === G.myTeam)) continue;
         const tx = r.pos[0] - e[0], ty = r.pos[1] + 2.0 - e[1], tz = r.pos[2] - e[2], d = Math.hypot(tx, ty, tz);
         if (d > 150 || d < 0.5 || d >= bd) continue;
         if (raycast(e, [tx / d, ty / d, tz / d], d, BOXES)) continue;
@@ -1058,6 +1158,12 @@ function frame(t) {
   else for (const r of G.remotes.values()) { r.ch.root.visible = false; r.rope.visible = false; r.shadow.visible = false; } // the replay has its own copies
   updateGibs(dt);
   updateKillFx(dt);
+  if (G.joined) {
+    updateObjectives(dt, now, G.round, ME.pos);
+    const a = G.round && G.round.bomb && G.round.bomb.act;
+    if (a && a.by === G.myId) hud.meter(a.f, a.k === 'plant' ? 'PLANTING... keep holding F' : 'DEFUSING... keep holding F', '#ff4f4f');
+    if (G.vote) $('voteLeft').textContent = `${Math.max(0, Math.ceil((G.voteEnds - performance.now()) / 1000))}s`;
+  }
 
   for (const pr of G.projs.values()) {
     if (pr.k === 'slipper') {
@@ -1560,26 +1666,40 @@ function fmtClock(ms) { const s2 = Math.ceil(ms / 1000); return `${Math.floor(s2
 function renderRound(r) {
   const el = $('round');
   if (!r) { el.textContent = ''; return; }
-  el.textContent = r.over ? `next round in ${Math.ceil(r.left / 1000)}` : `first to ${r.target} · ${fmtClock(r.left)}`;
+  const teamGame = r.game && GAMES[r.game] && GAMES[r.game].teams;
+  el.textContent = r.over ? `next round in ${Math.ceil(r.left / 1000)}` : teamGame ? '' : `first to ${r.target} · ${fmtClock(r.left)}`;
 }
 net.on('round', (m) => {
   const box = $('roundEnd');
-  if (m.start) { G.roundOver = false; if (RP.mode === 'hl') stopReplay(true); box.classList.add('hidden'); hud.msg('ROUND START', 1.5, 'brag'); return; }
+  if (m.start) {
+    G.roundOver = false; if (RP.mode === 'hl') stopReplay(true); box.classList.add('hidden'); showVote(null);
+    if (m.game) { G.round = { ...(G.round || {}), ...m }; updateLabel(); }
+    hud.msg(m.game && m.game !== 'dm' && GAMES[m.game] ? GAMES[m.game].name.toUpperCase() : 'ROUND START', 1.8, 'brag');
+    if (m.game && GAMES[m.game]) hud.chat(null, null, GAMES[m.game].desc);
+    return;
+  }
   if (!m.over) return;
   G.roundOver = true;
   box.innerHTML = '';
   const h = document.createElement('h3');
-  const [wn] = m.winner ? nameOf(m.winner) : ['nobody'];
-  h.textContent = m.winner === G.myId ? 'YOU WIN' : `${wn} wins`;
+  if (m.sc) {
+    const won = m.winTeam && m.winTeam === G.myTeam;
+    h.textContent = m.winTeam ? `${TEAMS[m.winTeam].name} WINS ${m.sc[0]} - ${m.sc[1]}${won ? ' (YOU)' : ''}` : `DRAW ${m.sc[0]} - ${m.sc[1]}`;
+    if (m.winTeam) h.style.color = TEAMS[m.winTeam].color;
+  } else {
+    const [wn] = m.winner ? nameOf(m.winner) : ['nobody'];
+    h.textContent = m.winner === G.myId ? 'YOU WIN' : `${wn} wins`;
+  }
   box.append(h);
-  for (const [id, name, k, d] of m.top) {
+  for (const [id, name, k, d, team] of m.top) {
     const row = document.createElement('div');
     row.textContent = `${name}  ·  ${k} / ${d}`;
+    if (team && TEAMS[team]) row.style.color = TEAMS[team].color;
     if (id === G.myId) row.style.color = '#ffe14d';
     box.append(row);
   }
   box.classList.remove('hidden');
-  if (m.winner === G.myId) sfx.kill();
+  if (m.winner === G.myId || (m.winTeam && m.winTeam === G.myTeam)) sfx.kill();
 });
 // play of the round: the server picked the best moment and sent the recording
 net.on('hl', (m) => {

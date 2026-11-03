@@ -27,6 +27,9 @@
   <div id="wave"></div>
   <div id="round"></div>
   <div id="roundEnd" class="hidden"></div>
+  <div id="teamBar" class="hidden"><span class="t1"></span><span class="mid"></span><span class="t2"></span></div>
+  <div id="objective"></div>
+  <div id="votePanel" class="hidden"><div class="vt">VOTE: NEXT MATCH · press 1 / 2 / 3 <span id="voteLeft"></span></div><div id="voteOpts"></div></div>
   <div id="toast"></div>
   <div id="speed"><span id="speedNum">0</span><small> km/h</small><div id="speedLabel"></div></div>
   <div id="combo"></div>
@@ -104,6 +107,7 @@
   <div class="screen panel hidden" id="scr-setup">
     <h2>BOTS</h2>
     <div class="form">
+      <label>mode <select id="setupGame"></select></label>
       <label>map <select id="setupMap"></select></label>
       <label>bots <input id="setupBots" type="range" min="1" max="12" step="1" value="5"><span id="setupBotsN">5</span></label>
       <label>difficulty <select id="setupDiff"></select></label>
@@ -118,6 +122,7 @@
     <h2>MATCH SETTINGS</h2>
     <div class="note">these change the match for everyone in this room</div>
     <div class="form">
+      <label>mode <select id="cfgGame"></select></label>
       <label>map <select id="cfgMap"></select></label>
       <label>hipfire accuracy <select id="cfgHip"></select></label>
       <label class="botsOnly">bot difficulty <select id="cfgDiff"></select></label>

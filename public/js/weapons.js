@@ -430,10 +430,12 @@ function setCd(id, now) {
   W.cd[id] = Math.max(W.cd[id] || 0, now - Math.min(40, iv * 0.5)) + iv; // keeps auto fire rate steady at low fps
 }
 
+// teammates are see-through for your bullets and swings
+export const isFriend = (r) => !!(G.myTeam && r.team && r.team === G.myTeam);
 function rayPlayers(o, d, maxT) {
   let best = null;
   for (const r of G.remotes.values()) {
-    if (!r.alive) continue;
+    if (!r.alive || isFriend(r)) continue;
     for (const hb of r.hitboxes()) {
       const h = rayBox(o, d, hb, best ? best.t : maxT);
       if (h && (!best || h.t < best.t)) best = { t: h.t, r, head: hb.head };
@@ -445,7 +447,7 @@ function rayPlayers(o, d, maxT) {
 function conePlayers(o, d, range, cone) {
   const out = [], cosC = Math.cos(cone);
   for (const r of G.remotes.values()) {
-    if (!r.alive) continue;
+    if (!r.alive || isFriend(r)) continue;
     const tx = r.pos[0] - o[0], ty = r.pos[1] + 1 - o[1], tz = r.pos[2] - o[2];
     const dist = Math.hypot(tx, ty, tz);
     if (dist > range || dist < 1e-3) continue;
@@ -815,7 +817,7 @@ export function updateWeapons(dt, now) {
   if (dashing) {
     W.dashFuel = Math.max(0, W.dashFuel - dt);
     for (const r of G.remotes.values()) {
-      if (!r.alive) continue;
+      if (!r.alive || isFriend(r)) continue;
       if (Math.hypot(r.pos[0] - ME.pos[0], r.pos[1] - ME.pos[1], r.pos[2] - ME.pos[2]) > 2.6) continue;
       if (now - (W.dashHitT.get(r.id) || 0) < 300) continue;
       W.dashHitT.set(r.id, now);

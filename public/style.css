@@ -285,3 +285,18 @@ body.replaying #weaponName, body.replaying #meter, body.replaying #hand, body.re
 body.replaying #speedLines { visibility: hidden; }
 
 .allmode { display: block; font-size: 14px; margin: 4px 0 8px; color: #ffe14d; }
+
+/* modes */
+#teamBar { position: absolute; left: 50%; top: 34px; transform: translateX(-50%); display: flex; gap: 10px; align-items: center; font-size: 20px; text-shadow: 2px 2px 0 #000; }
+#teamBar .t1 { color: #ff4f4f; } #teamBar .t2 { color: #4fa8ff; }
+#teamBar .mine { text-decoration: underline; font-size: 24px; }
+#teamBar .mid { font-size: 13px; color: #fff; background: rgba(0, 0, 0, 0.45); padding: 2px 8px; }
+#objective { position: absolute; left: 50%; top: 64px; transform: translateX(-50%); font-size: 15px; color: #ffe14d; text-shadow: 1px 1px 0 #000; white-space: nowrap; }
+#votePanel { position: absolute; right: 16px; top: 34%; width: 300px; background: rgba(10, 0, 20, 0.85); border: 3px solid var(--cyan); padding: 10px 12px; box-shadow: 4px 4px 0 #000; }
+#votePanel .vt { font-size: 14px; color: var(--cyan); margin-bottom: 6px; }
+.vopt { display: flex; align-items: center; gap: 8px; padding: 5px 6px; margin-top: 4px; background: rgba(255, 255, 255, 0.06); font-size: 15px; }
+.vopt b { color: #ffe14d; width: 16px; }
+.vopt span { flex: 1; }
+.vopt i { font-style: normal; color: #fff; background: rgba(255, 255, 255, 0.15); padding: 0 6px; }
+.vopt.on { outline: 2px solid #ffe14d; }
+body.replaying #teamBar, body.replaying #objective { visibility: hidden; }

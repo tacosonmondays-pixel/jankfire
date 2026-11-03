@@ -15,6 +15,7 @@ import { ownedSkin, ownedKill, randomContainer, CONTAINERS, COSMETICS } from './
 import { validLook, achievementsFrom, ACHIEVEMENTS } from './shared/looks.js';
 import { STAT_KEYS } from './server/store.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
+import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor } from './shared/modes.js';
 import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
 
@@ -134,6 +135,11 @@ function enforceSkins(skins, inv) {
 if (process.env.JF_STREAK) STREAKS.scythe.kills = Number(process.env.JF_STREAK) || STREAKS.scythe.kills;
 const ROUND = { ffa: { kills: 20, time: 360 }, bots: { kills: 15, time: 300 } };
 if (process.env.JF_ROUND_KILLS) for (const r of Object.values(ROUND)) r.kills = Number(process.env.JF_ROUND_KILLS) || r.kills;
+// test knobs for plant & defuse (short rounds / fuse / match)
+if (process.env.JF_BOMB_WINS) BOMB.wins = Number(process.env.JF_BOMB_WINS) || BOMB.wins;
+if (process.env.JF_BOMB_FUSE) BOMB.fuse = Number(process.env.JF_BOMB_FUSE) || BOMB.fuse;
+if (process.env.JF_BOMB_ROUND) BOMB.roundTime = Number(process.env.JF_BOMB_ROUND) || BOMB.roundTime;
+if (process.env.JF_TARGET) for (const t of Object.values(TARGETS)) for (const k of Object.keys(t)) t[k] = Number(process.env.JF_TARGET);
 function randomSkins() {
   const out = {};
   for (const id of Object.keys(WEAPONS)) if (Math.random() < 0.6) out[id] = [pick(SKIN_F), pick(SKIN_H), pick(SKIN_E), id === 'knife' ? pick(['default', 'knife_karambit', 'knife_butterfly', 'knife_switch', 'knife_cleaver']) : 'default'];
@@ -179,6 +185,11 @@ class Room {
     this.clouds = new Map(); this.nextCloud = 1;
     this.nextProj = 1; this.nextPeel = 1; this.nextHole = 1;
     this.rec = { frames: [], ev: [] };
+    this.game = 'dm'; // dm / tdm / tags / bomb (Online + Bots rooms)
+    this.score = { 1: 0, 2: 0 };
+    this.tags = new Map(); this.nextTag = 1;
+    this.bomb = null;
+    this.vote = null;
     this.cfg = { map: mode === 'training' ? 'range' : mode === 'coop' ? 'warehouse' : 'islands', hip: 'normal', bots: 5, diff: 'normal' };
     this.wave = 0; this.toSpawn = 0; this.interUntil = 0;
     this.round = ROUND[mode] ? { target: ROUND[mode].kills, ends: now() + ROUND[mode].time * 1000, over: false, next: 0 } : null;
@@ -193,13 +204,42 @@ class Room {
     for (const p of this.players.values()) if (p.id !== exceptId && p.ws && p.ws.readyState === 1) p.ws.send(s);
   }
   humans() { return [...this.players.values()].filter((p) => !p.isBot); }
+  teamsOn() { return (this.mode === 'ffa' || this.mode === 'bots') && !!GAMES[this.game].teams; }
+  fighters() { return [...this.players.values()].filter((p) => !(p.isBot && p.ai && p.ai.dummy)); }
+  // even teams, humans spread first
+  assignTeams() {
+    const list = this.fighters().sort((a, b) => (a.isBot - b.isBot) || (Math.random() - 0.5));
+    let i = 0;
+    for (const p of list) {
+      if (!p.ownColor) p.ownColor = p.color;
+      if (this.teamsOn()) { p.team = (i++ % 2) + 1; p.color = TEAMS[p.team].color; }
+      else { p.team = 0; p.color = (p.look && p.look.color) || p.ownColor; }
+    }
+    this.broadcast({ t: 'teams', game: this.game, list: list.map((p) => [p.id, p.team, p.color]) });
+  }
+  teamFor() {
+    const c = { 1: 0, 2: 0 };
+    for (const p of this.fighters()) if (p.team) c[p.team]++;
+    return c[1] <= c[2] ? 1 : 2;
+  }
+  joinTeam(p) {
+    if (!p.ownColor) p.ownColor = p.color;
+    if (!this.teamsOn()) { p.team = 0; return; }
+    p.team = this.teamFor();
+    p.color = TEAMS[p.team].color;
+  }
 
-  pickSpawn(forBot) {
-    const spawns = this.map.spawns;
+  pickSpawn(forBot, who) {
+    let spawns = this.map.spawns;
+    const ts = this.map.teamSpawns;
+    if (who && who.team && this.teamsOn() && ts) {
+      const attacking = this.game === 'bomb' ? who.team === (this.bomb ? this.bomb.att : 1) : who.team === 1;
+      spawns = attacking ? ts.att : ts.def;
+    }
     let best = spawns[0], bestD = -1;
     for (const s of spawns) {
       let d = 1e9;
-      for (const p of this.players.values()) if (p.alive && (!forBot || !p.isBot)) d = Math.min(d, dist3(s, p.pos));
+      for (const p of this.players.values()) if (p.alive && p !== who && (!forBot || !p.isBot) && !(who && who.team && p.team === who.team)) d = Math.min(d, dist3(s, p.pos));
       d += Math.random() * 15;
       if (d > bestD) { bestD = d; best = s; }
     }
@@ -219,7 +259,7 @@ class Room {
       onGround: false, slipUntil: 0, acct: opts.acct || null, level: opts.level || 0,
     };
   }
-  info(p) { return { id: p.id, name: p.name, color: p.color, skins: p.skins, bot: p.isBot, level: p.level, look: p.look, card: p.card || '' }; }
+  info(p) { return { id: p.id, name: p.name, color: p.color, skins: p.skins, bot: p.isBot, level: p.level, look: p.look, card: p.card || '', team: p.team || 0 }; }
 
   addHuman(ws, m) {
     if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && !this.humans().length) {
@@ -239,6 +279,9 @@ class Room {
     p.card = cleanCard(m.card);
     p.kfx = ownedKill(m.kfx, inv);
     p.kc = !!m.kc;
+    if (this.mode === 'bots' && m.cfg && GAMES[m.cfg.game] && !this.humans().length) this.setGame(m.cfg.game);
+    this.joinTeam(p);
+    if (p.team) p.pos = this.pickSpawn(false, p);
     this.players.set(p.id, p);
     send(p, {
       t: 'welcome', id: p.id, name, color: p.color, pos: p.pos, q: p.seq, mode: this.mode, cfg: this.cfg,
@@ -247,12 +290,14 @@ class Room {
       projs: [...this.projectiles.values()].map((pr) => ({ id: pr.id, k: pr.k, p: pr.p, v: pr.v, o: pr.o })),
       holes: [...this.holes.values()].map((h) => ({ id: h.id, p: h.p, o: h.o, big: h.big, age: (now() - h.born) / 1000 })),
       wave: this.waveInfo(), level: p.level, account: !!p.acct, round: this.roundInfo(),
+      game: this.game, team: p.team || 0, tags: [...this.tags.values()].map((g) => ({ id: g.id, p: g.p, team: g.team })), vote: this.voteInfo(),
     });
     this.broadcast({ t: 'pj', ...this.info(p) }, p.id);
     send(p, { t: 'tip', tip: p.tip });
     deal(p);
     if (this.mode === 'ffa' || this.mode === 'coop') this.broadcast({ t: 'chat', id: 0, m: `${name} joined` });
     if (this.mode === 'bots') this.fillBots();
+    if (this.mode === 'bots' && this.humans().length === 1 && this.game !== 'dm') this.startRound();
     if (this.mode === 'training') this.spawnDummies();
     console.log(`+ ${name} (#${p.id}) -> ${this.id}`);
     return p;
@@ -260,6 +305,7 @@ class Room {
 
   remove(p) {
     flushStats(p);
+    if (this.bomb && this.bomb.carrier === p.id) this.dropBomb(p.pos);
     this.players.delete(p.id);
     for (const pr of this.projectiles.values()) if (pr.k === 'slipper' && pr.o === p.id) this.removeProj(pr);
     this.broadcast({ t: 'pl', id: p.id });
@@ -276,6 +322,7 @@ class Room {
       ai: { diff, target: 0, retarget: 0, nextShot: now() + 1500, seenAt: 0, ammo: 0, reloadUntil: 0, jumpT: 0, wp: null, seed: Math.random() * 100, dummy: opts.dummy || null, strafeDir: 1 },
     });
     b.ai.ammo = WEAPONS[b.w].mag || 1;
+    if (!opts.dummy) { this.joinTeam(b); if (b.team) b.pos = this.pickSpawn(true, b); }
     this.players.set(b.id, b);
     this.broadcast({ t: 'pj', ...this.info(b) });
     return b;
@@ -324,6 +371,7 @@ class Room {
     let best = null, bestD = 1e9;
     for (const t of this.players.values()) {
       if (t === b || !t.alive || (t.isBot && (this.mode === 'coop' || t.ai.dummy))) continue;
+      if (this.teamsOn() && t.team === b.team) continue;
       const d = dist3(t.pos, b.pos);
       const vis = !raycast(eyeOf(b), norm([t.pos[0] - b.pos[0], t.pos[1] + 1 - b.pos[1] - PH.eye, t.pos[2] - b.pos[2]]) || [0, 0, 1], d, this.boxes);
       const score = d * (vis ? 1 : 2.5);
@@ -374,6 +422,13 @@ class Room {
       b.yaw = lerpAngle(b.yaw, Math.atan2(-wx, -wz), 3 * dt);
       b.pitch *= 0.95;
     }
+    // objectives: carry the bomb to a site and plant it, go defuse it, grab tags
+    const goal = this.botGoal(b);
+    if (goal) {
+      const gx = goal.p[0] - b.pos[0], gz = goal.p[2] - b.pos[2], gl = Math.hypot(gx, gz);
+      if (goal.use && gl < goal.r) { wx = 0; wz = 0; jump = false; this.tryUse(b); }
+      else if (goal.force || !t || !t.alive || !ai.seenAt) { wx = gx / (gl || 1); wz = gz / (gl || 1); }
+    }
     // grappling: chase people who are far / up high / out of sight, save yourself when falling, show off sometimes
     if (!ai.hook && n >= (ai.nextHook || 0) && this.mode !== 'training') {
       const skill = ai.diff === 'easy' ? 0.35 : ai.diff === 'hard' ? 1 : 0.7;
@@ -406,6 +461,52 @@ class Room {
       if (!raycast(probe, [0, -1, 0], 6, boxes)) { wx = -wx; wz = -wz; ai.strafeDir *= -1; }
     }
     return { wx: wx * D.speed, wz: wz * D.speed, jump };
+  }
+
+  // follow the map's lane waypoints toward a site (bots can't path-find, so maps give them routes)
+  routeTo(b, siteId, final) {
+    const nav = this.map.nav && this.map.nav[siteId];
+    if (!nav) return final;
+    const ai = b.ai;
+    if (!ai.route || ai.routeSite !== siteId) {
+      let best = null, bd = 1e9, bi = 0;
+      for (const rt of nav) rt.forEach((q, i) => { const d = Math.hypot(q[0] - b.pos[0], q[1] - b.pos[2]); if (d < bd) { bd = d; best = rt; bi = i; } });
+      ai.route = best; ai.ri = bi; ai.routeSite = siteId;
+    }
+    const rt = ai.route;
+    while (ai.ri < rt.length && Math.hypot(rt[ai.ri][0] - b.pos[0], rt[ai.ri][1] - b.pos[2]) < 2.6) ai.ri++;
+    if (ai.ri >= rt.length) return final;
+    return [rt[ai.ri][0], b.pos[1], rt[ai.ri][1]];
+  }
+  botGoal(b) {
+    const B = this.bomb;
+    if (B && this.game === 'bomb' && B.ph !== 'done' && !B.between) {
+      const sites = this.map.sites || [];
+      const mid = (s) => [(s.min[0] + s.max[0]) / 2, s.min[1], (s.min[2] + s.max[2]) / 2];
+      if (b.team === B.att) {
+        if (B.carrier === b.id) {
+          b.ai.site = b.ai.site && sites.find((x) => x.id === b.ai.site.id) ? b.ai.site : pick(sites);
+          const inSite = siteAt(this.map, b.pos);
+          return { p: inSite ? b.pos : this.routeTo(b, b.ai.site.id, mid(b.ai.site)), use: true, r: inSite ? 99 : 1.5, force: true };
+        }
+        if (B.drop) return { p: B.drop, force: true, r: 0 };
+        if (B.ph === 'planted') return { p: this.routeTo(b, B.site, B.p), r: 0 }; // guard it
+        if (!b.ai.site) b.ai.site = pick(sites);
+        return b.ai.site ? { p: this.routeTo(b, b.ai.site.id, mid(b.ai.site)), r: 0 } : null;
+      }
+      if (B.ph === 'planted') {
+        const near = dist3(b.pos, B.p) < 8;
+        return { p: near ? B.p : this.routeTo(b, B.site, B.p), use: near, r: BOMB.defuseRange - 0.6, force: true };
+      }
+      if (!b.ai.site || Math.random() < 0.002) b.ai.site = pick(sites);
+      return b.ai.site ? { p: this.routeTo(b, b.ai.site.id, mid(b.ai.site)), r: 0 } : null;
+    }
+    if (this.game === 'tags' && this.tags.size) {
+      let best = null, bd = 45;
+      for (const g of this.tags.values()) { const d = dist3(g.p, b.pos); if (d < bd) { bd = d; best = g; } }
+      if (best) return { p: best.p, r: 0 };
+    }
+    return null;
   }
 
   botFire(b, t, D) {
@@ -509,7 +610,11 @@ class Room {
     if (t.isBot) { t.slipUntil = now() + 1700; t.vel[1] = Math.max(t.vel[1], 6.5); t.onGround = false; return; }
     send(t, { t: 'slip' });
   }
-  friendly(a, b) { return this.mode === 'coop' && a && b && a !== b && a.isBot === b.isBot; }
+  friendly(a, b) {
+    if (!a || !b || a === b) return false;
+    if (this.mode === 'coop') return a.isBot === b.isBot;
+    return this.teamsOn() && a.team && a.team === b.team;
+  }
   damage(t, amt, attacker, w, hs) {
     if (!t.alive || amt <= 0) return;
     if (this.round && this.round.over && w !== 'void') return;
@@ -592,6 +697,11 @@ class Room {
         killer = this.players.get(t.lastAttacker); via = t.lastAttackW;
       }
     }
+    if (killer && killer !== t && this.teamsOn() && killer.team !== t.team && this.round && !this.round.over) {
+      if (this.game === 'tdm') this.score[killer.team]++;
+      if (this.game === 'tags') this.dropTag(t);
+    }
+    if (this.bomb && this.bomb.carrier === t.id) this.dropBomb(t.pos);
     if (killer && killer !== t) {
       killer.kills++;
       killer.streak = (killer.streak || 0) + 1;
@@ -606,7 +716,8 @@ class Room {
       }
     }
     // killcam: humans who have it on wait for it to finish (or skip it) before respawning
-    if (!t.isBot && t.kc && killer && killer !== t && this.mode !== 'training') t.respawnAt = now() + 9000;
+    if (this.game === 'bomb' && this.teamsOn()) t.respawnAt = now() + BOMB.respawn;
+    if (!t.isBot && t.kc && killer && killer !== t && this.mode !== 'training') t.respawnAt = Math.max(t.respawnAt, now() + 9000);
     if (killer && killer !== t && this.round && !this.round.over && !(t.isBot && t.ai && t.ai.dummy) && this.mode !== 'training') this.hlCandidate(killer, t, w);
     send(t, { t: 'streak', reset: 1 });
     t.streak = 0;
@@ -1074,9 +1185,11 @@ class Room {
     if (m.map && MAPS[m.map] && m.map !== this.cfg.map && this.mode !== 'training' && MAP_ORDER.includes(m.map)) {
       this.cfg.map = m.map;
       changes.push(`map → ${MAPS[m.map].name}`);
-      this.resetWorld();
+      if (GAMES[this.game].sites && !(this.map.sites && this.map.sites.length)) { this.game = 'dm'; this.bomb = null; this.assignTeams(); changes.push('mode → Deathmatch (no bomb sites here)'); }
+      if (this.bomb) this.newBombRound(true); else this.resetWorld();
     }
     if (m.hip && HIPFIRE[m.hip] && m.hip !== this.cfg.hip) { this.cfg.hip = m.hip; changes.push(`hipfire → ${HIPFIRE[m.hip].name}`); }
+    if (m.game && GAMES[m.game] && m.game !== this.game && this.mode === 'bots' && this.setGame(m.game)) { changes.push(`mode → ${GAMES[m.game].name}`); this.vote = null; setTimeout(() => this.startRound(), 50); }
     if (m.diff && BOT_DIFF[m.diff] && m.diff !== this.cfg.diff && this.mode !== 'ffa') {
       this.cfg.diff = m.diff;
       for (const b of this.players.values()) if (b.isBot) b.ai.diff = m.diff;
@@ -1097,7 +1210,7 @@ class Room {
     for (const p of this.players.values()) {
       if (p.isBot && p.ai.dummy) continue;
       p.alive = true; p.hp = 100; p.vel = [0, 0, 0]; p.spawnT = now(); p.seq++;
-      p.pos = this.pickSpawn(p.isBot);
+      p.pos = this.pickSpawn(p.isBot, p);
       send(p, { t: 'spawn', p: p.pos, q: p.seq });
     }
     if (this.mode === 'training') { this.removeBots(); this.spawnDummies(); }
@@ -1187,6 +1300,13 @@ class Room {
         })();
         break;
       case 'kc': p.kc = !!m.on; break;
+      case 'use': this.tryUse(p); break;
+      case 'vote':
+        if (this.vote && Number.isInteger(m.i) && m.i >= 0 && m.i < this.vote.options.length) {
+          this.vote.votes.set(p.id, m.i);
+          this.broadcast({ t: 'votes', counts: this.voteInfo().counts });
+        }
+        break;
       case 'respawn': // killcam finished or skipped
         if (!p.alive) p.respawnAt = Math.min(p.respawnAt, Math.max(now(), (p.deadT || 0) + 1500));
         break;
@@ -1210,7 +1330,16 @@ class Room {
 
   roundInfo() {
     if (!this.round) return null;
-    return { target: this.round.target, left: Math.max(0, (this.round.over ? this.round.next : this.round.ends) - now()), over: this.round.over };
+    const r = { target: this.round.target, left: Math.max(0, (this.round.over ? this.round.next : this.round.ends) - now()), over: this.round.over, game: this.game };
+    if (this.teamsOn()) r.sc = [this.score[1], this.score[2]];
+    const b = this.bomb;
+    if (b) {
+      const n = now();
+      r.bomb = { att: b.att, ph: b.ph, n: b.n, wins: [b.wins[1], b.wins[2]], carrier: b.carrier, drop: b.drop, p: b.p, site: b.site,
+        left: Math.max(0, (b.ph === 'planted' ? b.explodeAt : b.between || b.ends) - n),
+        act: b.act ? { k: b.act.kind, by: b.act.id, f: Math.min(1, (n - b.act.start) / ((b.act.kind === 'plant' ? BOMB.plant : BOMB.defuse) * 1000)) } : 0 };
+    }
+    return r;
   }
   tickRound() {
     const r = this.round;
@@ -1218,15 +1347,27 @@ class Room {
     const n = now();
     if (r.over) { if (n >= r.next) this.startRound(); return; }
     if (!this.humans().length) return;
+    if (this.game === 'bomb' && this.bomb) { this.tickBomb(n); return; }
+    if (this.teamsOn()) { if (this.score[1] >= r.target || this.score[2] >= r.target || n >= r.ends) this.endRound(); return; }
     let top = null;
     for (const p of this.players.values()) if (!top || p.kills > top.kills) top = p;
     if ((top && top.kills >= r.target) || n >= r.ends) this.endRound();
   }
   endRound() {
     const list = [...this.players.values()].filter((p) => !(p.isBot && p.ai.dummy)).sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
-    const winner = list[0] && list[0].kills > 0 ? list[0] : null;
+    // team games: the winning team takes it, and its best player gets the roll
+    let winTeam = 0;
+    if (this.teamsOn()) {
+      const sc = this.game === 'bomb' && this.bomb ? this.bomb.wins : this.score;
+      winTeam = sc[1] === sc[2] ? 0 : sc[1] > sc[2] ? 1 : 2;
+    }
+    const pool = winTeam ? list.filter((p) => p.team === winTeam) : list;
+    const winner = pool[0] && (winTeam || pool[0].kills > 0) ? pool[0] : null;
     this.round.over = true;
-    this.round.next = now() + 9000;
+    this.round.next = now() + VOTE_MS + 2000;
+    this.round.winTeam = winTeam;
+    if (this.bomb) { this.bomb.act = null; this.bomb.between = 0; }
+    this.startVote();
     let roll = null;
     if (winner && !winner.isBot) {
       const eligible = this.mode === 'ffa' ? this.humans().length >= 2 : list.filter((p) => p.isBot).length >= 3;
@@ -1239,7 +1380,8 @@ class Room {
         roll = { n: 1, kind, why: 'won the round' };
       }
     }
-    this.broadcast({ t: 'round', over: 1, winner: winner ? winner.id : 0, top: list.slice(0, 5).map((p) => [p.id, p.name, p.kills, p.deaths]), next: 9000 });
+    this.broadcast({ t: 'round', over: 1, winner: winner ? winner.id : 0, winTeam, game: this.game, sc: this.teamsOn() ? (this.game === 'bomb' && this.bomb ? [this.bomb.wins[1], this.bomb.wins[2]] : [this.score[1], this.score[2]]) : null,
+      top: list.slice(0, 6).map((p) => [p.id, p.name, p.kills, p.deaths, p.team || 0]), next: VOTE_MS + 2000 });
     const r = this.round;
     setTimeout(() => {
       if (this.round !== r || !r.hl || r.hl.pending || !r.hl.clip || !r.hl.clip.frames.length) return;
@@ -1249,15 +1391,179 @@ class Room {
     if (roll) send(winner, { t: 'roll+', ...roll });
   }
   startRound() {
+    this.resolveVote();
     for (const p of this.players.values()) { p.kills = 0; p.deaths = 0; }
-    this.round = { target: ROUND[this.mode].kills, ends: now() + ROUND[this.mode].time * 1000, over: false, next: 0 };
-    this.resetWorld();
+    this.round = { target: (TARGETS[this.mode] || TARGETS.ffa)[this.game] || ROUND[this.mode].kills, ends: now() + ROUND[this.mode].time * 1000, over: false, next: 0 };
+    this.score = { 1: 0, 2: 0 };
+    this.clearTags();
+    this.assignTeams();
+    this.bomb = this.game === 'bomb' && this.teamsOn() ? { att: 1, n: 0, wins: { 1: 0, 2: 0 } } : null;
+    if (this.bomb) { this.round.ends = now() + 3600 * 1000; this.newBombRound(true); }
+    else this.resetWorld();
     this.broadcast({ t: 'round', start: 1, ...this.roundInfo() });
+  }
+  // switch game type (bots setup / match settings / the vote)
+  setGame(g) {
+    if (!GAMES[g] || (GAMES[g].sites && !(this.map.sites && this.map.sites.length))) return false;
+    this.game = g;
+    return true;
+  }
+
+  // ---------------------------------------------------------- map / mode vote between rounds
+  startVote() {
+    if (this.mode !== 'ffa' && this.mode !== 'bots') return;
+    const games = GAME_ORDER.slice().sort(() => Math.random() - 0.5);
+    const options = [], usedMaps = new Set();
+    for (const g of games) {
+      if (options.length >= 3) break;
+      const maps = mapsFor(g, MAPS, MAP_ORDER).filter((m) => !usedMaps.has(m));
+      if (!maps.length) continue;
+      const m = pick(maps);
+      usedMaps.add(m);
+      options.push({ game: g, map: m });
+    }
+    this.vote = { options, votes: new Map(), ends: now() + VOTE_MS };
+    this.broadcast({ t: 'vote', ...this.voteInfo() });
+  }
+  voteInfo() {
+    const v = this.vote;
+    if (!v) return null;
+    const counts = v.options.map(() => 0);
+    for (const i of v.votes.values()) counts[i]++;
+    return { options: v.options.map((o) => ({ ...o, name: GAMES[o.game].name, mapName: MAPS[o.map].name })), counts, left: Math.max(0, v.ends - now()) };
+  }
+  resolveVote() {
+    const v = this.vote;
+    this.vote = null;
+    if (!v || !v.options.length) return;
+    const counts = v.options.map(() => 0);
+    for (const i of v.votes.values()) counts[i]++;
+    const max = Math.max(...counts);
+    const top = v.options.filter((o, i) => counts[i] === max);
+    const win = pick(top);
+    const mapChanged = win.map !== this.cfg.map;
+    this.cfg.map = win.map;
+    this.setGame(win.game);
+    this.projectiles.clear(); this.peels.clear(); this.holes.clear();
+    if (mapChanged) this.broadcast({ t: 'cfg', cfg: this.cfg });
+    this.broadcast({ t: 'chat', id: 0, m: `next up: ${GAMES[this.game].name} on ${this.map.name}` });
+  }
+
+  // ---------------------------------------------------------- tags (kill confirmed)
+  dropTag(t) {
+    const g = { id: this.nextTag++, p: [r2(t.pos[0]), r2(t.pos[1] + 0.9), r2(t.pos[2])], team: t.team, born: now() };
+    this.tags.set(g.id, g);
+    this.broadcast({ t: 'tag+', id: g.id, p: g.p, team: g.team });
+  }
+  clearTags() { if (this.tags.size) { this.tags.clear(); this.broadcast({ t: 'tagc' }); } }
+  tickTags(n) {
+    if (!this.tags.size) return;
+    for (const g of [...this.tags.values()]) {
+      if (n - g.born > TAG_LIFE) { this.tags.delete(g.id); this.broadcast({ t: 'tagx', id: g.id }); continue; }
+      for (const p of this.players.values()) {
+        if (!p.alive || !p.team) continue;
+        if (Math.hypot(p.pos[0] - g.p[0], p.pos[1] + 0.9 - g.p[1], p.pos[2] - g.p[2]) > 1.9) continue;
+        const confirm = p.team !== g.team;
+        if (confirm && this.round && !this.round.over) this.score[p.team]++;
+        this.tags.delete(g.id);
+        this.broadcast({ t: 'tagx', id: g.id, by: p.id, k: confirm ? 'confirm' : 'deny' });
+        break;
+      }
+    }
+  }
+
+  // ---------------------------------------------------------- plant & defuse
+  newBombRound(first) {
+    const b = this.bomb;
+    if (!first && b.n === BOMB.swapAfter) { b.att = 3 - b.att; this.broadcast({ t: 'chat', id: 0, m: 'SIDES SWAPPED' }); }
+    b.n++;
+    Object.assign(b, { ph: 'live', site: null, p: null, drop: null, explodeAt: 0, act: null, between: 0, ends: now() + BOMB.roundTime * 1000, carrier: 0 });
+    for (const p of this.players.values()) if (p.ai) { p.ai.site = null; p.ai.route = null; }
+    this.projectiles.clear(); this.peels.clear(); this.holes.clear();
+    this.resetWorld();
+    const att = this.fighters().filter((p) => p.team === b.att && p.alive);
+    const carrier = att.find((p) => !p.isBot) || att[0];
+    b.carrier = carrier ? carrier.id : 0;
+    if (carrier) send(carrier, { t: 'bombyou' });
+    this.broadcast({ t: 'bombev', k: 'round', n: b.n, att: b.att });
+  }
+  dropBomb(pos) {
+    const b = this.bomb;
+    if (!b || b.ph !== 'live') return;
+    b.carrier = 0;
+    const h = raycast([pos[0], pos[1] + 1, pos[2]], [0, -1, 0], 60, this.boxes);
+    b.drop = h ? [r2(pos[0]), r2(h.point[1] + 0.15), r2(pos[2])] : null;
+    if (!b.drop) { // fell into the void with it: it comes back to a random attacker
+      const att = this.fighters().filter((p) => p.team === b.att && p.alive);
+      if (att.length) b.carrier = pick(att).id;
+    }
+    this.broadcast({ t: 'bombev', k: 'drop' });
+  }
+  bombRoundWin(team, why) {
+    const b = this.bomb;
+    b.wins[team]++;
+    b.ph = 'done'; b.act = null;
+    this.broadcast({ t: 'bombev', k: 'win', team, why, wins: [b.wins[1], b.wins[2]] });
+    if (b.wins[team] >= BOMB.wins) { this.endRound(); return; }
+    b.between = now() + BOMB.between;
+  }
+  tickBomb(n) {
+    const b = this.bomb;
+    if (b.between) { if (n >= b.between) this.newBombRound(false); return; }
+    if (b.ph === 'done') return;
+    // dropped bomb: any attacker can grab it
+    if (b.ph === 'live' && b.drop) {
+      for (const p of this.players.values()) {
+        if (!p.alive || p.team !== b.att) continue;
+        if (Math.hypot(p.pos[0] - b.drop[0], p.pos[1] - b.drop[1], p.pos[2] - b.drop[2]) < BOMB.pickup) { b.carrier = p.id; b.drop = null; send(p, { t: 'bombyou' }); this.broadcast({ t: 'bombev', k: 'pickup', id: p.id }); break; }
+      }
+    }
+    // planting / defusing: you have to keep holding F and stay put
+    if (b.act) {
+      const a = this.players.get(b.act.id);
+      const hold = a && a.alive && n - (a.useT || 0) < 600 && dist3(a.pos, b.act.pos) < 1.6;
+      const ok = hold && (b.act.kind === 'plant' ? b.carrier === a.id && siteAt(this.map, a.pos) : b.ph === 'planted' && dist3(a.pos, b.p) < BOMB.defuseRange + 0.6);
+      if (!ok) b.act = null;
+      else if (n - b.act.start >= (b.act.kind === 'plant' ? BOMB.plant : BOMB.defuse) * 1000) {
+        if (b.act.kind === 'plant') {
+          const site = siteAt(this.map, a.pos);
+          Object.assign(b, { ph: 'planted', site: site.id, p: [r2(a.pos[0]), r2(a.pos[1] + 0.1), r2(a.pos[2])], explodeAt: n + BOMB.fuse * 1000, carrier: 0, act: null, planter: a.id });
+          this.broadcast({ t: 'bombev', k: 'planted', site: site.id, id: a.id });
+          if (a.acct) stat(a, 'xp', 10);
+        } else {
+          b.act = null;
+          this.broadcast({ t: 'bombev', k: 'defused', id: a.id });
+          if (a.acct) stat(a, 'xp', 15);
+          this.bombRoundWin(3 - b.att, 'defused');
+          return;
+        }
+      }
+    }
+    if (b.ph === 'planted' && n >= b.explodeAt) {
+      const at = b.p.slice();
+      b.ph = 'done';
+      this.explodeAt(at, null, 'bomb', BOMB.radius, BOMB.dmg, 60);
+      this.broadcast({ t: 'bombev', k: 'boom', p: at });
+      this.bombRoundWin(b.att, 'exploded');
+      return;
+    }
+    if (b.ph === 'live' && n >= b.ends) this.bombRoundWin(3 - b.att, 'time');
+  }
+  // someone is holding F (players send this every ~250ms while it's held; bots call it directly)
+  tryUse(p) {
+    const b = this.bomb;
+    if (!b || !p.alive || b.between || b.ph === 'done') return;
+    p.useT = now();
+    if (b.act) return;
+    if (b.ph === 'live' && b.carrier === p.id && siteAt(this.map, p.pos)) b.act = { id: p.id, kind: 'plant', start: now(), pos: p.pos.slice() };
+    else if (b.ph === 'planted' && p.team !== b.att && dist3(p.pos, b.p) < BOMB.defuseRange) b.act = { id: p.id, kind: 'defuse', start: now(), pos: p.pos.slice() };
+    if (b.act) this.broadcast({ t: 'bombev', k: b.act.kind, id: p.id });
   }
 
   tick(dt) {
     const n = now();
     this.tickRound();
+    this.tickTags(n);
     for (const b of this.players.values()) if (b.isBot && b.alive) this.stepBot(b, dt);
     this.tickProjectiles(dt);
     this.tickHoles(dt);
@@ -1268,7 +1574,7 @@ class Room {
       if (!p.alive && n >= p.respawnAt) {
         if (p.isBot && this.mode === 'coop') continue;
         p.alive = true; p.hp = 100; p.vel = [0, 0, 0]; p.spawnT = n; p.seq++;
-        p.pos = p.isBot && p.ai.dummy ? p.ai.dummy.home.slice() : this.pickSpawn(p.isBot);
+        p.pos = p.isBot && p.ai.dummy ? p.ai.dummy.home.slice() : this.pickSpawn(p.isBot, p);
         p.slipUntil = 0; p.burnUntil = 0; p.sleepUntil = 0;
         send(p, { t: 'spawn', p: p.pos, q: p.seq });
         if (!p.isBot) deal(p);
