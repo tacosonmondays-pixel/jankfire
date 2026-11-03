@@ -556,6 +556,27 @@ function limb(r0, r1, len, color, y) { // vertical cylinder hanging down from it
   m.position.y = y;
   return m;
 }
+// ------------------------------------------------------------ hair (sits on the egg head; head group local, top of the egg ~y 0.31)
+function addHair(H, lk) {
+  const style = lk.hair || 'none';
+  if (style === 'none' || lk.head === 'helmet') return;
+  const hc = new THREE.Color(lk.hairColor || '#1a1a1a').getHex();
+  const cap = (cover = 0.45, sx = 0.9, sy = 1.18, r = 0.15) => {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 6, 0, Math.PI * 2, 0, Math.PI * cover), M(hc));
+    m.scale.set(sx, sy, 1.0); m.position.y = 0.15; H.add(m); return m;
+  };
+  switch (style) {
+    case 'short': cap(0.42); break;
+    case 'bowl': cap(0.56, 0.95, 1.2, 0.155); H.add(bx(0.24, 0.04, 0.04, hc, 0, 0.215, -0.135)); break;
+    case 'spiky': cap(0.4); for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2; const k = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.14, 5), M(hc)); k.position.set(Math.cos(a) * 0.07, 0.31, Math.sin(a) * 0.07); k.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5); H.add(k); } break;
+    case 'mohawk': H.add(bx(0.035, 0.13, 0.3, hc, 0, 0.33, 0.01)); break;
+    case 'long': cap(0.45); H.add(bx(0.25, 0.34, 0.06, hc, 0, 0.08, 0.12)); for (const sx of [-1, 1]) H.add(bx(0.04, 0.26, 0.12, hc, sx * 0.12, 0.1, 0.02)); break;
+    case 'ponytail': cap(0.45); H.add(ball(0.05, hc, 0, 0.22, 0.15)); { const t = cylZ(0.035, 0.2, hc, 0, 0.12, 0.2); t.rotation.x = 1.1; H.add(t); } break;
+    case 'bun': cap(0.45); H.add(ball(0.07, hc, 0, 0.32, 0.06)); break;
+    case 'afro': { const a = ball(0.21, hc, 0, 0.22, 0.03); a.scale.set(1.05, 0.95, 1.05); H.add(a); break; }
+  }
+}
+
 // ------------------------------------------------------------ character accessories (head / face / back)
 function addAccessories(ch, look, c) {
   if (!look) return;
@@ -583,13 +604,47 @@ function addAccessories(ch, look, c) {
     case 'bandana': at(H, bx(0.22, 0.09, 0.03, 0xc02030, 0, 0.07, fz + 0.01)); break;
     case 'visor': at(H, bx(0.24, 0.05, 0.02, 0x3ee6c8, 0, 0.17, fz - 0.005, true)); break;
   }
-  const by = 1.35, bz = 0.18;
+  // back stuff hangs off the upper back (chest back surface ~z 0.15) and is strapped over the shoulders
+  const thick = look.top === 'jacket' || look.top === 'suit' || look.top === 'hoodie' ? 0.03 : 0;
+  const bk = 0.15 + thick;
+  const straps = (col) => { for (const sx of [-1, 1]) { at(Bd, bx(0.045, 0.025, 0.32, col, sx * 0.11, 1.52, 0.0)); at(Bd, bx(0.045, 0.3, 0.025, col, sx * 0.11, 1.37, -0.16 - thick)); } };
   switch (look.back) {
-    case 'backpack': at(Bd, bx(0.3, 0.38, 0.16, c, 0, by - 0.05, bz + 0.06)); at(Bd, bx(0.26, 0.1, 0.17, 0x222222, 0, by + 0.1, bz + 0.07)); break;
-    case 'cape': { const cp = bx(0.5, 0.9, 0.03, 0xc02030, 0, by - 0.35, bz + 0.03); cp.rotation.x = 0.12; Bd.add(cp); break; }
-    case 'voidcape': { const cp = bx(0.5, 0.95, 0.03, 0x000000, 0, by - 0.37, bz + 0.03); cp.material = M(0x2a002a); cp.rotation.x = 0.12; Bd.add(cp); at(Bd, bx(0.52, 0.06, 0.035, 0xff00dc, 0, by + 0.08, bz + 0.03, true)); break; }
-    case 'wings': for (const sx of [-1, 1]) { const w = bx(0.5, 0.25, 0.03, 0xffffff, sx * 0.32, by, bz + 0.05); w.rotation.z = sx * 0.4; w.rotation.y = sx * 0.3; Bd.add(w); } break;
-    case 'jetpack': for (const sx of [-1, 1]) { const t = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.4, 8), M(0x8a8f99)); t.position.set(sx * 0.1, by - 0.05, bz + 0.08); Bd.add(t); at(Bd, new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.1, 8), M(0xff6a1a, true))).position.set(sx * 0.1, by - 0.3, bz + 0.08); } break;
+    case 'backpack':
+      at(Bd, bx(0.3, 0.38, 0.15, c, 0, 1.3, bk + 0.075));
+      at(Bd, bx(0.31, 0.12, 0.16, 0x222222, 0, 1.44, bk + 0.08));
+      at(Bd, bx(0.2, 0.12, 0.05, 0x222222, 0, 1.2, bk + 0.16));
+      straps(0x222222);
+      break;
+    case 'cape': case 'voidcape': {
+      const voidc = look.back === 'voidcape';
+      const piv = new THREE.Group(); piv.position.set(0, 1.52, bk - 0.02); Bd.add(piv);
+      piv.add(bx(0.4, 0.04, 0.05, voidc ? 0xff00dc : 0xffc21a, 0, 0, -0.02, voidc)); // clasp across the shoulders
+      piv.add(bx(0.5, 0.95, 0.025, voidc ? 0x2a002a : 0xc02030, 0, -0.48, 0.02));
+      if (voidc) piv.add(bx(0.52, 0.05, 0.03, 0xff00dc, 0, -0.95, 0.02, true));
+      piv.rotation.x = 0.1;
+      ch.cape = piv;
+      break;
+    }
+    case 'wings': {
+      at(Bd, bx(0.14, 0.2, 0.05, 0xdddddd, 0, 1.36, bk + 0.02));
+      ch.wings = [];
+      for (const sx of [-1, 1]) {
+        const piv = new THREE.Group(); piv.position.set(sx * 0.06, 1.42, bk + 0.04); Bd.add(piv);
+        const w1 = bx(0.5, 0.22, 0.025, 0xffffff, sx * 0.27, 0.04, 0); w1.rotation.z = sx * 0.35; piv.add(w1);
+        const w2 = bx(0.36, 0.14, 0.022, 0xe8e8ff, sx * 0.22, -0.1, 0.01); w2.rotation.z = sx * 0.1; piv.add(w2);
+        piv.rotation.y = sx * -0.25;
+        ch.wings.push(piv);
+      }
+      break;
+    }
+    case 'jetpack':
+      at(Bd, bx(0.26, 0.34, 0.04, 0x55595f, 0, 1.33, bk + 0.02));
+      for (const sx of [-1, 1]) {
+        const t = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.4, 8), M(0x8a8f99)); t.position.set(sx * 0.09, 1.3, bk + 0.1); Bd.add(t);
+        const n = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.1, 8), M(0xff6a1a, true)); n.position.set(sx * 0.09, 1.05, bk + 0.1); n.rotation.x = Math.PI; Bd.add(n);
+      }
+      straps(0x333333);
+      break;
   }
 }
 
@@ -606,40 +661,71 @@ export function buildCharacter(color, look) {
     body.add(glb);
     body.add(bx(0.5, 0.15, 0.5, c, 0, 1.95, 0));
   } else {
+    const lk = look || {};
+    const SK = lk.skin ? new THREE.Color(lk.skin).getHex() : SKIN;
+    const JT = new THREE.Color(SK).multiplyScalar(0.82).getHex();
+    const TOP = lk.topColor ? new THREE.Color(lk.topColor).getHex() : c;
+    const BOT = lk.bottomColor ? new THREE.Color(lk.bottomColor).getHex() : c;
+    const top = lk.top || 'tank', bottom = lk.bottom || 'shorts';
+    const sleeves = top === 'tee' ? 'short' : top === 'hoodie' || top === 'jacket' || top === 'suit' ? 'long' : null;
     // legs: hip -> thigh -> knee -> shin -> foot
     for (const [leg, knee, sx] of [[legL, kneeL, -1], [legR, kneeR, 1]]) {
       leg.position.set(0.1 * sx, 0.92, 0);
-      leg.add(ball(0.075, JOINT));
-      leg.add(limb(0.07, 0.058, 0.42, SKIN, -0.22));
+      leg.add(ball(0.075, JT));
+      leg.add(limb(0.07, 0.058, 0.42, SK, -0.22));
+      if (bottom === 'pants') leg.add(limb(0.082, 0.07, 0.44, BOT, -0.22));
       knee.position.y = -0.44;
-      knee.add(ball(0.062, JOINT));
-      knee.add(limb(0.056, 0.045, 0.4, SKIN, -0.21));
-      knee.add(bx(0.1, 0.06, 0.22, SKIN, 0, -0.43, -0.05));
+      knee.add(ball(0.062, JT));
+      knee.add(limb(0.056, 0.045, 0.4, SK, -0.21));
+      if (bottom === 'pants') knee.add(limb(0.068, 0.058, 0.38, BOT, -0.2));
+      knee.add(bx(0.1, 0.06, 0.22, bottom === 'pants' ? 0x222222 : SK, 0, -0.43, -0.05));
       leg.add(knee);
       body.add(leg);
     }
-    body.add(bx(0.34, 0.18, 0.23, c, 0, 0.98, 0)); // shorts in your color
-    body.add(limb(0.1, 0.12, 0.16, SKIN, 1.13)); // skinny mannequin waist
-    const chest = ball(0.2, SKIN, 0, 1.34, 0); chest.scale.set(1.2, 1.1, 0.72); body.add(chest);
-    const sash = bx(0.09, 0.56, 0.31, c, 0, 1.31, 0); sash.rotation.z = 0.65; body.add(sash);
-    body.add(limb(0.045, 0.05, 0.12, SKIN, 1.57));
+    if (bottom === 'skirt') { const sk = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.28, 0.36, 8), M(BOT)); sk.position.y = 0.88; body.add(sk); }
+    else body.add(bx(0.34, 0.18, 0.23, BOT, 0, 0.98, 0)); // shorts / top of the pants
+    body.add(limb(0.1, 0.12, 0.16, top === 'none' || top === 'tank' ? SK : TOP, 1.13)); // waist
+    const chest = ball(0.2, SK, 0, 1.34, 0); chest.scale.set(1.2, 1.1, 0.72); body.add(chest);
+    if (top === 'tank') { const sash = bx(0.09, 0.56, 0.31, TOP, 0, 1.31, 0); sash.rotation.z = 0.65; body.add(sash); }
+    if (top === 'tee' || top === 'hoodie') { const sh = ball(0.215, TOP, 0, 1.34, 0); sh.scale.set(1.2, 1.1, 0.74); body.add(sh); }
+    if (top === 'hoodie') {
+      const hood = ball(0.13, TOP, 0, 1.58, 0.13); hood.scale.set(1.2, 0.8, 0.8); body.add(hood);
+      body.add(bx(0.22, 0.1, 0.03, new THREE.Color(TOP).multiplyScalar(0.8).getHex(), 0, 1.2, -0.155)); // front pocket
+      for (const sx of [-1, 1]) body.add(bx(0.012, 0.12, 0.012, 0xffffff, sx * 0.04, 1.42, -0.16));
+    }
+    if (top === 'jacket' || top === 'suit') {
+      const sh = ball(0.208, top === 'suit' ? 0xffffff : 0xf0f0f0, 0, 1.34, 0); sh.scale.set(1.2, 1.1, 0.73); body.add(sh); // shirt under
+      for (const sx of [-1, 1]) { // the two front panels + back
+        const pnl = bx(0.17, 0.5, 0.05, TOP, sx * (top === 'suit' ? 0.07 : 0.11), 1.3, -0.135); pnl.rotation.y = sx * 0.25; body.add(pnl);
+        const lap = bx(0.05, 0.2, 0.03, new THREE.Color(TOP).multiplyScalar(0.75).getHex(), sx * 0.06, 1.45, -0.16); lap.rotation.z = sx * 0.4; body.add(lap);
+      }
+      body.add(bx(0.42, 0.5, 0.06, TOP, 0, 1.3, 0.13));
+      for (const sx of [-1, 1]) body.add(bx(0.07, 0.5, 0.26, TOP, sx * 0.215, 1.3, 0));
+      if (top === 'suit') body.add(bx(0.04, 0.26, 0.02, 0xc02030, 0, 1.36, -0.165)); // tie
+    }
+    body.add(limb(0.045, 0.05, 0.12, SK, 1.57));
     head.position.set(0, 1.62, 0);
-    const egg = ball(0.14, SKIN, 0, 0.14, 0); egg.scale.set(0.85, 1.22, 0.95); head.add(egg);
-    head.add(bx(0.005, 0.2, 0.3, JOINT, 0, 0.14, 0)); // seam where the mold met
+    const egg = ball(0.14, SK, 0, 0.14, 0); egg.scale.set(0.85, 1.22, 0.95); head.add(egg);
+    head.add(bx(0.005, 0.2, 0.3, JT, 0, 0.14, 0)); // seam where the mold met
     head.rotation.z = jank.tilt;
     body.add(head);
-    for (const sx of [-1, 1]) body.add(ball(0.068, JOINT, 0.25 * sx, 1.45 + (sx > 0 ? jank.shoulder : 0), 0));
+    for (const sx of [-1, 1]) body.add(ball(0.068, sleeves ? TOP : JT, 0.25 * sx, 1.45 + (sx > 0 ? jank.shoulder : 0), 0));
     // right arm holds the gun
-    arm.add(cylZ(0.048, 0.28, SKIN, 0, 0, -0.14));
-    arm.add(ball(0.05, JOINT, 0, 0, -0.29));
-    arm.add(cylZ(0.042, 0.24, SKIN, -0.03, -0.01, -0.42));
-    arm.add(ball(0.045, SKIN, -0.04, -0.02, -0.55));
+    arm.add(cylZ(0.048, 0.28, SK, 0, 0, -0.14));
+    if (sleeves) arm.add(cylZ(0.058, sleeves === 'long' ? 0.29 : 0.15, TOP, 0, 0, sleeves === 'long' ? -0.145 : -0.075));
+    arm.add(ball(0.05, sleeves === 'long' ? TOP : JT, 0, 0, -0.29));
+    arm.add(cylZ(0.042, 0.24, SK, -0.03, -0.01, -0.42));
+    if (sleeves === 'long') arm.add(cylZ(0.052, 0.16, TOP, -0.025, -0.008, -0.38));
+    arm.add(ball(0.045, SK, -0.04, -0.02, -0.55));
     const tag = bx(0.05, 0.07, 0.005, 0xffffff, 0.05, -0.06, -0.2); tag.rotation.z = 0.5; arm.add(tag); // price tag still on
     // left arm reaches for the front of the gun, badly
     armL.position.set(-0.25, 1.45, 0);
-    const upper = cylZ(0.048, 0.3, SKIN, 0.07, -0.02, -0.14); upper.rotation.y = -0.45; armL.add(upper);
-    armL.add(ball(0.05, JOINT, 0.14, -0.04, -0.28));
-    const fore = cylZ(0.042, 0.3, SKIN, 0.27, -0.04, -0.4); fore.rotation.y = -0.9; armL.add(fore);
+    const upper = cylZ(0.048, 0.3, SK, 0.07, -0.02, -0.14); upper.rotation.y = -0.45; armL.add(upper);
+    if (sleeves) { const sl = cylZ(0.058, sleeves === 'long' ? 0.31 : 0.15, TOP, sleeves === 'long' ? 0.07 : 0.035, -0.02, sleeves === 'long' ? -0.14 : -0.07); sl.rotation.y = -0.45; armL.add(sl); }
+    armL.add(ball(0.05, sleeves === 'long' ? TOP : JT, 0.14, -0.04, -0.28));
+    const fore = cylZ(0.042, 0.3, SK, 0.27, -0.04, -0.4); fore.rotation.y = -0.9; armL.add(fore);
+    if (sleeves === 'long') { const fs = cylZ(0.052, 0.18, TOP, 0.2, -0.035, -0.34); fs.rotation.y = -0.9; armL.add(fs); }
+    addHair(head, lk);
     body.add(armL);
   }
   arm.position.set(0.25, 1.45 + jank.shoulder, 0);

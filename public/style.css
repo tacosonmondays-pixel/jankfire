@@ -108,7 +108,7 @@ h1 {
 
 
 /* ================= v3: menus, cosmetics, hp glitch, scope ================= */
-#menu { flex-direction: column; }
+#menu { flex-direction: column; justify-content: safe center; } /* tall screens scroll from the top instead of getting cut off */
 .screen { width: min(900px, 100%); }
 .screen h2 { margin: 0 0 10px; text-align: center; color: var(--yellow); font-size: 34px; transform: rotate(-1.5deg); }
 .panel .note { text-align: center; color: #aaa; font-size: 13px; margin-bottom: 8px; }
@@ -300,3 +300,7 @@ body.replaying #speedLines { visibility: hidden; }
 .vopt i { font-style: normal; color: #fff; background: rgba(255, 255, 255, 0.15); padding: 0 6px; }
 .vopt.on { outline: 2px solid #ffe14d; }
 body.replaying #teamBar, body.replaying #objective { visibility: hidden; }
+
+/* character screen: keep the preview in view while you scroll through the options */
+#charSlot { position: sticky; top: -18px; z-index: 3; background: rgba(18, 8, 24, 0.96); padding-bottom: 4px; }
+#charSlot #preview { height: 240px; }

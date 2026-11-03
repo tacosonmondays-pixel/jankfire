@@ -24,7 +24,7 @@ import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse
 import { GAMES, GAME_ORDER, TEAMS } from '/shared/modes.js';
 import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
-import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook } from '/shared/looks.js';
+import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, HAIRS, TOPS, BOTTOMS } from '/shared/looks.js';
 import { account, restore, login, register, logout, saveProfile, leaderboard as fetchLeaders } from './account.js';
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 
@@ -384,6 +384,34 @@ function buildCharacterUI() {
     b.addEventListener('click', () => { setLook({ ...look, color: c }); buildCharacterUI(); });
     cel.append(b);
   }
+  // outfit: skin / hair / top / bottom, each a style + a colour
+  const swatches = (elId, key, list, autoTitle) => {
+    const el = $(elId);
+    el.innerHTML = '';
+    for (const c of autoTitle ? ['', ...list] : list) {
+      const b = document.createElement('button');
+      b.className = 'swatch' + (c ? '' : ' auto') + ((look[key] || '') === c ? ' on' : '');
+      if (c) b.style.background = c;
+      b.title = c || autoTitle;
+      b.addEventListener('click', () => { setLook({ ...look, [key]: c }); buildCharacterUI(); });
+      el.append(b);
+    }
+  };
+  const styles = (elId, key, cat) => {
+    const el = $(elId);
+    el.innerHTML = '';
+    for (const [k, v] of Object.entries(cat)) {
+      const c = document.createElement('button');
+      c.className = 'chip' + ((look[key] || DEFAULT_LOOK[key]) === k ? ' on' : '');
+      c.textContent = v.name;
+      c.addEventListener('click', () => { setLook({ ...look, [key]: k }); buildCharacterUI(); });
+      el.append(c);
+    }
+  };
+  swatches('lk-skin', 'skin', SKIN_TONES, 'mannequin');
+  styles('lk-hair', 'hair', HAIRS); swatches('lk-hairColor', 'hairColor', HAIR_COLORS);
+  styles('lk-top', 'top', TOPS); swatches('lk-topColor', 'topColor', CLOTH_COLORS, 'same as your colour');
+  styles('lk-bottom', 'bottom', BOTTOMS); swatches('lk-bottomColor', 'bottomColor', CLOTH_COLORS, 'same as your colour');
   for (const slot of LOOK_SLOTS) {
     const el = $('lk-' + slot);
     el.innerHTML = '';
@@ -450,7 +478,8 @@ const cardEditor = initCardEditor({
 $('lkRandom').addEventListener('click', () => {
   const achs = myAchs();
   const pick = (arr) => arr[(Math.random() * arr.length) | 0];
-  const look = { color: pick(LOOK_COLORS) };
+  const look = { color: pick(LOOK_COLORS), skin: pick(SKIN_TONES), hair: pick(Object.keys(HAIRS)), hairColor: pick(HAIR_COLORS),
+    top: pick(Object.keys(TOPS)), topColor: pick(CLOTH_COLORS), bottom: pick(Object.keys(BOTTOMS)), bottomColor: pick(CLOTH_COLORS) };
   for (const s2 of LOOK_SLOTS) look[s2] = pick(Object.entries(ACCESSORIES[s2]).filter(([, v]) => !v.ach || achs.has(v.ach)).map(([k]) => k));
   setLook(look); buildCharacterUI();
 });

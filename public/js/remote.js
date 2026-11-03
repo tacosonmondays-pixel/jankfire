@@ -212,6 +212,9 @@ export class Remote {
     const sw = Math.sin(this.walk);
     ch.legL.rotation.x = sw * amp;
     ch.legR.rotation.x = -sw * amp;
+    // cape streams out behind you the faster you go; wings flap in the air
+    if (ch.cape) { const tgt = 0.1 + Math.min(1.15, hs * 0.035) + (hs > 2 ? Math.sin(now * 0.014) * 0.07 : 0); ch.cape.rotation.x += (tgt - ch.cape.rotation.x) * Math.min(1, dt * 8); }
+    if (ch.wings) { const f = grounded ? 0 : Math.sin(now * 0.02) * 0.6; ch.wings[0].rotation.y = 0.25 + f; ch.wings[1].rotation.y = -0.25 - f; }
     const bend = ch.jank.wrongKnee ? -1 : 1;
     ch.kneeL.rotation.x = Math.max(0, -sw) * amp * 1.2 * bend + (grounded ? 0 : 0.8);
     ch.kneeR.rotation.x = Math.max(0, sw) * amp * 1.2 * bend + (grounded ? 0 : 0.8);
