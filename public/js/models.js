@@ -321,6 +321,18 @@ const WB = {
     g.userData.muzzle = new THREE.Vector3(0, 0, -0.15);
     g.userData.len = 0.3;
   },
+  katana(g) { // wrapped handle, round guard, a long thin blade (in its own group so it can grow)
+    g.add(cylZ(0.022, 0.24, 0x1a1a1a, 0, 0, 0.06, 6));
+    for (let i = 0; i < 5; i++) g.add(bx(0.05, 0.012, 0.012, 0xc02030, 0, 0, 0.16 - i * 0.045));
+    g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.015, 10), M(0xb08a3a)).rotateX(Math.PI / 2).translateY(0.0).translateZ(0));
+    const blade = new THREE.Group(); blade.position.z = -0.07;
+    blade.add(bx(0.012, 0.04, 0.72, 0xe8ecf2, 0, 0.005, -0.36));
+    blade.add(bx(0.014, 0.008, 0.72, 0xffffff, 0, 0.026, -0.36, true)); // the edge catches the light
+    const tip = bx(0.012, 0.03, 0.06, 0xe8ecf2, 0, 0.012, -0.74); tip.rotation.x = 0.3; blade.add(tip);
+    g.add(blade);
+    g.userData.katBlade = blade; g.userData.katLen = 0.72;
+    g.userData.muzzle = new THREE.Vector3(0, 0.01, -0.82); g.userData.len = 0.95;
+  },
   knife(g) { // standard combat knife
     g.add(bx(0.035, 0.05, 0.13, 0x2a2a2a, 0, 0, 0.02));
     g.add(bx(0.07, 0.015, 0.02, 0x555555, 0, 0.01, -0.05));
@@ -1015,3 +1027,11 @@ export function buildPeel() {
 }
 
 export function tipColor(tip) { return new THREE.Color((ARROW_TIPS[tip] || ARROW_TIPS.regular).color).getHex(); }
+
+// the katana gets longer with kills: stretch the blade (and move its tip, so trails follow)
+export function setKatana(g, n) {
+  if (!g || !g.userData.katBlade) return;
+  const k = 1 + n * 0.55;
+  g.userData.katBlade.scale.z = k;
+  g.userData.muzzle.z = -0.07 - (g.userData.katLen + 0.03) * k;
+}

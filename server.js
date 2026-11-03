@@ -305,6 +305,7 @@ class Room {
       holes: [...this.holes.values()].map((h) => ({ id: h.id, p: h.p, o: h.o, big: h.big, age: (now() - h.born) / 1000 })),
       wave: this.waveInfo(), level: p.level, account: !!p.acct, round: this.roundInfo(),
       bubbles: [...this.bubbles.values()].map((b) => ({ id: b.id, p: b.p, r: b.r, left: b.until - now() })),
+      kat: [...this.players.values()].filter((o) => o.kat).map((o) => [o.id, o.kat]),
       game: this.game, team: p.team || 0, tags: [...this.tags.values()].map((g) => ({ id: g.id, p: g.p, team: g.team })), vote: this.voteInfo(),
     });
     this.broadcast({ t: 'pj', ...this.info(p) }, p.id);
@@ -791,6 +792,11 @@ class Room {
       if (this.game === 'tags') this.dropTag(t);
     }
     if (this.bomb && this.bomb.carrier === t.id) this.dropBomb(t.pos);
+    if (killer && killer !== t && w === 'katana') { // the katana grows with every kill
+      killer.kat = Math.min(WEAPONS.katana.growMax, (killer.kat || 0) + 1);
+      this.broadcast({ t: 'kat', id: killer.id, n: killer.kat });
+    }
+    if (t.kat) { t.kat = 0; this.broadcast({ t: 'kat', id: t.id, n: 0 }); }
     if (killer && killer !== t) {
       killer.kills++;
       killer.streak = (killer.streak || 0) + 1;
@@ -900,8 +906,9 @@ class Room {
       this.applyHitscan(p, t, m.w, n, h, d);
     } else if (w.kind === 'melee') {
       const hv = m.heavy && w.heavy ? w.heavy : null; // knife right click
+      const reach = w.range + (m.w === 'katana' ? (p.kat || 0) * w.grow : 0);
       if (hv) { if (!this.pairOk(p, t, 'mh' + m.w, hv.cd * 750) || !this.rangeOk(p, t, hv.range)) return; }
-      else if (!this.pairOk(p, t, 'm' + m.w, w.cd * 750) || !this.rangeOk(p, t, w.range)) return;
+      else if (!this.pairOk(p, t, 'm' + m.w, w.cd * 750) || !this.rangeOk(p, t, reach)) return;
       const dir = w.radial ? toT : d;
       let dmg = hv ? hv.dmg : w.dmg, back = false;
       if (w.backstab) { // they're facing away from you -> backstab

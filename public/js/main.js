@@ -15,7 +15,7 @@ import { ME, stepPlayer, tryHook, releaseHook, applyKb, slip, eye, hookPoint, hs
 import {
   W, initWeapons, rebuildViewmodels, rebuildOne, setLoadout, refillAmmo, switchSlot, lastSlot, cycleSlot, reload,
   fireDown, fireUp, updateWeapons, muzzleWorld, onSlipperBack, inspect, grantScythe, loseScythe, toggleScythe, cycleCard, heavyAttack,
-  useItem, syncItem, resetItems,
+  useItem, syncItem, resetItems, setMyKatana,
 } from './weapons.js';
 import { Remote, updateGibs } from './remote.js';
 import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN } from './skins.js';
@@ -809,6 +809,8 @@ net.on('welcome', (m) => {
   $('roundEnd').classList.add('hidden');
   G.round = m.round; G.myTeam = m.team || 0;
   G.pocket = []; G.streakN = 0; renderStreak(0);
+  G.kat.clear(); setMyKatana(0);
+  for (const [id, n] of m.kat || []) G.kat.set(id, n);
   setupObjectives(m.cfg.map);
   clearTags();
   for (const g of m.tags || []) addTag(g.id, g.p, g.team);
@@ -881,6 +883,7 @@ net.on('sn', (m) => {
       const n = G.names.get(id) || { name: '???', color: '#ffffff' };
       r = new Remote(id, n.level ? `${n.name} [${n.level}]` : n.name, n.color, G.skins.get(id) || {}, n.bot, n.look);
       r.team = n.team || 0;
+      r.katN = G.kat.get(id) || 0;
       G.remotes.set(id, r);
     }
     r.snap(m.s, e);
@@ -928,6 +931,13 @@ net.on('bombev', (m) => {
 });
 // ------------------------------------------------------------ items: charges, bubbles, smoke, frost
 net.on('ic', (m) => syncItem(m.i, m.n, m.next));
+// the katana grows: everyone sees how long yours is
+G.kat = new Map();
+net.on('kat', (m) => {
+  G.kat.set(m.id, m.n);
+  if (m.id === G.myId) { setMyKatana(m.n); if (m.n) hud.msg(`KATANA GROWS · ${m.n} kill${m.n > 1 ? 's' : ''}`, 1.3, 'brag'); return; }
+  const r = G.remotes.get(m.id); if (r) r.setKat(m.n);
+});
 G.bubbles = new Map();
 function addBubble(m) {
   const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(m.r, 2), new THREE.MeshBasicMaterial({ color: 0x4fd8ff, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide }));

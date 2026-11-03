@@ -65,6 +65,22 @@ export const ANIMS = {
     K(0.13, [0.1, -0.06, -0.12], [-0.2, -0.75, -0.7], 'snap'), // rip down-right
     K(0.22, [0.11, -0.08, -0.1], [-0.25, -0.82, -0.75]), K(0.4),
   ], events: [[0.07, 'whoosh']], trail: [0.06, 0.2] },
+  swing_katana: { hit: 0.12, keys: [
+    K(0), K(0.08, [0.12, 0.1, 0.06], [0.35, -0.9, -0.6], 'in'),
+    K(0.16, [-0.2, -0.08, -0.14], [-0.3, 1.2, 0.8], 'snap'), K(0.27, [-0.22, -0.1, -0.12], [-0.35, 1.3, 0.85]), K(0.5),
+  ], events: [[0.09, 'whoosh']], trail: [0.08, 0.26] },
+  swing_katana2: { hit: 0.12, keys: [
+    K(0), K(0.08, [-0.16, 0.1, 0.05], [0.3, 1.0, 0.7], 'in'),
+    K(0.16, [0.14, -0.08, -0.14], [-0.3, -1.1, -0.8], 'snap'), K(0.27, [0.16, -0.1, -0.12], [-0.35, -1.2, -0.85]), K(0.5),
+  ], events: [[0.09, 'whoosh']], trail: [0.08, 0.26] },
+  draw_katana: { keys: [K(0, [-0.18, -0.2, 0.1], [0.2, 1.2, 0.4]), K(0.22, [0.04, 0.02, -0.04], [-0.1, -0.2, -0.1], 'snap'), K(0.4)], events: [[0.18, 'shing']], trail: [0.1, 0.24] },
+  inspect_katana: { keys: [
+    K(0), K(0.35, [-0.08, 0.06, 0.01], [0.15, 0.9, 0.2]),
+    K(0.8, [-0.08, 0.06, 0.01], [0.15, 0.9, 0.2 + Math.PI]), // look down the edge
+    K(1.2, [-0.08, 0.06, 0.01], [0.15, 0.9, 0.2 + Math.PI]),
+    K(1.45, [0.02, 0.0, -0.02], [-0.4, -0.6, 0.2 + PI2], 'snap'), // flick the blood off
+    K(1.9, [0, 0, 0], [0, 0, PI2]),
+  ], events: [[0.8, 'ting'], [1.45, 'whoosh']] },
   stab_knife: { hit: 0.29, keys: [
     K(0), K(0.22, [0.05, 0.07, 0.16], [0.5, 0.15, 0.15], 'in'), // wind up: pull back and raise
     K(0.29, [-0.04, -0.01, -0.3], [-0.4, -0.05, 0], 'snap'), // thrust
@@ -335,7 +351,7 @@ export const ANIMS = {
   ], events: [[0.45, 'rev']] },
 };
 
-const SPECIAL = new Set(['bread', 'slipper', 'spoon', 'revolver', 'shotgun', 'minigun', 'sniper', 'cig', 'duck', 'reverse', 'popper', 'chicken', 'blower', 'knife', 'slapper', 'scythe']);
+const SPECIAL = new Set(['katana', 'bread', 'slipper', 'spoon', 'revolver', 'shotgun', 'minigun', 'sniper', 'cig', 'duck', 'reverse', 'popper', 'chicken', 'blower', 'knife', 'slapper', 'scythe']);
 // weapon skins get their own inspect when they have one (butterfly flips, karambit spins...)
 export function inspectFor(id, model) {
   if (model && ANIMS['inspect_' + model]) return 'inspect_' + model;
@@ -348,6 +364,7 @@ const HEAVY = new Set(['minigun', 'blower', 'bowling', 'chicken']);
 export function drawFor(id, model) {
   if (model && ANIMS['draw_' + model]) return 'draw_' + model;
   if (id === 'knife') return 'draw_knife';
+  if (id === 'katana') return 'draw_katana';
   if (id === 'scythe') return 'draw_scythe';
   if (id === 'cards') return 'draw_cards';
   if (id === 'bow') return 'draw_bow';

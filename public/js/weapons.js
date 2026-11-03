@@ -5,7 +5,7 @@ import { BOXES } from '/shared/map.js';
 import { raycast, rayBox } from '/shared/physics.js';
 import { G } from './ctx.js';
 import { ME, eye, look, applyKb, hspeed } from './player.js';
-import { buildWeapon, M, cardFace, tipColor } from './models.js';
+import { buildWeapon, M, cardFace, tipColor, setKatana } from './models.js';
 import { fx } from './fx.js';
 import { sfx, loopSfx, stopLoops } from './audio.js';
 import { net } from './net.js';
@@ -234,6 +234,9 @@ function adsPose(id, m) {
   return pose;
 }
 
+// katana: longer blade + more reach per kill (the server says how long)
+export function setMyKatana(n) { W.kat = n; if (models.katana) { setKatana(models.katana.g, n); adsCache.clear(); } }
+
 // ------------------------------------------------------------ items (G)
 W.item = DEFAULT_LOADOUT.item;
 W.ic = {}; // id -> { n, next (performance.now ms) }
@@ -307,6 +310,7 @@ const VM = {
   snowball: { p: [0.17, -0.19, -0.33], r: [0.2, 0.2, 0.1], s: 0.75 },
   spoon: { p: [0.15, -0.15, -0.3], r: [0.2, 0.25, 0.1], s: 1.3 },
   knife: { p: [0.16, -0.17, -0.3], r: [0.15, 0.2, 0.15], s: 1.3 },
+  katana: { p: [0.2, -0.22, -0.34], r: [0.35, 0.25, -0.15], s: 0.85 },
   bow: { p: [0.1, -0.12, -0.36], r: [0, 0.05, 0.3], s: 1.0 },
   cards: { p: [0.1, -0.15, -0.3], r: [-0.35, 0.15, 0.05], s: 1.15 },
   slapper: { p: [0.22, -0.24, -0.42], r: [0.25, 0.1, 0], s: 0.7 },
@@ -347,6 +351,7 @@ export function rebuildViewmodels() {
     if (FLASH_IDS.has(id) && g.userData.muzzle) { flash = makeFlash(id === 'shotgun' || id === 'sniper'); flash.position.copy(g.userData.muzzle); g.add(flash); }
     models[id] = { wrap, g, cfg, flash };
   }
+  if (models.katana) setKatana(models.katana.g, W.kat || 0);
   if (!trail) initTrail();
 }
 
@@ -623,7 +628,8 @@ function resolveSwing(id) {
   const hv = W.heavy && w.heavy ? w.heavy : null;
   W.heavy = false;
   const o = eye(), d = look();
-  const targets = conePlayers(o, d, hv ? hv.range : w.range, hv ? hv.cone : w.cone);
+  const reach = w.range + (id === 'katana' ? (W.kat || 0) * w.grow : 0);
+  const targets = conePlayers(o, d, hv ? hv.range : reach, hv ? hv.cone : w.cone);
   if (targets.length) {
     for (const tg of targets) {
       net.send({ t: 'hit', to: tg.r.id, w: id, d: d.map(r2), heavy: hv ? 1 : undefined });

@@ -4,7 +4,7 @@ import { BOXES } from '/shared/map.js';
 import { raycast, playerBoxes } from '/shared/physics.js';
 import { FLAGS } from '/shared/weapons.js';
 import { G } from './ctx.js';
-import { buildCharacter, buildWeapon, makeNameTag, makeShadow, cardTex } from './models.js';
+import { buildCharacter, buildWeapon, makeNameTag, makeShadow, cardTex, setKatana } from './models.js';
 import { fx, makeBeam, setBeam } from './fx.js';
 import { emitSkinFx } from './skins.js';
 import { jankify } from './jank.js';
@@ -104,6 +104,7 @@ export class Remote {
     this.pos = keep.pos;
   }
 
+  setKat(n) { this.katN = n; if (this.w === 'katana' && this.weaponMesh) setKatana(this.weaponMesh, n); }
   setSkins(s) { this.skins = s || {}; const w = this.w; this.w = null; if (w) this.setWeapon(w); }
 
   setWeapon(w) {
@@ -114,6 +115,7 @@ export class Remote {
       this.weaponMesh = buildWeapon(w, this.skins[w]);
       this.weaponMesh.traverse((o) => { if (o.isMesh && !o.material.transparent) o.material = visibleMat(o.material); });
       this.weaponMesh.scale.setScalar(w === 'bread' ? 1.0 : 1.5);
+      if (w === 'katana') setKatana(this.weaponMesh, this.katN || 0);
       this.ch.slot.add(this.weaponMesh);
     }
   }

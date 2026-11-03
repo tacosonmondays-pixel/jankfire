@@ -125,6 +125,11 @@ export const WEAPONS = {
     desc: 'Thrown like a boomerang. Hits on the way out and on the way back.',
     cd: 0.5, speed: 32, grav: 0, r: 0.3, out: 0.45, back: 38, dmg: 30, kb: 22, kbUp: 6, life: 3,
   },
+  katana: {
+    slot: 'melee', kind: 'melee', name: 'Katana', color: '#e8e8f0',
+    desc: 'Every kill with it makes the blade longer and your reach further. Resets when you die. How long can you get it?',
+    cd: 0.5, range: 2.8, cone: 0.7, dmg: 48, kb: 6, kbUp: 2, delay: 0.1, grow: 0.5, growMax: 30,
+  },
   knife: {
     slot: 'melee', kind: 'melee', name: 'Knife', color: '#c8d0dc',
     desc: 'Left click: fast slashes. Right click: heavy stab (from behind = dead). Comes in a lot of skins.',
