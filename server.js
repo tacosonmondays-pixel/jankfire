@@ -374,6 +374,30 @@ class Room {
       b.yaw = lerpAngle(b.yaw, Math.atan2(-wx, -wz), 3 * dt);
       b.pitch *= 0.95;
     }
+    // grappling: chase people who are far / up high / out of sight, save yourself when falling, show off sometimes
+    if (!ai.hook && n >= (ai.nextHook || 0) && this.mode !== 'training') {
+      const skill = ai.diff === 'easy' ? 0.35 : ai.diff === 'hard' ? 1 : 0.7;
+      const below = !b.onGround && !raycast([b.pos[0], b.pos[1] + 0.5, b.pos[2]], [0, -1, 0], 40, boxes);
+      let want = null;
+      if (below && (b.vel[1] < -4 || b.pos[1] < this.map.killY + 25)) { // falling into the void: hook back toward the middle, up high
+        const c = this.map.spawns ? this.map.spawns[0] : [0, 0, 0];
+        want = [c[0] - b.pos[0], 18 + Math.max(0, c[1] - b.pos[1]), c[2] - b.pos[2]];
+      } else if (t && t.alive && Math.random() < skill) {
+        const dx = t.pos[0] - b.pos[0], dy = t.pos[1] - b.pos[1], dz = t.pos[2] - b.pos[2];
+        const hd = Math.hypot(dx, dz);
+        if (hd > pref[1] + 10 || dy > 4 || !ai.seenAt) want = [dx, dy + hd * 0.35 + 6, dz];
+      } else if (!t && Math.random() < 0.25 * skill) {
+        const a = Math.random() * Math.PI * 2;
+        want = [Math.cos(a) * 20, 14 + Math.random() * 10, Math.sin(a) * 20];
+      }
+      ai.nextHook = n + (want ? 700 : 1800) + Math.random() * 1200 / skill;
+      if (want) {
+        const l = Math.hypot(...want) || 1, d = want.map((v) => v / l), e = eyeOf(b);
+        const h = raycast(e, d, HOOK.range, boxes);
+        if (h && h.t > 6 && h.point[1] > b.pos[1] - 1) { ai.hook = { point: h.point, len: h.t, until: n + 2600 }; b.g = h.point; }
+      }
+    }
+    if (ai.hook) jump = false;
     const wl = Math.hypot(wx, wz);
     if (wl > 0) { wx /= wl; wz /= wl; }
     // don't walk off the map (bots are dumb, not suicidal)
@@ -443,6 +467,22 @@ class Room {
       }
     }
     v[1] -= 26 * dt;
+    // on the rope: same pull as a player's grapple. let go near the point (or when it's been a while) with a jump boost
+    const hk = b.ai && b.ai.hook;
+    if (hk) {
+      const dx = hk.point[0] - b.pos[0], dy = hk.point[1] - (b.pos[1] + 1), dz = hk.point[2] - b.pos[2];
+      const dist = Math.hypot(dx, dy, dz) || 1, nx = dx / dist, ny = dy / dist, nz = dz / dist;
+      if (dist > 2) { v[0] += nx * HOOK.pull * dt; v[1] += ny * HOOK.pull * dt; v[2] += nz * HOOK.pull * dt; }
+      v[1] += 26 * 0.35 * dt;
+      hk.len = Math.min(hk.len, dist);
+      const radial = v[0] * nx + v[1] * ny + v[2] * nz;
+      if (dist >= hk.len - 0.05 && radial < 0) { v[0] -= nx * radial; v[1] -= ny * radial; v[2] -= nz * radial; }
+      if (dist < 4.5 || n > hk.until || slipping) {
+        if (!slipping) { v[0] *= 1.12; v[2] *= 1.12; v[1] = Math.max(v[1], 0) * 1.12 + 11; } // hook jump
+        b.ai.hook = null; b.g = null;
+      }
+      b.onGround = false;
+    }
     const was = b.onGround;
     const res = movePlayer(b.pos, v, dt, this.boxes, was);
     b.onGround = !!res.ground && v[1] <= 0.01;
@@ -542,6 +582,7 @@ class Room {
   kill(t, attacker, w) {
     if (!t.alive) return;
     t.alive = false; t.hp = 0; t.deaths++; t.g = null; t.reverseUntil = 0;
+    if (t.ai) t.ai.hook = null;
     t.respawnAt = now() + (t.isBot && t.ai.dummy ? 700 : 2500);
     t.deadT = now();
     let killer = attacker, via = null;
