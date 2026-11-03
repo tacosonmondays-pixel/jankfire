@@ -35,6 +35,7 @@
   <div id="speed"><span id="speedNum">0</span><small> km/h</small><div id="speedLabel"></div></div>
   <div id="combo"></div>
   <div id="streak"></div>
+  <div id="streakTray"></div>
   <div id="cheat"></div>
   <div id="hand"></div>
   <div id="sleepFx">z z z</div>
@@ -87,7 +88,7 @@
       <button class="mid danger" id="dQuit">QUIT GAME</button>
     </div>
     <div id="status"></div>
-    <div class="hint">WASD move · SHIFT run · C / CTRL crouch (slide when fast) · SPACE jump (hold to bhop, jump while grappling to launch) · RIGHT CLICK aim · E grapple · R reload · F inspect · 1 2 3 switch · G use item · H use killstreak · V/X scythe · B menu · TAB scores · T chat</div>
+    <div class="hint">WASD move · SHIFT run · C / CTRL crouch (slide when fast) · SPACE jump (hold to bhop, jump while grappling to launch) · RIGHT CLICK aim · E grapple · R reload · F inspect · 1 2 3 switch · G use item · 5 6 7 use killstreaks · V/X scythe · B menu · TAB scores · T chat</div>
   </div>
 
   <!-- pause (in game) -->
@@ -141,6 +142,8 @@
       <div class="lcol"><div class="lt">melee</div><div id="lo-melee"></div></div>
       <div class="lcol"><div class="lt">item (G)</div><div id="lo-item"></div></div>
     </div>
+    <div class="lt">killstreaks (pick 3 · press 5 / 6 / 7 to use them)</div>
+    <div id="lo-streaks"></div>
     <div id="loDesc">hover a weapon to see what it does</div>
     <div id="loNote"></div>
     <button class="mid back">BACK</button>

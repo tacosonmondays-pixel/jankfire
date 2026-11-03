@@ -1,7 +1,8 @@
 // JANKFIRE client entry: menus, modes, input, net handlers and the main loop.
 import * as THREE from 'three';
 import { BOXES, MAPS, MAP_ORDER } from '/shared/map.js';
-import { WEAPONS, ORDER, SLOTS, FLAGS, SLIP_TIME, HIPFIRE, BOT_DIFF, MODES, STREAKS, ITEMS, ITEM_ORDER, validLoadout } from '/shared/weapons.js';
+import { WEAPONS, ORDER, SLOTS, FLAGS, SLIP_TIME, HIPFIRE, BOT_DIFF, MODES, STREAKS, ITEMS, ITEM_ORDER, validLoadout, validStreaks } from '/shared/weapons.js';
+import { streakIcon } from './icons.js';
 import { stepProjectile, raycast } from '/shared/physics.js';
 import { G } from './ctx.js';
 import { initWorld, renderFrame, setJank, updateWorld, loadMap } from './world.js';
@@ -137,7 +138,7 @@ function startMode(mode, cfg) {
   if (G.joined) quitToMenu(true);
   connecting = true;
   $('status').textContent = 'connecting...';
-  net.connect({ name: G.settings.name, mode, skins: G.equipped, look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), kc: G.settings.killcam !== false, cfg, token: account.loggedIn ? account.token : undefined }, () => {
+  net.connect({ name: G.settings.name, mode, skins: G.equipped, look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), kc: G.settings.killcam !== false, streaks: validStreaks(S.loadout.streaks), cfg, token: account.loggedIn ? account.token : undefined }, () => {
     connecting = false;
     resetWorldState();
     show('main');
@@ -323,6 +324,28 @@ function buildLoadoutUI() {
       });
       col.append(b);
     }
+  }
+  // killstreaks: pick 3
+  const kc = $('lo-streaks');
+  kc.innerHTML = '';
+  const picks = validStreaks(S.loadout.streaks);
+  for (const [id, st] of Object.entries(STREAKS).sort((a, b) => a[1].kills - b[1].kills)) {
+    const b = document.createElement('button');
+    b.className = 'kpick' + (picks.includes(id) ? ' on' : '');
+    const im = document.createElement('img'); im.src = streakIcon(id); im.alt = '';
+    const t = document.createElement('span'); t.textContent = `${st.name} · ${st.kills}`;
+    b.append(im, t);
+    b.addEventListener('mouseenter', () => { $('loDesc').textContent = `${st.name} (${st.kills} kills in a row): ${st.desc}`; });
+    b.addEventListener('click', () => {
+      let list = picks.slice();
+      if (list.includes(id)) { toast('you need 3 killstreaks: pick another one to swap it out'); return; }
+      list = [...list.slice(0, 2), id]; // the newest pick replaces your most expensive one
+      S.loadout.streaks = validStreaks(list);
+      saveSettings();
+      if (G.joined) net.send({ t: 'streaks', list: S.loadout.streaks });
+      buildLoadoutUI(); renderStreak(G.streakN || 0);
+    });
+    kc.append(b);
   }
   // items
   const ic = $('lo-item');
@@ -659,7 +682,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyV') W.dashHeld = true;
   if (e.code === 'KeyX' && !e.repeat) toggleScythe();
   if (e.code === 'KeyG' && !e.repeat) useItem();
-  if (e.code === 'KeyH' && !e.repeat) deployStreak();
+  if (['Digit5', 'Digit6', 'Digit7'].includes(e.code) && !e.repeat) deployStreak(Number(e.code.slice(5)) - 5);
   if (e.code === 'Digit4') switchSlot(3);
   if ((e.code === 'KeyC' || e.code === 'ControlLeft' || e.code === 'ControlRight') && !e.repeat) {
     if (e.code !== 'KeyC') e.preventDefault();
@@ -785,6 +808,7 @@ net.on('welcome', (m) => {
   renderRound(m.round);
   $('roundEnd').classList.add('hidden');
   G.round = m.round; G.myTeam = m.team || 0;
+  G.pocket = []; G.streakN = 0; renderStreak(0);
   setupObjectives(m.cfg.map);
   clearTags();
   for (const g of m.tags || []) addTag(g.id, g.p, g.team);
@@ -1395,45 +1419,67 @@ function frame(t) {
 
 // ------------------------------------------------------------ killstreaks
 G.pocket = [];
+// killstreak tray (bottom right): your 3 picks, the kills each needs, lit up when ready (press 5 / 6 / 7)
 function renderStreak(n) {
-  const el = $('streak');
-  const parts = [];
-  if (n >= 2) parts.push(`streak ${n}`);
-  if (G.pocket.length) parts.push(`G: ${STREAKS[G.pocket[0]].name}${G.pocket.length > 1 ? ` (+${G.pocket.length - 1})` : ''}`);
-  const next = Object.values(STREAKS).find((st) => st.kills > n);
-  if (n >= 1 && next) parts.push(`next: ${next.name} at ${next.kills}`);
-  el.textContent = parts.join(' · ');
+  const tray = $('streakTray');
+  const picks = validStreaks(S.loadout.streaks);
+  const key = picks.join(',') + '|' + n + '|' + G.pocket.join(',');
+  if (tray.dataset.key !== key) {
+    tray.dataset.key = key;
+    tray.innerHTML = '';
+    picks.forEach((id, i) => {
+      const st = STREAKS[id], ready = G.pocket.includes(id);
+      const d = document.createElement('div');
+      d.className = 'kstreak' + (ready ? ' ready' : '');
+      d.title = `${st.name}: ${st.desc}`;
+      const im = document.createElement('img'); im.src = streakIcon(id); im.alt = '';
+      const k = document.createElement('b'); k.textContent = String(5 + i);
+      const c = document.createElement('span'); c.textContent = ready ? 'READY' : `${Math.min(n, st.kills)}/${st.kills}`;
+      d.append(im, k, c);
+      tray.append(d);
+    });
+  }
+  $('streak').textContent = n >= 2 ? `streak ${n}` : '';
 }
-function deployStreak() {
-  if (!G.joined || !ME.alive || !G.pocket.length) return;
+function deployStreak(slot) {
+  const id = validStreaks(S.loadout.streaks)[slot];
+  if (!G.joined || !ME.alive || !id) return;
+  if (!G.pocket.includes(id)) { hud.msg(`${STREAKS[id].name}: ${STREAKS[id].kills} kills in a row`, 1.2); sfx.empty(); return; }
   const e = eye(), d = lookDir();
   const h = raycast(e, d, 300, BOXES);
   const at = h ? h.point : [e[0] + d[0] * 60, e[1] + d[1] * 60, e[2] + d[2] * 60];
-  const r = G.pocket.shift();
-  net.send({ t: 'deploy', r, at: at.map((x) => Math.round(x * 100) / 100) });
-  hud.msg(STREAKS[r].name.toUpperCase(), 1.4, 'brag');
+  G.pocket.splice(G.pocket.indexOf(id), 1);
+  net.send({ t: 'deploy', r: id, at: at.map((x) => Math.round(x * 100) / 100) });
+  hud.msg(STREAKS[id].name.toUpperCase(), 1.4, 'brag');
   renderStreak(G.streakN || 0);
 }
 function lookDir() { const cp = Math.cos(ME.pitch); return [-Math.sin(ME.yaw) * cp, Math.sin(ME.pitch), -Math.cos(ME.yaw) * cp]; }
 net.on('streak', (m) => {
-  if (m.reset) {
-    G.streakN = 0; G.pocket = []; G.satUntil = 0; G.spinUntil = 0; ME.moonUntil = 0;
+  if (m.reset) { // you died: the count starts over and active stuff ends. earned-but-unused streaks stay in the tray
+    G.streakN = 0; G.satUntil = 0; G.spinUntil = 0; ME.moonUntil = 0;
     loseScythe();
     renderStreak(0);
     return;
   }
-  G.streakN = m.n;
+  if (m.earned) {
+    const st = STREAKS[m.earned];
+    if (!st) return;
+    G.streakN = m.n;
+    if (!G.pocket.includes(m.earned)) G.pocket.push(m.earned);
+    const key = 5 + validStreaks(S.loadout.streaks).indexOf(m.earned);
+    hud.msg(`${st.name.toUpperCase()} READY · PRESS ${key}`, 2.4, 'brag');
+    sfx.kill();
+    renderStreak(m.n);
+    return;
+  }
+  // you activated one: switch it on here
   const st = STREAKS[m.reward];
   if (!st) return;
   if (m.reward === 'moonboots') ME.moonUntil = performance.now() + st.dur * 1000;
   if (m.reward === 'satellite') G.satUntil = performance.now() + st.dur * 1000;
   if (m.reward === 'spinbot') G.spinUntil = performance.now() + st.dur * 1000;
   if (m.reward === 'scythe') grantScythe();
-  if (st.deploy) G.pocket.push(m.reward);
-  hud.msg(`${m.n} KILL STREAK: ${st.name.toUpperCase()}`, 2.4, 'brag');
-  toast(st.desc, 3000);
-  sfx.kill();
-  renderStreak(m.n);
+  toast(st.desc, 2500);
 });
 
 // ------------------------------------------------------------ toast

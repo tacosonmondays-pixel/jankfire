@@ -16,7 +16,7 @@ import { validLook, achievementsFrom, ACHIEVEMENTS } from './shared/looks.js';
 import { STAT_KEYS } from './server/store.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor } from './shared/modes.js';
-import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS } from './shared/weapons.js';
+import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, validStreaks } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -290,6 +290,7 @@ class Room {
     p.look = validLook(m.look, m._achs || new Set());
     if (p.look.color) p.color = p.look.color;
     p.card = cleanCard(m.card);
+    p.streaks = validStreaks(m.streaks);
     p.kfx = ownedKill(m.kfx, inv);
     p.kc = !!m.kc;
     if (this.mode === 'bots' && m.cfg && GAMES[m.cfg.game] && !this.humans().length) this.setGame(m.cfg.game);
@@ -794,12 +795,14 @@ class Room {
       killer.kills++;
       killer.streak = (killer.streak || 0) + 1;
       if (!killer.isBot && this.mode !== 'training') {
-        for (const [id, st] of Object.entries(STREAKS)) {
+        // your 3 picked streaks: earn one and it waits in your tray until you use it (keys 5 / 6 / 7)
+        for (const id of validStreaks(killer.streaks)) {
+          const st = STREAKS[id];
           if (killer.streak !== st.kills) continue;
-          if (id === 'scythe') killer.scythe = true;
-          if (st.deploy) (killer.pocket ||= []).push(id);
-          send(killer, { t: 'streak', reward: id, n: killer.streak });
-          this.broadcast({ t: 'chat', id: 0, m: `${killer.name} got a ${killer.streak} kill streak: ${st.name}` }, killer.id);
+          killer.pocket ||= [];
+          if (!killer.pocket.includes(id)) killer.pocket.push(id);
+          send(killer, { t: 'streak', earned: id, n: killer.streak });
+          this.broadcast({ t: 'chat', id: 0, m: `${killer.name} earned ${st.name} (${st.kills} kills)` }, killer.id);
         }
       }
     }
@@ -809,8 +812,7 @@ class Room {
     if (killer && killer !== t && this.round && !this.round.over && !(t.isBot && t.ai && t.ai.dummy) && this.mode !== 'training') this.hlCandidate(killer, t, w);
     send(t, { t: 'streak', reset: 1 });
     t.streak = 0;
-    t.scythe = false;
-    t.pocket = [];
+    t.scythe = false; // active stuff ends when you die; earned-but-unused streaks stay in your tray
     if (this.mode !== 'training') {
       if (killer && killer !== t && killer.acct) {
         if (t.isBot) stat(killer, 'bot_kills', 1), stat(killer, 'xp', 5);
@@ -1370,11 +1372,15 @@ class Room {
         this.kill(p, null, 'tbag');
         break;
       }
-      case 'deploy': { // use a killstreak from your pocket at the point you aimed at
+      case 'streaks': p.streaks = validStreaks(m.list); break;
+      case 'deploy': { // use a killstreak from your tray (aimed ones land where you looked)
         const i = (p.pocket || []).indexOf(m.r);
         const at = vec3(m.at);
-        if (i < 0 || !at || !p.alive) break;
+        if (i < 0 || !p.alive || !STREAKS[m.r]) break;
+        if ((m.r === 'chickenstrike' || m.r === 'giantduck') && !at) break;
         p.pocket.splice(i, 1);
+        if (m.r === 'scythe') p.scythe = true;
+        send(p, { t: 'streak', reward: m.r });
         if (m.r === 'chickenstrike') {
           this.broadcast({ t: 'fx', k: 'strikeCall', id: p.id, p: at.map(r2) });
           for (let k = 0; k < 14; k++) setTimeout(() => {

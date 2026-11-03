@@ -169,7 +169,7 @@ export const STREAKS = {
   satellite: { kills: 7, name: 'Spy Satellite', desc: 'see every enemy through walls for 20s', auto: true, dur: 20 },
   giantduck: { kills: 10, name: 'Giant Duck', desc: 'G: a giant black hole that pulls in everyone but you', deploy: true },
 };
-export const DEFAULT_LOADOUT = { primary: 'ar', secondary: 'cig', melee: 'bread', item: 'frag' };
+export const DEFAULT_LOADOUT = { primary: 'ar', secondary: 'cig', melee: 'bread', item: 'frag', streaks: ['moonboots', 'chickenstrike', 'scythe'] };
 
 // items: one per loadout, G to use. charges come back over time (recharge = seconds per charge)
 export const ITEMS = {
@@ -185,6 +185,7 @@ export function validLoadout(lo) {
   const out = { ...DEFAULT_LOADOUT };
   if (lo) for (const s of SLOTS) if (WEAPONS[lo[s]] && WEAPONS[lo[s]].slot === s) out[s] = lo[s];
   if (lo && ITEMS[lo.item]) out.item = lo.item;
+  out.streaks = validStreaks(lo && lo.streaks);
   return out;
 }
 
@@ -223,3 +224,12 @@ export const RANKS = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J'
 export const FLAGS = { SMOKE: 1, FIRE: 2, BLOW: 4, SPIN: 8, SLIP: 16, SLIDE: 32, REVERSE: 64, CROUCH: 128, DASH: 256 };
 export const SLIP_TIME = 1.7;
 export const HOOK = { range: 90, pull: 42, tug: 16 };
+
+// your 3 killstreaks, cheapest first (keys 5 / 6 / 7)
+export function validStreaks(list) {
+  const ok = Array.isArray(list) ? [...new Set(list.filter((id) => STREAKS[id]))] : [];
+  const out = ok.slice(0, 3);
+  for (const id of DEFAULT_LOADOUT.streaks) if (out.length < 3 && !out.includes(id)) out.push(id);
+  for (const id of Object.keys(STREAKS)) if (out.length < 3 && !out.includes(id)) out.push(id);
+  return out.sort((a, b) => STREAKS[a].kills - STREAKS[b].kills);
+}
