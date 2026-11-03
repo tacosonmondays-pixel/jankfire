@@ -974,5 +974,5 @@ export function setKatana(g, n) {
   if (!ud || !ud.katBlade) return;
   const k = 1 + n * 0.55;
   ud.katBlade.scale.z = k;
-  ud.muzzle.z = ud.katBlade.position.z - (ud.katLen + 0.03) * k;
+  ud.muzzle.z = ud.katBlade.position.z - ud.katLen * k; // katLen = katBlade origin to the tip
 }

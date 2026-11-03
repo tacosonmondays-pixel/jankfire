@@ -12,7 +12,7 @@ export function build(g) {
   bl.add(box(0.014, 0.008, 0.72, 0xffffff, 0, 0.026, -0.36, true));
   const tip = box(0.012, 0.03, 0.06, 0xe8ecf2, 0, 0.012, -0.74); tip.rotation.x = 0.3; bl.add(tip);
   g.add(bl);
-  g.userData.katBlade = bl; g.userData.katLen = 0.72;
+  g.userData.katBlade = bl; g.userData.katLen = 0.75;
   g.userData.muzzle = new THREE.Vector3(0, 0.01, -0.82); g.userData.len = 0.95;
 }
 export const hatAt = null;
