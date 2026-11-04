@@ -223,8 +223,8 @@ function punchIn(cam) {
 export function updateReplay(dt, now, cam) {
   if (!st) return false;
   const o = st.opts;
-  // replays keep to the wall clock (the frame dt is capped at 0.1 s): on a slow PC the killcam still ends before the server respawns you
-  dt = st.wall ? Math.min(0.25, Math.max(0, (now - st.wall) / 1000)) : dt;
+  // replays keep to the wall clock (the frame dt is capped at 0.1 s): on a slow PC (down to ~2 fps) the killcam still ends before the server respawns you
+  dt = st.wall ? Math.min(0.5, Math.max(0, (now - st.wall) / 1000)) : dt;
   st.wall = now;
   const slow = o.slow && o.slow.find(([a, b]) => st.t >= a && st.t <= b);
   const sp = slow ? slow[2] || 0.3 : 1; // slow windows are [from, to, speed?]

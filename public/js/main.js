@@ -27,7 +27,7 @@ import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse
 import { GAMES, GAME_ORDER, TEAMS } from '/shared/modes.js';
 import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
-import { EPIC_CAM, EPIC_W } from '/shared/epic.js';
+import { EPIC_CAM, epicMul, epicCamMs } from '/shared/epic.js';
 import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, HAIRS, TOPS, BOTTOMS } from '/shared/looks.js';
 import { account, restore, login, register, logout, saveProfile, leaderboard as fetchLeaders } from './account.js';
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
@@ -1066,6 +1066,7 @@ net.on('kill', (m) => {
   if (m.ep && m.k) parts.push([`  EPIC ${Math.round(m.ep.d)}m`, '#ffe14d']);
   if (!dummy) hud.feed(parts);
   if (m.v === G.myId) epicKC = m.ep && m.ep.lock && m.k && m.k !== G.myId && S.killcam !== false && G.mode !== 'training' ? { ...m.ep, w: via } : null; // too epic to skip (the server holds your respawn)
+  if (m.v === G.myId) epicHold = !!(m.ep && m.ep.lock); // ...until it spawns you, killcam or not
   if (m.v === G.myId) {
     ME.alive = false;
     releaseHook();
@@ -1308,7 +1309,7 @@ function frame(t) {
     }
     pingT -= dt;
     if (pingT <= 0) { pingT = 2; net.send({ t: 'pi', c: performance.now() }); }
-    if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = epicKC ? 'killcam... too epic to skip' : 'killcam... (space to skip)'; else hud.deadTimer(Math.max(0, 2.5 - (now - (G.deadAt || now)) / 1000)); }
+    if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = epicKC ? 'killcam... too epic to skip' : 'killcam... (space to skip)'; else if (epicHold) epicTimer(now); else hud.deadTimer(Math.max(0, 2.5 - (now - (G.deadAt || now)) / 1000)); }
   }
 
   const rt = now + G.offset - INTERP_MS;
@@ -1590,7 +1591,7 @@ function queueKillcam(killer, via) {
 function endKillcam() {
   clearTimeout(killcamT);
   G.killcamPending = false;
-  epicKC = null;
+  epicKC = null; epicHold = false;
   if (RP.mode === 'killcam') stopReplay(true);
 }
 function skipReplay() {
@@ -1604,16 +1605,19 @@ function skipReplay() {
 // whole epic killcam has played, so a hacked client can't skip it either. here: a longer, slower cut that punches in on you,
 // a banner when the shot lands, and a padlock where the skip button was.
 let epicKC = null; // the epic kill you're stuck watching
+let epicHold = false, nopeT = 0; // the server is holding your respawn (until 'spawn')
 function epicLocked() { return !!epicKC && !ME.alive && !G.roundOver && (G.killcamPending || RP.mode === 'killcam'); }
 function epicTags(ep) {
   const w = WEAPONS[ep.w];
-  const far = w && w.kind === 'melee' ? 'WHAT A REACH' : w && (EPIC_W[ep.w] || 1) >= 2 ? `WITH A ${w.name.toUpperCase()}?!` : 'LONG SHOT';
+  const far = w && w.kind === 'melee' ? 'WHAT A REACH' : w && epicMul(ep.w) >= 2 ? `WITH A ${w.name.toUpperCase()}?!` : 'LONG SHOT';
   const T = { far, hs: 'HEADSHOT', ns: 'NO-SCOPE', air: 'MID-AIR', rope: 'OFF THE GRAPPLE', fast: `${ep.kmh || 300} KM/H`, hp: `ON ${ep.hp || 1} HP` };
   return (Array.isArray(ep.why) ? ep.why : []).map((k) => T[k]).filter(Boolean).join(' · ');
 }
 function epicCam(killer, via, deathS) {
   const ep = epicKC, C = EPIC_CAM;
-  const clip = localClip(deathS - C.pre, deathS + 1200, infoOf);
+  // started late (a slow PC hitching on the kill): cut into the lead-up so it still ends before the server lets you go
+  const late = Math.max(0, Math.min(C.pre - 1000, performance.now() - (G.deadAt || 0) - C.delay));
+  const clip = localClip(deathS - C.pre + late, deathS + 1200, infoOf);
   const [kn, kc] = nameOf(killer);
   showReplayUI('KILLCAM', cardUrlFor(killer), kn, kc, `got you with ${wname(via)}`, '');
   epicUI(true);
@@ -1643,8 +1647,13 @@ function epicUI(on) {
   h.textContent = '';
   h.append(lk, 'TOO EPIC TO SKIP');
 }
-// trying to skip anyway: the padlock rattles
+// the clip ended (or was too short to play) but the server still holds you: count down to the end of the lock
+function epicTimer(now) { $('deadTimer').textContent = `too epic to skip · ${Math.max(0, (epicCamMs() - (now - (G.deadAt || now))) / 1000).toFixed(1)}...`; }
+// trying to skip anyway: the padlock rattles (at most every 300 ms: holding space auto-repeats)
 function epicNope() {
+  const tn = performance.now();
+  if (tn - nopeT < 300) return;
+  nopeT = tn;
   const el = RP.active ? $('rpHint') : $('deadTimer');
   el.classList.remove('nope'); void el.offsetWidth; el.classList.add('nope');
   el.addEventListener('animationend', () => el.classList.remove('nope'), { once: true });
@@ -1664,7 +1673,7 @@ function epicBanner(ep) {
 }
 // and the killer gets to brag about it
 function epicBrag(ep) {
-  hud.msg(ep.lock ? `UNSKIPPABLE:\nthey had to watch that · ${Math.round(ep.d)}m` : `EPIC SHOT · ${Math.round(ep.d)}m\n${epicTags(ep)}`, 3.2, 'epicbrag');
+  hud.msg(ep.lock ? `UNSKIPPABLE:\nthey HAVE to watch this · ${Math.round(ep.d)}m` : `EPIC SHOT · ${Math.round(ep.d)}m\n${epicTags(ep)}`, 3.2, 'epicbrag');
   sfx.choir();
 }
 
