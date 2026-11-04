@@ -130,6 +130,19 @@ export const sfx = {
   choir(pos) { for (const [f, d] of [[523, 0], [659, 0.05], [784, 0.1], [1046, 0.15]]) tone('sine', f, f * 1.01, 2.2, 0.12, pos, d); },
   tbag(pos) { for (let i = 0; i < 3; i++) tone('sawtooth', 120 - i * 25, 40, 0.18, 0.3, pos, i * 0.1); },
 };
+// katana parry: a struck blade. a free metal bar rings at 1 : 2.76 : 5.40 : 8.93 (not harmonic, that's what makes it
+// sound like steel), over a scraping hiss, with a hard click on top and a detuned pair for the shimmer.
+// perfect parries ring higher and longer, with a fifth and a low thump under it.
+sfx.parry = (pos, perfect) => {
+  const f = perfect ? 1480 : 1250, L = perfect ? 1.4 : 1;
+  noise(0.035, 0.75, 'highpass', 5000, 9000, pos); // contact
+  noise(0.42 * L, 0.42, 'bandpass', 8500, 3200, pos, 0.004, 2.5); // shhhing
+  for (const [k, v, d] of [[1, 0.34, 1.1], [2.76, 0.22, 0.75], [5.4, 0.13, 0.45], [8.93, 0.07, 0.25]]) tone('sine', f * k, f * k * 0.996, d * L, v, pos);
+  tone('sine', f * 1.006, f * 1.002, 0.9 * L, 0.16, pos); // beats against the fundamental
+  if (perfect) { tone('sine', f * 1.5, f * 1.505, 1.4, 0.12, pos, 0.03); tone('sine', 150, 45, 0.2, 0.4, pos, 0.01); noise(0.12, 0.3, 'lowpass', 900, 120, pos, 0.01); }
+};
+// a small tick for the 2nd, 3rd... thing parried in one window (a minigun stream shouldn't SHING ten times)
+sfx.tink = (pos) => { const f = 3000 + Math.random() * 600; tone('sine', f, f * 0.97, 0.12, 0.13, pos); noise(0.025, 0.45, 'highpass', 6000, 9000, pos); };
 
 const LOOPDEF = {
   fire: { type: 'lowpass', f: 900, q: 0.7, vol: 0.55 },

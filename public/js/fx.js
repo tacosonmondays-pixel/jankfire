@@ -219,6 +219,22 @@ export const fx = {
     const nn = n || [0, 1, 0];
     for (let i = 0; i < 10; i++) misc.spawn(p[0], p[1], p[2], nn[0] * 4 + R(3), nn[1] * 4 + R(3), nn[2] * 4 + R(3), 0.5, 0.15, 0.08, 0x999988, 0x444444, 1, 12, 1);
   },
+  // katana parry: hot sparks off the blade and a tiny white pop. dir = the way the hit came from: sparks spray out
+  // sideways and up off the edge, only a little back along it (straight back would be into a swordsman's face)
+  sparks(p, dir, n = 20, hot = false) {
+    const d = dir || [0, 0, 0], sx = -d[2], sz = d[0];
+    for (let i = 0; i < n; i++) {
+      const s = 2.5 + Math.random() * (hot ? 7 : 5), side = R(1), back = Math.random() * 0.35;
+      const a = [sx * side + d[0] * back + R(0.3), 0.25 + Math.random() * 0.9, sz * side + d[2] * back + R(0.3)], l = Math.hypot(...a) || 1;
+      fire.spawn(p[0], p[1], p[2], a[0] / l * s, a[1] / l * s, a[2] / l * s, 0.1 + Math.random() * 0.2, hot ? 0.11 : 0.085, 0.02,
+        Math.random() < 0.5 ? 0xffffff : 0xfff2b0, 0xff7a10, 1, 14, 2);
+    }
+    const m = new THREE.Mesh(SPHERE_GEO, new THREE.MeshBasicMaterial({ color: hot ? 0xfff6c0 : 0xffffff, transparent: true, opacity: 1 }));
+    m.position.set(p[0], p[1], p[2]);
+    m.scale.setScalar(hot ? 0.22 : 0.15);
+    scene.add(m);
+    timed.push({ mesh: m, life: hot ? 0.16 : 0.1, ml: hot ? 0.16 : 0.1, kind: 'pop' }); // just fades, no growing
+  },
   burn(p) {
     fire.spawn(p[0] + R(0.4), p[1] + Math.random() * 1.8, p[2] + R(0.4), R(0.5), 2 + Math.random() * 2, R(0.5), 0.4, 0.35, 0.05, 0xffcc44, 0xff2200, 1, -2, 0);
   },

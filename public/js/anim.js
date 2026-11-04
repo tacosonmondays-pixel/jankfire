@@ -372,6 +372,22 @@ export function drawFor(id, model) {
   return HEAVY.has(id) ? 'draw_heavy' : 'draw_gun';
 }
 
+// katana parry (right click): the blade snaps up across the body (overshoots a hair), holds through the 0.35 s
+// window with a little drift so it doesn't look frozen, then drops back. a landed parry adds hit stop + a kick on top.
+Object.assign(ANIMS, {
+  parry_katana: { keys: [
+    K(0), K(0.05, [-0.15, 0.16, 0.02], [0.84, 1.03, 0.52], 'snap'), // snap up
+    K(0.1, [-0.13, 0.13, 0], [0.75, 0.95, 0.45]), // settle into the guard
+    K(0.34, [-0.12, 0.125, 0], [0.72, 0.93, 0.43], 'linear'), // hold
+    K(0.56, [0, 0, 0], [0, 0, 0], 'smooth'),
+  ], events: [[0.01, 'whoosh']], trail: [0, 0.07] },
+  // your swing got parried: whatever you're holding gets knocked up and away, then you get it back
+  staggered: { keys: [
+    K(0), K(0.07, [0.08, 0.12, 0.14], [0.75, -0.45, 0.65], 'snap'),
+    K(0.32, [0.06, 0.08, 0.1], [0.55, -0.32, 0.45]), K(0.62),
+  ] },
+});
+
 for (const a of Object.values(ANIMS)) a.dur = a.keys[a.keys.length - 1].t;
 
 // returns { p, r, s } at time t, or null when finished

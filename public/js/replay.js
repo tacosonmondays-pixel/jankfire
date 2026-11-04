@@ -102,6 +102,12 @@ function applyEv(m) {
     sfx.swing(g ? g.pos : null);
   } else if (m.t === 'fx' && m.k === 'tbag') {
     fx.explosion(m.p, 6); sfx.boom(m.p);
+  } else if (m.t === 'guard') { // katana parry: the guard pose
+    if (g) g.parryT = performance.now();
+  } else if (m.t === 'parry') { // ...and what it bounced
+    if (g) g.parryHitT = performance.now();
+    fx.sparks(m.p, null, m.pf ? 40 : 24, !!m.pf); sfx.parry(m.p, !!m.pf);
+    if (m.b) fx.tracer(m.p, m.b, 0xffffff, 0.07, 0.3);
   } else if (m.t === 'kill') {
     const v = st.ghosts.get(m.v);
     if (v) {

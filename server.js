@@ -18,6 +18,7 @@ import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor } from './shared/modes.js';
 import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, validStreaks, fireRate } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
+import { PARRY } from './shared/weapons.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -156,6 +157,7 @@ function cleanCard(c) { return typeof c === 'string' && c.length <= 24000 && CAR
 const REC_T = new Set(['kill', 'boom', 'fx', 'pd', 'he']);
 const REC_FX = new Set(['shot', 'swing', 'tbag', 'reflect']);
 const REC_MS = 12000;
+for (const t of ['parry', 'guard']) REC_T.add(t); // katana parries show up in killcams too
 function newDeck() {
   const d = [];
   for (const s of ['h', 's', 'c', 'd']) for (let r = 1; r <= 13; r++) d.push(s + r);
@@ -792,7 +794,7 @@ class Room {
       if (this.game === 'tags') this.dropTag(t);
     }
     if (this.bomb && this.bomb.carrier === t.id) this.dropBomb(t.pos);
-    if (killer && killer !== t && w === 'katana') { // the katana grows with every kill
+    if (killer && killer !== t && (w === 'katana' || w === 'parry')) { // the katana grows with every kill (parries too)
       killer.kat = Math.min(WEAPONS.katana.growMax, (killer.kat || 0) + 1);
       this.broadcast({ t: 'kat', id: killer.id, n: killer.kat });
     }
@@ -892,6 +894,7 @@ class Room {
   }
 
   applyHitscan(p, t, wid, n, h, d, mul = 1) {
+    if (this.parryShot(p, t, wid, n, h, d, mul)) return; // katana parry: blocked, or sent back
     const w = WEAPONS[wid], pellets = w.pellets || 1;
     const dmg = (w.dmg * (n - h) + w.dmg * (w.head || 1) * h) * mul;
     const k = w.kb * n;
@@ -903,9 +906,11 @@ class Room {
     const t = this.players.get(m.to);
     const d = norm(vec3(m.d));
     if (!w || !t || !d || t === p || !t.alive || !p.alive) return;
+    if (now() < (p.staggerUntil || 0)) return; // got parried: still reeling
     if ((w.slot === 'streak' || w.kind === 'dash') && !p.scythe) return; // you have to earn it
     if (w.kind === 'dash') {
       if (!(p.f & FLAGS.DASH) || !this.pairOk(p, t, 'dash', 280) || !this.rangeOk(p, t, w.range)) return;
+      if (this.parryMelee(p, t)) return;
       this.hurt(t, p, 'scythe', w.dmg, [d[0] * w.kb, d[1] * w.kb + w.kbUp, d[2] * w.kb]);
       return;
     }
@@ -920,6 +925,7 @@ class Room {
       const reach = w.range + (m.w === 'katana' ? (p.kat || 0) * w.grow : 0);
       if (hv) { if (!this.pairOk(p, t, 'mh' + m.w, hv.cd * 750) || !this.rangeOk(p, t, hv.range)) return; }
       else if (!this.pairOk(p, t, 'm' + m.w, w.cd * 750) || !this.rangeOk(p, t, reach)) return;
+      if (this.parryMelee(p, t)) return;
       const dir = w.radial ? toT : d;
       let dmg = hv ? hv.dmg : w.dmg, back = false;
       if (w.backstab) { // they're facing away from you -> backstab
@@ -947,6 +953,107 @@ class Room {
       if (!this.pairOk(p, t, 'hook', 400) || !this.rangeOk(p, t, HOOK.range)) return;
       this.hurt(t, p, 'hook', 0, [-toT[0] * HOOK.tug, -toT[1] * HOOK.tug + 5, -toT[2] * HOOK.tug]);
     }
+  }
+
+  // ---------------------------------------------------------- katana parry
+  // right click with the katana opens a short window. anything hitting you from the front in it bounces off:
+  // bullets are blocked (in the perfect start of the window they go straight back into the shooter), projectiles get
+  // batted back at whoever threw them, melee attackers get shoved off and staggered. explosions still hurt.
+  startParry(p, m) {
+    const n = now(), P = PARRY;
+    if (!p.alive || p.w !== 'katana') return; // p.w comes from your snapshots
+    if (n - (p.parryT || 0) < (P.win + P.cd) * 900) return; // cooldown, with a little slack for network jitter
+    if (Number.isFinite(m.y)) p.yaw = m.y; // freshest look direction for the facing check
+    p.parryT = n; p.parryN = 0;
+    this.parryUntil = Math.max(this.parryUntil || 0, n + (P.win + P.slack) * 1000);
+    this.broadcast({ t: 'guard', id: p.id });
+  }
+  // 0 = not parried, 1 = parried, 2 = perfect. inc = the way the hit comes from (parrier -> source)
+  parryAt(t, inc) {
+    const P = PARRY, age = now() - (t.parryT || 0);
+    if (!t.alive || !t.parryT || t.w !== 'katana' || age > (P.win + P.slack) * 1000) return 0;
+    // the front = within arc/2 of where you look, side to side. from (nearly) straight above or below always counts
+    const hl = Math.hypot(inc[0], inc[2]), l = Math.hypot(inc[0], inc[1], inc[2]);
+    if (hl > l * 0.3 && (-Math.sin(t.yaw) * inc[0] - Math.cos(t.yaw) * inc[2]) / hl < Math.cos((P.arc / 2) * Math.PI / 180)) return 0;
+    return age <= (P.perfect + P.slack) * 1000 ? 2 : 1;
+  }
+  // where the sparks fly: just in front of the chest, toward the hit
+  parrySpot(t, inc) {
+    const hl = Math.hypot(inc[0], inc[2]), fx = hl > 0.05 ? inc[0] / hl : -Math.sin(t.yaw), fz = hl > 0.05 ? inc[2] / hl : -Math.cos(t.yaw);
+    return [t.pos[0] + fx * 0.55, t.pos[1] + 1.35, t.pos[2] + fz * 0.55];
+  }
+  parryFx(t, by, pf, k, at, extra) {
+    t.parryN = (t.parryN || 0) + 1; // nth thing parried this window (clients only make a big deal of the first)
+    this.broadcast({ t: 'parry', id: t.id, by: by ? by.id : 0, pf: pf ? 1 : 0, k, n: t.parryN, p: at.map(r2), ...extra });
+  }
+  // hitscan: players' hit reports and bots' shots (both come through applyHitscan)
+  parryShot(p, t, wid, n, h, d, mul) {
+    if (!t.parryT || p === t || this.friendly(p, t) || this.bubbleBlocks(p, t)) return false;
+    const inc = [-d[0], -d[1], -d[2]], pr = this.parryAt(t, inc);
+    if (!pr) return false;
+    const w = WEAPONS[wid], back = pr === 2 && p.alive;
+    this.parryFx(t, p, back, 'shot', this.parrySpot(t, inc), back ? { b: center(p).map(r2) } : {});
+    if (back) { // perfect: the same bullets (pellets, headshots) go back into the shooter, credited to the parrier
+      const dmg = (w.dmg * (n - h) + w.dmg * (w.head || 1) * h) * mul, k = (w.kb || 0) * n, up = (w.kbUp || 0) * (n / (w.pellets || 1));
+      this.hurt(p, t, 'parry', dmg, k || up ? [-d[0] * k, -d[1] * k + up, -d[2] * k] : null, { hs: h > 0 });
+    }
+    return true;
+  }
+  // melee: no damage. the attacker gets shoved back and staggered (their hits don't count for a moment)
+  parryMelee(p, t) {
+    if (!t.parryT || this.friendly(p, t)) return false;
+    const inc = [p.pos[0] - t.pos[0], p.pos[1] - t.pos[1], p.pos[2] - t.pos[2]], pr = this.parryAt(t, inc);
+    if (!pr) return false;
+    const P = PARRY, f = pr === 2 ? 1.4 : 1, hl = Math.hypot(inc[0], inc[2]);
+    const dx = hl > 0.05 ? inc[0] / hl : -Math.sin(t.yaw), dz = hl > 0.05 ? inc[2] / hl : -Math.cos(t.yaw);
+    p.staggerUntil = now() + P.stagger * f * 1000;
+    if (p.isBot && p.ai) p.ai.nextShot = Math.max(p.ai.nextShot, p.staggerUntil);
+    this.knock(p, [dx * P.shove * f, P.shoveUp, dz * P.shove * f], 'parry');
+    this.tag(p, t, 'parry'); // shoved off a ledge by a parry = the parrier's kill
+    this.parryFx(t, p, pr === 2, 'melee', this.parrySpot(t, inc), { st: r2(P.stagger * f) });
+    return true;
+  }
+  // projectiles: batted back toward whoever threw them at the same speed. the parrier owns it now, so it hits the thrower.
+  // runs right after the projectile moves, so it also catches things that normally fly through people (ducks, grenades)
+  parryProj(pr, prev) {
+    if (pr.back) this.parryHome(pr, prev);
+    const n = now();
+    if (n > (this.parryUntil || 0)) return false; // nobody has a window open
+    const spd = Math.hypot(pr.v[0], pr.v[1], pr.v[2]);
+    if (spd < 4) return false; // rolling / resting stuff isn't hitting anyone
+    const owner = this.players.get(pr.o), lim = (PARRY.win + PARRY.slack) * 1000;
+    const c = this.sweep(prev, pr.p, pr.r + 0.3, (t) => t.id === pr.o || !t.parryT || n - t.parryT > lim || (pr.hit.has(t.id) && n - pr.hit.get(t.id) < 700) || this.friendly(owner, t))[0];
+    if (!c) return false;
+    const t = c.t, seg = [prev[0] - pr.p[0], prev[1] - pr.p[1], prev[2] - pr.p[2]];
+    const inc = Math.hypot(...seg) > 1e-4 ? seg : pr.v.map((x) => -x);
+    const pf = this.parryAt(t, inc);
+    if (!pf) return false;
+    let dir = null, eta = 0;
+    if (owner && owner.alive) {
+      const g = WEAPONS[pr.k].grav || 0, oc = center(owner), to = [oc[0] - c.at[0], oc[1] - c.at[1], oc[2] - c.at[2]];
+      eta = Math.hypot(...to) / spd;
+      dir = norm([to[0], to[1] + 0.5 * g * eta * eta, to[2]]); // aim a bit high so gravity drops it onto them
+    }
+    dir ||= norm(inc) || [0, 1, 0];
+    pr.p = c.at.slice();
+    pr.v = dir.map((x) => x * spd);
+    pr.o = t.id;
+    pr.hit.clear(); pr.hit.set(t.id, n); // can't hit the parrier on its way out
+    if (pr.k === 'slipper') { pr.phase = 0; pr.born = n - (WEAPONS.slipper.out - Math.max(0.3, eta + 0.15)) * 1000; } // out to the thrower, then home to the parrier
+    if (pr.k === 'frag' || pr.k === 'smokegren' || pr.k === 'duck') pr.back = owner && owner.alive ? owner.id : 0;
+    this.broadcast({ t: 'pu', id: pr.id, p: pr.p.map(r2), v: pr.v.map(r2) });
+    this.parryFx(t, owner, pf === 2, 'proj', c.at, { pr: pr.id });
+    return true;
+  }
+  // grenades and ducks fly through people, so a batted-back one would sail right past the thrower: it stops dead on
+  // them instead and goes off at their feet
+  parryHome(pr, prev) {
+    const t = this.players.get(pr.back);
+    if (!t || !t.alive) { pr.back = 0; return; }
+    if (!this.sweep(prev, pr.p, pr.r + 0.3, (x) => x !== t).length) return;
+    pr.back = 0;
+    pr.v = [pr.v[0] * 0.08, Math.min(pr.v[1], 0), pr.v[2] * 0.08];
+    this.broadcast({ t: 'pu', id: pr.id, p: pr.p.map(r2), v: pr.v.map(r2) });
   }
 
   onFire(p, m) {
@@ -1172,6 +1279,7 @@ class Room {
       } else {
         hit = stepProjectile(pr, dt, this.boxes, w.grav);
       }
+      if (this.parryProj(pr, prev)) continue; // batted back by a katana parry
       if (pr.k === 'duck') {
         if (age >= w.fuse) { this.removeProj(pr); this.makeHole(pr.p, pr.o); continue; }
       } else if (pr.k === 'frag' || pr.k === 'smokegren') {
@@ -1435,6 +1543,7 @@ class Room {
         break;
       case 'kc': p.kc = !!m.on; break;
       case 'use': this.tryUse(p); break;
+      case 'parry': this.startParry(p, m); break;
       case 'item': this.useItem(p, m); break;
       case 'vote':
         if (this.vote && Number.isInteger(m.i) && m.i >= 0 && m.i < this.vote.options.length) {

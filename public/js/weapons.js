@@ -14,6 +14,7 @@ import { hud } from './hud.js';
 import { tracerColor, emitSkinFx } from './skins.js';
 import { ANIMS, sample, sampleCh, eventsBetween, inspectFor, drawFor } from './anim.js';
 import { weaponIcon, clearIcons, itemIcon } from './icons.js';
+import { PARRY } from '/shared/weapons.js';
 
 export const W = {
   slots: [DEFAULT_LOADOUT.primary, DEFAULT_LOADOUT.secondary, DEFAULT_LOADOUT.melee],
@@ -282,6 +283,67 @@ export function heavyAttack() {
   playAnim(stab, 'swing');
   W.pendingSwing = ANIMS[stab].hit;
   return true;
+}
+
+// ------------------------------------------------------------ katana parry (right click)
+// opens a short window that the server checks hits against (it decides what got parried and tells everyone).
+// returns false when the katana isn't out, so right click does its normal thing
+export function parry() {
+  if (W.cur !== 'katana') return false;
+  const now = performance.now();
+  if (canParry(now)) doParry(now);
+  else if (ME.alive && (W.parryCd || 0) - now < 150) W.parryQ = now; // a hair early: buffer it
+  return true;
+}
+// not mid-swing, and not in the first moment of pulling it out (the server hasn't seen it in your hand yet)
+const canParry = (now) => ME.alive && now >= (W.parryCd || 0) && W.pendingSwing <= 0 && !(W.anim && W.anim.kind === 'draw' && W.anim.t < 0.12);
+function doParry(now) {
+  W.parryQ = 0; W.parryT = now;
+  W.parryCd = now + (PARRY.win + PARRY.cd) * 1000;
+  W.cd.katana = Math.max(W.cd.katana || 0, now + PARRY.win * 1000); // no slashing out of the guard
+  cancelInspect();
+  net.send({ t: 'parry', y: r2(ME.yaw) });
+  playAnim('parry_katana', 'parry');
+}
+// the server says we parried something: hit stop, the blade kicks, sparks fly off it. big = the first one in a while
+export function parryLanded(perfect, big) {
+  const m = models.katana;
+  if (!m || W.cur !== 'katana') return;
+  W.hitStop = Math.max(W.hitStop, big ? (perfect ? 0.13 : 0.09) : 0.03);
+  const k = big ? 1 : 0.35;
+  rec.rv[0] += (perfect ? 7 : 4.5) * k; rec.pv[2] += 1.1 * k; rec.rv[2] += 3 * rnd() * k;
+  punchCam((perfect ? 0.05 : 0.03) * k, 0.02 * rnd() * k, 0.04 * rnd() * k);
+  if (!G.skinFxVM) return;
+  m.wrap.updateMatrixWorld(true);
+  const R = (s) => (Math.random() - 0.5) * s;
+  for (let i = 0, n = big ? (perfect ? 34 : 22) : 8; i < n; i++) {
+    tmpV.copy(m.g.userData.muzzle).multiplyScalar(0.3 + Math.random() * 0.45); m.g.localToWorld(tmpV);
+    G.skinFxVM.add.spawn(tmpV.x, tmpV.y, tmpV.z, R(2.4), 0.3 + Math.random() * 1.6, -0.2 - Math.random() * 1.3,
+      0.16 + Math.random() * 0.24, perfect ? 0.034 : 0.028, 0.004, Math.random() < 0.5 ? 0xffffff : 0xfff2b0, 0xff7a10, 1, 6);
+  }
+}
+// our swing got parried: whatever we hold gets knocked away, no attacking for a moment, half speed (see parryTick)
+export function stagger(dur) {
+  const now = performance.now();
+  W.staggerUntil = now + dur * 1000;
+  for (const id of W.slots) if (id) W.cd[id] = Math.max(W.cd[id] || 0, W.staggerUntil);
+  W.pendingSwing = 0; W.pendingThrow = 0; W.heavy = false; W.parryQ = 0;
+  cancelInspect();
+  playAnim('staggered', 'stagger');
+  rec.rv[0] += 5; rec.rv[2] += 6 * rnd(); rec.pv[2] += 1.5;
+  punchCam(-0.06, 0.04 * rnd(), 0.08 * rnd());
+  G.shake = Math.max(G.shake, 0.45);
+}
+// every frame: buffered presses, stagger slow-down, and the cooldown ring round the crosshair
+function parryTick(now) {
+  if (now < (W.staggerUntil || 0)) ME.speedMul *= 0.5;
+  if (W.parryQ) { if (now - W.parryQ > 250 || W.cur !== 'katana') W.parryQ = 0; else if (canParry(now)) doParry(now); }
+  if (W.cur !== 'katana' || !ME.alive) { hud.parryRing(null); return; }
+  const t = (now - (W.parryT || -1e9)) / 1000, P = PARRY;
+  if (t < P.win) hud.parryRing(1, 'open'); // guard is up
+  else if (t < P.win + P.cd) hud.parryRing(1 - (t - P.win) / P.cd, 'cd'); // drains while it recharges
+  else if (t < P.win + P.cd + 0.25) hud.parryRing(1, 'ready'); // a blink when it's back
+  else hud.parryRing(null);
 }
 
 function playAnim(name, kind) { if (ANIMS[name]) W.anim = { name, kind, t: 0 }; }
@@ -774,6 +836,7 @@ export function updateWeapons(dt, now) {
   W.scoped = !!(w.ads && w.ads.scope && W.aim > 0.92);
   hud.scope(W.scoped);
   ME.speedMul = (w.speedMul || 1) * (1 - W.aim * 0.25);
+  parryTick(now); // katana parry: buffered presses, stagger, cooldown ring
 
   if (alive && w.kind === 'hitscan') {
     if (w.spinup) {

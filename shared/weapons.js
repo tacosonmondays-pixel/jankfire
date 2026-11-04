@@ -141,9 +141,10 @@ export const WEAPONS = {
   },
   katana: {
     slot: 'melee', kind: 'melee', name: 'Katana', color: '#e8e8f0',
-    desc: 'Every kill with it makes the blade longer and your reach further. Resets when you die. How long can you get it?',
+    desc: 'Every kill makes the blade longer and your reach further (resets when you die). Right click parries: bullets, rockets and swords from the front bounce off, and a perfect parry sends bullets straight back.',
     cd: 0.5, range: 2.8, cone: 0.7, dmg: 48, kb: 6, kbUp: 2, delay: 0.1, grow: 0.5, growMax: 30,
   },
+  parry: { slot: null, kind: 'parry', name: 'Katana Parry', color: '#9fe8ff' }, // kill credit: bullets parried back, parry shoves into the void
   knife: {
     slot: 'melee', kind: 'melee', name: 'Knife', color: '#c8d0dc',
     desc: 'Left click: fast slashes. Right click: heavy stab (from behind = dead). Comes in a lot of skins.',
@@ -249,6 +250,10 @@ export const RANKS = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J'
 export const FLAGS = { SMOKE: 1, FIRE: 2, BLOW: 4, SPIN: 8, SLIP: 16, SLIDE: 32, REVERSE: 64, CROUCH: 128, DASH: 256 };
 export const SLIP_TIME = 1.7;
 export const HOOK = { range: 90, pull: 42, tug: 16 };
+// katana right click. times in seconds: the window, its perfect start, the cooldown after it, and server slack for
+// hit reports that arrive a bit late. arc = full cone (degrees) around where you look that counts as "the front".
+// shove / shoveUp / stagger = what a parried melee attacker gets.
+export const PARRY = { win: 0.35, perfect: 0.15, cd: 0.8, slack: 0.05, arc: 110, shove: 14, shoveUp: 5, stagger: 0.55 };
 
 // your 3 killstreaks, cheapest first (keys 5 / 6 / 7)
 export function validStreaks(list) {
