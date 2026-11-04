@@ -295,8 +295,9 @@ export function parry() {
   else if (ME.alive && (W.parryCd || 0) - now < 150) W.parryQ = now; // a hair early: buffer it
   return true;
 }
-// not mid-swing, and not in the first moment of pulling it out (the server hasn't seen it in your hand yet)
-const canParry = (now) => ME.alive && now >= (W.parryCd || 0) && W.pendingSwing <= 0 && !(W.anim && W.anim.kind === 'draw' && W.anim.t < 0.12);
+// not mid-swing, not reeling from a parried swing of our own (the server refuses that too), and not in the first
+// moment of pulling it out (the server hasn't seen it in your hand yet)
+const canParry = (now) => ME.alive && now >= (W.parryCd || 0) && now >= (W.staggerUntil || 0) && W.pendingSwing <= 0 && !(W.anim && W.anim.kind === 'draw' && W.anim.t < 0.12);
 function doParry(now) {
   W.parryQ = 0; W.parryT = now;
   W.parryCd = now + (PARRY.win + PARRY.cd) * 1000;
@@ -452,6 +453,9 @@ export function refillAmmo() {
   W.reloadId = null;
   W.fuel.blower = WEAPONS.blower.fuel;
   W.slipperOut = false;
+  // katana parry: a new life (spawn, join) starts with the guard ready, like the server. not on a weapon swap:
+  // the server keeps your cooldown and stagger through those
+  W.parryT = 0; W.parryCd = 0; W.parryQ = 0; W.staggerUntil = 0;
 }
 
 export function setLoadout(lo) {

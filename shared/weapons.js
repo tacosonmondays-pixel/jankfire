@@ -251,9 +251,10 @@ export const FLAGS = { SMOKE: 1, FIRE: 2, BLOW: 4, SPIN: 8, SLIP: 16, SLIDE: 32,
 export const SLIP_TIME = 1.7;
 export const HOOK = { range: 90, pull: 42, tug: 16 };
 // katana right click. times in seconds: the window, its perfect start, the cooldown after it, and server slack for
-// hit reports that arrive a bit late. arc = full cone (degrees) around where you look that counts as "the front".
-// shove / shoveUp / stagger = what a parried melee attacker gets.
-export const PARRY = { win: 0.35, perfect: 0.15, cd: 0.8, slack: 0.05, arc: 110, shove: 14, shoveUp: 5, stagger: 0.55 };
+// hit reports that arrive a bit late. arc = full cone (degrees) around where you look that counts as "the front":
+// 70 either side covers the whole screen at the default fov (95 tall is ~125 across at 16:9) plus a bit for the
+// server's yaw being up to a snapshot old. shove / shoveUp / stagger = what a parried melee attacker gets.
+export const PARRY = { win: 0.35, perfect: 0.15, cd: 0.8, slack: 0.05, arc: 140, shove: 14, shoveUp: 5, stagger: 0.55 };
 
 // your 3 killstreaks, cheapest first (keys 5 / 6 / 7)
 export function validStreaks(list) {

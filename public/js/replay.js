@@ -104,9 +104,11 @@ function applyEv(m) {
     fx.explosion(m.p, 6); sfx.boom(m.p);
   } else if (m.t === 'guard') { // katana parry: the guard pose
     if (g) g.parryT = performance.now();
-  } else if (m.t === 'parry') { // ...and what it bounced
+  } else if (m.t === 'parry') { // ...and what it bounced. only the first thing in a window SHINGs (n = its count), like live
     if (g) g.parryHitT = performance.now();
-    fx.sparks(m.p, null, m.pf ? 40 : 24, !!m.pf); sfx.parry(m.p, !!m.pf);
+    const big = !(m.n > 1), dl = g ? Math.hypot(m.p[0] - g.pos[0], m.p[2] - g.pos[2]) || 1 : 0;
+    fx.sparks(m.p, g ? [(m.p[0] - g.pos[0]) / dl, 0, (m.p[2] - g.pos[2]) / dl] : null, big ? (m.pf ? 40 : 24) : 8, !!m.pf);
+    if (big) sfx.parry(m.p, !!m.pf); else sfx.tink(m.p);
     if (m.b) fx.tracer(m.p, m.b, 0xffffff, 0.07, 0.3);
   } else if (m.t === 'kill') {
     const v = st.ghosts.get(m.v);

@@ -79,14 +79,17 @@ export const hud = {
     if (amt >= 18) { nanT = 0.2; nanText = GARBAGE[(Math.random() * GARBAGE.length) | 0]; }
   },
   crossFade(k) { const c = $('crosshair'); const v = String(Math.round(k * 100) / 100); if (c.style.opacity !== v) c.style.opacity = v; },
-  // katana parry cooldown: a thin ring round the crosshair (open = guard up, cd = draining, ready = back). null hides it
+  // katana parry cooldown: a thin ring round the crosshair (open = guard up, cd = draining, ready = back). null hides it.
+  // it's called every frame, so the element and what it shows are cached: the usual call (null, already hidden) is one compare
+  parryRingCache: { el: null, state: '', step: -1 },
   parryRing(k, state) {
-    let el = $('parryRing');
-    if (k == null) { if (el && el.style.display !== 'none') el.style.display = 'none'; return; }
-    if (!el) { el = document.createElement('div'); el.id = 'parryRing'; $('hud').append(el); }
-    const key = state + Math.round(k * 60);
-    if (el.dataset.key === key) return;
-    el.dataset.key = key;
+    const ring = this.parryRingCache;
+    if (k == null) { if (ring.state) { ring.state = ''; ring.el.style.display = 'none'; } return; }
+    const step = Math.round(k * 60);
+    if (state === ring.state && step === ring.step) return;
+    if (!ring.el) { ring.el = document.createElement('div'); ring.el.id = 'parryRing'; $('hud').append(ring.el); }
+    const el = ring.el;
+    ring.state = state; ring.step = step;
     el.style.display = 'block';
     el.className = state;
     const c = state === 'open' ? '#9fe8ff' : state === 'ready' ? '#ffffff' : 'rgba(255, 255, 255, 0.85)';

@@ -962,6 +962,7 @@ class Room {
   startParry(p, m) {
     const n = now(), P = PARRY;
     if (!p.alive || p.w !== 'katana') return; // p.w comes from your snapshots
+    if (n < (p.staggerUntil || 0)) return; // your own swing just got parried: no guard until you stop reeling
     if (n - (p.parryT || 0) < (P.win + P.cd) * 900) return; // cooldown, with a little slack for network jitter
     if (Number.isFinite(m.y)) p.yaw = m.y; // freshest look direction for the facing check
     p.parryT = n; p.parryN = 0;
@@ -972,10 +973,11 @@ class Room {
   parryAt(t, inc) {
     const P = PARRY, age = now() - (t.parryT || 0);
     if (!t.alive || !t.parryT || t.w !== 'katana' || age > (P.win + P.slack) * 1000) return 0;
-    // the front = within arc/2 of where you look, side to side. from (nearly) straight above or below always counts
+    // the front = within arc/2 of where you look, side to side. from (nearly) straight above or below always counts.
+    // inc is always built from positions the server tracks (shots, melee) or simulates (projectiles), never sent by a client
     const hl = Math.hypot(inc[0], inc[2]), l = Math.hypot(inc[0], inc[1], inc[2]);
     if (hl > l * 0.3 && (-Math.sin(t.yaw) * inc[0] - Math.cos(t.yaw) * inc[2]) / hl < Math.cos((P.arc / 2) * Math.PI / 180)) return 0;
-    return age <= (P.perfect + P.slack) * 1000 ? 2 : 1;
+    return age <= (P.perfect + P.slack) * 1000 ? 2 : 1; // the slack moves the perfect cut-off too: a late report is late there as well
   }
   // where the sparks fly: just in front of the chest, toward the hit
   parrySpot(t, inc) {
@@ -989,7 +991,10 @@ class Room {
   // hitscan: players' hit reports and bots' shots (both come through applyHitscan)
   parryShot(p, t, wid, n, h, d, mul) {
     if (!t.parryT || p === t || this.friendly(p, t) || this.bubbleBlocks(p, t)) return false;
-    const inc = [-d[0], -d[1], -d[2]], pr = this.parryAt(t, inc);
+    // where the shot comes from: the shooter's eye, a position the server tracks. never the d in their hit message
+    // (a crafted d decides front or back). d only when the two coincide, and for the knockback below
+    const e = eyeOf(p), c = center(t), inc = norm([e[0] - c[0], e[1] - c[1], e[2] - c[2]]) || [-d[0], -d[1], -d[2]];
+    const pr = this.parryAt(t, inc);
     if (!pr) return false;
     const w = WEAPONS[wid], back = pr === 2 && p.alive;
     this.parryFx(t, p, back, 'shot', this.parrySpot(t, inc), back ? { b: center(p).map(r2) } : {});
@@ -1447,6 +1452,7 @@ class Room {
     for (const p of this.players.values()) {
       if (p.isBot && p.ai.dummy) continue;
       p.alive = true; p.hp = 100; p.vel = [0, 0, 0]; p.spawnT = now(); p.seq++;
+      p.parryT = 0; p.staggerUntil = 0; // katana parry: the client resets on 'spawn', so the server does too
       p.pos = this.pickSpawn(p.isBot, p);
       send(p, { t: 'spawn', p: p.pos, q: p.seq });
       this.sendLoadout(p);
@@ -1821,6 +1827,7 @@ class Room {
         p.alive = true; p.hp = 100; p.vel = [0, 0, 0]; p.spawnT = n; p.seq++;
         p.pos = p.isBot && p.ai.dummy ? p.ai.dummy.home.slice() : this.pickSpawn(p.isBot, p);
         p.slipUntil = 0; p.burnUntil = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.ic = {}; p.healLeft = 0;
+        p.parryT = 0; p.staggerUntil = 0; // katana parry: a new life starts with the guard ready (the client resets too)
         send(p, { t: 'spawn', p: p.pos, q: p.seq });
         this.sendLoadout(p);
         if (!p.isBot) deal(p);

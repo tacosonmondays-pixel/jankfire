@@ -24,7 +24,10 @@ net.on('parry', (m) => {
   recordEv(m);
   const now = performance.now(), mine = m.id === G.myId, r = G.remotes.get(m.id);
   const big = now - (bigT.get(m.id) || -1e9) > 180;
-  if (big) bigT.set(m.id, now);
+  if (big) {
+    bigT.set(m.id, now);
+    if (bigT.size > 16) for (const [id, t] of bigT) if (now - t > 1000) bigT.delete(id); // players come and go: forget stale ones
+  }
   if (!mine) { // your own blade sparks in the viewmodel instead
     let dir = null;
     if (r) { const dx = m.p[0] - r.pos[0], dz = m.p[2] - r.pos[2], l = Math.hypot(dx, dz) || 1; dir = [dx / l, 0, dz / l]; }
