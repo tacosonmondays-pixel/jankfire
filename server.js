@@ -25,6 +25,7 @@ import { WRECK, slamSize, ramDmg } from './shared/weapons.js'; // wrecking ball
 import { query } from './shared/physics.js';
 import { epicCheck, epicCamMs, EPIC } from './shared/epic.js';
 import { holeDrag, steer } from './shared/physics.js';
+import { steer as steerTo } from './shared/homing.js'; // homing slippers (steerTo(v, from, to, max)); the duck's steer(v, dir, max) is physics.js's
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -853,7 +854,7 @@ class Room {
     t.lastHs = !!hs;
     if (hs && attacker && attacker !== t && attacker.acct && this.mode !== 'training') stat(attacker, 'headshots', 1);
     this.tag(t, attacker, w);
-    this.broadcast({ t: 'dmg', to: t.id, from: attacker ? attacker.id : 0, a: Math.round(Math.min(amt, 999)), w, hs: !!hs });
+    this.broadcast({ t: 'dmg', to: t.id, from: attacker ? attacker.id : 0, a: Math.round(Math.min(amt, 999)), w, hs: !!hs, ko: t.hp <= 0 ? 1 : undefined }); // ko: this hit kills (heavier headshot sounds)
     if (t.hp <= 0) this.kill(t, attacker, w);
   }
   heal(p, amt, max = 100) {
@@ -1406,6 +1407,26 @@ class Room {
     return out.sort((a, b) => a.d - b.d);
   }
 
+  // homing slippers lock the nearest enemy in front of them that they can see: never the thrower, teammates,
+  // players behind a bubble, or anyone this slipper already hit on the way out (it would orbit them)
+  slipperTarget(pr, owner) {
+    const w = WEAPONS.slipper, s = Math.hypot(...pr.v);
+    if (s < 1) return null;
+    if (this.round && this.round.over) return null; // no damage then anyway
+    const cone = Math.cos(w.homeCone * (owner.isBot ? 0.5 : 1) * Math.PI / 180), n = now(); // bots: narrower, so their aim error still matters
+    let best = null, bs = Infinity;
+    for (const t of this.players.values()) {
+      if (!t.alive || t === owner || pr.hit.has(t.id) || this.friendly(owner, t) || this.bubbleBlocks(owner, t)) continue;
+      if (!t.isBot && n - t.spawnT < 1200) continue; // spawn protected: a hit would do nothing
+      const c = center(t), to = [c[0] - pr.p[0], c[1] - pr.p[1], c[2] - pr.p[2]], d = Math.hypot(...to);
+      const sc = t.id === pr.tg ? d * 0.8 : d; // keep the current lock unless another is clearly nearer (no flip-flopping)
+      if (d >= w.homeR || sc >= bs || d < 1e-3 || (to[0] * pr.v[0] + to[1] * pr.v[1] + to[2] * pr.v[2]) / (d * s) < cone) continue;
+      if (raycast(pr.p, to.map((x) => x / d), d, this.boxes)) continue; // behind a wall
+      best = t; bs = sc;
+    }
+    return best;
+  }
+
   removeProj(pr, extra) {
     this.projectiles.delete(pr.id);
     this.broadcast(Object.assign({ t: 'pd', id: pr.id, p: pr.p.map(r2) }, extra));
@@ -1423,9 +1444,15 @@ class Room {
       if (pr.k === 'soap') { this.stepSoap(pr, n, owner, prev, dt); continue; }
       if (pr.k === 'slipper') {
         if (!owner || !owner.alive) { this.removeProj(pr); continue; }
-        if (pr.phase === 0 && age >= w.out) { pr.phase = 1; pr.hit.clear(); }
+        if (pr.phase === 0) { // homing: curve toward the nearest enemy ahead, and keep going out while locked on
+          const tg = age < w.outLock ? this.slipperTarget(pr, owner) : null, id = tg ? tg.id : 0;
+          if (id !== (pr.tg || 0)) pr.sync = Math.min(pr.sync, 0.03); // tell clients soon so their prediction follows the new curve (capped if the lock wobbles)
+          pr.tg = id;
+          if (tg) steerTo(pr.v, pr.p, center(tg), w.homeTurn * dt);
+        }
+        if (pr.phase === 0 && age >= (pr.tg ? w.outLock : w.out)) { pr.phase = 1; pr.hit.clear(); pr.tg = 0; pr.sync = 0; }
         if (pr.phase === 0) {
-          if (stepProjectile(pr, dt, this.boxes, 0)) { pr.phase = 1; pr.hit.clear(); }
+          if (stepProjectile(pr, dt, this.boxes, 0)) { pr.phase = 1; pr.hit.clear(); pr.tg = 0; pr.sync = 0; }
         } else {
           const tgt = eyeOf(owner); tgt[1] -= 0.3;
           const to = [tgt[0] - pr.p[0], tgt[1] - pr.p[1], tgt[2] - pr.p[2]];
@@ -1436,7 +1463,7 @@ class Room {
           for (let k = 0; k < 3; k++) pr.p[k] += pr.v[k] * dt;
         }
         pr.sync -= dt;
-        if (pr.sync <= 0) { pr.sync = 0.1; this.broadcast({ t: 'pu', id: pr.id, p: pr.p.map(r2), v: pr.v.map(r2) }); }
+        if (pr.sync <= 0) { pr.sync = 0.1; this.broadcast({ t: 'pu', id: pr.id, p: pr.p.map(r2), v: pr.v.map(r2), tg: pr.tg || undefined, ph: pr.phase || undefined }); }
       } else {
         if (pr.k === 'duck' && this.duckFly(pr, owner, dt)) continue; // homing, and it stuck to someone
         hit = stepProjectile(pr, dt, this.boxes, w.grav);

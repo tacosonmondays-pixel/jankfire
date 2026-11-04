@@ -28,6 +28,7 @@ import { courtKill, courtVerdict, updateCourt, courtReset, courtSync } from './s
 import { noScope, updateNoScope } from './noscope.js';
 import { makeRope, setRope, setRopeSkin, myGrapple, initGrapplePreview, grappleThumb, showGrapple, renderGrapplePreview } from './grapple.js';
 import { updateSpeedLines } from './speedlines.js';
+import { slipperUpdate, slipperStep } from './slipper.js';
 import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse } from './objective.js';
 import { GAMES, GAME_ORDER, TEAMS } from '/shared/modes.js';
 import { defaultCard, cardEl, initCardEditor } from './cards.js';
@@ -1067,7 +1068,7 @@ net.on('dmg', (m) => {
     ME.hp -= m.a;
     hud.hp(ME.hp);
     hud.hurt(m.a);
-    sfx.hurt();
+    if (m.hs) sfx.headshotTaken(m.ko); else sfx.hurt();
     if (m.w === 'cig') G.burnUntil = performance.now() + 600;
   }
   if (target) {
@@ -1084,7 +1085,7 @@ net.on('dmg', (m) => {
   }
   if (m.from === G.myId && m.to !== G.myId) {
     hud.hit(m.hs);
-    if (m.hs) sfx.headshot(); else sfx.hit();
+    if (m.hs) sfx.headshot(m.ko); else sfx.hit();
     if (target) {
       const v = new THREE.Vector3(target.pos[0], target.pos[1] + 2, target.pos[2]).project(G.camera);
       if (v.z < 1) hud.dmgNum((v.x * 0.5 + 0.5) * innerWidth + (Math.random() - 0.5) * 30, (-v.y * 0.5 + 0.5) * innerHeight, m.a, m.hs);
@@ -1161,6 +1162,7 @@ net.on('ps', (m) => {
 });
 net.on('pu', (m) => {
   const pr = G.projs.get(m.id);
+  if (pr && pr.k === 'slipper') return slipperUpdate(pr, m); // homing: steer between updates, ease corrections
   if (pr) { pr.p = m.p.slice(); pr.v = m.v.slice(); }
 });
 net.on('pd', (m) => {
@@ -1405,7 +1407,7 @@ function frame(t) {
   for (const pr of G.projs.values()) {
     if (pr.k === 'soap') { stepSoap(pr, dt, now); continue; } // bubble wand: wobbly bubbles on an exact path (wand.js)
     if (pr.k === 'slipper') {
-      for (let k = 0; k < 3; k++) pr.p[k] += pr.v[k] * dt;
+      slipperStep(pr, dt, now);
       pr.spin += dt * 20;
       pr.mesh.position.set(...pr.p);
       pr.mesh.rotation.set(0, pr.spin, 0.3);

@@ -2,6 +2,8 @@
 let ac = null, master = null, nbuf = null, vol = 0.5;
 const loops = {};
 const L = { pos: [0, 0, 0], yaw: 0 };
+let hsAt = -1; // when the last headshot DINK played
+let hsTakenAt = -1; // when the last headshot TONK played on you
 
 export function initAudio(v) {
   if (v != null) vol = v;
@@ -82,7 +84,55 @@ export const sfx = {
   whoops(pos) { tone('sine', 1600, 180, 0.7, 0.4, pos); tone('sine', 1610, 185, 0.7, 0.2, pos); },
   cough() { for (let i = 0; i < 3; i++) noise(0.16, 0.8, 'bandpass', 700, 350, null, i * 0.23, 2); },
   hit() { tone('square', 1900, 1900, 0.05, 0.18); },
-  headshot() { tone('square', 2400, 2400, 0.07, 0.22); tone('square', 3300, 3300, 0.1, 0.18, null, 0.06); },
+  // headshot DINK: struck steel rings at inharmonic partials (x2.76, x5.4), so stack those over a bright ping with a
+  // tick of noise for the attack and a little bass thump under it. ko = the headshot killed: heavier, lower, a double ping
+  headshot(ko) {
+    if (!ac) return;
+    const n = ac.currentTime, rapid = n - hsAt < 0.06; // minigun headshots: don't stack a wall of rings
+    hsAt = n;
+    if (ko) {
+      noise(0.04, 0.5, 'highpass', 5000, 11000);
+      for (const [f, v, d, dl] of [[1760, 0.26, 0.55, 0], [1767, 0.11, 0.5, 0], [1760 * 2.76, 0.1, 0.22, 0], [1760 * 5.4, 0.04, 0.1, 0], [2640, 0.2, 0.45, 0.075], [2640 * 2.76, 0.06, 0.14, 0.075]]) tone('sine', f, f * 0.985, d, v, null, dl);
+      tone('triangle', 3520, 3480, 0.2, 0.08, null, 0.075);
+      tone('sine', 130, 36, 0.32, 0.5); // the thump, bigger (kept under a boom: kill() plays on top)
+      tone('square', 95, 40, 0.07, 0.08);
+      noise(0.22, 0.3, 'lowpass', 900, 60);
+      return;
+    }
+    const k = rapid ? 0.5 : 1;
+    noise(0.025, 0.45 * k, 'highpass', 7000, 11000);
+    tone('sine', 2350, 2310, 0.32 * k, 0.27 * k);
+    tone('sine', 2358, 2318, 0.28 * k, 0.12 * k); // a hair detuned: shimmer
+    tone('sine', 2350 * 2.76, 6380, 0.13, 0.09 * k);
+    tone('sine', 2350 * 5.4, 12500, 0.05, 0.035 * k);
+    tone('triangle', 3525, 3500, 0.09, 0.09 * k);
+    tone('square', 4700, 4700, 0.015, 0.06 * k);
+    if (!rapid) tone('sine', 175, 55, 0.12, 0.42); // thump
+  },
+  // you got headshot: a dull helmet TONK (low wobbly metal, felt through the skull) and a crunch.
+  // ko = it killed you: deeper, longer, a bone crack and your ears ring
+  headshotTaken(ko) {
+    if (!ac) return;
+    const n = ac.currentTime, rapid = n - hsTakenAt < 0.08;
+    hsTakenAt = n;
+    if (rapid && !ko) { // automatic fire on your head: full TONKs every 40 ms stack up and clip, so just a small one
+      tone('triangle', 540, 455, 0.12, 0.16);
+      noise(0.05, 0.25, 'bandpass', 2400, 1300, null, 0, 1.3);
+      return;
+    }
+    const k = ko ? 1 : 0;
+    tone('triangle', 540 - k * 150, 455 - k * 130, 0.26 + k * 0.25, 0.4);
+    tone('sine', (540 - k * 150) * 2.32, 1000 - k * 330, 0.14 + k * 0.1, 0.16);
+    tone('sine', (540 - k * 150) * 1.51, 760 - k * 220, 0.18, 0.12);
+    tone('sine', 150 - k * 40, 42, 0.18 + k * 0.22, 0.55 + k * 0.1); // thump through the skull
+    noise(0.09, 0.7, 'bandpass', 2400, 1300, null, 0.01, 1.3); // crunch
+    noise(0.08, 0.5, 'bandpass', 1700, 800, null, 0.07, 1.3);
+    if (ko) {
+      noise(0.11, 0.6, 'bandpass', 3200, 900, null, 0.03, 2); // crack
+      noise(0.4, 0.35, 'lowpass', 1200, 50);
+      tone('sine', 3900, 3860, 1.5, 0.045, null, 0.06); // ringing ears
+    }
+  },
   hurt() { tone('sawtooth', 240, 90, 0.22, 0.3); },
   kill() {
     for (const [d, len] of [[0, 0.1], [0.13, 0.1], [0.26, 0.1], [0.4, 0.5]]) {
