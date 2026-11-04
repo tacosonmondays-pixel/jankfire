@@ -383,7 +383,9 @@ function sendSkins() {
   skinSendT = setTimeout(() => { if (G.joined) net.send({ t: 'skin', s: G.equipped }); }, 250);
 }
 // the weapons that show up in COSMETICS (the rifle form of the scythe borrows the scythe's look)
-function skinnable() { return ORDER.filter((id) => WEAPONS[id] && (SLOTS.includes(WEAPONS[id].slot) || WEAPONS[id].slot === 'item' || id === 'scythe')); }
+function skinnable() { return ORDER.filter((id) => WEAPONS[id] && (SLOTS.includes(WEAPONS[id].slot) || itemModel(id) || id === 'scythe')); }
+// items you see in your hand wear skins (popper, reverse card). the thrown duck is a plain projectile, so not that
+function itemModel(id) { return Object.values(ITEMS).some((it) => it.w === id); }
 function storeSkin(id, skin) {
   if (skin[0] === 'default' && skin[1] === 'none' && skin[2] === 'none' && (skin[3] || 'default') === 'default') delete S.skins[id];
   else S.skins[id] = skin;
@@ -534,13 +536,13 @@ $('lkReset').addEventListener('click', () => { setLook({ ...DEFAULT_LOOK }); bui
 function buildCosmeticsUI() {
   const list = $('cosWeapons');
   list.innerHTML = '';
-  for (const slot of [...SLOTS, 'item', 'streak']) { // items with a model (duck, popper, reverse card) wear skins too
+  for (const slot of [...SLOTS, 'item', 'streak']) { // items with a model (popper, reverse card) wear skins too
     const h = document.createElement('div');
     h.className = 'lt'; h.textContent = slot === 'streak' ? 'killstreak' : slot === 'item' ? 'item (G)' : slot;
     list.append(h);
     for (const id of ORDER) {
       const w = WEAPONS[id];
-      if (w.slot !== slot || id === 'scythe_rifle') continue;
+      if (w.slot !== slot || id === 'scythe_rifle' || (slot === 'item' && !itemModel(id))) continue;
       const b = document.createElement('button');
       b.className = 'wpick' + (G.cosSel === id ? ' on' : '');
       if (modelsFor(id).length > 1) b.title = 'has skins';

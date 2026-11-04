@@ -216,7 +216,7 @@ Achievement accessories:
 ## Cosmetics + containers
 
 **Skins** are different models and belong to one weapon each, like a CS knife: every weapon has at least one (Toy Blaster and Bullpup for the AR, Pocket Uzi, Double Barrel, Old Gatling, Musket, Flintlock, Turkey Launcher, Hand Cannon, Bunch Blaster, Compound Bow, Fat Cigar, Hair Dryer, Champagne, Skip Card, Ice Cube, Ladle, Croc, Reaper scythe, plus Karambit / Butterfly / Switchblade / Cleaver / Bowie / Kitchen knives, Foam Finger and Bear Paw slappers, the Croissant).
-**Wraps** (paint), **hats** and **effects** go on **every weapon at once** by default (untick the box in COSMETICS to dress weapons one by one). The Scythe Rifle and the items with a model (Rubber Duck, Party Popper, Reverse Card) can be dressed too. One **kill effect** per player.
+**Wraps** (paint), **hats** and **effects** go on **every weapon at once** by default (untick the box in COSMETICS to dress weapons one by one). The Scythe Rifle and the items you hold up (Party Popper, Reverse Card) can be dressed too. One **kill effect** per player.
 
 **CONTAINERS** (main menu) is where you open them:
 
