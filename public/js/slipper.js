@@ -10,6 +10,7 @@ import { steer } from '/shared/homing.js';
 const SMOOTH = 12; // 1/s: how fast a correction fades
 const SNAP = 4; // m: further off than this (lag spike, teleport) and we just jump
 
+const to = [0, 0, 0], aim = [0, 0, 0], rp = [0, 0, 0], ZERO = [0, 0, 0]; // scratch, no per-frame garbage
 const LEAD = 0.11; // s: remotes are drawn this far behind the server clock (main.js INTERP_MS), the slipper isn't
 
 // where a player is in the slipper's timeline, so the predicted curve bends toward where the server is aiming it
@@ -17,8 +18,9 @@ function posOf(id) {
   if (id === G.myId) return ME.alive ? ME.pos : null;
   const r = G.remotes.get(id);
   if (!r || !r.alive) return null;
-  const v = r.vel || [0, 0, 0];
-  return [r.pos[0] + v[0] * LEAD, r.pos[1] + v[1] * LEAD, r.pos[2] + v[2] * LEAD];
+  const v = r.vel || ZERO;
+  for (let k = 0; k < 3; k++) rp[k] = r.pos[k] + v[k] * LEAD;
+  return rp;
 }
 
 function init(pr) {
@@ -42,7 +44,8 @@ export function slipperStep(pr, dt, now = performance.now()) {
   pr.uAt = null;
   const o = pr.ph ? posOf(pr.o) : null;
   if (o) { // on the way back: straight at the thrower's hand, like the server, and wait there for the catch
-    const to = [o[0] - sp[0], o[1] + PH.eye - 0.3 - sp[1], o[2] - sp[2]], d = Math.hypot(...to), s = Math.hypot(...sv);
+    to[0] = o[0] - sp[0]; to[1] = o[1] + PH.eye - 0.3 - sp[1]; to[2] = o[2] - sp[2];
+    const d = Math.hypot(to[0], to[1], to[2]), s = Math.hypot(sv[0], sv[1], sv[2]);
     if (d > 1e-3) {
       for (let k = 0; k < 3; k++) sv[k] = (to[k] / d) * s;
       const st = Math.min(s * fly, Math.max(0, d - 1));
@@ -50,7 +53,7 @@ export function slipperStep(pr, dt, now = performance.now()) {
     }
   } else {
     const t = !pr.ph && pr.tg ? posOf(pr.tg) : null;
-    if (t) steer(sv, sp, [t[0], t[1] + 0.9, t[2]], WEAPONS.slipper.homeTurn * fly);
+    if (t) { aim[0] = t[0]; aim[1] = t[1] + 0.9; aim[2] = t[2]; steer(sv, sp, aim, WEAPONS.slipper.homeTurn * fly); }
     for (let k = 0; k < 3; k++) sp[k] += sv[k] * fly;
   }
   const f = Math.exp(-SMOOTH * dt);

@@ -1146,14 +1146,17 @@ class Room {
   slipperTarget(pr, owner) {
     const w = WEAPONS.slipper, s = Math.hypot(...pr.v);
     if (s < 1) return null;
-    const cone = Math.cos(w.homeCone * Math.PI / 180);
-    let best = null, bd = w.homeR;
+    if (this.round && this.round.over) return null; // no damage then anyway
+    const cone = Math.cos(w.homeCone * (owner.isBot ? 0.5 : 1) * Math.PI / 180), n = now(); // bots: narrower, so their aim error still matters
+    let best = null, bs = Infinity;
     for (const t of this.players.values()) {
       if (!t.alive || t === owner || pr.hit.has(t.id) || this.friendly(owner, t) || this.bubbleBlocks(owner, t)) continue;
+      if (!t.isBot && n - t.spawnT < 1200) continue; // spawn protected: a hit would do nothing
       const c = center(t), to = [c[0] - pr.p[0], c[1] - pr.p[1], c[2] - pr.p[2]], d = Math.hypot(...to);
-      if (d >= bd || d < 1e-3 || (to[0] * pr.v[0] + to[1] * pr.v[1] + to[2] * pr.v[2]) / (d * s) < cone) continue;
+      const sc = t.id === pr.tg ? d * 0.8 : d; // keep the current lock unless another is clearly nearer (no flip-flopping)
+      if (d >= w.homeR || sc >= bs || d < 1e-3 || (to[0] * pr.v[0] + to[1] * pr.v[1] + to[2] * pr.v[2]) / (d * s) < cone) continue;
       if (raycast(pr.p, to.map((x) => x / d), d, this.boxes)) continue; // behind a wall
-      best = t; bd = d;
+      best = t; bs = sc;
     }
     return best;
   }
@@ -1175,7 +1178,7 @@ class Room {
         if (!owner || !owner.alive) { this.removeProj(pr); continue; }
         if (pr.phase === 0) { // homing: curve toward the nearest enemy ahead, and keep going out while locked on
           const tg = age < w.outLock ? this.slipperTarget(pr, owner) : null, id = tg ? tg.id : 0;
-          if (id !== (pr.tg || 0)) pr.sync = 0; // tell clients right away so their prediction follows the new curve
+          if (id !== (pr.tg || 0)) pr.sync = Math.min(pr.sync, 0.03); // tell clients soon so their prediction follows the new curve (capped if the lock wobbles)
           pr.tg = id;
           if (tg) steer(pr.v, pr.p, center(tg), w.homeTurn * dt);
         }

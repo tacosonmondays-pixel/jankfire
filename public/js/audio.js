@@ -3,6 +3,7 @@ let ac = null, master = null, nbuf = null, vol = 0.5;
 const loops = {};
 const L = { pos: [0, 0, 0], yaw: 0 };
 let hsAt = -1; // when the last headshot DINK played
+let hsTakenAt = -1; // when the last headshot TONK played on you
 
 export function initAudio(v) {
   if (v != null) vol = v;
@@ -102,6 +103,14 @@ export const sfx = {
   // you got headshot: a dull helmet TONK (low wobbly metal, felt through the skull) and a crunch.
   // ko = it killed you: deeper, longer, a bone crack and your ears ring
   headshotTaken(ko) {
+    if (!ac) return;
+    const n = ac.currentTime, rapid = n - hsTakenAt < 0.08;
+    hsTakenAt = n;
+    if (rapid && !ko) { // automatic fire on your head: full TONKs every 40 ms stack up and clip, so just a small one
+      tone('triangle', 540, 455, 0.12, 0.16);
+      noise(0.05, 0.25, 'bandpass', 2400, 1300, null, 0, 1.3);
+      return;
+    }
     const k = ko ? 1 : 0;
     tone('triangle', 540 - k * 150, 455 - k * 130, 0.26 + k * 0.25, 0.4);
     tone('sine', (540 - k * 150) * 2.32, 1000 - k * 330, 0.14 + k * 0.1, 0.16);
