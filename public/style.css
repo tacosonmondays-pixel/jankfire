@@ -476,3 +476,24 @@ body.replaying #mlg { display: none; }
 .chips.sprays .chip.locked::before { position: absolute; left: 3px; top: 2px; font-size: 11px; }
 .chips.sprays .chip span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #rollResult .sprayPic { display: block; width: 96px; height: 96px; margin: 6px auto 0; image-rendering: pixelated; background: #5d5d66; border: 2px solid #000; }
+/* settings > controls (key bindings) */
+#ctlList { columns: 2; column-gap: 26px; }
+@media (max-width: 760px) { #ctlList { columns: 1; } }
+.ctlGroup { break-inside: avoid; padding-bottom: 4px; }
+.ctlGroup h3 { color: var(--yellow); margin: 8px 0 3px; font-size: 17px; }
+.krow { display: grid; grid-template-columns: 1fr 86px 86px 24px; gap: 4px; align-items: center; margin: 2px 0; font-size: 13px; }
+.krow .kname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.krow.changed .kname { color: var(--yellow); }
+.kb, .kreset { font-family: var(--font); font-size: 13px; padding: 2px 4px; background: rgba(255, 255, 255, 0.1); color: #fff; border: 2px solid rgba(255, 255, 255, 0.2); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kb:hover, .kreset:hover:not(:disabled) { border-color: var(--cyan); background: rgba(255, 255, 255, 0.2); }
+.kb.empty { color: #777; }
+.kb.wait { border-color: var(--yellow); color: var(--yellow); animation: kbwait 0.7s steps(2) infinite; }
+@keyframes kbwait { 50% { background: rgba(255, 225, 77, 0.25); } }
+.kreset { padding: 2px 0; }
+.kreset:disabled { opacity: 0.25; cursor: default; }
+#ctlMsg { text-align: center; min-height: 20px; margin: 2px 0 4px; color: var(--cyan); font-size: 14px; }
+#ctlMsg.warn { color: var(--yellow); }
+.ctlPreset { display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 14px; }
+.ctlPreset input { accent-color: var(--pink); width: 16px; height: 16px; }
+.ctlBtns { justify-content: center; margin-top: 12px; }
+#ctlBtn { margin: 6px 0; }

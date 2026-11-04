@@ -53,15 +53,17 @@ Notes:
 
 ## Controls
 
+These are the defaults. **Every one can be rebound** in SETTINGS → KEY BINDINGS (a primary and an alternate key or mouse button per action; Esc stays the pause key). The hotbar, the killstreak tray and every "press X" hint show your keys.
+
 | | |
 |---|---|
 | WASD | move |
 | Shift | run |
 | Space | jump (hold to bhop). Jump while grappling to launch off the rope with your momentum |
-| C / Ctrl | crouch; crouch while fast to slide. Spam it too long and your knees explode. As the Wrecking Ball: ground slam (in the air) / brake |
+| C / Left Ctrl | crouch; crouch while fast to slide. Spam it too long and your knees explode. As the Wrecking Ball: ground slam (in the air) / brake |
 | Left mouse | fire / swing / play a card / draw the bow (hold, release) |
 | Right mouse | aim down sights · **Knife: heavy stab** · **Katana: parry** · Card Deck: pick a card |
-| E / mouse side buttons | grapple (hold) |
+| E / Mouse 4 (back side button) | grapple (hold) |
 | R | reload (Card Deck: redraw) |
 | F | inspect your weapon · **Plant & Defuse: hold F to plant / defuse** |
 | G | **use your item** (grenade, medkit, shield bubble, duck, smoke, party popper, reverse card, bubble wand) |
@@ -73,7 +75,7 @@ Notes:
 | Space / click | skip a killcam or the play of the round |
 | B / Esc | pause menu · Tab scoreboard · T / Enter chat |
 
-Settings: display (windowed / windowed fullscreen / fullscreen), grapple on right click instead, toggle aim, sensitivity, ADS sensitivity, fov, fov kick, shake, blood, fps counter, quality, speed lines, killcam, show other players' uploaded name cards.
+Settings: display (windowed / windowed fullscreen / fullscreen), key bindings (with a "right click grapples, E aims" preset), toggle aim, sensitivity, ADS sensitivity, fov, fov kick, shake, blood, fps counter, quality, speed lines, killcam, show other players' uploaded name cards.
 
 ## Modes
 

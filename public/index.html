@@ -31,7 +31,7 @@
   <div id="roundEnd" class="hidden"></div>
   <div id="teamBar" class="hidden"><span class="t1"></span><span class="mid"></span><span class="t2"></span></div>
   <div id="objective"></div>
-  <div id="votePanel" class="hidden"><div class="vt">VOTE: NEXT MATCH · press 1 / 2 / 3 <span id="voteLeft"></span></div><div id="voteOpts"></div></div>
+  <div id="votePanel" class="hidden"><div class="vt">VOTE: NEXT MATCH · press <span id="voteKeys">1 / 2 / 3</span> <span id="voteLeft"></span></div><div id="voteOpts"></div></div>
   <div id="toast"></div>
   <div id="speed"><span id="speedNum">0</span><small> km/h</small><div id="speedLabel"></div></div>
   <div id="combo"></div>
@@ -90,7 +90,7 @@
       <button class="mid danger" id="dQuit">QUIT GAME</button>
     </div>
     <div id="status"></div>
-    <div class="hint">WASD move · SHIFT run · C / CTRL crouch (slide when fast) · SPACE jump (hold to bhop, jump while grappling to launch) · RIGHT CLICK aim · E grapple · R reload · F inspect · 1 2 3 switch · G use item · 5 6 7 use killstreaks · Z spray · V/X scythe · B menu · TAB scores · T chat</div>
+    <div class="hint" id="keyHint">WASD move · SHIFT run · C / CTRL crouch (slide when fast) · SPACE jump (hold to bhop, jump while grappling to launch) · RIGHT CLICK aim · E grapple · R reload · F inspect · 1 2 3 switch · G use item · 5 6 7 use killstreaks · Z spray · V/X scythe · B menu · TAB scores · T chat</div>
   </div>
 
   <!-- pause (in game) -->
@@ -199,7 +199,7 @@
         <div class="lt">kill effect (yours, on every kill with any weapon)</div><div class="chips" id="sk-kill"></div>
         <div class="lt">grapple (yours: everyone sees your rope and hook)</div>
         <div class="grap"><canvas id="grapPreview"></canvas><div class="gcards" id="sk-grapple"></div></div>
-        <div class="lt">spray (yours: press Z in a match to paint it where you look)</div><div class="chips sprays" id="sk-spray"></div>
+        <div class="lt">spray (yours: press <span id="sprayKey">Z</span> in a match to paint it where you look)</div><div class="chips sprays" id="sk-spray"></div>
         <div class="row"><button class="mid" id="skRandom">RANDOMIZE</button><button class="mid" id="skReset">RESET</button><button class="mid" id="skAll">COPY THIS LOOK TO ALL</button></div>
       </div>
     </div>
@@ -283,7 +283,7 @@
         <h3>controls</h3>
         <label>mouse sens <input id="sens" type="range" min="0.2" max="4" step="0.1"><span id="sensN"></span></label>
         <label>aim sens <input id="adsSens" type="range" min="0.2" max="2" step="0.05"><span id="adsSensN"></span></label>
-        <label><input type="checkbox" id="swapAim"> right click grapples (E aims)</label>
+        <button class="mid" data-go="controls" id="ctlBtn">KEY BINDINGS</button>
         <label><input type="checkbox" id="toggleAim"> toggle aim instead of hold</label>
         <h3>gameplay</h3>
         <label><input type="checkbox" id="blood"> pixel blood</label>
@@ -292,6 +292,16 @@
       </div>
     </div>
     <button class="mid back">BACK</button>
+  </div>
+
+  <!-- controls: every key binding (keys.js has the list, controls.js draws it) -->
+  <div class="screen panel hidden" id="scr-controls">
+    <h2>CONTROLS</h2>
+    <div class="note">click a key, then press the new key or mouse button · Esc cancels · Backspace / Delete clears it · a key another action already uses gets swapped onto that action</div>
+    <div id="ctlMsg"></div>
+    <label class="ctlPreset"><input type="checkbox" id="ctlSwap"> preset: right click grapples, E aims</label>
+    <div id="ctlList"></div>
+    <div class="row ctlBtns"><button class="mid danger" id="ctlResetAll">RESET ALL</button><button class="mid" data-go="settings">BACK</button></div>
   </div>
 </div>
 

@@ -5,6 +5,7 @@ import { G } from './ctx.js';
 import { MAPS } from '/shared/map.js';
 import { TEAMS, GAMES, BOMB, siteAt } from '/shared/modes.js';
 import { M } from './models.js';
+import { K } from './keys.js';
 
 const $ = (id) => document.getElementById(id);
 let sites = [], bomb = null, carrierMark = null, mapId = null;
@@ -122,9 +123,9 @@ export function updateObjectives(dt, now, r, myPos) {
   let line = '';
   if (isBomb) {
     const b = r.bomb, att = G.myTeam === b.att;
-    if (b.ph === 'planted') line = `BOMB PLANTED AT ${b.site} · ${fmt(b.left)}${att ? ' · guard it' : ' · DEFUSE IT (hold F at the bomb)'}`;
+    if (b.ph === 'planted') line = `BOMB PLANTED AT ${b.site} · ${fmt(b.left)}${att ? ' · guard it' : ` · DEFUSE IT (hold ${K.label('use')} at the bomb)`}`;
     else if (b.ph === 'done') line = '';
-    else if (b.carrier === G.myId) line = `YOU HAVE THE BOMB · get to A or B · hold F to plant · ${fmt(b.left)}`;
+    else if (b.carrier === G.myId) line = `YOU HAVE THE BOMB · get to A or B · hold ${K.label('use')} to plant · ${fmt(b.left)}`;
     else if (b.drop) line = att ? `BOMB DROPPED · go pick it up · ${fmt(b.left)}` : `they dropped the bomb · ${fmt(b.left)}`;
     else line = att ? `plant the bomb at A or B · ${fmt(b.left)}` : `stop them planting at A or B · ${fmt(b.left)}`;
     if (b.act && b.act.by !== G.myId) line += b.act.k === 'plant' ? ' · THEY ARE PLANTING' : ' · DEFUSING!';

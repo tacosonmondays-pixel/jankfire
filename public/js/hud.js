@@ -1,5 +1,6 @@
 // DOM HUD. Comic Sans is load-bearing.
 import { WEAPONS, SUITS as SUITSH, RANKS as RANKSH } from '/shared/weapons.js';
+import { K } from './keys.js';
 
 const $ = (id) => document.getElementById(id);
 let centerT = 0, hitT = 0, hurtV = 0, weaponT = 0;
@@ -29,7 +30,7 @@ export const hud = {
       d.id = 'slot-' + i;
       d.style.setProperty('--c', w.color);
       if (icons[i]) { const im = document.createElement('img'); im.src = icons[i]; im.alt = ''; d.append(im); }
-      const k = document.createElement('span'); k.className = 'key'; k.textContent = String(i + 1);
+      const k = document.createElement('span'); k.className = 'key'; k.textContent = K.label('slot' + (i + 1), String(i + 1)).replace('unbound', '');
       const n = document.createElement('span'); n.className = 'nm'; n.textContent = w.name;
       d.append(k, n);
       bar.append(d);
@@ -141,7 +142,7 @@ export const hud = {
     $('speed').style.fontSize = Math.min(64, 26 + kmh / 25) + 'px';
   },
   combo(n) { $('combo').textContent = n >= 2 ? `BHOP x${n}` : ''; },
-  // the item box at the end of the hotbar: picture, G key, charges, refill pie
+  // the item box at the end of the hotbar: picture, its key, charges, refill pie
   itemSlot(id, icon) {
     let el = $('itemSlot');
     if (!el) { el = document.createElement('div'); el.id = 'itemSlot'; el.className = 'hslot item'; }
@@ -149,7 +150,7 @@ export const hud = {
     el.innerHTML = '';
     if (!id) { el.remove(); return; }
     const im = document.createElement('img'); im.src = icon; im.alt = '';
-    const k = document.createElement('span'); k.className = 'key'; k.textContent = 'G';
+    const k = document.createElement('span'); k.className = 'key'; k.textContent = K.label('item').replace('unbound', '');
     const n = document.createElement('span'); n.className = 'nm'; n.id = 'itemN';
     const pie = document.createElement('div'); pie.className = 'pie'; pie.id = 'itemPie';
     el.append(pie, im, k, n);
@@ -171,7 +172,7 @@ export const hud = {
     const w = WEAPONS[id];
     if (!w) return;
     $('weaponName').innerHTML = '';
-    $('weaponName').append(span(w.name, w.color), document.createElement('br'), span(w.desc, '#fff'));
+    $('weaponName').append(span(w.name, w.color), document.createElement('br'), span(K.hint(w.desc), '#fff'));
     $('weaponName').style.opacity = 1;
     weaponT = 3;
   },
