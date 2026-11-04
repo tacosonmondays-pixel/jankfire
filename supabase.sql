@@ -21,7 +21,10 @@ create table if not exists jf_users (
   playtime    int  not null default 0,
   void_kills  int  not null default 0,
   headshots   int  not null default 0,
-  tbags       int  not null default 0
+  tbags       int  not null default 0,
+  sniper_feats int not null default 0
 );
+-- Already set up from an older version? This adds what's new (safe to run again).
+alter table jf_users add column if not exists sniper_feats int not null default 0;
 -- Lock the table down: only the game server (service key) can read or write it. Browsers never talk to it directly.
 alter table jf_users enable row level security;

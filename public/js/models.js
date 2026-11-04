@@ -510,6 +510,7 @@ const HAT_AT = {
   spoon: [[0, 0.017, -0.13], 0.04], slapper: [[0, 0.0125, -0.55], 0.09], scythe: [[0, 0.47, -0.8], 0.14],
   scythe_rifle: [[0, 0.13, -0.05], 0.12], bow: [[0, 0.08, 0.0], 0.08], cards: [[0, 0.07, -0.004], 0.07],
   slapper_foam: [[0, 0.03, -0.5], 0.1], slapper_paw: [[0, 0.06, -0.5], 0.1], bread_croissant: [[0, 0.15, -0.6], 0.15],
+  sniper_golden: [[0, 0.245, -0.05], 0.09], // on the crown's cross
   p_chicken: [[0, 0.31, -0.28], 0.15], p_bowling: [[0, 0.45, 0], 0.3], p_duck: [[0, 0.418, -0.2], 0.2], p_slipper: [[0, 0.11, -0.13], 0.1], p_banana: [[0, 0.24, 0], 0.12],
 };
 
@@ -526,6 +527,125 @@ function skipTex() {
   skipTexture = new THREE.CanvasTexture(c); skipTexture.magFilter = THREE.NearestFilter;
   return skipTexture;
 }
+// ------------------------------------------------------------ Golden Sniper (Sniper Royalty reward)
+// gold plate with darker gold scrollwork (canvas, nearest-filtered so it stays crunchy), jewels, a crown on the scope
+// and a glint that hops around the metal. everything is noWrap: a wrap can't take the gold off a trophy
+const goldMats = new Map();
+function goldMat(kind) {
+  if (goldMats.has(kind)) return goldMats.get(kind);
+  const P = (o) => jankify(new THREE.MeshPhongMaterial({ flatShading: true, ...o }));
+  const m = kind === 'dark' ? P({ color: 0x9a6410, specular: 0xffcf6a, shininess: 40, emissive: 0x160a00 })
+    : kind === 'gold' ? P({ color: 0xffc21a, specular: 0xfff0a0, shininess: 80, emissive: 0x2a1800 })
+      : P({ map: engraving(kind), color: 0xffc21a, specular: 0xfff0a0, shininess: 80, emissive: 0x2a1800 }); // gold x a grey pattern (other players' glow tints by colour)
+  goldMats.set(kind, m);
+  return m;
+}
+function engraving(kind) { // a scroll vine, curls and a border, in grey: the material colour makes it gold (dark lines = darker gold)
+  const W = kind === 'long' ? 64 : 32, H = 16;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  const gr = x.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, '#e2d8c6');
+  x.fillStyle = gr; x.fillRect(0, 0, W, H);
+  x.strokeStyle = '#7a6040'; x.lineWidth = 1;
+  x.strokeRect(1.5, 1.5, W - 3, H - 3);
+  x.beginPath();
+  for (let i = 0; i <= W - 8; i++) { const y = H / 2 + Math.sin(i * 0.45) * 2.6; if (i) x.lineTo(4 + i, y); else x.moveTo(4, y); }
+  x.stroke();
+  for (let k = 0; k < W / 14; k++) { // a curl above, then below the vine
+    const cx = 8 + k * 14, up = k % 2 ? 1 : -1;
+    x.beginPath(); x.arc(cx, H / 2 + up * 3.5, 2.2, 0, Math.PI * 1.6); x.stroke();
+    x.fillStyle = '#7a6040'; x.fillRect(cx + 4, H / 2 - up * 3, 1, 1);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+let glintTexture = null;
+function glintTex() { // a star: four long rays, four short ones, a hot core
+  if (glintTexture) return glintTexture;
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const x = c.getContext('2d');
+  const core = x.createRadialGradient(32, 32, 0, 32, 32, 9);
+  core.addColorStop(0, 'rgba(255,255,255,1)'); core.addColorStop(0.45, 'rgba(255,240,180,0.75)'); core.addColorStop(1, 'rgba(255,220,120,0)');
+  x.fillStyle = core; x.fillRect(0, 0, 64, 64);
+  const ray = (a, len, w) => {
+    x.save(); x.translate(32, 32); x.rotate(a);
+    const g = x.createLinearGradient(0, 0, len, 0); g.addColorStop(0, 'rgba(255,255,240,1)'); g.addColorStop(1, 'rgba(255,225,140,0)');
+    x.fillStyle = g; x.beginPath(); x.moveTo(0, -w); x.lineTo(len, 0); x.lineTo(0, w); x.fill(); x.restore();
+  };
+  for (let i = 0; i < 4; i++) { ray((i * Math.PI) / 2, 31, 2.6); ray(Math.PI / 4 + (i * Math.PI) / 2, 13, 1.5); }
+  glintTexture = new THREE.CanvasTexture(c);
+  glintTexture.colorSpace = THREE.SRGBColorSpace;
+  return glintTexture;
+}
+// the glint: one star that flashes on a different bit of metal every 1.6 s. it animates itself whenever it's drawn,
+// so it works on your viewmodel, other players' guns, replays and the menu preview alike
+const GLINT_AT = [[0, 0.112, -0.245, 0.11], [0, 0.25, -0.05, 0.1], [0.018, 0.05, -0.7, 0.13], [0.04, 0.03, 0.02, 0.1], [0, 0.048, -1.18, 0.12], [0.035, 0.03, 0.4, 0.1]];
+function addGlint(g) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glintTex(), color: 0xfff2b8, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  s.scale.setScalar(1e-4);
+  s.frustumCulled = false;
+  s.renderOrder = 3;
+  const phase = Math.random() * 20, PER = 1.6, FLASH = 0.42;
+  s.onBeforeRender = () => {
+    const t = performance.now() / 1000 + phase, u = (t % PER) / FLASH;
+    const at = GLINT_AT[Math.floor(t / PER) % GLINT_AT.length], k = u < 1 ? Math.sin(u * Math.PI) ** 2 : 0;
+    s.position.set(at[0], at[1], at[2]);
+    s.scale.setScalar(Math.max(1e-4, at[3] * k));
+    s.material.rotation = u * 1.4;
+    s.updateMatrixWorld();
+  };
+  g.add(s);
+}
+function goldSniper(g) {
+  const gold = goldMat('gold'), dark = goldMat('dark');
+  const part = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.userData.noWrap = true; g.add(m); return m; };
+  const box = (w, h, d, mat, x, y, z) => part(new THREE.BoxGeometry(w, h, d), mat, x, y, z);
+  const tube = (r, len, mat, x, y, z, seg = 8) => part(new THREE.CylinderGeometry(r, r, len, seg).rotateX(Math.PI / 2), mat, x, y, z);
+  const gem = (r, color, x, y, z) => part(new THREE.SphereGeometry(r, 6, 4), M(color, true), x, y, z);
+  // body: same shape as the standard sniper, so it holds, aims and scopes the same
+  box(0.07, 0.12, 0.55, goldMat('long'), 0, 0, 0); // receiver, scrollwork all round (one material per mesh: other players' guns expect that)
+  box(0.072, 0.012, 0.55, dark, 0, 0.064, 0); // dark gold rib along the top
+  box(0.072, 0.01, 0.55, dark, 0, -0.064, 0);
+  tube(0.022, 1.2, gold, 0, 0.02, -0.85); // barrel
+  for (const z of [-0.36, -0.62, -0.88, -1.14]) tube(0.026, 0.018, dark, 0, 0.02, z); // engraved bands
+  tube(0.03, 0.09, dark, 0, 0.02, -1.42, 6); // muzzle brake
+  for (const z of [-1.4, -1.44]) box(0.062, 0.008, 0.012, gold, 0, 0.02, z);
+  box(0.06, 0.16, 0.32, goldMat('short'), 0, -0.03, 0.42); // stock
+  box(0.064, 0.17, 0.03, dark, 0, -0.03, 0.585); // butt plate
+  box(0.062, 0.04, 0.18, M(0x9a0f2a), 0, 0.05, 0.43); // red velvet cheek rest
+  const grip = box(0.05, 0.14, 0.06, gold, 0, -0.12, 0.1); grip.rotation.x = -0.12;
+  box(0.012, 0.05, 0.012, dark, 0, -0.08, 0.02); // trigger
+  box(0.008, 0.012, 0.11, dark, 0, -0.105, 0.02); // trigger guard
+  tube(0.007, 0.05, dark, 0.05, 0.03, 0.12, 6).rotation.set(0, Math.PI / 2, 0); // bolt handle
+  part(new THREE.SphereGeometry(0.013, 6, 4), gold, 0.077, 0.03, 0.12); // bolt knob
+  for (const sx of [-1, 1]) { // jewels set into both sides of the receiver
+    box(0.004, 0.034, 0.12, dark, sx * 0.036, 0.0, -0.15);
+    gem(0.011, 0xff1f45, sx * 0.038, 0.0, -0.19); gem(0.011, 0x2a6bff, sx * 0.038, 0.0, -0.15); gem(0.011, 0x18d060, sx * 0.038, 0.0, -0.11);
+  }
+  // scope: gold tube, dark gold bells and mounts, a blue lens
+  tube(0.05, 0.32, gold, 0, 0.11, -0.05);
+  tube(0.058, 0.05, dark, 0, 0.11, -0.215);
+  tube(0.054, 0.04, dark, 0, 0.11, 0.11);
+  for (const z of [-0.13, 0.03]) { box(0.03, 0.03, 0.03, dark, 0, 0.072, z); tube(0.053, 0.014, dark, 0, 0.11, z); }
+  const lens = part(new THREE.CircleGeometry(0.046, 10), M(0x7fd6ff, true), 0, 0.11, -0.2405); lens.rotation.y = Math.PI;
+  // a small jewelled crown on top of the scope
+  const cz = -0.05, cy = 0.158;
+  part(new THREE.CylinderGeometry(0.036, 0.031, 0.026, 10), gold, 0, cy + 0.013, cz); // band
+  part(new THREE.SphereGeometry(0.03, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), M(0x9a0f2a), 0, cy + 0.024, cz); // velvet cap
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    part(new THREE.ConeGeometry(0.009, 0.03, 4), gold, Math.cos(a) * 0.031, cy + 0.04, cz + Math.sin(a) * 0.031);
+    gem(0.005, 0xfff6e0, Math.cos(a) * 0.031, cy + 0.057, cz + Math.sin(a) * 0.031); // pearls on the points
+    gem(0.0065, [0xff1f45, 0x2a6bff, 0x18d060][i % 3], Math.cos(a + 0.63) * 0.036, cy + 0.013, cz + Math.sin(a + 0.63) * 0.036);
+  }
+  part(new THREE.SphereGeometry(0.009, 6, 4), gold, 0, cy + 0.058, cz); // orb
+  box(0.004, 0.022, 0.004, gold, 0, cy + 0.076, cz); box(0.014, 0.004, 0.004, gold, 0, cy + 0.079, cz); // cross
+  addGlint(g);
+  g.userData.muzzle = new THREE.Vector3(0, 0.02, -1.48);
+  g.userData.len = 1.8;
+}
+
 // skins for every weapon: alternate models. each belongs to its weapon and keeps that weapon's muzzle / moving parts
 const SKIN_BUILD = {
   redline_hotrod(g) { redlineBuild(g, true); },
@@ -592,6 +712,7 @@ const SKIN_BUILD = {
     g.add(bx(0.04, 0.05, 0.06, 0xb08a3a, 0, 0.06, 0.05));
     g.userData.muzzle = new THREE.Vector3(0, 0.04, -1.48); g.userData.len = 1.8;
   },
+  sniper_golden(g) { goldSniper(g); }, // Sniper Royalty: gold plate, scrollwork, jewels, a crown on the scope, a glint
   revolver_flint(g) { // flintlock pistol
     g.add(cylZ(0.022, 0.26, 0x555555, 0, 0.03, -0.17));
     g.add(bx(0.05, 0.06, 0.24, 0x6b3a1a, 0, 0.01, -0.1));

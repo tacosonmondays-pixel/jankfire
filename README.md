@@ -49,6 +49,7 @@ Notes:
 - The **secret key is a secret.** It only ever goes in `.env` or Render's environment settings. Never in the exe, never in `desktop/config.json`, never in chat or a public repo. The exe talks to your server; only the server talks to Supabase.
 - `render.yaml` uses the **Starter** plan (about $7/month) so it never sleeps. The free plan works but sleeps after 15 idle minutes and takes ~30-60 s to wake.
 - Without Supabase, accounts live in `data/jankfire-db.json` (or the app's user-data folder for the exe). Fine on your own PC, wiped whenever a host like Render restarts.
+- Set up Supabase with an older version? Run `supabase.sql` again after updating: it adds new stat columns (like `sniper_feats` for Sniper Royalty) and keeps every account. `npm run check-supabase` tells you if one is missing.
 - Any Node host with WebSockets works (Railway, Fly.io, a VPS). The server reads `PORT`.
 
 ## Controls
@@ -168,7 +169,7 @@ Sign up from the main menu. Accounts save loadout, cosmetics, character, name ca
 
 **CHARACTER** on the main menu: your colour (name + outline), skin tone, hair (9 styles, any colour), top (sash, t-shirt, hoodie, jacket, suit, nothing) and bottom (shorts, pants, skirt) with their colours, a head, face and back accessory, your kill effect and your name card. Everyone sees your look. Capes hang from your shoulders and stream behind you when you're fast, wings flap in the air, backpacks and jetpacks have straps.
 
-Achievement accessories:
+Achievement unlocks (accessories, plus one weapon skin):
 
 | Achievement | How | Unlocks |
 |---|---|---|
@@ -181,6 +182,12 @@ Achievement accessories:
 | Sharpshooter | 50 headshots | Visor |
 | Knee Trouble | t-bag so hard you explode | Ice Pack |
 | No Life | play 5 hours | Jetpack |
+| Sniper Royalty | four kinds of sniper kill (below) | **Golden Sniper** (a sniper skin) |
+
+**Sniper Royalty → the Golden Sniper.** Get each of these Sniper kills at least once, in any order, over any number of matches: a **LONG SHOT** (50 m or more, measured by the server from its own positions), a **QUICK-SCOPE** (fired within 0.35 s of the scope fully coming up), a **NO-SCOPE** (fired without the scope) and a **HEADSHOT**. One kill can tick several. Every new tick pops a gold toast (`SNIPER ROYALTY 2/4  QUICK-SCOPE`) with the four boxes; the boxes also show in the achievements list here and next to the locked skin in COSMETICS > Sniper. The last one plays the achievement unlock plus a big gold GOLDEN SNIPER UNLOCKED, and the skin goes straight onto your sniper.
+- Logged-in players only (a guest is told what would have counted: "log in so it counts"). Kills on bots count too; training dummies don't.
+- Anti-farm: a kill on someone who hadn't really moved for 5 s (the server tracks it from the snapshots; respawning or being knocked around doesn't count as moving) never ticks a box, so no farming it on an AFK player or a friend standing still.
+- Quick-scope and no-scope are the shooter's word (`qs: 1` / `ns: 1` on sniper hits), so they only ever buy progress, never damage, and claiming both at once counts for neither.
 
 ## Name cards, killcam, play of the round
 
@@ -190,7 +197,8 @@ Achievement accessories:
 
 ## Cosmetics + containers
 
-**Skins** are different models and belong to one weapon each, like a CS knife: every weapon has at least one (Toy Blaster and Bullpup for the AR, Pocket Uzi, Double Barrel, Old Gatling, Musket, Flintlock, Turkey Launcher, Hand Cannon, Bunch Blaster, Compound Bow, Fat Cigar, Hair Dryer, Champagne, Skip Card, Ice Cube, Ladle, Croc, Reaper scythe, plus Karambit / Butterfly / Switchblade / Cleaver / Bowie / Kitchen knives, Foam Finger and Bear Paw slappers, the Croissant).
+**Skins** are different models and belong to one weapon each, like a CS knife: every weapon has at least one (Toy Blaster and Bullpup for the AR, Pocket Uzi, Double Barrel, Old Gatling, Musket and the Golden Sniper, Flintlock, Turkey Launcher, Hand Cannon, Bunch Blaster, Compound Bow, Fat Cigar, Hair Dryer, Champagne, Skip Card, Ice Cube, Ladle, Croc, Reaper scythe, plus Karambit / Butterfly / Switchblade / Cleaver / Bowie / Kitchen knives, Foam Finger and Bear Paw slappers, the Croissant).
+The **Golden Sniper** is never in a crate: it's the reward for the Sniper Royalty achievement (see Character) and the server only lets you wear it once you have it. Gold plate with darker gold scrollwork, jewels set in the receiver, a small jewelled crown on the scope and a glint that hops around the metal; everyone sees it, and it stays gold under any wrap.
 **Wraps** (paint), **hats** and **effects** go on **every weapon at once** by default (untick the box in COSMETICS to dress weapons one by one). The Scythe Rifle can be dressed too. One **kill effect** per player.
 
 **CONTAINERS** (main menu) is where you open them:
@@ -227,5 +235,5 @@ Prompts live in `tools/models.json`; models land in `public/models/<id>.glb` and
 - `server.js`: static files + WebSocket `/ws`. Rooms: shared Online and Coop, private Bots and Training. Movement is client-authoritative; the server owns HP, kills, projectiles, arrows, cards, items, frost, streaks, modes (teams, tags, the bomb), the map/mode vote, cosmetics ownership, achievements, round recordings for highlights, and bots (including their objective routes and grappling).
 - `server/`: accounts, stats, containers, leaderboard (`/api/*`), stored in a local file or Supabase.
 - `shared/`: `map.js` maps + box physics + bot routes · `modes.js` game modes, teams, bomb rules, vote timing · `weapons.js` weapons, items, killstreaks, loadout rules · `cosmetics.js` skins/wraps/effects/kill effects/hats + crates · `looks.js` character outfits.
-- `public/js/`: `main.js` menus + net + loop · `player.js` movement · `weapons.js` viewmodels, recoil springs, ADS, items · `anim.js` swing/inspect keyframes (per-knife styles) · `speedlines.js` · `remote.js` other players · `replay.js` killcam + highlights · `killfx.js` kill effects · `cards.js` name cards · `objective.js` bomb sites, tags, team bar · `icons.js` hotbar/item/streak pictures · `models.js` · `skins.js` · `fx.js` · `world.js` · `scenery.js` the land around each map · `hud.js` · `audio.js`.
+- `public/js/`: `main.js` menus + net + loop · `player.js` movement · `weapons.js` viewmodels, recoil springs, ADS, items · `anim.js` swing/inspect keyframes (per-knife styles) · `speedlines.js` · `remote.js` other players · `replay.js` killcam + highlights · `killfx.js` kill effects · `cards.js` name cards · `objective.js` bomb sites, tags, team bar · `icons.js` hotbar/item/streak pictures · `models.js` · `skins.js` · `fx.js` · `world.js` · `scenery.js` the land around each map · `hud.js` · `royal.js` Sniper Royalty toasts + the Golden Sniper unlock · `audio.js`.
 - `desktop/`: the Electron app (launcher, in-app server, display modes).

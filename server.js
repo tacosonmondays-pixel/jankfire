@@ -13,6 +13,8 @@ import { makeStore } from './server/store.js';
 import { Accounts, levelOf } from './server/accounts.js';
 import { ownedSkin, ownedKill, randomContainer, CONTAINERS, COSMETICS } from './shared/cosmetics.js';
 import { validLook, achievementsFrom, ACHIEVEMENTS } from './shared/looks.js';
+import { ROYAL, ROYAL_FEATS } from './shared/looks.js'; // Sniper Royalty
+import { achInv } from './shared/cosmetics.js'; // achievement-locked skins (the Golden Sniper)
 import { STAT_KEYS } from './server/store.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor } from './shared/modes.js';
@@ -127,9 +129,9 @@ function cleanSkins(s) {
   }
   return out;
 }
-function enforceSkins(skins, inv) {
-  const out = {};
-  for (const [id, sk] of Object.entries(skins)) out[id] = ownedSkin(sk, inv, id);
+function enforceSkins(skins, inv, achs) {
+  const out = {}, own = achInv(inv, achs); // achievement skins (Golden Sniper) only count from your achievements
+  for (const [id, sk] of Object.entries(skins)) out[id] = ownedSkin(sk, own, id);
   return out;
 }
 if (process.env.JF_STREAK) STREAKS.scythe.kills = Number(process.env.JF_STREAK) || STREAKS.scythe.kills;
@@ -284,7 +286,7 @@ class Room {
     }
     const name = m._name || clean(m.name, 16) || pick(DEFAULT_NAMES) + nextId;
     const inv = m._inv || {};
-    const p = this.newPlayer(name, { ws, skins: enforceSkins(cleanSkins(m.skins), inv), acct: m._acct, level: m._level });
+    const p = this.newPlayer(name, { ws, skins: enforceSkins(cleanSkins(m.skins), inv, m._achs), acct: m._acct, level: m._level });
     p.inv = inv;
     p.tip = pick(TIP_IDS);
     p.look = validLook(m.look, m._achs || new Set());
@@ -859,6 +861,18 @@ class Room {
       Object.assign(hl, { pending: false, label, id: k.id, name: k.name, color: k.color, card: k.card || '', clip: this.clip(t0, now()) });
     }, 1300);
   }
+  // anti-farm, from the snapshots: when everyone last really moved (ROYAL.moved metres from where they stood).
+  // a respawn or getting knocked around (moving within 1.2 s of being hit) doesn't count as moving
+  trackMoves(n) {
+    for (const p of this.players.values()) {
+      if (!p.alive) { p.stillAt = null; continue; }
+      if (p.movedT == null) p.movedT = n; // just joined
+      if (!p.stillAt || dist3(p.stillAt, p.pos) > ROYAL.moved) {
+        if (p.stillAt && n - (p.lastAttackT || 0) > 1200) p.movedT = n;
+        p.stillAt = p.pos.slice();
+      }
+    }
+  }
   // a slice of the recording: 10 Hz frames + the events in that window + who's who
   clip(t0, t1) {
     const frames = this.rec.frames.filter((f) => f.s >= t0 && f.s <= t1 && f.odd);
@@ -915,6 +929,7 @@ class Room {
       const n = clampInt(m.n, 1, Math.min(pellets, this.maxPellets(w, p, t))), h = clampInt(m.h, 0, n);
       if (!this.pairOk(p, t, 'hs' + m.w, (1000 / fireRate(w, p.hp)) * 0.6) || !this.rangeOk(p, t, w.range)) return; // the Redline fires faster as you lose HP
       this.applyHitscan(p, t, m.w, n, h, d);
+      if (m.w === 'sniper' && !t.alive) this.royalKill(p, t, m, h > 0); // this shot killed them (a reflected one hurts you, not them)
     } else if (w.kind === 'melee') {
       const hv = m.heavy && w.heavy ? w.heavy : null; // knife right click
       const reach = w.range + (m.w === 'katana' ? (p.kat || 0) * w.grow : 0);
@@ -933,6 +948,18 @@ class Room {
       if (!this.pairOk(p, t, 'cig', 75) || !this.rangeOk(p, t, w.range)) return;
       this.hurt(t, p, 'cig', w.dmg, [d[0] * 1.5, 0.6, d[2] * 1.5]);
     }
+  }
+
+  // Sniper Royalty: the boxes a sniper kill ticks. qs / ns are the shooter's word, so they only ever buy progress, never
+  // damage: the kill is the server's, the distance comes from server positions, and a victim who hadn't moved for 5 s
+  // (AFK, a friend standing still) never counts. no training (dummies) and no bots doing the shooting
+  royalKill(p, t, m, hs) {
+    if (p.isBot || this.mode === 'training' || (t.isBot && t.ai && t.ai.dummy)) return;
+    const n = now();
+    if (n - (t.movedT ?? n) >= ROYAL.still) return;
+    const qs = m.qs === 1, ns = m.ns === 1; // scoped and unscoped at once is a lie: neither counts
+    const bits = (dist3(p.pos, t.pos) >= ROYAL.long ? RB.long : 0) | (qs && !ns ? RB.quick : 0) | (ns && !qs ? RB.noscope : 0) | (hs ? RB.head : 0);
+    if (bits) royal(p, bits);
   }
 
   onPush(p, m) {
@@ -1454,7 +1481,7 @@ class Room {
           p.skinT = now();
           (async () => {
             if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; }
-            p.skins = enforceSkins(cleanSkins(m.s), p.inv);
+            p.skins = enforceSkins(cleanSkins(m.s), p.inv, p.acct && p.acct.achs);
             this.broadcast({ t: 'sk', id: p.id, s: p.skins }, p.id);
           })();
         }
@@ -1727,6 +1754,7 @@ class Room {
         p.g ? p.g.map(r2) : 0, p.f, p.kills, p.deaths]);
     }
     const n = now();
+    this.trackMoves(n);
     this.recOdd = !this.recOdd;
     this.rec.frames.push({ s: n, p: ps, odd: this.recOdd, j: [...this.projectiles.values()].map((pr) => [pr.id, pr.k, r2(pr.p[0]), r2(pr.p[1]), r2(pr.p[2]), pr.tip || 0]) });
     while (this.rec.frames.length && this.rec.frames[0].s < n - REC_MS) this.rec.frames.shift();
@@ -1751,6 +1779,22 @@ function liveStats(p) {
 function checkAch(p) {
   const now2 = achievementsFrom(liveStats(p));
   for (const id of now2) if (!p.acct.achs.has(id)) { p.acct.achs.add(id); send(p, { t: 'ach', id }); }
+}
+// Sniper Royalty feats: bit flags in the sniper_feats stat (bit i = ROYAL_FEATS[i]). d only ever gets bits the account
+// doesn't have yet, so liveStats / flushStats can add them up like any other stat (the store ORs them in).
+// guests don't keep any: they're told once per feat that it would have counted
+const RB = Object.fromEntries(ROYAL_FEATS.map((f, i) => [f.id, 1 << i]));
+function royal(p, bits) {
+  if (!p.acct) {
+    const add = bits & ~(p.royalG || 0);
+    if (add) { p.royalG = (p.royalG || 0) | add; send(p, { t: 'royal', add, all: p.royalG, guest: 1 }); }
+    return;
+  }
+  const have = liveStats(p).sniper_feats || 0, add = bits & ~have;
+  if (!add) return;
+  p.acct.d.sniper_feats = (p.acct.d.sniper_feats || 0) | add;
+  send(p, { t: 'royal', add, all: have | add });
+  checkAch(p); // the last box unlocks the achievement (and with it the Golden Sniper)
 }
 function flushStats(p) {
   if (!p.acct) return;
