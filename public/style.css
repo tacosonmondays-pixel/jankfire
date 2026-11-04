@@ -310,6 +310,27 @@ body.replaying #speedLines { visibility: hidden; }
 .vopt.on { outline: 2px solid #ffe14d; }
 body.replaying #teamBar, body.replaying #objective { visibility: hidden; }
 
+/* ---------------- wrecking ball killstreak: time left + slam charge, top middle */
+#ballTimer { display: none; position: absolute; left: 50%; top: 96px; transform: translateX(-50%) rotate(-1.5deg); text-align: center; color: #dfe7ef; }
+#ballTimer b { font-size: 20px; letter-spacing: 1px; }
+#ballTimer .bar { width: 300px; height: 12px; margin: 4px auto 0; border: 2px solid #dfe7ef; background: rgba(0, 0, 0, 0.55); }
+#ballTimer .bar i { display: block; height: 100%; background: repeating-linear-gradient(45deg, #b8c4d0 0 8px, #8a96a4 8px 16px); }
+#ballTimer .slam { position: relative; width: 300px; height: 16px; margin: 3px auto 0; background: rgba(0, 0, 0, 0.45); font-size: 11px; line-height: 16px; }
+#ballTimer .slam i { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(255, 225, 77, 0.35); }
+#ballTimer .slam span { position: relative; }
+#ballTimer.ready .slam { color: #ffe14d; }
+#ballTimer.air .slam { color: #fff; }
+#ballTimer.air .slam i { background: linear-gradient(90deg, rgba(255, 225, 77, 0.55), rgba(255, 80, 40, 0.85)); }
+#ballTimer.low b { color: #ff5050; animation: ballLow 0.5s steps(2) infinite; }
+@keyframes ballLow { 50% { color: #ffffff; } }
+body.replaying #ballTimer { visibility: hidden; }
+#ballTimer .spd { margin-top: 3px; font-size: 15px; color: var(--yellow); }
+#ballTimer.ramming .spd { color: #ff7a3a; }
+body.wrecking #speed { display: none; } /* the ball sits where the speed usually is: it's in the ball's box instead */
+/* weapons are holstered inside the ball: dim the hotbar + ammo, and keep the big messages clear of the ball's box */
+body.wrecking #hotbar, body.wrecking #ammo { opacity: 0.3; }
+body.wrecking #center { top: 41%; }
+
 /* character screen: keep the preview in view while you scroll through the options */
 #charSlot { position: sticky; top: -18px; z-index: 3; background: rgba(18, 8, 24, 0.96); padding-bottom: 4px; }
 #charSlot #preview { height: 240px; }

@@ -21,6 +21,9 @@ import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, IT
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
 import { verdict } from './shared/verdict.js';
 
+import { WRECK, slamSize, ramDmg } from './shared/weapons.js'; // wrecking ball
+import { query } from './shared/physics.js';
+
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
 try { if (fs.existsSync(path.join(ROOT, '.env'))) process.loadEnvFile(path.join(ROOT, '.env')); } catch (e) { console.warn('could not read .env:', e.message); }
@@ -135,6 +138,8 @@ function enforceSkins(skins, inv) {
   return out;
 }
 if (process.env.JF_STREAK) STREAKS.scythe.kills = Number(process.env.JF_STREAK) || STREAKS.scythe.kills;
+if (process.env.JF_WRECK) STREAKS.wreckingball.kills = Number(process.env.JF_WRECK) || STREAKS.wreckingball.kills; // test knob: earn the wrecking ball fast
+if (process.env.JF_WRECK_DUR) STREAKS.wreckingball.dur = Number(process.env.JF_WRECK_DUR) || STREAKS.wreckingball.dur; // test knob: a longer ball (slow test browsers)
 const ROUND = { ffa: { kills: 20, time: 360 }, bots: { kills: 15, time: 300 } };
 if (process.env.JF_ROUND_KILLS) for (const r of Object.values(ROUND)) r.kills = Number(process.env.JF_ROUND_KILLS) || r.kills;
 // test knobs for plant & defuse (short rounds / fuse / match)
@@ -738,6 +743,7 @@ class Room {
   trapPlayer(t, owner, dir, reflected) {
     const it = ITEMS.wand, n = now();
     if (!t.alive || t.trap || n < (t.trapSafe || 0) || (this.round && this.round.over)) return false;
+    if (this.isBall(t, n)) return false; // a 2 m steel wrecking ball just bursts the soap (its client rolls it, a bubble can't hold it)
     if (owner && owner !== t && !t.isBot && n - t.spawnT < 1200) return false; // spawn protection
     for (const b of this.bubbles.values()) if (this.inBubble(b, t)) return false; // soap can't get into a shield bubble
     if (!reflected && owner && owner !== t && owner.alive && t.reverseUntil > n) { // reverse card: the blower gets sealed in instead
@@ -947,6 +953,7 @@ class Room {
     send(t, { t: 'streak', reset: 1 });
     t.streak = 0;
     t.scythe = false; // active stuff ends when you die; earned-but-unused streaks stay in your tray
+    t.ballUntil = 0; t.f &= ~FLAGS.BALL; // (or everyone sees a steel ball at the spawn until the respawned client speaks)
     if (this.mode !== 'training') {
       if (killer && killer !== t && killer.acct) {
         if (t.isBot) stat(killer, 'bot_kills', 1), stat(killer, 'xp', 5);
@@ -1021,6 +1028,7 @@ class Room {
   }
 
   applyHitscan(p, t, wid, n, h, d, mul = 1) {
+    if (this.isBall(t)) h = 0; // a wrecking ball has no head
     const w = WEAPONS[wid], pellets = w.pellets || 1;
     const dmg = (w.dmg * (n - h) + w.dmg * (w.head || 1) * h) * mul;
     const k = w.kb * n;
@@ -1039,6 +1047,7 @@ class Room {
     const t = this.players.get(m.to);
     const d = norm(vec3(m.d));
     if (!w || !t || !d || t === p || !t.alive || !p.alive) return;
+    if (this.isBall(p)) return; // no hands in the wrecking ball
     if ((w.slot === 'streak' || w.kind === 'dash') && !p.scythe) return; // you have to earn it
     if (w.kind === 'dash') {
       if (!(p.f & FLAGS.DASH) || !this.pairOk(p, t, 'dash', 280) || !this.rangeOk(p, t, w.range)) return;
@@ -1271,7 +1280,7 @@ class Room {
     for (const t of this.players.values()) {
       if (!t.alive || skip(t)) continue;
       let best = Infinity;
-      for (const hb of t.trap ? trapBoxes(t.pos) : playerBoxes(t.pos)) { // sealed in a soap bubble: the bubble gets hit
+      for (const hb of t.trap ? trapBoxes(t.pos) : this.isBall(t) ? ballBoxes(t.pos) : playerBoxes(t.pos)) { // a soap bubble gets hit on the bubble; a wrecking ball is one big ball
         const e = { min: hb.min.map((x) => x - r), max: hb.max.map((x) => x + r) };
         const h = rayBox(prev, dir, e, len + 1e-3);
         if (h && h.t < best) best = h.t;
@@ -1505,10 +1514,13 @@ class Room {
         p.f = m.f | 0;
         if (p.trap) this.holdTrapped(p, true); // sealed in a soap bubble: you go where it floats
         if (p.pos[1] < this.map.killY) this.kill(p, null, 'void');
+        if ((p.f & FLAGS.BALL) && !(p.ballUntil > now())) p.f &= ~FLAGS.BALL; // only someone who earned the wrecking ball gets to be one
+        if (p.ballUntil > now()) this.ballAir(p);
         break;
       }
       case 'hit': this.onHit(p, m); break;
       case 'push': this.onPush(p, m); break;
+      case 'slam': this.onSlam(p, m); break;
       case 'fire': this.onFire(p, m); break;
       case 'cough':
         if (p.alive && now() - p.coughT > 800) { p.coughT = now(); this.damage(p, 12, null, 'cough'); }
@@ -1543,7 +1555,8 @@ class Room {
         if ((m.r === 'chickenstrike' || m.r === 'giantduck') && !at) break;
         p.pocket.splice(i, 1);
         if (m.r === 'scythe') p.scythe = true;
-        send(p, { t: 'streak', reward: m.r });
+        if (m.r === 'wreckingball') { p.ballUntil = now() + STREAKS.wreckingball.dur * 1000 + 1000; p.slamT = 0; p.ballTop = p.pos[1]; p.ballVy = 0; } // +1s for lag
+        send(p, { t: 'streak', reward: m.r, dur: STREAKS[m.r].dur });
         if (m.r === 'chickenstrike') {
           this.broadcast({ t: 'fx', k: 'strikeCall', id: p.id, p: at.map(r2) });
           for (let k = 0; k < 14; k++) setTimeout(() => {
@@ -1852,6 +1865,7 @@ class Room {
     this.tickHoles(dt);
     this.tickStatus(dt);
     this.tickPeels();
+    this.tickBalls();
     this.tickWaves();
     for (const p of this.players.values()) {
       if (!p.alive && n >= p.respawnAt) {
@@ -1863,6 +1877,95 @@ class Room {
         this.sendLoadout(p);
         if (!p.isBot) deal(p);
       }
+    }
+  }
+
+  // ---------------------------------------------------------- wrecking ball (killstreak)
+  // a ball only counts if this player really activated the streak and their snapshots say they're rolling
+  isBall(p, n = now()) { return p.alive && p.ballUntil > n && !!(p.f & FLAGS.BALL); }
+  // the highest the ball has been since it last touched a floor, from its snapshots + the server's own map (slam height)
+  ballAir(p) {
+    const y = p.pos[1], vy0 = p.ballVy || 0, n = now();
+    p.ballVy = p.vel[1];
+    p.ballSnapT = n;
+    if (p.vel[1] < -(WRECK.slamV - 12)) p.diveT = n; // slam dive (onSlam wants to have seen one)
+    (p.ballHist ||= []).push([n, p.pos.slice()]); // where it really was lately, so a claimed speed has to match the moves
+    while (p.ballHist.length > 2 && n - p.ballHist[0][0] > 160) p.ballHist.shift();
+    if (p.ballTop == null || (p.vel[1] > -3 && floorUnder(this.boxes, p.pos, 0.3) != null)) { p.ballTop = y; return; } // (diving at it isn't touching it)
+    if (vy0 < -3 && p.vel[1] > 0 && floorUnder(this.boxes, p.pos, 3) != null) { p.ballTop = y; return; } // bounced off the floor between snapshots
+    p.ballTop = Math.max(p.ballTop, y);
+  }
+  // rams: judged here from server-side positions + velocities, never from a client saying it hit someone.
+  // the ball's path since the last tick is a segment, so a fast ball can't skip through someone between snapshots.
+  tickBalls() {
+    const n = now(), R = WRECK.r;
+    for (const p of this.players.values()) {
+      if (!this.isBall(p, n)) { p.ballPrev = null; p.ballHist = null; continue; }
+      const c = [p.pos[0], p.pos[1] + R, p.pos[2]];
+      let a = p.ballPrev || c;
+      p.ballPrev = c;
+      if (dist3(a, c) > 6) a = c; // a jump that big is a teleport, not a roll: don't sweep everyone in between
+      // how fast it really moved over its last few snapshots: a claimed speed only counts if the position keeps up with it
+      // (timed by when they arrived, but at least 1/30 s per snapshot: after a network stall they arrive all at once)
+      const hh = p.ballHist || [], h0 = hh[0], h1 = hh[hh.length - 1];
+      const span = hh.length > 1 ? Math.max(h1[0] - h0[0], (hh.length - 1) * 33) : 0;
+      const mv = span && n - h1[0] < 200 ? dist3(h0[1], h1[1]) / (span / 1000) : 0;
+      // rolling, swinging and falling onto people count. rising doesn't (the bounce after a slam), and neither does the
+      // slam dive itself: the slam does its own damage, sized by the height
+      const down = p.vel[1] < -(WRECK.slamV - 8) ? 0 : Math.max(0, -p.vel[1]);
+      const vl = Math.hypot(p.vel[0], down, p.vel[2]);
+      const sp = Math.min(vl, mv * 1.4 + 3);
+      if (sp < WRECK.ramMin) continue;
+      const dir = [p.vel[0] / vl, -down / vl, p.vel[2] / vl];
+      for (const t of this.players.values()) {
+        if (t === p || !t.alive || this.friendly(p, t)) continue;
+        const tc = center(t);
+        const reach = R + 0.5 + WRECK.ramReach + Math.hypot(t.vel[0], t.vel[2]) * 0.04; // ball + body + a bit for lag
+        if (segPointDist(a, c, tc) > reach) continue;
+        if ((tc[0] - a[0]) * dir[0] + (tc[1] - a[1]) * dir[1] + (tc[2] - a[2]) * dir[2] < -0.3) continue; // it's rolling away from them
+        const to = [tc[0] - c[0], tc[1] - c[1], tc[2] - c[2]], td = Math.hypot(...to);
+        if (td > 0.3 && raycast(c, to.map((x) => x / td), td - 0.3, this.boxes)) continue; // there's a wall in between
+        if (!this.pairOk(p, t, 'ram', WRECK.ramCd)) continue;
+        const dmg = ramDmg(sp);
+        const k = Math.min(WRECK.ramKbMax, WRECK.ramKb + sp * WRECK.ramKbMul);
+        const hl = Math.hypot(dir[0], dir[2]) || 1;
+        // launched the way the ball was going, and up off the floor
+        this.hurt(t, p, 'wreck', dmg, [dir[0] / hl * k, WRECK.ramUp + sp * 0.2, dir[2] / hl * k]);
+        this.broadcast({ t: 'fx', k: 'ram', id: p.id, to: t.id, p: tc.map(r2), s: Math.round(sp) });
+        this.knock(p, [-dir[0] * sp * 0.18, 1.5, -dir[2] * sp * 0.18], 'wreck'); // the ball keeps most of its momentum
+      }
+    }
+  }
+  // ground slam: the client lands a slam and says where. ball active, cooldown, the spot near where we think it is and on
+  // a floor. how big it is comes from the server's own record of how high the ball got since it last touched the floor.
+  onSlam(p, m) {
+    const n = now();
+    if (!this.isBall(p, n) || n - (p.slamT || 0) < WRECK.slamCd * 1000 - 250) return;
+    let at = vec3(m.p);
+    if (!at || Math.hypot(at[0] - p.pos[0], at[2] - p.pos[2]) > 4 + Math.hypot(p.vel[0], p.vel[2]) * 0.1 || at[1] > p.pos[1] + 1.5 || at[1] < p.pos[1] - 8) at = p.pos.slice();
+    let fl = floorUnder(this.boxes, [at[0], at[1] + 1, at[2]], 9);
+    if (fl == null) { at = p.pos.slice(); fl = floorUnder(this.boxes, [at[0], at[1] + 1, at[2]], 9); } // no floor where it says: try where we think it is
+    if (fl == null) return; // nothing under it to slam into
+    at[1] = fl;
+    // its last snapshot has to be near that floor, or diving at it: a ball hanging on its chain or hovering up there can't
+    // slam the floor below. (a slam that starts and lands between two snapshots can only have dived as far as a slam
+    // goes in that time: at 30 a second that's about 2 m)
+    const above = p.pos[1] - fl, since = Math.min(0.1, (n - (p.ballSnapT || 0)) / 1000);
+    if (above > 8 || (above > 2.5 + since * WRECK.slamV && !(n - (p.diveT || 0) < 400))) return;
+    const h = Math.min(30, (p.ballTop ?? p.pos[1]) - fl);
+    if (!(h >= 0.25)) return; // it never left the floor
+    p.slamT = n; p.ballTop = fl;
+    const S = slamSize(h), c = [at[0], fl + WRECK.r, at[2]];
+    this.broadcast({ t: 'fx', k: 'slam', id: p.id, p: at.map(r2), r: r2(S.r), h: r2(h) }, p.id);
+    for (const t of this.players.values()) {
+      if (t === p || !t.alive || this.friendly(p, t)) continue;
+      const tc = center(t), to = [tc[0] - c[0], tc[1] - c[1], tc[2] - c[2]], d = Math.hypot(...to);
+      const f = 1 - Math.max(0, d - WRECK.r) / S.r; // full at the ball's edge, nothing past the radius
+      if (f <= 0) continue;
+      if (d > 0.3 && raycast(c, to.map((x) => x / d), d - 0.3, this.boxes)) continue; // it's a shockwave: not through walls or the floor
+      const hl = Math.hypot(to[0], to[2]), out = hl > 0.2 ? [to[0] / hl, to[2] / hl] : [0, 0];
+      const k = S.kb * (0.35 + 0.65 * f);
+      this.hurt(t, p, 'wreck', S.dmg * (0.2 + 0.8 * f), [out[0] * k, S.up * (0.5 + 0.5 * f) + 3, out[1] * k]); // up and out
     }
   }
 
@@ -1914,6 +2017,30 @@ function flushStats(p) {
   store.addStats(p.acct.n, d).catch((e) => console.error('stats save failed', e.message));
 }
 setInterval(() => { for (const r of rooms.values()) for (const p of r.players.values()) flushStats(p); }, 60000);
+
+REC_FX.add('slam').add('ram'); // wrecking ball hits show up in killcams + highlights
+// what a wrecking ball is hit-tested as (the same box the clients shoot at)
+function ballBoxes(pos) {
+  const r = WRECK.r, [x, y, z] = pos;
+  return [{ min: [x - r, y, z - r], max: [x + r, y + 2 * r, z + r], head: false }];
+}
+// the top of the floor right under these feet (no more than drop below them), or null (wrecking ball slams)
+const qFloor = [];
+function floorUnder(boxes, p, drop, hw = 0.6) {
+  let best = null;
+  for (const b of query(boxes, p[0] - hw, p[2] - hw, p[0] + hw, p[2] + hw, qFloor)) {
+    const top = b.max[1];
+    if (top > p[1] + 0.05 || top < p[1] - drop || (best != null && top <= best)) continue;
+    if (b.min[0] < p[0] + hw && b.max[0] > p[0] - hw && b.min[2] < p[2] + hw && b.max[2] > p[2] - hw) best = top;
+  }
+  return best;
+}
+// shortest distance from point c to the segment a-b (wrecking ball rams)
+function segPointDist(a, b, c) {
+  const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], l2 = ab[0] * ab[0] + ab[1] * ab[1] + ab[2] * ab[2];
+  const t = l2 > 1e-9 ? Math.max(0, Math.min(1, ((c[0] - a[0]) * ab[0] + (c[1] - a[1]) * ab[1] + (c[2] - a[2]) * ab[2]) / l2)) : 0;
+  return Math.hypot(a[0] + ab[0] * t - c[0], a[1] + ab[1] * t - c[1], a[2] + ab[2] * t - c[2]);
+}
 
 function segs(s) {
   if (!Array.isArray(s)) return [];

@@ -143,6 +143,24 @@ export const sfx = {
   error(pos) { tone('square', 880, 880, 0.12, 0.2, pos); tone('square', 660, 660, 0.25, 0.2, pos, 0.14); },
   yeet(pos) { noise(0.7, 0.5, 'bandpass', 400, 3000, pos, 0, 1.5); tone('sine', 300, 1400, 0.6, 0.15, pos); },
   choir(pos) { for (const [f, d] of [[523, 0], [659, 0.05], [784, 0.1], [1046, 0.15]]) tone('sine', f, f * 1.01, 2.2, 0.12, pos, d); },
+  // wrecking ball: a struck steel ball rings with a few out-of-tune partials (k = how hard)
+  clang(pos, k = 1) {
+    for (const [f, d, v] of [[287, 1.1, 0.34], [701, 0.8, 0.24], [1133, 0.55, 0.17], [1789, 0.4, 0.12], [2647, 0.28, 0.08]]) {
+      const ff = f * (0.96 + Math.random() * 0.08);
+      tone('sine', ff, ff * 0.985, d * (0.5 + k * 0.5), v * k, pos);
+    }
+    noise(0.05, 0.7 * k, 'highpass', 2500, 7000, pos);
+    tone('triangle', 140, 60, 0.12, 0.4 * k, pos);
+  },
+  // ground slam: a huge clang, the floor booming, rubble raining down after (k = how big: 0 off a hop, 1 from way up)
+  slam(pos, k = 0.5) {
+    const v = 0.55 + k * 0.45;
+    noise(1 + k, v, 'lowpass', 1600, 35, pos); tone('sine', 92 - k * 22, 20, 0.9 + k * 0.9, v, pos); tone('square', 58, 26, 0.3 + k * 0.3, 0.3 * v, pos);
+    sfx.clang(pos, 0.7 + k * 0.3);
+    for (let i = 0; i < 3 + k * 6; i++) noise(0.1 + Math.random() * 0.08, 0.45, 'bandpass', 700 + Math.random() * 1600, 260, pos, 0.08 + i * 0.07 + Math.random() * 0.05, 1.4);
+  },
+  chain(pos) { for (let i = 0; i < 7; i++) tone('triangle', 1900 + Math.random() * 2200, 1400, 0.05, 0.11, pos, i * 0.028); noise(0.22, 0.22, 'highpass', 3000, 5200, pos); },
+  wreck(pos) { sfx.clang(pos, 0.9); tone('sawtooth', 70, 380, 0.7, 0.14, pos, 0.05); noise(0.35, 0.5, 'lowpass', 900, 100, pos); },
   tbag(pos) { for (let i = 0; i < 3; i++) tone('sawtooth', 120 - i * 25, 40, 0.18, 0.3, pos, i * 0.1); },
   // scales of justice: the gavel lands with the stamp (0.1 s in); n bangs for a one-shot
   gavel(pos, n = 1) {
@@ -163,6 +181,7 @@ const LOOPDEF = {
   blower: { type: 'bandpass', f: 500, q: 0.6, vol: 0.5, osc: ['sawtooth', 68, 0.07] },
   soapy: { type: 'lowpass', f: 300, q: 3, vol: 0.32, osc: ['sine', 52, 0.1] }, // inside a soap bubble: low underwater rumble
   spin: { type: 'bandpass', f: 1200, q: 2, vol: 0.25, osc: ['sawtooth', 110, 0.08] },
+  roll: { type: 'lowpass', f: 240, q: 1.2, vol: 0.55, osc: ['sawtooth', 34, 0.06] }, // wrecking ball rumbling along the floor
 };
 
 export function loopSfx(name, on) {
@@ -186,6 +205,16 @@ export function loopSfx(name, on) {
     l.g.gain.setTargetAtTime(on ? l.def.vol : 0, ac.currentTime, 0.04);
     l.on = on;
   }
+}
+
+// a loop whose loudness follows something (0..1), e.g. the wrecking ball's rumble follows how fast it rolls
+export function loopLevel(name, k) {
+  if (!ac) return;
+  const was = !!(loops[name] && loops[name].on);
+  if (!(k > 0.02)) { if (was) loopSfx(name, false); return; }
+  loopSfx(name, true);
+  const l = loops[name];
+  if (!was || Math.abs((l.k || 0) - k) > 0.03) { l.k = k; l.g.gain.setTargetAtTime(l.def.vol * Math.min(1, k), ac.currentTime, 0.06); }
 }
 
 export function stopLoops() { for (const k in loops) loopSfx(k, false); }

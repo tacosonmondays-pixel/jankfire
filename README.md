@@ -58,7 +58,7 @@ Notes:
 | WASD | move |
 | Shift | run |
 | Space | jump (hold to bhop). Jump while grappling to launch off the rope with your momentum |
-| C / Ctrl | crouch; crouch while fast to slide. Spam it too long and your knees explode |
+| C / Ctrl | crouch; crouch while fast to slide. Spam it too long and your knees explode. As the Wrecking Ball: ground slam (in the air) / brake |
 | Left mouse | fire / swing / play a card / draw the bow (hold, release) |
 | Right mouse | aim down sights · **Knife: heavy stab** · Card Deck: pick a card |
 | E / mouse side buttons | grapple (hold) |
@@ -125,7 +125,7 @@ Coop wave bots and training dummies aren't on the scoreboard, so only their stre
 
 **Snowball:** barely hurts, but every hit adds frost. 4 hits freezes them solid for a moment; hit a frozen target and they shatter.
 
-**Bubble Wand (item):** G blows a stream of 4 slow, wobbly soap bubbles (2 charges, 15 s to refill each; they float about 10 m). The first enemy one touches is sealed in a giant soap bubble for 5 s: no moving, shooting, items or streaks, just looking around while it floats them up (2 m/s) and away from you (1.5 m/s). Then it pops and drops them: no fall damage, but over the void that's your kill. Any hit (bullet, melee, projectile, explosion) pops it instead of hurting them, so teammates can shoot a friend free and enemies can wait until they're over the void (shoot it open there and the kill is yours). You, your teammates and anyone in a Shield Bubble can't be bubbled; blow one at someone with a Reverse Card up and you're the one floating away. After a pop nobody can be bubbled again for a while: 1.5 s, or 60% of however long they were in (3 s after a full float), so two wands can't keep someone in one for good. Inside, everything sounds underwater and the world wobbles behind a rainbow soap film.
+**Bubble Wand (item):** G blows a stream of 4 slow, wobbly soap bubbles (2 charges, 15 s to refill each; they float about 10 m). The first enemy one touches is sealed in a giant soap bubble for 5 s: no moving, shooting, items or streaks, just looking around while it floats them up (2 m/s) and away from you (1.5 m/s). Then it pops and drops them: no fall damage, but over the void that's your kill. Any hit (bullet, melee, projectile, explosion) pops it instead of hurting them, so teammates can shoot a friend free and enemies can wait until they're over the void (shoot it open there and the kill is yours). You, your teammates, anyone in a Shield Bubble and a rolling Wrecking Ball can't be bubbled; blow one at someone with a Reverse Card up and you're the one floating away. After a pop nobody can be bubbled again for a while: 1.5 s, or 60% of however long they were in (3 s after a full float), so two wands can't keep someone in one for good. Inside, everything sounds underwater and the world wobbles behind a rainbow soap film.
 
 **Bow:** hold to draw, release to fire. Every arrow gets a random tip, shown on the HUD: regular, power, knockback, flame, explosion, gas, sleep.
 
@@ -146,8 +146,17 @@ Pick **3** in LOADOUT. Kills in one life (the count resets when you die) earn th
 | 4 | Chicken Strike: rain exploding chickens where you aim |
 | 5 | Scythe Rifle in slot 4: X switches to rifle mode, hold V to glitch dash |
 | 6 | Spinbot: 10 s of aimbot + spinning. You are now a cheater |
+| 6 | Wrecking Ball: 20 s as a giant steel demolition ball in third person: ram, chain-swing, ground slam (see below) |
 | 7 | Spy Satellite: every enemy shows through walls for 20 s |
 | 10 | Giant Duck: a giant black hole where you aim that pulls in everyone but you |
+
+**Wrecking Ball:** you curl up inside a 2.2 m riveted steel demolition ball (a stripe in your colour, a chain stub on top, your eyes peeking out of a slot) and the camera pulls out behind and above you. No guns for 20 s (a box at the top shows the time left, your speed and what a ram or a slam would do right now), but:
+- **Roll:** heavy and fast (about 95 km/h from just pushing), low friction so it keeps rolling, turns slowly, bounces off walls with a clang, falls hard. Space is a small hop, crouch on the floor brakes.
+- **Ram:** roll into people. Damage scales with your speed: 2 x your speed in m/s up to rolling top speed (from 6 m/s, so a slow roll barely taps them; 52 at a full-speed roll), then it climbs much faster: about 75 at 31 m/s, 97 at 36, 120 (the cap) from 41. So a chain swing or a big drop into someone is brutal. They get launched the way you were going. Teammates are safe.
+- **Chain (E):** the grapple becomes a heavy chain on a crane winch: it hauls you up while you hang or drag along, then lets you swing in long pendulum arcs that keep all your momentum. When it snaps tight your speed turns into swing instead of stopping you. Hold W to pump the swing higher (it only pushes while you're swinging that way). Jump to let go. Hook a person to reel yourself into them.
+- **Ground slam (C / Ctrl in the air):** straight down, very fast. The higher you were, the bigger it is: off a small hop it's 30 at the centre across 4 m, from 18 m up or more it's 150 across 10 m, falling off with distance, knocking everyone up and out. It bounces you back up 5 to 12 m (higher the higher you came from) so you can slam again: 1.5 s cooldown, hold crouch to chain them.
+- The server judges every ram and slam from its own positions, velocities and map (including how high you got); the client can't claim hits, and a ball hanging up on its chain can't slam the floor below. Slams don't go through walls or floors.
+- Code: `public/js/wreck.js` has the ball's looks, its chain, the third-person camera and the HUD box; the rolling, chain and slam physics are in `player.js` (`ballStep`, `ballHookStep`); rams and slams are judged in `server.js` (`tickBalls`, `onSlam`); the numbers are `WRECK` in `shared/weapons.js`.
 
 ## Maps
 

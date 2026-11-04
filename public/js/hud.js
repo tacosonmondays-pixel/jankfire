@@ -224,6 +224,33 @@ export const hud = {
     while (log.children.length > 8) log.firstChild.remove();
     setTimeout(() => d.remove(), 12000);
   },
+  // wrecking ball: seconds left, a draining bar, how hard you'd ram someone right now, and the slam: recharging, ready,
+  // or how big it would be from up here (left = null hides it)
+  ball(left, dur, sl) {
+    let el = $('ballTimer');
+    if (left == null) { if (el && el.style.display !== 'none') el.style.display = 'none'; return; }
+    if (!el) {
+      el = document.createElement('div'); el.id = 'ballTimer';
+      el.innerHTML = '<b></b><div class="bar"><i></i></div><div class="spd"></div><div class="slam"><i></i><span></span></div>';
+      $('hud').append(el);
+    }
+    el.style.display = 'block';
+    const ready = sl.ready >= 1, air = ready && sl.h != null && sl.size;
+    const kmh = Math.round((sl.speed || 0) * 3.6), ram = sl.ram || 0;
+    const key = left.toFixed(1) + '|' + Math.round(sl.ready * 20) + '|' + (air ? Math.round(sl.h) : '-') + '|' + kmh + '|' + ram;
+    if (el.dataset.key === key) return;
+    el.dataset.key = key;
+    el.querySelector('b').textContent = `WRECKING BALL · ${left.toFixed(1)}s`;
+    el.querySelector('.bar i').style.width = Math.max(0, Math.min(1, left / dur)) * 100 + '%';
+    el.querySelector('.spd').textContent = `${kmh} km/h · ${ram ? `RAM ${ram}` : 'too slow to ram'}`;
+    el.classList.toggle('ramming', ram >= 60);
+    el.classList.toggle('low', left < 4);
+    el.querySelector('.slam i').style.width = (air ? 8 + sl.size.k * 92 : Math.min(1, sl.ready) * 100) + '%';
+    el.querySelector('.slam span').textContent = !ready ? 'slam recharging...'
+      : air ? `CROUCH: SLAM from ${Math.round(sl.h)} m · ${Math.round(sl.size.dmg)} dmg` : 'GROUND SLAM: crouch in the air · E: chain';
+    el.classList.toggle('ready', ready);
+    el.classList.toggle('air', !!air);
+  },
   ping(ms) { $('ping').textContent = ms + 'ms'; },
   // scales of justice: the verdict on whoever you're aiming at, under the crosshair (null hides it)
   verdict(text, sub = '', cls = '') {

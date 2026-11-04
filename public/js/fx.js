@@ -99,6 +99,7 @@ export class PSys {
 
 const BEAM_GEO = new THREE.BoxGeometry(1, 1, 1).translate(0, 0, 0.5);
 const SPHERE_GEO = new THREE.IcosahedronGeometry(1, 1);
+const RING_GEO = new THREE.RingGeometry(0.86, 1, 40).rotateX(-Math.PI / 2); // flat on the floor
 const tmpV = new THREE.Vector3();
 
 export function makeBeam(color, opacity = 1) {
@@ -281,6 +282,32 @@ export const fx = {
   },
   dust(p, n = 8) {
     for (let i = 0; i < n; i++) smoke.spawn(p[0] + R(0.4), p[1] + 0.05, p[2] + R(0.4), R(3), 0.5 + Math.random(), R(3), 0.5, 0.2, 0.7, 0xc8b89a, 0xa89878, 0.5, 0, 3);
+  },
+  // a flat ring racing out along the floor (shockwaves)
+  ring(p, radius, color = 0xffffff, life = 0.45) {
+    const m = new THREE.Mesh(RING_GEO, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1, depthWrite: false, side: THREE.DoubleSide }));
+    m.position.set(p[0], p[1] + 0.12, p[2]);
+    scene.add(m);
+    timed.push({ mesh: m, life, ml: life, kind: 'flash', r: radius });
+  },
+  // wrecking ball ground slam: shockwave rings, a wall of dust rolling outward, chunks of floor, sparks.
+  // radius = how far it hurts, k = how big a slam it was (0 = off a hop, 1 = from way up)
+  slam(p, radius, k = 0.5) {
+    this.ring(p, radius * 1.1, 0xffffff, 0.3 + k * 0.15);
+    this.ring(p, radius * 0.8, 0xd8c39a, 0.55 + k * 0.25);
+    if (k > 0.5) this.ring(p, radius * 1.35, 0xfff2b0, 0.7);
+    const nd = 24 + Math.round(k * 40), sp = radius * 1.4;
+    for (let i = 0; i < nd; i++) {
+      const a = (i / nd) * Math.PI * 2 + R(0.1), s = sp * (0.6 + Math.random() * 0.7);
+      smoke.spawn(p[0] + Math.cos(a) * 0.9, p[1] + 0.2 + Math.random() * 0.5, p[2] + Math.sin(a) * 0.9, Math.cos(a) * s, 0.6 + Math.random() * (1 + k * 2), Math.sin(a) * s,
+        0.7 + Math.random() * 0.6 + k * 0.4, 0.6 + k * 0.4, 2 + k * 1.6, 0xd6c6a6, 0x9a8a6a, 0.75, 0, 2.6);
+    }
+    for (let i = 0; i < 16 + k * 30; i++) {
+      const a = Math.random() * Math.PI * 2, s = 3 + Math.random() * (5 + k * 8);
+      misc.spawn(p[0] + R(0.8), p[1] + 0.2, p[2] + R(0.8), Math.cos(a) * s, 5 + Math.random() * (6 + k * 9), Math.sin(a) * s,
+        1 + Math.random() * 0.8, 0.14 + Math.random() * 0.12 + k * 0.08, 0.12, Math.random() < 0.5 ? 0x8a7e6a : 0x5e554a, 0x3a342c, 1, 26, 0.3);
+    }
+    for (let i = 0; i < 12 + k * 20; i++) fire.spawn(p[0] + R(0.5), p[1] + 0.3, p[2] + R(0.5), R(11), 2 + Math.random() * 7, R(11), 0.25 + Math.random() * 0.2, 0.14, 0.04, 0xfff2b0, 0xff7a1a, 1, 18, 1);
   },
   update(dt) {
     fire.update(dt); smoke.update(dt); misc.update(dt); blood.update(dt);

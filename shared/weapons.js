@@ -200,6 +200,7 @@ export const STREAKS = {
   chickenstrike: { kills: 4, name: 'Chicken Strike', desc: 'rain exploding chickens where you aim', deploy: true },
   scythe: { kills: 5, name: 'Scythe Rifle', desc: 'X: rifle mode · hold V: glitch dash', auto: true },
   spinbot: { kills: 6, name: 'Spinbot', desc: 'aimbot + spinbot for 10s. you are now a cheater.', auto: true, dur: 10 },
+  wreckingball: { kills: 6, name: 'Wrecking Ball', desc: 'become a giant steel wrecking ball for 20s: ram people (faster = harder), swing on the chain (E, W pumps it), crouch in the air to ground slam (higher = bigger)', auto: true, dur: 20 },
   satellite: { kills: 7, name: 'Spy Satellite', desc: 'see every enemy through walls for 20s', auto: true, dur: 20 },
   giantduck: { kills: 10, name: 'Giant Duck', desc: 'a giant black hole where you aim that pulls in everyone but you', deploy: true },
 };
@@ -270,4 +271,28 @@ export function validStreaks(list) {
   for (const id of DEFAULT_LOADOUT.streaks) if (out.length < 3 && !out.includes(id)) out.push(id);
   for (const id of Object.keys(STREAKS)) if (out.length < 3 && !out.includes(id)) out.push(id);
   return out.sort((a, b) => STREAKS[a].kills - STREAKS[b].kills);
+}
+
+// ------------------------------------------------------------ wrecking ball killstreak
+// the client rolls the ball; the server judges rams + slams with these same numbers.
+FLAGS.BALL = 4096; // set in your snapshots while you're the ball (the server only believes it if you activated one)
+// not a gun, just the name + colour rams and slams show in the kill feed
+WEAPONS.wreck = { slot: null, kind: 'wreck', name: 'Wrecking Ball', color: '#b8c4d0' };
+// ram: see ramDmg. slam: sized by how high you were when you started it, from a hop (h0 m: slamDmg[0] at the centre,
+// slamR[0] m across the floor) up to h1 m or more (slamDmg[1], slamR[1]).
+export const WRECK = {
+  r: 1.1, ramMin: 6, ramMul: 2, ramKnee: 26, ramMul2: 4.5, ramMax: 120, ramCd: 600, ramKb: 8, ramKbMul: 0.9, ramKbMax: 60, ramUp: 6, ramReach: 0.75,
+  h0: 0.5, h1: 18, slamDmg: [30, 150], slamR: [4, 10], slamKb: [12, 34], slamUp: [7, 20], slamCd: 1.5, slamV: 62,
+};
+// what ramming someone at sp m/s does: 2 x speed up to rolling top speed (26 m/s = 52), then it climbs much faster so
+// a chain swing or a big drop hurts a lot more than just rolling (about 75 at 31 m/s, 97 at 36, 120 from 41)
+export function ramDmg(sp) {
+  const W = WRECK;
+  return sp < W.ramMin ? 0 : Math.min(W.ramMax, sp <= W.ramKnee ? W.ramMul * sp : W.ramMul * W.ramKnee + (sp - W.ramKnee) * W.ramMul2);
+}
+// how big a slam from h metres up is (k: 0 = off a hop, 1 = from 18 m up or more)
+export function slamSize(h) {
+  const k = Math.max(0, Math.min(1, (h - WRECK.h0) / (WRECK.h1 - WRECK.h0)));
+  const at = (a) => a[0] + (a[1] - a[0]) * k;
+  return { k, dmg: at(WRECK.slamDmg), r: at(WRECK.slamR), kb: at(WRECK.slamKb), up: at(WRECK.slamUp) };
 }

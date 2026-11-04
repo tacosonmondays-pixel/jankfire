@@ -30,6 +30,8 @@ import { GAMES, GAME_ORDER, TEAMS } from '/shared/modes.js';
 import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
 import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, HAIRS, TOPS, BOTTOMS } from '/shared/looks.js';
+import { startBall, endBall, ballOn, BS } from './player.js';
+import { updateWreck, ballCam, wreckFx, wreckDied } from './wreck.js';
 import { account, restore, login, register, logout, saveProfile, leaderboard as fetchLeaders } from './account.js';
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 
@@ -156,6 +158,7 @@ function resetWorldState() {
   G.joined = false;
   ME.alive = false;
   releaseHook();
+  endBall();
   stopLoops();
   for (const r of G.remotes.values()) r.dispose();
   G.remotes.clear(); G.names.clear(); G.skins.clear();
@@ -1056,6 +1059,7 @@ net.on('kill', (m) => {
     const vi = G.names.get(m.v) || {};
     const replaced = kfx && playKillFx(kfx, { pos: victim.pos.slice(), vel: m.vel || victim.vel, yaw: victim.yaw, color: victim.color, look: vi.look, name: vi.name });
     if (replaced) victim.ch.root.visible = false; else victim.breakApart(m.vel || victim.vel);
+    wreckDied(victim, m.vel); // they died as a wrecking ball: it bursts open
   } else if (m.v === G.myId && kfx) playKillFx(kfx, { pos: ME.pos.slice(), vel: m.vel || ME.vel, yaw: ME.yaw, color: G.myColor, look: validLook(G.settings.look, myAchs()), name: G.myName });
   const dummy = victim && victim.bot && victim.name === 'Dummy';
   let parts;
@@ -1241,6 +1245,9 @@ net.on('fx', (m) => {
   } else if (m.k === 'strike') {
     sfx.strike(m.p);
     if (m.n >= 2) hud.msg(m.n >= 3 ? 'STRIKE' : 'SPARE', 1.2, 'brag');
+  } else if (m.k === 'slam' || m.k === 'ram') { // wrecking ball
+    recordEv(m);
+    wreckFx(m);
   } else if (m.k === 'thwack') {
     sfx.thwack(m.p);
   } else if (m.k === 'verdict') {
@@ -1302,6 +1309,7 @@ function frame(t) {
     if (spinning) $('cheat').textContent = `JANKHAX v6.9\n[x] AIMBOT\n[x] SPINBOT\n[x] NO SPREAD\n${((G.spinUntil - now) / 1000).toFixed(1)}s left`;
     G.spinning = spinning;
     updateWeapons(dt, now);
+    if (ballOn(now)) { W.flags |= FLAGS.BALL; if (BS.snapNow) { BS.snapNow = false; sendT = 0; } } // wrecking ball (a slam dive goes out right away: the server checks it)
 
     sendT -= dt;
     if (sendT <= 0 && ME.alive) {
@@ -1416,6 +1424,7 @@ function frame(t) {
   const sh = G.shake * G.shake * 0.08;
   const pu = G.punch || { x: 0, y: 0, z: 0 };
   cam.rotation.set(Math.max(-1.57, Math.min(1.57, ME.pitch + pOff + pu.x)) + (Math.random() - 0.5) * sh, ME.yaw + pu.y + (Math.random() - 0.5) * sh, roll + pu.z);
+  if (!RP.active) ballCam(cam, dt); // wrecking ball: third person, behind and above the ball
   const hs = hspeed();
   const fovTarget = (S.fov + (S.fovKick ? Math.min(35, hs * 0.3) + (ME.sprinting ? 6 : 0) : 0)) / (W.zoom || 1);
   fovNow += (fovTarget - fovNow) * Math.min(1, dt * (W.aim > 0 ? 14 : 6));
@@ -1433,6 +1442,7 @@ function frame(t) {
   const shHit = G.joined ? raycast([ME.pos[0], ME.pos[1] + 0.1, ME.pos[2]], [0, -1, 0], 120, BOXES) : null;
   myShadow.visible = !!shHit && ME.alive && !ME.onGround && !RP.active;
   if (shHit) myShadow.position.set(ME.pos[0], shHit.point[1] + 0.03, ME.pos[2]);
+  updateWreck(dt, now, RP.active, myShadow, myRope); // your own wrecking ball, its chain (instead of your rope), rumble + timer
   if (now < (G.burnUntil || 0)) fx.burn([ME.pos[0] + Math.sin(ME.yaw) * -0.8, ME.pos[1], ME.pos[2] - Math.cos(ME.yaw) * 0.8]);
   $('reverseFx').style.opacity = now < W.reverseUntil ? 1 : 0;
 
@@ -1450,6 +1460,7 @@ function frame(t) {
   skinTick(dt, now);
   updateWorld(dt);
   G.vmScene.visible = G.joined && !RP.active;
+  if (ballOn(now)) G.vmScene.visible = false; // weapons are holstered inside the ball
   renderFrame();
   if ((screen === 'cosmetics' || screen === 'character') && !$('menu').classList.contains('hidden')) renderPreview(dt);
 }
@@ -1495,6 +1506,7 @@ net.on('streak', (m) => {
   if (m.reset) { // you died: the count starts over and active stuff ends. earned-but-unused streaks stay in the tray
     G.streakN = 0; G.satUntil = 0; G.spinUntil = 0; ME.moonUntil = 0;
     loseScythe();
+    endBall();
     renderStreak(0);
     return;
   }
@@ -1516,6 +1528,7 @@ net.on('streak', (m) => {
   if (m.reward === 'satellite') G.satUntil = performance.now() + st.dur * 1000;
   if (m.reward === 'spinbot') G.spinUntil = performance.now() + st.dur * 1000;
   if (m.reward === 'scythe') grantScythe();
+  if (m.reward === 'wreckingball') startBall(m.dur || st.dur);
   toast(st.desc, 2500);
 });
 

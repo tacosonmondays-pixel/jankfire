@@ -126,6 +126,22 @@ export function streakIcon(id) {
   } else if (id === 'giantduck') {
     circle(32, 34, 24, '#120018'); x.strokeStyle = '#b07dff'; x.lineWidth = 2; x.beginPath(); x.arc(32, 34, 27, 0, Math.PI * 2); x.stroke();
     x.strokeStyle = '#000'; x.lineWidth = 3; circle(28, 38, 11, '#ffd23b'); circle(38, 26, 7, '#ffd23b'); x.fillStyle = '#ff7a1a'; x.fillRect(44, 25, 7, 4);
+  } else if (id === 'wreckingball') {
+    // riveted steel ball on a chain, hazard stripe, eyes peeking out of the slot
+    for (const [w, c] of [[4.5, '#000'], [2, '#b8c4d0']]) { // chain links: dark outline, light steel
+      x.lineWidth = w; x.strokeStyle = c;
+      for (let i = 0; i < 3; i++) { x.beginPath(); x.ellipse(32, 4 + i * 5.5, i & 1 ? 1.2 : 2.8, 3.4, 0, 0, Math.PI * 2); x.stroke(); }
+    }
+    x.lineWidth = 2; x.strokeStyle = '#000'; x.fillStyle = '#8a96a4'; x.fillRect(28, 17, 8, 6); x.strokeRect(28, 17, 8, 6);
+    x.strokeStyle = '#000'; x.lineWidth = 3; circle(32, 41, 20, '#98a1ab');
+    x.save(); x.beginPath(); x.arc(32, 41, 18.5, 0, Math.PI * 2); x.clip();
+    for (let i = -3; i < 6; i++) { x.fillStyle = i & 1 ? '#111' : '#ffe14d'; x.beginPath(); x.moveTo(6 + i * 9, 50); x.lineTo(15 + i * 9, 50); x.lineTo(21 + i * 9, 42); x.lineTo(12 + i * 9, 42); x.fill(); }
+    x.fillStyle = '#ffffff'; x.globalAlpha = 0.35; x.beginPath(); x.ellipse(24, 30, 6, 3.5, -0.6, 0, Math.PI * 2); x.fill(); x.globalAlpha = 1;
+    x.restore();
+    x.fillStyle = '#16181c'; x.fillRect(20, 31, 24, 7);
+    x.fillStyle = '#fff'; x.fillRect(24, 32, 5, 4); x.fillRect(35, 32, 5, 4);
+    x.fillStyle = '#000'; x.fillRect(26, 33, 2, 3); x.fillRect(37, 33, 2, 3);
+    x.fillStyle = '#ccd3db'; for (const [rx, ry] of [[15, 41], [49, 41], [32, 58], [20, 54], [44, 54], [20, 27], [44, 27]]) x.fillRect(rx - 1, ry - 1, 2.5, 2.5);
   }
   const url = c.toDataURL();
   streakCache.set(id, url);

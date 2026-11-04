@@ -7,6 +7,7 @@ import { G } from './ctx.js';
 import { buildCharacter, buildWeapon, makeNameTag, makeShadow, cardTex, setKatana } from './models.js';
 import { fx, makeBeam, setBeam } from './fx.js';
 import { emitSkinFx } from './skins.js';
+import { wreckRemote, ballBoxes, wreckDispose } from './wreck.js';
 import { jankify } from './jank.js';
 
 // players ignore fog, glow a bit, and get an outline in their colour so you can spot them across the map
@@ -137,6 +138,7 @@ export class Remote {
 
   // what you can hit matches what you see: far-away players are drawn (and hit-tested) bigger on your screen
   hitboxes() {
+    if ((this.f & FLAGS.BALL) && this.alive) return ballBoxes(this.pos, this.distScale || 1); // a wrecking ball is one big ball
     const k = (this.distScale || 1);
     const boxes = playerBoxes(this.pos);
     if (k === 1) return boxes;
@@ -285,6 +287,7 @@ export class Remote {
       this.rope.visible = true;
       setBeam(this.rope, this.muzzle(), this.g, 0.05);
     } else this.rope.visible = false;
+    wreckRemote(this, dt, now); // wrecking ball killstreak: a steel ball (and a chain) instead of the mannequin
 
     const sh = raycast([x, y + 0.1, z], [0, -1, 0], 80, BOXES);
     if (sh) { this.shadow.visible = true; this.shadow.position.set(x, sh.point[1] + 0.03, z); } else this.shadow.visible = false;
@@ -305,6 +308,7 @@ export class Remote {
     G.scene.remove(this.ch.root);
     G.scene.remove(this.rope);
     G.scene.remove(this.shadow);
+    wreckDispose(this);
   }
 }
 
