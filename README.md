@@ -65,6 +65,7 @@ Notes:
 | R | reload (Card Deck: redraw) |
 | F | inspect your weapon · **Plant & Defuse: hold F to plant / defuse** |
 | G | **use your item** (grenade, medkit, shield bubble, duck, smoke) |
+| Z | **spray** your graffiti on the wall, floor or ceiling you're looking at (one at a time, every 10 s) |
 | 5 / 6 / 7 | **use your killstreaks** (the tray on the right shows which are ready) |
 | 1 / 2 / 3, wheel, Q | primary / secondary / melee, last weapon. 4 = Scythe Rifle if you have it |
 | V (hold) / X | Scythe Rifle: glitch dash / switch to rifle mode |
@@ -218,7 +219,7 @@ Achievement accessories:
 ## Cosmetics + containers
 
 **Skins** are different models and belong to one weapon each, like a CS knife: every weapon has at least one (Toy Blaster and Bullpup for the AR, Pocket Uzi, Double Barrel, Old Gatling, Musket, Flintlock, Turkey Launcher, Hand Cannon, Bunch Blaster, Compound Bow, Fat Cigar, Hair Dryer, Champagne, Skip Card, Ice Cube, Ladle, Croc, Reaper scythe, plus Karambit / Butterfly / Switchblade / Cleaver / Bowie / Kitchen knives, Foam Finger and Bear Paw slappers, the Croissant).
-**Wraps** (paint), **hats** and **effects** go on **every weapon at once** by default (untick the box in COSMETICS to dress weapons one by one). The Scythe Rifle can be dressed too. One **kill effect** and one **grapple skin** per player.
+**Wraps** (paint), **hats** and **effects** go on **every weapon at once** by default (untick the box in COSMETICS to dress weapons one by one). The Scythe Rifle can be dressed too. One **kill effect**, one **grapple skin** and one **spray** per player.
 
 **CONTAINERS** (main menu) is where you open them:
 
@@ -226,13 +227,15 @@ Achievement accessories:
 |---|---|
 | Crate | weapon skins |
 | Duffel Bag | hats, effects, kill effects, grapples |
-| Box | wraps |
+| Box | wraps, sprays |
 
 New accounts get one of each. Win a round (Online needs 2+ real players, Bots needs 3+ bots) for a random container; coop gives one every 5 waves. Odds: Common 55%, Rare 28%, Epic 13%, Legendary 4%. Own everything in a type and it turns into 100 XP.
 
 **Kill effects** (what happens to people you kill): Gibs, Confetti (free), Tombstone, Make It Rain, Missing Texture, Balloons, Chickens, Blue Screen, Yeet, Ascend, Big Duck.
 
 **Grapple skins** (your rope and the thing on the end, everyone sees it, each lands with its own sound): Rope + iron hook (free), Chain + claw, Candy Cane, Plunger, Jungle Vine + wooden hook, Laser + emitter, Sticky Hand (stretchy), Rainbow + star. Pick one in COSMETICS (hover a card to try it in the preview).
+
+**Sprays** (press **Z**): graffiti you paint where you're looking, up to 6 m away. Flat on walls, turned to face you on floors and ceilings, cut off at edges and doorways. One per player (a new one replaces your old one), every 10 s, wiped when the map changes; people who join later still see them. Free: GG (the default), EZ, WP, GL. From boxes: L, NOOB, ?, OOF (common), RIP, Heart, Smiley (rare), Skull, Flame, Rubber Duck (epic), the rainbow JANKFIRE logo (legendary). Pick yours in COSMETICS.
 
 The hotbar at the bottom shows a picture of each weapon you carry, with your skin on it, plus your item and its charges.
 
@@ -256,5 +259,5 @@ Prompts live in `tools/models.json`; models land in `public/models/<id>.glb` and
 - `server.js`: static files + WebSocket `/ws`. Rooms: shared Online and Coop, private Bots and Training. Movement is client-authoritative; the server owns HP, kills, projectiles, arrows, cards, items, frost, streaks, modes (teams, tags, the bomb), the map/mode vote, cosmetics ownership, achievements, round recordings for highlights, and bots (including their objective routes and grappling).
 - `server/`: accounts, stats, containers, leaderboard (`/api/*`), stored in a local file or Supabase.
 - `shared/`: `map.js` maps + box physics + bot routes · `modes.js` game modes, teams, bomb rules, vote timing · `weapons.js` weapons, items, killstreaks, loadout rules · `cosmetics.js` skins/wraps/effects/kill effects/hats + crates · `looks.js` character outfits · `verdict.js` the Scales of Justice verdict (server decides, client previews).
-- `public/js/`: `main.js` menus + net + loop · `player.js` movement · `weapons.js` viewmodels, recoil springs, ADS, items · `anim.js` swing/inspect keyframes (per-knife styles) · `speedlines.js` · `remote.js` other players · `replay.js` killcam + highlights · `killfx.js` kill effects · `scales.js` Scales of Justice: verdict readout, tipping beam, pendulum pans, stamps · `cards.js` name cards · `objective.js` bomb sites, tags, team bar · `icons.js` hotbar/item/streak pictures · `models.js` · `skins.js` · `fx.js` · `world.js` · `scenery.js` the land around each map · `hud.js` · `audio.js`.
+- `public/js/`: `main.js` menus + net + loop · `player.js` movement · `weapons.js` viewmodels, recoil springs, ADS, items · `anim.js` swing/inspect keyframes (per-knife styles) · `speedlines.js` · `remote.js` other players · `replay.js` killcam + highlights · `killfx.js` kill effects · `scales.js` Scales of Justice: verdict readout, tipping beam, pendulum pans, stamps · `sprays.js` sprays (drawn on a canvas, decals cut to the map) · `cards.js` name cards · `objective.js` bomb sites, tags, team bar · `icons.js` hotbar/item/streak pictures · `models.js` · `skins.js` · `fx.js` · `world.js` · `scenery.js` the land around each map · `hud.js` · `audio.js`.
 - `desktop/`: the Electron app (launcher, in-app server, display modes).

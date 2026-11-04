@@ -93,11 +93,32 @@ export const COSMETICS = {
     sticky: { name: 'Sticky Hand', rarity: 'epic', desc: 'the vending machine toy. stretchy' },
     rainbow: { name: 'Rainbow', rarity: 'legendary', desc: 'colour-cycling beam with a star on the end' },
   },
+  // graffiti you paint on walls with Z. one per player. the art is drawn in public/js/sprays.js
+  spray: {
+    gg: { name: 'GG', rarity: 'free', desc: 'good game' },
+    ez: { name: 'EZ', rarity: 'free', desc: 'too easy' },
+    wp: { name: 'WP', rarity: 'free', desc: 'well played' },
+    gl: { name: 'GL', rarity: 'free', desc: 'good luck (you need it)' },
+    l: { name: 'L', rarity: 'common', desc: 'take the L' },
+    noob: { name: 'NOOB', rarity: 'common', desc: 'for the new guy' },
+    what: { name: '?', rarity: 'common', desc: 'what' },
+    oof: { name: 'OOF', rarity: 'common', desc: 'big oof' },
+    rip: { name: 'RIP', rarity: 'rare', desc: 'press F' },
+    heart: { name: 'Heart', rarity: 'rare', desc: 'spread love. and bullets' },
+    smiley: { name: 'Smiley', rarity: 'rare', desc: 'have a nice day' },
+    skull: { name: 'Skull', rarity: 'epic', desc: 'spooky' },
+    flame: { name: 'Flame', rarity: 'epic', desc: 'this wall is on fire' },
+    duck: { name: 'Rubber Duck', rarity: 'epic', desc: 'quack' },
+    logo: { name: 'JANKFIRE', rarity: 'legendary', desc: 'the rainbow logo' },
+  },
 };
+// sprays: size of the decal (m), how far Z reaches (m), cooldown (s), how many are shown at once, the one you start with
+export const SPRAY = { size: 1.2, reach: 6, cd: 10, max: 24, def: 'gg' };
+export function ownedSpray(id, inv) { return owns(inv, 'spray', id) ? id : SPRAY.def; }
 export const TYPES = ['finish', 'hat', 'effect', 'model'];
-// everything you can roll: the four weapon-skin parts plus kill effects and grapple skins
-export const LOOT_TYPES = [...TYPES, 'kill', 'grapple'];
-export const TYPE_NAMES_ALL = { finish: 'Wrap', hat: 'Hat', effect: 'Effect', model: 'Skin', kill: 'Kill Effect', grapple: 'Grapple' };
+// everything you can roll: the four weapon-skin parts plus kill effects, grapple skins and sprays
+export const LOOT_TYPES = [...TYPES, 'kill', 'grapple', 'spray'];
+export const TYPE_NAMES_ALL = { finish: 'Wrap', hat: 'Hat', effect: 'Effect', model: 'Skin', kill: 'Kill Effect', grapple: 'Grapple', spray: 'Spray' };
 export function ownedKill(id, inv) { return owns(inv, 'kill', id) ? id : 'none'; }
 // hasOwn: ids come off the network, so '__proto__' and friends must not look like catalog entries
 export function ownedGrapple(id, inv) { return typeof id === 'string' && Object.hasOwn(COSMETICS.grapple, id) && owns(inv, 'grapple', id) ? id : 'rope'; }
@@ -129,11 +150,11 @@ export function unowned(inv) {
   return out;
 }
 
-// three kinds of loot: crates have weapon skins, duffel bags have hats + effects, boxes have wraps
+// three kinds of loot: crates have weapon skins, duffel bags have hats + effects, boxes have the paint (wraps + sprays)
 export const CONTAINERS = {
   crate: { name: 'Crate', plural: 'Crates', types: ['model'], desc: 'weapon skins', field: 'crates' },
   bag: { name: 'Duffel Bag', plural: 'Duffel Bags', types: ['hat', 'effect', 'kill', 'grapple'], desc: 'hats, effects, kill effects + grapples', field: 'bags' },
-  box: { name: 'Box', plural: 'Boxes', types: ['finish'], desc: 'wraps', field: 'boxes' },
+  box: { name: 'Box', plural: 'Boxes', types: ['finish', 'spray'], desc: 'wraps + sprays', field: 'boxes' },
 };
 export function randomContainer(rnd = Math.random) { const r = rnd(); return r < 0.45 ? 'box' : r < 0.8 ? 'bag' : 'crate'; }
 

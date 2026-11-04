@@ -470,3 +470,9 @@ body.replaying #mlg { display: none; }
 .gcard.on { border-color: var(--yellow); color: var(--yellow); }
 .gcard.locked { opacity: 0.45; border-style: dashed; border-color: var(--rc, #555); }
 .gcard.locked span::before { content: '🔒 '; }
+/* sprays: chips with a little picture of the graffiti on a concrete square */
+.chips.sprays .chip { position: relative; display: inline-flex; flex-direction: column; align-items: center; gap: 2px; width: 76px; padding: 3px 2px 2px; font-size: 11px; }
+.chips.sprays .chip img { width: 60px; height: 60px; image-rendering: pixelated; background: #5d5d66; border: 1px solid #000; }
+.chips.sprays .chip.locked::before { position: absolute; left: 3px; top: 2px; font-size: 11px; }
+.chips.sprays .chip span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#rollResult .sprayPic { display: block; width: 96px; height: 96px; margin: 6px auto 0; image-rendering: pixelated; background: #5d5d66; border: 2px solid #000; }
