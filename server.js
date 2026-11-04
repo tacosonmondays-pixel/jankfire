@@ -18,6 +18,7 @@ import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, canDefuse } from './shared/modes.js';
 import { WEAPONS, SLOTS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, validStreaks, fireRate } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
+import { installEcon } from './server/econ.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -305,6 +306,8 @@ class Room {
     return lo;
   }
   sendLoadout(p) {
+    if (this.isEcon()) { this.econLoadout(p); return; } // Plant & Defuse economy: the gear you bought, not a loadout
+    if (p.ec) this.econEnd(p);
     if (p.isBot) { if (GAMES[this.game].random && !p.ai.dummy) { p.w = pick(BOT_GUNS); p.ai.ammo = WEAPONS[p.w].mag || 1; } return; }
     const rnd = (this.mode === 'ffa' || this.mode === 'bots') && GAMES[this.game].random;
     if (rnd) { p.forced = true; send(p, { t: 'loadout', lo: this.randomLoadout() }); }
@@ -372,6 +375,7 @@ class Room {
     if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && has(GAMES, m.cfg.game) && !this.humans().length) this.setGame(m.cfg.game);
     this.joinTeam(p);
     if (p.team) p.pos = this.pickSpawn(false, p);
+    if (this.isEcon()) this.econJoin(p);
     this.players.set(p.id, p);
     send(p, {
       t: 'welcome', id: p.id, name, color: p.color, pos: p.pos, q: p.seq, mode: this.mode, cfg: this.cfg,
@@ -392,6 +396,7 @@ class Room {
     if (this.mode === 'ffa' || this.mode === 'coop') this.broadcast({ t: 'chat', id: 0, m: `${name} joined` });
     if (this.mode === 'bots') this.fillBots();
     if (this.mode === 'bots' && this.humans().length === 1 && this.game !== 'dm') this.startRound();
+    if (process.env.JF_FFA_BOMB) this.econTestStart(); // test knob
     if (this.mode === 'training') this.spawnDummies();
     console.log(`+ ${name} (#${p.id}) -> ${this.id}`);
     return p;
@@ -400,6 +405,7 @@ class Room {
   remove(p) {
     flushStats(p);
     if (this.bomb && this.bomb.carrier === p.id) this.dropBomb(p.pos, p);
+    if (this.isEcon()) this.econLeave(p);
     this.players.delete(p.id);
     // whatever they threw goes with them (with no owner it would ignore teams and bubbles); their holes and gas go inert
     for (const pr of this.projectiles.values()) if (pr.o === p.id) this.removeProj(pr);
@@ -419,6 +425,7 @@ class Room {
     });
     b.ai.ammo = WEAPONS[b.w].mag || 1;
     if (!opts.dummy) { this.joinTeam(b); if (b.team) b.pos = this.pickSpawn(true, b); }
+    if (!opts.dummy && this.isEcon()) this.econJoin(b);
     this.players.set(b.id, b);
     this.broadcast({ t: 'pj', ...this.info(b) });
     return b;
@@ -509,7 +516,7 @@ class Room {
     if (t && this.friendly(b, t)) { ai.target = 0; ai.seenAt = 0; t = null; } // teams got reshuffled: that's a teammate now
     let wx = 0, wz = 0, jump = false;
     const w = WEAPONS[b.w];
-    const pref = b.w === 'sniper' ? [25, 60] : b.w === 'shotgun' ? [3, 9] : b.w === 'marbles' ? [1.5, 4] : b.w === 'chicken' ? [10, 30] : [7, 22];
+    const pref = w.kind === 'melee' ? [0, 1.2] : b.w === 'sniper' ? [25, 60] : b.w === 'shotgun' ? [3, 9] : b.w === 'marbles' ? [1.5, 4] : b.w === 'chicken' ? [10, 30] : [7, 22];
     if (t && t.alive) {
       const e = eyeOf(b), tc = [t.pos[0], t.pos[1] + 1.1, t.pos[2]];
       const dx = tc[0] - e[0], dy = tc[1] - e[1], dz = tc[2] - e[2];
@@ -544,7 +551,7 @@ class Room {
     }
     ai.navJump = false;
     // grappling: chase people who are far / up high / out of sight, save yourself when falling, show off sometimes
-    if (!ai.hook && n >= (ai.nextHook || 0) && this.mode !== 'training') {
+    if (!ai.hook && n >= (ai.nextHook || 0) && this.mode !== 'training' && !this.hookOff()) {
       const skill = ai.diff === 'easy' ? 0.35 : ai.diff === 'hard' ? 1 : 0.7;
       const below = !b.onGround && !raycast([b.pos[0], b.pos[1] + 0.5, b.pos[2]], [0, -1, 0], 40, boxes);
       let want = null;
@@ -657,6 +664,7 @@ class Room {
     return ids;
   }
   botGoal(b) {
+    if (this.isEcon()) { const eg = this.econBotGoal(b); if (eg) return eg; }
     const B = this.bomb;
     if (B && this.game === 'bomb' && B.ph !== 'done' && !B.between) {
       const sites = this.map.sites || [];
@@ -690,6 +698,7 @@ class Room {
   }
 
   botFire(b, t, D) {
+    if (this.isEcon() && !this.econBotShot(b, t, D)) return;
     const w = WEAPONS[b.w], n = now();
     const iv = w.rate ? 1000 / fireRate(w, b.hp) : w.cd * 1000;
     if (w.mag) {
@@ -895,6 +904,7 @@ class Room {
   damage(t, amt, attacker, w, hs, from) {
     if (amt <= 0 || this.hitBlocked(t, attacker, w, from)) return false;
     if (attacker && attacker.isBot && !t.isBot && this.mode !== 'bots') amt *= 0.6; // coop bots hit softer
+    if (this.isEcon()) amt = this.econArmor(t, amt, attacker, w, hs);
     t.hp -= amt;
     t.lastHs = !!hs;
     if (hs && attacker && attacker !== t && attacker.acct && this.mode !== 'training') stat(attacker, 'headshots', 1);
@@ -991,7 +1001,7 @@ class Room {
     if (killer && killer !== t) {
       killer.kills++;
       killer.streak = (killer.streak || 0) + 1;
-      if (!killer.isBot && this.mode !== 'training') {
+      if (!killer.isBot && this.mode !== 'training' && this.streaksOn()) {
         // your 3 picked streaks: earn one and it waits in your tray until you use it (keys 5 / 6 / 7)
         for (const id of validStreaks(killer.streaks)) {
           const st = STREAKS[id];
@@ -1027,6 +1037,7 @@ class Room {
     this.broadcast({ t: 'kill', k: killer && killer !== t ? killer.id : 0, v: t.id, w, via, vel: t.vel.map(r2), pos: t.pos.map(r2), yaw: r2(t.yaw || 0), fx: kfx, rs: Math.max(0, t.minRespawnAt - now()) });
     t.lastAttacker = 0;
     if (t.isBot && this.mode === 'coop') { setTimeout(safe('coop', () => { if (this.players.get(t.id) === t) this.remove(t); }), 50); }
+    if (this.isEcon()) this.econOnKill(t, killer, w, via);
   }
   // is this kill the play of the round? multikills, speed, distance and void kills score higher
   hlCandidate(k, t, w) {
@@ -1574,6 +1585,7 @@ class Room {
   }
 
   handle(p, m) {
+    if (this.isEcon() && this.econHandle(p, m)) return;
     switch (m.t) {
       case 's': {
         if (!p.alive || m.q !== p.seq) return;
@@ -1707,7 +1719,8 @@ class Room {
       const n = now();
       r.bomb = { att: b.att, ph: b.ph, n: b.n, wins: [b.wins[1], b.wins[2]], carrier: b.carrier, drop: b.drop, p: b.p, site: b.site,
         left: Math.max(0, (b.ph === 'planted' ? b.explodeAt : b.between || b.ends) - n),
-        act: b.act ? { k: b.act.kind, by: b.act.id, f: Math.min(1, (n - b.act.start) / ((b.act.kind === 'plant' ? BOMB.plant : BOMB.defuse) * 1000)) } : 0 };
+        act: b.act ? { k: b.act.kind, by: b.act.id, f: Math.min(1, (n - b.act.start) / this.actMs(b.act)) } : 0 };
+      if (this.isEcon()) this.econRoundInfo(r);
     }
     return r;
   }
@@ -1858,6 +1871,7 @@ class Room {
     b.n++;
     Object.assign(b, { ph: 'live', site: null, p: null, drop: null, explodeAt: 0, act: null, between: 0, ends: now() + BOMB.roundTime * 1000, carrier: 0 });
     for (const p of this.players.values()) if (p.ai) { p.ai.site = null; p.ai.route = null; }
+    if (this.isEcon()) this.econNewRound(first); // buy phase, payouts carried over, the half's credit reset
     this.projectiles.clear(); this.peels.clear(); this.holes.clear();
     this.resetWorld();
     this.giveBomb();
@@ -1889,6 +1903,7 @@ class Room {
     b.wins[team]++;
     b.ph = 'done'; b.act = null;
     this.broadcast({ t: 'bombev', k: 'win', team, why, wins: [b.wins[1], b.wins[2]] });
+    if (this.isEcon()) this.econRoundEnd(team, why);
     if (b.wins[team] >= BOMB.wins) { this.endRound(); return; }
     b.between = now() + BOMB.between;
   }
@@ -1926,7 +1941,7 @@ class Room {
       const hold = a && a.alive && n - (a.useT || 0) < 600 && dist3(a.pos, b.act.pos) < 1.6;
       const ok = hold && (b.act.kind === 'plant' ? b.carrier === a.id && siteAt(this.map, a.pos) : b.ph === 'planted' && canDefuse(a.pos, b.p, 0.6));
       if (!ok) b.act = null;
-      else if (n - b.act.start >= (b.act.kind === 'plant' ? BOMB.plant : BOMB.defuse) * 1000) {
+      else if (n - b.act.start >= this.actMs(b.act)) {
         if (b.act.kind === 'plant') {
           const site = siteAt(this.map, a.pos);
           Object.assign(b, { ph: 'planted', site: site.id, p: [r2(a.pos[0]), r2(a.pos[1] + 0.1), r2(a.pos[2])], explodeAt: n + BOMB.fuse * 1000, carrier: 0, act: null, planter: a.id });
@@ -1965,6 +1980,7 @@ class Room {
   tick(dt) {
     const n = now();
     this.tickRound();
+    if (this.isEcon()) this.tickEcon(n);
     this.tickTags(n);
     this.tickItems(dt);
     for (const b of this.players.values()) if (b.isBot && b.alive) this.stepBot(b, dt);
@@ -2002,6 +2018,11 @@ class Room {
     this.broadcast({ t: 'sn', s: n, p: ps, wave: this.mode === 'coop' ? this.waveInfo() : undefined, round: this.roundInfo() || undefined });
   }
 }
+
+installEcon(Room, {
+  send, cleanSkins, enforceSkins, logErr, BOT_GUNS,
+  refreshInv: async (p) => { if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; } },
+});
 
 // ---------------------------------------------------------------- account stats
 function stat(p, key, v) {
