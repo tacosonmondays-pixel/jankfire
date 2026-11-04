@@ -1188,7 +1188,7 @@ net.on('kill', (m) => {
   const via = m.w === 'void' || m.w === 'cough' ? m.via : m.w;
   const victim = G.remotes.get(m.v);
   // shredder kills: the pieces go through the killer's machine instead of the usual gibs / kill effect
-  if (m.w === 'shredder' && shredKill(m, G.remotes, m.v === G.myId ? { pos: ME.pos.slice(), yaw: ME.yaw, color: G.myColor, look: validLook(G.settings.look, myAchs()) } : null)) m.fx = 'none';
+  if (m.w === 'shredder' && shredKill(m, G.remotes, m.v === G.myId ? { pos: ME.pos.slice(), yaw: ME.yaw, color: G.myColor, look: teamLook(validLook(G.settings.look, myAchs()), G.myTeam) } : null)) m.fx = 'none'; // (team colour beats clothes)
   const kfx = m.fx && m.fx !== 'none' ? m.fx : null;
   if (victim) {
     victim.reverseUntil = 0; // the server ends their reverse card on death too

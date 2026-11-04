@@ -1453,6 +1453,7 @@ class Room {
   onPush(p, m) {
     const t = this.players.get(m.to);
     if (!t || t === p || !t.alive || !p.alive) return;
+    if (this.isBall(p) || now() < (p.staggerUntil || 0)) return; // no hands in the wrecking ball; parried = still reeling (like 'hit')
     const toT = norm([t.pos[0] - p.pos[0], t.pos[1] - p.pos[1], t.pos[2] - p.pos[2]]) || [0, 1, 0];
     if (m.w === 'blower') {
       const w = WEAPONS.blower;
@@ -1506,7 +1507,7 @@ class Room {
   shredHold(t, at) {
     if (!t.isBot) { send(t, { t: 'grab', p: at.map(r2) }); return; }
     if (t.ai.dummy && t.ai.dummy.move) return; // moving dummies are on rails
-    t.ai.hook = null; t.g = null; // no grappling out of it
+    t.ai.hook = null; t.g = null; t.ai.route = null; // no grappling out of it; plans its route again once it's spat out
     t.held = { at, until: now() + 260 };
   }
   // ~4 s of sucking overheats it (same numbers the client shows), then it has to cool. a hacked client can't keep it on:
