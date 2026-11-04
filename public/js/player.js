@@ -7,6 +7,8 @@ import { sfx } from './audio.js';
 import { hud } from './hud.js';
 import { net } from './net.js';
 import { fx } from './fx.js';
+import { WEAPONS } from '/shared/weapons.js';
+import { holeDrag } from '/shared/physics.js';
 
 export const ME = {
   pos: [0, 5, 0], vel: [0, 0, 0], yaw: 0, pitch: 0,
@@ -46,6 +48,32 @@ export function look() {
   return [-Math.sin(ME.yaw) * cp, Math.sin(ME.pitch), -Math.cos(ME.yaw) * cp];
 }
 export function hspeed() { return Math.hypot(ME.vel[0], ME.vel[2]); }
+
+// rubber duck black holes eat momentum: inside one you bleed speed (all but falling in, harder near the middle)
+// and close to the middle your rope snaps. never in your own hole or your team's. ME.holeF = how deep you are (0..1)
+function friendlyHole(h) {
+  if (h.o === G.myId) return true;
+  const n = G.names.get(h.o);
+  if (G.mode === 'coop') return !!n && !n.bot;
+  return !!(G.myTeam && n && n.team === G.myTeam);
+}
+function holeEat(dt, now) {
+  ME.holeF = 0;
+  for (const h of G.holes.values()) {
+    if (now < h.born || friendlyHole(h)) continue;
+    const R = h.R || (h.big ? 34 : WEAPONS.duck.holeR);
+    const d = holeDrag(ME.pos, ME.vel, h.p, R, WEAPONS.duck.drag * (h.on === G.myId ? WEAPONS.duck.onDrag : 1), dt); // stuck on you: slowed, not frozen
+    if (d < 0) continue;
+    ME.holeF = Math.max(ME.holeF, 1 - d / R);
+    if (ME.hook && d < WEAPONS.duck.snapR * (h.big ? 1.6 : 1)) {
+      const a = hookPoint();
+      ME.hook = null;
+      if (a) fx.spray(a, 8, [0x9a3bff, 0xffffff], 5, 0.5, 0.1, 10, 1);
+      sfx.ropeSnap();
+      hud.msg('ROPE SNAPPED', 0.7, 'slip');
+    }
+  }
+}
 
 export function applyKb(v) {
   ME.vel[0] += v[0]; ME.vel[1] += v[1]; ME.vel[2] += v[2];
@@ -207,6 +235,7 @@ export function stepPlayer(dt, inp, now) {
 
   v[1] -= grav * dt;
   if (ME.hook) hookStep(dt);
+  holeEat(dt, now);
   if (!ME.onGround) ME.airMaxFall = Math.min(ME.airMaxFall, v[1]);
 
   const was = ME.onGround;

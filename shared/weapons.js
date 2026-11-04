@@ -115,9 +115,12 @@ export const WEAPONS = {
   },
   duck: {
     slot: 'item', kind: 'proj', name: 'Rubber Duck', color: '#ffd23b',
-    desc: 'Throw it. It turns into a black hole that sucks everyone in, then pops.',
+    desc: 'Throw it. It homes in on enemies and sticks to whoever it touches: the black hole opens ON them and follows them, dragging their friends in, eating everyone\'s momentum and snapping grapples. Then it pops.',
     cd: 5, speed: 22, grav: 22, r: 0.3, bounce: 0.45, fuse: 1.0,
-    holeTime: 2.5, holeR: 15, pull: 45, blastR: 9, blastKb: 30, blastDmg: 25,
+    holeTime: 3, holeR: 15, pull: 70, blastR: 9, blastKb: 30, blastDmg: 45,
+    // homing (range, cos of the cone, rad/s), sticking (delay before the hole opens on them, crush per 0.1s on the victim),
+    // momentum eater (speed bled per second at the middle, how much of that the one it's stuck to gets, rope snap distance)
+    homeR: 25, homeCos: 0.5, turn: 3, stick: 0.3, stuckDmg: 1, drag: 6, onDrag: 0.5, snapR: 6, lift: 1,
   },
   snowball: {
     slot: 'secondary', kind: 'proj', name: 'Snowball', color: '#dff4ff',
@@ -192,7 +195,7 @@ export const STREAKS = {
   scythe: { kills: 5, name: 'Scythe Rifle', desc: 'X: rifle mode · hold V: glitch dash', auto: true },
   spinbot: { kills: 6, name: 'Spinbot', desc: 'aimbot + spinbot for 10s. you are now a cheater.', auto: true, dur: 10 },
   satellite: { kills: 7, name: 'Spy Satellite', desc: 'see every enemy through walls for 20s', auto: true, dur: 20 },
-  giantduck: { kills: 10, name: 'Giant Duck', desc: 'a giant black hole where you aim that pulls in everyone but you', deploy: true },
+  giantduck: { kills: 10, name: 'Giant Duck', desc: 'a giant black hole where you aim that pulls in everyone but you and eats their momentum', deploy: true },
 };
 export const DEFAULT_LOADOUT = { primary: 'ar', secondary: 'cig', melee: 'bread', item: 'frag', streaks: ['moonboots', 'chickenstrike', 'scythe'] };
 
@@ -201,7 +204,7 @@ export const ITEMS = {
   frag: { name: 'Frag Grenade', desc: 'Bounces, blows up after 2s. Knocks people (and you) flying.', charges: 2, recharge: 16, color: '#9ab04a', proj: 'frag' },
   medkit: { name: 'Medkit', desc: 'Heals 60 over a couple of seconds.', charges: 1, recharge: 22, color: '#ff4f4f', heal: 60 },
   bubble: { name: 'Shield Bubble', desc: 'A dome for 7s. Nothing from outside can hurt anyone inside.', charges: 1, recharge: 28, color: '#4fd8ff', dur: 7, r: 4.4 },
-  duck: { name: 'Rubber Duck', desc: 'Turns into a black hole that sucks everyone in, then pops.', charges: 1, recharge: 20, color: '#ffd23b', proj: 'duck' },
+  duck: { name: 'Rubber Duck', desc: 'Homes in and sticks to an enemy. The black hole opens on them and follows them: their friends get dragged in, speed gets eaten, ropes snap. Then it pops.', charges: 1, recharge: 20, color: '#ffd23b', proj: 'duck' },
   smoke: { name: 'Smoke Bomb', desc: 'A thick cloud nobody can see through for 10s.', charges: 2, recharge: 18, color: '#9aa0a8', proj: 'smokegren', dur: 10, r: 6.5 },
 };
 export const ITEM_ORDER = ['frag', 'medkit', 'bubble', 'duck', 'smoke'];

@@ -4,6 +4,7 @@ import { BOXES, MAPS, MAP_ORDER } from '/shared/map.js';
 import { WEAPONS, ORDER, SLOTS, FLAGS, SLIP_TIME, HIPFIRE, BOT_DIFF, MODES, STREAKS, ITEMS, ITEM_ORDER, validLoadout, validStreaks } from '/shared/weapons.js';
 import { streakIcon } from './icons.js';
 import { stepProjectile, raycast } from '/shared/physics.js';
+import { duckFrame, duckStuck } from './duck.js';
 import { G } from './ctx.js';
 import { initWorld, renderFrame, setJank, updateWorld, loadMap } from './world.js';
 import { loadTripoModels, buildProjectile, buildPeel, buildHole, makeShadow, tipColor, buildCharacter, M } from './models.js';
@@ -789,8 +790,9 @@ function addHole(m) {
   mesh.position.set(...m.p);
   if (m.big) mesh.userData.big = true;
   G.scene.add(mesh);
-  G.holes.set(m.id, { mesh, p: m.p, born: performance.now() - (m.age || 0) * 1000 });
-  sfx.hole(m.p);
+  G.holes.set(m.id, { mesh, p: m.p, born: performance.now() - (m.age || 0) * 1000, o: m.o, big: !!m.big, on: m.on || 0 });
+  if (m.on && m.age < 0) duckStuck(G.holes.get(m.id), m); // a duck stuck on someone: the hole opens (and hums) in a moment
+  else sfx.hole(m.p);
 }
 function addRemoteInfo(p) {
   G.names.set(p.id, { name: p.name, color: p.color, bot: p.bot, level: p.level, look: p.look, card: p.card || '', skins: p.skins || {}, team: p.team || 0 });
@@ -1371,12 +1373,14 @@ function frame(t) {
   }
   for (const h of G.holes.values()) {
     const age = (now - h.born) / 1000;
+    if (age < 0) continue; // still a duck stuck on someone (duck.js)
     const k = Math.min(1, age / 0.3);
     h.mesh.scale.setScalar(k * (1 + Math.sin(age * 20) * 0.08) * (h.mesh.userData.big ? 4 : 1));
     h.mesh.userData.orbit.rotation.y += dt * 6;
     h.mesh.userData.ring.rotation.z += dt * 3;
     fx.vortex(h.p, WEAPONS.duck.holeR * (h.mesh.userData.big ? 1.6 : 0.6));
   }
+  duckFrame(now, dt); // homing ducks, stuck ducks, holes riding their victim
 
   // camera
   const cam = G.camera;
