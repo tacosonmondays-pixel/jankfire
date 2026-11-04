@@ -1027,6 +1027,27 @@ class Room {
     return Math.max(1, Math.min(pellets, Math.ceil(pellets * frac * 1.35 + 2)));
   }
 
+  // revolver: a tap is the accurate shot (1 per 0.4 s), holding fire fans the hammer (6/s, fan damage). the server keeps
+  // its own cylinder per shooter (a revolver bullet hits one player, so a hit is a shot) with two schedules: nothing
+  // counts faster than a fan, and full damage only for unmarked hits on the tap schedule (a fanned hit pushes the next
+  // tap a whole tap away), so a hacked client firing fast gets fan damage. a hit may come up to 40% of a shot early
+  // (lag), but the average rate holds. 6 hits, then the next needs a reload-length pause. returns the damage
+  // multiplier, 0 = drop it
+  revolverHit(p, t, m, w) {
+    if (!this.rangeOk(p, t, w.range)) return 0;
+    const n = now(), f = w.fanHammer, tapMs = 1000 / w.rate, fanMs = 1000 / f.rate;
+    let c = p.revCyl;
+    if (!c || c.t < p.spawnT) c = p.revCyl = { t: -1e9, n: 0, tap: 0, fan: 0 }; // respawned with a full cylinder
+    if (n < c.fan - fanMs * 0.4) return 0;
+    if (n - c.t >= w.reload * 750) c.n = 0; // long enough to have reloaded
+    if (c.n >= w.mag && this.mode !== 'training') return 0; // training = infinite ammo
+    const tap = !m.fan && n >= c.tap - tapMs * 0.4;
+    c.fan = Math.max(c.fan, n) + fanMs;
+    c.tap = tap ? Math.max(c.tap, n) + tapMs : Math.max(c.tap, n + tapMs);
+    c.t = n; c.n++;
+    return tap ? 1 : f.dmg / w.dmg;
+  }
+
   applyHitscan(p, t, wid, n, h, d, mul = 1) {
     if (this.isBall(t)) h = 0; // a wrecking ball has no head
     const w = WEAPONS[wid], pellets = w.pellets || 1;
@@ -1058,6 +1079,7 @@ class Room {
     if (w.kind === 'hitscan') {
       const pellets = w.pellets || 1;
       const n = clampInt(m.n, 1, Math.min(pellets, this.maxPellets(w, p, t))), h = clampInt(m.h, 0, n);
+      if (w.fanHammer) { const mul = this.revolverHit(p, t, m, w); if (mul) this.applyHitscan(p, t, m.w, n, h, d, mul); return; } // tap or fan the hammer
       if (!this.pairOk(p, t, 'hs' + m.w, (1000 / fireRate(w, p.hp)) * 0.6) || !this.rangeOk(p, t, w.range)) return; // the Redline fires faster as you lose HP
       this.applyHitscan(p, t, m.w, n, h, d);
     } else if (w.kind === 'melee') {
@@ -1104,7 +1126,7 @@ class Room {
     if (w.slot === 'streak' && !p.scythe) return;
     let o = vec3(m.o);
     if (!o || dist3(o, eyeOf(p)) > 4) o = eyeOf(p);
-    if (w.kind === 'hitscan') { this.broadcast({ t: 'fx', k: 'shot', w: m.w, id: p.id, s: segs(m.s) }, p.id); return; }
+    if (w.kind === 'hitscan') { this.broadcast({ t: 'fx', k: 'shot', w: m.w, id: p.id, s: segs(m.s), fan: (w.fanHammer && m.fan ? 1 : undefined) }, p.id); return; } // fan: everyone sees the fanning spin
     if (w.kind === 'melee') { this.broadcast({ t: 'fx', k: 'swing', w: m.w, id: p.id, a: o.map(r2), h: m.heavy ? 1 : undefined }, p.id); return; }
     if (w.kind === 'reverse') {
       const n = now();

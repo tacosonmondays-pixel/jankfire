@@ -75,9 +75,12 @@ export const WEAPONS = {
   // ------------------------------------------------------------ secondary
   revolver: {
     slot: 'secondary', kind: 'hitscan', name: 'Revolver', color: '#e0c070',
-    desc: '6 shots. Bullets ricochet off walls twice. Headshots basically kill.',
+    desc: '6 shots, twirled round your finger after each one. Tap for a dead-accurate shot, hold to fan the hammer: the rest goes in a second, wild and a bit weaker. Ricochets off walls twice. Headshots basically kill.',
     rate: 1 / 0.4, mag: 6, reload: 2.0, dmg: 40, head: 2.5, spread: 0.003,
     kb: 0, kbUp: 0, recoil: 3, kick: 0.07, range: 250, ricochet: 2, tracer: 0xffd060,
+    // hold fire to fan the hammer: after `hold` s the rest of the cylinder goes at `rate`/s, `dmg` a shot, way more spread,
+    // `kick` x the aim kick and recoil. the server enforces the rate, the damage and 6 shots per reload
+    fanHammer: { rate: 6, hold: 0.2, dmg: 28, spread: 0.065, kick: 0.3 },
     ads: { zoom: 1.4, spread: 0.2, p: [0, -0.085, -0.28] },
   },
   marbles: {
