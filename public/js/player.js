@@ -84,7 +84,7 @@ export function applyKb(v) {
   if (v[1] > 0.5 && ME.onGround) { ME.onGround = false; ME.pos[1] += 0.02; }
 }
 
-export function slip(now) {
+export function slip(now, k) { // k: what you slipped on ('marbles', or a banana)
   ME.slipUntil = now + SLIP_TIME * 1000;
   const d = look();
   ME.vel[0] += d[0] * 6; ME.vel[2] += d[2] * 6;
@@ -92,7 +92,8 @@ export function slip(now) {
   ME.onGround = false;
   ME.hook = null;
   sfx.whoops();
-  hud.msg('WHOOPS!', 1.4, 'slip');
+  if (k === 'marbles') sfx.clatter();
+  hud.msg(k === 'marbles' ? 'MARBLES!' : 'WHOOPS!', 1.4, 'slip');
 }
 
 function accelerate(v, wx, wz, wishSpeed, accel, dt) {

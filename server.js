@@ -35,6 +35,7 @@ import { query as boxQuery } from './shared/physics.js';
 import { navSteer } from './shared/nav.js';
 import { DUCKRAIN } from './shared/modes.js';
 import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
+import { MSLIP, onPatch, patchPreroll } from './shared/marbles.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -196,6 +197,7 @@ function onBoxTop(pos, boxes) {
 if (process.env.JF_BOMB_WINS) BOMB.wins = Number(process.env.JF_BOMB_WINS) || BOMB.wins;
 if (process.env.JF_BOMB_FUSE) BOMB.fuse = Number(process.env.JF_BOMB_FUSE) || BOMB.fuse;
 if (process.env.JF_BOMB_ROUND) BOMB.roundTime = Number(process.env.JF_BOMB_ROUND) || BOMB.roundTime;
+if (process.env.JF_MSLIP_LIFE) MSLIP.life = Number(process.env.JF_MSLIP_LIFE) || MSLIP.life; // test knob: marble patches that outlast slow test browsers
 if (process.env.JF_TARGET) for (const t of Object.values(TARGETS)) for (const k of Object.keys(t)) t[k] = Number(process.env.JF_TARGET);
 // test knobs for gun game (everyone starts on a later rung) and infection (round length, patient zero delay, in seconds)
 const GG_START = Math.max(0, Math.min(LADDER.length - 1, Math.floor(Number(process.env.JF_GG_START) || 0)));
@@ -227,6 +229,7 @@ REC_FX.add('verdict'); // scales of justice: highlights show the ruling
 const REC_MS = 12000;
 for (const k of ['trap', 'trapx']) REC_T.add(k); // bubble wand: replays draw the giant soap bubble too
 for (const t of ['parry', 'guard']) REC_T.add(t); // katana parries show up in killcams too
+for (const t of ['mpatch', 'mslip', 'mpx']) REC_T.add(t); // marbles on the floor too
 function newDeck() {
   const d = [];
   for (const s of ['h', 's', 'c', 'd']) for (let r = 1; r <= 13; r++) d.push(s + r);
@@ -315,6 +318,7 @@ class Room {
     this.smokes = new Map(); this.nextSmoke = 1; // smoke clouds: bots can't see through them, late joiners get them
     this.oitcOut = new Set(); // one in the chamber: who ran out of lives this round (by account or name)
     if (mode === 'ffa' && GAMES[process.env.JF_GAME]) this.game = process.env.JF_GAME; // test knob: the online room starts in this mode
+    this.mpatches = new Map(); this.nextMp = 1; // marble shotgun: marbles on the floor you slip on
     this.cfg = { map: mode === 'training' ? 'range' : mode === 'coop' ? 'warehouse' : 'islands', hip: 'normal', bots: 5, diff: 'normal' };
     this.wave = 0; this.toSpawn = 0; this.interUntil = 0;
     this.round = ROUND[mode] ? { target: ROUND[mode].kills, ends: now() + ROUND[mode].time * 1000, over: false, next: 0 } : null;
@@ -451,6 +455,7 @@ class Room {
       kat: [...this.players.values()].filter((o) => o.kat).map((o) => [o.id, o.kat]),
       game: this.game, team: p.team || 0, tags: [...this.tags.values()].map((g) => ({ id: g.id, p: g.p, team: g.team })), vote: this.voteInfo(),
       sprays: this.sprayList(),
+      mpatch: this.patchList(),
     });
     this.broadcast({ t: 'pj', ...this.info(p) }, p.id);
     send(p, { t: 'tip', tip: p.tip });
@@ -833,6 +838,7 @@ class Room {
       }
       for (const [victim, h] of hits) this.applyHitscan(b, victim, b.w, h.n, h.h, h.d, 0.7);
       this.broadcast({ t: 'fx', k: 'shot', w: b.w, id: b.id, s: segs.slice(0, 12) });
+      if (w.marbles) this.marblePatch(b, segs.slice(0, 12)); // bots' marbles trip people too
     } else if (w.kind === 'proj') {
       this.spawnProj(b, b.w, o, spreadDir(aim, D.err));
     } else if (w.kind === 'melee') { // zombie claws and the gun game's melee rungs: botThink only gets here in reach
@@ -1147,10 +1153,10 @@ class Room {
     }
     send(t, { t: 'kb', v: v.map(r2), w });
   }
-  slip(t) {
+  slip(t, k) {
     t.knockT = now(); // sliding on a banana isn't moving either
     if (t.isBot) { t.slipUntil = now() + 1700; t.vel[1] = Math.max(t.vel[1], 6.5); t.onGround = false; return; }
-    send(t, { t: 'slip' });
+    send(t, k ? { t: 'slip', k } : { t: 'slip' }); // k: what you slipped on (the client says MARBLES! for marbles)
   }
   friendly(a, b) {
     if (!a || !b || a === b) return false;
@@ -1409,6 +1415,7 @@ class Room {
     const frames = this.rec.frames.filter((f) => f.s >= t0 && f.s <= t1 && f.odd);
     const ev = this.rec.ev.filter((e) => e.s >= t0 && e.s <= t1);
     ev.unshift(...trapPreroll(this.rec.ev, t0)); // someone already floating in a soap bubble when the clip starts
+    ev.unshift(...patchPreroll(this.rec.ev, t0)); // marbles already on the floor
     const info = {};
     for (const f of frames) for (const e of f.p) if (!info[e[0]]) {
       const pl = this.players.get(e[0]);
@@ -1783,6 +1790,7 @@ class Room {
       if (n - (p.lastFire.fx || 0) < iv) return;
       p.lastFire.fx = n;
     }
+    if (w.marbles && p.w === m.w) this.marblePatch(p, segs(m.s)); // marbles on the floor (the server works out where)
     if (w.kind === 'hitscan') { this.broadcast({ t: 'fx', k: 'shot', w: m.w, id: p.id, s: segs(m.s), fan: fan ? 1 : undefined }, p.id); return; } // fan: everyone sees the fanning spin
     if (w.kind === 'melee') { this.broadcast({ t: 'fx', k: 'swing', w: m.w, id: p.id, a: o.map(r2), h: m.heavy === 1 ? 1 : undefined }, p.id); return; }
     const d = norm(vec3(m.d));
@@ -2341,6 +2349,87 @@ class Room {
     }
   }
 
+  // ---------------------------------------------------------- marbles on the floor (Marble Shotgun)
+  // a marble shot leaves a patch where its marbles settle, and anyone who runs over it slips. where: from the shooter's
+  // eye (a position the server tracks) along the pellet directions, with the server's own raycasts to what they hit
+  // and down to the floor. the client's pellet ends only pick the directions and how far (capped at the gun's range).
+  marblePatch(p, ss) {
+    const M = MSLIP, w = WEAPONS.marbles, n = now();
+    if (!p.alive || p.trap || this.isBall(p, n) || !Array.isArray(ss) || !ss.length) return;
+    if (n - (p.mpT || 0) < M.cd * 1000) return; // one patch per real shot, however many fire messages come in
+    p.mpT = n;
+    const e = eyeOf(p), pts = [];
+    for (const s of ss) {
+      const d = norm([s[3] - e[0], s[4] - e[1], s[5] - e[2]]);
+      if (!d) continue;
+      const L = Math.min(w.range, Math.hypot(s[3] - e[0], s[4] - e[1], s[5] - e[2]));
+      const h = raycast(e, d, L, this.boxes);
+      // hit the map: drop off that surface. stopped short of it (a player) or flew the whole way: drop from there
+      const a = h ? h.point.map((x, k) => x + h.normal[k] * 0.1 - d[k] * 0.05) : e.map((x, k) => x + d[k] * L);
+      const f = raycast(a, [0, -1, 0], 40, this.boxes);
+      if (f && f.normal[1] === 1) pts.push([a[0], a[1] - f.t, a[2]]); // (nothing below = it fell into the void)
+    }
+    // the biggest bunch that landed together on one floor
+    let best = [];
+    for (const a of pts) {
+      const c = pts.filter((b) => Math.abs(b[1] - a[1]) < 0.5 && Math.hypot(b[0] - a[0], b[2] - a[2]) < 2.5);
+      if (c.length > best.length) best = c;
+    }
+    if (best.length < Math.max(3, ss.length * 0.3)) return; // sprayed all over (or into the sky): no patch
+    let cx = 0, cz = 0;
+    for (const b of best) { cx += b[0] / best.length; cz += b[2] / best.length; }
+    const top = Math.max(...best.map((b) => b[1])), f = raycast([cx, top + 0.4, cz], [0, -1, 0], 1.4, this.boxes);
+    if (!f || f.normal[1] !== 1) return; // the middle is over a gap
+    const y = top + 0.4 - f.t;
+    const rms = Math.sqrt(best.reduce((s, b) => s + (b[0] - cx) ** 2 + (b[2] - cz) ** 2, 0) / best.length);
+    const pt = {
+      id: this.nextMp++, c: [r2(cx), r2(y), r2(cz)], r: r2(Math.max(M.rMin, Math.min(M.rMax, 0.9 + rms * 1.3))),
+      n: Math.round(M.n * Math.min(1, (best.length / ss.length) * 1.4)), o: p.id, team: p.team || 0,
+      born: n, until: n + M.life * 1000, map: this.cfg.map,
+    };
+    // caps: your oldest goes first, then the room's oldest
+    const mine = [...this.mpatches.values()].filter((q) => q.o === p.id);
+    while (mine.length >= M.per) this.dropPatch(mine.shift());
+    while (this.mpatches.size >= M.room) this.dropPatch(this.mpatches.values().next().value);
+    this.mpatches.set(pt.id, pt);
+    this.broadcast({ t: 'mpatch', ...this.patchInfo(pt) });
+  }
+  patchInfo(pt) { return { id: pt.id, c: pt.c, r: pt.r, n: pt.n, o: pt.o, left: Math.max(0, pt.until - now()) }; }
+  patchList() { return [...this.mpatches.values()].filter((pt) => pt.map === this.cfg.map).map((pt) => this.patchInfo(pt)); }
+  dropPatch(pt) { if (this.mpatches.delete(pt.id)) this.broadcast({ t: 'mpx', id: pt.id }); }
+  tickMarbles() {
+    if (!this.mpatches.size) return;
+    const n = now();
+    for (const pt of [...this.mpatches.values()]) {
+      if (n > pt.until || pt.map !== this.cfg.map) { this.dropPatch(pt); continue; }
+      if (n - pt.born < MSLIP.land * 1000) continue; // still flying
+      const owner = this.players.get(pt.o) || null;
+      for (const t of this.players.values()) {
+        if (!this.slipsOn(t, pt, owner, n)) continue;
+        this.marbleSlip(t, pt, owner, n);
+        if (!this.mpatches.has(pt.id)) break;
+      }
+    }
+  }
+  // who slips: anyone on it going faster than a careful walk (the shooter too, it's a janky game). not teammates
+  // (like the banana), a wrecking ball, a soap bubble, frozen or dead people, or someone who just slipped
+  slipsOn(t, pt, owner, n) {
+    if (!t.alive || t.trap || this.isBall(t, n) || n < (t.frozenUntil || 0) || n - (t.mslipT || 0) < MSLIP.immune) return false;
+    if (owner !== t && this.friendly(owner, t)) return false;
+    if (t.isBot ? n < t.slipUntil || !t.onGround || (t.ai.dummy && t.ai.dummy.move) : (t.f & FLAGS.SLIP) || Math.abs(t.vel[1]) > 2) return false; // (players: no vertical speed = on the floor)
+    return onPatch(pt, t.pos, 0.15) && Math.hypot(t.vel[0], t.vel[2]) > MSLIP.walk;
+  }
+  marbleSlip(t, pt, owner, n) {
+    const M = MSLIP;
+    t.mslipT = n;
+    this.slip(t, 'marbles');
+    if (t.isBot) { const hs = Math.hypot(t.vel[0], t.vel[2]) || 1; t.vel[0] += (t.vel[0] / hs) * 4; t.vel[2] += (t.vel[2] / hs) * 4; } // feet out the way they were going
+    if (owner && owner !== t) this.tag(t, owner, 'marbles'); // slip off a ledge = the shooter's kill
+    pt.n = Math.floor(pt.n * M.thin); pt.r = r2(Math.max(M.minR, pt.r * M.thinR)); // the marbles scatter: thinner every time
+    this.broadcast({ t: 'mslip', id: pt.id, by: t.id, n: pt.n, r: pt.r, p: t.pos.map(r2) });
+    if (pt.n < M.minN) this.dropPatch(pt);
+  }
+
   // ---------------------------------------------------------- sprays (Z): one graffiti per player, a new map wipes them
   onSpray(p, m, fresh) {
     const n = now(), at = vec3(m.p), nm = vec3(m.n);
@@ -2428,6 +2517,7 @@ class Room {
   resetWorld() {
     this.resetChaos();
     this.projectiles.clear(); this.peels.clear(); this.holes.clear();
+    this.mpatches.clear(); // clients wipe theirs on 'clear'
     this.broadcast({ t: 'clear' });
     this.clearTags();
     for (const b of this.bubbles.values()) this.broadcast({ t: 'bubx', id: b.id });
@@ -3294,6 +3384,7 @@ class Room {
     this.tickHoles(dt);
     this.tickStatus(dt);
     this.tickPeels();
+    this.tickMarbles();
     this.tickBalls();
     this.tickWaves();
     if (this.sprays.size && this.sprayMap !== this.cfg.map) this.sprays.clear(); // the map changed: its graffiti goes with it

@@ -24,6 +24,7 @@ import { Remote, updateGibs } from './remote.js';
 import { stepSoap, trapStart, trapEnd, updateWand, stuckInBubble } from './wand.js';
 import { parry } from './weapons.js';
 import './parry.js'; // katana parry: sparks, sounds, PARRY!, the guard pose
+import { addPatch, clearPatches } from './mslip.js'; // marble shotgun: marbles on the floor you slip on
 import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN } from './skins.js';
 import { initPreview, showPreview, showCharacter, renderPreview, resizePreview } from './preview.js';
 import { playKillFx, updateKillFx, clearKillFx } from './killfx.js';
@@ -213,6 +214,7 @@ function clearEntities() {
   for (const h of G.holes.values()) G.scene.remove(h.mesh);
   G.projs.clear(); G.peels.clear(); G.holes.clear();
   clearCrosses();
+  clearPatches();
 }
 function quitToMenu(silent) {
   net.close();
@@ -986,6 +988,7 @@ net.on('welcome', (m) => {
   hud.chat(null, null, `you are ${m.name}. ${tips[m.mode] || ''}`);
   clearSprays(); sprayT = -1e9;
   for (const s of m.sprays || []) addSpray(s, true); // graffiti that was already on the walls
+  for (const pt of m.mpatch || []) addPatch(pt); // marbles already on the floor
 });
 net.on('cfg', (m) => {
   const mapChanged = m.cfg.map !== G.cfg.map;
@@ -1211,7 +1214,7 @@ net.on('loadout', (m) => {
 net.on('modew', (m) => { if (m.w) endBall(); setOnly(m.w || null, G.forcedLoadout || S.loadout); }); // (a mode weapon ends a wrecking ball: the server already did)
 net.on('kb', (m) => applyKb(m.v));
 net.on('grab', (m) => shredGrab(m)); // you're in someone's shredder
-net.on('slip', () => slip(performance.now()));
+net.on('slip', (m) => slip(performance.now(), m.k));
 net.on('dmg', (m) => {
   const target = m.to === G.myId ? null : G.remotes.get(m.to);
   if (m.to === G.myId) {
