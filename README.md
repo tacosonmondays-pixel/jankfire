@@ -60,7 +60,7 @@ Notes:
 | Space | jump (hold to bhop). Jump while grappling to launch off the rope with your momentum |
 | C / Ctrl | crouch; crouch while fast to slide. Spam it too long and your knees explode. As the Wrecking Ball: ground slam (in the air) / brake |
 | Left mouse | fire / swing / play a card / draw the bow (hold, release) |
-| Right mouse | aim down sights · **Knife: heavy stab** · Card Deck: pick a card |
+| Right mouse | aim down sights · **Knife: heavy stab** · **Katana: parry** · Card Deck: pick a card |
 | E / mouse side buttons | grapple (hold) |
 | R | reload (Card Deck: redraw) |
 | F | inspect your weapon · **Plant & Defuse: hold F to plant / defuse** |
@@ -137,6 +137,7 @@ Why the numbers:
 **Knife (CS-style):** left click alternates diagonal slashes, right click is a heavy stab (windup, 90 damage, a backstab kills). Every knife skin moves like its real-world family: the Butterfly's handles flip around the blade, the Karambit spins on your finger through the ring, the Switchblade flicks open, the Kitchen knife rolls like a bayonet, the Bowie does a barrel-roll toss, the Cleaver balances on a fingertip.
 
 **Katana:** the blade gets longer (and reaches further) with every kill you get with it. Resets when you die.
+**Right click parries:** a 0.35 s window, then a 0.8 s cooldown (a ring round the crosshair). Anything that hits you from the front (140 degrees, judged by the server from its own positions) bounces off: bullets are blocked, and in the first 0.15 s (a perfect parry) they go back into the shooter as a Katana Parry kill; projectiles get batted back at the thrower; melee attackers get shoved back and staggered (no guard of their own until it wears off). Explosions aren't parried. SHING, sparks, PARRY! / PERFECT PARRY!, and it shows in killcams.
 
 **Scales of Justice:** a big brass balance scale swung like a mace (overhead smash, click again for a side swing). 35 damage times a **verdict** the server decides at hit time from how the target stands next to you right now. Each charge is a point of guilt, each thing in their favour takes one off:
 
@@ -153,6 +154,10 @@ Coop wave bots and training dummies aren't on the scoreboard, so only their stre
 
 **Revolver:** tap for a dead-accurate 40 damage shot (headshots basically kill), and after every shot it does a quick cowboy twirl round your trigger finger, back in the hand before you can fire again. **Hold fire to fan the hammer:** after the first shot the rest of the cylinder goes at about 6 a second, with way more spread and 28 damage a shot (70 to the head), the gun spinning in your hand the whole time to rapid hammer clicks. Your off hand holds it down, so fanning kicks less than tapping. Aim down sights for plain single shots. Everyone else (and the killcam) sees your revolver spin too. The server checks it all: hits that come faster than a tap only do fan damage, nothing counts faster than a fan, and after 6 hits it wants a reload.
 
+**Sniper no-scopes:** a sniper hit when you're not fully scoped gets a NO SCOPE badge with the distance by your crosshair and a no-scope icon in the kill feed (damage is the same). Get no-scoped from 25 m+ and you get the full MLG treatment: a spinning rainbow NO-SCOPED, hitmarkers, lens flares, stickers and an airhorn, and your killcam waits for it. A no-scope headshot at any range sends up fireworks that spell the shooter's name and the distance, for everyone (killcams and the play of the round too).
+
+**Slipper:** thrown like a boomerang, it curves into the nearest enemy in front of it on the way out (and keeps flying out a bit longer while it has a lock), then flies back to you.
+
 **Snowball:** barely hurts, but every hit adds frost. 4 hits freezes them solid for a moment; hit a frozen target and they shatter.
 
 **Bubble Wand (item):** G blows a stream of 4 slow, wobbly soap bubbles (2 charges, 15 s to refill each; they float about 10 m). The first enemy one touches is sealed in a giant soap bubble for 5 s: no moving, shooting, items or streaks, just looking around while it floats them up (2 m/s) and away from you (1.5 m/s). Then it pops and drops them: no fall damage, but over the void that's your kill. Any hit (bullet, melee, projectile, explosion) pops it instead of hurting them, so teammates can shoot a friend free and enemies can wait until they're over the void (shoot it open there and the kill is yours). You, your teammates, anyone in a Shield Bubble and a rolling Wrecking Ball can't be bubbled; blow one at someone with a Reverse Card up and you're the one floating away. After a pop nobody can be bubbled again for a while: 1.5 s, or 60% of however long they were in (3 s after a full float), so two wands can't keep someone in one for good. Inside, everything sounds underwater and the world wobbles behind a rainbow soap film.
@@ -164,7 +169,7 @@ Hearts heal by the number · Spades throw that many cards · Clubs blast people 
 
 **Aim down sights:** the rifles, SMG, revolver and peel shooter have real iron sights (the shotgun has a bead), and ADS lines the sight up with the exact middle of the screen with the gun below it. Launchers, the minigun and the bow stay low and to the side. Hats tuck away while you aim.
 
-**Feel:** springy recoil with camera punch, muzzle flashes, ejected shells, shotgun pump and sniper bolt after each shot, smear trails on swings, a tiny freeze when a melee hit connects, draw animations, weapon sway, speed lines when you go fast.
+**Feel:** springy recoil with camera punch, muzzle flashes, ejected shells, shotgun pump and sniper bolt after each shot, smear trails on swings, a tiny freeze when a melee hit connects, draw animations, weapon sway, speed lines when you go fast. Headshots go DINK (a heavier TONK on a kill, damped under automatic fire).
 
 ## Killstreaks
 
@@ -275,6 +280,7 @@ The hotbar at the bottom shows a picture of each weapon you carry, with your ski
 
 - **No speed cap.** Jump on the tick you land and friction never touches you.
 - Air strafe to gain speed. Grapple, then jump to launch off the rope with your momentum.
+- **The grapple is a pendulum rope** (`shared/hookphys.js`, the same one for bots): a steady pull toward the point plus a reel that winds in, it keeps your swing so you go round in arcs, and catching a fall or reaching the point eases in instead of snapping. The camera leans into the rope a little. **Grapple jump:** let go with a fling along your swing plus a hop, on top of your momentum (more on the upswing, swinging the way you look).
 - Self-launch: shotgun the floor, chicken rocket your feet, minigun downward, bread a wall, leaf blower, frag grenade, party popper (G: aim down to fly up, aim at a wall to fly off it).
 - Fall into the void and whoever hit you in the last 10 s gets the kill.
 
