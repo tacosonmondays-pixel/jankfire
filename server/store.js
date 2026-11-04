@@ -9,7 +9,7 @@ import crypto from 'node:crypto';
 import { CONTAINERS } from '../shared/cosmetics.js';
 const FIELD = (kind) => (CONTAINERS[kind] ? CONTAINERS[kind].field : null);
 
-export const STAT_KEYS = ['kills', 'deaths', 'bot_kills', 'wins', 'best_wave', 'top_speed', 'xp', 'playtime', 'void_kills', 'headshots', 'tbags'];
+export const STAT_KEYS = ['kills', 'deaths', 'bot_kills', 'wins', 'best_wave', 'top_speed', 'xp', 'playtime', 'void_kills', 'headshots', 'tbags', 'airborne', 'wings_old'];
 const MAX_KEYS = new Set(['best_wave', 'top_speed']); // these keep the max instead of adding up
 
 function applyDelta(u, d) {
@@ -30,6 +30,8 @@ class FileStore {
     this.db.users ||= {};
     this.db.secret ||= crypto.randomBytes(32).toString('hex');
     this.timer = null;
+    // the Wings moved from Frequent Flyer to Never Landed: everyone who had Frequent Flyer at that moment keeps them (runs once)
+    if (!this.db.wingsMoved) { for (const u of Object.values(this.db.users)) if ((u.top_speed || 0) >= 1000) u.wings_old = 1; this.db.wingsMoved = 1; }
     this.flushNow();
   }
   flushNow() {
@@ -45,7 +47,7 @@ class FileStore {
   async get(nameLower) { return this.db.users[nameLower] || null; }
   async create(u) {
     if (this.db.users[u.name_lower]) return false;
-    this.db.users[u.name_lower] = { kills: 0, deaths: 0, bot_kills: 0, wins: 0, best_wave: 0, top_speed: 0, xp: 0, playtime: 0, void_kills: 0, headshots: 0, tbags: 0, crates: 1, bags: 1, boxes: 1, inv: {}, profile: {}, created_at: new Date().toISOString(), ...u };
+    this.db.users[u.name_lower] = { kills: 0, deaths: 0, bot_kills: 0, wins: 0, best_wave: 0, top_speed: 0, xp: 0, playtime: 0, void_kills: 0, headshots: 0, tbags: 0, airborne: 0, crates: 1, bags: 1, boxes: 1, inv: {}, profile: {}, created_at: new Date().toISOString(), ...u };
     this.save();
     return true;
   }

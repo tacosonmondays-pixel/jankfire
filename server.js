@@ -18,6 +18,7 @@ import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor } from './shared/modes.js';
 import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, validStreaks, fireRate } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
+import { query as boxQuery } from './shared/physics.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -135,6 +136,17 @@ function enforceSkins(skins, inv) {
 if (process.env.JF_STREAK) STREAKS.scythe.kills = Number(process.env.JF_STREAK) || STREAKS.scythe.kills;
 const ROUND = { ffa: { kills: 20, time: 360 }, bots: { kills: 15, time: 300 } };
 if (process.env.JF_ROUND_KILLS) for (const r of Object.values(ROUND)) r.kills = Number(process.env.JF_ROUND_KILLS) || r.kills;
+// Never Landed: grace after each spawn to get off the ground (+ slack for lag), and how late you can join a match and still count
+const AIR = { grace: 3000, slack: 400, join: 5000 };
+// feet resting on a box top. jump pads don't count: they launch you, you can't stand on them
+function onBoxTop(pos, boxes) {
+  const hw = PH.halfW;
+  for (const b of boxQuery(boxes, pos[0] - hw, pos[2] - hw, pos[0] + hw, pos[2] + hw, [])) {
+    if (b.pad || pos[1] < b.max[1] - 0.02 || pos[1] > b.max[1] + 0.06) continue;
+    if (pos[0] + hw > b.min[0] && pos[0] - hw < b.max[0] && pos[2] + hw > b.min[2] && pos[2] - hw < b.max[2]) return true;
+  }
+  return false;
+}
 // test knobs for plant & defuse (short rounds / fuse / match)
 if (process.env.JF_BOMB_WINS) BOMB.wins = Number(process.env.JF_BOMB_WINS) || BOMB.wins;
 if (process.env.JF_BOMB_FUSE) BOMB.fuse = Number(process.env.JF_BOMB_FUSE) || BOMB.fuse;
@@ -195,6 +207,7 @@ class Room {
     this.wave = 0; this.toSpawn = 0; this.interUntil = 0;
     this.round = ROUND[mode] ? { target: ROUND[mode].kills, ends: now() + ROUND[mode].time * 1000, over: false, next: 0 } : null;
     if (mode === 'coop') this.interUntil = now() + 4000;
+    if (this.round) this.round.t0 = now();
   }
   get map() { return MAPS[this.cfg.map]; }
   get boxes() { return this.map.boxes; }
@@ -297,6 +310,8 @@ class Room {
     this.joinTeam(p);
     if (p.team) p.pos = this.pickSpawn(false, p);
     this.players.set(p.id, p);
+    // in from the start (or close enough): your Never Landed run counts. the welcome below is your first spawn
+    if (this.round && !this.round.over && now() - (this.round.t0 || 0) < AIR.join) p.air = { ok: true, rest: 0, y: 0 };
     send(p, {
       t: 'welcome', id: p.id, name, color: p.color, pos: p.pos, q: p.seq, mode: this.mode, cfg: this.cfg,
       players: [...this.players.values()].filter((o) => o !== p).map((o) => this.info(o)),
@@ -310,6 +325,7 @@ class Room {
     });
     this.broadcast({ t: 'pj', ...this.info(p) }, p.id);
     send(p, { t: 'tip', tip: p.tip });
+    if (p.air) send(p, { t: 'air', on: 1, grace: AIR.grace });
     deal(p);
     this.sendLoadout(p);
     if (this.mode === 'ffa' || this.mode === 'coop') this.broadcast({ t: 'chat', id: 0, m: `${name} joined` });
@@ -1356,6 +1372,7 @@ class Room {
         if (p.acct) { const kmh = Math.min(20000, Math.hypot(vel[0], vel[2]) * 3.6); if (kmh > (p.acct.d.top_speed || 0)) { p.acct.d.top_speed = kmh; if (kmh > 450) checkAch(p); } }
         if (Number.isFinite(m.y)) p.yaw = m.y;
         if (Number.isFinite(m.x)) p.pitch = m.x;
+        this.airCheck(p);
         if (WEAPONS[m.w]) p.w = m.w;
         p.g = vec3(m.g);
         p.f = m.f | 0;
@@ -1460,6 +1477,7 @@ class Room {
         }
         break;
       case 'pi': send(p, { t: 'po', c: m.c }); break;
+      case 'land': this.airFail(p, false); break; // your client saw you touch the ground: run's over
     }
   }
 
@@ -1501,6 +1519,7 @@ class Room {
     this.round.over = true;
     this.round.next = now() + VOTE_MS + 2000;
     this.round.winTeam = winTeam;
+    this.airEnd();
     if (this.bomb) { this.bomb.act = null; this.bomb.between = 0; }
     this.startVote();
     let roll = null;
@@ -1529,6 +1548,8 @@ class Room {
     this.resolveVote();
     for (const p of this.players.values()) { p.kills = 0; p.deaths = 0; }
     this.round = { target: (TARGETS[this.mode] || TARGETS.ffa)[this.game] || ROUND[this.mode].kills, ends: now() + ROUND[this.mode].time * 1000, over: false, next: 0 };
+    this.round.t0 = now();
+    this.airStart();
     this.score = { 1: 0, 2: 0 };
     this.clearTags();
     this.assignTeams();
@@ -1536,6 +1557,39 @@ class Room {
     if (this.bomb) { this.round.ends = now() + 3600 * 1000; this.newBombRound(true); }
     else this.resetWorld();
     this.broadcast({ t: 'round', start: 1, ...this.roundInfo() });
+  }
+  // ---------------------------------------------------------- Never Landed: a whole match without touching the ground
+  // the client knows exactly when it lands and reports it ('land'); the server also watches snapshots so a client
+  // that never reports can't just stand around. the match end decides.
+  airStart() {
+    for (const p of this.players.values()) {
+      if (p.isBot) continue;
+      p.air = { ok: true, rest: 0, y: 0 };
+      send(p, { t: 'air', on: 1, grace: AIR.grace });
+    }
+  }
+  airCheck(p) {
+    const a = p.air;
+    if (!a || !a.ok) return;
+    const flat = Math.abs(p.pos[1] - a.y) < 0.01;
+    a.y = p.pos[1];
+    if (now() - p.spawnT < AIR.grace + AIR.slack) { a.rest = 0; return; }
+    // standing still on a box top for two snapshots in a row (a bhop touch or a jump's peak never sits flat twice)
+    if (flat && onBoxTop(p.pos, this.boxes)) { if (++a.rest >= 2) this.airFail(p, true); } else a.rest = 0;
+  }
+  airFail(p, seen) {
+    if (!p.air || !p.air.ok) return;
+    p.air.ok = false;
+    if (seen) send(p, { t: 'air', fail: 1 });
+  }
+  airEnd() {
+    for (const p of this.players.values()) {
+      if (p.isBot || !p.air) continue;
+      const ok = p.air.ok;
+      p.air = null;
+      send(p, { t: 'air', end: 1, ok: ok ? 1 : 0, acct: p.acct ? 1 : 0 });
+      if (ok) { console.log(`never landed: ${p.name}`); stat(p, 'airborne', 1); }
+    }
   }
   // switch game type (bots setup / match settings / the vote)
   setGame(g) {
