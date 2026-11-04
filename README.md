@@ -100,7 +100,7 @@ Bots play the objectives too: they carry and plant the bomb, defuse it, and grab
 
 ## Weapons
 
-- **Primary:** Assault Rifle, SMG, Shotgun, Minigun, Sniper, Chicken Rocket, Bowling Ball Launcher, Bow, Peel Shooter
+- **Primary:** Assault Rifle, SMG, Shotgun, Minigun, Sniper, Chicken Rocket, Bowling Ball Launcher, Bow, Peel Shooter, **Shredder**
 - **Secondary:** Revolver, Marble Shotgun, Cigarette (smoke it, blow fire), Leaf Blower, Card Deck, **Snowball**
 - **Melee:** Bread, Slipper (throw it, it comes back), Knife, Hand Slapper (point blank, launches + makes them slip), **Katana**, Spoon, **Scales of Justice**
 - **Item (G):** one per loadout, see below. The Party Popper and the Reverse Card used to be secondaries; they're items now.
@@ -161,6 +161,7 @@ Coop wave bots and training dummies aren't on the scoreboard, so only their stre
 **Snowball:** barely hurts, but every hit adds frost. 4 hits freezes them solid for a moment; hit a frozen target and they shatter.
 
 **Bubble Wand (item):** G blows a stream of 4 slow, wobbly soap bubbles (2 charges, 15 s to refill each; they float about 10 m). The first enemy one touches is sealed in a giant soap bubble for 5 s: no moving, shooting, items or streaks, just looking around while it floats them up (2 m/s) and away from you (1.5 m/s). Then it pops and drops them: no fall damage, but over the void that's your kill. Any hit (bullet, melee, projectile, explosion) pops it instead of hurting them, so teammates can shoot a friend free and enemies can wait until they're over the void (shoot it open there and the kill is yours). You, your teammates, anyone in a Shield Bubble and a rolling Wrecking Ball can't be bubbled; blow one at someone with a Reverse Card up and you're the one floating away. After a pop nobody can be bubbled again for a while: 1.5 s, or 60% of however long they were in (3 s after a full float), so two wands can't keep someone in one for good. Inside, everything sounds underwater and the world wobbles behind a rainbow soap film.
+**Shredder:** an industrial vacuum-shredder. Hold to suck: a 14 m cone (35° each side) pulls people toward the intake, harder the closer they are (sprint and you can get away at long range; within a few metres it just yanks you in). Their gun goes in first. Whoever reaches the intake hangs in the spinning teeth and gets chewed (150 damage a second, dead in about 0.7 s); a Shredder kill takes them apart, the pieces go into the machine and come out of the exhaust chute in chunks, with blood and confetti. About 4 s of sucking overheats it (the teeth glow red-hot, the gauge hits the red, it steams), then it has to cool. Teammates are safe, bots carry it too, and the server does the pulling and the shredding from its own positions. Skin: Wood Chipper.
 
 **Bow:** hold to draw, release to fire. Every arrow gets a random tip, shown on the HUD: regular, power, knockback, flame, explosion, gas, sleep.
 

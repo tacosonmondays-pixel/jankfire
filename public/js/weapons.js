@@ -6,9 +6,11 @@ import { raycast, rayBox } from '/shared/physics.js';
 import { G } from './ctx.js';
 import { ME, eye, look, applyKb, hspeed } from './player.js';
 import { buildWeapon, M, cardFace, tipColor, setKatana, freeTree } from './models.js';
+import { heatTeeth, spinTeeth } from './models.js';
 import { fx } from './fx.js';
 import { marbles } from './marbles.js';
 import { sfx, loopSfx, stopLoops } from './audio.js';
+import { shredMotor } from './audio.js';
 import { net } from './net.js';
 import { hud } from './hud.js';
 import { tracerColor, emitSkinFx } from './skins.js';
@@ -435,6 +437,7 @@ const VM = {
   revolver: { p: [0.17, -0.16, -0.32], r: [0, 0.06, 0], s: 1.0 },
   cig: { p: [0.15, -0.17, -0.3], r: [0.15, 0.6, 0.2], s: 1.1 },
   blower: { p: [0.24, -0.27, -0.45], r: [0, 0.05, 0], s: 0.6 },
+  shredder: { p: [0.27, -0.26, -0.46], r: [0, 0.16, 0], s: 0.46 },
   popper: { p: [0.17, -0.18, -0.34], r: [0.1, 0.1, 0], s: 0.75 },
   reverse: { p: [0.15, -0.15, -0.34], r: [0.3, -0.3, 0.15], s: 0.65 },
   duck: { p: [0.17, -0.18, -0.4], r: [0.1, 0.5, 0], s: 0.55 },
@@ -933,9 +936,124 @@ function animEvent(ev, g) {
     case 'smoke': for (let i = 0; i < 12; i++) sys.norm.spawn(evPos.x - 0.05 + R(0.05), evPos.y + 0.02, evPos.z - 0.1 + R(0.05), R(0.3), 0.15 + Math.random() * 0.2, -0.3 - Math.random() * 0.3, 1.4, 0.03, 0.2, 0xcccccc, 0x777777, 0.55, -0.1, 0.8); break;
     case 'spark': for (let i = 0; i < 10; i++) sys.add.spawn(evPos.x + R(0.03), evPos.y, evPos.z + R(0.03), R(0.8), 0.3 + Math.random() * 0.6, R(0.8), 0.5, 0.025, 0.005, 0xffcc44, 0xff3300, 1, 3); break;
     case 'spin': W.inspectSpin = 1.5; sfx.reload(); break;
+    case 'startup': shredStartup(); break;
     case 'rev': sfx.rev(); break;
     case 'chains': sfx.chains(); break;
   }
+}
+
+// ------------------------------------------------------------ shredder
+// hold to suck: the heat climbs (overheats at w.fuel seconds) and only comes back down when you let go, like the
+// blower's fuel. the client just reports who's in the cone; the server decides the pull and the shredding.
+W.shred = { heat: 0, hot: false, hotK: 0, spin: 0, tick: 0, on: false, gore: 0, puff: 0 };
+function updateShredder(dt, alive, now) {
+  const w = WEAPONS.shredder, S = W.shred, mine = W.cur === 'shredder';
+  // heat runs on real time like the server's (dt is capped at 0.1 s a frame, so under 10 fps it would fall behind)
+  const rdt = S.at ? Math.min(0.3, Math.max(0, (now - S.at) / 1000)) : dt;
+  S.at = now;
+  if (S.life !== G.spawnT) { S.life = G.spawnT; S.heat = 0; S.hot = false; } // a new life starts cold (the server's too)
+  const want = alive && mine && W.held && !S.hot;
+  if (want) {
+    S.heat += rdt;
+    if (S.heat >= w.fuel) { S.hot = true; sfx.overheat(); hud.msg('OVERHEATED', 1.2); }
+  } else {
+    S.heat = Math.max(0, S.heat - w.regen * rdt);
+    if (S.hot && S.heat <= w.fuel * w.coolTo) { S.hot = false; sfx.click(); }
+  }
+  S.on = want && !S.hot;
+  S.spin = S.on ? Math.min(1, S.spin + dt / 0.35) : Math.max(0, S.spin - dt / 0.9); // teeth spin up / wind down
+  shredMotor(mine ? S.spin : 0);
+  if (!S.on) return;
+  const m = models.shredder, o = eye(), d = look();
+  fx.vacuum(vmToWorld(m, m.g.userData.muzzle, 2.2), d, ME.vel, w.range, w.cone, S.spin, dt);
+  S.tick -= dt;
+  if (S.tick <= 0) {
+    S.tick = w.tick;
+    for (const tg of conePlayers(o, d, w.range, w.cone)) net.send({ t: 'push', to: tg.r.id, w: 'shredder' });
+  }
+}
+// the viewmodel is drawn over the world by its own camera (65°, yours is wider), so a world effect aimed at the gun has
+// to go through the screen: gun-local point v -> the world point dist from your eye that lands on the same pixel
+const tmpV3 = new THREE.Vector3(), tmpV4 = new THREE.Vector3(), tmpV5 = new THREE.Vector3();
+function vmToWorld(m, v, dist) {
+  m.wrap.updateMatrixWorld(true);
+  G.camera.updateMatrixWorld();
+  tmpV3.copy(v); m.g.localToWorld(tmpV3);
+  tmpV3.project(G.vmCamera).setZ(0.5).unproject(G.camera);
+  tmpV4.setFromMatrixPosition(G.camera.matrixWorld);
+  tmpV3.sub(tmpV4).normalize().multiplyScalar(dist).add(tmpV4);
+  return [tmpV3.x, tmpV3.y, tmpV3.z];
+}
+// gun-local point v (and direction dir) in viewmodel space, for particles that live with the gun
+function vmPoint(m, v, out = tmpV) { out.copy(v); return m.g.localToWorld(out); }
+function vmDir(m, v, dir, out = tmpV2) { out.copy(v).add(dir); m.g.localToWorld(out); return out.sub(vmPoint(m, v, tmpV5)).normalize(); }
+const AIR = [0xf4fbff, 0xe2edf5], LEAF = [0x4caf50, 0x8bc34a, 0xff9800, 0xc0602a, 0xffd54f];
+// stuff spiralling from the rim down into the teeth (each one aimed at the throat a bit round from where it started)
+function throat(m, dt, rate, colors, end, size, alpha) {
+  const sys = G.skinFxVM && G.skinFxVM.norm, ud = m.g.userData;
+  if (!sys) return;
+  for (let i = 0, n = Math.floor(dt * rate + Math.random()); i < n; i++) {
+    const a = Math.random() * Math.PI * 2, r = ud.mouthR * (0.45 + Math.random() * 0.5), life = 0.09 + Math.random() * 0.09;
+    const p = vmPoint(m, tmpV.set(Math.cos(a) * r, ud.axisY + Math.sin(a) * r, ud.muzzle.z + 0.012));
+    const q = vmPoint(m, tmpV2.set(Math.cos(a + 1.5) * 0.035, ud.axisY + Math.sin(a + 1.5) * 0.035, ud.throatZ), tmpV2);
+    sys.spawn(p.x, p.y, p.z, (q.x - p.x) / life, (q.y - p.y) / life, (q.z - p.z) / life, life, size * (0.7 + Math.random() * 0.6), size * 0.25,
+      colors[(Math.random() * colors.length) | 0], end, alpha, 0, 0);
+  }
+}
+// a burst out of the chute: n bits, blood / confetti / smoke = the share of each
+function chuteVM(m, n, blood, confetti, smoke) {
+  const sys = G.skinFxVM, ud = m.g.userData;
+  if (!sys) return;
+  const d = vmDir(m, ud.chute, ud.chuteDir), c = vmPoint(m, ud.chute, tmpV4);
+  const R = (k) => (Math.random() - 0.5) * k;
+  for (let i = 0; i < n; i++) {
+    const kind = Math.random(), sp = 0.5 + Math.random() * 0.9;
+    if (kind < smoke) sys.norm.spawn(c.x, c.y, c.z, d.x * sp * 0.4 + R(0.1), d.y * sp * 0.4 + 0.1 + R(0.1), d.z * sp * 0.4 + R(0.1), 0.5 + Math.random() * 0.3, 0.012, 0.03, 0x5a5a5a, 0x2a2a2a, 0.55, -0.15, 1.5);
+    else if (kind < smoke + blood) sys.norm.spawn(c.x, c.y, c.z, d.x * sp + R(0.25), d.y * sp + R(0.25), d.z * sp + R(0.25), 0.45 + Math.random() * 0.3, 0.008 + Math.random() * 0.008, 0.005, Math.random() < 0.3 ? 0xd01010 : 0x8a0000, 0x3a0000, 1, 2.2, 0.4);
+    else if (kind < smoke + blood + confetti) sys.norm.spawn(c.x, c.y, c.z, d.x * sp + R(0.35), d.y * sp + R(0.35), d.z * sp + R(0.35), 0.7 + Math.random() * 0.4, 0.008, 0.008, [0xff4fd8, 0x4fd8ff, 0xffe14d, 0x7dff4f, 0xff7a1a][(Math.random() * 5) | 0], 0xffffff, 1, 1.2, 1.4);
+  }
+}
+// viewmodel: a lean into the pull + a shake while it runs, the teeth (spinTeeth: never seem to run backwards, blur
+// at speed), lamps + heat gauge, air spiralling down the throat, blood when it's chewing,
+// smoke when the motor starts, a droop + steam when it's overheated
+function shredderVM(m, dt, now, pose) {
+  const S = W.shred, ud = m.g.userData, R = (k) => (Math.random() - 0.5) * k;
+  S.hotK += ((S.hot ? 1 : 0) - S.hotK) * Math.min(1, dt * 5);
+  const j = 0.011 * S.spin + (S.gore > 0 ? 0.008 : 0);
+  pose(R(j), R(j) - 0.035 * S.hotK, -0.014 * S.spin, R(j * 2) - 0.24 * S.hotK, 0, R(j * 3) + 0.14 * S.hotK);
+  spinTeeth(m.g, dt, S.spin + W.inspectSpin * 0.45);
+  const lit = S.hot ? (now % 300 < 150 ? 0xff2020 : 0x300000) : S.spin > 0.05 ? 0xff3a2a : 0x500000;
+  if (ud.lamps) for (const l of ud.lamps) l.material.color.setHex(lit);
+  const heat = Math.min(1, S.heat / WEAPONS.shredder.fuel), glow = Math.max(0, (heat - 0.45) / 0.55);
+  if (ud.heatNeedle) ud.heatNeedle.rotation.y = 2.3 - 4.6 * heat + R(0.12) * S.spin;
+  heatTeeth(m.g, glow); // the teeth going red-hot
+  S.gore = Math.max(0, S.gore - dt); S.puff = Math.max(0, S.puff - dt);
+  if (!m.wrap.visible) return;
+  if (S.on) throat(m, dt, 130 * S.spin, Math.random() < 0.2 ? LEAF : AIR, 0xc8d8e0, 0.009, 0.55);
+  if (S.gore > 0) { throat(m, dt, 90, [0xd01010, 0x8a0000], 0x3a0000, 0.011, 1); if (Math.random() < dt * 14) chuteVM(m, 2, 0.8, 0.2, 0); }
+  if (S.puff > 0) chuteVM(m, Math.floor(dt * 50 + Math.random()), 0, 0, 1);
+  if (S.hot && G.skinFxVM && Math.random() < dt * 30) { // steam off the chute
+    const c = vmPoint(m, ud.chute);
+    G.skinFxVM.norm.spawn(c.x + R(0.01), c.y, c.z + R(0.01), R(0.03), 0.07 + Math.random() * 0.06, R(0.03), 0.6, 0.004, 0.012, 0xf0f0f0, 0xb0b0b0, 0.35, -0.04, 1.2);
+  }
+}
+// the draw: the motor catches (teeth jump, a puff of smoke out of the chute)
+function shredStartup() { W.inspectSpin = Math.max(W.inspectSpin, 1.3); W.shred.puff = 0.3; sfx.startup(); }
+// you're chewing someone: thump the gun, blood down the throat and out of the chute
+export function shredKick() { if (W.cur !== 'shredder') return; kickVM('shredder', 0.3); W.kick = Math.min(1, W.kick + 0.12); W.shred.gore = 0.22; }
+// a chunk just came out of my chute (kills): spray it in first person too
+export function shredSpitVM(big) { const m = models.shredder; if (m && W.cur === 'shredder') { chuteVM(m, big ? 40 : 6, 0.6, big ? 0.4 : 0.15, 0); kickVM('shredder', big ? 0.6 : 0.15); } }
+// where my shredder's intake + chute are in the world, and which way to spit (shredder.js aims gibs at them): points
+// that land on the gun on screen, the spit thrown up and out in front of you so you see it arc over the gun
+export function shredderPorts() {
+  const m = models.shredder;
+  if (!m || W.cur !== 'shredder' || !m.wrap.visible) return null;
+  const ud = m.g.userData;
+  const intake = vmToWorld(m, ud.muzzle, 3), chute = vmToWorld(m, ud.chute, 2.6); // (pieces go in a bit deeper than the dust: smaller on screen)
+  const tip = vmToWorld(m, tmpV5.copy(ud.chute).addScaledVector(ud.chuteDir, 0.25), 2.6), lk = look();
+  const sd = [tip[0] - chute[0], tip[1] - chute[1], tip[2] - chute[2]], sl = Math.hypot(...sd) || 1;
+  const d = [sd[0] / sl * 0.25 + lk[0] * 0.6, sd[1] / sl * 0.25 + 0.8 + lk[1] * 0.6, sd[2] / sl * 0.25 + lk[2] * 0.6], l = Math.hypot(...d);
+  return { intake, chute, dir: d.map((x) => x / l), vel: ME.vel, mine: true };
 }
 
 export function updateWeapons(dt, now) {
@@ -1003,6 +1121,7 @@ export function updateWeapons(dt, now) {
       }
     }
   }
+  updateShredder(dt, alive, now);
 
   revolverFrame(id, w, now);
   if (id === 'bow') {
@@ -1064,6 +1183,7 @@ export function updateWeapons(dt, now) {
   loopSfx('spin', spinning && W.held);
   const reversed = now < W.reverseUntil;
   W.flags = (smoking ? FLAGS.SMOKE : 0) | (firing ? FLAGS.FIRE : 0) | (blowing ? FLAGS.BLOW : 0) | (spinning ? FLAGS.SPIN : 0) | (reversed ? FLAGS.REVERSE : 0) | (ME.dashing ? FLAGS.DASH : 0);
+  if (W.shred.on) W.flags |= FLAGS.SUCK;
 
   // ---- HUD
   if (ITEMS[W.item]) { const c = charges(W.item), it = ITEMS[W.item]; hud.item(c.n, it.charges, c.next ? 1 - Math.max(0, c.next - now) / (it.recharge * 1000) : 1); }
@@ -1083,6 +1203,7 @@ export function updateWeapons(dt, now) {
   else if (id === 'slipper' && W.slipperOut) hud.meter(null);
   else if (w.cd && w.cd >= 1 && !ready(id, now)) hud.meter(1 - ((W.cd[id] - now) / 1000) / w.cd, 'COOLDOWN', w.color);
   else hud.meter(null);
+  if (id === 'shredder') { const S = W.shred, f = S.heat / w.fuel; hud.meter(f, S.hot ? 'OVERHEATED · COOLING' : 'HEAT', S.hot ? '#ff3030' : f > 0.7 ? '#ff7a1a' : '#ffb31a'); }
 
   // ---- viewmodel animation
   const m = models[id];
@@ -1175,6 +1296,7 @@ export function updateWeapons(dt, now) {
   m.wrap.scale.setScalar(scale);
   if (m.g.userData.barrels) m.g.userData.barrels.rotation.z += W.spin * dt * 40;
   if (blowing || (spinning && W.spin >= 1 && W.held)) { px += (Math.random() - 0.5) * 0.008; py += (Math.random() - 0.5) * 0.008; }
+  if (id === 'shredder') shredderVM(m, dt, now, (a, b, c, d, e, f) => { px += a; py += b; pz += c; rx += d; ry += e; rz += f; });
   m.wrap.visible = !(id === 'slipper' && W.slipperOut) && !W.scoped && !ME.dashing;
   m.wrap.position.set(px, py, pz);
   m.wrap.rotation.set(rx, ry, rz);

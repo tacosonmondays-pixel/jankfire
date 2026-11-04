@@ -194,6 +194,156 @@ function fillWith(g, cols, n, cx, cy, cz, rx, h, r) { // marbles/gumballs piled 
   }
 }
 
+// ------------------------------------------------------------ Shredder bits
+let hazardMat = null;
+function hazard() { // yellow/black warning stripes
+  if (hazardMat) return hazardMat;
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const x = c.getContext('2d');
+  x.fillStyle = '#f2b01e'; x.fillRect(0, 0, 32, 32);
+  x.fillStyle = '#151515';
+  for (let i = -32; i < 64; i += 16) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + 8, 0); x.lineTo(i - 24, 32); x.lineTo(i - 32, 32); x.fill(); }
+  const t = new THREE.CanvasTexture(c);
+  t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.colorSpace = THREE.SRGBColorSpace;
+  return (hazardMat = jankify(new THREE.MeshLambertMaterial({ map: t, flatShading: true })));
+}
+let heatFace = null;
+function heatDial() { // heat gauge face: cold on the left, the red zone where it overheats on the right
+  if (heatFace) return heatFace;
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const x = c.getContext('2d');
+  x.fillStyle = '#f2efe4'; x.beginPath(); x.arc(32, 32, 31, 0, Math.PI * 2); x.fill();
+  x.lineWidth = 7;
+  for (const [a0, a1, col] of [[-2.3, -0.4, '#3cb83c'], [-0.4, 1.0, '#f2b01e'], [1.0, 2.3, '#e8281e']]) { x.strokeStyle = col; x.beginPath(); x.arc(32, 32, 24, a0 - Math.PI / 2, a1 - Math.PI / 2); x.stroke(); }
+  x.fillStyle = '#151515'; x.font = 'bold 13px sans-serif'; x.textAlign = 'center'; x.fillText('HOT', 32, 52);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter;
+  return (heatFace = new THREE.MeshBasicMaterial({ map: t }));
+}
+// a thin box from a to b (vanes)
+function strut(a, b, w, h, color) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, a.distanceTo(b)), M(color));
+  m.position.copy(a).add(b).multiplyScalar(0.5); m.lookAt(b);
+  return m;
+}
+// a shredder's teeth heating up, k 0..1: the steel darkens to a dull red and glows orange over it (glowing on top of
+// near-white steel would just look whiter). base = the glow a material already has (remote.js lights players up)
+const hotDark = new THREE.Color(0x3a0c04), hotGlow = new THREE.Color();
+export function heatTeeth(g, k, base = 0) {
+  const m = g.userData.blade && g.userData.blade.material;
+  if (!m || !m.emissive) return;
+  const c0 = g.userData.bladeColor || (g.userData.bladeColor = m.color.clone());
+  m.color.copy(c0).lerp(hotDark, k * 0.85);
+  m.emissive.copy(m.color).multiplyScalar(base).add(hotGlow.setRGB(k, k * 0.32, k * 0.05));
+  const b = g.userData.blur;
+  if (b) { b.material.color.copy(m.color); b.material.emissive.copy(m.emissive); } // the blur of them glows too
+}
+// the rotor turning at k (1 = full speed). a tooth steps at most a third of the gap to the next one a frame, so at any
+// fps they never seem to stand still or run backwards; past that, the blur sleeve fades in over them and sells the speed
+export function spinTeeth(g, dt, k) {
+  const ud = g.userData;
+  if (!ud.teeth) return;
+  ud.teeth.rotation.z -= Math.min(0.3, dt * k * 40);
+  const b = ud.blur, o = Math.min(1, Math.max(0, (k - 0.3) / 0.6));
+  if (!b) return;
+  b.visible = o > 0.01;
+  b.material.opacity = 0.62 * o;
+  b.rotation.z -= dt * k * 31; // (streaks, not teeth: no stepping to worry about)
+}
+let blurMap = null;
+function blurTex() { // the teeth smeared round the drum: steel streaks with the red tips in them, one band per row
+  if (blurMap) return blurMap;
+  const c = document.createElement('canvas'); c.width = 64; c.height = 32;
+  const x = c.getContext('2d');
+  for (const v of [3, 16, 29]) { // (rows 0-2: the cage hides row 3, it's down the throat)
+    x.globalAlpha = 0.28; x.fillStyle = '#b8bdc5'; x.fillRect(0, v - 3, 64, 7); // the steel, smeared all the way round
+    for (let i = 0; i < 14; i++) {
+      x.globalAlpha = 0.4 + Math.random() * 0.55;
+      x.fillStyle = Math.random() < 0.3 ? '#8a1010' : Math.random() < 0.5 ? '#f2f5fa' : '#a8adb5';
+      const len = 10 + Math.random() * 30, u = Math.random() * 64, h = 1 + Math.random() * 2, y = v - 3 + Math.random() * 6;
+      x.fillRect(u, y, len, h); x.fillRect(u - 64, y, len, h); // wraps round the seam
+    }
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return (blurMap = t);
+}
+// colours + the intake shape (segs/phase: 4 + PI/4 = a square hopper). fills g, sets muzzle / chute / teeth / lamps / gauge
+function shredderBuild(g, o) {
+  const y = 0.055; // the axis the rotor + funnel sit on
+  const grip = bx(0.045, 0.13, 0.055, o.grip, 0, -0.075, 0.03); grip.rotation.x = -0.3; g.add(grip);
+  g.add(bx(0.014, 0.036, 0.016, 0xd01c1c, 0, -0.03, -0.022)); // big red trigger
+  // motor at the back, the chute on top of it
+  g.add(bx(0.19, 0.17, 0.26, o.body, 0, y, 0.16));
+  g.add(bx(0.15, 0.13, 0.03, o.dark, 0, y, 0.3));
+  if (o.hazard) { const hz = new THREE.Mesh(new THREE.BoxGeometry(0.198, 0.178, 0.05), hazard()); hz.position.set(0, y, 0.06); hz.userData.noWrap = true; g.add(hz); }
+  for (let i = 0; i < 5; i++) for (const sx of [-1, 1]) g.add(bx(0.012, 0.13, 0.016, o.dark, sx * 0.1, y, 0.1 + i * 0.042)); // cooling fins
+  // carry handle over the cage (the hat sits on it)
+  for (const z of [0.0, -0.13]) g.add(bx(0.016, 0.06, 0.016, o.dark, 0, 0.19, z));
+  g.add(bx(0.024, 0.024, 0.17, o.grip, 0, 0.222, -0.065));
+  g.add(bx(0.07, 0.06, 0.07, o.dark, 0, 0.17, 0.12)); // chute collar
+  g.add(bx(0.06, 0.08, 0.06, o.chute, 0, 0.22, 0.125));
+  const bend = bx(0.065, 0.065, 0.15, o.chute, 0, 0.265, 0.18); bend.rotation.x = -0.45; g.add(bend);
+  const lip = bx(0.08, 0.08, 0.02, o.dark, 0, 0.297, 0.248); lip.rotation.x = -0.45; g.add(lip);
+  const hole = bx(0.046, 0.046, 0.01, 0x000000, 0, 0.3, 0.255, true); hole.rotation.x = -0.45; g.add(hole);
+  g.userData.chute = new THREE.Vector3(0, 0.305, 0.262);
+  g.userData.chuteDir = new THREE.Vector3(0, 0.43, 0.9).normalize();
+  // power lamps (one on the back for everyone else, one by the gauge for you): weapons.js / shredder.js light them
+  // as the motor spins and blink them when it overheats. meshes, not materials: remote.js swaps in tinted copies
+  const lamp = (w, h, d, px, py, pz) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), jankify(new THREE.MeshBasicMaterial({ color: 0x500000 }))); m.position.set(px, py, pz); m.userData.noWrap = true; g.add(m); return m; };
+  g.userData.lamps = [lamp(0.03, 0.03, 0.012, 0.045, 0.1, 0.316), lamp(0.014, 0.01, 0.014, -0.082, 0.15, 0.077)];
+  // heat gauge on top of the stripes, tipped back at you: the needle climbs to the red as it heats up (weapons.js)
+  const gauge = new THREE.Group(); gauge.position.set(-0.048, 0.146, 0.058); gauge.rotation.x = 0.55; g.add(gauge);
+  gauge.add(new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.029, 0.01, 12), M(o.dark)));
+  const face = new THREE.Mesh(new THREE.CircleGeometry(0.023, 14).rotateX(-Math.PI / 2), heatDial()); face.position.y = 0.0055; face.userData.noWrap = true; gauge.add(face);
+  const needle = new THREE.Group(); needle.position.y = 0.007; gauge.add(needle);
+  const nm = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.002, 0.02), M(0xd01c1c, true)); nm.position.z = -0.008; nm.userData.noWrap = true; needle.add(nm);
+  needle.rotation.y = 2.3;
+  g.userData.heatNeedle = needle; // not .needle: that one's the Redline's tachometer
+  // the rotor cage: bars you can see the teeth through
+  for (const z of [0.005, -0.15]) g.add(cylZ(0.108, 0.026, o.dark, 0, y, z, 12));
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + 0.2, bar = bx(0.013, 0.013, 0.16, o.dark, Math.cos(a) * 0.102, y + Math.sin(a) * 0.102, -0.072);
+    bar.rotation.z = a; g.add(bar);
+  }
+  // teeth: four rows of hooked blades on a hub, spinning round the funnel axis (weapons.js / shredder.js spin it).
+  // bare steel under any wrap, with their own material: they glow red-hot as it overheats
+  const steel = jankify(new THREE.MeshLambertMaterial({ color: o.teeth, flatShading: true }));
+  const teeth = new THREE.Group(); teeth.position.set(0, y, -0.06);
+  teeth.add(cylZ(0.026, 0.27, 0x55595f, 0, 0, -0.04, 8));
+  for (let row = 0; row < 4; row++) {
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + row * 0.52, t = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.062, 0.028), steel);
+      t.position.set(Math.cos(a) * 0.052, Math.sin(a) * 0.052, 0.05 - row * 0.062); t.rotation.set(0.35, 0, a - Math.PI / 2); t.userData.noWrap = true; teeth.add(t);
+      const tip = bx(0.017, 0.016, 0.03, 0x8a1010, Math.cos(a) * 0.082, Math.sin(a) * 0.082, 0.05 - row * 0.062);
+      tip.rotation.z = a - Math.PI / 2; tip.userData.noWrap = true; teeth.add(tip);
+      g.userData.blade = t; // any blade: its material (or the tinted copy remote.js swaps in) is the one to heat up
+    }
+  }
+  g.add(teeth);
+  g.userData.teeth = teeth;
+  // motion blur: a see-through sleeve of streaks round the teeth inside the cage, faded in with speed (spinTeeth).
+  // its own material per gun: each one fades and heats on its own
+  const blur = new THREE.Mesh(new THREE.CylinderGeometry(0.094, 0.094, 0.13, 18, 1, true).rotateX(Math.PI / 2),
+    jankify(new THREE.MeshLambertMaterial({ color: o.teeth, map: blurTex(), transparent: true, opacity: 0, depthWrite: false })));
+  blur.position.set(0, y, -0.0725); blur.visible = false; blur.userData.noWrap = true; g.add(blur);
+  g.userData.blur = blur;
+  // the intake: a thick-walled funnel, painted outside, dark inside so the teeth at the bottom of it show
+  const R = o.mouthR, Z = o.mouthZ, lp = { segs: o.segs, phase: o.phase, y };
+  g.add(lathe([[R - 0.008, Z], [R + 0.012, Z], [R + 0.012, Z + 0.025], [0.112, -0.15], [0.09, -0.15]], o.funnel, lp)); // (profile order = which way the faces point)
+  g.add(lathe([[0.09, -0.15], [0.09, -0.175], [R - 0.008, Z]], o.liner, lp));
+  // vanes down the inside give the air its spin (round intake only)
+  if (o.vanes) for (let i = 0; i < 6; i++) {
+    const a0 = (i / 6) * Math.PI * 2, a1 = a0 + 0.7, r0 = 0.092, r1 = R - 0.035, z0 = -0.18, z1 = Z + 0.03;
+    g.add(strut(new THREE.Vector3(Math.cos(a0) * r0, y + Math.sin(a0) * r0, z0), new THREE.Vector3(Math.cos(a1) * r1, y + Math.sin(a1) * r1, z1), 0.007, 0.012, o.vanes));
+  }
+  const lipR = new THREE.Mesh(new THREE.TorusGeometry(R + 0.004, 0.016, 4, o.segs, Math.PI * 2), M(o.rim));
+  lipR.position.set(0, y, Z); lipR.rotation.z = o.phase || 0; g.add(lipR);
+  const nb = o.segs === 4 ? 4 : 8; // bolts round the rim (in the corners of a square hopper)
+  for (let i = 0; i < nb; i++) { const a = (o.phase || 0) + (i / nb) * Math.PI * 2 + (nb === 4 ? 0 : Math.PI / 8); g.add(bx(0.012, 0.012, 0.008, 0xb8bcc4, Math.cos(a) * (R + 0.006), y + Math.sin(a) * (R + 0.006), Z - 0.017)); }
+  g.userData.muzzle = new THREE.Vector3(0, y, Z - 0.01);
+  Object.assign(g.userData, { mouthR: R, axisY: y, throatZ: -0.19 }); // where the air goes in (weapons.js draws it)
+  g.userData.len = 0.75;
+}
+
 // ------------------------------------------------------------ weapons (forward = -Z, grip at origin)
 function cardTexture() {
   const c = document.createElement('canvas');
@@ -422,6 +572,9 @@ const WB = {
     g.userData.muzzle = new THREE.Vector3(0, 0, -0.6);
     g.userData.len = 0.9;
   },
+  shredder(g) { // gunmetal motor with warning stripes, a rotor cage, a yellow intake; the chute spits out the back
+    shredderBuild(g, { body: 0x3d4452, dark: 0x1e2126, funnel: 0xf2b01e, liner: 0x4a3a1a, vanes: 0x8a6a2a, rim: 0x151515, chute: 0x8a919b, teeth: 0xd6dce4, grip: 0x1a1a1a, segs: 14, phase: 0, mouthR: 0.21, mouthZ: -0.43, hazard: true });
+  },
   banana(g) {
     g.add(bx(0.08, 0.12, 0.38, 0x8a5a2b));
     g.add(bx(0.05, 0.14, 0.07, 0x5a3a1a, 0, -0.12, 0.08));
@@ -604,6 +757,7 @@ const HAT_AT = {
   spoon: [[0, 0.017, -0.13], 0.04], slapper: [[0, 0.0125, -0.55], 0.09], scythe: [[0, 0.47, -0.8], 0.14],
   scythe_rifle: [[0, 0.13, -0.05], 0.12], bow: [[0, 0.08, 0.0], 0.08], cards: [[0, 0.07, -0.004], 0.07],
   slapper_foam: [[0, 0.03, -0.5], 0.1], slapper_paw: [[0, 0.06, -0.5], 0.1], bread_croissant: [[0, 0.15, -0.6], 0.15],
+  shredder: [[0, 0.234, -0.065], 0.11], shredder_chipper: [[0, 0.234, -0.065], 0.11],
   p_chicken: [[0, 0.31, -0.28], 0.15], p_bowling: [[0, 0.45, 0], 0.3], p_duck: [[0, 0.418, -0.2], 0.2], p_slipper: [[0, 0.11, -0.13], 0.1], p_banana: [[0, 0.24, 0], 0.12],
   scales: [[0, 0.555, 0], 0.07], scales_kangaroo: [[0, 0.6, 0.004], 0.05],
 };
@@ -624,6 +778,21 @@ function skipTex() {
 // skins for every weapon: alternate models. each belongs to its weapon and keeps that weapon's muzzle / moving parts
 const SKIN_BUILD = {
   redline_hotrod(g) { redlineBuild(g, true); },
+  shredder_chipper(g) { // a rustic garden wood chipper: green, orange square hopper, a little petrol engine, wheels
+    shredderBuild(g, { body: 0x3a7a2a, dark: 0x22301c, funnel: 0xff7a1a, liner: 0x4a2a14, rim: 0x2a2a2a, chute: 0xff7a1a, teeth: 0xc8ccd2, grip: 0x8a5a2b, segs: 4, phase: Math.PI / 4, mouthR: 0.27, mouthZ: -0.44 });
+    for (const sx of [-1, 1]) {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.03, 10).rotateZ(Math.PI / 2), M(0x1a1a1a));
+      wheel.position.set(sx * 0.122, -0.025, 0.25); g.add(wheel);
+      g.add(bx(0.006, 0.03, 0.03, 0xf2b01e, sx * 0.139, -0.025, 0.25)); // hub
+    }
+    g.add(bx(0.06, 0.06, 0.1, 0x2a2a2a, 0.062, 0.165, 0.215)); // petrol engine
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.014, 8), M(0xd01c1c)); cap.position.set(0.062, 0.202, 0.24); g.add(cap);
+    g.add(bx(0.004, 0.004, 0.05, 0xdddddd, -0.1, 0.09, 0.2)); // pull-start cord + handle
+    g.add(bx(0.014, 0.014, 0.05, 0x1a1a1a, -0.108, 0.09, 0.17));
+    for (const [x, yy, z] of [[-0.096, 0.02, 0.24], [0.096, 0.1, 0.06], [-0.096, 0.1, 0.07]]) g.add(bx(0.003, 0.03, 0.04, 0x8a4a1a, x, yy, z)); // rust
+    const flap = bx(0.075, 0.006, 0.06, 0xff7a1a, 0, 0.34, 0.26); flap.rotation.x = 0.35; g.add(flap); // deflector
+    for (let i = 0; i < 5; i++) { const ch = bx(0.024, 0.008, 0.03, 0xc8a070, -0.05 + i * 0.024, -0.04 + (i % 2) * 0.01, -0.24 - (i % 3) * 0.03); ch.rotation.y = i; ch.userData.noWrap = true; g.add(ch); } // wood chips
+  },
   marbles_gumball(g) { // a gumball machine you can shoot
     const grip = bx(0.036, 0.12, 0.048, 0xd01c2a, 0, -0.07, 0.07); grip.rotation.x = -0.45; g.add(grip);
     g.add(bx(0.062, 0.07, 0.2, 0xd01c2a, 0, -0.01, 0.0)); // red cast body

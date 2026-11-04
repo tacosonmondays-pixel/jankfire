@@ -384,6 +384,16 @@ export const ANIMS = {
     K(0.5, [-0.03, 0.06, 0.02], [0.25, 0.3, 0.15], 'snap'), K(0.7, [-0.04, 0.05, 0.02], [0.2, 0.3, 0.1]),
     K(1.4),
   ], events: [[0.45, 'rev']] },
+  inspect_shredder: { keys: [ // swing the intake round to look down it, blip the motor so the teeth spin in your face, swing back
+    K(0), K(0.45, [-0.19, 0.1, -0.045], [-0.36, 2.84, 0.1]), K(0.66, [-0.19, 0.102, -0.045], [-0.33, 2.88, 0.12]),
+    K(0.73, [-0.185, 0.112, -0.035], [-0.25, 2.84, 0.18], 'snap'), K(0.86, [-0.19, 0.1, -0.045], [-0.38, 2.9, 0.08]),
+    K(1.2, [-0.19, 0.101, -0.045], [-0.35, 2.86, 0.11]), K(1.62, [-0.02, 0.015, 0.01], [-0.04, 0.2, 0.02]), K(1.85),
+  ], events: [[0.64, 'rev'], [0.66, 'spin']] },
+  draw_shredder: { keys: [ // hauled up heavy, then the motor catches: a jolt, a couple of shudders, settle
+    K(0, [0.07, -0.4, 0.14], [-0.75, 0.3, 0.7]), K(0.3, [0, 0.02, 0], [0.1, 0, -0.05], 'snap'), K(0.44, [0.004, -0.004, 0.008], [-0.04, 0.01, 0.02]),
+    K(0.52, [-0.006, 0.022, 0.016], [0.16, -0.05, -0.08], 'snap'), K(0.62, [0.004, -0.01, 0.004], [-0.07, 0.03, 0.05]),
+    K(0.71, [-0.002, 0.007, 0.002], [0.05, -0.015, -0.03]), K(0.92),
+  ], events: [[0.28, 'clunk'], [0.5, 'startup']] },
 };
 
 const SPECIAL = new Set(['katana', 'bread', 'slipper', 'spoon', 'revolver', 'shotgun', 'minigun', 'sniper', 'cig', 'duck', 'reverse', 'popper', 'chicken', 'blower', 'knife', 'slapper', 'scythe']);
@@ -394,6 +404,7 @@ export function inspectFor(id, model) {
   if (id === 'scythe_rifle') return 'inspect_sniper';
   return SPECIAL.has(id) ? 'inspect_' + id : 'inspect_gun';
 }
+SPECIAL.add('shredder'); // inspect_shredder
 
 // what plays when you pull a weapon out
 const HEAVY = new Set(['minigun', 'blower', 'bowling', 'chicken']);
@@ -406,6 +417,7 @@ export function drawFor(id, model) {
   if (id === 'bow') return 'draw_bow';
   if (id === 'scales') return 'draw_scales';
   if (['bread', 'spoon', 'slapper', 'slipper', 'popper', 'duck', 'reverse', 'cig'].includes(id)) return 'draw_melee';
+  if (id === 'shredder') return 'draw_shredder'; // up it comes, then the motor catches
   return HEAVY.has(id) ? 'draw_heavy' : 'draw_gun';
 }
 

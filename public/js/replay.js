@@ -12,6 +12,7 @@ import { tracerColor } from './skins.js';
 import { playKillFx } from './killfx.js';
 import { courtReplay } from './scales.js';
 import { replayNoScope } from './noscope.js';
+import { shredKill } from './shredder.js';
 import { WEAPONS } from '/shared/weapons.js';
 import { wreckFx, wreckDied } from './wreck.js';
 import { TEAMS, GAMES } from '/shared/modes.js';
@@ -143,6 +144,7 @@ function applyEv(m) {
     if (m.b) fx.tracer(m.p, m.b, 0xffffff, 0.07, 0.3);
   } else if (m.t === 'kill') {
     const v = st.ghosts.get(m.v);
+    if (v && m.w === 'shredder' && shredKill(m, st.ghosts)) m.fx = 'none'; // through the killer's machine
     if (v) {
       const vi = info[m.v] || {};
       const replaced = m.fx && m.fx !== 'none' && playKillFx(m.fx, { pos: v.pos.slice(), vel: m.vel || v.vel, yaw: v.yaw, color: v.color, look: teamLook(vi.look, v.team), name: vi.name });

@@ -12,6 +12,7 @@ import { jankify } from './jank.js';
 import { newTwirl, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
 import { makeRope, setRope, setRopeSkin } from './grapple.js';
 import { sfx } from './audio.js';
+import { remoteShredder } from './shredder.js';
 
 // players ignore fog, glow a bit, and get an outline in their colour so you can spot them across the map
 const noFog = new Map();
@@ -385,6 +386,7 @@ export class Remote {
     if ((this.f & FLAGS.SMOKE) && Math.random() < dt * 25) fx.smoke(head, 1);
     if (this.f & FLAGS.FIRE) fx.fireCone(head, ld, this.vel, 5);
     if (this.f & FLAGS.BLOW) fx.leaves(this.muzzle(), ld, this.vel);
+    if (this.w === 'shredder') remoteShredder(this, dt);
     if (this.weaponMesh && this.weaponMesh.userData.barrels && (this.f & FLAGS.SPIN)) this.weaponMesh.userData.barrels.rotation.z += dt * 40;
     this.card.visible = !!(this.f & FLAGS.REVERSE) || now < (this.reverseUntil || 0);
     if (this.card.visible) this.card.rotation.y += dt * 9;

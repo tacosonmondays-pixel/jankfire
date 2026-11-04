@@ -29,6 +29,7 @@ import { playKillFx, updateKillFx, clearKillFx } from './killfx.js';
 import { courtKill, courtVerdict, updateCourt, courtReset, courtSync } from './scales.js';
 import { noScope, updateNoScope } from './noscope.js';
 import { makeRope, setRope, setRopeSkin, myGrapple, initGrapplePreview, grappleThumb, showGrapple, renderGrapplePreview } from './grapple.js';
+import { shredKill, shredHit, shredGrab, grabStep, updateShreds, clearShreds } from './shredder.js';
 import { updateSpeedLines } from './speedlines.js';
 import { slipperUpdate, slipperStep } from './slipper.js';
 import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse } from './objective.js';
@@ -189,6 +190,7 @@ function resetWorldState() {
   clearRec();
   clearKillFx();
   clearSprays();
+  clearShreds();
   G.roundOver = false;
   renderRound(null);
   $('roundEnd').classList.add('hidden');
@@ -1146,6 +1148,7 @@ net.on('loadout', (m) => {
   if (m.lo) hud.msg(`${wname(m.lo.primary)} · ${wname(m.lo.secondary)} · ${wname(m.lo.melee)}${ITEMS[m.lo.item] ? ' · ' + ITEMS[m.lo.item].name : ''}`, 2.2, 'brag');
 });
 net.on('kb', (m) => applyKb(m.v));
+net.on('grab', (m) => shredGrab(m)); // you're in someone's shredder
 net.on('slip', () => slip(performance.now()));
 net.on('dmg', (m) => {
   const target = m.to === G.myId ? null : G.remotes.get(m.to);
@@ -1168,6 +1171,7 @@ net.on('dmg', (m) => {
       fx.blood(c, dir, Math.min(100, m.a), fl ? fl.point[1] : null);
     }
   }
+  if (m.w === 'shredder') shredHit(m);
   if (m.from === G.myId && m.to !== G.myId) {
     hud.hit(m.hs);
     if (m.hs) sfx.headshot(m.ko); else sfx.hit();
@@ -1183,6 +1187,8 @@ net.on('kill', (m) => {
   const [kn, kc] = nameOf(m.k), [vn, vc] = nameOf(m.v);
   const via = m.w === 'void' || m.w === 'cough' ? m.via : m.w;
   const victim = G.remotes.get(m.v);
+  // shredder kills: the pieces go through the killer's machine instead of the usual gibs / kill effect
+  if (m.w === 'shredder' && shredKill(m, G.remotes, m.v === G.myId ? { pos: ME.pos.slice(), yaw: ME.yaw, color: G.myColor, look: validLook(G.settings.look, myAchs()) } : null)) m.fx = 'none';
   const kfx = m.fx && m.fx !== 'none' ? m.fx : null;
   if (victim) {
     victim.reverseUntil = 0; // the server ends their reverse card on death too
@@ -1442,6 +1448,7 @@ function frame(t) {
     jumpPressed = false;
     acc += dt;
     while (acc >= STEP) { stepPlayer(STEP, inp, now); airTick(now); inp.jumpPressed = false; acc -= STEP; }
+    grabStep(now); // held in a shredder's intake
     // spinbot killstreak: lock onto the nearest enemy you can see
     const spinning = ME.alive && now < (G.spinUntil || 0);
     if (spinning) {
@@ -1489,6 +1496,7 @@ function frame(t) {
   updateKillFx(dt);
   updateCourt(dt, now);
   updateSprays(dt);
+  updateShreds(dt);
   for (const [id, b] of G.bubbles) { if (now > b.until + 500) { G.scene.remove(b.mesh); G.bubbles.delete(id); continue; } b.mesh.rotation.y += dt * 0.3; b.mesh.material.opacity = 0.18 + Math.sin(now * 0.006) * 0.05; }
   updateWand(dt, now); // bubble wand: giant soap bubbles round people, the view from inside one, the wand in your hand
   for (let i = G.smokes.length - 1; i >= 0; i--) {

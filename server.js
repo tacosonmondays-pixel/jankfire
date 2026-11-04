@@ -96,6 +96,7 @@ const COLORS = ['#ff4fd8', '#4fd8ff', '#ffe14d', '#7dff4f', '#ff7a1a', '#b07dff'
 const DEFAULT_NAMES = ['player', 'guy', 'someone', 'nobody', 'dude', 'person'];
 const BOT_NAMES = ['Gary', 'Linda', 'Steve', 'Brenda', 'Kevin', 'Doug', 'Karen', 'Phil', 'Tina', 'Rick', 'Deb', 'Carl', 'Pam', 'Todd', 'Barb', 'Chad'];
 const BOT_GUNS = ['ar', 'ar', 'smg', 'shotgun', 'shotgun', 'sniper', 'chicken', 'banana', 'minigun', 'revolver', 'redline', 'marbles'];
+BOT_GUNS.push('shredder'); // bots suck too (botShred)
 const SKIN_F = ['default', 'default', 'gold', 'chrome', 'pink', 'camo', 'neon', 'rainbow', 'galaxy', 'lava', 'missing', 'tiger', 'fade', 'carbon', 'tape'];
 const SKIN_H = ['none', 'none', 'none', 'tophat', 'party', 'crown', 'cowboy', 'propeller', 'cone', 'eyes', 'duck'];
 const SKIN_E = ['none', 'none', 'none', 'sparkles', 'flames', 'money', 'smoke'];
@@ -154,6 +155,7 @@ function spreadDir(d, s) {
 }
 const center = (p) => [p.pos[0], p.pos[1] + 0.9, p.pos[2]];
 const eyeOf = (p) => [p.pos[0], p.pos[1] + PH.eye, p.pos[2]];
+const lookOf = (p) => { const cp = Math.cos(p.pitch || 0); return [-Math.sin(p.yaw || 0) * cp, Math.sin(p.pitch || 0), -Math.cos(p.yaw || 0) * cp]; };
 function clean(s, max) { return String(s || '').replace(/[<>&"'`\u0000-\u001f]/g, '').trim().slice(0, max); }
 function cleanSkins(s) {
   const out = {};
@@ -552,7 +554,7 @@ class Room {
     if (t && this.friendly(b, t)) { ai.target = 0; ai.seenAt = 0; t = null; } // teams got reshuffled: that's a teammate now
     let wx = 0, wz = 0, jump = false;
     const w = WEAPONS[b.w];
-    const pref = b.w === 'sniper' ? [25, 60] : b.w === 'shotgun' ? [3, 9] : b.w === 'marbles' ? [1.5, 4] : b.w === 'chicken' ? [10, 30] : [7, 22];
+    const pref = b.w === 'sniper' ? [25, 60] : b.w === 'shotgun' ? [3, 9] : b.w === 'marbles' ? [1.5, 4] : b.w === 'chicken' ? [10, 30] : b.w === 'shredder' ? [1.5, 9] : [7, 22];
     if (t && t.alive) {
       const e = eyeOf(b), tc = [t.pos[0], t.pos[1] + 1.1, t.pos[2]];
       const dx = tc[0] - e[0], dy = tc[1] - e[1], dz = tc[2] - e[2];
@@ -734,6 +736,7 @@ class Room {
 
   botFire(b, t, D) {
     const w = WEAPONS[b.w], n = now();
+    if (b.w === 'shredder') { this.botShred(b); return; } // no shots: it sucks for as long as they're in front of it
     const iv = w.rate ? 1000 / fireRate(w, b.hp) : w.cd * 1000;
     if (w.mag) {
       b.ai.ammo--;
@@ -811,12 +814,14 @@ class Room {
       v[1] += 26 * ROPE.lift * b.ropeLift * dt;
     }
     this.eatMomentum(b, dt);
+    if (b.held && n < b.held.until) { for (let i = 0; i < 3; i++) v[i] = Math.max(-30, Math.min(30, (b.held.at[i] - b.pos[i]) * 9)); b.onGround = false; } // hanging in a shredder
     const was = b.onGround;
     const res = movePlayer(b.pos, v, dt, this.boxes, was);
     b.onGround = !!res.ground && v[1] <= 0.01;
     if (b.onGround && res.ground.pad && !b.ai.dummy) { const pd = res.ground.pad; v[0] += pd[0]; v[1] = pd[1]; v[2] += pd[2]; b.onGround = false; }
     b.f = slipping ? 16 : 0;
     if (b.onGround) b.ground = b.pos.slice(); // last place they stood (void deaths drop their tag here)
+    if (n < (b.suckUntil || 0)) b.f |= FLAGS.SUCK; // shredder running: clients draw the suction
     if (b.pos[1] < this.map.killY) this.kill(b, null, 'void');
   }
 
@@ -1457,6 +1462,83 @@ class Room {
       if (!this.pairOk(p, t, 'hook', 400) || !this.rangeOk(p, t, HOOK.range)) return;
       this.hurt(t, p, 'hook', 0, [-toT[0] * HOOK.tug, -toT[1] * HOOK.tug + 5, -toT[2] * HOOK.tug]);
     }
+    if (m.w === 'shredder') this.shredPull(p, t);
+  }
+
+  // ---------------------------------------------------------- shredder
+  // the client only says who is in its cone. everything else comes from server positions: the pull toward the
+  // intake (harder the closer they are, never away from you), and once they're in it: held in the teeth + shredded
+  shredPull(p, t) {
+    const w = WEAPONS.shredder, n = now(), gap = (n - (p.pair.get('shred:' + t.id) || 0)) / 1000;
+    if (p.w !== 'shredder' || !this.pairOk(p, t, 'shred', 70) || !this.rangeOk(p, t, w.range)) return;
+    // damage + pull scale with the time since the last tick on them, so a low-fps client shreds as fast as anyone
+    // (pairOk keeps that gap honest). after a pause it's one normal tick, not a burst
+    const el = gap < 0.3 ? gap : w.tick;
+    if (!p.isBot && !this.shredHeat(p, n)) return;
+    const e = eyeOf(p), L = lookOf(p);
+    const mouth = [e[0] + L[0] * w.mouth, e[1] + L[1] * w.mouth - 0.25, e[2] + L[2] * w.mouth];
+    // in front of you (loosely: positions lag a bit) and not through a wall
+    const c = center(t), fe = [c[0] - e[0], c[1] - e[1], c[2] - e[2]], de = Math.hypot(...fe) || 1e-3;
+    if (de > 3 && (fe[0] * L[0] + fe[1] * L[1] + fe[2] * L[2]) / de < Math.cos(w.cone + 0.45)) return;
+    if (raycast(e, [fe[0] / de, fe[1] / de, fe[2] / de], Math.max(0, de - 0.5), this.boxes)) return;
+    // intake to the nearest bit of their body
+    const by = Math.max(t.pos[1] + 0.2, Math.min(t.pos[1] + 1.7, mouth[1]));
+    const to = [mouth[0] - t.pos[0], mouth[1] - by, mouth[2] - t.pos[2]], d = Math.hypot(...to) || 1e-3;
+    if (d > w.range) return;
+    if (d <= w.grabR) { // the last few metres it just yanks them in; inside shredR the teeth have them
+      const safe = this.friendly(p, t) || this.bubbleBlocks(p, t) || t.reverseUntil > n || (!t.isBot && n - t.spawnT < 1200);
+      // hang them in the air stream just past the mouth, a bit to the right where the gun is, low enough that the
+      // shooter can still see past them (that's their feet: their middle is 0.9 up)
+      const rx = Math.cos(p.yaw || 0), rz = -Math.sin(p.yaw || 0);
+      if (!safe) this.shredHold(t, [mouth[0] + L[0] * 0.75 + rx * 0.3, mouth[1] + L[1] * 0.75 - 1.0, mouth[2] + L[2] * 0.75 + rz * 0.3]);
+      this.hurt(t, p, 'shredder', d <= w.shredR ? w.dps * el : 0, null);
+      return;
+    }
+    if (!t.isBot && n - t.spawnT < 1200) return; // spawn protection covers the pull too: no reeling people in as they spawn
+    // speed-capped so they don't arrive like a bullet (or overshoot through you on a laggy connection)
+    const k = 1 - d / w.range, dir = [to[0] / d, to[1] / d, to[2] / d];
+    const along = (t.vel[0] - p.vel[0]) * dir[0] + (t.vel[1] - p.vel[1]) * dir[1] + (t.vel[2] - p.vel[2]) * dir[2];
+    const dv = Math.max(0, Math.min((w.pull + (w.pullMax - w.pull) * k * k) * (el / w.tick), w.vmax + d * 0.3 - along));
+    this.hurt(t, p, 'shredder', 0, [dir[0] * dv, dir[1] * dv + w.lift * (0.4 + 0.6 * k), dir[2] * dv]);
+  }
+  // stuck in the intake: a human's client gets told where to hang and chases that point every frame; a bot does the
+  // same in stepBot (steering every tick, not once per push, so a shooter's slow or bunched pushes can't fling it)
+  shredHold(t, at) {
+    if (!t.isBot) { send(t, { t: 'grab', p: at.map(r2) }); return; }
+    if (t.ai.dummy && t.ai.dummy.move) return; // moving dummies are on rails
+    t.ai.hook = null; t.g = null; // no grappling out of it
+    t.held = { at, until: now() + 260 };
+  }
+  // ~4 s of sucking overheats it (same numbers the client shows), then it has to cool. a hacked client can't keep it on:
+  // heat charges exactly the time shredPull credits pull + damage for (the whole gap at a steady cadence, one tick
+  // after a pause) and the rest of a pause cools it, so no push cadence shreds for free. that's also the client's own
+  // sum (a tick of suction per push, cooling while let go), so an honest one never gets locked out early
+  shredHeat(p, n) {
+    const w = WEAPONS.shredder, gap = Math.min(10, (n - (p.shredT || 0)) / 1000);
+    if ((p.shredT || 0) < p.spawnT) { p.shredHeat = 0; p.shredHot = false; } // a new life starts cold (the client's does too)
+    p.shredT = n;
+    // overheated: every push is turned away before anything is credited, and only cools it (pushing can't keep it hot)
+    if (p.shredHot) {
+      p.shredHeat = Math.max(0, p.shredHeat - gap * w.regen);
+      if (p.shredHeat <= w.fuel * w.coolTo) p.shredHot = false;
+      return false;
+    }
+    const on = gap < 0.3 ? gap : w.tick;
+    p.shredHeat = Math.max(0, (p.shredHeat || 0) + on - (gap - on) * w.regen);
+    if (p.shredHeat > w.fuel + 0.75) { p.shredHot = true; return false; } // (0.75 s of slack for network jitter)
+    return true;
+  }
+  // bots: suck everyone in front of them through the same rules, with their own heat
+  botShred(b) {
+    const w = WEAPONS.shredder, ai = b.ai, n = now(), gap = Math.min(10, (n - (ai.shT || 0)) / 1000);
+    if (gap < w.tick) return;
+    if ((ai.shT || 0) < b.spawnT) { ai.heat = 0; ai.hot = false; } // respawned: cold again
+    ai.shT = n;
+    if (ai.hot) { ai.heat = Math.max(0, ai.heat - gap * w.regen); if (ai.heat > w.fuel * w.coolTo) return; ai.hot = false; }
+    else ai.heat = gap < 0.25 ? (ai.heat || 0) + gap : Math.max(0, (ai.heat || 0) - gap * w.regen);
+    if (ai.heat >= w.fuel) { ai.hot = true; return; }
+    b.suckUntil = n + 160;
+    for (const t of this.players.values()) if (t !== b && t.alive) this.shredPull(b, t);
   }
 
   // ---------------------------------------------------------- katana parry
