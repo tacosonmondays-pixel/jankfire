@@ -385,7 +385,8 @@ button.mid.glow { background: var(--yellow); }
 @keyframes zmbanner { 0% { opacity: 0; transform: translateX(-50%) scale(1.7); } 9% { opacity: 1; transform: translateX(-50%) scale(1); } 78% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) scale(0.96); } }
 #roundEnd .zmOver { color: #d0161f; font-size: 50px; -webkit-text-stroke: 1px #000; letter-spacing: 3px; }
 #roundEnd .zmSub { font-size: 20px; margin-bottom: 10px; color: #ddd; }
-.zmRows .zr { display: grid; grid-template-columns: minmax(110px, 1fr) repeat(5, 64px); gap: 4px; font-size: 16px; text-align: right; padding: 1px 0; }
+#roundEnd:has(.zmOver) { left: min(50%, calc(100% - 540px)); } /* clear of the vote panel on the right */
+.zmRows .zr { display: grid; grid-template-columns: minmax(90px, 1fr) repeat(5, 50px); gap: 4px; font-size: 15px; text-align: right; padding: 1px 0; }
 .zmRows .zr span:first-child { text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .zmRows .zr.head { color: #aaa; font-size: 12px; border-bottom: 1px solid #555; }
 body.zm-on #streakTray, body.zm-on #streak { display: none; }

@@ -146,6 +146,7 @@ const methods = {
   zmJoin(p) {
     p.z = { c: ZM.start, guns: [], melee: '', ammo: {}, shotT: {}, kills: 0, heads: 0, downs: 0, revives: 0, earned: 0, hurtT: 0, cola: false, down: null, dead: false };
     this.zmKit(p);
+    send(p, { t: 'streak', reset: 1 }); // the streak count starts over (the tray is hidden and deploy is off)
   },
   zmKit(p) {
     const z = p.z;
@@ -154,7 +155,11 @@ const methods = {
   },
   // what p is carrying (sendLoadout calls this on every spawn): their guns + melee and the ammo each one has left
   zmLoadout(p, want) {
-    if (!p.z) this.zmJoin(p); // joined mid-game
+    if (!p.z) { // joined mid-game: mid-round you sit it out like the dead (so rejoining isn't a free revive and a fresh 500)
+      this.zmJoin(p);
+      const zs = this.zs;
+      if (zs.st === 'live' && zs.n > 0 && this.humans().some((h) => h !== p && h.alive)) { p.alive = false; p.hp = 0; p.respawnAt = Infinity; p.z.dead = true; send(p, { t: 'zbench' }); }
+    }
     if (p.team !== 1) { p.team = 1; this.broadcast({ t: 'teams', game: this.game, list: [[p.id, 1, p.color]] }); }
     p.forced = true; // so the next mode hands their own loadout back
     send(p, { t: 'zl', slots: [...p.z.guns, p.z.melee], ammo: p.z.ammo, want: want || undefined, c: p.z.c });
@@ -214,9 +219,10 @@ const methods = {
     const zs = this.zs;
     zs.st = 'break'; zs.until = n + ZM.rest;
     this.broadcast({ t: 'zround', k: 'clear', n: zs.n, ms: ZM.rest });
+    const every = this.mode === 'bots' ? 10 : 5; // a container every 5 rounds online, every 10 in the Bots room (solo is easier to farm)
     for (const h of hs) {
       stat(h, 'xp', 8 + zs.n * 4);
-      if (zs.n % 5 === 0 && h.acct && store) { const kind = randomContainer(); store.grantRolls(h.acct.n, kind, 1).catch(() => {}); send(h, { t: 'roll+', n: 1, kind, why: `survived zombies round ${zs.n}` }); }
+      if (zs.n % every === 0 && h.acct && store) { const kind = randomContainer(); store.grantRolls(h.acct.n, kind, 1).catch(() => {}); send(h, { t: 'roll+', n: 1, kind, why: `survived zombies round ${zs.n}` }); }
     }
   },
   // a flow field per living player, redone when they've moved, every so often, and right after a door opens

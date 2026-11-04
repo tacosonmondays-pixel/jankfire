@@ -35,7 +35,7 @@ import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset }
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
 const INTERP_MS = 110;
-const wname = (id) => (WEAPONS[id] ? WEAPONS[id].name : id === 'hook' ? 'Grapple' : id === 'tbag' ? 'T-Bag' : id);
+const wname = (id) => (WEAPONS[id] ? WEAPONS[id].name : id === 'hook' ? 'Grapple' : id === 'tbag' ? 'T-Bag' : id === 'bite' ? 'Claws' : id);
 const wcolor = (id) => (WEAPONS[id] ? WEAPONS[id].color : '#ccc');
 
 // ------------------------------------------------------------ settings

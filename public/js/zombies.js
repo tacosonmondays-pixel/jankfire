@@ -430,7 +430,7 @@ function downTick(info, now) {
   G.deadAt = now - 450; // the death camera floats up 4 m: keep it under the ceiling, over your body
   const me = (info.dn || []).find((d) => d[0] === G.myId);
   $('deadCard').innerHTML = '';
-  if (info.st === 'over') setDead('GAME OVER', 'everyone went down');
+  if (info.st === 'over') setDead('', ''); // the game over box says it all, don't print over its numbers
   else if (me) setDead("YOU'RE DOWN", me[5] > 0 ? `getting revived... ${Math.round(me[5] * 100)}%` : `bleeding out in ${Math.ceil(me[4] / 1000)} · a friend can hold F on you to revive you`);
   else setDead("YOU'RE DEAD", 'you come back when the next round starts');
 }
@@ -563,6 +563,8 @@ net.on('zdown', (m) => {
   if (m.k === 'up') { hud.chat(null, null, `${name} ${me ? 'are' : 'is'} back up`); sfx.heal(); }
   if (m.k === 'out') hud.chat(null, null, `${name} bled out · back next round`);
 });
+// joined mid-round: you watch until the next round starts
+net.on('zbench', () => { ME.alive = false; W.held = false; W.aimHeld = false; G.deadAt = performance.now(); hud.dead(true, [['you joined mid-round', '#fff']]); });
 // game over: how far you got and who did what (the vote panel shows up next to it)
 net.on('zmover', (m) => {
   const box = $('roundEnd');

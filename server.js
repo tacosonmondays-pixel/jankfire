@@ -303,6 +303,7 @@ class Room {
     p.kfx = ownedKill(m.kfx, inv);
     p.kc = !!m.kc;
     if (this.mode === 'bots' && m.cfg && GAMES[m.cfg.game] && !this.humans().length) this.setGame(m.cfg.game);
+    if (this.mode === 'bots' && !this.humans().length && !this.map.zm !== !GAMES[this.game].zombies) this.setGame(this.map.zm ? 'zm' : this.game); // the zombie map only with zombies
     this.joinTeam(p);
     if (p.team) p.pos = this.pickSpawn(false, p);
     this.players.set(p.id, p);
@@ -1413,6 +1414,7 @@ class Room {
       }
       case 'streaks': p.streaks = validStreaks(m.list); break;
       case 'deploy': { // use a killstreak from your tray (aimed ones land where you looked)
+        if (this.zm) break; // zombies: no killstreaks, not even ones carried over
         const i = (p.pocket || []).indexOf(m.r);
         const at = vec3(m.at);
         if (i < 0 || !p.alive || !STREAKS[m.r]) break;
@@ -1555,8 +1557,8 @@ class Room {
     this.round = { target: (TARGETS[this.mode] || TARGETS.ffa)[this.game] || ROUND[this.mode].kills, ends: now() + ROUND[this.mode].time * 1000, over: false, next: 0 };
     this.score = { 1: 0, 2: 0 };
     this.clearTags();
+    this.zmReset(); // zombies: a fresh game, or clear the last one away (before teams, so no zombies on them)
     this.assignTeams();
-    this.zmReset(); // zombies: a fresh game, or clear the last one away
     this.bomb = this.game === 'bomb' && this.teamsOn() ? { att: 1, n: 0, wins: { 1: 0, 2: 0 } } : null;
     if (this.bomb) { this.round.ends = now() + 3600 * 1000; this.newBombRound(true); }
     else this.resetWorld();
@@ -1574,6 +1576,7 @@ class Room {
   startVote() {
     if (this.mode !== 'ffa' && this.mode !== 'bots') return;
     const games = GAME_ORDER.slice().sort(() => Math.random() - 0.5);
+    if (this.mode === 'bots' && GAMES[this.game].zombies) games.sort((a, b) => (b === this.game) - (a === this.game)); // solo zombies: play again is always an option
     const options = [], usedMaps = new Set();
     for (const g of games) {
       if (options.length >= 3) break;
