@@ -71,6 +71,16 @@ export const WEAPONS = {
     auto: true, cd: 0.3, speed: 42, grav: 18, r: 0.25, dmg: 14, kb: 9, bounce: 0.35,
     ads: { zoom: 1.25, p: [0, -0.12, -0.32] },
   },
+  // hold to suck (cone like the leaf blower, but it pulls). the server works out the pull and the shredding:
+  // pull = pull..pullMax per tick (harder the closer), capped so they arrive at ~vmax; inside grabR of the intake
+  // (mouth m in front of your eyes) it just yanks them into the teeth, inside shredR they take dps.
+  // heat works like the blower's fuel.
+  shredder: {
+    slot: 'primary', kind: 'cone', name: 'Shredder', color: '#ffb31a',
+    desc: 'An industrial vacuum-shredder. Hold to suck people in, harder the closer they get. Whoever reaches the intake gets shredded and spat out the chute. Overheats after 4 s.',
+    range: 14, cone: 0.61, tick: 0.09, mouth: 1.3, shredR: 2, grabR: 3.5, dps: 150, pull: 4, pullMax: 22, vmax: 10, lift: 1.4,
+    fuel: 4, regen: 1, coolTo: 0.35, speedMul: 0.92,
+  },
 
   // ------------------------------------------------------------ secondary
   revolver: {
@@ -249,6 +259,7 @@ export const RANKS = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J'
 export const FLAGS = { SMOKE: 1, FIRE: 2, BLOW: 4, SPIN: 8, SLIP: 16, SLIDE: 32, REVERSE: 64, CROUCH: 128, DASH: 256 };
 export const SLIP_TIME = 1.7;
 export const HOOK = { range: 90, pull: 42, tug: 16 };
+FLAGS.SUCK = 2048; // a shredder is running: everyone else sees the suction and hears the motor
 
 // your 3 killstreaks, cheapest first (keys 5 / 6 / 7)
 export function validStreaks(list) {

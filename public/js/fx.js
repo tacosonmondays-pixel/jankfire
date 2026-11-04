@@ -187,6 +187,53 @@ export const fx = {
         Math.random() < 0.5 ? 0xbbaa99 : 0x777777, 0x333333, 1, 0, 0);
     }
   },
+  // shredder suction: dust, leaves, grit and air swirls pulled out of a cone into the intake o. each one is aimed
+  // to reach o as it dies (base = the shooter's velocity, so they keep up when you move). k = how spun up it is,
+  // dt = frame time: the amount is per second, so a slow frame doesn't mean thin suction
+  vacuum(o, d, base, range, cone, k = 1, dt = 1 / 60) {
+    const up = Math.abs(d[1]) < 0.95 ? [0, 1, 0] : [1, 0, 0];
+    let ux = d[1] * up[2] - d[2] * up[1], uy = d[2] * up[0] - d[0] * up[2], uz = d[0] * up[1] - d[1] * up[0];
+    const ul = Math.hypot(ux, uy, uz) || 1; ux /= ul; uy /= ul; uz /= ul;
+    const vx = d[1] * uz - d[2] * uy, vy = d[2] * ux - d[0] * uz, vz = d[0] * uy - d[1] * ux;
+    const tc = Math.tan(cone), n = Math.min(80, Math.floor((240 + 420 * k) * dt + Math.random()));
+    const leaves = [0x4caf50, 0x8bc34a, 0xff9800, 0xc0602a, 0xffd54f];
+    for (let i = 0; i < n; i++) {
+      const kind = Math.random(), swirl = kind < 0.3;
+      // swirls stay close to the mouth and spin round the axis: a little tornado going in
+      const dist = swirl ? 0.4 + Math.random() * 2.6 : 1.2 + Math.random() * range * (0.45 + 0.45 * k);
+      const a = Math.random() * Math.PI * 2, r = dist * tc * Math.sqrt(Math.random()) * (swirl ? 0.6 : 0.9);
+      const ca = Math.cos(a), sa = Math.sin(a);
+      const x = o[0] + d[0] * dist + (ux * ca + vx * sa) * r, y = o[1] + d[1] * dist + (uy * ca + vy * sa) * r, z = o[2] + d[2] * dist + (uz * ca + vz * sa) * r;
+      const life = (swirl ? 0.12 : 0.22) + dist / (14 + 14 * k) + Math.random() * 0.08;
+      let px = (o[0] - x) / life + base[0], py = (o[1] - y) / life + base[1], pz = (o[2] - z) / life + base[2];
+      if (swirl) {
+        const sw = 2.5 + 4 * k;
+        px += (vx * ca - ux * sa) * sw; py += (vy * ca - uy * sa) * sw; pz += (vz * ca - uz * sa) * sw;
+        misc.spawn(x, y, z, px, py, pz, life, 0.11, 0.03, 0xe8f6ff, 0xffffff, 0.6, 0, 0);
+      } else if (kind < 0.5) smoke.spawn(x, y, z, px, py, pz, life, 0.5, 0.08, 0xc8b898, 0x8a7a66, 0.35, 0, 0);
+      else if (kind < 0.78) misc.spawn(x, y, z, px, py, pz, life, 0.15, 0.04, leaves[(Math.random() * leaves.length) | 0], 0x553311, 1, 0, 0);
+      else misc.spawn(x, y, z, px, py, pz, life, 0.08, 0.03, Math.random() < 0.5 ? 0x555555 : 0x8a6a4a, 0x333333, 1, 0, 0);
+    }
+  },
+  // a stream of blood from p into to (a shredder's intake), each drop landing on it
+  bloodTo(p, to, n = 8, base = [0, 0, 0]) {
+    for (let i = 0; i < n; i++) {
+      const x = p[0] + R(0.3), y = p[1] + R(0.45), z = p[2] + R(0.3), life = 0.14 + Math.random() * 0.16;
+      blood.spawn(x, y, z, (to[0] - x) / life + base[0], (to[1] - y) / life + base[1], (to[2] - z) / life + base[2],
+        life, 0.08 + Math.random() * 0.08, 0.025, Math.random() < 0.3 ? 0xd01010 : 0x8a0000, 0x3a0000, 1, 0, 0);
+    }
+  },
+  // a burst shot out of a chute along d: blood if gore is on, confetti if party is
+  chute(o, d, base, n = 20, gore = true, party = true) {
+    const cols = [0xff4fd8, 0x4fd8ff, 0xffe14d, 0x7dff4f, 0xff7a1a, 0xffffff];
+    for (let i = 0; i < n; i++) {
+      const s = 5 + Math.random() * 7;
+      if (party) misc.spawn(o[0], o[1], o[2], d[0] * s + R(2.5) + base[0], d[1] * s + R(2.5) + base[1], d[2] * s + R(2.5) + base[2],
+        0.9 + Math.random() * 0.9, 0.1, 0.1, cols[(Math.random() * cols.length) | 0], 0xffffff, 1, 6, 1.6);
+      if (gore) blood.spawn(o[0], o[1], o[2], d[0] * s * 0.8 + R(2) + base[0], d[1] * s * 0.8 + R(2) + base[1], d[2] * s * 0.8 + R(2) + base[2],
+        0.5 + Math.random() * 0.5, 0.08 + Math.random() * 0.08, 0.05, Math.random() < 0.3 ? 0xd01010 : 0x8a0000, 0x3a0000, 1, 18, 0.5);
+    }
+  },
   explosion(p, radius) {
     const m = new THREE.Mesh(SPHERE_GEO, new THREE.MeshBasicMaterial({ color: 0xffcc33, transparent: true, opacity: 1 }));
     m.position.set(p[0], p[1], p[2]);

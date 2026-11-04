@@ -129,6 +129,12 @@ export const sfx = {
   yeet(pos) { noise(0.7, 0.5, 'bandpass', 400, 3000, pos, 0, 1.5); tone('sine', 300, 1400, 0.6, 0.15, pos); },
   choir(pos) { for (const [f, d] of [[523, 0], [659, 0.05], [784, 0.1], [1046, 0.15]]) tone('sine', f, f * 1.01, 2.2, 0.12, pos, d); },
   tbag(pos) { for (let i = 0; i < 3; i++) tone('sawtooth', 120 - i * 25, 40, 0.18, 0.3, pos, i * 0.1); },
+  // shredder: teeth chewing, a wet spit out of the chute, the overheat hiss, and other people's suction (k = spin)
+  shred(pos) { noise(0.13, 0.75, 'bandpass', 1700, 450, pos, 0, 1.4); tone('square', 95, 55, 0.13, 0.22, pos); noise(0.05, 0.45, 'highpass', 3500, 6000, pos, 0.06); },
+  spit(pos) { noise(0.18, 0.8, 'lowpass', 1500, 180, pos); tone('sine', 300, 70, 0.17, 0.4, pos); },
+  overheat(pos) { noise(1.0, 0.35, 'highpass', 5200, 2400, pos); tone('square', 1300, 1300, 0.07, 0.14, pos); tone('square', 1300, 1300, 0.07, 0.14, pos, 0.13); },
+  startup(pos) { for (let i = 0; i < 3; i++) noise(0.06, 0.55, 'lowpass', 1000, 180, pos, i * 0.075); tone('sawtooth', 45, 150, 0.55, 0.16, pos, 0.2); tone('square', 90, 380, 0.5, 0.05, pos, 0.22); }, // sputter sputter VRRRM
+  suck(pos, k = 1) { noise(0.34, 0.2 + 0.25 * k, 'bandpass', 450 + 1000 * k, 300 + 700 * k, pos, 0, 1.1); tone('sawtooth', 70 + 170 * k, 76 + 180 * k, 0.32, 0.04 + 0.05 * k, pos); },
 };
 
 const LOOPDEF = {
@@ -162,3 +168,26 @@ export function loopSfx(name, on) {
 }
 
 export function stopLoops() { for (const k in loops) loopSfx(k, false); }
+
+// shredder motor: a whine that climbs as the teeth spin up (k 0..1). it sits in loops so stopLoops() shuts it up too
+export function shredMotor(k) {
+  if (!ac) return;
+  let l = loops.shredder;
+  if (!l) {
+    if (k <= 0.01) return;
+    const g = ac.createGain(); g.gain.value = 0; g.connect(master);
+    const s = ac.createBufferSource(); s.buffer = nbuf; s.loop = true;
+    const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.3; f.frequency.value = 300;
+    s.connect(f); f.connect(g); s.start();
+    const og = ac.createGain(); og.gain.value = 0.22; og.connect(g);
+    const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 50; o.connect(og); o.start();
+    const o2 = ac.createOscillator(); o2.type = 'square'; o2.frequency.value = 100; o2.connect(og); o2.start();
+    l = loops.shredder = { g, on: false, def: { vol: 0.45 }, f, o, o2 };
+  }
+  const on = k > 0.01, t = ac.currentTime;
+  l.o.frequency.setTargetAtTime(48 + k * 230, t, 0.06);
+  l.o2.frequency.setTargetAtTime(96 + k * 700, t, 0.06);
+  l.f.frequency.setTargetAtTime(260 + k * 1900, t, 0.06);
+  if (on || l.on) l.g.gain.setTargetAtTime(on ? 0.1 + k * 0.35 : 0, t, 0.05);
+  l.on = on;
+}

@@ -99,7 +99,7 @@ Bots play the objectives too: they carry and plant the bomb, defuse it, and grab
 
 ## Weapons
 
-- **Primary:** Assault Rifle, SMG, Shotgun, Minigun, Sniper, Chicken Rocket, Bowling Ball Launcher, Bow, Peel Shooter
+- **Primary:** Assault Rifle, SMG, Shotgun, Minigun, Sniper, Chicken Rocket, Bowling Ball Launcher, Bow, Peel Shooter, **Shredder**
 - **Secondary:** Revolver, Cigarette (smoke it, blow fire), Leaf Blower, Card Deck, Party Popper, Reverse Card, **Snowball**
 - **Melee:** Bread, Slipper (throw it, it comes back), Knife, Hand Slapper (point blank, launches + makes them slip), **Katana**, Spoon
 - **Item (G):** Frag Grenade (x2, bounces, 2 s fuse, grenade-jump with it), Medkit, Shield Bubble (nothing from outside hurts anyone inside for 7 s), Rubber Duck (black hole), Smoke Bomb (x2). Charges refill over time.
@@ -111,6 +111,8 @@ Bots play the objectives too: they carry and plant the bomb, defuse it, and grab
 **Katana:** the blade gets longer (and reaches further) with every kill you get with it. Resets when you die.
 
 **Snowball:** barely hurts, but every hit adds frost. 4 hits freezes them solid for a moment; hit a frozen target and they shatter.
+
+**Shredder:** an industrial vacuum-shredder. Hold to suck: a 14 m cone (35° each side) pulls people toward the intake, harder the closer they are (sprint and you can get away at long range; within a few metres it just yanks you in). Their gun goes in first. Whoever reaches the intake hangs in the spinning teeth and gets chewed (150 damage a second, dead in about 0.7 s); a Shredder kill takes them apart, the pieces go into the machine and come out of the exhaust chute in chunks, with blood and confetti. About 4 s of sucking overheats it (the teeth glow red-hot, the gauge hits the red, it steams), then it has to cool. Teammates are safe, bots carry it too, and the server does the pulling and the shredding from its own positions. Skin: Wood Chipper.
 
 **Bow:** hold to draw, release to fire. Every arrow gets a random tip, shown on the HUD: regular, power, knockback, flame, explosion, gas, sleep.
 

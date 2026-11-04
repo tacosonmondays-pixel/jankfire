@@ -10,6 +10,7 @@ import { marbles } from './marbles.js';
 import { sfx } from './audio.js';
 import { tracerColor } from './skins.js';
 import { playKillFx } from './killfx.js';
+import { shredKill } from './shredder.js';
 import { WEAPONS } from '/shared/weapons.js';
 import { raycast } from '/shared/physics.js';
 import { BOXES } from '/shared/map.js';
@@ -104,6 +105,7 @@ function applyEv(m) {
     fx.explosion(m.p, 6); sfx.boom(m.p);
   } else if (m.t === 'kill') {
     const v = st.ghosts.get(m.v);
+    if (v && m.w === 'shredder' && shredKill(m, st.ghosts)) m.fx = 'none'; // through the killer's machine
     if (v) {
       const vi = info[m.v] || {};
       const replaced = m.fx && m.fx !== 'none' && playKillFx(m.fx, { pos: v.pos.slice(), vel: m.vel || v.vel, yaw: v.yaw, color: v.color, look: vi.look, name: vi.name });
