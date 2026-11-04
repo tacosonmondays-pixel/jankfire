@@ -120,7 +120,8 @@ function hookStep(dt) {
   const dist = Math.hypot(dx, dy, dz);
   if (dist < 0.01) return;
   const nx = dx / dist, ny = dy / dist, nz = dz / dist;
-  if (dist > 2) { v[0] += nx * HOOK.pull * dt; v[1] += ny * HOOK.pull * dt; v[2] += nz * HOOK.pull * dt; }
+  const pull = HOOK.pull * (G.hookMul || 1); // spoons & grapples pulls harder
+  if (dist > 2) { v[0] += nx * pull * dt; v[1] += ny * pull * dt; v[2] += nz * pull * dt; }
   v[1] += C.grav * 0.35 * dt;
   // rope: you can swing and get reeled in, but never drift further away
   ME.hook.len = Math.min(ME.hook.len, dist);

@@ -13,6 +13,7 @@ import { jankify } from './jank.js';
 const noFog = new Map();
 function visibleMat(m) {
   if (!m || m.isShaderMaterial || m.isSpriteMaterial) return m;
+  if (Array.isArray(m)) return m.map(visibleMat); // the knife blade has a material per face
   if (!noFog.has(m)) {
     const c = m.clone();
     c.fog = false;

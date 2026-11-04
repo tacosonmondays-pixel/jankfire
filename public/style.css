@@ -355,3 +355,27 @@ button.mid.glow { background: var(--yellow); }
 @media (max-height: 480px) {
   body.hotbar-right #hotbar { transform: translateY(-50%) scale(0.66); }
 }
+
+/* chaos modes: floor is lava, duck rain, one in the chamber, spoons */
+#center.lava { color: #ff6a1a; font-size: 64px; text-shadow: 3px 3px 0 #000, 0 0 18px #ff3a00; animation: wobble 0.35s infinite; }
+#lavaGlow { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.6s; background: linear-gradient(0deg, rgba(255, 70, 0, 0.32) 0%, rgba(255, 90, 0, 0.08) 22%, transparent 45%); }
+#lavaGlow.on { opacity: 1; animation: lavapulse 2.4s ease-in-out infinite; }
+@keyframes lavapulse { 50% { filter: brightness(1.35); } }
+#lavaHit { position: absolute; inset: 0; pointer-events: none; opacity: 0; box-shadow: inset 0 0 160px 50px rgba(255, 80, 0, 0.9); }
+#lavaHit.on { animation: lavahit 0.6s ease-out; }
+@keyframes lavahit { from { opacity: 1; } to { opacity: 0; } }
+#chaosHud { position: absolute; right: 18px; bottom: 96px; display: none; flex-direction: column; align-items: flex-end; gap: 4px; font-size: 14px; transform: rotate(-1.5deg); } /* where the ammo counter usually is */
+body.hotbar-right #chaosHud { right: 50%; transform: translateX(50%); bottom: 14px; }
+body.chaos-lives #chaosHud { display: flex; }
+body.chaos-lives #ammo, body.chaos-nostreaks #streakTray, body.chaos-lives #streak { display: none !important; }
+.ch-row { display: flex; align-items: center; gap: 5px; background: rgba(0, 0, 0, 0.45); padding: 3px 8px; }
+.ch-row span { width: 62px; color: #ddd; }
+.ch-bul { display: inline-block; width: 11px; height: 24px; border: 2px solid #6a5420; border-radius: 6px 6px 1px 1px; background: rgba(255, 255, 255, 0.08); }
+.ch-bul.on { background: linear-gradient(180deg, #ffe6a0 0 30%, #d9a43a 30% 100%); border-color: #000; box-shadow: 0 0 8px rgba(255, 210, 90, 0.7); }
+.ch-life { font-size: 22px; color: #555; line-height: 1; }
+.ch-life.on { color: #ff3b5c; text-shadow: 2px 2px 0 #000; }
+#specBar { position: absolute; left: 50%; bottom: 90px; transform: translateX(-50%); display: none; font-size: 20px; color: #ffe14d; background: rgba(10, 0, 20, 0.75); border: 3px solid var(--pink); padding: 6px 16px; white-space: nowrap; }
+#specBar.on { display: block; }
+body.replaying #chaosHud, body.replaying #specBar, body.replaying #lavaGlow { visibility: hidden; }
+#setupMap option:disabled { color: #666; }
+body.chaos-spec #hotbar, body.chaos-spec #hpbox, body.chaos-spec #crosshair, body.chaos-spec #speed, body.chaos-spec #chaosHud { visibility: hidden; }

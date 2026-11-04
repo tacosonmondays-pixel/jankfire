@@ -162,3 +162,11 @@ export function loopSfx(name, on) {
 }
 
 export function stopLoops() { for (const k in loops) loopSfx(k, false); }
+
+// chaos modes: a duck falling out of the sky (a whistle that drops as it comes down), lava hissing, a lava rumble
+Object.assign(sfx, {
+  whistle(pos, dur = 1.6) { tone('sine', 2300, 520, dur, 0.2, pos); tone('sine', 2330, 535, dur, 0.08, pos); },
+  sizzle(pos) { noise(0.5, 0.55, 'highpass', 5200, 1800, pos, 0, 0.8); noise(0.25, 0.4, 'bandpass', 900, 300, pos, 0.02, 3); tone('square', 90, 40, 0.18, 0.12, pos); },
+  rumble(pos) { noise(1.6, 0.7, 'lowpass', 260, 40, pos); tone('sawtooth', 55, 30, 1.4, 0.3, pos); for (let i = 0; i < 5; i++) noise(0.12, 0.35, 'highpass', 3000, 1200, pos, 0.2 + i * 0.22, 1); },
+  chamber(pos) { tone('square', 1500, 1450, 0.04, 0.2, pos); tone('square', 700, 650, 0.07, 0.2, pos, 0.06); },
+});

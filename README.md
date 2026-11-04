@@ -92,8 +92,13 @@ Game modes (Play + Bots):
 | Tags | kills drop a tag. Grab enemy tags to score, grab your own team's to deny them. |
 | Plant & Defuse | attackers carry the bomb to site A or B and hold F to plant (3 s). Defenders stop them or hold F to defuse (5 s). First to 4 rounds, sides swap after round 3. |
 | Randomizer | everyone gets a random loadout every life |
+| Spoons & Grapples | free for all with nothing but the Spoon (one hit kills, point blank) and the grappling hook, which pulls 35% harder. No guns, no items, no killstreaks. |
+| Duck Rain | deathmatch, but rubber ducks rain from the sky (a drop every 2.4 s down to 1.1 s as the match goes on, 1-4 ducks each depending on map size, half of them near someone) and land as black holes. A red ring and a shadow on the ground plus a falling whistle show where each one lands. A sky duck kill is a suicide unless someone hurt you in the last 6 s (they get it). |
+| Floor Is Lava | the map's ground floor burns: 20 damage per touch, then 4 every 0.3 s for 1.4 s, and it bounces you back up. Crates, roofs, walls and ledges are safe, spawns are always on safe ground. The ground floor is worked out per map (the lowest height with a real amount of floor, plus curbs half a metre above it). Only on maps that have one (not Platform or Skyline). |
+| One in the Chamber | a Revolver with one bullet (any hit kills, no reloading) and a knife. Each kill gives a bullet (max 3). 3 lives each, out of lives = spectate (click to watch the next one). Last one standing wins. |
 
 Bots play the objectives too: they carry and plant the bomb, defuse it, and grab tags. They also use the grapple to chase, to get up high, and to save themselves from the void.
+In the chaos modes they rush you with the spoon (grappling in from afar), stop at lava edges and grapple back out when they fall in, and in One in the Chamber only spend their bullet on a close enough shot, knifing you otherwise.
 
 **Match Settings** (pause menu): map, hipfire accuracy, bot difficulty, bot count, and (in Bots) the mode.
 

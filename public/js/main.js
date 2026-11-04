@@ -29,6 +29,8 @@ import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
 import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, HAIRS, TOPS, BOTTOMS } from '/shared/looks.js';
 import { account, restore, login, register, logout, saveProfile, leaderboard as fetchLeaders } from './account.js';
+import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
+import { mapsFor } from '/shared/modes.js';
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 
 const $ = (id) => document.getElementById(id);
@@ -240,6 +242,13 @@ $('setupBots').addEventListener('input', () => { $('setupBotsN').textContent = $
 $('setupGo').addEventListener('click', () => startMode('bots', {
   map: $('setupMap').value, bots: Number($('setupBots').value), diff: $('setupDiff').value, hip: $('setupHip').value, game: $('setupGame').value,
 }));
+// some modes need certain maps (bomb sites, a floor to turn into lava): grey out the rest and move off them
+function syncSetupMaps() {
+  const ok = new Set(mapsFor($('setupGame').value, MAPS, MAP_ORDER));
+  for (const o of $('setupMap').options) o.disabled = !ok.has(o.value);
+  if (!ok.has($('setupMap').value) && ok.size) $('setupMap').value = [...ok][0];
+}
+$('setupGame').addEventListener('change', syncSetupMaps);
 function syncMatchUI() {
   $('cfgMap').value = G.cfg.map;
   $('cfgMap').disabled = G.mode === 'training';
@@ -369,7 +378,7 @@ function buildLoadoutUI() {
   }
 }
 function applyLoadout(force) {
-  if (G.forcedLoadout) { $('loNote').textContent = 'randomizer is on: you get a random loadout every life'; return; }
+  if (G.forcedLoadout) { $('loNote').textContent = G.forcedLoadout.only ? 'this mode hands everyone the same weapons' : 'randomizer is on: you get a random loadout every life'; return; }
   const canNow = force || !G.joined || !ME.alive || performance.now() - (G.spawnT || 0) < 5000;
   if (canNow) { setLoadout(S.loadout); G.pendingLoadout = false; $('loNote').textContent = ''; }
   else { G.pendingLoadout = true; $('loNote').textContent = 'loadout switches when you respawn'; }
@@ -1004,7 +1013,7 @@ net.on('loadout', (m) => {
   G.forcedLoadout = m.lo || null;
   setLoadout(m.lo || S.loadout);
   refillAmmo();
-  if (m.lo) hud.msg(`${wname(m.lo.primary)} · ${wname(m.lo.secondary)} · ${wname(m.lo.melee)}`, 2.2, 'brag');
+  if (m.lo && !m.lo.only) hud.msg(`${wname(m.lo.primary)} · ${wname(m.lo.secondary)} · ${wname(m.lo.melee)}`, 2.2, 'brag');
 });
 net.on('kb', (m) => applyKb(m.v));
 net.on('slip', () => slip(performance.now()));
@@ -1062,6 +1071,8 @@ net.on('kill', (m) => {
   } else {
     parts = [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc]];
   }
+  const hazard = m.w === 'lava' || (m.w === 'duck' && (!m.k || m.via)); // floor is lava / duck rain: nobody owns those
+  if (hazard) parts = m.k ? [[kn, kc], [`  [${wname(m.via)}]  `, wcolor(m.via)], [vn, vc], [m.w === 'lava' ? '  into the lava' : '  under a sky duck', '#aaa']] : [[vn, vc], [m.w === 'lava' ? '  touched the floor' : '  got flattened by a sky duck', '#ff8a3a']];
   if (!dummy) hud.feed(parts);
   if (m.v === G.myId) {
     ME.alive = false;
@@ -1077,6 +1088,7 @@ net.on('kill', (m) => {
         ? [[kn, kc], [' knocked you into the void', '#fff'], [`  (${wname(via)})`, wcolor(via)]]
         : [['killed by ', '#fff'], [kn, kc], [`  (${wname(via)})`, wcolor(via)]]);
     } else hud.dead(true, [[m.w === 'void' ? 'you fell into the void' : m.w === 'tbag' ? 'you t-bagged too hard. your knees exploded.' : 'you smoked too much', '#fff']]);
+    if (hazard) hud.dead(true, m.k ? [[kn, kc], [m.w === 'lava' ? ' knocked you into the lava' : ' softened you up for a sky duck', '#fff'], [`  (${wname(m.via)})`, wcolor(m.via)]] : [[m.w === 'lava' ? 'the floor was lava' : 'a duck fell out of the sky on you', '#fff']]);
   }
   if (m.k === G.myId && m.v !== G.myId) {
     sfx.kill();
@@ -1267,7 +1279,7 @@ function frame(t) {
     } : {};
     jumpPressed = false;
     acc += dt;
-    while (acc >= STEP) { stepPlayer(STEP, inp, now); inp.jumpPressed = false; acc -= STEP; }
+    while (acc >= STEP) { stepPlayer(STEP, inp, now); lavaStep(now); inp.jumpPressed = false; acc -= STEP; }
     // spinbot killstreak: lock onto the nearest enemy you can see
     const spinning = ME.alive && now < (G.spinUntil || 0);
     if (spinning) {
@@ -1325,6 +1337,7 @@ function frame(t) {
     if (a && a.by === G.myId) hud.meter(a.f, a.k === 'plant' ? 'PLANTING... keep holding F' : 'DEFUSING... keep holding F', '#ff4f4f');
     if (G.vote) $('voteLeft').textContent = `${Math.max(0, Math.ceil((G.voteEnds - performance.now()) / 1000))}s`;
   }
+  updateChaos(dt, now);
 
   for (const pr of G.projs.values()) {
     if (pr.k === 'slipper') {
@@ -1406,6 +1419,7 @@ function frame(t) {
   fovNow += (fovTarget - fovNow) * Math.min(1, dt * (W.aim > 0 ? 14 : 6));
   if (Math.abs(cam.fov - fovNow) > 0.05) { cam.fov = fovNow; cam.updateProjectionMatrix(); }
   if (RP.active) updateReplay(dt, now, cam); // killcam / play of the round owns the camera
+  const specCam = !RP.active && spectateCam(dt, cam); // one in the chamber: out of lives, watching someone
   cam.updateMatrixWorld();
   updateSpeedLines(dt, G.joined && ME.alive && !RP.active ? Math.hypot(ME.vel[0], ME.vel[1], ME.vel[2]) : 0, ME.vel, cam, ME.dashing ? 0.9 : 0, S.speedLines !== false);
   const rh = G.renderer.domElement.height;
@@ -1434,7 +1448,7 @@ function frame(t) {
   G.skinFxVM.update(dt);
   skinTick(dt, now);
   updateWorld(dt);
-  G.vmScene.visible = G.joined && !RP.active;
+  G.vmScene.visible = G.joined && !RP.active && !specCam;
   renderFrame();
   if ((screen === 'cosmetics' || screen === 'character') && !$('menu').classList.contains('hidden')) renderPreview(dt);
 }
@@ -1466,6 +1480,7 @@ function renderStreak(n) {
 function deployStreak(slot) {
   const id = validStreaks(S.loadout.streaks)[slot];
   if (!G.joined || !ME.alive || !id) return;
+  if (chaosNoStreaks()) { hud.msg('no killstreaks in this mode', 1.2); sfx.empty(); return; }
   if (!G.pocket.includes(id)) { hud.msg(`${STREAKS[id].name}: ${STREAKS[id].kills} kills in a row`, 1.2); sfx.empty(); return; }
   const e = eye(), d = lookDir();
   const h = raycast(e, d, 300, BOXES);
@@ -1866,6 +1881,8 @@ function renderRound(r) {
   if (!r) { el.textContent = ''; return; }
   const teamGame = r.game && GAMES[r.game] && GAMES[r.game].teams;
   el.textContent = r.over ? `next round in ${Math.ceil(r.left / 1000)}` : teamGame ? '' : `first to ${r.target} · ${fmtClock(r.left)}`;
+  const ct = chaosRoundText(r);
+  if (ct) el.textContent = ct;
 }
 net.on('round', (m) => {
   const box = $('roundEnd');
@@ -1874,6 +1891,7 @@ net.on('round', (m) => {
     if (m.game) { G.round = { ...(G.round || {}), ...m }; updateLabel(); }
     hud.msg(m.game && m.game !== 'dm' && GAMES[m.game] ? GAMES[m.game].name.toUpperCase() : 'ROUND START', 1.8, 'brag');
     if (m.game && GAMES[m.game]) hud.chat(null, null, GAMES[m.game].desc);
+    chaosRoundStart(m.game);
     return;
   }
   if (!m.over) return;
