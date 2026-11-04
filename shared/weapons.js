@@ -127,6 +127,7 @@ export const WEAPONS = {
   // thrown items (not in a weapon slot; the item slot fires these)
   frag: { slot: 'hidden', kind: 'proj', name: 'Frag Grenade', color: '#7a8a3a', speed: 24, grav: 22, r: 0.15, bounce: 0.42, fuse: 2.2, radius: 7.5, dmg: 105, kb: 34, life: 6 },
   smokegren: { slot: 'hidden', kind: 'proj', name: 'Smoke Bomb', color: '#9aa0a8', speed: 22, grav: 22, r: 0.15, bounce: 0.35, fuse: 1.3, life: 5 },
+
   // bubble wand soap bubbles: they fly the exact path in shared/wand.js (kind 'soap', so nothing can 'fire' them)
   soap: { slot: 'hidden', kind: 'soap', name: 'Bubble Wand', color: '#9fe8ff', speed: 11, r: 0.4, drag: 1.4, drift: 1, lift: 0.25, bob: 0.2, sway: 0.25, life: 4 },
 
@@ -203,11 +204,12 @@ export const ITEMS = {
   frag: { name: 'Frag Grenade', desc: 'Bounces, blows up after 2s. Knocks people (and you) flying.', charges: 2, recharge: 16, color: '#9ab04a', proj: 'frag' },
   medkit: { name: 'Medkit', desc: 'Heals 60 over a couple of seconds.', charges: 1, recharge: 22, color: '#ff4f4f', heal: 60 },
   bubble: { name: 'Shield Bubble', desc: 'A dome for 7s. Nothing from outside can hurt anyone inside.', charges: 1, recharge: 28, color: '#4fd8ff', dur: 7, r: 4.4 },
-  // bubbles: soap bubbles per blow, gap ms apart. a hit seals them in a giant bubble for dur s that floats up (rise m/s)
-  // and away from you (drift m/s), then pops. any hit pops it early. safe = s before they can be bubbled again
-  wand: { name: 'Bubble Wand', desc: 'Blow a stream of soap bubbles. An enemy one touches is sealed in a giant bubble that floats up and away for 5s (no moving, no shooting), then pops and drops them. Over the void, that is your kill. Any hit pops it early.', charges: 2, recharge: 15, color: '#9fe8ff', bubbles: 4, gap: 90, dur: 5, rise: 2, drift: 1.5, safe: 1.5 },
   duck: { name: 'Rubber Duck', desc: 'Turns into a black hole that sucks everyone in, then pops.', charges: 1, recharge: 20, color: '#ffd23b', proj: 'duck' },
   smoke: { name: 'Smoke Bomb', desc: 'A thick cloud nobody can see through for 10s.', charges: 2, recharge: 18, color: '#9aa0a8', proj: 'smokegren', dur: 10, r: 6.5 },
+  // bubbles: soap bubbles per blow, gap ms apart. a hit seals them in a giant bubble for dur s that floats up (rise m/s)
+  // and away from you (drift m/s), then pops. any hit pops it early. safe = s before they can be bubbled again, or
+  // safeK x how long they were in if that's longer (two wands can't chain someone)
+  wand: { name: 'Bubble Wand', desc: 'Blow a stream of soap bubbles. An enemy one touches is sealed in a giant bubble that floats up and away for 5s (no moving, no shooting), then pops and drops them. Over the void, that is your kill. Any hit pops it early.', charges: 2, recharge: 15, color: '#9fe8ff', bubbles: 4, gap: 90, dur: 5, rise: 2, drift: 1.5, safe: 1.5, safeK: 0.6 },
 };
 export const ITEM_ORDER = ['frag', 'medkit', 'bubble', 'duck', 'smoke', 'wand'];
 

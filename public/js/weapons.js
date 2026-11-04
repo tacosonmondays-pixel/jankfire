@@ -263,6 +263,7 @@ export function useItem() {
   W.itemT = performance.now();
   c.n--; if (!c.next) c.next = performance.now() + it.recharge * 1000;
   net.send({ t: 'item', i: id, o: eye().map(r2), d: look().map(r2) });
+  if (id === 'wand') return; // no toss: the wand has its own viewmodel and bloops (wand.js)
   if (!W.anim || W.anim.kind === 'inspect' || W.anim.kind === 'draw') playAnim('toss_item', 'item');
   if (id === 'medkit') sfx.heal(); else if (id === 'bubble') sfx.reverse(); else sfx.swing();
 }

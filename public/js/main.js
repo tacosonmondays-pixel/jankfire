@@ -969,8 +969,8 @@ net.on('freeze', (m) => {
   const r = G.remotes.get(m.id); if (r) { r.frozenUntil = performance.now() + m.dur; sfx.ting(r.pos); }
 });
 // bubble wand: someone got sealed in a giant soap bubble / it popped (wand.js does the rest)
-net.on('trap', (m) => trapStart(m));
-net.on('trapx', (m) => trapEnd(m));
+net.on('trap', (m) => { trapStart(m); recordEv(m); });
+net.on('trapx', (m) => { trapEnd(m); recordEv(m); });
 
 // hold F to plant / defuse: keep telling the server while it's held, and stand still
 let useTimer = 0;

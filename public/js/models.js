@@ -1098,6 +1098,13 @@ export function soapBubble(r, seg = 16, wob = 0.05) {
   m.onBeforeRender = () => { SOAP_TIME.value = (performance.now() / 1000) % 1000; }; // keeps swirling in replays too
   return m;
 }
+// someone sealed in a giant soap bubble kicks and flails in there (ch = their mannequin, t = seconds, any clock)
+export function soapFlail(ch, t) {
+  ch.legL.rotation.x = Math.sin(t * 7) * 0.7; ch.legR.rotation.x = -Math.sin(t * 7) * 0.7;
+  ch.kneeL.rotation.x = 0.6 + Math.sin(t * 7 + 1) * 0.4; ch.kneeR.rotation.x = 0.6 - Math.sin(t * 7 + 1) * 0.4;
+  ch.armL.rotation.z = 2 + Math.sin(t * 9) * 0.5;
+  ch.body.rotation.z = Math.sin(t * 1.4) * 0.3;
+}
 
 export function buildPeel() {
   const g = new THREE.Group();

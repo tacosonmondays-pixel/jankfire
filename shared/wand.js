@@ -25,3 +25,9 @@ export function trapBoxes(pos, k = 1) {
   const h = TRAP.box * k, c = [pos[0], pos[1] + TRAP.y * k, pos[2]];
   return [{ head: false, min: [c[0] - h, c[1] - h, c[2] - h], max: [c[0] + h, c[1] + h, c[2] + h] }];
 }
+
+// replays: the 'trap' events from before the clip starts whose bubble is still up at t0 (ev = [{ s, m }], oldest first)
+export function trapPreroll(ev, t0) {
+  return ev.filter((e) => e.m.t === 'trap' && e.s < t0 && e.s + e.m.left > t0 &&
+    !ev.some((x) => x.m.t === 'trapx' && x.m.id === e.m.id && x.s >= e.s && x.s < t0));
+}

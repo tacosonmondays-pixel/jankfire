@@ -7,7 +7,7 @@ import { soapAt, TRAP, trapBoxes } from '/shared/wand.js';
 import { G } from './ctx.js';
 import { ME, eye, releaseHook } from './player.js';
 import { W } from './weapons.js';
-import { soapBubble, M } from './models.js';
+import { soapBubble, soapFlail, M } from './models.js';
 import { fx } from './fx.js';
 import { sfx, loopSfx, setMuffle, stopLoops } from './audio.js';
 import { hud } from './hud.js';
@@ -62,7 +62,7 @@ export function trapEnd(m) {
   traps.delete(m.id);
   const r = G.remotes.get(m.id);
   if (r) { r.trapUntil = 0; delete r.hitboxes; }
-  if (m.id === G.myId) { if (ME.trapUntil) endMine(loud); }
+  if (m.id === G.myId) { if (m.p && ME.alive) ME.pos = m.p.slice(); if (ME.trapUntil) endMine(loud); } // p: we weren't where the bubble went
   else if (T && T.mesh) burst(T, loud);
   if (m.pb === G.myId && m.why === 'hit' && m.id !== G.myId) { hud.hit(false); hud.msg(`POPPED ${nameOf(m.id)}`, 0.9); }
 }
@@ -135,11 +135,7 @@ export function updateWand(dt, now) {
     T.mesh.scale.setScalar(TRAP.r * ds * Math.max(0.2, grow));
     T.mesh.material.uniforms.uWob.value = 0.025 + (left < 1 ? (1 - Math.max(0, left)) * 0.07 : 0); // shakier right before it pops
     T.mesh.visible = r.ch.root.visible;
-    const ch = r.ch, ft = now * 0.001 + T.id;
-    ch.legL.rotation.x = Math.sin(ft * 7) * 0.7; ch.legR.rotation.x = -Math.sin(ft * 7) * 0.7;
-    ch.kneeL.rotation.x = 0.6 + Math.sin(ft * 7 + 1) * 0.4; ch.kneeR.rotation.x = 0.6 - Math.sin(ft * 7 + 1) * 0.4;
-    ch.armL.rotation.z = 2 + Math.sin(ft * 9) * 0.5;
-    ch.body.rotation.z = Math.sin(ft * 1.4) * 0.3;
+    soapFlail(r.ch, now * 0.001 + T.id);
   }
   // soap bubbles the server just took away (hit a wall, sealed someone in, ran out of life): pop
   for (const [id, pr] of live) if (!G.projs.has(id)) { live.delete(id); fx.droplets(pr.p, 0.36, 10); sfx.plip(pr.p); }
@@ -194,20 +190,27 @@ function stepVM(dt) {
   m.visible = !W.scoped;
 }
 
-// ------------------------------------------------------------ inside a bubble: soap film round the edges of your view
+// ------------------------------------------------------------ inside a bubble: you see everything through the film
+// a faint swirl over the whole view, thick rainbow film toward the edges, a bright rim all the way round where the
+// wall curves away, and the whole thing wobbles
 let ov = null, ovOn = false, popT = 0;
 const CSS = `
 #bubbleFx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; opacity: 0; transition: opacity 0.35s; }
 #bubbleFx.on { opacity: 1; }
 #bubbleFx.pop { transition: opacity 0.16s ease-out; }
-#bubbleFx .wob { position: absolute; inset: -6%; animation: bubWob 2.3s ease-in-out infinite alternate;
-  -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, transparent 58%, #000 100%); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, transparent 58%, #000 100%); }
+#bubbleFx .wob { position: absolute; inset: -4%; animation: bubWob 2.3s ease-in-out infinite alternate; }
 #bubbleFx.pop .wob { animation: none; transform: scale(1.5); transition: transform 0.16s ease-out; }
-#bubbleFx .film { position: absolute; left: 50%; top: 50%; width: 170vmax; height: 170vmax; margin: -85vmax 0 0 -85vmax; opacity: 0.55;
+#bubbleFx .all, #bubbleFx .edge { position: absolute; inset: 0; overflow: hidden; }
+#bubbleFx .all { opacity: 0.14; }
+#bubbleFx .edge { opacity: 0.62; -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, transparent 44%, #000 96%); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, transparent 44%, #000 96%); }
+#bubbleFx .film { position: absolute; left: 50%; top: 50%; width: 170vmax; height: 170vmax; margin: -85vmax 0 0 -85vmax;
   background: conic-gradient(#ff8ad8, #ffe680, #8dffb8, #7ad8ff, #c39bff, #ff8ad8); animation: bubSpin 9s linear infinite; }
-#bubbleFx .glint { position: absolute; left: 9%; top: 9%; width: 30%; height: 18%; border-radius: 50%; border-top: 6px solid rgba(255, 255, 255, 0.55); transform: rotate(-20deg); }
-#bubbleFx .glint.b { left: auto; top: auto; right: 10%; bottom: 11%; width: 16%; height: 10%; border-top: 0; border-bottom: 4px solid rgba(255, 255, 255, 0.4); }
-#bubbleFx .tint { position: absolute; inset: 0; background: radial-gradient(ellipse 60% 60% at 50% 50%, rgba(190, 235, 255, 0.03) 45%, rgba(160, 215, 255, 0.2) 100%); }
+#bubbleFx .all .film { animation-duration: 14s; animation-direction: reverse; }
+#bubbleFx .rim { position: absolute; inset: 3%; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 0 26px 4px rgba(255, 255, 255, 0.5), inset 0 0 120px 24px rgba(170, 225, 255, 0.3), 0 0 22px 3px rgba(255, 255, 255, 0.4), 0 0 0 100vmax rgba(215, 240, 255, 0.28); }
+#bubbleFx .glint { position: absolute; left: 11%; top: 10%; width: 30%; height: 18%; border-radius: 50%; border-top: 7px solid rgba(255, 255, 255, 0.6); transform: rotate(-20deg); filter: blur(1px); }
+#bubbleFx .glint.b { left: auto; top: auto; right: 12%; bottom: 12%; width: 16%; height: 10%; border-top: 0; border-bottom: 5px solid rgba(255, 255, 255, 0.45); }
+#bubbleFx .tint { position: absolute; inset: 0; background: radial-gradient(ellipse 60% 60% at 50% 50%, rgba(190, 235, 255, 0.05) 40%, rgba(160, 215, 255, 0.22) 100%); }
 @keyframes bubWob { from { transform: scale(1, 1.035) rotate(-0.7deg); } to { transform: scale(1.04, 0.985) rotate(0.7deg); } }
 @keyframes bubSpin { to { transform: rotate(360deg); } }`;
 function showOverlay(on, popped) {
@@ -218,7 +221,8 @@ function showOverlay(on, popped) {
     document.head.append(st);
     ov = document.createElement('div');
     ov.id = 'bubbleFx';
-    ov.innerHTML = '<div class="tint"></div><div class="wob"><div class="film"></div><div class="glint"></div><div class="glint b"></div></div>';
+    ov.innerHTML = '<div class="tint"></div><div class="wob"><div class="all"><div class="film"></div></div><div class="edge"><div class="film"></div></div>' +
+      '<div class="rim"></div><div class="glint"></div><div class="glint b"></div></div>';
     const ref = document.getElementById('freezeFx'); // under the crosshair and the rest of the HUD
     if (ref) ref.after(ov); else document.body.append(ov);
   }
