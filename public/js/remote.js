@@ -8,6 +8,7 @@ import { buildCharacter, buildWeapon, makeNameTag, makeShadow, cardTex, setKatan
 import { fx, makeBeam, setBeam } from './fx.js';
 import { emitSkinFx } from './skins.js';
 import { jankify } from './jank.js';
+import { makeRope, setRope, setRopeSkin } from './grapple.js';
 
 // players ignore fog, glow a bit, and get an outline in their colour so you can spot them across the map
 const noFog = new Map();
@@ -83,7 +84,7 @@ export class Remote {
     this.tag.position.y = 2.3;
     this.ch.root.add(this.tag);
     G.scene.add(this.ch.root);
-    if (!this.rope) { this.rope = makeBeam(0x3a2a1a); this.rope.visible = false; G.scene.add(this.rope); }
+    if (!this.rope) { this.rope = makeRope(this.grap); this.rope.visible = false; G.scene.add(this.rope); }
     if (!this.shadow) { this.shadow = makeShadow(); G.scene.add(this.shadow); }
     this.card = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 1.05), new THREE.MeshBasicMaterial({ map: cardTex(), side: THREE.DoubleSide }));
     this.card.position.y = 2.9;
@@ -106,6 +107,7 @@ export class Remote {
 
   setKat(n) { this.katN = n; if (this.w === 'katana' && this.weaponMesh) setKatana(this.weaponMesh, n); }
   setSkins(s) { this.skins = s || {}; const w = this.w; this.w = null; if (w) this.setWeapon(w); }
+  setGrapple(id) { this.grap = id; setRopeSkin(this.rope, id); } // their grapple skin (unknown ids fall back to rope)
 
   setWeapon(w) {
     this.w = w;
@@ -278,7 +280,7 @@ export class Remote {
 
     if (this.g) {
       this.rope.visible = true;
-      setBeam(this.rope, this.muzzle(), this.g, 0.05);
+      setRope(this.rope, this.muzzle(), this.g);
     } else this.rope.visible = false;
 
     const sh = raycast([x, y + 0.1, z], [0, -1, 0], 80, BOXES);

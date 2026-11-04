@@ -11,7 +11,7 @@ import { spawn } from 'node:child_process';
 import { WebSocketServer } from 'ws';
 import { makeStore } from './server/store.js';
 import { Accounts, levelOf } from './server/accounts.js';
-import { ownedSkin, ownedKill, randomContainer, CONTAINERS, COSMETICS } from './shared/cosmetics.js';
+import { ownedSkin, ownedKill, ownedGrapple, randomContainer, CONTAINERS, COSMETICS } from './shared/cosmetics.js';
 import { validLook, achievementsFrom, ACHIEVEMENTS } from './shared/looks.js';
 import { STAT_KEYS } from './server/store.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
@@ -149,6 +149,7 @@ function send(p, obj) { if (p.ws && p.ws.readyState === 1) p.ws.send(JSON.string
 
 const TIP_IDS = Object.keys(ARROW_TIPS);
 const KILL_IDS = Object.keys(COSMETICS.kill).filter((k) => k !== 'none');
+const GRAP_IDS = Object.keys(COSMETICS.grapple).filter((k) => k !== 'rope');
 // name cards: a small picture you drew or uploaded, as a data url. anything else is dropped.
 const CARD_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/;
 function cleanCard(c) { return typeof c === 'string' && c.length <= 24000 && CARD_RE.test(c) ? c : ''; }
@@ -272,7 +273,7 @@ class Room {
       onGround: false, slipUntil: 0, acct: opts.acct || null, level: opts.level || 0,
     };
   }
-  info(p) { return { id: p.id, name: p.name, color: p.color, skins: p.skins, bot: p.isBot, level: p.level, look: p.look, card: p.card || '', team: p.team || 0 }; }
+  info(p) { return { id: p.id, name: p.name, color: p.color, skins: p.skins, bot: p.isBot, level: p.level, look: p.look, card: p.card || '', team: p.team || 0, grap: p.grap || 'rope' }; }
 
   addHuman(ws, m) {
     if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && !this.humans().length) {
@@ -292,6 +293,7 @@ class Room {
     p.card = cleanCard(m.card);
     p.streaks = validStreaks(m.streaks);
     p.kfx = ownedKill(m.kfx, inv);
+    p.grap = ownedGrapple(m.grap, inv);
     p.kc = !!m.kc;
     if (this.mode === 'bots' && m.cfg && GAMES[m.cfg.game] && !this.humans().length) this.setGame(m.cfg.game);
     this.joinTeam(p);
@@ -339,6 +341,7 @@ class Room {
       ai: { diff, target: 0, retarget: 0, nextShot: now() + 1500, seenAt: 0, ammo: 0, reloadUntil: 0, jumpT: 0, wp: null, seed: Math.random() * 100, dummy: opts.dummy || null, strafeDir: 1 },
     });
     b.ai.ammo = WEAPONS[b.w].mag || 1;
+    if (!opts.dummy && Math.random() < 0.5) b.grap = pick(GRAP_IDS); // bots show off ropes you can roll
     if (!opts.dummy) { this.joinTeam(b); if (b.team) b.pos = this.pickSpawn(true, b); }
     this.players.set(b.id, b);
     this.broadcast({ t: 'pj', ...this.info(b) });
@@ -866,7 +869,7 @@ class Room {
     const info = {};
     for (const f of frames) for (const e of f.p) if (!info[e[0]]) {
       const pl = this.players.get(e[0]);
-      if (pl) info[e[0]] = { name: pl.name, color: pl.color, skins: pl.skins, bot: pl.isBot, look: pl.look, level: pl.level };
+      if (pl) info[e[0]] = { name: pl.name, color: pl.color, skins: pl.skins, bot: pl.isBot, look: pl.look, level: pl.level, grap: pl.grap || 'rope' };
     }
     return { frames: frames.map((f) => ({ s: f.s, p: f.p, j: f.j })), ev, info };
   }
@@ -1433,6 +1436,16 @@ class Room {
           p.kfx = ownedKill(m.id, p.inv);
         })();
         break;
+      case 'grap': // grapple skin: free ones or ones you own. quick clicks batch into one inventory read, the last pick wins
+        p.grapWant = typeof m.id === 'string' ? m.id : '';
+        if (!p.grapQ) p.grapQ = setTimeout(async () => {
+          try { // nothing here may reject: an unhandled rejection takes the whole server down
+            if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; }
+            const g = ownedGrapple(p.grapWant, p.inv);
+            if (g !== p.grap && this.players.get(p.id) === p) { p.grap = g; this.broadcast({ t: 'gr', id: p.id, g }, p.id); }
+          } catch (e) { console.error('grap failed', e.message); } finally { p.grapQ = null; }
+        }, 250);
+        break;
       case 'kc': p.kc = !!m.on; break;
       case 'use': this.tryUse(p); break;
       case 'item': this.useItem(p, m); break;
@@ -1797,6 +1810,7 @@ wss.on('connection', (ws) => {
     if (!me) {
       if (m.t !== 'join' || ws.joining) return;
       ws.joining = true;
+      for (const k of ['_name', '_acct', '_level', '_inv', '_achs']) delete m[k]; // only the server fills these in (from the token), never the client
       (async () => {
         const u = m.token ? await accounts.verify(m.token).catch(() => null) : null;
         if (u) {
