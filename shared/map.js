@@ -36,23 +36,25 @@ function builder() {
 }
 
 // a wall with holes cut in it. axis 'x' = runs along x at z=fixed, 'z' = runs along z at x=fixed.
-// openings: [{ a, b, y0, y1 }] measured along the wall
+// openings: [{ a, b, y0, y1 }] measured along the wall. they may overlap (a door under a balcony door), so the wall
+// is cut at every opening edge and each piece keeps only the heights no opening covers
 function wall(L, axis, fixed, a0, a1, y0, y1, t, mat, openings = []) {
-  const ops = openings.filter((o) => o.b > a0 && o.a < a1).sort((p, q) => p.a - q.a);
+  const ops = openings.filter((o) => o.b > a0 && o.a < a1);
   const seg = (s0, s1, yy0, yy1) => {
     if (s1 - s0 < 0.02 || yy1 - yy0 < 0.02) return;
     if (axis === 'x') L(s0, yy0, fixed - t / 2, s1, yy1, fixed + t / 2, mat);
     else L(fixed - t / 2, yy0, s0, fixed + t / 2, yy1, s1, mat);
   };
-  let cur = a0;
-  for (const o of ops) {
-    const a = Math.max(a0, o.a), b = Math.min(a1, o.b);
-    seg(cur, a, y0, y1);
-    seg(a, b, y0, Math.max(y0, o.y0));
-    seg(a, b, Math.min(y1, o.y1), y1);
-    cur = b;
+  const cuts = [...new Set([a0, a1, ...ops.flatMap((o) => [Math.max(a0, o.a), Math.min(a1, o.b)])])].sort((p, q) => p - q);
+  for (let i = 0; i < cuts.length - 1; i++) {
+    const s0 = cuts[i], s1 = cuts[i + 1], m = (s0 + s1) / 2;
+    let y = y0;
+    for (const o of ops.filter((o) => o.a < m && o.b > m).sort((p, q) => p.y0 - q.y0)) {
+      seg(s0, s1, y, Math.min(y1, o.y0));
+      y = Math.max(y, o.y1);
+    }
+    seg(s0, s1, y, y1);
   }
-  seg(cur, a1, y0, y1);
 }
 
 // slab with a rectangular hole (for stairwells)
@@ -744,8 +746,9 @@ function bazaar() {
     for (const sx of [-1, 1]) { // stalls along both walls
       const x = sx * 6.5;
       B.add(x - 2, 0, z - 1.5, x + 2, 1.1, z + 1.5, 'wood');
-      for (const dz of [-1.4, 1.4]) B.box(x + sx * -1.8, 1.3, z + dz, 0.15, 2.6, 0.15, 'wood');
-      B.add(x - 2.4, 2.6, z - 1.9, x + 2.4, 2.75, z + 1.9, (z / 8) % 2 ? 'cloth' : 'pink');
+      for (const dz of [-1.4, 1.4]) B.box(x + sx * -1.8, 1.5, z + dz, 0.15, 3, 0.15, 'wood');
+      // awning high enough (counter + 1.9) that you can jump onto the counter and walk over it, under the gallery (3.15)
+      B.add(x - 2.4, 3, z - 1.9, x + 2.4, 3.1, z + 1.9, (z / 8) % 2 ? 'cloth' : 'pink');
     }
   }
   for (const z of [18, 38]) B.add(-4, 3.2, z - 0.05, 4, 7, z + 0.05, 'cloth'); // hanging banners
@@ -763,7 +766,9 @@ function bazaar() {
   // Stable: its roof is the Bridge
   B.add(20, 0, -30, 34, 3.4, -2, 'adobe');
   B.add(20, 3.4, -30, 34, 4.4, -29.6, 'adobe'); B.add(20, 3.4, -2.4, 34, 4.4, -2, 'adobe');
-  B.add(20, 3.4, -29.6, 20.4, 4.4, -16, 'adobe'); B.add(20, 3.4, -8.4, 20.4, 4.4, -2.4, 'adobe');
+  B.add(20, 3.4, -29.6, 20.4, 4.4, -22, 'adobe'); B.add(20, 3.4, -8.4, 20.4, 4.4, -2.4, 'adobe');
+  // the plaza corner north of the landing climbs onto the Bridge too (it was a dead end that walled in anyone heading for the roof)
+  for (let i = 0; i < 8; i++) B.add(16 + i * 0.5, 0, -22, 16.5 + i * 0.5, (i + 1) * 0.425, -16, 'adobe');
   B.add(33.6, 3.4, -26, 34, 4.4, -2.4, 'adobe'); // east parapet, gap at the A end so you can drop onto the terrace
   for (const z of [-24, -18, -12, -6]) B.box(27, 3.4 + 0.5, z, 1.2, 1, 1.2, 'crate');
   // a crate staircase in A's approach: hop up and over the parapet onto the Bridge
@@ -785,8 +790,10 @@ function bazaar() {
   B.add(36.8, 3.2, 10, 37, 4.1, 40.8, 'wood'); // rail
   for (let z = 12; z <= 40; z += 7) B.box(36.6, 1.5, z, 0.3, 2.95, 0.3, 'wood');
   B.add(34, 3.2, 9.8, 37, 4.1, 10, 'wood');
-  // the Gate: chokepoint into A, with a hole up high you can jump through
-  wall(W, 'x', -6, 34, 56, 0, 6, 1, 'brick', [{ a: 40, b: 46, y0: 0, y1: 4 }, { a: 51, b: 53.5, y0: 1.9, y1: 3.1 }]);
+  // the Gate: chokepoint into A, with a hole up high you can jump through (sill 1.2 = one jump from A's side,
+  // 2.2 tall so you fit on the 1 m sill). from the canal you get up via the crate standing in the water under it
+  wall(W, 'x', -6, 34, 56, 0, 6, 1, 'brick', [{ a: 40, b: 46, y0: 0, y1: 4 }, { a: 51, b: 53.5, y0: 1.2, y1: 3.4 }]);
+  B.add(51.1, -1.6, -5.5, 53.4, 0, -4.2, 'crate');
 
   // ---- SITE A: the terrace. raised, tiled, orange canopies. ways in: gate ramp (south), Bridge drop (west), garden stairs (north)
   B.add(34, 0, -50, 56, 1.6, -28, 'tile');
@@ -826,14 +833,15 @@ function bazaar() {
   B.box(-56, 0.6, -46, 1.2, 1.2, 1.2, 'crate'); B.box(-36, 0.6, -32, 2, 1.2, 1.2, 'crate'); B.box(-38, 1.6, -45, 2.4, 3.2, 1.2, 'wood');
   B.add(-64, 0, -52, -63.7, 6, -24, 'blue'); // painted wall: B is cool
 
-  // ---- the Spice House: two floors between mid plaza and B. door from the plaza, door + upstairs window onto B
+  // ---- the Spice House: two floors between mid plaza and B. door from the plaza, a door onto B with the balcony door right above it
   const SX0 = -30, SX1 = -20, SZ0 = -30, SZ1 = -6, F = 3.6;
   B.add(SX0, 0, SZ0, SX1, 0.12, SZ1, 'wood');
   wall(W, 'z', SX1, SZ0, SZ1, 0, 2 * F, 0.4, 'plaster', [{ a: -18, b: -15, y0: 0, y1: 2.8 }, { a: -11, b: -9, y0: F + 1, y1: F + 2.2 }]);
-  wall(W, 'z', SX0, SZ0, SZ1, 0, 2 * F, 0.4, 'plaster', [{ a: -28, b: -25.5, y0: 0, y1: 2.8 }, { a: -29.4, b: -26.6, y0: F + 0.25, y1: F + 2.7 }]);
-  // balcony over B: walk upstairs, out the door, look down on the site (or drop in)
+  wall(W, 'z', SX0, SZ0, SZ1, 0, 2 * F, 0.4, 'plaster', [{ a: -28, b: -25.5, y0: 0, y1: 2.8 }, { a: -28.15, b: -25.35, y0: F + 0.25, y1: F + 2.7 }]);
+  // balcony over B: walk upstairs, out the door, look down on the site (or drop in through the gap in the rail)
   B.add(-34, F, -30, -30.2, F + 0.25, -24, 'wood');
-  B.add(-34, F + 0.25, -30, -33.8, F + 1.15, -24, 'wood'); B.add(-33.8, F + 0.25, -30, -30.2, F + 1.15, -29.8, 'wood');
+  B.add(-34, F + 0.25, -30, -33.8, F + 1.15, -28.25, 'wood'); B.add(-34, F + 0.25, -25.25, -33.8, F + 1.15, -24, 'wood');
+  B.add(-33.8, F + 0.25, -30, -30.2, F + 1.15, -29.8, 'wood');
   B.box(-33.8, F / 2, -24.3, 0.3, F, 0.3, 'wood'); B.box(-33.8, F / 2, -29.7, 0.3, F, 0.3, 'wood');
   wall(W, 'x', SZ0, SX0, SX1, 0, 2 * F, 0.4, 'plaster');
   wall(W, 'x', SZ1, SX0, SX1, 0, 2 * F, 0.4, 'plaster');
@@ -868,17 +876,20 @@ function bazaar() {
     name: 'Bazaar', size: 'large', boxes: B.boxes, killY: -30,
     sky: { top: 0x4a8fd8, mid: 0xf2dcae, bot: 0x8a6a40, fog: 0xf0d8a8 }, fogNear: 90, fogFar: 320,
     spawns, teamSpawns: { att, def },
-    // bot routes along the real lanes, [x, z] points ending on each site
+    // bot routes along the real lanes, [x, z] points ending on each site. bots walk straight from point to point and
+    // count a point as reached 2.6 m away, so: every leg is clear of props, doors get a point on their centreline more
+    // than 2.6 m in on each side, and the hall lanes (and the plaza point after them, off the well's line) keep to the
+    // middle so a bot shoved behind a stall slides back out
     nav: {
       A: [
-        [[16, 62], [28, 62], [42, 62], [42, 30], [43, 6], [43, -3], [43, -10], [47, -21], [47, -27], [46, -38]], // canal street
-        [[0, 56], [0, 30], [0, 2], [8, -3], [18, -2.5], [18, -10], [18, -14], [24, -20], [31, -27.5], [37, -28.5], [44, -38]], // hall -> bridge
-        [[8, -64], [22, -62], [32, -58], [39, -57], [39, -52], [41, -47], [46, -40]], // defenders' garden
+        [[16, 62], [28, 62], [42, 62], [42, 30], [43, 6], [43, -3], [43, -10], [47, -21], [47, -27], [46.5, -30.8], [43.5, -31], [42, -38]], // canal street
+        [[0, 56], [2.5, 32], [2.5, 16], [2.5, -1], [3, -4], [18, -2.5], [18, -10], [18, -14], [27, -21], [31, -27.5], [37, -28.5], [44, -38]], // hall -> bridge
+        [[0, -62], [8, -64], [22, -63], [32, -58], [39, -57], [39, -52], [41, -47], [46, -40]], // defenders' garden
       ],
       B: [
-        [[-16, 62], [-30, 61], [-43, 60], [-43, 57], [-43, 52], [-43, 44], [-43, 30], [-43, 8], [-46, -2], [-46, -9], [-46, -18], [-46, -25], [-44, -31]], // cistern
-        [[0, 56], [0, 30], [0, 2], [-8, -8], [-17, -16.5], [-21.5, -16.5], [-25, -21], [-26, -26.7], [-31, -26.7], [-35, -28], [-40, -33]], // hall -> spice house
-        [[-8, -64], [-22, -62], [-32, -58], [-40, -56], [-44, -50], [-52, -45]], // defenders' arcade
+        [[-16, 62], [-30, 61], [-43, 60], [-43, 57], [-43, 52], [-43, 44], [-43, 30], [-43, 8], [-43, -1], [-44, -9], [-46, -18], [-46, -25], [-44, -31]], // cistern
+        [[0, 56], [-2.5, 32], [-2.5, 16], [-2.5, -1], [-3, -4], [-17, -16.5], [-23, -16.5], [-25, -21], [-26, -26.75], [-33, -26.75], [-37, -28.5], [-41, -33]], // hall -> spice house
+        [[0, -62], [-8, -64], [-22, -62], [-32, -58], [-40, -56], [-40, -50], [-52, -45]], // defenders' arcade
       ],
     },
     sites: [{ id: 'A', min: [36, 1.6, -50], max: [56, 1.6, -30] }, { id: 'B', min: [-60, 0, -50], max: [-34, 0, -28] }],
