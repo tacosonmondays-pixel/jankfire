@@ -2,6 +2,7 @@
 // Grounded maps sit on a plateau with cliffs dropping to a valley; city maps sit in a skyline; sky maps float over clouds.
 // Far things use unlit colours pre-mixed with the sky colour (fake aerial perspective) so fog doesn't erase them.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const SCENES = {
   crate: { theme: 'sky' }, platform: { theme: 'sky' }, range: { theme: 'sky' },
@@ -28,7 +29,10 @@ const fade = (hex, fogHex, k) => new THREE.Color(hex).lerp(new THREE.Color(fogHe
 const basic = (hex) => new THREE.MeshBasicMaterial({ color: hex, fog: false });
 
 export function buildScenery(scene, map, id, voidMesh) {
-  if (group) { scene.remove(group); group.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); }
+  if (group) { // everything in here was made for this map: geometries, materials and the city texture
+    scene.remove(group);
+    group.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); } });
+  }
   group = new THREE.Group();
   scene.add(group);
   const cfg = SCENES[id] || { theme: 'sky' };
@@ -48,14 +52,16 @@ export function buildScenery(scene, map, id, voidMesh) {
 
   // ---- a ring of mountains, far away (unlit, faded into the sky)
   const mtnMat = basic(fade(pal.mtn, fog, 0.5)), snowMat = basic(fade(pal.snow, fog, 0.35));
+  const drop = cfg.theme === 'sky' ? 50 : 0; // sky maps: the void plane sits under the cloud sea, so the bases go down past it
   for (let i = 0; i < 34; i++) {
     const a = (i / 34) * Math.PI * 2 + r() * 0.15, d = 700 + r() * 300;
     const h = 140 + r() * 260, rad = 90 + r() * 120;
-    const m = new THREE.Mesh(new THREE.ConeGeometry(rad, h, 5 + ((r() * 3) | 0)), mtnMat);
-    m.position.set(cx + Math.cos(a) * d, floorY + h / 2 - 20, cz + Math.sin(a) * d);
+    const m = new THREE.Mesh(new THREE.ConeGeometry(rad, h + drop, 5 + ((r() * 3) | 0)), mtnMat);
+    m.position.set(cx + Math.cos(a) * d, floorY + (h - drop) / 2 - 20, cz + Math.sin(a) * d);
     m.rotation.y = r() * 3;
     group.add(m);
-    if (cfg.theme !== 'desert' && h > 260) { const cap = new THREE.Mesh(new THREE.ConeGeometry(rad * 0.32, h * 0.32, m.geometry.parameters.radialSegments), snowMat); cap.position.set(m.position.x, floorY + h - h * 0.16 - 20, m.position.z); cap.rotation.y = m.rotation.y; group.add(cap); }
+    // the cap is the top 0.32 h of the cone, so its base is as wide as the (taller, steeper) mountain is there
+    if (cfg.theme !== 'desert' && h > 260) { const cap = new THREE.Mesh(new THREE.ConeGeometry(rad * 0.32 * h / (h + drop), h * 0.32, m.geometry.parameters.radialSegments), snowMat); cap.position.set(m.position.x, floorY + h - h * 0.16 - 20, m.position.z); cap.rotation.y = m.rotation.y; group.add(cap); }
   }
 
   // ---- the floor far below (valley / city streets / ocean / cloud sea)
@@ -64,7 +70,7 @@ export function buildScenery(scene, map, id, voidMesh) {
     floor.position.set(cx, floorY, cz);
     group.add(floor);
     if (voidMesh) voidMesh.visible = false;
-  } else if (voidMesh) voidMesh.visible = true;
+  } else if (voidMesh) { voidMesh.visible = true; voidMesh.position.y = map.killY - 85; } // below the clouds (they reach killY-73), not through them
 
   // ---- cliffs: the map sits on a plateau
   if (cfg.skirt) {
@@ -132,7 +138,28 @@ export function buildScenery(scene, map, id, voidMesh) {
     }
   }
   if (cfg.theme === 'sky') { // a sea of clouds below
-    const cl = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, fog: false });
+    // merged into one mesh, the clouds aren't sorted against each other: no depth writes, or near ones cut holes in far ones
+    const cl = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, fog: false, depthWrite: false });
     for (let i = 0; i < 90; i++) { const [x, z] = near(-R * 0.5, 700); const s = 30 + r() * 60; const m = new THREE.Mesh(new THREE.SphereGeometry(s, 7, 4), cl); m.scale.y = 0.25; m.position.set(x, map.killY - 30 - r() * 20, z); group.add(m); }
+  }
+  mergeByMaterial(group);
+}
+
+// one draw call per material instead of one per mountain / tree / tower: bake each piece's transform and merge
+// (like the map boxes). the clouds lose per-cloud sorting, which doesn't show at one opacity without depth writes.
+function mergeByMaterial(g) {
+  const byMat = new Map();
+  for (const m of g.children) {
+    m.updateMatrix(); m.geometry.applyMatrix4(m.matrix);
+    m.position.set(0, 0, 0); m.rotation.set(0, 0, 0); m.scale.set(1, 1, 1);
+    if (!byMat.has(m.material)) byMat.set(m.material, []);
+    byMat.get(m.material).push(m);
+  }
+  g.clear();
+  for (const [mat, list] of byMat) {
+    const merged = list.length > 1 ? mergeGeometries(list.map((m) => m.geometry), false) : null;
+    if (!merged) { for (const m of list) g.add(m); continue; } // one piece, or shapes that don't merge: keep them as they are
+    for (const m of list) m.geometry.dispose();
+    g.add(new THREE.Mesh(merged, mat));
   }
 }

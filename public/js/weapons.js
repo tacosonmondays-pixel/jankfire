@@ -5,7 +5,7 @@ import { BOXES } from '/shared/map.js';
 import { raycast, rayBox } from '/shared/physics.js';
 import { G } from './ctx.js';
 import { ME, eye, look, applyKb, hspeed } from './player.js';
-import { buildWeapon, M, cardFace, tipColor, setKatana } from './models.js';
+import { buildWeapon, M, cardFace, tipColor, setKatana, freeTree } from './models.js';
 import { fx } from './fx.js';
 import { marbles } from './marbles.js';
 import { sfx, loopSfx, stopLoops } from './audio.js';
@@ -223,12 +223,12 @@ function adsPose(id, m) {
   const sg = g.userData.sight;
   if (sg) pose = [0, -sg.y * s, -EYE_RELIEF - sg.z * s]; // sight line exactly through the middle
   else {
-    // no sights: keep the whole thing under (and a bit right of) the middle of the screen
-    const save = g.position.clone(), rot = g.rotation.clone();
-    g.position.set(0, 0, 0); g.rotation.set(0, 0, 0); g.updateMatrixWorld(true);
-    const box = new THREE.Box3();
-    g.traverse((o) => { if (o.isMesh && !o.userData.isHat && !(o.parent && o.parent.userData.isHat)) { o.geometry.computeBoundingBox(); box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld)); } });
-    g.position.copy(save); g.rotation.copy(rot); g.updateMatrixWorld(true);
+    // no sights: keep the whole thing under (and a bit right of) the middle of the screen.
+    // measured in the gun's own space (no wrap, viewmodel root or scale), so * s below is the only scaling
+    g.updateMatrixWorld(true);
+    const inv = g.matrixWorld.clone().invert(), rel = new THREE.Matrix4(), box = new THREE.Box3();
+    const underHat = (o) => { for (; o && o !== g; o = o.parent) if (o.userData.isHat) return true; return false; }; // hidden while aiming
+    g.traverse((o) => { if (o.isMesh && !underHat(o)) { o.geometry.computeBoundingBox(); box.union(o.geometry.boundingBox.clone().applyMatrix4(rel.multiplyMatrices(inv, o.matrixWorld))); } });
     const w = WEAPONS[id];
     if (id === 'bow') pose = [-0.07, -0.03 - g.userData.muzzle.y * s, w.ads.p[2], 0.42]; // canted, riser left of the arrow
     else pose = [Math.max(w.ads.p[0], 0.06), Math.min(w.ads.p[1], -0.03 - box.max.y * s), w.ads.p[2]];
@@ -339,7 +339,7 @@ export function rebuildViewmodels() {
   clearIcons();
   for (const id of ORDER) {
     if (!VM[id]) continue;
-    if (models[id]) vmRoot.remove(models[id].wrap);
+    if (models[id]) { vmRoot.remove(models[id].wrap); freeTree(models[id].wrap); if (models[id].flash) models[id].flash.userData.face.material.dispose(); }
     const wrap = new THREE.Group();
     const g = buildWeapon(id, (G.equipped || {})[id]);
     const cfg = VM[id];
@@ -859,7 +859,8 @@ export function updateWeapons(dt, now) {
   if (W.aimHeld) cancelInspect();
   // glitch dash: hold V with the scythe out. you turn into pixels and rush where you look, hitting everyone you pass
   const D = WEAPONS.dash;
-  const dashing = alive && W.hasScythe && isScythe(id) && W.dashHeld && W.dashFuel > 0;
+  const stuck = now < (ME.frozenUntil || 0) || now < (ME.sleepUntil || 0); // frozen or asleep: no dashing (or dash hits)
+  const dashing = alive && !stuck && W.hasScythe && isScythe(id) && W.dashHeld && W.dashFuel > 0;
   if (dashing && !ME.dashing) { sfx.reverse(); cancelInspect(); }
   if (!dashing && ME.dashing) sfx.whoops();
   ME.dashing = dashing;

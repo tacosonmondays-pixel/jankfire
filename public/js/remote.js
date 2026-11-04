@@ -4,7 +4,7 @@ import { BOXES } from '/shared/map.js';
 import { raycast, playerBoxes } from '/shared/physics.js';
 import { FLAGS } from '/shared/weapons.js';
 import { G } from './ctx.js';
-import { buildCharacter, buildWeapon, makeNameTag, makeShadow, cardTex, setKatana } from './models.js';
+import { buildCharacter, buildWeapon, makeNameTag, makeShadow, cardTex, setKatana, freeTree, teamLook } from './models.js';
 import { fx, makeBeam, setBeam } from './fx.js';
 import { emitSkinFx } from './skins.js';
 import { jankify } from './jank.js';
@@ -50,9 +50,9 @@ function lerpAngle(a, b, t) {
 }
 
 export class Remote {
-  constructor(id, name, color, skins = {}, bot = false, look = null) {
+  constructor(id, name, color, skins = {}, bot = false, look = null, team = 0) {
     Object.assign(this, {
-      id, name, color, skins, bot, outfit: look, buf: [], pos: [0, -999, 0], vel: [0, 0, 0], yaw: 0, pitch: 0,
+      id, name, color, skins, bot, outfit: look, team, buf: [], pos: [0, -999, 0], vel: [0, 0, 0], yaw: 0, pitch: 0,
       w: null, hp: 100, alive: true, g: null, f: 0, k: 0, d: 0, walk: 0, burnUntil: 0,
       rope: null, shadow: null, ch: null, twitchUntil: 0, twitchNext: 2000 + Math.random() * 5000, twitch: null,
     });
@@ -60,8 +60,9 @@ export class Remote {
   }
 
   build() {
-    if (this.ch) G.scene.remove(this.ch.root);
-    this.ch = buildCharacter(this.color, this.outfit);
+    if (this.ch) { G.scene.remove(this.ch.root); this.free(); }
+    this.ice = null; this.shells = []; this.glow = 0;
+    this.ch = buildCharacter(this.color, teamLook(this.outfit, this.team)); // on a team: team colour, not your clothes
     this.ch.root.scale.setScalar(1.2); // a bit bigger than you so they read at crusty resolutions
     const outline = outlineMat(new THREE.Color(this.color).getHex());
     const parts = [];
@@ -72,7 +73,7 @@ export class Remote {
       shell.scale.setScalar(1.12);
       shell.userData.outline = true;
       o.add(shell);
-      (this.shells ||= []).push(shell);
+      this.shells.push(shell);
     }
     this.marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: markerTexture(), color: this.color, sizeAttenuation: false, fog: false, transparent: true }));
     this.marker.scale.set(0.035, 0.035, 1);
@@ -96,12 +97,17 @@ export class Remote {
 
   setLook(look, color) {
     this.outfit = look; if (color) this.color = color;
-    this.ice = null;
-    const keep = { pos: this.pos.slice() };
-    this.shells = []; this.glow = 0;
-    G.scene.remove(this.ch.root);
+    const keep = this.pos.slice();
     this.build();
-    this.pos = keep.pos;
+    this.pos = keep;
+  }
+  // the old character's GPU copies: its geometries, name tag, marker, card and ice (shared materials stay)
+  free() {
+    freeTree(this.ch.root);
+    this.tag.material.map.dispose(); this.tag.material.dispose();
+    this.marker.material.dispose(); // its texture is shared
+    this.card.material.dispose(); // so is the card's
+    if (this.ice) this.ice.material.dispose();
   }
 
   setKat(n) { this.katN = n; if (this.w === 'katana' && this.weaponMesh) setKatana(this.weaponMesh, n); }
@@ -109,6 +115,7 @@ export class Remote {
 
   setWeapon(w) {
     this.w = w;
+    if (this.weaponMesh) freeTree(this.weaponMesh);
     this.ch.slot.clear();
     this.weaponMesh = null;
     if (w) {
@@ -127,7 +134,7 @@ export class Remote {
 
   snap(t, e) {
     const [, x, y, z, vx, vy, vz, yaw, pitch, w, hp, alive, g, f, k, d] = e;
-    if (alive && !this.alive) this.buf.length = 0; // respawned: don't interpolate across the map
+    if (alive && !this.alive) { this.buf.length = 0; this.frozenUntil = 0; } // respawned: don't interpolate across the map, no ice
     this.buf.push({ t, p: [x, y, z], v: [vx, vy, vz], yaw, pitch });
     if (this.buf.length > 60) this.buf.shift();
     this.vel = [vx, vy, vz];
@@ -170,11 +177,13 @@ export class Remote {
     const floor = raycast([this.pos[0], this.pos[1] + 1, this.pos[2]], [0, -1, 0], 30, BOXES);
     const floorY = floor ? floor.point[1] : -1e9;
     for (const o of parts) {
-      const m = new THREE.Mesh(o.geometry, o.material);
+      // each gib gets its own geometry: the character can be rebuilt (and freed) while they fly
+      const own = !o.geometry.userData.shared;
+      const m = new THREE.Mesh(own ? o.geometry.clone() : o.geometry, o.material);
       o.matrixWorld.decompose(m.position, m.quaternion, m.scale);
       G.scene.add(m);
       G.gibs.push({
-        m, floorY, life: 4 + Math.random(),
+        m, own, floorY, life: 4 + Math.random(),
         v: [vel[0] * 0.6 + (Math.random() - 0.5) * 7, vel[1] * 0.5 + 3 + Math.random() * 5, vel[2] * 0.6 + (Math.random() - 0.5) * 7],
         av: [(Math.random() - 0.5) * 14, (Math.random() - 0.5) * 14, (Math.random() - 0.5) * 14],
       });
@@ -229,8 +238,8 @@ export class Remote {
     }
     if (this.ice) this.ice.visible = frozen;
     if (frozen) this.walk -= dt * Math.min(hs, 14) * 1.5;
-    // cape streams out behind you the faster you go; wings flap in the air
-    if (ch.cape) { const tgt = 0.1 + Math.min(1.15, hs * 0.035) + (hs > 2 ? Math.sin(now * 0.014) * 0.07 : 0); ch.cape.rotation.x += (tgt - ch.cape.rotation.x) * Math.min(1, dt * 8); }
+    // cape streams out behind you the faster you go (negative tilt = backwards); wings flap in the air
+    if (ch.cape) { const tgt = -(0.1 + Math.min(1.15, hs * 0.035) + (hs > 2 ? Math.sin(now * 0.014) * 0.07 : 0)); ch.cape.rotation.x += (tgt - ch.cape.rotation.x) * Math.min(1, dt * 8); }
     if (ch.wings) { const f = grounded ? 0 : Math.sin(now * 0.02) * 0.6; ch.wings[0].rotation.y = 0.25 + f; ch.wings[1].rotation.y = -0.25 - f; }
     const bend = ch.jank.wrongKnee ? -1 : 1;
     ch.kneeL.rotation.x = Math.max(0, -sw) * amp * 1.2 * bend + (grounded ? 0 : 0.8);
@@ -305,6 +314,9 @@ export class Remote {
     G.scene.remove(this.ch.root);
     G.scene.remove(this.rope);
     G.scene.remove(this.shadow);
+    this.free();
+    this.rope.material.dispose(); // the beam geometry is shared
+    this.shadow.geometry.dispose(); this.shadow.material.dispose();
   }
 }
 
@@ -322,6 +334,6 @@ export function updateGibs(dt) {
     }
     g.m.rotation.x += g.av[0] * dt; g.m.rotation.y += g.av[1] * dt; g.m.rotation.z += g.av[2] * dt;
     if (g.life < 0.5) g.m.scale.multiplyScalar(Math.max(0, 1 - dt * 6));
-    if (g.life <= 0) { G.scene.remove(g.m); G.gibs.splice(i, 1); }
+    if (g.life <= 0) { G.scene.remove(g.m); if (g.own) g.m.geometry.dispose(); G.gibs.splice(i, 1); }
   }
 }

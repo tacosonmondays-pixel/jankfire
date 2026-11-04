@@ -51,6 +51,7 @@ export async function loadTripoModels() {
 function prep(scene, it) {
   scene.traverse((o) => {
     if (!o.isMesh) return;
+    o.geometry.userData.shared = true; // every clone of this model uses the same geometry: freeTree leaves it alone
     for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
       for (const k of ['map', 'emissiveMap', 'normalMap', 'roughnessMap', 'metalnessMap']) {
         if (m[k]) { m[k].magFilter = THREE.NearestFilter; m[k].minFilter = THREE.NearestFilter; m[k].generateMipmaps = false; m[k].needsUpdate = true; }
@@ -91,6 +92,13 @@ export function fitted(id, opts = {}) {
 }
 
 // ------------------------------------------------------------ primitive helpers
+// a discarded model's own geometries go back to the GPU (shared ones, sprites' and GLB parts stay). materials are
+// mostly the shared M() ones, so each owner frees its own.
+export function freeTree(root) {
+  root.traverse((o) => { if (o.geometry && !o.isSprite && !o.geometry.userData.shared) o.geometry.dispose(); });
+}
+// in a team game the team colour beats clothing colours (so nobody dresses as the other team)
+export function teamLook(look, team) { return team && look ? { ...look, topColor: '', bottomColor: '' } : look; }
 const matCache = new Map();
 export function M(color, basic = false) {
   const key = color + (basic ? 'b' : 'l');
@@ -843,7 +851,7 @@ function addAccessories(ch, look, c) {
       piv.add(bx(0.4, 0.04, 0.05, voidc ? 0xff00dc : 0xffc21a, 0, 0, -0.02, voidc)); // clasp across the shoulders
       piv.add(bx(0.5, 0.95, 0.025, voidc ? 0x2a002a : 0xc02030, 0, -0.48, 0.02));
       if (voidc) piv.add(bx(0.52, 0.05, 0.03, 0xff00dc, 0, -0.95, 0.02, true));
-      piv.rotation.x = 0.1;
+      piv.rotation.x = -0.1; // negative = the bottom edge swings back (+z), away from the body
       ch.cape = piv;
       break;
     }
