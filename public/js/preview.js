@@ -1,6 +1,6 @@
 // Spinning weapon preview for the cosmetics screen. Its own tiny renderer so it works from the menu.
 import * as THREE from 'three';
-import { buildWeapon } from './models.js';
+import { buildWeapon, freeTree } from './models.js';
 import { makeSkinSystems, emitSkinFx } from './skins.js';
 
 let renderer, scene, cam, holder, cur = null, systems, canvas, fit = 1;
@@ -35,7 +35,7 @@ export function resizePreview() {
 
 export function showPreview(id, skin) {
   if (!holder) return;
-  holder.clear();
+  freeTree(holder); holder.clear(); // the last thing shown is gone for good
   const g = buildWeapon(id, skin);
   g.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(g);
@@ -53,7 +53,7 @@ export function showPreview(id, skin) {
 // show a mannequin with a look instead of a weapon (character screen)
 export function showCharacter(build, color, look) {
   if (!holder) return;
-  holder.clear();
+  freeTree(holder); holder.clear(); // the last thing shown is gone for good
   const ch = build(color, look);
   const wrap = new THREE.Group();
   ch.root.rotation.y = Math.PI;
