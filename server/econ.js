@@ -556,7 +556,7 @@ const M = {
     if (!isHit && open) { s.fired = true; return true; }
     if (x.m <= 0) {
       const rl = p.ec.rl;
-      if (rl && rl.u === x.u && n >= rl.at - rl.ms * 0.35) this.econFinishReload(p); // the reload message ran late
+      if (rl && rl.u === x.u && n >= rl.at - rl.ms * 0.1) this.econFinishReload(p); // the reload message ran late (65 % done is enough)
       if (x.m <= 0) return false;
     }
     x.m--; x.fresh = false;
