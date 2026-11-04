@@ -18,6 +18,7 @@ import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor } from './shared/modes.js';
 import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, validStreaks, fireRate } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
+import { ropeStep, ropeJump } from './shared/hookphys.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -587,18 +588,13 @@ class Room {
       }
     }
     v[1] -= 26 * dt;
-    // on the rope: same pull as a player's grapple. let go near the point (or when it's been a while) with a jump boost
+    // on the rope: the same pendulum rope as a player's grapple (shared/hookphys.js), so bots swing smoothly too.
+    // let go near the point (or when it's been a while) with a grapple jump
     const hk = b.ai && b.ai.hook;
     if (hk) {
-      const dx = hk.point[0] - b.pos[0], dy = hk.point[1] - (b.pos[1] + 1), dz = hk.point[2] - b.pos[2];
-      const dist = Math.hypot(dx, dy, dz) || 1, nx = dx / dist, ny = dy / dist, nz = dz / dist;
-      if (dist > 2) { v[0] += nx * HOOK.pull * dt; v[1] += ny * HOOK.pull * dt; v[2] += nz * HOOK.pull * dt; }
-      v[1] += 26 * 0.35 * dt;
-      hk.len = Math.min(hk.len, dist);
-      const radial = v[0] * nx + v[1] * ny + v[2] * nz;
-      if (dist >= hk.len - 0.05 && radial < 0) { v[0] -= nx * radial; v[1] -= ny * radial; v[2] -= nz * radial; }
-      if (dist < 4.5 || n > hk.until || slipping) {
-        if (!slipping) { v[0] *= 1.12; v[2] *= 1.12; v[1] = Math.max(v[1], 0) * 1.12 + 11; } // hook jump
+      ropeStep(hk, hk.point, b.pos, v, dt, 26);
+      if (hk.dist < 4.5 || n > hk.until || slipping) {
+        if (!slipping) { const cp = Math.cos(b.pitch); ropeJump(v, [-Math.sin(b.yaw) * cp, Math.sin(b.pitch), -Math.cos(b.yaw) * cp]); }
         b.ai.hook = null; b.g = null;
       }
       b.onGround = false;

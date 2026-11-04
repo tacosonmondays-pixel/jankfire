@@ -1391,6 +1391,7 @@ function frame(t) {
   if (now < (ME.sleepUntil || 0)) { pOff = -0.5 + Math.sin(now * 0.002) * 0.1; roll = 0.3; }
   $('sleepFx').style.opacity = now < (ME.sleepUntil || 0) ? 1 : 0;
   if (G.joined && !ME.alive) { pOff = -0.6; roll = 0.4; cam.position.y += Math.min(4, (now - (G.deadAt || now)) / 600); }
+  if (G.joined && ME.alive && S.shake) roll += ME.lean || 0; // leaning into a grapple swing (eased in player.js)
   if (!G.joined) { // menu backdrop: slow orbit over the current map
     const a = now * 0.00005;
     cam.position.set(Math.sin(a) * 40, 18, Math.cos(a) * 40);
@@ -1402,7 +1403,7 @@ function frame(t) {
   const pu = G.punch || { x: 0, y: 0, z: 0 };
   cam.rotation.set(Math.max(-1.57, Math.min(1.57, ME.pitch + pOff + pu.x)) + (Math.random() - 0.5) * sh, ME.yaw + pu.y + (Math.random() - 0.5) * sh, roll + pu.z);
   const hs = hspeed();
-  const fovTarget = (S.fov + (S.fovKick ? Math.min(35, hs * 0.3) + (ME.sprinting ? 6 : 0) : 0)) / (W.zoom || 1);
+  const fovTarget = (S.fov + (S.fovKick ? Math.min(35, hs * 0.3) + (ME.sprinting ? 6 : 0) + (ME.alive ? ME.ropeFov || 0 : 0) : 0)) / (W.zoom || 1);
   fovNow += (fovTarget - fovNow) * Math.min(1, dt * (W.aim > 0 ? 14 : 6));
   if (Math.abs(cam.fov - fovNow) > 0.05) { cam.fov = fovNow; cam.updateProjectionMatrix(); }
   if (RP.active) updateReplay(dt, now, cam); // killcam / play of the round owns the camera

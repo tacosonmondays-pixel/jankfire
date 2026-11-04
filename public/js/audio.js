@@ -64,7 +64,28 @@ function noise(dur, v, type, f0, f1, pos, delay = 0, q = 1) {
   s.start(t, Math.random() * 1.5); s.stop(t + dur + 0.05);
 }
 
+// filtered noise that fades in and out (noise() starts at full volume, which clicks): air rushing past
+function whoosh(dur, v, f0, f1, q = 1.2, pos = null) {
+  if (!ac) return;
+  const t = ac.currentTime;
+  const s = ac.createBufferSource();
+  s.buffer = nbuf;
+  const f = ac.createBiquadFilter();
+  f.type = 'bandpass'; f.Q.value = q;
+  f.frequency.setValueAtTime(f0, t);
+  f.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.45);
+  f.frequency.exponentialRampToValueAtTime(f0 * 0.8, t + dur);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(v, t + dur * 0.3);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f); f.connect(g); g.connect(dest(pos));
+  s.start(t, Math.random() * 1.5); s.stop(t + dur + 0.05);
+}
+
 export const sfx = {
+  // grapple jump: one clean whoosh, a little brighter when you timed it on the upswing
+  ropeJump(q = 0) { whoosh(0.42, 0.32, 380, 1500 + q * 900); tone('sine', 150, 60, 0.14, 0.07); },
   sniper(pos) { noise(0.7, 1, 'lowpass', 7000, 120, pos); tone('sawtooth', 220, 30, 0.5, 0.5, pos); tone('square', 1800, 200, 0.1, 0.15, pos); },
   boom(pos) { noise(1.1, 1, 'lowpass', 1800, 50, pos); tone('sine', 110, 25, 0.9, 0.9, pos); },
   squawk(pos) { tone('square', 700, 1500, 0.1, 0.22, pos); tone('square', 1500, 500, 0.18, 0.22, pos, 0.1); },
