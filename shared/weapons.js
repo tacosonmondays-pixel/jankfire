@@ -136,8 +136,11 @@ export const WEAPONS = {
   },
   slipper: {
     slot: 'melee', kind: 'proj', name: 'Slipper', color: '#ff9ad5',
-    desc: 'Thrown like a boomerang. Hits on the way out and on the way back.',
+    desc: 'Thrown like a boomerang. Curves into the nearest enemy in front of it, then flies back to you. Hits on the way out and on the way back.',
     cd: 0.5, speed: 32, grav: 0, r: 0.3, out: 0.45, back: 38, dmg: 30, kb: 22, kbUp: 6, life: 3,
+    // homing on the way out: locks the nearest enemy within homeR m and homeCone degrees of its heading, turns homeTurn rad/s,
+    // and keeps flying out (up to outLock s) while it has a lock so far targets are reachable
+    homeR: 30, homeCone: 70, homeTurn: 5, outLock: 1,
   },
   katana: {
     slot: 'melee', kind: 'melee', name: 'Katana', color: '#e8e8f0',
