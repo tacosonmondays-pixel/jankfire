@@ -203,6 +203,7 @@ export function updateReplay(dt, now, cam) {
   const o = st.opts;
   const slow = o.slow && o.slow.some(([a, b]) => st.t >= a && st.t <= b);
   const sp = slow ? 0.3 : 1;
+  RP.sp = sp; // bloodcross.js runs the replay's crosses on replay time, so the slow-mo spikes keep pace with the ghosts
   st.t += dt * 1000 * sp;
   feed(st.t + 260);
   // ghosts size themselves by distance to the camera: measure from the replay camera, not wherever you are

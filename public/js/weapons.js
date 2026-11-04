@@ -624,7 +624,6 @@ function fireBlood(now) {
   const o = eye(), d = look();
   net.send({ t: 'fire', w: 'bloodcross', o: o.map(r2), d: d.map(r2) });
   sfx.bcBeat();
-  hud.hurt(10); // you feel it
   W.kick = 0.3; W.flashT = 0.07;
   playAnim('bang_bloodcross', 'bang');
   kickVM('bloodcross');

@@ -1440,7 +1440,7 @@ function frame(t) {
   G.skinFxVM.update(dt);
   skinTick(dt, now);
   updateWorld(dt);
-  updateCrosses(dt); // after the projectile loop + replay: it turns blood bolts nose-first
+  updateCrosses(dt, RP.active ? RP.sp || 1 : 1); // after the projectile loop + replay: it turns blood bolts nose-first
   G.vmScene.visible = G.joined && !RP.active;
   renderFrame();
   if ((screen === 'cosmetics' || screen === 'character') && !$('menu').classList.contains('hidden')) renderPreview(dt);

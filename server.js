@@ -1116,6 +1116,7 @@ class Room {
   crossCast(m) { this.broadcast(m); this.rec.ev.push({ s: now(), m }); }
   fireBlood(p, o, d) {
     const w = WEAPONS.bloodcross, n = now();
+    if (this.round && this.round.over) return; // nothing can be hurt between rounds, so don't charge blood for it
     if (n - (p.lastFire.bloodcross || 0) < w.cd * 750) return;
     p.lastFire.bloodcross = n; // a refused shot uses the cooldown up too, so spamming it costs the server nothing
     if (p.hp - w.cost < 1) { send(p, { t: 'bcross', k: 'dry', o: p.id }); return; } // it never takes your last HP, so it can't kill you
@@ -1133,7 +1134,8 @@ class Room {
   tickBloodBolt(pr, dt, n) {
     const w = WEAPONS.bloodcross, owner = this.players.get(pr.o), prev = pr.p.slice();
     const hit = stepProjectile(pr, dt, this.boxes, 0);
-    const vs = this.sweep(prev, pr.p, pr.r, (t) => t.id === pr.o || this.friendly(owner, t)); // only up to the wall, so nobody gets hit through it
+    // only up to the wall, so nobody gets hit through it. a shooter who left can't tell friend from foe: it only finds walls then
+    const vs = owner ? this.sweep(prev, pr.p, pr.r, (t) => t.id === pr.o || this.friendly(owner, t)) : [];
     if (vs.length) { pr.p = vs[0].at; this.removeProj(pr); this.stickCross(pr, vs[0].t); return; }
     if (hit) { // walls + floors: a red X that fizzles out, no damage
       const nrm = [0, 0, 0]; nrm[hit.axis] = hit.sign;
@@ -1182,17 +1184,21 @@ class Room {
   blowCross(mk, t) {
     const w = WEAPONS.bloodcross, owner = this.players.get(mk.o) || null, p = mk.p;
     this.crossCast({ t: 'bcross', k: 'boom', id: mk.id, o: mk.o, to: mk.t, p: p.map(r2) });
+    // the shooter left before the pop: everyone still sees it, but with no attacker the team, spawn and bubble checks
+    // can't work (it would hit their old team), so it does no damage
+    if (!owner) return;
     let kills = 0;
-    const pop = (v, dmg, kb, hs) => { const was = v.alive; this.hurt(v, owner, 'bloodcross', dmg, kb, { hs }); if (was && !v.alive) kills++; };
-    if (t) pop(t, w.dmg, [mk.d[0] * w.kb, 4, mk.d[2] * w.kb], mk.off[1] >= 1.62);
+    // never a headshot: it's a fixed delayed pop wherever it stuck, so it stays out of the headshot stats + highlights
+    const pop = (v, dmg, kb) => { const was = v.alive; this.hurt(v, owner, 'bloodcross', dmg, kb); if (was && !v.alive) kills++; };
+    if (t) pop(t, w.dmg, [mk.d[0] * w.kb, 4, mk.d[2] * w.kb]);
     for (const v of [...this.players.values()]) { // the small blast: everyone else close by, not you (teammates are skipped by hurt)
-      if (v === t || !v.alive || (owner && v.id === owner.id)) continue;
+      if (v === t || v === owner || !v.alive) continue;
       const c = center(v), to = [c[0] - p[0], c[1] - p[1], c[2] - p[2]], dist = Math.hypot(...to);
       if (dist > w.blastR) continue;
       const f = 1 - dist / w.blastR, dir = dist > 0.1 ? to.map((x) => x / dist) : [0, 1, 0];
-      pop(v, w.blastDmg * f, [dir[0] * w.kb * 1.5 * f, 3 + 3 * f, dir[2] * w.kb * 1.5 * f], false);
+      pop(v, w.blastDmg * f, [dir[0] * w.kb * 1.5 * f, 3 + 3 * f, dir[2] * w.kb * 1.5 * f]);
     }
-    if (kills && owner && owner.alive) { // blood magic: a kill pays back what the shot cost (never past full)
+    if (kills && owner.alive) { // blood magic: a kill pays back what the shot cost (never past full)
       const a = Math.max(0, Math.min(mk.cost, Math.max(100, owner.hp) - owner.hp));
       owner.hp += a;
       this.crossCast({ t: 'bcross', k: 'refund', id: mk.id, o: owner.id, a: Math.round(a), p: p.map(r2) });

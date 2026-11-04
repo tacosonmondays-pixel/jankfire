@@ -161,7 +161,9 @@ export function crossShot(m, pr) {
     b.userData.dir = d;
     b.lookAt(b.position.x - d[0], b.position.y - d[1], b.position.z - d[2]);
   }
-  if (m.o === G.myId) return; // yours: weapons.js already did the thump + the finger flick
+  // yours: weapons.js already did the thump + the finger flick. the bolt means the server took the blood: now you feel it
+  // (a shot it refused, on HP the client hadn't caught up on, never flashes)
+  if (m.o === G.myId) { hud.hurt(10); return; }
   sfx.bcBeat(m.p);
   const r = G.remotes.get(m.o);
   if (r && r.alive) { const a = r.muzzle(); beam(a, m.p, pal.glow, 0.035, 0.1, false, 0.85); beam(a, m.p, pal.core, 0.012, 0.07, true, 0.9); spurt(a, pal, 8, null, 0.7); }
@@ -510,7 +512,9 @@ export function crossEvent(m, ghosts, info) {
   else if (!ghosts && m.o === G.myId && m.k === 'dry') hud.msg('NOT ENOUGH BLOOD', 0.8, 'reverse');
 }
 
-export function updateCrosses(dt) {
+// rpSp: how fast a replay is playing (0.3 in slow-mo). crosses from a replay ('r' keys) live on its clock, so a mark can't
+// time out before its pop plays, and the spikes burst out in slow motion with the ghost they're in
+export function updateCrosses(dt, rpSp = 1) {
   if (!scene) return;
   blood.update(dt); glow.update(dt);
   bolts();
@@ -521,7 +525,7 @@ export function updateCrosses(dt) {
     if (b.u.flare) { b.u.flare.visible = t < 0.07; b.u.flare.userData.face.rotation.z = Math.random() * 6.28; } // the red burst off their fingertip
     if (t >= 0.3) bangs.splice(i, 1);
   }
-  for (const mk of [...marks.values()]) tickMark(mk, dt);
+  for (const mk of [...marks.values()]) tickMark(mk, mk.key[0] === 'r' ? dt * rpSp : dt);
   for (let i = walls.length - 1; i >= 0; i--) if (tickWall(walls[i], dt)) walls.splice(i, 1);
   for (let i = fades.length - 1; i >= 0; i--) {
     const f = fades[i];
