@@ -53,7 +53,7 @@ Notes:
 
 ## Controls
 
-These are the defaults. **Every one can be rebound** in SETTINGS → KEY BINDINGS (a primary and an alternate key or mouse button per action; Esc stays the pause key). The hotbar, the killstreak tray and every "press X" hint show your keys.
+These are the defaults. **Every one can be rebound** in SETTINGS → KEY BINDINGS (a primary and an alternate key or mouse button per action; Esc stays the pause key). The hotbar, the killstreak tray and every "press X" hint show your keys. Right Ctrl (crouch) and Mouse 5 (grapple) are no longer bound by default: add them as alternates if your hands miss them.
 
 | | |
 |---|---|

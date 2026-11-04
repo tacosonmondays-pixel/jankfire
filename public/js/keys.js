@@ -41,7 +41,15 @@ export const ACTIONS = [
   ['vote3', 'Vote: option 3', 'Interface', ['Digit3'], 'vote'],
 ].map(([id, label, group, def, ctx]) => ({ id, label, group, def, ctx: ctx || 'game' }));
 
-const BY = Object.fromEntries(ACTIONS.map((a) => [a.id, a]));
+const BY = Object.assign(Object.create(null), Object.fromEntries(ACTIONS.map((a) => [a.id, a]))); // no prototype: a save key like 'toString' is just unknown
+{ // dev check for the one-line adds: a repeated id or two defaults on one key in one context would both fire
+  const seen = new Set();
+  for (const a of ACTIONS) {
+    if (seen.has('id|' + a.id)) console.warn('keys.js: duplicate action id', a.id);
+    seen.add('id|' + a.id);
+    for (const c of a.def) { if (seen.has(a.ctx + '|' + c)) console.warn('keys.js: two default bindings on', c, 'in', a.ctx); seen.add(a.ctx + '|' + c); }
+  }
+}
 const RESERVED = new Set(['Escape']); // pointer lock / pause: never bindable
 const okCode = (c) => typeof c === 'string' && c.length > 0 && c.length <= 32 && /^[A-Za-z0-9]+$/.test(c) && !RESERVED.has(c);
 const mac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform || '');
@@ -86,23 +94,26 @@ const ids = (x) => (Array.isArray(x) ? x : [x]);
 export const K = {
   // read settings.binds (or the old 'right click grapples' checkbox) and keep writing changes back there
   attach(s) {
-    store = s; set = {};
+    store = null; set = {};
     const b = s && s.binds;
-    if (b && typeof b === 'object' && b.v === 1 && b.set && typeof b.set === 'object') {
-      const used = new Set();
-      for (const [id, v] of Object.entries(b.set)) {
-        if (!BY[id] || !Array.isArray(v)) continue; // an action that's gone: ignore it
-        set[id] = [0, 1].map((i) => {
-          const c = okCode(v[i]) && !used.has(BY[id].ctx + '|' + v[i]) ? v[i] : null; // a broken save can't double-bind a key
-          if (c) used.add(BY[id].ctx + '|' + c);
-          return c;
-        });
+    try {
+      if (b && typeof b === 'object' && b.v > 1) { rebuild(); store = s; changed(true); return; } // a newer build's save: play on defaults, leave it alone until a key changes
+      if (b && typeof b === 'object' && b.v === 1 && b.set && typeof b.set === 'object') {
+        const used = new Set();
+        for (const [id, v] of Object.entries(b.set)) {
+          if (!BY[id] || !Array.isArray(v)) continue; // an action that's gone: ignore it
+          set[id] = [0, 1].map((i) => {
+            const c = okCode(v[i]) && !used.has(BY[id].ctx + '|' + v[i]) ? v[i] : null; // a broken save can't double-bind a key
+            if (c) used.add(BY[id].ctx + '|' + c);
+            return c;
+          });
+        }
       }
       rebuild();
-    } else {
-      rebuild();
-      if (s && s.swapAim) { s.swapAim = false; K.set('aim', 0, 'KeyE'); return; } // the old checkbox, as a preset: E aims, right click grapples
-    }
+    } catch (e) { console.error('keys.js: bad save, using defaults', e); set = {}; rebuild(); }
+    store = s;
+    // the old checkbox (also from a profile synced by an old client): a preset, E aims and right click grapples
+    if (s && s.swapAim) { s.swapAim = false; if (!set.aim && !set.grapple) { K.set('grapple', 0, 'Mouse2'); K.set('aim', 0, 'KeyE'); return; } }
     commit();
   },
   onChange(fn) { subs.push(fn); }, // fn(rebound): false when only the key names changed (keyboard layout)
@@ -159,7 +170,8 @@ export const K = {
   // shared text (weapon / streak / mode descriptions) is written for the default keys: swap in the player's
   hint(text) {
     if (typeof text !== 'string') return text;
-    const r = (re, id, f) => { if (K.label(id) === K.codeLabel(BY[id].def[0])) return; text = text.replace(re, f || (() => K.label(id))); };
+    // an unbound action keeps the default wording ('unbound parries' reads worse than a stale key)
+    const r = (re, id, f) => { if (!K.get(id).some(Boolean) || K.label(id) === K.codeLabel(BY[id].def[0])) return; text = text.replace(re, f || (() => K.label(id))); };
     r(/\b[Rr]ight click\b/g, 'aim');
     r(/\b[Ll]eft click\b/g, 'fire');
     r(/\bR(?= redraws)/g, 'reload');

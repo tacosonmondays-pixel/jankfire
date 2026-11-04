@@ -3,11 +3,12 @@
 import { K, ACTIONS, GROUPS } from './keys.js';
 
 const $ = (id) => document.getElementById(id);
-let cap = null, save = () => {}, wired = false, swallowClickUntil = 0, swallowUp = '', resetArm = 0;
+let cap = null, save = () => {}, wired = false, swallowClickUntil = 0, swallowUp = '', resetArm = 0, open = false;
 
 // main.js calls this from show(): open = the controls screen is the one showing
-export function controlsScreen(open, saveFn) {
+export function controlsScreen(isOpen, saveFn) {
   if (saveFn) save = saveFn;
+  open = isOpen;
   if (!open) { cap = null; return; }
   if (!wired) wire();
   msg('');
@@ -34,7 +35,7 @@ function render() {
         b.textContent = waiting ? 'press a key' : c ? K.codeLabel(c) : i ? '+' : 'unbound';
         b.title = `${a.label}: ${i ? 'alternate' : 'primary'} key`;
         b.dataset.act = a.id; b.dataset.slot = i;
-        b.addEventListener('click', () => { cap = { id: a.id, slot: i, label: a.label }; render(); msg(`press a key or mouse button for ${a.label} · Esc cancels · Backspace clears`); });
+        b.addEventListener('click', () => { cap = { id: a.id, slot: i, label: a.label }; render(); msg(`press a key or mouse button for ${a.label} (click the flashing key again for left mouse) · Esc cancels · Backspace clears`); });
         row.append(b);
       });
       const r = document.createElement('button'); r.className = 'kreset'; r.textContent = '↺';
@@ -48,17 +49,26 @@ function render() {
   }
   $('ctlSwap').checked = K.get('aim').includes('KeyE') && K.get('grapple').includes('Mouse2');
 }
+// stop the flashing in place: a full render now would replace the button being clicked and eat its click
+function unflash() {
+  const w = document.querySelector('#ctlList .kb.wait');
+  if (!w) return;
+  const c = K.get(w.dataset.act)[+w.dataset.slot];
+  w.classList.remove('wait'); w.textContent = c ? K.codeLabel(c) : +w.dataset.slot ? '+' : 'unbound';
+}
 function done() { save(); render(); if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); }
 function finish(code) {
   const { id, slot, label } = cap;
   cap = null;
   const moved = K.set(id, slot, code);
   done();
+  if (code && K.get(id)[slot] !== code) { msg(`${K.codeLabel(code)} can't be bound`, true); return; }
   msg(code ? `${label} → ${K.codeLabel(code)}${movedText(moved)}` : `${label}: ${slot ? 'alternate' : 'primary'} cleared`, !!moved);
 }
 
 function wire() {
   wired = true;
+  K.onChange(() => { if (open && !cap) render(); }); // a login can bring other bindings in while this is open
   // capture phase on window: while waiting for a key, nothing else (game, menu buttons, browser) sees it
   addEventListener('keydown', (e) => {
     if (!cap) return;
@@ -73,6 +83,9 @@ function wire() {
   addEventListener('keyup', (e) => { if (swallowUp && e.code === swallowUp) { swallowUp = ''; e.preventDefault(); e.stopImmediatePropagation(); } }, true);
   addEventListener('mousedown', (e) => {
     if (!cap) return;
+    // a left click on another button (another key, BACK, a checkbox) means you changed your mind: let it through
+    const t = e.button === 0 && e.target.closest && e.target.closest('button, input, label, select, a');
+    if (t && !t.classList.contains('wait')) { cap = null; unflash(); msg('cancelled'); return; }
     e.preventDefault(); e.stopImmediatePropagation();
     if (e.button === 0) swallowClickUntil = performance.now() + 800; // the click that follows isn't a new "change this key" (only the left button makes one)
     finish('Mouse' + e.button);
@@ -80,7 +93,8 @@ function wire() {
   addEventListener('click', (e) => { if (performance.now() < swallowClickUntil) { swallowClickUntil = 0; e.preventDefault(); e.stopImmediatePropagation(); } }, true);
   $('ctlSwap').addEventListener('change', () => {
     const on = $('ctlSwap').checked;
-    K.set('aim', 0, on ? 'KeyE' : 'Mouse2'); // aim takes grapple's key and grapple gets right click (the swap rule does the rest)
+    // set both, so it still lands when grapple or aim were moved first (the swap rule moves whatever was in the way)
+    if (on) { K.set('grapple', 0, 'Mouse2'); K.set('aim', 0, 'KeyE'); } else { K.set('aim', 0, 'Mouse2'); K.set('grapple', 0, 'KeyE'); }
     done();
     msg(on ? 'right click grapples, E aims' : 'right click aims, E grapples');
   });

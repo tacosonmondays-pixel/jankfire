@@ -63,7 +63,7 @@ G.settings.loadout = validLoadout(G.settings.loadout);
 if (!G.settings.skins || typeof G.settings.skins !== 'object') G.settings.skins = {};
 if (!G.settings.look || typeof G.settings.look !== 'object') G.settings.look = { ...DEFAULT_LOOK };
 K.attach(G.settings); // key bindings (keys.js): only what you changed is saved, old saves and the old swapAim box still load
-const SYNC_KEYS = ['jank', 'sens', 'adsSens', 'vol', 'fov', 'swapAim', 'toggleAim', 'blood', 'shake', 'fovKick', 'showFps', 'killcam', 'showCards', 'speedLines', 'binds'];
+const SYNC_KEYS = ['jank', 'sens', 'adsSens', 'vol', 'fov', 'swapAim', 'toggleAim', 'blood', 'shake', 'fovKick', 'showFps', 'killcam', 'showCards', 'speedLines', 'binds']; // swapAim stays synced (as false) so an old profile's true can't come back
 function profileData() {
   const settings = {};
   for (const k of SYNC_KEYS) settings[k] = G.settings[k];
@@ -336,10 +336,13 @@ function renderKeyHints() {
     + `${L('dash')}/${L('scythe')} scythe · ${L('menu')} menu · ${L('scores')} scores · ${L('chat')} chat · change them in SETTINGS > KEY BINDINGS`;
   $('voteKeys').textContent = ['vote1', 'vote2', 'vote3'].map(K.label).join(' / ');
   $('sprayKey').textContent = K.label('spray');
+  $('loItemKey').textContent = K.label('item');
+  $('loStreakKeys').textContent = ['streak1', 'streak2', 'streak3'].map(K.label).join(' / ');
 }
 renderKeyHints();
 K.onChange(() => {
   renderKeyHints();
+  if (G.vote) showVote(G.vote); // the option boxes show the vote keys
   if (W.slots) showSlots(); // hotbar numbers + item key
   $('streakTray').dataset.key = ''; renderStreak(G.streakN || 0);
 });
@@ -715,7 +718,7 @@ const inGame = () => G.joined && !chatOpen && $('menu').classList.contains('hidd
 
 function openChat() {
   chatOpen = true;
-  K.clear();
+  releaseHeld(); // keyups typed in the box don't reach the game, so let go of everything now
   $('chatin').classList.remove('hidden');
   $('chatin').value = '';
   setTimeout(() => $('chatin').focus(), 0);
@@ -749,14 +752,14 @@ addEventListener('keydown', (e) => {
 // a key or a mouse button went down in game. every check goes through the bindings (keys.js), so any action works on either
 function pressed(e) {
   if ((RP.active || G.killcamPending) && K.matches('skip', e)) { e.preventDefault(); skipReplay(); return; }
+  const vote = G.vote ? ['vote1', 'vote2', 'vote3'].findIndex((a) => K.matches(a, e)) : -1;
+  if (vote >= 0) { castVote(vote); return; } // during a vote its keys win over any game action on the same key
   if (K.matches('scores', e)) { e.preventDefault(); scoresOpen = true; renderScores(); return; }
   if (K.matches('chat', e)) { e.preventDefault(); openChat(); return; }
   if (K.matches('menu', e)) { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
   if (K.matches(BUBBLED, e) && stuckInBubble(true)) return; // sealed in a soap bubble: no shooting, aiming, grapple, items, dash, t-bag, sprays or streaks
   if (K.matches('jump', e)) { e.preventDefault(); if (!e.repeat) jumpPressed = true; }
   if (K.matches('grapple', e) && !e.repeat) tryHook();
-  const vote = G.vote ? ['vote1', 'vote2', 'vote3'].findIndex((a) => K.matches(a, e)) : -1;
-  if (vote >= 0) { castVote(vote); return; }
   if (K.matches('slot1', e)) switchSlot(0);
   if (K.matches('slot2', e)) switchSlot(1);
   if (K.matches('slot3', e)) switchSlot(2);
@@ -781,6 +784,7 @@ function pressed(e) {
 const BUBBLED = ['fire', 'aim', 'grapple', 'item', 'dash', 'crouch', 'spray', 'streak1', 'streak2', 'streak3'];
 // a key or button came up: releases match whatever pressed the action, even if it got rebound since
 function released(e) {
+  if (e.type === 'keyup' && K.typing(e)) return; // typed in chat / a text box (opening chat already let go of everything)
   if (K.up('use', e)) stopUse();
   if (K.up('dash', e)) W.dashHeld = false;
   if (K.up('scores', e)) { scoresOpen = false; hud.scores(false); }
@@ -792,6 +796,7 @@ addEventListener('keyup', released);
 addEventListener('mousedown', (e) => {
   if (!inGame()) return;
   if (RP.mode === 'killcam' || G.killcamPending) { skipReplay(); return; }
+  if (e.button === 1 && K.bound(e)) e.preventDefault(); // a bound middle button never starts autoscroll
   pressed(e);
 });
 addEventListener('mouseup', released);
@@ -1085,7 +1090,7 @@ function showVote(v) {
   v.options.forEach((o, i) => {
     const d = document.createElement('div');
     d.className = 'vopt' + (i === myVote ? ' on' : '');
-    const k = document.createElement('b'); k.textContent = String(i + 1);
+    const k = document.createElement('b'); k.textContent = K.label('vote' + (i + 1));
     const t = document.createElement('span'); t.textContent = `${o.name} · ${o.mapName}`;
     const c = document.createElement('i'); c.textContent = String((v.counts || [])[i] || 0);
     d.append(k, t, c);

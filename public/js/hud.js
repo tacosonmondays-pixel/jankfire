@@ -272,7 +272,7 @@ export const hud = {
     el.classList.toggle('low', left < 4);
     el.querySelector('.slam i').style.width = (air ? 8 + sl.size.k * 92 : Math.min(1, sl.ready) * 100) + '%';
     el.querySelector('.slam span').textContent = !ready ? 'slam recharging...'
-      : air ? `CROUCH: SLAM from ${Math.round(sl.h)} m · ${Math.round(sl.size.dmg)} dmg` : 'GROUND SLAM: crouch in the air · E: chain';
+      : air ? `${K.label('crouch').toUpperCase()}: SLAM from ${Math.round(sl.h)} m · ${Math.round(sl.size.dmg)} dmg` : `GROUND SLAM: ${K.label('crouch')} in the air · ${K.label('grapple').toUpperCase()}: chain`;
     el.classList.toggle('ready', ready);
     el.classList.toggle('air', !!air);
   },
