@@ -4,13 +4,13 @@
 import * as THREE from 'three';
 import { G } from './ctx.js';
 import { Remote } from './remote.js';
-import { buildProjectile, tipColor, M } from './models.js';
+import { buildProjectile, tipColor, teamLook, M } from './models.js';
 import { fx } from './fx.js';
 import { sfx } from './audio.js';
 import { tracerColor } from './skins.js';
 import { playKillFx } from './killfx.js';
 import { WEAPONS } from '/shared/weapons.js';
-import { TEAMS } from '/shared/modes.js';
+import { TEAMS, GAMES } from '/shared/modes.js';
 import { raycast } from '/shared/physics.js';
 import { BOXES } from '/shared/map.js';
 
@@ -45,15 +45,17 @@ export function playClip(clip, opts = {}) {
   stopReplay(true);
   if (!clip || !Array.isArray(clip.frames) || clip.frames.length < 3) { if (opts.onEnd) opts.onEnd(); return false; }
   const ghosts = new Map();
+  const tg = GAMES[G.round && G.round.game] && GAMES[G.round.game].teams;
   for (const [k, inf] of Object.entries(clip.info || {})) {
     const id = Number(k);
     const i = inf || {};
-    // team colour beats clothes on ghosts too (clips without a team field: a team colour means a team)
-    const team = i.team ?? (Object.values(TEAMS).some((t) => t.color === i.color) ? 1 : 0);
+    // team colour beats clothes on ghosts too (clips without a team field: a team colour means a team, in a team game)
+    const team = i.team ?? (tg && Object.values(TEAMS).some((t) => t.color === i.color) ? 1 : 0);
     const g = new Remote(id, i.level ? `${i.name} [${i.level}]` : (i.name || '???'), i.color || '#ffffff', i.skins || {}, !!i.bot, i.look || null, team);
-    // katana length at the start of the clip: one less than its first recorded growth, else what it was when clipped
+    // katana length at the start of the clip: what it was before its first recorded change (was: our own recording
+    // knows; a growth is one more than before), else what it was when clipped
     const k0 = (clip.ev || []).find((e) => e.m && e.m.t === 'kat' && e.m.id === id);
-    g.katN = k0 && k0.m.n > 0 ? k0.m.n - 1 : (i.kat || 0);
+    g.katN = k0 && k0.m.was != null ? k0.m.was : k0 && k0.m.n > 0 ? k0.m.n - 1 : (i.kat || 0);
     g.ghost = true;
     if (id === opts.focus) g.tag.visible = false;
     ghosts.set(id, g);
@@ -110,7 +112,7 @@ function applyEv(m) {
     const v = st.ghosts.get(m.v);
     if (v) {
       const vi = info[m.v] || {};
-      const replaced = m.fx && m.fx !== 'none' && playKillFx(m.fx, { pos: v.pos.slice(), vel: m.vel || v.vel, yaw: v.yaw, color: v.color, look: vi.look, name: vi.name });
+      const replaced = m.fx && m.fx !== 'none' && playKillFx(m.fx, { pos: v.pos.slice(), vel: m.vel || v.vel, yaw: v.yaw, color: v.color, look: teamLook(vi.look, v.team), name: vi.name });
       if (replaced) v.ch.root.visible = false; else v.breakApart(m.vel || v.vel);
       v.iceUntil = 0;
     }

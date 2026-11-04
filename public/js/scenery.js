@@ -60,7 +60,8 @@ export function buildScenery(scene, map, id, voidMesh) {
     m.position.set(cx + Math.cos(a) * d, floorY + (h - drop) / 2 - 20, cz + Math.sin(a) * d);
     m.rotation.y = r() * 3;
     group.add(m);
-    if (cfg.theme !== 'desert' && h > 260) { const cap = new THREE.Mesh(new THREE.ConeGeometry(rad * 0.32, h * 0.32, m.geometry.parameters.radialSegments), snowMat); cap.position.set(m.position.x, floorY + h - h * 0.16 - 20, m.position.z); cap.rotation.y = m.rotation.y; group.add(cap); }
+    // the cap is the top 0.32 h of the cone, so its base is as wide as the (taller, steeper) mountain is there
+    if (cfg.theme !== 'desert' && h > 260) { const cap = new THREE.Mesh(new THREE.ConeGeometry(rad * 0.32 * h / (h + drop), h * 0.32, m.geometry.parameters.radialSegments), snowMat); cap.position.set(m.position.x, floorY + h - h * 0.16 - 20, m.position.z); cap.rotation.y = m.rotation.y; group.add(cap); }
   }
 
   // ---- the floor far below (valley / city streets / ocean / cloud sea)
@@ -137,14 +138,15 @@ export function buildScenery(scene, map, id, voidMesh) {
     }
   }
   if (cfg.theme === 'sky') { // a sea of clouds below
-    const cl = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, fog: false });
+    // merged into one mesh, the clouds aren't sorted against each other: no depth writes, or near ones cut holes in far ones
+    const cl = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, fog: false, depthWrite: false });
     for (let i = 0; i < 90; i++) { const [x, z] = near(-R * 0.5, 700); const s = 30 + r() * 60; const m = new THREE.Mesh(new THREE.SphereGeometry(s, 7, 4), cl); m.scale.y = 0.25; m.position.set(x, map.killY - 30 - r() * 20, z); group.add(m); }
   }
   mergeByMaterial(group);
 }
 
 // one draw call per material instead of one per mountain / tree / tower: bake each piece's transform and merge
-// (like the map boxes). the clouds lose per-cloud sorting, which doesn't show at one opacity.
+// (like the map boxes). the clouds lose per-cloud sorting, which doesn't show at one opacity without depth writes.
 function mergeByMaterial(g) {
   const byMat = new Map();
   for (const m of g.children) {

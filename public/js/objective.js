@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { G } from './ctx.js';
 import { MAPS } from '/shared/map.js';
-import { TEAMS, GAMES, BOMB, siteAt } from '/shared/modes.js';
+import { TEAMS, GAMES, BOMB, siteAt, canDefuse } from '/shared/modes.js';
 import { M } from './models.js';
 
 const $ = (id) => document.getElementById(id);
@@ -77,7 +77,8 @@ export function canUse(r, myPos) {
   const b = r && r.bomb;
   if (!b || r.game !== 'bomb' || b.ph === 'done') return false;
   if (b.ph === 'live' && b.carrier === G.myId) return !!siteAt(MAPS[G.cfg.map], myPos);
-  if (b.ph === 'planted' && G.myTeam && G.myTeam !== b.att && b.p) return Math.hypot(myPos[0] - b.p[0], myPos[1] - b.p[1], myPos[2] - b.p[2]) < BOMB.defuseRange;
+  // the server's rule (a cylinder: a bomb up on a prop is defused from the floor), so F never inspects where bots defuse
+  if (b.ph === 'planted' && G.myTeam && G.myTeam !== b.att && b.p) return canDefuse(myPos, b.p);
   return false;
 }
 

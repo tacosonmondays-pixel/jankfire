@@ -105,7 +105,7 @@ function show(id) {
   if (id === 'character') { $('charSlot').append($('preview')); buildCharacterUI(); setTimeout(resizePreview, 0); }
   if (id === 'namecard') cardEditor.open();
   if (id === 'crates') renderCrates();
-  if (id === 'loadout') { streakDraft = null; buildLoadoutUI(); }
+  if (id === 'loadout') { if ($('loNote').textContent === DRAFT_NOTE) $('loNote').textContent = ''; streakDraft = null; buildLoadoutUI(); }
   if (id === 'settings') syncDisplay();
   if (id === 'match') syncMatchUI();
   if (id === 'profile') { renderProfile(); restore().then((me) => { if (me && screen === 'profile') { renderProfile(); renderAcctBar(); } }); }
@@ -360,11 +360,13 @@ function buildLoadoutUI() {
     b.append(im, t);
     b.addEventListener('mouseenter', () => { $('loDesc').textContent = `${st.name} (${st.kills} kills in a row): ${st.desc}`; });
     b.addEventListener('click', () => {
-      // the 2-pick draft is never saved or sent (validStreaks would pad it straight back with the defaults)
-      if (picks.includes(id)) { streakDraft = picks.filter((x) => x !== id); $('loNote').textContent = 'pick a killstreak for the empty slot'; buildLoadoutUI(); return; }
+      // a draft under 3 picks is never saved or sent (validStreaks would pad it straight back with the defaults)
+      if (picks.includes(id)) { streakDraft = picks.filter((x) => x !== id); $('loNote').textContent = DRAFT_NOTE; buildLoadoutUI(); return; }
       if (picks.length >= 3) { toast('click one of your killstreaks to drop it first'); return; }
+      const next = [...picks, id];
+      if (next.length < 3) { streakDraft = next; buildLoadoutUI(); return; } // still a slot to fill: nothing saved yet
       streakDraft = null;
-      S.loadout.streaks = validStreaks([...picks, id]);
+      S.loadout.streaks = validStreaks(next);
       saveSettings();
       $('loNote').textContent = '';
       applyStreaks();
@@ -402,14 +404,23 @@ function sendItemSel() {
 }
 // killstreak picks: the server switches them now, or from your next life while you have a streak going
 let streakDraft = null;
+const DRAFT_NOTE = 'pick a killstreak for each empty slot', NEXT_NOTE = 'killstreak picks apply next life (you have a streak going)';
 const activeStreaks = () => G.activeStreaks || validStreaks(S.loadout.streaks);
 function applyStreaks() {
   const list = validStreaks(S.loadout.streaks);
   if (G.joined) net.send({ t: 'streaks', list });
-  if (G.joined && (G.streakN || 0) > 0) { $('loNote').textContent = 'killstreak picks apply next life (you have a streak going)'; toast('killstreak picks apply next life'); }
+  if (G.joined && (G.streakN || 0) > 0) { $('loNote').textContent = NEXT_NOTE; toast('killstreak picks apply next life'); }
   else G.activeStreaks = list;
   renderStreak(G.streakN || 0);
 }
+// the server's word on which picks count this life (a kill still in flight when you changed them makes it wait)
+net.on('streaks', (m) => {
+  if (!Array.isArray(m.list)) return;
+  G.activeStreaks = validStreaks(m.list);
+  if (m.pending) $('loNote').textContent = NEXT_NOTE;
+  else if ($('loNote').textContent === NEXT_NOTE) $('loNote').textContent = '';
+  renderStreak(G.streakN || 0);
+});
 
 // ------------------------------------------------------------ cosmetics screen
 G.cosSel = S.loadout.primary;
@@ -987,7 +998,7 @@ net.on('ic', onIc);
 // the katana grows: everyone sees how long yours is
 G.kat = new Map();
 net.on('kat', (m) => {
-  recordEv(m);
+  recordEv({ ...m, was: G.kat.get(m.id) || 0 }); // killcam ghosts start with the length before this change
   G.kat.set(m.id, m.n);
   if (m.id === G.myId) { setMyKatana(m.n); if (m.n) hud.msg(`KATANA GROWS · ${m.n} kill${m.n > 1 ? 's' : ''}`, 1.3, 'brag'); return; }
   const r = G.remotes.get(m.id); if (r) r.setKat(m.n);
@@ -1121,7 +1132,7 @@ net.on('kill', (m) => {
     stopLoops();
     G.deadAt = performance.now();
     G.respawnMs = m.rs ?? 2500; // the mode's respawn delay (Plant & Defuse is longer)
-    G.frost = 0;
+    G.frost = 0; ME.frozenUntil = 0; // shattered: no ice overlay on the death screen
     sfx.death();
     deathCard(m.k && m.k !== G.myId ? m.k : 0, via);
     if (m.k && m.k !== G.myId && S.killcam !== false && G.mode !== 'training') queueKillcam(m.k, via);
@@ -1531,6 +1542,7 @@ net.on('streak', (m) => {
   if (m.reset) { // you died: the count starts over and active stuff ends. earned-but-unused streaks stay in the tray
     G.streakN = 0; G.satUntil = 0; G.spinUntil = 0; ME.moonUntil = 0;
     G.activeStreaks = validStreaks(S.loadout.streaks); // picks changed mid-streak count from now on (the server does the same)
+    if ($('loNote').textContent === NEXT_NOTE) $('loNote').textContent = '';
     loseScythe();
     renderStreak(0);
     return;
