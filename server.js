@@ -1630,6 +1630,7 @@ class Room {
         if (i < 0 || !p.alive || !has(STREAKS, m.r)) break;
         if ((m.r === 'chickenstrike' || m.r === 'giantduck') && !at) break;
         p.pocket.splice(i, 1);
+        if (this.mode === 'training') (p.trainCd ||= {})[m.r] = now() + ((STREAKS[m.r].dur || 0) + 3) * 1000;
         if (m.r === 'scythe') p.scythe = true;
         send(p, { t: 'streak', reward: m.r });
         if (m.r === 'chickenstrike') {
@@ -1963,11 +1964,26 @@ class Room {
     if (b.act) this.broadcast({ t: 'bombev', k: b.act.kind, id: p.id });
   }
 
+  // training: your 3 picked killstreaks are always in your tray. a used one comes back once it has run out (+3 s)
+  trainingStreaks(n) {
+    if (n - (this.trainT || 0) < 1000) return;
+    this.trainT = n;
+    for (const p of this.players.values()) {
+      if (p.isBot || !p.alive) continue;
+      p.pocket ||= []; p.trainCd ||= {};
+      for (const id of validStreaks(p.streaks)) {
+        if (p.pocket.includes(id) || n < (p.trainCd[id] || 0)) continue;
+        p.pocket.push(id);
+        send(p, { t: 'streak', earned: id, n: 0 });
+      }
+    }
+  }
   tick(dt) {
     const n = now();
     this.tickRound();
     this.tickTags(n);
     this.tickItems(dt);
+    if (this.mode === 'training') this.trainingStreaks(n);
     for (const b of this.players.values()) if (b.isBot && b.alive) this.stepBot(b, dt);
     this.tickProjectiles(dt);
     this.tickHoles(dt);

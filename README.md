@@ -81,7 +81,7 @@ Settings: display (windowed / windowed fullscreen / fullscreen), grapple on righ
 | Play | Online with real people, one shared room. After every match everyone votes on the next map + mode. |
 | Bots | Private match vs 1-12 bots. Pick the mode, map, difficulty and hipfire. |
 | Coop | Everyone vs endless waves of bots. No friendly fire. A container every 5 waves. |
-| Training | Target dummies, infinite ammo, a movement playground. Good for testing kill effects and the katana. |
+| Training | Target dummies, infinite ammo, a movement playground. Your 3 picked killstreaks are always in the tray (a used one comes back a few seconds after it runs out). Good for testing kill effects, the katana and the streaks. |
 
 Game modes (Play + Bots):
 
