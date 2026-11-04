@@ -36,6 +36,8 @@ export function resample(pts, n) {
   return out;
 }
 const v3 = (a) => new THREE.Vector3(a[0], a[1], a[2]);
+// side-on planar uvs: u along the blade (z), v up (y), about 4 texture repeats per metre
+const sideUV = (pos) => { const uv = []; for (let i = 0; i < pos.length; i += 3) uv.push(-pos[i + 2] * 4, pos[i + 1] * 4); return new THREE.Float32BufferAttribute(uv, 2); };
 
 // ---------------------------------------------------------------- the blade generator
 // spine/edge: [z, y] lines from the heel (handle end) to the tip. They may meet at the tip (pointed) or not (blunt front, e.g. a cleaver).
@@ -109,6 +111,7 @@ export function blade(o) {
   if (Math.hypot(S[n - 1][0] - E[n - 1][0], S[n - 1][1] - E[n - 1][1]) > 0.001) cap(n - 1, n - 2);
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute([...flat, ...bev], 3));
+  geo.setAttribute('uv', sideUV([...flat, ...bev]));
   geo.addGroup(0, flat.length / 3, 0);
   geo.addGroup(flat.length / 3, bev.length / 3, 1);
   geo.computeVertexNormals();
@@ -138,6 +141,7 @@ export function blade(o) {
     if (!pos.length) continue;
     const bg = new THREE.BufferGeometry();
     bg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    bg.setAttribute('uv', sideUV(pos));
     bg.computeVertexNormals();
     const bm = new THREE.Mesh(bg, mat(b.color, b.glow));
     if (b.glow) bm.userData.noWrap = true;

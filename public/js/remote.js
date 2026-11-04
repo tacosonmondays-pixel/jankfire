@@ -113,7 +113,12 @@ export class Remote {
     this.weaponMesh = null;
     if (w) {
       this.weaponMesh = buildWeapon(w, this.skins[w]);
-      this.weaponMesh.traverse((o) => { if (o.isMesh && !o.material.transparent) o.material = visibleMat(o.material); });
+      this.weaponMesh.traverse((o) => { // blade-kit meshes carry a [flat, bevel] material pair
+        if (!o.isMesh) return;
+        const arr = Array.isArray(o.material), ms = arr ? o.material : [o.material];
+        if (ms.some((m) => m.transparent)) return;
+        o.material = arr ? ms.map(visibleMat) : visibleMat(o.material);
+      });
       this.weaponMesh.scale.setScalar(w === 'bread' ? 1.0 : 1.5);
       if (w === 'katana') setKatana(this.weaponMesh, this.katN || 0);
       this.ch.slot.add(this.weaponMesh);
