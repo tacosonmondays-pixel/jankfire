@@ -19,6 +19,15 @@ export function initAudio(v) {
 
 export function setVolume(v) { vol = v; if (master) master.gain.value = v; }
 export function setListener(p, yaw) { L.pos = p; L.yaw = yaw; }
+// sealed in a soap bubble: everything you hear goes through a low pass, like your head is underwater
+let muffle = null;
+export function setMuffle(on, instant) {
+  if (!ac) return;
+  if (!muffle) { muffle = ac.createBiquadFilter(); muffle.type = 'lowpass'; muffle.frequency.value = 22000; master.disconnect(); master.connect(muffle); muffle.connect(ac.destination); }
+  const f = muffle.frequency, t = ac.currentTime, to = on ? 480 : 22000;
+  f.cancelScheduledValues(t);
+  if (instant) f.setValueAtTime(to, t); else f.setTargetAtTime(to, t, 0.06);
+}
 
 function dest(pos) {
   const g = ac.createGain();
@@ -125,6 +134,12 @@ export const sfx = {
   cash(pos) { tone('square', 1800, 1800, 0.06, 0.2, pos); tone('square', 2400, 2400, 0.3, 0.2, pos, 0.07); noise(0.2, 0.3, 'highpass', 4000, 6000, pos, 0.05); },
   glitch(pos) { for (let i = 0; i < 6; i++) tone('square', 200 + Math.random() * 2000, 100 + Math.random() * 3000, 0.04, 0.12, pos, i * 0.035); },
   pop(pos) { noise(0.06, 0.8, 'highpass', 800, 3000, pos); },
+  // bubble wand: blowing one, a little one popping, getting sealed in, the giant one popping, blubbing inside
+  bloop(pos) { const f = 240 + Math.random() * 180; tone('sine', f, f * 3.4, 0.11, 0.32, pos); tone('sine', f * 7, f * 9, 0.035, 0.05, pos, 0.09); },
+  plip(pos) { tone('sine', 1800 + Math.random() * 900, 3400, 0.035, 0.1, pos); noise(0.03, 0.2, 'highpass', 3000, 6000, pos); },
+  glorp(pos) { tone('sine', 130, 560, 0.34, 0.45, pos); tone('triangle', 85, 240, 0.42, 0.22, pos, 0.05); noise(0.35, 0.25, 'lowpass', 1200, 180, pos); },
+  bigPop(pos) { noise(0.09, 1, 'highpass', 500, 3500, pos); tone('sine', 1150, 150, 0.14, 0.65, pos); tone('square', 2600, 900, 0.05, 0.12, pos); noise(0.5, 0.3, 'highpass', 5000, 9000, pos, 0.06); },
+  blub(pos) { const f = 85 + Math.random() * 90; tone('sine', f, f * 2.7, 0.14, 0.3, pos); },
   error(pos) { tone('square', 880, 880, 0.12, 0.2, pos); tone('square', 660, 660, 0.25, 0.2, pos, 0.14); },
   yeet(pos) { noise(0.7, 0.5, 'bandpass', 400, 3000, pos, 0, 1.5); tone('sine', 300, 1400, 0.6, 0.15, pos); },
   choir(pos) { for (const [f, d] of [[523, 0], [659, 0.05], [784, 0.1], [1046, 0.15]]) tone('sine', f, f * 1.01, 2.2, 0.12, pos, d); },
@@ -135,6 +150,7 @@ const LOOPDEF = {
   fire: { type: 'lowpass', f: 900, q: 0.7, vol: 0.55 },
   inhale: { type: 'highpass', f: 2600, q: 0.7, vol: 0.14 },
   blower: { type: 'bandpass', f: 500, q: 0.6, vol: 0.5, osc: ['sawtooth', 68, 0.07] },
+  soapy: { type: 'lowpass', f: 300, q: 3, vol: 0.32, osc: ['sine', 52, 0.1] }, // inside a soap bubble: low underwater rumble
   spin: { type: 'bandpass', f: 1200, q: 2, vol: 0.25, osc: ['sawtooth', 110, 0.08] },
 };
 

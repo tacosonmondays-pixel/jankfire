@@ -13,6 +13,8 @@ import { playKillFx } from './killfx.js';
 import { WEAPONS } from '/shared/weapons.js';
 import { raycast } from '/shared/physics.js';
 import { BOXES } from '/shared/map.js';
+import { soapBubble, soapFlail } from './models.js';
+import { TRAP, trapPreroll } from '/shared/wand.js';
 
 const KEEP = 10000;
 export const rec = { frames: [], ev: [] };
@@ -32,6 +34,7 @@ export function serverNow() { return performance.now() + G.offset; }
 export function localClip(t0, t1, infoOf) {
   const frames = rec.frames.filter((f) => f.s >= t0 && f.s <= t1);
   const ev = rec.ev.filter((e) => e.s >= t0 && e.s <= t1);
+  ev.unshift(...trapPreroll(rec.ev, t0)); // someone already floating in a soap bubble when the clip starts
   const info = {};
   for (const f of frames) for (const e of f.p) if (!info[e[0]]) info[e[0]] = infoOf(e[0]);
   return { frames, ev, info };
@@ -59,6 +62,7 @@ export function playClip(clip, opts = {}) {
     ei: 0, end: Math.min(opts.end || Infinity, frames[frames.length - 1].s), first: true, lastEye: null, lastYaw: 0,
   };
   while (st.ei < clip.ev.length && clip.ev[st.ei].s < t0) st.ei++;
+  for (const e of clip.ev) if (e.s < t0 && e.m.t === 'trap') trapGhost(e.m, e.s); // sealed in before the clip starts
   RP.active = true;
   RP.mode = opts.mode || 'replay';
   document.body.classList.add('replaying');
@@ -69,6 +73,7 @@ export function stopReplay(silent) {
   if (!st) return;
   const s = st;
   st = null;
+  for (const g of s.ghosts.values()) if (g.soap) { G.scene.remove(g.soap.mesh); g.soap.mesh.material.dispose(); }
   for (const g of s.ghosts.values()) g.dispose();
   for (const m of s.projs.values()) G.scene.remove(m);
   RP.active = false;
@@ -87,6 +92,7 @@ function feed(upTo) {
 }
 
 function applyEv(m) {
+  if (m.t === 'trap' || m.t === 'trapx') { trapGhost(m, st.t); return; }
   const g = st.ghosts.get(m.id);
   const info = st.clip.info || {};
   if (m.t === 'fx' && m.k === 'shot') {
@@ -150,6 +156,31 @@ function updateProjs(t, dt) {
   for (const [id, mesh] of st.projs) if (!seen.has(id)) { G.scene.remove(mesh); st.projs.delete(id); }
 }
 
+// bubble wand: a giant soap bubble round whoever was sealed in ('trap'), popped by 'trapx' or when it runs out
+function trapGhost(m, s) {
+  const g = st.ghosts.get(m.id), T = g && g.soap;
+  if (!g) return;
+  if (T) { G.scene.remove(T.mesh); T.mesh.material.dispose(); g.soap = null; }
+  if (m.t === 'trapx') {
+    if (T && m.why !== 'gone') { const p = T.mesh.position.toArray(); fx.droplets(p, T.mesh.scale.x, 60); sfx.bigPop(p); }
+    return;
+  }
+  g.soap = { mesh: soapBubble(1, 28, 0.025), s, until: s + (m.left || 0) };
+  G.scene.add(g.soap.mesh);
+}
+function stepTrapGhosts(t) {
+  for (const g of st.ghosts.values()) {
+    const T = g.soap;
+    if (!T) continue;
+    if (t > T.until + 300) { trapGhost({ t: 'trapx', id: g.id, why: 'time' }, t); continue; } // the clip lost its pop
+    const ds = g.distScale || 1, x = Math.min(1, (t - T.s) / 300) - 1, grow = 1 + 2.70158 * x * x * x + 1.70158 * x * x;
+    T.mesh.position.set(g.pos[0], g.pos[1] + TRAP.y * ds, g.pos[2]);
+    T.mesh.scale.setScalar(TRAP.r * ds * Math.max(0.2, grow));
+    T.mesh.visible = g.ch.root.visible;
+    soapFlail(g.ch, t * 0.001 + g.id);
+  }
+}
+
 // over-the-shoulder camera on whoever the replay is about
 function updateCam(dt, cam) {
   const f = st.ghosts.get(st.opts.focus);
@@ -206,6 +237,7 @@ export function updateReplay(dt, now, cam) {
   if (!st.first) { cam.position.copy(camPos); cam.lookAt(camLook); cam.updateMatrixWorld(); }
   while (st.ei < st.clip.ev.length && st.clip.ev[st.ei].s <= st.t) { try { applyEv(st.clip.ev[st.ei].m); } catch (e) { console.warn('replay ev', e); } st.ei++; }
   for (const g of st.ghosts.values()) g.update(st.t, dt * sp, now);
+  stepTrapGhosts(st.t);
   updateProjs(st.t, dt * sp);
   updateCam(dt, cam);
   if (o.onTick) o.onTick(st.t, slow);

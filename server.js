@@ -14,6 +14,7 @@ import { Accounts, levelOf } from './server/accounts.js';
 import { ownedSkin, ownedKill, randomContainer, CONTAINERS, COSMETICS } from './shared/cosmetics.js';
 import { validLook, achievementsFrom, ACHIEVEMENTS } from './shared/looks.js';
 import { STAT_KEYS } from './server/store.js';
+import { soapAt, trapBoxes, trapPreroll } from './shared/wand.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor } from './shared/modes.js';
 import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, validStreaks, fireRate } from './shared/weapons.js';
@@ -156,6 +157,7 @@ function cleanCard(c) { return typeof c === 'string' && c.length <= 24000 && CAR
 const REC_T = new Set(['kill', 'boom', 'fx', 'pd', 'he']);
 const REC_FX = new Set(['shot', 'swing', 'tbag', 'reflect']);
 const REC_MS = 12000;
+for (const k of ['trap', 'trapx']) REC_T.add(k); // bubble wand: replays draw the giant soap bubble too
 function newDeck() {
   const d = [];
   for (const s of ['h', 's', 'c', 'd']) for (let r = 1; r <= 13; r++) d.push(s + r);
@@ -310,6 +312,7 @@ class Room {
     });
     this.broadcast({ t: 'pj', ...this.info(p) }, p.id);
     send(p, { t: 'tip', tip: p.tip });
+    for (const t of this.players.values()) if (t.trap) send(p, { t: 'trap', ...this.trapInfo(t) }); // anyone already floating in a soap bubble
     deal(p);
     this.sendLoadout(p);
     if (this.mode === 'ffa' || this.mode === 'coop') this.broadcast({ t: 'chat', id: 0, m: `${name} joined` });
@@ -389,6 +392,7 @@ class Room {
     for (const t of this.players.values()) {
       if (t === b || !t.alive || (t.isBot && (this.mode === 'coop' || t.ai.dummy))) continue;
       if (this.teamsOn() && t.team === b.team) continue;
+      if (t.trap) continue; // sealed in a soap bubble: shooting it would only set them free, wait for the pop
       const d = dist3(t.pos, b.pos);
       const vis = !raycast(eyeOf(b), norm([t.pos[0] - b.pos[0], t.pos[1] + 1 - b.pos[1] - PH.eye, t.pos[2] - b.pos[2]]) || [0, 0, 1], d, this.boxes);
       const score = d * (vis ? 1 : 2.5);
@@ -410,6 +414,7 @@ class Room {
       b.yaw = Math.PI;
       return { wx: 0, wz: 0, jump: false };
     }
+    if ((this.players.get(ai.target) || {}).trap) ai.retarget = 0; // whoever it was after just got sealed in a soap bubble
     if (n > ai.retarget) { const t = this.botTarget(b); ai.target = t ? t.id : 0; ai.retarget = n + 400 + Math.random() * 600; }
     const t = this.players.get(ai.target);
     let wx = 0, wz = 0, jump = false;
@@ -547,7 +552,7 @@ class Room {
         let maxT = mh ? mh.t : w.range, victim = null, head = false;
         for (const p of this.players.values()) {
           if (p === b || !p.alive || (p.isBot && this.mode === 'coop')) continue;
-          for (const hb of playerBoxes(p.pos)) {
+          for (const hb of p.trap ? trapBoxes(p.pos) : playerBoxes(p.pos)) { // a soap bubble gets hit on the bubble
             const h = rayBox(o, d, hb, maxT);
             if (h && h.t < maxT) { maxT = h.t; victim = p; head = hb.head; }
           }
@@ -563,6 +568,7 @@ class Room {
   }
 
   stepBot(b, dt) {
+    if (b.trap) { this.driftTrapped(b); return; } // in a soap bubble: no thinking, just floating
     const n = now();
     const frozen = n < (b.frozenUntil || 0);
     const think = frozen ? { wx: 0, wz: 0, jump: false } : this.botThink(b, dt);
@@ -633,6 +639,7 @@ class Room {
     let o = vec3(m.o);
     if (!o || dist3(o, eyeOf(p)) > 4) o = eyeOf(p);
     const d = norm(vec3(m.d)) || [0, 0, -1];
+    if (m.i === 'wand') { this.blowWand(p, o, d); return; }
     if (it.proj) {
       const w = WEAPONS[it.proj];
       const pr = this.makeProj(p, it.proj, [o[0] + d[0] * 0.7, o[1] + d[1] * 0.7, o[2] + d[2] * 0.7],
@@ -680,6 +687,119 @@ class Room {
     }
   }
 
+  // ---------------------------------------------------------- bubble wand: soap bubbles that seal people in a giant one
+  // G blows a short stream of slow wobbly bubbles: server projectiles on the exact path in shared/wand.js
+  blowWand(p, o, d) {
+    const it = ITEMS.wand, w = WEAPONS.soap, ey = eyeOf(p);
+    const od = [o[0] - ey[0], o[1] - ey[1], o[2] - ey[2]], ol = Math.hypot(...od);
+    if (ol > 1e-3 && raycast(ey, od.map((x) => x / ol), ol, this.boxes)) o = ey; // no blowing from the far side of a wall
+    const off = [o[0] - p.pos[0], o[1] - p.pos[1] - 0.15, o[2] - p.pos[2]]; // the wand is at your mouth, a bit under your eyes
+    for (let i = 0; i < it.bubbles; i++) setTimeout(() => {
+      if (this.players.get(p.id) !== p || !p.alive || p.trap) return;
+      const s = spreadDir(d, i ? 0.09 : 0.02), sp = w.speed * (0.85 + Math.random() * 0.3);
+      const e = [p.pos[0] + off[0], p.pos[1] + off[1], p.pos[2] + off[2]];
+      const wall = raycast(e, s, 0.8, this.boxes);
+      const k = wall ? Math.max(0, wall.t - w.r - 0.05) : 0.8;
+      const pos = [e[0] + s[0] * k, e[1] + s[1] * k, e[2] + s[2] * k].map(r2);
+      // your momentum carries them, but only so much: p.vel is whatever the client said, and a 1e5 m/s bubble would
+      // sweep half the map in its first tick
+      const pl = Math.hypot(...p.vel), ik = pl > 25 ? 0.3 * 25 / pl : 0.3;
+      const vel = [s[0] * sp + p.vel[0] * ik, s[1] * sp + p.vel[1] * ik + 0.5, s[2] * sp + p.vel[2] * ik].map(r2);
+      this.makeProj(p, 'soap', pos, vel, { born: now(), p0: pos.slice(), v0: vel.slice() });
+    }, i * it.gap);
+  }
+  stepSoap(pr, n, owner, prev, dt) {
+    const w = WEAPONS.soap, age = (n - pr.born) / 1000;
+    if (!owner || age > w.life) { this.removeProj(pr); return; }
+    soapAt(pr.p0, pr.v0, pr.id, age, pr.p);
+    for (let k = 0; k < 3; k++) pr.v[k] = (pr.p[k] - prev[k]) / dt; // only for late joiners: roughly where it's heading now
+    // walls, floors and the void pop it
+    const seg = [pr.p[0] - prev[0], pr.p[1] - prev[1], pr.p[2] - prev[2]], len = Math.hypot(...seg);
+    const h = len > 1e-6 ? raycast(prev, seg.map((x) => x / len), len + w.r, this.boxes) : null;
+    if (h) { const b = Math.max(0, h.t - w.r) / len; for (let k = 0; k < 3; k++) pr.p[k] = prev[k] + seg[k] * b; this.removeProj(pr); return; }
+    if (pr.p[1] < this.map.killY) { this.removeProj(pr); return; }
+    // it pops on the outside of a shield bubble
+    for (const b of this.bubbles.values()) if (dist3(pr.p, b.p) < b.r && dist3(prev, b.p) >= b.r) { this.removeProj(pr); return; }
+    // the first person it touches (not you, not your team) gets sealed in
+    const hits = this.sweep(prev, pr.p, w.r, (t) => t.id === pr.o || this.friendly(owner, t));
+    if (!hits.length) return;
+    const t = hits[0].t;
+    pr.p = hits[0].at;
+    this.removeProj(pr);
+    const dir = norm([pr.v0[0], 0, pr.v0[2]]) || norm([t.pos[0] - owner.pos[0], 0, t.pos[2] - owner.pos[2]]) || [0, 0, 0]; // away from the blower
+    this.trapPlayer(t, owner, dir);
+  }
+  trapInfo(t) { return { id: t.id, by: t.trap.by, left: Math.max(0, t.trap.until - now()), v: t.trap.v }; }
+  // sealed in: can't move or attack, floats up and along dir, pops after dur. humans float on their own client
+  // (movement is theirs), bots in driftTrapped. no new bubble for a moment after one pops.
+  trapPlayer(t, owner, dir, reflected) {
+    const it = ITEMS.wand, n = now();
+    if (!t.alive || t.trap || n < (t.trapSafe || 0) || (this.round && this.round.over)) return false;
+    if (owner && owner !== t && !t.isBot && n - t.spawnT < 1200) return false; // spawn protection
+    for (const b of this.bubbles.values()) if (this.inBubble(b, t)) return false; // soap can't get into a shield bubble
+    if (!reflected && owner && owner !== t && owner.alive && t.reverseUntil > n) { // reverse card: the blower gets sealed in instead
+      this.broadcast({ t: 'fx', k: 'reflect', id: t.id, by: owner.id });
+      return this.trapPlayer(owner, t, [-dir[0], 0, -dir[2]], true);
+    }
+    // at = where the bubble should have them by now (humans move themselves, see holdTrapped), slack = lag allowance
+    t.trap = { by: owner ? owner.id : 0, until: n + it.dur * 1000, v: [dir[0] * it.drift, it.rise, dir[2] * it.drift].map(r2), seq: t.seq,
+      at: t.pos.slice(), atT: n, slack: 2.5 + Math.min(30, Math.hypot(...t.vel)) * 0.25 };
+    t.g = null; t.burnUntil = 0; // no air in there: the fire goes out
+    if (t.ai) t.ai.hook = null;
+    this.tag(t, owner, 'soap');
+    this.broadcast({ t: 'trap', ...this.trapInfo(t) });
+    return true;
+  }
+  // pop: a hit (by = who, with w), time, or they died / respawned. whoever set up the drop is tagged so a fall into the
+  // void is their kill: an enemy who shot it open, otherwise the bubbler
+  popTrap(t, why, by, w) {
+    const tr = t.trap;
+    if (!tr) return false;
+    t.trap = null;
+    const held = (now() - tr.until) / 1000 + ITEMS.wand.dur; // s they were in it
+    t.trapSafe = now() + Math.max(ITEMS.wand.safe, held * ITEMS.wand.safeK) * 1000; // so two wands can't keep someone in one for good
+    const owner = this.players.get(tr.by);
+    if (t.alive && (why === 'hit' || why === 'time')) {
+      if (by && by !== t && by !== owner && !this.friendly(by, t)) this.tag(t, by, w);
+      else this.tag(t, owner, 'soap');
+    }
+    // p: they weren't going where it floated (lag, or a client that won't drift): drop them from where the server has them
+    this.broadcast({ t: 'trapx', id: t.id, why, pb: by ? by.id : 0, p: why === 'time' && tr.off && !t.isBot ? t.pos.map(r2) : undefined });
+    return true;
+  }
+  tickTraps(n) {
+    for (const p of this.players.values()) {
+      const tr = p.trap;
+      if (!tr) continue;
+      if (!p.alive || tr.seq !== p.seq) this.popTrap(p, 'gone');
+      else if (n >= tr.until) this.popTrap(p, 'time');
+      else if (!p.isBot) { // by the clock, like their client. held every tick: a client that goes quiet still floats
+        movePlayer(tr.at, tr.v.slice(), Math.min(0.1, (n - tr.atT) / 1000), this.boxes, false); tr.atT = n;
+        this.holdTrapped(p);
+      }
+    }
+  }
+  // movement is the client's, but nobody steers a soap bubble: a sealed-in player's reported position is kept within
+  // reach of where the bubble would have floated them (the slack covers lag and how fast they were going when it hit)
+  // rep = from their own report. the first one that is drifting with the bubble (their client got the 'trap') moves the
+  // path onto them (once, and not far): the server's guess started where it last had them and can snag on a ledge
+  // their client floats past
+  holdTrapped(p, rep) {
+    const tr = p.trap, d = dist3(p.pos, tr.at);
+    if (rep && !tr.ack && d <= Math.min(tr.slack, 3) && dist3(p.vel, tr.v) < 0.3) { tr.ack = 1; tr.at = p.pos.slice(); return this.holdTrapped(p); }
+    if (rep) tr.off = d > tr.slack;
+    if (d > tr.slack) for (let k = 0; k < 3; k++) p.pos[k] = tr.at[k] + (p.pos[k] - tr.at[k]) * (tr.slack / d);
+    p.vel = tr.v.slice(); p.g = null;
+  }
+  driftTrapped(b) {
+    const tr = b.trap, n = now();
+    b.vel = tr.v.slice();
+    movePlayer(b.pos, b.vel, Math.min(0.1, (n - tr.atT) / 1000), this.boxes, false); // by the clock: same speed when ticks run late
+    tr.atT = n;
+    b.onGround = false; b.g = null; b.f = 0;
+    if (b.pos[1] < this.map.killY) this.kill(b, null, 'void');
+  }
+
   // ---------------------------------------------------------- combat
   tag(t, attacker, w) {
     if (!attacker || attacker === t) return;
@@ -705,6 +825,7 @@ class Room {
   }
   damage(t, amt, attacker, w, hs) {
     if (!t.alive || amt <= 0) return;
+    if (t.trap) return; // sealed in a soap bubble: burning, gas and the like can't get in (a real hit pops it, see hurt)
     if (this.round && this.round.over && w !== 'void') return;
     if (attacker && attacker !== t && now() - t.spawnT < 1200 && !t.isBot) return; // spawn protection
     if (this.friendly(attacker, t)) return;
@@ -760,6 +881,7 @@ class Room {
   // everything that hurts or shoves a player goes through here so reverse cards work on all of it
   hurt(t, attacker, w, dmg, kb, opts = {}) {
     if (!t || !t.alive) return;
+    if (t.trap && !this.bubbleBlocks(attacker, t) && this.popTrap(t, 'hit', attacker, w)) return; // in a soap bubble: the first hit (teammates' too) only pops it
     if (this.friendly(attacker, t)) return;
     if (this.bubbleBlocks(attacker, t)) { this.broadcast({ t: 'fx', k: 'bubhit', p: center(t).map(r2) }); return; }
     if (attacker && attacker !== t && attacker.alive && t.reverseUntil > now()) {
@@ -776,6 +898,7 @@ class Room {
   }
   kill(t, attacker, w) {
     if (!t.alive) return;
+    if (t.trap) this.popTrap(t, 'dead');
     t.alive = false; t.hp = 0; t.deaths++; t.g = null; t.reverseUntil = 0;
     if (t.ai) t.ai.hook = null;
     t.respawnAt = now() + (t.isBot && t.ai.dummy ? 700 : 2500);
@@ -863,6 +986,7 @@ class Room {
   clip(t0, t1) {
     const frames = this.rec.frames.filter((f) => f.s >= t0 && f.s <= t1 && f.odd);
     const ev = this.rec.ev.filter((e) => e.s >= t0 && e.s <= t1);
+    ev.unshift(...trapPreroll(this.rec.ev, t0)); // someone already floating in a soap bubble when the clip starts
     const info = {};
     for (const f of frames) for (const e of f.p) if (!info[e[0]]) {
       const pl = this.players.get(e[0]);
@@ -1069,6 +1193,7 @@ class Room {
     if (tip === 'explosion') { this.explodeAt(pr.p, owner, 'bow', 5.5, 50, 30); return; }
     if (tip === 'gas') { this.makeCloud(pr.p, pr.o); if (!t) return; }
     if (!t || t.id === pr.o) return;
+    if (t.trap) { this.hurt(t, owner, 'bow', 0, null); return; } // a soap bubble takes the arrow: no fire, sleep or knockback gets in
     let dmg = w.dmg + (w.dmgMax - w.dmg) * c;
     let kb = [d[0] * 6, 2, d[2] * 6];
     if (tip === 'power') dmg *= 1.8;
@@ -1130,7 +1255,7 @@ class Room {
     for (const t of this.players.values()) {
       if (!t.alive || skip(t)) continue;
       let best = Infinity;
-      for (const hb of playerBoxes(t.pos)) {
+      for (const hb of t.trap ? trapBoxes(t.pos) : playerBoxes(t.pos)) { // sealed in a soap bubble: the bubble gets hit
         const e = { min: hb.min.map((x) => x - r), max: hb.max.map((x) => x + r) };
         const h = rayBox(prev, dir, e, len + 1e-3);
         if (h && h.t < best) best = h.t;
@@ -1153,6 +1278,7 @@ class Room {
       const owner = this.players.get(pr.o);
       const prev = pr.p.slice();
       let hit = null;
+      if (pr.k === 'soap') { this.stepSoap(pr, n, owner, prev, dt); continue; }
       if (pr.k === 'slipper') {
         if (!owner || !owner.alive) { this.removeProj(pr); continue; }
         if (pr.phase === 0 && age >= w.out) { pr.phase = 1; pr.hit.clear(); }
@@ -1183,7 +1309,7 @@ class Room {
         }
       } else {
         const ownerImmune = pr.k === 'slipper' ? Infinity : pr.k === 'bowling' ? 0.5 : 0.25;
-        const victims = this.sweep(prev, pr.p, pr.r, (t) => (t.id === pr.o && age < ownerImmune) || (pr.hit.has(t.id) && n - pr.hit.get(t.id) < 700) || this.friendly(owner, t));
+        const victims = this.sweep(prev, pr.p, pr.r, (t) => (t.id === pr.o && age < ownerImmune) || (pr.hit.has(t.id) && n - pr.hit.get(t.id) < 700) || (this.friendly(owner, t) && !t.trap));
         if (victims.length) {
           if (pr.k === 'chicken') { pr.p = victims[0].at; this.projectiles.delete(pr.id); this.explode(pr); continue; }
           if (pr.k === 'snowball') {
@@ -1192,6 +1318,7 @@ class Room {
             this.removeProj(pr, { b: 1 });
             if (v.t.id === pr.o) continue;
             const d = norm(pr.v) || [0, 0, 1];
+            if (v.t.trap) { this.hurt(v.t, owner, 'snowball', 0, null); continue; } // a soap bubble takes it (teammates' too): pop, no frost
             if (!this.bubbleBlocks(owner, v.t) && !this.friendly(owner, v.t)) {
               const frozen = v.t.frozenUntil > now();
               if (!frozen) this.hurt(v.t, owner, 'snowball', w.dmg, [d[0] * w.kb, w.kbUp, d[2] * w.kb]);
@@ -1347,6 +1474,7 @@ class Room {
   }
 
   handle(p, m) {
+    if (p.trap && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use'].includes(m.t)) return; // sealed in a soap bubble: no attacks, items, streaks or planting till it pops
     switch (m.t) {
       case 's': {
         if (!p.alive || m.q !== p.seq) return;
@@ -1359,6 +1487,7 @@ class Room {
         if (WEAPONS[m.w]) p.w = m.w;
         p.g = vec3(m.g);
         p.f = m.f | 0;
+        if (p.trap) this.holdTrapped(p, true); // sealed in a soap bubble: you go where it floats
         if (p.pos[1] < this.map.killY) this.kill(p, null, 'void');
         break;
       }
@@ -1700,6 +1829,7 @@ class Room {
     this.tickRound();
     this.tickTags(n);
     this.tickItems(dt);
+    this.tickTraps(n);
     for (const b of this.players.values()) if (b.isBot && b.alive) this.stepBot(b, dt);
     this.tickProjectiles(dt);
     this.tickHoles(dt);

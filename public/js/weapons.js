@@ -263,6 +263,7 @@ export function useItem() {
   W.itemT = performance.now();
   c.n--; if (!c.next) c.next = performance.now() + it.recharge * 1000;
   net.send({ t: 'item', i: id, o: eye().map(r2), d: look().map(r2) });
+  if (id === 'wand') return; // no toss: the wand has its own viewmodel and bloops (wand.js)
   if (!W.anim || W.anim.kind === 'inspect' || W.anim.kind === 'draw') playAnim('toss_item', 'item');
   if (id === 'medkit') sfx.heal(); else if (id === 'bubble') sfx.reverse(); else sfx.swing();
 }
@@ -478,7 +479,7 @@ export const isFriend = (r) => !!(G.myTeam && r.team && r.team === G.myTeam);
 function rayPlayers(o, d, maxT) {
   let best = null;
   for (const r of G.remotes.values()) {
-    if (!r.alive || isFriend(r)) continue;
+    if (!r.alive || (isFriend(r) && !(r.trapUntil > performance.now()))) continue; // a teammate in a soap bubble can be shot free
     for (const hb of r.hitboxes()) {
       const h = rayBox(o, d, hb, best ? best.t : maxT);
       if (h && (!best || h.t < best.t)) best = { t: h.t, r, head: hb.head };
@@ -490,7 +491,7 @@ function rayPlayers(o, d, maxT) {
 function conePlayers(o, d, range, cone) {
   const out = [], cosC = Math.cos(cone);
   for (const r of G.remotes.values()) {
-    if (!r.alive || isFriend(r)) continue;
+    if (!r.alive || (isFriend(r) && !(r.trapUntil > performance.now()))) continue; // (or swung / burned free)
     const tx = r.pos[0] - o[0], ty = r.pos[1] + 1 - o[1], tz = r.pos[2] - o[2];
     const dist = Math.hypot(tx, ty, tz);
     if (dist > range || dist < 1e-3) continue;
