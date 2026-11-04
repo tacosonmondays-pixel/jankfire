@@ -15,8 +15,8 @@ import { ownedSkin, ownedKill, randomContainer, CONTAINERS, COSMETICS } from './
 import { validLook, achievementsFrom, ACHIEVEMENTS } from './shared/looks.js';
 import { STAT_KEYS } from './server/store.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
-import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor } from './shared/modes.js';
-import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, validStreaks, fireRate } from './shared/weapons.js';
+import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, canDefuse } from './shared/modes.js';
+import { WEAPONS, SLOTS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, validStreaks, fireRate } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -92,8 +92,33 @@ const SKIN_KEYS = { f: /^[a-z_]{1,24}$/ };
 const now = () => Date.now();
 const r2 = (x) => Math.round(x * 100) / 100;
 const dist3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-const clampInt = (x, lo, hi) => Math.max(lo, Math.min(hi, Math.floor(Number(x) || 0)));
+// client numbers: Number() / | 0 on an object call its own toString / valueOf, and {"toString":1} throws
+const num = (x) => typeof x === 'number' ? x : typeof x === 'string' ? Number(x) : 0;
+const clampInt = (x, lo, hi) => Math.max(lo, Math.min(hi, Math.floor(num(x) || 0)));
 const pick = (a) => a[(Math.random() * a.length) | 0];
+// client data as a table key: only real string keys (no '__proto__', no arrays that stringify forever)
+const has = (T, k) => typeof k === 'string' && Object.hasOwn(T, k);
+// one bad message or tick must not take every room down: log it (at most once per 5 s per kind) and carry on
+const errT = new Map();
+function logErr(kind, e) {
+  const n = Date.now();
+  if (n - (errT.get(kind) || 0) < 5000) return;
+  errT.set(kind, n);
+  console.error(`[${kind}]`, e && e.stack || e);
+}
+const safe = (kind, fn) => (...a) => { try { return fn(...a); } catch (e) { logErr(kind, e); } };
+// the protocol nests 3 deep at most (fire.s, join.skins); anything much deeper is junk
+function tooDeep(v, max = 6) {
+  const st = [v, 0];
+  let objs = 0;
+  while (st.length) {
+    const d = st.pop(), x = st.pop();
+    if (!x || typeof x !== 'object') continue;
+    if (d >= max || ++objs > 4000) return true;
+    for (const k in x) if (x[k] && typeof x[k] === 'object') st.push(x[k], d + 1);
+  }
+  return false;
+}
 function vec3(a) {
   if (!Array.isArray(a) || a.length !== 3) return null;
   for (const x of a) if (typeof x !== 'number' || !Number.isFinite(x) || Math.abs(x) > 1e6) return null;
@@ -169,6 +194,55 @@ function deal(p) {
   send(p, { t: 'hand', hand: p.hand, left: p.deck.length });
 }
 
+// bot lanes as a graph: every waypoint is a node, lanes link their neighbours both ways, and lane starts (the spawns)
+// and lane ends (the sites) link to each other, so a bot can get from any lane to any site or to a dropped bomb
+const NAV = new WeakMap();
+function navGraph(map) {
+  if (!map || !map.nav) return null;
+  let g = NAV.get(map);
+  if (g) return g;
+  g = { pts: [], adj: [], ends: {} };
+  const node = (q) => {
+    const x = q[0], z = q[q.length - 1]; // [x, z] (or [x, y, z])
+    let i = g.pts.findIndex((p) => Math.hypot(p[0] - x, p[1] - z) < 1);
+    if (i < 0) { i = g.pts.length; g.pts.push([x, z]); g.adj.push([]); }
+    return i;
+  };
+  const link = (a, b) => {
+    if (a === b || g.adj[a].some((e) => e[0] === b)) return;
+    const d = Math.hypot(g.pts[a][0] - g.pts[b][0], g.pts[a][1] - g.pts[b][1]);
+    g.adj[a].push([b, d]); g.adj[b].push([a, d]);
+  };
+  const near = (list, r) => { for (const a of list) for (const b of list) if (Math.hypot(g.pts[a][0] - g.pts[b][0], g.pts[a][1] - g.pts[b][1]) < r) link(a, b); };
+  const starts = [];
+  for (const [site, lanes] of Object.entries(map.nav)) {
+    g.ends[site] = [];
+    for (const lane of lanes) {
+      if (!lane.length) continue;
+      const ids = lane.map(node);
+      for (let i = 1; i < ids.length; i++) link(ids[i - 1], ids[i]);
+      starts.push(ids[0]); g.ends[site].push(ids[ids.length - 1]);
+    }
+  }
+  near(starts, 22);
+  for (const e of Object.values(g.ends)) near(e, 30);
+  NAV.set(map, g);
+  return g;
+}
+// cheapest path (dijkstra, the graph is tiny) from node a to any of the goal nodes. cost(u, v, d): edge cost (default: length)
+function navPath(g, a, goals, cost) {
+  const n = g.pts.length, dist = new Array(n).fill(Infinity), prev = new Array(n).fill(-1), done = new Array(n).fill(false);
+  dist[a] = 0;
+  for (;;) {
+    let u = -1;
+    for (let i = 0; i < n; i++) if (!done[i] && dist[i] < Infinity && (u < 0 || dist[i] < dist[u])) u = i;
+    if (u < 0) return null;
+    if (goals.includes(u)) { const path = []; for (let v = u; v >= 0; v = prev[v]) path.unshift(v); return { path, cost: dist[u] }; }
+    done[u] = true;
+    for (const [v, d] of g.adj[u]) { const c = dist[u] + (cost ? cost(u, v, d) : d); if (c < dist[v]) { dist[v] = c; prev[v] = u; } }
+  }
+}
+
 let nextId = 1;
 const rooms = new Map();
 const humans = () => { let n = 0; for (const r of rooms.values()) for (const p of r.players.values()) if (!p.isBot) n++; return n; };
@@ -191,6 +265,7 @@ class Room {
     this.bomb = null;
     this.vote = null;
     this.bubbles = new Map(); this.nextBub = 1;
+    this.smokes = new Map(); this.nextSmoke = 1; // smoke clouds: bots can't see through them, late joiners get them
     this.cfg = { map: mode === 'training' ? 'range' : mode === 'coop' ? 'warehouse' : 'islands', hip: 'normal', bots: 5, diff: 'normal' };
     this.wave = 0; this.toSpawn = 0; this.interUntil = 0;
     this.round = ROUND[mode] ? { target: ROUND[mode].kills, ends: now() + ROUND[mode].time * 1000, over: false, next: 0 } : null;
@@ -277,9 +352,9 @@ class Room {
   addHuman(ws, m) {
     if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && !this.humans().length) {
       const c = m.cfg;
-      if (MAPS[c.map] && MAP_ORDER.includes(c.map)) this.cfg.map = c.map;
-      if (HIPFIRE[c.hip]) this.cfg.hip = c.hip;
-      if (BOT_DIFF[c.diff]) this.cfg.diff = c.diff;
+      if (has(MAPS, c.map) && MAP_ORDER.includes(c.map)) this.cfg.map = c.map;
+      if (has(HIPFIRE, c.hip)) this.cfg.hip = c.hip;
+      if (has(BOT_DIFF, c.diff)) this.cfg.diff = c.diff;
       if (c.bots != null) this.cfg.bots = clampInt(c.bots, 0, 12);
     }
     const name = m._name || clean(m.name, 16) || pick(DEFAULT_NAMES) + nextId;
@@ -293,7 +368,8 @@ class Room {
     p.streaks = validStreaks(m.streaks);
     p.kfx = ownedKill(m.kfx, inv);
     p.kc = !!m.kc;
-    if (this.mode === 'bots' && m.cfg && GAMES[m.cfg.game] && !this.humans().length) this.setGame(m.cfg.game);
+    p.item = has(ITEMS, m.item) ? m.item : 'frag'; // the client confirms it with 'itemsel' right after 'welcome'
+    if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && has(GAMES, m.cfg.game) && !this.humans().length) this.setGame(m.cfg.game);
     this.joinTeam(p);
     if (p.team) p.pos = this.pickSpawn(false, p);
     this.players.set(p.id, p);
@@ -305,6 +381,7 @@ class Room {
       holes: [...this.holes.values()].map((h) => ({ id: h.id, p: h.p, o: h.o, big: h.big, age: (now() - h.born) / 1000 })),
       wave: this.waveInfo(), level: p.level, account: !!p.acct, round: this.roundInfo(),
       bubbles: [...this.bubbles.values()].map((b) => ({ id: b.id, p: b.p, r: b.r, left: b.until - now() })),
+      smokes: [...this.smokes.values()].map((s) => [...s.p, Math.round(s.until - now())]), ic: this.icInfo(p),
       kat: [...this.players.values()].filter((o) => o.kat).map((o) => [o.id, o.kat]),
       game: this.game, team: p.team || 0, tags: [...this.tags.values()].map((g) => ({ id: g.id, p: g.p, team: g.team })), vote: this.voteInfo(),
     });
@@ -322,10 +399,12 @@ class Room {
 
   remove(p) {
     flushStats(p);
-    if (this.bomb && this.bomb.carrier === p.id) this.dropBomb(p.pos);
+    if (this.bomb && this.bomb.carrier === p.id) this.dropBomb(p.pos, p);
     this.players.delete(p.id);
-    for (const pr of this.projectiles.values()) if (pr.k === 'slipper' && pr.o === p.id) this.removeProj(pr);
+    // whatever they threw goes with them (with no owner it would ignore teams and bubbles); their holes and gas go inert
+    for (const pr of this.projectiles.values()) if (pr.o === p.id) this.removeProj(pr);
     this.broadcast({ t: 'pl', id: p.id });
+    if (this.vote && this.vote.votes.delete(p.id)) this.broadcast({ t: 'votes', counts: this.voteInfo().counts });
     if (!p.isBot && (this.mode === 'ffa' || this.mode === 'coop')) this.broadcast({ t: 'chat', id: 0, m: `${p.name} left` });
     if (!this.humans().length) rooms.delete(this.id);
   }
@@ -390,11 +469,26 @@ class Room {
       if (t === b || !t.alive || (t.isBot && (this.mode === 'coop' || t.ai.dummy))) continue;
       if (this.teamsOn() && t.team === b.team) continue;
       const d = dist3(t.pos, b.pos);
-      const vis = !raycast(eyeOf(b), norm([t.pos[0] - b.pos[0], t.pos[1] + 1 - b.pos[1] - PH.eye, t.pos[2] - b.pos[2]]) || [0, 0, 1], d, this.boxes);
+      const vis = this.canSee(eyeOf(b), [t.pos[0], t.pos[1] + 1, t.pos[2]]);
       const score = d * (vis ? 1 : 2.5);
       if (score < bestD) { bestD = score; best = t; }
     }
     return best;
+  }
+  // bot eyesight: walls and smoke clouds block it
+  canSee(a, c) {
+    const d = [c[0] - a[0], c[1] - a[1], c[2] - a[2]], l = Math.hypot(d[0], d[1], d[2]);
+    if (l < 1e-6) return true;
+    return !raycast(a, [d[0] / l, d[1] / l, d[2] / l], l, this.boxes) && !this.smokeBlocks(a, c);
+  }
+  smokeBlocks(a, c) {
+    if (!this.smokes.size) return false;
+    const d = [c[0] - a[0], c[1] - a[1], c[2] - a[2]], l2 = d[0] * d[0] + d[1] * d[1] + d[2] * d[2] || 1;
+    for (const s of this.smokes.values()) { // closest point of the sight line to the cloud's centre
+      const k = Math.max(0, Math.min(1, ((s.p[0] - a[0]) * d[0] + (s.p[1] - a[1]) * d[1] + (s.p[2] - a[2]) * d[2]) / l2));
+      if (Math.hypot(a[0] + d[0] * k - s.p[0], a[1] + d[1] * k - s.p[1], a[2] + d[2] * k - s.p[2]) < s.r) return true;
+    }
+    return false;
   }
 
   botThink(b, dt) {
@@ -411,7 +505,8 @@ class Room {
       return { wx: 0, wz: 0, jump: false };
     }
     if (n > ai.retarget) { const t = this.botTarget(b); ai.target = t ? t.id : 0; ai.retarget = n + 400 + Math.random() * 600; }
-    const t = this.players.get(ai.target);
+    let t = this.players.get(ai.target);
+    if (t && this.friendly(b, t)) { ai.target = 0; ai.seenAt = 0; t = null; } // teams got reshuffled: that's a teammate now
     let wx = 0, wz = 0, jump = false;
     const w = WEAPONS[b.w];
     const pref = b.w === 'sniper' ? [25, 60] : b.w === 'shotgun' ? [3, 9] : b.w === 'marbles' ? [1.5, 4] : b.w === 'chicken' ? [10, 30] : [7, 22];
@@ -419,7 +514,7 @@ class Room {
       const e = eyeOf(b), tc = [t.pos[0], t.pos[1] + 1.1, t.pos[2]];
       const dx = tc[0] - e[0], dy = tc[1] - e[1], dz = tc[2] - e[2];
       const hd = Math.hypot(dx, dz), dist = Math.hypot(dx, dy, dz);
-      const vis = !raycast(e, [dx / dist, dy / dist, dz / dist], dist, boxes);
+      const vis = this.canSee(e, tc);
       if (vis && !ai.seenAt) ai.seenAt = n;
       if (!vis) ai.seenAt = 0;
       const yaw = Math.atan2(-dx, -dz), pitch = Math.atan2(dy, hd);
@@ -443,9 +538,11 @@ class Room {
     const goal = this.botGoal(b);
     if (goal) {
       const gx = goal.p[0] - b.pos[0], gz = goal.p[2] - b.pos[2], gl = Math.hypot(gx, gz);
-      if (goal.use && gl < goal.r) { wx = 0; wz = 0; jump = false; this.tryUse(b); }
-      else if (goal.force || !t || !t.alive || !ai.seenAt) { wx = gx / (gl || 1); wz = gz / (gl || 1); }
+      if (goal.use && gl < goal.r) { wx = 0; wz = 0; jump = false; this.tryUse(b); ai.progQ = null; }
+      else if (goal.force || !t || !t.alive || !ai.seenAt) { wx = gx / (gl || 1); wz = gz / (gl || 1); if (ai.navJump && b.onGround) jump = true; }
+      else ai.progQ = null; // busy fighting, not walking the route: that doesn't count as stuck
     }
+    ai.navJump = false;
     // grappling: chase people who are far / up high / out of sight, save yourself when falling, show off sometimes
     if (!ai.hook && n >= (ai.nextHook || 0) && this.mode !== 'training') {
       const skill = ai.diff === 'easy' ? 0.35 : ai.diff === 'hard' ? 1 : 0.7;
@@ -472,28 +569,92 @@ class Room {
     if (ai.hook) jump = false;
     const wl = Math.hypot(wx, wz);
     if (wl > 0) { wx /= wl; wz /= wl; }
-    // don't walk off the map (bots are dumb, not suicidal)
+    // don't walk off the map (bots are dumb, not suicidal). a floor up to 15 m down will do (no fall damage); a box
+    // far below is no floor: a long fall drifts past it into the void
     if (wl > 0 && b.onGround) {
       const probe = [b.pos[0] + wx * 2.5, b.pos[1] + 0.5, b.pos[2] + wz * 2.5];
-      if (!raycast(probe, [0, -1, 0], 6, boxes)) { wx = -wx; wz = -wz; ai.strafeDir *= -1; }
+      if (!raycast(probe, [0, -1, 0], Math.max(6, Math.min(15, probe[1] - this.map.killY)), boxes)) { wx = -wx; wz = -wz; ai.strafeDir *= -1; }
     }
     return { wx: wx * D.speed, wz: wz * D.speed, jump };
   }
 
-  // follow the map's lane waypoints toward a site (bots can't path-find, so maps give them routes)
+  // walk the map's lanes toward a site (bots can't path-find, so maps give them routes: see navGraph)
   routeTo(b, siteId, final) {
-    const nav = this.map.nav && this.map.nav[siteId];
-    if (!nav) return final;
-    const ai = b.ai;
-    if (!ai.route || ai.routeSite !== siteId) {
-      let best = null, bd = 1e9, bi = 0;
-      for (const rt of nav) rt.forEach((q, i) => { const d = Math.hypot(q[0] - b.pos[0], q[1] - b.pos[2]); if (d < bd) { bd = d; best = rt; bi = i; } });
-      ai.route = best; ai.ri = bi; ai.routeSite = siteId;
+    const g = navGraph(this.map), ends = g && g.ends[siteId];
+    return ends && ends.length ? this.navTo(b, 'site' + siteId, final, ends) : final;
+  }
+  // can a bot walk straight from pos (feet) to q ([x, z])? two rays a body-width apart, at knee and chest height
+  clearPath(pos, q) {
+    const dx = q[0] - pos[0], dz = q[1] - pos[2], l = Math.hypot(dx, dz);
+    if (l < 0.5) return true;
+    const d = [dx / l, 0, dz / l], sx = -d[2] * 0.38, sz = d[0] * 0.38;
+    for (const h of [0.75, 1.5]) for (const s of [-1, 1]) if (raycast([pos[0] + sx * s, pos[1] + h, pos[2] + sz * s], d, l, this.boxes)) return false;
+    return true;
+  }
+  // the nearest waypoint you can walk straight to (or just the nearest one)
+  navEntry(pos, g, avoid = -1) {
+    const order = g.pts.map((q, i) => [Math.hypot(q[0] - pos[0], q[1] - pos[2]), i]).filter((e) => e[1] !== avoid).sort((a, c) => a[0] - c[0]);
+    if (!order.length) return -1;
+    for (const [d, i] of order) if (d < 90 && this.clearPath(pos, g.pts[i])) return i;
+    return order[0][1];
+  }
+  // follow a path through the lane graph to final: go straight once final is in plain sight, cut a corner only when
+  // the next waypoint is, and when it stops getting closer, hop and then plan again from where it stands
+  navTo(b, key, final, goals) {
+    const ai = b.ai, n = now(), g = navGraph(this.map);
+    if (!g) return final;
+    if (ai.navKey !== key) { ai.navKey = key; ai.route = null; ai.avoid = -1; }
+    if (n - (ai.navT || 0) > 500) { ai.progQ = null; ai.losT = 0; } // wasn't routing a moment ago (frozen, asleep, dead)
+    if (ai.hook) ai.progQ = null; // swinging somewhere: plans again when it lets go
+    ai.navT = n;
+    if (n >= (ai.losT || 0)) {
+      ai.losT = n + 250;
+      ai.direct = Math.hypot(final[0] - b.pos[0], final[2] - b.pos[2]) < 25 && this.clearPath(b.pos, [final[0], final[2]]);
+      if (!ai.direct && ai.route && ai.ri + 1 < ai.route.length && this.clearPath(b.pos, ai.route[ai.ri + 1])) ai.ri++;
     }
-    const rt = ai.route;
-    while (ai.ri < rt.length && Math.hypot(rt[ai.ri][0] - b.pos[0], rt[ai.ri][1] - b.pos[2]) < 2.6) ai.ri++;
-    if (ai.ri >= rt.length) return final;
-    return [rt[ai.ri][0], b.pos[1], rt[ai.ri][1]];
+    let tgt = final;
+    if (ai.direct) ai.route = null;
+    else {
+      if (!ai.route) {
+        // a little random cost per waypoint spreads bots over the lanes; legs it got stuck on cost a lot for a while
+        const from = this.navEntry(b.pos, g, ai.avoid), jit = g.pts.map(() => 1 + Math.random() * 0.6), bl = ai.blocked;
+        const r = from >= 0 ? navPath(g, from, goals, (u, v, d) => d * jit[v] + (bl && (bl.get(u + ':' + v) || 0) > n ? 1000 : 0)) : null;
+        ai.rnodes = r ? r.path : []; ai.route = ai.rnodes.map((i) => g.pts[i]); ai.ri = 0;
+      }
+      const rt = ai.route;
+      while (ai.ri < rt.length && Math.hypot(rt[ai.ri][0] - b.pos[0], rt[ai.ri][1] - b.pos[2]) < 1.2) ai.ri++;
+      if (ai.ri < rt.length) tgt = [rt[ai.ri][0], b.pos[1], rt[ai.ri][1]];
+    }
+    const d = Math.hypot(tgt[0] - b.pos[0], tgt[2] - b.pos[2]);
+    if (!ai.progQ || Math.abs(ai.progQ[0] - tgt[0]) + Math.abs(ai.progQ[1] - tgt[2]) > 0.5 || d < ai.progD - 1) { ai.progQ = [tgt[0], tgt[2]]; ai.progD = d; ai.progT = n; }
+    else if (d > 1.5 && n - ai.progT > 1200) {
+      ai.navJump = true;
+      if (n - ai.progT > 2600) {
+        ai.avoid = -1;
+        if (ai.route && ai.ri < ai.rnodes.length) {
+          ai.avoid = ai.rnodes[ai.ri];
+          if (ai.ri > 0) (ai.blocked ||= new Map()).set(ai.rnodes[ai.ri - 1] + ':' + ai.avoid, n + 60000);
+        }
+        ai.route = null; ai.direct = false; ai.losT = n + 1500; ai.progQ = null;
+      }
+    }
+    return tgt;
+  }
+  // a dropped bomb: the one or two attacker bots closest to it by walking distance go get it (re-picked every 1.5 s)
+  dropChasers() {
+    const B = this.bomb, n = now(), key = B.drop.join();
+    if (B.chase && B.chase.key === key && n < B.chase.until) return B.chase.ids;
+    const g = navGraph(this.map), at = B.drop;
+    B.dropNode = g ? this.navEntry([at[0], at[1] - 0.15, at[2]], g) : -1;
+    const cost = (p) => {
+      const d = Math.hypot(p.pos[0] - at[0], p.pos[2] - at[2]);
+      if (B.dropNode < 0 || (d < 25 && this.clearPath(p.pos, [at[0], at[2]]))) return d;
+      const a = this.navEntry(p.pos, g), r = a >= 0 ? navPath(g, a, [B.dropNode]) : null;
+      return r ? Math.hypot(g.pts[a][0] - p.pos[0], g.pts[a][1] - p.pos[2]) + r.cost + Math.hypot(g.pts[B.dropNode][0] - at[0], g.pts[B.dropNode][1] - at[2]) : d * 3;
+    };
+    const ids = this.fighters().filter((p) => p.isBot && p.alive && p.team === B.att).map((p) => [cost(p), p.id]).sort((a, c) => a[0] - c[0]).slice(0, 2).map((e) => e[1]);
+    B.chase = { key, until: n + 1500, ids };
+    return ids;
   }
   botGoal(b) {
     const B = this.bomb;
@@ -503,16 +664,18 @@ class Room {
       if (b.team === B.att) {
         if (B.carrier === b.id) {
           b.ai.site = b.ai.site && sites.find((x) => x.id === b.ai.site.id) ? b.ai.site : pick(sites);
-          const inSite = siteAt(this.map, b.pos);
-          return { p: inSite ? b.pos : this.routeTo(b, b.ai.site.id, mid(b.ai.site)), use: true, r: inSite ? 99 : 1.5, force: true };
+          if (siteAt(this.map, b.pos)) return { p: b.pos, use: true, r: 99, force: true };
+          return { p: this.routeTo(b, b.ai.site.id, mid(b.ai.site)), r: 0, force: true };
         }
-        if (B.drop) return { p: B.drop, force: true, r: 0 };
+        if (B.drop && this.dropChasers().includes(b.id)) {
+          return { p: B.dropNode >= 0 ? this.navTo(b, 'drop' + B.chase.key, B.drop, [B.dropNode]) : B.drop, force: true, r: 0 };
+        }
         if (B.ph === 'planted') return { p: this.routeTo(b, B.site, B.p), r: 0 }; // guard it
         if (!b.ai.site) b.ai.site = pick(sites);
         return b.ai.site ? { p: this.routeTo(b, b.ai.site.id, mid(b.ai.site)), r: 0 } : null;
       }
       if (B.ph === 'planted') {
-        const near = dist3(b.pos, B.p) < 8;
+        const near = Math.hypot(b.pos[0] - B.p[0], b.pos[2] - B.p[2]) < 8;
         return { p: near ? B.p : this.routeTo(b, B.site, B.p), use: near, r: BOMB.defuseRange - 0.6, force: true };
       }
       if (!b.ai.site || Math.random() < 0.002) b.ai.site = pick(sites);
@@ -599,7 +762,7 @@ class Room {
       if (dist >= hk.len - 0.05 && radial < 0) { v[0] -= nx * radial; v[1] -= ny * radial; v[2] -= nz * radial; }
       if (dist < 4.5 || n > hk.until || slipping) {
         if (!slipping) { v[0] *= 1.12; v[2] *= 1.12; v[1] = Math.max(v[1], 0) * 1.12 + 11; } // hook jump
-        b.ai.hook = null; b.g = null;
+        b.ai.hook = null; b.g = null; b.ai.route = null; // landed somewhere new: plan again from there
       }
       b.onGround = false;
     }
@@ -608,28 +771,44 @@ class Room {
     b.onGround = !!res.ground && v[1] <= 0.01;
     if (b.onGround && res.ground.pad && !b.ai.dummy) { const pd = res.ground.pad; v[0] += pd[0]; v[1] = pd[1]; v[2] += pd[2]; b.onGround = false; }
     b.f = slipping ? 16 : 0;
+    if (b.onGround) b.ground = b.pos.slice(); // last place they stood (void deaths drop their tag here)
     if (b.pos[1] < this.map.killY) this.kill(b, null, 'void');
   }
 
   // ---------------------------------------------------------- items (G): charges refill over time
-  itemCharges(p, id) {
-    const it = ITEMS[id];
-    p.ic ||= {};
-    let c = p.ic[id];
-    if (!c) c = p.ic[id] = { n: it.charges, next: 0 };
-    const n = now();
+  // one item per loadout (p.item, set with 'itemsel'); its charges are per life and the server's count is the real one
+  itemCharges(p) {
+    const it = ITEMS[p.item] || ITEMS.frag;
+    if (!p.ic || p.ic.i !== p.item) p.ic = { i: p.item, n: it.charges, next: 0 };
+    const c = p.ic, n = now();
     while (c.n < it.charges && c.next && n >= c.next) { c.n++; c.next = c.n < it.charges ? c.next + it.recharge * 1000 : 0; }
     return c;
   }
+  icInfo(p) { const c = this.itemCharges(p); return { i: p.item, n: c.n, next: c.next ? c.next - now() : 0 }; }
+  sendIc(p) { if (!p.isBot) send(p, { t: 'ic', ...this.icInfo(p) }); }
+  // your loadout item changed: right away while dead or in the first 5 s of a life, otherwise from your next life
+  // (the client's applyLoadout rule; its 5 s start when 'spawn' reaches it, so allow one round trip more)
+  selectItem(p, id) {
+    if (!has(ITEMS, id)) return;
+    if (id === p.item) p.nextItem = null;
+    else if (!p.alive || now() - p.spawnT < 5000 + Math.min(1000, (p.ws && p.ws.rtt) || 250)) {
+      // what you already used this life stays used: swapping doesn't hand out fresh charges
+      const used = ITEMS[p.item].charges - this.itemCharges(p).n, it = ITEMS[id];
+      p.item = id; p.nextItem = null;
+      p.ic = { i: id, n: Math.max(0, it.charges - used), next: used > 0 ? now() + it.recharge * 1000 : 0 };
+    } else p.nextItem = id;
+    this.sendIc(p);
+  }
   useItem(p, m) {
-    const it = ITEMS[m.i];
-    if (!it || !p.alive) return;
-    const c = this.itemCharges(p, m.i);
-    if (c.n <= 0 || now() - (p.itemT || 0) < 400) return;
+    if (!p.alive || !has(ITEMS, m.i)) return;
+    const c = this.itemCharges(p);
+    // not your item, no charge left, or too fast: tell the client the real count so its HUD can't drift
+    if (m.i !== p.item || c.n <= 0 || now() - (p.itemT || 0) < 400) { this.sendIc(p); return; }
+    const it = ITEMS[p.item];
     p.itemT = now();
     c.n--;
     if (!c.next) c.next = now() + it.recharge * 1000;
-    send(p, { t: 'ic', i: m.i, n: c.n, next: c.next ? c.next - now() : 0 });
+    this.sendIc(p);
     let o = vec3(m.o);
     if (!o || dist3(o, eyeOf(p)) > 4) o = eyeOf(p);
     const d = norm(vec3(m.d)) || [0, 0, -1];
@@ -638,45 +817,46 @@ class Room {
       const pr = this.makeProj(p, it.proj, [o[0] + d[0] * 0.7, o[1] + d[1] * 0.7, o[2] + d[2] * 0.7],
         [d[0] * w.speed + p.vel[0] * 0.35, d[1] * w.speed + 3 + p.vel[1] * 0.35, d[2] * w.speed + p.vel[2] * 0.35]);
       pr.born = now();
-    } else if (m.i === 'medkit') {
+    } else if (p.item === 'medkit') {
       p.healLeft = it.heal;
       this.broadcast({ t: 'fx', k: 'medkit', id: p.id });
-    } else if (m.i === 'bubble') {
+    } else if (p.item === 'bubble') {
       const b = { id: this.nextBub++, p: [r2(p.pos[0]), r2(p.pos[1] + 1), r2(p.pos[2])], r: it.r, until: now() + it.dur * 1000, o: p.id };
       this.bubbles.set(b.id, b);
       this.broadcast({ t: 'bub+', id: b.id, p: b.p, r: b.r, left: it.dur * 1000 });
     }
   }
   inBubble(b, t) { return Math.hypot(t.pos[0] - b.p[0], t.pos[1] + 1 - b.p[1], t.pos[2] - b.p[2]) < b.r; }
-  // a bubble protects whoever is inside from anyone outside it
-  bubbleBlocks(attacker, t) {
-    if (!attacker || attacker === t || !this.bubbles.size) return false;
-    for (const b of this.bubbles.values()) if (this.inBubble(b, t) && !this.inBubble(b, attacker)) return true;
+  // a bubble protects whoever is inside from anyone outside it. damage with no attacker (the bomb) passes from: where it came from
+  bubbleBlocks(attacker, t, from) {
+    if (attacker === t || !this.bubbles.size || (!attacker && !from)) return false;
+    for (const b of this.bubbles.values()) {
+      if (!this.inBubble(b, t)) continue;
+      if (attacker ? !this.inBubble(b, attacker) : Math.hypot(from[0] - b.p[0], from[1] - b.p[1], from[2] - b.p[2]) >= b.r) return true;
+    }
     return false;
   }
-  // snowballs: frost builds up, enough of it freezes you, a snowball to a frozen target shatters them
+  // snowballs: frost builds up, enough of it freezes you, a snowball to a frozen target shatters them.
+  // only call it for a snowball that really landed (hurt() returned the target)
   frost(t, owner) {
     const w = WEAPONS.snowball, n = now();
-    if (t.frozenUntil > n) {
-      t.frozenUntil = 0;
-      this.broadcast({ t: 'fx', k: 'shatter', id: t.id, p: center(t).map(r2) });
-      this.kill(t, owner, 'snowball');
-      return;
-    }
     t.frost = Math.max(0, (t.frost || 0) - Math.floor((n - (t.frostT || 0)) / (w.frostDecay * 1000))) + 1;
     t.frostT = n;
     if (t.frost >= w.freezeAt) {
       t.frost = 0;
       t.frozenUntil = n + w.freeze * 1000;
       t.vel[0] = 0; t.vel[2] = 0;
+      t.g = null; if (t.ai) t.ai.hook = null; // ice doesn't swing on a rope
       this.broadcast({ t: 'freeze', id: t.id, dur: w.freeze * 1000 });
     } else this.broadcast({ t: 'frost', id: t.id, n: t.frost });
   }
   tickItems(dt) {
     const n = now();
     for (const b of [...this.bubbles.values()]) if (n >= b.until) { this.bubbles.delete(b.id); this.broadcast({ t: 'bubx', id: b.id }); }
+    for (const s of [...this.smokes.values()]) if (n >= s.until) this.smokes.delete(s.id);
     for (const p of this.players.values()) {
-      if (p.healLeft > 0 && p.alive) { const a = Math.min(p.healLeft, 26 * dt); p.healLeft -= a; p.hp = Math.min(100, p.hp + a); }
+      if (p.healLeft > 0 && p.alive) { const a = Math.min(p.healLeft, 26 * dt); p.healLeft -= a; if (p.hp < 100) p.hp = Math.min(100, p.hp + a); } // never eats overheal
+      if (!p.isBot && p.ic && p.ic.next && n >= p.ic.next) this.sendIc(p); // a charge came back
     }
   }
 
@@ -690,6 +870,7 @@ class Room {
       if (t.ai.dummy && t.ai.dummy.move) return;
       t.vel[0] += v[0]; t.vel[1] += v[1]; t.vel[2] += v[2];
       if (v[1] > 0.5 && t.onGround) { t.onGround = false; t.pos[1] += 0.02; }
+      if (Math.hypot(v[0], v[2]) > 12) t.ai.route = null; // knocked off the lane: plan again from wherever it lands
       return;
     }
     send(t, { t: 'kb', v: v.map(r2), w });
@@ -703,12 +884,16 @@ class Room {
     if (this.mode === 'coop') return a.isBot === b.isBot;
     return this.teamsOn() && a.team && a.team === b.team;
   }
-  damage(t, amt, attacker, w, hs) {
-    if (!t.alive || amt <= 0) return;
-    if (this.round && this.round.over && w !== 'void') return;
-    if (attacker && attacker !== t && now() - t.spawnT < 1200 && !t.isBot) return; // spawn protection
-    if (this.friendly(attacker, t)) return;
-    if (this.bubbleBlocks(attacker, t)) return;
+  // the rules every hit follows: true = it doesn't land
+  hitBlocked(t, attacker, w, from) {
+    if (!t.alive) return true;
+    if (this.round && this.round.over && w !== 'void') return true;
+    if (attacker && attacker !== t && now() - t.spawnT < 1200 && !t.isBot) return true; // spawn protection
+    return !!this.friendly(attacker, t) || this.bubbleBlocks(attacker, t, from);
+  }
+  // returns true when the damage was applied
+  damage(t, amt, attacker, w, hs, from) {
+    if (amt <= 0 || this.hitBlocked(t, attacker, w, from)) return false;
     if (attacker && attacker.isBot && !t.isBot && this.mode !== 'bots') amt *= 0.6; // coop bots hit softer
     t.hp -= amt;
     t.lastHs = !!hs;
@@ -716,6 +901,7 @@ class Room {
     this.tag(t, attacker, w);
     this.broadcast({ t: 'dmg', to: t.id, from: attacker ? attacker.id : 0, a: Math.round(Math.min(amt, 999)), w, hs: !!hs });
     if (t.hp <= 0) this.kill(t, attacker, w);
+    return true;
   }
   heal(p, amt, max = 100) {
     if (!p.alive) return;
@@ -750,6 +936,7 @@ class Room {
       if (c.tick > 0) continue;
       c.tick = 0.4;
       const owner = this.players.get(c.o);
+      if (!owner) continue; // whoever made it left: it's just fog now
       for (const t of this.players.values()) {
         if (!t.alive || t.id === c.o || this.friendly(owner, t)) continue;
         if (dist3(center(t), c.p) < 5.5) this.damage(t, 4, owner, 'bow');
@@ -757,11 +944,14 @@ class Room {
     }
   }
 
-  // everything that hurts or shoves a player goes through here so reverse cards work on all of it
+  // everything that hurts or shoves a player goes through here so reverse cards work on all of it.
+  // returns whoever actually took the damage (the attacker when it bounced off a reverse card), or null
+  // opts: hs (headshot), slip, lethal (at least their hp: a player's sniper headshot), from (where ownerless damage came from)
   hurt(t, attacker, w, dmg, kb, opts = {}) {
-    if (!t || !t.alive) return;
-    if (this.friendly(attacker, t)) return;
-    if (this.bubbleBlocks(attacker, t)) { this.broadcast({ t: 'fx', k: 'bubhit', p: center(t).map(r2) }); return; }
+    if (!t || !t.alive) return null;
+    if (this.friendly(attacker, t)) return null;
+    if (this.bubbleBlocks(attacker, t, opts.from)) { this.broadcast({ t: 'fx', k: 'bubhit', p: center(t).map(r2) }); return null; }
+    if (opts.lethal) dmg = Math.max(dmg, t.hp); // sized for whoever was shot: a reverse card bounces that same hit
     if (attacker && attacker !== t && attacker.alive && t.reverseUntil > now()) {
       this.broadcast({ t: 'fx', k: 'reflect', id: t.id, by: attacker.id });
       const victim = attacker;
@@ -772,13 +962,14 @@ class Room {
     if (kb) this.knock(t, kb, w);
     if (opts.slip) this.slip(t);
     this.tag(t, attacker, w);
-    this.damage(t, dmg, attacker, w, opts.hs);
+    return this.damage(t, dmg, attacker, w, opts.hs, opts.from) ? t : null;
   }
   kill(t, attacker, w) {
     if (!t.alive) return;
     t.alive = false; t.hp = 0; t.deaths++; t.g = null; t.reverseUntil = 0;
-    if (t.ai) t.ai.hook = null;
-    t.respawnAt = now() + (t.isBot && t.ai.dummy ? 700 : 2500);
+    if (t.ai) { t.ai.hook = null; t.ai.route = null; } // a fresh route from the spawn, not the old waypoint index
+    // the mode's respawn delay; skipping the killcam ('respawn') can't go below it
+    t.respawnAt = t.minRespawnAt = now() + (t.isBot && t.ai.dummy ? 700 : this.game === 'bomb' && this.teamsOn() ? BOMB.respawn : 2500);
     t.deadT = now();
     let killer = attacker, via = null;
     if (w === 'void' || w === 'cough') {
@@ -789,9 +980,9 @@ class Room {
     }
     if (killer && killer !== t && this.teamsOn() && killer.team !== t.team && this.round && !this.round.over) {
       if (this.game === 'tdm') this.score[killer.team]++;
-      if (this.game === 'tags') this.dropTag(t);
+      if (this.game === 'tags') this.dropTag(t, killer);
     }
-    if (this.bomb && this.bomb.carrier === t.id) this.dropBomb(t.pos);
+    if (this.bomb && this.bomb.carrier === t.id) this.dropBomb(t.pos, t);
     if (killer && killer !== t && w === 'katana') { // the katana grows with every kill
       killer.kat = Math.min(WEAPONS.katana.growMax, (killer.kat || 0) + 1);
       this.broadcast({ t: 'kat', id: killer.id, n: killer.kat });
@@ -813,11 +1004,11 @@ class Room {
       }
     }
     // killcam: humans who have it on wait for it to finish (or skip it) before respawning
-    if (this.game === 'bomb' && this.teamsOn()) t.respawnAt = now() + BOMB.respawn;
     if (!t.isBot && t.kc && killer && killer !== t && this.mode !== 'training') t.respawnAt = Math.max(t.respawnAt, now() + 9000);
     if (killer && killer !== t && this.round && !this.round.over && !(t.isBot && t.ai && t.ai.dummy) && this.mode !== 'training') this.hlCandidate(killer, t, w);
     send(t, { t: 'streak', reset: 1 });
     t.streak = 0;
+    if (t.nextStreaks) { t.streaks = t.nextStreaks; t.nextStreaks = null; } // picks changed mid-streak count from this life on
     t.scythe = false; // active stuff ends when you die; earned-but-unused streaks stay in your tray
     if (this.mode !== 'training') {
       if (killer && killer !== t && killer.acct) {
@@ -833,9 +1024,9 @@ class Room {
       if (killer.isBot && killer.kfx == null) killer.kfx = Math.random() < 0.45 ? pick(KILL_IDS) : 'none'; // bots show off stuff you can roll
       kfx = killer.kfx || 'none';
     }
-    this.broadcast({ t: 'kill', k: killer && killer !== t ? killer.id : 0, v: t.id, w, via, vel: t.vel.map(r2), pos: t.pos.map(r2), yaw: r2(t.yaw || 0), fx: kfx });
+    this.broadcast({ t: 'kill', k: killer && killer !== t ? killer.id : 0, v: t.id, w, via, vel: t.vel.map(r2), pos: t.pos.map(r2), yaw: r2(t.yaw || 0), fx: kfx, rs: Math.max(0, t.minRespawnAt - now()) });
     t.lastAttacker = 0;
-    if (t.isBot && this.mode === 'coop') { setTimeout(() => { if (this.players.get(t.id) === t) this.remove(t); }, 50); }
+    if (t.isBot && this.mode === 'coop') { setTimeout(safe('coop', () => { if (this.players.get(t.id) === t) this.remove(t); }), 50); }
   }
   // is this kill the play of the round? multikills, speed, distance and void kills score higher
   hlCandidate(k, t, w) {
@@ -854,10 +1045,10 @@ class Room {
     const hl = { score, pending: true };
     r.hl = hl;
     // grab the clip a moment later so it includes the aftermath
-    setTimeout(() => {
+    setTimeout(safe('clip', () => {
       if (this.round !== r || r.hl !== hl) return;
       Object.assign(hl, { pending: false, label, id: k.id, name: k.name, color: k.color, card: k.card || '', clip: this.clip(t0, now()) });
-    }, 1300);
+    }), 1300);
   }
   // a slice of the recording: 10 Hz frames + the events in that window + who's who
   clip(t0, t1) {
@@ -895,11 +1086,12 @@ class Room {
     const w = WEAPONS[wid], pellets = w.pellets || 1;
     const dmg = (w.dmg * (n - h) + w.dmg * (w.head || 1) * h) * mul;
     const k = w.kb * n;
-    this.hurt(t, p, wid, dmg, [d[0] * k, d[1] * k + (w.kbUp || 0) * (n / pellets), d[2] * k], { hs: h > 0 });
+    // a sniper headshot from a player always kills (bots keep their softer shots)
+    this.hurt(t, p, wid, dmg, [d[0] * k, d[1] * k + (w.kbUp || 0) * (n / pellets), d[2] * k], { hs: h > 0, lethal: wid === 'sniper' && h > 0 && !p.isBot });
   }
 
   onHit(p, m) {
-    const w = WEAPONS[m.w];
+    const w = has(WEAPONS, m.w) && WEAPONS[m.w];
     const t = this.players.get(m.to);
     const d = norm(vec3(m.d));
     if (!w || !t || !d || t === p || !t.alive || !p.alive) return;
@@ -950,11 +1142,19 @@ class Room {
   }
 
   onFire(p, m) {
-    const w = WEAPONS[m.w];
+    const w = has(WEAPONS, m.w) && WEAPONS[m.w];
     if (!w || !p.alive) return;
-    if (w.slot === 'streak' && !p.scythe) return;
+    // loadout weapons only (plus the scythe once earned): items (frag, smoke, duck) are thrown with 'item', never 'fire'
+    if (!SLOTS.includes(w.slot) && !(w.slot === 'streak' && p.scythe)) return;
     let o = vec3(m.o);
     if (!o || dist3(o, eyeOf(p)) > 4) o = eyeOf(p);
+    // shot / swing effects are only relayed, but each goes to everyone: at most ~4x the weapon's rate (frames can bunch up).
+    // one limiter per player, not per weapon: you hold one gun at a time, and cycling ids must not add the rates up
+    if (w.kind === 'hitscan' || w.kind === 'melee') {
+      const n = now(), iv = w.rate ? 250 / w.rate : (w.cd || 0.3) * 250;
+      if (n - (p.lastFire.fx || 0) < iv) return;
+      p.lastFire.fx = n;
+    }
     if (w.kind === 'hitscan') { this.broadcast({ t: 'fx', k: 'shot', w: m.w, id: p.id, s: segs(m.s) }, p.id); return; }
     if (w.kind === 'melee') { this.broadcast({ t: 'fx', k: 'swing', w: m.w, id: p.id, a: o.map(r2), h: m.heavy ? 1 : undefined }, p.id); return; }
     if (w.kind === 'reverse') {
@@ -971,7 +1171,7 @@ class Room {
       const n = now();
       if (n - (p.lastFire.bow || 0) < w.cd * 750) return;
       p.lastFire.bow = n;
-      const c = Math.max(0.15, Math.min(1, Number(m.c) || 0));
+      const c = Math.max(0.15, Math.min(1, num(m.c) || 0));
       const tip = p.tip;
       const sp = (w.speed + (w.speedMax - w.speed) * c) * (tip === 'power' ? 1.3 : 1);
       const pr = this.makeProj(p, 'bow', [o[0] + d[0] * 0.7, o[1] + d[1] * 0.7, o[2] + d[2] * 0.7], d.map((x) => x * sp), { tip, charge: c });
@@ -1026,12 +1226,12 @@ class Room {
       this.knock(p, [d[0] * k, d[1] * k + (ult ? 6 : 2), d[2] * k], 'cards');
     }
     send(p, { t: 'hand', hand: p.hand, left: (p.deck || []).length });
-    if (!p.hand.length) setTimeout(() => { if (this.players.get(p.id) === p) deal(p); }, 1500);
+    if (!p.hand.length) setTimeout(safe('deal', () => { if (this.players.get(p.id) === p) deal(p); }), 1500);
   }
 
   spawnProj(p, wid, o, d) {
     const w = WEAPONS[wid], n = now();
-    if (n - (p.lastFire[wid] || 0) < w.cd * 750) return;
+    if (!(w.cd > 0) || n - (p.lastFire[wid] || 0) < w.cd * 750) return; // nothing without a cooldown comes through here
     if (wid === 'slipper') for (const pr of this.projectiles.values()) if (pr.k === 'slipper' && pr.o === p.id) return;
     p.lastFire[wid] = n;
     const wallHit = raycast(o, d, 0.8, this.boxes);
@@ -1073,9 +1273,10 @@ class Room {
     let kb = [d[0] * 6, 2, d[2] * 6];
     if (tip === 'power') dmg *= 1.8;
     if (tip === 'knockback') { dmg = 15; kb = [d[0] * 60, 15, d[2] * 60]; }
-    if (tip === 'flame') { dmg = 15; this.burn(t, owner, 3); }
+    const shielded = this.bubbleBlocks(owner, t); // the bubble stops the arrow's fire and sleep too, not just its damage
+    if (tip === 'flame') { dmg = 15; if (!shielded) this.burn(t, owner, 3); }
     if (tip === 'gas') dmg = 10;
-    if (tip === 'sleep') { dmg = 10; this.sleep(t, owner, 2.5); }
+    if (tip === 'sleep') { dmg = 10; if (!shielded) this.sleep(t, owner, 2.5); }
     const head = pr.p[1] > t.pos[1] + 1.55;
     this.hurt(t, owner, 'bow', dmg * (head ? 1.5 : 1), kb, { hs: head });
   }
@@ -1088,7 +1289,7 @@ class Room {
       const f = 1 - dist / R, dir = dist > 0.1 ? to.map((x) => x / dist) : [0, 1, 0];
       const self = owner && t.id === owner.id;
       const k = kb * (0.4 + 0.6 * f);
-      this.hurt(t, self ? null : owner, wid, self ? 0 : dmg * (0.3 + 0.7 * f), [dir[0] * k, dir[1] * k + 6 * f, dir[2] * k]);
+      this.hurt(t, self ? null : owner, wid, self ? 0 : dmg * (0.3 + 0.7 * f), [dir[0] * k, dir[1] * k + 6 * f, dir[2] * k], { from: owner ? null : p });
     }
   }
 
@@ -1178,7 +1379,11 @@ class Room {
         if (age >= w.fuse) {
           this.removeProj(pr);
           if (pr.k === 'frag') this.explodeAt(pr.p, owner, 'frag', w.radius, w.dmg, w.kb);
-          else this.broadcast({ t: 'smoke', p: pr.p.map(r2), r: ITEMS.smoke.r, dur: ITEMS.smoke.dur * 1000 });
+          else {
+            const sm = { id: this.nextSmoke++, p: pr.p.map(r2), r: ITEMS.smoke.r, until: n + ITEMS.smoke.dur * 1000 };
+            this.smokes.set(sm.id, sm);
+            this.broadcast({ t: 'smoke', p: sm.p, r: sm.r, dur: ITEMS.smoke.dur * 1000 });
+          }
           continue;
         }
       } else {
@@ -1192,11 +1397,12 @@ class Room {
             this.removeProj(pr, { b: 1 });
             if (v.t.id === pr.o) continue;
             const d = norm(pr.v) || [0, 0, 1];
-            if (!this.bubbleBlocks(owner, v.t) && !this.friendly(owner, v.t)) {
-              const frozen = v.t.frozenUntil > now();
-              if (!frozen) this.hurt(v.t, owner, 'snowball', w.dmg, [d[0] * w.kb, w.kbUp, d[2] * w.kb]);
-              if (v.t.alive) this.frost(v.t, owner);
-            }
+            if (v.t.frozenUntil > n) { // frozen: this one shatters them, if a hit could land at all (and no reverse card)
+              if (v.t.reverseUntil > n || this.hitBlocked(v.t, owner, 'snowball')) continue;
+              v.t.frozenUntil = 0;
+              this.broadcast({ t: 'fx', k: 'shatter', id: v.t.id, p: center(v.t).map(r2) });
+              this.kill(v.t, owner, 'snowball');
+            } else if (this.hurt(v.t, owner, 'snowball', w.dmg, [d[0] * w.kb, w.kbUp, d[2] * w.kb]) === v.t && v.t.alive) this.frost(v.t, owner);
             continue;
           }
         if (pr.k === 'bow' || pr.k === 'card') { pr.p = victims[0].at; this.arrowHit(pr, owner, victims[0].t); continue; }
@@ -1255,6 +1461,7 @@ class Room {
       if (age >= h.time) {
         this.holes.delete(h.id);
         this.broadcast({ t: 'he', id: h.id, p: h.p });
+        if (!owner) continue; // whoever threw it left: it pops harmlessly
         for (const t of this.players.values()) {
           if (!t.alive) continue;
           const c = center(t);
@@ -1273,8 +1480,9 @@ class Room {
       h.tick -= dt;
       if (h.tick > 0) continue;
       h.tick = 0.1;
+      if (!owner) continue;
       for (const t of this.players.values()) {
-        if (!t.alive || this.friendly(owner, t) || (h.big && t.id === h.o)) continue;
+        if (!t.alive || this.friendly(owner, t) || (h.big && t.id === h.o) || this.bubbleBlocks(owner, t)) continue; // no pulling people out of a bubble
         const c = center(t);
         const to = [h.p[0] - c[0], h.p[1] - c[1], h.p[2] - c[2]];
         const dist = Math.hypot(...to);
@@ -1311,15 +1519,21 @@ class Room {
     if (n - p.cfgT < 1500) return;
     p.cfgT = n;
     const changes = [];
-    if (m.map && MAPS[m.map] && m.map !== this.cfg.map && this.mode !== 'training' && MAP_ORDER.includes(m.map)) {
+    if (has(MAPS, m.map) && m.map !== this.cfg.map && this.mode !== 'training' && MAP_ORDER.includes(m.map)) {
       this.cfg.map = m.map;
       changes.push(`map → ${MAPS[m.map].name}`);
-      if (GAMES[this.game].sites && !(this.map.sites && this.map.sites.length)) { this.game = 'dm'; this.bomb = null; this.assignTeams(); changes.push('mode → Deathmatch (no bomb sites here)'); }
-      if (this.bomb) this.newBombRound(true); else this.resetWorld();
+      this.smokes.clear(); // clients drop theirs with the old map
+      let fresh = false;
+      if (GAMES[this.game].sites && !(this.map.sites && this.map.sites.length)) {
+        this.game = 'dm'; this.bomb = null; changes.push('mode → Deathmatch (no bomb sites here)');
+        // a new deathmatch round (the bomb round's clock and kills don't carry over). during the vote the vote decides
+        if (this.round && !this.round.over) fresh = true; else this.assignTeams();
+      }
+      if (fresh) this.startRound(); else if (this.bomb) this.newBombRound(true); else this.resetWorld();
     }
-    if (m.hip && HIPFIRE[m.hip] && m.hip !== this.cfg.hip) { this.cfg.hip = m.hip; changes.push(`hipfire → ${HIPFIRE[m.hip].name}`); }
-    if (m.game && GAMES[m.game] && m.game !== this.game && this.mode === 'bots' && this.setGame(m.game)) { changes.push(`mode → ${GAMES[m.game].name}`); this.vote = null; setTimeout(() => this.startRound(), 50); }
-    if (m.diff && BOT_DIFF[m.diff] && m.diff !== this.cfg.diff && this.mode !== 'ffa') {
+    if (has(HIPFIRE, m.hip) && m.hip !== this.cfg.hip) { this.cfg.hip = m.hip; changes.push(`hipfire → ${HIPFIRE[m.hip].name}`); }
+    if (has(GAMES, m.game) && m.game !== this.game && this.mode === 'bots' && this.setGame(m.game)) { changes.push(`mode → ${GAMES[m.game].name}`); this.vote = null; setTimeout(safe('startRound', () => this.startRound()), 50); }
+    if (has(BOT_DIFF, m.diff) && m.diff !== this.cfg.diff && this.mode !== 'ffa') {
       this.cfg.diff = m.diff;
       for (const b of this.players.values()) if (b.isBot) b.ai.diff = m.diff;
       changes.push(`bots → ${BOT_DIFF[m.diff].name}`);
@@ -1333,14 +1547,27 @@ class Room {
     if (this.mode === 'ffa' || this.mode === 'coop') this.broadcast({ t: 'chat', id: 0, m: `${p.name} set ${changes.join(', ')}` });
   }
 
+  // per-life state: cleared on every respawn and on every new round / match / map
+  resetLife(p) {
+    p.slipUntil = 0; p.burnUntil = 0; p.burnBy = 0; p.burnTick = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.frostT = 0;
+    p.healLeft = 0; p.reverseUntil = 0; p.g = null; p.lastAttacker = 0; p.ground = null;
+    if (p.ai) { p.ai.hook = null; p.ai.route = null; }
+    if (!p.isBot) { if (p.nextItem) { p.item = p.nextItem; p.nextItem = null; } p.ic = null; } // full charges (sendIc after 'spawn')
+  }
   resetWorld() {
     this.projectiles.clear(); this.peels.clear(); this.holes.clear();
     this.broadcast({ t: 'clear' });
+    this.clearTags();
+    for (const b of this.bubbles.values()) this.broadcast({ t: 'bubx', id: b.id });
+    for (const c of this.clouds.values()) this.broadcast({ t: 'cloudx', id: c.id });
+    this.bubbles.clear(); this.clouds.clear();
     for (const p of this.players.values()) {
       if (p.isBot && p.ai.dummy) continue;
       p.alive = true; p.hp = 100; p.vel = [0, 0, 0]; p.spawnT = now(); p.seq++;
       p.pos = this.pickSpawn(p.isBot, p);
+      this.resetLife(p);
       send(p, { t: 'spawn', p: p.pos, q: p.seq });
+      this.sendIc(p);
       this.sendLoadout(p);
     }
     if (this.mode === 'training') { this.removeBots(); this.spawnDummies(); }
@@ -1356,9 +1583,10 @@ class Room {
         if (p.acct) { const kmh = Math.min(20000, Math.hypot(vel[0], vel[2]) * 3.6); if (kmh > (p.acct.d.top_speed || 0)) { p.acct.d.top_speed = kmh; if (kmh > 450) checkAch(p); } }
         if (Number.isFinite(m.y)) p.yaw = m.y;
         if (Number.isFinite(m.x)) p.pitch = m.x;
-        if (WEAPONS[m.w]) p.w = m.w;
+        if (has(WEAPONS, m.w)) p.w = m.w;
         p.g = vec3(m.g);
-        p.f = m.f | 0;
+        p.f = num(m.f) | 0;
+        if (raycast([pos[0], pos[1] + 0.3, pos[2]], [0, -1, 0], 0.6, this.boxes)) p.ground = pos.slice(); // standing on something
         if (p.pos[1] < this.map.killY) this.kill(p, null, 'void');
         break;
       }
@@ -1369,7 +1597,7 @@ class Room {
         if (p.alive && now() - p.coughT > 800) { p.coughT = now(); this.damage(p, 12, null, 'cough'); }
         break;
       case 'chat': {
-        const text = clean(m.m, 120);
+        const text = typeof m.m === 'string' ? clean(m.m, 120) : '';
         if (text && now() - p.chatT > 400) { p.chatT = now(); this.broadcast({ t: 'chat', id: p.id, m: text }); }
         break;
       }
@@ -1390,22 +1618,26 @@ class Room {
         this.kill(p, null, 'tbag');
         break;
       }
-      case 'streaks': p.streaks = validStreaks(m.list); break;
+      case 'streaks': { // with a streak going the new picks wait for your next life (no swapping picks mid-streak)
+        const v = validStreaks(m.list);
+        if (p.streak) p.nextStreaks = v; else { p.streaks = v; p.nextStreaks = null; }
+        break;
+      }
       case 'deploy': { // use a killstreak from your tray (aimed ones land where you looked)
         const i = (p.pocket || []).indexOf(m.r);
         const at = vec3(m.at);
-        if (i < 0 || !p.alive || !STREAKS[m.r]) break;
+        if (i < 0 || !p.alive || !has(STREAKS, m.r)) break;
         if ((m.r === 'chickenstrike' || m.r === 'giantduck') && !at) break;
         p.pocket.splice(i, 1);
         if (m.r === 'scythe') p.scythe = true;
         send(p, { t: 'streak', reward: m.r });
         if (m.r === 'chickenstrike') {
           this.broadcast({ t: 'fx', k: 'strikeCall', id: p.id, p: at.map(r2) });
-          for (let k = 0; k < 14; k++) setTimeout(() => {
+          for (let k = 0; k < 14; k++) setTimeout(safe('strike', () => {
             if (!this.players.has(p.id)) return;
             const a = Math.random() * Math.PI * 2, rr = Math.random() * 10;
             this.makeProj(p, 'chicken', [at[0] + Math.cos(a) * rr, at[1] + 45, at[2] + Math.sin(a) * rr], [0, -34, 0]);
-          }, 600 + k * 170);
+          }), 600 + k * 170);
         } else if (m.r === 'giantduck') {
           this.makeHole([at[0], at[1] + 4, at[2]], p.id, { big: true });
         }
@@ -1416,7 +1648,8 @@ class Room {
         if (now() - (p.lookT || 0) < 300) break;
         p.lookT = now();
         p.look = validLook(m.look, p.acct ? p.acct.achs : new Set());
-        if (p.look.color) p.color = p.look.color;
+        // in team games you stay in your team's colour (no dressing up as the other team); your pick shows again after
+        p.color = this.teamsOn() && p.team ? TEAMS[p.team].color : p.look.color || p.color;
         this.broadcast({ t: 'lk', id: p.id, look: p.look, color: p.color });
         break;
       }
@@ -1431,19 +1664,21 @@ class Room {
         (async () => {
           if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; }
           p.kfx = ownedKill(m.id, p.inv);
-        })();
+        })().catch((e) => logErr('kfx', e));
         break;
       case 'kc': p.kc = !!m.on; break;
       case 'use': this.tryUse(p); break;
       case 'item': this.useItem(p, m); break;
-      case 'vote':
-        if (this.vote && Number.isInteger(m.i) && m.i >= 0 && m.i < this.vote.options.length) {
+      case 'itemsel': this.selectItem(p, m.i); break;
+      case 'vote': // only a changed vote counts (each one is broadcast to the room)
+        if (this.vote && Number.isInteger(m.i) && m.i >= 0 && m.i < this.vote.options.length && this.vote.votes.get(p.id) !== m.i && now() - (p.voteT || 0) > 250) {
+          p.voteT = now();
           this.vote.votes.set(p.id, m.i);
           this.broadcast({ t: 'votes', counts: this.voteInfo().counts });
         }
         break;
-      case 'respawn': // killcam finished or skipped
-        if (!p.alive) p.respawnAt = Math.min(p.respawnAt, Math.max(now(), (p.deadT || 0) + 1500));
+      case 'respawn': // killcam finished or skipped: respawn now, but never sooner than the mode allows
+        if (!p.alive) p.respawnAt = Math.min(p.respawnAt, Math.max(now(), p.minRespawnAt || 0));
         break;
       case 'redraw':
         if (p.alive && now() - (p.redrawT || 0) > 2500) { p.redrawT = now(); deal(p); }
@@ -1456,7 +1691,7 @@ class Room {
             if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; }
             p.skins = enforceSkins(cleanSkins(m.s), p.inv);
             this.broadcast({ t: 'sk', id: p.id, s: p.skins }, p.id);
-          })();
+          })().catch((e) => logErr('skin', e));
         }
         break;
       case 'pi': send(p, { t: 'po', c: m.c }); break;
@@ -1496,8 +1731,8 @@ class Room {
       const sc = this.game === 'bomb' && this.bomb ? this.bomb.wins : this.score;
       winTeam = sc[1] === sc[2] ? 0 : sc[1] > sc[2] ? 1 : 2;
     }
-    const pool = winTeam ? list.filter((p) => p.team === winTeam) : list;
-    const winner = pool[0] && (winTeam || pool[0].kills > 0) ? pool[0] : null;
+    // a drawn team match has no winner (no roll, no stat): FFA needs at least one kill
+    const winner = this.teamsOn() ? (winTeam && list.find((p) => p.team === winTeam)) || null : list[0] && list[0].kills > 0 ? list[0] : null;
     this.round.over = true;
     this.round.next = now() + VOTE_MS + 2000;
     this.round.winTeam = winTeam;
@@ -1518,11 +1753,11 @@ class Room {
     this.broadcast({ t: 'round', over: 1, winner: winner ? winner.id : 0, winTeam, game: this.game, sc: this.teamsOn() ? (this.game === 'bomb' && this.bomb ? [this.bomb.wins[1], this.bomb.wins[2]] : [this.score[1], this.score[2]]) : null,
       top: list.slice(0, 6).map((p) => [p.id, p.name, p.kills, p.deaths, p.team || 0]), next: VOTE_MS + 2000 });
     const r = this.round;
-    setTimeout(() => {
+    setTimeout(safe('hl', () => {
       if (this.round !== r || !r.hl || r.hl.pending || !r.hl.clip || !r.hl.clip.frames.length) return;
       const { label, id, name, color, card, clip } = r.hl;
       this.broadcast({ t: 'hl', label, id, name, color, card, clip });
-    }, 1600);
+    }), 1600);
     if (roll) send(winner, { t: 'roll+', ...roll });
   }
   startRound() {
@@ -1539,7 +1774,7 @@ class Room {
   }
   // switch game type (bots setup / match settings / the vote)
   setGame(g) {
-    if (!GAMES[g] || (GAMES[g].sites && !(this.map.sites && this.map.sites.length))) return false;
+    if (!has(GAMES, g) || (GAMES[g].sites && !(this.map.sites && this.map.sites.length))) return false;
     this.game = g;
     return true;
   }
@@ -1580,13 +1815,22 @@ class Room {
     this.cfg.map = win.map;
     this.setGame(win.game);
     this.projectiles.clear(); this.peels.clear(); this.holes.clear();
-    if (mapChanged) this.broadcast({ t: 'cfg', cfg: this.cfg });
+    if (mapChanged) { this.smokes.clear(); this.broadcast({ t: 'cfg', cfg: this.cfg }); }
     this.broadcast({ t: 'chat', id: 0, m: `next up: ${GAMES[this.game].name} on ${this.map.name}` });
   }
 
   // ---------------------------------------------------------- tags (kill confirmed)
-  dropTag(t) {
-    const g = { id: this.nextTag++, p: [r2(t.pos[0]), r2(t.pos[1] + 0.9), r2(t.pos[2])], team: t.team, born: now() };
+  // the floor under a point (null over the void)
+  floorAt(p) {
+    if (!p) return null;
+    const h = raycast([p[0], p[1] + 1, p[2]], [0, -1, 0], 60, this.boxes);
+    return h && h.point[1] > this.map.killY ? h.point : null;
+  }
+  // tags land on the floor under the body; off the map they drop where the victim last stood (or at the killer)
+  dropTag(t, killer) {
+    const at = this.floorAt(t.pos) || this.floorAt(t.ground) || (killer && killer.alive && this.floorAt(killer.pos));
+    if (!at) return;
+    const g = { id: this.nextTag++, p: [r2(at[0]), r2(at[1] + 0.9), r2(at[2])], team: t.team, born: now() };
     this.tags.set(g.id, g);
     this.broadcast({ t: 'tag+', id: g.id, p: g.p, team: g.team });
   }
@@ -1616,22 +1860,28 @@ class Room {
     for (const p of this.players.values()) if (p.ai) { p.ai.site = null; p.ai.route = null; }
     this.projectiles.clear(); this.peels.clear(); this.holes.clear();
     this.resetWorld();
-    const att = this.fighters().filter((p) => p.team === b.att && p.alive);
-    const carrier = att.find((p) => !p.isBot) || att[0];
-    b.carrier = carrier ? carrier.id : 0;
-    if (carrier) send(carrier, { t: 'bombyou' });
+    this.giveBomb();
     this.broadcast({ t: 'bombev', k: 'round', n: b.n, att: b.att });
   }
-  dropBomb(pos) {
+  // hand the bomb to a random living attacker (humans first, never skip), or leave it at the attackers' spawn
+  giveBomb(skip) {
+    const b = this.bomb;
+    const att = this.fighters().filter((p) => p.team === b.att && p.alive && p !== skip);
+    const hs = att.filter((p) => !p.isBot);
+    const c = hs.length ? pick(hs) : att.length ? pick(att) : null;
+    b.carrier = c ? c.id : 0; b.drop = null; b.idle = null;
+    if (c) { send(c, { t: 'bombyou' }); return; }
+    const s = (this.map.teamSpawns && this.map.teamSpawns.att[0]) || this.map.spawns[0];
+    const f = this.floorAt(s);
+    b.drop = [r2(s[0]), r2((f ? f[1] : s[1]) + 0.15), r2(s[2])]; b.dropT = now();
+  }
+  dropBomb(pos, from) {
     const b = this.bomb;
     if (!b || b.ph !== 'live') return;
-    b.carrier = 0;
-    const h = raycast([pos[0], pos[1] + 1, pos[2]], [0, -1, 0], 60, this.boxes);
-    b.drop = h ? [r2(pos[0]), r2(h.point[1] + 0.15), r2(pos[2])] : null;
-    if (!b.drop) { // fell into the void with it: it comes back to a random attacker
-      const att = this.fighters().filter((p) => p.team === b.att && p.alive);
-      if (att.length) b.carrier = pick(att).id;
-    }
+    b.carrier = 0; b.idle = null;
+    const f = this.floorAt(pos);
+    b.drop = f ? [r2(pos[0]), r2(f[1] + 0.15), r2(pos[2])] : null; b.dropT = now();
+    if (!b.drop) this.giveBomb(from); // fell into the void with it: it comes back to another attacker
     this.broadcast({ t: 'bombev', k: 'drop' });
   }
   bombRoundWin(team, why) {
@@ -1646,18 +1896,35 @@ class Room {
     const b = this.bomb;
     if (b.between) { if (n >= b.between) this.newBombRound(false); return; }
     if (b.ph === 'done') return;
+    if (b.ph === 'live' && !b.drop) {
+      const c = this.players.get(b.carrier);
+      if (!c || !c.alive || c.team !== b.att) this.giveBomb(); // nobody has it (empty side at round start, a carrier who left)
+      else if (!b.idle || b.idle.id !== c.id || dist3(c.pos, b.idle.p) > 1.5) b.idle = { id: c.id, p: c.pos.slice(), t: n };
+      else if (n - b.idle.t > 15000 && !b.act && this.fighters().some((p) => p !== c && p.alive && p.team === b.att)) {
+        // an AFK carrier drops it for the team (and can't grab it straight back)
+        this.dropBomb(c.pos, c);
+        b.noPick = { id: c.id, until: n + 8000 };
+        send(c, { t: 'chat', id: 0, m: 'you stood still too long and dropped the bomb' });
+      }
+    }
     // dropped bomb: any attacker can grab it
     if (b.ph === 'live' && b.drop) {
       for (const p of this.players.values()) {
-        if (!p.alive || p.team !== b.att) continue;
+        if (!p.alive || p.team !== b.att || (b.noPick && b.noPick.id === p.id && n < b.noPick.until)) continue;
         if (Math.hypot(p.pos[0] - b.drop[0], p.pos[1] - b.drop[1], p.pos[2] - b.drop[2]) < BOMB.pickup) { b.carrier = p.id; b.drop = null; send(p, { t: 'bombyou' }); this.broadcast({ t: 'bombev', k: 'pickup', id: p.id }); break; }
+      }
+      // bots can't climb to every ledge: a drop no human attacker is alive to fetch goes back to a bot after 20 s
+      // (only to a living one: with every attacker dead, or no bots at all, it stays where it fell)
+      if (b.drop && n - (b.dropT || n) > 20000 && !this.fighters().some((p) => !p.isBot && p.alive && p.team === b.att) && this.fighters().some((p) => p.isBot && p.alive && p.team === b.att)) {
+        this.giveBomb();
+        if (b.carrier) this.broadcast({ t: 'bombev', k: 'pickup', id: b.carrier });
       }
     }
     // planting / defusing: you have to keep holding F and stay put
     if (b.act) {
       const a = this.players.get(b.act.id);
       const hold = a && a.alive && n - (a.useT || 0) < 600 && dist3(a.pos, b.act.pos) < 1.6;
-      const ok = hold && (b.act.kind === 'plant' ? b.carrier === a.id && siteAt(this.map, a.pos) : b.ph === 'planted' && dist3(a.pos, b.p) < BOMB.defuseRange + 0.6);
+      const ok = hold && (b.act.kind === 'plant' ? b.carrier === a.id && siteAt(this.map, a.pos) : b.ph === 'planted' && canDefuse(a.pos, b.p, 0.6));
       if (!ok) b.act = null;
       else if (n - b.act.start >= (b.act.kind === 'plant' ? BOMB.plant : BOMB.defuse) * 1000) {
         if (b.act.kind === 'plant') {
@@ -1691,7 +1958,7 @@ class Room {
     p.useT = now();
     if (b.act) return;
     if (b.ph === 'live' && b.carrier === p.id && siteAt(this.map, p.pos)) b.act = { id: p.id, kind: 'plant', start: now(), pos: p.pos.slice() };
-    else if (b.ph === 'planted' && p.team !== b.att && dist3(p.pos, b.p) < BOMB.defuseRange) b.act = { id: p.id, kind: 'defuse', start: now(), pos: p.pos.slice() };
+    else if (b.ph === 'planted' && p.team !== b.att && canDefuse(p.pos, b.p)) b.act = { id: p.id, kind: 'defuse', start: now(), pos: p.pos.slice() };
     if (b.act) this.broadcast({ t: 'bombev', k: b.act.kind, id: p.id });
   }
 
@@ -1711,8 +1978,9 @@ class Room {
         if (p.isBot && this.mode === 'coop') continue;
         p.alive = true; p.hp = 100; p.vel = [0, 0, 0]; p.spawnT = n; p.seq++;
         p.pos = p.isBot && p.ai.dummy ? p.ai.dummy.home.slice() : this.pickSpawn(p.isBot, p);
-        p.slipUntil = 0; p.burnUntil = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.ic = {}; p.healLeft = 0;
+        this.resetLife(p);
         send(p, { t: 'spawn', p: p.pos, q: p.seq });
+        this.sendIc(p);
         this.sendLoadout(p);
         if (!p.isBot) deal(p);
       }
@@ -1779,7 +2047,7 @@ function segs(s) {
 }
 
 function roomFor(mode, ws) {
-  if (!MODES[mode]) mode = 'ffa';
+  if (!has(MODES, mode)) mode = 'ffa';
   const id = mode === 'ffa' || mode === 'coop' ? mode : `${mode}:${nextId}:${Math.random().toString(36).slice(2, 7)}`;
   if (!rooms.has(id)) rooms.set(id, new Room(id, mode));
   return rooms.get(id);
@@ -1789,14 +2057,23 @@ function roomFor(mode, ws) {
 wss.on('connection', (ws) => {
   let me = null;
   ws.isAlive = true;
-  ws.on('pong', () => { ws.isAlive = true; });
+  ws.budget = 400; ws.budgetT = now();
+  // ws reports bad frames (too big, broken compression) as 'error': without a listener that would crash the process
+  ws.on('error', (e) => logErr('ws', e.message));
+  ws.on('pong', () => { ws.isAlive = true; if (ws.pingT) ws.rtt = now() - ws.pingT; });
   ws.on('message', (data) => {
+    // a generous per-connection budget (a busy client sends ~100/s): floods get dropped, not relayed to the room
+    const t = now();
+    ws.budget = Math.min(400, ws.budget + (t - ws.budgetT) * 0.3); ws.budgetT = t;
+    if (ws.budget < 1) return;
+    ws.budget--;
     let m;
     try { m = JSON.parse(data); } catch { return; }
-    if (!m || typeof m !== 'object') return;
+    if (!m || typeof m !== 'object' || Array.isArray(m) || tooDeep(m)) return;
     if (!me) {
       if (m.t !== 'join' || ws.joining) return;
       ws.joining = true;
+      for (const k of Object.keys(m)) if (k[0] === '_') delete m[k]; // _acct, _inv, _name...: only the server sets those
       (async () => {
         const u = m.token ? await accounts.verify(m.token).catch(() => null) : null;
         if (u) {
@@ -1814,23 +2091,24 @@ wss.on('connection', (ws) => {
       })().catch((e) => { console.error('join failed', e); ws.close(); });
       return;
     }
-    me.room.handle(me, m);
+    try { me.room.handle(me, m); } catch (e) { logErr('msg ' + (typeof m.t === 'string' ? m.t.slice(0, 12) : '?'), e); }
   });
-  ws.on('close', () => {
+  ws.on('close', safe('close', () => {
     if (!me) return;
     console.log(`- ${me.name} (#${me.id}) <- ${me.room.id}`);
     me.room.remove(me);
-  });
+  }));
 });
 
 // ---------------------------------------------------------------- loops
 const TICK = 1 / 60;
-setInterval(() => { for (const r of rooms.values()) r.tick(TICK); }, TICK * 1000);
-setInterval(() => { for (const r of rooms.values()) if (r.players.size) r.snapshot(); }, 50);
+setInterval(() => { for (const r of rooms.values()) try { r.tick(TICK); } catch (e) { logErr('tick ' + r.mode, e); } }, TICK * 1000);
+setInterval(() => { for (const r of rooms.values()) try { if (r.players.size) r.snapshot(); } catch (e) { logErr('snapshot ' + r.mode, e); } }, 50);
 setInterval(() => {
   for (const ws of wss.clients) {
     if (!ws.isAlive) { ws.terminate(); continue; }
     ws.isAlive = false;
+    ws.pingT = now();
     ws.ping();
   }
 }, 10000);
@@ -1855,4 +2133,9 @@ export function shutdown() {
   for (const r of rooms.values()) for (const p of r.players.values()) flushStats(p);
   if (store.flushNow) store.flushNow();
 }
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { shutdown(); setTimeout(() => process.exit(0), 300); });
+// a failed last save must not keep the process alive (the uncaughtException handler below would swallow it)
+for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { try { shutdown(); } catch (e) { logErr('shutdown', e); } setTimeout(() => process.exit(0), 300); });
+// last resort: a bug in one room (or one callback) gets logged instead of dropping every room
+// (a server that can't even start, e.g. the port is taken, still stops; the desktop app reports that itself)
+process.on('uncaughtException', (e) => { logErr('uncaught', e); if (!server.listening && !process.versions.electron) process.exit(1); });
+process.on('unhandledRejection', (e) => logErr('unhandled', e));
