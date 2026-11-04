@@ -100,7 +100,8 @@ export class Accounts {
 
   // ------------------------------------------------------------ HTTP
   async handle(req, res, url) {
-    const send = (code, obj) => { res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify(obj)); };
+    // stringify first: if it throws, the catch below can still answer (headers not sent yet)
+    const send = (code, obj) => { const s = JSON.stringify(obj); res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(s); };
     try {
       const body = req.method === 'POST' ? await readJson(req) : {};
       const auth = (req.headers.authorization || '').replace(/^Bearer /, '');
@@ -120,6 +121,11 @@ export class Accounts {
           const u = await this.verify(auth);
           if (!u) return send(401, { error: 'not logged in' });
           if (!body.profile || typeof body.profile !== 'object') return send(400, { error: 'bad profile' });
+          // JSON.parse takes nesting JSON.stringify can't write back (that would break every later save): it must
+          // serialize, and fit a name card (up to 24 KB, see cleanCard) plus loadout, skins, look and settings
+          let s = null;
+          try { s = JSON.stringify(body.profile); } catch { /* too deep */ }
+          if (!s || s.length > 40000) return send(400, { error: 'bad profile' });
           await this.store.setProfile(u.name_lower, body.profile);
           return send(200, { ok: true });
         }
@@ -135,7 +141,7 @@ export class Accounts {
       }
     } catch (e) {
       console.error('api error', url, e.message);
-      return send(500, { error: 'server error' });
+      if (!res.headersSent) send(500, { error: 'server error' });
     }
   }
 }

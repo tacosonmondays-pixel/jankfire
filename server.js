@@ -92,7 +92,9 @@ const SKIN_KEYS = { f: /^[a-z_]{1,24}$/ };
 const now = () => Date.now();
 const r2 = (x) => Math.round(x * 100) / 100;
 const dist3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-const clampInt = (x, lo, hi) => Math.max(lo, Math.min(hi, Math.floor(Number(x) || 0)));
+// client numbers: Number() / | 0 on an object call its own toString / valueOf, and {"toString":1} throws
+const num = (x) => typeof x === 'number' ? x : typeof x === 'string' ? Number(x) : 0;
+const clampInt = (x, lo, hi) => Math.max(lo, Math.min(hi, Math.floor(num(x) || 0)));
 const pick = (a) => a[(Math.random() * a.length) | 0];
 // client data as a table key: only real string keys (no '__proto__', no arrays that stringify forever)
 const has = (T, k) => typeof k === 'string' && Object.hasOwn(T, k);
@@ -567,10 +569,11 @@ class Room {
     if (ai.hook) jump = false;
     const wl = Math.hypot(wx, wz);
     if (wl > 0) { wx /= wl; wz /= wl; }
-    // don't walk off the map (bots are dumb, not suicidal). any floor above the void will do: there's no fall damage
+    // don't walk off the map (bots are dumb, not suicidal). a floor up to 15 m down will do (no fall damage); a box
+    // far below is no floor: a long fall drifts past it into the void
     if (wl > 0 && b.onGround) {
       const probe = [b.pos[0] + wx * 2.5, b.pos[1] + 0.5, b.pos[2] + wz * 2.5];
-      if (!raycast(probe, [0, -1, 0], Math.max(6, probe[1] - this.map.killY), boxes)) { wx = -wx; wz = -wz; ai.strafeDir *= -1; }
+      if (!raycast(probe, [0, -1, 0], Math.max(6, Math.min(15, probe[1] - this.map.killY)), boxes)) { wx = -wx; wz = -wz; ai.strafeDir *= -1; }
     }
     return { wx: wx * D.speed, wz: wz * D.speed, jump };
   }
@@ -1134,11 +1137,12 @@ class Room {
     if (!SLOTS.includes(w.slot) && !(w.slot === 'streak' && p.scythe)) return;
     let o = vec3(m.o);
     if (!o || dist3(o, eyeOf(p)) > 4) o = eyeOf(p);
-    // shot / swing effects are only relayed, but each goes to everyone: at most ~4x the weapon's rate (frames can bunch up)
+    // shot / swing effects are only relayed, but each goes to everyone: at most ~4x the weapon's rate (frames can bunch up).
+    // one limiter per player, not per weapon: you hold one gun at a time, and cycling ids must not add the rates up
     if (w.kind === 'hitscan' || w.kind === 'melee') {
       const n = now(), iv = w.rate ? 250 / w.rate : (w.cd || 0.3) * 250;
-      if (n - (p.lastFire['fx' + m.w] || 0) < iv) return;
-      p.lastFire['fx' + m.w] = n;
+      if (n - (p.lastFire.fx || 0) < iv) return;
+      p.lastFire.fx = n;
     }
     if (w.kind === 'hitscan') { this.broadcast({ t: 'fx', k: 'shot', w: m.w, id: p.id, s: segs(m.s) }, p.id); return; }
     if (w.kind === 'melee') { this.broadcast({ t: 'fx', k: 'swing', w: m.w, id: p.id, a: o.map(r2), h: m.heavy ? 1 : undefined }, p.id); return; }
@@ -1156,7 +1160,7 @@ class Room {
       const n = now();
       if (n - (p.lastFire.bow || 0) < w.cd * 750) return;
       p.lastFire.bow = n;
-      const c = Math.max(0.15, Math.min(1, Number(m.c) || 0));
+      const c = Math.max(0.15, Math.min(1, num(m.c) || 0));
       const tip = p.tip;
       const sp = (w.speed + (w.speedMax - w.speed) * c) * (tip === 'power' ? 1.3 : 1);
       const pr = this.makeProj(p, 'bow', [o[0] + d[0] * 0.7, o[1] + d[1] * 0.7, o[2] + d[2] * 0.7], d.map((x) => x * sp), { tip, charge: c });
@@ -1570,7 +1574,7 @@ class Room {
         if (Number.isFinite(m.x)) p.pitch = m.x;
         if (has(WEAPONS, m.w)) p.w = m.w;
         p.g = vec3(m.g);
-        p.f = m.f | 0;
+        p.f = num(m.f) | 0;
         if (raycast([pos[0], pos[1] + 0.3, pos[2]], [0, -1, 0], 0.6, this.boxes)) p.ground = pos.slice(); // standing on something
         if (p.pos[1] < this.map.killY) this.kill(p, null, 'void');
         break;
@@ -1899,7 +1903,8 @@ class Room {
         if (Math.hypot(p.pos[0] - b.drop[0], p.pos[1] - b.drop[1], p.pos[2] - b.drop[2]) < BOMB.pickup) { b.carrier = p.id; b.drop = null; send(p, { t: 'bombyou' }); this.broadcast({ t: 'bombev', k: 'pickup', id: p.id }); break; }
       }
       // bots can't climb to every ledge: a drop no human attacker is alive to fetch goes back to a bot after 20 s
-      if (b.drop && n - (b.dropT || n) > 20000 && !this.fighters().some((p) => !p.isBot && p.alive && p.team === b.att)) {
+      // (only to a living one: with every attacker dead, or no bots at all, it stays where it fell)
+      if (b.drop && n - (b.dropT || n) > 20000 && !this.fighters().some((p) => !p.isBot && p.alive && p.team === b.att) && this.fighters().some((p) => p.isBot && p.alive && p.team === b.att)) {
         this.giveBomb();
         if (b.carrier) this.broadcast({ t: 'bombev', k: 'pickup', id: b.carrier });
       }
@@ -2117,7 +2122,8 @@ export function shutdown() {
   for (const r of rooms.values()) for (const p of r.players.values()) flushStats(p);
   if (store.flushNow) store.flushNow();
 }
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { shutdown(); setTimeout(() => process.exit(0), 300); });
+// a failed last save must not keep the process alive (the uncaughtException handler below would swallow it)
+for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { try { shutdown(); } catch (e) { logErr('shutdown', e); } setTimeout(() => process.exit(0), 300); });
 // last resort: a bug in one room (or one callback) gets logged instead of dropping every room
 // (a server that can't even start, e.g. the port is taken, still stops; the desktop app reports that itself)
 process.on('uncaughtException', (e) => { logErr('uncaught', e); if (!server.listening && !process.versions.electron) process.exit(1); });
