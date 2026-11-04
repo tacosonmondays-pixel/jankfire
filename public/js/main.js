@@ -760,7 +760,8 @@ addEventListener('keyup', (e) => {
 });
 addEventListener('mousedown', (e) => {
   if (!inGame()) return;
-  if (RP.mode === 'killcam' || G.killcamPending) { skipReplay(); return; }
+  if (RP.mode === 'killcam' || RP.mode === 'hl' || G.killcamPending) { skipReplay(); return; } // a click skips the killcam and the play of the round
+  if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor: no shooting
   if (e.button === 0) fireDown();
   if (e.button === 2) { if (S.swapAim) tryHook(); else aimDown(); }
   if (e.button === 3 || e.button === 4) tryHook();
@@ -775,6 +776,7 @@ addEventListener('wheel', (e) => { if (inGame()) cycleSlot(e.deltaY > 0 ? 1 : -1
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== canvas) return;
   if (performance.now() < (G.spinUntil || 0)) return; // the aimbot has the wheel
+  if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor: no looking around either
   const s = 0.0022 * S.sens * (W.aim > 0.5 ? S.adsSens / W.zoom : 1);
   const mx = e.movementX, my = e.movementY;
   // Chrome's pointer lock sometimes reports one giant fake jump (often the wrong way) when you move far or fast.
@@ -1212,7 +1214,13 @@ net.on('heal', (m) => {
   const r = G.remotes.get(m.id);
   if (r) for (let i = 0; i < 12; i++) fx.burn([r.pos[0], r.pos[1], r.pos[2]]);
 });
-net.on('sleep', (m) => { ME.sleepUntil = performance.now() + m.dur * 1000; releaseHook(); hud.msg('zzz...', m.dur, 'slip'); sfx.snore(); });
+net.on('sleep', (m) => {
+  const n = performance.now();
+  if (n >= (ME.sleepUntil || 0)) ME.sleepAt = n; // a second arrow keeps you down longer, it doesn't knock you down again
+  ME.sleepUntil = n + m.dur * 1000;
+  releaseHook(); fireUp(); W.aimHeld = false; // knocked flat: let go of everything
+  hud.msg('zzz...', m.dur, 'slip'); sfx.snore();
+});
 net.on('boom', (m) => {
   recordEv(m);
   fx.explosion(m.p, m.r); sfx.boom(m.p);
@@ -1371,7 +1379,7 @@ function frame(t) {
       net.send({
         t: 's', q: ME.seq, p: ME.pos.map(r2), v: ME.vel.map(r2), y: r2(G.spinning ? (now * 0.03) % (Math.PI * 2) : ME.yaw), x: r2(G.spinning ? Math.sin(now * 0.02) * 1.2 : ME.pitch), w: W.cur,
         g: hp ? hp.map(r2) : 0,
-        f: W.flags | (now < ME.slipUntil ? FLAGS.SLIP : 0) | (ME.sliding ? FLAGS.SLIDE : 0) | (ME.crouching ? FLAGS.CROUCH : 0),
+        f: W.flags | (now < ME.slipUntil ? FLAGS.SLIP : 0) | (ME.sliding ? FLAGS.SLIDE : 0) | (ME.crouching ? FLAGS.CROUCH : 0) | (now < (ME.sleepUntil || 0) ? FLAGS.SLEEP : 0),
       });
     }
     pingT -= dt;
@@ -1462,8 +1470,16 @@ function frame(t) {
     roll = Math.sin(k * Math.PI * 4) * 0.5 * (1 - k);
     pOff = Math.sin(k * Math.PI) * 1.1;
   }
-  if (now < (ME.sleepUntil || 0)) { pOff = -0.5 + Math.sin(now * 0.002) * 0.1; roll = 0.3; }
-  $('sleepFx').style.opacity = now < (ME.sleepUntil || 0) ? 1 : 0;
+  const asleep = G.joined && ME.alive && now < (ME.sleepUntil || 0);
+  if (asleep) { // knocked flat: the view drops to the floor and rolls onto its side, breathes, then gets back up at the end
+    const t = (now - (ME.sleepAt || now)) / 1000, left = (ME.sleepUntil - now) / 1000;
+    const fall = Math.min(1, t / 0.45), up = Math.min(1, left / 0.4);
+    const k = fall * fall * (up * up * (3 - 2 * up)); // falls like a plank, gets up quick
+    cam.position.y += (ME.pos[1] + 0.32 - e[1]) * k;
+    roll = (1.38 + Math.sin(now * 0.0021) * 0.05) * k + (fall < 1 ? Math.sin(fall * Math.PI) * 0.15 : 0);
+    pOff = (Math.sin(now * 0.0021 + 1) * 0.035 - ME.pitch * 0.6) * k;
+  }
+  $('sleepFx').style.opacity = asleep ? 1 : 0;
   if (G.joined && !ME.alive) { pOff = -0.6; roll = 0.4; cam.position.y += Math.min(4, (now - (G.deadAt || now)) / 600); }
   if (!G.joined) { // menu backdrop: slow orbit over the current map
     const a = now * 0.00005;
@@ -1508,7 +1524,7 @@ function frame(t) {
   G.skinFxVM.update(dt);
   skinTick(dt, now);
   updateWorld(dt);
-  G.vmScene.visible = G.joined && !RP.active;
+  G.vmScene.visible = G.joined && !RP.active && !asleep;
   renderFrame();
   if ((screen === 'cosmetics' || screen === 'character') && !$('menu').classList.contains('hidden')) renderPreview(dt);
 }
@@ -1981,7 +1997,7 @@ net.on('hl', (m) => {
   const box = $('roundEnd');
   box.classList.add('hidden');
   const url = m.id === G.myId ? cardUrlFor(G.myId) : (S.showCards !== false && m.card) || defaultCard(m.name, m.color);
-  showReplayUI('PLAY OF THE ROUND', url, m.name, m.color, m.label, 'SPACE to skip');
+  showReplayUI('PLAY OF THE ROUND', url, m.name, m.color, m.label, 'SPACE / CLICK to skip'); // skipping is just for you: the round end, vote and next match carry on
   const slow = (m.clip.ev || []).filter((e) => e.m && e.m.t === 'kill' && e.m.k === m.id).map((e) => [e.s - 260, e.s + 220]);
   playClip(m.clip, {
     focus: m.id, mode: 'hl', slow,
