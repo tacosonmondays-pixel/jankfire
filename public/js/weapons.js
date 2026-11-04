@@ -13,6 +13,7 @@ import { net } from './net.js';
 import { hud } from './hud.js';
 import { tracerColor, emitSkinFx } from './skins.js';
 import { ANIMS, sample, sampleCh, eventsBetween, inspectFor, drawFor } from './anim.js';
+import { newTwirl, resetTwirl, twirling, spin, settle, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
 import { weaponIcon, clearIcons, itemIcon } from './icons.js';
 
 export const W = {
@@ -518,6 +519,7 @@ const r2 = (x) => Math.round(x * 100) / 100;
 
 function currentSpread(w) {
   if (G.spinning) return 0; // spinbot = no spread
+  if (fanShot) return fanSpread(w);
   const hip = (HIPFIRE[G.cfg.hip] || HIPFIRE.normal).mul;
   const base = (w.spread || 0) + W.bloom;
   const ads = w.ads ? base * (w.ads.spread ?? 1) * Math.min(1, hip) : base * hip;
@@ -530,6 +532,7 @@ function fireHitscan(id, now) {
   if (w.mag && G.mode !== 'training') W.ammo[id]--;
   setCd(id, now);
   W.lastShotT = now;
+  if (w.fanHammer && models[id]) applyTwirl(models[id].g, 0, models[id].cfg.s); // mid-twirl revolver: the shot leaves the resting muzzle (twirlVM spins it again before the next render)
   const o = eye(), base = look(), mz = muzzleWorld();
   const hits = new Map();
   const segs = [];
@@ -563,12 +566,12 @@ function fireHitscan(id, now) {
       sfx.ricochet(end);
     }
   }
-  for (const [rid, h] of hits) net.send({ t: 'hit', to: rid, w: id, d: h.d.map(r2), n: h.n, h: h.h });
+  for (const [rid, h] of hits) net.send({ t: 'hit', to: rid, w: id, d: h.d.map(r2), n: h.n, h: h.h, fan: fanShot ? 1 : undefined });
   const fast = w.rate > 8;
   const skin = (G.equipped || {})[id];
   if (shots) marbles.shoot(shots, marblePalette(skin));
   else for (const s of segs) fx.tracer(s.slice(0, 3), s.slice(3), tracerColor(skin, w.tracer || 0xfff0a0), w.thick || (fast ? 0.03 : 0.045), fast ? 0.07 : 0.2);
-  net.send({ t: 'fire', w: id, o: o.map(r2), s: segs.slice(0, 12).map((s) => s.map(r2)) });
+  net.send({ t: 'fire', w: id, o: o.map(r2), s: segs.slice(0, 12).map((s) => s.map(r2)), fan: fanShot ? 1 : undefined });
   if (w.recoil) applyKb([-base[0] * w.recoil, -base[1] * w.recoil, -base[2] * w.recoil]);
   ME.pitch = Math.min(1.55, ME.pitch + (w.kick || 0) * (0.6 + Math.random() * 0.8) * (1 - W.aim * 0.5));
   ME.yaw += (Math.random() - 0.5) * (w.kick || 0) * 0.5;
@@ -580,9 +583,68 @@ function fireHitscan(id, now) {
   if (SHELL_ON_FIRE.has(id) && models[id]) ejectShell(models[id].g);
   if (id === 'shotgun') W.cycle = { name: 'pump_shotgun', t: 0.22 };
   if (id === 'sniper' || id === 'scythe_rifle') W.cycle = { name: 'bolt_sniper', t: 0.32 };
+  if (w.fanHammer) revolverShot(w, now);
   if (id === 'sniper' || id === 'shotgun') G.shake = Math.max(G.shake, 0.6);
   sfx.gun(id, null, id === 'redline' ? redlineK() : 0);
   if (w.mag && W.ammo[id] <= 0) reload();
+}
+
+// ------------------------------------------------------------ revolver: twirl after every shot, hold to fan the hammer
+// a tap is the accurate shot. keep holding and the rest of the cylinder goes at fanHammer.rate with wild spread and
+// fan damage (the server checks both). the gun spins round your trigger finger after every shot and the whole time
+// you fan. aiming down sights = plain single shots, no twirl in front of your eye.
+W.twirl = newTwirl();
+W.fanning = { on: false, arm: false, down: 0, next: 0, hammer: 0 };
+let fanShot = false; // the shot being fired right now is a fanned one (spread + net messages read this)
+const fanSpread = (w) => w.fanHammer.spread * (HIPFIRE[G.cfg.hip] || HIPFIRE.normal).mul;
+function revolverShot(w, now) {
+  const twirl = fanShot || (!W.aimHeld && W.aim < 0.5);
+  if (!fanShot) W.fanning.next = now + 1000 / w.fanHammer.rate;
+  if (twirl) twirlShot(W.twirl, fanShot);
+  if (twirl && !fanShot) sfx.twirl();
+}
+function fanTheHammer(id, w, now) {
+  const F = W.fanning, f = w.fanHammer, iv = 1000 / f.rate;
+  if (F.hammer && now >= F.hammer) { F.hammer = 0; if (F.on) sfx.hammer(); }
+  if (!(ME.alive && W.held && F.arm && !W.aimHeld && !W.reloadId)) {
+    // let go, ran dry, aimed or died: stop fanning and catch the gun. anything but letting go needs a fresh click
+    if (W.held) F.arm = false;
+    if (F.on) { F.on = false; settle(W.twirl); }
+    return;
+  }
+  if (now - F.down < f.hold * 1000 || now < F.next) return;
+  if (W.ammo[id] <= 0) { reload(); return; }
+  const was = F.on, p0 = ME.pitch, y0 = ME.yaw, v0 = ME.vel.slice();
+  F.on = true;
+  cancelInspect();
+  fanShot = true;
+  fireHitscan(id, now);
+  fanShot = false;
+  // the off hand holds it down: a fraction of the aim kick and the shove
+  ME.pitch = p0 + (ME.pitch - p0) * f.kick; ME.yaw = y0 + (ME.yaw - y0) * f.kick;
+  for (let i = 0; i < 3; i++) ME.vel[i] = v0[i] + (ME.vel[i] - v0[i]) * f.kick;
+  W.cd[id] = now + 1000 / w.rate; // a tap after fanning waits one normal shot, not every fanned one stacked up
+  F.next = (was ? Math.max(F.next, now - Math.min(40, iv * 0.5)) : now) + iv;
+  F.hammer = now + iv * 0.55; // slap the hammer back between shots
+}
+// every frame: fan if held. anything else out = the revolver forgets it was mid-twirl, and a hold that started on
+// another gun doesn't fan when you switch to it
+function revolverFrame(id, w, now) {
+  if (w.fanHammer) { fanTheHammer(id, w, now); return; }
+  W.fanning.arm = false;
+  if (W.fanning.on || twirling(W.twirl)) { W.fanning.on = false; resetTwirl(W.twirl); }
+}
+// spin the viewmodel round the trigger finger (the hand stays put). returns how far into the twirl pose it is
+function twirlVM(m, dt) {
+  const s = W.twirl;
+  if (W.aimHeld && s.seg && !s.seg.quick) { spin(s, 0.12, -4, 0); s.seg.quick = true; } // aiming: finish the turn now
+  const a = stepTwirl(s, dt);
+  applyTwirl(m.g, a, m.cfg.s);
+  if (m.flash) { // the flash hangs where the shot left the muzzle instead of spinning off with the barrel
+    const mz = m.g.userData.muzzle, c = Math.cos(a), sn = Math.sin(a), y = mz.y - m.g.position.y / m.cfg.s, z = mz.z - m.g.position.z / m.cfg.s;
+    m.flash.position.set(mz.x, y * c + z * sn, z * c - y * sn); m.flash.rotation.x = -a;
+  }
+  return s.k * (1 - W.aim);
 }
 
 function fireProj(id, now, fromAnim) {
@@ -689,6 +751,7 @@ export function fireDown() {
   W.held = true;
   cancelInspect();
   const id = W.cur, w = WEAPONS[id], now = performance.now();
+  W.fanning.down = now; W.fanning.arm = true; // revolver: keep holding from here to fan the hammer
   if (!ME.alive || W.reloadId === id || !ready(id, now)) return;
   if (W.anim && W.anim.kind === 'draw') W.anim = null;
   if (w.kind === 'hitscan' && !w.auto && !w.spinup) {
@@ -823,6 +886,7 @@ export function updateWeapons(dt, now) {
     }
   }
 
+  revolverFrame(id, w, now);
   if (id === 'bow') {
     if (alive && W.held && ready('bow', now)) { const was = W.draw; W.draw = Math.min(1, W.draw + dt / w.draw); if (was < 1 && W.draw >= 1) sfx.click(); }
     const tip = ARROW_TIPS[G.tip] ? G.tip : 'regular';
@@ -986,6 +1050,7 @@ export function updateWeapons(dt, now) {
     m.g.rotation.x = a;
     m.g.position.set(0, Math.sin(a) * pz, pz - Math.cos(a) * pz);
   }
+  if (w.fanHammer) { const k = twirlVM(m, dt); px -= k * 0.025; py -= k * 0.02; pz -= k * 0.1; ry += k * 0.4; rz -= k * 0.15; } // arm out + wrist turned so you see it go round (the barrel never swings through your face)
   if (W.inspectSpin > 0) { W.inspectSpin = Math.max(0, W.inspectSpin - dt * 0.8); if (m.g.userData.barrels) m.g.userData.barrels.rotation.z += W.inspectSpin * dt * 30; }
   m.wrap.scale.setScalar(scale);
   if (id === 'reverse' && reversed) { ry += Math.sin(now * 0.03) * 0.8; py += 0.05; }

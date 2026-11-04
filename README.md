@@ -110,6 +110,8 @@ Bots play the objectives too: they carry and plant the bomb, defuse it, and grab
 
 **Katana:** the blade gets longer (and reaches further) with every kill you get with it. Resets when you die.
 
+**Revolver:** tap for a dead-accurate 40 damage shot (headshots basically kill), and after every shot it does a quick cowboy twirl round your trigger finger, back in the hand before you can fire again. **Hold fire to fan the hammer:** after the first shot the rest of the cylinder goes at about 6 a second, with way more spread and 28 damage a shot (70 to the head), the gun spinning in your hand the whole time to rapid hammer clicks. Your off hand holds it down, so fanning kicks less than tapping. Aim down sights for plain single shots. Everyone else (and the killcam) sees your revolver spin too. The server checks it all: hits that come faster than a tap only do fan damage, nothing counts faster than a fan, and after 6 hits it wants a reload.
+
 **Snowball:** barely hurts, but every hit adds frost. 4 hits freezes them solid for a moment; hit a frozen target and they shatter.
 
 **Bow:** hold to draw, release to fire. Every arrow gets a random tip, shown on the HUD: regular, power, knockback, flame, explosion, gas, sleep.

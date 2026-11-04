@@ -92,6 +92,7 @@ function applyEv(m) {
   if (m.t === 'fx' && m.k === 'shot') {
     const w = WEAPONS[m.w];
     if (!w || !Array.isArray(m.s)) return;
+    if (g && w.fanHammer) g.revShot(!!m.fan); // ghosts twirl their revolvers too
     const fast = w.rate > 8, mz = g ? g.muzzle() : null;
     const col = tracerColor(((info[m.id] || {}).skins || {})[m.w], w.tracer || 0xfff0a0);
     if (w.marbles) { const sk = ((info[m.id] || {}).skins || {})[m.w]; marbles.shootSegs(m.s, mz, sk && sk[3] === 'marbles_gumball' ? 'gumball' : 'glass', 2); if (m.s.length) sfx.gun(m.w, m.s[0].slice(0, 3)); return; }

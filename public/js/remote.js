@@ -8,6 +8,7 @@ import { buildCharacter, buildWeapon, makeNameTag, makeShadow, cardTex, setKatan
 import { fx, makeBeam, setBeam } from './fx.js';
 import { emitSkinFx } from './skins.js';
 import { jankify } from './jank.js';
+import { newTwirl, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
 
 // players ignore fog, glow a bit, and get an outline in their colour so you can spot them across the map
 const noFog = new Map();
@@ -105,6 +106,12 @@ export class Remote {
   }
 
   setKat(n) { this.katN = n; if (this.w === 'katana' && this.weaponMesh) setKatana(this.weaponMesh, n); }
+  // revolver: a quick twirl after every shot, one turn per shot while they fan the hammer (same timing as yours).
+  // the gun points forward for this shot's tracer; update() puts the spin back on
+  revShot(fan) {
+    twirlShot(this.tw || (this.tw = newTwirl()), fan);
+    if (this.weaponMesh && this.w === 'revolver') applyTwirl(this.weaponMesh, 0, this.weaponMesh.scale.x);
+  }
   setSkins(s) { this.skins = s || {}; const w = this.w; this.w = null; if (w) this.setWeapon(w); }
 
   setWeapon(w) {
@@ -293,6 +300,8 @@ export class Remote {
     this.card.visible = !!(this.f & FLAGS.REVERSE) || now < (this.reverseUntil || 0);
     if (this.card.visible) this.card.rotation.y += dt * 9;
     if (now < this.burnUntil && Math.random() < 0.7) fx.burn(this.pos);
+    if (this.w !== 'revolver') this.tw = null;
+    else if (this.tw && this.weaponMesh) applyTwirl(this.weaponMesh, stepTwirl(this.tw, dt), this.weaponMesh.scale.x);
     if (this.weaponMesh) { ch.root.updateMatrixWorld(true); emitSkinFx(G.skinFxWorld, this.weaponMesh, dt, this.w === 'bread' ? 1 : 1.5); }
   }
 

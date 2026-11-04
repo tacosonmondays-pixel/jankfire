@@ -1176,6 +1176,7 @@ net.on('fx', (m) => {
   if (m.k === 'shot') {
     const w = WEAPONS[m.w];
     if (!w) return;
+    if (r && w.fanHammer) r.revShot(!!m.fan); // their revolver twirls too
     const fast = w.rate > 8;
     const mz = r ? r.muzzle() : null;
     const color = () => tracerColor((G.skins.get(m.id) || {})[m.w], w.tracer || 0xfff0a0);
