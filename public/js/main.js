@@ -39,6 +39,8 @@ import { EPIC_CAM, epicMul, epicCamMs } from '/shared/epic.js';
 import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, HAIRS, TOPS, BOTTOMS } from '/shared/looks.js';
 import { startBall, endBall, ballOn, BS } from './player.js';
 import { updateWreck, ballCam, wreckFx, wreckDied } from './wreck.js';
+import { hasAcc } from '/shared/looks.js';
+import { airTick, airReset, airFlourish } from './airborne.js';
 import { account, restore, login, register, logout, saveProfile, leaderboard as fetchLeaders } from './account.js';
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { SPRAY, ownedSpray } from '/shared/cosmetics.js';
@@ -479,12 +481,13 @@ function buildCharacterUI() {
     const el = $('lk-' + slot);
     el.innerHTML = '';
     for (const [k, v] of Object.entries(ACCESSORIES[slot])) {
-      const have = !v.ach || achs.has(v.ach);
+      const have = hasAcc(v, achs);
       const c = document.createElement('button');
       c.className = 'chip' + (look[slot] === k ? ' on' : '') + (have ? '' : ' locked');
       c.textContent = v.name;
       if (v.ach) c.style.setProperty('--rc', '#ffe14d');
       c.title = v.ach ? `${ACHIEVEMENTS[v.ach].name}: ${ACHIEVEMENTS[v.ach].desc}` : 'free';
+      if (v.legacy && achs.has(v.legacy) && !achs.has(v.ach)) c.title += ' (yours anyway: you earned them before they moved here)';
       c.addEventListener('click', () => {
         if (!have) { toast(`${v.name}: unlock "${ACHIEVEMENTS[v.ach].name}" (${ACHIEVEMENTS[v.ach].desc})${account.loggedIn ? '' : '. log in so it counts'}`, 3200); return; }
         setLook({ ...look, [slot]: k }); buildCharacterUI();
@@ -514,7 +517,7 @@ function buildCharacterUI() {
   // achievements list with progress
   const list = $('achList');
   list.innerHTML = '';
-  const h = document.createElement('div'); h.className = 'lt'; h.textContent = `achievements ${achs.size}/${Object.keys(ACHIEVEMENTS).length}`;
+  const h = document.createElement('div'); h.className = 'lt'; h.textContent = `achievements ${[...achs].filter((a) => ACHIEVEMENTS[a]).length}/${Object.keys(ACHIEVEMENTS).length}`;
   list.append(h);
   const st = (account.me && account.me.stats) || {};
   for (const [id, a] of Object.entries(ACHIEVEMENTS)) {
@@ -543,7 +546,7 @@ $('lkRandom').addEventListener('click', () => {
   const pick = (arr) => arr[(Math.random() * arr.length) | 0];
   const look = { color: pick(LOOK_COLORS), skin: pick(SKIN_TONES), hair: pick(Object.keys(HAIRS)), hairColor: pick(HAIR_COLORS),
     top: pick(Object.keys(TOPS)), topColor: pick(CLOTH_COLORS), bottom: pick(Object.keys(BOTTOMS)), bottomColor: pick(CLOTH_COLORS) };
-  for (const s2 of LOOK_SLOTS) look[s2] = pick(Object.entries(ACCESSORIES[s2]).filter(([, v]) => !v.ach || achs.has(v.ach)).map(([k]) => k));
+  for (const s2 of LOOK_SLOTS) look[s2] = pick(Object.entries(ACCESSORIES[s2]).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k));
   setLook(look); buildCharacterUI();
 });
 $('lkReset').addEventListener('click', () => { setLook({ ...DEFAULT_LOOK }); buildCharacterUI(); });
@@ -854,6 +857,7 @@ function addRemoteInfo(p) {
 // ------------------------------------------------------------ net handlers
 net.on('welcome', (m) => {
   G.myId = m.id; G.myName = m.name; G.myColor = m.color; G.joined = true; connecting = false;
+  airReset();
   G.mode = m.mode; G.cfg = m.cfg;
   loadMap(m.cfg.map);
   ME.pos = m.pos.slice(); ME.vel = [0, 0, 0]; ME.alive = true; ME.hp = 100; ME.seq = m.q;
@@ -938,6 +942,7 @@ net.on('ach', (m) => {
   hud.msg(`ACHIEVEMENT: ${a.name}`, 3, 'brag');
   hud.chat(null, null, `achievement unlocked: ${a.name} (${a.desc})${rewards ? ' · unlocked ' + rewards + ' in CHARACTER' : ''}`);
   sfx.kill();
+  if (m.id === 'airborne') airFlourish();
 });
 net.on('sn', (m) => {
   recordSnap(m);
@@ -1364,7 +1369,7 @@ function frame(t) {
     } : {};
     jumpPressed = false;
     acc += dt;
-    while (acc >= STEP) { stepPlayer(STEP, inp, now); inp.jumpPressed = false; acc -= STEP; }
+    while (acc >= STEP) { stepPlayer(STEP, inp, now); airTick(now); inp.jumpPressed = false; acc -= STEP; }
     // spinbot killstreak: lock onto the nearest enemy you can see
     const spinning = ME.alive && now < (G.spinUntil || 0);
     if (spinning) {
@@ -1934,6 +1939,7 @@ function renderProfile() {
   const rows = [
     ['wins', st.wins], ['kills', st.kills], ['deaths', st.deaths], ['k/d', st.deaths ? (st.kills / st.deaths).toFixed(2) : st.kills],
     ['bot kills', st.bot_kills], ['best coop wave', st.best_wave], ['top speed', `${st.top_speed} km/h`], ['played', fmtTime(st.playtime)],
+    ['never landed', `${st.airborne || 0}x`],
     ['cosmetics', `${owned}/${total}`], ['crates / bags / boxes', `${me.rolls.crate || 0} / ${me.rolls.bag || 0} / ${me.rolls.box || 0}`],
   ];
   $('profStats').innerHTML = '';

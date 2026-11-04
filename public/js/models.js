@@ -913,6 +913,11 @@ function addAccessories(ch, look, c) {
     case 'eyepatch': at(H, bx(0.06, 0.05, 0.02, 0x111111, 0.05, 0.17, fz, true)); at(H, bx(0.28, 0.012, 0.012, 0x111111, 0, 0.19, fz + 0.01)); break;
     case 'bandana': at(H, bx(0.22, 0.09, 0.03, 0xc02030, 0, 0.07, fz + 0.01)); break;
     case 'visor': at(H, bx(0.24, 0.05, 0.02, 0x3ee6c8, 0, 0.17, fz - 0.005, true)); break;
+    case 'goggles': { // old-school flight goggles: leather strap round the head, two round amber lenses
+      const s = new THREE.Mesh(new THREE.CylinderGeometry(0.153, 0.153, 0.035, 12, 1, true), M(0x6a3f1e)); s.position.y = 0.17; H.add(s);
+      for (const sx of [-1, 1]) { at(H, cylZ(0.048, 0.04, 0x8a5a2b, sx * 0.058, 0.175, fz + 0.005, 10)); at(H, cylZ(0.036, 0.01, 0xffb84d, sx * 0.058, 0.175, fz - 0.016, 10, true)); }
+      break;
+    }
   }
   // back stuff hangs off the upper back (chest back surface ~z 0.15) and is strapped over the shoulders
   const thick = look.top === 'jacket' || look.top === 'suit' || look.top === 'hoodie' ? 0.03 : 0;

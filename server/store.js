@@ -10,6 +10,7 @@ import { CONTAINERS } from '../shared/cosmetics.js';
 const FIELD = (kind) => (CONTAINERS[kind] ? CONTAINERS[kind].field : null);
 
 export const STAT_KEYS = ['kills', 'deaths', 'bot_kills', 'wins', 'best_wave', 'top_speed', 'xp', 'playtime', 'void_kills', 'headshots', 'tbags'];
+STAT_KEYS.push('airborne', 'wings_old'); // Never Landed + the grandfathered Wings
 const MAX_KEYS = new Set(['best_wave', 'top_speed']); // these keep the max instead of adding up
 
 function applyDelta(u, d) {
@@ -30,6 +31,8 @@ class FileStore {
     this.db.users ||= {};
     this.db.secret ||= crypto.randomBytes(32).toString('hex');
     this.timer = null;
+    // the Wings moved from Frequent Flyer to Never Landed: everyone who had Frequent Flyer at that moment keeps them (runs once)
+    if (!this.db.wingsMoved) { for (const u of Object.values(this.db.users)) if ((u.top_speed || 0) >= 1000) u.wings_old = 1; this.db.wingsMoved = 1; }
     this.flushNow();
   }
   flushNow() {
@@ -116,7 +119,10 @@ class SupabaseStore {
   async addStats(nameLower, d) {
     const u = await this.get(nameLower);
     if (!u) return;
-    await this.req('PATCH', `?name_lower=eq.${encodeURIComponent(nameLower)}`, applyDelta(u, d), { Prefer: 'return=minimal' });
+    const out = applyDelta(u, d);
+    // a stat column the table doesn't have yet (supabase.sql not re-run) would fail the whole batch: skip just that stat
+    for (const k of Object.keys(out)) if (!(k in u)) { delete out[k]; if (!this.warned?.[k]) { (this.warned ||= {})[k] = 1; console.warn(`  !! jf_users has no '${k}' column: run the new block in supabase.sql`); } }
+    await this.req('PATCH', `?name_lower=eq.${encodeURIComponent(nameLower)}`, out, { Prefer: 'return=minimal' });
   }
   async grantRolls(nameLower, kind, n) {
     const u = await this.get(nameLower), f = FIELD(kind);

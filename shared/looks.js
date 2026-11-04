@@ -12,7 +12,13 @@ export const ACHIEVEMENTS = {
   sharp: { name: 'Sharpshooter', desc: 'land 50 headshots', stat: 'headshots', goal: 50 },
   knees: { name: 'Knee Trouble', desc: 't-bag so hard you explode', stat: 'tbags', goal: 1 },
   nolife: { name: 'No Life', desc: 'play for 5 hours', stat: 'playtime', goal: 18000 },
+  airborne: { name: 'Never Landed', desc: 'finish a whole match without touching the ground after any spawn', stat: 'airborne', goal: 1 },
 };
+// hidden unlocks that aren't in the list: the Wings used to come from Frequent Flyer, and whoever had them by then keeps them
+export const LEGACY_ACHS = { oldwings: { stat: 'wings_old', goal: 1 } };
+// careful: these ids show up in /api/me achs too, so anything mapping achs through ACHIEVEMENTS[id] must skip unknown ids
+// an accessory is yours if you have its achievement (or its legacy one)
+export function hasAcc(a, achs) { return !!a && (!a.ach || !!(achs && (achs.has(a.ach) || (a.legacy && achs.has(a.legacy))))); }
 
 export const ACCESSORIES = {
   head: {
@@ -24,10 +30,11 @@ export const ACCESSORIES = {
   face: {
     none: { name: 'None' }, shades: { name: 'Sunglasses' }, mustache: { name: 'Mustache' }, clown: { name: 'Clown Nose' },
     eyepatch: { name: 'Eyepatch' }, bandana: { name: 'Bandana', ach: 'firstblood' }, visor: { name: 'Visor', ach: 'sharp' },
+    goggles: { name: 'Flight Goggles', ach: 'flyer' },
   },
   back: {
     none: { name: 'None' }, backpack: { name: 'Backpack' }, cape: { name: 'Cape' },
-    wings: { name: 'Wings', ach: 'flyer' }, voidcape: { name: 'Void Cape', ach: 'void' }, jetpack: { name: 'Jetpack', ach: 'nolife' },
+    wings: { name: 'Wings', ach: 'airborne', legacy: 'oldwings' }, voidcape: { name: 'Void Cape', ach: 'void' }, jetpack: { name: 'Jetpack', ach: 'nolife' },
   },
 };
 export const LOOK_SLOTS = ['head', 'face', 'back'];
@@ -45,6 +52,7 @@ export function achievementsFrom(stats) {
   const out = new Set();
   if (!stats) return out;
   for (const [id, a] of Object.entries(ACHIEVEMENTS)) if ((stats[a.stat] || 0) >= a.goal) out.add(id);
+  for (const [id, a] of Object.entries(LEGACY_ACHS)) if ((stats[a.stat] || 0) >= a.goal) out.add(id);
   return out;
 }
 
@@ -55,7 +63,7 @@ export function validLook(look, achs) {
   if (LOOK_COLORS.includes(look.color)) out.color = look.color;
   for (const s of LOOK_SLOTS) {
     const a = ACCESSORIES[s][look[s]];
-    if (a && (!a.ach || (achs && achs.has(a.ach)))) out[s] = look[s];
+    if (a && hasAcc(a, achs)) out[s] = look[s];
   }
   if (HAIRS[look.hair]) out.hair = look.hair;
   if (TOPS[look.top]) out.top = look.top;

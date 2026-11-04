@@ -229,12 +229,17 @@ Achievement accessories:
 | First Blood | get a kill | Bandana |
 | Champion | win 10 rounds | Champion Crown |
 | Speed Demon | hit 500 km/h | Racing Helmet |
-| Frequent Flyer | hit 1000 km/h | Wings |
+| Frequent Flyer | hit 1000 km/h | Flight Goggles |
 | Survivor | reach coop wave 10 | Hard Hat |
 | Void Lord | knock 25 people into the void | Void Cape |
 | Sharpshooter | 50 headshots | Visor |
 | Knee Trouble | t-bag so hard you explode | Ice Pack |
 | No Life | play 5 hours | Jetpack |
+| Never Landed | finish a whole match without touching the ground after any spawn | Wings |
+
+**Never Landed:** be in the match from the start (or join in the first 5 seconds) until the end-of-match screen. After every spawn you get 3 seconds to leave the ground; after that, any touch of a floor, roof, box top or platform ends the run for that match, even a single bhop tick. Walls, the grapple and jump pads (as long as you don't stand on them) are fine, and so is dying: every respawn gives a fresh 3 seconds. A **NEVER LANDED** tag with a little wing shows on the left while your run is clean; **YOU TOUCHED GRASS** when it breaks. Your client reports the touch, and the server also checks your snapshots against the map (resting on a box top twice in a row = landed), so a client that just never reports doesn't get it. Leaving and rejoining doesn't wipe a broken run. Online and Bots matches, logged-in players only.
+
+The Wings used to come from Frequent Flyer: everyone who had Frequent Flyer before the change keeps them (Supabase hosts: run the end of `supabase.sql` once to add the new columns and grandfather them; until then the server skips just those stats and logs a hint).
 
 ## Name cards, killcam, play of the round
 
