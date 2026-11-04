@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { G } from './ctx.js';
 import { Remote } from './remote.js';
 import { buildProjectile, tipColor, teamLook, M } from './models.js';
+import { crossEvent } from './bloodcross.js';
 import { fx } from './fx.js';
 import { marbles } from './marbles.js';
 import { sfx } from './audio.js';
@@ -157,6 +158,8 @@ function applyEv(m) {
     if (m.k === st.opts.focus) sfx.kill();
   } else if (m.t === 'boom') {
     fx.explosion(m.p, m.r); sfx.boom(m.p);
+  } else if (m.t === 'bcross') {
+    crossEvent(m, st.ghosts, info); // the X sticks to the ghost, bursts, pops
   } else if (m.t === 'pd' && m.x) {
     fx.explosion(m.p, WEAPONS.chicken.radius); sfx.boom(m.p);
   } else if (m.t === 'he') {
@@ -297,6 +300,8 @@ export function updateReplay(dt, now, cam) {
   st.wall = now;
   const slow = o.slow && o.slow.find(([a, b]) => st.t >= a && st.t <= b);
   const sp = slow ? slow[2] || 0.3 : 1; // slow windows are [from, to, speed?]
+  // bloodcross.js runs the replay's crosses on replay time (this wall-clock step x the slow-mo), so the spikes keep pace with the ghosts
+  RP.sp = sp; RP.dt = dt;
   st.t += dt * 1000 * sp;
   feed(st.t + 260);
   for (const g of st.ghosts.values()) if (g.downAt && st.t >= g.downAt + 400) { g.alive = false; g.downAt = 0; } // died with no kill event in the clip

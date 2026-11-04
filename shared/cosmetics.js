@@ -50,6 +50,7 @@ export const COSMETICS = {
     scythe_reaper: { name: 'Reaper', rarity: 'legendary', weapon: 'scythe' },
     katana_bokken: { name: 'Bokken', rarity: 'common', weapon: 'katana' },
     marbles_gumball: { name: 'Gumball Machine', rarity: 'rare', weapon: 'marbles' },
+    bloodcross_shadow: { name: 'Shadow Cross', rarity: 'epic', weapon: 'bloodcross' }, // a charred hand that bleeds purple
     redline_hotrod: { name: 'Hot Rod', rarity: 'epic', weapon: 'redline' },
     katana_shirasaya: { name: 'Shirasaya', rarity: 'rare', weapon: 'katana' },
     scales_kangaroo: { name: 'Kangaroo Court', rarity: 'rare', weapon: 'scales' },

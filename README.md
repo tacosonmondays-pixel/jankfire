@@ -101,7 +101,7 @@ Bots play the objectives too: they carry and plant the bomb, defuse it, and grab
 ## Weapons
 
 - **Primary:** Assault Rifle, SMG, Shotgun, Minigun, Sniper, Chicken Rocket, Bowling Ball Launcher, Bow, Peel Shooter, **Shredder**
-- **Secondary:** Revolver, Marble Shotgun, Cigarette (smoke it, blow fire), Leaf Blower, Card Deck, **Snowball**
+- **Secondary:** Revolver, Marble Shotgun, Cigarette (smoke it, blow fire), Leaf Blower, Card Deck, **Snowball**, **Blood Cross**
 - **Melee:** Bread, Slipper (throw it, it comes back), Knife, Hand Slapper (point blank, launches + makes them slip), **Katana**, Spoon, **Scales of Justice**
 - **Item (G):** one per loadout, see below. The Party Popper and the Reverse Card used to be secondaries; they're items now.
 
@@ -167,6 +167,8 @@ Coop wave bots and training dummies aren't on the scoreboard, so only their stre
 
 **Card Deck:** you hold 5 cards from a real 54-card deck. Right click picks, left click flicks it out of the fan, R redraws.
 Hearts heal by the number · Spades throw that many cards · Clubs blast people back · Diamonds dash you forward · Aces teleport you · J / Q / K are ultimates · Jokers fire a random ultimate.
+
+**Blood Cross:** no gun, just your hand doing finger guns (the thumb is the hammer). Every shot costs you 12 HP (it never takes your last one, so it can't kill you), about one shot every 0.7 s. The glowing blood bolt flies dead straight and sticks where it lands: on a player a small glowing X carves into their body and rides along with them, 0.6 s later two 2.5 m blood spikes burst out through them in a big X, then they pop for 75 damage plus a small blast (3 m, up to 35) on anyone else close by (not your team), blood all over the walls. A kill with it pays the 12 HP back. On walls and floors it leaves an X that fizzles out. Everyone sees the mark, the spikes and the pop (killcams and the play of the round too); when it's you, the X is on your screen. Inspect blows the blood off your fingertip. In Training the blood you spent comes back 2 s after your last shot. Skin: Shadow Cross, a charred hand that bleeds purple.
 
 **Aim down sights:** the rifles, SMG, revolver and peel shooter have real iron sights (the shotgun has a bead), and ADS lines the sight up with the exact middle of the screen with the gun below it. Launchers, the minigun and the bow stay low and to the side. Hats tuck away while you aim.
 

@@ -1671,6 +1671,7 @@ class Room {
     if (w.kind === 'melee') { this.broadcast({ t: 'fx', k: 'swing', w: m.w, id: p.id, a: o.map(r2), h: m.heavy === 1 ? 1 : undefined }, p.id); return; }
     const d = norm(vec3(m.d));
     if (d && w.kind === 'proj') this.spawnProj(p, m.w, o, d);
+    if (d && w.kind === 'blood') this.fireBlood(p, o, d);
     if (d && w.kind === 'bow') {
       const n = now();
       if (n - (p.lastFire.bow || 0) < w.cd * 750) return;
@@ -1818,6 +1819,100 @@ class Room {
     }
   }
 
+  // ---------------------------------------------------------- Blood Cross: paid in HP, the bolt sticks, a cross bursts out of them, they pop
+  // cross events go to everyone and into the recording, so killcams + the play of the round show the mark, the spikes and the pop
+  crossCast(m) { this.broadcast(m); this.rec.ev.push({ s: now(), m }); }
+  fireBlood(p, o, d) {
+    const w = WEAPONS.bloodcross, n = now();
+    if (this.round && this.round.over) return; // nothing can be hurt between rounds, so don't charge blood for it
+    if (n - (p.lastFire.bloodcross || 0) < w.cd * 750) return;
+    p.lastFire.bloodcross = n; // a refused shot uses the cooldown up too, so spamming it costs the server nothing
+    if (p.hp - w.cost < 1) { send(p, { t: 'bcross', k: 'dry', o: p.id }); return; } // it never takes your last HP, so it can't kill you
+    p.hp -= w.cost;
+    if (this.mode === 'training') p.bcPaid = (p.bcPaid || 0) + w.cost; // training hands it back once you stop
+    const wallHit = raycast(o, d, 0.8, this.boxes);
+    const off = wallHit ? Math.max(0, wallHit.t - w.r - 0.05) : 0.8;
+    const pr = {
+      id: this.nextProj++, k: 'bloodcross', o: p.id, r: w.r, bounce: 0, born: n, phase: 0, hit: new Map(), sync: 0, cost: w.cost,
+      p: [o[0] + d[0] * off, o[1] + d[1] * off, o[2] + d[2] * off], v: d.map((x) => x * w.speed), // no gravity, no inherited speed: it goes where you point
+    };
+    this.projectiles.set(pr.id, pr);
+    this.broadcast({ t: 'ps', id: pr.id, k: pr.k, p: pr.p.map(r2), v: pr.v.map(r2), o: p.id });
+  }
+  tickBloodBolt(pr, dt, n) {
+    const w = WEAPONS.bloodcross, owner = this.players.get(pr.o), prev = pr.p.slice();
+    const hit = stepProjectile(pr, dt, this.boxes, 0);
+    // only up to the wall, so nobody gets hit through it. a shooter who left can't tell friend from foe: it only finds walls then
+    const vs = owner ? this.sweep(prev, pr.p, pr.r, (t) => t.id === pr.o || this.friendly(owner, t)) : [];
+    if (vs.length) { pr.p = vs[0].at; this.removeProj(pr); this.stickCross(pr, vs[0].t); return; }
+    if (hit) { // walls + floors: a red X that fizzles out, no damage
+      const nrm = [0, 0, 0]; nrm[hit.axis] = hit.sign;
+      this.removeProj(pr);
+      this.crossCast({ t: 'bcross', k: 'wall', id: pr.id, o: pr.o, p: pr.p.map(r2), n: nrm });
+      return;
+    }
+    if ((n - pr.born) / 1000 > w.life || pr.p[1] < this.map.killY) this.removeProj(pr);
+  }
+  // the mark lives in the target's own frame (turned by their yaw), so it turns and moves with them
+  crossAt(t, off) {
+    const c = Math.cos(t.yaw || 0), s = Math.sin(t.yaw || 0);
+    return [t.pos[0] + (off[0] * c + off[2] * s) * 0.15, t.pos[1] + off[1], t.pos[2] + (off[2] * c - off[0] * s) * 0.15];
+  }
+  stickCross(pr, t) {
+    const w = WEAPONS.bloodcross;
+    let dx = pr.p[0] - t.pos[0], dz = pr.p[2] - t.pos[2], l = Math.hypot(dx, dz);
+    if (l < 0.05) { dx = -pr.v[0]; dz = -pr.v[2]; l = Math.hypot(dx, dz) || 1; } // dropped straight onto their head: face where it came from
+    dx /= l; dz /= l;
+    const c = Math.cos(t.yaw || 0), s = Math.sin(t.yaw || 0);
+    // which side it hit (unit, body-local) + how high: shins count as hips so the cross never ends up in the floor
+    const off = [r2(dx * c - dz * s), r2(Math.max(0.9, Math.min(2.15, pr.p[1] - t.pos[1]))), r2(dx * s + dz * c)];
+    const mk = { id: pr.id, o: pr.o, t: t.id, seq: t.seq, off, d: norm(pr.v) || [0, 0, -1], at: now() + w.fuse * 1000, ph: 0, cost: pr.cost || w.cost };
+    mk.p = this.crossAt(t, off);
+    (this.crosses ||= new Map()).set(mk.id, mk);
+    this.crossCast({ t: 'bcross', k: 'stick', id: mk.id, o: mk.o, to: t.id, off, p: mk.p.map(r2), f: w.fuse });
+  }
+  tickCrosses() {
+    const n = now(), w = WEAPONS.bloodcross;
+    if (this.mode === 'training') { // infinite ammo there: the blood you spent comes back 2s after your last shot
+      for (const p of this.players.values()) {
+        if (!p.bcPaid || n - (p.lastFire.bloodcross || 0) < 2000) continue;
+        const a = p.alive ? Math.min(p.bcPaid, 100 - p.hp) : 0;
+        if (a > 0) { p.hp += a; send(p, { t: 'bcross', k: 'refill', o: p.id, a: Math.round(a) }); }
+        p.bcPaid = 0;
+      }
+    }
+    if (!this.crosses || !this.crosses.size) return;
+    for (const mk of this.crosses.values()) {
+      const t = this.players.get(mk.t), on = !!(t && t.alive && t.seq === mk.seq);
+      if (on) mk.p = this.crossAt(t, mk.off); // died or respawned: it stays where they were
+      if (mk.ph === 0 && n >= mk.at) { mk.ph = 1; this.crossCast({ t: 'bcross', k: 'erupt', id: mk.id, o: mk.o, to: mk.t, p: mk.p.map(r2) }); }
+      else if (mk.ph === 1 && n >= mk.at + w.burst * 1000) { this.crosses.delete(mk.id); this.blowCross(mk, on ? t : null); }
+    }
+  }
+  blowCross(mk, t) {
+    const w = WEAPONS.bloodcross, owner = this.players.get(mk.o) || null, p = mk.p;
+    this.crossCast({ t: 'bcross', k: 'boom', id: mk.id, o: mk.o, to: mk.t, p: p.map(r2) });
+    // the shooter left before the pop: everyone still sees it, but with no attacker the team, spawn and bubble checks
+    // can't work (it would hit their old team), so it does no damage
+    if (!owner) return;
+    let kills = 0;
+    // never a headshot: it's a fixed delayed pop wherever it stuck, so it stays out of the headshot stats + highlights
+    const pop = (v, dmg, kb) => { const was = v.alive; this.hurt(v, owner, 'bloodcross', dmg, kb); if (was && !v.alive) kills++; };
+    if (t) pop(t, w.dmg, [mk.d[0] * w.kb, 4, mk.d[2] * w.kb]);
+    for (const v of [...this.players.values()]) { // the small blast: everyone else close by, not you (teammates are skipped by hurt)
+      if (v === t || v === owner || !v.alive) continue;
+      const c = center(v), to = [c[0] - p[0], c[1] - p[1], c[2] - p[2]], dist = Math.hypot(...to);
+      if (dist > w.blastR) continue;
+      const f = 1 - dist / w.blastR, dir = dist > 0.1 ? to.map((x) => x / dist) : [0, 1, 0];
+      pop(v, w.blastDmg * f, [dir[0] * w.kb * 1.5 * f, 3 + 3 * f, dir[2] * w.kb * 1.5 * f]);
+    }
+    if (kills && owner.alive) { // blood magic: a kill pays back what the shot cost (never past full)
+      const a = Math.max(0, Math.min(mk.cost, Math.max(100, owner.hp) - owner.hp));
+      owner.hp += a;
+      this.crossCast({ t: 'bcross', k: 'refund', id: mk.id, o: owner.id, a: Math.round(a), p: p.map(r2) });
+    }
+  }
+
   makePeel(p, owner) {
     const pl = { id: this.nextPeel++, p: [r2(p[0]), r2(p[1]), r2(p[2])], born: now(), o: owner };
     this.peels.set(pl.id, pl);
@@ -1879,6 +1974,7 @@ class Room {
       this.epicProj = pr; // a kill by this projectile counts from where it was fired (epicOf)
       const w = WEAPONS[pr.k];
       const age = (n - pr.born) / 1000;
+      if (pr.k === 'bloodcross') { this.tickBloodBolt(pr, dt, n); continue; }
       const owner = this.players.get(pr.o);
       const prev = pr.p.slice();
       let hit = null;
@@ -2217,6 +2313,7 @@ class Room {
       this.sendLoadout(p);
     }
     if (this.mode === 'training') { this.removeBots(); this.spawnDummies(); }
+    if (this.crosses) this.crosses.clear();
   }
 
   handle(p, m) {
@@ -2678,6 +2775,7 @@ class Room {
     this.tickTraps(n);
     for (const b of this.players.values()) if (b.isBot && b.alive) this.stepBot(b, dt);
     this.tickProjectiles(dt);
+    this.tickCrosses();
     this.tickHoles(dt);
     this.tickStatus(dt);
     this.tickPeels();
