@@ -823,7 +823,13 @@ class Room {
     } else if (w.kind === 'melee') { // zombie claws and the gun game's melee rungs: botThink only gets here in reach
       const d = norm([t.pos[0] - b.pos[0], t.pos[1] - b.pos[1], t.pos[2] - b.pos[2]]) || aim;
       this.broadcast({ t: 'fx', k: 'swing', w: b.w, id: b.id, a: o.map(r2) });
-      this.hurt(t, b, b.w, w.dmg, [d[0] * w.kb, d[1] * w.kb + (w.kbUp || 0), d[2] * w.kb], { slip: !!w.slip });
+      if (this.parryMelee(b, t)) return; // a katana parry shoves the bot off, like a player's swing
+      const vd = w.verdict ? this.verdictOf(b, t) : null; // the scales rung: the court decides how hard it lands
+      const hp0 = t.hp, dmg = w.dmg * (vd ? vd.mult : 1);
+      this.hurt(t, b, b.w, dmg, [d[0] * w.kb, d[1] * w.kb + (w.kbUp || 0), d[2] * w.kb], { slip: !!w.slip });
+      if (vd && t.hp < hp0) this.broadcast({ t: 'fx', k: 'verdict', id: t.id, by: b.id, m: vd.mult, g: vd.g, one: !t.alive && dmg >= 100 ? 1 : 0, p: center(t).map(r2) });
+    } else if (w.kind === 'blood') { // the Blood Cross rung: same HP price and cooldown as a player's
+      this.fireBlood(b, o, spreadDir(aim, D.err));
     } else if (w.kind === 'bow') { // bots always loose a full draw
       const d = spreadDir(aim, D.err);
       const pr = this.makeProj(b, 'bow', [o[0] + d[0] * 0.7, o[1] + d[1] * 0.7, o[2] + d[2] * 0.7], d.map((x) => x * w.speedMax), { tip: pick(TIP_IDS), charge: 1 });
@@ -2384,6 +2390,7 @@ class Room {
     p.healLeft = 0; p.reverseUntil = 0; p.g = null; p.lastAttacker = 0; p.ground = null;
     if (p.ai) { p.ai.hook = null; p.ai.route = null; }
     p.parryT = 0; p.staggerUntil = 0; // katana parry: a new life starts with the guard ready (the client resets too)
+    p.ballUntil = 0; p.f &= ~FLAGS.BALL; // a wrecking ball doesn't roll into the next round (or the next mode)
     if (!p.isBot) { if (p.nextItem) { p.item = p.nextItem; p.nextItem = null; } p.ic = null; } // full charges (sendIc after 'spawn')
   }
   resetWorld() {
@@ -2884,6 +2891,7 @@ class Room {
     const w = this.modeWeapon(p);
     if ((!w && !p.only) || (p.isBot && p.ai.dummy)) return false;
     if (w === 'claw' && p.alive) { p.hp = INFECT.hp; p.healLeft = 0; }
+    if (w && p.ballUntil) { p.ballUntil = 0; p.f &= ~FLAGS.BALL; } // patient zero mid wrecking ball: claws only (the client ends it on 'modew')
     if (p.isBot) { p.w = w || pick(BOT_GUNS); p.ai.ammo = WEAPONS[p.w].mag || 1; p.ai.reloadUntil = 0; }
     else {
       if (w && p.forced) { p.forced = false; send(p, { t: 'loadout', lo: null }); }

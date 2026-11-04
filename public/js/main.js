@@ -1122,7 +1122,7 @@ net.on('bombev', (m) => {
 function onIc(m) {
   if (!m || !Object.hasOwn(ITEMS, m.i)) return;
   syncItem(m.i, m.n, m.next);
-  if (m.i !== W.item) { setItem(m.i); showSlots(); }
+  if (m.i !== W.item && !W.only) { setItem(m.i); showSlots(); } // (gun game / zombies: one weapon, no item)
 }
 net.on('ic', onIc);
 // the katana grows: everyone sees how long yours is
@@ -1201,7 +1201,7 @@ net.on('loadout', (m) => {
   if (m.lo) hud.msg(`${wname(m.lo.primary)} · ${wname(m.lo.secondary)} · ${wname(m.lo.melee)}${ITEMS[m.lo.item] ? ' · ' + ITEMS[m.lo.item].name : ''}`, 2.2, 'brag');
 });
 // gun game / infection: the server hands you exactly one weapon (null = your own loadout again)
-net.on('modew', (m) => setOnly(m.w || null, G.forcedLoadout || S.loadout));
+net.on('modew', (m) => { if (m.w) endBall(); setOnly(m.w || null, G.forcedLoadout || S.loadout); }); // (a mode weapon ends a wrecking ball: the server already did)
 net.on('kb', (m) => applyKb(m.v));
 net.on('grab', (m) => shredGrab(m)); // you're in someone's shredder
 net.on('slip', () => slip(performance.now()));
@@ -1301,6 +1301,7 @@ net.on('spawn', (m) => {
   ME.pos = m.p.slice(); ME.vel = [0, 0, 0]; ME.alive = true; ME.hp = 100; ME.seq = m.q;
   ME.slipUntil = 0; ME.combo = 0; ME.sleepUntil = 0;
   G.spawnT = performance.now();
+  endBall(); // a new life or round: no wrecking ball rolls on (the server ends it too)
   refillAmmo();
   if (G.pendingLoadout) applyLoadout(true);
   hud.dead(false);

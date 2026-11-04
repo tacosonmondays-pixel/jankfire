@@ -21,8 +21,10 @@ export const TAG_LIFE = 30000;
 export const VOTE_MS = 14000;
 // gun game: everyone climbs the same ladder, guns -> silly -> melee. a kill with your rung's weapon moves you up,
 // dying to any melee weapon knocks you back one. the first kill with the last rung (the spoon) wins the match.
-export const LADDER = ['ar', 'smg', 'redline', 'shotgun', 'minigun', 'revolver', 'marbles', 'sniper', 'bow', 'chicken', 'banana', 'cards', 'slapper', 'bread', 'katana', 'spoon'];
-export const GUNGAME = { time: 600 }; // match clock in seconds: 16 rungs take longer than a kill limit
+// update 2 adds the Shredder (with the close-range guns), the Blood Cross (with the silly ones) and the Scales of Justice
+// (with the melee): 19 rungs
+export const LADDER = ['ar', 'smg', 'redline', 'shotgun', 'minigun', 'shredder', 'revolver', 'marbles', 'sniper', 'bow', 'chicken', 'bloodcross', 'banana', 'cards', 'slapper', 'bread', 'scales', 'katana', 'spoon'];
+export const GUNGAME = { time: 600 }; // match clock in seconds: 19 rungs take longer than a kill limit
 // infection: patient zero turns a few seconds in (two of them from `two` fighters up). zombies get the claw,
 // more HP and more speed; anyone who dies as a survivor comes back as a zombie. survivors win if anyone lasts the timer.
 export const INFECT = { time: 180, delay: 6, two: 8, hp: 200, color: '#7dff4f' };
