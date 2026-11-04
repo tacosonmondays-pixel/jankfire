@@ -7,8 +7,8 @@ import { G } from './ctx.js';
 import { buildCharacter, buildWeapon, makeNameTag, makeShadow, cardTex, setKatana } from './models.js';
 import { fx, makeBeam, setBeam } from './fx.js';
 import { emitSkinFx } from './skins.js';
+import { wreckRemote, ballBoxes, wreckDispose } from './wreck.js';
 import { jankify } from './jank.js';
-import { wreckRemote, ballBoxes } from './wreck.js';
 
 // players ignore fog, glow a bit, and get an outline in their colour so you can spot them across the map
 const noFog = new Map();
@@ -303,6 +303,7 @@ export class Remote {
     G.scene.remove(this.ch.root);
     G.scene.remove(this.rope);
     G.scene.remove(this.shadow);
+    wreckDispose(this);
   }
 }
 

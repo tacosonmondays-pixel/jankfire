@@ -5,9 +5,9 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { BOXES } from '/shared/map.js';
 import { raycast } from '/shared/physics.js';
-import { WRECK, FLAGS, STREAKS, slamSize } from '/shared/weapons.js';
+import { WRECK, FLAGS, STREAKS, slamSize, ramDmg } from '/shared/weapons.js';
 import { G } from './ctx.js';
-import { ME, BS, eye, look, hookPoint, hspeed, ballOn } from './player.js';
+import { ME, BS, C, eye, look, hookPoint, hspeed, ballOn } from './player.js';
 import { W } from './weapons.js';
 import { fx } from './fx.js';
 import { sfx, loopLevel } from './audio.js';
@@ -24,13 +24,18 @@ function mat(color, kind = 'l', glow = 0) {
   const key = color + kind + glow;
   if (!mats.has(key)) {
     mats.set(key, kind === 'b' ? new THREE.MeshBasicMaterial({ color, fog: false })
+      : kind === 'o' ? new THREE.MeshBasicMaterial({ color, side: THREE.BackSide, fog: false }) // outline
       : kind === 's' ? new THREE.MeshPhongMaterial({ color, specular: 0x9aa8b8, shininess: 70, flatShading: true, fog: false })
         : new THREE.MeshLambertMaterial({ color, flatShading: true, fog: false, emissive: new THREE.Color(color).multiplyScalar(glow) }));
   }
   return mats.get(key);
 }
+// every ball (yours, everyone else's, replay ghosts) shares its geometry: nothing to leak when one goes away
+const boxGeos = new Map();
 function box(w, h, d, m, x, y, z) {
-  const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+  const key = w + ',' + h + ',' + d;
+  if (!boxGeos.has(key)) boxGeos.set(key, new THREE.BoxGeometry(w, h, d));
+  const o = new THREE.Mesh(boxGeos.get(key), m);
   o.position.set(x, y, z);
   return o;
 }
@@ -57,7 +62,8 @@ function ballParts() {
     }
   }
   parts = { rivets: mergeGeometries(rv), seams: mergeGeometries(sm), body: new THREE.SphereGeometry(R, 22, 14),
-    stripe: new THREE.SphereGeometry(R * 1.008, 28, 2, 0, Math.PI * 2, Math.PI / 2 - 0.17, 0.34) };
+    stripe: new THREE.SphereGeometry(R * 1.008, 28, 2, 0, Math.PI * 2, Math.PI / 2 - 0.17, 0.34),
+    base: new THREE.CylinderGeometry(0.28, 0.34, 0.14, 10), ring: new THREE.TorusGeometry(0.12, 0.045, 5, 12) };
   return parts;
 }
 const LINK_GEO = new THREE.TorusGeometry(0.13, 0.042, 4, 10).scale(1, 1.5, 1); // an oval chain link, long axis = y
@@ -71,10 +77,10 @@ export function buildWreckBall(color, look, opts = {}) {
   g.add(new THREE.Mesh(P.seams, mat(DARK)));
   g.add(new THREE.Mesh(P.rivets, mat(RIVET, 's')));
   // chain stub: base plate, lifting lug, a ring and two links
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.34, 0.14, 10), mat(DARK));
+  const base = new THREE.Mesh(P.base, mat(DARK));
   base.position.y = R - 0.03; g.add(base);
   g.add(box(0.09, 0.3, 0.26, mat(DARK), 0, R + 0.16, 0));
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.045, 5, 12), mat(LINK, 's'));
+  const ring = new THREE.Mesh(P.ring, mat(LINK, 's'));
   ring.position.y = R + 0.31; g.add(ring);
   for (const [y, ry] of [[R + 0.55, Math.PI / 2], [R + 0.8, 0]]) { const l = new THREE.Mesh(LINK_GEO, mat(LINK, 's')); l.position.y = y; l.rotation.y = ry; g.add(l); }
   // the viewing slot, front and a bit up: a steel frame, and the mannequin in there looking out
@@ -95,7 +101,7 @@ export function buildWreckBall(color, look, opts = {}) {
   if (lk.face === 'shades' || lk.face === 'visor') slot.add(box(0.4, 0.07, 0.02, mat(lk.face === 'visor' ? 0x3ee6c8 : 0x111111, 'b'), 0, -0.005, -0.075));
   g.add(slot);
   if (opts.outline) { // same coloured outline every other player gets
-    const o = new THREE.Mesh(P.body, new THREE.MeshBasicMaterial({ color: c, side: THREE.BackSide, fog: false }));
+    const o = new THREE.Mesh(P.body, mat(c, 'o'));
     o.scale.setScalar(1.06); g.add(o);
   }
   g.userData.hook = new THREE.Vector3(0, R + 0.95, 0);
@@ -137,6 +143,7 @@ export class Chain {
     this.mesh.visible = true;
   }
   hide() { this.mesh.visible = false; }
+  dispose() { this.mesh.removeFromParent(); this.mesh.dispose(); } // (frees the instance buffer)
 }
 // how far a chain of length L hangs between two points d apart (parabola: L = d + 8 sag^2 / 3d)
 const sagOf = (d, L) => (L > d ? Math.sqrt((3 * d * (L - d)) / 8) : 0);
@@ -192,10 +199,11 @@ export function wreckBurst(c, vel = [0, 0, 0]) {
 }
 
 // ------------------------------------------------------------ you
-const me = { g: null, key: '', st: newSpin(0), chain: null, was: false, camLen: 0, shadowBig: false };
+const me = { g: null, key: '', st: newSpin(0), chain: null, was: false, camLen: 0, shadowBig: false, dur: 0 };
 function poof(p) { fx.spray([p[0], p[1] + R, p[2]], 26, [0xb8c4d0, 0x8a96a4, 0xffffff], 7, 0.7, 0.18, 10, 1.5); fx.dust(p, 12); }
 function onStart() {
   W.held = false; W.aimHeld = false; W.dashHeld = false;
+  me.dur = Math.max(1, (ME.ballUntil - performance.now()) / 1000); // (for the HUD bar: the server may have said a longer one)
   me.st = newSpin(ME.yaw);
   document.body.classList.add('wrecking'); // (the HUD moves out of the ball's way)
   sfx.wreck();
@@ -209,10 +217,14 @@ function onEnd() {
   loopLevel('roll', 0);
   hud.ball(null);
 }
-// every frame (main loop): your own ball, its chain and shadow, the rumble, the HUD timer, and no guns while it lasts
-export function updateWreck(dt, now, replaying, shadow) {
+// every frame (main loop): your own ball, its chain (instead of your rope) and shadow, the rumble, the HUD timer, and no
+// guns while it lasts
+export function updateWreck(dt, now, replaying, shadow, rope) {
   const on = G.joined && ballOn(now);
   if (on !== me.was) { me.was = on; if (on) onStart(); else onEnd(); }
+  // died in it: the death cam starts from your own eyes, not the ball's camera pivot 3 m up (the server ends the streak
+  // just before it says you died, so this can't wait for endBall)
+  if (!ME.alive && ME.eyeH > C.standEye) ME.eyeH = C.standEye;
   if (!on) {
     if (me.g) me.g.visible = false;
     if (me.chain) me.chain.hide();
@@ -220,6 +232,7 @@ export function updateWreck(dt, now, replaying, shadow) {
     return;
   }
   W.held = false; W.aimHeld = false; W.dashHeld = false; // no hands
+  if (rope) rope.visible = false; // the ball swings on its own chain
   const key = G.myColor + '|' + JSON.stringify(G.settings.look || {});
   if (!me.g || me.key !== key) {
     if (me.g) G.scene.remove(me.g);
@@ -233,13 +246,16 @@ export function updateWreck(dt, now, replaying, shadow) {
   spinBall(me.st, ME.vel, ME.onGround, dt, hp, c, ME.yaw);
   me.g.position.set(c[0], c[1], c[2]);
   me.g.quaternion.copy(me.st.q);
-  // (the camera is pressed right up against it: don't fill the screen with the inside of a ball)
-  me.g.visible = !replaying && G.camera.position.distanceTo(me.g.position) > R + 0.2;
+  // a wall right behind you squeezes the camera boom: then the camera sits on the chain stub, so hide the ball rather
+  // than fill the screen with it (and never show the inside of a ball)
+  const near = me.camLen < 1.8 || G.camera.position.distanceTo(me.g.position) < R + 0.2;
+  me.g.visible = !replaying && !near;
   lookAround(me.g, now, 0);
   if (hp && !replaying) {
     me.g.updateMatrixWorld(true);
     const s = me.g.localToWorld(_v.copy(me.g.userData.hook));
     const ch = BS.chain, d = Math.hypot(hp[0] - s.x, hp[1] - s.y, hp[2] - s.z);
+    if (near && d > 2) s.lerp(_d.set(hp[0], hp[1], hp[2]), 1.4 / d); // (no giant links right in front of the camera)
     me.chain.set([s.x, s.y, s.z], hp, ch && !ch.taut ? sagOf(d, ch.len - R - 0.95) : d * 0.008); // (the physics measures from the middle of the ball)
   } else me.chain.hide();
   // a big shadow under the ball, on the floor or not
@@ -258,8 +274,8 @@ export function updateWreck(dt, now, replaying, shadow) {
   const h = !ME.onGround && !BS.slam && sh ? BS.top - sh.point[1] : null;
   // what a ram would do right now (the server's rule: rolling, swinging and falling count, rising and the slam dive don't)
   const v = ME.vel, rs = Math.hypot(v[0], v[2], v[1] < 0 && v[1] > 8 - WRECK.slamV ? v[1] : 0);
-  const ram = rs < WRECK.ramMin ? 0 : Math.round(Math.min(WRECK.ramMax, rs * WRECK.ramMul));
-  hud.ball(Math.max(0, (ME.ballUntil - now) / 1000), STREAKS.wreckingball.dur, { ready, h, size: h != null ? slamSize(h) : null, speed: rs, ram });
+  const ram = Math.round(ramDmg(rs));
+  hud.ball(Math.max(0, (ME.ballUntil - now) / 1000), me.dur || STREAKS.wreckingball.dur, { ready, h, size: h != null ? slamSize(h) : null, speed: rs, ram });
 }
 
 // third person: a boom straight back from the pivot above the ball along your view, so the crosshair (and your chain)
@@ -272,7 +288,10 @@ export function ballCam(cam, dt) {
   const e = eye(), d = look();
   const want = CAM.dist + Math.min(1.5, hspeed() * 0.04);
   const hit = raycast(e, [-d[0], -d[1], -d[2]], want + 0.5, BOXES);
-  const free = hit ? Math.max(0.4, hit.t - 0.45) : want;
+  // stay this far off whatever it hit, measured square to its face (looking steeply down in a low room, the boom
+  // goes up into the ceiling at a slant, and the near plane would poke through it)
+  const ax = hit && hit.axis >= 0 ? Math.abs(d[hit.axis]) : 1; // (axis -1: the pivot itself is inside something)
+  const free = hit ? Math.max(0.15, Math.min(want, hit.t - Math.min(1, 0.3 / Math.max(0.3, ax)))) : want;
   const target = on ? free : 0;
   if (me.camLen > free) me.camLen = free; // never through a wall
   me.camLen += (target - me.camLen) * Math.min(1, dt * (target > me.camLen ? 3 : 10));
@@ -281,17 +300,25 @@ export function ballCam(cam, dt) {
 
 // ------------------------------------------------------------ everyone else (and replay ghosts): called from Remote.update
 function ballOff(r, w) {
-  w.on = false; w.g.visible = false; w.chain.hide();
+  w.on = false; w.g.visible = false; if (w.chain) w.chain.hide();
   r.ch.body.visible = true; r.marker.position.y = 2.75; r.shadow.scale.setScalar(1);
+}
+// a Remote (or replay ghost) going away: free its chain's instance buffer (the ball itself only uses shared geometry)
+export function wreckDispose(r) {
+  if (r.wreck && r.wreck.chain) r.wreck.chain.dispose();
+  r.wreck = null;
 }
 export function wreckRemote(r, dt, now) {
   const on = !!(r.f & FLAGS.BALL) && r.alive;
   let w = r.wreck;
-  if (!on) { if (w && w.on) ballOff(r, w); return; }
+  if (!on) {
+    if (w && w.on) { if (r.alive && r.buf.length > 2) { poof(r.pos); sfx.clang(r.pos, 0.5); } ballOff(r, w); } // ran out (dying bursts it instead)
+    return;
+  }
   const root = r.ch.root;
   if (!w || w.root !== root || w.color !== r.color) { // (re)build: first time, new look, new team colour
-    if (w) { w.g.removeFromParent(); w.chain.mesh.removeFromParent(); }
-    w = r.wreck = { g: buildWreckBall(r.color, r.outfit, { outline: true }), st: newSpin(r.yaw), chain: new Chain(root, true), root, color: r.color, on: false, seed: Math.random() * 9 };
+    if (w) { w.g.removeFromParent(); if (w.chain) w.chain.dispose(); }
+    w = r.wreck = { g: buildWreckBall(r.color, r.outfit, { outline: true }), st: newSpin(r.yaw), chain: null, root, color: r.color, on: false, seed: Math.random() * 9 };
     root.add(w.g);
   }
   if (!w.on) { w.on = true; w.st = newSpin(r.yaw); if (r.buf.length > 2) { poof(r.pos); sfx.wreck(r.pos); } }
@@ -309,11 +336,12 @@ export function wreckRemote(r, dt, now) {
   w.g.visible = true;
   lookAround(w.g, now, w.seed);
   if (r.g) {
+    if (!w.chain) w.chain = new Chain(root, true); // (only made for balls that actually swing)
     root.updateMatrixWorld(true);
     const s = w.g.localToWorld(_v.copy(w.g.userData.hook));
     w.chain.mesh.matrix.copy(root.matrixWorld).invert();
     w.chain.set([s.x, s.y, s.z], r.g, Math.hypot(r.g[0] - s.x, r.g[1] - s.y, r.g[2] - s.z) * 0.012);
-  } else w.chain.hide();
+  } else if (w.chain) w.chain.hide();
   r.shadow.scale.setScalar(2.4 * k);
   const hs = Math.hypot(r.vel[0], r.vel[2]);
   if (Math.abs(r.vel[1]) < 1.5 && hs > 12 && Math.random() < dt * hs * 0.2) fx.dust(r.pos, 2);

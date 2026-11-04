@@ -6,9 +6,9 @@ import { G } from './ctx.js';
 import { sfx } from './audio.js';
 import { hud } from './hud.js';
 import { net } from './net.js';
-import { fx } from './fx.js';
 import { query } from '/shared/physics.js';
 import { WRECK, slamSize } from '/shared/weapons.js';
+import { fx } from './fx.js';
 
 export const ME = {
   pos: [0, 5, 0], vel: [0, 0, 0], yaw: 0, pitch: 0,
@@ -244,10 +244,11 @@ export const BALL = {
   wall: 0.6, floor: 0.3, eye: 3.0, corner: 0.45, // bounce off walls / hard landings, camera pivot above your feet, corner slide
   floatK: 0.4, floatTo: -8, // after a slam: lighter gravity on the way up and over the top, so there's time to slam again
   reel: 2, reelAcc: 40, reelMax: 26, winch: 25, minLen: 4.5, clear: 0.8, catch: 0.7, // chain winch + snapping tight
+  pump: 9, pumpMax: 40, // W on a tight chain pumps the swing, up to this fast
 };
 export const BS = {
   hw: PH.halfW, h: PH.height, slam: false, slamReady: 0, slamBuf: 0, airPress: false, crouchWas: false, float: false,
-  chain: null, pivotY: 0, bonkT: 0, top: 0, slamTop: 0, last: null,
+  chain: null, pivotY: 0, bonkT: 0, top: 0, slamTop: 0, last: null, snapNow: false,
 };
 ME.ballUntil = 0;
 export const ballOn = (now = performance.now()) => ME.alive && now < (ME.ballUntil || 0);
@@ -335,6 +336,25 @@ function ballPush(v, wx, wz, accel, steer, dt) {
   }
   const add = BALL.top - (v[0] * wx + v[2] * wz);
   if (add > 0) { const a = Math.min(add, accel * dt); v[0] += wx * a; v[2] += wz * a; }
+}
+
+// on a tight chain W pumps the swing like a real wrecking ball: it pushes along the swing (never along the chain), and
+// only while the ball is already going your way, so holding W builds the swing up instead of damping it
+function ballPump(v, wx, wz, dt) {
+  const a = hookPoint(), p = ME.pos;
+  if (!a) return;
+  let nx = a[0] - p[0], ny = a[1] - (p[1] + WRECK.r), nz = a[2] - p[2];
+  const nl = Math.hypot(nx, ny, nz) || 1;
+  nx /= nl; ny /= nl; nz /= nl;
+  const k = wx * nx + wz * nz;
+  let tx = wx - nx * k, ty = -ny * k, tz = wz - nz * k;
+  const tl = Math.hypot(tx, ty, tz);
+  if (tl < 0.2) return; // pushing straight along the chain does nothing
+  tx /= tl; ty /= tl; tz /= tl;
+  const sp = Math.hypot(v[0], v[1], v[2]), along = v[0] * tx + v[1] * ty + v[2] * tz;
+  if ((along <= 0 && sp > 2) || sp >= BALL.pumpMax) return; // (from a dead hang any push gets it going)
+  const add = Math.min(BALL.pump * dt, BALL.pumpMax - sp);
+  v[0] += tx * add; v[1] += ty * add; v[2] += tz * add;
 }
 
 // how long the chain can be with the bottom of the swing still clearing the floor under the anchor. look down from just
@@ -440,7 +460,7 @@ function ballStep(dt, inp, now) {
   if (!inp.crouch) BS.airPress = false;
   BS.slamBuf -= dt;
   if ((BS.slamBuf > 0 || BS.airPress) && !ME.onGround && !BS.slam && now >= BS.slamReady) {
-    BS.slam = true; BS.float = false; BS.slamBuf = 0; BS.slamTop = BS.top;
+    BS.slam = true; BS.float = false; BS.slamBuf = 0; BS.slamTop = BS.top; BS.snapNow = true; // (the server wants to see the dive)
     ME.hook = null; BS.chain = null;
     v[0] *= 0.15; v[2] *= 0.15; v[1] = -WRECK.slamV;
     sfx.yeet();
@@ -462,7 +482,8 @@ function ballStep(dt, inp, now) {
       }
       if (wl) ballPush(v, wx, wz, BALL.accel, BALL.steer, dt);
     }
-  } else if (wl) ballPush(v, wx, wz, BALL.airAccel, BALL.airSteer, dt);
+  } else if (wl && ME.hook && BS.chain && BS.chain.taut) ballPump(v, wx, wz, dt);
+  else if (wl) ballPush(v, wx, wz, BALL.airAccel, BALL.airSteer, dt);
   v[1] -= BALL.grav * (moon ? 0.45 : 1) * (BS.float ? BALL.floatK : 1) * dt;
   if (v[1] < BALL.floatTo) BS.float = false;
   if (ME.hook && BS.slam) { ME.hook = null; BS.chain = null; }

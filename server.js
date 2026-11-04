@@ -18,7 +18,8 @@ import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor } from './shared/modes.js';
 import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, validStreaks, fireRate } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
-import { WRECK, slamSize } from './shared/weapons.js';
+
+import { WRECK, slamSize, ramDmg } from './shared/weapons.js'; // wrecking ball
 import { query } from './shared/physics.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -159,7 +160,6 @@ function cleanCard(c) { return typeof c === 'string' && c.length <= 24000 && CAR
 // replays: the server keeps the last few seconds of everything so it can send the play of the round
 const REC_T = new Set(['kill', 'boom', 'fx', 'pd', 'he']);
 const REC_FX = new Set(['shot', 'swing', 'tbag', 'reflect']);
-REC_FX.add('slam').add('ram'); // wrecking ball hits show up in killcams + highlights
 const REC_MS = 12000;
 function newDeck() {
   const d = [];
@@ -824,7 +824,7 @@ class Room {
     send(t, { t: 'streak', reset: 1 });
     t.streak = 0;
     t.scythe = false; // active stuff ends when you die; earned-but-unused streaks stay in your tray
-    t.ballUntil = 0;
+    t.ballUntil = 0; t.f &= ~FLAGS.BALL; // (or everyone sees a steel ball at the spawn until the respawned client speaks)
     if (this.mode !== 'training') {
       if (killer && killer !== t && killer.acct) {
         if (t.isBot) stat(killer, 'bot_kills', 1), stat(killer, 'xp', 5);
@@ -898,6 +898,7 @@ class Room {
   }
 
   applyHitscan(p, t, wid, n, h, d, mul = 1) {
+    if (this.isBall(t)) h = 0; // a wrecking ball has no head
     const w = WEAPONS[wid], pellets = w.pellets || 1;
     const dmg = (w.dmg * (n - h) + w.dmg * (w.head || 1) * h) * mul;
     const k = w.kb * n;
@@ -909,6 +910,7 @@ class Room {
     const t = this.players.get(m.to);
     const d = norm(vec3(m.d));
     if (!w || !t || !d || t === p || !t.alive || !p.alive) return;
+    if (this.isBall(p)) return; // no hands in the wrecking ball
     if ((w.slot === 'streak' || w.kind === 'dash') && !p.scythe) return; // you have to earn it
     if (w.kind === 'dash') {
       if (!(p.f & FLAGS.DASH) || !this.pairOk(p, t, 'dash', 280) || !this.rangeOk(p, t, w.range)) return;
@@ -1365,9 +1367,9 @@ class Room {
         if (WEAPONS[m.w]) p.w = m.w;
         p.g = vec3(m.g);
         p.f = m.f | 0;
+        if (p.pos[1] < this.map.killY) this.kill(p, null, 'void');
         if ((p.f & FLAGS.BALL) && !(p.ballUntil > now())) p.f &= ~FLAGS.BALL; // only someone who earned the wrecking ball gets to be one
         if (p.ballUntil > now()) this.ballAir(p);
-        if (p.pos[1] < this.map.killY) this.kill(p, null, 'void');
         break;
       }
       case 'hit': this.onHit(p, m); break;
@@ -1408,7 +1410,7 @@ class Room {
         p.pocket.splice(i, 1);
         if (m.r === 'scythe') p.scythe = true;
         if (m.r === 'wreckingball') { p.ballUntil = now() + STREAKS.wreckingball.dur * 1000 + 1000; p.slamT = 0; p.ballTop = p.pos[1]; p.ballVy = 0; } // +1s for lag
-        send(p, { t: 'streak', reward: m.r });
+        send(p, { t: 'streak', reward: m.r, dur: STREAKS[m.r].dur });
         if (m.r === 'chickenstrike') {
           this.broadcast({ t: 'fx', k: 'strikeCall', id: p.id, p: at.map(r2) });
           for (let k = 0; k < 14; k++) setTimeout(() => {
@@ -1705,6 +1707,31 @@ class Room {
     if (b.act) this.broadcast({ t: 'bombev', k: b.act.kind, id: p.id });
   }
 
+  tick(dt) {
+    const n = now();
+    this.tickRound();
+    this.tickTags(n);
+    this.tickItems(dt);
+    for (const b of this.players.values()) if (b.isBot && b.alive) this.stepBot(b, dt);
+    this.tickProjectiles(dt);
+    this.tickHoles(dt);
+    this.tickStatus(dt);
+    this.tickPeels();
+    this.tickBalls();
+    this.tickWaves();
+    for (const p of this.players.values()) {
+      if (!p.alive && n >= p.respawnAt) {
+        if (p.isBot && this.mode === 'coop') continue;
+        p.alive = true; p.hp = 100; p.vel = [0, 0, 0]; p.spawnT = n; p.seq++;
+        p.pos = p.isBot && p.ai.dummy ? p.ai.dummy.home.slice() : this.pickSpawn(p.isBot, p);
+        p.slipUntil = 0; p.burnUntil = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.ic = {}; p.healLeft = 0;
+        send(p, { t: 'spawn', p: p.pos, q: p.seq });
+        this.sendLoadout(p);
+        if (!p.isBot) deal(p);
+      }
+    }
+  }
+
   // ---------------------------------------------------------- wrecking ball (killstreak)
   // a ball only counts if this player really activated the streak and their snapshots say they're rolling
   isBall(p, n = now()) { return p.alive && p.ballUntil > n && !!(p.f & FLAGS.BALL); }
@@ -1712,6 +1739,8 @@ class Room {
   ballAir(p) {
     const y = p.pos[1], vy0 = p.ballVy || 0, n = now();
     p.ballVy = p.vel[1];
+    p.ballSnapT = n;
+    if (p.vel[1] < -(WRECK.slamV - 12)) p.diveT = n; // slam dive (onSlam wants to have seen one)
     (p.ballHist ||= []).push([n, p.pos.slice()]); // where it really was lately, so a claimed speed has to match the moves
     while (p.ballHist.length > 2 && n - p.ballHist[0][0] > 160) p.ballHist.shift();
     if (p.ballTop == null || (p.vel[1] > -3 && floorUnder(this.boxes, p.pos, 0.3) != null)) { p.ballTop = y; return; } // (diving at it isn't touching it)
@@ -1729,8 +1758,10 @@ class Room {
       p.ballPrev = c;
       if (dist3(a, c) > 6) a = c; // a jump that big is a teleport, not a roll: don't sweep everyone in between
       // how fast it really moved over its last few snapshots: a claimed speed only counts if the position keeps up with it
+      // (timed by when they arrived, but at least 1/30 s per snapshot: after a network stall they arrive all at once)
       const hh = p.ballHist || [], h0 = hh[0], h1 = hh[hh.length - 1];
-      const mv = h0 && h1[0] - h0[0] >= 25 && n - h1[0] < 200 ? dist3(h0[1], h1[1]) / ((h1[0] - h0[0]) / 1000) : 0;
+      const span = hh.length > 1 ? Math.max(h1[0] - h0[0], (hh.length - 1) * 33) : 0;
+      const mv = span && n - h1[0] < 200 ? dist3(h0[1], h1[1]) / (span / 1000) : 0;
       // rolling, swinging and falling onto people count. rising doesn't (the bounce after a slam), and neither does the
       // slam dive itself: the slam does its own damage, sized by the height
       const down = p.vel[1] < -(WRECK.slamV - 8) ? 0 : Math.max(0, -p.vel[1]);
@@ -1747,7 +1778,7 @@ class Room {
         const to = [tc[0] - c[0], tc[1] - c[1], tc[2] - c[2]], td = Math.hypot(...to);
         if (td > 0.3 && raycast(c, to.map((x) => x / td), td - 0.3, this.boxes)) continue; // there's a wall in between
         if (!this.pairOk(p, t, 'ram', WRECK.ramCd)) continue;
-        const dmg = Math.min(WRECK.ramMax, sp * WRECK.ramMul);
+        const dmg = ramDmg(sp);
         const k = Math.min(WRECK.ramKbMax, WRECK.ramKb + sp * WRECK.ramKbMul);
         const hl = Math.hypot(dir[0], dir[2]) || 1;
         // launched the way the ball was going, and up off the floor
@@ -1763,11 +1794,16 @@ class Room {
     const n = now();
     if (!this.isBall(p, n) || n - (p.slamT || 0) < WRECK.slamCd * 1000 - 250) return;
     let at = vec3(m.p);
-    if (!at || Math.hypot(at[0] - p.pos[0], at[2] - p.pos[2]) > 4 + Math.hypot(p.vel[0], p.vel[2]) * 0.1 || at[1] > p.pos[1] + 1.5 || at[1] < p.pos[1] - 14) at = p.pos.slice();
-    let fl = floorUnder(this.boxes, [at[0], at[1] + 1, at[2]], 16);
-    if (fl == null) { at = p.pos.slice(); fl = floorUnder(this.boxes, [at[0], at[1] + 1, at[2]], 16); } // no floor where it says: try where we think it is
+    if (!at || Math.hypot(at[0] - p.pos[0], at[2] - p.pos[2]) > 4 + Math.hypot(p.vel[0], p.vel[2]) * 0.1 || at[1] > p.pos[1] + 1.5 || at[1] < p.pos[1] - 8) at = p.pos.slice();
+    let fl = floorUnder(this.boxes, [at[0], at[1] + 1, at[2]], 9);
+    if (fl == null) { at = p.pos.slice(); fl = floorUnder(this.boxes, [at[0], at[1] + 1, at[2]], 9); } // no floor where it says: try where we think it is
     if (fl == null) return; // nothing under it to slam into
     at[1] = fl;
+    // its last snapshot has to be near that floor, or diving at it: a ball hanging on its chain or hovering up there can't
+    // slam the floor below. (a slam that starts and lands between two snapshots can only have dived as far as a slam
+    // goes in that time: at 30 a second that's about 2 m)
+    const above = p.pos[1] - fl, since = Math.min(0.1, (n - (p.ballSnapT || 0)) / 1000);
+    if (above > 8 || (above > 2.5 + since * WRECK.slamV && !(n - (p.diveT || 0) < 400))) return;
     const h = Math.min(30, (p.ballTop ?? p.pos[1]) - fl);
     if (!(h >= 0.25)) return; // it never left the floor
     p.slamT = n; p.ballTop = fl;
@@ -1778,34 +1814,10 @@ class Room {
       const tc = center(t), to = [tc[0] - c[0], tc[1] - c[1], tc[2] - c[2]], d = Math.hypot(...to);
       const f = 1 - Math.max(0, d - WRECK.r) / S.r; // full at the ball's edge, nothing past the radius
       if (f <= 0) continue;
+      if (d > 0.3 && raycast(c, to.map((x) => x / d), d - 0.3, this.boxes)) continue; // it's a shockwave: not through walls or the floor
       const hl = Math.hypot(to[0], to[2]), out = hl > 0.2 ? [to[0] / hl, to[2] / hl] : [0, 0];
       const k = S.kb * (0.35 + 0.65 * f);
       this.hurt(t, p, 'wreck', S.dmg * (0.2 + 0.8 * f), [out[0] * k, S.up * (0.5 + 0.5 * f) + 3, out[1] * k]); // up and out
-    }
-  }
-
-  tick(dt) {
-    const n = now();
-    this.tickRound();
-    this.tickTags(n);
-    this.tickItems(dt);
-    for (const b of this.players.values()) if (b.isBot && b.alive) this.stepBot(b, dt);
-    this.tickProjectiles(dt);
-    this.tickHoles(dt);
-    this.tickStatus(dt);
-    this.tickPeels();
-    this.tickWaves();
-    this.tickBalls();
-    for (const p of this.players.values()) {
-      if (!p.alive && n >= p.respawnAt) {
-        if (p.isBot && this.mode === 'coop') continue;
-        p.alive = true; p.hp = 100; p.vel = [0, 0, 0]; p.spawnT = n; p.seq++;
-        p.pos = p.isBot && p.ai.dummy ? p.ai.dummy.home.slice() : this.pickSpawn(p.isBot, p);
-        p.slipUntil = 0; p.burnUntil = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.ic = {}; p.healLeft = 0;
-        send(p, { t: 'spawn', p: p.pos, q: p.seq });
-        this.sendLoadout(p);
-        if (!p.isBot) deal(p);
-      }
     }
   }
 
@@ -1858,6 +1870,7 @@ function flushStats(p) {
 }
 setInterval(() => { for (const r of rooms.values()) for (const p of r.players.values()) flushStats(p); }, 60000);
 
+REC_FX.add('slam').add('ram'); // wrecking ball hits show up in killcams + highlights
 // what a wrecking ball is hit-tested as (the same box the clients shoot at)
 function ballBoxes(pos) {
   const r = WRECK.r, [x, y, z] = pos;

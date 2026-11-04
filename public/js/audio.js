@@ -128,7 +128,6 @@ export const sfx = {
   error(pos) { tone('square', 880, 880, 0.12, 0.2, pos); tone('square', 660, 660, 0.25, 0.2, pos, 0.14); },
   yeet(pos) { noise(0.7, 0.5, 'bandpass', 400, 3000, pos, 0, 1.5); tone('sine', 300, 1400, 0.6, 0.15, pos); },
   choir(pos) { for (const [f, d] of [[523, 0], [659, 0.05], [784, 0.1], [1046, 0.15]]) tone('sine', f, f * 1.01, 2.2, 0.12, pos, d); },
-  tbag(pos) { for (let i = 0; i < 3; i++) tone('sawtooth', 120 - i * 25, 40, 0.18, 0.3, pos, i * 0.1); },
   // wrecking ball: a struck steel ball rings with a few out-of-tune partials (k = how hard)
   clang(pos, k = 1) {
     for (const [f, d, v] of [[287, 1.1, 0.34], [701, 0.8, 0.24], [1133, 0.55, 0.17], [1789, 0.4, 0.12], [2647, 0.28, 0.08]]) {
@@ -147,6 +146,7 @@ export const sfx = {
   },
   chain(pos) { for (let i = 0; i < 7; i++) tone('triangle', 1900 + Math.random() * 2200, 1400, 0.05, 0.11, pos, i * 0.028); noise(0.22, 0.22, 'highpass', 3000, 5200, pos); },
   wreck(pos) { sfx.clang(pos, 0.9); tone('sawtooth', 70, 380, 0.7, 0.14, pos, 0.05); noise(0.35, 0.5, 'lowpass', 900, 100, pos); },
+  tbag(pos) { for (let i = 0; i < 3; i++) tone('sawtooth', 120 - i * 25, 40, 0.18, 0.3, pos, i * 0.1); },
 };
 
 const LOOPDEF = {
@@ -180,8 +180,6 @@ export function loopSfx(name, on) {
   }
 }
 
-export function stopLoops() { for (const k in loops) loopSfx(k, false); }
-
 // a loop whose loudness follows something (0..1), e.g. the wrecking ball's rumble follows how fast it rolls
 export function loopLevel(name, k) {
   if (!ac) return;
@@ -191,3 +189,5 @@ export function loopLevel(name, k) {
   const l = loops[name];
   if (!was || Math.abs((l.k || 0) - k) > 0.03) { l.k = k; l.g.gain.setTargetAtTime(l.def.vol * Math.min(1, k), ac.currentTime, 0.06); }
 }
+
+export function stopLoops() { for (const k in loops) loopSfx(k, false); }

@@ -28,9 +28,9 @@ import { GAMES, GAME_ORDER, TEAMS } from '/shared/modes.js';
 import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
 import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, HAIRS, TOPS, BOTTOMS } from '/shared/looks.js';
-import { account, restore, login, register, logout, saveProfile, leaderboard as fetchLeaders } from './account.js';
-import { startBall, endBall, ballOn } from './player.js';
+import { startBall, endBall, ballOn, BS } from './player.js';
 import { updateWreck, ballCam, wreckFx, wreckDied } from './wreck.js';
+import { account, restore, login, register, logout, saveProfile, leaderboard as fetchLeaders } from './account.js';
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 
 const $ = (id) => document.getElementById(id);
@@ -1236,11 +1236,11 @@ net.on('fx', (m) => {
   } else if (m.k === 'strike') {
     sfx.strike(m.p);
     if (m.n >= 2) hud.msg(m.n >= 3 ? 'STRIKE' : 'SPARE', 1.2, 'brag');
-  } else if (m.k === 'thwack') {
-    sfx.thwack(m.p);
   } else if (m.k === 'slam' || m.k === 'ram') { // wrecking ball
     recordEv(m);
     wreckFx(m);
+  } else if (m.k === 'thwack') {
+    sfx.thwack(m.p);
   }
 });
 net.on('chat', (m) => {
@@ -1297,6 +1297,7 @@ function frame(t) {
     if (spinning) $('cheat').textContent = `JANKHAX v6.9\n[x] AIMBOT\n[x] SPINBOT\n[x] NO SPREAD\n${((G.spinUntil - now) / 1000).toFixed(1)}s left`;
     G.spinning = spinning;
     updateWeapons(dt, now);
+    if (ballOn(now)) { W.flags |= FLAGS.BALL; if (BS.snapNow) { BS.snapNow = false; sendT = 0; } } // wrecking ball (a slam dive goes out right away: the server checks it)
 
     sendT -= dt;
     if (sendT <= 0 && ME.alive) {
@@ -1306,7 +1307,7 @@ function frame(t) {
       net.send({
         t: 's', q: ME.seq, p: ME.pos.map(r2), v: ME.vel.map(r2), y: r2(G.spinning ? (now * 0.03) % (Math.PI * 2) : ME.yaw), x: r2(G.spinning ? Math.sin(now * 0.02) * 1.2 : ME.pitch), w: W.cur,
         g: hp ? hp.map(r2) : 0,
-        f: W.flags | (now < ME.slipUntil ? FLAGS.SLIP : 0) | (ME.sliding ? FLAGS.SLIDE : 0) | (ME.crouching ? FLAGS.CROUCH : 0) | (ballOn(now) ? FLAGS.BALL : 0),
+        f: W.flags | (now < ME.slipUntil ? FLAGS.SLIP : 0) | (ME.sliding ? FLAGS.SLIDE : 0) | (ME.crouching ? FLAGS.CROUCH : 0),
       });
     }
     pingT -= dt;
@@ -1423,11 +1424,10 @@ function frame(t) {
 
   const hp = hookPoint();
   if (hp && ME.alive && !RP.active) { myRope.visible = true; setBeam(myRope, muzzleWorld(), hp, 0.05); } else myRope.visible = false;
-  if (ballOn(now)) myRope.visible = false; // the ball swings on its own chain
   const shHit = G.joined ? raycast([ME.pos[0], ME.pos[1] + 0.1, ME.pos[2]], [0, -1, 0], 120, BOXES) : null;
   myShadow.visible = !!shHit && ME.alive && !ME.onGround && !RP.active;
   if (shHit) myShadow.position.set(ME.pos[0], shHit.point[1] + 0.03, ME.pos[2]);
-  updateWreck(dt, now, RP.active, myShadow); // your own wrecking ball, its chain, rumble + timer
+  updateWreck(dt, now, RP.active, myShadow, myRope); // your own wrecking ball, its chain (instead of your rope), rumble + timer
   if (now < (G.burnUntil || 0)) fx.burn([ME.pos[0] + Math.sin(ME.yaw) * -0.8, ME.pos[1], ME.pos[2] - Math.cos(ME.yaw) * 0.8]);
   $('reverseFx').style.opacity = now < W.reverseUntil ? 1 : 0;
 
@@ -1513,7 +1513,7 @@ net.on('streak', (m) => {
   if (m.reward === 'satellite') G.satUntil = performance.now() + st.dur * 1000;
   if (m.reward === 'spinbot') G.spinUntil = performance.now() + st.dur * 1000;
   if (m.reward === 'scythe') grantScythe();
-  if (m.reward === 'wreckingball') startBall(st.dur);
+  if (m.reward === 'wreckingball') startBall(m.dur || st.dur);
   toast(st.desc, 2500);
 });
 

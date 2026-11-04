@@ -224,7 +224,6 @@ export const hud = {
     while (log.children.length > 8) log.firstChild.remove();
     setTimeout(() => d.remove(), 12000);
   },
-  ping(ms) { $('ping').textContent = ms + 'ms'; },
   // wrecking ball: seconds left, a draining bar, how hard you'd ram someone right now, and the slam: recharging, ready,
   // or how big it would be from up here (left = null hides it)
   ball(left, dur, sl) {
@@ -252,6 +251,7 @@ export const hud = {
     el.classList.toggle('ready', ready);
     el.classList.toggle('air', !!air);
   },
+  ping(ms) { $('ping').textContent = ms + 'ms'; },
   update(dt) {
     if (lostT > 0) {
       lostT -= dt;
