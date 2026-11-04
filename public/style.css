@@ -359,6 +359,19 @@ body.wrecking #center { top: 41%; }
 
 #freezeFx { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.2s; box-shadow: inset 0 0 160px 40px rgba(190, 235, 255, 0.85); background: repeating-linear-gradient(45deg, rgba(255,255,255,0.06) 0 6px, transparent 6px 14px); }
 
+/* katana parry: cooldown ring round the crosshair, a white flash when you parry something, the shout */
+#parryRing { position: absolute; left: 50%; top: 50%; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%; display: none; opacity: 0.8; pointer-events: none;
+  -webkit-mask: radial-gradient(circle, transparent 13.5px, #000 14.5px); mask: radial-gradient(circle, transparent 13.5px, #000 14.5px); }
+#parryRing.open { opacity: 1; }
+#parryRing.ready { animation: parryready 0.25s ease-out forwards; }
+@keyframes parryready { from { transform: scale(1); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+#parryFx { position: absolute; inset: 0; opacity: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.95) 15%, rgba(215, 240, 255, 0.75) 60%, rgba(255, 255, 255, 0.55)); }
+#center.parry { color: #fff; font-size: 54px; letter-spacing: 2px; text-shadow: 0 0 14px #9fe8ff, 3px 3px 0 #000; }
+#center.perfect { color: #fff3a0; font-size: 68px; letter-spacing: 4px; text-shadow: 0 0 20px #ffe14d, 0 0 6px #fff, 3px 3px 0 #000; animation: parrypop 0.3s ease-out; }
+#center.parried { color: #ff5a5a; font-size: 50px; letter-spacing: 3px; }
+@keyframes parrypop { from { transform: translate(-50%, -50%) rotate(-3deg) scale(1.7); } to { transform: translate(-50%, -50%) rotate(-3deg) scale(1); } }
+body.replaying #parryRing { visibility: hidden; }
+
 /* killstreaks */
 /* killstreaks: small icons in the bottom right corner */
 #streakTray { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 4px; align-items: flex-end; }

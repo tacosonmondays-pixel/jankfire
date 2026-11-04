@@ -79,6 +79,30 @@ export const hud = {
     if (amt >= 18) { nanT = 0.2; nanText = GARBAGE[(Math.random() * GARBAGE.length) | 0]; }
   },
   crossFade(k) { const c = $('crosshair'); const v = String(Math.round(k * 100) / 100); if (c.style.opacity !== v) c.style.opacity = v; },
+  // katana parry cooldown: a thin ring round the crosshair (open = guard up, cd = draining, ready = back). null hides it.
+  // it's called every frame, so the element and what it shows are cached: the usual call (null, already hidden) is one compare
+  parryRingCache: { el: null, state: '', step: -1 },
+  parryRing(k, state) {
+    const ring = this.parryRingCache;
+    if (k == null) { if (ring.state) { ring.state = ''; ring.el.style.display = 'none'; } return; }
+    const step = Math.round(k * 60);
+    if (state === ring.state && step === ring.step) return;
+    if (!ring.el) { ring.el = document.createElement('div'); ring.el.id = 'parryRing'; $('hud').append(ring.el); }
+    const el = ring.el;
+    ring.state = state; ring.step = step;
+    el.style.display = 'block';
+    el.className = state;
+    const c = state === 'open' ? '#9fe8ff' : state === 'ready' ? '#ffffff' : 'rgba(255, 255, 255, 0.85)';
+    el.style.background = `conic-gradient(${c} ${Math.round(k * 360)}deg, rgba(0, 0, 0, 0.3) 0)`; // dark track so it reads on bright skies
+  },
+  // a quick full-screen flash that fades out by itself (landing a parry)
+  flash(a, dur = 0.2) {
+    let el = $('parryFx');
+    if (!el) { el = document.createElement('div'); el.id = 'parryFx'; $('hud').prepend(el); }
+    el.style.transition = 'none'; el.style.opacity = a;
+    void el.offsetWidth; // restart the fade
+    el.style.transition = `opacity ${dur}s ease-out`; el.style.opacity = 0;
+  },
   scope(on) {
     $('scope').classList.toggle('on', on);
     $('crosshair').style.display = on ? 'none' : '';

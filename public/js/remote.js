@@ -275,6 +275,16 @@ export class Remote {
       ch.arm.rotation.y = (st < 0.35 ? -1 : 1) * k * 1.3;
       ch.arm.rotation.x = this.pitch + k * 0.5;
     } else ch.arm.rotation.y = 0;
+    // katana parry ('guard' event): blade snaps up across the body, holds through the window, drops back.
+    // a parried hit (parryHitT) jolts it up a touch
+    const pk = this.w === 'katana' ? (now - (this.parryT || -1e9)) / 560 : 1;
+    if (pk >= 0 && pk < 1) {
+      const k = pk < 0.09 ? pk / 0.09 : pk > 0.62 ? 1 - (pk - 0.62) / 0.38 : 1;
+      const jolt = Math.max(0, 1 - (now - (this.parryHitT || -1e9)) / 140) * 0.3;
+      ch.arm.rotation.x = this.pitch + (0.35 + jolt - this.pitch) * k;
+      ch.arm.rotation.y = 0.75 * k;
+      ch.slot.rotation.set(0.85 * k, 0.55 * k, 0);
+    } else if (ch.slot.rotation.x) ch.slot.rotation.set(0, 0, 0);
     // marker + name tag stay readable far away
     G.camera.getWorldPosition(camPos);
     const dist = camPos.distanceTo(ch.root.position);

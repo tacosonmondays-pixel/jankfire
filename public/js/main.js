@@ -21,6 +21,8 @@ import {
 } from './weapons.js';
 import { Remote, updateGibs } from './remote.js';
 import { stepSoap, trapStart, trapEnd, updateWand, stuckInBubble } from './wand.js';
+import { parry } from './weapons.js';
+import './parry.js'; // katana parry: sparks, sounds, PARRY!, the guard pose
 import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN } from './skins.js';
 import { initPreview, showPreview, showCharacter, renderPreview, resizePreview } from './preview.js';
 import { playKillFx, updateKillFx, clearKillFx } from './killfx.js';
@@ -707,6 +709,7 @@ $('chatin').addEventListener('keydown', (e) => {
 function aimDown() {
   if (W.cur === 'cards') { cycleCard(); return; }
   if (heavyAttack()) return; // knife: right click is the heavy stab
+  if (parry()) return; // katana: right click parries
   if (S.toggleAim) W.aimHeld = !W.aimHeld; else W.aimHeld = true;
 }
 function aimUp() { if (!S.toggleAim) W.aimHeld = false; }
