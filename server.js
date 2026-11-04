@@ -18,6 +18,8 @@ import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor } from './shared/modes.js';
 import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, validStreaks, fireRate } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
+import { WRECK, slamSize } from './shared/weapons.js';
+import { query } from './shared/physics.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -133,6 +135,8 @@ function enforceSkins(skins, inv) {
   return out;
 }
 if (process.env.JF_STREAK) STREAKS.scythe.kills = Number(process.env.JF_STREAK) || STREAKS.scythe.kills;
+if (process.env.JF_WRECK) STREAKS.wreckingball.kills = Number(process.env.JF_WRECK) || STREAKS.wreckingball.kills; // test knob: earn the wrecking ball fast
+if (process.env.JF_WRECK_DUR) STREAKS.wreckingball.dur = Number(process.env.JF_WRECK_DUR) || STREAKS.wreckingball.dur; // test knob: a longer ball (slow test browsers)
 const ROUND = { ffa: { kills: 20, time: 360 }, bots: { kills: 15, time: 300 } };
 if (process.env.JF_ROUND_KILLS) for (const r of Object.values(ROUND)) r.kills = Number(process.env.JF_ROUND_KILLS) || r.kills;
 // test knobs for plant & defuse (short rounds / fuse / match)
@@ -155,6 +159,7 @@ function cleanCard(c) { return typeof c === 'string' && c.length <= 24000 && CAR
 // replays: the server keeps the last few seconds of everything so it can send the play of the round
 const REC_T = new Set(['kill', 'boom', 'fx', 'pd', 'he']);
 const REC_FX = new Set(['shot', 'swing', 'tbag', 'reflect']);
+REC_FX.add('slam').add('ram'); // wrecking ball hits show up in killcams + highlights
 const REC_MS = 12000;
 function newDeck() {
   const d = [];
@@ -819,6 +824,7 @@ class Room {
     send(t, { t: 'streak', reset: 1 });
     t.streak = 0;
     t.scythe = false; // active stuff ends when you die; earned-but-unused streaks stay in your tray
+    t.ballUntil = 0;
     if (this.mode !== 'training') {
       if (killer && killer !== t && killer.acct) {
         if (t.isBot) stat(killer, 'bot_kills', 1), stat(killer, 'xp', 5);
@@ -1130,7 +1136,7 @@ class Room {
     for (const t of this.players.values()) {
       if (!t.alive || skip(t)) continue;
       let best = Infinity;
-      for (const hb of playerBoxes(t.pos)) {
+      for (const hb of this.isBall(t) ? ballBoxes(t.pos) : playerBoxes(t.pos)) { // (a wrecking ball is one big ball)
         const e = { min: hb.min.map((x) => x - r), max: hb.max.map((x) => x + r) };
         const h = rayBox(prev, dir, e, len + 1e-3);
         if (h && h.t < best) best = h.t;
@@ -1359,11 +1365,14 @@ class Room {
         if (WEAPONS[m.w]) p.w = m.w;
         p.g = vec3(m.g);
         p.f = m.f | 0;
+        if ((p.f & FLAGS.BALL) && !(p.ballUntil > now())) p.f &= ~FLAGS.BALL; // only someone who earned the wrecking ball gets to be one
+        if (p.ballUntil > now()) this.ballAir(p);
         if (p.pos[1] < this.map.killY) this.kill(p, null, 'void');
         break;
       }
       case 'hit': this.onHit(p, m); break;
       case 'push': this.onPush(p, m); break;
+      case 'slam': this.onSlam(p, m); break;
       case 'fire': this.onFire(p, m); break;
       case 'cough':
         if (p.alive && now() - p.coughT > 800) { p.coughT = now(); this.damage(p, 12, null, 'cough'); }
@@ -1398,6 +1407,7 @@ class Room {
         if ((m.r === 'chickenstrike' || m.r === 'giantduck') && !at) break;
         p.pocket.splice(i, 1);
         if (m.r === 'scythe') p.scythe = true;
+        if (m.r === 'wreckingball') { p.ballUntil = now() + STREAKS.wreckingball.dur * 1000 + 1000; p.slamT = 0; p.ballTop = p.pos[1]; p.ballVy = 0; } // +1s for lag
         send(p, { t: 'streak', reward: m.r });
         if (m.r === 'chickenstrike') {
           this.broadcast({ t: 'fx', k: 'strikeCall', id: p.id, p: at.map(r2) });
@@ -1695,6 +1705,85 @@ class Room {
     if (b.act) this.broadcast({ t: 'bombev', k: b.act.kind, id: p.id });
   }
 
+  // ---------------------------------------------------------- wrecking ball (killstreak)
+  // a ball only counts if this player really activated the streak and their snapshots say they're rolling
+  isBall(p, n = now()) { return p.alive && p.ballUntil > n && !!(p.f & FLAGS.BALL); }
+  // the highest the ball has been since it last touched a floor, from its snapshots + the server's own map (slam height)
+  ballAir(p) {
+    const y = p.pos[1], vy0 = p.ballVy || 0, n = now();
+    p.ballVy = p.vel[1];
+    (p.ballHist ||= []).push([n, p.pos.slice()]); // where it really was lately, so a claimed speed has to match the moves
+    while (p.ballHist.length > 2 && n - p.ballHist[0][0] > 160) p.ballHist.shift();
+    if (p.ballTop == null || (p.vel[1] > -3 && floorUnder(this.boxes, p.pos, 0.3) != null)) { p.ballTop = y; return; } // (diving at it isn't touching it)
+    if (vy0 < -3 && p.vel[1] > 0 && floorUnder(this.boxes, p.pos, 3) != null) { p.ballTop = y; return; } // bounced off the floor between snapshots
+    p.ballTop = Math.max(p.ballTop, y);
+  }
+  // rams: judged here from server-side positions + velocities, never from a client saying it hit someone.
+  // the ball's path since the last tick is a segment, so a fast ball can't skip through someone between snapshots.
+  tickBalls() {
+    const n = now(), R = WRECK.r;
+    for (const p of this.players.values()) {
+      if (!this.isBall(p, n)) { p.ballPrev = null; p.ballHist = null; continue; }
+      const c = [p.pos[0], p.pos[1] + R, p.pos[2]];
+      let a = p.ballPrev || c;
+      p.ballPrev = c;
+      if (dist3(a, c) > 6) a = c; // a jump that big is a teleport, not a roll: don't sweep everyone in between
+      // how fast it really moved over its last few snapshots: a claimed speed only counts if the position keeps up with it
+      const hh = p.ballHist || [], h0 = hh[0], h1 = hh[hh.length - 1];
+      const mv = h0 && h1[0] - h0[0] >= 25 && n - h1[0] < 200 ? dist3(h0[1], h1[1]) / ((h1[0] - h0[0]) / 1000) : 0;
+      // rolling, swinging and falling onto people count. rising doesn't (the bounce after a slam), and neither does the
+      // slam dive itself: the slam does its own damage, sized by the height
+      const down = p.vel[1] < -(WRECK.slamV - 8) ? 0 : Math.max(0, -p.vel[1]);
+      const vl = Math.hypot(p.vel[0], down, p.vel[2]);
+      const sp = Math.min(vl, mv * 1.4 + 3);
+      if (sp < WRECK.ramMin) continue;
+      const dir = [p.vel[0] / vl, -down / vl, p.vel[2] / vl];
+      for (const t of this.players.values()) {
+        if (t === p || !t.alive || this.friendly(p, t)) continue;
+        const tc = center(t);
+        const reach = R + 0.5 + WRECK.ramReach + Math.hypot(t.vel[0], t.vel[2]) * 0.04; // ball + body + a bit for lag
+        if (segPointDist(a, c, tc) > reach) continue;
+        if ((tc[0] - a[0]) * dir[0] + (tc[1] - a[1]) * dir[1] + (tc[2] - a[2]) * dir[2] < -0.3) continue; // it's rolling away from them
+        const to = [tc[0] - c[0], tc[1] - c[1], tc[2] - c[2]], td = Math.hypot(...to);
+        if (td > 0.3 && raycast(c, to.map((x) => x / td), td - 0.3, this.boxes)) continue; // there's a wall in between
+        if (!this.pairOk(p, t, 'ram', WRECK.ramCd)) continue;
+        const dmg = Math.min(WRECK.ramMax, sp * WRECK.ramMul);
+        const k = Math.min(WRECK.ramKbMax, WRECK.ramKb + sp * WRECK.ramKbMul);
+        const hl = Math.hypot(dir[0], dir[2]) || 1;
+        // launched the way the ball was going, and up off the floor
+        this.hurt(t, p, 'wreck', dmg, [dir[0] / hl * k, WRECK.ramUp + sp * 0.2, dir[2] / hl * k]);
+        this.broadcast({ t: 'fx', k: 'ram', id: p.id, to: t.id, p: tc.map(r2), s: Math.round(sp) });
+        this.knock(p, [-dir[0] * sp * 0.18, 1.5, -dir[2] * sp * 0.18], 'wreck'); // the ball keeps most of its momentum
+      }
+    }
+  }
+  // ground slam: the client lands a slam and says where. ball active, cooldown, the spot near where we think it is and on
+  // a floor. how big it is comes from the server's own record of how high the ball got since it last touched the floor.
+  onSlam(p, m) {
+    const n = now();
+    if (!this.isBall(p, n) || n - (p.slamT || 0) < WRECK.slamCd * 1000 - 250) return;
+    let at = vec3(m.p);
+    if (!at || Math.hypot(at[0] - p.pos[0], at[2] - p.pos[2]) > 4 + Math.hypot(p.vel[0], p.vel[2]) * 0.1 || at[1] > p.pos[1] + 1.5 || at[1] < p.pos[1] - 14) at = p.pos.slice();
+    let fl = floorUnder(this.boxes, [at[0], at[1] + 1, at[2]], 16);
+    if (fl == null) { at = p.pos.slice(); fl = floorUnder(this.boxes, [at[0], at[1] + 1, at[2]], 16); } // no floor where it says: try where we think it is
+    if (fl == null) return; // nothing under it to slam into
+    at[1] = fl;
+    const h = Math.min(30, (p.ballTop ?? p.pos[1]) - fl);
+    if (!(h >= 0.25)) return; // it never left the floor
+    p.slamT = n; p.ballTop = fl;
+    const S = slamSize(h), c = [at[0], fl + WRECK.r, at[2]];
+    this.broadcast({ t: 'fx', k: 'slam', id: p.id, p: at.map(r2), r: r2(S.r), h: r2(h) }, p.id);
+    for (const t of this.players.values()) {
+      if (t === p || !t.alive || this.friendly(p, t)) continue;
+      const tc = center(t), to = [tc[0] - c[0], tc[1] - c[1], tc[2] - c[2]], d = Math.hypot(...to);
+      const f = 1 - Math.max(0, d - WRECK.r) / S.r; // full at the ball's edge, nothing past the radius
+      if (f <= 0) continue;
+      const hl = Math.hypot(to[0], to[2]), out = hl > 0.2 ? [to[0] / hl, to[2] / hl] : [0, 0];
+      const k = S.kb * (0.35 + 0.65 * f);
+      this.hurt(t, p, 'wreck', S.dmg * (0.2 + 0.8 * f), [out[0] * k, S.up * (0.5 + 0.5 * f) + 3, out[1] * k]); // up and out
+    }
+  }
+
   tick(dt) {
     const n = now();
     this.tickRound();
@@ -1706,6 +1795,7 @@ class Room {
     this.tickStatus(dt);
     this.tickPeels();
     this.tickWaves();
+    this.tickBalls();
     for (const p of this.players.values()) {
       if (!p.alive && n >= p.respawnAt) {
         if (p.isBot && this.mode === 'coop') continue;
@@ -1767,6 +1857,29 @@ function flushStats(p) {
   store.addStats(p.acct.n, d).catch((e) => console.error('stats save failed', e.message));
 }
 setInterval(() => { for (const r of rooms.values()) for (const p of r.players.values()) flushStats(p); }, 60000);
+
+// what a wrecking ball is hit-tested as (the same box the clients shoot at)
+function ballBoxes(pos) {
+  const r = WRECK.r, [x, y, z] = pos;
+  return [{ min: [x - r, y, z - r], max: [x + r, y + 2 * r, z + r], head: false }];
+}
+// the top of the floor right under these feet (no more than drop below them), or null (wrecking ball slams)
+const qFloor = [];
+function floorUnder(boxes, p, drop, hw = 0.6) {
+  let best = null;
+  for (const b of query(boxes, p[0] - hw, p[2] - hw, p[0] + hw, p[2] + hw, qFloor)) {
+    const top = b.max[1];
+    if (top > p[1] + 0.05 || top < p[1] - drop || (best != null && top <= best)) continue;
+    if (b.min[0] < p[0] + hw && b.max[0] > p[0] - hw && b.min[2] < p[2] + hw && b.max[2] > p[2] - hw) best = top;
+  }
+  return best;
+}
+// shortest distance from point c to the segment a-b (wrecking ball rams)
+function segPointDist(a, b, c) {
+  const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], l2 = ab[0] * ab[0] + ab[1] * ab[1] + ab[2] * ab[2];
+  const t = l2 > 1e-9 ? Math.max(0, Math.min(1, ((c[0] - a[0]) * ab[0] + (c[1] - a[1]) * ab[1] + (c[2] - a[2]) * ab[2]) / l2)) : 0;
+  return Math.hypot(a[0] + ab[0] * t - c[0], a[1] + ab[1] * t - c[1], a[2] + ab[2] * t - c[2]);
+}
 
 function segs(s) {
   if (!Array.isArray(s)) return [];

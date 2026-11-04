@@ -58,7 +58,7 @@ Notes:
 | WASD | move |
 | Shift | run |
 | Space | jump (hold to bhop). Jump while grappling to launch off the rope with your momentum |
-| C / Ctrl | crouch; crouch while fast to slide. Spam it too long and your knees explode |
+| C / Ctrl | crouch; crouch while fast to slide. Spam it too long and your knees explode. As the Wrecking Ball: ground slam (in the air) / brake |
 | Left mouse | fire / swing / play a card / draw the bow (hold, release) |
 | Right mouse | aim down sights · **Knife: heavy stab** · Card Deck: pick a card |
 | E / mouse side buttons | grapple (hold) |
@@ -131,8 +131,16 @@ Pick **3** in LOADOUT. Kills in one life (the count resets when you die) earn th
 | 4 | Chicken Strike: rain exploding chickens where you aim |
 | 5 | Scythe Rifle in slot 4: X switches to rifle mode, hold V to glitch dash |
 | 6 | Spinbot: 10 s of aimbot + spinning. You are now a cheater |
+| 6 | Wrecking Ball: 20 s as a giant steel demolition ball in third person: ram, chain-swing, ground slam (see below) |
 | 7 | Spy Satellite: every enemy shows through walls for 20 s |
 | 10 | Giant Duck: a giant black hole where you aim that pulls in everyone but you |
+
+**Wrecking Ball:** you curl up inside a 2.2 m riveted steel demolition ball (a stripe in your colour, a chain stub on top, your eyes peeking out of a slot) and the camera pulls out behind and above you. No guns for 20 s (a box at the top shows the time left, your speed and what a ram or a slam would do right now), but:
+- **Roll:** heavy and fast (about 95 km/h from just pushing), low friction so it keeps rolling, turns slowly, bounces off walls with a clang, falls hard. Space is a small hop, crouch on the floor brakes.
+- **Ram:** roll into people. Damage is 2 x your speed in m/s (from 6 m/s, so a slow roll barely taps them; max 120, so a full-speed chain swing is brutal) and they get launched the way you were going. Teammates are safe.
+- **Chain (E):** the grapple becomes a heavy chain on a crane winch: it hauls you up while you hang or drag along, then lets you swing in long pendulum arcs that keep all your momentum. When it snaps tight your speed turns into swing instead of stopping you. Jump to let go. Hook a person to reel yourself into them.
+- **Ground slam (C / Ctrl in the air):** straight down, very fast. The higher you were, the bigger it is: off a small hop it's 30 at the centre across 4 m, from 18 m up or more it's 150 across 10 m, falling off with distance, knocking everyone up and out. It bounces you back up 5 to 12 m (higher the higher you came from) so you can slam again: 1.5 s cooldown, hold crouch to chain them.
+- The server judges every ram and slam from its own positions, velocities and map (including how high you got); the client can't claim hits.
 
 ## Maps
 
@@ -227,5 +235,5 @@ Prompts live in `tools/models.json`; models land in `public/models/<id>.glb` and
 - `server.js`: static files + WebSocket `/ws`. Rooms: shared Online and Coop, private Bots and Training. Movement is client-authoritative; the server owns HP, kills, projectiles, arrows, cards, items, frost, streaks, modes (teams, tags, the bomb), the map/mode vote, cosmetics ownership, achievements, round recordings for highlights, and bots (including their objective routes and grappling).
 - `server/`: accounts, stats, containers, leaderboard (`/api/*`), stored in a local file or Supabase.
 - `shared/`: `map.js` maps + box physics + bot routes · `modes.js` game modes, teams, bomb rules, vote timing · `weapons.js` weapons, items, killstreaks, loadout rules · `cosmetics.js` skins/wraps/effects/kill effects/hats + crates · `looks.js` character outfits.
-- `public/js/`: `main.js` menus + net + loop · `player.js` movement · `weapons.js` viewmodels, recoil springs, ADS, items · `anim.js` swing/inspect keyframes (per-knife styles) · `speedlines.js` · `remote.js` other players · `replay.js` killcam + highlights · `killfx.js` kill effects · `cards.js` name cards · `objective.js` bomb sites, tags, team bar · `icons.js` hotbar/item/streak pictures · `models.js` · `skins.js` · `fx.js` · `world.js` · `scenery.js` the land around each map · `hud.js` · `audio.js`.
+- `public/js/`: `main.js` menus + net + loop · `player.js` movement · `weapons.js` viewmodels, recoil springs, ADS, items · `anim.js` swing/inspect keyframes (per-knife styles) · `speedlines.js` · `wreck.js` the Wrecking Ball's looks, chain and third-person camera (its rolling is in `player.js`) · `remote.js` other players · `replay.js` killcam + highlights · `killfx.js` kill effects · `cards.js` name cards · `objective.js` bomb sites, tags, team bar · `icons.js` hotbar/item/streak pictures · `models.js` · `skins.js` · `fx.js` · `world.js` · `scenery.js` the land around each map · `hud.js` · `audio.js`.
 - `desktop/`: the Electron app (launcher, in-app server, display modes).

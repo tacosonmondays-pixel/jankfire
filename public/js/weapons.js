@@ -255,6 +255,7 @@ function charges(id) {
 }
 export function syncItem(id, n, nextMs) { if (!ITEMS[id]) return; W.ic[id] = { n, next: nextMs ? performance.now() + nextMs : 0 }; }
 export function useItem() {
+  if (performance.now() < (ME.ballUntil || 0)) return; // wrecking ball: no hands
   const id = W.item, it = ITEMS[id];
   if (!it || !ME.alive) return;
   const c = charges(id);
@@ -269,6 +270,7 @@ export function useItem() {
 
 // knife right click: CS-style heavy stab. returns false when this weapon has no heavy attack
 export function heavyAttack() {
+  if (performance.now() < (ME.ballUntil || 0)) return true; // wrecking ball: no hands
   const id = W.cur, w = WEAPONS[id], now = performance.now();
   if (!w || !w.heavy || !ANIMS['stab_' + id]) return false;
   const model = models[id] && models[id].g.userData.model;
@@ -686,6 +688,7 @@ function cough() {
 }
 
 export function fireDown() {
+  if (performance.now() < (ME.ballUntil || 0)) return; // wrecking ball: no hands
   W.held = true;
   cancelInspect();
   const id = W.cur, w = WEAPONS[id], now = performance.now();
@@ -760,6 +763,7 @@ function animEvent(ev, g) {
 }
 
 export function updateWeapons(dt, now) {
+  if (ME.alive && now < (ME.ballUntil || 0)) { W.held = false; W.aimHeld = false; W.dashHeld = false; W.exhale = 0; W.charge = 0; } // wrecking ball: no hands
   const id = W.cur, w = WEAPONS[id];
   const alive = ME.alive;
   let smoking = false, firing = false, blowing = false, spinning = false;

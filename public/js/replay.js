@@ -13,6 +13,7 @@ import { playKillFx } from './killfx.js';
 import { WEAPONS } from '/shared/weapons.js';
 import { raycast } from '/shared/physics.js';
 import { BOXES } from '/shared/map.js';
+import { wreckFx, wreckDied } from './wreck.js';
 
 const KEEP = 10000;
 export const rec = { frames: [], ev: [] };
@@ -108,6 +109,7 @@ function applyEv(m) {
       const vi = info[m.v] || {};
       const replaced = m.fx && m.fx !== 'none' && playKillFx(m.fx, { pos: v.pos.slice(), vel: m.vel || v.vel, yaw: v.yaw, color: v.color, look: vi.look, name: vi.name });
       if (replaced) v.ch.root.visible = false; else v.breakApart(m.vel || v.vel);
+      wreckDied(v, m.vel);
     }
     if (st.opts.onKill) st.opts.onKill(m);
     if (m.k === st.opts.focus) sfx.kill();
@@ -117,6 +119,8 @@ function applyEv(m) {
     fx.explosion(m.p, WEAPONS.chicken.radius); sfx.boom(m.p);
   } else if (m.t === 'he') {
     fx.blast(m.p, WEAPONS.duck.blastR); sfx.holePop(m.p);
+  } else if (m.t === 'fx' && (m.k === 'slam' || m.k === 'ram')) {
+    wreckFx(m, true); // wrecking ball slams + rams (the ghost itself already rolls as a ball from its snapshot flags)
   }
 }
 
