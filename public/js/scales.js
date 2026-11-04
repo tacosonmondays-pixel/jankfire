@@ -21,10 +21,15 @@ function fresh() { if (roomOf !== G.myId) { roomOf = G.myId; streaks.clear(); la
 export function courtKill(m) {
   fresh();
   if (m.k && m.k !== m.v) streaks.set(m.k, (streaks.get(m.k) || 0) + 1);
-  streaks.set(m.v, 0);
+  streaks.delete(m.v); // only players on a streak are kept (coop sends a lot of wave bots through here)
   if (m.v === G.myId && m.k && m.k !== G.myId) lastKiller = m.k;
   else if (m.k === G.myId && m.v === lastKiller) lastKiller = 0; // revenge served
 }
+// a new match (main.js, round start): the server forgets grudges too. dropping the streaks is safe because the court
+// only counts this match's kills of a streak (shared/verdict.js), which is all this map holds from here
+export function courtReset() { lastKiller = 0; streaks.clear(); }
+// on join the server sends the streaks so far (the kill feed only has them from here on): [[id, streak], ...]
+export function courtSync(m) { fresh(); for (const [id, n] of m.s || []) if (n > 0) streaks.set(id, n); }
 const friend = (r) => !!(G.myTeam && r.team && r.team === G.myTeam);
 const dummy = (r) => r.bot && r.name === 'Dummy';
 
@@ -39,7 +44,7 @@ export function judge(r) {
     const sc = R.game === 'bomb' && R.bomb ? R.bomb.wins : R.sc || [0, 0];
     teams = [sc[G.myTeam - 1] || 0, sc[r.team - 1] || 0];
   }
-  return verdict(me, { kills: r.k, deaths: r.d, streak: streaks.get(r.id) || 0 }, { board, teams, revenge: !!lastKiller && lastKiller === r.id });
+  return verdict(me, { kills: r.k, deaths: r.d, streak: streaks.get(r.id) || 0 }, { board, teams, revenge: !!lastKiller && lastKiller === r.id, npc: (G.mode === 'coop' && r.bot) || dummy(r) });
 }
 
 // who's on trial: whoever is under the crosshair, else the one a swing would hit closest to it.
@@ -58,7 +63,7 @@ function accused(reach, cone) {
     if (dot > best) { best = dot; near = r; }
   }
   if (ray && raycast(o, d, ray.t, BOXES)) ray = null; // behind a wall
-  const r = ray ? ray.r : near;
+  const r = ray && inReach.has(ray.r) ? ray.r : near || (ray && ray.r); // a swing hits whoever is in reach, so they come first
   return r ? { r, reach: inReach.has(r) } : null;
 }
 
@@ -159,9 +164,10 @@ function stampTex(title, sub, ink) {
   stampTexs.set(key, t);
   return t;
 }
-// the stamp slams down over the victim, settles, then fades. it follows them until they die, then stays put
-function stamp(p, title, sub, ink, who, big) {
-  const mat = new THREE.SpriteMaterial({ map: stampTex(title, sub, ink), transparent: true, depthTest: false, depthWrite: false, fog: false });
+// the stamp slams down over the victim, settles, then fades. it follows them until they die, then stays put.
+// mine (your own hit): big and through everything. anyone else's is a normal thing in the world: walls hide it, distance shrinks it
+function stamp(p, title, sub, ink, who, big, mine) {
+  const mat = new THREE.SpriteMaterial({ map: stampTex(title, sub, ink), transparent: true, depthTest: !mine, depthWrite: false, fog: false });
   mat.rotation = -0.1 + R(0.1);
   const s = new THREE.Sprite(mat);
   s.renderOrder = 30;
@@ -171,7 +177,7 @@ function stamp(p, title, sub, ink, who, big) {
     if (who) o.position.set(who.pos[0], who.pos[1] + 2.25, who.pos[2]);
     const slam = Math.min(1, age / 0.1);
     const k = slam < 1 ? 1 + (1 - slam * slam) * 1.8 : 1 + Math.max(0, 0.1 - (age - 0.1)) * 0.6 * Math.sin((age - 0.1) * 60);
-    const w = Math.max(2.2, o.position.distanceTo(G.camera.position) * 0.7) * (big ? 1.35 : 1); // never smaller than a fifth of the screen
+    const w = (mine ? Math.max(2.2, o.position.distanceTo(G.camera.position) * 0.7) : 2.2) * (big ? 1.35 : 1); // yours: never smaller than a fifth of the screen
     o.scale.set(w * k, w * 0.5 * k, 1);
     const fade = big ? 1.95 : 1.3;
     mat.opacity = slam < 1 ? slam : age > fade ? Math.max(0, 1 - (age - fade) / 0.45) : 1;
@@ -196,23 +202,38 @@ function coins(p, n) {
   }
 }
 
+const titleOf = (g) => (g > 0 ? 'GUILTY!' : g < 0 ? 'NOT GUILTY' : 'HUNG JURY');
+// stamp, gold and gavel where the ruling landed. mine: the hit is yours (or, in a replay, the one the camera follows).
+// someone else's trial far away gets no stamp, coins or sparks (they'd flood the screen and give away where the fight is)
+function ruling(m, p, victim, mine, stampIt) {
+  if (mine || G.camera.position.distanceTo(V1.set(p[0], p[1], p[2])) < 35) {
+    const ink = m.g > 0 ? '#6a0a00' : m.g < 0 ? '#0a2a5a' : '#3a2a10';
+    if (stampIt) stamp(p, titleOf(m.g), m.one ? 'THE COURT HAS SPOKEN' : fmtMult(m.m), ink, victim, m.one, mine);
+    fx.spray([p[0], p[1] + 0.7, p[2]], Math.round(18 + 14 * m.m), [0xffd23b, 0xfff2a0, 0xffb31a, 0xffffff], 9, 0.9, 0.12, 9, 1.4);
+    coins(p, Math.round(2 + 4 * m.m));
+  }
+  sfx.gavel(p, m.one ? 3 : 1);
+  if (m.g > 0) sfx.guilty(p, m.one); else if (m.g < 0) sfx.acquit(p);
+}
+
 // the server ruled on a scales hit: { id: victim, by: attacker, m: multiplier, g: guilt, one: one-shot, p: where }
 export function courtVerdict(m) {
   const now = performance.now();
   const victim = m.id === G.myId ? null : G.remotes.get(m.id);
   const p = m.p || (victim ? [victim.pos[0], victim.pos[1] + 0.9, victim.pos[2]] : ME.pos);
-  const title = m.g > 0 ? 'GUILTY!' : m.g < 0 ? 'NOT GUILTY' : 'HUNG JURY';
-  const ink = m.g > 0 ? '#6a0a00' : m.g < 0 ? '#0a2a5a' : '#3a2a10';
-  if (m.id !== G.myId) stamp(p, title, m.one ? 'THE COURT HAS SPOKEN' : fmtMult(m.m), ink, victim, m.one);
-  fx.spray([p[0], p[1] + 0.7, p[2]], Math.round(18 + 14 * m.m), [0xffd23b, 0xfff2a0, 0xffb31a, 0xffffff], 9, 0.9, 0.12, 9, 1.4);
-  coins(p, Math.round(2 + 4 * m.m));
-  sfx.gavel(p, m.one ? 3 : 1);
-  if (m.g > 0) sfx.guilty(p, m.one); else if (m.g < 0) sfx.acquit(p);
-  if (m.by === G.myId) {
+  const title = titleOf(m.g);
+  const mine = m.by === G.myId;
+  ruling(m, p, victim, mine, m.id !== G.myId);
+  if (mine) {
     court.ruling = { g: m.g, until: now + 900 };
     if (m.one) { hud.msg('THE COURT HAS SPOKEN', 1.8, 'court'); G.shake = Math.max(G.shake, 0.6); }
   } else { const h = G.remotes.get(m.by); if (h) h.ruling = { g: m.g, until: now + 1200 }; }
   if (m.id === G.myId) hud.msg(m.one ? 'THE COURT HAS SPOKEN' : `${title} ${fmtMult(m.m)}`, 1.3, 'court');
+}
+// the same ruling in a killcam or highlight (replay.js): victim is their ghost, focus whoever the camera follows
+export function courtReplay(m, victim, focus) {
+  const p = m.p || (victim && [victim.pos[0], victim.pos[1] + 0.9, victim.pos[2]]);
+  if (p) ruling(m, p, victim, m.by === focus, true);
 }
 
 // every frame (main.js): other people's scales, stamps, coins

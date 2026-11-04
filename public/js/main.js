@@ -22,7 +22,7 @@ import { Remote, updateGibs } from './remote.js';
 import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN } from './skins.js';
 import { initPreview, showPreview, showCharacter, renderPreview, resizePreview } from './preview.js';
 import { playKillFx, updateKillFx, clearKillFx } from './killfx.js';
-import { courtKill, courtVerdict, updateCourt } from './scales.js';
+import { courtKill, courtVerdict, updateCourt, courtReset, courtSync } from './scales.js';
 import { updateSpeedLines } from './speedlines.js';
 import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse } from './objective.js';
 import { GAMES, GAME_ORDER, TEAMS } from '/shared/modes.js';
@@ -1135,6 +1135,7 @@ net.on('pd', (m) => {
   }
 });
 net.on('tip', (m) => { G.tip = m.tip; });
+net.on('court', courtSync); // scales of justice: everyone's kill streak when you join
 net.on('hand', (m) => { G.hand = m.hand || []; });
 net.on('tp', (m) => { ME.pos = m.p.slice(); fx.glitch(ME.pos, [0, 0, 0], 20); sfx.reverse(); });
 net.on('heal', (m) => {
@@ -1237,6 +1238,7 @@ net.on('fx', (m) => {
   } else if (m.k === 'thwack') {
     sfx.thwack(m.p);
   } else if (m.k === 'verdict') {
+    recordEv(m); // killcams show the ruling too
     courtVerdict(m);
   }
 });
@@ -1875,6 +1877,7 @@ function renderRound(r) {
 net.on('round', (m) => {
   const box = $('roundEnd');
   if (m.start) {
+    courtReset(); // scales of justice: a new match, a clean record (the server does the same)
     G.roundOver = false; if (RP.mode === 'hl') stopReplay(true); box.classList.add('hidden'); showVote(null);
     if (m.game) { G.round = { ...(G.round || {}), ...m }; updateLabel(); }
     hud.msg(m.game && m.game !== 'dm' && GAMES[m.game] ? GAMES[m.game].name.toUpperCase() : 'ROUND START', 1.8, 'brag');

@@ -118,7 +118,8 @@ const SHELL_ON_FIRE = new Set(['ar', 'smg', 'redline', 'minigun', 'scythe_rifle'
 
 // smear trail: a fading ribbon behind the tip of whatever you swing
 const TRAIL_N = 26;
-const TRAIL_COLOR = { knife: 0xbfe8ff, bread: 0xffd9a0, spoon: 0xffffff, slapper: 0xffb0d0, scythe: 0xff3ad8, slipper: 0xb0ffb0, cards: 0xffffff, scales: 0xffd86a };
+const TRAIL_COLOR = { knife: 0xbfe8ff, bread: 0xffd9a0, spoon: 0xffffff, slapper: 0xffb0d0, scythe: 0xff3ad8, slipper: 0xb0ffb0, cards: 0xffffff };
+TRAIL_COLOR.scales = 0xffd86a; // brass
 const trailPts = [];
 let trail = null;
 const tmpV2 = new THREE.Vector3(), tcol = new THREE.Color();

@@ -156,6 +156,7 @@ function cleanCard(c) { return typeof c === 'string' && c.length <= 24000 && CAR
 // replays: the server keeps the last few seconds of everything so it can send the play of the round
 const REC_T = new Set(['kill', 'boom', 'fx', 'pd', 'he']);
 const REC_FX = new Set(['shot', 'swing', 'tbag', 'reflect']);
+REC_FX.add('verdict'); // scales of justice: highlights show the ruling
 const REC_MS = 12000;
 function newDeck() {
   const d = [];
@@ -311,6 +312,7 @@ class Room {
     });
     this.broadcast({ t: 'pj', ...this.info(p) }, p.id);
     send(p, { t: 'tip', tip: p.tip });
+    send(p, { t: 'court', s: [...this.players.values()].filter((o) => o.streak > 0).map((o) => [o.id, o.streak]) }); // scales of justice: streaks so far
     deal(p);
     this.sendLoadout(p);
     if (this.mode === 'ffa' || this.mode === 'coop') this.broadcast({ t: 'chat', id: 0, m: `${name} joined` });
@@ -905,7 +907,7 @@ class Room {
   verdictOf(p, t) {
     let teams = null;
     if (this.teamsOn() && p.team && t.team) { const sc = this.game === 'bomb' && this.bomb ? this.bomb.wins : this.score; teams = [sc[p.team] || 0, sc[t.team] || 0]; }
-    return verdict(p, t, { board: this.fighters(), teams, revenge: !!p.lastKiller && p.lastKiller === t.id });
+    return verdict(p, t, { board: this.fighters(), teams, revenge: !!p.lastKiller && p.lastKiller === t.id, npc: (this.mode === 'coop' && t.isBot) || !!(t.ai && t.ai.dummy) });
   }
 
   onHit(p, m) {
@@ -1542,6 +1544,7 @@ class Room {
   startRound() {
     this.resolveVote();
     for (const p of this.players.values()) { p.kills = 0; p.deaths = 0; }
+    for (const p of this.players.values()) p.lastKiller = 0; // new match: the court forgets old grudges
     this.round = { target: (TARGETS[this.mode] || TARGETS.ffa)[this.game] || ROUND[this.mode].kills, ends: now() + ROUND[this.mode].time * 1000, over: false, next: 0 };
     this.score = { 1: 0, 2: 0 };
     this.clearTags();

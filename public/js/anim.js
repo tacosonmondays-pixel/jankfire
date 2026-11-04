@@ -104,14 +104,14 @@ export const ANIMS = {
   // the pans hang on chains (scales.js), so every swing flings them about
   swing_scales: { hit: 0.22, keys: [
     K(0), K(0.14, [0, 0.18, 0.05], [0.5, -0.1, 0.3], 'in'), // heave it up and back over your head
-    K(0.23, [-0.12, 0.12, -0.12], [-1.26, 0.06, -0.05], 'snap'), // SMASH it down right in front of you
-    K(0.36, [-0.12, 0.08, -0.1], [-1.36, 0.06, -0.05]), // it's heavy: it stays down a moment
+    K(0.23, [-0.18, 0.1, 0.06], [-0.65, 0.05, 0.2], 'snap'), // SMASH: the beam lands right across the middle of the screen
+    K(0.36, [-0.19, 0.06, 0.06], [-0.8, 0.05, 0.2]), // it's heavy: it sinks a little and stays down a moment
     K(0.6),
   ], events: [[0.02, 'chains'], [0.15, 'whooshBig'], [0.3, 'chains']], trail: [0.14, 0.34] },
   swing_scales2: { hit: 0.19, keys: [
     K(0), K(0.12, [0.08, 0.16, 0.06], [-0.2, -0.6, -0.95], 'in'), // cock it out to the right
-    K(0.22, [-0.14, 0.13, -0.12], [-0.3, 1.5, -1.2], 'snap'), // sweep it flat across the middle
-    K(0.34, [-0.2, 0.1, -0.1], [-0.3, 2.1, -1.15]), K(0.58),
+    K(0.22, [-0.14, 0.27, 0], [-0.25, 2.25, -1.25], 'snap'), // sweep it flat across the middle, head first
+    K(0.34, [-0.24, 0.22, 0], [-0.25, 2.7, -1.25]), K(0.58),
   ], events: [[0.02, 'chains'], [0.12, 'whooshBig'], [0.28, 'chains']], trail: [0.12, 0.3] },
   draw_scales: { keys: [K(0, [0.02, -0.32, 0.06], [-0.6, 0, 0.35]), K(0.3, [0, 0.015, 0], [0.06, 0, -0.05], 'back'), K(0.46)], events: [[0.05, 'chains'], [0.3, 'chains']] },
   inspect_scales: { keys: [ // hold it up, jiggle it, watch the pans swing
@@ -372,7 +372,8 @@ export const ANIMS = {
   ], events: [[0.45, 'rev']] },
 };
 
-const SPECIAL = new Set(['katana', 'bread', 'slipper', 'spoon', 'revolver', 'shotgun', 'minigun', 'sniper', 'cig', 'duck', 'reverse', 'popper', 'chicken', 'blower', 'knife', 'slapper', 'scythe', 'scales']);
+const SPECIAL = new Set(['katana', 'bread', 'slipper', 'spoon', 'revolver', 'shotgun', 'minigun', 'sniper', 'cig', 'duck', 'reverse', 'popper', 'chicken', 'blower', 'knife', 'slapper', 'scythe']);
+SPECIAL.add('scales'); // on its own line so other new weapons can add theirs without touching the list
 // weapon skins get their own inspect when they have one (butterfly flips, karambit spins...)
 export function inspectFor(id, model) {
   if (model && ANIMS['inspect_' + model]) return 'inspect_' + model;

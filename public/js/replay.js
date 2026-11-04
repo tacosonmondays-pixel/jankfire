@@ -10,6 +10,7 @@ import { marbles } from './marbles.js';
 import { sfx } from './audio.js';
 import { tracerColor } from './skins.js';
 import { playKillFx } from './killfx.js';
+import { courtReplay } from './scales.js';
 import { WEAPONS } from '/shared/weapons.js';
 import { raycast } from '/shared/physics.js';
 import { BOXES } from '/shared/map.js';
@@ -89,6 +90,7 @@ function feed(upTo) {
 function applyEv(m) {
   const g = st.ghosts.get(m.id);
   const info = st.clip.info || {};
+  if (m.t === 'fx' && m.k === 'verdict') return courtReplay(m, g, st.opts.focus); // scales of justice: the stamp + gold
   if (m.t === 'fx' && m.k === 'shot') {
     const w = WEAPONS[m.w];
     if (!w || !Array.isArray(m.s)) return;

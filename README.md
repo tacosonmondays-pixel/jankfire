@@ -118,10 +118,10 @@ Bots play the objectives too: they carry and plant the bomb, defuse it, and grab
 | they're above / below you on the scoreboard | +1 / -1 |
 | they lead the match (and it isn't you) | +1 |
 | team modes: your team is behind / ahead | +1 / -1 |
-| they're on a 3+ / 5+ kill streak | +1 / +2 |
-| they're the last one who killed you (until you get revenge) | +2 |
+| they're on a 3+ / 5+ kill streak (kills from this match) | +1 / +2 |
+| they're the last one who killed you (until you get revenge, or the match ends) | +2 |
 
-GUILTY: x(1 + 0.4 per point), up to x3, which one-shots (THE COURT HAS SPOKEN). NOT GUILTY: x(1 - 0.25 per point), down to x0.4. Zero points: HUNG JURY, x1. The scale in your hands tips toward the verdict for whoever is under your crosshair (heart pan = guilty, feather pan = innocent) and a readout under the crosshair says it, e.g. `GUILTY x2.2`. Every hit gets a gold stamp, a gavel bang and a shower of coins. Skin: **Kangaroo Court**, a wobbly wooden toy scale with a kangaroo judge.
+Coop wave bots and training dummies aren't on the scoreboard, so only their streak and revenge count (a fresh one is a HUNG JURY, x1). GUILTY: x(1 + 0.4 per point), up to x3, which one-shots (THE COURT HAS SPOKEN). NOT GUILTY: x(1 - 0.25 per point), down to x0.4. Zero points: HUNG JURY, x1. The scale in your hands tips toward the verdict for whoever is under your crosshair (heart pan = guilty, feather pan = innocent) and a readout under the crosshair says it, e.g. `GUILTY x2.2`. Every hit gets a gavel bang, a shower of coins and a gold stamp over the victim (yours shows through walls; other people's only nearby), in killcams and highlights too. Skin: **Kangaroo Court**, a wobbly wooden toy scale with a kangaroo judge.
 
 **Snowball:** barely hurts, but every hit adds frost. 4 hits freezes them solid for a moment; hit a frozen target and they shatter.
 

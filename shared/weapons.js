@@ -163,7 +163,7 @@ export const WEAPONS = {
   },
   scales: {
     slot: 'melee', kind: 'melee', name: 'Scales of Justice', color: '#ffc83a',
-    desc: 'A big brass balance scale, swung like a mace. Every hit gets a verdict: leaders, streakers and whoever killed you last are GUILTY and take up to x3 (one shot). Anyone doing worse than you is NOT GUILTY and barely feels it.',
+    desc: 'Hits as hard as they deserve: leaders, streakers and your killer take up to x3.',
     // dmg is multiplied by the server's verdict at hit time (shared/verdict.js): x0.4 .. x3
     cd: 0.6, range: 3.2, cone: 0.75, dmg: 35, kb: 14, kbUp: 5, delay: 0.22, verdict: true, speedMul: 0.95,
   },

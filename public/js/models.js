@@ -239,6 +239,7 @@ function chainLinks(g, a, b, n, color) { // little flat links from a to b, every
     g.add(l);
   }
 }
+const ARC_MATS = {}; // the dial's red / pale halves: shared, so swapping to the scales doesn't make new materials every time
 function scalesBuild(g, toy) {
   const C = toy
     ? { metal: 0xe0a860, dark: 0xe8402a, hi: 0x2f6bff, grip: 0xe0a860, pan: 0x3fbf4a, beam: 0xffd23b, chain: 0xf4f0e0 }
@@ -259,7 +260,7 @@ function scalesBuild(g, toy) {
   if (!toy) {
     const plate = new THREE.Mesh(new THREE.CircleGeometry(0.084, 10, Math.PI / 2 - 0.95, 1.9), M(C.dark)); plate.position.set(0, TOP - 0.07, 0.002); body.add(plate);
     for (const [a0, col] of [[Math.PI / 2, 0xff3a2a], [Math.PI / 2 - 0.85, 0xdff8ff]]) {
-      const arc = new THREE.Mesh(new THREE.RingGeometry(0.056, 0.078, 8, 1, a0, 0.85), new THREE.MeshBasicMaterial({ color: col, side: THREE.DoubleSide }));
+      const arc = new THREE.Mesh(new THREE.RingGeometry(0.056, 0.078, 8, 1, a0, 0.85), (ARC_MATS[col] ||= new THREE.MeshBasicMaterial({ color: col, side: THREE.DoubleSide })));
       arc.position.set(0, TOP - 0.07, 0.005); arc.userData.noWrap = true; body.add(arc);
     }
   }
