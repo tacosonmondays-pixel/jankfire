@@ -18,6 +18,7 @@ import { raycast } from '/shared/physics.js';
 import { BOXES } from '/shared/map.js';
 import { soapBubble, soapFlail } from './models.js';
 import { TRAP, trapPreroll } from '/shared/wand.js';
+import { patchPreroll } from '/shared/marbles.js';
 
 const KEEP = 10000;
 export const rec = { frames: [], ev: [] };
@@ -38,6 +39,7 @@ export function localClip(t0, t1, infoOf) {
   const frames = rec.frames.filter((f) => f.s >= t0 && f.s <= t1);
   const ev = rec.ev.filter((e) => e.s >= t0 && e.s <= t1);
   ev.unshift(...trapPreroll(rec.ev, t0)); // someone already floating in a soap bubble when the clip starts
+  ev.unshift(...patchPreroll(rec.ev, t0)); // marbles already on the floor
   const info = {};
   for (const f of frames) for (const e of f.p) if (!info[e[0]]) info[e[0]] = infoOf(e[0]);
   return { frames, ev, info };
@@ -81,6 +83,7 @@ export function stopReplay(silent) {
   for (const g of s.ghosts.values()) if (g.soap) { G.scene.remove(g.soap.mesh); g.soap.mesh.material.dispose(); }
   for (const g of s.ghosts.values()) g.dispose();
   for (const m of s.projs.values()) G.scene.remove(m);
+  for (const k of s.mp || []) marbles.dropPatch(k); // the replay's marbles on the floor
   RP.active = false;
   RP.mode = null;
   document.body.classList.remove('replaying');
@@ -105,6 +108,7 @@ function feed(upTo) {
 
 function applyEv(m) {
   if (m.t === 'trap' || m.t === 'trapx') { trapGhost(m, st.t); return; }
+  if (m.t === 'mpatch' || m.t === 'mslip' || m.t === 'mpx') { ghostPatch(m); return; }
   const g = st.ghosts.get(m.id);
   const info = st.clip.info || {};
   if (m.t === 'fx' && m.k === 'verdict') return courtReplay(m, g, st.opts.focus); // scales of justice: the stamp + gold
@@ -292,4 +296,17 @@ export function updateReplay(dt, now, cam) {
   if (o.onTick) o.onTick(st.t, slow);
   if (st.t >= st.end) { stopReplay(false); return true; }
   return true;
+}
+
+// marbles on the floor (Marble Shotgun) in a replay: keyed -id so they never mix with the live ones
+function ghostPatch(m) {
+  const k = -m.id;
+  if (!Number.isFinite(k)) return;
+  if (m.t === 'mpatch') {
+    if (!Array.isArray(m.c)) return;
+    const sk = (((st.clip.info || {})[m.o] || {}).skins || {}).marbles;
+    marbles.addPatch(k, m, sk && sk[3] === 'marbles_gumball' ? 'gumball' : 'glass');
+    (st.mp ||= new Set()).add(k);
+  } else if (m.t === 'mslip') { if (Array.isArray(m.p)) { marbles.thinPatch(k, m.n, m.r, m.p); sfx.clatter(m.p); } }
+  else marbles.dropPatch(k);
 }

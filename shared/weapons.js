@@ -85,7 +85,7 @@ export const WEAPONS = {
   },
   marbles: {
     slot: 'secondary', kind: 'hitscan', name: 'Marble Shotgun', color: '#7fd0ff',
-    desc: 'A hundred glass marbles per shot. One marble barely tickles, but point blank they all land: one shot, one kill. They bounce round the floor after.',
+    desc: 'A hundred glass marbles per shot. One marble barely tickles, but point blank they all land: one shot, one kill. They stay on the floor after: anyone who runs over them slips (crouch-walk to cross).',
     rate: 1 / 0.9, mag: 2, reload: 1.9, pellets: 100, dmg: 1.15, head: 1.3, spread: 0.27,
     kb: 0, kbUp: 0, recoil: 4, kick: 0.07, range: 30, marbles: true,
     ads: { zoom: 1.15, spread: 0.8, p: [0, -0.1, -0.3] },

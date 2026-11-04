@@ -23,6 +23,7 @@ import { Remote, updateGibs } from './remote.js';
 import { stepSoap, trapStart, trapEnd, updateWand, stuckInBubble } from './wand.js';
 import { parry } from './weapons.js';
 import './parry.js'; // katana parry: sparks, sounds, PARRY!, the guard pose
+import { addPatch, clearPatches } from './mslip.js'; // marble shotgun: marbles on the floor you slip on
 import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN } from './skins.js';
 import { initPreview, showPreview, showCharacter, renderPreview, resizePreview } from './preview.js';
 import { playKillFx, updateKillFx, clearKillFx } from './killfx.js';
@@ -198,6 +199,7 @@ function clearEntities() {
   for (const pl of G.peels.values()) G.scene.remove(pl);
   for (const h of G.holes.values()) G.scene.remove(h.mesh);
   G.projs.clear(); G.peels.clear(); G.holes.clear();
+  clearPatches();
 }
 function quitToMenu(silent) {
   net.close();
@@ -892,6 +894,7 @@ net.on('welcome', (m) => {
   hud.chat(null, null, `you are ${m.name}. ${tips[m.mode] || ''}`);
   clearSprays(); sprayT = -1e9;
   for (const s of m.sprays || []) addSpray(s, true); // graffiti that was already on the walls
+  for (const pt of m.mpatch || []) addPatch(pt); // marbles already on the floor
 });
 net.on('cfg', (m) => {
   const mapChanged = m.cfg.map !== G.cfg.map;
@@ -1079,7 +1082,7 @@ net.on('loadout', (m) => {
   if (m.lo) hud.msg(`${wname(m.lo.primary)} · ${wname(m.lo.secondary)} · ${wname(m.lo.melee)}${ITEMS[m.lo.item] ? ' · ' + ITEMS[m.lo.item].name : ''}`, 2.2, 'brag');
 });
 net.on('kb', (m) => applyKb(m.v));
-net.on('slip', () => slip(performance.now()));
+net.on('slip', (m) => slip(performance.now(), m.k));
 net.on('dmg', (m) => {
   const target = m.to === G.myId ? null : G.remotes.get(m.to);
   if (m.to === G.myId) {
