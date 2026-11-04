@@ -47,6 +47,9 @@ import { account, restore, login, register, logout, saveProfile, leaderboard as 
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { SPRAY, ownedSpray } from '/shared/cosmetics.js';
 import { sprayAim, sprayFx, addSpray, clearSprays, updateSprays, sprayIcon } from './sprays.js';
+import { achInv } from '/shared/cosmetics.js'; // achievement rewards (Golden Sniper) count as owned once you have the achievement
+import { achProgress } from '/shared/looks.js';
+import { royalToast, royalUnlock, royalBoxes } from './royal.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
@@ -484,6 +487,7 @@ function myAchs() { return new Set((account.me && account.me.achs) || []); }
 function rewardsFor(achId) {
   const out = [];
   for (const s2 of LOOK_SLOTS) for (const [k, v] of Object.entries(ACCESSORIES[s2])) if (v.ach === achId) out.push({ slot: s2, id: k, name: v.name });
+  for (const t of LOOT_TYPES) for (const [k, v] of Object.entries(COSMETICS[t])) if (v.ach === achId) out.push({ type: t, id: k, name: v.name }); // weapon skins live in COSMETICS
   return out;
 }
 function setLook(look) {
@@ -584,12 +588,13 @@ function buildCharacterUI() {
     d.className = 'ach' + (done ? ' done' : '');
     const b = document.createElement('b'); b.textContent = (done ? '★ ' : '') + a.name;
     const t = document.createElement('div'); t.textContent = a.desc;
-    const have = Math.min(a.goal, st[a.stat] || 0);
+    const have = Math.min(a.goal, achProgress(a, st));
     const bar = document.createElement('div'); bar.className = 'bar';
     const fill = document.createElement('i'); fill.style.width = (done ? 100 : (have / a.goal) * 100) + '%'; bar.append(fill);
     const rw = document.createElement('div'); rw.className = 'rw';
     rw.textContent = 'unlocks ' + rewardsFor(id).map((x) => x.name).join(', ');
     d.append(b, t, bar, rw);
+    if (a.feats) d.insertBefore(royalBoxes(done ? (1 << a.feats.length) - 1 : st[a.stat] || 0, 0, a.feats), bar); // the parts, ticked or not
     list.append(d);
   }
   $('lkNote').textContent = account.loggedIn ? 'other players see this. locked stuff unlocks from achievements.' : 'guest: free accessories only. log in to earn the achievement ones.';
@@ -686,13 +691,29 @@ function buildCosmeticsUI() {
     c.className = 'chip' + ((sk[3] || 'default') === k ? ' on' : '') + (have ? '' : ' locked');
     c.textContent = v.name;
     c.style.setProperty('--rc', RARITY[v.rarity].color);
+    const ach = v.ach && ACHIEVEMENTS[v.ach]; // achievement skins: not in crates, you earn them
+    if (ach) { c.classList.add('achchip'); c.title = `${ach.name}: ${ach.desc}`; }
     c.addEventListener('click', () => {
+      if (!have && ach) { toast(`${v.name}: unlock "${ach.name}" (${ach.desc})${account.loggedIn ? '' : '. log in so it counts'}`, 3600); return; }
       if (!have) { toast(`${v.name} is ${RARITY[v.rarity].name}. win rounds to get rolls.`); return; }
       const s2 = sk.slice(); s2[3] = k; setSkin(id, s2); buildCosmeticsUI();
     });
     $('sk-model').append(c);
   }
   buildGrappleUI();
+  // next to an achievement skin: what it takes, with the parts you've ticked so far
+  $('skAch').innerHTML = '';
+  for (const k of models) {
+    const v = COSMETICS.model[k], a = v.ach && ACHIEVEMENTS[v.ach];
+    if (!a) continue;
+    const st = (account.me && account.me.stats) || {}, done = myAchs().has(v.ach);
+    const box = document.createElement('div'); box.className = 'achskin' + (done ? ' done' : '');
+    const h = document.createElement('b'); h.textContent = done ? `★ ${v.name}: yours` : `${v.name} (locked): ${a.name} ${Math.min(a.goal, achProgress(a, st))}/${a.goal}`;
+    const t = document.createElement('div'); t.textContent = done ? `${a.name} complete${k === 'sniper_golden' ? '. stays gold under any wrap' : ''}` : a.desc + (account.loggedIn ? '' : '. log in so it counts');
+    box.append(h, t);
+    if (a.feats) box.append(royalBoxes(done ? (1 << a.feats.length) - 1 : st[a.stat] || 0, 0, a.feats));
+    $('skAch').append(box);
+  }
   showPreview(id, ownedSkin(sk, G.inv, id));
 }
 $('skRandom').addEventListener('click', () => {
@@ -1002,10 +1023,32 @@ net.on('ach', (m) => {
   if (!a) return;
   if (account.me) { account.me.achs = [...new Set([...(account.me.achs || []), m.id])]; }
   const rewards = rewardsFor(m.id).map((x) => x.name).join(', ');
+  const where = rewardsFor(m.id).some((x) => x.type) ? 'COSMETICS' : 'CHARACTER';
   hud.msg(`ACHIEVEMENT: ${a.name}`, 3, 'brag');
-  hud.chat(null, null, `achievement unlocked: ${a.name} (${a.desc})${rewards ? ' · unlocked ' + rewards + ' in CHARACTER' : ''}`);
+  hud.chat(null, null, `achievement unlocked: ${a.name} (${a.desc})${rewards ? ' · unlocked ' + rewards + ' in ' + where : ''}`);
   sfx.kill();
   if (m.id === 'airborne') airFlourish();
+  const skins = rewardsFor(m.id).filter((x) => x.type === 'model');
+  if (skins.length && account.me) unlockSkins(skins);
+});
+// an achievement that unlocks a weapon skin (Sniper Royalty: the Golden Sniper) puts it straight on that weapon.
+// the server lets you: it checks your achievements, not your inventory
+function unlockSkins(list) {
+  G.inv = achInv(account.me.inv, account.me.achs);
+  for (const r of list) {
+    const w = COSMETICS.model[r.id].weapon, sk = validSkin(S.skins[w]).slice();
+    sk[3] = r.id;
+    storeSkin(w, sk);
+  }
+  saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne();
+  if (list.some((r) => r.id === 'sniper_golden')) royalUnlock('SNIPER ROYALTY 4/4 · it\'s on your sniper now (swap it in COSMETICS)');
+}
+// Sniper Royalty: you just ticked a box (the server decides; a guest is told it would have counted)
+net.on('royal', (m) => {
+  const all = m.all | 0, add = m.add | 0;
+  if (!add) return;
+  if (account.me && !m.guest) account.me.stats = { ...(account.me.stats || {}), sniper_feats: all };
+  royalToast(all, add, !!m.guest);
 });
 net.on('sn', (m) => {
   recordSnap(m);
@@ -1989,7 +2032,7 @@ function onLoggedIn(me, fresh) {
     try { localStorage.setItem('jankfire', JSON.stringify(G.settings)); } catch { /* fine */ }
     applySettingsToUI();
   } else saveSettings();
-  G.inv = me.inv || {};
+  G.inv = achInv(me.inv, me.achs); // achievement rewards you've earned count as owned
   if (G.joined) { net.send({ t: 'kfx', id: myKfx() }); net.send({ t: 'grap', id: myGrapple() }); } // the profile may have brought other picks: tell the server
   recomputeEquipped();
   rebuildOne();
@@ -2024,7 +2067,8 @@ function renderProfile() {
   const bar = document.createElement('div'); bar.className = 'xpbar'; const fill = document.createElement('div'); fill.style.width = k * 100 + '%'; bar.append(fill);
   $('profLevel').append(t, bar);
   const st = me.stats;
-  const owned = LOOT_TYPES.reduce((a, ty) => a + Object.keys(COSMETICS[ty]).filter((id) => owns(me.inv, ty, id)).length, 0);
+  const myInv = achInv(me.inv, me.achs); // achievement rewards you've earned count as owned
+  const owned = LOOT_TYPES.reduce((a, ty) => a + Object.keys(COSMETICS[ty]).filter((id) => owns(myInv, ty, id)).length, 0);
   const total = LOOT_TYPES.reduce((a, ty) => a + Object.keys(COSMETICS[ty]).length, 0);
   const rows = [
     ['wins', st.wins], ['kills', st.kills], ['deaths', st.deaths], ['k/d', st.deaths ? (st.kills / st.deaths).toFixed(2) : st.kills],
@@ -2084,8 +2128,8 @@ function renderCrates() {
   }
   for (const [kind, c] of Object.entries(CONTAINERS)) {
     const n = account.me.rolls[kind] || 0;
-    const own = c.types.reduce((a, t) => a + Object.keys(COSMETICS[t]).filter((id) => owns(G.inv, t, id)).length, 0);
-    const all = c.types.reduce((a, t) => a + Object.keys(COSMETICS[t]).length, 0);
+    const own = c.types.reduce((a, t) => a + Object.keys(COSMETICS[t]).filter((id) => !COSMETICS[t][id].ach && owns(G.inv, t, id)).length, 0);
+    const all = c.types.reduce((a, t) => a + Object.keys(COSMETICS[t]).filter((id) => !COSMETICS[t][id].ach).length, 0); // achievement rewards aren't in containers
     const card = document.createElement('div'); card.className = 'cratecard' + (n > 0 ? ' has' : '');
     const im = document.createElement('img'); im.src = containerArt(kind); im.alt = '';
     const h = document.createElement('b'); h.textContent = c.name;
@@ -2104,7 +2148,7 @@ let rolling = false;
 function randomCard(kind) {
   const types = CONTAINERS[kind].types;
   const pool = [];
-  for (const t of types) for (const [id, c] of Object.entries(COSMETICS[t])) if (c.rarity !== 'free') pool.push({ type: t, id, name: c.name, rarity: c.rarity });
+  for (const t of types) for (const [id, c] of Object.entries(COSMETICS[t])) if (c.rarity !== 'free' && !c.ach) pool.push({ type: t, id, name: c.name, rarity: c.rarity });
   const r = Math.random() * 100;
   const want = r < 55 ? 'common' : r < 83 ? 'rare' : r < 96 ? 'epic' : 'legendary';
   const pref = pool.filter((p) => p.rarity === want);
@@ -2160,7 +2204,7 @@ async function doRoll(kind) {
   }));
   setTimeout(() => {
     rolling = false;
-    G.inv = account.me.inv || {};
+    G.inv = achInv(account.me.inv, account.me.achs);
     recomputeEquipped();
     renderAcctBar();
     const res = $('rollResult');

@@ -20,6 +20,7 @@ import { newTwirl, resetTwirl, twirling, spin, settle, twirlShot, stepTwirl, app
 import { weaponIcon, clearIcons, itemIcon } from './icons.js';
 import { tickScalesVM } from './scales.js';
 import { PARRY } from '/shared/weapons.js';
+import { ROYAL } from '/shared/looks.js';
 
 export const W = {
   slots: [DEFAULT_LOADOUT.primary, DEFAULT_LOADOUT.secondary, DEFAULT_LOADOUT.melee],
@@ -709,7 +710,8 @@ function fireHitscan(id, now) {
     }
   }
   const ns = id === 'sniper' && !W.scoped ? 1 : undefined; // no-scope: the server only makes it look cool, damage is the same
-  for (const [rid, h] of hits) net.send({ t: 'hit', to: rid, w: id, d: h.d.map(r2), n: h.n, h: h.h, ns, fan: fanShot ? 1 : undefined });
+  const qs = id === 'sniper' && W.scoped && now - W.scopedAt <= ROYAL.quick ? 1 : undefined; // quick-scope: fired right as the scope came up (Sniper Royalty only, never damage)
+  for (const [rid, h] of hits) net.send({ t: 'hit', to: rid, w: id, d: h.d.map(r2), n: h.n, h: h.h, ns, qs, fan: fanShot ? 1 : undefined });
   const fast = w.rate > 8;
   const skin = (G.equipped || {})[id];
   if (shots) marbles.shoot(shots, marblePalette(skin));
@@ -1107,7 +1109,9 @@ export function updateWeapons(dt, now) {
   const canAim = !!w.ads && alive && !W.reloadId;
   W.aim = canAim && W.aimHeld ? Math.min(1, W.aim + dt * 7) : Math.max(0, W.aim - dt * 8);
   W.zoom = w.ads ? 1 + (w.ads.zoom - 1) * W.aim : 1;
+  const wasScoped = W.scoped;
   W.scoped = !!(w.ads && w.ads.scope && W.aim > 0.92);
+  if (W.scoped && !wasScoped) W.scopedAt = now; // quick-scopes count from the moment the scope is fully up
   hud.scope(W.scoped);
   ME.speedMul = (w.speedMul || 1) * (1 - W.aim * 0.25);
   parryTick(now); // katana parry: buffered presses, stagger, cooldown ring

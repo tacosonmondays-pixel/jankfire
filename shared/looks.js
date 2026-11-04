@@ -2,6 +2,18 @@
 // Some accessories are free, the rest are unlocked by achievements (checked on the server).
 export const LOOK_COLORS = ['#ff4fd8', '#4fd8ff', '#ffe14d', '#7dff4f', '#ff7a1a', '#b07dff', '#ff4f4f', '#4fffb0', '#ffffff', '#ff9ad5', '#3a3a44', '#8a5a2b'];
 
+// Sniper Royalty: four kinds of sniper kill, in any order, over any number of matches. each one is a bit in the
+// sniper_feats stat (bit i = ROYAL_FEATS[i]) and one kill can tick several. the server decides every tick
+export const ROYAL_FEATS = [
+  { id: 'long', name: 'LONG SHOT', desc: 'a sniper kill from 50 m or more' },
+  { id: 'quick', name: 'QUICK-SCOPE', desc: 'a sniper kill fired within 0.35 s of the scope coming up' },
+  { id: 'noscope', name: 'NO-SCOPE', desc: 'a sniper kill fired without the scope' },
+  { id: 'head', name: 'HEADSHOT', desc: 'a sniper headshot kill' },
+];
+// long: metres between server positions. quick: ms after the scope is fully up. a victim who hasn't moved `moved`
+// metres for `still` ms never counts, so nobody farms it on an AFK player or a friend standing still
+export const ROYAL = { long: 50, quick: 350, still: 5000, moved: 0.6 };
+
 export const ACHIEVEMENTS = {
   firstblood: { name: 'First Blood', desc: 'get your first kill', stat: 'kills', goal: 1 },
   champion: { name: 'Champion', desc: 'win 10 rounds', stat: 'wins', goal: 10 },
@@ -13,12 +25,18 @@ export const ACHIEVEMENTS = {
   knees: { name: 'Knee Trouble', desc: 't-bag so hard you explode', stat: 'tbags', goal: 1 },
   nolife: { name: 'No Life', desc: 'play for 5 hours', stat: 'playtime', goal: 18000 },
   airborne: { name: 'Never Landed', desc: 'finish a whole match without touching the ground after any spawn', stat: 'airborne', goal: 1 },
+  royalty: { name: 'Sniper Royalty', desc: 'sniper kills: a 50 m+ long shot, a quick-scope, a no-scope and a headshot', stat: 'sniper_feats', goal: 4, feats: ROYAL_FEATS },
 };
 // hidden unlocks that aren't in the list: the Wings used to come from Frequent Flyer, and whoever had them by then keeps them
 export const LEGACY_ACHS = { oldwings: { stat: 'wings_old', goal: 1 } };
 // careful: these ids show up in /api/me achs too, so anything mapping achs through ACHIEVEMENTS[id] must skip unknown ids
 // an accessory is yours if you have its achievement (or its legacy one)
 export function hasAcc(a, achs) { return !!a && (!a.ach || !!(achs && (achs.has(a.ach) || (a.legacy && achs.has(a.legacy))))); }
+// progress toward an achievement. a multi-part one keeps its parts as bit flags in one stat: progress = how many are done
+export function achProgress(a, stats) {
+  const v = (stats && stats[a.stat]) || 0;
+  return a.feats ? a.feats.filter((_, i) => v & (1 << i)).length : v;
+}
 
 export const ACCESSORIES = {
   head: {
@@ -51,7 +69,7 @@ export const DEFAULT_LOOK = { color: '', head: 'none', face: 'none', back: 'none
 export function achievementsFrom(stats) {
   const out = new Set();
   if (!stats) return out;
-  for (const [id, a] of Object.entries(ACHIEVEMENTS)) if ((stats[a.stat] || 0) >= a.goal) out.add(id);
+  for (const [id, a] of Object.entries(ACHIEVEMENTS)) if (achProgress(a, stats) >= a.goal) out.add(id);
   for (const [id, a] of Object.entries(LEGACY_ACHS)) if ((stats[a.stat] || 0) >= a.goal) out.add(id);
   return out;
 }

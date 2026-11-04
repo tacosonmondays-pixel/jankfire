@@ -476,3 +476,43 @@ body.replaying #mlg { display: none; }
 .chips.sprays .chip.locked::before { position: absolute; left: 3px; top: 2px; font-size: 11px; }
 .chips.sprays .chip span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #rollResult .sprayPic { display: block; width: 96px; height: 96px; margin: 6px auto 0; image-rendering: pixelated; background: #5d5d66; border: 2px solid #000; }
+/* Sniper Royalty: the gold toast per feat, the four boxes, the GOLDEN SNIPER UNLOCKED moment */
+#royalToast { position: absolute; left: 50%; top: max(12%, 92px); transform: translate(-50%, -12px) scale(0.92); opacity: 0; transition: opacity 0.25s, transform 0.25s; text-align: center; padding: 6px 16px 8px; background: linear-gradient(180deg, rgba(64, 38, 0, 0.85), rgba(26, 13, 0, 0.85)); border: 3px solid #ffc21a; box-shadow: 0 0 18px rgba(255, 194, 26, 0.45), 4px 4px 0 #000; white-space: nowrap; }
+#royalToast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+#royalToast .rt { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 24px; }
+#royalToast .rt b { color: #ffd23b; letter-spacing: 1px; }
+#royalToast .rt span { color: #fff; }
+#royalToast .rsub { font-size: 13px; color: #ffb0e0; margin-top: 2px; }
+.rcrown { width: 34px; height: 26px; }
+.rcrown svg, .rcrownbig svg { width: 100%; height: 100%; display: block; }
+.rfeats { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; margin-top: 4px; font-size: 13px; }
+.rf { display: inline-flex; align-items: center; gap: 5px; color: #a8987a; }
+.rf i { display: inline-block; width: 13px; height: 13px; border: 2px solid currentColor; font-style: normal; font-size: 11px; line-height: 13px; text-align: center; }
+.rf.on { color: #ffd23b; }
+.rf.on i { background: #ffd23b; color: #2a1800; text-shadow: none; }
+.rf.new { animation: rfpop 0.5s 3; }
+@keyframes rfpop { 50% { transform: scale(1.3) rotate(-5deg); color: #fff; } }
+#royalBig { position: absolute; inset: 0; overflow: hidden; opacity: 0; visibility: hidden; transition: opacity 0.4s, visibility 0s 0.4s; background: radial-gradient(ellipse at 50% 56%, rgba(255, 200, 60, 0) 35%, rgba(255, 170, 20, 0.3) 100%); }
+#royalBig.show { opacity: 1; visibility: visible; transition: opacity 0.15s; }
+#royalBig .rrays { position: absolute; left: 50%; top: 56%; width: 150vmax; height: 150vmax; transform: translate(-50%, -50%); background: repeating-conic-gradient(rgba(255, 214, 80, 0.24) 0 7deg, transparent 7deg 18deg); -webkit-mask: radial-gradient(circle, #000 0 10%, transparent 40%); mask: radial-gradient(circle, #000 0 10%, transparent 40%); animation: rrays 7s linear infinite; }
+@keyframes rrays { to { transform: translate(-50%, -50%) rotate(360deg); } }
+#royalBig .rcrownbig { position: absolute; left: 50%; top: 45%; width: 110px; height: 82px; transform: translate(-50%, -50%); filter: drop-shadow(0 0 12px rgba(255, 210, 60, 0.9)) drop-shadow(3px 3px 0 #000); animation: rcrown 0.7s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+@keyframes rcrown { from { transform: translate(-50%, -140%) scale(0.2) rotate(-25deg); } }
+#royalBig .rbig { position: absolute; left: 50%; top: 56%; transform: translate(-50%, -50%) rotate(-3deg); font-size: clamp(30px, 6vw, 68px); white-space: nowrap; text-shadow: none;
+  background: linear-gradient(100deg, #b07410 0%, #ffe27a 30%, #fff8d8 45%, #ffc21a 60%, #b07410 100%); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: #ffd23b;
+  filter: drop-shadow(3px 3px 0 #000) drop-shadow(0 0 10px rgba(255, 190, 40, 0.8)); animation: rshine 1.6s linear infinite, rslam 0.5s cubic-bezier(0.2, 1.8, 0.4, 1) both; }
+@keyframes rshine { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+@keyframes rslam { from { transform: translate(-50%, -50%) rotate(-3deg) scale(2.6); opacity: 0; } }
+#royalBig .rsub { position: absolute; left: 50%; top: 64%; transform: translateX(-50%); width: max-content; max-width: 92vw; font-size: 17px; color: #fff3c0; text-align: center; }
+#royalBig .rsparks { position: absolute; left: 50%; top: 56%; }
+#royalBig .rsparks i { position: absolute; width: 8px; height: 8px; background: #ffe27a; box-shadow: 0 0 8px #ffc21a; transform: rotate(45deg); animation: rspark 1.4s ease-out both; }
+@keyframes rspark { from { transform: translate(0, 0) rotate(45deg) scale(1.4); opacity: 1; } to { transform: translate(var(--dx), var(--dy)) rotate(225deg) scale(0.2); opacity: 0; } }
+/* cosmetics: skins you earn from an achievement */
+.chip.achchip { box-shadow: 0 0 6px rgba(255, 194, 26, 0.55); }
+.chip.achchip.locked { opacity: 0.8; }
+.achskin { margin: 2px 0 6px; padding: 6px 10px; background: rgba(255, 194, 26, 0.08); border: 2px dashed #b08a2a; font-size: 13px; color: #e8dcb8; }
+.achskin b { color: #ffd23b; font-size: 15px; }
+.achskin.done { border-style: solid; border-color: #ffc21a; }
+.achskin .rfeats, .ach .rfeats { justify-content: flex-start; }
+.ach .rfeats { margin: 3px 0 1px; font-size: 12px; }
+@media (max-width: 700px) { #royalToast { white-space: normal; max-width: 94vw; } #royalToast .rt { font-size: 18px; gap: 8px; } }

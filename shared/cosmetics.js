@@ -35,6 +35,8 @@ export const COSMETICS = {
     shotgun_double: { name: 'Double Barrel', rarity: 'rare', weapon: 'shotgun' },
     minigun_gatling: { name: 'Old Gatling', rarity: 'epic', weapon: 'minigun' },
     sniper_musket: { name: 'Musket', rarity: 'legendary', weapon: 'sniper' },
+    // ach: never in a container. it's yours once you have that achievement (the server checks, see achInv)
+    sniper_golden: { name: 'Golden Sniper', rarity: 'legendary', weapon: 'sniper', ach: 'royalty' },
     revolver_flint: { name: 'Flintlock', rarity: 'epic', weapon: 'revolver' },
     chicken_turkey: { name: 'Turkey Launcher', rarity: 'rare', weapon: 'chicken' },
     bowling_cannon: { name: 'Hand Cannon', rarity: 'epic', weapon: 'bowling' },
@@ -148,7 +150,20 @@ export function ownedSkin(skin, inv, weapon) {
 
 export function unowned(inv) {
   const out = [];
-  for (const t of LOOT_TYPES) for (const [id, c] of Object.entries(COSMETICS[t])) if (c.rarity !== 'free' && !owns(inv, t, id)) out.push({ type: t, id, rarity: c.rarity });
+  for (const t of LOOT_TYPES) for (const [id, c] of Object.entries(COSMETICS[t])) if (c.rarity !== 'free' && !c.ach && !owns(inv, t, id)) out.push({ type: t, id, rarity: c.rarity });
+  return out;
+}
+
+// your inventory plus the achievement rewards you've earned (cosmetics with an ach field). achs: Set or array of ids.
+// an ach item only ever counts from the achievement, never from the inventory itself
+export function achInv(inv, achs) {
+  const has = (a) => (achs instanceof Set ? achs.has(a) : Array.isArray(achs) && achs.includes(a));
+  const out = {};
+  for (const t of Object.keys(COSMETICS)) {
+    const ids = inv && Array.isArray(inv[t]) ? inv[t].filter((id) => !(Object.hasOwn(COSMETICS[t], id) && COSMETICS[t][id].ach)) : [];
+    for (const [id, c] of Object.entries(COSMETICS[t])) if (c.ach && has(c.ach)) ids.push(id);
+    if (ids.length) out[t] = ids;
+  }
   return out;
 }
 

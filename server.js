@@ -14,6 +14,8 @@ import { Accounts, levelOf } from './server/accounts.js';
 import { ownedSkin, ownedKill, ownedGrapple, randomContainer, CONTAINERS, COSMETICS } from './shared/cosmetics.js';
 import { owns, SPRAY } from './shared/cosmetics.js';
 import { validLook, achievementsFrom, ACHIEVEMENTS } from './shared/looks.js';
+import { ROYAL, ROYAL_FEATS } from './shared/looks.js'; // Sniper Royalty
+import { achInv } from './shared/cosmetics.js'; // achievement-locked skins (the Golden Sniper)
 import { STAT_KEYS } from './server/store.js';
 import { soapAt, trapBoxes, trapPreroll } from './shared/wand.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
@@ -166,9 +168,9 @@ function cleanSkins(s) {
   }
   return out;
 }
-function enforceSkins(skins, inv) {
-  const out = {};
-  for (const [id, sk] of Object.entries(skins)) out[id] = ownedSkin(sk, inv, id);
+function enforceSkins(skins, inv, achs) {
+  const out = {}, own = achInv(inv, achs); // achievement skins (Golden Sniper) only count from your achievements
+  for (const [id, sk] of Object.entries(skins)) out[id] = ownedSkin(sk, own, id);
   return out;
 }
 if (process.env.JF_STREAK) STREAKS.scythe.kills = Number(process.env.JF_STREAK) || STREAKS.scythe.kills;
@@ -394,7 +396,7 @@ class Room {
     }
     const name = m._name || clean(m.name, 16) || pick(DEFAULT_NAMES) + nextId;
     const inv = m._inv || {};
-    const p = this.newPlayer(name, { ws, skins: enforceSkins(cleanSkins(m.skins), inv), acct: m._acct, level: m._level });
+    const p = this.newPlayer(name, { ws, skins: enforceSkins(cleanSkins(m.skins), inv, m._achs), acct: m._acct, level: m._level });
     p.inv = inv;
     p.tip = pick(TIP_IDS);
     p.look = validLook(m.look, m._achs || new Set());
@@ -1286,17 +1288,23 @@ class Room {
       hp: k.alive && !(k.selfHurtT > k.spawnT) ? k.hp : 0, // any self-damage this life: no low-HP bonus
     };
   }
-  // from the snapshots: when everyone last really moved (EPIC.moved metres; a respawn or getting knocked around doesn't count)
-  // and where they were over the last 0.6 s (how fast they're really going)
+  // from the snapshots: when everyone last really moved (a respawn or getting knocked around doesn't count) and where
+  // they were over the last 0.6 s (how fast they're really going). one tracker for both anti-farm rules: EPIC kills
+  // read movedT (EPIC.moved metres), Sniper Royalty reads royalMovedT (ROYAL.moved metres; the same as long as the
+  // two thresholds agree, its own anchor when they don't)
   trackMoves(n) {
+    const gate = (p, at, t, metres) => {
+      if (!p[at]) p[t] = n; // just joined
+      if (!p[at] || !p.trail || dist3(p[at], p.pos) > metres) {
+        if (p[at] && p.trail && n - (p.knockT || 0) > 1200) p[t] = n;
+        p[at] = p.pos.slice();
+      }
+    };
     for (const p of this.players.values()) {
       if (!p.alive) { p.trail = null; continue; }
       if (p.trackSeq !== p.seq) { p.trackSeq = p.seq; p.trail = null; } // respawned or put back at a spawn (round start): that jump isn't moving
-      if (!p.stillAt) p.movedT = n; // just joined
-      if (!p.stillAt || !p.trail || dist3(p.stillAt, p.pos) > EPIC.moved) {
-        if (p.stillAt && p.trail && n - (p.knockT || 0) > 1200) p.movedT = n;
-        p.stillAt = p.pos.slice();
-      }
+      gate(p, 'stillAt', 'movedT', EPIC.moved);
+      if (ROYAL.moved === EPIC.moved) p.royalMovedT = p.movedT; else gate(p, 'royalAt', 'royalMovedT', ROYAL.moved);
       (p.trail ||= []).push([n, p.pos[0], p.pos[1], p.pos[2]]);
       while (p.trail[0][0] < n - 600) p.trail.shift();
     }
@@ -1398,8 +1406,8 @@ class Room {
     if (w.kind === 'hitscan') {
       const pellets = w.pellets || 1;
       const n = clampInt(m.n, 1, Math.min(pellets, this.maxPellets(w, p, t))), h = clampInt(m.h, 0, n);
-      // the shot's flags (ns: no-scope, fan: fanned revolver) are 1 or absent, anything else counts as absent
-      const fan = m.fan === 1, ns = m.ns === 1;
+      // the shot's flags (ns: no-scope, qs: quick-scope, fan: fanned revolver) are 1 or absent, anything else is absent
+      const fan = m.fan === 1, ns = m.ns === 1, qs = m.qs === 1;
       if (w.fanHammer) { const mul = this.revolverHit(p, t, fan, w); if (mul) this.applyHitscan(p, t, m.w, n, h, d, mul); return; } // tap or fan the hammer
       if (!this.pairOk(p, t, 'hs' + m.w, (1000 / fireRate(w, p.hp)) * 0.6) || !this.rangeOk(p, t, w.range)) return; // the Redline fires faster as you lose HP
       p.nsHit = m.w === 'sniper' && p.w === 'sniper' && ns; // a no-scope (ns: 1) can make the kill EPIC
@@ -1407,6 +1415,7 @@ class Room {
       this.applyHitscan(p, t, m.w, n, h, d);
       p.nsHit = false;
       if (ns && m.w === 'sniper') this.noScope(p, t, h > 0, hp0);
+      if (m.w === 'sniper' && !t.alive) this.royalKill(p, t, ns, qs, h > 0); // this shot killed them (a parried / reflected one hurts you, not them)
     } else if (w.kind === 'melee') {
       const hv = m.heavy === 1 && w.heavy ? w.heavy : null; // knife right click (the flag is 1 or absent)
       const reach = w.range + (m.w === 'katana' ? (p.kat || 0) * w.grow : 0);
@@ -1448,6 +1457,18 @@ class Room {
     }
     this.broadcast(ev);
     this.rec.ev.push({ s: n, m: ev }); // so the play of the round gets the fireworks too
+  }
+
+  // Sniper Royalty: the boxes a sniper kill ticks. qs / ns are the shooter's word, so they only ever buy progress, never
+  // damage: the kill is the server's, the distance comes from server positions, and a victim who hadn't moved for 5 s
+  // (AFK, a friend standing still) never counts. no training (dummies) and no bots doing the shooting
+  royalKill(p, t, ns, qs, hs) {
+    if (p.isBot || this.mode === 'training' || (t.isBot && t.ai && t.ai.dummy)) return;
+    const n = now();
+    if (n - (t.royalMovedT ?? n) >= ROYAL.still) return; // epic's tracker (trackMoves), Royalty's own thresholds
+    // scoped and unscoped at once is a lie: neither counts
+    const bits = (dist3(p.pos, t.pos) >= ROYAL.long ? RB.long : 0) | (qs && !ns ? RB.quick : 0) | (ns && !qs ? RB.noscope : 0) | (hs ? RB.head : 0);
+    if (bits) royal(p, bits);
   }
 
   onPush(p, m) {
@@ -2459,7 +2480,7 @@ class Room {
           p.skinT = now();
           (async () => {
             if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; }
-            p.skins = enforceSkins(cleanSkins(m.s), p.inv);
+            p.skins = enforceSkins(cleanSkins(m.s), p.inv, p.acct && p.acct.achs);
             this.broadcast({ t: 'sk', id: p.id, s: p.skins }, p.id);
           })().catch((e) => logErr('skin', e));
         }
@@ -2921,6 +2942,22 @@ function liveStats(p) {
 function checkAch(p) {
   const now2 = achievementsFrom(liveStats(p));
   for (const id of now2) if (!p.acct.achs.has(id)) { p.acct.achs.add(id); send(p, { t: 'ach', id }); }
+}
+// Sniper Royalty feats: bit flags in the sniper_feats stat (bit i = ROYAL_FEATS[i]). d only ever gets bits the account
+// doesn't have yet, so liveStats / flushStats can add them up like any other stat (the store ORs them in).
+// guests don't keep any: they're told once per feat that it would have counted
+const RB = Object.fromEntries(ROYAL_FEATS.map((f, i) => [f.id, 1 << i]));
+function royal(p, bits) {
+  if (!p.acct) {
+    const add = bits & ~(p.royalG || 0);
+    if (add) { p.royalG = (p.royalG || 0) | add; send(p, { t: 'royal', add, all: p.royalG, guest: 1 }); }
+    return;
+  }
+  const have = liveStats(p).sniper_feats || 0, add = bits & ~have;
+  if (!add) return;
+  p.acct.d.sniper_feats = (p.acct.d.sniper_feats || 0) | add;
+  send(p, { t: 'royal', add, all: have | add });
+  checkAch(p); // the last box unlocks the achievement (and with it the Golden Sniper)
 }
 function flushStats(p) {
   if (!p.acct) return;
