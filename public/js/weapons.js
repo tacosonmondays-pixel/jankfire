@@ -478,7 +478,7 @@ export const isFriend = (r) => !!(G.myTeam && r.team && r.team === G.myTeam);
 function rayPlayers(o, d, maxT) {
   let best = null;
   for (const r of G.remotes.values()) {
-    if (!r.alive || isFriend(r)) continue;
+    if (!r.alive || (isFriend(r) && !(r.trapUntil > performance.now()))) continue; // a teammate in a soap bubble can be shot free
     for (const hb of r.hitboxes()) {
       const h = rayBox(o, d, hb, best ? best.t : maxT);
       if (h && (!best || h.t < best.t)) best = { t: h.t, r, head: hb.head };
@@ -490,7 +490,7 @@ function rayPlayers(o, d, maxT) {
 function conePlayers(o, d, range, cone) {
   const out = [], cosC = Math.cos(cone);
   for (const r of G.remotes.values()) {
-    if (!r.alive || isFriend(r)) continue;
+    if (!r.alive || (isFriend(r) && !(r.trapUntil > performance.now()))) continue; // (or swung / burned free)
     const tx = r.pos[0] - o[0], ty = r.pos[1] + 1 - o[1], tz = r.pos[2] - o[2];
     const dist = Math.hypot(tx, ty, tz);
     if (dist > range || dist < 1e-3) continue;

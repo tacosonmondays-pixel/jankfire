@@ -19,6 +19,7 @@ import {
   useItem, syncItem, resetItems, setMyKatana,
 } from './weapons.js';
 import { Remote, updateGibs } from './remote.js';
+import { stepSoap, trapStart, trapEnd, updateWand, stuckInBubble } from './wand.js';
 import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN } from './skins.js';
 import { initPreview, showPreview, showCharacter, renderPreview, resizePreview } from './preview.js';
 import { playKillFx, updateKillFx, clearKillFx } from './killfx.js';
@@ -676,6 +677,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'Tab') { e.preventDefault(); scoresOpen = true; renderScores(); return; }
   if (e.code === 'KeyT' || e.code === 'Enter') { e.preventDefault(); openChat(); return; }
   if (e.code === 'KeyB') { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
+  if (/^(KeyE|KeyG|KeyV|KeyC|ControlLeft|ControlRight|Digit[567])$/.test(e.code) && stuckInBubble(true)) { keys[e.code] = true; return; } // sealed in a soap bubble: no grapple, items, dash, t-bag or streaks
   if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) jumpPressed = true; }
   if (e.code === 'KeyE' && !e.repeat) { if (S.swapAim) aimDown(); else tryHook(); }
   if (G.vote && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) { castVote(Number(e.code.slice(5)) - 1); return; }
@@ -708,6 +710,7 @@ addEventListener('keyup', (e) => {
 addEventListener('mousedown', (e) => {
   if (!inGame()) return;
   if (RP.mode === 'killcam' || G.killcamPending) { skipReplay(); return; }
+  if (stuckInBubble(true)) return; // sealed in a soap bubble: no shooting, aiming or grappling till it pops
   if (e.button === 0) fireDown();
   if (e.button === 2) { if (S.swapAim) tryHook(); else aimDown(); }
   if (e.button === 3 || e.button === 4) tryHook();
@@ -965,6 +968,9 @@ net.on('freeze', (m) => {
   if (m.id === G.myId) { ME.frozenUntil = performance.now() + m.dur; G.frost = 0; releaseHook(); hud.msg('FROZEN SOLID', m.dur / 1000, 'slip'); sfx.ting(); }
   const r = G.remotes.get(m.id); if (r) { r.frozenUntil = performance.now() + m.dur; sfx.ting(r.pos); }
 });
+// bubble wand: someone got sealed in a giant soap bubble / it popped (wand.js does the rest)
+net.on('trap', (m) => trapStart(m));
+net.on('trapx', (m) => trapEnd(m));
 
 // hold F to plant / defuse: keep telling the server while it's held, and stand still
 let useTimer = 0;
@@ -1096,7 +1102,7 @@ net.on('spawn', (m) => {
 net.on('ps', (m) => {
   spawnProj(m);
   if (m.o !== G.myId) {
-    const s = { chicken: 'squawk', duck: 'squeak', bowling: 'thunk', slipper: 'swing' }[m.k] || 'pew';
+    const s = { chicken: 'squawk', duck: 'squeak', bowling: 'thunk', slipper: 'swing', soap: 'bloop' }[m.k] || 'pew';
     sfx[s](m.p);
   }
 });
@@ -1313,6 +1319,7 @@ function frame(t) {
   updateGibs(dt);
   updateKillFx(dt);
   for (const [id, b] of G.bubbles) { if (now > b.until + 500) { G.scene.remove(b.mesh); G.bubbles.delete(id); continue; } b.mesh.rotation.y += dt * 0.3; b.mesh.material.opacity = 0.18 + Math.sin(now * 0.006) * 0.05; }
+  updateWand(dt, now); // bubble wand: giant soap bubbles round people, the view from inside one, the wand in your hand
   for (let i = G.smokes.length - 1; i >= 0; i--) {
     const s2 = G.smokes[i];
     if (now > s2.until) { G.smokes.splice(i, 1); continue; }
@@ -1327,6 +1334,7 @@ function frame(t) {
   }
 
   for (const pr of G.projs.values()) {
+    if (pr.k === 'soap') { stepSoap(pr, dt, now); continue; } // bubble wand: wobbly bubbles on an exact path (wand.js)
     if (pr.k === 'slipper') {
       for (let k = 0; k < 3; k++) pr.p[k] += pr.v[k] * dt;
       pr.spin += dt * 20;

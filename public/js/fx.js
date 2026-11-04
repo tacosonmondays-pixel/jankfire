@@ -270,6 +270,15 @@ export const fx = {
         colors[(Math.random() * colors.length) | 0], 0xffffff, 1, grav, drag);
     }
   },
+  // a soap bubble (radius r) pops: droplets fly off its whole surface, then rain down
+  droplets(p, r, n = 40) {
+    const cols = [0xffffff, 0xd8f6ff, 0xffd6f4, 0xfff4b8, 0xc8ffe8];
+    for (let i = 0; i < n; i++) {
+      const a = [R(), R(), R()], l = Math.hypot(...a) || 1, s = 1.5 + Math.random() * 4.5;
+      misc.spawn(p[0] + (a[0] / l) * r, p[1] + (a[1] / l) * r, p[2] + (a[2] / l) * r, (a[0] / l) * s, (a[1] / l) * s + 1.5, (a[2] / l) * s,
+        0.45 + Math.random() * 0.5, 0.05 + Math.random() * 0.07, 0.02, cols[(Math.random() * cols.length) | 0], 0xbfe8ff, 0.9, 14, 1.5);
+    }
+  },
   dust(p, n = 8) {
     for (let i = 0; i < n; i++) smoke.spawn(p[0] + R(0.4), p[1] + 0.05, p[2] + R(0.4), R(3), 0.5 + Math.random(), R(3), 0.5, 0.2, 0.7, 0xc8b89a, 0xa89878, 0.5, 0, 3);
   },

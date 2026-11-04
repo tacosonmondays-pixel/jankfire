@@ -1029,6 +1029,8 @@ function buildProjectileRaw(k) {
     duck(g, 2.2);
   } else if (k === 'slipper') {
     slipper(g, 1.6);
+  } else if (k === 'soap') {
+    g.add(soapBubble(0.36, 16)); // a hair smaller than its 0.4 hit radius
   } else {
     const t = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.06, 4, 8, Math.PI * 0.8), M(0xffe135));
     g.add(t);
@@ -1049,6 +1051,52 @@ export function buildHole() {
   const orbit = new THREE.Group(); orbit.add(d); g.add(orbit);
   g.userData = { shell, ring, orbit };
   return g;
+}
+
+// ------------------------------------------------------------ soap bubbles (Bubble Wand)
+// see-through in the middle, a thin-film rainbow toward the rim that swirls and shifts with the angle you see it at,
+// two little window glints, and a soft wobble. wob = how much it wobbles, uAlpha fades it (pop).
+const SOAP_TIME = { value: 0 };
+const SOAP_VS = `
+uniform float uTime; uniform float uSeed; uniform float uWob;
+varying vec3 vN; varying vec3 vV; varying vec3 vO;
+void main() {
+  vec3 p = position;
+  float w = sin(uTime * 5.0 + uSeed + p.y * 3.0) + 0.7 * sin(uTime * 3.7 + uSeed * 1.7 + p.x * 2.6) + 0.5 * sin(uTime * 4.4 - uSeed + p.z * 2.2);
+  p *= 1.0 + w * uWob;
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
+  vN = normalize(normalMatrix * normal);
+  vV = -mv.xyz;
+  vO = position;
+  gl_Position = projectionMatrix * mv;
+}`;
+const SOAP_FS = `
+uniform float uTime; uniform float uSeed; uniform float uAlpha;
+varying vec3 vN; varying vec3 vV; varying vec3 vO;
+vec3 film(float h) { return clamp(abs(fract(h + vec3(0.0, 0.667, 0.333)) * 6.0 - 3.0) - 1.0, 0.0, 1.0); }
+void main() {
+  vec3 n = normalize(vN), v = normalize(vV);
+  if (!gl_FrontFacing) n = -n;
+  float f = 1.0 - abs(dot(n, v));
+  float th = vO.y * 0.8 + sin(vO.x * 3.0 + uTime * 0.9 + uSeed) * 0.3 + sin(vO.z * 4.0 - uTime * 0.7) * 0.2 + f * 1.2 + uTime * 0.04 + uSeed;
+  vec3 c = mix(vec3(1.0), film(th), 0.7);
+  vec3 r = reflect(-v, n);
+  float g = pow(max(dot(r, normalize(vec3(-0.4, 0.75, 0.5))), 0.0), 30.0) + 0.5 * pow(max(dot(r, normalize(vec3(0.7, 0.2, 0.6))), 0.0), 60.0);
+  float a = 0.05 + f * f * 0.8;
+  gl_FragColor = vec4(c + g, clamp((a + g) * uAlpha, 0.0, 1.0));
+}`;
+const soapGeos = new Map();
+export function soapBubble(r, seg = 16, wob = 0.05) {
+  if (!soapGeos.has(seg)) soapGeos.set(seg, new THREE.SphereGeometry(1, seg, Math.round(seg * 0.7)));
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uTime: SOAP_TIME, uSeed: { value: Math.random() * 50 }, uWob: { value: wob }, uAlpha: { value: 1 } },
+    vertexShader: SOAP_VS, fragmentShader: SOAP_FS, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+  });
+  const m = new THREE.Mesh(soapGeos.get(seg), mat);
+  m.scale.setScalar(r);
+  m.renderOrder = 3;
+  m.onBeforeRender = () => { SOAP_TIME.value = (performance.now() / 1000) % 1000; }; // keeps swirling in replays too
+  return m;
 }
 
 export function buildPeel() {

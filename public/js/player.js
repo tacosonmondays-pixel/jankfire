@@ -141,6 +141,16 @@ export function stepPlayer(dt, inp, now) {
     ME.onGround = !!res.ground && v[1] <= 0;
     return;
   }
+  // sealed in a soap bubble (Bubble Wand): you float where it floats and can't steer. looking around still works
+  if (now < (ME.trapUntil || 0)) {
+    const tv = ME.trapV || [0, 0, 0];
+    v[0] = tv[0]; v[1] = tv[1]; v[2] = tv[2];
+    ME.hook = null; ME.sliding = false; ME.crouching = false; ME.sprinting = false; ME.jumpBuf = 0;
+    ME.eyeH += (C.standEye - ME.eyeH) * Math.min(1, dt * 14);
+    movePlayer(p, v, dt, BOXES, false);
+    ME.onGround = false;
+    return;
+  }
   const moon = now < ME.moonUntil;
   const grav = C.grav * (moon ? 0.4 : 1), jumpV = C.jump * (moon ? 1.55 : 1);
   const slipping = now < ME.slipUntil;

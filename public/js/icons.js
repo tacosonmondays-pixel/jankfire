@@ -74,6 +74,14 @@ export function itemIcon(id) {
   } else if (id === 'bubble') {
     x.beginPath(); x.arc(48, 32, 22, 0, Math.PI * 2); x.fillStyle = 'rgba(79,216,255,0.35)'; x.fill(); x.strokeStyle = '#4fd8ff'; x.lineWidth = 4; x.stroke();
     x.beginPath(); x.arc(40, 24, 7, Math.PI, Math.PI * 1.6); x.strokeStyle = '#fff'; x.lineWidth = 3; x.stroke();
+  } else if (id === 'wand') { // bubble wand: pink stick + ring, three rainbow soap bubbles drifting off it
+    for (const [w, c] of [[6, '#000'], [3, '#ff7ad8']]) { x.lineWidth = w; x.strokeStyle = c; x.beginPath(); x.moveTo(14, 56); x.lineTo(30, 36); x.stroke(); x.beginPath(); x.arc(36, 28, 10, 0, Math.PI * 2); x.stroke(); }
+    for (const [cx, cy, r] of [[64, 22, 13], [84, 40, 8], [56, 47, 6]]) {
+      const g = x.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+      g.addColorStop(0, '#ff7ad8'); g.addColorStop(0.35, '#ffe66b'); g.addColorStop(0.65, '#7dffb0'); g.addColorStop(1, '#6bb8ff');
+      x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fillStyle = 'rgba(200,240,255,0.22)'; x.fill(); x.lineWidth = 2.5; x.strokeStyle = g; x.stroke();
+      x.beginPath(); x.arc(cx - r * 0.35, cy - r * 0.35, r * 0.3, Math.PI, Math.PI * 1.6); x.strokeStyle = '#fff'; x.lineWidth = 2; x.stroke();
+    }
   } else if (id === 'duck') {
     circle(44, 38, 16, '#ffd23b'); circle(58, 22, 10, '#ffd23b');
     x.fillStyle = '#ff7a1a'; x.beginPath(); x.moveTo(66, 22); x.lineTo(78, 25); x.lineTo(66, 28); x.fill();
