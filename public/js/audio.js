@@ -374,3 +374,5 @@ export function loopLevel(name, k) {
 }
 
 export function stopLoops() { for (const k in loops) loopSfx(k, false); }
+// the raw building blocks, for features that synth their own sounds (lasso.js)
+export const synth = { tone, noise, whoosh };

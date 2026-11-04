@@ -30,6 +30,8 @@ import { steer as steerTo } from './shared/homing.js'; // homing slippers (steer
 import { PARRY } from './shared/weapons.js';
 import { ropeStep, ropeJump, ROPE } from './shared/hookphys.js';
 import { query as boxQuery } from './shared/physics.js';
+import { installLasso } from './server/lasso.js'; // lasso (secondary): its Room methods
+import { lassoPreroll } from './shared/lasso.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -185,6 +187,7 @@ REC_FX.add('verdict'); // scales of justice: highlights show the ruling
 const REC_MS = 12000;
 for (const k of ['trap', 'trapx']) REC_T.add(k); // bubble wand: replays draw the giant soap bubble too
 for (const t of ['parry', 'guard']) REC_T.add(t); // katana parries show up in killcams too
+REC_T.add('lasso'); // lasso throws, catches, flings and splats too
 function newDeck() {
   const d = [];
   for (const s of ['h', 's', 'c', 'd']) for (let r = 1; r <= 13; r++) d.push(s + r);
@@ -348,6 +351,7 @@ class Room {
     this.broadcast({ t: 'pj', ...this.info(p) }, p.id);
     send(p, { t: 'tip', tip: p.tip });
     for (const t of this.players.values()) if (t.trap) send(p, { t: 'trap', ...this.trapInfo(t) }); // anyone already floating in a soap bubble
+    this.lassoJoin(p); // anyone already hanging off a lasso
     send(p, { t: 'court', s: [...this.players.values()].filter((o) => o.streak > 0).map((o) => [o.id, o.streak]) }); // scales of justice: streaks so far
     if (p.air && p.air.ok) send(p, { t: 'air', on: 1, grace: AIR.grace });
     deal(p);
@@ -362,6 +366,7 @@ class Room {
 
   remove(p) {
     flushStats(p);
+    this.lassoDrop(p, 'gone'); // ropes they held (or hung off) drop
     if (this.bomb && this.bomb.carrier === p.id) this.dropBomb(p.pos);
     this.players.delete(p.id);
     for (const pr of this.projectiles.values()) if (pr.k === 'slipper' && pr.o === p.id) this.removeProj(pr);
@@ -379,6 +384,7 @@ class Room {
       ai: { diff, target: 0, retarget: 0, nextShot: now() + 1500, seenAt: 0, ammo: 0, reloadUntil: 0, jumpT: 0, wp: null, seed: Math.random() * 100, dummy: opts.dummy || null, strafeDir: 1 },
     });
     b.ai.ammo = WEAPONS[b.w].mag || 1;
+    this.lassoArm(b); // some bot-room bots carry the lasso
     if (!opts.dummy && Math.random() < 0.5) b.grap = pick(GRAP_IDS); // bots show off ropes you can roll
     if (!opts.dummy) { this.joinTeam(b); if (b.team) b.pos = this.pickSpawn(true, b); }
     this.players.set(b.id, b);
@@ -442,6 +448,8 @@ class Room {
   botThink(b, dt) {
     const ai = b.ai, n = now(), D = BOT_DIFF[ai.diff] || BOT_DIFF.normal;
     if (b.sleepUntil > n) return { wx: 0, wz: 0, jump: false };
+    const lt = this.lassoThink(b, dt); // a lasso bot holding someone does the fling routine (server/lasso.js)
+    if (lt) return lt;
     const boxes = this.boxes;
     if (ai.dummy) {
       const d = ai.dummy;
@@ -606,6 +614,7 @@ class Room {
   }
 
   stepBot(b, dt) {
+    if (this.lassoBot(b)) return; // on the end of a lasso: whoever holds it moves them
     if (b.trap) { this.driftTrapped(b); return; } // in a soap bubble: no thinking, just floating
     const n = now();
     const frozen = n < (b.frozenUntil || 0);
@@ -855,6 +864,7 @@ class Room {
   // path onto them (once, and not far): the server's guess started where it last had them and can snag on a ledge
   // their client floats past
   holdTrapped(p, rep) {
+    if (this.lassoHeld(p)) { p.trap.at = p.pos.slice(); p.trap.atT = now(); return; } // lassoed: the bubble swings with them
     const tr = p.trap, d = dist3(p.pos, tr.at);
     if (rep && !tr.ack && d <= Math.min(tr.slack, 3) && dist3(p.vel, tr.v) < 0.3) { tr.ack = 1; tr.at = p.pos.slice(); return this.holdTrapped(p); }
     if (rep) tr.off = d > tr.slack;
@@ -972,6 +982,7 @@ class Room {
   kill(t, attacker, w) {
     if (!t.alive) return;
     if (t.trap) this.popTrap(t, 'dead');
+    this.lassoDrop(t, 'dead'); // a rope they held (or hung off) drops
     t.alive = false; t.hp = 0; t.deaths++; t.g = null; t.reverseUntil = 0;
     if (t.ai) t.ai.hook = null;
     t.respawnAt = now() + (t.isBot && t.ai.dummy ? 700 : 2500);
@@ -1124,6 +1135,7 @@ class Room {
     const frames = this.rec.frames.filter((f) => f.s >= t0 && f.s <= t1 && f.odd);
     const ev = this.rec.ev.filter((e) => e.s >= t0 && e.s <= t1);
     ev.unshift(...trapPreroll(this.rec.ev, t0)); // someone already floating in a soap bubble when the clip starts
+    ev.unshift(...lassoPreroll(this.rec.ev, t0)); // or already hanging off a lasso
     const info = {};
     for (const f of frames) for (const e of f.p) if (!info[e[0]]) {
       const pl = this.players.get(e[0]);
@@ -1601,6 +1613,7 @@ class Room {
       const prev = pr.p.slice();
       let hit = null;
       if (pr.k === 'soap') { this.stepSoap(pr, n, owner, prev, dt); continue; }
+      if (pr.k === 'loop') { this.stepLoop(pr, n, owner, prev, dt); continue; } // lasso loops (server/lasso.js)
       if (pr.k === 'slipper') {
         if (!owner || !owner.alive) { this.removeProj(pr); continue; }
         if (pr.phase === 0) { // homing: curve toward the nearest enemy ahead, and keep going out while locked on
@@ -1912,12 +1925,14 @@ class Room {
 
   handle(p, m) {
     if (p.trap && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray'].includes(m.t)) return; // sealed in a soap bubble: no attacks, parries, items, streaks, sprays or planting till it pops
+    if ((m.t === 'fire' || m.t === 'hit') && this.lassoHolding(p)) return; // both hands are on the lasso
     switch (m.t) {
       case 's': {
         if (!p.alive || m.q !== p.seq) return;
         const pos = vec3(m.p), vel = vec3(m.v);
         if (!pos || !vel) return;
         p.pos = pos; p.vel = vel;
+        this.lassoSnap(p); // on the end of a lasso: the rope has you, not your client
         if (p.acct) { const kmh = Math.min(20000, Math.hypot(vel[0], vel[2]) * 3.6); if (kmh > (p.acct.d.top_speed || 0)) { p.acct.d.top_speed = kmh; if (kmh > 450) checkAch(p); } }
         if (Number.isFinite(m.y)) p.yaw = m.y;
         if (Number.isFinite(m.x)) p.pitch = m.x;
@@ -2047,6 +2062,8 @@ class Room {
         break;
       case 'pi': send(p, { t: 'po', c: m.c }); break;
       case 'land': this.airFail(p, false); break; // your client saw you touch the ground: run's over
+      case 'lasso': this.onLasso(p, m); break; // throw / let go / wriggle
+      case 'lh': this.onLassoHold(p, m); break; // the body you hold, from your client
     }
   }
 
@@ -2326,6 +2343,7 @@ class Room {
     this.tickItems(dt);
     this.tickTraps(n);
     for (const b of this.players.values()) if (b.isBot && b.alive) this.stepBot(b, dt);
+    this.tickLasso(dt);
     this.tickProjectiles(dt);
     this.tickHoles(dt);
     this.tickStatus(dt);
@@ -2453,6 +2471,8 @@ class Room {
     this.broadcast({ t: 'sn', s: n, p: ps, wave: this.mode === 'coop' ? this.waveInfo() : undefined, round: this.roundInfo() || undefined });
   }
 }
+
+installLasso(Room);
 
 // ---------------------------------------------------------------- account stats
 function stat(p, key, v) {

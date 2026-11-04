@@ -276,6 +276,7 @@ export class Remote {
       this.yaw = s0.yaw; this.pitch = s0.pitch;
     }
     if (i > 3) b.splice(0, i - 3);
+    if (G.lassoPos) G.lassoPos(this, now); // the one you hold on your lasso is where your own simulation has them
 
     const [x, y, z] = this.pos;
     ch.root.position.set(x, y, z);
@@ -367,6 +368,7 @@ export class Remote {
       setRope(this.rope, this.muzzle(), this.g);
     } else this.rope.visible = false;
     wreckRemote(this, dt, now); // wrecking ball killstreak: a steel ball (and a chain) instead of the mannequin
+    if (G.lassoRemote) G.lassoRemote(this, dt, now); // lasso: spinning it, hanging off one (flailing), flung (tumbling)
 
     const sh = raycast([x, y + 0.1, z], [0, -1, 0], 80, BOXES);
     if (sh) { this.shadow.visible = true; this.shadow.position.set(x, sh.point[1] + 0.03, z); } else this.shadow.visible = false;
@@ -395,6 +397,7 @@ export class Remote {
     G.scene.remove(this.rope);
     G.scene.remove(this.shadow);
     wreckDispose(this);
+    if (G.lassoDispose) G.lassoDispose(this);
   }
 }
 

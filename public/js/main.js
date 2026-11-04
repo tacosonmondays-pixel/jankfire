@@ -45,6 +45,7 @@ import { account, restore, login, register, logout, saveProfile, leaderboard as 
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { SPRAY, ownedSpray } from '/shared/cosmetics.js';
 import { sprayAim, sprayFx, addSpray, clearSprays, updateSprays, sprayIcon } from './sprays.js';
+import { lassoFrame, loopFrame, lassoClick, lassoWheel, lassoKey, lassoLate } from './lasso.js'; // lasso (secondary)
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
@@ -729,6 +730,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'Tab') { e.preventDefault(); scoresOpen = true; renderScores(); return; }
   if (e.code === 'KeyT' || e.code === 'Enter') { e.preventDefault(); openChat(); return; }
   if (e.code === 'KeyB') { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
+  if (lassoKey(e, true)) return; // holding someone on the lasso: R / F reel, no weapon switching
   if (/^(KeyE|KeyG|KeyV|KeyC|KeyZ|ControlLeft|ControlRight|Digit[567])$/.test(e.code) && stuckInBubble(true)) { keys[e.code] = true; return; } // sealed in a soap bubble: no grapple, items, dash, t-bag, sprays or streaks
   if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) jumpPressed = true; }
   if (e.code === 'KeyE' && !e.repeat) { if (S.swapAim) aimDown(); else tryHook(); }
@@ -755,6 +757,7 @@ addEventListener('keydown', (e) => {
 });
 addEventListener('keyup', (e) => {
   keys[e.code] = false;
+  lassoKey(e, false);
   if (e.code === 'KeyF') stopUse();
   if (e.code === 'KeyV') W.dashHeld = false;
   if (e.code === 'Tab') { scoresOpen = false; hud.scores(false); }
@@ -764,6 +767,7 @@ addEventListener('mousedown', (e) => {
   if (!inGame()) return;
   if (RP.mode === 'killcam' || G.killcamPending) { skipReplay(); return; }
   if (stuckInBubble(true)) return; // sealed in a soap bubble: no shooting, aiming or grappling till it pops
+  if (lassoClick(e.button)) return; // holding someone on the lasso: fire lets go
   if (e.button === 0) fireDown();
   if (e.button === 2) { if (S.swapAim) tryHook(); else aimDown(); }
   if (e.button === 3 || e.button === 4) tryHook();
@@ -774,7 +778,7 @@ addEventListener('mouseup', (e) => {
   if (e.button === 3 || e.button === 4) releaseHook();
 });
 addEventListener('contextmenu', (e) => e.preventDefault());
-addEventListener('wheel', (e) => { if (inGame()) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true });
+addEventListener('wheel', (e) => { if (inGame() && !lassoWheel(e.deltaY)) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true }); // (holding someone on the lasso: the wheel reels)
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== canvas) return;
   if (performance.now() < (G.spinUntil || 0)) return; // the aimbot has the wheel
@@ -1392,6 +1396,7 @@ function frame(t) {
     if (spinning) $('cheat').textContent = `JANKHAX v6.9\n[x] AIMBOT\n[x] SPINBOT\n[x] NO SPREAD\n${((G.spinUntil - now) / 1000).toFixed(1)}s left`;
     G.spinning = spinning;
     updateWeapons(dt, now);
+    lassoFrame(dt, now); // lasso: spin + throw, the rope you hold, your hands (before the snapshot: it sets a flag)
     if (ballOn(now)) { W.flags |= FLAGS.BALL; if (BS.snapNow) { BS.snapNow = false; sendT = 0; } } // wrecking ball (a slam dive goes out right away: the server checks it)
 
     sendT -= dt;
@@ -1434,6 +1439,7 @@ function frame(t) {
 
   for (const pr of G.projs.values()) {
     if (pr.k === 'soap') { stepSoap(pr, dt, now); continue; } // bubble wand: wobbly bubbles on an exact path (wand.js)
+    if (pr.k === 'loop') { loopFrame(pr, dt, now); continue; } // a lasso loop in flight (lasso.js)
     if (pr.k === 'slipper') {
       slipperStep(pr, dt, now);
       pr.spin += dt * 20;
@@ -1518,6 +1524,7 @@ function frame(t) {
   if (Math.abs(cam.fov - fovNow) > 0.05) { cam.fov = fovNow; cam.updateProjectionMatrix(); }
   if (RP.active) updateReplay(dt, now, cam); // killcam / play of the round owns the camera
   cam.updateMatrixWorld();
+  lassoLate(dt, now); // lasso ropes between people + from your hand, now that everyone (and the camera) has moved
   updateSpeedLines(dt, G.joined && ME.alive && !RP.active ? Math.hypot(ME.vel[0], ME.vel[1], ME.vel[2]) : 0, ME.vel, cam, ME.dashing ? 0.9 : 0, S.speedLines !== false);
   const rh = G.renderer.domElement.height;
   fx.setScale(rh / (2 * Math.tan((cam.fov * Math.PI) / 360)));

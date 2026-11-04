@@ -18,6 +18,7 @@ import { raycast } from '/shared/physics.js';
 import { BOXES } from '/shared/map.js';
 import { soapBubble, soapFlail } from './models.js';
 import { TRAP, trapPreroll } from '/shared/wand.js';
+import { lassoPreroll } from '/shared/lasso.js';
 
 const KEEP = 10000;
 export const rec = { frames: [], ev: [] };
@@ -38,6 +39,7 @@ export function localClip(t0, t1, infoOf) {
   const frames = rec.frames.filter((f) => f.s >= t0 && f.s <= t1);
   const ev = rec.ev.filter((e) => e.s >= t0 && e.s <= t1);
   ev.unshift(...trapPreroll(rec.ev, t0)); // someone already floating in a soap bubble when the clip starts
+  ev.unshift(...lassoPreroll(rec.ev, t0)); // or already hanging off a lasso
   const info = {};
   for (const f of frames) for (const e of f.p) if (!info[e[0]]) info[e[0]] = infoOf(e[0]);
   return { frames, ev, info };
@@ -67,6 +69,7 @@ export function playClip(clip, opts = {}) {
   };
   while (st.ei < clip.ev.length && clip.ev[st.ei].s < t0) st.ei++;
   for (const e of clip.ev) if (e.s < t0 && e.m.t === 'trap') trapGhost(e.m, e.s); // sealed in before the clip starts
+  for (const e of clip.ev) if (e.s < t0 && e.m.t === 'lasso' && G.lassoReplay) G.lassoReplay(e.m, ghosts); // lassoed before it starts
   RP.active = true;
   RP.mode = opts.mode || 'replay';
   RP.focus = opts.focus; // whose replay it is
@@ -105,6 +108,7 @@ function feed(upTo) {
 
 function applyEv(m) {
   if (m.t === 'trap' || m.t === 'trapx') { trapGhost(m, st.t); return; }
+  if (m.t === 'lasso') { if (G.lassoReplay) G.lassoReplay(m, st.ghosts); return; } // lasso catches, flings, splats (lasso.js)
   const g = st.ghosts.get(m.id);
   const info = st.clip.info || {};
   if (m.t === 'fx' && m.k === 'verdict') return courtReplay(m, g, st.opts.focus); // scales of justice: the stamp + gold
@@ -180,6 +184,7 @@ function updateProjs(t, dt) {
     mesh.position.set(px, py, pz);
     if ((kind === 'chicken' || kind === 'bow' || kind === 'card') && Math.hypot(vx, vy, vz) > 0.01) mesh.lookAt(px - vx, py - vy, pz - vz);
     else { mesh.userData.spin += dt * 14; mesh.rotation.set(mesh.userData.spin, mesh.userData.spin * 0.7, 0); }
+    if (kind === 'loop' && G.lassoLoopGhost) G.lassoLoopGhost(mesh, vx, vy, vz); // a lasso loop flies flat, not tumbling
     if (kind === 'chicken' && Math.random() < dt * 8) fx.feathers([px, py, pz], 1);
   }
   for (const [id, mesh] of st.projs) if (!seen.has(id)) { G.scene.remove(mesh); st.projs.delete(id); }
@@ -287,6 +292,7 @@ export function updateReplay(dt, now, cam) {
   while (st.ei < st.clip.ev.length && st.clip.ev[st.ei].s <= st.t) { try { applyEv(st.clip.ev[st.ei].m); } catch (e) { console.warn('replay ev', e); } st.ei++; }
   for (const g of st.ghosts.values()) g.update(st.t, dt * sp, now);
   stepTrapGhosts(st.t);
+  if (G.lassoLate) G.lassoLate(dt * sp, now, st.ghosts); // lasso ropes between ghosts
   updateProjs(st.t, dt * sp);
   updateCam(dt, cam);
   if (o.onTick) o.onTick(st.t, slow);

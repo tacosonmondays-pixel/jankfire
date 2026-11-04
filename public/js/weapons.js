@@ -450,11 +450,13 @@ const VM = {
   scythe: { p: [0.3, -0.33, -0.46], r: [0.25, 0.25, -0.3], s: 0.55 },
   scythe_rifle: { p: [0.2, -0.21, -0.4], r: [0, 0.03, 0], s: 0.6 },
   scales: { p: [0.27, -0.335, -0.47], r: [0.06, 0.12, 0], s: 0.6 }, // held upright, beam across the view
+  lasso: { p: [0.2, -0.24, -0.4], r: [0.1, 0.4, 0], s: 0.9 }, // (lasso.js hides this and animates its own hands + rope)
 };
 
 let vmRoot;
 const models = {};
 const tmpV = new THREE.Vector3();
+export const vmModel = (id) => models[id]; // the lasso draws its own hands and hides this one
 
 export function initWeapons() {
   vmRoot = new THREE.Group();
@@ -657,7 +659,7 @@ function currentSpread(w) {
   const base = (w.spread || 0) + W.bloom;
   const ads = w.ads ? base * (w.ads.spread ?? 1) * Math.min(1, hip) : base * hip;
   const hipS = base * hip;
-  return hipS + (ads - hipS) * W.aim;
+  return hipS + (ads - hipS) * W.aim + (G.heldSpread || 0); // + swinging on the end of someone's lasso
 }
 
 function fireHitscan(id, now) {

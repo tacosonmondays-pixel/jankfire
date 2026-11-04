@@ -316,3 +316,15 @@ export function slamSize(h) {
   const at = (a) => a[0] + (a[1] - a[0]) * k;
   return { k, dmg: at(WRECK.slamDmg), r: at(WRECK.slamR), kb: at(WRECK.slamKb), up: at(WRECK.slamUp) };
 }
+
+// ------------------------------------------------------------ lasso (secondary)
+// hold fire to spin the loop, let go to throw it; catch someone and they hang off your rope. the physics + numbers are
+// in shared/lasso.js (the holder's client runs them on the body, the server checks them)
+WEAPONS.lasso = {
+  slot: 'secondary', kind: 'lasso', name: 'Lasso', color: '#e0b070',
+  desc: 'Hold to spin the loop, let go to throw. Catch someone and they swing on your rope: wheel (or R / F) reels it in and out. Long rope, shake them side to side, walk backwards and flick round: click to let go and they fly. Walls and floors hurt.',
+};
+// the loop in flight: a server projectile like any other (it decides who it catches)
+WEAPONS.loop = { slot: 'hidden', kind: 'loop', name: 'Lasso', color: '#e0b070', speed: 30, grav: 6, r: 0.55, life: 4 };
+ORDER.push('lasso'); // ORDER was taken before these: the loadout, viewmodels and cosmetics list come from it
+FLAGS.LASSO = 1 << 20; // set in your snapshots while you spin the loop overhead (everyone sees it, killcams too)
