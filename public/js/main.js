@@ -25,6 +25,7 @@ import { initPreview, showPreview, showCharacter, renderPreview, resizePreview }
 import { playKillFx, updateKillFx, clearKillFx } from './killfx.js';
 import { courtKill, courtVerdict, updateCourt, courtReset, courtSync } from './scales.js';
 import { noScope, updateNoScope } from './noscope.js';
+import { makeRope, setRope, setRopeSkin, myGrapple, initGrapplePreview, grappleThumb, showGrapple, renderGrapplePreview } from './grapple.js';
 import { updateSpeedLines } from './speedlines.js';
 import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse } from './objective.js';
 import { GAMES, GAME_ORDER, TEAMS } from '/shared/modes.js';
@@ -55,7 +56,7 @@ const SYNC_KEYS = ['jank', 'sens', 'adsSens', 'vol', 'fov', 'swapAim', 'toggleAi
 function profileData() {
   const settings = {};
   for (const k of SYNC_KEYS) settings[k] = G.settings[k];
-  return { loadout: G.settings.loadout, skins: G.settings.skins, look: G.settings.look, card: G.settings.card || '', kfx: G.settings.kfx || 'none', settings };
+  return { loadout: G.settings.loadout, skins: G.settings.skins, look: G.settings.look, card: G.settings.card || '', kfx: G.settings.kfx || 'none', grap: G.settings.grap || 'rope', settings };
 }
 function saveSettings() {
   try { localStorage.setItem('jankfire', JSON.stringify(G.settings)); } catch { /* whatever */ }
@@ -89,7 +90,7 @@ initPreview($('preview'));
 
 const myShadow = makeShadow();
 G.scene.add(myShadow);
-const myRope = makeBeam(0x3a2a1a);
+const myRope = makeRope(myGrapple());
 myRope.visible = false;
 G.scene.add(myRope);
 
@@ -146,7 +147,7 @@ function startMode(mode, cfg) {
   if (G.joined) quitToMenu(true);
   connecting = true;
   $('status').textContent = 'connecting...';
-  net.connect({ name: G.settings.name, mode, skins: G.equipped, look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), kc: G.settings.killcam !== false, streaks: validStreaks(S.loadout.streaks), cfg, token: account.loggedIn ? account.token : undefined }, () => {
+  net.connect({ name: G.settings.name, mode, skins: G.equipped, look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), grap: myGrapple(), kc: G.settings.killcam !== false, streaks: validStreaks(S.loadout.streaks), cfg, token: account.loggedIn ? account.token : undefined }, () => {
     connecting = false;
     resetWorldState();
     show('main');
@@ -620,6 +621,7 @@ function buildCosmeticsUI() {
     });
     $('sk-model').append(c);
   }
+  buildGrappleUI();
   showPreview(id, ownedSkin(sk, G.inv, id));
 }
 $('skRandom').addEventListener('click', () => {
@@ -644,6 +646,36 @@ $('skAll').addEventListener('click', () => { // copy this weapon's wrap/hat/effe
   saveSettings(); recomputeEquipped(); sendSkins(); rebuildViewmodels(); setLoadout(S.loadout); buildCosmeticsUI();
 });
 $('skAllMode').addEventListener('change', () => { S.skinAll = $('skAllMode').checked; saveSettings(); buildCosmeticsUI(); });
+
+// ------------------------------------------------------------ grapple skins (one per player, everyone sees your rope)
+function setGrap(id) {
+  S.grap = id;
+  saveSettings();
+  if (G.joined) net.send({ t: 'grap', id });
+}
+function buildGrappleUI() {
+  const el = $('sk-grapple');
+  el.innerHTML = '';
+  const cur = myGrapple(), live = initGrapplePreview($('grapPreview'));
+  showGrapple(cur);
+  for (const [k, v] of Object.entries(COSMETICS.grapple)) {
+    const have = owns(G.inv, 'grapple', k);
+    const c = document.createElement('button');
+    c.className = 'gcard' + (cur === k ? ' on' : '') + (have ? '' : ' locked');
+    c.style.setProperty('--rc', RARITY[v.rarity].color);
+    c.title = `${v.name} (${RARITY[v.rarity].name}): ${v.desc}`;
+    if (live) { const im = document.createElement('img'); im.src = grappleThumb(k); im.alt = ''; c.append(im); }
+    const nm = document.createElement('span'); nm.textContent = v.name;
+    c.append(nm);
+    c.addEventListener('mouseenter', () => showGrapple(k)); // hover to try it on in the preview, locked or not
+    c.addEventListener('mouseleave', () => showGrapple(myGrapple()));
+    c.addEventListener('click', () => {
+      if (!have) { showGrapple(k); toast(`${v.name} (${RARITY[v.rarity].name}): ${v.desc}. find it in duffel bags`, 3000); return; }
+      setGrap(k); buildGrappleUI();
+    });
+    el.append(c);
+  }
+}
 
 // ------------------------------------------------------------ input
 const keys = {};
@@ -802,7 +834,7 @@ function addHole(m) {
   sfx.hole(m.p);
 }
 function addRemoteInfo(p) {
-  G.names.set(p.id, { name: p.name, color: p.color, bot: p.bot, level: p.level, look: p.look, card: p.card || '', skins: p.skins || {}, team: p.team || 0 });
+  G.names.set(p.id, { name: p.name, color: p.color, bot: p.bot, level: p.level, look: p.look, card: p.card || '', skins: p.skins || {}, team: p.team || 0, grap: p.grap });
   G.skins.set(p.id, p.skins || {});
 }
 
@@ -868,6 +900,12 @@ net.on('sk', (m) => {
   const r = G.remotes.get(m.id);
   if (r) r.setSkins(m.s);
 });
+net.on('gr', (m) => { // someone picked another grapple skin
+  const n = G.names.get(m.id);
+  if (n) n.grap = m.g;
+  const r = G.remotes.get(m.id);
+  if (r) r.setGrapple(m.g);
+});
 net.on('lk', (m) => {
   if (m.id === G.myId) { G.myColor = m.color; return; }
   const n = G.names.get(m.id);
@@ -899,6 +937,7 @@ net.on('sn', (m) => {
       r = new Remote(id, n.level ? `${n.name} [${n.level}]` : n.name, n.color, G.skins.get(id) || {}, n.bot, n.look);
       r.team = n.team || 0;
       r.katN = G.kat.get(id) || 0;
+      r.setGrapple(n.grap);
       G.remotes.set(id, r);
     }
     r.snap(m.s, e);
@@ -1451,7 +1490,7 @@ function frame(t) {
   if (RP.active) { cam.getWorldDirection(tmpDir); setListener([cam.position.x, cam.position.y, cam.position.z], Math.atan2(-tmpDir.x, -tmpDir.z)); } else setListener(e, ME.yaw);
 
   const hp = hookPoint();
-  if (hp && ME.alive && !RP.active) { myRope.visible = true; setBeam(myRope, muzzleWorld(), hp, 0.05); } else myRope.visible = false;
+  if (hp && ME.alive && !RP.active) { myRope.visible = true; setRopeSkin(myRope, myGrapple()); setRope(myRope, muzzleWorld(), hp); } else myRope.visible = false;
   const shHit = G.joined ? raycast([ME.pos[0], ME.pos[1] + 0.1, ME.pos[2]], [0, -1, 0], 120, BOXES) : null;
   myShadow.visible = !!shHit && ME.alive && !ME.onGround && !RP.active;
   if (shHit) myShadow.position.set(ME.pos[0], shHit.point[1] + 0.03, ME.pos[2]);
@@ -1477,6 +1516,7 @@ function frame(t) {
   if (ballOn(now)) G.vmScene.visible = false; // weapons are holstered inside the ball
   renderFrame();
   if ((screen === 'cosmetics' || screen === 'character') && !$('menu').classList.contains('hidden')) renderPreview(dt);
+  if (screen === 'cosmetics' && !$('menu').classList.contains('hidden')) renderGrapplePreview(dt);
 }
 
 // ------------------------------------------------------------ killstreaks
@@ -1572,9 +1612,9 @@ function setKfx(id) {
 }
 net.on('cd', (m) => { const n = G.names.get(m.id); if (n) n.card = m.card || ''; });
 function infoOf(id) {
-  if (id === G.myId) return { name: G.myName, color: G.myColor, skins: G.equipped, look: validLook(S.look, myAchs()), bot: false };
+  if (id === G.myId) return { name: G.myName, color: G.myColor, skins: G.equipped, look: validLook(S.look, myAchs()), bot: false, grap: myGrapple() };
   const n = G.names.get(id) || {};
-  return { name: n.name || '???', color: n.color || '#ffffff', skins: G.skins.get(id) || {}, look: n.look || null, bot: !!n.bot, level: n.level };
+  return { name: n.name || '???', color: n.color || '#ffffff', skins: G.skins.get(id) || {}, look: n.look || null, bot: !!n.bot, level: n.level, grap: n.grap };
 }
 // the death screen shows whoever killed you, on their name card
 function deathCard(killer, via) {
@@ -1778,11 +1818,13 @@ function onLoggedIn(me, fresh) {
     if (prof.look && typeof prof.look === 'object') G.settings.look = { ...DEFAULT_LOOK, ...prof.look };
     if (typeof prof.card === 'string') G.settings.card = prof.card;
     if (typeof prof.kfx === 'string') G.settings.kfx = prof.kfx;
+    if (typeof prof.grap === 'string') G.settings.grap = prof.grap;
     Object.assign(G.settings, prof.settings || {});
     try { localStorage.setItem('jankfire', JSON.stringify(G.settings)); } catch { /* fine */ }
     applySettingsToUI();
   } else saveSettings();
   G.inv = me.inv || {};
+  if (G.joined) { net.send({ t: 'kfx', id: myKfx() }); net.send({ t: 'grap', id: myGrapple() }); } // the profile may have brought other picks: tell the server
   recomputeEquipped();
   rebuildViewmodels();
   setLoadout(G.settings.loadout);
@@ -1964,6 +2006,8 @@ async function doRoll(kind) {
       if (item.rarity === 'legendary' || item.rarity === 'epic') sfx.kill(); else sfx.ting();
       if (item.type === 'kill') {
         btn('EQUIP KILL EFFECT', () => { setKfx(item.id); closeRoll(); toast(`kill effect: ${item.name}`); });
+      } else if (item.type === 'grapple') {
+        btn('EQUIP GRAPPLE', () => { setGrap(item.id); closeRoll(); toast(`grapple: ${item.name}`); });
       } else {
       // skins belong to one weapon; everything else can go on whatever you're looking at
       const target = item.type === 'model' ? COSMETICS.model[item.id].weapon : G.cosSel;

@@ -445,3 +445,15 @@ body.replaying #mlg { display: none; }
 @keyframes mlgFlare { 0% { transform: scale(0.2) rotate(0); opacity: 0; } 30% { opacity: 1; } 100% { transform: scale(var(--s, 1)) rotate(60deg); opacity: 0; } }
 @keyframes mlgPop { 0% { transform: translate(-50%, -50%) scale(0) rotate(var(--r)); } 25% { transform: translate(-50%, -50%) scale(1.25) rotate(var(--r)); } 75% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1) rotate(var(--r)); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { #mlg .mlg-spin, #mlg .mlg-shake, #mlg .mlg-flash, #mlg .mlg-txt { animation: none; } }
+/* grapple skins (cosmetics): a live preview next to picture cards */
+.grap { display: grid; grid-template-columns: 190px 1fr; gap: 8px; margin-bottom: 6px; align-items: start; }
+@media (max-width: 700px) { .grap { grid-template-columns: 1fr; } }
+#grapPreview { width: 100%; height: 150px; background: #24122f; border: 2px solid #444; image-rendering: pixelated; display: block; }
+.gcards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.gcard { font-family: var(--font); font-size: 12px; padding: 2px 2px 1px; cursor: pointer; background: rgba(255, 255, 255, 0.06); color: #fff; border: 2px solid transparent; border-left: 3px solid var(--rc, transparent); display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; }
+.gcard img { width: 100%; aspect-ratio: 16 / 9; image-rendering: pixelated; display: block; }
+.gcard span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.gcard:hover { background: rgba(255, 255, 255, 0.16); }
+.gcard.on { border-color: var(--yellow); color: var(--yellow); }
+.gcard.locked { opacity: 0.45; border-style: dashed; border-color: var(--rc, #555); }
+.gcard.locked span::before { content: '🔒 '; }

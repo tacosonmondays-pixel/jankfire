@@ -10,6 +10,8 @@ import { emitSkinFx } from './skins.js';
 import { wreckRemote, ballBoxes, wreckDispose } from './wreck.js';
 import { jankify } from './jank.js';
 import { newTwirl, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
+import { makeRope, setRope, setRopeSkin } from './grapple.js';
+import { sfx } from './audio.js';
 
 // players ignore fog, glow a bit, and get an outline in their colour so you can spot them across the map
 const noFog = new Map();
@@ -85,7 +87,7 @@ export class Remote {
     this.tag.position.y = 2.3;
     this.ch.root.add(this.tag);
     G.scene.add(this.ch.root);
-    if (!this.rope) { this.rope = makeBeam(0x3a2a1a); this.rope.visible = false; G.scene.add(this.rope); }
+    if (!this.rope) { this.rope = makeRope(this.grap); this.rope.visible = false; G.scene.add(this.rope); }
     if (!this.shadow) { this.shadow = makeShadow(); G.scene.add(this.shadow); }
     this.card = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 1.05), new THREE.MeshBasicMaterial({ map: cardTex(), side: THREE.DoubleSide }));
     this.card.position.y = 2.9;
@@ -114,6 +116,7 @@ export class Remote {
     if (this.weaponMesh && this.w === 'revolver') applyTwirl(this.weaponMesh, 0, this.weaponMesh.scale.x);
   }
   setSkins(s) { this.skins = s || {}; const w = this.w; this.w = null; if (w) this.setWeapon(w); }
+  setGrapple(id) { this.grap = id; setRopeSkin(this.rope, id); } // their grapple skin (unknown ids fall back to rope)
 
   setWeapon(w) {
     this.w = w;
@@ -139,6 +142,7 @@ export class Remote {
     this.buf.push({ t, p: [x, y, z], v: [vx, vy, vz], yaw, pitch });
     if (this.buf.length > 60) this.buf.shift();
     this.vel = [vx, vy, vz];
+    if (g && !this.g && alive && !this.ghost && this.buf.length > 1) sfx.grapple(this.grap, g); // their hook just landed: you hear it, a bit quieter
     this.hp = hp; this.alive = !!alive; this.g = g || null; this.f = f; this.k = k; this.d = d;
     if (w !== this.w) this.setWeapon(w);
   }
@@ -292,7 +296,7 @@ export class Remote {
 
     if (this.g) {
       this.rope.visible = true;
-      setBeam(this.rope, this.muzzle(), this.g, 0.05);
+      setRope(this.rope, this.muzzle(), this.g);
     } else this.rope.visible = false;
     wreckRemote(this, dt, now); // wrecking ball killstreak: a steel ball (and a chain) instead of the mannequin
 

@@ -218,19 +218,21 @@ Achievement accessories:
 ## Cosmetics + containers
 
 **Skins** are different models and belong to one weapon each, like a CS knife: every weapon has at least one (Toy Blaster and Bullpup for the AR, Pocket Uzi, Double Barrel, Old Gatling, Musket, Flintlock, Turkey Launcher, Hand Cannon, Bunch Blaster, Compound Bow, Fat Cigar, Hair Dryer, Champagne, Skip Card, Ice Cube, Ladle, Croc, Reaper scythe, plus Karambit / Butterfly / Switchblade / Cleaver / Bowie / Kitchen knives, Foam Finger and Bear Paw slappers, the Croissant).
-**Wraps** (paint), **hats** and **effects** go on **every weapon at once** by default (untick the box in COSMETICS to dress weapons one by one). The Scythe Rifle can be dressed too. One **kill effect** per player.
+**Wraps** (paint), **hats** and **effects** go on **every weapon at once** by default (untick the box in COSMETICS to dress weapons one by one). The Scythe Rifle can be dressed too. One **kill effect** and one **grapple skin** per player.
 
 **CONTAINERS** (main menu) is where you open them:
 
 | Container | Contains |
 |---|---|
 | Crate | weapon skins |
-| Duffel Bag | hats, effects, kill effects |
+| Duffel Bag | hats, effects, kill effects, grapples |
 | Box | wraps |
 
 New accounts get one of each. Win a round (Online needs 2+ real players, Bots needs 3+ bots) for a random container; coop gives one every 5 waves. Odds: Common 55%, Rare 28%, Epic 13%, Legendary 4%. Own everything in a type and it turns into 100 XP.
 
 **Kill effects** (what happens to people you kill): Gibs, Confetti (free), Tombstone, Make It Rain, Missing Texture, Balloons, Chickens, Blue Screen, Yeet, Ascend, Big Duck.
+
+**Grapple skins** (your rope and the thing on the end, everyone sees it, each lands with its own sound): Rope + iron hook (free), Chain + claw, Candy Cane, Plunger, Jungle Vine + wooden hook, Laser + emitter, Sticky Hand (stretchy), Rainbow + star. Pick one in COSMETICS (hover a card to try it in the preview).
 
 The hotbar at the bottom shows a picture of each weapon you carry, with your skin on it, plus your item and its charges.
 

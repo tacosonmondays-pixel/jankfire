@@ -9,6 +9,7 @@ import { net } from './net.js';
 import { query } from '/shared/physics.js';
 import { WRECK, slamSize } from '/shared/weapons.js';
 import { fx } from './fx.js';
+import { flashRope, myGrapple } from './grapple.js';
 
 export const ME = {
   pos: [0, 5, 0], vel: [0, 0, 0], yaw: 0, pitch: 0,
@@ -107,10 +108,10 @@ export function tryHook() {
     ME.hook = { point: mh.point, len: mh.t };
   } else {
     const end = [o[0] + d[0] * HOOK.range, o[1] + d[1] * HOOK.range, o[2] + d[2] * HOOK.range];
-    fx.rope([o[0], o[1] - 0.3, o[2]], end, 0.1);
+    flashRope([o[0], o[1] - 0.3, o[2]], end, 0.1);
     return;
   }
-  sfx.grapple();
+  sfx.grapple(myGrapple());
 }
 
 export function releaseHook() { ME.hook = null; }

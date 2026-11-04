@@ -82,12 +82,25 @@ export const COSMETICS = {
     ascend: { name: 'Ascend', rarity: 'legendary', desc: 'a beam from the sky takes them' },
     duck: { name: 'Big Duck', rarity: 'legendary', desc: 'a giant duck eats them' },
   },
+  // your grappling hook: the rope and the thing on the end. one per player, everyone sees it.
+  grapple: {
+    rope: { name: 'Rope', rarity: 'free', desc: 'brown rope, iron hook. classic' },
+    chain: { name: 'Chain', rarity: 'common', desc: 'clanky chain with a claw on the end' },
+    candy: { name: 'Candy Cane', rarity: 'common', desc: 'striped rope, candy cane hook' },
+    plunger: { name: 'Plunger', rarity: 'rare', desc: 'it sticks. do not ask where it has been' },
+    vine: { name: 'Jungle Vine', rarity: 'rare', desc: 'leafy vine and a wooden hook' },
+    laser: { name: 'Laser', rarity: 'epic', desc: 'a cyan beam that grabs things' },
+    sticky: { name: 'Sticky Hand', rarity: 'epic', desc: 'the vending machine toy. stretchy' },
+    rainbow: { name: 'Rainbow', rarity: 'legendary', desc: 'colour-cycling beam with a star on the end' },
+  },
 };
 export const TYPES = ['finish', 'hat', 'effect', 'model'];
-// everything you can roll: the four weapon-skin parts plus kill effects
-export const LOOT_TYPES = [...TYPES, 'kill'];
-export const TYPE_NAMES_ALL = { finish: 'Wrap', hat: 'Hat', effect: 'Effect', model: 'Skin', kill: 'Kill Effect' };
+// everything you can roll: the four weapon-skin parts plus kill effects and grapple skins
+export const LOOT_TYPES = [...TYPES, 'kill', 'grapple'];
+export const TYPE_NAMES_ALL = { finish: 'Wrap', hat: 'Hat', effect: 'Effect', model: 'Skin', kill: 'Kill Effect', grapple: 'Grapple' };
 export function ownedKill(id, inv) { return owns(inv, 'kill', id) ? id : 'none'; }
+// hasOwn: ids come off the network, so '__proto__' and friends must not look like catalog entries
+export function ownedGrapple(id, inv) { return typeof id === 'string' && Object.hasOwn(COSMETICS.grapple, id) && owns(inv, 'grapple', id) ? id : 'rope'; }
 // "finish" is called a wrap in the UI: the paint job. "model" is the skin: a different weapon shape.
 export const TYPE_NAMES = { finish: 'Wrap', hat: 'Hat', effect: 'Effect', model: 'Skin' };
 export function modelsFor(weapon) { return Object.entries(COSMETICS.model).filter(([id, c]) => id === 'default' || c.weapon === weapon).map(([id]) => id); }
@@ -119,7 +132,7 @@ export function unowned(inv) {
 // three kinds of loot: crates have weapon skins, duffel bags have hats + effects, boxes have wraps
 export const CONTAINERS = {
   crate: { name: 'Crate', plural: 'Crates', types: ['model'], desc: 'weapon skins', field: 'crates' },
-  bag: { name: 'Duffel Bag', plural: 'Duffel Bags', types: ['hat', 'effect', 'kill'], desc: 'hats, effects + kill effects', field: 'bags' },
+  bag: { name: 'Duffel Bag', plural: 'Duffel Bags', types: ['hat', 'effect', 'kill', 'grapple'], desc: 'hats, effects, kill effects + grapples', field: 'bags' },
   box: { name: 'Box', plural: 'Boxes', types: ['finish'], desc: 'wraps', field: 'boxes' },
 };
 export function randomContainer(rnd = Math.random) { const r = rnd(); return r < 0.45 ? 'box' : r < 0.8 ? 'bag' : 'crate'; }
