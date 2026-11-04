@@ -171,7 +171,7 @@ export const hud = {
     const w = WEAPONS[id];
     if (!w) return;
     $('weaponName').innerHTML = '';
-    $('weaponName').append(span(w.name, w.color), document.createElement('br'), span(w.desc, '#fff'));
+    $('weaponName').append(span(w.name, w.color), document.createElement('br'), span((this.descFor && this.descFor[id]) || w.desc, '#fff'));
     $('weaponName').style.opacity = 1;
     weaponT = 3;
   },

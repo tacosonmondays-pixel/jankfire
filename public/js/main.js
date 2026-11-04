@@ -44,6 +44,7 @@ import { updateWreck, ballCam, wreckFx, wreckDied } from './wreck.js';
 import { hasAcc } from '/shared/looks.js';
 import { airTick, airReset, airFlourish } from './airborne.js';
 import { account, restore, login, register, logout, saveProfile, leaderboard as fetchLeaders } from './account.js';
+import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { SPRAY, ownedSpray } from '/shared/cosmetics.js';
 import { sprayAim, sprayFx, addSpray, clearSprays, updateSprays, sprayIcon } from './sprays.js';
@@ -262,8 +263,8 @@ const gameEntries = GAME_ORDER.map((k) => [k, GAMES[k].name]);
 fillSelect($('setupGame'), gameEntries, 'dm');
 fillSelect($('cfgGame'), gameEntries, 'dm');
 fillSelect($('setupMap'), mapEntries, 'islands');
-// a mode that needs bomb sites only offers the maps that have them (the server quietly refuses the rest)
-const mapsOf = (game) => (GAMES[game] && GAMES[game].sites ? mapsFor(game, MAPS, MAP_ORDER) : MAP_ORDER);
+// a mode that needs certain maps (bomb sites, a floor to turn into lava) only offers those (the server refuses the rest)
+const mapsOf = (game) => (GAMES[game] && (GAMES[game].sites || GAMES[game].mapOk) ? mapsFor(game, MAPS, MAP_ORDER) : MAP_ORDER);
 $('setupGame').addEventListener('change', () => {
   const keep = $('setupMap').value, list = mapsOf($('setupGame').value);
   fillSelect($('setupMap'), mapEntries.filter(([k]) => list.includes(k)), list.includes(keep) ? keep : list[0]);
@@ -271,7 +272,7 @@ $('setupGame').addEventListener('change', () => {
 $('cfgGame').addEventListener('change', () => {
   const g = $('cfgGame').value, list = mapsOf(g);
   if (!list.includes(G.cfg.map)) {
-    toast(`${GAMES[g].name} needs a map with bomb sites (${list.map((k) => MAPS[k].name).join(', ')}): change the map first`, 3200);
+    toast(`${GAMES[g].name} needs ${GAMES[g].sites ? 'a map with bomb sites' : 'another map'} (${list.map((k) => MAPS[k].name).join(', ')}): change the map first`, 3200);
     $('cfgGame').value = (G.round && G.round.game) || 'dm';
     return;
   }
@@ -426,7 +427,7 @@ function buildLoadoutUI() {
 }
 function applyLoadout(force) {
   sendItemSel();
-  if (G.forcedLoadout) { $('loNote').textContent = 'randomizer is on: you get a random loadout every life'; return; }
+  if (G.forcedLoadout) { $('loNote').textContent = G.forcedLoadout.only ? 'this mode hands everyone the same weapons' : 'randomizer is on: you get a random loadout every life'; return; }
   if (W.only) { $('loNote').textContent = 'this mode hands you one weapon: your loadout comes back after the match'; return; }
   const canNow = force || !G.joined || !ME.alive || performance.now() - (G.spawnT || 0) < 5000;
   if (canNow) { setLoadout(S.loadout); G.pendingLoadout = false; $('loNote').textContent = ''; }
@@ -1195,10 +1196,12 @@ net.on('votes', (m) => { if (G.vote) { G.vote.counts = m.counts; showVote(G.vote
 
 // randomizer mode: the server hands you a loadout each life (null = use your own again)
 net.on('loadout', (m) => {
-  G.forcedLoadout = m.lo ? { ...m.lo, item: S.loadout.item } : null; // weapons only: you keep your own item
+  // randomizer: weapons only, you keep your own item. chaos kits (lo.only) come with their own item rule (none)
+  G.forcedLoadout = m.lo ? (m.lo.only ? m.lo : { ...m.lo, item: S.loadout.item }) : null;
+  hud.descFor = (m.lo && m.lo.desc) || null; // chaos modes can say what a weapon does in this mode
   setLoadout(G.forcedLoadout || S.loadout);
   refillAmmo();
-  if (m.lo) hud.msg(`${wname(m.lo.primary)} · ${wname(m.lo.secondary)} · ${wname(m.lo.melee)}${ITEMS[m.lo.item] ? ' · ' + ITEMS[m.lo.item].name : ''}`, 2.2, 'brag');
+  if (m.lo && !m.lo.only) hud.msg(`${wname(m.lo.primary)} · ${wname(m.lo.secondary)} · ${wname(m.lo.melee)}`, 2.2, 'brag');
 });
 // gun game / infection: the server hands you exactly one weapon (null = your own loadout again)
 net.on('modew', (m) => { if (m.w) endBall(); setOnly(m.w || null, G.forcedLoadout || S.loadout); }); // (a mode weapon ends a wrecking ball: the server already did)
@@ -1266,6 +1269,8 @@ net.on('kill', (m) => {
   } else {
     parts = [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc]];
   }
+  const hazard = m.w === 'lava' || (m.w === 'duck' && m.sky); // floor is lava / duck rain: nobody owns those
+  if (hazard) parts = m.k ? [[kn, kc], [`  [${wname(m.via)}]  `, wcolor(m.via)], [vn, vc], [m.w === 'lava' ? '  into the lava' : '  under a sky duck', '#aaa']] : [[vn, vc], [m.w === 'lava' ? '  touched the floor' : '  got flattened by a sky duck', '#ff8a3a']];
   if (m.ep && m.k) parts.push([`  EPIC ${Math.round(m.ep.d)}m`, '#ffe14d']);
   if (!dummy) hud.feed(parts);
   if (m.v === G.myId) epicKC = m.ep && m.ep.lock && m.k && m.k !== G.myId && S.killcam !== false && G.mode !== 'training' ? { ...m.ep, w: via } : null; // too epic to skip (the server holds your respawn)
@@ -1286,6 +1291,7 @@ net.on('kill', (m) => {
         ? [[kn, kc], [' knocked you into the void', '#fff'], [`  (${wname(via)})`, wcolor(via)]]
         : [['killed by ', '#fff'], [kn, kc], [`  (${wname(via)})`, wcolor(via)]]);
     } else hud.dead(true, [[m.w === 'void' ? 'you fell into the void' : m.w === 'tbag' ? 'you t-bagged too hard. your knees exploded.' : 'you smoked too much', '#fff']]);
+    if (hazard) hud.dead(true, m.k ? [[kn, kc], [m.w === 'lava' ? ' knocked you into the lava' : ' softened you up for a sky duck', '#fff'], [`  (${wname(m.via)})`, wcolor(m.via)]] : [[m.w === 'lava' ? 'the floor was lava' : 'a duck fell out of the sky on you', '#fff']]);
   }
   if (m.k === G.myId && m.v !== G.myId) {
     G.streakN = (G.streakN || 0) + 1; // the server counts every kill too, but only tells you at your picks
@@ -1506,7 +1512,7 @@ function frame(t) {
     } : {};
     jumpPressed = false;
     acc += dt;
-    while (acc >= STEP) { stepPlayer(STEP, inp, now); airTick(now); inp.jumpPressed = false; acc -= STEP; }
+    while (acc >= STEP) { stepPlayer(STEP, inp, now); airTick(now); lavaStep(now); inp.jumpPressed = false; acc -= STEP; }
     grabStep(now); // held in a shredder's intake
     // spinbot killstreak: lock onto the nearest enemy you can see
     const spinning = ME.alive && now < (G.spinUntil || 0);
@@ -1573,6 +1579,7 @@ function frame(t) {
     if (a && a.by === G.myId) hud.meter(a.f, a.k === 'plant' ? 'PLANTING... keep holding F' : 'DEFUSING... keep holding F', '#ff4f4f');
     if (G.vote) $('voteLeft').textContent = `${Math.max(0, Math.ceil((G.voteEnds - performance.now()) / 1000))}s`;
   }
+  updateChaos(dt, now);
 
   for (const pr of G.projs.values()) {
     if (pr.k === 'soap') { stepSoap(pr, dt, now); continue; } // bubble wand: wobbly bubbles on an exact path (wand.js)
@@ -1661,6 +1668,7 @@ function frame(t) {
   fovNow += (fovTarget - fovNow) * Math.min(1, dt * (W.aim > 0 ? 14 : 6));
   if (Math.abs(cam.fov - fovNow) > 0.05) { cam.fov = fovNow; cam.updateProjectionMatrix(); }
   if (RP.active) updateReplay(dt, now, cam); // killcam / play of the round owns the camera
+  const specCam = !RP.active && spectateCam(dt, cam); // one in the chamber: out of lives, watching someone
   cam.updateMatrixWorld();
   updateSpeedLines(dt, G.joined && ME.alive && !RP.active ? Math.hypot(ME.vel[0], ME.vel[1], ME.vel[2]) : 0, ME.vel, cam, ME.dashing ? 0.9 : 0, S.speedLines !== false);
   const rh = G.renderer.domElement.height;
@@ -1693,7 +1701,7 @@ function frame(t) {
   skinTick(dt, now);
   updateWorld(dt);
   updateCrosses(dt, RP.active ? (RP.sp || 1) * (RP.dt != null && dt > 0 ? RP.dt / dt : 1) : 1); // after the projectile loop + replay: it turns blood bolts nose-first
-  G.vmScene.visible = G.joined && !RP.active;
+  G.vmScene.visible = G.joined && !RP.active && !specCam;
   if (ballOn(now)) G.vmScene.visible = false; // weapons are holstered inside the ball
   renderFrame();
   if ((screen === 'cosmetics' || screen === 'character') && !$('menu').classList.contains('hidden')) renderPreview(dt);
@@ -1728,6 +1736,7 @@ function deployStreak(slot) {
   const id = activeStreaks()[slot];
   if (!G.joined || !ME.alive || !id) return;
   if (W.only) { hud.msg('no killstreaks in this mode (they keep for later)', 1.2); sfx.empty(); return; }
+  if (chaosNoStreaks()) { hud.msg('no killstreaks in this mode', 1.2); sfx.empty(); return; }
   if (!G.pocket.includes(id)) { hud.msg(`${STREAKS[id].name}: ${STREAKS[id].kills} kills in a row`, 1.2); sfx.empty(); return; }
   const e = eye(), d = lookDir();
   const h = raycast(e, d, 300, BOXES);
@@ -2267,6 +2276,8 @@ function renderRound(r) {
   if (mt != null) { el.textContent = mt; return; }
   const teamGame = r.game && GAMES[r.game] && GAMES[r.game].teams;
   el.textContent = r.over ? `next round in ${Math.ceil(r.left / 1000)}` : teamGame ? '' : `first to ${r.target} · ${fmtClock(r.left)}`;
+  const ct = chaosRoundText(r);
+  if (ct) el.textContent = ct;
 }
 net.on('round', (m) => {
   const box = $('roundEnd');
@@ -2276,6 +2287,7 @@ net.on('round', (m) => {
     if (m.game) { G.round = { ...(G.round || {}), ...m }; updateLabel(); if (screen === 'match') syncMatchUI(); }
     hud.msg(m.game && m.game !== 'dm' && GAMES[m.game] ? GAMES[m.game].name.toUpperCase() : 'ROUND START', 1.8, 'brag');
     if (m.game && GAMES[m.game]) hud.chat(null, null, GAMES[m.game].desc);
+    chaosRoundStart(m.game);
     return;
   }
   if (!m.over) return;

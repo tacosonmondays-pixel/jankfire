@@ -33,6 +33,8 @@ import { PARRY } from './shared/weapons.js';
 import { ropeStep, ropeJump, ROPE } from './shared/hookphys.js';
 import { query as boxQuery } from './shared/physics.js';
 import { navSteer } from './shared/nav.js';
+import { DUCKRAIN } from './shared/modes.js';
+import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -201,6 +203,10 @@ if (process.env.JF_GG_TIME) GUNGAME.time = Number(process.env.JF_GG_TIME) || GUN
 if (process.env.JF_INF_TIME) INFECT.time = Number(process.env.JF_INF_TIME) || INFECT.time;
 if (process.env.JF_INF_DELAY) INFECT.delay = Number(process.env.JF_INF_DELAY) || INFECT.delay;
 if (process.env.JF_INF_HP) INFECT.hp = Number(process.env.JF_INF_HP) || INFECT.hp;
+// test knobs for the chaos modes: lives in one in the chamber, round length in seconds, how hard it rains ducks (x), JF_GAME = the online room's first mode
+if (process.env.JF_LIVES) GAMES.oitc.lives = Number(process.env.JF_LIVES) || GAMES.oitc.lives;
+if (process.env.JF_ROUND_TIME) for (const r of Object.values(ROUND)) r.time = Number(process.env.JF_ROUND_TIME) || r.time;
+if (process.env.JF_DUCKS) DUCKRAIN.n = DUCKRAIN.n.map((x) => x * (Number(process.env.JF_DUCKS) || 1));
 function randomSkins() {
   const out = {};
   for (const id of Object.keys(WEAPONS)) if (Math.random() < 0.6) out[id] = [pick(SKIN_F), pick(SKIN_H), pick(SKIN_E), id === 'knife' ? pick(['default', 'knife_karambit', 'knife_butterfly', 'knife_switch', 'knife_cleaver']) : 'default'];
@@ -307,6 +313,8 @@ class Room {
     this.bubbles = new Map(); this.nextBub = 1;
     this.sprays = new Map(); this.sprayMap = ''; // owner id -> graffiti, and the map they were painted on
     this.smokes = new Map(); this.nextSmoke = 1; // smoke clouds: bots can't see through them, late joiners get them
+    this.oitcOut = new Set(); // one in the chamber: who ran out of lives this round (by account or name)
+    if (mode === 'ffa' && GAMES[process.env.JF_GAME]) this.game = process.env.JF_GAME; // test knob: the online room starts in this mode
     this.cfg = { map: mode === 'training' ? 'range' : mode === 'coop' ? 'warehouse' : 'islands', hip: 'normal', bots: 5, diff: 'normal' };
     this.wave = 0; this.toSpawn = 0; this.interUntil = 0;
     this.round = ROUND[mode] ? { target: ROUND[mode].kills, ends: now() + ROUND[mode].time * 1000, over: false, next: 0 } : null;
@@ -350,6 +358,7 @@ class Room {
   }
   sendLoadout(p) {
     if (this.modeLoadout(p)) return; // gun game rung / zombie claw
+    if (this.sendChaosKit(p)) return;
     if (p.isBot) { if (GAMES[this.game].random && !p.ai.dummy) { p.w = pick(BOT_GUNS); p.ai.ammo = WEAPONS[p.w].mag || 1; } return; }
     const rnd = (this.mode === 'ffa' || this.mode === 'bots') && GAMES[this.game].random;
     if (rnd) { p.forced = true; send(p, { t: 'loadout', lo: this.randomLoadout() }); }
@@ -370,6 +379,7 @@ class Room {
 
   pickSpawn(forBot, who) {
     let spawns = this.map.spawns;
+    if (this.lavaOn) spawns = surfaces(this.map).spawns; // floor is lava: only ever spawn on safe ground
     const ts = this.map.teamSpawns;
     if (who && who.team && this.teamsOn() && ts && !(this.map.teamSpawnsBomb && this.game !== 'bomb')) { // teamSpawnsBomb: other team modes spawn all over, away from enemies
       const attacking = this.game === 'bomb' ? who.team === (this.bomb ? this.bomb.att : 1) : who.team === 1;
@@ -466,6 +476,7 @@ class Room {
     for (const pr of this.projectiles.values()) if (pr.o === p.id) this.removeProj(pr);
     this.broadcast({ t: 'pl', id: p.id });
     if (this.vote && this.vote.votes.delete(p.id)) this.broadcast({ t: 'votes', counts: this.voteInfo().counts });
+    if (this.livesOn) this.oitcList(); // so 'N left' drops them
     if (!p.isBot && (this.mode === 'ffa' || this.mode === 'coop')) this.broadcast({ t: 'chat', id: 0, m: `${p.name} left` });
     if (!this.humans().length) rooms.delete(this.id);
   }
@@ -482,6 +493,7 @@ class Room {
     if (!opts.dummy && Math.random() < 0.5) b.grap = pick(GRAP_IDS); // bots show off ropes you can roll
     if (!opts.dummy) { this.joinTeam(b); if (b.team) b.pos = this.pickSpawn(true, b); }
     this.players.set(b.id, b);
+    this.sendLoadout(b); // bots added mid-match get the mode's weapons too
     this.broadcast({ t: 'pj', ...this.info(b) });
     if (!opts.dummy) this.modeJoin(b);
     return b;
@@ -573,10 +585,11 @@ class Room {
     if (n > ai.retarget) { const t = this.botTarget(b); ai.target = t ? t.id : 0; ai.retarget = n + 400 + Math.random() * 600; }
     let t = this.players.get(ai.target);
     if (t && this.friendly(b, t)) { ai.target = 0; ai.seenAt = 0; t = null; } // teams got reshuffled: that's a teammate now
+    this.botChaosThink(b, t, n);
     let wx = 0, wz = 0, jump = false;
     const w = WEAPONS[b.w];
     const pref = b.w === 'sniper' ? [25, 60] : b.w === 'shotgun' ? [3, 9] : b.w === 'marbles' ? [1.5, 4] : b.w === 'chicken' ? [10, 30] : b.w === 'shredder' ? [1.5, 9] : [7, 22];
-    if (w.kind === 'melee') { pref[0] = 0; pref[1] = w.range * 0.7; } // claws + gun game melee rungs: get in their face
+    if (w.kind === 'melee') { pref[0] = 0; pref[1] = this.chaosKit ? 1.2 : w.range * 0.7; } // claws, melee rungs, spoons + knives: get in their face
     if (t && t.alive) {
       const e = eyeOf(b), tc = [t.pos[0], t.pos[1] + 1.1, t.pos[2]];
       const dx = tc[0] - e[0], dy = tc[1] - e[1], dz = tc[2] - e[2];
@@ -593,7 +606,7 @@ class Room {
       if (w.kind !== 'melee') { wx += -fz * ai.strafeDir * 0.8; wz += fx * ai.strafeDir * 0.8; } // melee bots circling at 1 m never line up a swing
       let ang = Math.abs(b.yaw - yaw) % (Math.PI * 2); if (ang > Math.PI) ang = Math.PI * 2 - ang;
       const meleeOk = w.kind === 'melee' && dist < w.range && ang < 0.6; // up close the angle swings too fast for the gun aim check
-      if (vis && (meleeOk || (ai.seenAt && n - ai.seenAt > D.react && ang < 0.25)) && n >= ai.nextShot && n >= ai.reloadUntil && dist < (w.range || 60)) this.botFire(b, t, D);
+      if (vis && (meleeOk || (ai.seenAt && n - ai.seenAt > D.react && ang < 0.25)) && n >= ai.nextShot && n >= ai.reloadUntil && dist < (w.range || 60) + (w.kind === 'melee' ? 1 : 0)) this.botFire(b, t, D);
       if (b.onGround && Math.random() < dt * (dist < 15 ? 1.2 : 0.4)) jump = true;
     } else {
       if (!ai.wp || dist3(ai.wp, b.pos) < 4) ai.wp = pick(this.map.spawns);
@@ -655,6 +668,7 @@ class Room {
       const probe = [b.pos[0] + wx * 2.5, b.pos[1] + 0.5, b.pos[2] + wz * 2.5];
       if (!raycast(probe, [0, -1, 0], Math.max(6, Math.min(15, probe[1] - this.map.killY)), boxes)) { wx = -wx; wz = -wz; ai.strafeDir *= -1; }
     }
+    if (this.lavaOn) [wx, wz, jump] = this.botLava(b, wx, wz, jump, t);
     return { wx: wx * D.speed, wz: wz * D.speed, jump };
   }
 
@@ -787,6 +801,7 @@ class Room {
   }
 
   botFire(b, t, D) {
+    if (this.chaosKit && this.botChaosFire(b, t, D)) return;
     const w = WEAPONS[b.w], n = now();
     if (b.w === 'shredder') { this.botShred(b); return; } // no shots: it sucks for as long as they're in front of it
     const iv = w.rate ? 1000 / fireRate(w, b.hp) : w.cd * 1000;
@@ -855,7 +870,7 @@ class Room {
           const fr = slipping ? 0.02 : 6;
           if (hs > 0) { const ns = Math.max(0, hs - Math.max(hs, 3) * fr * dt) / hs; v[0] *= ns; v[2] *= ns; }
           if (!slipping) {
-            const cur = v[0] * think.wx + v[2] * think.wz, add = 8.5 * this.modeSpeed(b) - cur;
+            const cur = v[0] * think.wx + v[2] * think.wz, add = 8.5 * this.modeSpeed(b) * (b.ai.spd || 1) - cur;
             if (add > 0 && (think.wx || think.wz)) { const a = Math.min(add, 11 * 8.5 * dt); v[0] += a * think.wx; v[2] += a * think.wz; }
           }
         }
@@ -869,7 +884,7 @@ class Room {
     // let go near the point (or when it's been a while) with a grapple jump
     const hk = b.ai && b.ai.hook;
     if (hk) {
-      ropeStep(hk, hk.point, b.pos, v, dt, 26);
+      ropeStep(hk, hk.point, b.pos, v, dt, 26, this.hookMul); // (spoons & grapples pulls harder)
       b.ropeLift = 1;
       if (hk.dist < 4.5 || n > hk.until || slipping) {
         // grapple jump the way they're facing, a bit up, and never flung into the surface they're hooked on
@@ -921,9 +936,9 @@ class Room {
   useItem(p, m) {
     if (!p.alive || !has(ITEMS, m.i)) return;
     const c = this.itemCharges(p);
-    // not your item, no charge left, too fast, or a mode that hands out one weapon and nothing else (gun game, zombies):
-    // tell the client the real count so its HUD can't drift
-    if (m.i !== p.item || c.n <= 0 || now() - (p.itemT || 0) < 400 || this.modeWeapon(p)) { this.sendIc(p); return; }
+    // not your item, no charge left, too fast, or a mode with no items (gun game, zombies, the chaos kits): tell the
+    // client the real count so its HUD can't drift
+    if (m.i !== p.item || c.n <= 0 || now() - (p.itemT || 0) < 400 || this.modeWeapon(p) || (this.chaosKit && this.chaosKit.noItem)) { this.sendIc(p); return; }
     const it = ITEMS[p.item];
     p.itemT = now();
     c.n--;
@@ -1242,6 +1257,8 @@ class Room {
         killer = this.players.get(t.lastAttacker); via = t.lastAttackW;
       }
     }
+    // sky ducks and lava belong to nobody: whoever hurt you in the last few seconds gets it, else it's on you
+    if (!killer && (w === 'duck' || w === 'lava') && t.lastAttacker && now() - t.lastAttackT < 6000 && this.players.has(t.lastAttacker)) { killer = this.players.get(t.lastAttacker); via = t.lastAttackW; }
     if (killer && killer !== t && this.teamsOn() && killer.team !== t.team && this.round && !this.round.over) {
       if (this.game === 'tdm') this.score[killer.team]++;
       if (this.game === 'tags') this.dropTag(t, killer);
@@ -1257,7 +1274,7 @@ class Room {
       killer.streak = (killer.streak || 0) + 1;
       if (killer.lastKiller === t.id) killer.lastKiller = 0; // revenge served (scales of justice)
       t.lastKiller = killer.id;
-      if (!killer.isBot && this.mode !== 'training' && !this.modeWeapon(killer)) { // no killstreaks in gun game or as a zombie
+      if (!killer.isBot && this.mode !== 'training' && !this.modeWeapon(killer) && !(this.chaosKit && this.chaosKit.noStreaks)) { // no killstreaks in gun game, as a zombie or in a chaos kit
         // your 3 picked streaks: earn one and it waits in your tray until you use it (keys 5 / 6 / 7)
         for (const id of validStreaks(killer.streaks)) {
           const st = STREAKS[id];
@@ -1296,8 +1313,9 @@ class Room {
       if (killer.isBot && killer.kfx == null) killer.kfx = Math.random() < 0.45 ? pick(KILL_IDS) : 'none'; // bots show off stuff you can roll
       kfx = killer.kfx || 'none';
     }
-    this.broadcast({ t: 'kill', k: killer && killer !== t ? killer.id : 0, v: t.id, w, via, vel: t.vel.map(r2), pos: t.pos.map(r2), yaw: r2(t.yaw || 0), fx: kfx, ep: ep || undefined, rs: Math.max(0, t.minRespawnAt - now()) });
+    this.broadcast({ t: 'kill', k: killer && killer !== t ? killer.id : 0, v: t.id, w, via, vel: t.vel.map(r2), pos: t.pos.map(r2), yaw: r2(t.yaw || 0), fx: kfx, ep: ep || undefined, rs: Math.max(0, t.minRespawnAt - now()), sky: w === 'duck' && now() - (t.skyT || 0) < 800 ? 1 : undefined });
     t.lastAttacker = 0;
+    this.chaosKill(t, killer);
     if (t.isBot && this.mode === 'coop') { setTimeout(safe('coop', () => { if (this.players.get(t.id) === t) this.remove(t); }), 50); }
     this.modeKill(t, killer, via || w);
   }
@@ -1458,6 +1476,7 @@ class Room {
   }
 
   onHit(p, m) {
+    if (!this.chaosHit(p, m)) return; // chaos kits: only their weapons; one in the chamber's bullet
     const w = has(WEAPONS, m.w) && WEAPONS[m.w];
     const t = this.players.get(m.to);
     const d = norm(vec3(m.d));
@@ -1543,6 +1562,7 @@ class Room {
   }
 
   onPush(p, m) {
+    if (m.w !== 'hook' && this.chaosKit && !this.chaosKit.slots.includes(m.w)) return;
     const t = this.players.get(m.to);
     if (!t || t === p || !t.alive || !p.alive) return;
     if (this.isBall(p) || now() < (p.staggerUntil || 0)) return; // no hands in the wrecking ball; parried = still reeling (like 'hit')
@@ -1746,6 +1766,7 @@ class Room {
     const w = has(WEAPONS, m.w) && WEAPONS[m.w];
     if (!w || !p.alive || this.isBall(p)) return; // no hands in the wrecking ball
     if (!this.allowed(p, m.w)) return; // gun game rung / zombie claw only
+    if (!this.chaosFire(p, m)) return; // chaos kits: only their weapons; one in the chamber's bullet
     // loadout weapons only (plus the scythe once earned, and the one weapon a mode hands you: the zombie claw): items
     // (frag, smoke, duck, popper, reverse card) come from G, grenades and thrown cards from the deck, never 'fire'
     if (!SLOTS.includes(w.slot) && !(w.slot === 'streak' && p.scythe) && this.modeWeapon(p) !== m.w) return;
@@ -2104,7 +2125,8 @@ class Room {
       }
       if (this.parryProj(pr, prev)) continue; // batted back by a katana parry
       if (pr.k === 'duck') {
-        if (age >= w.fuse) { this.removeProj(pr); this.makeHole(pr.p, pr.o); continue; }
+        // sky ducks (duck rain) open where they land, and their holes are a bit gentler
+        if (pr.sky ? !!hit || age > 8 : age >= w.fuse) { this.removeProj(pr); const h = this.makeHole(pr.p, pr.o); if (pr.sky) Object.assign(h, DUCKRAIN.hole, { sky: true }); continue; }
       } else if (pr.k === 'frag' || pr.k === 'smokegren') {
         if (age >= w.fuse) {
           this.removeProj(pr);
@@ -2209,6 +2231,7 @@ class Room {
           const self = t.id === h.o;
           if (self && h.big) continue;
           const k = h.blastKb * (0.4 + 0.6 * f);
+          if (h.sky) t.skyT = n; // so the kill feed can tell a sky duck from a thrown one
           this.hurt(t, self ? null : owner, 'duck', self ? 0 : h.blastDmg * f, [dir[0] * k, dir[1] * k + 8 * f, dir[2] * k]);
         }
         continue;
@@ -2226,6 +2249,7 @@ class Room {
         if (dist > h.R || dist < 0.05) continue;
         const s = (h.pull * (1 - dist / h.R) + 8) * 0.1 * Math.min(1, dist / 1.5);
         // plus a little lift each pulse: off their feet, ground friction can't hold them back (a duck stuck on someone at floor height pulls sideways)
+        if (h.sky) t.skyT = n;
         this.knock(t, [to[0] / dist * s, to[1] / dist * s + w.lift * Math.min(1, dist / 1.5), to[2] / dist * s], 'duck');
         if (t.id !== h.o) this.tag(t, owner, 'duck');
         if (dist < 2 && t.id !== h.o) this.damage(t, 3, owner, 'duck');
@@ -2366,7 +2390,11 @@ class Room {
         // a new deathmatch round (the bomb round's clock and kills don't carry over). during the vote the vote decides
         if (this.round && !this.round.over) fresh = true; else this.assignTeams();
       }
-      if (fresh) this.startRound(); else if (this.bomb) this.newBombRound(true); else this.resetWorld();
+      if (GAMES[this.game].mapOk && !GAMES[this.game].mapOk(this.map)) { changes.push(`mode → Deathmatch (no ${GAMES[this.game].name} on this map)`); this.game = 'dm'; this.assignTeams(); }
+      if (fresh) this.startRound();
+      else if (this.bomb) this.newBombRound(true);
+      else if (this.livesOn) { this.vote = null; setTimeout(safe('startRound', () => this.startRound()), 50); } // lives can't be patched mid-match
+      else this.resetWorld();
     }
     if (has(HIPFIRE, m.hip) && m.hip !== this.cfg.hip) { this.cfg.hip = m.hip; changes.push(`hipfire → ${HIPFIRE[m.hip].name}`); }
     if (has(GAMES, m.game) && m.game !== this.game && this.mode === 'bots' && this.setGame(m.game)) { changes.push(`mode → ${GAMES[m.game].name}`); this.vote = null; if (this.round) { this.round.over = true; this.round.next = now() + 1000; } setTimeout(safe('startRound', () => this.startRound()), 50); } // over: tickRound mustn't judge the old round by the new mode's rules
@@ -2391,9 +2419,11 @@ class Room {
     if (p.ai) { p.ai.hook = null; p.ai.route = null; }
     p.parryT = 0; p.staggerUntil = 0; // katana parry: a new life starts with the guard ready (the client resets too)
     p.ballUntil = 0; p.f &= ~FLAGS.BALL; // a wrecking ball doesn't roll into the next round (or the next mode)
+    p.lavaBurn = 0; p.lavaSeen = 0; // floor is lava: the burn ends with the life
     if (!p.isBot) { if (p.nextItem) { p.item = p.nextItem; p.nextItem = null; } p.ic = null; } // full charges (sendIc after 'spawn')
   }
   resetWorld() {
+    this.resetChaos();
     this.projectiles.clear(); this.peels.clear(); this.holes.clear();
     this.broadcast({ t: 'clear' });
     this.clearTags();
@@ -2426,7 +2456,7 @@ class Room {
         if (Number.isFinite(m.y)) p.yaw = m.y;
         if (Number.isFinite(m.x)) p.pitch = m.x;
         this.airCheck(p);
-        if (has(WEAPONS, m.w)) p.w = m.w;
+        if (has(WEAPONS, m.w) && (!this.chaosKit || this.chaosKit.slots.includes(m.w))) p.w = m.w;
         const only = this.modeWeapon(p);
         if (only) p.w = only; // everyone sees what you're really allowed to hold
         p.g = vec3(m.g);
@@ -2451,6 +2481,7 @@ class Room {
         break;
       }
       case 'tbag': { // crouch-spammed too hard: your knees explode
+        if (this.chaosKit && this.chaosKit.noTbag) break; // one in the chamber: a free area kill that also burns a life
         if (!p.alive || now() - (p.tbagT || 0) < 3000) break;
         p.tbagT = now();
         const c = center(p);
@@ -2473,6 +2504,7 @@ class Room {
         break;
       }
       case 'deploy': { // use a killstreak from your tray (aimed ones land where you looked)
+        if (this.chaosKit && this.chaosKit.noStreaks) break;
         const i = (p.pocket || []).indexOf(m.r);
         const at = vec3(m.at);
         if (i < 0 || !p.alive || !has(STREAKS, m.r)) break;
@@ -2534,6 +2566,7 @@ class Room {
       case 'kc': p.kc = !!m.on; break;
       case 'use': this.tryUse(p); break;
       case 'parry': this.startParry(p, m); break;
+      case 'lava': this.lavaTouch(p, true); break; // floor is lava: "ouch, I touched it"
       case 'item': this.useItem(p, m); break;
       case 'spray': this.onSpray(p, m); break;
       case 'itemsel': this.selectItem(p, m.i); break;
@@ -2545,6 +2578,7 @@ class Room {
         }
         break;
       case 'respawn': // killcam finished or skipped: respawn now, but never sooner than the mode allows
+        if (this.livesOn && p.oitc && p.oitc.out) break; // out of lives: you watch
         if (!p.alive) p.respawnAt = Math.min(p.respawnAt, Math.max(now(), p.minRespawnAt || 0));
         if (!p.alive && p.epicLock) p.respawnAt = Math.max(p.respawnAt, Math.min(p.epicLock, (p.deadT || 0) + 10500)); // EPIC killcam: no skipping it (9 s cap, 10.5 s after a long no-scope's overlay)
         break;
@@ -2590,6 +2624,7 @@ class Room {
     if (this.game === 'bomb' && this.bomb) { this.tickBomb(n); return; }
     if (this.tickModes(n)) return; // gun game + infection end their own way
     if (this.teamsOn()) { if (this.score[1] >= r.target || this.score[2] >= r.target || n >= r.ends) this.endRound(); return; }
+    if (this.livesOn) { this.tickLives(n); return; }
     let top = null;
     for (const p of this.players.values()) if (!top || p.kills > top.kills) top = p;
     if ((top && top.kills >= r.target) || n >= r.ends) this.endRound();
@@ -2597,14 +2632,17 @@ class Room {
   endRound() {
     const list = [...this.players.values()].filter((p) => !(p.isBot && p.ai.dummy)).sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
     this.modeSort(list, this.round.res);
+    const lives = (p) => (p.oitc && !p.oitc.out ? p.oitc.lives : 0);
+    if (this.livesOn) list.sort((a, b) => lives(b) - lives(a) || b.kills - a.kills); // one in the chamber: still standing first
+    const lastOne = this.livesOn && list.filter((p) => lives(p) > 0).length === 1;
     // team games: the winning team takes it, and its best player gets the roll
     let winTeam = 0;
     if (this.teamsOn()) {
       const sc = this.game === 'bomb' && this.bomb ? this.bomb.wins : this.score;
       winTeam = sc[1] === sc[2] ? 0 : sc[1] > sc[2] ? 1 : 2;
     }
-    // a drawn team match has no winner (no roll, no stat): FFA needs at least one kill
-    const winner = this.teamsOn() ? (winTeam && list.find((p) => p.team === winTeam)) || null : list[0] && list[0].kills > 0 ? list[0] : null;
+    // a drawn team match has no winner (no roll, no stat): FFA needs at least one kill (or to be the last one standing)
+    const winner = this.teamsOn() ? (winTeam && list.find((p) => p.team === winTeam)) || null : list[0] && (list[0].kills > 0 || lastOne) ? list[0] : null;
     this.round.over = true;
     this.round.next = now() + VOTE_MS + 2000;
     this.round.winTeam = winTeam;
@@ -2616,6 +2654,7 @@ class Room {
       const eligible = this.mode === 'ffa' ? this.humans().length >= 2 : list.filter((p) => p.isBot).length >= 3;
       if (!winner.acct) roll = { n: 0, guest: 1 };
       else if (!eligible) roll = { n: 0, why: this.mode === 'ffa' ? 'need at least 2 real players for a roll' : 'need at least 3 bots for a roll' };
+      else if (!winner.kills) roll = { n: 0, why: 'no kills, no roll (hiding is not winning)' }; // last one standing still needs to have fought
       else {
         stat(winner, 'wins', 1); stat(winner, 'xp', 50);
         const kind = randomContainer();
@@ -2685,6 +2724,7 @@ class Room {
   // switch game type (bots setup / match settings / the vote)
   setGame(g) {
     if (!has(GAMES, g) || (GAMES[g].sites && !(this.map.sites && this.map.sites.length))) return false;
+    if (GAMES[g].mapOk && !GAMES[g].mapOk(this.map)) return false; // e.g. floor is lava: no real floor here (or nothing to stand on)
     this.game = g;
     return true;
   }
@@ -2993,6 +3033,233 @@ class Room {
     this.endRound();
   }
 
+  // ---------------------------------------------------------- chaos modes: spoons & grapples, duck rain, floor is lava, one in the chamber
+  get chaosKit() { return ((this.mode === 'ffa' || this.mode === 'bots') && GAMES[this.game].kit) || null; }
+  get lavaOn() { return (this.mode === 'ffa' || this.mode === 'bots') && !!GAMES[this.game].lava && lavaOk(this.map); }
+  get livesOn() { return (this.mode === 'ffa' || this.mode === 'bots') && !!GAMES[this.game].lives; }
+  get hookMul() { return ((this.mode === 'ffa' || this.mode === 'bots') && GAMES[this.game].hookMul) || 1; }
+  // everyone gets the mode's kit (players get told, bots switch guns and get theirs back afterwards). true = handled
+  sendChaosKit(p) {
+    const kit = this.chaosKit;
+    if (p.isBot) {
+      if (p.ai.dummy) return false;
+      if (!kit) { if (p.ai.ownW) { p.w = p.ai.ownW; p.ai.ownW = null; p.ai.ammo = WEAPONS[p.w].mag || 1; } return false; }
+      if (!p.ai.ownW) p.ai.ownW = p.w;
+      p.w = kit.slots[0]; p.ai.ammo = WEAPONS[p.w].mag || 1;
+      if (this.livesOn) this.oitcSpawn(p);
+      return true;
+    }
+    if (!kit) return false;
+    p.forced = true; p.scythe = false;
+    send(p, { t: 'loadout', lo: { only: kit.slots, item: kit.noItem ? 'none' : undefined, noReload: !!kit.noReload, noStreaks: !!kit.noStreaks, desc: kit.desc } });
+    if (this.livesOn) this.oitcSpawn(p);
+    return true;
+  }
+  // only your kit's weapons count. one in the chamber: a revolver hit spends a bullet and always kills
+  chaosHit(p, m) {
+    const kit = this.chaosKit;
+    if (!kit) return true;
+    if (!kit.slots.includes(m.w)) return false;
+    if (!this.livesOn || m.w !== 'revolver') return true;
+    const t = this.players.get(m.to), d = norm(vec3(m.d));
+    if (!t || !d || t === p || !t.alive || !p.alive || !this.rangeOk(p, t, WEAPONS.revolver.range) || !this.oitcShot(p, 'hit')) return false;
+    this.hurt(t, p, 'revolver', 999, null, { hs: clampInt(m.h, 0, 1) > 0 });
+    return false;
+  }
+  chaosFire(p, m) {
+    const kit = this.chaosKit;
+    if (!kit) return true;
+    if (!kit.slots.includes(m.w)) return false;
+    return !this.livesOn || m.w !== 'revolver' || this.oitcShot(p, 'fire');
+  }
+  // a shot sends 'hit' (if it hit someone) and 'fire' a moment apart: both ride on one bullet
+  oitcShot(p, kind) {
+    const o = p.oitc, n = now();
+    if (!o || !p.alive) return false;
+    const s = o.shot;
+    if (s && n - s.t < 250 && !s[kind]) { s[kind] = true; return true; }
+    if (o.bullets <= 0 || (s && n - s.t < 300)) { this.sendOitc(p); return false; }
+    o.bullets--;
+    o.shot = { t: n, [kind]: true };
+    this.sendOitc(p);
+    return true;
+  }
+  // late joiners get as many lives as whoever has the fewest (nobody gets a head start)
+  oitcKey(p) { return p.acct ? 'a:' + p.acct.n : 'n:' + p.name; }
+  oitcSpawn(p) {
+    if (!p.oitc && this.oitcOut.has(this.oitcKey(p))) { // out of lives this round: reconnecting doesn't buy you new ones
+      p.oitc = { lives: 0, bullets: 0, out: true, shot: null }; p.alive = false; p.respawnAt = Infinity; p.deadT = now();
+      this.sendOitc(p); this.oitcList(); return;
+    }
+    if (!p.oitc) {
+      const ins = [...this.players.values()].filter((o) => o !== p && o.oitc && !o.oitc.out);
+      p.oitc = { lives: ins.length ? Math.max(1, Math.min(...ins.map((o) => o.oitc.lives))) : GAMES[this.game].lives, bullets: 0, out: false, shot: null };
+      this.oitcList();
+    }
+    p.oitc.bullets = GAMES[this.game].bullets[0]; p.oitc.shot = null;
+    this.sendOitc(p);
+  }
+  sendOitc(p) { if (!p.isBot && p.oitc) send(p, { t: 'oitc', b: p.oitc.bullets, l: p.oitc.lives, out: p.oitc.out ? 1 : 0 }); }
+  oitcList() { this.broadcast({ t: 'oitcl', list: this.fighters().map((x) => [x.id, x.oitc ? x.oitc.lives : 0]) }); }
+  // a death: one in the chamber takes a life (none left = out, you spectate) and gives the killer a bullet
+  chaosKill(t, killer) {
+    if (!this.livesOn || !this.round || this.round.over) return;
+    const o = t.oitc;
+    if (o && !o.out) {
+      o.lives = Math.max(0, o.lives - 1); o.bullets = 0;
+      if (!o.lives) { o.out = true; t.respawnAt = Infinity; this.oitcOut.add(this.oitcKey(t)); this.broadcast({ t: 'chat', id: 0, m: `${t.name} is out of lives` }); }
+      this.sendOitc(t);
+    }
+    if (killer && killer !== t && killer.oitc && killer.alive) { killer.oitc.bullets = Math.min(GAMES[this.game].bullets[1], killer.oitc.bullets + 1); this.sendOitc(killer); }
+    this.oitcList();
+  }
+  // last one standing wins (once at least two were in it), or on time: most lives, then most kills
+  tickLives(n) {
+    const r = this.round, f = this.fighters();
+    r.peak = Math.max(r.peak || 0, f.length);
+    const ins = f.filter((p) => p.oitc && !p.oitc.out);
+    if ((r.peak >= 2 && ins.length <= 1) || n >= r.ends) this.endRound();
+  }
+  // a new round or map: everyone back in with full lives, the sky clears up
+  resetChaos() {
+    this.rain = null; this.oitcOut = new Set();
+    if (!this.livesOn) return;
+    if (this.round) this.round.target = 0; // no kill limit: last one standing
+    for (const p of this.players.values()) p.oitc = { lives: GAMES[this.game].lives, bullets: 0, out: false, shot: null };
+    this.oitcList();
+  }
+  tickChaos(dt, n) {
+    if (this.mode !== 'ffa' && this.mode !== 'bots') return;
+    if (GAMES[this.game].duckRain) this.tickDuckRain(n);
+    if (this.lavaOn) this.tickLava(n, dt);
+  }
+  // duck rain: a few ducks every couple of seconds, more and more often as the match goes on, half of them near someone
+  tickDuckRain(n) {
+    const r = this.round;
+    if (!r || r.over || !this.humans().length) return;
+    const R = this.rain || (this.rain = { next: n + 3000 });
+    if (n < R.next) return;
+    let top = 0;
+    for (const p of this.players.values()) top = Math.max(top, p.kills);
+    const dur = ROUND[this.mode].time * 1000, k = Math.max(0, Math.min(1, Math.max(1 - (r.ends - n) / dur, top / r.target)));
+    R.next = n + (DUCKRAIN.every[0] + (DUCKRAIN.every[1] - DUCKRAIN.every[0]) * k) * 1000;
+    const s = surfaces(this.map), size = Math.max(0.5, Math.min(1.8, Math.sqrt(s.total / 9000)));
+    const count = Math.max(1, Math.round((DUCKRAIN.n[0] + (DUCKRAIN.n[1] - DUCKRAIN.n[0]) * k) * size + Math.random() - 0.5));
+    const alive = this.fighters().filter((p) => p.alive);
+    for (let i = 0; i < count; i++) for (let tries = 0; tries < 6; tries++) if (this.skyDuck(alive.length && Math.random() < DUCKRAIN.near ? pick(alive) : null, s)) break;
+  }
+  // one duck: falls straight down onto whatever is on top there (a roof keeps you dry) and everyone sees where first
+  skyDuck(near, s) {
+    let x, z;
+    if (near) { const a = Math.random() * Math.PI * 2, d = 2 + Math.random() * 12; x = near.pos[0] + Math.cos(a) * d; z = near.pos[2] + Math.sin(a) * d; }
+    else {
+      let r = Math.random() * s.total, t = s.tops[0];
+      for (const tt of s.tops) { r -= tt.area; if (r <= 0) { t = tt; break; } }
+      if (!t) return false;
+      x = t.b.min[0] + Math.random() * (t.b.max[0] - t.b.min[0]); z = t.b.min[2] + Math.random() * (t.b.max[2] - t.b.min[2]);
+    }
+    const top = s.maxTop + 20, h = raycast([x, top, z], [0, -1, 0], top - this.map.killY, this.boxes);
+    if (!h) return false;
+    const w = WEAPONS.duck, land = h.point, y0 = Math.min(top - 1, land[1] + DUCKRAIN.height);
+    const pr = this.makeProj({ id: 0 }, 'duck', [x, y0, z], [0, -DUCKRAIN.vy, 0], { sky: true });
+    pr.born = now();
+    const v = DUCKRAIN.vy, dy = Math.max(0, y0 - land[1] - w.r), eta = (-v + Math.sqrt(v * v + 2 * w.grav * dy)) / w.grav;
+    this.broadcast({ t: 'skyduck', id: pr.id, p: land.map(r2), ms: Math.round(eta * 1000) });
+    return true;
+  }
+  // floor is lava: bots get checked here, players bounce themselves and tell us (we also look, in case they don't)
+  tickLava(n, dt) {
+    const s = surfaces(this.map);
+    for (const p of this.players.values()) {
+      if (!p.alive || (p.isBot && p.ai.dummy)) continue;
+      if (p.lavaBurn > n && n >= (p.lavaBurnT || 0)) { p.lavaBurnT = n + 300; this.broadcast({ t: 'fx', k: 'burn', id: p.id }); this.damage(p, LAVA.burnDmg, null, 'lava'); }
+      if (!p.alive) continue;
+      if (p.isBot) { if (p.onGround && onLava(s, this.boxes, p.pos)) this.lavaTouch(p, false); continue; }
+      p.lavaSeen = onLava(s, this.boxes, p.pos, 0.03) ? (p.lavaSeen || 0) + dt : 0;
+      if (p.lavaSeen > 0.12) this.lavaTouch(p, false);
+    }
+  }
+  // touching the ground floor: hurts, keeps burning for a moment and pops you back up
+  lavaTouch(p, told) {
+    if (!this.lavaOn || !p.alive || (this.round && this.round.over)) return;
+    const n = now(), s = surfaces(this.map);
+    if (n - (p.lavaT || 0) < LAVA.every * 1000) return;
+    // a player saying "ouch" has to be somewhere above lava (now or a tenth of a second ago)
+    if (told && !lavaBelow(s, this.boxes, [p.pos[0], p.pos[1] + 0.3, p.pos[2]], 6) && !lavaBelow(s, this.boxes, [p.pos[0] - p.vel[0] * 0.1, p.pos[1] + 0.3, p.pos[2] - p.vel[2] * 0.1], 6)) return;
+    p.lavaT = n; p.lavaBurn = n + LAVA.burn * 1000; p.lavaBurnT = n + 300;
+    if (p.isBot) { p.vel[1] = Math.max(p.vel[1], LAVA.hop); p.onGround = false; p.pos[1] += 0.05; }
+    else if (!told) this.knock(p, [0, LAVA.hop, 0], 'lava');
+    this.broadcast({ t: 'sizzle', id: p.id, p: p.pos.map(r2) });
+    this.damage(p, LAVA.dmg, null, 'lava');
+  }
+  // bots: knife when out of bullets or up close, revolver otherwise. melee bots run straight at you, and faster
+  botChaosThink(b, t, n) {
+    const ai = b.ai;
+    if (!this.chaosKit) { if (Math.abs(ai.strafeDir) !== 1) ai.strafeDir = Math.sign(ai.strafeDir) || 1; ai.spd = 1; return; }
+    if (this.livesOn && b.oitc) {
+      const want = b.oitc.bullets > 0 && !(t && t.alive && dist3(t.pos, b.pos) < 2.5) ? 'revolver' : 'knife';
+      if (b.w !== want) { b.w = want; ai.nextShot = Math.max(ai.nextShot, n + 300); }
+    }
+    const melee = WEAPONS[b.w].kind === 'melee';
+    ai.strafeDir = (Math.sign(ai.strafeDir) || 1) * (melee ? 0.3 : 1);
+    ai.spd = melee ? WEAPONS[b.w].speedMul || 1.1 : 1;
+    if (melee && this.hookMul > 1 && t && t.alive && dist3(t.pos, b.pos) > 12) ai.nextHook = Math.min(ai.nextHook || 0, n + 500);
+  }
+  // true = handled. melee: swing if they're in reach. one in the chamber: only take a shot that's worth the bullet
+  botChaosFire(b, t, D) {
+    const w = WEAPONS[b.w], n = now();
+    // a beat to look around first, and nobody fresh off a spawn, or small maps empty out in seconds
+    if (this.livesOn && (n - (b.spawnT || 0) < 2500 || n - (t.spawnT || 0) < 1500)) return true;
+    if (w.kind === 'melee') {
+      b.ai.nextShot = n + (w.cd * 1000) / D.rate;
+      this.broadcast({ t: 'fx', k: 'swing', w: b.w, id: b.id, a: eyeOf(b).map(r2) });
+      if (dist3(b.pos, t.pos) > w.range + 0.9) return true;
+      if (this.livesOn && Math.random() < Math.min(0.7, (0.35 * D.err) / 0.045)) return true; // one in the chamber: knife whiffs too
+      const to = norm([t.pos[0] - b.pos[0], t.pos[1] - b.pos[1], t.pos[2] - b.pos[2]]) || [0, 0, 1];
+      this.hurt(t, b, b.w, w.dmg, [to[0] * w.kb, to[1] * w.kb + (w.kbUp || 0), to[2] * w.kb]);
+      return true;
+    }
+    if (!this.livesOn || b.w !== 'revolver' || !b.oitc) return false;
+    if (b.oitc.bullets <= 0 || dist3(b.pos, t.pos) > (b.ai.diff === 'hard' ? 40 : 26)) return true;
+    b.oitc.bullets--;
+    b.ai.nextShot = n + 700;
+    const cp = Math.cos(b.pitch), o = eyeOf(b);
+    // bots flub some shots (still costs the bullet): easy ~70%, normal ~35%, hard ~14%, so 3 lives last a while
+    const miss = Math.random() < Math.min(0.7, (0.35 * D.err) / 0.045);
+    const d = spreadDir([-Math.sin(b.yaw) * cp, Math.sin(b.pitch), -Math.cos(b.yaw) * cp], (w.spread || 0) + D.err * 0.6 + (miss ? 0.14 : 0));
+    const mh = raycast(o, d, w.range, this.boxes);
+    let maxT = mh ? mh.t : w.range, victim = null, head = false;
+    for (const p of this.players.values()) {
+      if (p === b || !p.alive) continue;
+      for (const hb of playerBoxes(p.pos)) { const h = rayBox(o, d, hb, maxT); if (h && h.t < maxT) { maxT = h.t; victim = p; head = hb.head; } }
+    }
+    this.broadcast({ t: 'fx', k: 'shot', w: 'revolver', id: b.id, s: [[...o, o[0] + d[0] * maxT, o[1] + d[1] * maxT, o[2] + d[2] * maxT].map(r2)] });
+    if (victim) this.hurt(victim, b, 'revolver', 999, null, { hs: head });
+    return true;
+  }
+  // floor is lava bots: look before stepping off something, and if they're in it, jump and grapple back to safe ground
+  botLava(b, wx, wz, jump, t) {
+    const s = surfaces(this.map), ai = b.ai, n = now(), e = eyeOf(b);
+    const hookAt = (to, minT, ms) => {
+      const L = Math.hypot(...to) || 1, h = raycast(e, to.map((v) => v / L), HOOK.range, this.boxes);
+      if (h && h.t > minT) { ai.hook = { point: h.point, len: h.t, until: n + ms }; b.g = h.point; }
+    };
+    const inLava = b.onGround && onLava(s, this.boxes, b.pos);
+    if (inLava || (!b.onGround && !ai.hook && b.vel[1] < 0 && lavaBelow(s, this.boxes, [b.pos[0], b.pos[1] + 0.2, b.pos[2]], 30))) {
+      const safe = nearestSafe(s, b.pos, 45);
+      if (!safe) return [wx, wz, true];
+      const dx = safe[0] - b.pos[0], dz = safe[2] - b.pos[2], l = Math.hypot(dx, dz) || 1;
+      if (!ai.hook && n >= (ai.lavaHookT || 0)) { ai.lavaHookT = n + 700; hookAt([dx, safe[1] + 2.5 - e[1], dz], 2, 2200); }
+      return [dx / l, dz / l, true];
+    }
+    if (b.onGround && (wx || wz) && lavaBelow(s, this.boxes, [b.pos[0] + wx * 1.4, b.pos[1] + 0.5, b.pos[2] + wz * 1.4], 12)) {
+      // lava ahead: stop at the edge, sometimes grapple over toward whoever we're after
+      if (t && t.alive && !ai.hook && n >= (ai.lavaHookT || 0)) { ai.lavaHookT = n + 1500; if (Math.random() < 0.6) hookAt([t.pos[0] - e[0], t.pos[1] + 4 - e[1], t.pos[2] - e[2]], 6, 2600); }
+      return [0, 0, false];
+    }
+    return [wx, wz, jump];
+  }
+
   tick(dt) {
     const n = now();
     this.tickRound();
@@ -3008,6 +3275,7 @@ class Room {
     this.tickBalls();
     this.tickWaves();
     if (this.sprays.size && this.sprayMap !== this.cfg.map) this.sprays.clear(); // the map changed: its graffiti goes with it
+    this.tickChaos(dt, n);
     for (const p of this.players.values()) {
       if (!p.alive && n >= p.respawnAt) {
         if (p.isBot && this.mode === 'coop') continue;
@@ -3296,6 +3564,8 @@ server.listen(PORT, () => {
     try { spawn(cmd[0], cmd[1], { stdio: 'ignore', detached: true }).unref(); } catch { /* no browser, no problem */ }
   }
 });
+// floor is lava + duck rain size up every map once at startup, so a vote never stalls a live match working it out
+setImmediate(() => { for (const id of MAP_ORDER) surfaces(MAPS[id]); });
 // save everyone's stats right now (used on shutdown and by the desktop app when it closes)
 export function shutdown() {
   for (const r of rooms.values()) for (const p of r.players.values()) flushStats(p);

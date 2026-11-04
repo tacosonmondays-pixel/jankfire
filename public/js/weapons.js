@@ -540,8 +540,14 @@ export function refillAmmo() {
 export function setLoadout(lo) {
   const v = validLoadout(lo);
   W.item = v.item;
+  // chaos modes hand you a fixed kit: just these weapons, maybe no item, maybe no reloading (bullets come from kills)
+  const kit = lo && Array.isArray(lo.only) ? lo.only.filter((id) => WEAPONS[id]) : null;
+  if (kit && kit.length) { W.hasScythe = false; ME.dashing = false; }
+  W.noReload = !!(lo && lo.noReload);
   const streakSlot = W.hasScythe ? (W.slots[3] || 'scythe') : null;
   W.slots = SLOTS.map((s) => v[s]);
+  if (kit && kit.length) W.slots = kit;
+  if (lo && lo.item === 'none') W.item = null;
   if (streakSlot) W.slots[3] = streakSlot;
   if (W.only) { W.slots = [W.only]; W.item = null; } // gun game / zombies: one weapon, no item
   if (W.slot >= W.slots.length) W.slot = 0;
@@ -604,6 +610,7 @@ export function reload() {
   cancelInspect();
   if (W.cur === 'cards') { redrawCards(); return; }
   const id = W.cur, w = WEAPONS[id];
+  if (W.noReload) return; // one in the chamber: bullets only come from kills
   if (!w.mag || W.reloadId || W.ammo[id] >= w.mag || !ME.alive) return;
   W.reloadId = id;
   W.reloadUntil = performance.now() + w.reload * 1000;

@@ -149,7 +149,7 @@ function hookStep(dt) {
   const a = hookPoint();
   if (!a) { ME.hook = null; return; }
   // pendulum rope, same as the bots': reels in at a steady rate, keeps your swing, soft instead of snapping
-  ropeStep(ME.hook, a, ME.pos, ME.vel, dt, C.grav);
+  ropeStep(ME.hook, a, ME.pos, ME.vel, dt, C.grav, G.hookMul || 1); // (spoons & grapples pulls harder)
   feel.lift = 1;
 }
 

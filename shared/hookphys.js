@@ -34,8 +34,8 @@ const smooth = (x) => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
 
 // one fixed step on the rope. h = hook state ({len, ...}, filled in on the first step, and again if anything else sets h.len),
 // a = anchor, p = feet, v = velocity (gravity already applied this step). mutates v and h. returns how hard the rope
-// pulled (m/s², toward the point).
-export function ropeStep(h, a, p, v, dt, grav) {
+// pulled (m/s², toward the point). mul scales the wind and the reel (Spoons & Grapples pulls 1.35x)
+export function ropeStep(h, a, p, v, dt, grav, mul = 1) {
   const dx = a[0] - p[0], dy = a[1] - (p[1] + 1), dz = a[2] - p[2];
   const dist = Math.hypot(dx, dy, dz);
   v[1] += grav * ROPE.lift * dt;
@@ -44,10 +44,11 @@ export function ropeStep(h, a, p, v, dt, grav) {
   const nx = dx / dist, ny = dy / dist, nz = dz / dist;
   let vin = v[0] * nx + v[1] * ny + v[2] * nz; // closing speed
   if (h.lp !== h.len) h.reel = null; // someone else set the rope length (a new hook, or another mode handing it back): start fresh
-  if (h.reel == null) { h.len = dist; h.reel = h.rt = clamp(vin, 0, ROPE.reel); h.pull = 0; h.n = [0, 0, 0]; } // first step: taut, already reeling if you were flying at it
+  const PULL = ROPE.pull * mul, REEL = ROPE.reel * mul;
+  if (h.reel == null) { h.len = dist; h.reel = h.rt = clamp(vin, 0, REEL); h.pull = 0; h.n = [0, 0, 0]; } // first step: taut, already reeling if you were flying at it
   h.n[0] = nx; h.n[1] = ny; h.n[2] = nz; // rope direction, for the camera lean
   // the wind: a steady pull toward the point that fades out smoothly near the end (no on/off buzz at the anchor)
-  const wf = ROPE.pull * smooth((dist - ROPE.minLen) / ROPE.pullFade);
+  const wf = PULL * smooth((dist - ROPE.minLen) / ROPE.pullFade);
   v[0] += nx * wf * dt; v[1] += ny * wf * dt; v[2] += nz * wf * dt; vin += wf * dt;
   // closing in faster than the reel: it takes up the slack, so the rope is there to swing you when you get close
   if (h.len > dist) h.len = Math.max(ROPE.minLen, dist);
@@ -55,7 +56,7 @@ export function ropeStep(h, a, p, v, dt, grav) {
   // minLen. the corners of that speed profile are rounded off (rt = profile, reel = smoothed) so the pull never switches
   // on or off in one step
   const room = Math.max(0, h.len - ROPE.minLen);
-  const want = (1 - wf / ROPE.pull) * Math.min(ROPE.reel, Math.sqrt(2 * ROPE.arrive * Math.max(0, room - h.reel * ROPE.round))); // aims early by the smoothing lag
+  const want = (1 - wf / PULL) * Math.min(REEL, Math.sqrt(2 * ROPE.arrive * Math.max(0, room - h.reel * ROPE.round))); // aims early by the smoothing lag
   h.rt += clamp(want - h.rt, -ROPE.wind * 2 * dt, ROPE.wind * dt);
   h.reel += (h.rt - h.reel) * (1 - Math.exp(-dt / ROPE.round));
   if (h.reel * dt > room) h.reel = room / dt;
