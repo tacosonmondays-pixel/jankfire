@@ -487,7 +487,9 @@ function setCd(id, now) {
 }
 
 // teammates are see-through for your bullets and swings
-export const isFriend = (r) => !!(G.myTeam && r.team && r.team === G.myTeam) || (G.infOn === true && !!r.zombie === !!G.zombie); // infection: your own side
+// game modes add their own sides here (infection: zombies vs survivors)
+export const modeFriends = [];
+export const isFriend = (r) => !!(G.myTeam && r.team && r.team === G.myTeam) || modeFriends.some((f) => f(r));
 function rayPlayers(o, d, maxT) {
   let best = null;
   for (const r of G.remotes.values()) {

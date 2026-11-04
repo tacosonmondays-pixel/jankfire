@@ -50,6 +50,7 @@ export function playClip(clip, opts = {}) {
     const i = inf || {};
     const g = new Remote(id, i.level ? `${i.name} [${i.level}]` : (i.name || '???'), i.color || '#ffffff', i.skins || {}, !!i.bot, i.look || null);
     g.ghost = true;
+    if (i.zs && i.zs <= clip.frames[0].s) g.setZombie(true); // infection: already a zombie when the clip starts
     if (id === opts.focus) g.tag.visible = false;
     ghosts.set(id, g);
   }

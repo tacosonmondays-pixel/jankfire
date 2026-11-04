@@ -51,7 +51,7 @@ export const hud = {
     $('hpbox').classList.toggle('lowhp', p > 0 && p < 30);
     $('hpbar').style.width = p + '%';
     $('hpbar').style.background = p > 60 ? '#5dff4f' : p > 30 ? '#ffe14d' : '#ff3030';
-    $('hptext').textContent = nanT > 0 ? nanText : Math.ceil(Math.max(p, v)) + ' HP'; // overheal / zombie HP shows past 100
+    $('hptext').textContent = nanT > 0 ? nanText : Math.ceil(p) + ' HP';
   },
   // taking damage: the lost chunk turns into missing texture, the bar glitches, little error squares spray out
   hpGlitch(amt, from, to) {

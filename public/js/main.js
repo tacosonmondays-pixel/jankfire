@@ -32,7 +32,7 @@ import { account, restore, login, register, logout, saveProfile, leaderboard as 
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { setOnly } from './weapons.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
-import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection } from './infection.js';
+import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection, infClipInfo } from './infection.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
@@ -1014,7 +1014,7 @@ net.on('loadout', (m) => {
   if (m.lo) hud.msg(`${wname(m.lo.primary)} · ${wname(m.lo.secondary)} · ${wname(m.lo.melee)}`, 2.2, 'brag');
 });
 // gun game / infection: the server hands you exactly one weapon (null = your own loadout again)
-net.on('only', (m) => setOnly(m.w || null, G.forcedLoadout || S.loadout));
+net.on('modew', (m) => setOnly(m.w || null, G.forcedLoadout || S.loadout));
 net.on('kb', (m) => applyKb(m.v));
 net.on('slip', () => slip(performance.now()));
 net.on('dmg', (m) => {
@@ -1580,6 +1580,7 @@ function queueKillcam(killer, via) {
   killcamT = setTimeout(() => {
     if (ME.alive || !G.joined || RP.active) { G.killcamPending = false; return; }
     const clip = localClip(deathS - 4500, deathS + 1200, infoOf);
+    infClipInfo(clip.info);
     const [kn, kc] = nameOf(killer);
     showReplayUI('KILLCAM', cardUrlFor(killer), kn, kc, `got you with ${wname(via)}`, 'SPACE / CLICK to skip');
     $('dead').classList.add('hidden');

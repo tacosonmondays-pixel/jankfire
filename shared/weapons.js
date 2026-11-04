@@ -179,7 +179,7 @@ export const WEAPONS = {
 
   // ------------------------------------------------------------ mode weapons (handed out by a game mode, never in loadouts)
   claw: {
-    slot: 'mode', kind: 'melee', name: 'Zombie Claw', color: '#7dff4f',
+    slot: 'mode', mode: 'inf', kind: 'melee', name: 'Zombie Claw', color: '#7dff4f',
     desc: 'Infection only. Two swipes and they turn. Zombies run faster with their arms out.',
     cd: 0.45, range: 2.6, cone: 0.85, dmg: 55, kb: 8, kbUp: 3, delay: 0.08, speedMul: 1.3,
   },

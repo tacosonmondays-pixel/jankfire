@@ -6,11 +6,16 @@ import { hud } from './hud.js';
 import { sfx } from './audio.js';
 import { ME } from './player.js';
 import { INFECT } from '/shared/modes.js';
+import { modeFriends } from './weapons.js';
+import { serverNow } from './replay.js';
 
 const $ = (id) => document.getElementById(id);
 G.infected = new Set(); // ids of everyone who's a zombie right now
 G.zombie = false; // am I?
 G.infOn = false; // is an infection match running (your own side is see-through for your shots)
+G.infT = new Map(); // id -> server time they turned (killcams draw them as zombies from then)
+G.infSide = null; // who took the last match: 'inf' or 'surv'
+modeFriends.push((r) => G.infOn && !!r.zombie === !!G.zombie);
 const nameOf = (id) => (id === G.myId ? G.myName : (G.names.get(id) || {}).name || '???');
 const fmt = (ms) => { const s = Math.ceil(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 
@@ -27,20 +32,24 @@ function bigMoment(title, sub) {
   sfx.infected(); sfx.groan();
   G.shake = Math.max(G.shake || 0, 0.8);
 }
-// you're a zombie now: green in the kill feed too (the next match's team colours put it back)
-function turn(id) {
+// a zombie now: green in the kill feed too (the next match's team colours put it back). your own colour stays,
+// it's also your menu preview
+function turn(id, late) {
   G.infected.add(id);
+  if (!G.infT.has(id)) G.infT.set(id, late ? 1 : serverNow());
   const n = G.names.get(id);
   if (n) n.color = INFECT.color;
-  if (id === G.myId) { G.zombie = true; G.myColor = INFECT.color; }
+  if (id === G.myId) G.zombie = true;
 }
 
-net.on('inf', (m) => {
+net.on('infect', (m) => {
+  if (m.side) { G.infSide = m.side; return; } // the match is over: the 'round' message right after shows it
   if (m.all) {
-    G.infected = new Set();
+    G.infected = new Set(); G.infT.clear();
+    if (!m.all.length) G.infSide = null;
     const was = G.zombie;
     G.zombie = false;
-    for (const id of m.all) turn(id);
+    for (const id of m.all) turn(id, true);
     if (G.zombie && !was) bigMoment('YOU ARE INFECTED', 'you showed up late: you start as a zombie');
     return;
   }
@@ -70,7 +79,7 @@ export function updateInfection(dt) {
   for (const rm of G.remotes.values()) rm.setZombie(G.infOn && G.infected.has(rm.id));
   const bar = $('infBar');
   bar.classList.toggle('hidden', !G.infOn || r.over);
-  if (!G.infOn) return;
+  if (!G.infOn) { if ($('infLine').textContent) $('infLine').textContent = ''; return; } // no stale numbers next time it shows
   // zombies moan now and then (only the ones near enough to matter)
   for (const rm of G.remotes.values()) {
     if (!rm.zombie || !rm.alive || Math.random() > dt * 0.16) continue;
@@ -91,13 +100,14 @@ export function updateInfection(dt) {
 
 export function infRoundText(r) {
   if (r.game !== 'inf' || r.over) return null;
-  return `infection · ${fmt(r.left)}`;
+  return 'infection'; // the clock is in the bar right under it
 }
 // end screen title: which side took it (and whether that's you)
 export function infRoundTitle(m) {
-  if (m.game !== 'inf' || !m.side) return null;
-  const mine = (m.side === 'inf') === G.zombie;
-  return [`${m.side === 'inf' ? 'THE INFECTED WIN' : 'SURVIVORS WIN'}${mine ? ' (YOU)' : ''}`, m.side === 'inf' ? INFECT.color : '#ffffff'];
+  const side = m.side || G.infSide;
+  if (m.game !== 'inf' || !side) return null;
+  const mine = (side === 'inf') === G.zombie;
+  return [`${side === 'inf' ? 'THE INFECTED WIN' : 'SURVIVORS WIN'}${mine ? ' (YOU)' : ''}`, side === 'inf' ? INFECT.color : '#ffffff'];
 }
 export function infRowNote(id, m) {
   if (m.game !== 'inf') return '';
@@ -110,8 +120,21 @@ export function infScoreRows(rows) {
   rows.sort((a, b) => z(a) - z(b));
   for (const r of rows) if (z(r)) { r.color = INFECT.color; r.name += '  (zombie)'; }
 }
+// your killcam: who was already a zombie (replay.js draws them green)
+export function infClipInfo(info) {
+  if (!G.infOn) return;
+  for (const id of Object.keys(info)) { const n = Number(id); if (G.infected.has(n) && info[id]) info[id].zs = G.infT.get(n) || 1; }
+}
+// zombie HP goes past 100: the HP number says so (the bar just stays full)
+const hpBase = hud.hp;
+hud.hp = function (v) {
+  hpBase.call(this, v);
+  const el = $('hptext');
+  if (G.infOn && G.zombie && v > 100 && el.textContent.endsWith(' HP')) el.textContent = Math.ceil(v) + ' HP';
+};
 export function resetInfection() {
-  G.infected.clear(); G.zombie = false; G.infOn = false;
+  G.infected.clear(); G.infT.clear(); G.zombie = false; G.infOn = false; G.infSide = null;
+  $('infLine').textContent = ''; $('infMeter').firstChild.style.width = '0%';
   document.body.classList.remove('mode-inf', 'zombie');
   $('infBar').classList.add('hidden');
 }

@@ -36,6 +36,7 @@ export function updateGunGame() {
   const show = on() && !G.round.over;
   document.body.classList.toggle('mode-gun', on());
   bar.classList.toggle('hidden', !show);
+  if (!on() && bar.dataset.key) { bar.dataset.key = ''; for (const id of ['ggRung', 'ggNow', 'ggNext', 'ggLead', 'ggPips']) $(id).textContent = ''; } // left gun game: no stale numbers
   if (!show) return;
   const mine = Math.min(rungOf(G.myId), N - 1);
   let lead = G.myId, ln = rungOf(G.myId);
@@ -85,4 +86,5 @@ export function resetGunGame() {
   document.body.classList.remove('mode-gun');
   $('ggBar').classList.add('hidden');
   $('ggBar').dataset.key = '';
+  for (const id of ['ggRung', 'ggNow', 'ggNext', 'ggLead', 'ggPips']) $(id).textContent = ''; // no stale numbers when it shows again
 }

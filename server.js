@@ -145,6 +145,7 @@ const GG_START = Math.max(0, Math.min(LADDER.length - 1, Math.floor(Number(proce
 if (process.env.JF_GG_TIME) GUNGAME.time = Number(process.env.JF_GG_TIME) || GUNGAME.time;
 if (process.env.JF_INF_TIME) INFECT.time = Number(process.env.JF_INF_TIME) || INFECT.time;
 if (process.env.JF_INF_DELAY) INFECT.delay = Number(process.env.JF_INF_DELAY) || INFECT.delay;
+if (process.env.JF_INF_HP) INFECT.hp = Number(process.env.JF_INF_HP) || INFECT.hp;
 function randomSkins() {
   const out = {};
   for (const id of Object.keys(WEAPONS)) if (Math.random() < 0.6) out[id] = [pick(SKIN_F), pick(SKIN_H), pick(SKIN_E), id === 'knife' ? pick(['default', 'knife_karambit', 'knife_butterfly', 'knife_switch', 'knife_cleaver']) : 'default'];
@@ -424,7 +425,7 @@ class Room {
     let wx = 0, wz = 0, jump = false;
     const w = WEAPONS[b.w];
     const pref = b.w === 'sniper' ? [25, 60] : b.w === 'shotgun' ? [3, 9] : b.w === 'marbles' ? [1.5, 4] : b.w === 'chicken' ? [10, 30] : [7, 22];
-    if (w.kind === 'melee') { pref[0] = 0; pref[1] = w.range * 0.5; } // claws + gun game melee rungs: get in their face
+    if (w.kind === 'melee') { pref[0] = 0; pref[1] = w.range * 0.7; } // claws + gun game melee rungs: get in their face
     if (t && t.alive) {
       const e = eyeOf(b), tc = [t.pos[0], t.pos[1] + 1.1, t.pos[2]];
       const dx = tc[0] - e[0], dy = tc[1] - e[1], dz = tc[2] - e[2];
@@ -438,9 +439,10 @@ class Room {
       const fx = dx / (hd || 1), fz = dz / (hd || 1);
       if (dist > pref[1] || !vis) { wx += fx; wz += fz; } else if (dist < pref[0]) { wx -= fx; wz -= fz; }
       if (Math.random() < dt * 0.6) ai.strafeDir *= -1;
-      wx += -fz * ai.strafeDir * 0.8; wz += fx * ai.strafeDir * 0.8;
+      if (w.kind !== 'melee') { wx += -fz * ai.strafeDir * 0.8; wz += fx * ai.strafeDir * 0.8; } // melee bots circling at 1 m never line up a swing
       let ang = Math.abs(b.yaw - yaw) % (Math.PI * 2); if (ang > Math.PI) ang = Math.PI * 2 - ang;
-      if (vis && ai.seenAt && n - ai.seenAt > D.react && ang < 0.25 && n >= ai.nextShot && n >= ai.reloadUntil && dist < (w.range || 60)) this.botFire(b, t, D);
+      const meleeOk = w.kind === 'melee' && dist < w.range && ang < 0.6; // up close the angle swings too fast for the gun aim check
+      if (vis && (meleeOk || (ai.seenAt && n - ai.seenAt > D.react && ang < 0.25)) && n >= ai.nextShot && n >= ai.reloadUntil && dist < (w.range || 60)) this.botFire(b, t, D);
       if (b.onGround && Math.random() < dt * (dist < 15 ? 1.2 : 0.4)) jump = true;
     } else {
       if (!ai.wp || dist3(ai.wp, b.pos) < 4) ai.wp = pick(this.map.spawns);
@@ -464,10 +466,10 @@ class Room {
       if (below && (b.vel[1] < -4 || b.pos[1] < this.map.killY + 25)) { // falling into the void: hook back toward the middle, up high
         const c = this.map.spawns ? this.map.spawns[0] : [0, 0, 0];
         want = [c[0] - b.pos[0], 18 + Math.max(0, c[1] - b.pos[1]), c[2] - b.pos[2]];
-      } else if (t && t.alive && Math.random() < skill) {
+      } else if (t && t.alive && (b.inf || Math.random() < skill)) {
         const dx = t.pos[0] - b.pos[0], dy = t.pos[1] - b.pos[1], dz = t.pos[2] - b.pos[2];
         const hd = Math.hypot(dx, dz);
-        if (hd > pref[1] + 10 || dy > 4 || !ai.seenAt) want = [dx, dy + hd * 0.35 + 6, dz];
+        if (hd > pref[1] + 10 || dy > 4 || !ai.seenAt || (b.inf && hd > 6)) want = [dx, dy + hd * 0.35 + 6, dz];
       } else if (!t && Math.random() < 0.25 * skill) {
         const a = Math.random() * Math.PI * 2;
         want = [Math.cos(a) * 20, 14 + Math.random() * 10, Math.sin(a) * 20];
@@ -597,7 +599,7 @@ class Room {
           const fr = slipping ? 0.02 : 6;
           if (hs > 0) { const ns = Math.max(0, hs - Math.max(hs, 3) * fr * dt) / hs; v[0] *= ns; v[2] *= ns; }
           if (!slipping) {
-            const cur = v[0] * think.wx + v[2] * think.wz, add = 8.5 * (b.only ? WEAPONS[b.w].speedMul || 1 : 1) - cur; // mode weapons: the spoon / claw run faster
+            const cur = v[0] * think.wx + v[2] * think.wz, add = 8.5 * this.modeSpeed(b) - cur;
             if (add > 0 && (think.wx || think.wz)) { const a = Math.min(add, 11 * 8.5 * dt); v[0] += a * think.wx; v[2] += a * think.wz; }
           }
         }
@@ -891,6 +893,7 @@ class Room {
       const pl = this.players.get(e[0]);
       if (pl) info[e[0]] = { name: pl.name, color: pl.color, skins: pl.skins, bot: pl.isBot, look: pl.look, level: pl.level };
     }
+    if (GAMES[this.game].infect) for (const id of Object.keys(info)) { const pl = this.players.get(Number(id)); if (pl && pl.inf) info[id].zs = pl.infT || 1; } // replays draw zombies as zombies
     return { frames: frames.map((f) => ({ s: f.s, p: f.p, j: f.j })), ev, info };
   }
   pairOk(p, t, key, ms) {
@@ -1344,7 +1347,7 @@ class Room {
       if (this.bomb) this.newBombRound(true); else this.resetWorld();
     }
     if (m.hip && HIPFIRE[m.hip] && m.hip !== this.cfg.hip) { this.cfg.hip = m.hip; changes.push(`hipfire → ${HIPFIRE[m.hip].name}`); }
-    if (m.game && GAMES[m.game] && m.game !== this.game && this.mode === 'bots' && this.setGame(m.game)) { changes.push(`mode → ${GAMES[m.game].name}`); this.vote = null; setTimeout(() => this.startRound(), 50); }
+    if (m.game && GAMES[m.game] && m.game !== this.game && this.mode === 'bots' && this.setGame(m.game)) { changes.push(`mode → ${GAMES[m.game].name}`); this.vote = null; if (this.round) { this.round.over = true; this.round.next = now() + 1000; } setTimeout(() => this.startRound(), 50); } // over: tickRound mustn't judge the old round by the new mode's rules
     if (m.diff && BOT_DIFF[m.diff] && m.diff !== this.cfg.diff && this.mode !== 'ffa') {
       this.cfg.diff = m.diff;
       for (const b of this.players.values()) if (b.isBot) b.ai.diff = m.diff;
@@ -1519,9 +1522,9 @@ class Room {
     for (const p of this.players.values()) if (!top || p.kills > top.kills) top = p;
     if ((top && top.kills >= r.target) || n >= r.ends) this.endRound();
   }
-  endRound(res) { // res: a mode that picked its own winner ({ winner, side })
+  endRound() {
     const list = [...this.players.values()].filter((p) => !(p.isBot && p.ai.dummy)).sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
-    this.modeSort(list, res);
+    this.modeSort(list, this.round.res);
     // team games: the winning team takes it, and its best player gets the roll
     let winTeam = 0;
     if (this.teamsOn()) {
@@ -1529,7 +1532,7 @@ class Room {
       winTeam = sc[1] === sc[2] ? 0 : sc[1] > sc[2] ? 1 : 2;
     }
     const pool = winTeam ? list.filter((p) => p.team === winTeam) : list;
-    const winner = res ? res.winner : pool[0] && (winTeam || pool[0].kills > 0) ? pool[0] : null;
+    const winner = pool[0] && (winTeam || pool[0].kills > 0) ? pool[0] : null;
     this.round.over = true;
     this.round.next = now() + VOTE_MS + 2000;
     this.round.winTeam = winTeam;
@@ -1547,7 +1550,7 @@ class Room {
         roll = { n: 1, kind, why: 'won the round' };
       }
     }
-    this.broadcast({ t: 'round', over: 1, winner: winner ? winner.id : 0, winTeam, game: this.game, sc: this.teamsOn() ? (this.game === 'bomb' && this.bomb ? [this.bomb.wins[1], this.bomb.wins[2]] : [this.score[1], this.score[2]]) : null, side: res && res.side,
+    this.broadcast({ t: 'round', over: 1, winner: winner ? winner.id : 0, winTeam, game: this.game, sc: this.teamsOn() ? (this.game === 'bomb' && this.bomb ? [this.bomb.wins[1], this.bomb.wins[2]] : [this.score[1], this.score[2]]) : null,
       top: list.slice(0, 6).map((p) => [p.id, p.name, p.kills, p.deaths, p.team || 0]), next: VOTE_MS + 2000 });
     const r = this.round;
     setTimeout(() => {
@@ -1737,10 +1740,10 @@ class Room {
     if (g.infect && p.inf) return 'claw';
     return null;
   }
-  // can p hit / fire with wid? only their mode weapon while a mode hands one out, and mode weapons never outside their mode
+  // can p hit / fire with wid? only their mode weapon while a mode hands one out, and the claw only as a zombie
   allowed(p, wid) {
     const only = this.modeWeapon(p);
-    return only ? wid === only : !(WEAPONS[wid] && WEAPONS[wid].slot === 'mode');
+    return only ? wid === only : !(WEAPONS[wid] && WEAPONS[wid].mode === 'inf');
   }
   // every spawn: hand out the mode weapon (+ zombie HP), or the normal loadout back once the mode is over
   modeLoadout(p) {
@@ -1751,21 +1754,24 @@ class Room {
     else {
       if (w && p.forced) { p.forced = false; send(p, { t: 'loadout', lo: null }); }
       if (w) p.w = w;
-      send(p, { t: 'only', w });
+      send(p, { t: 'modew', w });
     }
     p.only = w;
     return !!w;
   }
+  // bots run faster holding a mode weapon that says so (the zombie claw)
+  modeSpeed(b) { return b.only ? WEAPONS[b.w].speedMul || 1 : 1; }
   // joined mid-match: bottom of the ladder, or a zombie if the infection already got going. tell them who's where
   modeJoin(p) {
     if (this.mode !== 'ffa' && this.mode !== 'bots') return;
     const g = GAMES[this.game], live = this.round && !this.round.over;
     p.gg = GG_START;
     p.inf = !!(g.infect && live && !this.infAt && this.fighters().some((o) => o.inf));
-    if (p.inf) this.broadcast({ t: 'inf', id: p.id, by: 0, late: 1 }, p.id);
+    if (p.inf) p.infT = now();
+    if (p.inf) this.broadcast({ t: 'infect', id: p.id, by: 0, late: 1 }, p.id);
     if (p.isBot) { this.modeLoadout(p); return; }
     send(p, { t: 'gg', all: g.ladder ? this.fighters().map((o) => [o.id, o.gg || 0]) : [] });
-    send(p, { t: 'inf', all: g.infect ? this.fighters().filter((o) => o.inf).map((o) => o.id) : [] });
+    send(p, { t: 'infect', all: g.infect ? this.fighters().filter((o) => o.inf).map((o) => o.id) : [] });
   }
   // a fresh match: everyone back to the bottom of the ladder and human again
   startModes() {
@@ -1776,7 +1782,7 @@ class Room {
     if (g.ladder) { this.round.target = LADDER.length; this.round.ends = n + GUNGAME.time * 1000; }
     if (g.infect) { this.round.target = 0; this.round.ends = n + INFECT.time * 1000; }
     this.broadcast({ t: 'gg', all: g.ladder ? this.fighters().map((p) => [p.id, p.gg]) : [] });
-    this.broadcast({ t: 'inf', all: [] });
+    this.broadcast({ t: 'infect', all: [] });
   }
   // a death under the mode's rules (kw: what really killed them; void kills count for whoever knocked them off)
   modeKill(t, killer, kw) {
@@ -1796,7 +1802,7 @@ class Room {
   modeSort(list, res) {
     const g = GAMES[this.game];
     if (g.ladder) list.sort((a, b) => (b.gg || 0) - (a.gg || 0) || b.kills - a.kills || a.deaths - b.deaths);
-    else if (g.infect && res) list.sort((a, b) => (!!b.inf === (res.side === 'inf')) - (!!a.inf === (res.side === 'inf')));
+    else if (g.infect && res) list.sort((a, b) => (!!b.inf === (res.side === 'inf')) - (!!a.inf === (res.side === 'inf'))); // stable: by kills within a side
   }
 
   // gun game: a kill with your rung's weapon moves you up (the one with the spoon wins), dying to melee knocks you back one
@@ -1806,7 +1812,7 @@ class Room {
     if (kw === LADDER[killer.gg || 0]) {
       killer.gg = (killer.gg || 0) + 1;
       this.broadcast({ t: 'gg', id: killer.id, n: killer.gg, k: killer.gg >= N ? 'win' : killer.gg === N - 1 ? 'last' : 'up' });
-      if (killer.gg >= N) { this.endRound({ winner: killer }); return; }
+      if (killer.gg >= N) { this.endRound(); return; } // modeSort puts them on top
       this.modeLoadout(killer); // the next weapon, right now
     }
     if (WEAPONS[kw] && WEAPONS[kw].kind === 'melee') { // humiliated: they get it on respawn
@@ -1818,9 +1824,9 @@ class Room {
   // infection: p turns. patient zero turns on the spot; the dead come back as zombies
   infect(p, by, first) {
     if (p.inf) return;
-    p.inf = true;
+    p.inf = true; p.infT = now();
     if (p.alive) this.modeLoadout(p);
-    this.broadcast({ t: 'inf', id: p.id, by: by && by !== p ? by.id : 0, first: first ? 1 : undefined });
+    this.broadcast({ t: 'infect', id: p.id, by: by && by !== p ? by.id : 0, first: first ? 1 : undefined });
   }
   survivors() { return this.fighters().filter((p) => !p.inf); }
   tickInfect(n) {
@@ -1834,13 +1840,15 @@ class Room {
     const surv = this.survivors(), z = this.fighters().length - surv.length;
     if (!surv.length) { this.endInfect('inf'); return; }
     if (!z) { if (surv.length >= 2) this.infAt = n; else if (n >= this.round.ends) this.endInfect('surv'); return; } // the zombies all left: someone else turns
-    if (surv.length === 1 && this.infLast !== surv[0].id) { this.infLast = surv[0].id; this.broadcast({ t: 'inf', last: surv[0].id }); }
+    if (surv.length === 1 && this.infLast !== surv[0].id) { this.infLast = surv[0].id; this.broadcast({ t: 'infect', last: surv[0].id }); }
     if (n >= this.round.ends) this.endInfect('surv');
   }
-  // the best player on the winning side takes the round (and the roll): survivors don't need kills, surviving is enough
+  // the winning side goes on top of the end screen; its best player takes the round (and the roll) only if they
+  // got a kill, like dm, so hiding till the clock runs out doesn't pay. the side's title shows either way
   endInfect(side) {
-    const pool = this.fighters().filter((p) => !!p.inf === (side === 'inf')).sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
-    this.endRound({ winner: pool[0] || null, side });
+    this.round.res = { side };
+    this.broadcast({ t: 'infect', side });
+    this.endRound();
   }
 
   tick(dt) {
