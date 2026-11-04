@@ -914,7 +914,9 @@ class Room {
       const pellets = w.pellets || 1;
       const n = clampInt(m.n, 1, Math.min(pellets, this.maxPellets(w, p, t))), h = clampInt(m.h, 0, n);
       if (!this.pairOk(p, t, 'hs' + m.w, (1000 / fireRate(w, p.hp)) * 0.6) || !this.rangeOk(p, t, w.range)) return; // the Redline fires faster as you lose HP
+      const hp0 = t.hp; // no-scope hype only goes out if the shot really landed
       this.applyHitscan(p, t, m.w, n, h, d);
+      if (m.ns === 1 && m.w === 'sniper') this.noScope(p, t, h > 0, hp0);
     } else if (w.kind === 'melee') {
       const hv = m.heavy && w.heavy ? w.heavy : null; // knife right click
       const reach = w.range + (m.w === 'katana' ? (p.kat || 0) * w.grow : 0);
@@ -933,6 +935,20 @@ class Room {
       if (!this.pairOk(p, t, 'cig', 75) || !this.rangeOk(p, t, w.range)) return;
       this.hurt(t, p, 'cig', w.dmg, [d[0] * 1.5, 0.6, d[2] * 1.5]);
     }
+  }
+
+  // no-scope hype. "ns" is the shooter's word, so it only buys cosmetics, never damage: the distance is measured here,
+  // nothing goes out if the shot was blocked (spawn protection, bubble, reverse card, teammate, round over), and one per shot
+  noScope(p, t, hs, hp0) {
+    if (t.alive && t.hp >= hp0) return;
+    const n = now();
+    if (n - (p.nsT || 0) < 700) return; // a bolt action can't fire faster than this anyway
+    p.nsT = n;
+    const ev = { t: 'ns', k: p.id, v: t.id, d: Math.min(999, Math.round(dist3(p.pos, t.pos))), hs: hs ? 1 : 0, kill: t.alive ? 0 : 1, p: t.pos.map(r2) };
+    // a long one (25 m+, like the client's NS_LONG) holds the victim's killcam back ~1.3 s for the MLG overlay: don't force their respawn mid-killcam
+    if (ev.kill && ev.d >= 25 && !t.isBot && t.kc && this.mode !== 'training') t.respawnAt = Math.max(t.respawnAt, n + 10500);
+    this.broadcast(ev);
+    this.rec.ev.push({ s: n, m: ev }); // so the play of the round gets the fireworks too
   }
 
   onPush(p, m) {

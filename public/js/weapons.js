@@ -563,7 +563,8 @@ function fireHitscan(id, now) {
       sfx.ricochet(end);
     }
   }
-  for (const [rid, h] of hits) net.send({ t: 'hit', to: rid, w: id, d: h.d.map(r2), n: h.n, h: h.h });
+  const ns = id === 'sniper' && !W.scoped ? 1 : undefined; // no-scope: the server only makes it look cool, damage is the same
+  for (const [rid, h] of hits) net.send({ t: 'hit', to: rid, w: id, d: h.d.map(r2), n: h.n, h: h.h, ns });
   const fast = w.rate > 8;
   const skin = (G.equipped || {})[id];
   if (shots) marbles.shoot(shots, marblePalette(skin));

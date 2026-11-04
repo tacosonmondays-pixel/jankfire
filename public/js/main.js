@@ -22,6 +22,7 @@ import { Remote, updateGibs } from './remote.js';
 import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN } from './skins.js';
 import { initPreview, showPreview, showCharacter, renderPreview, resizePreview } from './preview.js';
 import { playKillFx, updateKillFx, clearKillFx } from './killfx.js';
+import { noScope, updateNoScope } from './noscope.js';
 import { updateSpeedLines } from './speedlines.js';
 import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse } from './objective.js';
 import { GAMES, GAME_ORDER, TEAMS } from '/shared/modes.js';
@@ -1242,6 +1243,12 @@ net.on('chat', (m) => {
   hud.chat(n, c, m.m);
 });
 net.on('po', (m) => { G.ping = Math.round(performance.now() - m.c); hud.ping(G.ping); });
+// no-scope hype (cosmetic): badge for the shooter, feed icon, the MLG treatment for a long one, fireworks for a headshot
+net.on('ns', (m) => {
+  recordEv(m); // the killcam replays the fireworks
+  const hold = noScope(m, nameOf(m.k), nameOf(m.v));
+  if (hold && G.killcamPending && !RP.active) queueKillcam(m.k, 'sniper', hold); // got no-scoped from far: the overlay plays out first
+});
 
 // ------------------------------------------------------------ main loop
 let last = performance.now(), acc = 0, sendT = 0, pingT = 0, fovNow = S.fov, fpsAcc = 0, fpsN = 0;
@@ -1429,6 +1436,7 @@ function frame(t) {
   fpsAcc += dt; fpsN++;
   if (fpsAcc > 0.5) { $('fps').textContent = S.showFps ? Math.round(fpsN / fpsAcc) + ' fps' : ''; fpsAcc = 0; fpsN = 0; }
   hud.update(dt);
+  updateNoScope(dt, cam, RP.active);
   fx.update(dt);
   G.skinFxWorld.update(dt);
   G.skinFxVM.update(dt);
@@ -1562,7 +1570,7 @@ function replayFeed(k, info) {
   $('rpFeed').append(d);
 }
 let killcamT = 0;
-function queueKillcam(killer, via) {
+function queueKillcam(killer, via, delay = 900) {
   clearTimeout(killcamT);
   const deathS = serverNow();
   G.killcamPending = true;
@@ -1578,7 +1586,7 @@ function queueKillcam(killer, via) {
       onEnd: () => { G.killcamPending = false; hideReplayUI(); if (!ME.alive) $('dead').classList.remove('hidden'); net.send({ t: 'respawn' }); },
       onAbort: () => { G.killcamPending = false; hideReplayUI(); },
     });
-  }, 900);
+  }, delay);
 }
 function endKillcam() {
   clearTimeout(killcamT);

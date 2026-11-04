@@ -131,6 +131,55 @@ export const sfx = {
   tbag(pos) { for (let i = 0; i < 3; i++) tone('sawtooth', 120 - i * 25, 40, 0.18, 0.3, pos, i * 0.1); },
 };
 
+// ------------------------------------------------------------ no-scope hype: airhorn, ding, fireworks
+let hornCurve = null;
+// one brassy blast: detuned saws through a fuzz, with the little pitch scoop at the start that makes it a horn
+function horn(f, at, dur, v) {
+  if (!ac) return;
+  const t = ac.currentTime + at;
+  if (!hornCurve) { hornCurve = new Float32Array(256); for (let i = 0; i < 256; i++) hornCurve[i] = Math.tanh((i / 128 - 1) * 4); }
+  const sh = ac.createWaveShaper(); sh.curve = hornCurve;
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3200; lp.Q.value = 3;
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.02);
+  g.gain.setValueAtTime(v, t + Math.max(0.03, dur - 0.05)); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  sh.connect(lp); lp.connect(g); g.connect(master);
+  for (const [type, m, det] of [['sawtooth', 1, -9], ['sawtooth', 1, 8], ['square', 1.5, 0], ['sawtooth', 2, 4]]) {
+    const o = ac.createOscillator(); o.type = type; o.detune.value = det;
+    o.frequency.setValueAtTime(f * m * 0.8, t); o.frequency.exponentialRampToValueAtTime(f * m, t + 0.045);
+    const og = ac.createGain(); og.gain.value = 0.3;
+    o.connect(og); og.connect(sh); o.start(t); o.stop(t + dur + 0.05);
+  }
+}
+// fireworks are far away but loud: keep the direction (panning), fall off gently, and arrive late like real sound
+function far(pos) {
+  if (!pos) return [null, 0];
+  const dx = pos[0] - L.pos[0], dy = pos[1] - L.pos[1], dz = pos[2] - L.pos[2], d = Math.hypot(dx, dy, dz), e = 6 + d * 0.2;
+  const k = d > e ? e / d : 1;
+  return [[L.pos[0] + dx * k, L.pos[1] + dy * k, L.pos[2] + dz * k], Math.min(0.6, d / 343)];
+}
+Object.assign(sfx, {
+  noscope() { for (const [f, d] of [[1046, 0], [1568, 0.06], [2093, 0.12]]) tone('square', f, f, d ? 0.09 : 0.06, 0.12, null, d); noise(0.3, 0.3, 'bandpass', 500, 5000, null, 0, 2); },
+  // BWAAA BWA BWA BWAAAAAA (short: BWA BWAAA)
+  airhorn(short) { for (const [at, dur] of short ? [[0, 0.16], [0.22, 0.45]] : [[0, 0.34], [0.42, 0.12], [0.6, 0.12], [0.78, 0.9]]) horn(415, at, dur, short ? 0.2 : 0.28); },
+  fwWhistle(pos, dur = 1) {
+    if (!ac) return;
+    const [q, dl] = far(pos), t = ac.currentTime + dl;
+    const o = ac.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(900, t); o.frequency.exponentialRampToValueAtTime(2900, t + dur);
+    const lfo = ac.createOscillator(); lfo.frequency.value = 22;
+    const lg = ac.createGain(); lg.gain.value = 70; lfo.connect(lg); lg.connect(o.frequency);
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.14, t + 0.08);
+    g.gain.setValueAtTime(0.14, t + dur * 0.85); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(dest(q));
+    o.start(t); lfo.start(t); o.stop(t + dur + 0.05); lfo.stop(t + dur + 0.05);
+    noise(dur, 0.1, 'bandpass', 2500, 5000, q, dl, 2);
+  },
+  fwBang(pos) { const [q, dl] = far(pos); noise(0.06, 1, 'highpass', 1500, 5000, q, dl); noise(1.3, 1, 'lowpass', 2400, 60, q, dl); tone('sine', 110, 28, 0.7, 0.9, q, dl); },
+  fwCrackle(pos) { const [q, dl] = far(pos); for (let i = 0; i < 22; i++) noise(0.02 + Math.random() * 0.03, 0.25 + Math.random() * 0.35, 'highpass', 2500 + Math.random() * 3000, 6000, q, dl + 0.35 + Math.random() * 1.1); },
+});
+
 const LOOPDEF = {
   fire: { type: 'lowpass', f: 900, q: 0.7, vol: 0.55 },
   inhale: { type: 'highpass', f: 2600, q: 0.7, vol: 0.14 },
