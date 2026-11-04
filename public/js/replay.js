@@ -18,6 +18,7 @@ import { raycast } from '/shared/physics.js';
 import { BOXES } from '/shared/map.js';
 import { soapBubble, soapFlail } from './models.js';
 import { TRAP, trapPreroll } from '/shared/wand.js';
+import { pipStart, pipStop } from './pip.js';
 
 const KEEP = 10000;
 export const rec = { frames: [], ev: [] };
@@ -71,6 +72,7 @@ export function playClip(clip, opts = {}) {
   RP.mode = opts.mode || 'replay';
   RP.focus = opts.focus; // whose replay it is
   document.body.classList.add('replaying');
+  pipStart(st); // killer's POV + LIVE reaction boxes
   return true;
 }
 
@@ -78,6 +80,7 @@ export function stopReplay(silent) {
   if (!st) return;
   const s = st;
   st = null;
+  pipStop();
   for (const g of s.ghosts.values()) if (g.soap) { G.scene.remove(g.soap.mesh); g.soap.mesh.material.dispose(); }
   for (const g of s.ghosts.values()) g.dispose();
   for (const m of s.projs.values()) G.scene.remove(m);
@@ -112,6 +115,7 @@ function applyEv(m) {
     const w = WEAPONS[m.w];
     if (!w || !Array.isArray(m.s)) return;
     if (g && w.fanHammer) g.revShot(!!m.fan); // ghosts twirl their revolvers too
+    if (g) g.shotT = performance.now(); // (the POV box kicks their gun)
     const fast = w.rate > 8, mz = g ? g.muzzle() : null;
     const col = tracerColor(((info[m.id] || {}).skins || {})[m.w], w.tracer || 0xfff0a0);
     if (w.marbles) { const sk = ((info[m.id] || {}).skins || {})[m.w]; marbles.shootSegs(m.s, mz, sk && sk[3] === 'marbles_gumball' ? 'gumball' : 'glass', 2); if (m.s.length) sfx.gun(m.w, m.s[0].slice(0, 3)); return; }

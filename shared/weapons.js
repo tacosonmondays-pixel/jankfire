@@ -296,6 +296,7 @@ export function validStreaks(list) {
 // ------------------------------------------------------------ wrecking ball killstreak
 // the client rolls the ball; the server judges rams + slams with these same numbers.
 FLAGS.BALL = 4096; // set in your snapshots while you're the ball (the server only believes it if you activated one)
+FLAGS.ADS = 1 << 20; // aiming down sights. cosmetic: killcam POV boxes zoom in / show the scope (the server just relays it)
 // not a gun, just the name + colour rams and slams show in the kill feed
 WEAPONS.wreck = { slot: null, kind: 'wreck', name: 'Wrecking Ball', color: '#b8c4d0' };
 // ram: see ramDmg. slam: sized by how high you were when you started it, from a hop (h0 m: slamDmg[0] at the centre,

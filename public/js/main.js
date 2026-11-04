@@ -35,6 +35,7 @@ import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse
 import { GAMES, GAME_ORDER, TEAMS } from '/shared/modes.js';
 import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
+import { renderPip } from './pip.js';
 import { EPIC_CAM, epicMul, epicCamMs } from '/shared/epic.js';
 import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, HAIRS, TOPS, BOTTOMS } from '/shared/looks.js';
 import { startBall, endBall, ballOn, BS } from './player.js';
@@ -306,6 +307,9 @@ bindCheck('blood', 'blood');
 bindCheck('killcam', 'killcam', () => { if (G.joined) net.send({ t: 'kc', on: S.killcam }); });
 bindCheck('showCards', 'showCards');
 bindCheck('speedLines', 'speedLines');
+SYNC_KEYS.push('pip'); // killcam picture-in-picture, on unless switched off
+if (typeof S.pip !== 'boolean') S.pip = true;
+bindCheck('pip', 'pip');
 // display: windowed / windowed fullscreen (maximized, desktop app only) / fullscreen
 const DISPLAY = window.jf && window.jf.display
   ? [['windowed', 'Windowed'], ['maximized', 'Windowed fullscreen'], ['fullscreen', 'Fullscreen']]
@@ -1402,7 +1406,7 @@ function frame(t) {
       net.send({
         t: 's', q: ME.seq, p: ME.pos.map(r2), v: ME.vel.map(r2), y: r2(G.spinning ? (now * 0.03) % (Math.PI * 2) : ME.yaw), x: r2(G.spinning ? Math.sin(now * 0.02) * 1.2 : ME.pitch), w: W.cur,
         g: hp ? hp.map(r2) : 0,
-        f: W.flags | (now < ME.slipUntil ? FLAGS.SLIP : 0) | (ME.sliding ? FLAGS.SLIDE : 0) | (ME.crouching ? FLAGS.CROUCH : 0),
+        f: W.flags | (now < ME.slipUntil ? FLAGS.SLIP : 0) | (ME.sliding ? FLAGS.SLIDE : 0) | (ME.crouching ? FLAGS.CROUCH : 0) | (W.aim > 0.5 ? FLAGS.ADS : 0),
       });
     }
     pingT -= dt;
@@ -1551,6 +1555,7 @@ function frame(t) {
   G.vmScene.visible = G.joined && !RP.active;
   if (ballOn(now)) G.vmScene.visible = false; // weapons are holstered inside the ball
   renderFrame();
+  renderPip(dt, now); // killcam picture-in-picture (after the main view: it only draws into the corner)
   if ((screen === 'cosmetics' || screen === 'character') && !$('menu').classList.contains('hidden')) renderPreview(dt);
   if (screen === 'cosmetics' && !$('menu').classList.contains('hidden')) renderGrapplePreview(dt);
 }
@@ -1920,6 +1925,7 @@ function applySettingsToUI() {
   $('jank').value = String(S.jank); setJank(S.jank);
   for (const id of ['fov', 'vol', 'sens', 'adsSens']) { $(id).value = String(S[id]); $(id).dispatchEvent(new Event('input')); }
   for (const id of ['fovKick', 'shake', 'showFps', 'swapAim', 'toggleAim', 'blood', 'killcam', 'showCards', 'speedLines']) $(id).checked = !!S[id];
+  $('pip').checked = S.pip !== false;
   setVolume(S.vol);
 }
 

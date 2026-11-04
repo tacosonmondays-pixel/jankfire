@@ -421,7 +421,7 @@ export function inspect() {
 }
 
 // viewmodel placement per weapon: position, rotation, scale
-const VM = {
+export const VM = {
   ar: { p: [0.2, -0.2, -0.38], r: [0, 0.04, 0], s: 0.7 },
   smg: { p: [0.2, -0.19, -0.36], r: [0, 0.05, 0], s: 0.8 },
   shotgun: { p: [0.2, -0.2, -0.36], r: [0, 0.04, 0], s: 0.7 },
