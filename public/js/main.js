@@ -24,6 +24,7 @@ import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSk
 import { initPreview, showPreview, showCharacter, renderPreview, resizePreview } from './preview.js';
 import { playKillFx, updateKillFx, clearKillFx } from './killfx.js';
 import { courtKill, courtVerdict, updateCourt, courtReset, courtSync } from './scales.js';
+import { noScope, updateNoScope } from './noscope.js';
 import { updateSpeedLines } from './speedlines.js';
 import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse } from './objective.js';
 import { GAMES, GAME_ORDER, TEAMS } from '/shared/modes.js';
@@ -1267,6 +1268,12 @@ net.on('chat', (m) => {
   hud.chat(n, c, m.m);
 });
 net.on('po', (m) => { G.ping = Math.round(performance.now() - m.c); hud.ping(G.ping); });
+// no-scope hype (cosmetic): badge for the shooter, feed icon, the MLG treatment for a long one, fireworks for a headshot
+net.on('ns', (m) => {
+  recordEv(m); // the killcam replays the fireworks
+  const hold = noScope(m, nameOf(m.k), nameOf(m.v));
+  if (hold && G.killcamPending && !RP.active) queueKillcam(m.k, 'sniper', hold); // got no-scoped from far: the overlay plays out first
+});
 
 // ------------------------------------------------------------ main loop
 let last = performance.now(), acc = 0, sendT = 0, pingT = 0, fovNow = S.fov, fpsAcc = 0, fpsN = 0;
@@ -1460,6 +1467,7 @@ function frame(t) {
   fpsAcc += dt; fpsN++;
   if (fpsAcc > 0.5) { $('fps').textContent = S.showFps ? Math.round(fpsN / fpsAcc) + ' fps' : ''; fpsAcc = 0; fpsN = 0; }
   hud.update(dt);
+  updateNoScope(dt, cam, RP.active);
   fx.update(dt);
   G.skinFxWorld.update(dt);
   G.skinFxVM.update(dt);
@@ -1598,13 +1606,13 @@ function replayFeed(k, info) {
   $('rpFeed').append(d);
 }
 let killcamT = 0;
-function queueKillcam(killer, via) {
+function queueKillcam(killer, via, delay = 900) {
   clearTimeout(killcamT);
   const deathS = serverNow();
   G.killcamPending = true;
   killcamT = setTimeout(() => {
     if (ME.alive || !G.joined || RP.active) { G.killcamPending = false; return; }
-    if (epicKC) { epicCam(killer, via, deathS); return; }
+    if (epicKC) { epicCam(killer, via, deathS, delay); return; } // (a long no-scope: after the MLG overlay)
     const clip = localClip(deathS - 4500, deathS + 1200, infoOf);
     const [kn, kc] = nameOf(killer);
     showReplayUI('KILLCAM', cardUrlFor(killer), kn, kc, `got you with ${wname(via)}`, 'SPACE / CLICK to skip');
@@ -1615,12 +1623,12 @@ function queueKillcam(killer, via) {
       onEnd: () => { G.killcamPending = false; hideReplayUI(); if (!ME.alive) $('dead').classList.remove('hidden'); net.send({ t: 'respawn' }); },
       onAbort: () => { G.killcamPending = false; hideReplayUI(); },
     });
-  }, 900);
+  }, delay);
 }
 function endKillcam() {
   clearTimeout(killcamT);
   G.killcamPending = false;
-  epicKC = null; epicHold = false;
+  epicKC = null; epicHold = false; epicExtra = 0;
   if (RP.mode === 'killcam') stopReplay(true);
 }
 function skipReplay() {
@@ -1635,6 +1643,7 @@ function skipReplay() {
 // a banner when the shot lands, and a padlock where the skip button was.
 let epicKC = null; // the epic kill you're stuck watching
 let epicHold = false, nopeT = 0; // the server is holding your respawn (until 'spawn')
+let epicExtra = 0; // ms the epic killcam started later than usual (no-scope MLG overlay first)
 function epicLocked() { return !!epicKC && !ME.alive && !G.roundOver && (G.killcamPending || RP.mode === 'killcam'); }
 function epicTags(ep) {
   const w = WEAPONS[ep.w];
@@ -1642,10 +1651,12 @@ function epicTags(ep) {
   const T = { far, hs: 'HEADSHOT', ns: 'NO-SCOPE', air: 'MID-AIR', rope: 'OFF THE GRAPPLE', fast: `${ep.kmh || 300} KM/H`, hp: `ON ${ep.hp || 1} HP` };
   return (Array.isArray(ep.why) ? ep.why : []).map((k) => T[k]).filter(Boolean).join(' · ');
 }
-function epicCam(killer, via, deathS) {
+function epicCam(killer, via, deathS, delay = EPIC_CAM.delay) {
   const ep = epicKC, C = EPIC_CAM;
-  // started late (a slow PC hitching on the kill): cut into the lead-up so it still ends before the server lets you go
-  const late = Math.max(0, Math.min(C.pre - 1000, performance.now() - (G.deadAt || 0) - C.delay));
+  // started late (a slow PC hitching on the kill): cut into the lead-up so it still ends before the server lets you go.
+  // a long no-scope holds the killcam back for the MLG overlay on purpose (delay), and the server's lock waits that out too
+  epicExtra = Math.max(0, delay - C.delay);
+  const late = Math.max(0, Math.min(C.pre - 1000, performance.now() - (G.deadAt || 0) - delay));
   const clip = localClip(deathS - C.pre + late, deathS + 1200, infoOf);
   const [kn, kc] = nameOf(killer);
   showReplayUI('KILLCAM', cardUrlFor(killer), kn, kc, `got you with ${wname(via)}`, '');
@@ -1677,7 +1688,7 @@ function epicUI(on) {
   h.append(lk, 'TOO EPIC TO SKIP');
 }
 // the clip ended (or was too short to play) but the server still holds you: count down to the end of the lock
-function epicTimer(now) { $('deadTimer').textContent = `too epic to skip · ${Math.max(0, (epicCamMs() - (now - (G.deadAt || now))) / 1000).toFixed(1)}...`; }
+function epicTimer(now) { $('deadTimer').textContent = `too epic to skip · ${Math.max(0, (epicCamMs() + epicExtra - (now - (G.deadAt || now))) / 1000).toFixed(1)}...`; }
 // trying to skip anyway: the padlock rattles (at most every 300 ms: holding space auto-repeats)
 function epicNope() {
   const tn = performance.now();

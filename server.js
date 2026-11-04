@@ -1147,8 +1147,10 @@ class Room {
       if (w.fanHammer) { const mul = this.revolverHit(p, t, m, w); if (mul) this.applyHitscan(p, t, m.w, n, h, d, mul); return; } // tap or fan the hammer
       if (!this.pairOk(p, t, 'hs' + m.w, (1000 / fireRate(w, p.hp)) * 0.6) || !this.rangeOk(p, t, w.range)) return; // the Redline fires faster as you lose HP
       p.nsHit = m.w === 'sniper' && p.w === 'sniper' && (m.ns === 1 || m.ns === true); // a no-scope (ns: 1) can make the kill EPIC
+      const hp0 = t.hp; // no-scope hype only goes out if the shot really landed
       this.applyHitscan(p, t, m.w, n, h, d);
       p.nsHit = false;
+      if (m.ns === 1 && m.w === 'sniper') this.noScope(p, t, h > 0, hp0);
     } else if (w.kind === 'melee') {
       const hv = m.heavy && w.heavy ? w.heavy : null; // knife right click
       const reach = w.range + (m.w === 'katana' ? (p.kat || 0) * w.grow : 0);
@@ -1171,6 +1173,24 @@ class Room {
       if (!this.pairOk(p, t, 'cig', 75) || !this.rangeOk(p, t, w.range)) return;
       this.hurt(t, p, 'cig', w.dmg, [d[0] * 1.5, 0.6, d[2] * 1.5]);
     }
+  }
+
+  // no-scope hype. "ns" is the shooter's word, so it only buys cosmetics, never damage: the distance is measured here,
+  // nothing goes out if the shot was blocked (spawn protection, bubble, reverse card, teammate, round over), and one per shot
+  noScope(p, t, hs, hp0) {
+    if (t.alive && t.hp >= hp0) return;
+    const n = now();
+    if (n - (p.nsT || 0) < 700) return; // a bolt action can't fire faster than this anyway
+    p.nsT = n;
+    const ev = { t: 'ns', k: p.id, v: t.id, d: Math.min(999, Math.round(dist3(p.pos, t.pos))), hs: hs ? 1 : 0, kill: t.alive ? 0 : 1, p: t.pos.map(r2) };
+    // a long one (25 m+, like the client's NS_LONG) holds the victim's killcam back ~1.3 s for the MLG overlay: don't force their respawn mid-killcam
+    if (ev.kill && ev.d >= 25 && !t.isBot && t.kc && this.mode !== 'training') {
+      t.respawnAt = Math.max(t.respawnAt, n + 10500);
+      // an EPIC no-scope: the overlay first, then the unskippable killcam (1.3 s later than usual), so its lock moves too
+      if (t.epicLock) t.epicLock = Math.min(t.respawnAt, Math.max(t.epicLock, n + epicCamMs() + 1300));
+    }
+    this.broadcast(ev);
+    this.rec.ev.push({ s: n, m: ev }); // so the play of the round gets the fireworks too
   }
 
   onPush(p, m) {
@@ -1696,7 +1716,7 @@ class Room {
         break;
       case 'respawn': // killcam finished or skipped
         if (!p.alive) p.respawnAt = Math.min(p.respawnAt, Math.max(now(), (p.deadT || 0) + 1500));
-        if (!p.alive && p.epicLock) p.respawnAt = Math.max(p.respawnAt, Math.min(p.epicLock, (p.deadT || 0) + 9000)); // EPIC killcam: no skipping it
+        if (!p.alive && p.epicLock) p.respawnAt = Math.max(p.respawnAt, Math.min(p.epicLock, (p.deadT || 0) + 10500)); // EPIC killcam: no skipping it (9 s cap, 10.5 s after a long no-scope's overlay)
         break;
       case 'redraw':
         if (p.alive && now() - (p.redrawT || 0) > 2500) { p.redrawT = now(); deal(p); }

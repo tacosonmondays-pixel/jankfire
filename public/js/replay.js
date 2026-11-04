@@ -11,6 +11,7 @@ import { sfx } from './audio.js';
 import { tracerColor } from './skins.js';
 import { playKillFx } from './killfx.js';
 import { courtReplay } from './scales.js';
+import { replayNoScope } from './noscope.js';
 import { WEAPONS } from '/shared/weapons.js';
 import { wreckFx, wreckDied } from './wreck.js';
 import { raycast } from '/shared/physics.js';
@@ -139,6 +140,8 @@ function applyEv(m) {
     fx.explosion(m.p, WEAPONS.chicken.radius); sfx.boom(m.p);
   } else if (m.t === 'he') {
     fx.blast(m.p, WEAPONS.duck.blastR); sfx.holePop(m.p);
+  } else if (m.t === 'ns') { // no-scope headshot: the fireworks again, on a faster fuse
+    replayNoScope(m, (info[m.k] || {}).name);
   }
 }
 
