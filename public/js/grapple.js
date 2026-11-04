@@ -232,7 +232,9 @@ const DEFS = {
     const cup = new THREE.CylinderGeometry(0.05, 0.145, 0.12, 10, 1, true).rotateX(-Math.PI / 2).translate(0, 0, -0.06);
     const parts = [[rod(V(0, 0, -0.62), V(0, 0, -0.1), 0.022), 0xb57f45], [ball(V(0, 0, -0.62), 0.032), 0x7a4a22], [cup, 0xc4141f],
       [rod(V(0, 0, -0.135), V(0, 0, -0.11), 0.05, 0.05, 10), 0x8a0c14], [ring(V(0, 0, -0.01), 0.145, 0.017), 0x8a0c14]];
-    return { tail: 0.62, beams: [['cyl', 0.042, ropeMat('TWIST', { c1: 0xe8dcc0, c2: 0x9c8a62, f: 12, tw: 3 })]], hook: bake(parts, litMat()) };
+    const hook = bake(parts, litMat());
+    hook.geometry.translate(0, 0, -0.05); // sat a little off the face, or the cup vanishes into the wall from your own view
+    return { tail: 0.67, beams: [['cyl', 0.042, ropeMat('TWIST', { c1: 0xe8dcc0, c2: 0x9c8a62, f: 12, tw: 3 })]], hook };
   },
   vine: () => { // wooden hook lashed together with vine, plus a couple of leaves
     const parts = [[rod(V(0, 0, -0.47), V(0, 0, -0.06), 0.03), 0x7a4a22], [ball(V(0, 0, -0.06), 0.042), 0x6a3e1a],
@@ -268,8 +270,8 @@ const DEFS = {
     }
     const mat = new THREE.MeshPhongMaterial({ vertexColors: true, transparent: true, opacity: 0.88, shininess: 90, specular: 0xffffff, emissive: 0x4a0a30 });
     const hand = bake(parts, mat);
-    hand.geometry.rotateY(0.7).translate(0, 0, -0.11); // landed at a slant (one edge on the wall), so it reads from the side too
-    return { tail: 0.13, stretch: true, beams: [['cyl', 0.045, ropeMat('JELLY', { c1: 0xff4fa8, a: 0.72 })]], hook: hand };
+    hand.geometry.rotateY(0.7).translate(0, 0, -0.17); // landed at a slant, pulled back off the face so it reads from the side and from your own view
+    return { tail: 0.19, stretch: true, beams: [['cyl', 0.045, ropeMat('JELLY', { c1: 0xff4fa8, a: 0.72 })]], hook: hand };
   },
   rainbow: () => { // a glowing star that spins on the end of a rainbow
     const s = new THREE.Shape();

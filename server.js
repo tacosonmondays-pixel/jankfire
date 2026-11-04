@@ -1802,6 +1802,7 @@ function roomFor(mode, ws) {
 wss.on('connection', (ws) => {
   let me = null;
   ws.isAlive = true;
+  ws.on('error', () => {}); // oversized or broken frames: ws closes the socket itself, an unhandled 'error' would kill the whole server
   ws.on('pong', () => { ws.isAlive = true; });
   ws.on('message', (data) => {
     let m;

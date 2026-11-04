@@ -83,16 +83,17 @@ export const sfx = {
   death() { tone('sawtooth', 392, 370, 0.3, 0.25); tone('sawtooth', 370, 349, 0.3, 0.25, null, 0.32); tone('sawtooth', 349, 200, 0.9, 0.25, null, 0.64); },
   jump() { tone('sine', 280, 520, 0.07, 0.06); },
   pad(pos) { tone('sine', 140, 1000, 0.4, 0.4, pos); tone('square', 70, 500, 0.3, 0.08, pos); },
-  grapple(skin) { // the hook landing, per grapple skin
+  grapple(skin, pos) { // the hook landing, per grapple skin. pos = someone else's hook: quieter, from where it hit
+    const q = pos ? 0.6 : 1;
     switch (skin) {
-      case 'chain': for (let i = 0; i < 4; i++) tone('triangle', 2100 + Math.random() * 1600, 1700, 0.06, 0.12, null, i * 0.035); noise(0.15, 0.25, 'highpass', 3000, 6000); break;
-      case 'candy': tone('sine', 1568, 1568, 0.22, 0.14); tone('sine', 2093, 2093, 0.3, 0.1, null, 0.06); noise(0.08, 0.2, 'highpass', 3000, 6000); break;
-      case 'plunger': tone('sine', 420, 90, 0.16, 0.45); noise(0.12, 0.35, 'lowpass', 900, 200); tone('square', 600, 950, 0.06, 0.05, null, 0.1); break;
-      case 'vine': noise(0.18, 0.35, 'bandpass', 600, 2200, null, 0, 1.5); tone('triangle', 260, 170, 0.08, 0.35, null, 0.1); break;
-      case 'laser': tone('square', 2400, 300, 0.18, 0.11); tone('sawtooth', 1200, 150, 0.2, 0.07); noise(0.1, 0.15, 'highpass', 5000, 9000); break;
-      case 'sticky': noise(0.14, 0.5, 'lowpass', 1800, 250); tone('sine', 300, 110, 0.12, 0.3); tone('sine', 220, 340, 0.16, 0.14, null, 0.07); break;
-      case 'rainbow': [1047, 1319, 1568, 2093].forEach((f, i) => tone('triangle', f, f, 0.14, 0.1, null, i * 0.05)); noise(0.1, 0.15, 'highpass', 4000, 8000); break;
-      default: tone('sawtooth', 300, 1400, 0.12, 0.15); noise(0.1, 0.3, 'highpass', 3000, 6000);
+      case 'chain': for (let i = 0; i < 4; i++) tone('triangle', 2100 + Math.random() * 1600, 1700, 0.06, 0.12 * q, pos, i * 0.035); noise(0.15, 0.25 * q, 'highpass', 3000, 6000, pos); break;
+      case 'candy': tone('sine', 1568, 1568, 0.22, 0.14 * q, pos); tone('sine', 2093, 2093, 0.3, 0.1 * q, pos, 0.06); noise(0.08, 0.2 * q, 'highpass', 3000, 6000, pos); break;
+      case 'plunger': tone('sine', 420, 90, 0.16, 0.45 * q, pos); noise(0.12, 0.35 * q, 'lowpass', 900, 200, pos); tone('square', 600, 950, 0.06, 0.05 * q, pos, 0.1); break;
+      case 'vine': noise(0.18, 0.35 * q, 'bandpass', 600, 2200, pos, 0, 1.5); tone('triangle', 260, 170, 0.08, 0.35 * q, pos, 0.1); break;
+      case 'laser': tone('square', 2400, 300, 0.18, 0.11 * q, pos); tone('sawtooth', 1200, 150, 0.2, 0.07 * q, pos); noise(0.1, 0.15 * q, 'highpass', 5000, 9000, pos); break;
+      case 'sticky': noise(0.14, 0.5 * q, 'lowpass', 1800, 250, pos); tone('sine', 300, 110, 0.12, 0.3 * q, pos); tone('sine', 220, 340, 0.16, 0.14 * q, pos, 0.07); break;
+      case 'rainbow': [1047, 1319, 1568, 2093].forEach((f, i) => tone('triangle', f, f, 0.14, 0.1 * q, pos, i * 0.05)); noise(0.1, 0.15 * q, 'highpass', 4000, 8000, pos); break;
+      default: tone('sawtooth', 300, 1400, 0.12, 0.15 * q, pos); noise(0.1, 0.3 * q, 'highpass', 3000, 6000, pos);
     }
   },
   swing(pos) { noise(0.16, 0.5, 'bandpass', 700, 2600, pos, 0, 2); },

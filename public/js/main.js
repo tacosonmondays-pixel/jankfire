@@ -825,9 +825,8 @@ function addHole(m) {
   sfx.hole(m.p);
 }
 function addRemoteInfo(p) {
-  G.names.set(p.id, { name: p.name, color: p.color, bot: p.bot, level: p.level, look: p.look, card: p.card || '', skins: p.skins || {}, team: p.team || 0 });
+  G.names.set(p.id, { name: p.name, color: p.color, bot: p.bot, level: p.level, look: p.look, card: p.card || '', skins: p.skins || {}, team: p.team || 0, grap: p.grap });
   G.skins.set(p.id, p.skins || {});
-  G.names.get(p.id).grap = p.grap;
 }
 
 // ------------------------------------------------------------ net handlers
@@ -1698,6 +1697,7 @@ function onLoggedIn(me, fresh) {
     applySettingsToUI();
   } else saveSettings();
   G.inv = me.inv || {};
+  if (G.joined) { net.send({ t: 'kfx', id: myKfx() }); net.send({ t: 'grap', id: myGrapple() }); } // the profile may have brought other picks: tell the server
   recomputeEquipped();
   rebuildViewmodels();
   setLoadout(G.settings.loadout);

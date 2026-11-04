@@ -9,6 +9,7 @@ import { fx, makeBeam, setBeam } from './fx.js';
 import { emitSkinFx } from './skins.js';
 import { jankify } from './jank.js';
 import { makeRope, setRope, setRopeSkin } from './grapple.js';
+import { sfx } from './audio.js';
 
 // players ignore fog, glow a bit, and get an outline in their colour so you can spot them across the map
 const noFog = new Map();
@@ -128,6 +129,7 @@ export class Remote {
     this.buf.push({ t, p: [x, y, z], v: [vx, vy, vz], yaw, pitch });
     if (this.buf.length > 60) this.buf.shift();
     this.vel = [vx, vy, vz];
+    if (g && !this.g && alive && !this.ghost && this.buf.length > 1) sfx.grapple(this.grap, g); // their hook just landed: you hear it, a bit quieter
     this.hp = hp; this.alive = !!alive; this.g = g || null; this.f = f; this.k = k; this.d = d;
     if (w !== this.w) this.setWeapon(w);
   }
