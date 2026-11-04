@@ -935,7 +935,7 @@ class Room {
     const od = [o[0] - ey[0], o[1] - ey[1], o[2] - ey[2]], ol = Math.hypot(...od);
     if (ol > 1e-3 && raycast(ey, od.map((x) => x / ol), ol, this.boxes)) o = ey; // no blowing from the far side of a wall
     const off = [o[0] - p.pos[0], o[1] - p.pos[1] - 0.15, o[2] - p.pos[2]]; // the wand is at your mouth, a bit under your eyes
-    for (let i = 0; i < it.bubbles; i++) setTimeout(() => {
+    for (let i = 0; i < it.bubbles; i++) setTimeout(safe('wand', () => {
       if (this.players.get(p.id) !== p || !p.alive || p.trap) return;
       const s = spreadDir(d, i ? 0.09 : 0.02), sp = w.speed * (0.85 + Math.random() * 0.3);
       const e = [p.pos[0] + off[0], p.pos[1] + off[1], p.pos[2] + off[2]];
@@ -947,7 +947,7 @@ class Room {
       const pl = Math.hypot(...p.vel), ik = pl > 25 ? 0.3 * 25 / pl : 0.3;
       const vel = [s[0] * sp + p.vel[0] * ik, s[1] * sp + p.vel[1] * ik + 0.5, s[2] * sp + p.vel[2] * ik].map(r2);
       this.makeProj(p, 'soap', pos, vel, { born: now(), p0: pos.slice(), v0: vel.slice() });
-    }, i * it.gap);
+    }), i * it.gap);
   }
   stepSoap(pr, n, owner, prev, dt) {
     const w = WEAPONS.soap, age = (n - pr.born) / 1000;
@@ -987,7 +987,7 @@ class Room {
     t.trap = { by: owner ? owner.id : 0, until: n + it.dur * 1000, v: [dir[0] * it.drift, it.rise, dir[2] * it.drift].map(r2), seq: t.seq,
       at: t.pos.slice(), atT: n, slack: 2.5 + Math.min(30, Math.hypot(...t.vel)) * 0.25 };
     t.g = null; t.burnUntil = 0; // no air in there: the fire goes out
-    if (t.ai) t.ai.hook = null;
+    if (t.ai) { t.ai.hook = null; t.ai.route = null; } // floated off its lane: plans again from wherever it drops
     this.tag(t, owner, 'soap');
     this.broadcast({ t: 'trap', ...this.trapInfo(t) });
     return true;
@@ -1403,7 +1403,7 @@ class Room {
       p.nsHit = false;
       if (ns && m.w === 'sniper') this.noScope(p, t, h > 0, hp0);
     } else if (w.kind === 'melee') {
-      const hv = m.heavy && w.heavy ? w.heavy : null; // knife right click
+      const hv = m.heavy === 1 && w.heavy ? w.heavy : null; // knife right click (the flag is 1 or absent)
       const reach = w.range + (m.w === 'katana' ? (p.kat || 0) * w.grow : 0);
       if (hv) { if (!this.pairOk(p, t, 'mh' + m.w, hv.cd * 750) || !this.rangeOk(p, t, hv.range)) return; }
       else if (!this.pairOk(p, t, 'm' + m.w, w.cd * 750) || !this.rangeOk(p, t, reach)) return;
@@ -1504,7 +1504,8 @@ class Room {
     this.parryFx(t, p, back, 'shot', this.parrySpot(t, inc), back ? { b: center(p).map(r2) } : {});
     if (back) { // perfect: the same bullets (pellets, headshots) go back into the shooter, credited to the parrier
       const dmg = (w.dmg * (n - h) + w.dmg * (w.head || 1) * h) * mul, k = (w.kb || 0) * n, up = (w.kbUp || 0) * (n / (w.pellets || 1));
-      this.hurt(p, t, 'parry', dmg, k || up ? [-d[0] * k, -d[1] * k + up, -d[2] * k] : null, { hs: h > 0 });
+      // a player's sniper headshot stays lethal on the way back (it's the same bullet); bots' stay soft
+      this.hurt(p, t, 'parry', dmg, k || up ? [-d[0] * k, -d[1] * k + up, -d[2] * k] : null, { hs: h > 0, lethal: wid === 'sniper' && h > 0 && !p.isBot });
     }
     return true;
   }
@@ -1584,7 +1585,7 @@ class Room {
       p.lastFire.fx = n;
     }
     if (w.kind === 'hitscan') { this.broadcast({ t: 'fx', k: 'shot', w: m.w, id: p.id, s: segs(m.s), fan: fan ? 1 : undefined }, p.id); return; } // fan: everyone sees the fanning spin
-    if (w.kind === 'melee') { this.broadcast({ t: 'fx', k: 'swing', w: m.w, id: p.id, a: o.map(r2), h: m.heavy ? 1 : undefined }, p.id); return; }
+    if (w.kind === 'melee') { this.broadcast({ t: 'fx', k: 'swing', w: m.w, id: p.id, a: o.map(r2), h: m.heavy === 1 ? 1 : undefined }, p.id); return; }
     const d = norm(vec3(m.d));
     if (d && w.kind === 'proj') this.spawnProj(p, m.w, o, d);
     if (d && w.kind === 'bow') {
@@ -2056,7 +2057,7 @@ class Room {
     if (!owns(p.inv, 'spray', id)) { // rolled it since you joined? read your inventory again (once) and retry
       if (fresh || !p.acct || n - (p.invT || 0) < 3000) return;
       p.invT = n;
-      store.get(p.acct.n).then((u) => { if (u) p.inv = u.inv || {}; if (this.players.get(p.id) === p) this.onSpray(p, m, true); }).catch(() => {});
+      store.get(p.acct.n).then((u) => { if (u) p.inv = u.inv || {}; if (this.players.get(p.id) === p) this.onSpray(p, m, true); }).catch((e) => logErr('spray', e));
       return;
     }
     p.sprayT = n;
@@ -2230,11 +2231,14 @@ class Room {
         this.broadcast({ t: 'cd', id: p.id, card: p.card }, p.id);
         break;
       }
-      case 'kfx':
-        (async () => {
-          if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; }
-          p.kfx = ownedKill(m.id, p.inv);
-        })().catch((e) => logErr('kfx', e));
+      case 'kfx': // kill effect: quick clicks batch into one inventory read (like 'grap'), the last pick wins
+        p.kfxWant = typeof m.id === 'string' ? m.id : '';
+        if (!p.kfxQ) p.kfxQ = setTimeout(() => {
+          (async () => {
+            if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; }
+            p.kfx = ownedKill(p.kfxWant, p.inv);
+          })().catch((e) => logErr('kfx', e)).finally(() => { p.kfxQ = null; });
+        }, 250);
         break;
       case 'grap': // grapple skin: free ones or ones you own. quick clicks batch into one inventory read, the last pick wins
         p.grapWant = typeof m.id === 'string' ? m.id : '';
@@ -2277,7 +2281,7 @@ class Room {
           })().catch((e) => logErr('skin', e));
         }
         break;
-      case 'pi': send(p, { t: 'po', c: m.c }); break;
+      case 'pi': send(p, { t: 'po', c: Number.isFinite(m.c) ? m.c : 0 }); break; // echo a number, not whatever object came in
       case 'land': this.airFail(p, false); break; // your client saw you touch the ground: run's over
     }
   }
