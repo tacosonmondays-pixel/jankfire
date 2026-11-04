@@ -438,7 +438,7 @@ class Room {
     if (p.team) p.pos = this.pickSpawn(false, p);
     this.players.set(p.id, p);
     // in from the start (or close enough): your Never Landed run counts. the welcome below is your first spawn
-    if (this.round && !this.round.over && now() - (this.round.t0 || 0) < AIR.join) p.air = { ok: !(this.airBad && this.airBad.has(name)), rest: 0 };
+    if (this.round && !this.round.over && now() - (this.round.t0 || 0) < AIR.join && !GAMES[this.game].lava) p.air = { ok: !(this.airBad && this.airBad.has(name)), rest: 0 };
     send(p, {
       t: 'welcome', id: p.id, name, color: p.color, pos: p.pos, q: p.seq, mode: this.mode, cfg: this.cfg,
       players: [...this.players.values()].filter((o) => o !== p).map((o) => this.info(o)),
@@ -2219,7 +2219,7 @@ class Room {
       if (age >= h.time) {
         this.holes.delete(h.id);
         this.broadcast({ t: 'he', id: h.id, p: h.p });
-        if (!owner) continue; // whoever threw it left: it pops harmlessly
+        if (!owner && !h.sky) continue; // whoever threw it left: it pops harmlessly (a sky duck's hole is nobody's: it works)
         for (const t of this.players.values()) {
           if (!t.alive) continue;
           const c = center(t);
@@ -2232,17 +2232,17 @@ class Room {
           if (self && h.big) continue;
           const k = h.blastKb * (0.4 + 0.6 * f);
           if (h.sky) t.skyT = n; // so the kill feed can tell a sky duck from a thrown one
-          this.hurt(t, self ? null : owner, 'duck', self ? 0 : h.blastDmg * f, [dir[0] * k, dir[1] * k + 8 * f, dir[2] * k]);
+          this.hurt(t, self ? null : owner, 'duck', self ? 0 : h.blastDmg * f, [dir[0] * k, dir[1] * k + 8 * f, dir[2] * k], { from: owner ? null : h.p });
         }
         continue;
       }
       h.tick -= dt;
       if (h.tick > 0) continue;
       h.tick = 0.1;
-      if (!owner) continue;
+      if (!owner && !h.sky) continue;
       for (const t of this.players.values()) {
-        if (!t.alive || this.friendly(owner, t) || (h.big && t.id === h.o) || this.bubbleBlocks(owner, t)) continue; // no pulling people out of a bubble
-        if (t.id === h.on) { this.damage(t, w.stuckDmg, owner, 'duck'); continue; } // the one it's stuck to IS the middle
+        if (!t.alive || this.friendly(owner, t) || (h.big && t.id === h.o) || this.bubbleBlocks(owner, t, owner ? null : h.p)) continue; // no pulling people out of a bubble
+        if (t.id === h.on) { if (h.sky) t.skyT = n; this.damage(t, w.stuckDmg, owner, 'duck'); continue; } // the one it's stuck to IS the middle
         const c = center(t);
         const to = [h.p[0] - c[0], h.p[1] - c[1], h.p[2] - c[2]];
         const dist = Math.hypot(...to);
@@ -2261,9 +2261,10 @@ class Room {
   // in flight: latch onto an enemy it touched since last tick, else steer toward the nearest enemy ahead of it.
   // ducks nobody threw (thrower left, ducks from the sky) just fly. true = it stuck and is gone
   duckFly(pr, owner, dt) {
-    if (!owner) return false;
+    if (!owner && !pr.sky) return false; // a thrower who left: it just flies
     const w = WEAPONS.duck;
-    const skip = (t) => t.id === pr.o || this.friendly(owner, t) || this.bubbleBlocks(owner, t);
+    // a sky duck (duck rain) belongs to nobody: it homes in on anyone below it, and a shield bubble stops it from outside
+    const skip = owner ? (t) => t.id === pr.o || this.friendly(owner, t) || this.bubbleBlocks(owner, t) : (t) => this.bubbleBlocks(null, t, pr.p);
     let stuck = pr.lp ? this.sweep(pr.lp, pr.p, pr.r + 0.1, skip)[0] : null;
     if (!stuck) for (const t of this.players.values()) { // sat still inside someone (sweep needs movement)
       if (!t.alive || skip(t)) continue;
@@ -2272,7 +2273,8 @@ class Room {
     if (stuck) {
       pr.p = stuck.at;
       this.removeProj(pr);
-      this.makeHole(center(stuck.t), pr.o, { on: stuck.t.id, delay: w.stick });
+      const h = this.makeHole(center(stuck.t), pr.o, { on: stuck.t.id, delay: w.stick });
+      if (pr.sky) { Object.assign(h, DUCKRAIN.hole, { sky: true }); stuck.t.skyT = now(); } // a sky duck's hole, riding them
       this.tag(stuck.t, owner, 'duck');
       return true;
     }
@@ -2693,6 +2695,9 @@ class Room {
   // that never reports can't just stand around. the match end decides.
   airStart() {
     this.airBad = new Set(); // names that touched down this match: leaving and rejoining doesn't wipe it
+    // Floor Is Lava has no Never Landed run: everyone's kept off the floor there anyway (and the lava bounces you
+    // back up), so it would come almost for free
+    if (GAMES[this.game].lava) return;
     for (const p of this.players.values()) {
       if (p.isBot) continue;
       p.air = { ok: true, rest: 0 };
