@@ -102,7 +102,7 @@ Bots play the objectives too: they carry and plant the bomb, defuse it, and grab
 - **Primary:** Assault Rifle, SMG, Shotgun, Minigun, Sniper, Chicken Rocket, Bowling Ball Launcher, Bow, Peel Shooter
 - **Secondary:** Revolver, Cigarette (smoke it, blow fire), Leaf Blower, Card Deck, Party Popper, Reverse Card, **Snowball**
 - **Melee:** Bread, Slipper (throw it, it comes back), Knife, Hand Slapper (point blank, launches + makes them slip), **Katana**, Spoon, **Scales of Justice**
-- **Item (G):** Frag Grenade (x2, bounces, 2 s fuse, grenade-jump with it), Medkit, Shield Bubble (nothing from outside hurts anyone inside for 7 s), Rubber Duck (black hole), Smoke Bomb (x2), **Bubble Wand** (x2, seals enemies in floating soap bubbles). Charges refill over time.
+- **Item (G):** Frag Grenade (x2, bounces, 2 s fuse, grenade-jump with it), Medkit, Shield Bubble (nothing from outside hurts anyone inside for 7 s), Rubber Duck (homes in and sticks to an enemy; the black hole opens on them and follows them, drags their friends in, eats everyone's momentum and snaps grapples, then pops), Smoke Bomb (x2), **Bubble Wand** (x2, seals enemies in floating soap bubbles). Charges refill over time.
 
 **Only the minigun shoves people with bullets**: hold it on someone and they get pushed away (the price for spraying). Melee and explosives still knock people around, and your own movement tricks (shotgun jumps, minigun flying) still work.
 
@@ -150,7 +150,7 @@ Pick **3** in LOADOUT. Kills in one life (the count resets when you die) earn th
 | 6 | Spinbot: 10 s of aimbot + spinning. You are now a cheater |
 | 6 | Wrecking Ball: 20 s as a giant steel demolition ball in third person: ram, chain-swing, ground slam (see below) |
 | 7 | Spy Satellite: every enemy shows through walls for 20 s |
-| 10 | Giant Duck: a giant black hole where you aim that pulls in everyone but you |
+| 10 | Giant Duck: a giant black hole where you aim that pulls in everyone but you and eats their momentum |
 
 **Wrecking Ball:** you curl up inside a 2.2 m riveted steel demolition ball (a stripe in your colour, a chain stub on top, your eyes peeking out of a slot) and the camera pulls out behind and above you. No guns for 20 s (a box at the top shows the time left, your speed and what a ram or a slam would do right now), but:
 - **Roll:** heavy and fast (about 95 km/h from just pushing), low friction so it keeps rolling, turns slowly, bounces off walls with a clang, falls hard. Space is a small hop, crouch on the floor brakes.

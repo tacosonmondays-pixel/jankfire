@@ -24,6 +24,7 @@ import { verdict } from './shared/verdict.js';
 import { WRECK, slamSize, ramDmg } from './shared/weapons.js'; // wrecking ball
 import { query } from './shared/physics.js';
 import { epicCheck, epicCamMs, EPIC } from './shared/epic.js';
+import { holeDrag, steer } from './shared/physics.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -314,7 +315,7 @@ class Room {
       players: [...this.players.values()].filter((o) => o !== p).map((o) => this.info(o)),
       peels: [...this.peels.values()].map((pl) => ({ id: pl.id, p: pl.p })),
       projs: [...this.projectiles.values()].map((pr) => ({ id: pr.id, k: pr.k, p: pr.p, v: pr.v, o: pr.o })),
-      holes: [...this.holes.values()].map((h) => ({ id: h.id, p: h.p, o: h.o, big: h.big, age: (now() - h.born) / 1000 })),
+      holes: [...this.holes.values()].map((h) => ({ id: h.id, p: h.p, o: h.o, big: h.big, on: h.on || 0, age: (now() - h.born) / 1000 })),
       wave: this.waveInfo(), level: p.level, account: !!p.acct, round: this.roundInfo(),
       bubbles: [...this.bubbles.values()].map((b) => ({ id: b.id, p: b.p, r: b.r, left: b.until - now() })),
       kat: [...this.players.values()].filter((o) => o.kat).map((o) => [o.id, o.kat]),
@@ -621,6 +622,7 @@ class Room {
       }
       b.onGround = false;
     }
+    this.eatMomentum(b, dt);
     const was = b.onGround;
     const res = movePlayer(b.pos, v, dt, this.boxes, was);
     b.onGround = !!res.ground && v[1] <= 0.01;
@@ -1436,6 +1438,7 @@ class Room {
         pr.sync -= dt;
         if (pr.sync <= 0) { pr.sync = 0.1; this.broadcast({ t: 'pu', id: pr.id, p: pr.p.map(r2), v: pr.v.map(r2) }); }
       } else {
+        if (pr.k === 'duck' && this.duckFly(pr, owner, dt)) continue; // homing, and it stuck to someone
         hit = stepProjectile(pr, dt, this.boxes, w.grav);
       }
       if (pr.k === 'duck') {
@@ -1511,8 +1514,10 @@ class Room {
       id: this.nextHole++, p: p.map(r2), o: owner, born: now(), tick: 0, big,
       time: big ? 6 : w.holeTime, R: big ? 34 : w.holeR, pull: big ? 80 : w.pull, blastR: big ? 18 : w.blastR, blastKb: big ? 45 : w.blastKb, blastDmg: big ? 70 : w.blastDmg,
     };
+    if (o.on) { h.on = o.on; h.born += (o.delay || 0) * 1000; h.syncT = now() + 500; } // stuck on someone: opens on them a moment later
     this.holes.set(h.id, h);
-    this.broadcast({ t: 'hs', id: h.id, p: h.p, o: owner, big });
+    this.broadcast({ t: 'hs', id: h.id, p: h.p, o: owner, big, on: h.on || 0, age: r2((now() - h.born) / 1000) });
+    return h;
   }
 
   tickHoles(dt) {
@@ -1520,6 +1525,8 @@ class Room {
     for (const h of this.holes.values()) {
       const age = (n - h.born) / 1000;
       const owner = this.players.get(h.o);
+      this.holeSync(h, n);
+      if (age < 0) continue; // stuck duck: the hole opens on them in a moment
       if (age >= h.time) {
         this.holes.delete(h.id);
         this.broadcast({ t: 'he', id: h.id, p: h.p });
@@ -1543,15 +1550,80 @@ class Room {
       h.tick = 0.1;
       for (const t of this.players.values()) {
         if (!t.alive || this.friendly(owner, t) || (h.big && t.id === h.o)) continue;
+        if (t.id === h.on) { this.damage(t, w.stuckDmg, owner, 'duck'); continue; } // the one it's stuck to IS the middle
         const c = center(t);
         const to = [h.p[0] - c[0], h.p[1] - c[1], h.p[2] - c[2]];
         const dist = Math.hypot(...to);
         if (dist > h.R || dist < 0.05) continue;
         const s = (h.pull * (1 - dist / h.R) + 8) * 0.1 * Math.min(1, dist / 1.5);
-        this.knock(t, to.map((x) => (x / dist) * s), 'duck');
+        // plus a little lift each pulse: off their feet, ground friction can't hold them back (a duck stuck on someone at floor height pulls sideways)
+        this.knock(t, [to[0] / dist * s, to[1] / dist * s + w.lift * Math.min(1, dist / 1.5), to[2] / dist * s], 'duck');
         if (t.id !== h.o) this.tag(t, owner, 'duck');
         if (dist < 2 && t.id !== h.o) this.damage(t, 3, owner, 'duck');
       }
+    }
+  }
+
+  // ---------------------------------------------------------- rubber duck: homes in, sticks, the hole rides its victim
+  // in flight: latch onto an enemy it touched since last tick, else steer toward the nearest enemy ahead of it.
+  // ducks nobody threw (thrower left, ducks from the sky) just fly. true = it stuck and is gone
+  duckFly(pr, owner, dt) {
+    if (!owner) return false;
+    const w = WEAPONS.duck;
+    const skip = (t) => t.id === pr.o || this.friendly(owner, t) || this.bubbleBlocks(owner, t);
+    let stuck = pr.lp ? this.sweep(pr.lp, pr.p, pr.r + 0.1, skip)[0] : null;
+    if (!stuck) for (const t of this.players.values()) { // sat still inside someone (sweep needs movement)
+      if (!t.alive || skip(t)) continue;
+      if (playerBoxes(t.pos).some((b) => b.min.every((m, i) => pr.p[i] > m - pr.r) && b.max.every((m, i) => pr.p[i] < m + pr.r))) { stuck = { t, at: pr.p.slice() }; break; }
+    }
+    if (stuck) {
+      pr.p = stuck.at;
+      this.removeProj(pr);
+      this.makeHole(center(stuck.t), pr.o, { on: stuck.t.id, delay: w.stick });
+      this.tag(stuck.t, owner, 'duck');
+      return true;
+    }
+    pr.lp = pr.p.slice();
+    // homing: nearest enemy within homeR, inside a 60 degree cone of where it's flying, in plain view
+    const sp = Math.hypot(pr.v[0], pr.v[1], pr.v[2]);
+    let tgt = null, bd = w.homeR;
+    if (sp > 4) for (const t of this.players.values()) {
+      if (!t.alive || skip(t)) continue;
+      const c = center(t), to = [c[0] - pr.p[0], c[1] - pr.p[1], c[2] - pr.p[2]], d = Math.hypot(...to);
+      if (d >= bd || d < 0.05 || (to[0] * pr.v[0] + to[1] * pr.v[1] + to[2] * pr.v[2]) / (d * sp) < w.homeCos) continue;
+      if (raycast(pr.p, to.map((x) => x / d), d, this.boxes)) continue;
+      tgt = t; bd = d;
+    }
+    if (tgt) { const c = center(tgt); steer(pr.v, [c[0] - pr.p[0], c[1] - pr.p[1], c[2] - pr.p[2]], w.turn * dt); }
+    // clients steer it too (toward the same person); this keeps them honest
+    const hid = tgt ? tgt.id : 0;
+    pr.sync -= dt;
+    if (hid !== (pr.hid || 0) || (hid && pr.sync <= 0)) {
+      pr.hid = hid; pr.sync = 0.1;
+      this.broadcast({ t: 'dh', id: pr.id, p: pr.p.map(r2), v: pr.v.map(r2), h: hid });
+    }
+    return false;
+  }
+  // a stuck duck's hole rides its victim until they die. everyone gets its size, who it's on and where it is
+  // right away and twice a second after (late joiners catch up the same way)
+  holeSync(h, n) {
+    if (h.on) {
+      const t = this.players.get(h.on);
+      if (t && t.alive) h.p = center(t).map(r2);
+      else { h.on = 0; h.syncT = 0; }
+    }
+    if (n < (h.syncT || 0)) return;
+    h.syncT = n + 500;
+    this.broadcast({ t: 'hu', id: h.id, p: h.p, R: h.R, on: h.on || 0, age: r2((n - h.born) / 1000) });
+  }
+  // bots inside a black hole lose their momentum like players do (not the thrower or their team) and ropes near the middle snap
+  eatMomentum(b, dt) {
+    if (!this.holes.size || (b.ai.dummy && b.ai.dummy.move)) return;
+    const w = WEAPONS.duck, n = now();
+    for (const h of this.holes.values()) {
+      if (n < h.born || b.id === h.o || this.friendly(this.players.get(h.o), b)) continue;
+      const d = holeDrag(b.pos, b.vel, h.p, h.R, w.drag * (b.id === h.on ? w.onDrag : 1), dt);
+      if (d >= 0 && d < w.snapR * (h.big ? 1.6 : 1) && b.ai.hook) { b.ai.hook = null; b.g = null; }
     }
   }
 
