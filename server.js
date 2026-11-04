@@ -1870,7 +1870,7 @@ class Room {
   makeProj(p, wid, pos, vel, extra = {}) {
     const w = WEAPONS[wid];
     const pr = { id: this.nextProj++, k: wid, o: p.id, r: w.r, bounce: w.bounce || 0, born: now() - 300, phase: 0, hit: new Map(), sync: 0, p: pos.slice(), v: vel.slice(), ...extra };
-    pr.ef = this.epicState(p); // EPIC: where (and how) they fired it from
+    pr.ef = p.pos ? this.epicState(p) : null; // EPIC: where (and how) they fired it from (a sky duck has nobody)
     this.projectiles.set(pr.id, pr);
     this.broadcast({ t: 'ps', id: pr.id, k: pr.k, p: pr.p.map(r2), v: pr.v.map(r2), o: p.id, tip: extra.tip });
     return pr;

@@ -1123,7 +1123,9 @@ net.on('bombev', (m) => {
 function onIc(m) {
   if (!m || !Object.hasOwn(ITEMS, m.i)) return;
   syncItem(m.i, m.n, m.next);
-  if (m.i !== W.item && !W.only) { setItem(m.i); showSlots(); } // (gun game / zombies: one weapon, no item)
+  // (gun game / zombies hand you one weapon and no item, a chaos kit can say no item: the 'ic' doesn't put it back)
+  const noItem = W.only || (G.forcedLoadout && G.forcedLoadout.only && G.forcedLoadout.item === 'none');
+  if (m.i !== W.item && !noItem) { setItem(m.i); showSlots(); }
 }
 net.on('ic', onIc);
 // the katana grows: everyone sees how long yours is
