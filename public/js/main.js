@@ -1636,6 +1636,8 @@ function frame(t) {
     const a = now * 0.00005;
     cam.position.set(Math.sin(a) * 40, 18, Math.cos(a) * 40);
     ME.yaw = a; ME.pitch = -0.35;
+    const mc = MAPS[G.cfg.map] && MAPS[G.cfg.map].menuCam; // sealed maps: orbit inside instead of over the roof
+    if (mc) { cam.position.set(Math.sin(a) * mc[0], mc[1], Math.cos(a) * mc[0]); ME.pitch = mc[2]; }
   }
 
   G.shake = S.shake ? Math.max(0, G.shake - dt * 2.2) : 0;

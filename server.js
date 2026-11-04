@@ -32,6 +32,7 @@ import { steer as steerTo } from './shared/homing.js'; // homing slippers (steer
 import { PARRY } from './shared/weapons.js';
 import { ropeStep, ropeJump, ROPE } from './shared/hookphys.js';
 import { query as boxQuery } from './shared/physics.js';
+import { navSteer } from './shared/nav.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -231,7 +232,7 @@ function deal(p) {
 // and lane ends (the sites) link to each other, so a bot can get from any lane to any site or to a dropped bomb
 const NAV = new WeakMap();
 function navGraph(map) {
-  if (!map || !map.nav) return null;
+  if (!map || !map.nav || map.graph) return null; // maze maps have a real walk graph instead (shared/nav.js, navSteer)
   let g = NAV.get(map);
   if (g) return g;
   g = { pts: [], adj: [], ends: {} };
@@ -354,10 +355,16 @@ class Room {
     p.color = TEAMS[p.team].color;
   }
 
+  // could someone standing at spawn s see p? (within the fog, nothing in between)
+  inSight(s, p) {
+    const e = [s[0], s[1] + PH.eye, s[2]], d = [p.pos[0] - e[0], p.pos[1] + 1 - e[1], p.pos[2] - e[2]], l = Math.hypot(...d);
+    return l < (this.map.fogFar || 1e9) && !raycast(e, [d[0] / l, d[1] / l, d[2] / l], l, this.boxes);
+  }
+
   pickSpawn(forBot, who) {
     let spawns = this.map.spawns;
     const ts = this.map.teamSpawns;
-    if (who && who.team && this.teamsOn() && ts) {
+    if (who && who.team && this.teamsOn() && ts && !(this.map.teamSpawnsBomb && this.game !== 'bomb')) { // teamSpawnsBomb: other team modes spawn all over, away from enemies
       const attacking = this.game === 'bomb' ? who.team === (this.bomb ? this.bomb.att : 1) : who.team === 1;
       spawns = attacking ? ts.att : ts.def;
     }
@@ -365,6 +372,8 @@ class Room {
     for (const s of spawns) {
       let d = 1e9;
       for (const p of this.players.values()) if (p.alive && p !== who && (!forBot || !p.isBot) && !(who && who.team && p.team === who.team)) d = Math.min(d, dist3(s, p.pos));
+      if (this.map.spawnSafe) for (const p of this.players.values()) if (p.alive && p !== who && (!forBot || !p.isBot) && !(who && who.team && p.team === who.team) && this.inSight(s, p)) d = Math.min(d, dist3(s, p.pos) * 0.3); // in plain sight down a long hall isn't safe
+      if (this.map.spawnSafe) d = Math.min(d, this.map.spawnSafe); // huge maps: far enough is far enough, then it's random (not always the one corner farthest from you)
       d += Math.random() * 15;
       if (d > bestD) { bestD = d; best = s; }
     }
@@ -590,6 +599,18 @@ class Room {
       else ai.progQ = null; // busy fighting, not walking the route: that doesn't count as stuck
     }
     ai.navJump = false;
+    // mazes: follow the map's walk graph (shared/nav.js) to wherever we were about to walk straight at (and into a wall).
+    // in every mode: fights, wandering, the bomb (lane waypoints from laneTo, a dropped bomb), tags
+    if (this.map.graph) {
+      const gl = goal ? Math.hypot(goal.p[0] - b.pos[0], goal.p[2] - b.pos[2]) : 0;
+      const want = goal && (goal.force || !t || !t.alive || !ai.seenAt) ? (goal.use && gl < goal.r ? null : goal.p) : t && t.alive ? (ai.seenAt ? null : t.pos) : ai.wp;
+      const s = want && navSteer(this.map.graph, ai.nav || (ai.nav = {}), b.pos, want, n);
+      if (s) {
+        wx = s[0]; wz = s[1];
+        if (s[2] && b.onGround) jump = true; // hop to get unstuck
+        if (!t || !t.alive || (!ai.seenAt && dist3(t.pos, b.pos) > 12)) b.yaw = lerpAngle(b.yaw, Math.atan2(-wx, -wz), 30 * dt); // look where you walk, not through walls
+      }
+    }
     // grappling: chase people who are far / up high / out of sight, save yourself when falling, show off sometimes
     if (!ai.hook && n >= (ai.nextHook || 0) && this.mode !== 'training') {
       const skill = ai.diff === 'easy' ? 0.35 : ai.diff === 'hard' ? 1 : 0.7;
@@ -627,6 +648,7 @@ class Room {
 
   // walk the map's lanes toward a site (bots can't path-find, so maps give them routes: see navGraph)
   routeTo(b, siteId, final) {
+    if (this.map.graph) return this.laneTo(b, siteId, final); // maze maps: the walk graph drives (see laneTo)
     const g = navGraph(this.map), ends = g && g.ends[siteId];
     return ends && ends.length ? this.navTo(b, 'site' + siteId, final, ends) : final;
   }
@@ -702,6 +724,22 @@ class Room {
     const ids = this.fighters().filter((p) => p.isBot && p.alive && p.team === B.att).map((p) => [cost(p), p.id]).sort((a, c) => a[0] - c[0]).slice(0, 2).map((e) => e[1]);
     B.chase = { key, until: n + 1500, ids };
     return ids;
+  }
+  // maze maps (map.graph, e.g. Backrooms): walk one of the site's lanes waypoint by waypoint (they spread the bots out,
+  // one goes down through the pools); navSteer in botThink walks each leg through the walk graph, stairs and drops
+  laneTo(b, siteId, final) {
+    const nav = this.map.nav && this.map.nav[siteId];
+    if (!nav) return final;
+    const ai = b.ai;
+    if (!ai.route || ai.routeSite !== siteId) {
+      let best = null, bd = 1e9, bi = 0;
+      for (const rt of nav) rt.forEach((q, i) => { const d = Math.hypot(q[0] - b.pos[0], q[1] - b.pos[2]) + Math.abs((q[2] ?? b.pos[1]) - b.pos[1]) * 3; if (d < bd) { bd = d; best = rt; bi = i; } });
+      ai.route = best; ai.ri = bi; ai.routeSite = siteId;
+    }
+    const rt = ai.route; // points are [x, z] or [x, z, y] (routes that go down a level)
+    while (ai.ri < rt.length && Math.hypot(rt[ai.ri][0] - b.pos[0], rt[ai.ri][1] - b.pos[2]) < 2.6 && Math.abs((rt[ai.ri][2] ?? b.pos[1]) - b.pos[1]) < 2) ai.ri++;
+    if (ai.ri >= rt.length) return final;
+    return [rt[ai.ri][0], rt[ai.ri][2] ?? b.pos[1], rt[ai.ri][1]];
   }
   botGoal(b) {
     const B = this.bomb;
@@ -2685,7 +2723,7 @@ class Room {
     const b = this.bomb;
     if (!first && b.n === BOMB.swapAfter) { b.att = 3 - b.att; this.broadcast({ t: 'chat', id: 0, m: 'SIDES SWAPPED' }); }
     b.n++;
-    Object.assign(b, { ph: 'live', site: null, p: null, drop: null, explodeAt: 0, act: null, between: 0, ends: now() + BOMB.roundTime * 1000, carrier: 0 });
+    Object.assign(b, { ph: 'live', site: null, p: null, drop: null, explodeAt: 0, act: null, between: 0, ends: now() + (process.env.JF_BOMB_ROUND ? BOMB.roundTime : this.map.roundTime || BOMB.roundTime) * 1000, carrier: 0 }); // per-map round time (the test knob still wins)
     for (const p of this.players.values()) if (p.ai) { p.ai.site = null; p.ai.route = null; }
     this.projectiles.clear(); this.peels.clear(); this.holes.clear();
     this.resetWorld();
@@ -3062,6 +3100,9 @@ wss.on('connection', (ws) => {
     me.room.remove(me);
   }));
 });
+
+// maze maps build their bots' walk graph (and lanes) the first time they're asked for: do it now, not mid-match
+for (const m of Object.values(MAPS)) if (m.graph) void m.nav;
 
 // ---------------------------------------------------------------- loops
 const TICK = 1 / 60;
