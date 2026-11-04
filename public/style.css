@@ -322,7 +322,7 @@ body.replaying #speedLines { visibility: hidden; }
 #votePanel { position: absolute; right: 16px; top: 34%; width: 300px; background: rgba(10, 0, 20, 0.85); border: 3px solid var(--cyan); padding: 10px 12px; box-shadow: 4px 4px 0 #000; }
 #votePanel .vt { font-size: 14px; color: var(--cyan); margin-bottom: 6px; }
 .vopt { display: flex; align-items: center; gap: 8px; padding: 5px 6px; margin-top: 4px; background: rgba(255, 255, 255, 0.06); font-size: 15px; }
-.vopt b { color: #ffe14d; width: 16px; }
+.vopt b { color: #ffe14d; min-width: 16px; white-space: nowrap; } /* rebound keys can be longer than one digit (Num 1, Mouse 4) */
 .vopt span { flex: 1; }
 .vopt i { font-style: normal; color: #fff; background: rgba(255, 255, 255, 0.15); padding: 0 6px; }
 .vopt.on { outline: 2px solid #ffe14d; }
