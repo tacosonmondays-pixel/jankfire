@@ -29,6 +29,29 @@ export const COSMETICS = {
     slapper_foam: { name: 'Foam Finger', rarity: 'rare', weapon: 'slapper' },
     slapper_paw: { name: 'Bear Paw', rarity: 'epic', weapon: 'slapper' },
     bread_croissant: { name: 'Croissant Club', rarity: 'epic', weapon: 'bread' },
+    ar_toy: { name: 'Toy Blaster', rarity: 'common', weapon: 'ar' },
+    ar_bullpup: { name: 'Bullpup', rarity: 'rare', weapon: 'ar' },
+    smg_uzi: { name: 'Pocket Uzi', rarity: 'rare', weapon: 'smg' },
+    shotgun_double: { name: 'Double Barrel', rarity: 'rare', weapon: 'shotgun' },
+    minigun_gatling: { name: 'Old Gatling', rarity: 'epic', weapon: 'minigun' },
+    sniper_musket: { name: 'Musket', rarity: 'legendary', weapon: 'sniper' },
+    revolver_flint: { name: 'Flintlock', rarity: 'epic', weapon: 'revolver' },
+    chicken_turkey: { name: 'Turkey Launcher', rarity: 'rare', weapon: 'chicken' },
+    bowling_cannon: { name: 'Hand Cannon', rarity: 'epic', weapon: 'bowling' },
+    banana_bunch: { name: 'Bunch Blaster', rarity: 'rare', weapon: 'banana' },
+    bow_compound: { name: 'Compound Bow', rarity: 'rare', weapon: 'bow' },
+    cig_cigar: { name: 'Fat Cigar', rarity: 'rare', weapon: 'cig' },
+    blower_dryer: { name: 'Hair Dryer', rarity: 'epic', weapon: 'blower' },
+    popper_bottle: { name: 'Champagne', rarity: 'epic', weapon: 'popper' },
+    reverse_skip: { name: 'Skip Card', rarity: 'common', weapon: 'reverse' },
+    snowball_ice: { name: 'Ice Cube', rarity: 'rare', weapon: 'snowball' },
+    spoon_ladle: { name: 'Ladle', rarity: 'common', weapon: 'spoon' },
+    slipper_croc: { name: 'Croc', rarity: 'epic', weapon: 'slipper' },
+    scythe_reaper: { name: 'Reaper', rarity: 'legendary', weapon: 'scythe' },
+    katana_bokken: { name: 'Bokken', rarity: 'common', weapon: 'katana' },
+    marbles_gumball: { name: 'Gumball Machine', rarity: 'rare', weapon: 'marbles' },
+    redline_hotrod: { name: 'Hot Rod', rarity: 'epic', weapon: 'redline' },
+    katana_shirasaya: { name: 'Shirasaya', rarity: 'rare', weapon: 'katana' },
   },
   hat: {
     none: { name: 'None', rarity: 'free' }, party: { name: 'Party Hat', rarity: 'free' }, cone: { name: 'Traffic Cone', rarity: 'free' },
@@ -70,7 +93,7 @@ export function modelsFor(weapon) { return Object.entries(COSMETICS.model).filte
 
 // inventory = { finish: [...ids], hat: [...], effect: [...] } of things you rolled. Free stuff is always owned.
 export function owns(inv, type, id) {
-  const c = COSMETICS[type] && COSMETICS[type][id];
+  const c = typeof id === 'string' && Object.hasOwn(COSMETICS, type) && Object.hasOwn(COSMETICS[type], id) && COSMETICS[type][id];
   if (!c) return false;
   return c.rarity === 'free' || !!(inv && Array.isArray(inv[type]) && inv[type].includes(id));
 }
@@ -81,7 +104,7 @@ export function ownedSkin(skin, inv, weapon) {
   if (!Array.isArray(skin)) return d;
   return TYPES.map((t, i) => {
     const v = skin[i] ?? d[i];
-    if (t === 'model' && v !== 'default' && (!COSMETICS.model[v] || (weapon && COSMETICS.model[v].weapon !== weapon))) return 'default';
+    if (t === 'model' && v !== 'default' && (typeof v !== 'string' || !Object.hasOwn(COSMETICS.model, v) || (weapon && COSMETICS.model[v].weapon !== weapon))) return 'default';
     return owns(inv, t, v) ? v : d[i];
   });
 }

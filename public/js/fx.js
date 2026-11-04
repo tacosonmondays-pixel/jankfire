@@ -1,5 +1,6 @@
 // Particles (square, because circles cost extra), tracers, ropes, explosions.
 import * as THREE from 'three';
+import { marbles } from './marbles.js';
 
 const VS = `
 attribute float aSize; attribute float aAlpha; attribute vec3 aColor; attribute float aTile;
@@ -127,6 +128,7 @@ export const fx = {
     misc = new PSys(2500, THREE.NormalBlending);
     blood = new PSys(1500, THREE.NormalBlending);
     sc.add(smoke.points, misc.points, fire.points, blood.points);
+    marbles.init(sc);
   },
   // square pixel blood. dir = which way it sprays. floorY = where decals land (or null)
   blood(p, dir, amount, floorY) {
@@ -273,6 +275,7 @@ export const fx = {
   },
   update(dt) {
     fire.update(dt); smoke.update(dt); misc.update(dt); blood.update(dt);
+    marbles.update(dt);
     for (let i = decals.length - 1; i >= 0; i--) {
       const m = decals[i];
       m.userData.life -= dt;

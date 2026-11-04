@@ -5,6 +5,8 @@ import { jankify } from './jank.js';
 import { applySkin } from './skins.js';
 import { COSMETICS } from '/shared/cosmetics.js';
 import { SUITS, RANKS, ARROW_TIPS } from '/shared/weapons.js';
+import { BLADES } from './blades/index.js';
+import { lathe } from './blades/kit.js';
 
 // ------------------------------------------------------------ playing card faces (canvas, cached)
 const cardFaces = new Map();
@@ -49,6 +51,7 @@ export async function loadTripoModels() {
 function prep(scene, it) {
   scene.traverse((o) => {
     if (!o.isMesh) return;
+    o.geometry.userData.shared = true; // every clone of this model uses the same geometry: freeTree leaves it alone
     for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
       for (const k of ['map', 'emissiveMap', 'normalMap', 'roughnessMap', 'metalnessMap']) {
         if (m[k]) { m[k].magFilter = THREE.NearestFilter; m[k].minFilter = THREE.NearestFilter; m[k].generateMipmaps = false; m[k].needsUpdate = true; }
@@ -89,6 +92,13 @@ export function fitted(id, opts = {}) {
 }
 
 // ------------------------------------------------------------ primitive helpers
+// a discarded model's own geometries go back to the GPU (shared ones, sprites' and GLB parts stay). materials are
+// mostly the shared M() ones, so each owner frees its own.
+export function freeTree(root) {
+  root.traverse((o) => { if (o.geometry && !o.isSprite && !o.geometry.userData.shared) o.geometry.dispose(); });
+}
+// in a team game the team colour beats clothing colours (so nobody dresses as the other team)
+export function teamLook(look, team) { return team && look ? { ...look, topColor: '', bottomColor: '' } : look; }
 const matCache = new Map();
 export function M(color, basic = false) {
   const key = color + (basic ? 'b' : 'l');
@@ -115,6 +125,73 @@ function ball(r, color, x = 0, y = 0, z = 0, basic = false) {
   const m = new THREE.Mesh(new THREE.SphereGeometry(r, 6, 4), M(color, basic));
   m.position.set(x, y, z);
   return m;
+}
+
+
+// ------------------------------------------------------------ Redline + Marble Shotgun bits
+let tachoMat = null;
+function tachoFace() { // tachometer dial: ticks sweep clockwise from bottom-left to bottom-right, red zone at the end
+  if (tachoMat) return tachoMat;
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const x = c.getContext('2d');
+  x.fillStyle = '#0d0d10'; x.beginPath(); x.arc(64, 64, 63, 0, Math.PI * 2); x.fill();
+  const P = (th, r) => [64 + Math.sin(th) * r, 64 - Math.cos(th) * r];
+  x.strokeStyle = '#e8281e'; x.lineWidth = 12; x.beginPath(); x.arc(64, 64, 49, 1.2 - Math.PI / 2, 2.3 - Math.PI / 2); x.stroke();
+  for (let i = 0; i <= 10; i++) {
+    const th = -2.3 + (4.6 * i) / 10, [x0, y0] = P(th, 57), [x1, y1] = P(th, i % 2 ? 47 : 40);
+    x.strokeStyle = th > 1.15 ? '#ff6a5a' : '#f2f2f2'; x.lineWidth = i % 2 ? 3 : 6;
+    x.beginPath(); x.moveTo(x0, y0); x.lineTo(x1, y1); x.stroke();
+  }
+  x.fillStyle = '#f2f2f2'; x.font = 'bold 17px sans-serif'; x.textAlign = 'center'; x.fillText('RPM', 64, 100);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter;
+  return (tachoMat = new THREE.MeshBasicMaterial({ map: t }));
+}
+function redlineBuild(g, hot) {
+  const body = hot ? 0xc8ccd4 : 0x24262d, accent = hot ? 0xff7a1a : 0xc81e1e, dark = hot ? 0x2a2a2e : 0x151515;
+  g.add(bx(0.06, 0.1, 0.3, body, 0, 0, -0.04)); // receiver
+  g.add(bx(0.062, 0.018, 0.3, accent, 0, 0.058, -0.04)); // top rail
+  g.add(bx(0.062, 0.012, 0.16, accent, 0, -0.03, -0.07)); // stripe
+  const grip = bx(0.04, 0.12, 0.05, dark, 0, -0.1, 0.05); grip.rotation.x = -0.3; g.add(grip);
+  g.add(bx(0.036, 0.16, 0.05, dark, 0, -0.12, -0.1)); // mag
+  g.add(bx(0.05, 0.08, 0.16, dark, 0, -0.01, 0.19)); // stock
+  g.add(cylZ(0.034, 0.22, hot ? 0xd8dde4 : 0x3a3d45, 0, 0.01, -0.29, 8)); // barrel shroud
+  // vents in the shroud glow hotter the lower your HP (weapons.js drives the colour)
+  const vent = jankify(new THREE.MeshBasicMaterial({ color: 0x401010 }));
+  for (let i = 0; i < 4; i++) {
+    const v = new THREE.Mesh(new THREE.BoxGeometry(0.072, 0.012, 0.022), vent);
+    v.position.set(0, 0.012, -0.21 - i * 0.045); v.userData.noWrap = true; g.add(v);
+  }
+  g.userData.vents = vent;
+  g.add(cylZ(0.016, 0.07, 0x111111, 0, 0.01, -0.43, 8)); // muzzle brake
+  for (const sx of [-1, 1]) g.add(bx(0.006, 0.02, 0.03, 0x111111, sx * 0.016, 0.01, -0.42));
+  // the tachometer on the left side, facing you: its needle is your fire rate
+  const dial = new THREE.Group(); dial.position.set(-0.034, 0.03, -0.05); g.add(dial);
+  dial.add(new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.01, 14).rotateZ(Math.PI / 2), M(hot ? 0xd8dde4 : 0x101010)));
+  const face = new THREE.Mesh(new THREE.CircleGeometry(0.031, 18), tachoFace());
+  face.rotation.y = -Math.PI / 2; face.position.x = -0.0055; face.userData.noWrap = true; dial.add(face);
+  const needle = new THREE.Group(); needle.position.x = -0.007; dial.add(needle);
+  const nm = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.026, 0.003), M(0xff2a2a, true)); nm.position.y = 0.011; nm.userData.noWrap = true; needle.add(nm);
+  needle.rotation.x = -2.3;
+  g.userData.needle = needle;
+  if (hot) { // hot rod: chrome side pipes and flame licks
+    for (const sx of [-1, 1]) {
+      g.add(cylZ(0.009, 0.24, 0xd8dde4, sx * 0.04, -0.035, -0.1, 8));
+      g.add(cylZ(0.012, 0.02, 0x333333, sx * 0.04, -0.035, -0.225, 8));
+      for (let i = 0; i < 3; i++) { const f = bx(0.003, 0.012, 0.07 - i * 0.015, i % 2 ? 0xffd23b : 0xff7a1a, sx * 0.031, 0.02 - i * 0.014, 0.02 + i * 0.01); f.rotation.x = 0.25; g.add(f); }
+    }
+  }
+  g.userData.muzzle = new THREE.Vector3(0, 0.01, -0.47);
+  g.userData.len = 0.68;
+}
+const MARBLE_COLS = [0x2f7bff, 0x19c37d, 0xff4f4f, 0xffd23b, 0xb07dff, 0xff8a1a, 0x37d6ff];
+const GUM_COLS = [0xff2e63, 0xffd400, 0x00c2ff, 0x7dff4f, 0xff7a1a, 0xffffff, 0xff4fd8];
+function glassMat() { return jankify(new THREE.MeshLambertMaterial({ color: 0xcfefff, transparent: true, opacity: 0.3, depthWrite: false })); }
+function fillWith(g, cols, n, cx, cy, cz, rx, h, r) { // marbles/gumballs piled in a container
+  for (let i = 0; i < n; i++) {
+    const a = i * 2.4, k = (i % 4) / 4;
+    const m = ball(r, cols[i % cols.length], cx + Math.cos(a) * rx * (0.3 + k), cy + Math.floor(i / 4) * r * 1.7, cz + Math.sin(a) * rx * (0.3 + k));
+    m.userData.noWrap = true; g.add(m);
+  }
 }
 
 // ------------------------------------------------------------ weapons (forward = -Z, grip at origin)
@@ -177,6 +254,24 @@ const WB = {
     g.add(bx(0.04, 0.03, 0.2, 0x555566, 0, 0.0, 0.2));
     g.userData.muzzle = new THREE.Vector3(0, 0.01, -0.37);
     g.userData.len = 0.6;
+  },
+  redline(g) { redlineBuild(g, false); }, // a stubby carbine with a tachometer bolted on
+  marbles(g) { // a brass blunderbuss fed from a jar of marbles
+    const grip = bx(0.036, 0.12, 0.048, 0x6b3a1a, 0, -0.07, 0.07); grip.rotation.x = -0.45; g.add(grip);
+    g.add(bx(0.044, 0.06, 0.2, 0x6b3a1a, 0, -0.012, 0.0)); // walnut stock
+    g.add(bx(0.05, 0.05, 0.1, 0x34343c, 0, 0.004, -0.03)); // iron lock
+    g.add(bx(0.006, 0.035, 0.05, 0x1a1a1a, 0, -0.05, 0.02)); // trigger guard
+    g.add(bx(0.04, 0.035, 0.12, 0x6b3a1a, 0, -0.022, -0.15)); // forestock
+    g.add(lathe([[0.019, -0.08], [0.019, -0.24], [0.024, -0.3], [0.036, -0.335], [0.052, -0.36], [0.05, -0.368], [0.036, -0.35], [0.022, -0.31], [0, -0.3]], 0xc8a050, { segs: 12, y: 0.012 }));
+    g.add(cylZ(0.023, 0.016, 0xa07830, 0, 0.012, -0.1, 12)); // barrel bands
+    g.add(cylZ(0.023, 0.016, 0xa07830, 0, 0.012, -0.22, 12));
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.016, 0.03, 8), M(0xc8a050)); neck.position.set(0, 0.045, -0.06); g.add(neck);
+    const jar = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.075, 12), glassMat());
+    jar.position.set(0, 0.098, -0.06); jar.userData.noWrap = true; jar.renderOrder = 2; g.add(jar);
+    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.012, 12), M(0x2a2a2a)); lid.position.set(0, 0.141, -0.06); g.add(lid);
+    fillWith(g, MARBLE_COLS, 10, 0, 0.074, -0.06, 0.018, 0, 0.012);
+    g.userData.muzzle = new THREE.Vector3(0, 0.012, -0.37);
+    g.userData.len = 0.5;
   },
   shotgun(g) {
     g.add(cylZ(0.025, 0.7, 0x1a1a1a, 0, 0.025, -0.38));
@@ -310,18 +405,16 @@ const WB = {
     g.userData.muzzle = new THREE.Vector3(0, 0, -1.45);
     g.userData.len = 1.6;
   },
+  snowball(g) {
+    const b = ball(0.07, 0xf2f8ff, 0, 0.02, -0.08); b.scale.set(1, 0.92, 1); g.add(b);
+    g.add(ball(0.03, 0xffffff, 0.03, 0.06, -0.1));
+    g.userData.muzzle = new THREE.Vector3(0, 0.02, -0.16);
+    g.userData.len = 0.18;
+  },
   slipper(g) {
     slipper(g, 1);
     g.userData.muzzle = new THREE.Vector3(0, 0, -0.15);
     g.userData.len = 0.3;
-  },
-  knife(g) { // standard combat knife
-    g.add(bx(0.035, 0.05, 0.13, 0x2a2a2a, 0, 0, 0.02));
-    g.add(bx(0.07, 0.015, 0.02, 0x555555, 0, 0.01, -0.05));
-    const blade = bx(0.012, 0.045, 0.2, 0xd8dde4, 0, 0.012, -0.16); g.add(blade);
-    g.add(bx(0.012, 0.02, 0.05, 0xd8dde4, 0, 0.03, -0.27));
-    g.userData.muzzle = new THREE.Vector3(0, 0.01, -0.3);
-    g.userData.len = 0.35;
   },
   slapper(g) { // toy hand on a stick
     g.add(cylZ(0.015, 0.6, 0xffe14d, 0, 0, -0.2, 6));
@@ -422,54 +515,192 @@ const HAT_AT = {
   sniper: [[0, 0.16, -0.05], 0.13], chicken: [[0, 0.075, -0.5], 0.09], bowling: [[0, 0.17, -0.1], 0.15], banana: [[0, 0.185, 0.02], 0.1],
   revolver: [[0, 0.065, -0.02], 0.08], cig: [[0, 0.0125, 0.055], 0.04], blower: [[0, 0.22, 0.05], 0.14], popper: [[0, 0.07, 0.02], 0.07],
   reverse: [[0, 0.09, 0.02], 0.07], duck: [[0, 0.152, -0.072], 0.06], bread: [[0, 0.11, -0.3], 0.16], slipper: [[0, 0.068, -0.08], 0.07],
-  spoon: [[0, 0.017, -0.13], 0.04], knife: [[0, 0.025, 0.04], 0.05], slapper: [[0, 0.0125, -0.55], 0.09], scythe: [[0, 0.47, -0.8], 0.14],
+  spoon: [[0, 0.017, -0.13], 0.04], slapper: [[0, 0.0125, -0.55], 0.09], scythe: [[0, 0.47, -0.8], 0.14],
   scythe_rifle: [[0, 0.13, -0.05], 0.12], bow: [[0, 0.08, 0.0], 0.08], cards: [[0, 0.07, -0.004], 0.07],
-  knife_kitchen: [[0, 0.0225, 0.04], 0.05], knife_bowie: [[0, 0.025, 0.04], 0.05], knife_cleaver: [[0, 0.1, -0.12], 0.07],
-  knife_switch: [[0, 0.02, 0.03], 0.05], knife_karambit: [[0, 0.02, 0.01], 0.05], knife_butterfly: [[0, 0.016, 0.02], 0.05],
   slapper_foam: [[0, 0.03, -0.5], 0.1], slapper_paw: [[0, 0.06, -0.5], 0.1], bread_croissant: [[0, 0.15, -0.6], 0.15],
   p_chicken: [[0, 0.31, -0.28], 0.15], p_bowling: [[0, 0.45, 0], 0.3], p_duck: [[0, 0.418, -0.2], 0.2], p_slipper: [[0, 0.11, -0.13], 0.1], p_banana: [[0, 0.24, 0], 0.12],
 };
 
 // weapon skins: a different model for the same weapon
+let skipTexture = null;
+function skipTex() {
+  if (skipTexture) return skipTexture;
+  const c = document.createElement('canvas'); c.width = 32; c.height = 48;
+  const x = c.getContext('2d');
+  x.fillStyle = '#2a7a3a'; x.fillRect(0, 0, 32, 48); x.fillStyle = '#fff'; x.fillRect(3, 3, 26, 42);
+  x.fillStyle = '#2a7a3a'; x.fillRect(5, 5, 22, 38);
+  x.strokeStyle = '#fff'; x.lineWidth = 4; x.beginPath(); x.arc(16, 24, 8, 0, Math.PI * 2); x.stroke();
+  x.beginPath(); x.moveTo(10, 30); x.lineTo(22, 18); x.stroke();
+  skipTexture = new THREE.CanvasTexture(c); skipTexture.magFilter = THREE.NearestFilter;
+  return skipTexture;
+}
+// skins for every weapon: alternate models. each belongs to its weapon and keeps that weapon's muzzle / moving parts
+const SKIN_BUILD = {
+  redline_hotrod(g) { redlineBuild(g, true); },
+  marbles_gumball(g) { // a gumball machine you can shoot
+    const grip = bx(0.036, 0.12, 0.048, 0xd01c2a, 0, -0.07, 0.07); grip.rotation.x = -0.45; g.add(grip);
+    g.add(bx(0.062, 0.07, 0.2, 0xd01c2a, 0, -0.01, 0.0)); // red cast body
+    g.add(bx(0.064, 0.032, 0.05, 0xd8dde4, 0, -0.005, -0.065)); // chrome coin box
+    const knob = cylZ(0.014, 0.016, 0xd8dde4, 0, 0, 0, 8); knob.rotation.y = Math.PI / 2; knob.position.set(-0.04, -0.005, -0.065); g.add(knob);
+    g.add(cylZ(0.024, 0.26, 0xd8dde4, 0, 0.012, -0.2, 10)); // chute
+    g.add(cylZ(0.032, 0.03, 0xd01c2a, 0, 0.012, -0.335, 10)); // mouth ring
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.04, 0.02, 12), M(0xd01c2a)); base.position.set(0, 0.035, -0.03); g.add(base);
+    const globe = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 8), glassMat()); globe.position.set(0, 0.095, -0.03); globe.userData.noWrap = true; globe.renderOrder = 2; g.add(globe);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.02, 0.012, 10), M(0xd01c2a)); cap.position.set(0, 0.153, -0.03); g.add(cap);
+    fillWith(g, GUM_COLS, 14, 0, 0.06, -0.03, 0.026, 0, 0.014);
+    g.userData.muzzle = new THREE.Vector3(0, 0.012, -0.35);
+    g.userData.len = 0.48;
+  },
+  ar_bullpup(g) { // magazine behind the grip, everything stubby
+    g.add(bx(0.075, 0.12, 0.62, 0x2a2a30, 0, 0, 0.02));
+    g.add(cylZ(0.019, 0.26, 0x111111, 0, 0.015, -0.4));
+    g.add(bx(0.05, 0.2, 0.08, 0x222222, 0, -0.15, 0.18));
+    g.add(bx(0.05, 0.13, 0.06, 0x222222, 0, -0.12, -0.06));
+    g.add(bx(0.05, 0.05, 0.3, 0x444450, 0, 0.09, -0.02));
+    g.userData.muzzle = new THREE.Vector3(0, 0.015, -0.72); g.userData.len = 1.0;
+  },
+  ar_toy(g) { // a foam dart blaster: bright, chunky, orange tip
+    g.add(bx(0.09, 0.14, 0.5, 0x4fd8ff, 0, 0, -0.05));
+    g.add(cylZ(0.035, 0.36, 0xffe14d, 0, 0.02, -0.46));
+    g.add(cylZ(0.04, 0.06, 0xff7a1a, 0, 0.02, -0.66, 8, true));
+    g.add(bx(0.06, 0.18, 0.07, 0xff4fd8, 0, -0.14, 0.06));
+    g.add(bx(0.07, 0.12, 0.26, 0xff4fd8, 0, -0.02, 0.32));
+    g.add(bx(0.05, 0.06, 0.16, 0xffe14d, 0, 0.1, -0.08));
+    g.userData.muzzle = new THREE.Vector3(0, 0.02, -0.72); g.userData.len = 1.0;
+  },
+  smg_uzi(g) {
+    g.add(bx(0.07, 0.13, 0.26, 0x222228, 0, 0, -0.06));
+    g.add(cylZ(0.018, 0.12, 0x111111, 0, 0.02, -0.26));
+    g.add(bx(0.045, 0.3, 0.05, 0x111111, 0, -0.18, -0.02));
+    g.add(bx(0.06, 0.03, 0.2, 0x444450, 0, 0.08, -0.06));
+    g.userData.muzzle = new THREE.Vector3(0, 0.02, -0.37); g.userData.len = 0.6;
+  },
+  shotgun_double(g) { // side by side, all wood and brass
+    for (const sx of [-1, 1]) g.add(cylZ(0.024, 0.62, 0x2a2a2a, sx * 0.026, 0.02, -0.36));
+    g.add(bx(0.11, 0.08, 0.16, 0xb08a3a, 0, 0, -0.02));
+    g.add(bx(0.08, 0.13, 0.32, 0x6b3a1a, 0, -0.04, 0.22));
+    g.add(bx(0.1, 0.05, 0.3, 0x6b3a1a, 0, -0.035, -0.26));
+    g.userData.muzzle = new THREE.Vector3(0, 0.02, -0.74); g.userData.len = 1.1;
+  },
+  minigun_gatling(g) { // old brass gatling with a crank
+    const barrels = new THREE.Group(); barrels.position.set(0, 0, -0.35);
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; barrels.add(cylZ(0.014, 0.62, 0xb08a3a, Math.cos(a) * 0.055, Math.sin(a) * 0.055, -0.1, 5)); }
+    barrels.add(cylZ(0.08, 0.05, 0x8a6a2a, 0, 0, -0.34, 8)); barrels.add(cylZ(0.08, 0.05, 0x8a6a2a, 0, 0, 0.12, 8));
+    g.add(barrels); g.userData.barrels = barrels;
+    g.add(bx(0.16, 0.18, 0.3, 0x5a4a2a, 0, 0, 0.06));
+    g.add(bx(0.03, 0.03, 0.16, 0xb08a3a, 0.12, 0.02, 0.1)); g.add(bx(0.03, 0.12, 0.03, 0xb08a3a, 0.14, -0.04, 0.16)); // crank
+    g.add(bx(0.06, 0.14, 0.08, 0x3a2a1a, 0, 0.14, 0.04));
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.75); g.userData.len = 1.0;
+  },
+  sniper_musket(g) { // long wooden musket with a bayonet
+    g.add(bx(0.06, 0.09, 1.0, 0x6b3a1a, 0, -0.01, -0.3));
+    g.add(cylZ(0.02, 1.2, 0x555555, 0, 0.04, -0.85));
+    g.add(bx(0.07, 0.16, 0.34, 0x6b3a1a, 0, -0.05, 0.38));
+    g.add(bx(0.008, 0.02, 0.28, 0xdddddd, 0, -0.02, -1.55, true));
+    g.add(bx(0.04, 0.05, 0.06, 0xb08a3a, 0, 0.06, 0.05));
+    g.userData.muzzle = new THREE.Vector3(0, 0.04, -1.48); g.userData.len = 1.8;
+  },
+  revolver_flint(g) { // flintlock pistol
+    g.add(cylZ(0.022, 0.26, 0x555555, 0, 0.03, -0.17));
+    g.add(bx(0.05, 0.06, 0.24, 0x6b3a1a, 0, 0.01, -0.1));
+    g.add(bx(0.02, 0.05, 0.04, 0x888888, 0, 0.07, 0.02));
+    const grip = bx(0.05, 0.15, 0.07, 0x6b3a1a, 0, -0.06, 0.08); grip.rotation.x = 0.6; g.add(grip);
+    g.add(ball(0.03, 0xb08a3a, 0, -0.12, 0.13));
+    g.userData.muzzle = new THREE.Vector3(0, 0.03, -0.29); g.userData.len = 0.35;
+  },
+  chicken_turkey(g) {
+    g.add(cylZ(0.1, 0.8, 0x6b4a2a, 0, 0, -0.1, 8));
+    g.add(cylZ(0.11, 0.05, 0xb08a3a, 0, 0, -0.5, 8));
+    for (let i = 0; i < 5; i++) { const f = bx(0.05, 0.2, 0.02, [0xc02030, 0xff7a1a, 0x8a5a2b, 0xffe14d, 0xc02030][i], (i - 2) * 0.05, 0.16, 0.28); f.rotation.z = (i - 2) * 0.25; g.add(f); }
+    g.add(bx(0.06, 0.14, 0.06, 0x333333, 0, -0.14, 0.05));
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.62); g.userData.len = 0.9;
+  },
+  bowling_cannon(g) { // pirate hand cannon
+    g.add(cylZ(0.12, 0.7, 0x2a2a2a, 0, 0, -0.18, 8));
+    g.add(cylZ(0.14, 0.06, 0x2a2a2a, 0, 0, -0.52, 8));
+    g.add(ball(0.12, 0x2a2a2a, 0, 0, 0.16));
+    g.add(bx(0.06, 0.18, 0.06, 0x6b3a1a, 0, -0.16, 0.02));
+    g.add(bx(0.02, 0.02, 0.06, 0xff7a1a, 0, 0.12, 0.12, true)); // fuse
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.6); g.userData.len = 0.9;
+  },
+  banana_bunch(g) {
+    g.add(cylZ(0.05, 0.5, 0x6b4a2a, 0, 0, -0.1, 6));
+    for (let i = 0; i < 4; i++) { const b = cylZ(0.03, 0.26, 0xffe135, (i - 1.5) * 0.04, 0.07, -0.25); b.rotation.x = -0.3 - i * 0.05; g.add(b); }
+    g.add(bx(0.05, 0.14, 0.06, 0x333333, 0, -0.1, 0.05));
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.36); g.userData.len = 0.6;
+  },
+  bow_compound(g) { // cams, cables, a sight. same string + arrow as the normal bow
+    g.add(bx(0.035, 0.22, 0.05, 0x2a2a30, 0, 0, 0));
+    for (const sy of [1, -1]) {
+      const limb = bx(0.03, 0.26, 0.03, 0x111111, 0, sy * 0.24, 0.05); limb.rotation.x = sy * 0.35; g.add(limb);
+      const cam = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.02, 10), M(0xb0b0b8)); cam.rotation.z = Math.PI / 2; cam.position.set(0, sy * 0.36, 0.1); g.add(cam);
+    }
+    g.add(bx(0.01, 0.06, 0.08, 0x7dff4f, 0.03, 0.06, -0.05, true));
+    const string = new THREE.Group();
+    for (const sy of [1, -1]) { const st = bx(0.004, 0.36, 0.004, 0xeeeeee, 0, sy * 0.18, 0.14, true); st.rotation.x = -sy * 0.12; string.add(st); }
+    g.add(string);
+    const arrow = new THREE.Group();
+    arrow.add(cylZ(0.006, 0.7, 0x333333, 0, 0, -0.18, 4));
+    const tip = bx(0.02, 0.02, 0.05, 0xdddddd, 0, 0, -0.55, true); tip.userData.noWrap = true; arrow.add(tip);
+    arrow.add(bx(0.002, 0.03, 0.06, 0x4fd8ff, 0, 0, 0.14));
+    g.add(arrow);
+    g.userData.arrow = arrow; g.userData.arrowTip = tip; g.userData.string = string;
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.6); g.userData.len = 0.9;
+  },
+  cig_cigar(g) {
+    g.add(cylZ(0.022, 0.22, 0x6b3a1a, 0, 0, 0, 8));
+    g.add(cylZ(0.024, 0.03, 0xc02030, 0, 0, 0.06, 8));
+    const tip = cylZ(0.023, 0.02, 0xff4a1a, 0, 0, -0.115, 8, true);
+    tip.userData.noWrap = true; g.add(tip); g.userData.tip = tip;
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.11); g.userData.len = 0.18;
+  },
+  blower_dryer(g) { // a hair dryer, obviously
+    g.add(cylZ(0.08, 0.36, 0xff9ad5, 0, 0, -0.2, 10));
+    g.add(cylZ(0.06, 0.12, 0xff4fd8, 0, 0, -0.42, 10));
+    g.add(bx(0.06, 0.24, 0.07, 0xff9ad5, 0, -0.16, 0.0));
+    g.add(bx(0.07, 0.03, 0.04, 0xffffff, 0, -0.06, -0.06));
+    g.userData.muzzle = new THREE.Vector3(0, -0.03, -0.87); g.userData.len = 1.0;
+  },
+  popper_bottle(g) { // champagne
+    g.add(cylZ(0.05, 0.2, 0x2a5a2a, 0, 0, 0, 10));
+    g.add(cylZ(0.025, 0.1, 0x2a5a2a, 0, 0, -0.14, 8));
+    g.add(cylZ(0.028, 0.05, 0xffd21a, 0, 0, -0.18, 8));
+    g.add(bx(0.07, 0.07, 0.08, 0xffffff, 0, 0, 0.02));
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.21); g.userData.len = 0.3;
+  },
+  reverse_skip(g) {
+    const card = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.18, 0.004), new THREE.MeshBasicMaterial({ map: skipTex() }));
+    card.rotation.x = -0.2; g.add(card); g.userData.card = card;
+    g.userData.muzzle = new THREE.Vector3(0, 0.05, -0.05); g.userData.len = 0.2;
+  },
+  snowball_ice(g) {
+    const c = bx(0.12, 0.12, 0.12, 0xbfe8ff, 0, 0.02, -0.08); c.rotation.set(0.4, 0.6, 0.2); g.add(c);
+    g.userData.muzzle = new THREE.Vector3(0, 0.02, -0.16); g.userData.len = 0.18;
+  },
+  spoon_ladle(g) {
+    g.add(cylZ(0.01, 0.2, 0xc8c8d0, 0, 0, -0.02, 5));
+    const bowl = ball(0.06, 0xd8d8e0, 0, -0.02, -0.15); bowl.scale.set(1, 0.6, 1); g.add(bowl);
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.17); g.userData.len = 0.22;
+  },
+  slipper_croc(g) { // a croc, holes and all
+    g.add(bx(0.13, 0.07, 0.3, 0x7dff4f, 0, 0, -0.02));
+    g.add(ball(0.07, 0x7dff4f, 0, 0.03, -0.14));
+    for (let i = 0; i < 6; i++) g.add(bx(0.02, 0.01, 0.02, 0x3a8a2a, (i % 3 - 1) * 0.04, 0.04, -0.12 + Math.floor(i / 3) * 0.06));
+    g.add(bx(0.13, 0.02, 0.04, 0x3a8a2a, 0, 0.04, 0.1));
+    g.userData.muzzle = new THREE.Vector3(0, 0, -0.15); g.userData.len = 0.3;
+  },
+  scythe_reaper(g) { // black wood, a bone-white blade
+    g.add(cylZ(0.022, 1.6, 0x1a1a1a, 0, 0, -0.3, 6));
+    const blade = new THREE.Group(); blade.position.set(0, 0.05, -1.05);
+    for (let i = 0; i < 6; i++) { const seg = bx(0.015, 0.08 - i * 0.008, 0.16, 0xe8e4d8, 0, 0.06 + i * 0.07, 0.02 + i * i * 0.012); seg.rotation.x = -0.25 - i * 0.18; blade.add(seg); }
+    g.add(blade); g.userData.blade = blade;
+    g.add(ball(0.05, 0xe8e4d8, 0, 0, 0.5));
+    g.userData.muzzle = new THREE.Vector3(0, 0, -1.12); g.userData.len = 1.7;
+  },
+};
+
 const MODEL_BUILD = {
-  knife_kitchen(g) {
-    g.add(bx(0.03, 0.045, 0.12, 0x2a1a10, 0, 0, 0.02));
-    g.add(bx(0.008, 0.06, 0.24, 0xe8ecef, 0, 0.012, -0.16));
-    g.userData.muzzle = new THREE.Vector3(0, 0.01, -0.29); g.userData.len = 0.36;
-  },
-  knife_bowie(g) {
-    g.add(bx(0.04, 0.05, 0.13, 0x6b3a1a, 0, 0, 0.03));
-    g.add(bx(0.09, 0.02, 0.025, 0xc8a050, 0, 0.01, -0.05));
-    g.add(bx(0.014, 0.06, 0.27, 0xd0d6dc, 0, 0.015, -0.19));
-    const tipB = bx(0.014, 0.03, 0.06, 0xd0d6dc, 0, 0.035, -0.34); tipB.rotation.x = 0.5; g.add(tipB);
-    g.userData.muzzle = new THREE.Vector3(0, 0.02, -0.36); g.userData.len = 0.45;
-  },
-  knife_cleaver(g) {
-    g.add(cylZ(0.02, 0.12, 0x2a1a10, 0, 0, 0.03, 6));
-    g.add(bx(0.01, 0.12, 0.2, 0xc8ccd0, 0, 0.04, -0.12));
-    g.userData.muzzle = new THREE.Vector3(0, 0.05, -0.22); g.userData.len = 0.33;
-  },
-  knife_switch(g) {
-    g.add(bx(0.03, 0.04, 0.13, 0x111111, 0, 0, 0.02));
-    g.add(bx(0.032, 0.012, 0.13, 0xc8a050, 0, 0.022, 0.02));
-    const blade = bx(0.01, 0.035, 0.15, 0xe0e4ea, 0, 0.01, -0.12); g.add(blade);
-    g.userData.blade = blade;
-    g.userData.muzzle = new THREE.Vector3(0, 0.01, -0.2); g.userData.len = 0.3;
-  },
-  knife_karambit(g) {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.008, 4, 8), M(0x222222)); ring.rotation.y = Math.PI / 2; ring.position.set(0, 0, 0.09); g.add(ring);
-    g.add(bx(0.03, 0.04, 0.11, 0x2a2a2a, 0, 0, 0.01));
-    for (let i = 0; i < 5; i++) { const s2 = bx(0.01, 0.03, 0.045, 0xd8dde4, 0, -0.01 - i * i * 0.006, -0.06 - i * 0.04); s2.rotation.x = 0.15 + i * 0.22; g.add(s2); }
-    g.userData.muzzle = new THREE.Vector3(0, -0.1, -0.25); g.userData.len = 0.33;
-  },
-  knife_butterfly(g) {
-    const h1 = bx(0.014, 0.03, 0.13, 0x8a8f99, 0.012, 0, 0.02), h2 = bx(0.014, 0.03, 0.13, 0x8a8f99, -0.012, 0, 0.02);
-    g.add(h1, h2);
-    for (let i = 0; i < 4; i++) g.add(bx(0.04, 0.004, 0.01, 0x333333, 0, 0.016, -0.02 + i * 0.03));
-    g.add(bx(0.008, 0.035, 0.15, 0xe8ecf0, 0, 0.005, -0.12));
-    g.userData.handles = [h1, h2];
-    g.userData.muzzle = new THREE.Vector3(0, 0.005, -0.2); g.userData.len = 0.33;
-  },
+  ...SKIN_BUILD,
   slapper_foam(g) {
     g.add(cylZ(0.015, 0.5, 0x4fd8ff, 0, 0, -0.18, 6));
     g.add(bx(0.2, 0.06, 0.18, 0x3070ff, 0, 0, -0.5));
@@ -494,6 +725,40 @@ const MODEL_BUILD = {
     g.userData.muzzle = new THREE.Vector3(0, 0, -1.3); g.userData.len = 1.4;
   },
 };
+// knives + swords live in blades/ (one file each, real proportions): base weapons go in WB, skins in MODEL_BUILD
+for (const [id, mod] of Object.entries(BLADES)) {
+  (COSMETICS.model[id] ? MODEL_BUILD : WB)[id] = mod.build;
+  if (mod.hatAt) HAT_AT[id] = mod.hatAt;
+}
+
+// iron sights: a rear notch + front post (glowing tip) on top of the gun, at one height, so the line of sight
+// runs over the top of the gun. ADS puts that line on the centre of the screen and the gun hangs below it.
+const SIGHTS = { ar: 'iron', smg: 'iron', redline: 'iron', revolver: 'iron', banana: 'iron', shotgun: 'bead' };
+const SIGHT_DOT = 0x7dff4f;
+function addSights(id, g) {
+  const kind = SIGHTS[id];
+  if (!kind || !g.userData.muzzle) return;
+  g.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(g);
+  const mz = g.userData.muzzle;
+  const ys = box.max.y + 0.014; // line of sight, just above the highest part
+  const zf = mz.z + 0.05;
+  const zr = Math.max(mz.z * 0.55, Math.min(box.max.z - 0.05, mz.z * 0.08)); // over the receiver, not the stock
+  const dark = 0x1a1a1a;
+  // front post (+ the bright tip you put on the target)
+  const postH = Math.max(0.01, ys - mz.y);
+  if (kind === 'iron') g.add(bx(0.007, postH, 0.008, dark, 0, mz.y + postH / 2 - 0.004, zf));
+  const tip = bx(kind === 'bead' ? 0.012 : 0.008, kind === 'bead' ? 0.012 : 0.008, kind === 'bead' ? 0.012 : 0.008, SIGHT_DOT, 0, ys - 0.004, zf, true);
+  tip.userData.noWrap = true;
+  g.add(tip);
+  if (kind === 'iron') { // rear notch: two ears with a gap the front post sits in
+    for (const sx of [-1, 1]) g.add(bx(0.008, 0.022, 0.012, dark, sx * 0.011, ys - 0.007, zr));
+    g.add(bx(0.03, 0.007, 0.012, dark, 0, ys - 0.016, zr));
+  } else { // shotgun: a vent rib along the top to sight down
+    g.add(bx(0.012, 0.005, Math.abs(zf - zr), dark, 0, ys - 0.008, (zf + zr) / 2));
+  }
+  g.userData.sight = { y: ys - 0.004, z: zr };
+}
 
 export function buildWeapon(id, skin) {
   const g = new THREE.Group();
@@ -509,6 +774,7 @@ export function buildWeapon(id, skin) {
     if (g.userData.tip) g.userData.tip.visible = true;
     g.add(glb);
   }
+  if (!glb) addSights(id, g);
   applySkin(g, skin);
   return g;
 }
@@ -520,6 +786,27 @@ function limb(r0, r1, len, color, y) { // vertical cylinder hanging down from it
   m.position.y = y;
   return m;
 }
+// ------------------------------------------------------------ hair (sits on the egg head; head group local, top of the egg ~y 0.31)
+function addHair(H, lk) {
+  const style = lk.hair || 'none';
+  if (style === 'none' || lk.head === 'helmet') return;
+  const hc = new THREE.Color(lk.hairColor || '#1a1a1a').getHex();
+  const cap = (cover = 0.45, sx = 0.9, sy = 1.18, r = 0.15) => {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 6, 0, Math.PI * 2, 0, Math.PI * cover), M(hc));
+    m.scale.set(sx, sy, 1.0); m.position.y = 0.15; H.add(m); return m;
+  };
+  switch (style) {
+    case 'short': cap(0.42); break;
+    case 'bowl': cap(0.56, 0.95, 1.2, 0.155); H.add(bx(0.24, 0.04, 0.04, hc, 0, 0.215, -0.135)); break;
+    case 'spiky': cap(0.4); for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2; const k = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.14, 5), M(hc)); k.position.set(Math.cos(a) * 0.07, 0.31, Math.sin(a) * 0.07); k.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5); H.add(k); } break;
+    case 'mohawk': H.add(bx(0.035, 0.13, 0.3, hc, 0, 0.33, 0.01)); break;
+    case 'long': cap(0.45); H.add(bx(0.25, 0.34, 0.06, hc, 0, 0.08, 0.12)); for (const sx of [-1, 1]) H.add(bx(0.04, 0.26, 0.12, hc, sx * 0.12, 0.1, 0.02)); break;
+    case 'ponytail': cap(0.45); H.add(ball(0.05, hc, 0, 0.22, 0.15)); { const t = cylZ(0.035, 0.2, hc, 0, 0.12, 0.2); t.rotation.x = 1.1; H.add(t); } break;
+    case 'bun': cap(0.45); H.add(ball(0.07, hc, 0, 0.32, 0.06)); break;
+    case 'afro': { const a = ball(0.21, hc, 0, 0.22, 0.03); a.scale.set(1.05, 0.95, 1.05); H.add(a); break; }
+  }
+}
+
 // ------------------------------------------------------------ character accessories (head / face / back)
 function addAccessories(ch, look, c) {
   if (!look) return;
@@ -547,13 +834,47 @@ function addAccessories(ch, look, c) {
     case 'bandana': at(H, bx(0.22, 0.09, 0.03, 0xc02030, 0, 0.07, fz + 0.01)); break;
     case 'visor': at(H, bx(0.24, 0.05, 0.02, 0x3ee6c8, 0, 0.17, fz - 0.005, true)); break;
   }
-  const by = 1.35, bz = 0.18;
+  // back stuff hangs off the upper back (chest back surface ~z 0.15) and is strapped over the shoulders
+  const thick = look.top === 'jacket' || look.top === 'suit' || look.top === 'hoodie' ? 0.03 : 0;
+  const bk = 0.15 + thick;
+  const straps = (col) => { for (const sx of [-1, 1]) { at(Bd, bx(0.045, 0.025, 0.32, col, sx * 0.11, 1.52, 0.0)); at(Bd, bx(0.045, 0.3, 0.025, col, sx * 0.11, 1.37, -0.16 - thick)); } };
   switch (look.back) {
-    case 'backpack': at(Bd, bx(0.3, 0.38, 0.16, c, 0, by - 0.05, bz + 0.06)); at(Bd, bx(0.26, 0.1, 0.17, 0x222222, 0, by + 0.1, bz + 0.07)); break;
-    case 'cape': { const cp = bx(0.5, 0.9, 0.03, 0xc02030, 0, by - 0.35, bz + 0.03); cp.rotation.x = 0.12; Bd.add(cp); break; }
-    case 'voidcape': { const cp = bx(0.5, 0.95, 0.03, 0x000000, 0, by - 0.37, bz + 0.03); cp.material = M(0x2a002a); cp.rotation.x = 0.12; Bd.add(cp); at(Bd, bx(0.52, 0.06, 0.035, 0xff00dc, 0, by + 0.08, bz + 0.03, true)); break; }
-    case 'wings': for (const sx of [-1, 1]) { const w = bx(0.5, 0.25, 0.03, 0xffffff, sx * 0.32, by, bz + 0.05); w.rotation.z = sx * 0.4; w.rotation.y = sx * 0.3; Bd.add(w); } break;
-    case 'jetpack': for (const sx of [-1, 1]) { const t = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.4, 8), M(0x8a8f99)); t.position.set(sx * 0.1, by - 0.05, bz + 0.08); Bd.add(t); at(Bd, new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.1, 8), M(0xff6a1a, true))).position.set(sx * 0.1, by - 0.3, bz + 0.08); } break;
+    case 'backpack':
+      at(Bd, bx(0.3, 0.38, 0.15, c, 0, 1.3, bk + 0.075));
+      at(Bd, bx(0.31, 0.12, 0.16, 0x222222, 0, 1.44, bk + 0.08));
+      at(Bd, bx(0.2, 0.12, 0.05, 0x222222, 0, 1.2, bk + 0.16));
+      straps(0x222222);
+      break;
+    case 'cape': case 'voidcape': {
+      const voidc = look.back === 'voidcape';
+      const piv = new THREE.Group(); piv.position.set(0, 1.52, bk - 0.02); Bd.add(piv);
+      piv.add(bx(0.4, 0.04, 0.05, voidc ? 0xff00dc : 0xffc21a, 0, 0, -0.02, voidc)); // clasp across the shoulders
+      piv.add(bx(0.5, 0.95, 0.025, voidc ? 0x2a002a : 0xc02030, 0, -0.48, 0.02));
+      if (voidc) piv.add(bx(0.52, 0.05, 0.03, 0xff00dc, 0, -0.95, 0.02, true));
+      piv.rotation.x = -0.1; // negative = the bottom edge swings back (+z), away from the body
+      ch.cape = piv;
+      break;
+    }
+    case 'wings': {
+      at(Bd, bx(0.14, 0.2, 0.05, 0xdddddd, 0, 1.36, bk + 0.02));
+      ch.wings = [];
+      for (const sx of [-1, 1]) {
+        const piv = new THREE.Group(); piv.position.set(sx * 0.06, 1.42, bk + 0.04); Bd.add(piv);
+        const w1 = bx(0.5, 0.22, 0.025, 0xffffff, sx * 0.27, 0.04, 0); w1.rotation.z = sx * 0.35; piv.add(w1);
+        const w2 = bx(0.36, 0.14, 0.022, 0xe8e8ff, sx * 0.22, -0.1, 0.01); w2.rotation.z = sx * 0.1; piv.add(w2);
+        piv.rotation.y = sx * -0.25;
+        ch.wings.push(piv);
+      }
+      break;
+    }
+    case 'jetpack':
+      at(Bd, bx(0.26, 0.34, 0.04, 0x55595f, 0, 1.33, bk + 0.02));
+      for (const sx of [-1, 1]) {
+        const t = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.4, 8), M(0x8a8f99)); t.position.set(sx * 0.09, 1.3, bk + 0.1); Bd.add(t);
+        const n = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.1, 8), M(0xff6a1a, true)); n.position.set(sx * 0.09, 1.05, bk + 0.1); n.rotation.x = Math.PI; Bd.add(n);
+      }
+      straps(0x333333);
+      break;
   }
 }
 
@@ -570,40 +891,71 @@ export function buildCharacter(color, look) {
     body.add(glb);
     body.add(bx(0.5, 0.15, 0.5, c, 0, 1.95, 0));
   } else {
+    const lk = look || {};
+    const SK = lk.skin ? new THREE.Color(lk.skin).getHex() : SKIN;
+    const JT = new THREE.Color(SK).multiplyScalar(0.82).getHex();
+    const TOP = lk.topColor ? new THREE.Color(lk.topColor).getHex() : c;
+    const BOT = lk.bottomColor ? new THREE.Color(lk.bottomColor).getHex() : c;
+    const top = lk.top || 'tank', bottom = lk.bottom || 'shorts';
+    const sleeves = top === 'tee' ? 'short' : top === 'hoodie' || top === 'jacket' || top === 'suit' ? 'long' : null;
     // legs: hip -> thigh -> knee -> shin -> foot
     for (const [leg, knee, sx] of [[legL, kneeL, -1], [legR, kneeR, 1]]) {
       leg.position.set(0.1 * sx, 0.92, 0);
-      leg.add(ball(0.075, JOINT));
-      leg.add(limb(0.07, 0.058, 0.42, SKIN, -0.22));
+      leg.add(ball(0.075, JT));
+      leg.add(limb(0.07, 0.058, 0.42, SK, -0.22));
+      if (bottom === 'pants') leg.add(limb(0.082, 0.07, 0.44, BOT, -0.22));
       knee.position.y = -0.44;
-      knee.add(ball(0.062, JOINT));
-      knee.add(limb(0.056, 0.045, 0.4, SKIN, -0.21));
-      knee.add(bx(0.1, 0.06, 0.22, SKIN, 0, -0.43, -0.05));
+      knee.add(ball(0.062, JT));
+      knee.add(limb(0.056, 0.045, 0.4, SK, -0.21));
+      if (bottom === 'pants') knee.add(limb(0.068, 0.058, 0.38, BOT, -0.2));
+      knee.add(bx(0.1, 0.06, 0.22, bottom === 'pants' ? 0x222222 : SK, 0, -0.43, -0.05));
       leg.add(knee);
       body.add(leg);
     }
-    body.add(bx(0.34, 0.18, 0.23, c, 0, 0.98, 0)); // shorts in your color
-    body.add(limb(0.1, 0.12, 0.16, SKIN, 1.13)); // skinny mannequin waist
-    const chest = ball(0.2, SKIN, 0, 1.34, 0); chest.scale.set(1.2, 1.1, 0.72); body.add(chest);
-    const sash = bx(0.09, 0.56, 0.31, c, 0, 1.31, 0); sash.rotation.z = 0.65; body.add(sash);
-    body.add(limb(0.045, 0.05, 0.12, SKIN, 1.57));
+    if (bottom === 'skirt') { const sk = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.28, 0.36, 8), M(BOT)); sk.position.y = 0.88; body.add(sk); }
+    else body.add(bx(0.34, 0.18, 0.23, BOT, 0, 0.98, 0)); // shorts / top of the pants
+    body.add(limb(0.1, 0.12, 0.16, top === 'none' || top === 'tank' ? SK : TOP, 1.13)); // waist
+    const chest = ball(0.2, SK, 0, 1.34, 0); chest.scale.set(1.2, 1.1, 0.72); body.add(chest);
+    if (top === 'tank') { const sash = bx(0.09, 0.56, 0.31, TOP, 0, 1.31, 0); sash.rotation.z = 0.65; body.add(sash); }
+    if (top === 'tee' || top === 'hoodie') { const sh = ball(0.215, TOP, 0, 1.34, 0); sh.scale.set(1.2, 1.1, 0.74); body.add(sh); }
+    if (top === 'hoodie') {
+      const hood = ball(0.13, TOP, 0, 1.58, 0.13); hood.scale.set(1.2, 0.8, 0.8); body.add(hood);
+      body.add(bx(0.22, 0.1, 0.03, new THREE.Color(TOP).multiplyScalar(0.8).getHex(), 0, 1.2, -0.155)); // front pocket
+      for (const sx of [-1, 1]) body.add(bx(0.012, 0.12, 0.012, 0xffffff, sx * 0.04, 1.42, -0.16));
+    }
+    if (top === 'jacket' || top === 'suit') {
+      const sh = ball(0.208, top === 'suit' ? 0xffffff : 0xf0f0f0, 0, 1.34, 0); sh.scale.set(1.2, 1.1, 0.73); body.add(sh); // shirt under
+      for (const sx of [-1, 1]) { // the two front panels + back
+        const pnl = bx(0.17, 0.5, 0.05, TOP, sx * (top === 'suit' ? 0.07 : 0.11), 1.3, -0.135); pnl.rotation.y = sx * 0.25; body.add(pnl);
+        const lap = bx(0.05, 0.2, 0.03, new THREE.Color(TOP).multiplyScalar(0.75).getHex(), sx * 0.06, 1.45, -0.16); lap.rotation.z = sx * 0.4; body.add(lap);
+      }
+      body.add(bx(0.42, 0.5, 0.06, TOP, 0, 1.3, 0.13));
+      for (const sx of [-1, 1]) body.add(bx(0.07, 0.5, 0.26, TOP, sx * 0.215, 1.3, 0));
+      if (top === 'suit') body.add(bx(0.04, 0.26, 0.02, 0xc02030, 0, 1.36, -0.165)); // tie
+    }
+    body.add(limb(0.045, 0.05, 0.12, SK, 1.57));
     head.position.set(0, 1.62, 0);
-    const egg = ball(0.14, SKIN, 0, 0.14, 0); egg.scale.set(0.85, 1.22, 0.95); head.add(egg);
-    head.add(bx(0.005, 0.2, 0.3, JOINT, 0, 0.14, 0)); // seam where the mold met
+    const egg = ball(0.14, SK, 0, 0.14, 0); egg.scale.set(0.85, 1.22, 0.95); head.add(egg);
+    head.add(bx(0.005, 0.2, 0.3, JT, 0, 0.14, 0)); // seam where the mold met
     head.rotation.z = jank.tilt;
     body.add(head);
-    for (const sx of [-1, 1]) body.add(ball(0.068, JOINT, 0.25 * sx, 1.45 + (sx > 0 ? jank.shoulder : 0), 0));
+    for (const sx of [-1, 1]) body.add(ball(0.068, sleeves ? TOP : JT, 0.25 * sx, 1.45 + (sx > 0 ? jank.shoulder : 0), 0));
     // right arm holds the gun
-    arm.add(cylZ(0.048, 0.28, SKIN, 0, 0, -0.14));
-    arm.add(ball(0.05, JOINT, 0, 0, -0.29));
-    arm.add(cylZ(0.042, 0.24, SKIN, -0.03, -0.01, -0.42));
-    arm.add(ball(0.045, SKIN, -0.04, -0.02, -0.55));
+    arm.add(cylZ(0.048, 0.28, SK, 0, 0, -0.14));
+    if (sleeves) arm.add(cylZ(0.058, sleeves === 'long' ? 0.29 : 0.15, TOP, 0, 0, sleeves === 'long' ? -0.145 : -0.075));
+    arm.add(ball(0.05, sleeves === 'long' ? TOP : JT, 0, 0, -0.29));
+    arm.add(cylZ(0.042, 0.24, SK, -0.03, -0.01, -0.42));
+    if (sleeves === 'long') arm.add(cylZ(0.052, 0.16, TOP, -0.025, -0.008, -0.38));
+    arm.add(ball(0.045, SK, -0.04, -0.02, -0.55));
     const tag = bx(0.05, 0.07, 0.005, 0xffffff, 0.05, -0.06, -0.2); tag.rotation.z = 0.5; arm.add(tag); // price tag still on
     // left arm reaches for the front of the gun, badly
     armL.position.set(-0.25, 1.45, 0);
-    const upper = cylZ(0.048, 0.3, SKIN, 0.07, -0.02, -0.14); upper.rotation.y = -0.45; armL.add(upper);
-    armL.add(ball(0.05, JOINT, 0.14, -0.04, -0.28));
-    const fore = cylZ(0.042, 0.3, SKIN, 0.27, -0.04, -0.4); fore.rotation.y = -0.9; armL.add(fore);
+    const upper = cylZ(0.048, 0.3, SK, 0.07, -0.02, -0.14); upper.rotation.y = -0.45; armL.add(upper);
+    if (sleeves) { const sl = cylZ(0.058, sleeves === 'long' ? 0.31 : 0.15, TOP, sleeves === 'long' ? 0.07 : 0.035, -0.02, sleeves === 'long' ? -0.14 : -0.07); sl.rotation.y = -0.45; armL.add(sl); }
+    armL.add(ball(0.05, sleeves === 'long' ? TOP : JT, 0.14, -0.04, -0.28));
+    const fore = cylZ(0.042, 0.3, SK, 0.27, -0.04, -0.4); fore.rotation.y = -0.9; armL.add(fore);
+    if (sleeves === 'long') { const fs = cylZ(0.052, 0.18, TOP, 0.2, -0.035, -0.34); fs.rotation.y = -0.9; armL.add(fs); }
+    addHair(head, lk);
     body.add(armL);
   }
   arm.position.set(0.25, 1.45 + jank.shoulder, 0);
@@ -665,6 +1017,15 @@ function buildProjectileRaw(k) {
     g.add(cylZ(0.012, 0.9, 0xc8a070, 0, 0, 0, 4));
     const tip = bx(0.04, 0.04, 0.08, 0xdddddd, 0, 0, -0.48, true); g.add(tip); g.userData.tip = tip;
     g.add(bx(0.004, 0.06, 0.1, 0xff4fd8, 0, 0, 0.4)); g.add(bx(0.06, 0.004, 0.1, 0xff4fd8, 0, 0, 0.4));
+  } else if (k === 'snowball') {
+    const b = ball(0.13, 0xf2f8ff); g.add(b); g.add(ball(0.06, 0xffffff, 0.05, 0.06, 0));
+  } else if (k === 'frag') {
+    const b = ball(0.12, 0x4a5a2a); b.scale.set(1, 1.2, 1); g.add(b);
+    g.add(bx(0.05, 0.06, 0.05, 0x333333, 0, 0.15, 0));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.008, 4, 8), M(0xcccccc)); ring.position.set(0.05, 0.17, 0); g.add(ring);
+  } else if (k === 'smokegren') {
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.22, 8), M(0x9aa0a8)); g.add(c);
+    g.add(bx(0.15, 0.03, 0.15, 0x555a60, 0, 0.12, 0));
   } else if (k === 'card') {
     const c = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.26), cardFace('back'));
     c.material.side = THREE.DoubleSide;
@@ -715,3 +1076,12 @@ export function buildPeel() {
 }
 
 export function tipColor(tip) { return new THREE.Color((ARROW_TIPS[tip] || ARROW_TIPS.regular).color).getHex(); }
+
+// the katana gets longer with kills: stretch the blade (and move its tip, so trails follow)
+export function setKatana(g, n) {
+  const ud = g && g.userData;
+  if (!ud || !ud.katBlade) return;
+  const k = 1 + n * 0.55;
+  ud.katBlade.scale.z = k;
+  ud.muzzle.z = ud.katBlade.position.z - ud.katLen * k; // katLen = katBlade origin to the tip
+}

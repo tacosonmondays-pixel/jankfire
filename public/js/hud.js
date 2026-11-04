@@ -17,15 +17,21 @@ function span(text, color) {
 
 export const hud = {
   init() {},
-  slots(ids) {
+  // hotbar (bottom middle): weapon pictures in slots, the one you're holding pops up
+  slots(ids, icons = []) {
     const bar = $('weapons');
     bar.innerHTML = '';
     ids.forEach((id, i) => {
       const w = WEAPONS[id];
+      if (!w) return;
       const d = document.createElement('div');
-      d.className = 'slot';
+      d.className = 'hslot';
       d.id = 'slot-' + i;
-      d.append(span(String(i + 1), '#fff'), span(' ' + w.name, w.color));
+      d.style.setProperty('--c', w.color);
+      if (icons[i]) { const im = document.createElement('img'); im.src = icons[i]; im.alt = ''; d.append(im); }
+      const k = document.createElement('span'); k.className = 'key'; k.textContent = String(i + 1);
+      const n = document.createElement('span'); n.className = 'nm'; n.textContent = w.name;
+      d.append(k, n);
       bar.append(d);
     });
   },
@@ -72,6 +78,7 @@ export const hud = {
     }
     if (amt >= 18) { nanT = 0.2; nanText = GARBAGE[(Math.random() * GARBAGE.length) | 0]; }
   },
+  crossFade(k) { const c = $('crosshair'); const v = String(Math.round(k * 100) / 100); if (c.style.opacity !== v) c.style.opacity = v; },
   scope(on) {
     $('scope').classList.toggle('on', on);
     $('crosshair').style.display = on ? 'none' : '';
@@ -110,8 +117,33 @@ export const hud = {
     $('speed').style.fontSize = Math.min(64, 26 + kmh / 25) + 'px';
   },
   combo(n) { $('combo').textContent = n >= 2 ? `BHOP x${n}` : ''; },
+  // the item box at the end of the hotbar: picture, G key, charges, refill pie
+  itemSlot(id, icon) {
+    let el = $('itemSlot');
+    if (!el) { el = document.createElement('div'); el.id = 'itemSlot'; el.className = 'hslot item'; }
+    $('weapons').append(el);
+    el.innerHTML = '';
+    if (!id) { el.remove(); return; }
+    const im = document.createElement('img'); im.src = icon; im.alt = '';
+    const k = document.createElement('span'); k.className = 'key'; k.textContent = 'G';
+    const n = document.createElement('span'); n.className = 'nm'; n.id = 'itemN';
+    const pie = document.createElement('div'); pie.className = 'pie'; pie.id = 'itemPie';
+    el.append(pie, im, k, n);
+    el.dataset.key = '';
+  },
+  item(n, max, frac) {
+    const el = $('itemN');
+    if (!el) return;
+    const key = n + '/' + max + '/' + Math.round(frac * 20);
+    if (el.dataset.key === key) return;
+    el.dataset.key = key;
+    el.textContent = `x${n}`;
+    $('itemSlot').classList.toggle('empty', n <= 0);
+    $('itemPie').style.background = frac < 1 ? `conic-gradient(rgba(255,255,255,0.28) ${frac * 360}deg, transparent 0)` : 'transparent';
+  },
+  slotOn(slot) { for (let i = 0; i < 6; i++) { const el = $('slot-' + i); if (el) el.classList.toggle('on', i === slot); } },
   weapon(id, slot) {
-    for (let i = 0; i < 3; i++) { const el = $('slot-' + i); if (el) el.classList.toggle('on', i === slot); }
+    for (let i = 0; i < 6; i++) { const el = $('slot-' + i); if (el) el.classList.toggle('on', i === slot); }
     const w = WEAPONS[id];
     if (!w) return;
     $('weaponName').innerHTML = '';

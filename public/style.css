@@ -20,22 +20,28 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color:
 #crosshair { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -54%); font-size: 26px; color: #fff; }
 #hitmarker { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -56%); font-size: 34px; opacity: 0; font-weight: bold; }
 #vignette { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, transparent 45%, rgba(255, 0, 0, 0.75) 100%); }
-#speed { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); font-size: 26px; text-align: center; color: var(--yellow); }
+#speed { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); font-size: 26px; text-align: center; color: var(--yellow); }
 #speed small { font-size: 14px; color: #fff; }
 #speedLabel { font-size: 16px; color: var(--pink); letter-spacing: 2px; }
 #speed.shake { animation: shake 0.08s infinite; }
 @keyframes shake { 0% { margin-left: -2px; } 50% { margin-left: 2px; margin-top: -1px; } 100% { margin-left: -1px; } }
-#combo { position: absolute; left: 50%; bottom: 180px; transform: translateX(-50%) rotate(-4deg); font-size: 22px; color: var(--cyan); }
+#combo { position: absolute; left: 50%; bottom: 210px; transform: translateX(-50%) rotate(-4deg); font-size: 22px; color: var(--cyan); }
 #hpbox { position: absolute; left: 20px; bottom: 20px; width: 240px; height: 30px; border: 3px solid #fff; background: rgba(0, 0, 0, 0.5); transform: rotate(-1.5deg); }
 #hpbar { height: 100%; width: 100%; background: #5dff4f; }
 #hptext { position: absolute; left: 8px; top: 2px; font-size: 18px; }
 #meter { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); width: 180px; height: 12px; border: 2px solid #fff; background: rgba(0, 0, 0, 0.5); display: none; }
 #meterFill { height: 100%; width: 0; }
 #meterLabel { position: absolute; top: 12px; left: 0; right: 0; text-align: center; font-size: 12px; }
-#weapons { position: absolute; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 2px; align-items: flex-end; }
+#hotbar { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; gap: 14px; align-items: flex-end; }
+#weapons { display: flex; gap: 6px; align-items: flex-end; }
+.hslot { position: relative; width: 96px; height: 60px; border-radius: 7px; background: rgba(10, 0, 20, 0.55); border: 2px solid rgba(255, 255, 255, 0.22); opacity: 0.72; transition: transform 0.08s, opacity 0.08s; }
+.hslot img { position: absolute; inset: 2px 2px 12px; width: calc(100% - 4px); height: calc(100% - 14px); object-fit: contain; image-rendering: pixelated; }
+.hslot .key { position: absolute; left: 4px; top: 1px; font-size: 13px; color: #fff; text-shadow: 1px 1px 0 #000; }
+.hslot .nm { position: absolute; left: 2px; right: 2px; bottom: 0; text-align: center; font-size: 11px; color: var(--c); text-shadow: 1px 1px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hslot.on { opacity: 1; border-color: var(--c, #fff); transform: translateY(-7px) scale(1.1); background: rgba(255, 79, 216, 0.22); box-shadow: 3px 3px 0 #000; }
 .slot { font-size: 14px; padding: 2px 8px; background: rgba(0, 0, 0, 0.35); opacity: 0.6; }
 .slot.on { opacity: 1; background: rgba(255, 79, 216, 0.35); font-size: 18px; transform: rotate(-2deg); }
-#weaponName { position: absolute; left: 50%; bottom: 60px; transform: translateX(-50%); text-align: center; font-size: 15px; max-width: 520px; transition: opacity 0.4s; }
+#weaponName { position: absolute; left: 50%; bottom: 92px; transform: translateX(-50%); text-align: center; font-size: 15px; max-width: 520px; transition: opacity 0.4s; }
 #weaponName span:first-child { font-size: 22px; }
 #feed { position: absolute; right: 16px; top: 14px; text-align: right; font-size: 15px; display: flex; flex-direction: column; gap: 3px; }
 #feed div { background: rgba(0, 0, 0, 0.35); padding: 2px 8px; }
@@ -87,7 +93,7 @@ h1 {
 #reverseFx { position: absolute; inset: 0; opacity: 0; transition: opacity 0.15s; box-shadow: inset 0 0 80px 20px rgba(255, 40, 40, 0.65); }
 #center.reverse { color: #ff3b3b; font-size: 54px; }
 .lohead { color: var(--yellow); text-align: center; margin: 14px 0 6px; }
-#loadout { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+#loadout { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .lcol { display: flex; flex-direction: column; gap: 4px; }
 .lt { color: #aaa; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
 .wpick {
@@ -103,7 +109,7 @@ h1 {
 
 
 /* ================= v3: menus, cosmetics, hp glitch, scope ================= */
-#menu { flex-direction: column; }
+#menu { flex-direction: column; justify-content: safe center; } /* tall screens scroll from the top instead of getting cut off */
 .screen { width: min(900px, 100%); }
 .screen h2 { margin: 0 0 10px; text-align: center; color: var(--yellow); font-size: 34px; transform: rotate(-1.5deg); }
 .panel .note { text-align: center; color: #aaa; font-size: 13px; margin-bottom: 8px; }
@@ -230,7 +236,7 @@ button.big:hover, button.mid:hover { transform: rotate(-1.5deg) scale(1.04); }
 
 #streak { position: absolute; left: 20px; bottom: 58px; font-size: 15px; color: var(--yellow); }
 #cheat { display: none; position: absolute; left: 16px; top: 44px; white-space: pre; font-family: 'Courier New', monospace; font-size: 13px; color: #39ff14; background: rgba(0, 0, 0, 0.6); border: 1px solid #39ff14; padding: 6px 10px; text-shadow: 0 0 6px #39ff14; }
-#hand { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); display: none; gap: 6px; }
+#hand { position: absolute; left: 50%; bottom: 200px; transform: translateX(-50%); display: none; gap: 6px; }
 .pcard { width: 38px; height: 54px; background: #fff; border: 2px solid #222; font-size: 15px; font-weight: bold; display: flex; align-items: center; justify-content: center; text-shadow: none; }
 .pcard.sel { transform: translateY(-10px); border-color: var(--yellow); box-shadow: 0 0 10px var(--yellow); }
 #sleepFx { position: absolute; inset: 0; background: rgba(20, 0, 40, 0.75); color: #b07dff; font-size: 60px; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
@@ -275,3 +281,77 @@ button.big:hover, button.mid:hover { transform: rotate(-1.5deg) scale(1.04); }
 body.replaying #game { filter: saturate(0.75) contrast(1.15) sepia(0.15); }
 body.replaying #crosshair, body.replaying #hpbox, body.replaying #ammo, body.replaying #weapons, body.replaying #speed, body.replaying #combo,
 body.replaying #weaponName, body.replaying #meter, body.replaying #hand, body.replaying #streak, body.replaying #scope, body.replaying #dead, body.replaying #vignette { visibility: hidden; }
+
+#speedLinesCv { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; image-rendering: pixelated; }
+body.replaying #speedLinesCv { visibility: hidden; }
+
+.allmode { display: block; font-size: 14px; margin: 4px 0 8px; color: #ffe14d; }
+
+/* modes */
+#teamBar { position: absolute; left: 50%; top: 34px; transform: translateX(-50%); display: flex; gap: 10px; align-items: center; font-size: 20px; text-shadow: 2px 2px 0 #000; }
+#teamBar .t1 { color: #ff4f4f; } #teamBar .t2 { color: #4fa8ff; }
+#teamBar .mine { text-decoration: underline; font-size: 24px; }
+#teamBar .mid { font-size: 13px; color: #fff; background: rgba(0, 0, 0, 0.45); padding: 2px 8px; }
+#objective { position: absolute; left: 50%; top: 64px; transform: translateX(-50%); font-size: 15px; color: #ffe14d; text-shadow: 1px 1px 0 #000; white-space: nowrap; }
+#votePanel { position: absolute; right: 16px; top: 34%; width: 300px; background: rgba(10, 0, 20, 0.85); border: 3px solid var(--cyan); padding: 10px 12px; box-shadow: 4px 4px 0 #000; }
+#votePanel .vt { font-size: 14px; color: var(--cyan); margin-bottom: 6px; }
+.vopt { display: flex; align-items: center; gap: 8px; padding: 5px 6px; margin-top: 4px; background: rgba(255, 255, 255, 0.06); font-size: 15px; }
+.vopt b { color: #ffe14d; width: 16px; }
+.vopt span { flex: 1; }
+.vopt i { font-style: normal; color: #fff; background: rgba(255, 255, 255, 0.15); padding: 0 6px; }
+.vopt.on { outline: 2px solid #ffe14d; }
+body.replaying #teamBar, body.replaying #objective { visibility: hidden; }
+
+/* character screen: keep the preview in view while you scroll through the options */
+#charSlot { position: sticky; top: -18px; z-index: 3; background: rgba(18, 8, 24, 0.96); padding-bottom: 4px; }
+#charSlot #preview { height: 240px; }
+
+.hslot.item { margin-left: 10px; opacity: 1; border-color: #9ab04a; }
+.hslot.item.empty img { filter: grayscale(1) brightness(0.6); }
+.hslot .pie { position: absolute; inset: 0; border-radius: 6px; pointer-events: none; }
+
+#freezeFx { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.2s; box-shadow: inset 0 0 160px 40px rgba(190, 235, 255, 0.85); background: repeating-linear-gradient(45deg, rgba(255,255,255,0.06) 0 6px, transparent 6px 14px); }
+
+/* killstreaks */
+/* killstreaks: small icons in the bottom right corner */
+#streakTray { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 4px; align-items: flex-end; }
+.kstreak { position: relative; width: 42px; height: 42px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; background: rgba(10, 0, 20, 0.55); border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 6px; opacity: 0.6; font-size: 9px; line-height: 1; padding-bottom: 1px; }
+.kstreak img { position: absolute; left: 50%; top: 2px; transform: translateX(-50%); width: 24px; height: 24px; image-rendering: pixelated; filter: grayscale(0.8); }
+.kstreak b { position: absolute; left: 3px; top: 0; font-size: 10px; color: #fff; text-shadow: 1px 1px 0 #000; }
+.kstreak.ready { opacity: 1; border-color: #ffe14d; box-shadow: 0 0 12px rgba(255, 225, 77, 0.6); animation: kready 0.9s steps(2) infinite; }
+.kstreak.ready img { filter: none; }
+.kstreak.ready span { color: #ffe14d; }
+@keyframes kready { 50% { transform: translateY(-4px); } }
+#lo-streaks { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.kpick { display: flex; align-items: center; gap: 6px; font-family: var(--font); font-size: 14px; padding: 3px 8px 3px 3px; background: rgba(255, 255, 255, 0.08); color: #fff; border: 2px solid transparent; cursor: pointer; }
+.kpick img { width: 30px; height: 30px; image-rendering: pixelated; }
+.kpick.on { border-color: #ffe14d; color: #ffe14d; }
+body.replaying #streakTray, body.replaying #hotbar { visibility: hidden; }
+/* hotbar down the right side (settings) */
+body.hotbar-right #hotbar { left: auto; right: 12px; bottom: auto; top: 50%; transform: translateY(-50%); flex-direction: column; align-items: flex-end; gap: 12px; }
+body.hotbar-right #weapons { flex-direction: column; align-items: flex-end; }
+body.hotbar-right .hslot.on { transform: translateX(-9px) scale(1.08); }
+body.hotbar-right .hslot.item { margin-left: 0; margin-top: 8px; }
+body.hotbar-right #ammo { right: 50%; transform: translateX(50%); bottom: 14px; }
+body.hotbar-right #weaponName { bottom: 62px; }
+
+/* containers screen */
+.cratecards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 10px 0; }
+@media (max-width: 700px) { .cratecards { grid-template-columns: 1fr; } }
+.cratecard { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 2px solid #444; text-align: center; }
+.cratecard.has { border-color: var(--yellow); box-shadow: 0 0 14px rgba(255, 225, 77, 0.25); }
+.cratecard img { width: 120px; height: 90px; image-rendering: pixelated; }
+.cratecard b { font-size: 22px; color: var(--yellow); }
+.cratecard span { font-size: 14px; color: #ddd; }
+.cratecard small { color: #9ad; }
+button.mid.glow { background: var(--yellow); }
+/* small windows: shrink the hotbar so it never runs into the HP box or off the screen */
+@media (max-width: 860px) {
+  body:not(.hotbar-right) #hotbar { left: calc(50% + 40px); transform: translateX(-50%) scale(0.8); transform-origin: bottom center; }
+}
+@media (max-height: 640px) {
+  body.hotbar-right #hotbar { transform: translateY(-50%) scale(0.78); transform-origin: right center; }
+}
+@media (max-height: 480px) {
+  body.hotbar-right #hotbar { transform: translateY(-50%) scale(0.66); }
+}

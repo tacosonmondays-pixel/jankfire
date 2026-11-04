@@ -264,6 +264,8 @@ export function applySkin(g, skin) {
       h.scale.setScalar(s);
       h.position.set(tmpV.x, tmpBox.max.y - s * 0.05, tmpV.z + tmpS.z * 0.15);
     }
+    h.userData.isHat = true;
+    g.userData.hat = h;
     g.add(h);
   }
   return g;
@@ -343,7 +345,8 @@ export function skinTick(dt, now) {
     m.emissive.setHSL((now * 0.00025) % 1, 0.9, 0.12);
   }
   for (const h of liveHats) {
-    if (!inScene(h)) { if (!h.parent) liveHats.delete(h); continue; }
+    // out of every scene = a discarded weapon (they're all added the frame they're built): let it go
+    if (!inScene(h)) { liveHats.delete(h); continue; }
     h.userData.tick(dt, now);
   }
 }

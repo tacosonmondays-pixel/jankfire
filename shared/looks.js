@@ -31,7 +31,15 @@ export const ACCESSORIES = {
   },
 };
 export const LOOK_SLOTS = ['head', 'face', 'back'];
-export const DEFAULT_LOOK = { color: '', head: 'none', face: 'none', back: 'none' };
+// outfit: skin, hair, top + bottom (all free)
+export const SKIN_TONES = ['#e6cba2', '#ffdbac', '#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#5c3a21', '#ffffff', '#9ad0ff', '#a8e6a1', '#c8a2ff', '#555560'];
+export const HAIR_COLORS = ['#1a1a1a', '#4a2a10', '#8a5a2b', '#d9b45a', '#f2e6c8', '#c02030', '#ff4fd8', '#4fd8ff', '#7dff4f', '#ffffff', '#ff7a1a', '#7a4aff'];
+export const CLOTH_COLORS = ['#ff4fd8', '#4fd8ff', '#ffe14d', '#7dff4f', '#ff7a1a', '#b07dff', '#ff4f4f', '#4fffb0', '#ffffff', '#ff9ad5', '#3a3a44', '#8a5a2b', '#1a1a1a', '#2a4a8a', '#3a6a2a', '#c8b48a'];
+export const HAIRS = { none: { name: 'Bald' }, short: { name: 'Short' }, bowl: { name: 'Bowl Cut' }, spiky: { name: 'Spiky' }, mohawk: { name: 'Mohawk' }, long: { name: 'Long' }, ponytail: { name: 'Ponytail' }, bun: { name: 'Bun' }, afro: { name: 'Afro' } };
+export const TOPS = { tank: { name: 'Sash' }, tee: { name: 'T-Shirt' }, hoodie: { name: 'Hoodie' }, jacket: { name: 'Jacket' }, suit: { name: 'Suit' }, none: { name: 'Nothing' } };
+export const BOTTOMS = { shorts: { name: 'Shorts' }, pants: { name: 'Pants' }, skirt: { name: 'Skirt' } };
+export const OUTFIT = { skin: SKIN_TONES, hairColor: HAIR_COLORS, topColor: CLOTH_COLORS, bottomColor: CLOTH_COLORS };
+export const DEFAULT_LOOK = { color: '', head: 'none', face: 'none', back: 'none', skin: '', hair: 'none', hairColor: '#1a1a1a', top: 'tank', topColor: '', bottom: 'shorts', bottomColor: '' };
 
 export function achievementsFrom(stats) {
   const out = new Set();
@@ -40,14 +48,19 @@ export function achievementsFrom(stats) {
   return out;
 }
 
+const has = (T, k) => typeof k === 'string' && Object.hasOwn(T, k); // client data: real keys only
 // anything you haven't unlocked falls back to none
 export function validLook(look, achs) {
   const out = { ...DEFAULT_LOOK };
   if (!look || typeof look !== 'object') return out;
   if (LOOK_COLORS.includes(look.color)) out.color = look.color;
   for (const s of LOOK_SLOTS) {
-    const a = ACCESSORIES[s][look[s]];
+    const a = has(ACCESSORIES[s], look[s]) && ACCESSORIES[s][look[s]];
     if (a && (!a.ach || (achs && achs.has(a.ach)))) out[s] = look[s];
   }
+  if (has(HAIRS, look.hair)) out.hair = look.hair;
+  if (has(TOPS, look.top)) out.top = look.top;
+  if (has(BOTTOMS, look.bottom)) out.bottom = look.bottom;
+  for (const [k, list] of Object.entries(OUTFIT)) if (list.includes(look[k])) out[k] = look[k];
   return out;
 }
