@@ -27,19 +27,19 @@ export function siteAt(map, p) {
   return null;
 }
 export function mapsFor(game, maps, order) {
-  return order.filter((id) => id !== 'range' && maps[id] && (!GAMES[game].sites || (maps[id].sites && maps[id].sites.length)) && (!GAMES[game].lava || lavaOk(maps[id])));
+  return order.filter((id) => id !== 'range' && maps[id] && (!GAMES[game].sites || (maps[id].sites && maps[id].sites.length)) && (!GAMES[game].mapOk || GAMES[game].mapOk(maps[id])));
 }
 
 // chaos modes (free for all). kit = the only weapons you get (no item, no killstreaks), checked by the server too.
-// hookMul = grapple pull, lives = one in the chamber's lives (out of lives = spectate), bullets = start / max
+// mapOk = which maps the mode can be played on, hookMul = grapple pull, lives = one in the chamber's lives (out of lives = spectate), bullets = start / max
 Object.assign(GAMES, {
   spoons: { name: 'Spoons & Grapples', desc: 'spoons only (one hit kills) and the grapple pulls harder. swing in and bonk', teams: false, kit: { slots: ['spoon'], noItem: true, noStreaks: true }, hookMul: 1.35 },
   duckrain: { name: 'Duck Rain', desc: 'deathmatch, but rubber ducks rain from the sky and land as black holes. watch for the shadows', teams: false, duckRain: true },
-  lava: { name: 'Floor Is Lava', desc: 'the ground floor burns. stay on crates, roofs and walls. bhop and grapple', teams: false, lava: true },
-  oitc: { name: 'One in the Chamber', desc: 'a revolver with one bullet (any hit kills) and a knife. kills give bullets. 3 lives, last one standing wins', teams: false, kit: { slots: ['revolver', 'knife'], noItem: true, noStreaks: true, noReload: true }, lives: 3, bullets: [1, 3] },
+  lava: { name: 'Floor Is Lava', desc: 'the ground floor burns. stay on crates, roofs and walls. bhop and grapple', teams: false, lava: true, mapOk: lavaOk },
+  oitc: { name: 'One in the Chamber', desc: 'a revolver with one bullet (any hit kills) and a knife. kills give bullets. 3 lives, last one standing wins', teams: false, kit: { slots: ['revolver', 'knife'], noItem: true, noStreaks: true, noReload: true, noTbag: true, desc: { revolver: 'one bullet, any hit kills. every kill gives you another (max 3)' } }, lives: 3, bullets: [1, 3] },
 });
 GAME_ORDER.push('spoons', 'duckrain', 'lava', 'oitc');
-Object.assign(TARGETS.ffa, { spoons: 20, duckrain: 20, lava: 20 });
-Object.assign(TARGETS.bots, { spoons: 15, duckrain: 15, lava: 15 });
+Object.assign(TARGETS.ffa, { spoons: 20, duckrain: 20, lava: 20, oitc: 0 }); // oitc: 0 = no kill limit, last one standing
+Object.assign(TARGETS.bots, { spoons: 15, duckrain: 15, lava: 15, oitc: 0 });
 // duck rain: a drop every `every` seconds (start -> end of the match), `n` ducks per drop scaled by map size, from `height` up
 export const DUCKRAIN = { every: [2.4, 1.1], n: [1.5, 3.5], height: 46, vy: 6, near: 0.5, hole: { R: 12, pull: 40, time: 2.6 } };

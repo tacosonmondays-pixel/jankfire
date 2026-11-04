@@ -177,6 +177,8 @@ net.on('oitc', (m) => {
   C.oitc = { b: m.b, l: m.l, out: !!m.out };
   W.ammo.revolver = m.b; // the server counts the bullets
   if (was && m.b > was.b && ME.alive && m.l === was.l) { hud.msg(`+1 BULLET · ${m.b} IN THE CHAMBER`, 1.3, 'brag'); sfx.chamber(); }
+  // out but still walking around = we (re)joined a round we're already out of: straight to spectating
+  if (m.out && ME.alive && !was) { ME.alive = false; G.deadAt = performance.now() - 3000; hud.dead(true, [['out of lives this round', '#fff']]); }
   if (m.out && !(was && was.out)) { hud.msg('OUT OF LIVES', 2.4, 'brag'); C.specSnap = true; }
   else if (was && m.l < was.l && m.l > 0) hud.chat(null, null, `${m.l} ${m.l > 1 ? 'lives' : 'life'} left`);
   renderLives();
@@ -283,4 +285,16 @@ export function updateChaos(dt, now) {
   tickDrops(now);
   tickLives(now);
   if (embers) { embers.update(dt); bubbles.update(dt); }
+}
+
+// floor is lava: size up each map's floor one at a time while we sit in the menus, so the bots setup screen
+// doesn't freeze for half a second working them all out the first time someone picks the mode (never mid-match)
+{
+  const ids = Object.keys(MAPS);
+  const step = () => {
+    if (!ids.length) return;
+    if (!G.joined) { try { surfaces(MAPS[ids.shift()]); } catch { /* a weird map just isn't lava-ready */ } }
+    setTimeout(step, G.joined ? 3000 : 120);
+  };
+  setTimeout(step, 1500);
 }

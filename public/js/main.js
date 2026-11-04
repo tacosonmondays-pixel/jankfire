@@ -1011,6 +1011,7 @@ net.on('votes', (m) => { if (G.vote) { G.vote.counts = m.counts; showVote(G.vote
 // randomizer mode: the server hands you a loadout each life (null = use your own again)
 net.on('loadout', (m) => {
   G.forcedLoadout = m.lo || null;
+  hud.descFor = (m.lo && m.lo.desc) || null; // chaos modes can say what a weapon does in this mode
   setLoadout(m.lo || S.loadout);
   refillAmmo();
   if (m.lo && !m.lo.only) hud.msg(`${wname(m.lo.primary)} · ${wname(m.lo.secondary)} · ${wname(m.lo.melee)}`, 2.2, 'brag');
@@ -1071,7 +1072,7 @@ net.on('kill', (m) => {
   } else {
     parts = [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc]];
   }
-  const hazard = m.w === 'lava' || (m.w === 'duck' && (!m.k || m.via)); // floor is lava / duck rain: nobody owns those
+  const hazard = m.w === 'lava' || (m.w === 'duck' && m.sky); // floor is lava / duck rain: nobody owns those
   if (hazard) parts = m.k ? [[kn, kc], [`  [${wname(m.via)}]  `, wcolor(m.via)], [vn, vc], [m.w === 'lava' ? '  into the lava' : '  under a sky duck', '#aaa']] : [[vn, vc], [m.w === 'lava' ? '  touched the floor' : '  got flattened by a sky duck', '#ff8a3a']];
   if (!dummy) hud.feed(parts);
   if (m.v === G.myId) {
