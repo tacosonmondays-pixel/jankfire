@@ -5,6 +5,7 @@ import { G } from './ctx.js';
 import { MAPS } from '/shared/map.js';
 import { TEAMS, GAMES, BOMB, siteAt } from '/shared/modes.js';
 import { M } from './models.js';
+import { zmCanUse } from './zombies.js';
 
 const $ = (id) => document.getElementById(id);
 let sites = [], bomb = null, carrierMark = null, mapId = null;
@@ -74,6 +75,7 @@ export function clearTags() { for (const g of tags.values()) G.scene.remove(g); 
 
 // am I in a spot where F plants / defuses?
 export function canUse(r, myPos) {
+  if (r && r.zm) return zmCanUse(); // zombies: a door, a wall gun, the crate, a downed friend
   const b = r && r.bomb;
   if (!b || r.game !== 'bomb' || b.ph === 'done') return false;
   if (b.ph === 'live' && b.carrier === G.myId) return !!siteAt(MAPS[G.cfg.map], myPos);

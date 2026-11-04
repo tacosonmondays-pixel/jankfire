@@ -63,7 +63,7 @@ Notes:
 | Right mouse | aim down sights · **Knife: heavy stab** · Card Deck: pick a card |
 | E / mouse side buttons | grapple (hold) |
 | R | reload (Card Deck: redraw) |
-| F | inspect your weapon · **Plant & Defuse: hold F to plant / defuse** |
+| F | inspect your weapon · **Plant & Defuse: hold F to plant / defuse** · **Zombies: hold F to buy (doors, wall guns, the crate) or revive a friend** |
 | G | **use your item** (grenade, medkit, shield bubble, duck, smoke) |
 | 5 / 6 / 7 | **use your killstreaks** (the tray on the right shows which are ready) |
 | 1 / 2 / 3, wheel, Q | primary / secondary / melee, last weapon. 4 = Scythe Rifle if you have it |
@@ -92,6 +92,15 @@ Game modes (Play + Bots):
 | Tags | kills drop a tag. Grab enemy tags to score, grab your own team's to deny them. |
 | Plant & Defuse | attackers carry the bomb to site A or B and hold F to plant (3 s). Defenders stop them or hold F to defuse (5 s). First to 4 rounds, sides swap after round 3. |
 | Randomizer | everyone gets a random loadout every life |
+| Zombies | co-op vs endless rounds of zombies on the Dead Mall (below). Its own map, and that map is only for it. |
+
+**Zombies** (Bots room solo, or with friends in Online when the vote picks it): you start in the mall's entrance hall with 500 credits, the Revolver and a knife. Zombie bots climb in through boarded windows (only in areas you've opened) and walk the map to whoever is closest, through open doors only.
+
+- **Credits:** +10 a hit on a zombie (its first 10 hits), +60 a kill, +100 for a headshot or melee kill. The HUD shows them with +N popups; Tab shows everyone's.
+- **Hold F** while looking at something: a **shutter** opens an area (750-1250), a **wall gun** (a chalk outline with its price) buys that weapon or, if you have it, its ammo for half price, the **mystery crate** (950) spins through weapons and offers you a random one (hold F again to take it). You carry 2 guns + a melee; a new gun replaces the one in your hands. Guns have real ammo here.
+- **Power switch** in the Loading Dock: lights the mall and powers the **Jank Cola** machine in the Atrium (2500: zombies hit you half as hard, you heal faster, lost if you go down).
+- **Rounds:** every round has more zombies with more HP (40 in round 1, +22 a round, then +9% from round 10). Shamblers early, runners from round 4, sprinters from round 9. 10 s between rounds; the round counter is red chalk tally marks.
+- **Going down:** no hits for 4 s and you heal. If you go down a friend can hold F on you for 3 s within 30 s to revive you; otherwise you're back (with the Revolver) when the next round starts. Everyone down = game over: the round you reached and everyone's kills / headshots / downs / revives / credits, then the vote. No killstreaks in this mode.
 
 Bots play the objectives too: they carry and plant the bomb, defuse it, and grab tags. They also use the grapple to chase, to get up high, and to save themselves from the void.
 
@@ -147,8 +156,11 @@ Pick **3** in LOADOUT. Kills in one life (the count resets when you die) earn th
 | **Bazaar** | large | the Plant & Defuse map (below) |
 | Islands | large | floating islands over the ocean |
 | Skyline | huge | real towers with floors, sky bridges, a construction site with a crane |
+| **Dead Mall** | medium | the Zombies map: a closed-down mall, one floor, six areas round the atrium |
 
 Every map has scenery around it now: plateaus with cliffs down to a valley, mesas and dunes, a city of lit towers below, an ocean, a cloud sea, mountains on the horizon.
+
+**Dead Mall** is the Zombies map: the Entrance Hall (start) plus five areas behind roller shutters (Food Court, Toy Store, Atrium, Arcade, Loading Dock), laid out in a ring round the Atrium so you can run loops (and loops inside them: the kiosk, the food court tables, the toy shelves, the elevator core, the arcade rows). Low ceilings and nothing tall to stand on, so there's no perch the zombies can't reach. Every area has boarded windows onto little back alleys where the zombies come from. Wall guns: Revolver, SMG (hall), Bread, Peel Shooter (food court), Shotgun, Bow (toy store), Assault Rifle (atrium), Sniper (arcade), Katana (dock). The mystery crate sits under its light beam at the north end of the Atrium.
 
 **Bazaar** is an original market town built on classic bomb-map rules (the same ones that make Dust 2 work):
 - three lanes: **Canal Street** (a long street with a sunken canal you can drop into), the **Market Hall** in the middle (covered, stalls for cover, banners that hide your head but not your feet), and the **Cistern** (an underground tunnel to B)
@@ -225,7 +237,7 @@ Prompts live in `tools/models.json`; models land in `public/models/<id>.glb` and
 ## How it works
 
 - `server.js`: static files + WebSocket `/ws`. Rooms: shared Online and Coop, private Bots and Training. Movement is client-authoritative; the server owns HP, kills, projectiles, arrows, cards, items, frost, streaks, modes (teams, tags, the bomb), the map/mode vote, cosmetics ownership, achievements, round recordings for highlights, and bots (including their objective routes and grappling).
-- `server/`: accounts, stats, containers, leaderboard (`/api/*`), stored in a local file or Supabase.
-- `shared/`: `map.js` maps + box physics + bot routes · `modes.js` game modes, teams, bomb rules, vote timing · `weapons.js` weapons, items, killstreaks, loadout rules · `cosmetics.js` skins/wraps/effects/kill effects/hats + crates · `looks.js` character outfits.
-- `public/js/`: `main.js` menus + net + loop · `player.js` movement · `weapons.js` viewmodels, recoil springs, ADS, items · `anim.js` swing/inspect keyframes (per-knife styles) · `speedlines.js` · `remote.js` other players · `replay.js` killcam + highlights · `killfx.js` kill effects · `cards.js` name cards · `objective.js` bomb sites, tags, team bar · `icons.js` hotbar/item/streak pictures · `models.js` · `skins.js` · `fx.js` · `world.js` · `scenery.js` the land around each map · `hud.js` · `audio.js`.
+- `server/`: accounts, stats, containers, leaderboard (`/api/*`), stored in a local file or Supabase · `zombies.js` the Zombies mode (rounds, the zombies' nav grid and AI, the shop, revives).
+- `shared/`: `map.js` maps + box physics + bot routes · `modes.js` game modes, teams, bomb rules, vote timing · `zombies.js` the Zombies rules, prices, ammo and what F is pointing at · `weapons.js` weapons, items, killstreaks, loadout rules · `cosmetics.js` skins/wraps/effects/kill effects/hats + crates · `looks.js` character outfits.
+- `public/js/`: `main.js` menus + net + loop · `player.js` movement · `weapons.js` viewmodels, recoil springs, ADS, items · `anim.js` swing/inspect keyframes (per-knife styles) · `speedlines.js` · `remote.js` other players · `replay.js` killcam + highlights · `killfx.js` kill effects · `cards.js` name cards · `objective.js` bomb sites, tags, team bar · `zombies.js` the Zombies HUD, shutters, wall guns, crate, prompts, ammo · `icons.js` hotbar/item/streak pictures · `models.js` · `skins.js` · `fx.js` · `world.js` · `scenery.js` the land around each map · `hud.js` · `audio.js`.
 - `desktop/`: the Electron app (launcher, in-app server, display modes).

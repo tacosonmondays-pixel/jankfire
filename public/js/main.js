@@ -30,6 +30,7 @@ import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, update
 import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, HAIRS, TOPS, BOTTOMS } from '/shared/looks.js';
 import { account, restore, login, register, logout, saveProfile, leaderboard as fetchLeaders } from './account.js';
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
+import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset } from './zombies.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
@@ -167,6 +168,7 @@ function resetWorldState() {
   stopReplay(true);
   hideReplayUI();
   if (G.forcedLoadout) { G.forcedLoadout = null; setLoadout(S.loadout); }
+  zmReset();
   for (const b of G.bubbles.values()) G.scene.remove(b.mesh);
   G.bubbles.clear(); G.smokes.length = 0; ME.frozenUntil = 0; G.frost = 0;
   clearRec();
@@ -740,6 +742,7 @@ addEventListener('resize', resizePreview);
 function renderScores() {
   const rows = [{ name: G.myName, color: G.myColor, k: G.kills, d: G.deaths, me: true, card: cardUrlFor(G.myId) }];
   for (const r of G.remotes.values()) if (!(r.bot && r.name === 'Dummy')) rows.push({ id: r.id, name: r.name, color: r.color, k: r.k, d: r.d, card: cardUrlFor(r.id) });
+  zmScoreRows(rows); // zombies: no zombies on it, credits next to names
   rows.sort((a, b) => b.k - a.k || a.d - b.d);
   if (G.round && GAMES[G.round.game] && GAMES[G.round.game].teams) {
     const team = (r) => (r.me ? G.myTeam : (G.remotes.get(r.id) || {}).team || 0);
@@ -818,6 +821,7 @@ net.on('welcome', (m) => {
   G.kat.clear(); setMyKatana(0);
   for (const [id, n] of m.kat || []) G.kat.set(id, n);
   setupObjectives(m.cfg.map);
+  zmSetup(m.cfg.map);
   clearTags();
   for (const g of m.tags || []) addTag(g.id, g.p, g.team);
   showVote(m.vote);
@@ -837,6 +841,7 @@ net.on('cfg', (m) => {
   const mapChanged = m.cfg.map !== G.cfg.map;
   G.cfg = m.cfg;
   if (mapChanged) { loadMap(m.cfg.map); clearEntities(); setupObjectives(m.cfg.map); }
+  if (mapChanged) zmSetup(m.cfg.map);
   updateLabel();
   if (screen === 'match') syncMatchUI();
 });
@@ -1050,6 +1055,7 @@ net.on('kill', (m) => {
     if (replaced) victim.ch.root.visible = false; else victim.breakApart(m.vel || victim.vel);
   } else if (m.v === G.myId && kfx) playKillFx(kfx, { pos: ME.pos.slice(), vel: m.vel || ME.vel, yaw: ME.yaw, color: G.myColor, look: validLook(G.settings.look, myAchs()), name: G.myName });
   const dummy = victim && victim.bot && victim.name === 'Dummy';
+  if (zmKillFeed(m, victim)) return; // zombies: a zombie went down. no feed line, the credits popup says it
   let parts;
   if (m.w === 'void') {
     parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], ['  into the void', '#aaa']] : [[vn, vc], ['  fell into the void', '#aaa']];
@@ -1321,6 +1327,7 @@ function frame(t) {
   $('freezeFx').style.opacity = now < (ME.frozenUntil || 0) ? 1 : Math.min(0.6, (G.frost || 0) * 0.15);
   if (G.joined) {
     updateObjectives(dt, now, G.round, ME.pos);
+    updateZombies(dt, now);
     const a = G.round && G.round.bomb && G.round.bomb.act;
     if (a && a.by === G.myId) hud.meter(a.f, a.k === 'plant' ? 'PLANTING... keep holding F' : 'DEFUSING... keep holding F', '#ff4f4f');
     if (G.vote) $('voteLeft').textContent = `${Math.max(0, Math.ceil((G.voteEnds - performance.now()) / 1000))}s`;
@@ -1864,6 +1871,8 @@ function fmtClock(ms) { const s2 = Math.ceil(ms / 1000); return `${Math.floor(s2
 function renderRound(r) {
   const el = $('round');
   if (!r) { el.textContent = ''; return; }
+  const zt = zmRoundText(r); // zombies: zombies left / the break
+  if (zt != null) { el.textContent = zt; return; }
   const teamGame = r.game && GAMES[r.game] && GAMES[r.game].teams;
   el.textContent = r.over ? `next round in ${Math.ceil(r.left / 1000)}` : teamGame ? '' : `first to ${r.target} · ${fmtClock(r.left)}`;
 }
