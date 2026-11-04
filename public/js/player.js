@@ -127,7 +127,7 @@ function ropeLetGo(dt) {
   ME.vel[1] += C.grav * ROPE.lift * feel.lift * dt;
 }
 
-// camera feel on the rope: lean a little into the pull and widen the fov a touch, eased in and out with
+// camera feel on the rope: lean a little toward the rope and widen the fov a touch, eased in and out with
 // critically damped springs (no snaps). main.js adds ME.lean to the camera roll and ME.ropeFov to the fov.
 const feel = { lean: 0, leanV: 0, fov: 0, fovV: 0, kick: 0, lift: 0, t: 0 };
 function ease(k, target, w, dt) {
@@ -135,13 +135,13 @@ function ease(k, target, w, dt) {
   feel[k] += feel[k + 'V'] * dt;
 }
 function hookFeel(dt, now) {
-  if (now - feel.t > 250) Object.assign(feel, { lean: 0, leanV: 0, fov: 0, fovV: 0, kick: 0, lift: 0 }); // respawned / was paused
+  if (now - feel.t > 250) Object.assign(feel, { leanV: 0, fovV: 0, kick: 0, lift: 0 }); // respawned / was paused: the springs ease lean and fov back from where they were
   feel.t = now;
   let lean = 0, fov = 0;
   const h = ME.hook;
   if (h && h.n) {
     const side = h.n[0] * Math.cos(ME.yaw) - h.n[2] * Math.sin(ME.yaw); // + = the rope pulls to your right
-    lean = -side * Math.min(1, (h.pull || 0) / 45) * 0.07; // roll is + to the left, so lean right = negative
+    lean = -side * 0.06; // by the rope's angle, so a steady swing leans too. roll is + to the left, so lean right = negative
     fov = 1.5 + Math.min(2.5, hspeed() * 0.08);
   }
   feel.kick = Math.max(0, feel.kick - dt * 3); // grapple jump: a short swell instead of a text popup
@@ -153,6 +153,7 @@ function hookFeel(dt, now) {
 export function stepPlayer(dt, inp, now) {
   if (!ME.alive) return;
   const v = ME.vel, p = ME.pos;
+  hookFeel(dt, now); // before any early return, so the camera lean keeps easing (e.g. through a dash)
   // glitch dash: fly straight where you look, no gravity. letting go keeps all of it.
   if (ME.dashing) {
     const d = look(), sp = 38;
@@ -171,7 +172,6 @@ export function stepPlayer(dt, inp, now) {
   let wx = -s * fw + c * st, wz = -c * fw - s * st;
   const wl = Math.hypot(wx, wz);
   if (wl) { wx /= wl; wz /= wl; }
-  hookFeel(dt, now);
   // grapple jump: let go and get flung along your swing plus a modest hop, added on top of your momentum.
   // timing counts a little: on the upswing, swinging the way you look, you get more
   if (inp.jumpPressed && ME.hook) {

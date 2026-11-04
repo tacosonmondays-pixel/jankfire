@@ -18,7 +18,7 @@ import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor } from './shared/modes.js';
 import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, validStreaks, fireRate } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
-import { ropeStep, ropeJump } from './shared/hookphys.js';
+import { ropeStep, ropeJump, ROPE } from './shared/hookphys.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -593,11 +593,16 @@ class Room {
     const hk = b.ai && b.ai.hook;
     if (hk) {
       ropeStep(hk, hk.point, b.pos, v, dt, 26);
+      b.ropeLift = 1;
       if (hk.dist < 4.5 || n > hk.until || slipping) {
-        if (!slipping) { const cp = Math.cos(b.pitch); ropeJump(v, [-Math.sin(b.yaw) * cp, Math.sin(b.pitch), -Math.cos(b.yaw) * cp]); }
+        // grapple jump the way they're facing, a bit up, and never flung into the surface they're hooked on
+        if (!slipping) { const cp = Math.cos(b.pitch); ropeJump(v, [-Math.sin(b.yaw) * cp, Math.max(0.3, Math.sin(b.pitch)), -Math.cos(b.yaw) * cp], hk.n); }
         b.ai.hook = null; b.g = null;
       }
       b.onGround = false;
+    } else if (b.ropeLift > 0) { // let go: the rope's share of their weight fades out like a player's (no one-step drop)
+      b.ropeLift = Math.max(0, b.ropeLift - dt / 0.15);
+      v[1] += 26 * ROPE.lift * b.ropeLift * dt;
     }
     const was = b.onGround;
     const res = movePlayer(b.pos, v, dt, this.boxes, was);
