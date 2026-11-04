@@ -214,7 +214,7 @@ export const ITEM_ORDER = ['frag', 'medkit', 'bubble', 'duck', 'smoke', 'popper'
 export function validLoadout(lo) {
   const out = { ...DEFAULT_LOADOUT };
   if (lo) for (const s of SLOTS) if (WEAPONS[lo[s]] && WEAPONS[lo[s]].slot === s) out[s] = lo[s];
-  if (lo && ITEMS[lo.item]) out.item = lo.item;
+  if (lo && Object.hasOwn(ITEMS, lo.item)) out.item = lo.item;
   out.streaks = validStreaks(lo && lo.streaks);
   return out;
 }

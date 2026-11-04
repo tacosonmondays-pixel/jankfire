@@ -178,10 +178,19 @@ export class Remote {
   // items (party popper, reverse card) pop into their hand for a moment, skin and all, then it's back to the gun
   popItem(id, ms) {
     if (this.itemMesh) this.itemMesh.removeFromParent();
-    this.itemMesh = buildWeapon(id, this.skins[id]);
-    this.itemMesh.traverse((o) => { if (o.isMesh && !o.material.transparent) o.material = visibleMat(o.material); });
-    this.itemMesh.scale.setScalar(1.5);
-    this.ch.slot.add(this.itemMesh);
+    // one mesh per item, reused every pop: building one each time leaked geometries + noFog clones
+    this.items ||= {};
+    const key = id + JSON.stringify(this.skins[id] || '');
+    let g = this.items[id];
+    if (!g || g.userData.key !== key) { // only a new skin rebuilds it
+      g = buildWeapon(id, this.skins[id]);
+      g.traverse((o) => { if (o.isMesh && !o.material.transparent) o.material = visibleMat(o.material); });
+      g.scale.setScalar(1.5);
+      g.userData.key = key;
+      this.items[id] = g;
+    }
+    this.itemMesh = g;
+    this.ch.slot.add(g);
     this.itemUntil = performance.now() + ms;
   }
   itemMuzzle() {
@@ -200,7 +209,7 @@ export class Remote {
       this.uno.rotation.z -= dt * 6; this.uno.rotation.y = Math.sin(now * 0.004) * 0.2;
       const s = 1.6 + Math.sin(now * 0.012) * 0.15;
       this.card.scale.set(s, s, s); this.card.position.y = 3.2 + Math.sin(now * 0.006) * 0.1;
-    }
+    } else if (this.card.scale.x !== 1) { this.card.scale.set(1, 1, 1); this.card.position.y = 2.9; } // back to the little card over their head
     const red = outlineMat(0xff2a2a), sh = this.shells || [];
     if (sh.length && on !== (sh[0].material === red)) { const mat = on ? red : outlineMat(new THREE.Color(this.color).getHex()); for (const s of sh) s.material = mat; }
   }

@@ -16,7 +16,7 @@ import { validLook, achievementsFrom, ACHIEVEMENTS } from './shared/looks.js';
 import { STAT_KEYS } from './server/store.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor } from './shared/modes.js';
-import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, validStreaks, fireRate } from './shared/weapons.js';
+import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, DEFAULT_LOADOUT, validStreaks, fireRate } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -233,8 +233,8 @@ class Room {
   sendLoadout(p) {
     if (p.isBot) { if (GAMES[this.game].random && !p.ai.dummy) { p.w = pick(BOT_GUNS); p.ai.ammo = WEAPONS[p.w].mag || 1; } return; }
     const rnd = (this.mode === 'ffa' || this.mode === 'bots') && GAMES[this.game].random;
-    if (rnd) { p.forced = true; send(p, { t: 'loadout', lo: this.randomLoadout() }); }
-    else if (p.forced) { p.forced = false; send(p, { t: 'loadout', lo: null }); }
+    if (rnd) { p.forced = true; const lo = this.randomLoadout(); p.item = lo.item; send(p, { t: 'loadout', lo }); }
+    else if (p.forced) { p.forced = false; if (p.ownItem) p.item = p.ownItem; send(p, { t: 'loadout', lo: null }); }
   }
   joinTeam(p) {
     if (!p.ownColor) p.ownColor = p.color;
@@ -294,6 +294,7 @@ class Room {
     p.streaks = validStreaks(m.streaks);
     p.kfx = ownedKill(m.kfx, inv);
     p.kc = !!m.kc;
+    p.item = p.ownItem = this.okItem(m.item) || DEFAULT_LOADOUT.item;
     if (this.mode === 'bots' && m.cfg && GAMES[m.cfg.game] && !this.humans().length) this.setGame(m.cfg.game);
     this.joinTeam(p);
     if (p.team) p.pos = this.pickSpawn(false, p);
@@ -613,6 +614,15 @@ class Room {
   }
 
   // ---------------------------------------------------------- items (G): charges refill over time
+  // only ITEMS' own keys: '__proto__' / 'constructor' must not reach p.ic (that would write onto Object.prototype)
+  okItem(id) { return typeof id === 'string' && Object.hasOwn(ITEMS, id) ? id : null; }
+  // the item in your loadout ('lo' / join). switching counts right away only before you've used one this life
+  setItem(p, id) {
+    id = this.okItem(id);
+    if (!id || p.forced) return; // randomizer: you get its item
+    p.ownItem = id;
+    if (!p.alive || (now() - p.spawnT < 5500 && (p.itemT || 0) < p.spawnT)) p.item = id;
+  }
   itemCharges(p, id) {
     const it = ITEMS[id];
     p.ic ||= {};
@@ -623,8 +633,8 @@ class Room {
     return c;
   }
   useItem(p, m) {
-    const it = ITEMS[m.i];
-    if (!it || !p.alive) return;
+    const it = Object.hasOwn(ITEMS, m.i) ? ITEMS[m.i] : null;
+    if (!it || !p.alive || m.i !== p.item) return; // only the one item in your loadout
     const c = this.itemCharges(p, m.i);
     if (c.n <= 0 || now() - (p.itemT || 0) < 400) return;
     p.itemT = now();
@@ -657,7 +667,7 @@ class Room {
   }
   popperHit(p, t, toT) {
     const w = WEAPONS.popper, pop = p.pop;
-    if (!pop || now() - pop.t > 500 || pop.hit.has(t.id) || !this.rangeOk(p, t, w.range)) return;
+    if (!pop || now() - pop.t > 750 || pop.hit.has(t.id) || !this.rangeOk(p, t, w.range)) return;
     const e = eyeOf(p), to = [t.pos[0] - e[0], t.pos[1] + 1 - e[1], t.pos[2] - e[2]], dist = Math.hypot(...to);
     if (dist > 2.5 && (to[0] * pop.d[0] + to[1] * pop.d[1] + to[2] * pop.d[2]) / dist < Math.cos(w.cone + 0.35)) return; // point blank counts from any angle (positions lag)
     pop.hit.add(t.id);
@@ -1453,6 +1463,7 @@ class Room {
       case 'kc': p.kc = !!m.on; break;
       case 'use': this.tryUse(p); break;
       case 'item': this.useItem(p, m); break;
+      case 'lo': this.setItem(p, m.item); break;
       case 'vote':
         if (this.vote && Number.isInteger(m.i) && m.i >= 0 && m.i < this.vote.options.length) {
           this.vote.votes.set(p.id, m.i);
@@ -1729,6 +1740,7 @@ class Room {
         p.alive = true; p.hp = 100; p.vel = [0, 0, 0]; p.spawnT = n; p.seq++;
         p.pos = p.isBot && p.ai.dummy ? p.ai.dummy.home.slice() : this.pickSpawn(p.isBot, p);
         p.slipUntil = 0; p.burnUntil = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.ic = {}; p.healLeft = 0;
+        if (p.ownItem) p.item = p.ownItem; // a switch made mid-life lands now (sendLoadout swaps in the randomizer's)
         send(p, { t: 'spawn', p: p.pos, q: p.seq });
         this.sendLoadout(p);
         if (!p.isBot) deal(p);

@@ -140,7 +140,7 @@ function startMode(mode, cfg) {
   if (G.joined) quitToMenu(true);
   connecting = true;
   $('status').textContent = 'connecting...';
-  net.connect({ name: G.settings.name, mode, skins: G.equipped, look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), kc: G.settings.killcam !== false, streaks: validStreaks(S.loadout.streaks), cfg, token: account.loggedIn ? account.token : undefined }, () => {
+  net.connect({ name: G.settings.name, mode, skins: G.equipped, look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), kc: G.settings.killcam !== false, item: S.loadout.item, streaks: validStreaks(S.loadout.streaks), cfg, token: account.loggedIn ? account.token : undefined }, () => {
     connecting = false;
     resetWorldState();
     show('main');
@@ -1045,6 +1045,7 @@ net.on('kill', (m) => {
   const victim = G.remotes.get(m.v);
   const kfx = m.fx && m.fx !== 'none' ? m.fx : null;
   if (victim) {
+    victim.reverseUntil = 0; // the server ends their reverse card on death too
     const vi = G.names.get(m.v) || {};
     const replaced = kfx && playKillFx(kfx, { pos: victim.pos.slice(), vel: m.vel || victim.vel, yaw: victim.yaw, color: victim.color, look: vi.look, name: vi.name });
     if (replaced) victim.ch.root.visible = false; else victim.breakApart(m.vel || victim.vel);
@@ -1225,6 +1226,7 @@ net.on('fx', (m) => {
     } else sfx.swing(m.a);
   } else if (m.k === 'reverse') {
     if (r) r.reverseUntil = performance.now() + m.dur * 1000;
+    if (m.id === G.myId) { W.reverseUntil = performance.now() + m.dur * 1000; hud.msg('REVERSE', 1.2, 'reverse'); } // only once the server really started it
     if (m.id !== G.myId) sfx.reverse(r ? r.pos : null);
     if (r) { // they flash the card: a red + yellow burst everyone can see
       r.popItem('reverse', 700);

@@ -243,8 +243,8 @@ export function setMyKatana(n) { W.kat = n; if (models.katana) { setKatana(model
 // ------------------------------------------------------------ items (G)
 W.item = DEFAULT_LOADOUT.item;
 W.ic = {}; // id -> { n, next (performance.now ms) }
-export function setItem(id) { if (ITEMS[id]) W.item = id; }
-export function resetItems() { W.ic = {}; }
+export function setItem(id) { if (Object.hasOwn(ITEMS, id)) W.item = id; }
+export function resetItems() { W.ic = {}; W.reverseUntil = 0; } // a reverse card doesn't survive death (the server drops it)
 function charges(id) {
   const it = ITEMS[id];
   let c = W.ic[id];
@@ -276,7 +276,6 @@ const POP = {
 };
 const CONFETTI = [0xff4fd8, 0x4fd8ff, 0xffe14d, 0x7dff4f, 0xff7a1a, 0xffffff];
 function popItem(id) {
-  if (id === 'reverse') { W.reverseUntil = performance.now() + WEAPONS.reverse.dur * 1000; hud.msg('REVERSE', 1.2, 'reverse'); }
   if (!POP[id] || !models[id]) return;
   cancelInspect();
   W.pop = { id, t: 0 };
@@ -455,6 +454,7 @@ export function refillAmmo() {
 export function setLoadout(lo) {
   const v = validLoadout(lo);
   W.item = v.item;
+  net.send({ t: 'lo', item: v.item }); // the server only lets you use the item you carry
   const streakSlot = W.hasScythe ? (W.slots[3] || 'scythe') : null;
   W.slots = SLOTS.map((s) => v[s]);
   if (streakSlot) W.slots[3] = streakSlot;
