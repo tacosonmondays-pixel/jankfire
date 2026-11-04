@@ -138,6 +138,38 @@ const LOOPDEF = {
   spin: { type: 'bandpass', f: 1200, q: 2, vol: 0.25, osc: ['sawtooth', 110, 0.08] },
 };
 
+// a tone that swells up instead of dying away (the whine before a blood cross bursts)
+function bcSwell(type, f0, f1, dur, v, pos) {
+  if (!ac) return;
+  const t = ac.currentTime;
+  const o = ac.createOscillator();
+  o.type = type;
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + dur);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0005, t);
+  g.gain.exponentialRampToValueAtTime(v, t + dur * 0.95);
+  g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.05);
+  o.connect(g); g.connect(dest(pos));
+  o.start(t); o.stop(t + dur + 0.08);
+}
+// Blood Cross
+Object.assign(sfx, {
+  bcBeat(pos) { // a wet heartbeat, lub-dub: you just paid 12 HP
+    tone('sine', 95, 36, 0.16, 0.9, pos); noise(0.1, 0.5, 'lowpass', 500, 90, pos);
+    tone('sine', 80, 32, 0.15, 0.6, pos, 0.17); noise(0.13, 0.4, 'bandpass', 700, 160, pos, 0.16, 2);
+  },
+  bcStick(pos) { noise(0.1, 0.6, 'bandpass', 1400, 300, pos, 0, 1.5); tone('sine', 380, 110, 0.09, 0.35, pos); },
+  bcWhine(pos, dur = 0.6) { bcSwell('sawtooth', 170, 1500, dur, 0.12, pos); bcSwell('sine', 340, 2600, dur, 0.1, pos); },
+  bcErupt(pos) { noise(0.22, 0.8, 'bandpass', 2400, 400, pos, 0, 0.9); tone('sawtooth', 140, 45, 0.2, 0.35, pos); tone('square', 900, 1800, 0.05, 0.08, pos); },
+  bcBoom(pos) { // a splattery boom: the bang, then the wet bits landing
+    noise(0.9, 1, 'lowpass', 1600, 60, pos); tone('sine', 120, 30, 0.8, 0.9, pos);
+    for (let i = 0; i < 7; i++) noise(0.06 + Math.random() * 0.06, 0.45, 'bandpass', 900 + Math.random() * 1600, 200, pos, 0.05 + i * 0.045 + Math.random() * 0.03, 1.8);
+  },
+  bcFizzle(pos) { noise(0.35, 0.35, 'highpass', 3500, 6500, pos); tone('sine', 300, 120, 0.12, 0.1, pos, 0.2); },
+  bcRefund() { tone('sine', 220, 660, 0.22, 0.25); tone('triangle', 440, 1320, 0.25, 0.15, null, 0.06); },
+});
+
 export function loopSfx(name, on) {
   if (!ac) return;
   let l = loops[name];

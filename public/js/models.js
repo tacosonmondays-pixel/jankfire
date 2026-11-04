@@ -691,6 +691,211 @@ const SKIN_BUILD = {
   },
 };
 
+// ------------------------------------------------------------ Blood Cross: no gun, a bare right hand doing finger guns
+// held like a pistol: the index points down -Z, the thumb is up (+Y), the palm faces left (-X), the back of the hand and the nails
+// face right (+X), the knuckles run top (index) to bottom (pinky). real sizes in metres. fingers are chains of capsule bones on
+// pivots built from joint positions (they curl toward the palm, about Y); nails, veins and the glow are placed in model space and
+// attached to the bone they ride on. userData.index / .thumb are plain pivots for the 'bang', .curl opens the fist for the draw,
+// .bare is the forearm for the viewmodel, kept out of the model (other players hold it in their own hand, the icon is just the hand)
+const BC_HAND = {
+  blood: { skin: 0xefbf86, knuckle: 0xe3a978, palm: 0xf3c592, nail: 0xf3c6b6, vein: 0xd4001e, veinDark: 0xa30018, tip: 0xff3a4c, halo: 0xff1a2e, sleeve: 0x2b2431, cuff: 0x4a3f55 },
+  shadow: { skin: 0x3d3547, knuckle: 0x2e2837, palm: 0x473e52, nail: 0x2a0d3b, vein: 0xa43dff, veinDark: 0x8a2be0, tip: 0xeec4ff, halo: 0x9a2bff, sleeve: 0x0f0c14, cuff: 0x2a2135 },
+};
+const bcV = (x, y, z) => new THREE.Vector3(x, y, z), BC_FWD = bcV(0, 0, -1);
+let bcGlowTx = null;
+function bcHandGlow() { // soft round glow for the fingertip (additive sprite)
+  if (bcGlowTx) return bcGlowTx;
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const x = c.getContext('2d'), gr = x.createRadialGradient(16, 16, 0, 16, 16, 16);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.3, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = gr; x.fillRect(0, 0, 32, 32);
+  return (bcGlowTx = new THREE.CanvasTexture(c));
+}
+let bcFlareTx = null;
+function bcFlareTex() { // a ragged star, white-hot in the middle: the blood muzzle flash
+  if (bcFlareTx) return bcFlareTx;
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const x = c.getContext('2d'), gr = x.createRadialGradient(16, 16, 0, 16, 16, 16);
+  gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.3, 'rgba(255,190,200,0.95)'); gr.addColorStop(0.65, 'rgba(255,120,130,0.8)'); gr.addColorStop(1, 'rgba(255,60,80,0)');
+  x.fillStyle = gr; x.beginPath();
+  for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2, r = i % 2 ? 5 + (i % 4) : 16; x.lineTo(16 + Math.cos(a) * r, 16 + Math.sin(a) * r); }
+  x.fill();
+  bcFlareTx = new THREE.CanvasTexture(c); bcFlareTx.magFilter = THREE.NearestFilter; bcFlareTx.minFilter = THREE.NearestFilter;
+  return bcFlareTx;
+}
+// a box whose edges + corners are pushed out round an inner box: the palm
+function bcRoundBox(w, h, d, r, seg = 3) {
+  const geo = new THREE.BoxGeometry(w, h, d, seg, seg, seg), a = geo.attributes.position, v = new THREE.Vector3();
+  const ix = w / 2 - r, iy = h / 2 - r, iz = d / 2 - r;
+  for (let i = 0; i < a.count; i++) {
+    const x = a.getX(i), y = a.getY(i), z = a.getZ(i);
+    const cx = Math.max(-ix, Math.min(ix, x)), cy = Math.max(-iy, Math.min(iy, y)), cz = Math.max(-iz, Math.min(iz, z));
+    v.set(x - cx, y - cy, z - cz).setLength(r);
+    a.setXYZ(i, cx + v.x, cy + v.y, cz + v.z);
+  }
+  return geo;
+}
+// one bone: a capsule from its joint (the pivot origin) to the next joint (-len on Z), a little flatter front to back
+function bcBone(r, len, color, flat = 0.88) {
+  const m = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 2, 8).rotateX(-Math.PI / 2).translate(0, 0, -len / 2), M(color));
+  m.scale.x = flat;
+  return m;
+}
+// a chain of bones through joint positions (model space: the weapon has no parent while it's built), one pivot per joint
+function bcBones(parent, pts, radii, color, flat) {
+  const piv = [];
+  let p = parent;
+  for (let i = 0; i < pts.length - 1; i++) {
+    p.updateMatrixWorld(true);
+    const d = new THREE.Vector3().subVectors(pts[i + 1], pts[i]), len = d.length();
+    const j = new THREE.Group();
+    j.position.copy(p.worldToLocal(pts[i].clone()));
+    j.quaternion.copy(p.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(new THREE.Quaternion().setFromUnitVectors(BC_FWD, d.normalize())));
+    j.add(bcBone(radii[i], len, color, flat));
+    p.add(j); piv.push(j); p = j;
+  }
+  return piv;
+}
+// joints of a finger curled toward the palm: each bone turns a further ang[i] about Y (0 = straight down -Z)
+function bcCurled(mcp, lens, ang, drop = 0) {
+  const pts = [mcp.clone()];
+  let a = 0;
+  for (let i = 0; i < lens.length; i++) { a += ang[i]; const p = pts[i]; pts.push(bcV(p.x - Math.sin(a) * lens[i], p.y - drop, p.z - Math.cos(a) * lens[i])); }
+  return pts;
+}
+// put a mesh on a bone's surface in model space (flat side facing n, long side along dir), then hang it on the pivot
+function bcOnBone(piv, mesh, pos, n, dir) {
+  const z = dir.clone().normalize(), x = n.clone().addScaledVector(z, -n.dot(z)).normalize(), y = new THREE.Vector3().crossVectors(z, x);
+  mesh.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
+  mesh.position.copy(pos);
+  piv.updateMatrixWorld(true);
+  piv.attach(mesh);
+  return mesh;
+}
+const bcBlob = (color, glow) => new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), M(color, glow));
+// a nail at the end of bone a->b (radius r), facing n. shadow nails are claws: longer, pointed past the tip
+function bcNail(piv, a, b, r, n, H, claw) {
+  const dir = new THREE.Vector3().subVectors(b, a), m = bcBlob(H.nail);
+  m.scale.set(r * 0.3, r * (claw ? 0.66 : 0.74), r * (claw ? 1.22 : 0.95));
+  const at = a.clone().lerp(b, claw ? 0.8 : 0.64).addScaledVector(n.clone().normalize(), r * 0.78);
+  return bcOnBone(piv, m, at, n, dir);
+}
+// a glowing line between two model-space points (veins, the X brand). never wrapped
+function bcLine(piv, a, b, th, color) {
+  const d = new THREE.Vector3().subVectors(b, a), m = new THREE.Mesh(new THREE.BoxGeometry(th, th * 0.7, d.length()), M(color, true));
+  m.userData.noWrap = true;
+  return bcOnBone(piv, m, a.clone().lerp(b, 0.5), bcV(1, 0, 0).cross(d).lengthSq() > 1e-9 ? bcV(1, 0, 0) : bcV(0, 1, 0), d);
+}
+function fingerGun(g, shadow) {
+  const H = BC_HAND[shadow ? 'shadow' : 'blood'];
+  // palm: a rounded block, narrower toward the wrist, the back a touch domed
+  const pg = bcRoundBox(0.03, 0.082, 0.09, 0.012), pa = pg.attributes.position;
+  for (let i = 0; i < pa.count; i++) {
+    const z = pa.getZ(i), k = (z + 0.045) / 0.09;
+    pa.setY(i, pa.getY(i) * (1 - 0.13 * k) - 0.004 * k);
+    if (pa.getX(i) > 0) pa.setX(i, pa.getX(i) * (1 + 0.25 * (1 - Math.abs(pa.getY(i)) / 0.045)));
+  }
+  pg.computeVertexNormals();
+  const palm = new THREE.Mesh(pg, M(H.skin)); palm.position.set(0.001, -0.005, 0.005); g.add(palm);
+  const thenar = bcBlob(H.palm); thenar.scale.set(0.0085, 0.018, 0.024); thenar.position.set(-0.0105, 0.01, 0.012); thenar.rotation.x = 0.45; g.add(thenar); // the fat bit under the thumb
+  const hypo = bcBlob(H.palm); hypo.scale.set(0.007, 0.015, 0.022); hypo.position.set(-0.0085, -0.029, 0.018); g.add(hypo);
+  // index: straight out, relaxed (a hair of bend at each joint). its own pivot on the big knuckle
+  const index = new THREE.Group(); index.position.set(0.003, 0.025, -0.036); g.add(index);
+  const ip = [bcV(0.003, 0.025, -0.036), bcV(0.001, 0.0262, -0.0765), bcV(-0.0012, 0.0262, -0.1005), bcV(-0.003, 0.0258, -0.1175)], ir = [0.0099, 0.0091, 0.0085];
+  const ib = bcBones(index, ip, ir, H.skin);
+  bcNail(ib[2], ip[2], ip[3], ir[2], bcV(1, 0.08, 0), H, shadow);
+  // the glowing point it all comes out of: a hot bead + a soft additive glow, riding the fingertip
+  const tip = new THREE.Group(), tipAt = ip[3].clone().addScaledVector(new THREE.Vector3().subVectors(ip[3], ip[2]).normalize(), ir[2] * 0.7);
+  const bead = bcBlob(H.tip, true); bead.scale.setScalar(0.0052); bead.userData.noWrap = true; tip.add(bead);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: bcHandGlow(), color: H.halo, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+  halo.scale.setScalar(0.034); tip.add(halo);
+  // the bang: a ragged burst of blood out of the fingertip (normal blend so it stays red on grass + sky) round a white-hot core
+  const flare = new THREE.Group(), fm = new THREE.MeshBasicMaterial({ map: bcFlareTex(), color: H.halo, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false });
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.07, 0.07), fm); face.userData.noWrap = true; flare.add(face);
+  for (const r of [0, Math.PI / 2]) { const sd = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.04), fm); sd.rotation.set(0, Math.PI / 2, r); sd.position.z = -0.028; sd.userData.noWrap = true; flare.add(sd); }
+  const hot = new THREE.Sprite(new THREE.SpriteMaterial({ map: bcHandGlow(), color: H.tip, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); hot.scale.setScalar(0.04); flare.add(hot);
+  flare.userData.face = face; flare.visible = false; tip.add(flare);
+  tip.position.copy(tipAt); ib[2].updateMatrixWorld(true); ib[2].attach(tip);
+  // blood running up the top of the finger to the tip
+  for (let i = 0; i < 3; i++) {
+    const up = bcV(0.25, 1, 0).normalize().multiplyScalar(ir[i] * 0.86);
+    bcLine(ib[i], ip[i].clone().add(up), ip[i + 1].clone().add(up).addScaledVector(bcV(0, 0, i === 2 ? 0.004 : 0), 1), 0.0021, H.vein);
+  }
+  // middle, ring, pinky curled into the palm under the index (their nails show under the thumb)
+  const curl = [];
+  for (const [mcp, lens, r, ang, drop] of [
+    [bcV(0.004, 0.0045, -0.038), [0.044, 0.027, 0.019], [0.0101, 0.0094, 0.0087], [1.42, 1.78, 0.95], 0.001],
+    [bcV(0.004, -0.0155, -0.0355), [0.041, 0.026, 0.018], [0.0096, 0.0089, 0.0083], [1.48, 1.78, 0.95], 0.002],
+    [bcV(0.003, -0.034, -0.0305), [0.034, 0.02, 0.016], [0.0084, 0.0078, 0.0073], [1.55, 1.8, 0.95], 0.003],
+  ]) {
+    const pts = bcCurled(mcp, lens, ang, drop), fb = bcBones(g, pts, r, H.skin);
+    let a = 0;
+    fb.forEach((j, i) => { a += ang[i]; curl.push({ j, q: j.quaternion.clone(), a: ang[i] }); });
+    bcNail(fb[2], pts[2], pts[3], r[2], bcV(Math.cos(a), 0, -Math.sin(a)), H, false);
+    const k = bcBlob(H.knuckle); k.scale.set(0.0062, 0.0088, 0.009); k.position.set(mcp.x + 0.009, mcp.y, mcp.z + 0.003); g.add(k); // big knuckle on the back
+  }
+  const ik = bcBlob(H.knuckle); ik.scale.set(0.0062, 0.0092, 0.0095); ik.position.set(0.012, 0.025, -0.033); g.add(ik);
+  // thumb: up like a cocked hammer, leaning back a little. its pivot is the root by the wrist so it can drop forward onto the index
+  const thumb = new THREE.Group(); thumb.position.set(-0.01, 0.012, 0.026); g.add(thumb);
+  const tp = [bcV(-0.01, 0.012, 0.026), bcV(-0.013, 0.037, 0.004), bcV(-0.011, 0.064, -0.004), bcV(-0.008, 0.084, 0)], tr = [0.0135, 0.0118, 0.0108];
+  const tb = bcBones(thumb, tp, tr, H.skin, 1);
+  bcNail(tb[2], tp[2], tp[3], tr[2], bcV(0.5, -0.1, 0.86), H, shadow);
+  if (shadow) { // charred: cracks glowing through the thumb + the side of the index, where you can see them
+    const back = bcV(0.45, 0, 0.9).normalize();
+    for (let i = 0; i < 2; i++) bcLine(tb[i + 1], tp[i + 1].clone().addScaledVector(back, tr[i + 1] * 0.9), tp[i + 2].clone().addScaledVector(back, tr[i + 1] * 0.82).add(bcV(0, -0.004, 0)), 0.0015, H.vein);
+    const side = bcV(-1, 0.3, 0).normalize();
+    bcLine(ib[0], ip[0].clone().addScaledVector(side, ir[0] * 0.86).add(bcV(0, 0, -0.008)), ip[1].clone().addScaledVector(side, ir[0] * 0.84), 0.0014, H.vein);
+  }
+  // the back of the hand: veins running down to the index knuckle, and the brand that gives it its name
+  const bx0 = 0.0175;
+  const path = (pts, th) => { for (let i = 0; i < pts.length - 1; i++) bcLine(g, bcV(bx0, pts[i][0], pts[i][1]), bcV(bx0, pts[i + 1][0], pts[i + 1][1]), th, H.veinDark); };
+  path([[-0.006, 0.05], [-0.003, 0.04], [0.003, 0.03], [0.007, 0.019], [0.011, 0.007], [0.016, -0.008], [0.019, -0.019], [0.021, -0.028]], 0.0017); // the big one, wrist to index knuckle
+  path([[0.007, 0.019], [0.0, 0.012], [-0.005, 0.002], [-0.007, -0.01], [-0.006, -0.026]], 0.0013); // off to the middle knuckle
+  path([[0.011, 0.007], [0.019, 0.003], [0.025, -0.004], [0.029, -0.013]], 0.0011);
+  path([[-0.026, 0.048], [-0.024, 0.036], [-0.027, 0.024], [-0.03, 0.01], [-0.028, -0.008]], 0.0012); // pinky side
+  for (const s of [-1, 1]) {
+    const c = bcV(bx0 + 0.0004, -0.013, -0.004), u = bcV(0, 0.7071 * s, 0.7071).multiplyScalar(0.0125);
+    bcLine(g, c.clone().sub(u), c.clone().add(u), 0.0034, H.tip);
+  }
+  if (shadow) { // charred: glowing cracks across the back and up the knuckles
+    for (const [a, b] of [[bcV(bx0, 0.028, 0.03), bcV(bx0, 0.016, 0.004)], [bcV(bx0, 0.016, 0.004), bcV(bx0, 0.024, -0.016)], [bcV(bx0, -0.036, 0.0), bcV(bx0, -0.026, -0.024)],
+      [bcV(bx0, -0.04, 0.03), bcV(bx0, -0.03, 0.012)]]) bcLine(g, a, b, 0.0016, H.vein);
+  }
+  // forearm + sleeve: viewmodel only, so it stays out of the model (icons, previews + skin effects only see the hand); weapons.js adds it
+  const arm = new THREE.Group();
+  const wrist = cylZ(0.027, 0.07, H.skin, 0.0, -0.007, 0.07, 10); wrist.scale.x = 0.7; arm.add(wrist);
+  const fg = new THREE.CylinderGeometry(0.029, 0.036, 0.23, 10).rotateX(-Math.PI / 2);
+  const fore = new THREE.Mesh(fg, M(H.skin)); fore.position.set(0, -0.009, 0.19); fore.scale.x = 0.8; arm.add(fore);
+  const sg = new THREE.CylinderGeometry(0.041, 0.047, 0.16, 12).rotateX(-Math.PI / 2);
+  const sleeve = new THREE.Mesh(sg, M(H.sleeve)); sleeve.position.set(0, -0.01, 0.29); sleeve.scale.x = 0.9; arm.add(sleeve);
+  const cuff = cylZ(0.043, 0.024, H.cuff, 0, -0.01, 0.214, 12); cuff.scale.x = 0.9; arm.add(cuff);
+  g.updateMatrixWorld(true);
+  const mz = new THREE.Vector3(); tip.getWorldPosition(mz);
+  Object.assign(g.userData, { index, thumb, curl, fingertip: tip, flare, bare: arm, muzzle: mz, len: 0.2 });
+}
+WB.bloodcross = (g) => fingerGun(g, false);
+SKIN_BUILD.bloodcross_shadow = (g) => fingerGun(g, true);
+HAT_AT.bloodcross = [[0.004, 0.036, -0.05], 0.028]; // on top of the index, in front of the thumb
+HAT_AT.bloodcross_shadow = HAT_AT.bloodcross;
+
+// Blood Cross bolt: a white-hot core in a red glow, long along Z. bloodcross.js turns every one of these to face where it's
+// flying and draws its trail, live or in a replay, so this keeps a list of them
+export const BLOOD_BOLTS = new Set();
+let bloodBoltGeo = null;
+const bcGlowMat = (color, opacity) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false });
+function bloodBolt(g) {
+  bloodBoltGeo ||= [new THREE.OctahedronGeometry(1, 0), new THREE.SphereGeometry(1, 8, 6)];
+  const core = new THREE.Mesh(bloodBoltGeo[0], new THREE.MeshBasicMaterial({ color: 0xff4a5c }));
+  core.scale.set(0.05, 0.05, 0.22); core.position.z = -0.06;
+  const sh = new THREE.Mesh(bloodBoltGeo[0], bcGlowMat(0xd0001a, 0.6));
+  sh.scale.set(0.1, 0.1, 0.44); sh.position.z = 0.06;
+  const halo = new THREE.Mesh(bloodBoltGeo[1], bcGlowMat(0xff0018, 0.2));
+  halo.scale.set(0.17, 0.17, 0.5); halo.position.z = 0.12;
+  for (const m of [core, sh, halo]) { m.userData.noWrap = true; g.add(m); }
+  g.userData.bolt = { core, shell: sh, halo };
+  BLOOD_BOLTS.add(g);
+}
+
 const MODEL_BUILD = {
   ...SKIN_BUILD,
   slapper_foam(g) {
@@ -1011,6 +1216,8 @@ function buildProjectileRaw(k) {
     g.add(bx(0.004, 0.06, 0.1, 0xff4fd8, 0, 0, 0.4)); g.add(bx(0.06, 0.004, 0.1, 0xff4fd8, 0, 0, 0.4));
   } else if (k === 'snowball') {
     const b = ball(0.13, 0xf2f8ff); g.add(b); g.add(ball(0.06, 0xffffff, 0.05, 0.06, 0));
+  } else if (k === 'bloodcross') {
+    bloodBolt(g);
   } else if (k === 'frag') {
     const b = ball(0.12, 0x4a5a2a); b.scale.set(1, 1.2, 1); g.add(b);
     g.add(bx(0.05, 0.06, 0.05, 0x333333, 0, 0.15, 0));

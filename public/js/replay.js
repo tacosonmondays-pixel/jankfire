@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { G } from './ctx.js';
 import { Remote } from './remote.js';
 import { buildProjectile, tipColor, M } from './models.js';
+import { crossEvent } from './bloodcross.js';
 import { fx } from './fx.js';
 import { marbles } from './marbles.js';
 import { sfx } from './audio.js';
@@ -113,6 +114,8 @@ function applyEv(m) {
     if (m.k === st.opts.focus) sfx.kill();
   } else if (m.t === 'boom') {
     fx.explosion(m.p, m.r); sfx.boom(m.p);
+  } else if (m.t === 'bcross') {
+    crossEvent(m, st.ghosts, info); // the X sticks to the ghost, bursts, pops
   } else if (m.t === 'pd' && m.x) {
     fx.explosion(m.p, WEAPONS.chicken.radius); sfx.boom(m.p);
   } else if (m.t === 'he') {

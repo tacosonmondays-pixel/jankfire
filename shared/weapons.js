@@ -92,6 +92,12 @@ export const WEAPONS = {
     desc: 'Hold to smoke. Let go to breathe fire for as long as you inhaled. Too long and you cough.',
     range: 13, cone: 0.42, dmg: 5, tick: 0.09, maxCharge: 3, coughAt: 4.5, exhaleMul: 1.2, jet: 6,
   },
+  // the shot is paid in your own HP (cost). the bolt sticks, a cross bursts out of them (fuse), then pops (burst) for dmg + a small blast
+  bloodcross: {
+    slot: 'secondary', kind: 'blood', name: 'Blood Cross', color: '#ff1f3d',
+    desc: 'No gun: you shoot blood out of your fingertip and every shot costs you 12 HP. The bolt sticks to whoever it hits, a cross bursts out of their body and they pop. A kill pays the blood back.',
+    cd: 0.7, speed: 75, grav: 0, r: 0.15, life: 2, cost: 12, fuse: 0.6, burst: 0.25, dmg: 75, blastR: 3, blastDmg: 35, kb: 6,
+  },
   blower: {
     slot: 'secondary', kind: 'cone', name: 'Leaf Blower', color: '#ff9a3a',
     desc: 'Pushes people off the map. Point it at the floor to hover.',

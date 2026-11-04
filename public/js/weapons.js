@@ -4,6 +4,7 @@ import { WEAPONS, ORDER, SLOTS, FLAGS, HIPFIRE, ARROW_TIPS, SUITS, RANKS, validL
 import { BOXES } from '/shared/map.js';
 import { raycast, rayBox } from '/shared/physics.js';
 import { G } from './ctx.js';
+import { palOf, crossFired } from './bloodcross.js';
 import { ME, eye, look, applyKb, hspeed } from './player.js';
 import { buildWeapon, M, cardFace, tipColor, setKatana } from './models.js';
 import { fx } from './fx.js';
@@ -323,6 +324,11 @@ const VM = {
   scythe_rifle: { p: [0.2, -0.21, -0.4], r: [0, 0.03, 0], s: 0.6 },
 };
 
+// Blood Cross: a bare hand low on the right, turned in side-on and rolled a little so you read it as a finger gun (from straight
+// behind, the thumb hides the finger)
+VM.bloodcross = { p: [0.165, -0.17, -0.33], r: [0.13, 0.43, 0.28], s: 1.22 };
+RECOIL.bloodcross = { back: 0.5, up: 3.5, roll: 1.2, side: 0.15, punch: 0.018 };
+const bcQ = new THREE.Quaternion(), bcY = new THREE.Vector3(0, 1, 0); // opening + closing the fist
 let vmRoot;
 const models = {};
 const tmpV = new THREE.Vector3();
@@ -348,6 +354,7 @@ export function rebuildViewmodels() {
     const hand = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.062, 0.09), M(0xf1c27d)); // a fist, not a brick
     hand.position.set(0.004, -0.042, 0.03);
     wrap.add(hand);
+    if (g.userData.bare) { hand.visible = false; g.add(g.userData.bare); } // Blood Cross: the hand is the weapon (+ your forearm)
     wrap.position.set(...cfg.p);
     wrap.rotation.set(...cfg.r);
     wrap.visible = id === W.cur;
@@ -609,6 +616,29 @@ function fireProj(id, now, fromAnim) {
   }
 }
 
+// Blood Cross: point and pay. the server takes the 12 HP (and says no below 1 HP), you get the thump, the flick and a spurt of blood
+function fireBlood(now) {
+  const w = WEAPONS.bloodcross, m = models.bloodcross;
+  if (ME.hp - w.cost < 1) { sfx.empty(); hud.msg('NOT ENOUGH BLOOD', 0.8, 'reverse'); W.cd.bloodcross = now + 300; return; }
+  setCd('bloodcross', now);
+  const o = eye(), d = look();
+  net.send({ t: 'fire', w: 'bloodcross', o: o.map(r2), d: d.map(r2) });
+  sfx.bcBeat();
+  hud.hurt(10); // you feel it
+  W.kick = 0.3; W.flashT = 0.07;
+  playAnim('bang_bloodcross', 'bang');
+  kickVM('bloodcross');
+  if (!m) return;
+  const P = palOf(G.myId), sys = G.skinFxVM, R = (k) => (Math.random() - 0.5) * k;
+  m.wrap.updateMatrixWorld(true);
+  m.g.userData.fingertip.getWorldPosition(tmpV);
+  if (sys) {
+    for (let i = 0; i < 18; i++) sys.add.spawn(tmpV.x, tmpV.y, tmpV.z, R(0.5), 0.05 + R(0.4), -0.5 - Math.random() * 0.9, 0.2, 0.02, 0.002, P.core, P.glow, 1, 0, 2); // hot sparks
+    for (let i = 0; i < 10; i++) sys.norm.spawn(tmpV.x, tmpV.y, tmpV.z, R(0.3), 0.08 + Math.random() * 0.25, -0.2 + R(0.3), 0.5, 0.009, 0.006, P.glow, P.deep, 1, 3, 0.5); // a spurt of blood
+  }
+  crossFired(muzzleWorld(), [o[0] + d[0] * 7, o[1] + d[1] * 7, o[2] + d[2] * 7]);
+}
+
 function swing(id, now) {
   const w = WEAPONS[id];
   setCd(id, now);
@@ -697,6 +727,7 @@ export function fireDown() {
   else if (w.kind === 'proj' && !w.auto) fireProj(id, now);
   else if (w.kind === 'reverse') useReverse(now);
   else if (w.kind === 'cards') playCard(now);
+  else if (w.kind === 'blood') fireBlood(now);
 }
 
 export function fireUp() {
@@ -751,6 +782,14 @@ function animEvent(ev, g) {
     case 'squeak': sfx.squeak(); break;
     case 'squawk': sfx.squawk(); break;
     case 'click': sfx.click(); break;
+    case 'bloodpuff': { // Blood Cross inspect: blow the blood off your fingertip like smoke off a barrel
+      const P = palOf(G.myId);
+      if (g.userData.fingertip) g.userData.fingertip.getWorldPosition(evPos);
+      sfx.blow();
+      for (let i = 0; i < 14; i++) sys.norm.spawn(evPos.x + R(0.008), evPos.y + R(0.008), evPos.z + R(0.008), 0.06 + R(0.06), 0.05 + Math.random() * 0.06, -0.08 + R(0.06), 0.8, 0.006, 0.02, P.mist, P.dark, 0.45, -0.03, 1.5);
+      for (let i = 0; i < 6; i++) sys.add.spawn(evPos.x, evPos.y, evPos.z, R(0.15), 0.06 + R(0.08), R(0.15), 0.3, 0.008, 0.001, P.glow, P.dark);
+      break;
+    }
     case 'blow': sfx.blow(); for (let i = 0; i < 6; i++) sys.norm.spawn(evPos.x + R(0.04), evPos.y, evPos.z + R(0.04), R(0.15), 0.1, R(0.15), 0.6, 0.02, 0.06, 0xdddddd, 0xffffff, 0.4); break;
     case 'smoke': for (let i = 0; i < 12; i++) sys.norm.spawn(evPos.x - 0.05 + R(0.05), evPos.y + 0.02, evPos.z - 0.1 + R(0.05), R(0.3), 0.15 + Math.random() * 0.2, -0.3 - Math.random() * 0.3, 1.4, 0.03, 0.2, 0xcccccc, 0x777777, 0.55, -0.1, 0.8); break;
     case 'spark': for (let i = 0; i < 10; i++) sys.add.spawn(evPos.x + R(0.03), evPos.y, evPos.z + R(0.03), R(0.8), 0.3 + Math.random() * 0.6, R(0.8), 0.5, 0.025, 0.005, 0xffcc44, 0xff3300, 1, 3); break;
@@ -897,6 +936,7 @@ export function updateWeapons(dt, now) {
   } else if (id === 'blower') hud.meter(W.fuel.blower / w.fuel, 'FUEL', '#ff9a3a');
   else if (w.spinup && W.spin > 0 && W.spin < 1) hud.meter(W.spin, 'SPINNING UP', '#c8c8c8');
   else if (id === 'slipper' && W.slipperOut) hud.meter(null);
+  else if (id === 'bloodcross') { const n = Math.max(0, Math.floor((ME.hp - 1) / w.cost)); hud.meter((ME.hp - 1) / 99, n ? `${n} SHOT${n > 1 ? 'S' : ''} OF BLOOD LEFT` : 'NOT ENOUGH BLOOD', w.color); }
   else if (w.cd && w.cd >= 1 && !ready(id, now)) hud.meter(1 - ((W.cd[id] - now) / 1000) / w.cd, 'COOLDOWN', w.color);
   else hud.meter(null);
 
@@ -980,6 +1020,15 @@ export function updateWeapons(dt, now) {
     if (ud.vents) ud.vents.color.setRGB(0.25 + 0.75 * k, 0.04 + 0.3 * k * k, 0.02 + (firingNow ? 0.15 * k : 0));
   }
   if (ud.handles) { const h = an && sampleCh(an, 'handles', at); ud.handles[0].rotation.x = h ? h[0] : 0; ud.handles[1].rotation.x = h ? h[1] : 0; }
+  if (ud.index) { // Blood Cross: the finger flicks, the thumb drops like a hammer, the fist opens + closes, the fingertip beats
+    const f = an && sampleCh(an, 'index', at), t = an && sampleCh(an, 'thumb', at), c = an && sampleCh(an, 'curl', at);
+    ud.index.rotation.x = f ? f[0] : 0; ud.thumb.rotation.x = t ? t[0] : 0;
+    for (const b of ud.curl) b.j.quaternion.copy(b.q).multiply(bcQ.setFromAxisAngle(bcY, -b.a * (c ? c[0] : 0)));
+    const beat = (now % 1100) / 1100, lub = Math.exp(-Math.pow((beat - 0.1) / 0.04, 2)) + 0.6 * Math.exp(-Math.pow((beat - 0.32) / 0.04, 2));
+    ud.fingertip.scale.setScalar(1 + lub * 0.45 + W.kick * 1.6);
+    ud.flare.visible = W.flashT > 0 && m.wrap.visible;
+    if (ud.flare.visible) { ud.flare.userData.face.rotation.z = Math.random() * 6.28; ud.flare.scale.setScalar((0.7 + Math.random() * 0.5) / (1 + W.kick * 1.6)); }
+  }
   if (ud.flipBlade) { const b = an && sampleCh(an, 'blade', at); ud.flipBlade.rotation.x = b ? b[0] : 0; }
   if (ud.pivot) {
     const sp = an && sampleCh(an, 'spin', at), a = sp ? sp[0] : 0, pz = ud.pivot.z * cfg.s;

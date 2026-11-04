@@ -53,6 +53,23 @@ export const ANIMS = {
   catch_slipper: { keys: [K(0, [0.05, -0.25, -0.1], [-0.6, 0, 0]), K(0.18, [0, 0.02, 0], [0.1, 0, 0], 'back'), K(0.3)], events: [[0.12, 'thwack']] },
   yank_popper: { keys: [K(0), K(0.05, [0, 0.02, 0.12], [0.5, 0, 0.1], 'snap'), K(0.32)] },
 
+  // Blood Cross finger gun. channels: index + thumb pivots (radians about X), curl = how far the fist is open (0 shut, 1 open hand,
+  // below 0 squeezed). bang: the hammer (thumb) snaps down, the fist squeezes, the wrist kicks up and the barrel (index) flicks.
+  // draw: an open hand comes up and snaps shut into the gun, thumb cocked with a click. inspect: blow the blood off the fingertip
+  bang_bloodcross: { keys: [K(0), K(0.035, [0, 0.018, 0.028], [0.32, 0.03, 0.08], 'snap'), K(0.12, [0, 0.007, 0.01], [0.1, 0.01, 0.03]), K(0.3)],
+    ch: { index: [[0, 0], [0.03, 0.22], [0.15, 0]], thumb: [[0, 0], [0.025, -0.95], [0.09, -0.95], [0.22, 0.12], [0.3, 0]], curl: [[0, 0], [0.03, -0.12], [0.2, 0]] } },
+  draw_bloodcross: { keys: [K(0, [0.03, -0.24, 0.08], [-0.8, 0.25, 0.4]), K(0.22, [0, 0.012, 0], [0.08, 0, 0.02], 'snap'), K(0.45)],
+    ch: { curl: [[0, 0.9], [0.14, 0.85], [0.27, -0.06], [0.34, 0]], thumb: [[0, -0.6], [0.2, -0.6], [0.3, 0.15], [0.38, 0]], index: [[0, 0.12], [0.25, 0]] },
+    events: [[0.3, 'click']] },
+  inspect_bloodcross: { keys: [
+    K(0), K(0.32, [-0.07, 0.045, -0.01], [1.05, -0.25, 0.05]), // fingertip up in front of your mouth
+    K(0.95, [-0.075, 0.05, -0.012], [1.08, -0.27, 0.06]), // ...and blow the blood off it
+    K(1.12, [-0.01, 0.012, 0], [0.15, 0, 0]),
+    K(1.5, [0, 0.012, 0], [0.05, 0, PI2 + 0.25]), // spin it round the finger like a pistol
+    K(1.72, [0, 0, 0], [0, 0, PI2], 'back'), K(1.95, [0, 0, 0], [0, 0, PI2]),
+    ], ch: { thumb: [[0.25, 0], [0.35, -0.45], [0.95, -0.45], [1.1, 0], [1.62, 0], [1.68, -0.35], [1.78, 0.1], [1.86, 0]], curl: [[1.1, 0], [1.2, 0.22], [1.5, 0.22], [1.64, 0]] },
+    events: [[0.5, 'bloodpuff'], [1.18, 'whoosh'], [1.69, 'click']] },
+
   // knife, done like CS: left click alternates a right->left and a left->right diagonal slash (fast, ~0.4s),
   // right click is a heavy stab: pull back, punch forward, hold, slow recovery (~0.9s)
   swing_knife: { hit: 0.1, keys: [
@@ -359,10 +376,12 @@ export function inspectFor(id, model) {
   return SPECIAL.has(id) ? 'inspect_' + id : 'inspect_gun';
 }
 
+SPECIAL.add('bloodcross'); // the Blood Cross blows the blood off its fingertip, every skin
 // what plays when you pull a weapon out
 const HEAVY = new Set(['minigun', 'blower', 'bowling', 'chicken']);
 export function drawFor(id, model) {
   if (model && ANIMS['draw_' + model]) return 'draw_' + model;
+  if (id === 'bloodcross') return 'draw_bloodcross';
   if (id === 'knife') return 'draw_knife';
   if (id === 'katana') return 'draw_katana';
   if (id === 'scythe') return 'draw_scythe';

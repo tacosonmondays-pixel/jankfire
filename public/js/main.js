@@ -7,6 +7,7 @@ import { stepProjectile, raycast } from '/shared/physics.js';
 import { G } from './ctx.js';
 import { initWorld, renderFrame, setJank, updateWorld, loadMap } from './world.js';
 import { loadTripoModels, buildProjectile, buildPeel, buildHole, makeShadow, tipColor, buildCharacter, M } from './models.js';
+import { initCrosses, crossEvent, crossShot, updateCrosses, clearCrosses } from './bloodcross.js';
 import { net } from './net.js';
 import { hud } from './hud.js';
 import { fx, makeBeam, setBeam, scaleU } from './fx.js';
@@ -72,6 +73,7 @@ recomputeEquipped();
 initWorld(canvas);
 setJank(G.settings.jank);
 fx.init(G.scene);
+initCrosses(G.scene);
 const vmScaleU = { value: 300 };
 G.skinFxWorld = makeSkinSystems(G.scene, scaleU);
 G.skinFxVM = makeSkinSystems(G.vmScene, vmScaleU);
@@ -181,6 +183,7 @@ function clearEntities() {
   for (const pl of G.peels.values()) G.scene.remove(pl);
   for (const h of G.holes.values()) G.scene.remove(h.mesh);
   G.projs.clear(); G.peels.clear(); G.holes.clear();
+  clearCrosses();
 }
 function quitToMenu(silent) {
   net.close();
@@ -1095,6 +1098,7 @@ net.on('spawn', (m) => {
 });
 net.on('ps', (m) => {
   spawnProj(m);
+  if (m.k === 'bloodcross') { crossShot(m, G.projs.get(m.id)); return; } // a heartbeat, not a pew
   if (m.o !== G.myId) {
     const s = { chicken: 'squawk', duck: 'squeak', bowling: 'thunk', slipper: 'swing' }[m.k] || 'pew';
     sfx[s](m.p);
@@ -1161,6 +1165,8 @@ net.on('pr', (m) => {
   }
 });
 net.on('hs', (m) => addHole(m));
+// Blood Cross: the X sticking to someone (or a wall), the spikes, the pop, the blood coming back on a kill
+net.on('bcross', (m) => { recordEv(m); crossEvent(m); });
 net.on('he', (m) => {
   recordEv(m);
   const h = G.holes.get(m.id);
@@ -1434,6 +1440,7 @@ function frame(t) {
   G.skinFxVM.update(dt);
   skinTick(dt, now);
   updateWorld(dt);
+  updateCrosses(dt); // after the projectile loop + replay: it turns blood bolts nose-first
   G.vmScene.visible = G.joined && !RP.active;
   renderFrame();
   if ((screen === 'cosmetics' || screen === 'character') && !$('menu').classList.contains('hidden')) renderPreview(dt);
