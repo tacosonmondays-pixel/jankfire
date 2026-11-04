@@ -99,6 +99,7 @@ function applyEv(m) {
     if (m.s.length) sfx.gun(m.w, m.s[0].slice(0, 3));
   } else if (m.t === 'fx' && m.k === 'swing') {
     if (g) g.swingT = performance.now();
+    if (m.w === 'popper' && g) { g.popItem('popper', 450); fx.confetti(g.itemMuzzle(), g.look(), g.vel); sfx.popper(g.pos); return; } // the popper item
     sfx.swing(g ? g.pos : null);
   } else if (m.t === 'fx' && m.k === 'tbag') {
     fx.explosion(m.p, 6); sfx.boom(m.p);

@@ -64,7 +64,7 @@ Notes:
 | E / mouse side buttons | grapple (hold) |
 | R | reload (Card Deck: redraw) |
 | F | inspect your weapon · **Plant & Defuse: hold F to plant / defuse** |
-| G | **use your item** (grenade, medkit, shield bubble, duck, smoke) |
+| G | **use your item** (grenade, medkit, shield bubble, duck, smoke, party popper, reverse card) |
 | 5 / 6 / 7 | **use your killstreaks** (the tray on the right shows which are ready) |
 | 1 / 2 / 3, wheel, Q | primary / secondary / melee, last weapon. 4 = Scythe Rifle if you have it |
 | V (hold) / X | Scythe Rifle: glitch dash / switch to rifle mode |
@@ -100,9 +100,34 @@ Bots play the objectives too: they carry and plant the bomb, defuse it, and grab
 ## Weapons
 
 - **Primary:** Assault Rifle, SMG, Shotgun, Minigun, Sniper, Chicken Rocket, Bowling Ball Launcher, Bow, Peel Shooter
-- **Secondary:** Revolver, Cigarette (smoke it, blow fire), Leaf Blower, Card Deck, Party Popper, Reverse Card, **Snowball**
+- **Secondary:** Revolver, Marble Shotgun, Cigarette (smoke it, blow fire), Leaf Blower, Card Deck, **Snowball**
 - **Melee:** Bread, Slipper (throw it, it comes back), Knife, Hand Slapper (point blank, launches + makes them slip), **Katana**, Spoon
-- **Item (G):** Frag Grenade (x2, bounces, 2 s fuse, grenade-jump with it), Medkit, Shield Bubble (nothing from outside hurts anyone inside for 7 s), Rubber Duck (black hole), Smoke Bomb (x2). Charges refill over time.
+- **Item (G):** one per loadout, see below. The Party Popper and the Reverse Card used to be secondaries; they're items now.
+
+### Items (G)
+
+Charges refill over time (the pie on the item box), and you get them all back when you respawn, so **charges = what you get per life**, **refill = how often in a long life**.
+
+| Item | Charges | Refill | What it does |
+|---|---|---|---|
+| Frag Grenade | 2 | 18 s | bounces, blows up after 2 s: 105 at the centre, knocks people (and you) flying. Grenade-jump with it |
+| Medkit | 2 | 20 s | heals 45 over 2 s |
+| Shield Bubble | 1 | 28 s | a dome for 7 s: nothing from outside hurts anyone inside |
+| Rubber Duck | 1 | 20 s | a black hole that sucks everyone in, then pops |
+| Smoke Bomb | 3 | 14 s | a cloud nobody can see through for 10 s |
+| **Party Popper** | 2 | 9 s | yank it: a confetti blast shoves everyone in front of you away hard and launches you backwards. Zero damage, all void kills and escapes |
+| **Reverse Card** | 1 | 22 s | for 3 s every bullet, blast and shove aimed at you goes back to whoever sent it. A big spinning UNO card over your head, the arrows circling you and a red outline tell everyone not to shoot |
+
+The popper and the reverse card pop into your left hand for a moment (wearing their Champagne / Skip Card skins if you have them) while your gun stays out. Other players see them in your hand too.
+
+Why the numbers:
+- **Frag** is the only item that kills outright, and a movement tool on top: still 2 a life, but the refill went 16 → 18 s.
+- **Medkit** was one heal of 60 a life, which lost to the bubble and the reverse card. Now 2 × 45 (90 a life): the pick for staying in fights. Refill 22 → 20 s.
+- **Shield Bubble** is the biggest defensive play (7 s, protects your whole team): 1 charge, the longest refill. Unchanged.
+- **Rubber Duck** sets up kills and void kills but doesn't do much damage on its own: unchanged.
+- **Smoke Bomb** has no damage and no protection, so it gets the most charges and a fast refill: 2 → 3 charges, 18 → 14 s.
+- **Party Popper** is mostly movement (a shotgun-jump-sized launch, one per yank) and a shove with zero damage: a short refill, but only 2 at a time (it used to be infinite with a 1 s cooldown as a secondary).
+- **Reverse Card** can turn a sniper headshot back on the sniper, so 3 s once a life with a long refill (it used to be 1.2 s every 6 s and cost you a secondary slot).
 
 **Only the minigun shoves people with bullets**: hold it on someone and they get pushed away (the price for spraying). Melee and explosives still knock people around, and your own movement tricks (shotgun jumps, minigun flying) still work.
 
@@ -191,7 +216,7 @@ Achievement accessories:
 ## Cosmetics + containers
 
 **Skins** are different models and belong to one weapon each, like a CS knife: every weapon has at least one (Toy Blaster and Bullpup for the AR, Pocket Uzi, Double Barrel, Old Gatling, Musket, Flintlock, Turkey Launcher, Hand Cannon, Bunch Blaster, Compound Bow, Fat Cigar, Hair Dryer, Champagne, Skip Card, Ice Cube, Ladle, Croc, Reaper scythe, plus Karambit / Butterfly / Switchblade / Cleaver / Bowie / Kitchen knives, Foam Finger and Bear Paw slappers, the Croissant).
-**Wraps** (paint), **hats** and **effects** go on **every weapon at once** by default (untick the box in COSMETICS to dress weapons one by one). The Scythe Rifle can be dressed too. One **kill effect** per player.
+**Wraps** (paint), **hats** and **effects** go on **every weapon at once** by default (untick the box in COSMETICS to dress weapons one by one). The Scythe Rifle and the items with a model (Rubber Duck, Party Popper, Reverse Card) can be dressed too. One **kill effect** per player.
 
 **CONTAINERS** (main menu) is where you open them:
 
@@ -211,7 +236,7 @@ The hotbar at the bottom shows a picture of each weapon you carry, with your ski
 
 - **No speed cap.** Jump on the tick you land and friction never touches you.
 - Air strafe to gain speed. Grapple, then jump to launch off the rope with your momentum.
-- Self-launch: shotgun the floor, chicken rocket your feet, minigun downward, bread a wall, leaf blower, party popper recoil.
+- Self-launch: shotgun the floor, chicken rocket your feet, minigun downward, bread a wall, leaf blower, frag grenade, party popper (G: aim down to fly up, aim at a wall to fly off it).
 - Fall into the void and whoever hit you in the last 10 s gets the kill.
 
 ## Tripo models (optional)

@@ -103,15 +103,16 @@ export const WEAPONS = {
     cd: 0.35,
   },
   card: { slot: null, kind: 'proj', name: 'Card', color: '#ffffff', cd: 0, speed: 55, grav: 4, r: 0.12, dmg: 9, kb: 4 },
+  // item now (G), like the duck: this is how it works, ITEMS.popper is how often you get it
   popper: {
-    slot: 'secondary', kind: 'melee', name: 'Party Popper', color: '#ff6bd0',
-    desc: 'Zero damage. Ridiculous knockback.',
-    cd: 1.0, range: 9, cone: 0.6, dmg: 0, kb: 50, kbUp: 12, recoil: 12, radial: true,
+    slot: 'item', kind: 'melee', name: 'Party Popper', color: '#ff6bd0',
+    desc: 'Yank the string: a confetti blast shoves everyone in front of you away, hard, and launches you backwards. Zero damage.',
+    range: 9, cone: 0.6, dmg: 0, kb: 50, kbUp: 12, recoil: 17, lift: 5, radial: true,
   },
   reverse: {
-    slot: 'secondary', kind: 'reverse', name: 'Reverse Card', color: '#ff3b3b',
-    desc: 'For 1.2s, any damage or knockback aimed at you goes back to whoever sent it.',
-    cd: 6, dur: 1.2,
+    slot: 'item', kind: 'reverse', name: 'Reverse Card', color: '#ff3b3b',
+    desc: 'Flash it and for 3s every bullet, blast and shove aimed at you goes back to whoever sent it.',
+    dur: 3,
   },
   duck: {
     slot: 'item', kind: 'proj', name: 'Rubber Duck', color: '#ffd23b',
@@ -197,14 +198,18 @@ export const STREAKS = {
 export const DEFAULT_LOADOUT = { primary: 'ar', secondary: 'cig', melee: 'bread', item: 'frag', streaks: ['moonboots', 'chickenstrike', 'scythe'] };
 
 // items: one per loadout, G to use. charges come back over time (recharge = seconds per charge)
+// charges refill when you respawn, so charges = what you get per life, recharge = how often in a long life.
+// w: the item is that weapon's model: it pops into your hand (with its skin) when you use it
 export const ITEMS = {
-  frag: { name: 'Frag Grenade', desc: 'Bounces, blows up after 2s. Knocks people (and you) flying.', charges: 2, recharge: 16, color: '#9ab04a', proj: 'frag' },
-  medkit: { name: 'Medkit', desc: 'Heals 60 over a couple of seconds.', charges: 1, recharge: 22, color: '#ff4f4f', heal: 60 },
+  frag: { name: 'Frag Grenade', desc: 'Bounces, blows up after 2s. Knocks people (and you) flying.', charges: 2, recharge: 18, color: '#9ab04a', proj: 'frag' },
+  medkit: { name: 'Medkit', desc: 'Heals 45 over a couple of seconds. Carry two.', charges: 2, recharge: 20, color: '#ff4f4f', heal: 45 },
   bubble: { name: 'Shield Bubble', desc: 'A dome for 7s. Nothing from outside can hurt anyone inside.', charges: 1, recharge: 28, color: '#4fd8ff', dur: 7, r: 4.4 },
   duck: { name: 'Rubber Duck', desc: 'Turns into a black hole that sucks everyone in, then pops.', charges: 1, recharge: 20, color: '#ffd23b', proj: 'duck' },
-  smoke: { name: 'Smoke Bomb', desc: 'A thick cloud nobody can see through for 10s.', charges: 2, recharge: 18, color: '#9aa0a8', proj: 'smokegren', dur: 10, r: 6.5 },
+  smoke: { name: 'Smoke Bomb', desc: 'A thick cloud nobody can see through for 10s.', charges: 3, recharge: 14, color: '#9aa0a8', proj: 'smokegren', dur: 10, r: 6.5 },
+  popper: { name: 'Party Popper', desc: 'A confetti blast: everyone in front of you gets shoved away hard and you get launched backwards. Zero damage, all void kills and escapes.', charges: 2, recharge: 9, color: '#ff6bd0', w: 'popper' },
+  reverse: { name: 'Reverse Card', desc: 'For 3s every bullet, blast and shove aimed at you goes back to whoever sent it. Everyone sees you flash it.', charges: 1, recharge: 22, color: '#ff3b3b', w: 'reverse' },
 };
-export const ITEM_ORDER = ['frag', 'medkit', 'bubble', 'duck', 'smoke'];
+export const ITEM_ORDER = ['frag', 'medkit', 'bubble', 'duck', 'smoke', 'popper', 'reverse'];
 
 export function validLoadout(lo) {
   const out = { ...DEFAULT_LOADOUT };

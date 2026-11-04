@@ -383,7 +383,7 @@ function sendSkins() {
   skinSendT = setTimeout(() => { if (G.joined) net.send({ t: 'skin', s: G.equipped }); }, 250);
 }
 // the weapons that show up in COSMETICS (the rifle form of the scythe borrows the scythe's look)
-function skinnable() { return ORDER.filter((id) => WEAPONS[id] && (SLOTS.includes(WEAPONS[id].slot) || id === 'scythe')); }
+function skinnable() { return ORDER.filter((id) => WEAPONS[id] && (SLOTS.includes(WEAPONS[id].slot) || WEAPONS[id].slot === 'item' || id === 'scythe')); }
 function storeSkin(id, skin) {
   if (skin[0] === 'default' && skin[1] === 'none' && skin[2] === 'none' && (skin[3] || 'default') === 'default') delete S.skins[id];
   else S.skins[id] = skin;
@@ -534,9 +534,9 @@ $('lkReset').addEventListener('click', () => { setLook({ ...DEFAULT_LOOK }); bui
 function buildCosmeticsUI() {
   const list = $('cosWeapons');
   list.innerHTML = '';
-  for (const slot of [...SLOTS, 'streak']) {
+  for (const slot of [...SLOTS, 'item', 'streak']) { // items with a model (duck, popper, reverse card) wear skins too
     const h = document.createElement('div');
-    h.className = 'lt'; h.textContent = slot === 'streak' ? 'killstreak' : slot;
+    h.className = 'lt'; h.textContent = slot === 'streak' ? 'killstreak' : slot === 'item' ? 'item (G)' : slot;
     list.append(h);
     for (const id of ORDER) {
       const w = WEAPONS[id];
@@ -1004,7 +1004,7 @@ net.on('loadout', (m) => {
   G.forcedLoadout = m.lo || null;
   setLoadout(m.lo || S.loadout);
   refillAmmo();
-  if (m.lo) hud.msg(`${wname(m.lo.primary)} · ${wname(m.lo.secondary)} · ${wname(m.lo.melee)}`, 2.2, 'brag');
+  if (m.lo) hud.msg(`${wname(m.lo.primary)} · ${wname(m.lo.secondary)} · ${wname(m.lo.melee)}${ITEMS[m.lo.item] ? ' · ' + ITEMS[m.lo.item].name : ''}`, 2.2, 'brag');
 });
 net.on('kb', (m) => applyKb(m.v));
 net.on('slip', () => slip(performance.now()));
@@ -1219,16 +1219,23 @@ net.on('fx', (m) => {
     G.shake = Math.max(G.shake, Math.max(0, 1 - d / 25));
   } else if (m.k === 'swing') {
     if (r) r.swingT = performance.now();
-    if (m.w === 'popper') {
-      if (r) fx.confetti(r.muzzle(), r.look(), r.vel);
-      sfx.popper(m.a);
+    if (m.w === 'popper') { // an item now: it pops into their hand for a moment
+      if (r) { r.popItem('popper', 450); fx.confetti(r.itemMuzzle(), r.look(), r.vel); }
+      sfx.popper(m.a); sfx.partyHorn(m.a);
     } else sfx.swing(m.a);
   } else if (m.k === 'reverse') {
     if (r) r.reverseUntil = performance.now() + m.dur * 1000;
     if (m.id !== G.myId) sfx.reverse(r ? r.pos : null);
+    if (r) { // they flash the card: a red + yellow burst everyone can see
+      r.popItem('reverse', 700);
+      const c = [r.pos[0], r.pos[1] + 1.3, r.pos[2]];
+      fx.blast(c, 2.2, 0xff3b3b, 0xffd23b);
+      fx.spray(c, 40, [0xff3b3b, 0xffd23b, 0xffffff], 10, 0.9, 0.2, 0, 2);
+    }
   } else if (m.k === 'reflect') {
     if (m.by === G.myId) { hud.msg('REVERSED', 1.2, 'reverse'); sfx.reverse(); }
     if (m.id === G.myId) hud.msg('REVERSED THEM', 1.0, 'reverse');
+    if (r) { fx.spray([r.pos[0], r.pos[1] + 1.3, r.pos[2]], 18, [0xff3b3b, 0xffd23b], 7, 0.5, 0.16, 0, 2); if (m.by !== G.myId) sfx.reverse(r.pos); }
   } else if (m.k === 'strike') {
     sfx.strike(m.p);
     if (m.n >= 2) hud.msg(m.n >= 3 ? 'STRIKE' : 'SPARE', 1.2, 'brag');
@@ -1419,7 +1426,8 @@ function frame(t) {
   myShadow.visible = !!shHit && ME.alive && !ME.onGround && !RP.active;
   if (shHit) myShadow.position.set(ME.pos[0], shHit.point[1] + 0.03, ME.pos[2]);
   if (now < (G.burnUntil || 0)) fx.burn([ME.pos[0] + Math.sin(ME.yaw) * -0.8, ME.pos[1], ME.pos[2] - Math.cos(ME.yaw) * 0.8]);
-  $('reverseFx').style.opacity = now < W.reverseUntil ? 1 : 0;
+  const revLeft = W.reverseUntil - now; // reverse card: red edges, blinking for the last second
+  $('reverseFx').style.opacity = revLeft > 0 ? (revLeft > 1000 || Math.floor(revLeft / 150) % 2 ? 1 : 0.25) : 0;
 
   if (G.joined) {
     hud.hp(ME.hp);

@@ -54,7 +54,7 @@ export function weaponIcon(id, skin) {
   }
 }
 
-// item pictures (drawn, not rendered): grenade, medkit, bubble, duck, smoke
+// item pictures (drawn, not rendered): grenade, medkit, bubble, duck, smoke, popper, reverse card
 const itemCache = new Map();
 export function itemIcon(id) {
   if (itemCache.has(id)) return itemCache.get(id);
@@ -81,6 +81,14 @@ export function itemIcon(id) {
   } else if (id === 'smoke') {
     x.fillStyle = '#9aa0a8'; x.fillRect(40, 26, 16, 26); x.strokeRect(40, 26, 16, 26);
     for (const [cx, cy, r] of [[40, 18, 9], [52, 14, 10], [62, 20, 8], [30, 22, 7]]) circle(cx, cy, r, '#d8dce0');
+  } else if (id === 'popper') { // (the hotbar normally shows the real model; these are the fallbacks)
+    x.beginPath(); x.moveTo(26, 50); x.lineTo(58, 14); x.lineTo(70, 30); x.closePath(); x.fillStyle = '#ff6bd0'; x.fill(); x.stroke();
+    for (const [cx, cy, c] of [[66, 10, '#ffe14d'], [78, 18, '#4fd8ff'], [74, 6, '#7dff4f'], [84, 28, '#ffffff']]) { x.fillStyle = c; x.fillRect(cx, cy, 5, 5); }
+  } else if (id === 'reverse') {
+    x.fillStyle = '#e8262b'; x.fillRect(32, 6, 32, 48); x.strokeRect(32, 6, 32, 48);
+    x.strokeStyle = '#fff'; x.lineWidth = 4;
+    x.beginPath(); x.arc(48, 30, 10, Math.PI * 0.9, Math.PI * 1.9); x.stroke();
+    x.beginPath(); x.arc(48, 30, 10, -Math.PI * 0.1, Math.PI * 0.9); x.stroke();
   }
   const url = c.toDataURL();
   itemCache.set(id, url);

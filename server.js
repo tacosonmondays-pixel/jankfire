@@ -227,6 +227,7 @@ class Room {
   randomLoadout() {
     const lo = {};
     for (const slot of ['primary', 'secondary', 'melee']) lo[slot] = pick(Object.keys(WEAPONS).filter((id) => WEAPONS[id].slot === slot));
+    lo.item = pick(Object.keys(ITEMS)); // the popper + reverse card left the secondary pool for this one
     return lo;
   }
   sendLoadout(p) {
@@ -645,7 +646,28 @@ class Room {
       const b = { id: this.nextBub++, p: [r2(p.pos[0]), r2(p.pos[1] + 1), r2(p.pos[2])], r: it.r, until: now() + it.dur * 1000, o: p.id };
       this.bubbles.set(b.id, b);
       this.broadcast({ t: 'bub+', id: b.id, p: b.p, r: b.r, left: it.dur * 1000 });
-    }
+    } else if (m.i === 'popper') this.popperUse(p, o, d);
+    else if (m.i === 'reverse') this.reverseUse(p);
+  }
+  // party popper (item): the client finds who's in its cone and sends 'hit's. they only count for a moment after
+  // a charge was really spent here, once per target, and only on people in front of where you aimed
+  popperUse(p, o, d) {
+    p.pop = { t: now(), d, hit: new Set() };
+    this.broadcast({ t: 'fx', k: 'swing', w: 'popper', id: p.id, a: o.map(r2) }, p.id);
+  }
+  popperHit(p, t, toT) {
+    const w = WEAPONS.popper, pop = p.pop;
+    if (!pop || now() - pop.t > 500 || pop.hit.has(t.id) || !this.rangeOk(p, t, w.range)) return;
+    const e = eyeOf(p), to = [t.pos[0] - e[0], t.pos[1] + 1 - e[1], t.pos[2] - e[2]], dist = Math.hypot(...to);
+    if (dist > 2.5 && (to[0] * pop.d[0] + to[1] * pop.d[1] + to[2] * pop.d[2]) / dist < Math.cos(w.cone + 0.35)) return; // point blank counts from any angle (positions lag)
+    pop.hit.add(t.id);
+    this.hurt(t, p, 'popper', 0, [toT[0] * w.kb, toT[1] * w.kb + w.kbUp, toT[2] * w.kb]);
+  }
+  // reverse card (item): for a few seconds everything aimed at you goes back to whoever sent it (see hurt)
+  reverseUse(p) {
+    const dur = WEAPONS.reverse.dur;
+    p.reverseUntil = now() + dur * 1000;
+    this.broadcast({ t: 'fx', k: 'reverse', id: p.id, dur });
   }
   inBubble(b, t) { return Math.hypot(t.pos[0] - b.p[0], t.pos[1] + 1 - b.p[1], t.pos[2] - b.p[2]) < b.r; }
   // a bubble protects whoever is inside from anyone outside it
@@ -910,6 +932,7 @@ class Room {
       return;
     }
     const toT = norm([t.pos[0] - p.pos[0], t.pos[1] - p.pos[1], t.pos[2] - p.pos[2]]) || d;
+    if (m.w === 'popper') { this.popperHit(p, t, toT); return; } // an item now: only right after a real pop
     if (w.kind === 'hitscan') {
       const pellets = w.pellets || 1;
       const n = clampInt(m.n, 1, Math.min(pellets, this.maxPellets(w, p, t))), h = clampInt(m.h, 0, n);
@@ -953,18 +976,12 @@ class Room {
     const w = WEAPONS[m.w];
     if (!w || !p.alive) return;
     if (w.slot === 'streak' && !p.scythe) return;
+    // only loadout weapons fire. items (popper, reverse card, duck), grenades and thrown cards come from G / the deck
+    if (!['primary', 'secondary', 'melee', 'streak'].includes(w.slot)) return;
     let o = vec3(m.o);
     if (!o || dist3(o, eyeOf(p)) > 4) o = eyeOf(p);
     if (w.kind === 'hitscan') { this.broadcast({ t: 'fx', k: 'shot', w: m.w, id: p.id, s: segs(m.s) }, p.id); return; }
     if (w.kind === 'melee') { this.broadcast({ t: 'fx', k: 'swing', w: m.w, id: p.id, a: o.map(r2), h: m.heavy ? 1 : undefined }, p.id); return; }
-    if (w.kind === 'reverse') {
-      const n = now();
-      if (n - (p.lastFire.reverse || 0) < w.cd * 900) return;
-      p.lastFire.reverse = n;
-      p.reverseUntil = n + w.dur * 1000;
-      this.broadcast({ t: 'fx', k: 'reverse', id: p.id, dur: w.dur });
-      return;
-    }
     const d = norm(vec3(m.d));
     if (d && w.kind === 'proj') this.spawnProj(p, m.w, o, d);
     if (d && w.kind === 'bow') {
