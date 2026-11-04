@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { BOXES } from '/shared/map.js';
 import { raycast, playerBoxes } from '/shared/physics.js';
 import { FLAGS } from '/shared/weapons.js';
-import { PARRY } from '/shared/weapons.js';
+import { guardPose } from './guard.js';
 import { G } from './ctx.js';
 import { buildCharacter, buildWeapon, makeNameTag, makeShadow, cardTex, setKatana } from './models.js';
 import { fx, makeBeam, setBeam } from './fx.js';
@@ -334,17 +334,9 @@ export class Remote {
       ch.arm.rotation.y = (st < 0.35 ? -1 : 1) * k * 1.3;
       ch.arm.rotation.x = this.pitch + k * 0.5;
     } else ch.arm.rotation.y = 0;
-    // katana parry ('guard' event): blade snaps up across the body, holds through the window, drops back.
-    // a parried hit (parryHitT) jolts it up a touch
-    const pd = (PARRY.win + 0.21) * 1000, ph = PARRY.win * 1000 / pd; // up for the whole window, then 0.21 s to drop back
-    const pk = this.w === 'katana' ? (now - (this.parryT || -1e9)) / pd : 1;
-    if (pk >= 0 && pk < 1) {
-      const k = pk < 0.05 ? pk / 0.05 : pk > ph ? 1 - (pk - ph) / (1 - ph) : 1;
-      const jolt = Math.max(0, 1 - (now - (this.parryHitT || -1e9)) / 140) * 0.3;
-      ch.arm.rotation.x = this.pitch + (0.35 + jolt - this.pitch) * k;
-      ch.arm.rotation.y = 0.75 * k;
-      ch.slot.rotation.set(0.85 * k, 0.55 * k, 0);
-    } else if (ch.slot.rotation.x) ch.slot.rotation.set(0, 0, 0);
+    // katana parry ('guard' event): the braced guard for the whole window, what it blocked, a whiff's slow recovery,
+    // and the stagger when their own swing got parried (guard.js). killcam ghosts run on the replay's clock
+    guardPose(this, ch, this.ghost ? rt : now);
     // marker + name tag stay readable far away
     G.camera.getWorldPosition(camPos);
     const dist = camPos.distanceTo(ch.root.position);

@@ -371,6 +371,12 @@ body.wrecking #center { top: 41%; }
 #center.parried { color: #ff5a5a; font-size: 50px; letter-spacing: 3px; }
 @keyframes parrypop { from { transform: translate(-50%, -50%) rotate(-3deg) scale(1.7); } to { transform: translate(-50%, -50%) rotate(-3deg) scale(1); } }
 body.replaying #parryRing { visibility: hidden; }
+/* katana parry: which key does it, just under the ring (fades for good after a few parries), and on the loadout card */
+#parryHint { position: absolute; left: 50%; top: 50%; margin-top: 23px; transform: translateX(-50%); display: none; pointer-events: none; white-space: nowrap;
+  font-size: 11px; font-weight: 700; letter-spacing: 1px; color: #dff6ff; text-shadow: 1px 1px 0 #000; transition: opacity 0.4s; }
+#parryHint b { display: inline-block; margin-right: 4px; padding: 0 4px; border: 1px solid rgba(159, 232, 255, 0.85); border-radius: 3px; background: rgba(0, 0, 0, 0.45); color: #fff; text-shadow: none; }
+body.replaying #parryHint { visibility: hidden; }
+.wpick .pkey { float: right; margin: 2px 0 0 8px; padding: 0 4px; border: 1px solid rgba(159, 232, 255, 0.7); border-radius: 3px; font-size: 11px; letter-spacing: 1px; color: #9fe8ff; }
 
 /* killstreaks */
 /* killstreaks: small icons in the bottom right corner */

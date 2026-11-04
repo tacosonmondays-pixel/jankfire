@@ -410,19 +410,19 @@ export function drawFor(id, model) {
   return HEAVY.has(id) ? 'draw_heavy' : 'draw_gun';
 }
 
-// katana parry (right click): the blade snaps up across the body (overshoots a hair), holds through the whole
-// window (PARRY.win) with a little drift so it doesn't look frozen, then drops back. a landed parry adds hit stop + a kick on top.
+// katana parry (right click): the pose is guard.js's (a two-handed braced block blended over the viewmodel, up for
+// the whole window, PARRY.win). this is its clock: the swish as it snaps up, and long enough for the
+// slowest way out of it (a whiff's sag and slow rise). guard.js ends it early after a quick return.
 Object.assign(ANIMS, {
-  parry_katana: { keys: [
-    K(0), K(0.05, [-0.15, 0.16, 0.02], [0.84, 1.03, 0.52], 'snap'), // snap up
-    K(0.1, [-0.13, 0.13, 0], [0.75, 0.95, 0.45]), // settle into the guard
-    K(PARRY.win, [-0.12, 0.125, 0], [0.72, 0.93, 0.43], 'linear'), // hold: up for the whole window
-    K(PARRY.win + 0.22, [0, 0, 0], [0, 0, 0], 'smooth'),
-  ], events: [[0.01, 'whoosh']], trail: [0, 0.07] },
-  // your swing got parried: whatever you're holding gets knocked up and away, then you get it back
+  parry_katana: { keys: [K(0), K(PARRY.win + 0.75)], events: [[0.004, 'guardUp']] },
+  // your swing got parried: whatever you're holding gets batted up and out, wrist bent back, it wobbles while you
+  // reel, then you haul it back in
   staggered: { keys: [
-    K(0), K(0.07, [0.08, 0.12, 0.14], [0.75, -0.45, 0.65], 'snap'),
-    K(0.32, [0.06, 0.08, 0.1], [0.55, -0.32, 0.45]), K(0.62),
+    K(0), K(0.045, [0.11, 0.13, 0.13], [0.95, -0.6, 0.85], 'snap'), // knocked away
+    K(0.12, [0.075, 0.09, 0.09], [0.6, -0.38, 0.5]), // it bounces back a little
+    K(0.2, [0.09, 0.115, 0.11], [0.78, -0.5, 0.68]), // and wobbles
+    K(0.42, [0.06, 0.07, 0.07], [0.48, -0.3, 0.38]), // still reeling
+    K(0.66, [0, 0, 0], [0, 0, 0], 'smooth'), // got it back
   ] },
 });
 

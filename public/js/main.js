@@ -22,6 +22,7 @@ import {
 import { Remote, updateGibs } from './remote.js';
 import { stepSoap, trapStart, trapEnd, updateWand, stuckInBubble } from './wand.js';
 import { parry } from './weapons.js';
+import { parryKey, parryDesc } from './weapons.js'; // the katana's parry key (loadout card)
 import './parry.js'; // katana parry: sparks, sounds, PARRY!, the guard pose
 import { addPatch, clearPatches } from './mslip.js'; // marble shotgun: marbles on the floor you slip on
 import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN } from './skins.js';
@@ -349,6 +350,7 @@ function buildLoadoutUI() {
         $('loDesc').textContent = `${w.name}: ${w.desc}`;
       });
       col.append(b);
+      if (id === 'katana') parryCard(b, w);
     }
   }
   // killstreaks: pick 3
@@ -386,6 +388,13 @@ function buildLoadoutUI() {
     b.addEventListener('click', () => { S.loadout.item = id; saveSettings(); buildLoadoutUI(); applyLoadout(false); });
     ic.append(b);
   }
+}
+// the katana's loadout card shows its parry key, and its description names the key you actually press
+function parryCard(b, w) {
+  const k = document.createElement('span'); k.className = 'pkey'; k.textContent = `${parryKey()} PARRY`;
+  b.append(k);
+  const desc = () => { $('loDesc').textContent = `${w.name}: ${parryDesc(w.desc)}`; }; // after the plain one above
+  b.addEventListener('mouseenter', desc); b.addEventListener('click', desc);
 }
 function applyLoadout(force) {
   if (G.forcedLoadout) { $('loNote').textContent = 'randomizer is on: you get a random loadout every life'; return; }

@@ -282,6 +282,8 @@ sfx.parry = (pos, perfect) => {
 };
 // a small tick for the 2nd, 3rd... thing parried in one window (a minigun stream shouldn't SHING ten times)
 sfx.tink = (pos) => { const f = 3000 + Math.random() * 600; tone('sine', f, f * 0.97, 0.12, 0.13, pos); noise(0.025, 0.45, 'highpass', 6000, 9000, pos); };
+// a katana guard going up: a quick swish that rises into a faint ring off the steel (you hear someone go on guard)
+sfx.guard = (pos) => { noise(0.11, 0.42, 'bandpass', 800, 4200, pos, 0, 2.2); tone('sine', 3150, 3320, 0.24, 0.055, pos, 0.035); };
 
 // ------------------------------------------------------------ no-scope hype: airhorn, ding, fireworks
 let hornCurve = null;

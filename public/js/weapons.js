@@ -17,6 +17,7 @@ import { newTwirl, resetTwirl, twirling, spin, settle, twirlShot, stepTwirl, app
 import { weaponIcon, clearIcons, itemIcon } from './icons.js';
 import { tickScalesVM } from './scales.js';
 import { PARRY } from '/shared/weapons.js';
+import { vmGuard, vmGuardStart, vmGuardHit, vmSparks } from './guard.js';
 
 export const W = {
   slots: [DEFAULT_LOADOUT.primary, DEFAULT_LOADOUT.secondary, DEFAULT_LOADOUT.melee],
@@ -370,23 +371,19 @@ function doParry(now) {
   cancelInspect();
   net.send({ t: 'parry', y: r2(ME.yaw) });
   playAnim('parry_katana', 'parry');
+  vmGuardStart(); // the guard is up on this very frame (guard.js)
+  parryHintSeen();
 }
-// the server says we parried something: hit stop, the blade kicks, sparks fly off it. big = the first one in a while
-export function parryLanded(perfect, big) {
+// the server says we parried something: hit stop, a camera kick, and guard.js recoils the blade and throws sparks off
+// the bit of it between you and them (from = world point it came from). big = the first one in a while.
+// returns the world point on screen over that spot, where a perfect parry's tracer leaves from
+export function parryLanded(perfect, big, from) {
   const m = models.katana;
-  if (!m || W.cur !== 'katana') return;
+  if (!m || W.cur !== 'katana') return null;
   W.hitStop = Math.max(W.hitStop, big ? (perfect ? 0.13 : 0.09) : 0.03);
   const k = big ? 1 : 0.35;
-  rec.rv[0] += (perfect ? 7 : 4.5) * k; rec.pv[2] += 1.1 * k; rec.rv[2] += 3 * rnd() * k;
   punchCam((perfect ? 0.05 : 0.03) * k, 0.02 * rnd() * k, 0.04 * rnd() * k);
-  if (!G.skinFxVM) return;
-  m.wrap.updateMatrixWorld(true);
-  const R = (s) => (Math.random() - 0.5) * s;
-  for (let i = 0, n = big ? (perfect ? 34 : 22) : 8; i < n; i++) {
-    tmpV.copy(m.g.userData.muzzle).multiplyScalar(0.3 + Math.random() * 0.45); m.g.localToWorld(tmpV);
-    G.skinFxVM.add.spawn(tmpV.x, tmpV.y, tmpV.z, R(2.4), 0.3 + Math.random() * 1.6, -0.2 - Math.random() * 1.3,
-      0.16 + Math.random() * 0.24, perfect ? 0.034 : 0.028, 0.004, Math.random() < 0.5 ? 0xffffff : 0xfff2b0, 0xff7a10, 1, 6);
-  }
+  return vmGuardHit(m, from, perfect, big, performance.now());
 }
 // our swing got parried: whatever we hold gets knocked away, no attacking for a moment, half speed (see parryTick)
 export function stagger(dur) {
@@ -399,11 +396,32 @@ export function stagger(dur) {
   rec.rv[0] += 5; rec.rv[2] += 6 * rnd(); rec.pv[2] += 1.5;
   punchCam(-0.06, 0.04 * rnd(), 0.08 * rnd());
   G.shake = Math.max(G.shake, 0.45);
+  // the clash: sparks off the end of whatever you swung (their blade sparks too, parry.js)
+  const m = models[W.cur];
+  if (m && m.g.userData.muzzle) {
+    m.wrap.updateMatrixWorld(true);
+    vmSparks(m.g.localToWorld(tmpV.copy(m.g.userData.muzzle).multiplyScalar(0.8)), tmpV2.set(0, 0.2, -1).normalize(), null, 18, false);
+  }
+}
+// the key that parries, for the hint under the crosshair and the katana's loadout card. the one place that knows it:
+// a keybinds registry only has to change this line
+export const parryKey = () => (G.settings.swapAim ? 'E' : 'RMB');
+// the katana's description names that key (it's written for right click)
+export const parryDesc = (s) => (parryKey() === 'RMB' ? s : s.replace(/\b[Rr]ight click\b/g, parryKey()));
+// the hint fades over your first few parries and then never shows again (counted in your settings)
+const HINT_N = 6;
+function parryHintSeen() {
+  const n = G.settings.parryHint | 0;
+  if (n >= HINT_N) return;
+  G.settings.parryHint = n + 1;
+  try { localStorage.setItem('jankfire', JSON.stringify(G.settings)); } catch { /* private mode */ }
 }
 // every frame: buffered presses, stagger slow-down, and the cooldown ring round the crosshair
 function parryTick(now) {
   if (now < (W.staggerUntil || 0)) ME.speedMul *= 0.5;
   if (W.parryQ) { if (now - W.parryQ > 250 || W.cur !== 'katana') W.parryQ = 0; else if (canParry(now)) doParry(now); }
+  const hn = G.settings.parryHint | 0;
+  hud.parryHint(W.cur === 'katana' && ME.alive && hn < HINT_N ? parryKey() : null, Math.min(1, (HINT_N - hn) / 4));
   if (W.cur !== 'katana' || !ME.alive) { hud.parryRing(null); return; }
   const t = (now - (W.parryT || -1e9)) / 1000, P = PARRY;
   if (t < P.win) hud.parryRing(1, 'open'); // guard is up
@@ -477,6 +495,7 @@ export function rebuildViewmodels() {
     const hand = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.062, 0.09), M(0xf1c27d)); // a fist, not a brick
     hand.position.set(0.004, -0.042, 0.03);
     wrap.add(hand);
+    wrap.userData.fist = hand; // (the katana guard closes it round the tsuka)
     wrap.position.set(...cfg.p);
     wrap.rotation.set(...cfg.r);
     wrap.visible = id === W.cur;
@@ -566,6 +585,7 @@ function equip(i) {
   playAnim(drawFor(id, models[id] && models[id].g.userData.model), 'draw');
   for (const k of ORDER) if (models[k]) models[k].wrap.visible = k === id;
   hud.weapon(id, i);
+  if (id === 'katana') hud.weaponDesc(parryDesc(WEAPONS.katana.desc)); // the parry key you actually press
   sfx.click();
 }
 
@@ -908,6 +928,7 @@ function animEvent(ev, g) {
   const R = (k) => (Math.random() - 0.5) * k;
   switch (ev) {
     case 'whoosh': sfx.swing(); break;
+    case 'guardUp': sfx.guard(); break; // katana parry
     case 'whooshBig': sfx.swing(); sfx.blow(); break;
     case 'shing': sfx.ting(); break;
     case 'clunk': sfx.thunk(); break;
@@ -1178,6 +1199,7 @@ export function updateWeapons(dt, now) {
   m.wrap.visible = !(id === 'slipper' && W.slipperOut) && !W.scoped && !ME.dashing;
   m.wrap.position.set(px, py, pz);
   m.wrap.rotation.set(rx, ry, rz);
+  vmGuard(m, W, dt, now, id === 'katana'); // katana parry: the braced guard blended over all that (guard.js)
   if (ud.court) tickScalesVM(m.g, dt, now); // scales of justice: tip toward the verdict, swing the pans
   if (m.g.userData.hat) m.g.userData.hat.visible = W.aim < 0.3;
   hud.crossFade(m.g.userData.sight ? Math.max(0, 1 - W.aim * 1.6) : 1);

@@ -19,6 +19,7 @@ import { BOXES } from '/shared/map.js';
 import { soapBubble, soapFlail } from './models.js';
 import { TRAP, trapPreroll } from '/shared/wand.js';
 import { patchPreroll } from '/shared/marbles.js';
+import { guardHit, guardStagger, weaponPoint, hitFrom } from './guard.js';
 
 const KEEP = 10000;
 export const rec = { frames: [], ev: [] };
@@ -129,14 +130,16 @@ function applyEv(m) {
     fx.explosion(m.p, 6); sfx.boom(m.p);
   } else if (m.t === 'fx' && (m.k === 'slam' || m.k === 'ram')) {
     wreckFx(m, true); // wrecking ball slams + rams (the ghost itself already rolls as a ball from its snapshot flags)
-  } else if (m.t === 'guard') { // katana parry: the guard pose
-    if (g) g.parryT = performance.now();
+  } else if (m.t === 'guard') { // katana parry: the guard pose, on the replay's clock (slow motion slows it too)
+    if (g) { g.parryT = st.t; sfx.guard(g.pos); }
   } else if (m.t === 'parry') { // ...and what it bounced. only the first thing in a window SHINGs (n = its count), like live
-    if (g) g.parryHitT = performance.now();
-    const big = !(m.n > 1), dl = g ? Math.hypot(m.p[0] - g.pos[0], m.p[2] - g.pos[2]) || 1 : 0;
-    fx.sparks(m.p, g ? [(m.p[0] - g.pos[0]) / dl, 0, (m.p[2] - g.pos[2]) / dl] : null, big ? (m.pf ? 40 : 24) : 8, !!m.pf);
-    if (big) sfx.parry(m.p, !!m.pf); else sfx.tink(m.p);
-    if (m.b) fx.tracer(m.p, m.b, 0xffffff, 0.07, 0.3);
+    const big = !(m.n > 1), from = hitFrom(m, (id) => st.ghosts.get(id));
+    const p = g && g.alive ? guardHit(g, m, st.t, big, from) : m.p; // sparks off the ghost's blade, where it was hit
+    if (!g || !g.alive) fx.sparks(m.p, null, big ? (m.pf ? 40 : 24) : 8, !!m.pf);
+    if (big) sfx.parry(p, !!m.pf); else sfx.tink(p);
+    if (m.b) fx.reflect(p, m.b);
+    const atk = m.k === 'melee' && st.ghosts.get(m.by); // a parried swing: the swinger reels, both blades spark
+    if (atk) { guardStagger(atk, st.t, m.st); const wp = weaponPoint(atk); if (wp) fx.sparks(wp, null, big ? 14 : 5, false); }
   } else if (m.t === 'kill') {
     const v = st.ghosts.get(m.v);
     if (v) {

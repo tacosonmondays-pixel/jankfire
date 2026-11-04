@@ -236,6 +236,23 @@ export const fx = {
     scene.add(m);
     timed.push({ mesh: m, life: hot ? 0.16 : 0.1, ml: hot ? 0.16 : 0.1, kind: 'pop' }); // just fades, no growing
   },
+  // a perfect parry sends the bullet home: a white-hot line from the blade (a) into the shooter (b), a cyan glow round
+  // it, sparks streaming along it and a hit where it lands
+  reflect(a, b) {
+    this.tracer(a, b, 0xffffff, 0.055, 0.34);
+    const glow = new THREE.Mesh(BEAM_GEO, new THREE.MeshBasicMaterial({ color: 0x4aa8d8, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    glow.frustumCulled = false;
+    setBeam(glow, a, b, 0.2);
+    scene.add(glow);
+    timed.push({ mesh: glow, life: 0.5, ml: 0.5, kind: 'beam' });
+    const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], L = Math.hypot(...d) || 1;
+    for (let i = 0; i < 30; i++) {
+      const u = Math.random() ** 0.7, s = 4 + Math.random() * 8;
+      fire.spawn(a[0] + d[0] * u, a[1] + d[1] * u, a[2] + d[2] * u, (d[0] / L) * s + R(1.2), (d[1] / L) * s + R(1.2) + 0.5, (d[2] / L) * s + R(1.2),
+        0.12 + Math.random() * 0.25, 0.1, 0.02, Math.random() < 0.6 ? 0xffffff : 0xbff0ff, 0x4aa8d8, 1, 2, 2);
+    }
+    this.sparks(b, [-d[0] / L, 0, -d[2] / L], 18, true);
+  },
   burn(p) {
     fire.spawn(p[0] + R(0.4), p[1] + Math.random() * 1.8, p[2] + R(0.4), R(0.5), 2 + Math.random() * 2, R(0.5), 0.4, 0.35, 0.05, 0xffcc44, 0xff2200, 1, -2, 0);
   },

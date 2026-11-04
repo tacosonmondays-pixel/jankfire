@@ -103,6 +103,20 @@ export const hud = {
     void el.offsetWidth; // restart the fade
     el.style.transition = `opacity ${dur}s ease-out`; el.style.opacity = 0;
   },
+  // the parry key just under the ring while you hold the katana ("RMB PARRY"). null hides it. cached like the ring
+  parryHintCache: { el: null, key: '' },
+  parryHint(key, a = 1) {
+    const h = this.parryHintCache, id = key ? key + '|' + a.toFixed(2) : '';
+    if (id === h.key) return;
+    h.key = id;
+    if (!h.el) { h.el = document.createElement('div'); h.el.id = 'parryHint'; $('hud').append(h.el); }
+    if (!key) { h.el.style.display = 'none'; return; }
+    const b = document.createElement('b'); b.textContent = key;
+    h.el.replaceChildren(b, 'PARRY');
+    h.el.style.display = 'block'; h.el.style.opacity = a;
+  },
+  // swap the description under the weapon name (the katana's names your parry key)
+  weaponDesc(text) { const s = $('weaponName').children[2]; if (s) s.textContent = text; },
   scope(on) {
     $('scope').classList.toggle('on', on);
     $('crosshair').style.display = on ? 'none' : '';
