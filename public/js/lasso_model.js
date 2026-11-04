@@ -198,6 +198,7 @@ export function buildLassoModel(g, look) {
   g.add(sp.mesh);
   if (look.metal) { const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.05, 8), M(look.metal)); cup.position.set(-0.07, -0.02, 0.02); cup.rotation.z = 0.4; g.add(cup); } // the hose's tap end
   g.userData.muzzle = new THREE.Vector3(0.03, -0.15, -0.06);
+  g.userData.loopParts = [rope.mesh, kn, sp.mesh]; // hidden while the loop is out (spinning, flying, round someone)
   g.userData.len = 0.4;
   g.userData.faceOn = false;
   void pts;

@@ -182,6 +182,7 @@ function loopParts(pr) {
   pr.mesh.add(ring.mesh, knot);
   G.scene.add(spoke.mesh);
   pr.born = pr.born || performance.now();
+  if (pr.ph == null) pr.ph = 0; // (late joiners get it from the welcome: still flying out)
   loops.set(pr.id, pr);
   return (pr.lz = { ring, knot, spoke, look, open: 0.25 });
 }
@@ -358,6 +359,10 @@ export function lassoFrame(dt, now) {
     const v = ME.vel, sp = Math.hypot(v[0], v[1], v[2]);
     ME.lean = (ME.lean || 0) + Math.sin(now * 0.004) * 0.06 + Math.max(-0.35, Math.min(0.35, (v[0] * Math.cos(ME.yaw) - v[2] * Math.sin(ME.yaw)) * -0.01));
     if (G.punch) { G.punch.vx += Math.sin(now * 0.011) * dt * (2 + sp * 0.1); G.punch.vz += Math.sin(now * 0.007) * dt * (2 + sp * 0.12); }
+    // and your aim drifts with the swing (rockets and arrows too, not just the hipfire spread)
+    const k = dt * (0.5 + Math.min(1.5, sp * 0.04));
+    ME.yaw += (Math.sin(now * 0.0073) * 0.6 + Math.sin(now * 0.0131 + 1) * 0.4) * k;
+    ME.pitch = Math.max(-1.55, Math.min(1.55, ME.pitch + (Math.sin(now * 0.0089 + 2) * 0.5 + Math.sin(now * 0.017) * 0.3) * k * 0.6));
   }
   if (S.fl && alive) {
     const t = (now - S.fl.t0) / 1000;
@@ -416,6 +421,7 @@ function buildVM() {
   const coil = coilGroup(look, { R: 0.1, loops: 5 });
   coil.scale.setScalar(0.85);
   coil.position.set(0, -0.01, -0.07);
+  coil.rotation.set(0.25, Math.PI / 2 - 0.5, 0); // the coils face you (at an angle), hanging off the fist
   armL.add(coil);
   const loop = new Rope(look, 32, 6), spoke = new Rope(look, 12, 5), haul = new Rope(look, 10, 5), tail = new Rope(look, 12, 5);
   const knot = honda(look, 0.9);
@@ -638,9 +644,11 @@ function heldBy(r) {
 }
 const _lp = new THREE.Vector3(), _yq = new THREE.Quaternion(), _Y = new THREE.Vector3(0, 1, 0);
 G.lassoRemote = function (r, dt, now) {
-  const ch = r.ch, z = partsOf(r), show = ch.root.visible && r.alive, t = now * 0.001 + r.id;
+  const ch = r.ch, show = ch.root.visible && r.alive, t = now * 0.001 + r.id;
+  const vp = show ? victimPos(r) : null, spun = show && !!(r.f & FLAGS.LASSO), hp = show ? heldBy(r) : null, f = r.ghost ? r.lzFl : flung.get(r.id);
+  if (!r.lzv && !vp && !spun && !hp && !f && r.w !== 'lasso') return; // nothing to do with a lasso: no ropes made for them
+  const z = partsOf(r);
   // ---- r holds someone: both arms reach down the rope at them
-  const vp = show ? victimPos(r) : null;
   if (vp) {
     const dx = vp[0] - r.pos[0], dy = vp[1] + 1 - (r.pos[1] + 1.6), dz = vp[2] - r.pos[2], hd = Math.hypot(dx, dz) || 1;
     let rel = Math.atan2(-dx, -dz) - r.yaw; while (rel > Math.PI) rel -= Math.PI * 2; while (rel < -Math.PI) rel += Math.PI * 2;
@@ -649,7 +657,9 @@ G.lassoRemote = function (r, dt, now) {
     ch.armL.rotation.x = pitch; ch.armL.rotation.y = yy * 0.8; ch.armL.rotation.z = 0;
   }
   // ---- spinning the loop overhead
-  const spinning = show && !!(r.f & FLAGS.LASSO) && !vp;
+  const spinning = spun && !vp;
+  const lp = r.weaponMesh && r.weaponMesh.userData.loopParts; // the loop hanging off their coil goes while it's out
+  if (lp) { const out = !!vp || spinning || [...G.projs.values()].some((p) => p.k === 'loop' && p.o === r.id); for (const o of lp) o.visible = !out; }
   z.over.mesh.visible = spinning; z.spoke.mesh.visible = spinning;
   if (spinning) {
     z.ph = (z.ph || 0) + dt * Math.PI * 2 * 2.6;
@@ -663,7 +673,6 @@ G.lassoRemote = function (r, dt, now) {
     sagRope(z.spoke, hand, [kp.x, kp.y, kp.z], Math.hypot(kp.x - hand[0], kp.y - hand[1], kp.z - hand[2]) * 1.02, { r: z.spoke.look.r * s * 0.85 });
   }
   // ---- r is on the end of someone's rope: arms and legs everywhere, bent toward the rope (hanging off it by the middle)
-  const hp = show ? heldBy(r) : null;
   if (hp) {
     flail(ch, t, Math.min(1, Math.hypot(...r.vel) / 30));
     const dx = hp[0] - r.pos[0], dz = hp[2] - r.pos[2], dy = hp[1] - r.pos[1], hl = Math.hypot(dx, dz) || 1;
@@ -672,7 +681,6 @@ G.lassoRemote = function (r, dt, now) {
     ch.body.rotation.x = -fwd * 0.55 * pull; ch.body.rotation.z = -side * 0.55 * pull;
   }
   // ---- flung: head over heels until they land
-  const f = r.ghost ? r.lzFl : flung.get(r.id);
   if (f && show && !hp && !f.down) {
     const age = (now - f.t0) / 1000;
     const floor = Math.abs(r.vel[1]) < 1.5 && age > 0.25 && !!raycast([r.pos[0], r.pos[1] + 0.3, r.pos[2]], [0, -1, 0], 0.6, BOXES);

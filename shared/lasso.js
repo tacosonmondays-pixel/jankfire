@@ -25,7 +25,6 @@ export const LASSO = {
   splat: [22, 2.4, 140], yeet: 45,
   stream: 30, // Hz: how often the holder sends the body
 };
-export const LASSO_C = 2 * LASSO.zeta * Math.sqrt(LASSO.k); // damping (1/s)
 
 const clamp = (x, a, b) => (x < a ? a : x > b ? b : x);
 export const aimDir = (yaw, pitch) => { const cp = Math.cos(pitch); return [-Math.sin(yaw) * cp, Math.sin(pitch), -Math.cos(yaw) * cp]; };
@@ -53,7 +52,7 @@ export function holdStep(b, h, st, dt, boxes, grav = 26) {
   // the target's velocity: the damping is relative to it, so a steady walk or a slow turn doesn't drag behind
   const vT = [(T[0] - Tp[0]) / dt, (T[1] - Tp[1]) / dt, (T[2] - Tp[2]) / dt];
   st.T = T;
-  const c = LASSO_C;
+  const c = 2 * LASSO.zeta * Math.sqrt(LASSO.k); // damping (1/s)
   let ax = LASSO.k * (T[0] - p[0]) + c * (vT[0] - v[0]);
   let ay = LASSO.k * (T[1] - (p[1] + W)) + c * (vT[1] - v[1]);
   let az = LASSO.k * (T[2] - p[2]) + c * (vT[2] - v[2]);
