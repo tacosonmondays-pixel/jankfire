@@ -12,6 +12,7 @@ const SCENES = {
   desert: { theme: 'desert', skirt: 'rock' },
   bazaar: { theme: 'desert', skirt: 'rock' },
   islands: { theme: 'ocean' },
+  backrooms: { theme: 'sealed' },
 };
 const PAL = {
   sky: { mtn: 0x8a7aa8, snow: 0xffffff, floor: 0xffffff },
@@ -32,6 +33,7 @@ export function buildScenery(scene, map, id, voidMesh) {
   group = new THREE.Group();
   scene.add(group);
   const cfg = SCENES[id] || { theme: 'sky' };
+  if (cfg.theme === 'sealed') { if (voidMesh) voidMesh.visible = false; return; } // indoors all the way round: nothing out there
   const pal = PAL[cfg.theme];
   const fog = map.sky.fog;
   const r = rnd(id.length * 7919 + 13);

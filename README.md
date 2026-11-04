@@ -147,6 +147,7 @@ Pick **3** in LOADOUT. Kills in one life (the count resets when you die) earn th
 | **Bazaar** | large | the Plant & Defuse map (below) |
 | Islands | large | floating islands over the ocean |
 | Skyline | huge | real towers with floors, sky bridges, a construction site with a crane |
+| **Backrooms** | extra large | the biggest by far: an endless yellow maze round a huge hall (below) |
 
 Every map has scenery around it now: plateaus with cliffs down to a valley, mesas and dunes, a city of lit towers below, an ocean, a cloud sea, mountains on the horizon.
 
@@ -155,6 +156,13 @@ Every map has scenery around it now: plateaus with cliffs down to a valley, mesa
 - defenders spawn about 2.5x closer to both sites than attackers, so they get set up first; every lane ends in a chokepoint (the Canal Gate, the Cistern arch, the mid plaza)
 - each site has three ways in for retakes, and its own look: A is a raised tiled terrace with orange canopies, B is a fountain court with blue walls and an arcade
 - upper levels: climb the crates in A's approach onto the **Bridge** rooftop overlooking A, the **upper canal walkway**, the **mid gallery** over the hall, go upstairs in the **Spice House** and out onto the balcony over B, or climb onto the **arcade roof** above B
+
+**Backrooms** is an original take on the "Level 0" internet legend: 240 x 240 m of mono-yellow wallpaper, damp beige carpet and buzzing fluorescent panels, sealed in (no sky, nothing outside), with a warm haze that swallows everything past ~100 m:
+- the **Hall** in the middle: 64 x 64 m under a 7.5 m ceiling, a few pillars and freestanding walls for cover, long fights across it
+- around it, the maze: rooms of every size with doorways, long straight halls for sightlines, pillar rooms, the odd dead-end alcove, and a 3 m drop ceiling (you can still jump, and grapple the ceiling)
+- a hole in the floor in the south-west drops you into the flooded **Pool Rooms** below; they run north under the west side, and stairs come back up in three places, one of them right into B
+- Plant & Defuse: **A** is the **Office** (cubicles, grey-blue carpet) east of the Hall, **B** is the **Wet Room** (white tiles, the pool stairs) west of it; defenders spawn at the north end, attackers at the south. Bots find their way through the maze with a walk graph (`shared/nav.js`)
+- some lights flicker, some are dead, the hum never stops (`public/js/backrooms.js`). you are probably alone
 
 ## Accounts, levels, achievements
 

@@ -18,6 +18,7 @@ import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor } from './shared/modes.js';
 import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, validStreaks, fireRate } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
+import { navSteer } from './shared/nav.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -253,6 +254,7 @@ class Room {
     for (const s of spawns) {
       let d = 1e9;
       for (const p of this.players.values()) if (p.alive && p !== who && (!forBot || !p.isBot) && !(who && who.team && p.team === who.team)) d = Math.min(d, dist3(s, p.pos));
+      if (this.map.spawnSafe) d = Math.min(d, this.map.spawnSafe); // huge maps: far enough is far enough, then it's random (not always the one corner farthest from you)
       d += Math.random() * 15;
       if (d > bestD) { bestD = d; best = s; }
     }
@@ -446,6 +448,17 @@ class Room {
       if (goal.use && gl < goal.r) { wx = 0; wz = 0; jump = false; this.tryUse(b); }
       else if (goal.force || !t || !t.alive || !ai.seenAt) { wx = gx / (gl || 1); wz = gz / (gl || 1); }
     }
+    // mazes: follow the map's walk graph to wherever we were about to walk straight at (and into a wall)
+    if (this.map.graph) {
+      const gl = goal ? Math.hypot(goal.p[0] - b.pos[0], goal.p[2] - b.pos[2]) : 0;
+      const want = goal && (goal.force || !t || !t.alive || !ai.seenAt) ? (goal.use && gl < goal.r ? null : goal.p) : t && t.alive ? (ai.seenAt ? null : t.pos) : ai.wp;
+      const s = want && navSteer(this.map.graph, ai.nav || (ai.nav = {}), b.pos, want, n);
+      if (s) {
+        wx = s[0]; wz = s[1];
+        if (s[2] && b.onGround) jump = true; // hop to get unstuck
+        if (!t || !t.alive || (!ai.seenAt && dist3(t.pos, b.pos) > 12)) b.yaw = lerpAngle(b.yaw, Math.atan2(-wx, -wz), 30 * dt); // look where you walk, not through walls
+      }
+    }
     // grappling: chase people who are far / up high / out of sight, save yourself when falling, show off sometimes
     if (!ai.hook && n >= (ai.nextHook || 0) && this.mode !== 'training') {
       const skill = ai.diff === 'easy' ? 0.35 : ai.diff === 'hard' ? 1 : 0.7;
@@ -487,13 +500,13 @@ class Room {
     const ai = b.ai;
     if (!ai.route || ai.routeSite !== siteId) {
       let best = null, bd = 1e9, bi = 0;
-      for (const rt of nav) rt.forEach((q, i) => { const d = Math.hypot(q[0] - b.pos[0], q[1] - b.pos[2]); if (d < bd) { bd = d; best = rt; bi = i; } });
+      for (const rt of nav) rt.forEach((q, i) => { const d = Math.hypot(q[0] - b.pos[0], q[1] - b.pos[2]) + Math.abs((q[2] ?? b.pos[1]) - b.pos[1]) * 3; if (d < bd) { bd = d; best = rt; bi = i; } });
       ai.route = best; ai.ri = bi; ai.routeSite = siteId;
     }
-    const rt = ai.route;
-    while (ai.ri < rt.length && Math.hypot(rt[ai.ri][0] - b.pos[0], rt[ai.ri][1] - b.pos[2]) < 2.6) ai.ri++;
+    const rt = ai.route; // points are [x, z] or [x, z, y] (routes that go down a level)
+    while (ai.ri < rt.length && Math.hypot(rt[ai.ri][0] - b.pos[0], rt[ai.ri][1] - b.pos[2]) < 2.6 && Math.abs((rt[ai.ri][2] ?? b.pos[1]) - b.pos[1]) < 2) ai.ri++;
     if (ai.ri >= rt.length) return final;
-    return [rt[ai.ri][0], b.pos[1], rt[ai.ri][1]];
+    return [rt[ai.ri][0], rt[ai.ri][2] ?? b.pos[1], rt[ai.ri][1]];
   }
   botGoal(b) {
     const B = this.bomb;
@@ -1822,6 +1835,9 @@ wss.on('connection', (ws) => {
     me.room.remove(me);
   });
 });
+
+// maze maps build their bots' walk graph (and lanes) the first time they're asked for: do it now, not mid-match
+for (const m of Object.values(MAPS)) if (m.graph) void m.nav;
 
 // ---------------------------------------------------------------- loops
 const TICK = 1 / 60;

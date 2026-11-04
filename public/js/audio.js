@@ -162,3 +162,25 @@ export function loopSfx(name, on) {
 }
 
 export function stopLoops() { for (const k in loops) loopSfx(k, false); }
+
+// the backrooms hum: mains buzz from old fluorescent ballasts, two tubes slightly out of tune with each other. quiet, constant
+let humG = null, humV = -1;
+export function hum(on, k = 1) {
+  if (!ac) return;
+  const v = on ? 0.5 * k : 0;
+  if (v === humV || (!humG && !v)) return;
+  if (!humG) {
+    humG = ac.createGain(); humG.gain.value = 0; humG.connect(master);
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1400; lp.connect(humG);
+    for (const [type, f, a] of [['sine', 60, 0.06], ['sawtooth', 120, 0.035], ['sawtooth', 120.4, 0.025], ['square', 180, 0.006]]) {
+      const o = ac.createOscillator(); o.type = type; o.frequency.value = f;
+      const g = ac.createGain(); g.gain.value = a; o.connect(g); g.connect(lp); o.start();
+    }
+    const s = ac.createBufferSource(); s.buffer = nbuf; s.loop = true; // the fizz of the tubes
+    const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 5200; bp.Q.value = 4;
+    const ng = ac.createGain(); ng.gain.value = 0.012;
+    s.connect(bp); bp.connect(ng); ng.connect(humG); s.start();
+  }
+  humG.gain.setTargetAtTime(v, ac.currentTime, v ? 0.6 : 0.08);
+  humV = v;
+}
