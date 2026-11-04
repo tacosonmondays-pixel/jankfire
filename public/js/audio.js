@@ -273,6 +273,11 @@ export const sfx = {
   overheat(pos) { noise(1.0, 0.35, 'highpass', 5200, 2400, pos); tone('square', 1300, 1300, 0.07, 0.14, pos); tone('square', 1300, 1300, 0.07, 0.14, pos, 0.13); },
   startup(pos) { for (let i = 0; i < 3; i++) noise(0.06, 0.55, 'lowpass', 1000, 180, pos, i * 0.075); tone('sawtooth', 45, 150, 0.55, 0.16, pos, 0.2); tone('square', 90, 380, 0.5, 0.05, pos, 0.22); }, // sputter sputter VRRRM
   suck(pos, k = 1) { noise(0.34, 0.2 + 0.25 * k, 'bandpass', 450 + 1000 * k, 300 + 700 * k, pos, 0, 1.1); tone('sawtooth', 70 + 170 * k, 76 + 180 * k, 0.32, 0.04 + 0.05 * k, pos); },
+  // modes: zombie groans, getting infected, climbing / falling down the gun game ladder
+  groan(pos) { const f = 80 + Math.random() * 45; tone('sawtooth', f, f * 0.7, 1.1, 0.2, pos); tone('sawtooth', f * 1.51, f * 1.02, 1.0, 0.09, pos, 0.06); noise(0.9, 0.22, 'bandpass', 520, 240, pos, 0, 3); },
+  infected() { tone('sawtooth', 110, 52, 1.5, 0.3); tone('sawtooth', 117, 55, 1.5, 0.25); tone('square', 233, 110, 1.2, 0.07, null, 0.05); noise(1.3, 0.45, 'lowpass', 900, 50); },
+  rankUp() { for (const [f, d] of [[523, 0], [659, 0.06], [784, 0.12], [1046, 0.18]]) tone('square', f, f, 0.09, 0.11, null, d); },
+  sad() { for (const [f, d, l] of [[311, 0, 0.28], [294, 0.3, 0.28], [277, 0.6, 0.28], [262, 0.9, 0.9]]) tone('sawtooth', f, f * 0.97, l, 0.16, null, d); },
 };
 // katana parry: a struck blade. a free metal bar rings at 1 : 2.76 : 5.40 : 8.93 (not harmonic, that's what makes it
 // sound like steel), over a scraping hiss, with a hard click on top and a detuned pair for the shimmer.

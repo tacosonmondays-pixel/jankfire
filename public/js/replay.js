@@ -67,6 +67,7 @@ export function playClip(clip, opts = {}) {
     g.katN = k0 && k0.m.was != null ? k0.m.was : k0 && k0.m.n > 0 ? k0.m.n - 1 : (i.kat || 0);
     g.ghost = true;
     g.setGrapple(i.grap);
+    if (i.zs && i.zs <= clip.frames[0].s) g.setZombie(true); // infection: already a zombie when the clip starts
     if (id === opts.focus) g.tag.visible = false;
     ghosts.set(id, g);
   }

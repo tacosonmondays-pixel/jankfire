@@ -94,6 +94,8 @@ Game modes (Play + Bots):
 | Tags | kills drop a tag. Grab enemy tags to score, grab your own team's to deny them. |
 | Plant & Defuse | attackers carry the bomb to site A or B and hold F to plant (3 s). Defenders stop them or hold F to defuse (5 s). First to 4 rounds, sides swap after round 3. |
 | Randomizer | everyone gets a random loadout every life |
+| Gun Game | everyone climbs the same 16-rung ladder holding only that rung's weapon (no other slots, items or killstreaks): AR, SMG, Redline, Shotgun, Minigun, Revolver, Marble Shotgun, Sniper, Bow, Chicken Rocket, Peel Shooter, Card Deck, Hand Slapper, Bread, Katana, Spoon. A kill with your rung's weapon moves you up; dying to any melee weapon knocks you back one (HUMILIATED). Everyone hears when someone reaches the spoon, and the first spoon kill wins. 10 minute clock, highest rung wins if it runs out. |
+| Infection | a few seconds in, one random player turns (two from 8 players). Zombies are green, groan, have 200 HP, run 30% faster and only get the Zombie Claw (two swipes kill). Survivors keep their loadout, but anyone who dies as a survivor comes back as a zombie, and late joiners start as one. Survivors win if anyone is alive when the 3 minute clock runs out (the round and the roll go to the best survivor who got a kill); the infected win once everyone has turned. |
 
 Bots play the objectives too: they carry and plant the bomb, defuse it, and grab tags. They also use the grapple to chase, to get up high, and to save themselves from the void.
 

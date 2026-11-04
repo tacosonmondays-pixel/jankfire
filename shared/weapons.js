@@ -212,6 +212,13 @@ export const WEAPONS = {
     ads: { zoom: 3, spread: 0, scope: true, p: [0, -0.1, -0.25] },
   },
   dash: { slot: null, kind: 'dash', name: 'Glitch Dash', color: '#ff00dc', dmg: 30, kb: 28, kbUp: 8, range: 3.5, speed: 38, max: 5, regen: 1.2 },
+
+  // ------------------------------------------------------------ mode weapons (handed out by a game mode, never in loadouts)
+  claw: {
+    slot: 'mode', mode: 'inf', kind: 'melee', name: 'Zombie Claw', color: '#7dff4f',
+    desc: 'Infection only. Two swipes and they turn. Zombies run faster with their arms out.',
+    cd: 0.45, range: 2.6, cone: 0.85, dmg: 55, kb: 8, kbUp: 3, delay: 0.08, speedMul: 1.3,
+  },
 };
 
 export const ORDER = Object.keys(WEAPONS);

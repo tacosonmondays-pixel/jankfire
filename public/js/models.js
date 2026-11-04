@@ -746,6 +746,21 @@ const WB = {
     g.userData.len = 0.22;
   },
   scales(g) { scalesBuild(g, false); },
+  claw(g) { // infection: a rotten green forearm, a torn cuff and four long dirty nails
+    const SK = 0x6f9a3a, DK = 0x55782b, NAIL = 0xd8cf9a, y = -0.03;
+    g.add(cylZ(0.055, 0.24, SK, 0, y, 0.03, 6));
+    for (let i = 0; i < 5; i++) { const rag = bx(0.03, 0.05, 0.05 + (i % 2) * 0.03, 0x4a5a3a, -0.05 + i * 0.025, y - 0.03, 0.14); rag.rotation.z = (i - 2) * 0.5; g.add(rag); }
+    g.add(bx(0.12, 0.045, 0.11, SK, 0, y, -0.15));
+    for (let i = 0; i < 4; i++) {
+      const x = -0.045 + i * 0.03;
+      const f = bx(0.022, 0.024, 0.09, DK, x, y + 0.004, -0.24); f.rotation.x = -0.2; g.add(f);
+      const nail = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.065, 4), M(NAIL));
+      nail.rotation.x = -Math.PI / 2 - 0.45; nail.position.set(x, y - 0.012, -0.3); g.add(nail);
+    }
+    const thumb = bx(0.024, 0.024, 0.075, DK, 0.075, y, -0.16); thumb.rotation.y = -0.6; g.add(thumb);
+    g.userData.muzzle = new THREE.Vector3(0, y, -0.33);
+    g.userData.len = 0.4;
+  },
 };
 
 // where a hat sits on each weapon (local position) and how tall it is. hand placed so every hat fits every weapon.

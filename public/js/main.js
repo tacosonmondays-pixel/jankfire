@@ -50,6 +50,9 @@ import { sprayAim, sprayFx, addSpray, clearSprays, updateSprays, sprayIcon } fro
 import { achInv } from '/shared/cosmetics.js'; // achievement rewards (Golden Sniper) count as owned once you have the achievement
 import { achProgress } from '/shared/looks.js';
 import { royalToast, royalUnlock, royalBoxes } from './royal.js';
+import { setOnly } from './weapons.js';
+import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
+import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection, infClipInfo } from './infection.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
@@ -189,6 +192,8 @@ function resetWorldState() {
   stopReplay(true);
   hideReplayUI();
   if (G.forcedLoadout) { G.forcedLoadout = null; setLoadout(S.loadout); }
+  if (W.only) setOnly(null, S.loadout);
+  resetGunGame(); resetInfection();
   for (const b of G.bubbles.values()) G.scene.remove(b.mesh);
   G.bubbles.clear(); G.smokes.length = 0; ME.frozenUntil = 0; G.frost = 0;
   resetItems(); stopUse(); G.activeStreaks = null; G.itemSent = null;
@@ -422,6 +427,7 @@ function buildLoadoutUI() {
 function applyLoadout(force) {
   sendItemSel();
   if (G.forcedLoadout) { $('loNote').textContent = 'randomizer is on: you get a random loadout every life'; return; }
+  if (W.only) { $('loNote').textContent = 'this mode hands you one weapon: your loadout comes back after the match'; return; }
   const canNow = force || !G.joined || !ME.alive || performance.now() - (G.spawnT || 0) < 5000;
   if (canNow) { setLoadout(S.loadout); G.pendingLoadout = false; $('loNote').textContent = ''; }
   else { G.pendingLoadout = true; $('loNote').textContent = 'loadout switches when you respawn'; }
@@ -876,6 +882,7 @@ function renderScores() {
   const rows = [{ name: G.myName, color: G.myColor, k: G.kills, d: G.deaths, me: true, card: cardUrlFor(G.myId) }];
   for (const r of G.remotes.values()) if (!(r.bot && r.name === 'Dummy')) rows.push({ id: r.id, name: r.name, color: r.color, k: r.k, d: r.d, card: cardUrlFor(r.id) });
   rows.sort((a, b) => b.k - a.k || a.d - b.d);
+  ggScoreRows(rows); infScoreRows(rows); // gun game: by rung · infection: survivors first, zombies green
   if (G.round && GAMES[G.round.game] && GAMES[G.round.game].teams) {
     const team = (r) => (r.me ? G.myTeam : (G.remotes.get(r.id) || {}).team || 0);
     const out = [];
@@ -1193,6 +1200,8 @@ net.on('loadout', (m) => {
   refillAmmo();
   if (m.lo) hud.msg(`${wname(m.lo.primary)} · ${wname(m.lo.secondary)} · ${wname(m.lo.melee)}${ITEMS[m.lo.item] ? ' · ' + ITEMS[m.lo.item].name : ''}`, 2.2, 'brag');
 });
+// gun game / infection: the server hands you exactly one weapon (null = your own loadout again)
+net.on('modew', (m) => setOnly(m.w || null, G.forcedLoadout || S.loadout));
 net.on('kb', (m) => applyKb(m.v));
 net.on('grab', (m) => shredGrab(m)); // you're in someone's shredder
 net.on('slip', () => slip(performance.now()));
@@ -1558,6 +1567,7 @@ function frame(t) {
   $('freezeFx').style.opacity = now < (ME.frozenUntil || 0) ? 1 : Math.min(0.6, frost * 0.15);
   if (G.joined) {
     updateObjectives(dt, now, G.round, ME.pos);
+    updateGunGame(); updateInfection(dt);
     const a = G.round && G.round.bomb && G.round.bomb.act;
     if (a && a.by === G.myId) hud.meter(a.f, a.k === 'plant' ? 'PLANTING... keep holding F' : 'DEFUSING... keep holding F', '#ff4f4f');
     if (G.vote) $('voteLeft').textContent = `${Math.max(0, Math.ceil((G.voteEnds - performance.now()) / 1000))}s`;
@@ -1716,6 +1726,7 @@ function renderStreak(n) {
 function deployStreak(slot) {
   const id = activeStreaks()[slot];
   if (!G.joined || !ME.alive || !id) return;
+  if (W.only) { hud.msg('no killstreaks in this mode (they keep for later)', 1.2); sfx.empty(); return; }
   if (!G.pocket.includes(id)) { hud.msg(`${STREAKS[id].name}: ${STREAKS[id].kills} kills in a row`, 1.2); sfx.empty(); return; }
   const e = eye(), d = lookDir();
   const h = raycast(e, d, 300, BOXES);
@@ -1865,6 +1876,7 @@ function queueKillcam(killer, via, delay = 900) {
     if (ME.alive || !G.joined || RP.active) { G.killcamPending = false; return; }
     if (epicKC) { epicCam(killer, via, deathS, delay); return; } // (a long no-scope: after the MLG overlay)
     const clip = localClip(deathS - 4500, deathS + 1200, infoOf);
+    infClipInfo(clip.info);
     const [kn, kc] = nameOf(killer);
     showReplayUI('KILLCAM', cardUrlFor(killer), kn, kc, `got you with ${wname(via)}`, 'SPACE / CLICK to skip');
     $('dead').classList.add('hidden');
@@ -2250,6 +2262,8 @@ function fmtClock(ms) { const s2 = Math.ceil(ms / 1000); return `${Math.floor(s2
 function renderRound(r) {
   const el = $('round');
   if (!r) { el.textContent = ''; return; }
+  const mt = ggRoundText(r) ?? infRoundText(r); // gun game / infection: just the clock, their bars show the rest
+  if (mt != null) { el.textContent = mt; return; }
   const teamGame = r.game && GAMES[r.game] && GAMES[r.game].teams;
   el.textContent = r.over ? `next round in ${Math.ceil(r.left / 1000)}` : teamGame ? '' : `first to ${r.target} · ${fmtClock(r.left)}`;
 }
@@ -2275,10 +2289,14 @@ net.on('round', (m) => {
     const [wn] = m.winner ? nameOf(m.winner) : ['nobody'];
     h.textContent = m.winner === G.myId ? 'YOU WIN' : `${wn} wins`;
   }
+  const it = infRoundTitle(m); // infection: survivors or the infected
+  if (it) { h.textContent = it[0]; h.style.color = it[1]; }
   box.append(h);
   for (const [id, name, k, d, team] of m.top) {
     const row = document.createElement('div');
     row.textContent = `${name}  ·  ${k} / ${d}`;
+    const note = ggRowNote(id, m) || infRowNote(id, m);
+    if (note) row.textContent += `  ·  ${note}`;
     if (team && TEAMS[team]) row.style.color = TEAMS[team].color;
     if (id === G.myId) row.style.color = '#ffe14d';
     box.append(row);
