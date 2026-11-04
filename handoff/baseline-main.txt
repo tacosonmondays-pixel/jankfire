@@ -1,0 +1,33 @@
+PASS t_replay | A after hl {"rp":null,"alive":true,"pending":false,"replayUI":false,"roundEnd":false}
+PASS t_items | hotbar item Gx1
+PASS t_katana | katana kills 4
+PASS t_streak | after 5+6 {"moon":true,"spin":true,"pocket":[]}
+PASS t_rand | life 2 ar,cig,bread
+PASS t_cos | scythe_rifle borrows ["pink","cone","none","default"]
+PASS t_skins | [pwlock] waiting for a free browser slot (2 max)...
+PASS t_hotbar2 | right 800x450 {"bar":[725,137,788,313],"ammo":[368,401,432,436],"streaks":[654,396,788,438],"hp":[20,397,260,433],"kids":4}
+PASS t_crates | after CONTAINERS (2) | cards Crateweapon skinsyou own 2 / 33OPEN (1)Duffel Baghats, effects + kill effectsyou own 9 / 32NONE LEFTBoxwrapsyou own 3 / 17OPEN (1)
+PASS t_outfit | [pwlock] waiting for a free browser slot (2 max)...
+FAIL t_anim (exit 1)
+        ^
+    
+    page.evaluate: TypeError: c.getContext is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:70)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at W (/tmp/claude-0/-home-user-jankfire/c08cafbd-bcf7-5220-b480-982798f055dc/scratchpad/regress-3700/scripts/t_anim.cjs:17:26)
+        at /tmp/claude-0/-home-user-jankfire/c08cafbd-bcf7-5220-b480-982798f055dc/scratchpad/regress-3700/scripts/t_anim.cjs:55:38 {
+      log: []
+    }
+    
+    Node.js v22.23.4
+PASS t_ads | [pwlock] waiting for a free browser slot (2 max)...
+PASS t_knives | [pwlock] waiting for a free browser slot (2 max)...
+PASS t_botgrap | {"bots":5,"hookFrames":18,"frames":32}
+FAIL t_flash (exit 0)
+PASS t_bazaar_views | no errors
+PASS t_bomb | events bombev:drop bombev:pickup bombev:plant bombev:planted:B bombev:defuse bombev:defuse bombev:boom bombev:win:exploded bombyou bombev:round bombev:drop bombyou bombev:pickup bombev:drop bombev:pic
+PASS t_guns | redline at 10 HP: 6 shots in 1.5 s (4.0/s)
+PASS t_gunsoak | remote shots seen {"marbles":0,"redline":0,"kills":30}
+PASS remote_check |  }
+passed 18, failed 2: t_anim t_flash
