@@ -462,12 +462,16 @@ const M = {
       if (price == null) return this.econNo(p, 'full', m);
       if (e.$ < price) return this.econNo(p, 'money', m);
       e.$ -= price;
-      const prev = [e.ar, e.hm, e.kit];
-      if (id === 'vest') e.ar = ARMOR.max;
-      else if (id === 'helm') { e.ar = ARMOR.max; e.hm = true; }
-      else e.kit = true;
-      const after = [e.ar, e.hm, e.kit];
-      e.rc.push({ k: 'g', id, paid: price, ok: () => e.ar === after[0] && e.hm === after[1] && e.kit === after[2], undo: () => { [e.ar, e.hm, e.kit] = prev; } });
+      // a receipt only watches what this purchase changed: armor + helmet, or the kit
+      if (id === 'kit') {
+        e.kit = true;
+        e.rc.push({ k: 'g', id, paid: price, ok: () => e.kit, undo: () => { e.kit = false; } });
+      } else {
+        const prev = [e.ar, e.hm];
+        e.ar = ARMOR.max; if (id === 'helm') e.hm = true;
+        const after = [e.ar, e.hm];
+        e.rc.push({ k: 'g', id, paid: price, ok: () => e.ar === after[0] && e.hm === after[1], undo: () => { [e.ar, e.hm] = prev; } });
+      }
     }
     this.econSync(p);
     this.econSend(p);
@@ -665,16 +669,14 @@ const M = {
     const hasGun = !!(e.sl.primary && botGun(e.sl.primary.id));
     const mode = e.$ >= full || (hasGun && e.$ >= 1000) ? 'full' : pistol ? 'pistol' : late || e.$ >= 2400 ? 'force' : 'eco';
     e.mode = mode;
+    // a random one of the guns on the list it can afford while keeping `keep` (repeats in the list weigh more)
     const gun = (list, keep) => {
-      for (const id of [...list].sort(() => Math.random() - 0.5).sort((a, c) => (weaponPrice(c) || 0) - (weaponPrice(a) || 0))) {
-        const pr = weaponPrice(id);
-        if (pr != null && econWeapon(id) && pr + keep <= e.$ && buy('w', id)) return true;
-      }
-      return false;
+      const ok = list.filter((id) => econWeapon(id) && weaponPrice(id) != null && weaponPrice(id) + keep <= e.$);
+      return ok.length > 0 && buy('w', pick(ok));
     };
     if (mode === 'pistol') { if (Math.random() < 0.6) buy('g', 'vest'); }
     else if (mode === 'full') {
-      if (!hasGun) gun(Math.random() < 0.5 ? BOT_FULL : [pick(BOT_FULL)], 1000) || gun(BOT_FULL, 650) || gun(BOT_FORCE, 650);
+      if (!hasGun) gun(BOT_FULL, 1000) || gun(BOT_FULL, 650) || gun(BOT_FORCE, 650);
       if (!buy('g', 'helm')) buy('g', 'vest');
       if (!att) buy('g', 'kit');
       if (e.$ >= 500) buy('i', 'frag');
