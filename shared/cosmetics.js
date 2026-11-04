@@ -52,6 +52,7 @@ export const COSMETICS = {
     marbles_gumball: { name: 'Gumball Machine', rarity: 'rare', weapon: 'marbles' },
     redline_hotrod: { name: 'Hot Rod', rarity: 'epic', weapon: 'redline' },
     katana_shirasaya: { name: 'Shirasaya', rarity: 'rare', weapon: 'katana' },
+    scales_kangaroo: { name: 'Kangaroo Court', rarity: 'rare', weapon: 'scales' },
   },
   hat: {
     none: { name: 'None', rarity: 'free' }, party: { name: 'Party Hat', rarity: 'free' }, cone: { name: 'Traffic Cone', rarity: 'free' },

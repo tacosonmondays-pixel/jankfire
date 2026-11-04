@@ -101,7 +101,7 @@ Bots play the objectives too: they carry and plant the bomb, defuse it, and grab
 
 - **Primary:** Assault Rifle, SMG, Shotgun, Minigun, Sniper, Chicken Rocket, Bowling Ball Launcher, Bow, Peel Shooter
 - **Secondary:** Revolver, Cigarette (smoke it, blow fire), Leaf Blower, Card Deck, Party Popper, Reverse Card, **Snowball**
-- **Melee:** Bread, Slipper (throw it, it comes back), Knife, Hand Slapper (point blank, launches + makes them slip), **Katana**, Spoon
+- **Melee:** Bread, Slipper (throw it, it comes back), Knife, Hand Slapper (point blank, launches + makes them slip), **Katana**, Spoon, **Scales of Justice**
 - **Item (G):** Frag Grenade (x2, bounces, 2 s fuse, grenade-jump with it), Medkit, Shield Bubble (nothing from outside hurts anyone inside for 7 s), Rubber Duck (black hole), Smoke Bomb (x2), **Bubble Wand** (x2, seals enemies in floating soap bubbles). Charges refill over time.
 
 **Only the minigun shoves people with bullets**: hold it on someone and they get pushed away (the price for spraying). Melee and explosives still knock people around, and your own movement tricks (shotgun jumps, minigun flying) still work.
@@ -109,6 +109,19 @@ Bots play the objectives too: they carry and plant the bomb, defuse it, and grab
 **Knife (CS-style):** left click alternates diagonal slashes, right click is a heavy stab (windup, 90 damage, a backstab kills). Every knife skin moves like its real-world family: the Butterfly's handles flip around the blade, the Karambit spins on your finger through the ring, the Switchblade flicks open, the Kitchen knife rolls like a bayonet, the Bowie does a barrel-roll toss, the Cleaver balances on a fingertip.
 
 **Katana:** the blade gets longer (and reaches further) with every kill you get with it. Resets when you die.
+
+**Scales of Justice:** a big brass balance scale swung like a mace (overhead smash, click again for a side swing). 35 damage times a **verdict** the server decides at hit time from how the target stands next to you right now. Each charge is a point of guilt, each thing in their favour takes one off:
+
+| | guilt |
+|---|---|
+| their K/D this match is better / worse than yours | +1 / -1 |
+| they're above / below you on the scoreboard | +1 / -1 |
+| they lead the match (and it isn't you) | +1 |
+| team modes: your team is behind / ahead | +1 / -1 |
+| they're on a 3+ / 5+ kill streak (kills from this match) | +1 / +2 |
+| they're the last one who killed you (until you get revenge, or the match ends) | +2 |
+
+Coop wave bots and training dummies aren't on the scoreboard, so only their streak and revenge count (a fresh one is a HUNG JURY, x1). GUILTY: x(1 + 0.4 per point), up to x3, which one-shots (THE COURT HAS SPOKEN). NOT GUILTY: x(1 - 0.25 per point), down to x0.4. Zero points: HUNG JURY, x1. The scale in your hands tips toward the verdict for whoever is under your crosshair (heart pan = guilty, feather pan = innocent) and a readout under the crosshair says it, e.g. `GUILTY x2.2`. Every hit gets a gavel bang, a shower of coins and a gold stamp over the victim (yours shows through walls; other people's only nearby), in killcams and highlights too. Skin: **Kangaroo Court**, a wobbly wooden toy scale with a kangaroo judge.
 
 **Snowball:** barely hurts, but every hit adds frost. 4 hits freezes them solid for a moment; hit a frozen target and they shatter.
 
@@ -228,6 +241,6 @@ Prompts live in `tools/models.json`; models land in `public/models/<id>.glb` and
 
 - `server.js`: static files + WebSocket `/ws`. Rooms: shared Online and Coop, private Bots and Training. Movement is client-authoritative; the server owns HP, kills, projectiles, arrows, cards, items, frost, streaks, modes (teams, tags, the bomb), the map/mode vote, cosmetics ownership, achievements, round recordings for highlights, and bots (including their objective routes and grappling).
 - `server/`: accounts, stats, containers, leaderboard (`/api/*`), stored in a local file or Supabase.
-- `shared/`: `map.js` maps + box physics + bot routes · `modes.js` game modes, teams, bomb rules, vote timing · `weapons.js` weapons, items, killstreaks, loadout rules · `cosmetics.js` skins/wraps/effects/kill effects/hats + crates · `looks.js` character outfits.
-- `public/js/`: `main.js` menus + net + loop · `player.js` movement · `weapons.js` viewmodels, recoil springs, ADS, items · `anim.js` swing/inspect keyframes (per-knife styles) · `speedlines.js` · `remote.js` other players · `replay.js` killcam + highlights · `killfx.js` kill effects · `cards.js` name cards · `objective.js` bomb sites, tags, team bar · `icons.js` hotbar/item/streak pictures · `models.js` · `skins.js` · `fx.js` · `world.js` · `scenery.js` the land around each map · `hud.js` · `audio.js`.
+- `shared/`: `map.js` maps + box physics + bot routes · `modes.js` game modes, teams, bomb rules, vote timing · `weapons.js` weapons, items, killstreaks, loadout rules · `cosmetics.js` skins/wraps/effects/kill effects/hats + crates · `looks.js` character outfits · `verdict.js` the Scales of Justice verdict (server decides, client previews).
+- `public/js/`: `main.js` menus + net + loop · `player.js` movement · `weapons.js` viewmodels, recoil springs, ADS, items · `anim.js` swing/inspect keyframes (per-knife styles) · `speedlines.js` · `remote.js` other players · `replay.js` killcam + highlights · `killfx.js` kill effects · `scales.js` Scales of Justice: verdict readout, tipping beam, pendulum pans, stamps · `cards.js` name cards · `objective.js` bomb sites, tags, team bar · `icons.js` hotbar/item/streak pictures · `models.js` · `skins.js` · `fx.js` · `world.js` · `scenery.js` the land around each map · `hud.js` · `audio.js`.
 - `desktop/`: the Electron app (launcher, in-app server, display modes).

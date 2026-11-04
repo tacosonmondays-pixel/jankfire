@@ -164,6 +164,12 @@ export const WEAPONS = {
     desc: 'Kills in one hit, but only point blank. You run way faster holding it.',
     cd: 0.7, range: 2.0, cone: 0.9, dmg: 999, kb: 12, kbUp: 6, delay: 0.05, speedMul: 1.8,
   },
+  scales: {
+    slot: 'melee', kind: 'melee', name: 'Scales of Justice', color: '#ffc83a',
+    desc: 'Hits as hard as they deserve: leaders, streakers and your killer take up to x3.',
+    // dmg is multiplied by the server's verdict at hit time (shared/verdict.js): x0.4 .. x3
+    cd: 0.6, range: 3.2, cone: 0.75, dmg: 35, kb: 14, kbUp: 5, delay: 0.22, verdict: true, speedMul: 0.95,
+  },
 
   // ------------------------------------------------------------ killstreak reward (not in loadouts)
   scythe: {

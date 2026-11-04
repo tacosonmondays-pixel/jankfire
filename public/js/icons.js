@@ -30,7 +30,7 @@ export function weaponIcon(id, skin) {
     if (!r) init();
     const g = buildWeapon(id, skin);
     const holder = new THREE.Group();
-    const flat = id === 'cards' || id === 'reverse'; // flat things look at you, everything else side-on
+    const flat = id === 'cards' || id === 'reverse' || g.userData.faceOn; // flat things look at you, everything else side-on
     g.rotation.y = flat ? 0 : -Math.PI / 2; // muzzle to the right, like an inventory picture
     holder.add(g);
     holder.rotation.x = flat ? -0.15 : 0.28; // a little from above

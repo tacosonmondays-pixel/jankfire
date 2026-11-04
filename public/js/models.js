@@ -226,6 +226,91 @@ function bowlingBall(g, r) {
   for (const [x, y] of [[-0.25, 0.5], [0.25, 0.5], [0, 0.22]]) g.add(ball(r * 0.13, 0x000000, x * r, y * r, -0.85 * r, true));
 }
 
+// ------------------------------------------------------------ Scales of Justice: held upright by the handle at the bottom
+// of the pillar, beam across X, a pan hanging off each end. Built at rest; scales.js tilts the beam toward the verdict
+// and swings the pans like pendulums. Left pan holds the heart (guilt), right pan the feather (innocence).
+function chainLinks(g, a, b, n, color) { // little flat links from a to b, every other one turned 90 degrees
+  const d = new THREE.Vector3().subVectors(b, a), len = d.length(), q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+  for (let i = 0; i < n; i++) {
+    const l = new THREE.Mesh(new THREE.BoxGeometry(0.009, (len / n) * 1.2, 0.0035), M(color));
+    l.position.copy(a).addScaledVector(d, ((i + 0.5) / n) * len);
+    l.quaternion.copy(q);
+    if (i % 2) l.rotateY(Math.PI / 2);
+    g.add(l);
+  }
+}
+const ARC_MATS = {}; // the dial's red / pale halves: shared, so swapping to the scales doesn't make new materials every time
+function scalesBuild(g, toy) {
+  const C = toy
+    ? { metal: 0xe0a860, dark: 0xe8402a, hi: 0x2f6bff, grip: 0xe0a860, pan: 0x3fbf4a, beam: 0xffd23b, chain: 0xf4f0e0 }
+    : { metal: 0xc89a32, dark: 0x7a5a1c, hi: 0xffd86a, grip: 0x4a2a14, pan: 0xd8a840, beam: 0xc89a32, chain: 0x9a7a2a };
+  const TOP = 0.46, HALF = 0.21, LEN = 0.15, PR = 0.065; // beam height, half span to the hooks, chain length, pan radius
+  // handle (what you hold) + pommel
+  g.add(ball(toy ? 0.036 : 0.03, toy ? 0xe8402a : C.metal, 0, -0.115, 0));
+  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.022, 0.17, 8), M(C.grip)); grip.position.y = -0.02; g.add(grip);
+  for (const y of [-0.09, 0.05]) { const r = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.012, 8), M(toy ? 0x2f6bff : C.metal)); r.position.y = y; g.add(r); }
+  // everything above the handle (the toy one wobbles on it)
+  const body = new THREE.Group(); body.position.y = 0.07; g.add(body);
+  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.035, toy ? 0.07 : 0.075, 0.035, toy ? 8 : 10), M(toy ? 0x2f6bff : C.metal)); foot.position.y = 0.01; body.add(foot);
+  const pillar = new THREE.Mesh(new THREE.CylinderGeometry(toy ? 0.022 : 0.014, toy ? 0.022 : 0.018, 0.34, 8), M(C.metal)); pillar.position.y = 0.2; body.add(pillar);
+  body.add(ball(0.024, toy ? 0xffd23b : C.hi, 0, 0.1, 0), ball(0.02, toy ? 0xe8402a : C.metal, 0, 0.26, 0));
+  body.add(bx(0.05, 0.05, 0.03, C.dark, 0, TOP - 0.09, 0)); // fulcrum bracket
+  body.add(cylZ(0.008, 0.05, C.hi, 0, TOP - 0.07, 0, 6)); // the pin the beam rocks on
+  // dial behind the pointer: red half = guilty, pale half = not guilty (the toy has a kangaroo there instead)
+  if (!toy) {
+    const plate = new THREE.Mesh(new THREE.CircleGeometry(0.084, 10, Math.PI / 2 - 0.95, 1.9), M(C.dark)); plate.position.set(0, TOP - 0.07, 0.002); body.add(plate);
+    for (const [a0, col] of [[Math.PI / 2, 0xff3a2a], [Math.PI / 2 - 0.85, 0xdff8ff]]) {
+      const arc = new THREE.Mesh(new THREE.RingGeometry(0.056, 0.078, 8, 1, a0, 0.85), (ARC_MATS[col] ||= new THREE.MeshBasicMaterial({ color: col, side: THREE.DoubleSide })));
+      arc.position.set(0, TOP - 0.07, 0.005); arc.userData.noWrap = true; body.add(arc);
+    }
+  }
+  const beam = new THREE.Group(); beam.position.y = TOP - 0.07; body.add(beam);
+  beam.add(bx(HALF * 2 + 0.03, toy ? 0.03 : 0.016, toy ? 0.026 : 0.018, C.beam));
+  for (const sx of [-1, 1]) {
+    beam.add(ball(toy ? 0.024 : 0.017, toy ? 0xe8402a : C.hi, sx * (HALF + 0.018), 0, 0));
+    beam.add(bx(0.006, 0.022, 0.006, C.dark, sx * HALF, -0.016, 0)); // hook
+  }
+  if (!toy) beam.add(bx(0.006, 0.075, 0.005, C.hi, 0, 0.042, 0.012)); // pointer: leans toward the heavy side
+  const pans = [-1, 1].map((sx) => {
+    const pan = new THREE.Group();
+    pan.userData.pivot = new THREE.Vector3(sx * HALF, -0.024, 0);
+    pan.position.copy(pan.userData.pivot);
+    for (let i = 0; i < 3; i++) { // chains (strings on the toy) from the hook to the rim
+      const a = (i / 3) * Math.PI * 2 + Math.PI / 2, rim = new THREE.Vector3(Math.cos(a) * PR * 0.85, -LEN + 0.012, Math.sin(a) * PR * 0.85);
+      if (toy) { const s = new THREE.Mesh(new THREE.CylinderGeometry(0.0025, 0.0025, rim.length(), 4), M(C.chain)); s.position.copy(rim).multiplyScalar(0.5); s.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), rim.clone().normalize()); pan.add(s, ball(0.008, 0xe8402a, rim.x * 0.5, rim.y * 0.5, rim.z * 0.5)); }
+      else chainLinks(pan, new THREE.Vector3(), rim, 6, C.chain);
+    }
+    const prof = [[0, -0.012], [PR * 0.55, -0.01], [PR * 0.9, 0], [PR, 0.014], [PR * 0.9, 0.012], [PR * 0.5, -0.002], [0, -0.004]];
+    const bowl = new THREE.Mesh(new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), toy ? 8 : 12), M(C.pan));
+    bowl.position.y = -LEN; pan.add(bowl);
+    if (sx < 0) { // guilt: a heart (the toy has a stack of blocks)
+      if (toy) { pan.add(bx(0.04, 0.03, 0.04, 0xe8402a, 0, -LEN + 0.02, 0), bx(0.03, 0.026, 0.03, 0x2f6bff, 0.004, -LEN + 0.047, 0)); }
+      else {
+        for (const hx of [-1, 1]) pan.add(ball(0.016, 0xd8202a, hx * 0.012, -LEN + 0.038, 0));
+        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.024, 0.034, 6), M(0xd8202a)); tip.rotation.z = Math.PI; tip.position.y = -LEN + 0.02; pan.add(tip);
+      }
+    } else if (toy) pan.add(ball(0.024, 0xffd23b, 0, -LEN + 0.026, 0)); // innocence: a feather (the toy has a ball)
+    else {
+      const vane = ball(0.045, 0xf6f6f6, 0.004, -LEN + 0.05, 0); vane.scale.set(0.32, 1, 0.1); vane.rotation.z = -0.35; pan.add(vane);
+      const quill = bx(0.004, 0.05, 0.004, 0xd8c8a0, -0.012, -LEN + 0.016, 0); quill.rotation.z = -0.35; pan.add(quill);
+    }
+    beam.add(pan);
+    return pan;
+  });
+  if (toy) { // the judge: a kangaroo in a wig, sitting on top
+    const k = new THREE.Group(); k.position.y = TOP - 0.055; body.add(k);
+    const fur = 0xb5651d;
+    const tum = ball(0.026, fur, 0, 0.022, 0); tum.scale.set(0.85, 1.15, 0.8); k.add(tum);
+    k.add(ball(0.017, fur, 0, 0.06, 0.004), ball(0.009, 0x8a4a14, 0, 0.056, 0.019), ball(0.003, 0x000000, -0.007, 0.065, 0.016, true), ball(0.003, 0x000000, 0.007, 0.065, 0.016, true));
+    for (const sx of [-1, 1]) { const ear = bx(0.008, 0.03, 0.004, fur, sx * 0.009, 0.085, 0); ear.rotation.z = -sx * 0.3; k.add(ear); k.add(ball(0.008, 0xf4f4f4, sx * 0.016, 0.052, -0.004)); } // ears + wig curls
+    const tail = cylZ(0.006, 0.06, fur, 0, 0.006, -0.03, 5); tail.rotation.x = 0.5; k.add(tail);
+  }
+  g.userData.court = { beam, pans, body, len: LEN, wobble: toy };
+  g.userData.faceOn = true; // pictures look at it from the front so both pans show
+  g.userData.muzzle = new THREE.Vector3(0, TOP, 0); // the swing trail follows the top of the scale
+  g.userData.len = 0.7;
+}
+
 const WB = {
   ar(g) {
     g.add(bx(0.07, 0.11, 0.5, 0x3b4a2a, 0, 0, -0.05));
@@ -499,6 +584,7 @@ const WB = {
     g.userData.muzzle = new THREE.Vector3(0, 0, -0.17);
     g.userData.len = 0.22;
   },
+  scales(g) { scalesBuild(g, false); },
 };
 
 // where a hat sits on each weapon (local position) and how tall it is. hand placed so every hat fits every weapon.
@@ -511,6 +597,7 @@ const HAT_AT = {
   scythe_rifle: [[0, 0.13, -0.05], 0.12], bow: [[0, 0.08, 0.0], 0.08], cards: [[0, 0.07, -0.004], 0.07],
   slapper_foam: [[0, 0.03, -0.5], 0.1], slapper_paw: [[0, 0.06, -0.5], 0.1], bread_croissant: [[0, 0.15, -0.6], 0.15],
   p_chicken: [[0, 0.31, -0.28], 0.15], p_bowling: [[0, 0.45, 0], 0.3], p_duck: [[0, 0.418, -0.2], 0.2], p_slipper: [[0, 0.11, -0.13], 0.1], p_banana: [[0, 0.24, 0], 0.12],
+  scales: [[0, 0.555, 0], 0.07], scales_kangaroo: [[0, 0.6, 0.004], 0.05],
 };
 
 // weapon skins: a different model for the same weapon
@@ -689,6 +776,7 @@ const SKIN_BUILD = {
     g.add(ball(0.05, 0xe8e4d8, 0, 0, 0.5));
     g.userData.muzzle = new THREE.Vector3(0, 0, -1.12); g.userData.len = 1.7;
   },
+  scales_kangaroo(g) { scalesBuild(g, true); }, // a wobbly wooden toy scale with a kangaroo judge on top
 };
 
 const MODEL_BUILD = {

@@ -225,6 +225,18 @@ export const hud = {
     setTimeout(() => d.remove(), 12000);
   },
   ping(ms) { $('ping').textContent = ms + 'ms'; },
+  // scales of justice: the verdict on whoever you're aiming at, under the crosshair (null hides it)
+  verdict(text, sub = '', cls = '') {
+    const el = $('verdict');
+    const key = text ? text + '|' + sub + '|' + cls : '';
+    if (el.dataset.key === key) return;
+    el.dataset.key = key;
+    el.style.display = text ? 'block' : 'none';
+    if (!text) return;
+    el.className = cls;
+    el.querySelector('b').textContent = text;
+    el.querySelector('span').textContent = sub;
+  },
   update(dt) {
     if (lostT > 0) {
       lostT -= dt;
