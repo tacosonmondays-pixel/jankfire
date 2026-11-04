@@ -16,7 +16,7 @@ import { validLook, achievementsFrom, ACHIEVEMENTS } from './shared/looks.js';
 import { STAT_KEYS } from './server/store.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, canDefuse } from './shared/modes.js';
-import { WEAPONS, SLOTS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, validStreaks, fireRate } from './shared/weapons.js';
+import { WEAPONS, SLOTS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, SLEEP_TIME, validStreaks, fireRate } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -172,7 +172,7 @@ function randomSkins() {
 }
 function send(p, obj) { if (p.ws && p.ws.readyState === 1) p.ws.send(JSON.stringify(obj)); }
 
-const TIP_IDS = Object.keys(ARROW_TIPS);
+const TIP_IDS = Object.keys(ARROW_TIPS).filter((k) => !process.env.JF_ARROW_TIP || k === process.env.JF_ARROW_TIP); // test knob: JF_ARROW_TIP=sleep
 const KILL_IDS = Object.keys(COSMETICS.kill).filter((k) => k !== 'none');
 // name cards: a small picture you drew or uploaded, as a data url. anything else is dropped.
 const CARD_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/;
@@ -770,7 +770,7 @@ class Room {
     const res = movePlayer(b.pos, v, dt, this.boxes, was);
     b.onGround = !!res.ground && v[1] <= 0.01;
     if (b.onGround && res.ground.pad && !b.ai.dummy) { const pd = res.ground.pad; v[0] += pd[0]; v[1] = pd[1]; v[2] += pd[2]; b.onGround = false; }
-    b.f = slipping ? 16 : 0;
+    b.f = (slipping ? 16 : 0) | (n < (b.sleepUntil || 0) ? FLAGS.SLEEP : 0); // asleep: everyone sees them lying on the floor
     if (b.onGround) b.ground = b.pos.slice(); // last place they stood (void deaths drop their tag here)
     if (b.pos[1] < this.map.killY) this.kill(b, null, 'void');
   }
@@ -912,8 +912,9 @@ class Room {
   sleep(t, by, secs) {
     if (!t.alive) return;
     this.tag(t, by, 'bow');
-    if (t.isBot) { t.sleepUntil = now() + secs * 1000; return; }
-    send(t, { t: 'sleep', dur: secs });
+    t.sleepUntil = now() + secs * 1000;
+    if (t.isBot) { if (t.ai) t.ai.hook = null; t.g = null; return; } // knocked flat: lets go of the rope too (snapshots show FLAGS.SLEEP)
+    send(t, { t: 'sleep', dur: secs }); // players send FLAGS.SLEEP themselves while it lasts
   }
   makeCloud(p, owner) {
     const c = { id: this.nextCloud++, p: p.map(r2), o: owner, born: now(), tick: 0 };
@@ -1276,7 +1277,7 @@ class Room {
     const shielded = this.bubbleBlocks(owner, t); // the bubble stops the arrow's fire and sleep too, not just its damage
     if (tip === 'flame') { dmg = 15; if (!shielded) this.burn(t, owner, 3); }
     if (tip === 'gas') dmg = 10;
-    if (tip === 'sleep') { dmg = 10; if (!shielded) this.sleep(t, owner, 2.5); }
+    if (tip === 'sleep') { dmg = 10; if (!shielded) this.sleep(t, owner, SLEEP_TIME); }
     const head = pr.p[1] > t.pos[1] + 1.55;
     this.hurt(t, owner, 'bow', dmg * (head ? 1.5 : 1), kb, { hs: head });
   }

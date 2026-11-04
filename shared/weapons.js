@@ -61,7 +61,7 @@ export const WEAPONS = {
   },
   bow: {
     slot: 'primary', kind: 'bow', name: 'Bow', color: '#c88a4a',
-    desc: 'Hold to draw, let go to fire. Every arrow gets a random tip: regular, power, knockback, flame, explosion, gas or sleep.',
+    desc: 'Hold to draw, let go to fire. Every arrow gets a random tip: regular, power, knockback, flame, explosion, gas or sleep (knocks them flat for 4 s).',
     cd: 0.35, draw: 0.9, speed: 34, speedMax: 85, grav: 9, r: 0.12, dmg: 20, dmgMax: 60,
     ads: { zoom: 1.6, p: [0, -0.1, -0.3] },
   },
@@ -248,8 +248,9 @@ export const ARROW_TIPS = {
 export const SUITS = { h: { name: 'Hearts', sym: '♥', color: '#e0202a' }, s: { name: 'Spades', sym: '♠', color: '#111111' }, c: { name: 'Clubs', sym: '♣', color: '#111111' }, d: { name: 'Diamonds', sym: '♦', color: '#e0202a' }, j: { name: 'Joker', sym: '★', color: '#b07dff' } };
 export const RANKS = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 
-export const FLAGS = { SMOKE: 1, FIRE: 2, BLOW: 4, SPIN: 8, SLIP: 16, SLIDE: 32, REVERSE: 64, CROUCH: 128, DASH: 256 };
+export const FLAGS = { SMOKE: 1, FIRE: 2, BLOW: 4, SPIN: 8, SLIP: 16, SLIDE: 32, REVERSE: 64, CROUCH: 128, DASH: 256, SLEEP: 512 };
 export const SLIP_TIME = 1.7;
+export const SLEEP_TIME = 4; // sleep arrow: knocked flat on the floor this long (s)
 export const HOOK = { range: 90, pull: 42, tug: 16 };
 
 // your 3 killstreaks, cheapest first (keys 5 / 6 / 7)
