@@ -100,6 +100,27 @@ export const ANIMS = {
     K(0.3, [0.15, -0.12, -0.2], [-0.3, -1.4, -0.8], 'snap'), K(0.48, [0.18, -0.16, -0.15], [-0.35, -1.5, -0.85]), K(0.78),
   ], events: [[0.2, 'whoosh']], trail: [0.16, 0.44] },
   fold_scythe: { keys: [K(0), K(0.15, [0, -0.18, 0.06], [0.7, 0, 0.9], 'snap'), K(0.4)], events: [[0.12, 'click'], [0.2, 'click']] },
+  // scales of justice, swung like a mace: a heavy overhead smash, then (click again) a flat side swing.
+  // the pans hang on chains (scales.js), so every swing flings them about
+  swing_scales: { hit: 0.22, keys: [
+    K(0), K(0.14, [0, 0.18, 0.05], [0.5, -0.1, 0.3], 'in'), // heave it up and back over your head
+    K(0.23, [-0.12, 0.12, -0.12], [-1.26, 0.06, -0.05], 'snap'), // SMASH it down right in front of you
+    K(0.36, [-0.12, 0.08, -0.1], [-1.36, 0.06, -0.05]), // it's heavy: it stays down a moment
+    K(0.6),
+  ], events: [[0.02, 'chains'], [0.15, 'whooshBig'], [0.3, 'chains']], trail: [0.14, 0.34] },
+  swing_scales2: { hit: 0.19, keys: [
+    K(0), K(0.12, [0.08, 0.16, 0.06], [-0.2, -0.6, -0.95], 'in'), // cock it out to the right
+    K(0.22, [-0.14, 0.13, -0.12], [-0.3, 1.5, -1.2], 'snap'), // sweep it flat across the middle
+    K(0.34, [-0.2, 0.1, -0.1], [-0.3, 2.1, -1.15]), K(0.58),
+  ], events: [[0.02, 'chains'], [0.12, 'whooshBig'], [0.28, 'chains']], trail: [0.12, 0.3] },
+  draw_scales: { keys: [K(0, [0.02, -0.32, 0.06], [-0.6, 0, 0.35]), K(0.3, [0, 0.015, 0], [0.06, 0, -0.05], 'back'), K(0.46)], events: [[0.05, 'chains'], [0.3, 'chains']] },
+  inspect_scales: { keys: [ // hold it up, jiggle it, watch the pans swing
+    K(0), K(0.4, [-0.13, 0.08, 0.06], [0.12, 0.35, 0.1]),
+    K(0.9, [-0.13, 0.09, 0.06], [0.12, 0.45, 0.1]),
+    K(1.0, [-0.12, 0.09, 0.06], [0.12, 0.45, -0.22], 'snap'), K(1.12, [-0.13, 0.09, 0.06], [0.12, 0.45, 0.2], 'snap'),
+    K(1.25, [-0.13, 0.09, 0.06], [0.12, 0.45, 0.05]),
+    K(2.0, [-0.13, 0.09, 0.06], [0.1, 0.4, 0.05]), K(2.5),
+  ], events: [[0.95, 'chains'], [1.1, 'chains'], [1.6, 'ting']] },
 
 
   // ------------------------------------------------------------ card deck: flick the card off the top of the fan
@@ -351,7 +372,7 @@ export const ANIMS = {
   ], events: [[0.45, 'rev']] },
 };
 
-const SPECIAL = new Set(['katana', 'bread', 'slipper', 'spoon', 'revolver', 'shotgun', 'minigun', 'sniper', 'cig', 'duck', 'reverse', 'popper', 'chicken', 'blower', 'knife', 'slapper', 'scythe']);
+const SPECIAL = new Set(['katana', 'bread', 'slipper', 'spoon', 'revolver', 'shotgun', 'minigun', 'sniper', 'cig', 'duck', 'reverse', 'popper', 'chicken', 'blower', 'knife', 'slapper', 'scythe', 'scales']);
 // weapon skins get their own inspect when they have one (butterfly flips, karambit spins...)
 export function inspectFor(id, model) {
   if (model && ANIMS['inspect_' + model]) return 'inspect_' + model;
@@ -368,6 +389,7 @@ export function drawFor(id, model) {
   if (id === 'scythe') return 'draw_scythe';
   if (id === 'cards') return 'draw_cards';
   if (id === 'bow') return 'draw_bow';
+  if (id === 'scales') return 'draw_scales';
   if (['bread', 'spoon', 'slapper', 'slipper', 'popper', 'duck', 'reverse', 'cig'].includes(id)) return 'draw_melee';
   return HEAVY.has(id) ? 'draw_heavy' : 'draw_gun';
 }

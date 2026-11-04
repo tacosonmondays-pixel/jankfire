@@ -129,6 +129,17 @@ export const sfx = {
   yeet(pos) { noise(0.7, 0.5, 'bandpass', 400, 3000, pos, 0, 1.5); tone('sine', 300, 1400, 0.6, 0.15, pos); },
   choir(pos) { for (const [f, d] of [[523, 0], [659, 0.05], [784, 0.1], [1046, 0.15]]) tone('sine', f, f * 1.01, 2.2, 0.12, pos, d); },
   tbag(pos) { for (let i = 0; i < 3; i++) tone('sawtooth', 120 - i * 25, 40, 0.18, 0.3, pos, i * 0.1); },
+  // scales of justice: the gavel lands with the stamp (0.1 s in); n bangs for a one-shot
+  gavel(pos, n = 1) {
+    for (let i = 0; i < n; i++) {
+      const d = 0.1 + i * 0.22;
+      noise(0.07, 1, 'bandpass', 1700, 700, pos, d, 1.6); tone('sine', 190, 60, 0.16, 0.8, pos, d);
+      tone('square', 520, 260, 0.03, 0.15, pos, d); noise(0.25, 0.22, 'lowpass', 900, 200, pos, d + 0.04); // wood knock + the courtroom
+    }
+  },
+  guilty(pos, big) { for (const [f, d, len] of [[196, 0, 0.16], [185, 0.2, 0.16], [147, 0.4, big ? 1.1 : 0.6]]) { tone('sawtooth', f, f * 0.99, len, 0.09, pos, d + 0.15); tone('square', f / 2, f / 2, len, 0.06, pos, d + 0.15); } }, // dun dun DUNNN
+  acquit(pos) { tone('sine', 660, 660, 0.18, 0.16, pos, 0.12); tone('sine', 990, 990, 0.35, 0.14, pos, 0.24); tone('triangle', 1320, 1320, 0.4, 0.06, pos, 0.24); },
+  chains(pos) { for (let i = 0; i < 6; i++) { const f = 2400 + Math.random() * 2600; tone('square', f, f * 0.9, 0.025, 0.035, pos, i * 0.035 + Math.random() * 0.02); } },
 };
 
 const LOOPDEF = {

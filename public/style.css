@@ -62,6 +62,14 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color:
 .num { position: absolute; font-size: 22px; font-weight: bold; animation: floatup 0.9s ease-out forwards; }
 @keyframes floatup { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-60px); opacity: 0; } }
 #ping { position: absolute; left: 16px; top: 10px; font-size: 12px; color: #aaa; }
+/* scales of justice: the verdict under the crosshair, and what the court says on a hit */
+#verdict { position: absolute; left: 50%; top: calc(50% + 24px); transform: translateX(-50%) rotate(-2deg); display: none; text-align: center; white-space: nowrap; padding: 1px 9px 2px; border: 2px solid #ffc83a; background: rgba(30, 18, 0, 0.45); }
+#verdict b { display: block; font-size: 16px; letter-spacing: 1px; color: #ffe9a8; }
+#verdict span { display: block; font-size: 11px; color: #e8dcc0; }
+#verdict.guilty b { color: #ff6a3a; }
+#verdict.innocent b { color: #9fe8ff; }
+body.replaying #verdict { visibility: hidden; }
+#center.court { color: #ffc83a; font-size: 52px; letter-spacing: 2px; }
 
 /* ---------------- menu */
 #menu { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(18, 8, 24, 0.55); overflow-y: auto; }

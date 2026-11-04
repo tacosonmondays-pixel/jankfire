@@ -22,6 +22,7 @@ import { Remote, updateGibs } from './remote.js';
 import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN } from './skins.js';
 import { initPreview, showPreview, showCharacter, renderPreview, resizePreview } from './preview.js';
 import { playKillFx, updateKillFx, clearKillFx } from './killfx.js';
+import { courtKill, courtVerdict, updateCourt } from './scales.js';
 import { updateSpeedLines } from './speedlines.js';
 import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse } from './objective.js';
 import { GAMES, GAME_ORDER, TEAMS } from '/shared/modes.js';
@@ -1040,6 +1041,7 @@ net.on('dmg', (m) => {
 });
 net.on('kill', (m) => {
   recordEv(m);
+  courtKill(m); // scales of justice: streaks + revenge
   const [kn, kc] = nameOf(m.k), [vn, vc] = nameOf(m.v);
   const via = m.w === 'void' || m.w === 'cough' ? m.via : m.w;
   const victim = G.remotes.get(m.v);
@@ -1234,6 +1236,8 @@ net.on('fx', (m) => {
     if (m.n >= 2) hud.msg(m.n >= 3 ? 'STRIKE' : 'SPARE', 1.2, 'brag');
   } else if (m.k === 'thwack') {
     sfx.thwack(m.p);
+  } else if (m.k === 'verdict') {
+    courtVerdict(m);
   }
 });
 net.on('chat', (m) => {
@@ -1312,6 +1316,7 @@ function frame(t) {
   else for (const r of G.remotes.values()) { r.ch.root.visible = false; r.rope.visible = false; r.shadow.visible = false; } // the replay has its own copies
   updateGibs(dt);
   updateKillFx(dt);
+  updateCourt(dt, now);
   for (const [id, b] of G.bubbles) { if (now > b.until + 500) { G.scene.remove(b.mesh); G.bubbles.delete(id); continue; } b.mesh.rotation.y += dt * 0.3; b.mesh.material.opacity = 0.18 + Math.sin(now * 0.006) * 0.05; }
   for (let i = G.smokes.length - 1; i >= 0; i--) {
     const s2 = G.smokes[i];

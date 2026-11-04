@@ -18,6 +18,7 @@ import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor } from './shared/modes.js';
 import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, validStreaks, fireRate } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
+import { verdict } from './shared/verdict.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -800,6 +801,8 @@ class Room {
     if (killer && killer !== t) {
       killer.kills++;
       killer.streak = (killer.streak || 0) + 1;
+      if (killer.lastKiller === t.id) killer.lastKiller = 0; // revenge served (scales of justice)
+      t.lastKiller = killer.id;
       if (!killer.isBot && this.mode !== 'training') {
         // your 3 picked streaks: earn one and it waits in your tray until you use it (keys 5 / 6 / 7)
         for (const id of validStreaks(killer.streaks)) {
@@ -898,6 +901,13 @@ class Room {
     this.hurt(t, p, wid, dmg, [d[0] * k, d[1] * k + (w.kbUp || 0) * (n / pellets), d[2] * k], { hs: h > 0 });
   }
 
+  // scales of justice: how guilty t is next to p, from what the server knows right now (formula in shared/verdict.js)
+  verdictOf(p, t) {
+    let teams = null;
+    if (this.teamsOn() && p.team && t.team) { const sc = this.game === 'bomb' && this.bomb ? this.bomb.wins : this.score; teams = [sc[p.team] || 0, sc[t.team] || 0]; }
+    return verdict(p, t, { board: this.fighters(), teams, revenge: !!p.lastKiller && p.lastKiller === t.id });
+  }
+
   onHit(p, m) {
     const w = WEAPONS[m.w];
     const t = this.players.get(m.to);
@@ -928,7 +938,11 @@ class Room {
         if (fwd[0] * (toT[0] / hl) + fwd[1] * (toT[2] / hl) > 0.45) { dmg *= w.backstab; back = true; }
       }
       const kb = hv ? hv.kb : w.kb, kbUp = hv ? hv.kbUp : w.kbUp;
+      const vd = w.verdict ? this.verdictOf(p, t) : null; // scales of justice: the court decides how hard it lands
+      if (vd) dmg *= vd.mult;
+      const hp0 = t.hp;
       this.hurt(t, p, m.w, dmg, [dir[0] * kb, dir[1] * kb + kbUp, dir[2] * kb], { slip: !!w.slip, hs: back });
+      if (vd && t.hp < hp0) this.broadcast({ t: 'fx', k: 'verdict', id: t.id, by: p.id, m: vd.mult, g: vd.g, one: !t.alive && dmg >= 100 ? 1 : 0, p: center(t).map(r2) });
     } else if (m.w === 'cig') {
       if (!this.pairOk(p, t, 'cig', 75) || !this.rangeOk(p, t, w.range)) return;
       this.hurt(t, p, 'cig', w.dmg, [d[0] * 1.5, 0.6, d[2] * 1.5]);

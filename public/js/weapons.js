@@ -14,6 +14,7 @@ import { hud } from './hud.js';
 import { tracerColor, emitSkinFx } from './skins.js';
 import { ANIMS, sample, sampleCh, eventsBetween, inspectFor, drawFor } from './anim.js';
 import { weaponIcon, clearIcons, itemIcon } from './icons.js';
+import { tickScalesVM } from './scales.js';
 
 export const W = {
   slots: [DEFAULT_LOADOUT.primary, DEFAULT_LOADOUT.secondary, DEFAULT_LOADOUT.melee],
@@ -117,7 +118,7 @@ const SHELL_ON_FIRE = new Set(['ar', 'smg', 'redline', 'minigun', 'scythe_rifle'
 
 // smear trail: a fading ribbon behind the tip of whatever you swing
 const TRAIL_N = 26;
-const TRAIL_COLOR = { knife: 0xbfe8ff, bread: 0xffd9a0, spoon: 0xffffff, slapper: 0xffb0d0, scythe: 0xff3ad8, slipper: 0xb0ffb0, cards: 0xffffff };
+const TRAIL_COLOR = { knife: 0xbfe8ff, bread: 0xffd9a0, spoon: 0xffffff, slapper: 0xffb0d0, scythe: 0xff3ad8, slipper: 0xb0ffb0, cards: 0xffffff, scales: 0xffd86a };
 const trailPts = [];
 let trail = null;
 const tmpV2 = new THREE.Vector3(), tcol = new THREE.Color();
@@ -321,6 +322,7 @@ const VM = {
   slapper: { p: [0.22, -0.24, -0.42], r: [0.25, 0.1, 0], s: 0.7 },
   scythe: { p: [0.3, -0.33, -0.46], r: [0.25, 0.25, -0.3], s: 0.55 },
   scythe_rifle: { p: [0.2, -0.21, -0.4], r: [0, 0.03, 0], s: 0.6 },
+  scales: { p: [0.27, -0.335, -0.47], r: [0.06, 0.12, 0], s: 0.6 }, // held upright, beam across the view
 };
 
 let vmRoot;
@@ -756,6 +758,7 @@ function animEvent(ev, g) {
     case 'spark': for (let i = 0; i < 10; i++) sys.add.spawn(evPos.x + R(0.03), evPos.y, evPos.z + R(0.03), R(0.8), 0.3 + Math.random() * 0.6, R(0.8), 0.5, 0.025, 0.005, 0xffcc44, 0xff3300, 1, 3); break;
     case 'spin': W.inspectSpin = 1.5; sfx.reload(); break;
     case 'rev': sfx.rev(); break;
+    case 'chains': sfx.chains(); break;
   }
 }
 
@@ -994,6 +997,7 @@ export function updateWeapons(dt, now) {
   m.wrap.visible = !(id === 'slipper' && W.slipperOut) && !W.scoped && !ME.dashing;
   m.wrap.position.set(px, py, pz);
   m.wrap.rotation.set(rx, ry, rz);
+  if (ud.court) tickScalesVM(m.g, dt, now); // scales of justice: tip toward the verdict, swing the pans
   if (m.g.userData.hat) m.g.userData.hat.visible = W.aim < 0.3;
   hud.crossFade(m.g.userData.sight ? Math.max(0, 1 - W.aim * 1.6) : 1);
   // muzzle flash
