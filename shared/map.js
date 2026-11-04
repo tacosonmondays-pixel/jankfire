@@ -878,16 +878,17 @@ function bazaar() {
     spawns, teamSpawns: { att, def },
     // bot routes along the real lanes, [x, z] points ending on each site. bots walk straight from point to point and
     // count a point as reached 2.6 m away, so: every leg is clear of props, doors get a point on their centreline more
-    // than 2.6 m in on each side, and the hall lanes keep to the middle so a bot shoved behind a stall slides back out
+    // than 2.6 m in on each side, and the hall lanes (and the plaza point after them, off the well's line) keep to the
+    // middle so a bot shoved behind a stall slides back out
     nav: {
       A: [
         [[16, 62], [28, 62], [42, 62], [42, 30], [43, 6], [43, -3], [43, -10], [47, -21], [47, -27], [46.5, -30.8], [43.5, -31], [42, -38]], // canal street
-        [[0, 56], [2.5, 32], [2.5, 16], [2.5, -1], [8, -3], [18, -2.5], [18, -10], [18, -14], [27, -21], [31, -27.5], [37, -28.5], [44, -38]], // hall -> bridge
+        [[0, 56], [2.5, 32], [2.5, 16], [2.5, -1], [3, -4], [18, -2.5], [18, -10], [18, -14], [27, -21], [31, -27.5], [37, -28.5], [44, -38]], // hall -> bridge
         [[0, -62], [8, -64], [22, -63], [32, -58], [39, -57], [39, -52], [41, -47], [46, -40]], // defenders' garden
       ],
       B: [
         [[-16, 62], [-30, 61], [-43, 60], [-43, 57], [-43, 52], [-43, 44], [-43, 30], [-43, 8], [-43, -1], [-44, -9], [-46, -18], [-46, -25], [-44, -31]], // cistern
-        [[0, 56], [-2.5, 32], [-2.5, 16], [-2.5, -1], [-8, -8], [-17, -16.5], [-23, -16.5], [-25, -21], [-26, -26.75], [-33, -26.75], [-37, -28.5], [-41, -33]], // hall -> spice house
+        [[0, 56], [-2.5, 32], [-2.5, 16], [-2.5, -1], [-3, -4], [-17, -16.5], [-23, -16.5], [-25, -21], [-26, -26.75], [-33, -26.75], [-37, -28.5], [-41, -33]], // hall -> spice house
         [[0, -62], [-8, -64], [-22, -62], [-32, -58], [-40, -56], [-40, -50], [-52, -45]], // defenders' arcade
       ],
     },
