@@ -476,3 +476,10 @@ body.replaying #mlg { display: none; }
 .chips.sprays .chip.locked::before { position: absolute; left: 3px; top: 2px; font-size: 11px; }
 .chips.sprays .chip span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #rollResult .sprayPic { display: block; width: 96px; height: 96px; margin: 6px auto 0; image-rendering: pixelated; background: #5d5d66; border: 2px solid #000; }
+
+/* ---------------- music: now playing */
+#nowPlaying { position: fixed; right: 18px; bottom: 16px; z-index: 50; pointer-events: none; font-size: 15px; color: #fff; background: rgba(18, 8, 24, 0.82); border: 2px solid var(--pink); padding: 5px 12px; transform: rotate(-1.5deg) translateY(12px); opacity: 0; transition: opacity 0.4s, transform 0.4s; text-shadow: 2px 2px 0 #000; }
+#nowPlaying.on { opacity: 1; transform: rotate(-1.5deg); }
+#nowPlaying .np-k { color: var(--pink); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
+#nowPlaying b { color: var(--yellow); }
+#nowPlaying i { color: var(--cyan); font-style: normal; font-size: 13px; }

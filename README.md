@@ -75,6 +75,8 @@ Notes:
 
 Settings: display (windowed / windowed fullscreen / fullscreen), grapple on right click instead, toggle aim, sensitivity, ADS sensitivity, fov, fov kick, shake, blood, fps counter, quality, speed lines, killcam, show other players' uploaded name cards.
 
+**Music:** plays in the menus and on the end-of-match screens (scores, play of the round, the vote), and crossfades out when a match starts. Settings → Audio has its own **music volume** (the main volume still scales it) and **music in matches** (off by default; on = quieter, under the game, and it dips during your killcam). It starts on your first click or key press, since browsers block sound before that. Adding a song: drop the mp3 (or .ogg / .wav) in `public/music/` and add one line to `TRACKS` at the top of `public/js/music.js`; with more than one it shuffles.
+
 ## Modes
 
 | Where | What it is |

@@ -13,6 +13,7 @@ import { hud } from './hud.js';
 import { fx, makeBeam, setBeam, scaleU } from './fx.js';
 import { marbles } from './marbles.js';
 import { initAudio, sfx, setVolume, setListener, stopLoops } from './audio.js';
+import { musicUpdate } from './music.js';
 import { ME, stepPlayer, tryHook, releaseHook, applyKb, slip, eye, hookPoint, hspeed, crouchTap } from './player.js';
 import {
   W, initWeapons, rebuildViewmodels, rebuildOne, setLoadout, refillAmmo, switchSlot, lastSlot, cycleSlot, reload,
@@ -295,6 +296,12 @@ $('jank').value = String(S.jank);
 $('jank').addEventListener('change', () => { S.jank = Number($('jank').value); setJank(S.jank); saveSettings(); });
 bindRange('fov', 'fov');
 bindRange('vol', 'vol', null, () => setVolume(S.vol));
+// music has its own volume (the main one still scales it) and stays out of matches unless you ask. old saves have neither
+if (typeof S.musicVol !== 'number') S.musicVol = 0.35;
+S.musicMatch = !!S.musicMatch;
+bindRange('musicVol', 'musicVol', null, musicUpdate);
+bindCheck('musicMatch', 'musicMatch', musicUpdate);
+SYNC_KEYS.push('musicVol', 'musicMatch');
 bindRange('sens', 'sens', (v) => v.toFixed(1));
 bindRange('adsSens', 'adsSens', (v) => v.toFixed(2));
 bindCheck('fovKick', 'fovKick');
@@ -1921,6 +1928,7 @@ function applySettingsToUI() {
   for (const id of ['fov', 'vol', 'sens', 'adsSens']) { $(id).value = String(S[id]); $(id).dispatchEvent(new Event('input')); }
   for (const id of ['fovKick', 'shake', 'showFps', 'swapAim', 'toggleAim', 'blood', 'killcam', 'showCards', 'speedLines']) $(id).checked = !!S[id];
   setVolume(S.vol);
+  $('musicVol').value = String(S.musicVol); $('musicMatch').checked = !!S.musicMatch; musicUpdate();
 }
 
 function renderProfile() {
