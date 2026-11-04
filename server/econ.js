@@ -44,6 +44,7 @@ function instView(x) {
 }
 function dropView(d) {
   const v = { id: d.id, k: d.k, p: d.p };
+  if (d.np && d.np.id) v.o = d.np.id; // who put it down (a drop, a swap, a buy): the client throws it from their hand
   if (d.k === 'w') Object.assign(v, { w: d.x.id, u: d.x.u, m: d.x.m, r: d.x.r, lim: d.x.lim ? 1 : 0, cl: d.x.cl ? 1 : 0, sk: d.x.sk, by: d.x.byName, kat: d.x.kat || 0 });
   else if (d.k === 'i') Object.assign(v, { w: d.iid, n: d.n });
   else v.w = 'kit';
@@ -195,7 +196,12 @@ const M = {
   },
   econRoundInfo(r) {
     const b = this.bomb, ec = this.ec;
-    if (ec) r.eco = { buy: Math.max(0, (b.buyUntil || 0) - now()), lose: [ec.lose[1], ec.lose[2]] };
+    if (!ec) return;
+    r.eco = { buy: Math.max(0, (b.buyUntil || 0) - now()), lose: [ec.lose[1], ec.lose[2]] };
+    // what everyone wears (vest 1, bucket 2, pliers 4): the client puts it on their models
+    const g = [];
+    for (const p of this.fighters()) { const e = p.ec; if (e && p.alive && !e.out) { const k = (e.ar > 0 ? 1 : 0) | (e.hm ? 2 : 0) | (e.kit ? 4 : 0); if (k) g.push([p.id, k]); } }
+    if (g.length) r.eco.gear = g;
   },
   // newBombRound, before everyone respawns: a fresh match, the half (sides swapped: credits reset), or the next round
   econNewRound(first) {
@@ -612,6 +618,7 @@ const M = {
       p.ecOwnSkins = D.enforceSkins(D.cleanSkins(m.s), p.inv);
       for (const x of Object.values(p.ec.sl)) if (x && x.by === p.id) { const sk = p.ecOwnSkins[x.id]; x.sk = Array.isArray(sk) ? sk.slice() : null; }
       this.econSync(p);
+      this.econSend(p); // your own viewmodel shows the new look too
     })().catch((e) => D.logErr('skin', e));
   },
   // armor (from damage()): returns the damage that gets through

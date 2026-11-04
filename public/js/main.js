@@ -30,6 +30,7 @@ import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, update
 import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, HAIRS, TOPS, BOTTOMS } from '/shared/looks.js';
 import { account, restore, login, register, logout, saveProfile, leaderboard as fetchLeaders } from './account.js';
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
+import { initEcon, ecoOn, econKey, econMouse, econMenuOpen, econFrame, econCam, econHideVM, econDead, econWelcome, econSpawn, econKill, econIc, econLoadout, econReset } from './econ.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
@@ -80,6 +81,7 @@ initWeapons();
 setLoadout(G.settings.loadout);
 hud.show(false);
 initPreview($('preview'));
+initEcon({ pause: () => { if (document.pointerLockElement) document.exitPointerLock(); pause(); }, lock }); // Plant & Defuse economy
 
 const myShadow = makeShadow();
 G.scene.add(myShadow);
@@ -167,6 +169,7 @@ function resetWorldState() {
   stopReplay(true);
   hideReplayUI();
   if (G.forcedLoadout) { G.forcedLoadout = null; setLoadout(S.loadout); }
+  econReset();
   for (const b of G.bubbles.values()) G.scene.remove(b.mesh);
   G.bubbles.clear(); G.smokes.length = 0; ME.frozenUntil = 0; G.frost = 0;
   resetItems(); stopUse(); G.activeStreaks = null; G.itemSent = null;
@@ -210,7 +213,7 @@ let wasLocked = false, lockedAt = 0, mouseAvg = 8;
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === canvas;
   if (locked) lockedAt = performance.now();
-  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden')) pause();
+  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !econMenuOpen()) pause();
   wasLocked = locked;
 });
 canvas.addEventListener('click', () => { if (G.joined && document.pointerLockElement !== canvas && $('menu').classList.contains('hidden')) lock(); });
@@ -395,6 +398,7 @@ function buildLoadoutUI() {
   }
 }
 function applyLoadout(force) {
+  if (econLoadout()) return; // Plant & Defuse: you buy your gear
   sendItemSel();
   if (G.forcedLoadout) { $('loNote').textContent = 'randomizer is on: you get a random loadout every life'; return; }
   const canNow = force || !G.joined || !ME.alive || performance.now() - (G.spawnT || 0) < 5000;
@@ -725,6 +729,7 @@ function aimUp() { if (!S.toggleAim) W.aimHeld = false; }
 
 addEventListener('keydown', (e) => {
   if (!inGame() || document.activeElement === $('name')) return;
+  if (econKey(e)) return; // buy menu, drop, P pause (econ.js ECON_KEYS)
   if ((RP.active || G.killcamPending) && (e.code === 'Space' || e.code === 'Enter')) { e.preventDefault(); skipReplay(); return; }
   if (e.code === 'Tab') { e.preventDefault(); scoresOpen = true; renderScores(); return; }
   if (e.code === 'KeyT' || e.code === 'Enter') { e.preventDefault(); openChat(); return; }
@@ -761,6 +766,7 @@ addEventListener('keyup', (e) => {
 addEventListener('mousedown', (e) => {
   if (!inGame()) return;
   if (RP.mode === 'killcam' || G.killcamPending) { skipReplay(); return; }
+  if (econMouse(e)) return;
   if (e.button === 0) fireDown();
   if (e.button === 2) { if (S.swapAim) tryHook(); else aimDown(); }
   if (e.button === 3 || e.button === 4) tryHook();
@@ -818,7 +824,7 @@ function updateLabel() {
 }
 
 // ------------------------------------------------------------ world entities
-function skinOf(owner, wid) { return (owner === G.myId ? G.equipped : (G.skins.get(owner) || {}))[wid]; }
+function skinOf(owner, wid) { return (owner === G.myId ? W.skinOver || G.equipped : (G.skins.get(owner) || {}))[wid]; }
 function spawnProj(m) {
   const w = WEAPONS[m.k];
   if (!w) return;
@@ -869,6 +875,7 @@ net.on('welcome', (m) => {
   renderRound(m.round);
   $('roundEnd').classList.add('hidden');
   G.round = m.round; G.myTeam = m.team || 0;
+  econWelcome(m);
   G.pocket = []; G.streakN = 0; G.activeStreaks = validStreaks(S.loadout.streaks); renderStreak(0);
   G.kat.clear(); setMyKatana(0);
   for (const [id, n] of m.kat || []) G.kat.set(id, n);
@@ -979,7 +986,7 @@ net.on('tagx', (m) => {
 net.on('bombyou', () => { hud.msg('YOU HAVE THE BOMB', 2, 'brag'); hud.chat(null, null, 'you have the bomb: get to site A or B and hold F to plant'); });
 net.on('bombev', (m) => {
   const [n] = m.id ? nameOf(m.id) : [''];
-  if (m.k === 'round') { hud.msg(`ROUND ${m.n} · ${G.myTeam === m.att ? 'ATTACK' : 'DEFEND'}`, 2.2, 'brag'); }
+  if (m.k === 'round') { if (!ecoOn()) hud.msg(`ROUND ${m.n} · ${G.myTeam === m.att ? 'ATTACK' : 'DEFEND'}`, 2.2, 'brag'); } // the economy has its own banner
   else if (m.k === 'planted') { hud.msg(`BOMB PLANTED AT ${m.site}`, 2.2, 'brag'); sfx.ting(); hud.chat(null, null, `${n} planted the bomb at ${m.site}`); }
   else if (m.k === 'defused') { hud.msg('BOMB DEFUSED', 2.2, 'brag'); sfx.kill(); hud.chat(null, null, `${n} defused the bomb`); }
   else if (m.k === 'boom') { G.shake = 1; }
@@ -987,7 +994,7 @@ net.on('bombev', (m) => {
   else if (m.k === 'pickup') hud.chat(null, null, `${n} picked up the bomb`);
   else if (m.k === 'win') {
     const mine = m.team === G.myTeam;
-    const why = { defused: 'bomb defused', exploded: 'bomb went off', time: 'time ran out' }[m.why] || '';
+    const why = { defused: 'bomb defused', exploded: 'bomb went off', time: 'time ran out', elim: 'team wiped' }[m.why] || '';
     hud.msg(`${TEAMS[m.team].name} WINS THE ROUND`, 3, 'brag');
     hud.chat(null, null, `${TEAMS[m.team].name} wins the round (${why}) · ${m.wins[0]} - ${m.wins[1]}`);
     if (mine) sfx.kill();
@@ -997,6 +1004,7 @@ net.on('bombev', (m) => {
 // item charges: the server's count is the real one, and so is the item it says you have
 function onIc(m) {
   if (!m || !Object.hasOwn(ITEMS, m.i)) return;
+  if (econIc(m)) return; // Plant & Defuse: the inventory says
   syncItem(m.i, m.n, m.next);
   if (m.i !== W.item) { setItem(m.i); showSlots(); }
 }
@@ -1148,6 +1156,7 @@ net.on('kill', (m) => {
         : [['killed by ', '#fff'], [kn, kc], [`  (${wname(via)})`, wcolor(via)]]);
     } else hud.dead(true, [[m.w === 'void' ? 'you fell into the void' : m.w === 'tbag' ? 'you t-bagged too hard. your knees exploded.' : 'you smoked too much', '#fff']]);
   }
+  econKill(m);
   if (m.k === G.myId && m.v !== G.myId) {
     G.streakN = (G.streakN || 0) + 1; // the server counts every kill too, but only tells you at your picks
     renderStreak(G.streakN);
@@ -1164,6 +1173,7 @@ net.on('spawn', (m) => {
   refillAmmo();
   if (G.pendingLoadout) applyLoadout(true);
   hud.dead(false);
+  econSpawn(m);
 });
 net.on('ps', (m) => {
   spawnProj(m);
@@ -1340,6 +1350,7 @@ function frame(t) {
     jumpPressed = false;
     acc += dt;
     while (acc >= STEP) { stepPlayer(STEP, inp, now); inp.jumpPressed = false; acc -= STEP; }
+    econFrame(dt); // Plant & Defuse: barriers, drops, armor on models, spectating
     // spinbot killstreak: lock onto the nearest enemy you can see
     const spinning = ME.alive && now < (G.spinUntil || 0);
     if (spinning) {
@@ -1376,7 +1387,7 @@ function frame(t) {
     }
     pingT -= dt;
     if (pingT <= 0) { pingT = 2; net.send({ t: 'pi', c: performance.now() }); }
-    if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = 'killcam... (space to skip)'; else hud.deadTimer(Math.max(0, ((G.respawnMs ?? 2500) - (now - (G.deadAt || now))) / 1000)); }
+    if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = 'killcam... (space to skip)'; else if (!econDead()) hud.deadTimer(Math.max(0, ((G.respawnMs ?? 2500) - (now - (G.deadAt || now))) / 1000)); }
   }
 
   const rt = now + G.offset - INTERP_MS;
@@ -1480,6 +1491,7 @@ function frame(t) {
   fovNow += (fovTarget - fovNow) * Math.min(1, dt * (W.aim > 0 ? 14 : 6));
   if (Math.abs(cam.fov - fovNow) > 0.05) { cam.fov = fovNow; cam.updateProjectionMatrix(); }
   if (RP.active) updateReplay(dt, now, cam); // killcam / play of the round owns the camera
+  else econCam(cam, dt); // spectating a teammate (Plant & Defuse)
   cam.updateMatrixWorld();
   updateSpeedLines(dt, G.joined && ME.alive && !RP.active ? Math.hypot(ME.vel[0], ME.vel[1], ME.vel[2]) : 0, ME.vel, cam, ME.dashing ? 0.9 : 0, S.speedLines !== false);
   const rh = G.renderer.domElement.height;
@@ -1508,7 +1520,7 @@ function frame(t) {
   G.skinFxVM.update(dt);
   skinTick(dt, now);
   updateWorld(dt);
-  G.vmScene.visible = G.joined && !RP.active;
+  G.vmScene.visible = G.joined && !RP.active && !econHideVM();
   renderFrame();
   if ((screen === 'cosmetics' || screen === 'character') && !$('menu').classList.contains('hidden')) renderPreview(dt);
 }

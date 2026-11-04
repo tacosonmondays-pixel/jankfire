@@ -8,6 +8,7 @@ import { buildCharacter, buildWeapon, makeNameTag, makeShadow, cardTex, setKatan
 import { fx, makeBeam, setBeam } from './fx.js';
 import { emitSkinFx } from './skins.js';
 import { jankify } from './jank.js';
+import { gearLook, dressGear } from './econ3d.js';
 
 // players ignore fog, glow a bit, and get an outline in their colour so you can spot them across the map
 const noFog = new Map();
@@ -62,13 +63,15 @@ export class Remote {
   build() {
     if (this.ch) { G.scene.remove(this.ch.root); this.free(); }
     this.ice = null; this.shells = []; this.glow = 0;
-    this.ch = buildCharacter(this.color, teamLook(this.outfit, this.team)); // on a team: team colour, not your clothes
+    this.ch = buildCharacter(this.color, gearLook(teamLook(this.outfit, this.team), this.gear)); // on a team: team colour, not your clothes
+    if (this.gear) dressGear(this.ch, this.gear, teamLook(this.outfit, this.team), this.team); // Plant & Defuse armor they bought
     this.ch.root.scale.setScalar(1.2); // a bit bigger than you so they read at crusty resolutions
     const outline = outlineMat(new THREE.Color(this.color).getHex());
     const parts = [];
     this.ch.body.traverse((o) => { if (o.isMesh) parts.push(o); });
     for (const o of parts) {
       o.material = visibleMat(o.material);
+      if (o.userData.noShell) continue; // a small armor bit inside a bigger outline (econ3d.js)
       const shell = new THREE.Mesh(o.geometry, outline);
       shell.scale.setScalar(1.12);
       shell.userData.outline = true;
@@ -110,6 +113,8 @@ export class Remote {
     if (this.ice) this.ice.material.dispose();
   }
 
+  // Plant & Defuse: what they bought (vest 1, bucket 2, pliers 4) goes on the model
+  setGear(bits) { bits = bits || 0; if (bits === (this.gear || 0)) return; this.gear = bits; this.setLook(this.outfit); }
   setKat(n) { this.katN = n; if (this.w === 'katana' && this.weaponMesh) setKatana(this.weaponMesh, n); }
   setSkins(s) { this.skins = s || {}; const w = this.w; this.w = null; if (w) this.setWeapon(w); }
 

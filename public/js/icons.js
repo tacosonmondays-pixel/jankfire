@@ -55,6 +55,33 @@ export function weaponIcon(id, skin) {
   }
 }
 
+// any model as a picture, lit like the weapons (Plant & Defuse gear in the buy menu). build() makes it, key caches it
+export function objIcon(key, build) {
+  if (cache.has(key)) return cache.get(key);
+  try {
+    if (!r) init();
+    const holder = new THREE.Group();
+    holder.add(build());
+    scene.add(holder);
+    holder.updateMatrixWorld(true);
+    box.setFromObject(holder);
+    box.getSize(size); box.getCenter(center);
+    holder.position.sub(center);
+    const fit = Math.max(size.x / cam.aspect, size.y) * 1.06;
+    cam.position.set(0, 0, fit / (2 * Math.tan((cam.fov * Math.PI) / 360)) + size.z / 2);
+    cam.lookAt(0, 0, 0);
+    r.render(scene, cam);
+    const url = r.domElement.toDataURL('image/png');
+    scene.remove(holder);
+    freeTree(holder);
+    cache.set(key, url);
+    return url;
+  } catch (e) {
+    console.warn('icon', key, e);
+    return '';
+  }
+}
+
 // item pictures (drawn, not rendered): grenade, medkit, bubble, duck, smoke
 const itemCache = new Map();
 export function itemIcon(id) {

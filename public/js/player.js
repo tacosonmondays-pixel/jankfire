@@ -84,6 +84,7 @@ export function hookPoint() {
 }
 
 export function tryHook() {
+  if (G.noHook) { G.noHook(); return; } // Plant & Defuse: no grapple, the button picks things up (econ.js)
   const now = performance.now();
   if (!ME.alive || ME.hook || now < (ME.frozenUntil || 0) || now < (ME.sleepUntil || 0)) return; // frozen or asleep: no grapple
   const o = eye(), d = look();
