@@ -190,6 +190,7 @@ export const STREAKS = {
   moonboots: { kills: 3, name: 'Moon Boots', desc: 'low gravity + huge jumps for 25s', auto: true, dur: 25 },
   chickenstrike: { kills: 4, name: 'Chicken Strike', desc: 'rain exploding chickens where you aim', deploy: true },
   scythe: { kills: 5, name: 'Scythe Rifle', desc: 'X: rifle mode · hold V: glitch dash', auto: true },
+  overdrive: { kills: 8, name: 'Overdrive Rig', desc: '25s as a scrap-built juggernaut: overshield, LMB rocket punch, RMB block, E quickhack, G homing missiles, hold Space to leap', auto: true, dur: 25 },
   spinbot: { kills: 6, name: 'Spinbot', desc: 'aimbot + spinbot for 10s. you are now a cheater.', auto: true, dur: 10 },
   satellite: { kills: 7, name: 'Spy Satellite', desc: 'see every enemy through walls for 20s', auto: true, dur: 20 },
   giantduck: { kills: 10, name: 'Giant Duck', desc: 'a giant black hole where you aim that pulls in everyone but you', deploy: true },
@@ -250,6 +251,16 @@ export const RANKS = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J'
 
 export const FLAGS = { SMOKE: 1, FIRE: 2, BLOW: 4, SPIN: 8, SLIP: 16, SLIDE: 32, REVERSE: 64, CROUCH: 128, DASH: 256 };
 export const SLIP_TIME = 1.7;
+// overdrive rig killstreak: in the rig, blocking, winding up a punch, crouched for a leap. the server only believes
+// them from someone it saw activate the streak (the numbers are RIG in shared/rig.js)
+Object.assign(FLAGS, { RIG: 16384, RIG_BLOCK: 32768, RIG_CHARGE: 65536, RIG_LEAP: 131072 });
+// not guns: what the rig's hits are called in the kill feed (its missiles fly as server projectiles)
+Object.assign(WEAPONS, {
+  rigpunch: { slot: null, kind: 'rig', name: 'Rocket Punch', color: '#ff2a6d' },
+  rigslam: { slot: null, kind: 'rig', name: 'Wall Slam', color: '#ffb000' },
+  rigquake: { slot: null, kind: 'rig', name: 'Crater', color: '#3ee6ff' },
+  rigmissile: { slot: 'hidden', kind: 'proj', name: 'Rig Missiles', color: '#ff6a3d', grav: 0, r: 0.22, life: 5 },
+});
 export const HOOK = { range: 90, pull: 42, tug: 16 };
 
 // your 3 killstreaks, cheapest first (keys 5 / 6 / 7)

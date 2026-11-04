@@ -14,6 +14,7 @@ import { Accounts, levelOf } from './server/accounts.js';
 import { ownedSkin, ownedKill, randomContainer, CONTAINERS, COSMETICS } from './shared/cosmetics.js';
 import { validLook, achievementsFrom, ACHIEVEMENTS } from './shared/looks.js';
 import { STAT_KEYS } from './server/store.js';
+import { installRig } from './server/rig.js'; // overdrive rig killstreak
 import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, canDefuse } from './shared/modes.js';
 import { WEAPONS, SLOTS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, validStreaks, fireRate } from './shared/weapons.js';
@@ -165,6 +166,9 @@ if (process.env.JF_BOMB_WINS) BOMB.wins = Number(process.env.JF_BOMB_WINS) || BO
 if (process.env.JF_BOMB_FUSE) BOMB.fuse = Number(process.env.JF_BOMB_FUSE) || BOMB.fuse;
 if (process.env.JF_BOMB_ROUND) BOMB.roundTime = Number(process.env.JF_BOMB_ROUND) || BOMB.roundTime;
 if (process.env.JF_TARGET) for (const t of Object.values(TARGETS)) for (const k of Object.keys(t)) t[k] = Number(process.env.JF_TARGET);
+// test knobs for the overdrive rig: earn it after this many kills, make it last this many seconds
+if (process.env.JF_RIG) STREAKS.overdrive.kills = Number(process.env.JF_RIG) || STREAKS.overdrive.kills;
+if (process.env.JF_RIG_DUR) STREAKS.overdrive.dur = Number(process.env.JF_RIG_DUR) || STREAKS.overdrive.dur;
 function randomSkins() {
   const out = {};
   for (const id of Object.keys(WEAPONS)) if (Math.random() < 0.6) out[id] = [pick(SKIN_F), pick(SKIN_H), pick(SKIN_E), id === 'knife' ? pick(['default', 'knife_karambit', 'knife_butterfly', 'knife_switch', 'knife_cleaver']) : 'default'];
@@ -800,6 +804,7 @@ class Room {
     this.sendIc(p);
   }
   useItem(p, m) {
+    if (this.rigOn(p)) { this.sendIc(p); return; } // no items in the overdrive rig
     if (!p.alive || !has(ITEMS, m.i)) return;
     const c = this.itemCharges(p);
     // not your item, no charge left, or too fast: tell the client the real count so its HUD can't drift
@@ -866,6 +871,7 @@ class Room {
     t.lastAttacker = attacker.id; t.lastAttackW = w; t.lastAttackT = now();
   }
   knock(t, v, w) {
+    if (this.rigOn(t)) v = this.rigShrug(v); // the overdrive rig shrugs it off
     if (t.isBot) {
       if (t.ai.dummy && t.ai.dummy.move) return;
       t.vel[0] += v[0]; t.vel[1] += v[1]; t.vel[2] += v[2];
@@ -876,6 +882,7 @@ class Room {
     send(t, { t: 'kb', v: v.map(r2), w });
   }
   slip(t) {
+    if (this.rigOn(t)) return; // a rig doesn't slip on peels
     if (t.isBot) { t.slipUntil = now() + 1700; t.vel[1] = Math.max(t.vel[1], 6.5); t.onGround = false; return; }
     send(t, { t: 'slip' });
   }
@@ -895,6 +902,7 @@ class Room {
   damage(t, amt, attacker, w, hs, from) {
     if (amt <= 0 || this.hitBlocked(t, attacker, w, from)) return false;
     if (attacker && attacker.isBot && !t.isBot && this.mode !== 'bots') amt *= 0.6; // coop bots hit softer
+    if (t.rig) { amt = this.rigSoak(t, amt, attacker, w, from); if (amt <= 0) return true; } // overdrive rig: block + overshield first
     t.hp -= amt;
     t.lastHs = !!hs;
     if (hs && attacker && attacker !== t && attacker.acct && this.mode !== 'training') stat(attacker, 'headshots', 1);
@@ -967,6 +975,7 @@ class Room {
   kill(t, attacker, w) {
     if (!t.alive) return;
     t.alive = false; t.hp = 0; t.deaths++; t.g = null; t.reverseUntil = 0;
+    this.rigDeath(t); // (every client bursts the frame open from the kill message)
     if (t.ai) { t.ai.hook = null; t.ai.route = null; } // a fresh route from the spawn, not the old waypoint index
     // the mode's respawn delay; skipping the killcam ('respawn') can't go below it
     t.respawnAt = t.minRespawnAt = now() + (t.isBot && t.ai.dummy ? 700 : this.game === 'bomb' && this.teamsOn() ? BOMB.respawn : 2500);
@@ -1091,6 +1100,7 @@ class Room {
   }
 
   onHit(p, m) {
+    if (this.rigOn(p)) return; // no guns in the overdrive rig: its hits are judged in server/rig.js
     const w = has(WEAPONS, m.w) && WEAPONS[m.w];
     const t = this.players.get(m.to);
     const d = norm(vec3(m.d));
@@ -1128,6 +1138,7 @@ class Room {
   }
 
   onPush(p, m) {
+    if (this.rigOn(p) || (m.w === 'hook' && p.hackedUntil > now())) return; // no grapple in the rig; a hacked one is fried
     const t = this.players.get(m.to);
     if (!t || t === p || !t.alive || !p.alive) return;
     const toT = norm([t.pos[0] - p.pos[0], t.pos[1] - p.pos[1], t.pos[2] - p.pos[2]]) || [0, 1, 0];
@@ -1142,6 +1153,7 @@ class Room {
   }
 
   onFire(p, m) {
+    if (this.rigOn(p)) return; // no guns in the overdrive rig
     const w = has(WEAPONS, m.w) && WEAPONS[m.w];
     if (!w || !p.alive) return;
     // loadout weapons only (plus the scythe once earned): items (frag, smoke, duck) are thrown with 'item', never 'fire'
@@ -1350,6 +1362,7 @@ class Room {
     const n = now();
     for (const pr of this.projectiles.values()) {
       const w = WEAPONS[pr.k];
+      if (pr.k === 'rigmissile') { this.rigMissileStep(pr, dt); continue; } // overdrive rig missiles home in (server/rig.js)
       const age = (n - pr.born) / 1000;
       const owner = this.players.get(pr.o);
       const prev = pr.p.slice();
@@ -1551,6 +1564,7 @@ class Room {
   resetLife(p) {
     p.slipUntil = 0; p.burnUntil = 0; p.burnBy = 0; p.burnTick = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.frostT = 0;
     p.healLeft = 0; p.reverseUntil = 0; p.g = null; p.lastAttacker = 0; p.ground = null;
+    this.rigReset(p); // a new round ends the overdrive rig (and any hack)
     if (p.ai) { p.ai.hook = null; p.ai.route = null; }
     if (!p.isBot) { if (p.nextItem) { p.item = p.nextItem; p.nextItem = null; } p.ic = null; } // full charges (sendIc after 'spawn')
   }
@@ -1587,6 +1601,7 @@ class Room {
         p.g = vec3(m.g);
         p.f = num(m.f) | 0;
         if (raycast([pos[0], pos[1] + 0.3, pos[2]], [0, -1, 0], 0.6, this.boxes)) p.ground = pos.slice(); // standing on something
+        this.rigSnap(p); // the rig flags only count from someone who activated it; no rope in the rig or when hacked
         if (p.pos[1] < this.map.killY) this.kill(p, null, 'void');
         break;
       }
@@ -1629,6 +1644,7 @@ class Room {
         if (i < 0 || !p.alive || !has(STREAKS, m.r)) break;
         if ((m.r === 'chickenstrike' || m.r === 'giantduck') && !at) break;
         p.pocket.splice(i, 1);
+        if (m.r === 'overdrive') this.rigStart(p);
         if (m.r === 'scythe') p.scythe = true;
         send(p, { t: 'streak', reward: m.r });
         if (m.r === 'chickenstrike') {
@@ -1694,6 +1710,7 @@ class Room {
           })().catch((e) => logErr('skin', e));
         }
         break;
+      case 'rig': this.onRig(p, m); break; // overdrive rig: punch, hack, missiles, leap, landing (server/rig.js)
       case 'pi': send(p, { t: 'po', c: m.c }); break;
     }
   }
@@ -1970,6 +1987,7 @@ class Room {
     for (const b of this.players.values()) if (b.isBot && b.alive) this.stepBot(b, dt);
     this.tickProjectiles(dt);
     this.tickHoles(dt);
+    this.tickRig();
     this.tickStatus(dt);
     this.tickPeels();
     this.tickWaves();
@@ -2002,6 +2020,8 @@ class Room {
     this.broadcast({ t: 'sn', s: n, p: ps, wave: this.mode === 'coop' ? this.waveInfo() : undefined, round: this.roundInfo() || undefined });
   }
 }
+
+installRig(Room, { now, num, vec3, norm, r2, center, safe, REC_T }); // the overdrive rig's methods (server/rig.js)
 
 // ---------------------------------------------------------------- account stats
 function stat(p, key, v) {

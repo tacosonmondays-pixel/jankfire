@@ -7,6 +7,7 @@ import { sfx } from './audio.js';
 import { hud } from './hud.js';
 import { net } from './net.js';
 import { fx } from './fx.js';
+import { rigStep, rigHook } from './rig.js'; // overdrive rig killstreak
 
 export const ME = {
   pos: [0, 5, 0], vel: [0, 0, 0], yaw: 0, pitch: 0,
@@ -85,6 +86,7 @@ export function hookPoint() {
 
 export function tryHook() {
   const now = performance.now();
+  if (rigHook(now)) return; // overdrive rig: E is the quickhack (and a hacked grapple is fried)
   if (!ME.alive || ME.hook || now < (ME.frozenUntil || 0) || now < (ME.sleepUntil || 0)) return; // frozen or asleep: no grapple
   const o = eye(), d = look();
   const mh = raycast(o, d, HOOK.range, BOXES);
@@ -132,6 +134,7 @@ function hookStep(dt) {
 export function stepPlayer(dt, inp, now) {
   if (!ME.alive) return;
   const v = ME.vel, p = ME.pos;
+  if (rigStep(dt, inp, now)) return; // overdrive rig: heavy, fast, leaps instead of jumping (rig.js)
   // glitch dash: fly straight where you look, no gravity. letting go keeps all of it.
   if (ME.dashing) {
     const d = look(), sp = 38;

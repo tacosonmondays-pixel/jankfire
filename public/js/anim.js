@@ -359,6 +359,21 @@ export function inspectFor(id, model) {
   return SPECIAL.has(id) ? 'inspect_' + id : 'inspect_gun';
 }
 
+// overdrive rig: the giant mechanical forearms that replace your guns (rigarms.js plays these). arm: which forearm the
+// keys move ('both' = the two, mirrored). offsets are camera space, on top of the arms' rest pose
+Object.assign(ANIMS, {
+  rig_on: { arm: 'both', keys: [K(0, [0.12, -0.6, 0.3], [1.0, 0, 0]), K(0.34, [0, 0.035, 0], [-0.1, 0, 0], 'back'), K(0.55)], events: [[0.04, 'servo'], [0.3, 'clank']] },
+  rig_off: { arm: 'both', keys: [K(0), K(0.45, [0.12, -0.65, 0.3], [1.0, 0, 0], 'in')], events: [[0.02, 'servo']] },
+  // the rocket punch: from wherever the wind-up had it, snap all the way out to the middle, hold through the dash, back
+  rig_punch: { arm: 'r', keys: [K(0), K(0.05, [-0.18, 0.05, -0.14], [-0.23, 0.05, -0.22], 'snap'), K(0.28, [-0.18, 0.05, -0.17], [-0.23, 0.05, -0.22]), K(0.55)] },
+  // quickhack: a quick look at the wrist deck (it turns to face you), then back down
+  rig_hack: { arm: 'l', keys: [K(0), K(0.13, [0.2, -0.04, -0.3], [0.78, -0.04, -0.18], 'snap'), K(0.48, [0.21, -0.03, -0.31], [0.8, -0.05, -0.19]), K(0.7)], events: [[0.1, 'beep']] },
+  rig_miss: { arm: 'both', keys: [K(0), K(0.06, [0, -0.05, 0.05], [0.14, 0, 0], 'snap'), K(0.32)] }, // the rack kicks on your back
+  rig_leap: { arm: 'both', keys: [K(0), K(0.08, [0.05, -0.14, 0.14], [0.55, 0, 0], 'snap'), K(0.5)] }, // arms thrown back off the jump
+  rig_land: { arm: 'both', keys: [K(0), K(0.06, [0, -0.12, -0.02], [-0.32, 0, 0], 'snap'), K(0.38)] }, // slam down with the landing
+  rig_jolt: { arm: 'both', keys: [K(0), K(0.04, [0, 0.025, 0.07], [-0.22, 0, 0], 'snap'), K(0.24)] }, // a blocked hit knocks the guard back
+});
+
 // what plays when you pull a weapon out
 const HEAVY = new Set(['minigun', 'blower', 'bowling', 'chicken']);
 export function drawFor(id, model) {

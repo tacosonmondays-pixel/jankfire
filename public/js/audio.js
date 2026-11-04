@@ -33,6 +33,8 @@ function dest(pos) {
   g.connect(p); p.connect(master);
   return g;
 }
+// the overdrive rig makes its own sounds (rigsfx.js) with these: same context, master volume and panning
+export const synth = { tone: (...a) => tone(...a), noise: (...a) => noise(...a), dest: (p) => dest(p), get ac() { return ac; }, get out() { return master; } };
 
 function tone(type, f0, f1, dur, v, pos, delay = 0) {
   if (!ac) return;

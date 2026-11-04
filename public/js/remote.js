@@ -8,6 +8,7 @@ import { buildCharacter, buildWeapon, makeNameTag, makeShadow, cardTex, setKatan
 import { fx, makeBeam, setBeam } from './fx.js';
 import { emitSkinFx } from './skins.js';
 import { jankify } from './jank.js';
+import { rigRemote, rigBoxes, rigDispose } from './rig.js'; // overdrive rig killstreak
 
 // players ignore fog, glow a bit, and get an outline in their colour so you can spot them across the map
 const noFog = new Map();
@@ -145,6 +146,7 @@ export class Remote {
   // what you can hit matches what you see: far-away players are drawn (and hit-tested) bigger on your screen
   hitboxes() {
     const k = (this.distScale || 1);
+    if (this.rigOn) return rigBoxes(this.pos, k); // the overdrive rig is a much bigger target
     const boxes = playerBoxes(this.pos);
     if (k === 1) return boxes;
     const [x, y, z] = this.pos;
@@ -297,6 +299,7 @@ export class Remote {
 
     const sh = raycast([x, y + 0.1, z], [0, -1, 0], 80, BOXES);
     if (sh) { this.shadow.visible = true; this.shadow.position.set(x, sh.point[1] + 0.03, z); } else this.shadow.visible = false;
+    rigRemote(this, dt, now, sh); // overdrive rig: the exo-frame (and its afterimages) instead of the mannequin
 
     const ld = this.look();
     const head = [x + ld[0] * 0.45, y + 1.5, z + ld[2] * 0.45];
@@ -315,6 +318,7 @@ export class Remote {
     G.scene.remove(this.rope);
     G.scene.remove(this.shadow);
     this.free();
+    rigDispose(this);
     this.rope.material.dispose(); // the beam geometry is shared
     this.shadow.geometry.dispose(); this.shadow.material.dispose();
   }

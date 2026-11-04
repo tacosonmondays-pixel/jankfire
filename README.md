@@ -132,7 +132,19 @@ Pick **3** in LOADOUT. Kills in one life (the count resets when you die) earn th
 | 5 | Scythe Rifle in slot 4: X switches to rifle mode, hold V to glitch dash |
 | 6 | Spinbot: 10 s of aimbot + spinning. You are now a cheater |
 | 7 | Spy Satellite: every enemy shows through walls for 20 s |
+| 8 | Overdrive Rig: 25 s inside a hulking scrap-built exo-frame: overshield, rocket punch, block, quickhack, homing missiles, crater leaps (see below) |
 | 10 | Giant Duck: a giant black hole where you aim that pulls in everyone but you |
+
+**Overdrive Rig:** a scrap-built cyber exo-frame closes around you, plate by plate: about 1.35x taller and much broader than you, welded scrap armour, hoses and pistons, huge forearms and fists, a red visor, cyan/magenta neon, and a missile rack on its spine. You see its forearms in first person; everyone else sees the whole frame stomp around. No guns, grapple or items for 25 s (a panel at the bottom shows the time left, the overshield, the punch charge and the missile + hack cooldowns), but:
+- **Overshield 100** on top of your HP: it soaks damage first (a hex shell flickers where it's hit). Only 15% of any knockback gets through, peels don't trip you.
+- **Fast and heavy:** 16 m/s walking, about 23 m/s (83 km/h) running, heavy footsteps that shake the screen, a crater wherever you come down hard. Above 11 m/s it leaves an **overdrive trail**: cyan/magenta afterimages that fade over 0.4 s (everyone sees them), and your screen gets a slow-mo/chromatic tint.
+- **Rocket punch (left mouse, hold and let go):** charges for up to 1.3 s (the fist pulls back, glows and shakes harder). Let go and the rig rockets forward 3.5 to 15 m (more charge, further) with a huge CLANG: 35 to 110 damage and a launch of 28 to 80 m/s. Someone you punch into a wall within 0.9 s takes a +40 **wall slam**. 0.5 s cooldown.
+- **Block (right mouse, hold):** forearms crossed in front of the visor. Hits from the front 120 degrees lose 80%, and the damage you block charges your next punch (40 blocked = a full punch). You walk slower while blocking.
+- **Quickhack (E):** a glance at the wrist display fries the grapple of whoever is in your crosshair, up to 40 m away with a clear line of sight: their rope snaps and they can't grapple for 4 s (a HACKED overlay on their screen). 2.5 s cooldown.
+- **Homing missiles (G):** the spine rack opens and fires a salvo of 4, split over the two best targets ahead of you. 30 each on a direct hit, a 3.2 m blast that falls off to 35% at the edge. Every 10 s.
+- **Charged leap (hold Space, let go):** the rig crouches for up to 0.9 s, then jumps where you look (11 to 27 m/s forward). The landing is a crater with dust and a shockwave ring: up to 25 damage across 4.5 to 7.5 m (more charge, wider), knocking people up and out. A quick tap is just a hop.
+- It ends cleanly when the 25 s run out, or when you die: then the frame bursts into scrap.
+- The server judges all of it: the rig flags in your snapshots only count if it saw you activate the streak, the block cone uses the server's view of where you face, punch and leap charges are timed from your own snapshots, the punch dash is re-run by the server on its own map and hits whoever it passes there (no client says who got hit), hacks are checked for range, aim, line of sight and cooldown, the missiles are server projectiles, and a landing has to come from a real leap onto a real floor near where the server has you.
 
 ## Maps
 
@@ -229,3 +241,4 @@ Prompts live in `tools/models.json`; models land in `public/models/<id>.glb` and
 - `shared/`: `map.js` maps + box physics + bot routes · `modes.js` game modes, teams, bomb rules, vote timing · `weapons.js` weapons, items, killstreaks, loadout rules · `cosmetics.js` skins/wraps/effects/kill effects/hats + crates · `looks.js` character outfits.
 - `public/js/`: `main.js` menus + net + loop · `player.js` movement · `weapons.js` viewmodels, recoil springs, ADS, items · `anim.js` swing/inspect keyframes (per-knife styles) · `speedlines.js` · `remote.js` other players · `replay.js` killcam + highlights · `killfx.js` kill effects · `cards.js` name cards · `objective.js` bomb sites, tags, team bar · `icons.js` hotbar/item/streak pictures · `models.js` · `skins.js` · `fx.js` · `world.js` · `scenery.js` the land around each map · `hud.js` · `audio.js`.
 - `desktop/`: the Electron app (launcher, in-app server, display modes).
+- Overdrive Rig (killstreak): `shared/rig.js` its numbers · `server/rig.js` the server side (overshield, block, punch dash, wall slams, quickhacks, missiles, landings) · `public/js/rig.js` the controller, HUD panel, trail and tint · `rigmodel.js` the frame, its animation, afterimages, scrap burst and missiles · `rigarms.js` the first-person forearms · `rigsfx.js` its sounds.

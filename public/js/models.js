@@ -7,6 +7,7 @@ import { COSMETICS } from '/shared/cosmetics.js';
 import { SUITS, RANKS, ARROW_TIPS } from '/shared/weapons.js';
 import { BLADES } from './blades/index.js';
 import { lathe } from './blades/kit.js';
+import { buildRigMissile } from './rigmodel.js'; // overdrive rig killstreak
 
 // ------------------------------------------------------------ playing card faces (canvas, cached)
 const cardFaces = new Map();
@@ -995,6 +996,7 @@ export function makeShadow() {
 
 // ------------------------------------------------------------ projectiles
 export function buildProjectile(k, skin) {
+  if (k === 'rigmissile') return buildRigMissile(); // overdrive rig missiles: they turn along their flight themselves
   const g = buildProjectileRaw(k);
   if (!g.userData.glb) g.userData.hatAt = HAT_AT['p_' + k];
   return applySkin(g, skin);

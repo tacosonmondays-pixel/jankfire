@@ -10,6 +10,7 @@ import { marbles } from './marbles.js';
 import { sfx } from './audio.js';
 import { tracerColor } from './skins.js';
 import { playKillFx } from './killfx.js';
+import { rigFx, rigDied } from './rig.js'; // overdrive rig killstreak
 import { WEAPONS } from '/shared/weapons.js';
 import { TEAMS, GAMES } from '/shared/modes.js';
 import { raycast } from '/shared/physics.js';
@@ -117,6 +118,7 @@ function applyEv(m) {
       const replaced = m.fx && m.fx !== 'none' && playKillFx(m.fx, { pos: v.pos.slice(), vel: m.vel || v.vel, yaw: v.yaw, color: v.color, look: teamLook(vi.look, v.team), name: vi.name });
       if (replaced) v.ch.root.visible = false; else v.breakApart(m.vel || v.vel);
       v.iceUntil = 0;
+      rigDied(v, m.vel); // died in the overdrive rig: it bursts into scrap
     }
     if (st.opts.onKill) st.opts.onKill(m);
     if (m.k === st.opts.focus) sfx.kill();
@@ -126,6 +128,8 @@ function applyEv(m) {
     fx.explosion(m.p, WEAPONS.chicken.radius); sfx.boom(m.p);
   } else if (m.t === 'he') {
     fx.blast(m.p, WEAPONS.duck.blastR); sfx.holePop(m.p);
+  } else if (m.t === 'rig') {
+    rigFx(m, st.ghosts); // overdrive rig punches, hacks, missiles, landings (the ghosts wear the rig from their snapshots)
   } else if (m.t === 'kat') {
     if (g) g.setKat(m.n);
   } else if (m.t === 'freeze') {

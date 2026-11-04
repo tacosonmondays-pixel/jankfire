@@ -116,6 +116,21 @@ export function streakIcon(id) {
     x.fillStyle = '#4fa8ff'; x.fillRect(4, 24, 18, 12); x.fillRect(42, 24, 18, 12); x.strokeRect(4, 24, 18, 12); x.strokeRect(42, 24, 18, 12);
     circle(32, 30, 9, '#cccccc');
     x.strokeStyle = '#ffe14d'; x.lineWidth = 2; for (const r of [10, 16, 22]) { x.beginPath(); x.arc(32, 60, r, -2.4, -0.7); x.stroke(); }
+  } else if (id === 'overdrive') {
+    // the rig's rocket fist punching out of the frame: speed lines, a plated forearm, a glowing magenta knuckle strip
+    x.lineWidth = 2;
+    for (const [y, c] of [[22, '#2ef2ff'], [31, '#ff2bd6'], [40, '#2ef2ff']]) { x.strokeStyle = c; x.beginPath(); x.moveTo(2, y); x.lineTo(15, y); x.stroke(); }
+    x.lineWidth = 3; x.strokeStyle = '#000';
+    x.fillStyle = '#30363e'; x.beginPath(); x.moveTo(6, 52); x.lineTo(24, 40); x.lineTo(30, 50); x.lineTo(14, 62); x.closePath(); x.fill(); x.stroke(); // forearm
+    x.fillStyle = '#a87c24'; x.fillRect(12, 47, 9, 5);
+    x.fillStyle = '#58616c'; x.fillRect(22, 14, 30, 30); x.strokeRect(22, 14, 30, 30); // knuckle block
+    x.fillStyle = '#30363e';
+    for (let i = 0; i < 4; i++) { x.fillRect(51, 15 + i * 7, 8, 6); x.strokeRect(51, 15 + i * 7, 8, 6); } // fingers curled at the front
+    x.fillStyle = '#83391b'; x.fillRect(46, 13, 7, 32); x.strokeRect(46, 13, 7, 32); // knuckle plate
+    x.fillStyle = '#ff2bd6'; x.fillRect(48, 15, 3, 28); // the glow strip
+    x.fillStyle = 'rgba(255,43,214,0.35)'; x.beginPath(); x.arc(56, 29, 12, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#ff1e1e'; x.fillRect(26, 20, 14, 3); // a red tally light on the back of the hand
+    x.fillStyle = '#2ef2ff'; x.fillRect(24, 38, 20, 2);
   } else if (id === 'giantduck') {
     circle(32, 34, 24, '#120018'); x.strokeStyle = '#b07dff'; x.lineWidth = 2; x.beginPath(); x.arc(32, 34, 27, 0, Math.PI * 2); x.stroke();
     x.strokeStyle = '#000'; x.lineWidth = 3; circle(28, 38, 11, '#ffd23b'); circle(38, 26, 7, '#ffd23b'); x.fillStyle = '#ff7a1a'; x.fillRect(44, 25, 7, 4);

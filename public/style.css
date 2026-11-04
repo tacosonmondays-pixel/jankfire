@@ -241,6 +241,56 @@ button.big:hover, button.mid:hover { transform: rotate(-1.5deg) scale(1.04); }
 .pcard.sel { transform: translateY(-10px); border-color: var(--yellow); box-shadow: 0 0 10px var(--yellow); }
 #sleepFx { position: absolute; inset: 0; background: rgba(20, 0, 40, 0.75); color: #b07dff; font-size: 60px; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
 
+/* overdrive rig killstreak: the rig panel (bottom middle), the overdrive trail tint, the hex shield flash, hacked */
+#rigHud { display: none; position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); width: 360px; padding: 8px 14px 9px; font-family: 'Courier New', monospace; font-size: 12px; font-weight: bold; color: #cfefff; letter-spacing: 1px;
+  background: linear-gradient(180deg, rgba(4, 16, 22, 0.84), rgba(20, 4, 24, 0.84)), repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 3px);
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px); box-shadow: inset 0 0 0 2px rgba(46, 242, 255, 0.6); }
+#rigHud .rh-top { display: flex; justify-content: space-between; align-items: baseline; }
+#rigHud .rh-top b { color: #ff2bd6; font-size: 15px; letter-spacing: 3px; text-shadow: 0 0 8px #ff2bd6; }
+#rigHud .rh-t { font-size: 19px; color: #2ef2ff; text-shadow: 0 0 8px #2ef2ff; }
+#rigHud .rh-bar { position: relative; height: 9px; flex: 1; background: rgba(255, 255, 255, 0.08); }
+#rigHud .rh-bar i { position: absolute; left: 0; top: 0; bottom: 0; display: block; }
+#rigHud .rh-time { margin: 3px 0 7px; height: 4px; }
+#rigHud .rh-time i { background: linear-gradient(90deg, #2ef2ff, #ff2bd6); }
+#rigHud .rh-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+#rigHud .rh-row span { width: 54px; }
+#rigHud .rh-row em { width: 96px; text-align: right; font-style: normal; color: #fff; }
+#rigHud .rh-sh i { background: repeating-linear-gradient(60deg, #46e8ff 0 5px, #1a9cc0 5px 8px); box-shadow: 0 0 8px #46e8ff; }
+#rigHud .rh-pu i { background: linear-gradient(90deg, #6a0e5a, #ff2bd6, #ffffff); }
+#rigHud.full .rh-pu i { animation: rigpulse 0.12s steps(2) infinite; }
+#rigHud.full .rh-pu em { color: #ff2bd6; }
+#rigHud.nosh .rh-sh { opacity: 0.35; }
+#rigHud .rh-ab { display: flex; justify-content: space-between; margin-top: 7px; }
+#rigHud .rh-ab > div { opacity: 0.5; }
+#rigHud .rh-ab > div.ready { opacity: 1; color: #2ef2ff; }
+#rigHud .rh-ab em { font-style: normal; color: #fff; }
+#rigHud kbd { display: inline-block; padding: 0 4px; border: 1px solid currentColor; font-family: inherit; }
+#rigHud.low .rh-t { color: #ff3030; animation: rigpulse 0.5s steps(2) infinite; }
+#rigHud.shhit { animation: righit 0.25s; }
+#rigHud.blockhit { animation: rigblock 0.25s; }
+@keyframes rigpulse { 50% { opacity: 0.45; } }
+@keyframes righit { 0% { box-shadow: inset 0 0 0 3px #ffffff, inset 0 0 26px #46e8ff; } }
+@keyframes rigblock { 0% { box-shadow: inset 0 0 0 3px #ff2bd6, inset 0 0 26px #ff2bd6; } }
+body.rigging #hotbar, body.rigging #ammo, body.rigging #streak { opacity: 0.25; }
+body.rigging #speed { bottom: 222px; }
+body.replaying #rigHud, body.replaying #rigTint, body.replaying #rigHex, body.replaying #rigHacked { visibility: hidden; }
+#rigTint { position: absolute; inset: 0; pointer-events: none; opacity: 0; mix-blend-mode: screen;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(255, 43, 214, 0.22) 76%, rgba(255, 43, 214, 0.48) 100%),
+    linear-gradient(90deg, rgba(255, 43, 214, 0.26), transparent 16%, transparent 84%, rgba(46, 242, 255, 0.26)),
+    repeating-linear-gradient(0deg, rgba(46, 242, 255, 0.06) 0 2px, transparent 2px 5px); }
+#rigHex { position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='30' height='52'><path d='M15 1 L29 9 L29 25 L15 33 L1 25 L1 9 Z M15 33 L15 51' fill='none' stroke='%2346e8ff' stroke-width='2'/></svg>");
+  -webkit-mask-image: radial-gradient(ellipse at center, transparent 30%, #000 80%); mask-image: radial-gradient(ellipse at center, transparent 30%, #000 80%); }
+#rigHex.on { animation: righex 0.4s ease-out; }
+@keyframes righex { 0% { opacity: 0.9; } 100% { opacity: 0; } }
+#rigHacked { display: none; position: absolute; inset: 0; pointer-events: none; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 17vh; box-sizing: border-box;
+  font-family: 'Courier New', monospace; color: #ff2bd6; text-shadow: 3px 0 #2ef2ff, -3px 0 #ff2bd6;
+  background: repeating-linear-gradient(0deg, rgba(255, 43, 214, 0.09) 0 3px, transparent 3px 10px), linear-gradient(90deg, rgba(46, 242, 255, 0.2), transparent 24%, transparent 76%, rgba(255, 43, 214, 0.2));
+  animation: righack 0.2s steps(3) infinite; }
+#rigHacked b { font-size: 46px; letter-spacing: 8px; }
+#rigHacked span { font-size: 16px; font-weight: bold; color: #fff; }
+@keyframes righack { 33% { transform: translateX(4px); filter: hue-rotate(50deg); } 66% { transform: translateX(-3px) skewX(3deg); } }
+
 /* character customizer */
 #charSlot #preview { height: 260px; }
 .swatch { width: 26px; height: 26px; border: 2px solid #222; cursor: pointer; padding: 0; }
