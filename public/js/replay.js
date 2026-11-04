@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { G } from './ctx.js';
 import { Remote } from './remote.js';
-import { buildProjectile, tipColor, M } from './models.js';
+import { buildProjectile, tipColor, teamLook, M } from './models.js';
 import { fx } from './fx.js';
 import { marbles } from './marbles.js';
 import { sfx } from './audio.js';
@@ -14,6 +14,7 @@ import { courtReplay } from './scales.js';
 import { replayNoScope } from './noscope.js';
 import { WEAPONS } from '/shared/weapons.js';
 import { wreckFx, wreckDied } from './wreck.js';
+import { TEAMS, GAMES } from '/shared/modes.js';
 import { raycast } from '/shared/physics.js';
 import { BOXES } from '/shared/map.js';
 import { soapBubble, soapFlail } from './models.js';
@@ -51,10 +52,17 @@ export function playClip(clip, opts = {}) {
   stopReplay(true);
   if (!clip || !Array.isArray(clip.frames) || clip.frames.length < 3) { if (opts.onEnd) opts.onEnd(); return false; }
   const ghosts = new Map();
+  const tg = GAMES[G.round && G.round.game] && GAMES[G.round.game].teams;
   for (const [k, inf] of Object.entries(clip.info || {})) {
     const id = Number(k);
     const i = inf || {};
-    const g = new Remote(id, i.level ? `${i.name} [${i.level}]` : (i.name || '???'), i.color || '#ffffff', i.skins || {}, !!i.bot, i.look || null);
+    // team colour beats clothes on ghosts too (clips without a team field: a team colour means a team, in a team game)
+    const team = i.team ?? (tg && Object.values(TEAMS).some((t) => t.color === i.color) ? 1 : 0);
+    const g = new Remote(id, i.level ? `${i.name} [${i.level}]` : (i.name || '???'), i.color || '#ffffff', i.skins || {}, !!i.bot, i.look || null, team);
+    // katana length at the start of the clip: what it was before its first recorded change (was: our own recording
+    // knows; a growth is one more than before), else what it was when clipped
+    const k0 = (clip.ev || []).find((e) => e.m && e.m.t === 'kat' && e.m.id === id);
+    g.katN = k0 && k0.m.was != null ? k0.m.was : k0 && k0.m.n > 0 ? k0.m.n - 1 : (i.kat || 0);
     g.ghost = true;
     g.setGrapple(i.grap);
     if (id === opts.focus) g.tag.visible = false;
@@ -137,10 +145,11 @@ function applyEv(m) {
     const v = st.ghosts.get(m.v);
     if (v) {
       const vi = info[m.v] || {};
-      const replaced = m.fx && m.fx !== 'none' && playKillFx(m.fx, { pos: v.pos.slice(), vel: m.vel || v.vel, yaw: v.yaw, color: v.color, look: vi.look, name: vi.name });
+      const replaced = m.fx && m.fx !== 'none' && playKillFx(m.fx, { pos: v.pos.slice(), vel: m.vel || v.vel, yaw: v.yaw, color: v.color, look: teamLook(vi.look, v.team), name: vi.name });
       wreckDied(v, m.vel); // they died as a wrecking ball: it bursts open
       if (replaced) v.ch.root.visible = false; else v.breakApart(m.vel || v.vel);
       v.alive = false; v.downAt = 0; // now they're down
+      v.iceUntil = 0;
     }
     if (st.opts.onKill) st.opts.onKill(m);
     if (m.k === st.opts.focus) sfx.kill();
@@ -152,6 +161,13 @@ function applyEv(m) {
     fx.blast(m.p, WEAPONS.duck.blastR); sfx.holePop(m.p);
   } else if (m.t === 'ns') { // no-scope headshot: the fireworks again, on a faster fuse
     replayNoScope(m, (info[m.k] || {}).name);
+  } else if (m.t === 'kat') {
+    if (g) g.setKat(m.n);
+  } else if (m.t === 'freeze') {
+    if (g) g.iceUntil = st.t + m.dur; // on the replay clock, which runs slow at the good bits
+  } else if (m.t === 'fx' && m.k === 'shatter') {
+    fx.spray(m.p, 70, [0xffffff, 0xbfe8ff, 0x7fd0ff], 11, 1.4, 0.2, 14, 0.5); sfx.crunch(m.p);
+    if (g) g.iceUntil = 0;
   }
 }
 
@@ -285,7 +301,7 @@ export function updateReplay(dt, now, cam) {
   // ghosts size themselves by distance to the camera: measure from the replay camera, not wherever you are
   if (!st.first) { cam.position.copy(camPos); cam.lookAt(camLook); cam.updateMatrixWorld(); }
   while (st.ei < st.clip.ev.length && st.clip.ev[st.ei].s <= st.t) { try { applyEv(st.clip.ev[st.ei].m); } catch (e) { console.warn('replay ev', e); } st.ei++; }
-  for (const g of st.ghosts.values()) g.update(st.t, dt * sp, now);
+  for (const g of st.ghosts.values()) { g.frozenUntil = st.t < (g.iceUntil || 0) ? now + 1000 : 0; g.update(st.t, dt * sp, now); }
   stepTrapGhosts(st.t);
   updateProjs(st.t, dt * sp);
   updateCam(dt, cam);

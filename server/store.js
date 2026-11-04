@@ -42,7 +42,7 @@ class FileStore {
   }
   save() {
     if (this.timer) return;
-    this.timer = setTimeout(() => { this.timer = null; this.flushNow(); }, 800);
+    this.timer = setTimeout(() => { this.timer = null; try { this.flushNow(); } catch (e) { console.error('db save failed', e.message); } }, 800);
   }
   async secret() { return this.db.secret; }
   async get(nameLower) { return this.db.users[nameLower] || null; }

@@ -42,7 +42,7 @@ export const WEAPONS = {
   },
   sniper: {
     slot: 'primary', kind: 'hitscan', name: 'Sniper', color: '#ff4fd8',
-    desc: 'Right click to scope. A headshot ends them. Hipfire is a gamble.',
+    desc: 'Right click to scope. A headshot always kills. Hipfire is a gamble.',
     rate: 1 / 1.1, mag: 5, reload: 2.2, dmg: 55, head: 2, spread: 0.05,
     kb: 0, kbUp: 0, recoil: 12, kick: 0.06, range: 500, tracer: 0xff4fd8, thick: 0.09,
     ads: { zoom: 4, spread: 0, scope: true, p: [0, -0.1, -0.25] },
@@ -75,8 +75,8 @@ export const WEAPONS = {
   // ------------------------------------------------------------ secondary
   revolver: {
     slot: 'secondary', kind: 'hitscan', name: 'Revolver', color: '#e0c070',
-    desc: '6 shots, twirled round your finger after each one. Tap for a dead-accurate shot, hold to fan the hammer: the rest goes in a second, wild and a bit weaker. Ricochets off walls twice. Headshots basically kill.',
-    rate: 1 / 0.4, mag: 6, reload: 2.0, dmg: 40, head: 2.5, spread: 0.003,
+    desc: '6 shots, twirled round your finger after each one. Tap for a dead-accurate shot, hold to fan the hammer: the rest goes in a second, wild and a bit weaker. Ricochets off walls twice. A headshot does 96: almost a kill.',
+    rate: 1 / 0.4, mag: 6, reload: 2.0, dmg: 40, head: 2.4, spread: 0.003,
     kb: 0, kbUp: 0, recoil: 3, kick: 0.07, range: 250, ricochet: 2, tracer: 0xffd060,
     // hold fire to fan the hammer: after `hold` s the rest of the cylinder goes at `rate`/s, `dmg` a shot, way more spread,
     // `kick` x the aim kick and recoil. the server enforces the rate, the damage and 6 shots per reload
@@ -235,10 +235,12 @@ export const ITEMS = {
 };
 export const ITEM_ORDER = ['frag', 'medkit', 'bubble', 'duck', 'smoke', 'popper', 'reverse', 'wand'];
 
+// a real key of the table (client data: no '__proto__', no arrays)
+const has = (T, k) => typeof k === 'string' && Object.hasOwn(T, k);
 export function validLoadout(lo) {
   const out = { ...DEFAULT_LOADOUT };
-  if (lo) for (const s of SLOTS) if (WEAPONS[lo[s]] && WEAPONS[lo[s]].slot === s) out[s] = lo[s];
-  if (lo && Object.hasOwn(ITEMS, lo.item)) out.item = lo.item;
+  if (lo) for (const s of SLOTS) if (has(WEAPONS, lo[s]) && WEAPONS[lo[s]].slot === s) out[s] = lo[s];
+  if (lo && has(ITEMS, lo.item)) out.item = lo.item;
   out.streaks = validStreaks(lo && lo.streaks);
   return out;
 }
@@ -286,7 +288,7 @@ export const PARRY = { win: 0.35, perfect: 0.15, cd: 0.8, slack: 0.05, arc: 140,
 
 // your 3 killstreaks, cheapest first (keys 5 / 6 / 7)
 export function validStreaks(list) {
-  const ok = Array.isArray(list) ? [...new Set(list.filter((id) => STREAKS[id]))] : [];
+  const ok = Array.isArray(list) ? [...new Set(list.filter((id) => has(STREAKS, id)))] : [];
   const out = ok.slice(0, 3);
   for (const id of DEFAULT_LOADOUT.streaks) if (out.length < 3 && !out.includes(id)) out.push(id);
   for (const id of Object.keys(STREAKS)) if (out.length < 3 && !out.includes(id)) out.push(id);

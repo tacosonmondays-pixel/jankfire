@@ -56,18 +56,19 @@ export function achievementsFrom(stats) {
   return out;
 }
 
+const has = (T, k) => typeof k === 'string' && Object.hasOwn(T, k); // client data: real keys only
 // anything you haven't unlocked falls back to none
 export function validLook(look, achs) {
   const out = { ...DEFAULT_LOOK };
   if (!look || typeof look !== 'object') return out;
   if (LOOK_COLORS.includes(look.color)) out.color = look.color;
   for (const s of LOOK_SLOTS) {
-    const a = ACCESSORIES[s][look[s]];
+    const a = has(ACCESSORIES[s], look[s]) && ACCESSORIES[s][look[s]];
     if (a && hasAcc(a, achs)) out[s] = look[s];
   }
-  if (HAIRS[look.hair]) out.hair = look.hair;
-  if (TOPS[look.top]) out.top = look.top;
-  if (BOTTOMS[look.bottom]) out.bottom = look.bottom;
+  if (has(HAIRS, look.hair)) out.hair = look.hair;
+  if (has(TOPS, look.top)) out.top = look.top;
+  if (has(BOTTOMS, look.bottom)) out.bottom = look.bottom;
   for (const [k, list] of Object.entries(OUTFIT)) if (list.includes(look[k])) out[k] = look[k];
   return out;
 }

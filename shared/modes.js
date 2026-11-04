@@ -25,6 +25,13 @@ export function siteAt(map, p) {
   }
   return null;
 }
+// can someone standing at pos defuse a bomb at bp? a cylinder, not a ball: a bomb planted on a prop (up to 4 m above
+// the site, see siteAt) can still be defused from the floor under it. it only reaches up: standing on a roof you can't
+// defuse a bomb on the floor beneath it. slack: the extra room you get while holding F
+export function canDefuse(pos, bp, slack = 0) {
+  const dy = bp[1] - pos[1];
+  return Math.hypot(pos[0] - bp[0], pos[2] - bp[2]) < BOMB.defuseRange + slack && dy < 4.6 + slack && dy > -1.6 - slack;
+}
 export function mapsFor(game, maps, order) {
   return order.filter((id) => id !== 'range' && maps[id] && (!GAMES[game].sites || (maps[id].sites && maps[id].sites.length)));
 }

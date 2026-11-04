@@ -7,7 +7,7 @@ import { stepProjectile, raycast } from '/shared/physics.js';
 import { duckFrame, duckStuck } from './duck.js';
 import { G } from './ctx.js';
 import { initWorld, renderFrame, setJank, updateWorld, loadMap } from './world.js';
-import { loadTripoModels, buildProjectile, buildPeel, buildHole, makeShadow, tipColor, buildCharacter, M } from './models.js';
+import { loadTripoModels, buildProjectile, buildPeel, buildHole, makeShadow, tipColor, buildCharacter, teamLook, M } from './models.js';
 import { net } from './net.js';
 import { hud } from './hud.js';
 import { fx, makeBeam, setBeam, scaleU } from './fx.js';
@@ -15,9 +15,9 @@ import { marbles } from './marbles.js';
 import { initAudio, sfx, setVolume, setListener, stopLoops } from './audio.js';
 import { ME, stepPlayer, tryHook, releaseHook, applyKb, slip, eye, hookPoint, hspeed, crouchTap } from './player.js';
 import {
-  W, initWeapons, rebuildViewmodels, rebuildOne, setLoadout, refillAmmo, switchSlot, lastSlot, cycleSlot, reload,
+  W, initWeapons, rebuildOne, setLoadout, refillAmmo, switchSlot, lastSlot, cycleSlot, reload,
   fireDown, fireUp, updateWeapons, muzzleWorld, onSlipperBack, inspect, grantScythe, loseScythe, toggleScythe, cycleCard, heavyAttack,
-  useItem, syncItem, resetItems, setMyKatana,
+  useItem, syncItem, resetItems, setItem, showSlots, setMyKatana,
 } from './weapons.js';
 import { Remote, updateGibs } from './remote.js';
 import { stepSoap, trapStart, trapEnd, updateWand, stuckInBubble } from './wand.js';
@@ -32,7 +32,7 @@ import { makeRope, setRope, setRopeSkin, myGrapple, initGrapplePreview, grappleT
 import { updateSpeedLines } from './speedlines.js';
 import { slipperUpdate, slipperStep } from './slipper.js';
 import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse } from './objective.js';
-import { GAMES, GAME_ORDER, TEAMS } from '/shared/modes.js';
+import { GAMES, GAME_ORDER, TEAMS, mapsFor } from '/shared/modes.js';
 import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
 import { EPIC_CAM, epicMul, epicCamMs } from '/shared/epic.js';
@@ -105,8 +105,7 @@ G.scene.add(myRope);
 loadTripoModels().then((n) => {
   if (!n) return;
   console.log(`loaded ${n} tripo models`);
-  rebuildViewmodels();
-  setLoadout(G.settings.loadout);
+  rebuildOne(); // visuals only: a randomizer or pending loadout stays as it is
   for (const r of G.remotes.values()) r.build();
   $('status').textContent = `${n} Tripo model(s) loaded`;
 });
@@ -122,7 +121,8 @@ function show(id) {
   if (id === 'character') { $('charSlot').append($('preview')); buildCharacterUI(); setTimeout(resizePreview, 0); }
   if (id === 'namecard') cardEditor.open();
   if (id === 'crates') renderCrates();
-  if (id === 'loadout') buildLoadoutUI();
+  if (id === 'loadout') { if ($('loNote').textContent === DRAFT_NOTE) $('loNote').textContent = ''; streakDraft = null; buildLoadoutUI(); }
+  if (id === 'settings') syncDisplay();
   if (id === 'match') syncMatchUI();
   if (id === 'profile') { renderProfile(); restore().then((me) => { if (me && screen === 'profile') { renderProfile(); renderAcctBar(); } }); }
   if (id === 'leaders') renderLeaders();
@@ -155,7 +155,7 @@ function startMode(mode, cfg) {
   if (G.joined) quitToMenu(true);
   connecting = true;
   $('status').textContent = 'connecting...';
-  net.connect({ name: G.settings.name, mode, skins: G.equipped, look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), grap: myGrapple(), kc: G.settings.killcam !== false, item: S.loadout.item, streaks: validStreaks(S.loadout.streaks), cfg, token: account.loggedIn ? account.token : undefined }, () => {
+  net.connect({ name: G.settings.name, mode, skins: G.equipped, look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), grap: myGrapple(), kc: G.settings.killcam !== false, streaks: validStreaks(S.loadout.streaks), item: S.loadout.item, cfg, token: account.loggedIn ? account.token : undefined }, () => {
     connecting = false;
     resetWorldState();
     show('main');
@@ -174,7 +174,7 @@ function resetWorldState() {
   for (const r of G.remotes.values()) r.dispose();
   G.remotes.clear(); G.names.clear(); G.skins.clear();
   clearEntities();
-  for (const g of G.gibs) G.scene.remove(g.m);
+  for (const g of G.gibs) { G.scene.remove(g.m); if (g.own) g.m.geometry.dispose(); }
   G.gibs.length = 0;
   hud.dead(false);
   hud.wave(null);
@@ -185,6 +185,7 @@ function resetWorldState() {
   if (G.forcedLoadout) { G.forcedLoadout = null; setLoadout(S.loadout); }
   for (const b of G.bubbles.values()) G.scene.remove(b.mesh);
   G.bubbles.clear(); G.smokes.length = 0; ME.frozenUntil = 0; G.frost = 0;
+  resetItems(); stopUse(); G.activeStreaks = null; G.itemSent = null;
   clearRec();
   clearKillFx();
   clearSprays();
@@ -219,6 +220,7 @@ function pause() {
   $('pauseTitle').textContent = `${MODES[G.mode] ? MODES[G.mode].name.toUpperCase() : 'PAUSED'} · ${MAPS[G.cfg.map] ? MAPS[G.cfg.map].name : ''}`;
   W.held = false; W.aimHeld = false;
   for (const k in keys) keys[k] = false;
+  stopUse();
   stopLoops();
 }
 let wasLocked = false, lockedAt = 0, mouseAvg = 8;
@@ -246,8 +248,23 @@ const diffEntries = Object.entries(BOT_DIFF).map(([k, v]) => [k, v.name]);
 const gameEntries = GAME_ORDER.map((k) => [k, GAMES[k].name]);
 fillSelect($('setupGame'), gameEntries, 'dm');
 fillSelect($('cfgGame'), gameEntries, 'dm');
-$('cfgGame').addEventListener('change', () => net.send({ t: 'cfg', game: $('cfgGame').value }));
 fillSelect($('setupMap'), mapEntries, 'islands');
+// a mode that needs bomb sites only offers the maps that have them (the server quietly refuses the rest)
+const mapsOf = (game) => (GAMES[game] && GAMES[game].sites ? mapsFor(game, MAPS, MAP_ORDER) : MAP_ORDER);
+$('setupGame').addEventListener('change', () => {
+  const keep = $('setupMap').value, list = mapsOf($('setupGame').value);
+  fillSelect($('setupMap'), mapEntries.filter(([k]) => list.includes(k)), list.includes(keep) ? keep : list[0]);
+});
+$('cfgGame').addEventListener('change', () => {
+  const g = $('cfgGame').value, list = mapsOf(g);
+  if (!list.includes(G.cfg.map)) {
+    toast(`${GAMES[g].name} needs a map with bomb sites (${list.map((k) => MAPS[k].name).join(', ')}): change the map first`, 3200);
+    $('cfgGame').value = (G.round && G.round.game) || 'dm';
+    return;
+  }
+  net.send({ t: 'cfg', game: g });
+  setTimeout(() => { if (screen === 'match') syncMatchUI(); }, 1800); // show what the server actually did
+});
 fillSelect($('setupDiff'), diffEntries, 'normal');
 fillSelect($('setupHip'), hipEntries, 'normal');
 fillSelect($('cfgMap'), mapEntries);
@@ -318,7 +335,12 @@ function applyDisplay(mode) {
   if (mode !== 'fullscreen' && document.fullscreenElement) document.exitFullscreen().catch(() => {});
 }
 $('displayMode').addEventListener('change', () => { S.display = $('displayMode').value; saveSettings(); applyDisplay(S.display); });
-if (window.jf && window.jf.displayGet) window.jf.displayGet().then((m) => { if (m) { S.display = m; $('displayMode').value = m; } });
+// the desktop app knows the real mode (F11 changes it behind the page's back), so ask before showing or cycling it
+function syncDisplay() {
+  if (!(window.jf && window.jf.displayGet)) return Promise.resolve();
+  return window.jf.displayGet().then((m) => { if (DISPLAY.some(([k]) => k === m)) { S.display = m; $('displayMode').value = m; } }).catch(() => {});
+}
+syncDisplay();
 // hotbar: weapons, item and killstreaks in one bar, along the bottom or down the right side
 const applyHotbar = () => document.body.classList.toggle('hotbar-right', S.hotbar === 'right');
 fillSelect($('hotbarPos'), [['bottom', 'Bottom'], ['right', 'Right side']], S.hotbar === 'right' ? 'right' : 'bottom');
@@ -349,10 +371,10 @@ function buildLoadoutUI() {
       col.append(b);
     }
   }
-  // killstreaks: pick 3
+  // killstreaks: pick 3. click one of yours to drop it, then click the one you want in its place
   const kc = $('lo-streaks');
   kc.innerHTML = '';
-  const picks = validStreaks(S.loadout.streaks);
+  const picks = streakDraft || validStreaks(S.loadout.streaks);
   for (const [id, st] of Object.entries(STREAKS).sort((a, b) => a[1].kills - b[1].kills)) {
     const b = document.createElement('button');
     b.className = 'kpick' + (picks.includes(id) ? ' on' : '');
@@ -361,13 +383,17 @@ function buildLoadoutUI() {
     b.append(im, t);
     b.addEventListener('mouseenter', () => { $('loDesc').textContent = `${st.name} (${st.kills} kills in a row): ${st.desc}`; });
     b.addEventListener('click', () => {
-      let list = picks.slice();
-      if (list.includes(id)) { toast('you need 3 killstreaks: pick another one to swap it out'); return; }
-      list = [...list.slice(0, 2), id]; // the newest pick replaces your most expensive one
-      S.loadout.streaks = validStreaks(list);
+      // a draft under 3 picks is never saved or sent (validStreaks would pad it straight back with the defaults)
+      if (picks.includes(id)) { streakDraft = picks.filter((x) => x !== id); $('loNote').textContent = DRAFT_NOTE; buildLoadoutUI(); return; }
+      if (picks.length >= 3) { toast('click one of your killstreaks to drop it first'); return; }
+      const next = [...picks, id];
+      if (next.length < 3) { streakDraft = next; buildLoadoutUI(); return; } // still a slot to fill: nothing saved yet
+      streakDraft = null;
+      S.loadout.streaks = validStreaks(next);
       saveSettings();
-      if (G.joined) net.send({ t: 'streaks', list: S.loadout.streaks });
-      buildLoadoutUI(); renderStreak(G.streakN || 0);
+      $('loNote').textContent = '';
+      applyStreaks();
+      buildLoadoutUI();
     });
     kc.append(b);
   }
@@ -386,11 +412,38 @@ function buildLoadoutUI() {
   }
 }
 function applyLoadout(force) {
+  sendItemSel();
   if (G.forcedLoadout) { $('loNote').textContent = 'randomizer is on: you get a random loadout every life'; return; }
   const canNow = force || !G.joined || !ME.alive || performance.now() - (G.spawnT || 0) < 5000;
   if (canNow) { setLoadout(S.loadout); G.pendingLoadout = false; $('loNote').textContent = ''; }
   else { G.pendingLoadout = true; $('loNote').textContent = 'loadout switches when you respawn'; }
 }
+// the server only lets you use the item you have equipped (it switches it by the same rule as the weapons)
+function sendItemSel() {
+  const i = S.loadout.item || 'frag';
+  if (!G.joined || i === G.itemSent) return;
+  G.itemSent = i;
+  net.send({ t: 'itemsel', i });
+}
+// killstreak picks: the server switches them now, or from your next life while you have a streak going
+let streakDraft = null;
+const DRAFT_NOTE = 'pick a killstreak for each empty slot', NEXT_NOTE = 'killstreak picks apply next life (you have a streak going)';
+const activeStreaks = () => G.activeStreaks || validStreaks(S.loadout.streaks);
+function applyStreaks() {
+  const list = validStreaks(S.loadout.streaks);
+  if (G.joined) net.send({ t: 'streaks', list });
+  if (G.joined && (G.streakN || 0) > 0) { $('loNote').textContent = NEXT_NOTE; toast('killstreak picks apply next life'); }
+  else G.activeStreaks = list;
+  renderStreak(G.streakN || 0);
+}
+// the server's word on which picks count this life (a kill still in flight when you changed them makes it wait)
+net.on('streaks', (m) => {
+  if (!Array.isArray(m.list)) return;
+  G.activeStreaks = validStreaks(m.list);
+  if (m.pending) $('loNote').textContent = NEXT_NOTE;
+  else if ($('loNote').textContent === NEXT_NOTE) $('loNote').textContent = '';
+  renderStreak(G.streakN || 0);
+});
 
 // ------------------------------------------------------------ cosmetics screen
 G.cosSel = S.loadout.primary;
@@ -410,7 +463,7 @@ function storeSkin(id, skin) {
 // wrap / hat / effect on EVERY weapon at once (each weapon keeps its own model)
 function setPartAll(idx, value) {
   for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[idx] = value; storeSkin(id, sk); }
-  saveSettings(); recomputeEquipped(); sendSkins(); rebuildViewmodels(); setLoadout(S.loadout);
+  saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne(); // visuals only: keeps a randomizer or pending loadout
 }
 const allMode = () => S.skinAll !== false;
 function setSkin(id, skin) {
@@ -642,21 +695,21 @@ $('skRandom').addEventListener('click', () => {
   if (allMode()) {
     const parts = ['finish', 'hat', 'effect'].map(pick);
     for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = parts[0]; sk[1] = parts[1]; sk[2] = parts[2]; storeSkin(id, sk); }
-    saveSettings(); recomputeEquipped(); sendSkins(); rebuildViewmodels(); setLoadout(S.loadout);
+    saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne();
   } else setSkin(G.cosSel, TYPES.map(pick));
   buildCosmeticsUI();
 });
 $('skReset').addEventListener('click', () => {
   if (allMode()) {
     for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = 'default'; sk[1] = 'none'; sk[2] = 'none'; storeSkin(id, sk); }
-    saveSettings(); recomputeEquipped(); sendSkins(); rebuildViewmodels(); setLoadout(S.loadout);
+    saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne();
   } else setSkin(G.cosSel, DEFAULT_SKIN.slice());
   buildCosmeticsUI();
 });
 $('skAll').addEventListener('click', () => { // copy this weapon's wrap/hat/effect to everything (models stay)
   const sk = validSkin(S.skins[G.cosSel]);
   for (const id of skinnable()) { const s2 = validSkin(S.skins[id]).slice(); s2[0] = sk[0]; s2[1] = sk[1]; s2[2] = sk[2]; storeSkin(id, s2); }
-  saveSettings(); recomputeEquipped(); sendSkins(); rebuildViewmodels(); setLoadout(S.loadout); buildCosmeticsUI();
+  saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne(); buildCosmeticsUI();
 });
 $('skAllMode').addEventListener('change', () => { S.skinAll = $('skAllMode').checked; saveSettings(); buildCosmeticsUI(); });
 
@@ -732,7 +785,7 @@ addEventListener('keydown', (e) => {
   if (/^(KeyE|KeyG|KeyV|KeyC|KeyZ|ControlLeft|ControlRight|Digit[567])$/.test(e.code) && stuckInBubble(true)) { keys[e.code] = true; return; } // sealed in a soap bubble: no grapple, items, dash, t-bag, sprays or streaks
   if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) jumpPressed = true; }
   if (e.code === 'KeyE' && !e.repeat) { if (S.swapAim) aimDown(); else tryHook(); }
-  if (G.vote && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) { castVote(Number(e.code.slice(5)) - 1); return; }
+  if (G.vote && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) { if (!e.repeat) castVote(Number(e.code.slice(5)) - 1); return; }
   if (e.code === 'Digit1') switchSlot(0);
   if (e.code === 'Digit2') switchSlot(1);
   if (e.code === 'Digit3') switchSlot(2);
@@ -790,7 +843,7 @@ addEventListener('mousemove', (e) => {
   ME.yaw -= mx * s;
   ME.pitch = Math.max(-1.55, Math.min(1.55, ME.pitch - my * s));
 });
-addEventListener('blur', () => { for (const k in keys) keys[k] = false; W.held = false; W.aimHeld = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; W.held = false; W.aimHeld = false; stopUse(); }); // the F keyup never comes
 addEventListener('resize', resizePreview);
 
 function renderScores() {
@@ -868,19 +921,24 @@ net.on('welcome', (m) => {
   for (const pl of m.peels) addPeel(pl);
   for (const pr of m.projs) spawnProj(pr);
   for (const h of m.holes || []) addHole(h);
+  for (const b of m.bubbles || []) addBubble(b); // domes and smoke that are already up when you join
+  for (const s2 of m.smokes || []) if (Array.isArray(s2)) G.smokes.push({ p: s2.slice(0, 3), r: ITEMS.smoke.r, until: performance.now() + (s2[3] || 0) });
   hud.wave(m.wave);
   renderRound(m.round);
   $('roundEnd').classList.add('hidden');
   G.round = m.round; G.myTeam = m.team || 0;
-  G.pocket = []; G.streakN = 0; renderStreak(0);
+  G.pocket = []; G.streakN = 0; G.activeStreaks = validStreaks(S.loadout.streaks); renderStreak(0);
   G.kat.clear(); setMyKatana(0);
   for (const [id, n] of m.kat || []) G.kat.set(id, n);
   setupObjectives(m.cfg.map);
   clearTags();
   for (const g of m.tags || []) addTag(g.id, g.p, g.team);
-  showVote(m.vote);
+  openVote(m.vote);
   refillAmmo();
+  resetItems(); // a fresh player on the server: welcome.ic has its real charges
+  G.itemSent = null;
   applyLoadout(true);
+  if (m.ic) onIc(m.ic);
   updateLabel();
   $('status').textContent = '';
   const tips = {
@@ -896,7 +954,7 @@ net.on('welcome', (m) => {
 net.on('cfg', (m) => {
   const mapChanged = m.cfg.map !== G.cfg.map;
   G.cfg = m.cfg;
-  if (mapChanged) { loadMap(m.cfg.map); clearEntities(); setupObjectives(m.cfg.map); }
+  if (mapChanged) { loadMap(m.cfg.map); clearEntities(); setupObjectives(m.cfg.map); G.smokes.length = 0; } // the server drops its smokes too
   if (mapChanged) clearSprays(); // sprays belong to the map they were painted on
   updateLabel();
   if (screen === 'match') syncMatchUI();
@@ -955,8 +1013,7 @@ net.on('sn', (m) => {
     let r = G.remotes.get(id);
     if (!r) {
       const n = G.names.get(id) || { name: '???', color: '#ffffff' };
-      r = new Remote(id, n.level ? `${n.name} [${n.level}]` : n.name, n.color, G.skins.get(id) || {}, n.bot, n.look);
-      r.team = n.team || 0;
+      r = new Remote(id, n.level ? `${n.name} [${n.level}]` : n.name, n.color, G.skins.get(id) || {}, n.bot, n.look, n.team || 0);
       r.katN = G.kat.get(id) || 0;
       r.setGrapple(n.grap);
       G.remotes.set(id, r);
@@ -975,10 +1032,11 @@ net.on('teams', (m) => {
     const n = G.names.get(id);
     if (n) { n.team = team; n.color = color; }
     const r = G.remotes.get(id);
-    if (r) { r.team = team; if (r.color !== color) r.setLook(r.outfit, color); }
+    if (r) { const was = !!r.team; r.team = team; if (r.color !== color || was !== !!team) r.setLook(r.outfit, color); } // team colour beats clothes
   }
   if (G.round) G.round.game = m.game;
   updateLabel();
+  if (screen === 'match') syncMatchUI();
   if (GAMES[m.game] && GAMES[m.game].teams && G.myTeam) hud.msg(`YOU ARE ${TEAMS[G.myTeam].name}`, 2, 'brag');
 });
 net.on('tag+', (m) => addTag(m.id, m.p, m.team));
@@ -1005,10 +1063,17 @@ net.on('bombev', (m) => {
   }
 });
 // ------------------------------------------------------------ items: charges, bubbles, smoke, frost
-net.on('ic', (m) => syncItem(m.i, m.n, m.next));
+// item charges: the server's count is the real one, and so is the item it says you have
+function onIc(m) {
+  if (!m || !Object.hasOwn(ITEMS, m.i)) return;
+  syncItem(m.i, m.n, m.next);
+  if (m.i !== W.item) { setItem(m.i); showSlots(); }
+}
+net.on('ic', onIc);
 // the katana grows: everyone sees how long yours is
 G.kat = new Map();
 net.on('kat', (m) => {
+  recordEv({ ...m, was: G.kat.get(m.id) || 0 }); // killcam ghosts start with the length before this change
   G.kat.set(m.id, m.n);
   if (m.id === G.myId) { setMyKatana(m.n); if (m.n) hud.msg(`KATANA GROWS · ${m.n} kill${m.n > 1 ? 's' : ''}`, 1.3, 'brag'); return; }
   const r = G.remotes.get(m.id); if (r) r.setKat(m.n);
@@ -1027,10 +1092,11 @@ net.on('bubx', (m) => { const b = G.bubbles.get(m.id); if (b) { G.scene.remove(b
 G.smokes = [];
 net.on('smoke', (m) => { G.smokes.push({ p: m.p, r: m.r, until: performance.now() + m.dur }); sfx.blow(m.p); });
 net.on('frost', (m) => {
-  if (m.id === G.myId) { G.frost = m.n; hud.msg(`${'❄'.repeat(m.n)} FROSTY`, 0.8); }
+  if (m.id === G.myId) { G.frost = m.n; G.frostT = performance.now(); hud.msg(`${'❄'.repeat(m.n)} FROSTY`, 0.8); }
   const r = G.remotes.get(m.id); if (r) fx.spray([r.pos[0], r.pos[1] + 1.2, r.pos[2]], 10, [0xffffff, 0xbfe8ff], 3, 0.6, 0.1, 2, 1);
 });
 net.on('freeze', (m) => {
+  recordEv(m);
   if (m.id === G.myId) { ME.frozenUntil = performance.now() + m.dur; G.frost = 0; releaseHook(); hud.msg('FROZEN SOLID', m.dur / 1000, 'slip'); sfx.ting(); }
   const r = G.remotes.get(m.id); if (r) { r.frozenUntil = performance.now() + m.dur; sfx.ting(r.pos); }
 });
@@ -1044,7 +1110,8 @@ function startUse() {
   stopUse();
   G.using = true;
   net.send({ t: 'use' });
-  useTimer = setInterval(() => { if (!G.using || !ME.alive) { stopUse(); return; } net.send({ t: 'use' }); }, 200);
+  // F has to still be down: blur, pause and chat clear the keys, so a lost keyup can't root you in place
+  useTimer = setInterval(() => { if (!G.using || !ME.alive || !keys.KeyF) { stopUse(); return; } net.send({ t: 'use' }); }, 200);
 }
 function stopUse() { clearInterval(useTimer); useTimer = 0; G.using = false; }
 // vote for the next match: press 1 / 2 / 3
@@ -1054,7 +1121,6 @@ function showVote(v) {
   G.vote = v;
   if (!v) { panel.classList.add('hidden'); myVote = -1; return; }
   panel.classList.remove('hidden');
-  G.voteEnds = performance.now() + (v.left || 0);
   const box = $('voteOpts');
   box.innerHTML = '';
   v.options.forEach((o, i) => {
@@ -1068,13 +1134,14 @@ function showVote(v) {
   });
 }
 function castVote(i) { if (!G.vote || i >= G.vote.options.length) return; myVote = i; net.send({ t: 'vote', i }); showVote(G.vote); sfx.click(); }
-net.on('vote', (m) => { myVote = -1; showVote(m); });
+function openVote(v) { myVote = -1; if (v) G.voteEnds = performance.now() + (v.left || 0); showVote(v); } // the countdown starts here, not on every re-render
+net.on('vote', (m) => openVote(m));
 net.on('votes', (m) => { if (G.vote) { G.vote.counts = m.counts; showVote(G.vote); } });
 
 // randomizer mode: the server hands you a loadout each life (null = use your own again)
 net.on('loadout', (m) => {
-  G.forcedLoadout = m.lo || null;
-  setLoadout(m.lo || S.loadout);
+  G.forcedLoadout = m.lo ? { ...m.lo, item: S.loadout.item } : null; // weapons only: you keep your own item
+  setLoadout(G.forcedLoadout || S.loadout);
   refillAmmo();
   if (m.lo) hud.msg(`${wname(m.lo.primary)} · ${wname(m.lo.secondary)} · ${wname(m.lo.melee)}${ITEMS[m.lo.item] ? ' · ' + ITEMS[m.lo.item].name : ''}`, 2.2, 'brag');
 });
@@ -1120,10 +1187,11 @@ net.on('kill', (m) => {
   if (victim) {
     victim.reverseUntil = 0; // the server ends their reverse card on death too
     const vi = G.names.get(m.v) || {};
-    const replaced = kfx && playKillFx(kfx, { pos: victim.pos.slice(), vel: m.vel || victim.vel, yaw: victim.yaw, color: victim.color, look: vi.look, name: vi.name });
+    const replaced = kfx && playKillFx(kfx, { pos: victim.pos.slice(), vel: m.vel || victim.vel, yaw: victim.yaw, color: victim.color, look: teamLook(vi.look, vi.team), name: vi.name });
     if (replaced) victim.ch.root.visible = false; else victim.breakApart(m.vel || victim.vel);
     wreckDied(victim, m.vel); // they died as a wrecking ball: it bursts open
-  } else if (m.v === G.myId && kfx) playKillFx(kfx, { pos: ME.pos.slice(), vel: m.vel || ME.vel, yaw: ME.yaw, color: G.myColor, look: validLook(G.settings.look, myAchs()), name: G.myName });
+    victim.frozenUntil = 0;
+  } else if (m.v === G.myId && kfx) playKillFx(kfx, { pos: ME.pos.slice(), vel: m.vel || ME.vel, yaw: ME.yaw, color: G.myColor, look: teamLook(validLook(G.settings.look, myAchs()), G.myTeam), name: G.myName });
   const dummy = victim && victim.bot && victim.name === 'Dummy';
   let parts;
   if (m.w === 'void') {
@@ -1147,6 +1215,8 @@ net.on('kill', (m) => {
     W.held = false; W.aimHeld = false;
     stopLoops();
     G.deadAt = performance.now();
+    G.respawnMs = m.rs ?? 2500; // the mode's respawn delay (Plant & Defuse is longer)
+    G.frost = 0; ME.frozenUntil = 0; // shattered: no ice overlay on the death screen
     sfx.death();
     deathCard(m.k && m.k !== G.myId ? m.k : 0, via);
     if (m.k && m.k !== G.myId && S.killcam !== false && G.mode !== 'training') queueKillcam(m.k, via);
@@ -1157,6 +1227,8 @@ net.on('kill', (m) => {
     } else hud.dead(true, [[m.w === 'void' ? 'you fell into the void' : m.w === 'tbag' ? 'you t-bagged too hard. your knees exploded.' : 'you smoked too much', '#fff']]);
   }
   if (m.k === G.myId && m.v !== G.myId) {
+    G.streakN = (G.streakN || 0) + 1; // the server counts every kill too, but only tells you at your picks
+    renderStreak(G.streakN);
     sfx.kill();
     hud.msg(dummy ? 'dummy down' : `killed ${vn}`, 1.4, 'brag');
   }
@@ -1164,7 +1236,7 @@ net.on('kill', (m) => {
 });
 net.on('spawn', (m) => {
   endKillcam();
-  resetItems(); ME.frozenUntil = 0; G.frost = 0;
+  ME.frozenUntil = 0; G.frost = 0; // item charges come from the server's 'ic' (a new round doesn't refill them)
   ME.pos = m.p.slice(); ME.vel = [0, 0, 0]; ME.alive = true; ME.hp = 100; ME.seq = m.q;
   ME.slipUntil = 0; ME.combo = 0; ME.sleepUntil = 0;
   G.spawnT = performance.now();
@@ -1252,7 +1324,7 @@ net.on('he', (m) => {
   G.shake = Math.max(G.shake, Math.max(0, 1 - d / 25));
 });
 net.on('fx', (m) => {
-  if (m.k === 'shot' || m.k === 'swing' || m.k === 'tbag') recordEv(m);
+  if (m.k === 'shot' || m.k === 'swing' || m.k === 'tbag' || m.k === 'shatter') recordEv(m);
   const r = G.remotes.get(m.id);
   if (m.k === 'shot') {
     const w = WEAPONS[m.w];
@@ -1360,7 +1432,7 @@ function frame(t) {
 
   if (G.joined) {
     const frozen = now < (ME.frozenUntil || 0);
-    if (frozen) { ME.vel[0] = 0; ME.vel[2] = 0; }
+    if (frozen) { ME.vel[0] = 0; ME.vel[2] = 0; if (ME.hook) releaseHook(); }
     const playing = $('menu').classList.contains('hidden') && !chatOpen && now >= (ME.sleepUntil || 0) && !RP.active && !G.using && !frozen;
     const inp = playing ? {
       f: keys.KeyW, b: keys.KeyS, l: keys.KeyA, r: keys.KeyD, jump: keys.Space, jumpPressed,
@@ -1407,7 +1479,7 @@ function frame(t) {
     }
     pingT -= dt;
     if (pingT <= 0) { pingT = 2; net.send({ t: 'pi', c: performance.now() }); }
-    if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = epicKC ? 'killcam... too epic to skip' : 'killcam... (space to skip)'; else if (epicHold) epicTimer(now); else hud.deadTimer(Math.max(0, 2.5 - (now - (G.deadAt || now)) / 1000)); }
+    if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = epicKC ? 'killcam... too epic to skip' : 'killcam... (space to skip)'; else if (epicHold) epicTimer(now); else hud.deadTimer(Math.max(0, ((G.respawnMs ?? 2500) - (now - (G.deadAt || now))) / 1000)); }
   }
 
   const rt = now + G.offset - INTERP_MS;
@@ -1424,7 +1496,9 @@ function frame(t) {
     if (now > s2.until) { G.smokes.splice(i, 1); continue; }
     for (let k = 0; k < 11; k++) { const a = Math.random() * 6.28, rr = Math.sqrt(Math.random()) * s2.r; fx.smoke([s2.p[0] + Math.cos(a) * rr, s2.p[1] + Math.random() * 3.5, s2.p[2] + Math.sin(a) * rr], 1, 0.4); }
   }
-  $('freezeFx').style.opacity = now < (ME.frozenUntil || 0) ? 1 : Math.min(0.6, (G.frost || 0) * 0.15);
+  // frost wears off one stack per frostDecay seconds, like on the server (which doesn't tell us)
+  const frost = Math.max(0, (G.frost || 0) - Math.floor((now - (G.frostT || 0)) / (WEAPONS.snowball.frostDecay * 1000)));
+  $('freezeFx').style.opacity = now < (ME.frozenUntil || 0) ? 1 : Math.min(0.6, frost * 0.15);
   if (G.joined) {
     updateObjectives(dt, now, G.round, ME.pos);
     const a = G.round && G.round.bomb && G.round.bomb.act;
@@ -1560,7 +1634,7 @@ G.pocket = [];
 // killstreak tray (bottom right): your 3 picks, the kills each needs, lit up when ready (press 5 / 6 / 7)
 function renderStreak(n) {
   const tray = $('streakTray');
-  const picks = validStreaks(S.loadout.streaks);
+  const picks = activeStreaks();
   const key = picks.join(',') + '|' + n + '|' + G.pocket.join(',');
   if (tray.dataset.key !== key) {
     tray.dataset.key = key;
@@ -1580,7 +1654,7 @@ function renderStreak(n) {
   $('streak').textContent = n >= 2 ? `streak ${n}` : '';
 }
 function deployStreak(slot) {
-  const id = validStreaks(S.loadout.streaks)[slot];
+  const id = activeStreaks()[slot];
   if (!G.joined || !ME.alive || !id) return;
   if (!G.pocket.includes(id)) { hud.msg(`${STREAKS[id].name}: ${STREAKS[id].kills} kills in a row`, 1.2); sfx.empty(); return; }
   const e = eye(), d = lookDir();
@@ -1595,6 +1669,8 @@ function lookDir() { const cp = Math.cos(ME.pitch); return [-Math.sin(ME.yaw) * 
 net.on('streak', (m) => {
   if (m.reset) { // you died: the count starts over and active stuff ends. earned-but-unused streaks stay in the tray
     G.streakN = 0; G.satUntil = 0; G.spinUntil = 0; ME.moonUntil = 0;
+    G.activeStreaks = validStreaks(S.loadout.streaks); // picks changed mid-streak count from now on (the server does the same)
+    if ($('loNote').textContent === NEXT_NOTE) $('loNote').textContent = '';
     loseScythe();
     endBall();
     renderStreak(0);
@@ -1603,12 +1679,12 @@ net.on('streak', (m) => {
   if (m.earned) {
     const st = STREAKS[m.earned];
     if (!st) return;
-    G.streakN = m.n;
+    G.streakN = Math.max(G.streakN || 0, m.n - 1); // this arrives just before the 'kill' that counts it
     if (!G.pocket.includes(m.earned)) G.pocket.push(m.earned);
-    const key = 5 + validStreaks(S.loadout.streaks).indexOf(m.earned);
+    const key = 5 + activeStreaks().indexOf(m.earned);
     hud.msg(`${st.name.toUpperCase()} READY · PRESS ${key}`, 2.4, 'brag');
     sfx.kill();
-    renderStreak(m.n);
+    renderStreak(G.streakN);
     return;
   }
   // you activated one: switch it on here
@@ -1687,9 +1763,9 @@ function setKfx(id) {
 }
 net.on('cd', (m) => { const n = G.names.get(m.id); if (n) n.card = m.card || ''; });
 function infoOf(id) {
-  if (id === G.myId) return { name: G.myName, color: G.myColor, skins: G.equipped, look: validLook(S.look, myAchs()), bot: false, grap: myGrapple() };
+  if (id === G.myId) return { name: G.myName, color: G.myColor, skins: G.equipped, look: validLook(S.look, myAchs()), bot: false, grap: myGrapple(), team: G.myTeam || 0, kat: W.kat || 0 };
   const n = G.names.get(id) || {};
-  return { name: n.name || '???', color: n.color || '#ffffff', skins: G.skins.get(id) || {}, look: n.look || null, bot: !!n.bot, level: n.level, grap: n.grap };
+  return { name: n.name || '???', color: n.color || '#ffffff', skins: G.skins.get(id) || {}, look: n.look || null, bot: !!n.bot, level: n.level, grap: n.grap, team: n.team || 0, kat: G.kat.get(id) || 0 };
 }
 // the death screen shows whoever killed you, on their name card
 function deathCard(killer, via) {
@@ -1901,16 +1977,15 @@ function onLoggedIn(me, fresh) {
   G.inv = me.inv || {};
   if (G.joined) { net.send({ t: 'kfx', id: myKfx() }); net.send({ t: 'grap', id: myGrapple() }); } // the profile may have brought other picks: tell the server
   recomputeEquipped();
-  rebuildViewmodels();
-  setLoadout(G.settings.loadout);
+  rebuildOne();
+  if (!fresh && prof.loadout) { applyLoadout(false); applyStreaks(); } // the account's own loadout, by the respawn rule
   renderAcctBar();
 }
 function doLogout() {
   logout();
   G.inv = {};
   recomputeEquipped();
-  rebuildViewmodels();
-  setLoadout(G.settings.loadout);
+  rebuildOne(); // only the skins changed
   renderAcctBar();
   show('main');
   toast('logged out. locked cosmetics are hidden until you log back in.');
@@ -2122,7 +2197,7 @@ net.on('round', (m) => {
   if (m.start) {
     courtReset(); // scales of justice: a new match, a clean record (the server does the same)
     G.roundOver = false; if (RP.mode === 'hl') stopReplay(true); box.classList.add('hidden'); showVote(null);
-    if (m.game) { G.round = { ...(G.round || {}), ...m }; updateLabel(); }
+    if (m.game) { G.round = { ...(G.round || {}), ...m }; updateLabel(); if (screen === 'match') syncMatchUI(); }
     hud.msg(m.game && m.game !== 'dm' && GAMES[m.game] ? GAMES[m.game].name.toUpperCase() : 'ROUND START', 1.8, 'brag');
     if (m.game && GAMES[m.game]) hud.chat(null, null, GAMES[m.game].desc);
     return;
@@ -2195,8 +2270,9 @@ $('installBtn').addEventListener('click', async () => {
 if (window.jf && window.jf.desktop) {
   $('desktopRow').classList.remove('hidden');
   $('dChange').addEventListener('click', () => { quitToMenu(true); window.jf.launcher(); });
-  $('dFull').addEventListener('click', () => {
+  $('dFull').addEventListener('click', async () => {
     if (!window.jf.display) { window.jf.fullscreen(); return; }
+    await syncDisplay();
     const order = ['windowed', 'maximized', 'fullscreen'];
     S.display = order[(order.indexOf(S.display || 'windowed') + 1) % 3];
     $('displayMode').value = S.display; saveSettings(); applyDisplay(S.display);

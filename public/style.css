@@ -308,8 +308,8 @@ body.replaying #weaponName, body.replaying #meter, body.replaying #hand, body.re
 #center.epicbrag::first-line { font-size: 56px; color: #ffd23b; }
 @keyframes epicpop { from { transform: translate(-50%, -50%) rotate(-3deg) scale(2.2); } }
 
-#speedLines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; image-rendering: pixelated; }
-body.replaying #speedLines { visibility: hidden; }
+#speedLinesCv { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; image-rendering: pixelated; }
+body.replaying #speedLinesCv { visibility: hidden; }
 
 .allmode { display: block; font-size: 14px; margin: 4px 0 8px; color: #ffe14d; }
 
