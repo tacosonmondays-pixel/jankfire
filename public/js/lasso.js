@@ -19,6 +19,7 @@ import { fx } from './fx.js';
 import { sfx, synth } from './audio.js';
 import { RP, recordEv } from './replay.js';
 import { Rope, sagRope, ringPoints, honda, ropeLook, vmArm, coilGroup } from './lasso_model.js';
+import { jankUniforms } from './jank.js';
 
 // every key the lasso listens to, in one place (a keybinds registry can take these over)
 export const LASSO_KEYS = { reelIn: 'KeyR', reelOut: 'KeyF', release: 2, wriggle: ['Space', 'KeyW', 'KeyA', 'KeyS', 'KeyD'] }; // release: a mouse button (fire always lets go too)
@@ -115,7 +116,7 @@ function onRel(m) {
     if (fling && sp >= LASSO.yeet) { hud.msg(`YEET\n${Math.round(sp)} m/s`, 1.6, 'epicbrag'); G.shake = Math.max(G.shake, 0.7); }
     else if (fling && sp > 12) hud.msg(`${Math.round(sp)} m/s`, 0.9, 'brag');
     else if (m.why === 'wriggle') hud.msg(`${nameOf(m.v)} WRIGGLED FREE`, 1.2, 'slip');
-    else if (m.why === 'time') hud.msg('the rope slipped', 1, 'slip');
+    else if (m.why === 'time' || m.why === 'lag') hud.msg('the rope slipped', 1, 'slip');
   }
   if (m.v === G.myId) {
     S.held = null; S.wr = 0;
@@ -189,6 +190,7 @@ function loopParts(pr) {
 const _u = [0, 0, 0], _v = [0, 0, 0];
 export function loopFrame(pr, dt, now) {
   const L = loopParts(pr);
+  if (!warmed.has(L.look)) warm(L.look);
   if (pr.ph === 0) stepProjectile(pr, dt, BOXES, LASSO.grav);
   else if (pr.ph === 1) { pr.v[0] *= Math.exp(-3 * dt); pr.v[2] *= Math.exp(-3 * dt); stepProjectile(pr, dt, BOXES, 26); }
   else {
@@ -211,7 +213,7 @@ export function loopFrame(pr, dt, now) {
   const n = [_u[1] * _v[2] - _u[2] * _v[1], _u[2] * _v[0] - _u[0] * _v[2], _u[0] * _v[1] - _u[1] * _v[0]];
   // the knot sits on the side facing the thrower (where the spoke pulls)
   ringPoints(L.ring.pts, pr.p, _u, _v, L.open, { seam: Math.PI, wob: pr.ph === 0 ? 0.06 : 0.12, wt: age * 9, nx: n[0], ny: n[1], nz: n[2] });
-  L.ring.update(L.look.r * 1.25);
+  L.ring.update(minR(pr.p, L.look.r * 1.25));
   const kp = L.ring.pts[0];
   L.knot.position.copy(kp);
   L.knot.lookAt(kp.x + _u[0], kp.y + _u[1], kp.z + _u[2]);
@@ -224,7 +226,8 @@ function loopSpoke(pr) {
   const L = pr.lz, hand = handOf(pr.o), kp = L.ring.pts[0];
   if (!hand || RP.active) { L.spoke.mesh.visible = false; return; }
   const d = Math.hypot(kp.x - hand[0], kp.y - hand[1], kp.z - hand[2]);
-  sagRope(L.spoke, hand, [kp.x, kp.y, kp.z], d * (pr.ph === 2 ? 1.04 : 1.07) + 0.3, { wave: Math.min(0.35, d * 0.02) * (pr.ph === 0 ? 1 : 0.5), wf: 3, wt: (L.age || 0) * 14, r: L.look.r, r1: L.look.r * 1.1 });
+  const r0 = pr.o === G.myId ? handR() : minR(hand, L.look.r), r1 = minR([kp.x, kp.y, kp.z], L.look.r * 1.1);
+  sagRope(L.spoke, hand, [kp.x, kp.y, kp.z], d * (pr.ph === 2 ? 1.04 : 1.07) + 0.15, { wave: Math.min(0.35, d * 0.02) * (pr.ph === 0 ? 1 : 0.5), wf: 3, wt: (L.age || 0) * 14, r: r0, r1 });
   L.spoke.mesh.visible = true;
 }
 // loops the server took away (caught, cut, back in the hand): their spoke goes too
@@ -247,6 +250,32 @@ function vmToWorld(x, y, z) {
   G.camera.updateMatrixWorld();
   G.camera.localToWorld(_hv);
   return [_hv.x, _hv.y, _hv.z];
+}
+
+// ropes are thin: far away they'd be under a pixel (or fall between the vertex-snap cells) and break up into dots. no
+// rope is ever thinner on screen than ~1.6 render pixels / snap cells (pxFrame works out the scale once a frame)
+const _cw = new THREE.Vector3();
+let pxK = 0;
+function pxFrame() {
+  G.camera.getWorldPosition(_cw);
+  const cells = Math.min(G.renderer.domElement.height || 600, 2 * jankUniforms.uSnap.value.y);
+  pxK = (1.6 * Math.tan((G.camera.fov * Math.PI) / 360)) / Math.max(60, cells);
+}
+const minR = (p, r) => Math.max(r, Math.hypot(p[0] - _cw.x, p[1] - _cw.y, p[2] - _cw.z) * pxK);
+// your rope, where it leaves your hand: as thick as the viewmodel's (the two cameras' fov differ)
+const handR = () => (VM.vr || 0.008) * Math.tan((G.camera.fov * Math.PI) / 360) / Math.tan((G.vmCamera.fov * Math.PI) / 360);
+// compile the rope's shaders up front (when the lasso first comes out / first shows up on someone): a first-use
+// shader compile is one long frame, and one long enough on a catch reads as a dead stream to the server
+const warmed = new Set();
+function warm(look) {
+  if (warmed.has(look) || !G.renderer) return;
+  warmed.add(look);
+  const g = new THREE.Group();
+  g.add(new Rope(look, 2, 3).mesh, honda(look));
+  try {
+    G.renderer.compile(g, G.camera, G.scene);
+    if (VM.root) G.renderer.compile(VM.root, G.vmCamera, G.vmScene);
+  } catch { /* then it compiles on first use */ }
 }
 
 // ------------------------------------------------------------ the fixed step (player.js calls this every 1/120 s)
@@ -402,12 +431,12 @@ function heldHud(now, dt) {
 const VM = { root: null, key: '', handW: null };
 // viewmodel poses: wrist (w) and elbow (e) in camera space, metres (x right, y up, -z ahead)
 const POSE = {
-  idleR: { w: [0.19, -0.15, -0.42], e: [0.29, -0.36, -0.22] },
-  spinR: { w: [0.15, 0.13, -0.42], e: [0.31, -0.1, -0.26] },
+  idleR: { w: [0.2, -0.1, -0.44], e: [0.31, -0.32, -0.25] },
+  spinR: { w: [0.2, 0.32, -0.42], e: [0.36, 0.05, -0.22] }, // the hand up over your head, just off the top of the screen
   throwR: { w: [0.09, 0.03, -0.62], e: [0.22, -0.15, -0.38] },
-  haulR: { w: [0.07, -0.13, -0.5], e: [0.18, -0.3, -0.27] },
-  idleL: { w: [-0.2, -0.18, -0.42], e: [-0.3, -0.38, -0.22] },
-  haulL: { w: [-0.03, -0.21, -0.37], e: [-0.15, -0.37, -0.16] },
+  haulR: { w: [0.1, -0.15, -0.5], e: [0.27, -0.4, -0.32] },
+  idleL: { w: [-0.22, -0.1, -0.45], e: [-0.32, -0.32, -0.25] },
+  haulL: { w: [-0.05, -0.22, -0.4], e: [-0.2, -0.42, -0.24] },
 };
 function buildVM() {
   const sk = skinOf(G.myId), lk = G.settings.look || {}, look = ropeLook(sk);
@@ -418,17 +447,16 @@ function buildVM() {
   const root = new THREE.Group();
   const armR = vmArm(skin, sleeve), armL = vmArm(skin, sleeve);
   armL.scale.x = -1; // mirrored left hand
-  const coil = coilGroup(look, { R: 0.1, loops: 5 });
-  coil.scale.setScalar(0.85);
-  coil.position.set(0, -0.01, -0.07);
-  coil.rotation.set(0.25, Math.PI / 2 - 0.5, 0); // the coils face you (at an angle), hanging off the fist
-  armL.add(coil);
-  const loop = new Rope(look, 32, 6), spoke = new Rope(look, 12, 5), haul = new Rope(look, 10, 5), tail = new Rope(look, 12, 5);
-  const knot = honda(look, 0.9);
-  root.add(armR, armL, loop.mesh, spoke.mesh, haul.mesh, tail.mesh, knot);
-  for (const o of [loop.mesh, spoke.mesh, haul.mesh, tail.mesh]) o.renderOrder = 1;
+  // the coil hangs off the left fist (gravity has it, not the forearm): loops facing you at an angle
+  const coil = coilGroup(look, { R: 0.075, loops: 5, rk: 0.5 });
+  coil.rotation.order = 'ZXY';
+  const loop = new Rope(look, 32, 6), spoke = new Rope(look, 12, 5), haul = new Rope(look, 10, 5);
+  const knot = honda(look, 0.55);
+  root.add(armR, armL, coil, loop.mesh, spoke.mesh, haul.mesh, knot);
+  for (const o of [loop.mesh, spoke.mesh, haul.mesh]) o.renderOrder = 1;
   G.vmScene.add(root);
-  Object.assign(VM, { root, key, armR, armL, coil, loop, spoke, haul, tail, knot, look, ph: 0, spinK: 0, haulK: 0, open: 0.16, rec: 0, sway: [0, 0] });
+  Object.assign(VM, { root, key, armR, armL, coil, loop, spoke, haul, knot, look, vr: look.r * 0.5, ph: 0, spinK: 0, haulK: 0, open: 0.12, rec: 0, sway: [0, 0] });
+  warm(look);
   return VM;
 }
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _up = new THREE.Vector3(0, 1, 0);
@@ -478,14 +506,17 @@ function vmFrame(dt, now) {
   if (holding && S.hold.taut) { const j = (Math.random() - 0.5) * 0.008 * tug; wR[2] -= 0.03 * tug; wR[0] += j; wR[1] += j; wL[2] -= 0.02 * tug; }
   V.armR.position.set(wR[0], wR[1], wR[2]);
   V.armL.position.set(wL[0], wL[1], wL[2]);
-  if (holding) { // both hands point down the rope at them (never back past your shoulders)
+  if (holding) { // both fists on the rope, low, elbows down and out; they lean and turn along the rope toward them
     const w = [hb.pos[0], hb.pos[1] + LASSO.waist, hb.pos[2]];
     _c.set(w[0], w[1], w[2]); G.camera.updateMatrixWorld(); G.camera.worldToLocal(_c);
     const k = Math.tan((G.vmCamera.fov * Math.PI) / 360) / Math.tan((G.camera.fov * Math.PI) / 360);
     _c.set(_c.x * k, _c.y * k, Math.min(_c.z, -0.3)).normalize();
-    const pull = [lerp(wR[0] - eR[0], _c.x, V.haulK), lerp(wR[1] - eR[1], _c.y, V.haulK), lerp(wR[2] - eR[2], _c.z, V.haulK)];
-    aimArm(V.armR, _b.set(wR[0] + pull[0], wR[1] + pull[1], wR[2] + pull[2]), -0.5);
-    aimArm(V.armL, _b.set(wL[0] + (wR[0] - wL[0]) * 2 + pull[0] * 0.3, wL[1] + (wR[1] - wL[1]) * 2 + pull[1] * 0.3, wL[2] + (wR[2] - wL[2]) * 2 + pull[2] * 0.3), 0.5);
+    const hk = V.haulK, lx = Math.max(-0.1, Math.min(0.1, _c.x * 0.12)) * hk, ly = Math.max(-0.05, Math.min(0.06, _c.y * 0.08)) * hk;
+    wR[0] += lx; wR[1] += ly; wL[0] += lx * 0.6; wL[1] += ly * 0.6;
+    V.armR.position.set(wR[0], wR[1], wR[2]); V.armL.position.set(wL[0], wL[1], wL[2]);
+    const dR = [wR[0] - eR[0], wR[1] - eR[1], wR[2] - eR[2]], dL = [wL[0] - eL[0], wL[1] - eL[1], wL[2] - eL[2]], pk = 0.12 * hk;
+    aimArm(V.armR, _b.set(wR[0] + dR[0] + _c.x * pk, wR[1] + dR[1] + _c.y * pk, wR[2] + dR[2] + _c.z * pk), lerp(-0.6, -1.1, hk));
+    aimArm(V.armL, _b.set(wL[0] + dL[0] + _c.x * pk * 0.7, wL[1] + dL[1] + _c.y * pk * 0.7, wL[2] + dL[2] + _c.z * pk * 0.7), lerp(0.6, 1.0, hk));
   } else {
     aimArm(V.armR, _b.set(wR[0] * 2 - eR[0], wR[1] * 2 - eR[1], wR[2] * 2 - eR[2]), -0.6 + V.spinK * 0.9);
     aimArm(V.armL, _b.set(wL[0] * 2 - eL[0], wL[1] * 2 - eL[1], wL[2] * 2 - eL[2]), 0.6);
@@ -497,10 +528,10 @@ function vmFrame(dt, now) {
   V.loop.mesh.visible = !holding && !thrown; V.knot.visible = V.loop.mesh.visible;
   V.spoke.mesh.visible = V.loop.mesh.visible;
   if (V.loop.mesh.visible) {
-    const openTo = lerp(0.12, 0.36 + 0.14 * S.spin, V.spinK);
+    const openTo = lerp(0.1, 0.32 + 0.12 * S.spin, V.spinK);
     V.open += (openTo - V.open) * Math.min(1, dt * 8);
     // spin plane: overhead and in front, tipped toward you so the near side dips into view at the top of the screen
-    const cHang = [gR.x - 0.01, gR.y - 0.15, gR.z - 0.03], cSpin = [0.05, 0.27, -0.72];
+    const cHang = [gR.x - 0.01, gR.y - 0.13, gR.z - 0.02], cSpin = [0.06, 0.28, -0.7];
     const c = cHang.map((x, i) => lerp(x, cSpin[i], V.spinK));
     const tip = lerp(1.45, 0.42, V.spinK); // hanging: the ring's nearly vertical; spinning: tipped toward you
     const u = [Math.cos(V.ph), 0, Math.sin(V.ph)], vv = [-Math.sin(V.ph), 0, Math.cos(V.ph)];
@@ -511,19 +542,20 @@ function vmFrame(dt, now) {
     const uS = [uu[0] * Math.cos(swing) - uu[1] * Math.sin(swing), uu[0] * Math.sin(swing) + uu[1] * Math.cos(swing), uu[2]];
     const n = [uS[1] * vw[2] - uS[2] * vw[1], uS[2] * vw[0] - uS[0] * vw[2], uS[0] * vw[1] - uS[1] * vw[0]];
     ringPoints(V.loop.pts, c, uS, vw, V.open, { seam: lerp(Math.PI / 2, Math.PI, V.spinK), wob: 0.04 + V.spinK * 0.05, wt: now * 0.01, nx: n[0], ny: n[1], nz: n[2], tear: 0.22 });
-    V.loop.update(V.look.r * 0.9);
+    V.loop.update(V.vr);
     const kp = V.loop.pts[0];
     V.knot.position.copy(kp);
     // the spoke: hand to knot, a little slack
     const d = gR.distanceTo(kp);
-    sagRope(V.spoke, [gR.x, gR.y, gR.z], [kp.x, kp.y, kp.z], d * 1.03, { r: V.look.r * 0.9 });
+    sagRope(V.spoke, [gR.x, gR.y, gR.z], [kp.x, kp.y, kp.z], d * 1.03, { r: V.vr });
   }
-  // ---- hauling: the rope runs from the left hand through the right one; the tail drops off to the coil
+  // ---- hauling: the rope runs from the coil in the left hand through the right one
   V.haul.mesh.visible = V.haulK > 0.3;
-  V.tail.mesh.visible = true;
-  if (V.haul.mesh.visible) sagRope(V.haul, [gL.x, gL.y, gL.z], [gR.x, gR.y, gR.z], gL.distanceTo(gR) * (S.hold && S.hold.taut ? 1.0 : 1.08), { r: V.look.r * 0.9 });
-  const cw = V.coil.localToWorld(_a.set(0, -0.08, 0));
-  sagRope(V.tail, [gL.x, gL.y, gL.z], [cw.x, cw.y, cw.z], gL.distanceTo(cw) * 1.25, { r: V.look.r * 0.85 });
+  if (V.haul.mesh.visible) sagRope(V.haul, [gL.x, gL.y, gL.z], [gR.x, gR.y, gR.z], gL.distanceTo(gR) * (S.hold && S.hold.taut ? 1.0 : 1.08), { r: V.vr });
+  // ---- the coil, hanging off the left fist: it swings with your steps and the look lag, and hangs toward the ground
+  // when you look up or down
+  V.coil.position.set(gL.x, gL.y - 0.004, gL.z);
+  V.coil.rotation.set(-Math.max(-1.2, Math.min(0.1, ME.pitch)) * 0.55 + sy * 0.6 + Math.cos(W.bob) * 0.04 * bob, -0.5 - V.haulK * 0.4, -sx * 1.4 + Math.sin(W.bob) * 0.07 * bob);
   VM.grip = [gR.x, gR.y, gR.z]; // the world end of your rope starts exactly behind it on screen (worked out in lassoLate)
 }
 
@@ -541,7 +573,7 @@ function cinchRing(rope, w, from, s) {
   const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
   _ru[0] = dx; _ru[1] = 0; _ru[2] = dz; _rv[0] = -dz; _rv[1] = 0; _rv[2] = dx;
   ringPoints(rope.pts, w, _ru, _rv, 0.2 * s, { seam: 0, tear: 0.25, nx: 0, ny: 1, nz: 0 });
-  rope.update(rope.look.r * 1.05 * s);
+  rope.update(minR(w, rope.look.r * 1.05 * s));
   rope.mesh.visible = true;
   const p = rope.pts[0];
   return [p.x, p.y, p.z];
@@ -551,6 +583,7 @@ function partsOf(r) { // the ropes a remote (or replay ghost) owns
   if (!z) {
     z = r.lzv = {};
     for (const k of ['rope', 'cinch', 'over', 'spoke']) { z[k] = new Rope(ropeLook(r.skins && r.skins.lasso), k === 'rope' ? 30 : 22, 5); z[k].mesh.visible = false; G.scene.add(z[k].mesh); }
+    warm(z.rope.look);
   }
   const look = ropeLook(r.skins && r.skins.lasso);
   if (z.rope.look !== look) for (const k of ['rope', 'cinch', 'over', 'spoke']) z[k].setLook(look);
@@ -565,10 +598,12 @@ function mineParts() {
 // one holder -> victim pair: the cinch round the victim, the rope from the holder's hand to its knot
 function drawPair(hand, rope, vw, vs, cinch, L, o) {
   const knot = cinchRing(cinch, vw, hand, vs);
+  o.r1 = minR(knot, o.r1 ?? o.r);
   sagRope(rope, hand, knot, Math.max(0.5, L - 0.4), o);
   rope.mesh.visible = true;
 }
 export function lassoLate(dt, now, ghosts) {
+  pxFrame();
   const mp = mineParts();
   if (!ghosts) { VM.handW = VM.grip ? vmToWorld(VM.grip[0], VM.grip[1], VM.grip[2]) : null; for (const pr of loops.values()) if (pr.lz && G.projs.get(pr.id) === pr) loopSpoke(pr); }
   const used = new Set();
@@ -578,7 +613,8 @@ export function lassoLate(dt, now, ghosts) {
       const v = g.lzHold;
       if (!v || !g.alive || !v.alive || !g.ch.root.visible || !v.buf.length) continue;
       const z = partsOf(g), zv = partsOf(v), s = SC(v);
-      drawPair(g.muzzle(), z.rope, [v.pos[0], v.pos[1] + WAIST_V * s, v.pos[2]], s, zv.cinch, g.lzHoldL || 8, { r: z.rope.look.r * 1.15 });
+      const hand = g.muzzle();
+      drawPair(hand, z.rope, [v.pos[0], v.pos[1] + WAIST_V * s, v.pos[2]], s, zv.cinch, g.lzHoldL || 8, { r: minR(hand, z.rope.look.r * 1.15), r1: z.rope.look.r * 1.15 });
       use(z.rope); use(zv.cinch);
     }
   } else if (G.joined && !RP.active) {
@@ -593,7 +629,8 @@ export function lassoLate(dt, now, ghosts) {
       const rope = hid === G.myId ? mp.rope : partsOf(hr).rope;
       const L = hid === G.myId && S.hold ? S.hold.L : h.L;
       const sp = hid === G.myId && S.hold ? Math.hypot(...S.hold.body.vel) : 0;
-      drawPair(hand, rope, vw, vs, cinch, L, { r: rope.look.r * (hid === G.myId ? 1 : 1.15), hum: hid === G.myId && S.hold && S.hold.taut ? Math.min(0.04, sp * 0.0008) : 0, wt: now * 0.05 });
+      const r = hid === G.myId ? handR() : minR(hand, rope.look.r * 1.15);
+      drawPair(hand, rope, vw, vs, cinch, L, { r, r1: rope.look.r * 1.15, hum: hid === G.myId && S.hold && S.hold.taut ? Math.min(0.04, sp * 0.0008) : 0, wt: now * 0.05 });
       use(rope); use(cinch);
     }
     // just let go: your rope whips back to your hand
@@ -601,7 +638,7 @@ export function lassoLate(dt, now, ghosts) {
     if (!S.hold && a && rT < 0.35 && VM.handW) {
       const k = ease(rT / 0.35), w = [a.pos[0], a.pos[1] + LASSO.waist, a.pos[2]];
       const end = w.map((x, i) => lerp(x, VM.handW[i], k));
-      sagRope(mp.rope, VM.handW, end, Math.hypot(...end.map((x, i) => x - VM.handW[i])) * 1.15 + 0.2, { r: mp.rope.look.r, wave: 0.6 * (1 - k), wf: 4, wt: rT * 40 });
+      sagRope(mp.rope, VM.handW, end, Math.hypot(...end.map((x, i) => x - VM.handW[i])) * 1.15 + 0.2, { r: handR(), r1: minR(end, mp.rope.look.r), wave: 0.6 * (1 - k), wf: 4, wt: rT * 40 });
       mp.rope.mesh.visible = true; use(mp.rope);
     }
   }
@@ -666,11 +703,11 @@ G.lassoRemote = function (r, dt, now) {
     const s = SC(r), c = [r.pos[0] - Math.sin(r.yaw) * 0.2 * s, r.pos[1] + 2.3 * s, r.pos[2] - Math.cos(r.yaw) * 0.2 * s];
     const tip = 0.25, u = [Math.cos(z.ph), Math.sin(z.ph) * Math.sin(tip), Math.sin(z.ph) * Math.cos(tip)], v = [-Math.sin(z.ph), Math.cos(z.ph) * Math.sin(tip), Math.cos(z.ph) * Math.cos(tip)];
     ringPoints(z.over.pts, c, u, v, 0.5 * s, { seam: 0, wob: 0.05, wt: t * 8, nx: 0, ny: 1, nz: 0 });
-    z.over.update(z.over.look.r * s);
+    z.over.update(minR(c, z.over.look.r * s));
     ch.arm.rotation.x = 1.75 + Math.sin(z.ph) * 0.15; ch.arm.rotation.y = Math.cos(z.ph) * 0.25;
     ch.root.updateMatrixWorld(true);
     const hand = r.muzzle(), kp = z.over.pts[0];
-    sagRope(z.spoke, hand, [kp.x, kp.y, kp.z], Math.hypot(kp.x - hand[0], kp.y - hand[1], kp.z - hand[2]) * 1.02, { r: z.spoke.look.r * s * 0.85 });
+    sagRope(z.spoke, hand, [kp.x, kp.y, kp.z], Math.hypot(kp.x - hand[0], kp.y - hand[1], kp.z - hand[2]) * 1.02, { r: minR(hand, z.spoke.look.r * s * 0.85) });
   }
   // ---- r is on the end of someone's rope: arms and legs everywhere, bent toward the rope (hanging off it by the middle)
   if (hp) {

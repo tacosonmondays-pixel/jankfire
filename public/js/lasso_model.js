@@ -161,47 +161,51 @@ export function honda(look, s = 1) {
 }
 
 // ------------------------------------------------------------ the coiled lasso (hotbar, third person, your off hand)
-// coils of rope side by side in the YZ plane (hanging off the hand like a real coil), the loop hanging below with
-// its knot, the tail end dangling. returns the group; userData.muzzle = where the working end leaves the hand
+// a hank of rope: loose loops in the YZ plane hanging off the hand (the top of every loop is in the fist, at the
+// origin), each a bit bigger or smaller than the last and fanned out a little at the bottom, a few turns of the
+// tail wrapped round where the hand holds them. o.R = loop size, o.rk = rope thickness (x the skin's), o.loops
 export function coilGroup(look, o = {}) {
-  const g = new THREE.Group(), mat = ropeMat(look), r = look.r * 1.15;
+  const g = new THREE.Group(), mat = ropeMat(look), r = look.r * (o.rk ?? 1.1);
   const R = o.R || 0.13, loops = o.loops || 5;
   for (let i = 0; i < loops; i++) {
-    const t = new THREE.Mesh(new THREE.TorusGeometry(R * (1 - i * 0.025), r, 6, 22), mat);
+    const k = i - (loops - 1) / 2, Ri = R * (1 + 0.09 * Math.sin(i * 2.4 + 0.7));
+    const piv = new THREE.Group(); // pivots at the fist: bunched up there, fanned out a little at the bottom
+    piv.rotation.set(k * 0.13 + 0.04 * Math.sin(i * 3.1), 0, k * 0.09);
+    const t = new THREE.Mesh(new THREE.TorusGeometry(Ri, r, 5, 20), mat);
     t.rotation.y = Math.PI / 2; // ring in the YZ plane
-    t.position.set((i - (loops - 1) / 2) * r * 1.9, -R * 0.92, (i % 2 ? 0.006 : -0.004));
-    t.rotation.x = (i - loops / 2) * 0.05;
-    t.scale.set(1, 1.12, 1); // coils hang a little long
-    g.add(t);
+    t.scale.set(1, 1.2, 1); // loops hang long
+    t.position.set(k * r * 2.05, -Ri * 1.2, 0);
+    piv.add(t);
+    g.add(piv);
   }
-  // the bundle is bound where the hand holds it
-  const bind = new THREE.Mesh(new THREE.CylinderGeometry(r * 3.2, r * 3.2, loops * r * 2.2, 8), M(look.kind === 'rib' ? 0x1a5a24 : 0x8a5a2a));
-  bind.rotation.z = Math.PI / 2; bind.position.set(0, 0, 0);
-  g.add(bind);
+  // two turns of the tail round the bundle, either side of where the hand holds it
+  const hw = ((loops - 1) * r * 2.05) / 2 + r * 1.4;
+  for (const z of [-0.3, 0.3]) {
+    const wrap = new THREE.Mesh(new THREE.TorusGeometry(hw, r * 0.75, 4, 12), mat);
+    wrap.scale.set(1, Math.max(0.3, (r * 2) / hw), 1); wrap.position.set(0, 0, z * R);
+    g.add(wrap);
+  }
   return g;
 }
 export function buildLassoModel(g, look) {
-  const coil = coilGroup(look);
+  const coil = coilGroup(look, { loops: 4, rk: 1 });
   g.add(coil);
-  // the loop hanging down in front of the coil, knot at the top
-  const pts = Array.from({ length: 23 }, () => new THREE.Vector3());
-  const rope = new Rope(look, 22, 6);
-  ringPoints(rope.pts, [0.03, -0.27, -0.06], [0, 1, 0], [0, 0, 1], 0.12, { seam: Math.PI / 2, nx: 1, ny: 0, nz: 0 });
+  // the loop hanging down beside the coil, its knot at the top, the spoke up to the fist
+  const X = 0.075, rope = new Rope(look, 22, 6);
+  ringPoints(rope.pts, [X, -0.27, -0.06], [0, 1, 0], [0, 0, 1], 0.12, { seam: Math.PI / 2, nx: 1, ny: 0, nz: 0 });
   rope.update(look.r * 1.1);
   rope.mesh.frustumCulled = true; rope.geo.computeBoundingSphere();
   g.add(rope.mesh);
-  const kn = honda(look, 1.1); kn.position.set(0.03, -0.15, -0.06); kn.rotation.z = Math.PI / 2; g.add(kn);
-  // spoke: knot up to the hand
+  const kn = honda(look, 1.1); kn.position.set(X, -0.15, -0.06); kn.rotation.z = Math.PI / 2; g.add(kn);
   const sp = new Rope(look, 6, 6);
-  for (let i = 0; i <= 6; i++) sp.pts[i].set(0.03 * (1 - i / 6), -0.15 + 0.15 * (i / 6), -0.06 * (1 - i / 6));
+  for (let i = 0; i <= 6; i++) { const t = i / 6; sp.pts[i].set(X + (0.02 - X) * t, -0.15 + 0.14 * t, -0.06 * (1 - t)); }
   sp.update(look.r * 1.1); sp.mesh.frustumCulled = true; sp.geo.computeBoundingSphere();
   g.add(sp.mesh);
-  if (look.metal) { const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.05, 8), M(look.metal)); cup.position.set(-0.07, -0.02, 0.02); cup.rotation.z = 0.4; g.add(cup); } // the hose's tap end
-  g.userData.muzzle = new THREE.Vector3(0.03, -0.15, -0.06);
+  if (look.metal) { const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.05, 8), M(look.metal)); cup.position.set(-0.08, -0.02, 0.02); cup.rotation.z = 0.4; g.add(cup); } // the hose's tap end
+  g.userData.muzzle = new THREE.Vector3(0.03, -0.03, -0.04); // the working end leaves the fist here
   g.userData.loopParts = [rope.mesh, kn, sp.mesh]; // hidden while the loop is out (spinning, flying, round someone)
   g.userData.len = 0.4;
   g.userData.faceOn = false;
-  void pts;
   return g;
 }
 // weapon builders + skins (models.js registers these like the blades)

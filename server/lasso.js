@@ -15,6 +15,9 @@ const r2 = (x) => Math.round(x * 100) / 100;
 const dist3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 const W = LASSO.waist;
 const LOCK = 0.35; // s after a fling with no control (the client's tumble): the server holds them to the flight
+// ms a holder's stream may go quiet before the rope drops (a hitch on the catch, a lag spike). test knob for slow
+// headless browsers
+const QUIET = Number(process.env.JF_LASSO_QUIET) || 1500;
 // [x, y, z] of finite numbers off the network, or null
 function vec3(a) {
   if (!Array.isArray(a) || a.length !== 3) return null;
@@ -328,7 +331,7 @@ const M = {
         else if (!V || !V.alive || V.seq !== H.seq) this.lassoEnd(h, 'gone');
         else if (this.isBall(h, n) || h.trap) this.lassoEnd(h, 'drop'); // turned into a ball / sealed in soap: the rope goes
         else if (n - H.t0 > LASSO.time * 1000) this.lassoEnd(h, 'time');
-        else if (!H.sim && n - H.lastT > 700) this.lassoEnd(h, 'lag'); // the holder's stream went quiet
+        else if (!H.sim && n - H.lastT > QUIET) this.lassoEnd(h, 'lag'); // the holder's stream went quiet
         else if (H.sim) this.lassoSim(h, H, V, dt);
       }
       if (z.by) {
