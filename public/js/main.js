@@ -544,7 +544,7 @@ function buildCharacterUI() {
   };
   swatches('lk-skin', 'skin', SKIN_TONES, 'mannequin');
   styles('lk-hair', 'hair', HAIRS); swatches('lk-hairColor', 'hairColor', HAIR_COLORS);
-  styles('lk-top', 'top', TOPS); swatches('lk-topColor', 'topColor', CLOTH_COLORS, 'same as your colour');
+  styles('lk-top', 'top', TOPS); swatches('lk-topColor', 'topColor', CLOTH_COLORS, look.top === 'runner' ? 'hi-vis yellow' : 'same as your colour');
   styles('lk-bottom', 'bottom', BOTTOMS); swatches('lk-bottomColor', 'bottomColor', CLOTH_COLORS, 'same as your colour');
   for (const slot of LOOK_SLOTS) {
     const el = $('lk-' + slot);
