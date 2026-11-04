@@ -1651,7 +1651,7 @@ class Room {
 
   onFire(p, m) {
     const w = has(WEAPONS, m.w) && WEAPONS[m.w];
-    if (!w || !p.alive) return;
+    if (!w || !p.alive || this.isBall(p)) return; // no hands in the wrecking ball
     // loadout weapons only (plus the scythe once earned): items (frag, smoke, duck, popper, reverse card) come from G,
     // grenades and thrown cards from the deck, never 'fire'
     if (!SLOTS.includes(w.slot) && !(w.slot === 'streak' && p.scythe)) return;
@@ -1829,6 +1829,7 @@ class Room {
     p.lastFire.bloodcross = n; // a refused shot uses the cooldown up too, so spamming it costs the server nothing
     if (p.hp - w.cost < 1) { send(p, { t: 'bcross', k: 'dry', o: p.id }); return; } // it never takes your last HP, so it can't kill you
     p.hp -= w.cost;
+    p.selfHurtT = n; // EPIC: bleeding yourself down to low HP doesn't make you a clutch hero (like coughing)
     if (this.mode === 'training') p.bcPaid = (p.bcPaid || 0) + w.cost; // training hands it back once you stop
     const wallHit = raycast(o, d, 0.8, this.boxes);
     const off = wallHit ? Math.max(0, wallHit.t - w.r - 0.05) : 0.8;
@@ -1842,6 +1843,8 @@ class Room {
   tickBloodBolt(pr, dt, n) {
     const w = WEAPONS.bloodcross, owner = this.players.get(pr.o), prev = pr.p.slice();
     const hit = stepProjectile(pr, dt, this.boxes, 0);
+    // a katana parry bats it back like any projectile: the parrier owns it now (and didn't pay blood for it)
+    if (this.parryProj(pr, prev)) { pr.cost = 0; return; }
     // only up to the wall, so nobody gets hit through it. a shooter who left can't tell friend from foe: it only finds walls then
     const vs = owner ? this.sweep(prev, pr.p, pr.r, (t) => t.id === pr.o || this.friendly(owner, t)) : [];
     if (vs.length) { pr.p = vs[0].at; this.removeProj(pr); this.stickCross(pr, vs[0].t); return; }
@@ -1866,7 +1869,7 @@ class Room {
     const c = Math.cos(t.yaw || 0), s = Math.sin(t.yaw || 0);
     // which side it hit (unit, body-local) + how high: shins count as hips so the cross never ends up in the floor
     const off = [r2(dx * c - dz * s), r2(Math.max(0.9, Math.min(2.15, pr.p[1] - t.pos[1]))), r2(dx * s + dz * c)];
-    const mk = { id: pr.id, o: pr.o, t: t.id, seq: t.seq, off, d: norm(pr.v) || [0, 0, -1], at: now() + w.fuse * 1000, ph: 0, cost: pr.cost || w.cost };
+    const mk = { id: pr.id, o: pr.o, t: t.id, seq: t.seq, off, d: norm(pr.v) || [0, 0, -1], at: now() + w.fuse * 1000, ph: 0, cost: pr.cost ?? w.cost };
     mk.p = this.crossAt(t, off);
     (this.crosses ||= new Map()).set(mk.id, mk);
     this.crossCast({ t: 'bcross', k: 'stick', id: mk.id, o: mk.o, to: t.id, off, p: mk.p.map(r2), f: w.fuse });
