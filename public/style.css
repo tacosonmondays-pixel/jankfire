@@ -289,6 +289,24 @@ button.big:hover, button.mid:hover { transform: rotate(-1.5deg) scale(1.04); }
 body.replaying #game { filter: saturate(0.75) contrast(1.15) sepia(0.15); }
 body.replaying #crosshair, body.replaying #hpbox, body.replaying #ammo, body.replaying #weapons, body.replaying #speed, body.replaying #combo,
 body.replaying #weaponName, body.replaying #meter, body.replaying #hand, body.replaying #streak, body.replaying #scope, body.replaying #dead, body.replaying #vignette { visibility: hidden; }
+/* EPIC killcams: letterbox, a padlock instead of the skip prompt, a banner when the shot lands */
+#replay.epic .scan { border-top: 8vh solid #000; border-bottom: 8vh solid #000; transition: border-width 0.5s ease-out; }
+#rpHint.locked { font-size: 22px; color: #ffe14d; letter-spacing: 2px; text-shadow: 2px 2px 0 #000; }
+#rpHint .lock { display: inline-block; position: relative; width: 16px; height: 12px; margin: 0 10px 0 2px; vertical-align: -1px; background: #ffe14d; border-radius: 2px; box-shadow: 2px 2px 0 #000; }
+#rpHint .lock::before { content: ''; position: absolute; left: 3px; top: -8px; width: 6px; height: 7px; border: 2px solid #ffe14d; border-bottom: 0; border-radius: 6px 6px 0 0; }
+#rpHint .lock::after { content: ''; position: absolute; left: 6px; top: 3px; width: 4px; height: 5px; background: #5a3d00; border-radius: 2px; }
+#rpHint.nope, #deadTimer.nope { animation: epicnope 0.45s; }
+#rpHint.nope .lock { animation: epicjiggle 0.45s; }
+@keyframes epicnope { 0% { transform: translateX(0); color: #ff4f4f; } 15% { transform: translateX(-10px) rotate(-3deg); } 35% { transform: translateX(9px) rotate(2deg); } 55% { transform: translateX(-6px) rotate(-1deg); color: #ff4f4f; } 75% { transform: translateX(4px); } 100% { transform: translateX(0); } }
+@keyframes epicjiggle { 30% { transform: translateY(-3px) rotate(-12deg); } 60% { transform: translateY(-1px) rotate(10deg); } }
+#rpEpic { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); text-align: center; white-space: nowrap; }
+#rpEpic .et { font-size: clamp(34px, 7vw, 76px); font-weight: bold; text-shadow: none; background: linear-gradient(180deg, #fff6b0 0%, #ffd23b 45%, #ff7a1a 100%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-stroke: 2px #000; filter: drop-shadow(4px 4px 0 #000); animation: epicslam 0.55s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+#rpEpic .es { margin-top: 4px; font-size: 20px; color: #fff; letter-spacing: 3px; text-shadow: 2px 2px 0 #000; animation: epicfade 0.6s 0.35s both; }
+@keyframes epicslam { from { transform: rotate(-4deg) skewX(-8deg) scale(3); opacity: 0; } to { transform: rotate(-4deg) skewX(-8deg) scale(1); opacity: 1; } }
+@keyframes epicfade { from { opacity: 0; transform: translateY(10px); } }
+#center.epicbrag { white-space: pre; text-align: center; font-size: 24px; line-height: 1.15; color: #fff; animation: epicpop 0.4s cubic-bezier(0.2, 1.6, 0.4, 1); }
+#center.epicbrag::first-line { font-size: 56px; color: #ffd23b; }
+@keyframes epicpop { from { transform: translate(-50%, -50%) rotate(-3deg) scale(2.2); } }
 
 #speedLines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; image-rendering: pixelated; }
 body.replaying #speedLines { visibility: hidden; }

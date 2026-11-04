@@ -29,6 +29,7 @@ import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse
 import { GAMES, GAME_ORDER, TEAMS } from '/shared/modes.js';
 import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
+import { EPIC_CAM, epicMul, epicCamMs } from '/shared/epic.js';
 import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, HAIRS, TOPS, BOTTOMS } from '/shared/looks.js';
 import { startBall, endBall, ballOn, BS } from './player.js';
 import { updateWreck, ballCam, wreckFx, wreckDied } from './wreck.js';
@@ -1074,7 +1075,10 @@ net.on('kill', (m) => {
   } else {
     parts = [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc]];
   }
+  if (m.ep && m.k) parts.push([`  EPIC ${Math.round(m.ep.d)}m`, '#ffe14d']);
   if (!dummy) hud.feed(parts);
+  if (m.v === G.myId) epicKC = m.ep && m.ep.lock && m.k && m.k !== G.myId && S.killcam !== false && G.mode !== 'training' ? { ...m.ep, w: via } : null; // too epic to skip (the server holds your respawn)
+  if (m.v === G.myId) epicHold = !!(m.ep && m.ep.lock); // ...until it spawns you, killcam or not
   if (m.v === G.myId) {
     ME.alive = false;
     releaseHook();
@@ -1094,6 +1098,7 @@ net.on('kill', (m) => {
     sfx.kill();
     hud.msg(dummy ? 'dummy down' : `killed ${vn}`, 1.4, 'brag');
   }
+  if (m.ep && m.k === G.myId && m.v !== G.myId) epicBrag({ ...m.ep, w: via });
 });
 net.on('spawn', (m) => {
   endKillcam();
@@ -1325,7 +1330,7 @@ function frame(t) {
     }
     pingT -= dt;
     if (pingT <= 0) { pingT = 2; net.send({ t: 'pi', c: performance.now() }); }
-    if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = 'killcam... (space to skip)'; else hud.deadTimer(Math.max(0, 2.5 - (now - (G.deadAt || now)) / 1000)); }
+    if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = epicKC ? 'killcam... too epic to skip' : 'killcam... (space to skip)'; else if (epicHold) epicTimer(now); else hud.deadTimer(Math.max(0, 2.5 - (now - (G.deadAt || now)) / 1000)); }
   }
 
   const rt = now + G.offset - INTERP_MS;
@@ -1577,6 +1582,7 @@ function showReplayUI(title, url, name, color, sub, hint) {
   $('rpCard').append(cardEl(url, name, sub, color));
   $('rpHint').textContent = hint || '';
   $('rpFeed').innerHTML = '';
+  epicUI(false);
   $('replay').classList.remove('hidden');
 }
 function hideReplayUI() { $('replay').classList.add('hidden'); }
@@ -1588,6 +1594,7 @@ function replayFeed(k, info) {
   for (const [t, c] of k.k ? [[a, ac], [`  [${wname(via)}]  `, wcolor(via)], [b, bc]] : [[b, bc], ['  died', '#aaa']]) {
     const sp = document.createElement('span'); sp.textContent = t; sp.style.color = c; d.append(sp);
   }
+  if (k.ep && k.k) { const sp = document.createElement('span'); sp.textContent = `  EPIC ${Math.round(k.ep.d)}m`; sp.style.color = '#ffe14d'; d.append(sp); if (k.k === RP.focus) epicBanner({ ...k.ep, w: via }); }
   $('rpFeed').append(d);
 }
 let killcamT = 0;
@@ -1597,6 +1604,7 @@ function queueKillcam(killer, via) {
   G.killcamPending = true;
   killcamT = setTimeout(() => {
     if (ME.alive || !G.joined || RP.active) { G.killcamPending = false; return; }
+    if (epicKC) { epicCam(killer, via, deathS); return; }
     const clip = localClip(deathS - 4500, deathS + 1200, infoOf);
     const [kn, kc] = nameOf(killer);
     showReplayUI('KILLCAM', cardUrlFor(killer), kn, kc, `got you with ${wname(via)}`, 'SPACE / CLICK to skip');
@@ -1612,11 +1620,90 @@ function queueKillcam(killer, via) {
 function endKillcam() {
   clearTimeout(killcamT);
   G.killcamPending = false;
+  epicKC = null; epicHold = false;
   if (RP.mode === 'killcam') stopReplay(true);
 }
 function skipReplay() {
+  if (epicLocked()) { epicNope(); return; }
   if (RP.active) { stopReplay(false); return; }
   if (G.killcamPending) { clearTimeout(killcamT); G.killcamPending = false; net.send({ t: 'respawn' }); }
+}
+
+// ------------------------------------------------------------ EPIC kills: too epic to skip
+// the server flags far / clutch / mid-air / no-scope kills as EPIC (shared/epic.js) and holds the victim's respawn until the
+// whole epic killcam has played, so a hacked client can't skip it either. here: a longer, slower cut that punches in on you,
+// a banner when the shot lands, and a padlock where the skip button was.
+let epicKC = null; // the epic kill you're stuck watching
+let epicHold = false, nopeT = 0; // the server is holding your respawn (until 'spawn')
+function epicLocked() { return !!epicKC && !ME.alive && !G.roundOver && (G.killcamPending || RP.mode === 'killcam'); }
+function epicTags(ep) {
+  const w = WEAPONS[ep.w];
+  const far = w && w.kind === 'melee' ? 'WHAT A REACH' : w && epicMul(ep.w) >= 2 ? `WITH A ${w.name.toUpperCase()}?!` : 'LONG SHOT';
+  const T = { far, hs: 'HEADSHOT', ns: 'NO-SCOPE', air: 'MID-AIR', rope: 'OFF THE GRAPPLE', fast: `${ep.kmh || 300} KM/H`, hp: `ON ${ep.hp || 1} HP` };
+  return (Array.isArray(ep.why) ? ep.why : []).map((k) => T[k]).filter(Boolean).join(' · ');
+}
+function epicCam(killer, via, deathS) {
+  const ep = epicKC, C = EPIC_CAM;
+  // started late (a slow PC hitching on the kill): cut into the lead-up so it still ends before the server lets you go
+  const late = Math.max(0, Math.min(C.pre - 1000, performance.now() - (G.deadAt || 0) - C.delay));
+  const clip = localClip(deathS - C.pre + late, deathS + 1200, infoOf);
+  const [kn, kc] = nameOf(killer);
+  showReplayUI('KILLCAM', cardUrlFor(killer), kn, kc, `got you with ${wname(via)}`, '');
+  epicUI(true);
+  $('dead').classList.add('hidden');
+  const done = () => { epicKC = null; G.killcamPending = false; hideReplayUI(); epicUI(false); };
+  playClip(clip, {
+    focus: killer, mode: 'killcam', victim: G.myId, zoom: Math.max(2, Math.min(5, (ep.d || 30) / 14)),
+    slow: C.slow.map(([a, b, r]) => [deathS + a, deathS + b, r]), end: deathS + C.post,
+    // swing onto you as it slows down, hold through the hit, ease off after
+    punch: (t) => { const r = t - deathS; return r < -650 ? 0 : r < -150 ? (r + 650) / 500 : r < 450 ? 1 : 1 - (r - 450) / 700; },
+    onKill: (k) => replayFeed(k, clip.info),
+    onEnd: () => { done(); if (!ME.alive) $('dead').classList.remove('hidden'); net.send({ t: 'respawn' }); },
+    onAbort: done,
+  });
+}
+// the skip prompt turns into a padlock (off again for every other replay)
+function epicUI(on) {
+  const h = $('rpHint');
+  h.classList.toggle('locked', on);
+  h.classList.remove('nope');
+  $('replay').classList.toggle('epic', on);
+  const b = $('rpEpic');
+  if (b) b.remove();
+  if (!on) return;
+  const lk = document.createElement('span');
+  lk.className = 'lock';
+  h.textContent = '';
+  h.append(lk, 'TOO EPIC TO SKIP');
+}
+// the clip ended (or was too short to play) but the server still holds you: count down to the end of the lock
+function epicTimer(now) { $('deadTimer').textContent = `too epic to skip · ${Math.max(0, (epicCamMs() - (now - (G.deadAt || now))) / 1000).toFixed(1)}...`; }
+// trying to skip anyway: the padlock rattles (at most every 300 ms: holding space auto-repeats)
+function epicNope() {
+  const tn = performance.now();
+  if (tn - nopeT < 300) return;
+  nopeT = tn;
+  const el = RP.active ? $('rpHint') : $('deadTimer');
+  el.classList.remove('nope'); void el.offsetWidth; el.classList.add('nope');
+  el.addEventListener('animationend', () => el.classList.remove('nope'), { once: true });
+  sfx.error();
+}
+// EPIC SHOT · 64m slams in when the shot lands (killcam and play of the round)
+function epicBanner(ep) {
+  const old = $('rpEpic');
+  if (old) old.remove();
+  const b = document.createElement('div'), t = document.createElement('div'), s = document.createElement('div');
+  b.id = 'rpEpic'; t.className = 'et'; s.className = 'es';
+  t.textContent = `EPIC SHOT · ${Math.round(ep.d)}m`;
+  s.textContent = epicTags(ep);
+  b.append(t, s);
+  $('replay').append(b);
+  sfx.choir();
+}
+// and the killer gets to brag about it
+function epicBrag(ep) {
+  hud.msg(ep.lock ? `UNSKIPPABLE:\nthey HAVE to watch this · ${Math.round(ep.d)}m` : `EPIC SHOT · ${Math.round(ep.d)}m\n${epicTags(ep)}`, 3.2, 'epicbrag');
+  sfx.choir();
 }
 
 // ------------------------------------------------------------ accounts
