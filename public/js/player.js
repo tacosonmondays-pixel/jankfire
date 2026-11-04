@@ -2,6 +2,7 @@
 import { movePlayer, raycast, rayBox, PH } from '/shared/physics.js';
 import { BOXES } from '/shared/map.js';
 import { HOOK, SLIP_TIME } from '/shared/weapons.js';
+import { ropeStep, ropeJump, ROPE } from '/shared/hookphys.js';
 import { G } from './ctx.js';
 import { sfx } from './audio.js';
 import { hud } from './hud.js';
@@ -28,7 +29,6 @@ export const C = {
   airCap: 1.4, airAccel: 90, airCtl: 2.6,
   slideFric: 0.25, slideMin: 7,
   sprintMul: 1.45, crouchMul: 0.45, standEye: 1.6, crouchEye: 1.05, slideEye: 0.95,
-  hookJump: 11, hookJumpMul: 1.12,
   tbagWindow: 4000, tbagWarn: 9, tbagBoom: 14,
 };
 
@@ -147,22 +147,45 @@ export function releaseHook() { ME.hook = null; }
 function hookStep(dt) {
   const a = hookPoint();
   if (!a) { ME.hook = null; return; }
-  const v = ME.vel, p = ME.pos;
-  const dx = a[0] - p[0], dy = a[1] - (p[1] + 1), dz = a[2] - p[2];
-  const dist = Math.hypot(dx, dy, dz);
-  if (dist < 0.01) return;
-  const nx = dx / dist, ny = dy / dist, nz = dz / dist;
-  if (dist > 2) { v[0] += nx * HOOK.pull * dt; v[1] += ny * HOOK.pull * dt; v[2] += nz * HOOK.pull * dt; }
-  v[1] += C.grav * 0.35 * dt;
-  // rope: you can swing and get reeled in, but never drift further away
-  ME.hook.len = Math.min(ME.hook.len, dist);
-  const radial = v[0] * nx + v[1] * ny + v[2] * nz;
-  if (dist >= ME.hook.len - 0.05 && radial < 0) { v[0] -= nx * radial; v[1] -= ny * radial; v[2] -= nz * radial; }
+  // pendulum rope, same as the bots': reels in at a steady rate, keeps your swing, soft instead of snapping
+  ropeStep(ME.hook, a, ME.pos, ME.vel, dt, C.grav);
+  feel.lift = 1;
+}
+
+// letting go: the rope's share of your weight fades out over a moment instead of dropping you in one step
+function ropeLetGo(dt) {
+  if (feel.lift <= 0) return;
+  feel.lift = Math.max(0, feel.lift - dt / 0.15);
+  ME.vel[1] += C.grav * ROPE.lift * feel.lift * dt;
+}
+
+// camera feel on the rope: lean a little toward the rope and widen the fov a touch, eased in and out with
+// critically damped springs (no snaps). main.js adds ME.lean to the camera roll and ME.ropeFov to the fov.
+const feel = { lean: 0, leanV: 0, fov: 0, fovV: 0, kick: 0, lift: 0, t: 0 };
+function ease(k, target, w, dt) {
+  feel[k + 'V'] += (w * w * (target - feel[k]) - 2 * w * feel[k + 'V']) * dt;
+  feel[k] += feel[k + 'V'] * dt;
+}
+function hookFeel(dt, now) {
+  if (now - feel.t > 250) Object.assign(feel, { leanV: 0, fovV: 0, kick: 0, lift: 0 }); // respawned / was paused: the springs ease lean and fov back from where they were
+  feel.t = now;
+  let lean = 0, fov = 0;
+  const h = ME.hook;
+  if (h && h.n && !(now < (ME.ballUntil || 0))) { // (the wrecking ball's chain doesn't lean the third-person camera)
+    const side = h.n[0] * Math.cos(ME.yaw) - h.n[2] * Math.sin(ME.yaw); // + = the rope pulls to your right
+    lean = -side * 0.06; // by the rope's angle, so a steady swing leans too. roll is + to the left, so lean right = negative
+    fov = 1.5 + Math.min(2.5, hspeed() * 0.08);
+  }
+  feel.kick = Math.max(0, feel.kick - dt * 3); // grapple jump: a short swell instead of a text popup
+  ease('lean', lean, 7, dt);
+  ease('fov', fov + feel.kick * 4, 6, dt);
+  ME.lean = feel.lean; ME.ropeFov = feel.fov;
 }
 
 export function stepPlayer(dt, inp, now) {
   if (!ME.alive) return;
-  if (ME.ballUntil) { if (now < ME.ballUntil) { ballStep(dt, inp, now); return; } endBall(); } // wrecking ball killstreak
+  hookFeel(dt, now); // before any early return, so the camera lean keeps easing (e.g. through a dash, the ball or a soap bubble)
+  if (ME.ballUntil) { if (now < ME.ballUntil) { feel.lift = 0; ballStep(dt, inp, now); return; } endBall(); } // wrecking ball killstreak (its chain has its own physics)
   const v = ME.vel, p = ME.pos;
   // glitch dash: fly straight where you look, no gravity. letting go keeps all of it.
   if (ME.dashing) {
@@ -178,7 +201,7 @@ export function stepPlayer(dt, inp, now) {
   if (now < (ME.trapUntil || 0)) {
     const tv = ME.trapV || [0, 0, 0];
     v[0] = tv[0]; v[1] = tv[1]; v[2] = tv[2];
-    ME.hook = null; ME.sliding = false; ME.crouching = false; ME.sprinting = false; ME.jumpBuf = 0;
+    ME.hook = null; ME.sliding = false; ME.crouching = false; ME.sprinting = false; ME.jumpBuf = 0; feel.lift = 0;
     ME.eyeH += (C.standEye - ME.eyeH) * Math.min(1, dt * 14);
     movePlayer(p, v, dt, BOXES, false);
     ME.onGround = false;
@@ -192,15 +215,15 @@ export function stepPlayer(dt, inp, now) {
   let wx = -s * fw + c * st, wz = -c * fw - s * st;
   const wl = Math.hypot(wx, wz);
   if (wl) { wx /= wl; wz /= wl; }
-  // grapple jump: jump while hooked = let go, get launched up, keep (and boost) the momentum
+  // grapple jump: let go and get flung along your swing plus a modest hop, added on top of your momentum.
+  // timing counts a little: on the upswing, swinging the way you look, you get more
   if (inp.jumpPressed && ME.hook) {
     ME.hook = null;
-    v[0] *= C.hookJumpMul; v[2] *= C.hookJumpMul;
-    v[1] = Math.max(v[1], 0) * C.hookJumpMul + C.hookJump;
+    const q = ropeJump(v, look());
     ME.onGround = false;
     inp.jumpPressed = false;
-    sfx.pad();
-    hud.msg('GRAPPLE JUMP', 0.6);
+    sfx.ropeJump(q);
+    feel.kick = 0.6 + q * 0.4;
   }
   if (inp.jumpPressed) ME.jumpBuf = 0.22;
   const wantJump = (ME.jumpBuf > 0 || inp.jump) && !slipping;
@@ -249,7 +272,7 @@ export function stepPlayer(dt, inp, now) {
   }
 
   v[1] -= grav * dt;
-  if (ME.hook) hookStep(dt);
+  if (ME.hook) hookStep(dt); else ropeLetGo(dt);
   holeEat(dt, now);
   if (!ME.onGround) ME.airMaxFall = Math.min(ME.airMaxFall, v[1]);
 
