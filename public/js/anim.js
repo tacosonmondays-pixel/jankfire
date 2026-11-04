@@ -3,6 +3,7 @@
 // Offsets are added on top of the weapon's normal pose. Spins can go past 2π and end on a multiple of 2π so
 // there's no pop when the animation finishes. Principles used: short anticipation, snappy strike,
 // held follow-through for weight, slower recovery for heavy stuff.
+import { PARRY } from '/shared/weapons.js'; // the guard pose holds as long as the parry window
 
 const PI2 = Math.PI * 2;
 const EASE = {
@@ -409,14 +410,14 @@ export function drawFor(id, model) {
   return HEAVY.has(id) ? 'draw_heavy' : 'draw_gun';
 }
 
-// katana parry (right click): the blade snaps up across the body (overshoots a hair), holds through the 0.35 s
-// window with a little drift so it doesn't look frozen, then drops back. a landed parry adds hit stop + a kick on top.
+// katana parry (right click): the blade snaps up across the body (overshoots a hair), holds through the whole
+// window (PARRY.win) with a little drift so it doesn't look frozen, then drops back. a landed parry adds hit stop + a kick on top.
 Object.assign(ANIMS, {
   parry_katana: { keys: [
     K(0), K(0.05, [-0.15, 0.16, 0.02], [0.84, 1.03, 0.52], 'snap'), // snap up
     K(0.1, [-0.13, 0.13, 0], [0.75, 0.95, 0.45]), // settle into the guard
-    K(0.34, [-0.12, 0.125, 0], [0.72, 0.93, 0.43], 'linear'), // hold
-    K(0.56, [0, 0, 0], [0, 0, 0], 'smooth'),
+    K(PARRY.win, [-0.12, 0.125, 0], [0.72, 0.93, 0.43], 'linear'), // hold: up for the whole window
+    K(PARRY.win + 0.22, [0, 0, 0], [0, 0, 0], 'smooth'),
   ], events: [[0.01, 'whoosh']], trail: [0, 0.07] },
   // your swing got parried: whatever you're holding gets knocked up and away, then you get it back
   staggered: { keys: [
