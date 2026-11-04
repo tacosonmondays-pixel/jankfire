@@ -9,6 +9,8 @@ The old session's scratch folder is gone, so the test tooling was copied into `h
 - Update 1.1 (PR #2): sniper knockback back (minigun + sniper are the only guns that shove); killcam victim stays until the
   killing shot, then explodes.
 - Update 1.2 (PR #3): sleep arrow knocks you flat for 4 s (everyone sees it); the play of the round is skippable.
+- PR #4: Training gives you your 3 picked killstreaks, always (a used one comes back 3 s after it runs out).
+- A Windows exe of all that was built and sent (JANKFIRE-1.2-win.zip, `npm run dist:win:zip`).
 
 ## Update 2: almost done -> `claude/int-features` (head 2b29c0a)
 Already merged and fixed in it: update 1, plus
@@ -16,6 +18,7 @@ bubble wand, Scales of Justice, Wrecking Ball, revolver twirl + fan, unskippable
 duck rework, headshot DINK/TONK + homing slippers, katana parry, pendulum grapple, sprays (Z), popper/reverse as items (8 items),
 Never Landed (wings), Shredder, Blood Cross, Golden Sniper (Sniper Royalty), Backrooms map, Gun Game, Infection,
 Spoons & Grapples, Duck Rain, Floor Is Lava, One in the Chamber, Runner Jacket.
+Since then also on it: Blood Cross is a big upright cross (not an X) with red anime impact frames (482573e).
 Its own commits explain every cross-feature decision (`git log --oneline be76a3a..claude/int-features`).
 
 To ship it:
@@ -44,6 +47,16 @@ Partly built (WIP, untested):
   shield, charged punch + block, grapple quickhack, homing missiles, charged leap). Original design, no copied names.
 
 ## Queued requests (not started)
+- NEW MODE: BATTLE ROYALE. Original design: a big map (or a new one), everyone drops in, loot on the ground (weapons,
+  items, armor), a shrinking zone that hurts outside it, last one standing wins; works in Online and Bots rooms.
+  TEACH THE BOTS TO PLAY IT: drop somewhere sensible, loot and upgrade their kit, rotate ahead of the zone, avoid or
+  third-party fights, heal/use items, fight at the right ranges, don't die to the zone. Test with a full bots match.
+- IMPROVED SEARCH & DESTROY = the competitive Plant & Defuse (`claude/f-econ`). TEACH THE BOTS TO PLAY IT PROPERLY:
+  sensible buys per economy (eco / force / full, drop weapons for teammates), attackers group up and execute a site
+  (smokes/frags first), plant in safe spots, post-plant positions; defenders split onto sites, hold angles, rotate on
+  info, retake together, defuse with a kit when safe; nobody wanders alone; pick up better weapons; save when the round
+  is lost. The server already has basic bot buying + pickups (server/econ.js); this is the full tactical behaviour.
+  Test: whole bots-only matches, check both sides win rounds for real reasons.
 - Map pass: `handoff/map_todo/MAP_FIXES.md` (+ 2 screenshots): Suburb bigger and Nuketown-like with a tree border,
   Skyline/Rooftop streets below, Warehouse props + fenced yard, Bazaar gaps, out-of-bounds "RETURN 3 2 1" countdown.
 - Two-stage end-of-match vote: mode first, then map (about 12 modes now).
