@@ -574,3 +574,9 @@ body.chaos-lives #ammo, body.chaos-nostreaks #streakTray, body.chaos-lives #stre
 body.replaying #chaosHud, body.replaying #specBar, body.replaying #lavaGlow { visibility: hidden; }
 #setupMap option:disabled { color: #666; }
 body.chaos-spec #hotbar, body.chaos-spec #hpbox, body.chaos-spec #crosshair, body.chaos-spec #speed, body.chaos-spec #chaosHud { visibility: hidden; }
+
+/* blood cross impact frames (hud.impact) */
+#impactFx { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+#impactFx.f1 { background: #ff1428; mix-blend-mode: multiply; }
+#impactFx.f2 { background: radial-gradient(circle at center, rgba(255, 70, 60, 0.95) 0 14%, rgba(40, 0, 6, 0.93) 42%); }
+#impactFx.f3 { background: radial-gradient(ellipse at center, rgba(255, 40, 40, 0.12) 25%, rgba(190, 0, 20, 0.6)); mix-blend-mode: screen; }

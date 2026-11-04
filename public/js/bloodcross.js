@@ -87,14 +87,14 @@ function sprite(color, size, opacity, add = false) {
 }
 function dispose(o) { o.traverse((m) => { if (m.material) m.material.dispose(); }); }
 
-// the X: two bright bars with a dark-red rim (so it reads as an X, not a red smudge), a white-hot line down each, a soft glow
-// behind. len / th in the parent's units
+// the cross: an upright beam with the crossbar in its upper third, each bar a bright core on a dark-red rim (so it reads as
+// a cross, not a red smudge), a white-hot line down each, a soft glow behind. len = beam height, th = bar thickness
 function makeX(pal, len, th) {
   const g = new THREE.Group();
-  for (const s of [-1, 1]) {
-    const rim = new THREE.Mesh(geo().bar, basic(pal.deep)); rim.scale.set(len * 1.1, th * 1.75, th * 0.35); rim.position.z = -th * 0.1; rim.rotation.z = s * Math.PI / 4; g.add(rim);
-    const bar = new THREE.Mesh(geo().bar, basic(pal.x)); bar.scale.set(len, th, th * 0.45); bar.rotation.z = s * Math.PI / 4; g.add(bar);
-    const core = new THREE.Mesh(geo().bar, additive(pal.core, 0.7)); core.scale.set(len * 0.78, th * 0.34, th * 0.6); core.rotation.z = s * Math.PI / 4; g.add(core);
+  for (const [w, h, y] of [[th, len, 0], [len * 0.62, th, len * 0.2]]) { // beam, then crossbar
+    const rim = new THREE.Mesh(geo().bar, basic(pal.deep)); rim.scale.set(w + th * 0.75, h + th * 0.75, th * 0.35); rim.position.set(0, y, -th * 0.1); g.add(rim);
+    const bar = new THREE.Mesh(geo().bar, basic(pal.x)); bar.scale.set(w, h, th * 0.45); bar.position.y = y; g.add(bar);
+    const core = new THREE.Mesh(geo().bar, additive(pal.core, 0.7)); core.scale.set(w > h ? w * 0.82 : th * 0.34, w > h ? th * 0.34 : h * 0.82, th * 0.6); core.position.y = y; g.add(core);
   }
   g.userData.glow = sprite(pal.glow, len * 2.1, 0.3);
   g.userData.hot = sprite(pal.core, len * 0.7, 0.4, true);
@@ -102,11 +102,11 @@ function makeX(pal, len, th) {
   g.add(g.userData.glow, g.userData.hot);
   return g;
 }
-// the eruption: two long shards crossed in a big X in the parent's XY plane, a few thorns on each so it reads as torn-out blood
+// the eruption: two long shards in a big upright cross in the parent's XY plane, a few thorns on each so it reads as torn-out blood
 function makeSpikes(pal, len) {
   const g = new THREE.Group(), parts = [];
   for (const s of [-1, 1]) {
-    const one = new THREE.Group(); one.rotation.z = s * Math.PI / 4;
+    const one = new THREE.Group(); one.rotation.z = s < 0 ? 0 : Math.PI / 2; if (s > 0) one.position.y = len * 0.2; // a cross: the upright beam, then the crossbar high on it
     const core = new THREE.Mesh(geo().spike, basic(pal.deep)); core.scale.set(0.075, len / 2, 0.075);
     const hot = new THREE.Mesh(geo().spike, haze(pal.glow, 0.4)); hot.scale.set(0.14, (len / 2) * 1.05, 0.14);
     const vein = new THREE.Mesh(geo().spike, additive(pal.core, 0.5)); vein.scale.set(0.018, (len / 2) * 0.8, 0.085); // a hot line down the middle
@@ -254,7 +254,7 @@ function loose(mk, p) {
 function dress(mk, grp, depth) {
   mk.grp = grp;
   grp.userData.bcMark = mk.key;
-  mk.x = makeX(mk.pal, 0.34, 0.05);
+  mk.x = makeX(mk.pal, 0.62, 0.075); // big enough to read from across the map
   mk.x.position.z = depth + 0.02;
   mk.sp = makeSpikes(mk.pal, 2.5 / S);
   mk.sp.position.z = depth * 0.3; // through the middle of them, a hair toward the side it hit
@@ -271,7 +271,7 @@ function centerOf(mk) {
 function stick(m, key, ghosts, info) {
   if (marks.has(key)) dropMark(marks.get(key)); // the same replay played again (killcam, then the play of the round)
   const mk = newMark(key, m, info), tg = who(m.to, ghosts);
-  if (tg.me) { mk.me = true; ov.start(mk); hud.msg('BLOOD CROSSED', 0.9, 'reverse'); }
+  if (tg.me) { mk.me = true; ov.start(mk); hud.msg('BLOOD CROSSED', 0.9, 'reverse'); hud.impact(0.55); }
   else if (tg.r && tg.r.alive && tg.r.ch) attach(mk, tg.r);
   else loose(mk, m.p);
   if (!ghosts && m.o === G.myId && !tg.me) { hud.hit(false); sfx.hit(); } // you marked them: the pop is 0.85 s away
@@ -309,6 +309,7 @@ function boom(mk) {
   const c = centerOf(mk);
   if (mk.grp && !mk.loose && inScene(mk.grp)) { scene.attach(mk.grp); mk.loose = true; } // they come apart, the cross stays where they were
   if (mk.me) ov.boom();
+  { const d = G.camera ? G.camera.position.distanceTo(new THREE.Vector3(c[0], c[1], c[2])) : 99, k = mk.me ? 1 : d < 30 ? 0.75 - d / 60 : 0; if (k > 0) hud.impact(k); } // red impact frames
   burst(c, mk.pal, mk.me);
   sfx.bcBoom(c);
   const d = Math.hypot(c[0] - ME.pos[0], c[1] - ME.pos[1], c[2] - ME.pos[2]);
@@ -405,8 +406,8 @@ function wallX(m, P) {
   const grp = new THREE.Group();
   grp.position.set(p[0], p[1], p[2]);
   grp.lookAt(p[0] + n[0], p[1] + n[1], p[2] + n[2]);
-  grp.rotateZ(R(0.4));
-  const x = makeX(P, 0.6, 0.075);
+  grp.rotateZ(R(0.08)); // a cross stands (nearly) upright
+  const x = makeX(P, 0.95, 0.1);
   x.position.z = 0.02; x.scale.setScalar(0.001);
   grp.add(x);
   scene.add(grp);
