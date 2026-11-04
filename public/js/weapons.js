@@ -247,8 +247,8 @@ export function setMyKatana(n) { W.kat = n; if (models.katana) { setKatana(model
 // ------------------------------------------------------------ items (G)
 W.item = DEFAULT_LOADOUT.item;
 W.ic = {}; // id -> { n, next (performance.now ms) }
-export function setItem(id) { if (ITEMS[id]) W.item = id; }
-export function resetItems() { W.ic = {}; }
+export function setItem(id) { if (Object.hasOwn(ITEMS, id)) W.item = id; }
+export function resetItems() { W.ic = {}; W.reverseUntil = 0; } // a reverse card doesn't survive death (the server drops it)
 function charges(id) {
   const it = ITEMS[id];
   let c = W.ic[id];
@@ -269,8 +269,67 @@ export function useItem() {
   c.n--; if (!c.next) c.next = performance.now() + it.recharge * 1000;
   net.send({ t: 'item', i: id, o: eye().map(r2), d: look().map(r2) });
   if (id === 'wand') return; // no toss: the wand has its own viewmodel and bloops (wand.js)
+  if (it.w) popItem(it.w); // party popper / reverse card: pops into your hand (see popEvent for what it does)
   if (!W.anim || W.anim.kind === 'inspect' || W.anim.kind === 'draw') playAnim('toss_item', 'item');
   if (id === 'medkit') sfx.heal(); else if (id === 'bubble') sfx.reverse(); else sfx.swing();
+}
+
+// ------------------------------------------------------------ item pop-ins: party popper, reverse card
+// the item pops up in your left hand (wearing its skin), does its thing and drops away again. your gun stays out.
+const POP = {
+  popper: { p: [-0.16, -0.15, -0.36], r: [0.1, -0.25, -0.2], anim: 'pop_popper' },
+  reverse: { p: [-0.09, -0.09, -0.3], r: [0.05, 0.3, 0.1], anim: 'pop_reverse' },
+};
+const CONFETTI = [0xff4fd8, 0x4fd8ff, 0xffe14d, 0x7dff4f, 0xff7a1a, 0xffffff];
+function popItem(id) {
+  if (!POP[id] || !models[id]) return;
+  cancelInspect();
+  W.pop = { id, t: 0 };
+  if (!W.anim || W.anim.kind === 'draw') playAnim('dip_item', 'item'); // the gun makes room
+}
+// the popped item's muzzle in the world (viewmodel space lines up with the camera)
+function popMuzzle(m) {
+  tmpV.copy(m.g.userData.muzzle); m.g.localToWorld(tmpV);
+  G.camera.updateMatrixWorld(); G.camera.localToWorld(tmpV);
+  return [tmpV.x, tmpV.y, tmpV.z];
+}
+function popEvent(ev, m) {
+  const sys = G.skinFxVM, R = (k) => (Math.random() - 0.5) * k;
+  vmRoot.updateMatrixWorld(true);
+  tmpV.copy(m.g.userData.muzzle); m.g.localToWorld(tmpV); // viewmodel space
+  const x = tmpV.x, y = tmpV.y, z = tmpV.z;
+  if (ev === 'pop') { // yank: confetti, everyone in front gets shoved (the server checks you really popped one), you fly back
+    const w = WEAPONS.popper, o = eye(), d = look();
+    for (const tg of conePlayers(o, d, w.range, w.cone)) {
+      net.send({ t: 'hit', to: tg.r.id, w: 'popper', d: d.map(r2) });
+      fx.spray([tg.r.pos[0], tg.r.pos[1] + 1.3, tg.r.pos[2]], 14, CONFETTI, 6, 0.8, 0.14, 4, 1.5);
+    }
+    fx.confetti(popMuzzle(m), d, ME.vel);
+    for (let i = 0; i < 40; i++) sys.norm.spawn(x + R(0.03), y + R(0.03), z + R(0.03), R(1.6), 0.3 + R(1.4), -1.2 - Math.random() * 2.2, 0.5, 0.022, 0.018, CONFETTI[(Math.random() * CONFETTI.length) | 0], 0xffffff, 1, 2, 1.5);
+    sfx.popper(); sfx.partyHorn();
+    applyKb([-d[0] * w.recoil, -d[1] * w.recoil + w.lift, -d[2] * w.recoil]);
+    punchCam(-0.05, 0.02 * rnd(), 0.05 * rnd());
+    G.shake = Math.max(G.shake, 0.45);
+  } else if (ev === 'flash') { // reverse card: a ring of red + yellow off the card
+    for (let i = 0; i < 36; i++) { const a = Math.random() * Math.PI * 2, s = 0.5 + Math.random() * 0.8; sys.add.spawn(x + R(0.02), y + R(0.02), z, Math.cos(a) * s, Math.sin(a) * s, R(0.3), 0.4, 0.03, 0.004, i % 2 ? 0xff3b3b : 0xffd23b, 0xffffff, 1, 0, 2); }
+    sfx.reverse();
+    punchCam(-0.02, 0, 0.03 * rnd());
+  }
+}
+function updatePop(dt) {
+  const P = W.pop;
+  if (!P) return;
+  const m = models[P.id], c = POP[P.id];
+  const a = m && ME.alive ? sample(c.anim, P.t + dt) : null;
+  if (!a) { if (m) m.wrap.visible = false; W.pop = null; return; }
+  const t0 = P.t;
+  P.t += dt;
+  m.wrap.position.set(c.p[0] + a.p[0], c.p[1] + a.p[1], c.p[2] + a.p[2]);
+  m.wrap.rotation.set(c.r[0] + a.r[0], c.r[1] + a.r[1], c.r[2] + a.r[2]);
+  m.wrap.scale.setScalar(a.s);
+  m.wrap.visible = !W.scoped;
+  for (const ev of eventsBetween(c.anim, t0, P.t)) popEvent(ev, m);
+  if (m.wrap.visible && G.skinFxVM) emitSkinFx(G.skinFxVM, m.g, dt, 0.3 * m.cfg.s);
 }
 
 // knife right click: CS-style heavy stab. returns false when this weapon has no heavy attack
@@ -468,6 +527,7 @@ export function refillAmmo() {
 export function setLoadout(lo) {
   const v = validLoadout(lo);
   W.item = v.item;
+  net.send({ t: 'lo', item: v.item }); // the server only lets you use the item you carry
   const streakSlot = W.hasScythe ? (W.slots[3] || 'scythe') : null;
   W.slots = SLOTS.map((s) => v[s]);
   if (streakSlot) W.slots[3] = streakSlot;
@@ -486,7 +546,8 @@ export function rebuildOne(id) {
 export function showSlots() {
   hud.slots(W.slots, W.slots.map((id) => weaponIcon(id, (G.equipped || {})[id])));
   hud.slotOn(W.slot);
-  hud.itemSlot(W.item, itemIcon(W.item));
+  const iw = ITEMS[W.item] && ITEMS[W.item].w; // popper / reverse card: a picture of the real thing, skin and all
+  hud.itemSlot(W.item, (iw && weaponIcon(iw, (G.equipped || {})[iw])) || itemIcon(W.item));
 }
 
 function equip(i) {
@@ -750,15 +811,6 @@ function swing(id, now) {
   W.swing = 1;
   W.swingId = id;
   net.send({ t: 'fire', w: id, o: eye().map(r2), d: look().map(r2) });
-  if (id === 'popper') {
-    const d = look();
-    fx.confetti(muzzleWorld(), d, ME.vel);
-    sfx.popper();
-    applyKb([-d[0] * w.recoil, -d[1] * w.recoil, -d[2] * w.recoil]);
-    playAnim('yank_popper', 'swing');
-    resolveSwing(id);
-    return;
-  }
   // chain swings: click again quickly and you get the backhand / second stab
   W.heavy = false;
   W.combo = now - W.lastSwingT < 750 ? W.combo + 1 : 0;
@@ -801,15 +853,6 @@ function resolveSwing(id) {
   }
 }
 
-function useReverse(now) {
-  const w = WEAPONS.reverse;
-  setCd('reverse', now);
-  W.reverseUntil = now + w.dur * 1000;
-  net.send({ t: 'fire', w: 'reverse', o: eye().map(r2), d: look().map(r2) });
-  sfx.reverse();
-  hud.msg('REVERSE', w.dur, 'reverse');
-}
-
 function cough() {
   net.send({ t: 'cough' });
   sfx.cough();
@@ -832,7 +875,6 @@ export function fireDown() {
     if (W.ammo[id] > 0) fireHitscan(id, now); else { sfx.empty(); reload(); }
   } else if (w.kind === 'melee') swing(id, now);
   else if (w.kind === 'proj' && !w.auto) fireProj(id, now);
-  else if (w.kind === 'reverse') useReverse(now);
   else if (w.kind === 'cards') playCard(now);
 }
 
@@ -1025,6 +1067,7 @@ export function updateWeapons(dt, now) {
 
   // ---- HUD
   if (ITEMS[W.item]) { const c = charges(W.item), it = ITEMS[W.item]; hud.item(c.n, it.charges, c.next ? 1 - Math.max(0, c.next - now) / (it.recharge * 1000) : 1); }
+  updatePop(dt);
   if (w.mag) hud.ammo(W.ammo[id], w.mag, !!W.reloadId);
   else hud.ammo(null);
   if (W.reloadId) hud.meter(1 - (W.reloadUntil - now) / (w.reload * 1000), 'RELOADING', '#ffffff');
@@ -1130,7 +1173,6 @@ export function updateWeapons(dt, now) {
   if (w.fanHammer) { const k = twirlVM(m, dt); px -= k * 0.025; py -= k * 0.02; pz -= k * 0.1; ry += k * 0.4; rz -= k * 0.15; } // arm out + wrist turned so you see it go round (the barrel never swings through your face)
   if (W.inspectSpin > 0) { W.inspectSpin = Math.max(0, W.inspectSpin - dt * 0.8); if (m.g.userData.barrels) m.g.userData.barrels.rotation.z += W.inspectSpin * dt * 30; }
   m.wrap.scale.setScalar(scale);
-  if (id === 'reverse' && reversed) { ry += Math.sin(now * 0.03) * 0.8; py += 0.05; }
   if (m.g.userData.barrels) m.g.userData.barrels.rotation.z += W.spin * dt * 40;
   if (blowing || (spinning && W.spin >= 1 && W.held)) { px += (Math.random() - 0.5) * 0.008; py += (Math.random() - 0.5) * 0.008; }
   m.wrap.visible = !(id === 'slipper' && W.slipperOut) && !W.scoped && !ME.dashing;

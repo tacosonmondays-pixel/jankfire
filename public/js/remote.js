@@ -46,6 +46,25 @@ function markerTexture() {
 const camPos = new THREE.Vector3();
 
 const tmpV = new THREE.Vector3(), tmpQ = new THREE.Quaternion(), tmpS = new THREE.Vector3();
+// reverse card on: the UNO reverse arrows, life size, chasing each other round their waist
+let unoParts = null;
+function unoRing() {
+  const R = 0.85, end = Math.PI * 0.72;
+  unoParts ||= { arc: new THREE.TorusGeometry(R, 0.07, 6, 20, end), head: new THREE.ConeGeometry(0.17, 0.32, 8), mats: [0xff2a2a, 0xffd23b].map((c) => new THREE.MeshBasicMaterial({ color: c, fog: false })) };
+  const g = new THREE.Group();
+  for (let i = 0; i < 2; i++) {
+    const a = new THREE.Group(), mat = unoParts.mats[i];
+    a.add(new THREE.Mesh(unoParts.arc, mat));
+    const h = new THREE.Mesh(unoParts.head, mat); // arrowhead at the end of the arc, pointing along it
+    h.position.set(Math.cos(end) * R, Math.sin(end) * R, 0);
+    h.rotation.z = end;
+    a.add(h);
+    a.rotation.z = i * Math.PI;
+    g.add(a);
+  }
+  g.rotation.x = Math.PI / 2; // flat round the waist; spin it on z
+  return g;
+}
 function lerpAngle(a, b, t) {
   let d = b - a;
   while (d > Math.PI) d -= Math.PI * 2;
@@ -172,6 +191,45 @@ export class Remote {
     tmpV.copy(this.weaponMesh.userData.muzzle);
     this.weaponMesh.localToWorld(tmpV);
     return [tmpV.x, tmpV.y, tmpV.z];
+  }
+
+  // items (party popper, reverse card) pop into their hand for a moment, skin and all, then it's back to the gun
+  popItem(id, ms) {
+    if (this.itemMesh) this.itemMesh.removeFromParent();
+    // one mesh per item, reused every pop: building one each time leaked geometries + noFog clones
+    this.items ||= {};
+    const key = id + JSON.stringify(this.skins[id] || '');
+    let g = this.items[id];
+    if (!g || g.userData.key !== key) { // only a new skin rebuilds it
+      g = buildWeapon(id, this.skins[id]);
+      g.traverse((o) => { if (o.isMesh && !o.material.transparent) o.material = visibleMat(o.material); });
+      g.scale.setScalar(1.5);
+      g.userData.key = key;
+      this.items[id] = g;
+    }
+    this.itemMesh = g;
+    this.ch.slot.add(g);
+    this.itemUntil = performance.now() + ms;
+  }
+  itemMuzzle() {
+    const g = this.itemMesh && this.itemMesh.parent ? this.itemMesh : this.weaponMesh;
+    if (!g) return [this.pos[0], this.pos[1] + 1.2, this.pos[2]];
+    this.ch.root.updateMatrixWorld(true);
+    tmpV.copy(g.userData.muzzle);
+    g.localToWorld(tmpV);
+    return [tmpV.x, tmpV.y, tmpV.z];
+  }
+  // reverse card on: the card over their head gets big and bobs, the arrows go round them, their outline turns red
+  unoFx(on, dt, now) {
+    if (on && (!this.uno || this.uno.parent !== this.ch.root)) { this.uno = unoRing(); this.uno.position.y = 1.05; this.ch.root.add(this.uno); }
+    if (this.uno) this.uno.visible = on;
+    if (on) {
+      this.uno.rotation.z -= dt * 6; this.uno.rotation.y = Math.sin(now * 0.004) * 0.2;
+      const s = 1.6 + Math.sin(now * 0.012) * 0.15;
+      this.card.scale.set(s, s, s); this.card.position.y = 3.2 + Math.sin(now * 0.006) * 0.1;
+    } else if (this.card.scale.x !== 1) { this.card.scale.set(1, 1, 1); this.card.position.y = 2.9; } // back to the little card over their head
+    const red = outlineMat(0xff2a2a), sh = this.shells || [];
+    if (sh.length && on !== (sh[0].material === red)) { const mat = on ? red : outlineMat(new THREE.Color(this.color).getHex()); for (const s of sh) s.material = mat; }
   }
 
   // the mannequin comes apart. pieces get flung and bounce around for a few seconds.
@@ -321,6 +379,11 @@ export class Remote {
     if (this.weaponMesh && this.weaponMesh.userData.barrels && (this.f & FLAGS.SPIN)) this.weaponMesh.userData.barrels.rotation.z += dt * 40;
     this.card.visible = !!(this.f & FLAGS.REVERSE) || now < (this.reverseUntil || 0);
     if (this.card.visible) this.card.rotation.y += dt * 9;
+    this.unoFx(this.card.visible, dt, now);
+    // a popped item hides the gun until it's done
+    const holding = !!this.itemMesh && this.itemMesh.parent === this.ch.slot && now < this.itemUntil;
+    if (this.itemMesh && !holding) { this.itemMesh.removeFromParent(); this.itemMesh = null; }
+    if (this.weaponMesh) this.weaponMesh.visible = !holding;
     if (now < this.burnUntil && Math.random() < 0.7) fx.burn(this.pos);
     if (this.w !== 'revolver') this.tw = null;
     else if (this.tw && this.weaponMesh) applyTwirl(this.weaponMesh, stepTwirl(this.tw, dt), this.weaponMesh.scale.x);

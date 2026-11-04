@@ -18,7 +18,7 @@ import { STAT_KEYS } from './server/store.js';
 import { soapAt, trapBoxes, trapPreroll } from './shared/wand.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor } from './shared/modes.js';
-import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, validStreaks, fireRate } from './shared/weapons.js';
+import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, DEFAULT_LOADOUT, validStreaks, fireRate } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
 import { verdict } from './shared/verdict.js';
 
@@ -245,13 +245,14 @@ class Room {
   randomLoadout() {
     const lo = {};
     for (const slot of ['primary', 'secondary', 'melee']) lo[slot] = pick(Object.keys(WEAPONS).filter((id) => WEAPONS[id].slot === slot));
+    lo.item = pick(Object.keys(ITEMS)); // the popper + reverse card left the secondary pool for this one
     return lo;
   }
   sendLoadout(p) {
     if (p.isBot) { if (GAMES[this.game].random && !p.ai.dummy) { p.w = pick(BOT_GUNS); p.ai.ammo = WEAPONS[p.w].mag || 1; } return; }
     const rnd = (this.mode === 'ffa' || this.mode === 'bots') && GAMES[this.game].random;
-    if (rnd) { p.forced = true; send(p, { t: 'loadout', lo: this.randomLoadout() }); }
-    else if (p.forced) { p.forced = false; send(p, { t: 'loadout', lo: null }); }
+    if (rnd) { p.forced = true; const lo = this.randomLoadout(); p.item = lo.item; send(p, { t: 'loadout', lo }); }
+    else if (p.forced) { p.forced = false; if (p.ownItem) p.item = p.ownItem; send(p, { t: 'loadout', lo: null }); }
   }
   joinTeam(p) {
     if (!p.ownColor) p.ownColor = p.color;
@@ -312,6 +313,7 @@ class Room {
     p.kfx = ownedKill(m.kfx, inv);
     p.grap = ownedGrapple(m.grap, inv);
     p.kc = !!m.kc;
+    p.item = p.ownItem = this.okItem(m.item) || DEFAULT_LOADOUT.item;
     if (this.mode === 'bots' && m.cfg && GAMES[m.cfg.game] && !this.humans().length) this.setGame(m.cfg.game);
     this.joinTeam(p);
     if (p.team) p.pos = this.pickSpawn(false, p);
@@ -639,6 +641,15 @@ class Room {
   }
 
   // ---------------------------------------------------------- items (G): charges refill over time
+  // only ITEMS' own keys: '__proto__' / 'constructor' must not reach p.ic (that would write onto Object.prototype)
+  okItem(id) { return typeof id === 'string' && Object.hasOwn(ITEMS, id) ? id : null; }
+  // the item in your loadout ('lo' / join). switching counts right away only before you've used one this life
+  setItem(p, id) {
+    id = this.okItem(id);
+    if (!id || p.forced) return; // randomizer: you get its item
+    p.ownItem = id;
+    if (!p.alive || (now() - p.spawnT < 5500 && (p.itemT || 0) < p.spawnT)) p.item = id;
+  }
   itemCharges(p, id) {
     const it = ITEMS[id];
     p.ic ||= {};
@@ -649,8 +660,8 @@ class Room {
     return c;
   }
   useItem(p, m) {
-    const it = ITEMS[m.i];
-    if (!it || !p.alive) return;
+    const it = Object.hasOwn(ITEMS, m.i) ? ITEMS[m.i] : null;
+    if (!it || !p.alive || m.i !== p.item) return; // only the one item in your loadout
     const c = this.itemCharges(p, m.i);
     if (c.n <= 0 || now() - (p.itemT || 0) < 400) return;
     p.itemT = now();
@@ -673,7 +684,28 @@ class Room {
       const b = { id: this.nextBub++, p: [r2(p.pos[0]), r2(p.pos[1] + 1), r2(p.pos[2])], r: it.r, until: now() + it.dur * 1000, o: p.id };
       this.bubbles.set(b.id, b);
       this.broadcast({ t: 'bub+', id: b.id, p: b.p, r: b.r, left: it.dur * 1000 });
-    }
+    } else if (m.i === 'popper') this.popperUse(p, o, d);
+    else if (m.i === 'reverse') this.reverseUse(p);
+  }
+  // party popper (item): the client finds who's in its cone and sends 'hit's. they only count for a moment after
+  // a charge was really spent here, once per target, and only on people in front of where you aimed
+  popperUse(p, o, d) {
+    p.pop = { t: now(), d, hit: new Set() };
+    this.broadcast({ t: 'fx', k: 'swing', w: 'popper', id: p.id, a: o.map(r2) }, p.id);
+  }
+  popperHit(p, t, toT) {
+    const w = WEAPONS.popper, pop = p.pop;
+    if (!pop || now() - pop.t > 750 || pop.hit.has(t.id) || !this.rangeOk(p, t, w.range)) return;
+    const e = eyeOf(p), to = [t.pos[0] - e[0], t.pos[1] + 1 - e[1], t.pos[2] - e[2]], dist = Math.hypot(...to);
+    if (dist > 2.5 && (to[0] * pop.d[0] + to[1] * pop.d[1] + to[2] * pop.d[2]) / dist < Math.cos(w.cone + 0.35)) return; // point blank counts from any angle (positions lag)
+    pop.hit.add(t.id);
+    this.hurt(t, p, 'popper', 0, [toT[0] * w.kb, toT[1] * w.kb + w.kbUp, toT[2] * w.kb]);
+  }
+  // reverse card (item): for a few seconds everything aimed at you goes back to whoever sent it (see hurt)
+  reverseUse(p) {
+    const dur = WEAPONS.reverse.dur;
+    p.reverseUntil = now() + dur * 1000;
+    this.broadcast({ t: 'fx', k: 'reverse', id: p.id, dur });
   }
   inBubble(b, t) { return Math.hypot(t.pos[0] - b.p[0], t.pos[1] + 1 - b.p[1], t.pos[2] - b.p[2]) < b.r; }
   // a bubble protects whoever is inside from anyone outside it
@@ -1156,6 +1188,7 @@ class Room {
       return;
     }
     const toT = norm([t.pos[0] - p.pos[0], t.pos[1] - p.pos[1], t.pos[2] - p.pos[2]]) || d;
+    if (m.w === 'popper') { this.popperHit(p, t, toT); return; } // an item now: only right after a real pop
     if (w.kind === 'hitscan') {
       const pellets = w.pellets || 1;
       const n = clampInt(m.n, 1, Math.min(pellets, this.maxPellets(w, p, t))), h = clampInt(m.h, 0, n);
@@ -1333,18 +1366,12 @@ class Room {
     const w = WEAPONS[m.w];
     if (!w || !p.alive) return;
     if (w.slot === 'streak' && !p.scythe) return;
+    // only loadout weapons fire. items (popper, reverse card, duck), grenades and thrown cards come from G / the deck
+    if (!['primary', 'secondary', 'melee', 'streak'].includes(w.slot)) return;
     let o = vec3(m.o);
     if (!o || dist3(o, eyeOf(p)) > 4) o = eyeOf(p);
     if (w.kind === 'hitscan') { this.broadcast({ t: 'fx', k: 'shot', w: m.w, id: p.id, s: segs(m.s), fan: (w.fanHammer && m.fan ? 1 : undefined) }, p.id); return; } // fan: everyone sees the fanning spin
     if (w.kind === 'melee') { this.broadcast({ t: 'fx', k: 'swing', w: m.w, id: p.id, a: o.map(r2), h: m.heavy ? 1 : undefined }, p.id); return; }
-    if (w.kind === 'reverse') {
-      const n = now();
-      if (n - (p.lastFire.reverse || 0) < w.cd * 900) return;
-      p.lastFire.reverse = n;
-      p.reverseUntil = n + w.dur * 1000;
-      this.broadcast({ t: 'fx', k: 'reverse', id: p.id, dur: w.dur });
-      return;
-    }
     const d = norm(vec3(m.d));
     if (d && w.kind === 'proj') this.spawnProj(p, m.w, o, d);
     if (d && w.kind === 'bow') {
@@ -1976,6 +2003,7 @@ class Room {
       case 'parry': this.startParry(p, m); break;
       case 'item': this.useItem(p, m); break;
       case 'spray': this.onSpray(p, m); break;
+      case 'lo': this.setItem(p, m.item); break;
       case 'vote':
         if (this.vote && Number.isInteger(m.i) && m.i >= 0 && m.i < this.vote.options.length) {
           this.vote.votes.set(p.id, m.i);
@@ -2258,6 +2286,7 @@ class Room {
         p.pos = p.isBot && p.ai.dummy ? p.ai.dummy.home.slice() : this.pickSpawn(p.isBot, p);
         p.slipUntil = 0; p.burnUntil = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.ic = {}; p.healLeft = 0;
         p.parryT = 0; p.staggerUntil = 0; // katana parry: a new life starts with the guard ready (the client resets too)
+        if (p.ownItem) p.item = p.ownItem; // a switch made mid-life lands now (sendLoadout swaps in the randomizer's)
         send(p, { t: 'spawn', p: p.pos, q: p.seq });
         this.sendLoadout(p);
         if (!p.isBot) deal(p);
