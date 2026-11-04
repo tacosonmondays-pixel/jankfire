@@ -118,6 +118,7 @@ const SHELL_ON_FIRE = new Set(['ar', 'smg', 'redline', 'minigun', 'scythe_rifle'
 // smear trail: a fading ribbon behind the tip of whatever you swing
 const TRAIL_N = 26;
 const TRAIL_COLOR = { knife: 0xbfe8ff, bread: 0xffd9a0, spoon: 0xffffff, slapper: 0xffb0d0, scythe: 0xff3ad8, slipper: 0xb0ffb0, cards: 0xffffff };
+TRAIL_COLOR.claw = 0x7dff4f;
 const trailPts = [];
 let trail = null;
 const tmpV2 = new THREE.Vector3(), tcol = new THREE.Color();
@@ -321,6 +322,7 @@ const VM = {
   slapper: { p: [0.22, -0.24, -0.42], r: [0.25, 0.1, 0], s: 0.7 },
   scythe: { p: [0.3, -0.33, -0.46], r: [0.25, 0.25, -0.3], s: 0.55 },
   scythe_rifle: { p: [0.2, -0.21, -0.4], r: [0, 0.03, 0], s: 0.6 },
+  claw: { p: [0.17, -0.17, -0.3], r: [0.25, 0.2, 0.35], s: 1.0 },
 };
 
 let vmRoot;
@@ -398,10 +400,21 @@ export function setLoadout(lo) {
   const streakSlot = W.hasScythe ? (W.slots[3] || 'scythe') : null;
   W.slots = SLOTS.map((s) => v[s]);
   if (streakSlot) W.slots[3] = streakSlot;
+  if (W.only) { W.slots = [W.only]; W.item = null; } // gun game / zombies: one weapon, no item
   if (W.slot >= W.slots.length) W.slot = 0;
   showSlots();
   W.cur = null;
   equip(W.slot);
+}
+
+// gun game / infection: the server hands you exactly one weapon (a fresh mag of it). null = back to `lo`
+W.only = null;
+export function setOnly(id, lo) {
+  W.only = WEAPONS[id] ? id : null;
+  if (W.only && WEAPONS[id].mag) W.ammo[id] = WEAPONS[id].mag;
+  if (W.reloadId && W.reloadId !== W.only) W.reloadId = null;
+  W.slot = 0;
+  setLoadout(lo);
 }
 
 export function rebuildOne(id) {
@@ -474,7 +487,7 @@ function setCd(id, now) {
 }
 
 // teammates are see-through for your bullets and swings
-export const isFriend = (r) => !!(G.myTeam && r.team && r.team === G.myTeam);
+export const isFriend = (r) => !!(G.myTeam && r.team && r.team === G.myTeam) || (G.infOn === true && !!r.zombie === !!G.zombie); // infection: your own side
 function rayPlayers(o, d, maxT) {
   let best = null;
   for (const r of G.remotes.values()) {

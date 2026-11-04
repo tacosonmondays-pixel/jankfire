@@ -129,6 +129,11 @@ export const sfx = {
   yeet(pos) { noise(0.7, 0.5, 'bandpass', 400, 3000, pos, 0, 1.5); tone('sine', 300, 1400, 0.6, 0.15, pos); },
   choir(pos) { for (const [f, d] of [[523, 0], [659, 0.05], [784, 0.1], [1046, 0.15]]) tone('sine', f, f * 1.01, 2.2, 0.12, pos, d); },
   tbag(pos) { for (let i = 0; i < 3; i++) tone('sawtooth', 120 - i * 25, 40, 0.18, 0.3, pos, i * 0.1); },
+  // modes: zombie groans, getting infected, climbing / falling down the gun game ladder
+  groan(pos) { const f = 80 + Math.random() * 45; tone('sawtooth', f, f * 0.7, 1.1, 0.2, pos); tone('sawtooth', f * 1.51, f * 1.02, 1.0, 0.09, pos, 0.06); noise(0.9, 0.22, 'bandpass', 520, 240, pos, 0, 3); },
+  infected() { tone('sawtooth', 110, 52, 1.5, 0.3); tone('sawtooth', 117, 55, 1.5, 0.25); tone('square', 233, 110, 1.2, 0.07, null, 0.05); noise(1.3, 0.45, 'lowpass', 900, 50); },
+  rankUp() { for (const [f, d] of [[523, 0], [659, 0.06], [784, 0.12], [1046, 0.18]]) tone('square', f, f, 0.09, 0.11, null, d); },
+  sad() { for (const [f, d, l] of [[311, 0, 0.28], [294, 0.3, 0.28], [277, 0.6, 0.28], [262, 0.9, 0.9]]) tone('sawtooth', f, f * 0.97, l, 0.16, null, d); },
 };
 
 const LOOPDEF = {

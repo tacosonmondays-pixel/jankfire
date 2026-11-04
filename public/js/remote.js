@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { BOXES } from '/shared/map.js';
 import { raycast, playerBoxes } from '/shared/physics.js';
 import { FLAGS } from '/shared/weapons.js';
+import { INFECT } from '/shared/modes.js';
 import { G } from './ctx.js';
 import { buildCharacter, buildWeapon, makeNameTag, makeShadow, cardTex, setKatana } from './models.js';
 import { fx, makeBeam, setBeam } from './fx.js';
@@ -40,6 +41,8 @@ function markerTexture() {
   return markerTex;
 }
 const camPos = new THREE.Vector3();
+// infection: a zombie is the same mannequin gone rotten green, clothes faded to grey, outlined in zombie green
+const zombieLook = (lk) => ({ ...(lk || {}), skin: '#6f9a3a', topColor: '#4a5a3a', bottomColor: '#3a3a30', hairColor: '#2a3a1a' });
 
 const tmpV = new THREE.Vector3(), tmpQ = new THREE.Quaternion(), tmpS = new THREE.Vector3();
 function lerpAngle(a, b, t) {
@@ -61,9 +64,10 @@ export class Remote {
 
   build() {
     if (this.ch) G.scene.remove(this.ch.root);
-    this.ch = buildCharacter(this.color, this.outfit);
+    const color = this.zombie ? INFECT.color : this.color;
+    this.ch = buildCharacter(color, this.zombie ? zombieLook(this.outfit) : this.outfit);
     this.ch.root.scale.setScalar(1.2); // a bit bigger than you so they read at crusty resolutions
-    const outline = outlineMat(new THREE.Color(this.color).getHex());
+    const outline = outlineMat(new THREE.Color(color).getHex());
     const parts = [];
     this.ch.body.traverse((o) => { if (o.isMesh) parts.push(o); });
     for (const o of parts) {
@@ -74,7 +78,7 @@ export class Remote {
       o.add(shell);
       (this.shells ||= []).push(shell);
     }
-    this.marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: markerTexture(), color: this.color, sizeAttenuation: false, fog: false, transparent: true }));
+    this.marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: markerTexture(), color, sizeAttenuation: false, fog: false, transparent: true }));
     this.marker.scale.set(0.035, 0.035, 1);
     this.marker.position.y = 2.75;
     this.ch.root.add(this.marker);
@@ -103,6 +107,9 @@ export class Remote {
     this.build();
     this.pos = keep.pos;
   }
+
+  // infection: turn into a zombie (or back). the real look and colour stay put underneath
+  setZombie(on) { if (!!this.zombie === on) return; this.zombie = on; this.setLook(this.outfit); }
 
   setKat(n) { this.katN = n; if (this.w === 'katana' && this.weaponMesh) setKatana(this.weaponMesh, n); }
   setSkins(s) { this.skins = s || {}; const w = this.w; this.w = null; if (w) this.setWeapon(w); }

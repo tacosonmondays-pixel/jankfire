@@ -5,8 +5,10 @@ export const GAMES = {
   tags: { name: 'Tags', desc: "kills drop tags. grab enemy tags to score, grab your own team's to deny them", teams: true },
   bomb: { name: 'Plant & Defuse', desc: 'attackers plant the bomb at A or B (hold F). defenders stop them or defuse it', teams: true, sites: true },
   rand: { name: 'Randomizer', desc: 'everyone gets a random loadout every life. first to the kill limit', teams: false, random: true },
+  gun: { name: 'Gun Game', desc: 'one weapon at a time. a kill moves you up the ladder, a melee death knocks you back. first kill with the spoon wins', teams: false, ladder: true },
+  inf: { name: 'Infection', desc: 'someone starts infected. whoever the zombies kill turns into one. survive the timer', teams: false, infect: true },
 };
-export const GAME_ORDER = ['dm', 'tdm', 'tags', 'bomb', 'rand'];
+export const GAME_ORDER = ['dm', 'tdm', 'tags', 'bomb', 'rand', 'gun', 'inf'];
 export const TEAMS = { 1: { name: 'RED', color: '#ff4f4f' }, 2: { name: 'BLUE', color: '#4fa8ff' } };
 // kill / point limits per room type
 export const TARGETS = { ffa: { dm: 20, tdm: 40, tags: 25, rand: 20 }, bots: { dm: 15, tdm: 30, tags: 20, rand: 15 } };
@@ -17,6 +19,13 @@ export const BOMB = {
 };
 export const TAG_LIFE = 30000;
 export const VOTE_MS = 14000;
+// gun game: everyone climbs the same ladder, guns -> silly -> melee. a kill with your rung's weapon moves you up,
+// dying to any melee weapon knocks you back one. the first kill with the last rung (the spoon) wins the match.
+export const LADDER = ['ar', 'smg', 'redline', 'shotgun', 'minigun', 'revolver', 'marbles', 'sniper', 'bow', 'chicken', 'banana', 'cards', 'slapper', 'bread', 'katana', 'spoon'];
+export const GUNGAME = { time: 600 }; // match clock in seconds: 16 rungs take longer than a kill limit
+// infection: patient zero turns a few seconds in (two of them from `two` fighters up). zombies get the claw,
+// more HP and more speed; anyone who dies as a survivor comes back as a zombie. survivors win if anyone lasts the timer.
+export const INFECT = { time: 180, delay: 6, two: 8, hp: 200, color: '#7dff4f' };
 
 // which bomb site (if any) a point is in
 export function siteAt(map, p) {
