@@ -148,6 +148,7 @@ function makeMaterials() {
   const lit = canvasTex(64, ceil(true));
   out.ceiltile = lam(lit, 4, { emissiveMap: glow, emissive: 0xfff2d2 });
   out.ceilflick = lam(lit, 4, { emissiveMap: glow, emissive: 0xfff2d2 }); // its own material so it can flicker
+  out.ceilflick2 = lam(lit, 4, { emissiveMap: glow, emissive: 0xfff2d2 }); out.ceilflick3 = lam(lit, 4, { emissiveMap: glow, emissive: 0xfff2d2 }); // and two more, so they don't all blink in sync
   out.ceildark = lam(canvasTex(64, ceil(false)), 4);
   // the pool rooms: bright white tiles that seem lit from nowhere
   out.pooltile = lam(canvasTex(16, (g, s) => { speckle(g, s, [234, 242, 242], 5, 4); g.fillStyle = '#a3bcc0'; for (let i = 0; i < s; i += 4) { g.fillRect(i, 0, 1, s); g.fillRect(0, i, s, 1); } }), 1, { emissive: 0x3c4c50 });
@@ -373,7 +374,7 @@ export function updateWorld(dt) {
   sun.rotation.y += dt * 0.3;
   sun.rotation.x += dt * 0.17;
   cullChunks();
-  if (MAT) updateBackrooms(dt, MAT.ceilflick.mat);
+  if (MAT) updateBackrooms(dt, [MAT.ceilflick.mat, MAT.ceilflick2.mat, MAT.ceilflick3.mat]);
 }
 
 export function renderFrame() {

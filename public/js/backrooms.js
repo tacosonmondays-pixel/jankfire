@@ -6,9 +6,11 @@ import { MAP, BOXES } from '/shared/map.js';
 import { raycast } from '/shared/physics.js';
 import { hum } from './audio.js';
 
-// ---- flicker: mostly on, now and then a burst of quick dips like a dying tube
-const fl = { v: 1, until: 0, burst: 0 };
+// ---- flicker: mostly on, now and then a burst of quick dips like a dying tube. each material dies on its own
+const fls = new Map();
 function flicker(mat, now) {
+  let fl = fls.get(mat);
+  if (!fl) fls.set(mat, (fl = { v: 1, until: now + Math.random() * 2000, burst: 0 }));
   if (now >= fl.until) {
     if (fl.burst > 0) { fl.burst--; fl.v = fl.v < 0.5 ? 0.85 + Math.random() * 0.15 : Math.random() * 0.25; fl.until = now + 30 + Math.random() * 120; }
     else if (Math.random() < 0.35) { fl.burst = 2 + ((Math.random() * 7) | 0); fl.v = 0.1; fl.until = now + 60; }
@@ -59,10 +61,10 @@ function appear() {
 }
 export function summonEntity() { gone(); return appear(); } // for testing: try right now
 
-export function updateBackrooms(dt, flickMat) {
+export function updateBackrooms(dt, flickMats) {
   const now = performance.now(), here = MAP.id === 'backrooms' && G.joined;
   hum(here, ent ? 0 : 1); // the hum stops while it's there
-  if (MAP.id === 'backrooms') flicker(flickMat, now);
+  if (MAP.id === 'backrooms') for (const m of flickMats) flicker(m, now);
   if (!here) { gone(); return; }
   if (ent) {
     const p = ent.mesh.position, c = G.camera.position;

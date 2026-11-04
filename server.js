@@ -243,10 +243,16 @@ class Room {
     p.color = TEAMS[p.team].color;
   }
 
+  // could someone standing at spawn s see p? (within the fog, nothing in between)
+  inSight(s, p) {
+    const e = [s[0], s[1] + PH.eye, s[2]], d = [p.pos[0] - e[0], p.pos[1] + 1 - e[1], p.pos[2] - e[2]], l = Math.hypot(...d);
+    return l < (this.map.fogFar || 1e9) && !raycast(e, [d[0] / l, d[1] / l, d[2] / l], l, this.boxes);
+  }
+
   pickSpawn(forBot, who) {
     let spawns = this.map.spawns;
     const ts = this.map.teamSpawns;
-    if (who && who.team && this.teamsOn() && ts) {
+    if (who && who.team && this.teamsOn() && ts && !(this.map.teamSpawnsBomb && this.game !== 'bomb')) { // teamSpawnsBomb: other team modes spawn all over, away from enemies
       const attacking = this.game === 'bomb' ? who.team === (this.bomb ? this.bomb.att : 1) : who.team === 1;
       spawns = attacking ? ts.att : ts.def;
     }
@@ -254,6 +260,7 @@ class Room {
     for (const s of spawns) {
       let d = 1e9;
       for (const p of this.players.values()) if (p.alive && p !== who && (!forBot || !p.isBot) && !(who && who.team && p.team === who.team)) d = Math.min(d, dist3(s, p.pos));
+      if (this.map.spawnSafe) for (const p of this.players.values()) if (p.alive && p !== who && (!forBot || !p.isBot) && !(who && who.team && p.team === who.team) && this.inSight(s, p)) d = Math.min(d, dist3(s, p.pos) * 0.3); // in plain sight down a long hall isn't safe
       if (this.map.spawnSafe) d = Math.min(d, this.map.spawnSafe); // huge maps: far enough is far enough, then it's random (not always the one corner farthest from you)
       d += Math.random() * 15;
       if (d > bestD) { bestD = d; best = s; }
@@ -1625,7 +1632,7 @@ class Room {
     const b = this.bomb;
     if (!first && b.n === BOMB.swapAfter) { b.att = 3 - b.att; this.broadcast({ t: 'chat', id: 0, m: 'SIDES SWAPPED' }); }
     b.n++;
-    Object.assign(b, { ph: 'live', site: null, p: null, drop: null, explodeAt: 0, act: null, between: 0, ends: now() + BOMB.roundTime * 1000, carrier: 0 });
+    Object.assign(b, { ph: 'live', site: null, p: null, drop: null, explodeAt: 0, act: null, between: 0, ends: now() + (this.map.roundTime || BOMB.roundTime) * 1000, carrier: 0 });
     for (const p of this.players.values()) if (p.ai) { p.ai.site = null; p.ai.route = null; }
     this.projectiles.clear(); this.peels.clear(); this.holes.clear();
     this.resetWorld();

@@ -158,10 +158,10 @@ Every map has scenery around it now: plateaus with cliffs down to a valley, mesa
 - upper levels: climb the crates in A's approach onto the **Bridge** rooftop overlooking A, the **upper canal walkway**, the **mid gallery** over the hall, go upstairs in the **Spice House** and out onto the balcony over B, or climb onto the **arcade roof** above B
 
 **Backrooms** is an original take on the "Level 0" internet legend: 240 x 240 m of mono-yellow wallpaper, damp beige carpet and buzzing fluorescent panels, sealed in (no sky, nothing outside), with a warm haze that swallows everything past ~100 m:
-- the **Hall** in the middle: 64 x 64 m under a 7.5 m ceiling, a few pillars and freestanding walls for cover, long fights across it
+- the **Hall** in the middle: 64 x 64 m under a 7.5 m ceiling, sparse pillars, freestanding walls (one with a window) and low walls for cover, long fights across it
 - around it, the maze: rooms of every size with doorways, long straight halls for sightlines, pillar rooms, the odd dead-end alcove, and a 3 m drop ceiling (you can still jump, and grapple the ceiling)
 - a hole in the floor in the south-west drops you into the flooded **Pool Rooms** below; they run north under the west side, and stairs come back up in three places, one of them right into B
-- Plant & Defuse: **A** is the **Office** (cubicles, grey-blue carpet) east of the Hall, **B** is the **Wet Room** (white tiles, the pool stairs) west of it; defenders spawn at the north end, attackers at the south. Bots find their way through the maze with a walk graph (`shared/nav.js`)
+- Plant & Defuse: **A** is the **Office** (cubicles, grey-blue carpet) north-east of the Hall, **B** is the **Wet Room** (white tiles, the pool stairs) north-west of it; defenders spawn at the north end, attackers at the south, and rounds are longer here (150 s). In TDM and Tags you spawn all over the map, away from enemies, not back in the lobbies. Bots find their way through the maze with a walk graph (`shared/nav.js`)
 - some lights flicker, some are dead, the hum never stops (`public/js/backrooms.js`). you are probably alone
 
 ## Accounts, levels, achievements
