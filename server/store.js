@@ -9,7 +9,8 @@ import crypto from 'node:crypto';
 import { CONTAINERS } from '../shared/cosmetics.js';
 const FIELD = (kind) => (CONTAINERS[kind] ? CONTAINERS[kind].field : null);
 
-export const STAT_KEYS = ['kills', 'deaths', 'bot_kills', 'wins', 'best_wave', 'top_speed', 'xp', 'playtime', 'void_kills', 'headshots', 'tbags', 'airborne', 'wings_old'];
+export const STAT_KEYS = ['kills', 'deaths', 'bot_kills', 'wins', 'best_wave', 'top_speed', 'xp', 'playtime', 'void_kills', 'headshots', 'tbags'];
+STAT_KEYS.push('airborne', 'wings_old'); // Never Landed + the grandfathered Wings
 const MAX_KEYS = new Set(['best_wave', 'top_speed']); // these keep the max instead of adding up
 
 function applyDelta(u, d) {
@@ -47,7 +48,7 @@ class FileStore {
   async get(nameLower) { return this.db.users[nameLower] || null; }
   async create(u) {
     if (this.db.users[u.name_lower]) return false;
-    this.db.users[u.name_lower] = { kills: 0, deaths: 0, bot_kills: 0, wins: 0, best_wave: 0, top_speed: 0, xp: 0, playtime: 0, void_kills: 0, headshots: 0, tbags: 0, airborne: 0, crates: 1, bags: 1, boxes: 1, inv: {}, profile: {}, created_at: new Date().toISOString(), ...u };
+    this.db.users[u.name_lower] = { kills: 0, deaths: 0, bot_kills: 0, wins: 0, best_wave: 0, top_speed: 0, xp: 0, playtime: 0, void_kills: 0, headshots: 0, tbags: 0, crates: 1, bags: 1, boxes: 1, inv: {}, profile: {}, created_at: new Date().toISOString(), ...u };
     this.save();
     return true;
   }
@@ -118,7 +119,10 @@ class SupabaseStore {
   async addStats(nameLower, d) {
     const u = await this.get(nameLower);
     if (!u) return;
-    await this.req('PATCH', `?name_lower=eq.${encodeURIComponent(nameLower)}`, applyDelta(u, d), { Prefer: 'return=minimal' });
+    const out = applyDelta(u, d);
+    // a stat column the table doesn't have yet (supabase.sql not re-run) would fail the whole batch: skip just that stat
+    for (const k of Object.keys(out)) if (!(k in u)) { delete out[k]; if (!this.warned?.[k]) { (this.warned ||= {})[k] = 1; console.warn(`  !! jf_users has no '${k}' column: run the new block in supabase.sql`); } }
+    await this.req('PATCH', `?name_lower=eq.${encodeURIComponent(nameLower)}`, out, { Prefer: 'return=minimal' });
   }
   async grantRolls(nameLower, kind, n) {
     const u = await this.get(nameLower), f = FIELD(kind);

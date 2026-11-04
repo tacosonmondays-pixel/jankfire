@@ -1700,6 +1700,7 @@ function renderProfile() {
   const rows = [
     ['wins', st.wins], ['kills', st.kills], ['deaths', st.deaths], ['k/d', st.deaths ? (st.kills / st.deaths).toFixed(2) : st.kills],
     ['bot kills', st.bot_kills], ['best coop wave', st.best_wave], ['top speed', `${st.top_speed} km/h`], ['played', fmtTime(st.playtime)],
+    ['never landed', `${st.airborne || 0}x`],
     ['cosmetics', `${owned}/${total}`], ['crates / bags / boxes', `${me.rolls.crate || 0} / ${me.rolls.bag || 0} / ${me.rolls.box || 0}`],
   ];
   $('profStats').innerHTML = '';

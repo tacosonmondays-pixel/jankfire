@@ -142,7 +142,7 @@ const AIR = { grace: 3000, slack: 400, join: 5000 };
 function onBoxTop(pos, boxes) {
   const hw = PH.halfW;
   for (const b of boxQuery(boxes, pos[0] - hw, pos[2] - hw, pos[0] + hw, pos[2] + hw, [])) {
-    if (b.pad || pos[1] < b.max[1] - 0.02 || pos[1] > b.max[1] + 0.06) continue;
+    if (b.pad || pos[1] < b.max[1] - 0.02 || pos[1] > b.max[1] + 0.03) continue; // narrow: positions are rounded to 1 cm
     if (pos[0] + hw > b.min[0] && pos[0] - hw < b.max[0] && pos[2] + hw > b.min[2] && pos[2] - hw < b.max[2]) return true;
   }
   return false;
@@ -311,7 +311,7 @@ class Room {
     if (p.team) p.pos = this.pickSpawn(false, p);
     this.players.set(p.id, p);
     // in from the start (or close enough): your Never Landed run counts. the welcome below is your first spawn
-    if (this.round && !this.round.over && now() - (this.round.t0 || 0) < AIR.join) p.air = { ok: true, rest: 0, y: 0 };
+    if (this.round && !this.round.over && now() - (this.round.t0 || 0) < AIR.join) p.air = { ok: !(this.airBad && this.airBad.has(name)), rest: 0 };
     send(p, {
       t: 'welcome', id: p.id, name, color: p.color, pos: p.pos, q: p.seq, mode: this.mode, cfg: this.cfg,
       players: [...this.players.values()].filter((o) => o !== p).map((o) => this.info(o)),
@@ -325,7 +325,7 @@ class Room {
     });
     this.broadcast({ t: 'pj', ...this.info(p) }, p.id);
     send(p, { t: 'tip', tip: p.tip });
-    if (p.air) send(p, { t: 'air', on: 1, grace: AIR.grace });
+    if (p.air && p.air.ok) send(p, { t: 'air', on: 1, grace: AIR.grace });
     deal(p);
     this.sendLoadout(p);
     if (this.mode === 'ffa' || this.mode === 'coop') this.broadcast({ t: 'chat', id: 0, m: `${name} joined` });
@@ -1549,37 +1549,37 @@ class Room {
     for (const p of this.players.values()) { p.kills = 0; p.deaths = 0; }
     this.round = { target: (TARGETS[this.mode] || TARGETS.ffa)[this.game] || ROUND[this.mode].kills, ends: now() + ROUND[this.mode].time * 1000, over: false, next: 0 };
     this.round.t0 = now();
-    this.airStart();
     this.score = { 1: 0, 2: 0 };
     this.clearTags();
     this.assignTeams();
     this.bomb = this.game === 'bomb' && this.teamsOn() ? { att: 1, n: 0, wins: { 1: 0, 2: 0 } } : null;
     if (this.bomb) { this.round.ends = now() + 3600 * 1000; this.newBombRound(true); }
     else this.resetWorld();
+    this.airStart(); // after the respawns: a client must get its 'spawn' (fresh grace) before the run starts
     this.broadcast({ t: 'round', start: 1, ...this.roundInfo() });
   }
   // ---------------------------------------------------------- Never Landed: a whole match without touching the ground
   // the client knows exactly when it lands and reports it ('land'); the server also watches snapshots so a client
   // that never reports can't just stand around. the match end decides.
   airStart() {
+    this.airBad = new Set(); // names that touched down this match: leaving and rejoining doesn't wipe it
     for (const p of this.players.values()) {
       if (p.isBot) continue;
-      p.air = { ok: true, rest: 0, y: 0 };
+      p.air = { ok: true, rest: 0 };
       send(p, { t: 'air', on: 1, grace: AIR.grace });
     }
   }
   airCheck(p) {
     const a = p.air;
     if (!a || !a.ok) return;
-    const flat = Math.abs(p.pos[1] - a.y) < 0.01;
-    a.y = p.pos[1];
     if (now() - p.spawnT < AIR.grace + AIR.slack) { a.rest = 0; return; }
-    // standing still on a box top for two snapshots in a row (a bhop touch or a jump's peak never sits flat twice)
-    if (flat && onBoxTop(p.pos, this.boxes)) { if (++a.rest >= 2) this.airFail(p, true); } else a.rest = 0;
+    // feet within 3 cm of a box top for two snapshots in a row: a bhop touch is 0.3 m up by the next one
+    if (onBoxTop(p.pos, this.boxes) && !(p.vel[1] > 0.5)) { if (++a.rest >= 2) this.airFail(p, true); } else a.rest = 0;
   }
   airFail(p, seen) {
     if (!p.air || !p.air.ok) return;
     p.air.ok = false;
+    (this.airBad ||= new Set()).add(p.name);
     if (seen) send(p, { t: 'air', fail: 1 });
   }
   airEnd() {

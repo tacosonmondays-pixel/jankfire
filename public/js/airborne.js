@@ -37,9 +37,11 @@ function ensure() {
 }
 
 // called after every physics step: a single grounded tick (a bhop touch) counts, a jump pad launch doesn't
+// grace runs from your last spawn or the run's start, whichever is later (the start can land a frame before its spawn)
+const airT0 = () => Math.max(G.spawnT || 0, AIR.t0 || 0);
 export function airTick(now) {
   if (!AIR.on || AIR.failed || !ME.alive || !ME.onGround) return;
-  if (now - (G.spawnT || 0) < AIR.grace) return;
+  if (now - airT0() < AIR.grace) return;
   airFailed(true);
 }
 function airFailed(tell) {
@@ -58,13 +60,13 @@ export function airHud(now) {
   const show = AIR.on && !AIR.failed && G.joined;
   el.style.display = show ? 'flex' : 'none';
   if (!show) return;
-  const left = AIR.grace - (now - (G.spawnT || 0));
+  const left = AIR.grace - (now - airT0());
   const g = ME.alive && left > 0;
   el.classList.toggle('grace', g);
   el.lastChild.textContent = g ? `get off the ground ${(left / 1000).toFixed(1)}` : '';
 }
 const render = (now) => airHud(now);
-setInterval(() => airHud(performance.now()), 100);
+setInterval(() => { if (AIR.on || (el && el.style.display !== 'none')) airHud(performance.now()); }, 100); // idle in the menu
 // new room: no run until the server says you're in from the start
 export function airReset() { AIR.on = false; AIR.failed = false; render(performance.now()); }
 
@@ -88,7 +90,7 @@ export function airFlourish() {
 // the server says: your run started (match start / joined in time), it broke (it saw you standing), or the match ended
 net.on('air', (m) => {
   ensure();
-  if (m.on) { AIR.on = true; AIR.failed = false; if (m.grace) AIR.grace = m.grace; }
+  if (m.on) { AIR.on = true; AIR.failed = false; AIR.t0 = performance.now(); if (m.grace) AIR.grace = m.grace; }
   else if (m.fail) airFailed(false);
   else if (m.end) {
     AIR.on = false;

@@ -16,6 +16,7 @@ export const ACHIEVEMENTS = {
 };
 // hidden unlocks that aren't in the list: the Wings used to come from Frequent Flyer, and whoever had them by then keeps them
 export const LEGACY_ACHS = { oldwings: { stat: 'wings_old', goal: 1 } };
+// careful: these ids show up in /api/me achs too, so anything mapping achs through ACHIEVEMENTS[id] must skip unknown ids
 // an accessory is yours if you have its achievement (or its legacy one)
 export function hasAcc(a, achs) { return !!a && (!a.ach || !!(achs && (achs.has(a.ach) || (a.legacy && achs.has(a.legacy))))); }
 
