@@ -116,6 +116,13 @@ export const sfx = {
   holePop(pos) { sfx.boom(pos); sfx.squeak(pos); },
   crunch(pos) { noise(0.09, 0.7, 'bandpass', 2200, 1400, pos, 0, 1.2); noise(0.07, 0.5, 'bandpass', 1800, 900, pos, 0.07, 1.2); },
   blow(pos) { noise(0.5, 0.35, 'highpass', 1500, 2500, pos); },
+  // spray can: clack clack (the ball rattling), then pssssht: overlapping hiss bursts so it sputters, and a short cut-off
+  spray(pos) {
+    tone('square', 2300, 2100, 0.025, 0.07, pos); tone('square', 2000, 1800, 0.025, 0.07, pos, 0.07);
+    noise(0.06, 0.35, 'bandpass', 900, 500, pos, 0.13, 1.2);
+    for (let i = 0; i < 7; i++) noise(0.24, 0.3, 'highpass', 4600 - i * 120, 2600, pos, 0.15 + i * 0.07, 0.8);
+    noise(0.09, 0.32, 'bandpass', 3600, 1400, pos, 0.66, 1.5);
+  },
   rev(pos) { tone('sawtooth', 60, 140, 0.4, 0.15, pos); noise(0.4, 0.3, 'bandpass', 500, 900, pos); },
   bowShot(pos) { tone('triangle', 220, 90, 0.15, 0.35, pos); noise(0.12, 0.4, 'bandpass', 1200, 500, pos, 0, 2); },
   heal(pos) { tone('sine', 600, 1200, 0.25, 0.25, pos); tone('sine', 900, 1800, 0.25, 0.15, pos, 0.08); },

@@ -12,6 +12,7 @@ import { WebSocketServer } from 'ws';
 import { makeStore } from './server/store.js';
 import { Accounts, levelOf } from './server/accounts.js';
 import { ownedSkin, ownedKill, randomContainer, CONTAINERS, COSMETICS } from './shared/cosmetics.js';
+import { owns, SPRAY } from './shared/cosmetics.js';
 import { validLook, achievementsFrom, ACHIEVEMENTS } from './shared/looks.js';
 import { STAT_KEYS } from './server/store.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
@@ -191,6 +192,7 @@ class Room {
     this.bomb = null;
     this.vote = null;
     this.bubbles = new Map(); this.nextBub = 1;
+    this.sprays = new Map(); this.sprayMap = ''; // owner id -> graffiti, and the map they were painted on
     this.cfg = { map: mode === 'training' ? 'range' : mode === 'coop' ? 'warehouse' : 'islands', hip: 'normal', bots: 5, diff: 'normal' };
     this.wave = 0; this.toSpawn = 0; this.interUntil = 0;
     this.round = ROUND[mode] ? { target: ROUND[mode].kills, ends: now() + ROUND[mode].time * 1000, over: false, next: 0 } : null;
@@ -307,6 +309,7 @@ class Room {
       bubbles: [...this.bubbles.values()].map((b) => ({ id: b.id, p: b.p, r: b.r, left: b.until - now() })),
       kat: [...this.players.values()].filter((o) => o.kat).map((o) => [o.id, o.kat]),
       game: this.game, team: p.team || 0, tags: [...this.tags.values()].map((g) => ({ id: g.id, p: g.p, team: g.team })), vote: this.voteInfo(),
+      sprays: this.sprayList(),
     });
     this.broadcast({ t: 'pj', ...this.info(p) }, p.id);
     send(p, { t: 'tip', tip: p.tip });
@@ -1305,6 +1308,41 @@ class Room {
     }
   }
 
+  // ---------------------------------------------------------- sprays (Z): one graffiti per player, a new map wipes them
+  onSpray(p, m, fresh) {
+    const n = now(), at = vec3(m.p), nm = vec3(m.n);
+    const id = typeof m.id === 'string' && Object.hasOwn(COSMETICS.spray, m.id) ? m.id : null;
+    if (!p.alive || !at || !nm || !id || n - (p.sprayT || 0) < SPRAY.cd * 1000 - 500) return; // half a second of slack for jitter
+    // flat on a wall, floor or ceiling: one axis, +-1
+    const k = nm.findIndex((x) => x !== 0);
+    if (k < 0 || Math.abs(nm[k]) !== 1 || nm.some((x, i) => i !== k && x !== 0)) return;
+    // near you (your position here can be one update old, so a bit more room when you're fast) and facing you, so no painting through walls
+    const e = eyeOf(p);
+    if (dist3(at, e) > SPRAY.reach + 1 + Math.min(6, Math.hypot(...p.vel) * 0.05)) return;
+    if ((e[0] - at[0]) * nm[0] + (e[1] - at[1]) * nm[1] + (e[2] - at[2]) * nm[2] < -0.25) return;
+    // and on a real face of this map
+    const h = raycast([at[0] + nm[0] * 0.05, at[1] + nm[1] * 0.05, at[2] + nm[2] * 0.05], [-nm[0], -nm[1], -nm[2]], 0.15, this.boxes);
+    if (!h || h.normal[k] !== nm[k]) return;
+    if (!owns(p.inv, 'spray', id)) { // rolled it since you joined? read your inventory again (once) and retry
+      if (fresh || !p.acct || n - (p.invT || 0) < 3000) return;
+      p.invT = n;
+      store.get(p.acct.n).then((u) => { if (u) p.inv = u.inv || {}; if (this.players.get(p.id) === p) this.onSpray(p, m, true); }).catch(() => {});
+      return;
+    }
+    p.sprayT = n;
+    if (this.sprayMap !== this.cfg.map) { this.sprays.clear(); this.sprayMap = this.cfg.map; } // painted on the old map: gone
+    const pt = h.point.map(r2);
+    pt[k] = nm[k] > 0 ? h.box.max[k] : h.box.min[k]; // exactly on the face
+    const yaw = Number.isFinite(m.y) ? m.y : p.yaw || 0, TAU = Math.PI * 2;
+    const s = { id: p.id, s: id, p: pt, n: nm, r: k === 1 ? r2(((yaw % TAU) + TAU) % TAU) : 0 }; // floors + ceilings face the way you look
+    this.sprays.delete(p.id); // your new one replaces the old one (and goes to the back of the line)
+    this.sprays.set(p.id, s);
+    while (this.sprays.size > SPRAY.max) this.sprays.delete(this.sprays.keys().next().value);
+    this.broadcast({ t: 'spray', ...s });
+  }
+  // what a late joiner gets in the welcome (clients wipe their own when the map changes)
+  sprayList() { return this.sprayMap === this.cfg.map ? [...this.sprays.values()] : []; }
+
   // ---------------------------------------------------------- lobby settings
   setCfg(p, m) {
     const n = now();
@@ -1436,6 +1474,7 @@ class Room {
       case 'kc': p.kc = !!m.on; break;
       case 'use': this.tryUse(p); break;
       case 'item': this.useItem(p, m); break;
+      case 'spray': this.onSpray(p, m); break;
       case 'vote':
         if (this.vote && Number.isInteger(m.i) && m.i >= 0 && m.i < this.vote.options.length) {
           this.vote.votes.set(p.id, m.i);
@@ -1706,6 +1745,7 @@ class Room {
     this.tickStatus(dt);
     this.tickPeels();
     this.tickWaves();
+    if (this.sprays.size && this.sprayMap !== this.cfg.map) this.sprays.clear(); // the map changed: its graffiti goes with it
     for (const p of this.players.values()) {
       if (!p.alive && n >= p.respawnAt) {
         if (p.isBot && this.mode === 'coop') continue;

@@ -30,6 +30,8 @@ import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, update
 import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, HAIRS, TOPS, BOTTOMS } from '/shared/looks.js';
 import { account, restore, login, register, logout, saveProfile, leaderboard as fetchLeaders } from './account.js';
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
+import { SPRAY, ownedSpray } from '/shared/cosmetics.js';
+import { sprayAim, sprayFx, addSpray, clearSprays, updateSprays, sprayIcon } from './sprays.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
@@ -171,6 +173,7 @@ function resetWorldState() {
   G.bubbles.clear(); G.smokes.length = 0; ME.frozenUntil = 0; G.frost = 0;
   clearRec();
   clearKillFx();
+  clearSprays();
   G.roundOver = false;
   renderRound(null);
   $('roundEnd').classList.add('hidden');
@@ -593,6 +596,7 @@ function buildCosmeticsUI() {
     });
     kel.append(c);
   }
+  buildSprayUI();
   chips('sk-finish', 'finish', 0);
   chips('sk-hat', 'hat', 1);
   chips('sk-effect', 'effect', 2);
@@ -688,6 +692,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyV') W.dashHeld = true;
   if (e.code === 'KeyX' && !e.repeat) toggleScythe();
   if (e.code === 'KeyG' && !e.repeat) useItem();
+  if (e.code === 'KeyZ' && !e.repeat) spray();
   if (['Digit5', 'Digit6', 'Digit7'].includes(e.code) && !e.repeat) deployStreak(Number(e.code.slice(5)) - 5);
   if (e.code === 'Digit4') switchSlot(3);
   if ((e.code === 'KeyC' || e.code === 'ControlLeft' || e.code === 'ControlRight') && !e.repeat) {
@@ -832,11 +837,14 @@ net.on('welcome', (m) => {
     training: 'dummies respawn instantly. knock the ones on the left ledge off. movement playground on the right.',
   };
   hud.chat(null, null, `you are ${m.name}. ${tips[m.mode] || ''}`);
+  clearSprays(); sprayT = -1e9;
+  for (const s of m.sprays || []) addSpray(s, true); // graffiti that was already on the walls
 });
 net.on('cfg', (m) => {
   const mapChanged = m.cfg.map !== G.cfg.map;
   G.cfg = m.cfg;
   if (mapChanged) { loadMap(m.cfg.map); clearEntities(); setupObjectives(m.cfg.map); }
+  if (mapChanged) clearSprays(); // sprays belong to the map they were painted on
   updateLabel();
   if (screen === 'match') syncMatchUI();
 });
@@ -1312,6 +1320,7 @@ function frame(t) {
   else for (const r of G.remotes.values()) { r.ch.root.visible = false; r.rope.visible = false; r.shadow.visible = false; } // the replay has its own copies
   updateGibs(dt);
   updateKillFx(dt);
+  updateSprays(dt);
   for (const [id, b] of G.bubbles) { if (now > b.until + 500) { G.scene.remove(b.mesh); G.bubbles.delete(id); continue; } b.mesh.rotation.y += dt * 0.3; b.mesh.material.opacity = 0.18 + Math.sin(now * 0.006) * 0.05; }
   for (let i = G.smokes.length - 1; i >= 0; i--) {
     const s2 = G.smokes[i];
@@ -1503,6 +1512,45 @@ net.on('streak', (m) => {
   if (m.reward === 'scythe') grantScythe();
   toast(st.desc, 2500);
 });
+
+// ------------------------------------------------------------ sprays (Z): paint your graffiti where you look
+SYNC_KEYS.push('spray'); // your pick follows your account like the other settings
+function mySpray() { return ownedSpray(S.spray, G.inv); }
+function setSpray(id) { S.spray = id; saveSettings(); }
+let sprayT = -1e9;
+function spray() {
+  if (!G.joined || !ME.alive || RP.active) return;
+  const now = performance.now(), left = SPRAY.cd * 1000 - (now - sprayT);
+  if (left > 0) { hud.msg(`spray ready in ${Math.ceil(left / 1000)}s`, 0.9); return; }
+  const h = sprayAim(eye(), lookDir());
+  if (!h) { hud.msg('nothing to spray on (get closer)', 0.9); return; }
+  sprayT = now;
+  const id = mySpray(), r3 = (x) => Math.round(x * 1000) / 1000;
+  net.send({ t: 'spray', id, p: h.p.map(r3), n: h.n, y: r3(ME.yaw) }); // the server checks it and shows everyone
+  sprayFx(h.p, h.n, id); // hiss right away, the paint shows up when the server says so
+}
+net.on('spray', (m) => addSpray(m, false));
+// cosmetics screen: a little picture of each spray on a concrete square
+function buildSprayUI() {
+  const el = $('sk-spray');
+  el.innerHTML = '';
+  const cur = mySpray();
+  for (const [k, v] of Object.entries(COSMETICS.spray)) {
+    const have = owns(G.inv, 'spray', k);
+    const c = document.createElement('button');
+    c.className = 'chip' + (cur === k ? ' on' : '') + (have ? '' : ' locked');
+    c.style.setProperty('--rc', RARITY[v.rarity].color);
+    c.title = `${v.name} · ${RARITY[v.rarity].name}: ${v.desc}`;
+    const im = document.createElement('img'); im.src = sprayIcon(k); im.alt = '';
+    const t = document.createElement('span'); t.textContent = v.name;
+    c.append(im, t);
+    c.addEventListener('click', () => {
+      if (!have) { toast(`${v.name} (${RARITY[v.rarity].name}): ${v.desc}. find it in boxes`, 3000); return; }
+      setSpray(k); buildSprayUI(); toast(`spray: ${v.name}. press Z in a match`);
+    });
+    el.append(c);
+  }
+}
 
 // ------------------------------------------------------------ toast
 let toastT = null;
@@ -1835,7 +1883,10 @@ async function doRoll(kind) {
       const sub = document.createElement('span'); sub.textContent = `${item.rarityName} ${TYPE_NAMES[item.type].toLowerCase()} unlocked`;
       res.append(big, sub);
       if (item.rarity === 'legendary' || item.rarity === 'epic') sfx.kill(); else sfx.ting();
-      if (item.type === 'kill') {
+      if (item.type === 'spray') {
+        const im = document.createElement('img'); im.className = 'sprayPic'; im.src = sprayIcon(item.id); im.alt = ''; res.append(im);
+        btn('EQUIP SPRAY', () => { setSpray(item.id); closeRoll(); toast(`spray: ${item.name}. press Z in a match`); });
+      } else if (item.type === 'kill') {
         btn('EQUIP KILL EFFECT', () => { setKfx(item.id); closeRoll(); toast(`kill effect: ${item.name}`); });
       } else {
       // skins belong to one weapon; everything else can go on whatever you're looking at
