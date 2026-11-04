@@ -89,7 +89,7 @@ export function modelsFor(weapon) { return Object.entries(COSMETICS.model).filte
 
 // inventory = { finish: [...ids], hat: [...], effect: [...] } of things you rolled. Free stuff is always owned.
 export function owns(inv, type, id) {
-  const c = COSMETICS[type] && COSMETICS[type][id];
+  const c = typeof id === 'string' && Object.hasOwn(COSMETICS, type) && Object.hasOwn(COSMETICS[type], id) && COSMETICS[type][id];
   if (!c) return false;
   return c.rarity === 'free' || !!(inv && Array.isArray(inv[type]) && inv[type].includes(id));
 }
@@ -100,7 +100,7 @@ export function ownedSkin(skin, inv, weapon) {
   if (!Array.isArray(skin)) return d;
   return TYPES.map((t, i) => {
     const v = skin[i] ?? d[i];
-    if (t === 'model' && v !== 'default' && (!COSMETICS.model[v] || (weapon && COSMETICS.model[v].weapon !== weapon))) return 'default';
+    if (t === 'model' && v !== 'default' && (typeof v !== 'string' || !Object.hasOwn(COSMETICS.model, v) || (weapon && COSMETICS.model[v].weapon !== weapon))) return 'default';
     return owns(inv, t, v) ? v : d[i];
   });
 }
