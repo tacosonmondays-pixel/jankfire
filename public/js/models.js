@@ -226,6 +226,37 @@ export function heatTeeth(g, k, base = 0) {
   const c0 = g.userData.bladeColor || (g.userData.bladeColor = m.color.clone());
   m.color.copy(c0).lerp(hotDark, k * 0.85);
   m.emissive.copy(m.color).multiplyScalar(base).add(hotGlow.setRGB(k, k * 0.32, k * 0.05));
+  const b = g.userData.blur;
+  if (b) { b.material.color.copy(m.color); b.material.emissive.copy(m.emissive); } // the blur of them glows too
+}
+// the rotor turning at k (1 = full speed). a tooth steps at most a third of the gap to the next one a frame, so at any
+// fps they never seem to stand still or run backwards; past that, the blur sleeve fades in over them and sells the speed
+export function spinTeeth(g, dt, k) {
+  const ud = g.userData;
+  if (!ud.teeth) return;
+  ud.teeth.rotation.z -= Math.min(0.3, dt * k * 40);
+  const b = ud.blur, o = Math.min(1, Math.max(0, (k - 0.3) / 0.6));
+  if (!b) return;
+  b.visible = o > 0.01;
+  b.material.opacity = 0.62 * o;
+  b.rotation.z -= dt * k * 31; // (streaks, not teeth: no stepping to worry about)
+}
+let blurMap = null;
+function blurTex() { // the teeth smeared round the drum: steel streaks with the red tips in them, one band per row
+  if (blurMap) return blurMap;
+  const c = document.createElement('canvas'); c.width = 64; c.height = 32;
+  const x = c.getContext('2d');
+  for (const v of [3, 16, 29]) { // (rows 0-2: the cage hides row 3, it's down the throat)
+    x.globalAlpha = 0.28; x.fillStyle = '#b8bdc5'; x.fillRect(0, v - 3, 64, 7); // the steel, smeared all the way round
+    for (let i = 0; i < 14; i++) {
+      x.globalAlpha = 0.4 + Math.random() * 0.55;
+      x.fillStyle = Math.random() < 0.3 ? '#8a1010' : Math.random() < 0.5 ? '#f2f5fa' : '#a8adb5';
+      const len = 10 + Math.random() * 30, u = Math.random() * 64, h = 1 + Math.random() * 2, y = v - 3 + Math.random() * 6;
+      x.fillRect(u, y, len, h); x.fillRect(u - 64, y, len, h); // wraps round the seam
+    }
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return (blurMap = t);
 }
 // colours + the intake shape (segs/phase: 4 + PI/4 = a square hopper). fills g, sets muzzle / chute / teeth / lamps / gauge
 function shredderBuild(g, o) {
@@ -281,6 +312,12 @@ function shredderBuild(g, o) {
   }
   g.add(teeth);
   g.userData.teeth = teeth;
+  // motion blur: a see-through sleeve of streaks round the teeth inside the cage, faded in with speed (spinTeeth).
+  // its own material per gun: each one fades and heats on its own
+  const blur = new THREE.Mesh(new THREE.CylinderGeometry(0.094, 0.094, 0.13, 18, 1, true).rotateX(Math.PI / 2),
+    jankify(new THREE.MeshLambertMaterial({ color: o.teeth, map: blurTex(), transparent: true, opacity: 0, depthWrite: false })));
+  blur.position.set(0, y, -0.0725); blur.visible = false; blur.userData.noWrap = true; g.add(blur);
+  g.userData.blur = blur;
   // the intake: a thick-walled funnel, painted outside, dark inside so the teeth at the bottom of it show
   const R = o.mouthR, Z = o.mouthZ, lp = { segs: o.segs, phase: o.phase, y };
   g.add(lathe([[R - 0.008, Z], [R + 0.012, Z], [R + 0.012, Z + 0.025], [0.112, -0.15], [0.09, -0.15]], o.funnel, lp)); // (profile order = which way the faces point)

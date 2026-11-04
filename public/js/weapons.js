@@ -6,7 +6,7 @@ import { raycast, rayBox } from '/shared/physics.js';
 import { G } from './ctx.js';
 import { ME, eye, look, applyKb, hspeed } from './player.js';
 import { buildWeapon, M, cardFace, tipColor, setKatana } from './models.js';
-import { heatTeeth } from './models.js';
+import { heatTeeth, spinTeeth } from './models.js';
 import { fx } from './fx.js';
 import { marbles } from './marbles.js';
 import { sfx, loopSfx, stopLoops } from './audio.js';
@@ -767,14 +767,18 @@ function animEvent(ev, g) {
 // hold to suck: the heat climbs (overheats at w.fuel seconds) and only comes back down when you let go, like the
 // blower's fuel. the client just reports who's in the cone; the server decides the pull and the shredding.
 W.shred = { heat: 0, hot: false, hotK: 0, spin: 0, tick: 0, on: false, gore: 0, puff: 0 };
-function updateShredder(dt, alive) {
+function updateShredder(dt, alive, now) {
   const w = WEAPONS.shredder, S = W.shred, mine = W.cur === 'shredder';
+  // heat runs on real time like the server's (dt is capped at 0.1 s a frame, so under 10 fps it would fall behind)
+  const rdt = S.at ? Math.min(0.3, Math.max(0, (now - S.at) / 1000)) : dt;
+  S.at = now;
+  if (S.life !== G.spawnT) { S.life = G.spawnT; S.heat = 0; S.hot = false; } // a new life starts cold (the server's too)
   const want = alive && mine && W.held && !S.hot;
   if (want) {
-    S.heat += dt;
+    S.heat += rdt;
     if (S.heat >= w.fuel) { S.hot = true; sfx.overheat(); hud.msg('OVERHEATED', 1.2); }
   } else {
-    S.heat = Math.max(0, S.heat - w.regen * dt);
+    S.heat = Math.max(0, S.heat - w.regen * rdt);
     if (S.hot && S.heat <= w.fuel * w.coolTo) { S.hot = false; sfx.click(); }
   }
   S.on = want && !S.hot;
@@ -830,15 +834,15 @@ function chuteVM(m, n, blood, confetti, smoke) {
     else if (kind < smoke + blood + confetti) sys.norm.spawn(c.x, c.y, c.z, d.x * sp + R(0.35), d.y * sp + R(0.35), d.z * sp + R(0.35), 0.7 + Math.random() * 0.4, 0.008, 0.008, [0xff4fd8, 0x4fd8ff, 0xffe14d, 0x7dff4f, 0xff7a1a][(Math.random() * 5) | 0], 0xffffff, 1, 1.2, 1.4);
   }
 }
-// viewmodel: a lean into the pull + a shake while it runs, the teeth (stepped less than half a tooth a frame, so they
-// never look like they run backwards), lamps + heat gauge, air spiralling down the throat, blood when it's chewing,
+// viewmodel: a lean into the pull + a shake while it runs, the teeth (spinTeeth: never seem to run backwards, blur
+// at speed), lamps + heat gauge, air spiralling down the throat, blood when it's chewing,
 // smoke when the motor starts, a droop + steam when it's overheated
 function shredderVM(m, dt, now, pose) {
   const S = W.shred, ud = m.g.userData, R = (k) => (Math.random() - 0.5) * k;
   S.hotK += ((S.hot ? 1 : 0) - S.hotK) * Math.min(1, dt * 5);
   const j = 0.011 * S.spin + (S.gore > 0 ? 0.008 : 0);
   pose(R(j), R(j) - 0.035 * S.hotK, -0.014 * S.spin, R(j * 2) - 0.24 * S.hotK, 0, R(j * 3) + 0.14 * S.hotK);
-  if (ud.teeth) ud.teeth.rotation.z -= Math.min(0.45, dt * (S.spin * 40 + W.inspectSpin * 18));
+  spinTeeth(m.g, dt, S.spin + W.inspectSpin * 0.45);
   const lit = S.hot ? (now % 300 < 150 ? 0xff2020 : 0x300000) : S.spin > 0.05 ? 0xff3a2a : 0x500000;
   if (ud.lamps) for (const l of ud.lamps) l.material.color.setHex(lit);
   const heat = Math.min(1, S.heat / WEAPONS.shredder.fuel), glow = Math.max(0, (heat - 0.45) / 0.55);
@@ -936,7 +940,7 @@ export function updateWeapons(dt, now) {
       }
     }
   }
-  updateShredder(dt, alive);
+  updateShredder(dt, alive, now);
 
   if (id === 'bow') {
     if (alive && W.held && ready('bow', now)) { const was = W.draw; W.draw = Math.min(1, W.draw + dt / w.draw); if (was < 1 && W.draw >= 1) sfx.click(); }

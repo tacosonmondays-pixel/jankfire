@@ -11,7 +11,7 @@ import { ME } from './player.js';
 import { fx } from './fx.js';
 import { sfx } from './audio.js';
 import { hud } from './hud.js';
-import { buildCharacter, heatTeeth } from './models.js';
+import { buildCharacter, heatTeeth, spinTeeth } from './models.js';
 import { shredderPorts, shredKick, shredSpitVM } from './weapons.js';
 
 const SW = WEAPONS.shredder;
@@ -37,11 +37,12 @@ function portsOf(id, pool = G.remotes) {
 // the SUCK flag in their snapshots drives it: teeth spin up, the suction pours in, the motor drones, the gun shakes
 export function remoteShredder(r, dt) {
   const on = !!(r.f & FLAGS.SUCK), now = performance.now();
+  if (r.shredD !== r.d) { r.shredD = r.d; r.shredHeat = 0; } // they died since: a new life starts cold, theirs did too
   r.shredSpin = on ? Math.min(1, (r.shredSpin || 0) + dt / 0.35) : Math.max(0, (r.shredSpin || 0) - dt / 0.9);
   r.shredHeat = on ? Math.min(SW.fuel, (r.shredHeat || 0) + dt) : Math.max(0, (r.shredHeat || 0) - dt * SW.regen); // a guess at theirs
   const g = r.weaponMesh, ud = g && g.userData;
   if (!ud || !ud.teeth) return;
-  ud.teeth.rotation.z -= Math.min(0.45, dt * r.shredSpin * 40); // under half a tooth a frame: never seems to run backwards
+  spinTeeth(g, dt, r.shredSpin);
   if (ud.lamps) for (const l of ud.lamps) l.material.color.setHex(r.shredSpin > 0.05 ? 0xff3a2a : 0x500000);
   heatTeeth(g, Math.max(0, (r.shredHeat / SW.fuel - 0.45) / 0.55), 0.28); // (0.28: the glow remote.js gives players)
   const kick = Math.max(0, 1 - (now - (r.shredKickT || 0)) / 160); // a jolt each time it bites
@@ -137,11 +138,13 @@ export function shredHit(m) {
 // hanging in the teeth: the body jerks about, arms and legs flail (on top of the normal animation, every frame)
 function thrash(now) {
   for (const r of chewed) {
-    if (now > r.chewUntil || !r.alive) {
-      if (r.gunEaten && r.gunEaten === r.weaponMesh) r.gunEaten.visible = true; // got away: here's your gun back
+    // dead, or got away (a chew tick a bit late on a laggy line isn't a getaway: no gun popping back to be eaten twice)
+    if (!r.alive || now > r.chewUntil + 450) {
+      if (r.gunEaten && r.gunEaten === r.weaponMesh) r.gunEaten.visible = true; // here's your gun back
       r.gunEaten = null; chewed.delete(r);
       continue;
     }
+    if (now > r.chewUntil) continue; // between chews: hanging there, not thrashing
     const ch = r.ch, t = now * 0.028 + r.id * 1.7;
     ch.root.position.x += R(0.05); ch.root.position.y += Math.abs(R(0.06)); ch.root.position.z += R(0.05);
     ch.root.rotation.y += Math.sin(t * 1.1) * 0.35 + R(0.15);
@@ -152,6 +155,16 @@ function thrash(now) {
 }
 
 // ------------------------------------------------------------ the kill
+// when it's you, there's no mannequin of you in the world to take apart, so one gets built to do it with. it's kept
+// for next time (built again only when your colour or look changes) instead of leaking a body's geometry every death
+let myBody = null, myKey = '';
+function myCopy(me) {
+  const key = me.color + JSON.stringify(me.look || null);
+  if (myBody && key === myKey) return myBody;
+  if (myBody) myBody.root.traverse((o) => { if (o.isMesh) o.geometry.dispose(); }); // (its materials are the shared M() ones)
+  myKey = key;
+  return (myBody = buildCharacter(me.color, me.look));
+}
 // v = the victim's mannequin (live remote or replay ghost) or, when it's you, me = { pos, yaw, color, look } to copy.
 // returns false when there's no machine to go through (killer left / swapped guns): normal gibs then
 export function shredKill(m, pool = G.remotes, me = null) {
@@ -160,20 +173,22 @@ export function shredKill(m, pool = G.remotes, me = null) {
   const v = pool.get(m.v);
   let ch = v && v.ch, copy = null;
   if (!ch && me) {
-    ch = buildCharacter(me.color, me.look);
+    ch = myCopy(me);
     ch.root.position.set(me.pos[0], me.pos[1], me.pos[2]);
     ch.root.rotation.y = me.yaw || 0;
     ch.root.scale.setScalar(1.2);
-    G.scene.add(ch.root); copy = ch.root;
+    copy = ch.root; // (never added to the scene: only its pieces are)
   }
   if (!ch) return false;
   ch.root.updateMatrixWorld(true);
   if (v && v.weaponMesh) eatGun(v, job); // still holding it (replays don't have the chewing): in it goes first
+  // their gun comes back with them: hidden till they're shown again, then thrash() hands it back
+  // (replay ghosts and anyone killed before they were chewed aren't in chewed yet, nothing else would)
+  if (v) { v.chewUntil = 0; chewed.add(v); }
   const gun = new Set();
   ch.slot.traverse((o) => gun.add(o));
   const parts = [];
   ch.body.traverse((o) => { if (o.isMesh && !o.userData.outline && !gun.has(o)) parts.push(o); });
-  if (copy) G.scene.remove(copy);
   if (!parts.length) return false;
   const a = job.last.intake;
   G.camera.getWorldPosition(tmpA);

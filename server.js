@@ -984,6 +984,7 @@ class Room {
       this.hurt(t, p, 'shredder', d <= w.shredR ? w.dps * el : 0, null);
       return;
     }
+    if (!t.isBot && n - t.spawnT < 1200) return; // spawn protection covers the pull too: no reeling people in as they spawn
     // speed-capped so they don't arrive like a bullet (or overshoot through you on a laggy connection)
     const k = 1 - d / w.range, dir = [to[0] / d, to[1] / d, to[2] / d];
     const along = (t.vel[0] - p.vel[0]) * dir[0] + (t.vel[1] - p.vel[1]) * dir[1] + (t.vel[2] - p.vel[2]) * dir[2];
@@ -998,19 +999,30 @@ class Room {
     t.ai.hook = null; t.g = null; // no grappling out of it
     t.held = { at, until: now() + 260 };
   }
-  // ~4 s of sucking overheats it (same numbers the client shows), then it has to cool. a hacked client can't keep it on
+  // ~4 s of sucking overheats it (same numbers the client shows), then it has to cool. a hacked client can't keep it on:
+  // heat charges exactly the time shredPull credits pull + damage for (the whole gap at a steady cadence, one tick
+  // after a pause) and the rest of a pause cools it, so no push cadence shreds for free. that's also the client's own
+  // sum (a tick of suction per push, cooling while let go), so an honest one never gets locked out early
   shredHeat(p, n) {
     const w = WEAPONS.shredder, gap = Math.min(10, (n - (p.shredT || 0)) / 1000);
+    if ((p.shredT || 0) < p.spawnT) { p.shredHeat = 0; p.shredHot = false; } // a new life starts cold (the client's does too)
     p.shredT = n;
-    p.shredHeat = gap < 0.25 ? (p.shredHeat || 0) + gap : Math.max(0, (p.shredHeat || 0) - gap * w.regen);
-    if (p.shredHeat > w.fuel + 0.75) p.shredHot = true;
-    else if (p.shredHot && p.shredHeat <= w.fuel * w.coolTo) p.shredHot = false;
-    return !p.shredHot;
+    // overheated: every push is turned away before anything is credited, and only cools it (pushing can't keep it hot)
+    if (p.shredHot) {
+      p.shredHeat = Math.max(0, p.shredHeat - gap * w.regen);
+      if (p.shredHeat <= w.fuel * w.coolTo) p.shredHot = false;
+      return false;
+    }
+    const on = gap < 0.3 ? gap : w.tick;
+    p.shredHeat = Math.max(0, (p.shredHeat || 0) + on - (gap - on) * w.regen);
+    if (p.shredHeat > w.fuel + 0.75) { p.shredHot = true; return false; } // (0.75 s of slack for network jitter)
+    return true;
   }
   // bots: suck everyone in front of them through the same rules, with their own heat
   botShred(b) {
     const w = WEAPONS.shredder, ai = b.ai, n = now(), gap = Math.min(10, (n - (ai.shT || 0)) / 1000);
     if (gap < w.tick) return;
+    if ((ai.shT || 0) < b.spawnT) { ai.heat = 0; ai.hot = false; } // respawned: cold again
     ai.shT = n;
     if (ai.hot) { ai.heat = Math.max(0, ai.heat - gap * w.regen); if (ai.heat > w.fuel * w.coolTo) return; ai.hot = false; }
     else ai.heat = gap < 0.25 ? (ai.heat || 0) + gap : Math.max(0, (ai.heat || 0) - gap * w.regen);
