@@ -104,7 +104,7 @@ Bots play the objectives too: they carry and plant the bomb, defuse it, and grab
 - **Melee:** Bread, Slipper (throw it, it comes back), Knife, Hand Slapper (point blank, launches + makes them slip), **Katana**, Spoon
 - **Item (G):** Frag Grenade (x2, bounces, 2 s fuse, grenade-jump with it), Medkit, Shield Bubble (nothing from outside hurts anyone inside for 7 s), Rubber Duck (black hole), Smoke Bomb (x2). Charges refill over time.
 
-**Only the minigun shoves people with bullets**: hold it on someone and they get pushed away (the price for spraying). Melee and explosives still knock people around, and your own movement tricks (shotgun jumps, minigun flying) still work.
+**Only two guns shove people with bullets**: the minigun (hold it on someone and they get pushed away, the price for spraying) and the sniper (a body shot sends them flying off the map). Melee and explosives still knock people around, and your own movement tricks (shotgun jumps, minigun flying) still work.
 
 **Knife (CS-style):** left click alternates diagonal slashes, right click is a heavy stab (windup, 90 damage, a backstab kills). Every knife skin moves like its real-world family: the Butterfly's handles flip around the blade, the Karambit spins on your finger through the ring, the Switchblade flicks open, the Kitchen knife rolls like a bayonet, the Bowie does a barrel-roll toss, the Cleaver balances on a fingertip.
 

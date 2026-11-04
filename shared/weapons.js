@@ -35,16 +35,16 @@ export const WEAPONS = {
   },
   minigun: {
     slot: 'primary', kind: 'hitscan', name: 'Minigun', color: '#c8c8c8',
-    desc: 'Spins up then never stops. The only gun that shoves people: hold it on someone and they get pushed away. The recoil is strong enough to fly on.',
+    desc: 'Spins up then never stops. Its bullets shove people: hold it on someone and they get pushed away. The recoil is strong enough to fly on.',
     auto: true, rate: 25, mag: 250, reload: 3.5, spinup: 0.6, dmg: 6, head: 1.5, spread: 0.045,
     kb: 1.7, recoil: 1.25, kick: 0.004, range: 200,
     ads: { zoom: 1.15, spread: 0.6, p: [0.08, -0.2, -0.36] },
   },
   sniper: {
     slot: 'primary', kind: 'hitscan', name: 'Sniper', color: '#ff4fd8',
-    desc: 'Right click to scope. A headshot always kills. Hipfire is a gamble.',
+    desc: 'Right click to scope. A headshot always kills, a body shot sends them flying off the map. Hipfire is a gamble.',
     rate: 1 / 1.1, mag: 5, reload: 2.2, dmg: 55, head: 2, spread: 0.05,
-    kb: 0, kbUp: 0, recoil: 12, kick: 0.06, range: 500, tracer: 0xff4fd8, thick: 0.09,
+    kb: 75, kbUp: 14, recoil: 12, kick: 0.06, range: 500, tracer: 0xff4fd8, thick: 0.09,
     ads: { zoom: 4, spread: 0, scope: true, p: [0, -0.1, -0.25] },
   },
   chicken: {
