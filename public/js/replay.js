@@ -61,6 +61,7 @@ export function playClip(clip, opts = {}) {
   while (st.ei < clip.ev.length && clip.ev[st.ei].s < t0) st.ei++;
   RP.active = true;
   RP.mode = opts.mode || 'replay';
+  RP.focus = opts.focus; // whose replay it is
   document.body.classList.add('replaying');
   return true;
 }
@@ -82,7 +83,14 @@ function feed(upTo) {
   const fr = st.clip.frames;
   while (st.fi < fr.length && fr[st.fi].s <= upTo) {
     const f = fr[st.fi++];
-    for (const e of f.p) { const g = st.ghosts.get(e[0]); if (g) g.snap(f.s, e); }
+    for (const e of f.p) {
+      const g = st.ghosts.get(e[0]);
+      if (!g) continue;
+      const up = g.alive || g.downAt;
+      g.snap(f.s, e);
+      // frames go in early (for smooth movement) but a death only shows once the replay gets there: they're still standing when the shot lands
+      if (!e[11] && up && f.s > st.t) { g.alive = true; g.downAt = g.downAt || f.s; }
+    }
   }
 }
 
@@ -108,6 +116,7 @@ function applyEv(m) {
       const vi = info[m.v] || {};
       const replaced = m.fx && m.fx !== 'none' && playKillFx(m.fx, { pos: v.pos.slice(), vel: m.vel || v.vel, yaw: v.yaw, color: v.color, look: vi.look, name: vi.name });
       if (replaced) v.ch.root.visible = false; else v.breakApart(m.vel || v.vel);
+      v.alive = false; v.downAt = 0; // now they're down
     }
     if (st.opts.onKill) st.opts.onKill(m);
     if (m.k === st.opts.focus) sfx.kill();
@@ -192,16 +201,36 @@ function updateCam(dt, cam) {
   cam.up.set(0, 1, 0);
   cam.lookAt(camLook);
   if (Math.abs(cam.fov - 72) > 0.05) { cam.fov = 72; cam.updateProjectionMatrix(); }
+  punchIn(cam);
+}
+
+// epic killcams: opts.punch(t) (0..1) swings the camera onto opts.victim and narrows the lens down to 72 / opts.zoom
+const punchV = new THREE.Vector3();
+function punchIn(cam) {
+  const o = st.opts;
+  if (!o.punch) return;
+  const v = st.ghosts.get(o.victim);
+  if (v && v.alive && v.buf.length) st.vAt = [v.pos[0], v.pos[1] + 1.3, v.pos[2]]; // after they drop, keep looking where they were
+  const p = Math.max(0, Math.min(1, o.punch(st.t) || 0));
+  if (!st.vAt || p <= 0) return;
+  const k = p * p * (3 - 2 * p);
+  cam.lookAt(punchV.set(st.vAt[0], st.vAt[1], st.vAt[2]).sub(camLook).multiplyScalar(k).add(camLook));
+  cam.fov = 72 / (1 + ((o.zoom || 1) - 1) * k);
+  cam.updateProjectionMatrix();
 }
 
 // returns true while a replay owns the camera
 export function updateReplay(dt, now, cam) {
   if (!st) return false;
   const o = st.opts;
-  const slow = o.slow && o.slow.some(([a, b]) => st.t >= a && st.t <= b);
-  const sp = slow ? 0.3 : 1;
+  // replays keep to the wall clock (the frame dt is capped at 0.1 s): on a slow PC the killcam still ends before the server respawns you
+  dt = st.wall ? Math.min(0.25, Math.max(0, (now - st.wall) / 1000)) : dt;
+  st.wall = now;
+  const slow = o.slow && o.slow.find(([a, b]) => st.t >= a && st.t <= b);
+  const sp = slow ? slow[2] || 0.3 : 1; // slow windows are [from, to, speed?]
   st.t += dt * 1000 * sp;
   feed(st.t + 260);
+  for (const g of st.ghosts.values()) if (g.downAt && st.t >= g.downAt + 400) { g.alive = false; g.downAt = 0; } // died with no kill event in the clip
   // ghosts size themselves by distance to the camera: measure from the replay camera, not wherever you are
   if (!st.first) { cam.position.copy(camPos); cam.lookAt(camLook); cam.updateMatrixWorld(); }
   while (st.ei < st.clip.ev.length && st.clip.ev[st.ei].s <= st.t) { try { applyEv(st.clip.ev[st.ei].m); } catch (e) { console.warn('replay ev', e); } st.ei++; }

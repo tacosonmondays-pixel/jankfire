@@ -18,6 +18,7 @@ import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor } from './shared/modes.js';
 import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, validStreaks, fireRate } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
+import { epicCheck, epicCamMs, EPIC } from './shared/epic.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -815,6 +816,11 @@ class Room {
     // killcam: humans who have it on wait for it to finish (or skip it) before respawning
     if (this.game === 'bomb' && this.teamsOn()) t.respawnAt = now() + BOMB.respawn;
     if (!t.isBot && t.kc && killer && killer !== t && this.mode !== 'training') t.respawnAt = Math.max(t.respawnAt, now() + 9000);
+    // EPIC kill: the victim (if they have killcams on) has to watch all of it. their respawn waits it out, never past the 9 s cap
+    const ep = this.epicOf(killer, t, w);
+    t.lastEpic = ep;
+    t.epicLock = ep && !t.isBot && t.kc ? Math.min(t.respawnAt, now() + epicCamMs()) : 0;
+    if (t.epicLock) ep.lock = 1;
     if (killer && killer !== t && this.round && !this.round.over && !(t.isBot && t.ai && t.ai.dummy) && this.mode !== 'training') this.hlCandidate(killer, t, w);
     send(t, { t: 'streak', reset: 1 });
     t.streak = 0;
@@ -833,7 +839,7 @@ class Room {
       if (killer.isBot && killer.kfx == null) killer.kfx = Math.random() < 0.45 ? pick(KILL_IDS) : 'none'; // bots show off stuff you can roll
       kfx = killer.kfx || 'none';
     }
-    this.broadcast({ t: 'kill', k: killer && killer !== t ? killer.id : 0, v: t.id, w, via, vel: t.vel.map(r2), pos: t.pos.map(r2), yaw: r2(t.yaw || 0), fx: kfx });
+    this.broadcast({ t: 'kill', k: killer && killer !== t ? killer.id : 0, v: t.id, w, via, vel: t.vel.map(r2), pos: t.pos.map(r2), yaw: r2(t.yaw || 0), fx: kfx, ep: ep || undefined });
     t.lastAttacker = 0;
     if (t.isBot && this.mode === 'coop') { setTimeout(() => { if (this.players.get(t.id) === t) this.remove(t); }, 50); }
   }
@@ -845,10 +851,10 @@ class Room {
     const multi = k.killLog.length;
     const spd = Math.hypot(k.vel[0], k.vel[1], k.vel[2]) * 3.6;
     const dist = Math.hypot(k.pos[0] - t.pos[0], k.pos[1] - t.pos[1], k.pos[2] - t.pos[2]);
-    const score = multi * 10 + Math.min(12, spd / 40) + Math.min(6, dist / 15) + (w === 'void' ? 5 : 0) + (t.lastHs ? 3 : 0) + (k.isBot ? -8 : 0) + Math.random();
+    const score = multi * 10 + Math.min(12, spd / 40) + Math.min(6, dist / 15) + (w === 'void' ? 5 : 0) + (t.lastHs ? 3 : 0) + (k.isBot ? -8 : 0) + Math.random() + (t.lastEpic ? 18 : 0); // an EPIC kill beats a double kill
     const r = this.round;
     if (r.hl && r.hl.score >= score) return;
-    const label = multi >= 5 ? 'RAMPAGE' : multi === 4 ? 'QUAD KILL' : multi === 3 ? 'TRIPLE KILL' : multi === 2 ? 'DOUBLE KILL'
+    const label = t.lastEpic && multi < 3 ? `EPIC SHOT · ${t.lastEpic.d}M` : multi >= 5 ? 'RAMPAGE' : multi === 4 ? 'QUAD KILL' : multi === 3 ? 'TRIPLE KILL' : multi === 2 ? 'DOUBLE KILL'
       : w === 'void' ? 'INTO THE VOID' : spd > 300 ? `${Math.round(spd)} KM/H KILL` : dist > 60 ? `${Math.round(dist)}M SHOT` : t.lastHs ? 'HEADSHOT' : 'NICE KILL';
     const t0 = Math.max(k.killLog[0] - 3200, n - 8000);
     const hl = { score, pending: true };
@@ -858,6 +864,42 @@ class Room {
       if (this.round !== r || r.hl !== hl) return;
       Object.assign(hl, { pending: false, label, id: k.id, name: k.name, color: k.color, card: k.card || '', clip: this.clip(t0, now()) });
     }, 1300);
+  }
+  // is this kill EPIC? only what the server trusts: its positions, the hit, the killer's state (see shared/epic.js)
+  epicOf(k, t, w) {
+    if (!k || k === t || k.isBot || this.mode === 'training' || this.mode === 'coop') return null; // coop is all bot kills: it'd never stop bragging
+    const n = now(), used = k.usedAt || {};
+    if (k.reverseUntil > n) return null; // bounced off their reverse card: nobody aimed that one
+    if (used.spinbot > (k.deadT || 0) && n - used.spinbot < STREAKS.spinbot.dur * 1000 + 500) return null; // the aimbot did it
+    if (w === 'chicken' && n - (used.chickenstrike || 0) < 6000) return null; // an airstrike
+    if (w === 'bow' && (t.burnUntil > n || [...this.clouds.values()].some((c) => c.o === k.id && dist3(center(t), c.p) < 5.5))) return null; // burn / gas ticks
+    const below = raycast([k.pos[0], k.pos[1] + 0.05, k.pos[2]], [0, -1, 0], 60, this.boxes);
+    return epicCheck({
+      dist: dist3(k.pos, t.pos), w, hs: !!t.lastHs && w !== 'snowball', ns: w === 'sniper' && this.hitNs === k,
+      air: !below || below.t > EPIC.airH + 0.05, rope: !!k.g && dist3(k.g, k.pos) < HOOK.range + 10, kmh: this.speedOf(k) * 3.6, hp: k.alive ? k.hp : 0,
+      still: n - (t.movedT || n), // anti-farm: shooting someone who stood still for 5 s is no trophy
+    });
+  }
+  // from the snapshots: when everyone last really moved (EPIC.moved metres; a respawn or getting knocked around doesn't count)
+  // and where they were over the last 0.6 s (how fast they're really going)
+  trackMoves(n) {
+    for (const p of this.players.values()) {
+      if (!p.alive) { p.trail = null; continue; }
+      if (!p.stillAt) p.movedT = n; // just joined
+      if (!p.stillAt || !p.trail || dist3(p.stillAt, p.pos) > EPIC.moved) {
+        if (p.stillAt && p.trail && n - (p.lastAttackT || 0) > 1200) p.movedT = n;
+        p.stillAt = p.pos.slice();
+      }
+      (p.trail ||= []).push([n, p.pos[0], p.pos[1], p.pos[2]]);
+      while (p.trail[0][0] < n - 600) p.trail.shift();
+    }
+  }
+  // the speed they say they're going, but no faster than the snapshots saw them move (+25% for network jitter)
+  speedOf(p) {
+    const tr = p.trail, v = Math.hypot(p.vel[0], p.vel[1], p.vel[2]);
+    if (!p.alive || !tr || !tr.length) return 0;
+    const [t0, x, y, z] = tr[0], dt = (now() - t0) / 1000;
+    return dt < 0.25 ? 0 : Math.min(v, (Math.hypot(p.pos[0] - x, p.pos[1] - y, p.pos[2] - z) / dt) * 1.25);
   }
   // a slice of the recording: 10 Hz frames + the events in that window + who's who
   clip(t0, t1) {
@@ -899,6 +941,7 @@ class Room {
   }
 
   onHit(p, m) {
+    this.hitNs = m.w === 'sniper' && (m.ns === 1 || m.ns === true) ? p : null; // no-scope sniper hits (ns: 1) can make the kill EPIC
     const w = WEAPONS[m.w];
     const t = this.players.get(m.to);
     const d = norm(vec3(m.d));
@@ -1397,6 +1440,7 @@ class Room {
         if (i < 0 || !p.alive || !STREAKS[m.r]) break;
         if ((m.r === 'chickenstrike' || m.r === 'giantduck') && !at) break;
         p.pocket.splice(i, 1);
+        (p.usedAt ||= {})[m.r] = now(); // EPIC kills skip the spinbot's (aimbot) and the chicken strike's
         if (m.r === 'scythe') p.scythe = true;
         send(p, { t: 'streak', reward: m.r });
         if (m.r === 'chickenstrike') {
@@ -1444,6 +1488,7 @@ class Room {
         break;
       case 'respawn': // killcam finished or skipped
         if (!p.alive) p.respawnAt = Math.min(p.respawnAt, Math.max(now(), (p.deadT || 0) + 1500));
+        if (!p.alive && p.epicLock) p.respawnAt = Math.max(p.respawnAt, Math.min(p.epicLock, (p.deadT || 0) + 9000)); // EPIC killcam: no skipping it
         break;
       case 'redraw':
         if (p.alive && now() - (p.redrawT || 0) > 2500) { p.redrawT = now(); deal(p); }
@@ -1727,6 +1772,7 @@ class Room {
         p.g ? p.g.map(r2) : 0, p.f, p.kills, p.deaths]);
     }
     const n = now();
+    this.trackMoves(n);
     this.recOdd = !this.recOdd;
     this.rec.frames.push({ s: n, p: ps, odd: this.recOdd, j: [...this.projectiles.values()].map((pr) => [pr.id, pr.k, r2(pr.p[0]), r2(pr.p[1]), r2(pr.p[2]), pr.tip || 0]) });
     while (this.rec.frames.length && this.rec.frames[0].s < n - REC_MS) this.rec.frames.shift();
