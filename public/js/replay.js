@@ -303,7 +303,7 @@ function ghostPatch(m) {
   const k = -m.id;
   if (!Number.isFinite(k)) return;
   if (m.t === 'mpatch') {
-    if (!Array.isArray(m.c)) return;
+    if (!Array.isArray(m.c) || marbles.patches.has(m.id)) return; // still on the floor live: don't draw it twice
     const sk = (((st.clip.info || {})[m.o] || {}).skins || {}).marbles;
     marbles.addPatch(k, m, sk && sk[3] === 'marbles_gumball' ? 'gumball' : 'glass');
     (st.mp ||= new Set()).add(k);

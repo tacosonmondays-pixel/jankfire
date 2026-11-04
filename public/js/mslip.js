@@ -24,6 +24,7 @@ net.on('mpx', (m) => { recordEv(m); marbles.dropPatch(m.id); });
 
 // people running through a patch kick the marbles round their feet about (only looks: the patch stays where it is)
 const kickT = new Map();
+let clackT = 0; // one clack cooldown for everyone, so a crowd through a patch isn't a drum roll
 function skitter() {
   requestAnimationFrame(skitter);
   if (!marbles.patches.size) return;
@@ -33,9 +34,9 @@ function skitter() {
   for (const [id, pos, vel] of movers) {
     if (Math.hypot(vel[0], vel[2]) < 2.5 || now - (kickT.get(id) || 0) < 60) continue;
     for (const pt of marbles.patches.values()) {
-      if (!onPatch(pt, pos, 0.6)) continue;
+      if (!onPatch(pt, pos, 0.6) || !marbles.seen(pt, pos[0], pos[2])) continue; // (the far side of a wall isn't on it)
       kickT.set(id, now);
-      if (marbles.kick(pos, vel) && Math.random() < 0.5) sfx.marble(id === G.myId ? null : pos);
+      if (marbles.kick(pos, vel) && now > clackT && Math.random() < 0.5) { sfx.marble(id === G.myId ? null : pos); clackT = now + 90; }
       break;
     }
   }

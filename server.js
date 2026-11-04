@@ -1131,6 +1131,8 @@ class Room {
     const ev = this.rec.ev.filter((e) => e.s >= t0 && e.s <= t1);
     ev.unshift(...trapPreroll(this.rec.ev, t0)); // someone already floating in a soap bubble when the clip starts
     ev.unshift(...patchPreroll(this.rec.ev, t0)); // marbles already on the floor
+    const had = new Set(ev.map((e) => e.m.t === 'mpatch' && e.m.id)); // still down from before the recording kept: from the live patch
+    for (const pt of this.mpatches.values()) if (pt.born < t0 && !had.has(pt.id) && pt.until - t0 > 300) ev.unshift({ s: t0, m: { t: 'mpatch', ...this.patchInfo(pt), left: pt.until - t0 } });
     const info = {};
     for (const f of frames) for (const e of f.p) if (!info[e[0]]) {
       const pl = this.players.get(e[0]);
@@ -1869,13 +1871,19 @@ class Room {
     if (best.length < Math.max(3, ss.length * 0.3)) return; // sprayed all over (or into the sky): no patch
     let cx = 0, cz = 0;
     for (const b of best) { cx += b[0] / best.length; cz += b[2] / best.length; }
-    const top = Math.max(...best.map((b) => b[1])), f = raycast([cx, top + 0.4, cz], [0, -1, 0], 1.4, this.boxes);
-    if (!f || f.normal[1] !== 1) return; // the middle is over a gap
+    const top = Math.max(...best.map((b) => b[1]));
+    let f = raycast([cx, top + 0.4, cz], [0, -1, 0], 1.4, this.boxes);
+    if (!f || f.normal[1] !== 1) { // the middle is in a pillar the marbles landed round (or over a gap): use the nearest marble
+      const b = best.reduce((m, b) => (Math.hypot(b[0] - cx, b[2] - cz) < Math.hypot(m[0] - cx, m[2] - cz) ? b : m));
+      cx = b[0]; cz = b[2]; f = raycast([cx, top + 0.4, cz], [0, -1, 0], 1.4, this.boxes);
+      if (!f || f.normal[1] !== 1) return;
+    }
     const y = top + 0.4 - f.t;
     const rms = Math.sqrt(best.reduce((s, b) => s + (b[0] - cx) ** 2 + (b[2] - cz) ** 2, 0) / best.length);
-    const pt = {
-      id: this.nextMp++, c: [r2(cx), r2(y), r2(cz)], r: r2(Math.max(M.rMin, Math.min(M.rMax, 0.9 + rms * 1.3))),
-      n: Math.round(M.n * Math.min(1, (best.length / ss.length) * 1.4)), o: p.id, team: p.team || 0,
+    const r = Math.max(M.rMin, Math.min(M.rMax, 0.9 + rms * 1.3));
+    const pt = { // (more marbles in a bigger patch so it doesn't read as a few specks)
+      id: this.nextMp++, c: [r2(cx), r2(y), r2(cz)], r: r2(r),
+      n: Math.round(M.n * Math.min(1, (best.length / ss.length) * 1.4) * Math.max(0.7, Math.min(1.6, (r / 1.6) ** 2))), o: p.id, team: p.team || 0,
       born: n, until: n + M.life * 1000, map: this.cfg.map,
     };
     // caps: your oldest goes first, then the room's oldest
@@ -1906,10 +1914,31 @@ class Room {
   // (like the banana), a wrecking ball, a soap bubble, frozen or dead people, or someone who just slipped
   slipsOn(t, pt, owner, n) {
     if (!t.alive || t.trap || this.isBall(t, n) || n < (t.frozenUntil || 0) || n - (t.mslipT || 0) < MSLIP.immune) return false;
-    if (owner !== t && this.friendly(owner, t)) return false;
+    if (owner ? owner !== t && this.friendly(owner, t) : this.teamsOn() && pt.team && pt.team === t.team) return false; // (the shooter left: their team is still safe)
+    if (!t.isBot && owner !== t && n - t.spawnT < 1200) return false; // spawn protection
+    if (t.isBot && owner === t && n - pt.born < 1500) return false; // a bot's marbles at its own feet: a moment to stop strafing
     if (t.isBot ? n < t.slipUntil || !t.onGround || (t.ai.dummy && t.ai.dummy.move) : (t.f & FLAGS.SLIP) || Math.abs(t.vel[1]) > 2) return false; // (players: no vertical speed = on the floor)
-    return onPatch(pt, t.pos, 0.15) && Math.hypot(t.vel[0], t.vel[2]) > MSLIP.walk;
+    if (!onPatch(pt, t.pos, 0.15) || this.marbleSpeed(t, n) <= this.marbleWalk(t)) return false;
+    const dx = t.pos[0] - pt.c[0], dz = t.pos[2] - pt.c[2], l = Math.hypot(dx, dz);
+    return !(l > 0.05 && raycast([pt.c[0], pt.c[1] + 0.3, pt.c[2]], [dx / l, 0, dz / l], l, this.boxes)); // a wall between you and the marbles
   }
+  // how fast you're going over the marbles: what you say, or what the snapshots saw over the last 0.3 s if that's more
+  // (so a client can't run across claiming it stands still). a jump of over 1.5 m between snapshots is a teleport, not running
+  marbleSpeed(t, n) {
+    const v = Math.hypot(t.vel[0], t.vel[2]), tr = t.trail;
+    if (t.isBot || !tr || tr.length < 2) return v;
+    let d = 0, t0 = 0;
+    for (let i = 1; i < tr.length; i++) {
+      if (tr[i][0] < n - 300) continue;
+      t0 ||= tr[i - 1][0];
+      const s = Math.hypot(tr[i][1] - tr[i - 1][1], tr[i][3] - tr[i - 1][3]);
+      if (s < 1.5) d += s;
+    }
+    const dt = t0 ? (tr[tr.length - 1][0] - t0) / 1000 : 0;
+    return dt < 0.15 ? v : Math.max(v, (d / dt) * 0.8); // (-20% for network jitter)
+  }
+  // a crouch walk is safe with any weapon out (a fast weapon crouch-walks faster), up to where crouching turns into a slide
+  marbleWalk(t) { return Math.min(MSLIP.slide, Math.max(MSLIP.walk, MSLIP.crouch * ((WEAPONS[t.w] || {}).speedMul || 1) + 1)); }
   marbleSlip(t, pt, owner, n) {
     const M = MSLIP;
     t.mslipT = n;

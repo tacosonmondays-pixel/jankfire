@@ -5,8 +5,9 @@ export const MSLIP = {
   land: 0.35, // s after the shot before it counts (the marbles are still flying)
   n: 90, rMin: 1.1, rMax: 2.5, // marbles + radius of a fresh patch (fewer when only some of the shot landed together)
   room: 10, per: 3, // live patches per room / per shooter (the oldest goes)
-  cd: 0.6, // s between patches from one shooter (the gun fires every 0.9 s): fire spam can't carpet the map
+  cd: 0.8, // s between patches from one shooter (the gun fires every 0.9 s): fire spam can't carpet the map
   walk: 5.5, // m/s: faster than this slips. a crouch walk (4.5) is careful enough, walking (10) isn't
+  crouch: 4.5, slide: 7, // crouch walk speed at speedMul 1, and where crouching turns into a slide (player.js slideMin)
   feet: 0.35, // how far above the patch's floor your feet can be and still be on it
   immune: 2000, // ms after a slip before marbles can get you again
   thin: 0.55, thinR: 0.85, minN: 10, minR: 0.8, // each slip scatters marbles: fewer, smaller, gone below minN
