@@ -760,7 +760,7 @@ addEventListener('keyup', (e) => {
 });
 addEventListener('mousedown', (e) => {
   if (!inGame()) return;
-  if (RP.mode === 'killcam' || G.killcamPending) { skipReplay(); return; }
+  if (RP.mode === 'killcam' || RP.mode === 'hl' || G.killcamPending) { skipReplay(); return; } // a click skips the killcam and the play of the round
   if (e.button === 0) fireDown();
   if (e.button === 2) { if (S.swapAim) tryHook(); else aimDown(); }
   if (e.button === 3 || e.button === 4) tryHook();
@@ -1981,7 +1981,7 @@ net.on('hl', (m) => {
   const box = $('roundEnd');
   box.classList.add('hidden');
   const url = m.id === G.myId ? cardUrlFor(G.myId) : (S.showCards !== false && m.card) || defaultCard(m.name, m.color);
-  showReplayUI('PLAY OF THE ROUND', url, m.name, m.color, m.label, 'SPACE to skip');
+  showReplayUI('PLAY OF THE ROUND', url, m.name, m.color, m.label, 'SPACE / CLICK to skip'); // skipping is just for you: the round end, vote and next match carry on
   const slow = (m.clip.ev || []).filter((e) => e.m && e.m.t === 'kill' && e.m.k === m.id).map((e) => [e.s - 260, e.s + 220]);
   playClip(m.clip, {
     focus: m.id, mode: 'hl', slow,
