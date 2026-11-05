@@ -477,9 +477,13 @@ body.replaying #mlg { display: none; }
 .chips.sprays .chip span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #rollResult .sprayPic { display: block; width: 96px; height: 96px; margin: 6px auto 0; image-rendering: pixelated; background: #5d5d66; border: 2px solid #000; }
 
-/* ---------------- music: now playing */
-#nowPlaying { position: fixed; right: 18px; bottom: 16px; z-index: 50; pointer-events: none; font-size: 15px; color: #fff; background: rgba(18, 8, 24, 0.82); border: 2px solid var(--pink); padding: 5px 12px; transform: rotate(-1.5deg) translateY(12px); opacity: 0; transition: opacity 0.4s, transform 0.4s; text-shadow: 2px 2px 0 #000; }
+/* ---------------- music: now playing (a little zine sticker; in matches it slides in top-left, under the ping) */
+#nowPlaying { position: fixed; right: 18px; bottom: 16px; z-index: 50; pointer-events: none; color: #fff; background: rgba(18, 8, 24, 0.92); border: 3px solid var(--pink); box-shadow: 5px 5px 0 var(--cyan); padding: 5px 12px 6px; transform: rotate(-1.5deg) translateY(14px); opacity: 0; transition: opacity 0.35s, transform 0.35s cubic-bezier(0.2, 1.6, 0.5, 1); text-shadow: 2px 2px 0 #000; max-width: min(420px, 60vw); }
 #nowPlaying.on { opacity: 1; transform: rotate(-1.5deg); }
-#nowPlaying .np-k { color: var(--pink); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
-#nowPlaying b { color: var(--yellow); }
-#nowPlaying i { color: var(--cyan); font-style: normal; font-size: 13px; }
+#nowPlaying .np-k { display: block; color: var(--pink); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: bold; }
+#nowPlaying b { color: var(--yellow); font-size: 18px; }
+#nowPlaying i { color: var(--cyan); font-style: normal; font-size: 13px; white-space: nowrap; }
+#nowPlaying.match { right: auto; bottom: auto; left: 16px; top: 48px; transform: rotate(1.5deg) translateX(-30px); font-size: 14px; }
+#nowPlaying.match.on { transform: rotate(1.5deg); }
+#nowPlaying.match b { font-size: 16px; }
+body.replaying #nowPlaying.match { display: none; }

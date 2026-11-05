@@ -1,1 +1,7 @@
-PLACEHOLDER
+node_modules/
+data/
+dist/
+.env
+.DS_Store
+tools/music/.cache/
+__pycache__/
