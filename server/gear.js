@@ -48,7 +48,8 @@ const gear = {
     if (m.ch === 0) { p.laserT = 0; return; } // switched away mid-charge
     if (m.ch === 1) { if (!p.beam && n >= (p.lastFire.laser || 0)) p.laserT = n; return; }
     if (!p.laserT || p.beam || n < (p.lastFire.laser || 0)) { p.laserT = 0; return; }
-    const held = (n - p.laserT) / 1000, k = Math.max(0, Math.min(1, (held - L.tap) / (L.charge - L.tap)));
+    // only time spent actually holding it counts (your snapshots say what's in your hands; bots always hold theirs)
+    const held = p.isBot || p.w === 'laser' ? (n - p.laserT) / 1000 : 0, k = Math.max(0, Math.min(1, (held - L.tap) / (L.charge - L.tap)));
     p.laserT = 0;
     const dur = lerp(L.dur, k);
     p.beam = { k, until: n + dur * 1000, next: 0 };
@@ -150,9 +151,16 @@ const gear = {
         if (!t.alive || t.trap || t.quiz || (t.isBot && t.ai && t.ai.dummy)) continue;
         const rx = t.pos[0] - fr.p[0], ry = t.pos[1] - fr.p[1], rz = t.pos[2] - fr.p[2];
         const dn = rx * nx + rz * nz, lat = rx * sx + rz * sz, was = fr.last.get(t.id);
-        fr.last.set(t.id, dn);
-        if (Math.abs(lat) > PHOTO.w / 2 || ry < -0.8 || ry > PHOTO.h - 0.6) continue;
-        const inside = Math.abs(dn) < PHOTO.depth / 2, crossed = was != null && Math.sign(was) !== Math.sign(dn) && Math.abs(was - dn) < 8;
+        fr.last.set(t.id, [dn, lat]);
+        if (ry < -0.8 || ry > PHOTO.h - 0.6) continue;
+        // inside the opening now, or went through it since last tick: the crossing point has to be in the opening too,
+        // and close (a respawn or another teleport that jumps across the plane far away is not walking through it)
+        const inside = Math.abs(dn) < PHOTO.depth / 2 && Math.abs(lat) < PHOTO.w / 2;
+        let crossed = false;
+        if (!inside && was && Math.sign(was[0]) !== Math.sign(dn) && Math.abs(was[0]) < 3 && Math.abs(dn) < 3) {
+          const k = was[0] / (was[0] - dn);
+          crossed = Math.abs(was[1] + (lat - was[1]) * k) < PHOTO.w / 2;
+        }
         if (!inside && !crossed) continue;
         if (n - (fr.used.get(t.id) || 0) < PHOTO.cd * 1000) continue;
         fr.used.set(t.id, n);

@@ -19,20 +19,41 @@ const golds = new Map(); // id -> until: the gold star over someone who aced it 
 const nameOf = (id) => (G.names.get(id) || {}).name || '???';
 let mineQ = null, lastWrong = null;
 
+// the sign over their head, so everyone else can read the sum too (the calculator faces them)
+function signTex() {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 176;
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  t.userData.write = (top, big, col = '#111') => {
+    const x = c.getContext('2d');
+    x.clearRect(0, 0, 512, 176);
+    x.fillStyle = '#4fd8ff'; x.fillRect(16, 16, 486, 130); // hard offset shadow
+    x.fillStyle = '#ffffff'; x.fillRect(4, 4, 486, 130); x.lineWidth = 8; x.strokeStyle = '#111'; x.strokeRect(4, 4, 486, 130);
+    x.beginPath(); x.moveTo(220, 134); x.lineTo(256, 172); x.lineTo(280, 134); x.closePath(); x.fillStyle = '#fff'; x.fill(); x.stroke(); // the speech tail
+    x.fillStyle = '#ff4fd8'; x.font = 'bold 30px sans-serif'; x.textAlign = 'center'; x.fillText(top, 247, 44);
+    let fs = 64; x.font = `bold ${fs}px sans-serif`; while (x.measureText(big).width > 460 && fs > 30) { fs -= 4; x.font = `bold ${fs}px sans-serif`; }
+    x.fillStyle = col; x.fillText(big, 247, 112);
+    t.needsUpdate = true;
+  };
+  return t;
+}
 function makeQ(m, scene) {
   const lcd = lcdTexture([`${m.q} = ?`, 'POP QUIZ']);
   const calc = calculator(lcd);
   calc.scale.setScalar(4.6); // about 1.4 m tall
   scene.add(calc);
+  const st = signTex();
+  const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: st, depthTest: false, transparent: true, fog: false }));
+  sign.scale.set(3.4, 1.17, 1); sign.renderOrder = 9; sign.center.set(0.5, 0);
+  scene.add(sign);
   const now = performance.now();
-  return { id: m.id, by: m.by, q: m.q, a: m.a, born: now, until: now + m.left, lcd, calc, sec: -1, done: 0, res: null, scene };
+  return { id: m.id, by: m.by, q: m.q, a: m.a, born: now, until: now + m.left, lcd, calc, sign, st, sec: -1, done: 0, res: null, scene };
 }
 function dropQ(map, id) {
   const Q = map.get(id);
   if (!Q) return;
   map.delete(id);
-  Q.scene.remove(Q.calc);
-  Q.lcd.dispose();
+  Q.scene.remove(Q.calc); Q.scene.remove(Q.sign);
+  Q.lcd.dispose(); Q.st.dispose(); Q.sign.material.dispose();
   Q.calc.traverse((o) => { if (o.isMesh && o.material && o.material.map === Q.lcd) o.material.dispose(); });
 }
 // where a quiz hovers: in front of their face, facing them (a ghost / remote, or you)
@@ -156,6 +177,7 @@ function result(Q, m) {
   Q.res = m;
   Q.done = performance.now();
   Q.lcd.userData.write(m.gone ? ['', ''] : m.ok ? ['CORRECT', '★ GOLD STAR'] : m.i < 0 ? ['TIME UP', `ANS = ${Q.a[m.c]}`] : ['WRONG', `ANS = ${Q.a[m.c]}`]);
+  if (!m.gone) Q.st.userData.write(m.ok ? 'CORRECT!' : m.i < 0 ? 'TOO SLOW' : `WRONG (said ${Q.a[m.i]})`, m.ok ? '★ GOLD STAR ★' : `${Q.q} = ${Q.a[m.c]}`, m.ok ? '#e0a800' : '#ff3030');
   const p = Q.calc.position.toArray();
   if (m.gone) return;
   if (m.ok) { sfx.quizRight(Q.id === G.myId ? null : p); fx.spray(p, 40, [0xffe14d, 0xffffff, 0xffc83a], 7, 1.3, 0.12, 6, 1.2); }
@@ -175,9 +197,13 @@ function stepQ(map, now, who, isReplay) {
     if (!pos) { Q.calc.visible = false; continue; }
     place(Q, pos, yaw, now);
     Q.calc.visible = isReplay || !RP.active;
+    const ds = (r && r.distScale) || 1;
+    Q.sign.position.set(pos[0], pos[1] + 2.75 * ds, pos[2]);
+    Q.sign.scale.set(3.4 * Math.max(1, ds * 0.8), 1.17 * Math.max(1, ds * 0.8), 1);
+    Q.sign.visible = (isReplay || !RP.active) && (isReplay || id !== G.myId); // you have the exam paper
     if (!Q.done) {
       const sec = Math.max(0, Math.ceil((Q.until - now) / 1000));
-      if (sec !== Q.sec) { Q.sec = sec; Q.lcd.userData.write([`${Q.q} = ?`, `POP QUIZ  ${sec}s`]); }
+      if (sec !== Q.sec) { Q.sec = sec; Q.lcd.userData.write([`${Q.q} = ?`, `POP QUIZ  ${sec}s`]); Q.st.userData.write(`POP QUIZ · ${nameOf(id)} · ${sec}s`, `${Q.q} = ?`); }
       if (r && Math.random() < 0.05) fx.spray([r.pos[0], r.pos[1] + 2.4, r.pos[2]], 1, [0x9fe8ff], 1, 0.4, 0.06, -2, 0.6); // sweating
     } else { // marked: it spins off and shrinks away
       const k = (now - Q.done) / 900;

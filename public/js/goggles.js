@@ -216,6 +216,7 @@ export function updateGoggles(dt, now) {
     lastItemT = W.itemT;
     if (W.item === 'nvg' && W.nvFired) { W.nvFired = false; sfx.nvFlash(); hud.flash(0.45, 0.18); G.shake = Math.max(G.shake, 0.2); NV.pop = 0.6; }
   }
+  W.nvOnFlag = NV.on && ME.alive; // goes out in your snapshots: everyone sees them on your face
   stepView(dt, now);
   stepFlash(now);
   stepFlares(dt);

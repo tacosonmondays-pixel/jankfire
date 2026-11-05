@@ -12,7 +12,11 @@ import { sfx, laserWhine } from './audio.js';
 const L = WEAPONS.laser;
 const beams = new Map(); // owner id -> { k, t0, until, meshes, src(): { o, d } }
 const lerp = (ab, k) => ab[0] + (ab[1] - ab[0]) * k;
-const BEAM_VS = `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+// the tube is built 1 long down -z and scaled to the beam's length: it starts lens-thin and fans out to full width over
+// the first couple of metres (otherwise your own beam starts as a pipe round your head)
+const BEAM_VS = `uniform float uLen; varying vec2 vUv;
+void main() { vUv = uv; vec3 p = position; float along = -p.z * uLen; p.xy *= mix(0.12, 1.0, smoothstep(0.0, 2.6, along));
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }`;
 // u runs round the tube, v along it (0 at the lens). bright rings race down it, the edge fizzes
 const BEAM_FS = `
 uniform float uT, uLen, uA, uCore; uniform vec3 uCol;
@@ -23,12 +27,12 @@ void main() {
   float fizz = 0.75 + 0.25 * sin(vUv.x * 40.0 + uT * 50.0 + along * 3.0);
   vec3 c = mix(uCol, vec3(1.0), uCore) * (0.75 + ring * 0.9) * fizz;
   float fade = smoothstep(0.0, 0.02, vUv.y) * (1.0 - smoothstep(0.96, 1.0, vUv.y));
-  gl_FragColor = vec4(c, uA * fade * (0.45 + 0.4 * ring));
+  gl_FragColor = vec4(c, uA * fade * mix(0.45 + 0.4 * ring, 1.0, uCore * 0.6));
 }`;
 let geo = null;
 function tubeGeo() { // radius 1, length 1 along -z from the origin (scaled per frame)
   if (geo) return geo;
-  geo = new THREE.CylinderGeometry(1, 1, 1, 14, 1, true);
+  geo = new THREE.CylinderGeometry(1, 1, 1, 14, 12, true); // (rings along it so the fan-out at the start bends smoothly)
   geo.rotateX(-Math.PI / 2); geo.translate(0, 0, -0.5);
   return geo;
 }
@@ -50,7 +54,7 @@ function flare() {
   return new THREE.Sprite(new THREE.SpriteMaterial({ map: flareTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
 }
 function makeMeshes(scene) {
-  const outer = new THREE.Mesh(tubeGeo(), beamMat(0.1)), core = new THREE.Mesh(tubeGeo(), beamMat(0.7));
+  const outer = new THREE.Mesh(tubeGeo(), beamMat(0.1)), core = new THREE.Mesh(tubeGeo(), beamMat(1));
   const mz = flare(), hit = flare();
   for (const m of [outer, core, mz, hit]) { m.frustumCulled = false; m.renderOrder = 5; scene.add(m); }
   return { outer, core, mz, hit, scene };
@@ -73,6 +77,7 @@ export function beamStart(id, k, dur, src, scene = G.scene) {
 export function beamStop(id) { const B = beams.get(id); if (B) { dropMeshes(B.M); beams.delete(id); } }
 export function beamsClear() { for (const id of [...beams.keys()]) beamStop(id); }
 export function beamOn(id) { return beams.has(id); }
+export const _beams = beams; // (tests peek)
 
 const tmp = new THREE.Vector3(), q = new THREE.Quaternion(), fwd = new THREE.Vector3(0, 0, -1);
 export function updateBeams(dt, now) {
@@ -86,7 +91,7 @@ export function updateBeams(dt, now) {
     const r = lerp(L.r, k) * Math.max(0.05, env) * (0.92 + Math.random() * 0.16);
     const { outer, core, mz, hit } = B.M;
     q.setFromUnitVectors(fwd, tmp.set(s.d[0], s.d[1], s.d[2]));
-    for (const [m, rr] of [[outer, r], [core, r * 0.38]]) {
+    for (const [m, rr] of [[outer, r], [core, Math.max(0.04, r * 0.3)]]) {
       m.position.set(s.o[0], s.o[1], s.o[2]); m.quaternion.copy(q); m.scale.set(rr, rr, len);
       m.material.uniforms.uT.value = now / 1000; m.material.uniforms.uLen.value = len; m.material.uniforms.uA.value = Math.min(1, env * 1.2);
     }

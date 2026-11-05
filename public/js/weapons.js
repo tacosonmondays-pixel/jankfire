@@ -959,8 +959,8 @@ function laserUp(now) {
   W.cd.laser = now + (dur + LZ.cd) * 1000;
   net.send({ t: 'fire', w: 'laser', o: eye().map(r2), d: look().map(r2) });
   beamStart(G.myId, k, dur, () => (ME.alive && W.cur === 'laser' && models.laser.wrap.visible ? { o: muzzleWorld(), d: look() } : ME.alive ? { o: eye(), d: look() } : null));
-  W.lz.kick = 0.35 + k * 0.65; W.lz.fireK = k;
-  kickVM('laser', 0.4 + k * 1.2); W.kick = 0.4 + k * 0.6;
+  W.lz.kick = 0.25 + k * 0.4; W.lz.fireK = k;
+  kickVM('laser', 0.25 + k * 0.55); W.kick = 0.2 + k * 0.3;
   punchCam(-0.02 - k * 0.05, 0.01 * rnd(), 0.025 * rnd() * k);
   if (k > 0.5) applyKb(look().map((x) => -x * k * 5)); // a full one shoves you back a bit
 }
@@ -1297,6 +1297,7 @@ export function updateWeapons(dt, now) {
   W.flags = (smoking ? FLAGS.SMOKE : 0) | (firing ? FLAGS.FIRE : 0) | (blowing ? FLAGS.BLOW : 0) | (spinning ? FLAGS.SPIN : 0) | (reversed ? FLAGS.REVERSE : 0) | (ME.dashing ? FLAGS.DASH : 0);
   if (W.shred.on) W.flags |= FLAGS.SUCK;
   if (W.lz.on) W.flags |= FLAGS.CHARGE; // everyone sees your pointer charging
+  if (W.nvOnFlag) W.flags |= FLAGS.NV; // night vision goggles down (goggles.js)
 
   // ---- HUD
   if (ITEMS[W.item]) { const c = charges(W.item), it = ITEMS[W.item]; hud.item(c.n, it.charges, c.next ? 1 - Math.max(0, c.next - now) / (it.recharge * 1000) : 1); }

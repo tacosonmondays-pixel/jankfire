@@ -153,6 +153,15 @@ export function instantCamera() {
   // name on the top deck
   const lab = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.012), new THREE.MeshBasicMaterial({ map: camLabel || (camLabel = canvasTex(256, 52, (x, w, h) => { x.fillStyle = '#2c2c33'; x.fillRect(0, 0, w, h); x.fillStyle = '#ffe14d'; x.font = 'bold italic 34px sans-serif'; x.textAlign = 'center'; x.fillText('SNAPPY 9000', w / 2, 38); })) }));
   lab.position.set(0.012, 0.052, -0.01); lab.rotation.x = -Math.PI / 2; g.add(lab);
+  // the back (what you see when you take a photo): rubber viewfinder eyepiece, a film counter, the film door seam, a sticker
+  g.add(box(0.026, 0.02, 0.008, 0x111114, 0.038, 0.036, 0.04));
+  g.add(box(0.016, 0.011, 0.002, 0x2a3a5a, 0.038, 0.036, 0.0445));
+  const ctr = noWrap(new THREE.Mesh(new THREE.PlaneGeometry(0.012, 0.009), new THREE.MeshBasicMaterial({ map: canvasTex(32, 24, (x) => { x.fillStyle = '#101010'; x.fillRect(0, 0, 32, 24); x.fillStyle = '#ff8a2a'; x.font = 'bold 20px monospace'; x.fillText('1', 10, 19); }, true) })));
+  ctr.position.set(-0.04, 0.036, 0.0396); g.add(ctr);
+  g.add(box(0.1, 0.002, 0.002, 0x8a8478, 0, -0.005, 0.0395)); // film door seam
+  g.add(box(0.016, 0.006, 0.006, 0x8a8478, -0.045, -0.025, 0.04)); // door latch
+  const smile = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 0.022), new THREE.MeshBasicMaterial({ map: canvasTex(200, 88, (x, w, h) => { x.fillStyle = '#ffe14d'; x.fillRect(0, 0, w, h); x.strokeStyle = '#111'; x.lineWidth = 6; x.strokeRect(3, 3, w - 6, h - 6); x.fillStyle = '#111'; x.font = 'bold 26px sans-serif'; x.textAlign = 'center'; x.fillText('SAY', w / 2, 38); x.fillText('CHEESE', w / 2, 70); }) }));
+  smile.position.set(0.012, -0.024, 0.0396); smile.rotation.z = -0.12; g.add(smile);
   // the print (hidden till it comes out): a white card, the picture on it
   const print = new THREE.Group(); print.visible = false; g.add(print);
   const card = new THREE.Mesh(new THREE.BoxGeometry(0.086, 0.0012, 0.104), mat(0xf8f6ee)); card.position.z = -0.052; print.add(card);

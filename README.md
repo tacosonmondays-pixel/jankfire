@@ -65,7 +65,9 @@ Notes:
 | E / mouse side buttons | grapple (hold) |
 | R | reload (Card Deck: redraw) |
 | F | inspect your weapon · **Plant & Defuse: hold F to plant / defuse** |
-| G | **use your item** (grenade, medkit, shield bubble, duck, smoke, party popper, reverse card, bubble wand) |
+| G | **use your item** (grenade, medkit, shield bubble, duck, smoke, party popper, reverse card, bubble wand, instant camera, pop quiz). Night Vision Goggles: G puts them on / takes them off |
+| H | **Night Vision Goggles: flash** everyone you can see (goggles on) |
+| 1 / 2 / 3 / 4 (in a pop quiz) | answer the question |
 | Z | **spray** your graffiti on the wall, floor or ceiling you're looking at (one at a time, every 10 s) |
 | 5 / 6 / 7 | **use your killstreaks** (the tray on the right shows which are ready) |
 | 1 / 2 / 3, wheel, Q | primary / secondary / melee, last weapon. 4 = Scythe Rifle if you have it |
@@ -108,7 +110,7 @@ In the chaos modes they rush you with the spoon (grappling in from afar), stop a
 
 ## Weapons
 
-- **Primary:** Assault Rifle, SMG, **Redline**, Shotgun, Minigun, Sniper (a headshot from a player always kills), Chicken Rocket, Bowling Ball Launcher, Bow, Peel Shooter, **Shredder**
+- **Primary:** Assault Rifle, SMG, **Redline**, Shotgun, Minigun, Sniper (a headshot from a player always kills), Chicken Rocket, Bowling Ball Launcher, Bow, Peel Shooter, **Shredder**, **Big Laser Pointer**
 - **Secondary:** Revolver, Marble Shotgun, Cigarette (smoke it, blow fire), Leaf Blower, Card Deck, **Snowball**, **Blood Cross**
 - **Melee:** Bread, Slipper (throw it, it comes back), Knife, Hand Slapper (point blank, launches + makes them slip), **Katana**, Spoon, **Scales of Justice**
 - **Item (G):** one per loadout, see below. The Party Popper and the Reverse Card used to be secondaries; they're items now.
@@ -127,6 +129,9 @@ Charges refill over time (the pie on the item box), and you get them all back wh
 | **Party Popper** | 2 | 9 s | yank it: a confetti blast shoves everyone in front of you away hard and launches you backwards. Zero damage, all void kills and escapes |
 | **Reverse Card** | 1 | 22 s | for 3 s every bullet, blast and shove aimed at you goes back to whoever sent it. A big spinning UNO card over your head, the arrows circling you and a red outline tell everyone not to shoot |
 | **Bubble Wand** | 2 | 15 s | blows 4 soap bubbles: the first enemy one touches is sealed in a giant bubble that floats up and away for 5 s, then pops (see below) |
+| **Instant Camera** | 1 | 25 s | G snaps a photo of what's in front of you (free). G again prints it: a giant photo stands up in front of you for 20 s, and walking into it puts you back where you took it, facing the same way. Anyone can use it (see below) |
+| **Pop Quiz** | 1 | 22 s | a calculator you throw. A hit freezes them with a maths question for 6 s: wrong or too slow = dead (your kill), right = +25 HP, 2.5 s where nothing hurts them and a speed boost |
+| **Night Vision Goggles** | 2 | 14 s | G flips them down (free): green view, the dark lifts, everyone glows. H spends a charge to flash everyone you can see near your crosshair (blinded 0.6-3.2 s, longer the more they were looking at you). Wearing them doubles how long any flash blinds you |
 
 The popper and the reverse card pop into your left hand for a moment (wearing their Champagne / Skip Card skins if you have them) while your gun stays out. Other players see them in your hand too.
 
@@ -169,6 +174,14 @@ Coop wave bots and training dummies aren't on the scoreboard, so only their stre
 **Snowball:** barely hurts, but every hit adds frost. 4 hits freezes them solid for a moment; hit a frozen target and they shatter.
 
 **Bubble Wand (item):** G blows a stream of 4 slow, wobbly soap bubbles (2 charges, 15 s to refill each; they float about 10 m). The first enemy one touches is sealed in a giant soap bubble for 5 s: no moving, shooting, items or streaks, just looking around while it floats them up (2 m/s) and away from you (1.5 m/s). Then it pops and drops them: no fall damage, but over the void that's your kill. Any hit (bullet, melee, projectile, explosion) pops it instead of hurting them, so teammates can shoot a friend free and enemies can wait until they're over the void (shoot it open there and the kill is yours). You, your teammates, anyone in a Shield Bubble and a rolling Wrecking Ball can't be bubbled; blow one at someone with a Reverse Card up and you're the one floating away. After a pop nobody can be bubbled again for a while: 1.5 s, or 60% of however long they were in (3 s after a full float), so two wands can't keep someone in one for good. Inside, everything sounds underwater and the world wobbles behind a rainbow soap film.
+**Big Laser Pointer:** an office laser pointer the size of a leg (taped-on pistol grip, two D-cells, a cat charm). Hold to charge: 1.2 s for a full one, you walk at 72% speed, the meter LEDs fill and the lens glows and whines (everyone sees and hears it). Let go: a thick green beam down where you look that follows your aim for up to 0.6 s, goes through everyone in the line, stops at walls, ticks 5-21 damage every 0.1 s and shoves a little (about 130 if they stand in a full one). A tap is a weak little zap. The server times the charge and does the hits. Bots carry it.
+
+**Instant Camera (item):** the first G is free: it snaps a photo (the server remembers where you stood, on the floor under you, and which way you faced; no floor under you = no photo). Every client renders the picture itself, so whoever was standing there is in it. The photo shows by your item slot until you print it (G, costs the charge) or die. The print is a giant instant photo on a kickstand, 1.9 m in front of you, for 20 s (one each: a new one replaces the old one). Walk into it from either side and you come out where the photo was taken, facing the same way. Anyone can walk through, enemies too, and an enemy who does is tagged by you, so anything that happens to them over there in the next 10 s is your kill. Whoever is standing on the spot when someone comes out gets telefragged (the traveller's kill). Killcams show frames and teleports. Bots with one snap a photo when it's quiet and print it to escape when a fight goes badly.
+
+**Pop Quiz (item):** the calculator flies in an arc and bounces. Whoever it hits is frozen with a maths question (sums, times tables, squares, halves, two-step ones) and 4 answers: keys 1-4 (or click) within 6 s. The server picks the question and keeps the answer. While they're sitting it nothing can hurt them and they can't attack; everyone else sees a giant calculator in front of their face and the sum on a sign over their head. Wrong or too slow: dead, your kill ("failed maths"). Right: a gold star, +25 HP (up to 125), 2.5 s where nothing hurts them and 4 s at 1.25x speed. Nobody can be quizzed again for 10 s after one. Teammates, shield bubbles, spawn protection and wrecking balls are immune; a Reverse Card sends the exam back to the thrower. Bots answer right 50 / 70 / 85% of the time (easy / normal / hard) after 1-4 s.
+
+**Night Vision Goggles (item):** G flips them down from your forehead (free, everyone sees them on your face with the lenses lit). The view goes green and grainy inside the two eyepieces, dark maps get readable (it lifts more the darker the map is), fog thins and everyone's outline glows. With them on, H flashes: everyone you can see (walls, smoke and shield bubbles block it) within 34 m and about 35° of your crosshair is whited out for 0.6 s (looking away) to 3.2 s (looking right at you), with ringing ears and a blurry afterimage. Anyone wearing goggles gets twice that. A Reverse Card flashes it back. Bots wear them and flash you.
+
 **Shredder:** an industrial vacuum-shredder. Hold to suck: a 14 m cone (35° each side) pulls people toward the intake, harder the closer they are (sprint and you can get away at long range; within a few metres it just yanks you in). Their gun goes in first. Whoever reaches the intake hangs in the spinning teeth and gets chewed (150 damage a second, dead in about 0.7 s); a Shredder kill takes them apart, the pieces go into the machine and come out of the exhaust chute in chunks, with blood and confetti. About 4 s of sucking overheats it (the teeth glow red-hot, the gauge hits the red, it steams), then it has to cool. Teammates are safe, bots carry it too, and the server does the pulling and the shredding from its own positions. Skin: Wood Chipper.
 
 **Bow:** hold to draw, release to fire. Every arrow gets a random tip, shown on the HUD: regular, power, knockback, flame, explosion, gas, sleep (knocks them flat on the floor for 4 s, Zzz).
