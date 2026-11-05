@@ -36,6 +36,8 @@ import { navSteer } from './shared/nav.js';
 import { DUCKRAIN } from './shared/modes.js';
 import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
 import { OOB, outOfBounds, boundsCenter } from './shared/bounds.js';
+import { tickHR, hrBot } from './server/hrguy.js'; // the Tall Guy From HR (Scary Forest)
+import { HR } from './shared/hr.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -316,7 +318,7 @@ class Room {
     this.smokes = new Map(); this.nextSmoke = 1; // smoke clouds: bots can't see through them, late joiners get them
     this.oitcOut = new Set(); // one in the chamber: who ran out of lives this round (by account or name)
     if (mode === 'ffa' && GAMES[process.env.JF_GAME]) this.game = process.env.JF_GAME; // test knob: the online room starts in this mode
-    this.cfg = { map: mode === 'training' ? 'range' : mode === 'coop' ? 'warehouse' : 'islands', hip: 'normal', bots: 5, diff: 'normal' };
+    this.cfg = { map: mode === 'training' ? 'range' : mode === 'coop' ? 'warehouse' : 'islands', hip: 'normal', bots: 5, diff: 'normal', hr: 'on' };
     this.wave = 0; this.toSpawn = 0; this.interUntil = 0;
     this.round = ROUND[mode] ? { target: ROUND[mode].kills, ends: now() + ROUND[mode].time * 1000, over: false, next: 0 } : null;
     if (mode === 'coop') this.interUntil = now() + 4000;
@@ -420,6 +422,7 @@ class Room {
       if (has(HIPFIRE, c.hip)) this.cfg.hip = c.hip;
       if (has(BOT_DIFF, c.diff)) this.cfg.diff = c.diff;
       if (c.bots != null) this.cfg.bots = clampInt(c.bots, 0, 12);
+      if (has(HR.every, c.hr)) this.cfg.hr = c.hr;
     }
     const name = m._name || clean(m.name, 16) || pick(DEFAULT_NAMES) + nextId;
     const inv = m._inv || {};
@@ -675,6 +678,7 @@ class Room {
       if (!raycast(probe, [0, -1, 0], Math.max(6, Math.min(15, probe[1] - this.map.killY)), boxes)) { wx = -wx; wz = -wz; ai.strafeDir *= -1; }
     }
     if (this.lavaOn) [wx, wz, jump] = this.botLava(b, wx, wz, jump, t);
+    if (this.hr && this.hr.on) { const o = hrBot(this, b, dt, { wx, wz, jump }), l = Math.hypot(o.wx, o.wz); if (l > 1) { o.wx /= l; o.wz /= l; } ({ wx, wz, jump } = o); } // scary forest: don't stare at HR
     return { wx: wx * D.speed, wz: wz * D.speed, jump };
   }
 
@@ -2422,6 +2426,7 @@ class Room {
       for (const b of this.players.values()) if (b.isBot) b.ai.diff = m.diff;
       changes.push(`bots → ${BOT_DIFF[m.diff].name}`);
     }
+    if (has(HR.every, m.hr) && m.hr !== this.cfg.hr) { this.cfg.hr = m.hr; changes.push(`the tall guy from HR → ${HR.names[m.hr]}`); }
     if (m.bots != null && this.mode === 'bots') {
       const c = clampInt(m.bots, 0, 12);
       if (c !== this.cfg.bots) { this.cfg.bots = c; this.fillBots(); changes.push(`bot count → ${c}`); }
@@ -3309,6 +3314,7 @@ class Room {
     this.tickCrosses();
     this.tickHoles(dt);
     this.tickStatus(dt);
+    tickHR(this, dt); // scary forest: the tall guy from HR
     this.tickPeels();
     this.tickBalls();
     this.tickWaves();

@@ -9,6 +9,8 @@ import { G } from './ctx.js';
 import { marbles } from './marbles.js';
 import { updateBackrooms } from './backrooms.js';
 import { addVibe } from './vibe.js';
+import { addForest } from './forestmats.js';
+import { updateForest, forestMap } from './forest.js';
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
 export const JANK = [
@@ -155,6 +157,7 @@ function makeMaterials() {
   out.pooltile = lam(canvasTex(16, (g, s) => { speckle(g, s, [234, 242, 242], 5, 4); g.fillStyle = '#a3bcc0'; for (let i = 0; i < s; i += 4) { g.fillRect(i, 0, 1, s); g.fillRect(0, i, s, 1); } }), 1, { emissive: 0x3c4c50 });
   out.poolwater = { mat: new THREE.MeshBasicMaterial({ color: 0x86dbe6, transparent: true, opacity: 0.42, depthWrite: false }), tile: 2 };
   addVibe(out, canvasTex, speckle); // the map pass look (vibe.js)
+  addForest(out, canvasTex, speckle); // scary forest (forestmats.js)
   for (const v of Object.values(out)) if (!v.mat.onBeforeCompile || v.mat.onBeforeCompile === THREE.Material.prototype.onBeforeCompile) hazify(v.mat, v.mat.isMeshBasicMaterial ? 0.45 : 1);
   return out;
 }
@@ -261,7 +264,8 @@ function buildChunked(scene, def) {
     const mk = MAT[b.mat] ? b.mat : 'stone';
     const key = Math.max(sx, sz) > C ? mk : mk + '|' + Math.floor(cx / C) + ',' + Math.floor(cz / C);
     const g = boxGeo(sx, sy, sz);
-    if (!b.fit) worldUV(g, cx, cy, cz, MAT[mk].tile);
+    if (b.rot) { worldUV(g, 0, 0, 0, MAT[mk].tile); g.rotateY(b.rot); } // turned render-only boxes (tree tiers)
+    else if (!b.fit) worldUV(g, cx, cy, cz, MAT[mk].tile);
     g.translate(cx, cy, cz);
     if (!groups.has(key)) groups.set(key, { k: mk, list: [] });
     groups.get(key).list.push(g.toNonIndexed());
@@ -398,6 +402,12 @@ export function loadMap(id) {
   mapLight(MAPS[MAP.id]);
   for (const o of skyStuff) o.visible = !(MAPS[MAP.id] && MAPS[MAP.id].sealed);
   for (const o of voidRocks) o.visible = !(MAPS[MAP.id] && (MAPS[MAP.id].sealed || MAPS[MAP.id].floorY != null));
+  const night = !!(MAPS[MAP.id] && MAPS[MAP.id].night); // night maps: the sun is a (cube) moon, and no pink clouds
+  sun.material.color.setHex(night ? 0xdfe6ff : 0xffe14d);
+  sun.scale.setScalar(night ? 0.8 : 1);
+  if (night) sun.position.set(-260, 300, -420); else sun.position.set(300, 220, -420);
+  for (const c of clouds) c.visible = !night && !(MAPS[MAP.id] && MAPS[MAP.id].sealed);
+  forestMap(MAPS[MAP.id], MAP.id);
 }
 
 export function resize() {
@@ -419,6 +429,7 @@ export function updateWorld(dt) {
   sun.rotation.x += dt * 0.17;
   cullChunks();
   if (MAT) updateBackrooms(dt, [MAT.ceilflick.mat, MAT.ceilflick2.mat, MAT.ceilflick3.mat]);
+  updateForest(dt);
 }
 
 export function renderFrame() {

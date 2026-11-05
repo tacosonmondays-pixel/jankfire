@@ -1872,9 +1872,310 @@ function range() {
     ] };
 }
 
+// ------------------------------------------------------------ SCARY FOREST: a pine forest at night, in the fog, by a lake
+// a dark pine wood (trunks are cover, the canopies are only drawn), a clearing with a stone circle and an office chair
+// nobody can explain, an abandoned cabin (site A), a campsite with a dead campfire, a fire lookout tower to climb, a dirt
+// road with a broken-down car that ends at a boat ramp, a lake with a dock, and a radio mast blinking red over its fenced
+// yard (site B). the woods carry on past the property line into the fog in every direction but east, where the lake is.
+// Plant & Defuse: attackers start at the trailhead (south-west), defenders at the ranger lot (north).
+// The Tall Guy From HR walks these woods (server/hrguy.js): map.hr says where he may stand and where he sends people
+const FOREST = { bounds: [-100, -84, 100, 84], shore: 72 };
+function pine(B, D, x, z, h, r) { // a pine: a trunk you bump into, a stack of turned tiers you only see
+  const tw = 0.26 + r() * 0.16;
+  B.add(x - tw, 0, z - tw, x + tw, h * 0.94, z + tw, r() < 0.15 ? 'bark2' : 'bark');
+  const n = 5 + ((r() * 2) | 0), base = h * (0.3 + r() * 0.08), span = h - base, w0 = 3.4 + r() * 1.6, yaw = r() * 3;
+  for (let i = 0; i < n; i++) {
+    const k = i / n, w = w0 * (1 - k * 0.82), y = base + k * span;
+    D.obb(x, y + span / n * 0.62, z, w, span / n * 1.3, w * (0.82 + r() * 0.3), yaw + i * 0.7 + r() * 0.3, (i + ((x * 7) | 0)) % 3 ? 'pine' : 'pine2');
+  }
+  D.obb(x, h + 0.45, z, 0.5, 1.1, 0.5, yaw, 'pine2');
+}
+function deadTree(B, D, x, z, h, r) { // bare, grey, too many elbows
+  B.add(x - 0.3, 0, z - 0.3, x + 0.3, h, z + 0.3, 'deadbark');
+  for (let i = 0; i < 5; i++) {
+    const y = h * (0.4 + i * 0.12), l = 1.2 + r() * 1.8 * (1 - i * 0.12), a = r() * 6.3;
+    D.obb(x + Math.cos(a) * l / 2, y, z + Math.sin(a) * l / 2, l, 0.16, 0.16, -a, 'deadbark');
+    D.obb(x + Math.cos(a) * l, y + 0.45, z + Math.sin(a) * l, 0.12, 0.9, 0.12, -a, 'deadbark'); // the elbow up at the end
+  }
+}
+function birch(B, D, x, z, h, r) { // white trunks: they catch the flashlight, so you think something is standing there
+  B.add(x - 0.2, 0, z - 0.2, x + 0.2, h, z + 0.2, 'birch');
+  for (let i = 0; i < 3; i++) D.obb(x + (r() - 0.5) * 0.8, h * (0.62 + i * 0.13), z + (r() - 0.5) * 0.8, 2.4 - i * 0.5, 1.1, 2.0 - i * 0.4, r() * 3, 'birchleaf');
+}
+function log(B, x0, z0, x1, z1, rr = 0.42) { // a fallen log along x or z (with a lighter cut end)
+  const ax = Math.abs(x1 - x0) > Math.abs(z1 - z0);
+  if (ax) { B.add(x0, 0, z0 - rr, x1, rr * 2, z0 + rr, 'logside'); B.add(x1, 0.02, z0 - rr + 0.04, x1 + 0.06, rr * 2 - 0.04, z0 + rr - 0.04, 'logend'); }
+  else { B.add(x0 - rr, 0, z0, x0 + rr, rr * 2, z1, 'logside'); B.add(x0 - rr + 0.04, 0.02, z1, x0 + rr - 0.04, rr * 2 - 0.04, z1 + 0.06, 'logend'); }
+}
+function boulder(B, x, z, s, r) { // a rock: a big block and a couple of smaller ones shoved into it
+  B.add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf');
+  B.add(x - s * 0.7, s * 1.1, z - s * 0.5, x + s * 0.5, s * 1.5, z + s * 0.6, 'rockf');
+  if (r() < 0.6) B.add(x + s * 0.7, 0, z + s * 0.4, x + s * 1.5, s * 0.7, z + s * 1.2, 'rockmoss');
+}
+// a wrecked sedan facing +x: hood up, driver door hanging open, a flat at the front, hazards still blinking
+function brokenCar(B, D, x, z) {
+  B.add(x - 2.3, 0.35, z - 0.95, x + 2.3, 1.0, z + 0.95, 'carrust');
+  B.add(x - 1.2, 1.0, z - 0.85, x + 0.8, 1.55, z + 0.85, 'glassdark'); B.add(x - 1.25, 1.55, z - 0.87, x + 0.85, 1.65, z + 0.87, 'carrust');
+  B.add(x - 0.25, 1.0, z - 0.88, x - 0.1, 1.55, z - 0.84, 'carrust'); B.add(x - 0.25, 1.0, z + 0.84, x - 0.1, 1.55, z + 0.88, 'carrust');
+  for (const [sx, sz, flat] of [[-1.5, -1, 0], [-1.5, 1, 0], [1.4, -1, 1], [1.4, 1, 0]]) B.add(x + sx - 0.36, 0, z + sz * 0.95 - 0.15, x + sx + 0.36, flat ? 0.42 : 0.7, z + sz * 0.95 + 0.15, 'tire');
+  B.add(x + 0.95, 1.0, z - 0.85, x + 1.05, 2.25, z + 0.85, 'carrust'); // the hood, propped up
+  B.add(x + 1.3, 0.9, z - 0.6, x + 2.1, 1.25, z + 0.6, 'metal'); // the engine nobody fixed
+  B.add(x - 0.1, 0.4, z + 0.95, x + 0.04, 1.4, z + 2.1, 'carrust'); // the driver door, hanging open (wrong side: it's that kind of night)
+  B.add(x + 2.3, 0.62, z - 0.8, x + 2.36, 0.82, z - 0.45, 'hazard2'); B.add(x + 2.3, 0.62, z + 0.45, x + 2.36, 0.82, z + 0.8, 'hazard2');
+  B.add(x - 2.36, 0.62, z - 0.8, x - 2.3, 0.82, z - 0.45, 'hazard2'); B.add(x - 2.36, 0.62, z + 0.45, x - 2.3, 0.82, z + 0.8, 'hazard2');
+  B.add(x - 2.4, 0.3, z - 0.9, x - 2.3, 0.55, z + 0.9, 'chrome'); B.add(x + 2.3, 0.3, z - 0.9, x + 2.4, 0.55, z + 0.9, 'chrome');
+  D.obb(x - 7, 0.35, z - 0.4, 0.9, 0.7, 0.08, 0.3, 'warnsign'); // a warning triangle (a square, it's a budget triangle)
+}
+function forest() {
+  const B = builder(), D = builder();
+  const r = rng(6660);
+  const W = B.local(0, 0, 0);
+  const [bx0, bz0, bx1, bz1] = FOREST.bounds, SH = FOREST.shore;
+  // ---- the ground: forest floor out a long way (past the lake shore it's mud under water), a dirt road
+  B.add(-260, -3, -220, SH, 0, 220, 'needles');
+  B.add(SH, -3, -220, SH + 4, -0.22, 220, 'mud'); B.add(SH + 4, -3, -220, SH + 9, -0.48, 220, 'mud'); B.add(SH + 9, -3, -220, 260, -0.7, 220, 'mud'); // the lake bed shelves away
+  horizon(D, -260, -220, 260, 220, 1500, 'needles', 0);
+  D.add(SH, -0.36, -1500, 1500, -0.3, 1500, 'lakewater'); // the lake, all the way out
+  const RZ0 = 52, RZ1 = 60; // the dirt road, west to east, gone into the fog one way and into the lake the other
+  B.add(-260, 0, RZ0, SH - 2, 0.06, RZ1, 'dirtroad'); D.add(-1500, 0, RZ0, -260, 0.06, RZ1, 'dirtroad');
+  for (let i = 0; i < 4; i++) B.add(SH - 2 + i * 2, -0.1 - i * 0.12, RZ0 + 1, SH + i * 2, 0.08 - i * 0.12, RZ1 - 1, 'planks'); // the boat ramp
+  // ---- trails: drawn on the floor (render only, each a hair higher than the last so no two share a plane)
+  const trails = [];
+  const trail = (pts, w = 2.6) => { for (let i = 0; i + 1 < pts.length; i++) trails.push([pts[i], pts[i + 1], w]); };
+  const TH = [-78, 68], CAMP = [-30, 30], CLR = [0, -10], CAB = [-50, -24], TWR = [24, -50], DEF = [21, -72], MAST = [52, 4], DOCK = [SH, -32];
+  trail([TH, [-62, 46], [-44, 36], CAMP]); trail([CAMP, [-12, 10], CLR]); trail([CLR, [-28, -12], [CAB[0], -16]]);
+  trail([[CAB[0], -32], [-42, -54], [-6, -68], DEF]); trail([CLR, [10, -30], [TWR[0], -46]]); trail([[TWR[0], -56], DEF]);
+  trail([CLR, [26, -2], [41, 4]]); trail([[62, -4], [64, -22], [SH + 4, -32]]); trail([CAMP, [-30, RZ0]]); trail([[52, 14], [50, 34], [50, RZ0]]);
+  trail([DEF, [48, -64], [62, -44], [SH - 2, -36]]); trail([TH, [-84, 30], [-78, -2], [-62, -20]]); trail([[-6, RZ0], [-4, 30], [-12, 10]]);
+  trails.forEach(([a, b, w], i) => { const dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz); D.obb((a[0] + b[0]) / 2, 0.012 + (i % 9) * 0.003, (a[1] + b[1]) / 2, l + w, 0.02, w, -Math.atan2(dz, dx), 'trail'); });
+  const segD = (x, z, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / l2)); return Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t); };
+  // places trees keep out of: [x, z, radius] and [x0, z0, x1, z1]
+  const holes = [[CLR[0], CLR[1], 17], [CAMP[0], CAMP[1], 12], [TWR[0], TWR[1], 9], [-48, -24, 11], [-60, -16, 5], [TH[0], TH[1] - 1, 13], [DEF[0], DEF[1] + 2, 13], [-74, -52, 5], [-6, 56, 6]];
+  const rects = [[41, -7, 64, 16], [-260, RZ0 - 2.5, SH, RZ1 + 2.5], [SH - 3, -220, 260, 220], [SH - 6, -36, SH + 20, -28]];
+  const free = (x, z, pad = 0) => !holes.some(([hx, hz, hr]) => Math.hypot(x - hx, z - hz) < hr + pad) && !rects.some(([a, b, c, d]) => x > a - pad && x < c + pad && z > b - pad && z < d + pad) && !trails.some(([a, b, w]) => segD(x, z, a, b) < w / 2 + 0.9 + pad);
+  const inPlay = (x, z) => x > bx0 - 2 && x < bx1 + 2 && z > bz0 - 2 && z < bz1 + 2;
+
+  // free-for-all spawns all over the woods (trees keep off them)
+  const spawns = [
+    [CAB[0] + 2.5, 0.5, CAB[1] - 1], [CAB[0] - 4, 0.5, CAB[1] - 2.5], [CAMP[0] + 3, 0.2, CAMP[1] + 2], [CAMP[0] - 6, 0.2, CAMP[1] + 4],
+    [TWR[0] + 4.5, 0.2, TWR[1] + 4.5], [TWR[0] + 1.5, 13.4, TWR[1] + 1.5], [MAST[0] - 5, 0.4, MAST[1] - 1], [MAST[0] + 6, 0.2, MAST[1] + 6], [SH + 8, 0.5, -32],
+    [CLR[0] - 12, 0.2, CLR[1] - 3], [CLR[0] + 13, 0.2, CLR[1] + 6], [CLR[0], 0.2, CLR[1] + 13], [-8, 0.2, 53], [20, 0.2, 57], [48, 0.2, 56],
+    [-78, 0.2, -10], [-86, 0.2, 40], [-60, 0.2, 10], [-20, 0.2, -44], [0, 0.2, -66], [40, 0.2, -30], [60, 0.2, 30], [10, 0.2, 30], [-74, 4.2, -52], [-30, 0.2, -70], [62, 0.2, -60],
+  ];
+  for (const p of spawns) holes.push([p[0], p[2], 2.2]);
+  holes.push([CAMP[0] - 12, CAMP[1] + 9, 3]);
+
+  // ---- the woods: a jittered grid, thicker in the deep parts, some dead ones, some birches. outside the property
+  // line it's just more woods (render only past the first row: you can look, the RETURN countdown says not to go)
+  const deep = (x, z) => 0.55 + 0.45 * Math.max(0, Math.sin(x * 0.045 + 1.3) * Math.cos(z * 0.05 - 0.4)); // thick and thin patches
+  const plant = (T, x, z) => { const k = r(), h = 9 + r() * 7; if (k < 0.07) deadTree(T, D, x, z, 6 + r() * 4, r); else if (k < 0.16) birch(T, D, x, z, 7 + r() * 4, r); else pine(T, D, x, z, h, r); };
+  const S = 4.2;
+  for (let x = bx0 - 72; x < SH; x += S) for (let z = bz0 - 70; z < bz1 + 70; z += S) {
+    const px = x + r() * S * 0.8, pz = z + r() * S * 0.8;
+    if (px > SH - 3) continue;
+    const near = inPlay(px, pz), edge = !near && px > bx0 - 9 && px < bx1 + 9 && pz > bz0 - 9 && pz < bz1 + 9;
+    if (near ? r() > deep(px, pz) * 0.95 : r() > 0.6) continue;
+    if (!free(px, pz)) continue;
+    if (near || edge) plant(B, px, pz); else pine(D, D, px, pz, 9 + r() * 8, r);
+  }
+  // the far shore across the lake: a dark line of trees in the fog
+  for (let z = -300; z < 300; z += 5) for (let k = 0; k < 3; k++) pine(D, D, 230 + k * 6 + r() * 5, z + r() * 4, 10 + r() * 8, r);
+  // undergrowth: ferns and bushes (only drawn: bullets go through, eyes don't)
+  for (let i = 0; i < 520; i++) { const x = bx0 - 20 + r() * (bx1 - bx0 + 40), z = bz0 - 20 + r() * (bz1 - bz0 + 40); if (x > SH - 2 || !free(x, z, -0.5)) continue; const s = 0.6 + r() * 0.8, a = r() * 3; if (r() < 0.55) { for (let k = 0; k < 3; k++) D.obb(x, s * 0.28, z, s * 1.5, s * 0.56, 0.07, a + k * 1.05, 'fern'); } else { D.obb(x, s * 0.3, z, s * 1.1, s * 0.6, s * 0.9, a, 'bush'); D.obb(x + 0.2, s * 0.75, z - 0.1, s * 0.7, s * 0.4, s * 0.6, a + 0.8, 'bush'); } } // ferns: three crossed fronds. bushes: a clump
+  for (let i = 0; i < 70; i++) { const x = bx0 + r() * (bx1 - bx0), z = bz0 + r() * (bz1 - bz0); if (x > SH - 4 || !free(x, z, 1)) continue; if (r() < 0.55) { const l = 3 + r() * 4; r() < 0.5 ? log(B, x, z, x + l, z) : log(B, x, z, x, z + l); } else if (r() < 0.6) boulder(B, x, z, 0.6 + r() * 0.9, r); else B.add(x - 0.35, 0, z - 0.35, x + 0.35, 0.5 + r() * 0.4, z + 0.35, 'logend'); }
+
+  // ---- the clearing: a ring of standing stones, one dead tree, and an office chair facing away from you
+  for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2 + 0.3, x = CLR[0] + Math.cos(a) * 9.5, z = CLR[1] + Math.sin(a) * 9.5, tall = 1.8 + (i % 3) * 0.6; B.add(x - 0.6, 0, z - 0.45, x + 0.6, tall, z + 0.45, i % 2 ? 'rockf' : 'rockmoss'); }
+  deadTree(B, D, CLR[0] + 3, CLR[1] - 2, 8.5, r);
+  W(CLR[0] - 2.4, 0, CLR[1] + 1.7, CLR[0] - 1.8, 0.08, CLR[1] + 2.3, 'metal'); W(CLR[0] - 2.15, 0.08, CLR[1] + 1.95, CLR[0] - 2.05, 0.55, CLR[1] + 2.05, 'chrome'); // the office chair: base, stem
+  W(CLR[0] - 2.45, 0.55, CLR[1] + 1.7, CLR[0] - 1.75, 0.68, CLR[1] + 2.4, 'officechair'); W(CLR[0] - 2.45, 0.68, CLR[1] + 2.32, CLR[0] - 1.75, 1.45, CLR[1] + 2.42, 'officechair');
+  W(CLR[0] + 6, 0, CLR[1] + 4, CLR[0] + 6.6, 1.25, CLR[1] + 4.6, 'white'); W(CLR[0] + 6.05, 1.25, CLR[1] + 4.05, CLR[0] + 6.55, 1.75, CLR[1] + 4.55, 'coolerwater'); // a water cooler. in the woods. for whom
+  log(B, CLR[0] - 12, CLR[1] + 8, CLR[0] - 6, CLR[1] + 8); boulder(B, CLR[0] + 11, CLR[1] - 8, 1.0, r);
+
+  // ---- the cabin (site A): log walls, a porch, a door front and back, a stepped roof, a stone chimney
+  { const L = B.local(CAB[0], CAB[1], 0);
+    const hw = 6.5, hd = 4.5, t = 0.35, Hh = 3.1, F = 0.35;
+    L(-hw - 0.4, 0, -hd - 0.4, hw + 0.4, F, hd + 0.4, 'stonebase'); L(-hw + t, F, -hd + t, hw - t, F + 0.05, hd - t, 'planks');
+    const front = [{ a: -1.0, b: 0.6, y0: F, y1: F + 2.3 }, { a: -4.6, b: -3.0, y0: F + 1.0, y1: F + 2.1 }, { a: 2.8, b: 4.4, y0: F + 1.0, y1: F + 2.1 }];
+    wall(L, 'x', hd, -hw, hw, F, F + Hh, t, 'logwall', front); // the front, facing the porch (+z, south)
+    wall(L, 'x', -hd, -hw, hw, F, F + Hh, t, 'logwall', [{ a: 3.4, b: 4.8, y0: F, y1: F + 2.3 }, { a: -3.6, b: -2.2, y0: F + 1.0, y1: F + 2.1 }]); // the back door
+    wall(L, 'z', -hw, -hd + t / 2, hd - t / 2, F, F + Hh, t, 'logwall', [{ a: -0.8, b: 0.8, y0: F + 1.0, y1: F + 2.1 }]);
+    wall(L, 'z', hw, -hd + t / 2, hd - t / 2, F, F + Hh, t, 'logwall', [{ a: 1.4, b: 2.6, y0: F + 1.0, y1: F + 2.1 }]);
+    L(-1.2, F, -hd + t / 2, -0.9, F + 2.6, 0.8, 'planks'); // a thin wall splits off the bedroom (west), with a doorway
+    L(-1.2, F, 1.8, -0.9, F + 2.6, hd - t / 2, 'planks'); L(-1.2, F + 2.3, 0.8, -0.9, F + 2.6, 1.8, 'planks');
+    // the roof: stepped slabs to a ridge along x, a little overhang, then a ridge beam
+    const top = F + Hh;
+    for (let i = 0; i < 5; i++) L(-hw - 0.5, top + i * 0.42, -hd - 0.7 + i * 1.05, hw + 0.5, top + i * 0.42 + 0.42, hd + 0.7 - i * 1.05, i % 2 ? 'cabinroof2' : 'cabinroof');
+    L(-hw - 0.6, top + 2.1, -0.35, hw + 0.6, top + 2.3, 0.35, 'logside');
+    L(hw - 0.4, 0, -1.4, hw + 0.9, top + 3.2, 0.2, 'stonebase'); // the chimney up the east wall
+    // the porch: boards, posts, a roof, steps down, a rocking chair, junk
+    L(-hw, 0, hd + 0.4, hw, F - 0.03, hd + 3.0, 'planks');
+    for (const x of [-hw + 0.2, -2, 2, hw - 0.2]) L(x - 0.11, 0, hd + 2.69, x + 0.11, F + 2.7, hd + 2.91, 'logside');
+    L(-hw - 0.3, F + 2.7, hd + 0.2, hw + 0.3, F + 2.9, hd + 3.2, 'cabinroof2');
+    L(-1.4, 0, hd + 3.0, 1.4, 0.17, hd + 3.6, 'planks');
+    L(3.2, F, hd + 0.8, 4.0, F + 0.5, hd + 1.6, 'logside'); L(3.2, F + 0.5, hd + 0.8, 4.0, F + 1.4, hd + 0.92, 'logside');
+    L(-5.8, F, hd + 0.7, -4.6, F + 1.1, hd + 1.9, 'crate'); L(-5.6, F + 1.1, hd + 0.9, -4.9, F + 1.7, hd + 1.6, 'crate');
+    // inside: table, chairs, a bed, the stove, a corkboard of HR memos, an old TV still on
+    L(1.6, F, -0.8, 3.6, F + 0.85, 0.6, 'planks'); L(1.7, F, -1.5, 2.3, F + 0.5, -0.9, 'planks'); L(2.9, F, 0.7, 3.5, F + 0.5, 1.3, 'planks');
+    L(-6.0, F, -3.9, -3.6, F + 0.6, -1.9, 'bedsheet'); L(-6.1, F, -4.1, -5.8, F + 1.1, -1.7, 'planks');
+    L(hw - t - 1.0, F, -1.2, hw - t, F + 1.3, 0.0, 'stonebase'); L(hw - t - 0.9, F + 0.2, -1.05, hw - t - 0.1, F + 0.9, -0.15, 'ash');
+    L(0.4, F + 1.1, -hd + t / 2, 2.6, F + 2.3, -hd + t / 2 + 0.06, 'hrboard', { fit: 1 });
+    L(-0.6, F, -3.9, 0.4, F + 0.7, -3.3, 'planks'); L(-0.5, F + 0.7, -3.85, 0.3, F + 1.3, -3.35, 'tvstatic');
+    // the woodshed and the axe stump round the side
+    const S2 = B.local(CAB[0] - 10.5, CAB[1] + 7, 0);
+    S2(-1.6, 0, -1.2, 1.6, 2.5, -1.0, 'planks'); S2(-1.8, 2.5, -1.4, 1.8, 2.7, 1.4, 'cabinroof2');
+    S2.B(-1.5, 1.25, 1.2, 0.18, 2.5, 0.18, 'logside'); S2.B(1.5, 1.25, 1.2, 0.18, 2.5, 0.18, 'logside');
+    for (let i = 0; i < 4; i++) S2(-1.4, i * 0.4, -0.9, 1.4, i * 0.4 + 0.4, -0.1 - i * 0.12, 'logend');
+    W(CAB[0] - 7, 0, CAB[1] + 12, CAB[0] - 6.3, 0.6, CAB[1] + 12.7, 'logend');
+  }
+
+  // ---- the campsite: a dead campfire in a ring of stones, log benches, two tents, a picnic table, the outhouse
+  { const [cx, cz] = CAMP;
+    for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2; B.box(cx + Math.cos(a) * 1.2, 0.18, cz + Math.sin(a) * 1.2, 0.45, 0.36, 0.45, 'rockf'); }
+    B.add(cx - 0.8, 0, cz - 0.8, cx + 0.8, 0.1, cz + 0.8, 'ash');
+    D.obb(cx, 0.22, cz, 1.4, 0.2, 0.22, 0.5, 'charcoal'); D.obb(cx, 0.32, cz, 1.2, 0.2, 0.2, 2.1, 'charcoal'); D.obb(cx + 0.1, 0.42, cz, 0.9, 0.16, 0.16, 1.2, 'charcoal');
+    log(B, cx - 2.2, cz - 4, cx + 2.2, cz - 4, 0.3); log(B, cx - 2.2, cz + 3.8, cx + 2.2, cz + 3.8, 0.3); log(B, cx + 4, cz - 1.8, cx + 4, cz + 2.2, 0.3);
+    const tent = (x, z, alongX, mat) => { // an A-frame tent, stepped (it's a jank tent)
+      for (let i = 0; i < 4; i++) { const w = 1.4 - i * 0.33, y = i * 0.42; if (alongX) B.add(x - 1.6, y, z - w, x + 1.6, y + 0.42, z + w, mat); else B.add(x - w, y, z - 1.6, x + w, y + 0.42, z + 1.6, mat); }
+      if (alongX) B.add(x + 1.6, 0, z - 0.4, x + 1.64, 1.1, z + 0.4, 'tentdark'); else B.add(x - 0.4, 0, z + 1.6, x + 0.4, 1.1, z + 1.64, 'tentdark');
+    };
+    tent(cx - 7, cz - 5, true, 'tentorange'); tent(cx + 6.5, cz - 6, false, 'tentgreen');
+    B.add(cx + 3, 0, cz + 6, cx + 6, 0.75, cz + 7, 'planks'); B.add(cx + 3, 0, cz + 5.1, cx + 6, 0.42, cz + 5.5, 'planks'); B.add(cx + 3, 0, cz + 7.5, cx + 6, 0.42, cz + 7.9, 'planks');
+    B.add(cx - 4.4, 0, cz + 5.5, cx - 3.4, 0.6, cz + 6.2, 'cooler'); B.add(cx - 4.45, 0.6, cz + 5.45, cx - 3.35, 0.68, cz + 6.25, 'white');
+    B.box(cx - 3, 1.1, cz + 3.4, 0.12, 2.2, 0.12, 'metal'); B.box(cx - 3, 2.0, cz + 3.4, 0.3, 0.4, 0.3, 'lantern'); // a lantern on a pole, almost dead
+    const O = B.local(cx - 12, cz + 9, 0); // the outhouse: one door, one moon cut in it, a seat
+    O(-0.9, 0, -0.9, 0.9, 0.15, 0.9, 'planks'); O(-0.9, 0.15, -0.9, 0.9, 2.4, -0.75, 'planks'); O(-0.9, 0.15, -0.75, -0.75, 2.4, 0.9, 'planks'); O(0.75, 0.15, -0.75, 0.9, 2.4, 0.9, 'planks');
+    O(-0.9, 0.15, 0.75, -0.35, 2.4, 0.9, 'planks'); O(0.35, 0.15, 0.75, 0.9, 2.4, 0.9, 'planks'); O(-0.35, 2.1, 0.75, 0.35, 2.4, 0.9, 'planks');
+    O(-1.0, 2.4, -1.0, 1.0, 2.55, 1.0, 'cabinroof2'); O(-0.6, 0.15, -0.75, 0.6, 0.6, -0.15, 'planks');
+  }
+
+  // ---- the fire lookout tower: four legs, five flights of switchback stairs inside them, a glassless cab up top
+  { const L = B.local(TWR[0], TWR[1], 0), R = 2.64, top = 5 * R;
+    for (const sx of [-3.1, 3.1]) for (const sz of [-3.1, 3.1]) L.B(sx, top / 2, sz, 0.34, top, 0.34, 'towerwood');
+    for (let k = 1; k <= 4; k++) for (const s of [-3.1, 3.1]) { L(-2.93, k * R - 0.3, s - 0.08, 2.93, k * R - 0.16, s + 0.08, 'towerwood'); L(s - 0.08, k * R - 0.6, -2.93, s + 0.08, k * R - 0.46, 2.93, 'towerwood'); } // girts, above head height
+    const A = [-2.9, -1.5], Bl = [-1.45, -0.05];
+    for (let k = 0; k < 5; k++) {
+      const ya = k * R, yb = (k + 1) * R;
+      if (k % 2 === 0) stairs(L, A[0], A[1], -1.5, 1, ya, yb, 'towerwood', 0.5); else stairs(L, Bl[0], Bl[1], 1.5, -1, ya, yb, 'towerwood', 0.5);
+      if (k < 4) { if (k % 2 === 0) L(A[0], yb - 0.22, 1.5, Bl[1], yb, 2.9, 'towerwood'); else L(A[0], yb - 0.22, -2.9, Bl[1], yb, -1.5, 'towerwood'); }
+    }
+    slab(L, -3.4, -3.4, 3.4, 3.4, top - 0.2, top, 'towerwood', [A[0] - 0.05, -1.55, A[1] + 0.05, 1.5]);
+    const cy = top, wins = (len) => [{ a: -len / 2 + 0.3, b: len / 2 - 0.3, y0: cy + 0.95, y1: cy + 2.15 }];
+    wall(L, 'x', -3.3, -3.4, 3.4, cy, cy + 2.5, 0.16, 'towerwood', wins(6.8)); wall(L, 'x', 3.3, -3.4, 3.4, cy, cy + 2.5, 0.16, 'towerwood', wins(6.8));
+    wall(L, 'z', -3.3, -3.22, 3.22, cy, cy + 2.5, 0.16, 'towerwood', wins(6.44)); wall(L, 'z', 3.3, -3.22, 3.22, cy, cy + 2.5, 0.16, 'towerwood', wins(6.44));
+    L(-3.7, cy + 2.5, -3.7, 3.7, cy + 2.7, 3.7, 'cabinroof'); L(-2.6, cy + 2.7, -2.6, 2.6, cy + 3.1, 2.6, 'cabinroof2'); L(-1.3, cy + 3.1, -1.3, 1.3, cy + 3.5, 1.3, 'cabinroof');
+    L(1.0, cy, -0.6, 2.4, cy + 0.9, 0.6, 'planks'); L(1.2, cy + 0.9, -0.4, 2.2, cy + 0.95, 0.4, 'mapsheet'); // the fire finder table, with a map on it
+    B.box(TWR[0] + 0.0, cy + 3.9, TWR[1], 0.1, 0.8, 0.1, 'metal');
+    adSign(B, TWR[0] - 4.6, TWR[1] + 4.2, 'signtower');
+  }
+
+  // ---- the radio mast yard (site B): a low chain-link fence, the mast blinking red, a shed full of radio, a generator
+  { const [mx, mz] = MAST, x0 = 42, x1 = 62, z0 = -5, z1 = 13, FH = 1.25;
+    const fence = (axis, fixed, a0, a1, gaps) => {
+      const cuts = [a0, ...gaps.flat(), a1];
+      for (let i = 0; i < cuts.length; i += 2) {
+        const s0 = cuts[i], s1 = cuts[i + 1];
+        if (axis === 'x') B.add(s0, 0, fixed - 0.04, s1, FH, fixed + 0.04, 'chainlink'); else B.add(fixed - 0.04, 0, s0, fixed + 0.04, FH, s1, 'chainlink');
+        for (let s = s0; s <= s1 + 0.01; s += Math.max(1.5, (s1 - s0) / Math.max(1, Math.round((s1 - s0) / 2.5)))) axis === 'x' ? B.box(s, FH / 2 + 0.1, fixed, 0.12, FH + 0.2, 0.12, 'metal') : B.box(fixed, FH / 2 + 0.1, s, 0.12, FH + 0.2, 0.12, 'metal');
+      }
+    };
+    fence('x', z0, x0, x1, [[48, 52]]); fence('x', z1, x0, x1, [[50, 54]]); fence('z', x0, z0 + 0.1, z1 - 0.1, [[2, 6]]); fence('z', x1, z0 + 0.1, z1 - 0.1, [[-1, 2]]);
+    B.add(x0 + 0.3, 0, z0 + 0.3, x1 - 0.3, 0.04, z1 - 0.3, 'gravel');
+    // the mast: a 2 m lattice, 48 m tall, red and white bands, red lights that blink
+    const H = 48, ax = mx + 4, az = mz + 4;
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) for (let y = 0; y < H; y += 6) B.add(ax + sx * 1 - 0.1, y, az + sz * 1 - 0.1, ax + sx * 1 + 0.1, Math.min(H, y + 6), az + sz * 1 + 0.1, (y / 6) % 2 ? 'mastwhite' : 'mastred');
+    for (let y = 1.5; y < H; y += 2) { B.add(ax - 1, y, az - 1.08, ax + 1, y + 0.08, az - 0.92, 'metal'); B.add(ax - 1, y, az + 0.92, ax + 1, y + 0.08, az + 1.08, 'metal'); B.add(ax - 1.08, y + 1, az - 0.92, ax - 0.92, y + 1.08, az + 0.92, 'metal'); B.add(ax + 0.92, y + 1, az - 0.92, ax + 1.08, y + 1.08, az + 0.92, 'metal'); }
+    B.add(ax - 1.4, H, az - 1.4, ax + 1.4, H + 0.2, az + 1.4, 'metal'); B.box(ax, H + 1.4, az, 0.2, 2.4, 0.2, 'metal');
+    B.box(ax, H + 2.8, az, 0.5, 0.5, 0.5, 'mastlight'); for (const y of [16, 32]) for (const s of [-1, 1]) B.box(ax + s * 1.2, y, az, 0.3, 0.3, 0.3, 'mastlight');
+    B.add(ax - 1.6, 0, az - 1.6, ax + 1.6, 0.35, az + 1.6, 'concrete');
+    // the shed: radio gear on a desk, a door west, a window south
+    const Sd = B.local(mx - 5, mz - 1, 0);
+    Sd(-2.5, 0, -2, 2.5, 0.2, 2, 'concrete');
+    wall(Sd, 'x', -2, -2.5, 2.5, 0.2, 2.9, 0.2, 'shedmetal', []); wall(Sd, 'x', 2, -2.5, 2.5, 0.2, 2.9, 0.2, 'shedmetal', [{ a: -1.6, b: 0, y0: 1.1, y1: 2.0 }]);
+    wall(Sd, 'z', -2.5, -1.9, 1.9, 0.2, 2.9, 0.2, 'shedmetal', [{ a: -0.6, b: 0.8, y0: 0.2, y1: 2.4 }]); wall(Sd, 'z', 2.5, -1.9, 1.9, 0.2, 2.9, 0.2, 'shedmetal', []);
+    Sd(-2.7, 2.9, -2.2, 2.7, 3.1, 2.2, 'roofg');
+    Sd(0.6, 0.2, -1.85, 2.35, 1.0, -0.9, 'metal'); Sd(0.8, 1.0, -1.85, 2.2, 1.8, -1.7, 'radiopanel', { fit: 1 }); Sd(-1.0, 0.2, 1.0, -0.2, 0.7, 1.7, 'officechair');
+    B.add(mx + 7, 0, mz - 8, mx + 9.4, 1.3, mz - 6.6, 'generator'); B.add(mx + 7.2, 1.3, mz - 7.9, mx + 7.5, 2.1, mz - 7.6, 'metal');
+    for (const [x, z] of [[mx - 6, mz + 6], [mx + 3, mz - 5]]) { B.add(x - 0.8, 0, z - 0.6, x + 0.8, 1.4, z - 0.45, 'logend'); B.add(x - 0.8, 0, z + 0.45, x + 0.8, 1.4, z + 0.6, 'logend'); B.add(x - 0.5, 0.3, z - 0.45, x + 0.5, 1.1, z + 0.45, 'cable'); } // cable drums
+    adSign(B, x0 - 0.6, 8.5, 'signmast', 'z');
+  }
+
+  // ---- the lake edge: a dock, a rowboat tied to it, a canoe on the shore, reeds
+  { const z0 = -33.4, z1 = -30.6;
+    B.add(SH - 4, 0.15, z0, SH + 18, 0.35, z1, 'planks');
+    for (let x = SH - 3; x <= SH + 18; x += 3) for (const z of [z0 + 0.15, z1 - 0.15]) B.box(x, -0.3, z, 0.25, 1.4, 0.25, 'logside');
+    B.add(SH + 17, 0.35, z0, SH + 18, 0.85, z1, 'crate');
+    const bt = (x, z, l, w, mat) => { B.add(x - l / 2, -0.32, z - w / 2, x + l / 2, 0.3, z - w / 2 + 0.12, mat); B.add(x - l / 2, -0.32, z + w / 2 - 0.12, x + l / 2, 0.3, z + w / 2, mat); B.add(x - l / 2, -0.32, z - w / 2, x - l / 2 + 0.12, 0.3, z + w / 2, mat); B.add(x + l / 2 - 0.12, -0.32, z - w / 2, x + l / 2, 0.3, z + w / 2, mat); B.add(x - l / 2, -0.36, z - w / 2, x + l / 2, -0.32, z + w / 2, mat); };
+    bt(SH + 11, z1 + 1.1, 3.6, 1.4, 'boatwood');
+    B.add(SH - 6, 0, 20, SH - 1.5, 0.45, 20.8, 'canoe');
+    for (let i = 0; i < 90; i++) { const z = bz0 - 30 + r() * (bz1 - bz0 + 60), x = SH - 1 + r() * 7; if (z > RZ0 - 3 && z < RZ1 + 3) continue; if (z > z0 - 2 && z < z1 + 2) continue; D.obb(x, 0.4, z, 0.1, 1.4 + r() * 0.8, 0.1, r() * 3, 'reed'); }
+  }
+
+  // ---- the road: the broken-down car, a fallen tree across the lanes, power poles, a trailhead lot with a sign
+  brokenCar(B, D, -8, 56.2);
+  B.add(33, 0, RZ0 - 3, 34.2, 1.1, RZ1 + 1, 'logside'); B.add(32.6, 0, RZ1 + 1, 34.8, 2.6, RZ1 + 2.2, 'rootball'); // it came down in a storm. or something pushed it
+  for (let x = -250; x < SH; x += 26) { (Math.abs(x) < 110 ? B : D).box(x, 4.5, RZ0 - 1.8, 0.32, 9, 0.32, 'deadbark'); (Math.abs(x) < 110 ? B : D).add(x - 1.2, 8.3, RZ0 - 1.95, x + 1.2, 8.45, RZ0 - 1.65, 'deadbark'); }
+  for (const s of [-1, 1]) D.add(-250, 8.2, RZ0 - 1.8 + s * 0.9 - 0.02, SH - 20, 8.24, RZ0 - 1.8 + s * 0.9 + 0.02, 'tire'); // the wires
+  B.add(TH[0] - 14, 0, TH[1] - 7, TH[0] + 14, 0.05, TH[1] + 7, 'gravel'); // the trailhead lot
+  adSign(B, TH[0] + 6, TH[1] - 7.5, 'signtrail');
+  B.add(TH[0] - 12, 0.05, TH[1] + 2, TH[0] - 10, 2.5, TH[1] + 4, 'toyblue'); B.add(TH[0] - 12.1, 2.5, TH[1] + 1.9, TH[0] - 9.9, 2.65, TH[1] + 4.1, 'white'); // a portable toilet. locked
+  B.add(TH[0] + 2, 0.05, TH[1] + 3, TH[0] + 4.4, 1.6, TH[1] + 4.2, 'containerg'); // a bear-proof bin
+  // the ranger lot (defenders): a gravel pull-off on a fire road, a ranger pickup, a notice board
+  B.add(DEF[0] - 14, 0, DEF[1] - 8, DEF[0] + 14, 0.05, DEF[1] + 8, 'gravel'); D.add(DEF[0] - 3, 0.005, -260, DEF[0] + 3, 0.035, DEF[1] - 8, 'dirtroad');
+  { const x = DEF[0] + 7, z = DEF[1] - 2; B.add(x - 1, 0.4, z - 2.6, x + 1, 1.1, z + 2.6, 'rangergreen'); B.add(x - 0.95, 1.1, z - 2.4, x + 0.95, 1.9, z - 0.6, 'glassdark'); B.add(x - 1, 1.9, z - 2.45, x + 1, 2.0, z - 0.55, 'rangergreen'); B.add(x - 1, 1.1, z - 0.5, x + 1, 1.5, z + 2.6, 'rangergreen'); for (const sx of [-1, 1]) for (const sz of [-1.6, 1.6]) B.add(x + sx - 0.15, 0, z + sz - 0.38, x + sx + 0.15, 0.75, z + sz + 0.38, 'tire'); B.add(x - 0.6, 2.0, z - 1.8, x + 0.6, 2.12, z - 1.4, 'hazard2'); }
+  adSign(B, DEF[0] - 6, DEF[1] + 7.6, 'signranger');
+  // the hunting stand in the west woods: a platform on legs, a ladder of steps
+  { const x = -74, z = -52; for (const sx of [-1, 1]) for (const sz of [-1, 1]) B.box(x + sx * 1.1, 2, z + sz * 1.1, 0.2, 4, 0.2, 'towerwood'); B.add(x - 1.4, 3.8, z - 1.4, x + 1.4, 4.0, z + 1.4, 'planks'); B.add(x - 1.4, 4.0, z - 1.4, x + 1.4, 4.9, z - 1.25, 'planks'); B.add(x - 1.4, 4.0, z - 1.25, x - 1.25, 4.9, z + 1.4, 'planks'); B.add(x + 1.25, 4.0, z - 1.25, x + 1.4, 4.9, z + 1.4, 'planks'); stairs(W, x - 0.6, x + 0.6, z + 6.3, -1, 0, 4.0, 'towerwood', 0.55); }
+  // ---- the property line: orange-topped stakes and the odd sign, so you know where the woods stop being yours
+  const stake = (x, z) => { B.box(x, 0.6, z, 0.14, 1.2, 0.14, 'logside'); B.box(x, 1.3, z, 0.16, 0.2, 0.16, 'toyorange'); };
+  for (let x = bx0; x < SH - 2; x += 11) { stake(x, bz0 + 1); stake(x, bz1 - 1); }
+  for (let z = bz0 + 11; z < bz1; z += 11) if (z < RZ0 - 3 || z > RZ1 + 3) stake(bx0 + 1, z);
+  adSign(B, bx0 + 1.5, 20, 'signturn', 'z'); adSign(B, -30, bz0 + 1.6, 'signturn'); adSign(B, 40, bz1 - 1.6, 'signturn');
+
+  // ---- spawns, teams, sites, bots
+  const att = [[TH[0] - 4, 0.2, TH[1] - 2], [TH[0], 0.2, TH[1] - 2], [TH[0] + 4, 0.2, TH[1] - 2], [TH[0] - 4, 0.2, TH[1] + 2], [TH[0], 0.2, TH[1] + 2], [TH[0] + 4, 0.2, TH[1] + 2], [TH[0] + 8, 0.2, TH[1]]];
+  const def = [[DEF[0] - 6, 0.2, DEF[1] - 2], [DEF[0] - 2, 0.2, DEF[1] - 2], [DEF[0] + 2, 0.2, DEF[1] + 2], [DEF[0] - 6, 0.2, DEF[1] + 2], [DEF[0] - 2, 0.2, DEF[1] + 2], [DEF[0] - 10, 0.2, DEF[1]], [DEF[0] + 1, 0.2, DEF[1] - 5]];
+  const sites = [{ id: 'A', min: [CAB[0] - 6.2, 0, CAB[1] - 4.2], max: [CAB[0] + 6.2, 0, CAB[1] + 7.4] }, { id: 'B', min: [42.4, 0, -4.6], max: [61.6, 0, 12.6] }];
+  let graph = null, nav = null;
+  const N = 210, gx0 = -105, gz0 = -105;
+  const navGraph = () => graph || (graph = buildNav(B.boxes, { x0: gx0, z0: gz0, n: N, cell: 1, levels: [0], band: 0.5, keep: (x, z) => x > bx0 && x < bx1 && z > bz0 && z < bz1 }));
+  const route = (...via) => { // A* through the via points, then keep only the corners (as in the Backrooms). points are [x, 0, z]
+    const g = navGraph(), ks = [];
+    for (let v = 0; v + 1 < via.length; v++) for (const k of navPath(g, navLocate(g, via[v]), navLocate(g, via[v + 1])) || []) if (ks[ks.length - 1] !== k) ks.push(k);
+    if (!ks.length) return via.map((p) => [p[0], p[2]]);
+    const out = [ks[0]];
+    for (let k = 1; k < ks.length; k++) { const a = g.nodes[out[out.length - 1]], b = g.nodes[ks[k + 1]]; if (b && navClear(g, 0, a[0], a[2], b[0], b[2])) continue; out.push(ks[k]); }
+    return out.map((k) => [g.nodes[k][0], g.nodes[k][2]]);
+  };
+  const P = (p) => [p[0], 0, p[1]];
+  const sA = [CAB[0] + 1.5, 0, CAB[1] + 1], sB = [MAST[0] + 1, 0, MAST[1] + 2];
+  const lanes = () => nav || (nav = {
+    A: [route(P(TH), [-84, 0, 30], [-78, 0, -2], [-62, 0, -20], sA), route(P(TH), P(CAMP), [-12, 0, 10], P(CLR), [-28, 0, -12], [CAB[0], 0, -16], sA), route(P(DEF), [-6, 0, -68], [-42, 0, -54], [CAB[0] + 3, 0, CAB[1] - 6], sA)],
+    B: [route(P(TH), P(CAMP), [-30, 0, 48], [20, 0, 50], [50, 0, 34], [52, 0, 15], sB), route(P(TH), P(CAMP), [-12, 0, 10], P(CLR), [26, 0, -2], [40, 0, 4], sB), route(P(DEF), [48, 0, -64], [62, 0, -44], [64, 0, -22], [62, 0, 0], sB)],
+  });
+  const map = {
+    name: 'Scary Forest', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -40, floorY: -4, bounds: FOREST.bounds,
+    sky: { top: 0x04060e, mid: 0x22304a, bot: 0x0c1018, fog: 0x1c2840 }, fogNear: 4, fogFar: 86,
+    light: { hemi: [0x7890c4, 0x161a24, 0.85], sun: [0xa4baff, 0.6] }, moon: true, night: true, flashlights: true,
+    chunk: 40, spawns, spawnSafe: 50, teamSpawns: { att, def }, teamSpawnsBomb: true, roundTime: 130, sites,
+    menuCam: [30, 9, -0.22],
+    // the Tall Guy From HR (server/hrguy.js): where he can't stand, and the awful places he transfers people to
+    hr: { keepOut: [[41, -7, 64, 16], [CAB[0] - 7, CAB[1] - 5, CAB[0] + 7, CAB[1] + 8]], awful: [
+      { p: [CAMP[0] - 12, 0.3, CAMP[1] + 9], name: 'THE OUTHOUSE' }, { p: [MAST[0] + 4.9, 48.3, MAST[1] + 4.9], name: 'THE TOP OF THE RADIO MAST' },
+      { p: [SH + 20, -0.6, 10], name: 'THE LAKE' }, { p: [CLR[0] - 2.1, 0.75, CLR[1] + 2], name: 'A MEETING (THE CHAIR)' }] },
+    get nav() { return lanes(); }, get graph() { return navGraph(); },
+  };
+  return map;
+}
+function adSign(B, x, z, mat, along = 'x') { // a wooden sign on two posts, the words drawn once across it
+  const L = B.local(x, z, along === 'x' ? 0 : 1);
+  L.B(-1.1, 0.9, 0, 0.16, 1.8, 0.16, 'logside'); L.B(1.1, 0.9, 0, 0.16, 1.8, 0.16, 'logside');
+  L.B(0, 1.75, 0, 2.8, 1.1, 0.12, 'planks'); L.B(0, 1.75, 0, 2.6, 0.95, 0.16, mat, { fit: 1 });
+}
+
 export const MAPS = {
   crate: crate(), platform: platform(), rooftop: rooftop(), suburb: suburb(), warehouse: warehouse(),
-  desert: desert(), islands: islands(), skyline: skyline(), bazaar: bazaar(), range: range(), backrooms: backrooms(),
+  desert: desert(), islands: islands(), skyline: skyline(), bazaar: bazaar(), range: range(), backrooms: backrooms(), forest: forest(),
 };
 // a spawn whose body would start inside a box (a column, a roof garden, a helipad) gets lifted onto whatever it's in
 function unstick(boxes, list) {
@@ -1885,7 +2186,7 @@ function unstick(boxes, list) {
   }
 }
 for (const m of Object.values(MAPS)) unstick(m.boxes, [...m.spawns, ...(m.teamSpawns ? [...m.teamSpawns.att, ...m.teamSpawns.def] : [])]);
-export const MAP_ORDER = ['crate', 'platform', 'rooftop', 'suburb', 'warehouse', 'desert', 'bazaar', 'islands', 'skyline', 'backrooms'];
+export const MAP_ORDER = ['crate', 'platform', 'rooftop', 'suburb', 'warehouse', 'desert', 'bazaar', 'islands', 'skyline', 'backrooms', 'forest'];
 
 // Client convenience: "the current map". These arrays/objects are mutated in place by setMap,
 // so every module that imported them sees the new map.
