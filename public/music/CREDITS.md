@@ -20,7 +20,7 @@ synthesis). No samples from other recordings are used.
 ## Third-party sounds
 
 A few instruments are played through **FluidR3_GM** (the General MIDI soundfont, rendered with FluidSynth): the
-orchestra hits in Jank Cola Rave, the rave piano and tuba in Rubber Duck Hardcore, the church organ in Hung Jury
+brass stabs in Jank Cola Rave, the rave piano and tuba in Rubber Duck Hardcore, the church organ in Hung Jury
 Hardcore and the synth bass in Wrecking Ball Warm-Up.
 
 FluidR3_GM: Copyright © 2000-2002, 2008 Frank Wen, © 2008 Toby Smithe. Released under the MIT licence:
