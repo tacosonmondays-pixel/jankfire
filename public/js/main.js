@@ -1280,6 +1280,7 @@ net.on('kill', (m) => {
   if (m.v === G.myId) epicKC = m.ep && m.ep.lock && m.k && m.k !== G.myId && S.killcam !== false && G.mode !== 'training' ? { ...m.ep, w: via } : null; // too epic to skip (the server holds your respawn)
   if (m.v === G.myId) epicHold = !!(m.ep && m.ep.lock); // ...until it spawns you, killcam or not
   if (m.v === G.myId) {
+    if (performance.now() < (ME.sleepUntil || 0) && $('center').textContent === 'zzz...') hud.msg('', 0); // died in your sleep: no "zzz..." over the killcam
     ME.alive = false;
     releaseHook();
     W.held = false; W.aimHeld = false;
