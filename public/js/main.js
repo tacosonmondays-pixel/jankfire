@@ -114,10 +114,10 @@ G.scene.add(myRope);
 
 loadTripoModels().then((n) => {
   if (!n) return;
-  console.log(`loaded ${n} tripo models`);
+  console.log(`loaded ${n} models`);
   rebuildOne(); // visuals only: a randomizer or pending loadout stays as it is
   for (const r of G.remotes.values()) r.build();
-  $('status').textContent = `${n} Tripo model(s) loaded`;
+  $('status').textContent = `${n} model(s) loaded`;
 });
 
 // ------------------------------------------------------------ screens

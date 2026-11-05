@@ -8,6 +8,7 @@ import { SUITS, RANKS, ARROW_TIPS } from '/shared/weapons.js';
 import { BLADES } from './blades/index.js';
 import { lathe } from './blades/kit.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { prepAuthored, authored, AUTHORED } from './glbkit.js';
 
 // ------------------------------------------------------------ playing card faces (canvas, cached)
 const cardFaces = new Map();
@@ -44,9 +45,9 @@ export async function loadTripoModels() {
   if (!list.length) return 0;
   const loader = new GLTFLoader();
   await Promise.all(list.map((it) => new Promise((res) => {
-    loader.load(it.url, (gltf) => { GLB[it.id] = prep(gltf.scene, it); res(); }, undefined, (e) => { console.warn('tripo model failed', it.id, e); res(); });
+    loader.load(it.url, (gltf) => { if (!prepAuthored(it.id, gltf.scene)) GLB[it.id] = prep(gltf.scene, it); res(); }, undefined, (e) => { console.warn('model failed', it.id, e); res(); });
   })));
-  return Object.keys(GLB).length;
+  return Object.keys(GLB).length + Object.keys(AUTHORED).length;
 }
 
 function prep(scene, it) {
@@ -1366,6 +1367,18 @@ export function buildWeapon(id, skin) {
   (variant ? MODEL_BUILD[model] : WB[id] || WB.cig)(g);
   g.userData.model = variant ? model : 'default';
   g.userData.hatAt = HAT_AT[variant ? model : id];
+  const bl = variant ? null : authored('w_' + id); // made in Blender, in this model's own space: swap it in as is
+  if (bl) {
+    for (const c of [...g.children]) if (c !== g.userData.tip) g.remove(c);
+    g.add(bl.obj);
+    const mt = bl.meta;
+    if (mt.muzzle) g.userData.muzzle = new THREE.Vector3(...mt.muzzle);
+    if (mt.sight) g.userData.sight = { y: mt.sight.y, z: mt.sight.z };
+    if (mt.hatAt) g.userData.hatAt = mt.hatAt; else delete g.userData.hatAt;
+    g.userData.glb = 'blender';
+    applySkin(g, skin);
+    return g;
+  }
   const glb = variant ? null : fitted('w_' + id, { alignZ: true, size: g.userData.len, zOffset: g.userData.muzzle.z / 2 });
   if (glb) delete g.userData.hatAt; // a generated model has its own shape: fall back to measuring it
   if (glb) {
