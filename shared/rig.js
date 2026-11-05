@@ -19,7 +19,7 @@ export const RIG = {
   hack: { range: 40, dur: 4, cd: 2.5, aim: 0.985 },
   // homing missiles: salvo size, cooldown, damage (direct; the blast falls off to 35% at r), blast radius, knockback,
   // speed (launch -> top), turn rate (rad/s), straight-up boost time before they home, life, seeker range + cone, ms apart
-  miss: { n: 4, cd: 10, dmg: 30, r: 3.2, kb: 12, speed: [16, 44], turn: 4.2, boost: 0.25, life: 5, seek: 75, cos: 0.4, gap: 90 },
+  miss: { n: 4, cd: 10, dmg: 22, r: 3.2, kb: 12, speed: [16, 44], turn: 4.2, boost: 0.25, life: 5, seek: 75, cos: 0.4, gap: 90 },
   // charged leap: hold to charge (s), cooldown, speed forward / up from no charge to full, landing shockwave (damage at
   // the middle, radius from no charge to full, knockback)
   leap: { charge: 0.9, cd: 0.7, h: [11, 27], up: [9.5, 17], dmg: 25, r: [4.5, 7.5], kb: 24 },

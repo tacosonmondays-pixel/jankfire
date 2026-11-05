@@ -365,7 +365,7 @@ export function updateRig(dt, now, cam, replaying) {
 export function rigVM(dt, now, vmRoot) {
   const on = RS.on && ME.alive;
   if (vmRoot) vmRoot.visible = !on;
-  if (!on) return false;
+  if (!on) { updateArms(dt, { visible: true }); return false; } // (lets the arms finish putting themselves away, then hides them)
   W.flags = FLAGS.RIG | (W.aimHeld ? FLAGS.RIG_BLOCK : 0) | (RS.charging ? FLAGS.RIG_CHARGE : 0) | (RS.leapCharging ? FLAGS.RIG_LEAP : 0);
   W.aim = 0; W.scoped = false;
   ME.speedMul = 1;

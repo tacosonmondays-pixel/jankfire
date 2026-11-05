@@ -325,8 +325,7 @@ export function installRig(Room, U) {
       if (b.rig || this.isBall(b)) return;
       setTimeout(safe('botrig', () => {
         if (this.players.get(b.id) !== b || !b.alive || b.rig || this.isBall(b) || (this.round && this.round.over)) return;
-        this.rigStart(b);
-        this.broadcast({ t: 'chat', id: 0, m: `${b.name} is in the OVERDRIVE RIG` });
+        this.rigStart(b); // (every client says who's in it from the 'on' event)
       }), 700);
     },
     // a bot in the rig: its own heavy movement (like a player's in public/js/rig.js), and a little plan. up close it
@@ -362,7 +361,7 @@ export function installRig(Room, U) {
         const easy = ai.diff === 'easy' ? 0.5 : 1;
         if (vis && dist < 15 && ang < 0.35 && n - R.punchT > P.cd * 1000 + 250) { // wind up a punch sized to the gap (blocking stored some already)
           B.mode = 'charge'; B.t0 = n - R.store * P.charge * 1000; B.c = Math.max(0.15, Math.min(1, (dist - 3) / 11 + Math.random() * 0.15)); R.ch.t0 = n; R.ch.t1 = n;
-        } else if (vis && dist < H.range && n - R.hackT > H.cd * 1000 && ang < 0.5 && (t.g || Math.random() < dt * 0.35)) this.rigHack(b, { to: t.id }, n); // grappling? not any more (and now and then, so they can't)
+        } else if (vis && dist < H.range && n - R.hackT > H.cd * 1000 && ang < 0.5 && (t.g || (dist > 12 && Math.random() < dt * 0.12))) this.rigHack(b, { to: t.id }, n); // grappling? not any more (and now and then, so they can't)
         else if (vis && dist > 12 && dist < M.seek && n - R.missT > M.cd * 1000 && Math.random() < dt * 2 * easy) this.rigMissiles(b, { d: look(b) }, n);
         else if (b.onGround && t && dist > 20 && n - R.leapT > 2500 && Math.random() < dt * 0.9 * easy) { B.mode = 'leap'; B.t0 = n; B.c = 0.6 + Math.random() * 0.4; R.lp.t0 = n; R.lp.t1 = n; }
       }

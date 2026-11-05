@@ -438,8 +438,8 @@ export function buildRig(color, opts = {}) {
   });
   // elbow rocket flames (the punch dash) and the pods' launch flash
   const flames = ['foreR', 'foreL'].map((nm) => { // out of the elbow nozzle, up + back along the forearm
-    const g = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.7, 8, 1, true).translate(0, 0.35, 0).rotateX(0.5),
-      new THREE.MeshBasicMaterial({ color: 0xff7ae8, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide }));
+    const g = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.55, 8, 1, true).translate(0, 0.275, 0).rotateX(0.5),
+      new THREE.MeshBasicMaterial({ color: 0xff3fc8, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide }));
     g.position.set(0, -0.01, 0.19);
     g.scale.setScalar(0.001); g.visible = false; g.renderOrder = 7;
     j[nm].add(g);
