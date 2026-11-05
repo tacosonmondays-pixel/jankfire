@@ -266,7 +266,7 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 .es-next small { color: var(--pink); font-weight: 700; letter-spacing: 3px; font-size: 14px; }
 .es-next b { font-size: clamp(26px, 4.2vh, 46px); color: var(--yellow); text-shadow: 3px 3px 0 var(--ink); line-height: 1; }
 .es-next span { text-shadow: 2px 2px 0 var(--ink); font-size: clamp(16px, 2.2vh, 24px); }
-.es-next .tag { position: static; align-self: flex-start; margin-top: 4px; padding: 2px 10px; font-size: 13px; font-weight: 700; letter-spacing: 2px; color: #000; background: var(--yellow); border: 3px solid #000; box-shadow: 3px 3px 0 var(--pink); }
+.es-next .tag { position: relative; align-self: flex-start; margin-top: 4px; padding: 2px 10px; font-size: 13px; font-weight: 700; letter-spacing: 2px; color: #000; background: var(--yellow); border: 3px solid #000; box-shadow: 3px 3px 0 var(--pink); }
 
 /* tabs */
 .es-tabs { width: min(var(--esw, 1120px), 100%); min-height: 0; display: flex; flex-direction: column; }
@@ -361,6 +361,7 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
   .es-steps span { padding-top: 1px; padding-bottom: 1px; font-size: 12px; }
   .es-tab { padding: 3px 12px 4px; font-size: 12px; }
   .es-tabbody { min-height: 40px; }
+  .es-tabpanel { min-height: 40px; }
 }
 /* the play of the round is on: the end screen steps aside to a vote rail on the right */
 #endscreen.mini { pointer-events: none; display: block; padding: 0; }
@@ -388,3 +389,62 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 #esClick { position: absolute; left: 50%; top: 62%; transform: translate(-50%, -50%); z-index: 25; pointer-events: none; padding: 10px 26px; font-size: 26px; font-weight: 700; letter-spacing: 2px; color: var(--ink);
   background: var(--yellow); color: #000; border: 4px solid #000; box-shadow: 6px 6px 0 var(--pink); animation: clickme 0.9s ease-in-out infinite; }
 @keyframes clickme { 50% { transform: translate(-50%, -50%) scale(1.07) rotate(-2deg); } }
+
+/* =================================================================== ORGANIC SLABS (organic.js)
+   Hand-cut lumpy shapes drawn in an svg under each element: the element's own flat fill, border and box shadow step
+   aside, and these variables colour the slab: --fill (body), --rim (the fleshy edge), --shd (the hard offset shadow,
+   same lumpy shape), --band (a header or side strip). States just change the variables. */
+.org { isolation: isolate; background: transparent !important; border-color: transparent !important; box-shadow: none !important;
+  --fill: #1c0c26; --rim: var(--pink); --shd: var(--cyan); }
+.org > .org-bg { position: absolute; z-index: -1; pointer-events: none; overflow: visible; }
+.es-chip, .es-timer, .es-steps span, .es-tile, .es-xp, .es-loot, .es-ach, .es-next, .es-vote, .es-tabpanel, .hlink, .hero-gun, #scr-main .namerow, .home-strip { position: relative; }
+/* end screen */
+.es-card.org { --fill: #1a0a24; --rim: var(--ca, var(--pink)); --band: var(--ca, var(--pink)); --shd: var(--cyan); will-change: transform; }
+.es-card.org.event { --rim: var(--yellow); --shd: var(--pink); }
+.es-card.org:hover { --shd: var(--yellow); }
+.es-card.org.mine { --rim: var(--yellow); --shd: var(--yellow); }
+.org .mthumb, .org .mapthumb { border: 0; }
+.es-card .key.org, .es-next .tag.org, .es-card .tag.org { --fill: var(--yellow); --rim: #000; --shd: #000; }
+.es-card .tag.org, .es-next .tag.org { --shd: var(--pink); }
+.es-next.org { --fill: rgba(18, 8, 24, 0.95); --rim: var(--pink); --shd: var(--cyan); }
+.es-tab.org { --fill: #fff; --rim: #000; --shd: #000; }
+.es-tab.org.on { --fill: var(--yellow); --shd: var(--pink); }
+.es-steps span.org { --fill: rgba(18, 8, 24, 0.95); --rim: #000; --shd: #000; }
+.es-steps span.org.on { --fill: var(--pink); --shd: var(--cyan); }
+.es-steps span.org.past { --rim: #2a5a0a; }
+.es-chip.org { --fill: rgba(18, 8, 24, 0.95); --rim: var(--pink); --shd: var(--cyan); }
+.es-timer.org { --fill: var(--yellow); --rim: #000; --shd: var(--pink); }
+.es-timer.org.beat { --fill: var(--pink); }
+.es-tabpanel { flex: 1 1 auto; min-height: 56px; display: flex; margin: 6px 10px 0 0; }
+.es-tabpanel.org { --fill: rgba(18, 8, 24, 0.95); --rim: var(--pink); --shd: var(--cyan); }
+.es-tabpanel > .es-tabbody { flex: 1 1 auto; min-height: 0; margin: 0; background: none !important; background-image: none !important; border: 0 !important; box-shadow: none !important; }
+.es-tile.org { --fill: #2a1638; --rim: #000; --shd: #000; }
+.es-tile.org.xp { --fill: var(--yellow); --shd: var(--pink); }
+.es-tile.org.crate { --fill: #fff; --shd: var(--pink); }
+.es-xp.org, .es-loot.org { --fill: #2a1638; --rim: #000; --shd: #000; }
+.es-loot.org.got { --fill: var(--pink); --shd: var(--cyan); }
+.es-ach.org { --fill: #1e3a12; --rim: #000; --shd: #000; }
+#endscreen:not(.mini) .es-vote > .org-bg { display: none; } /* the vote area is only a slab when it's the side rail */
+#endscreen.mini .es-vote.org { --fill: rgba(18, 8, 24, 0.95); --rim: var(--pink); --shd: var(--cyan); }
+/* menu */
+#scr-main .big.mode.org { --fill: #fff; --rim: #000; --shd: #000; --band: var(--mc, #000); will-change: transform; }
+#scr-main .big.mode.org.play { --fill: var(--yellow); --shd: var(--pink); }
+#scr-main #desktopRow .big.mode.org { --band: #b07dff; }
+.hlink.org { --fill: rgba(18, 8, 24, 0.95); --rim: #000; --shd: #000; --band: var(--hc); will-change: transform; }
+.hlink.org:hover { --fill: #2a1036; --shd: var(--hc); }
+.toy.org { --fill: var(--yellow); --rim: #000; --shd: var(--pink); }
+.hero-gun.org, #scr-main .namerow.org { --fill: rgba(18, 8, 24, 0.95); --rim: var(--pink); --shd: var(--cyan); }
+.hero-gun.org:hover { --shd: var(--yellow); }
+.home-strip.org { --fill: rgba(18, 8, 24, 0.95); --rim: var(--pink); --shd: var(--cyan); overflow: visible; }
+.home-event.org { --fill: rgba(30, 10, 40, 0.96); --rim: var(--yellow); --shd: var(--cyan); }
+#endscreen.mini .es-card.org { --band: transparent; } /* the rail's compact rows: the mode colour is in the rim */
+.es-card .cnt.org { --fill: #fff; --rim: #000; --shd: #000; }
+.es-card.lead .cnt.org { --fill: var(--pink); }
+#esClick.org { --fill: var(--yellow); --rim: #000; --shd: var(--pink); }
+/* the vote cards are alive: a slow breath each, out of step. 'deal' only holds its first frame (backwards), so
+   hover, the vote lift and the click squish still work after the cards are dealt */
+@keyframes breathe { 0%, 100% { scale: 1; } 50% { scale: 1.013 0.988; } }
+.es-card { animation: breathe 4.2s ease-in-out infinite; animation-delay: calc(var(--i, 0) * -1.1s); }
+.es-cards.deal .es-card { animation: deal 0.5s cubic-bezier(.2, 1.4, .4, 1) backwards, breathe 4.2s ease-in-out infinite; animation-delay: calc(var(--i) * 70ms), calc(var(--i, 0) * -1.1s); }
+.es-cards .es-card.squish { animation: squish 0.35s cubic-bezier(.3, 1.8, .5, 1), breathe 4.2s ease-in-out infinite; animation-delay: 0s, calc(var(--i, 0) * -1.1s); }
+@media (prefers-reduced-motion: reduce) { .es-card, .es-cards.deal .es-card, .es-cards .es-card.squish { animation: none; } }

@@ -10,6 +10,7 @@ import { MEDALS } from '/shared/medals.js';
 import { CONTAINERS } from '/shared/cosmetics.js';
 import { modeThumb, modeColors, medalImage, propImage } from './modeart.js';
 import { fleshFrame } from './flesh.js';
+import { organic } from './organic.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -23,6 +24,8 @@ const LINES = {
   draw: ['nobody wins. legal says that is fine.', 'a tie. HR is drafting a memo.', 'everyone gets a participation lanyard.'],
 };
 const TABS = [['board', 'LEADERBOARD'], ['perf', 'PERFORMANCE'], ['medals', 'MEDALS'], ['rewards', 'REWARDS']];
+const SMALL = { tex: false, bits: false, rim: 3, pad: 6, shadow: [4, 4], wob: 0.9, lumps: 2, lumpA: 1.6 }; // buttons, chips, stickers
+const STICK = { ...SMALL, shadow: [3, 3], lumps: 1, lumpA: 1.2, wob: 0.7 };
 const ES = { open: false, mini: false, vote: null, my: -1, myStage: '', perf: null, round: null, tab: 'board', totalEnd: 0, stageEnd: 0, stageLen: 1, roll: null, achs: [], raf: 0, lastSec: -1, opts: {} };
 export const endscreen = ES;
 
@@ -35,7 +38,7 @@ export function initEndscreen(opts = {}) {
     <div class="es-back"></div>
     <div class="es-frame"></div>
     <div class="es-top">
-      <div class="es-chip" id="esWhere"></div>
+      <div class="es-chip"><span id="esWhere"></span></div>
       <div class="es-timer"><small>NEXT ROUND IN</small><b id="esClock">00:00</b></div>
     </div>
     <div class="es-head">
@@ -52,7 +55,7 @@ export function initEndscreen(opts = {}) {
     </div>
     <div class="es-tabs">
       <div class="es-tabbar" id="esTabbar"></div>
-      <div class="es-tabbody" id="esBody"></div>
+      <div class="es-tabpanel"><div class="es-tabbody" id="esBody"></div></div>
     </div>`;
   $('hud').append(root);
   frameEl = root.querySelector('.es-frame');
@@ -62,9 +65,17 @@ export function initEndscreen(opts = {}) {
     b.dataset.tab = id;
     b.addEventListener('click', () => { setTab(id); sfx.click(); });
     bar.append(b);
+    organic(b, SMALL);
   }
+  // the fixed bits get their hand-cut slabs once
+  organic(root.querySelector('.es-chip'), SMALL);
+  organic(root.querySelector('.es-timer'), { ...SMALL, shadow: [5, 5] });
+  for (const sp of root.querySelectorAll('.es-steps span')) organic(sp, SMALL);
+  organic(root.querySelector('.es-tabpanel'), { rim: 6, lumps: 5, lumpA: 4, shadow: [9, 9] });
+  organic(root.querySelector('.es-vote'), { rim: 6, lumps: 4, shadow: [8, 8] }); // only drawn as the side rail (css)
   const click = el('div', 'hidden', 'CLICK TO DROP IN'); click.id = 'esClick';
   $('hud').append(click);
+  organic(click, { ...SMALL, rim: 4, shadow: [6, 6] });
   addEventListener('resize', () => { if (ES.open) drawFrame(); });
   net.on('perf', (m) => {
     ES.lv = ES.opts.level && ES.opts.level(); // before this match's xp lands
@@ -246,7 +257,7 @@ function renderCards(countsOnly, stageChanged) {
   [...box.children].forEach((c, i) => {
     c.classList.toggle('mine', i === ES.my);
     c.classList.toggle('lead', lead > 0 && h[i] * 100 + (b[i] || 0) === lead);
-    c.querySelector('.cnt').textContent = String(tot[i] || 0);
+    c.querySelector('.cnt .n').textContent = String(tot[i] || 0);
     const pips = c.querySelector('.pips');
     pips.innerHTML = '';
     for (let k = 0; k < Math.min(12, h[i] || 0); k++) pips.append(el('i', 'h'));
@@ -278,10 +289,13 @@ function card(o, i) {
   if (desc) info.append(el('span', 'desc', desc));
   c.append(info);
   const foot = el('div', 'foot');
-  foot.append(el('span', 'pips'), el('b', 'cnt', '0'));
+  const cnt = el('b', 'cnt'); cnt.append(el('span', 'n', '0')); // the number in its own span: setting the counter's text would wipe its slab
+  foot.append(el('span', 'pips'), cnt);
   c.append(foot, el('span', 'who'), el('span', 'stamp', 'YOUR VOTE'));
   c.title = desc;
   c.addEventListener('click', (e) => { e.stopPropagation(); esCast(i); });
+  organic(c, { band: 10, rim: 8, lumps: 4, lumpA: 3.6, holes: [c.querySelector('.mthumb, .mapthumb')] }); // a slab of meat with the picture set in it
+  for (const k of c.querySelectorAll('.key, .tag, .cnt')) organic(k, STICK);
   return c;
 }
 function renderDone(box, v) {
@@ -293,6 +307,8 @@ function renderDone(box, v) {
   if (v.event) t.append(el('span', 'tag', 'EVENT'));
   c.append(t);
   box.append(c);
+  organic(c, { rim: 7, lumps: 5, lumpA: 4.5, shadow: [10, 10], holes: [...c.querySelectorAll('.mthumb, .mapthumb')] });
+  for (const k of c.querySelectorAll('.tag')) organic(k, STICK);
 }
 function renderTabbar() { for (const b of $('esTabbar').children) b.classList.toggle('on', b.dataset.tab === ES.tab); }
 function setTab(id) { ES.tab = id; ES.tabPicked = true; renderTabbar(); renderTab(); }
@@ -332,7 +348,7 @@ function tile(label, value, cls, sub) {
   const d = el('div', 'es-tile' + (cls ? ' ' + cls : ''));
   d.append(el('small', null, label), el('b', null, value));
   if (sub) d.append(el('span', null, sub));
-  return d;
+  return organic(d, { bits: false, wet: false, rim: 3, pad: 7, shadow: [5, 5], wob: 1.1, lumps: 2, lumpA: 2.2, texA: 0.06 }); // black-rimmed: a clean inked edge
 }
 function tabPerf(body) {
   const p = ES.perf;
@@ -403,15 +419,15 @@ function tabRewards(body) {
     bar.append(f1, f0); xpBox.append(bar);
     requestAnimationFrame(() => requestAnimationFrame(() => { f1.style.width = `${to * 100}%`; }));
   } else xpBox.append(el('b', null, `+${p.xp} XP`), el('span', null, 'you are a guest. log in and this goes on your record (plus crates when you win).'));
-  w.append(xpBox);
+  w.append(organic(xpBox, { rim: 4, lumps: 3, shadow: [6, 6] }));
   const r = ES.roll;
   const loot = el('div', 'es-loot');
   if (r && r.n > 0) { const c = CONTAINERS[r.kind] || CONTAINERS.box; loot.append(el('b', null, `+${r.n} ${c.name.toUpperCase()}`), el('span', null, `${c.desc}. open it in CONTAINERS`)); loot.classList.add('got'); }
   else loot.append(el('b', null, 'NO CONTAINER'), el('span', null, (r && (r.why || (r.guest && 'you would have earned one. log in to keep them.'))) || 'win a round to earn one'));
-  w.append(loot);
+  w.append(organic(loot, { rim: 4, lumps: 3, shadow: [6, 6] }));
   if (ES.achs.length) {
     w.append(el('h4', 'es-h', 'ACHIEVEMENTS UNLOCKED'));
-    for (const a of ES.achs) { const d = el('div', 'es-ach'); d.append(el('b', null, a.name), el('span', null, a.desc || '')); w.append(d); }
+    for (const a of ES.achs) { const d = el('div', 'es-ach'); d.append(el('b', null, a.name), el('span', null, a.desc || '')); w.append(organic(d, { ...SMALL, rim: 3 })); }
   }
   body.append(w);
 }
