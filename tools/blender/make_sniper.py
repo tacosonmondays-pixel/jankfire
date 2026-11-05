@@ -116,11 +116,12 @@ def build():
     for p in parts:
         if p.data.materials and p.data.materials[0] is sticker:
             apply_mods(p); c = p.matrix_world.translation; uv_planar(p, (c.x, c.z, -c.y), (W(68), W(11)), '-x')
-    body = join(parts, 'sniper_body')
-    bn = part(bolt, 'bolt', pivot=(0, BORE_Y, Z(812)))
+    WZ = {'sn_pink': 'a', 'sn_rubber': 'a', 'sn_steel': 'b', 'sn_dark': 'b', 'sn_scope': 'b'}  # wrap zones (wrapzones.js): a = handle side, b = business end, everything else keeps its look
+    bodies = zone_join(parts, 'sniper_body', WZ, default='n', rule=lambda m, c: 'a' if m == 'sn_steel' and c[2] > Z(690) else None)  # the action rides with the chassis
+    bn = part(bolt, 'bolt_wzB', pivot=(0, BORE_Y, Z(812)))
     meta = {'kind': 'weapon', 'id': 'sniper', 'paint': ['sn_pink'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(SCOPE_H), 'z': Z(948)},
-            'hatAt': [[0, Y(SCOPE_H + 20), Z(655)], 0.13], 'bolt': {'node': 'bolt', 'lift': 1.05, 'travel': W(84)}}
-    return finish('w_sniper', [body, bn], meta)
+            'hatAt': [[0, Y(SCOPE_H + 20), Z(655)], 0.13], 'bolt': {'node': 'bolt_wzB', 'lift': 1.05, 'travel': W(84)}}
+    return finish('w_sniper', bodies + [bn], meta)
 
 
 main(build, 'w_sniper')

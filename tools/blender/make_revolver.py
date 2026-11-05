@@ -95,12 +95,13 @@ def build():
 
     for p in parts + cylp + ham:
         uv_box(p, 0.02)
-    body = join(parts, 'rv_body')
-    cnode = part(cylp, 'cylinder', pivot=(0, cyl_axis_y, Z(174)))
-    hnode = part(ham, 'hammer', pivot=(0, Y(2), Z(228)))
+    WZ = {'rv_pearl': 'a', 'rv_chrome': 'a', 'rv_satin': 'b', 'rv_dark': 'b'}  # wrap zones (wrapzones.js): a = handle side, b = business end, everything else keeps its look
+    bodies = zone_join(parts, 'rv_body', WZ, default='n', rule=lambda m, c: 'b' if m == 'rv_chrome' and c[2] < Z(146) else None)  # frame + grip vs barrel + cylinder, like the code model
+    cnode = part(cylp, 'cylinder_wzB', pivot=(0, cyl_axis_y, Z(174)))
+    hnode = part(ham, 'hammer_wzN', pivot=(0, Y(2), Z(228)))
     meta = {'kind': 'weapon', 'id': 'revolver', 'paint': ['rv_pearl'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(35.5), 'z': Z(212) + 0.14},
-            'hatAt': [[0, Y(24), Z(178)], 0.08], 'cylinder': {'node': 'cylinder', 'step': math.pi / 3}, 'hammer': {'node': 'hammer'}}
-    return finish('w_revolver', [body, cnode, hnode], meta)
+            'hatAt': [[0, Y(24), Z(178)], 0.08], 'cylinder': {'node': 'cylinder_wzB', 'step': math.pi / 3}, 'hammer': {'node': 'hammer_wzN'}}
+    return finish('w_revolver', bodies + [cnode, hnode], meta)
 
 
 main(build, 'w_revolver')

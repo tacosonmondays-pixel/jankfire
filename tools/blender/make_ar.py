@@ -156,10 +156,11 @@ def build():
 
     for p in parts:
         uv_box(p, 0.03)
-    body = join(parts, 'ar_body')
+    WZ = {'ar_olive': 'a', 'ar_grip': 'a', 'ar_rubber': 'a', 'ar_gunmetal': 'a', 'ar_dark': 'b', 'ar_mag': 'b', 'ar_magbase': 'b'}  # wrap zones (wrapzones.js): a = handle side, b = business end, everything else keeps its look
+    bodies = zone_join(parts, 'ar_body', WZ, default='n', rule=lambda m, c: 'b' if m == 'ar_gunmetal' and c[2] < Z(350) else None)  # the front sight base + delta ring ride with the barrel
     meta = {'kind': 'weapon', 'id': 'ar', 'paint': ['ar_olive', 'ar_grip'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(sight_h), 'z': Z(548) + 0.11},
             'hatAt': [[0, Y(33), Z(440)], 0.12], 'tip': None}
-    return finish('w_ar', [body], meta)
+    return finish('w_ar', bodies + [], meta)
 
 
 main(build, 'w_ar')

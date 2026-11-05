@@ -120,11 +120,12 @@ def build():
         if p.data.materials and p.data.materials[0] in (sticker, can_lbl):
             apply_mods(p); c = p.matrix_world.translation
             uv_planar(p, (c.x, c.z, -c.y), (W(72), W(32)) if p.data.materials[0] is sticker else (W(60), W(22)), '-x')
-    body = join(parts, 'minigun_body')
-    barrels = part(spin, 'barrels', pivot=(0, 0, Z(300)))
-    meta = {'kind': 'weapon', 'id': 'minigun', 'paint': ['mg_housing'], 'muzzle': [0, BORE_Y, MUZ_Z], 'barrels': 'barrels',
+    WZ = {'mg_housing': 'a', 'mg_dark': 'a', 'mg_rubber': 'a', 'mg_can': 'a', 'mg_black': 'a'}  # wrap zones (wrapzones.js): a = handle side, b = business end, everything else keeps its look
+    bodies = zone_join(parts, 'minigun_body', WZ, default='n', rule=None)
+    barrels = part(spin, 'barrels_wzB', pivot=(0, 0, Z(300)))
+    meta = {'kind': 'weapon', 'id': 'minigun', 'paint': ['mg_housing'], 'muzzle': [0, BORE_Y, MUZ_Z], 'barrels': 'barrels_wzB',
             'hatAt': [[0, Y(136), Z(690)], 0.14]}
-    return finish('w_minigun', [body, barrels], meta)
+    return finish('w_minigun', bodies + [barrels], meta)
 
 
 main(build, 'w_minigun')

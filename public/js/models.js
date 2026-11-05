@@ -1377,6 +1377,7 @@ export function buildWeapon(id, skin) {
     if (mt.sight) g.userData.sight = { y: mt.sight.y, z: mt.sight.z };
     if (mt.hatAt) g.userData.hatAt = mt.hatAt; else delete g.userData.hatAt;
     g.userData.glb = 'blender';
+    g.userData.wid = 'bl_' + id; // wrap zones come from the Blender parts' own names (_wzA / _wzB / _wzN), not the code model's rule
     bindAuthored(g, mt); // needle, vents, barrels + the pump / cylinder / hammer / bolt that the viewmodel moves
     applySkin(g, skin);
     return g;

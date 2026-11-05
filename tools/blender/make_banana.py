@@ -104,10 +104,11 @@ def build():
     bpy.context.view_layer.objects.active = stc; stc.select_set(True)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     uv_planar(stc, (sp[0] - W(16.2), sp[1], sp[2]), (W(22), W(13)), '-x')
-    body = join(parts, 'banana_body')
+    WZ = {'bn_steel': 'a', 'bn_wood': 'a', 'bn_grip': 'a', 'bn_dark': 'b', 'bn_peel': 'b', 'bn_brown': 'b', 'bn_stem': 'b'}  # wrap zones (wrapzones.js): a = handle side, b = business end, everything else keeps its look
+    bodies = zone_join(parts, 'banana_body', WZ, default='n', rule=None)
     meta = {'kind': 'weapon', 'id': 'banana', 'paint': ['bn_peel'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(SIGHT_H), 'z': Z(272)},
             'hatAt': [[0, Y(23), Z(420)], 0.1]}
-    return finish('w_banana', [body], meta)
+    return finish('w_banana', bodies + [], meta)
 
 
 main(build, 'w_banana')

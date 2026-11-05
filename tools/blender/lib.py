@@ -682,3 +682,24 @@ def px_disc(px, cx, cy, r, color, r_in=0.0, a0=None, a1=None):
         ang = np.arctan2(dx, -dy)  # 0 at the top, + clockwise
         mask &= (ang >= a0) & (ang <= a1)
     px[mask] = hexrgb(color)
+
+
+def centre(o):
+    """bounding-box centre of an object in game coordinates"""
+    pts = [o.matrix_world @ Vector(c) for c in o.bound_box]
+    c = sum(pts, Vector()) / 8
+    return (c.x, c.z, -c.y)
+
+
+def zone_join(parts, name, zones, default='b', rule=None):
+    """join parts into one node per wrap zone (public/js/wrapzones.js reads the name suffix): <name>_wzA = the handle
+    side (grip, stock, body, furniture), _wzB = the business end (barrel, slide, mag, metal bits), _wzN = decals and
+    trims that keep their own look unless the wrap is FULL, _wzAB = both. zones = {material name: 'a'|'b'|'n'|'ab'},
+    rule(material name, game centre) can override it per part (return None to use the table)."""
+    groups = {}
+    for p in parts:
+        apply_mods(p)
+        mn = p.data.materials[0].name if len(p.data.materials) else ''
+        z = (rule(mn, centre(p)) if rule else None) or zones.get(mn, default)
+        groups.setdefault(z.upper(), []).append(p)
+    return [join(objs, f'{name}_wz{k}') for k, objs in sorted(groups.items())]

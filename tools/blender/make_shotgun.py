@@ -87,11 +87,12 @@ def build():
 
     for p in parts + pump:
         uv_box(p, 0.03)
-    body = join(parts, 'sg_body')
-    pnode = part(pump, 'pump', pivot=(0, Y(-24), Z((pd0 + pd1) / 2)))
+    WZ = {'sg_walnut': 'a', 'sg_forend': 'a', 'sg_rubber': 'a', 'sg_blued': 'b', 'sg_dark': 'b', 'sg_black': 'b'}  # wrap zones (wrapzones.js): a = handle side, b = business end, everything else keeps its look
+    bodies = zone_join(parts, 'sg_body', WZ, default='n', rule=None)
+    pnode = part(pump, 'pump_wzA', pivot=(0, Y(-24), Z((pd0 + pd1) / 2)))
     meta = {'kind': 'weapon', 'id': 'shotgun', 'paint': ['sg_walnut', 'sg_forend'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(21), 'z': Z(560) - 0.11},
-            'hatAt': [[0, Y(15), Z(580)], 0.11], 'pump': {'node': 'pump', 'travel': W(95)}}
-    return finish('w_shotgun', [body, pnode], meta)
+            'hatAt': [[0, Y(15), Z(580)], 0.11], 'pump': {'node': 'pump_wzA', 'travel': W(95)}}
+    return finish('w_shotgun', bodies + [pnode], meta)
 
 
 main(build, 'w_shotgun')

@@ -116,9 +116,10 @@ def build():
     for p in parts: uv_box(p, 0.08)
     for o, sz in decals:
         apply_mods(o); c = o.matrix_world.translation; uv_planar(o, (c.x, c.z, -c.y), sz, '-x')
-    body = join(parts, 'bowling_body')
+    WZ = {'bw_pvc': 'a', 'bw_cap': 'a', 'bw_coupling': 'b', 'bw_tank': 'b', 'bw_valve': 'b', 'bw_black': 'b', 'bw_grip': 'b', 'bw_ball': 'b'}  # wrap zones (wrapzones.js): a = handle side, b = business end, everything else keeps its look
+    bodies = zone_join(parts, 'bowling_body', WZ, default='n', rule=None)
     meta = {'kind': 'weapon', 'id': 'bowling', 'paint': ['bw_coupling', 'bw_ball'], 'muzzle': [0, 0, -0.6], 'hatAt': [[0, 0.157, -0.12], 0.15]}
-    return finish('w_bowling', [body], meta)
+    return finish('w_bowling', bodies + [], meta)
 
 
 main(build, 'w_bowling')

@@ -94,9 +94,10 @@ def build():
         if p.data.materials and p.data.materials[0] in (band, warn_t):
             apply_mods(p); c = p.matrix_world.translation
             uv_planar(p, (c.x, c.z, -c.y), (W(58), W(26)) if p.data.materials[0] is band else (W(72), W(22)), '-x')
-    body = join(parts, 'chicken_body')
+    WZ = {'ck_tube': 'a', 'ck_rubber': 'b', 'ck_steel': 'b', 'ck_dark': 'b', 'ck_chicken': 'b', 'ck_beak': 'b', 'ck_comb': 'b'}  # wrap zones (wrapzones.js): a = handle side, b = business end, everything else keeps its look
+    bodies = zone_join(parts, 'chicken_body', WZ, default='n', rule=None)
     meta = {'kind': 'weapon', 'id': 'chicken', 'paint': ['ck_chicken'], 'muzzle': [0, 0, -0.62], 'hatAt': [[0, Y(60), Z(-114)], 0.09]}
-    return finish('w_chicken', [body], meta)
+    return finish('w_chicken', bodies + [], meta)
 
 
 main(build, 'w_chicken')

@@ -1371,7 +1371,7 @@ export function updateWeapons(dt, now) {
   if (W.inspectSpin > 0) { W.inspectSpin = Math.max(0, W.inspectSpin - dt * 0.8); if (m.g.userData.barrels) m.g.userData.barrels.rotation.z += W.inspectSpin * dt * 30; }
   m.wrap.scale.setScalar(scale);
   if (m.g.userData.barrels) m.g.userData.barrels.rotation.z += W.spin * dt * 40;
-  stepParts(m.g, dt, an, at); // Blender guns: rack the pump, settle the cylinder + hammer
+  stepParts(m.g, dt, an, at); // Blender guns: rack the pump, settle the cylinder + hammer, cycle the bolt
   if (blowing || (spinning && W.spin >= 1 && W.held)) { px += (Math.random() - 0.5) * 0.008; py += (Math.random() - 0.5) * 0.008; }
   if (id === 'shredder') shredderVM(m, dt, now, (a, b, c, d, e, f) => { px += a; py += b; pz += c; rx += d; ry += e; rz += f; });
   m.wrap.visible = !(id === 'slipper' && W.slipperOut) && !W.scoped && !ME.dashing;

@@ -96,9 +96,10 @@ def build():
     bpy.context.view_layer.objects.active = plq_o; plq_o.select_set(True)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     uv_planar(plq_o, (-W(15.4), Y(-92), Z(398)), (W(33), W(22)), '-x')
-    body = join(parts, 'marbles_body')
+    WZ = {'mb_walnut': 'a', 'mb_ramrod': 'a', 'mb_brass': 'b', 'mb_steel': 'b', 'mb_dark': 'b', 'mb_black': 'b', 'mb_zinc': 'b'}  # wrap zones (wrapzones.js): a = handle side, b = business end, everything else keeps its look
+    bodies = zone_join(parts, 'marbles_body', WZ, default='n', rule=None)
     meta = {'kind': 'weapon', 'id': 'marbles', 'paint': ['mb_jar'], 'muzzle': [0, BORE_Y, MUZ_Z], 'hatAt': [[0, Y(141), Z(JAR_D)], 0.07]}
-    return finish('w_marbles', [body], meta)
+    return finish('w_marbles', bodies + [], meta)
 
 
 main(build, 'w_marbles')

@@ -113,11 +113,12 @@ def build():
 
     for p in parts + needle: uv_box(p, 0.03)
     apply_mods(fc); uv_planar(fc, (DIAL[0], DIAL[1], DIAL[2]), W(51), '-x')
-    body = join(parts, 'redline_body')
-    nd = part(needle, 'needle', pivot=DIAL)
+    WZ = {'rl_steel': 'a', 'rl_grip': 'a', 'rl_dark': 'a', 'redline_vents': 'b'}  # wrap zones (wrapzones.js): a = handle side, b = business end, everything else keeps its look
+    bodies = zone_join(parts, 'redline_body', WZ, default='n', rule=lambda m, c: 'b' if (m in ('rl_steel', 'rl_dark', 'rl_red') and c[2] < Z(276)) or (m == 'rl_dark' and c[1] < Y(-60)) else None)  # jacket, sights, racing stripe + mag
+    nd = part(needle, 'needle_wzN', pivot=DIAL)
     meta = {'kind': 'weapon', 'id': 'redline', 'paint': ['rl_red'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(SIGHT_H), 'z': Z(310)},
-            'hatAt': [[0, Y(24), Z(440)], 0.1], 'needle': 'needle', 'vents': 'redline_vents'}
-    return finish('w_redline', [body, nd], meta)
+            'hatAt': [[0, Y(24), Z(440)], 0.1], 'needle': 'needle_wzN', 'vents': 'redline_vents'}
+    return finish('w_redline', bodies + [nd], meta)
 
 
 main(build, 'w_redline')

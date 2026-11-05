@@ -29,8 +29,11 @@ queued requests live in `HANDOFF.md` on the `claude/handoff` branch (`git show o
 - **Palette:** hot pink/magenta (`#ff4fd8`, `#ff00dc`), yellow (`#ffe14d`), cyan (`#4fd8ff`), toxic green (`#39ff14`,
   `#7dff4f`), red (`#ff3030`) on near-black. Each weapon has its own colour in `shared/weapons.js`, used for its icon, kill-feed
   tag and tracer.
-- **3D look:** chunky low-poly built from boxes, lathes and simple shapes. Blender-made `.glb` models are allowed for weapons and
-  props (`tools/blender/`, visual only: collisions stay boxes) if they keep this same chunky look. Characters are mannequins with
+- **3D look:** chunky low-poly built from boxes, lathes and simple shapes. Blender-made weapons and props (`tools/blender/`,
+  `.glb` in `public/models/`, visual only: collisions stay boxes) use the glossy bevelled look: real-reference proportions,
+  candy/clear-coat paint, chrome and brass, small crusty textures (the owner's pick, 2026-11-05). Each one keeps the code
+  model's muzzle/grip/sight spots, tags its wrap zones in its part names (`_wzA` / `_wzB` / `_wzN`) and falls back to the
+  code model if the file is missing. Characters are mannequins with
   built-in jank (random tilt, a wrong knee); other players get outlines. Maps are big readable blocks with scenery around them
   (never floating in a void), and sky, fog and lighting are tuned per map.
 - **Writing voice:** short, lowercase-ish, deadpan and cheeky. Item descriptions are one or two plain sentences with a joke
