@@ -82,6 +82,16 @@ export const WEAPONS = {
     fuel: 4, regen: 1, coolTo: 0.35, speedMul: 0.92,
   },
 
+  // hold to charge (charge s for a full one, you walk at slow x speed), let go: a beam down where you look for dur s
+  // (it follows your aim) that goes through everyone in it. [a, b] pairs run from a tap (charge <= tap s) to a full charge.
+  // the server times the charge itself (from the 'ch' you sent when you pressed) and does every hit
+  laser: {
+    slot: 'primary', kind: 'beam', name: 'Big Laser Pointer', color: '#39ff14',
+    desc: 'An office laser pointer the size of a leg. Hold to charge it up (you walk slower), let go for a fat beam that goes through everyone in a line. Tap it for a little zap. Do not point at aircraft.',
+    charge: 1.2, tap: 0.3, cd: 0.45, range: 120, tick: 0.1, dur: [0.16, 0.62], r: [0.22, 0.7], dmg: [5, 21], kb: [1.5, 7], kbUp: 1.5,
+    slow: 0.72, speedMul: 0.97, tracer: 0x39ff14,
+  },
+
   // ------------------------------------------------------------ secondary
   revolver: {
     slot: 'secondary', kind: 'hitscan', name: 'Revolver', color: '#e0c070',
@@ -149,6 +159,7 @@ export const WEAPONS = {
   },
   // thrown items (not in a weapon slot; the item slot fires these)
   frag: { slot: 'hidden', kind: 'proj', name: 'Frag Grenade', color: '#7a8a3a', speed: 24, grav: 22, r: 0.15, bounce: 0.42, fuse: 2.2, radius: 7.5, dmg: 105, kb: 34, life: 6 },
+  calc: { slot: 'hidden', kind: 'proj', name: 'Pop Quiz', color: '#7fffd4', speed: 30, grav: 16, r: 0.22, bounce: 0.35, life: 3.5 }, // pop quiz: the thrown calculator
   smokegren: { slot: 'hidden', kind: 'proj', name: 'Smoke Bomb', color: '#9aa0a8', speed: 22, grav: 22, r: 0.15, bounce: 0.35, fuse: 1.3, life: 5 },
 
   // bubble wand soap bubbles: they fly the exact path in shared/wand.js (kind 'soap', so nothing can 'fire' them)
@@ -256,7 +267,7 @@ export const ITEMS = {
   // safeK x how long they were in if that's longer (two wands can't chain someone)
   wand: { name: 'Bubble Wand', desc: 'Blow a stream of soap bubbles. An enemy one touches is sealed in a giant bubble that floats up and away for 5s (no moving, no shooting), then pops and drops them. Over the void, that is your kill. Any hit pops it early.', charges: 2, recharge: 15, color: '#9fe8ff', bubbles: 4, gap: 90, dur: 5, rise: 2, drift: 1.5, safe: 1.5, safeK: 0.6 },
 };
-export const ITEM_ORDER = ['frag', 'medkit', 'bubble', 'duck', 'smoke', 'popper', 'reverse', 'wand'];
+export const ITEM_ORDER = ['frag', 'medkit', 'bubble', 'duck', 'smoke', 'popper', 'reverse', 'wand', 'camera', 'quiz', 'nvg'];
 
 // a real key of the table (client data: no '__proto__', no arrays)
 const has = (T, k) => typeof k === 'string' && Object.hasOwn(T, k);
@@ -343,3 +354,28 @@ export function slamSize(h) {
   const at = (a) => a[0] + (a[1] - a[0]) * k;
   return { k, dmg: at(WRECK.slamDmg), r: at(WRECK.slamR), kb: at(WRECK.slamKb), up: at(WRECK.slamUp) };
 }
+
+// ------------------------------------------------------------ new gear: instant camera, pop quiz, night vision goggles
+// (the Big Laser Pointer is up with the primaries). the server's half is server/gear.js
+FLAGS.NV = 8192; // night vision goggles on: everyone sees them on your face, lenses glowing
+FLAGS.CHARGE = 16384; // charging the Big Laser Pointer: everyone sees the tip glow and hears the whine
+// kill-feed tags (not guns): telefrags + frames, and failed quizzes
+WEAPONS.camera = { slot: null, kind: 'photo', name: 'Instant Camera', color: '#c9a7ff' };
+WEAPONS.quiz = { slot: null, kind: 'quiz', name: 'Pop Quiz', color: '#7fffd4' };
+WEAPONS.nvg = { slot: null, kind: 'flash', name: 'Night Vision Goggles', color: '#3dff8a' };
+// G: the first press snaps a photo (the server keeps where you stood + which way you faced), the next press prints it:
+// a frame stands up `at` m in front of you for `life` s. walk into it (anyone can) and you come out where the photo was
+// taken, facing the same way. w x h = the frame's opening, cd = s before the same person can use a frame again,
+// frag = m: whoever is standing on the spot when you arrive gets telefragged
+export const PHOTO = { at: 1.7, life: 20, w: 1.3, h: 2.1, depth: 0.55, cd: 1.6, frag: 0.9, drop: 3, res: [256, 192] };
+ITEMS.camera = { name: 'Instant Camera', desc: 'G snaps a photo of what\'s in front of you. G again prints it as a frame you can walk into: it puts you back where you took it. Anyone can walk through, so photograph somewhere nasty.', charges: 1, recharge: 25, color: '#c9a7ff' };
+// a hit freezes them with a maths question for `time` s (4 answers, keys 1-4). wrong or too slow: dead (your kill).
+// right: +heal HP, nothing hurts them for `invuln` s and they run `fast` x speed for `fastT` s. `safe` s after a quiz
+// before the same person can get another one. bots get it right `bot[diff]` of the time, after `botT` s
+export const QUIZ = { time: 6, invuln: 2.5, heal: 25, fast: 1.25, fastT: 4, safe: 10, bot: { easy: 0.5, normal: 0.7, hard: 0.85 }, botT: [1.3, 4.2] };
+ITEMS.quiz = { name: 'Pop Quiz', desc: 'A calculator you throw. Whoever it hits freezes and gets a maths question: wrong or too slow and they die, right and they get a gold star, some HP and a few seconds nothing can hurt them.', charges: 1, recharge: 22, color: '#7fffd4', proj: 'calc' };
+// G puts them on / takes them off (free). while they're on, H (FLASH) spends a charge: everyone you can see within range m
+// and cone rad of your crosshair is blinded for dur[0] (looking away) .. dur[1] s (looking at you). wearing goggles
+// yourself makes any flash last nvMul x longer
+export const NVG = { range: 34, cone: 0.62, dur: [0.6, 3.2], nvMul: 2, toggle: 0.35 };
+ITEMS.nvg = { name: 'Night Vision Goggles', desc: 'G puts them on: the dark goes green and people glow. While they\'re on, H flashes everyone you can see. Flashes blind you twice as long while you wear them.', charges: 2, recharge: 14, color: '#3dff8a' };
