@@ -167,8 +167,8 @@ function waterTower(L, x, z, y) {
 }
 function billboard(L, x, z, y, along = 'x') {
   const w = 12;
-  if (along === 'x') { L.B(x - 4, y + 3, z, 0.4, 6, 0.4, 'metal'); L.B(x + 4, y + 3, z, 0.4, 6, 0.4, 'metal'); L.B(x, y + 7.5, z, w, 5, 0.4, 'billboard', { fit: 1 }); L.B(x, y + 4.9, z - 0.6, w, 0.2, 1.0, 'grid'); }
-  else { L.B(x, y + 3, z - 4, 0.4, 6, 0.4, 'metal'); L.B(x, y + 3, z + 4, 0.4, 6, 0.4, 'metal'); L.B(x, y + 7.5, z, 0.4, 5, w, 'billboard', { fit: 1 }); L.B(x - 0.6, y + 4.9, z, 1.0, 0.2, w, 'grid'); }
+  if (along === 'x') { L.B(x - 4, y + 3, z, 0.3, 6, 0.3, 'metal'); L.B(x + 4, y + 3, z, 0.3, 6, 0.3, 'metal'); L.B(x, y + 7.5, z, w, 5, 0.4, 'billboard', { fit: 1 }); L.B(x, y + 4.9, z - 0.6, w, 0.2, 1.0, 'grid'); }
+  else { L.B(x, y + 3, z - 4, 0.3, 6, 0.3, 'metal'); L.B(x, y + 3, z + 4, 0.3, 6, 0.3, 'metal'); L.B(x, y + 7.5, z, 0.4, 5, w, 'billboard', { fit: 1 }); L.B(x - 0.6, y + 4.9, z, 1.0, 0.2, w, 'grid'); }
 }
 
 // a skyscraper: tiers with setbacks, cornices, parapets and roof stuff. returns roof top height
@@ -275,7 +275,7 @@ function streetLevel(D, y, towers, roads, S, r) {
       box(0.02, 7.2, -2.5, 0.2, 7.4, 2.5, pick(strip));
     }
     // a vertical neon sign up the corner of some towers
-    if (r() < 0.6) D.add(t.x + t.w / 2, y + 8, t.z - t.d / 2 - 0.3, t.x + t.w / 2 + 0.3, y + 30, t.z - t.d / 2 + 2.4, pick(strip));
+    if (r() < 0.6) D.add(t.x + t.w / 2, y + 9, t.z - t.d / 2 - 0.3, t.x + t.w / 2 + 0.3, y + 30, t.z - t.d / 2 + 2.4, pick(strip));
   }
   // pocket parks in some of the leftover corners, and cables strung across the streets with ads hanging off them
   for (const x of roads.xs) for (const z of roads.zs) if (r() < 0.5) {
@@ -671,7 +671,7 @@ function suburb() {
 // catwalks round the walls. outside: a chain-link fence round a big yard (containers, trailers, trucks, a parking lot,
 // a smaller shed, a water tower); go over the fence and you get the RETURN TO THE MAP countdown
 function rack(B, x0, z, len, r) { // blue racking with orange beams, three decks you can climb, boxes on every level
-  for (let x = x0; x <= x0 + len + 0.01; x += 3) for (const pz of [z - 1.2, z + 1]) B.add(x - 0.1, 0, pz, x + 0.1, 7.3, pz + 0.2, 'shelf');
+  for (let x = x0; x <= x0 + len + 0.01; x += 3) for (const pz of [z - 1.3, z + 1.1]) B.add(x - 0.1, 0, pz, x + 0.1, 7.3, pz + 0.2, 'shelf'); // posts stand proud of the beams (no faces in one plane)
   for (const lvl of [0, 2.4, 4.8]) {
     B.add(x0, lvl + 2, z - 1.2, x0 + len, lvl + 2.25, z + 1.2, 'pallet');
     B.add(x0, lvl + 1.75, z - 1.25, x0 + len, lvl + 2, z - 1.2, 'toyorange'); B.add(x0, lvl + 1.75, z + 1.2, x0 + len, lvl + 2, z + 1.25, 'toyorange');
@@ -693,14 +693,14 @@ function forklift(B, x, z, rot, lift = 0) {
   for (const pz of [-0.5, 0.36]) L(-1.12, 0.1, pz, -0.98, 2.9, pz + 0.14, 'metal'); // mast
   for (const pz of [-0.42, 0.24]) L(-2.25, 0.15 + lift, pz, -1.12, 0.25 + lift, pz + 0.18, 'metal'); // forks
   if (lift) { L(-2.3, 0.25 + lift, -0.55, -1.15, 0.4 + lift, 0.55, 'pallet'); L(-2.25, 0.4 + lift, -0.5, -1.2, 1.2 + lift, 0.5, 'cardboard'); }
-  for (const [px, pz] of [[-0.6, -0.7], [-0.6, 0.5], [0.8, -0.7], [0.8, 0.5]]) L(px - 0.3, 0, pz, px + 0.3, 0.6, pz + 0.2, 'tire');
+  for (const [px, pz] of [[-0.55, -0.72], [-0.55, 0.52], [0.8, -0.72], [0.8, 0.52]]) L(px - 0.3, 0, pz, px + 0.3, 0.6, pz + 0.2, 'tire');
 }
 function trailer(B, x0, z0, livery) { // a semi trailer along x on its landing legs (no cab)
   const z1 = z0 + 2.6;
   B.add(x0, 1.3, z0, x0 + 12.5, 4.1, z1, 'truckbox');
   B.add(x0 + 1, 1.5, z0 - 0.03, x0 + 11.5, 3.9, z0, livery, { fit: 1 }); B.add(x0 + 1, 1.5, z1, x0 + 11.5, 3.9, z1 + 0.03, livery, { fit: 1 });
   for (const wx of [x0 + 0.9, x0 + 2.1]) for (const [a, b] of [[z0 + 0.1, z0 + 0.5], [z1 - 0.5, z1 - 0.1]]) B.add(wx - 0.5, 0, a, wx + 0.5, 1.0, b, 'tire');
-  B.add(x0 + 0.4, 0.95, z0 + 0.3, x0 + 2.6, 1.3, z1 - 0.3, 'metal');
+  B.add(x0 + 0.45, 0.95, z0 + 0.3, x0 + 2.6, 1.3, z1 - 0.3, 'metal');
   for (const pz of [z0 + 0.3, z1 - 0.5]) B.add(x0 + 9.4, 0, pz, x0 + 9.6, 1.3, pz + 0.2, 'metal');
 }
 
@@ -721,7 +721,7 @@ function warehouse() {
   add(-X, -1, 30, X, 0, Z, 'concrete');
   add(-X, -1, 18, -4, 0, 30, 'concrete'); add(4, -1, 18, X, 0, 30, 'concrete');
   for (const [x0, z0, x1, z1] of pits) {
-    add(x0, -0.4, z0 - 0.3, x1, 0.6, z0, 'hazard'); add(x0, -0.4, z1, x1, 0.6, z1 + 0.3, 'hazard');
+    add(x0, 0, z0 - 0.3, x1, 0.6, z0, 'hazard'); add(x0, 0, z1, x1, 0.6, z1 + 0.3, 'hazard');
     // the shaft: walls going down into the dark, a sign, and teeth at the bottom (you never get that far)
     add(x0 - 0.3, -24, z0 - 0.3, x0, -1, z1 + 0.3, 'rust'); add(x1, -24, z0 - 0.3, x1 + 0.3, -1, z1 + 0.3, 'rust');
     add(x0, -24, z0 - 0.3, x1, -1, z0, 'rust'); add(x0, -24, z1, x1, -1, z1 + 0.3, 'rust');
@@ -852,7 +852,7 @@ function desert() {
   const S = 100;
   B.add(-S, -2, -S, -7, 0, S, 'sand'); B.add(7, -2, -S, S, 0, S, 'sand');
   B.add(-S + 10, -10, -S + 10, -9, -2, S - 10, 'dirt'); B.add(9, -10, -S + 10, S - 10, -2, S - 10, 'dirt');
-  for (const z of [-55, 0, 55]) { B.box(0, -0.25, z, 14.2, 0.5, 4.5, 'wood'); B.add(-7.1, 0, z - 2.25, 7.1, 1, z - 2.05, 'wood'); B.add(-7.1, 0, z + 2.05, 7.1, 1, z + 2.25, 'wood'); }
+  for (const z of [-55, 0, 55]) { B.box(0, -0.25, z, 14, 0.5, 4.5, 'wood'); B.add(-7.1, 0, z - 2.25, 7.1, 1, z - 2.05, 'wood'); B.add(-7.1, 0, z + 2.05, 7.1, 1, z + 2.25, 'wood'); }
   // town walls
   for (const s of [-1, 1]) { B.add(-S, 0, s * S - 0.6, S, 9, s * S + 0.6, 'adobe'); B.add(s * S - 0.6, 0, -S, s * S + 0.6, 9, S, 'adobe'); }
   const spawns = [];
