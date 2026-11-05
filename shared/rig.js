@@ -27,6 +27,10 @@ export const RIG = {
 // every bit the rig sets in your snapshot FLAGS (the server clears them all unless it saw you activate the rig)
 export const RIG_BITS = FLAGS.RIG | FLAGS.RIG_BLOCK | FLAGS.RIG_CHARGE | FLAGS.RIG_LEAP;
 
+// streaks you can't start in the rig (they'd fight it for your body: the rig has its own movement), and the rig can't
+// start inside a wrecking ball. a clash leaves the streak in your tray
+const BODY = new Set(['moonboots', 'spinbot', 'wreckingball', 'overdrive']);
+export const rigClash = (id, inRig, inBall) => (inRig && BODY.has(id)) || (inBall && id === 'overdrive');
 const clamp01 = (k) => Math.max(0, Math.min(1, Number(k) || 0));
 export const lerpK = (a, k) => a[0] + (a[1] - a[0]) * clamp01(k);
 export const punchDmg = (c) => lerpK(RIG.punch.dmg, c);

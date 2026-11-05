@@ -3,10 +3,11 @@
 // slams, quickhacks (range, line of sight, cooldown), the homing missiles (server projectiles) and leap landings.
 // installRig(Room, helpers) adds these methods to Room; server.js calls them from one-line hooks.
 import { FLAGS, STREAKS } from '../shared/weapons.js';
-import { RIG, RIG_BITS, punchDmg, punchDist, dashDir, lerpK, inFront } from '../shared/rig.js';
+import { RIG, RIG_BITS, punchDmg, punchDist, dashDir, leapVel, lerpK, inFront } from '../shared/rig.js';
 import { raycast, stepProjectile, movePlayer } from '../shared/physics.js';
 
 const P = RIG.punch, M = RIG.miss, L = RIG.leap, H = RIG.hack;
+const look = (p) => { const c = Math.cos(p.pitch || 0); return [-Math.sin(p.yaw) * c, Math.sin(p.pitch || 0), -Math.cos(p.yaw) * c]; };
 const chest = (p) => [p.pos[0], p.pos[1] + 1.35, p.pos[2]];
 const head = (p) => [p.pos[0], p.pos[1] + 2.4, p.pos[2]];
 // shortest distance from point c to the segment a-b
@@ -29,7 +30,8 @@ function turnToward(a, b, max) {
 }
 
 export function installRig(Room, U) {
-  const { now, num, vec3, norm, r2, center, safe, REC_T } = U;
+  const { now, num, vec3, norm, r2, center, safe, REC_T, WEAPONS } = U;
+  const WEAPONS_kind = (t) => (WEAPONS[t.w] || {}).kind;
   REC_T.add('rig'); // punches, hacks, missiles and landings show up in the play of the round
 
   Object.assign(Room.prototype, {
@@ -315,6 +317,84 @@ export function installRig(Room, U) {
         const f = 1 - d / r, hl = Math.hypot(to[0], to[2]), out = hl > 0.2 ? [to[0] / hl, to[2] / hl] : [0, 0], k = L.kb * (0.4 + 0.6 * f);
         this.hurt(t, p, 'rigquake', L.dmg * (0.35 + 0.65 * f), [out[0] * k, 7 + 6 * f, out[1] * k]);
       }
+    },
+
+    // ------------------------------------------------------------ bots
+    // a bot that gets the streak suits up a beat later (bots have no tray: they use it right away)
+    rigBotEarn(b) {
+      if (b.rig || this.isBall(b)) return;
+      setTimeout(safe('botrig', () => {
+        if (this.players.get(b.id) !== b || !b.alive || b.rig || this.isBall(b) || (this.round && this.round.over)) return;
+        this.rigStart(b);
+        this.broadcast({ t: 'chat', id: 0, m: `${b.name} is in the OVERDRIVE RIG` });
+      }), 700);
+    },
+    // a bot in the rig: its own heavy movement (like a player's in public/js/rig.js), and a little plan. up close it
+    // charges a punch sized to the gap and throws it; further out it walks in behind its block and fires missiles; it
+    // fries the rope of anyone grappling; it leaps at far targets. every hit goes through the same checks as a player's
+    rigBotStep(b, think, dt, n) {
+      const R = b.rig, v = b.vel, ai = b.ai, D = RIG, B = R.bai || (R.bai = { mode: '', t0: 0, c: 0, lost: 0, blockT: 0 });
+      b.g = null; ai.hook = null;
+      let t = this.players.get(ai.target);
+      if (t && (!t.alive || this.friendly(b, t))) t = null;
+      const e = head(b), tc = t ? center(t) : null, dv = t ? [tc[0] - e[0], tc[1] - e[1], tc[2] - e[2]] : null;
+      const dist = t ? Math.hypot(dv[0], dv[1], dv[2]) : 1e9, vis = !!(t && ai.seenAt);
+      let ang = t ? Math.abs(Math.atan2(-dv[0], -dv[2]) - b.yaw) % (Math.PI * 2) : 9;
+      if (ang > Math.PI) ang = Math.PI * 2 - ang;
+      if (vis) B.lost = n;
+      // ---- decisions
+      if (B.mode === 'charge') {
+        R.ch.t1 = n;
+        const held = (n - B.t0) / (P.charge * 1000);
+        if (n - B.lost > 900) B.mode = ''; // lost them: put it down
+        else if (held >= B.c || (vis && dist < 3.4 && held > 0.12)) { this.rigPunch(b, { c: Math.min(1, held), d: look(b) }, n); B.mode = ''; if (R.dash) R.bdash = { dir: R.dash.dir, until: n + (R.dash.dist / P.speed) * 1000 }; }
+      } else if (B.mode === 'leap') {
+        R.lp.t1 = n;
+        const k = (n - B.t0) / (L.charge * 1000);
+        if (!b.onGround) B.mode = '';
+        else if (k >= B.c) {
+          const d = t ? [dv[0], Math.max(0.15, dv[1] / (dist || 1)), dv[2]] : look(b), lv = leapVel(Math.min(1, k), d);
+          v[0] = lv[0]; v[1] = lv[1]; v[2] = lv[2]; b.onGround = false; b.pos[1] += 0.02;
+          this.rigLeap(b, { c: Math.min(1, k) }, n);
+          R.botLeap = true; B.mode = '';
+        }
+      } else if (!R.bdash) {
+        const easy = ai.diff === 'easy' ? 0.5 : 1;
+        if (vis && dist < 15 && ang < 0.35 && n - R.punchT > P.cd * 1000 + 250) { // wind up a punch sized to the gap (blocking stored some already)
+          B.mode = 'charge'; B.t0 = n - R.store * P.charge * 1000; B.c = Math.max(0.15, Math.min(1, (dist - 3) / 11 + Math.random() * 0.15)); R.ch.t0 = n; R.ch.t1 = n;
+        } else if (vis && dist < H.range && n - R.hackT > H.cd * 1000 && ang < 0.5 && (t.g || Math.random() < dt * 0.35)) this.rigHack(b, { to: t.id }, n); // grappling? not any more (and now and then, so they can't)
+        else if (vis && dist > 12 && dist < M.seek && n - R.missT > M.cd * 1000 && Math.random() < dt * 2 * easy) this.rigMissiles(b, { d: look(b) }, n);
+        else if (b.onGround && t && dist > 20 && n - R.leapT > 2500 && Math.random() < dt * 0.9 * easy) { B.mode = 'leap'; B.t0 = n; B.c = 0.6 + Math.random() * 0.4; R.lp.t0 = n; R.lp.t1 = n; }
+      }
+      // walking in on someone with a gun: guard up (it soaks their shots and charges the next punch)
+      const block = B.mode === '' && !R.bdash && vis && dist > 14 && dist < 60 && (WEAPONS_kind(t) !== 'melee');
+      // ---- movement
+      if (R.bdash) {
+        const d = R.bdash.dir;
+        if (n < R.bdash.until) { v[0] = d[0] * P.speed; v[1] = d[1] * P.speed; v[2] = d[2] * P.speed; }
+        else { R.bdash = null; v[0] *= 0.28; v[2] *= 0.28; v[1] = Math.min(v[1], 2); }
+      } else {
+        const wl = Math.hypot(think.wx, think.wz), wx = wl ? think.wx / wl : 0, wz = wl ? think.wz / wl : 0;
+        let top = D.speed * Math.min(1, wl) * (block ? D.block.slow : 1) * (B.mode === 'charge' ? 0.75 : 1) * (B.mode === 'leap' ? 0.3 : 1);
+        if (b.onGround) {
+          const hs = Math.hypot(v[0], v[2]);
+          if (hs > 0) { const ns = Math.max(0, hs - Math.max(hs, 3) * D.fric * (wl ? 0.45 : 1) * dt) / hs; v[0] *= ns; v[2] *= ns; }
+          if (wl) { const cur = v[0] * wx + v[2] * wz, add = top - cur; if (add > 0) { const a = Math.min(add, D.accel * top * dt); v[0] += a * wx; v[2] += a * wz; } }
+          if (think.jump && B.mode === '' && Math.random() < 0.3) { v[1] = D.hop; b.onGround = false; }
+        } else if (wl) { const cur = v[0] * wx + v[2] * wz, add = D.airCap - cur; if (add > 0) { const a = Math.min(add, D.airAccel * dt); v[0] += a * wx; v[2] += a * wz; } }
+      }
+      if (!R.bdash) v[1] -= D.grav * dt;
+      const was = b.onGround;
+      const res = movePlayer(b.pos, v, dt, this.boxes, was);
+      b.onGround = !!res.ground && v[1] <= 0.01;
+      if (res.wall && R.bdash) { R.bdash = null; v[0] *= 0.28; v[2] *= 0.28; }
+      if (b.onGround && res.ground.pad) { const pd = res.ground.pad; v[0] += pd[0]; v[1] = pd[1]; v[2] += pd[2]; b.onGround = false; }
+      if (R.leap && !R.leap.landed) R.leap.top = Math.max(R.leap.top, b.pos[1]);
+      if (b.onGround && !was && R.botLeap) { R.botLeap = false; this.rigLand(b, { p: b.pos.slice() }, n); }
+      if (b.onGround) b.ground = b.pos.slice();
+      b.f = FLAGS.RIG | (block ? FLAGS.RIG_BLOCK : 0) | (B.mode === 'charge' ? FLAGS.RIG_CHARGE : 0) | (B.mode === 'leap' ? FLAGS.RIG_LEAP : 0);
+      if (block) R.blockT = n;
+      if (b.pos[1] < this.map.killY) this.kill(b, null, 'void');
     },
 
     // ------------------------------------------------------------ every tick

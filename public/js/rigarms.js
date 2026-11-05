@@ -20,6 +20,8 @@ function shiny(color) {
   if (!mats.has(k)) mats.set(k, jankify(new THREE.MeshPhongMaterial({ color, specular: 0xe8f0ff, shininess: 80, flatShading: true, emissive: new THREE.Color(color).multiplyScalar(0.08) })));
   return mats.get(k);
 }
+let accent = null;
+function accentMat() { if (!accent) accent = jankify(new THREE.MeshLambertMaterial({ color: G.myColor || '#ff4fd8', flatShading: true, emissive: new THREE.Color(G.myColor || '#ff4fd8').multiplyScalar(0.25) })); return accent; }
 const basic = (color) => { const k = 'b' + color; if (!mats.has(k)) mats.set(k, new THREE.MeshBasicMaterial({ color })); return mats.get(k); };
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1);
 
@@ -43,32 +45,46 @@ function buildArm(s) {
     if (!by.has(mat)) by.set(mat, []);
     by.get(mat).push(g);
   };
-  // forearm: a tapered industrial ram that swells toward the fist, plated, ribbed, two neon strips
+  // forearm: a tapered industrial ram that swells toward the fist. from first person you see its top and inner side,
+  // so that's where the detail is: three overlapping armour plates (salvage, all different), rivet rows, hazard
+  // chevrons, a stripe in your colour, ribs, a neon strip down the inside
+  const ac = accentMat();
   put(root, taper(cbox(0.13, 0.14, 0.62, 0.025), 1.38, 1.32), lam(C.gun), 0, 0, -0.31);
-  if (big) put(root, cbox(0.165, 0.03, 0.4, 0.012), lam(C.ochre, 0.14), 0, 0.093, -0.38, [0.06, 0, 0]);
-  else put(root, cbox(0.165, 0.03, 0.22, 0.012), lam(C.rust, 0.14), 0, 0.098, -0.5, [0.06, 0, 0]);
+  const plates = big ? [[C.steel, -0.2, 0.16], [C.ochre, -0.36, 0.17], [C.rust, -0.52, 0.18]] : [[C.olive, -0.2, 0.16], [C.steel, -0.36, 0.17], [C.teal, -0.52, 0.18]];
+  plates.forEach(([c, z, w], i) => {
+    put(root, cbox(w, 0.03, 0.17, 0.012), lam(c, 0.14), 0, 0.083 + i * 0.006, z, [0.09, 0, 0]);
+    for (const x of [-1, 1]) put(root, new THREE.SphereGeometry(0.0075, 5, 3), shiny(C.chrome), x * (w / 2 - 0.016), 0.1 + i * 0.006, z + 0.06);
+  });
+  put(root, cbox(0.03, 0.005, 0.15, 0.002), ac, 0.045, 0.106, -0.36, [0.09, 0, 0]); // your colour
+  if (big) for (let i = 0; i < 4; i++) put(root, new THREE.BoxGeometry(0.014, 0.004, 0.034), lam(C.black, 0.02), -0.03, 0.105, -0.39 + i * 0.022, [0.09, 0.7, 0]); // hazard chevrons on the ochre plate
   put(root, cbox(0.03, 0.13, 0.42, 0.01), lam(big ? C.steel : C.olive), 0.098, 0, -0.36);
+  put(root, cbox(0.03, 0.1, 0.3, 0.01), lam(big ? C.rust : C.steel, 0.12), -0.085, -0.005, -0.42); // the inner side: the one you see
   put(root, new THREE.BoxGeometry(0.012, 0.012, 0.36), basic(NEON.mag), 0.116, 0.05, -0.36);
-  put(root, new THREE.BoxGeometry(0.01, 0.01, 0.34), basic(NEON.cyan), -0.075, -0.075, -0.38);
-  for (let i = 0; i < 3; i++) put(root, cbox(0.175 + i * 0.016, 0.175 + i * 0.016, 0.016, 0.006), lam(C.black, 0.02), 0, 0, -0.14 - i * 0.16);
-  put(root, cbox(0.1, 0.1, 0.06, 0.02), lam(C.black, 0.02), 0, 0, -0.63); // wrist joint
+  put(root, new THREE.BoxGeometry(0.008, 0.012, 0.3), basic(NEON.cyan), -0.102, 0.03, -0.42);
+  for (let i = 0; i < 3; i++) put(root, cbox(0.175 + i * 0.016, 0.175 + i * 0.016, 0.016, 0.006), lam(C.black, 0.02), 0, 0, -0.1 - i * 0.05);
+  put(root, cbox(0.12, 0.12, 0.07, 0.02), lam(C.black, 0.02), 0, 0, -0.63); // wrist joint
+  put(root, cylZ(0.05, 0.03, 10), shiny(C.chrome), 0, 0, -0.61); // wrist bearing
   // thrusters on the outer side, pointing back: they fire on the punch dash
   for (const z of [-0.1, -0.22]) put(root, cyl(0.022, 0.03, 0.05, 8).rotateX(Math.PI / 2 - 0.4), lam(C.gun), 0.11, -0.03, z);
-  if (big) for (let i = 0; i < 5; i++) put(root, new THREE.TorusGeometry(0.022, 0.007, 4, 8), lam(C.steel), -0.05 + i * 0.026, 0.084 - (i % 2) * 0.006, -0.5 - (i % 2) * 0.012, [i % 2 ? 0 : Math.PI / 2, 0.4, 0]);
-  else { // the hack deck: a little screen on top of the forearm that turns to you when you hack
-    put(root, cbox(0.13, 0.024, 0.16, 0.008), lam(C.black, 0.02), 0, 0.09, -0.3);
-    put(root, new THREE.BoxGeometry(0.012, 0.012, 0.16), basic(NEON.cyan), 0.07, 0.1, -0.3);
+  if (big) for (let i = 0; i < 5; i++) put(root, new THREE.TorusGeometry(0.022, 0.007, 4, 8), lam(C.steel), -0.05 + i * 0.026, 0.07 - (i % 2) * 0.006, -0.56 - (i % 2) * 0.012, [i % 2 ? 0 : Math.PI / 2, 0.4, 0]); // a chain wrapped round the wrist
+  else { // the hack deck: a screen on the inner side of the forearm, angled up at you
+    put(root, cbox(0.03, 0.12, 0.18, 0.01), lam(C.black, 0.02), -0.088, 0.03, -0.3, [0, 0, 0.5]);
+    put(root, new THREE.BoxGeometry(0.008, 0.012, 0.18), basic(NEON.cyan), -0.1, 0.095, -0.3);
   }
-  // fist: knuckle block, four fingers curled under, a thumb on the inside, a spiked knuckle plate that glows
-  put(fist, cbox(0.19, 0.13, 0.15, 0.02), lam(C.steel), 0, 0, -0.03);
+  // fist: big (comic proportions: the fists are the show), knuckle block, four chunky fingers curled under, a thumb
+  // over the inside, a knuckle plate in your colour with chrome studs and a glow strip
+  const F = 1.35;
+  put(fist, cbox(0.19 * F, 0.13 * F, 0.15 * F, 0.025), lam(C.steel), 0, 0, -0.03);
+  put(fist, cbox(0.17 * F, 0.02, 0.1 * F, 0.008), lam(C.gun), 0, 0.07 * F, -0.02); // back-of-hand plate
   for (let i = 0; i < 4; i++) {
-    const x = -0.068 + i * 0.045;
-    put(fist, cbox(0.04, 0.05, 0.055, 0.01), lam(C.gun), x, -0.035, -0.12, [-0.4, 0, 0]);
-    put(fist, cbox(0.04, 0.045, 0.045, 0.01), lam(C.gun), x, -0.075, -0.09, [-1.2, 0, 0]);
+    const x = (-0.068 + i * 0.045) * F;
+    put(fist, cbox(0.04 * F, 0.05 * F, 0.055 * F, 0.012), lam(C.gun), x, -0.035 * F, -0.12 * F, [-0.4, 0, 0]);
+    put(fist, cbox(0.04 * F, 0.045 * F, 0.045 * F, 0.012), lam(C.gun), x, -0.075 * F, -0.09 * F, [-1.2, 0, 0]);
+    put(fist, new THREE.SphereGeometry(0.016 * F, 6, 4), lam(C.black, 0.02), x, -0.012 * F, -0.1 * F); // knuckle joints
   }
-  put(fist, cbox(0.05, 0.05, 0.08, 0.01), lam(C.gun), -0.105, -0.02, -0.07, [0, 0.4, 0.3]);
-  put(fist, cbox(0.2, 0.04, 0.06, 0.012), lam(big ? C.rust : C.olive, 0.14), 0, 0.03, -0.11, [-0.25, 0, 0]);
-  for (let i = 0; i < 4; i++) put(fist, new THREE.ConeGeometry(0.011, 0.035, 4).rotateX(-Math.PI / 2), shiny(C.chrome), -0.068 + i * 0.045, 0.03, -0.155);
+  put(fist, cbox(0.05 * F, 0.05 * F, 0.09 * F, 0.012), lam(C.gun), -0.105 * F, -0.02 * F, -0.07 * F, [0, 0.4, 0.3]);
+  put(fist, cbox(0.2 * F, 0.045 * F, 0.06 * F, 0.012), ac, 0, 0.03 * F, -0.11 * F, [-0.25, 0, 0]);
+  for (let i = 0; i < 4; i++) put(fist, new THREE.ConeGeometry(0.013 * F, 0.04 * F, 4).rotateX(-Math.PI / 2), shiny(C.chrome), (-0.068 + i * 0.045) * F, 0.03 * F, -0.155 * F);
   // bake: one mesh per material per group
   for (const { grp, by } of groups.values()) for (const [mat, list] of by) {
     const g = mergeGeometries(list, false);
@@ -77,10 +93,10 @@ function buildArm(s) {
   }
   // own (animated) bits: the glowing knuckle strip, its glow, the piston rod, the thruster flames, the deck screen
   const glow = new THREE.MeshBasicMaterial({ color: 0x4a0f3e });
-  const strip = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.012, 0.012), glow);
-  strip.position.set(0, 0.05, -0.135); strip.rotation.x = -0.25; fist.add(strip);
+  const strip = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.014, 0.014), glow);
+  strip.position.set(0, 0.072, -0.17); strip.rotation.x = -0.25; fist.add(strip);
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: NEON.mag, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 }));
-  sprite.position.set(0, 0.03, -0.17); sprite.scale.setScalar(0.001); fist.add(sprite);
+  sprite.position.set(0, 0.04, -0.23); sprite.scale.setScalar(0.001); fist.add(sprite);
   const body = new THREE.Mesh(cylZ(0.016, 0.3).translate(0, 0, -0.15), shiny(0x7f8892));
   body.position.set(-0.075 * s, 0.035, -0.04); root.add(body);
   const rod = new THREE.Mesh(cylZ(0.009, 0.3).translate(0, 0, -0.15), shiny(C.chrome));
@@ -94,8 +110,8 @@ function buildArm(s) {
   let screen = null;
   if (!big) {
     screen = new THREE.MeshBasicMaterial({ map: screenTex() });
-    const sc = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.08), screen);
-    sc.rotation.x = -Math.PI / 2; sc.position.set(0, 0.103, -0.3); root.add(sc);
+    const sc = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.1), screen);
+    sc.rotation.y = Math.PI / 2; sc.rotateX(-0.5); sc.position.set(0.106, 0.035, -0.3); root.add(sc); // (mirrored: on the inner side)
   }
   root.traverse((o) => { if (o.isMesh || o.isSprite) { o.frustumCulled = false; o.renderOrder = 2; } });
   root.scale.setScalar(SCALE);
@@ -105,7 +121,7 @@ function buildArm(s) {
 // ------------------------------------------------------------ the pair, and what they're doing
 let arms = null;
 // at rest the fists sit low left / right, knuckles forward, forearms running back out of the bottom corners
-const REST = { p: [0.44, -0.34, -0.12], r: [0.55, 0.38, 0.45] }, SCALE = 0.85;
+const REST = { p: [0.36, -0.33, -0.1], r: [0.26, 0.26, 0.14] }, SCALE = 0.78;
 const anims = [];
 let punchFrom = null, hidden = true, t0 = 0;
 export function armsReady() {
@@ -119,7 +135,7 @@ export function armsReady() {
 }
 export const armsObj = () => arms; // (pose sheets)
 export function playArms(name, k = 1) { if (ANIMS[name]) { anims.push({ name, t: 0, k }); if (name === 'rig_punch' && arms) punchFrom = arms.charge || null; } }
-export function armsOn() { if (!armsReady()) return; hidden = false; arms.grp.visible = true; anims.length = 0; playArms('rig_on'); }
+export function armsOn() { if (!armsReady()) return; if (accent) { accent.color.set(G.myColor || '#ff4fd8'); accent.emissive.set(G.myColor || '#ff4fd8').multiplyScalar(0.25); } hidden = false; arms.grp.visible = true; anims.length = 0; playArms('rig_on'); }
 export function armsOff() { if (!arms) return; anims.length = 0; playArms('rig_off'); hidden = true; }
 export function armsHide() { if (arms) { arms.grp.visible = false; anims.length = 0; hidden = true; } }
 // a heavy footstep: both arms dip, the one on that side a bit more
@@ -152,8 +168,12 @@ export function updateArms(dt, st, onEvent) {
   for (const A of [AR, AL]) {
     const s = A.s, isR = s > 0;
     // springs: the footstep dip and the blocked-hit kick
-    A.bobV += (-260 * A.bob - 20 * A.bobV) * dt; A.bob += A.bobV * dt;
-    A.kickV += (-300 * A.kick - 22 * A.kickV) * dt; A.kick += A.kickV * dt;
+    // (substepped: one big step on a slow frame would blow the springs up)
+    const ns = Math.min(40, Math.max(1, Math.ceil(dt * 240))), h = dt / ns;
+    for (let i = 0; i < ns; i++) {
+      A.bobV += (-260 * A.bob - 20 * A.bobV) * h; A.bob += A.bobV * h;
+      A.kickV += (-300 * A.kick - 22 * A.kickV) * h; A.kick += A.kickV * h;
+    }
     // servo twitch: every now and then a joint steps a hair and holds, like a cheap servo hunting
     A.twitchT -= dt;
     if (A.twitchT <= 0) { A.twitchT = 0.7 + Math.random() * 1.6; A.twitch = [R(0.008), R(0.006), R(0.03)]; }

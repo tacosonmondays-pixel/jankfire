@@ -11,8 +11,9 @@ import { PSys, scaleU } from './fx.js';
 
 // ------------------------------------------------------------ palette: salvage, all slightly different
 export const C = {
-  gun: 0x30363e, steel: 0x58616c, rust: 0x83391b, ochre: 0xa87c24, olive: 0x4a5234, teal: 0x27494d, cream: 0xa9a08a,
-  black: 0x131518, chrome: 0xb4bec8, brass: 0xa07e36, red: 0x7a1c16, hazard: 0xc89a1c,
+  // (punchy salvage: the game is bright and saturated, a muddy grey mech disappears against the maps)
+  gun: 0x3b4552, steel: 0x7d8a98, rust: 0xc0501f, ochre: 0xf0a81a, olive: 0x71843a, teal: 0x2a8088, cream: 0xe2d6b2,
+  black: 0x15171b, chrome: 0xc8d2dc, brass: 0xc79a3a, red: 0xb3231a, hazard: 0xffc81e,
 };
 export const NEON = { cyan: 0x2ef2ff, mag: 0xff2bd6, visor: 0xff1e1e };
 const mats = new Map();
@@ -159,8 +160,8 @@ function template() {
   put(torso, taper(cbox(1.06, 0.7, 0.7, 0.09), 0.9, 0.88), 'gun', 0, 0.6, 0);
   put(torso, cbox(0.92, 0.2, 0.26, 0.05), 'steel', 0, 0.88, -0.14, { r: [0.35, 0, 0] }); // the shelf the helmet sits in
   put(torso, cbox(0.48, 0.34, 0.08, 0.04), 'rust', -0.25, 0.64, -0.36, { r: [-0.1, 0.14, 0.05] }); // left breast plate, rusted through
-  put(torso, cbox(0.44, 0.32, 0.08, 0.04), 'steel', 0.25, 0.63, -0.36, { r: [-0.1, -0.16, -0.06] }); // right one, another salvage job
-  put(torso, cbox(0.1, 0.3, 0.02, 0.01), 'accent', 0.33, 0.63, -0.405, { r: [-0.1, -0.16, -0.06] }); // a stripe in your colour
+  put(torso, cbox(0.44, 0.32, 0.08, 0.04), 'accent', 0.25, 0.63, -0.36, { r: [-0.1, -0.16, -0.06] }); // right one, another salvage job
+  put(torso, cbox(0.1, 0.3, 0.02, 0.01), 'hazard', 0.33, 0.63, -0.405, { r: [-0.1, -0.16, -0.06] }); // a stripe in your colour
   put(torso, cbox(0.34, 0.32, 0.1, 0.04), 'black', 0, 0.36, -0.35); // core housing
   put(torso, new THREE.CylinderGeometry(0.12, 0.12, 0.05, 12).rotateX(Math.PI / 2), 'core', 0, 0.36, -0.395);
   put(torso, new THREE.TorusGeometry(0.14, 0.025, 4, 12), 'chrome', 0, 0.36, -0.4);
@@ -209,6 +210,7 @@ function template() {
     put(pod, cbox(0.38, 0.06, 0.34, 0.02), 'black', 0, 0.03, 0.02);
     put(pod, new THREE.BoxGeometry(0.028, 0.36, 0.02), s < 0 ? 'cyan' : 'mag', s * 0.19, 0.22, -0.13);
     put(pod, cbox(0.1, 0.3, 0.05, 0.02), 'hazard', -s * 0.12, 0.24, -0.15);
+    put(pod, cbox(0.38, 0.12, 0.34, 0.02), 'accent', 0, 0.36, 0.02); // a band in your colour round each pod
     for (const x of [-0.08, 0.08]) for (const z of [-0.06, 0.08]) { // the tubes, with red tips waiting inside
       put(pod, cyl(0.06, 0.06, 0.06, 8), 'black', x, 0.43, z, { small: true });
       put(pod, new THREE.ConeGeometry(0.045, 0.08, 6), 'red', x, 0.43, z, { small: true });
@@ -226,7 +228,7 @@ function template() {
     put(A.sh, cbox(0.28, 0.26, 0.22, 0.03), big ? 'rust' : 'teal', s * 0.02, -0.22, -0.07, { r: [0.1, 0, s * 0.05] });
     put(A.sh, new THREE.SphereGeometry(0.13, 8, 6), 'gun', 0, -0.5, 0);
     put(A.sh, cylX(0.075, 0.32), 'chrome', 0, -0.5, 0, { small: true });
-    const pc = big ? ['ochre', 'gun', 'rust'] : ['gun', 'olive', 'steel'];
+    const pc = big ? ['ochre', 'gun', 'rust'] : ['accent', 'olive', 'steel'];
     for (let i = 0; i < 3; i++) put(A.pa, cbox(0.52 - i * 0.05, 0.13, 0.54 - i * 0.04, 0.04), pc[i], s * (0.04 + i * 0.08), 0.17 - i * 0.12, 0, { r: [0, 0, -s * (0.3 + i * 0.24)] });
     put(A.pa, cbox(0.06, 0.28, 0.4, 0.02), 'gun', -s * 0.14, 0.27, 0.02, { r: [0, 0, s * 0.22] }); // guard plate beside the helm
     put(A.pa, new THREE.BoxGeometry(0.028, 0.028, 0.5), big ? 'mag' : 'cyan', s * 0.03, 0.24, 0, { r: [0, 0, -s * 0.3] });
@@ -268,7 +270,7 @@ function template() {
     put(A.th, cylX(0.12, 0.4), 'black', 0, -0.48, 0);
     put(A.sn, cbox(0.26, 0.22, 0.13, 0.04), big ? 'ochre' : 'cream', 0, -0.02, -0.16, { r: [0.25, 0, 0] });
     put(A.sn, taper(cbox(0.3, 0.52, 0.34, 0.05), 1.25, 1.12, 'y'), 'gun', 0, -0.27, 0.01);
-    put(A.sn, cbox(0.28, 0.36, 0.06, 0.03), big ? 'teal' : 'steel', 0, -0.3, -0.18);
+    put(A.sn, cbox(0.28, 0.36, 0.06, 0.03), 'accent', 0, -0.3, -0.18);
     put(A.sn, new THREE.BoxGeometry(0.02, 0.3, 0.02), 'mag', -s * 0.15, -0.3, -0.2);
     for (let i = 0; i < 2; i++) put(A.sn, cbox(0.34, 0.03, 0.38, 0.01), 'black', 0, -0.12 - i * 0.24, 0, { small: true });
     put(A.ft, cbox(0.38, 0.17, 0.6, 0.04), 'gun', 0, -0.06, -0.08);
@@ -518,8 +520,7 @@ export function poseRig(inst, s, dt) {
   const stomp = (k) => { inst.bobV -= (0.55 + run * 0.6) * k; if (inst.onStep) inst.onStep(k); };
   const crouch = Math.max(s.leap ? 0.3 * s.leap + 0.08 : 0, s.block ? 0.1 : 0, s.landT < 0.45 ? (s.landK || 0.5) * 0.32 * Math.sin(Math.min(1, s.landT / 0.45) * Math.PI) : 0);
   // hips bounce on each foot plant (a spring), sink for a crouch
-  inst.bobV += (-200 * inst.bob - 16 * inst.bobV) * dt;
-  inst.bob += inst.bobV * dt;
+  for (let n = Math.min(40, Math.max(1, Math.ceil(dt * 240))), h = dt / n, i = 0; i < n; i++) { inst.bobV += (-200 * inst.bob - 16 * inst.bobV) * h; inst.bob += inst.bobV * h; } // (substepped: slow frames)
   const hipsY = 1.1 - crouch + clamp(inst.bob, -0.12, 0.08) - (moving ? 0.03 * run : 0);
   J.hips.position.y = hipsY;
   const legs = [[J.thighL, J.shinL, J.footL, 0], [J.thighR, J.shinR, J.footR, 0.5]];
@@ -556,7 +557,7 @@ export function poseRig(inst, s, dt) {
   const bw = spr(inst, 'bw', s.block ? 1 : 0, 160, dt);
   const hk = (s.hackT ?? 9) < 0.8 ? hump(s.hackT, 0.15, 0.55) : 0;
   const shake = (cw * ck * ck * 0.06 + (s.hitT < 0.15 ? 0.05 : 0)) * (Math.random() - 0.5);
-  const twist = -0.55 * cw * (1 - pk) + 0.5 * pk;
+  const twist = -0.75 * cw * (1 - pk) + 0.55 * pk;
   J.torso.rotation.set(
     spr(inst, 'tx', lean + breathe, 90, dt) + (s.hitT < 0.25 ? 0.1 * (1 - s.hitT / 0.25) : 0),
     spr(inst, 'ty', twist + (moving ? -roll * 1.4 : 0), pk > 0 ? 700 : 110, dt) + shake,
@@ -579,7 +580,7 @@ export function poseRig(inst, s, dt) {
   if (hk > 0) mix(L, [1.0, -0.6, -0.1, 1.9, -0.3], hk); // the wrist deck up in front of the visor
   if (cw > 0) { // wind-up: right fist cocked back by the shoulder, left forward on guard, shaking harder as it charges
     const j2 = ck * ck * 0.12;
-    mix(R, [-0.7 + (Math.random() - 0.5) * j2, 0, 0.7, 2.5 + (Math.random() - 0.5) * j2, 0.3], cw);
+    mix(R, [-1.05 + (Math.random() - 0.5) * j2, 0.35, 0.55, 2.15 + (Math.random() - 0.5) * j2, 0.45], cw);
     mix(L, [0.8, -0.35, -0.1, 1.6, 0.1], cw * 0.85);
   }
   if (pk > 0) { mix(R, [1.55, 0, 0.05, 0.05, 0], pk); mix(L, [-0.35, 0, -0.3, 1.2, 0.2], pk * 0.8); }

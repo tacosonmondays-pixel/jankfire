@@ -600,7 +600,7 @@ function rigEvent(m, getR, live) {
       if (a && b) rmesh.beam(a, b, 0.4);
       if (rs) rs.hackT = 0;
       if (tg) { tg.hackedUntil = performance.now() + (m.dur || 4000); tg.g = null; rfx.glitch(b, 24, 0.9); rigsfx.hack(b); }
-      if (live && m.to === G.myId) { ME.hackedUntil = performance.now() + (m.dur || 4000); releaseHook(); rigsfx.hacked(); hud.msg('HACKED · GRAPPLE OFFLINE', 1.6, 'slip'); G.shake = Math.max(G.shake, 0.4); }
+      if (live && m.to === G.myId) { ME.hackedUntil = performance.now() + (m.dur || 4000); releaseHook(); rigsfx.hacked(); G.shake = Math.max(G.shake, 0.4); }
       if (me) hud.msg('BREACH: GRAPPLE FRIED', 0.9, 'brag');
       break;
     }

@@ -17,7 +17,8 @@ import { validLook, achievementsFrom, ACHIEVEMENTS } from './shared/looks.js';
 import { ROYAL, ROYAL_FEATS } from './shared/looks.js'; // Sniper Royalty
 import { achInv, wrapMode, WRAP_MODES } from './shared/cosmetics.js'; // achievement-locked skins (the Golden Sniper), wrap modes
 import { STAT_KEYS } from './server/store.js';
-import { installRig } from './server/rig.js'; // overdrive rig killstreak
+import { installRig } from './server/rig.js';
+import { rigClash } from './shared/rig.js'; // overdrive rig killstreak
 import { soapAt, trapBoxes, trapPreroll } from './shared/wand.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, canDefuse, LADDER, GUNGAME, INFECT } from './shared/modes.js';
@@ -865,6 +866,7 @@ class Room {
     const frozen = n < (b.frozenUntil || 0);
     const think = frozen ? { wx: 0, wz: 0, jump: false } : this.botThink(b, dt);
     if (frozen) { b.vel[0] = 0; b.vel[2] = 0; }
+    if (b.rig && this.rigOn(b, n)) { this.rigBotStep(b, think, dt, n); return; } // overdrive rig: its own movement + plan (server/rig.js)
     const v = b.vel;
     const slipping = n < b.slipUntil;
     if (!b.ai.dummy || !b.ai.dummy.move) {
@@ -1072,6 +1074,7 @@ class Room {
     const it = ITEMS.wand, n = now();
     if (!t.alive || t.trap || n < (t.trapSafe || 0) || (this.round && this.round.over)) return false;
     if (this.isBall(t, n)) return false; // a 2 m steel wrecking ball just bursts the soap (its client rolls it, a bubble can't hold it)
+    if (this.rigOn(t, n)) return false; // so does a 3 m overdrive rig
     if (owner && owner !== t && !t.isBot && n - t.spawnT < 1200) return false; // spawn protection
     for (const b of this.bubbles.values()) if (this.inBubble(b, t)) return false; // soap can't get into a shield bubble
     if (!reflected && owner && owner !== t && owner.alive && t.reverseUntil > n) { // reverse card: the blower gets sealed in instead
@@ -1198,6 +1201,7 @@ class Room {
   sleep(t, by, secs) {
     if (!t.alive) return;
     this.tag(t, by, 'bow');
+    if (this.rigOn(t)) return; // the overdrive rig doesn't nap (the arrow still hurt)
     t.sleepUntil = now() + secs * 1000;
     if (t.isBot) { if (t.ai) t.ai.hook = null; t.g = null; return; } // knocked flat: lets go of the rope too (snapshots show FLAGS.SLEEP)
     send(t, { t: 'sleep', dur: secs }); // players send FLAGS.SLEEP themselves while it lasts
@@ -1296,6 +1300,8 @@ class Room {
           this.broadcast({ t: 'chat', id: 0, m: `${killer.name} earned ${st.name} (${st.kills} kills)` }, killer.id);
         }
       }
+      // bots have no tray, but the overdrive rig is theirs to earn too (they suit up right away)
+      if (killer.isBot && this.mode !== 'training' && !this.modeWeapon(killer) && !(this.chaosKit && this.chaosKit.noStreaks) && killer.streak === STREAKS.overdrive.kills) this.rigBotEarn(killer);
     }
     // killcam: humans who have it on wait for it to finish (or skip it) before respawning
     if (!t.isBot && t.kc && killer && killer !== t && this.mode !== 'training') t.respawnAt = Math.max(t.respawnAt, now() + 9000);
@@ -2529,6 +2535,7 @@ class Room {
         if (i < 0 || !p.alive || !has(STREAKS, m.r)) break;
         if (this.modeWeapon(p)) break; // no killstreaks in gun game or as a zombie (they keep for later)
         if ((m.r === 'chickenstrike' || m.r === 'giantduck') && !at) break;
+        if (rigClash(m.r, this.rigOn(p), this.isBall(p) || p.ballUntil > now())) break; // overdrive rig vs other body streaks: it keeps in the tray
         p.pocket.splice(i, 1);
         if (m.r === 'overdrive') this.rigStart(p);
         if (this.mode === 'training') (p.trainCd ||= {})[m.r] = now() + ((STREAKS[m.r].dur || 0) + 3) * 1000;
@@ -2971,6 +2978,7 @@ class Room {
     if ((!w && !p.only) || (p.isBot && p.ai.dummy)) return false;
     if (w === 'claw' && p.alive) { p.hp = INFECT.hp; p.healLeft = 0; }
     if (w && p.ballUntil) { p.ballUntil = 0; p.f &= ~FLAGS.BALL; } // patient zero mid wrecking ball: claws only (the client ends it on 'modew')
+    if (w && p.rig) this.rigEnd(p); // same for the overdrive rig
     if (p.isBot) { p.w = w || pick(BOT_GUNS); p.ai.ammo = WEAPONS[p.w].mag || 1; p.ai.reloadUntil = 0; }
     else {
       if (w && p.forced) { p.forced = false; send(p, { t: 'loadout', lo: null }); }
@@ -3437,7 +3445,7 @@ class Room {
   }
 }
 
-installRig(Room, { now, num, vec3, norm, r2, center, safe, REC_T }); // the overdrive rig's methods (server/rig.js)
+installRig(Room, { now, num, vec3, norm, r2, center, safe, REC_T, WEAPONS }); // the overdrive rig's methods (server/rig.js)
 
 // ---------------------------------------------------------------- account stats
 function stat(p, key, v) {
