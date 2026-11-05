@@ -30,7 +30,7 @@ import { epicCheck, epicCamMs, EPIC } from './shared/epic.js';
 import { holeDrag, steer } from './shared/physics.js';
 import { steer as steerTo } from './shared/homing.js'; // homing slippers (steerTo(v, from, to, max)); the duck's steer(v, dir, max) is physics.js's
 import { PARRY } from './shared/weapons.js';
-import { ropeStep, ropeJump, ROPE } from './shared/hookphys.js';
+import { ROPE, classicRopeStep, classicRopeJump } from './shared/hookphys.js';
 import { query as boxQuery } from './shared/physics.js';
 import { navSteer } from './shared/nav.js';
 import { DUCKRAIN } from './shared/modes.js';
@@ -880,15 +880,14 @@ class Room {
       }
     }
     v[1] -= 26 * dt;
-    // on the rope: the same pendulum rope as a player's grapple (shared/hookphys.js), so bots swing smoothly too.
+    // on the rope: the same classic grapple as a player's (shared/hookphys.js).
     // let go near the point (or when it's been a while) with a grapple jump
     const hk = b.ai && b.ai.hook;
     if (hk) {
-      ropeStep(hk, hk.point, b.pos, v, dt, 26, this.hookMul); // (spoons & grapples pulls harder)
+      classicRopeStep(hk, hk.point, b.pos, v, dt, 26, this.hookMul); // (spoons & grapples pulls harder)
       b.ropeLift = 1;
       if (hk.dist < 4.5 || n > hk.until || slipping) {
-        // grapple jump the way they're facing, a bit up, and never flung into the surface they're hooked on
-        if (!slipping) { const cp = Math.cos(b.pitch); ropeJump(v, [-Math.sin(b.yaw) * cp, Math.max(0.3, Math.sin(b.pitch)), -Math.cos(b.yaw) * cp], hk.n); }
+        if (!slipping) classicRopeJump(v); // hook jump
         b.ai.hook = null; b.g = null; b.ai.route = null; // landed somewhere new: plan again from there
       }
       b.onGround = false;
