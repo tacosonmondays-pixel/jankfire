@@ -29,7 +29,8 @@ queued requests live in `HANDOFF.md` on the `claude/handoff` branch (`git show o
 - **Palette:** hot pink/magenta (`#ff4fd8`, `#ff00dc`), yellow (`#ffe14d`), cyan (`#4fd8ff`), toxic green (`#39ff14`,
   `#7dff4f`), red (`#ff3030`) on near-black. Each weapon has its own colour in `shared/weapons.js`, used for its icon, kill-feed
   tag and tracer.
-- **3D look:** chunky low-poly built from boxes, lathes and simple shapes (no imported meshes). Characters are mannequins with
+- **3D look:** chunky low-poly built from boxes, lathes and simple shapes. Blender-made `.glb` models are allowed for weapons and
+  props (`tools/blender/`, visual only: collisions stay boxes) if they keep this same chunky look. Characters are mannequins with
   built-in jank (random tilt, a wrong knee); other players get outlines. Maps are big readable blocks with scenery around them
   (never floating in a void), and sky, fog and lighting are tuned per map.
 - **Writing voice:** short, lowercase-ish, deadpan and cheeky. Item descriptions are one or two plain sentences with a joke
@@ -46,7 +47,9 @@ queued requests live in `HANDOFF.md` on the `claude/handoff` branch (`git show o
 - **The owner** types fast, with typos and slang ("XD", "cuh"). Read requests generously and build the fun version. If
   something is truly ambiguous, build the likely meaning and say what you assumed. They send lots of ideas: queue them
   rather than dropping any.
-- **Shipping:** small PRs to `main`, often. Open them as drafts; the owner clicks Ready + Merge on GitHub. Render
+- **Shipping:** small PRs to `main`, often. Open them as drafts. The owner lets the coordinating Claude session merge a PR once
+  its session reports it done and tested and it re-checks it on the latest main; look choices, `supabase.sql` re-runs and the
+  exe still wait for the owner. Render
   auto-deploys `main` to https://jankfire.onrender.com; PLAY ONLINE in the exe loads the game from there. Rebuild the Windows
   exe with `npm run dist:win:zip` (output in `dist/`) when asked. The owner creates GitHub releases themselves.
 - **Show the work:** send screenshots and short clips (Playwright `recordVideo` + ffmpeg, graphics setting `jank: 3` = Too HD)
@@ -89,13 +92,16 @@ queued requests live in `HANDOFF.md` on the `claude/handoff` branch (`git show o
   something failed or wasn't tested. Track every request in the task list; queue ideas instead of dropping them.
 - **Commit messages** describe what players see ("Sniper knockback is back: a body shot sends them flying...").
 
-## Tools and environment (what was used, nothing extra installed)
+## Tools and environment
+- Start sessions on the **jankfire** cloud environment: its setup script installs Blender 4.0 (`blender`), Blender 5.2
+  (`blender52`, for the vendored `blender-*` skills), software GL for EEVEE renders, and the npm packages; it can reach
+  jankfire.onrender.com to check the live site. Which skill fits which job: the `jankfire-toolbox` skill (`.claude/skills`).
 - Claude Code cloud session. Preinstalled: Node 22, Playwright + Chromium (`require('playwright')`; launch with
   `--use-gl=swiftshader --enable-unsafe-swiftshader --mute-audio`), ffmpeg, `gh` (use `gh api` REST; GraphQL is blocked).
   Exe builds use electron-builder from the repo's devDependencies (`npm run dist:win:zip`).
 - Multi-agent work used the Agent tool and the Workflow tool. Caveat: Workflow sub-agents only see the owner's latest message
   as "the request" and may refuse work asked for earlier; for that, use plain agents with the request quoted in the prompt.
-- Limits seen in the sandbox: onrender.com isn't reachable (can't check the live site; the owner checks it), GitHub release
+- Limits seen in the sandbox: on other environments onrender.com isn't reachable, GitHub release
   creation and force-push are blocked, and killing processes you didn't start is refused. Headless browsers are slow (cap
   them at 2 with `pwlock.cjs`).
 - Helper scripts live on the `claude/handoff` branch in `handoff/tests/`: `regress2.sh` (full regression), `t_*.cjs`
