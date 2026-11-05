@@ -328,18 +328,19 @@ const SKY_SUNSET = { top: 0x2b1d6b, mid: 0xff8fb8, bot: 0x14051a, fog: 0xf7a1c4 
 function crate() {
   const B = builder();
   const { box } = B;
-  box(0, -1.5, 0, 30, 3, 30, 'grass');
+  box(0, -1.5, 0, 30, 3, 30, 'rubber'); // a toy box floating in the sky: confetti rubber
   box(0, -5, 0, 20, 4, 20, 'dirt');
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) { box(8 * sx, 1, 8 * sz, 2, 2, 2, 'crate'); box(8 * sx + 1.6 * sx, 0.5, 8 * sz, 1.2, 1, 1.2, 'crate'); }
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) { box(8 * sx, 1, 8 * sz, 2, 2, 2, 'crate'); box(8 * sx + 1.6 * sx, 0.5, 8 * sz, 1.2, 1, 1.2, sx * sz > 0 ? 'toyred' : 'toyblue'); }
   box(0, 1, 10, 5, 2, 1, 'crate');
   box(0, 1, -10, 5, 2, 1, 'crate');
-  box(0, 1.5, 0, 5, 3, 5, 'stone');
-  box(0, 3.25, 0, 7, 0.5, 7, 'wood');
+  box(0, 1.5, 0, 5, 3, 5, 'toyface', { fit: 1 });
+  box(0, 3.25, 0, 7, 0.5, 7, 'toyteal');
   box(-5, 0.15, 0, 1.8, 0.3, 1.8, 'pad', { pad: [4, 14, 0] });
   box(5, 0.15, 0, 1.8, 0.3, 1.8, 'pad', { pad: [-4, 14, 0] });
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(12 * sx, 15, 12 * sz, 2.5, 1, 2.5, 'pink');
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(12 * sx, 15, 12 * sz, 2.5, 1, 2.5, 'toypink');
   box(0, 21, 0, 3, 1, 3, 'gold');
-  return { name: 'Crate', size: 'tiny', boxes: B.boxes, killY: -30, sky: SKY_SUNSET, fogNear: 50, fogFar: 200,
+  const D = builder(); D.add(-30, 40, -170, 30, 100, -110, 'toyface2', { fit: 1 }); // something enormous is watching
+  return { name: 'Crate', size: 'tiny', boxes: B.boxes, deco: D.boxes, killY: -30, sky: SKY_SUNSET, fogNear: 50, fogFar: 200,
     spawns: [[-11, 0.1, -11], [11, 0.1, 11], [-11, 0.1, 11], [11, 0.1, -11]] };
 }
 
@@ -348,7 +349,10 @@ function platform() {
   const B = builder();
   B.box(0, -1, 0, 90, 2, 90, 'grid');
   B.box(0, -5, 0, 76, 6, 76, 'concrete');
-  return { name: 'Platform', size: 'small', boxes: B.boxes, killY: -30,
+  const D = builder();
+  D.add(-45.06, -0.6, -45.06, 45.06, -0.3, 45.06, 'neonpink'); D.add(-38.06, -4, -38.06, 38.06, -3.7, 38.06, 'neoncyan');
+  for (const [x, z, al, ad] of [[0, -50, 'x', 'adcity2'], [0, 50, 'x', 'adcity4'], [-50, 0, 'z', 'adcity1'], [50, 0, 'z', 'adcity6']]) adBoard(D, x, z, -14, al, ad, 30, 12);
+  return { name: 'Platform', size: 'small', boxes: B.boxes, deco: D.boxes, killY: -30,
     sky: { top: 0x5a6070, mid: 0xb8bcc8, bot: 0x2a2c33, fog: 0xb8bcc8 }, fogNear: 80, fogFar: 320,
     spawns: [[-35, 0.1, -35], [35, 0.1, 35], [-35, 0.1, 35], [35, 0.1, -35], [0, 0.1, -35], [0, 0.1, 35], [-35, 0.1, 0], [35, 0.1, 0]] };
 }
@@ -863,11 +867,14 @@ function desert() {
     [70, 70, 2, 16, 12, 2], [42, 74, 2, 12, 10, 1], [20, 66, 3, 14, 12, 3], [75, 35, 3, 12, 14, 2], [40, 30, 0, 18, 12, 2],
     [70, -10, 3, 14, 12, 1], [40, -26, 1, 16, 12, 3], [72, -46, 2, 12, 12, 2], [30, -70, 0, 18, 14, 2], [62, -76, 0, 12, 10, 1],
   ];
-  const roofs = [];
+  const roofs = [], D = builder(), rv = rng(9090); // rv: the look's own dice, so nothing you collide with moves
   for (const [x, z, rot, w, d, n] of blds) {
-    const L = B.local(x, z, rot);
-    const { top } = shell(L, w, d, n, 3.6, 'adobe', { floor: 'wood', roof: 'adobe', roofAccess: true, backDoor: r() < 0.6 });
-    L(-w / 2 - 0.5, 2.6, -d / 2 - 2.2, w / 2 + 0.5, 2.8, -d / 2, 'cloth'); // awning
+    const L = B.local(x, z, rot), Ld = D.local(x, z, rot);
+    const paint = ['adobe', 'adobe', 'adobe', 'magenta', 'sideorange', 'sidemint', 'sidelemon'][(rv() * 7) | 0];
+    const { top } = shell(L, w, d, n, 3.6, paint, { floor: 'wood', roof: 'adobe', roofAccess: true, backDoor: r() < 0.6 });
+    L(-w / 2 - 0.5, 2.6, -d / 2 - 2.2, w / 2 + 0.5, 2.8, -d / 2, ['cloth', 'toypink', 'toyteal', 'toyyellow'][(rv() * 4) | 0]); // awning
+    if (rv() < 0.5) Ld(-2.2, 2.95, -d / 2 - 0.4, 2.2, 3.75, -d / 2 - 0.16, ['neonbar', 'neonnoodle', 'neonhotel', 'neonwork'][(rv() * 4) | 0], { fit: 1 });
+    if (n >= 2 && rv() < 0.4) adBoard(D, x, z, n * 3.6 + 0.3, rot % 2 ? 'z' : 'x', ['adcity1', 'adcity2', 'adcity3', 'adcity4', 'adcity5', 'adcity6'][(rv() * 6) | 0], 8, 3.5);
     L(-w / 2 - 0.3, 0, -d / 2 - 2.0, -w / 2, 2.6, -d / 2 - 1.8, 'wood'); L(w / 2, 0, -d / 2 - 2.0, w / 2 + 0.3, 2.6, -d / 2 - 1.8, 'wood');
     roofs.push({ x, z, top });
     spawns.push([x, 0.2, z]);
@@ -886,7 +893,7 @@ function desert() {
     for (let i = 0; i < 4; i++) {
       const cx = -12 + i * 8;
       for (const ox of [-2, 2]) for (const oz of [-1.5, 1.5]) M.B(cx + ox, 1.5, oz, 0.25, 3, 0.25, 'wood');
-      M.B(cx, 3.1, 0, 5, 0.2, 4, 'cloth');
+      M.B(cx, 3.1, 0, 5, 0.2, 4, ['cloth', 'toypink', 'toyteal', 'leopard'][i]);
       M.B(cx, 0.5, 0, 3.5, 1, 1.2, 'crate');
     }
     // water tower to grapple
@@ -900,7 +907,7 @@ function desert() {
   }
   B.box(-12, 0.15, 26, 2.5, 0.3, 2.5, 'pad', { pad: [26, 18, 0] });
   B.box(12, 0.15, -26, 2.5, 0.3, 2.5, 'pad', { pad: [-26, 18, 0] });
-  return { name: 'Desert', size: 'large', boxes: B.boxes, killY: -30,
+  return { name: 'Desert', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -30,
     sky: { top: 0x3f7fd0, mid: 0xf2d9a0, bot: 0x6a4a28, fog: 0xead6a6 }, fogNear: 110, fogFar: 400, spawns };
 }
 
@@ -963,13 +970,14 @@ function islands() {
   box(-73, 0.15, 0, 3.5, 0.3, 3.5, 'pad', { pad: [26, 26, 0] });
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
-    box(Math.cos(a) * 48, 30 + (i % 2) * 9, Math.sin(a) * 48, 4, 2, 4, 'pink');
+    box(Math.cos(a) * 48, 30 + (i % 2) * 9, Math.sin(a) * 48, 4, 2, 4, i % 2 ? 'toypink' : 'toyteal');
   }
   box(0, 42, 0, 12, 1.5, 12, 'missing');
   box(0, 70, 0, 5, 2, 5, 'gold');
-  box(60, 55, -60, 6, 2, 6, 'pink');
-  box(-60, 55, 60, 6, 2, 6, 'pink');
-  return { name: 'Islands', size: 'large', boxes, killY: -45, sky: SKY_SUNSET, fogNear: 90, fogFar: 330,
+  box(60, 55, -60, 6, 2, 6, 'toypink');
+  box(-60, 55, 60, 6, 2, 6, 'toypink');
+  const D = builder(); D.add(140, 60, -260, 200, 120, -200, 'toyface', { fit: 1 }); // the sun has a face now
+  return { name: 'Islands', size: 'large', boxes, deco: D.boxes, killY: -45, sky: SKY_SUNSET, fogNear: 90, fogFar: 330,
     spawns: [[10, 0.1, 10], [-10, 0.1, -10], [10, 0.1, -10], [-10, 0.1, 10], [8, 0.1, -88], [8, 0.1, 82], [88, 0.1, 8], [-88, 0.1, 8]] };
 }
 
@@ -1232,8 +1240,13 @@ function bazaar() {
   const att = [[-12, 0.1, 66], [-6, 0.1, 70], [0, 0.1, 63], [6, 0.1, 70], [12, 0.1, 66], [-16, 0.1, 58], [16, 0.1, 58]];
   const def = [[-12, 0.1, -70], [-6, 0.1, -63], [0, 0.1, -61], [6, 0.1, -63], [12, 0.1, -70], [-16, 0.1, -62], [16, 0.1, -62]];
   const spawns = [...att, ...def, [0, 0.1, 20], [42, 0.1, 30], [-45, -3.4, 20], [46, 1.7, -40], [-50, 0.1, -32], [8, 0.1, -12], [27, 3.5, -16], [40, 0.1, -60], [-41, 0.1, -60], [-25, 0.2, -16]];
+  // the look (render-only): neon over the market stalls, ads on the attackers' wall, strips under the hall roof
+  const D = builder(), neons = ['neonnoodle', 'neonbar', 'neonhotel', 'neonwork'];
+  for (let z = 8, i = 0; z <= 40; z += 16, i++) { D.add(8.7, 4.2, z - 2, 8.98, 5.0, z + 2, neons[i % 4], { fit: 1 }); D.add(-8.98, 4.6, z + 6, -8.7, 5.4, z + 10, neons[(i + 2) % 4], { fit: 1 }); }
+  D.add(8.9, 6.6, -2, 8.98, 6.75, 52, 'neonpink'); D.add(-8.98, 6.6, -2, -8.9, 6.75, 52, 'neoncyan');
+  D.add(-15, 4.5, 52.42, -7, 7.5, 52.6, 'adcity4', { fit: 1 }); D.add(7, 4.5, 52.42, 15, 7.5, 52.6, 'adcity1', { fit: 1 });
   return {
-    name: 'Bazaar', size: 'large', boxes: B.boxes, killY: -30,
+    name: 'Bazaar', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -30,
     sky: { top: 0x4a8fd8, mid: 0xf2dcae, bot: 0x8a6a40, fog: 0xf0d8a8 }, fogNear: 90, fogFar: 320,
     spawns, teamSpawns: { att, def },
     // bot routes along the real lanes, [x, z] points ending on each site. bots walk straight from point to point and
@@ -1513,7 +1526,9 @@ function range() {
   box(32, 9, -55, 3, 18, 3, 'stone');
   box(-32, -1, -40, 16, 2, 30, 'stone');
   box(-38, 1, -40, 1, 2, 30, 'missing');
-  return { name: 'Range', size: 'training', boxes, killY: -40,
+  const D = builder();
+  adBoard(D, -26, -70, 0, 'z', 'adcity6', 14, 6); adBoard(D, -26, -110, 0, 'z', 'adcity3', 14, 6); adBoard(D, 0, -130, 0, 'x', 'adcity2', 24, 9);
+  return { name: 'Range', size: 'training', boxes, deco: D.boxes, killY: -40,
     sky: { top: 0x3a7bd5, mid: 0xbfe3ff, bot: 0x203040, fog: 0xbfe3ff }, fogNear: 120, fogFar: 420,
     spawns: [[0, 0.1, 10], [5, 0.1, 10], [-5, 0.1, 10]],
     dummies: [
