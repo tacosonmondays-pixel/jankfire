@@ -98,6 +98,25 @@ export function itemIcon(id) {
     x.strokeStyle = '#fff'; x.lineWidth = 4;
     x.beginPath(); x.arc(48, 30, 10, Math.PI * 0.9, Math.PI * 1.9); x.stroke();
     x.beginPath(); x.arc(48, 30, 10, -Math.PI * 0.1, Math.PI * 0.9); x.stroke();
+  } else if (id === 'camera') { // instant camera: cream body, black top, a big lens, the print hanging out
+    x.fillStyle = '#f8f5ec'; x.fillRect(36, 44, 26, 14); x.strokeRect(36, 44, 26, 14); x.fillStyle = '#6fb8ff'; x.fillRect(40, 46, 18, 9);
+    x.fillStyle = '#f3eee2'; x.fillRect(22, 18, 52, 30); x.strokeRect(22, 18, 52, 30);
+    x.fillStyle = '#2c2c33'; x.fillRect(22, 10, 52, 12); x.strokeRect(22, 10, 52, 12);
+    circle(48, 32, 11, '#1a1c28'); circle(48, 32, 5, '#3a4a7a');
+    x.fillStyle = '#ff2d6a'; x.beginPath(); x.arc(66, 26, 4, 0, Math.PI * 2); x.fill(); x.stroke();
+    x.fillStyle = '#fff6d8'; x.fillRect(27, 13, 14, 6);
+  } else if (id === 'quiz') { // a calculator with a sum on it
+    x.save(); x.translate(48, 30); x.rotate(-0.18);
+    x.fillStyle = '#23263a'; x.fillRect(-17, -26, 34, 52); x.strokeRect(-17, -26, 34, 52);
+    x.fillStyle = '#b9c8a2'; x.fillRect(-13, -22, 26, 12);
+    x.fillStyle = '#1d2418'; x.font = 'bold 9px monospace'; x.fillText('7x8=?', -12, -13);
+    for (let r = 0; r < 4; r++) for (let k = 0; k < 3; k++) { x.fillStyle = r === 3 && k === 2 ? '#ff8a2a' : '#e3e6ee'; x.fillRect(-13 + k * 9, -6 + r * 8, 7, 6); }
+    x.restore();
+    x.fillStyle = '#ffe14d'; x.font = 'bold 20px sans-serif'; x.fillText('?', 74, 22); x.fillText('?', 12, 50);
+  } else if (id === 'nvg') { // night vision goggles: two olive tubes, green lenses
+    x.fillStyle = '#ff4fd8'; x.fillRect(10, 22, 76, 6); x.strokeRect(10, 22, 76, 6);
+    x.fillStyle = '#48503a'; x.fillRect(28, 18, 40, 16); x.strokeRect(28, 18, 40, 16);
+    for (const cx of [34, 62]) { circle(cx, 38, 14, '#3a4030'); circle(cx, 38, 9, '#39ff14'); x.fillStyle = '#d8ffd0'; x.fillRect(cx - 4, 33, 3, 3); }
   }
   const url = c.toDataURL();
   itemCache.set(id, url);

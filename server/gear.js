@@ -45,6 +45,7 @@ const gear = {
   // press: { w: 'laser', ch: 1 } starts the charge (its time is ours). release: { w: 'laser' } fires whatever we timed
   laserFire(p, m) {
     const n = H.now();
+    if (m.ch === 0) { p.laserT = 0; return; } // switched away mid-charge
     if (m.ch === 1) { if (!p.beam && n >= (p.lastFire.laser || 0)) p.laserT = n; return; }
     if (!p.laserT || p.beam || n < (p.lastFire.laser || 0)) { p.laserT = 0; return; }
     const held = (n - p.laserT) / 1000, k = Math.max(0, Math.min(1, (held - L.tap) / (L.charge - L.tap)));

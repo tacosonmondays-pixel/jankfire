@@ -367,7 +367,7 @@ WEAPONS.nvg = { slot: null, kind: 'flash', name: 'Night Vision Goggles', color: 
 // a frame stands up `at` m in front of you for `life` s. walk into it (anyone can) and you come out where the photo was
 // taken, facing the same way. w x h = the frame's opening, cd = s before the same person can use a frame again,
 // frag = m: whoever is standing on the spot when you arrive gets telefragged
-export const PHOTO = { at: 1.7, life: 20, w: 1.3, h: 2.1, depth: 0.55, cd: 1.6, frag: 0.9, drop: 3, res: [256, 192] };
+export const PHOTO = { at: 1.9, life: 20, w: 1.8, h: 2.1, depth: 0.55, cd: 1.6, frag: 0.9, drop: 3, res: 256 };
 ITEMS.camera = { name: 'Instant Camera', desc: 'G snaps a photo of what\'s in front of you. G again prints it as a frame you can walk into: it puts you back where you took it. Anyone can walk through, so photograph somewhere nasty.', charges: 1, recharge: 25, color: '#c9a7ff' };
 // a hit freezes them with a maths question for `time` s (4 answers, keys 1-4). wrong or too slow: dead (your kill).
 // right: +heal HP, nothing hurts them for `invuln` s and they run `fast` x speed for `fastT` s. `safe` s after a quiz
