@@ -708,13 +708,36 @@ function trailer(B, x0, z0, livery) { // a semi trailer along x on its landing l
   for (const pz of [z0 + 0.3, z1 - 0.5]) B.add(x0 + 9.4, 0, pz, x0 + 9.6, 1.3, pz + 0.2, 'metal');
 }
 
+// a semi: trailer + cab in a local frame, rear of the trailer at local z = 0 (back it up to a dock), cab toward +z
+function semi(B, x, z, rot, livery, cab = true) {
+  const L = B.local(x, z, rot);
+  L(-1.3, 1.3, 0, 1.3, 4.1, 12.5, 'truckbox');
+  L(-1.33, 1.5, 1, -1.3, 3.9, 11.5, livery, { fit: 1 }); L(1.3, 1.5, 1, 1.33, 3.9, 11.5, livery, { fit: 1 });
+  L(-1.25, 1.25, -0.05, 1.25, 1.35, 0, 'tail'); // the rear light bar
+  for (const wz of [1.2, 2.4]) for (const [a, b] of [[-1.2, -0.8], [0.8, 1.2]]) L(a, 0, wz - 0.5, b, 1.0, wz + 0.5, 'tire');
+  L(-1.0, 0.95, 0.6, 1.0, 1.3, 3.0, 'metal');
+  for (const px of [-1.0, 0.8]) L(px, 0, 9.4, px + 0.2, 1.3, 9.6, 'metal'); // landing legs
+  if (!cab) return;
+  L(-1.25, 0.6, 12.7, 1.25, 1.1, 16.6, 'metal'); // chassis under the cab
+  L(-1.25, 1.1, 13.6, 1.25, 3.3, 16.4, 'carred'); L(-1.15, 2.2, 16.4, 1.15, 3.1, 16.45, 'glass'); // cab + windscreen
+  L(-1.2, 1.1, 16.4, 1.2, 2.2, 16.9, 'carred'); L(-1.0, 1.4, 16.9, 1.0, 2.0, 16.95, 'chrome'); // nose + grille
+  L(-1.27, 2.3, 14.2, -1.25, 3.0, 15.9, 'glass'); L(1.25, 2.3, 14.2, 1.27, 3.0, 15.9, 'glass');
+  for (const px of [-1.1, 0.95]) L(px, 3.3, 13.6, px + 0.15, 4.6, 13.75, 'chrome'); // exhaust stacks
+  for (const wz of [13.4, 16]) for (const [a, b] of [[-1.3, -0.85], [0.85, 1.3]]) L(a, 0, wz - 0.55, b, 1.1, wz + 0.55, 'tire');
+  L(-1.25, 1.6, 16.95, -0.8, 1.9, 17, 'light'); L(0.8, 1.6, 16.95, 1.25, 1.9, 17, 'light');
+}
+function cratePile(B, x, z, n, r) { // crates stacked into a rough pyramid
+  for (let i = 0; i < n; i++) { const lvl = i < n * 0.55 ? 0 : i < n * 0.85 ? 1 : 2, s = 1.1 + r() * 0.3; B.add(x + (i % 3) * 1.25 + lvl * 0.6, lvl * 1.25, z + ((i / 3) | 0) % 2 * 1.3, x + (i % 3) * 1.25 + lvl * 0.6 + s, lvl * 1.25 + s, z + ((i / 3) | 0) % 2 * 1.3 + s, 'crate'); }
+}
+
 function warehouse() {
   const B = builder(), D = builder(); // D: render-only (lamps, trusses, barbed wire)
   const { add, box } = B;
   const r = rng(616);
   const X = 60, Z = 40, H = 16;
   const FX0 = -90, FX1 = 140, FZ = 75; // the fence
-  const bounds = [FX0 - 2, -FZ - 2, FX1 + 2, FZ + 2];
+  const RX0 = -114, RX1 = -102; // the road past the gate, running left-right to the horizon (centred on the texture's line)
+  const bounds = [RX0 - 1, -FZ - 2, FX1 + 2, FZ + 2]; // the fence, and on the gate side the far edge of the road
   // hall floor with three shredder shafts into the void
   const pits = [[-30, -6, -22, 6], [-4, 18, 4, 30], [26, -26, 34, -16]];
   add(-X, -1, -Z, X, 0, -26, 'concrete');
@@ -780,7 +803,11 @@ function warehouse() {
   groundHoles(B, -230, -190, 260, 190, -1, 0, 'asphalt', [[-X, -Z, X, Z], [X, -50, 110, 50]]);
   add(X, -1, -50, 110, 0, 50, 'concrete'); // the loading yard
   add(X, 0, -50, 110, 0.04, -49.7, 'hazard');
-  add(-230, 0, -4, FX0, 0.06, 4, 'roadx'); // the road in, through the gate, going nowhere
+  add(RX0, 0, -190, RX1, 0.06, 190, 'roadz'); add(RX1, 0, -6, FX0, 0.05, 6, 'concrete'); // the road, and the drive in to the gate
+  for (const x of [RX0 + 0.4, RX1 - 0.6]) add(x, 0.06, -190, x + 0.2, 0.07, 190, 'white');
+  for (const s2 of [-1, 1]) D.add(RX0, 0, s2 > 0 ? 190 : -900, RX1, 0.06, s2 > 0 ? 900 : -190, 'roadz'); // ...on out past the fog both ways
+  for (let z = -180; z <= 180; z += 30) { streetlight(W, RX0 - 1, z, 1); }
+  for (let z = -870; z <= 870; z += 45) if (Math.abs(z) > 190) streetlight(D.local(0, 0, 0), RX0 - 1, z, 1);
   const Y = B.local(X + 25, 0, 0);
   const cont = (x, z, y, rot, m) => (rot ? Y(x - 1.25, y, z - 6, x + 1.25, y + 2.6, z + 6, m) : Y(x - 6, y, z - 1.25, x + 6, y + 2.6, z + 1.25, m));
   cont(-10, -30, 0, 0, 'containerr'); cont(-10, -30, 2.6, 0, 'containerb'); cont(4, -30, 0, 0, 'containerg');
@@ -807,34 +834,52 @@ function warehouse() {
   for (let x = -18; x < 50; x += 4.5) add(x, 0.04, -65, x + 0.15, 0.05, -60, 'white');
   for (const [x, c] of [[-14, 'carred'], [-5, 'caryellow'], [9, 'carblue'], [18, 'burnt'], [36, 'cargreen']]) car(W, x + 1.2, -62.5, 1, c);
   // south yard: trailers in a row, pallets and tyres piled up
-  trailer(B, -40, 52, 'adtruck2'); trailer(B, -22, 56, 'adtruck'); trailer(B, 0, 51, 'adtruck2');
+  add(-58, 0, 40.3, -38, 1.2, 44, 'concrete'); add(-24, 0, 40.3, 26, 1.2, 44, 'concrete'); // the loading dock (the door at -34..-28 stays)
+  for (const [a, b] of [[-58, -38], [-24, 26]]) { add(a, 1.2, 43.9, b, 1.24, 44, 'hazard'); for (let x = a + 1.5; x < b - 1; x += 4) add(x, 0.3, 44, x + 0.5, 1.1, 44.35, 'tire'); add(b, 0, 41, b + 1.2, 0.6, 43.5, 'crate'); }
+  for (const [x, door] of [[-53, 'metal'], [-43, 'graffiti'], [-18, 'metal'], [-6, 'metal'], [6, 'graffiti'], [18, 'metal']]) D.add(x - 2.8, 1.2, 40.3, x + 2.8, 5.2, 40.36, door); // dock doors (shut)
+  semi(B, -53, 44.4, 0, 'adtruck2'); semi(B, -6, 44.4, 0, 'adtruck'); semi(B, 18, 44.4, 0, 'adtruck2', false);
+  forklift(B, -43, 47, 1, 1.2); forklift(B, 6, 48, 3);
   for (const [x, z, n] of [[24, 50, 9], [25.3, 50, 6], [24, 51.1, 3], [40, 60, 8], [-70, 50, 5], [-71.3, 50, 7]]) pallets(B, x, z, n, r, false);
   for (let i = 0; i < 6; i++) for (let k = 0; k <= i % 3; k++) box(52 + i * 1.1, 0.15 + k * 0.3, 62, 1, 0.3, 1, 'tire');
   forklift(B, 34, 66, 0);
+  for (const [x, z, n] of [[-30, 62, 9], [48, 50, 7], [-80, 40, 8], [-70, -44, 6], [70, -62, 9], [100, -62, 5], [100, 62, 8]]) cratePile(B, x, z, n, r);
+  for (const [x, z] of [[-60, 58], [-58.6, 58], [-60, 59.2], [-46, 66], [-44.6, 66], [80, 66], [81.4, 66], [80, 67.2], [-82, 46], [-82, 47.2], [64, -58], [65.4, -58]]) pallets(B, x, z, 3 + ((x * 7 + z) & 3), r, true);
+  forklift(B, -76, 52, 2, 1.6); forklift(B, 90, -60, 0);
+  for (const [x, z, m] of [[-86, -36, 'containerr'], [-86, -62, 'containerb']]) add(x, 0, z, x + 2.5, 2.6, z + 12, m);
   // west yard: the gate (open, the sliding panel parked beside it) with a guard booth, a water tower to grapple
   waterTower(W, -76, 30, 0);
-  add(-84, 0, 8, -80, 2.8, 12, 'toyteal'); add(-84.3, 2.8, 7.7, -79.7, 3.1, 12.3, 'toyred'); add(-84.05, 1.1, 8.6, -83.95, 2.2, 11.4, 'glass');
+  const GB = B.local(-84, 10.9, 0); // the guard booth by the gate, a boom barrier (up: they gave up)
+  shell(GB, 4, 3.4, 1, 2.8, 'toyteal', { roof: 'toyred', floor: 'tile', parapet: false });
+  GB(-1.6, 0.12, 0.4, 1.6, 0.95, 1.4, 'wood'); GB.B(0.8, 1.2, 0.9, 0.7, 0.45, 0.1, 'tvstatic');
+  add(-88, 0, 6.6, -87.4, 1.1, 7.2, 'hazard'); add(-87.78, 1.1, 6.83, -87.62, 5.1, 6.97, 'hazard');
+  const SO = B.local(-80, -16, 1); // the site office: a portacabin
+  shell(SO, 10, 4.2, 1, 3, 'containerb', { roof: 'roofg', floor: 'carpet', parapet: false });
+  SO(-4, 3.3, -2.5, 4, 4.2, -2.25, 'adoffice', { fit: 1 }); SO(-1.2, 0, -3.2, 1.2, 0.12, -2.1, 'grid');
+  SO(-4.5, 0.12, 0.6, -1.5, 0.85, 1.9, 'wood'); SO(1.5, 0.12, 0.6, 4.5, 0.85, 1.9, 'wood');
+  adBoard(B, -124, 0, 0, 'z', 'adcity2', 26, 10); // JANK COLA, by the road, facing the gate
+  adBoard(D, -128, -260, 0, 'z', 'adcity1', 22, 9); adBoard(D, -128, 300, 0, 'z', 'adcity3', 22, 9);
   for (const [x, z] of [[-70, -30], [-80, -50], [-74, 60]]) { add(x, 0, z, x + 2.6, 1.5, z + 1.6, 'containerg'); }
   // light masts
   for (const [x, z] of [[-84, -70], [134, -70], [-84, 70], [134, 70], [30, -70], [30, 70]]) { box(x, 7, z, 0.5, 14, 0.5, 'metal'); box(x, 14.2, z, 2.6, 0.5, 1, 'lamp'); }
   // the fence: chain link on posts with barbed wire on top, gate in the west side
   const fence = (x0, z0, x1, z1) => {
     const alongX = z0 === z1, len = alongX ? x1 - x0 : z1 - z0;
-    if (alongX) add(x0, 0, z0 - 0.04, x1, 3.2, z0 + 0.04, 'fence'); else add(x0 - 0.04, 0, z0, x0 + 0.04, 3.2, z1, 'fence');
-    for (let t = 0; t <= len + 0.01; t += 6) { const px = alongX ? x0 + t : x0, pz = alongX ? z0 : z0 + t; box(px, 1.75, pz, 0.14, 3.5, 0.14, 'metal'); }
-    if (alongX) { D.add(x0, 3.5, z0 - 0.02, x1, 3.53, z0 + 0.02, 'tire'); D.add(x0, 3.75, z0 - 0.02, x1, 3.78, z0 + 0.02, 'tire'); }
-    else { D.add(x0 - 0.02, 3.5, z0, x0 + 0.02, 3.53, z1, 'tire'); D.add(x0 - 0.02, 3.75, z0, x0 + 0.02, 3.78, z1, 'tire'); }
+    if (alongX) add(x0, 0, z0 - 0.04, x1, 4.2, z0 + 0.04, 'fence'); else add(x0 - 0.04, 0, z0, x0 + 0.04, 4.2, z1, 'fence');
+    for (let t = 0; t <= len + 0.01; t += 6) { const px = alongX ? x0 + t : x0, pz = alongX ? z0 : z0 + t; box(px, 2.25, pz, 0.14, 4.5, 0.14, 'metal'); }
+    if (alongX) { D.add(x0, 4.5, z0 - 0.02, x1, 4.53, z0 + 0.02, 'tire'); D.add(x0, 4.75, z0 - 0.02, x1, 4.78, z0 + 0.02, 'tire'); }
+    else { D.add(x0 - 0.02, 4.5, z0, x0 + 0.02, 4.53, z1, 'tire'); D.add(x0 - 0.02, 4.75, z0, x0 + 0.02, 4.78, z1, 'tire'); }
   };
   fence(FX0, -FZ, FX1, -FZ); fence(FX0, FZ, FX1, FZ); fence(FX1, -FZ, FX1, FZ);
   fence(FX0, -FZ, FX0, -6); fence(FX0, 6, FX0, FZ);
-  add(FX0 - 0.3, 0, 6.2, FX0 - 0.15, 3.2, 18, 'fence'); // the sliding gate, open
-  // trees along the inside of the fence, and the world outside (render-only)
-  for (let x = FX0 + 6; x < FX1 - 4; x += 11) for (const z of [-FZ + 3, FZ - 3]) if (Math.abs(x - 30) > 4) lollipop(W, x + (r() - 0.5) * 2, z, 4.5 + r() * 2, r);
+  add(FX0 - 0.3, 0, 6.2, FX0 - 0.15, 4.2, 18, 'fence'); // the sliding gate, open
+  // the world outside (render-only): trees just outside the fence (none in the yard: it's a yard), then scattered ones
   const Dw = D.local(0, 0, 0);
+  for (let x = FX0 + 4; x < FX1 + 8; x += 7) for (const z of [-FZ - 7, FZ + 7, -FZ - 15, FZ + 15]) if (r() < 0.8) (r() < 0.5 ? conifer : lollipop)(Dw, x + (r() - 0.5) * 3, z + (r() - 0.5) * 3, 5 + r() * 3, r);
+  for (let z = -FZ - 10; z <= FZ + 10; z += 7) for (const x of [FX1 + 7, FX1 + 15]) if (r() < 0.8) (r() < 0.5 ? conifer : lollipop)(Dw, x + (r() - 0.5) * 3, z + (r() - 0.5) * 3, 5 + r() * 3, r);
+  for (let z = -180; z <= 180; z += 8) if (Math.abs(z) > 12 && r() < 0.6) (r() < 0.5 ? conifer : lollipop)(Dw, RX0 - 8 - r() * 10, z, 5 + r() * 3, r); // across the road
   for (let i = 0; i < 50; i++) { const a = r() * Math.PI * 2, d = 120 + r() * 90; const x = 25 + Math.cos(a) * d * 1.2, z = Math.sin(a) * d; if (x > FX0 - 6 && x < FX1 + 6 && Math.abs(z) < FZ + 6) continue; (r() < 0.5 ? conifer : lollipop)(Dw, x, z, 6 + r() * 4, r); }
-  for (let x = -220; x < FX0 - 10; x += 26) streetlight(Dw, x, 5.5, -1);
   const spawns = [[-52, 0.1, -34], [52, 0.1, 34], [-52, 0.1, 34], [52, 0.1, -34], [0, 0.1, -12], [0, 0.1, 12], [84, 0.1, 0], [-46, 0.2, 12],
-    [-75, 0.1, 0], [-60, 0.2, -60], [10, 0.1, -58], [126, 0.1, -10], [10, 0.1, 64], [-50, 0.1, 64], [100, 0.1, 40], [-30, 7.4, -38.5]];
+    [-75, 0.1, 0], [-60, 0.2, -60], [10, 0.1, -58], [126, 0.1, -10], [10, 0.1, 66], [-46, 1.3, 42], [100, 0.1, 40], [-30, 7.4, -38.5]];
   let graph = null;
   const map = {
     name: 'Warehouse', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -25, bounds,

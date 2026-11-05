@@ -142,6 +142,7 @@ export function addVibe(out, canvasTex, speckle) {
   out.neonnoodle = neon('NOODLE', '#ff4fd8');
   out.neonhotel = neon('HOTEL 4 HOURS', '#fff04d');
   out.neonwork = neon('WORK HARDER', '#ff2a3a');
+  out.adoffice = ad('#ffe14d', '#120818', ['SITE OFFICE', 'knock. then knock louder.'], 256, 64, { lit: false });
   out.adware = ad('#2a6cff', '#ffe14d', ['DOCK 3', 'no loitering. no not-loitering.'], 256, 96, { small: '#fff', lit: false });
   out.adshred = ad('#ffe14d', '#ff2a3a', ['DANGER', 'industrial shredder. do not feed.'], 256, 96, { stripes: 'rgba(0,0,0,0.14)', small: '#120818', lit: false });
 }
