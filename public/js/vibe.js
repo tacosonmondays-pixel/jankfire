@@ -59,6 +59,15 @@ export function addVibe(out, canvasTex, speckle) {
   out.asphalt = lam(canvasTex(32, (g, s) => { speckle(g, s, [84, 82, 92], 20, 2); blobs(g, s, ['rgba(255,60,200,0.07)', 'rgba(60,255,220,0.07)', 'rgba(0,0,0,0.2)'], 10, 2, 6); }), 4); // oily
   out.wetroad = lam(canvasTex(32, (g, s) => { speckle(g, s, [40, 40, 56], 14, 2); blobs(g, s, ['rgba(255,60,200,0.18)', 'rgba(60,220,255,0.18)'], 8, 3, 8); g.fillStyle = '#ffe14d'; for (let x = 0; x < s; x += 16) g.fillRect(x, 15, 8, 2); }), 10);
   out.wetroadz = lam(canvasTex(32, (g, s) => { speckle(g, s, [40, 40, 56], 14, 2); blobs(g, s, ['rgba(255,60,200,0.18)', 'rgba(60,220,255,0.18)'], 8, 3, 8); g.fillStyle = '#ffe14d'; for (let y = 0; y < s; y += 16) g.fillRect(15, y, 2, 8); }), 10);
+  out.asphaltn = lam(canvasTex(32, (g, s) => { speckle(g, s, [36, 36, 48], 14, 2); blobs(g, s, ['rgba(255,60,200,0.06)', 'rgba(60,220,255,0.06)'], 9, 2, 6); }), 14); // the far city's streets, wet
+  out.seawater = { mat: new THREE.MeshPhongMaterial({ color: 0x0c2238, emissive: 0x040a16, specular: 0x88aacc, shininess: 70 }), tile: 1 };
+  { // brick tenements with windows: some lit (they glow), some not
+    const lit = [], c32 = 32;
+    for (let y = 3; y < c32; y += 8) for (let x = 2; x < c32; x += 6) lit.push([x, y, Math.random() < 0.45, Math.random() < 0.12]);
+    const base = canvasTex(c32, (g, s) => { speckle(g, s, [130, 60, 50], 22, 2); g.fillStyle = 'rgba(60,20,16,0.5)'; for (let y = 0; y < s; y += 4) g.fillRect(0, y, s, 1); for (const [x, y, on, neon] of lit) { g.fillStyle = on ? (neon ? '#ff4fd8' : '#ffe9a0') : '#1a1c2a'; g.fillRect(x, y, 3, 4); } });
+    const glow = canvasTex(c32, (g, s) => { g.fillStyle = '#000'; g.fillRect(0, 0, s, s); for (const [x, y, on, neon] of lit) if (on) { g.fillStyle = neon ? '#ff4fd8' : '#ffe9a0'; g.fillRect(x, y, 3, 4); } });
+    out.tenement = lam(base, 6, { emissive: 0xffffff, emissiveMap: glow });
+  }
   out.crosswalk = lam(canvasTex(16, (g, s) => { g.fillStyle = '#2a2a38'; g.fillRect(0, 0, s, s); g.fillStyle = '#e8e8f0'; g.fillRect(0, 0, s / 2, s); }), 2);
   out.sidepink = lam(canvasTex(16, siding([255, 120, 190], '#b0407a')), 1.2);
   out.sidelemon = lam(canvasTex(16, siding([250, 236, 80], '#a89a20')), 1.2);

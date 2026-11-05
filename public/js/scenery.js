@@ -128,9 +128,10 @@ export function buildScenery(scene, map, id, voidMesh) {
     for (let yy = 1; yy < 32; yy += 3) for (let xx = 1; xx < 16; xx += 3) { x.fillStyle = Math.random() < 0.4 ? '#ffe9a8' : '#2a3242'; x.fillRect(xx, yy, 2, 2); }
     const tex = new THREE.CanvasTexture(c); tex.magFilter = THREE.NearestFilter; tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     const towerMat = new THREE.MeshBasicMaterial({ map: tex, fog: false, color: new THREE.Color(1, 1, 1).lerp(new THREE.Color(fog), 0.25) });
-    const hMax = Math.max(40, ground - 18 - floorY); // you look down on the city: nothing pokes up to roof level to fake-grapple
+    const hMax = map.cityCap != null ? map.cityCap - floorY : Math.max(40, ground - 18 - floorY); // you look down on the city: nothing pokes up to roof level to fake-grapple
+    const from = map.cityR ? map.cityR - R + 40 : 60; // the map draws its own city out to cityR: these are just the horizon past it
     for (let i = 0; i < 220; i++) {
-      const [px, pz] = near(60, 650);
+      const [px, pz] = near(from, from + 600);
       const w = 14 + r() * 24, h = Math.min(hMax, 40 + r() * 260);
       const g = new THREE.BoxGeometry(w, h, w);
       const uv = g.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * w / 10, uv.getY(k) * h / 20);

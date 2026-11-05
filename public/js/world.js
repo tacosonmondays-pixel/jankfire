@@ -192,7 +192,8 @@ function buildMap(scene) {
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
     const mk = MAT[b.mat] ? b.mat : 'stone';
-    if (b.fit) { const g = boxGeo(sx, sy, sz); g.translate(cx, cy, cz); push(mk, g.toNonIndexed()); continue; } // the texture once per face (signs, faces)
+    if (b.fit) { const g = boxGeo(sx, sy, sz); if (b.rot) g.rotateY(b.rot); g.translate(cx, cy, cz); push(mk, g.toNonIndexed()); continue; } // the texture once per face (signs, faces)
+    if (b.rot) { const g = boxGeo(sx, sy, sz); worldUV(g, 0, 0, 0, MAT[mk].tile); g.rotateY(b.rot); g.translate(cx, cy, cz); push(mk, g.toNonIndexed()); continue; } // turned (render-only boxes: angled streets and blocks)
     if (b.mat === 'grass' && sy > 0.6) { // grass on top, dirt on the sides
       const g = boxGeo(sx, sy, sz);
       const top = g.clone();
