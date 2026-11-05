@@ -102,12 +102,14 @@ function open() {
 export function esClose(prompt) {
   ES.achs = []; // a new match: achievements from here on count for its end screen
   ES.open = false; ES.mini = false; ES.vote = null; ES.my = -1; ES.myStage = '';
+  ES.round = null; ES.perf = null; ES.roll = null; ES.lv = null; ES.line = ''; ES.lineFor = ''; ES.tab = 'board'; ES.tabPicked = false; // forget this match
   if (!root) return;
   root.classList.add('hidden'); root.classList.remove('mini');
   $('hud').classList.remove('es-open');
   $('esClick').classList.toggle('hidden', !prompt);
 }
 export function esHideClick() { const c = $('esClick'); if (c) c.classList.add('hidden'); }
+export function esClickShown() { const c = $('esClick'); return !!c && !c.classList.contains('hidden'); }
 // the play of the round is on: shrink to a side rail so the clip is watchable and you can still vote
 export function esMini(on) {
   ES.mini = !!on;
@@ -128,8 +130,8 @@ export function esVote(v) {
   ES.stageEnd = performance.now() + (v.left || 0);
   ES.stageLen = Math.max(1, v.left || 1);
   if (v.total) ES.totalEnd = performance.now() + v.total;
-  if (!ES.open) { // joined mid-vote (or the vote message beat the round message): open without a result title
-    if (!ES.round) ES.round = { pending: 1 };
+  if (!ES.open) { // joined mid-vote: no result of yours to show, just the vote
+    ES.round = { pending: 1 }; ES.perf = null; ES.roll = null;
     open();
   }
   if (stageChanged && ES.open && !(ES.round && ES.round.pending && v.stage === 'mode')) { if (v.stage === 'done') sfx.gavel(); else if (v.stage === 'map') sfx.slam(); }
@@ -146,7 +148,7 @@ export function esCast(i) {
   const v = ES.vote;
   if (!v || v.stage === 'done' || i < 0 || i >= v.options.length || i === ES.my) return false;
   ES.my = i;
-  net.send({ t: 'vote', i });
+  net.send({ t: 'vote', i, s: v.stage }); // the stage too: a late mode pick must not land on the map with the same number
   sfx.pop();
   renderCards(true);
   const c = $('esCards').children[i];
@@ -172,6 +174,7 @@ function result() {
   const m = ES.round;
   if (!m || m.pending) return 'none';
   if (ES.perf && ES.perf.won) return 'win';
+  if (m.game === 'inf' && G.infSide) return (G.infSide === 'inf') === !!G.zombie ? 'win' : 'lose'; // infection: your side won or it didn't
   const teams = !!m.sc;
   if (teams) return !m.winTeam ? 'draw' : m.winTeam === G.myTeam ? 'win' : 'lose';
   return !m.winner ? 'draw' : m.winner === G.myId ? 'win' : 'lose';
@@ -184,16 +187,24 @@ function renderWhere() {
 function renderTitle() {
   const t = $('esTitle'), r = result();
   const word = r === 'win' ? 'VICTORY' : r === 'lose' ? 'DEFEAT' : r === 'draw' ? 'DRAW' : 'NEXT MATCH';
+  if (ES.lineFor !== r && LINES[r]) { ES.line = pick(LINES[r]); ES.lineFor = r; } // the deadpan line matches the result
+  renderSub(r);
   if (t.dataset.word === word) return;
   t.dataset.word = word;
   t.className = `es-title r-${r}`;
   t.innerHTML = '';
-  const prop = (flip) => { const i = el('span', 'es-ico' + (flip ? ' flip' : '')); const img = new Image(); img.alt = ''; img.src = propImage(r === 'win' ? 'win' : r === 'draw' ? 'draw' : 'lose', flip); i.append(img); return i; }; // 3d, rendered from boxes
+  const prop = (flip) => { // 3d, rendered from boxes (no webgl for it: no prop)
+    const i = el('span', 'es-ico' + (flip ? ' flip' : '')), url = propImage(r === 'win' ? 'win' : r === 'draw' ? 'draw' : 'lose', flip);
+    if (url) { const img = new Image(); img.alt = ''; img.src = url; i.append(img); }
+    return i;
+  };
   const ico = prop(false);
   const w = el('b', 'es-word');
   [...word].forEach((ch, i) => { const s = el('span', null, ch); s.style.setProperty('--i', i); w.append(s); });
   t.append(ico, w);
   if (r !== 'none') t.append(prop(true)); else ico.remove();
+}
+function renderSub(r) {
   const m = ES.round || {};
   let sub = ES.line || '';
   if (m.sc) sub = `${TEAMS[1].name} ${m.sc[0]} - ${m.sc[1]} ${TEAMS[2].name} · ${sub}`;
@@ -332,7 +343,7 @@ function tabPerf(body) {
   eg.append(tile('EXPERIENCE', `+${p.xp}`, 'xp', p.acct ? 'XP' : 'xp (log in to keep it)'));
   const r = ES.roll;
   const crate = r && r.n > 0 ? (CONTAINERS[r.kind] || CONTAINERS.box).name.toUpperCase() : '—';
-  eg.append(tile('CONTAINER', r && r.n > 0 ? `+${r.n}` : '+0', 'crate', r && r.n > 0 ? crate : r && r.why ? r.why : 'win the round for one'));
+  eg.append(tile('CONTAINER', r && r.n > 0 ? `+${r.n}` : '+0', 'crate', r && r.n > 0 ? crate : r && r.guest ? 'you earned one. log in to keep them' : r && r.why ? r.why : 'win the round for one'));
   earn.append(eg);
   const rec = el('div', 'grp'); rec.append(el('h4', null, 'COMBAT RECORD'));
   const rg = el('div', 'tiles');
@@ -357,8 +368,10 @@ function medal(id, got) {
   const md = MEDALS[id];
   const d = el('div', 'es-medal' + (got ? ' got' : ''));
   d.style.setProperty('--mc', md.c);
-  const img = new Image(); img.alt = ''; img.className = 'coin'; img.src = medalImage(id, md); // a 3d badge
-  d.append(img, el('b', null, md.name), el('small', null, md.desc));
+  const url = medalImage(id, md); // a 3d badge (no webgl for it: a plain square with the glyph)
+  if (url) { const img = new Image(); img.alt = ''; img.className = 'coin'; img.src = url; d.append(img); }
+  else { const c = el('span', 'coin flat', md.g); c.style.background = md.c; d.append(c); }
+  d.append(el('b', null, md.name), el('small', null, md.desc));
   return d;
 }
 function tabMedals(body) {

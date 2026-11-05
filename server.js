@@ -82,7 +82,7 @@ function serve(req, res) {
   if (url === '/now') { // main menu "now playing" strip: the online room's mode + map, who's around
     const r = rooms.get('ffa');
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-cache' });
-    res.end(JSON.stringify({ online: humans(), room: r ? r.humans().length : 0, game: r ? r.game : process.env.JF_GAME || 'dm', map: r ? r.cfg.map : 'islands', region: process.env.JF_REGION || process.env.RENDER_REGION || '' }));
+    res.end(JSON.stringify({ online: humans(), room: r ? r.humans().length : 0, game: r ? r.game : process.env.JF_GAME || 'dm', map: r ? r.cfg.map : 'islands', region: process.env.JF_REGION || process.env.RENDER_REGION || '', ev: eventGame() }));
     return;
   }
   if (url.startsWith('/api/')) { accounts.handle(req, res, url); return; }
@@ -410,13 +410,15 @@ class Room {
     const used = new Set([...this.players.values()].map((p) => p.color));
     const color = opts.color || COLORS.find((c) => !used.has(c)) || COLORS[id % COLORS.length];
     const pos = opts.pos ? opts.pos.slice() : this.pickSpawn(opts.isBot);
-    return {
+    const p = {
       id, ws: opts.ws || null, room: this, name, color, pos, vel: [0, 0, 0], yaw: Math.random() * 6, pitch: 0,
       w: opts.w || 'ar', hp: 100, alive: true, respawnAt: 0, kills: 0, deaths: 0, seq: 1, spawnT: now(), reverseUntil: 0,
       lastAttacker: 0, lastAttackW: null, lastAttackT: 0, lastFire: {}, pair: new Map(), g: null, f: 0,
       chatT: 0, coughT: 0, cfgT: 0, skinT: 0, skins: opts.skins || {}, isBot: !!opts.isBot, ai: opts.ai || null,
       onGround: false, slipUntil: 0, acct: opts.acct || null, level: opts.level || 0,
     };
+    matchReset(p); // this match's report starts now, even for someone joining mid-match
+    return p;
   }
   info(p) { return { id: p.id, name: p.name, color: p.color, skins: p.skins, bot: p.isBot, level: p.level, look: p.look, card: p.card || '', team: p.team || 0, grap: p.grap || 'rope' }; }
 
@@ -483,7 +485,7 @@ class Room {
     // whatever they threw goes with them (with no owner it would ignore teams and bubbles); their holes and gas go inert
     for (const pr of this.projectiles.values()) if (pr.o === p.id) this.removeProj(pr);
     this.broadcast({ t: 'pl', id: p.id });
-    if (this.vote && this.vote.votes.delete(p.id)) this.broadcast({ t: 'votes', ...this.voteCounts() });
+    if (this.vote) { if (this.vote.votes.delete(p.id)) this.broadcast({ t: 'votes', ...this.voteCounts() }); this.voteHurry(); } // whoever's left may all have voted now
     if (this.livesOn) this.oitcList(); // so 'N left' drops them
     if (!p.isBot && (this.mode === 'ffa' || this.mode === 'coop')) this.broadcast({ t: 'chat', id: 0, m: `${p.name} left` });
     if (!this.humans().length) rooms.delete(this.id);
@@ -2404,6 +2406,7 @@ class Room {
       }
       if (GAMES[this.game].mapOk && !GAMES[this.game].mapOk(this.map)) { changes.push(`mode → Deathmatch (no ${GAMES[this.game].name} on this map)`); this.game = 'dm'; this.assignTeams(); }
       if (fresh) this.startRound();
+      else if (this.round && this.round.over) this.resetWorld(); // the end screen is up: respawn on the new map, the vote still picks what's next
       else if (this.bomb) this.newBombRound(true);
       else if (this.livesOn) { this.vote = null; setTimeout(safe('startRound', () => this.startRound()), 50); } // lives can't be patched mid-match
       else this.resetWorld();
@@ -2583,14 +2586,13 @@ class Room {
       case 'item': this.useItem(p, m); break;
       case 'spray': this.onSpray(p, m); break;
       case 'itemsel': this.selectItem(p, m.i); break;
-      case 'vote': // only a changed vote counts (each one is broadcast to the room). a vote is for the stage that's open now
-        if (this.vote && this.vote.stage !== 'done' && Number.isInteger(m.i) && m.i >= 0 && m.i < this.vote.options.length && this.vote.votes.get(p.id) !== m.i && now() - (p.voteT || 0) > 250) {
-          p.voteT = now();
-          this.vote.votes.set(p.id, m.i);
-          this.broadcast({ t: 'votes', ...this.voteCounts() });
-          this.voteHurry();
-        }
+      case 'vote': { // a vote is for the stage that's open now (s, when sent, must match it). one that comes too soon after
+        // the last is kept and counted once the 250 ms are up, so the card you see marked is always the one that counts
+        const v = this.vote;
+        if (!v || v.stage === 'done' || !Number.isInteger(m.i) || m.i < 0 || m.i >= v.options.length || (m.s != null && m.s !== v.stage)) break;
+        if (now() - (p.voteT || 0) > 250) this.castVote(p, m.i); else p.votePend = { i: m.i, stage: v.stage };
         break;
+      }
       case 'respawn': // killcam finished or skipped: respawn now, but never sooner than the mode allows
         if (this.livesOn && p.oitc && p.oitc.out) break; // out of lives: you watch
         if (!p.alive) p.respawnAt = Math.min(p.respawnAt, Math.max(now(), p.minRespawnAt || 0));
@@ -2665,7 +2667,7 @@ class Room {
     let roll = null;
     if (winner && !winner.isBot) {
       const eligible = this.mode === 'ffa' ? this.humans().length >= 2 : list.filter((p) => p.isBot).length >= 3;
-      if (!winner.acct) roll = { n: 0, guest: 1 };
+      if (!winner.acct) { roll = { n: 0, guest: 1 }; if (eligible && winner.kills && winner.m) winner.m.xp += 50; } // the xp they'd have kept
       else if (!eligible) roll = { n: 0, why: this.mode === 'ffa' ? 'need at least 2 real players for a roll' : 'need at least 3 bots for a roll' };
       else if (!winner.kills) roll = { n: 0, why: 'no kills, no roll (hiding is not winning)' }; // last one standing still needs to have fought
       else {
@@ -2679,13 +2681,18 @@ class Room {
       top: list.slice(0, 6).map((p) => [p.id, p.name, p.kills, p.deaths, p.team || 0]), next: this.round.next - now(),
       board: list.map((p, i) => [p.id, p.name, p.kills, p.deaths, p.team || 0, p.isBot ? 1 : 0, matchSummary(p, i, list, this).score]) });
     // your own match report (end screen: performance / medals / rewards). guests see the xp they would have kept
-    list.forEach((p, i) => { if (!p.isBot) send(p, { t: 'perf', ...matchSummary(p, i, list, this), won: p === winner || (winTeam && p.team === winTeam) ? 1 : 0, acct: p.acct ? 1 : 0 }); });
+    const side = GAMES[this.game].infect && this.round.res && this.round.res.side; // infection: the whole side that took it won
+    const won = (p) => (side ? (side === 'inf') === !!p.inf : p === winner || (winTeam && p.team === winTeam));
+    list.forEach((p, i) => { if (!p.isBot) send(p, { t: 'perf', ...matchSummary(p, i, list, this), won: won(p) ? 1 : 0, acct: p.acct ? 1 : 0 }); });
     this.startVote(); // after the result: clients open the end screen on 'round', then the vote fills it in
     const r = this.round;
     setTimeout(safe('hl', () => {
       if (this.round !== r || !r.hl || r.hl.pending || !r.hl.clip || !r.hl.clip.frames.length) return;
       const { label, id, name, color, card, clip } = r.hl;
       this.broadcast({ t: 'hl', label, id, name, color, card, clip });
+      // how long it plays: the clip, plus the slow-mo at each of their kills (0.3x for ~0.5 s). the vote's hurry mustn't cut it
+      const fr = clip.frames, kills = clip.ev.filter((e) => e.m && e.m.t === 'kill' && e.m.k === id).length;
+      r.hlEnd = now() + (fr[fr.length - 1].s - fr[0].s) + kills * 1150 + 500;
     }), 1600);
     if (roll) send(winner, { t: 'roll+', ...roll });
   }
@@ -2761,11 +2768,21 @@ class Room {
     this.botVotes();
     this.broadcast({ t: 'vote', ...this.voteInfo() });
   }
+  castVote(p, i) {
+    const v = this.vote;
+    p.voteT = now(); p.votePend = null;
+    if (v.votes.get(p.id) === i) return;
+    v.votes.set(p.id, i);
+    this.broadcast({ t: 'votes', ...this.voteCounts() });
+    this.voteHurry();
+  }
+  // the next round never starts before the play of the round has finished playing
+  holdForHl() { const r = this.round; if (r && r.over && r.hlEnd) r.next = Math.max(r.next, r.hlEnd); }
   // every human has voted: no point sitting through the rest of the stage. the bots still get their say first
   voteHurry() {
     const v = this.vote, n = now(), soon = n + 2500;
     if (!v || v.stage === 'done' || v.ends <= soon || !this.humans().every((h) => v.votes.has(h.id))) return;
-    if (this.round && this.round.over) this.round.next -= v.ends - soon;
+    if (this.round && this.round.over) { this.round.next -= v.ends - soon; this.holdForHl(); }
     v.ends = soon;
     for (const p of this.players.values()) if (p.voteAt) p.voteAt = Math.min(p.voteAt, n + 300 + Math.random() * 1800);
     this.broadcast({ t: 'votes', ...this.voteCounts(), left: soon - n, total: this.round && this.round.over ? this.round.next - n : 0 });
@@ -2778,6 +2795,11 @@ class Room {
   tickVote(n) {
     const v = this.vote;
     if (!v || v.stage === 'done') return;
+    for (const p of this.players.values()) { // re-picks that came in too fast: count them now
+      if (!p.votePend || n - (p.voteT || 0) <= 250) continue;
+      if (p.votePend.stage === v.stage) this.castVote(p, p.votePend.i); else p.votePend = null;
+      if (this.vote !== v || v.stage === 'done') return;
+    }
     let changed = false;
     for (const p of this.players.values()) {
       if (!p.isBot || !p.voteAt || n < p.voteAt || v.votes.has(p.id)) continue;
@@ -2798,6 +2820,7 @@ class Room {
     if (!v || v.stage === 'done') return;
     const isBot = (id) => this.players.get(id)?.isBot;
     const win = v.options[voteWinner(v.options.length, v.votes, isBot)];
+    for (const p of this.players.values()) { p.voteT = 0; p.votePend = null; } // a new stage: everyone can pick straight away
     if (v.stage === 'mode') {
       v.game = win.game; v.event = win.event;
       const maps = mapCards(v.game, MAPS, MAP_ORDER, this.cfg.map);
@@ -2811,7 +2834,7 @@ class Room {
       v.map = maps.length ? maps[0].map : this.cfg.map;
     } else v.map = win.map;
     Object.assign(v, { stage: 'done', options: [], votes: new Map(), ends: now() + VOTE.reveal });
-    if (this.round && this.round.over) this.round.next = Math.min(this.round.next, now() + VOTE.reveal);
+    if (this.round && this.round.over) { this.round.next = Math.min(this.round.next, now() + VOTE.reveal); this.holdForHl(); }
     this.broadcast({ t: 'vote', ...this.voteInfo() });
     this.broadcast({ t: 'chat', id: 0, m: `next up: ${GAMES[v.game].name} on ${MAPS[v.map].name}` });
   }
@@ -2832,7 +2855,7 @@ class Room {
     if (this.vote && this.vote.stage !== 'done') { this.advanceVote(); this.advanceVote(); }
     const v = this.vote;
     this.vote = null;
-    for (const p of this.players.values()) p.voteAt = 0;
+    for (const p of this.players.values()) { p.voteAt = 0; p.votePend = null; }
     if (!v || !v.game || !v.map || !MAPS[v.map]) return;
     const mapChanged = v.map !== this.cfg.map;
     this.cfg.map = v.map;
@@ -2953,11 +2976,11 @@ class Room {
           const site = siteAt(this.map, a.pos);
           Object.assign(b, { ph: 'planted', site: site.id, p: [r2(a.pos[0]), r2(a.pos[1] + 0.1), r2(a.pos[2])], explodeAt: n + BOMB.fuse * 1000, carrier: 0, act: null, planter: a.id });
           this.broadcast({ t: 'bombev', k: 'planted', site: site.id, id: a.id });
-          if (a.acct) stat(a, 'xp', 10);
+          if (a.acct) stat(a, 'xp', 10); else if (a.m) a.m.xp += 10;
         } else {
           b.act = null;
           this.broadcast({ t: 'bombev', k: 'defused', id: a.id });
-          if (a.acct) stat(a, 'xp', 15);
+          if (a.acct) stat(a, 'xp', 15); else if (a.m) a.m.xp += 15;
           this.bombRoundWin(3 - b.att, 'defused');
           return;
         }

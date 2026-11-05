@@ -28,8 +28,10 @@ function perim(x0, y0, x1, y1, r) {
   return { L, at };
 }
 
+let frames = 0;
 export function fleshFrame(W, H) {
   seed = 7 + ((W * 31 + H) % 1000); // same window = same lumps
+  const P = `fl${++frames}-`; // the menu and the end screen each have a frame on the page: their svg ids must not collide
   const T = Math.round(Math.max(12, Math.min(26, Math.min(W, H) * 0.022)));
   const P = perim(T, T, W - T, H - T, T * 2.2);
   const bumps = Array.from({ length: 7 }, () => ({ u: rnd() * P.L, w: 40 + rnd() * 90, a: 6 + rnd() * 10 }));
@@ -57,7 +59,7 @@ export function fleshFrame(W, H) {
   }
   // chrome bolts screwed into the meat, a pair of googly eyes up top
   let bolts = '';
-  const boltAt = (x, y, r) => { bolts += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${Math.round(rnd() * 90)})"><circle r="${r}" fill="url(#chrome)" stroke="#120818" stroke-width="2"/><path d="M${-r * 0.55} 0H${r * 0.55}M0 ${-r * 0.55}V${r * 0.55}" stroke="#3a3a48" stroke-width="2"/></g>`; };
+  const boltAt = (x, y, r) => { bolts += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${Math.round(rnd() * 90)})"><circle r="${r}" fill="url(#${P}chrome)" stroke="#120818" stroke-width="2"/><path d="M${-r * 0.55} 0H${r * 0.55}M0 ${-r * 0.55}V${r * 0.55}" stroke="#3a3a48" stroke-width="2"/></g>`; };
   const br = Math.max(5, T * 0.32);
   for (const [x, y] of [[T * 0.75, T * 0.75], [W - T * 0.75, T * 0.75], [T * 0.75, H - T * 0.75], [W - T * 0.75, H - T * 0.75]]) boltAt(x, y, br * 1.25);
   for (let x = 240; x < W - 200; x += 260 + rnd() * 120) { boltAt(x, T * 0.45, br); boltAt(x + 60, H - T * 0.45, br); }
@@ -67,9 +69,9 @@ export function fleshFrame(W, H) {
   const eyes = eye(W * 0.5 - er * 1.15, T * 0.55, er, 0) + eye(W * 0.5 + er * 1.15, T * 0.55, er * 0.82, 0.37);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">
   <defs>
-    <linearGradient id="meat" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e2667a"/><stop offset=".45" stop-color="#b8304e"/><stop offset=".7" stop-color="#d4507a"/><stop offset="1" stop-color="#8a1838"/></linearGradient>
-    <radialGradient id="chrome" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#c8ccd6"/><stop offset=".7" stop-color="#6a6e7c"/><stop offset="1" stop-color="#e8ecf4"/></radialGradient>
-    <filter id="wet" x="0" y="0" width="100%" height="100%">
+    <linearGradient id="${P}meat" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e2667a"/><stop offset=".45" stop-color="#b8304e"/><stop offset=".7" stop-color="#d4507a"/><stop offset="1" stop-color="#8a1838"/></linearGradient>
+    <radialGradient id="${P}chrome" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#c8ccd6"/><stop offset=".7" stop-color="#6a6e7c"/><stop offset="1" stop-color="#e8ecf4"/></radialGradient>
+    <filter id="${P}wet" x="0" y="0" width="100%" height="100%">
       <feTurbulence type="fractalNoise" baseFrequency=".035 .06" numOctaves="3" seed="4" result="n"/>
       <feDiffuseLighting in="n" surfaceScale="5" lighting-color="#ffc8d0" result="lit"><feDistantLight azimuth="235" elevation="48"/></feDiffuseLighting>
       <feComposite in="lit" in2="SourceGraphic" operator="arithmetic" k1="1.15" k2="0" k3="0" k4="0" result="tex"/>
@@ -78,13 +80,13 @@ export function fleshFrame(W, H) {
       <feComposite in="tex" in2="spec2" operator="arithmetic" k1="0" k2="1" k3=".55" k4="0" result="all"/>
       <feComposite in="all" in2="SourceAlpha" operator="in"/>
     </filter>
-    <filter id="glow" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="5"/></filter>
-    <clipPath id="bandclip"><path d="${band}" clip-rule="evenodd"/></clipPath>
+    <filter id="${P}glow" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="5"/></filter>
+    <clipPath id="${P}bandclip"><path d="${band}" clip-rule="evenodd"/></clipPath>
   </defs>
-  <path d="${inner}" fill="none" stroke="#000" stroke-opacity=".55" stroke-width="${T * 1.6}" filter="url(#glow)"/>
-  <path d="${band}" fill="url(#meat)" fill-rule="evenodd" filter="url(#wet)"/>
-  <g clip-path="url(#bandclip)" fill="none" stroke="#5a1a6a" stroke-opacity=".7" stroke-linecap="round">${veins}</g>
-  <path d="${inner}" fill="none" stroke="#ff4fd8" stroke-width="7" filter="url(#glow)"/>
+  <path d="${inner}" fill="none" stroke="#000" stroke-opacity=".55" stroke-width="${T * 1.6}" filter="url(#${P}glow)"/>
+  <path d="${band}" fill="url(#${P}meat)" fill-rule="evenodd" filter="url(#${P}wet)"/>
+  <g clip-path="url(#${P}bandclip)" fill="none" stroke="#5a1a6a" stroke-opacity=".7" stroke-linecap="round">${veins}</g>
+  <path d="${inner}" fill="none" stroke="#ff4fd8" stroke-width="7" filter="url(#${P}glow)"/>
   <path d="${inner}" fill="none" stroke="#120818" stroke-width="4"/>
   <path d="${inner}" fill="none" stroke="#ff4fd8" stroke-width="2.2"/>
   <path d="${inner}" fill="none" stroke="#ffe14d" stroke-width="0.9" stroke-dasharray="2 10" opacity=".9"/>

@@ -13,7 +13,7 @@ import { fleshFrame } from './flesh.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-let opts = {}, nowT = 0, evT = 0, lastFrame = '';
+let opts = {}, nowT = 0, evT = 0, lastFrame = '', serverEv = ''; // serverEv: the server's event of the day (its clock decides the vote's)
 
 export function initHome(o) {
   opts = o; // { start(mode, cfg), look() -> [color, look], skin(id) }
@@ -56,7 +56,7 @@ function hero() {
 }
 
 function renderEvent(tickOnly) {
-  const ev = eventGame();
+  const ev = (GAMES[serverEv] && serverEv) || eventGame();
   const box = $('homeEvent');
   const left = 86400000 - (Date.now() % 86400000), s = Math.floor(left / 1000);
   const clock = `${String(Math.floor(s / 3600)).padStart(2, '0')}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -92,6 +92,7 @@ async function pollNow() {
   try {
     const r = await fetch('/now', { cache: 'no-store' });
     const n = await r.json();
+    if (n.ev && n.ev !== serverEv) { serverEv = n.ev; renderEvent(); }
     strip.innerHTML = '';
     const seg = (label, val, cls) => { const s = el('span', 'seg' + (cls ? ' ' + cls : '')); s.append(el('small', null, label), el('b', null, val)); return s; };
     const game = GAMES[n.game] ? GAMES[n.game].name : 'Deathmatch', map = MAPS[n.map] ? MAPS[n.map].name : '';

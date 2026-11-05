@@ -126,7 +126,8 @@ function glyphTex(glyph, col) {
 export function medalImage(id, md) {
   const k = 'md:' + id;
   if (cache.has(k)) return cache.get(k);
-  const url = shot(() => {
+  let url = '';
+  try { url = shot(() => {
     const g = new THREE.Group();
     const face = new THREE.MeshLambertMaterial({ map: glyphTex(md.g, md.c) }), rim = new THREE.MeshLambertMaterial({ color: new THREE.Color(md.c).multiplyScalar(0.55), flatShading: true });
     const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.18, 8), [rim, face, rim]); coin.rotation.x = Math.PI / 2; coin.rotation.y = Math.PI / 8;
@@ -134,7 +135,7 @@ export function medalImage(id, md) {
     const strap = new THREE.Group(); for (const [x, c] of [[-0.16, md.c], [0, '#ffffff'], [0.16, md.c]]) { const s = box(0.16, 0.6, 0.06, c); s.position.set(x, 0.9, -0.05); strap.add(s); }
     g.add(coin, ring, strap); g.rotation.set(-0.12, -0.22, 0.06); g.position.y = 0.2;
     return g;
-  }, ['#000', '#000'], 96, 112, false);
+  }, ['#000', '#000'], 96, 112, false); } catch (e) { console.warn('medal art', id, e); } // no webgl: the caller draws a flat badge
   cache.set(k, url);
   return url;
 }
@@ -161,6 +162,10 @@ const PROPS = {
 };
 export function propImage(r, flip) {
   const k = 'p:' + r + (flip ? 'f' : '');
-  if (!cache.has(k)) cache.set(k, shot(() => { const p = (PROPS[r] || PROPS.lose)(); if (flip) p.rotation.y += 0.5; return p; }, ['#000', '#000'], 128, 128, false));
+  if (!cache.has(k)) {
+    let url = '';
+    try { url = shot(() => { const p = (PROPS[r] || PROPS.lose)(); if (flip) p.rotation.y += 0.5; return p; }, ['#000', '#000'], 128, 128, false); } catch (e) { console.warn('title art', r, e); }
+    cache.set(k, url);
+  }
   return cache.get(k);
 }

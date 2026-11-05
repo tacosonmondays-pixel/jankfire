@@ -18,8 +18,9 @@ export function matchKill(room, k, t, w) {
   m.best = Math.max(m.best, k.streak || 0);
   m.log = m.log.filter((x) => n - x < 8000); m.log.push(n);
   m.multi = Math.max(m.multi, m.log.length);
-  m.fast = Math.max(m.fast, Math.round(Math.hypot(k.vel[0], k.vel[1], k.vel[2]) * 3.6));
-  m.far = Math.max(m.far, Math.round(Math.hypot(k.pos[0] - t.pos[0], k.pos[1] - t.pos[1], k.pos[2] - t.pos[2])));
+  // movement is the client's word: keep it to sane numbers (top_speed has the same cap), it's only shown to them
+  m.fast = Math.max(m.fast, Math.round(Math.min(20000, Math.hypot(k.vel[0], k.vel[1], k.vel[2]) * 3.6)));
+  m.far = Math.max(m.far, Math.round(Math.min(1000, Math.hypot(k.pos[0] - t.pos[0], k.pos[1] - t.pos[1], k.pos[2] - t.pos[2]))));
   if (!k.acct && room.mode !== 'training') m.xp += t.isBot ? 5 : 20; // accounts get theirs through stat() (same numbers)
 }
 const scoreOf = (p) => { const m = p.m || {}; return p.kills * 100 + (m.hsk || 0) * 25 + (m.best || 0) * 10 + (m.first ? 50 : 0); };

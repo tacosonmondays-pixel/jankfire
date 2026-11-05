@@ -165,11 +165,11 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 #endscreen, #esClick { text-shadow: none; } /* the hud's black shadow would show through gradient text and muddy dark-on-gloss labels */
 #endscreen {
   --ft: clamp(12px, 2.2vmin, 26px);
-  position: absolute; inset: 0; z-index: 20; pointer-events: auto; overflow: hidden; color: #fff; font-family: var(--font);
+  position: absolute; inset: 0; z-index: 20; pointer-events: auto; overflow: hidden auto; color: #fff; font-family: var(--font); /* scrolls when a window is too small for it */
   display: grid; grid-template-rows: auto auto auto minmax(0, 1fr); justify-items: center; row-gap: clamp(4px, 1.1vh, 14px);
   padding: calc(var(--ft) + 10px) calc(var(--ft) + 22px) calc(var(--ft) + 14px);
 }
-.es-back { position: absolute; inset: 0; z-index: -1; background:
+.es-back { position: fixed; inset: 0; z-index: -1; background:
   var(--grime), rgba(18, 8, 24, 0.93); /* the match shows through as shapes, not as name tags you could read */
   }
 .es-back::after { content: ''; position: absolute; inset: 0; background: var(--scan); opacity: 0.7; }
@@ -310,10 +310,12 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 .es-medals { display: flex; flex-wrap: wrap; gap: 14px 18px; }
 .es-medal { width: 128px; display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; animation: medalin 0.55s cubic-bezier(.2, 1.6, .4, 1) both; animation-delay: calc(var(--i, 0) * 110ms); }
 .es-medal .coin { width: 84px; height: 98px; image-rendering: pixelated; display: block; }
+.es-medal .coin.flat { width: 64px; height: 64px; margin: 14px 0 6px; display: grid; place-items: center; font-size: 28px; font-weight: 700; color: #fff; -webkit-text-stroke: 3px #000; paint-order: stroke fill; border: 4px solid #000; box-shadow: 4px 4px 0 #000; } /* no webgl: a flat badge */
 .es-medal b { margin-top: 8px; font-size: 13px; line-height: 1.1; color: var(--yellow); text-shadow: 1px 1px 0 var(--ink); }
 .es-medal small { text-shadow: 1px 1px 0 var(--ink); font-size: 11px; color: #c8b0d8; line-height: 1.2; }
 .es-medals.small .es-medal { width: 96px; filter: grayscale(1); opacity: 0.55; animation: none; }
 .es-medals.small .coin { width: 42px; height: 49px; }
+.es-medals.small .coin.flat { width: 32px; height: 32px; margin: 6px 0 4px; font-size: 15px; border-width: 3px; box-shadow: 2px 2px 0 #000; }
 .es-medals.small small { display: none; } .es-medals.small b { font-size: 10px; color: #fff; }
 @keyframes medalin { 0% { transform: scale(0) rotate(-40deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
 /* rewards */
@@ -338,7 +340,9 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 }
 @media (max-width: 760px) {
   .es-cards { flex-wrap: wrap; }
-  .es-card { width: calc(50% - 12px); max-width: 220px; }
+  .es-card { width: calc(50% - 12px); max-width: 220px; rotate: none; }
+  .es-card .desc, .es-card .who { display: none; }
+  .es-card .mthumb, .es-card .mapthumb { aspect-ratio: 16 / 8; }
   .es-perf, .es-rewards { grid-template-columns: 1fr; }
   .es-perf .grp:first-child .tiles { flex-direction: row; }
   .es-board .row { grid-template-columns: 30px minmax(0, 1fr) 36px 36px 50px 60px; font-size: 13px; }
@@ -362,7 +366,7 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 #endscreen.mini { pointer-events: none; display: block; padding: 0; }
 #endscreen.mini .es-back, #endscreen.mini .es-head, #endscreen.mini .es-tabs, #endscreen.mini .es-frame, #endscreen.mini .es-chip { display: none; }
 #endscreen.mini .es-top { position: absolute; right: 18px; top: 16px; width: auto; }
-#endscreen.mini .es-vote { pointer-events: auto; position: absolute; right: 18px; top: 66px; width: min(300px, 40vw); padding: 10px; gap: 6px;
+#endscreen.mini .es-vote { pointer-events: auto; position: absolute; right: 18px; top: 66px; width: min(300px, 40vw); padding: 10px; gap: 6px; max-height: calc(100% - 84px); overflow-y: auto;
   background: var(--panel); border: var(--zpanel); box-shadow: var(--zshadow); }
 #endscreen.mini .es-steps span:not(.on), #endscreen.mini .es-steps i { display: none; }
 #endscreen.mini .es-stagebar { width: 100%; }

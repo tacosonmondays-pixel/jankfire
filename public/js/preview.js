@@ -35,7 +35,7 @@ export function resizePreview() {
 
 export function showPreview(id, skin) {
   if (!holder) return;
-  sway = 0; holder.rotation.y = 0; camHome();
+  sway = 0; holder.rotation.y = 0; camHome(); dropPlinth();
   freeTree(holder); holder.clear(); // the last thing shown is gone for good
   const g = buildWeapon(id, skin);
   g.updateMatrixWorld(true);
@@ -55,7 +55,7 @@ export function showPreview(id, skin) {
 // show a mannequin with a look instead of a weapon (character screen)
 export function showCharacter(build, color, look) {
   if (!holder) return;
-  sway = 0; holder.rotation.y = 0; camHome();
+  sway = 0; holder.rotation.y = 0; camHome(); dropPlinth();
   freeTree(holder); holder.clear(); // the last thing shown is gone for good
   const ch = build(color, look);
   const wrap = new THREE.Group();
@@ -104,10 +104,12 @@ export function showArmed(build, color, look, weapon) {
     ch.slot.add(weapon);
   }
   sway = 1.05; swayT = 0; // side on, so the gun reads in profile
-  holder.add(plinth());
+  holder.add(plinthObj || (plinthObj = plinth())); // built once, reused on every visit
   cam.position.set(0, 0.12, 2.75); cam.lookAt(0, -0.1, 0); // pulled back a bit so the plinth fits under the feet
 }
 function camHome() { cam.position.set(0, 0.3, 2.2); cam.lookAt(0, 0, 0); }
+let plinthObj = null;
+function dropPlinth() { if (plinthObj && plinthObj.parent) plinthObj.parent.remove(plinthObj); } // out before freeTree, so it isn't freed
 // the turntable you stand on: a chunky 8-sided concrete slab, a pink trim band, a black lip, bolts. feet at y = -0.625
 function speck(hex, n = 16) {
   const cv = document.createElement('canvas'); cv.width = cv.height = n;

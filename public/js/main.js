@@ -54,7 +54,7 @@ import { royalToast, royalUnlock, royalBoxes } from './royal.js';
 import { setOnly } from './weapons.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
 import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection, infClipInfo } from './infection.js';
-import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick } from './endscreen.js';
+import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown } from './endscreen.js';
 import { initHome, homeShown, homeLeft } from './home.js';
 
 const $ = (id) => document.getElementById(id);
@@ -172,7 +172,7 @@ $('quit').addEventListener('click', quitToMenu);
 
 function resume() {
   hideMenu();
-  lock();
+  if (!esFull()) lock(); // the end screen wants the mouse free for its cards
 }
 
 // ------------------------------------------------------------ playing
@@ -871,6 +871,8 @@ addEventListener('keyup', (e) => {
 });
 addEventListener('mousedown', (e) => {
   if (!inGame()) return;
+  if (e.target instanceof Element && e.target.closest('#endscreen')) return; // the end screen's cards and tabs take the click, not your gun (or the replay skip)
+  if (esClickShown()) { esHideClick(); lock(); return; } // CLICK TO DROP IN: that click only grabs the mouse
   if (RP.mode === 'killcam' || RP.mode === 'hl' || G.killcamPending) { skipReplay(); return; } // a click skips the killcam and the play of the round
   if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor: no shooting
   if (stuckInBubble(true)) return; // sealed in a soap bubble: no shooting, aiming or grappling till it pops
@@ -884,7 +886,7 @@ addEventListener('mouseup', (e) => {
   if (e.button === 3 || e.button === 4) releaseHook();
 });
 addEventListener('contextmenu', (e) => e.preventDefault());
-addEventListener('wheel', (e) => { if (inGame()) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true });
+addEventListener('wheel', (e) => { if (inGame() && !esActive()) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true }); // not while the end screen is up (its tab panel scrolls)
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== canvas) return;
   if (performance.now() < (G.spinUntil || 0)) return; // the aimbot has the wheel
