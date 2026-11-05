@@ -6,7 +6,7 @@ import { streakIcon } from './icons.js';
 import { stepProjectile, raycast } from '/shared/physics.js';
 import { duckFrame, duckStuck } from './duck.js';
 import { G } from './ctx.js';
-import { initWorld, renderFrame, setJank, updateWorld, loadMap } from './world.js';
+import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals } from './world.js';
 import { loadTripoModels, buildProjectile, buildPeel, buildHole, makeShadow, tipColor, buildCharacter, teamLook, M } from './models.js';
 import { initCrosses, crossEvent, crossShot, updateCrosses, clearCrosses } from './bloodcross.js';
 import { net } from './net.js';
@@ -116,6 +116,7 @@ loadTripoModels().then((n) => {
   if (!n) return;
   console.log(`loaded ${n} models`);
   rebuildOne(); // visuals only: a randomizer or pending loadout stays as it is
+  refreshMapVisuals(); // Blender props replace their stand-in boxes
   for (const r of G.remotes.values()) r.build();
   $('status').textContent = `${n} model(s) loaded`;
 });

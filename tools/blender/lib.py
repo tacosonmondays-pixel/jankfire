@@ -462,11 +462,15 @@ def sheet(root, file_id, views=('persp', 'left', 'right', 'top', 'front', 'back_
             _look_at(cam, c)
         else:
             cd.type = 'ORTHO'
-            d = {'left': Vector((-1, 0, 0)), 'right': Vector((1, 0, 0)), 'top': Vector((0, 0, 1)), 'front': Vector((0, 1, 0)), 'back': Vector((0, -1, 0))}[v]
+            # side views look across the long horizontal axis (a gun's z, a car's x), front views along it
+            ylong = dims.y >= dims.x
+            side_d, end_d = (Vector((1, 0, 0)), Vector((0, 1, 0))) if ylong else (Vector((0, -1, 0)), Vector((1, 0, 0)))
+            d = {'left': -side_d, 'right': side_d, 'top': Vector((0, 0, 1)), 'front': end_d, 'back': -end_d}[v]
             cam.location = c + d * size * 3
             _look_at(cam, c)
-            if v == 'top': cam.rotation_euler = Euler((0, 0, math.pi / 2 if dims.y > dims.x else 0))
-            ext = {'left': (dims.y, dims.z), 'right': (dims.y, dims.z), 'top': (max(dims.x, dims.y), min(dims.x, dims.y)), 'front': (dims.x, dims.z), 'back': (dims.x, dims.z)}[v]
+            if v == 'top': cam.rotation_euler = Euler((0, 0, math.pi / 2 if ylong else 0))
+            L_, Wd = (dims.y, dims.x) if ylong else (dims.x, dims.y)
+            ext = {'left': (L_, dims.z), 'right': (L_, dims.z), 'top': (L_, Wd), 'front': (Wd, dims.z), 'back': (Wd, dims.z)}[v]
             cd.ortho_scale = max(ext[0], ext[1] * res[0] / res[1]) * 1.12
         cd.clip_start = size * 0.01; cd.clip_end = size * 20
         p = os.path.join(tmp, f'{file_id}_{i}.png')
@@ -489,7 +493,7 @@ def sheet(root, file_id, views=('persp', 'left', 'right', 'top', 'front', 'back_
         canvas[y0:y0 + H, x0:x0 + W] = a
     # label strip (top-left) in the bitmap font
     lab = np.zeros((7 * 3 + 6, canvas.shape[1], 3), dtype=np.float32)
-    txt = f'{file_id}  {tris} TRIS  {dims.y:.2f}M LONG {dims.z:.2f}M TALL {dims.x:.2f}M WIDE {extra_note}'.upper().replace('_', ' ')
+    txt = f'{file_id}  {tris} TRIS  {max(dims.x, dims.y):.2f}M LONG {dims.z:.2f}M TALL {min(dims.x, dims.y):.2f}M WIDE {extra_note}'.upper().replace('_', ' ')
     text_px(lab, txt, 6, 3, 3, 0xffe14d)
     full = np.concatenate([canvas, np.concatenate([lab[::-1], np.ones(lab.shape[:2] + (1,), np.float32)], axis=2)], axis=0)
     img = bpy.data.images.new('sheet', full.shape[1], full.shape[0])
@@ -540,3 +544,56 @@ def tex_wood(name, base=0x8a5a2b, dark=0x5a3417, size=64, seed=5, rings=7.0):
     g = g ** 2.2 * 0.75 + 0.25 * r.random((size, size)) * 0.6
     px = hexrgb(base)[None, None] * (1 - g[:, :, None]) + hexrgb(dark)[None, None] * g[:, :, None]
     return _image(name, np.clip(px, 0, 1).astype(np.float32))
+
+
+def side_x(poly, thick, pos=(0, 0, 0), m=None, bev=0.0, seg=2, name='sidex', holes=(), angle=40):
+    """like side() but the outline is in the (x, y) plane (a vehicle seen from its side, front = +x), extruded along z."""
+    o = side([(x, y) for x, y in poly], thick, (0, 0, 0), m, 0, seg, name, [[(x, y) for x, y in h] for h in holes], angle=angle)
+    # side() made it in the (z, y) plane: turn z onto x (three: rotation.y = +90deg maps z -> x)
+    o.data.transform(Matrix.Rotation(-math.pi / 2, 4, 'Z') @ Matrix.Scale(-1, 4, Vector((0, 1, 0))))  # (bx, by) -> (-by, -bx)
+    bm = bmesh.new(); bm.from_mesh(o.data); bmesh.ops.reverse_faces(bm, faces=bm.faces); bm.to_mesh(o.data); bm.free()  # it was a mirror
+    o.location = gv(*pos)
+    smooth(o, angle); bevel(o, bev, seg, angle)
+    return o
+
+
+def wheel(r, width, pos, tire, hub, spokes=5, hub_r=0.6, name='wheel', axis='z'):
+    """a tyre (rounded lathe) + a hub with spokes, axle along game z (car wheels) or x."""
+    rr = r * 0.72
+    prof = [(rr, -width / 2), (r * 0.93, -width / 2), (r, -width * 0.32), (r, width * 0.32), (r * 0.93, width / 2), (rr, width / 2)]
+    t = lathe(prof, pos, tire, seg=24, axis='z', name=name + '_tire')
+    h = [t, cyl(rr, width * 0.9, pos, hub, axis='z', seg=20, bev=r * 0.03)]
+    for k in range(spokes):
+        a = 2 * math.pi * k / spokes
+        h.append(box((r * 0.16, rr * 0.9, width * 0.12), (pos[0] + math.cos(a) * rr * 0.45, pos[1] + math.sin(a) * rr * 0.45, pos[2] + width * 0.47 * (1 if pos[2] >= 0 else -1)), hub, bev=r * 0.02, rot=(0, 0, a - math.pi / 2)))
+    h.append(cyl(rr * 0.25, width * 1.02, pos, hub, axis='z', seg=12, bev=r * 0.02))
+    if axis == 'x':
+        for o in h: o.rotation_euler.rotate_axis('Z', math.pi / 2)
+    return h
+
+
+def main_multi(build, **sheet_kw):
+    """build() returns [(root, file_id)]: each is exported and gets its own sheet"""
+    argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
+    reset()
+    roots = build()
+    for root, fid in roots:
+        for r2, _ in roots: r2.hide_render = r2 is not root; [setattr(c, 'hide_render', r2 is not root) for c in r2.children_recursive]
+        if '--no-export' not in argv: export(root, fid)
+        if '--no-sheet' not in argv: sheet(root, fid, **sheet_kw)
+
+
+def uv_planar(o, center, size, axis='x'):
+    """straight-on UVs for a decal face seen from +axis (numbers, stickers): the image's right is the viewer's right."""
+    me = o.data
+    if not me.uv_layers: me.uv_layers.new()
+    uv = me.uv_layers.active.data
+    mw = o.matrix_world
+    for poly in me.polygons:
+        for li in poly.loop_indices:
+            v = mw @ me.vertices[me.loops[li].vertex_index].co
+            gx, gy, gz = v.x, v.z, -v.y  # back to game axes
+            if axis == 'x': u, w = -(gz - center[2]), gy - center[1]
+            elif axis == 'z': u, w = gx - center[0], gy - center[1]
+            else: u, w = gx - center[0], -(gz - center[2])
+            uv[li].uv = (u / size + 0.5, w / size + 0.5)

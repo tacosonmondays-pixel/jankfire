@@ -63,3 +63,30 @@ export function authored(id) {
   return { obj: c, meta: a.meta };
 }
 export const hasAuthored = (id) => !!AUTHORED[id];
+
+// moving parts of Blender guns (nodes named in the file's metadata): the shotgun's forend racks with the pump
+// animation, the revolver's cylinder turns a chamber and its hammer flicks on every shot
+export function findParts(g, meta) {
+  const node = (n) => { let r = null; g.traverse((o) => { if (!r && o.name === n) r = o; }); return r; };
+  const p = {};
+  if (meta.pump) { p.pump = node(meta.pump.node); if (p.pump) { p.pump0 = p.pump.position.z; p.travel = meta.pump.travel || 0.09; } }
+  if (meta.cylinder) { p.cyl = node(meta.cylinder.node); p.step = meta.cylinder.step || Math.PI / 3; p.cylA = 0; p.cylTo = 0; }
+  if (meta.hammer) { p.hammer = node(meta.hammer.node); p.hamT = 1; }
+  return Object.keys(p).length ? p : null;
+}
+export function partsShot(g) {
+  const p = g && g.userData.parts;
+  if (!p) return;
+  if (p.cyl) p.cylTo += p.step;
+  if (p.hammer) p.hamT = 0;
+}
+export function stepParts(g, dt, an, at) {
+  const p = g && g.userData.parts;
+  if (!p) return;
+  if (p.pump) { // back on the way out, snap home: same timing as the pump_shotgun keys (0.1 s back, 0.17 s home)
+    const k = an !== 'pump_shotgun' ? 0 : at < 0.1 ? at / 0.1 : at < 0.17 ? 1 - (at - 0.1) / 0.07 : 0;
+    p.pump.position.z = p.pump0 + k * p.travel;
+  }
+  if (p.cyl) { p.cylA += (p.cylTo - p.cylA) * Math.min(1, dt * 24); p.cyl.rotation.z = -p.cylA; }
+  if (p.hammer) { p.hamT = Math.min(1, p.hamT + dt); const t = p.hamT; p.hammer.rotation.x = t < 0.05 ? (t / 0.05) * 0.55 : Math.max(0, 0.55 * (1 - (t - 0.05) / 0.05)); }
+}
