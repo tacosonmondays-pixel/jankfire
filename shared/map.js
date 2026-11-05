@@ -244,7 +244,11 @@ function carve(B, x0, y0, z0, x1, y1, z1, keep = () => true) {
 // roads: { xs: [x of each road running along z], zs: [z of each road running along x], w: width }, S: half size
 function streetLevel(D, y, towers, roads, S, r) {
   const W = roads.w || 16, half = W / 2;
-  D.add(-S, y - 1, -S, S, y, S, 'sidewalk'); // pavement everywhere, roads on top
+  D.add(-S, y - 1, -S, S, y, S, 'asphaltn'); // the same wet street surface as the rest of the city, blocks and roads on top
+  // the blocks between the roads: kerbed pavement. the ones past the outermost roads stop short, so there's no pale rim round
+  // the edge of the grid (it used to sit on one big light-grey plate that ended in a hard edge)
+  const cellsOf = (list) => { const l = [...list].sort((a, b) => a - b), out = []; for (let i = 0; i <= l.length; i++) { const a = i ? l[i - 1] + half : l[0] - half - 36, b = i < l.length ? l[i] - half : l[l.length - 1] + half + 36; if (b - a > 4) out.push([Math.max(-S, a), Math.min(S, b)]); } return out; };
+  for (const [x0, x1] of cellsOf(roads.xs)) for (const [z0, z1] of cellsOf(roads.zs)) D.add(x0, y, z0, x1, y + 0.2, z1, 'pavecity');
   const ads = ['adcity1', 'adcity2', 'adcity3', 'adcity4', 'adcity5', 'adcity6'], neons = ['neonbar', 'neonnoodle', 'neonhotel', 'neonwork'];
   const strip = ['neonpink', 'neoncyan', 'neonyellow', 'neongreen'];
   const pick = (a) => a[(r() * a.length) | 0];
@@ -330,6 +334,8 @@ function cityDress(D, plan, roofs, base, r) {
 // piers with boats. Render-only. Near the towers it stays under the kill line, so a fall never passes through a roof;
 // further out it climbs, but never as tall as the towers you fight on. y: street level, S: half size of the street grid
 // round the towers, R: how far out, o: { kill (y), cap (y), shore (z of the coast), avenues: [[x, z, angle], ...] }
+// the street grid round the towers, carried on outward: north/east/west for L metres, south all the way to the water
+const gridOut = (xs, zs, S, L) => [...xs.flatMap((x) => [[x, -S - L, x, -S], [x, S, x, S + 5000]]), ...zs.flatMap((z) => [[-S - L, z, -S, z], [S, z, S + L, z]])];
 function cityBeyond(D, y, S, R, r, o) {
   const shore = (x) => o.shore + 38 * Math.sin(x / 150 + 1) + 18 * Math.sin(x / 47), park = (x) => shore(x) - 34;
   const pick = (a) => a[(r() * a.length) | 0];
@@ -362,12 +368,24 @@ function cityBeyond(D, y, S, R, r, o) {
   // ---- long avenues on the diagonal (each a little higher than the last, so crossings never share a plane)
   const aves = (o.avenues || []).map(([ax, az, a], k) => ({ ax, az, ux: Math.cos(a), uz: Math.sin(a), a, k }));
   const aveDist = (x, z) => Math.min(1e9, ...aves.map((v) => Math.abs((x - v.ax) * v.uz - (z - v.az) * v.ux)));
+  // the tower grid's own roads, carried on out of the grid into the city ([x0, z0, x1, z1] along one axis; south ones run
+  // down to the waterfront), so no road just stops at the edge of the grid. same texture in world space: the lines run on
+  const streets = (o.streets || []).map(([x0, z0, x1, z1]) => (x0 === x1
+    ? { x0: x0 - 9, x1: x0 + 9, z0: Math.max(-R, Math.min(z0, z1)), z1: Math.min(Math.max(z0, z1), park(x0) - 1), alongZ: true }
+    : { x0: Math.max(-R, Math.min(x0, x1)), x1: Math.min(R, Math.max(x0, x1)), z0: z0 - 9, z1: z0 + 9, alongZ: false }));
+  const nearStreet = (x, z, m) => streets.some((q) => Math.hypot(Math.max(q.x0 - 3 - x, 0, x - q.x1 - 3), Math.max(q.z0 - 3 - z, 0, z - q.z1 - 3)) < m);
+  for (const q of streets) {
+    if (q.x1 - q.x0 < 1 || q.z1 - q.z0 < 1) continue;
+    D.add(q.x0, y, q.z0, q.x1, y + 0.08, q.z1, q.alongZ ? 'wetroadz' : 'wetroad');
+    if (q.alongZ) { D.add(q.x0 - 3, y, q.z0, q.x0, y + 0.19, q.z1, 'pavecity'); D.add(q.x1, y, q.z0, q.x1 + 3, y + 0.19, q.z1, 'pavecity'); }
+    else { D.add(q.x0, y, q.z0 - 3, q.x1, y + 0.19, q.z0, 'pavecity'); D.add(q.x0, y, q.z1, q.x1, y + 0.19, q.z1 + 3, 'pavecity'); }
+  }
   const onLand = (x, z, m = 0) => Math.abs(x) < R - m && Math.abs(z) < R - m && z < park(x) - m && !(Math.abs(x) < S + m && Math.abs(z) < S + m);
   for (const v of aves) {
     let run = null;
     const flush = (t) => { if (run === null) return; const t0 = run, len = t - t0; if (len > 12) { const tm = (t0 + t) / 2, cx = v.ax + v.ux * tm, cz = v.az + v.uz * tm;
-      D.obb(cx, y + 0.04 + v.k * 0.01, cz, len, 0.08, 16, -v.a, 'wetroad');
-      for (const s2 of [-1, 1]) D.obb(cx - v.uz * s2 * 9.5, y + 0.1 + v.k * 0.01, cz + v.ux * s2 * 9.5, len, 0.2, 3, -v.a, 'sidewalk'); } run = null; };
+      D.obb(cx, y + 0.05 + v.k * 0.01, cz, len, 0.08, 16, -v.a, 'wetroad'); // (always above the grid's roads where they cross)
+      for (const s2 of [-1, 1]) D.obb(cx - v.uz * s2 * 9.5, y + 0.11 + v.k * 0.01, cz + v.ux * s2 * 9.5, len, 0.2, 3, -v.a, 'pavecity'); } run = null; };
     for (let t = -R * 1.5; t <= R * 1.5; t += 6) { const x = v.ax + v.ux * t, z = v.az + v.uz * t; if (onLand(x, z, 4)) { if (run === null) run = t; } else flush(t); }
     flush(R * 1.5);
   }
@@ -391,10 +409,10 @@ function cityBeyond(D, y, S, R, r, o) {
       const cx = ox + i * (bw + sw) * ux + j * (bd + sw) * vx, cz = oz + i * (bw + sw) * uz + j * (bd + sw) * vz;
       if (sector(cx, cz) !== k) continue;
       const w = bw * (0.8 + r() * 0.35), d = bd * (0.8 + r() * 0.35), rad = Math.hypot(w, d) / 2;
-      if (!onLand(cx, cz, rad * 0.7) || aveDist(cx, cz) < 10.5 + rad * 0.6 || near(cx, cz, rad, k)) continue;
+      if (!onLand(cx, cz, rad * 0.7) || aveDist(cx, cz) < 10.5 + rad * 0.6 || nearStreet(cx, cz, rad * 0.6 + 1) || near(cx, cz, rad, k)) continue;
       keep(cx, cz, rad, k);
       const yaw = -(th + (r() - 0.5) * (isOld ? 0.24 : 0.06)), cy = Math.cos(-yaw), sy = Math.sin(-yaw);
-      D.obb(cx, y + 0.12 + r() * 0.06, cz, w, 0.24 + r() * 0.06, d, yaw, 'sidewalk'); // the block's kerb
+      D.obb(cx, y + 0.12 + r() * 0.06, cz, w, 0.24 + r() * 0.06, d, yaw, 'pavecity'); // the block's kerb
       // buildings along the block's long side, heights by how far out it is
       const far = Math.max(Math.abs(cx), Math.abs(cz)) - S, lots = isOld ? 2 + ((r() * 3) | 0) : 1 + ((r() * 3) | 0);
       for (let l = 0; l < lots; l++) {
@@ -418,11 +436,11 @@ function cityBeyond(D, y, S, R, r, o) {
   // infill: the odd lots left along the seams between districts get small blocks, turned to fit their district (roughly)
   for (let t = 0; t < 2600; t++) {
     const cx = (r() * 2 - 1) * R, cz = (r() * 2 - 1) * R, w = 12 + r() * 16, d = 10 + r() * 14, rad = Math.hypot(w, d) / 2;
-    if (!onLand(cx, cz, rad * 0.7) || aveDist(cx, cz) < 10.5 + rad * 0.6 || near(cx, cz, rad * 1.05, -1)) continue;
+    if (!onLand(cx, cz, rad * 0.7) || aveDist(cx, cz) < 10.5 + rad * 0.6 || nearStreet(cx, cz, rad * 0.6 + 1) || near(cx, cz, rad * 1.05, -1)) continue;
     keep(cx, cz, rad, -1);
     const far = Math.max(Math.abs(cx), Math.abs(cz)) - S, yaw = -(thetas[sector(cx, cz)] + (r() - 0.5) * 0.5);
     const h = Math.max(3, Math.min(o.cap - y, far < 110 ? 3 + r() * Math.max(1, o.kill - y - 4) : 6 + r() * 26));
-    D.obb(cx, y + 0.12 + r() * 0.06, cz, w, 0.25, d, yaw, 'sidewalk');
+    D.obb(cx, y + 0.12 + r() * 0.06, cz, w, 0.25, d, yaw, 'pavecity');
     D.obb(cx, y + 0.3 + h / 2, cz, w - 2, h, d - 2, yaw, pick(facadesLow));
     D.obb(cx, y + 0.5 + h, cz, w - 2.5, 0.4, d - 2.5, yaw, 'roofg');
   }
@@ -536,7 +554,7 @@ function rooftop() {
   const D = builder();
   streetLevel(D, -142, plan.map(([x, z, w, d]) => ({ x, z, w, d })), { xs: [-140, -55, 55, 140], zs: [-140, -55, 55, 140], w: 18 }, 180, r);
   cityDress(D, plan, roofs, -152, r);
-  cityBeyond(D, -142, 180, 520, rng(5151), { kill: -130, cap: -14, shore: 340, avenues: [[0, -260, 0.62], [260, 0, -0.95], [-240, 60, 1.4], [-200, -300, 2.6]] });
+  cityBeyond(D, -142, 180, 520, rng(5151), { kill: -130, cap: -14, shore: 340, avenues: [[0, -260, 0.62], [260, 0, -0.95], [-240, 60, 1.4], [-200, -300, 2.6]], streets: gridOut([-140, -55, 55, 140], [-140, -55, 55, 140], 180, 200) });
   return { name: 'Rooftop', size: 'medium', boxes: B.boxes, deco: D.boxes, killY: -130, floorY: -150, cityR: 520, cityCap: -14,
     haze: { k: 0.92, top: -25, bottom: -142, dist: 90, color: 0x6a5c9c }, // look down: the city lights through a night smog
     sky: { top: 0x05051a, mid: 0x4a2a7a, bot: 0x000005, fog: 0x2a2050 }, fogNear: 110, fogFar: 480, spawns };
@@ -1345,7 +1363,7 @@ function skyline() {
   const D = builder(), towers = [...plan.map(([x, z, w, d]) => ({ x, z, w, d })), { x: 35, z: -100, w: 30, d: 30 }];
   streetLevel(D, -100, towers, { xs: [-135, -67.5, 0, 67.5, 135], zs: [-135, -67.5, 0, 67.5, 135], w: 18 }, 190, r);
   cityDress(D, plan, roofs, base, r);
-  cityBeyond(D, -100, 190, 680, rng(4040), { kill: -88, cap: 30, shore: 470, avenues: [[-60, -230, 0.42], [230, 40, -1.05], [-300, 120, 1.25], [80, -420, 0.06], [-250, -250, 2.35]] });
+  cityBeyond(D, -100, 190, 680, rng(4040), { kill: -88, cap: 30, shore: 470, avenues: [[-60, -230, 0.42], [230, 40, -1.05], [-300, 120, 1.25], [80, -420, 0.06], [-250, -250, 2.35]], streets: gridOut([-135, -67.5, 0, 67.5, 135], [-135, -67.5, 0, 67.5, 135], 190, 230) });
   return { name: 'Skyline', size: 'huge', boxes: B.boxes, deco: D.boxes, killY: -88, floorY: -108, cityR: 680, cityCap: 30,
     haze: { k: 0.88, top: 15, bottom: -100, dist: 110, color: 0xc89aa4 }, // look down: the city through a dusk haze
     sky: { top: 0x1a2a5a, mid: 0xff9a5a, bot: 0x0a0a1a, fog: 0xd98a6a }, fogNear: 160, fogFar: 700, spawns };

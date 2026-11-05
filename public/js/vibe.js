@@ -59,6 +59,7 @@ export function addVibe(out, canvasTex, speckle) {
   out.asphalt = lam(canvasTex(32, (g, s) => { speckle(g, s, [84, 82, 92], 20, 2); blobs(g, s, ['rgba(255,60,200,0.07)', 'rgba(60,255,220,0.07)', 'rgba(0,0,0,0.2)'], 10, 2, 6); }), 4); // oily
   out.wetroad = lam(canvasTex(32, (g, s) => { speckle(g, s, [40, 40, 56], 14, 2); blobs(g, s, ['rgba(255,60,200,0.18)', 'rgba(60,220,255,0.18)'], 8, 3, 8); g.fillStyle = '#ffe14d'; for (let x = 0; x < s; x += 16) g.fillRect(x, 15, 8, 2); }), 10);
   out.wetroadz = lam(canvasTex(32, (g, s) => { speckle(g, s, [40, 40, 56], 14, 2); blobs(g, s, ['rgba(255,60,200,0.18)', 'rgba(60,220,255,0.18)'], 8, 3, 8); g.fillStyle = '#ffe14d'; for (let y = 0; y < s; y += 16) g.fillRect(15, y, 2, 8); }), 10);
+  out.pavecity = lam(canvasTex(16, (g, s) => { speckle(g, s, [126, 126, 134], 14, 2); g.fillStyle = '#62626c'; g.fillRect(0, 0, s, 1); g.fillRect(0, 0, 1, s); }), 3); // city pavement: kerbed blocks, a mid grey that sits with the dark streets
   out.asphaltn = lam(canvasTex(32, (g, s) => { speckle(g, s, [36, 36, 48], 14, 2); blobs(g, s, ['rgba(255,60,200,0.06)', 'rgba(60,220,255,0.06)'], 9, 2, 6); }), 14); // the far city's streets, wet
   out.seawater = { mat: new THREE.MeshPhongMaterial({ color: 0x0c2238, emissive: 0x040a16, specular: 0x88aacc, shininess: 70 }), tile: 1 };
   { // brick tenements with windows: some lit (they glow), some not
