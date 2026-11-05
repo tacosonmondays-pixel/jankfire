@@ -621,8 +621,19 @@ export function poseRig(inst, s, dt) {
   inst.flames[1].visible = false;
   // ---- assembly (when it comes on): the plates fly in and snap shut, joint by joint
   const on = s.on ?? 1;
-  if (on < 1) inst.nodes.forEach((n, i) => { if (i === 0) return; const k2 = clamp(on * 1.6 - (i % 7) * 0.08, 0, 1); n.scale.setScalar(Math.max(0.001, k2 < 1 ? 0.25 + 0.75 * backOut(k2) : 1)); });
-  else if (inst.assembling) { inst.assembling = false; for (const n of inst.nodes) n.scale.setScalar(1); }
+  // each part flies in from outside along its own direction (up and out), grows and snaps shut, feet first, pods last
+  if (on < 1) inst.nodes.forEach((n, i) => {
+    if (i === 0) return;
+    const r = n.userData.rest, o = n.userData.off || (n.userData.off = new THREE.Vector3());
+    const order = clamp(1 - (r[1] + 0.3) / 1.6, 0, 1) * 0.35 + (i % 5) * 0.03; // lower joints first
+    const k2 = clamp(on * 1.7 - order, 0, 1);
+    n.scale.setScalar(Math.max(0.001, k2 < 1 ? 0.2 + 0.8 * backOut(k2) : 1));
+    n.position.sub(o);
+    const l = Math.hypot(r[0], r[2]) || 1, f = (1 - smooth(k2)) * 0.42; // (offsets add up down the chain: keep each small)
+    o.set((r[0] / l) * f * (Math.abs(r[0]) > 0.05 ? 1 : 0.3), f * 0.8, (r[2] / l) * f * 0.5);
+    n.position.add(o);
+  });
+  else if (inst.assembling) { inst.assembling = false; for (const n of inst.nodes) { n.scale.setScalar(1); if (n.userData.off) { n.position.sub(n.userData.off); n.userData.off.set(0, 0, 0); } } }
   if (on < 1) inst.assembling = true;
   updatePistons(inst);
   updateHoses(inst);

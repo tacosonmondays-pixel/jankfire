@@ -482,7 +482,7 @@ export function rigRemote(r, dt, now, floor) {
   }
   st.inst.root.visible = true;
   r.rigOn = true;
-  r.ch.body.visible = false;
+  r.ch.body.visible = st.onT < 0.4; // (the mannequin stands inside while the frame closes round it)
   r.rope.visible = false;
   if (r.weaponMesh && r.weaponMesh.userData.effect && r.weaponMesh.userData.effect !== 'none') { st.fxOf = r.weaponMesh; st.fx = r.weaponMesh.userData.effect; r.weaponMesh.userData.effect = 'none'; } // no skin sparkles out of a holstered gun
   r.marker.position.y = 3.25;
