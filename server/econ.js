@@ -5,6 +5,7 @@ import { WEAPONS, ITEMS } from '../shared/weapons.js';
 import { BOMB } from '../shared/modes.js';
 import { ECON, ARMOR, BLAST, GEAR, econWeapon, weaponPrice, refillPrice, killReward, armorPen, ammoSpec, itemSpec, gearPrice } from '../shared/econ.js';
 import { raycast, PH } from '../shared/physics.js';
+import AI, { aiDeps } from './econai.js'; // the team tactics (buying, executes, holds, rotations, retakes)
 
 // test knobs: JF_ECON=0 turns the economy off (Plant & Defuse as before), short buy phases, start / max credits
 const OFF = process.env.JF_ECON === '0';
@@ -253,6 +254,7 @@ const M = {
     }
     ec.dirty.add(1); ec.dirty.add(2);
     this.econFlushMoney();
+    this.econAiRoundEnd(win, why);
   },
   // end of kill(): no respawn this round, the kill reward, and the victim's gear goes on the floor
   econOnKill(t, killer, w, via) {
@@ -266,6 +268,7 @@ const M = {
       if (wid === 'katana' && mel && mel.id === 'katana') mel.kat = killer.kat || 0; // the blade keeps its length
     }
     if (t.ec && !t.ec.out) { this.econDropAll(t); this.econSync(t); this.econSend(t); }
+    this.econAiDeath(t, killer);
   },
 
   // ---------------------------------------------------------- spawn barriers
@@ -668,6 +671,7 @@ const M = {
   },
   // eco (save), force (cheap gun + vest), full (rifle, armor, kit, a frag). pistol rounds: a vest or nothing
   econBotBuy(b) {
+    if (this.econAiBuy(b)) return; // maps with sites: the team's plan (econai.js). below: the simple rules
     const e = b.ec, B = this.bomb, att = b.team === B.att;
     const buy = (k, id) => this.econBuy(b, { k, id }, true);
     const pistol = B.n === 1 || B.n === BOMB.swapAfter + 1;
@@ -696,25 +700,33 @@ const M = {
   // top of botGoal: stand still behind the barrier; otherwise walk to a better gun lying close by (when not fighting)
   econBotGoal(b) {
     const n = now(), ai = b.ai, ec = this.ec, B = this.bomb;
-    if (this.econBuying(n)) return { p: b.pos, r: 0, force: true };
-    if (!ec || !ec.drops.size || B.carrier === b.id || (B.ph === 'planted' && b.team !== B.att)) { ai.ecDrop = 0; return null; }
-    if (n >= (ai.ecPickT || 0)) { ai.ecPickT = n + 700; ai.ecDrop = this.econBotWant(b); }
+    if (this.econBuying(n)) {
+      const gd = ai.gift && ec && ec.drops.get(ai.gift); // a teammate dropped a rifle for us: go get it (inside the spawn)
+      if (gd && !(b.ec.sl.primary)) return { p: gd.p, r: 0, force: true };
+      ai.gift = 0;
+      return { p: b.pos, r: 0, force: true };
+    }
+    const tac = this.econAiGoal(b);
+    // pick up a better gun lying close by, unless the bot is busy with something that can't wait
+    const busy = tac && (tac.tac === 'plant' || tac.tac === 'carry' || tac.tac === 'defuse' || tac.tac === 'throw' || tac.tac === 'push' || tac.tac === 'save' || (tac.tac === 'clear' && B.ph === 'live'));
+    if (!ec || !ec.drops.size || busy || B.carrier === b.id || (B.ph === 'planted' && b.team !== B.att && !tac)) { ai.ecDrop = 0; return tac; }
+    if (n >= (ai.ecPickT || 0)) { ai.ecPickT = n + 700; ai.ecDrop = this.econBotWant(b, tac ? 14 : 20); }
     const d = ai.ecDrop && ec.drops.get(ai.ecDrop);
-    if (!d) { ai.ecDrop = 0; return null; }
-    if (Math.hypot(d.p[0] - b.pos[0], d.p[2] - b.pos[2]) < 1.6 && Math.abs(d.p[1] - b.pos[1]) < 2) { this.econTake(b, d, true); ai.ecDrop = 0; return null; }
+    if (!d) { ai.ecDrop = 0; return tac; }
+    if (Math.hypot(d.p[0] - b.pos[0], d.p[2] - b.pos[2]) < 1.6 && Math.abs(d.p[1] - b.pos[1]) < 2) { this.econTake(b, d, true); ai.ecDrop = 0; return tac; }
     return { p: d.p, r: 0 };
   },
-  econBotWant(b) {
+  econBotWant(b, range = 20) {
     const e = b.ec;
     let best = 0, bs = 0;
     const val = (x) => (x && botGun(x.id) && (!x.lim || x.m + x.r > 0) ? weaponPrice(x.id) || 0 : 0);
     for (const d of this.ec.drops.values()) {
       const dist = Math.hypot(d.p[0] - b.pos[0], d.p[2] - b.pos[2]);
-      if (dist > 20 || Math.abs(d.p[1] - b.pos[1]) > 3) continue;
+      if (dist > range || Math.abs(d.p[1] - b.pos[1]) > 3) continue;
       let gain = 0;
       if (d.k === 'w' && botGun(d.x.id) && (!d.x.lim || d.x.m + d.x.r > 0)) gain = val(d.x) - val(e.sl[WEAPONS[d.x.id].slot]) - 300;
       else if (d.k === 'k' && !e.kit && b.team !== this.bomb.att) gain = 400;
-      else if (d.k === 'i' && d.iid === 'frag' && !e.it) gain = 200;
+      else if (d.k === 'i' && (d.iid === 'frag' || d.iid === 'smoke') && !e.it) gain = 200;
       if (gain <= 0) continue;
       const s = gain / (5 + dist);
       if (s > bs && this.clearPath(b.pos, [d.p[0], d.p[2]])) { bs = s; best = d.id; }
@@ -725,6 +737,8 @@ const M = {
   econBotItem(b, n) {
     const e = b.ec, ai = b.ai;
     if (!e.it || e.it.id !== 'frag' || n < (ai.itemT || 0) || this.econBuying(n)) return;
+    const T = this.ec && this.ec.tac, A = T && T.A;
+    if (A && b.team === this.bomb.att && (A.phase === 'gather' || A.util.some((u) => !u.done && u.id === b.id))) return; // saved for the execute
     ai.itemT = n + 1500 + Math.random() * 2500;
     const t = this.players.get(ai.target);
     if (!t || !t.alive || !ai.seenAt) return;
@@ -756,6 +770,7 @@ const M = {
       if (p.isBot && p.alive) this.econBotItem(p, n);
     }
     if (ec.drops.size) this.econAutoPicks(n);
+    this.econAiTick(n);
     if (b.act && b.act.kind === 'defuse') {
       ec.defuser = b.act.id;
       if (b.act.kit == null) { const d = this.players.get(b.act.id); b.act.kit = !!(d && d.ec && d.ec.kit); }
@@ -790,7 +805,8 @@ M.econTestStart = function () {
 
 export function installEcon(Room, deps) {
   D = deps;
-  for (const [k, fn] of Object.entries(M)) {
+  aiDeps(deps);
+  for (const [k, fn] of Object.entries({ ...M, ...AI })) {
     if (k in Room.prototype) throw new Error('econ: Room already has ' + k);
     Room.prototype[k] = fn;
   }

@@ -243,7 +243,7 @@ function banner(m) {
   if (m.pistol) tags.push('PISTOL ROUND');
   if (m.n === BOMB.swapAfter) tags.push('LAST ROUND OF THE HALF');
   if (Math.max(...wins) >= BOMB.wins - 1) tags.push('MATCH POINT');
-  el.innerHTML = `<div class="r">ROUND ${m.n}</div><div class="s" style="color:${col}">${mine ? 'ATTACK' : 'DEFEND'}</div><div class="t">${['BUY PHASE · B to shop', ...tags].map((x) => `<span>${x}</span>`).join('')}</div>`;
+  el.innerHTML = `<div class="rs"><span class="r">ROUND ${m.n}</span><span class="s" style="color:${col}">${mine ? 'ATTACK' : 'DEFEND'}</span></div><div class="t">${['BUY PHASE · B to shop', ...tags].map((x) => `<span>${x}</span>`).join('')}</div>`;
   el.classList.remove('hidden', 'go'); void el.offsetWidth; el.classList.add('go');
   clearTimeout(el._t); el._t = setTimeout(() => el.classList.add('hidden'), 3600);
 }
@@ -436,7 +436,7 @@ export function econCam(cam, dt) {
   cam.lookAt(head[0] + ld[0] * 10, head[1] + ld[1] * 10, head[2] + ld[2] * 10);
   return true;
 }
-export const econHideVM = () => !!(G.eco && G.eco.spec && !ME.alive);
+export const econHideVM = () => !!(G.eco && !ME.alive); // out this round: no weapon in your face (spectating or not)
 
 // ------------------------------------------------------------ the buy menu
 const COLS = [['primary', 'PRIMARY'], ['secondary', 'SECONDARY'], ['melee', 'MELEE'], ['item', 'ITEMS'], ['gear', 'GEAR']];

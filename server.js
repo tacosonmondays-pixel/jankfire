@@ -333,7 +333,7 @@ class Room {
   }
   humans() { return [...this.players.values()].filter((p) => !p.isBot); }
   teamsOn() { return (this.mode === 'ffa' || this.mode === 'bots') && !!GAMES[this.game].teams; }
-  fighters() { return [...this.players.values()].filter((p) => !(p.isBot && p.ai && p.ai.dummy)); }
+  fighters() { return [...this.players.values()].filter((p) => !(p.isBot && p.ai && p.ai.dummy) && !p.watch); }
   // even teams, humans spread first
   assignTeams() {
     const list = this.fighters().sort((a, b) => (a.isBot - b.isBot) || (Math.random() - 0.5));
@@ -359,6 +359,7 @@ class Room {
     return lo;
   }
   sendLoadout(p) {
+    if (p.watch) return;
     if (this.isEcon()) { this.econLoadout(p); return; } // Plant & Defuse economy: the gear you bought, not a loadout
     if (p.ec) this.econEnd(p);
     if (this.modeLoadout(p)) return; // gun game rung / zombie claw
@@ -437,10 +438,11 @@ class Room {
     p.grap = ownedGrapple(m.grap, inv);
     p.kc = !!m.kc;
     p.item = has(ITEMS, m.item) ? m.item : 'frag'; // the client confirms it with 'itemsel' right after 'welcome'
+    if (process.env.JF_WATCH && name.startsWith('watch')) { p.watch = true; p.alive = false; p.hp = 0; p.respawnAt = p.minRespawnAt = Infinity; } // test knob: a ws observer for bots-only matches (never a fighter)
     if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && has(GAMES, m.cfg.game) && !this.humans().length) this.setGame(m.cfg.game);
-    this.joinTeam(p);
+    if (!p.watch) this.joinTeam(p);
     if (p.team) p.pos = this.pickSpawn(false, p);
-    if (this.isEcon()) this.econJoin(p);
+    if (this.isEcon() && !p.watch) this.econJoin(p);
     this.players.set(p.id, p);
     // in from the start (or close enough): your Never Landed run counts. the welcome below is your first spawn
     if (this.round && !this.round.over && now() - (this.round.t0 || 0) < AIR.join && !GAMES[this.game].lava) p.air = { ok: !(this.airBad && this.airBad.has(name)), rest: 0 };
@@ -644,6 +646,7 @@ class Room {
         if (!t || !t.alive || (!ai.seenAt && dist3(t.pos, b.pos) > 12)) b.yaw = lerpAngle(b.yaw, Math.atan2(-wx, -wz), 30 * dt); // look where you walk, not through walls
       }
     }
+    if (goal && goal.tac) [wx, wz] = this.econAiHold(b, goal, t, wx, wz, dt); // Plant & Defuse: hold an angle, watch it
     // grappling: chase people who are far / up high / out of sight, save yourself when falling, show off sometimes
     if (!ai.hook && n >= (ai.nextHook || 0) && this.mode !== 'training' && !this.hookOff()) {
       const skill = ai.diff === 'easy' ? 0.35 : ai.diff === 'hard' ? 1 : 0.7;
@@ -2446,7 +2449,7 @@ class Room {
     for (const c of this.clouds.values()) this.broadcast({ t: 'cloudx', id: c.id });
     this.bubbles.clear(); this.clouds.clear();
     for (const p of this.players.values()) {
-      if (p.isBot && p.ai.dummy) continue;
+      if ((p.isBot && p.ai.dummy) || p.watch) continue;
       p.alive = true; p.hp = 100; p.vel = [0, 0, 0]; p.spawnT = now(); p.seq++;
       p.parryT = 0; p.staggerUntil = 0; // katana parry: the client resets on 'spawn', so the server does too
       p.pos = this.pickSpawn(p.isBot, p);
@@ -3436,7 +3439,7 @@ class Room {
 }
 
 installEcon(Room, {
-  send, cleanSkins, enforceSkins, logErr, BOT_GUNS,
+  send, cleanSkins, enforceSkins, logErr, BOT_GUNS, navGraph,
   refreshInv: async (p) => { if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; } },
 });
 

@@ -443,10 +443,12 @@ body.eco #chatlog { bottom: 120px; }
 #ecoTimer span { font-size: 14px; color: #fff; background: rgba(0, 0, 0, 0.45); padding: 1px 10px; }
 #ecoTimer.low b { color: #ff5a5a; animation: ecoBlink 0.5s steps(2) infinite; }
 @keyframes ecoBlink { 50% { opacity: 0.55; } }
-#ecoBanner { position: absolute; left: 50%; top: 17%; transform: translateX(-50%); text-align: center; white-space: nowrap; }
-#ecoBanner .r { font-size: 24px; color: #fff; letter-spacing: 4px; }
-#ecoBanner .s { font-size: 58px; line-height: 1; transform: rotate(-2deg); text-shadow: 3px 3px 0 #000, -2px -2px 0 #000; }
-#ecoBanner .t { display: flex; flex-direction: column; align-items: center; gap: 3px; margin-top: 6px; }
+/* one compact strip under the buy timer, clear of the big centre callouts (#center sits at 32%) */
+#ecoBanner { position: absolute; left: 50%; top: 138px; transform: translateX(-50%); text-align: center; white-space: nowrap; display: flex; flex-direction: column; align-items: center; }
+#ecoBanner .rs { display: flex; align-items: baseline; gap: 12px; transform: rotate(-2deg); }
+#ecoBanner .r { font-size: 20px; color: #fff; letter-spacing: 3px; text-shadow: 2px 2px 0 #000; }
+#ecoBanner .s { font-size: 40px; line-height: 1; text-shadow: 3px 3px 0 #000, -2px -2px 0 #000; }
+#ecoBanner .t { display: flex; flex-direction: row; align-items: center; gap: 6px; margin-top: 4px; }
 #ecoBanner .t span { font-size: 15px; background: rgba(0, 0, 0, 0.55); padding: 2px 12px; color: #ffe14d; }
 #ecoBanner .t span:first-child { color: #fff; }
 #ecoBanner.go { animation: ecoBanner 3.6s ease-out forwards; }
