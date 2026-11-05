@@ -580,3 +580,12 @@ body.chaos-spec #hotbar, body.chaos-spec #hpbox, body.chaos-spec #crosshair, bod
 #impactFx.f1 { background: #ff1428; mix-blend-mode: multiply; }
 #impactFx.f2 { background: radial-gradient(circle at center, rgba(255, 70, 60, 0.95) 0 14%, rgba(40, 0, 6, 0.93) 42%); }
 #impactFx.f3 { background: radial-gradient(ellipse at center, rgba(255, 40, 40, 0.12) 25%, rgba(190, 0, 20, 0.6)); mix-blend-mode: screen; }
+
+/* wrap mode toggle: NORMAL / REVERSE / FULL, a little knife shows which half the wrap paints */
+.wrapmode { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; flex-wrap: wrap; }
+.wrapmode button { font-family: var(--font); font-weight: bold; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; cursor: pointer; background: #fff; color: #000; border: 3px solid #000; box-shadow: 3px 3px 0 #000; }
+.wrapmode button:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #000; }
+.wrapmode button.on { background: var(--yellow); box-shadow: 4px 4px 0 var(--pink); transform: rotate(-2deg); }
+.wrapmode svg { width: 46px; height: 14px; display: block; }
+.wrapmode .hint { font-size: 13px; color: #ffe14d; flex-basis: 100%; }
+.wrapmode.off { opacity: 0.5; }

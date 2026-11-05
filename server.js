@@ -15,7 +15,7 @@ import { ownedSkin, ownedKill, ownedGrapple, randomContainer, CONTAINERS, COSMET
 import { owns, SPRAY } from './shared/cosmetics.js';
 import { validLook, achievementsFrom, ACHIEVEMENTS } from './shared/looks.js';
 import { ROYAL, ROYAL_FEATS } from './shared/looks.js'; // Sniper Royalty
-import { achInv } from './shared/cosmetics.js'; // achievement-locked skins (the Golden Sniper)
+import { achInv, wrapMode, WRAP_MODES } from './shared/cosmetics.js'; // achievement-locked skins (the Golden Sniper), wrap modes
 import { STAT_KEYS } from './server/store.js';
 import { soapAt, trapBoxes, trapPreroll } from './shared/wand.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
@@ -30,7 +30,7 @@ import { epicCheck, epicCamMs, EPIC } from './shared/epic.js';
 import { holeDrag, steer } from './shared/physics.js';
 import { steer as steerTo } from './shared/homing.js'; // homing slippers (steerTo(v, from, to, max)); the duck's steer(v, dir, max) is physics.js's
 import { PARRY } from './shared/weapons.js';
-import { ropeStep, ropeJump, ROPE } from './shared/hookphys.js';
+import { ROPE, classicRopeStep, classicRopeJump } from './shared/hookphys.js';
 import { query as boxQuery } from './shared/physics.js';
 import { navSteer } from './shared/nav.js';
 import { DUCKRAIN } from './shared/modes.js';
@@ -168,7 +168,8 @@ function cleanSkins(s) {
   if (!s || typeof s !== 'object') return out;
   for (const id of Object.keys(WEAPONS)) {
     const v = s[id];
-    if (Array.isArray(v) && (v.length === 3 || v.length === 4) && v.every((x) => typeof x === 'string' && SKIN_KEYS.f.test(x))) out[id] = v.length === 3 ? [...v, 'default'] : v.slice();
+    // [wrap, hat, effect, model?, wrap mode?]: older clients send 3 or 4, the mode is checked against WRAP_MODES
+    if (Array.isArray(v) && v.length >= 3 && v.length <= 5 && v.every((x) => typeof x === 'string' && SKIN_KEYS.f.test(x))) out[id] = [v[0], v[1], v[2], v[3] || 'default', wrapMode(v[4])];
   }
   return out;
 }
@@ -211,7 +212,7 @@ if (process.env.JF_ROUND_TIME) for (const r of Object.values(ROUND)) r.time = Nu
 if (process.env.JF_DUCKS) DUCKRAIN.n = DUCKRAIN.n.map((x) => x * (Number(process.env.JF_DUCKS) || 1));
 function randomSkins() {
   const out = {};
-  for (const id of Object.keys(WEAPONS)) if (Math.random() < 0.6) out[id] = [pick(SKIN_F), pick(SKIN_H), pick(SKIN_E), id === 'knife' ? pick(['default', 'knife_karambit', 'knife_butterfly', 'knife_switch', 'knife_cleaver']) : 'default'];
+  for (const id of Object.keys(WEAPONS)) if (Math.random() < 0.6) out[id] = [pick(SKIN_F), pick(SKIN_H), pick(SKIN_E), id === 'knife' ? pick(['default', 'knife_karambit', 'knife_butterfly', 'knife_switch', 'knife_cleaver']) : 'default', pick(WRAP_MODES)];
   return out;
 }
 function send(p, obj) { if (p.ws && p.ws.readyState === 1) p.ws.send(JSON.stringify(obj)); }
@@ -886,15 +887,14 @@ class Room {
       }
     }
     v[1] -= 26 * dt;
-    // on the rope: the same pendulum rope as a player's grapple (shared/hookphys.js), so bots swing smoothly too.
+    // on the rope: the same classic grapple as a player's (shared/hookphys.js).
     // let go near the point (or when it's been a while) with a grapple jump
     const hk = b.ai && b.ai.hook;
     if (hk) {
-      ropeStep(hk, hk.point, b.pos, v, dt, 26, this.hookMul); // (spoons & grapples pulls harder)
+      classicRopeStep(hk, hk.point, b.pos, v, dt, 26, this.hookMul); // (spoons & grapples pulls harder)
       b.ropeLift = 1;
       if (hk.dist < 4.5 || n > hk.until || slipping) {
-        // grapple jump the way they're facing, a bit up, and never flung into the surface they're hooked on
-        if (!slipping) { const cp = Math.cos(b.pitch); ropeJump(v, [-Math.sin(b.yaw) * cp, Math.max(0.3, Math.sin(b.pitch)), -Math.cos(b.yaw) * cp], hk.n); }
+        if (!slipping) classicRopeJump(v); // hook jump
         b.ai.hook = null; b.g = null; b.ai.route = null; // landed somewhere new: plan again from there
       }
       b.onGround = false;
