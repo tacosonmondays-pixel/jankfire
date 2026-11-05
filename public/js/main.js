@@ -50,7 +50,7 @@ import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CON
 import { SPRAY, ownedSpray } from '/shared/cosmetics.js';
 import { sprayAim, sprayFx, addSpray, clearSprays, updateSprays, sprayIcon } from './sprays.js';
 import { achInv } from '/shared/cosmetics.js'; // achievement rewards (Golden Sniper) count as owned once you have the achievement
-import { achProgress } from '/shared/looks.js';
+import { achProgress, ROYAL_ALL, ROYAL_FEATS } from '/shared/looks.js';
 import { royalToast, royalUnlock, royalBoxes } from './royal.js';
 import { setOnly } from './weapons.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
@@ -128,7 +128,7 @@ function show(id) {
   for (const el of document.querySelectorAll('.screen')) el.classList.toggle('hidden', el.id !== 'scr-' + id);
   $('menu').classList.remove('hidden');
   hud.show(false);
-  if (id === 'cosmetics') { $('cosSlot').append($('preview')); buildCosmeticsUI(); setTimeout(resizePreview, 0); }
+  if (id === 'cosmetics') { skinAllNow = false; $('cosSlot').append($('preview')); buildCosmeticsUI(); setTimeout(resizePreview, 0); }
   if (id === 'character') { $('charSlot').append($('preview')); buildCharacterUI(); setTimeout(resizePreview, 0); }
   if (id === 'namecard') cardEditor.open();
   if (id === 'crates') renderCrates();
@@ -484,7 +484,9 @@ function setPartAll(idx, value) {
   for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[idx] = value; storeSkin(id, sk); }
   saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne(); // visuals only: keeps a randomizer or pending loadout
 }
-const allMode = () => S.skinAll !== false;
+// copy-to-every-weapon starts unticked every time you open COSMETICS (it isn't saved): you dress one weapon unless you ask
+let skinAllNow = false;
+const allMode = () => skinAllNow;
 function setSkin(id, skin) {
   if (plainSkin(skin)) delete S.skins[id];
   else S.skins[id] = skin;
@@ -506,6 +508,8 @@ function setLook(look) {
   saveSettings();
   if (G.joined) net.send({ t: 'look', look: validLook(look, myAchs()) });
 }
+// every achievement (and old one), for trying on locked accessories in the preview only: what you wear stays validLook(look, myAchs())
+const ALL_ACHS = new Set([...Object.keys(ACHIEVEMENTS), ...LOOK_SLOTS.flatMap((sl) => Object.values(ACCESSORIES[sl]).map((v) => v.legacy).filter(Boolean))]);
 function buildCharacterUI() {
   const achs = myAchs();
   const look = { ...DEFAULT_LOOK, ...G.settings.look };
@@ -560,6 +564,8 @@ function buildCharacterUI() {
       c.textContent = v.name;
       if (v.ach) c.style.setProperty('--rc', '#ffe14d');
       c.title = v.ach ? `${ACHIEVEMENTS[v.ach].name}: ${ACHIEVEMENTS[v.ach].desc}` : 'free';
+      c.addEventListener('mouseenter', () => { const t = validLook({ ...look, [slot]: k }, ALL_ACHS); showCharacter(buildCharacter, t.color || G.myColor || '#ff4fd8', t); }); // try it on, locked or not
+      c.addEventListener('mouseleave', () => showCharacter(buildCharacter, shown.color || G.myColor || '#ff4fd8', shown));
       if (v.legacy && achs.has(v.legacy) && !achs.has(v.ach)) c.title += ' (yours anyway: you earned them before they moved here)';
       c.addEventListener('click', () => {
         if (!have) { toast(`${v.name}: unlock "${ACHIEVEMENTS[v.ach].name}" (${ACHIEVEMENTS[v.ach].desc})${account.loggedIn ? '' : '. log in so it counts'}`, 3200); return; }
@@ -605,7 +611,7 @@ function buildCharacterUI() {
     const rw = document.createElement('div'); rw.className = 'rw';
     rw.textContent = 'unlocks ' + rewardsFor(id).map((x) => x.name).join(', ');
     d.append(b, t, bar, rw);
-    if (a.feats) d.insertBefore(royalBoxes(done ? (1 << a.feats.length) - 1 : st[a.stat] || 0, 0, a.feats), bar); // the parts, ticked or not
+    if (a.feats) d.insertBefore(royalBoxes(done ? ROYAL_ALL : st[a.stat] || 0, 0, a.feats), bar); // the parts, ticked or not
     list.append(d);
   }
   $('lkNote').textContent = account.loggedIn ? 'other players see this. locked stuff unlocks from achievements.' : 'guest: free accessories only. log in to earn the achievement ones.';
@@ -625,6 +631,13 @@ $('lkRandom').addEventListener('click', () => {
 });
 $('lkReset').addEventListener('click', () => { setLook({ ...DEFAULT_LOOK }); buildCharacterUI(); });
 
+// hover a cosmetic to see it on the weapon in the preview, locked or not; leaving puts your real look back.
+// req: a locked achievement skin whose "what it takes" box shows while hovering
+function tryOn(chip, skinFn, id, sk, req) {
+  const box = () => req && [...$('skAch').children].find((b) => b.dataset.skin === req);
+  chip.addEventListener('mouseenter', () => { showPreview(id, skinFn()); const b = box(); if (b) b.style.display = ''; });
+  chip.addEventListener('mouseleave', () => { showPreview(id, ownedSkin(sk, G.inv, id)); const b = box(); if (b) b.style.display = 'none'; });
+}
 function buildCosmeticsUI() {
   const list = $('cosWeapons');
   list.innerHTML = '';
@@ -661,6 +674,7 @@ function buildCosmeticsUI() {
       c.textContent = v.name;
       c.style.setProperty('--rc', RARITY[v.rarity].color);
       c.title = `${RARITY[v.rarity].name}${have ? '' : ' (locked: roll to unlock)'}`;
+      tryOn(c, () => { const s2 = sk.slice(); s2[idx] = k; return s2; }, id, sk); // hover: try it on, locked or not
       c.addEventListener('click', () => {
         if (!have) { toast(`${v.name} is ${RARITY[v.rarity].name}. win rounds to get rolls.`); return; }
         if (allMode()) setPartAll(idx, k);
@@ -705,6 +719,7 @@ function buildCosmeticsUI() {
     c.style.setProperty('--rc', RARITY[v.rarity].color);
     const ach = v.ach && ACHIEVEMENTS[v.ach]; // achievement skins: not in crates, you earn them
     if (ach) { c.classList.add('achchip'); c.title = `${ach.name}: ${ach.desc}`; }
+    tryOn(c, () => { const s2 = sk.slice(); s2[3] = k; return s2; }, id, sk, !have && ach ? k : null); // hover: try it on (+ what it takes)
     c.addEventListener('click', () => {
       if (!have && ach) { toast(`${v.name}: unlock "${ach.name}" (${ach.desc})${account.loggedIn ? '' : '. log in so it counts'}`, 3600); return; }
       if (!have) { toast(`${v.name} is ${RARITY[v.rarity].name}. win rounds to get rolls.`); return; }
@@ -713,17 +728,18 @@ function buildCosmeticsUI() {
     $('sk-model').append(c);
   }
   buildGrappleUI();
-  // next to an achievement skin: what it takes, with the parts you've ticked so far
+  // a locked achievement skin: what it takes, with the parts you've ticked so far. only shown while you hover it
   $('skAch').innerHTML = '';
   for (const k of models) {
     const v = COSMETICS.model[k], a = v.ach && ACHIEVEMENTS[v.ach];
-    if (!a) continue;
+    if (!a || owns(G.inv, 'model', k)) continue;
     const st = (account.me && account.me.stats) || {}, done = myAchs().has(v.ach);
     const box = document.createElement('div'); box.className = 'achskin' + (done ? ' done' : '');
+    box.dataset.skin = k; box.style.display = 'none';
     const h = document.createElement('b'); h.textContent = done ? `★ ${v.name}: yours` : `${v.name} (locked): ${a.name} ${Math.min(a.goal, achProgress(a, st))}/${a.goal}`;
     const t = document.createElement('div'); t.textContent = done ? `${a.name} complete${k === 'sniper_golden' ? '. stays gold under any wrap' : ''}` : a.desc + (account.loggedIn ? '' : '. log in so it counts');
     box.append(h, t);
-    if (a.feats) box.append(royalBoxes(done ? (1 << a.feats.length) - 1 : st[a.stat] || 0, 0, a.feats));
+    if (a.feats) box.append(royalBoxes(done ? ROYAL_ALL : st[a.stat] || 0, 0, a.feats));
     $('skAch').append(box);
   }
   showPreview(id, ownedSkin(sk, G.inv, id));
@@ -782,7 +798,7 @@ $('skAll').addEventListener('click', () => { // copy this weapon's wrap/hat/effe
   for (const id of skinnable()) { const s2 = validSkin(S.skins[id]).slice(); s2[0] = sk[0]; s2[1] = sk[1]; s2[2] = sk[2]; s2[4] = sk[4]; storeSkin(id, s2); }
   saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne(); buildCosmeticsUI();
 });
-$('skAllMode').addEventListener('change', () => { S.skinAll = $('skAllMode').checked; saveSettings(); buildCosmeticsUI(); });
+$('skAllMode').addEventListener('change', () => { skinAllNow = $('skAllMode').checked; buildCosmeticsUI(); });
 
 // ------------------------------------------------------------ grapple skins (one per player, everyone sees your rope)
 function setGrap(id) {
@@ -1090,7 +1106,7 @@ function unlockSkins(list) {
     storeSkin(w, sk);
   }
   saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne();
-  if (list.some((r) => r.id === 'sniper_golden')) royalUnlock('SNIPER ROYALTY 4/4 · it\'s on your sniper now (swap it in COSMETICS)');
+  if (list.some((r) => r.id === 'sniper_golden')) royalUnlock(`SNIPER ROYALTY ${ROYAL_FEATS.length}/${ROYAL_FEATS.length} · it's on your sniper now (swap it in COSMETICS)`);
 }
 // Sniper Royalty: you just ticked a box (the server decides; a guest is told it would have counted)
 net.on('royal', (m) => {
