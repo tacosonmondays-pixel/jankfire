@@ -689,7 +689,7 @@ function suburb() {
   const W = B.local(0, 0, 0);
   const bounds = [-114, -54, 116, 54];
   // the ground: flat lawn a long way out in every direction (no more cliff). past the trees it's just more nothing
-  B.add(-260, -3, -200, 260, 0, 200, 'lawn');
+  B.add(-140, -3, -80, 140, 0, 80, 'lawn'); groundHoles(B, -260, -200, 260, 200, -3, 0, 'grass', [[-140, -80, 140, 80]]); // lawn inside the trees, forest floor past them
   // the street (out west it keeps going, past the barricade, into the out of bounds), the turnaround in the east
   B.add(-260, 0, -7, 44, 0.1, 7, 'roadx');
   B.add(44, 0, -12, 80, 0.1, 12, 'road');
@@ -808,9 +808,35 @@ function suburb() {
   ring(W, -117, -57, 119, 57, 6.5, 2);
   const Dw = D.local(0, 0, 0);
   ring(Dw, -124, -64, 126, 64, 5.5, 3); ring(Dw, -131, -71, 133, 71, 6, 4);
-  for (let i = 0; i < 70; i++) { const a = r() * Math.PI * 2, d = 150 + r() * 90; (r() < 0.5 ? conifer : lollipop)(Dw, Math.cos(a) * d * 1.3, Math.sin(a) * d, 6 + r() * 4, r); }
+  // past the ring, a forest that thins out into the fog (render-only): thick by the ring, patchier further out, a cleared
+  // strip under a power line, green hills with trees on top, a big water tower poking out over the trees
+  const fr = rng(4343), pylonZ = -158;
+  const ftree = (x, z, h, y = 0) => { const L2 = D.local(x, z, 0, y), m = fr() < 0.5 ? 'leaves' : fr() < 0.6 ? 'hedge' : 'leaves2';
+    if (fr() < 0.5) { L2.B(0, h / 2, 0, 0.6, h, 0.6, 'wood'); L2.B(0, h + 0.8, 0, 3.4 + fr(), 2.2, 3.4 + fr(), m); L2.B(0, h + 2.4, 0, 2.2, 1.2, 2.2, m); }
+    else { L2.B(0, 1, 0, 0.5, 2, 0.5, 'wood'); L2.B(0, 2 + h * 0.3, 0, 4.4, h * 0.6, 4.4, m); L2.B(0, 2 + h * 0.75, 0, 2.6, h * 0.5, 2.6, m); } };
+  for (let x = -334; x <= 334; x += 8) for (let z = -274; z <= 274; z += 8) {
+    const e = Math.max(Math.abs(x) - 134, Math.abs(z) - 74); // how far past the ring
+    if (e < 0 || (x < -118 && Math.abs(z) < 15) || Math.abs(z - pylonZ) < 11) continue; // the road out west, the power line
+    if (fr() < (e < 40 ? 0.85 : e < 110 ? 0.5 : 0.24)) ftree(x + (fr() - 0.5) * 6, z + (fr() - 0.5) * 6, 5 + fr() * 5);
+  }
+  for (const [x, z, w, h] of [[-250, -200, 90, 18], [230, 190, 110, 24], [300, -60, 70, 14], [-310, 120, 80, 20], [60, 250, 100, 16], [-120, 240, 70, 12]]) {
+    for (let i = 0; i < 4; i++) { const k = 1 - i * 0.22; D.box(x + i * 3, (h / 4) * (i + 0.5), z - i * 2, w * k, h / 4, w * 0.7 * k, 'grass'); }
+    for (let t = 0; t < 7; t++) ftree(x + (fr() - 0.5) * w * 0.4, z + (fr() - 0.5) * w * 0.3, 5 + fr() * 4, h);
+  }
+  { const T = D.local(205, -175, 0); // the water tower
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) T.B(sx * 4, 13, sz * 4, 0.7, 26, 0.7, 'metal');
+    for (const y of [8, 17]) { T(-4, y, -4.1, 4, y + 0.3, -3.9, 'metal'); T(-4, y, 3.9, 4, y + 0.3, 4.1, 'metal'); T(-4.1, y, -4, -3.9, y + 0.3, 4, 'metal'); T(3.9, y, -4, 4.1, y + 0.3, 4, 'metal'); }
+    T(-6, 26, -6, 6, 34, 6, 'toyteal'); T(-4.5, 34, -4.5, 4.5, 36, 4.5, 'toyteal'); T(-0.6, 36, -0.6, 0.6, 38, 0.6, 'metal');
+    T(-5, 28.5, -6.15, 5, 32.5, -6.02, 'adwater', { fit: 1 }); T(-6.6, 25.6, -6.6, 6.6, 26, 6.6, 'grid');
+  }
+  for (let x = -330; x <= 330; x += 66) { // a power line on pylons, cables strung along
+    const P = D.local(x, pylonZ, 0);
+    P.B(0, 7, 0, 3.6, 14, 3.6, 'metal'); P.B(0, 20, 0, 2.2, 12, 2.2, 'metal'); P.B(0, 29, 0, 1.2, 6, 1.2, 'metal');
+    P.B(0, 22, 0, 0.4, 0.4, 13, 'metal'); P.B(0, 28, 0, 0.4, 0.4, 10, 'metal');
+    if (x + 66 <= 330) for (const [y, dz] of [[21.4, -6.2], [21.4, 6.2], [27.4, -4.7], [27.4, 4.7]]) D.add(x, y, pylonZ + dz - 0.05, x + 66, y + 0.08, pylonZ + dz + 0.05, 'tire');
+  }
   for (let x = -250; x < -130; x += 30) streetlight(Dw, x, 9, -1); // the road out west: streetlights to nowhere
-  horizon(D, -260, -200, 260, 200, 1500, 'sand'); D.add(-1500, 0, -7, -260, 0.1, 7, 'roadx'); // the lawns stop, the desert and the road carry on
+  horizon(D, -260, -200, 260, 200, 1500, 'grass'); D.add(-1500, 0, -7, -260, 0.1, 7, 'roadx'); // the forest floor and the road carry on
 
   spawns.push([33, 0.3, -28], [33, 0.3, 26], [-94, 0.3, -24], [-93, 0.5, 24], [-60, 0.2, -46], [-30, 0.2, 46], [40, 0.2, -46], [40, 0.2, 46], [62, 0.2, -10], [-30, 3.3, -3.1]);
   const att = [[-102, 0.2, -3], [-102, 0.2, 3], [-96, 0.2, 0], [-106, 0.2, 0], [-98, 0.35, 8.5], [-98, 0.35, -8.5], [-92, 0.2, -4]];
@@ -1671,7 +1697,7 @@ function backrooms() {
   const B = builder(), D = builder(); // D = render-only boxes: light overlays, pool water, tiles on the pool ceiling
   const W = B.local(0, 0, 0);
   const r = rng(1777);
-  const N = 60, U = 4, O = -120, H = 3, HH = 7.5, PY = -4.5, T = 0.2; // grid cells, cell size, map edge, ceilings, pool floor, wall thickness
+  const N = 60, U = 4, O = -120, H = 4.2, HH = 9, PY = -4.5, T = 0.2; // grid cells, cell size, map edge, ceilings (raised: more room to jump and grapple), pool floor, wall thickness
   const gx = (i) => O + i * U, mid = (i) => O + (i + 0.5) * U;
   const pick = (a) => a[(r() * a.length) | 0];
 
