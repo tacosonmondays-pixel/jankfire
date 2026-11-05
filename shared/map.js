@@ -1025,7 +1025,7 @@ function skyline() {
     B.box(cx - 8 - 12, 11 * F + 39, cz - 8, 6, 3, 3, 'concrete');
     B.box(cx - 8 + 30, 11 * F + 34, cz - 8, 0.2, 12, 0.2, 'metal');
     B.box(cx - 8 + 30, 11 * F + 27.5, cz - 8, 3, 1, 3, 'pink');
-    spawns.push([cx, 0.6, cz], [cx + 5, 4 * F + 0.6, cz + 5]);
+    spawns.push([cx + 5, 0.6, cz + 5], [cx + 5, 4 * F + 0.6, cz + 5]); // (the first one used to be inside the middle column)
   }
   // sky bridges between equal-height neighbours (enclosed glass tubes), roof edge to roof edge, with a doorway cut
   // through the parapet at both ends. ax/bx: where each roof's edge really is (the top tier, not the base: one of them
@@ -1541,6 +1541,15 @@ export const MAPS = {
   crate: crate(), platform: platform(), rooftop: rooftop(), suburb: suburb(), warehouse: warehouse(),
   desert: desert(), islands: islands(), skyline: skyline(), bazaar: bazaar(), range: range(), backrooms: backrooms(),
 };
+// a spawn whose body would start inside a box (a column, a roof garden, a helipad) gets lifted onto whatever it's in
+function unstick(boxes, list) {
+  for (const p of list) for (let k = 0; k < 3; k++) {
+    const b = boxes.find((q) => p[0] + 0.4 > q.min[0] && p[0] - 0.4 < q.max[0] && p[2] + 0.4 > q.min[2] && p[2] - 0.4 < q.max[2] && p[1] + 1.8 > q.min[1] && p[1] < q.max[1]);
+    if (!b) break;
+    p[1] = b.max[1] + 0.1;
+  }
+}
+for (const m of Object.values(MAPS)) unstick(m.boxes, [...m.spawns, ...(m.teamSpawns ? [...m.teamSpawns.att, ...m.teamSpawns.def] : [])]);
 export const MAP_ORDER = ['crate', 'platform', 'rooftop', 'suburb', 'warehouse', 'desert', 'bazaar', 'islands', 'skyline', 'backrooms'];
 
 // Client convenience: "the current map". These arrays/objects are mutated in place by setMap,
