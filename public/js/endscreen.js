@@ -8,7 +8,7 @@ import { GAMES, TEAMS } from '/shared/modes.js';
 import { MAPS } from '/shared/map.js';
 import { MEDALS } from '/shared/medals.js';
 import { CONTAINERS } from '/shared/cosmetics.js';
-import { modeThumb, modeColors } from './modeart.js';
+import { modeThumb, modeColors, medalImage, propImage } from './modeart.js';
 import { fleshFrame } from './flesh.js';
 
 const $ = (id) => document.getElementById(id);
@@ -181,14 +181,6 @@ function renderWhere() {
   const g = (ES.round && ES.round.game) || (G.round && G.round.game) || 'dm';
   $('esWhere').textContent = `${GAMES[g] ? GAMES[g].name : g} · ${MAPS[G.cfg.map] ? MAPS[G.cfg.map].name : ''}`;
 }
-const SKULL = `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 6C26 6 10 22 10 44c0 13 6 22 14 27v13c0 5 4 9 9 9h34c5 0 9-4 9-9V71c8-5 14-14 14-27C90 22 74 6 50 6z" fill="#f2e6d8" stroke="#120818" stroke-width="5" stroke-linejoin="round"/>
-  <path d="M22 48c0-9 8-12 15-10s9 10 5 16-17 6-20-6zM78 48c0-9-8-12-15-10s-9 10-5 16 17 6 20-6z" fill="#120818"/><circle cx="33" cy="47" r="4" fill="#ff3b5c"/><circle cx="67" cy="47" r="4" fill="#ff3b5c"/>
-  <path d="M50 58l-6 10h12z" fill="#120818"/><path d="M34 78v14M44 78v15M56 78v15M66 78v14" stroke="#120818" stroke-width="4"/><path d="M58 8l-6 14 8 6-4 10" fill="none" stroke="#120818" stroke-width="3"/>
-  <ellipse cx="32" cy="22" rx="10" ry="5" fill="#fff" opacity=".7" transform="rotate(-25 32 22)"/></svg>`;
-const CROWN = `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M10 76L6 26l24 20L50 12l20 34 24-20-4 50z" fill="#ffe14d" stroke="#120818" stroke-width="5" stroke-linejoin="round"/>
-  <rect x="10" y="74" width="80" height="16" rx="5" fill="#ff4fd8" stroke="#120818" stroke-width="5"/><circle cx="50" cy="56" r="8" fill="#4fd8ff" stroke="#120818" stroke-width="4"/>
-  <circle cx="26" cy="62" r="5" fill="#ff3b5c" stroke="#120818" stroke-width="3"/><circle cx="74" cy="62" r="5" fill="#7dff4f" stroke="#120818" stroke-width="3"/><ellipse cx="34" cy="40" rx="8" ry="3" fill="#fff" opacity=".7" transform="rotate(35 34 40)"/></svg>`;
-const SCALE = `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 14v70M24 88h52M14 30h72" stroke="#120818" stroke-width="7" stroke-linecap="round"/><path d="M14 30L4 58h20zM86 30L76 58h20z" fill="#4fd8ff" stroke="#120818" stroke-width="4" stroke-linejoin="round"/><circle cx="50" cy="14" r="7" fill="#ffe14d" stroke="#120818" stroke-width="4"/></svg>`;
 function renderTitle() {
   const t = $('esTitle'), r = result();
   const word = r === 'win' ? 'VICTORY' : r === 'lose' ? 'DEFEAT' : r === 'draw' ? 'DRAW' : 'NEXT MATCH';
@@ -196,11 +188,12 @@ function renderTitle() {
   t.dataset.word = word;
   t.className = `es-title r-${r}`;
   t.innerHTML = '';
-  const ico = el('span', 'es-ico'); ico.innerHTML = r === 'win' ? CROWN : r === 'draw' ? SCALE : SKULL;
+  const prop = (flip) => { const i = el('span', 'es-ico' + (flip ? ' flip' : '')); const img = new Image(); img.alt = ''; img.src = propImage(r === 'win' ? 'win' : r === 'draw' ? 'draw' : 'lose', flip); i.append(img); return i; }; // 3d, rendered from boxes
+  const ico = prop(false);
   const w = el('b', 'es-word');
   [...word].forEach((ch, i) => { const s = el('span', null, ch); s.style.setProperty('--i', i); w.append(s); });
   t.append(ico, w);
-  if (r !== 'none') { const ico2 = ico.cloneNode(true); ico2.classList.add('flip'); t.append(ico2); }
+  if (r !== 'none') t.append(prop(true)); else ico.remove();
   const m = ES.round || {};
   let sub = ES.line || '';
   if (m.sc) sub = `${TEAMS[1].name} ${m.sc[0]} - ${m.sc[1]} ${TEAMS[2].name} · ${sub}`;
@@ -364,8 +357,8 @@ function medal(id, got) {
   const md = MEDALS[id];
   const d = el('div', 'es-medal' + (got ? ' got' : ''));
   d.style.setProperty('--mc', md.c);
-  const coin = el('div', 'coin'); coin.append(el('span', null, md.g));
-  d.append(el('i', 'ribbon'), coin, el('b', null, md.name), el('small', null, md.desc));
+  const img = new Image(); img.alt = ''; img.className = 'coin'; img.src = medalImage(id, md); // a 3d badge
+  d.append(img, el('b', null, md.name), el('small', null, md.desc));
   return d;
 }
 function tabMedals(body) {
