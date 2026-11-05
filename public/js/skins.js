@@ -3,6 +3,8 @@
 import * as THREE from 'three';
 import { jankify } from './jank.js';
 import { PSys } from './fx.js';
+import { WRAP_MODES, zoneOf, paints } from './wrapzones.js';
+export { WRAP_MODES, WRAP_MODE_NAMES } from './wrapzones.js';
 
 export const FINISHES = {
   default: { name: 'Default' },
@@ -33,16 +35,16 @@ export const EFFECTS = {
   bubbles: { name: 'Bubbles' }, electric: { name: 'Electric' }, music: { name: 'Music' }, money: { name: 'Money' },
   smoke: { name: 'Smoke' }, rainbow: { name: 'Rainbow' },
 };
-export const DEFAULT_SKIN = ['default', 'none', 'none', 'default'];
+export const DEFAULT_SKIN = ['default', 'none', 'none', 'default', 'normal'];
 
-// skin = [wrap, hat, effect, model]
+// skin = [wrap, hat, effect, model, wrap mode]. saves from before wrap modes have no 5th slot: they get normal
 export function validSkin(s) {
   if (!Array.isArray(s) || !FINISHES[s[0]] || !HATS[s[1]] || !EFFECTS[s[2]]) return DEFAULT_SKIN;
-  return [s[0], s[1], s[2], typeof s[3] === 'string' ? s[3] : 'default'];
+  return [s[0], s[1], s[2], typeof s[3] === 'string' ? s[3] : 'default', WRAP_MODES.includes(s[4]) ? s[4] : 'normal'];
 }
 export function randomSkin() {
   const pick = (o) => { const k = Object.keys(o); return k[(Math.random() * k.length) | 0]; };
-  return [pick(FINISHES), pick(HATS), pick(EFFECTS), 'default'];
+  return [pick(FINISHES), pick(HATS), pick(EFFECTS), 'default', WRAP_MODES[(Math.random() * 3) | 0]];
 }
 
 const tmpC = new THREE.Color();
@@ -111,10 +113,11 @@ function textures() {
 // ------------------------------------------------------------ finish materials
 const cache = new Map();
 const rainbowMats = [];
-function finishMat(finish, base) {
+function finishMat(finish, base, zoned) {
   const hsl = {};
   base.getHSL(hsl);
-  const f = Math.round(Math.min(1.15, 0.4 + hsl.l * 1.1) * 10) / 10; // keeps dark parts dark
+  // full: keeps dark parts dark. a zoned wrap has to read against the unpainted half, so near-black barrels get lifted
+  const f = Math.round(Math.min(1.15, zoned ? 0.72 + hsl.l * 0.5 : 0.4 + hsl.l * 1.1) * 10) / 10;
   const key = finish + f;
   if (cache.has(key)) return cache.get(key);
   const T = textures();
@@ -234,16 +237,21 @@ function makeHat(id) {
 // ------------------------------------------------------------ apply
 const tmpBox = new THREE.Box3(), tmpV = new THREE.Vector3(), tmpS = new THREE.Vector3();
 export function applySkin(g, skin) {
-  const [finish, hat, effect] = validSkin(skin);
+  const [finish, hat, effect, , mode] = validSkin(skin);
   const meshes = [];
   g.traverse((o) => { if (o.isMesh) meshes.push(o); });
   if (finish !== 'default') {
+    const key = g.userData.model && g.userData.model !== 'default' ? g.userData.model : g.userData.wid;
+    if (mode !== 'full') g.updateMatrixWorld(true);
     for (const o of meshes) {
       const mats = Array.isArray(o.material) ? o.material : [o.material];
-      // wraps cover the whole weapon. only glowing bits and black eyes keep their look.
+      // glowing bits and black eyes always keep their look
       if (o.userData.noWrap || mats.some((m) => m.isShaderMaterial)) continue;
       if (mats.some((m) => m.isMeshBasicMaterial && m.color && m.color.getHex() === 0x000000 && !m.map)) continue;
-      const m = finishMat(finish, mats[0].color || new THREE.Color(1, 1, 1));
+      const base = mats[0].color || new THREE.Color(1, 1, 1);
+      // normal paints the handle side, reverse the business end, full the lot (see wrapzones.js); the rest keeps its own material
+      if (mode !== 'full' && !paints(mode, zoneOf(o, g, key, base))) continue;
+      const m = finishMat(finish, base, mode !== 'full');
       if (m) o.material = m;
     }
   }

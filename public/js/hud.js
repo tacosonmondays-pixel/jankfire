@@ -79,6 +79,41 @@ export const hud = {
     if (amt >= 18) { nanT = 0.2; nanText = GARBAGE[(Math.random() * GARBAGE.length) | 0]; }
   },
   crossFade(k) { const c = $('crosshair'); const v = String(Math.round(k * 100) / 100); if (c.style.opacity !== v) c.style.opacity = v; },
+  // katana parry cooldown: a thin ring round the crosshair (open = guard up, cd = draining, ready = back). null hides it.
+  // it's called every frame, so the element and what it shows are cached: the usual call (null, already hidden) is one compare
+  parryRingCache: { el: null, state: '', step: -1 },
+  parryRing(k, state) {
+    const ring = this.parryRingCache;
+    if (k == null) { if (ring.state) { ring.state = ''; ring.el.style.display = 'none'; } return; }
+    const step = Math.round(k * 60);
+    if (state === ring.state && step === ring.step) return;
+    if (!ring.el) { ring.el = document.createElement('div'); ring.el.id = 'parryRing'; $('hud').append(ring.el); }
+    const el = ring.el;
+    ring.state = state; ring.step = step;
+    el.style.display = 'block';
+    el.className = state;
+    const c = state === 'open' ? '#9fe8ff' : state === 'ready' ? '#ffffff' : 'rgba(255, 255, 255, 0.85)';
+    el.style.background = `conic-gradient(${c} ${Math.round(k * 360)}deg, rgba(0, 0, 0, 0.3) 0)`; // dark track so it reads on bright skies
+  },
+  // a quick full-screen flash that fades out by itself (landing a parry)
+  flash(a, dur = 0.2) {
+    let el = $('parryFx');
+    if (!el) { el = document.createElement('div'); el.id = 'parryFx'; $('hud').prepend(el); }
+    el.style.transition = 'none'; el.style.opacity = a;
+    void el.offsetWidth; // restart the fade
+    el.style.transition = `opacity ${dur}s ease-out`; el.style.opacity = 0;
+  },
+  // anime-style impact frames: a hard red/black frame, a dark frame with a red burst, then a red glow that fades. k = strength
+  impact(k = 1) {
+    let el = $('impactFx');
+    if (!el) { el = document.createElement('div'); el.id = 'impactFx'; $('hud').prepend(el); }
+    clearTimeout(this.impT); clearTimeout(this.impT2);
+    el.style.transition = 'none'; el.className = 'f1'; el.style.opacity = Math.min(1, k);
+    this.impT = setTimeout(() => {
+      el.className = 'f2';
+      this.impT2 = setTimeout(() => { el.className = 'f3'; void el.offsetWidth; el.style.transition = 'opacity 0.4s ease-out'; el.style.opacity = 0; }, 60);
+    }, 60);
+  },
   scope(on) {
     $('scope').classList.toggle('on', on);
     $('crosshair').style.display = on ? 'none' : '';
@@ -147,7 +182,7 @@ export const hud = {
     const w = WEAPONS[id];
     if (!w) return;
     $('weaponName').innerHTML = '';
-    $('weaponName').append(span(w.name, w.color), document.createElement('br'), span(w.desc, '#fff'));
+    $('weaponName').append(span(w.name, w.color), document.createElement('br'), span((this.descFor && this.descFor[id]) || w.desc, '#fff'));
     $('weaponName').style.opacity = 1;
     weaponT = 3;
   },
@@ -224,7 +259,46 @@ export const hud = {
     while (log.children.length > 8) log.firstChild.remove();
     setTimeout(() => d.remove(), 12000);
   },
+  // wrecking ball: seconds left, a draining bar, how hard you'd ram someone right now, and the slam: recharging, ready,
+  // or how big it would be from up here (left = null hides it)
+  ball(left, dur, sl) {
+    let el = $('ballTimer');
+    if (left == null) { if (el && el.style.display !== 'none') el.style.display = 'none'; return; }
+    if (!el) {
+      el = document.createElement('div'); el.id = 'ballTimer';
+      el.innerHTML = '<b></b><div class="bar"><i></i></div><div class="spd"></div><div class="slam"><i></i><span></span></div>';
+      $('hud').append(el);
+    }
+    el.style.display = 'block';
+    const ready = sl.ready >= 1, air = ready && sl.h != null && sl.size;
+    const kmh = Math.round((sl.speed || 0) * 3.6), ram = sl.ram || 0;
+    const key = left.toFixed(1) + '|' + Math.round(sl.ready * 20) + '|' + (air ? Math.round(sl.h) : '-') + '|' + kmh + '|' + ram;
+    if (el.dataset.key === key) return;
+    el.dataset.key = key;
+    el.querySelector('b').textContent = `WRECKING BALL · ${left.toFixed(1)}s`;
+    el.querySelector('.bar i').style.width = Math.max(0, Math.min(1, left / dur)) * 100 + '%';
+    el.querySelector('.spd').textContent = `${kmh} km/h · ${ram ? `RAM ${ram}` : 'too slow to ram'}`;
+    el.classList.toggle('ramming', ram >= 60);
+    el.classList.toggle('low', left < 4);
+    el.querySelector('.slam i').style.width = (air ? 8 + sl.size.k * 92 : Math.min(1, sl.ready) * 100) + '%';
+    el.querySelector('.slam span').textContent = !ready ? 'slam recharging...'
+      : air ? `CROUCH: SLAM from ${Math.round(sl.h)} m · ${Math.round(sl.size.dmg)} dmg` : 'GROUND SLAM: crouch in the air · E: chain';
+    el.classList.toggle('ready', ready);
+    el.classList.toggle('air', !!air);
+  },
   ping(ms) { $('ping').textContent = ms + 'ms'; },
+  // scales of justice: the verdict on whoever you're aiming at, under the crosshair (null hides it)
+  verdict(text, sub = '', cls = '') {
+    const el = $('verdict');
+    const key = text ? text + '|' + sub + '|' + cls : '';
+    if (el.dataset.key === key) return;
+    el.dataset.key = key;
+    el.style.display = text ? 'block' : 'none';
+    if (!text) return;
+    el.className = cls;
+    el.querySelector('b').textContent = text;
+    el.querySelector('span').textContent = sub;
+  },
   update(dt) {
     if (lostT > 0) {
       lostT -= dt;

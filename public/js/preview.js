@@ -41,6 +41,7 @@ export function showPreview(id, skin) {
   const box = new THREE.Box3().setFromObject(g);
   const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
   fit = 2.3 / Math.max(size.x, size.y, size.z, 0.05);
+  if (g.userData.bare) fit = Math.min(fit, 1.15 / Math.max(size.y, 0.05)); // the Blood Cross hand is as tall as it is long: fit it top to bottom
   const wrap = new THREE.Group();
   g.position.sub(c);
   wrap.add(g);
