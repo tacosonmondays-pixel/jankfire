@@ -20,6 +20,28 @@ queued requests live in `HANDOFF.md` on the `claude/handoff` branch (`git show o
   grows and parries, the Scales of Justice deal verdict damage...). Killstreaks and items are spectacles, not stat bumps.
 - Bots must actually know how to play every mode (routes, objectives, buying, grappling).
 
+### Style details (match these exactly)
+- **UI look:** a comic/zine style. Font: Comic Neue (bundled in `public/fonts`, `var(--font)`). Panels are dark purple-black
+  (`rgba(18,8,24,0.92)`) with a thick 4 px pink border and a hard, offset **cyan drop shadow** (`8px 8px 0`, no blur). The
+  main button is yellow (`#ffe14d`) with a black border and a pink offset shadow, tilted a degree or two. Other buttons are
+  white with black borders; destructive ones are red. Everything uses hard offset shadows: no soft blurs, no gradients on
+  buttons, no rounded "app" look.
+- **Palette:** hot pink/magenta (`#ff4fd8`, `#ff00dc`), yellow (`#ffe14d`), cyan (`#4fd8ff`), toxic green (`#39ff14`,
+  `#7dff4f`), red (`#ff3030`) on near-black. Each weapon has its own colour in `shared/weapons.js`, used for its icon, kill-feed
+  tag and tracer.
+- **3D look:** chunky low-poly built from boxes, lathes and simple shapes (no imported meshes). Characters are mannequins with
+  built-in jank (random tilt, a wrong knee); other players get outlines. Maps are big readable blocks with scenery around them
+  (never floating in a void), and sky, fog and lighting are tuned per map.
+- **Writing voice:** short, lowercase-ish, deadpan and cheeky. Item descriptions are one or two plain sentences with a joke
+  ("Hard bananas that bonk and make them slip. Misses stay on the floor as peels."). Kill-feed and death lines are silly
+  ("t-bagged too hard and exploded", "smoked too much", "into the void"). Big HUD callouts are ALL CAPS and punchy.
+- **Names:** silly-literal, not edgy-generic. For example: Peel Shooter, Hand Slapper, Bread, Spoon, Jank Cola, Dead Mall,
+  Scales of Justice ("HUNG JURY"), Wrecking Ball, Golden Sniper.
+- **Sound:** synthesized in code (`public/js/audio.js`, Web Audio), punchy and cartoonish. Every action gets a sound, and
+  headshots and kills get special ones (DINK / TONK).
+- **Feel:** fast movement (grapple, slides, rocket jumps), generous fun over balance-spreadsheet fairness, but the server
+  still keeps it honest (no cheating).
+
 ## How we work
 - **The owner** types fast, with typos and slang ("XD", "cuh"). Read requests generously and build the fun version. If
   something is truly ambiguous, build the likely meaning and say what you assumed. They send lots of ideas: queue them
