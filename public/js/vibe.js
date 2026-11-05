@@ -78,6 +78,10 @@ export function addVibe(out, canvasTex, speckle) {
   out.roofpink = gloss(canvasTex(16, shingle([240, 60, 150], '#7a1050')), 1.5);
   out.roofblue = lam(canvasTex(16, (g, s) => { speckle(g, s, [40, 100, 200], 14, 2); g.fillStyle = '#1a3a7a'; for (let x = 0; x < s; x += 4) g.fillRect(x, 0, 1, s); g.fillStyle = '#7ab0ff'; for (let x = 2; x < s; x += 4) g.fillRect(x, 0, 1, s); }), 2); // corrugated
   out.asphalt2 = lam(canvasTex(16, (g, s) => { speckle(g, s, [70, 74, 86], 12, 2); }), 3);
+  out.dirtroad = lam(canvasTex(16, (g, s) => { speckle(g, s, [178, 134, 86], 26, 2); g.fillStyle = 'rgba(90,60,30,0.35)'; for (let i = 0; i < 6; i++) g.fillRect(rnd(s), rnd(s), 1, 1); }), 3);
+  out.pottery = lam(canvasTex(16, (g, s) => { speckle(g, s, [196, 98, 52], 18, 2); g.fillStyle = '#7a2a10'; g.fillRect(0, 5, s, 1); g.fillStyle = '#f2d9a0'; g.fillRect(0, 9, s, 1); }), 1);
+  out.rock = lam(canvasTex(32, (g, s) => { speckle(g, s, [170, 92, 58], 22, 2); for (let y = 0; y < s; y += 6) { g.fillStyle = y % 12 ? 'rgba(120,50,30,0.35)' : 'rgba(230,170,110,0.3)'; g.fillRect(0, y, s, 2); } }), 6); // banded red rock
+  out.camel = lam(canvasTex(16, (g, s) => { speckle(g, s, [196, 160, 110], 16, 2); }), 2);
   out.picket = lam(canvasTex(16, (g, s) => { g.fillStyle = '#f4f2ec'; g.fillRect(0, 0, s, s); g.fillStyle = '#b8b4c8'; for (let x = 3; x < s; x += 4) g.fillRect(x, 0, 1, s); }), 1);
   out.plywood = lam(canvasTex(16, (g, s) => { speckle(g, s, [200, 160, 100], 40, 1); }), 1.5);
   out.jersey = lam(canvasTex(16, (g, s) => { speckle(g, s, [190, 190, 196], 14, 2); for (let x = 0; x < s; x += 8) { g.fillStyle = '#e8202a'; g.fillRect(x, 2, 4, 3); g.fillStyle = '#fff'; g.fillRect(x + 4, 2, 4, 3); } }), 2);

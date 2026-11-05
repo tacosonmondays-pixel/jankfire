@@ -430,6 +430,13 @@ function cityBeyond(D, y, S, R, r, o) {
 
 const SKY_SUNSET = { top: 0x2b1d6b, mid: 0xff8fb8, bot: 0x14051a, fog: 0xf7a1c4 };
 
+// render-only ground from the edge of a map's real ground [x0, z0, x1, z1] out to the horizon (R), so the ground carries on
+// past where you can walk without a floor plane that would cap every pit and canyon
+function horizon(D, x0, z0, x1, z1, R, mat, y = 0) {
+  D.add(-R, y - 2, -R, R, y, z0, mat); D.add(-R, y - 2, z1, R, y, R, mat);
+  D.add(-R, y - 2, z0, x0, y, z1, mat); D.add(x1, y - 2, z0, R, y, z1, mat);
+}
+
 // ------------------------------------------------------------ CRATE: tiny on purpose, pure chaos
 function crate() {
   const B = builder();
@@ -761,6 +768,7 @@ function suburb() {
   ring(Dw, -124, -64, 126, 64, 5.5, 3); ring(Dw, -131, -71, 133, 71, 6, 4);
   for (let i = 0; i < 70; i++) { const a = r() * Math.PI * 2, d = 150 + r() * 90; (r() < 0.5 ? conifer : lollipop)(Dw, Math.cos(a) * d * 1.3, Math.sin(a) * d, 6 + r() * 4, r); }
   for (let x = -250; x < -130; x += 30) streetlight(Dw, x, 9, -1); // the road out west: streetlights to nowhere
+  horizon(D, -260, -200, 260, 200, 1500, 'sand'); D.add(-1500, 0, -7, -260, 0.1, 7, 'roadx'); // the lawns stop, the desert and the road carry on
 
   spawns.push([33, 0.3, -28], [33, 0.3, 26], [-94, 0.3, -24], [-93, 0.5, 24], [-60, 0.2, -46], [-30, 0.2, 46], [40, 0.2, -46], [40, 0.2, 46], [62, 0.2, -10], [-30, 3.3, -3.1]);
   const att = [[-102, 0.2, -3], [-102, 0.2, 3], [-96, 0.2, 0], [-106, 0.2, 0], [-98, 0.35, 8.5], [-98, 0.35, -8.5], [-92, 0.2, -4]];
@@ -768,7 +776,7 @@ function suburb() {
   spawns.push(...att.slice(0, 3), ...def.slice(0, 3));
   let graph = null;
   const map = {
-    name: 'Suburb', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -40, bounds,
+    name: 'Suburb', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -40, bounds, floorY: -4,
     sky: { top: 0x2f7cf0, mid: 0xffd3ec, bot: 0x7a4a6a, fog: 0xffd3ec }, fogNear: 110, fogFar: 430,
     spawns, teamSpawns: { att, def },
     // bots: a walk graph over the ground (1 m cells): round the houses, through the side yards and gates
@@ -984,12 +992,13 @@ function warehouse() {
   for (let x = FX0 + 4; x < FX1 + 8; x += 7) for (const z of [-FZ - 7, FZ + 7, -FZ - 15, FZ + 15]) if (r() < 0.8) (r() < 0.5 ? conifer : lollipop)(Dw, x + (r() - 0.5) * 3, z + (r() - 0.5) * 3, 5 + r() * 3, r);
   for (let z = -FZ - 10; z <= FZ + 10; z += 7) for (const x of [FX1 + 7, FX1 + 15]) if (r() < 0.8) (r() < 0.5 ? conifer : lollipop)(Dw, x + (r() - 0.5) * 3, z + (r() - 0.5) * 3, 5 + r() * 3, r);
   for (let z = -180; z <= 180; z += 8) if (Math.abs(z) > 12 && r() < 0.6) (r() < 0.5 ? conifer : lollipop)(Dw, RX0 - 8 - r() * 10, z, 5 + r() * 3, r); // across the road
+  horizon(D, -230, -190, 260, 190, 1500, 'dirt');
   for (let i = 0; i < 50; i++) { const a = r() * Math.PI * 2, d = 120 + r() * 90; const x = 25 + Math.cos(a) * d * 1.2, z = Math.sin(a) * d; if (x > FX0 - 6 && x < FX1 + 6 && Math.abs(z) < FZ + 6) continue; (r() < 0.5 ? conifer : lollipop)(Dw, x, z, 6 + r() * 4, r); }
   const spawns = [[-52, 0.1, -34], [52, 0.1, 34], [-52, 0.1, 34], [52, 0.1, -34], [0, 0.1, -12], [0, 0.1, 12], [84, 0.1, 0], [-46, 0.2, 12],
     [-75, 0.1, 0], [-60, 0.2, -60], [10, 0.1, -58], [126, 0.1, -10], [10, 0.1, 66], [-46, 1.3, 42], [100, 0.1, 40], [-30, 7.4, -38.5]];
   let graph = null;
   const map = {
-    name: 'Warehouse', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -25, bounds,
+    name: 'Warehouse', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -25, bounds, floorY: -27,
     sky: { top: 0x0a0a20, mid: 0x5a2a6a, bot: 0x050508, fog: 0x3a2448 }, fogNear: 70, fogFar: 300,
     spawns,
     // bots: a walk graph over the floor and the catwalks, joined by the two stairs
@@ -1002,6 +1011,57 @@ function warehouse() {
 }
 
 // ------------------------------------------------------------ DESERT: big sand town split by a canyon
+// ---- desert props (shared by Desert and Bazaar's outskirts)
+function stall(L, x, z, rot, rv) { // a market stall: posts, a loud awning, a counter piled with goods, sometimes a rug
+  const T = (lx, lz) => [[lx, lz], [-lz, lx], [-lx, -lz], [lz, -lx]][rot & 3];
+  const P = (x0, y0, z0, x1, y1, z1, m, ex) => { const [ax, az] = T(x0, z0), [bx, bz] = T(x1, z1); L(x + ax, y0, z + az, x + bx, y1, z + bz, m, ex); };
+  for (const [px, pz] of [[-1.9, -1.4], [1.7, -1.4], [-1.9, 1.2], [1.7, 1.2]]) P(px, 0, pz, px + 0.2, 2.9, pz + 0.2, 'wood');
+  P(-2.3, 2.9, -1.8, 2.3, 3.05, 1.8, ['cloth', 'toypink', 'toyteal', 'toyyellow', 'leopard', 'camo'][(rv() * 6) | 0]);
+  P(-1.6, 0, -1.0, 1.6, 0.95, -0.3, 'wood');
+  const goods = ['toyorange', 'toygreen', 'toyred', 'pottery', 'shelfstock', 'cloth'];
+  for (let i = 0; i < 4; i++) { const gx = -1.4 + i * 0.75, h = 0.2 + rv() * 0.35; P(gx, 0.95, -0.95, gx + 0.6, 0.95 + h, -0.4, goods[(rv() * goods.length) | 0]); }
+  if (rv() < 0.6) P(-1.6, 0.6, 1.25, 1.6, 2.6, 1.3, ['leopard', 'camo', 'cloth', 'magenta'][(rv() * 4) | 0]); // a rug hung at the back
+  if (rv() < 0.7) pot(L, x + T(2.6, -1.2)[0], z + T(2.6, -1.2)[1], 0.8 + rv() * 0.4);
+}
+function pot(L, x, z, s = 1) { // a big clay pot
+  L.B(x, 0.25 * s, z, 0.7 * s, 0.5 * s, 0.7 * s, 'pottery'); L.B(x, 0.7 * s, z, 0.9 * s, 0.4 * s, 0.9 * s, 'pottery'); L.B(x, 1.02 * s, z, 0.45 * s, 0.25 * s, 0.45 * s, 'pottery');
+}
+function cart(L, x, z, alongX) { // a wooden hand cart, tipped forward on its handles
+  if (alongX) { L(x - 1.2, 0.6, z - 0.8, x + 1.2, 1.3, z + 0.8, 'wood'); for (const s of [-1, 1]) L(x - 0.45, 0, z + s * 0.85 - 0.1, x + 0.45, 0.9, z + s * 0.85 + 0.1, 'tire'); L(x + 1.2, 0.3, z - 0.6, x + 2.6, 0.45, z - 0.45, 'wood'); L(x + 1.2, 0.3, z + 0.45, x + 2.6, 0.45, z + 0.6, 'wood'); }
+  else { L(x - 0.8, 0.6, z - 1.2, x + 0.8, 1.3, z + 1.2, 'wood'); for (const s of [-1, 1]) L(x + s * 0.85 - 0.1, 0, z - 0.45, x + s * 0.85 + 0.1, 0.9, z + 0.45, 'tire'); L(x - 0.6, 0.3, z + 1.2, x - 0.45, 0.45, z + 2.6, 'wood'); L(x + 0.45, 0.3, z + 1.2, x + 0.6, 0.45, z + 2.6, 'wood'); }
+  L(x - 0.6, 1.3, z - 0.6, x + 0.6, 1.8, z + 0.6, ['crate', 'pottery', 'cloth', 'toyorange'][Math.abs((x * 3 + z) | 0) % 4]);
+}
+function tent(L, x, z, c) { // a cloth tent on poles (the Bazaar camp's kind)
+  L(x - 3, 0, z - 2, x + 3, 0.05, z + 2, 'cloth');
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) L.B(x + sx * 2.8, 1.4, z + sz * 1.8, 0.2, 2.8, 0.2, 'wood');
+  L(x - 3.2, 2.8, z - 2.2, x + 3.2, 3.0, z + 2.2, c); L(x - 2.2, 3.0, z - 1.4, x + 2.2, 3.5, z + 1.4, c);
+}
+function palm(L, x, z, h, r) { // a palm: a trunk that leans a little as it goes up, a crown of fronds
+  const lx = (r() - 0.5) * 0.5, lz = (r() - 0.5) * 0.5, n = Math.max(3, Math.round(h / 1.4));
+  for (let i = 0; i < n; i++) L.B(x + lx * i, (i + 0.5) * (h / n), z + lz * i, 0.55 - i * 0.02, h / n + 0.02, 0.55 - i * 0.02, i % 2 ? 'wood' : 'plywood');
+  const tx = x + lx * n, tz = z + lz * n;
+  L.B(tx, h + 0.1, tz, 1.4, 0.6, 1.4, 'leaves');
+  for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { L.B(tx + dx * 1.9, h, tz + dz * 1.9, dx ? 3 : 0.9, 0.35, dz ? 3 : 0.9, 'leaves2'); L.B(tx + dx * 3.3, h - 0.5, tz + dz * 3.3, dx ? 1.4 : 0.8, 0.3, dz ? 1.4 : 0.8, 'leaves'); }
+}
+function camel(L, x, z, alongX) { // a very boxy camel. it judges you
+  const B2 = (cx, cy, cz, sx, sy, sz, m) => (alongX ? L.B(x + cx, cy, z + cz, sx, sy, sz, m) : L.B(x + cz, cy, z + cx, sz, sy, sx, m));
+  B2(0, 1.9, 0, 2.6, 1.0, 1.0, 'camel'); B2(0.1, 2.6, 0, 1.0, 0.5, 0.8, 'camel'); // body + hump
+  for (const [lx, lz] of [[-1, -0.35], [-1, 0.35], [1, -0.35], [1, 0.35]]) B2(lx, 0.7, lz, 0.25, 1.4, 0.25, 'camel');
+  B2(1.55, 2.5, 0, 0.35, 1.3, 0.35, 'camel'); B2(1.85, 3.15, 0, 0.8, 0.4, 0.4, 'camel'); // neck + head
+  B2(2.2, 3.25, -0.21, 0.12, 0.12, 0.05, 'tire'); B2(2.2, 3.25, 0.21, 0.12, 0.12, 0.05, 'tire'); // eyes
+  B2(0, 2.45, 0, 1.4, 0.12, 1.1, ['cloth', 'leopard', 'toypink'][Math.abs((x + z) | 0) % 3]); // a blanket
+}
+function dune(D, x, z, w, d, h) { // a dune: flattened layers of sand, smaller as they go up
+  for (let i = 0; i < 4; i++) { const k = 1 - i * 0.24; D.box(x + i * w * 0.04, (h / 4) * (i + 0.5) - 0.05, z, w * k, h / 4, d * k, 'sand'); }
+}
+function rocks(D, x, z, s, r) { // a rock formation: a banded mesa with a few blocks stacked off it
+  const h = s * (1.1 + r() * 0.8);
+  D.box(x, h / 2, z, s * 1.6, h, s, 'rock');
+  D.box(x + s * 0.2, h + s * 0.12, z - s * 0.1, s * 1.1, s * 0.24, s * 0.7, 'rock');
+  if (r() < 0.6) D.box(x - s * 0.9, h * 0.3, z + s * 0.3, s * 0.7, h * 0.6, s * 0.7, 'rock');
+  if (r() < 0.5) D.box(x + s * 1.1, h * 0.2, z - s * 0.4, s * 0.5, h * 0.4, s * 0.6, 'rock');
+}
+
 function desert() {
   const B = builder();
   const r = rng(909);
@@ -1059,8 +1119,59 @@ function desert() {
   }
   B.box(-12, 0.15, 26, 2.5, 0.3, 2.5, 'pad', { pad: [26, 18, 0] });
   B.box(12, 0.15, -26, 2.5, 0.3, 2.5, 'pad', { pad: [-26, 18, 0] });
-  return { name: 'Desert', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -30,
-    sky: { top: 0x3f7fd0, mid: 0xf2d9a0, bot: 0x6a4a28, fog: 0xead6a6 }, fogNear: 110, fogFar: 400, spawns };
+
+  // ---- the town wall: gates east and west (a road runs through both), gate towers, corner towers, battlements
+  for (const sx of [-1, 1]) {
+    carve(B, sx * S - 1, 0, -6, sx * S + 1, 6, 6, (q) => q.mat === 'adobe' && q.min[0] < sx * S + 0.7 && q.max[0] > sx * S - 0.7 && q.max[2] - q.min[2] > 100);
+    for (const sz of [-1, 1]) B.add(sx * S - 3, 0, sz > 0 ? 6.5 : -10.5, sx * S + 3, 12, sz > 0 ? 10.5 : -6.5, 'adobe');
+    for (const sz of [-1, 1]) B.box(sx * S, 6.75, sz * S, 7, 13.5, 7, 'adobe');
+  }
+  for (let t = -S + 6; t <= S - 6; t += 3) { // merlons on the outer edge of the wall top
+    for (const sz of [-1, 1]) B.add(t - 0.6, 9, sz * (S + 0.6) - (sz > 0 ? 0.5 : 0), t + 0.6, 10, sz * (S + 0.6) + (sz > 0 ? 0 : 0.5), 'adobe');
+    if (Math.abs(t) > 12) for (const sx of [-1, 1]) B.add(sx * (S + 0.6) - (sx > 0 ? 0.5 : 0), 9, t - 0.6, sx * (S + 0.6) + (sx > 0 ? 0 : 0.5), 10, t + 0.6, 'adobe');
+  }
+  // ---- outside: sand all the way out (no cliff), the canyon running on as a ravine with a river at the bottom
+  groundHoles(B, -300, -300, 300, 300, -2, 0, 'sand', [[-S, -S, S, S], [-7, -284, 7, -S], [-7, S, 7, 284]]);
+  D.add(-9, -46, -284, -7, -2, 284, 'rock'); D.add(7, -46, -284, 9, -2, 284, 'rock');
+  for (const sz of [-1, 1]) D.add(-9, -46, sz > 0 ? 284 : -288, 9, -2, sz > 0 ? 288 : -284, 'rock');
+  D.add(-7, -47, -284, 7, -46, 284, 'sand'); D.add(-3.5, -46, -284, 3.5, -45.8, 284, 'water');
+  for (const z of [-180, -40, 20, 130, 220]) D.add(-5 + rv() * 3, -45.8, z, -1 + rv() * 3, -44.6 + rv(), z + 2 + rv() * 3, 'rock');
+  D.add(-4, -45.8, 66, 4, -45.3, 68.5, 'wood'); // somebody's old bridge
+  // ---- dirt roads: one through both gates and over the middle bridge, two over the other bridges, two north-south
+  B.add(-300, 0, -3, -7, 0.03, 3, 'dirtroad'); B.add(7, 0, -3, 300, 0.03, 3, 'dirtroad');
+  for (const sx of [-1, 1]) D.add(sx > 0 ? 300 : -760, 0, -3, sx > 0 ? 760 : -300, 0.03, 3, 'dirtroad');
+  for (const z of [-55, 55]) { B.add(-95, 0, z - 3, -7, 0.03, z + 3, 'dirtroad'); B.add(7, 0, z - 3, 95, 0.03, z + 3, 'dirtroad'); }
+  for (const x of [-54, 54]) B.add(x - 3, 0, -60, x + 3, 0.045, 60, 'dirtroad');
+  // ---- markets along the road by both gates, a camp by the north wall, clutter everywhere
+  const W = B.local(0, 0, 0);
+  for (const x of [-92, -85, -78, -71]) stall(W, x, -6, 2, rv);
+  for (const x of [-92, -85]) stall(W, x, 6, 0, rv);
+  for (const x of [85, 92]) stall(W, x, -6, 2, rv);
+  for (const x of [64, 71, 78, 85, 92]) stall(W, x, 6, 0, rv);
+  for (const [x, z, c] of [[-20, -92, 'cloth'], [-12, -92, 'toypink'], [16, 92, 'toyteal'], [24, 92, 'cloth']]) tent(W, x, z, c);
+  for (const [x, z] of [[-96, -14], [-96, 14], [96, 14], [-96, 40], [96, -40], [-60, 96], [60, -96], [-30, 96], [30, -96], [-97, -70], [97, 70], [-48, -4], [48, 4]]) pot(W, x, z, 0.8 + rv() * 0.5);
+  for (const [x, z, ax] of [[-66, -5.5, true], [78.5, -5.5, true], [-58, 30, false], [58, -30, false], [-15, 40, true]]) cart(W, x, z, ax);
+  for (const [x, z, n] of [[-95, -30, 6], [92, 22, 7], [-30, -95, 5], [40, 95, 6]]) cratePile(B, x, z, n, rv);
+  for (const [x, z] of [[-90, -12], [-90, 12], [90, -12], [90, 12], [-54, -64], [-54, 64], [54, -64], [54, 64], [-25, 3.8], [25, -3.8]]) palm(W, x, z, 6 + rv() * 3, rv);
+  // ---- the desert round the town (render-only): dunes, rock formations, a caravan camped outside the east gate, more palms
+  const Dw = D.local(0, 0, 0);
+  for (let i = 0; i < 46; i++) { const a = rv() * Math.PI * 2, d = 130 + rv() * 230, x = Math.cos(a) * d, z = Math.sin(a) * d; if (Math.abs(x) < 26 || Math.abs(z) < 14) continue; dune(D, x, z, 30 + rv() * 60, 18 + rv() * 36, 5 + rv() * 12); }
+  for (let i = 0; i < 16; i++) { const a = rv() * Math.PI * 2, d = 190 + rv() * 220, x = Math.cos(a) * d, z = Math.sin(a) * d; if (Math.abs(x) < 30 || Math.abs(z) < 20) continue; rocks(D, x, z, 12 + rv() * 20, rv); }
+  for (const [x, z, c] of [[124, -14, 'cloth'], [134, 10, 'toyyellow'], [146, -6, 'leopard']]) tent(Dw, x, z, c);
+  for (const [x, z, ax] of [[118, 18, true], [128, 22, false], [142, 16, true], [152, 0, false]]) camel(Dw, x, z, ax);
+  Dw(132, 0, -2, 134, 0.4, 0, 'stone'); Dw(132.5, 0.4, -1.5, 133.5, 1.0, -0.5, 'neonred'); // the campfire
+  for (let i = 0; i < 30; i++) { const a = rv() * Math.PI * 2, d = 110 + rv() * 120, x = Math.cos(a) * d, z = Math.sin(a) * d; if (Math.abs(x) < 20 || Math.abs(z) < 10) continue; palm(Dw, x, z, 6 + rv() * 4, rv); }
+  D.add(-260, 0, -210, -230, 26, -180, 'toyface', { fit: 1 }); // something enormous, half buried, smiling
+  horizon(D, -300, -300, 300, 300, 1500, 'sand');
+
+  const bounds = [-S - 1, -S - 1, S + 1, S + 1];
+  let graph = null;
+  const map = { name: 'Desert', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -30, bounds, floorY: -49,
+    sky: { top: 0x3f7fd0, mid: 0xf2d9a0, bot: 0x6a4a28, fog: 0xead6a6 }, fogNear: 130, fogFar: 520, spawns,
+    // bots: a walk graph over the town (1 m cells), across the bridges, round the stalls
+    get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0], z0: bounds[1], n: bounds[2] - bounds[0], cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
+  };
+  return map;
 }
 
 // ------------------------------------------------------------ ISLANDS: large, the original

@@ -10,7 +10,7 @@ const SCENES = {
   skyline: { theme: 'city' },
   suburb: { theme: 'desert', flat: true }, // the lawns just stop and the desert carries on: no cliff
   warehouse: { theme: 'industrial', flat: true, skyline: true }, // flat ground past the fence, a city on the horizon
-  desert: { theme: 'desert', skirt: 'rock' },
+  desert: { theme: 'desert', flat: true }, // the sand just keeps going: no cliff
   bazaar: { theme: 'desert', skirt: 'rock' },
   islands: { theme: 'ocean' },
   backrooms: { theme: 'sealed' },
@@ -50,7 +50,8 @@ export function buildScenery(scene, map, id, voidMesh) {
   if (x0 > x1) { x0 = -50; x1 = 50; z0 = -50; z1 = 50; }
   for (const b of map.boxes) if (b.max[1] <= 0.5 && b.max[1] > -6 && (b.max[0] - b.min[0]) * (b.max[2] - b.min[2]) > 400) ground = Math.min(ground, b.min[1]);
   const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, R = Math.max(x1 - x0, z1 - z0) / 2;
-  const floorY = cfg.flat ? -0.06 : map.floorY ?? map.killY - 35; // floorY: the map has its own street level down there // flat: the map's ground goes out a long way, the floor carries on from it
+  const floorY = cfg.flat ? -0.06 : map.floorY ?? map.killY - 35; // where the scenery stands (flat: on the map's own ground)
+  const planeY = map.floorY ?? floorY; // the far floor plane: flat maps with holes in them (canyons, pits) put it under the holes // flat: the map's ground goes out a long way, the floor carries on from it
 
   // ---- a ring of mountains, far away (unlit, faded into the sky)
   const mtnMat = basic(fade(pal.mtn, fog, 0.5)), snowMat = basic(fade(pal.snow, fog, 0.35));
@@ -69,7 +70,7 @@ export function buildScenery(scene, map, id, voidMesh) {
   // ---- the floor far below (valley / city streets / ocean / cloud sea)
   if (cfg.theme !== 'sky') {
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000).rotateX(-Math.PI / 2), basic(fade(pal.floor, fog, 0.35)));
-    floor.position.set(cx, floorY, cz);
+    floor.position.set(cx, planeY, cz);
     group.add(floor);
     if (voidMesh) voidMesh.visible = false;
   } else if (voidMesh) { voidMesh.visible = true; voidMesh.position.y = map.killY - 85; } // below the clouds (they reach killY-73), not through them
