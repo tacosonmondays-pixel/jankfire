@@ -1,10 +1,10 @@
 // Sniper Royalty on screen: the gold toast when you tick a box, the four boxes for the menus, and the big
 // GOLDEN SNIPER UNLOCKED moment. The server decides every tick (and who owns the skin); this only shows them.
-import { ROYAL_FEATS } from '/shared/looks.js';
+import { ROYAL_FEATS, featOn } from '/shared/looks.js';
 import { sfx } from './audio.js';
 
 const $ = (id) => document.getElementById(id);
-export const featsDone = (bits) => ROYAL_FEATS.filter((_, i) => bits & (1 << i)).length;
+export const featsDone = (bits) => ROYAL_FEATS.filter((f) => featOn(bits, f)).length;
 // a little gold crown (inline svg, no files)
 const CROWN = '<svg viewBox="0 0 64 48" aria-hidden="true"><defs><linearGradient id="rgc" x1="0" y1="0" x2="0" y2="1">'
   + '<stop offset="0" stop-color="#fff3a0"/><stop offset="0.55" stop-color="#ffc21a"/><stop offset="1" stop-color="#b07410"/></linearGradient></defs>'
@@ -19,9 +19,9 @@ function crown(cls) { const d = document.createElement('div'); d.className = cls
 export function royalBoxes(bits, fresh = 0, feats = ROYAL_FEATS) {
   const d = document.createElement('div');
   d.className = 'rfeats';
-  feats.forEach((f, i) => {
-    const on = bits & (1 << i), b = document.createElement('span'), box = document.createElement('i');
-    b.className = 'rf' + (on ? ' on' : '') + (fresh & (1 << i) ? ' new' : '');
+  feats.forEach((f) => {
+    const on = featOn(bits, f), b = document.createElement('span'), box = document.createElement('i');
+    b.className = 'rf' + (on ? ' on' : '') + (featOn(fresh, f) && !featOn(bits & ~fresh, f) ? ' new' : '');
     box.textContent = on ? '✔' : '';
     b.append(box, f.name);
     b.title = f.desc;
@@ -38,7 +38,7 @@ export function royalToast(all, add, guest) {
   el.innerHTML = '';
   const h = document.createElement('div'); h.className = 'rt';
   const n = document.createElement('b'); n.textContent = `SNIPER ROYALTY ${featsDone(all)}/${ROYAL_FEATS.length}`;
-  const what = document.createElement('span'); what.textContent = ROYAL_FEATS.filter((_, i) => add & (1 << i)).map((f) => f.name).join(' + ');
+  const what = document.createElement('span'); what.textContent = ROYAL_FEATS.filter((f) => featOn(add, f)).map((f) => f.name).join(' + ');
   h.append(crown('rcrown'), n, what);
   el.append(h, royalBoxes(all, add));
   if (guest) { const s = document.createElement('div'); s.className = 'rsub'; s.textContent = 'log in so it counts'; el.append(s); }

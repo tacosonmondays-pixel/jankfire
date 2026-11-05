@@ -14,7 +14,7 @@ import { Accounts, levelOf } from './server/accounts.js';
 import { ownedSkin, ownedKill, ownedGrapple, randomContainer, CONTAINERS, COSMETICS } from './shared/cosmetics.js';
 import { owns, SPRAY } from './shared/cosmetics.js';
 import { validLook, achievementsFrom, ACHIEVEMENTS } from './shared/looks.js';
-import { ROYAL, ROYAL_FEATS } from './shared/looks.js'; // Sniper Royalty
+import { ROYAL, ROYAL_FEATS, featOn } from './shared/looks.js'; // Sniper Royalty
 import { achInv, wrapMode, WRAP_MODES } from './shared/cosmetics.js'; // achievement-locked skins (the Golden Sniper), wrap modes
 import { STAT_KEYS } from './server/store.js';
 import { soapAt, trapBoxes, trapPreroll } from './shared/wand.js';
@@ -1566,8 +1566,8 @@ class Room {
     if (p.isBot || this.mode === 'training' || (t.isBot && t.ai && t.ai.dummy)) return;
     const n = now();
     if (n - (t.royalMovedT ?? n) >= ROYAL.still) return; // epic's tracker (trackMoves), Royalty's own thresholds
-    // scoped and unscoped at once is a lie: neither counts
-    const bits = (dist3(p.pos, t.pos) >= ROYAL.long ? RB.long : 0) | (qs && !ns ? RB.quick : 0) | (ns && !qs ? RB.noscope : 0) | (hs ? RB.head : 0);
+    // a quick-scope or a no-scope ticks the trick-shot box. scoped and unscoped at once is a lie: that doesn't count
+    const bits = (dist3(p.pos, t.pos) >= ROYAL.long ? RB.long : 0) | (qs !== ns ? RB.trick : 0) | (hs ? RB.head : 0);
     if (bits) royal(p, bits);
   }
 
@@ -3555,18 +3555,18 @@ function checkAch(p) {
   const now2 = achievementsFrom(liveStats(p));
   for (const id of now2) if (!p.acct.achs.has(id)) { p.acct.achs.add(id); send(p, { t: 'ach', id }); }
 }
-// Sniper Royalty feats: bit flags in the sniper_feats stat (bit i = ROYAL_FEATS[i]). d only ever gets bits the account
-// doesn't have yet, so liveStats / flushStats can add them up like any other stat (the store ORs them in).
+// Sniper Royalty feats: bit flags in the sniper_feats stat (each feat's bit, see ROYAL_FEATS). d only ever gets bits the
+// account doesn't have yet, so liveStats / flushStats can add them up like any other stat (the store ORs them in).
 // guests don't keep any: they're told once per feat that it would have counted
-const RB = Object.fromEntries(ROYAL_FEATS.map((f, i) => [f.id, 1 << i]));
+const RB = Object.fromEntries(ROYAL_FEATS.map((f) => [f.id, f.bit]));
 function royal(p, bits) {
   if (!p.acct) {
-    const add = bits & ~(p.royalG || 0);
+    const g = p.royalG || 0, add = bits & ~ROYAL_FEATS.filter((f) => featOn(g, f)).reduce((m, f) => m | f.mask, 0);
     if (add) { p.royalG = (p.royalG || 0) | add; send(p, { t: 'royal', add, all: p.royalG, guest: 1 }); }
     return;
   }
-  const have = liveStats(p).sniper_feats || 0, add = bits & ~have;
-  if (!add) return;
+  const have = liveStats(p).sniper_feats || 0, add = ROYAL_FEATS.some((f) => featOn(have, f)) ? bits & ~have & ~ROYAL_FEATS.filter((f) => featOn(have, f)).reduce((m, f) => m | f.mask, 0) : bits & ~have;
+  if (!add) return; // (a box you've already ticked, another way, doesn't count again)
   p.acct.d.sniper_feats = (p.acct.d.sniper_feats || 0) | add;
   send(p, { t: 'royal', add, all: have | add });
   checkAch(p); // the last box unlocks the achievement (and with it the Golden Sniper)
