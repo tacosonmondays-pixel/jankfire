@@ -99,6 +99,7 @@ export class PSys {
 
 const BEAM_GEO = new THREE.BoxGeometry(1, 1, 1).translate(0, 0, 0.5);
 const SPHERE_GEO = new THREE.IcosahedronGeometry(1, 1);
+const RING_GEO = new THREE.RingGeometry(0.86, 1, 40).rotateX(-Math.PI / 2); // flat on the floor
 const tmpV = new THREE.Vector3();
 
 export function makeBeam(color, opacity = 1) {
@@ -187,6 +188,53 @@ export const fx = {
         Math.random() < 0.5 ? 0xbbaa99 : 0x777777, 0x333333, 1, 0, 0);
     }
   },
+  // shredder suction: dust, leaves, grit and air swirls pulled out of a cone into the intake o. each one is aimed
+  // to reach o as it dies (base = the shooter's velocity, so they keep up when you move). k = how spun up it is,
+  // dt = frame time: the amount is per second, so a slow frame doesn't mean thin suction
+  vacuum(o, d, base, range, cone, k = 1, dt = 1 / 60) {
+    const up = Math.abs(d[1]) < 0.95 ? [0, 1, 0] : [1, 0, 0];
+    let ux = d[1] * up[2] - d[2] * up[1], uy = d[2] * up[0] - d[0] * up[2], uz = d[0] * up[1] - d[1] * up[0];
+    const ul = Math.hypot(ux, uy, uz) || 1; ux /= ul; uy /= ul; uz /= ul;
+    const vx = d[1] * uz - d[2] * uy, vy = d[2] * ux - d[0] * uz, vz = d[0] * uy - d[1] * ux;
+    const tc = Math.tan(cone), n = Math.min(80, Math.floor((240 + 420 * k) * dt + Math.random()));
+    const leaves = [0x4caf50, 0x8bc34a, 0xff9800, 0xc0602a, 0xffd54f];
+    for (let i = 0; i < n; i++) {
+      const kind = Math.random(), swirl = kind < 0.3;
+      // swirls stay close to the mouth and spin round the axis: a little tornado going in
+      const dist = swirl ? 0.4 + Math.random() * 2.6 : 1.2 + Math.random() * range * (0.45 + 0.45 * k);
+      const a = Math.random() * Math.PI * 2, r = dist * tc * Math.sqrt(Math.random()) * (swirl ? 0.6 : 0.9);
+      const ca = Math.cos(a), sa = Math.sin(a);
+      const x = o[0] + d[0] * dist + (ux * ca + vx * sa) * r, y = o[1] + d[1] * dist + (uy * ca + vy * sa) * r, z = o[2] + d[2] * dist + (uz * ca + vz * sa) * r;
+      const life = (swirl ? 0.12 : 0.22) + dist / (14 + 14 * k) + Math.random() * 0.08;
+      let px = (o[0] - x) / life + base[0], py = (o[1] - y) / life + base[1], pz = (o[2] - z) / life + base[2];
+      if (swirl) {
+        const sw = 2.5 + 4 * k;
+        px += (vx * ca - ux * sa) * sw; py += (vy * ca - uy * sa) * sw; pz += (vz * ca - uz * sa) * sw;
+        misc.spawn(x, y, z, px, py, pz, life, 0.11, 0.03, 0xe8f6ff, 0xffffff, 0.6, 0, 0);
+      } else if (kind < 0.5) smoke.spawn(x, y, z, px, py, pz, life, 0.5, 0.08, 0xc8b898, 0x8a7a66, 0.35, 0, 0);
+      else if (kind < 0.78) misc.spawn(x, y, z, px, py, pz, life, 0.15, 0.04, leaves[(Math.random() * leaves.length) | 0], 0x553311, 1, 0, 0);
+      else misc.spawn(x, y, z, px, py, pz, life, 0.08, 0.03, Math.random() < 0.5 ? 0x555555 : 0x8a6a4a, 0x333333, 1, 0, 0);
+    }
+  },
+  // a stream of blood from p into to (a shredder's intake), each drop landing on it
+  bloodTo(p, to, n = 8, base = [0, 0, 0]) {
+    for (let i = 0; i < n; i++) {
+      const x = p[0] + R(0.3), y = p[1] + R(0.45), z = p[2] + R(0.3), life = 0.14 + Math.random() * 0.16;
+      blood.spawn(x, y, z, (to[0] - x) / life + base[0], (to[1] - y) / life + base[1], (to[2] - z) / life + base[2],
+        life, 0.08 + Math.random() * 0.08, 0.025, Math.random() < 0.3 ? 0xd01010 : 0x8a0000, 0x3a0000, 1, 0, 0);
+    }
+  },
+  // a burst shot out of a chute along d: blood if gore is on, confetti if party is
+  chute(o, d, base, n = 20, gore = true, party = true) {
+    const cols = [0xff4fd8, 0x4fd8ff, 0xffe14d, 0x7dff4f, 0xff7a1a, 0xffffff];
+    for (let i = 0; i < n; i++) {
+      const s = 5 + Math.random() * 7;
+      if (party) misc.spawn(o[0], o[1], o[2], d[0] * s + R(2.5) + base[0], d[1] * s + R(2.5) + base[1], d[2] * s + R(2.5) + base[2],
+        0.9 + Math.random() * 0.9, 0.1, 0.1, cols[(Math.random() * cols.length) | 0], 0xffffff, 1, 6, 1.6);
+      if (gore) blood.spawn(o[0], o[1], o[2], d[0] * s * 0.8 + R(2) + base[0], d[1] * s * 0.8 + R(2) + base[1], d[2] * s * 0.8 + R(2) + base[2],
+        0.5 + Math.random() * 0.5, 0.08 + Math.random() * 0.08, 0.05, Math.random() < 0.3 ? 0xd01010 : 0x8a0000, 0x3a0000, 1, 18, 0.5);
+    }
+  },
   explosion(p, radius) {
     const m = new THREE.Mesh(SPHERE_GEO, new THREE.MeshBasicMaterial({ color: 0xffcc33, transparent: true, opacity: 1 }));
     m.position.set(p[0], p[1], p[2]);
@@ -218,6 +266,22 @@ export const fx = {
   impact(p, n) {
     const nn = n || [0, 1, 0];
     for (let i = 0; i < 10; i++) misc.spawn(p[0], p[1], p[2], nn[0] * 4 + R(3), nn[1] * 4 + R(3), nn[2] * 4 + R(3), 0.5, 0.15, 0.08, 0x999988, 0x444444, 1, 12, 1);
+  },
+  // katana parry: hot sparks off the blade and a tiny white pop. dir = the way the hit came from: sparks spray out
+  // sideways and up off the edge, only a little back along it (straight back would be into a swordsman's face)
+  sparks(p, dir, n = 20, hot = false) {
+    const d = dir || [0, 0, 0], sx = -d[2], sz = d[0];
+    for (let i = 0; i < n; i++) {
+      const s = 2.5 + Math.random() * (hot ? 7 : 5), side = R(1), back = Math.random() * 0.35;
+      const a = [sx * side + d[0] * back + R(0.3), 0.25 + Math.random() * 0.9, sz * side + d[2] * back + R(0.3)], l = Math.hypot(...a) || 1;
+      fire.spawn(p[0], p[1], p[2], a[0] / l * s, a[1] / l * s, a[2] / l * s, 0.1 + Math.random() * 0.2, hot ? 0.11 : 0.085, 0.02,
+        Math.random() < 0.5 ? 0xffffff : 0xfff2b0, 0xff7a10, 1, 14, 2);
+    }
+    const m = new THREE.Mesh(SPHERE_GEO, new THREE.MeshBasicMaterial({ color: hot ? 0xfff6c0 : 0xffffff, transparent: true, opacity: 1 }));
+    m.position.set(p[0], p[1], p[2]);
+    m.scale.setScalar(hot ? 0.22 : 0.15);
+    scene.add(m);
+    timed.push({ mesh: m, life: hot ? 0.16 : 0.1, ml: hot ? 0.16 : 0.1, kind: 'pop' }); // just fades, no growing
   },
   burn(p) {
     fire.spawn(p[0] + R(0.4), p[1] + Math.random() * 1.8, p[2] + R(0.4), R(0.5), 2 + Math.random() * 2, R(0.5), 0.4, 0.35, 0.05, 0xffcc44, 0xff2200, 1, -2, 0);
@@ -270,8 +334,43 @@ export const fx = {
         colors[(Math.random() * colors.length) | 0], 0xffffff, 1, grav, drag);
     }
   },
+  // a soap bubble (radius r) pops: droplets fly off its whole surface, then rain down
+  droplets(p, r, n = 40) {
+    const cols = [0xffffff, 0xd8f6ff, 0xffd6f4, 0xfff4b8, 0xc8ffe8];
+    for (let i = 0; i < n; i++) {
+      const a = [R(), R(), R()], l = Math.hypot(...a) || 1, s = 1.5 + Math.random() * 4.5;
+      misc.spawn(p[0] + (a[0] / l) * r, p[1] + (a[1] / l) * r, p[2] + (a[2] / l) * r, (a[0] / l) * s, (a[1] / l) * s + 1.5, (a[2] / l) * s,
+        0.45 + Math.random() * 0.5, 0.05 + Math.random() * 0.07, 0.02, cols[(Math.random() * cols.length) | 0], 0xbfe8ff, 0.9, 14, 1.5);
+    }
+  },
   dust(p, n = 8) {
     for (let i = 0; i < n; i++) smoke.spawn(p[0] + R(0.4), p[1] + 0.05, p[2] + R(0.4), R(3), 0.5 + Math.random(), R(3), 0.5, 0.2, 0.7, 0xc8b89a, 0xa89878, 0.5, 0, 3);
+  },
+  // a flat ring racing out along the floor (shockwaves)
+  ring(p, radius, color = 0xffffff, life = 0.45) {
+    const m = new THREE.Mesh(RING_GEO, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1, depthWrite: false, side: THREE.DoubleSide }));
+    m.position.set(p[0], p[1] + 0.12, p[2]);
+    scene.add(m);
+    timed.push({ mesh: m, life, ml: life, kind: 'flash', r: radius });
+  },
+  // wrecking ball ground slam: shockwave rings, a wall of dust rolling outward, chunks of floor, sparks.
+  // radius = how far it hurts, k = how big a slam it was (0 = off a hop, 1 = from way up)
+  slam(p, radius, k = 0.5) {
+    this.ring(p, radius * 1.1, 0xffffff, 0.3 + k * 0.15);
+    this.ring(p, radius * 0.8, 0xd8c39a, 0.55 + k * 0.25);
+    if (k > 0.5) this.ring(p, radius * 1.35, 0xfff2b0, 0.7);
+    const nd = 24 + Math.round(k * 40), sp = radius * 1.4;
+    for (let i = 0; i < nd; i++) {
+      const a = (i / nd) * Math.PI * 2 + R(0.1), s = sp * (0.6 + Math.random() * 0.7);
+      smoke.spawn(p[0] + Math.cos(a) * 0.9, p[1] + 0.2 + Math.random() * 0.5, p[2] + Math.sin(a) * 0.9, Math.cos(a) * s, 0.6 + Math.random() * (1 + k * 2), Math.sin(a) * s,
+        0.7 + Math.random() * 0.6 + k * 0.4, 0.6 + k * 0.4, 2 + k * 1.6, 0xd6c6a6, 0x9a8a6a, 0.75, 0, 2.6);
+    }
+    for (let i = 0; i < 16 + k * 30; i++) {
+      const a = Math.random() * Math.PI * 2, s = 3 + Math.random() * (5 + k * 8);
+      misc.spawn(p[0] + R(0.8), p[1] + 0.2, p[2] + R(0.8), Math.cos(a) * s, 5 + Math.random() * (6 + k * 9), Math.sin(a) * s,
+        1 + Math.random() * 0.8, 0.14 + Math.random() * 0.12 + k * 0.08, 0.12, Math.random() < 0.5 ? 0x8a7e6a : 0x5e554a, 0x3a342c, 1, 26, 0.3);
+    }
+    for (let i = 0; i < 12 + k * 20; i++) fire.spawn(p[0] + R(0.5), p[1] + 0.3, p[2] + R(0.5), R(11), 2 + Math.random() * 7, R(11), 0.25 + Math.random() * 0.2, 0.14, 0.04, 0xfff2b0, 0xff7a1a, 1, 18, 1);
   },
   update(dt) {
     fire.update(dt); smoke.update(dt); misc.update(dt); blood.update(dt);

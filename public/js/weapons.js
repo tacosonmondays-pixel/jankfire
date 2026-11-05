@@ -4,16 +4,23 @@ import { WEAPONS, ORDER, SLOTS, FLAGS, HIPFIRE, ARROW_TIPS, SUITS, RANKS, validL
 import { BOXES } from '/shared/map.js';
 import { raycast, rayBox } from '/shared/physics.js';
 import { G } from './ctx.js';
+import { palOf, crossFired } from './bloodcross.js';
 import { ME, eye, look, applyKb, hspeed } from './player.js';
 import { buildWeapon, M, cardFace, tipColor, setKatana, freeTree } from './models.js';
+import { heatTeeth, spinTeeth } from './models.js';
 import { fx } from './fx.js';
 import { marbles } from './marbles.js';
 import { sfx, loopSfx, stopLoops } from './audio.js';
+import { shredMotor } from './audio.js';
 import { net } from './net.js';
 import { hud } from './hud.js';
 import { tracerColor, emitSkinFx } from './skins.js';
 import { ANIMS, sample, sampleCh, eventsBetween, inspectFor, drawFor } from './anim.js';
+import { newTwirl, resetTwirl, twirling, spin, settle, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
 import { weaponIcon, clearIcons, itemIcon } from './icons.js';
+import { tickScalesVM } from './scales.js';
+import { PARRY } from '/shared/weapons.js';
+import { ROYAL } from '/shared/looks.js';
 
 export const W = {
   slots: [DEFAULT_LOADOUT.primary, DEFAULT_LOADOUT.secondary, DEFAULT_LOADOUT.melee],
@@ -118,6 +125,8 @@ const SHELL_ON_FIRE = new Set(['ar', 'smg', 'redline', 'minigun', 'scythe_rifle'
 // smear trail: a fading ribbon behind the tip of whatever you swing
 const TRAIL_N = 26;
 const TRAIL_COLOR = { knife: 0xbfe8ff, bread: 0xffd9a0, spoon: 0xffffff, slapper: 0xffb0d0, scythe: 0xff3ad8, slipper: 0xb0ffb0, cards: 0xffffff };
+TRAIL_COLOR.scales = 0xffd86a; // brass
+TRAIL_COLOR.claw = 0x7dff4f;
 const trailPts = [];
 let trail = null;
 const tmpV2 = new THREE.Vector3(), tcol = new THREE.Color();
@@ -243,8 +252,8 @@ export function setMyKatana(n) { W.kat = n; if (models.katana) { setKatana(model
 // ------------------------------------------------------------ items (G)
 W.item = DEFAULT_LOADOUT.item;
 W.ic = {}; // id -> { n, next (performance.now ms) }
-export function setItem(id) { if (ITEMS[id]) W.item = id; }
-export function resetItems() { W.ic = {}; }
+export function setItem(id) { if (Object.hasOwn(ITEMS, id)) W.item = id; }
+export function resetItems() { W.ic = {}; W.reverseUntil = 0; } // a reverse card doesn't survive death (the server drops it)
 function charges(id) {
   const it = ITEMS[id];
   let c = W.ic[id];
@@ -255,6 +264,7 @@ function charges(id) {
 }
 export function syncItem(id, n, nextMs) { if (!ITEMS[id]) return; W.ic[id] = { n, next: nextMs ? performance.now() + nextMs : 0 }; }
 export function useItem() {
+  if (performance.now() < (ME.ballUntil || 0)) return; // wrecking ball: no hands
   const id = W.item, it = ITEMS[id];
   if (!it || !ME.alive) return;
   const c = charges(id);
@@ -263,12 +273,73 @@ export function useItem() {
   W.itemT = performance.now();
   c.n--; if (!c.next) c.next = performance.now() + it.recharge * 1000;
   net.send({ t: 'item', i: id, o: eye().map(r2), d: look().map(r2) });
+  if (id === 'wand') return; // no toss: the wand has its own viewmodel and bloops (wand.js)
+  if (it.w) popItem(it.w); // party popper / reverse card: pops into your hand (see popEvent for what it does)
   if (!W.anim || W.anim.kind === 'inspect' || W.anim.kind === 'draw') playAnim('toss_item', 'item');
   if (id === 'medkit') sfx.heal(); else if (id === 'bubble') sfx.reverse(); else sfx.swing();
 }
 
+// ------------------------------------------------------------ item pop-ins: party popper, reverse card
+// the item pops up in your left hand (wearing its skin), does its thing and drops away again. your gun stays out.
+const POP = {
+  popper: { p: [-0.16, -0.15, -0.36], r: [0.1, -0.25, -0.2], anim: 'pop_popper' },
+  reverse: { p: [-0.09, -0.09, -0.3], r: [0.05, 0.3, 0.1], anim: 'pop_reverse' },
+};
+const CONFETTI = [0xff4fd8, 0x4fd8ff, 0xffe14d, 0x7dff4f, 0xff7a1a, 0xffffff];
+function popItem(id) {
+  if (!POP[id] || !models[id]) return;
+  cancelInspect();
+  W.pop = { id, t: 0 };
+  if (!W.anim || W.anim.kind === 'draw') playAnim('dip_item', 'item'); // the gun makes room
+}
+// the popped item's muzzle in the world (viewmodel space lines up with the camera)
+function popMuzzle(m) {
+  tmpV.copy(m.g.userData.muzzle); m.g.localToWorld(tmpV);
+  G.camera.updateMatrixWorld(); G.camera.localToWorld(tmpV);
+  return [tmpV.x, tmpV.y, tmpV.z];
+}
+function popEvent(ev, m) {
+  const sys = G.skinFxVM, R = (k) => (Math.random() - 0.5) * k;
+  vmRoot.updateMatrixWorld(true);
+  tmpV.copy(m.g.userData.muzzle); m.g.localToWorld(tmpV); // viewmodel space
+  const x = tmpV.x, y = tmpV.y, z = tmpV.z;
+  if (ev === 'pop') { // yank: confetti, everyone in front gets shoved (the server checks you really popped one), you fly back
+    const w = WEAPONS.popper, o = eye(), d = look();
+    for (const tg of conePlayers(o, d, w.range, w.cone)) {
+      net.send({ t: 'hit', to: tg.r.id, w: 'popper', d: d.map(r2) });
+      fx.spray([tg.r.pos[0], tg.r.pos[1] + 1.3, tg.r.pos[2]], 14, CONFETTI, 6, 0.8, 0.14, 4, 1.5);
+    }
+    fx.confetti(popMuzzle(m), d, ME.vel);
+    for (let i = 0; i < 40; i++) sys.norm.spawn(x + R(0.03), y + R(0.03), z + R(0.03), R(1.6), 0.3 + R(1.4), -1.2 - Math.random() * 2.2, 0.5, 0.022, 0.018, CONFETTI[(Math.random() * CONFETTI.length) | 0], 0xffffff, 1, 2, 1.5);
+    sfx.popper(); sfx.partyHorn();
+    applyKb([-d[0] * w.recoil, -d[1] * w.recoil + w.lift, -d[2] * w.recoil]);
+    punchCam(-0.05, 0.02 * rnd(), 0.05 * rnd());
+    G.shake = Math.max(G.shake, 0.45);
+  } else if (ev === 'flash') { // reverse card: a ring of red + yellow off the card
+    for (let i = 0; i < 36; i++) { const a = Math.random() * Math.PI * 2, s = 0.5 + Math.random() * 0.8; sys.add.spawn(x + R(0.02), y + R(0.02), z, Math.cos(a) * s, Math.sin(a) * s, R(0.3), 0.4, 0.03, 0.004, i % 2 ? 0xff3b3b : 0xffd23b, 0xffffff, 1, 0, 2); }
+    sfx.reverse();
+    punchCam(-0.02, 0, 0.03 * rnd());
+  }
+}
+function updatePop(dt) {
+  const P = W.pop;
+  if (!P) return;
+  const m = models[P.id], c = POP[P.id];
+  const a = m && ME.alive ? sample(c.anim, P.t + dt) : null;
+  if (!a) { if (m) m.wrap.visible = false; W.pop = null; return; }
+  const t0 = P.t;
+  P.t += dt;
+  m.wrap.position.set(c.p[0] + a.p[0], c.p[1] + a.p[1], c.p[2] + a.p[2]);
+  m.wrap.rotation.set(c.r[0] + a.r[0], c.r[1] + a.r[1], c.r[2] + a.r[2]);
+  m.wrap.scale.setScalar(a.s);
+  m.wrap.visible = !W.scoped;
+  for (const ev of eventsBetween(c.anim, t0, P.t)) popEvent(ev, m);
+  if (m.wrap.visible && G.skinFxVM) emitSkinFx(G.skinFxVM, m.g, dt, 0.3 * m.cfg.s);
+}
+
 // knife right click: CS-style heavy stab. returns false when this weapon has no heavy attack
 export function heavyAttack() {
+  if (performance.now() < (ME.ballUntil || 0)) return true; // wrecking ball: no hands
   const id = W.cur, w = WEAPONS[id], now = performance.now();
   if (!w || !w.heavy || !ANIMS['stab_' + id]) return false;
   const model = models[id] && models[id].g.userData.model;
@@ -282,6 +353,68 @@ export function heavyAttack() {
   playAnim(stab, 'swing');
   W.pendingSwing = ANIMS[stab].hit;
   return true;
+}
+
+// ------------------------------------------------------------ katana parry (right click)
+// opens a short window that the server checks hits against (it decides what got parried and tells everyone).
+// returns false when the katana isn't out, so right click does its normal thing
+export function parry() {
+  if (W.cur !== 'katana') return false;
+  const now = performance.now();
+  if (canParry(now)) doParry(now);
+  else if (ME.alive && (W.parryCd || 0) - now < 150) W.parryQ = now; // a hair early: buffer it
+  return true;
+}
+// not mid-swing, not reeling from a parried swing of our own (the server refuses that too), and not in the first
+// moment of pulling it out (the server hasn't seen it in your hand yet)
+const canParry = (now) => ME.alive && now >= (W.parryCd || 0) && now >= (W.staggerUntil || 0) && W.pendingSwing <= 0 && !(W.anim && W.anim.kind === 'draw' && W.anim.t < 0.12);
+function doParry(now) {
+  W.parryQ = 0; W.parryT = now;
+  W.parryCd = now + (PARRY.win + PARRY.cd) * 1000;
+  W.cd.katana = Math.max(W.cd.katana || 0, now + PARRY.win * 1000); // no slashing out of the guard
+  cancelInspect();
+  net.send({ t: 'parry', y: r2(ME.yaw) });
+  playAnim('parry_katana', 'parry');
+}
+// the server says we parried something: hit stop, the blade kicks, sparks fly off it. big = the first one in a while
+export function parryLanded(perfect, big) {
+  const m = models.katana;
+  if (!m || W.cur !== 'katana') return;
+  W.hitStop = Math.max(W.hitStop, big ? (perfect ? 0.13 : 0.09) : 0.03);
+  const k = big ? 1 : 0.35;
+  rec.rv[0] += (perfect ? 7 : 4.5) * k; rec.pv[2] += 1.1 * k; rec.rv[2] += 3 * rnd() * k;
+  punchCam((perfect ? 0.05 : 0.03) * k, 0.02 * rnd() * k, 0.04 * rnd() * k);
+  if (!G.skinFxVM) return;
+  m.wrap.updateMatrixWorld(true);
+  const R = (s) => (Math.random() - 0.5) * s;
+  for (let i = 0, n = big ? (perfect ? 34 : 22) : 8; i < n; i++) {
+    tmpV.copy(m.g.userData.muzzle).multiplyScalar(0.3 + Math.random() * 0.45); m.g.localToWorld(tmpV);
+    G.skinFxVM.add.spawn(tmpV.x, tmpV.y, tmpV.z, R(2.4), 0.3 + Math.random() * 1.6, -0.2 - Math.random() * 1.3,
+      0.16 + Math.random() * 0.24, perfect ? 0.034 : 0.028, 0.004, Math.random() < 0.5 ? 0xffffff : 0xfff2b0, 0xff7a10, 1, 6);
+  }
+}
+// our swing got parried: whatever we hold gets knocked away, no attacking for a moment, half speed (see parryTick)
+export function stagger(dur) {
+  const now = performance.now();
+  W.staggerUntil = now + dur * 1000;
+  for (const id of W.slots) if (id) W.cd[id] = Math.max(W.cd[id] || 0, W.staggerUntil);
+  W.pendingSwing = 0; W.pendingThrow = 0; W.heavy = false; W.parryQ = 0;
+  cancelInspect();
+  playAnim('staggered', 'stagger');
+  rec.rv[0] += 5; rec.rv[2] += 6 * rnd(); rec.pv[2] += 1.5;
+  punchCam(-0.06, 0.04 * rnd(), 0.08 * rnd());
+  G.shake = Math.max(G.shake, 0.45);
+}
+// every frame: buffered presses, stagger slow-down, and the cooldown ring round the crosshair
+function parryTick(now) {
+  if (now < (W.staggerUntil || 0)) ME.speedMul *= 0.5;
+  if (W.parryQ) { if (now - W.parryQ > 250 || W.cur !== 'katana') W.parryQ = 0; else if (canParry(now)) doParry(now); }
+  if (W.cur !== 'katana' || !ME.alive) { hud.parryRing(null); return; }
+  const t = (now - (W.parryT || -1e9)) / 1000, P = PARRY;
+  if (t < P.win) hud.parryRing(1, 'open'); // guard is up
+  else if (t < P.win + P.cd) hud.parryRing(1 - (t - P.win) / P.cd, 'cd'); // drains while it recharges
+  else if (t < P.win + P.cd + 0.25) hud.parryRing(1, 'ready'); // a blink when it's back
+  else hud.parryRing(null);
 }
 
 function playAnim(name, kind) { if (ANIMS[name]) W.anim = { name, kind, t: 0 }; }
@@ -307,6 +440,7 @@ const VM = {
   revolver: { p: [0.17, -0.16, -0.32], r: [0, 0.06, 0], s: 1.0 },
   cig: { p: [0.15, -0.17, -0.3], r: [0.15, 0.6, 0.2], s: 1.1 },
   blower: { p: [0.24, -0.27, -0.45], r: [0, 0.05, 0], s: 0.6 },
+  shredder: { p: [0.27, -0.26, -0.46], r: [0, 0.16, 0], s: 0.46 },
   popper: { p: [0.17, -0.18, -0.34], r: [0.1, 0.1, 0], s: 0.75 },
   reverse: { p: [0.15, -0.15, -0.34], r: [0.3, -0.3, 0.15], s: 0.65 },
   duck: { p: [0.17, -0.18, -0.4], r: [0.1, 0.5, 0], s: 0.55 },
@@ -321,8 +455,15 @@ const VM = {
   slapper: { p: [0.22, -0.24, -0.42], r: [0.25, 0.1, 0], s: 0.7 },
   scythe: { p: [0.3, -0.33, -0.46], r: [0.25, 0.25, -0.3], s: 0.55 },
   scythe_rifle: { p: [0.2, -0.21, -0.4], r: [0, 0.03, 0], s: 0.6 },
+  scales: { p: [0.27, -0.335, -0.47], r: [0.06, 0.12, 0], s: 0.6 }, // held upright, beam across the view
+  claw: { p: [0.17, -0.17, -0.3], r: [0.25, 0.2, 0.35], s: 1.0 },
 };
 
+// Blood Cross: a bare hand low on the right, turned in side-on and rolled a little so you read it as a finger gun (from straight
+// behind, the thumb hides the finger)
+VM.bloodcross = { p: [0.165, -0.17, -0.33], r: [0.13, 0.43, 0.28], s: 1.22 };
+RECOIL.bloodcross = { back: 0.5, up: 3.5, roll: 1.2, side: 0.15, punch: 0.018 };
+const bcQ = new THREE.Quaternion(), bcY = new THREE.Vector3(0, 1, 0); // opening + closing the fist
 let vmRoot;
 const models = {};
 const tmpV = new THREE.Vector3();
@@ -348,6 +489,7 @@ export function rebuildViewmodels() {
     const hand = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.062, 0.09), M(0xf1c27d)); // a fist, not a brick
     hand.position.set(0.004, -0.042, 0.03);
     wrap.add(hand);
+    if (g.userData.bare) { hand.visible = false; g.add(g.userData.bare); } // Blood Cross: the hand is the weapon (+ your forearm)
     wrap.position.set(...cfg.p);
     wrap.rotation.set(...cfg.r);
     wrap.visible = id === W.cur;
@@ -390,18 +532,38 @@ export function refillAmmo() {
   W.reloadId = null;
   W.fuel.blower = WEAPONS.blower.fuel;
   W.slipperOut = false;
+  // katana parry: a new life (spawn, join) starts with the guard ready, like the server. not on a weapon swap:
+  // the server keeps your cooldown and stagger through those
+  W.parryT = 0; W.parryCd = 0; W.parryQ = 0; W.staggerUntil = 0;
 }
 
 export function setLoadout(lo) {
   const v = validLoadout(lo);
   W.item = v.item;
+  // chaos modes hand you a fixed kit: just these weapons, maybe no item, maybe no reloading (bullets come from kills)
+  const kit = lo && Array.isArray(lo.only) ? lo.only.filter((id) => WEAPONS[id]) : null;
+  if (kit && kit.length) { W.hasScythe = false; ME.dashing = false; }
+  W.noReload = !!(lo && lo.noReload);
   const streakSlot = W.hasScythe ? (W.slots[3] || 'scythe') : null;
   W.slots = SLOTS.map((s) => v[s]);
+  if (kit && kit.length) W.slots = kit;
+  if (lo && lo.item === 'none') W.item = null;
   if (streakSlot) W.slots[3] = streakSlot;
+  if (W.only) { W.slots = [W.only]; W.item = null; } // gun game / zombies: one weapon, no item
   if (W.slot >= W.slots.length) W.slot = 0;
   showSlots();
   W.cur = null;
   equip(W.slot);
+}
+
+// gun game / infection: the server hands you exactly one weapon (a fresh mag of it). null = back to `lo`
+W.only = null;
+export function setOnly(id, lo) {
+  W.only = WEAPONS[id] ? id : null;
+  if (W.only && WEAPONS[id].mag) W.ammo[id] = WEAPONS[id].mag;
+  if (W.reloadId && W.reloadId !== W.only) W.reloadId = null;
+  W.slot = 0;
+  setLoadout(lo);
 }
 
 export function rebuildOne(id) {
@@ -413,7 +575,8 @@ export function rebuildOne(id) {
 export function showSlots() {
   hud.slots(W.slots, W.slots.map((id) => weaponIcon(id, (G.equipped || {})[id])));
   hud.slotOn(W.slot);
-  hud.itemSlot(W.item, itemIcon(W.item));
+  const iw = ITEMS[W.item] && ITEMS[W.item].w; // popper / reverse card: a picture of the real thing, skin and all
+  hud.itemSlot(W.item, (iw && weaponIcon(iw, (G.equipped || {})[iw])) || itemIcon(W.item));
 }
 
 function equip(i) {
@@ -447,6 +610,7 @@ export function reload() {
   cancelInspect();
   if (W.cur === 'cards') { redrawCards(); return; }
   const id = W.cur, w = WEAPONS[id];
+  if (W.noReload) return; // one in the chamber: bullets only come from kills
   if (!w.mag || W.reloadId || W.ammo[id] >= w.mag || !ME.alive) return;
   W.reloadId = id;
   W.reloadUntil = performance.now() + w.reload * 1000;
@@ -474,11 +638,13 @@ function setCd(id, now) {
 }
 
 // teammates are see-through for your bullets and swings
-export const isFriend = (r) => !!(G.myTeam && r.team && r.team === G.myTeam);
+// game modes add their own sides here (infection: zombies vs survivors)
+export const modeFriends = [];
+export const isFriend = (r) => !!(G.myTeam && r.team && r.team === G.myTeam) || modeFriends.some((f) => f(r));
 function rayPlayers(o, d, maxT) {
   let best = null;
   for (const r of G.remotes.values()) {
-    if (!r.alive || isFriend(r)) continue;
+    if (!r.alive || (isFriend(r) && !(r.trapUntil > performance.now()))) continue; // a teammate in a soap bubble can be shot free
     for (const hb of r.hitboxes()) {
       const h = rayBox(o, d, hb, best ? best.t : maxT);
       if (h && (!best || h.t < best.t)) best = { t: h.t, r, head: hb.head };
@@ -490,7 +656,7 @@ function rayPlayers(o, d, maxT) {
 function conePlayers(o, d, range, cone) {
   const out = [], cosC = Math.cos(cone);
   for (const r of G.remotes.values()) {
-    if (!r.alive || isFriend(r)) continue;
+    if (!r.alive || (isFriend(r) && !(r.trapUntil > performance.now()))) continue; // (or swung / burned free)
     const tx = r.pos[0] - o[0], ty = r.pos[1] + 1 - o[1], tz = r.pos[2] - o[2];
     const dist = Math.hypot(tx, ty, tz);
     if (dist > range || dist < 1e-3) continue;
@@ -518,6 +684,7 @@ const r2 = (x) => Math.round(x * 100) / 100;
 
 function currentSpread(w) {
   if (G.spinning) return 0; // spinbot = no spread
+  if (fanShot) return fanSpread(w);
   const hip = (HIPFIRE[G.cfg.hip] || HIPFIRE.normal).mul;
   const base = (w.spread || 0) + W.bloom;
   const ads = w.ads ? base * (w.ads.spread ?? 1) * Math.min(1, hip) : base * hip;
@@ -530,6 +697,7 @@ function fireHitscan(id, now) {
   if (w.mag && G.mode !== 'training') W.ammo[id]--;
   setCd(id, now);
   W.lastShotT = now;
+  if (w.fanHammer && models[id]) applyTwirl(models[id].g, 0, models[id].cfg.s); // mid-twirl revolver: the shot leaves the resting muzzle (twirlVM spins it again before the next render)
   const o = eye(), base = look(), mz = muzzleWorld();
   const hits = new Map();
   const segs = [];
@@ -563,12 +731,14 @@ function fireHitscan(id, now) {
       sfx.ricochet(end);
     }
   }
-  for (const [rid, h] of hits) net.send({ t: 'hit', to: rid, w: id, d: h.d.map(r2), n: h.n, h: h.h });
+  const ns = id === 'sniper' && !W.scoped ? 1 : undefined; // no-scope: the server only makes it look cool, damage is the same
+  const qs = id === 'sniper' && W.scoped && now - W.scopedAt <= ROYAL.quick ? 1 : undefined; // quick-scope: fired right as the scope came up (Sniper Royalty only, never damage)
+  for (const [rid, h] of hits) net.send({ t: 'hit', to: rid, w: id, d: h.d.map(r2), n: h.n, h: h.h, ns, qs, fan: fanShot ? 1 : undefined });
   const fast = w.rate > 8;
   const skin = (G.equipped || {})[id];
   if (shots) marbles.shoot(shots, marblePalette(skin));
   else for (const s of segs) fx.tracer(s.slice(0, 3), s.slice(3), tracerColor(skin, w.tracer || 0xfff0a0), w.thick || (fast ? 0.03 : 0.045), fast ? 0.07 : 0.2);
-  net.send({ t: 'fire', w: id, o: o.map(r2), s: segs.slice(0, 12).map((s) => s.map(r2)) });
+  net.send({ t: 'fire', w: id, o: o.map(r2), s: segs.slice(0, 12).map((s) => s.map(r2)), fan: fanShot ? 1 : undefined });
   if (w.recoil) applyKb([-base[0] * w.recoil, -base[1] * w.recoil, -base[2] * w.recoil]);
   ME.pitch = Math.min(1.55, ME.pitch + (w.kick || 0) * (0.6 + Math.random() * 0.8) * (1 - W.aim * 0.5));
   ME.yaw += (Math.random() - 0.5) * (w.kick || 0) * 0.5;
@@ -580,9 +750,68 @@ function fireHitscan(id, now) {
   if (SHELL_ON_FIRE.has(id) && models[id]) ejectShell(models[id].g);
   if (id === 'shotgun') W.cycle = { name: 'pump_shotgun', t: 0.22 };
   if (id === 'sniper' || id === 'scythe_rifle') W.cycle = { name: 'bolt_sniper', t: 0.32 };
+  if (w.fanHammer) revolverShot(w, now);
   if (id === 'sniper' || id === 'shotgun') G.shake = Math.max(G.shake, 0.6);
   sfx.gun(id, null, id === 'redline' ? redlineK() : 0);
   if (w.mag && W.ammo[id] <= 0) reload();
+}
+
+// ------------------------------------------------------------ revolver: twirl after every shot, hold to fan the hammer
+// a tap is the accurate shot. keep holding and the rest of the cylinder goes at fanHammer.rate with wild spread and
+// fan damage (the server checks both). the gun spins round your trigger finger after every shot and the whole time
+// you fan. aiming down sights = plain single shots, no twirl in front of your eye.
+W.twirl = newTwirl();
+W.fanning = { on: false, arm: false, down: 0, next: 0, hammer: 0 };
+let fanShot = false; // the shot being fired right now is a fanned one (spread + net messages read this)
+const fanSpread = (w) => w.fanHammer.spread * (HIPFIRE[G.cfg.hip] || HIPFIRE.normal).mul;
+function revolverShot(w, now) {
+  const twirl = fanShot || (!W.aimHeld && W.aim < 0.5);
+  if (!fanShot) W.fanning.next = now + 1000 / w.fanHammer.rate;
+  if (twirl) twirlShot(W.twirl, fanShot);
+  if (twirl && !fanShot) sfx.twirl();
+}
+function fanTheHammer(id, w, now) {
+  const F = W.fanning, f = w.fanHammer, iv = 1000 / f.rate;
+  if (F.hammer && now >= F.hammer) { F.hammer = 0; if (F.on) sfx.hammer(); }
+  if (!(ME.alive && W.held && F.arm && !W.aimHeld && !W.reloadId)) {
+    // let go, ran dry, aimed or died: stop fanning and catch the gun. anything but letting go needs a fresh click
+    if (W.held) F.arm = false;
+    if (F.on) { F.on = false; settle(W.twirl); }
+    return;
+  }
+  if (now - F.down < f.hold * 1000 || now < F.next) return;
+  if (W.ammo[id] <= 0) { reload(); return; }
+  const was = F.on, p0 = ME.pitch, y0 = ME.yaw, v0 = ME.vel.slice();
+  F.on = true;
+  cancelInspect();
+  fanShot = true;
+  fireHitscan(id, now);
+  fanShot = false;
+  // the off hand holds it down: a fraction of the aim kick and the shove
+  ME.pitch = p0 + (ME.pitch - p0) * f.kick; ME.yaw = y0 + (ME.yaw - y0) * f.kick;
+  for (let i = 0; i < 3; i++) ME.vel[i] = v0[i] + (ME.vel[i] - v0[i]) * f.kick;
+  W.cd[id] = now + 1000 / w.rate; // a tap after fanning waits one normal shot, not every fanned one stacked up
+  F.next = (was ? Math.max(F.next, now - Math.min(40, iv * 0.5)) : now) + iv;
+  F.hammer = now + iv * 0.55; // slap the hammer back between shots
+}
+// every frame: fan if held. anything else out = the revolver forgets it was mid-twirl, and a hold that started on
+// another gun doesn't fan when you switch to it
+function revolverFrame(id, w, now) {
+  if (w.fanHammer) { fanTheHammer(id, w, now); return; }
+  W.fanning.arm = false;
+  if (W.fanning.on || twirling(W.twirl)) { W.fanning.on = false; resetTwirl(W.twirl); }
+}
+// spin the viewmodel round the trigger finger (the hand stays put). returns how far into the twirl pose it is
+function twirlVM(m, dt) {
+  const s = W.twirl;
+  if (W.aimHeld && s.seg && !s.seg.quick) { spin(s, 0.12, -4, 0); s.seg.quick = true; } // aiming: finish the turn now
+  const a = stepTwirl(s, dt);
+  applyTwirl(m.g, a, m.cfg.s);
+  if (m.flash) { // the flash hangs where the shot left the muzzle instead of spinning off with the barrel
+    const mz = m.g.userData.muzzle, c = Math.cos(a), sn = Math.sin(a), y = mz.y - m.g.position.y / m.cfg.s, z = mz.z - m.g.position.z / m.cfg.s;
+    m.flash.position.set(mz.x, y * c + z * sn, z * c - y * sn); m.flash.rotation.x = -a;
+  }
+  return s.k * (1 - W.aim);
 }
 
 function fireProj(id, now, fromAnim) {
@@ -609,21 +838,34 @@ function fireProj(id, now, fromAnim) {
   }
 }
 
+// Blood Cross: point and pay. the server takes the 12 HP (and says no below 1 HP), you get the thump, the flick and a spurt of blood
+function fireBlood(now) {
+  const w = WEAPONS.bloodcross, m = models.bloodcross;
+  if (ME.hp - w.cost < 1) { sfx.empty(); hud.msg('NOT ENOUGH BLOOD', 0.8, 'reverse'); W.cd.bloodcross = now + 300; return; }
+  setCd('bloodcross', now);
+  const o = eye(), d = look();
+  net.send({ t: 'fire', w: 'bloodcross', o: o.map(r2), d: d.map(r2) });
+  sfx.bcBeat();
+  W.kick = 0.3; W.flashT = 0.07;
+  playAnim('bang_bloodcross', 'bang');
+  kickVM('bloodcross');
+  if (!m) return;
+  const P = palOf(G.myId), sys = G.skinFxVM, R = (k) => (Math.random() - 0.5) * k;
+  m.wrap.updateMatrixWorld(true);
+  m.g.userData.fingertip.getWorldPosition(tmpV);
+  if (sys) {
+    for (let i = 0; i < 18; i++) sys.add.spawn(tmpV.x, tmpV.y, tmpV.z, R(0.5), 0.05 + R(0.4), -0.5 - Math.random() * 0.9, 0.2, 0.02, 0.002, P.core, P.glow, 1, 0, 2); // hot sparks
+    for (let i = 0; i < 10; i++) sys.norm.spawn(tmpV.x, tmpV.y, tmpV.z, R(0.3), 0.08 + Math.random() * 0.25, -0.2 + R(0.3), 0.5, 0.009, 0.006, P.glow, P.deep, 1, 3, 0.5); // a spurt of blood
+  }
+  crossFired(muzzleWorld(), [o[0] + d[0] * 7, o[1] + d[1] * 7, o[2] + d[2] * 7]);
+}
+
 function swing(id, now) {
   const w = WEAPONS[id];
   setCd(id, now);
   W.swing = 1;
   W.swingId = id;
   net.send({ t: 'fire', w: id, o: eye().map(r2), d: look().map(r2) });
-  if (id === 'popper') {
-    const d = look();
-    fx.confetti(muzzleWorld(), d, ME.vel);
-    sfx.popper();
-    applyKb([-d[0] * w.recoil, -d[1] * w.recoil, -d[2] * w.recoil]);
-    playAnim('yank_popper', 'swing');
-    resolveSwing(id);
-    return;
-  }
   // chain swings: click again quickly and you get the backhand / second stab
   W.heavy = false;
   W.combo = now - W.lastSwingT < 750 ? W.combo + 1 : 0;
@@ -666,15 +908,6 @@ function resolveSwing(id) {
   }
 }
 
-function useReverse(now) {
-  const w = WEAPONS.reverse;
-  setCd('reverse', now);
-  W.reverseUntil = now + w.dur * 1000;
-  net.send({ t: 'fire', w: 'reverse', o: eye().map(r2), d: look().map(r2) });
-  sfx.reverse();
-  hud.msg('REVERSE', w.dur, 'reverse');
-}
-
 function cough() {
   net.send({ t: 'cough' });
   sfx.cough();
@@ -686,17 +919,19 @@ function cough() {
 }
 
 export function fireDown() {
+  if (performance.now() < (ME.ballUntil || 0)) return; // wrecking ball: no hands
   W.held = true;
   cancelInspect();
   const id = W.cur, w = WEAPONS[id], now = performance.now();
+  W.fanning.down = now; W.fanning.arm = true; // revolver: keep holding from here to fan the hammer
   if (!ME.alive || W.reloadId === id || !ready(id, now)) return;
   if (W.anim && W.anim.kind === 'draw') W.anim = null;
   if (w.kind === 'hitscan' && !w.auto && !w.spinup) {
     if (W.ammo[id] > 0) fireHitscan(id, now); else { sfx.empty(); reload(); }
   } else if (w.kind === 'melee') swing(id, now);
   else if (w.kind === 'proj' && !w.auto) fireProj(id, now);
-  else if (w.kind === 'reverse') useReverse(now);
   else if (w.kind === 'cards') playCard(now);
+  else if (w.kind === 'blood') fireBlood(now);
 }
 
 export function fireUp() {
@@ -751,15 +986,140 @@ function animEvent(ev, g) {
     case 'squeak': sfx.squeak(); break;
     case 'squawk': sfx.squawk(); break;
     case 'click': sfx.click(); break;
+    case 'bloodpuff': { // Blood Cross inspect: blow the blood off your fingertip like smoke off a barrel
+      const P = palOf(G.myId);
+      if (g.userData.fingertip) g.userData.fingertip.getWorldPosition(evPos);
+      sfx.blow();
+      for (let i = 0; i < 14; i++) sys.norm.spawn(evPos.x + R(0.008), evPos.y + R(0.008), evPos.z + R(0.008), 0.06 + R(0.06), 0.05 + Math.random() * 0.06, -0.08 + R(0.06), 0.8, 0.006, 0.02, P.mist, P.dark, 0.45, -0.03, 1.5);
+      for (let i = 0; i < 6; i++) sys.add.spawn(evPos.x, evPos.y, evPos.z, R(0.15), 0.06 + R(0.08), R(0.15), 0.3, 0.008, 0.001, P.glow, P.dark);
+      break;
+    }
     case 'blow': sfx.blow(); for (let i = 0; i < 6; i++) sys.norm.spawn(evPos.x + R(0.04), evPos.y, evPos.z + R(0.04), R(0.15), 0.1, R(0.15), 0.6, 0.02, 0.06, 0xdddddd, 0xffffff, 0.4); break;
     case 'smoke': for (let i = 0; i < 12; i++) sys.norm.spawn(evPos.x - 0.05 + R(0.05), evPos.y + 0.02, evPos.z - 0.1 + R(0.05), R(0.3), 0.15 + Math.random() * 0.2, -0.3 - Math.random() * 0.3, 1.4, 0.03, 0.2, 0xcccccc, 0x777777, 0.55, -0.1, 0.8); break;
     case 'spark': for (let i = 0; i < 10; i++) sys.add.spawn(evPos.x + R(0.03), evPos.y, evPos.z + R(0.03), R(0.8), 0.3 + Math.random() * 0.6, R(0.8), 0.5, 0.025, 0.005, 0xffcc44, 0xff3300, 1, 3); break;
     case 'spin': W.inspectSpin = 1.5; sfx.reload(); break;
+    case 'startup': shredStartup(); break;
     case 'rev': sfx.rev(); break;
+    case 'chains': sfx.chains(); break;
   }
 }
 
+// ------------------------------------------------------------ shredder
+// hold to suck: the heat climbs (overheats at w.fuel seconds) and only comes back down when you let go, like the
+// blower's fuel. the client just reports who's in the cone; the server decides the pull and the shredding.
+W.shred = { heat: 0, hot: false, hotK: 0, spin: 0, tick: 0, on: false, gore: 0, puff: 0 };
+function updateShredder(dt, alive, now) {
+  const w = WEAPONS.shredder, S = W.shred, mine = W.cur === 'shredder';
+  // heat runs on real time like the server's (dt is capped at 0.1 s a frame, so under 10 fps it would fall behind)
+  const rdt = S.at ? Math.min(0.3, Math.max(0, (now - S.at) / 1000)) : dt;
+  S.at = now;
+  if (S.life !== G.spawnT) { S.life = G.spawnT; S.heat = 0; S.hot = false; } // a new life starts cold (the server's too)
+  const want = alive && mine && W.held && !S.hot;
+  if (want) {
+    S.heat += rdt;
+    if (S.heat >= w.fuel) { S.hot = true; sfx.overheat(); hud.msg('OVERHEATED', 1.2); }
+  } else {
+    S.heat = Math.max(0, S.heat - w.regen * rdt);
+    if (S.hot && S.heat <= w.fuel * w.coolTo) { S.hot = false; sfx.click(); }
+  }
+  S.on = want && !S.hot;
+  S.spin = S.on ? Math.min(1, S.spin + dt / 0.35) : Math.max(0, S.spin - dt / 0.9); // teeth spin up / wind down
+  shredMotor(mine ? S.spin : 0);
+  if (!S.on) return;
+  const m = models.shredder, o = eye(), d = look();
+  fx.vacuum(vmToWorld(m, m.g.userData.muzzle, 2.2), d, ME.vel, w.range, w.cone, S.spin, dt);
+  S.tick -= dt;
+  if (S.tick <= 0) {
+    S.tick = w.tick;
+    for (const tg of conePlayers(o, d, w.range, w.cone)) net.send({ t: 'push', to: tg.r.id, w: 'shredder' });
+  }
+}
+// the viewmodel is drawn over the world by its own camera (65°, yours is wider), so a world effect aimed at the gun has
+// to go through the screen: gun-local point v -> the world point dist from your eye that lands on the same pixel
+const tmpV3 = new THREE.Vector3(), tmpV4 = new THREE.Vector3(), tmpV5 = new THREE.Vector3();
+function vmToWorld(m, v, dist) {
+  m.wrap.updateMatrixWorld(true);
+  G.camera.updateMatrixWorld();
+  tmpV3.copy(v); m.g.localToWorld(tmpV3);
+  tmpV3.project(G.vmCamera).setZ(0.5).unproject(G.camera);
+  tmpV4.setFromMatrixPosition(G.camera.matrixWorld);
+  tmpV3.sub(tmpV4).normalize().multiplyScalar(dist).add(tmpV4);
+  return [tmpV3.x, tmpV3.y, tmpV3.z];
+}
+// gun-local point v (and direction dir) in viewmodel space, for particles that live with the gun
+function vmPoint(m, v, out = tmpV) { out.copy(v); return m.g.localToWorld(out); }
+function vmDir(m, v, dir, out = tmpV2) { out.copy(v).add(dir); m.g.localToWorld(out); return out.sub(vmPoint(m, v, tmpV5)).normalize(); }
+const AIR = [0xf4fbff, 0xe2edf5], LEAF = [0x4caf50, 0x8bc34a, 0xff9800, 0xc0602a, 0xffd54f];
+// stuff spiralling from the rim down into the teeth (each one aimed at the throat a bit round from where it started)
+function throat(m, dt, rate, colors, end, size, alpha) {
+  const sys = G.skinFxVM && G.skinFxVM.norm, ud = m.g.userData;
+  if (!sys) return;
+  for (let i = 0, n = Math.floor(dt * rate + Math.random()); i < n; i++) {
+    const a = Math.random() * Math.PI * 2, r = ud.mouthR * (0.45 + Math.random() * 0.5), life = 0.09 + Math.random() * 0.09;
+    const p = vmPoint(m, tmpV.set(Math.cos(a) * r, ud.axisY + Math.sin(a) * r, ud.muzzle.z + 0.012));
+    const q = vmPoint(m, tmpV2.set(Math.cos(a + 1.5) * 0.035, ud.axisY + Math.sin(a + 1.5) * 0.035, ud.throatZ), tmpV2);
+    sys.spawn(p.x, p.y, p.z, (q.x - p.x) / life, (q.y - p.y) / life, (q.z - p.z) / life, life, size * (0.7 + Math.random() * 0.6), size * 0.25,
+      colors[(Math.random() * colors.length) | 0], end, alpha, 0, 0);
+  }
+}
+// a burst out of the chute: n bits, blood / confetti / smoke = the share of each
+function chuteVM(m, n, blood, confetti, smoke) {
+  const sys = G.skinFxVM, ud = m.g.userData;
+  if (!sys) return;
+  const d = vmDir(m, ud.chute, ud.chuteDir), c = vmPoint(m, ud.chute, tmpV4);
+  const R = (k) => (Math.random() - 0.5) * k;
+  for (let i = 0; i < n; i++) {
+    const kind = Math.random(), sp = 0.5 + Math.random() * 0.9;
+    if (kind < smoke) sys.norm.spawn(c.x, c.y, c.z, d.x * sp * 0.4 + R(0.1), d.y * sp * 0.4 + 0.1 + R(0.1), d.z * sp * 0.4 + R(0.1), 0.5 + Math.random() * 0.3, 0.012, 0.03, 0x5a5a5a, 0x2a2a2a, 0.55, -0.15, 1.5);
+    else if (kind < smoke + blood) sys.norm.spawn(c.x, c.y, c.z, d.x * sp + R(0.25), d.y * sp + R(0.25), d.z * sp + R(0.25), 0.45 + Math.random() * 0.3, 0.008 + Math.random() * 0.008, 0.005, Math.random() < 0.3 ? 0xd01010 : 0x8a0000, 0x3a0000, 1, 2.2, 0.4);
+    else if (kind < smoke + blood + confetti) sys.norm.spawn(c.x, c.y, c.z, d.x * sp + R(0.35), d.y * sp + R(0.35), d.z * sp + R(0.35), 0.7 + Math.random() * 0.4, 0.008, 0.008, [0xff4fd8, 0x4fd8ff, 0xffe14d, 0x7dff4f, 0xff7a1a][(Math.random() * 5) | 0], 0xffffff, 1, 1.2, 1.4);
+  }
+}
+// viewmodel: a lean into the pull + a shake while it runs, the teeth (spinTeeth: never seem to run backwards, blur
+// at speed), lamps + heat gauge, air spiralling down the throat, blood when it's chewing,
+// smoke when the motor starts, a droop + steam when it's overheated
+function shredderVM(m, dt, now, pose) {
+  const S = W.shred, ud = m.g.userData, R = (k) => (Math.random() - 0.5) * k;
+  S.hotK += ((S.hot ? 1 : 0) - S.hotK) * Math.min(1, dt * 5);
+  const j = 0.011 * S.spin + (S.gore > 0 ? 0.008 : 0);
+  pose(R(j), R(j) - 0.035 * S.hotK, -0.014 * S.spin, R(j * 2) - 0.24 * S.hotK, 0, R(j * 3) + 0.14 * S.hotK);
+  spinTeeth(m.g, dt, S.spin + W.inspectSpin * 0.45);
+  const lit = S.hot ? (now % 300 < 150 ? 0xff2020 : 0x300000) : S.spin > 0.05 ? 0xff3a2a : 0x500000;
+  if (ud.lamps) for (const l of ud.lamps) l.material.color.setHex(lit);
+  const heat = Math.min(1, S.heat / WEAPONS.shredder.fuel), glow = Math.max(0, (heat - 0.45) / 0.55);
+  if (ud.heatNeedle) ud.heatNeedle.rotation.y = 2.3 - 4.6 * heat + R(0.12) * S.spin;
+  heatTeeth(m.g, glow); // the teeth going red-hot
+  S.gore = Math.max(0, S.gore - dt); S.puff = Math.max(0, S.puff - dt);
+  if (!m.wrap.visible) return;
+  if (S.on) throat(m, dt, 130 * S.spin, Math.random() < 0.2 ? LEAF : AIR, 0xc8d8e0, 0.009, 0.55);
+  if (S.gore > 0) { throat(m, dt, 90, [0xd01010, 0x8a0000], 0x3a0000, 0.011, 1); if (Math.random() < dt * 14) chuteVM(m, 2, 0.8, 0.2, 0); }
+  if (S.puff > 0) chuteVM(m, Math.floor(dt * 50 + Math.random()), 0, 0, 1);
+  if (S.hot && G.skinFxVM && Math.random() < dt * 30) { // steam off the chute
+    const c = vmPoint(m, ud.chute);
+    G.skinFxVM.norm.spawn(c.x + R(0.01), c.y, c.z + R(0.01), R(0.03), 0.07 + Math.random() * 0.06, R(0.03), 0.6, 0.004, 0.012, 0xf0f0f0, 0xb0b0b0, 0.35, -0.04, 1.2);
+  }
+}
+// the draw: the motor catches (teeth jump, a puff of smoke out of the chute)
+function shredStartup() { W.inspectSpin = Math.max(W.inspectSpin, 1.3); W.shred.puff = 0.3; sfx.startup(); }
+// you're chewing someone: thump the gun, blood down the throat and out of the chute
+export function shredKick() { if (W.cur !== 'shredder') return; kickVM('shredder', 0.3); W.kick = Math.min(1, W.kick + 0.12); W.shred.gore = 0.22; }
+// a chunk just came out of my chute (kills): spray it in first person too
+export function shredSpitVM(big) { const m = models.shredder; if (m && W.cur === 'shredder') { chuteVM(m, big ? 40 : 6, 0.6, big ? 0.4 : 0.15, 0); kickVM('shredder', big ? 0.6 : 0.15); } }
+// where my shredder's intake + chute are in the world, and which way to spit (shredder.js aims gibs at them): points
+// that land on the gun on screen, the spit thrown up and out in front of you so you see it arc over the gun
+export function shredderPorts() {
+  const m = models.shredder;
+  if (!m || W.cur !== 'shredder' || !m.wrap.visible) return null;
+  const ud = m.g.userData;
+  const intake = vmToWorld(m, ud.muzzle, 3), chute = vmToWorld(m, ud.chute, 2.6); // (pieces go in a bit deeper than the dust: smaller on screen)
+  const tip = vmToWorld(m, tmpV5.copy(ud.chute).addScaledVector(ud.chuteDir, 0.25), 2.6), lk = look();
+  const sd = [tip[0] - chute[0], tip[1] - chute[1], tip[2] - chute[2]], sl = Math.hypot(...sd) || 1;
+  const d = [sd[0] / sl * 0.25 + lk[0] * 0.6, sd[1] / sl * 0.25 + 0.8 + lk[1] * 0.6, sd[2] / sl * 0.25 + lk[2] * 0.6], l = Math.hypot(...d);
+  return { intake, chute, dir: d.map((x) => x / l), vel: ME.vel, mine: true };
+}
+
 export function updateWeapons(dt, now) {
+  if (ME.alive && now < (ME.ballUntil || 0)) { W.held = false; W.aimHeld = false; W.dashHeld = false; W.exhale = 0; W.charge = 0; } // wrecking ball: no hands
   const id = W.cur, w = WEAPONS[id];
   const alive = ME.alive;
   let smoking = false, firing = false, blowing = false, spinning = false;
@@ -771,9 +1131,12 @@ export function updateWeapons(dt, now) {
   const canAim = !!w.ads && alive && !W.reloadId;
   W.aim = canAim && W.aimHeld ? Math.min(1, W.aim + dt * 7) : Math.max(0, W.aim - dt * 8);
   W.zoom = w.ads ? 1 + (w.ads.zoom - 1) * W.aim : 1;
+  const wasScoped = W.scoped;
   W.scoped = !!(w.ads && w.ads.scope && W.aim > 0.92);
+  if (W.scoped && !wasScoped) W.scopedAt = now; // quick-scopes count from the moment the scope is fully up
   hud.scope(W.scoped);
   ME.speedMul = (w.speedMul || 1) * (1 - W.aim * 0.25);
+  parryTick(now); // katana parry: buffered presses, stagger, cooldown ring
 
   if (alive && w.kind === 'hitscan') {
     if (w.spinup) {
@@ -822,7 +1185,9 @@ export function updateWeapons(dt, now) {
       }
     }
   }
+  updateShredder(dt, alive, now);
 
+  revolverFrame(id, w, now);
   if (id === 'bow') {
     if (alive && W.held && ready('bow', now)) { const was = W.draw; W.draw = Math.min(1, W.draw + dt / w.draw); if (was < 1 && W.draw >= 1) sfx.click(); }
     const tip = ARROW_TIPS[G.tip] ? G.tip : 'regular';
@@ -882,9 +1247,11 @@ export function updateWeapons(dt, now) {
   loopSfx('spin', spinning && W.held);
   const reversed = now < W.reverseUntil;
   W.flags = (smoking ? FLAGS.SMOKE : 0) | (firing ? FLAGS.FIRE : 0) | (blowing ? FLAGS.BLOW : 0) | (spinning ? FLAGS.SPIN : 0) | (reversed ? FLAGS.REVERSE : 0) | (ME.dashing ? FLAGS.DASH : 0);
+  if (W.shred.on) W.flags |= FLAGS.SUCK;
 
   // ---- HUD
   if (ITEMS[W.item]) { const c = charges(W.item), it = ITEMS[W.item]; hud.item(c.n, it.charges, c.next ? 1 - Math.max(0, c.next - now) / (it.recharge * 1000) : 1); }
+  updatePop(dt);
   if (w.mag) hud.ammo(W.ammo[id], w.mag, !!W.reloadId);
   else hud.ammo(null);
   if (W.reloadId) hud.meter(1 - (W.reloadUntil - now) / (w.reload * 1000), 'RELOADING', '#ffffff');
@@ -898,8 +1265,10 @@ export function updateWeapons(dt, now) {
   } else if (id === 'blower') hud.meter(W.fuel.blower / w.fuel, 'FUEL', '#ff9a3a');
   else if (w.spinup && W.spin > 0 && W.spin < 1) hud.meter(W.spin, 'SPINNING UP', '#c8c8c8');
   else if (id === 'slipper' && W.slipperOut) hud.meter(null);
+  else if (id === 'bloodcross') { const n = Math.max(0, Math.floor((ME.hp - 1) / w.cost)); hud.meter((ME.hp - 1) / 99, n ? `${n} SHOT${n > 1 ? 'S' : ''} OF BLOOD LEFT` : 'NOT ENOUGH BLOOD', w.color); }
   else if (w.cd && w.cd >= 1 && !ready(id, now)) hud.meter(1 - ((W.cd[id] - now) / 1000) / w.cd, 'COOLDOWN', w.color);
   else hud.meter(null);
+  if (id === 'shredder') { const S = W.shred, f = S.heat / w.fuel; hud.meter(f, S.hot ? 'OVERHEATED · COOLING' : 'HEAT', S.hot ? '#ff3030' : f > 0.7 ? '#ff7a1a' : '#ffb31a'); }
 
   // ---- viewmodel animation
   const m = models[id];
@@ -981,20 +1350,31 @@ export function updateWeapons(dt, now) {
     if (ud.vents) ud.vents.color.setRGB(0.25 + 0.75 * k, 0.04 + 0.3 * k * k, 0.02 + (firingNow ? 0.15 * k : 0));
   }
   if (ud.handles) { const h = an && sampleCh(an, 'handles', at); ud.handles[0].rotation.x = h ? h[0] : 0; ud.handles[1].rotation.x = h ? h[1] : 0; }
+  if (ud.index) { // Blood Cross: the finger flicks, the thumb drops like a hammer, the fist opens + closes, the fingertip beats
+    const f = an && sampleCh(an, 'index', at), t = an && sampleCh(an, 'thumb', at), c = an && sampleCh(an, 'curl', at);
+    ud.index.rotation.x = f ? f[0] : 0; ud.thumb.rotation.x = t ? t[0] : 0;
+    for (const b of ud.curl) b.j.quaternion.copy(b.q).multiply(bcQ.setFromAxisAngle(bcY, -b.a * (c ? c[0] : 0)));
+    const beat = (now % 1100) / 1100, lub = Math.exp(-Math.pow((beat - 0.1) / 0.04, 2)) + 0.6 * Math.exp(-Math.pow((beat - 0.32) / 0.04, 2));
+    ud.fingertip.scale.setScalar(1 + lub * 0.45 + W.kick * 1.6);
+    ud.flare.visible = W.flashT > 0 && m.wrap.visible;
+    if (ud.flare.visible) { ud.flare.userData.face.rotation.z = Math.random() * 6.28; ud.flare.scale.setScalar((0.7 + Math.random() * 0.5) / (1 + W.kick * 1.6)); }
+  }
   if (ud.flipBlade) { const b = an && sampleCh(an, 'blade', at); ud.flipBlade.rotation.x = b ? b[0] : 0; }
   if (ud.pivot) {
     const sp = an && sampleCh(an, 'spin', at), a = sp ? sp[0] : 0, pz = ud.pivot.z * cfg.s;
     m.g.rotation.x = a;
     m.g.position.set(0, Math.sin(a) * pz, pz - Math.cos(a) * pz);
   }
+  if (w.fanHammer) { const k = twirlVM(m, dt); px -= k * 0.025; py -= k * 0.02; pz -= k * 0.1; ry += k * 0.4; rz -= k * 0.15; } // arm out + wrist turned so you see it go round (the barrel never swings through your face)
   if (W.inspectSpin > 0) { W.inspectSpin = Math.max(0, W.inspectSpin - dt * 0.8); if (m.g.userData.barrels) m.g.userData.barrels.rotation.z += W.inspectSpin * dt * 30; }
   m.wrap.scale.setScalar(scale);
-  if (id === 'reverse' && reversed) { ry += Math.sin(now * 0.03) * 0.8; py += 0.05; }
   if (m.g.userData.barrels) m.g.userData.barrels.rotation.z += W.spin * dt * 40;
   if (blowing || (spinning && W.spin >= 1 && W.held)) { px += (Math.random() - 0.5) * 0.008; py += (Math.random() - 0.5) * 0.008; }
+  if (id === 'shredder') shredderVM(m, dt, now, (a, b, c, d, e, f) => { px += a; py += b; pz += c; rx += d; ry += e; rz += f; });
   m.wrap.visible = !(id === 'slipper' && W.slipperOut) && !W.scoped && !ME.dashing;
   m.wrap.position.set(px, py, pz);
   m.wrap.rotation.set(rx, ry, rz);
+  if (ud.court) tickScalesVM(m.g, dt, now); // scales of justice: tip toward the verdict, swing the pans
   if (m.g.userData.hat) m.g.userData.hat.visible = W.aim < 0.3;
   hud.crossFade(m.g.userData.sight ? Math.max(0, 1 - W.aim * 1.6) : 1);
   // muzzle flash

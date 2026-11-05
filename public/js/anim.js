@@ -53,6 +53,23 @@ export const ANIMS = {
   catch_slipper: { keys: [K(0, [0.05, -0.25, -0.1], [-0.6, 0, 0]), K(0.18, [0, 0.02, 0], [0.1, 0, 0], 'back'), K(0.3)], events: [[0.12, 'thwack']] },
   yank_popper: { keys: [K(0), K(0.05, [0, 0.02, 0.12], [0.5, 0, 0.1], 'snap'), K(0.32)] },
 
+  // Blood Cross finger gun. channels: index + thumb pivots (radians about X), curl = how far the fist is open (0 shut, 1 open hand,
+  // below 0 squeezed). bang: the hammer (thumb) snaps down, the fist squeezes, the wrist kicks up and the barrel (index) flicks.
+  // draw: an open hand comes up and snaps shut into the gun, thumb cocked with a click. inspect: blow the blood off the fingertip
+  bang_bloodcross: { keys: [K(0), K(0.035, [0, 0.018, 0.028], [0.32, 0.03, 0.08], 'snap'), K(0.12, [0, 0.007, 0.01], [0.1, 0.01, 0.03]), K(0.3)],
+    ch: { index: [[0, 0], [0.03, 0.22], [0.15, 0]], thumb: [[0, 0], [0.025, -0.95], [0.09, -0.95], [0.22, 0.12], [0.3, 0]], curl: [[0, 0], [0.03, -0.12], [0.2, 0]] } },
+  draw_bloodcross: { keys: [K(0, [0.03, -0.24, 0.08], [-0.8, 0.25, 0.4]), K(0.22, [0, 0.012, 0], [0.08, 0, 0.02], 'snap'), K(0.45)],
+    ch: { curl: [[0, 0.9], [0.14, 0.85], [0.27, -0.06], [0.34, 0]], thumb: [[0, -0.6], [0.2, -0.6], [0.3, 0.15], [0.38, 0]], index: [[0, 0.12], [0.25, 0]] },
+    events: [[0.3, 'click']] },
+  inspect_bloodcross: { keys: [
+    K(0), K(0.32, [-0.07, 0.045, -0.01], [1.05, -0.25, 0.05]), // fingertip up in front of your mouth
+    K(0.95, [-0.075, 0.05, -0.012], [1.08, -0.27, 0.06]), // ...and blow the blood off it
+    K(1.12, [-0.01, 0.012, 0], [0.15, 0, 0]),
+    K(1.5, [0, 0.012, 0], [0.05, 0, PI2 + 0.25]), // spin it round the finger like a pistol
+    K(1.72, [0, 0, 0], [0, 0, PI2], 'back'), K(1.95, [0, 0, 0], [0, 0, PI2]),
+    ], ch: { thumb: [[0.25, 0], [0.35, -0.45], [0.95, -0.45], [1.1, 0], [1.62, 0], [1.68, -0.35], [1.78, 0.1], [1.86, 0]], curl: [[1.1, 0], [1.2, 0.22], [1.5, 0.22], [1.64, 0]] },
+    events: [[0.5, 'bloodpuff'], [1.18, 'whoosh'], [1.69, 'click']] },
+
   // knife, done like CS: left click alternates a right->left and a left->right diagonal slash (fast, ~0.4s),
   // right click is a heavy stab: pull back, punch forward, hold, slow recovery (~0.9s)
   swing_knife: { hit: 0.1, keys: [
@@ -91,6 +108,15 @@ export const ANIMS = {
     K(0), K(0.1, [0.05, 0.12, 0.15], [0.9, 0, 0.2], 'in'),
     K(0.18, [-0.05, -0.05, -0.25], [-0.9, 0, 0], 'snap'), K(0.32, [-0.05, -0.07, -0.22], [-0.95, 0, 0]), K(0.52),
   ], events: [[0.12, 'whoosh']], trail: [0.1, 0.26] },
+  // zombie claw: a quick raking swipe across, then a backhand the other way
+  swing_claw: { hit: 0.1, keys: [
+    K(0), K(0.07, [0.1, 0.1, 0.06], [0.6, -0.5, -0.5], 'in'),
+    K(0.14, [-0.16, -0.08, -0.12], [-0.5, 0.9, 0.7], 'snap'), K(0.24, [-0.18, -0.1, -0.1], [-0.55, 1.0, 0.75]), K(0.42),
+  ], events: [[0.08, 'whoosh']], trail: [0.06, 0.22] },
+  swing_claw2: { hit: 0.1, keys: [
+    K(0), K(0.07, [-0.14, 0.1, 0.05], [0.6, 0.7, 0.6], 'in'),
+    K(0.14, [0.1, -0.08, -0.12], [-0.5, -0.7, -0.7], 'snap'), K(0.24, [0.12, -0.1, -0.1], [-0.55, -0.8, -0.75]), K(0.42),
+  ], events: [[0.08, 'whoosh']], trail: [0.06, 0.22] },
   swing_scythe: { hit: 0.24, keys: [ // heavy: slower wind-up, long follow-through
     K(0), K(0.16, [0.2, 0.15, 0.15], [0.4, -1.2, -0.6]),
     K(0.3, [-0.45, -0.1, -0.2], [-0.3, 2.2, 0.9], 'snap'), K(0.48, [-0.5, -0.14, -0.15], [-0.35, 2.4, 1.0]), K(0.78),
@@ -100,6 +126,27 @@ export const ANIMS = {
     K(0.3, [0.15, -0.12, -0.2], [-0.3, -1.4, -0.8], 'snap'), K(0.48, [0.18, -0.16, -0.15], [-0.35, -1.5, -0.85]), K(0.78),
   ], events: [[0.2, 'whoosh']], trail: [0.16, 0.44] },
   fold_scythe: { keys: [K(0), K(0.15, [0, -0.18, 0.06], [0.7, 0, 0.9], 'snap'), K(0.4)], events: [[0.12, 'click'], [0.2, 'click']] },
+  // scales of justice, swung like a mace: a heavy overhead smash, then (click again) a flat side swing.
+  // the pans hang on chains (scales.js), so every swing flings them about
+  swing_scales: { hit: 0.22, keys: [
+    K(0), K(0.14, [0, 0.18, 0.05], [0.5, -0.1, 0.3], 'in'), // heave it up and back over your head
+    K(0.23, [-0.18, 0.1, 0.06], [-0.65, 0.05, 0.2], 'snap'), // SMASH: the beam lands right across the middle of the screen
+    K(0.36, [-0.19, 0.06, 0.06], [-0.8, 0.05, 0.2]), // it's heavy: it sinks a little and stays down a moment
+    K(0.6),
+  ], events: [[0.02, 'chains'], [0.15, 'whooshBig'], [0.3, 'chains']], trail: [0.14, 0.34] },
+  swing_scales2: { hit: 0.19, keys: [
+    K(0), K(0.12, [0.08, 0.16, 0.06], [-0.2, -0.6, -0.95], 'in'), // cock it out to the right
+    K(0.22, [-0.14, 0.27, 0], [-0.25, 2.25, -1.25], 'snap'), // sweep it flat across the middle, head first
+    K(0.34, [-0.24, 0.22, 0], [-0.25, 2.7, -1.25]), K(0.58),
+  ], events: [[0.02, 'chains'], [0.12, 'whooshBig'], [0.28, 'chains']], trail: [0.12, 0.3] },
+  draw_scales: { keys: [K(0, [0.02, -0.32, 0.06], [-0.6, 0, 0.35]), K(0.3, [0, 0.015, 0], [0.06, 0, -0.05], 'back'), K(0.46)], events: [[0.05, 'chains'], [0.3, 'chains']] },
+  inspect_scales: { keys: [ // hold it up, jiggle it, watch the pans swing
+    K(0), K(0.4, [-0.13, 0.08, 0.06], [0.12, 0.35, 0.1]),
+    K(0.9, [-0.13, 0.09, 0.06], [0.12, 0.45, 0.1]),
+    K(1.0, [-0.12, 0.09, 0.06], [0.12, 0.45, -0.22], 'snap'), K(1.12, [-0.13, 0.09, 0.06], [0.12, 0.45, 0.2], 'snap'),
+    K(1.25, [-0.13, 0.09, 0.06], [0.12, 0.45, 0.05]),
+    K(2.0, [-0.13, 0.09, 0.06], [0.1, 0.4, 0.05]), K(2.5),
+  ], events: [[0.95, 'chains'], [1.1, 'chains'], [1.6, 'ting']] },
 
 
   // ------------------------------------------------------------ card deck: flick the card off the top of the fan
@@ -339,6 +386,20 @@ export const ANIMS = {
     K(0), K(0.4, [-0.1, 0.05, 0.05], [0, Math.PI, 0]), K(1.2, [-0.1, 0.06, 0.07], [0.1, Math.PI, 0]),
     K(1.7, [0, 0, 0], [0, PI2, 0]),
   ] },
+  // items that pop into your left hand for a moment (G): up from below, do the thing, drop away
+  pop_popper: { keys: [
+    K(0, [0.03, -0.3, 0.08], [0.9, 0, -0.3]), K(0.07, [0, 0, 0], [0, 0, 0], 'snap'),
+    K(0.1, [0, 0.03, 0.09], [0.55, 0, -0.1], 'snap'), // yank
+    K(0.24, [0, 0.01, 0.03], [0.18, 0, -0.04]), K(0.34, [0, 0, 0.02], [0.1, 0, 0]),
+    K(0.5, [0.03, -0.32, 0.08], [0.9, 0, -0.3], 'in'),
+  ], events: [[0.08, 'pop']] },
+  pop_reverse: { keys: [ // flash it at the camera: grows, spins twice, drops
+    K(0, [0, -0.3, 0.05], [0.8, 0, 0], 'smooth', 0.6), K(0.08, [0, 0, 0], [0, 0, 0], 'snap'),
+    K(0.16, [0, 0.01, 0.02], [0, 0, 0], 'back', 1.45),
+    K(0.5, [0, 0.01, 0.02], [0, PI2 * 2, 0], 'linear', 1.3), K(0.62, [0, 0, 0], [0, PI2 * 2, 0], 'smooth', 1),
+    K(0.8, [0, -0.32, 0.05], [0.8, PI2 * 2, 0], 'in', 0.8),
+  ], events: [[0.1, 'flash']] },
+  dip_item: { keys: [K(0), K(0.1, [0.03, -0.08, 0.04], [-0.2, -0.15, -0.3]), K(0.38, [0.03, -0.07, 0.04], [-0.18, -0.15, -0.28]), K(0.55)] }, // the gun makes room
   inspect_chicken: { keys: [
     K(0), K(0.3, [-0.05, 0.05, 0.03], [0.1, 0.5, 0.2]),
     K(0.45, [-0.03, 0.06, 0.03], [0.1, 0.5, 0.45], 'snap'), K(0.6, [-0.05, 0.05, 0.03], [0.1, 0.5, 0.0], 'snap'),
@@ -349,28 +410,60 @@ export const ANIMS = {
     K(0.5, [-0.03, 0.06, 0.02], [0.25, 0.3, 0.15], 'snap'), K(0.7, [-0.04, 0.05, 0.02], [0.2, 0.3, 0.1]),
     K(1.4),
   ], events: [[0.45, 'rev']] },
+  inspect_shredder: { keys: [ // swing the intake round to look down it, blip the motor so the teeth spin in your face, swing back
+    K(0), K(0.45, [-0.19, 0.1, -0.045], [-0.36, 2.84, 0.1]), K(0.66, [-0.19, 0.102, -0.045], [-0.33, 2.88, 0.12]),
+    K(0.73, [-0.185, 0.112, -0.035], [-0.25, 2.84, 0.18], 'snap'), K(0.86, [-0.19, 0.1, -0.045], [-0.38, 2.9, 0.08]),
+    K(1.2, [-0.19, 0.101, -0.045], [-0.35, 2.86, 0.11]), K(1.62, [-0.02, 0.015, 0.01], [-0.04, 0.2, 0.02]), K(1.85),
+  ], events: [[0.64, 'rev'], [0.66, 'spin']] },
+  draw_shredder: { keys: [ // hauled up heavy, then the motor catches: a jolt, a couple of shudders, settle
+    K(0, [0.07, -0.4, 0.14], [-0.75, 0.3, 0.7]), K(0.3, [0, 0.02, 0], [0.1, 0, -0.05], 'snap'), K(0.44, [0.004, -0.004, 0.008], [-0.04, 0.01, 0.02]),
+    K(0.52, [-0.006, 0.022, 0.016], [0.16, -0.05, -0.08], 'snap'), K(0.62, [0.004, -0.01, 0.004], [-0.07, 0.03, 0.05]),
+    K(0.71, [-0.002, 0.007, 0.002], [0.05, -0.015, -0.03]), K(0.92),
+  ], events: [[0.28, 'clunk'], [0.5, 'startup']] },
 };
 
 const SPECIAL = new Set(['katana', 'bread', 'slipper', 'spoon', 'revolver', 'shotgun', 'minigun', 'sniper', 'cig', 'duck', 'reverse', 'popper', 'chicken', 'blower', 'knife', 'slapper', 'scythe']);
+SPECIAL.add('scales'); // on its own line so other new weapons can add theirs without touching the list
 // weapon skins get their own inspect when they have one (butterfly flips, karambit spins...)
 export function inspectFor(id, model) {
   if (model && ANIMS['inspect_' + model]) return 'inspect_' + model;
   if (id === 'scythe_rifle') return 'inspect_sniper';
   return SPECIAL.has(id) ? 'inspect_' + id : 'inspect_gun';
 }
+SPECIAL.add('shredder'); // inspect_shredder
 
+SPECIAL.add('bloodcross'); // the Blood Cross blows the blood off its fingertip, every skin
 // what plays when you pull a weapon out
 const HEAVY = new Set(['minigun', 'blower', 'bowling', 'chicken']);
 export function drawFor(id, model) {
   if (model && ANIMS['draw_' + model]) return 'draw_' + model;
+  if (id === 'bloodcross') return 'draw_bloodcross';
   if (id === 'knife') return 'draw_knife';
   if (id === 'katana') return 'draw_katana';
   if (id === 'scythe') return 'draw_scythe';
   if (id === 'cards') return 'draw_cards';
   if (id === 'bow') return 'draw_bow';
+  if (id === 'scales') return 'draw_scales';
   if (['bread', 'spoon', 'slapper', 'slipper', 'popper', 'duck', 'reverse', 'cig'].includes(id)) return 'draw_melee';
+  if (id === 'shredder') return 'draw_shredder'; // up it comes, then the motor catches
   return HEAVY.has(id) ? 'draw_heavy' : 'draw_gun';
 }
+
+// katana parry (right click): the blade snaps up across the body (overshoots a hair), holds through the 0.35 s
+// window with a little drift so it doesn't look frozen, then drops back. a landed parry adds hit stop + a kick on top.
+Object.assign(ANIMS, {
+  parry_katana: { keys: [
+    K(0), K(0.05, [-0.15, 0.16, 0.02], [0.84, 1.03, 0.52], 'snap'), // snap up
+    K(0.1, [-0.13, 0.13, 0], [0.75, 0.95, 0.45]), // settle into the guard
+    K(0.34, [-0.12, 0.125, 0], [0.72, 0.93, 0.43], 'linear'), // hold
+    K(0.56, [0, 0, 0], [0, 0, 0], 'smooth'),
+  ], events: [[0.01, 'whoosh']], trail: [0, 0.07] },
+  // your swing got parried: whatever you're holding gets knocked up and away, then you get it back
+  staggered: { keys: [
+    K(0), K(0.07, [0.08, 0.12, 0.14], [0.75, -0.45, 0.65], 'snap'),
+    K(0.32, [0.06, 0.08, 0.1], [0.55, -0.32, 0.45]), K(0.62),
+  ] },
+});
 
 for (const a of Object.values(ANIMS)) a.dur = a.keys[a.keys.length - 1].t;
 
