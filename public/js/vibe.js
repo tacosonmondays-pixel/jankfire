@@ -56,7 +56,7 @@ export function addVibe(out, canvasTex, speckle) {
     for (let i = 0; i < 9; i++) { g.beginPath(); let x = rnd(s), y = 0; g.moveTo(x, y); while (y < s) { x += rnd(13) - 6; y += 4; g.lineTo(x, y); } g.stroke(); }
   }), 4);
   out.magenta = lam(canvasTex(16, (g, s) => { speckle(g, s, [220, 30, 170], 40, 2); g.fillStyle = 'rgba(60,0,40,0.3)'; for (let x = 0; x < s; x += 4) g.fillRect(x, 0, 1, s); }), 2);
-  out.asphalt = lam(canvasTex(32, (g, s) => { speckle(g, s, [66, 58, 78], 22, 2); blobs(g, s, ['rgba(255,60,200,0.12)', 'rgba(60,255,220,0.12)', 'rgba(0,0,0,0.25)'], 10, 2, 6); }), 4);
+  out.asphalt = lam(canvasTex(32, (g, s) => { speckle(g, s, [84, 82, 92], 20, 2); blobs(g, s, ['rgba(255,60,200,0.07)', 'rgba(60,255,220,0.07)', 'rgba(0,0,0,0.2)'], 10, 2, 6); }), 4); // oily
   out.wetroad = lam(canvasTex(32, (g, s) => { speckle(g, s, [40, 40, 56], 14, 2); blobs(g, s, ['rgba(255,60,200,0.18)', 'rgba(60,220,255,0.18)'], 8, 3, 8); g.fillStyle = '#ffe14d'; for (let x = 0; x < s; x += 16) g.fillRect(x, 15, 8, 2); }), 10);
   out.wetroadz = lam(canvasTex(32, (g, s) => { speckle(g, s, [40, 40, 56], 14, 2); blobs(g, s, ['rgba(255,60,200,0.18)', 'rgba(60,220,255,0.18)'], 8, 3, 8); g.fillStyle = '#ffe14d'; for (let y = 0; y < s; y += 16) g.fillRect(15, y, 2, 8); }), 10);
   out.crosswalk = lam(canvasTex(16, (g, s) => { g.fillStyle = '#2a2a38'; g.fillRect(0, 0, s, s); g.fillStyle = '#e8e8f0'; g.fillRect(0, 0, s / 2, s); }), 2);
@@ -67,6 +67,8 @@ export function addVibe(out, canvasTex, speckle) {
   out.sideorange = lam(canvasTex(16, siding([255, 150, 50], '#a85a10')), 1.2);
   out.roofteal = gloss(canvasTex(16, shingle([20, 170, 170], '#0a5a5a')), 1.5);
   out.roofpink = gloss(canvasTex(16, shingle([240, 60, 150], '#7a1050')), 1.5);
+  out.roofblue = lam(canvasTex(16, (g, s) => { speckle(g, s, [40, 100, 200], 14, 2); g.fillStyle = '#1a3a7a'; for (let x = 0; x < s; x += 4) g.fillRect(x, 0, 1, s); g.fillStyle = '#7ab0ff'; for (let x = 2; x < s; x += 4) g.fillRect(x, 0, 1, s); }), 2); // corrugated
+  out.asphalt2 = lam(canvasTex(16, (g, s) => { speckle(g, s, [70, 74, 86], 12, 2); }), 3);
   out.picket = lam(canvasTex(16, (g, s) => { g.fillStyle = '#f4f2ec'; g.fillRect(0, 0, s, s); g.fillStyle = '#b8b4c8'; for (let x = 3; x < s; x += 4) g.fillRect(x, 0, 1, s); }), 1);
   out.plywood = lam(canvasTex(16, (g, s) => { speckle(g, s, [200, 160, 100], 40, 1); }), 1.5);
   out.jersey = lam(canvasTex(16, (g, s) => { speckle(g, s, [190, 190, 196], 14, 2); for (let x = 0; x < s; x += 8) { g.fillStyle = '#e8202a'; g.fillRect(x, 2, 4, 3); g.fillStyle = '#fff'; g.fillRect(x + 4, 2, 4, 3); } }), 2);

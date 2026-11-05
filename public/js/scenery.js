@@ -9,7 +9,7 @@ const SCENES = {
   rooftop: { theme: 'city' }, // the street level (map deco) is the floor now, no skirt
   skyline: { theme: 'city' },
   suburb: { theme: 'desert', flat: true }, // the lawns just stop and the desert carries on: no cliff
-  warehouse: { theme: 'industrial', skirt: 'rock' },
+  warehouse: { theme: 'industrial', flat: true, skyline: true }, // flat ground past the fence, a city on the horizon
   desert: { theme: 'desert', skirt: 'rock' },
   bazaar: { theme: 'desert', skirt: 'rock' },
   islands: { theme: 'ocean' },
@@ -137,6 +137,20 @@ export function buildScenery(scene, map, id, voidMesh) {
       const m = new THREE.Mesh(g, towerMat);
       m.position.set(px, floorY + h / 2, pz);
       group.add(m);
+    }
+  }
+  if (cfg.skyline) { // a downtown on the horizon: a tight cluster of towers off to one side, windows lit, faded by distance
+    const c = document.createElement('canvas'); c.width = 16; c.height = 32;
+    const x = c.getContext('2d'); x.fillStyle = '#141828'; x.fillRect(0, 0, 16, 32);
+    for (let yy = 1; yy < 32; yy += 3) for (let xx = 1; xx < 16; xx += 3) { const k = Math.random(); x.fillStyle = k < 0.35 ? '#ffe9a8' : k < 0.42 ? '#ff4fd8' : k < 0.48 ? '#19e6ff' : '#262c40'; x.fillRect(xx, yy, 2, 2); }
+    const tex = new THREE.CanvasTexture(c); tex.magFilter = THREE.NearestFilter; tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    const mat = new THREE.MeshBasicMaterial({ map: tex, fog: false, color: new THREE.Color(1, 1, 1).lerp(new THREE.Color(fog), 0.3) });
+    const a0 = -2.4;
+    for (let i = 0; i < 46; i++) {
+      const a = a0 + (r() - 0.5) * 0.9, d = 480 + r() * 260, w = 18 + r() * 30, h = 50 + r() * 240 * (1 - Math.abs(a - a0));
+      const g = new THREE.BoxGeometry(w, h, w);
+      const uv = g.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * w / 10, uv.getY(k) * h / 20);
+      const m = new THREE.Mesh(g, mat); m.position.set(cx + Math.cos(a) * d, floorY + h / 2, cz + Math.sin(a) * d); group.add(m);
     }
   }
   if (cfg.theme === 'sky') { // a sea of clouds below
