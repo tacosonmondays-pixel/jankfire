@@ -145,24 +145,24 @@ def _smooth(g, up, dn):
     return out
 
 
-def hoover(notes, n, detune=0.22, voices=7, dip=4.0, glide=0.06, bright=3800.0, seed=3):
+def hoover(notes, n, detune=0.11, voices=7, dip=1.5, glide=0.05, bright=3800.0, seed=3):
     """the rave hoover: a stack of detuned saws + pulses an octave down, scooping up into each note, gliding between"""
-    pitch, gate, vel = _contour(notes, n, glide=glide, dip=dip, dip_t=0.09, vib=0.15, vib_hz=6.0)
+    pitch, gate, vel = _contour(notes, n, glide=glide, dip=dip, dip_t=0.04, vib=0.08, vib_hz=6.0)
     rng = np.random.default_rng(seed)
     f = midi_hz(pitch)
     x = np.zeros(n)
     for k in range(voices):
         d = detune * (k / (voices - 1) * 2 - 1) if voices > 1 else 0
-        drift = 1 + 0.002 * np.sin(2 * np.pi * (0.3 + 0.2 * rng.random()) * tt(n) + rng.random() * 6)
+        drift = 1 + 0.0007 * np.sin(2 * np.pi * (0.3 + 0.2 * rng.random()) * tt(n) + rng.random() * 6)
         x += saw(f * 2 ** (d / 12) * drift)
     pw = 0.5 + 0.35 * np.sin(2 * np.pi * 0.8 * tt(n))
-    x += 1.2 * pulse(f / 2, pw) + 0.9 * pulse(f * 2 ** (-12.08 / 12), 1 - pw)
+    x += 1.2 * pulse(f / 2, pw) + 0.9 * pulse(f / 2, 1 - pw)
     env = _smooth(gate, 1 - np.exp(-1 / (0.006 * SR)), 1 - np.exp(-1 / (0.07 * SR)))
     x = lp(x / voices, bright * (0.6 + 0.4 * env), 0.15) * env * np.maximum(vel, 0.0)
     return x
 
 
-def supersaw(notes, n, detune=0.18, voices=5, cut=5000.0, a=0.003, r=0.12, seed=5):
+def supersaw(notes, n, detune=0.10, voices=5, cut=5000.0, a=0.003, r=0.12, seed=5):
     """poly-ish: each note rendered separately (chords ok). notes = (t0, dur, midi|list, vel)"""
     out = np.zeros(n)
     for t0, d, ms, *rest in notes:
@@ -191,7 +191,7 @@ def stab(notes, n, cut=6000.0, decay=0.12, seed=7):
         if L <= 0: continue
         tl = tt(L); x = np.zeros(L)
         for m in ms:
-            for dd in (-0.15, 0, 0.13):
+            for dd in (-0.07, 0, 0.06):
                 x += saw(np.full(L, midi_hz(m) * 2 ** (dd / 12)))
             x += 0.6 * pulse(np.full(L, midi_hz(m - 12)), 0.3)
         env = adsr(L, 0.001, decay, 0.0, 0.05, gate=d) * 0.8 + 0.2 * np.exp(-tl / (decay * 3))
@@ -257,7 +257,7 @@ def siren(t0, dur, n, lo=72, hi=79, rate=2.0, shape='square', out=None):
     else:
         p = lo + (hi - lo) * (0.5 - 0.5 * np.cos(2 * np.pi * rate * tl))
     f = midi_hz(p)
-    x = pulse(f, 0.5) * 0.6 + saw(f * 1.005) * 0.4
+    x = pulse(f, 0.5) * 0.6 + saw(f * 1.0015) * 0.4
     x = lp(x, 3500, 0.2) * adsr(L, 0.02, 0.1, 1.0, 0.1)
     out[a0:a0 + L] += soft(x * 2, 1)
     return out

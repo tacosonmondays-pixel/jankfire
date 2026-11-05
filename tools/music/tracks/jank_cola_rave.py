@@ -8,6 +8,8 @@ from jf import inst, toys, voice
 from jf.kit import P, LowShelfFilter as P_LS, PeakFilter as P_PK, HighShelfFilter as P_HS, Reverb, Delay, Chorus, Distortion, Compressor, HighpassFilter, LowpassFilter, PeakFilter, steps, kicks, riff, shift, at_bar
 
 TITLE = 'Jank Cola Rave'
+F7 = 2793.8  # the cash register's bell, tuned to the key
+KEY = [5, 7, 8, 10, 0, 1, 3]  # F minor
 BPM = 174
 TARGET = -8.0
 
@@ -86,8 +88,9 @@ def build():
         pat = 'x..x..x.x..x..x.' if bar < DROPB else '..x...x...x..x.x'
         for b, _ in steps(pat, bar): stabs.append((b, 0.2, ch, 0.9))
     s.add('stab', inst.stab(s.notes(stabs), N))
-    orch = [(b, 0.25, [c - 12 for c in ch], v) for b, d, ch, v in stabs if (b * 4) % 16 in (0, 6, 12)]
-    s.add('orch', gm(55, s.notes(orch), N))
+    # brass section blasts on the chord (the soundfont's orchestra hit has its own chord baked in and fought the minor keys)
+    orch = [(b, 0.2, [ch[0] - 12] + ch, v) for b, d, ch, v in stabs if (b * 4) % 16 in (0, 6, 12)]
+    s.add('orch', gm(61, s.notes(orch), N))
 
     # ---------------- break: pad + siren + build
     pad = [(bar * 4, 4, CHORDS[bar % 4], 0.8) for bar in range(BREAK, DROPB)]
@@ -107,8 +110,8 @@ def build():
     for b, d, m in bel: s.place('bells', b, toys.bell(m + 12, 1.6), 0.6)
     pad2 = [(bar * 4, 4, CHORDS[bar % 4], 0.7) for bar in range(SLOMO, REV)]
     s.add('pad', inst.supersaw(s.notes(pad2), N, cut=1800, a=0.5, r=1.0))
-    s.place('vox', (SLOMO + 4) * 4, voice.say('jank', 41, 0.85, dur=1.2, bend=-4), 0.9)
-    s.place('vox', (SLOMO + 5) * 4, voice.say('cola', 39, 0.85, dur=1.5, bend=-5), 0.9)
+    s.place('vox', (SLOMO + 4) * 4, voice.say('jank', 41, 0.85, dur=1.2, bend=-4, slide=True), 0.9)
+    s.place('vox', (SLOMO + 5) * 4, voice.say('cola', 39, 0.85, dur=1.5, bend=-5, slide=True), 0.9)
     s.place('fx', SLOMO * 4, toys.can_open(2.5), 0.7)
     for bar in range(REV, DROPC):  # the rev: snare roll speeding up with the tempo
         for i in range(16): s.place('clap', bar * 4 + i / 4, inst.snare(0.08, 220 + i * 8 + (bar - REV) * 120, seed=i), 0.3 + 0.04 * i)
@@ -121,7 +124,7 @@ def build():
         s.place('fx', bar * 4, inst.crash(2.0), 0.6)
     for bar in range(DROPA, END, 8):
         if SLOMO <= bar < DROPC: continue
-        s.place('fx', bar * 4 + 7 * 4 + 2, toys.kaching(1.5), 0.85)
+        s.place('fx', bar * 4 + 7 * 4 + 2, toys.kaching(1.5, F7), 0.85)
     for bar in list(range(DROPB, SLOMO, 4)) + list(range(DROPC, OUTRO, 4)):
         s.place('vox', bar * 4, voice.say('jank', 53, 1.05, bend=-2), 0.9)
         s.place('vox', bar * 4 + 2.5, voice.say('co', 60, 1.35), 0.7)
@@ -132,11 +135,11 @@ def build():
 
     # ---------------- intro / outro: the can, a robot, the loop back
     s.place('fx', 0, toys.can_open(1.6), 0.9)
-    s.place('vox', 4 * 4, voice.say('jank', 50, 1.0, dur=0.6), 0.8)
+    s.place('vox', 4 * 4, voice.say('jank', 53, 1.0, dur=0.6), 0.8)
     s.place('vox', 5 * 4, voice.say('cola', 55, 1.3, dur=0.8), 0.8)
     s.place('fx', 4 * 4, inst.riser(float(s.t(8 * 4) - s.t(4 * 4))), 0.6)
-    s.place('fx', OUTRO * 4 + 16, toys.kaching(1.5), 0.8)
-    s.place('vox', (OUTRO + 4) * 4, voice.say('jank', 50, 1.0, dur=0.6), 0.7)
+    s.place('fx', OUTRO * 4 + 16, toys.kaching(1.5, F7), 0.8)
+    s.place('vox', (OUTRO + 4) * 4, voice.say('jank', 53, 1.0, dur=0.6), 0.7)
     s.place('vox', (OUTRO + 5) * 4, voice.say('cola', 55, 1.3, dur=0.8), 0.7)
     s.place('fx', (END - 1) * 4, inst.downer(1.4), 0.5)
     return s

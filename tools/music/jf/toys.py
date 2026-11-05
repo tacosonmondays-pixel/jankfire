@@ -18,9 +18,9 @@ def boing(note=55, length=0.7, up=7.0, wob=13.0, depth=1.2):
 
 def kazoo(notes, n, buzz=1.0, seed=11):
     """kazoo melody: a hummed voice through a buzzing membrane. scoops into notes, wobbly vibrato, nasal formants"""
-    pitch, gate, vel = _contour(notes, n, glide=0.05, dip=1.2, dip_t=0.07, vib=0.35, vib_hz=5.2, vib_delay=0.12)
+    pitch, gate, vel = _contour(notes, n, glide=0.04, dip=0.6, dip_t=0.04, vib=0.22, vib_hz=5.2, vib_delay=0.15)
     rng = np.random.default_rng(seed)
-    jitter = butter(rng.normal(0, 1, n), 18) * 0.08
+    jitter = butter(rng.normal(0, 1, n), 18) * 0.02
     f = midi_hz(pitch + jitter)
     src = saw(f) + 0.5 * pulse(f, 0.12)
     # the membrane: fast flutter of amplitude + hard asymmetric clip = that paper buzz
@@ -34,7 +34,7 @@ def kazoo(notes, n, buzz=1.0, seed=11):
 def squeak(note=88, length=0.22, seed=13):
     """squeezed toy: a breathy whistle that whoops up then drops"""
     n = ns(length); t = tt(n); u = t / length
-    p = note + 5 * np.sin(np.pi * np.minimum(u * 1.3, 1)) - 3 * u
+    p = note - 2.0 * np.exp(-t / 0.012) - 2.0 * np.maximum(u - 0.85, 0) / 0.15
     f = midi_hz(p)
     x = np.sin(2 * np.pi * np.cumsum(f) / SR) + 0.25 * np.sin(4 * np.pi * np.cumsum(f) / SR)
     x += 0.35 * bp(noise(n, seed), f, 0.9)
@@ -44,9 +44,9 @@ def squeak(note=88, length=0.22, seed=13):
 def duck(note=79, length=0.2, seed=17, squeeze=1.0):
     """rubber duck: a reedy honk, pitch rises while squeezed, falls as air rushes back. pitched so ducks can play riffs"""
     n = ns(length); t = tt(n); u = t / length
-    p = note - 1.8 + 2.0 * np.minimum(u / 0.25, 1) ** 0.6 - 4 * np.maximum(u - 0.7, 0) * squeeze
+    p = note - 1.2 * np.exp(-t / 0.012) - 2.5 * np.maximum(u - 0.82, 0) / 0.18 * squeeze
     rng = np.random.default_rng(seed)
-    f = midi_hz(p + butter(rng.normal(0, 1, n), 40) * 0.15)
+    f = midi_hz(p + butter(rng.normal(0, 1, n), 40) * 0.03)
     src = pulse(f, 0.18) + 0.4 * saw(f)
     x = bp(src, 1200, 0.7) * 1.1 + bp(src, 2400, 0.8) * 0.9 + bp(src, 3700, 0.7) * 0.5
     x += 0.25 * bp(noise(n, seed), 3000, 0.4) * (1 - u)  # air
@@ -57,11 +57,11 @@ def duck(note=79, length=0.2, seed=17, squeeze=1.0):
 def quack(note=60, length=0.24, seed=19):
     """a duck's actual quack (nasal 'waak'): for the breakdown choir"""
     n = ns(length); t = tt(n); u = t / length
-    f = midi_hz(note + 3 * np.sin(np.pi * u) - 4 * u)
+    f = midi_hz(note + 0.6 * (np.sin(np.pi * u) - 0.80) - 1.5 * np.maximum(u - 0.75, 0) / 0.25)  # the bump averages out ON the note
     src = saw(f) + 0.6 * pulse(f, 0.1)
     f1 = 500 + 400 * np.sin(np.pi * np.minimum(u * 1.6, 1)); f2 = 1300 + 600 * np.sin(np.pi * u)
     fr = np.stack([f1, f2, np.full(n, 2600.0), np.full(n, 3500.0)], 1)
-    bw = np.stack([np.full(n, 90.0), np.full(n, 120.0), np.full(n, 200.0), np.full(n, 300.0)], 1)
+    bw = np.stack([np.full(n, 220.0), np.full(n, 260.0), np.full(n, 320.0), np.full(n, 400.0)], 1)  # wide, so they don't ring at their own pitch
     g = np.stack([np.full(n, 1.0), np.full(n, 0.8), np.full(n, 0.5), np.full(n, 0.3)], 1)
     x = resonators(np.ascontiguousarray(src), np.ascontiguousarray(fr), np.ascontiguousarray(bw), np.ascontiguousarray(g))
     return soft(norm(x) * 1.6, 1) * np.minimum(1, t / 0.01) * np.clip((length - t) / 0.06, 0, 1)
@@ -86,13 +86,13 @@ def bell(note=88, length=1.2):
     return x * np.minimum(1, t / 0.001) * 0.5
 
 
-def kaching(length=1.5):
-    """'ka' (two quick drawer ratchets) + 'ching'"""
+def kaching(length=1.5, f=2350.0):
+    """'ka' (two quick drawer ratchets) + 'ching' (f = the bell's pitch: tune it to the song)"""
     n = ns(length); out = np.zeros(n)
     for d in (0.0, 0.05):
         c = hp(noise(ns(0.03)), 2000) * np.exp(-tt(ns(0.03)) / 0.006)
         out[ns(d):ns(d) + len(c)] += c * 0.8
-    c = ching(length - 0.08)
+    c = ching(length - 0.08, f)
     out[ns(0.08):ns(0.08) + len(c)] += c
     return out
 
@@ -184,7 +184,7 @@ def scratch(length=0.4, seed=47):
 
 def whistle(notes, n, seed=53):
     """a person whistling (western standoff): pure tone, breathy, wide slow vibrato, little scoops"""
-    pitch, gate, vel = _contour(notes, n, glide=0.08, dip=0.8, dip_t=0.08, vib=0.25, vib_hz=5.0, vib_delay=0.2)
+    pitch, gate, vel = _contour(notes, n, glide=0.06, dip=0.4, dip_t=0.04, vib=0.18, vib_hz=5.0, vib_delay=0.2)
     f = midi_hz(pitch)
     ph = np.cumsum(f) / SR
     x = np.sin(2 * np.pi * ph) + 0.04 * np.sin(4 * np.pi * ph)

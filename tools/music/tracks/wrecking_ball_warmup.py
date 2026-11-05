@@ -10,6 +10,7 @@ from jf.kit import (P, Reverb, Delay, Chorus, Distortion, Compressor, HighpassFi
                     LowShelfFilter, HighShelfFilter, steps, kicks, riff, shift, at_bar, acidpat)
 
 TITLE = 'Wrecking Ball Warm-Up'
+KEY = [0, 2, 3, 5, 7, 8, 10, 11]  # C minor (+ B for the G chord)
 BPM = 200
 TARGET = -8.0
 
@@ -18,9 +19,19 @@ KICKNOTE = [nm('G1'), nm('Ab1'), nm('Bb1'), nm('G1')]
 CHORDS = [[nm('C4'), nm('Eb4'), nm('G4')], [nm('C4'), nm('Eb4'), nm('Ab4')], [nm('D4'), nm('F4'), nm('Bb4')], [nm('D4'), nm('G4'), nm('B4')]]
 ROOT = [nm('C2'), nm('Ab1'), nm('Bb1'), nm('G1')]
 
-HOOVER = riff('C4:6 Eb4:2 G4:4 F4:4 Eb4:4 D4:4 C4:4 Bb3:4 Ab3:6 C4:2 Eb4:4 Ab4:4 G4:8 D4:4 B3:4')
-ALARM = ["C5 . C5 G5' . C5 Eb5~ D5 C5 . G4' . C5 . Bb4~ C5",
-         "C5 . C5 G5' . C5 Ab5~ G5 Eb5 . D5' . B4 . D5~ G5"]
+HOOVER = riff('C4:6 Eb4:2 G4:4 F4:4 Eb4:4 C4:4 Ab3:4 C4:4 Bb3:6 D4:2 F4:4 Bb4:4 G4:8 D4:4 B3:4')  # Cm Ab Bb G
+# the alarm riff as chord degrees (R root, 5 fifth, 3 third, 2 step, L low fifth, 7 low seventh), filled in per chord
+ALARM = "R . R 5' . R 3~ 2 R . L' . R . 7~ R"
+ALARM_CH = [dict(R='C5', **{'5': 'G5', '3': 'Eb5', '2': 'D5', 'L': 'G4', '7': 'Bb4'}),
+            dict(R='Ab4', **{'5': 'Eb5', '3': 'C5', '2': 'Bb4', 'L': 'Eb4', '7': 'G4'}),
+            dict(R='Bb4', **{'5': 'F5', '3': 'D5', '2': 'C5', 'L': 'F4', '7': 'Ab4'}),
+            dict(R='G4', **{'5': 'D5', '3': 'B4', '2': 'Ab4', 'L': 'D4', '7': 'F4'})]
+
+
+def alarm_bar(bar):
+    ch = ALARM_CH[bar % 4]
+    toks = [t if t == '.' else ch[t[0]] + t[1:] for t in ALARM.split()]
+    return acidpat(' '.join(toks), bar, gate=0.8)
 
 
 def tile(r, bar0, bar1):
@@ -62,10 +73,10 @@ def build():
         for b, _ in steps('..x...x...x...x.', bar): s.place('hats', b, inst.openhat(0.1, 8000), 0.8)
     for bar, words in ((0, ('one', 'two', 'three', 'four')), (2, ('one', 'two', 'three', 'four')), (4, ('faster',)), (6, ('faster',))):
         for i, w in enumerate(words):
-            s.place('coach', bar * 4 + i, voice.say(w, 52 + (2 if bar >= 4 else 0), 1.05, seed=bar * 4 + i, bend=-2), 1.0)
+            s.place('coach', bar * 4 + i, voice.say(w, 51 if bar < 4 else 55, 1.05, seed=bar * 4 + i, bend=-2), 1.0)
     for bar, w in ((COOL, 'breathe'), (COOL + 2, 'breathe'), (COOL + 4, 'four'), (COOL + 6, 'two')):
         s.place('coach', bar * 4, voice.say(w, 48, 1.0, dur=0.7 if w == 'breathe' else None, bend=-3), 1.0)
-    s.place('coach', (A - 1) * 4 + 2, voice.say('go', 57, 1.1), 1.0)
+    s.place('coach', (A - 1) * 4 + 2, voice.say('go', 55, 1.1), 1.0)
     s.place('fx', 4 * 4, inst.riser(float(s.t(A * 4) - s.t(4 * 4)), 400, 11000), 0.8)
 
     # ---------------- kick: 4/4 from bar 4 (rides the ramp), rolls, half-time in the swing
@@ -88,7 +99,7 @@ def build():
     # ---------------- alarm riff (gnarly square acid), hoover theme, stabs
     al = []
     for bar in list(range(A, BREAK)) + list(range(DROP + 8, SWING)) + list(range(DROP2, COOL)):
-        al += shift(acidpat(ALARM[bar % 2], bar, gate=0.8), 0, [0, -4, -2, -5][bar % 4] if bar % 2 else 0)
+        al += alarm_bar(bar)
     s.add('alarm', inst.acid(s.notes(al), N, wave='square', cut=1400, envmod=4000, res=0.55, decay=0.12, drive=3.0))
     hv = tile(HOOVER, B, BREAK) + tile(HOOVER, DROP, SWING) + tile(HOOVER, DROP2 + 8, COOL)
     s.add('hoover', inst.hoover(s.notes(hv), N, dip=5.0))
@@ -117,8 +128,8 @@ def build():
             b = bar * 4 + i / div; u = (b - (BREAK + 4) * 4) / 16
             s.place('clap', b, inst.snare(0.07, 220 + u * 160, seed=i), 0.25 + 0.6 * u)
     s.place('fx', (BREAK + 4) * 4, inst.riser(float(s.t(DROP * 4) - s.t((BREAK + 4) * 4))), 0.7)
-    s.add('siren', inst.siren(float(s.t((DROP2 + 8) * 4)), float(s.t(COOL * 4) - s.t((DROP2 + 8) * 4)), N, 72, 84, rate=0.8, shape='sweep'))
+    s.add('siren', inst.siren(float(s.t((DROP2 + 8) * 4)), float(s.t(COOL * 4) - s.t((DROP2 + 8) * 4)), N, 72, 79, rate=1.6))
     s.place('coach', SWING * 4, voice.say('faster', 55, 1.05), 1.0)
-    s.place('coach', (DROP2 - 1) * 4 + 2, voice.say('go', 57, 1.1), 1.0)
+    s.place('coach', (DROP2 - 1) * 4 + 2, voice.say('go', 55, 1.1), 1.0)
     s.repeat((DROP2 - 1) * 4 + 3, 1, 0.125)
     return s

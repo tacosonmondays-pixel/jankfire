@@ -9,6 +9,7 @@ from jf.kit import (P, Reverb, Delay, Chorus, Distortion, Compressor, HighpassFi
                     LowShelfFilter, HighShelfFilter, steps, kicks, riff, shift, at_bar)
 
 TITLE = 'Rubber Duck Hardcore'
+KEY = [2, 4, 6, 7, 9, 11, 1]  # D major / B minor
 BPM = 190
 TARGET = -8.0
 
@@ -51,8 +52,11 @@ def build():
     s.bus('fx', 1.0, P([Reverb(0.5, 0.5, 0.2, 0.9, 1.0)]), duck=0.2)
     s.bus('pad', 1.0, P([HighpassFilter(200), Chorus(0.3, 0.3, 8, 0, 0.5), Reverb(0.8, 0.5, 0.4, 0.7, 1.0)]), width=1.0, duck=0.5)
 
-    tune = lambda b: KICKNOTE[int(b // 4) % 4]
-    chord = lambda bar: bar % 4
+    # chord of a bar. drop 2 starts on bar 71 (after the waltz + the squeak bar), so from there the 4-bar
+    # progression counts from 71, or the ducks/lead (tiled from 71) would play a bar out of step with the piano
+    ph = lambda bar: (bar - (DROP2 + 1)) % 4 if bar >= DROP2 + 1 else bar % 4
+    tune = lambda b: KICKNOTE[ph(int(b // 4))]
+    chord = ph
 
     # ---------------- kick: 4/4 stomp, rolls on the phrase ends
     kb = []
@@ -131,10 +135,10 @@ def build():
     # ---------------- drop 2: alarm, vocals
     s.add('siren', inst.siren(float(s.t((DROP2 + 17) * 4)), float(s.t(OUTRO * 4) - s.t((DROP2 + 17) * 4)), N, 78, 83, rate=3.17), 0.8)
     for bar in list(range(DROP, WALTZ, 4)) + list(range(DROP2 + 1, OUTRO, 4)):
-        s.place('vox', bar * 4 + 3, voice.say('duck', 52, 1.1, bend=-2), 0.9)
+        s.place('vox', bar * 4 + 3, voice.say('duck', 54, 1.1, bend=-2), 0.9)
     for bar in (DROP, A):
         s.place('fx', bar * 4, inst.impact(2.0, 23), 0.9); s.place('fx', bar * 4, inst.crash(2.0), 0.6)
     s.place('vox', (DROP + 15) * 4 + 2, voice.stutter('yeah', 3, gap=float(s.t(0.5) - s.t(0)), note=55, size=1.2), 0.9)
-    s.place('vox', (OUTRO + 4) * 4, voice.say('duck', 48, 1.0, dur=0.5), 0.8)
+    s.place('vox', (OUTRO + 4) * 4, voice.say('duck', 47, 1.0, dur=0.5), 0.8)
     s.place('fx', (END - 1) * 4, inst.downer(1.2), 0.5)
     return s

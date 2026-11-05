@@ -9,6 +9,7 @@ from jf.kit import (P, Reverb, Delay, Chorus, Distortion, Compressor, HighpassFi
                     LowShelfFilter, HighShelfFilter, steps, kicks, riff, shift, at_bar)
 
 TITLE = 'Hung Jury Hardcore'
+KEY = [2, 4, 5, 7, 9, 10, 0, 1]  # D minor (+ C# for the A chord)
 BPM = 180
 TARGET = -8.0
 
@@ -61,10 +62,10 @@ def build():
         s.place('kick', b, inst.gabber_kick(nm('A1'), round(float(s.t(b + 1) - s.t(b)) - 0.002, 3)), 1.0, pan=-0.85); s.kick(b)
     for i in range(12):
         b = HUNG * 4 + i * 4 / 3
-        s.place('kick', b, inst.gabber_kick(nm('Bb1'), round(float(s.t(b + 4 / 3) - s.t(b)) - 0.002, 3)), 1.0, pan=0.85)
+        s.place('kick', b, inst.gabber_kick(nm('A1'), round(float(s.t(b + 4 / 3) - s.t(b)) - 0.002, 3)), 1.0, pan=0.85)
         s.place('vox', b + 0.5, voice.say('no', 50, 1.05, seed=i, bend=-3), 0.9, pan=0.85)
     for i in range(0, 16, 1):
-        s.place('vox', HUNG * 4 + i + 0.5, voice.say('yes', 55, 1.2, seed=i + 40, bend=2), 0.8, pan=-0.85)
+        s.place('vox', HUNG * 4 + i + 0.5, voice.say('yes', 57, 1.2, seed=i + 40, bend=2), 0.8, pan=-0.85)
 
     # ---------------- hats / claps
     for bar in range(A, END):
@@ -81,16 +82,16 @@ def build():
 
     # ---------------- gavels: three knocks to open, on the 1 of every other bar in the drops, the verdict
     for b in (6 * 4, 6 * 4 + 1, 6 * 4 + 2):
-        s.place('gavel', b, toys.gavel(0.6, 480), 1.0)
+        s.place('gavel', b, toys.gavel(0.6, 440.0), 1.0)
     s.place('vox', 7 * 4, voice.say('order', 48, 1.0, dur=0.7, bend=-3), 1.0)
     for bar in list(range(A, BREAK, 2)) + list(range(DROP, HUNG, 2)) + list(range(DROP2, OUTRO, 2)):
-        s.place('gavel', bar * 4, toys.gavel(0.4, 520, seed=bar), 0.6)
+        s.place('gavel', bar * 4, toys.gavel(0.4, 587.3, seed=bar), 0.6)
     for b in (DROP2 * 4 - 3, DROP2 * 4 - 2, DROP2 * 4 - 1):
-        s.place('gavel', b, toys.gavel(0.6, 460), 1.1)
+        s.place('gavel', b, toys.gavel(0.6, 440.0), 1.1)
     s.place('vox', DROP2 * 4 - 3, voice.say('order', 50, 1.0, dur=0.55, bend=-3), 1.0)
 
     # ---------------- kazoo theme + hoover riff
-    kz = tile(THEME, A, B, 8) + tile(THEME, B + 8, BREAK, 8) + tile(THEME, BREAK + 2, CLOCK, 8) + tile(THEME, DROP, HUNG, 8) + tile(THEME, DROP2 + 8, OUTRO, 8)
+    kz = tile(THEME, A, B, 8) + tile(THEME, B + 8, BREAK, 8) + tile(THEME, BREAK, CLOCK, 8) + tile(THEME, DROP, HUNG, 8) + tile(THEME, DROP2 + 8, OUTRO, 8)
     s.add('kazoo', toys.kazoo(s.notes(kz), N))
     hv = tile(HOOVER, B, BREAK) + tile(HOOVER, DROP + 8, HUNG) + tile(HOOVER, DROP2, OUTRO)
     s.add('hoover', inst.hoover(s.notes(hv), N))
@@ -98,7 +99,7 @@ def build():
     # ---------------- vocals
     for bar in list(range(B, BREAK, 4)) + list(range(DROP, HUNG, 4)) + list(range(DROP2, OUTRO, 4)):
         s.place('vox', bar * 4 + 3, voice.say('guilty', 52, 1.05, bend=-2), 0.9)
-    s.place('vox', CLOCK * 4 + 7, voice.say('guilty', 50, 1.0, dur=0.8, bend=-5), 1.1)
+    s.place('vox', CLOCK * 4 + 7, voice.say('guilty', 50, 1.0, dur=0.8, bend=-2), 1.1)
 
     # ---------------- the jury is out: murmur under the organ, then a clock ticks in the silence
     rng = np.random.default_rng(11)
@@ -109,12 +110,12 @@ def build():
         s.place('jury', b, voice.say(word, rng.uniform(44, 56), rng.uniform(0.9, 1.3), seed=i, bend=rng.uniform(-3, 2)), rng.uniform(0.4, 1.0), pan=rng.uniform(-0.9, 0.9))
     for i in range(8):
         b = CLOCK * 4 + i
-        s.place('clock', b, toys.gavel(0.08, 1900 if i % 2 == 0 else 1500, seed=i), 0.8)
+        s.place('clock', b, toys.gavel(0.08, 1760.0 if i % 2 == 0 else 1318.5, seed=i), 0.8)
     s.place('fx', CLOCK * 4 + 4, inst.riser(float(s.t(DROP * 4) - s.t(CLOCK * 4 + 4)), 400, 10000), 0.8)
     for bar in (A, DROP, DROP2):
         s.place('fx', bar * 4, inst.impact(2.0, 21), 0.9); s.place('fx', bar * 4, inst.crash(2.0), 0.6)
 
     # ---------------- alarm in drop 2's second half
-    s.add('siren', inst.siren(float(s.t((DROP2 + 12) * 4)), float(s.t(OUTRO * 4) - s.t((DROP2 + 12) * 4)), N, 74, 81, rate=1.5, shape='sweep'))
+    s.add('siren', inst.siren(float(s.t((DROP2 + 12) * 4)), float(s.t(OUTRO * 4) - s.t((DROP2 + 12) * 4)), N, 74, 81, rate=1.5))
     s.place('vox', (OUTRO + 4) * 4, voice.say('order', 46, 0.95, dur=0.8, bend=-4), 0.8)
     return s

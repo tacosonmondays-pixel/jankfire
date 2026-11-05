@@ -59,3 +59,18 @@ def acidpat(text, bar0=0, octave=0, gate=0.55, vel=1.0):
         name = tok.replace("'", '').replace('~', '')
         out.append((bar0 * 4 + i / 4, 0.25 if sl else 0.25 * gate, nm(name) + 12 * octave, vel, int(acc), int(sl)))
     return out
+
+
+def diatonic(notes, steps, scale, sharpen=()):
+    """move notes `steps` scale steps along `scale` (pitch classes, C=0). sharpen = pitch classes to raise a
+    semitone afterwards (e.g. the leading tone in a V chord). keeps acid riffs in key when they follow the chords"""
+    sc = sorted(scale)
+    out = []
+    for b, d, m, *r in notes:
+        pc = m % 12; o = m // 12
+        if pc not in sc: out.append((b, d, m, *r)); continue
+        i = sc.index(pc) + steps
+        nm2 = (o + i // len(sc)) * 12 + sc[i % len(sc)]
+        if nm2 % 12 in sharpen: nm2 += 1
+        out.append((b, d, nm2, *r))
+    return out

@@ -6,9 +6,10 @@ from jf.song import Song
 from jf.dsp import ns, nm, midi_hz
 from jf import inst, toys, voice
 from jf.kit import (P, Reverb, Delay, Chorus, Distortion, Compressor, HighpassFilter, LowpassFilter, PeakFilter, Phaser,
-                    LowShelfFilter, HighShelfFilter, steps, kicks, riff, shift, at_bar, acidpat)
+                    LowShelfFilter, HighShelfFilter, steps, kicks, riff, shift, at_bar, acidpat, diatonic)
 
 TITLE = 'Banana Peel Acid'
+KEY = [4, 6, 7, 9, 11, 0, 2]  # E minor
 BPM = 150
 TARGET = -8.0
 QUALITY = 5  # busy, noisy track: q6 came out at 4.6 MB
@@ -21,8 +22,8 @@ ACID1 = ["E2 E2' . E3~ D3 E2 . B2' E2 . G2~ A2 E2 E3' . D3",
          "E2 E2' . E3~ D3 E2 . F2' E2 . G2~ A2 B2' . A2~ G2"]
 ACID2 = ["B3' . B3 . A3~ G3 . E3 . B3' . D4~ E4 . B3 .",
          "B3' . B3 . A3~ G3 . E3 F3' . E3 . D3~ E3 . ."]
-SQUEAKS = riff('B5:2 G5:2 E5:2 G5:2 F#5:4 D5:4 E5:2 G5:2 B5:2 D6:2 B5:8 '
-               'C6:2 B5:2 A5:2 G5:2 F#5:4 A5:4 G5:2 F#5:2 E5:2 D#5:2 E5:8')
+SQUEAKS = riff('G5:2 E5:2 C5:2 E5:2 G5:4 E5:4 C6:2 B5:2 G5:2 E5:2 G5:8 '    # over C
+               'A5:2 F#5:2 D5:2 F#5:2 A5:4 F#5:4 D6:2 C6:2 A5:2 F#5:2 A5:8')  # over D
 
 
 def tempo_map():
@@ -38,7 +39,7 @@ def tempo_map():
 def acid_sec(pats, bar0, bar1, octave=0):
     out = []
     for bar in range(bar0, bar1):
-        out += shift(acidpat(pats[bar % 2], bar), 0, SEMIS[(bar // 4) % 4] + 12 * octave)
+        out += shift(diatonic(acidpat(pats[bar % 2], bar), [0, 0, -2, -1][(bar // 4) % 4], KEY), 0, 12 * octave)  # E E C D along E minor
     return out
 
 
@@ -102,13 +103,13 @@ def build():
     for bar in SLIPS:
         b = bar * 4 + 2
         s.place('peel', b - 0.1, toys.peel(0.3, seed=bar), 1.0)
-        s.add('whistle', toys.slidewhistle(float(s.t(b)), float(s.t(b + 1.8) - s.t(b)), N, 70, 95, up=False))
+        s.add('whistle', toys.slidewhistle(float(s.t(b)), float(s.t(b + 1.8) - s.t(b)), N, 71, 95, up=False))
         s.place('toys', b + 2, toys.bonk(nm('C4'), 0.3), 1.0)
     for bar in range(B, OUTRO, 8):
         if bar not in (BREAK,): s.place('vox', bar * 4 + 4 * 3 + 3, voice.say('slip', 55, 1.15, bend=3), 0.8)
 
     # ---------------- break: toy squeak tune
-    sq = at_bar(SQUEAKS, BREAK) + at_bar(SQUEAKS, BREAK + 4)
+    sq = at_bar(SQUEAKS[:11], BREAK) + at_bar(SQUEAKS[11:], BREAK + 4)  # break bars 40-43 are C, 44-47 are D
     for b, d, m in sq:
         s.place('squeak', b, toys.squeak(m, min(0.25, float(s.t(b + d) - s.t(b)) * 0.95), seed=int(b * 9)), 1.0, pan=0.25 * np.sin(b))
     for bar in range(BREAK + 4, DROP):
@@ -124,7 +125,7 @@ def build():
     f = FALL * 4
     s.place('peel', f + 4, toys.peel(0.5, seed=99), 1.2)
     s.add('whistle', toys.slidewhistle(float(s.t(f + 4)), float(s.t(f + 14) - s.t(f + 4)), N, 64, 98, up=False, wob=0.6), 1.2)
-    s.place('vox', f + 6, voice.say('ah', 57, 1.1, dur=2.5, bend=-12, vib=0.6), 1.0)
+    s.place('vox', f + 6, voice.say('ah', 57, 1.1, dur=2.5, bend=-12, vib=0.6, slide=True), 1.0)
     s.place('toys', f + 14, toys.bonk(nm('G3'), 0.4), 1.3)
     s.place('toys', f + 14.5, toys.boing(nm('E3'), 0.8, up=12), 0.9)
     s.place('vox', f + 15, voice.say('yeah', 52, 1.0, bend=-1), 0.9)

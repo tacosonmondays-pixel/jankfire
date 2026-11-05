@@ -6,9 +6,10 @@ from jf.song import Song
 from jf.dsp import ns, nm, midi_hz
 from jf import inst, toys, voice
 from jf.kit import (P, Reverb, Delay, Chorus, Distortion, Compressor, HighpassFilter, LowpassFilter, PeakFilter,
-                    LowShelfFilter, HighShelfFilter, Phaser, steps, kicks, riff, shift, at_bar, acidpat)
+                    LowShelfFilter, HighShelfFilter, Phaser, steps, kicks, riff, shift, at_bar, acidpat, diatonic)
 
 TITLE = 'Spoon Fight Tekno'
+KEY = [9, 11, 0, 2, 4, 5, 7]  # A minor
 BPM = 155
 TARGET = -8.0
 
@@ -26,8 +27,8 @@ STANDOFF_TUNE = riff('E5:4 A5:2 E5:2 A5:6 _:2 G5:2 F5:2 E5:2 D5:2 E5:6 _:2 '
 def acid_section(pats, bar0, bar1, transpose_every2=True):
     out = []
     for bar in range(bar0, bar1):
-        semis = (ROOTS[(bar // 2) % 4] - ROOTS[0]) if transpose_every2 else 0
-        out += shift(acidpat(pats[bar % 2], bar), 0, semis)
+        steps_ = [0, 0, -2, -1][(bar // 2) % 4] if transpose_every2 else 0  # A A F G, moved along A minor
+        out += diatonic(acidpat(pats[bar % 2], bar), steps_, KEY)
     return out
 
 
@@ -82,18 +83,18 @@ def build():
         pat = 'x.xxx.xxx.xxx.xx' if (bar >= A and not BREAK <= bar < DROP2) else 'x...x...x...x.x.'
         for b, c in steps(pat, bar):
             off = (b * 4) % 4
-            f = [3100, 2650, 3400, 2900][int(off)] * rng.uniform(0.99, 1.01)
+            f = [3136.0, 2637.0, 3520.0, 2349.3][int(off)]  # spoons tuned to G E A D
             s.place('perc', b, toys.clink(f, 0.2, seed=int(b * 16)), (1.0 if off == 2 else 0.55) * rng.uniform(0.8, 1.0), pan=rng.uniform(-0.5, 0.5))
         if bar >= A and not BREAK <= bar < DROP2:
             for b, _ in steps('..x...x...x...x.', bar): s.place('hats', b, inst.openhat(0.1, 8000))
         if B <= bar < BREAK or DROP2 <= bar < STANDOFF or DROP3 <= bar < OUTRO:
             for b in (bar * 4 + 1, bar * 4 + 3): s.place('clap', b, inst.clap(0.2, 1500))
         if bar % 8 == 7 and bar >= A:  # spoon rattle fill
-            for i in range(8): s.place('perc', bar * 4 + 3 + i / 8, toys.clink(rng.uniform(2500, 4200), 0.15, seed=i), 0.6, pan=(i % 2) * 1.2 - 0.6)
+            for i in range(8): s.place('perc', bar * 4 + 3 + i / 8, toys.clink([2637.0, 3136.0, 3520.0, 4186.0][i % 4], 0.15, seed=i), 0.6, pan=(i % 2) * 1.2 - 0.6)
 
     # ---------------- oi oi oi (four slightly different robots)
     def oi(beat, note, gain=1.0):
-        for k, (dn, sz, dt, p) in enumerate(((0, 1.0, 0, 0), (0.15, 1.1, 0.008, -0.6), (-0.1, 0.92, 0.015, 0.6), (12, 1.25, 0.004, 0.2))):
+        for k, (dn, sz, dt, p) in enumerate(((0, 1.0, 0, 0), (0, 1.1, 0.008, -0.6), (0, 0.92, 0.015, 0.6), (12, 1.25, 0.004, 0.2))):
             s.place('vox', beat + dt, voice.say('oi', note + dn, sz, seed=k * 7 + int(beat), bend=-2.5), gain * (0.5 if k == 3 else 0.8), pan=p)
     for bar in list(range(B, BREAK)) + list(range(DROP3, OUTRO)):
         if bar % 2 == 1:
@@ -123,8 +124,8 @@ def build():
     s.place('wind', STANDOFF * 4, toys.wind(float(s.t(DROP3 * 4) - s.t(STANDOFF * 4)) + 1.0))
     for bar in range(STANDOFF, DROP3):
         for b in (bar * 4, bar * 4 + 1.5, bar * 4 + 2, bar * 4 + 3.5):
-            s.place('perc', b, toys.clink(5200, 0.25, seed=int(b * 3)), 0.25, pan=0.5)
+            s.place('perc', b, toys.clink(5274.0, 0.25, seed=int(b * 3)), 0.25, pan=0.5)
         s.place('kick', bar * 4, inst.tek_kick(nm('A1'), 0.6), 0.5); s.kick(bar * 4)
-    s.place('toys', DROP3 * 4 - 0.5, toys.clink(2400, 0.6) + toys.clink(2900, 0.6), 1.2)
+    s.place('toys', DROP3 * 4 - 0.5, toys.clink(2637.0, 0.6) + toys.clink(3520.0, 0.6), 1.2)
     s.place('vox', DROP3 * 4 - 1, voice.say('oi', 55, 1.0, dur=0.3, bend=-4), 1.1)
     return s

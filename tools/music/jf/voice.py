@@ -55,8 +55,10 @@ WORDS = {
 }
 
 
-def say(word, note=50, size=1.0, dur=None, bend=-1.5, breath=0.05, seed=0, vib=0.0):
-    """render one word (key of WORDS or a phoneme list). dur stretches it. returns mono"""
+def say(word, note=50, size=1.0, dur=None, bend=-1.5, breath=0.05, seed=0, vib=0.0, slide=False):
+    """render one word (key of WORDS or a phoneme list). dur stretches it. returns mono.
+    bend: the word starts this many semitones off and settles onto `note` in ~50 ms (so it's in tune), or with
+    slide=True it glides across the whole word (for deliberate slurs and screams)"""
     seq = WORDS[word] if isinstance(word, str) else word
     total = sum(d for _, d in seq)
     k = (dur / total) if dur else 1.0
@@ -101,7 +103,8 @@ def say(word, note=50, size=1.0, dur=None, bend=-1.5, breath=0.05, seed=0, vib=0
     for j in range(4): F[:, j] = butter(np.pad(F[:, j], (ns(0.05), 0), mode='edge'), 14)[ns(0.05):]  # smooth glides
     vamp = butter(vamp, 60); namp = butter(namp, 80)
     # glottal source: saw + jitter, tilted down
-    f0 = midi_hz(note + bend * (t / total) + vib * np.sin(2 * np.pi * 5.5 * t) + butter(rng.normal(0, 1, n), 20) * 0.1)
+    contour = bend * (t / total) if slide else -bend * np.exp(-t / 0.035)
+    f0 = midi_hz(note + contour + vib * np.sin(2 * np.pi * 5.5 * t) + butter(rng.normal(0, 1, n), 20) * 0.03)
     g = lp(saw(f0), 2500 * size, 0.0) + 0.3 * saw(f0)
     asp = noise(n, seed + 7) * (namp + breath * vamp)
     exc = g * vamp + asp
@@ -115,6 +118,7 @@ def say(word, note=50, size=1.0, dur=None, bend=-1.5, breath=0.05, seed=0, vib=0
 
 def stutter(word, reps=3, gap=0.09, chop=0.06, **kw):
     """'J-J-J-JANK': the first chop of the word repeated, then the whole thing"""
+    kw.setdefault('bend', 0.0)  # the chops are the word's first 60 ms: no settling scoop there, or they repeat sharp
     w = say(word, **kw)
     c = w[:ns(chop)] * np.linspace(1, 0.2, ns(chop)) ** 0.3
     out = np.zeros(ns(gap) * reps + len(w))
