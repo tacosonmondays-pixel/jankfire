@@ -349,7 +349,7 @@ function cityBeyond(D, y, S, R, r, o) {
       if (x + 20 > S) D.add(S, y - 1, -S, x + 20, y, S, 'asphaltn');
     }
     D.add(x, y - 1, zp, x + 20, y + 0.25, zp + 24, 'lawn');
-    D.add(x, y - 1, zp + 24, x + 20, y + 0.3, zp + 33, 'sidewalk');
+    D.add(x, y - 1, zp + 24, x + 20, y + 0.3, zp + 33, 'pavecity'); // the promenade: the city's own pavement, not a pale strip
     D.add(x, y - 8, zp + 33, x + 20, y + 0.9, zp + 33.6, 'stone'); // the sea wall
     if (((x / 20) | 0) % 3 === 0) lollipop(D.local(x + 6 + r() * 8, zp + 6 + r() * 12, 0, y + 0.25), 0, 0, 3.5 + r() * 2, r);
     if (((x / 20) | 0) % 4 === 1) { D.add(x + 8, y + 0.3, zp + 25, x + 11, y + 0.75, zp + 25.8, 'wood'); streetlight(D.local(0, 0, 0, y + 0.3), x + 3, zp + 31, 1); }
@@ -367,13 +367,11 @@ function cityBeyond(D, y, S, R, r, o) {
   }
   // ---- long avenues on the diagonal (each a little higher than the last, so crossings never share a plane)
   const aves = (o.avenues || []).map(([ax, az, a], k) => ({ ax, az, ux: Math.cos(a), uz: Math.sin(a), a, k }));
-  const aveDist = (x, z) => Math.min(1e9, ...aves.map((v) => Math.abs((x - v.ax) * v.uz - (z - v.az) * v.ux)));
   // the tower grid's own roads, carried on out of the grid into the city ([x0, z0, x1, z1] along one axis; south ones run
   // down to the waterfront), so no road just stops at the edge of the grid. same texture in world space: the lines run on
   const streets = (o.streets || []).map(([x0, z0, x1, z1]) => (x0 === x1
     ? { x0: x0 - 9, x1: x0 + 9, z0: Math.max(-R, Math.min(z0, z1)), z1: Math.min(Math.max(z0, z1), park(x0) - 1), alongZ: true }
     : { x0: Math.max(-R, Math.min(x0, x1)), x1: Math.min(R, Math.max(x0, x1)), z0: z0 - 9, z1: z0 + 9, alongZ: false }));
-  const nearStreet = (x, z, m) => streets.some((q) => Math.hypot(Math.max(q.x0 - 3 - x, 0, x - q.x1 - 3), Math.max(q.z0 - 3 - z, 0, z - q.z1 - 3)) < m);
   for (const q of streets) {
     if (q.x1 - q.x0 < 1 || q.z1 - q.z0 < 1) continue;
     D.add(q.x0, y, q.z0, q.x1, y + 0.08, q.z1, q.alongZ ? 'wetroadz' : 'wetroad');
@@ -394,9 +392,25 @@ function cityBeyond(D, y, S, R, r, o) {
   let acc = r() * Math.PI * 2;
   for (let k = 0; k < K; k++) { cuts.push(acc); acc += (Math.PI * 2 / K) * (0.7 + r() * 0.6); }
   const sector = (x, z) => { let a = Math.atan2(z, x); for (let k = K - 1; k >= 0; k--) { let d = a - cuts[k]; while (d < 0) d += Math.PI * 2; let w = (k + 1 < K ? cuts[k + 1] : cuts[0] + Math.PI * 2) - cuts[k]; while (w <= 0) w += Math.PI * 2; if (d < w) return k; } return 0; };
-  // blocks from neighbouring districts can collide along the seam (inside one district the grid keeps them apart)
-  const near = (x, z, rad, k) => { for (let i = Math.floor((x - rad) / HC) - 1; i <= Math.floor((x + rad) / HC) + 1; i++) for (let j = Math.floor((z - rad) / HC) - 1; j <= Math.floor((z + rad) / HC) + 1; j++) for (const q of hash.get(i * 9973 + j) || []) if (q[3] !== k && Math.hypot(q[0] - x, q[1] - z) < (q[2] + rad) * 0.9) return true; return false; };
-  const keep = (x, z, rad, k) => { const i = Math.floor(x / HC), j = Math.floor(z / HC), key = i * 9973 + j; if (!hash.has(key)) hash.set(key, []); hash.get(key).push([x, z, rad, k]); };
+  // exact tests on a block's real (turned) footprint b = { cx, cz, hw, hd, ux, uz }: it must stay clear of every avenue
+  // and street with its sidewalks, of the other blocks, and keep all four corners on land. (checking from the middle
+  // alone let big or turned blocks poke 10+ m out over the roads)
+  const ext = (b, nx, nz) => b.hw * Math.abs(b.ux * nx + b.uz * nz) + b.hd * Math.abs(-b.uz * nx + b.ux * nz); // half its width along a direction
+  const clearOfRoads = (b) => {
+    for (const v of aves) { const nx = -v.uz, nz = v.ux; if (Math.abs((b.cx - v.ax) * nx + (b.cz - v.az) * nz) - ext(b, nx, nz) < 12) return false; }
+    for (const q of streets) { // separating axes: world x, world z, the block's own two
+      const x0 = q.x0 - 4, x1 = q.x1 + 4, z0 = q.z0 - 4, z1 = q.z1 + 4, rcx = (x0 + x1) / 2, rcz = (z0 + z1) / 2, rhx = (x1 - x0) / 2, rhz = (z1 - z0) / 2;
+      if (Math.abs(b.cx - rcx) > rhx + ext(b, 1, 0) || Math.abs(b.cz - rcz) > rhz + ext(b, 0, 1)) continue;
+      if (Math.abs((rcx - b.cx) * b.ux + (rcz - b.cz) * b.uz) > b.hw + rhx * Math.abs(b.ux) + rhz * Math.abs(b.uz)) continue;
+      if (Math.abs(-(rcx - b.cx) * b.uz + (rcz - b.cz) * b.ux) > b.hd + rhx * Math.abs(b.uz) + rhz * Math.abs(b.ux)) continue;
+      return false;
+    }
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) if (!onLand(b.cx + sx * b.hw * b.ux - sz * b.hd * b.uz, b.cz + sx * b.hw * b.uz + sz * b.hd * b.ux, 1)) return false;
+    return true;
+  };
+  const overlaps = (a, b, m) => [[a.ux, a.uz], [-a.uz, a.ux], [b.ux, b.uz], [-b.uz, b.ux]].every(([nx, nz]) => Math.abs((a.cx - b.cx) * nx + (a.cz - b.cz) * nz) < ext(a, nx, nz) + ext(b, nx, nz) + m);
+  const hitsBlock = (b) => { const rad = Math.hypot(b.hw, b.hd) + 2; for (let i = Math.floor((b.cx - rad) / HC) - 2; i <= Math.floor((b.cx + rad) / HC) + 2; i++) for (let j = Math.floor((b.cz - rad) / HC) - 2; j <= Math.floor((b.cz + rad) / HC) + 2; j++) for (const q of hash.get(i * 9973 + j) || []) if (overlaps(b, q, 1.5)) return true; return false; };
+  const keepBlock = (b) => { const key = Math.floor(b.cx / HC) * 9973 + Math.floor(b.cz / HC); if (!hash.has(key)) hash.set(key, []); hash.get(key).push(b); };
   const old = (r() * K) | 0; // the old town: small, narrow, crooked
   const facadesLow = ['brick', 'tenement', 'concrete', 'sidepink', 'sidemint', 'sideorange', 'tenement'], facadesHigh = ['office', 'window', 'tenement', 'glassblock', 'office'];
   const strips = ['neonpink', 'neoncyan', 'neonyellow', 'neongreen'];
@@ -408,10 +422,11 @@ function cityBeyond(D, y, S, R, r, o) {
     for (let i = -n; i <= n; i++) for (let j = -n; j <= n; j++) {
       const cx = ox + i * (bw + sw) * ux + j * (bd + sw) * vx, cz = oz + i * (bw + sw) * uz + j * (bd + sw) * vz;
       if (sector(cx, cz) !== k) continue;
-      const w = bw * (0.8 + r() * 0.35), d = bd * (0.8 + r() * 0.35), rad = Math.hypot(w, d) / 2;
-      if (!onLand(cx, cz, rad * 0.7) || aveDist(cx, cz) < 10.5 + rad * 0.6 || nearStreet(cx, cz, rad * 0.6 + 1) || near(cx, cz, rad, k)) continue;
-      keep(cx, cz, rad, k);
+      const w = bw * (0.8 + r() * 0.35), d = bd * (0.8 + r() * 0.35);
       const yaw = -(th + (r() - 0.5) * (isOld ? 0.24 : 0.06)), cy = Math.cos(-yaw), sy = Math.sin(-yaw);
+      const blk = { cx, cz, hw: w / 2, hd: d / 2, ux: cy, uz: sy };
+      if (!onLand(cx, cz, 0) || !clearOfRoads(blk) || hitsBlock(blk)) continue;
+      keepBlock(blk);
       D.obb(cx, y + 0.12 + r() * 0.06, cz, w, 0.24 + r() * 0.06, d, yaw, 'pavecity'); // the block's kerb
       // buildings along the block's long side, heights by how far out it is
       const far = Math.max(Math.abs(cx), Math.abs(cz)) - S, lots = isOld ? 2 + ((r() * 3) | 0) : 1 + ((r() * 3) | 0);
@@ -434,11 +449,13 @@ function cityBeyond(D, y, S, R, r, o) {
     }
   }
   // infill: the odd lots left along the seams between districts get small blocks, turned to fit their district (roughly)
-  for (let t = 0; t < 2600; t++) {
-    const cx = (r() * 2 - 1) * R, cz = (r() * 2 - 1) * R, w = 12 + r() * 16, d = 10 + r() * 14, rad = Math.hypot(w, d) / 2;
-    if (!onLand(cx, cz, rad * 0.7) || aveDist(cx, cz) < 10.5 + rad * 0.6 || nearStreet(cx, cz, rad * 0.6 + 1) || near(cx, cz, rad * 1.05, -1)) continue;
-    keep(cx, cz, rad, -1);
-    const far = Math.max(Math.abs(cx), Math.abs(cz)) - S, yaw = -(thetas[sector(cx, cz)] + (r() - 0.5) * 0.5);
+  for (let t = 0; t < 7000; t++) {
+    const cx = (r() * 2 - 1) * R, cz = (r() * 2 - 1) * R, w = 10 + r() * 16, d = 9 + r() * 14;
+    if (!onLand(cx, cz, 0)) continue;
+    const yaw = -(thetas[sector(cx, cz)] + (r() - 0.5) * 0.5), blk = { cx, cz, hw: w / 2, hd: d / 2, ux: Math.cos(-yaw), uz: Math.sin(-yaw) };
+    if (!clearOfRoads(blk) || hitsBlock(blk)) continue;
+    keepBlock(blk);
+    const far = Math.max(Math.abs(cx), Math.abs(cz)) - S;
     const h = Math.max(3, Math.min(o.cap - y, far < 110 ? 3 + r() * Math.max(1, o.kill - y - 4) : 6 + r() * 26));
     D.obb(cx, y + 0.12 + r() * 0.06, cz, w, 0.25, d, yaw, 'pavecity');
     D.obb(cx, y + 0.3 + h / 2, cz, w - 2, h, d - 2, yaw, pick(facadesLow));
@@ -473,7 +490,8 @@ function crate() {
   // it's a toy box on top of a tower of giant toy blocks, in a giant kid's playroom (render-only). fall off: you die long
   // before the carpet
   const D = builder(), F = -90; // the floor
-  D.box(0, -18, 0, 26, 22, 26, 'toyface', { fit: 1 }); D.box(2, -48, -1, 32, 38, 32, 'toyface2', { fit: 1 }); D.box(-1, -78, 1, 36, 24, 36, 'toyface', { fit: 1 });
+  D.box(0, -18, 0, 26, 22, 26, 'toyface', { fit: 1 }); D.obb(0.5, -48, -0.5, 24, 38, 24, 0.2, 'toyface2', { fit: 1 }); D.box(-1, -78, 1, 36, 24, 36, 'toyface', { fit: 1 });
+  // (the middle block is turned a little and no wider than the crate: a fall off any edge never passes through it)
   D.add(-420, F - 2, -420, 420, F, 420, 'rubber');
   D.add(-420, F, -422, 420, 300, -420, 'wallkid'); D.add(-420, F, 420, 420, 300, 422, 'wallkid'); D.add(-422, F, -420, -420, 300, 420, 'wallkid'); D.add(420, F, -420, 422, 300, 420, 'wallkid');
   D.add(-420, 300, -420, 420, 304, 420, 'plaster'); D.add(-50, 290, -50, 50, 300, 50, 'lamp'); D.add(-2, 296, -2, 2, 300, 2, 'chrome');
@@ -485,7 +503,7 @@ function crate() {
   D.add(60, F, -330, 260, F + 8, -320, 'toypink'); D.add(60, F, -250, 260, F + 8, -240, 'toypink'); // a toy train track
   for (let x = 66; x < 260; x += 14) D.add(x, F, -320, x + 4, F + 4, -250, 'wood');
   D.add(100, F + 8, -305, 150, F + 40, -265, 'toyred'); D.add(150, F + 8, -305, 180, F + 30, -265, 'toyyellow'); // the engine
-  return { name: 'Crate', size: 'tiny', boxes: B.boxes, deco: D.boxes, killY: -30, sky: { top: 0xffd6ec, mid: 0xffd6ec, bot: 0xffd6ec, fog: 0xffd6ec }, fogNear: 90, fogFar: 700,
+  return { name: 'Crate', size: 'tiny', boxes: B.boxes, deco: D.boxes, killY: -50, sky: { top: 0xffd6ec, mid: 0xffd6ec, bot: 0xffd6ec, fog: 0xffd6ec }, fogNear: 90, fogFar: 700,
     sealed: true, light: { hemi: [0xfff0f6, 0xc09ab0, 1.4], sun: [0xfff6e8, 1.0] },
     spawns: [[-11, 0.1, -11], [11, 0.1, 11], [-11, 0.1, 11], [11, 0.1, -11]] };
 }
@@ -498,15 +516,15 @@ function platform() {
   const D = builder();
   D.add(-45.06, -0.6, -45.06, 45.06, -0.3, 45.06, 'neonpink'); D.add(-38.06, -4, -38.06, 38.06, -3.7, 38.06, 'neoncyan');
   // it's an offshore rig: four legs down into the sea, braces, a lower deck with containers, a crane, a flare burning
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) { D.box(sx * 30, -20.5, sz * 30, 6, 25, 6, 'rust'); D.box(sx * 30, -32.7, sz * 30, 9, 1, 9, 'white'); }
-  for (const y of [-14, -25]) for (const s2 of [-1, 1]) { D.add(-27, y - 0.6, s2 * 30 - 0.6, 27, y + 0.6, s2 * 30 + 0.6, 'hazard'); D.add(s2 * 30 - 0.6, y - 0.6, -27, s2 * 30 + 0.6, y + 0.6, 27, 'hazard'); }
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) { D.box(sx * 30, -30.5, sz * 30, 6, 45, 6, 'rust'); D.box(sx * 30, -52.7, sz * 30, 9, 1, 9, 'white'); }
+  for (const y of [-14, -27, -40]) for (const s2 of [-1, 1]) { D.add(-27, y - 0.6, s2 * 30 - 0.6, 27, y + 0.6, s2 * 30 + 0.6, 'hazard'); D.add(s2 * 30 - 0.6, y - 0.6, -27, s2 * 30 + 0.6, y + 0.6, 27, 'hazard'); }
   D.add(-27, -20, -27, 0, -19, 0, 'grid'); for (const [x, z, m] of [[-24, -24, 'containerr'], [-24, -12, 'containerb'], [-12, -24, 'containerg']]) D.add(x, -19, z, x + 6, -16.4, z + 2.5, m);
   D.box(38, -9, 20, 2, 18, 2, 'hazard'); D.add(36, 0, 19, 70, 1.2, 21, 'hazard'); D.box(67, -8, 20, 0.2, 16, 0.2, 'metal'); // the crane, a hook hanging
   D.add(44, -3, -2, 78, -1.6, 2, 'metal'); D.add(76, -1.6, -1.4, 79, 3, 1.4, 'rust'); D.add(76.4, 3, -1, 78.6, 6.5, 1, 'neonyellow'); D.add(76.9, 6.5, -0.5, 78.1, 8.6, 0.5, 'neonred'); // the flare
-  for (const [x, z] of [[-520, -360], [610, 240], [-200, 640]]) { for (const sx of [-1, 1]) for (const sz of [-1, 1]) D.box(x + sx * 14, -18, z + sz * 14, 4, 30, 4, 'rust'); D.add(x - 22, -3, z - 22, x + 22, 0, z + 22, 'grid'); D.box(x + 18, 6, z, 2, 12, 2, 'neonyellow'); } // the other rigs
-  D.add(260, -33.6, -120, 330, -27, -104, 'toyred'); D.add(306, -27, -118, 324, -20, -106, 'white'); D.add(307, -24, -118.1, 323, -22, -105.9, 'glass'); // a ship going past
+  for (const [x, z] of [[-520, -360], [610, 240], [-200, 640]]) { for (const sx of [-1, 1]) for (const sz of [-1, 1]) D.box(x + sx * 14, -28, z + sz * 14, 4, 50, 4, 'rust'); D.add(x - 22, -3, z - 22, x + 22, 0, z + 22, 'grid'); D.box(x + 18, 6, z, 2, 12, 2, 'neonyellow'); } // the other rigs
+  D.add(260, -53.6, -120, 330, -47, -104, 'toyred'); D.add(306, -47, -118, 324, -40, -106, 'white'); D.add(307, -44, -118.1, 323, -42, -105.9, 'glass'); // a ship going past
   for (const [x, z, al, ad] of [[0, -50, 'x', 'adcity2'], [0, 50, 'x', 'adcity4'], [-50, 0, 'z', 'adcity1'], [50, 0, 'z', 'adcity6']]) adBoard(D, x, z, -14, al, ad, 30, 12);
-  return { name: 'Platform', size: 'small', boxes: B.boxes, deco: D.boxes, killY: -30, floorY: -33,
+  return { name: 'Platform', size: 'small', boxes: B.boxes, deco: D.boxes, killY: -50, floorY: -53,
     sky: { top: 0x5a6070, mid: 0xb8bcc8, bot: 0x2a2c33, fog: 0xb8bcc8 }, fogNear: 80, fogFar: 320,
     spawns: [[-35, 0.1, -35], [35, 0.1, 35], [-35, 0.1, 35], [35, 0.1, -35], [0, 0.1, -35], [0, 0.1, 35], [-35, 0.1, 0], [35, 0.1, 0]] };
 }
@@ -515,7 +533,7 @@ function platform() {
 function rooftop() {
   const B = builder();
   const r = rng(77);
-  B.box(0, -76, 0, 64, 152, 64, 'office');
+  B.box(0, -86, 0, 64, 172, 64, 'office');
   B.box(0, 0.25, 0, 64.8, 0.5, 64.8, 'concrete'); // roof deck, top at 0.5
   const top = 0.5;
   B.add(-32.4, top, -32.4, 32.4, top + 1.1, -32, 'concrete'); B.add(-32.4, top, 32, 32.4, top + 1.1, 32.4, 'concrete');
@@ -547,16 +565,17 @@ function rooftop() {
   const plan = [[0, 0, 64, 64, 0, 1]], roofs = { '0,0': top };
   for (const [x, z, h, w, t] of [[0, -95, -2, 36, 2], [-95, 0, 8, 30, 1], [95, 6, -8, 40, 2], [6, 98, 12, 32, 1], [-85, -85, 24, 26, 3], [88, 88, -4, 30, 2], [-90, 90, 4, 34, 1], [92, -92, 16, 28, 2]]) {
     const ry = tower(B, x, z, w, w, h, { tiers: t, base: -152, r });
+    B.box(x, -162, z, w, 20, w, 'office'); // a foundation down to the (lowered) street
     spawns.push([x + 3, ry + 0.1, z + 3]);
     plan.push([x, z, w, w, h, t]); roofs[`${x},${z}`] = ry;
   }
   // the look (render-only): a street far below instead of the void, neon crowns, cables with ads, a sign on our roof
   const D = builder();
-  streetLevel(D, -142, plan.map(([x, z, w, d]) => ({ x, z, w, d })), { xs: [-140, -55, 55, 140], zs: [-140, -55, 55, 140], w: 18 }, 180, r);
+  streetLevel(D, -162, plan.map(([x, z, w, d]) => ({ x, z, w, d })), { xs: [-140, -55, 55, 140], zs: [-140, -55, 55, 140], w: 18 }, 180, r);
   cityDress(D, plan, roofs, -152, r);
-  cityBeyond(D, -142, 180, 520, rng(5151), { kill: -130, cap: -14, shore: 340, avenues: [[0, -260, 0.62], [260, 0, -0.95], [-240, 60, 1.4], [-200, -300, 2.6]], streets: gridOut([-140, -55, 55, 140], [-140, -55, 55, 140], 180, 200) });
-  return { name: 'Rooftop', size: 'medium', boxes: B.boxes, deco: D.boxes, killY: -130, floorY: -150, cityR: 520, cityCap: -14,
-    haze: { k: 0.92, top: -25, bottom: -142, dist: 90, color: 0x6a5c9c }, // look down: the city lights through a night smog
+  cityBeyond(D, -162, 180, 520, rng(5151), { kill: -150, cap: -14, shore: 340, avenues: [[0, -260, 0.62], [260, 0, -0.95], [-240, 60, 1.4], [-200, -300, 2.6]], streets: gridOut([-140, -55, 55, 140], [-140, -55, 55, 140], 180, 200) });
+  return { name: 'Rooftop', size: 'medium', boxes: B.boxes, deco: D.boxes, killY: -150, floorY: -170, cityR: 520, cityCap: -14,
+    haze: { k: 0.92, top: -25, bottom: -162, dist: 95, color: 0x6a5c9c }, // look down: the city lights through a night smog
     sky: { top: 0x05051a, mid: 0x4a2a7a, bot: 0x000005, fog: 0x2a2050 }, fogNear: 110, fogFar: 480, spawns };
 }
 
@@ -689,7 +708,7 @@ function suburb() {
   const W = B.local(0, 0, 0);
   const bounds = [-114, -54, 116, 54];
   // the ground: flat lawn a long way out in every direction (no more cliff). past the trees it's just more nothing
-  B.add(-140, -3, -80, 140, 0, 80, 'lawn'); groundHoles(B, -260, -200, 260, 200, -3, 0, 'grass', [[-140, -80, 140, 80]]); // lawn inside the trees, forest floor past them
+  B.add(-260, -3, -200, 260, 0, 200, 'grass'); // one grass all the way out: the play area doesn't sit on a brighter plate of lawn any more
   // the street (out west it keeps going, past the barricade, into the out of bounds), the turnaround in the east
   B.add(-260, 0, -7, 44, 0.1, 7, 'roadx');
   B.add(44, 0, -12, 80, 0.1, 12, 'road');
@@ -844,7 +863,7 @@ function suburb() {
   spawns.push(...att.slice(0, 3), ...def.slice(0, 3));
   let graph = null;
   const map = {
-    name: 'Suburb', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -40, bounds, floorY: -4,
+    name: 'Suburb', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -60, bounds, floorY: -4,
     sky: { top: 0x2f7cf0, mid: 0xffd3ec, bot: 0x7a4a6a, fog: 0xffd3ec }, fogNear: 110, fogFar: 430,
     spawns, teamSpawns: { att, def },
     // bots: a walk graph over the ground (1 m cells): round the houses, through the side yards and gates
@@ -983,10 +1002,10 @@ function warehouse() {
   for (const [x0, z0, x1, z1] of pits) {
     add(x0, 0, z0 - 0.3, x1, 0.6, z0, 'hazard'); add(x0, 0, z1, x1, 0.6, z1 + 0.3, 'hazard');
     // the shaft: walls going down into the dark, a sign, and teeth at the bottom (you never get that far)
-    add(x0 - 0.3, -24, z0 - 0.3, x0, -1, z1 + 0.3, 'rust'); add(x1, -24, z0 - 0.3, x1 + 0.3, -1, z1 + 0.3, 'rust');
-    add(x0, -24, z0 - 0.3, x1, -1, z0, 'rust'); add(x0, -24, z1, x1, -1, z1 + 0.3, 'rust');
-    for (let x = x0 + 0.5; x < x1; x += 1.4) D.add(x, -22, z0, x + 0.6, -20.5, z1, 'metal');
-    D.add(x0 + 1, -20, z0 + 0.05, x1 - 1, -19.7, z1 - 0.05, 'neonred');
+    add(x0 - 0.3, -48, z0 - 0.3, x0, -1, z1 + 0.3, 'rust'); add(x1, -48, z0 - 0.3, x1 + 0.3, -1, z1 + 0.3, 'rust');
+    add(x0, -48, z0 - 0.3, x1, -1, z0, 'rust'); add(x0, -48, z1, x1, -1, z1 + 0.3, 'rust');
+    for (let x = x0 + 0.5; x < x1; x += 1.4) D.add(x, -46.5, z0, x + 0.6, -45, z1, 'metal'); // the teeth sit right at the kill line
+    D.add(x0 + 1, -44.9, z0 + 0.05, x1 - 1, -44.6, z1 - 0.05, 'neonred');
     add(x0 + (x1 - x0) / 2 - 2, 0, z0 - 0.62, x0 + (x1 - x0) / 2 + 2, 0.6, z0 - 0.32, 'adshred', { fit: 1 });
   }
   // painted walkways on the hall floor
@@ -1130,7 +1149,7 @@ function warehouse() {
     [-75, 0.1, 0], [-60, 0.2, -60], [10, 0.1, -58], [126, 0.1, -10], [10, 0.1, 66], [-46, 1.3, 42], [100, 0.1, 40], [-30, 7.4, -38.5]];
   let graph = null;
   const map = {
-    name: 'Warehouse', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -25, bounds, floorY: -27,
+    name: 'Warehouse', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -45, bounds, floorY: -50,
     sky: { top: 0x0a0a20, mid: 0x5a2a6a, bot: 0x050508, fog: 0x3a2448 }, fogNear: 70, fogFar: 300,
     spawns,
     // bots: a walk graph over the floor and the catwalks, joined by the two stairs
@@ -1264,11 +1283,11 @@ function desert() {
   }
   // ---- outside: sand all the way out (no cliff), the canyon running on as a ravine with a river at the bottom
   groundHoles(B, -300, -300, 300, 300, -2, 0, 'sand', [[-S, -S, S, S], [-7, -284, 7, -S], [-7, S, 7, 284]]);
-  D.add(-9, -46, -284, -7, -2, 284, 'rock'); D.add(7, -46, -284, 9, -2, 284, 'rock');
-  for (const sz of [-1, 1]) D.add(-9, -46, sz > 0 ? 284 : -288, 9, -2, sz > 0 ? 288 : -284, 'rock');
-  D.add(-7, -47, -284, 7, -46, 284, 'sand'); D.add(-3.5, -46, -284, 3.5, -45.8, 284, 'water');
-  for (const z of [-180, -40, 20, 130, 220]) D.add(-5 + rv() * 3, -45.8, z, -1 + rv() * 3, -44.6 + rv(), z + 2 + rv() * 3, 'rock');
-  D.add(-4, -45.8, 66, 4, -45.3, 68.5, 'wood'); // somebody's old bridge
+  D.add(-9, -66, -284, -7, -2, 284, 'rock'); D.add(7, -66, -284, 9, -2, 284, 'rock');
+  for (const sz of [-1, 1]) D.add(-9, -66, sz > 0 ? 284 : -288, 9, -2, sz > 0 ? 288 : -284, 'rock');
+  D.add(-7, -67, -284, 7, -66, 284, 'sand'); D.add(-3.5, -66, -284, 3.5, -65.8, 284, 'water');
+  for (const z of [-180, -40, 20, 130, 220]) D.add(-5 + rv() * 3, -65.8, z, -1 + rv() * 3, -64.6 + rv(), z + 2 + rv() * 3, 'rock');
+  D.add(-4, -65.8, 66, 4, -65.3, 68.5, 'wood'); // somebody's old bridge
   // ---- dirt roads: one through both gates and over the middle bridge, two over the other bridges, two north-south
   B.add(-300, 0, -3, -7, 0.03, 3, 'dirtroad'); B.add(7, 0, -3, 300, 0.03, 3, 'dirtroad');
   for (const sx of [-1, 1]) D.add(sx > 0 ? 300 : -760, 0, -3, sx > 0 ? 760 : -300, 0.03, 3, 'dirtroad');
@@ -1298,7 +1317,7 @@ function desert() {
 
   const bounds = [-S - 1, -S - 1, S + 1, S + 1];
   let graph = null;
-  const map = { name: 'Desert', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -30, bounds, floorY: -49,
+  const map = { name: 'Desert', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -50, bounds, floorY: -69,
     sky: { top: 0x3f7fd0, mid: 0xf2d9a0, bot: 0x6a4a28, fog: 0xead6a6 }, fogNear: 130, fogFar: 520, spawns,
     // bots: a walk graph over the town (1 m cells), across the bridges, round the stalls
     get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0], z0: bounds[1], n: bounds[2] - bounds[0], cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
@@ -1373,10 +1392,10 @@ function islands() {
   box(-60, 55, 60, 6, 2, 6, 'toypink');
   const D = builder(); D.add(140, 60, -260, 200, 120, -200, 'toyface', { fit: 1 }); // the sun has a face now
   // the islands are sea stacks: rock columns rising out of the ocean, surf round their feet (render-only)
-  const stack = (x, z, w, top) => { D.box(x, (top - 44) / 2, z, w, top + 44, w, 'rock'); D.box(x + w * 0.1, -36.5, z - w * 0.08, w * 1.35, 15, w * 1.3, 'rock'); D.box(x, -41.9, z, w * 1.5, 0.3, w * 1.45, 'white'); };
+  const stack = (x, z, w, top) => { D.box(x, (top - 64) / 2, z, w, top + 64, w, 'rock'); D.box(x + w * 0.1, -56.5, z - w * 0.08, w * 1.35, 15, w * 1.3, 'rock'); D.box(x, -61.9, z, w * 1.5, 0.3, w * 1.45, 'white'); };
   stack(0, 0, 22, -19); stack(0, -88, 18, -10); stack(0, 88, 18, -10); stack(88, 0, 18, -10); stack(-88, 0, 18, -10);
-  for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2 + 0.3, d = 130 + (i % 3) * 40; D.box(Math.cos(a) * d, -30 + (i % 2) * 8, Math.sin(a) * d, 8 + (i % 3) * 4, 28 + (i % 2) * 16, 8 + (i % 2) * 5, 'rock'); } // lonely rocks offshore
-  return { name: 'Islands', size: 'large', boxes, deco: D.boxes, killY: -45, floorY: -42, sky: SKY_SUNSET, fogNear: 90, fogFar: 330,
+  for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2 + 0.3, d = 130 + (i % 3) * 40; D.box(Math.cos(a) * d, -50 + (i % 2) * 8, Math.sin(a) * d, 8 + (i % 3) * 4, 28 + (i % 2) * 16, 8 + (i % 2) * 5, 'rock'); } // lonely rocks offshore
+  return { name: 'Islands', size: 'large', boxes, deco: D.boxes, killY: -65, floorY: -62, sky: SKY_SUNSET, fogNear: 90, fogFar: 330,
     spawns: [[10, 0.1, 10], [-10, 0.1, -10], [10, 0.1, -10], [-10, 0.1, 10], [8, 0.1, -88], [8, 0.1, 82], [88, 0.1, 8], [-88, 0.1, 8]] };
 }
 
@@ -1396,13 +1415,14 @@ function skyline() {
   const roofs = {};
   for (const [x, z, w, d, h, tiers, roof] of plan) {
     const ry = tower(B, x, z, w, d, h, { base, tiers, roof, r, pad: r() < 0.5 ? [(r() - 0.5) * 40, 30, (r() - 0.5) * 40] : null });
+    B.box(x, base - 10, z, w, 20, d, 'office'); // a foundation down to the (lowered) street
     roofs[`${x},${z}`] = ry;
     spawns.push([x + 4, ry + 0.1, z + 4]);
   }
   // construction site: open floors, columns, a crane
   {
     const cx = 35, cz = -100, w = 30, F = 4.5;
-    B.box(cx, (base + 0) / 2, cz, w, 0 - base, w, 'concrete');
+    B.box(cx, (base + 0) / 2, cz, w, 0 - base, w, 'concrete'); B.box(cx, base - 10, cz, w, 20, w, 'concrete');
     for (let f = 0; f < 12; f++) {
       const y = f * F;
       if (f % 4 !== 3) B.box(cx, y + 0.25, cz, w, 0.5, w, 'concrete');
@@ -1451,11 +1471,11 @@ function skyline() {
   for (let k = 0; k < 10; k++) B.box((r() - 0.5) * 300, 140 + r() * 40, (r() - 0.5) * 300, 5, 1.5, 5, 'gold');
   // ---- the look (all render-only): the street far below, a neon band round every crown, cables with ads between towers
   const D = builder(), towers = [...plan.map(([x, z, w, d]) => ({ x, z, w, d })), { x: 35, z: -100, w: 30, d: 30 }];
-  streetLevel(D, -100, towers, { xs: [-135, -67.5, 0, 67.5, 135], zs: [-135, -67.5, 0, 67.5, 135], w: 18 }, 190, r);
+  streetLevel(D, -120, towers, { xs: [-135, -67.5, 0, 67.5, 135], zs: [-135, -67.5, 0, 67.5, 135], w: 18 }, 190, r);
   cityDress(D, plan, roofs, base, r);
-  cityBeyond(D, -100, 190, 680, rng(4040), { kill: -88, cap: 30, shore: 470, avenues: [[-60, -230, 0.42], [230, 40, -1.05], [-300, 120, 1.25], [80, -420, 0.06], [-250, -250, 2.35]], streets: gridOut([-135, -67.5, 0, 67.5, 135], [-135, -67.5, 0, 67.5, 135], 190, 230) });
-  return { name: 'Skyline', size: 'huge', boxes: B.boxes, deco: D.boxes, killY: -88, floorY: -108, cityR: 680, cityCap: 30,
-    haze: { k: 0.88, top: 15, bottom: -100, dist: 110, color: 0xc89aa4 }, // look down: the city through a dusk haze
+  cityBeyond(D, -120, 190, 680, rng(4040), { kill: -108, cap: 30, shore: 470, avenues: [[-60, -230, 0.42], [230, 40, -1.05], [-300, 120, 1.25], [80, -420, 0.06], [-250, -250, 2.35]], streets: gridOut([-135, -67.5, 0, 67.5, 135], [-135, -67.5, 0, 67.5, 135], 190, 230) });
+  return { name: 'Skyline', size: 'huge', boxes: B.boxes, deco: D.boxes, killY: -108, floorY: -128, cityR: 680, cityCap: 30,
+    haze: { k: 0.88, top: 15, bottom: -120, dist: 120, color: 0xc89aa4 }, // look down: the city through a dusk haze
     sky: { top: 0x1a2a5a, mid: 0xff9a5a, bot: 0x0a0a1a, fog: 0xd98a6a }, fogNear: 160, fogFar: 700, spawns };
 }
 
@@ -1664,7 +1684,7 @@ function bazaar() {
   D.add(8.9, 6.6, -2, 8.98, 6.75, 52, 'neonpink'); D.add(-8.98, 6.6, -2, -8.9, 6.75, 52, 'neoncyan');
   D.add(-15, 4.5, 52.42, -7, 7.5, 52.6, 'adcity4', { fit: 1 }); D.add(7, 4.5, 52.42, 15, 7.5, 52.6, 'adcity1', { fit: 1 });
   return {
-    name: 'Bazaar', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -30, floorY: -6, bounds: [X0 - 1.5, Z0 - 1.5, X1 + 1.5, Z1 + 1.5],
+    name: 'Bazaar', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -50, floorY: -6, bounds: [X0 - 1.5, Z0 - 1.5, X1 + 1.5, Z1 + 1.5],
     sky: { top: 0x4a8fd8, mid: 0xf2dcae, bot: 0x8a6a40, fog: 0xf0d8a8 }, fogNear: 90, fogFar: 320,
     spawns, teamSpawns: { att, def },
     // bot routes along the real lanes, [x, z] points ending on each site. bots walk straight from point to point and
@@ -1920,7 +1940,7 @@ function backrooms() {
   const def2 = att2.map(([x, y, z]) => [x, y, -z]);
   const HZ = 0xb4a35a; // the haze
   return {
-    name: 'Backrooms', size: 'extra large', boxes: B.boxes, deco: D.boxes, killY: -30,
+    name: 'Backrooms', size: 'extra large', boxes: B.boxes, deco: D.boxes, killY: -50,
     sky: { top: HZ, mid: HZ, bot: HZ, fog: HZ }, fogNear: 6, fogFar: 105,
     light: { hemi: [0xfff3cc, 0xb2a476, 1.35], sun: [0xffe7a6, 0.5] }, // flat fluorescent light from everywhere
     chunk: 48, sealed: true, menuCam: [13, 3.4, -0.08], // big: drawn in chunks. sealed: no sky, and the menu orbits inside the hall
@@ -1946,14 +1966,14 @@ function range() {
   box(-38, 1, -40, 1, 2, 30, 'missing');
   groundHoles({ add: (...a) => boxes.push({ min: [a[0], a[1], a[2]], max: [a[3], a[4], a[5]], mat: a[6] }) }, -220, -280, 220, 160, -2, 0, 'grass', [[-20, -135, 20, 15], [22, -60, 42, -20], [-40, -55, -24, -25]]);
   const D = builder();
-  horizon(D, -220, -280, 220, 160, 1500, 'lawn');
+  horizon(D, -220, -280, 220, 160, 1500, 'grass'); // the same grass as the field you stand on
   D.add(-60, 0, -175, 60, 12, -160, 'dirt'); D.add(-50, 12, -172, 50, 16, -163, 'dirt'); // the berm the bullets end up in
   for (let x = -18; x <= 18; x += 3.2) D.add(x, 0, 6.4, x + 3, 0.8, 7.4, 'sand'); // sandbags on the firing line
   for (const [x, z] of [[-30, 20], [30, 20]]) { for (const sx of [-1, 1]) for (const sz of [-1, 1]) D.box(x + sx * 1.6, 4, z + sz * 1.6, 0.3, 8, 0.3, 'wood'); D.add(x - 2.2, 8, z - 2.2, x + 2.2, 8.3, z + 2.2, 'wood'); D.add(x - 2.4, 10.5, z - 2.4, x + 2.4, 10.8, z + 2.4, 'roofg'); } // watchtowers
   for (let z = 30; z > -260; z -= 10) for (const x of [-90, 90]) { D.box(x, 1, z, 0.15, 2, 0.15, 'metal'); D.add(x - 0.03, 1.6, z, x + 0.03, 1.65, z + 10, 'tire'); }
   for (let i = 0; i < 30; i++) { const rr = rng(400 + i), a = rr() * Math.PI * 2, d = 150 + rr() * 150; (rr() < 0.5 ? conifer : lollipop)(D.local(0, 0, 0), Math.cos(a) * d, -60 + Math.sin(a) * d, 6 + rr() * 4, rr); }
   adBoard(D, -26, -70, 0, 'z', 'adcity6', 14, 6); adBoard(D, -26, -110, 0, 'z', 'adcity3', 14, 6); adBoard(D, 0, -130, 0, 'x', 'adcity2', 24, 9);
-  return { name: 'Range', size: 'training', boxes, deco: D.boxes, killY: -40, floorY: -4, bounds: [-90, -175, 90, 40],
+  return { name: 'Range', size: 'training', boxes, deco: D.boxes, killY: -60, floorY: -4, bounds: [-90, -175, 90, 40],
     sky: { top: 0x3a7bd5, mid: 0xbfe3ff, bot: 0x203040, fog: 0xbfe3ff }, fogNear: 120, fogFar: 420,
     spawns: [[0, 0.1, 10], [5, 0.1, 10], [-5, 0.1, 10]],
     dummies: [
