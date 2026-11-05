@@ -1678,6 +1678,8 @@ function frame(t) {
     ME.yaw = a; ME.pitch = -0.35;
     const mc = MAPS[G.cfg.map] && MAPS[G.cfg.map].menuCam; // sealed maps: orbit inside instead of over the roof
     if (mc) { cam.position.set(Math.sin(a) * mc[0], mc[1], Math.cos(a) * mc[0]); ME.pitch = mc[2]; }
+    const tc = G.thumbCam; // tools/thumbs.cjs parks the camera here to photograph a map: [x, y, z, yaw, pitch]
+    if (tc) { cam.position.set(tc[0], tc[1], tc[2]); ME.yaw = tc[3]; ME.pitch = tc[4]; }
   }
 
   G.shake = S.shake ? Math.max(0, G.shake - dt * 2.2) : 0;

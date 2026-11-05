@@ -95,6 +95,12 @@ export function showArmed(build, color, look, weapon) {
   if (ch && weapon) {
     ch.arm.rotation.x = -0.12; ch.armL.rotation.x = -0.12; // gun up, pointing just under the camera
     weapon.scale.setScalar(1.5);
+    // in a match the stock goes into the shoulder (nobody looks that close). up here everyone does: slide the gun
+    // forward along the arm until its back end clears the shoulder ball, measured per gun. the slot isn't rotated
+    // in the arm, so the gun's own box (measured before it's attached) is exact; the arm points down -z
+    weapon.updateMatrixWorld(true);
+    const back = ch.slot.position.z + new THREE.Box3().setFromObject(weapon).max.z;
+    if (back > -0.075) weapon.position.z -= back + 0.075; // the stock just touches the shoulder ball (r 0.068)
     ch.slot.add(weapon);
   }
   sway = 1.05; swayT = 0; // side on, so the gun reads in profile
