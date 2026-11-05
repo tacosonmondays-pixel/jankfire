@@ -27,6 +27,14 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 | `make_ar.py` | `w_ar.glb` | M4-pattern carbine, x1.54 |
 | `make_shotgun.py` | `w_shotgun.glb` | 870-pattern pump, x1.05, `pump` node |
 | `make_revolver.py` | `w_revolver.glb` | 6in .357, x1.5, `cylinder` + `hammer` nodes |
+| `make_smg.py` | `w_smg.glb` | MP5A3 pattern, x1.0, glowing flashlight forend |
+| `make_redline.py` | `w_redline.glb` | PPS-43 pattern, x1.18, `needle` node (the tachometer, driven by HP) + `redline_vents` material (the barrel glows through the jacket) |
+| `make_minigun.py` | `w_minigun.glb` | M134 pattern, x1.0, `barrels` node (spun by the game) |
+| `make_sniper.py` | `w_sniper.glb` | AWM pattern, x1.67, `bolt` node (cycles with the bolt animation) |
+| `make_chicken.py` | `w_chicken.glb` | Carl Gustaf M3 pattern, x1.05, rubber chicken in the muzzle |
+| `make_bowling.py` | `w_bowling.glb` | backyard pneumatic cannon (PVC barrel, air tank, sprinkler valve, gauge) |
+| `make_banana.py` | `w_banana.glb` | AKS-74U pattern, x1.1, a real banana as the banana mag, peel muzzle |
+| `make_marbles.py` | `w_marbles.glb` | flintlock blunderbuss pistol, x1.1, mason-jar marble hopper |
 | `make_car.py` | `p_car.glb` | sedan, paint material `car_paint` (recoloured per car) |
 | `make_bus.py` | `p_bus.glb` | conventional school bus |
 | `make_forklift.py` | `p_forklift.glb` | counterbalance forklift |
@@ -42,9 +50,13 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
   that lands the muzzle on the code model's (each script says which).
 - **Metadata** goes on the root empty as `jf` (exported as glTF extras, read by `public/js/glbkit.js`):
   `muzzle`, `sight` `{ y, z }` (the line of sight; the game puts your eye 0.17 m / scale behind `z`, so push `z` back or
-  forward to set the eye distance), `hatAt` `[[x, y, z], height]`, and moving parts (`pump`, `cylinder`, `hammer`).
+  forward to set the eye distance), `hatAt` `[[x, y, z], height]`, moving parts (`pump`, `cylinder`, `hammer`, `bolt`), the code models' hooks
+  (`needle`, `vents`, `barrels`) and `paint` (materials the flat look recolours).
 - **Props**: vehicles face +x like the map builder's `car()`. Make the model match the boxes it stands in for
   (`shared/props.js` `PROPS`), feet on y = 0. Variants are separate nodes; give each its own origin with `part(..., pivot)`.
+- **Look**: glossy and bevelled (the owner's pick, 2026-11-05). `?models=flat` in the address (or localStorage
+  `jf_models = 'flat'`) shows a faceted no-gloss version for comparison, with each weapon's `paint` materials in its
+  shared/weapons.js colour; it's never on by default.
 - **Materials**: glTF keeps base colour/texture, roughness, metallic, emission, alpha and clearcoat. Bake colour into the
   texture (`tex_*` take the colour). Emissive materials stay glowing under weapon skins. Textures are tiny and nearest
   filtered on purpose (ugly-on-purpose, matches Potato through Too HD).

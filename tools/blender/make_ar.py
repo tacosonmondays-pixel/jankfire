@@ -157,7 +157,7 @@ def build():
     for p in parts:
         uv_box(p, 0.03)
     body = join(parts, 'ar_body')
-    meta = {'kind': 'weapon', 'id': 'ar', 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(sight_h), 'z': Z(548) + 0.11},
+    meta = {'kind': 'weapon', 'id': 'ar', 'paint': ['ar_olive', 'ar_grip'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(sight_h), 'z': Z(548) + 0.11},
             'hatAt': [[0, Y(33), Z(440)], 0.12], 'tip': None}
     return finish('w_ar', [body], meta)
 

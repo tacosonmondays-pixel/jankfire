@@ -89,7 +89,7 @@ def build():
         uv_box(p, 0.03)
     body = join(parts, 'sg_body')
     pnode = part(pump, 'pump', pivot=(0, Y(-24), Z((pd0 + pd1) / 2)))
-    meta = {'kind': 'weapon', 'id': 'shotgun', 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(21), 'z': Z(560) - 0.11},
+    meta = {'kind': 'weapon', 'id': 'shotgun', 'paint': ['sg_walnut', 'sg_forend'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(21), 'z': Z(560) - 0.11},
             'hatAt': [[0, Y(15), Z(580)], 0.11], 'pump': {'node': 'pump', 'travel': W(95)}}
     return finish('w_shotgun', [body, pnode], meta)
 

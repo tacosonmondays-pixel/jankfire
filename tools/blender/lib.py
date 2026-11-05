@@ -219,7 +219,7 @@ def ball(r, pos=(0, 0, 0), m=None, scale=(1, 1, 1), seg=16, rings=10, name='ball
     return o
 
 
-def lathe(profile, pos=(0, 0, 0), m=None, seg=16, axis='z', name='lathe', rot=None):
+def lathe(profile, pos=(0, 0, 0), m=None, seg=16, axis='z', name='lathe', rot=None, cap=True):
     """profile = [(radius, along)] revolved round a game axis (along = game z for axis z, so negative = forward)."""
     bm = bmesh.new()
     rings = []
@@ -237,7 +237,7 @@ def lathe(profile, pos=(0, 0, 0), m=None, seg=16, axis='z', name='lathe', rot=No
             try: bm.faces.new((a[i], a[j], b[j], b[i]))
             except ValueError: pass
     for ring, r in ((rings[0], profile[0][0]), (rings[-1], profile[-1][0])):
-        if r > 1e-5:
+        if r > 1e-5 and cap:
             try: bm.faces.new(ring)
             except ValueError: pass
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
@@ -594,6 +594,91 @@ def uv_planar(o, center, size, axis='x'):
             v = mw @ me.vertices[me.loops[li].vertex_index].co
             gx, gy, gz = v.x, v.z, -v.y  # back to game axes
             if axis == 'x': u, w = -(gz - center[2]), gy - center[1]
+            elif axis == '-x': u, w = gz - center[2], gy - center[1]  # seen from -x (a gun's left side)
             elif axis == 'z': u, w = gx - center[0], gy - center[1]
             else: u, w = gx - center[0], -(gz - center[2])
-            uv[li].uv = (u / size + 0.5, w / size + 0.5)
+            su, sv = size if isinstance(size, (tuple, list)) else (size, size)
+            uv[li].uv = (u / su + 0.5, w / sv + 0.5)
+
+
+def sweep(points, radii, m=None, seg=8, name='sweep', cap=True, squash=(1.0, 1.0), smooth_angle=60):
+    """a tube along a path of game points with a radius per point (bananas, necks, hoses, belts). squash scales the
+    cross-section (first = towards the path's 'up', second = sideways) for flat straps or 5-sided bananas (seg=5)."""
+    pts = [gv(*p) for p in points]
+    n = len(pts)
+    rr = list(radii) if isinstance(radii, (list, tuple)) else [radii] * n
+    T = []
+    for i in range(n):
+        t = pts[min(i + 1, n - 1)] - pts[max(i - 1, 0)]
+        T.append(t.normalized())
+    up = Vector((0, 0, 1))
+    if abs(T[0].dot(up)) > 0.9: up = Vector((1, 0, 0))
+    N = (up - T[0] * T[0].dot(up)).normalized()
+    bm = bmesh.new(); rings = []
+    for i, p in enumerate(pts):
+        N = (N - T[i] * T[i].dot(N)).normalized()  # parallel transport: no twisting
+        B = T[i].cross(N)
+        ring = [bm.verts.new(p + (N * math.cos(2 * math.pi * k / seg) * squash[0] + B * math.sin(2 * math.pi * k / seg) * squash[1]) * rr[i]) for k in range(seg)]
+        rings.append(ring)
+    for a, b in zip(rings, rings[1:]):
+        for k in range(seg):
+            j = (k + 1) % seg
+            try: bm.faces.new((a[k], a[j], b[j], b[k]))
+            except ValueError: pass
+    if cap:
+        for ring, r in ((rings[0], rr[0]), (rings[-1], rr[-1])):
+            if r > 1e-5:
+                try: bm.faces.new(ring)
+                except ValueError: pass
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    o = _obj(name, bm, m)
+    smooth(o, smooth_angle)
+    return o
+
+
+def rod(p0, p1, r, m=None, seg=8, name='rod', r1=None, bev=0.0):
+    """a cylinder (or cone, with r1) from game point p0 to p1: struts, pins, levers, stock frames."""
+    a, b = gv(*p0), gv(*p1)
+    d = b - a
+    bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=seg, radius1=r, radius2=r if r1 is None else r1, depth=d.length)
+    q = Vector((0, 0, 1)).rotation_difference(d.normalized())
+    bmesh.ops.transform(bm, matrix=q.to_matrix().to_4x4(), verts=bm.verts)
+    o = _obj(name, bm, m)
+    o.location = (a + b) / 2
+    smooth(o, 50); bevel(o, bev, 2, 50)
+    return o
+
+
+def path_arc(c, r, a0, a1, n=12, plane='zy', x=0.0):
+    """points on an arc in a game plane: 'zy' = side view (angles from +z towards +y), centre c = (z, y)."""
+    out = []
+    for i in range(n + 1):
+        t = math.radians(a0 + (a1 - a0) * i / n)
+        if plane == 'zy': out.append((x, c[1] + r * math.sin(t), c[0] + r * math.cos(t)))
+    return out
+
+
+# ------------------------------------------------------------ painting helpers for dials and decals (px = h x w x 3)
+def px_line(px, x0, y0, x1, y1, color, w=1.0):
+    h, wd = px.shape[:2]; c = hexrgb(color)
+    n = int(max(abs(x1 - x0), abs(y1 - y0)) * 2) + 2
+    for i in range(n + 1):
+        t = i / n; x = x0 + (x1 - x0) * t; y = y0 + (y1 - y0) * t
+        r = max(0.5, w / 2)
+        for yy in range(int(y - r), int(y + r) + 1):
+            for xx in range(int(x - r), int(x + r) + 1):
+                if 0 <= xx < wd and 0 <= yy < h and (xx - x) ** 2 + (yy - y) ** 2 <= r * r + 0.25: px[yy, xx] = c
+
+
+def px_disc(px, cx, cy, r, color, r_in=0.0, a0=None, a1=None):
+    """filled disc / ring, optionally only between angles a0..a1 (radians, 0 = up, clockwise as you look at it)."""
+    h, w = px.shape[:2]
+    yy, xx = np.mgrid[0:h, 0:w]
+    dx, dy = xx + 0.5 - cx, yy + 0.5 - cy
+    d = np.hypot(dx, dy)
+    mask = (d <= r) & (d >= r_in)
+    if a0 is not None:
+        ang = np.arctan2(dx, -dy)  # 0 at the top, + clockwise
+        mask &= (ang >= a0) & (ang <= a1)
+    px[mask] = hexrgb(color)

@@ -8,7 +8,7 @@ import { SUITS, RANKS, ARROW_TIPS } from '/shared/weapons.js';
 import { BLADES } from './blades/index.js';
 import { lathe } from './blades/kit.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { prepAuthored, authored, AUTHORED, findParts } from './glbkit.js';
+import { prepAuthored, authored, AUTHORED, bindAuthored } from './glbkit.js';
 
 // ------------------------------------------------------------ playing card faces (canvas, cached)
 const cardFaces = new Map();
@@ -1376,7 +1376,7 @@ export function buildWeapon(id, skin) {
     if (mt.sight) g.userData.sight = { y: mt.sight.y, z: mt.sight.z };
     if (mt.hatAt) g.userData.hatAt = mt.hatAt; else delete g.userData.hatAt;
     g.userData.glb = 'blender';
-    g.userData.parts = findParts(g, mt); // pump / cylinder / hammer that the viewmodel moves
+    bindAuthored(g, mt); // needle, vents, barrels + the pump / cylinder / hammer / bolt that the viewmodel moves
     applySkin(g, skin);
     return g;
   }

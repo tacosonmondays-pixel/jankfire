@@ -98,7 +98,7 @@ def build():
     body = join(parts, 'rv_body')
     cnode = part(cylp, 'cylinder', pivot=(0, cyl_axis_y, Z(174)))
     hnode = part(ham, 'hammer', pivot=(0, Y(2), Z(228)))
-    meta = {'kind': 'weapon', 'id': 'revolver', 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(35.5), 'z': Z(212) + 0.14},
+    meta = {'kind': 'weapon', 'id': 'revolver', 'paint': ['rv_pearl'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(35.5), 'z': Z(212) + 0.14},
             'hatAt': [[0, Y(24), Z(178)], 0.08], 'cylinder': {'node': 'cylinder', 'step': math.pi / 3}, 'hammer': {'node': 'hammer'}}
     return finish('w_revolver', [body, cnode, hnode], meta)
 
