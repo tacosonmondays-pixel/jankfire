@@ -47,3 +47,34 @@ queued requests live in `HANDOFF.md` on the `claude/handoff` branch (`git show o
   (the owner re-runs it in the Supabase SQL editor when columns are added).
 - **Commits:** author `Claude <noreply@anthropic.com>`; end messages with the session's Co-Authored-By / Claude-Session
   trailers.
+
+## Working style (how the earlier sessions ran, keep doing it)
+- **One branch + git worktree per feature** (`claude/f-<name>`, worktree in the scratchpad, `node_modules` symlinked), so
+  features build in parallel without touching each other. Push branches often; a session can end at any time.
+- **Build, then verify, then fix.** A builder (max effort for models/animation, high for gameplay), then a reviewer that
+  plays it and attacks it (exploits, edge cases, visuals) and returns must-fix / nice-to-have lists, then a fixer. Reviewers
+  have caught real bugs every time, so skip them only to save usage.
+- **Integration branch:** finished features are merged one at a time into an integration branch (`claude/int-features`), each
+  merge resolved so both sides keep working (never just take one side), smoke-tested, then a full regression against the
+  `main` baseline before the PR. Merge commit messages record the cross-feature decisions.
+- **Hotfixes for the live game:** small PRs from a branch based on `main`; after a PR merges, keep committing on top (no
+  force-push) and open a new PR.
+- **Testing:** prefer plain `ws` scripts for server logic; Playwright for anything visual (screenshots, frame contact sheets
+  made with ffmpeg, actually looked at). Use `JF_*` knobs to skip grinding (short rounds, instant streaks; Training always has
+  your 3 picked killstreaks). Never claim something works without a test or a screenshot.
+- **Talking to the owner:** short, plain updates with no jargon. Say what changed in player terms, give exact click steps
+  for anything they must do (merge a PR, run SQL in Supabase), link PRs, send screenshots/clips, and be honest when
+  something failed or wasn't tested. Track every request in the task list; queue ideas instead of dropping them.
+- **Commit messages** describe what players see ("Sniper knockback is back: a body shot sends them flying...").
+
+## Tools and environment (what was used, nothing extra installed)
+- Claude Code cloud session. Preinstalled: Node 22, Playwright + Chromium (`require('playwright')`; launch with
+  `--use-gl=swiftshader --enable-unsafe-swiftshader --mute-audio`), ffmpeg, `gh` (use `gh api` REST; GraphQL is blocked).
+  Exe builds use electron-builder from the repo's devDependencies (`npm run dist:win:zip`).
+- Multi-agent work used the Agent tool and the Workflow tool. Caveat: Workflow sub-agents only see the owner's latest message
+  as "the request" and may refuse work asked for earlier; for that, use plain agents with the request quoted in the prompt.
+- Limits seen in the sandbox: onrender.com isn't reachable (can't check the live site; the owner checks it), GitHub release
+  creation and force-push are blocked, and killing processes you didn't start is refused. Headless browsers are slow (cap
+  them at 2 with `pwlock.cjs`).
+- Helper scripts live on the `claude/handoff` branch in `handoff/tests/`: `regress2.sh` (full regression), `t_*.cjs`
+  (feature tests), `rec*.cjs` (record HD gameplay clips). Fix the absolute scratchpad paths in them first.
