@@ -26,6 +26,7 @@ export const COSMETICS = {
     knife_switch: { name: 'Switchblade', rarity: 'rare', weapon: 'knife' },
     knife_karambit: { name: 'Karambit', rarity: 'epic', weapon: 'knife' },
     knife_butterfly: { name: 'Butterfly', rarity: 'legendary', weapon: 'knife' },
+    knife_spoon: { name: 'Spoon', rarity: 'epic', weapon: 'knife' }, // a serving spoon. it still stabs
     slapper_foam: { name: 'Foam Finger', rarity: 'rare', weapon: 'slapper' },
     slapper_paw: { name: 'Bear Paw', rarity: 'epic', weapon: 'slapper' },
     bread_croissant: { name: 'Croissant Club', rarity: 'epic', weapon: 'bread' },
@@ -138,14 +139,19 @@ export function owns(inv, type, id) {
 }
 
 // drop anything you don't own (or a skin for the wrong weapon) back to the default. skin = [wrap, hat, effect, model]
+// wrap modes: what part of the weapon the wrap paints (normal = handle side, reverse = business end, full = all of it).
+// free for everyone, and the 5th slot of a skin. old saves have no 5th slot: they read as normal
+export const WRAP_MODES = ['normal', 'reverse', 'full'];
+export const wrapMode = (v) => (WRAP_MODES.includes(v) ? v : 'normal');
+
 export function ownedSkin(skin, inv, weapon) {
   const d = ['default', 'none', 'none', 'default'];
-  if (!Array.isArray(skin)) return d;
-  return TYPES.map((t, i) => {
+  if (!Array.isArray(skin)) return [...d, 'normal'];
+  return [...TYPES.map((t, i) => {
     const v = skin[i] ?? d[i];
     if (t === 'model' && v !== 'default' && (typeof v !== 'string' || !Object.hasOwn(COSMETICS.model, v) || (weapon && COSMETICS.model[v].weapon !== weapon))) return 'default';
     return owns(inv, t, v) ? v : d[i];
-  });
+  }), wrapMode(skin[4])];
 }
 
 export function unowned(inv) {

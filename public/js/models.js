@@ -1366,6 +1366,7 @@ export function buildWeapon(id, skin) {
   const variant = model && MODEL_BUILD[model] && COSMETICS.model[model] && COSMETICS.model[model].weapon === id;
   (variant ? MODEL_BUILD[model] : WB[id] || WB.cig)(g);
   g.userData.model = variant ? model : 'default';
+  g.userData.wid = id; // wrap zones look up their rule by model (or weapon) id
   g.userData.hatAt = HAT_AT[variant ? model : id];
   const bl = variant ? null : authored('w_' + id); // made in Blender, in this model's own space: swap it in as is
   if (bl) {
@@ -1382,6 +1383,7 @@ export function buildWeapon(id, skin) {
   }
   const glb = variant ? null : fitted('w_' + id, { alignZ: true, size: g.userData.len, zOffset: g.userData.muzzle.z / 2 });
   if (glb) delete g.userData.hatAt; // a generated model has its own shape: fall back to measuring it
+  if (glb) g.userData.wid = 'glb_' + id; // ...and its own parts: zones come from _wzA/_wzB names or the colour guess
   if (glb) {
     for (const c of [...g.children]) if (c !== g.userData.tip) g.remove(c);
     if (g.userData.tip) g.userData.tip.visible = true;

@@ -24,7 +24,8 @@ import { Remote, updateGibs } from './remote.js';
 import { stepSoap, trapStart, trapEnd, updateWand, stuckInBubble } from './wand.js';
 import { parry } from './weapons.js';
 import './parry.js'; // katana parry: sparks, sounds, PARRY!, the guard pose
-import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN } from './skins.js';
+import { addPatch, clearPatches } from './mslip.js'; // marble shotgun: marbles on the floor you slip on
+import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN, WRAP_MODES, WRAP_MODE_NAMES } from './skins.js';
 import { initPreview, showPreview, showCharacter, renderPreview, resizePreview } from './preview.js';
 import { playKillFx, updateKillFx, clearKillFx } from './killfx.js';
 import { courtKill, courtVerdict, updateCourt, courtReset, courtSync } from './scales.js';
@@ -49,7 +50,7 @@ import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CON
 import { SPRAY, ownedSpray } from '/shared/cosmetics.js';
 import { sprayAim, sprayFx, addSpray, clearSprays, updateSprays, sprayIcon } from './sprays.js';
 import { achInv } from '/shared/cosmetics.js'; // achievement rewards (Golden Sniper) count as owned once you have the achievement
-import { achProgress } from '/shared/looks.js';
+import { achProgress, ROYAL_ALL, ROYAL_FEATS } from '/shared/looks.js';
 import { royalToast, royalUnlock, royalBoxes } from './royal.js';
 import { setOnly } from './weapons.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
@@ -88,7 +89,7 @@ function recomputeEquipped() {
     const o = ownedSkin(sk, G.inv, id);
     if (o[0] !== 'default' || o[1] !== 'none' || o[2] !== 'none' || o[3] !== 'default') G.equipped[id] = o;
   }
-  if (G.equipped.scythe) G.equipped.scythe_rifle = G.equipped.scythe.slice(0, 3).concat('default'); // both forms look the same
+  if (G.equipped.scythe) G.equipped.scythe_rifle = G.equipped.scythe.slice(0, 3).concat('default', G.equipped.scythe[4]); // both forms look the same
 }
 recomputeEquipped();
 
@@ -128,7 +129,7 @@ function show(id) {
   for (const el of document.querySelectorAll('.screen')) el.classList.toggle('hidden', el.id !== 'scr-' + id);
   $('menu').classList.remove('hidden');
   hud.show(false);
-  if (id === 'cosmetics') { $('cosSlot').append($('preview')); buildCosmeticsUI(); setTimeout(resizePreview, 0); }
+  if (id === 'cosmetics') { skinAllNow = false; $('cosSlot').append($('preview')); buildCosmeticsUI(); setTimeout(resizePreview, 0); }
   if (id === 'character') { $('charSlot').append($('preview')); buildCharacterUI(); setTimeout(resizePreview, 0); }
   if (id === 'namecard') cardEditor.open();
   if (id === 'crates') renderCrates();
@@ -214,6 +215,7 @@ function clearEntities() {
   for (const h of G.holes.values()) G.scene.remove(h.mesh);
   G.projs.clear(); G.peels.clear(); G.holes.clear();
   clearCrosses();
+  clearPatches();
 }
 function quitToMenu(silent) {
   net.close();
@@ -472,8 +474,10 @@ function sendSkins() {
 function skinnable() { return ORDER.filter((id) => WEAPONS[id] && (SLOTS.includes(WEAPONS[id].slot) || itemModel(id) || id === 'scythe')); }
 // items you see in your hand wear skins (popper, reverse card). the thrown duck is a plain projectile, so not that
 function itemModel(id) { return Object.values(ITEMS).some((it) => it.w === id); }
+// nothing picked = no entry. a wrap mode that isn't normal is kept even without a wrap, so it's still there when you pick one
+const plainSkin = (skin) => skin[0] === 'default' && skin[1] === 'none' && skin[2] === 'none' && (skin[3] || 'default') === 'default' && (skin[4] || 'normal') === 'normal';
 function storeSkin(id, skin) {
-  if (skin[0] === 'default' && skin[1] === 'none' && skin[2] === 'none' && (skin[3] || 'default') === 'default') delete S.skins[id];
+  if (plainSkin(skin)) delete S.skins[id];
   else S.skins[id] = skin;
 }
 // wrap / hat / effect on EVERY weapon at once (each weapon keeps its own model)
@@ -481,9 +485,11 @@ function setPartAll(idx, value) {
   for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[idx] = value; storeSkin(id, sk); }
   saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne(); // visuals only: keeps a randomizer or pending loadout
 }
-const allMode = () => S.skinAll !== false;
+// copy-to-every-weapon starts unticked every time you open COSMETICS (it isn't saved): you dress one weapon unless you ask
+let skinAllNow = false;
+const allMode = () => skinAllNow;
 function setSkin(id, skin) {
-  if (skin[0] === 'default' && skin[1] === 'none' && skin[2] === 'none' && (skin[3] || 'default') === 'default') delete S.skins[id];
+  if (plainSkin(skin)) delete S.skins[id];
   else S.skins[id] = skin;
   saveSettings();
   recomputeEquipped();
@@ -503,6 +509,8 @@ function setLook(look) {
   saveSettings();
   if (G.joined) net.send({ t: 'look', look: validLook(look, myAchs()) });
 }
+// every achievement (and old one), for trying on locked accessories in the preview only: what you wear stays validLook(look, myAchs())
+const ALL_ACHS = new Set([...Object.keys(ACHIEVEMENTS), ...LOOK_SLOTS.flatMap((sl) => Object.values(ACCESSORIES[sl]).map((v) => v.legacy).filter(Boolean))]);
 function buildCharacterUI() {
   const achs = myAchs();
   const look = { ...DEFAULT_LOOK, ...G.settings.look };
@@ -557,6 +565,8 @@ function buildCharacterUI() {
       c.textContent = v.name;
       if (v.ach) c.style.setProperty('--rc', '#ffe14d');
       c.title = v.ach ? `${ACHIEVEMENTS[v.ach].name}: ${ACHIEVEMENTS[v.ach].desc}` : 'free';
+      c.addEventListener('mouseenter', () => { const t = validLook({ ...look, [slot]: k }, ALL_ACHS); showCharacter(buildCharacter, t.color || G.myColor || '#ff4fd8', t); }); // try it on, locked or not
+      c.addEventListener('mouseleave', () => showCharacter(buildCharacter, shown.color || G.myColor || '#ff4fd8', shown));
       if (v.legacy && achs.has(v.legacy) && !achs.has(v.ach)) c.title += ' (yours anyway: you earned them before they moved here)';
       c.addEventListener('click', () => {
         if (!have) { toast(`${v.name}: unlock "${ACHIEVEMENTS[v.ach].name}" (${ACHIEVEMENTS[v.ach].desc})${account.loggedIn ? '' : '. log in so it counts'}`, 3200); return; }
@@ -602,7 +612,7 @@ function buildCharacterUI() {
     const rw = document.createElement('div'); rw.className = 'rw';
     rw.textContent = 'unlocks ' + rewardsFor(id).map((x) => x.name).join(', ');
     d.append(b, t, bar, rw);
-    if (a.feats) d.insertBefore(royalBoxes(done ? (1 << a.feats.length) - 1 : st[a.stat] || 0, 0, a.feats), bar); // the parts, ticked or not
+    if (a.feats) d.insertBefore(royalBoxes(done ? ROYAL_ALL : st[a.stat] || 0, 0, a.feats), bar); // the parts, ticked or not
     list.append(d);
   }
   $('lkNote').textContent = account.loggedIn ? 'other players see this. locked stuff unlocks from achievements.' : 'guest: free accessories only. log in to earn the achievement ones.';
@@ -622,6 +632,13 @@ $('lkRandom').addEventListener('click', () => {
 });
 $('lkReset').addEventListener('click', () => { setLook({ ...DEFAULT_LOOK }); buildCharacterUI(); });
 
+// hover a cosmetic to see it on the weapon in the preview, locked or not; leaving puts your real look back.
+// req: a locked achievement skin whose "what it takes" box shows while hovering
+function tryOn(chip, skinFn, id, sk, req) {
+  const box = () => req && [...$('skAch').children].find((b) => b.dataset.skin === req);
+  chip.addEventListener('mouseenter', () => { showPreview(id, skinFn()); const b = box(); if (b) b.style.display = ''; });
+  chip.addEventListener('mouseleave', () => { showPreview(id, ownedSkin(sk, G.inv, id)); const b = box(); if (b) b.style.display = 'none'; });
+}
 function buildCosmeticsUI() {
   const list = $('cosWeapons');
   list.innerHTML = '';
@@ -635,7 +652,7 @@ function buildCosmeticsUI() {
       const b = document.createElement('button');
       b.className = 'wpick' + (G.cosSel === id ? ' on' : '');
       if (modelsFor(id).length > 1) b.title = 'has skins';
-      b.textContent = w.name + (S.skins[id] ? ' *' : '');
+      b.textContent = w.name + (S.skins[id] && !plainSkin([...S.skins[id].slice(0, 4), 'normal']) ? ' *' : ''); // a wrap mode alone isn't a skin
       b.style.setProperty('--c', w.color);
       b.addEventListener('click', () => { G.cosSel = id; buildCosmeticsUI(); });
       list.append(b);
@@ -658,6 +675,7 @@ function buildCosmeticsUI() {
       c.textContent = v.name;
       c.style.setProperty('--rc', RARITY[v.rarity].color);
       c.title = `${RARITY[v.rarity].name}${have ? '' : ' (locked: roll to unlock)'}`;
+      tryOn(c, () => { const s2 = sk.slice(); s2[idx] = k; return s2; }, id, sk); // hover: try it on, locked or not
       c.addEventListener('click', () => {
         if (!have) { toast(`${v.name} is ${RARITY[v.rarity].name}. win rounds to get rolls.`); return; }
         if (allMode()) setPartAll(idx, k);
@@ -685,6 +703,7 @@ function buildCosmeticsUI() {
     kel.append(c);
   }
   buildSprayUI();
+  wrapModeUI(id, sk);
   chips('sk-finish', 'finish', 0);
   chips('sk-hat', 'hat', 1);
   chips('sk-effect', 'effect', 2);
@@ -701,6 +720,7 @@ function buildCosmeticsUI() {
     c.style.setProperty('--rc', RARITY[v.rarity].color);
     const ach = v.ach && ACHIEVEMENTS[v.ach]; // achievement skins: not in crates, you earn them
     if (ach) { c.classList.add('achchip'); c.title = `${ach.name}: ${ach.desc}`; }
+    tryOn(c, () => { const s2 = sk.slice(); s2[3] = k; return s2; }, id, sk, !have && ach ? k : null); // hover: try it on (+ what it takes)
     c.addEventListener('click', () => {
       if (!have && ach) { toast(`${v.name}: unlock "${ach.name}" (${ach.desc})${account.loggedIn ? '' : '. log in so it counts'}`, 3600); return; }
       if (!have) { toast(`${v.name} is ${RARITY[v.rarity].name}. win rounds to get rolls.`); return; }
@@ -709,43 +729,77 @@ function buildCosmeticsUI() {
     $('sk-model').append(c);
   }
   buildGrappleUI();
-  // next to an achievement skin: what it takes, with the parts you've ticked so far
+  // a locked achievement skin: what it takes, with the parts you've ticked so far. only shown while you hover it
   $('skAch').innerHTML = '';
   for (const k of models) {
     const v = COSMETICS.model[k], a = v.ach && ACHIEVEMENTS[v.ach];
-    if (!a) continue;
+    if (!a || owns(G.inv, 'model', k)) continue;
     const st = (account.me && account.me.stats) || {}, done = myAchs().has(v.ach);
     const box = document.createElement('div'); box.className = 'achskin' + (done ? ' done' : '');
+    box.dataset.skin = k; box.style.display = 'none';
     const h = document.createElement('b'); h.textContent = done ? `★ ${v.name}: yours` : `${v.name} (locked): ${a.name} ${Math.min(a.goal, achProgress(a, st))}/${a.goal}`;
     const t = document.createElement('div'); t.textContent = done ? `${a.name} complete${k === 'sniper_golden' ? '. stays gold under any wrap' : ''}` : a.desc + (account.loggedIn ? '' : '. log in so it counts');
     box.append(h, t);
-    if (a.feats) box.append(royalBoxes(done ? (1 << a.feats.length) - 1 : st[a.stat] || 0, 0, a.feats));
+    if (a.feats) box.append(royalBoxes(done ? ROYAL_ALL : st[a.stat] || 0, 0, a.feats));
     $('skAch').append(box);
   }
   showPreview(id, ownedSkin(sk, G.inv, id));
 }
+// NORMAL / REVERSE / FULL: which part of the weapon the wrap paints (wrapzones.js). free, goes with the wrap
+const WRAP_HINT = {
+  normal: 'normal: the wrap goes on the handle / body. the blade and barrel keep their metal',
+  reverse: 'reverse: the wrap goes on the blade / barrel / business end. the handle keeps its look',
+  full: 'full: the whole weapon, like the old wraps',
+};
+function wrapIcon(mode) { // a tiny knife: the half the wrap paints is pink
+  const on = (z) => (mode === 'full' || mode === z ? '#ff4fd8' : '#9a9aa4');
+  return `<svg viewBox="0 0 46 14"><rect x="1" y="4" width="15" height="6" fill="${on('normal')}" stroke="#000" stroke-width="1.5"/>`
+    + `<rect x="16" y="2" width="3" height="10" fill="${on('normal')}" stroke="#000" stroke-width="1.5"/>`
+    + `<path d="M19 3 L40 3 L45 7 L40 11 L19 11 Z" fill="${on('reverse')}" stroke="#000" stroke-width="1.5"/></svg>`;
+}
+function wrapModeUI(id, sk) {
+  const el = $('sk-wrapmode');
+  el.innerHTML = '';
+  el.classList.toggle('off', sk[0] === 'default');
+  for (const m of WRAP_MODES) {
+    const b = document.createElement('button');
+    b.className = sk[4] === m ? 'on' : '';
+    b.innerHTML = wrapIcon(m);
+    b.append(WRAP_MODE_NAMES[m].toUpperCase());
+    b.title = WRAP_HINT[m];
+    b.addEventListener('click', () => {
+      if (allMode()) setPartAll(4, m);
+      else { const s2 = sk.slice(); s2[4] = m; setSkin(id, s2); }
+      buildCosmeticsUI();
+    });
+    el.append(b);
+  }
+  const h = document.createElement('div'); h.className = 'hint';
+  h.textContent = sk[0] === 'default' ? 'pick a wrap, then choose where it goes' : WRAP_HINT[sk[4]];
+  el.append(h);
+}
 $('skRandom').addEventListener('click', () => {
   const pick = (t) => { const ks = Object.keys(COSMETICS[t]).filter((k) => owns(G.inv, t, k)); return ks[(Math.random() * ks.length) | 0]; };
   if (allMode()) {
-    const parts = ['finish', 'hat', 'effect'].map(pick);
-    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = parts[0]; sk[1] = parts[1]; sk[2] = parts[2]; storeSkin(id, sk); }
+    const parts = ['finish', 'hat', 'effect'].map(pick), wm = WRAP_MODES[(Math.random() * 3) | 0];
+    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = parts[0]; sk[1] = parts[1]; sk[2] = parts[2]; sk[4] = wm; storeSkin(id, sk); }
     saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne();
-  } else setSkin(G.cosSel, TYPES.map(pick));
+  } else setSkin(G.cosSel, [...TYPES.map(pick), WRAP_MODES[(Math.random() * 3) | 0]]);
   buildCosmeticsUI();
 });
 $('skReset').addEventListener('click', () => {
   if (allMode()) {
-    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = 'default'; sk[1] = 'none'; sk[2] = 'none'; storeSkin(id, sk); }
+    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = 'default'; sk[1] = 'none'; sk[2] = 'none'; sk[4] = 'normal'; storeSkin(id, sk); }
     saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne();
   } else setSkin(G.cosSel, DEFAULT_SKIN.slice());
   buildCosmeticsUI();
 });
 $('skAll').addEventListener('click', () => { // copy this weapon's wrap/hat/effect to everything (models stay)
   const sk = validSkin(S.skins[G.cosSel]);
-  for (const id of skinnable()) { const s2 = validSkin(S.skins[id]).slice(); s2[0] = sk[0]; s2[1] = sk[1]; s2[2] = sk[2]; storeSkin(id, s2); }
+  for (const id of skinnable()) { const s2 = validSkin(S.skins[id]).slice(); s2[0] = sk[0]; s2[1] = sk[1]; s2[2] = sk[2]; s2[4] = sk[4]; storeSkin(id, s2); }
   saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne(); buildCosmeticsUI();
 });
-$('skAllMode').addEventListener('change', () => { S.skinAll = $('skAllMode').checked; saveSettings(); buildCosmeticsUI(); });
+$('skAllMode').addEventListener('change', () => { skinAllNow = $('skAllMode').checked; buildCosmeticsUI(); });
 
 // ------------------------------------------------------------ grapple skins (one per player, everyone sees your rope)
 function setGrap(id) {
@@ -987,6 +1041,7 @@ net.on('welcome', (m) => {
   hud.chat(null, null, `you are ${m.name}. ${tips[m.mode] || ''}`);
   clearSprays(); sprayT = -1e9;
   for (const s of m.sprays || []) addSpray(s, true); // graffiti that was already on the walls
+  for (const pt of m.mpatch || []) addPatch(pt); // marbles already on the floor
 });
 net.on('cfg', (m) => {
   const mapChanged = m.cfg.map !== G.cfg.map;
@@ -1052,7 +1107,7 @@ function unlockSkins(list) {
     storeSkin(w, sk);
   }
   saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne();
-  if (list.some((r) => r.id === 'sniper_golden')) royalUnlock('SNIPER ROYALTY 4/4 · it\'s on your sniper now (swap it in COSMETICS)');
+  if (list.some((r) => r.id === 'sniper_golden')) royalUnlock(`SNIPER ROYALTY ${ROYAL_FEATS.length}/${ROYAL_FEATS.length} · it's on your sniper now (swap it in COSMETICS)`);
 }
 // Sniper Royalty: you just ticked a box (the server decides; a guest is told it would have counted)
 net.on('royal', (m) => {
@@ -1212,7 +1267,7 @@ net.on('loadout', (m) => {
 net.on('modew', (m) => { if (m.w) endBall(); setOnly(m.w || null, G.forcedLoadout || S.loadout); }); // (a mode weapon ends a wrecking ball: the server already did)
 net.on('kb', (m) => applyKb(m.v));
 net.on('grab', (m) => shredGrab(m)); // you're in someone's shredder
-net.on('slip', () => slip(performance.now()));
+net.on('slip', (m) => slip(performance.now(), m.k));
 net.on('dmg', (m) => {
   const target = m.to === G.myId ? null : G.remotes.get(m.to);
   if (m.to === G.myId) {
@@ -1281,6 +1336,7 @@ net.on('kill', (m) => {
   if (m.v === G.myId) epicKC = m.ep && m.ep.lock && m.k && m.k !== G.myId && S.killcam !== false && G.mode !== 'training' ? { ...m.ep, w: via } : null; // too epic to skip (the server holds your respawn)
   if (m.v === G.myId) epicHold = !!(m.ep && m.ep.lock); // ...until it spawns you, killcam or not
   if (m.v === G.myId) {
+    if (performance.now() < (ME.sleepUntil || 0) && $('center').textContent === 'zzz...') hud.msg('', 0); // died in your sleep: no "zzz..." over the killcam
     ME.alive = false;
     releaseHook();
     W.held = false; W.aimHeld = false;
