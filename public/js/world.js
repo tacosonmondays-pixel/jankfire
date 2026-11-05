@@ -155,6 +155,7 @@ function makeMaterials() {
   out.pooltile = lam(canvasTex(16, (g, s) => { speckle(g, s, [234, 242, 242], 5, 4); g.fillStyle = '#a3bcc0'; for (let i = 0; i < s; i += 4) { g.fillRect(i, 0, 1, s); g.fillRect(0, i, s, 1); } }), 1, { emissive: 0x3c4c50 });
   out.poolwater = { mat: new THREE.MeshBasicMaterial({ color: 0x86dbe6, transparent: true, opacity: 0.42, depthWrite: false }), tile: 2 };
   addVibe(out, canvasTex, speckle); // the map pass look (vibe.js)
+  for (const v of Object.values(out)) if (!v.mat.onBeforeCompile || v.mat.onBeforeCompile === THREE.Material.prototype.onBeforeCompile) hazify(v.mat, v.mat.isMeshBasicMaterial ? 0.45 : 1);
   return out;
 }
 
@@ -162,6 +163,34 @@ function makeMaterials() {
 // a single triangle hundreds of metres long with corners behind the camera gets dropped by some GPUs (whole lawns vanished)
 const SEG = (v) => Math.min(48, Math.max(1, Math.ceil(v / 32)));
 const boxGeo = (sx, sy, sz) => new THREE.BoxGeometry(sx, sy, sz, SEG(sx), SEG(sy), SEG(sz));
+
+// height haze (map.haze, the city maps): a fog layer that gets thicker the lower and further you look, so the streets far
+// below are soft shapes and lights in a haze while fights across the rooftops stay clear. one shared set of uniforms,
+// patched into the map materials' fog. glowing stuff (neon, lit windows, signs) only takes part of it: lights shine through
+export const hazeUniforms = { uHaze: { value: new THREE.Vector4(0, 0, -1, 100) }, uHazeColor: { value: new THREE.Color(0) } }; // strength, top y, bottom y, depth scale
+const HAZE_FOG = `#ifdef USE_FOG
+	#ifdef FOG_EXP2
+		float fogFactor = 1.0 - exp( - fogDensity * fogDensity * vFogDepth * vFogDepth );
+	#else
+		float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
+	#endif
+	vec3 fogC = fogColor;
+	if ( uHaze.x > 0.0 ) {
+		float hz = clamp( ( uHaze.y - vHazeY ) / ( uHaze.y - uHaze.z ), 0.0, 1.0 );
+		float hf = uHaze.x * uHazeK * hz * ( 0.35 + 0.65 * hz ) * ( 1.0 - exp( - vFogDepth / uHaze.w ) );
+		fogC = mix( fogColor, uHazeColor, clamp( hf / max( 0.001, fogFactor + hf ), 0.0, 1.0 ) );
+		fogFactor = 1.0 - ( 1.0 - fogFactor ) * ( 1.0 - hf );
+	}
+	gl_FragColor.rgb = mix( gl_FragColor.rgb, fogC, fogFactor );
+#endif`;
+function hazify(mat, k) {
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uHaze = hazeUniforms.uHaze; sh.uniforms.uHazeColor = hazeUniforms.uHazeColor; sh.uniforms.uHazeK = { value: k };
+    sh.vertexShader = 'varying float vHazeY;\n' + sh.vertexShader.replace('#include <fog_vertex>', '#include <fog_vertex>\n\tvHazeY = ( modelMatrix * vec4( transformed, 1.0 ) ).y;');
+    sh.fragmentShader = 'uniform vec4 uHaze;\nuniform vec3 uHazeColor;\nuniform float uHazeK;\nvarying float vHazeY;\n' + sh.fragmentShader.replace('#include <fog_fragment>', HAZE_FOG);
+  };
+  mat.customProgramCacheKey = () => 'haze';
+}
 
 // world-space UVs: each face picks the two axes it spans, so textures continue across boxes
 function worldUV(geo, cx, cy, cz, tile) {
@@ -361,6 +390,9 @@ export function loadMap(id) {
   G.scene.fog.color.setHex(MAP.sky.fog);
   G.scene.fog.near = MAP.fogNear;
   G.scene.fog.far = MAP.fogFar;
+  const hz = MAPS[MAP.id] && MAPS[MAP.id].haze; // the city maps' haze layer (off everywhere else)
+  hazeUniforms.uHaze.value.set(hz ? hz.k : 0, hz ? hz.top : 0, hz ? hz.bottom : -1, hz ? hz.dist : 100);
+  if (hz) hazeUniforms.uHazeColor.value.setHex(hz.color);
   voidMesh.position.y = MAP.killY - 25;
   buildScenery(G.scene, MAPS[MAP.id], MAP.id, voidMesh);
   mapLight(MAPS[MAP.id]);

@@ -538,6 +538,7 @@ function rooftop() {
   cityDress(D, plan, roofs, -152, r);
   cityBeyond(D, -142, 180, 520, rng(5151), { kill: -130, cap: -14, shore: 340, avenues: [[0, -260, 0.62], [260, 0, -0.95], [-240, 60, 1.4], [-200, -300, 2.6]] });
   return { name: 'Rooftop', size: 'medium', boxes: B.boxes, deco: D.boxes, killY: -130, floorY: -150, cityR: 520, cityCap: -14,
+    haze: { k: 0.92, top: -25, bottom: -142, dist: 90, color: 0x6a5c9c }, // look down: the city lights through a night smog
     sky: { top: 0x05051a, mid: 0x4a2a7a, bot: 0x000005, fog: 0x2a2050 }, fogNear: 110, fogFar: 480, spawns };
 }
 
@@ -1346,6 +1347,7 @@ function skyline() {
   cityDress(D, plan, roofs, base, r);
   cityBeyond(D, -100, 190, 680, rng(4040), { kill: -88, cap: 30, shore: 470, avenues: [[-60, -230, 0.42], [230, 40, -1.05], [-300, 120, 1.25], [80, -420, 0.06], [-250, -250, 2.35]] });
   return { name: 'Skyline', size: 'huge', boxes: B.boxes, deco: D.boxes, killY: -88, floorY: -108, cityR: 680, cityCap: 30,
+    haze: { k: 0.88, top: 15, bottom: -100, dist: 110, color: 0xc89aa4 }, // look down: the city through a dusk haze
     sky: { top: 0x1a2a5a, mid: 0xff9a5a, bot: 0x0a0a1a, fog: 0xd98a6a }, fogNear: 160, fogFar: 700, spawns };
 }
 
