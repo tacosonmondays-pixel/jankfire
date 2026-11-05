@@ -24,7 +24,7 @@ import { Remote, updateGibs } from './remote.js';
 import { stepSoap, trapStart, trapEnd, updateWand, stuckInBubble } from './wand.js';
 import { parry } from './weapons.js';
 import './parry.js'; // katana parry: sparks, sounds, PARRY!, the guard pose
-import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN } from './skins.js';
+import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN, WRAP_MODES, WRAP_MODE_NAMES } from './skins.js';
 import { initPreview, showPreview, showCharacter, renderPreview, resizePreview } from './preview.js';
 import { playKillFx, updateKillFx, clearKillFx } from './killfx.js';
 import { courtKill, courtVerdict, updateCourt, courtReset, courtSync } from './scales.js';
@@ -88,7 +88,7 @@ function recomputeEquipped() {
     const o = ownedSkin(sk, G.inv, id);
     if (o[0] !== 'default' || o[1] !== 'none' || o[2] !== 'none' || o[3] !== 'default') G.equipped[id] = o;
   }
-  if (G.equipped.scythe) G.equipped.scythe_rifle = G.equipped.scythe.slice(0, 3).concat('default'); // both forms look the same
+  if (G.equipped.scythe) G.equipped.scythe_rifle = G.equipped.scythe.slice(0, 3).concat('default', G.equipped.scythe[4]); // both forms look the same
 }
 recomputeEquipped();
 
@@ -471,8 +471,10 @@ function sendSkins() {
 function skinnable() { return ORDER.filter((id) => WEAPONS[id] && (SLOTS.includes(WEAPONS[id].slot) || itemModel(id) || id === 'scythe')); }
 // items you see in your hand wear skins (popper, reverse card). the thrown duck is a plain projectile, so not that
 function itemModel(id) { return Object.values(ITEMS).some((it) => it.w === id); }
+// nothing picked = no entry. a wrap mode that isn't normal is kept even without a wrap, so it's still there when you pick one
+const plainSkin = (skin) => skin[0] === 'default' && skin[1] === 'none' && skin[2] === 'none' && (skin[3] || 'default') === 'default' && (skin[4] || 'normal') === 'normal';
 function storeSkin(id, skin) {
-  if (skin[0] === 'default' && skin[1] === 'none' && skin[2] === 'none' && (skin[3] || 'default') === 'default') delete S.skins[id];
+  if (plainSkin(skin)) delete S.skins[id];
   else S.skins[id] = skin;
 }
 // wrap / hat / effect on EVERY weapon at once (each weapon keeps its own model)
@@ -482,7 +484,7 @@ function setPartAll(idx, value) {
 }
 const allMode = () => S.skinAll !== false;
 function setSkin(id, skin) {
-  if (skin[0] === 'default' && skin[1] === 'none' && skin[2] === 'none' && (skin[3] || 'default') === 'default') delete S.skins[id];
+  if (plainSkin(skin)) delete S.skins[id];
   else S.skins[id] = skin;
   saveSettings();
   recomputeEquipped();
@@ -634,7 +636,7 @@ function buildCosmeticsUI() {
       const b = document.createElement('button');
       b.className = 'wpick' + (G.cosSel === id ? ' on' : '');
       if (modelsFor(id).length > 1) b.title = 'has skins';
-      b.textContent = w.name + (S.skins[id] ? ' *' : '');
+      b.textContent = w.name + (S.skins[id] && !plainSkin([...S.skins[id].slice(0, 4), 'normal']) ? ' *' : ''); // a wrap mode alone isn't a skin
       b.style.setProperty('--c', w.color);
       b.addEventListener('click', () => { G.cosSel = id; buildCosmeticsUI(); });
       list.append(b);
@@ -684,6 +686,7 @@ function buildCosmeticsUI() {
     kel.append(c);
   }
   buildSprayUI();
+  wrapModeUI(id, sk);
   chips('sk-finish', 'finish', 0);
   chips('sk-hat', 'hat', 1);
   chips('sk-effect', 'effect', 2);
@@ -723,25 +726,58 @@ function buildCosmeticsUI() {
   }
   showPreview(id, ownedSkin(sk, G.inv, id));
 }
+// NORMAL / REVERSE / FULL: which part of the weapon the wrap paints (wrapzones.js). free, goes with the wrap
+const WRAP_HINT = {
+  normal: 'normal: the wrap goes on the handle / body. the blade and barrel keep their metal',
+  reverse: 'reverse: the wrap goes on the blade / barrel / business end. the handle keeps its look',
+  full: 'full: the whole weapon, like the old wraps',
+};
+function wrapIcon(mode) { // a tiny knife: the half the wrap paints is pink
+  const on = (z) => (mode === 'full' || mode === z ? '#ff4fd8' : '#9a9aa4');
+  return `<svg viewBox="0 0 46 14"><rect x="1" y="4" width="15" height="6" fill="${on('normal')}" stroke="#000" stroke-width="1.5"/>`
+    + `<rect x="16" y="2" width="3" height="10" fill="${on('normal')}" stroke="#000" stroke-width="1.5"/>`
+    + `<path d="M19 3 L40 3 L45 7 L40 11 L19 11 Z" fill="${on('reverse')}" stroke="#000" stroke-width="1.5"/></svg>`;
+}
+function wrapModeUI(id, sk) {
+  const el = $('sk-wrapmode');
+  el.innerHTML = '';
+  el.classList.toggle('off', sk[0] === 'default');
+  for (const m of WRAP_MODES) {
+    const b = document.createElement('button');
+    b.className = sk[4] === m ? 'on' : '';
+    b.innerHTML = wrapIcon(m);
+    b.append(WRAP_MODE_NAMES[m].toUpperCase());
+    b.title = WRAP_HINT[m];
+    b.addEventListener('click', () => {
+      if (allMode()) setPartAll(4, m);
+      else { const s2 = sk.slice(); s2[4] = m; setSkin(id, s2); }
+      buildCosmeticsUI();
+    });
+    el.append(b);
+  }
+  const h = document.createElement('div'); h.className = 'hint';
+  h.textContent = sk[0] === 'default' ? 'pick a wrap, then choose where it goes' : WRAP_HINT[sk[4]];
+  el.append(h);
+}
 $('skRandom').addEventListener('click', () => {
   const pick = (t) => { const ks = Object.keys(COSMETICS[t]).filter((k) => owns(G.inv, t, k)); return ks[(Math.random() * ks.length) | 0]; };
   if (allMode()) {
-    const parts = ['finish', 'hat', 'effect'].map(pick);
-    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = parts[0]; sk[1] = parts[1]; sk[2] = parts[2]; storeSkin(id, sk); }
+    const parts = ['finish', 'hat', 'effect'].map(pick), wm = WRAP_MODES[(Math.random() * 3) | 0];
+    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = parts[0]; sk[1] = parts[1]; sk[2] = parts[2]; sk[4] = wm; storeSkin(id, sk); }
     saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne();
-  } else setSkin(G.cosSel, TYPES.map(pick));
+  } else setSkin(G.cosSel, [...TYPES.map(pick), WRAP_MODES[(Math.random() * 3) | 0]]);
   buildCosmeticsUI();
 });
 $('skReset').addEventListener('click', () => {
   if (allMode()) {
-    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = 'default'; sk[1] = 'none'; sk[2] = 'none'; storeSkin(id, sk); }
+    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = 'default'; sk[1] = 'none'; sk[2] = 'none'; sk[4] = 'normal'; storeSkin(id, sk); }
     saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne();
   } else setSkin(G.cosSel, DEFAULT_SKIN.slice());
   buildCosmeticsUI();
 });
 $('skAll').addEventListener('click', () => { // copy this weapon's wrap/hat/effect to everything (models stay)
   const sk = validSkin(S.skins[G.cosSel]);
-  for (const id of skinnable()) { const s2 = validSkin(S.skins[id]).slice(); s2[0] = sk[0]; s2[1] = sk[1]; s2[2] = sk[2]; storeSkin(id, s2); }
+  for (const id of skinnable()) { const s2 = validSkin(S.skins[id]).slice(); s2[0] = sk[0]; s2[1] = sk[1]; s2[2] = sk[2]; s2[4] = sk[4]; storeSkin(id, s2); }
   saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne(); buildCosmeticsUI();
 });
 $('skAllMode').addEventListener('change', () => { S.skinAll = $('skAllMode').checked; saveSettings(); buildCosmeticsUI(); });
