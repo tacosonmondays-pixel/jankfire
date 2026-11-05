@@ -56,6 +56,7 @@ import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from
 import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection, infClipInfo } from './infection.js';
 import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown } from './endscreen.js';
 import { initHome, homeShown, homeLeft } from './home.js';
+import { skipVote, skipReset } from './skipvote.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
@@ -228,6 +229,7 @@ function resetWorldState() {
   renderRound(null);
   $('roundEnd').classList.add('hidden');
   esClose(false);
+  skipReset();
   if (account.loggedIn) setTimeout(() => restore().then((me) => { if (me) renderAcctBar(); }), 900); // server saves stats when you leave
 }
 function clearEntities() {
@@ -995,6 +997,7 @@ net.on('welcome', (m) => {
   clearTags();
   for (const g of m.tags || []) addTag(g.id, g.p, g.team);
   openVote(m.vote);
+  skipVote(m.skip || null); // a /skip vote that's already on
   refillAmmo();
   resetItems(); // a fresh player on the server: welcome.ic has its real charges
   G.itemSent = null;
@@ -1003,8 +1006,8 @@ net.on('welcome', (m) => {
   updateLabel();
   $('status').textContent = '';
   const tips = {
-    ffa: 'T to chat, B for menu. Change the map or hipfire in Match Settings.',
-    bots: 'bots are dumb but there are a lot of them. B for menu.',
+    ffa: 'T to chat, B for menu. Change the map or hipfire in Match Settings. /skip in chat votes to skip the match.',
+    bots: 'bots are dumb but there are a lot of them. B for menu. /skip in chat skips the match.',
     coop: 'survive the waves. bots only hurt humans, no friendly fire.',
     training: 'dummies respawn instantly. knock the ones on the left ledge off. movement playground on the right.',
   };
@@ -1204,6 +1207,7 @@ function stopUse() { clearInterval(useTimer); useTimer = 0; G.using = false; }
 function openVote(v) { G.vote = v || null; if (v) esVote(v); }
 net.on('vote', (m) => openVote(m));
 net.on('votes', (m) => esVotes(m));
+net.on('skipvote', (m) => skipVote(m)); // someone typed /skip (server/skip.js)
 
 // randomizer mode: the server hands you a loadout each life (null = use your own again)
 net.on('loadout', (m) => {

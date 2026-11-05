@@ -21,6 +21,7 @@ const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const LINES = {
   win: ['quarterly kill targets: exceeded.', 'you have been promoted to slightly less disposable.', 'the shareholders are pleased. for now.', 'a bonus of $0.00 has been wired to your account.', 'management will take credit for this.'],
   lose: ['your organs have been leased.', 'performance review: scheduled.', 'please return the weapon to the front desk.', 'the board is disappointed in you.', 'your contract has been renewed. unfortunately.', 'skill issue (corporate).'],
+  skip: ['this meeting could have been an email.', 'the board voted. the board is always right.', 'nobody wanted that. noted.'],
   draw: ['nobody wins. legal says that is fine.', 'a tie. HR is drafting a memo.', 'everyone gets a participation lanyard.'],
 };
 const TABS = [['board', 'LEADERBOARD'], ['perf', 'PERFORMANCE'], ['medals', 'MEDALS'], ['rewards', 'REWARDS']];
@@ -184,6 +185,7 @@ export function esAch(a) { ES.achs.push({ ...a, at: performance.now() }); if (ES
 function result() {
   const m = ES.round;
   if (!m || m.pending) return 'none';
+  if (m.skipped) return 'skip'; // voted off with /skip: nobody won it
   if (ES.perf && ES.perf.won) return 'win';
   if (m.game === 'inf' && G.infSide) return (G.infSide === 'inf') === !!G.zombie ? 'win' : 'lose'; // infection: your side won or it didn't
   const teams = !!m.sc;
@@ -197,7 +199,7 @@ function renderWhere() {
 }
 function renderTitle() {
   const t = $('esTitle'), r = result();
-  const word = r === 'win' ? 'VICTORY' : r === 'lose' ? 'DEFEAT' : r === 'draw' ? 'DRAW' : 'NEXT MATCH';
+  const word = r === 'win' ? 'VICTORY' : r === 'lose' ? 'DEFEAT' : r === 'draw' ? 'DRAW' : r === 'skip' ? 'SKIPPED' : 'NEXT MATCH';
   if (ES.lineFor !== r && LINES[r]) { ES.line = pick(LINES[r]); ES.lineFor = r; } // the deadpan line matches the result
   renderSub(r);
   if (t.dataset.word === word) return;
@@ -205,7 +207,7 @@ function renderTitle() {
   t.className = `es-title r-${r}`;
   t.innerHTML = '';
   const prop = (flip) => { // 3d, rendered from boxes (no webgl for it: no prop)
-    const i = el('span', 'es-ico' + (flip ? ' flip' : '')), url = propImage(r === 'win' ? 'win' : r === 'draw' ? 'draw' : 'lose', flip);
+    const i = el('span', 'es-ico' + (flip ? ' flip' : '')), url = propImage(r === 'win' ? 'win' : r === 'draw' || r === 'skip' ? 'draw' : 'lose', flip); // skip: the gavel
     if (url) { const img = new Image(); img.alt = ''; img.src = url; i.append(img); }
     return i;
   };

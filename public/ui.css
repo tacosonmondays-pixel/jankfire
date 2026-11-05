@@ -448,3 +448,16 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 .es-cards.deal .es-card { animation: deal 0.5s cubic-bezier(.2, 1.4, .4, 1) backwards, breathe 4.2s ease-in-out infinite; animation-delay: calc(var(--i) * 70ms), calc(var(--i, 0) * -1.1s); }
 .es-cards .es-card.squish { animation: squish 0.35s cubic-bezier(.3, 1.8, .5, 1), breathe 4.2s ease-in-out infinite; animation-delay: 0s, calc(var(--i, 0) * -1.1s); }
 @media (prefers-reduced-motion: reduce) { .es-card, .es-cards.deal .es-card, .es-cards .es-card.squish { animation: none; } }
+/* the /skip vote callout (skipvote.js) */
+#skipBox { position: absolute; left: 50%; top: 58px; transform: translateX(-50%) rotate(-1.5deg); z-index: 6; display: flex; align-items: baseline; gap: 10px;
+  padding: 6px 16px; font-family: var(--font); color: #000; white-space: nowrap; text-shadow: none; }
+#skipBox.org { --fill: var(--yellow); --rim: #000; --shd: var(--pink); }
+#skipBox .t { font-size: 15px; letter-spacing: 2px; }
+#skipBox .mode { font-size: 15px; }
+#skipBox .n { font-size: 22px; color: var(--pink); -webkit-text-stroke: 1px #000; paint-order: stroke fill; }
+#skipBox .how { font-size: 12px; }
+#skipBox kbd { font-family: var(--font); font-weight: 700; background: #000; color: var(--yellow); padding: 0 5px; }
+#skipBox .left { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+#skipBox.bump { animation: skipbump 0.35s cubic-bezier(.3, 1.8, .5, 1); }
+@keyframes skipbump { 30% { scale: 1.12 0.9; } 70% { scale: 0.96 1.05; } }
+.r-skip .es-word span { color: #4fd8ff; text-shadow: 0.07em 0.07em 0 #000, 0.1em 0.1em 0 var(--pink); }

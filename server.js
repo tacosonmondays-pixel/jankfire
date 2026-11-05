@@ -22,6 +22,7 @@ import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, canDefuse, LADDER, GUNGAME, INFECT } from './shared/modes.js';
 import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, eventGame } from './shared/vote.js';
 import { matchReset, matchKill, matchSummary } from './server/match.js';
+import { SKIP, isSkipCmd, skipCommand, skipTick, skipPeople, skipInfo } from './server/skip.js';
 import { WEAPONS, SLOTS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, SLEEP_TIME, validStreaks, fireRate } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
 import { verdict } from './shared/verdict.js';
@@ -215,6 +216,9 @@ if (process.env.JF_INF_HP) INFECT.hp = Number(process.env.JF_INF_HP) || INFECT.h
 if (process.env.JF_LIVES) GAMES.oitc.lives = Number(process.env.JF_LIVES) || GAMES.oitc.lives;
 if (process.env.JF_ROUND_TIME) for (const r of Object.values(ROUND)) r.time = Number(process.env.JF_ROUND_TIME) || r.time;
 if (process.env.JF_DUCKS) DUCKRAIN.n = DUCKRAIN.n.map((x) => x * (Number(process.env.JF_DUCKS) || 1));
+// /skip vote: how long it stays open and the cooldown after one fails, in ms (test knobs)
+if (process.env.JF_SKIP_WINDOW) SKIP.window = Number(process.env.JF_SKIP_WINDOW) || SKIP.window;
+if (process.env.JF_SKIP_COOL) SKIP.cooldown = Number(process.env.JF_SKIP_COOL) || SKIP.cooldown;
 function randomSkins() {
   const out = {};
   for (const id of Object.keys(WEAPONS)) if (Math.random() < 0.6) out[id] = [pick(SKIN_F), pick(SKIN_H), pick(SKIN_E), id === 'knife' ? pick(['default', 'knife_karambit', 'knife_butterfly', 'knife_switch', 'knife_cleaver']) : 'default'];
@@ -338,6 +342,7 @@ class Room {
     for (const p of this.players.values()) if (p.id !== exceptId && p.ws && p.ws.readyState === 1) p.ws.send(s);
   }
   humans() { return [...this.players.values()].filter((p) => !p.isBot); }
+  sendTo(p, m) { send(p, m); } // for server/ modules
   teamsOn() { return (this.mode === 'ffa' || this.mode === 'bots') && !!GAMES[this.game].teams; }
   fighters() { return [...this.players.values()].filter((p) => !(p.isBot && p.ai && p.ai.dummy)); }
   // even teams, humans spread first
@@ -460,9 +465,10 @@ class Room {
       smokes: [...this.smokes.values()].map((s) => [...s.p, Math.round(s.until - now())]), ic: this.icInfo(p),
       kat: [...this.players.values()].filter((o) => o.kat).map((o) => [o.id, o.kat]),
       game: this.game, team: p.team || 0, tags: [...this.tags.values()].map((g) => ({ id: g.id, p: g.p, team: g.team })), vote: this.voteInfo(),
-      sprays: this.sprayList(),
+      sprays: this.sprayList(), skip: skipInfo(this),
     });
     this.broadcast({ t: 'pj', ...this.info(p) }, p.id);
+    skipPeople(this); // one more human: a skip vote needs more
     send(p, { t: 'tip', tip: p.tip });
     for (const t of this.players.values()) if (t.trap) send(p, { t: 'trap', ...this.trapInfo(t) }); // anyone already floating in a soap bubble
     send(p, { t: 'court', s: [...this.players.values()].filter((o) => o.streak > 0).map((o) => [o.id, o.streak]) }); // scales of justice: streaks so far
@@ -487,6 +493,7 @@ class Room {
     this.broadcast({ t: 'pl', id: p.id });
     if (this.vote) { if (this.vote.votes.delete(p.id)) this.broadcast({ t: 'votes', ...this.voteCounts() }); this.voteHurry(); } // whoever's left may all have voted now
     if (this.livesOn) this.oitcList(); // so 'N left' drops them
+    if (!p.isBot) skipPeople(this); // a skip vote's majority moved
     if (!p.isBot && (this.mode === 'ffa' || this.mode === 'coop')) this.broadcast({ t: 'chat', id: 0, m: `${p.name} left` });
     if (!this.humans().length) rooms.delete(this.id);
   }
@@ -2492,6 +2499,7 @@ class Room {
         break;
       case 'chat': {
         const text = typeof m.m === 'string' ? clean(m.m, 120) : '';
+        if (text && isSkipCmd(text)) { skipCommand(this, p); break; } // /skip: a vote to skip this match (server/skip.js), never shown as chat
         if (text && now() - p.chatT > 400) { p.chatT = now(); this.broadcast({ t: 'chat', id: p.id, m: text }); }
         break;
       }
@@ -2635,6 +2643,7 @@ class Room {
     const r = this.round;
     if (!r) return;
     const n = now();
+    skipTick(this, n);
     if (r.over) { this.tickVote(n); if (n >= r.next) this.startRound(); return; }
     if (!this.humans().length) return;
     if (this.game === 'bomb' && this.bomb) { this.tickBomb(n); return; }
@@ -2665,7 +2674,8 @@ class Room {
     this.airEnd();
     if (this.bomb) { this.bomb.act = null; this.bomb.between = 0; }
     let roll = null;
-    if (winner && !winner.isBot) {
+    if (winner && !winner.isBot && this.round.skipped) roll = { n: 0, why: 'skipped matches pay no containers' };
+    else if (winner && !winner.isBot) {
       const eligible = this.mode === 'ffa' ? this.humans().length >= 2 : list.filter((p) => p.isBot).length >= 3;
       if (!winner.acct) { roll = { n: 0, guest: 1 }; if (eligible && winner.kills && winner.m) winner.m.xp += 50; } // the xp they'd have kept
       else if (!eligible) roll = { n: 0, why: this.mode === 'ffa' ? 'need at least 2 real players for a roll' : 'need at least 3 bots for a roll' };
@@ -2677,7 +2687,7 @@ class Room {
         roll = { n: 1, kind, why: 'won the round' };
       }
     }
-    this.broadcast({ t: 'round', over: 1, winner: winner ? winner.id : 0, winTeam, game: this.game, sc: this.teamsOn() ? (this.game === 'bomb' && this.bomb ? [this.bomb.wins[1], this.bomb.wins[2]] : [this.score[1], this.score[2]]) : null,
+    this.broadcast({ t: 'round', over: 1, skipped: this.round.skipped ? 1 : 0, winner: winner ? winner.id : 0, winTeam, game: this.game, sc: this.teamsOn() ? (this.game === 'bomb' && this.bomb ? [this.bomb.wins[1], this.bomb.wins[2]] : [this.score[1], this.score[2]]) : null,
       top: list.slice(0, 6).map((p) => [p.id, p.name, p.kills, p.deaths, p.team || 0]), next: this.round.next - now(),
       board: list.map((p, i) => [p.id, p.name, p.kills, p.deaths, p.team || 0, p.isBot ? 1 : 0, matchSummary(p, i, list, this).score]) });
     // your own match report (end screen: performance / medals / rewards). guests see the xp they would have kept
@@ -2743,7 +2753,7 @@ class Room {
   airEnd() {
     for (const p of this.players.values()) {
       if (p.isBot || !p.air) continue;
-      const ok = p.air.ok;
+      const ok = p.air.ok && !(this.round && this.round.skipped); // a skipped match is too short to count
       p.air = null;
       send(p, { t: 'air', end: 1, ok: ok ? 1 : 0, acct: p.acct ? 1 : 0 });
       if (ok) { console.log(`never landed: ${p.name}`); stat(p, 'airborne', 1); }
@@ -2762,7 +2772,8 @@ class Room {
   // humans decide; bots vote too, but only break ties (shared/vote.js)
   startVote() {
     if (this.mode !== 'ffa' && this.mode !== 'bots') return;
-    const options = modeCards(MAPS, MAP_ORDER, this.game);
+    const options = modeCards(MAPS, MAP_ORDER, this.game, Math.random, this.skipped);
+    this.skipped = null;
     if (!options.length) return;
     this.vote = { stage: 'mode', options, votes: new Map(), ends: now() + VOTE.mode, game: null, map: null };
     this.botVotes();

@@ -13,8 +13,10 @@ export function eventGame(t = Date.now()) {
 const shuffle = (a, rnd) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 // 4 mode cards: the event, plus 3 others (never all free-for-all or all teams when there's a choice). every mode on a
 // card has at least one map it can be played on
-export function modeCards(maps, order, cur, rnd = Math.random) {
-  const ok = GAME_ORDER.filter((g) => mapsFor(g, maps, order).length);
+// avoid: a mode that was just voted off with /skip: not on the cards at all, not even as the event
+export function modeCards(maps, order, cur, rnd = Math.random, avoid = null) {
+  let ok = GAME_ORDER.filter((g) => mapsFor(g, maps, order).length);
+  if (avoid && ok.length > 1) ok = ok.filter((g) => g !== avoid);
   const ev = eventGame();
   const out = ok.includes(ev) ? [ev] : [];
   const rest = shuffle(ok.filter((g) => g !== ev && g !== cur), rnd);
