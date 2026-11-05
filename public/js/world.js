@@ -7,6 +7,7 @@ import { jankify, jankUniforms } from './jank.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { G } from './ctx.js';
 import { marbles } from './marbles.js';
+import { updateBackrooms } from './backrooms.js';
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
 export const JANK = [
@@ -120,6 +121,38 @@ function makeMaterials() {
   for (const [k, hex] of Object.entries({ carred: 0xc8202c, carblue: 0x2050b0, carwhite: 0xe8e8e8, carblack: 0x26262a, cargreen: 0x2a8a4a, caryellow: 0xe8c020, chrome: 0xc8ccd2 })) {
     out[k] = { mat: new THREE.MeshLambertMaterial({ color: hex }), tile: 1 };
   }
+  // backrooms: mono-yellow wallpaper, old damp carpet, drop-ceiling tiles with a fluorescent panel in every 4 m cell
+  // (the panels are in the texture and glow through an emissive map, so thousands of lights cost nothing)
+  const lam = (t, tile, o) => ({ mat: new THREE.MeshLambertMaterial({ map: t, ...o }), tile });
+  out.wallpaper = lam(canvasTex(32, (g, s) => {
+    speckle(g, s, [206, 188, 106], 7, 2);
+    g.fillStyle = 'rgba(170,148,70,0.3)'; for (let x = 0; x < s; x += 8) g.fillRect(x, 0, 2, s); // faint stripes
+    g.fillStyle = 'rgba(150,128,58,0.3)'; for (let y = 0; y < s; y += 8) for (let x = 4; x < s; x += 8) { g.fillRect(x, y + 1, 1, 1); g.fillRect(x + 1, y, 1, 1); g.fillRect(x + 2, y + 1, 1, 1); } // little chevrons
+  }), 1.6);
+  out.carpetb = lam(canvasTex(64, (g, s) => {
+    speckle(g, s, [168, 150, 96], 16, 1);
+    g.fillStyle = 'rgba(70,58,26,0.13)'; // damp patches (drawn wrapped so the tile is seamless)
+    for (let i = 0; i < 6; i++) { const x = rnd(s), y = rnd(s), rr = 4 + rnd(10); for (const ox of [-s, 0, s]) for (const oy of [-s, 0, s]) { g.beginPath(); g.arc(x + ox, y + oy, rr, 0, Math.PI * 2); g.fill(); } }
+  }), 6);
+  out.officecarpet = lam(canvasTex(16, (g, s) => { speckle(g, s, [86, 98, 130], 14, 1); g.fillStyle = 'rgba(40,44,60,0.4)'; g.fillRect(0, 0, s, 1); g.fillRect(0, 0, 1, s); }), 1);
+  out.cubicle = lam(canvasTex(16, (g, s) => { speckle(g, s, [116, 126, 150], 10, 1); g.fillStyle = '#5c606a'; g.fillRect(0, 0, s, 1); }), 1.4);
+  const ceil = (lit) => (g, s) => {
+    speckle(g, s, [214, 208, 186], 6, 2);
+    g.fillStyle = 'rgba(140,134,110,0.35)'; for (let i = 4; i < s; i += 8) { g.fillRect(i, 0, 1, s); g.fillRect(0, i, s, 1); } // 0.5 m tiles
+    g.fillStyle = '#cfcab8'; g.fillRect(19, 27, 26, 10);
+    g.fillStyle = lit ? '#fffdf0' : '#8f8c80'; g.fillRect(20, 28, 24, 8); // the panel, right in the middle of the cell
+    if (lit) { g.fillStyle = '#efe8c8'; for (let x = 23; x < 44; x += 4) g.fillRect(x, 28, 1, 8); }
+  };
+  // the tiles glow a little too (light bouncing round the room), the panel a lot
+  const glow = canvasTex(64, (g, s) => { g.fillStyle = '#8c8c8c'; g.fillRect(0, 0, s, s); g.fillStyle = '#fff'; g.fillRect(20, 28, 24, 8); });
+  const lit = canvasTex(64, ceil(true));
+  out.ceiltile = lam(lit, 4, { emissiveMap: glow, emissive: 0xfff2d2 });
+  out.ceilflick = lam(lit, 4, { emissiveMap: glow, emissive: 0xfff2d2 }); // its own material so it can flicker
+  out.ceilflick2 = lam(lit, 4, { emissiveMap: glow, emissive: 0xfff2d2 }); out.ceilflick3 = lam(lit, 4, { emissiveMap: glow, emissive: 0xfff2d2 }); // and two more, so they don't all blink in sync
+  out.ceildark = lam(canvasTex(64, ceil(false)), 4);
+  // the pool rooms: bright white tiles that seem lit from nowhere
+  out.pooltile = lam(canvasTex(16, (g, s) => { speckle(g, s, [234, 242, 242], 5, 4); g.fillStyle = '#a3bcc0'; for (let i = 0; i < s; i += 4) { g.fillRect(i, 0, 1, s); g.fillRect(0, i, s, 1); } }), 1, { emissive: 0x3c4c50 });
+  out.poolwater = { mat: new THREE.MeshBasicMaterial({ color: 0x86dbe6, transparent: true, opacity: 0.42, depthWrite: false }), tile: 2 };
   return out;
 }
 
@@ -137,11 +170,15 @@ function worldUV(geo, cx, cy, cz, tile) {
 
 let MAT = null;
 const mapMeshes = [];
+const chunkMeshes = [];
 // one merged mesh per material: thousands of boxes, a couple dozen draw calls
 function buildMap(scene) {
   if (!MAT) MAT = makeMaterials();
   for (const m of mapMeshes) { scene.remove(m); m.geometry.dispose(); }
   mapMeshes.length = 0;
+  chunkMeshes.length = 0;
+  const def = MAPS[MAP.id];
+  if (def && def.chunk) { buildChunked(scene, def); return; }
   const groups = new Map();
   const push = (k, g) => { if (!groups.has(k)) groups.set(k, []); groups.get(k).push(g); };
   for (const b of BOXES) {
@@ -175,7 +212,59 @@ function buildMap(scene) {
   }
 }
 
+// huge maps (map.chunk metres): one merged mesh per material per chunk, so what's behind you or deep in the fog isn't
+// drawn. map.deco boxes are drawn too but never bumped into. boxes bigger than a chunk (floors, ceilings, the long
+// outer walls) go in one mesh per material that's always drawn, or they'd make their whole chunk impossible to cull
+function buildChunked(scene, def) {
+  const C = def.chunk, groups = new Map();
+  for (const b of def.deco ? [...BOXES, ...def.deco] : BOXES) {
+    const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
+    const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
+    const mk = MAT[b.mat] ? b.mat : 'stone';
+    const key = Math.max(sx, sz) > C ? mk : mk + '|' + Math.floor(cx / C) + ',' + Math.floor(cz / C);
+    const g = new THREE.BoxGeometry(sx, sy, sz);
+    worldUV(g, cx, cy, cz, MAT[mk].tile);
+    g.translate(cx, cy, cz);
+    if (!groups.has(key)) groups.set(key, { k: mk, list: [] });
+    groups.get(key).list.push(g.toNonIndexed());
+  }
+  for (const [key, { k, list }] of groups) {
+    const merged = mergeGeometries(list, false);
+    for (const g of list) g.dispose();
+    if (!merged) continue;
+    const m = new THREE.Mesh(merged, MAT[k].mat);
+    if (k === 'water' || k === 'poolwater') m.renderOrder = 2;
+    scene.add(m);
+    mapMeshes.push(m);
+    if (key !== k) { merged.computeBoundingSphere(); chunkMeshes.push(m); }
+  }
+}
+
+// chunks entirely past the end of the fog are pure fog colour anyway: skip them (needs a sky the colour of the fog)
+const camFwd = new THREE.Vector3(), toChunk = new THREE.Vector3();
+function cullChunks() {
+  if (!chunkMeshes.length) return;
+  const cam = G.camera, far = G.scene.fog.far + 2;
+  cam.getWorldDirection(camFwd);
+  for (const m of chunkMeshes) {
+    const s = m.geometry.boundingSphere;
+    m.visible = toChunk.subVectors(s.center, cam.position).dot(camFwd) - s.radius < far; // fog goes by view depth, not distance
+  }
+}
+
+// per-map light: the backrooms is lit by fluorescent tubes from everywhere, not by the sun
+let defLight = null;
+function mapLight(map) {
+  const hemi = G.scene.children.find((o) => o.isHemisphereLight), sun = G.scene.children.find((o) => o.isDirectionalLight);
+  if (!hemi || !sun) return;
+  if (!defLight) defLight = { hemi: [hemi.color.getHex(), hemi.groundColor.getHex(), hemi.intensity], sun: [sun.color.getHex(), sun.intensity] };
+  const L = (map && map.light) || defLight;
+  hemi.color.setHex(L.hemi[0]); hemi.groundColor.setHex(L.hemi[1]); hemi.intensity = L.hemi[2];
+  sun.color.setHex(L.sun[0]); sun.intensity = L.sun[1];
+}
+
 let skyGeo, voidMesh;
+let skyStuff = []; // sun, clouds, void rocks: switched off on sealed maps (map.sealed), where nobody could ever see them
 function paintSky(sky) {
   const top = new THREE.Color(sky.top), mid = new THREE.Color(sky.mid), bot = new THREE.Color(sky.bot);
   const pos = skyGeo.attributes.position, c = new THREE.Color(), cols = [];
@@ -241,7 +330,9 @@ export function initWorld(canvas) {
   vmSun.position.set(0.5, 1, 0.8);
   vmScene.add(vmSun);
 
+  const n0 = scene.children.length;
   buildSky(scene);
+  skyStuff = scene.children.slice(n0).filter((o) => o !== voidMesh && o.geometry !== skyGeo);
   buildMap(scene);
   addEventListener('resize', resize);
   resize();
@@ -261,6 +352,8 @@ export function loadMap(id) {
   G.scene.fog.far = MAP.fogFar;
   voidMesh.position.y = MAP.killY - 25;
   buildScenery(G.scene, MAPS[MAP.id], MAP.id, voidMesh);
+  mapLight(MAPS[MAP.id]);
+  for (const o of skyStuff) o.visible = !(MAPS[MAP.id] && MAPS[MAP.id].sealed);
 }
 
 export function resize() {
@@ -280,6 +373,8 @@ export function updateWorld(dt) {
   }
   sun.rotation.y += dt * 0.3;
   sun.rotation.x += dt * 0.17;
+  cullChunks();
+  if (MAT) updateBackrooms(dt, [MAT.ceilflick.mat, MAT.ceilflick2.mat, MAT.ceilflick3.mat]);
 }
 
 export function renderFrame() {

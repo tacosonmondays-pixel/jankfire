@@ -4,9 +4,11 @@ import { BOXES, MAPS, MAP_ORDER } from '/shared/map.js';
 import { WEAPONS, ORDER, SLOTS, FLAGS, SLIP_TIME, HIPFIRE, BOT_DIFF, MODES, STREAKS, ITEMS, ITEM_ORDER, validLoadout, validStreaks } from '/shared/weapons.js';
 import { streakIcon } from './icons.js';
 import { stepProjectile, raycast } from '/shared/physics.js';
+import { duckFrame, duckStuck } from './duck.js';
 import { G } from './ctx.js';
 import { initWorld, renderFrame, setJank, updateWorld, loadMap } from './world.js';
 import { loadTripoModels, buildProjectile, buildPeel, buildHole, makeShadow, tipColor, buildCharacter, teamLook, M } from './models.js';
+import { initCrosses, crossEvent, crossShot, updateCrosses, clearCrosses } from './bloodcross.js';
 import { net } from './net.js';
 import { hud } from './hud.js';
 import { fx, makeBeam, setBeam, scaleU } from './fx.js';
@@ -19,18 +21,40 @@ import {
   useItem, syncItem, resetItems, setItem, showSlots, setMyKatana,
 } from './weapons.js';
 import { Remote, updateGibs } from './remote.js';
-import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN } from './skins.js';
+import { stepSoap, trapStart, trapEnd, updateWand, stuckInBubble } from './wand.js';
+import { parry } from './weapons.js';
+import './parry.js'; // katana parry: sparks, sounds, PARRY!, the guard pose
+import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN, WRAP_MODES, WRAP_MODE_NAMES } from './skins.js';
 import { initPreview, showPreview, showCharacter, renderPreview, resizePreview } from './preview.js';
 import { playKillFx, updateKillFx, clearKillFx } from './killfx.js';
+import { courtKill, courtVerdict, updateCourt, courtReset, courtSync } from './scales.js';
+import { noScope, updateNoScope } from './noscope.js';
+import { makeRope, setRope, setRopeSkin, myGrapple, initGrapplePreview, grappleThumb, showGrapple, renderGrapplePreview } from './grapple.js';
+import { shredKill, shredHit, shredGrab, grabStep, updateShreds, clearShreds } from './shredder.js';
 import { updateSpeedLines } from './speedlines.js';
+import { slipperUpdate, slipperStep } from './slipper.js';
 import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse } from './objective.js';
 import { GAMES, GAME_ORDER, TEAMS, mapsFor } from '/shared/modes.js';
 import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
+import { EPIC_CAM, epicMul, epicCamMs } from '/shared/epic.js';
 import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, HAIRS, TOPS, BOTTOMS } from '/shared/looks.js';
+import { startBall, endBall, ballOn, BS } from './player.js';
+import { updateWreck, ballCam, wreckFx, wreckDied } from './wreck.js';
+import { hasAcc } from '/shared/looks.js';
+import { airTick, airReset, airFlourish } from './airborne.js';
 import { account, restore, login, register, logout, saveProfile, leaderboard as fetchLeaders } from './account.js';
 import { updateRig, rigDied } from './rig.js'; // overdrive rig killstreak
+import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
+import { SPRAY, ownedSpray } from '/shared/cosmetics.js';
+import { sprayAim, sprayFx, addSpray, clearSprays, updateSprays, sprayIcon } from './sprays.js';
+import { achInv } from '/shared/cosmetics.js'; // achievement rewards (Golden Sniper) count as owned once you have the achievement
+import { achProgress } from '/shared/looks.js';
+import { royalToast, royalUnlock, royalBoxes } from './royal.js';
+import { setOnly } from './weapons.js';
+import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
+import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection, infClipInfo } from './infection.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
@@ -50,7 +74,7 @@ const SYNC_KEYS = ['jank', 'sens', 'adsSens', 'vol', 'fov', 'swapAim', 'toggleAi
 function profileData() {
   const settings = {};
   for (const k of SYNC_KEYS) settings[k] = G.settings[k];
-  return { loadout: G.settings.loadout, skins: G.settings.skins, look: G.settings.look, card: G.settings.card || '', kfx: G.settings.kfx || 'none', settings };
+  return { loadout: G.settings.loadout, skins: G.settings.skins, look: G.settings.look, card: G.settings.card || '', kfx: G.settings.kfx || 'none', grap: G.settings.grap || 'rope', settings };
 }
 function saveSettings() {
   try { localStorage.setItem('jankfire', JSON.stringify(G.settings)); } catch { /* whatever */ }
@@ -65,7 +89,7 @@ function recomputeEquipped() {
     const o = ownedSkin(sk, G.inv, id);
     if (o[0] !== 'default' || o[1] !== 'none' || o[2] !== 'none' || o[3] !== 'default') G.equipped[id] = o;
   }
-  if (G.equipped.scythe) G.equipped.scythe_rifle = G.equipped.scythe.slice(0, 3).concat('default'); // both forms look the same
+  if (G.equipped.scythe) G.equipped.scythe_rifle = G.equipped.scythe.slice(0, 3).concat('default', G.equipped.scythe[4]); // both forms look the same
 }
 recomputeEquipped();
 
@@ -73,6 +97,7 @@ recomputeEquipped();
 initWorld(canvas);
 setJank(G.settings.jank);
 fx.init(G.scene);
+initCrosses(G.scene);
 const vmScaleU = { value: 300 };
 G.skinFxWorld = makeSkinSystems(G.scene, scaleU);
 G.skinFxVM = makeSkinSystems(G.vmScene, vmScaleU);
@@ -84,7 +109,7 @@ initPreview($('preview'));
 
 const myShadow = makeShadow();
 G.scene.add(myShadow);
-const myRope = makeBeam(0x3a2a1a);
+const myRope = makeRope(myGrapple());
 myRope.visible = false;
 G.scene.add(myRope);
 
@@ -141,7 +166,7 @@ function startMode(mode, cfg) {
   if (G.joined) quitToMenu(true);
   connecting = true;
   $('status').textContent = 'connecting...';
-  net.connect({ name: G.settings.name, mode, skins: G.equipped, look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), kc: G.settings.killcam !== false, streaks: validStreaks(S.loadout.streaks), item: S.loadout.item, cfg, token: account.loggedIn ? account.token : undefined }, () => {
+  net.connect({ name: G.settings.name, mode, skins: G.equipped, look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), grap: myGrapple(), kc: G.settings.killcam !== false, streaks: validStreaks(S.loadout.streaks), item: S.loadout.item, cfg, token: account.loggedIn ? account.token : undefined }, () => {
     connecting = false;
     resetWorldState();
     show('main');
@@ -155,6 +180,7 @@ function resetWorldState() {
   G.joined = false;
   ME.alive = false;
   releaseHook();
+  endBall();
   stopLoops();
   for (const r of G.remotes.values()) r.dispose();
   G.remotes.clear(); G.names.clear(); G.skins.clear();
@@ -168,11 +194,15 @@ function resetWorldState() {
   stopReplay(true);
   hideReplayUI();
   if (G.forcedLoadout) { G.forcedLoadout = null; setLoadout(S.loadout); }
+  if (W.only) setOnly(null, S.loadout);
+  resetGunGame(); resetInfection();
   for (const b of G.bubbles.values()) G.scene.remove(b.mesh);
   G.bubbles.clear(); G.smokes.length = 0; ME.frozenUntil = 0; G.frost = 0;
   resetItems(); stopUse(); G.activeStreaks = null; G.itemSent = null;
   clearRec();
   clearKillFx();
+  clearSprays();
+  clearShreds();
   G.roundOver = false;
   renderRound(null);
   $('roundEnd').classList.add('hidden');
@@ -183,6 +213,7 @@ function clearEntities() {
   for (const pl of G.peels.values()) G.scene.remove(pl);
   for (const h of G.holes.values()) G.scene.remove(h.mesh);
   G.projs.clear(); G.peels.clear(); G.holes.clear();
+  clearCrosses();
 }
 function quitToMenu(silent) {
   net.close();
@@ -233,8 +264,8 @@ const gameEntries = GAME_ORDER.map((k) => [k, GAMES[k].name]);
 fillSelect($('setupGame'), gameEntries, 'dm');
 fillSelect($('cfgGame'), gameEntries, 'dm');
 fillSelect($('setupMap'), mapEntries, 'islands');
-// a mode that needs bomb sites only offers the maps that have them (the server quietly refuses the rest)
-const mapsOf = (game) => (GAMES[game] && GAMES[game].sites ? mapsFor(game, MAPS, MAP_ORDER) : MAP_ORDER);
+// a mode that needs certain maps (bomb sites, a floor to turn into lava) only offers those (the server refuses the rest)
+const mapsOf = (game) => (GAMES[game] && (GAMES[game].sites || GAMES[game].mapOk) ? mapsFor(game, MAPS, MAP_ORDER) : MAP_ORDER);
 $('setupGame').addEventListener('change', () => {
   const keep = $('setupMap').value, list = mapsOf($('setupGame').value);
   fillSelect($('setupMap'), mapEntries.filter(([k]) => list.includes(k)), list.includes(keep) ? keep : list[0]);
@@ -242,7 +273,7 @@ $('setupGame').addEventListener('change', () => {
 $('cfgGame').addEventListener('change', () => {
   const g = $('cfgGame').value, list = mapsOf(g);
   if (!list.includes(G.cfg.map)) {
-    toast(`${GAMES[g].name} needs a map with bomb sites (${list.map((k) => MAPS[k].name).join(', ')}): change the map first`, 3200);
+    toast(`${GAMES[g].name} needs ${GAMES[g].sites ? 'a map with bomb sites' : 'another map'} (${list.map((k) => MAPS[k].name).join(', ')}): change the map first`, 3200);
     $('cfgGame').value = (G.round && G.round.game) || 'dm';
     return;
   }
@@ -397,7 +428,8 @@ function buildLoadoutUI() {
 }
 function applyLoadout(force) {
   sendItemSel();
-  if (G.forcedLoadout) { $('loNote').textContent = 'randomizer is on: you get a random loadout every life'; return; }
+  if (G.forcedLoadout) { $('loNote').textContent = G.forcedLoadout.only ? 'this mode hands everyone the same weapons' : 'randomizer is on: you get a random loadout every life'; return; }
+  if (W.only) { $('loNote').textContent = 'this mode hands you one weapon: your loadout comes back after the match'; return; }
   const canNow = force || !G.joined || !ME.alive || performance.now() - (G.spawnT || 0) < 5000;
   if (canNow) { setLoadout(S.loadout); G.pendingLoadout = false; $('loNote').textContent = ''; }
   else { G.pendingLoadout = true; $('loNote').textContent = 'loadout switches when you respawn'; }
@@ -437,9 +469,13 @@ function sendSkins() {
   skinSendT = setTimeout(() => { if (G.joined) net.send({ t: 'skin', s: G.equipped }); }, 250);
 }
 // the weapons that show up in COSMETICS (the rifle form of the scythe borrows the scythe's look)
-function skinnable() { return ORDER.filter((id) => WEAPONS[id] && (SLOTS.includes(WEAPONS[id].slot) || id === 'scythe')); }
+function skinnable() { return ORDER.filter((id) => WEAPONS[id] && (SLOTS.includes(WEAPONS[id].slot) || itemModel(id) || id === 'scythe')); }
+// items you see in your hand wear skins (popper, reverse card). the thrown duck is a plain projectile, so not that
+function itemModel(id) { return Object.values(ITEMS).some((it) => it.w === id); }
+// nothing picked = no entry. a wrap mode that isn't normal is kept even without a wrap, so it's still there when you pick one
+const plainSkin = (skin) => skin[0] === 'default' && skin[1] === 'none' && skin[2] === 'none' && (skin[3] || 'default') === 'default' && (skin[4] || 'normal') === 'normal';
 function storeSkin(id, skin) {
-  if (skin[0] === 'default' && skin[1] === 'none' && skin[2] === 'none' && (skin[3] || 'default') === 'default') delete S.skins[id];
+  if (plainSkin(skin)) delete S.skins[id];
   else S.skins[id] = skin;
 }
 // wrap / hat / effect on EVERY weapon at once (each weapon keeps its own model)
@@ -449,7 +485,7 @@ function setPartAll(idx, value) {
 }
 const allMode = () => S.skinAll !== false;
 function setSkin(id, skin) {
-  if (skin[0] === 'default' && skin[1] === 'none' && skin[2] === 'none' && (skin[3] || 'default') === 'default') delete S.skins[id];
+  if (plainSkin(skin)) delete S.skins[id];
   else S.skins[id] = skin;
   saveSettings();
   recomputeEquipped();
@@ -461,6 +497,7 @@ function myAchs() { return new Set((account.me && account.me.achs) || []); }
 function rewardsFor(achId) {
   const out = [];
   for (const s2 of LOOK_SLOTS) for (const [k, v] of Object.entries(ACCESSORIES[s2])) if (v.ach === achId) out.push({ slot: s2, id: k, name: v.name });
+  for (const t of LOOT_TYPES) for (const [k, v] of Object.entries(COSMETICS[t])) if (v.ach === achId) out.push({ type: t, id: k, name: v.name }); // weapon skins live in COSMETICS
   return out;
 }
 function setLook(look) {
@@ -510,18 +547,19 @@ function buildCharacterUI() {
   };
   swatches('lk-skin', 'skin', SKIN_TONES, 'mannequin');
   styles('lk-hair', 'hair', HAIRS); swatches('lk-hairColor', 'hairColor', HAIR_COLORS);
-  styles('lk-top', 'top', TOPS); swatches('lk-topColor', 'topColor', CLOTH_COLORS, 'same as your colour');
+  styles('lk-top', 'top', TOPS); swatches('lk-topColor', 'topColor', CLOTH_COLORS, look.top === 'runner' ? 'hi-vis yellow' : 'same as your colour');
   styles('lk-bottom', 'bottom', BOTTOMS); swatches('lk-bottomColor', 'bottomColor', CLOTH_COLORS, 'same as your colour');
   for (const slot of LOOK_SLOTS) {
     const el = $('lk-' + slot);
     el.innerHTML = '';
     for (const [k, v] of Object.entries(ACCESSORIES[slot])) {
-      const have = !v.ach || achs.has(v.ach);
+      const have = hasAcc(v, achs);
       const c = document.createElement('button');
       c.className = 'chip' + (look[slot] === k ? ' on' : '') + (have ? '' : ' locked');
       c.textContent = v.name;
       if (v.ach) c.style.setProperty('--rc', '#ffe14d');
       c.title = v.ach ? `${ACHIEVEMENTS[v.ach].name}: ${ACHIEVEMENTS[v.ach].desc}` : 'free';
+      if (v.legacy && achs.has(v.legacy) && !achs.has(v.ach)) c.title += ' (yours anyway: you earned them before they moved here)';
       c.addEventListener('click', () => {
         if (!have) { toast(`${v.name}: unlock "${ACHIEVEMENTS[v.ach].name}" (${ACHIEVEMENTS[v.ach].desc})${account.loggedIn ? '' : '. log in so it counts'}`, 3200); return; }
         setLook({ ...look, [slot]: k }); buildCharacterUI();
@@ -551,7 +589,7 @@ function buildCharacterUI() {
   // achievements list with progress
   const list = $('achList');
   list.innerHTML = '';
-  const h = document.createElement('div'); h.className = 'lt'; h.textContent = `achievements ${achs.size}/${Object.keys(ACHIEVEMENTS).length}`;
+  const h = document.createElement('div'); h.className = 'lt'; h.textContent = `achievements ${[...achs].filter((a) => ACHIEVEMENTS[a]).length}/${Object.keys(ACHIEVEMENTS).length}`;
   list.append(h);
   const st = (account.me && account.me.stats) || {};
   for (const [id, a] of Object.entries(ACHIEVEMENTS)) {
@@ -560,12 +598,13 @@ function buildCharacterUI() {
     d.className = 'ach' + (done ? ' done' : '');
     const b = document.createElement('b'); b.textContent = (done ? '★ ' : '') + a.name;
     const t = document.createElement('div'); t.textContent = a.desc;
-    const have = Math.min(a.goal, st[a.stat] || 0);
+    const have = Math.min(a.goal, achProgress(a, st));
     const bar = document.createElement('div'); bar.className = 'bar';
     const fill = document.createElement('i'); fill.style.width = (done ? 100 : (have / a.goal) * 100) + '%'; bar.append(fill);
     const rw = document.createElement('div'); rw.className = 'rw';
     rw.textContent = 'unlocks ' + rewardsFor(id).map((x) => x.name).join(', ');
     d.append(b, t, bar, rw);
+    if (a.feats) d.insertBefore(royalBoxes(done ? (1 << a.feats.length) - 1 : st[a.stat] || 0, 0, a.feats), bar); // the parts, ticked or not
     list.append(d);
   }
   $('lkNote').textContent = account.loggedIn ? 'other players see this. locked stuff unlocks from achievements.' : 'guest: free accessories only. log in to earn the achievement ones.';
@@ -580,7 +619,7 @@ $('lkRandom').addEventListener('click', () => {
   const pick = (arr) => arr[(Math.random() * arr.length) | 0];
   const look = { color: pick(LOOK_COLORS), skin: pick(SKIN_TONES), hair: pick(Object.keys(HAIRS)), hairColor: pick(HAIR_COLORS),
     top: pick(Object.keys(TOPS)), topColor: pick(CLOTH_COLORS), bottom: pick(Object.keys(BOTTOMS)), bottomColor: pick(CLOTH_COLORS) };
-  for (const s2 of LOOK_SLOTS) look[s2] = pick(Object.entries(ACCESSORIES[s2]).filter(([, v]) => !v.ach || achs.has(v.ach)).map(([k]) => k));
+  for (const s2 of LOOK_SLOTS) look[s2] = pick(Object.entries(ACCESSORIES[s2]).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k));
   setLook(look); buildCharacterUI();
 });
 $('lkReset').addEventListener('click', () => { setLook({ ...DEFAULT_LOOK }); buildCharacterUI(); });
@@ -588,17 +627,17 @@ $('lkReset').addEventListener('click', () => { setLook({ ...DEFAULT_LOOK }); bui
 function buildCosmeticsUI() {
   const list = $('cosWeapons');
   list.innerHTML = '';
-  for (const slot of [...SLOTS, 'streak']) {
+  for (const slot of [...SLOTS, 'item', 'streak']) { // items with a model (popper, reverse card) wear skins too
     const h = document.createElement('div');
-    h.className = 'lt'; h.textContent = slot === 'streak' ? 'killstreak' : slot;
+    h.className = 'lt'; h.textContent = slot === 'streak' ? 'killstreak' : slot === 'item' ? 'item (G)' : slot;
     list.append(h);
     for (const id of ORDER) {
       const w = WEAPONS[id];
-      if (w.slot !== slot || id === 'scythe_rifle') continue;
+      if (w.slot !== slot || id === 'scythe_rifle' || (slot === 'item' && !itemModel(id))) continue;
       const b = document.createElement('button');
       b.className = 'wpick' + (G.cosSel === id ? ' on' : '');
       if (modelsFor(id).length > 1) b.title = 'has skins';
-      b.textContent = w.name + (S.skins[id] ? ' *' : '');
+      b.textContent = w.name + (S.skins[id] && !plainSkin([...S.skins[id].slice(0, 4), 'normal']) ? ' *' : ''); // a wrap mode alone isn't a skin
       b.style.setProperty('--c', w.color);
       b.addEventListener('click', () => { G.cosSel = id; buildCosmeticsUI(); });
       list.append(b);
@@ -647,6 +686,8 @@ function buildCosmeticsUI() {
     });
     kel.append(c);
   }
+  buildSprayUI();
+  wrapModeUI(id, sk);
   chips('sk-finish', 'finish', 0);
   chips('sk-hat', 'hat', 1);
   chips('sk-effect', 'effect', 2);
@@ -661,36 +702,116 @@ function buildCosmeticsUI() {
     c.className = 'chip' + ((sk[3] || 'default') === k ? ' on' : '') + (have ? '' : ' locked');
     c.textContent = v.name;
     c.style.setProperty('--rc', RARITY[v.rarity].color);
+    const ach = v.ach && ACHIEVEMENTS[v.ach]; // achievement skins: not in crates, you earn them
+    if (ach) { c.classList.add('achchip'); c.title = `${ach.name}: ${ach.desc}`; }
     c.addEventListener('click', () => {
+      if (!have && ach) { toast(`${v.name}: unlock "${ach.name}" (${ach.desc})${account.loggedIn ? '' : '. log in so it counts'}`, 3600); return; }
       if (!have) { toast(`${v.name} is ${RARITY[v.rarity].name}. win rounds to get rolls.`); return; }
       const s2 = sk.slice(); s2[3] = k; setSkin(id, s2); buildCosmeticsUI();
     });
     $('sk-model').append(c);
   }
+  buildGrappleUI();
+  // next to an achievement skin: what it takes, with the parts you've ticked so far
+  $('skAch').innerHTML = '';
+  for (const k of models) {
+    const v = COSMETICS.model[k], a = v.ach && ACHIEVEMENTS[v.ach];
+    if (!a) continue;
+    const st = (account.me && account.me.stats) || {}, done = myAchs().has(v.ach);
+    const box = document.createElement('div'); box.className = 'achskin' + (done ? ' done' : '');
+    const h = document.createElement('b'); h.textContent = done ? `★ ${v.name}: yours` : `${v.name} (locked): ${a.name} ${Math.min(a.goal, achProgress(a, st))}/${a.goal}`;
+    const t = document.createElement('div'); t.textContent = done ? `${a.name} complete${k === 'sniper_golden' ? '. stays gold under any wrap' : ''}` : a.desc + (account.loggedIn ? '' : '. log in so it counts');
+    box.append(h, t);
+    if (a.feats) box.append(royalBoxes(done ? (1 << a.feats.length) - 1 : st[a.stat] || 0, 0, a.feats));
+    $('skAch').append(box);
+  }
   showPreview(id, ownedSkin(sk, G.inv, id));
+}
+// NORMAL / REVERSE / FULL: which part of the weapon the wrap paints (wrapzones.js). free, goes with the wrap
+const WRAP_HINT = {
+  normal: 'normal: the wrap goes on the handle / body. the blade and barrel keep their metal',
+  reverse: 'reverse: the wrap goes on the blade / barrel / business end. the handle keeps its look',
+  full: 'full: the whole weapon, like the old wraps',
+};
+function wrapIcon(mode) { // a tiny knife: the half the wrap paints is pink
+  const on = (z) => (mode === 'full' || mode === z ? '#ff4fd8' : '#9a9aa4');
+  return `<svg viewBox="0 0 46 14"><rect x="1" y="4" width="15" height="6" fill="${on('normal')}" stroke="#000" stroke-width="1.5"/>`
+    + `<rect x="16" y="2" width="3" height="10" fill="${on('normal')}" stroke="#000" stroke-width="1.5"/>`
+    + `<path d="M19 3 L40 3 L45 7 L40 11 L19 11 Z" fill="${on('reverse')}" stroke="#000" stroke-width="1.5"/></svg>`;
+}
+function wrapModeUI(id, sk) {
+  const el = $('sk-wrapmode');
+  el.innerHTML = '';
+  el.classList.toggle('off', sk[0] === 'default');
+  for (const m of WRAP_MODES) {
+    const b = document.createElement('button');
+    b.className = sk[4] === m ? 'on' : '';
+    b.innerHTML = wrapIcon(m);
+    b.append(WRAP_MODE_NAMES[m].toUpperCase());
+    b.title = WRAP_HINT[m];
+    b.addEventListener('click', () => {
+      if (allMode()) setPartAll(4, m);
+      else { const s2 = sk.slice(); s2[4] = m; setSkin(id, s2); }
+      buildCosmeticsUI();
+    });
+    el.append(b);
+  }
+  const h = document.createElement('div'); h.className = 'hint';
+  h.textContent = sk[0] === 'default' ? 'pick a wrap, then choose where it goes' : WRAP_HINT[sk[4]];
+  el.append(h);
 }
 $('skRandom').addEventListener('click', () => {
   const pick = (t) => { const ks = Object.keys(COSMETICS[t]).filter((k) => owns(G.inv, t, k)); return ks[(Math.random() * ks.length) | 0]; };
   if (allMode()) {
-    const parts = ['finish', 'hat', 'effect'].map(pick);
-    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = parts[0]; sk[1] = parts[1]; sk[2] = parts[2]; storeSkin(id, sk); }
+    const parts = ['finish', 'hat', 'effect'].map(pick), wm = WRAP_MODES[(Math.random() * 3) | 0];
+    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = parts[0]; sk[1] = parts[1]; sk[2] = parts[2]; sk[4] = wm; storeSkin(id, sk); }
     saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne();
-  } else setSkin(G.cosSel, TYPES.map(pick));
+  } else setSkin(G.cosSel, [...TYPES.map(pick), WRAP_MODES[(Math.random() * 3) | 0]]);
   buildCosmeticsUI();
 });
 $('skReset').addEventListener('click', () => {
   if (allMode()) {
-    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = 'default'; sk[1] = 'none'; sk[2] = 'none'; storeSkin(id, sk); }
+    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = 'default'; sk[1] = 'none'; sk[2] = 'none'; sk[4] = 'normal'; storeSkin(id, sk); }
     saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne();
   } else setSkin(G.cosSel, DEFAULT_SKIN.slice());
   buildCosmeticsUI();
 });
 $('skAll').addEventListener('click', () => { // copy this weapon's wrap/hat/effect to everything (models stay)
   const sk = validSkin(S.skins[G.cosSel]);
-  for (const id of skinnable()) { const s2 = validSkin(S.skins[id]).slice(); s2[0] = sk[0]; s2[1] = sk[1]; s2[2] = sk[2]; storeSkin(id, s2); }
+  for (const id of skinnable()) { const s2 = validSkin(S.skins[id]).slice(); s2[0] = sk[0]; s2[1] = sk[1]; s2[2] = sk[2]; s2[4] = sk[4]; storeSkin(id, s2); }
   saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne(); buildCosmeticsUI();
 });
 $('skAllMode').addEventListener('change', () => { S.skinAll = $('skAllMode').checked; saveSettings(); buildCosmeticsUI(); });
+
+// ------------------------------------------------------------ grapple skins (one per player, everyone sees your rope)
+function setGrap(id) {
+  S.grap = id;
+  saveSettings();
+  if (G.joined) net.send({ t: 'grap', id });
+}
+function buildGrappleUI() {
+  const el = $('sk-grapple');
+  el.innerHTML = '';
+  const cur = myGrapple(), live = initGrapplePreview($('grapPreview'));
+  showGrapple(cur);
+  for (const [k, v] of Object.entries(COSMETICS.grapple)) {
+    const have = owns(G.inv, 'grapple', k);
+    const c = document.createElement('button');
+    c.className = 'gcard' + (cur === k ? ' on' : '') + (have ? '' : ' locked');
+    c.style.setProperty('--rc', RARITY[v.rarity].color);
+    c.title = `${v.name} (${RARITY[v.rarity].name}): ${v.desc}`;
+    if (live) { const im = document.createElement('img'); im.src = grappleThumb(k); im.alt = ''; c.append(im); }
+    const nm = document.createElement('span'); nm.textContent = v.name;
+    c.append(nm);
+    c.addEventListener('mouseenter', () => showGrapple(k)); // hover to try it on in the preview, locked or not
+    c.addEventListener('mouseleave', () => showGrapple(myGrapple()));
+    c.addEventListener('click', () => {
+      if (!have) { showGrapple(k); toast(`${v.name} (${RARITY[v.rarity].name}): ${v.desc}. find it in duffel bags`, 3000); return; }
+      setGrap(k); buildGrappleUI();
+    });
+    el.append(c);
+  }
+}
 
 // ------------------------------------------------------------ input
 const keys = {};
@@ -720,6 +841,7 @@ $('chatin').addEventListener('keydown', (e) => {
 function aimDown() {
   if (W.cur === 'cards') { cycleCard(); return; }
   if (heavyAttack()) return; // knife: right click is the heavy stab
+  if (parry()) return; // katana: right click parries
   if (S.toggleAim) W.aimHeld = !W.aimHeld; else W.aimHeld = true;
 }
 function aimUp() { if (!S.toggleAim) W.aimHeld = false; }
@@ -730,6 +852,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'Tab') { e.preventDefault(); scoresOpen = true; renderScores(); return; }
   if (e.code === 'KeyT' || e.code === 'Enter') { e.preventDefault(); openChat(); return; }
   if (e.code === 'KeyB') { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
+  if (/^(KeyE|KeyG|KeyV|KeyC|KeyZ|ControlLeft|ControlRight|Digit[567])$/.test(e.code) && stuckInBubble(true)) { keys[e.code] = true; return; } // sealed in a soap bubble: no grapple, items, dash, t-bag, sprays or streaks
   if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) jumpPressed = true; }
   if (e.code === 'KeyE' && !e.repeat) { if (S.swapAim) aimDown(); else tryHook(); }
   if (G.vote && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) { if (!e.repeat) castVote(Number(e.code.slice(5)) - 1); return; }
@@ -742,6 +865,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyV') W.dashHeld = true;
   if (e.code === 'KeyX' && !e.repeat) toggleScythe();
   if (e.code === 'KeyG' && !e.repeat) useItem();
+  if (e.code === 'KeyZ' && !e.repeat) spray();
   if (['Digit5', 'Digit6', 'Digit7'].includes(e.code) && !e.repeat) deployStreak(Number(e.code.slice(5)) - 5);
   if (e.code === 'Digit4') switchSlot(3);
   if ((e.code === 'KeyC' || e.code === 'ControlLeft' || e.code === 'ControlRight') && !e.repeat) {
@@ -761,7 +885,9 @@ addEventListener('keyup', (e) => {
 });
 addEventListener('mousedown', (e) => {
   if (!inGame()) return;
-  if (RP.mode === 'killcam' || G.killcamPending) { skipReplay(); return; }
+  if (RP.mode === 'killcam' || RP.mode === 'hl' || G.killcamPending) { skipReplay(); return; } // a click skips the killcam and the play of the round
+  if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor: no shooting
+  if (stuckInBubble(true)) return; // sealed in a soap bubble: no shooting, aiming or grappling till it pops
   if (e.button === 0) fireDown();
   if (e.button === 2) { if (S.swapAim) tryHook(); else aimDown(); }
   if (e.button === 3 || e.button === 4) tryHook();
@@ -776,6 +902,7 @@ addEventListener('wheel', (e) => { if (inGame()) cycleSlot(e.deltaY > 0 ? 1 : -1
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== canvas) return;
   if (performance.now() < (G.spinUntil || 0)) return; // the aimbot has the wheel
+  if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor: no looking around either
   const s = 0.0022 * S.sens * (W.aim > 0.5 ? S.adsSens / W.zoom : 1);
   const mx = e.movementX, my = e.movementY;
   // Chrome's pointer lock sometimes reports one giant fake jump (often the wrong way) when you move far or fast.
@@ -795,6 +922,7 @@ function renderScores() {
   const rows = [{ name: G.myName, color: G.myColor, k: G.kills, d: G.deaths, me: true, card: cardUrlFor(G.myId) }];
   for (const r of G.remotes.values()) if (!(r.bot && r.name === 'Dummy')) rows.push({ id: r.id, name: r.name, color: r.color, k: r.k, d: r.d, card: cardUrlFor(r.id) });
   rows.sort((a, b) => b.k - a.k || a.d - b.d);
+  ggScoreRows(rows); infScoreRows(rows); // gun game: by rung · infection: survivors first, zombies green
   if (G.round && GAMES[G.round.game] && GAMES[G.round.game].teams) {
     const team = (r) => (r.me ? G.myTeam : (G.remotes.get(r.id) || {}).team || 0);
     const out = [];
@@ -843,17 +971,19 @@ function addHole(m) {
   mesh.position.set(...m.p);
   if (m.big) mesh.userData.big = true;
   G.scene.add(mesh);
-  G.holes.set(m.id, { mesh, p: m.p, born: performance.now() - (m.age || 0) * 1000 });
-  sfx.hole(m.p);
+  G.holes.set(m.id, { mesh, p: m.p, born: performance.now() - (m.age || 0) * 1000, o: m.o, big: !!m.big, on: m.on || 0 });
+  if (m.on && m.age < 0) duckStuck(G.holes.get(m.id), m); // a duck stuck on someone: the hole opens (and hums) in a moment
+  else sfx.hole(m.p);
 }
 function addRemoteInfo(p) {
-  G.names.set(p.id, { name: p.name, color: p.color, bot: p.bot, level: p.level, look: p.look, card: p.card || '', skins: p.skins || {}, team: p.team || 0 });
+  G.names.set(p.id, { name: p.name, color: p.color, bot: p.bot, level: p.level, look: p.look, card: p.card || '', skins: p.skins || {}, team: p.team || 0, grap: p.grap });
   G.skins.set(p.id, p.skins || {});
 }
 
 // ------------------------------------------------------------ net handlers
 net.on('welcome', (m) => {
   G.myId = m.id; G.myName = m.name; G.myColor = m.color; G.joined = true; connecting = false;
+  airReset();
   G.mode = m.mode; G.cfg = m.cfg;
   loadMap(m.cfg.map);
   ME.pos = m.pos.slice(); ME.vel = [0, 0, 0]; ME.alive = true; ME.hp = 100; ME.seq = m.q;
@@ -891,11 +1021,14 @@ net.on('welcome', (m) => {
     training: 'dummies respawn instantly. knock the ones on the left ledge off. movement playground on the right.',
   };
   hud.chat(null, null, `you are ${m.name}. ${tips[m.mode] || ''}`);
+  clearSprays(); sprayT = -1e9;
+  for (const s of m.sprays || []) addSpray(s, true); // graffiti that was already on the walls
 });
 net.on('cfg', (m) => {
   const mapChanged = m.cfg.map !== G.cfg.map;
   G.cfg = m.cfg;
   if (mapChanged) { loadMap(m.cfg.map); clearEntities(); setupObjectives(m.cfg.map); G.smokes.length = 0; } // the server drops its smokes too
+  if (mapChanged) clearSprays(); // sprays belong to the map they were painted on
   updateLabel();
   if (screen === 'match') syncMatchUI();
 });
@@ -918,6 +1051,12 @@ net.on('sk', (m) => {
   const r = G.remotes.get(m.id);
   if (r) r.setSkins(m.s);
 });
+net.on('gr', (m) => { // someone picked another grapple skin
+  const n = G.names.get(m.id);
+  if (n) n.grap = m.g;
+  const r = G.remotes.get(m.id);
+  if (r) r.setGrapple(m.g);
+});
 net.on('lk', (m) => {
   if (m.id === G.myId) { G.myColor = m.color; return; }
   const n = G.names.get(m.id);
@@ -931,9 +1070,32 @@ net.on('ach', (m) => {
   if (!a) return;
   if (account.me) { account.me.achs = [...new Set([...(account.me.achs || []), m.id])]; }
   const rewards = rewardsFor(m.id).map((x) => x.name).join(', ');
+  const where = rewardsFor(m.id).some((x) => x.type) ? 'COSMETICS' : 'CHARACTER';
   hud.msg(`ACHIEVEMENT: ${a.name}`, 3, 'brag');
-  hud.chat(null, null, `achievement unlocked: ${a.name} (${a.desc})${rewards ? ' · unlocked ' + rewards + ' in CHARACTER' : ''}`);
+  hud.chat(null, null, `achievement unlocked: ${a.name} (${a.desc})${rewards ? ' · unlocked ' + rewards + ' in ' + where : ''}`);
   sfx.kill();
+  if (m.id === 'airborne') airFlourish();
+  const skins = rewardsFor(m.id).filter((x) => x.type === 'model');
+  if (skins.length && account.me) unlockSkins(skins);
+});
+// an achievement that unlocks a weapon skin (Sniper Royalty: the Golden Sniper) puts it straight on that weapon.
+// the server lets you: it checks your achievements, not your inventory
+function unlockSkins(list) {
+  G.inv = achInv(account.me.inv, account.me.achs);
+  for (const r of list) {
+    const w = COSMETICS.model[r.id].weapon, sk = validSkin(S.skins[w]).slice();
+    sk[3] = r.id;
+    storeSkin(w, sk);
+  }
+  saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne();
+  if (list.some((r) => r.id === 'sniper_golden')) royalUnlock('SNIPER ROYALTY 4/4 · it\'s on your sniper now (swap it in COSMETICS)');
+}
+// Sniper Royalty: you just ticked a box (the server decides; a guest is told it would have counted)
+net.on('royal', (m) => {
+  const all = m.all | 0, add = m.add | 0;
+  if (!add) return;
+  if (account.me && !m.guest) account.me.stats = { ...(account.me.stats || {}), sniper_feats: all };
+  royalToast(all, add, !!m.guest);
 });
 net.on('sn', (m) => {
   recordSnap(m);
@@ -948,6 +1110,7 @@ net.on('sn', (m) => {
       const n = G.names.get(id) || { name: '???', color: '#ffffff' };
       r = new Remote(id, n.level ? `${n.name} [${n.level}]` : n.name, n.color, G.skins.get(id) || {}, n.bot, n.look, n.team || 0);
       r.katN = G.kat.get(id) || 0;
+      r.setGrapple(n.grap);
       G.remotes.set(id, r);
     }
     r.snap(m.s, e);
@@ -999,7 +1162,9 @@ net.on('bombev', (m) => {
 function onIc(m) {
   if (!m || !Object.hasOwn(ITEMS, m.i)) return;
   syncItem(m.i, m.n, m.next);
-  if (m.i !== W.item) { setItem(m.i); showSlots(); }
+  // (gun game / zombies hand you one weapon and no item, a chaos kit can say no item: the 'ic' doesn't put it back)
+  const noItem = W.only || (G.forcedLoadout && G.forcedLoadout.only && G.forcedLoadout.item === 'none');
+  if (m.i !== W.item && !noItem) { setItem(m.i); showSlots(); }
 }
 net.on('ic', onIc);
 // the katana grows: everyone sees how long yours is
@@ -1032,6 +1197,9 @@ net.on('freeze', (m) => {
   if (m.id === G.myId) { ME.frozenUntil = performance.now() + m.dur; G.frost = 0; releaseHook(); hud.msg('FROZEN SOLID', m.dur / 1000, 'slip'); sfx.ting(); }
   const r = G.remotes.get(m.id); if (r) { r.frozenUntil = performance.now() + m.dur; sfx.ting(r.pos); }
 });
+// bubble wand: someone got sealed in a giant soap bubble / it popped (wand.js does the rest)
+net.on('trap', (m) => { trapStart(m); recordEv(m); });
+net.on('trapx', (m) => { trapEnd(m); recordEv(m); });
 
 // hold F to plant / defuse: keep telling the server while it's held, and stand still
 let useTimer = 0;
@@ -1069,12 +1237,17 @@ net.on('votes', (m) => { if (G.vote) { G.vote.counts = m.counts; showVote(G.vote
 
 // randomizer mode: the server hands you a loadout each life (null = use your own again)
 net.on('loadout', (m) => {
-  G.forcedLoadout = m.lo ? { ...m.lo, item: S.loadout.item } : null; // weapons only: you keep your own item
+  // randomizer: weapons only, you keep your own item. chaos kits (lo.only) come with their own item rule (none)
+  G.forcedLoadout = m.lo ? (m.lo.only ? m.lo : { ...m.lo, item: S.loadout.item }) : null;
+  hud.descFor = (m.lo && m.lo.desc) || null; // chaos modes can say what a weapon does in this mode
   setLoadout(G.forcedLoadout || S.loadout);
   refillAmmo();
-  if (m.lo) hud.msg(`${wname(m.lo.primary)} · ${wname(m.lo.secondary)} · ${wname(m.lo.melee)}`, 2.2, 'brag');
+  if (m.lo && !m.lo.only) hud.msg(`${wname(m.lo.primary)} · ${wname(m.lo.secondary)} · ${wname(m.lo.melee)}`, 2.2, 'brag');
 });
+// gun game / infection: the server hands you exactly one weapon (null = your own loadout again)
+net.on('modew', (m) => { if (m.w) endBall(); setOnly(m.w || null, G.forcedLoadout || S.loadout); }); // (a mode weapon ends a wrecking ball: the server already did)
 net.on('kb', (m) => applyKb(m.v));
+net.on('grab', (m) => shredGrab(m)); // you're in someone's shredder
 net.on('slip', () => slip(performance.now()));
 net.on('dmg', (m) => {
   const target = m.to === G.myId ? null : G.remotes.get(m.to);
@@ -1082,7 +1255,7 @@ net.on('dmg', (m) => {
     ME.hp -= m.a;
     hud.hp(ME.hp);
     hud.hurt(m.a);
-    sfx.hurt();
+    if (m.hs) sfx.headshotTaken(m.ko); else sfx.hurt();
     if (m.w === 'cig') G.burnUntil = performance.now() + 600;
   }
   if (target) {
@@ -1097,9 +1270,10 @@ net.on('dmg', (m) => {
       fx.blood(c, dir, Math.min(100, m.a), fl ? fl.point[1] : null);
     }
   }
+  if (m.w === 'shredder') shredHit(m);
   if (m.from === G.myId && m.to !== G.myId) {
     hud.hit(m.hs);
-    if (m.hs) sfx.headshot(); else sfx.hit();
+    if (m.hs) sfx.headshot(m.ko); else sfx.hit();
     if (target) {
       const v = new THREE.Vector3(target.pos[0], target.pos[1] + 2, target.pos[2]).project(G.camera);
       if (v.z < 1) hud.dmgNum((v.x * 0.5 + 0.5) * innerWidth + (Math.random() - 0.5) * 30, (-v.y * 0.5 + 0.5) * innerHeight, m.a, m.hs);
@@ -1108,15 +1282,20 @@ net.on('dmg', (m) => {
 });
 net.on('kill', (m) => {
   recordEv(m);
+  courtKill(m); // scales of justice: streaks + revenge
   const [kn, kc] = nameOf(m.k), [vn, vc] = nameOf(m.v);
   const via = m.w === 'void' || m.w === 'cough' ? m.via : m.w;
   const victim = G.remotes.get(m.v);
+  // shredder kills: the pieces go through the killer's machine instead of the usual gibs / kill effect
+  if (m.w === 'shredder' && shredKill(m, G.remotes, m.v === G.myId ? { pos: ME.pos.slice(), yaw: ME.yaw, color: G.myColor, look: teamLook(validLook(G.settings.look, myAchs()), G.myTeam) } : null)) m.fx = 'none'; // (team colour beats clothes)
   const kfx = m.fx && m.fx !== 'none' ? m.fx : null;
   if (victim) {
+    victim.reverseUntil = 0; // the server ends their reverse card on death too
     const vi = G.names.get(m.v) || {};
     const replaced = kfx && playKillFx(kfx, { pos: victim.pos.slice(), vel: m.vel || victim.vel, yaw: victim.yaw, color: victim.color, look: teamLook(vi.look, vi.team), name: vi.name });
     rigDied(victim, m.vel); // they died in the overdrive rig: the frame bursts apart into scrap
     if (replaced) victim.ch.root.visible = false; else victim.breakApart(m.vel || victim.vel);
+    wreckDied(victim, m.vel); // they died as a wrecking ball: it bursts open
     victim.frozenUntil = 0;
   } else if (m.v === G.myId && kfx) playKillFx(kfx, { pos: ME.pos.slice(), vel: m.vel || ME.vel, yaw: ME.yaw, color: G.myColor, look: teamLook(validLook(G.settings.look, myAchs()), G.myTeam), name: G.myName });
   const dummy = victim && victim.bot && victim.name === 'Dummy';
@@ -1132,8 +1311,14 @@ net.on('kill', (m) => {
   } else {
     parts = [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc]];
   }
+  const hazard = m.w === 'lava' || (m.w === 'duck' && m.sky); // floor is lava / duck rain: nobody owns those
+  if (hazard) parts = m.k ? [[kn, kc], [`  [${wname(m.via)}]  `, wcolor(m.via)], [vn, vc], [m.w === 'lava' ? '  into the lava' : '  under a sky duck', '#aaa']] : [[vn, vc], [m.w === 'lava' ? '  touched the floor' : '  got flattened by a sky duck', '#ff8a3a']];
+  if (m.ep && m.k) parts.push([`  EPIC ${Math.round(m.ep.d)}m`, '#ffe14d']);
   if (!dummy) hud.feed(parts);
+  if (m.v === G.myId) epicKC = m.ep && m.ep.lock && m.k && m.k !== G.myId && S.killcam !== false && G.mode !== 'training' ? { ...m.ep, w: via } : null; // too epic to skip (the server holds your respawn)
+  if (m.v === G.myId) epicHold = !!(m.ep && m.ep.lock); // ...until it spawns you, killcam or not
   if (m.v === G.myId) {
+    if (performance.now() < (ME.sleepUntil || 0) && $('center').textContent === 'zzz...') hud.msg('', 0); // died in your sleep: no "zzz..." over the killcam
     ME.alive = false;
     releaseHook();
     W.held = false; W.aimHeld = false;
@@ -1149,6 +1334,7 @@ net.on('kill', (m) => {
         ? [[kn, kc], [' knocked you into the void', '#fff'], [`  (${wname(via)})`, wcolor(via)]]
         : [['killed by ', '#fff'], [kn, kc], [`  (${wname(via)})`, wcolor(via)]]);
     } else hud.dead(true, [[m.w === 'void' ? 'you fell into the void' : m.w === 'tbag' ? 'you t-bagged too hard. your knees exploded.' : 'you smoked too much', '#fff']]);
+    if (hazard) hud.dead(true, m.k ? [[kn, kc], [m.w === 'lava' ? ' knocked you into the lava' : ' softened you up for a sky duck', '#fff'], [`  (${wname(m.via)})`, wcolor(m.via)]] : [[m.w === 'lava' ? 'the floor was lava' : 'a duck fell out of the sky on you', '#fff']]);
   }
   if (m.k === G.myId && m.v !== G.myId) {
     G.streakN = (G.streakN || 0) + 1; // the server counts every kill too, but only tells you at your picks
@@ -1156,6 +1342,7 @@ net.on('kill', (m) => {
     sfx.kill();
     hud.msg(dummy ? 'dummy down' : `killed ${vn}`, 1.4, 'brag');
   }
+  if (m.ep && m.k === G.myId && m.v !== G.myId) epicBrag({ ...m.ep, w: via });
 });
 net.on('spawn', (m) => {
   endKillcam();
@@ -1163,19 +1350,22 @@ net.on('spawn', (m) => {
   ME.pos = m.p.slice(); ME.vel = [0, 0, 0]; ME.alive = true; ME.hp = 100; ME.seq = m.q;
   ME.slipUntil = 0; ME.combo = 0; ME.sleepUntil = 0;
   G.spawnT = performance.now();
+  endBall(); // a new life or round: no wrecking ball rolls on (the server ends it too)
   refillAmmo();
   if (G.pendingLoadout) applyLoadout(true);
   hud.dead(false);
 });
 net.on('ps', (m) => {
   spawnProj(m);
+  if (m.k === 'bloodcross') { crossShot(m, G.projs.get(m.id)); return; } // a heartbeat, not a pew
   if (m.o !== G.myId) {
-    const s = { chicken: 'squawk', duck: 'squeak', bowling: 'thunk', slipper: 'swing' }[m.k] || 'pew';
+    const s = { chicken: 'squawk', duck: 'squeak', bowling: 'thunk', slipper: 'swing', soap: 'bloop' }[m.k] || 'pew';
     sfx[s](m.p);
   }
 });
 net.on('pu', (m) => {
   const pr = G.projs.get(m.id);
+  if (pr && pr.k === 'slipper') return slipperUpdate(pr, m); // homing: steer between updates, ease corrections
   if (pr) { pr.p = m.p.slice(); pr.v = m.v.slice(); }
 });
 net.on('pd', (m) => {
@@ -1207,6 +1397,7 @@ net.on('pd', (m) => {
   }
 });
 net.on('tip', (m) => { G.tip = m.tip; });
+net.on('court', courtSync); // scales of justice: everyone's kill streak when you join
 net.on('hand', (m) => { G.hand = m.hand || []; });
 net.on('tp', (m) => { ME.pos = m.p.slice(); fx.glitch(ME.pos, [0, 0, 0], 20); sfx.reverse(); });
 net.on('heal', (m) => {
@@ -1214,7 +1405,13 @@ net.on('heal', (m) => {
   const r = G.remotes.get(m.id);
   if (r) for (let i = 0; i < 12; i++) fx.burn([r.pos[0], r.pos[1], r.pos[2]]);
 });
-net.on('sleep', (m) => { ME.sleepUntil = performance.now() + m.dur * 1000; releaseHook(); hud.msg('zzz...', m.dur, 'slip'); sfx.snore(); });
+net.on('sleep', (m) => {
+  const n = performance.now();
+  if (n >= (ME.sleepUntil || 0)) ME.sleepAt = n; // a second arrow keeps you down longer, it doesn't knock you down again
+  ME.sleepUntil = n + m.dur * 1000;
+  releaseHook(); fireUp(); W.aimHeld = false; // knocked flat: let go of everything
+  hud.msg('zzz...', m.dur, 'slip'); sfx.snore();
+});
 net.on('boom', (m) => {
   recordEv(m);
   fx.explosion(m.p, m.r); sfx.boom(m.p);
@@ -1235,6 +1432,8 @@ net.on('pr', (m) => {
   }
 });
 net.on('hs', (m) => addHole(m));
+// Blood Cross: the X sticking to someone (or a wall), the spikes, the pop, the blood coming back on a kill
+net.on('bcross', (m) => { recordEv(m); crossEvent(m); });
 net.on('he', (m) => {
   recordEv(m);
   const h = G.holes.get(m.id);
@@ -1250,6 +1449,7 @@ net.on('fx', (m) => {
   if (m.k === 'shot') {
     const w = WEAPONS[m.w];
     if (!w) return;
+    if (r && w.fanHammer) r.revShot(!!m.fan); // their revolver twirls too
     const fast = w.rate > 8;
     const mz = r ? r.muzzle() : null;
     const color = () => tracerColor((G.skins.get(m.id) || {})[m.w], w.tracer || 0xfff0a0);
@@ -1293,21 +1493,35 @@ net.on('fx', (m) => {
     G.shake = Math.max(G.shake, Math.max(0, 1 - d / 25));
   } else if (m.k === 'swing') {
     if (r) r.swingT = performance.now();
-    if (m.w === 'popper') {
-      if (r) fx.confetti(r.muzzle(), r.look(), r.vel);
-      sfx.popper(m.a);
+    if (m.w === 'popper') { // an item now: it pops into their hand for a moment
+      if (r) { r.popItem('popper', 450); fx.confetti(r.itemMuzzle(), r.look(), r.vel); }
+      sfx.popper(m.a); sfx.partyHorn(m.a);
     } else sfx.swing(m.a);
   } else if (m.k === 'reverse') {
     if (r) r.reverseUntil = performance.now() + m.dur * 1000;
+    if (m.id === G.myId) { W.reverseUntil = performance.now() + m.dur * 1000; hud.msg('REVERSE', 1.2, 'reverse'); } // only once the server really started it
     if (m.id !== G.myId) sfx.reverse(r ? r.pos : null);
+    if (r) { // they flash the card: a red + yellow burst everyone can see
+      r.popItem('reverse', 700);
+      const c = [r.pos[0], r.pos[1] + 1.3, r.pos[2]];
+      fx.blast(c, 2.2, 0xff3b3b, 0xffd23b);
+      fx.spray(c, 40, [0xff3b3b, 0xffd23b, 0xffffff], 10, 0.9, 0.2, 0, 2);
+    }
   } else if (m.k === 'reflect') {
     if (m.by === G.myId) { hud.msg('REVERSED', 1.2, 'reverse'); sfx.reverse(); }
     if (m.id === G.myId) hud.msg('REVERSED THEM', 1.0, 'reverse');
+    if (r) { fx.spray([r.pos[0], r.pos[1] + 1.3, r.pos[2]], 18, [0xff3b3b, 0xffd23b], 7, 0.5, 0.16, 0, 2); if (m.by !== G.myId) sfx.reverse(r.pos); }
   } else if (m.k === 'strike') {
     sfx.strike(m.p);
     if (m.n >= 2) hud.msg(m.n >= 3 ? 'STRIKE' : 'SPARE', 1.2, 'brag');
+  } else if (m.k === 'slam' || m.k === 'ram') { // wrecking ball
+    recordEv(m);
+    wreckFx(m);
   } else if (m.k === 'thwack') {
     sfx.thwack(m.p);
+  } else if (m.k === 'verdict') {
+    recordEv(m); // killcams show the ruling too
+    courtVerdict(m);
   }
 });
 net.on('chat', (m) => {
@@ -1316,6 +1530,12 @@ net.on('chat', (m) => {
   hud.chat(n, c, m.m);
 });
 net.on('po', (m) => { G.ping = Math.round(performance.now() - m.c); hud.ping(G.ping); });
+// no-scope hype (cosmetic): badge for the shooter, feed icon, the MLG treatment for a long one, fireworks for a headshot
+net.on('ns', (m) => {
+  recordEv(m); // the killcam replays the fireworks
+  const hold = noScope(m, nameOf(m.k), nameOf(m.v));
+  if (hold && G.killcamPending && !RP.active) queueKillcam(m.k, 'sniper', hold); // got no-scoped from far: the overlay plays out first
+});
 
 // ------------------------------------------------------------ main loop
 let last = performance.now(), acc = 0, sendT = 0, pingT = 0, fovNow = S.fov, fpsAcc = 0, fpsN = 0;
@@ -1341,7 +1561,8 @@ function frame(t) {
     } : {};
     jumpPressed = false;
     acc += dt;
-    while (acc >= STEP) { stepPlayer(STEP, inp, now); inp.jumpPressed = false; acc -= STEP; }
+    while (acc >= STEP) { stepPlayer(STEP, inp, now); airTick(now); lavaStep(now); inp.jumpPressed = false; acc -= STEP; }
+    grabStep(now); // held in a shredder's intake
     // spinbot killstreak: lock onto the nearest enemy you can see
     const spinning = ME.alive && now < (G.spinUntil || 0);
     if (spinning) {
@@ -1364,6 +1585,7 @@ function frame(t) {
     if (spinning) $('cheat').textContent = `JANKHAX v6.9\n[x] AIMBOT\n[x] SPINBOT\n[x] NO SPREAD\n${((G.spinUntil - now) / 1000).toFixed(1)}s left`;
     G.spinning = spinning;
     updateWeapons(dt, now);
+    if (ballOn(now)) { W.flags |= FLAGS.BALL; if (BS.snapNow) { BS.snapNow = false; sendT = 0; } } // wrecking ball (a slam dive goes out right away: the server checks it)
 
     sendT -= dt;
     if (sendT <= 0 && ME.alive) {
@@ -1373,12 +1595,12 @@ function frame(t) {
       net.send({
         t: 's', q: ME.seq, p: ME.pos.map(r2), v: ME.vel.map(r2), y: r2(G.spinning ? (now * 0.03) % (Math.PI * 2) : ME.yaw), x: r2(G.spinning ? Math.sin(now * 0.02) * 1.2 : ME.pitch), w: W.cur,
         g: hp ? hp.map(r2) : 0,
-        f: W.flags | (now < ME.slipUntil ? FLAGS.SLIP : 0) | (ME.sliding ? FLAGS.SLIDE : 0) | (ME.crouching ? FLAGS.CROUCH : 0),
+        f: W.flags | (now < ME.slipUntil ? FLAGS.SLIP : 0) | (ME.sliding ? FLAGS.SLIDE : 0) | (ME.crouching ? FLAGS.CROUCH : 0) | (now < (ME.sleepUntil || 0) ? FLAGS.SLEEP : 0),
       });
     }
     pingT -= dt;
     if (pingT <= 0) { pingT = 2; net.send({ t: 'pi', c: performance.now() }); }
-    if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = 'killcam... (space to skip)'; else hud.deadTimer(Math.max(0, ((G.respawnMs ?? 2500) - (now - (G.deadAt || now))) / 1000)); }
+    if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = epicKC ? 'killcam... too epic to skip' : 'killcam... (space to skip)'; else if (epicHold) epicTimer(now); else hud.deadTimer(Math.max(0, ((G.respawnMs ?? 2500) - (now - (G.deadAt || now))) / 1000)); }
   }
 
   const rt = now + G.offset - INTERP_MS;
@@ -1386,7 +1608,11 @@ function frame(t) {
   else for (const r of G.remotes.values()) { r.ch.root.visible = false; r.rope.visible = false; r.shadow.visible = false; } // the replay has its own copies
   updateGibs(dt);
   updateKillFx(dt);
+  updateCourt(dt, now);
+  updateSprays(dt);
+  updateShreds(dt);
   for (const [id, b] of G.bubbles) { if (now > b.until + 500) { G.scene.remove(b.mesh); G.bubbles.delete(id); continue; } b.mesh.rotation.y += dt * 0.3; b.mesh.material.opacity = 0.18 + Math.sin(now * 0.006) * 0.05; }
+  updateWand(dt, now); // bubble wand: giant soap bubbles round people, the view from inside one, the wand in your hand
   for (let i = G.smokes.length - 1; i >= 0; i--) {
     const s2 = G.smokes[i];
     if (now > s2.until) { G.smokes.splice(i, 1); continue; }
@@ -1397,14 +1623,17 @@ function frame(t) {
   $('freezeFx').style.opacity = now < (ME.frozenUntil || 0) ? 1 : Math.min(0.6, frost * 0.15);
   if (G.joined) {
     updateObjectives(dt, now, G.round, ME.pos);
+    updateGunGame(); updateInfection(dt);
     const a = G.round && G.round.bomb && G.round.bomb.act;
     if (a && a.by === G.myId) hud.meter(a.f, a.k === 'plant' ? 'PLANTING... keep holding F' : 'DEFUSING... keep holding F', '#ff4f4f');
     if (G.vote) $('voteLeft').textContent = `${Math.max(0, Math.ceil((G.voteEnds - performance.now()) / 1000))}s`;
   }
+  updateChaos(dt, now);
 
   for (const pr of G.projs.values()) {
+    if (pr.k === 'soap') { stepSoap(pr, dt, now); continue; } // bubble wand: wobbly bubbles on an exact path (wand.js)
     if (pr.k === 'slipper') {
-      for (let k = 0; k < 3; k++) pr.p[k] += pr.v[k] * dt;
+      slipperStep(pr, dt, now);
       pr.spin += dt * 20;
       pr.mesh.position.set(...pr.p);
       pr.mesh.rotation.set(0, pr.spin, 0.3);
@@ -1447,12 +1676,14 @@ function frame(t) {
   }
   for (const h of G.holes.values()) {
     const age = (now - h.born) / 1000;
+    if (age < 0) continue; // still a duck stuck on someone (duck.js)
     const k = Math.min(1, age / 0.3);
     h.mesh.scale.setScalar(k * (1 + Math.sin(age * 20) * 0.08) * (h.mesh.userData.big ? 4 : 1));
     h.mesh.userData.orbit.rotation.y += dt * 6;
     h.mesh.userData.ring.rotation.z += dt * 3;
     fx.vortex(h.p, WEAPONS.duck.holeR * (h.mesh.userData.big ? 1.6 : 0.6));
   }
+  duckFrame(now, dt); // homing ducks, stuck ducks, holes riding their victim
 
   // camera
   const cam = G.camera;
@@ -1464,24 +1695,37 @@ function frame(t) {
     roll = Math.sin(k * Math.PI * 4) * 0.5 * (1 - k);
     pOff = Math.sin(k * Math.PI) * 1.1;
   }
-  if (now < (ME.sleepUntil || 0)) { pOff = -0.5 + Math.sin(now * 0.002) * 0.1; roll = 0.3; }
-  $('sleepFx').style.opacity = now < (ME.sleepUntil || 0) ? 1 : 0;
+  const asleep = G.joined && ME.alive && now < (ME.sleepUntil || 0);
+  if (asleep) { // knocked flat: the view drops to the floor and rolls onto its side, breathes, then gets back up at the end
+    const t = (now - (ME.sleepAt || now)) / 1000, left = (ME.sleepUntil - now) / 1000;
+    const fall = Math.min(1, t / 0.45), up = Math.min(1, left / 0.4);
+    const k = fall * fall * (up * up * (3 - 2 * up)); // falls like a plank, gets up quick
+    cam.position.y += (ME.pos[1] + 0.32 - e[1]) * k;
+    roll = (1.38 + Math.sin(now * 0.0021) * 0.05) * k + (fall < 1 ? Math.sin(fall * Math.PI) * 0.15 : 0);
+    pOff = (Math.sin(now * 0.0021 + 1) * 0.035 - ME.pitch * 0.6) * k;
+  }
+  $('sleepFx').style.opacity = asleep ? 1 : 0;
   if (G.joined && !ME.alive) { pOff = -0.6; roll = 0.4; cam.position.y += Math.min(4, (now - (G.deadAt || now)) / 600); }
+  if (G.joined && ME.alive && S.shake) roll += ME.lean || 0; // leaning into a grapple swing (eased in player.js)
   if (!G.joined) { // menu backdrop: slow orbit over the current map
     const a = now * 0.00005;
     cam.position.set(Math.sin(a) * 40, 18, Math.cos(a) * 40);
     ME.yaw = a; ME.pitch = -0.35;
+    const mc = MAPS[G.cfg.map] && MAPS[G.cfg.map].menuCam; // sealed maps: orbit inside instead of over the roof
+    if (mc) { cam.position.set(Math.sin(a) * mc[0], mc[1], Math.cos(a) * mc[0]); ME.pitch = mc[2]; }
   }
 
   G.shake = S.shake ? Math.max(0, G.shake - dt * 2.2) : 0;
   const sh = G.shake * G.shake * 0.08;
   const pu = G.punch || { x: 0, y: 0, z: 0 };
   cam.rotation.set(Math.max(-1.57, Math.min(1.57, ME.pitch + pOff + pu.x)) + (Math.random() - 0.5) * sh, ME.yaw + pu.y + (Math.random() - 0.5) * sh, roll + pu.z);
+  if (!RP.active) ballCam(cam, dt); // wrecking ball: third person, behind and above the ball
   const hs = hspeed();
-  const fovTarget = (S.fov + (S.fovKick ? Math.min(35, hs * 0.3) + (ME.sprinting ? 6 : 0) : 0)) / (W.zoom || 1);
+  const fovTarget = (S.fov + (S.fovKick ? Math.min(35, hs * 0.3) + (ME.sprinting ? 6 : 0) + (ME.alive ? ME.ropeFov || 0 : 0) : 0)) / (W.zoom || 1);
   fovNow += (fovTarget - fovNow) * Math.min(1, dt * (W.aim > 0 ? 14 : 6));
   if (Math.abs(cam.fov - fovNow) > 0.05) { cam.fov = fovNow; cam.updateProjectionMatrix(); }
   if (RP.active) updateReplay(dt, now, cam); // killcam / play of the round owns the camera
+  const specCam = !RP.active && spectateCam(dt, cam); // one in the chamber: out of lives, watching someone
   cam.updateMatrixWorld();
   updateSpeedLines(dt, G.joined && ME.alive && !RP.active ? Math.hypot(ME.vel[0], ME.vel[1], ME.vel[2]) : 0, ME.vel, cam, ME.dashing ? 0.9 : 0, S.speedLines !== false);
   const rh = G.renderer.domElement.height;
@@ -1490,13 +1734,15 @@ function frame(t) {
   if (RP.active) { cam.getWorldDirection(tmpDir); setListener([cam.position.x, cam.position.y, cam.position.z], Math.atan2(-tmpDir.x, -tmpDir.z)); } else setListener(e, ME.yaw);
 
   const hp = hookPoint();
-  if (hp && ME.alive && !RP.active) { myRope.visible = true; setBeam(myRope, muzzleWorld(), hp, 0.05); } else myRope.visible = false;
+  if (hp && ME.alive && !RP.active) { myRope.visible = true; setRopeSkin(myRope, myGrapple()); setRope(myRope, muzzleWorld(), hp); } else myRope.visible = false;
   const shHit = G.joined ? raycast([ME.pos[0], ME.pos[1] + 0.1, ME.pos[2]], [0, -1, 0], 120, BOXES) : null;
   myShadow.visible = !!shHit && ME.alive && !ME.onGround && !RP.active;
   if (shHit) myShadow.position.set(ME.pos[0], shHit.point[1] + 0.03, ME.pos[2]);
+  updateWreck(dt, now, RP.active, myShadow, myRope); // your own wrecking ball, its chain (instead of your rope), rumble + timer
   if (now < (G.burnUntil || 0)) fx.burn([ME.pos[0] + Math.sin(ME.yaw) * -0.8, ME.pos[1], ME.pos[2] - Math.cos(ME.yaw) * 0.8]);
   updateRig(dt, now, cam, RP.active); // overdrive rig: you in it (camera, HUD, trail) and its effects
-  $('reverseFx').style.opacity = now < W.reverseUntil ? 1 : 0;
+  const revLeft = W.reverseUntil - now; // reverse card: red edges, blinking for the last second
+  $('reverseFx').style.opacity = revLeft > 0 ? (revLeft > 1000 || Math.floor(revLeft / 150) % 2 ? 1 : 0.25) : 0;
 
   if (G.joined) {
     hud.hp(ME.hp);
@@ -1506,14 +1752,18 @@ function frame(t) {
   fpsAcc += dt; fpsN++;
   if (fpsAcc > 0.5) { $('fps').textContent = S.showFps ? Math.round(fpsN / fpsAcc) + ' fps' : ''; fpsAcc = 0; fpsN = 0; }
   hud.update(dt);
+  updateNoScope(dt, cam, RP.active);
   fx.update(dt);
   G.skinFxWorld.update(dt);
   G.skinFxVM.update(dt);
   skinTick(dt, now);
   updateWorld(dt);
-  G.vmScene.visible = G.joined && !RP.active;
+  updateCrosses(dt, RP.active ? (RP.sp || 1) * (RP.dt != null && dt > 0 ? RP.dt / dt : 1) : 1); // after the projectile loop + replay: it turns blood bolts nose-first
+  G.vmScene.visible = G.joined && !RP.active && !specCam && !asleep;
+  if (ballOn(now)) G.vmScene.visible = false; // weapons are holstered inside the ball
   renderFrame();
   if ((screen === 'cosmetics' || screen === 'character') && !$('menu').classList.contains('hidden')) renderPreview(dt);
+  if (screen === 'cosmetics' && !$('menu').classList.contains('hidden')) renderGrapplePreview(dt);
 }
 
 // ------------------------------------------------------------ killstreaks
@@ -1543,6 +1793,8 @@ function renderStreak(n) {
 function deployStreak(slot) {
   const id = activeStreaks()[slot];
   if (!G.joined || !ME.alive || !id) return;
+  if (W.only) { hud.msg('no killstreaks in this mode (they keep for later)', 1.2); sfx.empty(); return; }
+  if (chaosNoStreaks()) { hud.msg('no killstreaks in this mode', 1.2); sfx.empty(); return; }
   if (!G.pocket.includes(id)) { hud.msg(`${STREAKS[id].name}: ${STREAKS[id].kills} kills in a row`, 1.2); sfx.empty(); return; }
   const e = eye(), d = lookDir();
   const h = raycast(e, d, 300, BOXES);
@@ -1559,6 +1811,7 @@ net.on('streak', (m) => {
     G.activeStreaks = validStreaks(S.loadout.streaks); // picks changed mid-streak count from now on (the server does the same)
     if ($('loNote').textContent === NEXT_NOTE) $('loNote').textContent = '';
     loseScythe();
+    endBall();
     renderStreak(0);
     return;
   }
@@ -1580,8 +1833,48 @@ net.on('streak', (m) => {
   if (m.reward === 'satellite') G.satUntil = performance.now() + st.dur * 1000;
   if (m.reward === 'spinbot') G.spinUntil = performance.now() + st.dur * 1000;
   if (m.reward === 'scythe') grantScythe();
+  if (m.reward === 'wreckingball') startBall(m.dur || st.dur);
   toast(st.desc, 2500);
 });
+
+// ------------------------------------------------------------ sprays (Z): paint your graffiti where you look
+SYNC_KEYS.push('spray'); // your pick follows your account like the other settings
+function mySpray() { return ownedSpray(S.spray, G.inv); }
+function setSpray(id) { S.spray = id; saveSettings(); }
+let sprayT = -1e9;
+function spray() {
+  if (!G.joined || !ME.alive || RP.active || ballOn()) return; // (no hands in the wrecking ball)
+  const now = performance.now(), left = SPRAY.cd * 1000 - (now - sprayT);
+  if (left > 0) { hud.msg(`spray ready in ${Math.ceil(left / 1000)}s`, 0.9); return; }
+  const h = sprayAim(eye(), lookDir());
+  if (!h) { hud.msg('nothing to spray on (get closer)', 0.9); return; }
+  sprayT = now;
+  const id = mySpray(), r3 = (x) => Math.round(x * 1000) / 1000;
+  net.send({ t: 'spray', id, p: h.p.map(r3), n: h.n, y: r3(ME.yaw) }); // the server checks it and shows everyone
+  sprayFx(h.p, h.n, id); // hiss right away, the paint shows up when the server says so
+}
+net.on('spray', (m) => addSpray(m, false));
+// cosmetics screen: a little picture of each spray on a concrete square
+function buildSprayUI() {
+  const el = $('sk-spray');
+  el.innerHTML = '';
+  const cur = mySpray();
+  for (const [k, v] of Object.entries(COSMETICS.spray)) {
+    const have = owns(G.inv, 'spray', k);
+    const c = document.createElement('button');
+    c.className = 'chip' + (cur === k ? ' on' : '') + (have ? '' : ' locked');
+    c.style.setProperty('--rc', RARITY[v.rarity].color);
+    c.title = `${v.name} · ${RARITY[v.rarity].name}: ${v.desc}`;
+    const im = document.createElement('img'); im.src = sprayIcon(k); im.alt = '';
+    const t = document.createElement('span'); t.textContent = v.name;
+    c.append(im, t);
+    c.addEventListener('click', () => {
+      if (!have) { toast(`${v.name} (${RARITY[v.rarity].name}): ${v.desc}. find it in boxes`, 3000); return; }
+      setSpray(k); buildSprayUI(); toast(`spray: ${v.name}. press Z in a match`);
+    });
+    el.append(c);
+  }
+}
 
 // ------------------------------------------------------------ toast
 let toastT = null;
@@ -1609,9 +1902,9 @@ function setKfx(id) {
 }
 net.on('cd', (m) => { const n = G.names.get(m.id); if (n) n.card = m.card || ''; });
 function infoOf(id) {
-  if (id === G.myId) return { name: G.myName, color: G.myColor, skins: G.equipped, look: validLook(S.look, myAchs()), bot: false, team: G.myTeam || 0, kat: W.kat || 0 };
+  if (id === G.myId) return { name: G.myName, color: G.myColor, skins: G.equipped, look: validLook(S.look, myAchs()), bot: false, grap: myGrapple(), team: G.myTeam || 0, kat: W.kat || 0 };
   const n = G.names.get(id) || {};
-  return { name: n.name || '???', color: n.color || '#ffffff', skins: G.skins.get(id) || {}, look: n.look || null, bot: !!n.bot, level: n.level, team: n.team || 0, kat: G.kat.get(id) || 0 };
+  return { name: n.name || '???', color: n.color || '#ffffff', skins: G.skins.get(id) || {}, look: n.look || null, bot: !!n.bot, level: n.level, grap: n.grap, team: n.team || 0, kat: G.kat.get(id) || 0 };
 }
 // the death screen shows whoever killed you, on their name card
 function deathCard(killer, via) {
@@ -1627,6 +1920,7 @@ function showReplayUI(title, url, name, color, sub, hint) {
   $('rpCard').append(cardEl(url, name, sub, color));
   $('rpHint').textContent = hint || '';
   $('rpFeed').innerHTML = '';
+  epicUI(false);
   $('replay').classList.remove('hidden');
 }
 function hideReplayUI() { $('replay').classList.add('hidden'); }
@@ -1638,16 +1932,19 @@ function replayFeed(k, info) {
   for (const [t, c] of k.k ? [[a, ac], [`  [${wname(via)}]  `, wcolor(via)], [b, bc]] : [[b, bc], ['  died', '#aaa']]) {
     const sp = document.createElement('span'); sp.textContent = t; sp.style.color = c; d.append(sp);
   }
+  if (k.ep && k.k) { const sp = document.createElement('span'); sp.textContent = `  EPIC ${Math.round(k.ep.d)}m`; sp.style.color = '#ffe14d'; d.append(sp); if (k.k === RP.focus) epicBanner({ ...k.ep, w: via }); }
   $('rpFeed').append(d);
 }
 let killcamT = 0;
-function queueKillcam(killer, via) {
+function queueKillcam(killer, via, delay = 900) {
   clearTimeout(killcamT);
   const deathS = serverNow();
   G.killcamPending = true;
   killcamT = setTimeout(() => {
     if (ME.alive || !G.joined || RP.active) { G.killcamPending = false; return; }
+    if (epicKC) { epicCam(killer, via, deathS, delay); return; } // (a long no-scope: after the MLG overlay)
     const clip = localClip(deathS - 4500, deathS + 1200, infoOf);
+    infClipInfo(clip.info);
     const [kn, kc] = nameOf(killer);
     showReplayUI('KILLCAM', cardUrlFor(killer), kn, kc, `got you with ${wname(via)}`, 'SPACE / CLICK to skip');
     $('dead').classList.add('hidden');
@@ -1657,16 +1954,98 @@ function queueKillcam(killer, via) {
       onEnd: () => { G.killcamPending = false; hideReplayUI(); if (!ME.alive) $('dead').classList.remove('hidden'); net.send({ t: 'respawn' }); },
       onAbort: () => { G.killcamPending = false; hideReplayUI(); },
     });
-  }, 900);
+  }, delay);
 }
 function endKillcam() {
   clearTimeout(killcamT);
   G.killcamPending = false;
+  epicKC = null; epicHold = false; epicExtra = 0;
   if (RP.mode === 'killcam') stopReplay(true);
 }
 function skipReplay() {
+  if (epicLocked()) { epicNope(); return; }
   if (RP.active) { stopReplay(false); return; }
   if (G.killcamPending) { clearTimeout(killcamT); G.killcamPending = false; net.send({ t: 'respawn' }); }
+}
+
+// ------------------------------------------------------------ EPIC kills: too epic to skip
+// the server flags far / clutch / mid-air / no-scope kills as EPIC (shared/epic.js) and holds the victim's respawn until the
+// whole epic killcam has played, so a hacked client can't skip it either. here: a longer, slower cut that punches in on you,
+// a banner when the shot lands, and a padlock where the skip button was.
+let epicKC = null; // the epic kill you're stuck watching
+let epicHold = false, nopeT = 0; // the server is holding your respawn (until 'spawn')
+let epicExtra = 0; // ms the epic killcam started later than usual (no-scope MLG overlay first)
+function epicLocked() { return !!epicKC && !ME.alive && !G.roundOver && (G.killcamPending || RP.mode === 'killcam'); }
+function epicTags(ep) {
+  const w = WEAPONS[ep.w];
+  const far = w && w.kind === 'melee' ? 'WHAT A REACH' : w && epicMul(ep.w) >= 2 ? `WITH A ${w.name.toUpperCase()}?!` : 'LONG SHOT';
+  const T = { far, hs: 'HEADSHOT', ns: 'NO-SCOPE', air: 'MID-AIR', rope: 'OFF THE GRAPPLE', fast: `${ep.kmh || 300} KM/H`, hp: `ON ${ep.hp || 1} HP` };
+  return (Array.isArray(ep.why) ? ep.why : []).map((k) => T[k]).filter(Boolean).join(' · ');
+}
+function epicCam(killer, via, deathS, delay = EPIC_CAM.delay) {
+  const ep = epicKC, C = EPIC_CAM;
+  // started late (a slow PC hitching on the kill): cut into the lead-up so it still ends before the server lets you go.
+  // a long no-scope holds the killcam back for the MLG overlay on purpose (delay), and the server's lock waits that out too
+  epicExtra = Math.max(0, delay - C.delay);
+  const late = Math.max(0, Math.min(C.pre - 1000, performance.now() - (G.deadAt || 0) - delay));
+  const clip = localClip(deathS - C.pre + late, deathS + 1200, infoOf);
+  const [kn, kc] = nameOf(killer);
+  showReplayUI('KILLCAM', cardUrlFor(killer), kn, kc, `got you with ${wname(via)}`, '');
+  epicUI(true);
+  $('dead').classList.add('hidden');
+  const done = () => { epicKC = null; G.killcamPending = false; hideReplayUI(); epicUI(false); };
+  playClip(clip, {
+    focus: killer, mode: 'killcam', victim: G.myId, zoom: Math.max(2, Math.min(5, (ep.d || 30) / 14)),
+    slow: C.slow.map(([a, b, r]) => [deathS + a, deathS + b, r]), end: deathS + C.post,
+    // swing onto you as it slows down, hold through the hit, ease off after
+    punch: (t) => { const r = t - deathS; return r < -650 ? 0 : r < -150 ? (r + 650) / 500 : r < 450 ? 1 : 1 - (r - 450) / 700; },
+    onKill: (k) => replayFeed(k, clip.info),
+    onEnd: () => { done(); if (!ME.alive) $('dead').classList.remove('hidden'); net.send({ t: 'respawn' }); },
+    onAbort: done,
+  });
+}
+// the skip prompt turns into a padlock (off again for every other replay)
+function epicUI(on) {
+  const h = $('rpHint');
+  h.classList.toggle('locked', on);
+  h.classList.remove('nope');
+  $('replay').classList.toggle('epic', on);
+  const b = $('rpEpic');
+  if (b) b.remove();
+  if (!on) return;
+  const lk = document.createElement('span');
+  lk.className = 'lock';
+  h.textContent = '';
+  h.append(lk, 'TOO EPIC TO SKIP');
+}
+// the clip ended (or was too short to play) but the server still holds you: count down to the end of the lock
+function epicTimer(now) { $('deadTimer').textContent = `too epic to skip · ${Math.max(0, (epicCamMs() + epicExtra - (now - (G.deadAt || now))) / 1000).toFixed(1)}...`; }
+// trying to skip anyway: the padlock rattles (at most every 300 ms: holding space auto-repeats)
+function epicNope() {
+  const tn = performance.now();
+  if (tn - nopeT < 300) return;
+  nopeT = tn;
+  const el = RP.active ? $('rpHint') : $('deadTimer');
+  el.classList.remove('nope'); void el.offsetWidth; el.classList.add('nope');
+  el.addEventListener('animationend', () => el.classList.remove('nope'), { once: true });
+  sfx.error();
+}
+// EPIC SHOT · 64m slams in when the shot lands (killcam and play of the round)
+function epicBanner(ep) {
+  const old = $('rpEpic');
+  if (old) old.remove();
+  const b = document.createElement('div'), t = document.createElement('div'), s = document.createElement('div');
+  b.id = 'rpEpic'; t.className = 'et'; s.className = 'es';
+  t.textContent = `EPIC SHOT · ${Math.round(ep.d)}m`;
+  s.textContent = epicTags(ep);
+  b.append(t, s);
+  $('replay').append(b);
+  sfx.choir();
+}
+// and the killer gets to brag about it
+function epicBrag(ep) {
+  hud.msg(ep.lock ? `UNSKIPPABLE:\nthey HAVE to watch this · ${Math.round(ep.d)}m` : `EPIC SHOT · ${Math.round(ep.d)}m\n${epicTags(ep)}`, 3.2, 'epicbrag');
+  sfx.choir();
 }
 
 // ------------------------------------------------------------ accounts
@@ -1730,11 +2109,13 @@ function onLoggedIn(me, fresh) {
     if (prof.look && typeof prof.look === 'object') G.settings.look = { ...DEFAULT_LOOK, ...prof.look };
     if (typeof prof.card === 'string') G.settings.card = prof.card;
     if (typeof prof.kfx === 'string') G.settings.kfx = prof.kfx;
+    if (typeof prof.grap === 'string') G.settings.grap = prof.grap;
     Object.assign(G.settings, prof.settings || {});
     try { localStorage.setItem('jankfire', JSON.stringify(G.settings)); } catch { /* fine */ }
     applySettingsToUI();
   } else saveSettings();
-  G.inv = me.inv || {};
+  G.inv = achInv(me.inv, me.achs); // achievement rewards you've earned count as owned
+  if (G.joined) { net.send({ t: 'kfx', id: myKfx() }); net.send({ t: 'grap', id: myGrapple() }); } // the profile may have brought other picks: tell the server
   recomputeEquipped();
   rebuildOne();
   if (!fresh && prof.loadout) { applyLoadout(false); applyStreaks(); } // the account's own loadout, by the respawn rule
@@ -1768,11 +2149,13 @@ function renderProfile() {
   const bar = document.createElement('div'); bar.className = 'xpbar'; const fill = document.createElement('div'); fill.style.width = k * 100 + '%'; bar.append(fill);
   $('profLevel').append(t, bar);
   const st = me.stats;
-  const owned = LOOT_TYPES.reduce((a, ty) => a + Object.keys(COSMETICS[ty]).filter((id) => owns(me.inv, ty, id)).length, 0);
+  const myInv = achInv(me.inv, me.achs); // achievement rewards you've earned count as owned
+  const owned = LOOT_TYPES.reduce((a, ty) => a + Object.keys(COSMETICS[ty]).filter((id) => owns(myInv, ty, id)).length, 0);
   const total = LOOT_TYPES.reduce((a, ty) => a + Object.keys(COSMETICS[ty]).length, 0);
   const rows = [
     ['wins', st.wins], ['kills', st.kills], ['deaths', st.deaths], ['k/d', st.deaths ? (st.kills / st.deaths).toFixed(2) : st.kills],
     ['bot kills', st.bot_kills], ['best coop wave', st.best_wave], ['top speed', `${st.top_speed} km/h`], ['played', fmtTime(st.playtime)],
+    ['never landed', `${st.airborne || 0}x`],
     ['cosmetics', `${owned}/${total}`], ['crates / bags / boxes', `${me.rolls.crate || 0} / ${me.rolls.bag || 0} / ${me.rolls.box || 0}`],
   ];
   $('profStats').innerHTML = '';
@@ -1827,8 +2210,8 @@ function renderCrates() {
   }
   for (const [kind, c] of Object.entries(CONTAINERS)) {
     const n = account.me.rolls[kind] || 0;
-    const own = c.types.reduce((a, t) => a + Object.keys(COSMETICS[t]).filter((id) => owns(G.inv, t, id)).length, 0);
-    const all = c.types.reduce((a, t) => a + Object.keys(COSMETICS[t]).length, 0);
+    const own = c.types.reduce((a, t) => a + Object.keys(COSMETICS[t]).filter((id) => !COSMETICS[t][id].ach && owns(G.inv, t, id)).length, 0);
+    const all = c.types.reduce((a, t) => a + Object.keys(COSMETICS[t]).filter((id) => !COSMETICS[t][id].ach).length, 0); // achievement rewards aren't in containers
     const card = document.createElement('div'); card.className = 'cratecard' + (n > 0 ? ' has' : '');
     const im = document.createElement('img'); im.src = containerArt(kind); im.alt = '';
     const h = document.createElement('b'); h.textContent = c.name;
@@ -1847,7 +2230,7 @@ let rolling = false;
 function randomCard(kind) {
   const types = CONTAINERS[kind].types;
   const pool = [];
-  for (const t of types) for (const [id, c] of Object.entries(COSMETICS[t])) if (c.rarity !== 'free') pool.push({ type: t, id, name: c.name, rarity: c.rarity });
+  for (const t of types) for (const [id, c] of Object.entries(COSMETICS[t])) if (c.rarity !== 'free' && !c.ach) pool.push({ type: t, id, name: c.name, rarity: c.rarity });
   const r = Math.random() * 100;
   const want = r < 55 ? 'common' : r < 83 ? 'rare' : r < 96 ? 'epic' : 'legendary';
   const pref = pool.filter((p) => p.rarity === want);
@@ -1903,7 +2286,7 @@ async function doRoll(kind) {
   }));
   setTimeout(() => {
     rolling = false;
-    G.inv = account.me.inv || {};
+    G.inv = achInv(account.me.inv, account.me.achs);
     recomputeEquipped();
     renderAcctBar();
     const res = $('rollResult');
@@ -1913,8 +2296,13 @@ async function doRoll(kind) {
       const sub = document.createElement('span'); sub.textContent = `${item.rarityName} ${TYPE_NAMES[item.type].toLowerCase()} unlocked`;
       res.append(big, sub);
       if (item.rarity === 'legendary' || item.rarity === 'epic') sfx.kill(); else sfx.ting();
-      if (item.type === 'kill') {
+      if (item.type === 'spray') {
+        const im = document.createElement('img'); im.className = 'sprayPic'; im.src = sprayIcon(item.id); im.alt = ''; res.append(im);
+        btn('EQUIP SPRAY', () => { setSpray(item.id); closeRoll(); toast(`spray: ${item.name}. press Z in a match`); });
+      } else if (item.type === 'kill') {
         btn('EQUIP KILL EFFECT', () => { setKfx(item.id); closeRoll(); toast(`kill effect: ${item.name}`); });
+      } else if (item.type === 'grapple') {
+        btn('EQUIP GRAPPLE', () => { setGrap(item.id); closeRoll(); toast(`grapple: ${item.name}`); });
       } else {
       // skins belong to one weapon; everything else can go on whatever you're looking at
       const target = item.type === 'model' ? COSMETICS.model[item.id].weapon : G.cosSel;
@@ -1942,16 +2330,22 @@ function fmtClock(ms) { const s2 = Math.ceil(ms / 1000); return `${Math.floor(s2
 function renderRound(r) {
   const el = $('round');
   if (!r) { el.textContent = ''; return; }
+  const mt = ggRoundText(r) ?? infRoundText(r); // gun game / infection: just the clock, their bars show the rest
+  if (mt != null) { el.textContent = mt; return; }
   const teamGame = r.game && GAMES[r.game] && GAMES[r.game].teams;
   el.textContent = r.over ? `next round in ${Math.ceil(r.left / 1000)}` : teamGame ? '' : `first to ${r.target} · ${fmtClock(r.left)}`;
+  const ct = chaosRoundText(r);
+  if (ct) el.textContent = ct;
 }
 net.on('round', (m) => {
   const box = $('roundEnd');
   if (m.start) {
+    courtReset(); // scales of justice: a new match, a clean record (the server does the same)
     G.roundOver = false; if (RP.mode === 'hl') stopReplay(true); box.classList.add('hidden'); showVote(null);
     if (m.game) { G.round = { ...(G.round || {}), ...m }; updateLabel(); if (screen === 'match') syncMatchUI(); }
     hud.msg(m.game && m.game !== 'dm' && GAMES[m.game] ? GAMES[m.game].name.toUpperCase() : 'ROUND START', 1.8, 'brag');
     if (m.game && GAMES[m.game]) hud.chat(null, null, GAMES[m.game].desc);
+    chaosRoundStart(m.game);
     return;
   }
   if (!m.over) return;
@@ -1966,10 +2360,14 @@ net.on('round', (m) => {
     const [wn] = m.winner ? nameOf(m.winner) : ['nobody'];
     h.textContent = m.winner === G.myId ? 'YOU WIN' : `${wn} wins`;
   }
+  const it = infRoundTitle(m); // infection: survivors or the infected
+  if (it) { h.textContent = it[0]; h.style.color = it[1]; }
   box.append(h);
   for (const [id, name, k, d, team] of m.top) {
     const row = document.createElement('div');
     row.textContent = `${name}  ·  ${k} / ${d}`;
+    const note = ggRowNote(id, m) || infRowNote(id, m);
+    if (note) row.textContent += `  ·  ${note}`;
     if (team && TEAMS[team]) row.style.color = TEAMS[team].color;
     if (id === G.myId) row.style.color = '#ffe14d';
     box.append(row);
@@ -1984,7 +2382,7 @@ net.on('hl', (m) => {
   const box = $('roundEnd');
   box.classList.add('hidden');
   const url = m.id === G.myId ? cardUrlFor(G.myId) : (S.showCards !== false && m.card) || defaultCard(m.name, m.color);
-  showReplayUI('PLAY OF THE ROUND', url, m.name, m.color, m.label, 'SPACE to skip');
+  showReplayUI('PLAY OF THE ROUND', url, m.name, m.color, m.label, 'SPACE / CLICK to skip'); // skipping is just for you: the round end, vote and next match carry on
   const slow = (m.clip.ev || []).filter((e) => e.m && e.m.t === 'kill' && e.m.k === m.id).map((e) => [e.s - 260, e.s + 220]);
   playClip(m.clip, {
     focus: m.id, mode: 'hl', slow,

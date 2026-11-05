@@ -30,7 +30,7 @@ export function weaponIcon(id, skin) {
     if (!r) init();
     const g = buildWeapon(id, skin);
     const holder = new THREE.Group();
-    const flat = id === 'cards' || id === 'reverse'; // flat things look at you, everything else side-on
+    const flat = id === 'cards' || id === 'reverse' || g.userData.faceOn; // flat things look at you, everything else side-on
     g.rotation.y = flat ? 0 : -Math.PI / 2; // muzzle to the right, like an inventory picture
     holder.add(g);
     holder.rotation.x = flat ? -0.15 : 0.28; // a little from above
@@ -55,7 +55,7 @@ export function weaponIcon(id, skin) {
   }
 }
 
-// item pictures (drawn, not rendered): grenade, medkit, bubble, duck, smoke
+// item pictures (drawn, not rendered): grenade, medkit, bubble, duck, smoke, popper, reverse card
 const itemCache = new Map();
 export function itemIcon(id) {
   if (itemCache.has(id)) return itemCache.get(id);
@@ -75,6 +75,14 @@ export function itemIcon(id) {
   } else if (id === 'bubble') {
     x.beginPath(); x.arc(48, 32, 22, 0, Math.PI * 2); x.fillStyle = 'rgba(79,216,255,0.35)'; x.fill(); x.strokeStyle = '#4fd8ff'; x.lineWidth = 4; x.stroke();
     x.beginPath(); x.arc(40, 24, 7, Math.PI, Math.PI * 1.6); x.strokeStyle = '#fff'; x.lineWidth = 3; x.stroke();
+  } else if (id === 'wand') { // bubble wand: pink stick + ring, three rainbow soap bubbles drifting off it
+    for (const [w, c] of [[6, '#000'], [3, '#ff7ad8']]) { x.lineWidth = w; x.strokeStyle = c; x.beginPath(); x.moveTo(14, 56); x.lineTo(30, 36); x.stroke(); x.beginPath(); x.arc(36, 28, 10, 0, Math.PI * 2); x.stroke(); }
+    for (const [cx, cy, r] of [[64, 22, 13], [84, 40, 8], [56, 47, 6]]) {
+      const g = x.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+      g.addColorStop(0, '#ff7ad8'); g.addColorStop(0.35, '#ffe66b'); g.addColorStop(0.65, '#7dffb0'); g.addColorStop(1, '#6bb8ff');
+      x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fillStyle = 'rgba(200,240,255,0.22)'; x.fill(); x.lineWidth = 2.5; x.strokeStyle = g; x.stroke();
+      x.beginPath(); x.arc(cx - r * 0.35, cy - r * 0.35, r * 0.3, Math.PI, Math.PI * 1.6); x.strokeStyle = '#fff'; x.lineWidth = 2; x.stroke();
+    }
   } else if (id === 'duck') {
     circle(44, 38, 16, '#ffd23b'); circle(58, 22, 10, '#ffd23b');
     x.fillStyle = '#ff7a1a'; x.beginPath(); x.moveTo(66, 22); x.lineTo(78, 25); x.lineTo(66, 28); x.fill();
@@ -82,6 +90,14 @@ export function itemIcon(id) {
   } else if (id === 'smoke') {
     x.fillStyle = '#9aa0a8'; x.fillRect(40, 26, 16, 26); x.strokeRect(40, 26, 16, 26);
     for (const [cx, cy, r] of [[40, 18, 9], [52, 14, 10], [62, 20, 8], [30, 22, 7]]) circle(cx, cy, r, '#d8dce0');
+  } else if (id === 'popper') { // (the hotbar normally shows the real model; these are the fallbacks)
+    x.beginPath(); x.moveTo(26, 50); x.lineTo(58, 14); x.lineTo(70, 30); x.closePath(); x.fillStyle = '#ff6bd0'; x.fill(); x.stroke();
+    for (const [cx, cy, c] of [[66, 10, '#ffe14d'], [78, 18, '#4fd8ff'], [74, 6, '#7dff4f'], [84, 28, '#ffffff']]) { x.fillStyle = c; x.fillRect(cx, cy, 5, 5); }
+  } else if (id === 'reverse') {
+    x.fillStyle = '#e8262b'; x.fillRect(32, 6, 32, 48); x.strokeRect(32, 6, 32, 48);
+    x.strokeStyle = '#fff'; x.lineWidth = 4;
+    x.beginPath(); x.arc(48, 30, 10, Math.PI * 0.9, Math.PI * 1.9); x.stroke();
+    x.beginPath(); x.arc(48, 30, 10, -Math.PI * 0.1, Math.PI * 0.9); x.stroke();
   }
   const url = c.toDataURL();
   itemCache.set(id, url);
@@ -134,6 +150,22 @@ export function streakIcon(id) {
   } else if (id === 'giantduck') {
     circle(32, 34, 24, '#120018'); x.strokeStyle = '#b07dff'; x.lineWidth = 2; x.beginPath(); x.arc(32, 34, 27, 0, Math.PI * 2); x.stroke();
     x.strokeStyle = '#000'; x.lineWidth = 3; circle(28, 38, 11, '#ffd23b'); circle(38, 26, 7, '#ffd23b'); x.fillStyle = '#ff7a1a'; x.fillRect(44, 25, 7, 4);
+  } else if (id === 'wreckingball') {
+    // riveted steel ball on a chain, hazard stripe, eyes peeking out of the slot
+    for (const [w, c] of [[4.5, '#000'], [2, '#b8c4d0']]) { // chain links: dark outline, light steel
+      x.lineWidth = w; x.strokeStyle = c;
+      for (let i = 0; i < 3; i++) { x.beginPath(); x.ellipse(32, 4 + i * 5.5, i & 1 ? 1.2 : 2.8, 3.4, 0, 0, Math.PI * 2); x.stroke(); }
+    }
+    x.lineWidth = 2; x.strokeStyle = '#000'; x.fillStyle = '#8a96a4'; x.fillRect(28, 17, 8, 6); x.strokeRect(28, 17, 8, 6);
+    x.strokeStyle = '#000'; x.lineWidth = 3; circle(32, 41, 20, '#98a1ab');
+    x.save(); x.beginPath(); x.arc(32, 41, 18.5, 0, Math.PI * 2); x.clip();
+    for (let i = -3; i < 6; i++) { x.fillStyle = i & 1 ? '#111' : '#ffe14d'; x.beginPath(); x.moveTo(6 + i * 9, 50); x.lineTo(15 + i * 9, 50); x.lineTo(21 + i * 9, 42); x.lineTo(12 + i * 9, 42); x.fill(); }
+    x.fillStyle = '#ffffff'; x.globalAlpha = 0.35; x.beginPath(); x.ellipse(24, 30, 6, 3.5, -0.6, 0, Math.PI * 2); x.fill(); x.globalAlpha = 1;
+    x.restore();
+    x.fillStyle = '#16181c'; x.fillRect(20, 31, 24, 7);
+    x.fillStyle = '#fff'; x.fillRect(24, 32, 5, 4); x.fillRect(35, 32, 5, 4);
+    x.fillStyle = '#000'; x.fillRect(26, 33, 2, 3); x.fillRect(37, 33, 2, 3);
+    x.fillStyle = '#ccd3db'; for (const [rx, ry] of [[15, 41], [49, 41], [32, 58], [20, 54], [44, 54], [20, 27], [44, 27]]) x.fillRect(rx - 1, ry - 1, 2.5, 2.5);
   }
   const url = c.toDataURL();
   streakCache.set(id, url);

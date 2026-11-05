@@ -62,6 +62,14 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color:
 .num { position: absolute; font-size: 22px; font-weight: bold; animation: floatup 0.9s ease-out forwards; }
 @keyframes floatup { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-60px); opacity: 0; } }
 #ping { position: absolute; left: 16px; top: 10px; font-size: 12px; color: #aaa; }
+/* scales of justice: the verdict under the crosshair, and what the court says on a hit */
+#verdict { position: absolute; left: 50%; top: calc(50% + 24px); transform: translateX(-50%) rotate(-2deg); display: none; text-align: center; white-space: nowrap; padding: 1px 9px 2px; border: 2px solid #ffc83a; background: rgba(30, 18, 0, 0.45); }
+#verdict b { display: block; font-size: 16px; letter-spacing: 1px; color: #ffe9a8; }
+#verdict span { display: block; font-size: 11px; color: #e8dcc0; }
+#verdict.guilty b { color: #ff6a3a; }
+#verdict.innocent b { color: #9fe8ff; }
+body.replaying #verdict { visibility: hidden; }
+#center.court { color: #ffc83a; font-size: 52px; letter-spacing: 2px; }
 
 /* ---------------- menu */
 #menu { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(18, 8, 24, 0.55); overflow-y: auto; }
@@ -331,6 +339,24 @@ body.replaying #rigHud, body.replaying #rigTint, body.replaying #rigHex, body.re
 body.replaying #game { filter: saturate(0.75) contrast(1.15) sepia(0.15); }
 body.replaying #crosshair, body.replaying #hpbox, body.replaying #ammo, body.replaying #weapons, body.replaying #speed, body.replaying #combo,
 body.replaying #weaponName, body.replaying #meter, body.replaying #hand, body.replaying #streak, body.replaying #scope, body.replaying #dead, body.replaying #vignette { visibility: hidden; }
+/* EPIC killcams: letterbox, a padlock instead of the skip prompt, a banner when the shot lands */
+#replay.epic .scan { border-top: 8vh solid #000; border-bottom: 8vh solid #000; transition: border-width 0.5s ease-out; }
+#rpHint.locked { font-size: 22px; color: #ffe14d; letter-spacing: 2px; text-shadow: 2px 2px 0 #000; }
+#rpHint .lock { display: inline-block; position: relative; width: 16px; height: 12px; margin: 0 10px 0 2px; vertical-align: -1px; background: #ffe14d; border-radius: 2px; box-shadow: 2px 2px 0 #000; }
+#rpHint .lock::before { content: ''; position: absolute; left: 3px; top: -8px; width: 6px; height: 7px; border: 2px solid #ffe14d; border-bottom: 0; border-radius: 6px 6px 0 0; }
+#rpHint .lock::after { content: ''; position: absolute; left: 6px; top: 3px; width: 4px; height: 5px; background: #5a3d00; border-radius: 2px; }
+#rpHint.nope, #deadTimer.nope { animation: epicnope 0.45s; }
+#rpHint.nope .lock { animation: epicjiggle 0.45s; }
+@keyframes epicnope { 0% { transform: translateX(0); color: #ff4f4f; } 15% { transform: translateX(-10px) rotate(-3deg); } 35% { transform: translateX(9px) rotate(2deg); } 55% { transform: translateX(-6px) rotate(-1deg); color: #ff4f4f; } 75% { transform: translateX(4px); } 100% { transform: translateX(0); } }
+@keyframes epicjiggle { 30% { transform: translateY(-3px) rotate(-12deg); } 60% { transform: translateY(-1px) rotate(10deg); } }
+#rpEpic { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); text-align: center; white-space: nowrap; }
+#rpEpic .et { font-size: clamp(34px, 7vw, 76px); font-weight: bold; text-shadow: none; background: linear-gradient(180deg, #fff6b0 0%, #ffd23b 45%, #ff7a1a 100%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-stroke: 2px #000; filter: drop-shadow(4px 4px 0 #000); animation: epicslam 0.55s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+#rpEpic .es { margin-top: 4px; font-size: 20px; color: #fff; letter-spacing: 3px; text-shadow: 2px 2px 0 #000; animation: epicfade 0.6s 0.35s both; }
+@keyframes epicslam { from { transform: rotate(-4deg) skewX(-8deg) scale(3); opacity: 0; } to { transform: rotate(-4deg) skewX(-8deg) scale(1); opacity: 1; } }
+@keyframes epicfade { from { opacity: 0; transform: translateY(10px); } }
+#center.epicbrag { white-space: pre; text-align: center; font-size: 24px; line-height: 1.15; color: #fff; animation: epicpop 0.4s cubic-bezier(0.2, 1.6, 0.4, 1); }
+#center.epicbrag::first-line { font-size: 56px; color: #ffd23b; }
+@keyframes epicpop { from { transform: translate(-50%, -50%) rotate(-3deg) scale(2.2); } }
 
 #speedLinesCv { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; image-rendering: pixelated; }
 body.replaying #speedLinesCv { visibility: hidden; }
@@ -352,6 +378,27 @@ body.replaying #speedLinesCv { visibility: hidden; }
 .vopt.on { outline: 2px solid #ffe14d; }
 body.replaying #teamBar, body.replaying #objective { visibility: hidden; }
 
+/* ---------------- wrecking ball killstreak: time left + slam charge, top middle */
+#ballTimer { display: none; position: absolute; left: 50%; top: 96px; transform: translateX(-50%) rotate(-1.5deg); text-align: center; color: #dfe7ef; }
+#ballTimer b { font-size: 20px; letter-spacing: 1px; }
+#ballTimer .bar { width: 300px; height: 12px; margin: 4px auto 0; border: 2px solid #dfe7ef; background: rgba(0, 0, 0, 0.55); }
+#ballTimer .bar i { display: block; height: 100%; background: repeating-linear-gradient(45deg, #b8c4d0 0 8px, #8a96a4 8px 16px); }
+#ballTimer .slam { position: relative; width: 300px; height: 16px; margin: 3px auto 0; background: rgba(0, 0, 0, 0.45); font-size: 11px; line-height: 16px; }
+#ballTimer .slam i { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(255, 225, 77, 0.35); }
+#ballTimer .slam span { position: relative; }
+#ballTimer.ready .slam { color: #ffe14d; }
+#ballTimer.air .slam { color: #fff; }
+#ballTimer.air .slam i { background: linear-gradient(90deg, rgba(255, 225, 77, 0.55), rgba(255, 80, 40, 0.85)); }
+#ballTimer.low b { color: #ff5050; animation: ballLow 0.5s steps(2) infinite; }
+@keyframes ballLow { 50% { color: #ffffff; } }
+body.replaying #ballTimer { visibility: hidden; }
+#ballTimer .spd { margin-top: 3px; font-size: 15px; color: var(--yellow); }
+#ballTimer.ramming .spd { color: #ff7a3a; }
+body.wrecking #speed { display: none; } /* the ball sits where the speed usually is: it's in the ball's box instead */
+/* weapons are holstered inside the ball: dim the hotbar + ammo, and keep the big messages clear of the ball's box */
+body.wrecking #hotbar, body.wrecking #ammo { opacity: 0.3; }
+body.wrecking #center { top: 41%; }
+
 /* character screen: keep the preview in view while you scroll through the options */
 #charSlot { position: sticky; top: -18px; z-index: 3; background: rgba(18, 8, 24, 0.96); padding-bottom: 4px; }
 #charSlot #preview { height: 240px; }
@@ -361,6 +408,19 @@ body.replaying #teamBar, body.replaying #objective { visibility: hidden; }
 .hslot .pie { position: absolute; inset: 0; border-radius: 6px; pointer-events: none; }
 
 #freezeFx { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.2s; box-shadow: inset 0 0 160px 40px rgba(190, 235, 255, 0.85); background: repeating-linear-gradient(45deg, rgba(255,255,255,0.06) 0 6px, transparent 6px 14px); }
+
+/* katana parry: cooldown ring round the crosshair, a white flash when you parry something, the shout */
+#parryRing { position: absolute; left: 50%; top: 50%; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%; display: none; opacity: 0.8; pointer-events: none;
+  -webkit-mask: radial-gradient(circle, transparent 13.5px, #000 14.5px); mask: radial-gradient(circle, transparent 13.5px, #000 14.5px); }
+#parryRing.open { opacity: 1; }
+#parryRing.ready { animation: parryready 0.25s ease-out forwards; }
+@keyframes parryready { from { transform: scale(1); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+#parryFx { position: absolute; inset: 0; opacity: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.95) 15%, rgba(215, 240, 255, 0.75) 60%, rgba(255, 255, 255, 0.55)); }
+#center.parry { color: #fff; font-size: 54px; letter-spacing: 2px; text-shadow: 0 0 14px #9fe8ff, 3px 3px 0 #000; }
+#center.perfect { color: #fff3a0; font-size: 68px; letter-spacing: 4px; text-shadow: 0 0 20px #ffe14d, 0 0 6px #fff, 3px 3px 0 #000; animation: parrypop 0.3s ease-out; }
+#center.parried { color: #ff5a5a; font-size: 50px; letter-spacing: 3px; }
+@keyframes parrypop { from { transform: translate(-50%, -50%) rotate(-3deg) scale(1.7); } to { transform: translate(-50%, -50%) rotate(-3deg) scale(1); } }
+body.replaying #parryRing { visibility: hidden; }
 
 /* killstreaks */
 /* killstreaks: small icons in the bottom right corner */
@@ -405,3 +465,177 @@ button.mid.glow { background: var(--yellow); }
 @media (max-height: 480px) {
   body.hotbar-right #hotbar { transform: translateY(-50%) scale(0.66); }
 }
+
+/* no-scope hype: the shooter's badge, the kill feed icon, and the MLG treatment for whoever got no-scoped from far */
+#nsBadge { position: absolute; left: calc(50% + 34px); top: calc(50% + 20px); display: flex; flex-direction: column; align-items: flex-start; line-height: 1; opacity: 0; transform: rotate(-6deg); transition: opacity 0.3s; }
+#nsBadge.on { opacity: 1; transition: opacity 0.06s; animation: nsPop 0.4s cubic-bezier(0.2, 1.8, 0.4, 1) both; }
+#nsBadge b { font-size: 19px; color: #000; background: var(--yellow); padding: 2px 7px; box-shadow: 3px 3px 0 var(--pink); text-shadow: none; letter-spacing: 1px; }
+#nsBadge.kill b { background: var(--pink); color: #fff; box-shadow: 3px 3px 0 var(--yellow); text-shadow: 1px 1px 0 #000; }
+#nsBadge span { font-size: 26px; color: var(--yellow); margin: 3px 0 0 6px; }
+#nsBadge i { font-style: normal; font-size: 13px; color: #ff3030; margin: 4px 0 0 6px; letter-spacing: 1px; }
+@keyframes nsPop { from { transform: rotate(-35deg) scale(0.2); } to { transform: rotate(-6deg) scale(1); } }
+.nsicon { width: 18px; height: 18px; vertical-align: -4px; margin: 0 5px 0 -1px; image-rendering: pixelated; }
+body.replaying #nsBadge { visibility: hidden; }
+#mlg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; transition: opacity 0.3s, transform 0.35s; }
+#mlg.out { opacity: 0; transform: scale(1.2) rotate(4deg); }
+body.replaying #mlg { display: none; }
+#mlg .mlg-flash { position: absolute; inset: 0; mix-blend-mode: screen; background: radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.5), rgba(255, 79, 216, 0.35) 30%, rgba(79, 216, 255, 0.18) 55%, transparent 75%); animation: mlgPulse 0.4s ease-in-out infinite alternate, mlgHue 1.2s linear infinite; }
+#mlg.alive .mlg-flash { display: none; }
+#mlg .mlg-spin { position: absolute; left: 50%; top: 42%; width: 0; height: 0; animation: mlgSpin 0.55s cubic-bezier(0.2, 1.3, 0.4, 1) both; }
+#mlg.alive .mlg-spin { top: 15%; }
+#mlg .mlg-shake { animation: mlgShake 0.07s steps(2) 0.55s infinite; }
+#mlg .mlg-txt { position: absolute; left: 0; top: 0; width: max-content; transform: translate(-50%, -50%); font-size: clamp(64px, 13vw, 190px); font-weight: bold; letter-spacing: 2px; line-height: 1;
+  color: transparent; text-shadow: none; -webkit-text-stroke: 4px #000; background: linear-gradient(90deg, #ff3030, #ff9a1a, #ffe14d, #7dff4f, #4fd8ff, #b07dff, #ff4fd8, #ff3030) 0 0 / 200% 100%;
+  -webkit-background-clip: text; background-clip: text; filter: drop-shadow(6px 6px 0 #000) drop-shadow(0 0 16px rgba(255, 255, 255, 0.7)); animation: mlgRainbow 0.9s linear infinite; }
+#mlg.alive .mlg-txt { font-size: clamp(36px, 6.5vw, 90px); -webkit-text-stroke: 3px #000; }
+#mlg .mlg-by { position: absolute; left: 50%; top: 61%; transform: translateX(-50%) rotate(-3deg); font-size: clamp(22px, 3.4vw, 46px); color: #fff; white-space: nowrap; text-shadow: 3px 3px 0 #000; animation: mlgStamp 0.35s 0.3s cubic-bezier(0.2, 1.8, 0.4, 1) both; }
+#mlg.alive .mlg-by { top: 24%; font-size: clamp(16px, 2.2vw, 26px); }
+#mlg .mlg-hit { position: absolute; width: 64px; height: 64px; margin: -32px 0 0 -32px; filter: drop-shadow(2px 2px 0 #000); animation: mlgHit 0.3s ease-out forwards; }
+#mlg .mlg-hit::before, #mlg .mlg-hit::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 5px; margin-top: -2.5px; background: linear-gradient(90deg, #fff 0 36%, transparent 36% 64%, #fff 64%); transform: rotate(45deg); }
+#mlg .mlg-hit::after { transform: rotate(-45deg); }
+#mlg .mlg-hit.red::before, #mlg .mlg-hit.red::after { background: linear-gradient(90deg, #ff3030 0 36%, transparent 36% 64%, #ff3030 64%); }
+#mlg .mlg-flare { position: absolute; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; mix-blend-mode: screen; background: radial-gradient(circle, #fff 0 5%, hsla(var(--h), 100%, 70%, 0.85) 12%, transparent 60%); animation: mlgFlare 0.55s ease-out forwards; }
+#mlg .mlg-flare::before { content: ''; position: absolute; left: -90%; right: -90%; top: 50%; height: 4px; margin-top: -2px; background: linear-gradient(90deg, transparent, hsla(var(--h), 100%, 85%, 0.9), #fff, hsla(var(--h), 100%, 85%, 0.9), transparent); }
+#mlg .mlg-flare::after { content: ''; position: absolute; top: -45%; bottom: -45%; left: 50%; width: 3px; margin-left: -1.5px; background: linear-gradient(180deg, transparent, #fff, transparent); }
+#mlg .mlg-stk { position: absolute; transform: translate(-50%, -50%); font-size: 46px; font-weight: bold; white-space: nowrap; color: var(--c); -webkit-text-stroke: 2px #000; text-shadow: 4px 4px 0 #000; animation: mlgPop 0.85s cubic-bezier(0.2, 1.8, 0.4, 1) forwards; }
+@keyframes mlgSpin { from { transform: rotate(-900deg) scale(0.05); } 70% { transform: rotate(12deg) scale(1.25); } to { transform: rotate(-4deg) scale(1); } }
+@keyframes mlgShake { 0% { transform: translate(-7px, 4px) rotate(-1.5deg); } 50% { transform: translate(6px, -5px) rotate(1.5deg); } 100% { transform: translate(-3px, -2px); } }
+@keyframes mlgRainbow { to { background-position: 200% 0; } }
+@keyframes mlgPulse { to { opacity: 0.5; } } /* big layers stay under 3 flashes a second (photosensitivity) */
+@keyframes mlgHue { to { filter: hue-rotate(360deg); } }
+@keyframes mlgStamp { from { transform: translateX(-50%) rotate(-25deg) scale(3); opacity: 0; } to { transform: translateX(-50%) rotate(-3deg) scale(1); opacity: 1; } }
+@keyframes mlgHit { from { transform: scale(calc(var(--s, 1) * 1.6)); opacity: 1; } to { transform: scale(var(--s, 1)); opacity: 0; } }
+@keyframes mlgFlare { 0% { transform: scale(0.2) rotate(0); opacity: 0; } 30% { opacity: 1; } 100% { transform: scale(var(--s, 1)) rotate(60deg); opacity: 0; } }
+@keyframes mlgPop { 0% { transform: translate(-50%, -50%) scale(0) rotate(var(--r)); } 25% { transform: translate(-50%, -50%) scale(1.25) rotate(var(--r)); } 75% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1) rotate(var(--r)); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { #mlg .mlg-spin, #mlg .mlg-shake, #mlg .mlg-flash, #mlg .mlg-txt { animation: none; } }
+/* grapple skins (cosmetics): a live preview next to picture cards */
+.grap { display: grid; grid-template-columns: 190px 1fr; gap: 8px; margin-bottom: 6px; align-items: start; }
+@media (max-width: 700px) { .grap { grid-template-columns: 1fr; } }
+#grapPreview { width: 100%; height: 150px; background: #24122f; border: 2px solid #444; image-rendering: pixelated; display: block; }
+.gcards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.gcard { font-family: var(--font); font-size: 12px; padding: 2px 2px 1px; cursor: pointer; background: rgba(255, 255, 255, 0.06); color: #fff; border: 2px solid transparent; border-left: 3px solid var(--rc, transparent); display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; }
+.gcard img { width: 100%; aspect-ratio: 16 / 9; image-rendering: pixelated; display: block; }
+.gcard span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.gcard:hover { background: rgba(255, 255, 255, 0.16); }
+.gcard.on { border-color: var(--yellow); color: var(--yellow); }
+.gcard.locked { opacity: 0.45; border-style: dashed; border-color: var(--rc, #555); }
+.gcard.locked span::before { content: '🔒 '; }
+/* sprays: chips with a little picture of the graffiti on a concrete square */
+.chips.sprays .chip { position: relative; display: inline-flex; flex-direction: column; align-items: center; gap: 2px; width: 76px; padding: 3px 2px 2px; font-size: 11px; }
+.chips.sprays .chip img { width: 60px; height: 60px; image-rendering: pixelated; background: #5d5d66; border: 1px solid #000; }
+.chips.sprays .chip.locked::before { position: absolute; left: 3px; top: 2px; font-size: 11px; }
+.chips.sprays .chip span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#rollResult .sprayPic { display: block; width: 96px; height: 96px; margin: 6px auto 0; image-rendering: pixelated; background: #5d5d66; border: 2px solid #000; }
+/* Sniper Royalty: the gold toast per feat, the four boxes, the GOLDEN SNIPER UNLOCKED moment */
+#royalToast { position: absolute; left: 50%; top: max(12%, 92px); transform: translate(-50%, -12px) scale(0.92); opacity: 0; transition: opacity 0.25s, transform 0.25s; text-align: center; padding: 6px 16px 8px; background: linear-gradient(180deg, rgba(64, 38, 0, 0.85), rgba(26, 13, 0, 0.85)); border: 3px solid #ffc21a; box-shadow: 0 0 18px rgba(255, 194, 26, 0.45), 4px 4px 0 #000; white-space: nowrap; }
+#royalToast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+#royalToast .rt { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 24px; }
+#royalToast .rt b { color: #ffd23b; letter-spacing: 1px; }
+#royalToast .rt span { color: #fff; }
+#royalToast .rsub { font-size: 13px; color: #ffb0e0; margin-top: 2px; }
+.rcrown { width: 34px; height: 26px; }
+.rcrown svg, .rcrownbig svg { width: 100%; height: 100%; display: block; }
+.rfeats { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; margin-top: 4px; font-size: 13px; }
+.rf { display: inline-flex; align-items: center; gap: 5px; color: #a8987a; }
+.rf i { display: inline-block; width: 13px; height: 13px; border: 2px solid currentColor; font-style: normal; font-size: 11px; line-height: 13px; text-align: center; }
+.rf.on { color: #ffd23b; }
+.rf.on i { background: #ffd23b; color: #2a1800; text-shadow: none; }
+.rf.new { animation: rfpop 0.5s 3; }
+@keyframes rfpop { 50% { transform: scale(1.3) rotate(-5deg); color: #fff; } }
+#royalBig { position: absolute; inset: 0; overflow: hidden; opacity: 0; visibility: hidden; transition: opacity 0.4s, visibility 0s 0.4s; background: radial-gradient(ellipse at 50% 56%, rgba(255, 200, 60, 0) 35%, rgba(255, 170, 20, 0.3) 100%); }
+#royalBig.show { opacity: 1; visibility: visible; transition: opacity 0.15s; }
+#royalBig .rrays { position: absolute; left: 50%; top: 56%; width: 150vmax; height: 150vmax; transform: translate(-50%, -50%); background: repeating-conic-gradient(rgba(255, 214, 80, 0.24) 0 7deg, transparent 7deg 18deg); -webkit-mask: radial-gradient(circle, #000 0 10%, transparent 40%); mask: radial-gradient(circle, #000 0 10%, transparent 40%); animation: rrays 7s linear infinite; }
+@keyframes rrays { to { transform: translate(-50%, -50%) rotate(360deg); } }
+#royalBig .rcrownbig { position: absolute; left: 50%; top: 45%; width: 110px; height: 82px; transform: translate(-50%, -50%); filter: drop-shadow(0 0 12px rgba(255, 210, 60, 0.9)) drop-shadow(3px 3px 0 #000); animation: rcrown 0.7s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+@keyframes rcrown { from { transform: translate(-50%, -140%) scale(0.2) rotate(-25deg); } }
+#royalBig .rbig { position: absolute; left: 50%; top: 56%; transform: translate(-50%, -50%) rotate(-3deg); font-size: clamp(30px, 6vw, 68px); white-space: nowrap; text-shadow: none;
+  background: linear-gradient(100deg, #b07410 0%, #ffe27a 30%, #fff8d8 45%, #ffc21a 60%, #b07410 100%); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: #ffd23b;
+  filter: drop-shadow(3px 3px 0 #000) drop-shadow(0 0 10px rgba(255, 190, 40, 0.8)); animation: rshine 1.6s linear infinite, rslam 0.5s cubic-bezier(0.2, 1.8, 0.4, 1) both; }
+@keyframes rshine { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+@keyframes rslam { from { transform: translate(-50%, -50%) rotate(-3deg) scale(2.6); opacity: 0; } }
+#royalBig .rsub { position: absolute; left: 50%; top: 64%; transform: translateX(-50%); width: max-content; max-width: 92vw; font-size: 17px; color: #fff3c0; text-align: center; }
+#royalBig .rsparks { position: absolute; left: 50%; top: 56%; }
+#royalBig .rsparks i { position: absolute; width: 8px; height: 8px; background: #ffe27a; box-shadow: 0 0 8px #ffc21a; transform: rotate(45deg); animation: rspark 1.4s ease-out both; }
+@keyframes rspark { from { transform: translate(0, 0) rotate(45deg) scale(1.4); opacity: 1; } to { transform: translate(var(--dx), var(--dy)) rotate(225deg) scale(0.2); opacity: 0; } }
+/* cosmetics: skins you earn from an achievement */
+.chip.achchip { box-shadow: 0 0 6px rgba(255, 194, 26, 0.55); }
+.chip.achchip.locked { opacity: 0.8; }
+.achskin { margin: 2px 0 6px; padding: 6px 10px; background: rgba(255, 194, 26, 0.08); border: 2px dashed #b08a2a; font-size: 13px; color: #e8dcb8; }
+.achskin b { color: #ffd23b; font-size: 15px; }
+.achskin.done { border-style: solid; border-color: #ffc21a; }
+.achskin .rfeats, .ach .rfeats { justify-content: flex-start; }
+.ach .rfeats { margin: 3px 0 1px; font-size: 12px; }
+@media (max-width: 700px) { #royalToast { white-space: normal; max-width: 94vw; } #royalToast .rt { font-size: 18px; gap: 8px; } }
+/* gun game: rung, weapon now + next, a pip per rung (the leader's gets a marker) */
+#ggBar { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); text-align: center; white-space: nowrap; background: rgba(10, 0, 20, 0.55); border: 2px solid rgba(255, 255, 255, 0.2); padding: 3px 12px 5px; }
+#ggBar .gtop { display: flex; gap: 10px; align-items: baseline; justify-content: center; font-size: 18px; }
+#ggRung { font-size: 24px; color: var(--yellow); }
+#ggNext { font-size: 13px; opacity: 0.85; }
+#ggPips { display: flex; gap: 3px; justify-content: center; margin-top: 3px; }
+#ggPips i { position: relative; width: 12px; height: 7px; border: 1px solid var(--c); background: rgba(0, 0, 0, 0.5); }
+#ggPips i.done { background: var(--c); opacity: 0.5; }
+#ggPips i.on { background: var(--c); border-color: #fff; transform: scaleY(1.7); box-shadow: 0 0 6px var(--c); }
+#ggPips i.lead::after { content: '\25BC'; position: absolute; left: 50%; top: -13px; transform: translateX(-50%); font-size: 10px; color: #ff4f4f; }
+#ggLead { font-size: 12px; color: #ddd; margin-top: 2px; }
+body.mode-gun #streakTray, body.zombie #streakTray { display: none; }
+/* infection: survivors vs zombies bar, the green haze when you're one, the big YOU ARE INFECTED */
+#infBar { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); text-align: center; white-space: nowrap; background: rgba(10, 0, 20, 0.55); border: 2px solid #7dff4f; padding: 3px 12px 6px; }
+#infLine { font-size: 18px; }
+body.zombie #infLine { color: #7dff4f; }
+#infMeter { width: 220px; height: 7px; margin: 4px auto 0; background: #fff; border: 1px solid #000; }
+#infMeter i { display: block; height: 100%; width: 0; background: #7dff4f; transition: width 0.3s; }
+#infFx { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, transparent 45%, rgba(60, 255, 40, 0.38) 100%); transition: opacity 0.6s; }
+body.zombie #infFx { opacity: 1; }
+#infFx.flash { animation: infflash 1.4s ease-out; }
+@keyframes infflash { 0% { opacity: 1; background-color: rgba(70, 255, 40, 0.6); } 100% { background-color: rgba(70, 255, 40, 0); } }
+#infBig { position: absolute; left: 50%; top: 30%; z-index: 5; transform: translate(-50%, -50%); text-align: center; white-space: nowrap; opacity: 0; pointer-events: none; }
+#infBig b { display: block; font-size: 68px; color: #7dff4f; -webkit-text-stroke: 2px #000; text-shadow: 5px 5px 0 #000; }
+#infBig span { font-size: 20px; color: #fff; }
+#infBig.go { animation: infbig 3s ease-out forwards; }
+@keyframes infbig {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(2.6) rotate(-10deg); }
+  10% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-3deg); }
+  14% { transform: translate(-52%, -49%) scale(1.04) rotate(-5deg); }
+  18% { transform: translate(-48%, -51%) scale(1) rotate(-1deg); }
+  22%, 82% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-3deg); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.06) rotate(-3deg); }
+}
+body.replaying #ggBar, body.replaying #infBar, body.replaying #infFx { visibility: hidden; }
+/* chaos modes: floor is lava, duck rain, one in the chamber, spoons */
+#center.lava { color: #ff6a1a; font-size: 64px; text-shadow: 3px 3px 0 #000, 0 0 18px #ff3a00; animation: wobble 0.35s infinite; }
+#lavaGlow { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.6s; background: linear-gradient(0deg, rgba(255, 70, 0, 0.32) 0%, rgba(255, 90, 0, 0.08) 22%, transparent 45%); }
+#lavaGlow.on { opacity: 1; animation: lavapulse 2.4s ease-in-out infinite; }
+@keyframes lavapulse { 50% { filter: brightness(1.35); } }
+#lavaHit { position: absolute; inset: 0; pointer-events: none; opacity: 0; box-shadow: inset 0 0 160px 50px rgba(255, 80, 0, 0.9); }
+#lavaHit.on { animation: lavahit 0.6s ease-out; }
+@keyframes lavahit { from { opacity: 1; } to { opacity: 0; } }
+#chaosHud { position: absolute; right: 18px; bottom: 96px; display: none; flex-direction: column; align-items: flex-end; gap: 4px; font-size: 14px; transform: rotate(-1.5deg); } /* where the ammo counter usually is */
+body.hotbar-right #chaosHud { right: 50%; transform: translateX(50%); bottom: 14px; }
+body.chaos-lives #chaosHud { display: flex; }
+body.chaos-lives #ammo, body.chaos-nostreaks #streakTray, body.chaos-lives #streak { display: none !important; }
+.ch-row { display: flex; align-items: center; gap: 5px; background: rgba(0, 0, 0, 0.45); padding: 3px 8px; }
+.ch-row span { width: 62px; color: #ddd; }
+.ch-bul { display: inline-block; width: 11px; height: 24px; border: 2px solid #6a5420; border-radius: 6px 6px 1px 1px; background: rgba(255, 255, 255, 0.08); }
+.ch-bul.on { background: linear-gradient(180deg, #ffe6a0 0 30%, #d9a43a 30% 100%); border-color: #000; box-shadow: 0 0 8px rgba(255, 210, 90, 0.7); }
+.ch-life { font-size: 22px; color: #555; line-height: 1; }
+.ch-life.on { color: #ff3b5c; text-shadow: 2px 2px 0 #000; }
+#specBar { position: absolute; left: 50%; bottom: 90px; transform: translateX(-50%); display: none; font-size: 20px; color: #ffe14d; background: rgba(10, 0, 20, 0.75); border: 3px solid var(--pink); padding: 6px 16px; white-space: nowrap; }
+#specBar.on { display: block; }
+body.replaying #chaosHud, body.replaying #specBar, body.replaying #lavaGlow { visibility: hidden; }
+#setupMap option:disabled { color: #666; }
+body.chaos-spec #hotbar, body.chaos-spec #hpbox, body.chaos-spec #crosshair, body.chaos-spec #speed, body.chaos-spec #chaosHud { visibility: hidden; }
+
+/* blood cross impact frames (hud.impact) */
+#impactFx { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+#impactFx.f1 { background: #ff1428; mix-blend-mode: multiply; }
+#impactFx.f2 { background: radial-gradient(circle at center, rgba(255, 70, 60, 0.95) 0 14%, rgba(40, 0, 6, 0.93) 42%); }
+#impactFx.f3 { background: radial-gradient(ellipse at center, rgba(255, 40, 40, 0.12) 25%, rgba(190, 0, 20, 0.6)); mix-blend-mode: screen; }
+
+/* wrap mode toggle: NORMAL / REVERSE / FULL, a little knife shows which half the wrap paints */
+.wrapmode { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; flex-wrap: wrap; }
+.wrapmode button { font-family: var(--font); font-weight: bold; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; cursor: pointer; background: #fff; color: #000; border: 3px solid #000; box-shadow: 3px 3px 0 #000; }
+.wrapmode button:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #000; }
+.wrapmode button.on { background: var(--yellow); box-shadow: 4px 4px 0 var(--pink); transform: rotate(-2deg); }
+.wrapmode svg { width: 46px; height: 14px; display: block; }
+.wrapmode .hint { font-size: 13px; color: #ffe14d; flex-basis: 100%; }
+.wrapmode.off { opacity: 0.5; }

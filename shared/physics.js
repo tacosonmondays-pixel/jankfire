@@ -183,3 +183,28 @@ export function playerBoxes(pos) {
     { min: [x - 0.38, y + 1.62, z - 0.38], max: [x + 0.38, y + 2.3, z + 0.38], head: true },
   ];
 }
+
+// rubber duck black holes eat momentum: within R of c (a body centre) velocity bleeds off at up to k per second,
+// harder toward the middle, except the part falling straight in. returns the distance to c, or -1 when outside
+export function holeDrag(pos, vel, c, R, k, dt) {
+  const dx = c[0] - pos[0], dy = c[1] - (pos[1] + 0.9), dz = c[2] - pos[2];
+  const d = Math.hypot(dx, dy, dz);
+  if (!(d < R)) return -1;
+  const f = 1 - d / R, keep = Math.exp(-k * f * (2 - f) * dt);
+  const u = d > 0.5 ? Math.max(0, vel[0] * dx + vel[1] * dy + vel[2] * dz) / (d * d) : 0;
+  const ix = dx * u, iy = dy * u, iz = dz * u;
+  vel[0] = ix + (vel[0] - ix) * keep; vel[1] = iy + (vel[1] - iy) * keep; vel[2] = iz + (vel[2] - iz) * keep;
+  return d;
+}
+// turn v toward the direction `to` by at most maxA radians, keeping its speed (homing ducks)
+export function steer(v, to, maxA) {
+  const sp = Math.hypot(v[0], v[1], v[2]), tl = Math.hypot(to[0], to[1], to[2]);
+  if (sp < 1e-6 || tl < 1e-6) return;
+  const a0 = [v[0] / sp, v[1] / sp, v[2] / sp], b = [to[0] / tl, to[1] / tl, to[2] / tl];
+  const ang = Math.acos(Math.max(-1, Math.min(1, a0[0] * b[0] + a0[1] * b[1] + a0[2] * b[2])));
+  if (ang < 1e-4) return;
+  const a = Math.min(ang, maxA), s = Math.sin(ang);
+  if (s < 1e-4) return; // flying straight away: no defined way to turn
+  const k0 = Math.sin(ang - a) / s, k1 = Math.sin(a) / s;
+  for (let i = 0; i < 3; i++) v[i] = (a0[i] * k0 + b[i] * k1) * sp;
+}

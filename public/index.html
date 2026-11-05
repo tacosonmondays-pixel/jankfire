@@ -22,6 +22,7 @@
   <div id="freezeFx"></div>
   <div id="crosshair">+</div>
   <div id="hitmarker">x</div>
+  <div id="verdict"><b></b><span></span></div>
   <div id="vignette"></div>
   <div id="reverseFx"></div>
   <div id="modeLabel"></div>
@@ -30,6 +31,10 @@
   <div id="roundEnd" class="hidden"></div>
   <div id="teamBar" class="hidden"><span class="t1"></span><span class="mid"></span><span class="t2"></span></div>
   <div id="objective"></div>
+  <div id="ggBar" class="hidden"><div class="gtop"><b id="ggRung"></b><span id="ggNow"></span><span id="ggNext"></span></div><div id="ggPips"></div><div id="ggLead"></div></div>
+  <div id="infBar" class="hidden"><div id="infLine"></div><div id="infMeter"><i></i></div></div>
+  <div id="infFx"></div>
+  <div id="infBig"></div>
   <div id="votePanel" class="hidden"><div class="vt">VOTE: NEXT MATCH · press 1 / 2 / 3 <span id="voteLeft"></span></div><div id="voteOpts"></div></div>
   <div id="toast"></div>
   <div id="speed"><span id="speedNum">0</span><small> km/h</small><div id="speedLabel"></div></div>
@@ -46,6 +51,8 @@
   <div id="weaponName"></div>
   <div id="feed"></div>
   <div id="center"></div>
+  <div id="royalToast"></div>
+  <div id="royalBig"></div>
   <div id="dead" class="hidden"><div id="deadText"></div><div id="deadCard"></div><div id="deadTimer"></div></div>
   <div id="replay" class="hidden">
     <div class="scan"></div>
@@ -89,7 +96,7 @@
       <button class="mid danger" id="dQuit">QUIT GAME</button>
     </div>
     <div id="status"></div>
-    <div class="hint">WASD move · SHIFT run · C / CTRL crouch (slide when fast) · SPACE jump (hold to bhop, jump while grappling to launch) · RIGHT CLICK aim · E grapple · R reload · F inspect · 1 2 3 switch · G use item · 5 6 7 use killstreaks · V/X scythe · B menu · TAB scores · T chat</div>
+    <div class="hint">WASD move · SHIFT run · C / CTRL crouch (slide when fast) · SPACE jump (hold to bhop, jump while grappling to launch) · RIGHT CLICK aim · E grapple · R reload · F inspect · 1 2 3 switch · G use item · 5 6 7 use killstreaks · Z spray · V/X scythe · B menu · TAB scores · T chat</div>
   </div>
 
   <!-- pause (in game) -->
@@ -190,12 +197,17 @@
       <div class="cosmain">
         <div id="cosSlot"><canvas id="preview"></canvas></div>
         <div id="cosName"></div>
-        <div id="skModelRow"><div class="lt">skin (weapon model)</div><div class="chips" id="sk-model"></div></div>
+        <div id="skModelRow"><div class="lt">skin (weapon model)</div><div class="chips" id="sk-model"></div><div id="skAch"></div></div>
         <label class="allmode"><input type="checkbox" id="skAllMode"> wrap / hat / effect go on EVERY weapon (untick to dress weapons one by one)</label>
-        <div class="lt">wrap</div><div class="chips" id="sk-finish"></div>
+        <div class="lt">wrap</div>
+        <div class="wrapmode" id="sk-wrapmode"></div>
+        <div class="chips" id="sk-finish"></div>
         <div class="lt">hat</div><div class="chips" id="sk-hat"></div>
         <div class="lt">effect</div><div class="chips" id="sk-effect"></div>
         <div class="lt">kill effect (yours, on every kill with any weapon)</div><div class="chips" id="sk-kill"></div>
+        <div class="lt">grapple (yours: everyone sees your rope and hook)</div>
+        <div class="grap"><canvas id="grapPreview"></canvas><div class="gcards" id="sk-grapple"></div></div>
+        <div class="lt">spray (yours: press Z in a match to paint it where you look)</div><div class="chips sprays" id="sk-spray"></div>
         <div class="row"><button class="mid" id="skRandom">RANDOMIZE</button><button class="mid" id="skReset">RESET</button><button class="mid" id="skAll">COPY THIS LOOK TO ALL</button></div>
       </div>
     </div>
