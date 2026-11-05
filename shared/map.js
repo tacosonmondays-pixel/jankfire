@@ -887,6 +887,56 @@ function cratePile(B, x, z, n, r) { // crates stacked into a rough pyramid
   for (let i = 0; i < n; i++) { const lvl = i < n * 0.55 ? 0 : i < n * 0.85 ? 1 : 2, s = 1.1 + r() * 0.3; B.add(x + (i % 3) * 1.25 + lvl * 0.6, lvl * 1.25, z + ((i / 3) | 0) % 2 * 1.3, x + (i % 3) * 1.25 + lvl * 0.6 + s, lvl * 1.25 + s, z + ((i / 3) | 0) % 2 * 1.3 + s, 'crate'); }
 }
 
+// ---- construction machinery (each takes a builder, B for things you bump into or D for render-only, and its own frame).
+// local -z is the front
+function excavator(Bd, x, z, rot) {
+  const L = Bd.local(x, z, rot);
+  L(-1.7, 0, -1.9, -0.9, 0.9, 1.9, 'tire'); L(0.9, 0, -1.9, 1.7, 0.9, 1.9, 'tire'); L(-0.9, 0.25, -1.4, 0.9, 0.9, 1.4, 'metal'); // tracks
+  L(-1.5, 0.9, -1.3, 1.5, 2.1, 1.6, 'toyyellow'); L(-1.5, 0.9, 1.6, 1.5, 2.0, 2.3, 'hazard'); // the house, the counterweight
+  L(-1.45, 2.1, -1.3, -0.15, 3.5, 0.4, 'toyyellow'); L(-1.47, 2.45, -1.32, -0.13, 3.3, -1.28, 'glass'); L(-1.47, 2.45, -1.0, -1.43, 3.3, 0.2, 'glass');
+  L(0.2, 2.0, -1.4, 0.95, 2.7, -3.4, 'toyyellow'); L(0.2, 2.7, -3.4, 0.95, 3.5, -5.0, 'toyyellow'); L(0.2, 3.5, -5.0, 0.95, 4.1, -6.1, 'toyyellow'); // the boom
+  L(0.28, 1.3, -6.1, 0.87, 4.1, -6.7, 'toyyellow'); L(0.05, 0.25, -7.1, 1.1, 1.3, -5.9, 'metal'); L(0.05, 0, -7.3, 1.1, 0.25, -6.9, 'metal'); // stick, bucket, teeth
+}
+function bulldozer(Bd, x, z, rot) {
+  const L = Bd.local(x, z, rot);
+  L(-1.6, 0, -1.6, -0.9, 1.0, 1.8, 'tire'); L(0.9, 0, -1.6, 1.6, 1.0, 1.8, 'tire');
+  L(-0.9, 0.3, -1.6, 0.9, 1.8, 1.8, 'toyyellow'); L(-0.8, 1.8, -1.5, 0.8, 2.2, 0.2, 'toyyellow'); // body, engine hood
+  L(-0.9, 1.8, 0.2, 0.9, 3.3, 1.7, 'toyyellow'); L(-0.92, 2.2, 0.25, 0.92, 3.1, 1.65, 'glass'); L(-0.2, 2.2, -1.2, 0.0, 3.0, -1.0, 'chrome'); // cab, exhaust
+  L(-2.0, 0, -3.1, 2.0, 1.5, -2.7, 'metal'); for (const sx of [-1.3, 1.1]) L(sx, 0.5, -2.7, sx + 0.2, 0.8, -1.4, 'metal'); // the blade
+  L(-0.15, 0, 1.8, 0.15, 0.8, 2.8, 'metal'); // ripper
+}
+function mixerTruck(Bd, x, z, rot) {
+  const L = Bd.local(x, z, rot);
+  for (const wz of [-2.6, 1.4, 2.8]) for (const sx of [-1.25, 0.85]) L(sx, 0, wz - 0.5, sx + 0.4, 1.0, wz + 0.5, 'tire');
+  L(-1.2, 0.6, -3.6, 1.2, 1.1, 3.8, 'metal'); L(-1.2, 1.1, -3.9, 1.2, 3.0, -1.9, 'toyred'); L(-1.1, 2.0, -3.92, 1.1, 2.8, -3.88, 'glass'); // chassis, cab
+  for (let i = 0; i < 4; i++) { const w = 1.1 - Math.abs(i - 1.4) * 0.22; L(-w, 2.4 - w, -1.4 + i * 1.2, w, 2.4 + w, -0.2 + i * 1.2, i % 2 ? 'toyorange' : 'white'); } // the drum, striped
+  L(-0.3, 2.6, 3.4, 0.3, 3.0, 4.4, 'metal'); // the chute
+}
+function roller(Bd, x, z, rot) {
+  const L = Bd.local(x, z, rot);
+  L(-1.1, 0, -2.6, 1.1, 1.3, -1.4, 'metal'); L(-1.15, 0.5, -2.2, 1.15, 0.8, -1.8, 'hazard'); // the drum
+  L(-0.9, 0.4, -1.4, 0.9, 1.6, 1.6, 'toyyellow'); for (const sx of [-1.1, 0.7]) L(sx, 0, 0.6, sx + 0.4, 1.0, 1.6, 'tire');
+  for (const [px, pz] of [[-0.8, -0.6], [0.7, -0.6], [-0.8, 1.2], [0.7, 1.2]]) L(px, 1.6, pz, px + 0.1, 3.0, pz + 0.1, 'metal');
+  L(-0.95, 3.0, -0.7, 0.95, 3.15, 1.4, 'toyyellow'); L(-0.3, 1.6, 0.1, 0.3, 2.1, 0.7, 'seat');
+}
+function generatorTower(Bd, x, z, rot) { // a generator trailer with a fold-up light mast, lamps on
+  const L = Bd.local(x, z, rot);
+  L(-1.1, 0.35, -1.6, 1.1, 1.9, 1.6, 'containerg'); L(-1.12, 0.9, -1.2, 1.12, 1.6, 1.2, 'grid'); L(0.4, 1.9, 0.6, 0.7, 2.6, 0.9, 'chrome');
+  for (const sx of [-0.9, 0.6]) L(sx, 0, -0.4, sx + 0.3, 0.7, 0.4, 'tire');
+  L(-0.12, 1.9, -1.3, 0.12, 8.5, -1.06, 'metal'); L(-1.2, 8.5, -1.4, 1.2, 9.3, -1.0, 'metal');
+  for (const sx of [-1.1, -0.25, 0.6]) L(sx, 8.6, -1.45, sx + 0.5, 9.2, -1.4, 'lamp');
+}
+function pipeStack(Bd, x, z, alongZ) { // big pipes stacked in a pyramid
+  const L = Bd.local(x, z, alongZ ? 1 : 0);
+  for (let row = 0; row < 3; row++) for (let i = 0; i < 3 - row; i++) L.B((i - (2 - row) / 2) * 0.95, 0.45 + row * 0.82, 0, 0.85, 0.85, 7, row % 2 ? 'rust' : 'metal');
+}
+function gravelPile(Bd, x, z, s, m = 'sand') {
+  for (let i = 0; i < 4; i++) { const k = 1 - i * 0.24; Bd.box(x + i * 0.2, (i + 0.5) * s * 0.18, z - i * 0.1, s * k, s * 0.18, s * 0.8 * k, m); }
+}
+function cones(Bd, x0, z0, x1, z1, n) {
+  for (let i = 0; i < n; i++) { const t = n > 1 ? i / (n - 1) : 0, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t; Bd.box(x, 0.06, z, 0.6, 0.12, 0.6, 'tire'); Bd.box(x, 0.45, z, 0.38, 0.7, 0.38, 'toyorange'); Bd.box(x, 0.5, z, 0.42, 0.14, 0.42, 'white'); }
+}
+
 function warehouse() {
   const B = builder(), D = builder(); // D: render-only (lamps, trusses, barbed wire)
   const { add, box } = B;
@@ -957,7 +1007,12 @@ function warehouse() {
   for (let i = 0; i < 4; i++) box(50, 0.15 + i * 0.3, -2, 1, 0.3, 1, 'tire'); for (let i = 0; i < 3; i++) box(51.1, 0.15 + i * 0.3, -2, 1, 0.3, 1, 'tire');
 
   // ---- outside: the ground, the yard, the fence
-  groundHoles(B, -230, -190, 260, 190, -1, 0, 'asphalt', [[-X, -Z, X, Z], [X, -50, 110, 50]]);
+  // the ground: grass all round (inside the fence and out), paved where the trucks and forklifts work
+  groundHoles(B, -230, -190, 260, 190, -1, 0, 'grass', [[-X, -Z, X, Z], [X, -50, 110, 50]]);
+  add(FX0, 0, -6, -X, 0.03, 6, 'asphalt2'); // the drive from the gate to the hall's west door
+  add(-64, 0, Z, 60, 0.03, 66, 'asphalt2'); // the dock apron (south)
+  add(-72, 0, -72, 110, 0.03, -Z, 'asphalt2'); // the service yard and parking (north)
+  add(110, 0, -FZ, FX1, 0.03, FZ, 'asphalt2'); // the container yard (east)
   add(X, -1, -50, 110, 0, 50, 'concrete'); // the loading yard
   add(X, 0, -50, 110, 0.04, -49.7, 'hazard');
   add(RX0, 0, -190, RX1, 0.06, 190, 'roadz'); add(RX1, 0, -6, FX0, 0.05, 6, 'concrete'); // the road, and the drive in to the gate
@@ -1031,11 +1086,20 @@ function warehouse() {
   add(FX0 - 0.3, 0, 6.2, FX0 - 0.15, 4.2, 18, 'fence'); // the sliding gate, open
   // the world outside (render-only): trees just outside the fence (none in the yard: it's a yard), then scattered ones
   const Dw = D.local(0, 0, 0);
-  for (let x = FX0 + 4; x < FX1 + 8; x += 7) for (const z of [-FZ - 7, FZ + 7, -FZ - 15, FZ + 15]) if (r() < 0.8) (r() < 0.5 ? conifer : lollipop)(Dw, x + (r() - 0.5) * 3, z + (r() - 0.5) * 3, 5 + r() * 3, r);
-  for (let z = -FZ - 10; z <= FZ + 10; z += 7) for (const x of [FX1 + 7, FX1 + 15]) if (r() < 0.8) (r() < 0.5 ? conifer : lollipop)(Dw, x + (r() - 0.5) * 3, z + (r() - 0.5) * 3, 5 + r() * 3, r);
-  for (let z = -180; z <= 180; z += 8) if (Math.abs(z) > 12 && r() < 0.6) (r() < 0.5 ? conifer : lollipop)(Dw, RX0 - 8 - r() * 10, z, 5 + r() * 3, r); // across the road
-  horizon(D, -230, -190, 260, 190, 1500, 'dirt');
-  for (let i = 0; i < 50; i++) { const a = r() * Math.PI * 2, d = 120 + r() * 90; const x = 25 + Math.cos(a) * d * 1.2, z = Math.sin(a) * d; if (x > FX0 - 6 && x < FX1 + 6 && Math.abs(z) < FZ + 6) continue; (r() < 0.5 ? conifer : lollipop)(Dw, x, z, 6 + r() * 4, r); }
+  const tree = (x, z, h) => { if (x > RX0 - 6 && x < FX0 + 2 && Math.abs(z) < 200) return; (r() < 0.45 ? conifer : lollipop)(Dw, x, z, h, r); }; // never on the road or by the gate
+  for (let k = 0; k < 5; k++) { // a woodland belt round the fence, five rows deep
+    for (let x = FX0 - 30; x < FX1 + 40; x += 6.5) for (const sz of [-1, 1]) if (r() < 0.85) tree(x + (r() - 0.5) * 3, sz * (FZ + 6 + k * 7) + (r() - 0.5) * 3, 5 + r() * 3.5);
+    for (let z = -FZ - 40; z <= FZ + 40; z += 6.5) if (r() < 0.85) tree(FX1 + 6 + k * 7 + (r() - 0.5) * 3, z + (r() - 0.5) * 3, 5 + r() * 3.5);
+    for (let z = -190; z <= 190; z += 6.5) if (r() < 0.85 && (Math.abs(z) > 16 || k > 2) && Math.abs(z + 260) > 14 && Math.abs(z - 300) > 14) tree(RX0 - 8 - k * 7 + (r() - 0.5) * 3, z + (r() - 0.5) * 3, 5 + r() * 3.5); // across the road
+  }
+  for (let i = 0; i < 260; i++) { const a = r() * Math.PI * 2, d = 140 + r() * 200, x = 25 + Math.cos(a) * d * 1.2, z = Math.sin(a) * d; if (x > FX0 - 40 && x < FX1 + 40 && Math.abs(z) < FZ + 40) continue; tree(x, z, 6 + r() * 5); }
+  horizon(D, -230, -190, 260, 190, 1500, 'grass');
+  // machinery outside the gate: between the fence and the road (solid, cover) and a machine yard across the road (look only)
+  excavator(B, -96, -26, 3); bulldozer(B, -96, 24, 1); generatorTower(B, -95.5, 44, 1); pipeStack(B, -96.5, -46, true); gravelPile(B, -96, 62, 7);
+  cones(B, -101, -7.5, -91, -7.5, 5); cones(B, -101, 7.5, -91, 7.5, 5);
+  mixerTruck(D, -132, -30, 1); roller(D, -130, 26, 2); excavator(D, -142, 40, 0); bulldozer(D, -146, -48, 1); mixerTruck(D, -150, 18, 3);
+  gravelPile(D, -140, -14, 12, 'dirt'); gravelPile(D, -128, 52, 9); gravelPile(D, -152, -24, 10, 'sand');
+  cones(D, -118, -40, -118, -16, 6); cones(D, -118, 16, -118, 40, 6);
   const spawns = [[-52, 0.1, -34], [52, 0.1, 34], [-52, 0.1, 34], [52, 0.1, -34], [0, 0.1, -12], [0, 0.1, 12], [84, 0.1, 0], [-46, 0.2, 12],
     [-75, 0.1, 0], [-60, 0.2, -60], [10, 0.1, -58], [126, 0.1, -10], [10, 0.1, 66], [-46, 1.3, 42], [100, 0.1, 40], [-30, 7.4, -38.5]];
   let graph = null;
