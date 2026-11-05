@@ -274,6 +274,7 @@ function mapLight(map) {
 
 let skyGeo, voidMesh;
 let skyStuff = []; // sun, clouds, void rocks: switched off on sealed maps (map.sealed), where nobody could ever see them
+const voidRocks = []; // and the floating rocks only belong over a void: maps with a real floor (map.floorY) hide them
 function paintSky(sky) {
   const top = new THREE.Color(sky.top), mid = new THREE.Color(sky.mid), bot = new THREE.Color(sky.bot);
   const pos = skyGeo.attributes.position, c = new THREE.Color(), cols = [];
@@ -315,6 +316,7 @@ function buildSky(scene) {
     r.position.set(Math.cos(a) * d, -25 - Math.random() * 30, Math.sin(a) * d);
     r.rotation.set(Math.random() * 3, Math.random() * 3, 0);
     scene.add(r);
+    voidRocks.push(r);
   }
 }
 
@@ -363,6 +365,7 @@ export function loadMap(id) {
   buildScenery(G.scene, MAPS[MAP.id], MAP.id, voidMesh);
   mapLight(MAPS[MAP.id]);
   for (const o of skyStuff) o.visible = !(MAPS[MAP.id] && MAPS[MAP.id].sealed);
+  for (const o of voidRocks) o.visible = !(MAPS[MAP.id] && (MAPS[MAP.id].sealed || MAPS[MAP.id].floorY != null));
 }
 
 export function resize() {
