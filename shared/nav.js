@@ -41,7 +41,8 @@ export function navClear(g, lv, ax, az, bx, bz) {
   return true;
 }
 
-// o: { x0, z0, n, cell, levels: [floor y, ...], stairs: [{ top, bot }], drops: [{ from, to }] } (points are [x, y, z])
+// o: { x0, z0, n, cell, levels: [floor y, ...], stairs: [{ top, bot }], drops: [{ from, to }] } (points are [x, y, z]),
+// band (floors up to this much above a level count as that level), keep(x, z) (false = no node there)
 export function buildNav(boxes, o) {
   const { x0, z0, n, cell: C } = o;
   const g = { x0, z0, n, cell: C, levels: o.levels, obs: [], nodes: [], lvl: [], adj: [], cost: [], cells: new Map() };
@@ -66,17 +67,19 @@ export function buildNav(boxes, o) {
       ob.get(k).push(r);
     }
   };
+  const band = o.band || 0; // outdoor maps: every floor top from y up to y + band (curbs, sidewalks, porches) is one level
   o.levels.forEach((y, lv) => {
     const ob = new Map(), floor = new Uint8Array(n * n);
     for (const b of boxes) {
-      if (Math.abs(b.max[1] - y) < 0.06) { // a floor on this level: mark the cells whose middle it holds up
+      if (b.pad) { bucket(ob, [b.min[0] - R, b.min[2] - R, b.max[0] + R, b.max[2] + R]); continue; } // jump pads: a bot walking over one gets launched
+      if (b.max[1] > y - 0.06 && b.max[1] < y + band + 0.06) { // a floor on this level: mark the cells whose middle it holds up
         const i0 = Math.floor((b.min[0] - x0) / C), i1 = Math.floor((b.max[0] - x0) / C), j0 = Math.floor((b.min[2] - z0) / C), j1 = Math.floor((b.max[2] - z0) / C);
         for (let i = Math.max(0, i0); i <= Math.min(n - 1, i1); i++) for (let j = Math.max(0, j0); j <= Math.min(n - 1, j1); j++) {
           const cx = x0 + (i + 0.5) * C, cz = z0 + (j + 0.5) * C;
           if (cx > b.min[0] && cx < b.max[0] && cz > b.min[2] && cz < b.max[2]) floor[i * n + j] = 1;
         }
       }
-      if (b.max[1] > y + 0.3 && b.min[1] < y + 1.75) bucket(ob, [b.min[0] - R, b.min[2] - R, b.max[0] + R, b.max[2] + R]); // a standing body would bump into it
+      if (b.max[1] > y + (band ? band + 0.06 : 0.3) && b.min[1] < y + 1.75) bucket(ob, [b.min[0] - R, b.min[2] - R, b.max[0] + R, b.max[2] + R]); // a standing body would bump into it
     }
     // no floor = in the way too (that's how you end up on the level below)
     for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) if (!floor[i * n + j]) bucket(ob, [x0 + i * C - R, z0 + j * C - R, x0 + (i + 1) * C + R, z0 + (j + 1) * C + R]);
@@ -85,6 +88,7 @@ export function buildNav(boxes, o) {
     for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
       if (!floor[i * n + j]) continue;
       const cx = x0 + (i + 0.5) * C, cz = z0 + (j + 0.5) * C;
+      if (o.keep && !o.keep(cx, cz)) continue; // e.g. outside the play area
       if ((ob.get(K(i, j)) || []).some((r) => cx > r[0] && cx < r[2] && cz > r[1] && cz < r[3])) continue;
       idx[i * n + j] = addNode([cx, y, cz], lv);
     }

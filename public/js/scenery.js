@@ -8,7 +8,7 @@ const SCENES = {
   crate: { theme: 'sky' }, platform: { theme: 'sky' }, range: { theme: 'sky' },
   rooftop: { theme: 'city', skirt: 'tower' },
   skyline: { theme: 'city' },
-  suburb: { theme: 'hills', skirt: 'rock' },
+  suburb: { theme: 'desert', flat: true }, // the lawns just stop and the desert carries on: no cliff
   warehouse: { theme: 'industrial', skirt: 'rock' },
   desert: { theme: 'desert', skirt: 'rock' },
   bazaar: { theme: 'desert', skirt: 'rock' },
@@ -50,7 +50,7 @@ export function buildScenery(scene, map, id, voidMesh) {
   if (x0 > x1) { x0 = -50; x1 = 50; z0 = -50; z1 = 50; }
   for (const b of map.boxes) if (b.max[1] <= 0.5 && b.max[1] > -6 && (b.max[0] - b.min[0]) * (b.max[2] - b.min[2]) > 400) ground = Math.min(ground, b.min[1]);
   const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, R = Math.max(x1 - x0, z1 - z0) / 2;
-  const floorY = map.killY - 35;
+  const floorY = cfg.flat ? -0.06 : map.killY - 35; // flat: the map's ground goes out a long way, the floor carries on from it
 
   // ---- a ring of mountains, far away (unlit, faded into the sky)
   const mtnMat = basic(fade(pal.mtn, fog, 0.5)), snowMat = basic(fade(pal.snow, fog, 0.35));

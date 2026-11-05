@@ -8,6 +8,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { G } from './ctx.js';
 import { marbles } from './marbles.js';
 import { updateBackrooms } from './backrooms.js';
+import { addVibe } from './vibe.js';
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
 export const JANK = [
@@ -153,8 +154,14 @@ function makeMaterials() {
   // the pool rooms: bright white tiles that seem lit from nowhere
   out.pooltile = lam(canvasTex(16, (g, s) => { speckle(g, s, [234, 242, 242], 5, 4); g.fillStyle = '#a3bcc0'; for (let i = 0; i < s; i += 4) { g.fillRect(i, 0, 1, s); g.fillRect(0, i, s, 1); } }), 1, { emissive: 0x3c4c50 });
   out.poolwater = { mat: new THREE.MeshBasicMaterial({ color: 0x86dbe6, transparent: true, opacity: 0.42, depthWrite: false }), tile: 2 };
+  addVibe(out, canvasTex, speckle); // the map pass look (vibe.js)
   return out;
 }
+
+// a box mesh for a map box. huge ones (the long street, the lawn out to the horizon) get cut into <= 32 m pieces:
+// a single triangle hundreds of metres long with corners behind the camera gets dropped by some GPUs (whole lawns vanished)
+const SEG = (v) => Math.min(48, Math.max(1, Math.ceil(v / 32)));
+const boxGeo = (sx, sy, sz) => new THREE.BoxGeometry(sx, sy, sz, SEG(sx), SEG(sy), SEG(sz));
 
 // world-space UVs: each face picks the two axes it spans, so textures continue across boxes
 function worldUV(geo, cx, cy, cz, tile) {
@@ -181,22 +188,23 @@ function buildMap(scene) {
   if (def && def.chunk) { buildChunked(scene, def); return; }
   const groups = new Map();
   const push = (k, g) => { if (!groups.has(k)) groups.set(k, []); groups.get(k).push(g); };
-  for (const b of BOXES) {
+  for (const b of def && def.deco ? [...BOXES, ...def.deco] : BOXES) { // deco: drawn, never bumped into
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
     const mk = MAT[b.mat] ? b.mat : 'stone';
+    if (b.fit) { const g = boxGeo(sx, sy, sz); g.translate(cx, cy, cz); push(mk, g.toNonIndexed()); continue; } // the texture once per face (signs, faces)
     if (b.mat === 'grass' && sy > 0.6) { // grass on top, dirt on the sides
-      const g = new THREE.BoxGeometry(sx, sy, sz);
+      const g = boxGeo(sx, sy, sz);
       const top = g.clone();
       // split the box faces: index groups 2 = +y
-      const keep = (geo, faces) => { const idx = []; for (const f of faces) for (let i = 0; i < 6; i++) idx.push(geo.index.array[f * 6 + i]); geo.setIndex(idx); return geo; };
+      const keep = (geo, faces) => { const idx = []; for (const f of faces) { const gr = geo.groups[f]; for (let i = gr.start; i < gr.start + gr.count; i++) idx.push(geo.index.array[i]); } geo.setIndex(idx); geo.clearGroups(); return geo; };
       keep(top, [2]); keep(g, [0, 1, 3, 4, 5]);
       worldUV(top, cx, cy, cz, MAT.grass.tile); worldUV(g, cx, cy, cz, MAT.dirt.tile);
       top.translate(cx, cy, cz); g.translate(cx, cy, cz);
       push('grass', top.toNonIndexed()); push('dirt', g.toNonIndexed());
       continue;
     }
-    const g = new THREE.BoxGeometry(sx, sy, sz);
+    const g = boxGeo(sx, sy, sz);
     worldUV(g, cx, cy, cz, MAT[mk].tile);
     g.translate(cx, cy, cz);
     push(mk, g.toNonIndexed());
@@ -222,8 +230,8 @@ function buildChunked(scene, def) {
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
     const mk = MAT[b.mat] ? b.mat : 'stone';
     const key = Math.max(sx, sz) > C ? mk : mk + '|' + Math.floor(cx / C) + ',' + Math.floor(cz / C);
-    const g = new THREE.BoxGeometry(sx, sy, sz);
-    worldUV(g, cx, cy, cz, MAT[mk].tile);
+    const g = boxGeo(sx, sy, sz);
+    if (!b.fit) worldUV(g, cx, cy, cz, MAT[mk].tile);
     g.translate(cx, cy, cz);
     if (!groups.has(key)) groups.set(key, { k: mk, list: [] });
     groups.get(key).list.push(g.toNonIndexed());
