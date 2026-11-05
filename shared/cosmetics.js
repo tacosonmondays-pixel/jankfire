@@ -26,6 +26,7 @@ export const COSMETICS = {
     knife_switch: { name: 'Switchblade', rarity: 'rare', weapon: 'knife' },
     knife_karambit: { name: 'Karambit', rarity: 'epic', weapon: 'knife' },
     knife_butterfly: { name: 'Butterfly', rarity: 'legendary', weapon: 'knife' },
+    knife_spoon: { name: 'Spoon', rarity: 'epic', weapon: 'knife' }, // a serving spoon. it still stabs
     slapper_foam: { name: 'Foam Finger', rarity: 'rare', weapon: 'slapper' },
     slapper_paw: { name: 'Bear Paw', rarity: 'epic', weapon: 'slapper' },
     bread_croissant: { name: 'Croissant Club', rarity: 'epic', weapon: 'bread' },

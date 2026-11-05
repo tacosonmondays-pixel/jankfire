@@ -57,6 +57,7 @@ const RULES = {
   knife: (c, p) => p.z < -0.045 ? B : A,
   knife_kitchen: (c, p) => p.z < -0.08 ? B : A,
   knife_bowie: (c, p) => p.z < -0.06 ? B : A,
+  knife_spoon: (c, p) => p.z < -0.055 ? B : A, // normal: the handle. reverse: the bowl
   knife_cleaver: (c) => is(c, 0xcdd3da, 0xf6f8fa) ? B : A,
   knife_switch: (c, p) => p.z < -0.035 ? B : A,
   knife_karambit: (c, p) => p.z < -0.045 ? B : A,
