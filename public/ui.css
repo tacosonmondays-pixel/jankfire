@@ -159,8 +159,9 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 
 /* =================================================================== END SCREEN */
 #hud.es-open > :not(#endscreen):not(#chatlog):not(#chatin):not(#replay):not(#toast):not(#esClick) { visibility: hidden; }
-#hud.es-open #chatlog { z-index: 30; left: calc(var(--ft, 24px) + 18px); bottom: calc(var(--ft, 24px) + 52px); max-width: min(380px, 26vw); text-shadow: 2px 2px 0 #000, 0 0 6px #000; }
-#hud.es-open #chatin { z-index: 31; left: calc(var(--ft, 24px) + 18px); bottom: calc(var(--ft, 24px) + 18px); }
+#hud.es-open { --ft: clamp(12px, 2.2vmin, 26px); --esw: clamp(600px, calc(100vw - 2 * (var(--ft) + 300px)), 1120px); } /* the tab panel leaves the chat its own corner */
+#hud.es-open #chatlog { z-index: 30; left: calc(var(--ft) + 18px); bottom: calc(var(--ft) + 52px); max-width: min(380px, calc((100vw - var(--esw)) / 2 - var(--ft) - 30px)); text-shadow: 2px 2px 0 #000, 0 0 6px #000; }
+#hud.es-open #chatin { z-index: 31; left: calc(var(--ft) + 18px); bottom: calc(var(--ft) + 18px); }
 #endscreen, #esClick { text-shadow: none; } /* the hud's black shadow would show through gradient text and muddy dark-on-gloss labels */
 #endscreen {
   --ft: clamp(12px, 2.2vmin, 26px);
@@ -169,7 +170,7 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
   padding: calc(var(--ft) + 10px) calc(var(--ft) + 22px) calc(var(--ft) + 14px);
 }
 .es-back { position: absolute; inset: 0; z-index: -1; background:
-  var(--grime), rgba(18, 8, 24, 0.86);
+  var(--grime), rgba(18, 8, 24, 0.93); /* the match shows through as shapes, not as name tags you could read */
   }
 .es-back::after { content: ''; position: absolute; inset: 0; background: var(--scan); opacity: 0.7; }
 .es-top { width: 100%; display: flex; justify-content: space-between; align-items: center; min-height: 30px; }
@@ -268,7 +269,7 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 .es-next .tag { position: static; align-self: flex-start; margin-top: 4px; padding: 2px 10px; font-size: 13px; font-weight: 700; letter-spacing: 2px; color: #000; background: var(--yellow); border: 3px solid #000; box-shadow: 3px 3px 0 var(--pink); }
 
 /* tabs */
-.es-tabs { width: min(1120px, 100%); min-height: 0; display: flex; flex-direction: column; }
+.es-tabs { width: min(var(--esw, 1120px), 100%); min-height: 0; display: flex; flex-direction: column; }
 .es-tabbar { display: flex; gap: 8px; padding-left: 14px; position: relative; z-index: 1; flex-wrap: wrap; }
 .es-tab { padding: 5px 16px 6px; font-size: clamp(13px, 1.7vh, 17px); letter-spacing: 1px; }
 .es-tab.on { background: var(--yellow); box-shadow: 4px 4px 0 var(--pink); transform: translateY(-3px) rotate(-1.5deg); }
@@ -277,7 +278,7 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 .es-empty { text-shadow: 1px 1px 0 var(--ink); color: #c8b0d8; font-size: 16px; text-align: center; padding: 18px 0; }
 .es-h { margin: 14px 0 8px; color: #a890b8; letter-spacing: 3px; font-size: 13px; }
 /* leaderboard */
-.es-board .row { text-shadow: 1px 1px 0 var(--ink); --tc: transparent; display: grid; grid-template-columns: 42px minmax(0, 1fr) 54px 54px 64px 84px; align-items: center; gap: 6px; padding: 5px 10px; font-size: 16px; border-left: 6px solid var(--tc);
+.es-board .row { text-shadow: 1px 1px 0 var(--ink); --tc: transparent; display: grid; grid-template-columns: 42px minmax(0, 1fr) 54px 54px 64px 84px; align-items: center; gap: 6px; padding: 3px 10px; font-size: 15px; line-height: 1.3; border-left: 6px solid var(--tc);
   animation: rowin 0.35s ease-out both; animation-delay: calc(var(--i, 0) * 35ms); }
 .es-board .row:nth-child(odd):not(.head) { background: rgba(255, 255, 255, 0.045); }
 .es-board .row > span:nth-child(n + 3) { text-align: right; font-variant-numeric: tabular-nums; }
@@ -311,7 +312,7 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 .es-medal .coin { width: 84px; height: 98px; image-rendering: pixelated; display: block; }
 .es-medal b { margin-top: 8px; font-size: 13px; line-height: 1.1; color: var(--yellow); text-shadow: 1px 1px 0 var(--ink); }
 .es-medal small { text-shadow: 1px 1px 0 var(--ink); font-size: 11px; color: #c8b0d8; line-height: 1.2; }
-.es-medals.small .es-medal { width: 96px; filter: grayscale(1); opacity: 0.38; animation: none; }
+.es-medals.small .es-medal { width: 96px; filter: grayscale(1); opacity: 0.55; animation: none; }
 .es-medals.small .coin { width: 42px; height: 49px; }
 .es-medals.small small { display: none; } .es-medals.small b { font-size: 10px; color: #fff; }
 @keyframes medalin { 0% { transform: scale(0) rotate(-40deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
@@ -341,14 +342,21 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
   .es-perf, .es-rewards { grid-template-columns: 1fr; }
   .es-perf .grp:first-child .tiles { flex-direction: row; }
   .es-board .row { grid-template-columns: 30px minmax(0, 1fr) 36px 36px 50px 60px; font-size: 13px; }
-  #hud.es-open #chatlog { display: none; }
 }
+@media (max-width: 1100px) { #hud.es-open #chatlog { display: none; } } /* no corner left for it: the end screen wins */
 
 @media (max-height: 640px) { /* short windows: give the tab panel room */
+  #endscreen { row-gap: 3px; padding-bottom: calc(var(--ft) + 18px); }
   .es-vhint, .es-card .sub { display: none; }
-  .es-card .mthumb, .es-card .mapthumb { aspect-ratio: 16 / 8; }
-  .es-title { font-size: clamp(38px, 9vh, 66px); }
-  .es-steps span { padding-top: 2px; padding-bottom: 2px; }
+  .es-sub { font-size: 12px; margin-top: 0; }
+  .es-card .mthumb, .es-card .mapthumb { aspect-ratio: 16 / 7; }
+  .es-card { padding: 6px 6px 7px; gap: 4px; }
+  .es-card .cnt { min-width: 30px; height: 30px; font-size: 17px; }
+  .es-cards { padding: 2px 0; }
+  .es-title { font-size: clamp(34px, 8vh, 56px); }
+  .es-steps span { padding-top: 1px; padding-bottom: 1px; font-size: 12px; }
+  .es-tab { padding: 3px 12px 4px; font-size: 12px; }
+  .es-tabbody { min-height: 40px; }
 }
 /* the play of the round is on: the end screen steps aside to a vote rail on the right */
 #endscreen.mini { pointer-events: none; display: block; padding: 0; }
