@@ -167,8 +167,8 @@ function waterTower(L, x, z, y) {
 }
 function billboard(L, x, z, y, along = 'x') {
   const w = 12;
-  if (along === 'x') { L.B(x - 4, y + 3, z, 0.4, 6, 0.4, 'metal'); L.B(x + 4, y + 3, z, 0.4, 6, 0.4, 'metal'); L.B(x, y + 7.5, z, w, 5, 0.4, 'billboard'); L.B(x, y + 4.9, z - 0.6, w, 0.2, 1.0, 'grid'); }
-  else { L.B(x, y + 3, z - 4, 0.4, 6, 0.4, 'metal'); L.B(x, y + 3, z + 4, 0.4, 6, 0.4, 'metal'); L.B(x, y + 7.5, z, 0.4, 5, w, 'billboard'); L.B(x - 0.6, y + 4.9, z, 1.0, 0.2, w, 'grid'); }
+  if (along === 'x') { L.B(x - 4, y + 3, z, 0.4, 6, 0.4, 'metal'); L.B(x + 4, y + 3, z, 0.4, 6, 0.4, 'metal'); L.B(x, y + 7.5, z, w, 5, 0.4, 'billboard', { fit: 1 }); L.B(x, y + 4.9, z - 0.6, w, 0.2, 1.0, 'grid'); }
+  else { L.B(x, y + 3, z - 4, 0.4, 6, 0.4, 'metal'); L.B(x, y + 3, z + 4, 0.4, 6, 0.4, 'metal'); L.B(x, y + 7.5, z, 0.4, 5, w, 'billboard', { fit: 1 }); L.B(x - 0.6, y + 4.9, z, 1.0, 0.2, w, 'grid'); }
 }
 
 // a skyscraper: tiers with setbacks, cornices, parapets and roof stuff. returns roof top height
@@ -218,6 +218,108 @@ function tower(B, x, z, w, d, h, o = {}) {
   if (r() < 0.4) L(-2, 0, -2, 2, 0.6, 4, 'glassblock'); // skylight
   if (o.pad) L(hw - 4, 0, hd - 4, hw - 1.5, 0.3, hd - 1.5, 'pad', { pad: o.pad });
   return ry;
+}
+
+// cut the region [x0..x1, y0..y1, z0..z1] out of every box it touches (doorways through parapets): each box keeps
+// up to six pieces around the hole. only boxes passing keep(b) are cut
+function carve(B, x0, y0, z0, x1, y1, z1, keep = () => true) {
+  const out = [];
+  for (const b of B.boxes) {
+    const [a, c] = [b.min, b.max];
+    if (!keep(b) || a[0] >= x1 || c[0] <= x0 || a[1] >= y1 || c[1] <= y0 || a[2] >= z1 || c[2] <= z0) { out.push(b); continue; }
+    const piece = (p0, p1) => { if (p1[0] - p0[0] > 0.01 && p1[1] - p0[1] > 0.01 && p1[2] - p0[2] > 0.01) out.push({ ...b, min: p0, max: p1 }); };
+    const cx0 = Math.max(a[0], x0), cx1 = Math.min(c[0], x1), cy0 = Math.max(a[1], y0), cy1 = Math.min(c[1], y1);
+    piece([a[0], a[1], a[2]], [x0, c[1], c[2]]); piece([x1, a[1], a[2]], [c[0], c[1], c[2]]); // either side on x
+    piece([cx0, a[1], a[2]], [cx1, y0, c[2]]); piece([cx0, y1, a[2]], [cx1, c[1], c[2]]); // below / above
+    piece([cx0, cy0, a[2]], [cx1, cy1, z0]); piece([cx0, cy0, z1], [cx1, cy1, c[2]]); // either side on z
+  }
+  B.boxes.length = 0; B.boxes.push(...out);
+}
+
+// the street level far below a city map (render-only, D = a deco builder): wet neon roads on a grid, crossings, parked
+// and abandoned cars, streetlights, shopfronts with neon and ads round the foot of every tower, little parks. falling
+// still kills you before you get here, but now you see where you were going. towers: [{ x, z, w, d }],
+// roads: { xs: [x of each road running along z], zs: [z of each road running along x], w: width }, S: half size
+function streetLevel(D, y, towers, roads, S, r) {
+  const W = roads.w || 16, half = W / 2;
+  D.add(-S, y - 1, -S, S, y, S, 'sidewalk'); // pavement everywhere, roads on top
+  const ads = ['adcity1', 'adcity2', 'adcity3', 'adcity4', 'adcity5', 'adcity6'], neons = ['neonbar', 'neonnoodle', 'neonhotel', 'neonwork'];
+  const strip = ['neonpink', 'neoncyan', 'neonyellow', 'neongreen'];
+  const pick = (a) => a[(r() * a.length) | 0];
+  // roads (x-runs split at the z-roads so the two never overlap in one plane), crossings at every junction
+  const cuts = (list, a) => [-S, ...list.flatMap((v) => [v - half, v + half]), S].filter((v, i, l) => i === 0 || v > l[i - 1]);
+  for (const z of roads.zs) { const c = cuts(roads.xs); for (let i = 0; i + 1 < c.length; i += 2) D.add(c[i], y, z - half, c[i + 1], y + 0.08, z + half, 'wetroad'); }
+  for (const x of roads.xs) { D.add(x - half, y, -S, x + half, y + 0.08, S, 'wetroadz'); }
+  for (const x of roads.xs) for (const z of roads.zs) { D.add(x - half, y + 0.08, z - half - 3, x + half, y + 0.1, z - half, 'crosswalk'); D.add(x - half, y + 0.08, z + half, x + half, y + 0.1, z + half + 3, 'crosswalk'); }
+  const L = D.local(0, 0, 0, y + 0.08);
+  const inTower = (x, z, m = 1) => towers.some((t) => Math.abs(x - t.x) < t.w / 2 + m && Math.abs(z - t.z) < t.d / 2 + m);
+  // cars: parked along the kerbs, a few stopped dead in the middle (nobody drives here any more)
+  const cols = ['carred', 'carblue', 'carwhite', 'carblack', 'cargreen', 'caryellow', 'burnt'];
+  for (const z of roads.zs) for (let x = -S + 8; x < S - 8; x += 9 + r() * 14) { if (roads.xs.some((v) => Math.abs(x - v) < half + 4)) continue; car(L, x, z + (r() < 0.5 ? -1 : 1) * (r() < 0.75 ? half - 1.3 : 2.2), 0, pick(cols)); }
+  for (const x of roads.xs) for (let z = -S + 8; z < S - 8; z += 9 + r() * 14) { if (roads.zs.some((v) => Math.abs(z - v) < half + 4)) continue; car(L, x + (r() < 0.5 ? -1 : 1) * (r() < 0.75 ? half - 1.3 : 2.2), z, 1, pick(cols)); }
+  // streetlights and the odd bus shelter down both sides of every road
+  for (const z of roads.zs) for (let x = -S + 6; x < S; x += 18) for (const s of [-1, 1]) if (!roads.xs.some((v) => Math.abs(x - v) < half + 2) && !inTower(x, z + s * (half + 1.2))) streetlight(L, x, z + s * (half + 1.2), 1);
+  for (const x of roads.xs) for (let z = -S + 6; z < S; z += 18) for (const s of [-1, 1]) if (!roads.zs.some((v) => Math.abs(z - v) < half + 2) && !inTower(x + s * (half + 1.2), z)) streetlight(L, x + s * (half + 1.2), z, 1);
+  // shopfronts round the foot of every tower: an awning, a neon sign, an ad, a glowing strip
+  for (const t of towers) for (const [nx, nz] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+    const len = nx ? t.d : t.w, cx = t.x + nx * (t.w / 2), cz = t.z + nz * (t.d / 2);
+    for (let k = -len / 2 + 3; k < len / 2 - 5; k += 7 + r() * 3) {
+      const px = nx ? cx : t.x + k + 2, pz = nz ? cz : t.z + k + 2, along = nx ? 'z' : 'x';
+      const box = (o0, u0, a0, o1, u1, a1, m, ex) => { // o = out from the wall, u = up, a = along it
+        const [ox0, ox1] = [o0 * (nx || nz), o1 * (nx || nz)].sort((p, q) => p - q);
+        if (along === 'x') D.add(px + a0, y + u0, pz + ox0, px + a1, y + u1, pz + ox1, m, ex); else D.add(px + ox0, y + u0, pz + a0, px + ox1, y + u1, pz + a1, m, ex);
+      };
+      box(0.02, 0, -2, 0.12, 3.2, 2, 'window');
+      box(0, 3.4, -2.4, 2.2, 3.6, 2.4, pick(['toypink', 'toyteal', 'toyyellow', 'toypurple', 'cloth']));
+      if (r() < 0.6) box(0.05, 4.0, -2, 0.3, 5.0, 2, pick(neons), { fit: 1 }); else box(0.05, 4.0, -2.2, 0.3, 6.8, 2.2, pick(ads), { fit: 1 });
+      box(0.02, 7.2, -2.5, 0.2, 7.4, 2.5, pick(strip));
+    }
+    // a vertical neon sign up the corner of some towers
+    if (r() < 0.6) D.add(t.x + t.w / 2, y + 8, t.z - t.d / 2 - 0.3, t.x + t.w / 2 + 0.3, y + 30, t.z - t.d / 2 + 2.4, pick(strip));
+  }
+  // pocket parks in some of the leftover corners, and cables strung across the streets with ads hanging off them
+  for (const x of roads.xs) for (const z of roads.zs) if (r() < 0.5) {
+    const px = x + half + 6, pz = z + half + 6;
+    if (inTower(px, pz, 4)) continue;
+    D.add(px - 3, y, pz - 3, px + 3, y + 0.5, pz + 3, 'stone'); D.add(px - 2.6, y + 0.5, pz - 2.6, px + 2.6, y + 0.6, pz + 2.6, 'lawn');
+    lollipop(D.local(px, pz, 0, y + 0.6), 0, 0, 3, r);
+  }
+}
+
+// neon crowns, facade ads and cables with hanging ads for a grid of towers (plan rows: [x, z, w, d, h, tiers])
+function cityDress(D, plan, roofs, base, r) {
+  const strip = ['neonpink', 'neoncyan', 'neonyellow', 'neongreen'], ads = ['adcity1', 'adcity2', 'adcity3', 'adcity4', 'adcity5', 'adcity6'];
+  const pick = (a) => a[(r() * a.length) | 0];
+  const firstTop = (h, tiers) => (tiers > 1 ? base + (h - base) * (1 / tiers) * 0.82 : h);
+  for (const [x, z, w, d, h, tiers] of plan) {
+    const ry = roofs[`${x},${z}`], cw = Math.max(10, w - 8 * (tiers - 1)) / 2, cd = Math.max(10, d - 8 * (tiers - 1)) / 2;
+    const c = pick(strip); // a glowing band round the crown, and another lower down
+    D.add(x - cw - 0.06, ry - 2.4, z - cd - 0.06, x + cw + 0.06, ry - 1.9, z + cd + 0.06, c);
+    const by = Math.min(base + 70, firstTop(h, tiers) - 3); // on the lowest tier, or it floats outside a narrower one
+    D.add(x - w / 2 - 0.06, by, z - d / 2 - 0.06, x + w / 2 + 0.06, by + 0.6, z + d / 2 + 0.06, pick(strip));
+    // a huge ad up one face of the lowest tier
+    const t0 = firstTop(h, tiers), ay = base + 40 + r() * Math.max(1, t0 - base - 70), side = (r() * 4) | 0;
+    if (t0 - ay > 20) {
+      if (side < 2) { const fz = z + (side ? d / 2 : -d / 2), s = side ? 1 : -1; D.add(x - 7, ay, Math.min(fz, fz + s * 0.3), x + 7, ay + 9, Math.max(fz, fz + s * 0.3), pick(ads), { fit: 1 }); }
+      else { const fx = x + (side > 2 ? w / 2 : -w / 2), s = side > 2 ? 1 : -1; D.add(Math.min(fx, fx + s * 0.3), ay, z - 7, Math.max(fx, fx + s * 0.3), ay + 9, z + 7, pick(ads), { fit: 1 }); }
+    }
+  }
+  // cables between neighbours on the grid, with an ad and a neon strip hanging off the middle
+  for (const a of plan) for (const b of plan) {
+    const dx = b[0] - a[0], dz = b[1] - a[1];
+    if (!((dx > 0 && dz === 0 && dx < 80) || (dz > 0 && dx === 0 && dz < 80))) continue;
+    const top = Math.min(firstTop(a[4], a[5]), firstTop(b[4], b[5])) - 6, y = base + 30 + r() * Math.max(5, top - base - 40);
+    if (y > top) continue;
+    if (dz === 0) {
+      const x0 = a[0] + a[2] / 2, x1 = b[0] - b[2] / 2, z = a[1] + (r() - 0.5) * 8, m = (x0 + x1) / 2;
+      D.add(x0, y, z - 0.05, x1, y + 0.1, z + 0.05, 'tire'); D.add(x0, y - 3, z + 1.95, x1, y - 2.9, z + 2.05, 'tire');
+      D.add(m - 5, y - 6, z - 0.15, m + 5, y - 0.6, z + 0.15, pick(ads), { fit: 1 }); D.add(m - 5, y - 6.4, z - 0.2, m + 5, y - 6, z + 0.2, pick(strip));
+    } else {
+      const z0 = a[1] + a[3] / 2, z1 = b[1] - b[3] / 2, x = a[0] + (r() - 0.5) * 8, m = (z0 + z1) / 2;
+      D.add(x - 0.05, y, z0, x + 0.05, y + 0.1, z1, 'tire'); D.add(x + 1.95, y - 3, z0, x + 2.05, y - 2.9, z1, 'tire');
+      D.add(x - 0.15, y - 6, m - 5, x + 0.15, y - 0.6, m + 5, pick(ads), { fit: 1 }); D.add(x - 0.2, y - 6.4, m - 5, x + 0.2, y - 6, m + 5, pick(strip));
+    }
+  }
 }
 
 const SKY_SUNSET = { top: 0x2b1d6b, mid: 0xff8fb8, bot: 0x14051a, fog: 0xf7a1c4 };
@@ -284,11 +386,17 @@ function rooftop() {
   L(-2, 0, -26, 2, 0.15, -22, 'pad', { pad: [0, 22, -34] });
   // neighbouring towers to grapple / bhop to
   const spawns = [[0, top + 0.1, 0], [20, 3.3 + top, 20], [-14, 0.3 + top, -14], [-20, top + 0.1, 20], [24, top + 0.1, -4]];
+  const plan = [[0, 0, 64, 64, 0, 1]], roofs = { '0,0': top };
   for (const [x, z, h, w, t] of [[0, -95, -2, 36, 2], [-95, 0, 8, 30, 1], [95, 6, -8, 40, 2], [6, 98, 12, 32, 1], [-85, -85, 24, 26, 3], [88, 88, -4, 30, 2], [-90, 90, 4, 34, 1], [92, -92, 16, 28, 2]]) {
     const ry = tower(B, x, z, w, w, h, { tiers: t, base: -152, r });
     spawns.push([x + 3, ry + 0.1, z + 3]);
+    plan.push([x, z, w, w, h, t]); roofs[`${x},${z}`] = ry;
   }
-  return { name: 'Rooftop', size: 'medium', boxes: B.boxes, killY: -130,
+  // the look (render-only): a street far below instead of the void, neon crowns, cables with ads, a sign on our roof
+  const D = builder();
+  streetLevel(D, -142, plan.map(([x, z, w, d]) => ({ x, z, w, d })), { xs: [-140, -55, 55, 140], zs: [-140, -55, 55, 140], w: 18 }, 180, r);
+  cityDress(D, plan, roofs, -152, r);
+  return { name: 'Rooftop', size: 'medium', boxes: B.boxes, deco: D.boxes, killY: -130, floorY: -142.2,
     sky: { top: 0x05051a, mid: 0x4a2a7a, bot: 0x000005, fog: 0x2a2050 }, fogNear: 110, fogFar: 480, spawns };
 }
 
@@ -802,22 +910,21 @@ function skyline() {
     B.box(cx - 8 + 30, 11 * F + 27.5, cz - 8, 3, 1, 3, 'pink');
     spawns.push([cx, 0.6, cz], [cx + 5, 4 * F + 0.6, cz + 5]);
   }
-  // sky bridges between equal-height neighbours (enclosed glass tubes)
-  const bridge = (x0, z0, x1, z1, y) => {
-    if (z0 === z1) {
-      B.add(x0, y - 0.3, z0 - 2, x1, y, z0 + 2, 'concrete');
-      B.add(x0, y, z0 - 2, x1, y + 2.6, z0 - 1.8, 'glassblock'); B.add(x0, y, z0 + 1.8, x1, y + 2.6, z0 + 2, 'glassblock');
-      B.add(x0, y + 2.6, z0 - 2, x1, y + 2.9, z0 + 2, 'roofg');
-    } else {
-      B.add(x0 - 2, y - 0.3, z0, x0 + 2, y, z1, 'concrete');
-      B.add(x0 - 2, y, z0, x0 - 1.8, y + 2.6, z1, 'glassblock'); B.add(x0 + 1.8, y, z0, x0 + 2, y + 2.6, z1, 'glassblock');
-      B.add(x0 - 2, y + 2.6, z0, x0 + 2, y + 2.9, z1, 'roofg');
-    }
+  // sky bridges between equal-height neighbours (enclosed glass tubes), roof edge to roof edge, with a doorway cut
+  // through the parapet at both ends. ax/bx: where each roof's edge really is (the top tier, not the base: one of them
+  // used to start at the lower tier's edge and stick out 4 m into the air past the roof it was meant to reach)
+  const edge = (w, tiers) => Math.max(10, w - 8 * (tiers - 1)) / 2 + 0.4;
+  const bridge = (ta, tb, z, y) => {
+    const ax = ta[0] + edge(ta[2], ta[5]), bx = tb[0] - edge(tb[2], tb[5]);
+    B.add(ax, y - 0.3, z - 2, bx, y, z + 2, 'concrete');
+    B.add(ax, y, z - 2, bx, y + 2.6, z - 1.8, 'glassblock'); B.add(ax, y, z + 1.8, bx, y + 2.6, z + 2, 'glassblock');
+    B.add(ax, y + 2.6, z - 2, bx, y + 2.9, z + 2, 'roofg');
+    B.add(ax, y + 2.3, z - 1.8, bx, y + 2.4, z - 1.7, 'neoncyan'); B.add(ax, y + 2.3, z + 1.7, bx, y + 2.4, z + 1.8, 'neoncyan');
+    for (const x of [ax, bx]) carve(B, x - 1, y + 0.001, z - 1.8, x + 0.001, y + 1.2, z + 1.8, (q) => q.mat === 'concrete' && q.min[1] >= y - 0.01);
   };
-  bridge(-35 + 15.4, -35, 35 - 15.4, -35, roofs['-35,-35']);
-  bridge(35 + 18.4, 35, 100 - 15.4, 35, roofs['35,35']);
-  // openings in the parapets where bridges arrive
-  B.boxes.splice(0, 0);
+  const T = (x, z) => plan.find((q) => q[0] === x && q[1] === z);
+  bridge(T(-35, -35), T(35, -35), -35, roofs['-35,-35']);
+  bridge(T(35, 35), T(100, 35), 35, roofs['35,35']);
   // window washer platforms and ledges to grapple
   for (let i = 0; i < 18; i++) {
     const [x, z, w, d, h] = plan[(r() * plan.length) | 0];
@@ -826,7 +933,11 @@ function skyline() {
     B.box(x + off[0], y, z + off[1], side < 2 ? 6 : 1.6, 0.4, side < 2 ? 1.6 : 6, 'metal');
   }
   for (let k = 0; k < 10; k++) B.box((r() - 0.5) * 300, 140 + r() * 40, (r() - 0.5) * 300, 5, 1.5, 5, 'gold');
-  return { name: 'Skyline', size: 'huge', boxes: B.boxes, killY: -80,
+  // ---- the look (all render-only): the street far below, a neon band round every crown, cables with ads between towers
+  const D = builder(), towers = [...plan.map(([x, z, w, d]) => ({ x, z, w, d })), { x: 35, z: -100, w: 30, d: 30 }];
+  streetLevel(D, -100, towers, { xs: [-135, -67.5, 0, 67.5, 135], zs: [-135, -67.5, 0, 67.5, 135], w: 18 }, 190, r);
+  cityDress(D, plan, roofs, base, r);
+  return { name: 'Skyline', size: 'huge', boxes: B.boxes, deco: D.boxes, killY: -88, floorY: -100.2,
     sky: { top: 0x1a2a5a, mid: 0xff9a5a, bot: 0x0a0a1a, fog: 0xd98a6a }, fogNear: 160, fogFar: 700, spawns };
 }
 
