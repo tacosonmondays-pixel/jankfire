@@ -443,8 +443,8 @@ body.eco #chatlog { bottom: 120px; }
 #ecoTimer span { font-size: 14px; color: #fff; background: rgba(0, 0, 0, 0.45); padding: 1px 10px; }
 #ecoTimer.low b { color: #ff5a5a; animation: ecoBlink 0.5s steps(2) infinite; }
 @keyframes ecoBlink { 50% { opacity: 0.55; } }
-/* one compact strip under the buy timer, clear of the big centre callouts (#center sits at 32%) */
-#ecoBanner { position: absolute; left: 50%; top: 138px; transform: translateX(-50%); text-align: center; white-space: nowrap; display: flex; flex-direction: column; align-items: center; }
+/* one compact strip between the big centre callouts (#center, 32%) and the crosshair */
+#ecoBanner { position: absolute; left: 50%; top: 37.5%; transform: translateX(-50%); text-align: center; white-space: nowrap; display: flex; flex-direction: column; align-items: center; }
 #ecoBanner .rs { display: flex; align-items: baseline; gap: 12px; transform: rotate(-2deg); }
 #ecoBanner .r { font-size: 20px; color: #fff; letter-spacing: 3px; text-shadow: 2px 2px 0 #000; }
 #ecoBanner .s { font-size: 40px; line-height: 1; text-shadow: 3px 3px 0 #000, -2px -2px 0 #000; }

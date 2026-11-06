@@ -343,7 +343,10 @@ const M = {
   // pick up drop d: auto (walking over it) only fills an empty slot; manual swaps with what you have
   econTake(p, d, manual) {
     const e = p.ec, ec = this.ec;
-    const gone = () => { ec.drops.delete(d.id); this.broadcast({ t: 'drx', id: d.id, by: p.id }); };
+    const gone = () => {
+      ec.drops.delete(d.id); this.broadcast({ t: 'drx', id: d.id, by: p.id });
+      if (p.isBot && p.ai && p.ai.gift === d.id) { p.ai.gift = 0; if (ec.tac) this.tacLog(ec.tac, `${p.name} picks up the ${WEAPONS[d.x.id].name} a teammate dropped`); }
+    };
     if (d.k === 'w') {
       const x = d.x, slot = WEAPONS[x.id].slot, cur = e.sl[slot];
       if (cur && !manual) return false;

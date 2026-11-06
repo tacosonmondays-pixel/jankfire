@@ -331,15 +331,18 @@ const M = {
       Dd.hot = hot; Dd.hotT = n;
       const away = bots.filter((b) => Dd.assign.get(b.id) && Dd.assign.get(b.id).site !== hot);
       const keep = bots.length >= 4 ? new Set(Object.keys(S.sites).filter((id) => id !== hot).map((id) => { const a = away.find((b) => Dd.assign.get(b.id).site === id); return a && a.id; }).filter(Boolean)) : new Set();
-      const used = new Set([...Dd.assign.values()].filter((a) => a.site === hot).map((a) => a.spot));
+      // rotators don't trickle onto a site the attackers are taking one at a time: they meet at the site's defenders'
+      // stage, hold the way in from there together, and retake from there if the bomb goes down
+      const s = S.sites[hot], mid = centroid(away.map((b) => b.pos)) || S.defC;
+      const lane = s.defE.slice().sort((a, c) => hyp(a.stage, mid) - hyp(c.stage, mid))[0];
       let moved = 0;
       for (const b of away) {
         if (keep.has(b.id)) continue;
-        const spot = this.econAiPickHold(S.sites[hot], used, 'back');
-        if (spot) used.add(spot);
-        Dd.assign.set(b.id, { site: hot, spot, rot: true });
+        const a = moved * 2.1 + 0.6, q = this.econAiStand(lane.stage[0] + Math.cos(a) * 2.2, lane.stage[2] + Math.sin(a) * 2.2, lane.stage[1], 1.6, 3) || lane.stage;
+        Dd.assign.set(b.id, { site: hot, spot: { p: q, node: lane.node, look: s.c }, rot: true });
         moved++;
       }
+      Dd.rotStage = lane;
       this.tacLog(T, `defenders ROTATE to ${hot}: ${[...cnt[hot]].filter((k) => typeof k === 'number').length} attackers seen${cnt[hot].has('carrier') ? ' (with the bomb)' : ''}${[...cnt[hot]].some((k) => String(k).startsWith('dead')) ? ', a teammate died there' : ''}; ${moved} rotating, ${keep.size} anchor(s) stay`);
     }
   },
@@ -522,6 +525,15 @@ const M = {
   econAiHold(b, goal, t, wx, wz, dt) {
     const ai = b.ai, at = goal.at || goal.p, gl = Math.hypot(at[0] - b.pos[0], at[2] - b.pos[2]);
     const fighting = t && t.alive && ai.seenAt;
+    if (!goal.use && this.projectiles.size) {
+      for (const pr of this.projectiles.values()) {
+        if (pr.k !== 'frag' || pr.o === b.id) continue;
+        const o = this.players.get(pr.o);
+        if (o && o.team === b.team) continue;
+        const dx = b.pos[0] - pr.p[0], dz = b.pos[2] - pr.p[2], d = Math.hypot(dx, dz);
+        if (d < 8 && Math.abs(b.pos[1] - pr.p[1]) < 4) return [dx / (d || 1), dz / (d || 1)]; // run
+      }
+    }
     if (goal.hold && gl < Math.max(1.6, goal.r + 0.6) && !goal.use) {
       if (fighting) { const s = ai.strafeDir * 0.35; return [Math.cos(b.yaw) * s, -Math.sin(b.yaw) * s]; } // a little jiggle, no charge
       if (gl < goal.r) { wx = 0; wz = 0; }
@@ -650,9 +662,10 @@ const M = {
   // buy a second rifle and leave the first at our feet for teammate `to` (it walks over and picks it up)
   econAiGift(b, to) {
     const e = b.ec, mate = this.players.get(to);
-    if (!mate || !mate.alive || !mate.ec || usable(mate.ec.sl.primary) || !usable(e.sl.primary) || e.$ < weaponPrice('ar')) return;
+    if (!mate || !mate.alive || !mate.ec || usable(mate.ec.sl.primary) || !usable(e.sl.primary)) return;
     const before = new Set(this.ec.drops.keys());
-    if (!this.econBuy(b, { k: 'w', id: 'ar' }, true)) return;
+    const id = e.sl.primary.id === 'ar' ? 'redline' : 'ar'; // the same gun again would only refill it: buy the other rifle, ours drops
+    if (!econWeapon(id) || e.$ < weaponPrice(id) || !this.econBuy(b, { k: 'w', id }, true)) return;
     const d = [...this.ec.drops.values()].find((x) => !before.has(x.id) && x.k === 'w');
     if (!d) return;
     mate.ai.gift = d.id;
