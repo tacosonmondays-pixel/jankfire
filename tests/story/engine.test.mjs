@@ -138,7 +138,8 @@ test('save -> load -> resume mid-quest', () => {
   a.S.emit({ type: 'kill', kind: 'dummy' });
   a.S.tick(3.5);
   const data = JSON.parse(JSON.stringify(toSave(a.S.st)));
-  assert.ok(Array.isArray(data.flags) && data.flags.includes('said.lumps.soup'));
+  assert.ok(Array.isArray(data.flags) && !data.flags.some((f) => f.startsWith('said.')));
+  assert.ok(data.said.lumps.split(' ').includes('soup'));
   const b = mk(fromSave(data));
   b.bag.add('soup_pot');
   assert.equal(b.S.st.quests.lab_soup.step, 'interns');
@@ -174,4 +175,31 @@ test('content sanity: every quest step / branch / npc node reference exists', ()
     for (const o of node.opts || []) assert.ok(!o[1] || n.lines[o[1]], `${n.id}/${k} -> ${o[1]}`);
     for (const g of node.go || []) assert.ok(n.lines[g[1]], `${n.id}/${k} go ${g[1]}`);
   }
+});
+
+test('a step with done actions finishes once (no endless re-check)', () => {
+  const content = { npcs: {}, quests: { q: { id: 'q', title: 'Q', steps: [
+    { id: 'a', goal: { type: 'flag', flag: 'go' }, done: ['flag:aDone', 'var:n+1'] },
+    { id: 'b', goal: { type: 'wait', t: 1 }, done: ['var:n+1'] },
+  ] } } };
+  const S = makeStory({ content });
+  S.run(['quest:q', 'flag:go']);
+  assert.equal(S.st.quests.q.step, 'b');
+  assert.equal(S.st.vars.n, 1);
+  S.tick(2);
+  assert.ok(S.st.quests.q.done);
+  assert.equal(S.st.vars.n, 2);
+});
+
+test('dialogue memory lives apart from the flags, packed small, and old said.* flags migrate', () => {
+  const st = newState();
+  for (let i = 0; i < 900; i++) st.said[`npc${i % 40}.node${i}`] = true;
+  const d = toSave(st);
+  assert.equal(d.flags.length, 0);
+  assert.ok(JSON.stringify(d.said).length < 12000, 'said packs small');
+  const back = fromSave(JSON.parse(JSON.stringify(d)));
+  assert.equal(Object.keys(back.said).length, 900);
+  const old = fromSave({ flags: ['said.lumps.soup', 'real'] });
+  assert.ok(old.said['lumps.soup'] && old.flags.real && !old.flags['said.lumps.soup']);
+  assert.equal(cond('said.lumps.soup && real', old), true);
 });

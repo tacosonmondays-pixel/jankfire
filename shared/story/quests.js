@@ -25,7 +25,7 @@ export function makeQuests(S) {
   function enterStep(id, sid, quiet, hold) {
     const d = def(id), q = st().quests[id], s = stepOf(d, sid);
     if (!s) { finish(id, sid && sid.startsWith('end') ? sid.slice(4) || '' : ''); return; } // 'end' / 'end:good'
-    q.step = sid; q.n = goalsOf(s).map(() => 0); q.t = 0; if (hold) q.hold = true; else delete q.hold;
+    q.step = sid; q.n = goalsOf(s).map(() => 0); q.t = 0; delete q.fin; if (hold) q.hold = true; else delete q.hold;
     if (!quiet) S.out({ type: 'stepStart', quest: id, step: sid, text: s.text });
     if (s.do) S.run(s.do, `quest ${id}/${sid}`);
     check(id);
@@ -49,6 +49,7 @@ export function makeQuests(S) {
     const d = def(id), q = st().quests[id], s = stepOf(d, q.step);
     if (!s || q.done) return;
     S.out({ type: 'stepDone', quest: id, step: s.id });
+    q.fin = s.id; // (finishing: the re-check after its done actions mustn't finish it again)
     if (s.done) S.run(s.done, `quest ${id}/${s.id} done`);
     if (!isActive(id) || st().quests[id].step !== s.id) return; // an action already moved it (quest.step / quest.fail)
     let to = branch;
@@ -93,7 +94,7 @@ export function makeQuests(S) {
   function check(id) {
     if (!isActive(id)) return;
     const d = def(id), q = st().quests[id], s = stepOf(d, q.step);
-    if (!s) return;
+    if (!s || q.fin === s.id) return;
     const G = goalsOf(s);
     for (let i = 0; i < G.length; i++) if ((G[i].type === 'flag' || G[i].if) && !(q.n[i] >= need(G[i])) && S.test(G[i].if || G[i].flag)) q.n[i] = need(G[i]);
     const bad = s.fail && (typeof s.fail === 'string' || Array.isArray(s.fail) ? S.test(s.fail) : s.fail.type === 'flag' && S.test(s.fail.if || s.fail.flag));
