@@ -106,6 +106,7 @@ def build():
 
     # ---------------- the tape cassette (where the SMG's mag sits): yellow shell, a window on the roll, the label tape
     A(side([(-0.152, -0.032), (-0.05, -0.032), (-0.05, -0.046), (-0.152, -0.046)], 0.05, (0, 0, 0), grey, bev=0.003))  # its bay
+    i_mag = len(parts)
     cs = side([(-0.148, -0.04), (-0.054, -0.04), (-0.054, -0.17), (-0.064, -0.182), (-0.14, -0.182), (-0.148, -0.172)], 0.034, (0, 0, 0), nose, bev=0.006)
     cut(cs, cyl(0.03, 0.01, (0.017, -0.11, -0.1), None, axis='x', seg=24))
     A(fixmats(cs))
@@ -114,6 +115,10 @@ def build():
     A(cyl(0.009, 0.028, (0.0, -0.11, -0.1), key, axis='x', seg=14))
     A(box((0.024, 0.008, 0.06), (0, -0.184, -0.1), grey, bev=0.002))
 
+    mag = parts[i_mag:]; del parts[i_mag:]  # the cassette is its own node (reloads swap it)
+    # the charging handle: the tape-feed slider on the left of the nose, its own node (slides back)
+    A(box((0.003, 0.006, 0.07), (-0.0372, 0.03, -0.25), dark))
+    chg = [box((0.012, 0.012, 0.016), (-0.043, 0.03, -0.27), keyp, bev=0.003), box((0.006, 0.006, 0.012), (-0.038, 0.03, -0.27), chrome)]
     # ---------------- trigger guard, the print lever as the trigger, grip (the SMG's), rubber over-mould
     A(side(SM.poly([(330, -40), (342, -40), (344, -62), (392, -64), (396, -42), (404, -42), (402, -70), (336, -72), (330, -62)]), SM.W(13), (0, 0, 0), grey, bev=SM.W(1.8)))
     A(side(SM.poly([(362, -42), (374, -42), (378, -54), (372, -64), (364, -62), (367, -52)]), SM.W(8), (0, 0, 0), keyp, bev=SM.W(1.5)))
@@ -135,9 +140,9 @@ def build():
         L = w * 0.0011
         if text == 'TRIGGER': pos = (0.0068, -0.0585, 0.0); L = 0.04
         o = box((0.001, 0.011, L), pos, m, rot=(rot, 0 if ax == 'x' else math.pi, 0))
-        A(o); decals.append((o, (L, 0.011), ax))
+        (mag.append if text == 'MAG' else A)(o); decals.append((o, (L, 0.011), ax))
 
-    for p in parts: fixmats(p); uv_box(p, 0.04)
+    for p in parts + mag + chg: fixmats(p); uv_box(p, 0.04)
     for o, sz, ax in decals: decal(o, sz, ax)
     me = strip.data; uvl = me.uv_layers.active.data; L = lw * 0.0011  # the strip's own UVs: u along it, v across
     for poly in me.polygons:
@@ -147,9 +152,11 @@ def build():
             uvl[li].uv = (((-0.36 - gz) + max(0, (BORE_Y - 0.01) - gy)) / L, 0.5 + gx / 0.024)
     WZ = {'lb_shell': 'a', 'lb_rubber': 'a', 'lb_stamp': 'a', 'lb_yellow': 'b', 'lb_grey': 'b', 'lb_chrome': 'b', 'lb_dark': 'b'}
     bodies = zone_join(parts, 'labelmaker', WZ, default='n', rule=lambda m, c: 'a' if m == 'lb_grey' and c[2] > 0.0 else None)
-    meta = {'kind': 'weapon', 'id': 'smg', 'skin': 'smg_label', 'paint': ['lb_shell'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': SIGHT_Y, 'z': REAR_Z},
+    mn = moving(mag, 'mag', (0, -0.04, -0.1), {'lb_yellow': 'b', 'lb_grey': 'b'}, default='n')
+    cn = moving(chg, 'charge', (-0.043, 0.03, -0.27), {'lb_chrome': 'b'}, default='n')
+    meta = {'kind': 'weapon', 'id': 'smg', 'skin': 'smg_label', 'mag': {'node': 'mag'}, 'charge': {'node': 'charge'}, 'paint': ['lb_shell'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': SIGHT_Y, 'z': REAR_Z},
             'hatAt': [[0, 0.075, 0.03], 0.1]}
-    return finish('w_smg_label', bodies, meta)
+    return finish('w_smg_label', bodies + [mn, cn], meta)
 
 
 main(build, 'w_smg_label')

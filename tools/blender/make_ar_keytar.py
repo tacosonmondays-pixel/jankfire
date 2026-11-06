@@ -116,9 +116,16 @@ def build():
 
     # ---------------- ROM cartridge mag (where the AR's mag sits), with its label
     A(side([(-0.16, -0.046), (-0.02, -0.046), (-0.02, -0.062), (-0.16, -0.062)], 0.034, (0, 0, 0), dark, bev=0.003))  # the slot
+    mag, chg = [], []
+    i_mag = len(parts)
     A(side([(-0.148, -0.05), (-0.03, -0.05), (-0.045, -0.2), (-0.054, -0.212), (-0.164, -0.206), (-0.17, -0.194)], 0.02, (0, 0, 0), yel, bev=0.004))
     A(side([(-0.155, -0.17), (-0.046, -0.176), (-0.052, -0.21), (-0.164, -0.204)], 0.024, (0, 0, 0), grip, bev=0.003))  # grip lip
     rl = box((0.001, 0.068, 0.072), (0.0105, -0.12, -0.096), rom, rot=(0.1, 0, 0)); A(rl); decals.append((rl, (0.072, 0.068), 'x'))
+    mag += parts[i_mag:]; del parts[i_mag:]  # the cartridge is its own node (reloads pull it out)
+    # the charging handle: a chrome T on the back of the key deck (the octave-shift slider), its own node
+    A(box((0.01, 0.003, 0.05), (0, TOP + 0.0015, 0.1), dark))
+    chg.append(box((0.008, 0.01, 0.014), (0, TOP + 0.005, 0.085), chrome, bev=0.002))
+    chg.append(box((0.04, 0.008, 0.012), (0, TOP + 0.011, 0.085), grip, bev=0.003))
 
     # ---------------- trigger guard, trigger, pistol grip (the AR's, in hot pink), selector
     A(side(AR.poly([(461, -46), (468, -46), (468, -70), (505, -70), (512, -50), (518, -46), (522, -50), (512, -77), (461, -77)]), AR.W(11), (0, 0, 0), dark, bev=AR.W(1.6)))
@@ -135,13 +142,15 @@ def build():
     A(tube(coil, 0.0022, cyann, seg=6))
     A(cyl(0.0065, 0.022, (0.0, -0.268, 0.39), dark, axis='y', seg=10))
 
-    for p in parts: fixmats(p); uv_box(p, 0.05)
+    for p in parts + mag + chg: fixmats(p); uv_box(p, 0.05)
     for o, sz, ax in decals: decal(o, sz, ax)
     WZ = {'kt_body': 'a', 'kt_grip': 'a', 'kt_rubber': 'a', 'kt_neck': 'b', 'kt_yellow': 'b', 'kt_chrome': 'b', 'kt_dark': 'b'}
     bodies = zone_join(parts, 'keytar', WZ, default='n', rule=lambda m, c: 'a' if m == 'kt_dark' and -0.37 < c[2] < 0.2 and c[1] < -0.04 else None)
-    meta = {'kind': 'weapon', 'id': 'ar', 'skin': 'ar_keytar', 'paint': ['kt_body'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': SIGHT_Y, 'z': REAR_Z},
+    mn = moving(mag, 'mag', (0, -0.05, -0.09), {'kt_yellow': 'b', 'kt_grip': 'b'}, default='n')
+    cn = moving(chg, 'charge', (0, TOP + 0.008, 0.085), {'kt_chrome': 'b', 'kt_grip': 'b'}, default='n')
+    meta = {'kind': 'weapon', 'id': 'ar', 'skin': 'ar_keytar', 'mag': {'node': 'mag'}, 'charge': {'node': 'charge'}, 'paint': ['kt_body'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': SIGHT_Y, 'z': REAR_Z},
             'hatAt': [[0, TOP + 0.02, 0.12], 0.12]}
-    return finish('w_ar_keytar', bodies, meta)
+    return finish('w_ar_keytar', bodies + [mn, cn], meta)
 
 
 main(build, 'w_ar_keytar')
