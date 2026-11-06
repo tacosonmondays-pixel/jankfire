@@ -320,7 +320,7 @@ function smiles(s) {
   };
 }
 
-// ================================================================ TODD, intern (year 40). on the missing-texture platform above the Islands
+// ================================================================ TODD, intern (year 40). up in the Islands wreck's crow's nest, on a missing-texture patch
 function todd(s) {
   const root = grp();
   // an upturned crate to sit on, a stack of binders with the laptop on it, a coffee pot, crumpled paper

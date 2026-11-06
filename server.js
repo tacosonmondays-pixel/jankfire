@@ -778,7 +778,7 @@ class Room {
       const below = !b.onGround && !raycast([b.pos[0], b.pos[1] + 0.5, b.pos[2]], [0, -1, 0], 40, boxes);
       let want = null;
       if (below && (b.vel[1] < -4 || b.pos[1] < this.map.killY + 25)) { // falling into the void: hook back toward the middle, up high
-        const c = this.map.spawns ? this.map.spawns[0] : [0, 0, 0];
+        const sp = this.map.spawns, c = !sp ? [0, 0, 0] : !this.map.sea ? sp[0] : sp.reduce((p, q) => (Math.hypot(q[0] - b.pos[0], q[2] - b.pos[2]) < Math.hypot(p[0] - b.pos[0], p[2] - b.pos[2]) ? q : p)); // (sea maps: back to the nearest land, not across the map)
         want = [c[0] - b.pos[0], 18 + Math.max(0, c[1] - b.pos[1]), c[2] - b.pos[2]];
       } else if (t && t.alive && (b.inf || Math.random() < skill)) {
         const dx = t.pos[0] - b.pos[0], dy = t.pos[1] - b.pos[1], dz = t.pos[2] - b.pos[2];
@@ -3336,7 +3336,7 @@ class Room {
     if (!first && b.n === BOMB.swapAfter) { b.att = 3 - b.att; this.broadcast({ t: 'chat', id: 0, m: 'SIDES SWAPPED' }); }
     b.n++;
     this.dropLeavers(true); // bots that gave their place to a human leave between rounds
-    Object.assign(b, { ph: 'live', site: null, p: null, drop: null, explodeAt: 0, act: null, between: 0, ends: now() + (process.env.JF_BOMB_ROUND ? BOMB.roundTime : this.map.roundTime || BOMB.roundTime) * 1000, carrier: 0 }); // per-map round time (the test knob still wins)
+    Object.assign(b, { ph: 'live', site: null, p: null, drop: null, explodeAt: 0, act: null, between: 0, ends: now() + (process.env.JF_BOMB_ROUND ? BOMB.roundTime : this.map.roundTime || BOMB.roundTime) * 1000, carrier: 0, noPick: null }); // per-map round time (the test knob still wins)
     for (const p of this.players.values()) if (p.ai) { p.ai.site = null; p.ai.route = null; }
     if (this.isEcon()) this.econNewRound(first); // buy phase, payouts carried over, the half's credit reset
     this.projectiles.clear(); this.peels.clear(); this.holes.clear(); this.clearCarts();
@@ -3385,14 +3385,15 @@ class Room {
       else if (n - b.idle.t > 15000 && !b.act && this.fighters().some((p) => p !== c && p.alive && p.team === b.att)) {
         // an AFK carrier drops it for the team (and can't grab it straight back)
         this.dropBomb(c.pos, c);
-        b.noPick = { id: c.id, until: n + 8000 };
+        b.noPick = { id: c.id, until: n + 8000, p: c.pos.slice() }; // (8 s, and then until they've moved off the spot: still standing on it = still AFK)
         send(c, { t: 'chat', id: 0, m: 'you stood still too long and dropped the bomb' });
       }
     }
     // dropped bomb: any attacker can grab it
     if (b.ph === 'live' && b.drop) {
       for (const p of this.players.values()) {
-        if (!p.alive || p.team !== b.att || (b.noPick && b.noPick.id === p.id && n < b.noPick.until)) continue;
+        if (b.noPick && b.noPick.id === p.id && n >= b.noPick.until && dist3(p.pos, b.noPick.p) >= 2) b.noPick = null; // they've moved off the spot: back in the game
+        if (!p.alive || p.team !== b.att || (b.noPick && b.noPick.id === p.id)) continue;
         if (Math.hypot(p.pos[0] - b.drop[0], p.pos[1] - b.drop[1], p.pos[2] - b.drop[2]) < BOMB.pickup) { b.carrier = p.id; b.drop = null; send(p, { t: 'bombyou' }); this.broadcast({ t: 'bombev', k: 'pickup', id: p.id }); break; }
       }
       // bots can't climb to every ledge: a drop no human attacker is alive to fetch goes back to a bot after 20 s

@@ -2533,78 +2533,474 @@ function desertSD() {
   return map;
 }
 
-// ------------------------------------------------------------ ISLANDS: large, the original
+// ------------------------------------------------------------ the island kit (Islands, Islands S&D)
+// the sea is a foot deep over the sand round each island (the shelf), then it isn't: past it you sink (killY)
+const ISL = { SH: -0.55, SB: -0.6, RF: -0.65, WY: -0.25 }; // the shelves' sand, the sandbars' (a hair lower: where one runs into a shelf, the shelf wins), the reef's (lower again), the sea's surface
+// a flight of solid steps along x (alongX) or z, from a0 (its foot, at ya) to a1 (its head, yb), c0..c1 across.
+// rail: +1 / -1 a rail up the c1 / c0 side. returns { bot, top }: points just off each end, for the walk graph (the
+// foot's well clear of the first step: the graph keeps 0.45 m off anything you'd bump into)
+function flight(B, alongX, a0, a1, c0, c1, ya, yb, mat = 'wood', rail = 0) {
+  const n = Math.max(1, Math.ceil((yb - ya) / 0.45)), h = (yb - ya) / n, run = (a1 - a0) / n, s = Math.sign(run), cm = (c0 + c1) / 2;
+  const e = rail > 0 ? Math.max(c0, c1) - 0.05 : Math.min(c0, c1) + 0.05;
+  for (let i = 1; i <= n; i++) {
+    const p0 = a0 + (i - 1) * run, p1 = a0 + i * run, y = ya + i * h;
+    if (alongX) B.add(p0, ya, c0, p1, y, c1, mat); else B.add(c0, ya, p0, c1, y, p1, mat);
+    if (rail) { if (alongX) B.add(p0, y, e - 0.05, p1, y + 1, e + 0.05, 'metal'); else B.add(e - 0.05, y, p0, e + 0.05, y + 1, p1, 'metal'); }
+  }
+  return { bot: alongX ? [a0 - s * 1.3, ya, cm] : [cm, ya, a0 - s * 1.3], top: alongX ? [a1 + s * 0.7, yb, cm] : [cm, yb, a1 + s * 0.7] };
+}
+// an island: sand down to 6 m under, a shelf of shallows round it (shelf m wide: knocked off the beach, you land in
+// the shallows, not the deep), surf where the shelf drops away
+function isle(B, D, x0, z0, x1, z1, o = {}) {
+  const W = B.local(0, 0, 0), s = o.shelf ?? 5;
+  slab(W, x0, z0, x1, z1, -6, 0, o.mat || 'sand', o.hole);
+  if (s <= 0) return;
+  slab(W, x0 - s, z0 - s, x1 + s, z1 + s, -2.5, ISL.SH, 'wetsand', [x0, z0, x1, z1]);
+  const X0 = x0 - s, Z0 = z0 - s, X1 = x1 + s, Z1 = z1 + s, f = 0.6, y0 = ISL.WY, y1 = ISL.WY + 0.04;
+  D.add(X0 - f, y0, Z0 - f, X1 + f, y1, Z0, 'surf'); D.add(X0 - f, y0, Z1, X1 + f, y1, Z1 + f, 'surf');
+  D.add(X0 - f, y0, Z0, X0, y1, Z1, 'surf'); D.add(X1, y0, Z0, X1 + f, y1, Z1, 'surf');
+}
+// a sandbar from (ax, az) to (bx, bz), w wide: shallows to wade, in steps (boxes only) along its longer way
+function sandbar(B, ax, az, bx, bz, w = 10, step = 2) {
+  const dx = bx - ax, dz = bz - az, alongX = Math.abs(dx) >= Math.abs(dz), n = Math.max(1, Math.ceil(Math.abs(alongX ? dx : dz) / step));
+  for (let i = 0; i < n; i++) {
+    const t0 = i / n, t1 = (i + 1) / n, tm = (t0 + t1) / 2;
+    if (alongX) { const zc = az + dz * tm; B.add(ax + dx * t0, -2.5, zc - w / 2, ax + dx * t1, ISL.SB, zc + w / 2, 'wetsand'); }
+    else { const xc = ax + dx * tm; B.add(xc - w / 2, -2.5, az + dz * t0, xc + w / 2, ISL.SB, az + dz * t1, 'wetsand'); }
+  }
+}
+// a flat of reef between two islands (x0..x1, z0..z1): shallows to wade where the gap was too narrow to be a channel
+function reef(B, x0, z0, x1, z1) { B.add(x0, -2.5, z0, x1, ISL.RF, z1, 'wetsand'); }
+// a rope bridge along x (alongX) or z, from a0 to a1 on the line c, its deck at 0: planks, rope rails you can lean on
+// (or go over), posts, stilts down into the sea. the ropes only run rails[0]..rails[1] (over the deep water): where the
+// deck crosses a shelf you can step on and off it from the shallows beside it (bots walking the shallows used to slide
+// along a rope off the end of the shelf)
+function ropeWalk(B, D, alongX, a0, a1, c, w = 2.6, rails = [a0, a1]) {
+  const [r0, r1] = rails;
+  const R = (p0, y0, q0, p1, y1, q1, m, dd) => (dd ? D : B).add(alongX ? p0 : q0, y0, alongX ? q0 : p0, alongX ? p1 : q1, y1, alongX ? q1 : p1, m);
+  R(a0, -0.14, c - w / 2, a1, 0, c + w / 2, 'wood');
+  for (let p = a0 + 0.2; p < a1 - 0.1; p += 0.5) R(p, 0, c - w / 2, p + 0.38, 0.03, c + w / 2, 'shipwood', true); // the planks
+  for (const s of [-1, 1]) {
+    const e = c + s * (w / 2 + 0.05);
+    if (r1 - r0 > 0.6) { // (no deep water under it: no ropes)
+      R(r0 + 0.13, 0.95, e - 0.04, r1 - 0.13, 1.03, e + 0.04, 'tire'); // the rope (its ends in the posts)
+      for (const p of [r0 + 0.13, r1 - 0.13]) R(p - 0.13, 0, e - 0.13, p + 0.13, 1.4, e + 0.13, 'wood');
+      for (let p = r0 + 1.2; p < r1 - 1; p += 1.2) R(p - 0.02, 0, e - 0.02, p + 0.02, 0.95, e + 0.02, 'tire', true); // the hangers
+    }
+    for (let p = a0 + 3; p < a1 - 2; p += 4) R(p - 0.08, -2.4, e - 0.08, p + 0.08, -0.14, e + 0.08, 'wood', true); // stilts
+  }
+}
+// a cannon on its carriage, its mouth toward (dx, dz) (a unit axis): black barrel, wooden carriage, wheels
+function cannon(B, D, x, z, y, dx, dz) {
+  const ax = dx !== 0, sx = ax ? 1.4 : 0.9, sz = ax ? 0.9 : 1.4;
+  B.box(x, y + 0.3, z, sx, 0.6, sz, 'wood');
+  D.box(x + dx * 0.5, y + 0.95, z + dz * 0.5, ax ? 2.4 : 0.56, 0.56, ax ? 0.56 : 2.4, 'tire'); D.box(x + dx * 1.62, y + 0.95, z + dz * 1.62, ax ? 0.18 : 0.7, 0.7, ax ? 0.7 : 0.18, 'tire'); // the barrel, its lip
+  for (const s of [-1, 1]) for (const k of [-0.45, 0.45]) D.box(x + (ax ? k : s * 0.5), y + 0.3, z + (ax ? s * 0.5 : k), ax ? 0.6 : 0.12, 0.6, ax ? 0.12 : 0.6, 'wood');
+}
+// a beach hut: bamboo walls, a door on the door side (dz = -1 north / +1 south), a window opposite, a thatched roof
+function hut(B, D, cx, cz, dz = -1, w = 4.4, d = 3.6) {
+  const W = B.local(0, 0, 0), x0 = cx - w / 2, x1 = cx + w / 2, z0 = cz - d / 2, z1 = cz + d / 2;
+  wall(W, 'x', dz < 0 ? z0 : z1, x0, x1, 0, 2.6, 0.2, 'bamboo', [{ a: cx - 0.6, b: cx + 0.6, y0: 0, y1: 2.1 }]);
+  wall(W, 'x', dz < 0 ? z1 : z0, x0, x1, 0, 2.6, 0.2, 'bamboo', [{ a: cx - 0.8, b: cx + 0.8, y0: 1.0, y1: 1.9 }]);
+  wall(W, 'z', x0, z0 + 0.1, z1 - 0.1, 0, 2.6, 0.2, 'bamboo'); wall(W, 'z', x1, z0 + 0.1, z1 - 0.1, 0, 2.6, 0.2, 'bamboo');
+  B.add(x0 - 0.5, 2.6, z0 - 0.5, x1 + 0.5, 2.9, z1 + 0.5, 'thatch'); B.add(x0 + 0.3, 2.9, z0 + 0.3, x1 - 0.3, 3.3, z1 - 0.3, 'thatch');
+  D.add(x0 + 0.4, 1.0, cz - 0.25, x1 - 0.4, 1.1, cz + 0.25, 'cloth'); // a hammock
+  B.box(x1 - 0.8, 0.4, dz < 0 ? z1 - 0.8 : z0 + 0.8, 0.8, 0.8, 0.8, 'crate');
+}
+// a lounger under an umbrella (the umbrella's only to look at)
+function lounger(B, D, x, z, m) {
+  B.add(x - 0.35, 0, z - 0.95, x + 0.35, 0.35, z + 0.95, m); B.add(x - 0.35, 0.35, z - 0.95, x + 0.35, 0.85, z - 0.65, m);
+  D.add(x + 0.9, 0, z - 0.05, x + 1.0, 2.2, z + 0.05, 'white'); D.add(x - 0.3, 2.2, z - 1.2, x + 2.2, 2.32, z + 1.2, pickUmb(x + z));
+}
+const pickUmb = (k) => ['toypink', 'toyteal', 'toyyellow', 'sidelemon'][Math.abs(Math.round(k * 7)) % 4];
+
+// ---- the set pieces. each is built where the standard Islands has it, moved (dx, dz) (Islands S&D moves them about);
+// st collects their stairs for the walk graph
+const MD = 4.5, QD = 7.5, SK = 7.5, FW = 4.5; // the wreck's main deck and quarterdeck, the top of Skull Rock, the fort's wall walk
+function shifted(B, dx, dz) { // a builder that puts everything dx, dz over
+  return { boxes: B.boxes, add: (x0, y0, z0, x1, y1, z1, m, e) => B.add(x0 + dx, y0, z0 + dz, x1 + dx, y1, z1 + dz, m, e),
+    box: (cx, cy, cz, sx, sy, sz, m, e) => B.box(cx + dx, cy, cz + dz, sx, sy, sz, m, e), local: (ox, oz, rot = 0, oy = 0) => B.local(ox + dx, oz + dz, rot, oy) };
+}
+function isPiece(B0, D0, dx, dz, st) {
+  const B = shifted(B0, dx, dz), D = shifted(D0, dx, dz);
+  return { B, D, add: B.add, W: B.local(0, 0, 0), up: (f) => { st.push({ bot: [f.bot[0] + dx, f.bot[1], f.bot[2] + dz], top: [f.top[0] + dx, f.top[1], f.top[2] + dz] }); return f; } };
+}
+// Mount Kaboom (round 0, -3): three terraces, two ways up each, the crater (its rim open at the two stairs), the throat
+// right down. returns the throat in the world (the island under it needs the same hole)
+function volcano(B0, D0, dx, dz, st) {
+  const { B, D, add, W, up } = isPiece(B0, D0, dx, dz, st); const T = [-2, -5, 2, -1];
+  slab(W, -15, -16, 15, 10, 0, 3, 'basalt', T); slab(W, -10, -12, 10, 6, 3, 6, 'basalt', T); slab(W, -6, -9, 6, 3, 6, 9, 'basalt', T);
+  D.add(-2, 4.3, -5, 2, 4.5, -1, 'lava'); // down the throat (only to look at: fall in and you keep going)
+  for (const [x0, z0, x1, z1] of [[-2.3, -5.3, 2.3, -5], [-2.3, -1, 2.3, -0.7], [-2.3, -5, -2, -1], [2, -5, 2.3, -1]]) add(x0, 9, z0, x1, 9.3, z1, 'basalt'); // its lip
+  D.add(-1.6, 9.3, -0.66, 1.6, 9.9, -0.6, 'advolcano', { fit: 1 });
+  for (const [x0, z0, x1, z1] of [[-6, -9, -2.2, -8.4], [2.2, -9, 6, -8.4], [-6, 2.4, -2.2, 3], [2.2, 2.4, 6, 3], [-6, -8.4, -5.4, 2.4], [5.4, -8.4, 6, 2.4]]) add(x0, 9, z0, x1, 9.9, z1, 'basalt'); // the rim, open at the two stairs
+  // lava down the north and west faces
+  for (const [x, w] of [[3.2, 0.7]]) { D.add(x, 6, -9.06, x + w, 9, -9, 'lava'); D.add(x, 6, -12, x + w, 6.03, -9, 'lava'); D.add(x, 3, -12.06, x + w, 6, -12, 'lava'); D.add(x, 3, -16, x + w, 3.03, -12, 'lava'); D.add(x, 0, -16.06, x + w, 3, -16, 'lava'); D.add(x, 0.03, -18.5, x + w, 0.06, -16, 'lava'); }
+  D.add(-6.06, 6, -6, -6, 9, -5.4, 'lava'); D.add(-10, 6, -6, -6, 6.03, -5.4, 'lava'); D.add(-10.06, 3, -6, -10, 6, -5.4, 'lava'); D.add(-15, 3, -6, -10, 3.03, -5.4, 'lava');
+  // the ways up: south or west onto the first terrace, east or west onto the second, north or south onto the top
+  up(flight(B, false, 14.2, 10, -2, 2, 0, 3, 'basalt'));
+  up(flight(B, true, -19.2, -15, -9, -5.5, 0, 3, 'basalt'));
+  up({ ...flight(B, true, 14.2, 10, -4, 0, 3, 6, 'basalt'), bot: [14.6, 3, -2] }); // (the terrace is narrow: their feet are right at its edge)
+  up({ ...flight(B, true, -14.2, -10, 0, 3.5, 3, 6, 'basalt'), bot: [-14.6, 3, 1.75] });
+  up({ ...flight(B, false, -11.9, -9, -2, 2, 6, 9, 'basalt'), bot: [3, 6, -11.5] });
+  up({ ...flight(B, false, 5.9, 3, -2, 2, 6, 9, 'basalt'), bot: [3, 6, 5] });
+  D.add(3, 1.2, 10.02, 9, 2.4, 10.08, 'advolcano', { fit: 1 });
+  // boulders on the terraces (cover on the way up)
+  for (const [x, z, y, s] of [[-12.5, -13, 3, 1.1], [12, -8, 3, 1.3], [-11.5, 7, 3, 1.0], [7.5, -10.5, 6, 0.9], [-8, 4, 6, 0.8]]) { add(x - s, y, z - s * 0.8, x + s, y + s * 1.2, z + s * 0.8, 'basalt'); }
+  return [T[0] + dx, T[1] + dz, T[2] + dx, T[3] + dz];
+}
+// the tiki bar (round -13, 18): a bamboo counter under a thatched roof on four posts, stools, the back bar and its bottles
+function tikiBar(B0, D0, dx, dz, r) {
+  const { B, D, add } = isPiece(B0, D0, dx, dz, []), pick = (a) => a[(r() * a.length) | 0];
+  add(-17, 0, 18.4, -9, 1.1, 19.4, 'bamboo'); D.add(-17.1, 1.1, 18.3, -8.9, 1.18, 19.5, 'wood'); // the counter
+  add(-16.6, 0, 15.6, -9.4, 1.7, 16.1, 'wood'); for (let x = -16.2; x < -9.6; x += 0.55) D.box(x, 1.85, 15.85, 0.22, 0.3, 0.22, pick(['glass', 'toyteal', 'toypink', 'toyyellow'])); // the back bar, its bottles
+  for (const x of [-16, -14.5, -13, -11.5, -10]) B.box(x, 0.35, 20.4, 0.5, 0.7, 0.5, 'bamboo'); // stools
+  for (const [x, z] of [[-17.6, 15], [-8.4, 15], [-17.6, 20.8], [-8.4, 20.8]]) B.box(x, 1.5, z, 0.3, 3, 0.3, 'bamboo');
+  add(-18.6, 3, 14.2, -7.4, 3.3, 21.8, 'thatch'); add(-17.4, 3.3, 15.2, -8.6, 3.7, 20.8, 'thatch'); add(-15.6, 3.7, 16.4, -10.4, 4.0, 19.6, 'thatch');
+  D.add(-16, 2.3, 21.82, -10, 2.95, 21.9, 'adtiki', { fit: 1 });
+}
+// the big tiki (round -21.5, 17): cover, and he's watching
+function bigTiki(B0, D0, dx, dz) {
+  const { D, add } = isPiece(B0, D0, dx, dz, []);
+  add(-22.6, 0, 15.9, -20.4, 0.6, 18.1, 'basalt'); add(-22.4, 0.6, 16.2, -20.6, 3.8, 17.8, 'wood');
+  D.add(-22.6, 2.9, 17.8, -20.4, 3.3, 18.1, 'wood'); D.add(-22.1, 2.3, 17.8, -21.7, 2.8, 17.86, 'white'); D.add(-21.3, 2.3, 17.8, -20.9, 2.8, 17.86, 'white');
+  D.add(-21.95, 2.4, 17.86, -21.8, 2.6, 17.9, 'tire'); D.add(-21.15, 2.4, 17.86, -21.0, 2.6, 17.9, 'tire'); D.add(-22.1, 1.2, 17.8, -20.9, 1.6, 17.88, 'toyred');
+  D.add(-22.8, 3.8, 16.0, -20.2, 4.3, 18.0, 'leaves2');
+}
+// the surf school (round 24, 14): boards stuck in the sand, its sign
+function surfSchool(B0, D0, dx, dz) {
+  const { D } = isPiece(B0, D0, dx, dz, []);
+  for (const [i, m] of ['toypink', 'toyyellow', 'toyteal'].entries()) D.box(24 + i * 0.8, 1.1, 14.6, 0.6, 2.2, 0.12, m); // surfboards stuck in the sand
+  D.add(22.6, 0, 13.4, 22.72, 2.6, 13.52, 'wood'); D.add(21.4, 1.6, 13.52, 23.9, 2.6, 13.6, 'adsurf', { fit: 1 });
+}
+// the bait shack (round 46, 9, on the pier's wide bit): its hatch, its sign, crates and a barrel out front
+function baitShack(B0, D0, dx, dz) {
+  const { B, D, add, W } = isPiece(B0, D0, dx, dz, []);
+  wall(W, 'x', 8.3, 43, 49, 0, 2.8, 0.2, 'planks', [{ a: 44.2, b: 47.8, y0: 1.0, y1: 2.0 }]); // the shack's front (its hatch)
+  wall(W, 'x', 10.3, 43, 49, 0, 2.8, 0.2, 'planks'); wall(W, 'z', 43.1, 8.4, 10.2, 0, 2.8, 0.2, 'planks'); wall(W, 'z', 48.9, 8.4, 10.2, 0, 2.8, 0.2, 'planks');
+  add(42.6, 2.8, 7.8, 49.4, 3.05, 10.8, 'roofteal'); add(43.2, 1.0, 7.95, 48.8, 1.08, 8.2, 'wood');
+  D.add(43.6, 2.06, 8.18, 48.4, 2.75, 8.2, 'adbait', { fit: 1 });
+  for (const [x, z] of [[43.2, 3.2], [44.6, 3.4], [48.5, 3.1]]) B.box(x, 0.45, z, 0.9, 0.9, 0.9, 'crate'); B.box(46.6, 0.55, 3.3, 1.1, 1.1, 1.1, 'barrel');
+}
+// the Soggy Biscuit (round 0, -69, lying along x), broken in two: the hold (walk in at the break), the main deck (a
+// gangway up each side), the quarterdeck over the captain's cabin, the crow's nest, the duck figurehead
+function wreck(B0, D0, dx, dz, st) {
+  const { B, D, add, W, up } = isPiece(B0, D0, dx, dz, st); const ZA = -73.5, ZB = -64.5; // the hull's sides
+  const side = (z, x0, x1, y1, ports) => wall(W, 'x', z, x0, x1, 0, y1, 0.4, 'shiphull', ports.map((x) => ({ a: x - 0.5, b: x + 0.5, y0: 0.6, y1: 1.4 })));
+  for (const z of [ZA + 0.2, ZB - 0.2]) {
+    side(z, 1.5, 15.6, MD, [4, 8, 12]); side(z, -10, -1.5, MD, [-7, -4]); side(z, -18, -10, QD, [-15, -12]);
+    wall(W, 'x', z, 1.5, 15.6, MD, MD + 1, 0.4, 'shipwood', z < -69 ? [] : [{ a: 8, b: 10.4, y0: MD, y1: MD + 1 }]); // the bulwarks (a gap where a gangway comes up)
+    wall(W, 'x', z, -10, -1.5, MD, MD + 1, 0.4, 'shipwood', z < -69 ? [{ a: -4.6, b: -2.2, y0: MD, y1: MD + 1 }] : []);
+    wall(W, 'x', z, -18, -10, QD, QD + 1, 0.4, 'shipwood');
+  }
+  add(1.5, MD - 0.4, ZA + 0.4, 15.6, MD, ZB - 0.4, 'shipwood'); add(-10, MD - 0.4, ZA + 0.4, -1.5, MD, ZB - 0.4, 'shipwood'); // the main deck (both halves)
+  add(-17.6, MD - 0.4, ZA + 0.4, -10, MD, ZB - 0.4, 'shipwood'); add(-17.6, QD - 0.4, ZA + 0.4, -10, QD, ZB - 0.4, 'shipwood'); // the cabin's floor, the quarterdeck
+  // the bow: it steps in to a narrower nose (beam 5) and the stem, the rubber duck figurehead under the bowsprit
+  for (const [y0, y1, m] of [[0, MD, 'shiphull'], [MD, MD + 1, 'shipwood']]) {
+    add(15.6, y0, ZA, 16, y1, ZA + 2.4, m); add(15.6, y0, ZB - 2.4, 16, y1, ZB, m); // where it steps in
+    add(16, y0, ZA + 2, 19.2, y1, ZA + 2.4, m); add(16, y0, ZB - 2.4, 19.2, y1, ZB - 2, m); add(19.2, y0, ZA + 2, 19.6, y1, ZB - 2, m); // its sides, the stem
+  }
+  add(15.6, MD - 0.4, ZA + 2.4, 19.2, MD, ZB - 2.4, 'shipwood');
+  D.add(19.6, 4.5, -69.4, 23.6, 4.8, -68.6, 'shipwood'); // the bowsprit
+  add(19.6, 2.6, -69.6, 21, 3.6, -68.4, 'toyyellow'); add(20.4, 3.6, -69.35, 21.1, 4.3, -68.65, 'toyyellow'); D.add(21.1, 3.8, -69.15, 21.6, 4.0, -68.85, 'barrelr'); // the duck
+  // the stern: the transom (its windows, the name), the cabin's front wall (a door) under the quarterdeck
+  wall(W, 'z', -17.8, ZA + 0.4, ZB - 0.4, 0, QD + 1, 0.4, 'shiphull', [{ a: -71, b: -69.8, y0: 5.4, y1: 6.6 }, { a: -68.2, b: -67, y0: 5.4, y1: 6.6 }]);
+  D.add(-18.08, 2.2, -71.4, -18.02, 3.4, -66.6, 'adship', { fit: 1 });
+  wall(W, 'z', -10.15, -71.6, ZB - 0.4, MD, QD - 0.4, 0.3, 'shipwood', [{ a: -69, b: -67.6, y0: MD, y1: MD + 2.1 }]);
+  // the ways up: a gangway each side, the quarterdeck stair, the cabin's table and the captain's chest
+  up(flight(B, false, -59.9, ZB, 8, 10.4, 0, MD, 'shipwood'));
+  up(flight(B, false, -78.1, ZA, -4.6, -2.2, 0, MD, 'shipwood'));
+  up(flight(B, true, -5.8, -10, ZA + 0.4, ZA + 1.9, MD, QD, 'shipwood'));
+  add(-15.6, MD, -69.6, -12.8, MD + 0.8, -68.4, 'wood'); add(-17.4, MD, -66.4, -16.2, MD + 0.8, -65.2, 'crate');
+  // the masts: the foremast with its crow's nest and the torn sail, the mizzen with the flag, the main mast fallen on the sand
+  add(9.75, MD, -69.25, 10.25, 17, -68.75, 'shipwood'); add(8.6, 14.2, -70.4, 11.4, 14.5, -67.6, 'shipwood');
+  D.add(10.35, 14.5, -70.15, 11.15, 14.53, -67.85, 'missing'); // where the intern ran out of textures (secrets.js: Todd stands on it)
+  for (const [x0, z0, x1, z1] of [[8.6, -70.4, 11.4, -70.2], [8.6, -67.8, 11.4, -67.6], [8.6, -70.2, 8.8, -67.8], [11.2, -70.2, 11.4, -67.8]]) add(x0, 14.5, z0, x1, 15.4, z1, 'shipwood');
+  D.add(9.8, 11, -73, 10.2, 11.3, -65, 'shipwood'); D.add(10.25, 6.5, -72.4, 10.3, 11, -66.4, 'sail'); D.add(10.25, 5.5, -71.4, 10.3, 6.5, -68.6, 'sail');
+  add(-14.2, QD, -69.2, -13.8, 15, -68.8, 'shipwood'); D.add(-13.8, 12.6, -69.04, -11, 14.4, -68.96, 'flagskull', { fit: 1 });
+  D.add(-12.3, QD, -69.15, -12.1, QD + 1.0, -68.85, 'wood'); D.add(-12.4, QD + 0.6, -69.8, -12.0, QD + 1.4, -68.2, 'wood'); // the wheel
+  add(-7, 0, -62.5, 6.5, 0.8, -61.7, 'shipwood'); D.add(-6, 0.03, -61.7, 3, 0.1, -59.4, 'sail'); // the main mast, fallen, and its sail
+  // the hold: barrels, crates, two cannons at the gunports, hammocks
+  for (const [x, z] of [[3, -72], [3, -70.8], [14, -66], [-3.5, -72.2], [-16.6, -72.2], [-16.6, -71]]) B.box(x, 0.55, z, 1.1, 1.1, 1.1, 'barrel');
+  for (const [x, z] of [[6, -66.2], [7.2, -66.4], [-8, -66], [-15.5, -66.2]]) B.box(x, 0.5, z, 1, 1, 1, 'crate');
+  cannon(B, D, 12, -71.2, 0, 0, -1); cannon(B, D, -12, -66.6, 0, 0, 1);
+  D.add(4, 2.8, -69.3, 9, 2.9, -68.7, 'cloth'); D.add(-9, 2.8, -69.3, -4, 2.9, -68.7, 'cloth');
+  for (const x of [11, -7]) { D.box(x, 3.85, -69, 0.06, 0.5, 0.06, 'metal'); D.box(x, 3.4, -69, 0.32, 0.42, 0.32, 'lantern'); } // lanterns in the hold
+  // splinters at the break
+  for (const [x, z, h] of [[1.5, ZA + 0.2, 1.2], [1.5, ZB - 0.2, 0.8], [-1.5, ZA + 0.2, 0.9], [-1.5, ZB - 0.2, 1.4]]) D.box(x + (x > 0 ? -0.15 : 0.15), MD + h / 2 - 0.3, z, 0.3, h, 0.42, 'shipwood');
+}
+// the lighthouse (round 82, -6): the striped tower, the lantern; o.climb false: no stair round it and no gallery (S&D)
+function lighthouse(B0, D0, dx, dz, st, o = {}) {
+  const { B, D, add, W, up } = isPiece(B0, D0, dx, dz, st);
+  [['white', 0], ['toyred', 4.5], ['white', 9], ['toyred', 13.5]].forEach(([m, y]) => add(79, y, -9, 85, y + 4.5, -3, m));
+  if (o.climb !== false) {
+    up(flight(B, true, 79, 85, -3, -1.5, 0, 4.5, 'metal', 1)); add(85, 4.05, -3, 86.5, 4.5, -1.5, 'metal');
+    up({ ...flight(B, false, -3, -9, 85, 86.5, 4.5, 9, 'metal', 1), bot: [85.6, 4.5, -2.4] }); add(85, 8.55, -10.5, 86.5, 9, -9, 'metal'); // (the landings are one cell)
+    up({ ...flight(B, true, 85, 79, -10.5, -9, 9, 13.5, 'metal', -1), bot: [85.6, 9, -9.6] }); add(77.5, 13.05, -10.5, 79, 13.5, -9, 'metal');
+    up({ ...flight(B, false, -9, -3, 77.5, 79, 13.5, 18, 'metal', -1), bot: [78.4, 13.5, -9.6] });
+    slab(W, 76, -12, 88, 0, 17.6, 18, 'metal', [77.5, -9, 85, -3]); // the gallery (open over the last flight)
+    for (const [x0, z0, x1, z1] of [[76, -12, 88, -11.9], [76, -0.1, 88, 0], [76, -11.9, 76.1, -0.1], [87.9, -11.9, 88, -0.1]]) add(x0, 18, z0, x1, 19, z1, 'metal');
+  }
+  add(80, 18, -8, 84, 21, -4, 'glass'); D.add(81.4, 18.6, -6.6, 82.6, 20.2, -5.4, 'light'); // the lantern
+  add(79.6, 21, -8.4, 84.4, 21.5, -3.6, 'toyred'); add(80.6, 21.5, -7.4, 83.4, 22.2, -4.6, 'toyred'); D.box(82, 22.5, -6, 0.6, 0.6, 0.6, 'metal');
+  D.add(78.94, 1.6, -7.5, 79.0, 2.6, -4.5, 'adlight', { fit: 1 });
+}
+// the keeper's cottage (round 71, 9): its door west, windows, a bed, a table
+function cottage(B0, D0, dx, dz) {
+  const { add, W } = isPiece(B0, D0, dx, dz, []);
+  wall(W, 'z', 67.6, 6.375, 11.625, 0, 3, 0.25, 'plaster', [{ a: 8.3, b: 9.7, y0: 0, y1: 2.2 }]);
+  wall(W, 'z', 74.4, 6.375, 11.625, 0, 3, 0.25, 'plaster', [{ a: 8.2, b: 9.8, y0: 1.1, y1: 2.1 }]);
+  wall(W, 'x', 6.5, 67.725, 74.275, 0, 3, 0.25, 'plaster', [{ a: 70.2, b: 71.8, y0: 1.1, y1: 2.1 }]); wall(W, 'x', 11.5, 67.725, 74.275, 0, 3, 0.25, 'plaster');
+  add(67.1, 3, 5.9, 74.9, 3.3, 12.1, 'roofpink'); add(68, 3.3, 6.8, 74, 3.8, 11.2, 'roofpink');
+  add(72.6, 0, 9.6, 74.1, 0.55, 11.2, 'bedsheet'); add(69.4, 0, 7, 70.8, 0.8, 8.2, 'wood');
+}
+// Fort Splinter (round -77, 0): walls to walk (FW), the gate east (o.westGate: a big one west too, else a back door),
+// the bastions, merlons, the armoury, the well, the flag, cannons on the east wall. o.walk false: no stairs up to the
+// walls. o.pad: the human cannonball on the east wall
+function fort(B0, D0, dx, dz, st, o = {}) {
+  const { B, D, add, W, up } = isPiece(B0, D0, dx, dz, st);
+  wall(W, 'x', -12, -84, -70, 0, FW, 2, 'stone'); wall(W, 'x', 12, -84, -70, 0, FW, 2, 'stone');
+  wall(W, 'z', -86, -10, 10, 0, FW, 2, 'stone', [o.westGate ? { a: -2.5, b: 2.5, y0: 0, y1: 3.4 } : { a: -1, b: 1, y0: 0, y1: 2.4 }]); wall(W, 'z', -68, -10, 10, 0, FW, 2, 'stone', [{ a: -2.5, b: 2.5, y0: 0, y1: 3.4 }]);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const x = sx < 0 ? -86 : -68, z = sz * 12; add(x - 2, 0, z - 2, x + 2, 6, z + 2, 'stone'); } // the bastions (jump up from the walls)
+  // merlons on the walls' outer edges
+  for (let x = -83.2; x < -70.5; x += 2.2) for (const z of [-12.7, 12.7]) add(x, FW, z - 0.3, x + 1.2, FW + 1, z + 0.3, 'stone');
+  for (let z = -9.2; z < 9.5; z += 2.2) for (const x of [-86.7, -67.3]) if (!(o.pad && x > -70 && Math.abs(z - 6.2) < 0.1)) add(x - 0.3, FW, z, x + 0.3, FW + 1, z + 1.2, 'stone'); // (a gap for the cannonball)
+  D.add(-66.94, 3.5, -2.2, -66.88, 4.3, 2.2, 'adfort', { fit: 1 });
+  if (o.walk !== false) up({ ...flight(B, true, -72.7, -79.3, -11, -9.6, 0, FW, 'stone'), top: [-78.7, FW, -12] });
+  if (o.walk !== false) up({ ...flight(B, true, -82.3, -75.7, 9.6, 11, 0, FW, 'stone'), top: [-76.3, FW, 11.6] });
+  // the courtyard: the armoury against the west wall, the well, the flag, barrels and crates, cannonballs
+  wall(W, 'x', -3.2, -85, -80.2, 0, 3, 0.4, 'stone'); wall(W, 'x', -8.8, -85, -80.2, 0, 3, 0.4, 'stone');
+  wall(W, 'z', -80.4, -8.6, -3.4, 0, 3, 0.4, 'stone', [{ a: -6.7, b: -5.3, y0: 0, y1: 2.2 }]); add(-85, 3, -9, -80, 3.3, -3, 'wood');
+  add(-79.2, 0, 3.2, -77.2, 1.0, 5.2, 'stone'); D.add(-78.9, 1.0, 3.5, -77.5, 1.02, 4.9, 'water'); for (const x of [-79.1, -77.3]) D.add(x - 0.08, 1.0, 4.12, x + 0.08, 2.6, 4.28, 'wood'); D.add(-79.4, 2.6, 3.6, -77.0, 2.8, 4.8, 'thatch');
+  add(-74.1, 0, 5.9, -73.9, 11, 6.1, 'metal'); D.add(-73.9, 8.8, 5.96, -71.2, 10.6, 6.04, 'flagskull', { fit: 1 });
+  for (const [x, z] of [[-75, -6], [-75, -4.8], [-73.8, -5.4], [-82, 7.5], [-80.8, 7.8], [-71.5, 8]]) B.box(x, 0.55, z, 1.1, 1.1, 1.1, 'barrel');
+  for (const [x, z] of [[-77.5, -1.5], [-71.6, -7.6], [-83.6, 1.5]]) B.box(x, 0.6, z, 1.2, 1.2, 1.2, 'crate');
+  for (const [x, z] of [[-73, 2.2], [-82.5, -1.5]]) for (const [ox, oz, oy] of [[-0.3, -0.3, 0], [0.3, -0.3, 0], [-0.3, 0.3, 0], [0.3, 0.3, 0], [0, 0, 0.5]]) D.box(x + ox, 0.25 + oy, z + oz, 0.5, 0.5, 0.5, 'tire');
+  // cannons on the east wall (pointing at the volcano), the human cannonball on it
+  for (const z of [-7.5, -4.3]) cannon(B, D, -68.2, z, FW, 1, 0);
+  if (o.pad) add(-69, FW, 5.6, -67.2, FW + 0.3, 8, 'pad', { pad: [40, 11, -2.4] }); // (lands on the volcano's west beach)
+}
+// Skull Rock (round 0, 69): its mouth a cave right through, the treasure inside (gone), eyes you can sit in, a stair up
+// the back of its head
+function skullRock(B0, D0, dx, dz, st) {
+  const { B, D, add, W, up } = isPiece(B0, D0, dx, dz, st);
+  const Z0 = 63, Z1 = 75, EY0 = 4, EY1 = 6, ED = 1.6;
+  for (const s of [-1, 1]) { // the two sides of the head, an eye in each
+    const x0 = s < 0 ? -8 : 2, x1 = s < 0 ? -2 : 8, e0 = s < 0 ? -6 : 3, e1 = s < 0 ? -3 : 6;
+    add(s < 0 ? -7 : 2, 0, Z0, s < 0 ? -2 : 7, EY0, Z1, 'skullrock'); add(x0, EY1, Z0, x1, SK, Z1, 'skullrock'); // (the jaw a bit narrower: cheekbones)
+    add(x0, EY0, Z0 + ED, x1, EY1, Z1, 'skullrock'); add(x0, EY0, Z0, e0, EY1, Z0 + ED, 'skullrock'); add(e1, EY0, Z0, x1, EY1, Z0 + ED, 'skullrock');
+    D.add(e0, EY0, Z0 + ED - 0.06, e1, EY1, Z0 + ED - 0.02, 'skulldark');
+  }
+  add(-2, 3, Z0, 2, 3.4, Z1, 'skullrock'); add(-2, 3.4, Z0 + 0.8, 2, 4.6, Z1, 'skullrock'); add(-2, 3.4, Z0, -0.8, 4.6, Z0 + 0.8, 'skullrock'); add(0.8, 3.4, Z0, 2, 4.6, Z0 + 0.8, 'skullrock'); add(-2, 4.6, Z0, 2, SK, Z1, 'skullrock');
+  D.add(-0.8, 3.4, Z0 + 0.74, 0.8, 4.6, Z0 + 0.78, 'skulldark');
+  for (let x = -1.85; x < 1.8; x += 0.46) D.add(x, 2.55, Z0 - 0.06, x + 0.34, 3, Z0, 'white'); // teeth
+  add(-1.95, 0, 69, -0.75, 0.8, 70.2, 'wood'); D.add(-1.9, 0.8, 69.05, -0.8, 0.95, 70.15, 'gold'); // the chest (empty)
+  for (const [x, z] of [[-0.4, 68.6], [0.3, 70.8], [-1.2, 71.2], [0.9, 69.4]]) D.box(x, 0.04, z, 0.3, 0.08, 0.3, 'gold'); // a few coins they dropped
+  D.add(-1.98, 1.0, 66, -1.94, 2.0, 68.6, 'adtreasure', { fit: 1 });
+  up({ ...flight(B, true, -7.8, 7.8, Z1, Z1 + 1.5, 0, SK, 'skullrock', 1), top: [7, SK, 74] }); // up the back of its head
+}
+
+// ------------------------------------------------------------ ISLANDS: Jank Atoll at sunset, under the sun with a face.
+// five islands on a warm sea. in the middle Volcano Island: Mount Kaboom (three terraces, two ways up each, a crater
+// with a throat that goes all the way down: get knocked in and that's that), the tiki village on its south beach,
+// jungle round the back. north the Wreck (the Soggy Biscuit, broken in two on its reef: the hold, the decks, the
+// quarterdeck, the crow's nest), east Lighthouse Point (a stair winds round the tower up to the gallery), west Fort
+// Splinter (walls to walk, cannons that fire you over the water), south Skull Rock (a cave through its mouth, the
+// treasure: already dug up). from the volcano a rope bridge north, the long pier east, a rope bridge west (or the
+// cannon), a sandbar south; round the outside sandbars wade from island to island. TDM: the fort vs the lighthouse
 function islands() {
-  const { boxes, box } = builder();
-  box(0, -2, 0, 64, 4, 64, 'grass');
-  box(0, -7, 0, 46, 6, 46, 'dirt');
-  box(0, -12.5, 0, 26, 5, 26, 'dirt');
-  box(0, -17, 0, 10, 4, 10, 'dirt');
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    box(22 * sx, 9, 22 * sz, 4, 18, 4, 'stone');
-    box(22 * sx, 18.5, 22 * sz, 9, 1, 9, 'wood');
-  }
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(6 * sx, 2.5, 6 * sz, 1, 5, 1, 'wood');
-  box(0, 5.5, 0, 14, 1, 14, 'missing');
-  box(0, 0.75, -6, 8, 1.5, 0.5, 'wood');
-  box(0, 0.75, 6, 8, 1.5, 0.5, 'wood');
-  box(2, 0.6, 1, 1.2, 1.2, 1.2, 'crate');
-  box(14, 1, 4, 2, 2, 2, 'crate');
-  box(15.6, 0.5, 6.2, 1, 1, 1, 'crate');
-  box(-13, 1, -9, 3, 2, 3, 'crate');
-  box(9, 1.5, -17, 7, 3, 1, 'stone');
-  box(-9, 1.5, 17, 1, 3, 7, 'stone');
-  box(-18, 1, 5, 2, 2, 2, 'crate');
-  box(19, 1, -12, 2, 2, 2, 'crate');
-  box(5, 0.5, 14, 1, 1, 1, 'crate');
-  box(-4, 0.5, -20, 1, 1, 1, 'crate');
-  box(0, 0.15, 27, 3.5, 0.3, 3.5, 'pad', { pad: [0, 26, 26] });
-  box(0, 0.15, -27, 3.5, 0.3, 3.5, 'pad', { pad: [0, 26, -26] });
-  box(27, 0.15, 0, 3.5, 0.3, 3.5, 'pad', { pad: [26, 26, 0] });
-  box(-27, 0.15, 0, 3.5, 0.3, 3.5, 'pad', { pad: [-26, 26, 0] });
-  box(0, 0.15, -13, 3, 0.3, 3, 'pad', { pad: [0, 44, 0] });
-  box(0, -2, -88, 36, 4, 36, 'grass');
-  box(0, -7, -88, 24, 6, 24, 'dirt');
-  box(-6, 4, -88, 1.5, 8, 1.5, 'stone');
-  box(6, 4, -88, 1.5, 8, 1.5, 'stone');
-  box(0, 8.5, -88, 14, 1, 1.5, 'stone');
-  box(8, 1, -80, 2, 2, 2, 'crate');
-  box(-9, 1, -95, 2, 2, 2, 'crate');
-  box(0, 0.15, -73, 3.5, 0.3, 3.5, 'pad', { pad: [0, 26, 26] });
-  box(0, -2, 88, 36, 4, 36, 'grass');
-  box(0, -7, 88, 24, 6, 24, 'dirt');
-  box(0, 0.25, 88, 12, 0.5, 12, 'stone');
-  box(0, 0.75, 88, 9, 0.5, 9, 'stone');
-  box(0, 1.25, 88, 6, 0.5, 6, 'stone');
-  box(0, 1.75, 88, 3, 0.5, 3, 'gold');
-  box(0, 0.15, 73, 3.5, 0.3, 3.5, 'pad', { pad: [0, 26, -26] });
-  box(0, -0.25, 51, 2, 0.5, 38, 'wood');
-  box(88, -2, 0, 36, 4, 36, 'grass');
-  box(88, -7, 0, 24, 6, 24, 'dirt');
-  box(88, 14, 0, 4, 28, 4, 'stone');
-  box(88, 28.5, 0, 7, 1, 7, 'wood');
-  box(80, 1, 9, 2, 2, 2, 'crate');
-  box(73, 0.15, 0, 3.5, 0.3, 3.5, 'pad', { pad: [-26, 26, 0] });
-  box(-88, -2, 0, 36, 4, 36, 'grass');
-  box(-88, -7, 0, 24, 6, 24, 'dirt');
-  box(-88, 6, 0, 2, 12, 6, 'missing');
-  box(-80, 1, -9, 2, 2, 2, 'crate');
-  box(-73, 0.15, 0, 3.5, 0.3, 3.5, 'pad', { pad: [26, 26, 0] });
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
-    box(Math.cos(a) * 48, 30 + (i % 2) * 9, Math.sin(a) * 48, 4, 2, 4, i % 2 ? 'toypink' : 'toyteal');
-  }
-  box(0, 42, 0, 12, 1.5, 12, 'missing');
-  box(0, 70, 0, 5, 2, 5, 'gold');
-  box(60, 55, -60, 6, 2, 6, 'toypink');
-  box(-60, 55, 60, 6, 2, 6, 'toypink');
-  const D = builder(); D.add(140, 60, -260, 200, 120, -200, 'toyface', { fit: 1 }); // the sun has a face now
-  // the islands are sea stacks: rock columns rising out of the ocean, surf round their feet (render-only)
-  const stack = (x, z, w, top) => { D.box(x, (top - 64) / 2, z, w, top + 64, w, 'rock'); D.box(x + w * 0.1, -56.5, z - w * 0.08, w * 1.35, 15, w * 1.3, 'rock'); D.box(x, -61.9, z, w * 1.5, 0.3, w * 1.45, 'white'); };
-  stack(0, 0, 22, -19); stack(0, -88, 18, -10); stack(0, 88, 18, -10); stack(88, 0, 18, -10); stack(-88, 0, 18, -10);
-  for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2 + 0.3, d = 130 + (i % 3) * 40; D.box(Math.cos(a) * d, -50 + (i % 2) * 8, Math.sin(a) * d, 8 + (i % 3) * 4, 28 + (i % 2) * 16, 8 + (i % 2) * 5, 'rock'); } // lonely rocks offshore
-  return { name: 'Islands', size: 'large', boxes, deco: D.boxes, killY: -65, floorY: -62, sky: SKY_SUNSET, fogNear: 90, fogFar: 330,
-    spawns: [[10, 0.1, 10], [-10, 0.1, -10], [10, 0.1, -10], [-10, 0.1, 10], [8, 0.1, -88], [8, 0.1, 82], [88, 0.1, 8], [-88, 0.1, 8]] };
+  const B = builder(), D = builder(), r = rng(4242), add = B.add, W = B.local(0, 0, 0), Dw = D.local(0, 0, 0);
+  const st = []; // the stair flights, for the walk graph
+  // ---- the sea and the sun
+  D.add(-420, ISL.WY - 0.1, -420, 420, ISL.WY, 420, 'sea');
+  D.add(140, 60, -260, 200, 120, -200, 'toyface', { fit: 1 }); // the sun has a face (lighting.js aims the light from it)
+
+  // ---- C, Volcano Island (x -28..28, z -24..24): Mount Kaboom, the tiki village on the south beach, jungle round the back
+  isle(B, D, -28, -24, 28, 24, { hole: [-2, -5, 2, -1] });
+  slab(Dw, -25.5, -21.5, 25.5, 14, 0, 0.03, 'grass', [-15, -16, 15, 10]);
+  volcano(B, D, 0, 0, st);
+  tikiBar(B, D, 0, 0, r); bigTiki(B, D, 0, 0);
+  hut(B, D, 7.5, 18, -1); hut(B, D, 18.5, 17.2, -1);
+  [[-4.5, 21.6], [-2, 21.6], [10.5, 22.2], [13, 22.2], [21.5, 22]].forEach(([x, z], i) => lounger(B, D, x, z, ['toyteal', 'toypink', 'toyyellow'][i % 3]));
+  surfSchool(B, D, 0, 0);
+  // the cannon on the west beach (the human cannonball: it fires you at the fort)
+  cannon(B, D, -24.2, 9, 0, -1, 0); add(-27.3, 0, 7.7, -25.5, 0.3, 10.3, 'pad', { pad: [-34, 15, -7.4] }); // (lands in front of the fort's gate)
+  D.add(-22.4, 0, 11.4, -22.28, 2.6, 11.52, 'wood'); D.add(-24.6, 1.6, 11.52, -20.4, 2.6, 11.6, 'adcannon', { fit: 1 });
+  // palms all round the beach, the jungle round the back (ferns, bushes you can hide in, boulders)
+  for (const [x, z] of [[-25, 22], [-19, 22.5], [-5.5, 23], [4, 23], [16, 23], [25, 21], [25, 12], [-25.5, 13], [-26, 2], [26, 2], [26, -8], [-26, -9], [-25, -21], [-15, -22], [-6, -22.5], [12, -22], [24, -20], [19, -18]]) palm(W, x, z, 5.5 + r() * 3.5, r);
+  for (const [x, z] of [[-21, -18], [-9, -19.5], [3, -19], [15, -19.6], [21, -13], [-22, -4], [21, 0], [-19, 6]]) { const s = 0.8 + r() * 0.5; add(x - s, 0, z - s, x + s, s * 1.5, z + s, 'bush'); }
+  for (let i = 0; i < 26; i++) { const x = -25 + r() * 50, z = -23 + r() * 8; if (Math.abs(x - 6) > 2.5) D.box(x, 0.4, z, 1.2 + r(), 0.8, 1.2 + r(), 'fern'); }
+  for (const [x, z, s] of [[-12, -20, 1.4], [8, -21, 1.2], [23, -16, 1.6], [-24, -15, 1.3]]) { add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'basalt'); add(x - s * 0.6, s * 1.1, z - s * 0.5, x + s * 0.5, s * 1.5, z + s * 0.6, 'basalt'); }
+
+  // ---- the ways off it: the rope bridge north (a rock to rest on halfway), the pier east (the bait shack halfway),
+  // the rope bridge west (or the cannon), the sandbar south
+  isle(B, D, 3, -44, 9, -38, { shelf: 1.5 }); palm(W, 8, -39.5, 5.5, r); add(3.4, 0, -43.6, 4.6, 1.0, -42.4, 'basalt');
+  ropeWalk(B, D, false, -58, -44, 6, 2.6, [-53, -45.5]); ropeWalk(B, D, false, -38, -24, 6, 2.6, [-36.5, -29]);
+  add(28, -0.3, 4.5, 62, 0, 7.5, 'wood'); add(42, -0.3, 2, 50, 0, 4.5, 'wood'); add(42, -0.3, 7.5, 50, 0, 10.5, 'wood'); // the pier, wider round the shack
+  for (let x = 28.4; x < 62; x += 0.6) D.add(x, 0, 4.5, x + 0.5, 0.025, 7.5, 'planks');
+  for (let x = 30; x < 62; x += 4) for (const z of [4.6, 7.4]) D.box(x, -1.3, z, 0.3, 2.2, 0.3, 'wood');
+  for (const x of [32, 38, 54, 60]) for (const z of [4.75, 7.25]) B.box(x, 0.3, z, 0.36, 0.6, 0.36, 'tire'); // bollards
+  for (const [x0, x1] of [[33, 42], [50, 57]]) for (const z of [4.56, 7.44]) { add(x0, 0.9, z - 0.06, x1, 1.0, z + 0.06, 'wood'); for (let x = x0 + 0.1; x < x1; x += 2) D.add(x, 0, z - 0.05, x + 0.1, 0.9, z + 0.05, 'wood'); } // its rails
+  baitShack(B, D, 0, 0);
+  isle(B, D, -48, -4, -42, 2, { shelf: 1.5 }); palm(W, -44, 1, 6, r); add(-47.4, 0, -3.8, -46.2, 1.1, -2.7, 'basalt');
+  ropeWalk(B, D, true, -62, -48, -1, 2.6, [-57, -49.5]); ropeWalk(B, D, true, -42, -28, -1, 2.6, [-40.5, -33]);
+  sandbar(B, -6, 26.5, -6, 55.5); add(-8.2, -0.6, 36.5, -6.6, 0.6, 38, 'basalt'); add(-5, -0.6, 45, -3.4, 0.8, 46.8, 'basalt');
+
+  // ---- N, the Wreck (x -22..22, z -80..-58): the Soggy Biscuit on its reef, rocks, two palms, a rowboat
+  isle(B, D, -22, -80, 22, -58);
+  slab(Dw, -19.5, -77.5, 19.5, -60.5, 0, 0.03, 'wetsand', [-18, -73.5, 19.5, -64.5]);
+  wreck(B, D, 0, 0, st);
+  for (const [x, z, s] of [[-18, -61, 1.2], [17, -61.5, 1.0], [-19, -78, 1.4], [19, -78, 1.1]]) { add(x - s, 0, z - s * 0.8, x + s, s * 1.2, z + s * 0.8, 'rockf'); }
+  palm(W, -20, -63.5, 6.5, r); palm(W, 20.5, -66, 5.5, r);
+  D.add(-20.5, 0, -76, -17.5, 0.6, -74.6, 'boatwood');
+
+  // ---- E, Lighthouse Point (x 62..92, z -18..18): the tower (a stair round it to the gallery), the keeper's cottage, rocks
+  isle(B, D, 62, -18, 92, 18);
+  slab(Dw, 64.5, -15.5, 89.5, 15.5, 0, 0.03, 'grass', [76, -12, 88, 0]);
+  lighthouse(B, D, 0, 0, st); cottage(B, D, 0, 0);
+  for (const [x, z, s] of [[89, -15, 1.6], [90, 6, 1.3], [88.5, 14.5, 1.5], [65, -15.5, 1.2], [73, -14, 1.0], [86, 9, 0.9]]) { add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf'); add(x - s * 0.6, s * 1.1, z - s * 0.5, x + s * 0.5, s * 1.5, z + s * 0.6, 'rockf'); }
+  palm(W, 65, 14.5, 6, r); palm(W, 72, -4.5, 7, r); palm(W, 90, 2.5, 5.5, r);
+  for (const [x, z] of [[64.5, 1.5], [65.6, 1.2], [64.8, 10.5]]) B.box(x, 0.4, z, 0.8, 0.8, 0.8, 'crate');
+
+  // ---- W, Fort Splinter (x -92..-62, z -18..18): the fort (the cannonball on its east wall), palms, rocks, a rowboat
+  isle(B, D, -92, -18, -62, 18);
+  slab(Dw, -89.5, -15.5, -64.5, 15.5, 0, 0.03, 'grass', [-88, -14, -66, 14]);
+  fort(B, D, 0, 0, st, { pad: true });
+  for (const [x, z] of [[-89, -16], [-80, -16.2], [-70, -15.6], [-64, -14], [-89, 16.2], [-78, 16.4], [-66, 15.5], [-90, -6], [-90, 7]]) palm(W, x, z, 5.5 + r() * 3, r);
+  for (const [x, z, s] of [[-65, -8, 1.2], [-64.5, 9, 1.4], [-90.5, 1.5, 1.0]]) { add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf'); }
+  D.add(-93.6, -0.2, -2.6, -92.2, 0.4, 0.6, 'boatwood');
+
+  // ---- S, Skull Rock (x -18..18, z 58..80): the skull, palms, rocks, a rowboat
+  isle(B, D, -18, 58, 18, 80);
+  slab(Dw, -15.5, 60.5, 15.5, 77.5, 0, 0.03, 'grass', [-9, 62, 9, 77]);
+  skullRock(B, D, 0, 0, st);
+  for (const [x, z] of [[-16, 61], [-12, 78], [-5, 79], [11, 78.4], [16, 78], [16.5, 62.5], [-16.5, 70]]) palm(W, x, z, 5.5 + r() * 3, r);
+  for (const [x, z, s] of [[-12, 63.5, 1.1], [12.5, 62.5, 1.3], [-13, 74, 1.0], [12, 73.5, 1.2]]) add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf');
+  D.add(9, -0.2, 81.2, 12.6, 0.4, 82.6, 'boatwood');
+
+  // ---- the sandbars round the outside, each with a palm islet halfway
+  sandbar(B, -59.5, -16, -18, -55.5); sandbar(B, 18, -55.5, 59.5, -16); sandbar(B, 59.5, 16, 15, 55.5); sandbar(B, -15, 55.5, -59.5, 16);
+  for (const [x, z] of [[-40, -36], [40, -36], [37.5, 36], [-37.5, 36]]) { isle(B, D, x - 3, z - 3, x + 3, z + 3, { shelf: 1 }); palm(W, x + 1.6, z - 1.4, 5 + r() * 2, r); add(x - 2.6, 0, z + 1.2, x - 1.4, 0.9, z + 2.4, 'rockf'); }
+  for (const [x, z] of [[-50, -26.5], [-28, -46], [50, -26.5], [28, -46], [49, 26], [26.5, 46], [-49, 26], [-26.5, 46]]) add(x - 0.8, ISL.SB, z - 0.7, x + 0.8, 0.9, z + 0.7, 'rockf');
+
+  // ---- spawns: the fort's courtyard and beaches vs the lighthouse's point (TDM); everywhere for the rest
+  const att = [[-78, 0.1, -5], [-76, 0.1, 0], [-78, 0.1, 6.5], [-82, 0.1, 2.5], [-72, 0.1, -1.5], [-89.5, 0.1, -8], [-89.5, 0.1, 8]];
+  const def = [[76, 0.1, -12], [70, 0.1, -9], [66, 0.1, 2.5], [76.5, 0.1, 13], [83, 0.1, 6], [88, 0.1, -9.5], [70.5, 0.1, 14]];
+  const spawns = [...att.slice(0, 3), ...def.slice(0, 3), [-10, 0.1, 22.5], [6, 0.1, 13], [-22, 0.1, -11], [20, 0.1, -10], [0, 9.1, 0.7], [-6, 3.1, -14],
+    [-6, 0.1, -67], [12, 0.1, -61], [-12, MD + 0.1, -69], [6, 0.1, -70], [-11, 0.1, 61], [11, 0.1, 76.5], [0, SK + 0.1, 70], [-40, 0.1, -38], [40, 0.1, 37]];
+  let graph = null;
+  const map = { name: 'Islands', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -16, floorY: -1.5, sky: SKY_SUNSET, fogNear: 110, fogFar: 380,
+    spawns, teamSpawns: { att, def }, edgeGuard: true, sea: true, // (sea: falls are 'into the sea' in the kill feed)
+    get graph() { return graph || (graph = buildNav(B.boxes, { x0: -100, z0: -90, n: 196, cell: 1, levels: [ISL.SB, 3, MD, 6, QD, 9, 13.5, 18], band: 0.6, stairs: st })); },
+  };
+  return map;
+}
+
+// ------------------------------------------------------------ ISLANDS S&D: the Treasure Tour (Plant & Defuse). the tour
+// group (attackers) comes ashore at Skull Rock (south), the pirates (defenders) hold Fort Splinter (north). in the
+// middle Volcano Island: Mount Kaboom stands between the two. the sites sit either side of the fort: B, Lighthouse Point
+// (west, a rope bridge from the fort's west gate: the tower's foot, the keeper's cottage, lobster pots); A, the Wreck
+// (east, over the reef from its east gate: the Soggy Biscuit, plant in the hold). the tour's ways in: up the middle, round
+// the volcano and over a boardwalk to the tiki bar's islet (west) or the beach huts' (east), or a sandbar out to either;
+// then over the reef (or its boardwalk) onto the site. the fort's walls stand between its courtyard and the middle
+function islandsSD() {
+  const B = builder(), D = builder(), r = rng(4343), add = B.add, W = B.local(0, 0, 0), Dw = D.local(0, 0, 0);
+  const st = [];
+  D.add(-420, ISL.WY - 0.1, -420, 420, ISL.WY, 420, 'sea');
+  D.add(140, 60, -260, 200, 120, -200, 'toyface', { fit: 1 });
+
+  // ---- N, Fort Splinter (x -18..18, z -82..-46): the pirates' spawn in its courtyard, a gate east and west to the bridges
+  isle(B, D, -18, -82, 18, -46, { shelf: 3 }); // (a narrow shelf: 10 m of deep water between it and the middle's)
+  slab(Dw, -15.5, -79.5, 15.5, -48.5, 0, 0.03, 'grass', [-11, -78, 11, -50]);
+  fort(B, D, 77, -64, st, { westGate: true, walk: false });
+  for (const [x, z] of [[-16, -80], [16, -48.5], [-16, -48.5], [16.2, -80]]) palm(W, x, z, 5.5 + r() * 2, r);
+  for (const [x, z, s] of [[-15.5, -58, 1.1], [15.5, -70, 1.2]]) add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf'); // cover outside the gates
+
+  // ---- C, Volcano Island (x -21..21, z -28..6): Mount Kaboom between the spawns
+  const T = volcano(B, D, 0, -10, st);
+  isle(B, D, -21, -28, 21, 6, { hole: T });
+  slab(Dw, -19, -26.5, 19, 4.5, 0, 0.03, 'grass', [-15, -26, 15, 0]);
+  for (const [x, z] of [[-18, -26], [18, -26.5], [-18.5, 4], [18, 4.5]]) palm(W, x, z, 5.5 + r() * 3, r);
+  for (const [x, z] of [[-18, -3], [18, -2], [18.2, -18], [-18.5, -23]]) { const s = 0.8 + r() * 0.4; add(x - s, 0, z - s, x + s, s * 1.5, z + s, 'bush'); }
+  for (const [x, z, s] of [[-9, 4, 1.1], [9, 3.5, 1.2]]) add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'basalt');
+
+  // ---- S, Skull Rock (x -16..16, z 20..50): the tour group's beach, their boats pulled up on it
+  isle(B, D, -16, 20, 16, 50);
+  slab(Dw, -13.5, 22.5, 13.5, 47.5, 0, 0.03, 'grass', [-9, 29, 9, 44]);
+  skullRock(B, D, 0, -33, st);
+  for (const [x, z] of [[-14, 22], [14, 23], [-14, 36], [14, 37], [-12.5, 49], [12.5, 49]]) palm(W, x, z, 5.5 + r() * 3, r);
+  for (const [x, z, s] of [[-12.5, 28, 1.1], [12.5, 30, 1.2]]) add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf');
+  D.add(-4.5, -0.2, 51.4, -1.5, 0.4, 52.8, 'boatwood'); D.add(2, -0.2, 51.8, 5, 0.4, 53.2, 'boatwood');
+
+  // ---- W, the tiki bar's islet (x -60..-36, z -36..-12); E, the beach huts' (x 36..60, z -36..-12)
+  isle(B, D, -60, -36, -36, -12);
+  tikiBar(B, D, -36, -42, r); bigTiki(B, D, -36, -42);
+  lounger(B, D, -50, -15, 'toyteal'); lounger(B, D, -46, -15, 'toypink');
+  for (const [x, z] of [[-58.5, -14], [-37, -13.5], [-59, -33.5], [-37.5, -24.5]]) palm(W, x, z, 5.5 + r() * 3, r);
+  isle(B, D, 36, -36, 60, -12);
+  hut(B, D, 44.5, -27, 1); hut(B, D, 53, -19, -1);
+  lounger(B, D, 57, -30, 'toyyellow'); lounger(B, D, 57.6, -25.6, 'toyteal');
+  surfSchool(B, D, 16, -29);
+  for (const [x, z] of [[58.5, -14], [37.5, -13.5], [58.8, -34], [37.5, -29]]) palm(W, x, z, 5.5 + r() * 3, r);
+
+  // ---- B, Lighthouse Point (x -62..-34, z -82..-48): the tower's foot (no way up: the site's big cover), the cottage,
+  // lobster pots, an upturned boat, rocks
+  isle(B, D, -62, -82, -34, -48);
+  slab(Dw, -59.5, -79.5, -36.5, -50.5, 0, 0.03, 'grass', [-47, -74, -39, -66]);
+  lighthouse(B, D, -125, -64, st, { climb: false }); cottage(B, D, -125, -64);
+  for (const [x, z] of [[-50.4, -75], [-49.4, -75.6], [-50, -74], [-38.5, -60], [-37.6, -59], [-55, -63]]) B.box(x, 0.4, z, 0.8, 0.8, 0.8, 'crate');
+  add(-47.5, 0, -58.6, -43.5, 0.8, -57, 'boatwood'); // an upturned rowboat
+  for (const [x, z, s] of [[-59.5, -79.5, 1.3], [-36.5, -79.5, 1.2], [-59.5, -62, 1.0]]) add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf');
+  palm(W, -60, -50.5, 6, r); palm(W, -36.5, -50.5, 5.5, r);
+  siteBoard(D, -43, 1.8, -66.92, 'x', 'siteb', 2.6); siteBoard(D, -54, 0.9, -52.3, 'x', 'siteb', 1.6);
+
+  // ---- A, the Wreck (x 28..70, z -82..-50): the Soggy Biscuit on its reef, crates, rocks
+  isle(B, D, 28, -82, 70, -50);
+  slab(Dw, 29.5, -79.5, 68, -52.5, 0, 0.03, 'wetsand', [30, -70.5, 67.6, -61.5]);
+  wreck(B, D, 48, 3, st);
+  for (const [x, z] of [[34, -56], [35, -55.2], [62, -77], [61, -77.8], [36.5, -77]]) B.box(x, 0.45, z, 0.9, 0.9, 0.9, 'crate');
+  for (const [x, z, s] of [[31, -81, 1.2], [68, -52.5, 1.1], [67.5, -80, 1.2]]) add(x - s, 0, z - s * 0.8, x + s, s * 1.2, z + s * 0.8, 'rockf');
+  palm(W, 30, -52.5, 6, r);
+  siteBoard(D, 38, 2.0, -61.42, 'x', 'sitea', 2); siteBoard(D, 54, 2.0, -61.42, 'x', 'sitea', 2);
+
+  // ---- the links: mid (S to C), the sandbars (S to W / E), the boardwalks C to W / E, W to B, E to A, and the pirates'
+  // bridge to B. the reef joins the islands round the sites and the middle (the shallows between them used to be a
+  // couple of metres of deep water: a jump for a player, a grave for anyone knocked into it); the deep water left is the
+  // moat round the fort, the channel under the attackers' bridge and the open sea
+  ropeWalk(B, D, false, 6, 20, -4, 2.6, [11, 15]);
+  sandbar(B, -12.5, 26, -43, -10.5, 20); sandbar(B, 12.5, 26, 43, -10.5, 20); // (wide: they fill the bays between the middle and the islets)
+  ropeWalk(B, D, true, -36, -21, -13, 2.6, [0, 0]); ropeWalk(B, D, true, 21, 36, -13, 2.6, [0, 0]);
+  reef(B, -32, -33, -25, -3); reef(B, 25, -33, 32, -3); // C to W / E
+  ropeWalk(B, D, false, -48, -36, -54, 2.6, [0, 0]); reef(B, -65, -44, -31, -40); // W to B
+  ropeWalk(B, D, false, -50, -36, 54, 2.6, [0, 0]); reef(B, 31, -46, 65, -40); // E to A
+  ropeWalk(B, D, true, -34, -18, -64, 2.6, [-29, -21]); ropeWalk(B, D, true, 18, 28, -78, 2.6, [0, 0]); reef(B, 20.5, -85, 23.5, -45); // the fort to A
+  for (const [x, z] of [[-29, 12], [29, 12], [-39, -1.5], [39, -1.5]]) add(x - 0.8, ISL.SB, z - 0.7, x + 0.8, 0.9, z + 0.7, 'rockf');
+
+  // ---- spawns, the ways in (for the bots), the sites
+  const att = [[-6, 0.1, 46], [0, 0.1, 47], [6, 0.1, 46], [-11, 0.1, 44.5], [11, 0.1, 44.5], [-3, 0.1, 48.5], [3, 0.1, 48.5]];
+  const def = [[-4, 0.1, -60], [3, 0.1, -64], [0, 0.1, -71], [5, 0.1, -60.5], [-1.5, 0.1, -56], [6, 0.1, -66.5], [-5.5, 0.1, -58]];
+  const spawns = [...att.slice(0, 3), ...def.slice(0, 3), [6, 0.1, 2.5], [-48, 0.1, -16], [48, 0.1, -16], [-48, 0.1, -62], [48, 0.1, -56]];
+  let graph = null;
+  const map = { name: 'Islands', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -16, floorY: -1.5, sky: SKY_SUNSET, fogNear: 110, fogFar: 380,
+    spawns, teamSpawns: { att, def }, edgeGuard: true, ceiling: 9.5, sea: true,
+    nav: {
+      B: [
+        [[0, 46], [-4, 22], [-4, 5], [-17, 3], [-19, -5], [-19, -13], [-22, -13], [-36, -13], [-40, -20], [-40, -30], [-40, -38], [-40, -44], [-42, -54]], // mid, the tiki bar's islet, the sandbar
+        [[-4, 46], [-4, 22], [-4, 5], [-17, 3], [-19, -13], [-36, -13], [-42, -16], [-41, -25], [-48, -31], [-54, -34], [-54, -40], [-54, -47], [-52, -54]], // mid, the islet, the rope bridge
+        [[-6, 46], [-12, 38], [-17.5, 26], [-26, 15], [-34, 5], [-41, -3], [-48, -10.5], [-46, -16], [-41, -20], [-41, -25], [-48, -31], [-54, -34], [-54, -40], [-54, -47], [-52, -54]], // the sandbar out west, the rope bridge
+        [[0, -64], [-9, -64], [-18, -64], [-26, -64], [-34, -64], [-38, -64], [-42, -62]], // the pirates: the west gate, the bridge
+      ],
+      A: [
+        [[0, 46], [-4, 22], [-4, 5], [10, 3], [17, 3], [19, -5], [19, -13], [22, -13], [36, -13], [40, -20], [40, -30], [40, -38], [40, -44], [42, -55]],
+        [[4, 46], [-4, 22], [-4, 5], [17, 3], [19, -13], [36, -13], [42, -16], [48, -23], [54, -31], [54, -37], [54, -44], [54, -50], [52, -56]],
+        [[6, 46], [12, 38], [17.5, 26], [26, 15], [34, 5], [41, -3], [48, -10.5], [48, -15], [48, -23], [54, -31], [54, -37], [54, -44], [54, -50], [52, -56]],
+        [[0, -64], [9, -64], [13, -70], [16, -77], [22, -78], [28, -78], [34, -77], [40, -76]], // the pirates: the east gate, round the bastion, the bridge behind the wreck
+      ],
+    },
+    sites: [{ id: 'A', min: [32, 0, -80], max: [66, 0, -54] }, { id: 'B', min: [-60, 0, -80], max: [-36, 0, -50] }],
+    get graph() { return graph || (graph = buildNav(B.boxes, { x0: -67, z0: -88, n: 145, cell: 1, levels: [ISL.SB, 3, MD, 6, QD, 9], band: 0.6, stairs: st })); },
+  };
+  return map;
 }
 
 // ------------------------------------------------------------ the skyline kit (Skyline, Skyline S&D)
@@ -4077,7 +4473,7 @@ function deadmall() {
 
 export const MAPS = {
   crate: crate(), platform: platform(), rooftop: rooftop(), rooftop_sd: rooftopSD(), suburb: suburb(), suburb_sd: suburbSD(), warehouse: warehouse(), warehouse_sd: warehouseSD(),
-  desert: desert(), desert_sd: desertSD(), islands: islands(), skyline: skyline(), skyline_sd: skylineSD(), bazaar: bazaar(), bazaar_sd: bazaarSD(), range: range(), backrooms: backrooms(), forest: forest(),
+  desert: desert(), desert_sd: desertSD(), islands: islands(), islands_sd: islandsSD(), skyline: skyline(), skyline_sd: skylineSD(), bazaar: bazaar(), bazaar_sd: bazaarSD(), range: range(), backrooms: backrooms(), forest: forest(),
   deadmall: deadmall(),
 };
 // maps with an S&D version: '<id>_sd' is its own layout on the bomb-map rules, the one Plant & Defuse plays; '<id>' is
