@@ -420,9 +420,19 @@ export function initWorld(canvas) {
 
 export function setJank(i) { jank = JANK[i] || JANK[1]; resize(); setLightPreset(JANK[i] ? i : 1); }
 
+// OVERDUE: a streamed map (MAPS[id].stream, the story's city) runs the city streamer instead of one built mesh.
+// loaded on demand, so maps without `stream` (all of PvP) never fetch it
+let city = null, cityGen = 0;
+function cityFor(def) {
+  const gen = ++cityGen;
+  if (!def || !def.stream) { if (city) { city.stopCity(); city = null; } return; }
+  import('./city/ingame.js').then((m) => { if (gen !== cityGen) return; city = m; m.startCity(def, { sky: (s) => paintSky(s) }); }).catch((e) => console.error('city failed to load', e));
+}
+
 // swap the whole level (called when the server says the map changed)
 export function loadMap(id) {
   setMap(id);
+  cityFor(MAPS[MAP.id]);
   marbles.clear();
   resetGrid(BOXES);
   buildMap(G.scene);
@@ -475,6 +485,7 @@ export function updateWorld(dt) {
   sun.rotation.y += dt * 0.3;
   sun.rotation.x += dt * 0.17;
   cullChunks();
+  if (city) city.updateCity(dt);
   if (MAT) updateBackrooms(dt, [MAT.ceilflick.mat, MAT.ceilflick2.mat, MAT.ceilflick3.mat]);
   updateForest(dt);
   updateShredPit(dt);
