@@ -10,13 +10,15 @@ _You win a training sim, the camera pulls out through the Machine's glass, and f
 **Who:** CHANGE, DALE, AUNTIE SPREADSHEET, LUMPS, WEE GORDO, DUMPLING  
 **Giver:** — · **Needs:** —
 
+**Mechanic hook:** the tutorial is a grapple lesson in disguise: Dumpling's tour is swing onto the Wok Roofs, ride a washing line back, and land somewhere Dumpling can score out of ten _(uses: the grapple, washing-line ziplines, bhop and infinite momentum)_
+
 **Beats**
 - A normal-looking PvP match on the Suburb map. The player wins. TRAINING COMPLETE. The bots stand and stare.
 - C1: the pull-back through the glass, up the hill to the Spire and back down. Dale presses the button. You drop into the tray.
 - First words with Dale and Auntie. Auntie sees the barcode on your neck and drops her crayon; she covers it.
 - Lumps and Wee Gordo arrive. Gordo scans the barcode with a stolen ☺ CORP scanner: NO RECORD. He doesn't trust you. Lumps does.
 - The Bottom names you CHANGE.
-- Tutorial with Dumpling: grab a weapon from the Lost Property bins, shoot a dead vending machine for loot, ride a washing line across the Wok Roofs.
+- Tutorial with Dumpling: grab a weapon from the Lost Property bins, shoot a dead vending machine for loot, grapple onto the Wok Roofs (scored out of ten) and ride a washing line back.
 - Dinner. Auntie tells you how the world ended (P1b). You go to sleep in a box marked RETURNS.
 
 **The mystery**
@@ -31,9 +33,10 @@ _You win a training sim, the camera pulls out through the Machine's glass, and f
 4. talk to the old man
 5. grab something from the lost property bins
 6. shoot the dead vending machine
-7. ride the washing line to the wok roofs
-8. dinner at the lost & found
-9. sleep
+7. grapple onto the wok roofs (dumpling is scoring you)
+8. ride a washing line back to the lost & found
+9. dinner at the lost & found
+10. sleep
 
 #### Scene: `c1_please_take_your_item` (cinematic, 95 s, music: overdue_main_theme)
 - `  0` _It starts as a normal JANKFIRE match on the Suburb map: the real HUD, the kill feed, the timer at 0:04. The player gets the last kill._
@@ -171,6 +174,19 @@ _You win a training sim, the camera pulls out through the Machine's glass, and f
   - **DUMPLING:** my dad's hat's in there. he's not lost. he's at work. he'll come and get it.
   - _Dumpling's ears go flat for a second, then pop up.* come ON._
 
+#### Talk: `dumpling_score` (with DUMPLING)
+- **[start]**
+  - **DUMPLING:** grapple the wok on that roof. no, the wok. the WOK. the round thing.
+  - **DUMPLING:** let go when you're going up, not when you're going down. going down is how mr. abara broke his everything.
+  - _you land, roughly, on a roof covered in woks_
+  - **DUMPLING:** ...four out of ten. you swung like a fridge. lumps swings like a fridge and he IS a fridge.
+  - ➤ _"let me go again."_ → again
+  - ➤ _"four?"_ → four
+- **[again]**
+  - **DUMPLING:** you can't go again. it's a tour. tours go forwards. ride the washing line back. don't drop a sock.
+- **[four]**
+  - **DUMPLING:** four's good. i gave dale a one. he grappled a pigeon.
+
 #### Talk: `dinner` (with AUNTIE SPREADSHEET)
 - **[start]**
   - _A long table in the depot. Soup in mismatched bowls. Lumps eats four. Gordo reads a binder while he eats. Dale doesn't come; he never leaves the Machine at night._
@@ -225,6 +241,8 @@ _The Bottom trades soup to Gristle & Sons for medicine. Steal a car, cross the e
 **Where:** Sharon's Soup Kitchen (THE BOTTOM), The Ring Road (THE COMMUTE), The Gut Border (THE GUT)  
 **Who:** BIG SAUCE SHARON, LUMPS, WEE GORDO, EMPLOYEE OF THE MONTH  
 **Giver:** BIG SAUCE SHARON · **Needs:** m01_return_to_sender
+
+**Mechanic hook:** a slosh meter on the soup pot turns every jump, drift and car-roof landing into a decision; the interns' 'business cards' are frags _(uses: cars and traffic, frags and smoke, rocket and shotgun jumps)_
 
 **Beats**
 - P2 briefing: Sharon, the pot; Lumps, the key; Gordo, 'he means steal a car'.
@@ -371,6 +389,8 @@ _It's Sunday. Lumps visits his mum in the Gut, and the Choir tells you where Gri
 **Who:** LUMPS, DOT, SISTER AGENDA, THE STOMACH BISHOP, MINA  
 **Giver:** LUMPS · **Needs:** m02_sauce_run
 
+**Mechanic hook:** the Gut teaches flow: slide on Peristalsis Avenue's squeeze, swing the rib arches, bounce the lungs, and a long swing fills HYPE for the first time _(uses: slide, the grapple, hype)_
+
 **Beats**
 - C3: driving into the Gut. Skin streets, rib arches, the Choir turning. A woman in the wall says 'ambrose?'
 - On foot: peristalsis streets carry you, lungs bounce you. Lumps knows the way and hates it.
@@ -509,6 +529,8 @@ _Mr. Overtime comes down the Long Stairs to collect two hundred and forty-four q
 **Who:** MR. OVERTIME, LUMPS, AUNTIE SPREADSHEET, MINA, DUMPLING, WEE GORDO  
 **Giver:** AUNTIE SPREADSHEET · **Needs:** m03_somethings_digesting
 
+**Mechanic hook:** Overtime's missed staples stay in the walls as grapple points; the collectors' water tank soaks him (wet clockwork runs slow); Lumps throws you the Redline when you're low _(uses: the grapple, soak and shock, the redline)_
+
 **Beats**
 - C4: sunset, the clocks stop, the brogues on the stairs. The collectors load people into a Gristle & Sons truck: Dumpling's dad, others, and an old woman with a braid who looks at you and says 'rory?'.
 - Lumps stands in front of the truck. Overtime staples his arm to it.
@@ -614,6 +636,8 @@ _A Meat Mechanic installs the piece of Overtime's heart in your chest. Implants 
 **Where:** Bev's Clinic (THE GUT), The Lost & Found (THE BOTTOM)  
 **Who:** AUNTIE SPREADSHEET, BEV, DALE, MR. OVERTIME  
 **Giver:** DALE · **Needs:** m04_clocking_in
+
+**Mechanic hook:** the first install: the clinic chair is the implant UI, and the Punch-Clock's tick is your first downside _(uses: bio-implants)_
 
 **Beats**
 - Auntie takes you to Bev's clinic on the Gut border.

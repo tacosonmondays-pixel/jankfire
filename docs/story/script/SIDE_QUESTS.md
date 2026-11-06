@@ -11,6 +11,8 @@ _Mr. Deposit has taken a deposit off everyone who's slept near his rubble pile f
 **Who:** BIG SAUCE SHARON, MR. DEPOSIT, AUNTIE SPREADSHEET  
 **Giver:** BIG SAUCE SHARON · **Needs:** m02_sauce_run
 
+**Mechanic hook:** burn the armchairs off with the Cigarette, ride the washing lines round the shrinking pile, and post a grenade in the deposit box _(uses: fire (the cigarette, flame arrows), washing-line ziplines, frags and smoke)_
+
 **The twist:** He can't stand up: the armchairs grew into him. The deposits are all he has. And his deed is the one Vacancy will staple to the Bottom's sale in Act IV.
 
 **Beats**
@@ -52,6 +54,8 @@ _A man by the Down Escalator sells one shoe for 10,000 coupons. He doesn't want 
 **Where:** The Down Escalator (THE BOTTOM), Tooth Market (THE GUT), Peristalsis Avenue (THE GUT)  
 **Who:** ONE SHOE GUY  
 **Giver:** ONE SHOE GUY · **Needs:** m03_somethings_digesting
+
+**Mechanic hook:** learn the lasso on the only thing small and fast enough: a living shoe surfing peristalsis _(uses: the lasso, slide)_
 
 **The twist:** The other shoe is in the Gut, and it's alive now: it walks, it has a tongue, and it doesn't want to go back. And Clement was born in a shoe shop on the first night of the Long Dark; the shoes were his dad's.
 
@@ -96,6 +100,8 @@ _Help Lumps train by carrying fridges up the Long Stairs. Drop one and it rolls 
 **Who:** LUMPS, DUMPLING  
 **Giver:** LUMPS · **Needs:** m02_sauce_run
 
+**Mechanic hook:** fridge physics up 1,000 steps, and Lumps' 'big one', an Overdrive Rig he built for carrying fridges _(uses: overdrive rig)_
+
 **The twist:** It isn't training. Lumps is carrying the fridges up to the top of the stairs so that one day he can carry his mum down them. He's been practising the weight.
 
 **Beats**
@@ -134,6 +140,8 @@ _The Bottom's satellite dishes are woks. A storm has knocked them all out. Fix t
 **Who:** DUMPLING, AUNTIE SPREADSHEET  
 **Giver:** DUMPLING · **Needs:** m01_return_to_sender
 
+**Mechanic hook:** a storm grapple puzzle: aim twelve wok dishes at the Spire while the wind swings you _(uses: the grapple, washing-line ziplines)_
+
 **The twist:** When the last wok is aligned, every TV in the Bottom picks up the same thing: a dead ☺ CORP channel that only broadcasts at 03:00. A test card, and a voice reading the Schedule. It's the first time anyone in the Bottom has heard the Missing Hour mentioned (and the start of the Satellite Ear trail).
 
 **Beats**
@@ -167,6 +175,8 @@ _Return ten items from the Lost & Found to their owners all over the city. One o
 **Who:** DALE, WRISTBAND, GARY  
 **Giver:** DALE · **Needs:** m01_return_to_sender
 
+**Mechanic hook:** ten deliveries across the city, one of them a whole bus, one of them only reachable by grapple _(uses: cars and traffic, the grapple)_
+
 **The twist:** Item ten is a lunchbox with a note taped to it: 'don't be late tonight. it's our forty. love, j.' It has no owner left to return it to. Dale knows whose it is. It's one of Overtime's six memory fragments.
 
 **Beats**
@@ -197,6 +207,45 @@ _Return ten items from the Lost & Found to their owners all over the city. One o
 
 ---
 
+### THE WASHING LINE RUN `sq_bottom_line_run`
+_Dumpling has a stopwatch and a dare: ride the Bottom's washing lines from the Lost & Found to the Long Stairs without touching the ground._
+
+**Where:** The Lost & Found (THE BOTTOM), The Wok Roofs (THE BOTTOM), Lumps' Gym (THE BOTTOM), Top of the Long Stairs (THE GUT)  
+**Who:** DUMPLING, BIG SAUCE SHARON  
+**Giver:** DUMPLING · **Needs:** m01_return_to_sender
+
+**Mechanic hook:** the first grapple time trial: forty-one lines, never touch the floor _(uses: washing-line ziplines, the grapple)_
+
+**The twist:** Dumpling's big brother did it once, years ago, and never told anyone how: there's a forty-first line, over the gym, that isn't on anyone's map. Ride all forty-one in one go under the gold time and a sock is waiting at the last pole with your name on it (the Sock Tendons secret).
+
+**Beats**
+- Dumpling's start board, in crayon: bronze, silver, gold, and a line marked 'the secret one'.
+- The run: forty washing lines across the stacked roofs; touch the ground and Dumpling blows a whistle made of a biro.
+- Sharon, from her kitchen window, on every lap: 'mind my sheets.'
+- Gold: Dumpling's brother's old time. Then the forty-first line.
+
+**Objectives**
+1. take dumpling's dare
+2. ride the washing lines to the long stairs without touching the ground · timer 180s
+
+#### Talk: `dare` (with DUMPLING)
+- **[start]**
+  - **DUMPLING:** ghost! ghost. i've got a stopwatch. it's dad's. it's for eggs.
+  - **DUMPLING:** ride the lines from here to the long stairs and don't touch the floor. my brother did it in ninety seconds. he won't say how.
+  - **BIG SAUCE SHARON:** *from a window* mind my sheets.
+
+#### Talk: `time` (with DUMPLING)
+- **[start]**
+  - _Dumpling looks at the egg timer for a long time._
+  - **DUMPLING:** ...that's quite good. for a ghost.
+  - **DUMPLING:** my brother says there's a secret line. over the gym. he says only real ones find it. i think he made it up. he makes a lot up. he's fourteen.
+  - _does: flag:line_run_done_
+
+**Reward:** 250 coupons, washing_line
+**Review card:** EXCEEDS EXPECTATIONS. you didn't touch the floor once. / MEETS EXPECTATIONS. you touched it a bit. / SEE ME. you're in sharon's sheets.
+
+---
+
 ## THE GUT
 
 ### CHOIR PRACTICE `sq_gut_choir_practice`
@@ -205,6 +254,8 @@ _The Choir needs a tenor. Collect three voice boxes from overdue ☺ CORP office
 **Where:** The Choir Lung (THE GUT), Gristle & Sons Campus (THE GUT), The Waiting Room (THE LATES)  
 **Who:** SISTER AGENDA, THE STOMACH BISHOP  
 **Giver:** SISTER AGENDA · **Needs:** m03_somethings_digesting
+
+**Mechanic hook:** three overdue offices with grapple-only entrances; the Lates call centre is dark _(uses: the grapple, night vision goggles)_
 
 **The twist:** Sister Agenda doesn't want a tenor. She wants her own voice back: the Bishop made every singer sing on his note, and a voice box from outside the Gut is the only thing that can sing off it. The first time she uses it, she sings a single line of her own, out of tune, and the whole Choir stops to listen.
 
@@ -243,6 +294,8 @@ _The acid lake in the Big Stomach is rising. Plug the burping vents with cars be
 **Who:** BEV  
 **Giver:** BEV · **Needs:** m03_somethings_digesting
 
+**Mechanic hook:** a driving puzzle: plug six acid vents with cars before the lake rises _(uses: cars and traffic)_
+
 **The twist:** It's rising because something's been feeding it: the Unpaid have been dumping stolen ☺ CORP paperwork into it, and the Gut can't digest forms. The last vent is plugged with a filing cabinet full of Late Fees notices addressed to the Bottom. Bev reads one and laughs until she has to sit down.
 
 **Beats**
@@ -276,6 +329,8 @@ _Something's stuck in Peristalsis Avenue and the whole street is backed up. It's
 **Who:** DOT  
 **Giver:** DOT · **Needs:** m03_somethings_digesting
 
+**Mechanic hook:** push a whole house down an intestine: knockback works, the wrecking ball works best _(uses: wrecking ball, rubber duck (black hole), shove and knockback)_
+
 **The twist:** The house's owner is still in it, making tea. He's been travelling down the Gut's digestive tract in his house for nine years and thinks it's a very slow train. When you push the house through, he arrives at the Big Stomach, looks out of the window, and says 'oh. this isn't leeds.'
 
 **Beats**
@@ -303,6 +358,8 @@ _Gristle & Sons wants the Gut to hit its growth target this quarter. Feed it, or
 **Where:** The Feed Dock (THE GUT), Gristle & Sons Campus (THE GUT), The Long Stairs (THE BOTTOM)  
 **Who:** THE STOMACH BISHOP, SISTER AGENDA, LUMPS  
 **Giver:** THE STOMACH BISHOP · **Needs:** m06_option_c
+
+**Mechanic hook:** escort or blow up Regrowth tankers _(uses: cars and traffic, frags and smoke)_
 
 **The twist:** The 'feed' isn't people this time: it's the Gut's own regrowth tubes, pumping Regrowth toward the Long Stairs. Hitting the target means the Gut grows into the Bottom's top terraces. Sabotaging it means the Choir loses a quarter's bonus, and the Bishop makes Sister Agenda write it down as her fault.
 
@@ -336,6 +393,8 @@ _There's a door at the bottom of the Big Stomach. Don't press it._
 **Where:** The Big Stomach (THE GUT), The Belly Button (THE GUT)  
 **Who:** THE FOUNDING PARTNER, THE STOMACH BISHOP  
 **Giver:** — · **Needs:** m20_the_missing
+
+**Mechanic hook:** the arm storm: grapple-run up the frozen arms, nail them to the vault, judge him guilty _(uses: scythe rifle, scales of justice (verdicts), the grapple, nail to the wall)_
 
 **The twist:** You press it. Behind it is the founding partner of Gristle & Sons, Augustus Gristle, grown into the district's oldest organ, still holding pens. The Bishop sings to him every night. Augustus wants one more contract, and someone to tell his son the truth.
 
@@ -377,6 +436,8 @@ _Pip and Long Larry want you to prank the Family until it falls apart. Every pra
 **Where:** The Green Room (PINSTRIPE), Mamma Polizza's (PINSTRIPE), The Bocce Pit (PINSTRIPE), The Sauce Works (PINSTRIPE)  
 **Who:** PIP GRINSWORTH, LONG LARRY, DON GRINALDI FAZZOLETTO, NONNA FAZZOLETTO  
 **Giver:** PIP GRINSWORTH · **Needs:** m07_an_offer
+
+**Mechanic hook:** every prank is a weapon gimmick: peels, marbles, the popper, a bubble, a duck _(uses: banana peels, marble slip, party popper, bubble wand, rubber duck (black hole))_
 
 **The twist:** Larry writes every prank, Pip takes the credit, and the last prank is Larry's idea alone: he wants the Don, just once, to laugh at one of his jokes. In the last part it's Nonna who laughs. Up in the rafters, out loud, for the first time anyone can remember. Larry cries for an hour.
 
@@ -421,6 +482,8 @@ _The Family needs some wet work done. Deliver the laundry. Actual laundry. They'
 **Who:** NONNA FAZZOLETTO  
 **Giver:** NONNA FAZZOLETTO · **Needs:** m07_an_offer
 
+**Mechanic hook:** a crease meter: deliver laundry without landing hard _(uses: cars and traffic)_
+
 **The twist:** The laundry is the Don's: shirts, a hundred of them, every one with the same grin stain on the collar. Nonna has been washing her dead son's shirts every week for fifty years. The last basket has a note pinned to it for whoever did the delivery: 'thank you. he always liked them crisp.'
 
 **Beats**
@@ -443,6 +506,8 @@ _Help survivors file claims on their apocalypse cover. Every claim is denied. Ev
 **Where:** The Claims Office (PINSTRIPE)  
 **Who:** NONNA FAZZOLETTO  
 **Giver:** — · **Needs:** m07_an_offer
+
+**Mechanic hook:** the Scales of Justice are the Claims Office's decoration until the adjusters get what they deserve _(uses: scales of justice (verdicts), card deck, reverse card)_
 
 **The twist:** After eight denials the ninth claimant is a little old man whose claim is for a single cat, lost on the Final Quarter. It's denied (act of shareholders). You can take it to Nonna in person. If you hold the Fazzoletti page, she reads it, looks at it for a long time, and approves it: the only claim the Family has ever paid. It pays 3 coupons. He frames it.
 
@@ -476,6 +541,8 @@ _A meatball the size of a car got loose on Respect Bridge. Roll it home to Mamma
 **Who:**   
 **Giver:** — · **Needs:** m07_an_offer
 
+**Mechanic hook:** a physics escort: shove, lasso and grapple a car-sized meatball uphill _(uses: the lasso, shove and knockback, the grapple)_
+
 **The twist:** The meatball is Mamma Polizza's sixty-year-old sourdough-style 'mother meatball', from which every meatball in Pinstripe has been made. If it rolls into the river, Pinstripe's cuisine ends. The goons are weeping openly. A goon tells you the recipe in exchange (a secret implant clue: 'the secret ingredient is a knuckle').
 
 **Beats**
@@ -499,6 +566,8 @@ _Race the Mall Walkers' club: twelve terrifyingly fast grandmothers in matching 
 **Where:** The Infinite Queue (THE CHECKOUT), Food Court Colosseum (THE CHECKOUT), The Big Escalator (THE CHECKOUT)  
 **Who:**   
 **Giver:** — · **Needs:** m10_doorbusters
+
+**Mechanic hook:** a walking race: bhop and you're fined; the grandmothers carry a Giant Duck for emergencies _(uses: bhop and infinite momentum, giant duck)_
 
 **The twist:** They walk to remember: every lap passes the Big Doors, and on every lap the club leader, Dorothea, touches the glass. After you beat them (it takes three races), she invites you to walk a lap with them, slowly, and tells you the names they say at the doors.
 
@@ -534,6 +603,8 @@ _Gail needs a price check. Scan 30 hidden barcodes across the Checkout with the 
 **Who:** GAIL ON THE PA  
 **Giver:** GAIL ON THE PA · **Needs:** m10_doorbusters
 
+**Mechanic hook:** thirty barcodes hidden on the dome's ribs, the fountain and a rat _(uses: instant camera, the grapple)_
+
 **The twist:** The barcodes are on things no shop would sell: a fountain, a dead escalator, a rat (a live one, very offended), a tree, a Forever Shopper, you. The 30th is on the inside of the PA booth's door, and when you scan it, it comes up as GAIL PRENTICE · ASSISTANT MANAGER · PRICE: 17:31. She's been waiting for someone to scan her for sixty-one years.
 
 **Beats**
@@ -562,6 +633,8 @@ _The Mall Rats have spent sixty-one years collecting the names of the people who
 **Where:** The Vents (THE CHECKOUT), The Big Doors (THE CHECKOUT), Returns Desk Zero (THE CHECKOUT)  
 **Who:** WRISTBAND, MINA  
 **Giver:** WRISTBAND · **Needs:** m11_no_refunds
+
+**Mechanic hook:** a stealth break-in to Returns Desk Zero through the vents _(uses: spy satellite, the grapple)_
 
 **The twist:** Big Value has the list. It always had it: a membership-scan log from 17:30 to 17:34 of every card that was refused at the door. It's in Returns Desk Zero, the only returns desk that's never taken a return, filed as 'declined transactions'. With it, the Mall Rats can finish the wall. If the Mall Rats run the Checkout, they paint the names on the welded doors; if Big Value does, Gail reads them on the PA, one a day, for as long as it takes.
 
@@ -605,6 +678,8 @@ _Returns Desk Zero has never accepted a return. A sign says so. A clerk-bot has 
 **Who:** THE CART MOTHER  
 **Giver:** — · **Needs:** m11_no_refunds
 
+**Mechanic hook:** wheel Brenda through a stampede on a trolley _(uses: shopping cart cannon)_
+
 **The twist:** The first thing it will accept is Brenda's receipt. Brenda (the Cart Mother, beaten) has to bring it herself. She does, if you help her through the mall on a trolley. The clerk-bot scans it and says the only thing it has ever been programmed to say: 'refund approved.' It hands her a single bottle of water. She sits down on the floor and drinks it.
 
 **Beats**
@@ -630,6 +705,8 @@ _Escort a giant 1 across Number Works. Everybody wants it: you can't carry anyth
 **Where:** The Number Yard (NUMBER WORKS), Prime Lane (NUMBER WORKS), The Big Calculator (NUMBER WORKS)  
 **Who:** NELL THIRTEEN  
 **Giver:** NELL THIRTEEN · **Needs:** m14_price_of_everything
+
+**Mechanic hook:** escort a giant 1; the union banks tennis balls off digits _(uses: bank shots, cars and traffic)_
 
 **The twist:** Halfway, the 1 gets a 3 attached to it by Remainder's 'rounding' crews and becomes a 13, and the union refuses to touch an unlucky number. Nell holds a vote, mid-ambush, on whether a 13 is still a 1 with friends. It passes 7-6. You carry the 13.
 
@@ -660,6 +737,8 @@ _Someone's been stealing halves. Every worker's wage has been rounded down by 0.
 **Where:** The Forecast Archive (NUMBER WORKS), The Remainder Pit (NUMBER WORKS), The Price Press (NUMBER WORKS)  
 **Who:** NELL THIRTEEN, MR. SEVENS, FOREMAN REMAINDER  
 **Giver:** NELL THIRTEEN · **Needs:** m14_price_of_everything
+
+**Mechanic hook:** a stakeout in the Remainder Pit _(uses: instant camera)_
 
 **The twist:** It's the Price Press itself: Remainder's oldest program, still running the rule it was given on the Final Quarter: 'round all outstanding values down by 0.5 until the books balance'. The books will never balance, because the 0.5 it's trying to make up is the 0.5% Q4 revision that came in that morning and was ignored. In the Forecast Archive you find the original rule card, with a note from the 09:00 forecasting team: 'we hit it. tell the board.' (A clue toward the Act III memo, and a Cale memory flash if Drift is low: Agnes saying 'remainder's always half a percent out.')
 
@@ -696,6 +775,8 @@ _There's a button on top of the Big Calculator labelled ÷0. Every sign in Numbe
 **Who:** FOREMAN REMAINDER  
 **Giver:** FOREMAN REMAINDER · **Needs:** m15_rounding_down
 
+**Mechanic hook:** an hour of NaN: gravity reverses, digits walk, and pop quizzes have no right answer _(uses: rocket and shotgun jumps, the grapple, pop quiz)_
+
 **The twist:** You do. For one in-game hour Number Works stops making sense: gravity's a suggestion, prices are NaN (everything costs nothing and also infinity, so shops give you whatever you can carry), smokestacks puff the wrong way, and the giant digits get up and walk around. The Foreman (rehired) shows up and, for the first time since he was nine, laughs. 'i always wanted to press that.' The secret: at the top of the tallest Smokestack, a Lucky Thirteenth Rib (secret implant) is just sitting there, because in NaN-time nothing is unlucky.
 
 **Beats**
@@ -722,6 +803,8 @@ _A kidney got up and left Bev's clinic before its install. Retrieve it._
 **Where:** Jar Alley (CHROME GRISTLE), Arcade Row (CHROME GRISTLE), The Noodle Shrine (CHROME GRISTLE)  
 **Who:** BEV  
 **Giver:** BEV · **Needs:** m17_minutes
+
+**Mechanic hook:** chase a kidney along the neon sign line _(uses: the grapple, the lasso)_
 
 **The twist:** The kidney has been regrown so many times by different Meat Mechanics that it's become a little person: it has a job (it's working the noodle stall at the Noodle Shrine), friends, and a tiny paper hat. Its original owner, a man on the Commute, doesn't want it back: 'it's got a life now. i've got two.' You can leave it be, and it waves at you every time you pass.
 
@@ -750,6 +833,8 @@ _Get two Meat Mechanics to diagnose the same rash. They disagree violently._
 **Where:** Organ Pawn (CHROME GRISTLE), Doctor Upsell's Clinic (CHROME GRISTLE), Bev's Clinic (THE GUT)  
 **Who:** BEV, DOCTOR UPSELL  
 **Giver:** BEV · **Needs:** m17_minutes
+
+**Mechanic hook:** the grid rash is Drift you can see _(uses: bio-implants)_
 
 **The twist:** The rash is on you: a pattern spreading under your plastic where your implants join, shaped exactly like the Schedule's grid. Both diagnoses are right. Bev says it's rejection; Upsell says it's 'the body accepting the schedule'. It's the first visible sign of Drift, and it fades if you uninstall parts or lower your Drift (the game tells you, in Bev's words, without a number).
 
@@ -783,6 +868,8 @@ _Beat the high score on an Arcade Row cabinet that runs the old JANKFIRE._
 **Who:**   
 **Giver:** — · **Needs:** m17_minutes
 
+**Mechanic hook:** beat your own high score; the cabinet's cheat code is a Spinbot _(uses: spinbot)_
+
 **The twist:** The cabinet is a tiny piece of the Machine's sims, salvaged. The high score belongs to CALE R. 4417, from sixty-one years ago, set on a lunch break. You're trying to beat yourself. When you do, the cabinet asks for initials, and if you type RC it plays a ten-second Cale memory: a lunch break, a cheap sandwich, Agnes leaning on the cabinet saying 'you're wasting your break, rory.' 'it's the only bit of the day that's mine.'
 
 **Beats**
@@ -804,6 +891,8 @@ _Organ Pawn has a kidney in its window with a tag: D. PELL. Lumps saw it._
 **Where:** Organ Pawn (CHROME GRISTLE)  
 **Who:** LUMPS  
 **Giver:** — · **Needs:** m20_the_missing
+
+**Mechanic hook:** a pawn-shop heist past blinking jars _(uses: night vision goggles, the grapple)_
 
 **The twist:** Dot sold it, years ago, to pay for Lumps' tenth birthday (a bike made of a shopping trolley). The pawn tag has accrued sixty-one per cent a year in fees. It costs more than the Bottom earns in a year. Lumps can't afford it and won't let you pay. The only way is a Pawn Heist (a stealth job) or the Gold Member legendary's loot magnet, or simply... letting it go. Dot, told, says: 'it was a lovely bike.'
 
@@ -840,6 +929,8 @@ _Mow 50 lawns with the Lawn Mower, perfectly. The HOA measures each one to the m
 **Who:** LINDA FAIRWAY  
 **Giver:** LINDA FAIRWAY · **Needs:** m21_property_values
 
+**Mechanic hook:** mow fifty lawns to the millimetre _(uses: fire (the cigarette, flame arrows), cars and traffic)_
+
 **The twist:** Lawn 50 belongs to the Prize Pumpkin, which has won every year because it's the only entry. Linda asks you not to mow too close to it. It's grown over the shelter's old air vent, and the pumpkin is the only thing on the street that came up from the shelter with them. Linda planted it at eleven. It's sixty years old, enormous, and very slightly alive.
 
 **Beats**
@@ -870,6 +961,8 @@ _Evergreen is having a block party. Attendance is compulsory. Survive it._
 **Who:** LINDA FAIRWAY  
 **Giver:** LINDA FAIRWAY · **Needs:** m21_property_values
 
+**Mechanic hook:** a wave survival block party with a three-legged race _(uses: chicken strike, frags and smoke)_
+
 **The twist:** It's a survival wave mode with BBQ dads, a bouncy castle that's a trap, a three-legged race (you and a mannequin tied together) and a talent show. The last act of the talent show is the pilot families singing in perfect harmony, a song from before the war, and if you left them plugged in, Linda's dad sings the lead. She mouths along. It's beautiful and it's horrible and it's both on purpose.
 
 **Beats**
@@ -890,6 +983,8 @@ _Evergreen's safehouse comes with a rule: you need the same car as the neighbour
 **Where:** The Cul-de-sac (EVERGREEN ACRES)  
 **Who:** LINDA FAIRWAY  
 **Giver:** LINDA FAIRWAY · **Needs:** m21_property_values
+
+**Mechanic hook:** steal the right blue car from the Unpaid _(uses: cars and traffic)_
 
 **The twist:** The neighbours' car is a pastel-blue estate that hasn't been made in sixty-one years. The only one left outside Evergreen is in the Unpaid's camp, as their 'company car'. Stealing it is a heist; trading for it costs you an internship. When you park it on the drive, the mannequin family next door waves, and for one frame its wave is out of sync.
 
@@ -913,6 +1008,8 @@ _Evergreen's mailman never stops walking. His satchel is full of letters posted 
 **Where:** The Cul-de-sac (EVERGREEN ACRES), The Long Stairs (THE BOTTOM), Gary's Site Office (THE COMMUTE), Remainder Downtown Office (THE LATES)  
 **Who:** THE MAILMAN, GARY, PAULINE FROM ACCOUNTS  
 **Giver:** THE MAILMAN · **Needs:** m21_property_values
+
+**Mechanic hook:** follow the mailman at 4 km/h; the last letter is up the ruins by the Long Stairs _(uses: cars and traffic, the grapple)_
 
 **The twist:** One of them is addressed to MRS. JUNE SALLOW, 14 HILLSIDE ROAD. Hillside Road collapsed into the Bottom; number 14 is a ruin by the Long Stairs, and in it, on a dead hallway table, an answering machine still holds one message, 17:30:00 on the Final Quarter. It's the last of Overtime's six memory fragments: 'i'm here. i'm on my way, june.' The letter in your hand is a card from Edwin to June, posted at lunch: 'happy forty. i'll be on time. E.'
 
@@ -948,6 +1045,8 @@ _Gus has been trying to finish the same lasagne for 22,000 days. Something inter
 **Where:** The Canteen (THE LATES)  
 **Who:** GUS, PAULINE FROM ACCOUNTS  
 **Giver:** GUS · **Needs:** m22_the_waiting_room
+
+**Mechanic hook:** eleven chained interruptions in one loop; rewind the fork _(uses: tv remote (pause / rewind), loops)_
 
 **The twist:** Every interruption is a different Looper's small Tuesday disaster (a fire alarm, a dropped tray, a fight over a stapler), and fixing one makes the next one happen. When you finally clear all eleven, Gus holds up the last bite and doesn't eat it. 'if i finish it, it'll be wednesday. and my wife will be dead.' You can tell him to eat it, or not. Either is kind.
 
@@ -996,6 +1095,8 @@ _You're locked in an office in the Lates. The only way out is to photocopy yours
 **Who:** PAULINE FROM ACCOUNTS  
 **Giver:** PAULINE FROM ACCOUNTS · **Needs:** m22_the_waiting_room
 
+**Mechanic hook:** photocopy yourself out: a co-op puzzle with your own delayed copies _(uses: instant camera)_
+
 **The twist:** Each copy is a little worse (blurrier, a wrong colour, a knee that bends two ways), and each copy needs to stand on a pressure plate. By copy six you're arguing with yourself. The last copy, very faded, asks the original: 'are we the same person?' The puzzle's answer is no; the door opens when you say so.
 
 **Beats**
@@ -1030,6 +1131,8 @@ _The Lates' hold music plays everywhere, all day. Nobody knows where it comes fr
 **Who:** PAULINE FROM ACCOUNTS  
 **Giver:** PAULINE FROM ACCOUNTS · **Needs:** m22_the_waiting_room
 
+**Mechanic hook:** follow a sound down the Backrooms Stairwell in the dark _(uses: night vision goggles, loops)_
+
 **The twist:** It's a woman in the Backrooms Stairwell, deep down, at a switchboard, humming into the line to keep 4,000 callers company: the Lates' Remainder call centre has had 4,000 people on hold since 17:29. She's been humming for sixty-one years. One of the held calls is from the Spire's lobby security desk, 17:29: in the background, a running man's footsteps and a polite voice saying 'that's against policy'. It's one of Overtime's memory fragments.
 
 **Beats**
@@ -1052,6 +1155,8 @@ _Go back through the door at 03:00. At the end of a row there was an empty dock 
 **Where:** The Door in the Sky (THE LATES), The Restoration Warehouse (THE LATES)  
 **Who:** EMPLOYEE 4417  
 **Giver:** — · **Needs:** m23_workforce_restoration
+
+**Mechanic hook:** beat a version of you with no jank by being janky _(uses: marble slip, banana peels, the lasso)_
 
 **The twist:** Hask had a copy of you built with the Schedule forced in, to see what you'd be on the payroll. It's happy. It remembers Mina and doesn't think she's important. Beating it gets you its chip: the strongest head implant in the game, which loads a little of the Schedule into you. It costs two permanent Drift. The game asks you twice.
 
@@ -1078,6 +1183,8 @@ _People fall into the void. Some of them wave. Pull them out with the lasso befo
 **Where:** The Edge (THE MARGINS), The Gnome Field (THE MARGINS)  
 **Who:** THE JANITOR, OLD PAT  
 **Giver:** THE JANITOR · **Needs:** m26_exit_interview
+
+**Mechanic hook:** lasso rescues out of the void, falling in on purpose _(uses: the lasso, void edges)_
 
 **The twist:** The ones you pull out are still employed. They've just lost the dental. And they're recent: Vacancy's survey teams have been 'clearing' squatters. The last one you pull out is the Janitor's wife, who went in sixty-one years ago with their house, and she's exactly as she was, mid-sentence. 'wendell, have you mopped' — and the void takes her back before she can finish. The Janitor says thank you. He means it. He keeps mopping.
 
@@ -1119,6 +1226,8 @@ _Plant gnomes to hold the ground. Vacancy can't sell what's occupied._
 **Who:** OLD PAT, PENNY PLOT  
 **Giver:** OLD PAT · **Needs:** m26_exit_interview
 
+**Mechanic hook:** turn 412 gnomes under fire before sundown _(uses: void edges, the grapple)_
+
 **The twist:** Vacancy's lawyers have found the loophole: a gnome counts as occupation only if it's 'facing the property'. The Margin Walkers have been planting them facing the void for years. You have to turn four hundred and twelve gnomes round, under fire from survey teams, before the lawyers' deadline. Old Pat, for the first time, looks at the names under them as she turns each one.
 
 **Beats**
@@ -1141,6 +1250,8 @@ _The Last Bus Stop's timetable says the 17:42 is due. It's been due for sixty-on
 **Where:** The Last Bus Stop (THE MARGINS), The Lost & Found (THE BOTTOM)  
 **Who:** OLD PAT  
 **Giver:** — · **Needs:** m26_exit_interview
+
+**Mechanic hook:** drive a bus out of the void against the clock _(uses: cars and traffic)_
 
 **The twist:** At 17:42 on a foggy night, it comes: a city bus out of the void, the 17:42 from the Final Quarter, with the driver and nine passengers who don't know anything has happened. Their bus went into the void bomb's blast and came out the other side sixty-one years later. You have to get them to the Bottom before the void takes the bus back at 18:00, while they ask questions you don't want to answer. (The Lost & Found's 'one of them is a whole bus' lost-property tag was always this bus.)
 
@@ -1168,6 +1279,8 @@ _☺ CORP keeps printing new Overtimes. The newest one stands in the Punctuality
 **Who:** MR. OVERTIME  
 **Giver:** — · **Needs:** m13_rush_hour
 
+**Mechanic hook:** flood the museum, ride the Pendulum of Punctuality into him _(uses: soak and shock, the grapple, scales of justice (verdicts))_
+
 **The twist:** One exhibit is EMPLOYEE #1: A LIFE ON TIME, a glass case of Edwin Sallow's things, including a framed photo: Employee of the Month, the very first, with a cat on his lap and a woman out of focus at the edge of the frame, laughing. It's one of his six memory fragments. Every rehired Overtime stops in front of that case for exactly one second before he fights you. He doesn't know why.
 
 **Beats**
@@ -1191,6 +1304,8 @@ _An email that will doom ☺ CORP is about to be sent. Chase it down the Spire's
 **Where:** Spire, 60th Floor (CORP HILL), The Cathedral of Shareholder Value (CORP HILL)  
 **Who:** PRITCHARD  
 **Giver:** PRITCHARD · **Needs:** m24_the_split
+
+**Mechanic hook:** a chase through the Spire's pneumatic tubes _(uses: the grapple, on time)_
 
 **The twist:** Pritchard sent it. By accident. It's his resignation letter, typed at 03:00 one night and saved as a draft for six years, and the Spire's mail system is pneumatic: it's a physical capsule racing through 400 km of tubes to every desk. You catch it at the last junction. He asks you to read it. It's one line: 'i would like a minute to myself.' He asks you to put it back in the tube. Or not.
 
@@ -1224,6 +1339,8 @@ _Ruin ☺ CORP's dress code: steal every tie in an office of 300 synced mannequi
 **Who:** PIP GRINSWORTH  
 **Giver:** PIP GRINSWORTH · **Needs:** m24_the_split
 
+**Mechanic hook:** a stealth rhythm level: steal 300 ties on the clocks' beat _(uses: on time)_
+
 **The twist:** Without ties, the mannequin workers lose sync. They start walking at their own pace. One sits down. One looks out of the window. One, very slowly, loosens its collar and laughs. Pip, who set it up as a prank, watches through binoculars and goes quiet.
 
 **Beats**
@@ -1246,6 +1363,8 @@ _Survive a ☺ CORP team-building exercise: a trust fall off a skyscraper._
 **Who:** THE TWINS  
 **Giver:** — · **Needs:** m24_the_split
 
+**Mechanic hook:** a trust fall off a skyscraper you grapple out of at the last second _(uses: the grapple, rocket and shotgun jumps)_
+
 **The twist:** It's run by the Twins (before the raid), who explain that this is how they were merged: a trust fall in the Merger's integration week, into a Gristle & Sons fusion vat. The exercise's 'catchers' are a Facilities team with a bleach cannon. You can fall (and grapple out at the last second), or push the Twins off instead and see who catches whom. Nobody catches anybody. They land in the Smiling Fountain, still agreeing.
 
 **Beats**
@@ -1267,6 +1386,8 @@ _Get a parking permit on Corp Hill. It's the hardest quest in the game._
 **Where:** The ☺ Spire Lobby (CORP HILL), Spire, 60th Floor (CORP HILL), The Cathedral of Shareholder Value (CORP HILL), The Punctuality Museum (CORP HILL), The Smiling Fountain (CORP HILL)  
 **Who:** PRITCHARD, CHAD TEMPO  
 **Giver:** — · **Needs:** m24_the_split
+
+**Mechanic hook:** nineteen forms; the permit is a laminated Card Deck _(uses: instant camera, card deck)_
 
 **The twist:** It's a 19-step bureaucratic odyssey across every office on Corp Hill: forms that need forms, a queue that's a sim of a queue, a stamp that's in the museum, a signature from someone who died in the war (you have to go to the Lates for it), and finally an appointment with Pritchard, who looks at the form and says 'oh, you didn't need one of these. there's no parking on corp hill. there aren't any cars allowed.' The permit is a legendary (it's laminated).
 
@@ -1302,6 +1423,8 @@ _Gary, ninety-eight, still runs his site office on the lip of a crater. He's fil
 **Where:** Gary's Site Office (THE COMMUTE), The ☺ Spire Lobby (CORP HILL)  
 **Who:** GARY  
 **Giver:** GARY · **Needs:** m02_sauce_run
+
+**Mechanic hook:** a heavy crate of reports the raiders want for armour _(uses: cars and traffic)_
 
 **The twist:** 244 reports. Every one lists, under ATTENDANCE, the same forty-one names, all marked PRESENT. They're his warehouse floor team. They were on the floor at 17:30; he was in the office, eating lunch late. The region is the crater. He's been taking the register for sixty-one years. When you deliver the reports to the Spire's inbox (a chute in the lobby), the clerk-bot stamps them RECEIVED, and Gary, told, says: 'oh. good. good. it's fine.' and, for once, it is.
 
@@ -1354,6 +1477,8 @@ _Under a collapsed overpass, a man in the old Mr. Smiles suit is hiding from the
 **Who:** MR. SMILES, THE MORALE OFFICER  
 **Giver:** MR. SMILES · **Needs:** m06_option_c
 
+**Mechanic hook:** build a kite and fly it on the Spiral Freeway in a paper storm _(uses: the grapple, cars and traffic)_
+
 **The twist:** He was in the suit at a Big Value shelter event at 17:30. The suit saved him from the flash; the face under it didn't make it. He can't take the head off. The fun thing is a kite. He's never flown one; the Fun Department always said kites weren't 'scalable'. You get him to the top of the Spiral Freeway in a paper storm, which is perfect kite weather, and he flies it for a whole minute before the Morale Officer's convoy finds him. (If you've beaten her, it never comes, and he flies it until dark.)
 
 **Beats**
@@ -1398,6 +1523,8 @@ _Todd, about a hundred and twenty, sits in a lawn chair on a bus roof while the 
 **Where:** The Shrine of the First Intern (THE COMMUTE), Camp Onboarding (THE COMMUTE), The Unfinished Bit (THE COMMUTE)  
 **Who:** TODD, EMPLOYEE OF THE MONTH, THE MISSING TEXTURE  
 **Giver:** TODD · **Needs:** m06_option_c
+
+**Mechanic hook:** extract Todd, then fight a bug that can't tell a banana from the floor _(uses: the grapple, banana peels, marble slip)_
 
 **The twist:** Todd wrote the world's physics on his first day, from memory, and never finished it. There's a bit of the Commute that's just purple and black squares. It's been growing. In part 2 Todd takes you there to finish it, and it fights back. In part 3, if you've fought Employee of the Month, Todd finds out the warlord's intern badge says TODD: Craig is his grandson.
 
@@ -1447,6 +1574,8 @@ _The Unpaid want to become a company. A company needs a big win. Employee of the
 **Who:** EMPLOYEE OF THE MONTH, TODD  
 **Giver:** EMPLOYEE OF THE MONTH · **Needs:** m02_sauce_run, act>=2
 
+**Mechanic hook:** a moving-convoy fight: grapple from rig to rig on the gantries _(uses: cars and traffic, the grapple, the lasso, shove and knockback)_
+
 **The twist:** What he actually wants is a performance review: someone, anyone, to tell him how he's doing. If you took his internship in m02, you're 'staff' and you can give him one after the fight (a dialogue). Whatever you say, he takes it seriously. 'MEETS EXPECTATIONS' makes him cry. He takes one plaque off his chest and gives it to you. It has your face on it.
 
 **Beats**
@@ -1491,6 +1620,8 @@ _The Fun Department's carnival comes out at night on the Commute. Every game is 
 **Who:** THE MORALE OFFICER, MR. SMILES  
 **Giver:** MR. SMILES · **Needs:** m06_option_c
 
+**Mechanic hook:** carnival games where losing is a fight; climb the Ferris wheel by grapple _(uses: party popper, chicken strike, the grapple)_
+
 **The twist:** The Morale Officer wrote 'every Big Value is a shelter'. The carnival's noise is so she never has to hear the quiet. The way to beat her for good is to stop shooting and wait. Mr. Smiles, if he's with you, takes his own glove off (just the glove) and holds her hand while she takes her heads off.
 
 **Beats**
@@ -1514,6 +1645,8 @@ _The fallen 13 on the Commute is waking up. It was one of Remainder's orbital bi
 **Where:** The Fallen 13 (THE COMMUTE), Union Hall 13 (NUMBER WORKS)  
 **Who:** NELL THIRTEEN, UNLUCKY 13  
 **Giver:** NELL THIRTEEN · **Needs:** m15_rounding_down
+
+**Mechanic hook:** a hot-zone climb up a fallen satellite; soak and tase its panels _(uses: moon boots, spy satellite, soak and shock, the grapple)_
 
 **The twist:** Its last target is the Bottom. It's been trying to fire for sixty-one years and never had the power. The fights you've had near it have been charging it. Nell's union were stamped with 13s because the satellite was a 13: 'they put the number on us that they put on the thing that killed us. management's sense of humour.'
 
@@ -1599,6 +1732,12 @@ Taxi (fares from every district, some of them strange), repo man (steal back car
 
 _always · from Act 1 · The Lost & Found (THE BOTTOM), Dividend Road (CORP HILL), The Ring Road (THE COMMUTE)_  
 **Pays:** coupons · _"taxi! take me to the void. no, the nice bit."_
+
+### GRAPPLE TIME TRIALS `grapple_trials`
+One signature swing route per district (mechanics.js GRAPPLE.routes), timed, with bronze / silver / gold ghosts of your best run. Gold on all eleven unlocks the Sock Line grapple skin. The Bottom's is the Washing Line Run.
+
+_always · from Act 1 · The Wok Roofs (THE BOTTOM), Peristalsis Avenue (THE GUT), Respect Bridge (PINSTRIPE), The Infinite Queue (THE CHECKOUT), The Number Yard (NUMBER WORKS), Arcade Row (CHROME GRISTLE), The Cul-de-sac (EVERGREEN ACRES), The Waiting Room (THE LATES), The Scary Forest (THE MARGINS), Dividend Road (CORP HILL), The Ring Road (THE COMMUTE)_  
+**Pays:** coupons, HYPE, grapple skins, a gold ghost to race · _"don't touch the floor. the floor's for people with stairs."_
 
 ### GRAFFITI `graffiti`
 Tag ☺ CORP's clean walls with sprays (Z). Cleaners with bleach cannons come within 30 s. Tags that survive a day count for a reward.

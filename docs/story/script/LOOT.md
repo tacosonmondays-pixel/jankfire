@@ -284,6 +284,22 @@ _Generated from `loot.js`. No durability, ever._
 **Lore:** Your copy's rifle. Perfect, punctual and happy. It has never once improvised.  
 **Drops:** boss EMPLOYEE 4417 (farmable)
 
+### THE FIRST STAPLE `first_staple`
+> "this will only take a minute."
+
+**nailgun** · ☺ CORP STANDARD ISSUE  
+**Quirk:** nails are staples: a pinned enemy stays on the wall as a grapple point for 6 s, and grappling to them yanks them off it  
+**Lore:** Torn out of Mr. Overtime's stapler arm on the Gut border. It's still warm. It still wants to file something.  
+**Drops:** boss MR. OVERTIME · fight 1, and the Punctuality Museum rehire
+
+### THE WASHING LINE `washing_line`
+> "hang them out to dry."
+
+**lasso** · BOTTOM SCRAP CO.  
+**Quirk:** a caught enemy is pegged out to dry on the nearest wall, pole or washing line for 3 s (dangling, can't shoot); the rope doubles as a zipline you can ride  
+**Lore:** Sharon's longest washing line, socks still on, braided into a lasso by the Bottom's kids for a dare.  
+**Drops:** quest `sq_bottom_line_run` · the Washing Line Run's gold time
+
 ### SOLE SURVIVOR `sole_survivor`
 > "one shoe. very good shoe."
 

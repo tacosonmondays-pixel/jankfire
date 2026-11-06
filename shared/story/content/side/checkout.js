@@ -7,6 +7,7 @@ export const SIDE_CHECKOUT = {
     locations: ["checkout:queue", "checkout:food_court", "checkout:escalator"], cast: [],
     requires: { missions: ["m10_doorbusters"], if: null },
     logline: "Race the Mall Walkers' club: twelve terrifyingly fast grandmothers in matching tracksuits who have walked the mall's loop every morning since the Stampede.",
+    mechanic: { uses: ["bhop", "giant_duck"], hook: "a walking race: bhop and you're fined; the grandmothers carry a Giant Duck for emergencies" },
     twist: "They walk to remember: every lap passes the Big Doors, and on every lap the club leader, Dorothea, touches the glass. After you beat them (it takes three races), she invites you to walk a lap with them, slowly, and tells you the names they say at the doors.",
     beats: ["Race 1: the food court loop (no running: walking only; the HUD fines you if your feet leave the floor).", "Race 2: the escalators (walk up the down one).", "Race 3: the whole Infinite Queue (14 laps of the district).", "A slow lap."],
     steps: [
@@ -28,6 +29,7 @@ export const SIDE_CHECKOUT = {
     locations: ["checkout:queue", "checkout:returns", "checkout:vents"], cast: ["gail"],
     requires: { missions: ["m10_doorbusters"], if: null },
     logline: "Gail needs a price check. Scan 30 hidden barcodes across the Checkout with the Instant Camera.",
+    mechanic: { uses: ["camera", "grapple"], hook: "thirty barcodes hidden on the dome's ribs, the fountain and a rat" },
     twist: "The barcodes are on things no shop would sell: a fountain, a dead escalator, a rat (a live one, very offended), a tree, a Forever Shopper, you. The 30th is on the inside of the PA booth's door, and when you scan it, it comes up as GAIL PRENTICE · ASSISTANT MANAGER · PRICE: 17:31. She's been waiting for someone to scan her for sixty-one years.",
     beats: ["Gail on the PA: 'price check on aisle everything.'", "30 barcodes hidden around the dome, vents, escalators and the queue (photo goal).", "The last one."],
     steps: [
@@ -47,6 +49,7 @@ export const SIDE_CHECKOUT = {
     locations: ["checkout:vents", "checkout:doors", "checkout:returns"], cast: ["wristband", "mina"],
     requires: { missions: ["m11_no_refunds"], if: null },
     logline: "The Mall Rats have spent sixty-one years collecting the names of the people who died outside the Big Doors. They have 3,211. They know there are more.",
+    mechanic: { uses: ["satellite", "grapple"], hook: "a stealth break-in to Returns Desk Zero through the vents" },
     twist: "Big Value has the list. It always had it: a membership-scan log from 17:30 to 17:34 of every card that was refused at the door. It's in Returns Desk Zero, the only returns desk that's never taken a return, filed as 'declined transactions'. With it, the Mall Rats can finish the wall. If the Mall Rats run the Checkout, they paint the names on the welded doors; if Big Value does, Gail reads them on the PA, one a day, for as long as it takes.",
     beats: ["The vent classroom's wall of names, in chalk.", "Wristband: there are gaps. People who weren't known.", "Break into Returns Desk Zero (stealth: Mall Security, then a vault of unreturned items).", "The log.", "If Mina is free, she reads the log with Milo, in the vents, holding his hand."],
     steps: [
@@ -70,6 +73,7 @@ export const SIDE_CHECKOUT = {
     locations: ["checkout:returns"], cast: ["cart_mother"],
     requires: { missions: ["m11_no_refunds"], if: null },
     logline: "Returns Desk Zero has never accepted a return. A sign says so. A clerk-bot has been waiting behind it since the Stampede for its first customer.",
+    mechanic: { uses: ["cart"], hook: "wheel Brenda through a stampede on a trolley" },
     twist: "The first thing it will accept is Brenda's receipt. Brenda (the Cart Mother, beaten) has to bring it herself. She does, if you help her through the mall on a trolley. The clerk-bot scans it and says the only thing it has ever been programmed to say: 'refund approved.' It hands her a single bottle of water. She sits down on the floor and drinks it.",
     beats: ["The desk, the bot, the sign: RETURNS DESK ZERO · NO RETURNS SINCE 17:31.", "Find Brenda (she's in the Cart Corral since her defeat, if not dismantled).", "Wheel her to the desk on a trolley through a sale stampede.", "The refund."],
     steps: [

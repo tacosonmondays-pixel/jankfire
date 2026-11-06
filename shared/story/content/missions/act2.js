@@ -11,6 +11,7 @@ export const MISSIONS_ACT2 = {
     cast: ["auntie", "gordo", "lumps", "dale"],
     requires: { missions: ["m05_second_stomach"], if: null },
     logline: "Auntie lays out her wall of evidence: six companies signed the end of the world, each one kept its page, and with all six she can prove every debt they collect is a lie.",
+    mechanic: { uses: ["grapple"], hook: "Gordo's den is up a grapple-only stack of containers; his string map doubles as the first look at every district's swing route" },
     beats: [
       "C6: the wall, the six frames. Auntie explains Option C. Gordo asks how she knows; she dodges again.",
       "Dale: the Machine has a sim in it that's never been played, locked, and the lock is a document.",
@@ -63,6 +64,7 @@ export const MISSIONS_ACT2 = {
     cast: ["don", "pip", "larry"],
     requires: { missions: ["m06_option_c"], if: null },
     logline: "In Pinstripe the Don makes you an offer you could refuse, and his jesters make you a different one.",
+    mechanic: { uses: ["late_fees", "grapple"], hook: "the tax-office run on the Bleach Line is your first ★2 chase, and Pinstripe's marionette strings are the escape route" },
     beats: [
       "Respect Bridge: pay respect (coupons, or a compliment to a goon, who's touched).",
       "C7 at Mamma Polizza's: Pip and Larry at the door; the Don descends on his strings. 'everybody wants that page. nobody wants what comes with it.' His job: collect the Family's premium from ☺ CORP's tax office on the Bleach Line.",
@@ -131,6 +133,7 @@ export const MISSIONS_ACT2 = {
     cast: ["don", "nonna", "pip", "larry"],
     requires: { missions: ["m07_an_offer"], if: null },
     logline: "The Family's page is up in Villa Fazzoletto. So is whoever works the Don's strings.",
+    mechanic: { uses: ["parry", "grapple", "peels"], hook: "cut the Don's strings with the katana, parry his slaps, and climb his own strings into the rafters" },
     beats: [
       "Into the Villa: as a guest (did_don_job), through the Punchlines' green room (did_pip_job), or up Larry's crawlspace (larry_crawlspace).",
       "The Don 'assesses' you: an underwriter's assessment, in the marble ballroom. Boss fight: DON GRINALDI FAZZOLETTO. Shoot the strings, drop the limbs.",
@@ -202,6 +205,7 @@ export const MISSIONS_ACT2 = {
     cast: ["cale", "agnes", "overtime", "dale", "auntie"],
     requires: { missions: [], if: "pages>=1" },
     logline: "The first page unlocks a sim nobody has ever played: you, as R. Cale, on the 60th floor of the ☺ Spire, on the last afternoon of the world.",
+    mechanic: { uses: ["camera"], hook: "no grapple in the sims of the last workday: Cale walks, carries six coffees, and spots a fake invoice; the lack of jank is the point" },
     beats: [
       "Dale opens the locked sim. Auntie watches from the doorway and leaves before it starts.",
       "15:55: the ☺ Spire lobby, as it was. Cale comes back from a coffee run with six coffees. Mr. Overtime at the security desk, cleaner and newer, an overcoat over his chair: 'you're cutting it fine, cale.'",
@@ -287,6 +291,7 @@ export const MISSIONS_ACT2 = {
     cast: ["wristband", "gail", "cart_mother"],
     requires: { missions: ["m06_option_c"], if: null },
     logline: "In the Big Value mall's air vents, the lost child from the Stampede is sixty-six now. He reads the barcode on your neck and goes white.",
+    mechanic: { uses: ["marbles", "cart", "grapple"], hook: "the Mall Rats teach marbles under segways and give you the Rat Cart Cannon; the vents are a grapple maze above the dome" },
     beats: [
       "The Checkout: the Infinite Queue, the dome, mannequin shoppers in every window. Gail on the PA. 'we're sorry for any inconvenience.'",
       "Cart surfing and escalators to the vents, chased by Mall Security on segways.",
@@ -343,6 +348,7 @@ export const MISSIONS_ACT2 = {
     cast: ["cart_mother", "wristband", "gail"],
     requires: { missions: ["m10_doorbusters"], if: null },
     logline: "The doors open at 09:00, like they have every day since the Stampede, and every lost cart in the city comes for you.",
+    mechanic: { uses: ["cart", "grapple", "knockback"], hook: "fire carts into the Cart Mother to make her heavy, grapple carts out of her pile, then cart-surf her own swarm" },
     beats: [
       "C8 Doorbusters. The Cart Mother.",
       "Boss fight across the Food Court Colosseum and the Cart Corral. Shopping-cart cannon carts make her heavy.",
@@ -407,6 +413,7 @@ export const MISSIONS_ACT2 = {
     cast: ["cale", "agnes", "hask", "dale"],
     requires: { missions: ["m09_workday_1600"], if: "pages>=2" },
     logline: "16:45 on the last workday. Copy the end of the world onto a tape drive that is very, very slow.",
+    mechanic: { uses: ["camera"], hook: "a stealth level with a progress bar: copy the tape while an officer does rounds" },
     beats: [
       "Back in the sim. 16:43. Agnes gets you into the print room on 60. She keeps watch.",
       "The tape drive: an ancient ☺ CORP cartridge unit. The copy takes four minutes. A progress bar.",
@@ -465,6 +472,7 @@ export const MISSIONS_ACT2 = {
     cast: ["gordo", "overtime"],
     requires: { missions: ["m06_option_c"], if: "pages>=1" },
     logline: "On the Spiral Freeway, in a paper storm, Mr. Overtime chases your car on foot, at exactly the speed limit.",
+    mechanic: { uses: ["cars", "grapple", "bhop", "radar", "knockback"], hook: "a chase where the boss chases you at the speed limit: grapple his tie to be towed, get out onto the bhop road of car roofs, and radar him at exactly 70" },
     beats: [
       "Gordo needs a ride up the Spiral Freeway to the Number Works side of the hill (or back from it).",
       "C10: the paper storm, the mirror, Overtime running. 'please pull over. you're in breach of your schedule.'",
@@ -515,6 +523,7 @@ export const MISSIONS_ACT2 = {
     cast: ["nell", "foreman", "mr_sevens"],
     requires: { missions: ["m06_option_c"], if: null },
     logline: "Number Works prints the city's prices every morning at 06:00. The union stamped with the unwanted numbers wants a vote. Management wants a strike broken.",
+    mechanic: { uses: ["rocket_jump", "bounce_shots"], hook: "the union votes you onto the press roof by rocket jump, and the print run is a fight on stamping presses" },
     beats: [
       "The Number Yard: conveyors of giant numbers, smokestacks puffing digits, a shift of workers stamped 13, 0 and 0.5.",
       "Union Hall 13: Nell Thirteen and a vote on whether to let you speak (motion carried, 7-6).",
@@ -572,6 +581,7 @@ export const MISSIONS_ACT2 = {
     cast: ["foreman", "nell", "mr_sevens"],
     requires: { missions: ["m14_price_of_everything"], if: null },
     logline: "Foreman Remainder comes down for the print run, and the page is in his face.",
+    mechanic: { uses: ["grapple", "quiz", "water_taser"], hook: "yank the Foreman's crane arms with the grapple to tip him face-down, tase his rolls into 13s, and quiz the rounding crews" },
     beats: [
       "Boss fight: FOREMAN REMAINDER on the conveyor yard and up the Big Calculator. He multiplies and divides.",
       "Beaten, his face flickers and shows one number before it dies: 4,112,006,551. You've seen it before, on slide 31.",
@@ -624,6 +634,7 @@ export const MISSIONS_ACT2 = {
     cast: ["cale", "agnes", "dale"],
     requires: { missions: ["m12_workday_1645"], if: "pages>=3" },
     logline: "Sixty floors of Stairwell B at 17:20, with the sirens going and the clocks starting to crack.",
+    mechanic: { uses: ["slide"], hook: "sixty floors of stairs against the sirens: slide down the banisters (Cale did it as a kid)" },
     beats: [
       "17:20: the lifts lock. The sirens start. Cale and Agnes go into Stairwell B.",
       "A descent level: floors counting down, staff panicking on landings, Timekeeping officers locking floor doors, a man carrying a fish tank, the clocks on every landing cracking from the middle out (the Schedule Bomb warming up downtown).",
@@ -674,6 +685,7 @@ export const MISSIONS_ACT2 = {
     cast: ["cale", "overtime", "auntie", "dale"],
     requires: { missions: ["m16_workday_1720", "m13_rush_hour"], if: null },
     logline: "17:29. Cale reaches the lobby with the copy, and Mr. Overtime is waiting. Then Auntie tells you the truth.",
+    mechanic: { uses: ["bhop"], hook: "the last flashback's run across the lobby is the only time the game asks you to run as fast as you can and then takes it away" },
     beats: [
       "Dale: one more. She's been holding it back. It's the last few minutes.",
       "F4: the lobby, 17:28. Playable until the middle of the floor. Overtime steps out. 'you're running. that's against policy.' 17:29:41. Black. The clock counts to 17:30:00. BEEP.",

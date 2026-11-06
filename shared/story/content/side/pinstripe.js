@@ -6,6 +6,7 @@ export const SIDE_PINSTRIPE = {
     locations: ["pinstripe:clown_cellar", "pinstripe:restaurant", "pinstripe:bocce_pit", "pinstripe:sauce_works"], cast: ["pip", "larry", "don", "nonna"],
     requires: { missions: ["m07_an_offer"], if: null },
     logline: "Pip and Long Larry want you to prank the Family until it falls apart. Every prank is a weapon gimmick.",
+    mechanic: { uses: ["peels", "marbles", "popper", "bubble_wand", "duck"], hook: "every prank is a weapon gimmick: peels, marbles, the popper, a bubble, a duck" },
     twist: "Larry writes every prank, Pip takes the credit, and the last prank is Larry's idea alone: he wants the Don, just once, to laugh at one of his jokes. In the last part it's Nonna who laughs. Up in the rafters, out loud, for the first time anyone can remember. Larry cries for an hour.",
     beats: ["Prank 1: banana-peel the Bocce Pit before a 'settlement' (Peel Shooter). The goons slip; the dispute is settled by slapstick.", "Prank 2: marbles in the Sauce Works (Marble Shotgun): the red river carries goons into the vats.", "Prank 3: the Party Popper in the restaurant's dessert trolley.", "Part 2 (after m08): Larry's joke. Set it up across the Villa with the Bubble Wand, a Rubber Duck and a meatball. The joke is very long. The punchline is a man walking into a bar."],
     steps: [
@@ -35,6 +36,7 @@ export const SIDE_PINSTRIPE = {
     locations: ["pinstripe:villa", "pinstripe:respect_bridge", "pinstripe:restaurant"], cast: ["nonna"],
     requires: { missions: ["m07_an_offer"], if: null },
     logline: "The Family needs some wet work done. Deliver the laundry. Actual laundry. They're very clean.",
+    mechanic: { uses: ["cars"], hook: "a crease meter: deliver laundry without landing hard" },
     twist: "The laundry is the Don's: shirts, a hundred of them, every one with the same grin stain on the collar. Nonna has been washing her dead son's shirts every week for fifty years. The last basket has a note pinned to it for whoever did the delivery: 'thank you. he always liked them crisp.'",
     beats: ["A laundry basket that must arrive dry, uncreased and on time to five addresses (it's a driving delivery with a crease meter).", "Goons try to 'help' and drop it.", "The note."],
     steps: [
@@ -52,6 +54,7 @@ export const SIDE_PINSTRIPE = {
     locations: ["pinstripe:claims"], cast: ["nonna"],
     requires: { missions: ["m07_an_offer"], if: null },
     logline: "Help survivors file claims on their apocalypse cover. Every claim is denied. Every denial is a gunfight.",
+    mechanic: { uses: ["verdict", "cards", "reverse"], hook: "the Scales of Justice are the Claims Office's decoration until the adjusters get what they deserve" },
     twist: "After eight denials the ninth claimant is a little old man whose claim is for a single cat, lost on the Final Quarter. It's denied (act of shareholders). You can take it to Nonna in person. If you hold the Fazzoletti page, she reads it, looks at it for a long time, and approves it: the only claim the Family has ever paid. It pays 3 coupons. He frames it.",
     beats: ["The Claims Office queue. Each claim: a survivor, a policy, a reason for denial (act of shareholders, act of god, act of god's shareholders, 'you didn't read clause 9', 'clause 9 is blank').", "Each denial sends adjusters with tiny hands and big guns.", "The ninth claim."],
     steps: [
@@ -71,6 +74,7 @@ export const SIDE_PINSTRIPE = {
     locations: ["pinstripe:respect_bridge", "pinstripe:restaurant"], cast: [],
     requires: { missions: ["m07_an_offer"], if: null },
     logline: "A meatball the size of a car got loose on Respect Bridge. Roll it home to Mamma Polizza's.",
+    mechanic: { uses: ["lasso", "knockback", "grapple"], hook: "a physics escort: shove, lasso and grapple a car-sized meatball uphill" },
     twist: "The meatball is Mamma Polizza's sixty-year-old sourdough-style 'mother meatball', from which every meatball in Pinstripe has been made. If it rolls into the river, Pinstripe's cuisine ends. The goons are weeping openly. A goon tells you the recipe in exchange (a secret implant clue: 'the secret ingredient is a knuckle').",
     beats: ["It's rolling. Downhill. Toward the river.", "Push it with knockback, block it with cars, lasso it (it drags you).", "Get it up the restaurant's stairs."],
     steps: [

@@ -7,6 +7,7 @@ export const SIDE_CORPHILL = {
     locations: ["corphill:museum"], cast: ["overtime"],
     requires: { missions: ["m13_rush_hour"], if: null },
     logline: "☺ CORP keeps printing new Overtimes. The newest one stands in the Punctuality Museum, among exhibits about being on time.",
+    mechanic: { uses: ["water_taser", "grapple", "verdict"], hook: "flood the museum, ride the Pendulum of Punctuality into him" },
     twist: "One exhibit is EMPLOYEE #1: A LIFE ON TIME, a glass case of Edwin Sallow's things, including a framed photo: Employee of the Month, the very first, with a cat on his lap and a woman out of focus at the edge of the frame, laughing. It's one of his six memory fragments. Every rehired Overtime stops in front of that case for exactly one second before he fights you. He doesn't know why.",
     beats: ["The museum: exhibits (THE FIRST TIME CARD, LATENESS THROUGH THE AGES, THE PENDULUM OF PUNCTUALITY), a gift shop that sells clocks.", "The EMPLOYEE #1 case.", "Boss: OVERTIME (REHIRED). Refightable every midnight: POSITION REFILLED."],
     steps: [
@@ -25,6 +26,7 @@ export const SIDE_CORPHILL = {
     locations: ["corphill:spire_60", "corphill:cathedral"], cast: ["pritchard"],
     requires: { missions: ["m24_the_split"], if: null },
     logline: "An email that will doom ☺ CORP is about to be sent. Chase it down the Spire's pneumatic tubes before it reaches everyone.",
+    mechanic: { uses: ["grapple", "on_time"], hook: "a chase through the Spire's pneumatic tubes" },
     twist: "Pritchard sent it. By accident. It's his resignation letter, typed at 03:00 one night and saved as a draft for six years, and the Spire's mail system is pneumatic: it's a physical capsule racing through 400 km of tubes to every desk. You catch it at the last junction. He asks you to read it. It's one line: 'i would like a minute to myself.' He asks you to put it back in the tube. Or not.",
     beats: ["Pritchard on the pager, hyperventilating.", "A chase through the Spire's tube network (riding capsules, grappling junctions).", "The capsule.", "Choice: send it, or give it back to him."],
     steps: [
@@ -50,6 +52,7 @@ export const SIDE_CORPHILL = {
     locations: ["corphill:spire_60", "corphill:fountain"], cast: ["pip"],
     requires: { missions: ["m24_the_split"], if: null },
     logline: "Ruin ☺ CORP's dress code: steal every tie in an office of 300 synced mannequin workers without being seen.",
+    mechanic: { uses: ["on_time"], hook: "a stealth rhythm level: steal 300 ties on the clocks' beat" },
     twist: "Without ties, the mannequin workers lose sync. They start walking at their own pace. One sits down. One looks out of the window. One, very slowly, loosens its collar and laughs. Pip, who set it up as a prank, watches through binoculars and goes quiet.",
     beats: ["Pip's challenge (Pip needs ties for a costume. 300 ties.)", "Stealth: the office moves on the beat of the clocks (On Time traversal).", "The workers out of sync."],
     steps: [ { id: "ties", text: "steal 300 ties", goal: { type: "pickup", item: "corp_tie" }, marker: "corphill:spire_60" } ],
@@ -64,6 +67,7 @@ export const SIDE_CORPHILL = {
     locations: ["corphill:cathedral", "corphill:dividend_road"], cast: ["twins"],
     requires: { missions: ["m24_the_split"], if: null },
     logline: "Survive a ☺ CORP team-building exercise: a trust fall off a skyscraper.",
+    mechanic: { uses: ["grapple", "rocket_jump"], hook: "a trust fall off a skyscraper you grapple out of at the last second" },
     twist: "It's run by the Twins (before the raid), who explain that this is how they were merged: a trust fall in the Merger's integration week, into a Gristle & Sons fusion vat. The exercise's 'catchers' are a Facilities team with a bleach cannon. You can fall (and grapple out at the last second), or push the Twins off instead and see who catches whom. Nobody catches anybody. They land in the Smiling Fountain, still agreeing.",
     beats: ["A rooftop. A whiteboard: TRUST.", "The fall (a skydiving grapple challenge down the Spire's side).", "Or the push."],
     steps: [ { id: "fall", text: "trust", goal: { type: "reach", zone: "corphill:dividend_road" } } ],
@@ -78,6 +82,7 @@ export const SIDE_CORPHILL = {
     locations: ["corphill:spire_lobby", "corphill:spire_60", "corphill:cathedral", "corphill:museum", "corphill:fountain"], cast: ["pritchard", "chad_tempo"],
     requires: { missions: ["m24_the_split"], if: null },
     logline: "Get a parking permit on Corp Hill. It's the hardest quest in the game.",
+    mechanic: { uses: ["camera", "cards"], hook: "nineteen forms; the permit is a laminated Card Deck" },
     twist: "It's a 19-step bureaucratic odyssey across every office on Corp Hill: forms that need forms, a queue that's a sim of a queue, a stamp that's in the museum, a signature from someone who died in the war (you have to go to the Lates for it), and finally an appointment with Pritchard, who looks at the form and says 'oh, you didn't need one of these. there's no parking on corp hill. there aren't any cars allowed.' The permit is a legendary (it's laminated).",
     beats: ["Form 1. Form 1a. Form 1a (revised).", "A queue (60 s of standing still; any movement sends you to the back).", "The stamp in the Punctuality Museum.", "A dead man's signature (the Lates).", "Pritchard."],
     steps: [
