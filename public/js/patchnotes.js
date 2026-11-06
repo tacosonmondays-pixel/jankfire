@@ -7,7 +7,6 @@ export const PATCH_NOTES = [
     'knives and katanas got the same gloss, so they read as polished steel.',
     'the Zombies wall boards hang the real models.',
     'fixed: chrome showed up black in the hotbar, the locker and the menu.',
-    'skins load the first time someone uses them, so the game starts faster.',
   ] },
   { v: '3.7', date: '2026-11-06', title: 'LAW & DISORDER', items: [
     'NEW ITEM: SPEED TRAP. hold G to point a radar gun at people. over 100 km/h they get SLOW DOWN 3.. 2.. 1. slow down and it\'s a warning, keep speeding and it\'s JAIL (a cage drops on them for 3.5 s). over 200 is jail on the spot.',
