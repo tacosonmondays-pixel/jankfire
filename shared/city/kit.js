@@ -131,3 +131,17 @@ export function stall(B, x, y, z, yaw4, r) {
   for (const sx of [-1.4, 1.4]) L(sx - 0.05, 0, -0.95, sx + 0.05, 2.3, -0.85, 'metal', { nc: true });
   L.P(pick(r, ['crate_soup', 'crate_soup', 'fridge', 'pchair']), 0, 1.0, 0, r() * 6.28, 0.6 + r() * 0.2, (r() * 8) | 0);
 }
+
+// a grapple anchor (DESIGN: the districts are grapple playgrounds): a glowing yellow ring you can read from 90 m on a
+// short bracket, with an invisible collision block round it so the rope (which hooks collision boxes) bites on it.
+// s = block size (bigger is easier to hit), yaw = which way the ring faces, host = 'hang' (ring under the point) or
+// 'side'. a 'grapple' mark tells the bots and tools/city/grapple.mjs where the anchors are. kept by the chunk holding it
+export function hook(B, x, y, z, o = {}) {
+  if (!B.inside(x, z)) return;
+  const s = o.s || 1.4, yaw = o.yaw || 0, R = 0.42, c = Math.cos(yaw), sn = Math.sin(yaw), pts = [];
+  B.add(x - s / 2, y - s / 2, z - s / 2, x + s / 2, y + s / 2, z + s / 2, 'metal', { hide: true });
+  for (let i = 0; i <= 10; i++) { const a = (i / 10) * Math.PI * 2, u = Math.cos(a) * R; pts.push([x + u * c, y - 0.55 + Math.sin(a) * R, z - u * sn]); }
+  B.shape({ kind: 'tube', pts, r: 0.075, seg: 5, mat: 'glow', tint: 0xffe14d, step: 0.5, at: [x, y, z] }); // (kept in the mid ring too: readable far off)
+  B.add(x - 0.06, y - 0.15, z - 0.06, x + 0.06, y + 0.25, z + 0.06, 'metal', { nc: true, tint: 0x3a3a44 }); // the bracket
+  B.out.marks.push({ id: 'grapple', p: [x, y, z] });
+}

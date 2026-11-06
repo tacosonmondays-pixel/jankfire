@@ -5,7 +5,8 @@
 // THE GUT BORDER: the top of the Bottom, pastel houses half swallowed by flesh, the gate at the top of the Long Stairs.
 import { SLICE, PLACES } from './slice.js';
 import { rng, hash2 } from './plan.js';
-import { cube, stairsZ, line, rubble, stall, flightLen, retaining, PASTEL, pick } from './kit.js';
+import { cube, stairsZ, line, rubble, stall, flightLen, retaining, PASTEL, pick, hook } from './kit.js';
+import { playGut } from './playground.js';
 
 const GY = SLICE.gut.y;
 const inRect = (x0, z0, x1, z1, r) => x0 < r[2] && x1 > r[0] && z0 < r[3] && z1 > r[1];
@@ -214,7 +215,7 @@ export function gut(B, d) {
       if (k < n - 1 && br() < 0.35) { const lx = ox1 + 1.5, lz = (oz0 + oz1) / 2; if (B.inside(lx, lz)) lungPad(B, lx, lz, 0.5); }
     }
     // vein cables across the street to the next block (they glow)
-    if (br() < 0.7) { const vz = bz0 + 4 + br() * (bz1 - bz0 - 8), vx = bx1 + 2; if (B.inside(vx, vz)) B.prop('veincable', vx + SW / 2, GY + 9 + br() * 4, vz, 0, (SW + 6) / 4, 0); }
+    if (br() < 0.7) { const vz = bz0 + 4 + br() * (bz1 - bz0 - 8), vx = bx1 + 2; if (B.inside(vx, vz)) { const vy = GY + 9 + br() * 4; B.prop('veincable', vx + SW / 2, vy, vz, 0, (SW + 6) / 4, 0); hook(B, vx + SW / 2, vy + 0.3, vz, { s: 1.4 }); } }
   }
   // the guts themselves: intestines arcing out of the ground over the streets and back in, veins across the cobbles,
   // wet mounds with eyes. seeded per chunk, anchored in it (keep clear of the arena and the stomach's bowl)
@@ -226,6 +227,7 @@ export function gut(B, d) {
     const mx = (ax + bx) / 2 + (r() - 0.5) * 8, mz = (az + bz) / 2 + (r() - 0.5) * 8;
     B.shape({ kind: 'tube', pts: [[ax, GY - 1.5, az], [ax + (mx - ax) * 0.4, GY + h * 0.8, az + (mz - az) * 0.4], [mx, GY + h, mz], [bx + (mx - bx) * 0.4, GY + h * 0.8, bz + (mz - bz) * 0.4], [bx, GY - 1.5, bz]], r: rad, seg: 10, ribs: 0.12, mat: r() < 0.7 ? 'flesh' : 'fat', tint: pick(r, FLESH), step: 1.0, pulse: 5 });
     B.shape({ kind: 'blob', c: [ax, GY, az], r: [rad * 2, rad * 0.9, rad * 2], seg: 8, mat: 'liver', pulse: 3 });
+    hook(B, mx, GY + h + rad + 0.65, mz, { s: 1.6 }); // a grapple ring on the crown (swing the guts)
     B.shape({ kind: 'blob', c: [bx, GY, bz], r: [rad * 2, rad * 0.9, rad * 2], seg: 8, mat: 'liver', pulse: 3, at: [bx, GY, bz] });
   }
   for (let i = 0; i < 10; i++) { // veins: thin purple-red tubes snaking along the ground
@@ -246,6 +248,7 @@ export function gut(B, d) {
   if (B.touches(SLICE.arena.rect, 16)) arena(B);
   choir(B, r);
   if (B.touches(SLICE.teeth.rect, 2)) toothMarket(B, r);
+  playGut(B); // grapple rings, the Wishbone (playground.js)
 }
 
 // the border: the Bottom's top houses, half eaten. ground creeps from pastel to flesh going north; the gate at the
