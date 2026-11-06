@@ -49,6 +49,7 @@ Notes:
 - The **secret key is a secret.** It only ever goes in `.env` or Render's environment settings. Never in the exe, never in `desktop/config.json`, never in chat or a public repo. The exe talks to your server; only the server talks to Supabase.
 - `render.yaml` uses the **Starter** plan (about $7/month) so it never sleeps. The free plan works but sleeps after 15 idle minutes and takes ~30-60 s to wake.
 - Without Supabase, accounts live in `data/jankfire-db.json` (or the app's user-data folder for the exe). Fine on your own PC, wiped whenever a host like Render restarts.
+- Set up Supabase with an older version? Run `supabase.sql` again after updating: it adds new stat columns (like `sniper_feats` for Sniper Royalty) and keeps every account. `npm run check-supabase` tells you if one is missing.
 - Any Node host with WebSockets works (Railway, Fly.io, a VPS). The server reads `PORT`.
 
 ## Controls
@@ -65,16 +66,20 @@ Notes:
 | R | reload (Card Deck: redraw) |
 | Lasso | hold fire to spin the loop, let go to throw · holding someone: **wheel** (or hold **R** in / **F** out) reels the rope, **fire** or **right mouse** lets go · being held: mash **Space / WASD** to wriggle free |
 | F | inspect your weapon · **Plant & Defuse: hold F to plant / defuse** |
-| G | **use your item** (grenade, medkit, shield bubble, duck, smoke, party popper, reverse card, bubble wand) |
+| G | **use your item** (grenade, medkit, shield bubble, duck, smoke, party popper, reverse card, bubble wand, instant camera, pop quiz). Night Vision Goggles: G puts them on / takes them off |
+| H | **Night Vision Goggles: flash** everyone you can see (goggles on) |
+| 1 / 2 / 3 / 4 (in a pop quiz) | answer the question |
 | Z | **spray** your graffiti on the wall, floor or ceiling you're looking at (one at a time, every 10 s) |
 | 5 / 6 / 7 | **use your killstreaks** (the tray on the right shows which are ready) |
 | 1 / 2 / 3, wheel, Q | primary / secondary / melee, last weapon. 4 = Scythe Rifle if you have it |
 | V (hold) / X | Scythe Rifle: glitch dash / switch to rifle mode |
 | 1 / 2 / 3 (between rounds) | vote for the next map + mode |
-| Space / click | skip a killcam or the play of the round |
+| Space / click | skip a killcam (not an EPIC one, and never the play of the round) |
 | B / Esc | pause menu · Tab scoreboard · T / Enter chat |
 
 Settings: display (windowed / windowed fullscreen / fullscreen), grapple on right click instead, toggle aim, sensitivity, ADS sensitivity, fov, fov kick, shake, blood, fps counter, quality, speed lines, killcam, show other players' uploaded name cards.
+
+**Music:** a soundtrack of original gabber / hard tek tracks (Jank Cola Rave, Spoon Fight Tekno, Rubber Duck Hardcore, Hung Jury Hardcore, Banana Peel Acid, Wrecking Ball Warm-Up) plus the owner's own "Untitled". The menus and end-of-match screens shuffle them; every match picks a new random song and loops it, with a "now playing" sticker. Settings → Audio: **music volume** (menus), **music in matches** (on for bots / co-op / training), **...in competitive too** (off by default: the Online room and Plant & Defuse stay quiet unless you turn it on) and **match music volume**; it dips during killcams, and the main volume scales all of it. It starts on your first click or key press, since browsers block sound before that. The generated tracks are re-rendered from code in `tools/music/` (see its README); credits and licences in `public/music/CREDITS.md`. Adding a song: drop the file in `public/music/` and add one line to `TRACKS` at the top of `public/js/music.js`.
 
 ## Modes
 
@@ -83,7 +88,7 @@ Settings: display (windowed / windowed fullscreen / fullscreen), grapple on righ
 | Play | Online with real people, one shared room. After every match everyone votes on the next map + mode. |
 | Bots | Private match vs 1-12 bots. Pick the mode, map, difficulty and hipfire. |
 | Coop | Everyone vs endless waves of bots. No friendly fire. A container every 5 waves. |
-| Training | Target dummies, infinite ammo, a movement playground. Good for testing kill effects and the katana. |
+| Training | Target dummies, infinite ammo, a movement playground. Your 3 picked killstreaks are always in the tray (a used one comes back a few seconds after it runs out). Good for testing kill effects, the katana and the streaks. |
 
 Game modes (Play + Bots):
 
@@ -93,16 +98,23 @@ Game modes (Play + Bots):
 | Team Deathmatch | red vs blue, first team to the kill limit. No friendly fire. |
 | Tags | kills drop a tag. Grab enemy tags to score, grab your own team's to deny them. |
 | Plant & Defuse | attackers carry the bomb to site A or B and hold F to plant (3 s). Defenders stop them or hold F to defuse (5 s). First to 4 rounds, sides swap after round 3. |
-| Randomizer | everyone gets a random loadout every life |
+| Randomizer | everyone gets a random loadout every life (weapons only: your item and its charges stay yours) |
+| Gun Game | everyone climbs the same 19-rung ladder holding only that rung's weapon (no other slots, items or killstreaks): AR, SMG, Redline, Shotgun, Minigun, Shredder, Revolver, Marble Shotgun, Sniper, Bow, Chicken Rocket, Blood Cross, Peel Shooter, Card Deck, Hand Slapper, Bread, Scales of Justice, Katana, Spoon. A kill with your rung's weapon moves you up; dying to any melee weapon knocks you back one (HUMILIATED). Everyone hears when someone reaches the spoon, and the first spoon kill wins. 10 minute clock, highest rung wins if it runs out. |
+| Infection | a few seconds in, one random player turns (two from 8 players). Zombies are green, groan, have 200 HP, run 30% faster and only get the Zombie Claw (two swipes kill). Survivors keep their loadout, but anyone who dies as a survivor comes back as a zombie, and late joiners start as one. Survivors win if anyone is alive when the 3 minute clock runs out (the round and the roll go to the best survivor who got a kill); the infected win once everyone has turned. |
+| Spoons & Grapples | free for all with nothing but the Spoon (one hit kills, point blank) and the grappling hook, which pulls 35% harder. No guns, no items, no killstreaks. |
+| Duck Rain | deathmatch, but rubber ducks rain from the sky (a drop every 2.4 s down to 1.1 s as the match goes on, 1-4 ducks each depending on map size, half of them near someone) and land as black holes. A red ring and a shadow on the ground plus a falling whistle show where each one lands. A sky duck kill is a suicide unless someone hurt you in the last 6 s (they get it). Sky ducks are the real Rubber Duck: they fall straight down (no homing, so you can dodge the red ring), but one that lands on you sticks and the hole rides you. Only a thrown duck homes in. |
+| Floor Is Lava | the map's ground floor burns: 20 damage per touch, then 4 every 0.3 s for 1.4 s, and it bounces you back up. Crates, roofs, walls and ledges are safe, spawns are always on safe ground. The ground floor is worked out per map (the lowest height with a real amount of floor, plus curbs half a metre above it). Only on maps that have one (not Platform or Skyline). No Never Landed run here (the lava keeps everyone off the floor anyway). |
+| One in the Chamber | a Revolver with one bullet (any hit kills, no reloading) and a knife. Each kill gives a bullet (max 3). 3 lives each, out of lives = spectate (click to watch the next one). Last one standing wins. |
 
-Bots play the objectives too: they carry and plant the bomb, defuse it, and grab tags. They also use the grapple to chase, to get up high, and to save themselves from the void.
+Bots play the objectives too: they carry and plant the bomb, defuse it, and grab tags. They also use the grapple to chase, to get up high, and to save themselves from the void. On maps with bomb lanes (Bazaar and the classic maps) they walk the lanes as a graph and re-plan when they get stuck; on the Backrooms a walk graph of the whole maze (both levels, stairs and drops) steers them in every mode.
+In the chaos modes they rush you with the spoon (grappling in from afar), stop at lava edges and grapple back out when they fall in, and in One in the Chamber only spend their bullet on a close enough shot, knifing you otherwise.
 
 **Match Settings** (pause menu): map, hipfire accuracy, bot difficulty, bot count, and (in Bots) the mode.
 
 ## Weapons
 
-- **Primary:** Assault Rifle, SMG, Shotgun, Minigun, Sniper, Chicken Rocket, Bowling Ball Launcher, Bow, Peel Shooter
-- **Secondary:** Revolver, Marble Shotgun, Cigarette (smoke it, blow fire), Leaf Blower, Card Deck, **Snowball**, **Lasso**
+- **Primary:** Assault Rifle, SMG, **Redline**, Shotgun, Minigun, Sniper (a headshot from a player always kills), Chicken Rocket, Bowling Ball Launcher, Bow, Peel Shooter, **Shredder**, **Big Laser Pointer**
+- **Secondary:** Revolver, Marble Shotgun, Cigarette (smoke it, blow fire), Leaf Blower, Card Deck, **Snowball**, **Blood Cross**, **Lasso**
 - **Melee:** Bread, Slipper (throw it, it comes back), Knife, Hand Slapper (point blank, launches + makes them slip), **Katana**, Spoon, **Scales of Justice**
 - **Item (G):** one per loadout, see below. The Party Popper and the Reverse Card used to be secondaries; they're items now.
 
@@ -120,6 +132,9 @@ Charges refill over time (the pie on the item box), and you get them all back wh
 | **Party Popper** | 2 | 9 s | yank it: a confetti blast shoves everyone in front of you away hard and launches you backwards. Zero damage, all void kills and escapes |
 | **Reverse Card** | 1 | 22 s | for 3 s every bullet, blast and shove aimed at you goes back to whoever sent it. A big spinning UNO card over your head, the arrows circling you and a red outline tell everyone not to shoot |
 | **Bubble Wand** | 2 | 15 s | blows 4 soap bubbles: the first enemy one touches is sealed in a giant bubble that floats up and away for 5 s, then pops (see below) |
+| **Instant Camera** | 1 | 25 s | G snaps a photo of what's in front of you (free). G again prints it: a giant photo stands up in front of you for 20 s, and walking into it puts you back where you took it, facing the same way. Anyone can use it (see below) |
+| **Pop Quiz** | 1 | 22 s | a calculator you throw. A hit freezes them with a maths question for 6 s: wrong or too slow = dead (your kill), right = +25 HP, 2.5 s where nothing hurts them and a speed boost |
+| **Night Vision Goggles** | 2 | 14 s | G flips them down (free): green view, the dark lifts, everyone glows. H spends a charge to flash everyone you can see near your crosshair (blinded 0.6-3.2 s, longer the more they were looking at you). Wearing them doubles how long any flash blinds you |
 
 The popper and the reverse card pop into your left hand for a moment (wearing their Champagne / Skip Card skins if you have them) while your gun stays out. Other players see them in your hand too.
 
@@ -133,12 +148,14 @@ Why the numbers:
 - **Reverse Card** can turn a sniper headshot back on the sniper, so 3 s once a life with a long refill (it used to be 1.2 s every 6 s and cost you a secondary slot).
 - **Bubble Wand** takes someone out of the fight for 5 s and can float them over the void, but any hit (a teammate's too) pops it and nobody can be re-bubbled straight away: 2 charges, a 15 s refill.
 
-**Only the minigun shoves people with bullets**: hold it on someone and they get pushed away (the price for spraying). Melee and explosives still knock people around, and your own movement tricks (shotgun jumps, minigun flying) still work.
+**Only two guns shove people with bullets**: the minigun (hold it on someone and they get pushed away, the price for spraying) and the sniper (a body shot sends them flying off the map). Melee and explosives still knock people around, and your own movement tricks (shotgun jumps, minigun flying) still work.
 
 **Knife (CS-style):** left click alternates diagonal slashes, right click is a heavy stab (windup, 90 damage, a backstab kills). Every knife skin moves like its real-world family: the Butterfly's handles flip around the blade, the Karambit spins on your finger through the ring, the Switchblade flicks open, the Kitchen knife rolls like a bayonet, the Bowie does a barrel-roll toss, the Cleaver balances on a fingertip.
 
 **Katana:** the blade gets longer (and reaches further) with every kill you get with it. Resets when you die.
 **Right click parries:** a 0.35 s window, then a 0.8 s cooldown (a ring round the crosshair). Anything that hits you from the front (140 degrees, judged by the server from its own positions) bounces off: bullets are blocked, and in the first 0.15 s (a perfect parry) they go back into the shooter as a Katana Parry kill; projectiles get batted back at the thrower; melee attackers get shoved back and staggered (no guard of their own until it wears off). Explosions aren't parried. SHING, sparks, PARRY! / PERFECT PARRY!, and it shows in killcams.
+
+**Marble Shotgun:** a hundred marbles a shot, and they stay on the floor. Where most of a shot lands together the server leaves a **patch of marbles** (worked out from the shooter's own position and its own map raycasts) for 9 s, and you can see every marble in it. Run, sprint, slide or bhop across one and your feet go out from under you (MARBLES!, the banana slip); **crouch-walk** over it (or walk round) and you're fine, with any weapon out (except the Spoon, which crouches straight into a slide). Patches stop at walls: the far side of a wall isn't on them. Everyone slips, the shooter on their own marbles too, except teammates. After a slip you get 2 s before marbles can get you again, and each slip scatters some of them: the patch gets smaller and thinner, and goes after about four slips. Slipping off a ledge or into the void is the shooter's kill. Bots slip too, and patches show in killcams. 3 patches per shooter, 10 per room.
 
 **Scales of Justice:** a big brass balance scale swung like a mace (overhead smash, click again for a side swing). 35 damage times a **verdict** the server decides at hit time from how the target stands next to you right now. Each charge is a point of guilt, each thing in their favour takes one off:
 
@@ -153,7 +170,7 @@ Why the numbers:
 
 Coop wave bots and training dummies aren't on the scoreboard, so only their streak and revenge count (a fresh one is a HUNG JURY, x1). GUILTY: x(1 + 0.4 per point), up to x3, which one-shots (THE COURT HAS SPOKEN). NOT GUILTY: x(1 - 0.25 per point), down to x0.4. Zero points: HUNG JURY, x1. The scale in your hands tips toward the verdict for whoever is under your crosshair (heart pan = guilty, feather pan = innocent) and a readout under the crosshair says it, e.g. `GUILTY x2.2`. Every hit gets a gavel bang, a shower of coins and a gold stamp over the victim (yours shows through walls; other people's only nearby), in killcams and highlights too. Skin: **Kangaroo Court**, a wobbly wooden toy scale with a kangaroo judge.
 
-**Revolver:** tap for a dead-accurate 40 damage shot (headshots basically kill), and after every shot it does a quick cowboy twirl round your trigger finger, back in the hand before you can fire again. **Hold fire to fan the hammer:** after the first shot the rest of the cylinder goes at about 6 a second, with way more spread and 28 damage a shot (70 to the head), the gun spinning in your hand the whole time to rapid hammer clicks. Your off hand holds it down, so fanning kicks less than tapping. Aim down sights for plain single shots. Everyone else (and the killcam) sees your revolver spin too. The server checks it all: hits that come faster than a tap only do fan damage, nothing counts faster than a fan, and after 6 hits it wants a reload.
+**Revolver:** tap for a dead-accurate 40 damage shot (a headshot does 96: almost a kill), and after every shot it does a quick cowboy twirl round your trigger finger, back in the hand before you can fire again. **Hold fire to fan the hammer:** after the first shot the rest of the cylinder goes at about 6 a second, with way more spread and 28 damage a shot (67 to the head), the gun spinning in your hand the whole time to rapid hammer clicks. Your off hand holds it down, so fanning kicks less than tapping. Aim down sights for plain single shots. Everyone else (and the killcam) sees your revolver spin too. The server checks it all: hits that come faster than a tap only do fan damage, nothing counts faster than a fan, and after 6 hits it wants a reload.
 
 **Sniper no-scopes:** a sniper hit when you're not fully scoped gets a NO SCOPE badge with the distance by your crosshair and a no-scope icon in the kill feed (damage is the same). Get no-scoped from 25 m+ and you get the full MLG treatment: a spinning rainbow NO-SCOPED, hitmarkers, lens flares, stickers and an airhorn, and your killcam waits for it. A no-scope headshot at any range sends up fireworks that spell the shooter's name and the distance, for everyone (killcams and the play of the round too).
 
@@ -170,11 +187,22 @@ Coop wave bots and training dummies aren't on the scoreboard, so only their stre
 - Skin: **Garden Hose** (a green hose with a brass nozzle for the knot, and you swing them on the hose).
 
 **Bubble Wand (item):** G blows a stream of 4 slow, wobbly soap bubbles (2 charges, 15 s to refill each; they float about 10 m). The first enemy one touches is sealed in a giant soap bubble for 5 s: no moving, shooting, items or streaks, just looking around while it floats them up (2 m/s) and away from you (1.5 m/s). Then it pops and drops them: no fall damage, but over the void that's your kill. Any hit (bullet, melee, projectile, explosion) pops it instead of hurting them, so teammates can shoot a friend free and enemies can wait until they're over the void (shoot it open there and the kill is yours). You, your teammates, anyone in a Shield Bubble and a rolling Wrecking Ball can't be bubbled; blow one at someone with a Reverse Card up and you're the one floating away. After a pop nobody can be bubbled again for a while: 1.5 s, or 60% of however long they were in (3 s after a full float), so two wands can't keep someone in one for good. Inside, everything sounds underwater and the world wobbles behind a rainbow soap film.
+**Big Laser Pointer:** an office laser pointer the size of a leg (taped-on pistol grip, two D-cells, a cat charm). Hold to charge: 1.2 s for a full one, you walk at 72% speed, the meter LEDs fill and the lens glows and whines (everyone sees and hears it). Let go: a thick green beam down where you look that follows your aim for up to 0.6 s, goes through everyone in the line, stops at walls, ticks 5-21 damage every 0.1 s and shoves a little (about 130 if they stand in a full one). A tap is a weak little zap. The server times the charge and does the hits. Bots carry it.
 
-**Bow:** hold to draw, release to fire. Every arrow gets a random tip, shown on the HUD: regular, power, knockback, flame, explosion, gas, sleep.
+**Instant Camera (item):** the first G is free: it snaps a photo (the server remembers where you stood, on the floor under you, and which way you faced; no floor under you = no photo). Every client renders the picture itself, so whoever was standing there is in it. The photo shows by your item slot until you print it (G, costs the charge) or die. The print is a giant instant photo on a kickstand, 1.9 m in front of you, for 20 s (one each: a new one replaces the old one). Walk into it from either side and you come out where the photo was taken, facing the same way. Anyone can walk through, enemies too, and an enemy who does is tagged by you, so anything that happens to them over there in the next 10 s is your kill. Whoever is standing on the spot when someone comes out gets telefragged (the traveller's kill). Killcams show frames and teleports. Bots with one snap a photo when it's quiet and print it to escape when a fight goes badly.
+
+**Pop Quiz (item):** the calculator flies in an arc and bounces. Whoever it hits is frozen with a maths question (sums, times tables, squares, halves, two-step ones) and 4 answers: keys 1-4 (or click) within 6 s. The server picks the question and keeps the answer. While they're sitting it nothing can hurt them and they can't attack; everyone else sees a giant calculator in front of their face and the sum on a sign over their head. Wrong or too slow: dead, your kill ("failed maths"). Right: a gold star, +25 HP (up to 125), 2.5 s where nothing hurts them and 4 s at 1.25x speed. Nobody can be quizzed again for 10 s after one. Teammates, shield bubbles, spawn protection and wrecking balls are immune; a Reverse Card sends the exam back to the thrower. Bots answer right 50 / 70 / 85% of the time (easy / normal / hard) after 1-4 s.
+
+**Night Vision Goggles (item):** G flips them down from your forehead (free, everyone sees them on your face with the lenses lit). The view goes green and grainy inside the two eyepieces, dark maps get readable (it lifts more the darker the map is), fog thins and everyone's outline glows. With them on, H flashes: everyone you can see (walls, smoke and shield bubbles block it) within 34 m and about 35° of your crosshair is whited out for 0.6 s (looking away) to 3.2 s (looking right at you), with ringing ears and a blurry afterimage. Anyone wearing goggles gets twice that. A Reverse Card flashes it back. Bots wear them and flash you.
+
+**Shredder:** an industrial vacuum-shredder. Hold to suck: a 14 m cone (35° each side) pulls people toward the intake, harder the closer they are (sprint and you can get away at long range; within a few metres it just yanks you in). Their gun goes in first. Whoever reaches the intake hangs in the spinning teeth and gets chewed (150 damage a second, dead in about 0.7 s); a Shredder kill takes them apart, the pieces go into the machine and come out of the exhaust chute in chunks, with blood and confetti. About 4 s of sucking overheats it (the teeth glow red-hot, the gauge hits the red, it steams), then it has to cool. Teammates are safe, bots carry it too, and the server does the pulling and the shredding from its own positions. Skin: Wood Chipper.
+
+**Bow:** hold to draw, release to fire. Every arrow gets a random tip, shown on the HUD: regular, power, knockback, flame, explosion, gas, sleep (knocks them flat on the floor for 4 s, Zzz).
 
 **Card Deck:** you hold 5 cards from a real 54-card deck. Right click picks, left click flicks it out of the fan, R redraws.
 Hearts heal by the number · Spades throw that many cards · Clubs blast people back · Diamonds dash you forward · Aces teleport you · J / Q / K are ultimates · Jokers fire a random ultimate.
+
+**Blood Cross:** no gun, just your hand doing finger guns (the thumb is the hammer). Every shot costs you 12 HP (it never takes your last one, so it can't kill you), about one shot every 0.7 s. The glowing blood bolt flies dead straight and sticks where it lands: on a player a small glowing X carves into their body and rides along with them, 0.6 s later two 2.5 m blood spikes burst out through them in a big X, then they pop for 75 damage plus a small blast (3 m, up to 35) on anyone else close by (not your team), blood all over the walls. A kill with it pays the 12 HP back. On walls and floors it leaves an X that fizzles out. Everyone sees the mark, the spikes and the pop (killcams and the play of the round too); when it's you, the X is on your screen. Inspect blows the blood off your fingertip. In Training the blood you spent comes back 2 s after your last shot. Skin: Shadow Cross, a charred hand that bleeds purple.
 
 **Aim down sights:** the rifles, SMG, revolver and peel shooter have real iron sights (the shotgun has a bead), and ADS lines the sight up with the exact middle of the screen with the gun below it. Launchers, the minigun and the bow stay low and to the side. Hats tuck away while you aim.
 
@@ -192,6 +220,7 @@ Pick **3** in LOADOUT. Kills in one life (the count resets when you die) earn th
 | 6 | Spinbot: 10 s of aimbot + spinning. You are now a cheater |
 | 6 | Wrecking Ball: 20 s as a giant steel demolition ball in third person: ram, chain-swing, ground slam (see below) |
 | 7 | Spy Satellite: every enemy shows through walls for 20 s |
+| 8 | Overdrive Rig: 25 s inside a hulking scrap-built exo-frame: overshield, rocket punch, block, quickhack, homing missiles, crater leaps (see below) |
 | 10 | Giant Duck: a giant black hole where you aim that pulls in everyone but you and eats their momentum |
 
 **Wrecking Ball:** you curl up inside a 2.2 m riveted steel demolition ball (a stripe in your colour, a chain stub on top, your eyes peeking out of a slot) and the camera pulls out behind and above you. No guns for 20 s (a box at the top shows the time left, your speed and what a ram or a slam would do right now), but:
@@ -201,6 +230,21 @@ Pick **3** in LOADOUT. Kills in one life (the count resets when you die) earn th
 - **Ground slam (C / Ctrl in the air):** straight down, very fast. The higher you were, the bigger it is: off a small hop it's 30 at the centre across 4 m, from 18 m up or more it's 150 across 10 m, falling off with distance, knocking everyone up and out. It bounces you back up 5 to 12 m (higher the higher you came from) so you can slam again: 1.5 s cooldown, hold crouch to chain them.
 - The server judges every ram and slam from its own positions, velocities and map (including how high you got); the client can't claim hits, and a ball hanging up on its chain can't slam the floor below. Slams don't go through walls or floors.
 - Code: `public/js/wreck.js` has the ball's looks, its chain, the third-person camera and the HUD box; the rolling, chain and slam physics are in `player.js` (`ballStep`, `ballHookStep`); rams and slams are judged in `server.js` (`tickBalls`, `onSlam`); the numbers are `WRECK` in `shared/weapons.js`.
+
+**Overdrive Rig:** a scrap-built cyber exo-frame closes around you, plate by plate: about 1.35x taller and much broader than you, welded scrap armour, hoses and pistons, huge forearms and fists, a red visor, cyan/magenta neon, and a missile rack on its spine. You see its forearms in first person; everyone else sees the whole frame stomp around. No guns, grapple or items for 25 s (a panel at the top shows the time left, the overshield, the punch charge and the missile + hack cooldowns), but:
+- **Overshield 100** on top of your HP: it soaks damage first (a hex shell flickers where it's hit). Only 15% of any knockback gets through, peels don't trip you.
+- **Fast and heavy:** 16 m/s walking, about 23 m/s (83 km/h) running, heavy footsteps that shake the screen, a crater wherever you come down hard. Above 11 m/s it leaves an **overdrive trail**: cyan/magenta afterimages that fade over 0.4 s (everyone sees them), and your screen gets a slow-mo/chromatic tint.
+- **Rocket punch (left mouse, hold and let go):** charges for up to 1.3 s (the fist pulls back, glows and shakes harder). Let go and the rig rockets forward 3.5 to 15 m (more charge, further) with a huge CLANG: 35 to 110 damage and a launch of 28 to 80 m/s. Someone you punch into a wall within 0.9 s takes a +40 **wall slam**. 0.5 s cooldown.
+- **Block (right mouse, hold):** forearms crossed in front of the visor. Hits from the front 120 degrees lose 80%, and the damage you block charges your next punch (40 blocked = a full punch). You walk slower while blocking.
+- **Sky-high jump (tap Space):** about 6 m straight up, several times a normal jump; it comes down with a heavy thud and a crater (cosmetic, no fall damage).
+- **Thrusters (E, the grapple key):** a burst of jet flame out of the boots and the back that lifts you about 13 m/s and keeps your speed, in the air too. 3 charges, one back every 2.6 s (dots on the panel), a quarter second apart: enough to climb onto things or dodge, never to fly forever. The server counts the charges; everyone sees the jets. A thrust doesn't cancel a leap's crater landing.
+- **Quickhack (R):** a glance at the wrist display fries the grapple of whoever is in your crosshair, up to 40 m away with a clear line of sight: their rope snaps and they can't grapple for 4 s (a HACKED overlay on their screen). 2.5 s cooldown.
+- **Homing missiles (G):** the spine rack opens and fires a salvo of 4, split over the two best targets ahead of you. 22 each on a direct hit (a full salvo won't kill on its own: follow it up with a punch), a 3.2 m blast that falls off to 35% at the edge. Every 10 s.
+- **Charged leap (hold Space, let go):** the rig crouches for up to 0.9 s, then jumps where you look (11 to 27 m/s forward, and never lower than the tap jump). The landing is a crater with dust and a shockwave ring: up to 25 damage across 4.5 to 7.5 m (more charge, wider), knocking people up and out. A quick tap is the sky-high jump above.
+- It ends cleanly when the 25 s run out, or when you die: then the frame bursts into scrap.
+- **With everything else:** soap bubbles just burst on it, the sleep arrow still hurts but can't knock it flat, getting infected ends it, and while you're in it Moon Boots / Spinbot / Wrecking Ball stay in your tray for later (the rig can't start inside the wrecking ball either). Gun Game, Infection and the chaos kits have no killstreaks, so no rig there.
+- **Bots** earn it too (at the same kill count) and fight in it: they size punches to the gap, walk into gunfire behind the block, fire missiles at range, hack anyone grappling, and leap at far targets.
+- The server judges all of it: the rig flags in your snapshots only count if it saw you activate the streak, the block cone uses the server's view of where you face, punch and leap charges are timed from your own snapshots, the punch dash is re-run by the server on its own map and hits whoever it passes there (no client says who got hit), hacks are checked for range, aim, line of sight and cooldown, the missiles are server projectiles, and a landing has to come from a real leap onto a real floor near where the server has you.
 
 ## Maps
 
@@ -215,6 +259,7 @@ Pick **3** in LOADOUT. Kills in one life (the count resets when you die) earn th
 | **Bazaar** | large | the Plant & Defuse map (below) |
 | Islands | large | floating islands over the ocean |
 | Skyline | huge | real towers with floors, sky bridges, a construction site with a crane |
+| **Backrooms** | extra large | the biggest by far: an endless yellow maze round a huge hall (below) |
 
 Every map has scenery around it now: plateaus with cliffs down to a valley, mesas and dunes, a city of lit towers below, an ocean, a cloud sea, mountains on the horizon.
 
@@ -223,6 +268,13 @@ Every map has scenery around it now: plateaus with cliffs down to a valley, mesa
 - defenders spawn about 2.5x closer to both sites than attackers, so they get set up first; every lane ends in a chokepoint (the Canal Gate, the Cistern arch, the mid plaza)
 - each site has three ways in for retakes, and its own look: A is a raised tiled terrace with orange canopies, B is a fountain court with blue walls and an arcade
 - upper levels: climb the crates in A's approach onto the **Bridge** rooftop overlooking A, the **upper canal walkway**, the **mid gallery** over the hall, go upstairs in the **Spice House** and out onto the balcony over B, or climb onto the **arcade roof** above B
+
+**Backrooms** is an original take on the "Level 0" internet legend: 240 x 240 m of mono-yellow wallpaper, damp beige carpet and buzzing fluorescent panels, sealed in (no sky, nothing outside), with a warm haze that swallows everything past ~100 m:
+- the **Hall** in the middle: 64 x 64 m under a 7.5 m ceiling, sparse pillars, freestanding walls (one with a window) and low walls for cover, long fights across it
+- around it, the maze: rooms of every size with doorways, long straight halls for sightlines, pillar rooms, the odd dead-end alcove, and a 3 m drop ceiling (you can still jump, and grapple the ceiling)
+- a hole in the floor in the south-west drops you into the flooded **Pool Rooms** below; they run north under the west side, and stairs come back up in three places, one of them right into B
+- Plant & Defuse: **A** is the **Office** (cubicles, grey-blue carpet) north-east of the Hall, **B** is the **Wet Room** (white tiles, the pool stairs) north-west of it; defenders spawn at the north end, attackers at the south, and rounds are longer here (150 s). In TDM and Tags you spawn all over the map, away from enemies, not back in the lobbies. Bots find their way through the maze with a walk graph (`shared/nav.js`)
+- some lights flicker, some are dead, the hum never stops (`public/js/backrooms.js`). you are probably alone
 
 ## Accounts, levels, achievements
 
@@ -234,9 +286,9 @@ Sign up from the main menu. Accounts save loadout, cosmetics, character, name ca
 
 ## Character
 
-**CHARACTER** on the main menu: your colour (name + outline), skin tone, hair (9 styles, any colour), top (sash, t-shirt, hoodie, jacket, suit, nothing) and bottom (shorts, pants, skirt) with their colours, a head, face and back accessory, your kill effect and your name card. Everyone sees your look. Capes hang from your shoulders and stream behind you when you're fast, wings flap in the air, backpacks and jetpacks have straps.
+**CHARACTER** on the main menu: your colour (name + outline), skin tone, hair (9 styles, any colour), top (sash, t-shirt, hoodie, jacket, suit, runner jacket, nothing) and bottom (shorts, pants, skirt) with their colours, a head, face and back accessory, your kill effect and your name card. Everyone sees your look. The runner jacket is an oversized hi-vis bomber: the top colour paints its body (hi-vis yellow if you don't pick one), the black panels and reflective tape stay. Capes hang from your shoulders and stream behind you when you're fast, wings flap in the air, backpacks and jetpacks have straps.
 
-Achievement accessories:
+Achievement unlocks (accessories, plus one weapon skin):
 
 | Achievement | How | Unlocks |
 |---|---|---|
@@ -250,21 +302,28 @@ Achievement accessories:
 | Knee Trouble | t-bag so hard you explode | Ice Pack |
 | No Life | play 5 hours | Jetpack |
 | Never Landed | finish a whole match without touching the ground after any spawn | Wings |
+| Sniper Royalty | three kinds of sniper kill (below) | **Golden Sniper** (a sniper skin) |
 
 **Never Landed:** be in the match from the start (or join in the first 5 seconds) until the end-of-match screen. After every spawn you get 3 seconds to leave the ground; after that, any touch of a floor, roof, box top or platform ends the run for that match, even a single bhop tick. Walls, the grapple and jump pads (as long as you don't stand on them) are fine, and so is dying: every respawn gives a fresh 3 seconds. A **NEVER LANDED** tag with a little wing shows on the left while your run is clean; **YOU TOUCHED GRASS** when it breaks. Your client reports the touch, and the server also checks your snapshots against the map (resting on a box top twice in a row = landed), so a client that just never reports doesn't get it. Leaving and rejoining doesn't wipe a broken run. Online and Bots matches, logged-in players only.
 
 The Wings used to come from Frequent Flyer: everyone who had Frequent Flyer before the change keeps them (Supabase hosts: run the end of `supabase.sql` once to add the new columns and grandfather them; until then the server skips just those stats and logs a hint).
+
+**Sniper Royalty → the Golden Sniper.** Get each of these Sniper kills at least once, in any order, over any number of matches: a **LONG SHOT** (50 m or more, measured by the server from its own positions), a **QUICK-SCOPE / NO-SCOPE** (either one: fired within 0.35 s of the scope fully coming up, or without the scope at all) and a **HEADSHOT**. One kill can tick several. Every new tick pops a gold toast (`SNIPER ROYALTY 2/3  QUICK-SCOPE / NO-SCOPE`) with the three boxes; the boxes also show in the achievements list here, and in COSMETICS > Sniper when you hover the locked skin. The last one plays the achievement unlock plus a big gold GOLDEN SNIPER UNLOCKED, and the skin goes straight onto your sniper.
+- Logged-in players only (a guest is told what would have counted: "log in so it counts"). Kills on bots count too; training dummies don't.
+- Anti-farm: a kill on someone who hadn't really moved for 5 s (the server tracks it from the snapshots; respawning or being knocked around doesn't count as moving) never ticks a box, so no farming it on an AFK player or a friend standing still.
+- Quick-scope and no-scope are the shooter's word (`qs: 1` / `ns: 1` on sniper hits), so they only ever buy progress, never damage, and claiming both at once counts for neither.
 
 ## Name cards, killcam, play of the round
 
 - **Name card:** a 256x64 banner. CHARACTER → EDIT NAME CARD: brush, spray, fill, text, eraser, colour picker, preset backgrounds, or **UPLOAD IMAGE** (it gets cropped to fit). Saved as a small JPEG. If you don't make one you get a generated card. Other players can turn uploaded cards off in Settings.
 - **Killcam:** when someone kills you, you watch the last ~4 seconds over their shoulder in slow motion at the end, with their name card. Skip with Space or click. You respawn when it ends (turn it off in Settings for instant respawns).
 - **EPIC kills can't be skipped:** the server decides at kill time, from its own positions: any kill from 60 m+, a headshot from 40 m+ (sniper, revolver, bow: one careful bullet), mid-air (nothing under any part of you for 3 m) or grappling or 300+ km/h from 30 m+, on under 10 HP from 25 m+ (not if you hurt yourself this life, e.g. coughing), a no-scope from 20 m+, or two of those at once from 20 m+. Distances are scaled per weapon (a 28 m shotgun kill counts as far; the AR needs a bit more; melee counts 2.5x but only up to its reach). Rockets, arrows, slippers and the rest count from where (and how) you fired them, and not at all if you died before they landed. The victim's killcam turns into TOO EPIC TO SKIP: more build-up, slower, punches in on them, EPIC SHOT · 64m when it lands, and the server holds their respawn until it's over (about 8 s, never past the 9 s killcam cap). The killer gets UNSKIPPABLE. Killcam off in Settings still means no killcam. Bots never get one, and there are none in Coop or Training. Never epic: a victim who hadn't moved for 5 s (respawning or getting shoved around doesn't count as moving; running while being shot does), kills credited to you after they fell or coughed themselves to death, spinbot (aimbot) kills, chicken strikes, shots bounced back by a reverse card, burn / gas ticks. A knife backstab isn't a headshot. Speed has to be real (the server checks how far you actually went) and a grapple has to be within hook range. Play of the round prefers epic kills. Rules in `shared/epic.js`.
-- **Play of the round:** the server keeps a short recording, scores every kill (multikills, speed, distance, void kills, headshots) and plays the best one for everyone when the round ends, with that player's name card. Then the scoreboard.
+- **Play of the round:** the server keeps a short recording, scores every kill (multikills, speed, distance, void kills, headshots) and plays the best one for everyone when the round ends, with that player's name card. Nobody can skip it. Then the scoreboard.
 
 ## Cosmetics + containers
 
-**Skins** are different models and belong to one weapon each, like a CS knife: every weapon has at least one (Toy Blaster and Bullpup for the AR, Pocket Uzi, Double Barrel, Old Gatling, Musket, Flintlock, Turkey Launcher, Hand Cannon, Bunch Blaster, Compound Bow, Fat Cigar, Hair Dryer, Champagne, Skip Card, Ice Cube, Ladle, Croc, Reaper scythe, plus Karambit / Butterfly / Switchblade / Cleaver / Bowie / Kitchen knives, Foam Finger and Bear Paw slappers, the Croissant).
+**Skins** are different models and belong to one weapon each, like a CS knife: every weapon has at least one (Toy Blaster and Bullpup for the AR, Pocket Uzi, Double Barrel, Old Gatling, Musket and the Golden Sniper, Flintlock, Turkey Launcher, Hand Cannon, Bunch Blaster, Compound Bow, Fat Cigar, Hair Dryer, Champagne, Skip Card, Ice Cube, Ladle, Croc, Reaper scythe, plus Karambit / Butterfly / Switchblade / Cleaver / Bowie / Kitchen knives, Foam Finger and Bear Paw slappers, the Croissant).
+The **Golden Sniper** is never in a crate: it's the reward for the Sniper Royalty achievement (see Character) and the server only lets you wear it once you have it. Gold plate with darker gold scrollwork, jewels set in the receiver, a small jewelled crown on the scope and a glint that hops around the metal; everyone sees it, and it stays gold under any wrap.
 **Wraps** (paint), **hats** and **effects** go on **every weapon at once** by default (untick the box in COSMETICS to dress weapons one by one). The Scythe Rifle and the items you hold up (Party Popper, Reverse Card) can be dressed too. One **kill effect**, one **grapple skin** and one **spray** per player.
 
 **CONTAINERS** (main menu) is where you open them:
@@ -277,7 +336,7 @@ The Wings used to come from Frequent Flyer: everyone who had Frequent Flyer befo
 
 New accounts get one of each. Win a round (Online needs 2+ real players, Bots needs 3+ bots) for a random container; coop gives one every 5 waves. Odds: Common 55%, Rare 28%, Epic 13%, Legendary 4%. Own everything in a type and it turns into 100 XP.
 
-**Kill effects** (what happens to people you kill): Gibs, Confetti (free), Tombstone, Make It Rain, Missing Texture, Balloons, Chickens, Blue Screen, Yeet, Ascend, Big Duck.
+**Kill effects** (what happens to people you kill): Gibs, Confetti (free), Tombstone, Make It Rain, Missing Texture, Balloons, Chickens, Blue Screen, Yeet, Ascend, Big Duck, Blast Zone (knocked clean off the screen: they rocket away and a burst of colour jets back at the map).
 
 **Grapple skins** (your rope and the thing on the end, everyone sees it, each lands with its own sound): Rope + iron hook (free), Chain + claw, Candy Cane, Plunger, Jungle Vine + wooden hook, Laser + emitter, Sticky Hand (stretchy), Rainbow + star. Pick one in COSMETICS (hover a card to try it in the preview).
 
@@ -305,7 +364,8 @@ Prompts live in `tools/models.json`; models land in `public/models/<id>.glb` and
 
 - `server.js`: static files + WebSocket `/ws`. Rooms: shared Online and Coop, private Bots and Training. Movement is client-authoritative; the server owns HP, kills, projectiles, arrows, cards, items, frost, streaks, modes (teams, tags, the bomb), the map/mode vote, cosmetics ownership, achievements, round recordings for highlights, and bots (including their objective routes and grappling).
 - `server/`: accounts, stats, containers, leaderboard (`/api/*`), stored in a local file or Supabase.
-- `shared/`: `map.js` maps + box physics + bot routes · `modes.js` game modes, teams, bomb rules, vote timing · `weapons.js` weapons, items, killstreaks, loadout rules · `cosmetics.js` skins/wraps/effects/kill effects/hats + crates · `looks.js` character outfits · `verdict.js` the Scales of Justice verdict (server decides, client previews) · `lasso.js` the lasso's spring + rope step and its numbers (the holder's client and the server both run it).
-- `public/js/`: `main.js` menus + net + loop · `player.js` movement · `weapons.js` viewmodels, recoil springs, ADS, items · `anim.js` swing/inspect keyframes (per-knife styles) · `speedlines.js` · `remote.js` other players · `replay.js` killcam + highlights · `killfx.js` kill effects · `scales.js` Scales of Justice: verdict readout, tipping beam, pendulum pans, stamps · `sprays.js` sprays (drawn on a canvas, decals cut to the map) · `cards.js` name cards · `objective.js` bomb sites, tags, team bar · `icons.js` hotbar/item/streak pictures · `models.js` · `skins.js` · `fx.js` · `world.js` · `scenery.js` the land around each map · `hud.js` · `audio.js` · `lasso.js` the lasso (spin + throw, holding someone and streaming them, being held, ropes, poses, killcams) · `lasso_model.js` its rope (a tube along a sagging curve), loop, knot, coil, hands and skins.
+- `shared/`: `map.js` maps + box physics + bot routes · `modes.js` game modes, teams, bomb rules, vote timing · `weapons.js` weapons, items, killstreaks, loadout rules · `cosmetics.js` skins/wraps/effects/kill effects/hats + crates · `looks.js` character outfits · `verdict.js` the Scales of Justice verdict (server decides, client previews) · `epic.js` EPIC kill rules · `hookphys.js` the pendulum grapple rope (players and bots) · `homing.js` homing slippers · `wand.js` soap-bubble traps · `nav.js` walk graphs for maze maps (Backrooms bots) · `lava.js` Floor Is Lava's floor + safe ground.
+- `public/js/`: `main.js` menus + net + loop · `player.js` movement · `weapons.js` viewmodels, recoil springs, ADS, items · `anim.js` swing/inspect keyframes (per-knife styles) · `speedlines.js` · `remote.js` other players · `replay.js` killcam + highlights · `killfx.js` kill effects · `royal.js` Sniper Royalty toasts + the Golden Sniper unlock · `scales.js` Scales of Justice: verdict readout, tipping beam, pendulum pans, stamps · `sprays.js` sprays (drawn on a canvas, decals cut to the map) · `cards.js` name cards · `objective.js` bomb sites, tags, team bar · `icons.js` hotbar/item/streak pictures · `models.js` · `skins.js` · `fx.js` · `world.js` · `scenery.js` the land around each map · `hud.js` · `audio.js` · `shredder.js` · `bloodcross.js` · `gungame.js` + `infection.js` · `chaos.js` the chaos modes · `backrooms.js` the Backrooms' hum, flicker and visitor.
 - `server/lasso.js`: the lasso's server side (who the loop catches, checking + relaying the hold stream, splats, credit, bots using it), installed onto the Room.
 - `desktop/`: the Electron app (launcher, in-app server, display modes).
+- Overdrive Rig (killstreak): `shared/rig.js` its numbers · `server/rig.js` the server side (overshield, block, punch dash, wall slams, quickhacks, missiles, landings) · `public/js/rig.js` the controller, HUD panel, trail and tint · `rigmodel.js` the frame, its animation, afterimages, scrap burst and missiles · `rigarms.js` the first-person forearms · `rigsfx.js` its sounds. · tests: `tests/rig/t_rig.cjs` (training, Playwright: every ability fires, the tap jump is 4.5 m+, 3 thrusts then a refusal, it runs out cleanly; server `JF_RIG_DUR=28`), `tests/rig/t_rigthrust.cjs` (ws only: the server refuses thrust spam and refills one charge) and `tests/rig/t_rigbots.cjs` (ws only: bots earn it and use every move, thrusters included; server `JF_RIG=2`)

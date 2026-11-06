@@ -27,6 +27,9 @@ try {
     say(true, 'connected, and the jf_users table exists');
     const count = await fetch(`${url}/rest/v1/jf_users?select=name_lower`, { headers: H({ Prefer: 'count=exact', Range: '0-0' }) });
     say(true, `accounts so far: ${(count.headers.get('content-range') || '?/?').split('/')[1]}`);
+    // columns added after the first release: without them those stats can't be saved
+    const cols = await fetch(`${url}/rest/v1/jf_users?select=airborne,wings_old,sniper_feats&limit=1`, { headers: H() });
+    if (!cols.ok) { say(false, 'the jf_users table is missing newer columns (airborne + wings_old for Never Landed, sniper_feats for Sniper Royalty). Run supabase.sql again in the SQL Editor: it adds them and keeps every account.'); process.exit(1); }
     console.log('\nAll good. Start the server and accounts will be saved in Supabase.\n');
   } else if (res.status === 401 || res.status === 403) {
     say(false, `Supabase rejected the key (${res.status}). Re-copy the secret key (sb_secret_...) from Project Settings -> API Keys.`);

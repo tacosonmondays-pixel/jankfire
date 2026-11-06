@@ -3,20 +3,25 @@ import * as THREE from 'three';
 import { BOXES } from '/shared/map.js';
 import { raycast, playerBoxes } from '/shared/physics.js';
 import { FLAGS } from '/shared/weapons.js';
+import { INFECT } from '/shared/modes.js';
 import { G } from './ctx.js';
-import { buildCharacter, buildWeapon, makeNameTag, makeShadow, cardTex, setKatana } from './models.js';
+import { buildCharacter, buildWeapon, makeNameTag, makeShadow, cardTex, setKatana, freeTree, teamLook } from './models.js';
 import { fx, makeBeam, setBeam } from './fx.js';
 import { emitSkinFx } from './skins.js';
 import { wreckRemote, ballBoxes, wreckDispose } from './wreck.js';
 import { jankify } from './jank.js';
+import { rigRemote, rigBoxes, rigDispose } from './rig.js'; // overdrive rig killstreak
+import { gearLook, dressGear } from './econ3d.js';
 import { newTwirl, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
 import { makeRope, setRope, setRopeSkin } from './grapple.js';
 import { sfx } from './audio.js';
+import { remoteShredder } from './shredder.js';
 
 // players ignore fog, glow a bit, and get an outline in their colour so you can spot them across the map
 const noFog = new Map();
 function visibleMat(m) {
   if (!m || m.isShaderMaterial || m.isSpriteMaterial) return m;
+  if (Array.isArray(m)) return m.map(visibleMat); // the knife blade has a material per face
   if (!noFog.has(m)) {
     const c = m.clone();
     c.fog = false;
@@ -44,6 +49,22 @@ function markerTexture() {
   return markerTex;
 }
 const camPos = new THREE.Vector3();
+// sleep arrow: the Zs that float over a sleeper's head
+let zTex = null;
+function zTexture() {
+  if (zTex) return zTex;
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.font = 'bold 54px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineWidth = 8; g.strokeStyle = '#000'; g.strokeText('Z', 32, 34);
+  g.fillStyle = '#b07dff'; g.fillText('Z', 32, 34);
+  zTex = new THREE.CanvasTexture(c);
+  return zTex;
+}
+const NAP_DIRS = [[0, 1, 1, 0], [0, -1, -1, 0], [-1, 0, 0, 1], [1, 0, 0, -1]]; // [local x, local z, tilt x, tilt z]: back, front, left, right
+const napBox = new THREE.Box3();
+// infection: a zombie is the same mannequin gone rotten green, clothes faded to grey, outlined in zombie green
+const zombieLook = (lk) => ({ ...(lk || {}), skin: '#6f9a3a', topColor: '#4a5a3a', bottomColor: '#3a3a30', hairColor: '#2a3a1a' });
 
 const tmpV = new THREE.Vector3(), tmpQ = new THREE.Quaternion(), tmpS = new THREE.Vector3();
 // reverse card on: the UNO reverse arrows, life size, chasing each other round their waist
@@ -73,9 +94,9 @@ function lerpAngle(a, b, t) {
 }
 
 export class Remote {
-  constructor(id, name, color, skins = {}, bot = false, look = null) {
+  constructor(id, name, color, skins = {}, bot = false, look = null, team = 0) {
     Object.assign(this, {
-      id, name, color, skins, bot, outfit: look, buf: [], pos: [0, -999, 0], vel: [0, 0, 0], yaw: 0, pitch: 0,
+      id, name, color, skins, bot, outfit: look, team, buf: [], pos: [0, -999, 0], vel: [0, 0, 0], yaw: 0, pitch: 0,
       w: null, hp: 100, alive: true, g: null, f: 0, k: 0, d: 0, walk: 0, burnUntil: 0,
       rope: null, shadow: null, ch: null, twitchUntil: 0, twitchNext: 2000 + Math.random() * 5000, twitch: null,
     });
@@ -83,21 +104,26 @@ export class Remote {
   }
 
   build() {
-    if (this.ch) G.scene.remove(this.ch.root);
-    this.ch = buildCharacter(this.color, this.outfit);
+    if (this.ch) { G.scene.remove(this.ch.root); this.free(); }
+    this.ice = null; this.shells = []; this.glow = 0; this.zzz = null;
+    // infection: a zombie. otherwise, on a team: team colour, not your clothes
+    const color = this.zombie ? INFECT.color : this.color;
+    this.ch = buildCharacter(color, this.zombie ? zombieLook(this.outfit) : gearLook(teamLook(this.outfit, this.team), this.gear)); // gearLook: no hat under a Plant & Defuse bucket
+    if (this.gear && !this.zombie) dressGear(this.ch, this.gear, teamLook(this.outfit, this.team), this.team); // Plant & Defuse armor they bought
     this.ch.root.scale.setScalar(1.2); // a bit bigger than you so they read at crusty resolutions
-    const outline = outlineMat(new THREE.Color(this.color).getHex());
+    const outline = outlineMat(new THREE.Color(color).getHex());
     const parts = [];
     this.ch.body.traverse((o) => { if (o.isMesh) parts.push(o); });
     for (const o of parts) {
       o.material = visibleMat(o.material);
+      if (o.userData.noShell) continue; // a small armor bit inside a bigger outline (econ3d.js)
       const shell = new THREE.Mesh(o.geometry, outline);
       shell.scale.setScalar(1.12);
       shell.userData.outline = true;
       o.add(shell);
-      (this.shells ||= []).push(shell);
+      this.shells.push(shell);
     }
-    this.marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: markerTexture(), color: this.color, sizeAttenuation: false, fog: false, transparent: true }));
+    this.marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: markerTexture(), color, sizeAttenuation: false, fog: false, transparent: true }));
     this.marker.scale.set(0.035, 0.035, 1);
     this.marker.position.y = 2.75;
     this.ch.root.add(this.marker);
@@ -119,13 +145,24 @@ export class Remote {
 
   setLook(look, color) {
     this.outfit = look; if (color) this.color = color;
-    this.ice = null;
-    const keep = { pos: this.pos.slice() };
-    this.shells = []; this.glow = 0;
-    G.scene.remove(this.ch.root);
+    const keep = this.pos.slice();
     this.build();
-    this.pos = keep.pos;
+    this.pos = keep;
   }
+  // the old character's GPU copies: its geometries, name tag, marker, card and ice (shared materials stay)
+  free() {
+    freeTree(this.ch.root);
+    this.tag.material.map.dispose(); this.tag.material.dispose();
+    this.marker.material.dispose(); // its texture is shared
+    this.card.material.dispose(); // so is the card's
+    if (this.ice) this.ice.material.dispose();
+    if (this.zzz) for (const z of this.zzz.children) z.material.dispose(); // the Z texture is shared
+  }
+
+  // Plant & Defuse: what they bought (vest 1, bucket 2, pliers 4) goes on the model
+  setGear(bits) { bits = bits || 0; if (bits === (this.gear || 0)) return; this.gear = bits; this.setLook(this.outfit); }
+  // infection: turn into a zombie (or back). the real look and colour stay put underneath
+  setZombie(on) { if (!!this.zombie === on) return; this.zombie = on; this.setLook(this.outfit); }
 
   setKat(n) { this.katN = n; if (this.w === 'katana' && this.weaponMesh) setKatana(this.weaponMesh, n); }
   // revolver: a quick twirl after every shot, one turn per shot while they fan the hammer (same timing as yours).
@@ -139,6 +176,7 @@ export class Remote {
 
   setWeapon(w) {
     this.w = w;
+    if (this.weaponMesh) freeTree(this.weaponMesh);
     this.ch.slot.clear();
     this.weaponMesh = null;
     if (w) {
@@ -157,7 +195,7 @@ export class Remote {
 
   snap(t, e) {
     const [, x, y, z, vx, vy, vz, yaw, pitch, w, hp, alive, g, f, k, d] = e;
-    if (alive && !this.alive) this.buf.length = 0; // respawned: don't interpolate across the map
+    if (alive && !this.alive) { this.buf.length = 0; this.frozenUntil = 0; this.nap = null; } // respawned: don't interpolate across the map, no ice, not asleep
     this.buf.push({ t, p: [x, y, z], v: [vx, vy, vz], yaw, pitch });
     if (this.buf.length > 60) this.buf.shift();
     this.vel = [vx, vy, vz];
@@ -170,7 +208,8 @@ export class Remote {
   hitboxes() {
     if ((this.f & FLAGS.BALL) && this.alive) return ballBoxes(this.pos, this.distScale || 1); // a wrecking ball is one big ball
     const k = (this.distScale || 1);
-    const boxes = playerBoxes(this.pos);
+    if (this.rigOn) return rigBoxes(this.pos, k); // the overdrive rig is a much bigger target
+    const boxes = this.nap && this.napK > 0.5 ? this.napBoxes() : playerBoxes(this.pos);
     if (k === 1) return boxes;
     const [x, y, z] = this.pos;
     return boxes.map((b) => ({
@@ -178,6 +217,103 @@ export class Remote {
       min: [x + (b.min[0] - x) * k, y + (b.min[1] - y) * k, z + (b.min[2] - z) * k],
       max: [x + (b.max[0] - x) * k, y + (b.max[1] - y) * k, z + (b.max[2] - z) * k],
     }));
+  }
+
+  // knocked flat by a sleep arrow: the body and head lie along the floor where the body is drawn
+  napBoxes() {
+    const n = this.nap, [x, y, z] = this.pos, c = Math.cos(this.yaw), s = Math.sin(this.yaw);
+    const dx = n.dx * c + n.dz * s, dz = -n.dx * s + n.dz * c, y0 = y + n.liftW, rise = Math.tan(n.slope);
+    const seg = (a, b, r, h, head) => {
+      const ax = x + dx * a, az = z + dz * a, bx = x + dx * b, bz = z + dz * b, ya = y0 + a * rise, yb = y0 + b * rise;
+      return { head, min: [Math.min(ax, bx) - r, Math.min(ya, yb) - 0.05, Math.min(az, bz) - r], max: [Math.max(ax, bx) + r, Math.max(ya, yb) + h, Math.max(az, bz) + r] };
+    };
+    return [seg(0, 1.75, 0.42, 0.75, false), seg(1.75, 2.35, 0.36, 0.7, true)];
+  }
+
+  // how to fall: with the shove if there's room, else whichever way has floor and no wall. tilted to the slope under them
+  // and lifted so no part of them (backpack, hat, wings) goes through the floor
+  pickNap(now) {
+    const ch = this.ch, [x, y, z] = this.pos, c = Math.cos(this.yaw), s = Math.sin(this.yaw);
+    const sc = ch.root.scale.y, L = 1.9 * sc;
+    const lvx = this.vel[0] * c - this.vel[2] * s, lvz = this.vel[0] * s + this.vel[2] * c; // velocity in the body's frame
+    const order = NAP_DIRS.slice().sort((a, b) => (b[0] * lvx + b[1] * lvz) - (a[0] * lvx + a[1] * lvz) + (a === NAP_DIRS[0] ? -0.5 : b === NAP_DIRS[0] ? 0.5 : 0));
+    let best = null;
+    for (const d of order) {
+      const wx = d[0] * c + d[1] * s, wz = -d[0] * s + d[1] * c;
+      const wall = raycast([x, y + 0.4, z], [wx, 0, wz], L + 0.3, BOXES);
+      const free = wall ? wall.t : L + 0.3;
+      const ground = [];
+      for (const f of [0.33, 0.66, 1]) { const g = raycast([x + wx * L * f, y + 1.2, z + wz * L * f], [0, -1, 0], 4, BOXES); ground.push(g ? g.point[1] - y : -2); }
+      const score = free + (ground[2] > -1.5 ? 1 : 0);
+      if (!best || score > best.score + 0.01) best = { d, ground, score };
+      if (!wall && ground[2] > -1.5) break;
+    }
+    const slope = Math.max(-0.45, Math.min(0.45, Math.atan2(best.ground[2], L)));
+    let liftW = 0;
+    best.ground.forEach((g, i) => { liftW = Math.max(liftW, g - L * [0.33, 0.66, 1][i] * Math.tan(slope)); });
+    // how far below the feet the lying body reaches, measured on the real model in the lying pose
+    const n = { t: now, wake: 0, dx: best.d[0], dz: best.d[1], tx: best.d[2], tz: best.d[3], slope, liftW, lift: 0 };
+    const parts = [ch.body.rotation, ch.body.position, ch.legL.rotation, ch.legR.rotation, ch.kneeL.rotation, ch.kneeR.rotation, ch.arm.rotation, ch.armL.rotation, ch.head.rotation];
+    if (ch.cape) parts.push(ch.cape.rotation);
+    const keep = parts.map((v) => [v.x, v.y, v.z]);
+    this.napPose(n, 1, Math.PI / 2 - slope, 0);
+    ch.root.updateMatrixWorld(true);
+    let minY = 0;
+    ch.body.traverse((o) => {
+      if (!o.isMesh || o.userData.outline || !o.geometry || !o.visible) return; // (hidden bits don't count)
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      napBox.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld);
+      minY = Math.min(minY, (napBox.min.y - ch.root.position.y) / sc);
+    });
+    parts.forEach((v, i) => v.set(...keep[i]));
+    n.lift = liftW / sc - minY + 0.05;
+    return n;
+  }
+  // k: 0 standing .. 1 flat on the floor
+  napPose(n, k, ang, y) {
+    const ch = this.ch, mix = (a, b) => a + (b - a) * k;
+    ch.body.rotation.x = n.tx * ang; ch.body.rotation.z = n.tz * ang;
+    ch.body.position.y = y;
+    ch.legL.rotation.x = mix(ch.legL.rotation.x, 0.06); ch.legR.rotation.x = mix(ch.legR.rotation.x, -0.04);
+    ch.kneeL.rotation.x = mix(ch.kneeL.rotation.x, 0.1); ch.kneeR.rotation.x = mix(ch.kneeR.rotation.x, 0);
+    ch.arm.rotation.x = mix(ch.arm.rotation.x, -1.35); ch.armL.rotation.x = mix(ch.armL.rotation.x, -1.45); // arms down by the sides
+    ch.arm.rotation.y = mix(ch.arm.rotation.y, 0);
+    ch.head.rotation.x = mix(ch.head.rotation.x, 0); ch.head.rotation.y = mix(ch.head.rotation.y, 0.5);
+    if (ch.cape) ch.cape.rotation.x = mix(ch.cape.rotation.x, -0.05);
+  }
+
+  // sleep arrow: topples over, lies on the floor the whole nap with Zs over the head, then a quick get-up
+  updateNap(now) {
+    const ch = this.ch, asleep = !!(this.f & FLAGS.SLEEP);
+    if (asleep && !this.nap) this.nap = this.pickNap(now);
+    const n = this.nap;
+    this.napK = 0;
+    if (!n) return;
+    if (asleep) n.wake = 0; else if (!n.wake) n.wake = now;
+    const fall = Math.min(1, (now - n.t) / 450), up = n.wake ? Math.min(1, (now - n.wake) / 380) : 0;
+    if (up >= 1) { this.nap = null; if (this.zzz) this.zzz.visible = false; return; }
+    const k = fall * fall * (1 - up * up * (3 - 2 * up)); // falls like a plank, gets up quick
+    const land = (now - n.t - 450) / 260, bounce = land > 0 && land < 1 && !n.wake ? Math.sin(land * Math.PI) * 0.07 : 0;
+    this.napPose(n, k, (Math.PI / 2 - n.slope) * k - bounce, (n.lift + Math.sin(now * 0.0021) * 0.012) * k); // breathing
+    this.napK = k;
+    // Zzz over the head while they're down
+    if (!this.zzz) {
+      this.zzz = new THREE.Group();
+      for (let i = 0; i < 3; i++) this.zzz.add(new THREE.Sprite(new THREE.SpriteMaterial({ map: zTexture(), transparent: true, depthWrite: false, fog: false })));
+      ch.root.add(this.zzz);
+    }
+    const show = fall > 0.7 && !n.wake;
+    this.zzz.visible = show;
+    if (!show) return;
+    const hl = 1.75 * Math.cos(n.slope), hy = n.lift + 1.75 * Math.sin(n.slope) + 0.35;
+    this.zzz.position.set(n.dx * hl, hy, n.dz * hl);
+    this.zzz.children.forEach((z, i) => {
+      const ph = ((now - n.t) / 1600 + i / 3) % 1;
+      z.position.set(Math.sin(ph * 5 + i * 2) * 0.12, ph * 0.9, 0);
+      z.scale.setScalar(0.2 + ph * 0.22);
+      z.material.opacity = Math.sin(ph * Math.PI);
+      z.material.rotation = Math.sin(ph * 4 + i) * 0.3;
+    });
   }
 
   look() {
@@ -241,11 +377,13 @@ export class Remote {
     const floor = raycast([this.pos[0], this.pos[1] + 1, this.pos[2]], [0, -1, 0], 30, BOXES);
     const floorY = floor ? floor.point[1] : -1e9;
     for (const o of parts) {
-      const m = new THREE.Mesh(o.geometry, o.material);
+      // each gib gets its own geometry: the character can be rebuilt (and freed) while they fly
+      const own = !o.geometry.userData.shared;
+      const m = new THREE.Mesh(own ? o.geometry.clone() : o.geometry, o.material);
       o.matrixWorld.decompose(m.position, m.quaternion, m.scale);
       G.scene.add(m);
       G.gibs.push({
-        m, floorY, life: 4 + Math.random(),
+        m, own, floorY, life: 4 + Math.random(),
         v: [vel[0] * 0.6 + (Math.random() - 0.5) * 7, vel[1] * 0.5 + 3 + Math.random() * 5, vel[2] * 0.6 + (Math.random() - 0.5) * 7],
         av: [(Math.random() - 0.5) * 14, (Math.random() - 0.5) * 14, (Math.random() - 0.5) * 14],
       });
@@ -301,8 +439,8 @@ export class Remote {
     }
     if (this.ice) this.ice.visible = frozen;
     if (frozen) this.walk -= dt * Math.min(hs, 14) * 1.5;
-    // cape streams out behind you the faster you go; wings flap in the air
-    if (ch.cape) { const tgt = 0.1 + Math.min(1.15, hs * 0.035) + (hs > 2 ? Math.sin(now * 0.014) * 0.07 : 0); ch.cape.rotation.x += (tgt - ch.cape.rotation.x) * Math.min(1, dt * 8); }
+    // cape streams out behind you the faster you go (negative tilt = backwards); wings flap in the air
+    if (ch.cape) { const tgt = -(0.1 + Math.min(1.15, hs * 0.035) + (hs > 2 ? Math.sin(now * 0.014) * 0.07 : 0)); ch.cape.rotation.x += (tgt - ch.cape.rotation.x) * Math.min(1, dt * 8); }
     if (ch.wings) { const f = grounded ? 0 : Math.sin(now * 0.02) * 0.6; ch.wings[0].rotation.y = 0.25 + f; ch.wings[1].rotation.y = -0.25 - f; }
     const bend = ch.jank.wrongKnee ? -1 : 1;
     ch.kneeL.rotation.x = Math.max(0, -sw) * amp * 1.2 * bend + (grounded ? 0 : 0.8);
@@ -316,6 +454,8 @@ export class Remote {
     }
     const tw = now < this.twitchUntil;
     ch.head.rotation.x = this.pitch * 0.5;
+    const cg = (now - (this.coughT || -1e9)) / 1000; // coughing: three hacking jerks forward, fading out
+    if (cg >= 0 && cg < 1) ch.head.rotation.x += Math.abs(Math.sin(cg * Math.PI * 3)) * (1 - cg) * 0.7;
     ch.head.rotation.y = tw && this.twitch === 'head' ? 1.4 : 0;
     ch.head.rotation.z = ch.jank.tilt + (tw && this.twitch === 'head' ? 0.6 : 0);
     if (tw && this.twitch === 'arm') ch.armL.rotation.z = 1.8; else ch.armL.rotation.z = 0;
@@ -362,6 +502,7 @@ export class Remote {
     const targetTilt = slipping ? -1.3 + Math.sin(now * 0.02) * 0.3 : sliding ? -0.6 : 0;
     ch.body.rotation.x += (targetTilt - ch.body.rotation.x) * Math.min(1, dt * 12);
     ch.body.rotation.z = slipping ? Math.sin(now * 0.013) * 0.6 : ch.jank.lean * 0.3;
+    this.updateNap(now);
 
     if (this.g) {
       this.rope.visible = true;
@@ -372,12 +513,14 @@ export class Remote {
 
     const sh = raycast([x, y + 0.1, z], [0, -1, 0], 80, BOXES);
     if (sh) { this.shadow.visible = true; this.shadow.position.set(x, sh.point[1] + 0.03, z); } else this.shadow.visible = false;
+    rigRemote(this, dt, now, sh); // overdrive rig: the exo-frame (and its afterimages) instead of the mannequin
 
     const ld = this.look();
     const head = [x + ld[0] * 0.45, y + 1.5, z + ld[2] * 0.45];
     if ((this.f & FLAGS.SMOKE) && Math.random() < dt * 25) fx.smoke(head, 1);
     if (this.f & FLAGS.FIRE) fx.fireCone(head, ld, this.vel, 5);
     if (this.f & FLAGS.BLOW) fx.leaves(this.muzzle(), ld, this.vel);
+    if (this.w === 'shredder') remoteShredder(this, dt);
     if (this.weaponMesh && this.weaponMesh.userData.barrels && (this.f & FLAGS.SPIN)) this.weaponMesh.userData.barrels.rotation.z += dt * 40;
     this.card.visible = !!(this.f & FLAGS.REVERSE) || now < (this.reverseUntil || 0);
     if (this.card.visible) this.card.rotation.y += dt * 9;
@@ -398,6 +541,10 @@ export class Remote {
     G.scene.remove(this.shadow);
     wreckDispose(this);
     if (G.lassoDispose) G.lassoDispose(this);
+    this.free();
+    rigDispose(this);
+    // the rope is a grapple-skin group: its beams + hook share the skin's geometries and materials, nothing to free
+    this.shadow.geometry.dispose(); this.shadow.material.dispose();
   }
 }
 
@@ -415,6 +562,6 @@ export function updateGibs(dt) {
     }
     g.m.rotation.x += g.av[0] * dt; g.m.rotation.y += g.av[1] * dt; g.m.rotation.z += g.av[2] * dt;
     if (g.life < 0.5) g.m.scale.multiplyScalar(Math.max(0, 1 - dt * 6));
-    if (g.life <= 0) { G.scene.remove(g.m); G.gibs.splice(i, 1); }
+    if (g.life <= 0) { G.scene.remove(g.m); if (g.own) g.m.geometry.dispose(); G.gibs.splice(i, 1); }
   }
 }

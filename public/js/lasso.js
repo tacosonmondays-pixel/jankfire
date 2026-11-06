@@ -6,7 +6,7 @@
 // in killcams. Hooks into player.js / remote.js / replay.js through G (no import cycles): G.lassoStep, G.lassoPos,
 // G.lassoRemote, G.lassoDispose, G.lassoReplay, G.lassoLoopGhost.
 import * as THREE from 'three';
-import { LASSO, holdStep, aimDir, clampLen, flingVel, throwRange } from '/shared/lasso.js';
+import { LASSO, holdStep, aimDir, clampLen, flingVel, throwRange, lassoPreroll } from '/shared/lasso.js';
 import { FLAGS } from '/shared/weapons.js';
 import { BOXES } from '/shared/map.js';
 import { stepProjectile, movePlayer, raycast } from '/shared/physics.js';
@@ -17,7 +17,7 @@ import { W, vmModel } from './weapons.js';
 import { hud } from './hud.js';
 import { fx } from './fx.js';
 import { sfx, synth } from './audio.js';
-import { RP, recordEv } from './replay.js';
+import { RP, RP_HOOKS, recordEv } from './replay.js';
 import { Rope, sagRope, ringPoints, honda, ropeLook, vmArm, coilGroup } from './lasso_model.js';
 import { jankUniforms } from './jank.js';
 
@@ -653,7 +653,6 @@ export function lassoLate(dt, now, ghosts) {
     if (!ghosts && RP.active) { z.over.mesh.visible = false; z.spoke.mesh.visible = false; }
   }
 }
-G.lassoLate = lassoLate; // replay.js draws its ghosts' ropes with it
 
 // ------------------------------------------------------------ everyone else's bodies (remote.js calls these)
 // after the interpolation: the one you hold is wherever your own simulation has them (no 110 ms lag), and the one
@@ -777,6 +776,14 @@ function ghostFling(g, m) {
   g.lzFl = { t0: performance.now(), sp, ax: [a[0] / al, 0, a[2] / al], rate: 7 + sp * 0.12, ang: 0, last: null };
   if (sp >= LASSO.yeet) sfx.yeet(m.p);
 }
+// replay.js hooks: lasso events onto the ghosts, holds from before the clip, the ropes between ghosts every frame,
+// and a local clip that starts mid-hold gets the hold that was already going
+RP_HOOKS.push({
+  ev(m, ghosts) { if (m.t !== 'lasso') return false; G.lassoReplay(m, ghosts); return true; },
+  pre(m, ghosts) { if (m.t === 'lasso' && (m.k === 'hold' || m.k === 'rel')) G.lassoReplay(m, ghosts); },
+  step(t, ghosts, dt) { lassoLate(dt, performance.now(), ghosts); },
+  preroll: lassoPreroll,
+});
 // the loop flying in a replay: open ring + knot from buildProjectile, laid flat along its flight
 G.lassoLoopGhost = function (mesh, vx, vy, vz) {
   const hl = Math.hypot(vx, vz);

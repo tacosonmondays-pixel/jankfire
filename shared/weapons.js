@@ -35,16 +35,16 @@ export const WEAPONS = {
   },
   minigun: {
     slot: 'primary', kind: 'hitscan', name: 'Minigun', color: '#c8c8c8',
-    desc: 'Spins up then never stops. The only gun that shoves people: hold it on someone and they get pushed away. The recoil is strong enough to fly on.',
+    desc: 'Spins up then never stops. Its bullets shove people: hold it on someone and they get pushed away. The recoil is strong enough to fly on.',
     auto: true, rate: 25, mag: 250, reload: 3.5, spinup: 0.6, dmg: 6, head: 1.5, spread: 0.045,
     kb: 1.7, recoil: 1.25, kick: 0.004, range: 200,
     ads: { zoom: 1.15, spread: 0.6, p: [0.08, -0.2, -0.36] },
   },
   sniper: {
     slot: 'primary', kind: 'hitscan', name: 'Sniper', color: '#ff4fd8',
-    desc: 'Right click to scope. A headshot ends them. Hipfire is a gamble.',
+    desc: 'Right click to scope. A headshot always kills, a body shot sends them flying off the map. Hipfire is a gamble.',
     rate: 1 / 1.1, mag: 5, reload: 2.2, dmg: 55, head: 2, spread: 0.05,
-    kb: 0, kbUp: 0, recoil: 12, kick: 0.06, range: 500, tracer: 0xff4fd8, thick: 0.09,
+    kb: 75, kbUp: 14, recoil: 12, kick: 0.06, range: 500, tracer: 0xff4fd8, thick: 0.09,
     ads: { zoom: 4, spread: 0, scope: true, p: [0, -0.1, -0.25] },
   },
   chicken: {
@@ -61,7 +61,7 @@ export const WEAPONS = {
   },
   bow: {
     slot: 'primary', kind: 'bow', name: 'Bow', color: '#c88a4a',
-    desc: 'Hold to draw, let go to fire. Every arrow gets a random tip: regular, power, knockback, flame, explosion, gas or sleep.',
+    desc: 'Hold to draw, let go to fire. Every arrow gets a random tip: regular, power, knockback, flame, explosion, gas or sleep (knocks them flat for 4 s).',
     cd: 0.35, draw: 0.9, speed: 34, speedMax: 85, grav: 9, r: 0.12, dmg: 20, dmgMax: 60,
     ads: { zoom: 1.6, p: [0, -0.1, -0.3] },
   },
@@ -71,12 +71,32 @@ export const WEAPONS = {
     auto: true, cd: 0.3, speed: 42, grav: 18, r: 0.25, dmg: 14, kb: 9, bounce: 0.35,
     ads: { zoom: 1.25, p: [0, -0.12, -0.32] },
   },
+  // hold to suck (cone like the leaf blower, but it pulls). the server works out the pull and the shredding:
+  // pull = pull..pullMax per tick (harder the closer), capped so they arrive at ~vmax; inside grabR of the intake
+  // (mouth m in front of your eyes) it just yanks them into the teeth, inside shredR they take dps.
+  // heat works like the blower's fuel.
+  shredder: {
+    slot: 'primary', kind: 'cone', name: 'Shredder', color: '#ffb31a',
+    desc: 'An industrial vacuum-shredder. Hold to suck people in, harder the closer they get. Whoever reaches the intake gets shredded and spat out the chute. Overheats after 4 s.',
+    range: 14, cone: 0.61, tick: 0.09, mouth: 1.3, shredR: 2, grabR: 3.5, dps: 150, pull: 4, pullMax: 22, vmax: 10, lift: 1.4,
+    fuel: 4, regen: 1, coolTo: 0.35, speedMul: 0.92,
+  },
+
+  // hold to charge (charge s for a full one, you walk at slow x speed), let go: a beam down where you look for dur s
+  // (it follows your aim) that goes through everyone in it. [a, b] pairs run from a tap (charge <= tap s) to a full charge.
+  // the server times the charge itself (from the 'ch' you sent when you pressed) and does every hit
+  laser: {
+    slot: 'primary', kind: 'beam', name: 'Big Laser Pointer', color: '#39ff14',
+    desc: 'An office laser pointer the size of a leg. Hold to charge it up (you walk slower), let go for a fat beam that goes through everyone in a line. Tap it for a little zap. Do not point at aircraft.',
+    charge: 1.2, tap: 0.3, cd: 0.45, range: 120, tick: 0.1, dur: [0.16, 0.62], r: [0.22, 0.7], dmg: [5, 21], kb: [1.5, 7], kbUp: 1.5,
+    slow: 0.72, speedMul: 0.97, tracer: 0x39ff14,
+  },
 
   // ------------------------------------------------------------ secondary
   revolver: {
     slot: 'secondary', kind: 'hitscan', name: 'Revolver', color: '#e0c070',
-    desc: '6 shots, twirled round your finger after each one. Tap for a dead-accurate shot, hold to fan the hammer: the rest goes in a second, wild and a bit weaker. Ricochets off walls twice. Headshots basically kill.',
-    rate: 1 / 0.4, mag: 6, reload: 2.0, dmg: 40, head: 2.5, spread: 0.003,
+    desc: '6 shots, twirled round your finger after each one. Tap for a dead-accurate shot, hold to fan the hammer: the rest goes in a second, wild and a bit weaker. Ricochets off walls twice. A headshot does 96: almost a kill.',
+    rate: 1 / 0.4, mag: 6, reload: 2.0, dmg: 40, head: 2.4, spread: 0.003,
     kb: 0, kbUp: 0, recoil: 3, kick: 0.07, range: 250, ricochet: 2, tracer: 0xffd060,
     // hold fire to fan the hammer: after `hold` s the rest of the cylinder goes at `rate`/s, `dmg` a shot, way more spread,
     // `kick` x the aim kick and recoil. the server enforces the rate, the damage and 6 shots per reload
@@ -85,15 +105,21 @@ export const WEAPONS = {
   },
   marbles: {
     slot: 'secondary', kind: 'hitscan', name: 'Marble Shotgun', color: '#7fd0ff',
-    desc: 'A hundred glass marbles per shot. One marble barely tickles, but point blank they all land: one shot, one kill. They bounce round the floor after.',
+    desc: 'A hundred glass marbles per shot. One marble barely tickles, but point blank they all land: one shot, one kill. They stay on the floor after: anyone who runs over them slips (crouch-walk to cross).',
     rate: 1 / 0.9, mag: 2, reload: 1.9, pellets: 100, dmg: 1.15, head: 1.3, spread: 0.27,
     kb: 0, kbUp: 0, recoil: 4, kick: 0.07, range: 30, marbles: true,
     ads: { zoom: 1.15, spread: 0.8, p: [0, -0.1, -0.3] },
   },
   cig: {
     slot: 'secondary', kind: 'cone', name: 'Cigarette', color: '#ff7a1a',
-    desc: 'Hold to smoke. Let go to breathe fire for as long as you inhaled. Too long and you cough.',
+    desc: 'Hold to smoke. Let go to breathe fire for as long as you inhaled. Hold it into TOO MUCH and you cough smoke instead of fire (and it hurts).',
     range: 13, cone: 0.42, dmg: 5, tick: 0.09, maxCharge: 3, coughAt: 4.5, exhaleMul: 1.2, jet: 6,
+  },
+  // the shot is paid in your own HP (cost). the bolt sticks, a cross bursts out of them (fuse), then pops (burst) for dmg + a small blast
+  bloodcross: {
+    slot: 'secondary', kind: 'blood', name: 'Blood Cross', color: '#ff1f3d',
+    desc: 'No gun: you shoot blood out of your fingertip and every shot costs you 12 HP. The bolt sticks to whoever it hits, a cross bursts out of their body and they pop. A kill pays the blood back.',
+    cd: 0.7, speed: 75, grav: 0, r: 0.15, life: 2, cost: 12, fuse: 0.6, burst: 0.25, dmg: 75, blastR: 3, blastDmg: 35, kb: 6,
   },
   blower: {
     slot: 'secondary', kind: 'cone', name: 'Leaf Blower', color: '#ff9a3a',
@@ -133,6 +159,7 @@ export const WEAPONS = {
   },
   // thrown items (not in a weapon slot; the item slot fires these)
   frag: { slot: 'hidden', kind: 'proj', name: 'Frag Grenade', color: '#7a8a3a', speed: 24, grav: 22, r: 0.15, bounce: 0.42, fuse: 2.2, radius: 7.5, dmg: 105, kb: 34, life: 6 },
+  calc: { slot: 'hidden', kind: 'proj', name: 'Pop Quiz', color: '#7fffd4', speed: 30, grav: 16, r: 0.22, bounce: 0.35, life: 3.5 }, // pop quiz: the thrown calculator
   smokegren: { slot: 'hidden', kind: 'proj', name: 'Smoke Bomb', color: '#9aa0a8', speed: 22, grav: 22, r: 0.15, bounce: 0.35, fuse: 1.3, life: 5 },
 
   // bubble wand soap bubbles: they fly the exact path in shared/wand.js (kind 'soap', so nothing can 'fire' them)
@@ -170,8 +197,8 @@ export const WEAPONS = {
     desc: 'A big toy hand on a stick. Point blank only. Launches them and makes them slip.',
     cd: 0.8, range: 1.9, cone: 0.8, dmg: 15, kb: 55, kbUp: 14, delay: 0.1, slip: true, radial: true,
   },
-  spoon: {
-    slot: 'melee', kind: 'melee', name: 'Spoon', color: '#e8e8f0',
+  spoon: { // modeOnly: not in the loadout any more (it's a knife skin now); Gun Game's last rung and Spoons & Grapples still hand it out
+    slot: 'melee', kind: 'melee', name: 'Spoon', color: '#e8e8f0', modeOnly: true,
     desc: 'Kills in one hit, but only point blank. You run way faster holding it.',
     cd: 0.7, range: 2.0, cone: 0.9, dmg: 999, kb: 12, kbUp: 6, delay: 0.05, speedMul: 1.8,
   },
@@ -196,6 +223,13 @@ export const WEAPONS = {
     ads: { zoom: 3, spread: 0, scope: true, p: [0, -0.1, -0.25] },
   },
   dash: { slot: null, kind: 'dash', name: 'Glitch Dash', color: '#ff00dc', dmg: 30, kb: 28, kbUp: 8, range: 3.5, speed: 38, max: 5, regen: 1.2 },
+
+  // ------------------------------------------------------------ mode weapons (handed out by a game mode, never in loadouts)
+  claw: {
+    slot: 'mode', mode: 'inf', kind: 'melee', name: 'Zombie Claw', color: '#7dff4f',
+    desc: 'Infection only. Two swipes and they turn. Zombies run faster with their arms out.',
+    cd: 0.45, range: 2.6, cone: 0.85, dmg: 55, kb: 8, kbUp: 3, delay: 0.08, speedMul: 1.3,
+  },
 };
 
 export const ORDER = Object.keys(WEAPONS);
@@ -210,6 +244,7 @@ export const STREAKS = {
   moonboots: { kills: 3, name: 'Moon Boots', desc: 'low gravity + huge jumps for 25s', auto: true, dur: 25 },
   chickenstrike: { kills: 4, name: 'Chicken Strike', desc: 'rain exploding chickens where you aim', deploy: true },
   scythe: { kills: 5, name: 'Scythe Rifle', desc: 'X: rifle mode · hold V: glitch dash', auto: true },
+  overdrive: { kills: 8, name: 'Overdrive Rig', desc: '25s as a scrap-built juggernaut: overshield, LMB rocket punch, RMB block, Space jumps sky high (hold to leap), E thrusters, G homing missiles, R quickhack', auto: true, dur: 25 },
   spinbot: { kills: 6, name: 'Spinbot', desc: 'aimbot + spinbot for 10s. you are now a cheater.', auto: true, dur: 10 },
   wreckingball: { kills: 6, name: 'Wrecking Ball', desc: 'become a giant steel wrecking ball for 20s: ram people (faster = harder), swing on the chain (E, W pumps it), crouch in the air to ground slam (higher = bigger)', auto: true, dur: 20 },
   satellite: { kills: 7, name: 'Spy Satellite', desc: 'see every enemy through walls for 20s', auto: true, dur: 20 },
@@ -233,12 +268,14 @@ export const ITEMS = {
   // safeK x how long they were in if that's longer (two wands can't chain someone)
   wand: { name: 'Bubble Wand', desc: 'Blow a stream of soap bubbles. An enemy one touches is sealed in a giant bubble that floats up and away for 5s (no moving, no shooting), then pops and drops them. Over the void, that is your kill. Any hit pops it early.', charges: 2, recharge: 15, color: '#9fe8ff', bubbles: 4, gap: 90, dur: 5, rise: 2, drift: 1.5, safe: 1.5, safeK: 0.6 },
 };
-export const ITEM_ORDER = ['frag', 'medkit', 'bubble', 'duck', 'smoke', 'popper', 'reverse', 'wand'];
+export const ITEM_ORDER = ['frag', 'medkit', 'bubble', 'duck', 'smoke', 'popper', 'reverse', 'wand', 'camera', 'quiz', 'nvg'];
 
+// a real key of the table (client data: no '__proto__', no arrays)
+const has = (T, k) => typeof k === 'string' && Object.hasOwn(T, k);
 export function validLoadout(lo) {
   const out = { ...DEFAULT_LOADOUT };
-  if (lo) for (const s of SLOTS) if (WEAPONS[lo[s]] && WEAPONS[lo[s]].slot === s) out[s] = lo[s];
-  if (lo && Object.hasOwn(ITEMS, lo.item)) out.item = lo.item;
+  if (lo) for (const s of SLOTS) if (has(WEAPONS, lo[s]) && WEAPONS[lo[s]].slot === s && !WEAPONS[lo[s]].modeOnly) out[s] = lo[s];
+  if (lo && has(ITEMS, lo.item)) out.item = lo.item;
   out.streaks = validStreaks(lo && lo.streaks);
   return out;
 }
@@ -275,18 +312,30 @@ export const ARROW_TIPS = {
 export const SUITS = { h: { name: 'Hearts', sym: '♥', color: '#e0202a' }, s: { name: 'Spades', sym: '♠', color: '#111111' }, c: { name: 'Clubs', sym: '♣', color: '#111111' }, d: { name: 'Diamonds', sym: '♦', color: '#e0202a' }, j: { name: 'Joker', sym: '★', color: '#b07dff' } };
 export const RANKS = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 
-export const FLAGS = { SMOKE: 1, FIRE: 2, BLOW: 4, SPIN: 8, SLIP: 16, SLIDE: 32, REVERSE: 64, CROUCH: 128, DASH: 256 };
+export const FLAGS = { SMOKE: 1, FIRE: 2, BLOW: 4, SPIN: 8, SLIP: 16, SLIDE: 32, REVERSE: 64, CROUCH: 128, DASH: 256, SLEEP: 512 };
 export const SLIP_TIME = 1.7;
+// overdrive rig killstreak: in the rig, blocking, winding up a punch, crouched for a leap. the server only believes
+// them from someone it saw activate the streak (the numbers are RIG in shared/rig.js)
+Object.assign(FLAGS, { RIG: 16384, RIG_BLOCK: 32768, RIG_CHARGE: 65536, RIG_LEAP: 131072 });
+// not guns: what the rig's hits are called in the kill feed (its missiles fly as server projectiles)
+Object.assign(WEAPONS, {
+  rigpunch: { slot: null, kind: 'rig', name: 'Rocket Punch', color: '#ff2a6d' },
+  rigslam: { slot: null, kind: 'rig', name: 'Wall Slam', color: '#ffb000' },
+  rigquake: { slot: null, kind: 'rig', name: 'Crater', color: '#3ee6ff' },
+  rigmissile: { slot: 'hidden', kind: 'proj', name: 'Rig Missiles', color: '#ff6a3d', grav: 0, r: 0.22, life: 5 },
+});
+export const SLEEP_TIME = 4; // sleep arrow: knocked flat on the floor this long (s)
 export const HOOK = { range: 90, pull: 42, tug: 16 };
 // katana right click. times in seconds: the window, its perfect start, the cooldown after it, and server slack for
 // hit reports that arrive a bit late. arc = full cone (degrees) around where you look that counts as "the front":
 // 70 either side covers the whole screen at the default fov (95 tall is ~125 across at 16:9) plus a bit for the
 // server's yaw being up to a snapshot old. shove / shoveUp / stagger = what a parried melee attacker gets.
 export const PARRY = { win: 0.35, perfect: 0.15, cd: 0.8, slack: 0.05, arc: 140, shove: 14, shoveUp: 5, stagger: 0.55 };
+FLAGS.SUCK = 2048; // a shredder is running: everyone else sees the suction and hears the motor
 
 // your 3 killstreaks, cheapest first (keys 5 / 6 / 7)
 export function validStreaks(list) {
-  const ok = Array.isArray(list) ? [...new Set(list.filter((id) => STREAKS[id]))] : [];
+  const ok = Array.isArray(list) ? [...new Set(list.filter((id) => has(STREAKS, id)))] : [];
   const out = ok.slice(0, 3);
   for (const id of DEFAULT_LOADOUT.streaks) if (out.length < 3 && !out.includes(id)) out.push(id);
   for (const id of Object.keys(STREAKS)) if (out.length < 3 && !out.includes(id)) out.push(id);
@@ -316,6 +365,31 @@ export function slamSize(h) {
   const at = (a) => a[0] + (a[1] - a[0]) * k;
   return { k, dmg: at(WRECK.slamDmg), r: at(WRECK.slamR), kb: at(WRECK.slamKb), up: at(WRECK.slamUp) };
 }
+
+// ------------------------------------------------------------ new gear: instant camera, pop quiz, night vision goggles
+// (the Big Laser Pointer is up with the primaries). the server's half is server/gear.js
+FLAGS.NV = 8192; // night vision goggles on: everyone sees them on your face, lenses glowing
+FLAGS.CHARGE = 1 << 19; // (was 16384, the same bit as FLAGS.RIG) charging the Big Laser Pointer: everyone sees the tip glow and hears the whine
+// kill-feed tags (not guns): telefrags + frames, and failed quizzes
+WEAPONS.camera = { slot: null, kind: 'photo', name: 'Instant Camera', color: '#c9a7ff' };
+WEAPONS.quiz = { slot: null, kind: 'quiz', name: 'Pop Quiz', color: '#7fffd4' };
+WEAPONS.nvg = { slot: null, kind: 'flash', name: 'Night Vision Goggles', color: '#3dff8a' };
+// G: the first press snaps a photo (the server keeps where you stood + which way you faced), the next press prints it:
+// a frame stands up `at` m in front of you for `life` s. walk into it (anyone can) and you come out where the photo was
+// taken, facing the same way. w x h = the frame's opening, cd = s before the same person can use a frame again,
+// frag = m: whoever is standing on the spot when you arrive gets telefragged
+export const PHOTO = { at: 1.9, life: 20, w: 1.8, h: 2.1, depth: 0.55, cd: 1.6, frag: 0.9, drop: 3, res: 256 };
+ITEMS.camera = { name: 'Instant Camera', desc: 'G snaps a photo of what\'s in front of you. G again prints it as a frame you can walk into: it puts you back where you took it. Anyone can walk through, so photograph somewhere nasty.', charges: 1, recharge: 25, color: '#c9a7ff' };
+// a hit freezes them with a maths question for `time` s (4 answers, keys 1-4). wrong or too slow: dead (your kill).
+// right: +heal HP, nothing hurts them for `invuln` s and they run `fast` x speed for `fastT` s. `safe` s after a quiz
+// before the same person can get another one. bots get it right `bot[diff]` of the time, after `botT` s
+export const QUIZ = { time: 6, invuln: 2.5, heal: 25, fast: 1.25, fastT: 4, safe: 10, bot: { easy: 0.5, normal: 0.7, hard: 0.85 }, botT: [1.3, 4.2] };
+ITEMS.quiz = { name: 'Pop Quiz', desc: 'A calculator you throw. Whoever it hits freezes and gets a maths question: wrong or too slow and they die, right and they get a gold star, some HP and a few seconds nothing can hurt them.', charges: 1, recharge: 22, color: '#7fffd4', proj: 'calc' };
+// G puts them on / takes them off (free). while they're on, H (FLASH) spends a charge: everyone you can see within range m
+// and cone rad of your crosshair is blinded for dur[0] (looking away) .. dur[1] s (looking at you). wearing goggles
+// yourself makes any flash last nvMul x longer
+export const NVG = { range: 34, cone: 0.62, dur: [0.6, 3.2], nvMul: 2, toggle: 0.35 };
+ITEMS.nvg = { name: 'Night Vision Goggles', desc: 'G puts them on: the dark goes green and people glow. While they\'re on, H flashes everyone you can see. Flashes blind you twice as long while you wear them.', charges: 2, recharge: 14, color: '#3dff8a' };
 
 // ------------------------------------------------------------ lasso (secondary)
 // hold fire to spin the loop, let go to throw it; catch someone and they hang off your rope. the physics + numbers are

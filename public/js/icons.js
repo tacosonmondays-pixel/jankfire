@@ -1,7 +1,7 @@
 // Weapon pictures for the hotbar: each weapon (with your skin, wrap and hat) rendered side-on into a small
 // transparent image, cached until something about it changes.
 import * as THREE from 'three';
-import { buildWeapon } from './models.js';
+import { buildWeapon, freeTree } from './models.js';
 
 const IW = 160, IH = 96;
 let r = null, scene = null, cam = null;
@@ -46,10 +46,38 @@ export function weaponIcon(id, skin) {
     r.render(scene, cam);
     const url = r.domElement.toDataURL('image/png');
     scene.remove(holder);
+    freeTree(holder); // only the picture is kept
     cache.set(key, url);
     return url;
   } catch (e) {
     console.warn('icon', id, e);
+    return '';
+  }
+}
+
+// any model as a picture, lit like the weapons (Plant & Defuse gear in the buy menu). build() makes it, key caches it
+export function objIcon(key, build) {
+  if (cache.has(key)) return cache.get(key);
+  try {
+    if (!r) init();
+    const holder = new THREE.Group();
+    holder.add(build());
+    scene.add(holder);
+    holder.updateMatrixWorld(true);
+    box.setFromObject(holder);
+    box.getSize(size); box.getCenter(center);
+    holder.position.sub(center);
+    const fit = Math.max(size.x / cam.aspect, size.y) * 1.06;
+    cam.position.set(0, 0, fit / (2 * Math.tan((cam.fov * Math.PI) / 360)) + size.z / 2);
+    cam.lookAt(0, 0, 0);
+    r.render(scene, cam);
+    const url = r.domElement.toDataURL('image/png');
+    scene.remove(holder);
+    freeTree(holder);
+    cache.set(key, url);
+    return url;
+  } catch (e) {
+    console.warn('icon', key, e);
     return '';
   }
 }
@@ -97,6 +125,25 @@ export function itemIcon(id) {
     x.strokeStyle = '#fff'; x.lineWidth = 4;
     x.beginPath(); x.arc(48, 30, 10, Math.PI * 0.9, Math.PI * 1.9); x.stroke();
     x.beginPath(); x.arc(48, 30, 10, -Math.PI * 0.1, Math.PI * 0.9); x.stroke();
+  } else if (id === 'camera') { // instant camera: cream body, black top, a big lens, the print hanging out
+    x.fillStyle = '#f8f5ec'; x.fillRect(36, 44, 26, 14); x.strokeRect(36, 44, 26, 14); x.fillStyle = '#6fb8ff'; x.fillRect(40, 46, 18, 9);
+    x.fillStyle = '#f3eee2'; x.fillRect(22, 18, 52, 30); x.strokeRect(22, 18, 52, 30);
+    x.fillStyle = '#2c2c33'; x.fillRect(22, 10, 52, 12); x.strokeRect(22, 10, 52, 12);
+    circle(48, 32, 11, '#1a1c28'); circle(48, 32, 5, '#3a4a7a');
+    x.fillStyle = '#ff2d6a'; x.beginPath(); x.arc(66, 26, 4, 0, Math.PI * 2); x.fill(); x.stroke();
+    x.fillStyle = '#fff6d8'; x.fillRect(27, 13, 14, 6);
+  } else if (id === 'quiz') { // a calculator with a sum on it
+    x.save(); x.translate(48, 30); x.rotate(-0.18);
+    x.fillStyle = '#23263a'; x.fillRect(-17, -26, 34, 52); x.strokeRect(-17, -26, 34, 52);
+    x.fillStyle = '#b9c8a2'; x.fillRect(-13, -22, 26, 12);
+    x.fillStyle = '#1d2418'; x.font = 'bold 9px monospace'; x.fillText('7x8=?', -12, -13);
+    for (let r = 0; r < 4; r++) for (let k = 0; k < 3; k++) { x.fillStyle = r === 3 && k === 2 ? '#ff8a2a' : '#e3e6ee'; x.fillRect(-13 + k * 9, -6 + r * 8, 7, 6); }
+    x.restore();
+    x.fillStyle = '#ffe14d'; x.font = 'bold 20px sans-serif'; x.fillText('?', 74, 22); x.fillText('?', 12, 50);
+  } else if (id === 'nvg') { // night vision goggles: two olive tubes, green lenses
+    x.fillStyle = '#ff4fd8'; x.fillRect(10, 22, 76, 6); x.strokeRect(10, 22, 76, 6);
+    x.fillStyle = '#48503a'; x.fillRect(28, 18, 40, 16); x.strokeRect(28, 18, 40, 16);
+    for (const cx of [34, 62]) { circle(cx, 38, 14, '#3a4030'); circle(cx, 38, 9, '#39ff14'); x.fillStyle = '#d8ffd0'; x.fillRect(cx - 4, 33, 3, 3); }
   }
   const url = c.toDataURL();
   itemCache.set(id, url);
@@ -131,6 +178,21 @@ export function streakIcon(id) {
     x.fillStyle = '#4fa8ff'; x.fillRect(4, 24, 18, 12); x.fillRect(42, 24, 18, 12); x.strokeRect(4, 24, 18, 12); x.strokeRect(42, 24, 18, 12);
     circle(32, 30, 9, '#cccccc');
     x.strokeStyle = '#ffe14d'; x.lineWidth = 2; for (const r of [10, 16, 22]) { x.beginPath(); x.arc(32, 60, r, -2.4, -0.7); x.stroke(); }
+  } else if (id === 'overdrive') {
+    // the rig's rocket fist punching out of the frame: speed lines, a plated forearm, a glowing magenta knuckle strip
+    x.lineWidth = 2;
+    for (const [y, c] of [[22, '#2ef2ff'], [31, '#ff2bd6'], [40, '#2ef2ff']]) { x.strokeStyle = c; x.beginPath(); x.moveTo(2, y); x.lineTo(15, y); x.stroke(); }
+    x.lineWidth = 3; x.strokeStyle = '#000';
+    x.fillStyle = '#30363e'; x.beginPath(); x.moveTo(6, 52); x.lineTo(24, 40); x.lineTo(30, 50); x.lineTo(14, 62); x.closePath(); x.fill(); x.stroke(); // forearm
+    x.fillStyle = '#a87c24'; x.fillRect(12, 47, 9, 5);
+    x.fillStyle = '#58616c'; x.fillRect(22, 14, 30, 30); x.strokeRect(22, 14, 30, 30); // knuckle block
+    x.fillStyle = '#30363e';
+    for (let i = 0; i < 4; i++) { x.fillRect(51, 15 + i * 7, 8, 6); x.strokeRect(51, 15 + i * 7, 8, 6); } // fingers curled at the front
+    x.fillStyle = '#83391b'; x.fillRect(46, 13, 7, 32); x.strokeRect(46, 13, 7, 32); // knuckle plate
+    x.fillStyle = '#ff2bd6'; x.fillRect(48, 15, 3, 28); // the glow strip
+    x.fillStyle = 'rgba(255,43,214,0.35)'; x.beginPath(); x.arc(56, 29, 12, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#ff1e1e'; x.fillRect(26, 20, 14, 3); // a red tally light on the back of the hand
+    x.fillStyle = '#2ef2ff'; x.fillRect(24, 38, 20, 2);
   } else if (id === 'giantduck') {
     circle(32, 34, 24, '#120018'); x.strokeStyle = '#b07dff'; x.lineWidth = 2; x.beginPath(); x.arc(32, 34, 27, 0, Math.PI * 2); x.stroke();
     x.strokeStyle = '#000'; x.lineWidth = 3; circle(28, 38, 11, '#ffd23b'); circle(38, 26, 7, '#ffd23b'); x.fillStyle = '#ff7a1a'; x.fillRect(44, 25, 7, 4);

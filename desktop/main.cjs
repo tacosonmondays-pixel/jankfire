@@ -6,7 +6,7 @@ const path = require('node:path');
 const net = require('node:net');
 const os = require('node:os');
 const fs = require('node:fs');
-const { pathToFileURL } = require('node:url');
+const { pathToFileURL, fileURLToPath } = require('node:url');
 
 const ROOT = path.join(__dirname, '..');
 const LAUNCHER = path.join(__dirname, 'launcher.html');
@@ -74,6 +74,23 @@ function normalize(addr) {
   return u.origin;
 }
 
+// who is calling window.jf? the launcher (a file inside the app), the game page of the server this app runs
+// ('host on this PC'), or any other page: the official server or an address typed into JOIN. only the app's own
+// pages may start a server, pick one, see the LAN addresses or save anything; any game page may still switch
+// screens, change the display mode (not saved) and quit.
+function caller(e) {
+  const f = e.senderFrame;
+  if (!win || !f || f.parent || e.sender !== win.webContents) return 'other'; // no iframes, no other windows
+  let u;
+  try { u = new URL(f.url); } catch { return 'other'; }
+  if (u.protocol === 'file:') {
+    try { const p = path.resolve(fileURLToPath(u)); return (process.platform === 'win32' ? p.toLowerCase() === LAUNCHER.toLowerCase() : p === LAUNCHER) ? 'launcher' : 'other'; } catch { return 'other'; }
+  }
+  if (local && u.protocol === 'http:' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1') && Number(u.port) === local.port) return 'local';
+  return u.protocol === 'http:' || u.protocol === 'https:' ? 'remote' : 'other';
+}
+function need(e, ...kinds) { if (!kinds.includes(caller(e))) throw new Error('not allowed from this page'); }
+
 function showLauncher(err) {
   win.setTitle('JANKFIRE');
   win.loadFile(LAUNCHER, err ? { query: { err } } : undefined);
@@ -89,62 +106,78 @@ function createWindow() {
   win.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:/i.test(url)) shell.openExternal(url); return { action: 'deny' }; });
   win.webContents.on('before-input-event', (e, input) => {
     if (input.type !== 'keyDown') return;
-    if (input.key === 'F11') { win.setFullScreen(!win.isFullScreen()); e.preventDefault(); }
+    if (input.key === 'F11') { toggleFullscreen(true); e.preventDefault(); } // a real key press: remembered
     if (input.control && input.shift && input.key.toLowerCase() === 'i') win.webContents.toggleDevTools();
   });
   win.webContents.on('did-fail-load', (_e, _code, desc, url, isMain) => {
     if (isMain && !String(url).startsWith('file:')) showLauncher(`couldn't reach ${url} (${desc})`);
   });
   win.webContents.on('page-title-updated', (e) => e.preventDefault());
+  // fullscreen changed some other way (the OS button, a page's own fullscreen): keep the mode in step.
+  // leaving is always fine to remember; entering only counts for this session
+  win.on('enter-full-screen', () => { if (displayMode !== 'fullscreen') { lastMode = displayMode; displayMode = 'fullscreen'; } });
+  win.on('leave-full-screen', () => { if (displayMode === 'fullscreen') { displayMode = lastMode; saveDisplay(); } });
   // start in the display mode you picked last time
-  try { const m = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'display.json'), 'utf8')).mode; if (m && m !== 'windowed') setTimeout(() => applyDisplay(m), 50); } catch { /* first run */ }
+  const m = readDisplay();
+  if (m !== 'windowed') setTimeout(() => applyDisplay(m), 50);
   showLauncher();
 }
 
-ipcMain.handle('jf:info', () => ({
+ipcMain.handle('jf:info', (e) => ({
   version: app.getVersion(), official: config.officialServer || '',
-  hosting: local ? { port: local.port, lan: local.lan } : null,
+  hosting: local && ['launcher', 'local'].includes(caller(e)) ? { port: local.port, lan: local.lan } : null,
 }));
-ipcMain.handle('jf:host', async () => {
+ipcMain.handle('jf:host', async (e) => {
+  need(e, 'launcher');
   const l = await startLocalServer();
   win.setTitle(`JANKFIRE · hosting${l.lan.length ? ' · friends join ' + l.lan[0] : ''}`);
   win.loadURL(`http://localhost:${l.port}/`);
   return { port: l.port, lan: l.lan };
 });
-ipcMain.handle('jf:join', async (_e, addr) => {
+ipcMain.handle('jf:join', async (e, addr) => {
+  need(e, 'launcher');
   const url = normalize(addr);
   win.setTitle(`JANKFIRE · ${new URL(url).host}`);
   win.loadURL(url + '/');
   return url;
 });
-ipcMain.handle('jf:launcher', () => showLauncher());
-ipcMain.handle('jf:fullscreen', () => win.setFullScreen(!win.isFullScreen()));
-// display mode: 'windowed' | 'maximized' (windowed fullscreen) | 'fullscreen'. remembered for next launch.
+ipcMain.handle('jf:launcher', (e) => { need(e, 'launcher', 'local', 'remote'); showLauncher(); }); // CHANGE SERVER
+// display mode: 'windowed' | 'maximized' (windowed fullscreen) | 'fullscreen'. remembered for next launch when
+// it comes from F11 or the app's own pages; a remote page can switch it (its FULLSCREEN button) but not save it.
+// every change goes through applyDisplay, so displayMode is always what the window really is.
+const MODES = ['windowed', 'maximized', 'fullscreen'];
 const displayFile = () => path.join(app.getPath('userData'), 'display.json');
-let windowedBounds = null, displayMode = 'windowed';
+let windowedBounds = null, displayMode = 'windowed', lastMode = 'windowed'; // lastMode: where leaving fullscreen goes back to
+function readDisplay() { try { const m = JSON.parse(fs.readFileSync(displayFile(), 'utf8')).mode; return MODES.includes(m) ? m : 'windowed'; } catch { return 'windowed'; } }
+function saveDisplay() { try { fs.writeFileSync(displayFile(), JSON.stringify({ mode: displayMode })); } catch { /* not important */ } }
 function applyDisplay(mode) {
   if (!win) return;
   const { screen } = require('electron');
-  if (displayMode === 'windowed' && mode !== 'windowed') windowedBounds = win.getBounds(); // remember the normal size
+  // the normal size, taken only from a really normal window (not one that F11 or the OS made full or maximized)
+  if (displayMode === 'windowed' && !win.isFullScreen() && !win.isMaximized()) windowedBounds = win.getBounds();
+  if (displayMode !== 'fullscreen') lastMode = displayMode;
   displayMode = mode;
   if (mode === 'fullscreen') { win.setFullScreen(true); return; }
   win.setFullScreen(false);
   if (mode === 'maximized') { // windowed fullscreen: a normal window that fills the screen (taskbar stays)
     win.maximize();
-    setTimeout(() => { if (!win.isMaximized()) win.setBounds(screen.getDisplayMatching(win.getBounds()).workArea); }, 150);
+    setTimeout(() => { if (displayMode === 'maximized' && !win.isFullScreen() && !win.isMaximized()) win.setBounds(screen.getDisplayMatching(win.getBounds()).workArea); }, 150);
   } else {
     if (win.isMaximized()) win.unmaximize();
     if (windowedBounds) win.setBounds(windowedBounds);
   }
 }
-ipcMain.handle('jf:display', (_e, mode) => {
-  mode = ['windowed', 'maximized', 'fullscreen'].includes(mode) ? mode : 'windowed';
+function toggleFullscreen(save) { applyDisplay(displayMode === 'fullscreen' ? lastMode : 'fullscreen'); if (save) saveDisplay(); }
+ipcMain.handle('jf:fullscreen', (e) => { need(e, 'launcher', 'local', 'remote'); toggleFullscreen(caller(e) !== 'remote'); return displayMode; });
+ipcMain.handle('jf:display', (e, mode) => {
+  need(e, 'launcher', 'local', 'remote');
+  mode = MODES.includes(mode) ? mode : 'windowed';
   applyDisplay(mode);
-  try { fs.writeFileSync(displayFile(), JSON.stringify({ mode })); } catch { /* not important */ }
+  if (caller(e) !== 'remote') saveDisplay();
   return mode;
 });
-ipcMain.handle('jf:displayGet', () => { try { return JSON.parse(fs.readFileSync(displayFile(), 'utf8')).mode || 'windowed'; } catch { return 'windowed'; } });
-ipcMain.handle('jf:quit', () => app.quit());
+ipcMain.handle('jf:displayGet', () => displayMode);
+ipcMain.handle('jf:quit', (e) => { need(e, 'launcher', 'local', 'remote'); app.quit(); });
 
 app.on('before-quit', () => { try { if (local && local.mod.shutdown) local.mod.shutdown(); } catch { /* closing anyway */ } });
 app.on('window-all-closed', () => app.quit());

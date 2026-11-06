@@ -21,7 +21,8 @@ create table if not exists jf_users (
   playtime    int  not null default 0,
   void_kills  int  not null default 0,
   headshots   int  not null default 0,
-  tbags       int  not null default 0
+  tbags       int  not null default 0,
+  sniper_feats int not null default 0
 );
 -- Lock the table down: only the game server (service key) can read or write it. Browsers never talk to it directly.
 alter table jf_users enable row level security;
@@ -36,3 +37,6 @@ do $$ begin
     update jf_users set wings_old = 1 where top_speed >= 1000;
   end if;
 end $$;
+
+-- Sniper Royalty (bit flags for its four sniper feats; it unlocks the Golden Sniper). Safe to run again.
+alter table jf_users add column if not exists sniper_feats int not null default 0;
