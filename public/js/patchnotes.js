@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '5.9', date: '2026-11-06', title: 'DRESS YOUR KILLSTREAKS', items: [
+    'killstreaks have looks now. CUSTOMIZE > KILLSTREAKS: every streak takes a wrap, and most get new models.',
+    'wrecking ball: bowling ball, meatball, disco ball. giant duck: pool flamingo, robo duck, golden duck. chicken strike: pigeon raid, drone strike. moon boots: heelys, rocket sneakers, clown shoes. spinbot: halo, anime aura. spy satellite: pizza dish, cctv blimp.',
+    'everyone else sees your look too. getting flattened by a disco ball is a lifestyle.',
+  ] },
   { v: '5.8', date: '2026-11-06', title: 'SAT-NAV (MOSTLY RIGHT)', items: [
     'a minimap on every map and every mode (top left). it shows you, your team, the plant sites and the bomb. enemies blip red when they shoot, except in plant & defuse, where you have to actually listen. a spy satellite still shows everyone.',
     'settings > minimap: on/off, S/M/L, and turn with you or north up. royale keeps its own zone map, which now follows the same settings.',
