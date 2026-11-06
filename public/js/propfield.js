@@ -23,6 +23,7 @@ const stripN = (n) => (n || '').replace(/\.\d+$/, ''); // (Blender keeps names u
 const isLod1 = (o) => { for (let p = o; p; p = p.parent) if (stripN(p.name) === 'lod1') return true; return false; };
 
 let field = null; // { group, kinds: [...], cam: {...} }
+const lit = new Set(); // every lit prop material (its studio reflection follows the map's light)
 let MATS = null; // world.js's map materials (tints)
 const kindCache = new Map(); // model id + variant -> { lod0, lod1, lo, hi, lod, tint }
 
@@ -82,7 +83,7 @@ function propMat(m, glow) {
     const c = m.emissive && m.emissive.getHex() ? m.emissive.clone() : m.color.clone();
     out = new THREE.MeshBasicMaterial({ name: m.name, color: c, map: m.emissiveMap || m.map || null });
     out.toneMapped = false;
-  } else { out = m.clone(); out.vertexColors = true; }
+  } else { out = m.clone(); out.vertexColors = true; out.userData.env0 = out.envMapIntensity ?? 0; lit.add(out); }
   const prev = m.onBeforeCompile; // (jankify's vertex snap)
   out.onBeforeCompile = (sh, r) => {
     if (prev && prev !== THREE.Material.prototype.onBeforeCompile) prev(sh, r);
@@ -256,6 +257,9 @@ function placeMatrix(p, k, ref, out) {
 // ---------------------------------------------------------------- build the field for a map
 export function buildPropField(scene, def, mats) {
   MATS = mats || MATS;
+  // the studio reflection is a constant light of its own: on a night map it made the props glow against the dark world
+  const envK = def && def.night ? 0.12 : def && (def.sealed || def.zm) ? 0.5 : 1;
+  for (const m of lit) m.envMapIntensity = m.userData.env0 * envK;
   if (field) { scene.remove(field.group); for (const k of field.kinds) for (const m of k.meshes) m.dispose(); field = null; }
   const lists = off ? [] : [def && def.boxes && def.boxes.props, def && def.deco && def.deco.props];
   const groups = new Map();
