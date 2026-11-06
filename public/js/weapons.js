@@ -24,13 +24,18 @@ import { newTwirl, resetTwirl, twirling, spin, settle, twirlShot, stepTwirl, app
 import { partsShot, stepParts } from './glbkit.js';
 import { balisongStep } from './balisong.js'; // real balisong flips
 import { reloadStep, reloadEvent } from './reloads.js'; // proper reloads for the guns that only dipped
-import { katanaHands, katanaStep, katanaEvent, wrapFist, KAT_VM } from './katanavm.js'; // two hands on the katana
+import { gunHand, mirrorHand } from './hands.js'; // PS1 low-poly hands
+import { bladeStep, bladeIdle, TRAIL_LIFE } from './bladefeel.js'; // snappy knives + katana: tosses, smears, idle sway
+import { katanaHands, katanaStep, katanaEvent, KAT_VM } from './katanavm.js'; // two hands on the katana
 import { weaponIcon, clearIcons, itemIcon } from './icons.js';
 import { rigFire, rigItem, rigVM, rigBlockKey, rigReload } from './rig.js'; // overdrive rig killstreak
 import { tickScalesVM } from './scales.js';
 import { PARRY } from '/shared/weapons.js';
 import { SIDEARMS, reloadAnim, sideParts, sideHand, sideShot, sideStep, stepOffHand, sideEvent } from './sidearms.js'; // Plan B, Lefty & Righty, Half a Shotgun
 import { ROYAL } from '/shared/looks.js';
+import { GAMES, spoonLookOn } from '/shared/modes.js';
+// a mode kit's run speed (spoons & grapples), on top of the weapon's own
+const kitSpeed = () => ((G.mode === 'ffa' || G.mode === 'bots') && GAMES[G.game] && GAMES[G.game].kit && GAMES[G.game].kit.speedMul) || 1;
 import { secFireDown, secShot } from './secondaries.js'; // taser, tv remote, water pistol streams
 import { RIFLES, RF, RIFLE_VM, RIFLE_RECOIL, RIFLE_SHELLS, rifleShot, bursting, rifleReset, quickScoped, rifleStep, rifleEvent } from './rifles.js'; // the rifle pack
 import { tacOn, tacShot, tacKick, tacFrame } from './tactical.js'; // Plant & Defuse: spray patterns + moving spread
@@ -165,7 +170,7 @@ function initTrail() {
   trail.renderOrder = 5;
   G.vmScene.add(trail);
 }
-function updateTrail(now, m, active, color) {
+function updateTrail(now, m, active, color, life = 120) {
   if (!trail) return;
   if (active && m) {
     m.wrap.updateMatrixWorld(true);
@@ -174,14 +179,14 @@ function updateTrail(now, m, active, color) {
     tmpV2.copy(mz).multiplyScalar(0.45); m.g.localToWorld(tmpV2);
     trailPts.unshift({ t: now, a: [tmpV.x, tmpV.y, tmpV.z], b: [tmpV2.x, tmpV2.y, tmpV2.z] });
   }
-  while (trailPts.length > TRAIL_N || (trailPts.length && now - trailPts[trailPts.length - 1].t > 120)) trailPts.pop();
+  while (trailPts.length > TRAIL_N || (trailPts.length && now - trailPts[trailPts.length - 1].t > life)) trailPts.pop();
   const n = trailPts.length;
   trail.visible = n >= 3;
   if (!trail.visible) return;
   const pos = trail.geometry.attributes.position.array, col = trail.geometry.attributes.color.array;
   tcol.setHex(color);
   for (let i = 0; i < n; i++) {
-    const q = trailPts[i], k = Math.max(0, 1 - (now - q.t) / 120) * (1 - i / n) * 0.9;
+    const q = trailPts[i], k = Math.max(0, 1 - (now - q.t) / life) * (1 - i / n) * 0.9;
     pos.set(q.a, i * 6); pos.set(q.b, i * 6 + 3);
     col[i * 6] = tcol.r * k; col[i * 6 + 1] = tcol.g * k; col[i * 6 + 2] = tcol.b * k;
     col[i * 6 + 3] = tcol.r * k * 0.15; col[i * 6 + 4] = tcol.g * k * 0.15; col[i * 6 + 5] = tcol.b * k * 0.15;
@@ -520,13 +525,13 @@ export function rebuildViewmodels() {
   for (const id of ORDER) {
     if (!VM[id]) continue;
     if (models[id]) { vmRoot.remove(models[id].wrap); freeTree(models[id].wrap); if (models[id].flash) models[id].flash.userData.face.material.dispose(); }
+    if (models[id] && models[id].left) { vmRoot.remove(models[id].left.wrap); freeTree(models[id].left.wrap); } // Lefty & Righty's left gun too (it was left on screen after a rebuild)
     const wrap = new THREE.Group();
     const g = buildWeapon(id, (W.skinOver || G.equipped || {})[id]);
     const cfg = VM[id];
     g.scale.setScalar(cfg.s);
     wrap.add(g);
-    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.062, 0.09), M(0xf1c27d)); // a fist, not a brick
-    hand.position.set(...((g.userData.glb === 'blender' && cfg.handGlb) || cfg.hand || [0.004, -0.042, 0.03])); // (bullpups hold it further forward; handGlb: a Blender model's grip sits elsewhere)
+    const hand = gunHand(id, cfg, g, g.userData.model); // a PS1 hand round the grip, index on the trigger (hands.js; cfg.hand / handGlb: where the grip is)
     wrap.add(hand);
     if (g.userData.bare) { hand.visible = false; g.add(g.userData.bare); } // Blood Cross: the hand is the weapon (+ your forearm)
     wrap.position.set(...cfg.p);
@@ -535,11 +540,10 @@ export function rebuildViewmodels() {
     vmRoot.add(wrap);
     let flash = null;
     if (FLASH_IDS.has(id) && g.userData.muzzle) { flash = makeFlash(id === 'shotgun' || id === 'sniper' || id === 'autoshot' || id === 'dmr'); flash.position.copy(g.userData.muzzle); g.add(flash); }
-    models[id] = { wrap, g, cfg, flash };
+    models[id] = { wrap, g, cfg, flash, hand };
     if (WEAPONS[id].hands) models[id].left = akLeftModel(id, cfg, hand); // Lefty & Righty: a second gun for the left hand
     if (SIDEARMS.has(id)) sideHand(g, id, 'R');
     if (id === 'katana') katanaHands(models[id], hand); // held like a katana: both fists on the tsuka
-    if (id === 'knife' || id === 'spoon') wrapFist(models[id], hand, id === 'spoon' ? 0.03 : 0.022, id === 'spoon' ? 0.85 : 1); // a fist closed round the handle (every knife skin)
   }
   if (models.katana) setKatana(models.katana.g, W.kat || 0);
   if (!trail) initTrail();
@@ -922,7 +926,7 @@ function akLeftModel(id, cfg, rh) {
   const g = buildWeapon(id, (W.skinOver || G.equipped || {})[id]);
   g.scale.setScalar(cfg.s);
   wrap.add(g);
-  const hand = rh.clone(); wrap.add(hand);
+  const hand = mirrorHand(rh); wrap.add(hand); // a left hand on the left gun
   wrap.visible = false;
   vmRoot.add(wrap);
   const flash = makeFlash(false); flash.position.copy(g.userData.muzzle); g.add(flash);
@@ -1116,7 +1120,7 @@ function resolveSwing(id) {
       const p = tg.r.pos;
       fx.blast([p[0], p[1] + 1.4, p[2]], hv ? 1.1 : 0.6, 0xffffff, 0xffe14d); // impact flash
     }
-    if (id === 'spoon') sfx.ting(); else if (id !== 'popper') sfx.bonk();
+    if (id === 'spoon' || (id === 'knife' && spoonLookOn(G.mode, G.game))) sfx.ting(); else if (id !== 'popper') sfx.bonk();
     if (hv) sfx.crunch();
     // hit stop: the swing freezes for a few frames on contact so it feels like it connected
     W.hitStop = hv ? 0.11 : 0.06;
@@ -1423,7 +1427,7 @@ export function updateWeapons(dt, now) {
   W.scoped = !!(w.ads && w.ads.scope && W.aim > 0.92);
   if (W.scoped && !wasScoped) W.scopedAt = now; // quick-scopes count from the moment the scope is fully up
   hud.scope(W.scoped);
-  ME.speedMul = (w.speedMul || 1) * (1 - W.aim * 0.25);
+  ME.speedMul = (w.speedMul || 1) * (1 - W.aim * 0.25) * kitSpeed(); // (spoons & grapples: you run with your spoon)
   parryTick(now); // katana parry: buffered presses, stagger, cooldown ring
   laserTick(id, now, dt); // laser pointer charge
 
@@ -1627,6 +1631,7 @@ export function updateWeapons(dt, now) {
     const tip = m.g.userData.tip;
     if (tip) tip.scale.setScalar(1 + W.charge * 0.6 + Math.random() * 0.2 * (smoking ? 1 : 0));
   }
+  { const sw = !W.anim && W.aim < 0.05 && bladeIdle(id, now, 1 - W.runK); if (sw) { px += sw[0]; py += sw[1]; pz += sw[2]; rx += sw[3]; ry += sw[4]; rz += sw[5]; } } // blades sway a little at rest
   // keyframed animation on top of everything (swings, throws, inspects)
   let scale = 1;
   const adt = W.hitStop > 0 ? 0 : dt; // hit stop freezes the swing for a moment
@@ -1667,6 +1672,7 @@ export function updateWeapons(dt, now) {
     m.g.rotation.x = a;
     m.g.position.set(0, Math.sin(a) * pz, pz - Math.cos(a) * pz);
   }
+  if (id === 'knife' || id === 'katana') bladeStep(m, an, at, sampleCh); // the knife leaves the hand on a toss (the hand stays), the fingers let go
   if (w.fanHammer) { const k = twirlVM(m, dt); px -= k * 0.025; py -= k * 0.02; pz -= k * 0.1; ry += k * 0.4; rz -= k * 0.15; } // arm out + wrist turned so you see it go round (the barrel never swings through your face)
   if (W.inspectSpin > 0) { W.inspectSpin = Math.max(0, W.inspectSpin - dt * 0.8); if (m.g.userData.barrels) m.g.userData.barrels.rotation.z += W.inspectSpin * dt * 30; }
   m.wrap.scale.setScalar(scale);
@@ -1701,6 +1707,6 @@ export function updateWeapons(dt, now) {
   for (const k of ORDER) { const mm = models[k]; if (mm && mm.flash) mm.flash.visible = k === id && W.flashT > 0 && m.wrap.visible; }
   if (w.hands && m.flash) m.flash.visible = W.ak.R.flash > 0 && m.wrap.visible; // the right gun's own flash
   if (m.flash && m.flash.visible) { m.flash.userData.face.rotation.z = Math.random() * 6.28; m.flash.scale.setScalar(0.8 + Math.random() * 0.6); }
-  updateTrail(now, m, trailOn && m.wrap.visible, TRAIL_COLOR[id] || 0xffffff);
+  updateTrail(now, m, trailOn && m.wrap.visible, TRAIL_COLOR[id] || 0xffffff, TRAIL_LIFE[id]);
   if (m.wrap.visible && G.skinFxVM) { m.wrap.updateMatrixWorld(true); emitSkinFx(G.skinFxVM, m.g, dt, 0.3 * cfg.s); }
 }

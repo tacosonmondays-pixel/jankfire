@@ -12,6 +12,7 @@ import { W } from './weapons.js';
 import { fx } from './fx.js';
 import { sfx, loopLevel } from './audio.js';
 import { hud } from './hud.js';
+import { authored, AUTHORED, whenLate, nodeIn, ownMatByName } from './glbkit.js'; // the Blender ball (tools/blender/make_wreck.py)
 
 const R = WRECK.r;
 const Y = new THREE.Vector3(0, 1, 0);
@@ -68,10 +69,51 @@ function ballParts() {
 }
 const LINK_GEO = new THREE.TorusGeometry(0.13, 0.042, 4, 10).scale(1, 1.5, 1); // an oval chain link, long axis = y
 
+// the Blender chain link (one oval link, long axis y), centred: the chain instances it. null = ours
+let blLink;
+function linkOf() {
+  if (blLink !== undefined) return blLink;
+  const a = AUTHORED.x_wreck;
+  if (!a) return null; // (not loaded yet: ours, and look again next time)
+  let m = null;
+  const n = nodeIn(a.scene, 'link');
+  if (n) n.traverse((o) => { if (!m && o.isMesh) m = o; });
+  if (m && m.material.fog) { m.material.fog = false; m.material.needsUpdate = true; } // (players ignore fog, chain too)
+  blLink = m ? { geo: m.geometry.clone().center(), mat: m.material } : null;
+  return blLink;
+}
+// the player's face peeking out of the slot: skin plate, the shadow under the frame, eyes (the pupils look around)
+function wreckFace(slot, lk) {
+  slot.add(box(0.62, 0.17, 0.06, mat(lk.skin ? new THREE.Color(lk.skin).getHex() : 0xe6cba2), 0, 0, -0.01));
+  slot.add(box(0.62, 0.035, 0.07, mat(0x000000, 'b'), 0, 0.07, -0.015)); // shadow under the top of the frame
+  const pupils = [];
+  for (const sx of [-1, 1]) {
+    slot.add(box(0.11, 0.08, 0.02, mat(0xffffff, 'b'), sx * 0.12, -0.005, -0.05));
+    const p = box(0.045, 0.05, 0.02, mat(0x000000, 'b'), sx * 0.12, -0.012, -0.062);
+    p.userData.x = sx * 0.12;
+    pupils.push(p); slot.add(p);
+  }
+  if (lk.face === 'shades' || lk.face === 'visor') slot.add(box(0.4, 0.07, 0.02, mat(lk.face === 'visor' ? 0x3ee6c8 : 0x111111, 'b'), 0, -0.005, -0.075));
+  return pupils;
+}
 // the ball. origin = its centre. userData.hook = where the chain comes out (top of the stub)
 export function buildWreckBall(color, look, opts = {}) {
   const P = ballParts(), g = new THREE.Group();
   const c = new THREE.Color(color || '#ff4fd8').getHex();
+  const bl = authored('x_wreck');
+  if (bl) { // the Blender ball: its band in your colour, your face in its slot, our outline + chain
+    g.add(bl.obj);
+    bl.obj.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) if (m.fog) { m.fog = false; m.needsUpdate = true; } }); // players ignore fog, like ours
+    const lnk = nodeIn(bl.obj, 'link'); if (lnk) lnk.removeFromParent(); // (that one's the chain's)
+    ownMatByName(g, 'wb_accent', mat(c, 'l', 0.3));
+    const slot = nodeIn(bl.obj, 'slot');
+    g.userData.pupils = slot ? wreckFace(slot, look || {}) : [];
+    if (opts.outline) { const o = new THREE.Mesh(P.body, mat(c, 'o')); o.scale.setScalar(1.06); g.add(o); }
+    const hk = bl.meta.hook;
+    g.userData.hook = Array.isArray(hk) && hk.length === 3 && hk.every(Number.isFinite) ? new THREE.Vector3(...hk) : new THREE.Vector3(0, R + 0.95, 0);
+    g.userData.glb = 'blender';
+    return g;
+  }
   g.add(new THREE.Mesh(P.body, mat(STEEL, 's')));
   g.add(new THREE.Mesh(P.stripe, mat(c, 'l', 0.3)));
   g.add(new THREE.Mesh(P.seams, mat(DARK)));
@@ -89,16 +131,7 @@ export function buildWreckBall(color, look, opts = {}) {
   slot.position.set(0, Math.sin(lat) * R, -Math.cos(lat) * R);
   slot.rotation.x = lat;
   for (const [w, h, x, y] of [[0.76, 0.06, 0, 0.115], [0.76, 0.06, 0, -0.115], [0.07, 0.29, -0.345, 0], [0.07, 0.29, 0.345, 0]]) slot.add(box(w, h, 0.18, mat(DARK), x, y, 0));
-  slot.add(box(0.62, 0.17, 0.06, mat(lk.skin ? new THREE.Color(lk.skin).getHex() : 0xe6cba2), 0, 0, -0.01));
-  slot.add(box(0.62, 0.035, 0.07, mat(0x000000, 'b'), 0, 0.07, -0.015)); // shadow under the top of the frame
-  const pupils = [];
-  for (const sx of [-1, 1]) {
-    slot.add(box(0.11, 0.08, 0.02, mat(0xffffff, 'b'), sx * 0.12, -0.005, -0.05));
-    const p = box(0.045, 0.05, 0.02, mat(0x000000, 'b'), sx * 0.12, -0.012, -0.062);
-    p.userData.x = sx * 0.12;
-    pupils.push(p); slot.add(p);
-  }
-  if (lk.face === 'shades' || lk.face === 'visor') slot.add(box(0.4, 0.07, 0.02, mat(lk.face === 'visor' ? 0x3ee6c8 : 0x111111, 'b'), 0, -0.005, -0.075));
+  const pupils = wreckFace(slot, lk);
   g.add(slot);
   if (opts.outline) { // same coloured outline every other player gets
     const o = new THREE.Mesh(P.body, mat(c, 'o'));
@@ -117,7 +150,8 @@ const QUARTER = new THREE.Quaternion().setFromAxisAngle(Y, Math.PI / 2);
 export class Chain {
   constructor(parent, world = false, max = 300) {
     this.max = max;
-    this.mesh = new THREE.InstancedMesh(LINK_GEO, mat(LINK, 's'), max);
+    const bl = linkOf(); // (the Blender link once the ball's model is in)
+    this.mesh = new THREE.InstancedMesh(bl ? bl.geo : LINK_GEO, bl ? bl.mat : mat(LINK, 's'), max);
     this.mesh.frustumCulled = false;
     this.mesh.count = 0;
     this.mesh.visible = false;
@@ -200,6 +234,7 @@ export function wreckBurst(c, vel = [0, 0, 0]) {
 
 // ------------------------------------------------------------ you
 const me = { g: null, key: '', st: newSpin(0), chain: null, was: false, camLen: 0, shadowBig: false, dur: 0 };
+whenLate('x_wreck', () => { me.key = ''; blLink = undefined; if (me.chain) { me.chain.dispose(); me.chain = null; } }); // the Blender ball landed: rebuild yours (others rebuild with their mannequin)
 function poof(p) { fx.spray([p[0], p[1] + R, p[2]], 26, [0xb8c4d0, 0x8a96a4, 0xffffff], 7, 0.7, 0.18, 10, 1.5); fx.dust(p, 12); }
 function onStart() {
   W.held = false; W.aimHeld = false; W.dashHeld = false;
@@ -275,7 +310,8 @@ export function updateWreck(dt, now, replaying, shadow, rope) {
   // what a ram would do right now (the server's rule: rolling, swinging and falling count, rising and the slam dive don't)
   const v = ME.vel, rs = Math.hypot(v[0], v[2], v[1] < 0 && v[1] > 8 - WRECK.slamV ? v[1] : 0);
   const ram = Math.round(ramDmg(rs));
-  hud.ball(Math.max(0, (ME.ballUntil - now) / 1000), me.dur || STREAKS.wreckingball.dur, { ready, h, size: h != null ? slamSize(h) : null, speed: rs, ram });
+  const bh = G.myBody && G.myBody.k === 'wreckingball' ? G.myBody : null; // its HP (bodyhp.js): it lasts until that breaks
+  hud.ball(Math.max(0, (ME.ballUntil - now) / 1000), me.dur || STREAKS.wreckingball.dur, { ready, h, size: h != null ? slamSize(h) : null, speed: rs, ram, hp: bh ? bh.hp : null, max: bh ? bh.max : null });
 }
 
 // third person: a boom straight back from the pivot above the ball along your view, so the crosshair (and your chain)

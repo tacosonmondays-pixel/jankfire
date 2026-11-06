@@ -15,10 +15,24 @@ export const AUTHORED = {}; // id -> { scene, meta }
 // skin models (w_<skin>.glb, pj_<skin>.glb) aren't downloaded up front: only the first time someone shows that skin
 // (you, another player, the locker). Until then it's the code model; when it lands, onLateModel's callback rebuilds.
 export const LAZY = new Map(); // id -> url
-export const isLazy = (id) => { const m = /^(?:w|pj)_(.+)$/.exec(id); return !!(m && m[1] !== 'default' && Object.hasOwn(COSMETICS.model, m[1])); };
-const late = { fn: null, t: 0, busy: 0 };
+// the gear and killstreak models (x_<thing>.glb: the rig, the wrecking ball, the camera...) and the rig's missile load
+// the same way: the first time something asks (prefetch() asks early for what your loadout will need)
+export const isLazy = (id) => { if (/^x_/.test(id) || id === 'pj_rigmissile') return true; const m = /^(?:w|pj)_(.+)$/.exec(id); return !!(m && m[1] !== 'default' && Object.hasOwn(COSMETICS.model, m[1])); };
+const late = { fn: null, t: 0, busy: 0, by: new Map() };
 export function onLateModel(fn) { late.fn = fn; }
+export function whenLate(id, fn) { if (!late.by.has(id)) late.by.set(id, []); late.by.get(id).push(fn); } // that model just landed: drop a cached copy built without it
 export const lateBusy = () => late.busy; // skins still downloading (tests wait for them)
+export function prefetch(ids) { for (const id of ids) if (LAZY.has(id)) fetchLate(id); }
+// what each item / killstreak shows: fetched as soon as it's in your loadout (killstreaks take a while to earn), so the
+// first time you use it it's already the Blender one. other people's gear loads the first time it shows up
+const GEAR_FILES = { camera: ['x_camera', 'x_photoframe'], quiz: ['x_calc'], nvg: ['x_nvg'], wand: ['x_wand'] };
+const STREAK_FILES = { overdrive: ['x_rig', 'x_rigarms', 'pj_rigmissile'], wreckingball: ['x_wreck'] };
+export function prefetchLoadout(lo) {
+  if (!lo) return;
+  const ids = [...(GEAR_FILES[lo.item] || [])];
+  for (const k of Array.isArray(lo.streaks) ? lo.streaks : []) ids.push(...(STREAK_FILES[k] || []));
+  prefetch(ids);
+}
 function fetchLate(id) {
   const url = LAZY.get(id);
   LAZY.delete(id);
@@ -26,6 +40,7 @@ function fetchLate(id) {
   new GLTFLoader().load(url, (gltf) => {
     late.busy--;
     if (!prepAuthored(id, gltf.scene)) return;
+    for (const f of late.by.get(id) || []) try { f(id); } catch (e) { console.warn('late model', id, e); }
     clearTimeout(late.t);
     late.t = setTimeout(() => { if (late.fn) late.fn(id); }, 120); // a few at once: one rebuild
   }, undefined, (e) => { late.busy--; console.warn('model failed', id, e); });
@@ -130,6 +145,25 @@ export function authored(id) {
   return { obj: c, meta: a.meta };
 }
 export const hasAuthored = (id) => !!AUTHORED[id];
+// candy paint in a colour the game picks (the rig's plates in your colour): the same clear-coat + studio reflection as
+// the Blender models, and an emissive so setColor-style code can keep tinting it
+export function glossyPaint(color, emi = 0.18) {
+  const c = new THREE.Color(color);
+  const m = new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.34, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.2, emissive: c.clone().multiplyScalar(emi), envMap: MODEL_STYLE === 'flat' ? null : envMap(), envMapIntensity: 0.3, fog: false });
+  return jankify(m);
+}
+// the mesh of a named node (or the first mesh under it) gets the game's own material: returns that mesh, or null
+export function ownMat(root, name, mat) {
+  const n = nodeIn(root, name);
+  let m = null;
+  if (n) n.traverse((o) => { if (!m && o.isMesh) m = o; });
+  if (m && mat) { m.material = mat; m.userData.noWrap = true; }
+  return m;
+}
+// every mesh whose material is called `name` (or starts with it, Blender adds .001) gets `mat`: the player's colour band
+export function ownMatByName(root, name, mat) {
+  root.traverse((o) => { if (o.isMesh && !Array.isArray(o.material) && o.material.name && o.material.name.startsWith(name)) o.material = mat; });
+}
 
 export const nodeIn = (g, n) => { let r = null; g.traverse((o) => { if (!r && o.name === n) r = o; }); return r; };
 
@@ -154,6 +188,8 @@ export function bindAuthored(g, meta) {
     const fan = meta.fan.map((n) => nodeIn(g, n)).filter((c) => c && c.isMesh);
     if (fan.length) { g.userData.fan = fan; for (const c of fan) c.traverse((o) => { o.userData.noWrap = true; }); }
   }
+  // a katana skin's blade (grows with kills, setKatana in models.js): a node straight under the root, pointing -z, katLen = origin to tip
+  if (meta.katBlade && Number.isFinite(meta.katLen)) { const n = nodeIn(g, meta.katBlade); if (n) { g.userData.katBlade = n; g.userData.katLen = meta.katLen; } }
   if (meta.bow) bowRig(g, meta.bow);
   if (meta.noWrap) g.traverse((o) => { if (o.isMesh) o.userData.noWrap = true; }); // trophies (the Golden Sniper): no wrap covers them
   g.userData.parts = findParts(g, meta);

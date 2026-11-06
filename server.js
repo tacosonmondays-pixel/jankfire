@@ -18,6 +18,8 @@ import { ROYAL, ROYAL_FEATS, featOn } from './shared/looks.js'; // Sniper Royalt
 import { achInv, wrapMode, WRAP_MODES } from './shared/cosmetics.js'; // achievement-locked skins (the Golden Sniper), wrap modes
 import { STAT_KEYS } from './server/store.js';
 import { installRig } from './server/rig.js';
+import { installBody } from './server/bodyhp.js'; // the wrecking ball + rig last until they break
+import { BODY, bodyKinds } from './shared/bodyhp.js';
 import { rigClash } from './shared/rig.js'; // overdrive rig killstreak
 import { soapAt, trapBoxes, trapPreroll } from './shared/wand.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
@@ -31,7 +33,7 @@ import { verdict } from './shared/verdict.js';
 
 import { WRECK, slamSize, ramDmg } from './shared/weapons.js'; // wrecking ball
 import { query } from './shared/physics.js';
-import { epicCheck, epicCamMs, EPIC } from './shared/epic.js';
+import { epicCheck, epicCamMs, EPIC, EPIC_LOCK } from './shared/epic.js';
 import { holeDrag, steer } from './shared/physics.js';
 import { steer as steerTo } from './shared/homing.js'; // homing slippers (steerTo(v, from, to, max)); the duck's steer(v, dir, max) is physics.js's
 import { PARRY } from './shared/weapons.js';
@@ -246,6 +248,7 @@ if (process.env.JF_TARGET) for (const t of Object.values(TARGETS)) for (const k 
 // test knobs for the overdrive rig: earn it after this many kills, make it last this many seconds
 if (process.env.JF_RIG) STREAKS.overdrive.kills = Number(process.env.JF_RIG) || STREAKS.overdrive.kills;
 if (process.env.JF_RIG_DUR) STREAKS.overdrive.dur = Number(process.env.JF_RIG_DUR) || STREAKS.overdrive.dur;
+if (process.env.JF_BODY_DECAY) for (const k of bodyKinds) BODY[k].decay *= Number(process.env.JF_BODY_DECAY) || 1; // test knob: the ball / rig wear out faster
 // test knobs for gun game (everyone starts on a later rung) and infection (round length, patient zero delay, in seconds)
 const GG_START = Math.max(0, Math.min(LADDER.length - 1, Math.floor(Number(process.env.JF_GG_START) || 0)));
 if (process.env.JF_GG_TIME) GUNGAME.time = Number(process.env.JF_GG_TIME) || GUNGAME.time;
@@ -1349,7 +1352,8 @@ class Room {
     if (this.hitBlocked(t, attacker, w, from)) return false;
     if (this.zm) amt = this.zmDamage(t, amt, attacker); // credits for hits, claws, the cola
     if (attacker && attacker.isBot && !t.isBot && this.mode !== 'bots') amt *= 0.6; // coop bots hit softer
-    if (t.rig) { amt = this.rigSoak(t, amt, attacker, w, from); if (amt <= 0) return true; } // overdrive rig: block + overshield first
+    if (t.body && t.body.kind === 'wreckingball') { amt = this.bodySoak(t, amt, attacker, w); if (amt <= 0) return true; } // wrecking ball: its own HP takes it (server/bodyhp.js)
+    if (t.rig) { amt = this.rigSoak(t, amt, attacker, w, from); if (amt <= 0) return true; } // overdrive rig: block, then its armour
     if (this.isEcon()) amt = this.econArmor(t, amt, attacker, w, hs);
     if (this.brOn) { amt = this.brDamage(t, amt, attacker, w); if (amt <= 0) return false; } // loot tiers + armour
     t.hp -= amt;
@@ -1423,6 +1427,7 @@ class Room {
     if (t.trap && !this.bubbleBlocks(attacker, t, opts.from) && this.popTrap(t, 'hit', attacker, w)) return null; // in a soap bubble: the first hit (teammates' too) only pops it
     if (this.friendly(attacker, t)) return null;
     if (this.bubbleBlocks(attacker, t, opts.from)) { this.broadcast({ t: 'fx', k: 'bubhit', p: center(t).map(r2) }); return null; }
+    if (w === 'knife' && this.chaosKit && this.chaosKit.oneHit) dmg = Math.max(dmg, t.hp); // spoons & grapples: the spoon (a knife in its spoon look) kills in one
     if (opts.lethal) dmg = Math.max(dmg, t.hp); // sized for whoever was shot: a reverse card bounces that same hit
     if (attacker && attacker !== t && attacker.alive && t.reverseUntil > now()) {
       this.broadcast({ t: 'fx', k: 'reflect', id: t.id, by: attacker.id });
@@ -1484,14 +1489,14 @@ class Room {
         }
       }
       // bots have no tray, but the overdrive rig is theirs to earn too (they suit up right away)
-      if (killer.isBot && this.mode !== 'training' && !this.modeWeapon(killer) && !(this.chaosKit && this.chaosKit.noStreaks) && killer.streak === STREAKS.overdrive.kills) this.rigBotEarn(killer);
+      if (killer.isBot && this.mode !== 'training' && !this.modeWeapon(killer) && !(this.chaosKit && this.chaosKit.noStreaks) && !this.warm && killer.streak === STREAKS.overdrive.kills) this.rigBotEarn(killer); // (a lobby's warm-up earns nothing)
     }
     // killcam: humans who have it on wait for it to finish (or skip it) before respawning
     if (!t.isBot && t.kc && killer && killer !== t && this.mode !== 'training') t.respawnAt = Math.max(t.respawnAt, now() + 9000);
     // EPIC kill: the victim (if they have killcams on) has to watch all of it. their respawn waits it out, never past the 9 s cap
     const ep = this.epicOf(killer, t, w, via);
     t.lastEpic = ep;
-    t.epicLock = ep && !t.isBot && t.kc ? Math.min(t.respawnAt, now() + epicCamMs()) : 0;
+    t.epicLock = ep && EPIC_LOCK.has(w) && !t.isBot && t.kc ? Math.min(t.respawnAt, now() + epicCamMs()) : 0; // only snipers + the revolver can't be skipped
     if (t.epicLock) ep.lock = 1;
     if (this.warm) { t.respawnAt = t.minRespawnAt = now() + LOBBY.respawn; t.epicLock = 0; if (ep) ep.lock = 0; } // a lobby's warm-up: straight back in
     if (this.zm) this.zmKilled(t, killer, w); // credits for zombie kills, players go down instead of respawning
@@ -1668,7 +1673,7 @@ class Room {
   }
 
   applyHitscan(p, t, wid, n, h, d, mul = 1) {
-    if (this.isBall(t)) h = 0; // a wrecking ball has no head
+    if (this.isBall(t) || this.rigOn(t)) h = 0; // a wrecking ball has no head, and the rig's is armoured
     if (this.parryShot(p, t, wid, n, h, d, mul)) return; // katana parry: blocked, or sent back
     const w = WEAPONS[wid], pellets = w.pellets || 1;
     const rx = this.rifleShot(p, t, wid, h); // rifle pack: bursts, the lever ramp, quick-scopes
@@ -2927,7 +2932,7 @@ class Room {
         if (this.mode === 'training') (p.trainCd ||= {})[m.r] = now() + ((STREAKS[m.r].dur || 0) + 3) * 1000;
         (p.usedAt ||= {})[m.r] = now(); // EPIC kills skip the spinbot's (aimbot) and the chicken strike's
         if (m.r === 'scythe') p.scythe = true;
-        if (m.r === 'wreckingball') { p.ballUntil = now() + STREAKS.wreckingball.dur * 1000 + 1000; p.slamT = 0; p.ballTop = p.pos[1]; p.ballVy = 0; } // +1s for lag
+        if (m.r === 'wreckingball') { p.ballUntil = now() + STREAKS.wreckingball.dur * 1000 + 1000; p.slamT = 0; p.ballTop = p.pos[1]; p.ballVy = 0; this.bodyStart(p, 'wreckingball'); } // until it breaks (dur is only a safety net), +1s for lag
         send(p, { t: 'streak', reward: m.r, dur: STREAKS[m.r].dur });
         if (m.r === 'chickenstrike') {
           this.broadcast({ t: 'fx', k: 'strikeCall', id: p.id, p: at.map(r2) });
@@ -3510,7 +3515,7 @@ class Room {
     if (GAMES[this.game].ladder) this.ggKill(t, killer, kw);
     else if (GAMES[this.game].infect && !this.infAt && !t.inf) this.infect(t, killer);
   }
-  // gun game ends on the spoon kill or the clock, infection on the clock or when nobody's left to infect
+  // gun game ends on the spoon (the knife's last rung) kill or the clock, infection on the clock or when nobody's left to infect
   tickModes(n) {
     const g = GAMES[this.game];
     if (!g.ladder && !g.infect) return false;
@@ -3815,6 +3820,7 @@ class Room {
     this.tickCrosses();
     this.tickHoles(dt);
     this.tickRig();
+    this.tickBody(now(), dt); // wrecking ball + rig HP: the slow drain, batched updates
     this.tickStatus(dt);
     tickHR(this, dt); // scary forest: the tall guy from HR
     this.tickPeels();
@@ -3947,6 +3953,7 @@ class Room {
 
 installRoyale(Room, { send, movePlayer });
 installRig(Room, { now, num, vec3, norm, r2, center, safe, REC_T, WEAPONS }); // the overdrive rig's methods (server/rig.js)
+installBody(Room, { now, send, r2 }); // HP pools for the body killstreaks (server/bodyhp.js)
 installGear(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm, vec3, stat, liveStats });
 installTactical(Room, { send });
 installRifles(Room, { now, send });

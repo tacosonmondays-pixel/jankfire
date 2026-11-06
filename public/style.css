@@ -888,3 +888,5 @@ body.replaying #zmHud { visibility: hidden; }
 .wrapfilter button.on { background: var(--yellow); box-shadow: 3px 3px 0 var(--pink); transform: rotate(-2deg); }
 .wrapfilter input { font-family: var(--font); font-size: 14px; width: 150px; padding: 3px 8px; background: rgba(18, 8, 24, 0.92); color: #fff; border: 3px solid var(--pink); box-shadow: 3px 3px 0 var(--cyan, #4fd8ff); outline: none; }
 .wrapfilter .n { font-size: 12px; color: #ffe14d; }
+/* the overdrive rig lasts until it breaks: its top bar is the armour (bodyhp.js), so no separate shield row */
+#rigHud .rh-sh { display: none; }

@@ -1,6 +1,38 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '4.8', date: '2026-11-06', title: 'BLENDER ROUND 3', items: [
+    'the zombie claw, the lasso (+ the Garden Hose skin), the Bubble Wand, the wrecking ball, the laser pointer, the instant camera, the Pop Quiz calculator and the night vision goggles all got real glossy models.',
+    'THE OVERDRIVE RIG got rebuilt: hydraulics, chrome stacks, BONK and HUGS on the knuckles, a bobblehead on the dash. the missiles say RETURN TO SENDER.',
+    'you can watch your instant camera photo develop now (the right way up). other people\'s night vision goggles flip up over their forehead instead of through their chin.',
+    'fixed: the Scary Forest, Dead Mall, Jankburg and Suburb (Plant & Defuse) had no picture on their vote cards.',
+  ] },
+  { v: '4.7', date: '2026-11-06', title: 'UNTIL IT BREAKS', items: [
+    'the WRECKING BALL and the OVERDRIVE RIG have no timer any more: they last until they break. the ball has 900 HP, the rig 1200 armour, and both drain slowly so they end on their own after about a minute.',
+    'shots hit the ball or the rig, not you. no headshot bonus, and no single hit takes more than 120. lava, the zone and the void still get you.',
+    'when it breaks you get knocked up out of the wreckage at your own HP. the kill feed says who BROKE it (it isn\'t a kill), and they get a shout.',
+    'your own health bar for it in the HUD, and a bar over everyone else\'s.',
+  ] },
+  { v: '4.6', date: '2026-11-06', title: 'REMODEL', items: [
+    'SUBURB, DESERT and BAZAAR got rebuilt from scratch, and each one has its own Plant & Defuse layout now (like Warehouse).',
+    'SUBURB: two rows of houses you can go inside, a park with a playground in the middle, a canal with a boardwalk, a Mega-Mart, traffic, and a forest round the edge.',
+    'DESERT: a western main street with a hotel and saloon, a water tower, an oasis, a railway with a mine tunnel, and a wall round the town. Plant & Defuse plays DRY GULCH, the payroll job.',
+    'BAZAAR: rebuilt market streets with stalls, rooftops and new lanes, plus its own Plant & Defuse version.',
+    'the Warehouse shredder is animated now, and the Backrooms pool water stopped shimmering.',
+    'some hidden people and cats moved house with the remodel. go find them again.',
+  ] },
+  { v: '4.5', date: '2026-11-06', title: 'NEW HANDS WHO DIS', items: [
+    'NEW HANDS on everything: chunky low-poly PS1 hands with real fingers that wrap round grips, triggers and handles, in your skin tone with your sleeve colour. no more tan boxes.',
+    'the katana and knives got snappier: a wind-up, a whippy cut with a longer smear, a springy settle. knives flip and get caught, the katana twirls on inspect. hit timing hasn\'t changed.',
+    'akimbo gets a real left hand, and so do reloads and the card deck.',
+  ] },
+  { v: '4.4', date: '2026-11-06', title: 'COSMETICS PACK 2', items: [
+    '"too epic to skip" killcams are only for the sniper, Second Opinion and the revolver now. epic kills with anything else still count, but you can skip them.',
+    'THE SPOON IS A KNIFE NOW. one weapon, not two: Gun Game\'s last rung is the knife in the spoon look (first kill with the spoon still wins), Spoons & Grapples is knives in the spoon look with one-hit kills. the Ladle became a knife skin and you keep it if you had it.',
+    '27 NEW SKINS: Keytar (AR), Label Maker (SMG), Brolly (shotgun), Pool Cue (sniper), Take A Number (Hat Trick), Leaf Shredder (Belt Sander), Fountain Pen (Second Opinion), Cap Gun (Yeehaw), Weed Whacker (Lawn Mower), Calculator (Plan B), Walkie Talkies (Lefty & Righty), Pepper Mills (Half a Shotgun), Business Cards, Squirt Flower + Hose Nozzle (water pistol), Bug Zapper (taser), Game Pad (TV remote), Cordless Drill (revolver), Cat Laser, Baguette + Neon Tube katanas, Pizza Cutter, Keycard and Frozen Fish knives, Sliced Loaf, Flip-Flop.',
+    '37 NEW WRAPS (102 total): a camo family, Brushed Steel, Damascus, Anodized Ti, Verdigris, Kitchen Granite, Marble, Jade, Amethyst Geode, Wood Burl, Moss, Sprinkles, Watermelon, Sushi, Memphis 90s, Bowling Alley, Arcade Carpet, Checkered Flag, Jersey, Barcode, QR Code, Organ Donor, Loaded Dice, Number Soup, Candy Corn, Ugly Sweater.',
+    'animated legendaries: Opal, Lava Lamp, Vaporwave, Nebula, Aurora, Black Hole, Market Crash and Neon Hex.',
+  ] },
   { v: '4.3', date: '2026-11-06', title: 'HOTFIX: EVICTION CANCELLED', items: [
     'fixed: after a Jank Royale match, every other mode stayed in battle royale (the EVICTION NOTICE, the zone and royale loot rules followed you into quick play and everything else).',
     'Quick Play\'s vote no longer offers Plant & Defuse, Jank Royale or Zombies. they have their own cards and lobbies now.',

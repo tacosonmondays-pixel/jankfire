@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { G } from './ctx.js';
 import { PSys, scaleU } from './fx.js';
+import { AUTHORED, authored, glossyPaint } from './glbkit.js'; // the Blender rig (tools/blender/make_rig.py)
 
 // ------------------------------------------------------------ palette: salvage, all slightly different
 export const C = {
@@ -99,8 +100,69 @@ export function taper(g, kx, ky, axis = 'z') {
 
 // ------------------------------------------------------------ the template (built once, shared by every rig)
 const _m = new THREE.Matrix4(), _e = new THREE.Euler(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3();
-let TPL = null;
+let TPL = null, BL_TPL = null;
+// the Blender rig (x_rig.glb) once it's downloaded (it loads when someone has the rig in their killstreaks, or the first
+// time one comes on), else ours. same joints, pistons, hoses, glows and flames either way: only the plates change
 function template() {
+  if (BL_TPL) return BL_TPL;
+  const code = codeTemplate();
+  if (!AUTHORED.x_rig) { authored('x_rig'); return code; } // (starts the download)
+  BL_TPL = glbTemplate(code, AUTHORED.x_rig.scene) || code;
+  return BL_TPL;
+}
+export const rigIsBlender = () => !!(BL_TPL && BL_TPL.glb);
+export function rigReset() { BL_TPL = null; BL_MISSILE = undefined; } // (sheets: the code rig next to the Blender one)
+const OWN_KEYS = new Set(['accent', 'visor', 'glowL', 'glowR', 'screen', 'core', 'cyan', 'mag']);
+const SMALL = /_sm\d*$/;
+// per joint: every mesh under that joint's node (not under a child joint), moved into the joint's space and merged per
+// material; rg_<key> names the game's own materials (your colour, the glows, the deck screen, neon); the rest keep the
+// Blender look. the hull (outline, hex shield, afterimages) is every part not named *_sm
+function glbTemplate(code, scene) {
+  scene.updateMatrixWorld(true);
+  const names = new Set(code.joints.map((j) => j.name)), byName = new Map();
+  scene.traverse((o) => { if (names.has(o.name) && !byName.has(o.name)) byName.set(o.name, o); });
+  if (byName.size < code.joints.length) { console.warn('x_rig: missing joints', [...names].filter((n) => !byName.has(n))); return null; }
+  const inv = new THREE.Matrix4(), mm = new THREE.Matrix4();
+  const norm = (g) => { // same attributes everywhere so the merges line up
+    const n = g.index ? g.toNonIndexed() : g.clone();
+    for (const k of Object.keys(n.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'uv') n.deleteAttribute(k);
+    if (!n.attributes.normal) n.computeVertexNormals();
+    if (!n.attributes.uv) n.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(n.attributes.position.count * 2), 2));
+    n.morphAttributes = {};
+    return n;
+  };
+  const joints = code.joints.map((tj) => {
+    const node = byName.get(tj.name), groups = new Map(), hull = [];
+    inv.copy(node.matrixWorld).invert();
+    const visit = (o, small) => {
+      for (const c of o.children) {
+        if (names.has(c.name)) continue; // a child joint: its own parts
+        const sm = small || SMALL.test(c.name);
+        if (c.isMesh && !Array.isArray(c.material)) {
+          const g = norm(c.geometry).applyMatrix4(mm.multiplyMatrices(inv, c.matrixWorld));
+          const km = /^rg_([A-Za-z]+)/.exec(c.material.name || ''), key = km ? km[1] : 'mat';
+          const gk = OWN_KEYS.has(key) ? key : c.material.uuid;
+          if (!groups.has(gk)) groups.set(gk, { key, mat: OWN_KEYS.has(key) ? null : c.material, list: [] });
+          if (!OWN_KEYS.has(key) && c.material.fog) { c.material.fog = false; c.material.needsUpdate = true; } // players ignore fog: the rig reads across the map
+          groups.get(gk).list.push(g);
+          if (!sm) { const h = g.clone(); h.deleteAttribute('uv'); h.deleteAttribute('normal'); hull.push(h); }
+        }
+        visit(c, sm);
+      }
+    };
+    visit(node, false);
+    const geos = [];
+    for (const { key, mat, list } of groups.values()) { const mg = mergeGeometries(list, false); mg.userData.shared = true; geos.push([key, mg, mat]); }
+    let hullG = null;
+    if (hull.length) { hullG = mergeVertices(mergeGeometries(hull, false), 1e-3); hullG.computeVertexNormals(); }
+    return { ...tj, geos, hull: hullG };
+  });
+  let nv = 0;
+  const idx = [];
+  for (const j of joints) if (j.hull) { j.hv0 = nv; const ix = j.hull.index.array; for (let i = 0; i < ix.length; i++) idx.push(ix[i] + nv); nv += j.hull.attributes.position.count; }
+  return { joints, pistons: code.pistons, hoses: code.hoses, glows: code.glows, ghostN: nv, ghostIndex: new THREE.BufferAttribute(new Uint32Array(idx), 1), glb: true };
+}
+function codeTemplate() {
   if (TPL) return TPL;
   const joints = [], pistons = [], hoses = [], glows = [];
   const J = (name, parent, x, y, z) => { const j = { name, i: joints.length, parent: parent ? parent.i : -1, pos: [x, y, z], parts: new Map(), out: [] }; joints.push(j); return j; };
@@ -366,7 +428,7 @@ export function buildRig(color, opts = {}) {
   const T = template();
   const col = new THREE.Color(color || '#ff4fd8');
   const own = {
-    accent: new THREE.MeshLambertMaterial({ color: col, flatShading: true, fog: false, emissive: col.clone().multiplyScalar(0.3) }),
+    accent: T.glb ? glossyPaint(col, 0.22) : new THREE.MeshLambertMaterial({ color: col, flatShading: true, fog: false, emissive: col.clone().multiplyScalar(0.3) }),
     visor: new THREE.MeshBasicMaterial({ color: NEON.visor, fog: false }),
     glowL: new THREE.MeshBasicMaterial({ color: 0x4a0f3e, fog: false }),
     glowR: new THREE.MeshBasicMaterial({ color: 0x4a0f3e, fog: false }),
@@ -386,8 +448,8 @@ export function buildRig(color, opts = {}) {
     n.userData.rest = tj.pos.slice();
     if (tj.parent >= 0) nodes[tj.parent].add(n);
     nodes.push(n); j[tj.name] = n;
-    for (const [mk, geo] of tj.geos) {
-      const m = new THREE.Mesh(geo, own[mk] || SHARED[mk]());
+    for (const [mk, geo, bm] of tj.geos) {
+      const m = new THREE.Mesh(geo, own[mk] || bm || (SHARED[mk] ? SHARED[mk]() : lam(C.gun)));
       n.add(m);
     }
     if (tj.hull) {
@@ -494,7 +556,7 @@ export function freeRig(inst) {
 }
 export function setRigColor(inst, color) {
   const c = new THREE.Color(color);
-  inst.own.accent.color.copy(c); inst.own.accent.emissive.copy(c).multiplyScalar(0.3);
+  inst.own.accent.color.copy(c); inst.own.accent.emissive.copy(c).multiplyScalar(inst.own.accent.isMeshPhysicalMaterial ? 0.22 : 0.3);
   if (inst.outlineMat) inst.outlineMat.uniforms.uColor.value.copy(c);
 }
 
@@ -975,10 +1037,32 @@ function missileGeo() {
   MISSILE = g;
   return g;
 }
+// the Blender missile (pj_rigmissile.glb): one mesh with a material per part, so it turns along its flight like ours
+let BL_MISSILE;
+function glbMissile() {
+  if (BL_MISSILE) return BL_MISSILE;
+  const a = AUTHORED.pj_rigmissile;
+  if (!a) { authored('pj_rigmissile'); return null; } // (starts the download)
+  a.scene.updateMatrixWorld(true);
+  const parts = [], mats = [];
+  a.scene.traverse((o) => {
+    if (!o.isMesh || Array.isArray(o.material)) return;
+    const g = (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone()).applyMatrix4(o.matrixWorld);
+    for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'uv') g.deleteAttribute(k);
+    if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+    if (o.material.fog) { o.material.fog = false; o.material.needsUpdate = true; }
+    parts.push(g); mats.push(o.material);
+  });
+  if (!parts.length) return null;
+  BL_MISSILE = { geo: mergeGeometries(parts, true), mats };
+  BL_MISSILE.geo.userData.shared = true; // every missile shares it (freeTree leaves it)
+  return BL_MISSILE;
+}
 const _mp = new THREE.Vector3(), _mq = new THREE.Quaternion(), _ms = new THREE.Vector3(1, 1, 1), _z = new THREE.Vector3(0, 0, -1);
 export function buildRigMissile() {
   const grp = new THREE.Group();
-  const body = new THREE.Mesh(missileGeo(), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, fog: false }));
+  const bm = glbMissile();
+  const body = new THREE.Mesh(bm ? bm.geo : missileGeo(), bm ? bm.mats : new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, fog: false }));
   const flame = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.5, 6, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.55),
     new THREE.MeshBasicMaterial({ color: 0xff7ae8, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
   body.add(flame);

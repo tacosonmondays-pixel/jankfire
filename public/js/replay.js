@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { G } from './ctx.js';
 import { Remote } from './remote.js';
-import { buildProjectile, tipColor, teamLook, M } from './models.js';
+import { buildProjectile, tipColor, teamLook, M, lookSkin } from './models.js';
 import { crossEvent } from './bloodcross.js';
 import { fx } from './fx.js';
 import { marbles } from './marbles.js';
@@ -15,7 +15,7 @@ import { rigFx, rigDied } from './rig.js'; // overdrive rig killstreak
 import { courtReplay } from './scales.js';
 import { replayNoScope } from './noscope.js';
 import { shredKill } from './shredder.js';
-import { WEAPONS } from '/shared/weapons.js';
+import { WEAPONS, WEAPON_ALIAS } from '/shared/weapons.js';
 import { wreckFx, wreckDied } from './wreck.js';
 import { TEAMS, GAMES } from '/shared/modes.js';
 import { raycast } from '/shared/physics.js';
@@ -65,8 +65,23 @@ export const RP = { active: false, mode: null };
 let st = null;
 const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), tmp = new THREE.Vector3();
 
+// old clips name retired weapons (a spoon kill): swap every exact id for its replacement before playing. the spoon
+// look comes back because buildWeapon draws an aliased 'spoon' as the knife in it; here it just has to be a real weapon
+function unRetire(x, d = 0) {
+  let n = 0;
+  if (d > 12 || !x || typeof x !== 'object') return n;
+  for (const k of Object.keys(x)) {
+    const v = x[k];
+    if (typeof v === 'string') { if (Object.hasOwn(WEAPON_ALIAS, v)) { x[k] = WEAPON_ALIAS[v]; n++; } } else if (v && typeof v === 'object') n += unRetire(v, d + 1);
+  }
+  return n;
+}
 export function playClip(clip, opts = {}) {
   stopReplay(true);
+  if (clip && !clip._unretired) {
+    clip._unretired = true;
+    if (unRetire(clip.frames) + unRetire(clip.ev) && clip.info) for (const i of Object.values(clip.info)) if (i) i.skins = { ...(i.skins || {}), knife: lookSkin('spoon', (i.skins || {}).knife) }; // their spoons were knives in the spoon look
+  }
   if (!clip || !Array.isArray(clip.frames) || clip.frames.length < 3) { if (opts.onEnd) opts.onEnd(); return false; }
   const ghosts = new Map();
   const tg = GAMES[G.round && G.round.game] && GAMES[G.round.game].teams;

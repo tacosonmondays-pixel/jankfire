@@ -291,11 +291,6 @@ export const WEAPONS = {
     desc: 'A big toy hand on a stick. Point blank only. Launches them and makes them slip.',
     cd: 0.8, range: 1.9, cone: 0.8, dmg: 15, kb: 55, kbUp: 14, delay: 0.1, slip: true, radial: true,
   },
-  spoon: { // modeOnly: not in the loadout any more (it's a knife skin now); Gun Game's last rung and Spoons & Grapples still hand it out
-    slot: 'melee', kind: 'melee', name: 'Spoon', color: '#e8e8f0', modeOnly: true,
-    desc: 'Kills in one hit, but only point blank. You run way faster holding it.',
-    cd: 0.7, range: 2.0, cone: 0.9, dmg: 999, kb: 12, kbUp: 6, delay: 0.05, speedMul: 1.8,
-  },
   scales: {
     slot: 'melee', kind: 'melee', name: 'Scales of Justice', color: '#ffc83a',
     desc: 'Hits as hard as they deserve: leaders, streakers and your killer take up to x3.',
@@ -338,9 +333,9 @@ export const STREAKS = {
   moonboots: { kills: 3, name: 'Moon Boots', desc: 'low gravity + huge jumps for 25s', auto: true, dur: 25 },
   chickenstrike: { kills: 4, name: 'Chicken Strike', desc: 'rain exploding chickens where you aim', deploy: true },
   scythe: { kills: 5, name: 'Scythe Rifle', desc: 'X: rifle mode · hold V: glitch dash', auto: true },
-  overdrive: { kills: 8, name: 'Overdrive Rig', desc: '25s as a scrap-built juggernaut: overshield, LMB rocket punch, RMB block, Space jumps sky high (hold to leap), E thrusters, G homing missiles, R quickhack', auto: true, dur: 25 },
+  overdrive: { kills: 8, name: 'Overdrive Rig', desc: 'a scrap-built juggernaut until its armour breaks: 1200 armour, LMB rocket punch, RMB block, Space jumps sky high (hold to leap), E thrusters, G homing missiles, R quickhack', auto: true, dur: 65 }, // dur: only a safety net now, it lasts until it breaks (shared/bodyhp.js)
   spinbot: { kills: 6, name: 'Spinbot', desc: 'aimbot + spinbot for 10s. you are now a cheater.', auto: true, dur: 10 },
-  wreckingball: { kills: 6, name: 'Wrecking Ball', desc: 'become a giant steel wrecking ball for 20s: ram people (faster = harder), swing on the chain (E, W pumps it), crouch in the air to ground slam (higher = bigger)', auto: true, dur: 20 },
+  wreckingball: { kills: 6, name: 'Wrecking Ball', desc: 'become a giant steel wrecking ball until it breaks (900 HP): ram people (faster = harder), swing on the chain (E, W pumps it), crouch in the air to ground slam (higher = bigger)', auto: true, dur: 65 }, // (until it breaks: shared/bodyhp.js)
   satellite: { kills: 7, name: 'Spy Satellite', desc: 'see every enemy through walls for 20s', auto: true, dur: 20 },
   giantduck: { kills: 10, name: 'Giant Duck', desc: 'a giant black hole where you aim that pulls in everyone but you and eats their momentum', deploy: true },
 };
@@ -540,3 +535,7 @@ WEAPONS.lasso = {
 WEAPONS.loop = { slot: 'hidden', kind: 'loop', name: 'Lasso', color: '#e0b070', speed: 30, grav: 6, r: 0.55, life: 4 };
 ORDER.push('lasso'); // ORDER was taken before these: the loadout, viewmodels and cosmetics list come from it
 FLAGS.LASSO = 1 << 21; // (was 1 << 20, the same bit as FLAGS.WALK) set in your snapshots while you spin the loop overhead (everyone sees it, killcams too)
+
+// retired weapons: old replays, saves and kill feeds still name them. the spoon is the knife now (in its spoon look)
+export const WEAPON_ALIAS = { spoon: 'knife' };
+export const wAlias = (id) => (typeof id === 'string' && Object.hasOwn(WEAPON_ALIAS, id) ? WEAPON_ALIAS[id] : id);

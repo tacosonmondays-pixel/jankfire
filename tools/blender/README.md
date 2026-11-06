@@ -20,6 +20,10 @@ node tools/blender/shots.cjs 3100 <outDir> ar:ar_toy,cig,bow 3      # skins are 
                                                                      # "in use" shot instead (lit, drawn, swung)
 node tools/blender/shots.cjs 3100 <outDir> ar,smg,shotgun 3 --check-only  # just the ADS check
 node tools/blender/shots_props.cjs 3100 <outDir> 3,0                 # props on Warehouse/Suburb vs their boxes + a showcase
+node tools/blender/shots_r3.cjs 3100 <outDir> camera,frame,calc,nvg,wand,wreck,rig,arms,missile 3,0
+                                     # the gear, wrecking ball and Overdrive Rig: OLD | BLENDER | IN USE strips in the game's lights
+node tools/blender/rig_game.cjs 3100 <outDir> both 3 --video         # the Overdrive Rig in Training: first person (the real
+                                     # killstreak) + third person (the pose code on the range), screenshots or a clip each
 ```
 Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cli optimize in.glb out.glb --compress quantize
 --texture-compress false`. Don't use Draco or meshopt: the client has no decoders (and the apt Blender has no Draco).
@@ -64,7 +68,33 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 | `make_cig.py` | `w_cig.glb`, `w_cig_cigar.glb` | king-size filter cigarette x2.2 (MAY CAUSE JANK), fat gordo cigar x1.45; the ember is the `tip` node |
 | `make_cards.py` | `w_cards.glb`, `pj_card.glb`, `w_reverse.glb`, `w_reverse_skip.glb` | rounded glossy cards: the deck's `fan` (`card0`..`card4` face meshes, weapons.js deals your hand onto them), the thrown card, the Reverse / Skip cards (`card` node) |
 | `make_bread.py` | `w_bread.glb`, `w_bread_croissant.glb` | baguette x2.7 with real scores, in a bakery sleeve that says BREAD; croissant x8.7 |
-| `make_spoon.py` | `w_spoon.glb`, `w_spoon_ladle.glb`, `w_knife_spoon.glb` | tablespoon x1.15 (PROPERTY OF THE CAFETERIA), soup ladle; the Knife's Spoon skin is the same tablespoon held like a knife (x0.915, on its side, the code skin's tip and hat spot) |
+| `make_spoon.py` | `w_knife_spoon.glb`, `w_knife_ladle.glb` | the Knife's Spoon skin (the tablespoon held like a knife, x0.915, on its side) and Ladle skin (the soup ladle, bowl down, handle on the grip axis, chicken noodle soup still in it). The Spoon weapon itself is gone: it's the knife now |
+| `make_knife_pizza.py` | `w_knife_pizza.glb` | restaurant pizza wheel, life size (100 mm wheel, fork, thumb guard), a pepperoni stuck on, cheese string, NOT A KNIFE |
+| `make_knife_keycard.py` | `w_knife_keycard.glb` | ☺ CORP ID badge x1.2 on a lobster claw, the lanyard wound into the grip (loop + clasp off the butt), bottom edge ground sharp |
+| `make_knife_fish.py` | `w_knife_fish.glb` | frozen Atlantic mackerel x1.3 held by the tail stock, frost + ice lumps, curled mid-flop, FRESH sticker |
+| `make_katana_skins.py` | `w_katana_baguette.glb`, `w_katana_neon.glb` | katana skins on the code katana's layout; the blade is its own node (`katBlade`, origin at the guard face, `katLen`) so it grows with kills. Baguette (scored, bitten, cheese-box tsuba, twine ito); Neon Tube (glowing tube in glass, heatsink tsuba, glowing circuit ito, cord hanging out the back) |
+| `make_bread_sliced.py` | `w_bread_sliced.glb` | FAMILY SIZE sliced loaf (42 slices) in a polka-dot bag clear on top, twisted neck = handle, twist tie |
+| `make_slipper_flipflop.py` | `w_slipper_flipflop.glb`, `pj_slipper_flipflop.glb` | beach flip-flop, real size, worn foot imprint, SALE tag, gum underneath; thrown x1.6 |
+| `make_pistol_calc.py` | `w_pistol_calc.glb` | Calculator: 80s desk calculator on Plan B's grip, LCD reads 58008; `slide_wzB` = the top shell (child `slide_keys_wzN` keeps keys + LCD unwrapped), `mag_wzB` = a 2xAA sled, `hammer_wzN` = the AC key lever |
+| `make_akimbo_walkie.py` | `w_akimbo_walkie.glb` | Walkie Talkies: upright radio as the grip, rubber duck antenna off the front jack = barrel; `cocker_wzN` (channel knob), `mag_wzB` (battery pack), `tagL_wzN` / `tagR_wzN` |
+| `make_sawnoff_pepper.py` | `w_sawnoff_pepper.glb` | Pepper Mills: two walnut restaurant mills banded together as barrels; `hinge_wzB` (+ `hinge_trim_wzN`), `forend_wzA`, `shell1/2_wzN` = giant peppercorns, `hammerR/L_wzN` = finial knobs |
+| `make_cards_business.py` | `w_cards_business.glb` | Business Cards: portrait ☺ CORP cards fanned out of a chrome case; `fan` card0..4 = inset faces the game deals onto |
+| `make_water_skins.py` | `w_water_flower.glb`, `w_water_hose.glb` | Squirt Flower (daisy muzzle, stem barrel, clear bulb tank) and Hose Nozzle (8-pattern dial, NOT SOAP jar tank, lever = pump); `water_*_wzN` + `pump_*_wzB`; `--only=flower/hose` |
+| `make_taser_zapper.py` | `w_taser_zapper.glb` | Bug Zapper: fly-swatter racket bent into a pistol grip, head flat at muzzle height; `led_wzN` |
+| `make_remote_pad.py` | `w_remote_pad.glb` | Game Pad: original wired pad held by its right handle, II / << face keys; `ir_wzN` = the cut cable's frayed end (the muzzle) |
+| `make_revolver_drill.py` | `w_revolver_drill.glb` | Cordless Drill: pink drill/driver, bubble-level sight; `cylinder_wzB` = chuck + gold bit, `hammer_wzN` = gear selector |
+| `make_laser_cattoy.py` | `w_laser_cattoy.glb` | Cat Laser: giant felt toy mouse, laser in its nose, swiss cheese grip; `meta.laser` hooks (lz_led0..4, lz_emit, lz_button, lz_tail = the swinging charm), bound by `public/js/laserglb.js` (any Blender laser, the base one too) |
+| `sidekit.py` | (helpers) | keys, top-down plates, decal quads, curved label patches, ring UVs, 7-segment LCD painter, the ☺ CORP smiley |
+| `make_ar_keytar.py` | `w_ar_keytar.glb` | 80s keytar x1.0 as a carbine: two octaves of keys on the top deck (you aim over them), glowing ribbon neck, headstock front sight, jack-plug muzzle, ROM cartridge `mag`, octave-slider `charge`, coiled patch cable (☺ CORP SYNTH-47, LEGALLY A GUN) |
+| `make_smg_label.py` | `w_smg_label.glb` | office label printer x2.5 as the SMG: keypad, flush LCD (DEAD x3 COPIES), tape-cassette `mag`, tape-feed `charge`, APPROVED stamp butt, labels on everything, a PROPERTY OF ☺ CORP strip out of the muzzle |
+| `make_shotgun_umbrella.py` | `w_shotgun_umbrella.glb` | gent's stick umbrella x1.15: brass ferrule muzzle, furled canopy (☺ print), the runner is `pump_wzB`, crook bent into the grip (its hook = trigger guard), IT NEVER RAINS INDOORS tag |
+| `make_sniper_cue.py` | `w_sniper_cue.glb` | 58in pool cue x1.4: chalked tip muzzle, ebony points (☺ CORP BILLIARDS), brass action, 8-ball knob on `bolt_wzB`, three-ball mag, felt scope between chalk cubes (NO JUMP SHOTS) |
+| `make_burst_ticket.py` | `w_burst_ticket.glb` | deli TAKE A NUMBER dispenser as the Hat Trick bullpup: queue-stanchion barrel, NOW SERVING 03 carry handle (sight tunnel through it), ticket-roll `mag`, yellow PULL `charge` (PLEASE WAIT) |
+| `make_lmg_leaf.py` | `w_lmg_leaf.glb` | blower-vac-mulcher as the Belt Sander: vacuum tube barrel with slots showing `lmg_heat`, yellow blade lid = `cover`, leaf-bag `mag` (100% ORGANIC AMMO), `belt_00`..`belt_11` are autumn leaves (LEAF IT TO US) |
+| `make_dmr_pen.py` | `w_dmr_pen.glb` | boardroom fountain pen: nib muzzle, resin barrel with ink window, marble desk-set grip, ink-cartridge `mag`, pen-clip `charge`, magnifier + loupe scope, SIGN HERE flags |
+| `make_lever_capgun.py` | `w_lever_capgun.glb` | 60s toy cap rifle on the Yeehaw's layout: orange-plug barrel, scrollwork receiver with the cap door open on a red roll, fake-wood stock with a horse-head medallion, yellow loop `lever`, big-spur `lhammer` (BANG!) |
+| `make_autoshot_trimmer.py` | `w_autoshot_trimmer.glb` | petrol string trimmer as the Lawn Mower: bump head muzzle, debris guard, 2-stroke engine, see-through fuel-tank `mag` (MIX 50:1), pull-start `charge` (TRIM RESPONSIBLY) |
+| `corp.py` | (helpers) | the gun skins' kit: scale helper, `moving()`, `fixmats`, ☺ smiley + sticker painting, decal UVs, `uv_tube` |
 | `make_slipper.py` | `w_slipper.glb`, `pj_slipper.glb`, `w_slipper_croc.glb`, `pj_slipper_croc.glb` | fluffy house slipper (a MOM tag), foam clog with charms; thrown ones x1.6 |
 | `make_projectiles.py` | `pj_chicken`, `pj_bowling`, `pj_banana`, `pj_peel`, `pj_frag`, `pj_smokegren` | the rubber chicken (with a firework on its back), the giant bowling ball, the banana, the peel on the floor, a pineapple frag (PULL ME tag), a canister smoke (DO NOT INHALE) |
 | `make_slapper.py` | `w_slapper.glb`, `w_slapper_foam.glb`, `w_slapper_paw.glb` | jelly-rubber toy hand on a candy stick (real hand x1.35, metaballs, SLAP knuckle tattoos), stadium foam finger (#1 / U R #2), grizzly paw (BEAR ARMS); the slapping end is the `hand` node; `--only=` builds one |
@@ -82,6 +112,9 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 | `make_chicken_turkey.py` | `w_chicken_turkey.glb`, `pj_chicken_turkey.glb` | RPG-style tube with a roast turkey on the muzzle (HEAT 350F); the thrown turkey x3.3 |
 | `make_bowling_cannon.py` | `w_bowling_cannon.glb` | bronze hand mortar with verdigris, slow-match fuse, bowling-pin lifting handles; `ads` pose |
 | `make_banana_bunch.py` | `w_banana_bunch.glb` | the Peel Shooter's AKS-74U in AK-74 plum, the mag is a whole hand of bananas (PRODUCE OF JANK) |
+| `make_laser.py` | `w_laser.glb` | Big Laser Pointer: an office laser pointer pen x4.7 (leg-sized) with a lime toy-pistol grip duct-taped under it, D-cells, a PEW-O-METER LED bar and a cat charm; `meta.laser` hooks, bound by `public/js/laserglb.js` like the Cat Laser's: `lz_button_wzN` (pressed), `lz_led0_wzN`..`lz_led4_wzN` (lit with the charge), `lz_emit_wzN`, `lz_charm_wzN` (swings); the charge orb is the game's |
+| `make_gear.py` | `x_camera.glb`, `x_photoframe.glb`, `x_calc.glb`, `x_nvg.glb` | the gear (`x_` = not a weapon, loaded only when someone carries it): instant camera at real size (`flash`, `shutter`, `print` > `pic`, the photo the game paints), the photo portal (a 2.1 m print on an easel back, the live picture fills its opening), the Pop Quiz calculator (`screen` shows the sum), flip-up night vision goggles (`pivot` at the forehead knuckle, `lensL` / `lensR` / `ir` glow, `strap` only on other people's heads); `-- --only=camera,frame,calc,nvg` |
+| `make_rig.py` | `x_rig.glb`, `x_rigarms.glb`, `pj_rigmissile.glb` | the Overdrive Rig, jointed exactly like the code rig (`public/js/rigmodel.js`): one empty per joint (names, parents and rest spots in the `joints` meta, so the leg IK and every pose still fit), each joint's plates as one mesh per material in its space; `rg_*` materials are the game's (`rg_accent` = your colour, visor, core, glows, the hack deck's `rg_screen`), `*_sm` parts stay out of the outline / shield / afterimage; pistons, hoses, glows and flames stay code and have mounts. Excavator-breaker forearms, forklift-mast spine, ammo-crate missile pods, chrome stacks, BONK / HUGS knuckles, a bobblehead on the dash. The first-person forearms (`armR` > `fistR`, `armL` > `fistL`) and the missile (RETURN TO SENDER). `-- --only=rig,arms,missile`, `--qa` (per joint), `--stats` |
 
 ## Rules that make a model drop straight in
 - **Build in game space**: three.js axes and metres (x right, y up, -z forward); `lib.gv()` converts to Blender. A
@@ -123,6 +156,9 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 - Metaballs: positions go through `gv()`, radii are metres too (millimetres made a 70 m blob that hung Blender).
 - One Blender session = unique object names: in a multi-file script give each model's hook nodes their own names and
   put the exact name in its meta.
+- A plane the game paints with its own canvas texture (the camera's `pic`, the calculator's `screen`, the rig's
+  `rg_screen`): the glTF exporter writes v as 1 - v and the game's canvas textures are flipY, so author that plane's V
+  flipped (v = 1 on the bottom edge) or the game's picture shows upside down.
 
 ## How the game uses them
 - `public/js/glbkit.js`: `prepAuthored` takes any glb with `jf` metadata: nearest-filtered textures, the Potato vertex
@@ -130,6 +166,16 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 - Weapons: `buildWeapon` (models.js) swaps in `w_<id>` (or `w_<skin>` for a skin model) as built (no fitting) and reads
   muzzle/sight/hat/hooks from it. A missing or broken file = the code model, as before. Finishes, wraps, hats and
   effects work on top. Thrown things: `buildProjectile` takes `pj_<skin>` / `pj_<kind>`, `buildPeel` takes `pj_peel`.
+- Loaded late: weapon skins, the gear, the wrecking ball and the Overdrive Rig (`x_*`, `pj_rigmissile`) download only
+  when they're in your loadout (`prefetchLoadout`) or someone near you uses one: `authored(id)` starts the download, the
+  code model stands in until it lands, and `whenLate(id, fn)` lets a module rebuild then. Side renderers (icons, the
+  locker preview, tests) draw through `withEnv(renderer, root, draw)` so chrome keeps its reflections there.
+- Gear hooks (`gearmodels.js`): the game swaps "own" node materials for its live ones (`ownMat`: the camera's `pic`,
+  the calculator's `screen`, the goggles' lenses) and moves the hook nodes (shutter, print, pivot). The laser's are in
+  its `meta.laser` (`laserglb.js`).
+- The Overdrive Rig: `rigmodel.js` finds each joint of `x_rig` by name, merges its meshes per material, swaps `rg_*`
+  for the game's materials (your colour, glows, the hack screen) and keeps its own pistons, hoses, glows and flames;
+  `rigarms.js` does the same with `x_rigarms` for first person, and the missiles use `pj_rigmissile`.
 - Knives and katanas (`public/js/blades/`) stay code-built: they are real-reference models already. `glossBlade` gives
   them the Blender set's studio gloss (steel and brass turn metal, wood varnished, grips satin) whenever the Blender
   models are loaded.
