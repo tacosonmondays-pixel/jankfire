@@ -10,7 +10,7 @@ const SCENES = {
   range: { theme: 'hills', flat: true },
   rooftop: { theme: 'city' }, // the street level (map deco) is the floor now, no skirt
   skyline: { theme: 'city' },
-  suburb: { theme: 'desert', flat: true }, // the lawns just stop and the desert carries on: no cliff
+  suburb: { theme: 'hills', flat: true }, // a forest out past the tree ring, green hills and more forest into the distance
   warehouse: { theme: 'industrial', flat: true, skyline: true }, // flat ground past the fence, a city on the horizon
   desert: { theme: 'desert', flat: true }, // the sand just keeps going: no cliff
   bazaar: { theme: 'desert', flat: true }, // sand all round outside the walls, no cliff

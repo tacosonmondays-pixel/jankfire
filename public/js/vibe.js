@@ -46,7 +46,7 @@ export function addVibe(out, canvasTex, speckle) {
   out.toyface2 = gloss(canvasTex(64, face('#ff4fd8', '#2a0a5a')), 1);
 
   // ---- loud ground and walls (ugly on purpose)
-  out.lawn = lam(canvasTex(32, (g, s) => { speckle(g, s, [70, 230, 40], 70, 2); g.fillStyle = 'rgba(20,90,0,0.28)'; g.fillRect(0, 0, s / 2, s); }), 4); // acid green, mow stripes
+  out.lawn = lam(canvasTex(32, (g, s) => { speckle(g, s, [82, 176, 58], 42, 2); g.fillStyle = 'rgba(20,80,0,0.18)'; g.fillRect(0, 0, s / 2, s); }), 4); // mown grass for parks and planters: the same green as the grass round it, with stripes
   out.rubber = lam(canvasTex(32, (g, s) => { speckle(g, s, [40, 30, 60], 20, 2); blobs(g, s, ['#ff2ad4', '#7aff1a', '#19e6ff', '#ffe14d'], 26, 1, 3); }), 2); // playground confetti rubber
   out.camo = lam(canvasTex(32, (g, s) => { speckle(g, s, [150, 120, 60], 30, 2); blobs(g, s, ['#4a5a18', '#2a1a0a', '#c88a2a', '#7a2a6a'], 22, 3, 7); }), 3); // noisy camo floor
   out.leopard = lam(canvasTex(32, (g, s) => { speckle(g, s, [230, 160, 40], 30, 2); blobs(g, s, ['#2a1408'], 18, 2, 4); }), 2);
@@ -59,6 +59,9 @@ export function addVibe(out, canvasTex, speckle) {
   out.asphalt = lam(canvasTex(32, (g, s) => { speckle(g, s, [84, 82, 92], 20, 2); blobs(g, s, ['rgba(255,60,200,0.07)', 'rgba(60,255,220,0.07)', 'rgba(0,0,0,0.2)'], 10, 2, 6); }), 4); // oily
   out.wetroad = lam(canvasTex(32, (g, s) => { speckle(g, s, [40, 40, 56], 14, 2); blobs(g, s, ['rgba(255,60,200,0.18)', 'rgba(60,220,255,0.18)'], 8, 3, 8); g.fillStyle = '#ffe14d'; for (let x = 0; x < s; x += 16) g.fillRect(x, 15, 8, 2); }), 10);
   out.wetroadz = lam(canvasTex(32, (g, s) => { speckle(g, s, [40, 40, 56], 14, 2); blobs(g, s, ['rgba(255,60,200,0.18)', 'rgba(60,220,255,0.18)'], 8, 3, 8); g.fillStyle = '#ffe14d'; for (let y = 0; y < s; y += 16) g.fillRect(15, y, 2, 8); }), 10);
+  // city pavement (the kerbed blocks and the sidewalks): dark wet violet slate with the street's neon in the puddles, a step
+  // up from the asphalt so the kerbs still read, never the pale grey slab it used to be against the dark streets
+  out.pavecity = lam(canvasTex(16, (g, s) => { speckle(g, s, [60, 56, 76], 10, 2); blobs(g, s, ['rgba(255,60,200,0.08)', 'rgba(60,220,255,0.08)'], 4, 1, 3); g.fillStyle = '#2c2938'; g.fillRect(0, 0, s, 1); g.fillRect(0, 0, 1, s); }), 3);
   out.asphaltn = lam(canvasTex(32, (g, s) => { speckle(g, s, [36, 36, 48], 14, 2); blobs(g, s, ['rgba(255,60,200,0.06)', 'rgba(60,220,255,0.06)'], 9, 2, 6); }), 14); // the far city's streets, wet
   out.seawater = { mat: new THREE.MeshPhongMaterial({ color: 0x0c2238, emissive: 0x040a16, specular: 0x88aacc, shininess: 70 }), tile: 1 };
   { // brick tenements with windows: some lit (they glow), some not
@@ -157,6 +160,7 @@ export function addVibe(out, canvasTex, speckle) {
   out.neonnoodle = neon('NOODLE', '#ff4fd8');
   out.neonhotel = neon('HOTEL 4 HOURS', '#fff04d');
   out.neonwork = neon('WORK HARDER', '#ff2a3a');
+  out.adwater = ad('#19d6c8', '#fff', ['SUBURBIA', 'water: now with extra water'], 256, 96, { small: '#120818', lit: false });
   out.adoffice = ad('#ffe14d', '#120818', ['SITE OFFICE', 'knock. then knock louder.'], 256, 64, { lit: false });
   out.adware = ad('#2a6cff', '#ffe14d', ['DOCK 3', 'no loitering. no not-loitering.'], 256, 96, { small: '#fff', lit: false });
   out.adshred = ad('#ffe14d', '#ff2a3a', ['DANGER', 'industrial shredder. do not feed.'], 256, 96, { stripes: 'rgba(0,0,0,0.14)', small: '#120818', lit: false });
