@@ -83,8 +83,8 @@ export const SECRETS = {
     },
   },
   todd: {
-    kind: 'npc', map: 'islands', p: [2.6, 42.8, -2.4], face: -0.6, chapter: 'jank', look: 'todd',
-    name: 'TODD', title: 'intern (year 40)', where: 'somewhere above the Islands', gift: { roll: 'crate' },
+    kind: 'npc', map: 'islands', p: [10.8, 14.6, -68.2], face: 2.98, chapter: 'jank', look: 'todd', // up the wreck's foremast, in the crow's nest, on his patch of missing texture
+    name: 'TODD', title: 'intern (year 40)', where: 'the crow\'s nest on the Islands', gift: { roll: 'crate' },
     lines: {
       start: { say: ['oh hey! sorry, i\'m on a deadline. the deadline was in 1986.', 'i\'m todd. i\'m the intern. i\'m also the whole physics department. they downsized it to me.'],
         opts: [['why is everything so janky?', 'jank'], ['why does momentum never stop?', 'mom'], ['40 years as an intern?', 'intern']] },

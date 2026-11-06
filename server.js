@@ -778,7 +778,7 @@ class Room {
       const below = !b.onGround && !raycast([b.pos[0], b.pos[1] + 0.5, b.pos[2]], [0, -1, 0], 40, boxes);
       let want = null;
       if (below && (b.vel[1] < -4 || b.pos[1] < this.map.killY + 25)) { // falling into the void: hook back toward the middle, up high
-        const c = this.map.spawns ? this.map.spawns[0] : [0, 0, 0];
+        const sp = this.map.spawns, c = !sp ? [0, 0, 0] : !this.map.sea ? sp[0] : sp.reduce((p, q) => (Math.hypot(q[0] - b.pos[0], q[2] - b.pos[2]) < Math.hypot(p[0] - b.pos[0], p[2] - b.pos[2]) ? q : p)); // (sea maps: back to the nearest land, not across the map)
         want = [c[0] - b.pos[0], 18 + Math.max(0, c[1] - b.pos[1]), c[2] - b.pos[2]];
       } else if (t && t.alive && (b.inf || Math.random() < skill)) {
         const dx = t.pos[0] - b.pos[0], dy = t.pos[1] - b.pos[1], dz = t.pos[2] - b.pos[2];
