@@ -9,6 +9,7 @@ import { BLADES } from './blades/index.js';
 import { lathe } from './blades/kit.js';
 import { buildRigMissile } from './rigmodel.js'; // overdrive rig killstreak
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { laserBuild, calculator } from './gearmodels.js'; // the new gear's models (laser pointer, pop quiz calculator)
 import { prepAuthored, authored, AUTHORED, bindAuthored } from './glbkit.js';
 
 // ------------------------------------------------------------ playing card faces (canvas, cached)
@@ -1326,6 +1327,7 @@ const MODEL_BUILD = {
     g.userData.muzzle = new THREE.Vector3(0, 0, -1.3); g.userData.len = 1.4;
   },
 };
+WB.laser = laserBuild; // Big Laser Pointer (gearmodels.js)
 // knives + swords live in blades/ (one file each, real proportions): base weapons go in WB, skins in MODEL_BUILD
 for (const [id, mod] of Object.entries(BLADES)) {
   (COSMETICS.model[id] ? MODEL_BUILD : WB)[id] = mod.build;
@@ -1799,6 +1801,8 @@ function buildProjectileRaw(k) {
     duck(g, 2.2);
   } else if (k === 'slipper') {
     slipper(g, 1.6);
+  } else if (k === 'calc') {
+    g.add(calculator()); // pop quiz
   } else if (k === 'soap') {
     g.add(soapBubble(0.36, 16)); // a hair smaller than its 0.4 hit radius
   } else {
