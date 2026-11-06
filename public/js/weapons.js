@@ -1,5 +1,6 @@
 // Local weapon logic, loadouts, ammo + first-person viewmodels.
 import * as THREE from 'three';
+import { beamStart, beamOn, chargeLook, chargeWhine } from './beam.js'; // Big Laser Pointer
 import { WEAPONS, ORDER, SLOTS, FLAGS, HIPFIRE, ARROW_TIPS, SUITS, RANKS, validLoadout, DEFAULT_LOADOUT, ITEMS, fireRate } from '/shared/weapons.js';
 import { BOXES } from '/shared/map.js';
 import { raycast, rayBox } from '/shared/physics.js';
@@ -60,6 +61,7 @@ const RECOIL = {
   banana: { back: 1.2, up: 3.5, roll: 2, side: 0.3, punch: 0.015 },
   duck: { back: 1.2, up: 4, roll: 3, side: 0.3, punch: 0.015 },
   bow: { back: -1.4, up: 2.5, roll: 1, side: 0.1, punch: 0.012 },
+  laser: { back: 1.8, up: 5, roll: 1.2, side: 0.15, punch: 0.03 },
 };
 const rnd = () => (Math.random() < 0.5 ? -1 : 1) * (0.5 + Math.random() * 0.5);
 function kickVM(id, mul = 1) {
@@ -273,11 +275,12 @@ export function useItem() {
   if (!it || !ME.alive) return;
   const c = charges(id);
   if (performance.now() - (W.itemT || 0) < 420) return; // same spam limit as the server
+  if (W.itemHook && W.itemHook(id)) return; // new gear (gear.js): the camera's free photo, goggles on / off
   if (c.n <= 0) { sfx.empty(); hud.msg(`${it.name}: recharging`, 0.8); return; }
   W.itemT = performance.now();
   c.n--; if (!c.next) c.next = performance.now() + it.recharge * 1000;
   net.send({ t: 'item', i: id, o: eye().map(r2), d: look().map(r2) });
-  if (id === 'wand') return; // no toss: the wand has its own viewmodel and bloops (wand.js)
+  if (id === 'wand' || id === 'camera' || id === 'nvg') return; // no toss: the wand, camera and goggles have their own viewmodels
   if (it.w) popItem(it.w); // party popper / reverse card: pops into your hand (see popEvent for what it does)
   if (!W.anim || W.anim.kind === 'inspect' || W.anim.kind === 'draw') playAnim('toss_item', 'item');
   if (id === 'medkit') sfx.heal(); else if (id === 'bubble') sfx.reverse(); else sfx.swing();
@@ -446,6 +449,7 @@ const VM = {
   cig: { p: [0.15, -0.17, -0.3], r: [0.15, 0.6, 0.2], s: 1.1 },
   blower: { p: [0.24, -0.27, -0.45], r: [0, 0.05, 0], s: 0.6 },
   shredder: { p: [0.27, -0.26, -0.46], r: [0, 0.16, 0], s: 0.46 },
+  laser: { p: [0.21, -0.215, -0.4], r: [0, 0.05, 0], s: 0.62 },
   popper: { p: [0.17, -0.18, -0.34], r: [0.1, 0.1, 0], s: 0.75 },
   reverse: { p: [0.15, -0.15, -0.34], r: [0.3, -0.3, 0.15], s: 0.65 },
   duck: { p: [0.17, -0.18, -0.4], r: [0.1, 0.5, 0], s: 0.55 },
@@ -947,11 +951,54 @@ export function fireDown() {
   else if (w.kind === 'proj' && !w.auto) fireProj(id, now);
   else if (w.kind === 'cards') playCard(now);
   else if (w.kind === 'blood') fireBlood(now);
+  else if (w.kind === 'beam') laserDown(now);
+}
+
+// ------------------------------------------------------------ Big Laser Pointer: hold to charge, let go to fire
+// the server times the charge from the 'ch' we send on the press; ours is only for the looks (meter, whine, orb)
+W.lz = { on: false, t: 0, k: 0, kick: 0 };
+const LZ = WEAPONS.laser;
+const lzK = (now) => Math.max(0, Math.min(1, ((now - W.lz.t) / 1000 - LZ.tap) / (LZ.charge - LZ.tap)));
+function laserDown(now) {
+  if (W.lz.on || beamOn(G.myId)) return;
+  W.lz.on = true; W.lz.t = now;
+  net.send({ t: 'fire', w: 'laser', ch: 1 });
+  sfx.click();
+}
+function laserUp(now) {
+  if (!W.lz.on) return;
+  W.lz.on = false;
+  chargeWhine(0);
+  if (!ME.alive || W.cur !== 'laser') { net.send({ t: 'fire', w: 'laser', ch: 0 }); return; }
+  const k = lzK(now), dur = LZ.dur[0] + (LZ.dur[1] - LZ.dur[0]) * k;
+  W.cd.laser = now + (dur + LZ.cd) * 1000;
+  net.send({ t: 'fire', w: 'laser', o: eye().map(r2), d: look().map(r2) });
+  beamStart(G.myId, k, dur, () => (ME.alive && W.cur === 'laser' && models.laser.wrap.visible ? { o: muzzleWorld(), d: look() } : ME.alive ? { o: eye(), d: look() } : null));
+  W.lz.kick = 0.25 + k * 0.4; W.lz.fireK = k;
+  kickVM('laser', 0.25 + k * 0.55); W.kick = 0.2 + k * 0.3;
+  punchCam(-0.02 - k * 0.05, 0.01 * rnd(), 0.025 * rnd() * k);
+  if (k > 0.5) applyKb(look().map((x) => -x * k * 5)); // a full one shoves you back a bit
+}
+// every frame: the charge (slows you, whines, lights the meter), cancel it if you switched away or died
+function laserTick(id, now, dt) {
+  if (W.lz.on && (id !== 'laser' || !ME.alive)) { W.lz.on = false; chargeWhine(0); net.send({ t: 'fire', w: 'laser', ch: 0 }); }
+  if (W.lz.on) { W.lz.k = lzK(now); ME.speedMul *= LZ.slow; chargeWhine(0.05 + W.lz.k * 0.95); } else W.lz.k = 0;
+  W.lz.kick = Math.max(0, W.lz.kick - dt * 3);
+}
+function laserVM(m, now, pose) {
+  const k = W.lz.on ? W.lz.k : 0, ud = m.g.userData;
+  chargeLook(ud, k, W.lz.on, now);
+  // the longer you hold it the harder it shakes, and you pull it in tight to your shoulder; firing kicks it up
+  const sh = W.lz.on ? 0.0015 + k * k * 0.006 : beamOn(G.myId) ? 0.004 * (W.lz.fireK || 0) : 0;
+  const pull = W.lz.on ? Math.min(1, (now - W.lz.t) / 250) : 0;
+  pose((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh - 0.01 * pull, 0.03 * pull + W.lz.kick * 0.06, W.lz.kick * 0.25, 0, (Math.random() - 0.5) * sh * 3 + 0.04 * pull);
+  if (ud.charm) { ud.charm.rotation.x = Math.sin(now * 0.004) * 0.25 - W.swayY * 4 + W.lz.kick * 1.2; ud.charm.rotation.z = Math.sin(now * 0.0031) * 0.2 + W.swayX * 3; }
 }
 
 export function fireUp() {
   W.held = false;
   if (rigFire(false)) return; // overdrive rig: let go to throw it
+  if (W.lz.on) laserUp(performance.now());
   W.coughLock = false;
   if (W.cur === 'bow') {
     const now = performance.now();
@@ -1155,6 +1202,7 @@ export function updateWeapons(dt, now) {
   hud.scope(W.scoped);
   ME.speedMul = (w.speedMul || 1) * (1 - W.aim * 0.25);
   parryTick(now); // katana parry: buffered presses, stagger, cooldown ring
+  laserTick(id, now, dt); // laser pointer charge
 
   if (alive && w.kind === 'hitscan') {
     if (w.spinup) {
@@ -1266,6 +1314,8 @@ export function updateWeapons(dt, now) {
   const reversed = now < W.reverseUntil;
   W.flags = (smoking ? FLAGS.SMOKE : 0) | (firing ? FLAGS.FIRE : 0) | (blowing ? FLAGS.BLOW : 0) | (spinning ? FLAGS.SPIN : 0) | (reversed ? FLAGS.REVERSE : 0) | (ME.dashing ? FLAGS.DASH : 0);
   if (W.shred.on) W.flags |= FLAGS.SUCK;
+  if (W.lz.on) W.flags |= FLAGS.CHARGE; // everyone sees your pointer charging
+  if (W.nvOnFlag) W.flags |= FLAGS.NV; // night vision goggles down (goggles.js)
 
   // ---- HUD
   if (ITEMS[W.item]) { const c = charges(W.item), it = ITEMS[W.item]; hud.item(c.n, it.charges, c.next ? 1 - Math.max(0, c.next - now) / (it.recharge * 1000) : 1); }
@@ -1287,6 +1337,10 @@ export function updateWeapons(dt, now) {
   else if (w.cd && w.cd >= 1 && !ready(id, now)) hud.meter(1 - ((W.cd[id] - now) / 1000) / w.cd, 'COOLDOWN', w.color);
   else hud.meter(null);
   if (id === 'shredder') { const S = W.shred, f = S.heat / w.fuel; hud.meter(f, S.hot ? 'OVERHEATED · COOLING' : 'HEAT', S.hot ? '#ff3030' : f > 0.7 ? '#ff7a1a' : '#ffb31a'); }
+  if (id === 'laser') {
+    if (W.lz.on) hud.meter(Math.max(0.03, W.lz.k), W.lz.k >= 1 ? 'FULLY CHARGED · LET GO' : (now - W.lz.t) / 1000 < LZ.tap ? 'TAP = LITTLE ZAP' : 'CHARGING', W.lz.k >= 1 ? '#ffffff' : w.color);
+    else if (!ready(id, now)) hud.meter(null);
+  }
 
   // ---- viewmodel animation
   const m = models[id];
@@ -1390,6 +1444,7 @@ export function updateWeapons(dt, now) {
   stepParts(m.g, dt, an, at); // Blender guns: rack the pump, settle the cylinder + hammer, cycle the bolt
   if (blowing || (spinning && W.spin >= 1 && W.held)) { px += (Math.random() - 0.5) * 0.008; py += (Math.random() - 0.5) * 0.008; }
   if (id === 'shredder') shredderVM(m, dt, now, (a, b, c, d, e, f) => { px += a; py += b; pz += c; rx += d; ry += e; rz += f; });
+  if (id === 'laser') laserVM(m, now, (a, b, c, d, e, f) => { px += a; py += b; pz += c; rx += d; ry += e; rz += f; });
   m.wrap.visible = !(id === 'slipper' && W.slipperOut) && !W.scoped && !ME.dashing;
   m.wrap.position.set(px, py, pz);
   m.wrap.rotation.set(rx, ry, rz);

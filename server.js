@@ -40,6 +40,7 @@ import { query as boxQuery } from './shared/physics.js';
 import { navSteer } from './shared/nav.js';
 import { DUCKRAIN } from './shared/modes.js';
 import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
+import { installGear } from './server/gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
 import { MSLIP, onPatch, patchPreroll } from './shared/marbles.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -112,7 +113,7 @@ const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 40000, perMes
 const COLORS = ['#ff4fd8', '#4fd8ff', '#ffe14d', '#7dff4f', '#ff7a1a', '#b07dff', '#ff4f4f', '#4fffb0', '#ffffff', '#ff9ad5'];
 const DEFAULT_NAMES = ['player', 'guy', 'someone', 'nobody', 'dude', 'person'];
 const BOT_NAMES = ['Gary', 'Linda', 'Steve', 'Brenda', 'Kevin', 'Doug', 'Karen', 'Phil', 'Tina', 'Rick', 'Deb', 'Carl', 'Pam', 'Todd', 'Barb', 'Chad'];
-const BOT_GUNS = ['ar', 'ar', 'smg', 'shotgun', 'shotgun', 'sniper', 'chicken', 'banana', 'minigun', 'revolver', 'redline', 'marbles'];
+const BOT_GUNS = ['ar', 'ar', 'smg', 'shotgun', 'shotgun', 'sniper', 'chicken', 'banana', 'minigun', 'revolver', 'redline', 'marbles', 'laser'];
 BOT_GUNS.push('shredder'); // bots suck too (botShred)
 const SKIN_F = ['default', 'default', 'gold', 'chrome', 'pink', 'camo', 'neon', 'rainbow', 'galaxy', 'lava', 'missing', 'tiger', 'fade', 'carbon', 'tape'];
 const SKIN_H = ['none', 'none', 'none', 'tophat', 'party', 'crown', 'cowboy', 'propeller', 'cone', 'eyes', 'duck'];
@@ -247,6 +248,8 @@ REC_FX.add('verdict'); // scales of justice: highlights show the ruling
 const REC_MS = 12000;
 for (const k of ['trap', 'trapx']) REC_T.add(k); // bubble wand: replays draw the giant soap bubble too
 for (const t of ['parry', 'guard']) REC_T.add(t); // katana parries show up in killcams too
+for (const t of ['snap', 'frame', 'framex', 'quiz', 'quizx']) REC_T.add(t); // instant camera frames + pop quizzes in killcams
+for (const k of ['beam', 'tele', 'nvflash']) REC_FX.add(k); // laser beams, frame teleports, goggle flashes
 for (const t of ['mpatch', 'mslip', 'mpx']) REC_T.add(t); // marbles on the floor too
 function newDeck() {
   const d = [];
@@ -482,6 +485,7 @@ class Room {
     skipPeople(this); // one more human: a skip vote needs more
     send(p, { t: 'tip', tip: p.tip });
     for (const t of this.players.values()) if (t.trap) send(p, { t: 'trap', ...this.trapInfo(t) }); // anyone already floating in a soap bubble
+    this.gearJoin(p); // photo frames standing, quizzes going
     send(p, { t: 'court', s: [...this.players.values()].filter((o) => o.streak > 0).map((o) => [o.id, o.streak]) }); // scales of justice: streaks so far
     if (p.air && p.air.ok) send(p, { t: 'air', on: 1, grace: AIR.grace });
     deal(p);
@@ -572,6 +576,7 @@ class Room {
       if (t === b || !t.alive || (t.isBot && (this.mode === 'coop' || t.ai.dummy))) continue;
       if (this.teamsOn() && t.team === b.team) continue;
       if (t.trap) continue; // sealed in a soap bubble: shooting it would only set them free, wait for the pop
+      if (t.quiz) continue; // sitting a pop quiz: nothing can hurt them till it's marked
       if (this.friendly(b, t)) continue; // infection: zombies hunt survivors, survivors shoot zombies
       const d = dist3(t.pos, b.pos);
       const vis = this.canSee(eyeOf(b), [t.pos[0], t.pos[1] + 1, t.pos[2]]);
@@ -599,6 +604,7 @@ class Room {
   botThink(b, dt) {
     const ai = b.ai, n = now(), D = BOT_DIFF[ai.diff] || BOT_DIFF.normal;
     if (b.sleepUntil > n) return { wx: 0, wz: 0, jump: false };
+    if (n < (b.blindUntil || 0)) return this.botBlind(b, dt); // flashed by goggles: stumbling about, can't see a thing
     const boxes = this.boxes;
     if (ai.dummy) {
       const d = ai.dummy;
@@ -688,6 +694,7 @@ class Room {
       }
     }
     if (ai.hook) jump = false;
+    [wx, wz] = this.botGearSteer(b, wx, wz); // walking into its own photo frame
     const wl = Math.hypot(wx, wz);
     if (wl > 0) { wx /= wl; wz /= wl; }
     // don't walk off the map (bots are dumb, not suicidal). a floor up to 15 m down will do (no fall damage); a box
@@ -832,6 +839,7 @@ class Room {
     if (this.chaosKit && this.botChaosFire(b, t, D)) return;
     const w = WEAPONS[b.w], n = now();
     if (b.w === 'shredder') { this.botShred(b); return; } // no shots: it sucks for as long as they're in front of it
+    if (w.kind === 'beam') { this.botLaser(b); return; } // laser pointer: charge, then let go
     const iv = w.rate ? 1000 / fireRate(w, b.hp) : w.cd * 1000;
     if (w.mag) {
       b.ai.ammo--;
@@ -965,6 +973,7 @@ class Room {
   useItem(p, m) {
     if (this.rigOn(p)) { this.sendIc(p); return; } // no items in the overdrive rig
     if (!p.alive || !has(ITEMS, m.i)) return;
+    if (this.gearItem(p, m)) return; // instant camera snap (free), goggles flash without goggles on
     const c = this.itemCharges(p);
     // not your item, no charge left, too fast, or a mode with no items (gun game, zombies, the chaos kits): tell the
     // client the real count so its HUD can't drift
@@ -978,6 +987,7 @@ class Room {
     if (!o || dist3(o, eyeOf(p)) > 4) o = eyeOf(p);
     const d = norm(vec3(m.d)) || [0, 0, -1];
     if (m.i === 'wand') { this.blowWand(p, o, d); return; }
+    if (this.gearUse(p, m, o, d)) return; // print a photo, throw a pop quiz, goggles flash
     if (it.proj) {
       const w = WEAPONS[it.proj];
       const pr = this.makeProj(p, it.proj, [o[0] + d[0] * 0.7, o[1] + d[1] * 0.7, o[2] + d[2] * 0.7],
@@ -1196,6 +1206,7 @@ class Room {
     if (!t.alive) return true;
     if (this.round && this.round.over && w !== 'void') return true;
     if (attacker && attacker !== t && now() - t.spawnT < 1200 && !t.isBot) return true; // spawn protection
+    if (attacker && attacker !== t && this.invulnerable(t)) return true; // sitting a pop quiz, or the few seconds after acing one
     return !!this.friendly(attacker, t) || this.bubbleBlocks(attacker, t, from);
   }
   // returns true when the damage was applied
@@ -1448,6 +1459,7 @@ class Room {
     const frames = this.rec.frames.filter((f) => f.s >= t0 && f.s <= t1 && f.odd);
     const ev = this.rec.ev.filter((e) => e.s >= t0 && e.s <= t1);
     ev.unshift(...trapPreroll(this.rec.ev, t0)); // someone already floating in a soap bubble when the clip starts
+    ev.unshift(...this.framePreroll(this.rec.ev, t0)); // photo frames already standing (and the photos in them)
     ev.unshift(...patchPreroll(this.rec.ev, t0)); // marbles already on the floor
     const had = new Set(ev.map((e) => e.m.t === 'mpatch' && e.m.id)); // still down from before the recording kept: from the live patch
     for (const pt of this.mpatches.values()) if (pt.born < t0 && !had.has(pt.id) && pt.until - t0 > 300) ev.unshift({ s: t0, m: { t: 'mpatch', ...this.patchInfo(pt), left: pt.until - t0 } });
@@ -1816,6 +1828,7 @@ class Room {
     // loadout weapons only (plus the scythe once earned, and the one weapon a mode hands you: the zombie claw): items
     // (frag, smoke, duck, popper, reverse card) come from G, grenades and thrown cards from the deck, never 'fire'
     if (!SLOTS.includes(w.slot) && !(w.slot === 'streak' && p.scythe) && this.modeWeapon(p) !== m.w) return;
+    if (w.kind === 'beam') { this.laserFire(p, m); return; } // laser pointer: 'ch' starts the charge, the release fires what we timed
     let o = vec3(m.o);
     if (!o || dist3(o, eyeOf(p)) > 4) o = eyeOf(p);
     const fan = !!(w.fanHammer && m.fan === 1); // revolver: fanning the hammer (validated like every flag: 1 or nothing)
@@ -2190,6 +2203,7 @@ class Room {
         const ownerImmune = pr.k === 'slipper' ? Infinity : pr.k === 'bowling' ? 0.5 : 0.25;
         const victims = this.sweep(prev, pr.p, pr.r, (t) => (t.id === pr.o && age < ownerImmune) || (pr.hit.has(t.id) && n - pr.hit.get(t.id) < 700) || (this.friendly(owner, t) && !t.trap));
         if (victims.length) {
+          if (pr.k === 'calc') { this.calcHit(pr, owner, victims[0]); continue; } // pop quiz: freeze them with a question
           if (pr.k === 'chicken') { pr.p = victims[0].at; this.projectiles.delete(pr.id); this.explode(pr); continue; }
           if (pr.k === 'snowball') {
             const v = victims[0];
@@ -2581,10 +2595,12 @@ class Room {
     p.parryT = 0; p.staggerUntil = 0; // katana parry: a new life starts with the guard ready (the client resets too)
     p.ballUntil = 0; p.f &= ~FLAGS.BALL; // a wrecking ball doesn't roll into the next round (or the next mode)
     p.lavaBurn = 0; p.lavaSeen = 0; // floor is lava: the burn ends with the life
+    this.gearReset(p); // photo, goggles, laser charge, quiz
     if (!p.isBot) { if (p.nextItem) { p.item = p.nextItem; p.nextItem = null; } p.ic = null; } // full charges (sendIc after 'spawn')
   }
   resetWorld() {
     this.resetChaos();
+    this.gearWorldReset(); // photo frames come down
     this.projectiles.clear(); this.peels.clear(); this.holes.clear();
     this.mpatches.clear(); // clients wipe theirs on 'clear'
     this.broadcast({ t: 'clear' });
@@ -2607,6 +2623,7 @@ class Room {
   }
 
   handle(p, m) {
+    if (p.quiz && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray'].includes(m.t)) return; // pens down: no attacks during a pop quiz
     if (p.trap && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray'].includes(m.t)) return; // sealed in a soap bubble: no attacks, parries, items, streaks, sprays or planting till it pops
     switch (m.t) {
       case 's': {
@@ -2629,6 +2646,7 @@ class Room {
         if (p.pos[1] < this.map.killY) this.kill(p, null, 'void');
         if ((p.f & FLAGS.BALL) && !(p.ballUntil > now())) p.f &= ~FLAGS.BALL; // only someone who earned the wrecking ball gets to be one
         if (p.ballUntil > now()) this.ballAir(p);
+        this.gearSnap(p); // goggles / laser flags only if the server agrees; pop quiz holds you in place
         break;
       }
       case 'hit': this.onHit(p, m); break;
@@ -2740,6 +2758,8 @@ class Room {
       case 'parry': this.startParry(p, m); break;
       case 'lava': this.lavaTouch(p, true); break; // floor is lava: "ouch, I touched it"
       case 'item': this.useItem(p, m); break;
+      case 'ans': this.onAnswer(p, m); break; // pop quiz answer (0-3)
+      case 'nv': this.onNv(p, m); break; // night vision goggles on / off
       case 'spray': this.onSpray(p, m); break;
       case 'itemsel': this.selectItem(p, m.i); break;
       case 'vote': { // a vote is for the stage that's open now (s, when sent, must match it). one that comes too soon after
@@ -3549,6 +3569,7 @@ class Room {
     this.tickWaves();
     if (this.sprays.size && this.sprayMap !== this.cfg.map) this.sprays.clear(); // the map changed: its graffiti goes with it
     this.tickChaos(dt, n);
+    this.tickGear(n); // laser beams, photo frames, pop quizzes, bots' gadgets
     for (const p of this.players.values()) {
       if (!p.alive && n >= p.respawnAt) {
         if (p.isBot && this.mode === 'coop') continue;
@@ -3670,6 +3691,7 @@ class Room {
 }
 
 installRig(Room, { now, num, vec3, norm, r2, center, safe, REC_T, WEAPONS }); // the overdrive rig's methods (server/rig.js)
+installGear(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm, vec3 });
 
 // ---------------------------------------------------------------- account stats
 function stat(p, key, v) {

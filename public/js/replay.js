@@ -25,6 +25,10 @@ import { TRAP, trapPreroll } from '/shared/wand.js';
 import { patchPreroll } from '/shared/marbles.js';
 
 const KEEP = 10000;
+// other modules' replay bits (the new gear: photo frames, pop quizzes, laser beams, goggle flashes). each hook may have
+// ev(m, ghosts, t) -> true if it handled the event, pre(m, ghosts, s) for events from before the clip that set things up,
+// step(t, ghosts, dt) every replay frame, stop() when it ends, preroll(ev, t0) -> extra events a local clip needs
+export const RP_HOOKS = [];
 export const rec = { frames: [], ev: [] };
 const r2 = (x) => Math.round(x * 100) / 100;
 
@@ -48,6 +52,7 @@ export function localClip(t0, t1, infoOf) {
   const frames = rec.frames.filter((f) => f.s >= t0 && f.s <= t1);
   const ev = rec.ev.filter((e) => e.s >= t0 && e.s <= t1);
   ev.unshift(...trapPreroll(rec.ev, t0)); // someone already floating in a soap bubble when the clip starts
+  for (const h of RP_HOOKS) if (h.preroll) ev.unshift(...h.preroll(rec.ev, t0));
   ev.unshift(...patchPreroll(rec.ev, t0)); // marbles already on the floor
   const info = {};
   for (const f of frames) for (const e of f.p) if (!info[e[0]]) info[e[0]] = infoOf(e[0]);
@@ -86,6 +91,7 @@ export function playClip(clip, opts = {}) {
   };
   while (st.ei < clip.ev.length && clip.ev[st.ei].s < t0) st.ei++;
   for (const e of clip.ev) if (e.s < t0 && e.m.t === 'trap') trapGhost(e.m, e.s); // sealed in before the clip starts
+  for (const e of clip.ev) if (e.s < t0) for (const h of RP_HOOKS) if (h.pre) h.pre(e.m, ghosts, e.s, t0);
   RP.active = true;
   RP.mode = opts.mode || 'replay';
   RP.focus = opts.focus; // whose replay it is
@@ -98,6 +104,7 @@ export function stopReplay(silent) {
   const s = st;
   st = null;
   for (const g of s.ghosts.values()) if (g.soap) { G.scene.remove(g.soap.mesh); g.soap.mesh.material.dispose(); }
+  for (const h of RP_HOOKS) if (h.stop) h.stop();
   for (const g of s.ghosts.values()) g.dispose();
   for (const m of s.projs.values()) G.scene.remove(m);
   for (const k of s.mp || []) marbles.dropPatch(k); // the replay's marbles on the floor
@@ -124,6 +131,7 @@ function feed(upTo) {
 }
 
 function applyEv(m) {
+  for (const h of RP_HOOKS) if (h.ev && h.ev(m, st.ghosts, st.t)) return;
   if (m.t === 'trap' || m.t === 'trapx') { trapGhost(m, st.t); return; }
   if (m.t === 'mpatch' || m.t === 'mslip' || m.t === 'mpx') { ghostPatch(m); return; }
   const g = st.ghosts.get(m.id);
@@ -354,6 +362,7 @@ export function updateReplay(dt, now, cam) {
     g.frozenUntil = st.t < (g.iceUntil || 0) ? now + 1000 : 0; g.update(st.t, dt * sp, now);
   }
   stepTrapGhosts(st.t);
+  for (const h of RP_HOOKS) if (h.step) h.step(st.t, st.ghosts, dt * sp);
   updateProjs(st.t, dt * sp);
   updateCam(dt, cam);
   for (const g of st.ghosts.values()) { g.alive = g.fedAlive; g.f = g.fedF; }
