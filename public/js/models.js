@@ -7,6 +7,7 @@ import { COSMETICS } from '/shared/cosmetics.js';
 import { SUITS, RANKS, ARROW_TIPS } from '/shared/weapons.js';
 import { BLADES } from './blades/index.js';
 import { lathe } from './blades/kit.js';
+import { LASSO_MODELS, buildLoopProjectile } from './lasso_model.js';
 import { buildRigMissile } from './rigmodel.js'; // overdrive rig killstreak
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { laserBuild, calculator } from './gearmodels.js'; // the new gear's models (laser pointer, pop quiz calculator)
@@ -1334,6 +1335,11 @@ for (const [id, mod] of Object.entries(BLADES)) {
   (COSMETICS.model[id] ? MODEL_BUILD : WB)[id] = mod.build;
   if (mod.hatAt) HAT_AT[id] = mod.hatAt;
 }
+// the lasso + its skins live in lasso_model.js, registered the same way
+for (const [id, mod] of Object.entries(LASSO_MODELS)) {
+  (COSMETICS.model[id] ? MODEL_BUILD : WB)[id] = mod.build;
+  if (mod.hatAt) HAT_AT[id] = mod.hatAt;
+}
 
 // iron sights: a rear notch + front post (glowing tip) on top of the gun, at one height, so the line of sight
 // runs over the top of the gun. ADS puts that line on the centre of the screen and the gun hangs below it.
@@ -1818,6 +1824,7 @@ export function buildProjectile(k, skin) {
 }
 function buildProjectileRaw(k) {
   const g = new THREE.Group();
+  if (k === 'loop') return buildLoopProjectile(g); // a lasso loop (lasso.js animates it live; this is for replays + late joiners)
   const sizes = { chicken: 0.7, banana: 0.4, bowling: 0.9, duck: 0.5, slipper: 0.45, bow: 0.9, card: 0.25 };
   const glb = fitted('p_' + k, { size: sizes[k] || 0.5, alignZ: true });
   if (glb) { g.add(glb); g.userData.glb = true; return g; }
