@@ -1,4 +1,4 @@
-// Night Vision Goggles (item): G flips them down over your eyes / back up (free), H fires the flash (a charge).
+// Night Vision Goggles (item): G flips them down over your eyes / back up (free), MIDDLE CLICK or N fires the flash (a charge).
 // On: the screen goes green and grainy inside the two eyepieces, the dark lifts, fog thins and everyone's outline glows.
 // The flash: the server decides who it reaches ('flashed'); flashMe() is the white-out + ringing (any flash can use it).
 // Everyone else sees the goggles on your face with the lenses lit (FLAGS.NV in snapshots) and the flash go off ('nvflash').

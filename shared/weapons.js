@@ -317,6 +317,7 @@ export const SLIP_TIME = 1.7;
 // overdrive rig killstreak: in the rig, blocking, winding up a punch, crouched for a leap. the server only believes
 // them from someone it saw activate the streak (the numbers are RIG in shared/rig.js)
 Object.assign(FLAGS, { RIG: 16384, RIG_BLOCK: 32768, RIG_CHARGE: 65536, RIG_LEAP: 131072 });
+FLAGS.WALK = 1048576; // Plant & Defuse: shift = slow walk. nobody hears your footsteps
 // not guns: what the rig's hits are called in the kill feed (its missiles fly as server projectiles)
 Object.assign(WEAPONS, {
   rigpunch: { slot: null, kind: 'rig', name: 'Rocket Punch', color: '#ff2a6d' },
@@ -385,7 +386,7 @@ ITEMS.camera = { name: 'Instant Camera', desc: 'G snaps a photo of what\'s in fr
 // before the same person can get another one. bots get it right `bot[diff]` of the time, after `botT` s
 export const QUIZ = { time: 6, invuln: 2.5, heal: 25, fast: 1.25, fastT: 4, safe: 10, bot: { easy: 0.5, normal: 0.7, hard: 0.85 }, botT: [1.3, 4.2] };
 ITEMS.quiz = { name: 'Pop Quiz', desc: 'A calculator you throw. Whoever it hits freezes and gets a maths question: wrong or too slow and they die, right and they get a gold star, some HP and a few seconds nothing can hurt them.', charges: 1, recharge: 22, color: '#7fffd4', proj: 'calc' };
-// G puts them on / takes them off (free). while they're on, H (FLASH) spends a charge: everyone you can see within range m
+// G puts them on / takes them off (free). while they're on, the flash (middle click / N) spends a charge: everyone you can see within range m
 // and cone rad of your crosshair is blinded for dur[0] (looking away) .. dur[1] s (looking at you). wearing goggles
 // yourself makes any flash last nvMul x longer
 export const NVG = { range: 34, cone: 0.62, dur: [0.6, 3.2], nvMul: 2, toggle: 0.35 };
