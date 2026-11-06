@@ -2,14 +2,17 @@
 // Some accessories are free, the rest are unlocked by achievements (checked on the server).
 export const LOOK_COLORS = ['#ff4fd8', '#4fd8ff', '#ffe14d', '#7dff4f', '#ff7a1a', '#b07dff', '#ff4f4f', '#4fffb0', '#ffffff', '#ff9ad5', '#3a3a44', '#8a5a2b'];
 
-// Sniper Royalty: four kinds of sniper kill, in any order, over any number of matches. each one is a bit in the
-// sniper_feats stat (bit i = ROYAL_FEATS[i]) and one kill can tick several. the server decides every tick
+// Sniper Royalty: three kinds of sniper kill, in any order, over any number of matches. the sniper_feats stat keeps
+// bit flags (one kill can tick several, the server decides every tick); each feat says which bits tick it (mask).
+// the quick-scope and the no-scope used to be two boxes (bits 2 and 4): now either one ticks the trick-shot box,
+// so anyone who already had either keeps it
 export const ROYAL_FEATS = [
-  { id: 'long', name: 'LONG SHOT', desc: 'a sniper kill from 50 m or more' },
-  { id: 'quick', name: 'QUICK-SCOPE', desc: 'a sniper kill fired within 0.35 s of the scope coming up' },
-  { id: 'noscope', name: 'NO-SCOPE', desc: 'a sniper kill fired without the scope' },
-  { id: 'head', name: 'HEADSHOT', desc: 'a sniper headshot kill' },
+  { id: 'long', name: 'LONG SHOT', desc: 'a sniper kill from 50 m or more', bit: 1, mask: 1 },
+  { id: 'trick', name: 'QUICK-SCOPE / NO-SCOPE', desc: 'a sniper kill fired within 0.35 s of the scope coming up, or without the scope at all', bit: 2, mask: 2 | 4 },
+  { id: 'head', name: 'HEADSHOT', desc: 'a sniper headshot kill', bit: 8, mask: 8 },
 ];
+export const featOn = (bits, f) => !!(bits & f.mask);
+export const ROYAL_ALL = ROYAL_FEATS.reduce((m, f) => m | f.bit, 0); // every box ticked
 // long: metres between server positions. quick: ms after the scope is fully up. a victim who hasn't moved `moved`
 // metres for `still` ms never counts, so nobody farms it on an AFK player or a friend standing still
 export const ROYAL = { long: 50, quick: 350, still: 5000, moved: 0.6 };
@@ -25,7 +28,7 @@ export const ACHIEVEMENTS = {
   knees: { name: 'Knee Trouble', desc: 't-bag so hard you explode', stat: 'tbags', goal: 1 },
   nolife: { name: 'No Life', desc: 'play for 5 hours', stat: 'playtime', goal: 18000 },
   airborne: { name: 'Never Landed', desc: 'finish a whole match without touching the ground after any spawn', stat: 'airborne', goal: 1 },
-  royalty: { name: 'Sniper Royalty', desc: 'sniper kills: a 50 m+ long shot, a quick-scope, a no-scope and a headshot', stat: 'sniper_feats', goal: 4, feats: ROYAL_FEATS },
+  royalty: { name: 'Sniper Royalty', desc: 'sniper kills: a 50 m+ long shot, a quick-scope or no-scope, and a headshot', stat: 'sniper_feats', goal: 3, feats: ROYAL_FEATS },
 };
 // hidden unlocks that aren't in the list: the Wings used to come from Frequent Flyer, and whoever had them by then keeps them
 export const LEGACY_ACHS = { oldwings: { stat: 'wings_old', goal: 1 } };
@@ -35,7 +38,7 @@ export function hasAcc(a, achs) { return !!a && (!a.ach || !!(achs && (achs.has(
 // progress toward an achievement. a multi-part one keeps its parts as bit flags in one stat: progress = how many are done
 export function achProgress(a, stats) {
   const v = (stats && stats[a.stat]) || 0;
-  return a.feats ? a.feats.filter((_, i) => v & (1 << i)).length : v;
+  return a.feats ? a.feats.filter((f) => featOn(v, f)).length : v;
 }
 
 export const ACCESSORIES = {
