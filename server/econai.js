@@ -38,7 +38,7 @@ const centroid = (list) => { if (!list || !list.length) return null; const c = [
 const inBox = (s, q, pad) => q[0] >= s.min[0] - pad && q[0] <= s.max[0] + pad && q[2] >= s.min[2] - pad && q[2] <= s.max[2] + pad;
 const usable = (x) => x && (WEAPONS[x.id].kind === 'hitscan' || WEAPONS[x.id].kind === 'proj') && WEAPONS[x.id].slot !== 'melee' && (!x.lim || x.m + x.r > 0);
 const RIFLES = ['ar', 'ar', 'ar', 'redline', 'redline', 'chicken', 'burst', 'dmr', 'lmg'];
-const FORCE = ['smg', 'smg', 'shotgun', 'banana', 'bowling', 'lever', 'autoshot'];
+const FORCE = ['smg', 'smg', 'shotgun', 'banana', 'bowling', 'lever', 'autoshot', 'tennis'];
 
 const M = {
   // ---------------------------------------------------------- the map's tactical spots (worked out once per map)

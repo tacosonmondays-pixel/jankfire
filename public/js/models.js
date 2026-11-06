@@ -12,6 +12,7 @@ import { buildRigMissile } from './rigmodel.js'; // overdrive rig killstreak
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { laserBuild, calculator } from './gearmodels.js'; // the new gear's models (laser pointer, pop quiz calculator)
 import { prepAuthored, authored, AUTHORED, bindAuthored } from './glbkit.js';
+import { nailgunBuild, tennisBuild, cartCannonBuild, tennisBall, cartModel, nailgunStaple, tennisMachine, cartBasket } from './primmodels.js'; // the new primaries + what they shoot
 import { catEars, catTail, maidDress } from './catwear.js'; // Board Approved: cat ears, cat tail, maid dress
 import { RIFLE_WB, bindRifle } from './riflemodels.js'; // the rifle pack (burst rifle, lmg, marksman, lever-action, auto shotgun)
 
@@ -1332,6 +1333,8 @@ const MODEL_BUILD = {
   },
 };
 WB.laser = laserBuild; // Big Laser Pointer (gearmodels.js)
+WB.nailgun = nailgunBuild; WB.tennis = tennisBuild; WB.cart = cartCannonBuild; // the new primaries (primmodels.js)
+Object.assign(MODEL_BUILD, { nailgun_staple: nailgunStaple, tennis_machine: tennisMachine, cart_basket: cartBasket }); // ...and their skins
 // knives + swords live in blades/ (one file each, real proportions): base weapons go in WB, skins in MODEL_BUILD
 for (const [id, mod] of Object.entries(BLADES)) {
   (COSMETICS.model[id] ? MODEL_BUILD : WB)[id] = mod.build;
@@ -1821,6 +1824,7 @@ export function makeShadow() {
 // ------------------------------------------------------------ projectiles
 export function buildProjectile(k, skin) {
   if (k === 'rigmissile') return buildRigMissile(); // overdrive rig missiles: they turn along their flight themselves
+  if (k === 'cartp') return buildCart(); // shopping carts (replays draw them from the projectile list)
   const g = buildProjectileRaw(k);
   if (!g.userData.glb) g.userData.hatAt = HAT_AT['p_' + k];
   return applySkin(g, skin);
@@ -1866,6 +1870,8 @@ function buildProjectileRaw(k) {
     duck(g, 2.2);
   } else if (k === 'slipper') {
     slipper(g, 1.6);
+  } else if (k === 'tennis') {
+    g.add(tennisBall(0.1));
   } else if (k === 'calc') {
     g.add(calculator()); // pop quiz
   } else if (k === 'soap') {
@@ -1878,6 +1884,13 @@ function buildProjectileRaw(k) {
   return g;
 }
 
+// a shopping cart: the Blender one (p_cart) when it's loaded, else the code one. feet at y 0, nose at -z
+export function buildCart() {
+  const bl = authored('p_cart');
+  const g = new THREE.Group();
+  if (bl) { g.add(bl.obj); g.userData.glb = true; } else g.add(cartModel());
+  return g;
+}
 export function buildHole() {
   const g = new THREE.Group();
   g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0x000000 })));
