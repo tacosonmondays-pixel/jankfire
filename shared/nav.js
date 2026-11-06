@@ -205,6 +205,7 @@ export function navPath(g, a, b, max = g.maxExpand || Infinity) { // max: give u
 // Which way should a bot walk to reach goal? [x, z, hop] (a unit direction; hop = jump, it's getting itself unstuck),
 // or null when it can just walk straight at it. st is the bot's own scratch object (keeps its path between calls).
 export function navSteer(g, st, pos, goal, now) {
+  if (st.g !== g) { st.g = g; st.path = null; } // a different graph (another map, or this one built again after it was dropped): plan afresh
   if (now - (st.last || 0) > 400) { st.mx = pos[0]; st.mz = pos[2]; st.mt = now; } // wasn't navigating just now: restart the stuck clock
   st.last = now;
   // stuck (pushing into something for a while): sidestep and hop for a moment, then plan again
