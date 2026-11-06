@@ -24,6 +24,7 @@ import { storyKeys, initBar, barTick, barShow, useBar, dropHeld, nearestDrop, at
 import { openWheel, closeWheel, wheelOpen, wheelLook, wheelScale } from './wheel.js';
 import { initBag, toggleBag, bagOpen } from './bag.js';
 import { infoOf } from '/shared/story/items.js';
+import { LOOT_CSS } from './lootfx.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -258,6 +259,6 @@ function css() {
 .st-drop{background:#ff3030;color:#fff;font-weight:700;border-color:#000}
 .st-locker{margin-top:12px;border:3px dashed #7dff4f;padding:8px}
 .st-bag .st-cell{cursor:grab}.st-cell.over{outline:3px solid #ffe14d}.st-cell.held{outline:3px solid #4fd8ff;transform:rotate(-3deg)}.st-cell.drag{opacity:.4}
-`;
+`+ LOOT_CSS;
   document.head.append(s);
 }

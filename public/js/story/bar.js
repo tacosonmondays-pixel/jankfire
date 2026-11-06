@@ -8,7 +8,9 @@ import { G } from '../ctx.js';
 import { K, extendActions } from '../keys.js';
 import { hud } from '../hud.js';
 import { ME } from '../player.js';
-import { W, setSlots } from '../weapons.js';
+import { W, setSlots, STAT } from '../weapons.js';
+import { beamFor, lootSound, lootCard } from './lootfx.js'; // WP4
+import { statsOf } from '/shared/story/loot.js';
 import { weaponIcon, itemIcon, streakIcon } from '../icons.js';
 import { buildWeapon } from '../models.js';
 import { RARITY } from '/shared/cosmetics.js';
@@ -19,7 +21,7 @@ import { TEST } from '/shared/story/testmap.js';
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 export const RCOL = { ...Object.fromEntries(Object.entries(RARITY).map(([k, v]) => [k, v.color])), premium: '#ff00dc' }; // ☺ PREMIUM: hot pink
 export const IV = { inv: null, subs: [], on(fn) { this.subs.push(fn); }, sel: -1 };
-let story = null, barEl = null, wanted = '', shownK = '', drops = new Map();
+let story = null, barEl = null, cardEl = null, cardK = '', wanted = '', shownK = '', drops = new Map();
 
 // the story keys: their own group + context, so they only exist (and only show in CONTROLS) with story mode loaded
 export function storyKeys() {
@@ -41,8 +43,8 @@ export function initBar(st) {
     for (const f of IV.subs) f(IV.inv);
   });
   st.on('drops', (m) => { clearDrops(); for (const d of m.list || []) addDrop(d); });
-  st.on('drop+', (m) => addDrop(m.d));
-  st.on('drop-', (m) => { removeDrop(m.id); if (m.by) { const i = infoOf({ b: m.b }); if (i) hud.msg(`+ ${i.name.toUpperCase()}`, 1.2); } });
+  st.on('drop+', (m) => { const fresh = !drops.has(m.d.id); addDrop(m.d); if (fresh && Math.hypot(m.d.p[0] - ME.pos[0], m.d.p[2] - ME.pos[2]) < 40) lootSound(m.d.item.r, m.d.p); });
+  st.on('drop-', (m) => { removeDrop(m.id); if (m.by) { const i = infoOf(m.item || { b: m.b }); if (i) hud.msg(`+ ${i.name.toUpperCase()}`, 1.2); lootSound((m.item && m.item.r) || 'common', null, true); } });
 }
 
 export function iconOf(b) {
@@ -92,7 +94,22 @@ function render() {
     barEl.append(c);
   }
 }
-export function barShow(on) { if (barEl) barEl.classList.toggle('hidden', !on); document.body.classList.toggle('st-on', on); }
+export function barShow(on) {
+  if (barEl) barEl.classList.toggle('hidden', !on);
+  document.body.classList.toggle('st-on', on);
+  if (!on) { if (STAT.mul === statMul) STAT.mul = null; if (cardEl) cardEl.classList.add('hidden'); } // the sims are plain multiplayer: no rolled stats there
+}
+// the bar item in your hands (or null) and its rolled stats as weapons.js multipliers
+export function heldItem() { const inv = IV.inv, u = inv && inv.bar[W.slot], it = u == null ? null : itemAt(inv, u); return it && it.b === W.cur ? it : null; }
+const statCache = new Map();
+function statMul(id, k) {
+  const it = heldItem();
+  if (!it || it.b !== id) return 1;
+  const key = `${it.b}|${it.r}|${it.s}|${it.br}|${(it.m || []).join()}|${it.lg}`;
+  let s = statCache.get(key);
+  if (!s) { s = statsOf(it); statCache.set(key, s); if (statCache.size > 200) statCache.clear(); }
+  return s[k] ?? 1;
+}
 
 // press a bar key: weapons go in your hands, gear becomes your G item, snacks get eaten, streaks wait for HYPE (WP5)
 export function useBar(i) {
@@ -140,11 +157,10 @@ function addDrop(d) {
     m = new THREE.Mesh(dropGeo, [0, 1, 2, 3, 4, 5].map(() => new THREE.MeshLambertMaterial({ map: tex, color: 0xffffff })));
   }
   g.add(m);
-  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.12, 3, 6, 1, true), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.45, depthWrite: false }));
-  beam.position.y = 1.4; g.add(beam); // a plain rarity beam: WP4 makes these loud
+  const beam = beamFor(d.item.r); beam.position.y = -0.5; g.add(beam); // a beam per rarity (lootfx.js)
   g.position.set(d.p[0], d.p[1], d.p[2]);
   G.scene.add(g);
-  drops.set(d.id, { d, g, m, t: Math.random() * 6 });
+  drops.set(d.id, { d, g, m, beam, t: Math.random() * 6 });
 }
 function removeDrop(id) { const x = drops.get(id); if (!x) return; G.scene.remove(x.g); x.g.traverse((o) => { if (o.geometry && o.geometry !== dropGeo) o.geometry.dispose(); }); drops.delete(id); }
 export function clearDrops() { for (const id of [...drops.keys()]) removeDrop(id); }
@@ -155,7 +171,13 @@ export function nearestDrop() {
 }
 export const atLocker = () => Math.hypot(ME.pos[0] - TEST.locker.p[0], ME.pos[2] - TEST.locker.p[2]) < TEST.locker.r;
 export function barTick(dt) {
-  for (const x of drops.values()) { x.t += dt; x.m.rotation.y += dt * 1.6; x.m.position.y = Math.sin(x.t * 2.2) * 0.12; }
+  for (const x of drops.values()) { x.t += dt; x.m.rotation.y += dt * 1.6; x.m.position.y = Math.sin(x.t * 2.2) * 0.12; x.beam.userData.tick(dt, x.t, Math.hypot(x.d.p[0] - ME.pos[0], x.d.p[1] - ME.pos[1] - 1.6, x.d.p[2] - ME.pos[2])); }
+  STAT.mul = statMul; // rolled stats for whatever's in your hands (weapons.js reads it)
+  const near = nearestDrop();
+  if (!cardEl) { cardEl = el('div', 'st-lootcard hidden'); document.body.append(cardEl); }
+  const ck = near ? near.id + '|' + W.slot + '|' + W.cur : '';
+  if (ck !== cardK) { cardK = ck; cardEl.innerHTML = ''; if (near) cardEl.append(lootCard(near.item, heldItem())); }
+  cardEl.classList.toggle('hidden', !near);
   bridge();
   const k = `${W.slot}|${W.cur}|${W.item}`;
   if (k !== shownK) { shownK = k; render(); } // scroll / Q / G changed what's highlighted
