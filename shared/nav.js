@@ -139,7 +139,7 @@ export function navLocate(g, p) {
 }
 
 // A* from node a to node b: list of node indices, or null if there's no way
-export function navPath(g, a, b) {
+export function navPath(g, a, b, max = g.maxExpand || Infinity) { // max: give up after expanding this many nodes (huge maps)
   const N = g.nodes.length;
   if (!g._gs || g._gs.length !== N) Object.assign(g, { _gs: new Float64Array(N), _fs: new Float64Array(N), _from: new Int32Array(N), _seen: new Uint32Array(N), _done: new Uint32Array(N), _stamp: 0 });
   const gs = g._gs, fs = g._fs, from = g._from, seen = g._seen, done = g._done, st = ++g._stamp, goal = g.nodes[b];
@@ -156,7 +156,9 @@ export function navPath(g, a, b) {
     return top;
   };
   gs[a] = 0; fs[a] = h(a); from[a] = -1; seen[a] = st; push(a);
+  let budget = max;
   while (heap.length) {
+    if (--budget < 0) return null;
     const k = pop();
     if (k === b) { const path = []; for (let x = b; x !== -1; x = from[x]) path.push(x); return path.reverse(); }
     if (done[k] === st) continue;
@@ -190,9 +192,13 @@ export function navSteer(g, st, pos, goal, now) {
     st.straight = lv === g.lvl[b] && Math.abs(goal[1] - pos[1]) < 1.5 && navClear(g, lv, pos[0], pos[2], goal[0], goal[2]);
   }
   if (st.straight && !stuck) return null;
-  if (!st.path || st.end !== b || now > st.t + 3500) {
-    st.path = navPath(g, a, b); st.k = 0; st.t = now; st.end = b; st.cut = true;
-    if (!st.path) return null;
+  // plan again when the goal really moved (not every time a moving target steps into the next cell), when the plan is
+  // old, and not every tick for a goal there's no way to (that searched the whole graph each time)
+  const moved = st.end !== b && !(st.gx != null && Math.hypot(goal[0] - st.gx, goal[2] - st.gz) < 3);
+  if (!st.path || moved || now > st.t + 3500) {
+    if (st.failB === b && now < st.failT) return null;
+    st.path = navPath(g, a, b); st.k = 0; st.t = now; st.end = b; st.cut = true; st.gx = goal[0]; st.gz = goal[2];
+    if (!st.path) { st.failB = b; st.failT = now + 2500; return null; }
   }
   const P = st.path, N = g.nodes;
   while (st.k < P.length && Math.hypot(N[P[st.k]][0] - pos[0], N[P[st.k]][2] - pos[2]) < 1.3 && Math.abs(N[P[st.k]][1] - pos[1]) < 1.6) st.k++;

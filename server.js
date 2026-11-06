@@ -901,7 +901,7 @@ class Room {
         if (add > 0) { const a = Math.min(add, 60 * dt); v[0] += a * think.wx; v[2] += a * think.wz; }
       }
     }
-    v[1] -= 26 * dt;
+    v[1] -= 26 * dt * (b.gravMul || 1); // (jank royale: Overdraft Heights' low gravity)
     // on the rope: the same pendulum rope as a player's grapple (shared/hookphys.js), so bots swing smoothly too.
     // let go near the point (or when it's been a while) with a grapple jump
     const hk = b.ai && b.ai.hook;

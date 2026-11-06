@@ -406,7 +406,7 @@ function jankburg() {
     name: 'Jankburg', size: 'huge', royaleOnly: true, boxes: B.boxes, deco: D.boxes, killY: -40, bounds, floorY: -60,
     sky: { top: 0x2a0f5a, mid: 0xff7ab8, bot: 0x1a0626, fog: 0xc98ac8 }, fogNear: 110, fogFar: 460, chunk: 48, // (chunks: only what's in view and inside the haze is drawn)
     spawns: sp.slice(0, 48), plan: PLAN, lootHints,
-    get graph() { return graph || (graph = buildNav(B.boxes, { x0: -H - 10, z0: -H - 10, n: 2 * H + 20, cell: 1.25, levels: [0], band: 0.5, keep: (x, z) => Math.max(Math.abs(x), Math.abs(z)) < H + 10 })); },
+    get graph() { return graph || (graph = buildNav(B.boxes, { x0: -G, z0: -G, n: 2 * G, cell: 1.25, levels: [0], band: 0.5, keep: (x, z) => Math.max(Math.abs(x), Math.abs(z)) < G - 2 }), graph.maxExpand = 40000, graph); }, // the outer ring too: bots outside find the gates and breaches. (a search gives up after 40k nodes)
   };
   unstick(map.boxes, map.spawns);
   return map;
