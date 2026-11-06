@@ -37,6 +37,7 @@ import { courtKill, courtVerdict, updateCourt, courtReset, courtSync } from './s
 import { noScope, updateNoScope } from './noscope.js';
 import { makeRope, setRope, setRopeSkin, myGrapple, initGrapplePreview, grappleThumb, showGrapple, renderGrapplePreview } from './grapple.js';
 import { shredKill, shredHit, shredGrab, grabStep, updateShreds, clearShreds } from './shredder.js';
+import { pitKill } from './shredpit.js'; // the Warehouse's shredder pit: it chews, then spits the bits back up
 import { primFx, pinStep, tennisStep, tennisEnd, updatePrims, clearPrims, cartKey } from './primaries.js'; // nail gun, tennis balls, shopping carts
 import { updateSpeedLines } from './speedlines.js';
 import { slipperUpdate, slipperStep } from './slipper.js';
@@ -58,6 +59,7 @@ import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, ch
 import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset } from './royale.js'; // jank royale
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { ecoKeyLabel } from './econ.js';
+import { bodyReset } from './bodyhp.js'; // the wrecking ball + rig last until they break
 import { initEcon, ecoOn, econKey, econMouse, econMenuOpen, econFrame, econCam, econHideVM, econDead, econWelcome, econSpawn, econKill, econIc, econLoadout, econReset } from './econ.js';
 import { SPRAY, ownedSpray } from '/shared/cosmetics.js';
 import { sprayAim, sprayFx, addSpray, clearSprays, updateSprays, sprayIcon } from './sprays.js';
@@ -235,6 +237,7 @@ function startMode(mode, cfg) {
 }
 
 function resetWorldState() {
+  bodyReset(); // wrecking ball / rig HP bars
   G.joined = false;
   ME.alive = false;
   releaseHook();
@@ -1479,6 +1482,7 @@ net.on('kill', (m) => {
   [kn, vn] = brNames(m, kn, vn); // jank royale: no names in Pronoun Park
   const via = m.w === 'void' || m.w === 'cough' || ((m.w === 'car' || m.w === 'carboom') && m.via) ? m.via : m.w;
   const victim = G.remotes.get(m.v);
+  if (m.pit && m.w === 'void') pitKill(m, victim ? victim.color : m.v === G.myId ? G.myColor : null); // into the shredder pit's teeth (sets m.vel: the bits fly back up)
   // shredder kills: the pieces go through the killer's machine instead of the usual gibs / kill effect
   if (m.w === 'shredder' && shredKill(m, G.remotes, m.v === G.myId ? { pos: ME.pos.slice(), yaw: ME.yaw, color: G.myColor, look: teamLook(validLook(G.settings.look, myAchs()), G.myTeam) } : null)) m.fx = 'none'; // (team colour beats clothes)
   const kfx = m.fx && m.fx !== 'none' ? m.fx : null;
@@ -1494,7 +1498,9 @@ net.on('kill', (m) => {
   const dummy = victim && victim.bot && victim.name === 'Dummy';
   if (zmKillFeed(m, victim)) return; // zombies: a zombie went down. no feed line, the credits popup says it
   let parts;
-  if (m.w === 'void') {
+  if (m.w === 'void' && m.pit) { // the shredder pit
+    parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], ['  fed to the shredder', '#ff5a3a']] : [[vn, vc], ['  fed themselves to the shredder', '#ff5a3a']];
+  } else if (m.w === 'void') {
     parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], ['  into the void', '#aaa']] : [[vn, vc], ['  fell into the void', '#aaa']];
   } else if (m.w === 'tbag' && m.k === 0) {
     parts = [[vn, vc], ['  t-bagged too hard and exploded', '#ff9a3a']];
@@ -1532,9 +1538,9 @@ net.on('kill', (m) => {
     if (m.k && m.k !== G.myId && S.killcam !== false && G.mode !== 'training') queueKillcam(m.k, via);
     if (m.k) {
       hud.dead(true, m.w === 'void'
-        ? [[kn, kc], [' knocked you into the void', '#fff'], [`  (${wname(via)})`, wcolor(via)]]
+        ? [[kn, kc], [m.pit ? ' fed you to the shredder' : ' knocked you into the void', '#fff'], [`  (${wname(via)})`, wcolor(via)]]
         : [['killed by ', '#fff'], [kn, kc], [`  (${wname(via)})`, wcolor(via)]]);
-    } else hud.dead(true, [[m.w === 'void' ? 'you fell into the void' : m.w === 'tbag' ? 'you t-bagged too hard. your knees exploded.' : 'you smoked too much', '#fff']]);
+    } else hud.dead(true, [[m.w === 'void' ? (m.pit ? 'the shredder ate you. it was not hungry.' : 'you fell into the void') : m.w === 'tbag' ? 'you t-bagged too hard. your knees exploded.' : 'you smoked too much', '#fff']]);
     if (carK) hud.dead(true, carK.dead);
     else if (m.w === 'hr') hud.dead(true, hrDead());
     const gd = gearDeathLine(m);
@@ -1546,7 +1552,7 @@ net.on('kill', (m) => {
     G.streakN = (G.streakN || 0) + 1; // the server counts every kill too, but only tells you at your picks
     renderStreak(G.streakN);
     sfx.kill();
-    hud.msg(dummy ? 'dummy down' : `killed ${vn}`, 1.4, 'brag');
+    hud.msg(dummy ? 'dummy down' : m.pit ? 'FED TO THE SHREDDER' : `killed ${vn}`, m.pit ? 1.8 : 1.4, 'brag');
   }
   if (m.ep && m.k === G.myId && m.v !== G.myId) epicBrag({ ...m.ep, w: via });
 });
