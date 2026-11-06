@@ -45,7 +45,7 @@ export async function init() {
   if (data && Array.isArray(data.bagStub)) for (const i of data.bagStub.slice(0, 64)) if (typeof i === 'string') ST.bag.add(i);
   ST.S = makeStory({ content: merge(PACKS), state: st, host: HOST });
   ST.ready = true;
-  ST.where = where;
+  ST.where = where; ST.offYaw = (y) => offYaw(y);
   window.JF_STORY = ST; // (tests drive it from here)
   try { const sc = await import('./scene.js'); ST.scene = sc; sc.initScenes(ST); } catch (e) { console.warn('story scenes not loaded', e); }
 }
@@ -80,25 +80,51 @@ const HOST = {
   },
 };
 
-export async function save() {
+// story mode (WP0's shell): the engine's state goes to the sim, which writes the real save slot. outside it (the
+// Training-range lab, ?storylab=1) a local stand-in slot
+let synced = '';
+function sync(force) {
+  if (!inStory() || !ST.S) return;
+  const st = toSave(ST.S.st), key = JSON.stringify([st, [...ST.bag], ST.S.st.vars.coupons | 0]);
+  if (!force && key === synced) return;
+  synced = key;
+  G.story.send('engine', { st, bag: [...ST.bag], coupons: Math.max(0, ST.S.st.vars.coupons | 0) });
+}
+const inStory = () => !!(G.story && G.joined && G.mode === 'story');
+export async function save(why = 'quest') {
   if (!ST.S) return false;
+  if (inStory()) { sync(true); G.story.save(why); return true; }
   const data = { ...toSave(ST.S.st), bagStub: [...ST.bag] };
   return saveSlot(ST.slot, data);
 }
 
 // ---------------------------------------------------------------- staging the content on the map
-const off = (p) => [ST.anchor[0] + p[0], ST.anchor[1] + p[1], ST.anchor[2] + p[2]];
+// where the lab goes: the story test lot (WP0), turned to face you from the spawn; or the Training range (?storylab=1)
+const LABS = { story_test: { o: [0, 0, 6], rot: Math.PI }, range: { o: [0, 0, 10], rot: 0 } };
+let labAt = LABS.range;
+const off = (p) => { const c = Math.cos(labAt.rot), sn = Math.sin(labAt.rot); return [labAt.o[0] + p[0] * c + p[2] * sn, labAt.o[1] + p[1], labAt.o[2] - p[0] * sn + p[2] * c]; };
+const offYaw = (y) => y + labAt.rot;
 function stage() {
-  const key = G.joined ? MAP.id : '';
+  const key = G.joined ? MAP.id + (inStory() ? ':story' : '') : '';
   if (key === ST.staged) return;
   ST.staged = key;
   clearActors(); for (const t of ST.things.values()) G.scene.remove(t.mesh); ST.things.clear(); ST.inZone.clear();
-  if (!key || key !== 'range') return; // the lab lives on the Training range for now
-  ST.anchor = [0, 0, 10];
+  const where0 = G.joined && (MAP.id === 'story_test' && inStory() ? 'story_test' : MAP.id === 'range' && /[?&]storylab=1\b/.test(location.search) ? 'range' : '');
+  if (!where0) { ST.on = false; return; }
+  ST.on = true;
+  labAt = LABS[where0];
+  if (inStory() && G.story.cur) { // the save slot the shell loaded: pick up exactly where it was
+    const d = G.story.cur.data || {};
+    ST.S.st = fromSave(d); ST.bag.clear();
+    if (Array.isArray(d.bagStub)) for (const i of d.bagStub.slice(0, 64)) if (typeof i === 'string') ST.bag.add(i);
+    ST.S.st.vars.coupons = G.story.cur.coupons || ST.S.st.vars.coupons || 0;
+    synced = '';
+    if (ST.scene && Object.keys(ST.S.st.seen).length && ST.S.st.log.length && !ST.recapped) { ST.recapped = true; setTimeout(() => ST.scene.playScene('lab_recap'), 1500); } // PREVIOUSLY ON OVERDUE
+  }
   const D = ST.S.defs;
   for (const [id, n] of Object.entries(D.npcs)) {
     if (!n.home) continue;
-    const a = spawnActor(id, n, off(n.home.p), n.home.face || 0);
+    const a = spawnActor(id, n, off(n.home.p), offYaw(n.home.face || 0));
     if (n.walk && n.walk.loop) a.loop = n.walk.loop.map(off);
   }
   for (const [id, t] of Object.entries(D.things)) {
@@ -135,7 +161,8 @@ export function frame(dt, now, cam) {
   if (ST.capture) { dt = ST.capStep || 0; ST.capStep = 0; now = ST.capNow = (ST.capNow || now) + dt * 1000; }
   stage();
   const S = ST.S, e = eye();
-  if (ST.staged) {
+  if (ST.on) {
+    if (inStory() && (ST.syncT = (ST.syncT || 0) + dt) > 2) { ST.syncT = 0; sync(); } // (the shell's own auto / pause saves get it too)
     updateActors(dt * (ST.slowmo ?? 1), now, e);
     S.tick(dt);
     // zones: walking in / out
@@ -164,7 +191,7 @@ export function frame(dt, now, cam) {
   pr.classList.toggle('hidden', !txt);
   talkFrame(dt, now, e);
   if (ST.scene) ST.scene.sceneFrame(dt, now, cam);
-  questHud(S.quests.objectives(), where, cam, !ST.staged || (ST.scene && ST.scene.playing()) || talking());
+  questHud(S.quests.objectives(), where, cam, !ST.on || (ST.scene && ST.scene.playing()) || talking());
   if (takeCamera(cam, dt)) G.vmScene.visible = false; // (the gun goes away for the shot)
   if (cardQ.length && !locked() && now > (ST.cardT || 0)) { card0(...cardQ.shift()); ST.cardT = now + 1500; }
   ST.saveT += dt;

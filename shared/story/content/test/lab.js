@@ -40,7 +40,7 @@ export const npcs = {
     id: 'auntie', name: 'AUNTIE SPREADSHEET', title: 'keeps the books in crayon', look: 'auntie', voice: { kind: 'crayon', pitch: 1.1, rate: 0.9 },
     home: { p: [0, 0, 11], face: Math.PI }, idle: 'write',
     lines: {
-      start: { go: [['q.lab_soup.at.deliver && has.soup_pot', 'deliver'], ['q.lab_soup.done', 'after']],
+      start: { go: [['(q.lab_soup.at.deliver || q.lab_soup.at.sneak) && has.soup_pot', 'deliver'], ['q.lab_soup.done', 'after']],
         say: ['i\'m doing the books. the books are doing me.'], opts: [['what happened to the world?', 'world'], ['bye', 'bye']] },
       world: { say: ['the companies ended it. on purpose. on a tuesday.', 'sixty-one years ago. you hungry?'], do: ['codex:lore.final_quarter'] },
       deliver: { say: ['is that soup? the red kind?', '*she writes SOUP: 1 in crayon, then underlines it twice*'], face: 'grin' },

@@ -85,10 +85,7 @@ import { containerPic, playContainer, stopContainer } from './crate3d.js'; // co
 import { hubTabs } from './hub.js'; // the CUSTOMIZE hub's tabs (loadout / weapons / character / grapple & spray)
 import { initCustomize, czMode, czOpen, czClose, czFrame, czKill, czLate, czRefresh, czRolled, resolveRand, wantSkins, myFavs } from './customize.js'; // the weapon customize screen (replaces COSMETICS)
 import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, zmModelsLoaded } from './zombies.js';
-// OVERDUE story mode (WP8): only with ?story=1 or localStorage jfStory=1. without the flag nothing loads and every hook below is a no-op
-const STORY_ON = /[?&]story=1\b/.test(location.search) || (() => { try { return localStorage.getItem('jfStory') === '1'; } catch { return false; } })();
-let story = null;
-if (STORY_ON) import('./story/boot.js').then((m) => { story = m; return m.init(); }).catch((e) => console.error('story mode failed to load', e));
+let story = null; // OVERDUE's story engine (WP8: quests, talk, cutscenes), loaded with the story flag below. null = every hook is a no-op
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
@@ -162,6 +159,7 @@ initHome({
 // OVERDUE story mode: hidden until the owner approves the slice (?story=1 or localStorage jfStory=1)
 const storyFlag = () => { try { return new URLSearchParams(location.search).get('story') === '1' || localStorage.getItem('jfStory') === '1'; } catch { return false; } };
 if (storyFlag()) import('./story/main.js').then((m) => m.initStory({ startMode, quitToMenu: () => quitToMenu(), toast: (t, ms) => toast(t, ms) })).catch((e) => console.error('story mode failed to load', e));
+if (storyFlag()) import('./story/boot.js').then((m) => { story = m; return m.init(); }).catch((e) => console.error('story engine failed to load', e));
 initLobby({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), send: (m) => net.send(m), map: () => G.cfg && G.cfg.map });
 initEcon({ pause: () => { if (document.pointerLockElement) document.exitPointerLock(); pause(); }, lock }); // Plant & Defuse economy
 

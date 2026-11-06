@@ -18,9 +18,9 @@ const hp = new THREE.Vector3(), ev = new THREE.Vector3(), fw = new THREE.Vector3
 function ui() {
   if (U) return U;
   const el = document.createElement('div'); el.id = 'stTalk'; el.className = 'hidden';
-  el.innerHTML = '<div class="st-port"><canvas></canvas></div><div class="st-box"><div class="st-name"><b></b><span></span></div><div class="st-text"></div><div class="st-opts"></div><div class="st-hint"></div></div>';
+  el.innerHTML = '<div class="st-port"><canvas></canvas></div><div class="st-box"><div class="st-name"><b></b><span></span></div><div class="st-text"></div><div class="st-opts"></div><div class="st-keys"></div></div>';
   $('stLayer').append(el);
-  U = { el, port: el.querySelector('.st-port'), cv: el.querySelector('canvas'), box: el.querySelector('.st-box'), name: el.querySelector('.st-name b'), title: el.querySelector('.st-name span'), text: el.querySelector('.st-text'), opts: el.querySelector('.st-opts'), hint: el.querySelector('.st-hint') };
+  U = { el, port: el.querySelector('.st-port'), cv: el.querySelector('canvas'), box: el.querySelector('.st-box'), name: el.querySelector('.st-name b'), title: el.querySelector('.st-name span'), text: el.querySelector('.st-text'), opts: el.querySelector('.st-opts'), hint: el.querySelector('.st-keys') };
   organic(U.box, { rim: 5, lumps: 4, shadow: [8, 8] }); organic(U.port, { rim: 5, lumps: 3, shadow: [6, 6] });
   return U;
 }

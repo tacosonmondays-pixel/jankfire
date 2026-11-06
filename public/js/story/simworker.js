@@ -2,6 +2,7 @@
 // host.js's WorkerSocket exactly like a WebSocket: json strings both ways. the first message is { init: save }.
 import { createSim } from '/shared/story/sim.js';
 import { cleanSave } from '/shared/story/save.js';
+import '/shared/story/enginesys.js'; // the story engine's state rides along in the save (WP8)
 
 let sim = null, last = 0;
 const send = (o) => postMessage(JSON.stringify(o));

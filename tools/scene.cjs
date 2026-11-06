@@ -1,13 +1,13 @@
 // OVERDUE scene recorder (TECH_PLAN §6): plays one story scene at Too HD and writes an mp4 + a frame contact sheet.
 // The story runs in capture mode (boot.js): each recorded frame is exactly 1/fps of story time however slow the GPU is.
 // usage: node tools/scene.cjs <sceneId> [--port 3000] [--out docs/story/scenes] [--fps 24] [--w 1280 --h 720] [--pre <js>]
-// needs a running server (npm start) and ffmpeg. The story lab content lives on the Training range.
+// needs a running server (npm start) and ffmpeg. Starts a fresh story run (STORY, slot 1, NEW GAME) on the test lot.
 const { chromium } = require('playwright');
 const { execFileSync } = require('child_process');
 const fs = require('fs'), path = require('path'), os = require('os');
 const A = process.argv.slice(2), opt = (k, d) => { const i = A.indexOf('--' + k); return i >= 0 ? A[i + 1] : d; };
 const ID = A[0]; if (!ID || ID.startsWith('--')) { console.log('usage: node tools/scene.cjs <sceneId> [--port 3000] [--out dir] [--fps 24]'); process.exit(1); }
-const PORT = opt('port', 3000), OUT = opt('out', 'docs/story/scenes'), FPS = Number(opt('fps', 24)), W = Number(opt('w', 1280)), H = Number(opt('h', 720)), PRE = opt('pre', '');
+const PORT = opt('port', 3000), OUT = opt('out', 'docs/story/scenes'), FPS = Number(opt('fps', 12)), W = Number(opt('w', 960)), H = Number(opt('h', 540)), PRE = opt('pre', '');
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--mute-audio'] });
   const pg = await b.newPage({ viewport: { width: W, height: H } });
@@ -17,10 +17,13 @@ const PORT = opt('port', 3000), OUT = opt('out', 'docs/story/scenes'), FPS = Num
   const pump = (ms) => new Promise((r) => setTimeout(r, ms));
   const step = async () => { await pg.evaluate((dt) => { window.JF_STORY.capStep = dt; }, 1 / FPS); await pg.waitForFunction(() => window.JF_STORY.capStep === 0, null, { polling: 'raf' }); await pg.evaluate(() => new Promise((r) => requestAnimationFrame(() => r()))); };
   await pump(1500);
-  await pg.evaluate(() => document.querySelector('#scr-main [data-mode="training"]').click());
-  for (let i = 0; i < 300 && !(await pg.evaluate(() => !!(window.JF_STORY && window.JF_STORY.staged))); i++) await pump(100);
+  for (let i = 0; i < 100 && !(await pg.evaluate(() => !!document.getElementById('storyBtn'))); i++) await pump(100);
+  await pg.evaluate(() => { localStorage.removeItem('jfStorySaves'); document.getElementById('storyBtn').click(); }); // STORY -> slot 1 -> NEW GAME
+  for (let i = 0; i < 100 && !(await pg.evaluate(() => !!document.querySelector('#storyPick .st-slot .st-btn'))); i++) await pump(100);
+  await pg.evaluate(() => document.querySelector('#storyPick .st-slot .st-btn').click());
+  for (let i = 0; i < 300 && !(await pg.evaluate(() => !!(window.JF_STORY && window.JF_STORY.on))); i++) await pump(100);
   await pg.evaluate(() => { window.JF_STORY.capture = true; });
-  await pg.evaluate(async (pre) => { const { ME } = await import('/js/player.js'); ME.pos = [0, 0, 8]; ME.yaw = Math.PI; ME.pitch = -0.05; const S = window.JF_STORY.S;
+  await pg.evaluate(async (pre) => { const { ME } = await import('/js/player.js'); ME.pitch = -0.05; const S = window.JF_STORY.S;
     S.run(['log:lumps|lumps asked you for soup. the red kind.', 'log:gordo|you paid wee gordo to call off the interns. he remembers.', 'log:auntie|auntie wrote SOUP: 1 in crayon. underlined twice.']);
     if (pre) (0, eval)(pre); }, PRE);
   await pump(1500);

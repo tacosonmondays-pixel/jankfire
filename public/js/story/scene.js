@@ -45,7 +45,7 @@ export const sceneList = () => Object.keys(ST.S.defs.scenes);
 export function playScene(id, opts = {}) {
   const def = typeof id === 'object' ? id : ST.S.defs.scenes[id];
   if (!def) { console.warn('no scene', id); return false; }
-  if (P) { queue.push([def, opts]); return true; }
+  if (P || (talking() && def.kind !== 'talk')) { queue.push([def, opts]); return true; } // (a scene waits for the one playing, or for the conversation to end)
   P = { def, t: 0, i: 0, tracks: [...(def.tracks || [])].sort((a, b) => a.t - b.t), cast: new Map(), temp: [], hold: 0, stop: 0, slow: 1, sub: null, opts, kind: def.kind || 'cinematic', len: def.len ?? 10, skipK: 0, done: false };
   ST.S.st.seen[def.id] = true;
   document.body.classList.add('st-cine');
@@ -62,11 +62,11 @@ export function playScene(id, opts = {}) {
   return true;
 }
 function castOne(k, c) {
-  if (c.actor || actors.has(k)) { const a = actors.get(c.actor || k); if (a) { P.cast.set(k, a); a.inScene = true; if (c.at) { a.pos = [...where(c.at)]; a.r.pos = a.pos; } if (c.face != null) a.yaw = a.faceTarget = c.face; } return; }
+  if (c.actor || actors.has(k)) { const a = actors.get(c.actor || k); if (a) { P.cast.set(k, a); a.inScene = true; if (c.at) { a.pos = [...where(c.at)]; a.r.pos = a.pos; } if (c.face != null) a.yaw = a.faceTarget = ST.offYaw(c.face); } return; }
   const at = c.at ? where(c.at) : k === 'you' ? [ME.pos[0], ME.pos[1], ME.pos[2]] : [ME.pos[0], ME.pos[1], ME.pos[2] - 3];
   const def = ST.S.defs.npcs[c.npc] || { look: c.look || (k === 'you' ? 'mannequin' : 'mannequin'), voice: c.voice || { kind: 'beep' }, name: c.name || k.toUpperCase() };
   const id = '_scene_' + k;
-  const a = spawnActor(id, { ...def, look: c.look || def.look }, at, c.face ?? (k === 'you' ? ME.yaw : 0));
+  const a = spawnActor(id, { ...def, look: c.look || def.look }, at, c.face != null ? ST.offYaw(c.face) : k === 'you' ? ME.yaw : 0);
   a.inScene = true; a.sceneName = c.name || def.name;
   if (c.scale) a.ch.root.scale.multiplyScalar(c.scale);
   if (c.hidden) a.hidden = true;
@@ -87,7 +87,6 @@ function endScene(skipped) {
   if (p.def.onEnd) ST.S.run(p.def.onEnd, `scene ${p.def.id}`);
   ST.S.emit({ type: 'sceneEnd', scene: p.def.id });
   if (p.opts.done) p.opts.done(skipped);
-  if (queue.length) { const [d, o] = queue.shift(); setTimeout(() => playScene(d, o), 50); }
 }
 export function skipScene() { if (P && P.def.skip !== false) endScene(true); }
 
@@ -218,6 +217,7 @@ function recapPanels() {
 
 // ---------------------------------------------------------------- every frame
 export function sceneFrame(dt, now, cam) {
+  if (!P && queue.length && !talking()) { const [d, o] = queue.shift(); playScene(d, o); }
   if (!P) return;
   // skip: hold jump
   const hold = K.isDown('jump') && P.def.skip !== false && P.t > 0.3;
