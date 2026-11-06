@@ -2852,7 +2852,7 @@ function backrooms() {
       for (const e of es) e.used = true;
     } else {
       const e = pick(free.length > 2 ? free.slice(1, -1) : free), c = mid(e.k), w = 1.5 + r() * 0.7; // not right in a corner
-      addOpen(opens, e.ax, e.line, { a: c - w / 2, b: c + w / 2, y0: 0, y1: r() < 0.55 ? 2.25 + r() * 0.3 : H + 0.2 }); // full height ones cut the wall's top too (it goes up into the ceiling)
+      addOpen(opens, e.ax, e.line, { a: c - w / 2, b: c + w / 2, y0: 0, y1: (r() < 0.55 && r(), H + 0.2) }); // every doorway goes up into the ceiling, so bhops and grapples don't clip a lintel (the r() calls stay so the layout doesn't change)
       e.used = true;
     }
     if (!p.open) { rooms[p.a].deg++; rooms[p.b].deg++; }
