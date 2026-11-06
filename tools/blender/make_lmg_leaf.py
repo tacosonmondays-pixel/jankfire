@@ -14,7 +14,7 @@ from corp import *
 LM = Scale(1.33, 0.02, -0.87)
 Z, Y, W, poly = LM.Z, LM.Y, LM.W, LM.poly
 BORE_Y, MUZ_Z = 0.02, -0.87
-SIGHT_H = 63.0
+SIGHT_H = 69.0  # 6 mm over the LMG's: the big impeller housing sits low enough while aiming (the ADS check)
 HINGE = (0, 0.065, 0.08)
 SEAT = (-0.02, -0.1, -0.08)
 SEAT_D = (-0.08 - MUZ_Z) / LM.S

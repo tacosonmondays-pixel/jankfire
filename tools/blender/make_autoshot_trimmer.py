@@ -13,7 +13,7 @@ from corp import *
 AS = Scale(1.26, 0.02, -0.76)
 Z, Y, W, poly = AS.Z, AS.Y, AS.W, AS.poly
 BORE_Y, MUZ_Z = 0.02, -0.76
-SIGHT_H, REAR_D, FRONT_D = 46, 643, 126
+SIGHT_H, REAR_D, FRONT_D = 60, 643, 126   # 14 mm over the Lawn Mower's: the engine is fat
 MAG_D, MAG_H = 543, -52
 CH = (W(21), Y(8), Z(575))
 
@@ -74,21 +74,21 @@ def build():
     A(sweep(loop[2:5], W(10.5), rubber, seg=12))
 
     # ---------------- the engine (receiver): shroud, air filter + primer bulb, starter housing, muffler, plug boot, cooling fins
-    A(side(poly([(410, -46), (440, -48), (740, -48), (744, 0), (720, 26), (520, 30), (470, 22), (430, 10), (410, -10)]), W(76), (0, 0, 0), orange, bev=W(12), seg=3))
+    A(side(poly([(410, -46), (440, -48), (740, -48), (744, -6), (724, 10), (640, 16), (520, 18), (470, 14), (430, 6), (410, -10)]), W(72), (0, 0, 0), orange, bev=W(12), seg=3))
     A(side(poly([(460, -50), (742, -50), (742, -64), (460, -64)]), W(70), (0, 0, 0), black, bev=W(4)))  # the crankcase / tank seat
-    A(box((W(44), W(4), W(150)), (0, Y(34), Z(600)), black, bev=W(1)))  # the top rail (the sight sits on it)
-    for k in range(5): A(box((W(78), W(3), W(6)), (0, Y(-12 + k * 6), Z(470 + k * 2)), black, bev=W(1)))  # cooling slots at the front
+    A(box((W(30), W(6), W(170)), (0, Y(19), Z(590)), black, bev=W(1)))  # the top rail (the sight sits on it)
+    for k in range(5): A(box((W(74), W(3), W(6)), (0, Y(-14 + k * 6), Z(470 + k * 2)), black, bev=W(1)))  # cooling slots at the front
     # starter housing on the right (round, ribbed) + the cord hole
-    A(cyl(W(56), W(10), (W(40), Y(-10), Z(620)), white, axis='x', seg=28, bev=W(3)))
-    A(cyl(W(40), W(2), (W(45.5), Y(-10), Z(620)), black, axis='x', seg=24))
-    A(cyl(W(34), W(2.4), (W(46), Y(-10), Z(620)), white, axis='x', seg=24, bev=W(1)))
+    A(cyl(W(44), W(10), (W(40), Y(-18), Z(620)), white, axis='x', seg=28, bev=W(3)))
+    A(cyl(W(32), W(2), (W(45.5), Y(-18), Z(620)), black, axis='x', seg=24))
+    A(cyl(W(27), W(2.4), (W(46), Y(-18), Z(620)), white, axis='x', seg=24, bev=W(1)))
     for k in range(3):
         a = k * 2 * math.pi / 3 + 0.5
-        A(cyl(W(3.5), W(2), (W(47.5), Y(-10) + math.sin(a) * W(46), Z(620) + math.cos(a) * W(46)), chrome, axis='x', seg=8))
-    A(cyl(W(8), W(6), (W(46), Y(8), Z(588)), black, axis='x', seg=12))
+        A(cyl(W(3.5), W(2), (W(47.5), Y(-18) + math.sin(a) * W(37), Z(620) + math.cos(a) * W(37)), chrome, axis='x', seg=8))
+    A(cyl(W(8), W(6), (W(46), Y(4), Z(590)), black, axis='x', seg=12))
     lg = box((W(1), W(20), W(80)), (W(38.2), Y(-28), Z(530)), logo, rot=(0, 0, 0)); A(lg); decals.append((lg, (W(80), W(20)), 'x'))
     # air filter cover + primer bulb (left, where it would be on a real one) + choke lever
-    A(side(poly([(500, -36), (600, -36), (606, 18), (500, 22)]), W(18), (-W(42), 0, 0), black, bev=W(5)))
+    A(side(poly([(500, -36), (600, -36), (606, 18), (500, 22)]), W(18), (-W(40), 0, 0), black, bev=W(5)))
     A(ball(W(10), (-W(52), Y(-6), Z(470)), mat('tr_bulb', 0xf2f0e6, rough=0.15, alpha=0.6), seg=14, rings=8))
     A(box((W(6), W(16), W(20)), (-W(52), Y(16), Z(560)), mat('tr_choke', 0xd01c2a, rough=0.3, clearcoat=0.8), bev=W(2)))
     # muffler + perforated heat guard on the left, tailpipe out the back
@@ -98,12 +98,12 @@ def build():
             A(cyl(W(3.5), W(2), (-W(57.5), Y(-26 + j * 16), Z(640 + i * 24)), dark, axis='x', seg=8))
     A(cyl(W(6), W(30), (-W(46), Y(-10), Z(744)), chrome, axis='z', seg=10))
     # spark plug boot on top behind the sight
-    A(cyl(W(9), W(24), (W(18), Y(36), Z(700)), black, axis='y', seg=12, rot=(-0.5, 0, 0)))
-    A(tube([(W(18), Y(46), Z(706)), (W(26), Y(48), Z(720)), (W(34), Y(30), Z(732))], W(3), black, seg=6))
+    A(cyl(W(9), W(24), (-W(36), Y(2), Z(700)), black, axis='x', seg=12))  # spark plug boot, out the left
+    A(tube([(-W(46), Y(2), Z(700)), (-W(50), Y(-6), Z(716)), (-W(44), Y(-20), Z(732))], W(3), black, seg=6))
 
     # ---------------- rear sight: a ghost ring on the top rail
-    A(box((W(18), W(6), W(22)), (0, Y(38), Z(REAR_D)), dark, bev=W(1.2)))
-    for sx in (-1, 1): A(side(poly([(REAR_D - 9, 38), (REAR_D + 9, 38), (REAR_D + 6, SIGHT_H + 5), (REAR_D - 6, SIGHT_H + 5)]), W(2.4), (sx * W(7.5), 0, 0), steel, bev=W(0.6)))
+    A(box((W(18), W(8), W(22)), (0, Y(24), Z(REAR_D)), dark, bev=W(1.2)))
+    for sx in (-1, 1): A(side(poly([(REAR_D - 9, 26), (REAR_D + 9, 26), (REAR_D + 6, SIGHT_H + 5), (REAR_D - 6, SIGHT_H + 5)]), W(2.4), (sx * W(7.5), 0, 0), steel, bev=W(0.6)))
     ring = cyl(W(5.5), W(3), (0, Y(SIGHT_H), Z(REAR_D)), dark, axis='z', seg=16)
     cut(ring, cyl(W(3.4), W(10), (0, Y(SIGHT_H), Z(REAR_D)), None, axis='z', seg=12))
     A(fixmats(ring))
@@ -149,7 +149,7 @@ def build():
     mn = moving(mag, 'mag', (0, Y(MAG_H), Z(MAG_D)), {'tr_tank': 'b', 'tr_black': 'b'}, default='n')
     cn = moving(chg, 'charge', CH, {'tr_black': 'b'}, default='n')
     meta = {'kind': 'weapon', 'id': 'autoshot', 'skin': 'autoshot_trimmer', 'paint': ['tr_orange'], 'muzzle': [0, BORE_Y, MUZ_Z],
-            'sight': {'y': Y(SIGHT_H), 'z': Z(REAR_D) + 0.06}, 'hatAt': [[0, Y(38), Z(540)], 0.12],
+            'sight': {'y': Y(SIGHT_H), 'z': Z(REAR_D) + 0.06}, 'hatAt': [[0, Y(22), Z(540)], 0.12],
             'mag': {'node': 'mag'}, 'charge': {'node': 'charge'}}
     return finish('w_autoshot_trimmer', bodies + [mn, cn], meta)
 

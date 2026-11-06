@@ -16,7 +16,7 @@ BORE_Y, MUZ_Z = 0.02, -0.89
 SY, EYE_Z = Y(83.3), Z(842)
 SEAT = (0, Y(-36), Z(734))
 CH = (W(18), Y(4), Z(742))
-RB = 0.036   # the barrel's fattest radius
+RB = 0.047   # the barrel's fattest radius
 
 
 def build():

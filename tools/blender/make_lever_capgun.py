@@ -16,7 +16,7 @@ LEVER_PIV = (0, -0.04, -0.02)
 HAMMER_PIV = (0, 0.03, 0.09)
 LV_D, LV_H = (LEVER_PIV[2] - MUZ_Z) / S, (LEVER_PIV[1] - BORE_Y) / S
 REAR_D = (-0.2 - MUZ_Z) / S
-SIGHT_H = (0.06 - BORE_Y) / S
+SIGHT_H = (0.068 - BORE_Y) / S   # a bit over the Yeehaw's 0.06: the fat toy barrel + receiver sit lower while aiming
 OPEN = '--open' in sys.argv
 
 
@@ -69,8 +69,8 @@ def build():
     for d in (80, 300): A(box((W(22), W(44), W(12)), (0, Y(-6), Z(d)), barrelm, bev=W(5), seg=2))
     # buckhorn rear sight, toy chunky
     A(box((W(14), W(6), W(18)), (0, Y(12), Z(REAR_D)), barrelm, bev=W(1)))
-    A(side([(Z(REAR_D) - W(2), Y(12)), (Z(REAR_D) + W(2), Y(12)), (Z(REAR_D) + W(2), Y(SIGHT_H + 6)), (Z(REAR_D) - W(2), Y(SIGHT_H + 6))], W(36), (0, 0, 0), barrelm, bev=W(0.8),
-           holes=[[(Z(REAR_D) - W(5), Y(SIGHT_H)), (Z(REAR_D) + W(5), Y(SIGHT_H)), (Z(REAR_D) + W(5), Y(SIGHT_H + 10)), (Z(REAR_D) - W(5), Y(SIGHT_H + 10))]]))
+    A(side([(Z(REAR_D) - W(2), Y(12)), (Z(REAR_D) + W(2), Y(12)), (Z(REAR_D) + W(2), Y(SIGHT_H - 1)), (Z(REAR_D) - W(2), Y(SIGHT_H - 1))], W(36), (0, 0, 0), barrelm, bev=W(0.8)))
+    for sx in (-1, 1): A(box((W(10), W(8), W(4)), (sx * W(9), Y(SIGHT_H + 3), Z(REAR_D)), barrelm, bev=W(0.8)))  # the buckhorn's ears, the notch between them
 
     # ---------------- forend: moulded fake wood with a seam line and grooves
     A(side(poly([(304, 4), (488, 6), (488, -34), (304, -32)]), W(34), (0, 0, 0), fakewood, bev=W(9), seg=2))

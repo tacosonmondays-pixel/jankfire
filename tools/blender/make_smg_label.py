@@ -10,7 +10,7 @@ from corp import *
 
 BORE_Y, MUZ_Z = 0.01, -0.37
 SM = Scale(1.0, BORE_Y, MUZ_Z)      # the base SMG's grip + trigger, in its own millimetres
-SIGHT_Y, REAR_Z, FRONT_Z = 0.09, 0.1, -0.31
+SIGHT_Y, REAR_Z, FRONT_Z = 0.1, 0.1, -0.31
 TOP = 0.052
 
 
@@ -60,7 +60,7 @@ def build():
     A = parts.append
 
     # ---------------- the shell: one rounded body, a yellow nose with the tape slot, keypad deck, LCD hump
-    sh = side([(-0.33, -0.026), (-0.33, 0.04), (-0.318, TOP), (-0.02, TOP), (0.0, 0.07), (0.075, 0.072), (0.1, 0.058), (0.125, 0.04), (0.13, -0.016), (0.118, -0.034),
+    sh = side([(-0.33, -0.026), (-0.33, 0.04), (-0.318, TOP), (0.1, TOP), (0.125, 0.036), (0.13, -0.016), (0.118, -0.034),
                (0.05, -0.036), (-0.3, -0.036)], 0.074, (0, 0, 0), shell, bev=0.012, seg=3)
     A(sh)
     ns = side([(-0.372, -0.024), (-0.372, 0.03), (-0.355, 0.05), (-0.31, 0.054), (-0.31, -0.034), (-0.35, -0.036)], 0.07, (0, 0, 0), nose, bev=0.01, seg=3)
@@ -88,9 +88,9 @@ def build():
             if r == 1 and c == 6: m = keyp
             A(box((0.0125, 0.006, 0.026), (0.024 - r * 0.0158, TOP + 0.003, -0.288 + c * 0.031 + 0.0155), m, bev=0.0022, seg=1))
     A(box((0.068, 0.003, 0.226), (0, TOP - 0.0005, -0.16), dark))  # keyboard well
-    # LCD on the hump, tipped toward you
-    A(box((0.054, 0.004, 0.06), (0, 0.072, 0.036), dark, rot=(-0.12, 0, 0), bev=0.002))
-    lc = box((0.046, 0.001, 0.052), (0, 0.0745, 0.036), lcdm, rot=(-0.12, 0, 0)); A(lc); decals.append((lc, (0.046, 0.052), 'y'))
+    # LCD set flush in the deck behind the keys (no hump: you aim over it)
+    A(box((0.056, 0.004, 0.062), (0, TOP + 0.0005, 0.0), dark, bev=0.002))
+    lc = box((0.046, 0.001, 0.052), (0, TOP + 0.0028, 0.0), lcdm); A(lc); decals.append((lc, (0.046, 0.052), 'y'))
     # the embossing wheel on the right side, a knob in the middle, and its clicky detents
     A(cyl(0.032, 0.006, (0.04, 0.004, -0.15), grey, axis='x', seg=28, bev=0.0015))
     wh = cyl(0.028, 0.001, (0.0435, 0.004, -0.15), wheelm, axis='x', seg=28); A(wh); decals.append((wh, (0.056, 0.056), 'x'))
@@ -155,7 +155,7 @@ def build():
     mn = moving(mag, 'mag', (0, -0.04, -0.1), {'lb_yellow': 'b', 'lb_grey': 'b'}, default='n')
     cn = moving(chg, 'charge', (-0.043, 0.03, -0.27), {'lb_chrome': 'b'}, default='n')
     meta = {'kind': 'weapon', 'id': 'smg', 'skin': 'smg_label', 'mag': {'node': 'mag'}, 'charge': {'node': 'charge'}, 'paint': ['lb_shell'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': SIGHT_Y, 'z': REAR_Z},
-            'hatAt': [[0, 0.075, 0.03], 0.1]}
+            'hatAt': [[0, TOP + 0.004, 0.03], 0.1]}
     return finish('w_smg_label', bodies + [mn, cn], meta)
 
 
