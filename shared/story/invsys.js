@@ -16,6 +16,7 @@ import { savePart } from './save.js';
 import { TEST } from './testmap.js';
 import { invAdd, invOp, invTake, cleanInv, starterInv, itemAt, kindOf, hasItem, find, STORY_ITEMS } from './items.js';
 import { ITEMS } from '../weapons.js';
+import { rollTable, rollWeapon, legendaryItem, RARITY_ORDER } from './loot.js'; // WP4
 
 export const PICK = 3.2; // metres
 savePart('inv', (v) => cleanInv(v));
@@ -31,11 +32,13 @@ addSystem({
     const inv = () => sim.sty('inv', { inv: view(sim) });
     sim.invChanged = inv;
     sim.dropAt = (item, p) => {
-      const id = ++sim.dropN, d = { id, item: { b: item.b, r: item.r || 'common', s: item.s || 0, ...(item.n ? { n: item.n } : {}), ...(item.q ? { q: item.q } : {}) }, p: r2(p) };
+      const id = ++sim.dropN, d = { id, item: { b: item.b, r: item.r || 'common', s: item.s || 0, ...(item.n ? { n: item.n } : {}), ...(item.q ? { q: item.q } : {}), ...(item.br ? { br: item.br } : {}), ...(item.m ? { m: item.m.slice() } : {}), ...(item.lg ? { lg: item.lg } : {}) }, p: r2(p) };
       sim.drops.set(id, d);
       sim.sty('drop+', { d });
       return id;
     };
+    // roll a loot table (shared/story/content/loot.js) and scatter it round p. returns the drop ids
+    sim.lootDrop = (table, p, ctx = {}) => rollTable(table, sim.rand || Math.random, ctx).map((it, i, a) => { const ang = (i / Math.max(1, a.length)) * Math.PI * 2; return sim.dropAt(it, [p[0] + Math.cos(ang) * 1.2, p[1] + 0.6, p[2] + Math.sin(ang) * 1.2]); });
     sim.give = (item) => { const u = invAdd(sim.inv, item); if (u) inv(); else if (sim.me) sim.dropAt(item, sim.me.pos); return u; };
     sim.hasItem = (b, n = 1) => hasItem(sim.inv, b, n);
     sim.takeItem = (b, n = 1) => {
@@ -52,6 +55,11 @@ addSystem({
       sim.state.flags.testLoot = true;
       const kit = ['redline', 'marbles', 'katana', 'scales', 'shotgun', 'lasso', 'medkit', 'smoke', 'moonboots', 'jank_cola', 'bottlecap'];
       kit.forEach((b, i) => { const a = (i / kit.length) * Math.PI * 2; sim.dropAt({ b, q: b === 'jank_cola' ? 3 : b === 'bottlecap' ? 7 : 0 }, [8 * Math.cos(a), 0.6, -2 + 8 * Math.sin(a)]); });
+    }
+    if (sim.save.at.map === TEST.id && !sim.state.flags.testLoot2) { // WP4: one of every rarity in a row by the wall, plus the slice's named four
+      sim.state.flags.testLoot2 = true;
+      RARITY_ORDER.forEach((r, i) => sim.dropAt(rollWeapon({ rarity: r }), [-12 + i * 3, 0.6, -24]));
+      ['late_bloomer', 'grandmas_hands', 'mothers_ladle', 'severance_package'].forEach((id, i) => sim.dropAt(legendaryItem(id), [5 + i * 3, 0.6, -24]));
     }
     sim.sty('drops', { list: [...sim.drops.values()] });
     sim.invChanged();
@@ -82,7 +90,7 @@ addSystem({
         const u = invAdd(sim.inv, left);
         if (!u) { if (left.q && left.q !== d.item.q) { d.item.q = left.q; sim.sty('drop+', { d }); sim.invChanged(); } return err('the tote bag is full'); }
         sim.drops.delete(d.id);
-        sim.sty('drop-', { id: d.id, by: 1, b: d.item.b });
+        sim.sty('drop-', { id: d.id, by: 1, b: d.item.b, item: d.item });
         sim.invChanged();
         return true;
       }

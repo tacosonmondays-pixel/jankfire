@@ -33,7 +33,7 @@ t('ops: only items you have, quest items stay', () => {
   assert.ok(invOp(inv, { op: 'bar', slot: 7, u: inv.bar[0] }).ok); assert.equal(barWeapons(inv)[7], 'redline'); assert.equal(inv.bar[0], null);
   for (const bad of [{ op: 'bar', slot: 8, u: 1 }, { op: 'bar', slot: 0, u: 999 }, { op: 'bar', slot: -1, u: null }, { op: 'bar', slot: '1', u: 1 }, { op: 'move', from: 0, to: 99 }, { op: 'drop', u: 999 }, { op: 'stash', u: 1 }, { op: 'zzz' }, null, { op: 5 }])
     assert.ok(invOp(inv, bad).error, JSON.stringify(bad));
-  const q = invAdd(inv, { b: 'soup_pot' });
+  const q = invAdd(inv, { b: 'page_corp' }); // a keep item (content/items.js): no bar, no drop
   assert.ok(invOp(inv, { op: 'bar', slot: 3, u: q }).error); assert.ok(invOp(inv, { op: 'drop', u: q }).error);
   const d = invOp(inv, { op: 'drop', u: inv.bar[1] }); assert.equal(d.dropped.b, 'marbles'); assert.equal(inv.bar[1], null);
   assert.ok(invOp(inv, { op: 'stash', u: inv.bar[2] }, { atLocker: true }).ok); assert.equal(inv.locker[0].b, 'knife');
