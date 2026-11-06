@@ -2,7 +2,8 @@
 import * as THREE from 'three';
 import { BOXES, MAP, MAPS, MAP_ORDER } from '/shared/map.js';
 import { WEAPONS, ORDER, SLOTS, FLAGS, SLIP_TIME, HIPFIRE, BOT_DIFF, MODES, STREAKS, ITEMS, ITEM_ORDER, validLoadout, validStreaks } from '/shared/weapons.js';
-import { streakIcon } from './icons.js';
+import { streakIcon, liveIcon } from './icons.js';
+import './itemicons.js'; // registers the 3D item + killstreak pictures (icons.js set3dPics)
 import { stepProjectile, raycast } from '/shared/physics.js';
 import { duckFrame, duckStuck } from './duck.js';
 import { G } from './ctx.js';
@@ -58,6 +59,8 @@ import { updateRig, rigDied, rigOn } from './rig.js';
 import { rigClash } from '/shared/rig.js'; // overdrive rig killstreak
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
 import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset } from './royale.js'; // jank royale
+import { brActive } from './royale.js';
+import { initMinimap, minimapFrame } from './minimap.js'; // the HUD minimap (SAT-NAV)
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { ecoKeyLabel } from './econ.js';
 import { bodyReset } from './bodyhp.js'; // the wrecking ball + rig last until they break
@@ -134,6 +137,7 @@ const vmScaleU = { value: 300 };
 G.skinFxWorld = makeSkinSystems(G.scene, scaleU);
 G.skinFxVM = makeSkinSystems(G.vmScene, vmScaleU);
 hud.init();
+initMinimap();
 initEndscreen({
   note: (id, m) => ggRowNote(id, m) || infRowNote(id, m),
   title: (m) => { const t = m && !m.pending && infRoundTitle(m); return t ? t[0] : ''; },
@@ -331,7 +335,7 @@ let wasLocked = false, lockedAt = 0, mouseAvg = 8;
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === canvas;
   if (locked) { lockedAt = performance.now(); esHideClick(); }
-  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull() && !econMenuOpen()) pause(); // the end screen lets go of the mouse on purpose
+  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull() && !econMenuOpen() && !(G.story && G.story.uiOpen())) pause(); // the end screen lets go of the mouse on purpose
   wasLocked = locked;
 });
 canvas.addEventListener('click', () => { if (G.joined && document.pointerLockElement !== canvas && $('menu').classList.contains('hidden')) lock(); });
@@ -441,6 +445,17 @@ bindCheck('blood', 'blood');
 bindCheck('killcam', 'killcam', () => { if (G.joined) net.send({ t: 'kc', on: S.killcam }); });
 bindCheck('showCards', 'showCards');
 bindCheck('speedLines', 'speedLines');
+// minimap (on, M, turns with you) + bot chatter (on): old saves have none of it
+if (typeof S.mmOn !== 'boolean') S.mmOn = true;
+if (typeof S.mmRot !== 'boolean') S.mmRot = true;
+if (!['s', 'm', 'l'].includes(S.mmSize)) S.mmSize = 'm';
+if (typeof S.botChat !== 'boolean') S.botChat = true;
+bindCheck('mmOn', 'mmOn');
+bindCheck('mmRot', 'mmRot');
+bindCheck('botChat', 'botChat');
+$('mmSize').value = S.mmSize;
+$('mmSize').addEventListener('change', () => { S.mmSize = $('mmSize').value; saveSettings(); });
+SYNC_KEYS.push('mmOn', 'mmRot', 'mmSize', 'botChat');
 // display: windowed / windowed fullscreen (maximized, desktop app only) / fullscreen
 const DISPLAY = window.jf && window.jf.display
   ? [['windowed', 'Windowed'], ['maximized', 'Windowed fullscreen'], ['fullscreen', 'Fullscreen']]
@@ -525,7 +540,7 @@ function buildLoadoutUI() {
   for (const [id, st] of Object.entries(STREAKS).sort((a, b) => a[1].kills - b[1].kills)) {
     const b = document.createElement('button');
     b.className = 'kpick' + (picks.includes(id) ? ' on' : '');
-    const im = document.createElement('img'); im.src = streakIcon(id); im.alt = '';
+    const im = document.createElement('img'); im.alt = ''; liveIcon(im, () => streakIcon(id)); // (3D: the loading cube until its model lands)
     const t = document.createElement('span'); t.textContent = `${st.name} · ${st.kills}`;
     b.append(im, t);
     b.addEventListener('mouseenter', () => { $('loDesc').textContent = `${st.name} (${st.kills} kills in a row): ${K.hint(st.desc)}`; });
@@ -1053,6 +1068,7 @@ function pressed(e) {
   if (K.matches('scores', e)) { e.preventDefault(); scoresOpen = true; renderScores(); return; }
   if (K.matches('chat', e)) { e.preventDefault(); openChat(); return; }
   if (K.matches('menu', e)) { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
+  if (G.story && G.story.key(e, true)) return; // OVERDUE (flagged): quick bar 1-8, the wheel, the tote bag, pick up
   if (lobbyKey(e)) return; // a mode lobby: ready up
   if (gearKeyDown(e)) return; // pop quiz answers (1-4), goggles flash (nvgFlash)
   if (lassoKey(e, true)) return; // holding someone on the lasso: reel keys, fire / aim lets go, no weapon switching. held: jump / move wriggles
@@ -1088,6 +1104,7 @@ const SEC_STOPPED = ['fire', 'aim', 'grapple', 'item', 'dash', 'spray', 'streak1
 // a key or button came up: releases match whatever pressed the action, even if it got rebound since
 function released(e) {
   if (e.type === 'keyup' && K.typing(e)) return; // typed in chat / a text box (opening chat already let go of everything)
+  if (G.story) G.story.key(e, false); // (the wheel closes on its key's release)
   lassoKey(e, false);
   if (K.up('use', e)) stopUse();
   if (K.up('dash', e)) W.dashHeld = false;
@@ -1116,6 +1133,7 @@ addEventListener('contextmenu', (e) => e.preventDefault());
 addEventListener('wheel', (e) => { if (inGame() && !esActive() && !lassoWheel(e.deltaY)) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true }); // not while the end screen is up (its tab panel scrolls); holding someone on the lasso: the wheel reels
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== canvas) return;
+  if (G.story && G.story.look(e)) return; // the weapon wheel steers with the mouse
   if (performance.now() < (G.spinUntil || 0)) return; // the aimbot has the wheel
   if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor: no looking around either
   if (story && story.locked()) return; // story mode: talking / a cutscene has the camera
@@ -1775,6 +1793,7 @@ net.on('fx', (m) => {
 });
 net.on('chat', (m) => {
   if (!m.id) { hud.chat(null, null, m.m); return; }
+  if (S.botChat === false && G.remotes.get(m.id) && G.remotes.get(m.id).bot) return; // bot chatter off
   const [n, c] = nameOf(m.id);
   hud.chat(n, c, m.m);
 });
@@ -1812,6 +1831,7 @@ function frame(t) {
   last = t;
   if (dt > 0.1) dt = 0.1;
   if (dt <= 0) return;
+  if (G.story) dt *= G.story.timeScale(); // the weapon wheel slows time (solo)
   const now = performance.now();
 
   if (G.joined) {
@@ -1868,6 +1888,7 @@ function frame(t) {
   updateTraffic(dt, now, RP.active);
   updateLore(dt, now); updateLoreFx(now); // (out of a match it clears them away)
   brFrame(dt, now); // jank royale: blimp, zone, loot, hud
+  minimapFrame(now, { royale: brActive(), endscreen: esActive() }); // the HUD minimap (hidden in replays, dead, royale, story)
   updateGibs(dt);
   updateKillFx(dt);
   updateCourt(dt, now);
@@ -2064,7 +2085,7 @@ function renderStreak(n) {
       const d = document.createElement('div');
       d.className = 'kstreak' + (ready ? ' ready' : '');
       d.title = `${st.name}: ${K.hint(st.desc)}`;
-      const im = document.createElement('img'); im.src = streakIcon(id); im.alt = '';
+      const im = document.createElement('img'); im.alt = ''; liveIcon(im, () => streakIcon(id)); // (3D: the loading cube until its model lands)
       const k = document.createElement('b'); k.textContent = K.label('streak' + (i + 1));
       const c = document.createElement('span'); c.textContent = ready ? 'READY' : `${Math.min(n, st.kills)}/${st.kills}`;
       d.append(im, k, c);
@@ -2338,7 +2359,8 @@ function totalRolls(me) { const r = (me && me.rolls) || {}; return (r.crate || 0
 function fmtTime(sec) { const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60); return h ? `${h}h ${m}m` : `${m}m`; }
 function renderAcctBar() {
   const tr0 = account.loggedIn ? totalRolls(account.me) : 0;
-  $('cratesLbl').textContent = tr0 ? `CONTAINERS (${tr0})` : 'CONTAINERS'; // the label only: the button keeps its slab
+  $('cratesLbl').textContent = 'CONTAINERS'; // the label only: the button keeps its slab
+  $('cratesN').textContent = tr0 || ''; $('cratesN').classList.toggle('hidden', !tr0); // how many to open: a badge, not part of the label
   $('cratesBtn').classList.toggle('glow', tr0 > 0);
   const bar = $('acctBar');
   bar.innerHTML = '';
@@ -2442,6 +2464,7 @@ function applySettingsToUI() {
   setVolume(S.vol);
   $('musicVol').value = String(S.musicVol); $('musicMatchVol').value = String(S.musicMatchVol);
   $('musicMatch').checked = S.musicMatch !== false; $('musicComp').checked = !!S.musicComp; musicUpdate();
+  $('mmOn').checked = S.mmOn !== false; $('mmRot').checked = S.mmRot !== false; $('botChat').checked = S.botChat !== false; if (['s', 'm', 'l'].includes(S.mmSize)) $('mmSize').value = S.mmSize; // minimap + bot chatter
 }
 
 function renderProfile() {

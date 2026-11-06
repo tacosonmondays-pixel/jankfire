@@ -1,7 +1,7 @@
 // Spinning weapon preview for the cosmetics screen. Its own tiny renderer so it works from the menu.
 import * as THREE from 'three';
 import { buildWeapon, freeTree, M } from './models.js';
-import { withEnv } from './glbkit.js';
+import { withEnv, trackGlb, whenGlb, want } from './glbkit.js';
 import { makeSkinSystems, emitSkinFx } from './skins.js';
 import { idlePose } from './loco.js';
 
@@ -36,6 +36,19 @@ export function resizePreview() {
 }
 
 let idleT = 0;
+// the loading stand-in: a pink wireframe cube with a cyan one spinning the other way inside, glitching now and then
+let ldObj = null, ldT = 0;
+function loadingObj() {
+  if (ldObj) return ldObj;
+  ldObj = new THREE.Group();
+  const box = new THREE.EdgesGeometry(new THREE.BoxGeometry(0.9, 0.9, 0.9));
+  box.userData.shared = true;
+  const a = new THREE.LineSegments(box, new THREE.LineBasicMaterial({ color: 0xff4fd8 }));
+  const b = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(0.62, 0)), new THREE.LineBasicMaterial({ color: 0x4fd8ff }));
+  b.geometry.userData.shared = true;
+  ldObj.add(a, b);
+  return ldObj;
+}
 let shown = null; // what's on show, so a skin model that lands late can replace its stand-in
 export function refreshPreview() { if (shown) showPreview(shown[0], shown[1]); }
 export function showPreview(id, skin) {
@@ -43,7 +56,10 @@ export function showPreview(id, skin) {
   shown = [id, skin];
   sway = 0; holder.rotation.y = 0; camHome(); dropPlinth();
   freeTree(holder); holder.clear(); // the last thing shown is gone for good
-  const g = buildWeapon(id, skin);
+  const [g, t] = trackGlb(() => buildWeapon(id, skin));
+  for (const m of t.missing) want(m, 5); // the big one on show goes first
+  if (t.missing.size) { const me = shown; whenGlb([...t.missing], () => { if (shown === me) showPreview(id, skin); }); } // its Blender model landed (or we stop waiting): show that
+  if (t.pending) { freeTree(g); holder.add(loadingObj()); cur = holder; ext = { rxz: 0.75, hy: 0.6 }; if (manual) fitCam(); return; } // still downloading: the loading cube, never the old code model
   g.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(g);
   const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
@@ -56,6 +72,7 @@ export function showPreview(id, skin) {
   wrap.rotation.y = Math.PI / 2;
   holder.add(wrap);
   cur = g;
+  ext = { rxz: 0.5 * Math.hypot(size.x, size.z) * fit, hy: 0.5 * size.y * fit }; // the customize camera frames this (fitCam)
 }
 
 // show a mannequin with a look instead of a weapon (character screen)
@@ -83,8 +100,9 @@ export function showCharacter(build, color, look) {
 
 export function renderPreview(dt) {
   if (!renderer || !cur) return;
+  if (ldObj && ldObj.parent) { const t = (ldT += dt); ldObj.rotation.set(0.5 + Math.sin(t * 1.3) * 0.15, t * 2.2, 0); ldObj.children[1].rotation.y = -t * 3.1; ldObj.children[1].scale.setScalar(0.55 + (Math.random() < 0.08 ? 0.12 : 0)); ldObj.position.x = Math.random() < 0.06 ? (Math.random() - 0.5) * 0.06 : 0; }
   if (sway) { swayT += dt; holder.rotation.y = sway + Math.sin(swayT * 0.7) * 0.45; holder.position.y = Math.sin(swayT * 1.9) * 0.012; } // main menu: a slow idle sway, not a spin
-  else if (manual) holder.rotation.set(manual.pitch, manual.yaw, 0);
+  else if (manual) { holder.rotation.set(manual.pitch, manual.yaw, 0); fitCam(); }
   else holder.rotation.y += dt * 0.9;
   const pch = holder.children[0] && holder.children[0].userData.ch; // a mannequin on show: it breathes and shifts its weight
   if (pch) idlePose(pch, (idleT += dt));
@@ -118,10 +136,41 @@ export function showArmed(build, color, look, weapon) {
   holder.add(plinthObj || (plinthObj = plinth())); // built once, reused on every visit
   cam.position.set(0, 0.12, 2.75); cam.lookAt(0, -0.1, 0); // pulled back a bit so the plinth fits under the feet
 }
-function camHome() { if (manual) { cam.position.set(0, 0.22, manual.dist); cam.lookAt(0, 0.02, 0); return; } cam.position.set(0, 0.3, 2.2); cam.lookAt(0, 0, 0); }
+function camHome() { if (manual) { fitCam(); return; } cam.position.set(0, 0.3, 2.2); cam.lookAt(0, 0, 0); }
+// customize: back the camera off until the whole model fits at any turn of the turntable, at the current tilt, with a
+// margin (a long gun end-on, a tall shredder, a skin model that landed bigger). manual.dist / 3 is the wheel zoom on top
+let ext = { rxz: 1.15, hy: 0.4 };
+const MARGIN = 1.12;
+function fitCam() {
+  const p = Math.abs(manual.pitch || 0), tv = Math.tan((cam.fov * Math.PI) / 360), th = tv * cam.aspect;
+  const vh = ext.hy * Math.cos(p) + ext.rxz * Math.sin(p); // tilting brings the length into the vertical
+  const d = Math.max(ext.rxz / th, vh / tv) * MARGIN + ext.rxz; // (+ rxz: the near end is closer, so it's bigger)
+  const z = d * ((manual.dist || 3) / 3);
+  cam.position.set(0, 0.22 * z / 3, z); cam.lookAt(0, 0.02, 0);
+}
+// tests: the model's projected box (screen -1..1) at several turns of the turntable, at the current tilt
+export function previewBounds(turns = 12) {
+  if (!cur || !manual) return null;
+  const b = new THREE.Box3(), v = new THREE.Vector3(), out = { x0: 9, x1: -9, y0: 9, y1: -9 }, y0 = holder.rotation.y;
+  for (let i = 0; i < turns; i++) {
+    holder.rotation.y = (i / turns) * Math.PI * 2; holder.updateMatrixWorld(true); fitCam(); cam.updateMatrixWorld(true);
+    cur.traverse((o) => {
+      if (!o.isMesh || !o.geometry || !o.visible) return;
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      b.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld);
+      for (let k = 0; k < 8; k++) {
+        v.set(k & 1 ? b.max.x : b.min.x, k & 2 ? b.max.y : b.min.y, k & 4 ? b.max.z : b.min.z).project(cam);
+        out.x0 = Math.min(out.x0, v.x); out.x1 = Math.max(out.x1, v.x); out.y0 = Math.min(out.y0, v.y); out.y1 = Math.max(out.y1, v.y);
+      }
+    });
+  }
+  holder.rotation.y = y0; holder.updateMatrixWorld(true); fitCam();
+  return out;
+}
 // the customize screen turns the weapon itself (drag / its own slow spin) and stands back a bit: m = { yaw, pitch, dist } or null
 let manual = null;
 export function previewManual(m) { manual = m; camHome(); }
+export const previewShown = () => (shown ? shown[0] : null);
 let plinthObj = null;
 function dropPlinth() { if (plinthObj && plinthObj.parent) plinthObj.parent.remove(plinthObj); } // out before freeTree, so it isn't freed
 // the turntable you stand on: a chunky 8-sided concrete slab, a pink trim band, a black lip, bolts. feet at y = -0.625

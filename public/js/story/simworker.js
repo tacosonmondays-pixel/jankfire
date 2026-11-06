@@ -3,6 +3,8 @@
 import { createSim } from '/shared/story/sim.js';
 import { cleanSave } from '/shared/story/save.js';
 import '/shared/story/enginesys.js'; // the story engine's state rides along in the save (WP8)
+import '/shared/story/invsys.js'; // the Tote Bag + quick bar (WP3)
+import '/shared/story/solohost.js'; // the card deck's hand and other server-side bits solo needs
 
 let sim = null, last = 0;
 const send = (o) => postMessage(JSON.stringify(o));
@@ -10,6 +12,7 @@ onmessage = (e) => {
   if (!sim) {
     const d = e.data || {}, r = d.init ? cleanSave(d.init, { slot: d.init.slot | 0 }) : {};
     sim = createSim({ send, save: r.save || null });
+    sim.dev = d.dev === true; // ?storydev=1 (tests): the dev 'give'
     if (r.save && Number.isFinite(d.init.playtime)) sim.save.playtime = d.init.playtime;
     last = performance.now();
     setInterval(() => { const n = performance.now(); sim.tick(Math.min(0.25, (n - last) / 1000)); last = n; }, 50); // 20 Hz, like the rooms

@@ -41,7 +41,7 @@ export function buildScenery(scene, map, id, voidMesh) {
   }
   group = new THREE.Group();
   scene.add(group);
-  const cfg = SCENES[id] || (map.base && SCENES[map.base]) || { theme: 'sky' }; // an S&D version stands in its map's world
+  const cfg = map.stream ? { theme: 'sealed' } : SCENES[id] || (map.base && SCENES[map.base]) || { theme: 'sky' }; // an S&D version stands in its map's world; a streamed city (OVERDUE) brings its own horizon
   if (cfg.theme === 'sealed') { if (voidMesh) voidMesh.visible = false; return; } // indoors all the way round: nothing out there
   const pal = PAL[cfg.theme];
   const fog = map.sky.fog;

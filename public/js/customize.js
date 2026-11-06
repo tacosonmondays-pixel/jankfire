@@ -8,13 +8,14 @@
 import { G } from './ctx.js';
 import { WEAPONS, ORDER, SLOTS, ITEMS, ITEM_ORDER, STREAKS, validStreaks } from '/shared/weapons.js';
 import { streakIcon } from './icons.js';
-import { itemPic } from './itemicons.js';
 import { hubTabs } from './hub.js';
 import { COSMETICS, RARITY, CONTAINERS, owns, ownedSkin, modelsFor } from '/shared/cosmetics.js';
 import { ACHIEVEMENTS, achProgress, ROYAL_ALL } from '/shared/looks.js';
 import { validSkin, DEFAULT_SKIN, WRAP_MODES, WRAP_MODE_NAMES, makeHat } from './skins.js';
 import { showPreview, resizePreview, setPreviewRes, previewManual } from './preview.js';
-import { weaponIcon, objIcon, clearIcons } from './icons.js';
+import { weaponIcon, objIcon, drawIcon, isPlaceholder, PLACEHOLDER, studioIcon, liveIcon } from './icons.js';
+import { uiPic, itemPic } from './itemicons.js';
+import { whenGlb, prefetch, want } from './glbkit.js';
 import { defaultCard } from './cards.js';
 import { royalBoxes } from './royal.js';
 import { organic } from './organic.js';
@@ -35,6 +36,12 @@ const TABS = [
   { id: 'effect', name: 'Effect', ico: '✨', type: 'effect', idx: 2, none: 'none' },
   { id: 'finisher', name: 'Finisher', ico: '💀', type: 'kill', none: 'none', global: true },
 ];
+// the round buttons' props, from the icon studio: a door, a spanner, a palette, the top hat off the charm rack, a crystal, a skull
+const TAB_PIC = {
+  leave: () => uiPic('ui_door', '#ffe14d', 44), skin: () => uiPic('ui_wrench', '#ff4fd8', 44), wrap: () => uiPic('ui_palette', '#4fd8ff', 44),
+  charm: () => studioIcon('cztab:charm', () => makeHat('tophat'), { w: 44, h: 44, accent: '#ff4fd8', pitch: 0.3 }),
+  effect: () => uiPic('ui_crystal', '#ffe14d', 44), finisher: () => uiPic('ui_skull', '#ff3030', 44),
+};
 const TYPE_LABEL = { model: 'Skin', finish: 'Wrap', hat: 'Charm', effect: 'Effect', kill: 'Finisher' };
 const FX_ICO = { smoke: '💨', bubbles: '🫧', sparkles: '✨', music: '🎵', hearts: '💖', electric: '⚡', flames: '🔥', money: '💸', rainbow: '🌈' };
 const KILL_ICO = { none: '🦴', confetti: '🎉', grave: '🪦', cash: '💵', pixel: '👾', balloon: '🎈', chicken: '🐔', bsod: '💻', yeet: '🚀', ascend: '🛸', duck: '🦆', blastzone: '💥' };
@@ -112,7 +119,9 @@ export function initCustomize(a) {
   for (const t of TABS) {
     const b = el('button', 'cz-tab' + (t.id === 'leave' ? ' leave' : ''));
     b.dataset.tab = t.id;
-    b.append(el('span', 'ico', t.ico), el('span', 'lbl', t.name.toUpperCase()));
+    const ico = el('span', 'ico', t.ico);
+    b.append(ico, el('span', 'lbl', t.name.toUpperCase()));
+    requestAnimationFrame(() => { const im = el('img'); im.alt = ''; if (liveIcon(im, TAB_PIC[t.id])) { ico.textContent = ''; ico.append(im); } }); // its 3D prop (the emoji stays if 3D can't draw)
     b.addEventListener('click', () => {
       if (t.id === 'leave') { api.show(G.joined ? 'pause' : 'main'); return; }
       setTab(tab === t.id ? null : t.id);
@@ -151,12 +160,14 @@ export function czOpen() {
   root.classList.toggle('potato', (S.jank | 0) === 0);
   root.classList.toggle('lo-mode', mode === 'loadout');
   for (const b of root.querySelectorAll('.hub-tab')) b.classList.toggle('on', b.dataset.hub === (mode === 'loadout' ? 'loadout' : 'weapons'));
+  const hn = $('czHub').firstElementChild; if (hn && hn.mark) hn.mark(); // (its pictures: your gun / look may have changed)
   if (mode === 'loadout' && !SLOTS.includes(WEAPONS[sel].slot)) sel = S.loadout.primary;
   $('czStage').append($('preview'));
   setPreviewRes([0.3, 0.45, 0.75, 1][S.jank] ?? 0.5); // potato is crunchy here too
   previewManual(V);
   refresh();
   setTab(tab);
+  wantModels();
   requestAnimationFrame(() => { resizePreview(); dirty = 2; });
   lastAct = performance.now();
   if (first) for (const n of root.querySelectorAll('.cz-career, .cz-info')) if (!n._org) organic(n, { rim: 5, lumps: 4, shadow: [7, 7] }); // the menu's hand-cut slabs
@@ -169,7 +180,7 @@ export function czClose() {
   hoverOff();
 }
 export function czRefresh() { if (open) { refresh(); if (tab) renderTiles(); } }
-export function czLate() { if (open) { clearIcons(); iconQ.length = 0; tileQ.length = 0; refresh(); if (tab) renderTiles(); dirty = 2; } } // a skin's model landed: its pictures again
+export function czLate() { if (open) dirty = 2; } // a skin's model landed: only the pictures that waited on it redraw (pumpIcons + whenGlb), the 3D view refreshes itself
 
 // called every frame while the screen is up: returns how much time to render (0 = rest)
 export function czFrame(dt) {
@@ -268,7 +279,15 @@ function renderLeft() {
   const on = list.querySelector('.cz-row.on');
   if (on && !list.dataset.scrolled) { list.dataset.scrolled = '1'; requestAnimationFrame(() => on.scrollIntoView({ block: 'center' })); }
 }
-function pick(id) { sel = id; G.cosSel = id; refresh(); if (tab) renderTiles(); poke(); }
+function pick(id) { sel = id; G.cosSel = id; refresh(); if (tab) renderTiles(); poke(); wantModels(); }
+// fetch ahead: what's on screen asks for itself (pri 3, glbkit noteMiss); then this weapon's skins, then, while you
+// browse, every other weapon's skins a couple at a time in the background
+let idleT = 0;
+function wantModels() {
+  prefetch(['w_' + sel, ...modelsFor(sel).filter((k) => k !== 'default').map((k) => 'w_' + k)], tab === 'skin' ? 4 : 2); // the Skin strip open: those are on screen now
+  clearTimeout(idleT);
+  idleT = setTimeout(() => { if (open) prefetch(api.skinnable().flatMap((id) => modelsFor(id).filter((k) => k !== 'default').map((k) => 'w_' + k)), 0); }, 1500);
+}
 
 // ------------------------------------------------------------ right: info, mastery, overview, statistics
 const openRow = { overview: true, stats: false };
@@ -374,12 +393,12 @@ let draft = null; // killstreak picks while you have fewer than 3 (never saved l
 function loTile(cls, pic, name, sub, on, tip, color, fn) {
   const t = el('button', 'cz-tile ' + cls + (on ? ' on' : ''));
   t.style.setProperty('--rc', color);
-  const p = el('span', 'pic'), im = el('img'); im.alt = ''; p.append(im);
+  const p = el('span', 'pic'), im = el('img'); im.alt = ''; im.src = PLACEHOLDER; p.append(im);
   t.append(p, el('span', 'nm', name));
   if (sub) t.append(el('span', 'eq sub', sub));
   if (on) t.append(el('span', 'eq', 'ON'));
   t._pic = pic; t._img = im;
-  if (cls === 'lo-streak') im.src = pic(); else tileQ.push(t); // streak pictures are cheap drawings: right away
+  tileQ.push(t); // (killstreaks are 3D renders now too: queued like the rest)
   t.addEventListener('mouseenter', () => { const h = $('czHover'); h.classList.remove('hidden'); h.style.setProperty('--rc', color); h.querySelector('b').textContent = name; h.querySelector('i').textContent = tip[0]; h.querySelector('span').textContent = tip[1]; h.querySelector('.req').innerHTML = ''; });
   t.addEventListener('mouseleave', () => $('czHover').classList.add('hidden'));
   t.addEventListener('click', fn);
@@ -428,7 +447,7 @@ function setTab(t) {
   root.classList.toggle('strip-on', !!t);
   for (const b of $('czTabs').children) b.classList.toggle('on', b.dataset.tab === t);
   hoverOff();
-  if (t) { F.r = 'all'; renderTiles(); $('czTiles').scrollLeft = 0; }
+  if (t) { F.r = 'all'; renderTiles(); $('czTiles').scrollLeft = 0; wantModels(); }
   requestAnimationFrame(() => { resizePreview(); dirty = 2; });
 }
 const TAB = () => TABS.find((x) => x.id === tab);
@@ -488,7 +507,8 @@ function renderTiles() {
   for (const k of list) box.append(tile(T, k, cur));
   $('czN').textContent = `${list.length}/${all.length}`;
   if (!list.length) box.append(el('div', 'cz-empty', T.type === 'model' && !all.length ? `no skins for the ${WEAPONS[sel].name} yet` : 'nothing matches. try fewer letters'));
-  if (!tilesIO) for (const t of box.children) if (t._pic) tileQ.push(t);
+  if (!tilesIO) { for (const t of box.children) if (t._pic) tileQ.push(t); }
+  else for (const t of [...box.children].slice(0, 12).reverse()) if (t._pic) { tilesIO.unobserve(t); tileQ.unshift(t); } // the first screenful right away (the observer can lag a busy frame or two)
 }
 function variant(T, k) { const s = wearing(); s[T.idx] = k === RAND ? pickOne(pool(T.type, sel)) || T.none : k; return s; }
 function tile(T, k, cur, kind) {
@@ -515,7 +535,7 @@ function tile(T, k, cur, kind) {
   else if (T.type === 'effect') pic.append(el('span', 'glyph', k === 'none' ? '∅' : FX_ICO[k] || '✨'));
   else if (T.type === 'hat' && k === 'none') pic.append(el('span', 'glyph', '∅'));
   else {
-    const im = el('img'); im.alt = '';
+    const im = el('img'); im.alt = ''; im.src = PLACEHOLDER; pic.classList.add('loading');
     pic.append(im);
     const sk = wearing();
     if (T.type === 'hat') t._pic = () => objIcon('czhat:' + k, () => makeHat(k));
@@ -569,13 +589,20 @@ function hoverOff() {
 }
 
 // ------------------------------------------------------------ tile + list pictures, a few per frame
+let redraws = 0; // (tests read it: window.__czRedraws)
+export const czRedraws = () => redraws;
 const iconQ = [], tileQ = []; // the strip's tiles go first: they're what you're looking at
-function lazyIcon(img, fn) { const holder = { _pic: fn, _img: img }; iconQ.push(holder); }
+function lazyIcon(img, fn) { img.src = PLACEHOLDER; const holder = { _pic: fn, _img: img }; iconQ.push(holder); } // (the loading cube until it's drawn)
 function pumpIcons() {
   const t0 = performance.now();
   while ((tileQ.length || iconQ.length) && performance.now() - t0 < 12) {
     const t = tileQ.length ? tileQ.shift() : iconQ.shift();
-    if (t._img && t._img.isConnected) { const u = t._pic(); if (u) t._img.src = u; }
+    if (t._img && t._img.isConnected) {
+      const [u, w] = drawIcon(t._pic);
+      if (u && t._img.src !== u) { t._img.src = u; redraws++; }
+      if (t._img.parentNode) t._img.parentNode.classList.toggle('loading', isPlaceholder(u));
+      if (w) { whenGlb(w, () => tileQ.push(t)); if (t.dataset && t.dataset.k) for (const g of w) want(g, 4); } // drawn without (or waiting for) a Blender model: again when it lands. the strip's tiles jump the queue
+    }
   }
 }
 function wrapIcon(mode) { // a tiny knife: the half the wrap paints is pink

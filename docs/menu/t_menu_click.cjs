@@ -8,6 +8,8 @@ const vis = (pg, sel) => pg.isVisible(sel);
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--mute-audio'] });
   const pg = await b.newPage({ viewport: { width: 1280, height: 720 } });
   const errs = []; pg.on('pageerror', (e) => errs.push(e.message));
+  pg.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
+  const bad4 = []; pg.on('response', (r) => { if (r.status() >= 400) bad4.push(`${r.status()} ${r.url()}`); });
   await pg.addInitScript(() => { if (!localStorage.getItem('jankfire')) localStorage.setItem('jankfire', JSON.stringify({ name: 'clicker', killcam: false, jank: 1 })); });
   const URL = `http://localhost:${process.env.PORT}/`;
   await pg.goto(URL); await sleep(2500);
@@ -39,7 +41,7 @@ const vis = (pg, sel) => pg.isVisible(sel);
   ok(await vis(pg, '#scr-cosmetics') && (await pg.locator('#sk-grapple > *').count()) > 3 && (await pg.locator('#sk-spray > *').count()) > 3, 'hub GRAPPLE & SPRAY');
   await pg.click('#scr-cosmetics .back'); await sleep(800);
   ok(await vis(pg, '#scr-main'), 'BACK to home');
-  // icon row + the rest
+  // the side menu: every button (the icon row is plaques now; ids/selectors unchanged)
   for (const [sel, scr] of [['.hicon[data-go=settings]', 'settings'], ['.hicon[data-go=guide]', 'guide'], ['.hicon[data-go=lore]', 'lore'], ['#pnBtn', 'patchnotes'], ['[data-go=leaders]', 'leaders'], ['#cratesBtn', 'crates']]) {
     await home(); await pg.click('#scr-main ' + sel, { force: true }); await sleep(900); ok(await vis(pg, '#scr-' + scr), `home ${sel} -> ${scr}`);
     if (scr === 'settings') { await pg.click('#ctlBtn'); await sleep(700); ok(await vis(pg, '#scr-controls'), 'settings -> KEY BINDINGS'); }
@@ -77,7 +79,8 @@ const vis = (pg, sel) => pg.isVisible(sel);
   await home(); await pg.click('#acctBar button:has-text("PROFILE")'); await sleep(900);
   ok(await vis(pg, '#scr-profile'), 'PROFILE');
   await pg.click('#logoutBtn'); await sleep(900); ok(await pg.locator('#acctBar button:has-text("LOG IN")').count() === 1, 'LOG OUT from the profile');
-  ok(errs.length === 0, 'page errors: ' + (errs.join(' | ') || 0));
+  ok(errs.length === 0, 'page + console errors: ' + (errs.join(' | ') || 0));
+  ok(bad4.length === 0, '4xx/5xx responses: ' + (bad4.join(' | ') || 0));
   console.log(bad ? `${bad} FAIL` : 'ALL OK');
   await b.close();
 })();

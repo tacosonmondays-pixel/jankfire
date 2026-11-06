@@ -14,6 +14,7 @@ import { makeStory } from '/shared/story/story.js';
 import { toSave, fromSave } from '/shared/story/state.js';
 import * as lab from '/shared/story/content/test/lab.js';
 import * as overdue from '/shared/story/content/overdue.js'; // the full script, as an engine pack (PR #76)
+import { PLACES } from '/shared/city/slice.js'; // the world lane's real spots for the script's zones (the slice city)
 import { actors, spawnActor, despawnActor, clearActors, updateActors, dropTo, play } from './actors.js';
 import { startTalk, talkKey, talkFrame, talking } from './talk.js';
 import { questHud, card as card0, toast } from './questhud.js';
@@ -127,10 +128,11 @@ function stage() {
   ST.staged = key;
   clearActors(); for (const t of ST.things.values()) G.scene.remove(t.mesh); ST.things.clear(); ST.inZone.clear();
   for (const sp of SPOTS.values()) G.scene.remove(sp.mesh); SPOTS.clear(); for (const s0 of REH.signs) G.scene.remove(s0); REH.signs = [];
-  const where0 = G.joined && (MAP.id === 'story_test' && inStory() ? 'story_test' : MAP.id === 'range' && LAB && /[?&]storylab=1\b/.test(location.search) ? 'range' : '');
+  const where0 = G.joined && ((MAP.id === 'story_test' || MAP.id === 'story_slice') && inStory() && !LAB ? MAP.id : MAP.id === 'story_test' && inStory() ? 'story_test' : MAP.id === 'range' && LAB && /[?&]storylab=1\b/.test(location.search) ? 'range' : '');
   if (!where0) { ST.on = false; return; }
   ST.on = true;
-  labAt = LABS[where0];
+  labAt = LABS[where0] || LABS.story_test;
+  ST.city = where0 === 'story_slice';
   if (inStory() && G.story.cur) { // the save slot the shell loaded: pick up exactly where it was
     const d = G.story.cur.data || {};
     ST.S.st = fromSave(d); ST.bag.clear();
@@ -186,13 +188,17 @@ const REH = { zones: {}, signs: [] }, ROSTER = new Map(), SPOTS = new Map();
 function rehearse() {
   const D = ST.S.defs;
   REH.zones = {}; for (const s0 of REH.signs) G.scene.remove(s0); REH.signs = [];
-  const fixed = { 'bottom:machine': [0, 0, -11.8], 'bottom:lostfound': [0, 0, -4] };
+  // in the slice city the world lane's PLACES are the real spots; on the test lot (or for zones it doesn't have yet)
+  // the rehearsal grid round the Lost & Found
+  const city = ST.city, c0 = city ? PLACES['bottom:lostfound'].p : [0, 0, -4];
+  const fixed = city ? {} : { 'bottom:machine': [0, 0, -11.8], 'bottom:lostfound': [0, 0, -4] };
+  if (city) for (const [id, pl] of Object.entries(PLACES)) if (D.zones[id] && !D.zones[id].p) fixed[id] = pl.p.slice();
   const ids = Object.keys(D.zones).filter((z) => !D.zones[z].p).sort((a, b) => (D.zones[a].district || '').localeCompare(D.zones[b].district || '') || a.localeCompare(b));
-  const slots = [];
-  for (let z = -34; z <= 34; z += 6.5) for (let x = -34; x <= 34; x += 6.5) if (Math.hypot(x, z - 6) > 6 && Math.hypot(x, z + 12) > 6 && Math.hypot(x, z + 4) > 4) slots.push([x, 0, z]);
-  slots.sort((a, b) => Math.hypot(a[0], a[2] + 4) - Math.hypot(b[0], b[2] + 4)); // act I's districts sort first, so they land nearest the Lost & Found
+  const slots = [], span = city ? 30 : 34;
+  for (let z = -span; z <= span; z += 6.5) for (let x = -span; x <= span; x += 6.5) if (city || (Math.hypot(x, z - 6) > 6 && Math.hypot(x, z + 12) > 6 && Math.hypot(x, z + 4) > 4)) slots.push([c0[0] + x, c0[1], c0[2] + (city ? 34 + z : z + 4)]); // (city: the rehearsal yard is the street south of the depot)
+  slots.sort((a, b) => Math.hypot(a[0] - c0[0], a[2] - c0[2]) - Math.hypot(b[0] - c0[0], b[2] - c0[2])); // act I's districts sort first, so they land nearest the Lost & Found
   let i = 0;
-  for (const id of ids) { const p = fixed[id] || slots[i++] || [0, 0, 0]; p[1] = dropTo([p[0], 3, p[2]], 3); REH.zones[id] = p; D.zones[id].r = Math.min(D.zones[id].r || 2.5, 2.5); if (!fixed[id] || id === 'bottom:lostfound') REH.signs.push(sign(D.zones[id].name || id, p)); }
+  for (const id of ids) { const p = fixed[id] || slots[i++] || c0.slice(); p[1] = dropTo([p[0], p[1], p[2]], 30); REH.zones[id] = p; D.zones[id].r = Math.min(D.zones[id].r || 2.5, city && fixed[id] ? 4 : 2.5); if (!fixed[id] || id === 'bottom:lostfound' || city) REH.signs.push(sign(D.zones[id].name || id, p)); }
   ROSTER.clear();
   const at = {};
   for (const [id, n] of Object.entries(D.npcs)) {
