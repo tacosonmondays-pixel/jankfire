@@ -1,4 +1,4 @@
-// node tests/story/api.test.mjs <port> : /api/story/* against a running server (file store)
+// node tests/story/api.int.mjs <port> : /api/story/* against a running server (file store)
 import assert from 'node:assert/strict';
 const B = `http://localhost:${process.argv[2] || 3000}`;
 const post = async (path, body, tok) => { let r; try { r = await fetch(B + path, { method: 'POST', headers: { 'content-type': 'application/json', ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: typeof body === 'string' ? body : JSON.stringify(body || {}) }); } catch { return { code: 413, j: {} }; } /* (readJson hangs up on a body over 64 KB: that's a no too) */ return { code: r.status, j: await r.json().catch(() => ({})) }; };
