@@ -42,6 +42,7 @@ import { DUCKRAIN } from './shared/modes.js';
 import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
 import { OOB, outOfBounds, boundsCenter } from './shared/bounds.js';
 import { Traffic } from './server/traffic.js'; // cars on the roads (server/traffic.js)
+import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from './shared/secrets.js'; // hidden NPCs + cats
 import { installRoyale } from './server/royale.js'; // Jank Royale (battle royale)
 import { BR } from './shared/royale.js';
 import { tickHR, hrBot } from './server/hrguy.js'; // the Tall Guy From HR (Scary Forest)
@@ -2738,6 +2739,31 @@ class Room {
     if (this.crosses) this.crosses.clear();
   }
 
+  // hidden NPCs + cats (shared/secrets.js). the client opens the chat / pets straight away; this decides whether it
+  // counts: alive, on that map, really next to it, not mid Plant & Defuse, and once per account (gifts too)
+  onSecret(p, m) {
+    const id = m.id;
+    if (typeof id !== 'string' || !Object.hasOwn(SECRETS, id)) return;
+    const t = now();
+    if (t - (p.secT || 0) < SECRET.cd) return; // rate limit
+    p.secT = t;
+    const s = SECRETS[id], no = (why) => send(p, { t: 'sec', id, no: why });
+    if (s.map !== this.cfg.map) return no('map');
+    if (secretsOff(this.game) || this.isEcon()) return no('bomb');
+    if (!p.alive || p.isBot) return no('dead');
+    if (!canReach(p.pos, id, 0.4)) return no('far'); // (a little slack: you were next to it when you pressed F)
+    this.broadcast({ t: 'secfx', id, by: p.id }, p.id); // everyone else sees the cat purr / the NPC turn round
+    if (!p.acct) return send(p, { t: 'sec', id, guest: 1 });
+    if (p.acct.lore.has(id)) return send(p, { t: 'sec', id, again: 1 });
+    p.acct.lore.add(id);
+    let gift = s.gift || null;
+    if (gift && gift.type && owns(p.inv, gift.type, gift.id)) gift = gift.or || null; // already had it: the fallback
+    if (gift) gift = gift.type ? { type: gift.type, id: gift.id } : { roll: gift.roll };
+    if (gift && gift.type) (p.inv[gift.type] ||= []).push(gift.id); // yours from now (kill effect / grapple pickers check p.inv)
+    store.addLore(p.acct.n, id, gift).catch((e) => logErr('lore', e));
+    if (s.kind === 'cat') { p.acct.base.cats = (p.acct.base.cats || 0) + 1; checkAch(p); } // the 5th pet unlocks Board Approved
+    send(p, { t: 'sec', id, first: 1, gift, lore: [...p.acct.lore] });
+  }
   handle(p, m) {
     if (p.quiz && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray'].includes(m.t)) return; // pens down: no attacks during a pop quiz
     if (p.trap && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray'].includes(m.t)) return; // sealed in a soap bubble: no attacks, parries, items, streaks, sprays or planting till it pops
@@ -2786,6 +2812,7 @@ class Room {
         if (text && now() - p.chatT > 400) { p.chatT = now(); this.broadcast({ t: 'chat', id: p.id, m: text }); }
         break;
       }
+      case 'sec': this.onSecret(p, m); break; // F next to a hidden NPC or cat
       case 'tbag': { // crouch-spammed too hard: your knees explode
         if (this.chaosKit && this.chaosKit.noTbag) break; // one in the chamber: a free area kill that also burns a life
         if (!p.alive || now() - (p.tbagT || 0) < 3000) break;
@@ -3963,7 +3990,8 @@ wss.on('connection', (ws) => {
         const u = m.token ? await accounts.verify(m.token).catch(() => null) : null;
         if (u) {
           const base = {}; for (const k of STAT_KEYS) base[k] = u[k] || 0;
-          m._name = u.name; m._acct = { n: u.name_lower, d: {}, since: now(), base, achs: achievementsFrom(base) };
+          base.cats = catsOf(u.inv); // hidden cats petted (inv.lore, not a column: flushStats never sends it)
+          m._name = u.name; m._acct = { n: u.name_lower, d: {}, since: now(), base, achs: achievementsFrom(base), lore: loreOf(u.inv) };
           m._level = levelOf(u.xp); m._inv = u.inv || {}; m._achs = m._acct.achs;
         }
         else {

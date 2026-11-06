@@ -62,6 +62,7 @@ import { achInv } from '/shared/cosmetics.js'; // achievement rewards (Golden Sn
 import { achProgress, ROYAL_ALL, ROYAL_FEATS } from '/shared/looks.js';
 import { royalToast, royalUnlock, royalBoxes } from './royal.js';
 import { updateTraffic, carCollide, carKill, carFeedIcon } from './traffic.js'; // cars on the roads
+import { updateLore, updateLoreFx, loreKey, renderLore } from './lore.js'; // hidden NPCs + cats (F), the LORE page
 import { setOnly, coughCloud } from './weapons.js';
 import { renderPatchNotes, markPatchSeen, patchUnseen } from './patchnotes.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
@@ -179,6 +180,7 @@ function show(id) {
   if (id === 'match') syncMatchUI();
   if (id === 'profile') { renderProfile(); restore().then((me) => { if (me && screen === 'profile') { renderProfile(); renderAcctBar(); } }); }
   if (id === 'leaders') renderLeaders();
+  if (id === 'lore') renderLore($('loreList'));
   controlsScreen(id === 'controls', saveSettings);
   if (id === 'main') { renderAcctBar(); homeShown(); }
 }
@@ -590,6 +592,7 @@ function rewardsFor(achId) {
   const out = [];
   for (const s2 of LOOK_SLOTS) for (const [k, v] of Object.entries(ACCESSORIES[s2])) if (v.ach === achId) out.push({ slot: s2, id: k, name: v.name });
   for (const [k, v] of Object.entries(BOTTOMS)) if (v.ach === achId) out.push({ slot: 'bottom', id: k, name: v.name }); // (Overalls)
+  for (const [k, v] of Object.entries(TOPS)) if (v.ach === achId) out.push({ slot: 'top', id: k, name: v.name }); // (Maid Dress)
   for (const t of LOOT_TYPES) for (const [k, v] of Object.entries(COSMETICS[t])) if (v.ach === achId) out.push({ type: t, id: k, name: v.name }); // weapon skins live in COSMETICS
   return out;
 }
@@ -652,7 +655,7 @@ function buildCharacterUI() {
   };
   swatches('lk-skin', 'skin', SKIN_TONES, 'mannequin');
   styles('lk-hair', 'hair', HAIRS); swatches('lk-hairColor', 'hairColor', HAIR_COLORS);
-  styles('lk-top', 'top', TOPS); swatches('lk-topColor', 'topColor', CLOTH_COLORS, look.top === 'runner' ? 'hi-vis yellow' : 'same as your colour');
+  styles('lk-top', 'top', TOPS); swatches('lk-topColor', 'topColor', CLOTH_COLORS, look.top === 'runner' ? 'hi-vis yellow' : look.top === 'maid' ? 'classic black' : 'same as your colour');
   styles('lk-bottom', 'bottom', BOTTOMS); swatches('lk-bottomColor', 'bottomColor', CLOTH_COLORS, 'same as your colour');
   for (const slot of LOOK_SLOTS) {
     const el = $('lk-' + slot);
@@ -725,7 +728,7 @@ $('lkRandom').addEventListener('click', () => {
   const achs = myAchs();
   const pick = (arr) => arr[(Math.random() * arr.length) | 0];
   const look = { color: pick(LOOK_COLORS), skin: pick(SKIN_TONES), hair: pick(Object.keys(HAIRS)), hairColor: pick(HAIR_COLORS),
-    top: pick(Object.keys(TOPS)), topColor: pick(CLOTH_COLORS), bottom: pick(Object.entries(BOTTOMS).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k)), bottomColor: pick(CLOTH_COLORS) };
+    top: pick(Object.entries(TOPS).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k)), topColor: pick(CLOTH_COLORS), bottom: pick(Object.entries(BOTTOMS).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k)), bottomColor: pick(CLOTH_COLORS) };
   for (const s2 of LOOK_SLOTS) look[s2] = pick(Object.entries(ACCESSORIES[s2]).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k));
   setLook(look); buildCharacterUI();
 });
@@ -973,6 +976,7 @@ function pressed(e) {
   if ((RP.active || G.killcamPending) && K.matches('skip', e)) { e.preventDefault(); skipReplay(); return; }
   if (esKey(e, VOTES.findIndex((a) => K.matches(a, e)))) { e.preventDefault(); return; } // end screen: the vote keys win over any game action on the same key, arrows switch tabs
   if (brKey(e)) return; // jank royale: F pick up, H heal, space spectates the next one
+  if (loreKey(e, canUse(G.round, ME.pos))) { e.preventDefault(); return; } // the use key next to a hidden NPC / cat (not where it plants, defuses or buys), 1-3 answer in a chat
   if (K.matches('scores', e)) { e.preventDefault(); scoresOpen = true; renderScores(); return; }
   if (K.matches('chat', e)) { e.preventDefault(); openChat(); return; }
   if (K.matches('menu', e)) { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
@@ -1767,6 +1771,7 @@ function frame(t) {
   if (!RP.active) for (const r of G.remotes.values()) r.update(rt, dt, now);
   else for (const r of G.remotes.values()) { r.ch.root.visible = false; r.rope.visible = false; r.shadow.visible = false; } // the replay has its own copies
   updateTraffic(dt, now, RP.active);
+  updateLore(dt, now); updateLoreFx(now); // (out of a match it clears them away)
   brFrame(dt, now); // jank royale: blimp, zone, loot, hud
   updateGibs(dt);
   updateKillFx(dt);
