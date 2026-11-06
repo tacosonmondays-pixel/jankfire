@@ -16,6 +16,8 @@ Then check it in the real game (start a server first: `PORT=3100 node server.js`
 ```
 node tools/blender/shots.cjs 3100 <outDir> ar,shotgun,revolver 3,0   # viewmodel hip + ADS, code vs Blender, Too HD + Potato,
                                                                      # then the ADS check (exit code 1 if it fails)
+node tools/blender/shots.cjs 3100 <outDir> ar:ar_toy,cig,bow 3      # skins are weapon:model; weapons that can't aim get an
+                                                                     # "in use" shot instead (lit, drawn, swung)
 node tools/blender/shots.cjs 3100 <outDir> ar,smg,shotgun 3 --check-only  # just the ADS check
 node tools/blender/shots_props.cjs 3100 <outDir> 3,0                 # props on Warehouse/Suburb vs their boxes + a showcase
 ```
@@ -25,7 +27,7 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 ## What's here
 | file | makes | notes |
 |---|---|---|
-| `lib.py` | the kit | game-coordinate primitives (`box`, `cyl`, `lathe`, `side` side-profile extrusions, `side_x`, `tube`, `wheel`, booleans with `cut`), materials (`mat`) with generated crusty textures (`tex_noise`, `tex_wood`, `tex_stripes`, `tex_camo`, `tex_canvas` + a 5x7 bitmap font), `part` for moving nodes, `finish` + `export` + `sheet` |
+| `lib.py` | the kit | game-coordinate primitives (`box`, `cyl`, `lathe`, `side` side-profile extrusions, `side_x`, `tube`, `sweep`, `loft` (any cross-section along a path, per-face materials), `wheel`, booleans with `cut`, `jitter` for fur / ash / snow), materials (`mat`, `emit_tex` for glowing textures) with generated crusty textures (`tex_noise`, `tex_wood`, `tex_stripes`, `tex_camo`, `tex_canvas` + a 5x7 bitmap font), UVs (`uv_box`, `uv_planar` decals, `uv_cyl` wrap-around labels), `part` for moving nodes, `zone_join` (wrap zones), `clone_scaled` (a thrown copy), `finish` + `export` + `sheet` (`exposure` for pale things) |
 | `make_ar.py` | `w_ar.glb` | M4-pattern carbine, x1.54 |
 | `make_shotgun.py` | `w_shotgun.glb` | 870-pattern pump, x1.05, `pump` node |
 | `make_revolver.py` | `w_revolver.glb` | 6in .357, x1.5, `cylinder` + `hammer` nodes |
@@ -59,6 +61,27 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 | `make_rack.py` | `p_rack.glb` | pallet rack: nodes `bay` (6 m) and `frame` |
 | `make_streetlight.py` | `p_streetlight.glb` | 6 m cobra-head street light |
 | `make_numballs.py` | `p_numball.glb` | glossy toy number balls, nodes `n0`..`n9` |
+| `make_cig.py` | `w_cig.glb`, `w_cig_cigar.glb` | king-size filter cigarette x2.2 (MAY CAUSE JANK), fat gordo cigar x1.45; the ember is the `tip` node |
+| `make_cards.py` | `w_cards.glb`, `pj_card.glb`, `w_reverse.glb`, `w_reverse_skip.glb` | rounded glossy cards: the deck's `fan` (`card0`..`card4` face meshes, weapons.js deals your hand onto them), the thrown card, the Reverse / Skip cards (`card` node) |
+| `make_bread.py` | `w_bread.glb`, `w_bread_croissant.glb` | baguette x2.7 with real scores, in a bakery sleeve that says BREAD; croissant x8.7 |
+| `make_spoon.py` | `w_spoon.glb`, `w_spoon_ladle.glb`, `w_knife_spoon.glb` | tablespoon x1.15 (PROPERTY OF THE CAFETERIA), soup ladle; the Knife's Spoon skin is the same tablespoon held like a knife (x0.915, on its side, the code skin's tip and hat spot) |
+| `make_slipper.py` | `w_slipper.glb`, `pj_slipper.glb`, `w_slipper_croc.glb`, `pj_slipper_croc.glb` | fluffy house slipper (a MOM tag), foam clog with charms; thrown ones x1.6 |
+| `make_projectiles.py` | `pj_chicken`, `pj_bowling`, `pj_banana`, `pj_peel`, `pj_frag`, `pj_smokegren` | the rubber chicken (with a firework on its back), the giant bowling ball, the banana, the peel on the floor, a pineapple frag (PULL ME tag), a canister smoke (DO NOT INHALE) |
+| `make_slapper.py` | `w_slapper.glb`, `w_slapper_foam.glb`, `w_slapper_paw.glb` | jelly-rubber toy hand on a candy stick (real hand x1.35, metaballs, SLAP knuckle tattoos), stadium foam finger (#1 / U R #2), grizzly paw (BEAR ARMS); the slapping end is the `hand` node; `--only=` builds one |
+| `make_scythe.py` | `w_scythe.glb`, `w_scythe_rifle.glb`, `w_scythe_reaper.glb` | the killstreak's two forms from one rifle (Remington-700-size action, 34 mm scope) + an Austrian scythe blade on a hinge (`blade` node); the rifle's `bolt` cycles; the Reaper (bone blade, skull pommel, IF FOUND, YOU'RE NEXT) |
+| `make_revolver_flint.py` | `w_revolver_flint.glb` | late-1700s holster flintlock x1.05 (TOTALLY A REVOLVER); the cock is the `hammer` node (under a flipped empty so +x swings it the right way) |
+| `make_gumball.py` | `w_marbles_gumball.glb` | counter-top gumball machine x1.0 stretched into a pistol: see-through globe, 28 gumballs, the chrome chute is the barrel (NO REFUNDS) |
+| `make_redline_hotrod.py` | `w_redline_hotrod.glb` | the Redline x1.18 in candy cherry with a flame job, chrome, fuzzy dice; zoomie exhaust throats share `redline_vents`, so they glow with your HP; same `needle` |
+| `make_ar_toy.py` | `w_ar_toy.glb` | foam-dart blaster about x1.3 a real toy: clamshell screws, priming slide, see-through dart clip, tall plastic sights (NOT A TOY) |
+| `make_ar_bullpup.py` | `w_ar_bullpup.glb` | original 24in DMR bullpup x1.38, carry-handle optic, smoke mag behind the grip (FRONT TOWARD ENEMY); `port` = shells fly out by your cheek |
+| `make_smg_uzi.py` | `w_smg_uzi.glb` | Uzi-pattern open bolt x1.45, raised sights (FITS MOST POCKETS, your keys on the sling loop) |
+| `make_shotgun_double.py` | `w_shotgun_double.glb` | side-by-side 12-bore hammer gun x1.0; both hammers are the `hammer` node; a gold rubber duck on the lock plate |
+| `make_minigun_gatling.py` | `w_minigun_gatling.glb` | 1874 Camel-pattern Gatling x1.0: the crank is on the barrel axis, inside the `barrels` node (TURN CRANK FASTER) |
+| `make_sniper_musket.py` | `w_sniper_musket.glb` | Brown Bess x1.38 with a 15in bayonet; a brass pirate spyglass lashed on is the scope |
+| `make_sniper_golden.py` | `w_sniper_golden.glb` | the round-1 AWM re-dressed: gold scrollwork, rubies, a crown turret, a PRICELESS tag; `noWrap`, `glint` spots, `bolt` |
+| `make_chicken_turkey.py` | `w_chicken_turkey.glb`, `pj_chicken_turkey.glb` | RPG-style tube with a roast turkey on the muzzle (HEAT 350F); the thrown turkey x3.3 |
+| `make_bowling_cannon.py` | `w_bowling_cannon.glb` | bronze hand mortar with verdigris, slow-match fuse, bowling-pin lifting handles; `ads` pose |
+| `make_banana_bunch.py` | `w_banana_bunch.glb` | the Peel Shooter's AKS-74U in AK-74 plum, the mag is a whole hand of bananas (PRODUCE OF JANK) |
 
 ## Rules that make a model drop straight in
 - **Build in game space**: three.js axes and metres (x right, y up, -z forward); `lib.gv()` converts to Blender. A
@@ -68,7 +91,13 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 - **Metadata** goes on the root empty as `jf` (exported as glTF extras, read by `public/js/glbkit.js`):
   `muzzle`, `sight` `{ y, z }` (the line of sight; the game puts your eye 0.17 m / scale behind `z`, so push `z` back or
   forward to set the eye distance), `hatAt` `[[x, y, z], height]`, moving parts (`pump`, `cylinder`, `hammer`, `bolt`), the code models' hooks
-  (`needle`, `vents`, `barrels`) and `paint` (materials the flat look recolours).
+  (`needle`, `vents`, `barrels`, `tip` = the cigarette ember weapons.js swells, `fan` = the card nodes it deals your hand
+  onto, `hand`, `blade`, `card`), `bow` (the string rig: the halves stay on the limb tips and bend to the arrow's nock as
+  you draw, the limbs flex), `glint` (spots for the Golden Sniper's star glint), `noWrap` (a trophy no wrap paints), `port`
+  (where the shells fly out, if not the default spot) and `paint` (materials the flat look recolours). `id` is the base weapon, `skin` the skin it is.
+- **File names**: a weapon is `w_<id>.glb`, a skin `w_<skin id>.glb` (e.g. `w_ar_toy.glb`), a thrown thing `pj_<kind>.glb`
+  (centred, nose to -z) and a skin's thrown one `pj_<skin id>.glb` (a thrown croc is a croc). Anything missing = the code
+  model, as before.
 - **Aiming**: put real sights high enough that the gun stays under the crosshair (the AR's flip-up peep, the shotgun's
   ghost ring, the Redline's tall aperture, the Peel Shooter's side-mount red dot). Guns without sights can carry `ads`
   `[x, y, z]`, the viewmodel pose while aiming (the bowling cannon tucks itself down and right). The ADS check in
@@ -84,11 +113,26 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
   filtered on purpose (ugly-on-purpose, matches Potato through Too HD).
 - **Budget**: weapons up to ~10k tris (viewmodel), props 2-16k. Keep bevels small and segment counts modest.
 
+## Kit gotchas (found the hard way)
+- Raw bmesh UVs: name the layer (`bm.loops.layers.uv.new('UVMap')`). Unnamed it's "Float2", and after a join the
+  exported UVs are all zeros (white textures).
+- `uv_planar` right after making an object reads a stale `matrix_world`: call `bpy.context.view_layer.update()` first.
+- `lathe()` caps both ends by default, so a thin ring becomes a solid disc (a lens cover): pass `cap=False` for bands.
+- Boolean cuts can leave the new faces on an empty material slot (grey in the sheet): the round-2 gun scripts have a
+  small `fixmats()` that hands them the object's own material.
+- Metaballs: positions go through `gv()`, radii are metres too (millimetres made a 70 m blob that hung Blender).
+- One Blender session = unique object names: in a multi-file script give each model's hook nodes their own names and
+  put the exact name in its meta.
+
 ## How the game uses them
 - `public/js/glbkit.js`: `prepAuthored` takes any glb with `jf` metadata: nearest-filtered textures, the Potato vertex
   snap (`jankify`), a small studio env map for gloss, glows kept through skins. `authored(id)` gives a shared copy.
-- Weapons: `buildWeapon` (models.js) swaps in `w_<id>` as built (no fitting) and reads muzzle/sight/hat from it.
-  A missing or broken file = the code model, as before. Weapon skins (finishes, hats, effects) work on top.
+- Weapons: `buildWeapon` (models.js) swaps in `w_<id>` (or `w_<skin>` for a skin model) as built (no fitting) and reads
+  muzzle/sight/hat/hooks from it. A missing or broken file = the code model, as before. Finishes, wraps, hats and
+  effects work on top. Thrown things: `buildProjectile` takes `pj_<skin>` / `pj_<kind>`, `buildPeel` takes `pj_peel`.
+- Knives and katanas (`public/js/blades/`) stay code-built: they are real-reference models already. `glossBlade` gives
+  them the Blender set's studio gloss (steel and brass turn metal, wood varnished, grips satin) whenever the Blender
+  models are loaded.
 - Props: a map's boxes carry `{ pv: id }`; while `p_<id>` is loaded `world.js` skips drawing those boxes and `props.js`
   draws the model at the spot `L.P()` recorded. Collisions never change. In a map builder:
   ```js

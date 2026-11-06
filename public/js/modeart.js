@@ -3,6 +3,7 @@
 // every picture cached as an image after its first render.
 import * as THREE from 'three';
 import { buildWeapon, buildCharacter, M, freeTree } from './models.js';
+import { withEnv } from './glbkit.js';
 import { DEFAULT_LOOK } from '/shared/looks.js';
 
 const COLORS = {
@@ -97,7 +98,7 @@ function shot(build, col, w = 192, h = 120, slab = true) {
   const m = build(); root.add(m); scene.add(root);
   R.setClearColor(new THREE.Color(col[1]), slab ? 1 : 0);
   if (slab) { cam.position.set(1.05, 1.2, 2.05); cam.lookAt(0, 0.5, 0); } else { cam.position.set(1.5, 1.75, 2.9); cam.lookAt(0, 0.45, 0); }
-  R.render(scene, cam);
+  withEnv(R, scene, () => R.render(scene, cam)); // its own reflections for the Blender guns
   const url = R.domElement.toDataURL('image/png');
   scene.remove(root); freeTree(root);
   return url;

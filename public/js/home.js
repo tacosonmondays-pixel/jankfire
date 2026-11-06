@@ -53,6 +53,8 @@ export function homeShown() {
 }
 // other screens get the crunchy preview back
 export function homeLeft() { setPreviewRes(0.5); }
+// a skin model that downloaded late: put it in the hero's hands
+export function refreshHero() { if (homeOn()) hero(); }
 
 function hero() {
   const lo = G.settings.loadout || {};
