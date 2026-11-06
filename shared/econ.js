@@ -83,7 +83,6 @@ export const PRICES = {
   katana: { price: 950, kill: 750 },
   knife: { price: 350, kill: 1100, pen: 0.5 },
   slapper: { price: 300, kill: 1050 },
-  spoon: { price: null, kill: 600, pen: 1 }, // mode-only now (a knife skin): never sold
 };
 // kill rewards for things that aren't loadout weapons (the kill's w, or for void / cough kills the weapon that sent them)
 export const OTHER_KILL = { frag: 300, duck: 350, smokegren: 300, tbag: 1500, bomb: 0, scythe: 0, scythe_rifle: 0, hook: 300 };
