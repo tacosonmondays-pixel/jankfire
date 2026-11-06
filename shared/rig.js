@@ -8,7 +8,8 @@ export const RIG = {
   kbTake: 0.15, // how much knockback still gets through: the rig shrugs hits off
   // movement: ground speed (m/s), sprint multiplier, ground accel, friction, air accel / cap, gravity, tap hop, eye
   // height, the speed where the overdrive trail starts, and how fast it turns its momentum toward where you push
-  speed: 16, sprint: 1.45, accel: 7.5, fric: 4.2, airAccel: 24, airCap: 1.4, grav: 34, hop: 7.5, eye: 2.05, trail: 11, steer: 7,
+  // (hop: a tap of Space goes about 6 m straight up, several times a normal jump)
+  speed: 16, sprint: 1.45, accel: 7.5, fric: 4.2, airAccel: 24, airCap: 1.4, grav: 34, hop: 20, eye: 2.05, trail: 11, steer: 7,
   // rocket punch: hold to charge (s), cooldown, damage / dash length / knockback (horizontal, up) from no charge to full,
   // dash speed, how far in front of the rig the fist reaches, how wide the dash sweeps, and the wall slam bonus if they
   // hit a wall within wallWin s
@@ -22,7 +23,11 @@ export const RIG = {
   miss: { n: 4, cd: 10, dmg: 22, r: 3.2, kb: 12, speed: [16, 44], turn: 4.2, boost: 0.25, life: 5, seek: 75, cos: 0.4, gap: 90 },
   // charged leap: hold to charge (s), cooldown, speed forward / up from no charge to full, landing shockwave (damage at
   // the middle, radius from no charge to full, knockback)
-  leap: { charge: 0.9, cd: 0.7, h: [11, 27], up: [9.5, 17], dmg: 25, r: [4.5, 7.5], kb: 24 },
+  leap: { charge: 0.9, cd: 0.7, tap: 0.2, h: [11, 27], up: [20, 26], // (never lower than the hop: charging only adds)
+    dmg: 25, r: [4.5, 7.5], kb: 24 },
+  // thrusters (the grapple key): charges, s to refill one, s between bursts, the lift (m/s up, on top of whatever's
+  // left of a climb), and a shove the way you look. 3 back to back from the floor is ~10 m; never infinite flight
+  thrust: { n: 3, refill: 2.6, cd: 0.25, up: 13, fwd: 5 },
 };
 // every bit the rig sets in your snapshot FLAGS (the server clears them all unless it saw you activate the rig)
 export const RIG_BITS = FLAGS.RIG | FLAGS.RIG_BLOCK | FLAGS.RIG_CHARGE | FLAGS.RIG_LEAP;
@@ -59,4 +64,24 @@ export function rigBoxes(pos, k = 1) {
     { min: [x - w, y, z - w], max: [x + w, y + b, z + w], head: false },
     { min: [x - hw, y + b, z - hw], max: [x + hw, y + t, z + hw], head: true },
   ];
+}
+// a thrust burst: lift on top of what's left of a climb (a fall is cancelled first), most of your speed kept, a
+// shove the way you look (flat). v is changed in place
+export function thrustVel(v, d) {
+  const T = RIG.thrust, hl = Math.hypot(d[0], d[2]) || 1;
+  v[1] = Math.max(v[1], 0) * 0.6 + T.up;
+  v[0] = v[0] * 0.9 + (d[0] / hl) * T.fwd; v[2] = v[2] * 0.9 + (d[2] / hl) * T.fwd;
+}
+// thruster charges ({ n, next }): one comes back every refill s (both sides run this with their own clock)
+export function thrustCharges(c, n) {
+  const T = RIG.thrust;
+  while (c.n < T.n && c.next && n >= c.next) { c.n++; c.next = c.n < T.n ? c.next + T.refill * 1000 : 0; }
+  return c.n;
+}
+export function useThrust(c, n) {
+  const T = RIG.thrust;
+  if (thrustCharges(c, n) < 1 || n - (c.t || 0) < T.cd * 1000) return false;
+  c.n--; c.t = n;
+  if (!c.next) c.next = n + T.refill * 1000;
+  return true;
 }
