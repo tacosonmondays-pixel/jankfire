@@ -114,8 +114,8 @@ function load(id) {
     const u = m.story.has('s_' + id) ? '/models/story/s_' + id + '.glb' : m.pvp.has('p_' + id) ? '/models/p_' + id + '.glb' : null;
     if (!u) { e.state = 'code'; return; }
     loader.load(u, (gltf) => {
-      const parts = glbParts(gltf.scene);
-      if (parts.length) { e.parts = parts; e.state = 'glb'; e.url = u; for (const f of listeners) f(id); } else e.state = 'code';
+      const parts = glbParts(gltf.scene), lod1 = glbParts(gltf.scene, true); // full meshes, and the *_lod1 copy for mid distance
+      if (parts.length) { e.parts = parts; e.lod1 = lod1.length ? lod1 : null; e.state = 'glb'; e.url = u; for (const f of listeners) f(id); } else e.state = 'code';
     }, undefined, () => { e.state = 'code'; });
   });
   return e;
@@ -131,11 +131,17 @@ const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vecto
 const DETAIL = { door_bottom: 0.4, shutter: 0.35, acunit: 0.35, pchair: 0.5, laundry_a: 0.5, laundry_b: 0.5, stringlights: 0.5, wokdish: 0.45, tooth: 0.5, tooth_b: 0.5, eyeball: 0.5, crate_soup: 0.5, scooter: 0.6,
   ribarch: 3, lung: 2, machine: 4, gutgate: 4, smilesign: 2, sphincter: 1.4, lostfound_sign: 4, launderette: 3, gristlelogo: 2, choirpipe: 2, bus: 1.5 };
 export const propDetail = (id) => DETAIL[id] || 1;
+DETAIL.smilesign = 1; DETAIL.tarp = 0.6; DETAIL.lostpile = 0.5; DETAIL.sofa = 0.6; DETAIL.fridge = 0.6;
+// small things that repeat by the thousand aren't drawn at all past this (x the preset's props radius / 224): the
+// house's own far box carries its look out there
+const FAR = { door_bottom: 70, shutter: 60, acunit: 60, laundry_a: 90, laundry_b: 90, pchair: 70, stringlights: 80, wokdish: 70, crate_soup: 60, scooter: 70, tooth: 60, tooth_b: 60, eyeball: 70, cone: 70, skeleton_lanyard: 70, paperdrift: 90, lostpile: 90, tarp: 90, sofa: 90, fridge: 90, smilesign: 160, filecab: 100, rubble_a: 120, rubble_b: 120, tirestack: 100 };
+export const propFar = (id) => FAR[id] || Infinity;
 // hiR: instances closer than this (x the prop's DETAIL) to `at` get the full Blender model, the rest its _lod1 meshes
 // (or the code model when the file has none)
-export function buildPropGroup(list, hiR = 1e9, at = null) {
+export function buildPropGroup(list, hiR = 1e9, at = null, farK = 1) {
   const byId = new Map();
   for (const p of list) {
+    if (at && Math.hypot(p.x - at.x, p.z - at.z) > propFar(p.id) * farK) continue;
     const m = propModel(p.id), glb = m.parts !== m.code, hi = glb && (!at || Math.hypot(p.x - at.x, p.z - at.z) < hiR * propDetail(p.id));
     const parts = hi ? m.parts : (glb && m.lod1) || m.code, k = p.id + (hi ? '' : parts === m.code ? '~' : '_lod1');
     if (!byId.has(k)) byId.set(k, { parts, list: [] });

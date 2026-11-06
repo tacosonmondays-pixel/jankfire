@@ -59,7 +59,8 @@ function setPreset(i) {
   scene.traverse((o) => { if (o.material) o.material.needsUpdate = true; });
 }
 function resize() {
-  renderer.setSize(Math.max(80, innerWidth * SCALE[preset] | 0), Math.max(60, innerHeight * SCALE[preset] | 0), false);
+  const k = SCALE[preset] * (Q.has('res') ? Math.max(0.05, Math.min(1, +Q.get('res') || 1)) : 1); // res=: a test knob (same rings, fewer pixels)
+  renderer.setSize(Math.max(80, innerWidth * k | 0), Math.max(60, innerHeight * k | 0), false);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
 }
 addEventListener('resize', resize);

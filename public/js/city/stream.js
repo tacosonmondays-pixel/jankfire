@@ -195,7 +195,7 @@ export class CityStream {
 
   updateProps(want) {
     const list = want.filter((r) => r.d <= this.R.props && r.packed);
-    const hiCell = this.R.propsHi ? Math.floor(this.cam.x / 16) + ',' + Math.floor(this.cam.z / 16) : ''; // the hi-detail bubble moves with you
+    const hiCell = Math.floor(this.cam.x / 16) + ',' + Math.floor(this.cam.z / 16); // the detail bubbles move with you
     const key = list.map((r) => r.id).sort().join(';') + '|' + hiCell;
     if (key === this.props.key || this.time - this.props.t < 0.3) return;
     this.props.key = key; this.props.t = this.time;
@@ -205,7 +205,7 @@ export class CityStream {
       for (let i = 0; i < P.length; i += 7) inst.push({ id: ids[P[i]], x: P[i + 1], y: P[i + 2], z: P[i + 3], yaw: P[i + 4], s: P[i + 5], v: P[i + 6] });
     }
     freeProps(this.props.group);
-    this.props.group = buildPropGroup(inst, this.R.propsHi, this.cam); this.props.n = inst.length;
+    this.props.group = buildPropGroup(inst, this.R.propsHi, this.cam, this.R.props / 224); this.props.n = inst.length;
     this.root.add(this.props.group);
   }
 
