@@ -11,6 +11,7 @@ import { CONTAINERS } from '/shared/cosmetics.js';
 import { modeThumb, modeColors, medalImage, propImage } from './modeart.js';
 import { fleshFrame } from './flesh.js';
 import { organic } from './organic.js';
+import { K } from './keys.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -156,6 +157,7 @@ export function esVotes(m) {
   if (m.total) ES.totalEnd = performance.now() + m.total;
   renderCards(true);
 }
+export function esRekey() { if (ES.open && ES.vote) renderCards(true); } // a vote key got rebound: redraw the key on each card
 export function esCast(i) {
   const v = ES.vote;
   if (!v || v.stage === 'done' || i < 0 || i >= v.options.length || i === ES.my) return false;
@@ -168,10 +170,11 @@ export function esCast(i) {
   return true;
 }
 // keys while the end screen is up: 1-4 vote, arrows switch tabs. returns true when it used the key
-export function esKey(e) {
+export function esKey(e, vi = -1) { // vi: which vote key (keys.js vote1-4) this is, -1 = none
   if (!ES.open) return false;
-  const d = /^(Digit|Numpad)([1-9])$/.exec(e.code);
-  if (d && ES.vote && ES.vote.stage !== 'done') { if (!e.repeat) esCast(Number(d[2]) - 1); return true; }
+  const d = /^(Digit|Numpad)([1-9])$/.exec(e.code || '');
+  const n = vi >= 0 ? vi : d && (d[1] === 'Numpad' || d[2] > 4) ? Number(d[2]) - 1 : -1; // 1-4 follow the vote bindings; numpad and 5+ always vote
+  if (n >= 0 && ES.vote && ES.vote.stage !== 'done') { if (!e.repeat) esCast(n); return true; }
   if (!ES.mini && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
     const i = TABS.findIndex(([id]) => id === ES.tab), j = (i + (e.code === 'ArrowLeft' ? TABS.length - 1 : 1)) % TABS.length;
     setTab(TABS[j][0]); sfx.click(); return true;
@@ -280,7 +283,7 @@ function card(o, i) {
   const c = el('button', 'es-card' + (o.event ? ' event' : ''));
   c.style.setProperty('--i', i);
   if (o.game) { const [a, b] = modeColors(o.game); c.style.setProperty('--ca', a); c.style.setProperty('--cb', b); }
-  c.append(el('span', 'key', String(i + 1)));
+  c.append(el('span', 'key', i < 4 ? K.label('vote' + (i + 1)) : String(i + 1)));
   if (o.event) c.append(el('span', 'tag', 'EVENT'));
   c.append(o.game ? modeThumb(o.game, o.name) : mapThumb(o.map));
   const info = el('div', 'info');

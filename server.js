@@ -43,9 +43,17 @@ import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared
 import { OOB, outOfBounds, boundsCenter } from './shared/bounds.js';
 import { Traffic } from './server/traffic.js'; // cars on the roads (server/traffic.js)
 import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from './shared/secrets.js'; // hidden NPCs + cats
+import { installRoyale } from './server/royale.js'; // Jank Royale (battle royale)
+import { BR } from './shared/royale.js';
+import { tickHR, hrBot } from './server/hrguy.js'; // the Tall Guy From HR (Scary Forest)
+import { HR } from './shared/hr.js';
 import { installGear } from './server/gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
 import { installEcon } from './server/econ.js';
+import { installTactical } from './server/tactical.js';
+import { TAC } from './shared/tactical.js'; // Plant & Defuse gunplay: spray patterns, moving spread, the hit check
 import { MSLIP, onPatch, patchPreroll } from './shared/marbles.js';
+import { ZM } from './shared/zombies.js';
+import { installZombies } from './server/zombies.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -232,6 +240,12 @@ if (process.env.JF_DUCKS) DUCKRAIN.n = DUCKRAIN.n.map((x) => x * (Number(process
 // /skip vote: how long it stays open and the cooldown after one fails, in ms (test knobs)
 if (process.env.JF_SKIP_WINDOW) SKIP.window = Number(process.env.JF_SKIP_WINDOW) || SKIP.window;
 if (process.env.JF_SKIP_COOL) SKIP.cooldown = Number(process.env.JF_SKIP_COOL) || SKIP.cooldown;
+// test knobs for zombies: start on a later round, start rich, short breaks (ms), claw damage, bleed-out (s)
+if (process.env.JF_ZM_ROUND) ZM.startRound = Number(process.env.JF_ZM_ROUND) || 1;
+if (process.env.JF_ZM_CREDITS) ZM.start = Number(process.env.JF_ZM_CREDITS) || ZM.start;
+if (process.env.JF_ZM_REST) ZM.rest = ZM.first = Number(process.env.JF_ZM_REST) || ZM.rest;
+if (process.env.JF_ZM_SWIPE) ZM.swipe = Number(process.env.JF_ZM_SWIPE); // 0 = zombies can't hurt you (UI tests)
+if (process.env.JF_ZM_BLEED) ZM.bleed = Number(process.env.JF_ZM_BLEED) || ZM.bleed;
 function randomSkins() {
   const out = {};
   for (const id of Object.keys(WEAPONS)) if (Math.random() < 0.6) out[id] = [pick(SKIN_F), pick(SKIN_H), pick(SKIN_E), id === 'knife' ? pick(['default', 'knife_karambit', 'knife_butterfly', 'knife_switch', 'knife_cleaver']) : 'default', pick(WRAP_MODES)];
@@ -344,7 +358,9 @@ class Room {
     this.oitcOut = new Set(); // one in the chamber: who ran out of lives this round (by account or name)
     if (mode === 'ffa' && GAMES[process.env.JF_GAME]) this.game = process.env.JF_GAME; // test knob: the online room starts in this mode
     this.mpatches = new Map(); this.nextMp = 1; // marble shotgun: marbles on the floor you slip on
-    this.cfg = { map: mode === 'training' ? 'range' : mode === 'coop' ? 'warehouse' : 'islands', hip: 'normal', bots: 5, diff: 'normal' };
+    this.cfg = { map: mode === 'training' ? 'range' : mode === 'coop' ? 'warehouse' : 'islands', hip: 'normal', bots: 5, diff: 'normal', hr: 'on' };
+    if (GAMES[this.game].mapOk && !GAMES[this.game].mapOk(this.map)) this.cfg.map = mapsFor(this.game, MAPS, MAP_ORDER)[0]; // (the JF_GAME knob: a map the mode can be played on)
+    if (GAMES[this.game].zombies) this.setGame(this.game); // JF_GAME=zm: zombies brings its own map
     this.wave = 0; this.toSpawn = 0; this.interUntil = 0;
     this.round = ROUND[mode] ? { target: ROUND[mode].kills, ends: now() + ROUND[mode].time * 1000, over: false, next: 0 } : null;
     if (mode === 'coop') this.interUntil = now() + 4000;
@@ -352,7 +368,7 @@ class Room {
     this.traffic = new Traffic(this);
   }
   get map() { return MAPS[this.cfg.map]; }
-  get boxes() { return this.map.boxes; }
+  get boxes() { return this.zm ? this.zs.boxes : this.map.boxes; } // zombies: plus the shutters still down
 
   broadcast(obj, exceptId) {
     const s = JSON.stringify(obj);
@@ -391,7 +407,9 @@ class Room {
     if (p.watch) return;
     if (this.isEcon()) { this.econLoadout(p); return; } // Plant & Defuse economy: the gear you bought, not a loadout
     if (p.ec) this.econEnd(p);
+    if (this.zm) { if (!p.isBot) this.zmLoadout(p); return; } // zombies: the guns you bought
     if (this.modeLoadout(p)) return; // gun game rung / zombie claw
+    if (this.brOn) { this.brLoadout(p); return; } // jank royale: what you picked up
     if (this.sendChaosKit(p)) return;
     if (p.isBot) { if (GAMES[this.game].random && !p.ai.dummy) { p.w = pick(BOT_GUNS); p.ai.ammo = WEAPONS[p.w].mag || 1; } return; }
     const rnd = (this.mode === 'ffa' || this.mode === 'bots') && GAMES[this.game].random;
@@ -455,6 +473,7 @@ class Room {
       if (has(HIPFIRE, c.hip)) this.cfg.hip = c.hip;
       if (has(BOT_DIFF, c.diff)) this.cfg.diff = c.diff;
       if (c.bots != null) this.cfg.bots = clampInt(c.bots, 0, 12);
+      if (has(HR.every, c.hr)) this.cfg.hr = c.hr;
     }
     const name = m._name || clean(m.name, 16) || pick(DEFAULT_NAMES) + nextId;
     const inv = m._inv || {};
@@ -471,12 +490,13 @@ class Room {
     p.item = has(ITEMS, m.item) ? m.item : 'frag'; // the client confirms it with 'itemsel' right after 'welcome'
     if (process.env.JF_WATCH && name.startsWith('watch')) { p.watch = true; p.alive = false; p.hp = 0; p.respawnAt = p.minRespawnAt = Infinity; } // test knob: a ws observer for bots-only matches (never a fighter)
     if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && has(GAMES, m.cfg.game) && !this.humans().length) this.setGame(m.cfg.game);
+    if (this.mode === 'bots' && !this.humans().length && !this.map.zm !== !GAMES[this.game].zombies) this.setGame(this.map.zm ? 'zm' : this.game); // the zombie map only with zombies
     if (!p.watch) this.joinTeam(p);
     if (p.team) p.pos = this.pickSpawn(false, p);
     if (this.isEcon() && !p.watch) this.econJoin(p);
     this.players.set(p.id, p);
     // in from the start (or close enough): your Never Landed run counts. the welcome below is your first spawn
-    if (this.round && !this.round.over && now() - (this.round.t0 || 0) < AIR.join && !GAMES[this.game].lava) p.air = { ok: !(this.airBad && this.airBad.has(name)), rest: 0 };
+    if (this.round && !this.round.over && now() - (this.round.t0 || 0) < AIR.join && !GAMES[this.game].lava && !GAMES[this.game].royale) p.air = { ok: !(this.airBad && this.airBad.has(name)), rest: 0 };
     send(p, {
       t: 'welcome', id: p.id, name, color: p.color, pos: p.pos, q: p.seq, mode: this.mode, cfg: this.cfg,
       players: [...this.players.values()].filter((o) => o !== p).map((o) => this.info(o)),
@@ -500,11 +520,13 @@ class Room {
     if (p.air && p.air.ok) send(p, { t: 'air', on: 1, grace: AIR.grace });
     deal(p);
     this.modeJoin(p);
+    if (this.brOn && !p.watch) this.brJoin(p); // jank royale: a seat on the blimp, or watch till the next one
     this.sendLoadout(p);
     if (this.mode === 'ffa' || this.mode === 'coop') this.broadcast({ t: 'chat', id: 0, m: `${name} joined` });
     if (this.mode === 'bots') this.fillBots();
     if (this.mode === 'bots' && this.humans().length === 1 && this.game !== 'dm') this.startRound();
     if (process.env.JF_FFA_BOMB) this.econTestStart(); // test knob
+    if (this.mode === 'ffa' && GAMES[this.game].zombies && !this.zm && this.humans().length === 1) this.startRound(); // JF_GAME=zm: the first one in sets the zombies up
     if (this.mode === 'training') this.spawnDummies();
     console.log(`+ ${name} (#${p.id}) -> ${this.id}`);
     return p;
@@ -513,6 +535,7 @@ class Room {
   remove(p) {
     flushStats(p);
     if (this.bomb && this.bomb.carrier === p.id) this.dropBomb(p.pos, p);
+    if (this.brOn) this.brLeave(p); // their pockets spill out
     if (this.isEcon()) this.econLeave(p);
     this.players.delete(p.id);
     // whatever they threw goes with them (with no owner it would ignore teams and bubbles); their holes and gas go inert
@@ -523,12 +546,14 @@ class Room {
     if (!p.isBot) skipPeople(this); // a skip vote's majority moved
     if (!p.isBot && (this.mode === 'ffa' || this.mode === 'coop')) this.broadcast({ t: 'chat', id: 0, m: `${p.name} left` });
     if (!this.humans().length) rooms.delete(this.id);
+    else if (!p.isBot && this.mode === 'bots') this.fillBots(); // a human left: a bot takes the place back
   }
 
   // ---------------------------------------------------------- bots
   addBot(opts = {}) {
     const diff = this.cfg.diff;
-    const b = this.newPlayer(opts.dummy ? 'Dummy' : `${pick(BOT_NAMES)} [bot]`, {
+    const taken = new Set([...this.players.values()].map((p) => p.name)), free = BOT_NAMES.filter((n) => !taken.has(`${n} [bot]`)); // no two Garys if it can help it
+    const b = this.newPlayer(opts.dummy ? 'Dummy' : `${pick(free.length ? free : BOT_NAMES)} [bot]`, {
       isBot: true, pos: opts.pos, color: opts.dummy ? '#cccccc' : '#aaaaaa',
       w: opts.dummy ? 'ar' : pick(BOT_GUNS), skins: opts.dummy ? {} : randomSkins(),
       ai: { diff, target: 0, retarget: 0, nextShot: now() + 1500, seenAt: 0, ammo: 0, reloadUntil: 0, jumpT: 0, wp: null, seed: Math.random() * 100, dummy: opts.dummy || null, strafeDir: 1 },
@@ -541,15 +566,38 @@ class Room {
     this.sendLoadout(b); // bots added mid-match get the mode's weapons too
     this.broadcast({ t: 'pj', ...this.info(b) });
     if (!opts.dummy) this.modeJoin(b);
+    if (!opts.dummy && this.brOn) this.brJoin(b);
     return b;
   }
   removeBots() { for (const b of [...this.players.values()]) if (b.isBot) this.remove(b); }
-  fillBots() {
-    const want = clampInt(this.cfg.bots, 0, 12);
-    const bots = [...this.players.values()].filter((p) => p.isBot);
-    for (let i = bots.length; i < want; i++) this.addBot();
-    for (let i = want; i < bots.length; i++) this.remove(bots[i]);
+  // Play With Bots: the room is (bot count + 1) players. every human who joins takes a bot's place, so bots are slowly
+  // replaced by people; when someone leaves, a bot comes back. (the JF_WATCH test observer isn't a player)
+  botWant() {
+    const h = this.humans().filter((p) => !p.watch).length;
+    const size = this.brOn ? Math.max(clampInt(this.cfg.bots, 0, 12), clampInt(process.env.JF_BR_BOTS || BR.bots, 0, 31)) : clampInt(this.cfg.bots, 0, 12); // a royale wants a crowd
+    return Math.max(0, size + 1 - Math.max(1, h));
   }
+  fillBots() {
+    if (GAMES[this.game].zombies) return; // zombies brings its own bots
+    const want = this.botWant();
+    const bots = [...this.players.values()].filter((p) => p.isBot && !(p.ai && p.ai.dummy));
+    const staying = bots.filter((b) => !b.leaving);
+    // someone left: a bot that was on its way out stays after all, then new ones fill up
+    for (const b of bots) if (b.leaving && staying.length < want) { b.leaving = false; staying.push(b); }
+    for (let i = staying.length; i < want; i++) this.addBot();
+    if (staying.length <= want) return;
+    // too many: the dead go first (right away), then from the bigger team; alive ones leave when the round ends
+    const c = { 1: 0, 2: 0 };
+    for (const p of this.fighters()) if (p.team && !p.leaving) c[p.team]++;
+    const order = staying.slice().sort((a, b) => (a.alive - b.alive) || ((c[b.team] || 0) - (c[a.team] || 0)));
+    for (const b of order.slice(0, staying.length - want)) this.retireBot(b);
+  }
+  retireBot(b) {
+    if (!b.alive) { this.remove(b); return; }
+    b.leaving = true; // round modes: at the round's end. others: as soon as it dies (dropLeavers)
+  }
+  // bots marked to make room for a human: gone once they're dead, and all of them at a round's start
+  dropLeavers(all) { for (const b of [...this.players.values()]) if (b.isBot && b.leaving && (all || !b.alive)) this.remove(b); }
   spawnDummies() {
     if ([...this.players.values()].some((p) => p.isBot)) return;
     const list = this.map.dummies || this.map.spawns.map((s) => ({ p: s }));
@@ -591,9 +639,11 @@ class Room {
       if (t.trap) continue; // sealed in a soap bubble: shooting it would only set them free, wait for the pop
       if (t.quiz) continue; // sitting a pop quiz: nothing can hurt them till it's marked
       if (this.friendly(b, t)) continue; // infection: zombies hunt survivors, survivors shoot zombies
+      if (this.brOn && !this.brTargetable(t)) continue; // on the blimp / out
       const d = dist3(t.pos, b.pos);
       const vis = this.canSee(eyeOf(b), [t.pos[0], t.pos[1] + 1, t.pos[2]]);
-      const score = d * (vis ? 1 : 2.5);
+      let score = d * (vis ? 1 : 2.5);
+      if (this.brOn) score = this.brBotScore(b, t, score); // pick fights you can win, third-party the hurt ones
       if (score < bestD) { bestD = score; best = t; }
     }
     return best;
@@ -632,6 +682,7 @@ class Room {
     if (n > ai.retarget) { const t = this.botTarget(b); ai.target = t ? t.id : 0; ai.retarget = n + 400 + Math.random() * 600; }
     let t = this.players.get(ai.target);
     if (t && this.friendly(b, t)) { ai.target = 0; ai.seenAt = 0; t = null; } // teams got reshuffled: that's a teammate now
+    if (this.brOn) this.brBotWeapon(b, t && t.alive ? dist3(t.pos, b.pos) : 20); // the right gun for the range
     this.botChaosThink(b, t, n);
     let wx = 0, wz = 0, jump = false;
     const w = WEAPONS[b.w];
@@ -726,7 +777,9 @@ class Room {
       const probe = [b.pos[0] + wx * 2.5, b.pos[1] + 0.5, b.pos[2] + wz * 2.5];
       if (!raycast(probe, [0, -1, 0], Math.max(6, Math.min(15, probe[1] - this.map.killY)), boxes)) { wx = -wx; wz = -wz; ai.strafeDir *= -1; }
     }
+    if (this.brOn) [wx, wz, jump] = this.brBotEdge(b, wx, wz, jump); // jank royale: no hopping into canyons
     if (this.lavaOn) [wx, wz, jump] = this.botLava(b, wx, wz, jump, t);
+    if (this.hr && this.hr.on) { const o = hrBot(this, b, dt, { wx, wz, jump }), l = Math.hypot(o.wx, o.wz); if (l > 1) { o.wx /= l; o.wz /= l; } ({ wx, wz, jump } = o); } // scary forest: don't stare at HR
     return { wx: wx * D.speed, wz: wz * D.speed, jump };
   }
 
@@ -826,6 +879,7 @@ class Room {
     return [rt[ai.ri][0], rt[ai.ri][2] ?? b.pos[1], rt[ai.ri][1]];
   }
   botGoal(b) {
+    if (this.brOn) return this.brBotGoal(b); // jank royale: zone, heals, loot
     if (this.isEcon()) { const eg = this.econBotGoal(b); if (eg) return eg; }
     const B = this.bomb;
     if (B && this.game === 'bomb' && B.ph !== 'done' && !B.between) {
@@ -861,6 +915,7 @@ class Room {
 
   botFire(b, t, D) {
     if (this.chaosKit && this.botChaosFire(b, t, D)) return;
+    if (this.brOn && !this.brBotShot(b)) return; // jank royale: real bullets
     if (this.isEcon() && !this.econBotShot(b, t, D)) return;
     const w = WEAPONS[b.w], n = now();
     if (b.w === 'shredder') { this.botShred(b); return; } // no shots: it sucks for as long as they're in front of it
@@ -872,14 +927,16 @@ class Room {
     }
     b.ai.nextShot = n + iv / D.rate + (w.auto ? 0 : Math.random() * 300);
     const cp = Math.cos(b.pitch);
-    const aim = [-Math.sin(b.yaw) * cp, Math.sin(b.pitch), -Math.cos(b.yaw) * cp];
+    let aim = [-Math.sin(b.yaw) * cp, Math.sin(b.pitch), -Math.cos(b.yaw) * cp];
     const o = eyeOf(b);
     if (w.kind === 'hitscan') {
       const hip = (HIPFIRE[this.cfg.hip] || HIPFIRE.normal).mul;
       const pellets = w.pellets || 1;
       const hits = new Map(), segs = [];
+      let spr = (w.spread || 0) * Math.max(0.3, hip) + D.err;
+      if (this.isEcon()) [aim, spr] = this.tacBotAim(b, w, aim, spr, D); // Plant & Defuse: the spray pattern + moving spread
       for (let i = 0; i < pellets; i++) {
-        const d = spreadDir(aim, (w.spread || 0) * Math.max(0.3, hip) + D.err);
+        const d = spreadDir(aim, spr);
         const mh = raycast(o, d, w.range, this.boxes);
         let maxT = mh ? mh.t : w.range, victim = null, head = false;
         for (const p of this.players.values()) {
@@ -918,6 +975,8 @@ class Room {
 
   stepBot(b, dt) {
     if (b.trap) { this.driftTrapped(b); return; } // in a soap bubble: no thinking, just floating
+    if (this.brOn && this.brBotStep(b, dt)) return; // jank royale: riding the blimp, falling, gliding
+    if (b.zmz) { this.zmStep(b, dt); return; }
     const n = now();
     const frozen = n < (b.frozenUntil || 0);
     const think = frozen ? { wx: 0, wz: 0, jump: false } : this.botThink(b, dt);
@@ -943,7 +1002,7 @@ class Room {
         if (add > 0) { const a = Math.min(add, 60 * dt); v[0] += a * think.wx; v[2] += a * think.wz; }
       }
     }
-    v[1] -= 26 * dt;
+    v[1] -= 26 * dt * (b.gravMul || 1); // (jank royale: Overdraft Heights' low gravity)
     // on the rope: the same classic grapple as a player's (shared/hookphys.js).
     // let go near the point (or when it's been a while) with a grapple jump
     const hk = b.ai && b.ai.hook;
@@ -975,6 +1034,7 @@ class Room {
   // one item per loadout (p.item, set with 'itemsel'); its charges are per life and the server's count is the real one.
   // has() = Object.hasOwn: '__proto__' / 'constructor' never become an item
   itemCharges(p) {
+    if (this.brOn && p.br) return this.brIc(p); // jank royale: picked up, never recharges
     const it = ITEMS[p.item] || ITEMS.frag;
     if (!p.ic || p.ic.i !== p.item) p.ic = { i: p.item, n: it.charges, next: 0 };
     const c = p.ic, n = now();
@@ -982,7 +1042,7 @@ class Room {
     return c;
   }
   icInfo(p) { const c = this.itemCharges(p); return { i: p.item, n: c.n, next: c.next ? c.next - now() : 0 }; }
-  sendIc(p) { if (!p.isBot) send(p, { t: 'ic', ...this.icInfo(p) }); }
+  sendIc(p) { if (!p.isBot && !(this.brOn && p.br && !(p.br.gadget && p.br.gadget.n > 0))) send(p, { t: 'ic', ...this.icInfo(p) }); } // (jank royale: nothing to say without a gadget)
   // your loadout item changed: right away while dead or in the first 5 s of a life, otherwise from your next life
   // (the client's applyLoadout rule; its 5 s start when 'spawn' reaches it, so allow one round trip more)
   selectItem(p, id) {
@@ -1224,6 +1284,7 @@ class Room {
   friendly(a, b) {
     if (!a || !b || a === b) return false;
     if (this.mode === 'coop') return a.isBot === b.isBot;
+    if (this.zm) return a.isBot === b.isBot; // zombies: everyone vs the zombies
     if (GAMES[this.game].infect) return !!a.inf === !!b.inf; // infection: survivors vs zombies, no hurting your own side
     return this.teamsOn() && a.team && a.team === b.team;
   }
@@ -1240,9 +1301,11 @@ class Room {
     if (amt <= 0 || !t.alive) return false;
     if (t.trap) return false; // sealed in a soap bubble: burning, gas and the like can't get in (a real hit pops it, see hurt)
     if (this.hitBlocked(t, attacker, w, from)) return false;
+    if (this.zm) amt = this.zmDamage(t, amt, attacker); // credits for hits, claws, the cola
     if (attacker && attacker.isBot && !t.isBot && this.mode !== 'bots') amt *= 0.6; // coop bots hit softer
     if (t.rig) { amt = this.rigSoak(t, amt, attacker, w, from); if (amt <= 0) return true; } // overdrive rig: block + overshield first
     if (this.isEcon()) amt = this.econArmor(t, amt, attacker, w, hs);
+    if (this.brOn) { amt = this.brDamage(t, amt, attacker, w); if (amt <= 0) return false; } // loot tiers + armour
     t.hp -= amt;
     if (!attacker || attacker === t) t.selfHurtT = now(); // EPIC: coughing yourself down to 4 HP doesn't make you a clutch hero
     t.lastHs = !!hs;
@@ -1273,6 +1336,7 @@ class Room {
   }
   // out of the play area (map.bounds): OOB.secs to get back, then a void death. the client counts it down on its own
   oobCheck(t, n) {
+    if (this.brOn) return false; // jank royale: the zone is the edge of the map
     if (!this.map.bounds || t.trap || (t.isBot && t.ai.dummy)) return false;
     if (!outOfBounds(this.map, t.pos)) { t.oobAt = 0; return false; }
     if (!t.oobAt) { t.oobAt = n; return false; }
@@ -1284,7 +1348,7 @@ class Room {
     const n = now();
     for (const t of this.players.values()) {
       if (!t.alive) continue;
-      if (t.hp > 100 && !t.inf) t.hp = Math.max(100, t.hp - 2 * dt); // overheal fades (zombie HP doesn't)
+      if (t.hp > 100 && !t.inf && !t.zmz) t.hp = Math.max(100, t.hp - 2 * dt); // overheal fades (zombie HP doesn't)
       if (this.oobCheck(t, n)) continue;
       if (t.burnUntil > n) {
         t.burnTick -= dt;
@@ -1360,7 +1424,8 @@ class Room {
       if (this.round && !this.round.over) matchKill(this, killer, t, via || w);
       if (killer.lastKiller === t.id) killer.lastKiller = 0; // revenge served (scales of justice)
       t.lastKiller = killer.id;
-      if (!killer.isBot && this.mode !== 'training' && !this.modeWeapon(killer) && !(this.chaosKit && this.chaosKit.noStreaks) && this.streaksOn()) { // no killstreaks in gun game, as a zombie or in a chaos kit
+      if (this.zm) killer.streak = 0; // zombies: no killstreaks
+      if (!killer.isBot && this.mode !== 'training' && !this.zm && !this.modeWeapon(killer) && !(this.chaosKit && this.chaosKit.noStreaks) && this.streaksOn() && !this.brOn) { // no killstreaks in zombies, gun game, as a zombie or in a chaos kit
         // your 3 picked streaks: earn one and it waits in your tray until you use it (keys 5 / 6 / 7)
         for (const id of validStreaks(killer.streaks)) {
           const st = STREAKS[id];
@@ -1381,6 +1446,7 @@ class Room {
     t.lastEpic = ep;
     t.epicLock = ep && !t.isBot && t.kc ? Math.min(t.respawnAt, now() + epicCamMs()) : 0;
     if (t.epicLock) ep.lock = 1;
+    if (this.zm) this.zmKilled(t, killer, w); // credits for zombie kills, players go down instead of respawning
     if (killer && killer !== t && this.round && !this.round.over && !(t.isBot && t.ai && t.ai.dummy) && this.mode !== 'training') this.hlCandidate(killer, t, w);
     send(t, { t: 'streak', reset: 1 });
     t.streak = 0;
@@ -1406,6 +1472,7 @@ class Room {
     this.chaosKill(t, killer);
     if (t.isBot && this.mode === 'coop') { setTimeout(safe('coop', () => { if (this.players.get(t.id) === t) this.remove(t); }), 50); }
     this.modeKill(t, killer, via || w);
+    if (this.brOn) this.brKill(t, killer, w);
     if (this.isEcon()) this.econOnKill(t, killer, w, via);
   }
   // is this kill the play of the round? multikills, speed, distance and void kills score higher
@@ -1578,6 +1645,7 @@ class Room {
     if (this.isBall(p)) return; // no hands in the wrecking ball
     if (now() < (p.staggerUntil || 0)) return; // got parried: still reeling
     if (!this.allowed(p, m.w)) return; // gun game rung / zombie claw only
+    if (this.zm && !this.zmArm(p, m.w)) return; // zombies: only what you bought, while it has ammo
     if ((w.slot === 'streak' || w.kind === 'dash') && !p.scythe) return; // you have to earn it
     if (w.kind === 'dash') {
       if (!(p.f & FLAGS.DASH) || !this.pairOk(p, t, 'dash', 280) || !this.rangeOk(p, t, w.range)) return;
@@ -1662,6 +1730,7 @@ class Room {
     if (!t || t === p || !t.alive || !p.alive) return;
     if (this.isBall(p) || now() < (p.staggerUntil || 0)) return; // no hands in the wrecking ball; parried = still reeling (like 'hit')
     if (m.w !== 'hook' && !this.allowed(p, m.w)) return; // the grapple always works; otherwise gun game rung / zombie claw only
+    if (this.zm && m.w === 'blower' && !this.zmArm(p, 'blower')) return;
     const toT = norm([t.pos[0] - p.pos[0], t.pos[1] - p.pos[1], t.pos[2] - p.pos[2]]) || [0, 1, 0];
     if (m.w === 'blower') {
       const w = WEAPONS.blower;
@@ -1862,6 +1931,7 @@ class Room {
     const w = has(WEAPONS, m.w) && WEAPONS[m.w];
     if (!w || !p.alive || this.isBall(p)) return; // no hands in the wrecking ball
     if (!this.allowed(p, m.w)) return; // gun game rung / zombie claw only
+    if (this.zm && !this.zmArm(p, m.w)) return; // zombies: only what you bought, while it has ammo
     if (!this.chaosFire(p, m)) return; // chaos kits: only their weapons; one in the chamber's bullet
     // loadout weapons only (plus the scythe once earned, and the one weapon a mode hands you: the zombie claw): items
     // (frag, smoke, duck, popper, reverse card) come from G, grenades and thrown cards from the deck, never 'fire'
@@ -1997,7 +2067,7 @@ class Room {
     const shielded = this.bubbleBlocks(owner, t); // the bubble stops the arrow's fire and sleep too, not just its damage
     if (tip === 'flame') { dmg = 15; if (!shielded) this.burn(t, owner, 3); }
     if (tip === 'gas') dmg = 10;
-    if (tip === 'sleep') { dmg = 10; if (!shielded) this.sleep(t, owner, SLEEP_TIME); }
+    if (tip === 'sleep') { dmg = 10; if (!shielded) this.sleep(t, owner, this.isEcon() ? TAC.sleep : SLEEP_TIME); } // Plant & Defuse: a short nap (a free kill otherwise)
     const head = pr.p[1] > t.pos[1] + 1.55;
     this.hurt(t, owner, 'bow', dmg * (head ? 1.5 : 1), kb, { hs: head });
   }
@@ -2593,6 +2663,9 @@ class Room {
     const n = now();
     if (n - p.cfgT < 1500) return;
     p.cfgT = n;
+    // zombie maps only go with zombies: in the Bots room picking one switches the mode (and leaving it ends zombies);
+    // the Online room only gets zombies from the vote
+    if (m.map && MAPS[m.map] && !MAPS[m.map].zm !== !GAMES[this.game].zombies) { if (this.mode === 'bots') m.game = MAPS[m.map].zm ? 'zm' : 'dm'; else m.map = null; }
     const changes = [];
     const pickMap = has(MAPS, m.map) && MAP_ORDER.includes(m.map) ? mapForGame(this.game, MAPS, m.map) : null; // the version this mode plays
     if (pickMap && pickMap !== this.cfg.map && this.mode !== 'training') {
@@ -2619,6 +2692,7 @@ class Room {
       for (const b of this.players.values()) if (b.isBot) b.ai.diff = m.diff;
       changes.push(`bots → ${BOT_DIFF[m.diff].name}`);
     }
+    if (has(HR.every, m.hr) && m.hr !== this.cfg.hr) { this.cfg.hr = m.hr; changes.push(`the tall guy from HR → ${HR.names[m.hr]}`); }
     if (m.bots != null && this.mode === 'bots') {
       const c = clampInt(m.bots, 0, 12);
       if (c !== this.cfg.bots) { this.cfg.bots = c; this.fillBots(); changes.push(`bot count → ${c}`); }
@@ -2693,6 +2767,7 @@ class Room {
   handle(p, m) {
     if (p.quiz && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray'].includes(m.t)) return; // pens down: no attacks during a pop quiz
     if (p.trap && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray'].includes(m.t)) return; // sealed in a soap bubble: no attacks, parries, items, streaks, sprays or planting till it pops
+    if (this.brOn && this.brHandle(p, m)) return; // jank royale: the blimp, loot, heals; only guns you carry, with bullets left
     if (this.isEcon() && this.econHandle(p, m)) return;
     switch (m.t) {
       case 's': {
@@ -2763,6 +2838,7 @@ class Room {
       }
       case 'deploy': { // use a killstreak from your tray (aimed ones land where you looked)
         if (this.chaosKit && this.chaosKit.noStreaks) break;
+        if (this.zm) break; // zombies: no killstreaks, not even ones carried over
         const i = (p.pocket || []).indexOf(m.r);
         const at = vec3(m.at);
         if (i < 0 || !p.alive || !has(STREAKS, m.r)) break;
@@ -2841,6 +2917,7 @@ class Room {
         break;
       }
       case 'respawn': // killcam finished or skipped: respawn now, but never sooner than the mode allows
+        if (this.zm) break; // zombies: you wait for a revive or the next round
         if (this.livesOn && p.oitc && p.oitc.out) break; // out of lives: you watch
         if (!p.alive) p.respawnAt = Math.min(p.respawnAt, Math.max(now(), p.minRespawnAt || 0));
         if (!p.alive && p.epicLock) p.respawnAt = Math.max(p.respawnAt, Math.min(p.epicLock, (p.deadT || 0) + 10500)); // EPIC killcam: no skipping it (9 s cap, 10.5 s after a long no-scope's overlay)
@@ -2870,6 +2947,7 @@ class Room {
     const r = { target: this.round.target, left: Math.max(0, (this.round.over ? this.round.next : this.round.ends) - now()), over: this.round.over, game: this.game };
     if (this.teamsOn()) r.sc = [this.score[1], this.score[2]];
     if (GAMES[this.game].infect) { const s = this.survivors().length; r.inf = { s, z: this.fighters().length - s, t0: this.infAt ? Math.max(0, this.infAt - now()) : 0 }; }
+    if (this.zm) r.zm = this.zmInfo();
     const b = this.bomb;
     if (b) {
       const n = now();
@@ -2887,10 +2965,12 @@ class Room {
     skipTick(this, n);
     if (r.over) { this.tickVote(n); if (n >= r.next) this.startRound(); return; }
     if (!this.humans().length) return;
+    if (this.zm) { this.zmRound(n); return; } // zombies ends when everyone's down
     if (this.game === 'bomb' && this.bomb) { this.tickBomb(n); return; }
     if (this.tickModes(n)) return; // gun game + infection end their own way
     if (this.teamsOn()) { if (this.score[1] >= r.target || this.score[2] >= r.target || n >= r.ends) this.endRound(); return; }
     if (this.livesOn) { this.tickLives(n); return; }
+    if (this.brOn) { this.tickBR(n); return; }
     let top = null;
     for (const p of this.players.values()) if (!top || p.kills > top.kills) top = p;
     if ((top && top.kills >= r.target) || n >= r.ends) this.endRound();
@@ -2900,7 +2980,7 @@ class Room {
     this.modeSort(list, this.round.res);
     const lives = (p) => (p.oitc && !p.oitc.out ? p.oitc.lives : 0);
     if (this.livesOn) list.sort((a, b) => lives(b) - lives(a) || b.kills - a.kills); // one in the chamber: still standing first
-    const lastOne = this.livesOn && list.filter((p) => lives(p) > 0).length === 1;
+    const lastOne = this.livesOn ? list.filter((p) => lives(p) > 0).length === 1 : this.brOn && !!this.br && !!this.br.winner;
     // team games: the winning team takes it, and its best player gets the roll
     let winTeam = 0;
     if (this.teamsOn()) {
@@ -2928,7 +3008,7 @@ class Room {
         roll = { n: 1, kind, why: 'won the round' };
       }
     }
-    this.broadcast({ t: 'round', over: 1, skipped: this.round.skipped ? 1 : 0, winner: winner ? winner.id : 0, winTeam, game: this.game, sc: this.teamsOn() ? (this.game === 'bomb' && this.bomb ? [this.bomb.wins[1], this.bomb.wins[2]] : [this.score[1], this.score[2]]) : null,
+    this.broadcast({ t: 'round', over: 1, skipped: this.round.skipped ? 1 : 0, winner: winner ? winner.id : 0, winTeam, game: this.game, br: this.brOn && this.br ? this.brBoardInfo() : undefined, sc: this.teamsOn() ? (this.game === 'bomb' && this.bomb ? [this.bomb.wins[1], this.bomb.wins[2]] : [this.score[1], this.score[2]]) : null,
       top: list.slice(0, 6).map((p) => [p.id, p.name, p.kills, p.deaths, p.team || 0]), next: this.round.next - now(),
       board: list.map((p, i) => [p.id, p.name, p.kills, p.deaths, p.team || 0, p.isBot ? 1 : 0, matchSummary(p, i, list, this).score]) });
     // your own match report (end screen: performance / medals / rewards). guests see the xp they would have kept
@@ -2948,6 +3028,7 @@ class Room {
     if (roll) send(winner, { t: 'roll+', ...roll });
   }
   startRound() {
+    this.dropLeavers(true); // bots that gave their place to a human leave between matches
     this.resolveVote();
     for (const p of this.players.values()) { p.kills = 0; p.deaths = 0; matchReset(p); }
     this.firstBlood = 0;
@@ -2956,12 +3037,14 @@ class Room {
     this.round.t0 = now();
     this.score = { 1: 0, 2: 0 };
     this.clearTags();
+    this.zmReset(); // zombies: a fresh game, or clear the last one away (before teams, so no zombies on them)
     this.startModes();
     this.assignTeams();
     this.bomb = this.game === 'bomb' && this.teamsOn() ? { att: 1, n: 0, wins: { 1: 0, 2: 0 } } : null;
     if (this.bomb) { this.round.ends = now() + 3600 * 1000; this.newBombRound(true); }
     else this.resetWorld();
     this.airStart(); // after the respawns: a client must get its 'spawn' (fresh grace) before the run starts
+    this.brRound(); // jank royale: everyone onto the blimp (or off with the old one)
     this.broadcast({ t: 'round', start: 1, ...this.roundInfo() });
   }
   // ---------------------------------------------------------- Never Landed: a whole match without touching the ground
@@ -2971,7 +3054,7 @@ class Room {
     this.airBad = new Set(); // names that touched down this match: leaving and rejoining doesn't wipe it
     // Floor Is Lava has no Never Landed run: everyone's kept off the floor there anyway (and the lava bounces you
     // back up), so it would come almost for free
-    if (GAMES[this.game].lava) return;
+    if (GAMES[this.game].lava || GAMES[this.game].royale) return; // (a royale starts in the sky)
     for (const p of this.players.values()) {
       if (p.isBot) continue;
       p.air = { ok: true, rest: 0 };
@@ -3003,6 +3086,7 @@ class Room {
   // switch game type (bots setup / match settings / the vote)
   setGame(g) {
     if (!has(GAMES, g)) return false;
+    if (!GAMES[g].zombies !== !(MAPS[this.cfg.map] && MAPS[this.cfg.map].zm)) { const ok = mapsFor(g, MAPS, MAP_ORDER); this.cfg.map = ok.includes('islands') ? 'islands' : ok[0]; this.smokes.clear(); } // zombies comes with its own map
     const id = mapForGame(g, MAPS, this.cfg.map), m = MAPS[id]; // a map with an S&D version: Plant & Defuse plays that, the rest the standard one
     if (GAMES[g].sites && !(m.sites && m.sites.length)) return false;
     if (GAMES[g].mapOk && !GAMES[g].mapOk(m)) return false; // e.g. floor is lava: no real floor here (or nothing to stand on)
@@ -3017,6 +3101,7 @@ class Room {
   startVote() {
     if (this.mode !== 'ffa' && this.mode !== 'bots') return;
     const options = modeCards(MAPS, MAP_ORDER, this.game, Math.random, this.skipped);
+    if (this.mode === 'bots' && GAMES[this.game].zombies && this.skipped !== this.game && options.length && !options.some((o) => o.game === this.game)) options[options.length - 1] = { game: this.game, event: 0 }; // solo zombies: play again is always an option
     this.skipped = null;
     if (!options.length) return;
     this.vote = { stage: 'mode', options, votes: new Map(), ends: now() + VOTE.mode, game: null, map: null };
@@ -3157,6 +3242,7 @@ class Room {
     const b = this.bomb;
     if (!first && b.n === BOMB.swapAfter) { b.att = 3 - b.att; this.broadcast({ t: 'chat', id: 0, m: 'SIDES SWAPPED' }); }
     b.n++;
+    this.dropLeavers(true); // bots that gave their place to a human leave between rounds
     Object.assign(b, { ph: 'live', site: null, p: null, drop: null, explodeAt: 0, act: null, between: 0, ends: now() + (process.env.JF_BOMB_ROUND ? BOMB.roundTime : this.map.roundTime || BOMB.roundTime) * 1000, carrier: 0 }); // per-map round time (the test knob still wins)
     for (const p of this.players.values()) if (p.ai) { p.ai.site = null; p.ai.route = null; }
     if (this.isEcon()) this.econNewRound(first); // buy phase, payouts carried over, the half's credit reset
@@ -3256,6 +3342,7 @@ class Room {
   }
   // someone is holding F (players send this every ~250ms while it's held; bots call it directly)
   tryUse(p) {
+    if (this.zm) { this.zmUse(p); return; } // doors, wall guns, the crate, revives
     const b = this.bomb;
     if (!b || !p.alive || b.between || b.ph === 'done') return;
     p.useT = now();
@@ -3352,6 +3439,7 @@ class Room {
   modeSort(list, res) {
     const g = GAMES[this.game];
     if (g.ladder) list.sort((a, b) => (b.gg || 0) - (a.gg || 0) || b.kills - a.kills || a.deaths - b.deaths);
+    else if (g.royale && this.br) this.brSort(list);
     else if (g.infect && res) list.sort((a, b) => (!!b.inf === (res.side === 'inf')) - (!!a.inf === (res.side === 'inf'))); // stable: by kills within a side
   }
 
@@ -3630,6 +3718,7 @@ class Room {
 
   tick(dt) {
     const n = now();
+    if (this.mode === 'bots' && !this.bomb) this.dropLeavers(false); // (Plant & Defuse: the dead stay till the round ends)
     this.tickRound();
     if (this.isEcon()) this.tickEcon(n);
     this.tickTags(n);
@@ -3642,6 +3731,7 @@ class Room {
     this.tickHoles(dt);
     this.tickRig();
     this.tickStatus(dt);
+    tickHR(this, dt); // scary forest: the tall guy from HR
     this.tickPeels();
     this.tickMarbles();
     this.tickBalls();
@@ -3770,12 +3860,15 @@ class Room {
   }
 }
 
+installRoyale(Room, { send, movePlayer });
 installRig(Room, { now, num, vec3, norm, r2, center, safe, REC_T, WEAPONS }); // the overdrive rig's methods (server/rig.js)
 installGear(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm, vec3, stat, liveStats });
+installTactical(Room, { send });
 installEcon(Room, {
   send, cleanSkins, enforceSkins, logErr, BOT_GUNS, navGraph,
   refreshInv: async (p) => { if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; } },
 });
+installZombies(Room, { send, stat, store });
 
 // ---------------------------------------------------------------- account stats
 function stat(p, key, v) {
@@ -3861,8 +3954,12 @@ function segs(s) {
   return out;
 }
 
-function roomFor(mode, ws) {
+function roomFor(mode, ws, cfg) {
   if (!has(MODES, mode)) mode = 'ffa';
+  // Play With Bots: join a running bots room playing the same mode that still has a bot to swap out, else start one
+  if (mode === 'bots' && cfg && typeof cfg === 'object' && has(GAMES, cfg.game)) {
+    for (const r of rooms.values()) if (r.mode === 'bots' && r.game === cfg.game && r.botWant() > 0 && !r.closed) return r;
+  }
   const id = mode === 'ffa' || mode === 'coop' ? mode : `${mode}:${nextId}:${Math.random().toString(36).slice(2, 7)}`;
   if (!rooms.has(id)) rooms.set(id, new Room(id, mode));
   return rooms.get(id);
@@ -3902,7 +3999,7 @@ wss.on('connection', (ws) => {
           if (want && await store.get(want.toLowerCase()).catch(() => null)) m._name = want.slice(0, 10) + ' (guest)';
         }
         if (ws.readyState !== 1) return;
-        const room = roomFor(m.mode, ws);
+        const room = roomFor(m.mode, ws, m.cfg);
         me = room.addHuman(ws, m);
       })().catch((e) => { console.error('join failed', e); ws.close(); });
       return;

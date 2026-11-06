@@ -17,6 +17,7 @@ import { COSMETICS, CONTAINERS, TYPE_NAMES_ALL } from '/shared/cosmetics.js';
 import { SECRETS, SECRET, CHAPTERS, NPC_IDS, CAT_IDS, CAT_GOAL, secretsOn, secretsOff, canReach, loreOf } from '/shared/secrets.js';
 import { buildCat, updateCat, petCat } from './lorecats.js';
 import { buildNpc } from './lorenpcs.js';
+import { K } from './keys.js'; // the 'use' key (F by default) talks and pets; slot1-3 answer
 
 const $ = (id) => document.getElementById(id);
 let builtKey = '', objs = [], target = null, D = null, petT = 0;
@@ -83,7 +84,7 @@ export function updateLore(dt, now) {
     if (!o || !alive || Math.hypot(ME.pos[0] - o.s.p[0], ME.pos[2] - o.s.p[2]) > SECRET.reach + 2.2) closeTalk(); // walked off mid-sentence
     else tickTalk(dt);
   }
-  showPrompt(!D && target ? `<b>F</b> ${target.cat ? 'PET THE CAT' : 'TALK'}` : '');
+  showPrompt(!D && target ? `<b>${K.label('use')}</b> ${target.cat ? 'PET THE CAT' : 'TALK'}` : '');
 }
 // can you see it (a ray from your eye to its middle that doesn't hit a wall first)
 function seen(e, o) {
@@ -94,16 +95,18 @@ function seen(e, o) {
   return !h || h.t > L - 0.6;
 }
 
-// ---------------------------------------------------------------- keys: F talks / pets / next line; 1-3 answer
-export function loreKey(e) {
+// ---------------------------------------------------------------- keys (keys.js bindings): use talks / pets / next line;
+// the weapon slot keys answer. busyUse: where 'use' already plants, defuses or buys, that wins and lore stays out of it
+const SLOTS = ['slot1', 'slot2', 'slot3', 'slot4'];
+export function loreKey(e, busyUse) {
   if (D) {
-    const m = /^Digit([1-4])$/.exec(e.code);
-    if (m && D.opts && !D.typing) { const o = D.opts[Number(m[1]) - 1]; if (o) pick(o[1]); return true; }
-    if (m && D.opts) return true; // (the number keys don't switch guns while you're answering)
-    if (e.code === 'KeyF') { if (!e.repeat) advance(); return true; }
+    const n = SLOTS.findIndex((a) => K.matches(a, e));
+    if (n >= 0 && D.opts && !D.typing) { const o = D.opts[n]; if (o) pick(o[1]); return true; }
+    if (n >= 0 && D.opts) return true; // (the number keys don't switch guns while you're answering)
+    if (K.matches('use', e)) { if (!e.repeat) advance(); return true; }
     return false;
   }
-  if (e.code !== 'KeyF' || e.repeat || !target || !ME.alive) return false;
+  if (busyUse || !K.matches('use', e) || e.repeat || !target || !ME.alive) return false;
   if (target.cat) pet(target); else talk(target);
   return true;
 }
@@ -137,8 +140,9 @@ function render() {
   const txt = D.cur.slice(0, Math.floor(D.shown)), it = D.cur.startsWith('*');
   const t = box.querySelector('.lb-text'); t.textContent = it ? txt.replace(/\*/g, '') : txt; t.classList.toggle('act', it);
   const ob = box.querySelector('.lb-opts'); ob.innerHTML = '';
-  if (D.opts && !D.typing) D.opts.forEach((o, i) => { const b = document.createElement('div'); b.className = 'lb-opt'; b.innerHTML = `<i>${i + 1}</i>`; b.append(document.createTextNode(o[0])); b.addEventListener('click', () => pick(o[1])); ob.append(b); });
-  box.querySelector('.lb-hint').innerHTML = D.typing ? '<b>F</b> skip' : D.opts ? 'press <b>1</b>-<b>' + D.opts.length + '</b>' : D.i < D.lines.length - 1 ? '<b>F</b> next' : '<b>F</b> bye';
+  if (D.opts && !D.typing) D.opts.forEach((o, i) => { const b = document.createElement('div'); b.className = 'lb-opt'; b.innerHTML = `<i>${K.label(SLOTS[i])}</i>`; b.append(document.createTextNode(o[0])); b.addEventListener('click', () => pick(o[1])); ob.append(b); });
+  const u = `<b>${K.label('use')}</b>`;
+  box.querySelector('.lb-hint').innerHTML = D.typing ? `${u} skip` : D.opts ? `press <b>${K.label('slot1')}</b>-<b>${K.label(SLOTS[D.opts.length - 1])}</b>` : D.i < D.lines.length - 1 ? `${u} next` : `${u} bye`;
 }
 function tickTalk(dt) {
   if (!D.typing) return;
