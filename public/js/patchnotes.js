@@ -1,6 +1,14 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '3.1', date: '2026-11-06', title: 'PLANT & DEFUSE, BUT TACTICAL', items: [
+    'PLANT & DEFUSE ONLY: no enemy outlines and no nametags. you find people the old way.',
+    'hold SHIFT (your sprint key) to slow walk: quiet footsteps, steadier aim. stand still to shoot straight, moving shots spray.',
+    'guns kick in their own recoil patterns now. learn them.',
+    'gimmick weapons (slippers and friends) have limited ammo here, and the strong stuff got nerfed. buy with B, drop with H.',
+    'PLAY WITH BOTS: players who join take a bot\'s place. ONLINE rooms are players only now.',
+    'bots plant, hold the sites properly and defuse. defenders no longer wander into the attackers\' spawn on Bazaar.',
+  ] },
   { v: '3.0', date: '2026-11-06', title: 'ZOMBIES', items: [
     'NEW MODE: ZOMBIES. co-op against endless rounds of the undead on a new map, the DEAD MALL. pick it in BOTS (Game: Zombies) or vote for it online.',
     'start with 500 credits, a Revolver and a knife. hits and kills pay, headshots and knife kills pay more. hold your use key on a roller shutter to open an area, on a wall gun to buy it (or its ammo), or on the mystery crate for a random gun.',
