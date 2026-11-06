@@ -19,14 +19,14 @@ export const LAZY = new Map(); // id -> url
 // the same way: the first time something asks (prefetch() asks early for what your loadout will need)
 // the map props (p_<id>.glb) too: propfield.js asks for a map's own when that map loads (p_cart is the cart cannon's)
 export const isLazy = (id) => { if (/^x_/.test(id) || (/^p_/.test(id) && id !== 'p_cart') || id === 'pj_rigmissile') return true; const m = /^(?:w|pj)_(.+)$/.exec(id); return !!(m && m[1] !== 'default' && Object.hasOwn(COSMETICS.model, m[1])); };
-const late = { fn: null, t: 0, busy: 0, by: new Map() };
+const late = { fn: null, t: 0, busy: 0, by: new Map(), seen: new Set() };
 export function onLateModel(fn) { late.fn = fn; }
 export function whenLate(id, fn) { if (!late.by.has(id)) late.by.set(id, []); late.by.get(id).push(fn); } // that model just landed: drop a cached copy built without it
 const failed = new Map();
 export function whenFailed(id, fn) { if (!failed.has(id)) failed.set(id, []); failed.get(id).push(fn); } // it never came (or wasn't a Blender model): put the old look back
 const fail = (id) => { for (const f of failed.get(id) || []) try { f(id); } catch (e) { console.warn('late model', id, e); } };
 export const lateBusy = () => late.busy; // skins still downloading (tests wait for them)
-export function prefetch(ids) { for (const id of ids) if (LAZY.has(id)) fetchLate(id); }
+export function prefetch(ids, pri = 1) { for (const id of ids) want(id, pri); }
 // what each item / killstreak shows: fetched as soon as it's in your loadout (killstreaks take a while to earn), so the
 // first time you use it it's already the Blender one. other people's gear loads the first time it shows up
 const GEAR_FILES = { camera: ['x_camera', 'x_photoframe'], quiz: ['x_calc'], nvg: ['x_nvg'], wand: ['x_wand'] };
@@ -37,18 +37,103 @@ export function prefetchLoadout(lo) {
   for (const k of Array.isArray(lo.streaks) ? lo.streaks : []) ids.push(...(STREAK_FILES[k] || []));
   prefetch(ids);
 }
-function fetchLate(id) {
+function fetchLate(id, pri = 3) {
   const url = LAZY.get(id);
   LAZY.delete(id);
   late.busy++;
-  new GLTFLoader().load(url, (gltf) => {
+  queueGlb(id, url, pri, (gltf) => {
     late.busy--;
-    if (!prepAuthored(id, gltf.scene)) { fail(id); return; }
+    if (!prepAuthored(id, gltf.scene)) { landed(id); fail(id); return; }
     for (const f of late.by.get(id) || []) try { f(id); } catch (e) { console.warn('late model', id, e); }
-    clearTimeout(late.t);
+    landed(id);
     if (/^p_/.test(id)) return; // (a map prop: the map redraws itself, nobody's model changed)
+    if (!late.seen.has(id)) return; // fetched ahead and nothing built it yet: nothing to rebuild
+    clearTimeout(late.t);
     late.t = setTimeout(() => { if (late.fn) late.fn(id); }, 120); // a few at once: one rebuild
-  }, undefined, (e) => { late.busy--; console.warn('model failed', id, e); fail(id); });
+  }, () => { late.busy--; fail(id); }); // (the queue already said why)
+}
+
+// ------------------------------------------------------------ the download queue + "is it still coming?"
+// every .glb (the boot set and the lazy ones) goes through one queue: a few at a time, the most wanted first, so the
+// picture you're looking at isn't stuck behind 60 others. pictures ask pendingGlb(): while a Blender model is on its way
+// they show a loading placeholder instead of the old code model. only if it fails, or the downloads stall (no bytes for
+// WAIT_MS: a slow but moving connection keeps waiting), the code model stands in. onGlb listeners hear every model that lands, fails or times out, so only what used it redraws.
+export const WAIT_MS = 4000;
+export const glbLog = /jf_glblog/.test(location.search) ? [] : null; // ?jf_glblog: what was queued and started when (tests)
+const LD = { prog: 0, timer: new Set(), list: null, done: new Set(), failed: new Set(), asked: new Map(), subs: new Set(), once: new Map(), track: null };
+const Q = { items: new Map(), run: 0, max: 10 }; // (a lane stays taken while its model parses: 10 keeps the network busy)
+let loader = null;
+export function glbLoader() { return loader || (loader = new GLTFLoader()); }
+export function queueGlb(id, url, pri, ok, bad) {
+  const it = Q.items.get(id);
+  if (it) { if (!it.go && pri > it.pri) it.pri = pri; return; }
+  Q.items.set(id, { id, url, pri, ok, bad, go: false });
+  if (glbLog) glbLog.push([Math.round(performance.now()), 'q', id, pri]);
+  pump();
+}
+function pump() {
+  for (;;) {
+    let best = null;
+    for (const it of Q.items.values()) if (!it.go && (!best || it.pri > best.pri)) best = it;
+    if (!best) return;
+    if (best.pri <= 0) { let hi = 0; for (const it of Q.items.values()) if (it.pri > 0) hi++; if (hi || Q.run >= 2) return; } // background fetches: only once everything wanted is in, two at a time
+    if (Q.run >= Q.max + (best.pri >= 4 ? 3 : 0)) return; // what you're looking at right now gets three extra lanes
+    best.go = true; Q.run++;
+    if (glbLog) glbLog.push([Math.round(performance.now()), 'go', best.id, best.pri]);
+    const end = () => { Q.run--; Q.items.delete(best.id); pump(); };
+    glbLoader().load(best.url, (gltf) => { LD.prog = performance.now(); end(); try { best.ok(gltf); } catch (e) { console.warn('model', best.id, e); landed(best.id); } },
+      () => { LD.prog = performance.now(); }, (e) => { end(); console.warn('model failed', best.id, e); LD.failed.add(best.id); if (best.bad) best.bad(e); emit(best.id); });
+  }
+}
+// ask for a model sooner (pri: 0 idle, 1 soon, 2 this screen, 3 on screen right now)
+export function want(id, pri = 2) {
+  if (LAZY.has(id)) fetchLate(id, pri);
+  else { const it = Q.items.get(id); if (it && !it.go && pri > it.pri) { it.pri = pri; if (glbLog) glbLog.push([Math.round(performance.now()), 'up', id, pri]); pump(); } }
+}
+export function setGlbList(ids) { LD.list = new Set(ids); emit(null); } // the server's list: anything not on it was never coming
+export function landed(id) { LD.done.add(id); emit(id); }
+export function onGlb(fn) { LD.subs.add(fn); return () => LD.subs.delete(fn); }
+// fn() once, the first time any of ids lands / fails / gives up (null = the model list arrived)
+export function whenGlb(ids, fn) { for (const id of ids) { if (!LD.once.has(id)) LD.once.set(id, new Set()); LD.once.get(id).add(fn); } }
+function emit(id) {
+  const fire = new Set();
+  const take = (k) => { const s = LD.once.get(k); if (s) { LD.once.delete(k); for (const f of s) fire.add(f); } };
+  if (id === null) for (const k of [...LD.once.keys()]) { if (!LD.list.has(k)) take(k); } else take(id);
+  for (const f of LD.subs) try { f(id); } catch (e) { console.warn('glb sub', e); }
+  for (const f of fire) try { f(id); } catch (e) { console.warn('glb once', e); }
+}
+// a Blender model that exists (or might: before the list comes) and isn't here yet
+export function missingGlb(id) {
+  if (AUTHORED[id] || LD.done.has(id) || LD.failed.has(id)) return false;
+  return LD.list ? LD.list.has(id) : /^(w|pj|x|p)_/.test(id);
+}
+// ...and is still worth waiting for: a placeholder, not the code model
+export function pendingGlb(id) {
+  if (!missingGlb(id)) return false;
+  const n = performance.now();
+  if (!LD.asked.has(id)) LD.asked.set(id, n);
+  const wait = n - Math.max(LD.asked.get(id), LD.prog) < WAIT_MS;
+  if (wait && !LD.timer.has(id)) { LD.timer.add(id); giveUp(id, WAIT_MS + 20); }
+  return wait;
+}
+function giveUp(id, ms) { // nothing arrived for WAIT_MS: redraw with the stand-in (it's swapped again if the model lands later)
+  setTimeout(() => {
+    if (!missingGlb(id)) { LD.timer.delete(id); return; }
+    const left = WAIT_MS - (performance.now() - Math.max(LD.asked.get(id), LD.prog));
+    if (left > 0) giveUp(id, left + 20); else { LD.timer.delete(id); emit(id); }
+  }, ms);
+}
+// pictures wrap their build in trackGlb(): which Blender models it reached for that aren't here yet
+export function trackGlb(fn) {
+  const prev = LD.track, t = { missing: new Set(), pending: false };
+  LD.track = t;
+  try { return [fn(), t]; } finally { LD.track = prev; }
+}
+function noteMiss(id) {
+  const t = LD.track;
+  if (!t || !missingGlb(id)) return;
+  t.missing.add(id);
+  if (pendingGlb(id)) { t.pending = true; want(id, 3); }
 }
 
 // two looks to compare: 'glossy' (default: the materials as made in Blender + a studio reflection) and 'flat'
@@ -144,12 +229,12 @@ export function prepAuthored(id, scene) {
 // a fresh copy of an authored model (geometry + materials shared), or null
 export function authored(id) {
   const a = AUTHORED[id];
-  if (!a) { if (LAZY.has(id)) fetchLate(id); return null; }
+  if (!a) { late.seen.add(id); noteMiss(id); if (LAZY.has(id)) fetchLate(id); return null; }
   const c = a.scene.clone(true);
   c.userData.glbId = id;
   return { obj: c, meta: a.meta };
 }
-export const hasAuthored = (id) => !!AUTHORED[id];
+export const hasAuthored = (id) => { if (!AUTHORED[id]) noteMiss(id); return !!AUTHORED[id]; };
 // candy paint in a colour the game picks (the rig's plates in your colour): the same clear-coat + studio reflection as
 // the Blender models, and an emissive so setColor-style code can keep tinting it
 export function glossyPaint(color, emi = 0.18) {

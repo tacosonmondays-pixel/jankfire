@@ -2,7 +2,10 @@
 import * as THREE from 'three';
 import { BOXES, MAP, MAPS, MAP_ORDER } from '/shared/map.js';
 import { WEAPONS, ORDER, SLOTS, FLAGS, SLIP_TIME, HIPFIRE, BOT_DIFF, MODES, STREAKS, ITEMS, ITEM_ORDER, validLoadout, validStreaks } from '/shared/weapons.js';
-import { streakIcon } from './icons.js';
+import { streakIcon, liveIcon } from './icons.js';
+import './itemicons.js';
+import { strikeBird, dressHole, lookFiles, lookFilesOf } from './streaklooks.js';
+import { STREAK_LOOKS } from '/shared/cosmetics.js'; // killstreak looks in the world // registers the 3D item + killstreak pictures (icons.js set3dPics)
 import { stepProjectile, raycast } from '/shared/physics.js';
 import { duckFrame, duckStuck } from './duck.js';
 import { G } from './ctx.js';
@@ -10,7 +13,7 @@ import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisual
 import { setShadowPref } from './lighting.js';
 import { hrFeed, hrDead } from './hrguy.js';
 import { loadTripoModels, buildProjectile, buildPeel, buildHole, makeShadow, tipColor, buildCharacter, teamLook, M } from './models.js';
-import { onLateModel, prefetchLoadout } from './glbkit.js';
+import { onLateModel, prefetchLoadout, prefetch } from './glbkit.js';
 import { initCrosses, crossEvent, crossShot, updateCrosses, clearCrosses } from './bloodcross.js';
 import { net } from './net.js';
 import { hud } from './hud.js';
@@ -58,6 +61,8 @@ import { updateRig, rigDied, rigOn } from './rig.js';
 import { rigClash } from '/shared/rig.js'; // overdrive rig killstreak
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
 import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset } from './royale.js'; // jank royale
+import { brActive } from './royale.js';
+import { initMinimap, minimapFrame } from './minimap.js'; // the HUD minimap (SAT-NAV)
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { ecoKeyLabel } from './econ.js';
 import { bodyReset } from './bodyhp.js'; // the wrecking ball + rig last until they break
@@ -133,6 +138,7 @@ const vmScaleU = { value: 300 };
 G.skinFxWorld = makeSkinSystems(G.scene, scaleU);
 G.skinFxVM = makeSkinSystems(G.vmScene, vmScaleU);
 hud.init();
+initMinimap();
 initEndscreen({
   note: (id, m) => ggRowNote(id, m) || infRowNote(id, m),
   title: (m) => { const t = m && !m.pending && infRoundTitle(m); return t ? t[0] : ''; },
@@ -173,7 +179,7 @@ loadTripoModels().then((n) => {
   rebuildOne(); // visuals only: a randomizer or pending loadout stays as it is
   refreshMapVisuals(); // Blender props replace their stand-in boxes
   zmModelsLoaded(); // zombies: the wall guns too
-  prefetchLoadout(S.loadout); // your item's and killstreaks' models (they don't come with the startup download)
+  prefetchLoadout(S.loadout); prefetch(lookFiles(validStreaks(S.loadout.streaks))); // (+ your killstreak looks' models) // your item's and killstreaks' models (they don't come with the startup download)
   for (const r of G.remotes.values()) r.build();
   $('status').textContent = `${n} model(s) loaded`;
 });
@@ -329,7 +335,7 @@ let wasLocked = false, lockedAt = 0, mouseAvg = 8;
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === canvas;
   if (locked) { lockedAt = performance.now(); esHideClick(); }
-  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull() && !econMenuOpen()) pause(); // the end screen lets go of the mouse on purpose
+  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull() && !econMenuOpen() && !(G.story && G.story.uiOpen())) pause(); // the end screen lets go of the mouse on purpose
   wasLocked = locked;
 });
 canvas.addEventListener('click', () => { if (G.joined && document.pointerLockElement !== canvas && $('menu').classList.contains('hidden')) lock(); });
@@ -439,6 +445,17 @@ bindCheck('blood', 'blood');
 bindCheck('killcam', 'killcam', () => { if (G.joined) net.send({ t: 'kc', on: S.killcam }); });
 bindCheck('showCards', 'showCards');
 bindCheck('speedLines', 'speedLines');
+// minimap (on, M, turns with you) + bot chatter (on): old saves have none of it
+if (typeof S.mmOn !== 'boolean') S.mmOn = true;
+if (typeof S.mmRot !== 'boolean') S.mmRot = true;
+if (!['s', 'm', 'l'].includes(S.mmSize)) S.mmSize = 'm';
+if (typeof S.botChat !== 'boolean') S.botChat = true;
+bindCheck('mmOn', 'mmOn');
+bindCheck('mmRot', 'mmRot');
+bindCheck('botChat', 'botChat');
+$('mmSize').value = S.mmSize;
+$('mmSize').addEventListener('change', () => { S.mmSize = $('mmSize').value; saveSettings(); });
+SYNC_KEYS.push('mmOn', 'mmRot', 'mmSize', 'botChat');
 // display: windowed / windowed fullscreen (maximized, desktop app only) / fullscreen
 const DISPLAY = window.jf && window.jf.display
   ? [['windowed', 'Windowed'], ['maximized', 'Windowed fullscreen'], ['fullscreen', 'Fullscreen']]
@@ -523,7 +540,7 @@ function buildLoadoutUI() {
   for (const [id, st] of Object.entries(STREAKS).sort((a, b) => a[1].kills - b[1].kills)) {
     const b = document.createElement('button');
     b.className = 'kpick' + (picks.includes(id) ? ' on' : '');
-    const im = document.createElement('img'); im.src = streakIcon(id); im.alt = '';
+    const im = document.createElement('img'); im.alt = ''; liveIcon(im, () => streakIcon(id)); // (3D: the loading cube until its model lands)
     const t = document.createElement('span'); t.textContent = `${st.name} · ${st.kills}`;
     b.append(im, t);
     b.addEventListener('mouseenter', () => { $('loDesc').textContent = `${st.name} (${st.kills} kills in a row): ${K.hint(st.desc)}`; });
@@ -562,7 +579,7 @@ function applyLoadout(force) {
   if (G.forcedLoadout) { $('loNote').textContent = G.forcedLoadout.only ? 'this mode hands everyone the same weapons' : 'randomizer is on: you get a random loadout every life'; return; }
   if (W.only) { $('loNote').textContent = 'this mode hands you one weapon: your loadout comes back after the match'; return; }
   const canNow = force || !G.joined || !ME.alive || performance.now() - (G.spawnT || 0) < 5000;
-  prefetchLoadout(S.loadout); // (a new item or killstreak: its model, ahead of time)
+  prefetchLoadout(S.loadout); prefetch(lookFiles(validStreaks(S.loadout.streaks))); // (+ your killstreak looks' models) // (a new item or killstreak: its model, ahead of time)
   if (canNow) { setLoadout(S.loadout); G.pendingLoadout = false; $('loNote').textContent = ''; }
   else { G.pendingLoadout = true; $('loNote').textContent = 'loadout switches when you respawn'; }
 }
@@ -601,7 +618,7 @@ function sendSkins() {
   skinSendT = setTimeout(() => { if (G.joined) net.send({ t: 'skin', s: wantSkins(), fav: myFavs() }); }, 250); // random slots go as 'random': the server rolls them
 }
 // the weapons that show up in COSMETICS (the rifle form of the scythe borrows the scythe's look)
-function skinnable() { return ORDER.filter((id) => WEAPONS[id] && !WEAPONS[id].modeOnly && (SLOTS.includes(WEAPONS[id].slot) || itemModel(id) || id === 'scythe')); }
+function skinnable() { return [...ORDER.filter((id) => WEAPONS[id] && !WEAPONS[id].modeOnly && (SLOTS.includes(WEAPONS[id].slot) || itemModel(id) || id === 'scythe')), ...STREAK_LOOKS]; } // (+ the killstreaks with looks)
 // items you see in your hand wear skins (popper, reverse card). the thrown duck is a plain projectile, so not that
 function itemModel(id) { return Object.values(ITEMS).some((it) => it.w === id); }
 // nothing picked = no entry. a wrap mode that isn't normal is kept even without a wrap, so it's still there when you pick one
@@ -1050,6 +1067,7 @@ function pressed(e) {
   if (K.matches('scores', e)) { e.preventDefault(); scoresOpen = true; renderScores(); return; }
   if (K.matches('chat', e)) { e.preventDefault(); openChat(); return; }
   if (K.matches('menu', e)) { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
+  if (G.story && G.story.key(e, true)) return; // OVERDUE (flagged): quick bar 1-8, the wheel, the tote bag, pick up
   if (lobbyKey(e)) return; // a mode lobby: ready up
   if (gearKeyDown(e)) return; // pop quiz answers (1-4), goggles flash (nvgFlash)
   if (lassoKey(e, true)) return; // holding someone on the lasso: reel keys, fire / aim lets go, no weapon switching. held: jump / move wriggles
@@ -1085,6 +1103,7 @@ const SEC_STOPPED = ['fire', 'aim', 'grapple', 'item', 'dash', 'spray', 'streak1
 // a key or button came up: releases match whatever pressed the action, even if it got rebound since
 function released(e) {
   if (e.type === 'keyup' && K.typing(e)) return; // typed in chat / a text box (opening chat already let go of everything)
+  if (G.story) G.story.key(e, false); // (the wheel closes on its key's release)
   lassoKey(e, false);
   if (K.up('use', e)) stopUse();
   if (K.up('dash', e)) W.dashHeld = false;
@@ -1113,6 +1132,7 @@ addEventListener('contextmenu', (e) => e.preventDefault());
 addEventListener('wheel', (e) => { if (inGame() && !esActive() && !lassoWheel(e.deltaY)) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true }); // not while the end screen is up (its tab panel scrolls); holding someone on the lasso: the wheel reels
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== canvas) return;
+  if (G.story && G.story.look(e)) return; // the weapon wheel steers with the mouse
   if (performance.now() < (G.spinUntil || 0)) return; // the aimbot has the wheel
   if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor: no looking around either
   const s = 0.0022 * S.sens * (W.aim > 0.5 ? S.adsSens / W.zoom : 1);
@@ -1164,7 +1184,7 @@ function skinOf(owner, wid) { return (owner === G.myId ? W.skinOver || G.equippe
 function spawnProj(m) {
   const w = WEAPONS[m.k];
   if (!w) return;
-  const mesh = buildProjectile(m.k, skinOf(m.o, m.k));
+  const mesh = (m.st && strikeBird(m.o)) || buildProjectile(m.k, skinOf(m.o, m.k)); // (a Chicken Strike bird: the owner's look)
   G.scene.add(mesh);
   const pr = { id: m.id, k: m.k, o: m.o, p: m.p.slice(), v: m.v.slice(), r: w.r, bounce: w.bounce || 0, mesh, spin: 0, tip: m.tip || 0 };
   if (m.k === 'bow' && mesh.userData.tip) mesh.userData.tip.material = M(tipColor(m.tip), true);
@@ -1182,7 +1202,7 @@ function addPeel(m) {
 function addHole(m) {
   const mesh = buildHole();
   mesh.position.set(...m.p);
-  if (m.big) mesh.userData.big = true;
+  if (m.big) { mesh.userData.big = true; dressHole(mesh, m.o); } // the Giant Duck: its circling duck in the owner's look
   G.scene.add(mesh);
   G.holes.set(m.id, { mesh, p: m.p, born: performance.now() - (m.age || 0) * 1000, o: m.o, big: !!m.big, on: m.on || 0 });
   if (m.on && m.age < 0) duckStuck(G.holes.get(m.id), m); // a duck stuck on someone: the hole opens (and hums) in a moment
@@ -1191,6 +1211,7 @@ function addHole(m) {
 function addRemoteInfo(p) {
   G.names.set(p.id, { name: p.name, color: p.color, bot: p.bot, level: p.level, look: p.look, card: p.card || '', skins: p.skins || {}, team: p.team || 0, grap: p.grap });
   G.skins.set(p.id, p.skins || {});
+  const lf = lookFilesOf(p.skins); if (lf.length) prefetch(lf, 3); // their killstreak looks' models, before they use one
 }
 
 // ------------------------------------------------------------ net handlers
@@ -1271,6 +1292,7 @@ net.on('pl', (m) => {
 net.on('sk', (m) => {
   if (m.id === G.myId) { czRolled(m.s); recomputeEquipped(); rebuildOne(); return; } // your random slots, rolled for this life
   G.skins.set(m.id, m.s || {});
+  const lf = lookFilesOf(m.s); if (lf.length) prefetch(lf, 3); // (their new killstreak looks)
   const r = G.remotes.get(m.id);
   if (r) r.setSkins(m.s);
 });
@@ -1771,6 +1793,7 @@ net.on('fx', (m) => {
 });
 net.on('chat', (m) => {
   if (!m.id) { hud.chat(null, null, m.m); return; }
+  if (S.botChat === false && G.remotes.get(m.id) && G.remotes.get(m.id).bot) return; // bot chatter off
   const [n, c] = nameOf(m.id);
   hud.chat(n, c, m.m);
 });
@@ -1808,6 +1831,7 @@ function frame(t) {
   last = t;
   if (dt > 0.1) dt = 0.1;
   if (dt <= 0) return;
+  if (G.story) dt *= G.story.timeScale(); // the weapon wheel slows time (solo)
   const now = performance.now();
 
   if (G.joined) {
@@ -1864,6 +1888,7 @@ function frame(t) {
   updateTraffic(dt, now, RP.active);
   updateLore(dt, now); updateLoreFx(now); // (out of a match it clears them away)
   brFrame(dt, now); // jank royale: blimp, zone, loot, hud
+  minimapFrame(now, { royale: brActive(), endscreen: esActive() }); // the HUD minimap (hidden in replays, dead, royale, story)
   updateGibs(dt);
   updateKillFx(dt);
   updateCourt(dt, now);
@@ -2059,7 +2084,7 @@ function renderStreak(n) {
       const d = document.createElement('div');
       d.className = 'kstreak' + (ready ? ' ready' : '');
       d.title = `${st.name}: ${K.hint(st.desc)}`;
-      const im = document.createElement('img'); im.src = streakIcon(id); im.alt = '';
+      const im = document.createElement('img'); im.alt = ''; liveIcon(im, () => streakIcon(id)); // (3D: the loading cube until its model lands)
       const k = document.createElement('b'); k.textContent = K.label('streak' + (i + 1));
       const c = document.createElement('span'); c.textContent = ready ? 'READY' : `${Math.min(n, st.kills)}/${st.kills}`;
       d.append(im, k, c);
@@ -2333,7 +2358,8 @@ function totalRolls(me) { const r = (me && me.rolls) || {}; return (r.crate || 0
 function fmtTime(sec) { const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60); return h ? `${h}h ${m}m` : `${m}m`; }
 function renderAcctBar() {
   const tr0 = account.loggedIn ? totalRolls(account.me) : 0;
-  $('cratesLbl').textContent = tr0 ? `CONTAINERS (${tr0})` : 'CONTAINERS'; // the label only: the button keeps its slab
+  $('cratesLbl').textContent = 'CONTAINERS'; // the label only: the button keeps its slab
+  $('cratesN').textContent = tr0 || ''; $('cratesN').classList.toggle('hidden', !tr0); // how many to open: a badge, not part of the label
   $('cratesBtn').classList.toggle('glow', tr0 > 0);
   const bar = $('acctBar');
   bar.innerHTML = '';
@@ -2437,6 +2463,7 @@ function applySettingsToUI() {
   setVolume(S.vol);
   $('musicVol').value = String(S.musicVol); $('musicMatchVol').value = String(S.musicMatchVol);
   $('musicMatch').checked = S.musicMatch !== false; $('musicComp').checked = !!S.musicComp; musicUpdate();
+  $('mmOn').checked = S.mmOn !== false; $('mmRot').checked = S.mmRot !== false; $('botChat').checked = S.botChat !== false; if (['s', 'm', 'l'].includes(S.mmSize)) $('mmSize').value = S.mmSize; // minimap + bot chatter
 }
 
 function renderProfile() {
@@ -2608,7 +2635,7 @@ async function doRoll(kind) {
       } else {
       // skins belong to one weapon; everything else can go on whatever you're looking at
       const target = item.type === 'model' ? COSMETICS.model[item.id].weapon : G.cosSel;
-      btn(`PUT IT ON ${WEAPONS[target].name.toUpperCase()}`, () => {
+      btn(`PUT IT ON ${(WEAPONS[target] || STREAKS[target] || { name: 'it' }).name.toUpperCase()}`, () => { // (a killstreak skin goes on its streak)
         const sk = validSkin(S.skins[target]).slice();
         sk[TYPES.indexOf(item.type)] = item.id;
         G.cosSel = target;

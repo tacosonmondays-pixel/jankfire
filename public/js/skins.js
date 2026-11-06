@@ -118,6 +118,8 @@ function textures() {
 // ------------------------------------------------------------ finish materials
 const cache = new Map();
 const rainbowMats = [];
+// a wrap's material on its own (the Overdrive Rig's plates take one): shared + cached, so don't dispose it
+export function wrapMat(finish, base) { return finishMat(finish, base instanceof THREE.Color ? base : new THREE.Color(base), false, 1); }
 function finishMat(finish, base, zoned, ps = 1) {
   const hsl = {};
   base.getHSL(hsl);

@@ -1,6 +1,27 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '5.9', date: '2026-11-06', title: 'DRESS YOUR KILLSTREAKS', items: [
+    'killstreaks have looks now. CUSTOMIZE > KILLSTREAKS: every streak takes a wrap, and most get new models.',
+    'wrecking ball: bowling ball, meatball, disco ball. giant duck: pool flamingo, robo duck, golden duck. chicken strike: pigeon raid, drone strike. moon boots: heelys, rocket sneakers, clown shoes. spinbot: halo, anime aura. spy satellite: pizza dish, cctv blimp.',
+    'everyone else sees your look too. getting flattened by a disco ball is a lifestyle.',
+  ] },
+  { v: '5.8', date: '2026-11-06', title: 'SAT-NAV (MOSTLY RIGHT)', items: [
+    'a minimap on every map and every mode (top left). it shows you, your team, the plant sites and the bomb. enemies blip red when they shoot, except in plant & defuse, where you have to actually listen. a spy satellite still shows everyone.',
+    'settings > minimap: on/off, S/M/L, and turn with you or north up. royale keeps its own zone map, which now follows the same settings.',
+    'bots dress themselves now. every bot rolls its own outfit, hair, accessories and weapon skins, and some show up as a corpo suit, a rat king, a mall cop, a delivery guy or a maid assassin. same bot, same fit, all match.',
+    'bots talk. they brag after a cool kill, cope after a dumb death, and answer gg / ez / noob. each one has a personality (tryhard, polite, unhinged, corpo, or silent). settings > bot chatter turns them off.',
+  ] },
+  { v: '5.7', date: '2026-11-06', title: 'NO MORE OLD MODELS', items: [
+    'CUSTOMIZE loads the real Blender models first: what you\'re looking at downloads first, the rest after, and a tile shows static until its model lands instead of flashing the old blocky one. on a slow connection the skin strip went from about 88 s to 11 s.',
+    'the game downloads a lot less: models come compressed, and coming back later only fetches what changed.',
+    'killstreak and item pictures are 3D now (moon boots, satellite, spinbot, medkit, shield bubble and friends), all lit the same way.',
+  ] },
+  { v: '5.6', date: '2026-11-06', title: 'THE STAFF ENTRANCE', items: [
+    'the home screen\'s side menu got rebuilt as one thing instead of four different ideas glued together: fleshy plaques, each with a little 3D prop in a socket.',
+    'CUSTOMIZE shows your own equipped gun, CONTAINERS is a crate that hops when you have some to open (with a count badge).',
+    'leaderboard, settings, guide, lore and patch notes all match now (trophy, cog, guide book, a board-of-directors cat, clipboard). install app is a small link at the bottom.',
+  ] },
   { v: '5.5', date: '2026-11-06', title: 'PLATFORM, REBUILT', items: [
     'PLATFORM is not a flat slab any more: it\'s GLUG OIL\'s offshore rig. a grated cellar deck over the sea, a main deck of pipes and containers, a drill floor under a 30 m derrick, living quarters with a galley and bunks, a helideck with a chopper on top, cranes, a flare boom, and THE SNACK RUN supply boat tied up below.',
     'Platform has its own Plant & Defuse version, the Snack Attack: the crew defends the rig, SLURP OIL raiders attack from a riser platform. A is the drill floor, B is the cellar wellbay.',

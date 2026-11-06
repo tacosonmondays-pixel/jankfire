@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { G } from './ctx.js';
 import { PSys, scaleU } from './fx.js';
+import { wrapMat } from './skins.js'; // a wrap on the plates (killstreak look)
 import { AUTHORED, authored, glossyPaint } from './glbkit.js'; // the Blender rig (tools/blender/make_rig.py)
 
 // ------------------------------------------------------------ palette: salvage, all slightly different
@@ -427,8 +428,9 @@ export function drawScreen(t, k) {
 export function buildRig(color, opts = {}) {
   const T = template();
   const col = new THREE.Color(color || '#ff4fd8');
+  const wm = opts.finish && opts.finish !== 'default' ? wrapMat(opts.finish, col) : null; // your killstreak look: the plates in a wrap instead of your colour
   const own = {
-    accent: T.glb ? glossyPaint(col, 0.22) : new THREE.MeshLambertMaterial({ color: col, flatShading: true, fog: false, emissive: col.clone().multiplyScalar(0.3) }),
+    accent: wm || (T.glb ? glossyPaint(col, 0.22) : new THREE.MeshLambertMaterial({ color: col, flatShading: true, fog: false, emissive: col.clone().multiplyScalar(0.3) })),
     visor: new THREE.MeshBasicMaterial({ color: NEON.visor, fog: false }),
     glowL: new THREE.MeshBasicMaterial({ color: 0x4a0f3e, fog: false }),
     glowR: new THREE.MeshBasicMaterial({ color: 0x4a0f3e, fog: false }),
@@ -528,6 +530,7 @@ export function buildRig(color, opts = {}) {
   j.torso.rotation.order = 'YXZ';
   j.shoulderL.rotation.order = j.shoulderR.rotation.order = 'XZY';
   const inst = {
+    wrapped: !!wm,
     root, j, nodes, own, outlineMat, shieldMat, shield, pist, hoses, anchors, glows, flames, jets, jetGeo, jetMat, H_SEG, H_RAD,
     // pose state: gait phase, springs, timers
     phase: 0, plant: [0, 0], bob: 0, bobV: 0, sp: {}, look: 0, lookT: 0, lookNext: 1, t: 0, hexT: 9, hexK: 0, pods: 0,
@@ -544,7 +547,7 @@ function cylGeo(r, len) { // pointing +y from its origin
 export function freeRig(inst) {
   inst.root.removeFromParent();
   inst.hoses.geometry.dispose();
-  for (const m of Object.values(inst.own)) { if (m.map) m.map.dispose(); m.dispose(); }
+  for (const [k, m] of Object.entries(inst.own)) { if (k === 'accent' && inst.wrapped) continue; if (m.map) m.map.dispose(); m.dispose(); } // (a wrap's material is shared)
   if (inst.outlineMat) inst.outlineMat.dispose();
   inst.shieldMat.dispose();
   for (const g of inst.glows) g.material.dispose();
@@ -556,7 +559,7 @@ export function freeRig(inst) {
 }
 export function setRigColor(inst, color) {
   const c = new THREE.Color(color);
-  inst.own.accent.color.copy(c); inst.own.accent.emissive.copy(c).multiplyScalar(inst.own.accent.isMeshPhysicalMaterial ? 0.22 : 0.3);
+  if (!inst.wrapped) inst.own.accent.color.copy(c), inst.own.accent.emissive.copy(c).multiplyScalar(inst.own.accent.isMeshPhysicalMaterial ? 0.22 : 0.3);
   if (inst.outlineMat) inst.outlineMat.uniforms.uColor.value.copy(c);
 }
 

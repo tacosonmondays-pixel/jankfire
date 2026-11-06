@@ -12,6 +12,7 @@ import { W } from './weapons.js';
 import { fx } from './fx.js';
 import { sfx, loopLevel } from './audio.js';
 import { hud } from './hud.js';
+import { wreckShell, lookOf } from './streaklooks.js'; // your killstreak look: a disco / meat / bowling ball shell
 import { authored, AUTHORED, whenLate, nodeIn, ownMatByName } from './glbkit.js'; // the Blender ball (tools/blender/make_wreck.py)
 
 const R = WRECK.r;
@@ -106,6 +107,7 @@ export function buildWreckBall(color, look, opts = {}) {
     bl.obj.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) if (m.fog) { m.fog = false; m.needsUpdate = true; } }); // players ignore fog, like ours
     const lnk = nodeIn(bl.obj, 'link'); if (lnk) lnk.removeFromParent(); // (that one's the chain's)
     ownMatByName(g, 'wb_accent', mat(c, 'l', 0.3));
+    if (opts.skin) wreckShell(bl.obj, opts.skin);
     const slot = nodeIn(bl.obj, 'slot');
     g.userData.pupils = slot ? wreckFace(slot, look || {}) : [];
     if (opts.outline) { const o = new THREE.Mesh(P.body, mat(c, 'o')); o.scale.setScalar(1.06); g.add(o); }
@@ -268,10 +270,11 @@ export function updateWreck(dt, now, replaying, shadow, rope) {
   }
   W.held = false; W.aimHeld = false; W.dashHeld = false; // no hands
   if (rope) rope.visible = false; // the ball swings on its own chain
-  const key = G.myColor + '|' + JSON.stringify(G.settings.look || {});
+  const sk = lookOf('me', 'wreckingball');
+  const key = G.myColor + '|' + JSON.stringify(G.settings.look || {}) + JSON.stringify(sk) + (sk && AUTHORED['x_' + sk[3]] ? '+' : ''); // (+: its shell's file landed)
   if (!me.g || me.key !== key) {
     if (me.g) G.scene.remove(me.g);
-    me.g = buildWreckBall(G.myColor, G.settings.look);
+    me.g = buildWreckBall(G.myColor, G.settings.look, { skin: sk });
     me.key = key;
     G.scene.add(me.g);
   }
@@ -352,9 +355,10 @@ export function wreckRemote(r, dt, now) {
     return;
   }
   const root = r.ch.root;
-  if (!w || w.root !== root || w.color !== r.color) { // (re)build: first time, new look, new team colour
+  const sk = lookOf(r.skins || r.id, 'wreckingball'), skk = JSON.stringify(sk) + (sk && AUTHORED['x_' + sk[3]] ? '+' : '') + (AUTHORED.x_wreck ? 'b' : ''); // (rebuilt as the files land)
+  if (!w || w.root !== root || w.color !== r.color || w.skk !== skk) { // (re)build: first time, new look, new team colour, new ball skin
     if (w) { w.g.removeFromParent(); if (w.chain) w.chain.dispose(); }
-    w = r.wreck = { g: buildWreckBall(r.color, r.outfit, { outline: true }), st: newSpin(r.yaw), chain: null, root, color: r.color, on: false, seed: Math.random() * 9 };
+    w = r.wreck = { g: buildWreckBall(r.color, r.outfit, { outline: true, skin: sk }), st: newSpin(r.yaw), chain: null, root, color: r.color, skk, on: false, seed: Math.random() * 9 };
     root.add(w.g);
   }
   if (!w.on) { w.on = true; w.st = newSpin(r.yaw); if (r.buf.length > 2) { poof(r.pos); sfx.wreck(r.pos); } }
