@@ -15,6 +15,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { laserBuild, calculator } from './gearmodels.js'; // the new gear's models (laser pointer, pop quiz calculator)
 import { prepAuthored, authored, AUTHORED, bindAuthored, nodeIn, glossBlade, LAZY, isLazy } from './glbkit.js';
 import { SEC_WB, SEC_HATS, secAuthored } from './secmodels.js'; // water pistol, taser, tv remote, radar gun
+import { laserAuthored } from './laserglb.js'; // a Blender laser pointer's charge hooks (leds, lens, button, charm, orb)
 import { nailgunBuild, tennisBuild, cartCannonBuild, tennisBall, cartModel, nailgunStaple, tennisMachine, cartBasket } from './primmodels.js'; // the new primaries + what they shoot
 import { catEars, catTail, maidDress } from './catwear.js'; // Board Approved: cat ears, cat tail, maid dress
 import { RIFLE_WB, bindRifle } from './riflemodels.js'; // the rifle pack (burst rifle, lmg, marksman, lever-action, auto shotgun)
@@ -1411,6 +1412,7 @@ export function buildWeapon(id, skin) {
     g.userData.wid = 'bl_' + (variant ? model : id); // wrap zones come from the Blender parts' own names (_wzA / _wzB / _wzN), not the code model's rule
     bindAuthored(g, mt); // needle, vents, barrels, ember, card fan, bow string + the pump / cylinder / hammer / bolt that the viewmodel moves
     secAuthored(id, g, mt); // the radar gun's speed readout, the water pistol's tank level, the taser's ARMED light
+    laserAuthored(id, g, mt); // the laser's charge meter, lens glow, button, charm + the charge orb
     bindRifle(g, mt); // rifle pack: mag, charging handle, lever, feed cover, belt links, barrel heat
     if (Array.isArray(mt.glint) && mt.glint.length && mt.glint.every((a) => Array.isArray(a) && a.length === 4 && a.every(Number.isFinite))) addGlint(g, mt.glint);
     applySkin(g, skin);

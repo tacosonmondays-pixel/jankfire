@@ -192,3 +192,28 @@ def uv_ring(o, cx, cy, z0, z1, turn=0.0, sel=None):
             while e[2] - ref > 0.5: e[2] -= 1
             while e[2] - ref < -0.5: e[2] += 1
         for li, u, w in ls: uv[li].uv = (u, w)
+
+
+def cyl_patch(cx, cy, r, z0, z1, a0, a1, m, name='label', n=10, flip=False):
+    """a label wrapped on a cylinder along game z (axis through (cx, cy)): from angle a0 to a1 (radians from +x toward
+    +y), z0..z1. image u runs along z (flip: the other way, for a label read from +x), v up the visible side."""
+    bm = bmesh.new(); uvl = bm.loops.layers.uv.new('UVMap')
+    rows = []
+    for j in range(n + 1):
+        a = a0 + (a1 - a0) * j / n
+        rows.append([bm.verts.new(gv(cx + math.cos(a) * r, cy + math.sin(a) * r, z)) for z in (z0, z1)])
+    for j in range(n):
+        f = bm.faces.new((rows[j][0], rows[j][1], rows[j + 1][1], rows[j + 1][0]))
+        for lp, (zi, jj) in zip(f.loops, ((0, j), (1, j), (1, j + 1), (0, j + 1))):
+            u = zi if not flip else 1 - zi
+            lp[uvl].uv = (u, jj / n)
+    bm.normal_update()
+    cen = gv(cx, cy, (z0 + z1) / 2)
+    bm.faces.ensure_lookup_table()
+    f0 = bm.faces[0]
+    c0 = f0.calc_center_median()
+    out = c0 - Vector((cen.x, c0.y, cen.z))  # away from the axis (blender y = along it)
+    if f0.normal.dot(out) < 0: bmesh.ops.reverse_faces(bm, faces=list(bm.faces))
+    o = _new(name, bm, m)
+    for p in o.data.polygons: p.use_smooth = True
+    return o
