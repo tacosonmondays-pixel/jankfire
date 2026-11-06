@@ -14,7 +14,7 @@ import { nvToggle, nvFlashKey, onFlashed, nvFlashFx, updateGoggles, gogglesReset
 
 const L = WEAPONS.laser;
 // G with one of these: true = handled here (no charge spent locally). the camera's first press is a free photo, the
-// second prints it (that costs the charge, the normal way); the goggles' G is on/off, H fires the flash through useItem
+// second prints it (that costs the charge, the normal way); the goggles' G is on/off, nvgFlash (middle click / N) fires the flash through useItem
 function itemHook(id) {
   if (id === 'camera') {
     W.camPrint = holdingPhoto();
@@ -62,11 +62,21 @@ export function gearFx(m) {
   if (m.k === 'nvflash') { recordEv(m); if (m.id !== G.myId) nvFlashFx(m); return true; }
   return false;
 }
-// keys: 1-4 answer a pop quiz (and nothing else while you sit one), H fires the goggles' flash
+// named actions (the rebindable-keys work hooks these up): the goggles' flash is the middle mouse button, N on the
+// keyboard. never H: H drops your gun in Plant & Defuse
+export const GEAR_ACTIONS = { nvgFlash: { keys: ['KeyN'], mouse: [1] } };
+// keys: 1-4 answer a pop quiz (and nothing else while you sit one), nvgFlash fires the goggles' flash
 export function gearKeyDown(e) {
   if (quizKey(e)) return true;
-  if (e.code === 'KeyH' && !e.repeat) { nvFlashKey(); return true; }
+  if (GEAR_ACTIONS.nvgFlash.keys.includes(e.code) && !e.repeat) { nvFlashKey(); return true; }
   return false;
+}
+// mousedown: true = it was ours (main.js asks before its own buttons)
+export function gearMouseDown(e) {
+  if (!GEAR_ACTIONS.nvgFlash.mouse.includes(e.button)) return false;
+  e.preventDefault(); // no autoscroll on a middle click
+  nvFlashKey();
+  return true;
 }
 export function updateGear(dt, now) {
   updateBeams(dt, now);

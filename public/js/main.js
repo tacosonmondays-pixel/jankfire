@@ -23,6 +23,7 @@ import {
 } from './weapons.js';
 import { Remote, updateGibs } from './remote.js';
 import { stepSoap, trapStart, trapEnd, updateWand, stuckInBubble } from './wand.js';
+import { gearMouseDown } from './gear.js'; // the goggles' flash on the middle mouse button
 import { initGear, updateGear, gearFx, gearKeyDown, gearSpawn, gearLeave, gearKillParts, gearDeathLine } from './gear.js'; // laser pointer, camera, pop quiz, goggles
 import { parry } from './weapons.js';
 import './parry.js'; // katana parry: sparks, sounds, PARRY!, the guard pose
@@ -919,7 +920,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'Tab') { e.preventDefault(); scoresOpen = true; renderScores(); return; }
   if (e.code === 'KeyT' || e.code === 'Enter') { e.preventDefault(); openChat(); return; }
   if (e.code === 'KeyB') { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
-  if (gearKeyDown(e)) return; // pop quiz answers (1-4), goggles flash (H)
+  if (gearKeyDown(e)) return; // pop quiz answers (1-4), goggles flash (N)
   if (/^(KeyE|KeyG|KeyV|KeyC|KeyZ|ControlLeft|ControlRight|Digit[567])$/.test(e.code) && stuckInBubble(true)) { keys[e.code] = true; return; } // sealed in a soap bubble: no grapple, items, dash, t-bag, sprays or streaks
   if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) jumpPressed = true; }
   if (e.code === 'KeyE' && !e.repeat) { if (S.swapAim) aimDown(); else tryHook(); }
@@ -960,6 +961,7 @@ addEventListener('mousedown', (e) => {
   if (performance.now() < (ME.quizUntil || 0)) return; // pens down: sitting a pop quiz
   if (stuckInBubble(true)) return; // sealed in a soap bubble: no shooting, aiming or grappling till it pops
   if (econMouse(e)) return;
+  if (gearMouseDown(e)) return; // middle click: the goggles' flash (nvgFlash)
   if (e.button === 0) fireDown();
   if (e.button === 2) { if (S.swapAim) tryHook(); else aimDown(); }
   if (e.button === 3 || e.button === 4) tryHook();

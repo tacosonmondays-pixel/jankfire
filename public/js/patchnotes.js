@@ -15,7 +15,7 @@ export const PATCH_NOTES = [
     'BIG LASER POINTER: a new primary. hold to charge, let go to fire a thick beam that goes through people. tap for a weak one.',
     'INSTANT CAMERA: G takes a photo of where you stand. G again prints it as a frame. walk into the frame and you are back where you took it (so can anyone else).',
     'POP QUIZ: throw a calculator. whoever it hits freezes and gets a maths question. wrong or too slow and they die. right and they get a buff and a few seconds of invulnerability.',
-    'NIGHT VISION GOGGLES: G puts them on, the dark goes green and people glow. H flashes everyone you can see. flashbangs hurt you more while you wear them.',
+    'NIGHT VISION GOGGLES: G puts them on, the dark goes green and people glow. middle click (or N) flashes everyone you can see. flashbangs hurt you more while you wear them.',
     'the Spoon is gone from the loadout: it is a knife skin now. Gun Game\'s last rung and Spoons & Grapples still hand you one.',
   ] },
   { v: '2.3', date: '2026-11-06', title: 'THE OVERDRIVE UPDATE', items: [
