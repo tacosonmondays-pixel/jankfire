@@ -1,6 +1,14 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '4.1', date: '2026-11-06', title: 'HOLD IT RIGHT', items: [
+    'THE KATANA IS HELD LIKE A KATANA: two hands on the grip, big two-handed cuts both ways, an iai draw, a proper inspect (with a blood flick) and a two-handed parry. other players see both hands on it too. the timing hasn\'t changed.',
+    'THE BUTTERFLY KNIFE does real flips now: the handles swing round the pivot, with fan, rollover and aerial tricks.',
+    'melee fixes: the knife, spoon, slapper and karambit stabs no longer point the blade away from you, and bread got its own draw.',
+    'EVERY GUN HAS A RELOAD: mag swaps on the AR and SMG, shell by shell on the shotgun, bolt work on the sniper, a speedloader on the revolver.',
+    'the silly ones: a jerry can for the Redline, a tiny arm shoving the minigun belt in, a little hammer for the nail gun, a bag of marbles tipped into the jar, soul shells for the reaper rifle and a juice box for the water pistol.',
+    'reloads now end exactly when the ammo refills, at any framerate.',
+  ] },
   { v: '4.0', date: '2026-11-06', title: 'THE WRAP PACK', items: [
     '48 NEW WRAPS (65 total). commons come in every colour: Cherry Pop, Tangerine, Lemon Drop, Lime, Mint, Pool Tile, Sky, Navy, Grape Soda, Hot Magenta, Cream, Matte Black, Fridge White, Bubblegum, Creamsicle, Ketchup & Mustard, Hazard Stripes, Hi-Vis.',
     'PORCELAIN: Grandma\'s China, Crackle Glaze, and the legendary Kintsugi (gold in the cracks).',
