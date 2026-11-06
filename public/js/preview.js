@@ -2,6 +2,8 @@
 import * as THREE from 'three';
 import { buildWeapon, freeTree, M } from './models.js';
 import { withEnv, trackGlb, whenGlb, want } from './glbkit.js';
+import { streakModel } from './itemicons.js';
+import { isStreakLook } from '/shared/cosmetics.js';
 import { makeSkinSystems, emitSkinFx } from './skins.js';
 import { idlePose } from './loco.js';
 
@@ -56,7 +58,7 @@ export function showPreview(id, skin) {
   shown = [id, skin];
   sway = 0; holder.rotation.y = 0; camHome(); dropPlinth();
   freeTree(holder); holder.clear(); // the last thing shown is gone for good
-  const [g, t] = trackGlb(() => buildWeapon(id, skin));
+  const [g, t] = trackGlb(() => (isStreakLook(id) ? streakModel(id, skin) : buildWeapon(id, skin))); // (a killstreak's look, or a weapon)
   for (const m of t.missing) want(m, 5); // the big one on show goes first
   if (t.missing.size) { const me = shown; whenGlb([...t.missing], () => { if (shown === me) showPreview(id, skin); }); } // its Blender model landed (or we stop waiting): show that
   if (t.pending) { freeTree(g); holder.add(loadingObj()); cur = holder; ext = { rxz: 0.75, hy: 0.6 }; if (manual) fitCam(); return; } // still downloading: the loading cube, never the old code model
