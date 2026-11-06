@@ -11,7 +11,7 @@ import { showArmed, resizePreview, setPreviewRes } from './preview.js';
 import { modeThumb } from './modeart.js';
 import { fleshFrame } from './flesh.js';
 import { organic, organicRedraw } from './organic.js';
-import { weaponIcon, iconWaits } from './icons.js';
+import { iconWaits } from './icons.js';
 import { whenGlb } from './glbkit.js';
 import { navPic, navGunPic, navCratePic } from './navicons.js'; // the side menu's little 3D props
 import { containerPic } from './crate3d.js';
