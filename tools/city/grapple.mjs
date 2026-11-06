@@ -17,6 +17,8 @@ export const ROUTES = {
   longstairs: { from: [-44, 4.3, 226], to: [-44, 36.3, -20], r: 8, note: 'the Bottom: up the Long Stairs by the gantries' },
   market: { from: [-140, 0.3, 246], to: [-44, 12.3, 170], r: 12, note: 'the Bottom: market masts up onto the terraces' },
   ribave: { from: [-44, 40.3, -64], to: [-44, 40.3, -240], r: 10, note: 'the Gut: down Rib Avenue arch to arch' },
+  ribrun: { from: [-44, 40.3, -112], to: [-160, 40.3, -128], r: 12, note: 'the Gut: THE RIB RUN over Peristalsis Avenue to the stomach rim' },
+  gate_roofs: { from: [-44, 36.3, -4], to: [-73, 44.7, -13], r: 2.6, note: 'Overtime 1: from the stairs top up onto the highest roof' },
   pileup: { from: [212, 27, -20], to: [222, 34.5, -20], r: 3, note: 'the Commute: onto the Pile-Up' },
   crows_nest: { from: [-160, 8.3, 200], to: [-154, 29.8, 182], r: 2.2, walk: true, note: 'secret: the Crow\'s Nest (Lost & Found crane)' },
   wishbone: { from: [-44, 40.3, -196], to: [-44, 59, -213], r: 2.2, walk: true, note: 'secret: the Wishbone (Rib Avenue)' },

@@ -7,6 +7,7 @@ import { SLICE, PLACES } from './slice.js';
 import { rng, hash2 } from './plan.js';
 import { cube, stairsZ, line, rubble, stall, flightLen, retaining, PASTEL, pick, hook } from './kit.js';
 import { playGut } from './playground.js';
+import { gateArena, inGateArena } from './arenas.js';
 
 const GY = SLICE.gut.y;
 const inRect = (x0, z0, x1, z1, r) => x0 < r[2] && x1 > r[0] && z0 < r[3] && z1 > r[1];
@@ -279,6 +280,7 @@ export function border(B, d) {
       const lx0 = x + gap; x += gap + w;
       if (lx0 + w < X0 - 6 || lx0 > X1 + 6) continue;
       if (Math.abs(lx0 + w / 2 - G.x) < 14 || Math.abs(lx0 + w / 2 + 112) < 8) continue; // the gate's avenue, the escalator top
+      if (inGateArena(lx0, zz0, lx0 + w, zz1)) continue; // Overtime's arena (arenas.js builds its own houses)
       const hr = rng(seed), floors = 1 + (hr() * 3 | 0);
       let fy = y;
       for (let f = 0; f < floors; f++) {
@@ -298,6 +300,7 @@ export function border(B, d) {
     B.out.marks.push({ id: 'gut:stairs_top', p: [G.x, y, G.z + 6], face: 0 });
   }
   for (let i = 0; i < 4; i++) { const cx = X0 + r0() * (X1 - X0), cz = Z0 + r0() * (Z1 - Z0); if (cz > -21 && cz < -19) B.out.marks.push({ id: 'crowd', p: [cx, y, cz], kind: 'lost' }); }
+  gateArena(B); // THE GUT BORDER GATE (arenas.js)
 }
 
 // the slice's edges: nobody walks off the world. west: a wall of stacked containers; south: a rubble berm; north:
