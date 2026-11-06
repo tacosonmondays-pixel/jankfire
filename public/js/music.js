@@ -17,7 +17,6 @@ export const TRACKS = [
   { file: 'hung_jury_hardcore.ogg', title: 'Hung Jury Hardcore', artist: 'The Honourable DJ Gavel', lufs: -8.1, loop: true },
   { file: 'banana_peel_acid.ogg', title: 'Banana Peel Acid', artist: 'Slip Daddy', lufs: -8.1, loop: true },
   { file: 'wrecking_ball_warmup.ogg', title: 'Wrecking Ball Warm-Up', artist: 'Coach Ball', lufs: -8.1, loop: true },
-  { file: 'never_landed.ogg', title: 'Never Landed', artist: 'Target Dummy Idol', lufs: -8.1, loop: true },
 ];
 const REF_LUFS = -14; // everything is levelled to this (the music volume default was set by ear on Untitled)
 

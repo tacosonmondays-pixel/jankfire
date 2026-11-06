@@ -8,7 +8,7 @@ import soundfile as sf
 
 OUT = os.path.join(HERE, '..', '..', 'public', 'music')
 WORK = os.environ.get('JF_MUSIC_WORK', os.path.join(HERE, '.cache', 'work'))
-TRACKS = ['jank_cola_rave', 'spoon_fight_tekno', 'rubber_duck_hardcore', 'hung_jury_hardcore', 'banana_peel_acid', 'wrecking_ball_warmup', 'never_landed']
+TRACKS = ['jank_cola_rave', 'spoon_fight_tekno', 'rubber_duck_hardcore', 'hung_jury_hardcore', 'banana_peel_acid', 'wrecking_ball_warmup']
 
 
 def run(slug):
