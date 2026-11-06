@@ -57,14 +57,22 @@ export async function init() {
 
 // ---------------------------------------------------------------- the host: what the engine asks the world to do
 const S0 = () => ST.S;
+// the inventory: the systems lane's real bag (G.story.inv, WP3/WP5) when it's there, else the stand-in bag (bagStub)
+const INV = () => (G.story && G.story.inv && typeof G.story.inv.has === 'function' ? G.story.inv : null);
+export const bag = {
+  has: (b) => (INV() ? INV().has(b.startsWith('implant.') ? b.slice(8) : b, 1) || ST.bag.has(b) : ST.bag.has(b)), // (has.implant.X asks for the implant)
+  give: (b, n = 1) => { if (INV()) INV().give(b, n); else ST.bag.add(b); },
+  take: (b, n = 1) => { if (INV()) INV().take(b, n); else ST.bag.delete(b); },
+};
+ST.inv = bag;
 const HOST = {
-  has: (item) => ST.bag.has(item),
+  has: (item) => bag.has(item),
   act(a) {
     const arg = a.arg ?? '';
     switch (a.do) {
-      case 'give': { const it = a.item ? (a.item.id || a.item.roll || 'item') : arg; ST.bag.add(String(it)); toast(`you got <b>${String(it).replace(/_/g, ' ').toUpperCase()}</b>`); break; }
-      case 'take': ST.bag.delete(arg); break;
-      case 'coupons': { const n = Number(arg) || 0; ST.S.st.vars.coupons = (ST.S.st.vars.coupons || 0) + n; toast(`<b>${n >= 0 ? '+' : ''}${n}</b> ☺ coupons`); break; }
+      case 'give': { const it = a.item ? (a.item.id || a.item.roll || 'item') : arg; bag.give(String(it)); toast(`you got <b>${String(it).replace(/_/g, ' ').toUpperCase()}</b>`); break; }
+      case 'take': bag.take(arg); break;
+      case 'coupons': { const n = Number(arg) || 0; if (INV() && INV().coupons) INV().coupons(n); ST.S.st.vars.coupons = (ST.S.st.vars.coupons || 0) + n; toast(`<b>${n >= 0 ? '+' : ''}${n}</b> ☺ coupons`); break; }
       case 'toast': toast(arg); break;
       case 'scene': if (ST.scene) ST.scene.playScene(arg); break;
       case 'anim': { const [who, clip] = arg.split('/'); const ac = actors.get(who); if (ac) play(ac, clip); break; }
@@ -74,7 +82,7 @@ const HOST = {
       case 'turf': { const [d, f] = arg.split('='); toast(`<b>${String(d).toUpperCase()}</b> is run by <b>${String(f).toUpperCase()}</b> now`); break; }
       case 'boss': { const b = S0().defs.bosses[arg] || {}; const [name, job] = String(b.card || arg).split(' · '); if (ST.scene) ST.scene.playScene({ id: 'boss_' + arg, kind: 'boss', skip: true, boss: { name, job: job || '', sub: b.subtitle || '' } }); break; }
       case 'loot': toast(`LOOT DROP: <b>${arg.replace(/_/g, ' ')}</b>`); break;
-      case 'implant': ST.bag.add('implant.' + arg); toast(`IMPLANT: <b>${arg.replace(/_/g, ' ')}</b>`); break;
+      case 'implant': if (INV()) INV().give(arg, 1); ST.bag.add('implant.' + arg); toast(`IMPLANT: <b>${arg.replace(/_/g, ' ')}</b>`); break;
       case 'fees': S0().st.vars.fees = Math.max(0, (S0().st.vars.fees || 0) + (Number(arg) || 0)); toast(`LATE FEES <b>${'☺'.repeat(Math.min(5, S0().st.vars.fees))}</b>`); break;
       case 'call': toast(`☺ PAGER: <b>${(S0().defs.npcs[arg] || { name: arg }).name}</b> is calling`); break;
       case 'unlock': toast(`unlocked: <b>${(S0().defs.zones[arg] || { name: arg }).name}</b>`); break;
@@ -106,7 +114,7 @@ function sync(force) {
   const st = toSave(ST.S.st), key = JSON.stringify([st, [...ST.bag], ST.S.st.vars.coupons | 0]);
   if (!force && key === synced) return;
   synced = key;
-  G.story.send('engine', { st, bag: [...ST.bag], coupons: Math.max(0, ST.S.st.vars.coupons | 0) });
+  G.story.send('engine', INV() ? { st } : { st, bag: [...ST.bag], coupons: Math.max(0, ST.S.st.vars.coupons | 0) }); // (with the real bag the sim owns items + coupons)
 }
 const inStory = () => !!(G.story && G.joined && G.mode === 'story');
 export async function save(why = 'quest') {
@@ -306,7 +314,7 @@ export function frame(dt, now, cam) {
       }
       for (const sp of SPOTS.values()) { sp.mesh.visible = true; sp.mesh.userData.glow.material.opacity = 0.35 + Math.sin(now * 0.006) * 0.25; if (sp.mesh.userData.spin) sp.mesh.userData.spin.rotation.y += dt * 2; if (Math.hypot(ME.pos[0] - sp.p[0], ME.pos[2] - sp.p[2]) < 1.8) nearThing = { spot: sp, t: { name: sp.name.toUpperCase() } }; }
       for (const t of ST.things.values()) {
-        t.mesh.visible = S.test(t.t.if) && !ST.bag.has(t.t.item);
+        t.mesh.visible = S.test(t.t.if) && !bag.has(t.t.item);
         if (t.mesh.visible) { t.mesh.userData.glow.material.opacity = 0.35 + Math.sin(now * 0.006) * 0.25; if (Math.hypot(ME.pos[0] - t.p[0], ME.pos[2] - t.p[2]) < 1.8) nearThing = t; }
       }
     }
@@ -333,10 +341,10 @@ export function key(e) {
   if (codexOpen()) { if (K.matches('menu', e)) toggleCodex(ST.S, false); return true; }
   if (K.matches('use', e) && !e.repeat) {
     if (nearThing && nearThing.spot) { const sp = nearThing.spot; sfx.cash && sfx.cash();
-      if (sp.kind === 'pickup') { ST.bag.add(sp.item); toast(`picked up <b>${sp.name.toUpperCase()}</b>`); ST.S.emit({ type: 'pickup', item: sp.item, zone: sp.zone }); }
+      if (sp.kind === 'pickup') { bag.give(sp.item); toast(`picked up <b>${sp.name.toUpperCase()}</b>`); ST.S.emit({ type: 'pickup', item: sp.item, zone: sp.zone }); }
       else { if (sp.th) { ST.S.st.flags['used.' + sp.thing] = true; ST.S.run(sp.th.do || [], 'thing'); toast(`found <b>${sp.name}</b>`); } ST.S.emit({ type: 'interact', thing: sp.thing, zone: sp.zone }); }
       G.scene.remove(sp.mesh); for (const [k, v] of SPOTS) if (v === sp) SPOTS.delete(k); return true; }
-    if (nearThing) { const t = nearThing; ST.bag.add(t.t.item); sfx.cash && sfx.cash(); toast(`picked up <b>${t.t.name}</b>`); ST.S.emit({ type: 'pickup', item: t.t.item }); ST.S.emit({ type: 'interact', thing: t.id }); return true; }
+    if (nearThing) { const t = nearThing; bag.give(t.t.item); sfx.cash && sfx.cash(); toast(`picked up <b>${t.t.name}</b>`); ST.S.emit({ type: 'pickup', item: t.t.item }); ST.S.emit({ type: 'interact', thing: t.id }); return true; }
     if (nearAct) { if (document.pointerLockElement) { /* keep the lock: answers are on the number keys */ } startTalk(ST.S, nearAct.id, 'start', () => save()); return true; }
   }
   return false;
