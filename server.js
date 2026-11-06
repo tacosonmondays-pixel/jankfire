@@ -2615,7 +2615,12 @@ class Room {
       case 'slam': this.onSlam(p, m); break;
       case 'fire': this.onFire(p, m); break;
       case 'cough':
-        if (p.alive && now() - p.coughT > 800) { p.coughT = now(); this.damage(p, 12, null, 'cough'); }
+        if (p.alive && now() - p.coughT > 800) {
+          p.coughT = now();
+          const cp = Math.cos(p.pitch || 0); // everyone else sees the smoke burst out of your face, and you double over
+          this.broadcast({ t: 'fx', k: 'cough', id: p.id, p: eyeOf(p).map(r2), d: [-Math.sin(p.yaw || 0) * cp, Math.sin(p.pitch || 0), -Math.cos(p.yaw || 0) * cp].map(r2) }, p.id);
+          this.damage(p, 12, null, 'cough');
+        }
         break;
       case 'chat': {
         const text = typeof m.m === 'string' ? clean(m.m, 120) : '';

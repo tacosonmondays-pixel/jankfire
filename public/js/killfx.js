@@ -45,6 +45,9 @@ function textTex(lines, w, h, bg, fg, font) {
   return tex;
 }
 
+// Blast Zone's size (1 = the original big burst). a knob so it's easy to tune
+export const BLASTZONE = { scale: 1 };
+
 const EFFECTS = {
   confetti(c) {
     const p = [c.pos[0], c.pos[1] + 1.2, c.pos[2]];
@@ -184,7 +187,7 @@ const EFFECTS = {
     const ch = body(c);
     const hv = Math.hypot(c.vel[0], c.vel[2]);
     const a = hv > 2 ? Math.atan2(c.vel[2], c.vel[0]) : Math.random() * Math.PI * 2;
-    const dir = new THREE.Vector3(Math.cos(a), 0.55, Math.sin(a)).normalize(), sp = 60;
+    const dir = new THREE.Vector3(Math.cos(a), 0.55, Math.sin(a)).normalize(), sp = 60 * Math.sqrt(BLASTZONE.scale); // a smaller burst = a shorter flight too
     const start = new THREE.Vector3(c.pos[0], c.pos[1] + 1, c.pos[2]), FLY = 0.55;
     const tint = new THREE.Color(c.color || '#ff4fd8').getHex();
     add(ch.root, FLY, (o, dt, age) => {
@@ -199,7 +202,7 @@ const EFFECTS = {
       // ...but stops well short of where they got hit, and of the camera, so it's a big column you see, not a pink screen
       const cam = G.camera ? G.camera.position.distanceTo(at) : 60, reach = Math.max(8, Math.min(start.distanceTo(at) * 0.75, cam * 0.6));
       const beam = (len, r, color, spread, life) => {
-        const f = Math.min(1, reach / 46); len *= f; r *= Math.max(0.5, f);
+        const f = Math.min(1, reach / 46), k = BLASTZONE.scale; len *= f * k; r *= Math.max(0.5, f) * k;
         const geo = new THREE.ConeGeometry(r, len, 14, 1, true);
         geo.translate(0, -len / 2, 0); // the tip at the blast point, opening toward the map
         const m = new THREE.Mesh(geo, own(new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, fog: false }))); // solid colour (not additive) so it reads on bright skies too
@@ -215,9 +218,10 @@ const EFFECTS = {
       beam(46, 7, 0xffffff, 0, 0.9); // the white core
       beam(40, 9.5, tint, 0.08, 1.1); // the victim's colour
       for (const col of [0xff4fd8, 0xffe14d, 0x4fd8ff, 0x7dff4f]) beam(26 + Math.random() * 14, 3 + Math.random() * 2, col, 0.45, 0.8 + Math.random() * 0.4); // rays fanning out
-      fx.ring(p, 14, 0xffffff, 0.5); fx.ring(p, 9, tint, 0.7);
-      fx.explosion(p, 6);
-      fx.spray(p, 80, [0xffffff, 0xffe14d, 0xff4fd8, 0x4fd8ff, tint], 26, 1.2, 0.3, 4, 1.5);
+      const k = BLASTZONE.scale;
+      fx.ring(p, 14 * k, 0xffffff, 0.5); fx.ring(p, 9 * k, tint, 0.7);
+      fx.explosion(p, 6 * k);
+      fx.spray(p, Math.round(80 * k), [0xffffff, 0xffe14d, 0xff4fd8, 0x4fd8ff, tint], 26 * Math.sqrt(k), 1.2, 0.3, 4, 1.5);
       sfx.boom(p); sfx.airhorn(true);
     };
     sfx.yeet(c.pos);

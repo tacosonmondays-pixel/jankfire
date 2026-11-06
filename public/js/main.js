@@ -52,7 +52,7 @@ import { sprayAim, sprayFx, addSpray, clearSprays, updateSprays, sprayIcon } fro
 import { achInv } from '/shared/cosmetics.js'; // achievement rewards (Golden Sniper) count as owned once you have the achievement
 import { achProgress, ROYAL_ALL, ROYAL_FEATS } from '/shared/looks.js';
 import { royalToast, royalUnlock, royalBoxes } from './royal.js';
-import { setOnly } from './weapons.js';
+import { setOnly, coughCloud } from './weapons.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
 import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection, infClipInfo } from './infection.js';
 import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown } from './endscreen.js';
@@ -1503,6 +1503,10 @@ net.on('fx', (m) => {
     if (src) fx.spray([src[0], src[1] + 1.2, src[2]], 16, [0x7dff4f, 0xffffff], 3, 1.0, 0.14, -2, 1);
   } else if (m.k === 'bubhit') {
     fx.spray(m.p, 8, [0x4fd8ff, 0xffffff], 4, 0.3, 0.1, 0, 2); sfx.ricochet(m.p);
+  } else if (m.k === 'cough') { // someone over-smoked the cigarette: they double over and smoke bursts out in front of them
+    if (r) r.coughT = performance.now();
+    const ok = (a) => Array.isArray(a) && a.length === 3 && a.every(Number.isFinite);
+    if (ok(m.p) && ok(m.d)) { coughCloud(m.p, m.d); if (Math.hypot(m.p[0] - ME.pos[0], m.p[2] - ME.pos[2]) < 30) sfx.cough(); }
   } else if (m.k === 'burn') {
     if (r) r.burnUntil = performance.now() + 600;
     if (m.id === G.myId) G.burnUntil = performance.now() + 600;

@@ -911,11 +911,19 @@ function resolveSwing(id) {
   }
 }
 
+// a cough: a burst of smoke billows out in front of your face (no fire), thickening as it spreads. others see it too
+export function coughCloud(o, d) {
+  for (let i = 0; i <= 14; i++) {
+    const t = i / 14, k = 0.45 + t * 2.9;
+    fx.smoke([o[0] + d[0] * k, o[1] - 0.12 + d[1] * k + t * 0.25, o[2] + d[2] * k], 2 + Math.round(t * 3), 0.05 + t * 0.45);
+  }
+  fx.spray([o[0] + d[0] * 0.6, o[1] - 0.1 + d[1] * 0.6, o[2] + d[2] * 0.6], 14, [0xd8d8d8, 0xa8a8a8, 0x8a8a8a], 3, 1.1, 0.32, -0.6, 1.6);
+}
 function cough() {
   net.send({ t: 'cough' });
   sfx.cough();
   hud.msg('*cough cough*', 1.2);
-  fx.smoke(eye(), 25, 0.4);
+  coughCloud(eye(), look());
   W.charge = 0;
   W.coughLock = true;
   G.shake = Math.max(G.shake, 0.5);
@@ -950,6 +958,7 @@ export function fireUp() {
     W.draw = 0;
   }
   if (W.cur === 'cig') {
+    if (W.charge > WEAPONS.cig.maxCharge) { cough(); W.coughLock = false; return; } // let go in the TOO MUCH zone: you cough smoke instead of breathing fire
     if (W.charge > 0.12) {
       W.exhale = Math.min(W.charge, WEAPONS.cig.maxCharge) * WEAPONS.cig.exhaleMul;
       W.tick = 0;
