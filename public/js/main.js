@@ -54,7 +54,7 @@ import { rigClash } from '/shared/rig.js'; // overdrive rig killstreak
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
 import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames } from './royale.js'; // jank royale
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
-import { ECON_KEYS } from './econ.js';
+import { ecoKeyLabel } from './econ.js';
 import { initEcon, ecoOn, econKey, econMouse, econMenuOpen, econFrame, econCam, econHideVM, econDead, econWelcome, econSpawn, econKill, econIc, econLoadout, econReset } from './econ.js';
 import { SPRAY, ownedSpray } from '/shared/cosmetics.js';
 import { sprayAim, sprayFx, addSpray, clearSprays, updateSprays, sprayIcon } from './sprays.js';
@@ -436,7 +436,7 @@ function renderKeyHints() {
   $('gFight').innerHTML = `${B(L('fire'))} shoot · ${B(L('aim'))} aim · ${B(L('parry'))} katana parry · ${B(L('reload'))} reload · ${B(L('use'))} inspect · ${B(`${L('slot1')} ${L('slot2')} ${L('slot3')}`)} switch · ${B(L('lastSlot'))} last weapon`;
   $('gItems').innerHTML = `${B(L('item'))} item · ${B(L('nvgFlash'))} goggles flash · ${B(`${L('streak1')} ${L('streak2')} ${L('streak3')}`)} killstreaks · ${B(`${L('dash')} / ${L('scythe')}`)} scythe · ${B(L('spray'))} spray`;
   $('gElse').innerHTML = `${B(L('menu'))} menu · ${B(L('scores'))} scores · ${B(L('chat'))} chat`;
-  $('gEcon').innerHTML = `plant &amp; defuse: ${B(ECON_KEYS.buy.slice(3))} buy · ${B(ECON_KEYS.drop.slice(3))} drop what you hold · ${B(L('grapple'))} pick up · ${B(L('sprint'))} slow walk (silent) · stand still to shoot straight`;
+  $('gEcon').innerHTML = `plant &amp; defuse: ${B(ecoKeyLabel('buy'))} buy · ${B(ecoKeyLabel('drop'))} drop what you hold · ${B(L('grapple'))} pick up · ${B(L('sprint'))} slow walk (silent) · stand still to shoot straight`;
   $('voteKeys').textContent = VOTES.map(K.label).join(' ');
   $('sprayKey').textContent = K.label('spray');
   $('loItemKey').textContent = K.label('item');
@@ -964,7 +964,7 @@ function aimUp() { if (!S.toggleAim) W.aimHeld = false; }
 
 addEventListener('keydown', (e) => {
   if (!inGame() || K.typing(e) || document.activeElement === $('name')) return;
-  if (econKey(e)) return; // buy menu, drop, P pause (econ.js ECON_KEYS)
+  if (econKey(e)) return; // buy menu, drop, pause (keys.js 'buy' / 'drop' / 'pause')
   if (K.bound(e) || e.code === 'Tab') e.preventDefault(); // bound keys never scroll, tab focus or click a button
   pressed(e);
 });
