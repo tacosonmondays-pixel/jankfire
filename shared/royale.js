@@ -3,6 +3,7 @@
 // and the client (loot labels, the zone wall, the blimp's path, the glide).
 import { GAMES, GAME_ORDER, TARGETS } from './modes.js';
 import { MAPS } from './map.js';
+import { PLAN as JB } from './jankburg.js'; // (registers the Jankburg map)
 import { WEAPONS, ITEMS, FLAGS } from './weapons.js';
 
 FLAGS.GLIDE = 8192; // under an umbrella (everyone sees it open over your head)
@@ -12,6 +13,10 @@ for (const id of ['desert', 'warehouse', 'suburb']) if (MAPS[id]) MAPS[id].royal
 if (MAPS.desert) MAPS.desert.royale = { zone0: [0, 0, 150], blimpY: 115 }; // the first circle covers the whole town
 if (MAPS.warehouse) MAPS.warehouse.royale = { zone0: [13, 0, 150], blimpY: 105 };
 if (MAPS.suburb) MAPS.suburb.royale = { zone0: [1, 0, 130], blimpY: 100 };
+// Jankburg: the big one. the first circle covers the city and the outer ring; each district is a POI (see POI below)
+if (MAPS.jankburg) MAPS.jankburg.royale = { zone0: [0, 0, 300], blimpY: 195, pois: JB.districts, loot: 380 };
+// which POI a point is in (null outside them)
+export function poiAt(map, p) { const ps = map && map.royale && map.royale.pois; return (ps && ps.find((d) => p[0] >= d.rect[0] && p[0] <= d.rect[2] && p[2] >= d.rect[1] && p[2] <= d.rect[3])) || null; }
 
 Object.assign(GAMES, {
   br: { name: 'Jank Royale', desc: 'battle royale. jump out of the blimp, loot the floor, stay in the zone. last one standing wins', teams: false, royale: true, mapOk: (m) => !!(m && m.royale) },

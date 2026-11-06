@@ -6,7 +6,7 @@ import { GAMES } from '../shared/modes.js';
 import { WEAPONS, ITEMS, BOT_DIFF, FLAGS } from '../shared/weapons.js';
 import { raycast, PH } from '../shared/physics.js';
 import { outOfBounds } from '../shared/bounds.js';
-import { BR, ZONE, TIERS, GUNS, MELEE, GADGETS, STUFF, ARMOR_OF, ammoFor, bucketFor, blimpAt, blimpDone, zoneAt, outsideZone } from '../shared/royale.js';
+import { poiAt, BR, ZONE, TIERS, GUNS, MELEE, GADGETS, STUFF, ARMOR_OF, ammoFor, bucketFor, blimpAt, blimpDone, zoneAt, outsideZone } from '../shared/royale.js';
 
 const now = () => Date.now();
 const r2 = (x) => Math.round(x * 100) / 100;
@@ -156,7 +156,7 @@ export function installRoyale(Room, H) {
     brSpawnLoot() {
       const map = this.map, B = this.br, all = findSpots(map).slice().sort(() => Math.random() - 0.5);
       const bb = map.bounds || [-60, -60, 60, 60], area = (bb[2] - bb[0]) * (bb[3] - bb[1]);
-      const want = Math.max(60, Math.min(260, Math.round(area / 220)));
+      const want = Math.max(60, Math.min(map.royale.loot || 260, Math.round(area / 220)));
       const chosen = [];
       // indoors first (that's where the good stuff is), then roofs, then the street
       all.sort((s, t) => (t.indoor - s.indoor) + (Math.random() - 0.5) * 1.2);
@@ -168,7 +168,8 @@ export function installRoyale(Room, H) {
       }
       B.spots = chosen;
       for (const s of chosen) {
-        const q = Math.min(1, (s.indoor ? 0.5 : s.lv > 0 ? 0.45 : 0.15) + s.lv * 0.1 + Math.random() * 0.25);
+        const poi = poiAt(map, s.p); // districts loot better or worse (Liberal Lane: liberal helpings)
+        const q = Math.min(1, (s.indoor ? 0.5 : s.lv > 0 ? 0.45 : 0.15) + s.lv * 0.1 + Math.random() * 0.25 + (poi ? poi.loot : 0));
         const at = (k) => [r2(s.p[0] + (k ? (Math.random() - 0.5) * 1.6 : 0)), r2(s.p[1] + 0.02), r2(s.p[2] + (k ? (Math.random() - 0.5) * 1.6 : 0))];
         const r = Math.random();
         if (r < 0.46) {

@@ -45,7 +45,7 @@ export function canDefuse(pos, bp, slack = 0) {
   return Math.hypot(pos[0] - bp[0], pos[2] - bp[2]) < BOMB.defuseRange + slack && dy < 4.6 + slack && dy > -1.6 - slack;
 }
 export function mapsFor(game, maps, order) {
-  return order.filter((id) => id !== 'range' && maps[id] && (!GAMES[game].sites || (maps[id].sites && maps[id].sites.length)) && (!GAMES[game].mapOk || GAMES[game].mapOk(maps[id])));
+  return order.filter((id) => id !== 'range' && maps[id] && !(maps[id].royaleOnly && !GAMES[game].royale) && (!GAMES[game].sites || (maps[id].sites && maps[id].sites.length)) && (!GAMES[game].mapOk || GAMES[game].mapOk(maps[id])));
 }
 
 // chaos modes (free for all). kit = the only weapons you get (no item, no killstreaks), checked by the server too.
