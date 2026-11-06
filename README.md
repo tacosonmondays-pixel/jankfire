@@ -296,7 +296,7 @@ The **Golden Sniper** is never in a crate: it's the reward for the Sniper Royalt
 
 New accounts get one of each. Win a round (Online needs 2+ real players, Bots needs 3+ bots) for a random container; coop gives one every 5 waves. Odds: Common 55%, Rare 28%, Epic 13%, Legendary 4%. Own everything in a type and it turns into 100 XP.
 
-**Kill effects** (what happens to people you kill): Gibs, Confetti (free), Tombstone, Make It Rain, Missing Texture, Balloons, Chickens, Blue Screen, Yeet, Ascend, Big Duck, Blast Zone (knocked clean off the screen: they rocket away and a huge burst of colour jets back at the map).
+**Kill effects** (what happens to people you kill): Gibs, Confetti (free), Tombstone, Make It Rain, Missing Texture, Balloons, Chickens, Blue Screen, Yeet, Ascend, Big Duck, Blast Zone (knocked clean off the screen: they rocket away and a burst of colour jets back at the map).
 
 **Grapple skins** (your rope and the thing on the end, everyone sees it, each lands with its own sound): Rope + iron hook (free), Chain + claw, Candy Cane, Plunger, Jungle Vine + wooden hook, Laser + emitter, Sticky Hand (stretchy), Rainbow + star. Pick one in COSMETICS (hover a card to try it in the preview).
 

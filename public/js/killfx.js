@@ -46,7 +46,7 @@ function textTex(lines, w, h, bg, fg, font) {
 }
 
 // Blast Zone's size (1 = the original big burst). a knob so it's easy to tune
-export const BLASTZONE = { scale: 1 };
+export const BLASTZONE = { scale: 0.33 }; // one third of the original burst (owner pick, 2026-11-06)
 
 const EFFECTS = {
   confetti(c) {
