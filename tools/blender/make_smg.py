@@ -113,7 +113,7 @@ def build():
             apply_mods(p); uv_planar(p, (-W(29.5), Y(-81), Z(486)), W(52), '-x')
     WZ = {'smg_steel': 'a', 'smg_polymer': 'a', 'smg_teal': 'a', 'smg_rubber': 'a', 'smg_dark': 'b', 'smg_black': 'b'}  # wrap zones (wrapzones.js): a = handle side, b = business end, everything else keeps its look
     bodies = zone_join(parts, 'smg_body', WZ, default='n', rule=lambda m, c: 'b' if m == 'smg_steel' and c[2] < Z(120) else 'a' if m == 'smg_dark' and c[2] > Z(468) else None)  # sight hood with the barrel, stock with the body
-    meta = {'kind': 'weapon', 'id': 'smg', 'paint': ['smg_teal'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(SIGHT_H), 'z': Z(452) + 0.065},
+    meta = {'kind': 'weapon', 'id': 'smg', 'paint': ['smg_teal'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(SIGHT_H), 'z': Z(452) + 0.02},
             'hatAt': [[0, Y(34), Z(300)], 0.1]}
     return finish('w_smg', bodies + [], meta)
 

@@ -5,7 +5,7 @@
 // (the lineup is code model on top, Blender model under it, in the game's own lights and render preset)
 // ADS check (Blender models, Too HD): with each gun fully aimed, at 1280x720, 1280x800 and 900x900 and FOV 70 and 120,
 // it renders only the viewmodel and measures how much of the screen's centre (the middle 40% x 40%, where you look for
-// people) the gun covers. More than LIMIT anywhere = exit code 1. A scoped sniper hides its gun, so it reads 0 (scope).
+// people) the gun covers (pixels at least half opaque). More than LIMIT anywhere = exit code 1. A scoped sniper hides its gun, so it reads 0 (scope).
 const { chromium } = require('playwright');
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const flags = new Set(process.argv.slice(2).filter((a) => a.startsWith('--')));
@@ -50,7 +50,7 @@ const coverage = (pg) => pg.evaluate(async (CENTRE) => {
   const buf = new Uint8Array(cw * ch * 4);
   r.readRenderTargetPixels(rt, x0, y0, cw, ch, buf);
   r.setRenderTarget(null); r.setClearColor(cc, ca); G.vmScene.background = bg; rt.dispose();
-  let n = 0; for (let i = 3; i < buf.length; i += 4) if (buf[i] > 8) n++;
+  let n = 0; for (let i = 3; i < buf.length; i += 4) if (buf[i] >= 128) n++; // mostly opaque: see-through glass (a red-dot lens, the marble jar) doesn't block the view
   return n / (cw * ch);
 }, CENTRE);
 
