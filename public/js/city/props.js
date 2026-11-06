@@ -30,7 +30,7 @@ function snap(mat) { // potato vertex snap, plus a breathing pulse for materials
         #else
         float ph = 0.0;
         #endif
-        transformed += objectNormal * (0.04 * sin(uTime * 2.1 + ph) + 0.06 * uBeat);` : ''}`)
+        transformed += objectNormal * (0.025 * sin(uTime * 2.1 + ph) + 0.035 * uBeat); // (small flesh: teeth sit 0.12 m deep, keep under that)` : ''}`)
       .replace('#include <project_vertex>', `#include <project_vertex>
         vec4 jsnap = gl_Position; jsnap.xyz /= jsnap.w; jsnap.xy = floor(jsnap.xy * uSnap + 0.5) / uSnap; jsnap.xyz *= jsnap.w; gl_Position = jsnap;`);
     if (!mat.isMeshBasicMaterial && sh.fragmentShader.includes('#include <lights_fragment_end>')) sh.fragmentShader = '#define CITY_LIGHTS\n' + LIGHTS_HEAD + sh.fragmentShader.replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\n' + LIGHTS_GLSL);

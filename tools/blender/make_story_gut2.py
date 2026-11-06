@@ -130,7 +130,7 @@ def build_launderette(M):
     brk(3.55, 2.1, -1.875, 3.95)           # over the window
     brk(1.4, 2.6, 1.5, 3.7)                # over the door
     sw(box((3.5, 0.7, 0.2), (-1.875, 0.35, -0.48), None, bev=0.02, seg=1), 3)  # teal stall riser under the window
-    sw(box((8.1, 0.25, 0.75), (0, 4.88, -0.375), None, bev=0.03, seg=1), 0)    # cornice
+    sw(box((8.1, 0.25, 0.74), (0, 4.88, -0.38), None, bev=0.03, seg=1), 0)    # cornice
     # the fascia sign, proud of the brick, on a yellow frame
     sg = box((6.4, 0.86, 0.12), (-0.55, 3.55, -0.68), None, bev=0.02, seg=1)
     bpy.context.view_layer.update(); A(AT.region(sg, 'sign', front_proj(-0.55, 3.55, 6.4, 0.86)))
@@ -162,10 +162,10 @@ def build_launderette(M):
     card = box((0.42, 0.28, 0.01), (-0.5, 2.62, -0.47), None); bpy.context.view_layer.update()
     A(AT.region(card, 'card', front_proj(-0.5, 2.62, 0.42, 0.28)))
     gl = box((3.4, 2.04, 0.02), (-1.875, 1.8, -0.5), glass); uv_box(gl, 1.0); gl['keepuv'] = 1; A(gl)
-    for xx in (-3.6, -0.15): sw(box((0.1, 2.2, 0.12), (xx + (0.05 if xx < 0 else -0.05) * (1 if xx < -1 else 1), 1.8, -0.52), None, bev=0.01, seg=1), 0)
+    for xx in (-3.6, -0.15): sw(box((0.1, 2.0, 0.12), (xx + (0.05 if xx < 0 else -0.05) * (1 if xx < -1 else 1), 1.8, -0.52), None, bev=0.01, seg=1), 0)
     sw(box((3.55, 0.1, 0.14), (-1.875, 2.85, -0.53), None, bev=0.01, seg=1), 0)
     sw(box((3.55, 0.08, 0.16), (-1.875, 0.74, -0.54), None, bev=0.01, seg=1), 0)
-    sw(box((0.08, 2.1, 0.1), (-1.875, 1.8, -0.53), None), 0)  # the glazing bar in the middle
+    sw(box((0.08, 2.0, 0.1), (-1.875, 1.8, -0.53), None), 0)  # the glazing bar in the middle
     # the door: a throat inside, fleshy lips for jambs, the tongue lolling out onto the pavement
     sw(box((1.4, 2.4, 0.05), (1.5, 1.2, -0.06), None), 6)
     for xx in (0.82, 2.18):
@@ -235,13 +235,13 @@ def build_gristlelogo(M):
     P = []; A = P.append
     sw = lambda o, k: A(AT.swatch(o, k))
     # the words panel
-    tp = box((3.0, 1.6, 0.22), (1.1, 1.25, -0.11), None, bev=0.04, seg=1); bpy.context.view_layer.update()
+    tp = box((3.0, 1.6, 0.22), (1.1, 1.25, -0.12), None, bev=0.04, seg=1); bpy.context.view_layer.update()
     A(AT.region(tp, 'text', front_proj(1.1, 1.25, 3.0, 1.6)))
-    sw(box((3.16, 1.76, 0.12), (1.1, 1.25, -0.06), None, bev=0.03, seg=1), 1)
+    sw(box((3.16, 1.76, 0.12), (1.1, 1.25, -0.065), None, bev=0.03, seg=1), 1)
     # the badge: a yellow disc in a red rim, the smiling butcher-doctor on it
     bx, by = -1.35, 1.32
-    sw(cyl(1.15, 0.26, (bx, by, -0.13), None, axis='z', seg=28, bev=0.03), 0)
-    sw(torus(1.15, 0.1, None, (bx, by, -0.26), rot=(math.pi / 2, 0, 0), n=28, k=6, name='gl_rim'), 1)
+    sw(cyl(1.15, 0.26, (bx, by, -0.15), None, axis='z', seg=28, bev=0.03), 0)
+    sw(torus(1.15, 0.1, None, (bx, by, -0.28), rot=(math.pi / 2, 0, 0), n=28, k=6, name='gl_rim'), 1)
     sw(ball(0.52, (bx, by - 0.05, -0.3), None, scale=(1.0, 1.08, 0.42), seg=16, rings=10, name='gl_head'), 2)
     for ex in (-1, 1):
         sw(ball(0.12, (bx + ex * 0.3, by - 0.17, -0.5), None, scale=(1, 0.7, 0.35), seg=10, rings=6, name='gl_cheek'), 5)
@@ -307,6 +307,8 @@ def _blob_bits(M, P, bvh, rnd, n_pus, teeth, eyes, veins, sz, wall=False):
         A(orient_to(torus(r * 1.02, r * 0.3, M['flesh'], n=10, k=4, name='fb_lid', wob=lambda a: 1 + 0.4 * max(0, math.sin(a))), tuple(Vector(q) + N * r * 0.05), n))
     for k, (p, d, st) in enumerate(veins):
         pts = crawl(bvh, p, d, st, 0.28, 0.025, seed=k + 3, wig=0.35)
+        if wall: pts = [q for q in pts if q[2] < -0.1]
+        if len(pts) < 3: continue
         A(sweep(pts, [0.06 - 0.03 * i / (len(pts) - 1) for i in range(len(pts))], M['vein'], seg=4, name='fb_vein'))
 
 

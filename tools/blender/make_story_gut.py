@@ -181,7 +181,7 @@ def build_lung(M):
     max(tr.data.polygons, key=lambda p: (len(p.vertices), p.center.z)).material_index = 1
     A(tr)
     for sx in (-1, 1):
-        A(sweep([(0.0, 1.55, -1.05), (sx * 0.35, 1.68, -0.95), (sx * 0.75, 1.95, -0.8)], [0.3, 0.24, 0.2], br, seg=8, name='lung_main_br'))
+        A(sweep([(sx * 0.06, 1.56, -1.03 + 0.03 * sx), (sx * 0.35, 1.68, -0.95), (sx * 0.75, 1.95, -0.8)], [0.27 + 0.01 * sx, 0.24, 0.2], br, seg=8, name='lung_main_br'))
     # the bed of fat it sits in
     balls = []
     for gx in range(-4, 5):

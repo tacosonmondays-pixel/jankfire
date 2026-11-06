@@ -404,6 +404,7 @@ def lod1(parts, ratio=0.25, drop=(), target=None):
     for p in keep:
         c = p.copy(); c.data = p.data.copy(); _link(c); c.name = p.name + '_lod1'
         c.modifiers.clear()
+        if tris_of(c) < 40: out.append(c); continue  # glass panes, labels: already as cheap as they get
         md = c.modifiers.new('dec', 'DECIMATE'); md.ratio = max(0.02, min(1.0, goal / have)); md.use_collapse_triangulate = True
         apply_mods(c)
         _drop_crumbs(c)
@@ -466,7 +467,7 @@ def mirror_parts(parts):
     return parts
 
 
-def _drop_crumbs(o, keep=3):
+def _drop_crumbs(o, keep=6):
     """decimation leaves lone triangles behind: delete islands of fewer than `keep` faces."""
     bm = bmesh.new(); bm.from_mesh(o.data); bm.faces.ensure_lookup_table()
     seen = set(); kill = []
