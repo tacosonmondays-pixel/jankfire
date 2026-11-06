@@ -89,6 +89,10 @@ async function session(b, map, ids) {
     if (MAPVIEWS) { // two views a map: a spawn looking in at 7 m up, and high over the middle
       const sp = def.spawns.length ? def.spawns : [[0, 2, 0]], s0 = sp[0], s1 = sp[Math.floor(sp.length / 2)];
       let cx = 0, cz = 0; for (const s of sp) { cx += s[0] / sp.length; cz += s[2] / sp.length; }
+      if (Math.hypot(cx - s0[0], cz - s0[2]) < 8) { // the spawns side by side (Training): look at the props instead of the floor
+        const ps = [...(def.boxes.props || []), ...((def.deco && def.deco.props) || [])].map((p) => p.a || p.p).filter(Boolean);
+        if (ps.length) { cx = 0; cz = 0; for (const q of ps) { cx += q[0] / ps.length; cz += q[2] / ps.length; } }
+      }
       out.push({ id: 'map', k: 0, ...lookAt([s0[0], s0[1] + 7, s0[2]], [cx, s0[1] + 1, cz]) });
       const d = Math.max(30, Math.hypot(s1[0] - cx, s1[2] - cz));
       out.push({ id: 'map', k: 1, ...lookAt([cx + d * 0.7, s1[1] + d * 0.45 + 8, cz + d * 0.7], [cx, s1[1], cz]) });
