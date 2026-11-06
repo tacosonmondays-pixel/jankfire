@@ -1,6 +1,13 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '3.7', date: '2026-11-06', title: 'LAW & DISORDER', items: [
+    'NEW ITEM: SPEED TRAP. hold G to point a radar gun at people. over 100 km/h they get SLOW DOWN 3.. 2.. 1. slow down and it\'s a warning, keep speeding and it\'s JAIL (a cage drops on them for 3.5 s). over 200 is jail on the spot.',
+    'WATER PISTOL: soaks people for 4 s. soaked = slower and slidey, and it puts out fire.',
+    'TASER: a 1 s stun that chains through everyone soaked nearby. bring a friend with a water pistol.',
+    'TV REMOTE: left click PAUSES someone for 1.2 s (their momentum comes back after). aim to REWIND them 2 s back to where they were.',
+    'all four are in Plant & Defuse, the three secondaries are in the Zombies crate, and bots use them.',
+  ] },
   { v: '3.6', date: '2026-11-06', title: 'SIDEARMS', items: [
     'PLAN B: a plain semi-auto pistol. for when everything else is empty.',
     'LEFTY & RIGHTY: two machine pistols. left click fires the left one, your aim key fires the right one. each hand has its own mag and reloads on its own.',
