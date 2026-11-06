@@ -154,9 +154,9 @@ def choir(groups, n, L, morph, seed=81, voices=3, sway=0.12):
                 f = midi_hz(note + sw + vib + drift)
                 swell = 0.65 + 0.35 * slow_noise(m, 0.12, int(rng.integers(1 << 30)))
                 src += saw(f) * swell
-        src = lp(src, 1800, 0.0) + 0.02 * bp(noise(m, int(rng.integers(1 << 30))), 1200, 0.3) * len(midis)
-        bwd = np.array([60.0, 90, 140, 200])
-        out += _fbank(np.ascontiguousarray(src), mo, HUM * size, OOH * size, bwd, np.array([1.0, 0.25, 0.1, 0.05]), np.array([1.0, 0.4, 0.12, 0.05]))
+        src = lp(src, 3800, 0.0) + 0.02 * bp(noise(m, int(rng.integers(1 << 30))), 1200, 0.3) * len(midis)
+        bwd = np.array([60.0, 110, 170, 240])
+        out += _fbank(np.ascontiguousarray(src), mo, HUM * size, OOH * size, bwd, np.array([1.0, 2.0, 2.0, 1.0]), np.array([1.0, 2.6, 2.0, 1.0]))
     return loopify(out, n, xf)
 
 

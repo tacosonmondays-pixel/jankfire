@@ -47,13 +47,13 @@ def mel(text, bar0, stuck=None, vel=0.85, seed=0):
 def build():
     s = Song(TITLE, BPM, END)
     N, L = s.N, s.L
-    s.eq = [LowShelfFilter(70, 0.5, 0.7), PeakFilter(300, -1.0, 0.8), HighShelfFilter(7000, -2.0, 0.7)]
-    s.levels = dict(drums=-4.0, bass=-3.0, keys=-8.5, acc=-1.5, dogs=-12.0, crackle=-15.0)
+    s.eq = [LowShelfFilter(70, 0.5, 0.7), PeakFilter(300, -1.0, 0.8), HighShelfFilter(7000, 0.0, 0.7)]
+    s.levels = dict(drums=-4.0, bass=-5.0, keys=-8.5, acc=-0.5, dogs=-12.0, crackle=-15.0)
     dusty = [(0, 1100), (A * 4 - 0.5, 1100), (A * 4, 20000), (OUTRO * 4 - 2, 20000), (OUTRO * 4 + 2, 1100), (END * 4, 1100)]
     s.bus('kick', 1.0, P([LowpassFilter(2500), Compressor(-12, 3, 5, 80)]), auto=dusty)
     s.bus('drums', 1.0, P([HighpassFilter(90), Bitcrush(11), LowpassFilter(7500), Compressor(-14, 3, 3, 60), Reverb(0.25, 0.6, 0.1, 0.95, 0.5)]), duck=0.15, auto=dusty)
     s.bus('bass', 1.0, P([HighpassFilter(30), Compressor(-14, 3, 5, 100)]), duck=0.35, duck_rel=0.1)
-    s.bus('keys', 1.0, P([HighpassFilter(150), LowpassFilter(3200), Chorus(0.5, 0.3, 7, 0.0, 0.5), Reverb(0.45, 0.6, 0.25, 0.85, 0.9)]), duck=0.2, width=0.4)
+    s.bus('keys', 1.0, P([HighpassFilter(150), LowpassFilter(4200), Chorus(0.5, 0.3, 7, 0.0, 0.5), Reverb(0.45, 0.6, 0.25, 0.85, 0.9)]), duck=0.2, width=0.4)
     s.bus('acc', 1.0, P([HighpassFilter(160), PeakFilter(2800, -2.0, 1.0), Delay(60 / BPM * 0.75, 0.2, 0.12), Reverb(0.4, 0.55, 0.2, 0.9, 0.8)]), duck=0.1, width=0.3)
     s.bus('dogs', 1.0, P([HighpassFilter(350), LowpassFilter(2200), Reverb(0.85, 0.7, 0.55, 0.12, 1.0)]))
     s.bus('crackle', 1.0, P([HighpassFilter(200), LowpassFilter(9000)]))
