@@ -6,6 +6,7 @@ import { STAT_KEYS } from './store.js';
 import { rollPick, itemInfo, CONTAINERS } from '../shared/cosmetics.js';
 import { achievementsFrom } from '../shared/looks.js';
 import { catsOf } from '../shared/secrets.js';
+import { storyApi } from './story.js'; // OVERDUE save slots (/api/story/*)
 
 const scrypt = promisify(crypto.scrypt);
 const NAME_RE = /^[A-Za-z0-9_]{3,16}$/;
@@ -45,7 +46,7 @@ export class Accounts {
     const stats = {};
     for (const k of STAT_KEYS) stats[k] = u[k] || 0;
     stats.cats = catsOf(u.inv); // hidden cats petted (kept in inv.lore, not a column)
-    return { name: u.name, level: levelOf(u.xp), xp: u.xp || 0, stats, achs: [...achievementsFrom(stats)], profile: u.profile || {}, inv: u.inv || {}, rolls: { crate: u.crates || 0, bag: u.bags || 0, box: u.boxes || 0 }, created: u.created_at };
+    return { name: u.name, level: levelOf(u.xp), xp: u.xp || 0, stats, achs: [...achievementsFrom(stats)], profile: u.profile || {}, inv: pubInv(u.inv), rolls: { crate: u.crates || 0, bag: u.bags || 0, box: u.boxes || 0 }, created: u.created_at };
   }
 
   limited(ip) {
@@ -108,6 +109,7 @@ export class Accounts {
       const body = req.method === 'POST' ? await readJson(req) : {};
       const auth = (req.headers.authorization || '').replace(/^Bearer /, '');
       const ip = req.socket.remoteAddress || '?';
+      if (url.startsWith('/api/story/')) return await storyApi(this, url, body, auth, send);
       switch (url) {
         case '/api/register':
         case '/api/login': {
@@ -147,6 +149,9 @@ export class Accounts {
     }
   }
 }
+
+// the story save fallback lives in inv.story (server/story.js): it's not a cosmetic, keep it out of /api/me
+function pubInv(inv) { if (!inv || !inv.story) return inv || {}; const { story, ...rest } = inv; return rest; }
 
 function readJson(req) {
   return new Promise((resolve, reject) => {

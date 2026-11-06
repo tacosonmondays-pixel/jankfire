@@ -881,7 +881,7 @@ function platform() {
   return { name: 'Platform', size: 'medium', boxes: B.boxes, deco: D.boxes, killY: -30, floorY: -15.5,
     sky: { top: 0x4a5a78, mid: 0xb4c2d0, bot: 0x2c3846, fog: 0xb4c2d0 }, fogNear: 90, fogFar: 360,
     spawns, teamSpawns: { att, def }, edgeGuard: true, sea: true,
-    get graph() { return graph || (graph = buildNav(B.boxes, { x0: -67, z0: -45, n: 122, cell: 1, levels: [RIG.BOAT, RIG.CD, 0, RIG.M1, RIG.M2, RIG.M3], band: 0.6, stairs: st })); },
+    peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: -67, z0: -45, n: 122, cell: 1, levels: [RIG.BOAT, RIG.CD, 0, RIG.M1, RIG.M2, RIG.M3], band: 0.6, stairs: st })); },
   };
 }
 
@@ -1013,7 +1013,7 @@ function platformSD() {
       ],
     },
     sites: [{ id: 'A', min: [-33, RIG.M2, -53], max: [-15, RIG.M2, -35] }, { id: 'B', min: [2, CD, -53], max: [18, CD, -39] }],
-    get graph() { return graph || (graph = buildNav(B.boxes, { x0: -40, z0: -72, n: 162, cell: 1, levels: [RIG.BOAT, CD, 0, RIG.M1, RIG.M2, RIG.M3], band: 0.6, stairs: st })); },
+    peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: -40, z0: -72, n: 162, cell: 1, levels: [RIG.BOAT, CD, 0, RIG.M1, RIG.M2, RIG.M3], band: 0.6, stairs: st })); },
   };
 }
 
@@ -1206,7 +1206,7 @@ function rooftop() {
     haze: { k: 0.92, top: -25, bottom: -162, dist: 95, color: 0x6a5c9c }, // look down: the city lights through a night smog
     sky: { top: 0x05051a, mid: 0x4a2a7a, bot: 0x000005, fog: 0x2a2050 }, fogNear: 110, fogFar: 480, spawns, teamSpawns: { att, def }, edgeGuard: true,
     traffic: { grid: { ...roads, S: 180, y: -162 + 0.08, off: 5 } },
-    get graph() { return graph || (graph = buildNav(B.boxes, { x0: -62, z0: -62, n: 124, cell: 1, levels: [L0 - 0.45, 0, 3.9], band: 0.6,
+    peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: -62, z0: -62, n: 124, cell: 1, levels: [L0 - 0.45, 0, 3.9], band: 0.6,
       stairs: [...[-1, 1].flatMap((s) => [-4.5, 13.5].map((zc) => ({ top: [s * 30.6, 0, zc], bot: [s * 21.4, L0, zc] }))),
         { bot: [8.65, L0 + 0.1, -2.2], top: [8.65, 0, 4.2] }, { bot: [-8.65, 0, 0.2], top: [-8.65, 3.9, -5.6] }],
       drops: [-1, 1].flatMap((s) => [{ from: [s * 10.5, 0, -15.5], to: [s * 10.5, L0, -17.5] }, { from: [s * 14.5, 0, -12.5], to: [s * 14.5, L0, -11] }]) })); },
@@ -1351,7 +1351,7 @@ function rooftopSD() {
       ],
     },
     sites: [{ id: 'A', min: [32, 0, -56], max: [56, 0, -28] }, { id: 'B', min: [-56, 0, -56], max: [-32, 0, -28] }],
-    get graph() { return graph || (graph = buildNav(B.boxes, { x0: -62, z0: -74, n: 132, cell: 1, levels: [L0 - 0.45, -2, 0, 3.9], band: 0.6,
+    peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: -62, z0: -74, n: 132, cell: 1, levels: [L0 - 0.45, -2, 0, 3.9], band: 0.6,
       stairs: [{ top: [0, 0, -42.6], bot: [0, L0, -33.4] }, ...[-1, 1].flatMap((s) => [
         { top: [s * 30.6, 0, -30], bot: [s * 21.4, L0, -30] }, { top: [s * 44, 0, -26.6], bot: [s * 44, -2, -17.4] }, { top: [s * 30.6, -2, -6], bot: [s * 21.4, L0, -6] },
         { top: [s * 21.4, 0, 26], bot: [s * 30.6, -2, 26] }, { top: [s * 10, 0, 22.6], bot: [s * 10, L0, 13.4] }]),
@@ -1711,7 +1711,7 @@ function suburbSD() {
       ],
     },
     sites: [{ id: 'A', min: [16, 0, -56], max: [54, 0, -20] }, { id: 'B', min: [25, 0, 31], max: [49, 0, 52] }],
-    get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: bounds[2] - bounds[0] + 2, cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
+    peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: bounds[2] - bounds[0] + 2, cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
   };
   return map;
 }
@@ -1891,7 +1891,7 @@ function suburb() {
     // traffic (shared/traffic.js): in from the woods on the north street's inner lane, round the far end, out on the south
     // street's; the other way round on the two outer lanes. the parked cars are on the kerbs outside them
     traffic: { routes: [{ pts: [[-430, -16.5], [49.5, -16.5], [49.5, 16.5], [-430, 16.5]], v: [8, 13], r: 6 }, { pts: [[-430, 20], [53, 20], [53, -20], [-430, -20]], v: [8, 13], r: 6 }] },
-    get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: bounds[2] - bounds[0] + 2, cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
+    peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: bounds[2] - bounds[0] + 2, cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
   };
   return map;
 }
@@ -2120,7 +2120,7 @@ function warehouse() {
     sky: { top: 0x0a0a20, mid: 0x5a2a6a, bot: 0x050508, fog: 0x3a2448 }, fogNear: 70, fogFar: 300,
     spawns, teamSpawns: { att: west, def: east },
     shredders: [{ box: pit.slice(), y: -1.9, axis: 'z' }], // the shredder: drums along z, the tips of the teeth at y
-    get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: bounds[2] - bounds[0] + 2, cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
+    peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: bounds[2] - bounds[0] + 2, cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
   };
   return map;
 }
@@ -2336,7 +2336,7 @@ function warehouseSD() {
       ],
     },
     sites: [{ id: 'A', min: [31, 0, -54], max: [58, 0, -27] }, { id: 'B', min: [32, 0, 30], max: [56, 0, 54] }],
-    get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: bounds[2] - bounds[0] + 2, cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
+    peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: bounds[2] - bounds[0] + 2, cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
   };
   return map;
 }
@@ -2786,7 +2786,7 @@ function desert() {
     gates: [[-106, 0, -94, 0], [106, 0, 94, 0]], // the town's two gates (a bot out past the wall heads for one)
     edgeGuard: true, // bots don't dodge-jump next to the canyon (server.js: brBotEdge in every mode here)
     // bots: a walk graph over the town (1 m cells), over the bridges, round everything
-    get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0], z0: bounds[1], n: bounds[2] - bounds[0], cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
+    peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0], z0: bounds[1], n: bounds[2] - bounds[0], cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
   };
   return map;
 }
@@ -2992,7 +2992,7 @@ function desertSD() {
       ],
     },
     sites: [{ id: 'A', min: [16, 0, -52], max: [50, 0, -28] }, { id: 'B', min: [12, 0, 30], max: [48, 0, 50] }],
-    get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: bounds[2] - bounds[0] + 2, cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
+    peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: bounds[2] - bounds[0] + 2, cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
   };
   return map;
 }
@@ -3355,7 +3355,7 @@ function islands() {
   let graph = null;
   const map = { name: 'Islands', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -16, floorY: -1.5, sky: SKY_SUNSET, fogNear: 110, fogFar: 380,
     spawns, teamSpawns: { att, def }, edgeGuard: true, sea: true, // (sea: falls are 'into the sea' in the kill feed)
-    get graph() { return graph || (graph = buildNav(B.boxes, { x0: -100, z0: -90, n: 196, cell: 1, levels: [ISL.SB, 3, MD, 6, QD, 9, 13.5, 18], band: 0.6, stairs: st })); },
+    peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: -100, z0: -90, n: 196, cell: 1, levels: [ISL.SB, 3, MD, 6, QD, 9, 13.5, 18], band: 0.6, stairs: st })); },
   };
   return map;
 }
@@ -3462,7 +3462,7 @@ function islandsSD() {
       ],
     },
     sites: [{ id: 'A', min: [32, 0, -80], max: [66, 0, -54] }, { id: 'B', min: [-60, 0, -80], max: [-36, 0, -50] }],
-    get graph() { return graph || (graph = buildNav(B.boxes, { x0: -67, z0: -88, n: 145, cell: 1, levels: [ISL.SB, 3, MD, 6, QD, 9], band: 0.6, stairs: st })); },
+    peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: -67, z0: -88, n: 145, cell: 1, levels: [ISL.SB, 3, MD, 6, QD, 9], band: 0.6, stairs: st })); },
   };
   return map;
 }
@@ -3669,7 +3669,7 @@ function skyline() {
     haze: { k: 0.88, top: 15, bottom: -120, dist: 120, color: 0xc89aa4 }, // look down: the city through a dusk haze
     sky: { top: 0x1a2a5a, mid: 0xff9a5a, bot: 0x0a0a1a, fog: 0xd98a6a }, fogNear: 160, fogFar: 700, spawns, teamSpawns: { att, def }, edgeGuard: true,
     traffic: { grid: { ...roads, S: 200, y: -120 + 0.08, off: 5 } },
-    get graph() { return graph || (graph = buildNav(B.boxes, { x0: -90, z0: -90, n: 180, cell: 1, levels: [lo, R, hi], band: 0.6,
+    peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: -90, z0: -90, n: 180, cell: 1, levels: [lo, R, hi], band: 0.6,
       stairs: [-1, 1].flatMap((sx) => [-1, 1].flatMap((sz) => { const cy = sx === sz ? lo : hi, hiEnd = cy > R;
         const a = { p: [sx * 14.4, R, sz * S], q: [sx * (S - 13.4), cy, sz * S] }, b = { p: [sx * S, R, sz * 14.4], q: [sx * S, cy, sz * (S - 13.4)] };
         return [a, b].map(({ p, q }) => (hiEnd ? { top: q, bot: p } : { top: p, bot: q })); })) })); },
@@ -3784,7 +3784,7 @@ function skylineSD() {
       ],
     },
     sites: [{ id: 'A', min: [36, 46, -82], max: [60, 46, -48] }, { id: 'B', min: [-60, 46, -82], max: [-36, 46, -48] }],
-    get graph() { return graph || (graph = buildNav(B.boxes, { x0: -66, z0: -88, n: 132, cell: 1, levels: [Cy, 38, 40, 42, 46], band: 0.6,
+    peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: -66, z0: -88, n: 132, cell: 1, levels: [Cy, 38, 40, 42, 46], band: 0.6,
       stairs: [{ top: [0, 40, 10.6], bot: [0, Cy, 1.4] }, { top: [0, 40, -50.6], bot: [0, Cy, -39.4] }, ...[-1, 1].flatMap((s) => [
         { top: [s * 13.4, 40, 18], bot: [s * 34.6, 38, 18] }, { top: [s * 48, 42, -9.6], bot: [s * 48, 38, -1.4] },
         { top: [s * 40, 46, -46.6], bot: [s * 40, 42, -38.4] }, { top: [s * 56, 46, -46.6], bot: [s * 56, 42, -38.4] },
@@ -4073,7 +4073,7 @@ function bazaar() {
   const map = { name: 'Bazaar', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -50, floorY: -6, bounds, ceiling: 9,
     sky: { top: 0x4a8fd8, mid: 0xf2dcae, bot: 0x8a6a40, fog: 0xf0d8a8 }, fogNear: 100, fogFar: 380, spawns, teamSpawns: { att, def },
     // bots: a walk graph on the ground and on the caravanserai's gallery (up and down by its two flights)
-    get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: bounds[2] - bounds[0] + 2, cell: 1, levels: [0, 3.9], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]),
+    peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: bounds[2] - bounds[0] + 2, cell: 1, levels: [0, 3.9], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]),
       stairs: [{ top: [-15.5, 3.9, -46.25], bot: [-9.5, 0, -46.25] }, { top: [15.5, 3.9, -43.75], bot: [9.5, 0, -43.75] }] })); },
   };
   return map;
@@ -4223,7 +4223,7 @@ function bazaarSD() {
       ],
     },
     sites: [{ id: 'A', min: [28, 0, -44], max: [46, 0, -22] }, { id: 'B', min: [-46, 0, -44], max: [-28, 0, -22] }],
-    get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: Math.max(bounds[2] - bounds[0], bounds[3] - bounds[1]) + 2, cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
+    peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: Math.max(bounds[2] - bounds[0], bounds[3] - bounds[1]) + 2, cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
   };
   return map;
 }
@@ -4466,7 +4466,7 @@ function backrooms() {
     light: { hemi: [0xfff3cc, 0xb2a476, 1.35], sun: [0xffe7a6, 0.5] }, // flat fluorescent light from everywhere
     chunk: 48, sealed: true, menuCam: [13, 3.4, -0.08], // big: drawn in chunks. sealed: no sky, and the menu orbits inside the hall
     spawns, spawnSafe: 45, teamSpawns: { att: att2, def: def2 }, teamSpawnsBomb: true, roundTime: 150, // lobbies only for Plant & Defuse (they're 226 m apart); rounds are longer, it's a long walk
-     get nav() { return lanes(); }, get graph() { return navGraph(); },
+     peekGraph() { return graph; }, dropGraph() { graph = null; nav = null; }, get nav() { return lanes(); }, get graph() { return navGraph(); },
     sites: [{ id: 'A', min: [gx(siteA.i0) + 0.5, 0, gx(siteA.j0) + 0.5], max: [gx(siteA.i1) - 0.5, 0, gx(siteA.j1) - 0.5] },
       { id: 'B', min: [gx(siteB.i0) + 0.5, 0, gx(siteB.j0) + 0.5], max: [gx(siteB.i1) - 0.5, 0, gx(siteB.j1) - 0.5] }],
   };
@@ -4799,7 +4799,7 @@ function forest() {
     hr: { keepOut: [[41, -7, 64, 16], [CAB[0] - 7, CAB[1] - 5, CAB[0] + 7, CAB[1] + 8]], awful: [
       { p: [CAMP[0] - 12, 0.3, CAMP[1] + 9], name: 'THE OUTHOUSE' }, { p: [MAST[0] + 4.9, 48.3, MAST[1] + 4.9], name: 'THE TOP OF THE RADIO MAST' },
       { p: [SH + 20, -0.6, 10], name: 'THE LAKE' }, { p: [CLR[0] - 2.1, 0.75, CLR[1] + 2], name: 'A MEETING (THE CHAIR)' }] },
-    get nav() { return lanes(); }, get graph() { return navGraph(); },
+    peekGraph() { return graph; }, dropGraph() { graph = null; nav = null; }, get nav() { return lanes(); }, get graph() { return navGraph(); },
   };
   return map;
 }

@@ -98,6 +98,23 @@ class FileStore {
     this.save();
     return true;
   }
+  // story saves (OVERDUE, server/story.js). the file store acts like the jf_story table (3 slots in u.story);
+  // JF_STORY_FALLBACK=1 makes it act like Supabase before the SQL re-run (1 slot in inv.story) to test that path
+  async storyInfo() { return process.env.JF_STORY_FALLBACK === '1' ? { slots: 1, table: false } : { slots: 3, table: true }; }
+  async getStory(nameLower) {
+    const u = this.db.users[nameLower];
+    if (!u) return [];
+    const t = (await this.storyInfo()).table, src = t ? u.story : u.inv && u.inv.story;
+    return src && typeof src === 'object' ? Object.values(src) : [];
+  }
+  async putStory(nameLower, slot, save) {
+    const u = this.db.users[nameLower];
+    if (!u) return false;
+    if ((await this.storyInfo()).table) (u.story ||= {})[slot] = save;
+    else { u.inv ||= {}; u.inv.story = { [slot]: save }; }
+    this.save();
+    return true;
+  }
   async top(col, n = 15) {
     return Object.values(this.db.users).filter((u) => (u[col] || 0) > 0)
       .sort((a, b) => (b[col] || 0) - (a[col] || 0)).slice(0, n)
@@ -116,8 +133,8 @@ class SupabaseStore {
     const auth = this.key.startsWith('sb_') ? {} : { Authorization: `Bearer ${this.key}` };
     return { apikey: this.key, ...auth, 'Content-Type': 'application/json', ...extra };
   }
-  async req(method, query, body, extra) {
-    const res = await fetch(this.base + query, { method, headers: this.headers(extra), body: body ? JSON.stringify(body) : undefined });
+  async req(method, query, body, extra, table) { // table: another table than jf_users ('/jf_story')
+    const res = await fetch((table ? this.base.replace(/\/jf_users$/, table) : this.base) + query, { method, headers: this.headers(extra), body: body ? JSON.stringify(body) : undefined });
     if (!res.ok) throw new Error(`supabase ${method} ${res.status}: ${(await res.text()).slice(0, 200)}`);
     const t = await res.text();
     return t ? JSON.parse(t) : null;
@@ -167,6 +184,38 @@ class SupabaseStore {
     const patch = { inv }, f = gift && gift.roll && FIELD(gift.roll);
     if (f) patch[f] = (u[f] || 0) + 1;
     await this.req('PATCH', `?name_lower=eq.${encodeURIComponent(nameLower)}`, patch, { Prefer: 'return=minimal' });
+    return true;
+  }
+  // story saves: the jf_story table if the owner ran its supabase.sql block, else ONE slot in inv.story (TECH_PLAN §7)
+  async storyInfo() {
+    if (this.storyTable == null || (!this.storyTable && Date.now() - this.storyT > 600000)) { // (no table: look again every 10 min, the sql may have been run)
+      this.storyT = Date.now();
+      try { await this.req('GET', '?limit=0', null, null, '/jf_story'); this.storyTable = true; }
+      catch { if (this.storyTable == null) console.warn('  !! no jf_story table: story saves use inv.story (1 slot) until docs/story/jf_story.sql is run in Supabase'); this.storyTable = false; }
+    }
+    return this.storyTable ? { slots: 3, table: true } : { slots: 1, table: false };
+  }
+  async getStory(nameLower) {
+    if ((await this.storyInfo()).table) {
+      const rows = await this.req('GET', `?name_lower=eq.${encodeURIComponent(nameLower)}&select=slot,version,act,chapter,playtime,coupons,data,updated_at`, null, null, '/jf_story');
+      if (rows && rows.length) return rows.map((r) => { const { at, ...data } = r.data || {}; return { v: r.version, slot: r.slot, act: r.act, chapter: r.chapter, playtime: r.playtime, coupons: Number(r.coupons) || 0, at, data, t: Date.parse(r.updated_at) || 0 }; });
+      // nothing in the table yet: a save made before the sql re-run is still in inv.story (it moves on the next save)
+    }
+    const u = await this.get(nameLower);
+    const src = u && u.inv && u.inv.story;
+    return src && typeof src === 'object' ? Object.values(src) : [];
+  }
+  async putStory(nameLower, slot, save) {
+    if ((await this.storyInfo()).table) {
+      const row = { name_lower: nameLower, slot, version: save.v, act: save.act, chapter: save.chapter, playtime: save.playtime, coupons: save.coupons, data: { ...save.data, at: save.at }, updated_at: new Date().toISOString() };
+      await this.req('POST', '?on_conflict=name_lower,slot', row, { Prefer: 'resolution=merge-duplicates,return=minimal' }, '/jf_story');
+      return true;
+    }
+    const u = await this.get(nameLower);
+    if (!u) return false;
+    const inv = u.inv || {};
+    inv.story = { [slot]: save };
+    await this.req('PATCH', `?name_lower=eq.${encodeURIComponent(nameLower)}`, { inv }, { Prefer: 'return=minimal' });
     return true;
   }
   async top(col, n = 15) {

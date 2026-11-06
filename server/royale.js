@@ -9,6 +9,7 @@ import { raycast, PH } from '../shared/physics.js';
 import { navSteer } from '../shared/nav.js';
 import { outOfBounds } from '../shared/bounds.js';
 import { poiAt, BR, ZONE, TIERS, GUNS, MELEE, GADGETS, STUFF, ARMOR_OF, ammoFor, bucketFor, blimpAt, blimpDone, zoneAt, outsideZone } from '../shared/royale.js';
+import { onWarm, onForget } from './graphs.js';
 
 const now = () => Date.now();
 const r2 = (x) => Math.round(x * 100) / 100;
@@ -69,7 +70,8 @@ function rollTier(base, q) {
 }
 
 export function installRoyale(Room, H) {
-  setImmediate(() => { for (const m of Object.values(MAPS)) if (m.royale && m.graph) { findSpots(m); } }); // walk graphs + loot spots ready before the first drop
+  onWarm((room, m) => { if (room.brOn) groundSpots(m); }); // a royale starting: its loot spots now, not at the first drop (server/graphs.js)
+  onForget((m) => { delete m._brSpots; delete m._brGround; delete m._brGrid; }); // nobody's played it for a while
   const { send } = H;
   Object.defineProperty(Room.prototype, 'brOn', {
     get() { return (this.mode === 'ffa' || this.mode === 'bots') && !!GAMES[this.game].royale && !!this.map.royale; },
