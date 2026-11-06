@@ -73,11 +73,12 @@ function codeModel(id) {
 }
 
 // a loaded glTF scene -> parts merged by material (transforms baked in), so one prop = a few draw calls
-function glbParts(scene) {
+function glbParts(scene, lod1 = false) {
   scene.updateMatrixWorld(true);
   const byMat = new Map();
+  const isLod = (o) => { for (let q = o; q; q = q.parent) if (/_lod1/.test(q.name)) return true; return false; };
   scene.traverse((o) => {
-    if (!o.isMesh || /_lod1|_col$/.test(o.name)) return;
+    if (!o.isMesh || /_col$/.test(o.name) || isLod(o) !== lod1) return;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
     const geo = o.geometry.clone().applyMatrix4(o.matrixWorld);
     const take = (g, m) => { if (!byMat.has(m)) byMat.set(m, []); byMat.get(m).push(g); };
@@ -125,13 +126,19 @@ export const propStates = () => Object.fromEntries([...MODELS].map(([k, v]) => [
 // instances: [{ id, x, y, z, yaw, s, v }] -> a Group of InstancedMeshes (caller disposes the old group with freeProps)
 const PAINTS = [0xc8202c, 0x2050b0, 0xe8e8e8, 0x26262a, 0x2a8a4a, 0xe8c020, 0xff7ab0, 0x5fd3c6];
 const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), col = new THREE.Color();
-// hiR: instances closer than this to `at` get the Blender model, the rest the code model (cars are ~3k tris each)
+// how far out each prop keeps its full Blender model, as a share of the preset's propsHi: small things that repeat
+// a thousand times go simple sooner, landmarks stay detailed further
+const DETAIL = { door_bottom: 0.4, shutter: 0.35, acunit: 0.35, pchair: 0.5, laundry_a: 0.5, laundry_b: 0.5, stringlights: 0.5, wokdish: 0.45, tooth: 0.5, tooth_b: 0.5, eyeball: 0.5, crate_soup: 0.5, scooter: 0.6,
+  ribarch: 3, lung: 2, machine: 4, gutgate: 4, smilesign: 2, sphincter: 1.4, lostfound_sign: 4, launderette: 3, gristlelogo: 2, choirpipe: 2, bus: 1.5 };
+export const propDetail = (id) => DETAIL[id] || 1;
+// hiR: instances closer than this (x the prop's DETAIL) to `at` get the full Blender model, the rest its _lod1 meshes
+// (or the code model when the file has none)
 export function buildPropGroup(list, hiR = 1e9, at = null) {
   const byId = new Map();
   for (const p of list) {
-    const m = propModel(p.id), hi = m.parts !== m.code && (!at || Math.hypot(p.x - at.x, p.z - at.z) < hiR);
-    const k = p.id + (hi ? '' : '~');
-    if (!byId.has(k)) byId.set(k, { parts: hi ? m.parts : m.code, list: [] });
+    const m = propModel(p.id), glb = m.parts !== m.code, hi = glb && (!at || Math.hypot(p.x - at.x, p.z - at.z) < hiR * propDetail(p.id));
+    const parts = hi ? m.parts : (glb && m.lod1) || m.code, k = p.id + (hi ? '' : parts === m.code ? '~' : '_lod1');
+    if (!byId.has(k)) byId.set(k, { parts, list: [] });
     byId.get(k).list.push(p);
   }
   const g = new THREE.Group(); g.name = 'cityprops';

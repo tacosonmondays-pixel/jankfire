@@ -83,7 +83,7 @@ export function line(B, a, b, o = {}) {
   const n = 6, sag = o.sag ?? Math.hypot(b[0] - a[0], b[2] - a[2]) * 0.06, pts = [];
   for (let i = 0; i <= n; i++) { const t = i / n; pts.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - Math.sin(t * Math.PI) * sag, a[2] + (b[2] - a[2]) * t]); }
   B.shape({ kind: 'tube', pts, r: o.r || 0.03, seg: 4, mat: o.mat || 'metal', tint: o.tint, step: 2, lod: false, at: a });
-  if (o.zip) B.out.triggers.push({ kind: 'zip', a, b, sag });
+  if (o.zip && B.inside((a[0] + b[0]) / 2, (a[2] + b[2]) / 2)) B.out.triggers.push({ kind: 'zip', a, b, sag }); // stored once: by the chunk holding its middle
   const L = Math.hypot(b[0] - a[0], b[2] - a[2]), yaw = Math.atan2(-(b[2] - a[2]), b[0] - a[0]);
   if (o.hang) for (let s = 1.6; s < L - 1.4; s += 3.2) {
     const t = s / L, y = a[1] + (b[1] - a[1]) * t - Math.sin(t * Math.PI) * sag;

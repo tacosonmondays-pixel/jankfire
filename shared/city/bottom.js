@@ -92,7 +92,7 @@ function lane(B, k, x0, x1) {
     if (q === undefined || KEEP_OUT().some((rr) => inRect(Math.min(p, q), zs - 1, Math.max(p, q), zs + 1, rr))) continue;
     const hq = 5.2 + (hash2(k, i + 1) % 7) * 0.2, a = [p, y + h, zs - 0.2], b = [q, y + hq, zs - 0.2];
     if ((hash2(k, i, 3) % 5) < 3) line(B, a, b, { zip: true, hang: ['laundry_a', 'laundry_b'], mat: 'metal' });
-    else { bulbs(B, a, b, rng(hash2(k, i, 9))); B.out.triggers.push({ kind: 'zip', a, b, sag: Math.hypot(b[0] - a[0], 0) * 0.08 }); }
+    else { bulbs(B, a, b, rng(hash2(k, i, 9))); if (B.inside((a[0] + b[0]) / 2, a[2])) B.out.triggers.push({ kind: 'zip', a, b, sag: Math.abs(b[0] - a[0]) * 0.08 }); }
   }
 }
 

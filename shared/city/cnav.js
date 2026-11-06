@@ -13,46 +13,65 @@ const DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [-1, 1], [-1, -1], [1, -
 const OPP = [2, 3, 0, 1, 6, 7, 4, 5];
 
 // a packed chunk (chunk.js) -> { cx, cz, h: Int16Array (decimetres, NAV.none = no floor), link: Uint8Array, nodes }
+// built on a half-metre occupancy grid: every solid box drops its [y0, y1] into each 0.5 m sub-cell it overlaps, then
+// floors and half links are read off the sub-cells (a few interval tests each, no box loops): ~5 ms a chunk
 export function buildChunkNav(p) {
-  const X0 = p.cx * CHUNK, Z0 = p.cz * CHUNK, L = NAV.L;
+  const X0 = p.cx * CHUNK, Z0 = p.cz * CHUNK, L = NAV.L, S = 2, M = N * S; // sub-cells per cell side, per chunk side
   const h = new Int16Array(N * N * L).fill(NAV.none), link = new Uint8Array(N * N * L);
-  // a coarse bucket grid of this chunk's solid boxes (8 m cells)
-  const B = 8, NB = CHUNK / B, bucket = Array.from({ length: NB * NB }, () => []);
-  const solid = [];
+  // intervals per sub-cell, as a linked list in typed arrays (y0, y1, next)
+  let cap = 1 << 16, iy0 = new Float32Array(cap), iy1 = new Float32Array(cap), inext = new Int32Array(cap), ni = 0;
+  const head = new Int32Array(M * M).fill(-1);
+  const push = (c, y0, y1) => {
+    if (ni === cap) { cap *= 2; const g = (a) => { const b = new a.constructor(cap); b.set(a); return b; }; iy0 = g(iy0); iy1 = g(iy1); inext = g(inext); }
+    iy0[ni] = y0; iy1[ni] = y1; inext[ni] = head[c]; head[c] = ni++;
+  };
   for (let i = 0; i < p.mat.length; i++) {
     if (p.flag[i] & FLAGS.NC) continue;
-    const j = i * 6, b = [p.box[j], p.box[j + 1], p.box[j + 2], p.box[j + 3], p.box[j + 4], p.box[j + 5]];
-    solid.push(b);
-    for (let a = Math.max(0, Math.floor((b[0] - X0) / B)); a <= Math.min(NB - 1, Math.floor((b[3] - X0 - 1e-4) / B)); a++)
-      for (let c = Math.max(0, Math.floor((b[2] - Z0) / B)); c <= Math.min(NB - 1, Math.floor((b[5] - Z0 - 1e-4) / B)); c++) bucket[a + c * NB].push(b);
+    const j = i * 6, x0 = p.box[j], y0 = p.box[j + 1], z0 = p.box[j + 2], x1 = p.box[j + 3], y1 = p.box[j + 4], z1 = p.box[j + 5];
+    const a0 = Math.max(0, Math.floor((x0 - X0) * S + 1e-4)), a1 = Math.min(M - 1, Math.ceil((x1 - X0) * S - 1e-4) - 1);
+    const c0 = Math.max(0, Math.floor((z0 - Z0) * S + 1e-4)), c1 = Math.min(M - 1, Math.ceil((z1 - Z0) * S - 1e-4) - 1);
+    for (let a = a0; a <= a1; a++) for (let c = c0; c <= c1; c++) push(a + c * M, y0, y1);
   }
-  const near = (x, z) => bucket[Math.min(NB - 1, Math.max(0, Math.floor((x - X0) / B))) + Math.min(NB - 1, Math.max(0, Math.floor((z - Z0) / B))) * NB];
-  // floors: every box top under the cell centre with headroom above it (nothing solid in [top, top + height))
+  // anything solid in sub-cell sc between ya and yb?
+  const solid = (sc, ya, yb) => { for (let k = head[sc]; k >= 0; k = inext[k]) if (iy0[k] < yb && iy1[k] > ya) return true; return false; };
   let nodes = 0;
+  const tops = new Float32Array(64), cells = new Int32Array(4);
   for (let i = 0; i < N; i++) for (let k = 0; k < N; k++) {
-    const x = X0 + (i + 0.5) * NAV.cell, z = Z0 + (k + 0.5) * NAV.cell, list = near(x, z);
-    const under = list.filter((b) => x >= b[0] && x < b[3] && z >= b[2] && z < b[5]);
-    const tops = [...new Set(under.map((b) => b[4]))].sort((a, b) => a - b);
-    let lv = 0;
-    for (const t of tops) {
-      if (lv >= L) break;
-      if (under.some((b) => b[1] < t + NAV.height && b[4] > t + 0.01)) continue; // something's in the way above it
-      h[(i + k * N) * L + lv++] = Math.round(t * 10); nodes++;
+    const sa = i * S, sc0 = k * S;
+    cells[0] = sa + sc0 * M; cells[1] = sa + 1 + sc0 * M; cells[2] = sa + (sc0 + 1) * M; cells[3] = sa + 1 + (sc0 + 1) * M;
+    // the floor candidates: every top in the cell's 4 sub-cells, low to high
+    let nt = 0;
+    for (let c = 0; c < 4; c++) for (let q = head[cells[c]]; q >= 0 && nt < 64; q = inext[q]) tops[nt++] = iy1[q];
+    if (!nt) continue;
+    const ts = tops.subarray(0, nt).sort();
+    let lv = 0, last = -1e9;
+    for (let ti = 0; ti < nt && lv < L; ti++) {
+      const t = ts[ti];
+      if (t - last < 0.3) continue;
+      // the floor has to hold up the middle (2+ of the 4 sub-cells have a top within a step of it), with headroom
+      let held = 0, blocked = false;
+      for (let c = 0; c < 4 && !blocked; c++) {
+        let hold = false;
+        for (let q = head[cells[c]]; q >= 0; q = inext[q]) {
+          if (iy1[q] <= t + 1e-3 && iy1[q] > t - NAV.step && iy0[q] < t) hold = true;
+          if (iy0[q] < t + NAV.height && iy1[q] > t + 0.01) { blocked = true; break; }
+        }
+        if (hold) held++;
+      }
+      if (blocked || held < 2) continue;
+      h[(i + k * N) * L + lv++] = Math.round(t * 10); nodes++; last = t;
     }
   }
-  // half links: from the centre toward each neighbour as far as the cell edge, a body-height box at this floor must
-  // not hit anything (except what it's standing on: up to a step's height counts as walkable)
-  const hw = 0.3;
+  // half links: the sub-cells on the side of the cell toward each neighbour must be clear from a step up to head height
+  const SIDE = [[[1, 0], [1, 1]], [[0, 1], [1, 1]], [[0, 0], [0, 1]], [[0, 0], [1, 0]], [[1, 1]], [[0, 1]], [[0, 0]], [[1, 0]]];
   for (let i = 0; i < N; i++) for (let k = 0; k < N; k++) for (let lv = 0; lv < L; lv++) {
     const hv = h[(i + k * N) * L + lv];
     if (hv === NAV.none) continue;
-    const y = hv / 10, x = X0 + (i + 0.5) * NAV.cell, z = Z0 + (k + 0.5) * NAV.cell, list = near(x, z);
+    const y = hv / 10;
     let bits = 0;
     for (let d = 0; d < 8; d++) {
-      const ex = x + DIRS[d][0] * NAV.cell * 0.5, ez = z + DIRS[d][1] * NAV.cell * 0.5;
-      const mnx = Math.min(x, ex) - hw, mxx = Math.max(x, ex) + hw, mnz = Math.min(z, ez) - hw, mxz = Math.max(z, ez) + hw;
       let ok = true;
-      for (const b of list.length < 200 ? list : solid) if (b[0] < mxx && b[3] > mnx && b[2] < mxz && b[5] > mnz && b[1] < y + NAV.height && b[4] > y + NAV.step) { ok = false; break; }
+      for (const [u, v] of SIDE[d]) if (solid(i * S + u + (k * S + v) * M, y + NAV.step, y + NAV.height)) { ok = false; break; }
       if (ok) bits |= 1 << d;
     }
     link[(i + k * N) * L + lv] = bits;
@@ -122,28 +141,47 @@ export class NavWorld {
   }
   // A* between two world points. returns [[x, y, z], ...] (smoothed) or null. max = nodes to expand before giving up
   path(a, b, max = 8000) {
-    const s = this.locate(a[0], a[1], a[2]), g = this.locate(b[0], b[1], b[2]);
-    if (!s || !g) return null;
-    const key = (n) => ((n.gx + 32768) * 65536 + (n.gz + 32768)) * 4 + n.lv;
-    const hx = (n) => Math.hypot(n.gx - g.gx, n.gz - g.gz) * NAV.cell;
-    const open = new Heap(); open.push([hx(s), 0, s]);
-    const came = new Map([[key(s), null]]), cost = new Map([[key(s), 0]]);
-    const gk = key(g);
-    let it = 0, end = null;
+    const s0 = this.locate(a[0], a[1], a[2]), g = this.locate(b[0], b[1], b[2]);
+    if (!s0 || !g) return null;
+    // node key: (gx, gz, lv) packed into one number; per-search maps of cost and parent
+    const key = (gx, gz, lv) => ((gx + 32768) * 65536 + (gz + 32768)) * 4 + lv;
+    const gk = key(g.gx, g.gz, g.lv), cost = new Map(), came = new Map(), open = new Heap();
+    const sk = key(s0.gx, s0.gz, s0.lv);
+    cost.set(sk, 0); came.set(sk, -1); open.push([Math.hypot(s0.gx - g.gx, s0.gz - g.gz), 0, sk]);
+    let it = 0, found = false;
     while (open.size && it++ < max) {
-      const [, c, n] = open.pop();
-      const nk = key(n);
-      if (nk === gk) { end = n; break; }
-      if (c > cost.get(nk)) continue;
-      for (const m of this.next(n)) {
-        const mk = key(m), mc = c + m.cost;
-        if (cost.has(mk) && cost.get(mk) <= mc) continue;
-        cost.set(mk, mc); came.set(mk, n); open.push([mc + hx(m), mc, m]);
+      const [, c, k] = open.pop();
+      if (k === gk) { found = true; break; }
+      if (c > cost.get(k)) continue;
+      const lv = k % 4, gz = Math.floor(k / 4) % 65536 - 32768, gx = Math.floor(k / 4 / 65536) - 32768;
+      const q = this.cell(gx, gz);
+      if (!q) continue;
+      const bits = q.c.link[q.o + lv], y = q.c.h[q.o + lv];
+      for (let d = 0; d < 8; d++) {
+        if (!(bits & (1 << d))) continue;
+        const nx = gx + DIRS[d][0], nz = gz + DIRS[d][1];
+        if (d >= 4 && (!(bits & (1 << (DIRS[d][0] > 0 ? 0 : 2))) || !(bits & (1 << (DIRS[d][1] > 0 ? 1 : 3))))) continue; // no corner cutting
+        const r = this.cell(nx, nz);
+        if (!r) continue;
+        for (let l2 = 0; l2 < NAV.L; l2++) {
+          const hv = r.c.h[r.o + l2];
+          if (hv === NAV.none) continue;
+          const dy = (hv - y) / 10;
+          if (dy > NAV.step || dy < -NAV.drop) continue;
+          if (!(r.c.link[r.o + l2] & (1 << OPP[d])) && dy > -NAV.step) continue;
+          const mk = key(nx, nz, l2), mc = c + (d >= 4 ? 1.414 : 1) * NAV.cell + Math.abs(dy) * 0.5;
+          const old = cost.get(mk);
+          if (old !== undefined && old <= mc) continue;
+          cost.set(mk, mc); came.set(mk, k); open.push([mc + Math.hypot(nx - g.gx, nz - g.gz) * NAV.cell * 1.4, mc, mk]); // a greedy heuristic: a slightly longer path, far fewer nodes
+        }
       }
     }
-    if (!end) return null;
+    if (!found) return null;
     const pts = [];
-    for (let n = end; n; n = came.get(key(n))) pts.push([(n.gx + 0.5) * NAV.cell, this.y(n), (n.gz + 0.5) * NAV.cell]);
+    for (let k = gk; k !== -1 && k !== undefined; k = came.get(k)) {
+      const lv = k % 4, gz = Math.floor(k / 4) % 65536 - 32768, gx = Math.floor(k / 4 / 65536) - 32768;
+      pts.push([(gx + 0.5) * NAV.cell, this.y({ gx, gz, lv }), (gz + 0.5) * NAV.cell]);
+    }
     pts.reverse();
     // drop points on straight runs (same direction, same height)
     const out = [pts[0]];

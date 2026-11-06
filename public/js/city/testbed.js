@@ -7,6 +7,8 @@ import { CITIES, RINGS } from '/shared/city/plan.js';
 import { PH } from '/shared/physics.js';
 import { jankUniforms } from '../jank.js';
 import { propEnv } from './props.js';
+import { stepGimmicks } from '/shared/city/gimmicks.js';
+import { cityUniforms } from './mats.js';
 import '/shared/city/slice.js'; // registers the slice city (The Bottom + The Gut + the Commute)
 
 const Q = new URLSearchParams(location.search);
@@ -71,10 +73,11 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyF') { me.fly = !me.fly; me.vel[1] = 0; }
   if (e.code === 'F3') { e.preventDefault(); showPerf = !showPerf; }
   if (/^Digit[1-4]$/.test(e.code)) setPreset(+e.code.slice(5) - 1);
-  if (e.code === 'KeyE') grapple();
+  if (e.code === 'KeyE') me.useDown = true;
   if (e.code === 'KeyT') { me.pos = [...(C.spawn || [0, 2, 0])]; me.vel = [0, 0, 0]; }
 });
 addEventListener('keyup', (e) => { keys.delete(e.code); if (e.code === 'KeyE') me.hook = null; });
+let jumpDown = false; addEventListener('keydown', (e) => { if (e.code === 'Space' && !e.repeat) jumpDown = true; });
 canvas.addEventListener('click', () => { if (document.pointerLockElement !== canvas) canvas.requestPointerLock(); else shoot(); });
 document.addEventListener('pointerlockchange', () => { document.getElementById('help').style.display = document.pointerLockElement ? 'none' : ''; });
 addEventListener('mousemove', (e) => { if (document.pointerLockElement !== canvas) return; me.yaw -= e.movementX * 0.0022; me.pitch = Math.max(-1.55, Math.min(1.55, me.pitch - e.movementY * 0.0022)); });
@@ -93,6 +96,25 @@ function grapple() {
   const h = stream.world.raycast(eyeP(), fwd(), 140);
   me.hook = h ? h.point : null;
 }
+// the gimmicks' juice: callouts in the game's voice, socks raining off the washing line, a red flash in the acid
+const socks = [], sockGeo = new THREE.BoxGeometry(0.25, 0.08, 0.5), sockMats = [0xffffff, 0xff7ab0, 0xffe14d, 0x4fd8c6].map((c) => new THREE.MeshLambertMaterial({ color: c }));
+let lastCarry = 0, hp = 100;
+function gimFx(e) {
+  if (e.kind === 'zipOn') callout('ZIPLINE!');
+  else if (e.kind === 'zipOff' && e.speed > 16) callout('SOCK RUN');
+  else if (e.kind === 'sock') { const m = new THREE.Mesh(sockGeo, sockMats[(Math.random() * 4) | 0]); m.position.set(...e.p); m.rotation.set(Math.random() * 3, Math.random() * 3, 0); scene.add(m); socks.push([m, 2.5, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2]); }
+  else if (e.kind === 'bounce') callout(e.v > 30 ? 'BIG BREATH' : 'LUNG!');
+  else if (e.kind === 'carry' && performance.now() - lastCarry > 4000) { callout(e.name === 'PERISTALSIS' ? 'THE STREET IS DIGESTING YOU' : 'IT ONLY GOES DOWN'); lastCarry = performance.now(); }
+  else if (e.kind === 'surf') callout('RIDING THE BEAT');
+  else if (e.kind === 'acid') { hp -= e.dmg; if (hp <= 0) { hp = 100; me.pos = [...(C.spawn || [0, 2, 0])]; me.vel = [0, 0, 0]; callout('DIGESTED'); } else if (calloutT <= 0) callout("YOU'RE BEING DIGESTED"); }
+  else if (e.kind === 'hot' && calloutT <= 0) callout('HOT ZONE: DO NOT LICK');
+}
+function stepSocks(dt) {
+  for (let i = socks.length - 1; i >= 0; i--) {
+    const s = socks[i]; s[1] -= dt; s[0].position.y -= 3 * dt; s[0].position.x += s[2] * dt; s[0].position.z += s[3] * dt; s[0].rotation.x += dt * 4;
+    if (s[1] <= 0) { s[0].removeFromParent(); socks.splice(i, 1); }
+  }
+}
 let calloutT = 0;
 function callout(t) { const el = document.getElementById('callout'); el.textContent = t; el.style.opacity = 1; calloutT = 1.6; }
 
@@ -109,6 +131,14 @@ function step(dt) {
     return;
   }
   if (!stream.ready(me.pos[0], me.pos[2])) { me.held += dt; return; } // the ground here isn't in yet: wait for it
+  // the district gimmicks: ziplines, moving streets, lungs, acid (E grabs a line if one's in reach, else grapples)
+  const use = me.useDown || (window.__auto && window.__auto.use); me.useDown = false;
+  const wasZip = !!me.zip;
+  const ev = stepGimmicks(me, stream.triggers(), dt, { use, jump: jumpDown, face: fwd(), beat: cityUniforms.uBeat.value, sliding: keys.has('ControlLeft') });
+  jumpDown = false;
+  for (const e of ev) gimFx(e);
+  if (me.zip) return; // riding a line: it moves you
+  if (use && !wasZip && !ev.some((e) => e.kind === 'zipOn' || e.kind === 'zipOff')) grapple();
   const sp = keys.has('ShiftLeft') ? 11 : 7;
   const tx = (f[0] * iz + r[0] * ix) * sp, tz = (f[2] * iz + r[2] * ix) * sp;
   const acc = me.ground ? 60 : 14;
@@ -135,7 +165,7 @@ function frame() {
   const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now;
   fps = fps * 0.95 + (1 / Math.max(1e-3, dt)) * 0.05; frames++;
   if (frames > 30) frameMax = Math.max(frameMax, dt * 1000);
-  step(dt);
+  step(dt); stepSocks(dt);
   camera.position.set(...eyeP()); camera.rotation.set(me.pitch, me.yaw, 0);
   stream.update(camera, dt);
   const env = stream.env;
@@ -166,4 +196,4 @@ function frame() {
 }
 requestAnimationFrame(frame);
 
-window.__city = { stream, scene, camera, renderer, me, setPreset, shoot, callout, city, resetWorst: () => { frameMax = 0; frames = 0; }, worst: () => frameMax, fps: () => fps };
+window.__city = { hp: () => hp, stream, scene, camera, renderer, me, setPreset, shoot, callout, city, resetWorst: () => { frameMax = 0; frames = 0; }, worst: () => frameMax, fps: () => fps };

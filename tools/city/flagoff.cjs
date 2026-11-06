@@ -14,14 +14,28 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   pg.on('request', (r) => { if (/\/(city|story)\//.test(r.url()) || /storytest/.test(r.url())) reqs.push(r.url()); });
   await pg.addInitScript(() => localStorage.setItem('jankfire', JSON.stringify({ name: 'flagoff', loadout: { primary: 'ar', secondary: 'revolver', melee: 'knife' } })));
   await pg.goto(`http://localhost:${port}/`); await sleep(1500);
-  await pg.evaluate(() => document.getElementById('setupGo').click());
+  for (let i = 0; i < 30; i++) { // the menu wires up after the models load: keep pressing GO until we're in
+    const j = await pg.evaluate(async () => { const { G } = await import('/js/ctx.js'); if (!G.joined) document.getElementById('setupGo').click(); return G.joined; });
+    if (j) break; await sleep(2000);
+  }
   await sleep(8000);
   await pg.keyboard.press('Digit3'); await sleep(700);
-  await pg.mouse.move(480, 270); await pg.mouse.down(); await sleep(60);
-  const swing = await pg.evaluate(async () => { const w = await import('/js/weapons.js'); return { swing: w.W.swing, slot: w.W.slot ?? null }; });
-  await pg.mouse.up();
+  await pg.mouse.move(480, 270); await pg.mouse.click(480, 270); await sleep(1200); // the first click may only drop you in
+  await pg.keyboard.press('Digit3'); await sleep(700);
+  // headless Chromium has no pointer lock, so the game sits on its pause menu: put it away like a locked mouse would,
+  // and listen for the swing going out to the server
+  const pre = await pg.evaluate(async () => {
+    const { net } = await import('/js/net.js'); const { ME } = await import('/js/player.js');
+    window.__sent = []; const send = net.send.bind(net); net.send = (m) => { if (m && m.t === 'fire') window.__sent.push(m.w); return send(m); };
+    document.getElementById('menu').classList.add('hidden');
+    return { alive: ME.alive };
+  });
+  const watch = pg.evaluate(async () => { const w = await import('/js/weapons.js'); let mx = 0; const t = performance.now(); while (performance.now() - t < 900) { mx = Math.max(mx, w.W.swing || 0); await new Promise((r) => requestAnimationFrame(r)); } return { swing: mx, slot: w.W.slot ?? null }; });
+  await sleep(100); await pg.mouse.down(); await sleep(80); await pg.mouse.up();
+  const swing = await watch;
+  swing.sent = await pg.evaluate(() => window.__sent); swing.alive = pre.alive;
   const st = await pg.evaluate(async () => { const { G } = await import('/js/ctx.js'); const { MAP } = await import('/shared/map.js'); return { mode: G.mode, joined: G.joined, remotes: G.remotes.size, map: MAP.id }; });
   if (png) await pg.screenshot({ path: png });
-  console.log(JSON.stringify({ ...st, swung: swing.swing > 0, swing, pageErrors: errs, flagWarnings: flags, storyRequests: reqs }));
+  console.log(JSON.stringify({ ...st, swung: swing.swing > 0 || (swing.sent || []).length > 0, swing, pageErrors: errs, flagWarnings: flags, storyRequests: reqs }));
   await b.close();
 })();

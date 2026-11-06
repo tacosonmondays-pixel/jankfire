@@ -266,6 +266,15 @@ export class CityStream {
       maxUploadMs: +this.st.maxUploadMs.toFixed(1), hitches: this.st.hitches, errors: this.errors.length,
     };
   }
+  // the gimmick triggers (shared/city/gimmicks.js) of the collision chunks: rebuilt when that set changes
+  triggers() {
+    if (this._trigV === this.world.version) return this._trig;
+    const out = [];
+    for (const id of this.world.chunks.keys()) { const r = this.chunks.get(id); if (r && r.packed) for (const t of r.packed.triggers) out.push(t); }
+    this._trig = out; this._trigV = this.world.version;
+    return out;
+  }
+  marks() { const out = []; for (const id of this.world.chunks.keys()) { const r = this.chunks.get(id); if (r && r.packed) out.push(...r.packed.marks); } return out; }
   // is everything round (x, z) that you could stand on loaded? (hold the player until it is)
   ready(x, z) { return this.world.readyAt(this.city, x, z); }
   dispose() {
