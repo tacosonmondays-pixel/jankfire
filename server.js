@@ -41,6 +41,7 @@ import { navSteer } from './shared/nav.js';
 import { DUCKRAIN } from './shared/modes.js';
 import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
 import { installGear } from './server/gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
+import { installEcon } from './server/econ.js';
 import { MSLIP, onPatch, patchPreroll } from './shared/marbles.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -357,7 +358,7 @@ class Room {
   humans() { return [...this.players.values()].filter((p) => !p.isBot); }
   sendTo(p, m) { send(p, m); } // for server/ modules
   teamsOn() { return (this.mode === 'ffa' || this.mode === 'bots') && !!GAMES[this.game].teams; }
-  fighters() { return [...this.players.values()].filter((p) => !(p.isBot && p.ai && p.ai.dummy)); }
+  fighters() { return [...this.players.values()].filter((p) => !(p.isBot && p.ai && p.ai.dummy) && !p.watch); }
   // even teams, humans spread first
   assignTeams() {
     const list = this.fighters().sort((a, b) => (a.isBot - b.isBot) || (Math.random() - 0.5));
@@ -383,6 +384,9 @@ class Room {
     return lo;
   }
   sendLoadout(p) {
+    if (p.watch) return;
+    if (this.isEcon()) { this.econLoadout(p); return; } // Plant & Defuse economy: the gear you bought, not a loadout
+    if (p.ec) this.econEnd(p);
     if (this.modeLoadout(p)) return; // gun game rung / zombie claw
     if (this.sendChaosKit(p)) return;
     if (p.isBot) { if (GAMES[this.game].random && !p.ai.dummy) { p.w = pick(BOT_GUNS); p.ai.ammo = WEAPONS[p.w].mag || 1; } return; }
@@ -461,9 +465,11 @@ class Room {
     p.grap = ownedGrapple(m.grap, inv);
     p.kc = !!m.kc;
     p.item = has(ITEMS, m.item) ? m.item : 'frag'; // the client confirms it with 'itemsel' right after 'welcome'
+    if (process.env.JF_WATCH && name.startsWith('watch')) { p.watch = true; p.alive = false; p.hp = 0; p.respawnAt = p.minRespawnAt = Infinity; } // test knob: a ws observer for bots-only matches (never a fighter)
     if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && has(GAMES, m.cfg.game) && !this.humans().length) this.setGame(m.cfg.game);
-    this.joinTeam(p);
+    if (!p.watch) this.joinTeam(p);
     if (p.team) p.pos = this.pickSpawn(false, p);
+    if (this.isEcon() && !p.watch) this.econJoin(p);
     this.players.set(p.id, p);
     // in from the start (or close enough): your Never Landed run counts. the welcome below is your first spawn
     if (this.round && !this.round.over && now() - (this.round.t0 || 0) < AIR.join && !GAMES[this.game].lava) p.air = { ok: !(this.airBad && this.airBad.has(name)), rest: 0 };
@@ -494,6 +500,7 @@ class Room {
     if (this.mode === 'ffa' || this.mode === 'coop') this.broadcast({ t: 'chat', id: 0, m: `${name} joined` });
     if (this.mode === 'bots') this.fillBots();
     if (this.mode === 'bots' && this.humans().length === 1 && this.game !== 'dm') this.startRound();
+    if (process.env.JF_FFA_BOMB) this.econTestStart(); // test knob
     if (this.mode === 'training') this.spawnDummies();
     console.log(`+ ${name} (#${p.id}) -> ${this.id}`);
     return p;
@@ -502,6 +509,7 @@ class Room {
   remove(p) {
     flushStats(p);
     if (this.bomb && this.bomb.carrier === p.id) this.dropBomb(p.pos, p);
+    if (this.isEcon()) this.econLeave(p);
     this.players.delete(p.id);
     // whatever they threw goes with them (with no owner it would ignore teams and bubbles); their holes and gas go inert
     for (const pr of this.projectiles.values()) if (pr.o === p.id) this.removeProj(pr);
@@ -524,6 +532,7 @@ class Room {
     b.ai.ammo = WEAPONS[b.w].mag || 1;
     if (!opts.dummy && Math.random() < 0.5) b.grap = pick(GRAP_IDS); // bots show off ropes you can roll
     if (!opts.dummy) { this.joinTeam(b); if (b.team) b.pos = this.pickSpawn(true, b); }
+    if (!opts.dummy && this.isEcon()) this.econJoin(b);
     this.players.set(b.id, b);
     this.sendLoadout(b); // bots added mid-match get the mode's weapons too
     this.broadcast({ t: 'pj', ...this.info(b) });
@@ -623,7 +632,7 @@ class Room {
     let wx = 0, wz = 0, jump = false;
     const w = WEAPONS[b.w];
     const pref = b.w === 'sniper' ? [25, 60] : b.w === 'shotgun' ? [3, 9] : b.w === 'marbles' ? [1.5, 4] : b.w === 'chicken' ? [10, 30] : b.w === 'shredder' ? [1.5, 9] : [7, 22];
-    if (w.kind === 'melee') { pref[0] = 0; pref[1] = this.chaosKit ? 1.2 : w.range * 0.7; } // claws, melee rungs, spoons + knives: get in their face
+    if (w.kind === 'melee') { pref[0] = 0; pref[1] = this.chaosKit || this.isEcon() ? 1.2 : w.range * 0.7; } // claws, melee rungs, spoons + knives: get in their face
     if (t && t.alive) {
       const e = eyeOf(b), tc = [t.pos[0], t.pos[1] + 1.1, t.pos[2]];
       const dx = tc[0] - e[0], dy = tc[1] - e[1], dz = tc[2] - e[2];
@@ -670,8 +679,9 @@ class Room {
         if (!t || !t.alive || (!ai.seenAt && dist3(t.pos, b.pos) > 12)) b.yaw = lerpAngle(b.yaw, Math.atan2(-wx, -wz), 30 * dt); // look where you walk, not through walls
       }
     }
+    if (goal && goal.tac) [wx, wz] = this.econAiHold(b, goal, t, wx, wz, dt); // Plant & Defuse: hold an angle, watch it
     // grappling: chase people who are far / up high / out of sight, save yourself when falling, show off sometimes
-    if (!ai.hook && n >= (ai.nextHook || 0) && this.mode !== 'training') {
+    if (!ai.hook && n >= (ai.nextHook || 0) && this.mode !== 'training' && !this.hookOff()) {
       const skill = ai.diff === 'easy' ? 0.35 : ai.diff === 'hard' ? 1 : 0.7;
       const below = !b.onGround && !raycast([b.pos[0], b.pos[1] + 0.5, b.pos[2]], [0, -1, 0], 40, boxes);
       let want = null;
@@ -803,6 +813,7 @@ class Room {
     return [rt[ai.ri][0], rt[ai.ri][2] ?? b.pos[1], rt[ai.ri][1]];
   }
   botGoal(b) {
+    if (this.isEcon()) { const eg = this.econBotGoal(b); if (eg) return eg; }
     const B = this.bomb;
     if (B && this.game === 'bomb' && B.ph !== 'done' && !B.between) {
       const sites = this.map.sites || [];
@@ -837,6 +848,7 @@ class Room {
 
   botFire(b, t, D) {
     if (this.chaosKit && this.botChaosFire(b, t, D)) return;
+    if (this.isEcon() && !this.econBotShot(b, t, D)) return;
     const w = WEAPONS[b.w], n = now();
     if (b.w === 'shredder') { this.botShred(b); return; } // no shots: it sucks for as long as they're in front of it
     if (w.kind === 'beam') { this.botLaser(b); return; } // laser pointer: charge, then let go
@@ -1216,6 +1228,7 @@ class Room {
     if (this.hitBlocked(t, attacker, w, from)) return false;
     if (attacker && attacker.isBot && !t.isBot && this.mode !== 'bots') amt *= 0.6; // coop bots hit softer
     if (t.rig) { amt = this.rigSoak(t, amt, attacker, w, from); if (amt <= 0) return true; } // overdrive rig: block + overshield first
+    if (this.isEcon()) amt = this.econArmor(t, amt, attacker, w, hs);
     t.hp -= amt;
     if (!attacker || attacker === t) t.selfHurtT = now(); // EPIC: coughing yourself down to 4 HP doesn't make you a clutch hero
     t.lastHs = !!hs;
@@ -1323,7 +1336,7 @@ class Room {
       if (this.round && !this.round.over) matchKill(this, killer, t, via || w);
       if (killer.lastKiller === t.id) killer.lastKiller = 0; // revenge served (scales of justice)
       t.lastKiller = killer.id;
-      if (!killer.isBot && this.mode !== 'training' && !this.modeWeapon(killer) && !(this.chaosKit && this.chaosKit.noStreaks)) { // no killstreaks in gun game, as a zombie or in a chaos kit
+      if (!killer.isBot && this.mode !== 'training' && !this.modeWeapon(killer) && !(this.chaosKit && this.chaosKit.noStreaks) && this.streaksOn()) { // no killstreaks in gun game, as a zombie or in a chaos kit
         // your 3 picked streaks: earn one and it waits in your tray until you use it (keys 5 / 6 / 7)
         for (const id of validStreaks(killer.streaks)) {
           const st = STREAKS[id];
@@ -1369,6 +1382,7 @@ class Room {
     this.chaosKill(t, killer);
     if (t.isBot && this.mode === 'coop') { setTimeout(safe('coop', () => { if (this.players.get(t.id) === t) this.remove(t); }), 50); }
     this.modeKill(t, killer, via || w);
+    if (this.isEcon()) this.econOnKill(t, killer, w, via);
   }
   // is this kill the play of the round? multikills, speed, distance and void kills score higher
   hlCandidate(k, t, w) {
@@ -2609,7 +2623,7 @@ class Room {
     for (const c of this.clouds.values()) this.broadcast({ t: 'cloudx', id: c.id });
     this.bubbles.clear(); this.clouds.clear();
     for (const p of this.players.values()) {
-      if (p.isBot && p.ai.dummy) continue;
+      if ((p.isBot && p.ai.dummy) || p.watch) continue;
       p.alive = true; p.hp = 100; p.vel = [0, 0, 0]; p.spawnT = now(); p.seq++;
       p.parryT = 0; p.staggerUntil = 0; // katana parry: the client resets on 'spawn', so the server does too
       p.pos = this.pickSpawn(p.isBot, p);
@@ -2625,6 +2639,7 @@ class Room {
   handle(p, m) {
     if (p.quiz && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray'].includes(m.t)) return; // pens down: no attacks during a pop quiz
     if (p.trap && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray'].includes(m.t)) return; // sealed in a soap bubble: no attacks, parries, items, streaks, sprays or planting till it pops
+    if (this.isEcon() && this.econHandle(p, m)) return;
     switch (m.t) {
       case 's': {
         if (!p.alive || m.q !== p.seq) return;
@@ -2804,7 +2819,8 @@ class Room {
       const n = now();
       r.bomb = { att: b.att, ph: b.ph, n: b.n, wins: [b.wins[1], b.wins[2]], carrier: b.carrier, drop: b.drop, p: b.p, site: b.site,
         left: Math.max(0, (b.ph === 'planted' ? b.explodeAt : b.between || b.ends) - n),
-        act: b.act ? { k: b.act.kind, by: b.act.id, f: Math.min(1, (n - b.act.start) / ((b.act.kind === 'plant' ? BOMB.plant : BOMB.defuse) * 1000)) } : 0 };
+        act: b.act ? { k: b.act.kind, by: b.act.id, f: Math.min(1, (n - b.act.start) / this.actMs(b.act)) } : 0 };
+      if (this.isEcon()) this.econRoundInfo(r);
     }
     return r;
   }
@@ -3083,6 +3099,7 @@ class Room {
     b.n++;
     Object.assign(b, { ph: 'live', site: null, p: null, drop: null, explodeAt: 0, act: null, between: 0, ends: now() + (process.env.JF_BOMB_ROUND ? BOMB.roundTime : this.map.roundTime || BOMB.roundTime) * 1000, carrier: 0 }); // per-map round time (the test knob still wins)
     for (const p of this.players.values()) if (p.ai) { p.ai.site = null; p.ai.route = null; }
+    if (this.isEcon()) this.econNewRound(first); // buy phase, payouts carried over, the half's credit reset
     this.projectiles.clear(); this.peels.clear(); this.holes.clear();
     this.resetWorld();
     this.giveBomb();
@@ -3114,6 +3131,7 @@ class Room {
     b.wins[team]++;
     b.ph = 'done'; b.act = null;
     this.broadcast({ t: 'bombev', k: 'win', team, why, wins: [b.wins[1], b.wins[2]] });
+    if (this.isEcon()) this.econRoundEnd(team, why);
     if (b.wins[team] >= BOMB.wins) { this.endRound(); return; }
     b.between = now() + BOMB.between;
   }
@@ -3151,7 +3169,7 @@ class Room {
       const hold = a && a.alive && n - (a.useT || 0) < 600 && dist3(a.pos, b.act.pos) < 1.6;
       const ok = hold && (b.act.kind === 'plant' ? b.carrier === a.id && siteAt(this.map, a.pos) : b.ph === 'planted' && canDefuse(a.pos, b.p, 0.6));
       if (!ok) b.act = null;
-      else if (n - b.act.start >= (b.act.kind === 'plant' ? BOMB.plant : BOMB.defuse) * 1000) {
+      else if (n - b.act.start >= this.actMs(b.act)) {
         if (b.act.kind === 'plant') {
           const site = siteAt(this.map, a.pos);
           Object.assign(b, { ph: 'planted', site: site.id, p: [r2(a.pos[0]), r2(a.pos[1] + 0.1), r2(a.pos[2])], explodeAt: n + BOMB.fuse * 1000, carrier: 0, act: null, planter: a.id });
@@ -3553,6 +3571,7 @@ class Room {
   tick(dt) {
     const n = now();
     this.tickRound();
+    if (this.isEcon()) this.tickEcon(n);
     this.tickTags(n);
     this.tickItems(dt);
     if (this.mode === 'training') this.trainingStreaks(n);
@@ -3692,6 +3711,10 @@ class Room {
 
 installRig(Room, { now, num, vec3, norm, r2, center, safe, REC_T, WEAPONS }); // the overdrive rig's methods (server/rig.js)
 installGear(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm, vec3 });
+installEcon(Room, {
+  send, cleanSkins, enforceSkins, logErr, BOT_GUNS, navGraph,
+  refreshInv: async (p) => { if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; } },
+});
 
 // ---------------------------------------------------------------- account stats
 function stat(p, key, v) {
