@@ -9,8 +9,9 @@ import * as THREE from 'three';
 import { CHUNK, CITIES, RINGS, inCity, districtWeights, chunkId } from '/shared/city/plan.js';
 import { chunkBoxes } from '/shared/city/chunk.js';
 import { ChunkWorld } from '/shared/city/world.js';
-import { cityMaterials, cityUniforms } from './mats.js';
+import { cityMaterials, cityUniforms, NL } from './mats.js';
 import { buildPropGroup, freeProps, onPropModel } from './props.js';
+import './propcode.js'; // code stand-ins for every story prop (until its Blender model loads)
 
 const KINDS = ['solid', 'flesh', 'glow', 'glass', 'acid'];
 const HYST = 16; // metres past a ring before something is dropped from it (no flicker at the edge)
@@ -63,8 +64,13 @@ export class CityStream {
     this.time = 0; this.cam = new THREE.Vector3(); this.first = true;
     this.setPreset(preset);
     onPropModel(() => { this.props.key = ''; }); // a Blender prop landed: rebuild the instances with it
+    this.horizon = null;
+    if (this.def.horizon) this.workers[1 % workers].postMessage({ op: 'horizon', city, gen: this.def.horizon });
   }
-  setPreset(i) { this.preset = i; this.R = RINGS[i] || RINGS[1]; this.props.key = ''; this.far.wantKey = ''; }
+  setPreset(i) {
+    this.preset = i; this.R = { ...(RINGS[i] || RINGS[1]) };
+    const k = this.def.ringScale || {};
+    for (const key of Object.keys(k)) this.R[key] = Math.round(this.R[key] * k[key]); this.props.key = ''; this.far.wantKey = ''; }
   get boxes() { return this.world.boxes; }
 
   rec(cx, cz) {
@@ -138,6 +144,7 @@ export class CityStream {
     this.updateFar(want);
     this.updateProps(want);
     this.applyEnv(p);
+    this.pickLights(camera);
     const ms = performance.now() - t0;
     this.st.frameMs = ms; if (ms > 50 && !this.first) this.st.hitches++;
   }
@@ -145,6 +152,7 @@ export class CityStream {
   take(m) {
     if (m.op === 'error') { this.errors.push(m.err); if (m.col) this.colInflight--; else this.inflight = Math.max(0, this.inflight - 1); return; }
     if (m.op === 'far') { this.far.busy = false; this.takeFar(m); return; }
+    if (m.op === 'horizon') { this.horizon = groupOf(m.mesh, this.mats.horizon, 1); this.horizon.traverse((o) => { o.castShadow = o.receiveShadow = false; o.frustumCulled = false; }); this.root.add(this.horizon); return; }
     if (m.col) this.colInflight = Math.max(0, this.colInflight - 1); else this.inflight = Math.max(0, this.inflight - 1);
     const r = this.chunks.get(m.id);
     if (!r) return;
@@ -197,6 +205,34 @@ export class CityStream {
     this.root.add(this.props.group);
   }
 
+  // the NL nearest lights in the chunks round the camera -> the shader's arrays (view space, so no per-pixel matrix)
+  pickLights(camera) {
+    const p = camera.position, seen = new Set(), list = [];
+    for (const r of this.chunks.values()) {
+      if (!r.packed || !r.packed.lights || r.d > 70) continue;
+      for (const L of r.packed.lights) {
+        const key = L[0] * 7 + L[1] * 13 + L[2] * 17;
+        if (seen.has(key)) continue; seen.add(key);
+        const d = Math.hypot(L[0] - p.x, L[1] - p.y, L[2] - p.z) - L[4];
+        if (d < 50) list.push([d, L]);
+      }
+    }
+    list.sort((a, b) => a[0] - b[0]);
+    const v = new THREE.Vector3(), LP = cityUniforms.uLP.value, LC = cityUniforms.uLC.value, M = camera.matrixWorldInverse;
+    camera.updateMatrixWorld();
+    for (let i = 0; i < NL; i++) {
+      const L = list[i] && list[i][1];
+      if (!L) { LP[i].set(0, -1e4, 0, 1); LC[i].set(0, 0, 0, 0); continue; }
+      v.set(L[0], L[1], L[2]).applyMatrix4(M);
+      // fade the last few in/out so a light popping into the list doesn't snap
+      const fade = Math.min(1, Math.max(0, (50 - list[i][0]) / 12)) * (i > NL - 4 ? (NL - i) / 4 : 1);
+      LP[i].set(v.x, v.y, v.z, L[4]);
+      const k = L[5] * fade * 2.2;
+      LC[i].set(((L[3] >> 16) & 255) / 255 * k, ((L[3] >> 8) & 255) / 255 * k, (L[3] & 255) / 255 * k, 0);
+    }
+    this.nLights = Math.min(NL, list.length);
+  }
+
   // sky + fog blended between districts round the camera (40 m across a border)
   applyEnv(p) {
     const ws = districtWeights(this.city, p.x, p.z, 40);
@@ -205,12 +241,12 @@ export class CityStream {
     const hemi = [new THREE.Color(0, 0, 0), new THREE.Color(0, 0, 0), 0], sun = [new THREE.Color(0, 0, 0), 0];
     for (const [d, w] of ws) {
       fog.add(c.setHex(d.sky.fog).multiplyScalar(w)); top.add(c.setHex(d.sky.top).multiplyScalar(w)); mid.add(c.setHex(d.sky.mid).multiplyScalar(w)); bot.add(c.setHex(d.sky.bot).multiplyScalar(w));
-      near += d.fogNear * w; far += d.fogFar * w; night += (d.night ? 1 : 0) * w;
+      near += d.fogNear * w; far += d.fogFar * w; night += (+d.night || 0) * w;
       const L = d.light || { hemi: [0xcfe8ff, 0x7a4a6a, 1.5], sun: [0xfff0dd, 1.8] };
       hemi[0].add(c.setHex(L.hemi[0]).multiplyScalar(w)); hemi[1].add(c.setHex(L.hemi[1]).multiplyScalar(w)); hemi[2] += L.hemi[2] * w;
       sun[0].add(c.setHex(L.sun[0]).multiplyScalar(w)); sun[1] += L.sun[1] * w;
     }
-    cityUniforms.uNight.value = night;
+    cityUniforms.uNight.value = night; cityUniforms.uHaze.value.copy(fog).lerp(mid, 0.35);
     this.env = { fog, top, mid, bot, near, far: Math.min(far, this.R.far + 60), night, hemi, sun, district: ws.length ? ws.reduce((a, b) => (b[1] > a[1] ? b : a))[0] : null };
   }
 
@@ -225,7 +261,7 @@ export class CityStream {
     return {
       chunks: this.chunks.size, packed, near, mid, far: this.far.key ? this.far.key.split(';').length : 0, collision: this.world.chunks.size,
       boxes: this.world.boxes.length, props: this.props.n, inflight: this.inflight + this.colInflight, inbox: this.inbox.length,
-      geoMB: +((bytes + (fm ? fm.userData.bytes : 0)) / 1048576).toFixed(1), cityTris: tris + (fm ? fm.userData.tris : 0),
+      geoMB: +((bytes + (fm ? fm.userData.bytes : 0) + (this.horizon ? this.horizon.userData.bytes : 0)) / 1048576).toFixed(1), cityTris: tris + (fm ? fm.userData.tris : 0) + (this.horizon ? this.horizon.userData.tris : 0),
       built: this.st.built, avgBuildMs: this.st.built ? +(this.st.buildMs / this.st.built).toFixed(1) : 0, maxBuildMs: +this.st.maxBuildMs.toFixed(1),
       maxUploadMs: +this.st.maxUploadMs.toFixed(1), hitches: this.st.hitches, errors: this.errors.length,
     };

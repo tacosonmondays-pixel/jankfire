@@ -3,7 +3,8 @@
 // chunk moving between rings (near -> mid -> far) is never generated twice.
 // in:  { op: 'chunk', id, city, cx, cz, want: { packed, mesh0, mesh1, cells } }  |  { op: 'far', key, city, ids: [[cx, cz]] }
 // out: { op: 'chunk', id, packed?, mesh0?, mesh1?, cells?, ms }                   |  { op: 'far', key, mesh, ms }
-import { buildChunk, packChunk, transferList, hashChunk } from '/shared/city/chunk.js';
+import { buildChunk, packChunk, transferList, hashChunk, chunkBuilder } from '/shared/city/chunk.js';
+import { GENS } from '/shared/city/gens.js';
 import { meshChunk, meshTransfer, impostorCells } from '/shared/city/mesh.js';
 import { CHUNK } from '/shared/city/plan.js';
 
@@ -57,6 +58,11 @@ self.onmessage = (ev) => {
       if (w.hash) out.hash = hashChunk(e.p);
       out.ms = performance.now() - t; out.buildMs = e.buildMs;
       self.postMessage(out, tr);
+    } else if (m.op === 'horizon') { // the skyline round the city: one render-only mesh, built once
+      const t = performance.now(), B = chunkBuilder(m.city, 0, 0, [-3000, -3000, 3000, 3000]);
+      GENS[m.gen](B, m.city);
+      const mesh = meshChunk(packChunk(B.out), 1);
+      self.postMessage({ op: 'horizon', mesh, ms: performance.now() - t }, meshTransfer(mesh));
     } else if (m.op === 'far') {
       const t = performance.now(), mesh = farMesh(m.city, m.ids);
       self.postMessage({ op: 'far', key: m.key, mesh, ms: performance.now() - t }, [mesh.pos.buffer, mesh.col.buffer, mesh.nrm.buffer, mesh.idx.buffer]);

@@ -6,7 +6,25 @@ import * as THREE from 'three';
 import { FAMS } from '/shared/city/plan.js';
 import { jankUniforms } from '../jank.js';
 
-export const cityUniforms = { uTime: { value: 0 }, uBeat: { value: 0 }, uNight: { value: 0 } };
+export const NL = 24; // lights at once (the nearest ones round the camera, picked by stream.js every frame)
+export const cityUniforms = {
+  uTime: { value: 0 }, uBeat: { value: 0 }, uNight: { value: 0 }, uHaze: { value: new THREE.Color(0x806080) },
+  uLP: { value: Array.from({ length: NL }, () => new THREE.Vector4(0, -1e4, 0, 1)) }, // view-space position + radius
+  uLC: { value: Array.from({ length: NL }, () => new THREE.Vector4(0, 0, 0, 0)) }, // colour * strength
+};
+// the city's point lights, per fragment: soft pools under string lights, fire barrels, heart lamps, the Machine
+export const LIGHTS_GLSL = `
+#ifdef CITY_LIGHTS
+{ vec3 vp = -vViewPosition;
+  for (int i = 0; i < ${NL}; i++) {
+    vec3 d = uLP[i].xyz - vp; float r = uLP[i].w, dist = length(d);
+    if (dist >= r) continue;
+    float f = 1.0 - dist / r; f *= f;
+    float lam = max(0.0, dot(normal, d / max(dist, 1e-3))) * 0.85 + 0.15;
+    reflectedLight.directDiffuse += uLC[i].rgb * f * lam * diffuseColor.rgb;
+  } }
+#endif`;
+export const LIGHTS_HEAD = 'uniform vec4 uLP[' + NL + ']; uniform vec4 uLC[' + NL + '];\n';
 const T = 64, COLS = 8, ROWS = Math.ceil(FAMS.length / COLS), PAD = 0; // tiles are drawn seamless; nearest filtering, no bleed
 
 function rnd(seed) { let s = seed; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
@@ -65,7 +83,7 @@ varying vec3 vPaint; varying vec2 vWuv; varying float vFam; varying float vPulse
 const VERT_SNAP = `
 vec4 jsnap = gl_Position; jsnap.xyz /= jsnap.w; jsnap.xy = floor(jsnap.xy * uSnap + 0.5) / uSnap; jsnap.xyz *= jsnap.w; gl_Position = jsnap;`;
 const FRAG_HEAD = `
-uniform sampler2D uAtlas; uniform float uTime; uniform float uBeat; uniform float uNight;
+uniform sampler2D uAtlas; uniform float uTime; uniform float uBeat; uniform float uNight; uniform vec3 uHaze;
 varying vec3 vPaint; varying vec2 vWuv; varying float vFam; varying float vPulse; varying vec3 vWpos;
 vec4 atlasTex(vec2 uv, float fam) {
   vec2 cell = vec2(mod(fam, ${COLS}.0), floor(fam / ${COLS}.0));
@@ -99,6 +117,10 @@ function patch(mat, opts = {}) {
       diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.55, 0.12, 0.25), veins * 0.45);
       diffuseColor.rgb *= 0.92 + 0.16 * uBeat;` : ''}
       ${opts.glowWin ? 'diffuseColor.rgb *= mix(0.55, 1.15, uNight);' : ''}`);
+    if (opts.horizon) fs = fs.replace('#include <dithering_fragment>', `#include <dithering_fragment>
+      { float d = length(vWpos.xz - cameraPosition.xz); float hz = 0.45 + 0.5 * smoothstep(300.0, 1700.0, d);
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, uHaze, hz); }`);
+    if (opts.lights !== false && !mat.isMeshBasicMaterial) { fs = '#define CITY_LIGHTS\n' + LIGHTS_HEAD + fs.replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\n' + LIGHTS_GLSL); }
     if (opts.flesh) fs = fs.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
       { float rim = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 2.5);
         totalEmissiveRadiance += vec3(0.9, 0.12, 0.2) * rim * 0.55 * (0.7 + 0.5 * uBeat); }`);
@@ -127,6 +149,10 @@ export function cityMaterials() {
         totalEmissiveRadiance += vec3(1.0, 0.85, 0.5) * win * (0.15 + 0.6 * uNight); }`);
   };
   far.customProgramCacheKey = () => 'cityfar';
-  MATS = { solid, flesh, glow, glass, acid, far };
+  // the horizon: no fog (it would vanish), its own distance haze toward the sky instead
+  const hz = (m, o = {}) => { m.fog = false; return patch(m, { horizon: true, ...o }); };
+  const horizon = { solid: hz(new THREE.MeshLambertMaterial({ color: 0xffffff })), glow: hz(new THREE.MeshBasicMaterial({ color: 0xffffff }), { glowWin: true }) };
+  horizon.flesh = horizon.solid; horizon.glass = horizon.solid; horizon.acid = horizon.glow;
+  MATS = { solid, flesh, glow, glass, acid, far, horizon };
   return MATS;
 }

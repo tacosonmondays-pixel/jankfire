@@ -69,6 +69,11 @@ export function districtWeights(city, x, z, band = 40) {
     const w = out2 > 0 ? Math.max(0, 1 - out2 / (band / 2)) * 0.5 : 0.5 + Math.min(0.5, ins / band);
     if (w > 0) { out.push([d, w]); sum += w; }
   }
+  if (!out.length) { // outside every district (flying past the edge): the nearest one
+    let best = null, bd = Infinity;
+    for (const d of c.districts) { const [x0, z0, x1, z1] = d.rect, dd = Math.hypot(Math.max(x0 - x, 0, x - x1), Math.max(z0 - z, 0, z - z1)); if (dd < bd) { bd = dd; best = d; } }
+    return best ? [[best, 1]] : out;
+  }
   for (const e of out) e[1] /= sum || 1;
   return out;
 }

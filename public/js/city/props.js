@@ -7,7 +7,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { jankUniforms } from '../jank.js';
-import { cityUniforms } from './mats.js';
+import { cityUniforms, LIGHTS_GLSL, LIGHTS_HEAD } from './mats.js';
 
 const MODELS = new Map(); // id -> { parts: [{ geo, mat, paint }], state: 'code' | 'loading' | 'glb' }
 const listeners = new Set();
@@ -33,6 +33,7 @@ function snap(mat) { // potato vertex snap, plus a breathing pulse for materials
         transformed += objectNormal * (0.04 * sin(uTime * 2.1 + ph) + 0.06 * uBeat);` : ''}`)
       .replace('#include <project_vertex>', `#include <project_vertex>
         vec4 jsnap = gl_Position; jsnap.xyz /= jsnap.w; jsnap.xy = floor(jsnap.xy * uSnap + 0.5) / uSnap; jsnap.xyz *= jsnap.w; gl_Position = jsnap;`);
+    if (!mat.isMeshBasicMaterial && sh.fragmentShader.includes('#include <lights_fragment_end>')) sh.fragmentShader = '#define CITY_LIGHTS\n' + LIGHTS_HEAD + sh.fragmentShader.replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\n' + LIGHTS_GLSL);
   };
   mat.customProgramCacheKey = () => 'cityprop' + (pulse ? 'p' : '');
   return mat;

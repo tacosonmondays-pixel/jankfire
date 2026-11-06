@@ -50,7 +50,7 @@ function boxInto(S, x0, y0, z0, x1, y1, z1, m, tint, flag, lod, yaw = 0) {
   const [r, g, b] = rgbOf(m, tint), fam = famOf(m), tile = tileOf(m), fit = flag & FLAGS.FIT;
   const cs = Math.cos(yaw), sn = Math.sin(yaw), turned = yaw !== 0;
   for (const [ax, sg, ua, va] of FACES) {
-    if (ax === 1 && sg < 0 && (lod || y0 <= 0.001)) continue; // undersides on the ground and far away: never seen
+    if (ax === 1 && sg < 0 && (lod || y0 <= 0.001 || (y1 - y0 > 1.5 && Math.min(x1 - x0, z1 - z0) < 0.6))) continue; // undersides on the ground, of walls, and far away: never seen
     const p = [0, 0, 0], base = S.n;
     const nx = ax === 0 ? sg : 0, ny = ax === 1 ? sg : 0, nz = ax === 2 ? sg : 0;
     const wnx = turned ? nx * cs + nz * sn : nx, wnz = turned ? -nx * sn + nz * cs : nz;
@@ -136,9 +136,9 @@ export function meshChunk(p, lod = 0) {
   const get = (m) => { const k = kindOf(m); return sinks[k] || (sinks[k] = sink()); };
   for (let i = 0; i < p.mat.length; i++) {
     const f = p.flag[i];
-    if (f & FLAGS.HIDE) continue;
+    if (f & FLAGS.HIDE || (f & FLAGS.L1 && !lod) || (f & FLAGS.L0 && lod)) continue;
     const j = i * 6, x0 = p.box[j], y0 = p.box[j + 1], z0 = p.box[j + 2], x1 = p.box[j + 3], y1 = p.box[j + 4], z1 = p.box[j + 5];
-    if (lod) { const big = Math.max(x1 - x0, y1 - y0, z1 - z0); if (!(f & FLAGS.LOD) && (big < 2.5 || (f & FLAGS.NC && big < 4))) continue; }
+    if (lod && !(f & FLAGS.L1)) { const big = Math.max(x1 - x0, y1 - y0, z1 - z0); if (!(f & FLAGS.LOD) && (big < 2.5 || (f & FLAGS.NC && big < 4))) continue; }
     boxInto(get(p.mat[i]), x0, y0, z0, x1, y1, z1, p.mat[i], p.tint[i], f, lod);
   }
   for (let i = 0; i < p.dmat.length; i++) {
@@ -156,6 +156,7 @@ export function meshChunk(p, lod = 0) {
   for (const k of KINDS) out[k] = sinks[k] ? sinks[k].done() : null;
   return out;
 }
+
 export function meshTransfer(m) {
   const l = [];
   for (const k of KINDS) if (m[k]) l.push(m[k].pos.buffer, m[k].nrm.buffer, m[k].uv.buffer, m[k].col.buffer, m[k].idx.buffer);
