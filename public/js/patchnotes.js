@@ -1,7 +1,20 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '5.3', date: '2026-11-06', title: 'SKYLINE, REBUILT', items: [
+    'SKYLINE got rebuilt from scratch: towers above the dusk city, joined by sky bridges and cranes, with a rooftop park, a putt-putt course, a long neon corridor and helipads.',
+    'Skyline has its own Plant & Defuse version now: A is the helipad, B is the observatory.',
+    'fixed: the Plant & Defuse versions of Suburb, Desert, Bazaar, Rooftop and Skyline now get their own map\'s lighting instead of the default.',
+  ] },
+  { v: '5.2', date: '2026-11-06', title: 'TIDY MENU', items: [
+    'the home menu is cleaner: CUSTOMIZE, CONTAINERS and LEADERBOARD on the left, a row of small buttons for settings, the guide, lore and patch notes, and PLAY on the right.',
+    'your character stands in the middle in 3D holding your gun. click them for CHARACTER, click the gun for LOADOUT.',
+    'CUSTOMIZE is one place now, with tabs for LOADOUT (pick weapons, your item and 3 killstreaks), WEAPONS (skins, wraps, charms, effects, finishers), CHARACTER (outfits) and GRAPPLE & SPRAY.',
+    'the pause menu is just resume, customize, match settings, settings and quit.',
+    'containers are 3D now: they rattle while the strip spins and burst open when you get your item. item icons come from the real models.',
+  ] },
   { v: '5.1', date: '2026-11-06', title: 'LIGHTS ON', items: [
+    'fixed: leaving the Dead Mall no longer steals the next map\'s lighting (the Scary Forest came out lit like a sunny day).',
     'REAL SHADOWS: the sun casts shadows from buildings, props and players now, and they follow you around the map.',
     'every map got its own lighting mood with coloured bounce light. neon signs and lamps throw little pools of light, and corners and overhangs get darker.',
     'your hands and gun get darker in the shade and pick up the map\'s light. on Too HD the Scary Forest flashlights cast shadows.',

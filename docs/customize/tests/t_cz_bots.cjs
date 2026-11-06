@@ -18,8 +18,9 @@ let bad = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if
   await pg.evaluate(() => document.exitPointerLock && document.exitPointerLock());
   await pg.keyboard.press('Escape'); await sleep(600);
   if (!(await pg.isVisible('#scr-pause'))) { await pg.keyboard.press('Escape'); await sleep(600); }
-  await pg.click('#scr-pause [data-go="cosmetics"]', { force: true }); await sleep(1500);
-  ok(await pg.isVisible('#scr-customize'), 'pause -> COSMETICS opens customize');
+  await pg.click('#scr-pause [data-go="loadout"]', { force: true }); await sleep(1500);
+  ok(await pg.isVisible('#scr-customize'), 'pause -> CUSTOMIZE opens the hub');
+  await pg.click('.cz-hub .hub-tab[data-hub=weapons]'); await sleep(1000);
   await pg.click('.cz-row[data-id=knife]'); await sleep(500);
   await pg.click('.cz-tab[data-tab=skin]'); await sleep(1200);
   await pg.click('.cz-tile[data-k=knife_kitchen]'); await sleep(400);

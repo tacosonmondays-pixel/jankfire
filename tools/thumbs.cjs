@@ -25,7 +25,8 @@ const CAMS = {
   bazaar: [48, 20, 48, 0.785, -0.259], // high over the potters (south-east): the Grand Bazaar under its dome, the canal, the souks
   bazaar_sd: [27.5, 2.5, -44, -2.478, -0.074], // the A site: the dye vats, the dye house, cloth on the racks
   islands: [52.8, 5.1, 48, 0.8, -0.04],
-  skyline: [78.18, 78.31, 76.18, 0.79, -0.13],
+  skyline: [14, 58, 110, 0.126, -0.09], // over the rooftop garden (south) to the Spire, the crane behind it
+  skyline_sd: [66, 56, -40, 0.606, -0.277], // the A site: the helipad, its chopper and fuel cart, the ☺ CORP tower behind
 };
 (async () => {
   fs.mkdirSync(out, { recursive: true });

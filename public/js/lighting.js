@@ -114,7 +114,7 @@ function spotShadow() {
 export function lightingMap(def, id, night, sunMesh) {
   if (!L.sun) return;
   L.id = id;
-  const md = MOOD[id] || MOOD.def;
+  const md = MOOD[id] || (def && def.base && MOOD[def.base]) || MOOD.def; // an S&D version (<id>_sd) takes its map's mood
   L.mood = md; L.indoor = !!(md.indoor || (def && (def.sealed || def.zm)));
   // compass from the sun (or moon) cube in the sky, height from the mood
   let hx = sunMesh.position.x, hz = sunMesh.position.z;
