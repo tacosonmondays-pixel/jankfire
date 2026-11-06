@@ -18,6 +18,7 @@ const LOCK = 0.35; // s after a fling with no control (the client's tumble): the
 // ms a holder's stream may go quiet before the rope drops (a hitch on the catch, a lag spike). test knob for slow
 // headless browsers
 const QUIET = Number(process.env.JF_LASSO_QUIET) || 1500;
+if (process.env.JF_LASSO_TIME) LASSO.time = Number(process.env.JF_LASSO_TIME) || LASSO.time; // test knob: longer holds (slow headless browsers + screenshots)
 // [x, y, z] of finite numbers off the network, or null
 function vec3(a) {
   if (!Array.isArray(a) || a.length !== 3) return null;
@@ -300,11 +301,11 @@ const M = {
     if (z.by) { const h = this.players.get(z.by); if (h) this.lassoEnd(h, why); z.by = 0; }
   },
   // the flight's over: tell everyone how far the fling took them
-  lassoLand(V, died) {
+  lassoLand(V, died, at = V.pos) {
     const fl = V.lz.fl;
     V.lz.fl = null;
-    const d = Math.hypot(V.pos[0] - fl.p0[0], V.pos[2] - fl.p0[2]);
-    if (fl.why === 'fling' && fl.sp > 8) this.broadcast({ t: 'lasso', k: 'land', id: V.id, by: fl.by, d: Math.round(d), s: Math.round(fl.sp), void: died ? 1 : undefined, p: V.pos.map(r2) });
+    const d = Math.hypot(at[0] - fl.p0[0], at[2] - fl.p0[2]);
+    if (fl.why === 'fling' && fl.sp > 8 && (died || d >= 3)) this.broadcast({ t: 'lasso', k: 'land', id: V.id, by: fl.by, d: Math.round(d), s: Math.round(fl.sp), void: died ? 1 : undefined, p: at.map(r2) });
   },
 
   // ---------------------------------------------------------- wriggling free
@@ -390,18 +391,23 @@ const M = {
   lassoFlight(V, n) {
     const fl = V.lz.fl;
     if (!V.alive) { this.lassoLand(V, true); return; }
+    // the first LOCK s: the flight is the server's (a slow client's snapshots still show them standing where they were,
+    // so its reports only count once they've caught up with it). after that: their snapshots
+    let pos = V.pos, vel = V.vel;
     if (!V.isBot && fl.sim && n - fl.t0 < LOCK * 1000) {
       const S = fl.sim, dt = Math.min(0.1, (n - S.t) / 1000);
       if (dt > 0) { S.vel[1] -= 26 * dt; movePlayer(S.pos, S.vel, dt, this.boxes, false); S.t = n; }
       const d = dist3(V.pos, S.pos), slack = 2 + Math.hypot(S.vel[0], S.vel[1], S.vel[2]) * 0.08;
-      if (d > slack) { for (let k = 0; k < 3; k++) V.pos[k] = S.pos[k] + (V.pos[k] - S.pos[k]) * (slack / d); V.vel = S.vel.slice(); }
+      if (d > slack) for (let k = 0; k < 3; k++) V.pos[k] = S.pos[k] + (V.pos[k] - S.pos[k]) * (slack / d);
+      V.vel = S.vel.slice();
+      pos = S.pos; vel = S.vel;
     } else fl.sim = null;
-    const { s, ax } = this.lassoImpactSpeed(fl.lv, V.vel, V.pos);
+    const { s, ax } = this.lassoImpactSpeed(fl.lv, vel, pos);
     if (s >= LASSO.splat[0]) this.lassoSplat(this.players.get(fl.by) || null, V, s, ax);
-    fl.lv = V.vel.slice();
+    fl.lv = vel.slice();
     if (!V.lz.fl) return; // (the splat killed them)
-    const landed = n - fl.t0 > 150 && V.vel[1] <= 0.5 && touching(this.boxes, V.pos, 1, -1, 0.1);
-    if (landed || n - fl.t0 > 6000) this.lassoLand(V, false);
+    const landed = n - fl.t0 > 150 && vel[1] <= 0.5 && touching(this.boxes, pos, 1, -1, 0.1);
+    if (landed || n - fl.t0 > 6000) this.lassoLand(V, false, pos);
   },
   // snapshot hook ('s'): a held player is wherever the rope has them, whatever their own client says. also notes when
   // they started spinning the loop (a throw can't claim more spin than that) and checks flights for splats

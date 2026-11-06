@@ -434,7 +434,7 @@ const VM = { root: null, key: '', handW: null };
 // viewmodel poses: wrist (w) and elbow (e) in camera space, metres (x right, y up, -z ahead)
 const POSE = {
   idleR: { w: [0.2, -0.1, -0.44], e: [0.31, -0.32, -0.25] },
-  spinR: { w: [0.2, 0.32, -0.42], e: [0.36, 0.05, -0.22] }, // the hand up over your head, just off the top of the screen
+  spinR: { w: [0.2, 0.17, -0.5], e: [0.27, -0.26, -0.34] }, // the fist up and out in front, top right, the forearm coming in from the edge
   throwR: { w: [0.09, 0.03, -0.62], e: [0.22, -0.15, -0.38] },
   haulR: { w: [0.1, -0.15, -0.5], e: [0.27, -0.4, -0.32] },
   idleL: { w: [-0.22, -0.1, -0.45], e: [-0.32, -0.32, -0.25] },

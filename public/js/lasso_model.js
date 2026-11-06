@@ -230,23 +230,28 @@ export function buildLoopProjectile(g, look = ROPE_LOOK.default) {
 }
 
 // ------------------------------------------------------------ viewmodel hands
-// a forearm + hand gripping a rope (fingers curled round it), skin + sleeve colours from your character
-export function vmArm(skin = 0xe6cba2, sleeve = 0x3a5aa0) {
+// a forearm + gloved hand gripping a rope (fingers curled round it): rope work is done in leather work gloves, a
+// stitched gauntlet cuff flaring over the sleeve. sleeve = your character's top colour (rolled up, a darker turn-up)
+export function vmArm(skin = 0xe6cba2, sleeve = 0x3a5aa0, glove = 0x8a5228) {
   const g = new THREE.Group();
-  const fore = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.033, 0.3, 6), M(sleeve));
-  fore.rotation.x = Math.PI / 2; fore.position.z = 0.17; g.add(fore);
-  const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.033, 0.033, 0.03, 6), M(new THREE.Color(sleeve).multiplyScalar(0.7).getHex()));
-  cuff.rotation.x = Math.PI / 2; cuff.position.z = 0.035; g.add(cuff);
-  const wrist = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.027, 0.04, 6), M(skin)); wrist.rotation.x = Math.PI / 2; wrist.position.z = 0.01; g.add(wrist);
-  const palm = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, 0.06), M(skin)); palm.position.set(0, 0, -0.03); g.add(palm);
-  // four fingers curled over the top of the rope, the thumb wrapped under it
+  const dk = (c, k) => new THREE.Color(c).multiplyScalar(k).getHex();
+  const fore = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.033, 0.42, 8), M(sleeve)); // long enough to always run off the screen
+  fore.rotation.x = Math.PI / 2; fore.position.z = 0.29; g.add(fore);
+  const roll = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.009, 5, 10), M(dk(sleeve, 0.72))); roll.position.z = 0.085; g.add(roll); // the rolled-up sleeve
+  const skinB = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.025, 0.05, 8), M(skin)); skinB.rotation.x = Math.PI / 2; skinB.position.z = 0.055; g.add(skinB); // a bit of wrist
+  // the gauntlet: flares out toward the elbow, a stitched seam round its edge
+  const gaunt = new THREE.Mesh(new THREE.CylinderGeometry(0.023, 0.032, 0.05, 8), M(dk(glove, 0.9))); gaunt.rotation.x = Math.PI / 2; gaunt.position.z = 0.022; g.add(gaunt);
+  const seam = new THREE.Mesh(new THREE.TorusGeometry(0.031, 0.0035, 4, 12), M(0xe8c890)); seam.position.z = 0.046; g.add(seam);
+  const palm = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.032, 0.062), M(glove)); palm.position.set(0, 0, -0.03); g.add(palm);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(0.044, 0.006, 0.04), M(dk(glove, 1.18))); back.position.set(0, 0.018, -0.028); g.add(back); // the padded back of the hand
+  // four fingers curled over the top of the rope, the thumb wrapped under it, knuckles a shade lighter (worn leather)
   for (let i = 0; i < 4; i++) {
-    const f = new THREE.Mesh(new THREE.BoxGeometry(0.011, 0.016, 0.03), M(skin));
-    f.position.set(-0.018 + i * 0.012, 0.012, -0.066); f.rotation.x = 0.9; g.add(f);
-    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.014, 0.02), M(new THREE.Color(skin).multiplyScalar(0.92).getHex()));
-    tip.position.set(-0.018 + i * 0.012, -0.004, -0.08); tip.rotation.x = 2.1; g.add(tip);
+    const x = -0.019 + i * 0.0125;
+    const k = new THREE.Mesh(new THREE.BoxGeometry(0.0115, 0.017, 0.016), M(dk(glove, 1.12))); k.position.set(x, 0.012, -0.058); g.add(k);
+    const f = new THREE.Mesh(new THREE.BoxGeometry(0.0108, 0.016, 0.026), M(glove)); f.position.set(x, 0.01, -0.071); f.rotation.x = 0.9; g.add(f);
+    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.0102, 0.014, 0.02), M(dk(glove, 0.85))); tip.position.set(x, -0.006, -0.082); tip.rotation.x = 2.1; g.add(tip);
   }
-  const th = new THREE.Mesh(new THREE.BoxGeometry(0.013, 0.013, 0.035), M(skin)); th.position.set(0.026, -0.012, -0.05); th.rotation.set(-0.5, -0.5, 0); g.add(th);
+  const th = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.014, 0.036), M(glove)); th.position.set(0.027, -0.012, -0.05); th.rotation.set(-0.5, -0.5, 0); g.add(th);
   g.userData.grip = new THREE.Vector3(0, 0.0, -0.07); // where the rope runs through the fist
   return g;
 }
