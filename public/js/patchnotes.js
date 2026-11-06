@@ -1,6 +1,12 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '3.6', date: '2026-11-06', title: 'SIDEARMS', items: [
+    'PLAN B: a plain semi-auto pistol. for when everything else is empty.',
+    'LEFTY & RIGHTY: two machine pistols. left click fires the left one, your aim key fires the right one. each hand has its own mag and reloads on its own.',
+    'HALF A SHOTGUN: a sawed-off with two shells. point blank it deletes people, knocks them back, and the kick hops you off the floor.',
+    'all three are Jank Royale floor loot, in the Zombies crate (with wall ammo) and in Plant & Defuse with their own spray patterns.',
+  ] },
   { v: '3.5', date: '2026-11-06', title: 'HARDWARE STORE', items: [
     'NAIL GUN: fires nails, fast. land six in a row and they get nailed to the wall behind them like a poster. the nails stay in the walls.',
     'TENNIS BALL LAUNCHER: fuzzy balls bounce up to 5 times and hit 30% harder every bounce. bank it round a corner for a BANK SHOT.',
