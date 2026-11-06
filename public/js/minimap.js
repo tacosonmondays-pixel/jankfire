@@ -17,6 +17,7 @@ const CSS = `
 #mmTag { position: absolute; left: -4px; top: -11px; background: #ffe14d; color: #000; border: 2px solid #000; font-size: 10px; font-weight: bold; padding: 0 5px; transform: rotate(-3deg); letter-spacing: 1px; white-space: nowrap; }
 #mmN { position: absolute; right: -7px; top: -9px; width: 16px; height: 16px; line-height: 15px; text-align: center; background: #000; color: #ff4fd8; border: 2px solid #ff4fd8; font-size: 10px; font-weight: bold; }
 body.mmOn #airInd { top: calc(var(--mmB, 220px) + 10px) !important; }
+body.mmOn #nowPlaying.match { top: calc(var(--mmB, 220px) + 12px); } /* the song toast sits under the map, not on it */
 body.mmOn #ecoPay { top: max(27%, calc(var(--mmB, 220px) + 14px)) !important; }
 `;
 
@@ -37,7 +38,7 @@ function playBand(map) {
   return { floor: lo, top: hi + 7.5, deep: lo - 8 };
 }
 const ROAD = new Set(['road', 'asphalt', 'dirtroad']), GREEN = new Set(['grass', 'moss', 'hedge', 'leaves']), SAND = new Set(['sand', 'dirt']);
-const NEON = (b, k) => (ROAD.has(b.mat) ? '#2c2436' : GREEN.has(b.mat) ? `hsl(120, 35%, ${14 + k * 22}%)` : SAND.has(b.mat) ? `hsl(35, 38%, ${22 + k * 22}%)` : `hsl(${285 - k * 95}, ${38 + k * 32}%, ${16 + k * 44}%)`);
+const NEON = (b, k) => (ROAD.has(b.mat) ? '#3a3046' : GREEN.has(b.mat) ? `hsl(120, 38%, ${20 + k * 22}%)` : SAND.has(b.mat) ? `hsl(35, 38%, ${22 + k * 22}%)` : `hsl(${285 - k * 95}, ${40 + k * 30}%, ${24 + k * 40}%)`);
 const ROYALE = (b, k) => (ROAD.has(b.mat) ? '#7a5a3a' : b.mat === 'grass' ? '#3f7a32' : SAND.has(b.mat) ? '#c9a36a' : `hsl(${300 - k * 40}, ${30 + k * 30}%, ${30 + k * 35}%)`);
 // paint the boxes of a map, lowest first, so roofs and walls end up on top. toMap(wx, wz) -> [px, py] on x
 export function paintBoxes(x, map, toMap, S, opt = {}) {
@@ -73,6 +74,7 @@ function bake(id) {
   const x = c.getContext('2d');
   x.fillStyle = '#0c0614'; x.fillRect(0, 0, c.width, c.height);
   paintBoxes(x, map, (wx, wz) => [(wx - ext[0]) * ppm, (wz - ext[1]) * ppm], Math.max(c.width, c.height));
+  if (map.bounds) { const b = map.bounds; x.strokeStyle = '#ff4fd8'; x.lineWidth = Math.max(2, ppm * 0.6); x.setLineDash([ppm * 3, ppm * 2]); x.strokeRect((b[0] - ext[0]) * ppm, (b[1] - ext[1]) * ppm, (b[2] - b[0]) * ppm, (b[3] - b[1]) * ppm); x.setLineDash([]); } // the edge of the play area
   base = c; baseFor = id;
 }
 
