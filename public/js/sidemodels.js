@@ -113,22 +113,24 @@ export function akimboBuild(g) {
 const SO = { steel: 0x2e3238, case: 0x8a8f99, wood: 0x7a4422, red: 0xe05a3a, brass: 0xd9a53a, hull: 0xd02a2a };
 export function sawnoffBuild(g) {
   const S = 0.001, BY = 0.02, MZ = -0.31, HZ = -0.012; // 1 mm, bore line, muzzle, the hinge pin
-  const hinge = grp('hinge', 0, BY - 16 * S, HZ); // everything forward of the action swings down round the pin
+  // the pin sits low and ahead of the breech like a real side-by-side, so the chambers rise clear of the action when it breaks
+  const hinge = grp('hinge', 0, -0.002, -0.05), hb = grp('hingeBody', 0, BY - 16 * S + 0.002, HZ + 0.05); hinge.add(hb);
   const L = HZ - MZ; // barrel length (0.3)
   for (const sx of [-1, 1]) {
-    hinge.add(cz(11 * S, L, SO.steel, sx * 11 * S, 16 * S, -L / 2, 10));
-    hinge.add(cz(8.4 * S, 2 * S, 0x050505, sx * 11 * S, 16 * S, -L - 0.5 * S, 10, true)); // bores
+    hb.add(cz(11 * S, L, SO.steel, sx * 11 * S, 16 * S, -L / 2, 10));
+    hb.add(cz(8.4 * S, 2 * S, 0x050505, sx * 11 * S, 16 * S, -L - 0.5 * S, 10, true)); // bores
   }
-  hinge.add(bx(8 * S, 5 * S, L, SO.steel, 0, 28 * S, -L / 2)); // rib
-  hinge.add(bx(4 * S, 4 * S, 4 * S, SO.brass, 0, 32 * S, -L + 8 * S)); // bead
-  hinge.add(bx(14 * S, 2 * S, 22 * S, SO.red, 0, 31 * S, -L + 30 * S, true)); // a red band where the hacksaw went
-  hinge.add(zone(bx(36 * S, 22 * S, 110 * S, SO.wood, 0, -4 * S, -70 * S), 'a')); // splinter forend
+  hb.add(bx(8 * S, 5 * S, L, SO.steel, 0, 28 * S, -L / 2)); // rib
+  hb.add(bx(4 * S, 4 * S, 4 * S, SO.brass, 0, 32 * S, -L + 8 * S)); // bead
+  hb.add(bx(14 * S, 2 * S, 22 * S, SO.red, 0, 31 * S, -L + 30 * S, true)); // a red band where the hacksaw went
+  hb.add(zone(bx(36 * S, 22 * S, 110 * S, SO.wood, 0, -4 * S, -70 * S), 'a')); // splinter forend
   for (let i = 0; i < 2; i++) { // two shells in the chambers, rims flush with the breech face
-    const sh = grp('shell' + (i + 1), (i ? 1 : -1) * 11 * S, 16 * S, 0);
+    const sh = grp('shell' + (i + 1), (i ? -1 : 1) * 11 * S, 16 * S, 0);
     sh.add(cz(9.8 * S, 6 * S, SO.brass, 0, 0, -3 * S, 10)); sh.add(cz(9 * S, 55 * S, SO.hull, 0, 0, -32 * S, 10));
-    hinge.add(sh);
+    hb.add(sh);
   }
   g.add(hinge);
+  g.add(bx(30 * S, 12 * S, 44 * S, SO.case, 0, -0.004, -0.034)); // the bar under the barrels the pin sits in
   // the action (case-hardened), top lever, two hammers, two triggers, the guard, a sawn-off grip
   g.add(bx(46 * S, 46 * S, 70 * S, SO.case, 0, BY - 6 * S, HZ + 35 * S));
   g.add(bx(46 * S, 10 * S, 30 * S, SO.case, 0, BY - 26 * S, HZ + 6 * S)); // under the pin
