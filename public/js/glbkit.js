@@ -254,11 +254,11 @@ function glossOf(m) {
   const metal = steel || brass;
   c = new THREE.MeshPhysicalMaterial({
     name: m.name, color: m.color.clone(), map: m.map, side: m.side, flatShading: true,
-    // steel stays as bright as the code blade: mostly its own colour + a strong studio reflection (full metalness
-    // turned the flats dark grey whenever they face away from the lights)
-    metalness: metal ? 0.35 : 0, roughness: metal ? 0.22 : wood ? 0.55 : l < 0.25 ? 0.42 : 0.36,
+    // steel: mostly metal with a bit of its own colour left (full metalness goes dark grey on flats that face away
+    // from the lights; a low one + a strong reflection turned big flat blades into white plastic)
+    metalness: metal ? 0.8 : 0, roughness: metal ? 0.25 : wood ? 0.55 : l < 0.25 ? 0.42 : 0.36,
     clearcoat: metal ? 0 : wood ? 0.3 : l < 0.25 ? 0.35 : 0.6, clearcoatRoughness: 0.25,
-    envMap: envMap(), envMapIntensity: metal ? 1.5 : 0.3,
+    envMap: envMap(), envMapIntensity: metal ? 0.9 : 0.3,
   });
   c.userData.shared = true;
   jankify(c);
