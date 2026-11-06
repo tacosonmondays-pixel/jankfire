@@ -45,20 +45,24 @@ export function navClear(g, lv, ax, az, bx, bz) {
 // band (floors up to this much above a level count as that level), keep(x, z) (false = no node there)
 export function buildNav(boxes, o) {
   const { x0, z0, n, cell: C } = o;
-  const g = { x0, z0, n, cell: C, levels: o.levels, obs: [], nodes: [], lvl: [], adj: [], cost: [], cells: new Map() };
+  // memory: a city-sized map has ~140k nodes and ~1M links, so links are packed into typed arrays (see packNav below)
+  // instead of an array per node, and the cell -> nodes lookup is a linked list in typed arrays, not a Map of arrays
+  const g = { x0, z0, n, cell: C, levels: o.levels, obs: [], nodes: [], lvl: [] };
   const at = []; // per level: cell -> node index
+  let ea = new Int32Array(1 << 16), eb = new Int32Array(1 << 16), ec = new Float64Array(1 << 16), ne = 0; // links, one entry per direction
   const addNode = (p, lv) => {
     const k = g.nodes.length;
-    g.nodes.push(p); g.lvl.push(lv); g.adj.push([]); g.cost.push([]);
-    const ck = K(Math.floor((p[0] - x0) / C), Math.floor((p[2] - z0) / C));
-    if (!g.cells.has(ck)) g.cells.set(ck, []);
-    g.cells.get(ck).push(k);
+    g.nodes.push(p); g.lvl.push(lv);
     return k;
+  };
+  const edge = (a, b, c) => {
+    if (ne === ea.length) { const grow = (t) => { const u = new t.constructor(t.length * 2); u.set(t); return u; }; ea = grow(ea); eb = grow(eb); ec = grow(ec); }
+    ea[ne] = a; eb[ne] = b; ec[ne] = c; ne++;
   };
   const link = (a, b, oneWay) => {
     const p = g.nodes[a], q = g.nodes[b], c = Math.hypot(p[0] - q[0], p[2] - q[2]) + Math.abs(p[1] - q[1]) * 0.5;
-    g.adj[a].push(b); g.cost[a].push(c);
-    if (!oneWay) { g.adj[b].push(a); g.cost[b].push(c); }
+    edge(a, b, c);
+    if (!oneWay) edge(b, a, c);
   };
   const bucket = (ob, r) => {
     for (let i = Math.floor((r[0] - x0) / C); i <= Math.floor((r[2] - x0) / C); i++) for (let j = Math.floor((r[1] - z0) / C); j <= Math.floor((r[3] - z0) / C); j++) {
@@ -81,8 +85,11 @@ export function buildNav(boxes, o) {
       }
       if (b.max[1] > y + (band ? band + 0.06 : 0.3) && b.min[1] < y + 1.75) bucket(ob, [b.min[0] - R, b.min[2] - R, b.max[0] + R, b.max[2] + R]); // a standing body would bump into it
     }
-    // no floor = in the way too (that's how you end up on the level below)
-    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) if (!floor[i * n + j]) bucket(ob, [x0 + i * C - R, z0 + j * C - R, x0 + (i + 1) * C + R, z0 + (j + 1) * C + R]);
+    // no floor = in the way too (that's how you end up on the level below). a hole cell with holes all round it is
+    // skipped: a straight line from any node has to cross a hole cell on the edge of the hole first, and that blocks it
+    const hole = (i, j) => i < 0 || j < 0 || i >= n || j >= n || !floor[i * n + j];
+    const inner = (i, j) => i > 0 && j > 0 && i < n - 1 && j < n - 1 && hole(i - 1, j - 1) && hole(i - 1, j) && hole(i - 1, j + 1) && hole(i, j - 1) && hole(i, j + 1) && hole(i + 1, j - 1) && hole(i + 1, j) && hole(i + 1, j + 1);
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) if (!floor[i * n + j] && !inner(i, j)) bucket(ob, [x0 + i * C - R, z0 + j * C - R, x0 + (i + 1) * C + R, z0 + (j + 1) * C + R]);
     g.obs.push(ob);
     const idx = new Int32Array(n * n).fill(-1);
     for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
@@ -117,7 +124,31 @@ export function buildNav(boxes, o) {
     const a = cellOf(d.from), b = cellOf(d.to);
     if (a >= 0 && b >= 0) link(a, b, true); else g.bad.push(d);
   }
+  packNav(g, ea, eb, ec, ne);
   return g;
+}
+
+// links -> g.off / g.to / g.cw (node k's links are to[off[k] .. off[k + 1]), cost cw[same]), in the order they were
+// made; cells -> g.cellHead (per grid cell, the first node in it) / g.cellNext (the next node in the same cell)
+function packNav(g, ea, eb, ec, ne) {
+  const N = g.nodes.length, off = new Int32Array(N + 1), to = new Int32Array(ne), cw = new Float64Array(ne);
+  for (let e = 0; e < ne; e++) off[ea[e] + 1]++;
+  for (let k = 0; k < N; k++) off[k + 1] += off[k];
+  const fill = off.slice(0, N);
+  for (let e = 0; e < ne; e++) { const p = fill[ea[e]]++; to[p] = eb[e]; cw[p] = ec[e]; }
+  Object.assign(g, { off, to, cw });
+  const head = new Int32Array(g.n * g.n).fill(-1), next = new Int32Array(N).fill(-1), out = new Map(); // out: nodes off the grid
+  for (let k = N - 1; k >= 0; k--) { // backwards, so each cell's list runs in node order
+    const p = g.nodes[k], i = Math.floor((p[0] - g.x0) / g.cell), j = Math.floor((p[2] - g.z0) / g.cell);
+    if (i >= 0 && j >= 0 && i < g.n && j < g.n) { next[k] = head[i * g.n + j]; head[i * g.n + j] = k; } else { const ck = K(i, j); out.set(ck, [k, ...(out.get(ck) || [])]); }
+  }
+  Object.assign(g, { cellHead: head, cellNext: next, cellOut: out });
+}
+// the nodes in grid cell (i, j)
+function cellNodes(g, i, j, fn) {
+  if (i >= 0 && j >= 0 && i < g.n && j < g.n) { for (let k = g.cellHead[i * g.n + j]; k >= 0; k = g.cellNext[k]) fn(k); return; }
+  const list = g.cellOut.get(K(i, j));
+  if (list) for (const k of list) fn(k);
 }
 
 // the node a point belongs to (nodes on a floor above you count for a lot less: you'd need stairs to get there)
@@ -126,13 +157,11 @@ export function navLocate(g, p) {
   let best = -1, bs = 1e9;
   for (let r = 1; r <= 3 && best < 0; r++) {
     for (let di = -r; di <= r; di++) for (let dj = -r; dj <= r; dj++) {
-      const list = g.cells.get(K(i + di, j + dj));
-      if (!list) continue;
-      for (const k of list) {
+      cellNodes(g, i + di, j + dj, (k) => {
         const q = g.nodes[k], dy = q[1] - p[1];
         const s = Math.hypot(q[0] - p[0], q[2] - p[2]) + (dy > 0.6 ? dy * 6 : Math.abs(dy) * 2);
         if (s < bs) { bs = s; best = k; }
-      }
+      });
     }
   }
   return best;
@@ -163,9 +192,8 @@ export function navPath(g, a, b, max = g.maxExpand || Infinity) { // max: give u
     if (k === b) { const path = []; for (let x = b; x !== -1; x = from[x]) path.push(x); return path.reverse(); }
     if (done[k] === st) continue;
     done[k] = st;
-    const adj = g.adj[k], cost = g.cost[k];
-    for (let e = 0; e < adj.length; e++) {
-      const m = adj[e], ng = gs[k] + cost[e];
+    for (let e = g.off[k], e1 = g.off[k + 1]; e < e1; e++) {
+      const m = g.to[e], ng = gs[k] + g.cw[e];
       if (seen[m] === st && ng >= gs[m]) continue;
       seen[m] = st; gs[m] = ng; fs[m] = ng + h(m); from[m] = k;
       push(m);
