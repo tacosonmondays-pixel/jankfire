@@ -1445,7 +1445,8 @@ function conifer(L, x, z, h, r) {
 }
 
 // a stubby transit bus along +x (front at x0 + 12): you can get in by the door, shoot out through the window gaps
-function bus(B, x0, z0) {
+function bus(B, x0, z0) { propOf('transitbus', [x0, 0, z0], 0, () => busBoxes(B, x0, z0), { keep: (b) => !!b.fit }); } // (the livery stays a picture box)
+function busBoxes(B, x0, z0) {
   const z1 = z0 + 2.6, X = x0 + 12;
   for (const wx of [x0 + 2.2, x0 + 9.4]) for (const [a, b] of [[z0 - 0.08, z0 + 0.4], [z1 - 0.4, z1 + 0.08]]) B.add(wx - 0.55, 0, a, wx + 0.55, 1.1, b, 'tire');
   B.add(x0, 0.45, z0, X, 0.9, z1, 'busyellow'); // chassis, the floor inside is its top
@@ -1467,6 +1468,9 @@ function bus(B, x0, z0) {
 }
 // a box truck along +x, cab at the front: the back is open (roller door up) and a crate gets you in
 function truck(B, x0, z0, livery = 'adtruck', step = true) { // (step: the crate to climb in by; not when it's backed onto a dock)
+  propOf('boxtruck', [x0, 0, z0], 0, () => truckBoxes(B, x0, z0, livery, step), { keep: (b) => !!b.fit, skip: (b) => b.mat === 'crate' }); // (the livery stays a picture box, the step crate is a crate)
+}
+function truckBoxes(B, x0, z0, livery, step) {
   const z1 = z0 + 2.5;
   for (const wx of [x0 + 1.4, x0 + 5.6, x0 + 8.9]) for (const [a, b] of [[z0 - 0.08, z0 + 0.4], [z1 - 0.4, z1 + 0.08]]) B.add(wx - 0.5, 0, a, wx + 0.5, 1.0, b, 'tire');
   B.add(x0 + 0.3, 0.5, z0 + 0.3, x0 + 9.9, 0.95, z1 - 0.3, 'metal');
@@ -1941,6 +1945,9 @@ function trailerBoxes(B, x0, z0, livery) { // a semi trailer along x on its land
 // a semi: trailer + cab in a local frame, rear of the trailer at local z = 0 (back it up to a dock), cab toward +z
 function semi(B, x, z, rot, livery, cab = true) {
   const L = B.local(x, z, rot);
+  propOf(cab ? 'semi' : 'semitrailer', L.pt(0, 0, 0), L.yaw, () => semiBoxes(L, livery, cab), { keep: (b) => !!b.fit }); // (the livery stays a picture box)
+}
+function semiBoxes(L, livery, cab) {
   L(-1.3, 1.3, 0, 1.3, 4.1, 12.5, 'truckbox');
   L(-1.33, 1.5, 1, -1.3, 3.9, 11.5, livery, { fit: 1 }); L(1.3, 1.5, 1, 1.33, 3.9, 11.5, livery, { fit: 1 });
   L(-1.25, 1.25, -0.05, 1.25, 1.35, 0, 'tail'); // the rear light bar

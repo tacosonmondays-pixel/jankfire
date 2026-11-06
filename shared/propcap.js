@@ -34,7 +34,8 @@ export const spinAt = (x, z) => ((((Math.sin(x * 12.9898 + z * 78.233) * 43758.5
 
 // at: the prop's anchor in world space. frame: its turn (three's rotation.y, radians) for the fit. o.spin: an extra
 // turn for the drawing only (the fit stays in frame). o.keep(b): boxes that stay drawn (a billboard's picture) but still
-// count for the fit. o.v: variant, o.t: tint. fn may set o.frame / o.spin / o.t while it builds (they're read after)
+// count for the fit. o.skip(b): boxes that aren't the prop's at all (the crate you climb into a truck by): left as they'd
+// be outside it, not counted. o.v: variant, o.t: tint. fn may set o.frame / o.spin / o.t while it builds (read after)
 export function propOf(id, at, frame, fn, o = {}) {
   const got = [];
   CAP.push(got);
@@ -43,6 +44,7 @@ export function propOf(id, at, frame, fn, o = {}) {
   const c = Math.cos(frame), s = Math.sin(frame), lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
   let owner = null;
   for (const [b, list] of got) {
+    if (o.skip && o.skip(b)) { seen(b, list); continue; } // (as if added outside: an outer prop's, or a one-box prop of its own)
     if (!(o.keep && o.keep(b))) { b.pv = id; if (!owner && list.props) owner = list; }
     const cx = (b.min[0] + b.max[0]) / 2, cz = (b.min[2] + b.max[2]) / 2, hx = (b.max[0] - b.min[0]) / 2, hz = (b.max[2] - b.min[2]) / 2;
     const br = b.rot || 0, bc = Math.cos(br), bs = Math.sin(br);
