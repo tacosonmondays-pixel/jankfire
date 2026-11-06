@@ -128,3 +128,44 @@ c4_clocking_in: {
 `toSave(state)` → `{ flags: [], vars: {}, quests: {id: state}, standing, met: [], seen: [], codex: [], log: [], track }`
 merges into the save slot's `data` (TECH_PLAN §7; `met`, `codex`, `log`, `track` are new keys for the systems lane).
 `fromSave(data)` validates types and sizes and never throws.
+
+## Additions from the script (proposed, PR #75)
+The full script is the pack `shared/story/content/overdue.js`. It's authored in the richer files beside it (see
+`shared/story/content/index.js` and `docs/story/script/`) and converted into the engine shape above at import, so the
+engine files are untouched. `tests/story/overdue.test.mjs` loads it through `makeStory` and an auto-player finishes
+all 32 main missions and all 47 side questlines using only host-style events. What the pack needs that the schema
+doesn't have yet:
+
+**Pack keys**
+- `init`: actions for a new game (who rules each district, counters, starting fates). The host runs `S.run(pack.init)` once.
+- `autostart`: quest ids the host passes to `S.quests.start` whenever it likes (on load, after a quest ends). `start`
+  already checks `if`, so this is how main missions chain and how giver-less side quests unlock. Side quests with a
+  giver are offered from that NPC's `start` node instead.
+- Systems data the engine doesn't own yet, exported as-is with their schemas documented at the top of each source
+  file: `cast` (the full bible), `bosses` (phases, tells, lines, cores, refights), `implants` (perk, downside, look,
+  slot, drift, secret clue trails), `loot` (brands, modifiers, legendaries, tables), `items`, `collectibles`,
+  `collectibleSets`, `endings` (per-district epilogues by ruler), `activities`, `districts`, `factions`, `storyFlags`.
+
+**Host actions** (`host.act`, beyond give / take / coupons / scene / toast / music)
+- `talk:NPC/NODE`: open a conversation at a node. Steps use it for talks that play during a step, and choices use it
+  on the pseudo-NPC `choice`. Scenes put it in a track's `do` (tracks may carry `do`).
+- `turf:DISTRICT=FACTION` (the pack also sets the flags `turf.D.F`), `boss:ID`, `loot:TABLE`, `implant:ID`,
+  `fees:+N` (Late Fees stars), `call:NPC` (a pager call), `unlock:ZONE`, `collect:ID` (the pack also sets
+  `codex.col.ID` and `var.frags.SET`).
+
+**Vars the host keeps**
+- `var.drift`, `var.cats`, `var.clock.DISTRICT` (minutes past midnight, the district clock).
+- The pack itself keeps `var.act`, `var.pages` and `var.frags.SET`.
+- Fates are exclusive flags, `fate.CHARACTER.STATE`.
+
+**Small shape notes**
+- NPC `home` is `{ zone }` (a zone id) until the districts have coordinates.
+- `zones` come with `{ name, district, p: null }`: the district generators fill `p`.
+- `things` have `do` (actions on interact) and `how` (a hint).
+- NPC `voice` keeps an extra `timbre` (the authored instrument), mapped onto the engine's babble kinds.
+
+**Two engine findings**
+- `stepDone` recurses forever when a step has `done` actions. `S.run(s.done)` at depth 0 re-checks the same step,
+  which is still complete. The pack works around it by running a step's after-actions at the start of the next step.
+- Dialogue stores a `said.*` flag per node visited. A first-option playthrough already reaches 602 flags (394 of them
+  `said.*`), over `LIMITS.flags` (600). `said.*` probably wants its own capped store, or a bigger limit.
