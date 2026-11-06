@@ -132,11 +132,11 @@ def build():
     for p in parts: apply_mods(p); uv_box(p, 0.05)
     one_mat(parts)
     bake_normals(parts)
-    body = join(parts, 'bc_case_wzA')
+    body = zone_join(parts, 'bc_case', {'bc_chrome': 'a', 'bc_polish': 'b', 'bc_dark': 'b'})  # shell = A, lip + hinge = B
     dn = join(parts_n, 'bc_case_plate_wzN')
     meta = {'kind': 'weapon', 'id': 'cards', 'skin': 'cards_business', 'muzzle': [0, 0.05, -0.1], 'fan': [f'card{i}' for i in range(5)],
             'hatAt': [[0, 0.083, -0.004], 0.07]}
-    return finish('w_cards_business', cards + [body, dn], meta)
+    return finish('w_cards_business', cards + body + [dn], meta)
 
 
 main(build, 'w_cards_business', exposure=-0.6)
