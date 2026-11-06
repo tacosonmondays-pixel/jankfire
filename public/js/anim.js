@@ -30,14 +30,14 @@ export const ANIMS = {
   ], events: [[0.15, 'whoosh']], trail: [0.12, 0.34] },
   swing_spoon: { hit: 0.1, keys: [
     K(0), K(0.06, [0.02, 0.02, 0.08], [0.2, 0, 0]),
-    K(0.12, [-0.08, 0.04, -0.22], [-0.3, -0.25, 0], 'snap'),
-    K(0.22, [-0.08, 0.04, -0.2], [-0.3, -0.25, 0]),
+    K(0.12, [-0.09, 0.05, -0.2], [-0.12, 0.38, 0.1], 'snap'), // jab in toward the middle, side-on so the spoon doesn't hide behind your fist
+    K(0.22, [-0.09, 0.05, -0.19], [-0.14, 0.4, 0.1]),
     K(0.4),
   ], events: [[0.07, 'whoosh']], trail: [0.05, 0.18] },
   swing_spoon2: { hit: 0.11, keys: [ // overhead stab
     K(0), K(0.07, [0, 0.14, 0.05], [0.9, 0, 0]),
-    K(0.13, [-0.05, -0.05, -0.18], [-0.6, 0, 0], 'snap'),
-    K(0.24, [-0.05, -0.06, -0.16], [-0.65, 0, 0]),
+    K(0.13, [-0.07, -0.02, -0.17], [-0.45, 0.35, 0.15], 'snap'),
+    K(0.24, [-0.07, -0.03, -0.16], [-0.5, 0.37, 0.15]),
     K(0.42),
   ], events: [[0.08, 'whoosh']], trail: [0.06, 0.2] },
   throw_slipper: { hit: 0.16, keys: [
@@ -91,7 +91,7 @@ export const ANIMS = {
   ], events: [[0.25, 'whooshBig']], trail: [0.23, 0.34] },
   swing_slapper: { hit: 0.17, keys: [
     K(0), K(0.1, [0.05, 0.12, 0.15], [0.9, 0, 0.2], 'in'),
-    K(0.18, [-0.05, -0.05, -0.25], [-0.9, 0, 0], 'snap'), K(0.32, [-0.05, -0.07, -0.22], [-0.95, 0, 0]), K(0.52),
+    K(0.18, [-0.08, -0.02, -0.21], [-0.62, 0.34, 0.15], 'snap'), K(0.32, [-0.08, -0.04, -0.2], [-0.68, 0.36, 0.15]), K(0.52), // the slap lands in the middle, the hand in sight
   ], events: [[0.12, 'whoosh']], trail: [0.1, 0.26] },
   // zombie claw: a quick raking swipe across, then a backhand the other way
   swing_claw: { hit: 0.1, keys: [
@@ -104,11 +104,11 @@ export const ANIMS = {
   ], events: [[0.08, 'whoosh']], trail: [0.06, 0.22] },
   swing_scythe: { hit: 0.24, keys: [ // heavy: slower wind-up, long follow-through
     K(0), K(0.16, [0.2, 0.15, 0.15], [0.4, -1.2, -0.6]),
-    K(0.3, [-0.45, -0.1, -0.2], [-0.3, 2.2, 0.9], 'snap'), K(0.48, [-0.5, -0.14, -0.15], [-0.35, 2.4, 1.0]), K(0.78),
+    K(0.3, [-0.38, -0.06, -0.2], [-0.25, 1.95, 0.85], 'snap'), K(0.48, [-0.42, -0.09, -0.16], [-0.3, 2.1, 0.92]), K(0.78), // (the follow-through stays half on screen)
   ], events: [[0.2, 'whoosh']], trail: [0.16, 0.44] },
   swing_scythe2: { hit: 0.24, keys: [
     K(0), K(0.16, [-0.35, 0.18, 0.1], [0.5, 1.6, 0.6]),
-    K(0.3, [0.15, -0.12, -0.2], [-0.3, -1.4, -0.8], 'snap'), K(0.48, [0.18, -0.16, -0.15], [-0.35, -1.5, -0.85]), K(0.78),
+    K(0.3, [0.12, -0.08, -0.2], [-0.25, -1.25, -0.75], 'snap'), K(0.48, [0.14, -0.11, -0.16], [-0.3, -1.35, -0.8]), K(0.78),
   ], events: [[0.2, 'whoosh']], trail: [0.16, 0.44] },
   fold_scythe: { keys: [K(0), K(0.15, [0, -0.18, 0.06], [0.7, 0, 0.9], 'snap'), K(0.4)], events: [[0.12, 'click'], [0.2, 'click']] },
   // scales of justice, swung like a mace: a heavy overhead smash, then (click again) a flat side swing.
@@ -159,6 +159,8 @@ export const ANIMS = {
     K(0, [0, -0.26, 0], [-0.5 - PI2, 0, 0]), K(0.16, [0, 0.1, 0], [-PI2 * 0.45, 0, 0.3], 'snap'), // one forward flip
     K(0.3, [0, -0.02, 0], [-0.1, 0, 0], 'in'), K(0.42),
   ], events: [[0.29, 'thwack']] },
+  // the loaf's too long for the toss-and-catch (its first frame filled the screen): heaved up from low right onto the shoulder
+  draw_bread: { keys: [K(0, [0.12, -0.5, 0.12], [-0.9, 0.1, 0.5]), K(0.22, [0, 0.03, 0], [0.12, 0, -0.06], 'snap'), K(0.34, [0, -0.012, 0], [-0.05, 0, 0.02]), K(0.46)], events: [[0.2, 'thwack']] },
   draw_scythe: { keys: [K(0, [0, -0.3, 0], [0, 0, -PI2]), K(0.42, [0, 0.02, 0], [0.05, 0, 0], 'snap'), K(0.55)], events: [[0.38, 'shing']] },
   draw_cards: { keys: [K(0, [0, -0.2, 0], [-0.6, 0, 0], 'smooth', 0.4), K(0.24, [0, 0.02, 0], [0.05, 0, 0], 'back', 1), K(0.34)], events: [[0.08, 'riffle']] },
   draw_bow: { keys: [K(0, [-0.12, -0.26, 0], [0, 0, 0.9]), K(0.3, [0, 0, 0], [0, 0, 0], 'back'), K(0.4)], events: [[0.2, 'thwack']] },
@@ -285,7 +287,7 @@ export const ANIMS = {
   ], events: [[0.07, 'whoosh']], trail: [0.06, 0.2] },
   stab_knife_karambit: { hit: 0.29, keys: [
     K(0), K(0.22, [0.04, 0.14, 0.12], [-0.6, 0.1, 0.2], 'in'),
-    K(0.29, [-0.03, -0.08, -0.26], [0.6, -0.05, 0], 'snap'), K(0.46, [-0.03, -0.09, -0.24], [0.62, -0.05, 0]), K(0.85),
+    K(0.29, [-0.08, 0.0, -0.22], [0.35, 0.42, 0.2], 'snap'), K(0.46, [-0.08, -0.01, -0.21], [0.37, 0.44, 0.2]), K(0.85), // (side-on: the claw stays in sight)
   ], events: [[0.25, 'whooshBig']], trail: [0.23, 0.34] },
   // (butterfly: draw + inspect live in balisong.js)
   inspect_slapper: { keys: [ // wave hello, then clap

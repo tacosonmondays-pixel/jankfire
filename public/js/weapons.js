@@ -538,7 +538,7 @@ export function rebuildViewmodels() {
     if (WEAPONS[id].hands) models[id].left = akLeftModel(id, cfg, hand); // Lefty & Righty: a second gun for the left hand
     if (SIDEARMS.has(id)) sideHand(g, id, 'R');
     if (id === 'katana') katanaHands(models[id], hand); // held like a katana: both fists on the tsuka
-    if (id === 'knife') wrapFist(models[id], hand); // a fist closed round the handle (every knife skin)
+    if (id === 'knife' || id === 'spoon') wrapFist(models[id], hand, id === 'spoon' ? 0.03 : 0.022, id === 'spoon' ? 0.85 : 1); // a fist closed round the handle (every knife skin)
   }
   if (models.katana) setKatana(models.katana.g, W.kat || 0);
   if (!trail) initTrail();
@@ -1635,6 +1635,7 @@ export function updateWeapons(dt, now) {
   if (W.anim) {
     const t0 = W.anim.t;
     W.anim.t += adt;
+    if (W.anim.kind === 'reload' && W.reloadId === id && w.reload) W.anim.t = Math.max(t0, w.reload - (W.reloadUntil - now) / 1000); // on the reload's own clock: it ends on the frame the ammo comes back, at any frame rate
     for (const ev of eventsBetween(W.anim.name, t0, W.anim.t)) { animEvent(ev, m.g); if (SIDEARMS.has(id)) { sideEvent(ev, m, id); if (m.left) sideEvent(ev, m.left, id); } }
     const a = sample(W.anim.name, W.anim.t);
     const tw = ANIMS[W.anim.name] && ANIMS[W.anim.name].trail;
