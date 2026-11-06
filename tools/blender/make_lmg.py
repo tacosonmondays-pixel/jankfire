@@ -21,7 +21,8 @@ def Z(d): return MUZ_Z + d * S
 def Y(h): return BORE_Y + h * S
 def W(mm): return mm * S
 def poly(pts): return [P(d, h) for d, h in pts]
-SIGHT_H = (0.088 - BORE_Y) / S     # 51 mm: rear aperture centre + front post tip
+SIGHT_H = 63.0                     # rear aperture centre + front post tip: 12 mm taller than the code model's 0.088
+                                   # so the big receiver sits low enough while aiming (the ADS check)
 HINGE_D = (0.08 - MUZ_Z) / S       # 714 mm: the cover's back hinge
 SEAT_D = (-0.08 - MUZ_Z) / S       # 594 mm: the box seat
 REAR_D = (0.0 - MUZ_Z) / S         # 654 mm: rear aperture
@@ -85,20 +86,19 @@ def build():
     A = parts.append
 
     # ---------------- flash hider (slotted cone), barrel (glows), barrel clamp of the carry handle
-    fh = lathe([(0.0, Z(-1)), (W(9), Z(-1)), (W(11), Z(3)), (W(11), Z(50)), (W(9.5), Z(56)), (W(9.5), Z(64))], (0, BORE_Y, 0), dark, seg=12)
+    fh = lathe([(W(4.2), Z(6)), (W(4.2), Z(-1)), (W(9), Z(-1)), (W(11), Z(3)), (W(11), Z(50)), (W(9.5), Z(56)), (W(9.5), Z(64))], (0, BORE_Y, 0), dark, seg=12)
     for k in range(4):
         a = k * math.pi / 2 + math.pi / 4
         cut(fh, box((W(4), W(30), W(34)), (math.cos(a) * W(11), BORE_Y + math.sin(a) * W(11), Z(26)), None, rot=(0, 0, a - math.pi / 2)))
     A(fh)
-    A(lathe([(0, Z(0.5)), (W(3), Z(0.5)), (W(3), Z(6))], (0, BORE_Y, 0), black, seg=8))  # dark bore
-    A(lathe([(W(8.2), Z(60)), (W(8.4), Z(230)), (W(9.6), Z(236)), (W(9.6), Z(420)), (W(11.5), Z(426)), (W(11.5), Z(470))], (0, BORE_Y, 0), heat, seg=14))
+    A(lathe([(W(8.2), Z(60)), (W(8.4), Z(230)), (W(9.6), Z(236)), (W(9.6), Z(420)), (W(11.5), Z(426)), (W(11.5), Z(470))], (0, BORE_Y, 0), heat, seg=14, cap=False))
 
     # ---------------- front sight: clamp + tall post with a glowing tip
     A(cyl(W(12.5), W(18), (0, BORE_Y, Z(113)), steel, seg=14, bev=W(1)))
     A(side(poly([(103, 8), (123, 8), (120, 38), (106, 38)]), W(10), (0, 0, 0), steel, bev=W(1.2)))
     for sx in (-1, 1):  # protective ears
-        A(side(poly([(106, 30), (120, 30), (119, 50), (107, 50)]), W(2.5), (sx * W(7), 0, 0), steel, bev=W(0.5)))
-    A(box((W(3), W(12), W(3)), (0, Y(44), Z(113)), dark))
+        A(side(poly([(106, 30), (120, 30), (119, SIGHT_H - 1), (107, SIGHT_H - 1)]), W(2.5), (sx * W(7), 0, 0), steel, bev=W(0.5)))
+    A(box((W(3), W(SIGHT_H - 40), W(3)), (0, Y((SIGHT_H + 36) / 2), Z(113)), dark))
     A(box((W(4), W(4), W(4)), (0, Y(SIGHT_H - 1), Z(113)), dot, bev=W(0.7)))
 
     # ---------------- gas block + gas cylinder under the barrel, bipod (folded back under the handguard)
@@ -157,19 +157,19 @@ def build():
     A(box((W(30), W(10), W(10)), (0, Y(21), Z(HINGE_D + 10)), dark, bev=W(2)))
 
     # ---------------- feed tray cover (its own node, hinged at the back) with the rear sight on it
-    cv = side(poly([(556, 22), (HINGE_D + 4, 22), (HINGE_D + 4, 31), (HINGE_D - 30, 40), (630, 40), (572, 32), (556, 28)]), W(56), (0, 0, 0), orange, bev=W(3), seg=2)
+    cv = side(poly([(556, 22), (HINGE_D + 4, 22), (HINGE_D + 4, 31), (HINGE_D - 30, 40), (630, 40), (572, 32), (556, 28)]), W(52), (0, 0, 0), orange, bev=W(3), seg=2)
     cover.append(cv)
     for k in range(3):  # black ribs across the top, behind the sight
         cover.append(box((W(46), W(2.5), W(6)), (0, Y(40.5), Z(668 + k * 9)), over, bev=W(0.8)))
-    cover.append(cyl(W(4.5), W(58), (0, Y(30), Z(HINGE_D)), dark, axis='x', seg=10))  # hinge knuckle
+    cover.append(cyl(W(4.5), W(50), (0, Y(30), Z(HINGE_D)), dark, axis='x', seg=10))  # hinge knuckle
     # rear sight: a leaf with an aperture on the sight line
     cover.append(box((W(22), W(6), W(26)), (0, Y(42.5), Z(REAR_D)), dark, bev=W(1.2)))
     for sx in (-1, 1):
-        cover.append(side(poly([(REAR_D - 6, 44), (REAR_D + 6, 44), (REAR_D + 3, 55), (REAR_D - 3, 55)]), W(2.4), (sx * W(9), 0, 0), dark, bev=W(0.6)))
+        cover.append(side(poly([(REAR_D - 6, 44), (REAR_D + 6, 44), (REAR_D + 3, SIGHT_H + 4), (REAR_D - 3, SIGHT_H + 4)]), W(2.4), (sx * W(9), 0, 0), dark, bev=W(0.6)))
     ring = cyl(W(5.5), W(3), (0, Y(SIGHT_H), Z(REAR_D)), dark, seg=14)
     cut(ring, cyl(W(2.4), W(10), (0, Y(SIGHT_H), Z(REAR_D)), None, seg=10))
     cover.append(ring)
-    cover.append(box((W(3), W(5), W(3)), (0, Y(SIGHT_H - 7.5), Z(REAR_D)), dark))
+    cover.append(box((W(3.5), W(SIGHT_H - 49), W(2.2)), (0, Y((SIGHT_H + 40) / 2), Z(REAR_D)), dark))
     cover.append(cyl(W(5), W(6), (W(13), Y(48), Z(REAR_D)), over, axis='x', seg=10))  # elevation knob
 
     # ---------------- trigger guard + trigger, pistol grip (rubber core, sandpaper panels)
@@ -188,7 +188,7 @@ def build():
     for sx in (-1, 1):
         for k in range(5):
             A(box((W(3), W(8), W(36)), (sx * W(25.5), Y(-30 - k * 12), Z(905 + k * 6)), black, bev=W(1.2)))
-    lb = box((W(1), W(13), W(84)), (-W(26.6), Y(-30), Z(870)), label)  # BELT SANDER moulded label (left side)
+    lb = box((W(1), W(13), W(84)), (-W(26.6), Y(-30), Z(850)), label)  # BELT SANDER moulded label (left side)
     A(lb)
     A(tube([(0, Y(-112), Z(990)), (0, Y(-128), Z(992)), (0, Y(-128), Z(976)), (0, Y(-112), Z(978))], W(2.4), dark, seg=6))
     cpts = [(0, Y(-110), Z(1036)), (0, Y(-128), Z(1052)), (-W(4), Y(-160), Z(1060)), (-W(10), Y(-200), Z(1050)), (-W(16), Y(-228), Z(1030))]
@@ -254,7 +254,7 @@ def build():
 
     for p in parts + cover + magp:
         if p.data.materials and p.data.materials[0] not in (tag, dial_m, label): uv_box(p, 0.035)
-    apply_mods(lb); uv_planar(lb, (-W(26.6), Y(-30), Z(870)), (W(84), W(13)), '-x')
+    apply_mods(lb); uv_planar(lb, (-W(26.6), Y(-30), Z(850)), (W(84), W(13)), '-x')
     apply_mods(dl); uv_planar(dl, (-W(37), Y(-14), Z(700)), (W(24), W(24)), '-x')
 
     WZ = {'lmg_orange': 'a', 'lmg_over': 'a', 'lmg_grit': 'a', 'lmg_steel': 'b', 'lmg_dark': 'b', 'lmg_box': 'b'}
@@ -270,7 +270,7 @@ def build():
     mag_node = mover('mag', SEAT, zgroups(magp, lambda m: 'N' if m == 'lmg_tag' else 'B'))
     belt_root = bpy.data.objects.new('belt_wzN', None); bpy.context.scene.collection.objects.link(belt_root)
     for b in belt: b.parent = belt_root
-    meta = {'kind': 'weapon', 'id': 'lmg', 'paint': ['lmg_orange'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(SIGHT_H), 'z': Z(REAR_D)},
+    meta = {'kind': 'weapon', 'id': 'lmg', 'paint': ['lmg_orange'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(SIGHT_H), 'z': Z(REAR_D) + 0.08},
             'hatAt': [[0, Y(25), Z(440)], 0.11], 'mag': {'node': 'mag'}, 'cover': {'node': 'cover'},
             'belt': [f'belt_{i:02d}' for i in range(12)], 'heat': 'lmg_heat'}
     root = finish('w_lmg', bodies + [cv_node, mag_node, belt_root], meta)

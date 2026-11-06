@@ -95,7 +95,7 @@ def build():
     cut(rc, box((W(12), W(22), W(120)), (W(21), Y(4), Z(612)), None))             # ejection port / handle slot (right)
     A(rc)
     A(box((W(1.4), W(20), W(116)), (W(19.6), Y(4), Z(612)), dark))                  # bolt carrier in the port
-    dc = lathe([(W(18), Z(470)), (W(20), Z(478)), (W(20), Z(738)), (W(17), Z(746))], (0, Y(14), 0), steel, seg=18)
+    dc = lathe([(W(18), Z(470)), (W(20), Z(478)), (W(20), Z(706)), (W(14), Z(734))], (0, Y(14), 0), steel, seg=18)
     cut(dc, box((W(60), W(40), W(300)), (0, Y(-6), Z(608)), None))                 # keep the top half
     A(dc)
     A(box((W(22), W(4), W(180)), (0, Y(35), Z(570)), dark, bev=W(0.8)))           # rail base on the cover
@@ -145,10 +145,10 @@ def build():
     # ---------------- side-folding stock, pulled out: hinge block (left), polymer body with a slot, rubber butt
     A(side(poly([(736, -50), (772, -50), (772, 14), (736, 14)]), W(12), (-W(24), 0, 0), steel, bev=W(2)))
     A(cyl(W(7), W(10), (-W(29), Y(-18), Z(754)), chrome, axis='x', seg=12))        # latch button
-    st = side(poly([(740, 16), (980, 8), (996, 10), (996, -132), (980, -136), (900, -110), (780, -62), (740, -50)]), W(38), (0, 0, 0), green, bev=W(6), seg=2,
-              holes=[poly([(800, -14), (940, -18), (940, -34), (820, -40)])])
+    st = side(poly([(740, 12), (980, -6), (996, -4), (996, -132), (980, -136), (900, -110), (780, -62), (740, -50)]), W(38), (0, 0, 0), green, bev=W(6), seg=2,
+              holes=[poly([(800, -22), (940, -30), (940, -46), (820, -48)])])
     A(st)
-    A(side(poly([(994, 12), (1006, 10), (1006, -134), (994, -138)]), W(40), (0, 0, 0), rubber, bev=W(3)))
+    A(side(poly([(994, -2), (1006, -4), (1006, -134), (994, -138)]), W(40), (0, 0, 0), rubber, bev=W(3)))
     A(tube([(W(20), Y(-110), Z(960)), (W(26), Y(-112), Z(960)), (W(26), Y(-126), Z(966)), (W(20), Y(-128), Z(966))], W(2), dark, seg=6))  # sling loop
 
     # ---------------- the pull-start: recoil-starter housing on the left, cord along the side, T-handle clipped forward

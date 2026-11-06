@@ -111,8 +111,7 @@ def build():
     A = parts.append
 
     # ---------------- round barrel, muzzle crown + bore, front sight (dovetail ramp, blade, gold bead)
-    A(lathe([(W(7.2), Z(0)), (W(8.3), Z(0.5)), (W(8.3), Z(2)), (W(8.4), Z(120)), (W(9.2), Z(380)), (W(9.8), Z(500))], (0, BORE_Y, 0), blue, seg=16))
-    A(lathe([(0, Z(0.5)), (W(3.3), Z(0.5)), (W(3.3), Z(8))], (0, BORE_Y, 0), black, seg=10))
+    A(lathe([(W(3.3), Z(8)), (W(3.3), Z(0)), (W(7.2), Z(0)), (W(8.3), Z(0.5)), (W(8.3), Z(2)), (W(8.4), Z(120)), (W(9.2), Z(380)), (W(9.8), Z(500))], (0, BORE_Y, 0), blue, seg=16))
     A(side(poly([(26, 7), (54, 7), (54, 11), (30, 14), (26, 12)]), W(8), (0, 0, 0), blue, bev=W(0.8)))
     A(side(poly([(36, 12), (46, 12), (44, SIGHT_H - 3), (40, SIGHT_H - 3)]), W(2.6), (0, 0, 0), blue, bev=W(0.4)))
     A(ball(W(2.4), (0, Y(SIGHT_H - 2.2), Z(41)), bead, seg=10, rings=6))
@@ -139,7 +138,7 @@ def build():
     lo = bpy.data.objects.new('leaf', me); bpy.context.scene.collection.objects.link(lo); me.materials.append(blue)
     smooth(lo, 30); bevel(lo, W(0.4), 1, 30)
     A(lo)
-    A(box((W(1.4), W(1.4), W(3.6)), (0, Y(SIGHT_H - 3.2), Z(REAR_D)), bead))  # a tiny gold V insert
+    A(box((W(1.6), W(1.6), W(4.4)), (0, Y(SIGHT_H - 3.9), Z(REAR_D)), bead))  # a tiny gold V insert
 
     # ---------------- forend (walnut, rounded, swells a little toward the receiver)
     fe = side(poly([(304, 3), (488, 4), (488, -31), (304, -30)]), W(30), (0, 0, 0), fore_w, bev=W(8), seg=3)
@@ -151,7 +150,7 @@ def build():
     cut(rc, box((W(9), W(30), W(34)), (0, Y(16), Z(646)), None))  # hammer slot
     A(rc)
     A(box((W(13), W(8), W(60)), (0, Y(10), Z(538)), blue, bev=W(1)))  # the bolt seen through the port
-    A(box((W(13), W(4), W(70)), (0, Y(14.5), Z(604)), blue, bev=W(1)))  # bolt top behind the port
+    A(box((W(13), W(4), W(70)), (0, Y(15.4), Z(604)), blue, bev=W(1)))  # bolt top behind the port
     A(side(poly([(549, -29), (585, -29), (590, -26), (591, -16), (586, -12), (549, -12)]), W(1.6), (W(15.3), 0, 0), case, bev=W(0.6)))  # loading gate (right)
     A(cyl(W(2.2), W(1.5), (W(16.2), Y(-21), Z(552)), brass, axis='x', seg=8))
     for d, h in ((520, -32), (616, -30), (646, -38), (600, -6)):
@@ -199,7 +198,7 @@ def build():
     lever.append(cyl(W(4.5), W(11), (0, Y(LV_H), Z(LV_D)), gold, axis='x', seg=10))  # the pivot pin head
     # leather wrap round the front and bottom of the loop
     wrap = [(578, -92), (580, -110), (590, -128), (610, -142), (640, -150), (670, -150), (700, -146), (722, -136)]
-    lever.append(sweep([(0, Y(h), Z(d)) for d, h in wrap], [W(r) for r in (5.2, 6.8, 7.2, 7.2, 7.2, 7.2, 6.8, 5.2)], leather, seg=10, squash=(1.0, 0.85)))
+    lever.append(sweep([(0, Y(h), Z(d)) for d, h in wrap], [W(r) for r in (5.6, 7.4, 8.0, 8.0, 8.0, 8.0, 7.4, 5.6)], leather, seg=10, squash=(1.0, 0.85)))
 
 
     for p in parts + lever + ham:
