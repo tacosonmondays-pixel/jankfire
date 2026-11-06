@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '5.5', date: '2026-11-06', title: 'PLATFORM, REBUILT', items: [
+    'PLATFORM is not a flat slab any more: it\'s GLUG OIL\'s offshore rig. a grated cellar deck over the sea, a main deck of pipes and containers, a drill floor under a 30 m derrick, living quarters with a galley and bunks, a helideck with a chopper on top, cranes, a flare boom, and THE SNACK RUN supply boat tied up below.',
+    'Platform has its own Plant & Defuse version, the Snack Attack: the crew defends the rig, SLURP OIL raiders attack from a riser platform. A is the drill floor, B is the cellar wellbay.',
+    'that\'s every map remade. thanks for falling off all of them.',
+  ] },
   { v: '5.4', date: '2026-11-06', title: 'ISLANDS, REBUILT', items: [
     'ISLANDS got rebuilt from scratch: Mount Kaboom in the middle (a tiki village, a lava crater and a human cannonball pad), the Soggy Biscuit shipwreck with a crow\'s nest, a climbable lighthouse, Fort Splinter and Skull Rock, joined by rope bridges, a pier and sandbars.',
     'shallows round every beach, so you fall in the sea a lot less (the old Islands lost most deaths to falls). if you do go in, you sleep with the fishes.',

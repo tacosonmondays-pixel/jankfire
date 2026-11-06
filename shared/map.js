@@ -519,25 +519,489 @@ function crate() {
     spawns: [[-11, 0.1, -11], [11, 0.1, 11], [-11, 0.1, 11], [11, 0.1, -11]] };
 }
 
-// ------------------------------------------------------------ PLATFORM: one big flat gray slab
+// ------------------------------------------------------------ the rig kit (Platform, Platform S&D)
+// GLUG OIL's rig out in the North Sea. its decks: the cellar deck (-7.2, open grating with the sea under it), the main deck
+// (0), the mezzanine (3.6: the pipe rack's walkway, the living quarters' 1st floor), the drill floor and the LQ's 2nd floor
+// (7.2), the LQ roof and the helideck (10.8). the sea is 14 m down, the supply boat's deck 2 m above it
+const RIG = { CD: -7.2, M1: 3.6, M2: 7.2, M3: 10.8, SEA: -14, BOAT: -12 };
+const rigP = (alongX, bx) => (p0, y0, q0, p1, y1, q1, m, e) => (alongX ? bx.add(p0, y0, q0, p1, y1, q1, m, e) : bx.add(q0, y0, p0, q1, y1, p1, m, e));
+// a handrail along x (alongX) or z, a0..a1 on the line c, on a deck at y. the top rail is the physics (1.1 up: you can't
+// walk off or duck under it, a big enough hit still throws you over it); the posts and the knee rail are only to look at.
+// gaps: [[a, b]] left open (stairs, gangways)
+function rail(B, D, alongX, a0, a1, c, y, gaps = []) {
+  const P = rigP(alongX, B), Q = rigP(alongX, D), cuts = [a0, ...gaps.flat(), a1];
+  for (let i = 0; i + 1 < cuts.length; i += 2) {
+    const s0 = cuts[i], s1 = cuts[i + 1]; if (s1 - s0 < 0.25) continue;
+    P(s0, y + 0.98, c - 0.05, s1, y + 1.1, c + 0.05, 'rigyellow');
+    Q(s0 + 0.08, y + 0.48, c - 0.03, s1 - 0.08, y + 0.54, c + 0.03, 'rigyellow');
+    const n = Math.max(1, Math.round((s1 - s0) / 2.2));
+    for (let k = 0; k <= n; k++) { const p = s0 + 0.04 + (s1 - s0 - 0.08) * k / n; Q(p - 0.04, y, c - 0.04, p + 0.04, y + 0.98, c + 0.04, 'rigyellow'); }
+  }
+}
+// rails round a deck's edge (x0..x1, z0..z1 at y); g = { n, s, w, e: [[a, b]] } gaps along each side
+function railBox(B, D, x0, z0, x1, z1, y, g = {}) {
+  rail(B, D, true, x0, x1, z0 + 0.05, y, g.n); rail(B, D, true, x0, x1, z1 - 0.05, y, g.s);
+  rail(B, D, false, z0 + 0.1, z1 - 0.1, x0 + 0.05, y, g.w); rail(B, D, false, z0 + 0.1, z1 - 0.1, x1 - 0.05, y, g.e);
+}
+// a steel stair along x (alongX) or z from a0 (its foot, at ya) to a1 (its head, yb), c0..c1 across: grating treads
+// (o.thin: each a 0.3 slab, open underneath; otherwise solid steps), a handrail up each side (o.rails: which, -1 / 1).
+// returns { bot, top } for the walk graph (the foot 1.3 m clear of the first step, the head 0.7 m onto the landing)
+function rigStair(B, D, alongX, a0, a1, c0, c1, ya, yb, o = {}) {
+  const n = Math.max(1, Math.ceil((yb - ya) / 0.45 - 1e-9)), h = (yb - ya) / n, run = (a1 - a0) / n, s = Math.sign(run), cm = (c0 + c1) / 2;
+  const P = rigP(alongX, B), Q = rigP(alongX, D), lo = Math.min(c0, c1), hi = Math.max(c0, c1);
+  for (let i = 1; i <= n; i++) {
+    const p0 = a0 + (i - 1) * run, p1 = a0 + i * run, y = ya + i * h, pm = (p0 + p1) / 2;
+    P(p0, o.thin ? y - 0.3 : ya, lo, p1, y, hi, o.mat || 'grating');
+    for (const sd of o.rails || [-1, 1]) {
+      const e = sd > 0 ? hi : lo;
+      P(p0, y + 0.98, e - 0.05, p1, y + 1.1, e + 0.05, 'rigyellow');
+      if (i % 2) Q(pm - 0.04, y, e - 0.04, pm + 0.04, y + 0.98, e + 0.04, 'rigyellow');
+    }
+  }
+  return { bot: alongX ? [a0 - s * 1.3, ya, cm] : [cm, ya, a0 - s * 1.3], top: alongX ? [a1 + s * 0.7, yb, cm] : [cm, yb, a1 + s * 0.7] };
+}
+// a separator: a horizontal pressure vessel along x (x0..x1) round z = c, 3.4 across: an octagon in section (three boxes),
+// its rounded ends, two yellow saddles, a manway, valves and pipes off its back, a level gauge. cover on the deck, and its
+// back (4.0) is a step up onto the pipe rack
+function separator(B, D, x0, x1, c, y = 0) {
+  const r = 1.7, k = 0.7, y0 = y + 0.6;
+  B.add(x0 + 0.6, y0, c - r + k, x1 - 0.6, y0 + 2 * r, c + r - k, 'rigsteel');
+  B.add(x0 + 0.6, y0 + k, c - r, x1 - 0.6, y0 + 2 * r - k, c - r + k, 'rigsteel'); B.add(x0 + 0.6, y0 + k, c + r - k, x1 - 0.6, y0 + 2 * r - k, c + r, 'rigsteel');
+  B.add(x0, y0 + k, c - r + k, x0 + 0.6, y0 + 2 * r - k, c + r - k, 'rigsteel'); B.add(x1 - 0.6, y0 + k, c - r + k, x1, y0 + 2 * r - k, c + r - k, 'rigsteel'); // the ends
+  for (const x of [x0 + 1.8, x1 - 1.8]) B.add(x - 0.45, y, c - 1.35, x + 0.45, y0 + 0.5, c + 1.35, 'rigyellow'); // saddles
+  D.add(x0 - 0.12, y0 + 1.1, c - 0.5, x0, y0 + 2.3, c + 0.5, 'rigyellow'); // the manway in its end
+  for (const x of [x0 + 3.5, (x0 + x1) / 2, x1 - 3.5]) { D.add(x - 0.25, y0 + 2 * r, c - 0.25, x + 0.25, y0 + 2 * r + 0.5, c + 0.25, 'rigred'); D.add(x - 0.4, y0 + 2 * r + 0.5, c - 0.06, x + 0.4, y0 + 2 * r + 0.56, c + 0.06, 'rigyellow'); } // nozzles, handwheels
+  D.add((x0 + x1) / 2 - 1.4, y0 + 0.9, c - r - 0.08, (x0 + x1) / 2 + 1.4, y0 + 1.3, c - r, 'glass'); // the level gauge
+}
+// the pipe rack along x (x0..x1) round z = c: steel frames every 5 m, the walkway on top (3.6, grating, 2.2 wide) between
+// two bundles of pipes, cable trays slung under it. gap: [a, b] where a stair comes up through the pipes on its +z side
+function pipeRack(B, D, x0, x1, c, gap = null) {
+  const y = RIG.M1;
+  B.add(x0, y - 0.3, c - 1.1, x1, y, c + 1.1, 'grating');
+  for (let x = x0 + 0.3; x < x1; x += 5) { B.add(x - 0.18, 0, c - 3.05, x + 0.18, y - 0.6, c - 2.7, 'rigsteel'); B.add(x - 0.18, 0, c + 2.7, x + 0.18, y - 0.6, c + 3.05, 'rigsteel'); B.add(x - 0.18, y - 0.6, c - 3.05, x + 0.18, y - 0.3, c + 3.05, 'rigsteel'); }
+  for (const s of [-1, 1]) for (const [q0, q1, m] of [[1.2, 1.7, 'pipe'], [1.8, 2.3, 'rigyellow'], [2.4, 2.95, 'pipe']]) {
+    const z0 = c + s * q0, z1 = c + s * q1;
+    if (s > 0 && gap) { B.add(x0, y - 0.3, z0, gap[0], y + 0.25, z1, m); B.add(gap[1], y - 0.3, z0, x1, y + 0.25, z1, m); } else B.add(x0, y - 0.3, z0, x1, y + 0.25, z1, m);
+  }
+  for (const s of [-1, 1]) D.add(x0 + 0.5, y - 1.15, c + s * 0.5, x1 - 0.5, y - 1.05, c + s * 1.0, 'grating'); // cable trays
+}
+// the living quarters (x 18..34, z -14..14): the galley on the ground floor, bunks on the 1st (3.6), the control room on
+// the 2nd (7.2), the roof (10.8) and the helideck off its east side; a steel stair tower up its north side to every floor and
+// the roof; the lifeboats in their davits off the deck's north edge, the muster point. the pipe rack comes in at the 1st
+// floor's west door
+function livingQuarters(B0, D0, dx, dz, st, o = {}) {
+  const { B, D, add, W, up } = isPiece(B0, D0, dx, dz, st);
+  const X0 = 18, X1 = 34, Z0 = -14, Z1 = 14, t = 0.3, op = (a, b, y0, y1) => ({ a, b, y0, y1 });
+  const win = (list, y) => list.map(([a, b]) => op(a, b, y + 1.0, y + 2.3));
+  add(X0 + t, 0, Z0 + t, X1 - t, 0.15, Z1 - t, 'tile'); const g0 = 0.15; // the galley's floor (lino on a raised floor: the furniture stands on it)
+  add(X0, 3.3, Z0, X1, 3.6, Z1, 'rigsteel'); add(X0, 6.9, Z0, X1, 7.2, Z1, 'rigsteel'); add(X0, 10.5, Z0, X1, 10.8, Z1, 'rigsteel');
+  for (const [y0, y1, f] of [[0, 3.3, 0], [3.6, 6.9, 1], [7.2, 10.5, 2]]) {
+    const wW = f === 0 ? [op(-11, -9, 0, 2.4), op(9, 11, 0, 2.4)] : f === 1 ? [op(-1.1, 1.1, 3.6, 5.9), ...win([[-9, -6], [6, 9]], y0)] : win([[-11, -7], [-5, -1], [1, 5], [7, 11]], y0);
+    const wE = win(f === 2 ? [[-11, -7], [-5, -1], [1, 5], [7, 11]] : [[-10, -8], [-4, -2], [2, 4], [8, 10]], y0);
+    const wN = f === 0 ? [op(27.5, 29.5, 0, 2.4), ...win([[31, 32.6]], y0)] : f === 1 ? [op(24.6, 26.4, 3.6, 5.9), ...win([[29, 32]], y0)] : [op(18.6, 21.2, 7.2, 9.5), ...win([[23, 27], [29, 32.5]], y0)];
+    const wS = f === 0 ? [op(23.5, 25.5, 0, 2.4), ...win([[19.5, 21.5], [28, 30], [31.5, 33]], y0)] : win(f === 2 ? [[19.5, 23], [25, 29], [30.5, 33]] : [[19.5, 21.5], [24, 26], [28.5, 30.5]], y0);
+    wall(W, 'z', X0 + t / 2, Z0 + t, Z1 - t, y0, y1, t, 'rigwhite', wW);
+    wall(W, 'z', X1 - t / 2, Z0 + t, Z1 - t, y0, y1, t, 'rigwhite', wE);
+    wall(W, 'x', Z0 + t / 2, X0, X1, y0, y1, t, 'rigwhite', wN);
+    wall(W, 'x', Z1 - t / 2, X0, X1, y0, y1, t, 'rigwhite', wS);
+  }
+  for (const yc of [3.3, 6.9, 10.5]) for (const z of [-9, -3, 3, 9]) for (const x of [22, 29]) D.add(x - 1.2, yc - 0.06, z - 0.2, x + 1.2, yc, z + 0.2, 'lamp'); // ceiling lights
+  // the galley: tables and benches, the serving counter, Jank Cola, the telly, the signs
+  for (const z of [-9, -3, 3, 9]) for (const x0 of [20.5, 26]) { add(x0, g0, z - 0.6, x0 + 3.6, g0 + 0.78, z + 0.6, 'wood'); add(x0 + 0.2, g0, z - 1.35, x0 + 3.4, g0 + 0.45, z - 0.95, 'toyteal'); add(x0 + 0.2, g0, z + 0.95, x0 + 3.4, g0 + 0.45, z + 1.35, 'toyteal'); }
+  add(31.6, g0, -6, 33.7, g0 + 1.05, 6, 'rigsteel'); D.add(31.5, g0 + 1.05, -6.1, 33.7, g0 + 1.12, 6.1, 'chrome'); // the serving counter (back to the east wall)
+  add(32.6, g0, 8, 33.7, g0 + 2.0, 9.4, 'toyred'); D.add(32.55, g0 + 0.6, 8.15, 32.6, g0 + 1.8, 9.25, 'adcity2', { fit: 1 }); // the cola machine (JANK COLA)
+  D.add(18.3, 1.4, -2, 18.36, 2.4, 2, 'tvstatic'); D.add(18.3, 2.5, -3, 18.36, 3.1, 3, 'adgalley', { fit: 1 });
+  D.add(33.64, 2.3, -3.5, 33.7, 3.0, 3.5, 'addays', { fit: 1 });
+  // the 1st floor: bunks along the east and south walls, lockers, a corridor down the middle
+  for (const z of [-11.5, -7.5, 4.5, 8.5]) { add(30.6, 3.6, z - 1.0, 33.7, 4.15, z + 1.0, 'rigblue'); D.add(30.6, 5.0, z - 1.0, 33.7, 5.12, z + 1.0, 'rigblue'); for (const zz of [z - 0.95, z + 0.9]) D.add(30.65, 4.15, zz, 30.75, 5.0, zz + 0.05, 'metal'); D.add(30.7, 4.15, z - 0.9, 33.6, 4.3, z + 0.9, 'bedsheet'); }
+  for (const x of [21, 24.5]) { add(x, 3.6, 12.6, x + 2.4, 4.15, 13.7, 'rigblue'); D.add(x, 4.15, 12.7, x + 2.3, 4.3, 13.6, 'bedsheet'); }
+  for (const z0 of [-5.4, 1.6]) for (let k = 0; k < 5; k++) add(18.3, 3.6, z0 + k * 0.76, 18.8, 5.6, z0 + k * 0.76 + 0.7, 'metal'); // lockers (the west wall, either side of the door)
+  // the 2nd floor: the control room. consoles under the windows looking over the deck, the big red button
+  add(18.3, 7.2, -11, 19.4, 8.1, -1.5, 'rigsteel'); add(18.3, 7.2, 1.5, 19.4, 8.1, 11, 'rigsteel');
+  D.add(18.6, 8.1, -10.5, 19.3, 8.16, -2, 'radiopanel'); D.add(18.6, 8.1, 2, 19.3, 8.16, 10.5, 'radiopanel');
+  add(25, 7.2, -2, 28, 8.0, 2, 'rigsteel'); D.add(26.1, 8.0, -0.4, 26.9, 8.25, 0.4, 'toyred'); // the big red button
+  D.add(33.64, 9.0, -4, 33.7, 9.8, 4, 'adcontrol', { fit: 1 });
+  // the roof: rails, aerials, the big sign over the deck; the stair tower comes up at its north-west corner
+  railBox(B, D, X0, Z0, X1, Z1, RIG.M3, { n: [[24.1, 26.7]], e: [[-9.1, 9.1]] });
+  D.add(19.2, RIG.M3, -11.6, 19.5, RIG.M3 + 7, -11.3, 'metal'); D.add(19.2, RIG.M3 + 6, -12.4, 19.5, RIG.M3 + 6.2, -10.5, 'metal'); D.add(30, RIG.M3, 10, 32, RIG.M3 + 1.4, 12, 'rigsteel');
+  D.add(17.9, 11.9, -7, 17.96, 14.9, 7, 'adglug', { fit: 1 }); D.add(17.96, 11.9, -7.1, 18.2, 14.9, -6.95, 'rigsteel'); D.add(17.96, 11.9, 6.95, 18.2, 14.9, 7.1, 'rigsteel');
+  // the stair tower (north of it): ground -> 1st (east), 1st -> 2nd (west), 2nd -> roof (east), a landing at each floor
+  up({ ...rigStair(B, D, true, 19.4, 24.2, -19.6, -18.2, 0, RIG.M1, { thin: true }), top: [25.6, RIG.M1, -18.9] }); // (the head's right by the rails' ends)
+  add(24.2, 3.3, -19.8, 26.6, 3.6, -14, 'grating');
+  up(rigStair(B, D, true, 24.2, 20.0, -17.8, -16.4, RIG.M1, RIG.M2, { thin: true }));
+  add(17.6, 6.9, -19.8, 20.0, 7.2, -14, 'grating'); add(20.0, 6.9, -16.4, 21.6, 7.2, -14, 'grating'); // (the 2nd floor's landing runs on round to its door)
+  up({ ...rigStair(B, D, true, 20.0, 24.2, -19.6, -18.2, RIG.M2, RIG.M3, { thin: true }), top: [25.6, RIG.M3, -19.0] });
+  add(24.2, 10.5, -19.8, 26.6, 10.8, -14, 'grating');
+  for (const y of [RIG.M1, RIG.M3]) { rail(B, D, true, 24.2, 26.6, -19.75, y); rail(B, D, false, -19.7, -14.05, 26.55, y); rail(B, D, false, y === RIG.M1 ? -16.3 : -18.1, -14.05, 24.25, y); }
+  rail(B, D, true, 17.6, 20.0, -19.75, RIG.M2); rail(B, D, false, -19.7, -14.05, 17.65, RIG.M2); rail(B, D, false, -16.3, -14.05, 21.55, RIG.M2);
+  for (const [x, z] of [[17.35, -20.05], [26.6, -20.05]]) add(x, 0, z, x + 0.25, 11.9, z + 0.25, 'rigyellow'); // the tower's corner posts
+  // the lifeboats off the north edge, in their davits over the sea; the muster point
+  for (const x of [20.5, 28]) {
+    add(x, 0.7, -28.7, x + 6.2, 2.1, -26.5, 'lifeboat'); add(x + 0.6, 2.1, -28.4, x + 5.6, 3.3, -26.8, 'lifeboat');
+    D.add(x + 2.2, 2.4, -26.8, x + 3.2, 2.9, -26.74, 'glass'); D.add(x + 1.6, 1.3, -26.5, x + 4.6, 1.9, -26.44, 'adlifeboat', { fit: 1 });
+    for (const k of [0.5, 5.5]) { D.add(x + k, 0, -26.32, x + k + 0.22, 4.2, -26.1, 'rigyellow'); D.add(x + k, 4.0, -27.8, x + k + 0.22, 4.22, -26.1, 'rigyellow'); D.add(x + k + 0.09, 3.3, -27.7, x + k + 0.13, 4.0, -27.66, 'tire'); }
+  }
+  D.add(30.2, 1.0, -14.06, 33.6, 1.9, -14, 'admuster', { fit: 1 });
+  // the helideck: off the roof's east side, its net round the three open sides, the H, lights, a windsock, the chopper
+  add(X1, 10.5, -9, 52, 10.8, 9, 'rigsteel'); D.add(34.3, 10.8, -8.7, 51.7, 10.83, 8.7, 'helipad', { fit: 1 });
+  add(52, 10.05, -10.5, 53.5, 10.2, 10.5, 'net'); add(X1, 10.05, -10.5, 52, 10.2, -9, 'net'); add(X1, 10.05, 9, 52, 10.2, 10.5, 'net');
+  rail(B, D, true, X1 + 0.3, 53.5, -10.45, 10.2); rail(B, D, true, X1 + 0.3, 53.5, 10.45, 10.2); rail(B, D, false, -10.35, 10.35, 53.45, 10.2); // the net's lip (half a metre over the deck: it catches you, mostly)
+  for (let x = 35; x < 52; x += 4) for (const z of [-8.9, 8.75]) D.add(x, 10.8, z, x + 0.15, 10.9, z + 0.15, 'neongreen');
+  D.add(52.6, 10.2, -10.3, 52.75, 14, -10.15, 'metal'); D.add(52.75, 13.2, -10.35, 54.2, 13.7, -10.1, 'lifeboat');
+  if (!o.noChopper) chopper(B, D, 45.5, RIG.M3 + 0.03, 0.5, 'toyred'); // (on the H)
+  D.add(34, 8.1, -9, 46, 10.5, 9, 'truss'); D.add(34, 5, -9, 40, 8.1, 9, 'truss'); // the cantilever under it
+  D.add(X1 + 0.02, 9.6, -3.5, X1 + 0.08, 10.4, 3.5, 'adhelideck', { fit: 1 });
+}
+// the drilling side (round x -34..-14, z -10..10): the drill floor (7.2) on its red substructure, the derrick on it (30 m of
+// lattice, the monkey board half way up, the crown on top, the racked pipe), the doghouse, the drawworks; under it the
+// blowout preventer down through the deck to the cellar deck, the mud pumps and tanks; the V-door ramp up from the pipe
+// deck (east), a stair up each of the south and north sides
+function drillSide(B0, D0, dx, dz, st, o = {}) {
+  const { B, D, add, up } = isPiece(B0, D0, dx, dz, st);
+  const X0 = -34, X1 = -14, Z0 = -10, Z1 = 10, y = RIG.M2;
+  add(X0, y - 0.4, Z0, X1, y, Z1, 'deckplate');
+  for (const x of [X0, -24.5, X1 - 1]) for (const z of [Z0, Z1 - 1]) add(x, 0, z, x + 1, y - 0.4, z + 1, 'rigred'); // the substructure's legs
+  for (const z of [Z0 + 0.3, Z1 - 0.7]) D.add(X0 + 1, 3.3, z, X1 - 1, 3.7, z + 0.4, 'rigred'); for (const x of [X0 + 0.3, X1 - 0.7]) D.add(x, 3.3, Z0 + 1, x + 0.4, 3.7, Z1 - 1, 'rigred'); // its girders
+  // under the drill floor: the BOP (down through the deck), the mud pumps and tanks
+  add(-25.3, 0, -1.3, -22.7, 4.6, 1.3, 'bop'); add(-24.7, 4.6, -0.7, -23.3, y - 0.4, 0.7, 'rigsteel'); add(-24.9, RIG.CD, -0.9, -23.1, -0.5, 0.9, 'bop'); // (the deck plate covers it from -0.5 up)
+  for (const s of [-1, 1]) D.add(-25.36, 1.2 + s * 0.6 + 0.6, -1.36, -22.64, 1.6 + s * 0.6 + 0.6, 1.36, 'rigyellow');
+  D.add(-22.64, 2.6, -1.0, -22.58, 3.5, 1.0, 'adbop', { fit: 1 });
+  add(X0 + 0.2, 0, -8, -31.4, 3.2, 8, 'rigblue'); D.add(-31.4, 1.8, -2, -31.34, 2.8, 2, 'admud', { fit: 1 }); // the mud tanks
+  for (const s of [-1, 1]) { add(-22, 0, s * 6.5 - 1, -18, 2.2, s * 6.5 + 1, 'rigred'); D.add(-21.6, 2.2, s * 6.5 - 0.5, -18.4, 2.6, s * 6.5 + 0.5, 'rigsteel'); } // the mud pumps
+  // the derrick: four legs stepping in as they go up, X-braced lattice on each face, girts, the crown, a beacon
+  const H = 30, segs = 5, b0 = 4, b1 = 1.5, cx = -24, cz = 0;
+  for (let i = 0; i < segs; i++) {
+    const ya = y + (i * H) / segs, yb = y + ((i + 1) * H) / segs, hw = b0 - ((b0 - b1) * i) / segs, leg = i === 0 ? B : D;
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) leg.add(cx + sx * hw - (sx > 0 ? 0.6 : 0), ya, cz + sz * hw - (sz > 0 ? 0.6 : 0), cx + sx * hw + (sx < 0 ? 0.6 : 0), yb, cz + sz * hw + (sz < 0 ? 0.6 : 0), 'rigred');
+    const hi = hw - 0.6;
+    for (const s of [-1, 1]) { D.add(cx - hi, ya + 0.2, cz + s * (hw - 0.3) - 0.03, cx + hi, yb, cz + s * (hw - 0.3) + 0.03, 'trussred'); D.add(cx + s * (hw - 0.3) - 0.03, ya + 0.2, cz - hi, cx + s * (hw - 0.3) + 0.03, yb, cz + hi, 'trussred'); }
+    if (i) for (const s of [-1, 1]) { D.add(cx - hi, ya - 0.1, cz + s * (hw - 0.3) - 0.12, cx + hi, ya + 0.1, cz + s * (hw - 0.3) + 0.12, 'rigred'); D.add(cx + s * (hw - 0.3) - 0.12, ya - 0.1, cz - hi, cx + s * (hw - 0.3) + 0.12, ya + 0.1, cz + hi, 'rigred'); }
+  }
+  D.add(cx - 2.2, y + H, cz - 2.2, cx + 2.2, y + H + 1.4, cz + 2.2, 'rigred'); D.add(cx - 0.3, y + H + 1.4, cz - 0.3, cx + 0.3, y + H + 2.0, cz + 0.3, 'neonred'); // the crown, its beacon
+  D.add(cx - 0.9, y + 14, cz - 0.7, cx + 0.9, y + 16.5, cz + 0.7, 'rigyellow'); D.add(cx - 0.05, y + 16.5, cz - 0.05, cx + 0.05, y + H, cz + 0.05, 'tire'); // the top drive on its line
+  for (let k = 0; k < 10; k++) D.add(cx - 2.0 + (k % 5) * 0.3, y, cz - 1.6 + (k > 4 ? 0.45 : 0), cx - 1.88 + (k % 5) * 0.3, y + 22, cz - 1.48 + (k > 4 ? 0.45 : 0), 'rigsteel'); // racked pipe
+  add(cx + 3, y + 15, cz - 1.5, cx + 5, y + 15.3, cz + 1.5, 'grating'); // the monkey board, off the east face half way up (grapple up)
+  rail(B, D, false, cz - 1.5, cz + 1.5, cx + 4.95, y + 15.3); for (const s of [-1, 1]) rail(B, D, true, cx + 3, cx + 4.9, cz + s * 1.45, y + 15.3);
+  D.add(cx + 3.52, y + 9, cz - 2.8, cx + 3.58, y + 12, cz + 2.8, 'adglug', { fit: 1 });
+  D.add(cx - 1, y, cz - 1, cx + 1, y + 0.05, cz + 1, 'rigsteel'); // the rotary table
+  add(-31.4, y, -2, -28.8, y + 1.6, 2, 'rigred'); D.add(-31.2, y + 1.6, -1.6, -29, y + 2.0, 1.6, 'tire'); // the drawworks and its drum
+  // the doghouse (the driller's cabin), south-east corner
+  add(-18.5, y, 5.6, -14.3, y + 2.8, 9.7, 'rigblue'); D.add(-18.56, y + 1.2, 6.2, -18.5, y + 2.2, 9.1, 'glass'); D.add(-17.8, y + 2.8, 6.2, -15, y + 3.0, 9.1, 'rigsteel');
+  // the ways up: the V-door ramp from the pipe deck (east), the south and north stairs; rails round the edge
+  up(rigStair(B, D, true, -4, X1, -1.4, 1.4, 0, y, { mat: 'deckplate' }));
+  up(rigStair(B, D, false, 18, Z1, -31, -29.6, 0, y));
+  up(rigStair(B, D, false, -18, Z0, -17, -15.6, 0, y));
+  railBox(B, D, X0, Z0, X1, Z1, y, { s: [[-31.15, -29.45]], n: [[-17.15, -15.45]], e: [[-1.55, 1.55]] });
+}
+// a pedestal crane at (x, z): the yellow pedestal (9 m), the slewing deck and cab, the boom along +x (alongX) or +z out to
+// len, at the height of the cab's roof (walkable: grapple up and stroll out on it), a hook on its end
+function pedCrane(B, D, x, z, alongX, len, o = {}) {
+  const y = 9;
+  B.add(x - 1.3, 0, z - 1.3, x + 1.3, y, z + 1.3, 'rigyellow');
+  for (let k = 1; k < 9; k++) D.add(x + 1.3, k, z - 0.3, x + 1.36, k + 0.06, z + 0.3, 'rigsteel'); // the ladder's rungs
+  B.add(x - 2.2, y, z - 2.2, x + 2.2, y + 0.3, z + 2.2, 'grating');
+  const P = rigP(alongX, B), Q = rigP(alongX, D), a = alongX ? x : z, c = alongX ? z : x;
+  P(a - 1.6, y + 0.3, c - 1.1, a + 0.4, y + 2.6, c + 1.1, 'rigwhite'); Q(a + 0.4, y + 1.3, c - 0.9, a + 0.46, y + 2.3, c + 0.9, 'glass'); // the cab (it turns with its boom)
+  P(a - 2.2, y + 0.3, c - 1.9, a - 1.6, y + 1.6, c + 1.9, 'concrete'); // the counterweight
+  P(a + 0.4, y + 1.4, c - 0.7, a + len, y + 2.6, c + 0.7, 'truss'); // the boom
+  Q(a + len - 0.06, y - 2.5, c - 0.03, a + len - 0.0, y + 1.4, c + 0.03, 'tire'); Q(a + len - 0.4, y - 3.4, c - 0.35, a + len + 0.3, y - 2.5, c + 0.35, 'rigred'); // the hook
+  if (o.rest) B.add(o.rest[0] - 0.4, o.rest[1], o.rest[2] - 0.4, o.rest[0] + 0.4, y + 1.4, o.rest[2] + 0.4, 'rigyellow'); // its rest
+}
+// a christmas tree (the wellhead's valve stack, real name) dressed for christmas: valve blocks, wing valves, handwheels,
+// baubles, tinsel, a star on top. on a deck at y
+function xmasTree(B, D, x, z, y, r) {
+  B.add(x - 0.4, y, z - 0.4, x + 0.4, y + 2.3, z + 0.4, 'rigred');
+  B.add(x - 1.0, y + 1.0, z - 0.25, x + 1.0, y + 1.5, z + 0.25, 'rigred');
+  for (const s of [-1, 1]) D.add(x + s * 1.0 - (s > 0 ? 0 : 0.08), y + 0.85, z - 0.4, x + s * 1.0 + (s > 0 ? 0.08 : 0), y + 1.65, z + 0.4, 'rigyellow');
+  D.add(x - 0.45, y + 2.3, z - 0.45, x + 0.45, y + 2.45, z + 0.45, 'rigyellow'); D.add(x - 0.18, y + 2.45, z - 0.18, x + 0.18, y + 2.8, z + 0.18, 'neonyellow'); // the star
+  for (let k = 0; k < 6; k++) { const a = r() * Math.PI * 2, h = 0.3 + r() * 1.9; D.box(x + Math.cos(a) * 0.46, y + h, z + Math.sin(a) * 0.46, 0.14, 0.14, 0.14, ['toypink', 'toyteal', 'toyyellow'][k % 3]); }
+  D.add(x - 0.42, y + 1.7, z - 0.42, x + 0.42, y + 1.76, z + 0.42, 'neongreen'); D.add(x - 0.43, y + 0.6, z - 0.43, x + 0.43, y + 0.66, z + 0.43, 'neonpink'); // tinsel
+}
+// THE SNACK RUN, a supply boat moored along the rig's south side: its open cargo deck (-12: containers, pipe, snacks),
+// bulwarks, the bridge forward (east), the boat landing on the jacket beside it and the stair up to the cellar deck
+function snackRun(B0, D0, dx, dz, st, r) {
+  const { B, D, add, up } = isPiece(B0, D0, dx, dz, st), y = RIG.BOAT;
+  add(-12, y - 0.4, 24, 8, y, 31, 'grating'); // the boat landing
+  for (const x of [-11, -3, 5]) D.add(x, y - 2.4, 24.2, x + 0.6, y - 0.4, 24.8, 'rigyellow');
+  up(rigStair(B, D, false, 29.5, 24, -8.4, -7, y, RIG.CD));
+  rail(B, D, false, 24.1, 31, -11.95, y); rail(B, D, false, 24.1, 31, 7.95, y); rail(B, D, true, -11.9, 7.9, 24.05, y, [[-8.5, -6.9]]);
+  // the hull, its deck, the bulwarks (open along the landing), the bow
+  add(-24, y - 4, 31, 14, y - 0.4, 43.5, 'rigred'); add(-24, y - 0.4, 31, 14, y, 43.5, 'deckplate');
+  add(14, y - 4, 31.8, 20, y, 42.7, 'rigred'); add(20, y - 4, 33.5, 23, y, 41, 'rigred'); add(23, y - 3, 35.5, 25, y, 39, 'rigred');
+  // (the cargo deck's crash barriers: 2.2 m, like a real supply boat's. they keep you on board as well as the cargo)
+  add(-24, y, 31, -12, y + 2.2, 31.3, 'rigred'); add(8, y, 31, 14, y + 2.2, 31.3, 'rigred'); add(-24, y, 43.2, 14, y + 2.2, 43.5, 'rigred'); add(-24, y, 31.3, -23.7, y + 2.2, 43.2, 'rigred');
+  for (let x = -22; x < 13; x += 3) for (const z of [31.3, 43.14]) D.add(x, y + 0.2, z, x + 0.12, y + 2.2, z + 0.06, 'rigsteel'); // their stiffeners
+  D.add(-24, y - 2.6, 30.94, 14, y - 2.2, 31, 'rigwhite'); D.add(-24, y - 2.6, 43.5, 14, y - 2.2, 43.56, 'rigwhite'); // its stripe
+  for (const [x0, x1] of [[-10, -2], [2, 10]]) D.add(x0, y - 0.6, 30.95, x1, y - 0.2, 31.0, 'tire'); // fenders
+  // the bridge (forward): three decks of white, the wheelhouse on top (its windows), the name, mast and radar
+  add(14, y, 31.8, 20, y + 7.2, 42.7, 'rigwhite'); add(14.5, y + 7.2, 32.6, 19.5, y + 9.4, 41.9, 'rigwhite');
+  D.add(19.5, y + 8.0, 33.2, 19.56, y + 9.0, 41.3, 'glass'); D.add(14.44, y + 8.0, 33.2, 14.5, y + 9.0, 41.3, 'glass');
+  D.add(13.94, y + 4.2, 33.2, 14, y + 6.4, 41.3, 'adsnack', { fit: 1 }); D.add(-6, y - 3.4, 43.56, 8, y - 2.7, 43.62, 'adsnack', { fit: 1 });
+  D.add(16.8, y + 9.4, 37, 17.2, y + 13.5, 37.4, 'metal'); D.add(15.8, y + 12.2, 36.9, 18.2, y + 12.4, 37.5, 'metal'); D.add(16.9, y + 13.5, 37.1, 17.1, y + 13.8, 37.3, 'neonred');
+  // the cargo: two containers, the snacks, pipe, crates (a step up onto the containers)
+  for (const [x0, z0, m] of [[-21, 37.5, 'containerb'], [-8, 37.5, 'containerg']]) add(x0, y, z0, x0 + 12, y + 2.6, z0 + 2.5, m);
+  add(-21, y + 2.6, 37.5, -9, y + 5.2, 40, 'containerr');
+  add(5, y, 34, 7.5, y + 2.6, 42, 'pink'); D.add(4.94, y + 0.7, 35.5, 5, y + 1.9, 40.5, 'adsnacks', { fit: 1 }); D.add(7.5, y + 0.7, 35.5, 7.56, y + 1.9, 40.5, 'adsnacks', { fit: 1 });
+  for (const [x, z] of [[-9.5, 41.2], [-22, 41.8], [10, 34.5]]) B.box(x, y + 0.6, z, 1.2, 1.2, 1.2, 'crate');
+  for (let k = 0; k < 3; k++) add(-20 + k * 0.01, y + k * 0.5, 34 + k * 0.4, -10, y + 0.5 + k * 0.5, 35.8 - k * 0.4, 'pipe'); // a bundle of pipe
+  // its mooring lines to the jacket
+  D.add(-24, y + 0.6, 30.7, -20, y + 0.7, 30.9, 'tire'); D.add(18, y + 0.6, 31.4, 21, y + 0.7, 31.6, 'tire');
+}
+// the compressor house (x -2..14, z -24..-15, moved dz): blue steel walls, a roller door on its south side and a door on its
+// west, the two compressors inside, louvres, its sign; the crane's boom rests on its roof (5)
+function compressorHouse(B0, D0, dz) {
+  const { B, D, add, W } = isPiece(B0, D0, 0, dz, []), X0 = -2, X1 = 14, Z0 = -24, Z1 = -15, h = 5, t = 0.3;
+  wall(W, 'x', Z1 - t / 2, X0, X1, 0, h - 0.3, t, 'rigblue', [{ a: 4, b: 8, y0: 0, y1: 3.2 }]);
+  wall(W, 'x', Z0 + t / 2, X0, X1, 0, h - 0.3, t, 'rigblue');
+  wall(W, 'z', X0 + t / 2, Z0 + t, Z1 - t, 0, h - 0.3, t, 'rigblue', [{ a: -21, b: -18, y0: 0, y1: 2.6 }]);
+  wall(W, 'z', X1 - t / 2, Z0 + t, Z1 - t, 0, h - 0.3, t, 'rigblue');
+  add(X0, h - 0.3, Z0, X1, h, Z1, 'rigsteel');
+  for (const x0 of [0, 8.5]) { add(x0, 0, -22, x0 + 4, 2.4, -17.6, 'rigyellow'); D.add(x0 + 0.4, 2.4, -21.6, x0 + 3.6, 2.9, -18, 'rigsteel'); D.add(x0 + 1.6, 2.9, -20.2, x0 + 2.4, 4.7, -19.4, 'pipe'); } // the compressors
+  for (const x of [-1, 9.5, 12.5]) D.add(x, 2.2, Z1, x + 1.2, 3.8, Z1 + 0.06, 'grid'); // louvres
+  D.add(8.6, 3.4, Z1 + 0.06, 13.6, 4.4, Z1 + 0.12, 'adcompress', { fit: 1 });
+}
+// the jacket: legs from the cellar deck down into the sea (spreading as they go), braces, X-bracing on the outside faces,
+// foam round the legs at the waterline. xs / zs: the legs' lines. render-only
+function jacket(D, xs, zs, top = RIG.CD - 0.4) {
+  const segs = [[top, -24, 0], [-24, -40, 0.8], [-40, -62, 1.6]], ox = (x, k) => (x < 0 ? -k : x > 0 ? k : 0);
+  for (const x of xs) for (const z of zs) {
+    for (const [y0, y1, k] of segs) D.add(x + ox(x, k) - 1.2, y1, z + ox(z, k) - 1.2, x + ox(x, k) + 1.2, y0, z + ox(z, k) + 1.2, 'rigyellow');
+    D.add(x - 1.7, RIG.SEA, z - 1.7, x + 1.7, RIG.SEA + 0.03, z + 1.7, 'foam');
+  }
+  const [xa, xb] = [xs[0], xs[xs.length - 1]], [za, zb] = [zs[0], zs[zs.length - 1]];
+  for (const y of [-15.6, -30, -48]) {
+    for (const z of zs) D.add(xa + 1.2, y, z - 0.35, xb - 1.2, y + 0.7, z + 0.35, 'rigyellow');
+    for (const x of xs) D.add(x - 0.35, y, za + 1.2, x + 0.35, y + 0.7, zb - 1.2, 'rigyellow');
+  }
+  for (const z of [za, zb]) D.add(xa + 1.3, -46, z - 0.04, xb - 1.3, top, z + 0.04, 'truss');
+  for (const x of [xa, xb]) D.add(x - 0.04, -46, za + 1.3, x + 0.04, top, zb - 1.3, 'truss');
+}
+// another rig out on the horizon (render-only): legs, a deck, a derrick, its flare
+function farRig(D, x, z, s = 1) {
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) D.box(x + sx * 14 * s, RIG.SEA - 10, z + sz * 12 * s, 3 * s, 60, 3 * s, 'rigyellow');
+  D.add(x - 22 * s, 18, z - 18 * s, x + 22 * s, 21, z + 18 * s, 'rigsteel'); D.add(x + 4 * s, 21, z - 10 * s, x + 18 * s, 33, z + 8 * s, 'rigwhite');
+  D.add(x - 14 * s, 21, z - 4 * s, x - 8 * s, 60, z + 2 * s, 'trussred'); D.add(x - 20 * s, 40, z + 14 * s, x - 18 * s, 44, z + 16 * s, 'flame');
+}
+
+// ------------------------------------------------------------ PLATFORM: GLUG OIL's rig in the North Sea. one big platform:
+// the living quarters and the helideck (east), the drill floor under the derrick (west), the process deck between (the
+// pipe rack, two separators, the compressor house), the laydown deck with containers (south), the cellar deck under it all
+// (the christmas trees round the wellbay), the flare boom out west, a crane on its boom rest, THE SNACK RUN tied up below
 function platform() {
-  const B = builder();
-  B.box(0, -1, 0, 90, 2, 90, 'grid');
-  B.box(0, -5, 0, 76, 6, 76, 'concrete');
-  const D = builder();
-  D.add(-45.06, -0.6, -45.06, 45.06, -0.3, 45.06, 'neonpink'); D.add(-38.06, -4, -38.06, 38.06, -3.7, 38.06, 'neoncyan');
-  // it's an offshore rig: four legs down into the sea, braces, a lower deck with containers, a crane, a flare burning
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) { D.box(sx * 30, -30.5, sz * 30, 6, 45, 6, 'rust'); D.box(sx * 30, -52.7, sz * 30, 9, 1, 9, 'white'); }
-  for (const y of [-14, -27, -40]) for (const s2 of [-1, 1]) { D.add(-27, y - 0.6, s2 * 30 - 0.6, 27, y + 0.6, s2 * 30 + 0.6, 'hazard'); D.add(s2 * 30 - 0.6, y - 0.6, -27, s2 * 30 + 0.6, y + 0.6, 27, 'hazard'); }
-  D.add(-27, -20, -27, 0, -19, 0, 'grid'); for (const [x, z, m] of [[-24, -24, 'containerr'], [-24, -12, 'containerb'], [-12, -24, 'containerg']]) D.add(x, -19, z, x + 6, -16.4, z + 2.5, m);
-  D.box(38, -9, 20, 2, 18, 2, 'hazard'); D.add(36, 0, 19, 70, 1.2, 21, 'hazard'); D.box(67, -8, 20, 0.2, 16, 0.2, 'metal'); // the crane, a hook hanging
-  D.add(44, -3, -2, 78, -1.6, 2, 'metal'); D.add(76, -1.6, -1.4, 79, 3, 1.4, 'rust'); D.add(76.4, 3, -1, 78.6, 6.5, 1, 'neonyellow'); D.add(76.9, 6.5, -0.5, 78.1, 8.6, 0.5, 'neonred'); // the flare
-  for (const [x, z] of [[-520, -360], [610, 240], [-200, 640]]) { for (const sx of [-1, 1]) for (const sz of [-1, 1]) D.box(x + sx * 14, -28, z + sz * 14, 4, 50, 4, 'rust'); D.add(x - 22, -3, z - 22, x + 22, 0, z + 22, 'grid'); D.box(x + 18, 6, z, 2, 12, 2, 'neonyellow'); } // the other rigs
-  D.add(260, -53.6, -120, 330, -47, -104, 'toyred'); D.add(306, -47, -118, 324, -40, -106, 'white'); D.add(307, -44, -118.1, 323, -42, -105.9, 'glass'); // a ship going past
-  for (const [x, z, al, ad] of [[0, -50, 'x', 'adcity2'], [0, 50, 'x', 'adcity4'], [-50, 0, 'z', 'adcity1'], [50, 0, 'z', 'adcity6']]) adBoard(D, x, z, -14, al, ad, 30, 12);
-  return { name: 'Platform', size: 'small', boxes: B.boxes, deco: D.boxes, killY: -50, floorY: -53,
-    sky: { top: 0x5a6070, mid: 0xb8bcc8, bot: 0x2a2c33, fog: 0xb8bcc8 }, fogNear: 80, fogFar: 320,
-    spawns: [[-35, 0.1, -35], [35, 0.1, 35], [-35, 0.1, 35], [35, 0.1, -35], [0, 0.1, -35], [0, 0.1, 35], [-35, 0.1, 0], [35, 0.1, 0]] };
+  const B = builder(), D = builder(), r = rng(7777), add = B.add, st = [];
+  // ---- the sea, the far rigs, a tanker going by
+  D.add(-420, RIG.SEA - 0.1, -420, 420, RIG.SEA, 420, 'seanorth');
+  farRig(D, -420, -300); farRig(D, 520, 220, 0.8); farRig(D, -160, 540, 1.1);
+  D.add(250, RIG.SEA - 2, -230, 405, RIG.SEA + 8, -200, 'rigred'); D.add(370, RIG.SEA + 8, -226, 400, RIG.SEA + 22, -204, 'rigwhite'); D.add(385, RIG.SEA + 22, -218, 388, RIG.SEA + 32, -214, 'metal');
+
+  // ---- the main deck (0): holes for the three stairs down, rails round its edge (open where the flare boom goes off)
+  const holes = [[15.1, -21.2, 16.9, -13], [-12.2, 13, -10.4, 21.2], [5.4, 13, 7.2, 21.2]];
+  groundHoles(B, -36, -26, 36, 26, -0.5, 0, 'deckplate', holes);
+  railBox(B, D, -36, -26, 36, 26, 0, { w: [[21.2, 22.8]] });
+  railBox(B, D, 14.95, -21.25, 17.05, -13, 0, { s: [[14.9, 17.1]] }); railBox(B, D, -12.25, 13, -10.35, 21.25, 0, { n: [[-12.3, -10.3]] }); railBox(B, D, 5.35, 13, 7.25, 21.25, 0, { n: [[5.3, 7.3]] });
+  for (let x = -30; x <= 30; x += 12) for (const z of [-18, -6, 6, 18]) D.add(x - 0.4, -0.6, z - 0.15, x + 0.4, -0.5, z + 0.15, 'lamp'); // lights under it, over the cellar deck
+
+  // ---- the cellar deck (-7.2): open grating, the wellbay slot (railed: the sea's down there), the christmas trees, the
+  // pig launcher, pumps, the jacket's columns up to the main deck
+  groundHoles(B, -34, -24, 34, 24, RIG.CD - 0.4, RIG.CD, 'grating', [[-6, -1, 6, 1]]);
+  railBox(B, D, -34, -24, 34, 24, RIG.CD, { s: [[-8.5, -6.9]] });
+  railBox(B, D, -6.1, -1.1, 6.1, 1.1, RIG.CD);
+  D.add(-2, RIG.CD + 0.6, -1.16, 2, RIG.CD + 0.95, -1.1, 'addeep', { fit: 1 }); D.add(-2, RIG.CD + 0.6, 1.1, 2, RIG.CD + 0.95, 1.16, 'addeep', { fit: 1 });
+  for (const x of [-5, -3, -1, 1, 3, 5]) D.add(x - 0.25, -34, -0.25, x + 0.25, RIG.CD - 0.4, 0.25, 'rigsteel'); // the conductors, down to the seabed
+  for (const x of [-4.5, 0, 4.5]) for (const z of [-2.7, 2.7]) xmasTree(B, D, x, z, RIG.CD, r);
+  D.add(8, RIG.CD, -0.3, 8.1, RIG.CD + 1.8, 0.3, 'metal'); D.add(8.1, RIG.CD + 1.0, -1.6, 8.16, RIG.CD + 1.8, 1.6, 'adxmas', { fit: 1 });
+  add(8, RIG.CD, -16, 18, RIG.CD + 1.0, -15, 'rigsteel'); D.add(18, RIG.CD + 0.05, -16.1, 18.15, RIG.CD + 0.95, -14.9, 'rigyellow'); D.add(12, RIG.CD + 1.2, -15.04, 15.5, RIG.CD + 1.9, -14.98, 'adpig', { fit: 1 }); D.add(12.5, RIG.CD + 1.0, -15.1, 12.6, RIG.CD + 1.2, -15.0, 'metal'); D.add(15, RIG.CD + 1.0, -15.1, 15.1, RIG.CD + 1.2, -15.0, 'metal');
+  add(-22, RIG.CD, -18, -18, RIG.CD + 1.6, -15.5, 'rigblue'); add(18, RIG.CD, 15.5, 22, RIG.CD + 1.6, 18, 'rigblue'); add(-26, RIG.CD, 10, -23, RIG.CD + 2.2, 13, 'rigblue'); // pumps
+  for (const x of [-30, 0, 30]) for (const z of [-20, 20]) add(x - 0.8, RIG.CD, z - 0.8, x + 0.8, -0.5, z + 0.8, 'rigyellow'); // the columns
+  jacket(D, [-30, 0, 30], [-20, 20]);
+
+  // ---- the stairs down to the cellar deck (north-east, south-west, south middle)
+  st.push(rigStair(B, D, false, -21, -13, 15.3, 16.7, RIG.CD, 0));
+  st.push(rigStair(B, D, false, 21, 13, -12, -10.6, RIG.CD, 0));
+  st.push(rigStair(B, D, false, 21, 13, 5.6, 7.0, RIG.CD, 0));
+
+  // ---- the drilling side (west), the living quarters and helideck (east)
+  drillSide(B, D, 0, 0, st);
+  livingQuarters(B, D, 0, 0, st);
+
+  // ---- the process deck: the pipe rack (its walkway joins the LQ's 1st floor), the separators, the compressor house
+  pipeRack(B, D, -2, 18, 0, [4, 5.6]);
+  st.push(rigStair(B, D, false, 6.5, 1.7, 4.0, 5.6, 0, RIG.M1)); add(4.0, RIG.M1 - 0.3, 1.1, 5.6, RIG.M1, 1.7, 'grating');
+  rail(B, D, false, -1.1, 1.1, -1.95, RIG.M1);
+  separator(B, D, 0, 14, -10); separator(B, D, 0, 14, 10);
+  compressorHouse(B, D, 0);
+
+  // ---- the cranes: north-west on its boom rest on the compressor house (grapple up to the cab, walk out on the boom),
+  // south-east swung out over the boat
+  pedCrane(B, D, -28, -20, true, 34, { rest: [4, 5, -20] });
+  pedCrane(B, D, 13, 21, false, 22);
+
+  // ---- the laydown deck (south): containers (a crate up onto them), cargo baskets, gas bottles
+  add(-8, 0, 15.5, 4, 2.6, 18, 'containerr'); add(-8, 2.6, 15.5, 4, 5.2, 18, 'containerb'); add(-8, 0, 20.5, 4, 2.6, 23, 'containerg');
+  B.box(-9.4, 0.6, 19.2, 1.2, 1.2, 1.2, 'crate'); B.box(-6, 3.2, 21.7, 1.2, 1.2, 1.2, 'crate');
+  for (const [x, z] of [[8.5, 15.0], [8.5, 18.6]]) { add(x, 0, z, x + 2.6, 0.9, z + 2, 'rigred'); D.add(x + 0.3, 0.9, z + 0.3, x + 1.2, 1.4, z + 1.7, 'pipe'); }
+  add(-1, 0, 24.2, 3, 0.4, 25.6, 'rigyellow'); for (let x = -0.7; x < 2.8; x += 0.5) D.add(x, 0.4, 24.5, x + 0.36, 1.9, 24.86, 'toygreen');
+  // the pipe deck (between the drill floor and the rack): drill pipe stacked either side of the V-door ramp
+  for (const z0 of [-7.5, 4]) { add(-12.5, 0, z0, -5, 0.5, z0 + 3.5, 'pipe'); add(-12, 0.5, z0 + 0.3, -5.5, 0.95, z0 + 3.2, 'pipe'); }
+
+  // ---- the flare boom (out west from the south-west corner): a catwalk up to the tip, the flare on fire
+  rigStair(B, D, true, -36, -62, 21.3, 22.7, 0, 11.7, { thin: true }); // (not on the bots' map: the tip isn't one of their floors)
+  for (let k = 0; k < 4; k++) D.add(-36 - 6.5 * (k + 1), 2.925 * k - 1.8, 21.4, -36 - 6.5 * k, 2.925 * k - 0.35, 22.6, 'truss');
+  add(-66, 11.4, 20, -62, 11.7, 24, 'grating');
+  rail(B, D, true, -66, -62, 20.05, 11.7); rail(B, D, true, -66, -62, 23.95, 11.7); rail(B, D, false, 20.1, 23.9, -65.95, 11.7);
+  rail(B, D, false, 20.1, 21.25, -62.05, 11.7); rail(B, D, false, 22.75, 23.9, -62.05, 11.7);
+  add(-65, 11.7, 21.5, -64, 15.5, 22.5, 'rigred');
+  D.add(-65.6, 15.5, 21, -63.4, 17.8, 23, 'flame'); D.add(-65.1, 17.8, 21.5, -63.9, 20.2, 22.5, 'flame'); D.add(-64.75, 20.2, 21.85, -64.25, 21.6, 22.15, 'flame');
+  D.add(-66, 16, 21.6, -65.6, 17.2, 22.4, 'flame'); D.add(-63.4, 16.4, 21.4, -63, 17.4, 22, 'flame');
+  D.add(-65.5, 12.2, 24.0, -62.5, 12.6, 24.06, 'adflare', { fit: 1 });
+
+  // ---- THE SNACK RUN alongside (south), the boat landing and its stair
+  snackRun(B, D, 0, 0, st, r);
+
+  // ---- spawns: the galley vs under the drill floor (TDM); everywhere for the rest
+  const att = [[21, 0.25, -6], [21, 0.25, 6], [25, 0.25, -11.5], [25, 0.25, 11.5], [29.5, 0.25, -6.5], [29.5, 0.25, 6.5], [25, 0.25, 0]];
+  const def = [[-30, 0.1, -5], [-30, 0.1, 5], [-27, 0.1, -7.5], [-27, 0.1, 7.5], [-20, 0.1, -3], [-20, 0.1, 3], [-16.5, 0.1, 0]];
+  const spawns = [...att.slice(0, 3), ...def.slice(0, 3), [-20, RIG.CD + 0.1, -12], [20, RIG.CD + 0.1, 12], [-22, RIG.CD + 0.1, 12], [12, RIG.CD + 0.1, -8],
+    [-8, 0.1, -20], [8, 0.1, 5], [-10, 0.1, 12], [26, 0.1, -23], [-4, 0.1, 19], [-29, RIG.M2 + 0.1, -7], [-18, RIG.M2 + 0.1, 2], [24, RIG.M1 + 0.1, 4],
+    [23, RIG.M2 + 0.1, -6], [40, RIG.M3 + 0.1, -6], [-15, RIG.BOAT + 0.1, 32.5], [10, RIG.BOAT + 0.1, 41]];
+  let graph = null;
+  return { name: 'Platform', size: 'medium', boxes: B.boxes, deco: D.boxes, killY: -30, floorY: -15.5,
+    sky: { top: 0x4a5a78, mid: 0xb4c2d0, bot: 0x2c3846, fog: 0xb4c2d0 }, fogNear: 90, fogFar: 360,
+    spawns, teamSpawns: { att, def }, edgeGuard: true, sea: true,
+    get graph() { return graph || (graph = buildNav(B.boxes, { x0: -67, z0: -45, n: 122, cell: 1, levels: [RIG.BOAT, RIG.CD, 0, RIG.M1, RIG.M2, RIG.M3], band: 0.6, stairs: st })); },
+  };
+}
+
+// a bridge along z (z0..z1) at deck level y, x0..x1 wide: grating, a bundle of pipe down each side (cover up to the
+// waist), rails on them, a lattice frame and roof, junction boxes now and then (cover down its length), legs into the sea
+function trussBridge(B, D, x0, x1, z0, z1, y) {
+  B.add(x0, y - 0.4, z0, x1, y, z1, 'grating');
+  B.add(x0, y, z0, x0 + 0.7, y + 0.8, z1, 'pipe'); B.add(x1 - 0.7, y, z0, x1, y + 0.8, z1, 'pipe');
+  rail(B, D, false, z0, z1, x0 + 0.15, y + 0.8); rail(B, D, false, z0, z1, x1 - 0.15, y + 0.8);
+  D.add(x0, y + 0.8, z0, x0 + 0.06, y + 3.2, z1, 'truss'); D.add(x1 - 0.06, y + 0.8, z0, x1, y + 3.2, z1, 'truss'); D.add(x0, y + 3.2, z0, x1, y + 3.3, z1, 'truss');
+  for (let z = z0 + 4, k = 0; z < z1 - 3; z += 8, k++) B.box(k % 2 ? x1 - 1.25 : x0 + 1.25, y + 0.55, z, 0.9, 1.1, 1.2, 'rigblue');
+  for (let z = z0 + 6; z < z1 - 4; z += 12) D.add(x0 + 0.6, -40, z - 0.8, x1 - 0.6, y - 0.4, z + 0.8, 'truss');
+}
+// a pipe bridge along z (z0..z1) at y: grating between two big pipes (cover), rails on them, a lattice under it, valve
+// boxes now and then, legs into the sea
+function pipeBridge(B, D, x0, x1, z0, z1, y) {
+  B.add(x0, y - 0.4, z0, x1, y, z1, 'grating');
+  B.add(x0, y, z0, x0 + 0.9, y + 1.0, z1, 'pipe'); B.add(x1 - 0.9, y, z0, x1, y + 1.0, z1, 'rigyellow');
+  rail(B, D, false, z0, z1, x0 + 0.15, y + 1.0); rail(B, D, false, z0, z1, x1 - 0.15, y + 1.0);
+  D.add(x0 + 0.3, y - 2.6, z0, x1 - 0.3, y - 0.4, z1, 'truss');
+  for (let z = z0 + 7; z < z1 - 4; z += 12) D.add(x0 + 0.6, -40, z - 0.8, x1 - 0.6, y - 2.6, z + 0.8, 'truss');
+  for (let z = z0 + 5, k = 0; z < z1 - 3; z += 9, k++) B.box(k % 2 ? x1 - 1.4 : x0 + 1.4, y + 0.6, z, 1.0, 1.2, 1.0, 'rigred');
+}
+
+// ------------------------------------------------------------ PLATFORM S&D: the Snack Attack (Plant & Defuse). GLUG OIL's
+// crew (defenders) hold the rig (north) from its living quarters; SLURP OIL's raiders (attackers) came over on THE SNACK RUN
+// to the riser platform (south). between them the bridge support platform; the west bridge at deck level and the east pipe
+// bridge a deck lower join all three, and THE TOAD (a personnel basket on a spring: very safe) flings you from the middle
+// onto the rig's laydown deck. A is the drill floor up under the derrick (west), B the wellbay in the cellar deck among the
+// christmas trees (east). the rig's modules stand between the spawns
+function platformSD() {
+  const B = builder(), D = builder(), r = rng(7878), add = B.add, st = [], dz = -44, CD = RIG.CD;
+  D.add(-420, RIG.SEA - 0.1, -420, 420, RIG.SEA, 420, 'seanorth');
+  farRig(D, -420, -300); farRig(D, 520, 220, 0.8); farRig(D, -300, 460, 1.1);
+
+  // ---- the rig (north, x -36..36, z -70..-22): the main deck (holes for the stairs down), its cellar deck (the wellbay)
+  groundHoles(B, -36, -70, 36, -22, -0.5, 0, 'deckplate', [[15.1, -65.2, 16.9, -57], [-12.2, -35.2, -10.4, -27]]);
+  railBox(B, D, -36, -70, 36, -22, 0, { s: [[-20.1, -15.9]] });
+  railBox(B, D, 14.95, -65.25, 17.05, -57, 0, { s: [[14.9, 17.1]] }); railBox(B, D, -12.25, -35.25, -10.35, -27, 0, { s: [[-12.3, -10.3]] });
+  for (let x = -30; x <= 30; x += 12) for (const z of [-62, -50, -38, -28]) D.add(x - 0.4, -0.6, z - 0.15, x + 0.4, -0.5, z + 0.15, 'lamp');
+  groundHoles(B, -34, -68, 34, -24, CD - 0.4, CD, 'grating', [[4, -51, 16, -50]]);
+  railBox(B, D, -34, -68, 34, -24, CD, { s: [[13.9, 18.1]] });
+  railBox(B, D, 3.9, -51.1, 16.1, -49.9, CD);
+  D.add(8, CD + 0.6, -51.16, 12, CD + 0.95, -51.1, 'addeep', { fit: 1 }); D.add(8, CD + 0.6, -49.9, 12, CD + 0.95, -49.84, 'addeep', { fit: 1 });
+  for (const x of [5, 7, 9, 11, 13, 15]) D.add(x - 0.25, -34, -50.75, x + 0.25, CD - 0.4, -50.25, 'rigsteel');
+  for (const x of [5, 10, 15]) for (const z of [-52.7, -48.3]) xmasTree(B, D, x, z, CD, r);
+  D.add(1, CD, -50.3, 1.1, CD + 1.8, -49.7, 'metal'); D.add(1.1, CD + 1.0, -51.6, 1.16, CD + 1.8, -48.4, 'adxmas', { fit: 1 });
+  for (const [x, z] of [[3.5, -42.5], [15.5, -40.8], [16.3, -41.9]]) B.box(x, CD + 0.6, z, 1.2, 1.2, 1.2, 'crate'); B.box(6.5, CD + 0.8, -44.2, 1.6, 1.6, 1.6, 'wood'); // B's cover
+  add(19, CD, -45, 22.5, CD + 1.6, -42.5, 'rigblue'); add(-22, CD, -62, -18, CD + 1.6, -59.5, 'rigblue'); add(20, CD, -61, 23, CD + 2.2, -58, 'rigblue'); add(-26, CD, -34, -23, CD + 2.2, -31, 'rigblue'); // pumps
+  siteBoard(D, 6, CD + 2.6, -38.92, 'x', 'siteb', 2.8); siteBoard(D, 18.2, CD + 2.6, -47, 'z', 'siteb', 2.4);
+  for (const x of [-30, 0, 30]) for (const z of [-66, -26]) add(x - 0.8, CD, z - 0.8, x + 0.8, -0.5, z + 0.8, 'rigyellow');
+  jacket(D, [-30, 0, 30], [-66, -26]);
+  st.push(rigStair(B, D, false, -65, -57, 15.3, 16.7, CD, 0)); // the crew's way down to B (north)
+  st.push(rigStair(B, D, false, -35, -27, -12, -10.6, CD, 0)); // and the raiders' (south-west, off the laydown deck)
+
+  // ---- on the rig: the drilling side (A), the living quarters (the crew's spawn) and helideck, the pipe rack, a
+  // separator, the compressor house, the crane on its rest; the laydown deck (south) where the bridge and THE TOAD come in
+  drillSide(B, D, 0, dz, st);
+  siteBoard(D, -24, RIG.M2 + 1.2, -39.9, 'x', 'sitea', 3); siteBoard(D, -19.9, RIG.M2 + 1.2, -44, 'z', 'sitea', 2.4);
+  livingQuarters(B, D, 0, dz, st);
+  pipeRack(B, D, -2, 18, dz, [4, 5.6]);
+  st.push(rigStair(B, D, false, -37.5, -42.3, 4.0, 5.6, 0, RIG.M1)); add(4.0, RIG.M1 - 0.3, -42.9, 5.6, RIG.M1, -42.3, 'grating');
+  rail(B, D, false, -45.1, -42.9, -1.95, RIG.M1);
+  separator(B, D, 0, 14, -54);
+  compressorHouse(B, D, dz);
+  pedCrane(B, D, -28, -64, true, 34, { rest: [4, 5, -64] });
+  add(-9, 0, -27.5, -1, 2.6, -25, 'containerr'); B.box(-0.4, 0.6, -24.3, 1.2, 1.2, 1.2, 'crate');
+  add(18, 0, -27, 30, 2.6, -24.5, 'containerb'); add(20, 2.6, -27, 26, 5.2, -24.5, 'containerg');
+  for (const [x, z] of [[13, -33], [-5, -33.5]]) B.box(x, 0.8, z, 1.6, 1.6, 1.6, 'wood'); // cable drums
+  D.add(-30, 0, -56.1, -29.9, 7, -56, 'metal'); D.add(-29.9, 5, -56.1, -27.4, 6.6, -56.04, 'flagglug');
+
+  // ---- the west bridge (deck level, x -20..-16) and the east pipe bridge (the cellar deck's level, x 14..18), each in two
+  // spans: the rig to the middle, the middle to the riser platform
+  trussBridge(B, D, -20, -16, -22, 0, 0); trussBridge(B, D, -20, -16, 18, 38, 0);
+  pipeBridge(B, D, 14, 18, -24, 2, CD); pipeBridge(B, D, 14, 18, 16, 40, CD);
+
+  // ---- the bridge support platform (the middle, x -22..22, z 0..18): a deck at each level, a stair down each side, a
+  // junction hut, cable drums, THE TOAD on its north edge
+  groundHoles(B, -22, 0, 22, 18, -0.5, 0, 'deckplate', [[-14.2, 5, -12.4, 13.2], [10.2, 5, 12, 13.2]]);
+  railBox(B, D, -22, 0, 22, 18, 0, { n: [[-20.1, -15.9]], s: [[-20.1, -15.9]] });
+  railBox(B, D, -14.25, 5, -12.35, 13.25, 0, { n: [[-14.3, -12.3]] }); railBox(B, D, 10.15, 5, 12.05, 13.25, 0, { n: [[10.1, 12.1]] });
+  add(-20, CD - 0.4, 2, 20, CD, 16, 'grating'); railBox(B, D, -20, 2, 20, 16, CD, { n: [[13.9, 18.1]], s: [[13.9, 18.1]] });
+  st.push(rigStair(B, D, false, 13, 5, -14, -12.6, CD, 0)); st.push(rigStair(B, D, false, 13, 5, 10.4, 11.8, CD, 0));
+  for (const x of [-20, 0, 20]) for (const z of [3, 15]) add(x - 0.8, CD, z - 0.8, x + 0.8, -0.5, z + 0.8, 'rigyellow');
+  jacket(D, [-20, 0, 20], [3, 15]);
+  add(-6, 0, 7, 2, 3, 12, 'rigblue'); D.add(-6, 3, 7, 2, 3.25, 12, 'rigsteel'); D.add(-3, 1.2, 6.94, -0.6, 2.4, 7, 'adtoad', { fit: 1 }); // the junction hut
+  B.box(8, 0.8, 4.2, 1.6, 1.6, 1.6, 'wood'); B.box(-10, 0.8, 15.6, 1.6, 1.6, 1.6, 'wood'); B.box(4, 0.6, 15.8, 1.2, 1.2, 1.2, 'crate');
+  add(4, 0, 0.6, 8, 0.15, 2.6, 'pad', { pad: [0, 20.5, -19.5] }); // THE TOAD: over the gap onto the laydown deck
+  for (const [x0, z0, x1, z1] of [[3.8, 0.4, 8.2, 0.6], [3.8, 2.6, 8.2, 2.8], [3.8, 0.6, 4, 2.6], [8, 0.6, 8.2, 2.6]]) D.add(x0, 0, z0, x1, 0.5, z1, 'lifeboat'); // its basket's ring
+  D.add(8.6, 0, 2.2, 8.7, 1.6, 2.3, 'metal'); D.add(8.7, 1.0, 1.2, 8.76, 1.6, 3.4, 'adtoad', { fit: 1 });
+
+  // ---- the riser platform (south, x -24..24, z 38..70): the raiders' spawn behind the riser module, a stair down each
+  // side to its cellar deck (the east one to the pipe bridge), SLURP OIL's banner, their snacks; THE SNACK RUN alongside
+  groundHoles(B, -24, 38, 24, 70, -0.5, 0, 'deckplate', [[-15.6, 42.8, -13.8, 51], [13.8, 42.8, 15.6, 51]]);
+  railBox(B, D, -24, 38, 24, 70, 0, { n: [[-20.1, -15.9]] });
+  railBox(B, D, -15.65, 42.75, -13.75, 51, 0, { s: [[-15.7, -13.7]] }); railBox(B, D, 13.75, 42.75, 15.65, 51, 0, { s: [[13.7, 15.7]] });
+  add(-22, CD - 0.4, 40, 22, CD, 68, 'grating'); railBox(B, D, -22, 40, 22, 68, CD, { n: [[13.9, 18.1]], s: [[-8.5, -6.9]] });
+  st.push(rigStair(B, D, false, 43, 51, -15.4, -14, CD, 0)); st.push(rigStair(B, D, false, 43, 51, 14, 15.4, CD, 0));
+  for (const x of [-20, 0, 20]) for (const z of [44, 64]) add(x - 0.8, CD, z - 0.8, x + 0.8, -0.5, z + 0.8, 'rigyellow');
+  jacket(D, [-20, 0, 20], [44, 64]);
+  add(-10, 0, 42, 10, 5.4, 48, 'rigblue'); D.add(-10, 5.4, 42, 10, 5.6, 48, 'rigsteel'); // the riser module
+  for (const x of [-8, -4, 0, 4, 8]) D.add(x - 0.3, -40, 41.6, x + 0.3, 4.6, 42, 'pipe'); // its risers, down to the seabed
+  D.add(-6, 2.2, 48.0, 6, 5.0, 48.06, 'adslurp', { fit: 1 });
+  D.add(-22, 0, 66.9, -21.9, 7, 67, 'metal'); D.add(-21.9, 5, 66.9, -19.4, 6.6, 66.96, 'flagslurp');
+  add(-21, 0, 54, -18.5, 2.6, 62, 'pink'); D.add(-18.5, 0.7, 55.5, -18.44, 1.9, 60.5, 'adsnacks', { fit: 1 }); add(18.5, 0, 56, 21, 2.6, 64, 'pink'); D.add(18.44, 0.7, 57.5, 18.5, 1.9, 62.5, 'adsnacks', { fit: 1 });
+  for (let x = -20; x <= 20; x += 10) for (const z of [46, 58]) D.add(x - 0.4, -0.6, z - 0.15, x + 0.4, -0.5, z + 0.15, 'lamp');
+  snackRun(B, D, 0, 44, st, r);
+
+  // ---- spawns, the ways in (for the bots), the sites
+  const att = [[-12, 0.1, 56], [-6, 0.1, 60], [0, 0.1, 57], [6, 0.1, 60], [12, 0.1, 56], [-3, 0.1, 65], [3, 0.1, 65]];
+  const def = [[21, 0.25, -50], [21, 0.25, -38], [25, 0.25, -55.5], [25, 0.25, -32.5], [29.5, 0.25, -50.5], [29.5, 0.25, -37.5], [25, 0.25, -44]];
+  const spawns = [...att.slice(0, 3), ...def.slice(0, 3), [-10, 0.1, 10], [10, CD + 0.1, 9], [-26, 0.1, -28], [8, CD + 0.1, -32], [-24, RIG.M2 + 0.1, -36]];
+  let graph = null;
+  return { name: 'Platform', size: 'medium', boxes: B.boxes, deco: D.boxes, killY: -30, floorY: -15.5,
+    sky: { top: 0x4a5a78, mid: 0xb4c2d0, bot: 0x2c3846, fog: 0xb4c2d0 }, fogNear: 100, fogFar: 380,
+    spawns, teamSpawns: { att, def }, edgeGuard: true, sea: true,
+    nav: {
+      A: [
+        [[-6, 60], [-14, 54], [-18, 46], [-18, 36], [-18, 24], [-18, 9], [-18, -6], [-18, -20], [-24, -24], [-30.3, -24.7], [-30.3, -34.7, RIG.M2], [-26, -37, RIG.M2]], // the west bridge, up the drill floor's south stair
+        [[0, 60], [-14, 54], [-18, 46], [-18, 24], [-18, 9], [-18, -6], [-18, -20], [-10, -24], [-2.7, -32], [-2.7, -44], [-14.7, -44, RIG.M2], [-18, -40, RIG.M2]], // the west bridge, the pipe deck, the V-door ramp
+        [[4, 62], [14.7, 51.7], [14.7, 41.7, CD], [16, 36, CD], [16, 25, CD], [16, 12, CD], [11.1, 14.3, CD], [11.1, 4.3], [-8, 4], [-18, 1], [-18, -12], [-18, -20], [-10, -24], [-2.7, -32], [-2.7, -44], [-14.7, -44, RIG.M2], [-18, -40, RIG.M2]], // the pipe bridge, up through the middle, the west bridge
+        [[24, -54], [17, -54], [13.5, -57.3], [0, -57.3], [-8, -58], [-16.3, -63.3], [-16.3, -53.3, RIG.M2], [-20, -50, RIG.M2]], // the crew: out the west door, the drill floor's north stair
+      ],
+      B: [
+        [[6, 60], [12, 54], [14.7, 51.7], [14.7, 41.7, CD], [16, 36, CD], [16, 25, CD], [16, 9, CD], [16, -4, CD], [16, -14.5, CD], [14, -28, CD], [10, -44, CD]], // the pipe bridge all the way
+        [[-6, 62], [-14, 54], [-18, 46], [-18, 24], [-18, 9], [-18, -6], [-18, -20], [-14, -24], [-11.3, -26.3], [-11.3, -36.3, CD], [-2, -42, CD], [8, -45, CD]], // the west bridge, down off the laydown deck, along the cellar deck
+        [[-2, 62], [-14, 54], [-18, 46], [-18, 30], [-18, 20], [-8, 4], [9, 4.5], [11.1, 4.3], [11.1, 14.3, CD], [16, 12, CD], [16, 2, CD], [16, -4, CD], [16, -14.5, CD], [14, -28, CD], [10, -44, CD]], // the west bridge to the middle, down, the pipe bridge
+        [[24, -44], [17, -54], [16, -56.3], [16, -66.3, CD], [18, -58, CD], [18, -50, CD], [12, -46, CD]], // the crew: out the west door, down the north stair
+      ],
+    },
+    sites: [{ id: 'A', min: [-33, RIG.M2, -53], max: [-15, RIG.M2, -35] }, { id: 'B', min: [2, CD, -53], max: [18, CD, -39] }],
+    get graph() { return graph || (graph = buildNav(B.boxes, { x0: -40, z0: -72, n: 162, cell: 1, levels: [RIG.BOAT, CD, 0, RIG.M1, RIG.M2, RIG.M3], band: 0.6, stairs: st })); },
+  };
 }
 
 // ------------------------------------------------------------ the roof kit (Rooftop, Rooftop S&D)
@@ -4428,7 +4892,7 @@ function deadmall() {
 }
 
 export const MAPS = {
-  crate: crate(), platform: platform(), rooftop: rooftop(), rooftop_sd: rooftopSD(), suburb: suburb(), suburb_sd: suburbSD(), warehouse: warehouse(), warehouse_sd: warehouseSD(),
+  crate: crate(), platform: platform(), platform_sd: platformSD(), rooftop: rooftop(), rooftop_sd: rooftopSD(), suburb: suburb(), suburb_sd: suburbSD(), warehouse: warehouse(), warehouse_sd: warehouseSD(),
   desert: desert(), desert_sd: desertSD(), islands: islands(), islands_sd: islandsSD(), skyline: skyline(), skyline_sd: skylineSD(), bazaar: bazaar(), bazaar_sd: bazaarSD(), range: range(), backrooms: backrooms(), forest: forest(),
   deadmall: deadmall(),
 };
