@@ -112,7 +112,11 @@ function lungPad(B, x, z, s = 1) {
 // Clocking In: the old time office (punch clocks on the wall), a plaza with lungs to bounce over his slams
 function arena(B) {
   const [x0, z0, x1, z1] = SLICE.arena.rect, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-  B.add(x0, GY - 0.02, z0, x1, GY + 0.05, z1, 'tile', { nc: true, tint: 0xc8c0b0 });
+  B.add(x0, GY - 0.02, z0, x1, GY + 0.05, z1, 'teeth', { nc: true, tint: 0xf0e4d0 });
+  // ribs over the plaza (it's a ribcage now), mounds round the edge, the old time-office's queue rails
+  for (const az of [z0 + 18, z1 - 16]) if (B.inside(cx, az)) { B.prop('ribarch', cx, GY, az, 0, 1.5, 0); B.add(cx - 13, GY, az - 1.2, cx - 10.5, GY + 9, az + 1.2, 'bone', { hide: true }); B.add(cx + 10.5, GY, az - 1.2, cx + 13, GY + 9, az + 1.2, 'bone', { hide: true }); }
+  for (const [mx, mz] of [[x0 + 4, cz], [x1 - 4, cz - 8], [x0 + 26, z1 - 4], [x1 - 26, z0 + 22]]) if (B.inside(mx, mz)) B.prop(mx < cx ? 'fleshblob_a' : 'fleshblob_b', mx, GY, mz, mx < cx ? 0.5 : -0.5, 1.6, 0);
+  for (let x = x0 + 14; x < x1 - 14; x += 6) if (B.inside(x, z0 + 6)) B.add(x, GY, z0 + 5.9, x + 4, GY + 1.0, z0 + 6.1, 'metal', { nc: true, tint: 0xd0c8b8 });
   // the time office along the north side, its front a wall of punch clocks (glow faces)
   B.add(x0 + 10, GY, z0 - 14, x1 - 10, GY + 14, z0, 'concrete', { tint: 0xd8d4cc });
   for (let x = x0 + 12; x < x1 - 12; x += 3) B.add(x, GY + 2, z0 + 0.01, x + 1.6, GY + 3.6, z0 + 0.05, 'window', { nc: true, tint: 0xfff0c0 });
@@ -174,7 +178,7 @@ export function gut(B, d) {
     B.add(x, GY, z, x + w, GY + 0.05, z + d0, 'bile', { nc: true, tint: 0xb8ff4a });
     if (i < 2) B.light(x + w / 2, GY + 0.6, z + d0 / 2, 0xa6e22e, 6, 0.6);
   }
-  if (r() < 0.5) { const mx = X0 + 10 + r() * (X1 - X0 - 20), mz = Z0 + 10 + r() * (Z1 - Z0 - 20); if (stomachD(mx, mz) > S.r + 30) B.shape({ kind: 'blob', c: [mx, GY + 26 + r() * 8, mz], r: [18 + r() * 10, 2.2, 14 + r() * 8], seg: 14, mat: 'flesh', tint: 0xc85070, pulse: 7 }); }
+
   // streets: tooth cobbles (texture) with real teeth scattered at the edges, eyes in the gutters, heart lamps
   for (let x = Math.floor(X0 / 2) * 2; x < X1; x += 2) for (let z = Math.floor(Z0 / 2) * 2; z < Z1; z += 2) {
     const s = streetAt(x + 1, z + 1);

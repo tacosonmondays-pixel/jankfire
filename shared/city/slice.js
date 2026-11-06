@@ -76,7 +76,7 @@ registerCity('slice', {
   name: 'OVERDUE slice', cx0: -5, cz0: -4, cx1: 5, cz1: 4,
   spawn: [-189, 8.4, 196],
   horizon: 'horizon',
-  ringScale: { near: 0.72, props: 0.8 }, // the slice is dense: full detail a bit closer in, lod1 (one box per house) past it
+  ringScale: { near: 0.62, props: 0.75 }, // the slice is dense: full detail a bit closer in, lod1 (one box per house) past it
   districts: [
     // order matters: the first rect that holds a point is its district (districtAt)
     { id: 'border', name: 'The Gut Border', rect: SLICE.border.rect, gen: 'border', margin: 40,

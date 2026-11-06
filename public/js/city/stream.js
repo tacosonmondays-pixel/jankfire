@@ -135,7 +135,11 @@ export class CityStream {
     for (const r of this.chunks.values()) {
       const live = r.used === this.time, ring = live ? r.ring : 9;
       const showNear = ring === 1 && r.m0, showMid = (ring === 2 && r.m1) || (ring === 1 && !r.m0 && r.m1) || (ring === 2 && !r.m1 && r.m0);
-      if (r.m0) r.m0.visible = !!showNear || (ring === 2 && !r.m1);
+      if (r.m0) {
+        r.m0.visible = !!showNear || (ring === 2 && !r.m1);
+        const cast = r.d < 64; // only the chunks round you cast sun shadows (the shadow pass was half the triangles)
+        if (r.m0.userData.cast !== cast) { r.m0.userData.cast = cast; for (const m of r.m0.children) m.castShadow = cast && m.userData.kind !== 'glass' && m.userData.kind !== 'glow'; }
+      }
       if (r.m1) r.m1.visible = !!showMid && !showNear;
       if (r.m0 && (!live || r.d > R.near + HYST + CHUNK)) { freeGroup(r.m0); r.m0 = null; r.req.mesh0 = false; }
       if (r.m1 && (!live || r.d > R.mid + HYST + CHUNK || ring === 1 && r.m0 && r.d < R.near - CHUNK)) { freeGroup(r.m1); r.m1 = null; r.req.mesh1 = false; }
