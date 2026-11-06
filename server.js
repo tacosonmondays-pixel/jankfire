@@ -93,10 +93,12 @@ function modelList() {
   try { cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'tools/models.json'), 'utf8')); } catch { /* none */ }
   let files = [];
   try { files = fs.readdirSync(path.join(ROOT, 'public/models')).filter((f) => f.endsWith('.glb')); } catch { /* none */ }
+  let ps1 = new Set(); // PS1-look copies (tools/blender/ps1.py), shown with ?models=ps1
+  try { ps1 = new Set(fs.readdirSync(path.join(ROOT, 'public/models/ps1')).filter((f) => f.endsWith('.glb'))); } catch { /* none */ }
   return files.map((f) => {
     const id = f.slice(0, -4);
     const c = cfg.find((x) => x.id === id) || {};
-    return { id, url: '/models/' + f, size: c.size, rot: c.rot };
+    return { id, url: '/models/' + f, size: c.size, rot: c.rot, ...(ps1.has(f) ? { ps1: '/models/ps1/' + f } : {}) };
   });
 }
 

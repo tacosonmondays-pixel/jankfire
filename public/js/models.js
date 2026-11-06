@@ -13,7 +13,7 @@ import { LASSO_MODELS, buildLoopProjectile, lassoLoop, ropeLook } from './lasso_
 import { buildRigMissile } from './rigmodel.js'; // overdrive rig killstreak
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { laserBuild, calculator } from './gearmodels.js'; // the new gear's models (laser pointer, pop quiz calculator)
-import { prepAuthored, authored, AUTHORED, bindAuthored, nodeIn, glossBlade, LAZY, isLazy } from './glbkit.js';
+import { prepAuthored, authored, AUTHORED, bindAuthored, nodeIn, glossBlade, LAZY, isLazy, MODEL_STYLE } from './glbkit.js';
 import { SEC_WB, SEC_HATS, secAuthored } from './secmodels.js'; // water pistol, taser, tv remote, radar gun
 import { laserAuthored } from './laserglb.js'; // a Blender laser pointer's charge hooks (leds, lens, button, charm, orb)
 import { nailgunBuild, tennisBuild, cartCannonBuild, tennisBall, cartModel, nailgunStaple, tennisMachine, cartBasket } from './primmodels.js'; // the new primaries + what they shoot
@@ -55,10 +55,11 @@ export async function loadTripoModels() {
   try { list = await (await fetch('/models/list')).json(); } catch { return 0; }
   if (!list.length) return 0;
   const loader = new GLTFLoader();
-  for (const it of list) if (isLazy(it.id)) LAZY.set(it.id, it.url); // skins: fetched when first shown (glbkit.js)
+  const urlOf = (it) => (MODEL_STYLE === 'ps1' && it.ps1) || it.url; // ?models=ps1: the PS1 copy, where there is one
+  for (const it of list) if (isLazy(it.id)) LAZY.set(it.id, urlOf(it)); // skins: fetched when first shown (glbkit.js)
   list = list.filter((it) => !LAZY.has(it.id));
   await Promise.all(list.map((it) => new Promise((res) => {
-    loader.load(it.url, (gltf) => { if (!prepAuthored(it.id, gltf.scene)) GLB[it.id] = prep(gltf.scene, it); res(); }, undefined, (e) => { console.warn('model failed', it.id, e); res(); });
+    loader.load(urlOf(it), (gltf) => { if (!prepAuthored(it.id, gltf.scene)) GLB[it.id] = prep(gltf.scene, it); res(); }, undefined, (e) => { console.warn('model failed', it.id, e); res(); });
   })));
   return Object.keys(GLB).length + Object.keys(AUTHORED).length;
 }

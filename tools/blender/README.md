@@ -11,6 +11,7 @@ blender -b --python tools/blender/make_ar.py              # glb + sheet (~20 s)
 blender -b --python tools/blender/make_ar.py -- --no-sheet  # glb only (~5 s)
 blender -b --python tools/blender/make_ar.py -- --no-export # sheet only
 tools/blender/make_all.sh                                 # everything, 3 at a time
+blender -b --python tools/blender/ps1.py -- make_car.py --size 256  # a PS1-look copy (test): public/models/ps1/p_car.glb
 ```
 Then check it in the real game (start a server first: `PORT=3100 node server.js`):
 ```
@@ -151,6 +152,11 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
   exported UVs are all zeros (white textures).
 - `uv_planar` right after making an object reads a stale `matrix_world`: call `bpy.context.view_layer.update()` first.
 - `lathe()` caps both ends by default, so a thin ring becomes a solid disc (a lens cover): pass `cap=False` for bands.
+- Baking (ps1.py): this Blender has no denoiser, and with Cycles denoising left on every bake comes back black with no
+  error (`scene.cycles.use_denoising = False`). `uv.pack_islands(margin_method='FRACTION')` collapses every island to a
+  point; 'ADD' works, but the gap shrinks with the packing scale, so parts thinner than a texel still share texels.
+- Boolean cuts can also leave faces with junk material numbers (random, even negative): Blender and the glTF exporter
+  draw those with the last slot, so clamp them to it before reading them in Python.
 - Boolean cuts can leave the new faces on an empty material slot (grey in the sheet): the round-2 gun scripts have a
   small `fixmats()` that hands them the object's own material.
 - Metaballs: positions go through `gv()`, radii are metres too (millimetres made a 70 m blob that hung Blender).
@@ -163,6 +169,8 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 ## How the game uses them
 - `public/js/glbkit.js`: `prepAuthored` takes any glb with `jf` metadata: nearest-filtered textures, the Potato vertex
   snap (`jankify`), a small studio env map for gloss, glows kept through skins. `authored(id)` gives a shared copy.
+- PS1 test (`?models=ps1` or localStorage `jf_models = 'ps1'`): models with a copy in `public/models/ps1/` (made by
+  `ps1.py`, listed by the server as `ps1`) load that instead, as smooth Lambert with no mipmaps; the rest stay glossy.
 - Weapons: `buildWeapon` (models.js) swaps in `w_<id>` (or `w_<skin>` for a skin model) as built (no fitting) and reads
   muzzle/sight/hat/hooks from it. A missing or broken file = the code model, as before. Finishes, wraps, hats and
   effects work on top. Thrown things: `buildProjectile` takes `pj_<skin>` / `pj_<kind>`, `buildPeel` takes `pj_peel`.
