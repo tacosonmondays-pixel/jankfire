@@ -31,4 +31,16 @@ export const ITEMS = {
   sale_agreement: { name: "SALE AGREEMENT", kind: "document", keep: true, desc: "THE BOTTOM (ALL PLOTS, ALL OCCUPANTS). ☺ CORP TO VACANCY HOLDINGS. COMPLETION: ON RE-MERGER. Mr. Deposit's deed stapled to the back." },
   // ---------------------------------------------------------------- act V
   cale_tape: { name: "CALE'S TAPE", kind: "document", keep: true, desc: "A ☺ CORP tape cartridge. Option C, copied in the 60th-floor print room at 17:10 on the Final Quarter. Carried down sixty floors. It never got out of the building. Until now." },
+  // ---------------------------------------------------------------- side quest props
+  auntie_invoice: { name: "AUNTIE'S INVOICE", kind: "document", desc: "Forty pages, in crayon. 'Storage of a man. Wear and tear on the view. Emotional damp.' The total is circled four times." },
+  fridge: { name: "FRIDGE", kind: "quest", desc: "A weight, at Lumps' Gym. It's also a fridge. Don't drop it on the Long Stairs." },
+  lost_property_tag: { name: "LOST PROPERTY", kind: "quest", desc: "Something somebody lost on the last workday, with a name tag in Dale's handwriting." },
+  voice_box: { name: "VOICE BOX", kind: "quest", desc: "From a dead switchboard operator's headset. It still says 'your call is important to us' when you shake it." },
+  family_laundry: { name: "THE FAMILY'S LAUNDRY", kind: "quest", desc: "A basket of the Don's shirts. Every collar has the same grin stain. Keep it crisp." },
+  declined_log: { name: "DECLINED TRANSACTIONS", kind: "document", keep: true, desc: "Big Value's membership-scan log, 17:30 to 17:34 on the Final Quarter. Every card refused at the doors. Eight thousand and forty names." },
+  rule_card: { name: "THE RULE CARD", kind: "document", desc: "'ROUND ALL OUTSTANDING VALUES DOWN BY 0.5 UNTIL THE BOOKS BALANCE.' And under it: 'we hit it. tell the board.'" },
+  fq_letter: { name: "UNDELIVERED LETTER", kind: "quest", desc: "Posted on the Final Quarter. Sixty-one years in a satchel. Still sealed." },
+  corp_tie: { name: "☺ CORP TIE", kind: "quest", desc: "Regulation width. Regulation knot. Regulation sadness." },
+  gary_reports: { name: "244 QUARTERLY REPORTS", kind: "quest", desc: "A crate of reports from the region (a crater). ATTENDANCE: PRESENT. All forty-one." },
+  smiles_kite: { name: "A KITE", kind: "quest", desc: "A ☺ CORP banner, an umbrella and some of Gordo's string. Not scalable. Fun." },
 };

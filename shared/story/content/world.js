@@ -26,7 +26,7 @@
 //   actions (`do`, an array of strings, run in order):
 //     flag:<flag>  unflag:<flag>  start:<mission>  give:<item>  take:<item>  coupons:<+n|-n>  standing.<s>:<+n|-n>
 //     turf:<district>=<faction>  scene:<scene>  boss:<boss>  drift:<+n|-n>  fate:<cast>=<state>  implant:<implant>
-//     loot:<loot table>  unlock:<location>  fees:<+n|-n> (Late Fees stars)  call:<cast> (a pager call)
+//     collect:<collectible>  loot:<loot table>  unlock:<location>  fees:<+n|-n> (Late Fees stars)  call:<cast> (a pager call)
 //   fate states: alive, dead, gut (taken to the Gut), freed, gone (left the city), clocked_out, terminated, signed
 
 export const DISTRICTS = {
@@ -198,6 +198,7 @@ export const LOCATIONS = {
   'sims:stairwell': { district: 'sims', name: 'Stairwell B', desc: 'Sixty floors of stairs. The sirens start at 17:20.' },
   'sims:lobby': { district: 'sims', name: 'The Lobby (17:29)', desc: 'The doors are right there.' },
   'sims:suburb': { district: 'sims', name: 'Suburb (sim)', desc: 'The training sim the story starts in.' },
+  'sims:warehouse': { district: 'sims', name: 'Warehouse (sim)', desc: 'The Warehouse training map. Gary\'s site office is here, and a vending machine that is in no other match.' },
   'sims:school_gate': { district: 'sims', name: 'Hillside Primary (sim)', desc: 'A school gate at 17:30. A sim nobody plays.' },
 };
 export const LOCATION_IDS = Object.keys(LOCATIONS);

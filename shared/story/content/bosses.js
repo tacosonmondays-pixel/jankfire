@@ -670,7 +670,7 @@ export const BOSSES = {
   },
   missing_texture: {
     name: "THE MISSING TEXTURE", card: "THE MISSING TEXTURE · TODO", subtitle: "it was supposed to be patched.",
-    who: "missing_texture", kind: "secret", district: "commute", arena: "commute:missing_texture", quest: "sq_commute_missing_texture", unlock: "done:sq_commute_first_intern", hp: 11000,
+    who: "missing_texture", kind: "secret", district: "commute", arena: "commute:missing_texture", quest: "sq_commute_first_intern", unlock: "flag:todd_off_the_roof", hp: 11000,
     look: "thing: a creature of purple-and-black checkerboard squares, unshaded, flickering between a cube, a T-pose, a floating hand and a half-loaded car, green code scrolling over it.",
     why: "The first thing Todd forgot to code, on his first day. It's been growing out of the Unfinished Bit ever since.",
     phases: [

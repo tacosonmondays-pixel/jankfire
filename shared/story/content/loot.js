@@ -1,4 +1,121 @@
-export const BRANDS = {};
-export const MODIFIERS = {};
-export const LEGENDARIES = {};
-export const LOOT_TABLES = {};
+// OVERDUE loot: brands, modifiers, named legendaries and loot tables (DESIGN §6.5). No durability, ever.
+//
+// SCHEMA
+//   BRANDS[id]      = { name, flavour (the brand line on the item card), rule (what the brand does), look (paint / wrap zones) }
+//   MODIFIERS[id]   = { name (prefix), effect }
+//   LEGENDARIES[id] = { name, base (a shared/weapons.js id), brand, rarity ('legendary' | 'premium'), quirk (what it does, with
+//                       numbers), lore (two or three sentences of history), flavour (the one-line card quote),
+//                       drop: { boss? | where? | quest?, farm: true/false, note? } }
+//   LOOT_TABLES[id] = { desc, rolls, entries: [{ w (weight), rarity? , base?, brand?, legendary?, item? }] }
+// Rarities: common (green) → rare (blue) → epic (purple) → legendary (orange) → premium (☺ PREMIUM, hot pink; bosses and
+// late nights only). Stat rolls per rarity: common ±10%, rare +0..15%, epic +5..25%, legendary +10..35%, premium +20..45%.
+
+export const BRANDS = {
+  corp: { name: "☺ CORP STANDARD ISSUE", flavour: "reliable. accurate. boring. on time.", rule: "tight spread, low variance; beeps when you're late on a reload (reloads 10% faster if you start before the mag is half empty)", look: "white and cyan, chrome trim, a ☺ on the stock (_wzA white, _wzB cyan)" },
+  bottom_scrap: { name: "BOTTOM SCRAP CO.", flavour: "taped together with love and actual tape.", rule: "cheap; always one random extra part (a scope on a shotgun, a bayonet on a pistol, a cup holder)", look: "pastel paint over rust, tie-dye tape, a wok-dish sight (_wzA pastel, _wzN tape)" },
+  meat_mechanics: { name: "MEAT MECHANICS", flavour: "organic. you've got a lot to give.", rule: "the magazine regenerates slowly while holstered; the gun bleeds when you're hurt (cosmetic) and heals 1 HP per kill", look: "pink flesh grips, veins, a kidney logo, wet sheen (_wzA flesh, _wzB chrome)" },
+  famiglia: { name: "FAMIGLIA ARMS", flavour: "a family business since 1850.", rule: "crits on enemies who 'disrespected' you (hit you first) for 5 s", look: "pinstripe paint, gold medallion inlays, red-and-white (_wzA pinstripe, _wzB gold)" },
+  value_pack: { name: "VALUE PACK", flavour: "two for the price of one. prices slashed. quality also slashed.", rule: "comes in twos (akimbo where the base allows), jams 1 in 40 shots (tap reload to clear)", look: "yellow and red SALE stickers, a barcode, plastic wrap left on (_wzA yellow, _wzN stickers)" },
+  number_works: { name: "NUMBER WORKS", flavour: "the damage numbers matter.", rule: "damage rolls a number: 7s crit ×1.7, 13s deal 0.13×", look: "yellow and black hazard stripes, an LCD on the side showing the last roll (_wzA yellow, _wzB black)" },
+  gristle_biologics: { name: "GRISTLE & SONS BIOLOGICS", flavour: "grown, not made.", rule: "the gun grows: +1% damage per kill up to +20%, reset when you die", look: "bone and pink tissue, rib-cage stock, a choir-smile engraving (_wzA bone, _wzB pink)" },
+  unpaid: { name: "UNPAID, INC.", flavour: "we're a startup.", rule: "random stats every time you pick it up (pivoting); +exposure (enemies hear your shots 30% further)", look: "office-chair parts, filing-cabinet steel, a lanyard on the sling (_wzA grey, _wzN lanyard)" },
+};
+
+export const MODIFIERS = {
+  bouncy: { name: "Bouncy", effect: "knockback ++ (×1.8)" },
+  sticky: { name: "Sticky", effect: "projectiles stick and pop after 0.8 s" },
+  overdue: { name: "Overdue", effect: "+2% damage per second since your last reload, up to +40%" },
+  punctual: { name: "Punctual", effect: "shots on the beat of the district clock's tick crit" },
+  greasy: { name: "Greasy", effect: "drops a banana peel on every reload" },
+  haunted: { name: "Haunted", effect: "fires by itself sometimes (1 in 60 s), usually at an enemy, not always" },
+  rubbery: { name: "Rubbery", effect: "bullets bounce once" },
+  fleshy: { name: "Fleshy", effect: "magazine +20% but the gun burps when it reloads" },
+  rounded: { name: "Rounded", effect: "all damage is rounded to the nearest 5 (up on 7s, down on 13s)" },
+  on_loan: { name: "On Loan", effect: "+25% damage, but it returns itself to ☺ CORP after 10 minutes in your bag (it's back at a Late Desk for a fee)" },
+};
+
+const L = (o) => ({ rarity: "legendary", ...o });
+
+export const LEGENDARIES = {
+  // ---------------------------------------------------------------- from DESIGN §6.5
+  late_bloomer: L({ name: "THE LATE BLOOMER", base: "ar", brand: "corp", quirk: "damage +1% per second you're over the current mission timer (or per minute late for an appointment), up to +60%", lore: "Issued to ☺ CORP's slowest Timekeeping trainee, who missed every deadline and won every fight. They retired him for 'flexible scheduling'.", flavour: "better late than never. much better.", drop: { where: "lates:waiting_room", farm: true, note: "any epic+ roll in the Lates at night" } }),
+  grandmas_hands: L({ name: "GRANDMA'S HANDS", base: "slapper", brand: "bottom_scrap", quirk: "each slap heals you 6 HP and calls the target 'sweetie' (a speech bubble); slapped enemies slip", lore: "Two rubber gloves on a stick, made by the Mall Walkers' oldest member to keep her grandchildren in line. They are all grown up and still in line.", flavour: "she slaps because she loves.", drop: { quest: "sq_checkout_mall_walker", farm: false } }),
+  mothers_ladle: L({ name: "MOTHER'S LADLE", base: "bread", brand: "bottom_scrap", quirk: "splash damage of hot soup in a 3 m cone; leaves slippery soup puddles for 6 s", lore: "Big Sauce Sharon's spare ladle. She has never once used it on anyone. She threatens to daily.", flavour: "eat something.", drop: { where: "bottom:soup_kitchen", farm: false, note: "Sharon gives it to you after the Sauce Run if the pot arrived full" } }),
+  severance_package: L({ name: "SEVERANCE PACKAGE", base: "shotgun", brand: "corp", quirk: "every kill pays 50 coupons into your bag", lore: "HR's standard termination tool, from back when terminations came with a package. The package was this.", flavour: "it's not personal. it's paperwork.", drop: { where: "corphill:spire_60", farm: true, note: "HR Tactical (★4) drop" } }),
+  sunday_best: L({ name: "SUNDAY BEST", base: "revolver", brand: "famiglia", quirk: "every shot is a headshot on Sundays (game time); other days, +10% headshot damage", lore: "The Don wore it to church on Sundays. Nonna kept it polished after. Somebody had to look their best.", flavour: "dress for the job you want. the job is murder.", drop: { where: "pinstripe:villa", farm: true, note: "Villa goons on Sundays" } }),
+  the_intestine: L({ name: "THE INTESTINE", base: "lasso", brand: "gristle_biologics", quirk: "40 m long, and it pulls YOU to them instead of them to you", lore: "Nine metres of a Gut avenue, cleaned (mostly) and braided by the Choir for their bell tower. It wanted to see the world.", flavour: "nine metres of personal space.", drop: { boss: "bishop", farm: true } }),
+  reply_all: L({ name: "REPLY ALL", base: "minigun", brand: "corp", quirk: "every bullet that hits copies itself to every enemy within 4 m of the target (at 30% damage)", lore: "Built by ☺ CORP's IT department to deliver all-staff memos. It still does.", flavour: "per my last bullet.", drop: { quest: "sq_corphill_reply_all", farm: false } }),
+  quiet_quitter: L({ name: "QUIET QUITTER", base: "sniper", brand: "corp", quirk: "silent; does nothing at all between 17:00 and 09:00 (game time); during working hours, +25% damage", lore: "The rifle of a Timekeeping marksman who decided to do exactly what was in his contract and not a second more. They couldn't fire him. He was very good.", flavour: "outside working hours.", drop: { where: "corphill:dividend_road", farm: true, note: "★4 snipers, day only" } }),
+  lumps_ring: L({ name: "LUMPS' RING", base: "rigpunch", brand: "bottom_scrap", quirk: "knockback ×3; you cry on kills (a speech bubble: 'sorry. sorry.')", lore: "One of the gold rings off Lumps' forearm, re-forged into a knuckle for the Overdrive Rig's punch. He made it himself in the gym. He said sorry to it.", flavour: "he made it himself.", drop: { quest: "sq_bottom_leg_day", farm: false } }),
+  the_receipt: L({ name: "THE RECEIPT", base: "cards", brand: "value_pack", quirk: "cards are 3 m long receipts that slice everything in a line", lore: "Brenda Voss's receipt from the day of the Stampede, printed sixty-one years long since. She gave you a copy. She kept the original.", flavour: "you'll want to keep this.", drop: { boss: "cart_mother", farm: true } }),
+  // ---------------------------------------------------------------- bosses
+  the_deposit: L({ name: "THE DEPOSIT", base: "sawnoff", brand: "bottom_scrap", quirk: "pellets that hit stick in the enemy; when it dies, every stuck pellet is 'refunded' as ammo", lore: "Mr. Deposit's own gun, kept in the box for fifty years as 'a deposit against damages'. Nobody got it back. You did.", flavour: "you're not getting it back. except this once.", drop: { boss: "landlord", farm: true } }),
+  communion: L({ name: "COMMUNION", base: "cig", brand: "gristle_biologics", quirk: "the smoke heals you and allies 3 HP/s; the fire 'digests' (damage over time ×2 on Off-Spec enemies is replaced by a 4 s slow, so it's kind to the living Gut)", lore: "The Bishop's censer, swung over sixty years of feeding. It smells like the Choir Lung: warm, and slightly of soup.", flavour: "take this, all of you.", drop: { boss: "bishop", farm: true } }),
+  made_man: L({ name: "MADE MAN", base: "akimbo", brand: "famiglia", quirk: "each kill 'makes an offer': the nearest non-boss enemy switches sides for 8 s", lore: "Lefty and Righty, gold-plated, given by the Don to every goon on the day they were made. Nonna has a drawer of them. None of the goons ever used theirs.", flavour: "an offer. you understand.", drop: { boss: "don", farm: true } }),
+  nonnas_needles: L({ name: "NONNA'S NEEDLES", base: "nailgun", brand: "famiglia", quirk: "fires knitting needles; enemies nailed to a wall are 'knitted' (held for 2 s longer, and their friends slow down near them)", lore: "Nonna has been knitting with her son's strings for fifty years. These are the needles. She has spares. She has always had spares.", flavour: "sit still. nonna's working.", drop: { boss: "don", farm: true, note: "phase 3 only" } }),
+  gold_member: L({ name: "GOLD MEMBER", base: "cart", brand: "value_pack", quirk: "fired carts pull loot drops and coupons into them like a magnet; ride it and it hoovers up the floor", lore: "Brenda's own trolley, the one she pushed through the doors first, gold-plated by Big Value for its mascot.", flavour: "member since 1999.", drop: { boss: "cart_mother", farm: true } }),
+  carry_the_one: L({ name: "CARRY THE ONE", base: "bowling", brand: "number_works", quirk: "the ball is a giant 1; each person it bowls over adds 1 to its damage (it carries them)", lore: "A digit off a fallen orbital billboard, ground round by the Remainders' apprentices. It's a 1. It's been a 1 through everything.", flavour: "carries the one. and you.", drop: { boss: "foreman", farm: true } }),
+  the_upsell: L({ name: "THE UPSELL", base: "smg", brand: "meat_mechanics", quirk: "each kill is an 'upgrade': +5% fire rate (stacks to +50%), all lost when you die ('cancelled')", lore: "Doctor Upsell's personal sidearm, with a card machine screwed to the grip. It charges you 1 coupon per magazine. It always has.", flavour: "would you like to go large?", drop: { boss: "upsell", farm: true } }),
+  keep_off_the_grass: L({ name: "KEEP OFF THE GRASS", base: "autoshot", brand: "corp", quirk: "+50% damage to anything standing on grass; mows lawns perfectly to 1 inch", lore: "The HOA's ceremonial Lawn Mower, used once a year on the Prize Pumpkin's lawn by the President. Linda has never used it. It's never been needed.", flavour: "your lawn is 2 mm too long.", drop: { boss: "hoa", farm: true } }),
+  groundhog: L({ name: "GROUNDHOG", base: "remote", brand: "corp", quirk: "rewind lasts 6 s instead of 2, and a rewound enemy relives its last 6 s of damage", lore: "A Lates canteen remote that's been pointed at the same TV, showing the same Tuesday, for 22,000 days.", flavour: "you've seen this one.", drop: { boss: "perpetual_tuesday", farm: true } }),
+  quick_word: L({ name: "A QUICK WORD", base: "slipper", brand: "corp", quirk: "the slipper only moves when the target isn't looking at it, and then it's very fast", lore: "HR's own slipper. Every HR department has one. Nobody has ever seen it thrown.", flavour: "he just wants a quick word.", drop: { boss: "tall_guy", farm: true } }),
+  open_plan: L({ name: "OPEN PLAN", base: "blower", brand: "corp", quirk: "pushes ×2; anyone it pushes into the void is 'sold' and pays you 40 coupons", lore: "Vacancy's survey blower, used to 'clear' squatters off unsold plots. Penny Plot's commission was paid in its exhaust.", flavour: "lots of potential.", drop: { boss: "penny_plot", farm: true } }),
+  per_my_last_email: L({ name: "PER MY LAST EMAIL", base: "taser", brand: "corp", quirk: "a stunned target is 'cc'd': the stun jumps to everyone the target is looking at", lore: "The Steering Committee's meeting-room taser, installed for 'discipline in the minutes'. It was used in every meeting.", flavour: "as previously discussed.", drop: { boss: "meeting_room", farm: true } }),
+  circle_back: L({ name: "CIRCLE BACK", base: "slipper", brand: "corp", quirk: "the slipper comes back twice, from behind the target, before it returns to you", lore: "The Twins' shared slipper. They each think it's theirs. They've never once agreed who throws it.", flavour: "let's circle— —back.", drop: { boss: "twins", farm: true } }),
+  close_of_business: { name: "CLOSE OF BUSINESS", base: "laser", brand: "corp", rarity: "premium", quirk: "charge time is exactly 1.730 s; a fully charged beam ignores armour and shields, and every kill writes the victim's name in a ledger in your bag", lore: "Marion Hask's desk pointer, a ☺ CORP Big Laser Pointer, the one she used to present Option C to the board at 16:30. She pointed at the cities.", flavour: "it will not take long. it never did.", drop: { boss: "hask", farm: false, note: "post-game only (Hask's ledger room in the Spire)" } },
+  time_and_a_half: L({ name: "TIME AND A HALF", base: "burst", brand: "corp", quirk: "fires bursts of 4 and 5 alternately (4.5 average), and every 9th round is overtime: double damage", lore: "Overtime's backup weapon, holstered under the coat for sixty-one years. He never drew it. He was always too polite.", flavour: "you'll be compensated.", drop: { boss: "overtime_4", farm: false } }),
+  unpaid_overtime: L({ name: "UNPAID OVERTIME", base: "lmg", brand: "corp", quirk: "between 17:00 and 09:00 (game time) it never needs reloading", lore: "A Belt Sander from Timekeeping Enforcement's armoury, issued to the night shift. Nobody on the night shift was ever paid.", flavour: "it'll only take a minute. every minute.", drop: { boss: "overtime_rehire", farm: true } }),
+  employee_of_the_month: L({ name: "EMPLOYEE OF THE MONTH", base: "katana", brand: "unpaid", quirk: "the blade grows with every kill, and every 10th kill adds a little plaque to the sheath with your face on it", lore: "Craig's first sword, made from a paper guillotine on his first day running the Unpaid. He gave himself the first plaque that night.", flavour: "every month. since the end of the world.", drop: { boss: "eotm", farm: true } }),
+  mandatory_fun: L({ name: "MANDATORY FUN", base: "chicken", brand: "unpaid", quirk: "rubber chickens explode into confetti; enemies in the blast are forced to dance for 1 s", lore: "The Fun Department's party cannon, loaded with chickens from a ☺ CORP away-day that went wrong in a way nobody discusses.", flavour: "smile. that's not a request.", drop: { boss: "morale_officer", farm: true } }),
+  the_forecast: L({ name: "THE FORECAST", base: "tennis", brand: "number_works", quirk: "balls bounce exactly 13 times and the 13th bounce always hits the nearest enemy, wherever it is", lore: "A tennis-ball launcher from Remainder's forecasting floor, where analysts used it to settle bets. The 13th bounce was never in the model.", flavour: "forecast: you. 97%.", drop: { boss: "unlucky_13", farm: true } }),
+  the_missing_texture: L({ name: "THE MISSING TEXTURE", base: "bow", brand: "unpaid", quirk: "arrows are untextured purple-black cubes that pass through one wall", lore: "Grown out of the Unfinished Bit. Todd swears he didn't code it. Todd swears that about a lot of things.", flavour: "// TODO: aim", drop: { boss: "missing_texture", farm: true } }),
+  rider_clause: L({ name: "RIDER CLAUSE", base: "scales", brand: "gristle_biologics", quirk: "a hit 'adds a clause': the target takes +15% damage from everything for 6 s (stacks 3 times)", lore: "Augustus Gristle's own gavel and scales, from a time when he signed things with his own two hands. He had a lot more hands later.", flavour: "see attached.", drop: { boss: "founding_partner", farm: true } }),
+  employee_of_the_quarter: { name: "EMPLOYEE OF THE QUARTER", base: "dmr", brand: "corp", rarity: "premium", quirk: "no jank at all: no recoil, no spread, every shot on the beat crits; but it can't be fired while you're sliding, grappling or in the air", lore: "Your copy's rifle. Perfect, punctual and happy. It has never once improvised.", flavour: "you were always the draft.", drop: { boss: "prototype", farm: true } },
+  // ---------------------------------------------------------------- districts, quests, farmable
+  sole_survivor: L({ name: "SOLE SURVIVOR", base: "slipper", brand: "bottom_scrap", quirk: "a brogue that walks back to you instead of flying; it kicks anyone in its way", lore: "Clement's one shoe, from his dad's shop on Hillside Road. He gave it to you for luck.", flavour: "one shoe. very good shoe.", drop: { quest: "sq_bottom_one_shoe", farm: false, note: "if you let the other shoe go" } }),
+  sauce_works: L({ name: "THE SAUCE WORKS", base: "water", brand: "famiglia", quirk: "squirts hot tomato sauce: soaked enemies slip and are marked through walls for 6 s", lore: "A Sauce Works hose, cut down to a pistol by the Punchlines for a prank. The prank went on for eleven years.", flavour: "it's in the sauce.", drop: { where: "pinstripe:sauce_works", farm: true } }),
+  two_for_one: L({ name: "TWO FOR ONE", base: "pistol", brand: "value_pack", quirk: "every shot fires twice; every reload costs one magazine for two", lore: "A Big Value promotional pistol: buy one, get one free. Both are in the box. Both are slightly worse.", flavour: "prices slashed. so is everyone.", drop: { where: "checkout:food_court", farm: true, note: "Mall Security drop" } }),
+  the_long_stairs: L({ name: "THE LONG STAIRS", base: "lever", brand: "bottom_scrap", quirk: "each consecutive hit on the same target adds 1 'step' of damage (up to +1000% at 1,000 steps); misses reset; it counts out loud in Lumps' voice", lore: "Lumps' grandad's rifle, hung on the wall of the gym, used once a year to count the Long Stairs on Settlement Day.", flavour: "nine hundred and ninety-nine. that's the stairs.", drop: { where: "bottom:long_stairs", farm: false, note: "Lumps gives it to you if you finish Leg Day without dropping a fridge" } }),
+  hold_music: L({ name: "HOLD MUSIC", base: "snowball", brand: "corp", quirk: "frozen enemies are 'put on hold': they play hold music and can't be revived until thawed", lore: "A Lates call-centre water cooler's ice, sixty-one years cold. It hums.", flavour: "your call is important to us.", drop: { quest: "sq_lates_hold_music", farm: false } }),
+  gnome_be_gone: L({ name: "GNOME BE GONE", base: "chicken", brand: "bottom_scrap", quirk: "fires garden gnomes; where one lands the ground is 'occupied' and the void can't take it (a respawn point for 60 s)", lore: "Old Pat's gnome launcher, built after her wheelbarrow wore out. She painted a name on every round.", flavour: "you can't take what's occupied.", drop: { quest: "sq_margins_staking_claims", farm: false } }),
+  the_strings: L({ name: "THE STRINGS", base: "lasso", brand: "famiglia", quirk: "lassoed enemies become marionettes for 4 s: they copy your movements", lore: "A length of the Don's own strings, cut by Pip (or given by Nonna, depending on who runs Pinstripe).", flavour: "he's got people. on strings.", drop: { quest: "sq_pinstripe_two_jesters", farm: false } }),
+  dales_wrench: L({ name: "DALE'S WRENCH", base: "knife", brand: "bottom_scrap", quirk: "heavy hits on machines (vending machines, cars, turrets, the Meeting Room) always drop loot; it bites back 1 in 20 swings", lore: "Sixty-one years of fixing her. Worn smooth on one side where his thumb goes.", flavour: "careful. she bites.", drop: { where: "bottom:dale_shed", farm: false, note: "Dale gives it to you after his confession in m24, if you don't blame him" } }),
+  premium_parking_permit: { name: "PARKING PERMIT", base: "cards", brand: "corp", rarity: "premium", quirk: "deals every card as a laminated permit: cards ignore Late Fees (shooting Corp units adds no fees)", lore: "The only parking permit ever issued on Corp Hill, for the only parking that has never existed. Laminated by Pritchard personally.", flavour: "permitted.", drop: { quest: "sq_corphill_parking_permit", farm: false } },
+};
+
+const T = (desc, rolls, entries) => ({ desc, rolls, entries });
+const BOSS_TABLE = (legendary, extra) => T("a boss kill: guaranteed epic+, its legendaries at 20%, a premium at 4% (late night ×2)", 3, [
+  { w: 50, rarity: "epic" }, { w: 26, rarity: "legendary" }, ...(legendary ? legendary.map((l) => ({ w: 20 / legendary.length, legendary: l })) : []), { w: 4, rarity: "premium" }, ...(extra || []),
+]);
+
+export const LOOT_TABLES = {
+  lt_mission_rare: T("a story mission reward: a rare or better", 1, [{ w: 70, rarity: "rare" }, { w: 25, rarity: "epic" }, { w: 5, rarity: "legendary" }]),
+  lt_district_gut: T("Gut drops: Gristle & Sons and Meat Mechanics brands", 1, [{ w: 50, rarity: "common", brand: "gristle_biologics" }, { w: 30, rarity: "rare", brand: "meat_mechanics" }, { w: 15, rarity: "epic", brand: "gristle_biologics" }, { w: 5, rarity: "legendary" }]),
+  lt_district_pinstripe: T("Pinstripe drops: Famiglia Arms", 1, [{ w: 55, rarity: "common", brand: "famiglia" }, { w: 30, rarity: "rare", brand: "famiglia" }, { w: 12, rarity: "epic", brand: "famiglia" }, { w: 3, legendary: "sauce_works" }]),
+  lt_district_checkout: T("Checkout drops: Value Pack", 1, [{ w: 55, rarity: "common", brand: "value_pack" }, { w: 30, rarity: "rare", brand: "value_pack" }, { w: 12, rarity: "epic", brand: "value_pack" }, { w: 3, legendary: "two_for_one" }]),
+  lt_district_numberworks: T("Number Works drops: Number Works brand", 1, [{ w: 55, rarity: "common", brand: "number_works" }, { w: 30, rarity: "rare", brand: "number_works" }, { w: 12, rarity: "epic", brand: "number_works" }, { w: 3, rarity: "legendary", brand: "number_works" }]),
+  lt_boss_overtime_1: BOSS_TABLE(null, [{ w: 10, base: "nailgun", rarity: "epic", brand: "corp" }]),
+  lt_boss_overtime_2: BOSS_TABLE(["unpaid_overtime"]),
+  lt_boss_overtime_3: BOSS_TABLE(["late_bloomer"]),
+  lt_boss_overtime_4: BOSS_TABLE(["time_and_a_half"]),
+  lt_boss_overtime_rehire: BOSS_TABLE(["unpaid_overtime", "late_bloomer"], [{ w: 10, item: "core_cracked_punch_clock" }]),
+  lt_boss_landlord: BOSS_TABLE(["the_deposit"]),
+  lt_boss_bishop: BOSS_TABLE(["communion", "the_intestine"]),
+  lt_boss_founding_partner: BOSS_TABLE(["rider_clause"]),
+  lt_boss_don: BOSS_TABLE(["made_man", "nonnas_needles", "sunday_best"]),
+  lt_boss_cart_mother: BOSS_TABLE(["gold_member", "the_receipt"]),
+  lt_boss_foreman: BOSS_TABLE(["carry_the_one"]),
+  lt_boss_upsell: BOSS_TABLE(["the_upsell"]),
+  lt_boss_hoa: BOSS_TABLE(["keep_off_the_grass"]),
+  lt_boss_perpetual_tuesday: BOSS_TABLE(["groundhog", "late_bloomer"]),
+  lt_boss_prototype: BOSS_TABLE(["employee_of_the_quarter"]),
+  lt_boss_tall_guy: BOSS_TABLE(["quick_word"]),
+  lt_boss_penny_plot: BOSS_TABLE(["open_plan"]),
+  lt_boss_meeting_room: BOSS_TABLE(["per_my_last_email", "reply_all"]),
+  lt_boss_twins: BOSS_TABLE(["circle_back"]),
+  lt_boss_hask: BOSS_TABLE(["close_of_business"]),
+  lt_boss_eotm: BOSS_TABLE(["employee_of_the_month"]),
+  lt_boss_morale_officer: BOSS_TABLE(["mandatory_fun"]),
+  lt_boss_unlucky_13: BOSS_TABLE(["the_forecast"]),
+  lt_boss_missing_texture: BOSS_TABLE(["the_missing_texture"]),
+};

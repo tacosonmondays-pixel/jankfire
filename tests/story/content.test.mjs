@@ -42,3 +42,19 @@ test('content sizes the brief asked for', () => {
   }
   assert.ok(Object.values(C.IMPLANTS).filter((i) => i.secret).length >= 10, 'secret implants');
 });
+
+test('the validator catches broken references', () => {
+  const B = structuredClone(C);
+  B.MISSIONS.m02_sauce_run.talks.pot.nodes.start.opts[0][1] = 'no_such_node';
+  B.MISSIONS.m02_sauce_run.steps[0].goal.item = 'no_such_item';
+  B.BOSSES.don.core = 'no_such_core';
+  B.MISSIONS.m01_return_to_sender.reward.flags.push('no_such_flag');
+  B.LEGENDARIES.reply_all.base = 'no_such_weapon';
+  assert.equal(validate(B).length, 5);
+});
+
+test('the generated script docs are up to date', async () => {
+  const { render } = await import('../../tools/story/render_script.mjs');
+  const { readFileSync } = await import('node:fs');
+  for (const [file, text] of Object.entries(render(CONTENT))) assert.equal(readFileSync(new URL(`../../docs/story/script/${file}`, import.meta.url), 'utf8'), text, `${file} is stale: run node tools/story/render_script.mjs`);
+});

@@ -58,6 +58,7 @@ export function validate(C) {
     else if ((m = a.match(/^fate:([a-z0-9_]+)=([a-z_]+)$/))) { if (!has(C.CAST, m[1])) err(where, `unknown cast '${m[1]}'`); if (!FATES.has(m[2])) err(where, `unknown fate '${m[2]}'`); }
     else if ((m = a.match(/^loot:([a-z0-9_]+)$/))) { if (!has(C.LOOT_TABLES, m[1])) err(where, `unknown loot table '${m[1]}'`); }
     else if ((m = a.match(/^unlock:([a-z]+:[a-z0-9_]+)$/))) { if (!has(C.LOCATIONS, m[1])) err(where, `unknown location '${m[1]}'`); }
+    else if ((m = a.match(/^collect:([a-z0-9_]+)$/))) { if (!has(C.COLLECTIBLES, m[1])) err(where, `unknown collectible '${m[1]}'`); }
     else if ((m = a.match(/^call:([a-z0-9_]+)$/))) { if (!has(C.CAST, m[1])) err(where, `unknown cast '${m[1]}'`); }
     else err(where, `unparsed action '${a}'`);
   }
@@ -116,7 +117,7 @@ export function validate(C) {
       if (g.target && !has(C.LOCATIONS, g.target)) err(sw, `unknown target '${g.target}'`);
       if (g.item) item(sw, g.item);
       if (g.boss && !has(C.BOSSES, g.boss)) err(sw, `unknown boss '${g.boss}'`);
-      if (g.who && g.who !== 'any') cast(sw, g.who);
+      if (g.who && g.who !== 'any' && !isSpeaker(g.who)) err(sw, `unknown who '${g.who}'`);
       if (g.flag) flag(sw, g.flag);
       if (g.talk && !has(T, g.talk)) err(sw, `unknown talk '${g.talk}'`);
       if (s.talk && !has(T, s.talk)) err(sw, `unknown talk '${s.talk}'`);

@@ -473,10 +473,10 @@ export const CAST_DISTRICTS = {
   missing_texture: {
     name: "THE MISSING TEXTURE", full: null, title: "todo (secret boss)", role: "secret", body: "thing", age: null,
     look: "A creature made of purple and black checkerboard squares, with no shading, that flickers between low-poly shapes: a cube, a T-pose, a floating hand, a half-loaded car. Lines of green code scroll over it.",
-    voice: { kind: "glitch", pitch: 1.0, rate: 2.0 }, home: "commute:missing_texture", met: "sq_commute_missing_texture",
+    voice: { kind: "glitch", pitch: 1.0, rate: 2.0 }, home: "commute:missing_texture", met: "sq_commute_first_intern",
     wants: "To be finished.", fears: "Being patched.",
     secret: "It's the first thing Todd ever forgot to code, on his first day, sixty-one years ago: the bit of the world he never finished. It's been growing out of the Unfinished Bit ever since.",
-    arc: "A secret boss Todd sends you to (sq_commute_missing_texture). Beaten, it leaves behind a secret implant.",
+    arc: "A secret boss Todd sends you to (part 2 of sq_commute_first_intern). Beaten, it leaves behind a secret implant.",
     speech: "TODO comments and error messages.",
     samples: ["// TODO: finish this", "texture not found. texture not found.", "ERROR: you", "// todd was here", "NaN NaN NaN NaN"],
     rel: { todd: "Its author. Todd is so sorry." },
