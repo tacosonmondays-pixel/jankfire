@@ -10,6 +10,7 @@ import { fx } from './fx.js';
 import { ME, C as PC } from './player.js';
 import { W, setLoadout, showSlots, refillAmmo } from './weapons.js';
 import { RP } from './replay.js';
+import { paintBoxes } from './minimap.js'; // the map-from-above painter, shared with the HUD minimap
 import { buildWeapon, buildProjectile, freeTree, makeNameTag } from './models.js';
 import { BOXES, MAPS } from '/shared/map.js';
 import { raycast, movePlayer } from '/shared/physics.js';
@@ -201,15 +202,7 @@ function drawMapBase() {
   const x = c.getContext('2d');
   mapView = { cx: z0[0], cz: z0[1], ext, S };
   x.fillStyle = '#2a1a10'; x.fillRect(0, 0, S, S);
-  const boxes = map.boxes.filter((b) => !b.noCol && b.max[1] > -3 && b.max[1] < 60).sort((a, b) => a.max[1] - b.max[1]);
-  for (const b of boxes) {
-    const [px0, pz0] = toMap(b.min[0], b.min[2]), [px1, pz1] = toMap(b.max[0], b.max[2]);
-    if (px1 < 0 || pz1 < 0 || px0 > S || pz0 > S) continue;
-    const h = b.max[1], k = Math.max(0, Math.min(1, (h + 2) / 14));
-    const sand = b.mat === 'sand' || b.mat === 'grass' || b.mat === 'dirt';
-    x.fillStyle = b.mat === 'dirtroad' || b.mat === 'road' || b.mat === 'asphalt' ? '#7a5a3a' : sand ? (b.mat === 'grass' ? '#3f7a32' : '#c9a36a') : `hsl(${300 - k * 40}, ${30 + k * 30}%, ${30 + k * 35}%)`;
-    x.fillRect(px0, pz0, Math.max(1, px1 - px0), Math.max(1, pz1 - pz0));
-  }
+  paintBoxes(x, map, toMap, S, { style: 'royale' }); // the shared painter (minimap.js), in royale's sandy colours
   mapImg = c; mapFor = G.cfg.map;
 }
 function toMap(wx, wz) { const v = mapView; return [((wx - v.cx) / v.ext * 0.5 + 0.5) * v.S, ((wz - v.cz) / v.ext * 0.5 + 0.5) * v.S]; }
@@ -506,6 +499,7 @@ export function brRoundEnd(m, box) {
 }
 
 // ------------------------------------------------------------ every frame
+export const brActive = () => !!R.on; // the HUD minimap stays out of the way (royale has its own map)
 export function brFrame(dt, now) {
   if (!R.on) return;
   const t = st(), zn = zoneAt(R.zone, t);

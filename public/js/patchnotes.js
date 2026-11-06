@@ -1,6 +1,12 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '5.8', date: '2026-11-06', title: 'SAT-NAV (MOSTLY RIGHT)', items: [
+    'a minimap on every map and every mode (top left). it shows you, your team, the plant sites and the bomb. enemies blip red when they shoot, except in plant & defuse, where you have to actually listen. a spy satellite still shows everyone.',
+    'settings > minimap: on/off, S/M/L, and turn with you or north up. royale keeps its own zone map, which now follows the same settings.',
+    'bots dress themselves now. every bot rolls its own outfit, hair, accessories and weapon skins, and some show up as a corpo suit, a rat king, a mall cop, a delivery guy or a maid assassin. same bot, same fit, all match.',
+    'bots talk. they brag after a cool kill, cope after a dumb death, and answer gg / ez / noob. each one has a personality (tryhard, polite, unhinged, corpo, or silent). settings > bot chatter turns them off.',
+  ] },
   { v: '5.7', date: '2026-11-06', title: 'NO MORE OLD MODELS', items: [
     'CUSTOMIZE loads the real Blender models first: what you\'re looking at downloads first, the rest after, and a tile shows static until its model lands instead of flashing the old blocky one. on a slow connection the skin strip went from about 88 s to 11 s.',
     'the game downloads a lot less: models come compressed, and coming back later only fetches what changed.',
