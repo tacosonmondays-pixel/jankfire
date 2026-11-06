@@ -2,6 +2,7 @@
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
   { v: '2.7', date: '2026-11-06', title: 'THE REAL PLACES UPDATE', items: [
+    'SMARTY PANTS: answer 3 Pop Quiz questions right to unlock the achievement, the Big Glasses and the Overalls (the first locked pants).',
     'MAP PASS: every map sits in a real place now, with scenery out to the horizon instead of a platform in the void.',
     'SKYLINE + ROOFTOP: a whole city far below the towers, in the haze. the roads run on into the city.',
     'WAREHOUSE: remade, with racks, forklifts and pallets inside, a fenced yard, machinery outside the gate and a wood round the fence. Plant & Defuse gets its own Warehouse with three lanes.',
