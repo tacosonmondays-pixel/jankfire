@@ -902,7 +902,8 @@ addEventListener('keyup', (e) => {
 });
 addEventListener('mousedown', (e) => {
   if (!inGame()) return;
-  if (RP.mode === 'killcam' || RP.mode === 'hl' || G.killcamPending) { skipReplay(); return; } // a click skips the killcam and the play of the round
+  if (RP.mode === 'killcam' || G.killcamPending) { skipReplay(); return; } // a click skips the killcam
+  if (RP.mode === 'hl') return; // ...but not the play of the round
   if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor: no shooting
   if (stuckInBubble(true)) return; // sealed in a soap bubble: no shooting, aiming or grappling till it pops
   if (e.button === 0) fireDown();
@@ -1980,6 +1981,7 @@ function endKillcam() {
 }
 function skipReplay() {
   if (epicLocked()) { epicNope(); return; }
+  if (RP.active && RP.mode === 'hl') return; // the play of the round can't be skipped: everyone watches it (it still ends when the next match starts)
   if (RP.active) { stopReplay(false); return; }
   if (G.killcamPending) { clearTimeout(killcamT); G.killcamPending = false; net.send({ t: 'respawn' }); }
 }
@@ -2398,7 +2400,7 @@ net.on('hl', (m) => {
   const box = $('roundEnd');
   box.classList.add('hidden');
   const url = m.id === G.myId ? cardUrlFor(G.myId) : (S.showCards !== false && m.card) || defaultCard(m.name, m.color);
-  showReplayUI('PLAY OF THE ROUND', url, m.name, m.color, m.label, 'SPACE / CLICK to skip'); // skipping is just for you: the round end, vote and next match carry on
+  showReplayUI('PLAY OF THE ROUND', url, m.name, m.color, m.label, 'no skipping. witness greatness'); // unskippable; the round end and vote come after it
   const slow = (m.clip.ev || []).filter((e) => e.m && e.m.t === 'kill' && e.m.k === m.id).map((e) => [e.s - 260, e.s + 220]);
   playClip(m.clip, {
     focus: m.id, mode: 'hl', slow,
