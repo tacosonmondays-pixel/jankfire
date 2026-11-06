@@ -1,5 +1,6 @@
 // Draw calls + triangles of the world pass (renderer.info, the shadow pass included: one is forced each measured
 // frame so before/after compare like for like) in a real bots match, from fixed views: 3 spawns x 4 directions.
+// Players and particles are hidden while it measures (the world: map, props, traffic).
 // Also the scene's totals (meshes, instanced meshes, triangles in view-independent terms) and page errors.
 // usage: node tools/blender/perf_props.cjs <port> <out.json> [maps=jankburg,suburb,skyline] [preset=3]
 //   (start the server first: PORT=<port> node server.js; Jankburg plays as Jank Royale, the rest as Deathmatch)
@@ -43,6 +44,8 @@ async function measure(b, map) {
     const def = MAPS[map], sp = def.spawns.length ? def.spawns : [[0, 2, 0]];
     const pick = [sp[0], sp[Math.floor(sp.length / 2)], sp[sp.length - 1]];
     let pin = null; const iv = setInterval(() => { if (pin) { ME.pos = pin.p.slice(); ME.vel = [0, 0, 0]; ME.yaw = pin.yaw; ME.pitch = -0.04; } }, 5);
+    // the world only: players (Jank Royale's bots come and go: hundreds of draws either way) and particles hidden
+    const iv2 = setInterval(() => { for (const o of G.scene.children) if (o.isPoints) o.visible = false; G.remotes.forEach((r) => { if (r.ch && r.ch.root) r.ch.root.visible = false; }); }, 4);
     const views = [];
     for (const p of pick) for (let k = 0; k < 4; k++) {
       pin = { p: [p[0], p[1] + 0.05, p[2]], yaw: k * Math.PI / 2 };
@@ -52,7 +55,7 @@ async function measure(b, map) {
       views.push({ calls: Math.round(cur.calls / Math.max(1, cur.n)), tris: Math.round(cur.tris / Math.max(1, cur.n)) });
       cur = null;
     }
-    clearInterval(iv); r.render = orig; r.info.autoReset = true;
+    clearInterval(iv); clearInterval(iv2); r.render = orig; r.info.autoReset = true;
     // the scene's own totals (what's built, not what one view sees)
     let meshes = 0, inst = 0, tris = 0, instances = 0;
     G.scene.traverse((o) => {
