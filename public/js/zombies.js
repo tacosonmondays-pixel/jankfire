@@ -16,6 +16,7 @@ import { ZM, ZM_CRATE, zmTarget, zmAmmo, zmAmmoPrice, zmAreaAt, zmOpenAreas } fr
 import { buildWeapon, M } from './models.js';
 import { weaponIcon } from './icons.js';
 import { K } from './keys.js';
+import { zxSetup, zxTick, zxTarget, zxPrompt, zxMeter, zxPrice, zxOff } from './zmextra.js'; // boards, drops, the cheat machine
 const UK = () => K.label('use').toUpperCase(); // the buy / revive key (keys.js 'use', F by default)
 
 const $ = (id) => document.getElementById(id);
@@ -197,14 +198,6 @@ function buildCola(c, group) {
   group.add(m);
   return { mat };
 }
-function buildWindow(w, group) { // broken planks hanging off the frame (the zombies get through anyway)
-  const g = onWall(new THREE.Group(), [w.at[0], 0, w.at[2]], w.n, 0.34);
-  const wood = M(0x7a5230), dark = M(0x4a3018);
-  const plank = (x, y, rz, len, mat) => { const m = new THREE.Mesh(new THREE.BoxGeometry(len, 0.18, 0.05), mat); m.position.set(x, y, 0); m.rotation.z = rz; g.add(m); };
-  plank(0, 2.62, 0.06, 2.3, wood); plank(-0.6, 1.35, -0.55, 1.3, dark); plank(0.72, 2.15, 1.05, 0.95, wood);
-  for (const x of [-1.05, 1.05]) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.09, 2.1, 0.09), dark); m.position.set(x, 1.9, 0); g.add(m); }
-  group.add(g);
-}
 // fluorescent panels: dead until the power comes on (a few flicker anyway)
 function buildLamps(zm, group) {
   const pts = [];
@@ -239,6 +232,7 @@ function setLights(mode) { // 'off' = the dark mall, 'on' = the power's on, '' =
 // main.js calls this after every map load: build the mall's extras (or take them down on any other map)
 export function zmSetup(mapId) {
   if (Z.group) { G.scene.remove(Z.group); Z.group = null; }
+  zxOff();
   Z.solid.clear(); // loadMap refilled BOXES, so no shutters are in it any more
   Z.doors = []; Z.crate = null; Z.power = null; Z.cola = null; Z.mapId = mapId; Z.racks = [];
   for (const m of Z.marks.values()) G.scene.remove(m);
@@ -258,7 +252,7 @@ export function zmSetup(mapId) {
     Z.doors.push({ m, open: false, anim: 0 });
   }
   for (const b of zm.buys) group.add(buyBoard(b));
-  for (const w of zm.windows) buildWindow(w, group);
+  zxSetup(zm, group); // planks on every window, the cheat machine
   Z.crate = buildCrate(zm.crate, group);
   Z.power = buildPower(zm.power, group);
   Z.cola = buildCola(zm.cola, group);
@@ -294,6 +288,7 @@ export function updateZombies(dt, now) {
   useTick(info, now);
   crateTick(info, dt, now);
   downTick(info, now);
+  zxTick(info, dt, now);
   zombiesTick(dt, now);
   setLights(info.pw ? 'on' : 'off');
   if (Z.power) { Z.power.lever.rotation.x += ((info.pw ? 0.7 : -0.7) - Z.power.lever.rotation.x) * Math.min(1, dt * 8); Z.power.lamp.material.color.setHex(info.pw ? 0x40ff40 : 0xff2020); }
@@ -363,7 +358,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 function useTick(info, now) {
   const st = { open: Z.doors.map((d) => d.open), power: !!info.pw, down: (info.dn || []).map((d) => [d[0], d[1], d[2], d[3]]), me: G.myId };
   const here = zmOpenAreas(Z.map, st.open).has(zmAreaAt(Z.map, ME.pos)); // same rule as the server: you have to be somewhere open
-  const t = Z.target = ME.alive && here && info.st !== 'over' ? zmTarget(Z.map, st, eye(), look()) : null;
+  const t = Z.target = ME.alive && here && info.st !== 'over' ? zmTarget(Z.map, st, eye(), look()) || zxTarget(info, eye(), look()) : null;
   let text = '', ok = false;
   if (t) [text, ok] = promptFor(t, info);
   if (now < Z.flashT) { text = Z.flash; ok = Z.flashOk; }
@@ -371,25 +366,28 @@ function useTick(info, now) {
   prompt.className = ok ? 'ok' : 'no';
   if (G.using && t) {
     if (!Z.wasUsing || Z.useK !== t.k) { Z.useT = now; Z.useK = t.k; }
-    const need = (t.kind === 'revive' ? ZM.revive : t.kind === 'power' ? ZM.power : ZM.hold) * 1000;
-    hud.meter(Math.min(1, (now - Z.useT) / need), t.kind === 'revive' ? `REVIVING... keep holding ${UK()}` : t.kind === 'power' ? 'THROWING THE SWITCH...' : `HOLD ${UK()}`, t.kind === 'revive' ? '#7dff4f' : '#ffe14d');
+    const need = (t.kind === 'revive' ? ZM.revive * (G.settings.zload && G.settings.zload.perk === 'quickhands' ? 0.5 : 1) : t.kind === 'power' ? ZM.power : ZM.hold) * 1000;
+    const zm = zxMeter(t, now - Z.useT);
+    if (zm) hud.meter(...zm); else hud.meter(Math.min(1, (now - Z.useT) / need), t.kind === 'revive' ? `REVIVING... keep holding ${UK()}` : t.kind === 'power' ? 'THROWING THE SWITCH...' : `HOLD ${UK()}`, t.kind === 'revive' ? '#7dff4f' : '#ffe14d');
   }
   Z.wasUsing = G.using;
 }
 function promptFor(t, info) {
-  const can = (p) => Z.credits >= p;
-  if (t.kind === 'door') { const d = Z.map.doors[t.i]; return [`[${UK()}] OPEN ${d.name.toUpperCase()} · ${d.price}`, can(d.price)]; }
+  const zx = zxPrompt(t, info, Z.credits);
+  if (zx) return zx;
+  const can = (p) => Z.credits >= zxPrice(p);
+  if (t.kind === 'door') { const d = Z.map.doors[t.i]; return [`[${UK()}] OPEN ${d.name.toUpperCase()} · ${zxPrice(d.price)}`, can(d.price)]; }
   if (t.kind === 'buy') {
     const b = Z.map.buys[t.i], name = WEAPONS[b.w].name.toUpperCase();
-    if (!Z.guns.includes(b.w) && Z.melee !== b.w) return [`[${UK()}] BUY ${name} · ${b.price}`, can(b.price)];
+    if (!Z.guns.includes(b.w) && Z.melee !== b.w) return [`[${UK()}] BUY ${name} · ${zxPrice(b.price)}`, can(b.price)];
     const max = zmAmmo(b.w);
     if (max == null) return [`${name} · you have it`, false];
     const have = (WEAPONS[b.w].mag ? W.ammo[b.w] || 0 : 0) + (Z.res[b.w] || 0), price = zmAmmoPrice(b.price);
-    return have >= max ? [`${name} · ammo full`, false] : [`[${UK()}] ${name} AMMO · ${price}`, can(price)];
+    return have >= max ? [`${name} · ammo full`, false] : [`[${UK()}] ${name} AMMO · ${zxPrice(price)}`, can(price)];
   }
   if (t.kind === 'crate') {
     const bx = info.bx;
-    if (!bx) return [`[${UK()}] MYSTERY CRATE · ${ZM.crate} · a random weapon`, can(ZM.crate)];
+    if (!bx) return [`[${UK()}] MYSTERY CRATE · ${zxPrice(ZM.crate)} · a random weapon`, can(ZM.crate)];
     if (bx[0] === 2 && bx[1] === G.myId) return [`[${UK()}] TAKE THE ${WEAPONS[bx[2]].name.toUpperCase()}`, true];
     return [bx[0] === 1 ? 'spinning...' : `that's ${(G.names.get(bx[1]) || { name: 'someone' }).name}'s`, false];
   }
@@ -397,7 +395,7 @@ function promptFor(t, info) {
   if (t.kind === 'cola') {
     if (!info.pw) return ['JANK COLA · no power (the switch is in the loading dock)', false];
     if (Z.cola2) return ['JANK COLA · you already had one', false];
-    return [`[${UK()}] JANK COLA · ${ZM.cola} · zombies hit you half as hard`, can(ZM.cola)];
+    return [`[${UK()}] JANK COLA · ${zxPrice(ZM.cola)} · zombies hit you half as hard`, can(ZM.cola)];
   }
   if (t.kind === 'revive') return [`[${UK()}] HOLD TO REVIVE ${(G.names.get(t.id) || { name: '???' }).name.toUpperCase()}`, true];
   return ['', false];
@@ -532,7 +530,7 @@ net.on('zl', (m) => {
   Z.melee = slots[slots.length - 1]; Z.guns = slots.slice(0, -1);
   if (m.c != null) Z.credits = m.c;
   const keep = m.want || W.cur;
-  W.item = (G.settings.loadout && G.settings.loadout.item) || 'frag';
+  W.item = typeof m.it === 'string' && m.it ? m.it : (G.settings.loadout && G.settings.loadout.item) || 'frag'; // your zombies item
   W.slots = slots; W.cur = null; W.slot = -1;
   const i = slots.indexOf(keep);
   switchSlot(i >= 0 ? i : 0);

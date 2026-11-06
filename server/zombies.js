@@ -8,6 +8,7 @@ import { WEAPONS, FLAGS, fireRate } from '../shared/weapons.js';
 import { GAMES, VOTE_MS } from '../shared/modes.js';
 import { raycast, movePlayer, query } from '../shared/physics.js';
 import { randomContainer } from '../shared/cosmetics.js';
+import { installZmExtra } from './zmextra.js';
 import { ZM, zmCount, zmHp, zmMaxAlive, zmGap, zmGait, zmAmmo, zmAmmoPrice, zmPick, zmTarget, zmAreaAt, zmOpenAreas } from '../shared/zombies.js';
 
 let send = () => {}, stat = () => {}, store = null;
@@ -127,7 +128,7 @@ const methods = {
     const on = !!GAMES[this.game].zombies && (this.mode === 'ffa' || this.mode === 'bots') && !!this.map.zm;
     const had = !!this.zs;
     for (const p of [...this.players.values()]) if (p.isBot && (p.zmz || (on && !p.ai.dummy))) this.remove(p); // regular bots sit this one out
-    for (const p of this.players.values()) { p.z = null; p.zu = null; }
+    for (const p of this.players.values()) { p.z = null; p.zu = null; if (!on) this.zxLeave(p); }
     this.zs = null;
     if (!on) { if (had && this.mode === 'bots') this.fillBots(); return; }
     const n = now(), Z = this.map.zm;
@@ -136,6 +137,7 @@ const methods = {
       n: Math.max(0, (ZM.startRound || 1) - 1), st: 'pre', until: n + ZM.first, toSpawn: 0, spawnAt: 0,
       box: { st: 0, by: 0, w: '', until: 0 }, fields: new Map(), fieldT: n, win: Z.windows.map(() => 0), dead: [], list: [], tick: 0, lastT: n,
     };
+    this.zxReset(); // barricades, drops, the cheat machine
     this.zs.boxes = this.zmBoxes();
     this.zs.areas = this.zmAreas();
     const hs = this.humans();
@@ -145,13 +147,14 @@ const methods = {
   // a fresh kit: 500 credits, the revolver and the knife
   zmJoin(p) {
     p.z = { c: ZM.start, guns: [], melee: '', ammo: {}, shotT: {}, kills: 0, heads: 0, downs: 0, revives: 0, earned: 0, hurtT: 0, cola: false, down: null, dead: false };
+    this.zxJoin(p); // your zombies loadout: the passive's money, your item
     this.zmKit(p);
     send(p, { t: 'streak', reset: 1 }); // the streak count starts over (the tray is hidden and deploy is off)
   },
   zmKit(p) {
     const z = p.z;
-    z.guns = ZM.startGuns.slice(); z.melee = ZM.startMelee; z.ammo = {};
-    for (const w of z.guns) z.ammo[w] = zmAmmo(w);
+    z.melee = ZM.startMelee;
+    this.zxKit(p); // your start pistol
   },
   // what p is carrying (sendLoadout calls this on every spawn): their guns + melee and the ammo each one has left
   zmLoadout(p, want) {
@@ -162,7 +165,7 @@ const methods = {
     }
     if (p.team !== 1) { p.team = 1; this.broadcast({ t: 'teams', game: this.game, list: [[p.id, 1, p.color]] }); }
     p.forced = true; // so the next mode hands their own loadout back
-    send(p, { t: 'zl', slots: [...p.z.guns, p.z.melee], ammo: p.z.ammo, want: want || undefined, c: p.z.c });
+    send(p, { t: 'zl', slots: [...p.z.guns, p.z.melee], ammo: p.z.ammo, want: want || undefined, c: p.z.c, it: p.item });
   },
   // the room's collision: the map plus every shutter that's still down
   zmBoxes() { return this.map.boxes.concat(this.map.zm.doors.filter((d, i) => !this.zs.open[i]).map((d) => d.box)); },
@@ -184,6 +187,7 @@ const methods = {
     return {
       n: zs.n, st: zs.st, left: zs.toSpawn + alive, br: zs.st === 'pre' || zs.st === 'break' ? Math.max(0, zs.until - n) : 0,
       o: zs.open.reduce((a, o, i) => (o ? a.concat(i) : a), []), pw: zs.power ? 1 : 0, bx: bx.st ? [bx.st, bx.by, bx.w, Math.max(0, bx.until - n)] : 0, dn, pts,
+      ...this.zxInfo(n), // planks, drops, modifiers, the machine
     };
   },
 
@@ -200,6 +204,7 @@ const methods = {
     this.zmFields(n, hs);
     this.zmPlayers(n, dt, hs);
     this.zmCrate(n);
+    this.zxTick(n, hs); // drops to grab, modifiers running out, the machine landing
     for (const b of zs.list) if (b.zmz.ph === 'hunt' && (n - b.zmz.seen > 25000 || b.zmz.stuck > 8)) { this.remove(b); zs.toSpawn++; } // lost or wedged: try again from a window
     if (hs.length && hs.every((h) => !h.alive)) { this.zmGameOver(); return; }
     if (zs.st !== 'live') { if (n >= zs.until) this.zmNextRound(n, hs); return; }
@@ -212,6 +217,7 @@ const methods = {
     const zs = this.zs;
     zs.n++; zs.st = 'live';
     zs.toSpawn = zmCount(zs.n, hs.length); zs.spawnAt = n + 1500;
+    this.zxRound();
     for (const h of hs) if (!h.alive) this.zmRespawn(h); // the dead come back for the new round
     this.broadcast({ t: 'zround', k: 'start', n: zs.n, count: zs.toSpawn });
   },
@@ -244,7 +250,7 @@ const methods = {
     for (const h of hs) {
       const z = h.z;
       if (!z) continue;
-      if (h.alive) { if (h.hp < 100 && n - z.hurtT > ZM.regenAfter * 1000) h.hp = Math.min(100, h.hp + ZM.regen * (z.cola ? 1.6 : 1) * dt); continue; }
+      if (h.alive) { if (h.hp < 100 && n - z.hurtT > ZM.regenAfter * (this.zxPerk(h, 'secondwind') ? 500 : 1000)) h.hp = Math.min(100, h.hp + ZM.regen * (z.cola ? 1.6 : 1) * dt); continue; }
       if (!z.down) continue;
       if (this.zmReviver(h, n)) z.down.until += dt * 1000;
       else if (n >= z.down.until) { z.down = null; z.dead = true; this.broadcast({ t: 'zdown', id: h.id, k: 'out' }); }
@@ -253,7 +259,7 @@ const methods = {
   zmReviver(h, n) {
     for (const p of this.players.values()) {
       const u = p.zu;
-      if (p.alive && u && u.k === 'r' + h.id && !u.done && n - u.last < USE_GAP) return { p, f: Math.min(1, (n - u.t0) / (ZM.revive * 1000)) };
+      if (p.alive && u && u.k === 'r' + h.id && !u.done && n - u.last < USE_GAP) return { p, f: Math.min(1, (n - u.t0) / (ZM.revive * (this.zxPerk(p, 'quickhands') ? 500 : 1000))) };
     }
     return null;
   },
@@ -287,6 +293,7 @@ const methods = {
     t.respawnAt = Infinity; // nobody respawns on a timer here
     if (t.zmz) {
       zs.dead.push(t);
+      this.zxDrop(t, killer); // maybe a power-up
       if (killer && killer !== t && !killer.isBot && killer.z) {
         const melee = !!WEAPONS[w] && (WEAPONS[w].kind === 'melee' || w === 'slipper'), head = !!t.lastHs && !melee;
         this.zmGive(killer, melee || head ? ZM.bonus : ZM.kill, melee ? 'melee' : head ? 'head' : 'kill');
@@ -298,7 +305,7 @@ const methods = {
     if (t.isBot || !t.z) return;
     const z = t.z;
     z.downs++; z.cola = false;
-    z.down = zs.st !== 'over' && this.humans().some((h) => h !== t && h.alive) ? { at: t.pos.slice(), until: now() + ZM.bleed * 1000 } : null;
+    z.down = zs.st !== 'over' && this.humans().some((h) => h !== t && h.alive) ? { at: t.pos.slice(), until: now() + ZM.bleed * (this.zxPerk(t, 'stubborn') ? 2000 : 1000) } : null;
     z.dead = !z.down;
     this.broadcast({ t: 'zdown', id: t.id, k: z.down ? 'down' : 'dead' });
   },
@@ -321,7 +328,7 @@ const methods = {
     if (by && by.z) by.z.revives++;
     this.broadcast({ t: 'zdown', id: h.id, k: 'up', by: by ? by.id : 0 });
   },
-  zmGive(p, d, why) { p.z.c += d; if (d > 0) p.z.earned += d; send(p, { t: 'zc', c: p.z.c, d, why }); },
+  zmGive(p, d, why) { if (d > 0 && this.zxMod('taxfraud', p)) d *= 2; p.z.c += d; if (d > 0) p.z.earned += d; send(p, { t: 'zc', c: p.z.c, d, why }); },
   // damage hook: hits on zombies pay +10 (a zombie's first 10, one per player per 180 ms), zombie claws hit equally hard
   // in every room and half as hard with a Jank Cola, and getting hurt holds off your regen
   zmDamage(t, amt, a) {
@@ -329,7 +336,7 @@ const methods = {
     if (t.zmz) {
       const z = t.zmz;
       if (a && !a.isBot && a.z && amt > 0 && z.hits < ZM.hitCap && n - (z.hitAt[a.id] || 0) >= ZM.hitGap) { z.hitAt[a.id] = n; z.hits++; this.zmGive(a, ZM.hit, 'hit'); }
-      return amt;
+      return a && !a.isBot && a.z ? this.zxHit(t, amt, a) : amt; // the cheat machine's modifiers
     }
     if (t.isBot || !t.z) return amt;
     t.z.hurtT = n;
@@ -340,11 +347,13 @@ const methods = {
   // which all arrive within a fraction of the gun's fire interval
   zmArm(p, wid) {
     const z = p.z, w = WEAPONS[wid];
+    if (z && p.scythe && (wid === 'scythe' || wid === 'scythe_rifle')) return true; // the scythe off a drop
     if (!z || !w || (wid !== z.melee && !z.guns.includes(wid))) return false;
     if (z.ammo[wid] == null) return true; // melee, the cigarette, the blower
     const n = now(), iv = w.rate ? 1000 / fireRate(w, p.hp) : (w.cd || 0.35) * 750;
     if (n - (z.shotT[wid] || 0) < iv * 0.55) return true; // part of a shot we already counted
     if (z.ammo[wid] <= 0) return false;
+    if (this.zxMod('bottomless', p)) { z.shotT[wid] = n; return true; } // BOTTOMLESS MAG: nothing comes off
     z.ammo[wid]--; z.shotT[wid] = n;
     if (!w.mag) send(p, { t: 'za', w: wid, n: z.ammo[wid] }); // the client counts mags itself, not these
     return true;
@@ -361,13 +370,15 @@ const methods = {
   zmUse(p) {
     const zs = this.zs, n = now();
     if (!p.alive || !p.z || zs.st === 'over') return;
-    const t = zs.areas.has(zmAreaAt(this.map.zm, p.pos)) ? zmTarget(this.map.zm, this.zmView(p), eyeOf(p), lookOf(p), 0.6) : null;
+    const inside = zs.areas.has(zmAreaAt(this.map.zm, p.pos));
+    const t = inside ? zmTarget(this.map.zm, this.zmView(p), eyeOf(p), lookOf(p), 0.6) || this.zxTarget(p, eyeOf(p), lookOf(p)) : null; // then the boards and the machine
     if (!t) { p.zu = null; return; }
     let u = p.zu;
     if (!u || u.k !== t.k || n - u.last > USE_GAP) u = p.zu = { k: t.k, t0: n, last: n, done: false };
     u.last = n;
+    if (t.kind === 'board') { this.zxBoard(p, t, u, n); return; } // held: a plank every so often
     if (u.done) return;
-    const need = (t.kind === 'revive' ? ZM.revive : t.kind === 'power' ? ZM.power : ZM.hold) * 1000;
+    const need = (t.kind === 'revive' ? ZM.revive * (this.zxPerk(p, 'quickhands') ? 0.5 : 1) : t.kind === 'power' ? ZM.power : ZM.hold) * 1000;
     if (n - u.t0 + 30 >= need) { u.done = true; this.zmDo(p, t); }
   },
   zmDo(p, t) {
@@ -395,6 +406,7 @@ const methods = {
       this.broadcast({ t: 'zbox', k: 'spin', by: p.id, w: bx.w, ms: ZM.spin });
       return;
     }
+    if (t.kind === 'mach') { this.zxMach(p, t); return; }
     if (t.kind === 'power') { if (!zs.power) { zs.power = true; this.broadcast({ t: 'zpower', by: p.id }); } return; }
     if (t.kind === 'cola') {
       if (!zs.power) { this.zmSay(p, t.k, false, 'no power. find the switch'); return; }
@@ -403,6 +415,7 @@ const methods = {
     }
   },
   zmPay(p, price, k) {
+    price = this.zxPrice(p, price); // Coupon Book
     if (p.z.c < price) { this.zmSay(p, k, false, `need ${price}`); return false; }
     this.zmGive(p, -price, 'buy');
     return true;
@@ -456,7 +469,7 @@ const methods = {
     if (!stun && (zs.tick + b.id) % 3 === 0) this.zmThink(b, z, n);
     let tx = 0, tz = 0;
     if (!stun) {
-      const s = z.close ? 0 : z.speed * (z.swingAt ? 0.35 : 1);
+      const s = z.close ? 0 : z.speed * (z.swingAt ? 0.35 : 1) * (this.zxMod('brainfreeze') ? 0.35 : 1); // BRAIN FREEZE
       tx = z.wish[0] * s; tz = z.wish[1] * s;
       for (const o of zs.list) { // don't stack up on each other
         if (o === b) continue;
@@ -537,13 +550,15 @@ const methods = {
       if (hd > ZM.reachHit || dy < -1.3 || dy > ZM.reachUp + 0.3) return; // dodged
       const ry = t.pos[1] + 0.9 - b.pos[1] - 1.9, rl = Math.hypot(hd, ry); // from its head to your middle: over the top of anything you climbed on
       if (hd > 0.9 && raycast([b.pos[0], b.pos[1] + 1.9, b.pos[2]], [dx / rl, ry / rl, dz / rl], rl, this.boxes)) return; // not through a wall
-      if (ZM.swipe > 0) this.hurt(t, b, 'bite', ZM.swipe, [(dx / hd) * 4, 2, (dz / hd) * 4]);
+      const claw = this.zxClaw(t);
+      if (claw > 0 && t.z && n >= (t.z.iframe || 0)) { t.z.iframe = n + ZM.iframe; this.hurt(t, b, 'bite', claw, [(dx / hd) * 4, 2, (dz / hd) * 4]); } // then a moment nobody else's claws land
       return;
     }
     if (!t || !t.alive || n < z.nextSwing) return;
     const dx = t.pos[0] - b.pos[0], dz = t.pos[2] - b.pos[2], dy = t.pos[1] - b.pos[1];
     if (Math.hypot(dx, dz) > ZM.reach + (z.run ? 0.25 : 0) || dy < -1.2 || dy > ZM.reachUp) return;
-    z.swingAt = n + ZM.windup; z.nextSwing = n + ZM.swipeCd;
+    const fr = this.zxMod('brainfreeze') ? 1.6 : 1;
+    z.swingAt = n + ZM.windup * fr; z.nextSwing = n + ZM.swipeCd * fr;
     if (dy > 1 && b.onGround) z.jump = true;
     this.broadcast({ t: 'fx', k: 'swing', w: 'bite', id: b.id, a: [r2(b.pos[0]), r2(b.pos[1] + 1.4), r2(b.pos[2])] });
   },
@@ -553,6 +568,7 @@ const methods = {
     b.vel = [0, 0, 0]; b.onGround = true; b.yaw = w.yaw; b.pitch = 0.3;
     if (z.ph === 'wait') {
       b.f = 0;
+      if (this.zxTear(b, z, n)) return; // planks first
       if (zs.st !== 'over' && n >= z.t && zs.win[z.win] <= n) { z.ph = 'climb'; z.t0 = n; z.dur = z.run ? 850 : 1350; zs.win[z.win] = n + z.dur * 0.6; z.from = b.pos.slice(); }
       else if (n >= (z.bang || 0)) { z.bang = n + 600 + Math.random() * 900; this.broadcast({ t: 'fx', k: 'swing', w: 'bite', id: b.id, a: [r2(b.pos[0]), 1.4, r2(b.pos[2])] }); }
       return;
@@ -571,4 +587,5 @@ export function installZombies(Room, h) {
   // zombies is on: this room has a zombies state, for the map it's playing on (stale between a map change and the next match)
   Object.defineProperty(Room.prototype, 'zm', { get() { return !!this.zs && this.zs.map === this.cfg.map; } });
   Object.assign(Room.prototype, methods);
+  installZmExtra(Room, h);
 }
