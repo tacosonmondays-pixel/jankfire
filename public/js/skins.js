@@ -45,6 +45,8 @@ export function validSkin(s) {
   if (!Array.isArray(s) || !ok(FINISHES, s[0]) || !ok(HATS, s[1]) || !ok(EFFECTS, s[2])) return DEFAULT_SKIN;
   return [s[0], s[1], s[2], typeof s[3] === 'string' ? s[3] : 'default', WRAP_MODES.includes(s[4]) ? s[4] : 'normal'];
 }
+// what gets drawn: a 'random' slot that wasn't rolled yet (a menu hover) is drawn as the default
+const drawable = (skin) => validSkin(skin).map((v, i) => (v === 'random' ? DEFAULT_SKIN[i] : v));
 export function randomSkin() {
   const pick = (o) => { const k = Object.keys(o); return k[(Math.random() * k.length) | 0]; };
   return [pick(FINISHES), pick(HATS), pick(EFFECTS), 'default', WRAP_MODES[(Math.random() * 3) | 0]];
@@ -52,7 +54,7 @@ export function randomSkin() {
 
 const tmpC = new THREE.Color();
 export function tracerColor(skin, fallback) {
-  const f = FINISHES[validSkin(skin)[0]];
+  const f = FINISHES[drawable(skin)[0]];
   if (!f || !f.tracer) return fallback;
   if (f.tracer === 'rainbow') return tmpC.setHSL(Math.random(), 1, 0.6).getHex();
   return f.tracer;
@@ -241,7 +243,7 @@ export function makeHat(id) {
 // ------------------------------------------------------------ apply
 const tmpBox = new THREE.Box3(), tmpV = new THREE.Vector3(), tmpS = new THREE.Vector3();
 export function applySkin(g, skin) {
-  const [finish, hat, effect, , mode] = validSkin(skin);
+  const [finish, hat, effect, , mode] = drawable(skin);
   const meshes = [];
   g.traverse((o) => { if (o.isMesh) meshes.push(o); });
   if (finish !== 'default') {

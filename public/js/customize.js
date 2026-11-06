@@ -142,7 +142,7 @@ export function czOpen() {
   if (!sel || !api.skinnable().includes(sel)) sel = G.cosSel && api.skinnable().includes(G.cosSel) ? G.cosSel : S.loadout.primary;
   root.classList.toggle('potato', (S.jank | 0) === 0);
   $('czStage').append($('preview'));
-  setPreviewRes([0.4, 0.5, 0.75, 1][S.jank] ?? 0.5);
+  setPreviewRes([0.3, 0.45, 0.75, 1][S.jank] ?? 0.5); // potato is crunchy here too
   previewManual(V);
   refresh();
   setTab(tab);
@@ -158,7 +158,7 @@ export function czClose() {
   hoverOff();
 }
 export function czRefresh() { if (open) { refresh(); if (tab) renderTiles(); } }
-export function czLate() { if (open) { clearIcons(); iconQ.length = 0; refresh(); if (tab) renderTiles(); dirty = 2; } } // a skin's model landed: its pictures again
+export function czLate() { if (open) { clearIcons(); iconQ.length = 0; tileQ.length = 0; refresh(); if (tab) renderTiles(); dirty = 2; } } // a skin's model landed: its pictures again
 
 // called every frame while the screen is up: returns how much time to render (0 = rest)
 export function czFrame(dt) {
@@ -408,7 +408,7 @@ function renderTiles() {
   const box = $('czTiles');
   box.innerHTML = '';
   if (tilesIO) tilesIO.disconnect();
-  tilesIO = 'IntersectionObserver' in window ? new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting && e.target._pic) { iconQ.push(e.target); tilesIO.unobserve(e.target); } }, { root: box, rootMargin: '0px 200px' }) : null;
+  tilesIO = 'IntersectionObserver' in window ? new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting && e.target._pic) { tileQ.push(e.target); tilesIO.unobserve(e.target); } }, { root: box, rootMargin: '0px 200px' }) : null;
   const cur = current(T);
   const all = itemsFor(T);
   let list = all.filter((k) => {
@@ -424,7 +424,7 @@ function renderTiles() {
   for (const k of list) box.append(tile(T, k, cur));
   $('czN').textContent = `${list.length}/${all.length}`;
   if (!list.length) box.append(el('div', 'cz-empty', T.type === 'model' && !all.length ? `no skins for the ${WEAPONS[sel].name} yet` : 'nothing matches. try fewer letters'));
-  if (!tilesIO) for (const t of box.children) if (t._pic) iconQ.push(t);
+  if (!tilesIO) for (const t of box.children) if (t._pic) tileQ.push(t);
 }
 function variant(T, k) { const s = wearing(); s[T.idx] = k === RAND ? pickOne(pool(T.type, sel)) || T.none : k; return s; }
 function tile(T, k, cur, kind) {
@@ -505,12 +505,12 @@ function hoverOff() {
 }
 
 // ------------------------------------------------------------ tile + list pictures, a few per frame
-const iconQ = [];
+const iconQ = [], tileQ = []; // the strip's tiles go first: they're what you're looking at
 function lazyIcon(img, fn) { const holder = { _pic: fn, _img: img }; iconQ.push(holder); }
 function pumpIcons() {
   const t0 = performance.now();
-  while (iconQ.length && performance.now() - t0 < 12) {
-    const t = iconQ.shift();
+  while ((tileQ.length || iconQ.length) && performance.now() - t0 < 12) {
+    const t = tileQ.length ? tileQ.shift() : iconQ.shift();
     if (t._img && t._img.isConnected) { const u = t._pic(); if (u) t._img.src = u; }
   }
 }
