@@ -196,10 +196,12 @@ async function session(b, map, ids) {
 // one sheet per prop (or per map): rows = copies, columns = box / Blender for each preset
 function sheet(name, rows) {
   const cells = [], W = 480, H = 270;
+  let blank = 0;
   for (const row of rows) for (const s of row) {
-    const lab = `${s.boxes ? 'boxes' : 'Blender'} - ${PRESET[s.pr]} - ${s.map}`.replace(/:/g, ' ');
-    const f = s.f.replace(/\.png$/, '_l.png');
-    execFileSync('ffmpeg', ['-loglevel', 'error', '-y', '-i', s.f, '-vf', `scale=${W}:${H},drawbox=x=0:y=0:w=${W}:h=22:color=black@0.6:t=fill,drawtext=text='${lab}':x=8:y=4:fontsize=15:fontcolor=${s.boxes ? 'white' : 'yellow'}`, f]);
+    const lab = `${s.boxes ? 'boxes' : 'Blender'} - ${PRESET[s.pr]} - ${s.map}${s.f ? '' : ' (no clean shot)'}`.replace(/:/g, ' ');
+    const f = s.f ? s.f.replace(/\.png$/, '_l.png') : path.join(tmp, `blank_${blank++}.png`);
+    const src = s.f ? ['-i', s.f] : ['-f', 'lavfi', '-i', `color=c=0x120818:s=${W}x${H}:d=1`, '-frames:v', '1'];
+    execFileSync('ffmpeg', ['-loglevel', 'error', '-y', ...src, '-vf', `scale=${W}:${H},drawbox=x=0:y=0:w=${W}:h=22:color=black@0.6:t=fill,drawtext=text='${lab}':x=8:y=4:fontsize=15:fontcolor=${s.boxes ? 'white' : 'yellow'}`, f]);
     cells.push(f);
   }
   const cols = rows[0].length, args = [];
@@ -225,7 +227,8 @@ function sheet(name, rows) {
   const by = new Map();
   for (const s of all) { const key = s.id === 'map' ? 'map_' + s.map : s.id; if (!by.has(key)) by.set(key, new Map()); const rk = s.map + '|' + s.k; if (!by.get(key).has(rk)) by.get(key).set(rk, []); by.get(key).get(rk).push(s); }
   for (const [key, rowsMap] of by) {
-    const rows = [...rowsMap.values()].slice(0, MAPVIEWS ? 4 : 4).map((r) => r.sort((a, b) => (b.pr - a.pr) || (Number(b.boxes) - Number(a.boxes))));
+    // every row the same grid: boxes / Blender for each preset, a blank cell where a shot never came out clean
+    const rows = [...rowsMap.values()].slice(0, 4).map((r) => presets.slice().sort((a, b) => b - a).flatMap((pr) => [true, false].map((boxes) => r.find((s) => s.pr === pr && s.boxes === boxes) || { map: r[0].map, pr, boxes, f: null })));
     sheet(key, rows);
   }
   fs.rmSync(tmp, { recursive: true, force: true });
