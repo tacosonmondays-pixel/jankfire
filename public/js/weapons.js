@@ -62,6 +62,9 @@ const RECOIL = {
   duck: { back: 1.2, up: 4, roll: 3, side: 0.3, punch: 0.015 },
   bow: { back: -1.4, up: 2.5, roll: 1, side: 0.1, punch: 0.012 },
   laser: { back: 1.8, up: 5, roll: 1.2, side: 0.15, punch: 0.03 },
+  pistol: { back: 1.1, up: 7, roll: 1.6, side: 0.15, punch: 0.022 },
+  akimbo: { back: 0.7, up: 2.6, roll: 1.8, side: 0.3, punch: 0.006 }, // per hand (sidearms.js has a spring for each)
+  sawnoff: { back: 3.4, up: 16, roll: 3.5, side: 0.35, punch: 0.085 },
 };
 const rnd = () => (Math.random() < 0.5 ? -1 : 1) * (0.5 + Math.random() * 0.5);
 function kickVM(id, mul = 1) {
@@ -99,7 +102,7 @@ function flashTex() {
   flashTexture.magFilter = THREE.NearestFilter; flashTexture.minFilter = THREE.NearestFilter;
   return flashTexture;
 }
-const FLASH_IDS = new Set(['ar', 'smg', 'redline', 'marbles', 'shotgun', 'minigun', 'sniper', 'revolver', 'scythe_rifle', 'chicken', 'bowling', 'banana']);
+const FLASH_IDS = new Set(['ar', 'smg', 'redline', 'marbles', 'shotgun', 'minigun', 'sniper', 'revolver', 'scythe_rifle', 'chicken', 'bowling', 'banana', 'pistol', 'akimbo', 'sawnoff']);
 function makeFlash(big) {
   const grp = new THREE.Group();
   const mat = new THREE.MeshBasicMaterial({ map: flashTex(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
@@ -124,7 +127,7 @@ function ejectShell(g, color = 0xd9a53a, big = false) {
   G.skinFxVM.norm.spawn(tmpV.x, tmpV.y, tmpV.z, 0.6 + Math.random() * 0.5, 0.75 + Math.random() * 0.5, 0.1 + Math.random() * 0.25,
     0.55, sz, sz * 0.9, color, color, 1, 4.5, 0.4);
 }
-const SHELL_ON_FIRE = new Set(['ar', 'smg', 'redline', 'minigun', 'scythe_rifle']);
+const SHELL_ON_FIRE = new Set(['ar', 'smg', 'redline', 'minigun', 'scythe_rifle', 'pistol', 'akimbo']);
 
 // smear trail: a fading ribbon behind the tip of whatever you swing
 const TRAIL_N = 26;
@@ -446,6 +449,9 @@ const VM = {
   bowling: { p: [0.24, -0.24, -0.42], r: [0, 0.04, 0], s: 0.6 },
   banana: { p: [0.2, -0.2, -0.38], r: [0, 0.05, 0], s: 0.8 },
   revolver: { p: [0.17, -0.16, -0.32], r: [0, 0.06, 0], s: 1.0 },
+  pistol: { p: [0.165, -0.155, -0.31], r: [0, 0.06, 0], s: 1.0 },
+  akimbo: { p: [0.2, -0.175, -0.34], r: [0, 0.1, 0], s: 0.95 }, // the right gun; the left one is this mirrored
+  sawnoff: { p: [0.19, -0.18, -0.34], r: [0, 0.05, 0], s: 0.85 },
   cig: { p: [0.15, -0.17, -0.3], r: [0.15, 0.6, 0.2], s: 1.1 },
   blower: { p: [0.24, -0.27, -0.45], r: [0, 0.05, 0], s: 0.6 },
   shredder: { p: [0.27, -0.26, -0.46], r: [0, 0.16, 0], s: 0.46 },

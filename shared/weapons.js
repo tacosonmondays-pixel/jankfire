@@ -103,6 +103,33 @@ export const WEAPONS = {
     fanHammer: { rate: 6, hold: 0.2, dmg: 28, spread: 0.065, kick: 0.3 },
     ads: { zoom: 1.4, spread: 0.2, p: [0, -0.085, -0.28] },
   },
+  // plain sidearms (public/js/sidearms.js does their moving parts + the akimbo hands)
+  // Plan B: semi-auto, one shot per click (the server holds the rate). the slide locks back on the last round
+  pistol: {
+    slot: 'secondary', kind: 'hitscan', name: 'Plan B', color: '#a0b4ff',
+    desc: 'A plain pistol for when plan A runs dry. Out of the holster in a blink, 12 shots, and the slide locks back to tell you you\'re empty.',
+    rate: 5, mag: 12, reload: 1.35, dmg: 20, head: 2.2, spread: 0.006, bloom: 0.007, maxBloom: 0.03,
+    kb: 0, kbUp: 0, recoil: 0.6, kick: 0.035, range: 220, tracer: 0xb8c8ff, speedMul: 1.05,
+    ads: { zoom: 1.35, spread: 0.25, p: [0, -0.085, -0.28] },
+  },
+  // Lefty & Righty: one machine pistol per hand. left click = left gun, right click = right gun (no aiming), each full
+  // auto at `rate`, each with its own half of `mag` (mag = both hands) and its own reload. `hands` = how many guns
+  // fire at once, so the server lets the pair through at hands x rate
+  akimbo: {
+    slot: 'secondary', kind: 'hitscan', name: 'Lefty & Righty', color: '#00e5a0', hands: 2,
+    desc: 'Two machine pistols, one per hand. Left click fires lefty, right click fires righty, hold both to hose. They reload one at a time, so keep one busy.',
+    auto: true, rate: 9, mag: 40, reload: 1.5, dmg: 6, head: 1.6, spread: 0.045, bloom: 0.003, maxBloom: 0.05,
+    kb: 0, recoil: 0.25, kick: 0.012, range: 140, tracer: 0x7dffd0, speedMul: 1.05,
+  },
+  // Half a Shotgun: a sawed-off double. both shells, a huge shove on whoever eats the pellets, and enough kick that a
+  // shot at your feet hops you off the floor
+  sawnoff: {
+    slot: 'secondary', kind: 'hitscan', name: 'Half a Shotgun', color: '#e05a3a',
+    desc: 'Somebody sawed a shotgun in half. Two shells, and point blank they go flying. Shoot the floor for a little hop.',
+    rate: 1 / 0.3, mag: 2, reload: 2.3, pellets: 12, dmg: 9, head: 1.3, spread: 0.11,
+    kb: 3.4, kbUp: 9, recoil: 11, kick: 0.09, range: 32, tracer: 0xffa060,
+    ads: { zoom: 1.12, spread: 0.7, p: [0, -0.1, -0.3] },
+  },
   marbles: {
     slot: 'secondary', kind: 'hitscan', name: 'Marble Shotgun', color: '#7fd0ff',
     desc: 'A hundred glass marbles per shot. One marble barely tickles, but point blank they all land: one shot, one kill. They stay on the floor after: anyone who runs over them slips (crouch-walk to cross).',

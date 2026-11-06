@@ -11,6 +11,7 @@ import { buildRigMissile } from './rigmodel.js'; // overdrive rig killstreak
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { laserBuild, calculator } from './gearmodels.js'; // the new gear's models (laser pointer, pop quiz calculator)
 import { prepAuthored, authored, AUTHORED, bindAuthored } from './glbkit.js';
+import { pistolBuild, akimboBuild, sawnoffBuild } from './sidemodels.js'; // Plan B, Lefty & Righty, Half a Shotgun
 
 // ------------------------------------------------------------ playing card faces (canvas, cached)
 const cardFaces = new Map();
@@ -1328,6 +1329,8 @@ const MODEL_BUILD = {
   },
 };
 WB.laser = laserBuild; // Big Laser Pointer (gearmodels.js)
+Object.assign(WB, { pistol: pistolBuild, akimbo: akimboBuild, sawnoff: sawnoffBuild }); // plain sidearms (sidemodels.js)
+Object.assign(HAT_AT, { pistol: [[0, 0.05, -0.07], 0.07], akimbo: [[0, 0.06, -0.08], 0.07], sawnoff: [[0, 0.047, 0.02], 0.08] });
 // knives + swords live in blades/ (one file each, real proportions): base weapons go in WB, skins in MODEL_BUILD
 for (const [id, mod] of Object.entries(BLADES)) {
   (COSMETICS.model[id] ? MODEL_BUILD : WB)[id] = mod.build;
