@@ -161,7 +161,7 @@ def build_lung(M):
         if depth < 2 and len(pts) == 6:
             ex, ez = x + math.cos(ang) * ln, z + math.sin(ang) * ln
             for da in (-0.5, 0.55):
-                grow(ex, ez, ang + da + rnd.uniform(-0.12, 0.12), ln * rnd.uniform(0.75, 0.9), rad * 0.72, depth + 1)
+                grow(ex - math.cos(ang) * 0.06, ez - math.sin(ang) * 0.06, ang + da + rnd.uniform(-0.12, 0.12), ln * rnd.uniform(0.75, 0.9), rad * 0.62, depth + 1)
     for sx in (-1, 1):
         grow(sx * 1.05, -0.55, math.atan2(1.0, sx * 0.45), 1.15, 0.13, 0)
     print('JF_LUNG branches', len(branches))
@@ -181,7 +181,7 @@ def build_lung(M):
     max(tr.data.polygons, key=lambda p: (len(p.vertices), p.center.z)).material_index = 1
     A(tr)
     for sx in (-1, 1):
-        A(sweep([(0.0, 1.55, -1.05), (sx * 0.35, 1.68, -0.95), (sx * 0.75, 1.95, -0.8)], [0.3, 0.24, 0.2], br, seg=8, name='lung_main_br'))
+        A(sweep([(sx * 0.06, 1.56, -1.03 + 0.03 * sx), (sx * 0.35, 1.68, -0.95), (sx * 0.75, 1.95, -0.8)], [0.27 + 0.01 * sx, 0.24, 0.2], br, seg=8, name='lung_main_br'))
     # the bed of fat it sits in
     balls = []
     for gx in range(-4, 5):
@@ -410,7 +410,7 @@ def build_heartlamp(M):
     # roots into the street
     for k in range(3):
         a = 2 * math.pi * k / 3 + 0.5
-        A(sweep([(0, 0.35, 0), (math.cos(a) * 0.3, 0.12, math.sin(a) * 0.3), (math.cos(a) * 0.55, 0.0, math.sin(a) * 0.55)], [0.09, 0.07, 0.04], pole, seg=4, name='hl_root'))
+        A(sweep([(math.cos(a) * 0.04, 0.33 + 0.03 * k, math.sin(a) * 0.04), (math.cos(a) * 0.3, 0.12, math.sin(a) * 0.3), (math.cos(a) * 0.55, 0.0, math.sin(a) * 0.55)], [0.085 - 0.006 * k, 0.07, 0.04], pole, seg=4, name='hl_root'))
     A(meta([((0, 0.0, 0), 0.42), ((0.12, 0.12, 0.05), 0.3)], res=0.1, m=M['flesh'], target=90, name='hl_base', clamp=lambda p: (p[0], max(p[1], -0.03), p[2])))
     # the heart: a squashed sphere with an apex, two atria on top, a crooked aorta, pulmonary stubs
     bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=10, v_segments=7, radius=1.0)
@@ -495,9 +495,9 @@ def _paint_jarlabel(px):
     px[:] = hexrgb(0xfff3d0)
     px[1:3, :] = hexrgb(0x8a2a4a); px[-3:-1, :] = hexrgb(0x8a2a4a)
     text_px(px, 'GRISTLE', 3, 6, 2, 0x8a2a4a)
-    text_px(px, '& SONS', 56, 6, 1, 0x8a2a4a)
-    text_px(px, 'SPECIMEN 07', 3, 24, 1, 0x3e2470)
-    text_px(px, 'DO NOT TAP', 3, 34, 1, 0xd8203a)
+    text_px(px, '& SONS', 3, 22, 1, 0x8a2a4a)
+    text_px(px, 'SPECIMEN 07', 3, 31, 1, 0x3e2470)
+    text_px(px, 'DO NOT TAP', 3, 39, 1, 0xd8203a)
     px_disc(px, 82, 30, 7, 0xff6f91); px_disc(px, 82, 30, 4, 0xfff3d0)  # a little smiling stamp
     px[27, 79:86] = hexrgb(0x8a2a4a)
 

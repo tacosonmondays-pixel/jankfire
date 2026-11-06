@@ -99,7 +99,7 @@ export function bulbs(B, a, b, r) {
   for (let s = 0.8; s < L; s += 1.1) {
     const t = s / L, y = a[1] + (b[1] - a[1]) * t - Math.sin(t * Math.PI) * sag - 0.12;
     const col = pick(r, cols);
-    B.shape({ kind: 'blob', c: [a[0] + (b[0] - a[0]) * t, y, a[2] + (b[2] - a[2]) * t], r: 0.09, seg: 5, mat: 'neon', tint: col, lod: false });
+    B.shape({ kind: 'blob', c: [a[0] + (b[0] - a[0]) * t, y, a[2] + (b[2] - a[2]) * t], r: 0.09, seg: 4, mat: 'neon', tint: col, lod: false });
     if (((s * 10) | 0) % 3 === 0) B.light(a[0] + (b[0] - a[0]) * t, y - 0.3, a[2] + (b[2] - a[2]) * t, col, 9, 0.9);
   }
   return pts;

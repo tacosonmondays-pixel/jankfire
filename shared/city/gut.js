@@ -9,7 +9,7 @@ import { cube, stairsZ, line, rubble, stall, flightLen, retaining, PASTEL, pick 
 
 const GY = SLICE.gut.y;
 const inRect = (x0, z0, x1, z1, r) => x0 < r[2] && x1 > r[0] && z0 < r[3] && z1 > r[1];
-const FLESH = [0xff6f91, 0xff8aa6, 0xe85a7a, 0xffa0b4];
+const FLESH = [0xff6f91, 0xff8aa6, 0xe85a7a, 0xffa0b4, 0x9a3a6a, 0xffd27a, 0x7a3a9a]; // raw pink, liver-purple, fat, bruise
 
 // the campus street grid: avenues every 52 m in x (the rib avenue is one of them), streets every 44 m in z
 const AVES = [-286, -234, -182, -130, -44, 8, 60], STREETS = [-232, -188, -100, -60];
@@ -29,7 +29,7 @@ const KEEP = () => [SLICE.arena.rect, SLICE.teeth.rect, [SLICE.choir.x - 26, SLI
 // a sphincter for a door, the Gristle & Sons sign on some, vein cables to the neighbour
 function office(B, x0, z0, x1, z1, r) {
   const h = 9 + Math.floor(r() * 6) * 3, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-  const tint = pick(r, [0xc8c4cc, 0xd8d0c8, 0xb8c0c8, 0xe0d4d8]);
+  const tint = pick(r, [0xc8c4cc, 0xd8d0c8, 0xb8c0c8, 0xe0d4d8, 0xa8d8d0, 0xe8e0b0]); // the old campus: office grey, hospital mint, memo yellow
   B.add(x0, GY, z0, x1, GY + h, z1, 'concrete', { tint });
   for (let y = GY + 3; y < GY + h - 1; y += 3) for (const [a, b, c, d] of [[x0 + 1, z0 - 0.04, x1 - 1, z0], [x0 + 1, z1, x1 - 1, z1 + 0.04]]) B.add(a, y, b, c, y + 1.3, d, r() < 0.7 ? 'window' : 'glass', { nc: true });
   for (let y = GY + 3; y < GY + h - 1; y += 3) for (const [a, b, c, d] of [[x0 - 0.04, z0 + 1, x0, z1 - 1], [x1, z0 + 1, x1 + 0.04, z1 - 1]]) B.add(a, y, b, c, y + 1.3, d, r() < 0.7 ? 'window' : 'glass', { nc: true });
@@ -47,7 +47,10 @@ function office(B, x0, z0, x1, z1, r) {
   for (const [px, pz] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) if (r() < 0.55) B.prop(r() < 0.5 ? 'fleshblob_a' : 'fleshblob_b', px, GY + (r() < 0.5 ? 0 : h * r()), pz, r() * 6.28, 1 + r() * 0.8, 0);
   // a sphincter door on the street side, a sign above it on one block in three
   const doorZ = r() < 0.5 ? z0 : z1, yaw = doorZ === z0 ? 0 : Math.PI;
-  B.prop('sphincter', cx, GY, doorZ + (doorZ === z0 ? -0.05 : 0.05), yaw, 1, 0);
+  if (r() < 0.2 && x1 - x0 > 10) { // the odd shop still open under the skin: SUDS & SONS, with its tongue out
+    B.prop('launderette', cx, GY, doorZ + (doorZ === z0 ? -0.02 : 0.02), yaw, 1, 0);
+    B.light(cx, GY + 2.5, doorZ + (doorZ === z0 ? -3 : 3), 0xfff0d0, 9, 0.8);
+  } else B.prop(r() < 0.75 ? 'sphincter' : 'tongue', cx, GY, doorZ + (doorZ === z0 ? -0.05 : 0.05), yaw, 1, 0);
   if (r() < 0.35) B.prop('gristlelogo', cx, GY + h - 4, doorZ + (doorZ === z0 ? -0.1 : 0.1), yaw, 1, 0);
   for (let i = 0; i < 3; i++) B.out.marks.push({ id: 'crowd', p: [cx + (r() - 0.5) * (x1 - x0 + 6), GY, doorZ + (doorZ === z0 ? -3 : 3)], kind: pick(r, ['choir', 'digester', 'lost']) });
   return h;
@@ -109,7 +112,11 @@ function lungPad(B, x, z, s = 1) {
 // Clocking In: the old time office (punch clocks on the wall), a plaza with lungs to bounce over his slams
 function arena(B) {
   const [x0, z0, x1, z1] = SLICE.arena.rect, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-  B.add(x0, GY - 0.02, z0, x1, GY + 0.05, z1, 'tile', { nc: true, tint: 0xc8c0b0 });
+  B.add(x0, GY - 0.02, z0, x1, GY + 0.05, z1, 'teeth', { nc: true, tint: 0xf0e4d0 });
+  // ribs over the plaza (it's a ribcage now), mounds round the edge, the old time-office's queue rails
+  for (const az of [z0 + 18, z1 - 16]) if (B.inside(cx, az)) { B.prop('ribarch', cx, GY, az, 0, 1.5, 0); B.add(cx - 13, GY, az - 1.2, cx - 10.5, GY + 9, az + 1.2, 'bone', { hide: true }); B.add(cx + 10.5, GY, az - 1.2, cx + 13, GY + 9, az + 1.2, 'bone', { hide: true }); }
+  for (const [mx, mz] of [[x0 + 4, cz], [x1 - 4, cz - 8], [x0 + 26, z1 - 4], [x1 - 26, z0 + 22]]) if (B.inside(mx, mz)) B.prop(mx < cx ? 'fleshblob_a' : 'fleshblob_b', mx, GY, mz, mx < cx ? 0.5 : -0.5, 1.6, 0);
+  for (let x = x0 + 14; x < x1 - 14; x += 6) if (B.inside(x, z0 + 6)) B.add(x, GY, z0 + 5.9, x + 4, GY + 1.0, z0 + 6.1, 'metal', { nc: true, tint: 0xd0c8b8 });
   // the time office along the north side, its front a wall of punch clocks (glow faces)
   B.add(x0 + 10, GY, z0 - 14, x1 - 10, GY + 14, z0, 'concrete', { tint: 0xd8d4cc });
   for (let x = x0 + 12; x < x1 - 12; x += 3) B.add(x, GY + 2, z0 + 0.01, x + 1.6, GY + 3.6, z0 + 0.05, 'window', { nc: true, tint: 0xfff0c0 });
@@ -171,7 +178,7 @@ export function gut(B, d) {
     B.add(x, GY, z, x + w, GY + 0.05, z + d0, 'bile', { nc: true, tint: 0xb8ff4a });
     if (i < 2) B.light(x + w / 2, GY + 0.6, z + d0 / 2, 0xa6e22e, 6, 0.6);
   }
-  if (r() < 0.5) { const mx = X0 + 10 + r() * (X1 - X0 - 20), mz = Z0 + 10 + r() * (Z1 - Z0 - 20); if (stomachD(mx, mz) > S.r + 30) B.shape({ kind: 'blob', c: [mx, GY + 26 + r() * 8, mz], r: [18 + r() * 10, 2.2, 14 + r() * 8], seg: 14, mat: 'flesh', tint: 0xc85070, pulse: 7 }); }
+
   // streets: tooth cobbles (texture) with real teeth scattered at the edges, eyes in the gutters, heart lamps
   for (let x = Math.floor(X0 / 2) * 2; x < X1; x += 2) for (let z = Math.floor(Z0 / 2) * 2; z < Z1; z += 2) {
     const s = streetAt(x + 1, z + 1);
@@ -281,7 +288,7 @@ export function border(B, d) {
   }
   // the gate: the arch at the top of the Long Stairs, flesh-swallowed pastel, the Gristle & Sons sign over it
   if (B.inside(G.x, G.z)) {
-    B.prop('gutgate', G.x, y, G.z, 0, 1, 0);
+    B.prop('gutgate', G.x, y, G.z, Math.PI, 1, 0); // faces the Long Stairs (south)
     B.add(G.x - 9, y, G.z - 1.5, G.x - 6, y + 12, G.z + 1.5, 'flesh', { hide: true }); B.add(G.x + 6, y, G.z - 1.5, G.x + 9, y + 12, G.z + 1.5, 'flesh', { hide: true });
     B.add(G.x - 9, y + 10, G.z - 1.5, G.x + 9, y + 13, G.z + 1.5, 'flesh', { hide: true });
     B.out.marks.push({ id: 'gut:stairs_top', p: [G.x, y, G.z + 6], face: 0 });

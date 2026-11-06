@@ -262,7 +262,7 @@ def garment(rows, ncols, m, x0=0.0, y0=0.0, z0=0.0, dip=None, amp=0.02, wave=0.2
 
 def peg(x, y, z, m, rect, rot=0.0):
     """a plastic clothes peg clamped on the line at (x, y, z): one chunky tapered block (it's instanced a lot)"""
-    o = box((0.012, 0.07, 0.013), (x, y + 0.008, z), m, rot=(0, 0, rot), taper=None)
+    o = box((0.012, 0.07, 0.024), (x, y + 0.008, z), m, rot=(0, 0, rot), taper=None)
     for v in o.data.vertices:  # the jaw end is thinner
         if v.co.z < 0: v.co.y *= 0.55
     return [uv_fit(o, rect)]
@@ -294,10 +294,10 @@ def xform(objs, rot=(0, 0, 0), move=(0, 0, 0), pivot=(0, 0, 0)):
     return objs
 
 
-def broom(x, z, h, wood_m, head_m, rect_wood, rect_head, up=True, lean=(0.0, 0.0)):
+def broom(x, z, h, wood_m, head_m, rect_wood, rect_head, up=True, lean=(0.0, 0.0), y0=0.0):
     """an upside-down broom used as a pole: handle from the ground to h, the bristle head on top (bristles up)"""
     top = (x + lean[0], h, z + lean[1])
-    P = [rod((x, 0.0, z), top, 0.014, wood_m, seg=6)]
+    P = [rod((x, y0, z), top, 0.014, wood_m, seg=6)]
     hd = box((0.26, 0.05, 0.055), (top[0], h + 0.02, top[2]), head_m, bev=0.008, seg=1)
     br = box((0.25, 0.1, 0.045), (top[0], h + 0.09, top[2]), head_m)
     for v in br.data.vertices:  # bristles splay out at the tips

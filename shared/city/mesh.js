@@ -8,7 +8,7 @@ import { MATS, FAMS, CHUNK } from './plan.js';
 import { FLAGS } from './chunk.js';
 
 const FAM = Object.fromEntries(FAMS.map((f, i) => [f, i]));
-export const TILE_M = { dirt: 3, asphalt: 4, concrete: 3, plaster: 2.5, brick: 2, metal: 2, wood: 1.5, tile: 1, corrug: 1.5, fabric: 2, tiedye: 3, bone: 0.8, paint: 1, rib: 2, window: 2, flesh: 3, glass: 2, glow: 2 };
+export const TILE_M = { dirt: 3, asphalt: 4, concrete: 3, plaster: 2.5, brick: 2, metal: 2, wood: 1.5, tile: 1, corrug: 1.5, fabric: 2, tiedye: 3, bone: 0.8, paint: 1, rib: 1.6, window: 2, flesh: 1.6, glass: 2, glow: 2 };
 export const KINDS = ['solid', 'flesh', 'glow', 'glass', 'acid'];
 
 function sink() {
@@ -45,12 +45,13 @@ const tileOf = (m) => TILE_M[MATS[m] ? MATS[m][1] : 'concrete'] || 2;
 const FACES = [[0, 1, 2, 1], [0, -1, 2, 1], [1, 1, 0, 2], [1, -1, 0, 2], [2, 1, 0, 1], [2, -1, 0, 1]];
 
 // one box into a sink. yaw (deco) turns it round its centre. lod 1 drops the underside. fit = the texture once per face
-function boxInto(S, x0, y0, z0, x1, y1, z1, m, tint, flag, lod, yaw = 0) {
+function boxInto(S, x0, y0, z0, x1, y1, z1, m, tint, flag, lod, yaw = 0, covered = null) {
   const lo = [x0, y0, z0], hi = [x1, y1, z1], c = [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2];
   const [r, g, b] = rgbOf(m, tint), fam = famOf(m), tile = tileOf(m), fit = flag & FLAGS.FIT;
   const cs = Math.cos(yaw), sn = Math.sin(yaw), turned = yaw !== 0;
   for (const [ax, sg, ua, va] of FACES) {
     if (ax === 1 && sg < 0 && (lod || y0 <= 0.001 || (y1 - y0 > 1.5 && Math.min(x1 - x0, z1 - z0) < 0.6))) continue; // undersides on the ground, of walls, and far away: never seen
+    if (covered && covered(ax, sg, lo, hi)) continue; // a solid box sits right against this whole face
     const p = [0, 0, 0], base = S.n;
     const nx = ax === 0 ? sg : 0, ny = ax === 1 ? sg : 0, nz = ax === 2 ? sg : 0;
     const wnx = turned ? nx * cs + nz * sn : nx, wnz = turned ? -nx * sn + nz * cs : nz;
@@ -111,6 +112,12 @@ function shapeInto(S, s, lod) {
       const a0 = base0 + i * (seg + 1) + k, a1 = a0 + 1, b0 = a0 + seg + 1, b1 = b0 + 1;
       if (s.inside) { S.t(a0, b0, a1); S.t(a1, b0, b1); } else { S.t(a0, a1, b0); S.t(a1, b1, b0); }
     }
+  } else if (s.kind === 'quad') { // a flat 4-corner surface (smooth ramps drawn over stepped collision): q = 4 points, ccw from above
+    const q = s.q, base = S.n;
+    const e1 = [q[1][0] - q[0][0], q[1][1] - q[0][1], q[1][2] - q[0][2]], e2 = [q[3][0] - q[0][0], q[3][1] - q[0][1], q[3][2] - q[0][2]];
+    let n = norm(cross(e2, e1)); if (n[1] < 0) n = [-n[0], -n[1], -n[2]];
+    for (const p of q) S.v(p[0], p[1], p[2], n[0], n[1], n[2], p[0] / tile, p[2] / tile, r, g, b, a);
+    if (n[1] >= 0 && cross(e2, e1)[1] >= 0) { S.t(base, base + 3, base + 2); S.t(base, base + 2, base + 1); } else { S.t(base, base + 1, base + 2); S.t(base, base + 2, base + 3); }
   } else if (s.kind === 'blob' || s.kind === 'lathe') {
     const prof = s.kind === 'lathe' ? s.prof : null, rows = prof ? prof.length - 1 : Math.max(3, Math.round(seg * 0.6));
     const R = s.kind === 'blob' ? (Array.isArray(s.r) ? s.r : [s.r, s.r, s.r]) : [1, 1, 1], c = s.c, base0 = S.n;
@@ -131,15 +138,44 @@ function shapeInto(S, s, lod) {
 }
 
 // a packed chunk (chunk.js packChunk) -> { solid, flesh, glow, glass, acid } buffer sets (missing kinds = null)
+// hidden faces: a face is skipped when one solid, drawn, axis-aligned box covers all of it and carries on past it.
+// (wall segments meeting end to end, walls on slabs, stacked floors, stair steps: ~1/4 of a Bottom chunk's faces)
+function coverTest(p, lod) {
+  const G = 4, cells = new Map(), B = p.box;
+  const solidAt = (i) => { const f = p.flag[i]; if (f & (FLAGS.HIDE | FLAGS.NC)) return false; if ((f & FLAGS.L1 && !lod) || (f & FLAGS.L0 && lod)) return false; const k = kindOf(p.mat[i]); return k === 'solid' || k === 'flesh'; };
+  for (let i = 0; i < p.mat.length; i++) {
+    if (!solidAt(i)) continue;
+    const j = i * 6;
+    for (let a = Math.floor(B[j] / G); a <= Math.floor(B[j + 3] / G); a++) for (let c = Math.floor(B[j + 2] / G); c <= Math.floor(B[j + 5] / G); c++) {
+      const key = a * 8191 + c; let l = cells.get(key); if (!l) cells.set(key, (l = [])); l.push(j);
+    }
+  }
+  const e = 1e-3;
+  return (ax, sg, lo, hi) => {
+    const plane = sg > 0 ? hi[ax] : lo[ax], mx = ax === 0 ? plane : (lo[0] + hi[0]) / 2, mz = ax === 2 ? plane : (lo[2] + hi[2]) / 2;
+    const l = cells.get(Math.floor(mx / G) * 8191 + Math.floor(mz / G));
+    if (!l) return false;
+    for (const j of l) {
+      // spans the plane on the outside of the face, and covers the face in the other two axes
+      if (sg > 0 ? !(B[j + ax] <= plane + e && B[j + 3 + ax] > plane + 0.05) : !(B[j + 3 + ax] >= plane - e && B[j + ax] < plane - 0.05)) continue;
+      let ok = true;
+      for (let k = 0; k < 3 && ok; k++) if (k !== ax && (B[j + k] > lo[k] + e || B[j + 3 + k] < hi[k] - e)) ok = false;
+      if (ok) return true;
+    }
+    return false;
+  };
+}
+
 export function meshChunk(p, lod = 0) {
   const sinks = {};
   const get = (m) => { const k = kindOf(m); return sinks[k] || (sinks[k] = sink()); };
+  const covered = coverTest(p, lod);
   for (let i = 0; i < p.mat.length; i++) {
     const f = p.flag[i];
     if (f & FLAGS.HIDE || (f & FLAGS.L1 && !lod) || (f & FLAGS.L0 && lod)) continue;
     const j = i * 6, x0 = p.box[j], y0 = p.box[j + 1], z0 = p.box[j + 2], x1 = p.box[j + 3], y1 = p.box[j + 4], z1 = p.box[j + 5];
     if (lod && !(f & FLAGS.L1)) { const big = Math.max(x1 - x0, y1 - y0, z1 - z0); if (!(f & FLAGS.LOD) && (big < 2.5 || (f & FLAGS.NC && big < 4))) continue; }
-    boxInto(get(p.mat[i]), x0, y0, z0, x1, y1, z1, p.mat[i], p.tint[i], f, lod);
+    boxInto(get(p.mat[i]), x0, y0, z0, x1, y1, z1, p.mat[i], p.tint[i], f, lod, 0, kindOf(p.mat[i]) === 'glass' ? null : covered);
   }
   for (let i = 0; i < p.dmat.length; i++) {
     const j = i * 7, sx = p.deco[j + 3], sy = p.deco[j + 4], sz = p.deco[j + 5];

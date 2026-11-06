@@ -76,7 +76,7 @@ registerCity('slice', {
   name: 'OVERDUE slice', cx0: -5, cz0: -4, cx1: 5, cz1: 4,
   spawn: [-189, 8.4, 196],
   horizon: 'horizon',
-  ringScale: { near: 0.72, props: 0.8 }, // the slice is dense: full detail a bit closer in, lod1 (one box per house) past it
+  ringScale: { near: 0.62, props: 0.75 }, // the slice is dense: full detail a bit closer in, lod1 (one box per house) past it
   districts: [
     // order matters: the first rect that holds a point is its district (districtAt)
     { id: 'border', name: 'The Gut Border', rect: SLICE.border.rect, gen: 'border', margin: 40,
@@ -84,7 +84,7 @@ registerCity('slice', {
     { id: 'bottom', name: 'The Bottom', rect: SLICE.bottom.rect, gen: 'bottom', margin: 40,
       sky: { top: 0x140828, mid: 0x5a2a70, bot: 0x2a1840, fog: 0x3e2452 }, fogNear: 80, fogFar: 520, night: 1, light: fogLight(0xc8b8ff, 0x7a4a6a, 1.55, 0xd8c8ff, 0.9) },
     { id: 'gut', name: 'The Gut', rect: SLICE.gut.rect, gen: 'gut', margin: 40,
-      sky: { top: 0x2a0610, mid: 0x8a2a30, bot: 0x3a1018, fog: 0x8a3448 }, fogNear: 45, fogFar: 320, night: 0.5, light: fogLight(0xffa8b0, 0x6a1a30, 1.4, 0xffc0a0, 1.5) },
+      sky: { top: 0x1a0408, mid: 0x6a1a28, bot: 0x2a0a12, fog: 0x4a1424 }, fogNear: 70, fogFar: 340, night: 0.6, light: fogLight(0xffe0d0, 0x3a1020, 1.25, 0xfff0e0, 1.6) },
     { id: 'commute', name: 'The Commute', rect: SLICE.commute.rect, gen: 'commute', margin: 40,
       sky: { top: 0x3a4a8a, mid: 0xe0904a, bot: 0x7a5038, fog: 0xd8a070 }, fogNear: 60, fogFar: 600, night: 0.2, light: fogLight(0xffe0b0, 0x7a5a40, 1.4, 0xffd090, 1.9) },
   ],
