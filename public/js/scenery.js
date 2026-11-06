@@ -16,6 +16,8 @@ const SCENES = {
   bazaar: { theme: 'desert', flat: true }, // sand all round outside the walls, no cliff
   islands: { theme: 'ocean' },
   backrooms: { theme: 'sealed' },
+  jankburg: { theme: 'industrial', flat: true }, // sheds, stacks and a crane past the outer ring; the megacity is the map's own deco
+  forest: { theme: 'forest', flat: true }, // the woods go on past the fog: a black tree line against the sky
 };
 const PAL = {
   sky: { mtn: 0x8a7aa8, snow: 0xffffff, floor: 0xffffff },
@@ -24,6 +26,7 @@ const PAL = {
   industrial: { mtn: 0x6a6070, snow: 0xe0e0e8, floor: 0x5a5650, hill: 0x6a645a },
   desert: { mtn: 0xb07a4a, snow: 0xf2dcae, floor: 0xd8b07a, hill: 0xcfa468, mesa: 0xb8683a },
   ocean: { mtn: 0x4a7a6a, snow: 0xf0f4f8, floor: 0x2a6aa8, isle: 0x3a8a3a },
+  forest: { mtn: 0x0b111b, snow: 0x1e2838, floor: 0x0d1118, hill: 0x0a0f16, tree: 0x05080d },
 };
 
 let group = null;
@@ -156,6 +159,11 @@ export function buildScenery(scene, map, id, voidMesh) {
       const uv = g.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * w / 10, uv.getY(k) * h / 20);
       const m = new THREE.Mesh(g, mat); m.position.set(cx + Math.cos(a) * d, floorY + h / 2, cz + Math.sin(a) * d); group.add(m);
     }
+  }
+  if (cfg.theme === 'forest') { // ridge after ridge of pines, black against the night, out to the mountains
+    const tree = basic(fade(pal.tree, fog, 0.12)), tree2 = basic(fade(pal.tree, fog, 0.32)), hill = basic(fade(pal.hill, fog, 0.2));
+    for (let i = 0; i < 46; i++) { const [x, z] = near(150, 620); const s = 40 + r() * 90; const m = new THREE.Mesh(new THREE.SphereGeometry(s, 7, 4, 0, Math.PI * 2, 0, Math.PI / 2), hill); m.scale.y = 0.3 + r() * 0.35; m.position.set(x, floorY, z); group.add(m); }
+    for (let i = 0; i < 520; i++) { const [x, z] = near(70, 600); const far = Math.hypot(x - cx, z - cz) > R + 300; const h = 14 + r() * 22; const t = new THREE.Mesh(new THREE.ConeGeometry(h * 0.3, h, 5), far ? tree2 : tree); t.position.set(x, floorY + h / 2 + (far ? 6 : 0), z); t.rotation.y = r() * 3; group.add(t); }
   }
   if (cfg.theme === 'sky') { // a sea of clouds below
     // merged into one mesh, the clouds aren't sorted against each other: no depth writes, or near ones cut holes in far ones

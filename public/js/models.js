@@ -1431,6 +1431,51 @@ function addHair(H, lk) {
 }
 
 // ------------------------------------------------------------ character accessories (head / face / back)
+// ------------------------------------------------------------ Smarty Pants: Big Glasses + Overalls
+// Big Glasses: oversized round frames (each lens wider than an eye socket, together wider than the head), thick black
+// rims, white tape round the bridge where they broke, arms back to the ears. just the glasses (no eyes behind them)
+function bigGlasses(H, fz) {
+  const F = 0x141416, y = 0.172, R = 0.066, x = 0.084, z = fz - 0.012;
+  const glass = jankify(new THREE.MeshLambertMaterial({ color: 0xcfeeff, transparent: true, opacity: 0.28, depthWrite: false }));
+  for (const sx of [-1, 1]) {
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(R, 0.013, 6, 18), M(F)); rim.position.set(sx * x, y, z); rim.scale.z = 1.6; H.add(rim);
+    const ln = new THREE.Mesh(new THREE.CircleGeometry(R, 18), glass); ln.position.set(sx * x, y, z); ln.rotation.y = Math.PI; ln.renderOrder = 2; ln.userData.noWrap = true; H.add(ln);
+    const gl = bx(0.026, 0.008, 0.002, 0xffffff, sx * x - 0.028, y + 0.035, z - 0.002, true); gl.rotation.z = 0.6; H.add(gl); // glint
+    // arm back along the side of the head, hooked down behind the ear
+    const arm = bx(0.012, 0.014, 0.16, F, sx * 0.13, y + 0.01, fz + 0.075); arm.rotation.y = -sx * 0.18; H.add(arm);
+    const hook = bx(0.012, 0.05, 0.014, F, sx * 0.118, y - 0.012, fz + 0.155); hook.rotation.x = 0.4; H.add(hook);
+    H.add(bx(0.022, 0.022, 0.016, F, sx * (x + R + 0.004), y + 0.012, z)); // hinge block
+  }
+  H.add(bx(0.04, 0.014, 0.014, F, 0, y + 0.01, z)); // bridge
+  const tape = bx(0.028, 0.04, 0.03, 0xf4f1e6, 0, y + 0.008, z - 0.002); tape.rotation.z = 0.12; H.add(tape); // the tape round it (it broke)
+  for (const dx of [-0.007, 0.006]) { const w = bx(0.002, 0.042, 0.032, 0xc8c2ae, dx, y + 0.008, z - 0.002); w.rotation.z = 0.12; H.add(w); } // tape wraps
+}
+// overalls default to denim; a picked bottoms colour wins, and a team game paints them the team colour like any bottoms
+function overallsColor(lk, c) { return lk && lk.bottomColor ? new THREE.Color(lk.bottomColor).getHex() : lk && lk.teamed ? c : 0x3b64a8; }
+// the bib up the front of the chest with a pocket (and a pencil in it), straps over both shoulders, brass buckles,
+// side buttons at the hips, a little back panel the straps go into. thick = how far a jacket / hoodie sticks out
+function overallsBib(Bd, col, thick) {
+  const D = col, ST = 0xffc21a, SEAM = new THREE.Color(col).offsetHSL(0, -0.05, 0.16).getHex();
+  const fz = -0.15 - thick * 0.6;
+  const bib = bx(0.25, 0.27, 0.03, D, 0, 1.235, fz); bib.rotation.x = -0.1; Bd.add(bib);
+  for (const sx of [-1, 1]) { const sm = bx(0.008, 0.25, 0.034, SEAM, sx * 0.112, 1.235, fz); sm.rotation.x = -0.1; Bd.add(sm); } // stitching down the edges
+  const pk = bx(0.13, 0.1, 0.01, new THREE.Color(col).offsetHSL(0, 0, -0.05).getHex(), 0.0, 1.27, fz - 0.024); pk.rotation.x = -0.1; Bd.add(pk); // bib pocket
+  const pks = bx(0.13, 0.008, 0.012, SEAM, 0, 1.318, fz - 0.03); pks.rotation.x = -0.1; Bd.add(pks); // its top hem
+  // a pencil in the pocket: yellow, a pink eraser, a silver band
+  const pen = cylZ(0.013, 0.14, 0xffd21a, 0.04, 1.35, fz - 0.03, 6); pen.rotation.x = Math.PI / 2 - 0.12; pen.rotation.y = 0.0; pen.rotation.z = -0.15; Bd.add(pen);
+  const er = cylZ(0.013, 0.022, 0xff7ab8, 0.049, 1.43, fz - 0.04, 6); er.rotation.x = Math.PI / 2 - 0.12; er.rotation.z = -0.15; Bd.add(er);
+  const fe = cylZ(0.0135, 0.012, 0xc8ccd4, 0.048, 1.416, fz - 0.038, 6); fe.rotation.x = Math.PI / 2 - 0.12; fe.rotation.z = -0.15; Bd.add(fe);
+  // straps: up from the bib corners, over the shoulders, down the back into the back panel
+  for (const sx of [-1, 1]) {
+    const fr = bx(0.05, 0.2, 0.02, D, sx * 0.1, 1.44, fz - 0.005); fr.rotation.x = 0.18; Bd.add(fr);
+    Bd.add(bx(0.05, 0.022, 0.3, D, sx * 0.105, 1.545, 0.0)); // over the shoulder
+    const bk = bx(0.05, 0.4, 0.02, D, sx * 0.09, 1.34, 0.16 + thick); bk.rotation.z = sx * 0.12; Bd.add(bk);
+    const bu = bx(0.06, 0.04, 0.014, ST, sx * 0.1, 1.355, fz - 0.024); bu.rotation.x = -0.1; Bd.add(bu); // brass buckle
+    Bd.add(bx(0.026, 0.012, 0.016, 0x8a6a10, sx * 0.1, 1.355, fz - 0.03)); // its bar
+    Bd.add(ball(0.016, ST, sx * 0.175, 1.04, -0.03)); // hip button
+  }
+  Bd.add(bx(0.2, 0.12, 0.024, D, 0, 1.12, 0.14 + thick * 0.5)); // back panel
+}
 function addAccessories(ch, look, c) {
   if (!look) return;
   const H = ch.head, Bd = ch.body;
@@ -1456,6 +1501,7 @@ function addAccessories(ch, look, c) {
     case 'eyepatch': at(H, bx(0.06, 0.05, 0.02, 0x111111, 0.05, 0.17, fz, true)); at(H, bx(0.28, 0.012, 0.012, 0x111111, 0, 0.19, fz + 0.01)); break;
     case 'bandana': at(H, bx(0.22, 0.09, 0.03, 0xc02030, 0, 0.07, fz + 0.01)); break;
     case 'visor': at(H, bx(0.24, 0.05, 0.02, 0x3ee6c8, 0, 0.17, fz - 0.005, true)); break;
+    case 'bigglasses': bigGlasses(H, fz); break; // Smarty Pants
     case 'goggles': { // old-school flight goggles: leather strap round the head, two round amber lenses
       const s = new THREE.Mesh(new THREE.CylinderGeometry(0.153, 0.153, 0.035, 12, 1, true), M(0x6a3f1e)); s.position.y = 0.17; H.add(s);
       for (const sx of [-1, 1]) { at(H, cylZ(0.048, 0.04, 0x8a5a2b, sx * 0.058, 0.175, fz + 0.005, 10)); at(H, cylZ(0.036, 0.01, 0xffb84d, sx * 0.058, 0.175, fz - 0.016, 10, true)); }
@@ -1464,6 +1510,7 @@ function addAccessories(ch, look, c) {
   }
   // back stuff hangs off the upper back (chest back surface ~z 0.15) and is strapped over the shoulders
   const thick = look.top === 'runner' ? 0.04 : look.top === 'jacket' || look.top === 'suit' || look.top === 'hoodie' ? 0.03 : 0;
+  if (look.bottom === 'overalls') overallsBib(Bd, overallsColor(look, c), thick);
   const bk = 0.15 + thick;
   const straps = (col) => { for (const sx of [-1, 1]) { at(Bd, bx(0.045, 0.025, 0.32, col, sx * 0.11, 1.52, 0.0)); at(Bd, bx(0.045, 0.3, 0.025, col, sx * 0.11, 1.37, -0.16 - thick)); } };
   switch (look.back) {
@@ -1660,23 +1707,26 @@ export function buildCharacter(color, look) {
     const TOP = lk.topColor ? new THREE.Color(lk.topColor).getHex() : c;
     const BOT = lk.bottomColor ? new THREE.Color(lk.bottomColor).getHex() : c;
     const top = lk.top || 'tank', bottom = lk.bottom || 'shorts';
+    const legs = bottom === 'pants' || bottom === 'overalls'; // full-length legs (overalls are denim unless you pick a colour)
+    const LEG = bottom === 'overalls' ? overallsColor(lk, c) : BOT;
     const sleeves = top === 'tee' ? 'short' : top === 'hoodie' || top === 'jacket' || top === 'suit' ? 'long' : null;
     // legs: hip -> thigh -> knee -> shin -> foot
     for (const [leg, knee, sx] of [[legL, kneeL, -1], [legR, kneeR, 1]]) {
       leg.position.set(0.1 * sx, 0.92, 0);
       leg.add(ball(0.075, JT));
       leg.add(limb(0.07, 0.058, 0.42, SK, -0.22));
-      if (bottom === 'pants') leg.add(limb(0.082, 0.07, 0.44, BOT, -0.22));
+      if (legs) leg.add(limb(0.082, 0.07, 0.44, LEG, -0.22));
       knee.position.y = -0.44;
       knee.add(ball(0.062, JT));
       knee.add(limb(0.056, 0.045, 0.4, SK, -0.21));
-      if (bottom === 'pants') knee.add(limb(0.068, 0.058, 0.38, BOT, -0.2));
-      knee.add(bx(0.1, 0.06, 0.22, bottom === 'pants' ? 0x222222 : SK, 0, -0.43, -0.05));
+      if (legs) knee.add(limb(0.068, 0.058, 0.38, LEG, -0.2));
+      if (bottom === 'overalls') knee.add(limb(0.074, 0.072, 0.07, new THREE.Color(LEG).offsetHSL(0, -0.1, 0.12).getHex(), -0.34)); // rolled-up cuffs, the paler inside of the denim
+      knee.add(bx(0.1, 0.06, 0.22, legs ? (bottom === 'overalls' ? 0x6b3a1a : 0x222222) : SK, 0, -0.43, -0.05)); // (overalls come with brown work boots)
       leg.add(knee);
       body.add(leg);
     }
     if (bottom === 'skirt') { const sk = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.28, 0.36, 8), M(BOT)); sk.position.y = 0.88; body.add(sk); }
-    else body.add(bx(0.34, 0.18, 0.23, BOT, 0, 0.98, 0)); // shorts / top of the pants
+    else body.add(bx(0.34, 0.18, 0.23, LEG, 0, 0.98, 0)); // shorts / top of the pants
     body.add(limb(0.1, 0.12, 0.16, top === 'none' || top === 'tank' ? SK : TOP, 1.13)); // waist
     const chest = ball(0.2, SK, 0, 1.34, 0); chest.scale.set(1.2, 1.1, 0.72); body.add(chest);
     if (top === 'tank') { const sash = bx(0.09, 0.56, 0.31, TOP, 0, 1.31, 0); sash.rotation.z = 0.65; body.add(sash); }

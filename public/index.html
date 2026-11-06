@@ -118,15 +118,16 @@
     <h2>GUIDE</h2>
     <div class="note">welcome to your new job. read this or don't. we can't make you.</div>
     <div class="guide">
-      <div><h3>moving</h3><p><b>WASD</b> move · <b>SHIFT</b> run · <b>C / CTRL</b> crouch, slide when fast · <b>SPACE</b> jump (hold to bhop)</p>
-        <p><b>E</b> grapple · jump while grappling to launch. momentum is infinite. use it irresponsibly.</p></div>
-      <div><h3>fighting</h3><p><b>LEFT CLICK</b> shoot · <b>RIGHT CLICK</b> aim · <b>R</b> reload · <b>F</b> inspect · <b>1 2 3</b> switch · <b>Q</b> last weapon</p>
-        <p><b>G</b> item · <b>5 6 7</b> killstreaks · <b>V / X</b> scythe · <b>Z</b> spray</p></div>
-      <div><h3>everything else</h3><p><b>B</b> menu · <b>TAB</b> scores · <b>T</b> chat</p>
-        <p>at the end of a match everyone votes: <b>the mode first, then the map</b>. click a card or press <b>1-4</b>. humans decide, bots only break ties.</p>
-        <p>sick of this mode? type <b>/skip</b> in chat. more than half of the players in the room have to agree (alone, it's instant). you get 30 seconds, and a skipped match pays no containers.</p></div>
+      <div><h3>moving</h3><p id="gMove"><b>WASD</b> move · <b>SHIFT</b> run · <b>C / CTRL</b> crouch, slide when fast · <b>SPACE</b> jump (hold to bhop)</p>
+        <p id="gHook"><b>E</b> grapple · jump while grappling to launch. momentum is infinite. use it irresponsibly.</p></div>
+      <div><h3>fighting</h3><p id="gFight"><b>LEFT CLICK</b> shoot · <b>RIGHT CLICK</b> aim · <b>R</b> reload · <b>F</b> inspect · <b>1 2 3</b> switch · <b>Q</b> last weapon</p>
+        <p id="gItems"><b>G</b> item · <b>5 6 7</b> killstreaks · <b>V / X</b> scythe · <b>Z</b> spray</p></div>
+      <div><h3>everything else</h3><p id="gElse"><b>B</b> menu · <b>TAB</b> scores · <b>T</b> chat</p>
+        <p>at the end of a match everyone votes: <b>the mode first, then the map</b>. click a card or press <b id="voteKeys">1-4</b>. humans decide, bots only break ties.</p>
+        <p>sick of this mode? type <b>/skip</b> in chat. more than half of the players in the room have to agree (alone, it's instant). you get 30 seconds, and a skipped match pays no containers.</p>
+        <p>every key can be changed in <b>SETTINGS &gt; KEY BINDINGS</b>.</p></div>
     </div>
-    <div class="hint">WASD move · SHIFT run · C / CTRL crouch (slide when fast) · SPACE jump (hold to bhop, jump while grappling to launch) · RIGHT CLICK aim · E grapple · R reload · F inspect · 1 2 3 switch · G use item · 5 6 7 use killstreaks · Z spray · V/X scythe · B menu · TAB scores · T chat · /skip in chat votes to skip the match</div>
+    <div class="hint" id="keyHint">WASD move · SHIFT run · C / CTRL crouch (slide when fast) · SPACE jump (hold to bhop, jump while grappling to launch) · RIGHT CLICK aim · E grapple · R reload · F inspect · 1 2 3 switch · G use item · 5 6 7 use killstreaks · Z spray · V/X scythe · B menu · TAB scores · T chat · /skip in chat votes to skip the match</div>
     <button class="mid back">BACK</button>
   </div>
 
@@ -160,6 +161,7 @@
       <label>bots <input id="setupBots" type="range" min="1" max="12" step="1" value="5"><span id="setupBotsN">5</span></label>
       <label>difficulty <select id="setupDiff"></select></label>
       <label>hipfire <select id="setupHip"></select></label>
+      <label title="Scary Forest only">tall guy from HR <select id="setupHr"></select></label>
     </div>
     <button class="big" id="setupGo"><b>START</b></button>
     <button class="mid back">BACK</button>
@@ -173,6 +175,7 @@
       <label>mode <select id="cfgGame"></select></label>
       <label>map <select id="cfgMap"></select></label>
       <label>hipfire accuracy <select id="cfgHip"></select></label>
+      <label title="Scary Forest only">tall guy from HR <select id="cfgHr"></select></label>
       <label class="botsOnly">bot difficulty <select id="cfgDiff"></select></label>
       <label class="botsOnly">bots <input id="cfgBots" type="range" min="0" max="12" step="1"><span id="cfgBotsN"></span></label>
     </div>
@@ -186,9 +189,9 @@
       <div class="lcol"><div class="lt">primary</div><div id="lo-primary"></div></div>
       <div class="lcol"><div class="lt">secondary</div><div id="lo-secondary"></div></div>
       <div class="lcol"><div class="lt">melee</div><div id="lo-melee"></div></div>
-      <div class="lcol"><div class="lt">item (G)</div><div id="lo-item"></div></div>
+      <div class="lcol"><div class="lt">item (<span id="loItemKey">G</span>)</div><div id="lo-item"></div></div>
     </div>
-    <div class="lt">killstreaks (pick 3 · press 5 / 6 / 7 to use them)</div>
+    <div class="lt">killstreaks (pick 3 · press <span id="loStreakKeys">5 / 6 / 7</span> to use them)</div>
     <div id="lo-streaks"></div>
     <div id="loDesc">hover a weapon to see what it does</div>
     <div id="loNote"></div>
@@ -245,7 +248,7 @@
         <div class="lt">kill effect (yours, on every kill with any weapon)</div><div class="chips" id="sk-kill"></div>
         <div class="lt">grapple (yours: everyone sees your rope and hook)</div>
         <div class="grap"><canvas id="grapPreview"></canvas><div class="gcards" id="sk-grapple"></div></div>
-        <div class="lt">spray (yours: press Z in a match to paint it where you look)</div><div class="chips sprays" id="sk-spray"></div>
+        <div class="lt">spray (yours: press <span id="sprayKey">Z</span> in a match to paint it where you look)</div><div class="chips sprays" id="sk-spray"></div>
         <div class="row"><button class="mid" id="skRandom">RANDOMIZE</button><button class="mid" id="skReset">RESET</button><button class="mid" id="skAll">COPY THIS LOOK TO ALL</button></div>
       </div>
     </div>
@@ -333,7 +336,7 @@
         <h3>controls</h3>
         <label>mouse sens <input id="sens" type="range" min="0.2" max="4" step="0.1"><span id="sensN"></span></label>
         <label>aim sens <input id="adsSens" type="range" min="0.2" max="2" step="0.05"><span id="adsSensN"></span></label>
-        <label><input type="checkbox" id="swapAim"> right click grapples (E aims)</label>
+        <button class="mid" data-go="controls" id="ctlBtn">KEY BINDINGS</button>
         <label><input type="checkbox" id="toggleAim"> toggle aim instead of hold</label>
         <h3>gameplay</h3>
         <label><input type="checkbox" id="blood"> pixel blood</label>
@@ -342,6 +345,16 @@
       </div>
     </div>
     <button class="mid back">BACK</button>
+  </div>
+
+  <!-- controls: every key binding (keys.js has the list, controls.js draws it) -->
+  <div class="screen panel hidden" id="scr-controls">
+    <h2>CONTROLS</h2>
+    <div class="note">click a key, then press the new key or mouse button (click the flashing key again to bind left mouse) · Esc cancels · Backspace / Delete clears it · a key another action already uses gets swapped onto that action</div>
+    <div id="ctlMsg"></div>
+    <label class="ctlPreset"><input type="checkbox" id="ctlSwap"> preset: right click grapples, E aims</label>
+    <div id="ctlList"></div>
+    <div class="row ctlBtns"><button class="mid danger" id="ctlResetAll">RESET ALL</button><button class="mid" data-go="settings">BACK</button></div>
   </div>
 </div>
 
