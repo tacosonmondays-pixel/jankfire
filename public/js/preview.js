@@ -1,7 +1,7 @@
 // Spinning weapon preview for the cosmetics screen. Its own tiny renderer so it works from the menu.
 import * as THREE from 'three';
 import { buildWeapon, freeTree, M } from './models.js';
-import { withEnv } from './glbkit.js';
+import { withEnv, trackGlb, whenGlb, want } from './glbkit.js';
 import { makeSkinSystems, emitSkinFx } from './skins.js';
 import { idlePose } from './loco.js';
 
@@ -36,6 +36,19 @@ export function resizePreview() {
 }
 
 let idleT = 0;
+// the loading stand-in: a pink wireframe cube with a cyan one spinning the other way inside, glitching now and then
+let ldObj = null, ldT = 0;
+function loadingObj() {
+  if (ldObj) return ldObj;
+  ldObj = new THREE.Group();
+  const box = new THREE.EdgesGeometry(new THREE.BoxGeometry(0.9, 0.9, 0.9));
+  box.userData.shared = true;
+  const a = new THREE.LineSegments(box, new THREE.LineBasicMaterial({ color: 0xff4fd8 }));
+  const b = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(0.62, 0)), new THREE.LineBasicMaterial({ color: 0x4fd8ff }));
+  b.geometry.userData.shared = true;
+  ldObj.add(a, b);
+  return ldObj;
+}
 let shown = null; // what's on show, so a skin model that lands late can replace its stand-in
 export function refreshPreview() { if (shown) showPreview(shown[0], shown[1]); }
 export function showPreview(id, skin) {
@@ -43,7 +56,10 @@ export function showPreview(id, skin) {
   shown = [id, skin];
   sway = 0; holder.rotation.y = 0; camHome(); dropPlinth();
   freeTree(holder); holder.clear(); // the last thing shown is gone for good
-  const g = buildWeapon(id, skin);
+  const [g, t] = trackGlb(() => buildWeapon(id, skin));
+  for (const m of t.missing) want(m, 5); // the big one on show goes first
+  if (t.missing.size) { const me = shown; whenGlb([...t.missing], () => { if (shown === me) showPreview(id, skin); }); } // its Blender model landed (or we stop waiting): show that
+  if (t.pending) { freeTree(g); holder.add(loadingObj()); cur = holder; return; } // still downloading: the loading cube, never the old code model
   g.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(g);
   const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
@@ -83,6 +99,7 @@ export function showCharacter(build, color, look) {
 
 export function renderPreview(dt) {
   if (!renderer || !cur) return;
+  if (ldObj && ldObj.parent) { const t = (ldT += dt); ldObj.rotation.set(0.5 + Math.sin(t * 1.3) * 0.15, t * 2.2, 0); ldObj.children[1].rotation.y = -t * 3.1; ldObj.children[1].scale.setScalar(0.55 + (Math.random() < 0.08 ? 0.12 : 0)); ldObj.position.x = Math.random() < 0.06 ? (Math.random() - 0.5) * 0.06 : 0; }
   if (sway) { swayT += dt; holder.rotation.y = sway + Math.sin(swayT * 0.7) * 0.45; holder.position.y = Math.sin(swayT * 1.9) * 0.012; } // main menu: a slow idle sway, not a spin
   else if (manual) holder.rotation.set(manual.pitch, manual.yaw, 0);
   else holder.rotation.y += dt * 0.9;

@@ -642,6 +642,7 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 .hub-tab { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px 5px 8px; font-family: var(--font); font-weight: 700; font-size: 15px; letter-spacing: 1px; cursor: pointer;
   background: #fff; color: #000; border: 3px solid #000; box-shadow: 4px 4px 0 #000; }
 .hub-tab i { font-style: normal; font-size: 17px; }
+.hub-tab img.hub-pic { height: 24px; width: auto; margin: -5px 0; } /* the tab's 3D picture (hub.js) */
 .hub-tab:hover { transform: rotate(-1.5deg) scale(1.04); box-shadow: 4px 4px 0 var(--cyan); }
 .hub-tab.on { background: var(--yellow); box-shadow: 4px 4px 0 var(--pink); transform: rotate(-1.5deg); }
 #scr-customize .cz-hub { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); z-index: 5; }

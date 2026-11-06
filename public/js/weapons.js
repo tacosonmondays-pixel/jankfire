@@ -27,7 +27,8 @@ import { reloadStep, reloadEvent } from './reloads.js'; // proper reloads for th
 import { gunHand, mirrorHand } from './hands.js'; // PS1 low-poly hands
 import { bladeStep, bladeIdle, TRAIL_LIFE } from './bladefeel.js'; // snappy knives + katana: tosses, smears, idle sway
 import { katanaHands, katanaStep, katanaEvent, KAT_VM } from './katanavm.js'; // two hands on the katana
-import { weaponIcon, clearIcons, itemIcon } from './icons.js';
+import { weaponIcon, clearIcons, itemIcon, drawIcon } from './icons.js';
+import { whenGlb } from './glbkit.js';
 import { rigFire, rigItem, rigVM, rigBlockKey, rigReload } from './rig.js'; // overdrive rig killstreak
 import { tickScalesVM } from './scales.js';
 import { PARRY } from '/shared/weapons.js';
@@ -627,11 +628,15 @@ export function rebuildOne(id) {
 }
 // hotbar: a picture of each weapon you're carrying, with your skin on it
 export function showSlots() {
-  hud.slots(W.slots, W.slots.map((id) => (id ? weaponIcon(id, (W.skinOver || G.equipped || {})[id]) : '')));
+  const wait = new Set();
+  const pic = (fn) => { const [u, w] = drawIcon(fn); if (w) for (const x of w) wait.add(x); return u; };
+  hud.slots(W.slots, W.slots.map((id) => (id ? pic(() => weaponIcon(id, (W.skinOver || G.equipped || {})[id])) : '')));
   hud.slotOn(W.slot);
   const iw = ITEMS[W.item] && ITEMS[W.item].w; // popper / reverse card: a picture of the real thing, skin and all
-  hud.itemSlot(W.item, (iw && weaponIcon(iw, (G.equipped || {})[iw])) || itemIcon(W.item));
+  hud.itemSlot(W.item, (iw && pic(() => weaponIcon(iw, (G.equipped || {})[iw]))) || pic(() => itemIcon(W.item)));
+  if (wait.size && !slotWait) { slotWait = true; whenGlb([...wait], () => { slotWait = false; showSlots(); }); } // a loading picture: the real one when it lands
 }
+let slotWait = false;
 
 function equip(i) {
   const id = W.slots[i];

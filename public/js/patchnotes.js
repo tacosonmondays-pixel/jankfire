@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '5.7', date: '2026-11-06', title: 'NO MORE OLD MODELS', items: [
+    'CUSTOMIZE loads the real Blender models first: what you\'re looking at downloads first, the rest after, and a tile shows static until its model lands instead of flashing the old blocky one. on a slow connection the skin strip went from about 88 s to 11 s.',
+    'the game downloads a lot less: models come compressed, and coming back later only fetches what changed.',
+    'killstreak and item pictures are 3D now (moon boots, satellite, spinbot, medkit, shield bubble and friends), all lit the same way.',
+  ] },
   { v: '5.6', date: '2026-11-06', title: 'THE STAFF ENTRANCE', items: [
     'the home screen\'s side menu got rebuilt as one thing instead of four different ideas glued together: fleshy plaques, each with a little 3D prop in a socket.',
     'CUSTOMIZE shows your own equipped gun, CONTAINERS is a crate that hops when you have some to open (with a count badge).',
