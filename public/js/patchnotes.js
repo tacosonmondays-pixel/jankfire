@@ -1,6 +1,14 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '3.8', date: '2026-11-06', title: 'FRESHLY MODELLED', items: [
+    'BLENDER ROUND 2: the cigarette and cigar, card deck (and the cards you throw), Reverse and Skip cards, leaf blower, snowball, popper, rubber duck, bread, spoon, slipper, Hand Slapper, the bow and its arrows and the Scythe Rifle all got real glossy models.',
+    'all 29 weapon skins got remade too. the Spoon knife skin is a proper tablespoon now.',
+    'knives and katanas got the same gloss, so they read as polished steel.',
+    'the Zombies wall boards hang the real models.',
+    'fixed: chrome showed up black in the hotbar, the locker and the menu.',
+    'skins load the first time someone uses them, so the game starts faster.',
+  ] },
   { v: '3.7', date: '2026-11-06', title: 'LAW & DISORDER', items: [
     'NEW ITEM: SPEED TRAP. hold G to point a radar gun at people. over 100 km/h they get SLOW DOWN 3.. 2.. 1. slow down and it\'s a warning, keep speeding and it\'s JAIL (a cage drops on them for 3.5 s). over 200 is jail on the spot.',
     'WATER PISTOL: soaks people for 4 s. soaked = slower and slidey, and it puts out fire.',
