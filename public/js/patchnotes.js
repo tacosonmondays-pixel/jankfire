@@ -1,7 +1,19 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '2.7', date: '2026-11-06', title: 'THE REAL PLACES UPDATE', items: [
+    'TRAFFIC: cars, vans, buses and trucks drive the roads on Suburb, Warehouse, Desert and the city under Skyline and Rooftop. a slow bump shoves you, a fast one sends you flying. two cars crashing explode. shove someone into a car and it is your kill. off in Plant & Defuse.',
+    'SMARTY PANTS: answer 3 Pop Quiz questions right to unlock the achievement, the Big Glasses and the Overalls (the first locked pants).',
+    'MAP PASS: every map sits in a real place now, with scenery out to the horizon instead of a platform in the void.',
+    'SKYLINE + ROOFTOP: a whole city far below the towers, in the haze. the roads run on into the city.',
+    'WAREHOUSE: remade, with racks, forklifts and pallets inside, a fenced yard, machinery outside the gate and a wood round the fence. Plant & Defuse gets its own Warehouse with three lanes.',
+    'SUBURB sits in a forest now. the BACKROOMS have higher ceilings. DESERT, BAZAAR and the rest got scenery and fixes (stairs, spawns, flickering floors).',
+    'RETURN TO THE MAP: leave the play area and you get 3.. 2.. 1.. to come back, then BYE. whoever pushed you out gets the kill.',
+    'the void is lower on every map, so falls last longer.',
+  ] },
   { v: '2.6', date: '2026-11-06', title: 'THE TACTICAL UPDATE', items: [
+    'fixed: getting flashed and then dying (or respawning) no longer snaps your hearing back. the ringing runs its course and fades out.',
+    'OVERDRIVE RIG: a tap of SPACE now jumps about 6 m straight up with a heavy landing. E fires boot + back thrusters (3 charges, refill fast) that work in the air. the quickhack moved to R.',
     'PLANT & DEFUSE got an economy: earn money for kills, wins and plants, then spend it in the BUY PHASE (B). guns, armour (Padded Vest, Vest + Bucket), defuse pliers, frags, smokes and every item.',
     'lose a round and you get a loss bonus. drop guns for your team (H), pick them up (E). a fresh kit after a death, your bought gear if you live.',
     'BOTS PLAY IT AS A TEAM: they buy by the economy (eco / force / full), group up and execute a site with smokes and frags, plant safe, hold, rotate, retake together, defuse with pliers and save when the round is lost.',

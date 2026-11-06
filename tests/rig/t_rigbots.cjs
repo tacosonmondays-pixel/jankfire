@@ -17,7 +17,7 @@ ws.on('message', (d) => {
 setTimeout(() => {
   console.log('rig bots', [...rigBots].length, 'events', JSON.stringify(ev));
   console.log('rig kills', JSON.stringify(kills), 'flag frames', JSON.stringify(flagSeen));
-  const ok = rigBots.size > 0 && ev.punch > 0 && (ev.hit || 0) + (ev.miss || 0) > 0 && flagSeen.RIG > 0;
+  const ok = rigBots.size > 0 && ev.punch > 0 && (ev.hit || 0) + (ev.miss || 0) > 0 && ev.thrust > 0 && flagSeen.RIG > 0; // (thrust: bots fly up to people, dodge, chase, save themselves)
   console.log(ok ? 'no errors' : 'FAIL: bots never used the rig');
   process.exit(ok ? 0 : 1);
 }, SECS * 1000);

@@ -38,7 +38,7 @@ import { shredKill, shredHit, shredGrab, grabStep, updateShreds, clearShreds } f
 import { updateSpeedLines } from './speedlines.js';
 import { slipperUpdate, slipperStep } from './slipper.js';
 import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse } from './objective.js';
-import { GAMES, GAME_ORDER, TEAMS, mapsFor } from '/shared/modes.js';
+import { GAMES, GAME_ORDER, TEAMS, mapsFor, mapForGame } from '/shared/modes.js';
 import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
 import { EPIC_CAM, epicMul, epicCamMs } from '/shared/epic.js';
@@ -47,6 +47,7 @@ import { startBall, endBall, ballOn, BS } from './player.js';
 import { updateWreck, ballCam, wreckFx, wreckDied } from './wreck.js';
 import { hasAcc } from '/shared/looks.js';
 import { airTick, airReset, airFlourish } from './airborne.js';
+import { oobTick } from './bounds.js';
 import { account, restore, login, register, logout, saveProfile, leaderboard as fetchLeaders } from './account.js';
 import { updateRig, rigDied, rigOn } from './rig.js';
 import { rigClash } from '/shared/rig.js'; // overdrive rig killstreak
@@ -58,6 +59,7 @@ import { sprayAim, sprayFx, addSpray, clearSprays, updateSprays, sprayIcon } fro
 import { achInv } from '/shared/cosmetics.js'; // achievement rewards (Golden Sniper) count as owned once you have the achievement
 import { achProgress, ROYAL_ALL, ROYAL_FEATS } from '/shared/looks.js';
 import { royalToast, royalUnlock, royalBoxes } from './royal.js';
+import { updateTraffic, carCollide, carKill, carFeedIcon } from './traffic.js'; // cars on the roads
 import { setOnly, coughCloud } from './weapons.js';
 import { renderPatchNotes, markPatchSeen, patchUnseen } from './patchnotes.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
@@ -69,7 +71,7 @@ import { skipVote, skipReset } from './skipvote.js';
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
 const INTERP_MS = 110;
-const wname = (id) => (WEAPONS[id] ? WEAPONS[id].name : id === 'hook' ? 'Grapple' : id === 'tbag' ? 'T-Bag' : id);
+const wname = (id) => (WEAPONS[id] ? WEAPONS[id].name : id === 'hook' ? 'Grapple' : id === 'tbag' ? 'T-Bag' : id === 'carboom' ? 'Car Bomb' : id === 'car' ? 'Car' : id);
 const wcolor = (id) => (WEAPONS[id] ? WEAPONS[id].color : '#ccc');
 
 // ------------------------------------------------------------ settings
@@ -301,16 +303,17 @@ const diffEntries = Object.entries(BOT_DIFF).map(([k, v]) => [k, v.name]);
 const gameEntries = GAME_ORDER.map((k) => [k, GAMES[k].name]);
 fillSelect($('setupGame'), gameEntries, 'dm');
 fillSelect($('cfgGame'), gameEntries, 'dm');
-fillSelect($('setupMap'), mapEntries, 'islands');
-// a mode that needs certain maps (bomb sites, a floor to turn into lava) only offers those (the server refuses the rest)
-const mapsOf = (game) => (GAMES[game] && (GAMES[game].sites || GAMES[game].mapOk) ? mapsFor(game, MAPS, MAP_ORDER) : MAP_ORDER);
+// a mode only offers the maps it can be played on (bomb sites, a floor to turn into lava; Plant & Defuse the S&D versions,
+// the other modes the standard ones). the server refuses the rest
+const mapsOf = (game) => (GAMES[game] ? mapsFor(game, MAPS, MAP_ORDER) : MAP_ORDER);
+fillSelect($('setupMap'), mapEntries.filter(([k]) => mapsOf('dm').includes(k)), 'islands');
 $('setupGame').addEventListener('change', () => {
   const keep = $('setupMap').value, list = mapsOf($('setupGame').value);
   fillSelect($('setupMap'), mapEntries.filter(([k]) => list.includes(k)), list.includes(keep) ? keep : list[0]);
 });
 $('cfgGame').addEventListener('change', () => {
   const g = $('cfgGame').value, list = mapsOf(g);
-  if (!list.includes(G.cfg.map)) {
+  if (!list.includes(mapForGame(g, MAPS, G.cfg.map))) { // (a map with an S&D version swaps to the version the mode plays)
     toast(`${GAMES[g].name} needs ${GAMES[g].sites ? 'a map with bomb sites' : 'another map'} (${list.map((k) => MAPS[k].name).join(', ')}): change the map first`, 3200);
     $('cfgGame').value = (G.round && G.round.game) || 'dm';
     return;
@@ -328,7 +331,8 @@ $('setupGo').addEventListener('click', () => startMode('bots', {
   map: $('setupMap').value, bots: Number($('setupBots').value), diff: $('setupDiff').value, hip: $('setupHip').value, game: $('setupGame').value,
 }));
 function syncMatchUI() {
-  $('cfgMap').value = G.cfg.map;
+  { const g = (G.round && G.round.game) || 'dm', list = mapsOf(g); // only the maps (and versions) this mode plays
+    fillSelect($('cfgMap'), mapEntries.filter(([k]) => list.includes(k) || k === G.cfg.map), G.cfg.map); }
   $('cfgMap').disabled = G.mode === 'training';
   $('cfgHip').value = G.cfg.hip;
   $('cfgDiff').value = G.cfg.diff;
@@ -549,6 +553,7 @@ function myAchs() { return new Set((account.me && account.me.achs) || []); }
 function rewardsFor(achId) {
   const out = [];
   for (const s2 of LOOK_SLOTS) for (const [k, v] of Object.entries(ACCESSORIES[s2])) if (v.ach === achId) out.push({ slot: s2, id: k, name: v.name });
+  for (const [k, v] of Object.entries(BOTTOMS)) if (v.ach === achId) out.push({ slot: 'bottom', id: k, name: v.name }); // (Overalls)
   for (const t of LOOT_TYPES) for (const [k, v] of Object.entries(COSMETICS[t])) if (v.ach === achId) out.push({ type: t, id: k, name: v.name }); // weapon skins live in COSMETICS
   return out;
 }
@@ -593,9 +598,19 @@ function buildCharacterUI() {
     el.innerHTML = '';
     for (const [k, v] of Object.entries(cat)) {
       const c = document.createElement('button');
-      c.className = 'chip' + ((look[key] || DEFAULT_LOOK[key]) === k ? ' on' : '');
+      const have = hasAcc(v, achs); // achievement-locked styles (Overalls) work like locked accessories: a chip you can try on
+      c.className = 'chip' + ((look[key] || DEFAULT_LOOK[key]) === k ? ' on' : '') + (have ? '' : ' locked');
       c.textContent = v.name;
-      c.addEventListener('click', () => { setLook({ ...look, [key]: k }); buildCharacterUI(); });
+      if (v.ach) {
+        c.style.setProperty('--rc', '#ffe14d');
+        c.title = `${ACHIEVEMENTS[v.ach].name}: ${ACHIEVEMENTS[v.ach].desc}`;
+        c.addEventListener('mouseenter', () => { const t = validLook({ ...look, [key]: k }, ALL_ACHS); showCharacter(buildCharacter, t.color || G.myColor || '#ff4fd8', t); });
+        c.addEventListener('mouseleave', () => showCharacter(buildCharacter, shown.color || G.myColor || '#ff4fd8', shown));
+      }
+      c.addEventListener('click', () => {
+        if (!have) { toast(`${v.name}: unlock "${ACHIEVEMENTS[v.ach].name}" (${ACHIEVEMENTS[v.ach].desc})${account.loggedIn ? '' : '. log in so it counts'}`, 3200); return; }
+        setLook({ ...look, [key]: k }); buildCharacterUI();
+      });
       el.append(c);
     }
   };
@@ -674,7 +689,7 @@ $('lkRandom').addEventListener('click', () => {
   const achs = myAchs();
   const pick = (arr) => arr[(Math.random() * arr.length) | 0];
   const look = { color: pick(LOOK_COLORS), skin: pick(SKIN_TONES), hair: pick(Object.keys(HAIRS)), hairColor: pick(HAIR_COLORS),
-    top: pick(Object.keys(TOPS)), topColor: pick(CLOTH_COLORS), bottom: pick(Object.keys(BOTTOMS)), bottomColor: pick(CLOTH_COLORS) };
+    top: pick(Object.keys(TOPS)), topColor: pick(CLOTH_COLORS), bottom: pick(Object.entries(BOTTOMS).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k)), bottomColor: pick(CLOTH_COLORS) };
   for (const s2 of LOOK_SLOTS) look[s2] = pick(Object.entries(ACCESSORIES[s2]).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k));
   setLook(look); buildCharacterUI();
 });
@@ -1170,6 +1185,12 @@ function unlockSkins(list) {
   saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne();
   if (list.some((r) => r.id === 'sniper_golden')) royalUnlock(`SNIPER ROYALTY ${ROYAL_FEATS.length}/${ROYAL_FEATS.length} · it's on your sniper now (swap it in COSMETICS)`);
 }
+// Smarty Pants: a pop quiz answer that counted (the server's count)
+net.on('quizpt', (m) => {
+  const n = Number(m.n) || 0, goal = ACHIEVEMENTS.smarty.goal;
+  if (account.me) account.me.stats = { ...(account.me.stats || {}), quiz_right: n };
+  if (n < goal) setTimeout(() => hud.msg(`SMARTY PANTS ${n}/${goal}`, 1.6, 'brag'), 1900); // after the GOLD STAR callout
+});
 // Sniper Royalty: you just ticked a box (the server decides; a guest is told it would have counted)
 net.on('royal', (m) => {
   const all = m.all | 0, add = m.add | 0;
@@ -1348,7 +1369,7 @@ net.on('kill', (m) => {
   recordEv(m);
   courtKill(m); // scales of justice: streaks + revenge
   const [kn, kc] = nameOf(m.k), [vn, vc] = nameOf(m.v);
-  const via = m.w === 'void' || m.w === 'cough' ? m.via : m.w;
+  const via = m.w === 'void' || m.w === 'cough' || ((m.w === 'car' || m.w === 'carboom') && m.via) ? m.via : m.w;
   const victim = G.remotes.get(m.v);
   // shredder kills: the pieces go through the killer's machine instead of the usual gibs / kill effect
   if (m.w === 'shredder' && shredKill(m, G.remotes, m.v === G.myId ? { pos: ME.pos.slice(), yaw: ME.yaw, color: G.myColor, look: teamLook(validLook(G.settings.look, myAchs()), G.myTeam) } : null)) m.fx = 'none'; // (team colour beats clothes)
@@ -1380,7 +1401,10 @@ net.on('kill', (m) => {
   const hazard = m.w === 'lava' || (m.w === 'duck' && m.sky); // floor is lava / duck rain: nobody owns those
   if (hazard) parts = m.k ? [[kn, kc], [`  [${wname(m.via)}]  `, wcolor(m.via)], [vn, vc], [m.w === 'lava' ? '  into the lava' : '  under a sky duck', '#aaa']] : [[vn, vc], [m.w === 'lava' ? '  touched the floor' : '  got flattened by a sky duck', '#ff8a3a']];
   if (m.ep && m.k) parts.push([`  EPIC ${Math.round(m.ep.d)}m`, '#ffe14d']);
+  const carK = (m.w === 'car' || m.w === 'carboom') && carKill(m, kn, kc, vn, vc, wname, wcolor); // traffic: its own lines and icon
+  if (carK) parts = carK.parts;
   if (!dummy) hud.feed(parts);
+  if (carK && !dummy) carFeedIcon();
   if (m.v === G.myId) epicKC = m.ep && m.ep.lock && m.k && m.k !== G.myId && S.killcam !== false && G.mode !== 'training' ? { ...m.ep, w: via } : null; // too epic to skip (the server holds your respawn)
   if (m.v === G.myId) epicHold = !!(m.ep && m.ep.lock); // ...until it spawns you, killcam or not
   if (m.v === G.myId) {
@@ -1400,6 +1424,7 @@ net.on('kill', (m) => {
         ? [[kn, kc], [' knocked you into the void', '#fff'], [`  (${wname(via)})`, wcolor(via)]]
         : [['killed by ', '#fff'], [kn, kc], [`  (${wname(via)})`, wcolor(via)]]);
     } else hud.dead(true, [[m.w === 'void' ? 'you fell into the void' : m.w === 'tbag' ? 'you t-bagged too hard. your knees exploded.' : 'you smoked too much', '#fff']]);
+    if (carK) hud.dead(true, carK.dead);
     const gd = gearDeathLine(m);
     if (gd) hud.dead(true, m.k ? [[kn, kc], [' gave you a pop quiz. ', '#fff'], [gd, '#7fffd4']] : [[gd, '#fff']]);
     if (hazard) hud.dead(true, m.k ? [[kn, kc], [m.w === 'lava' ? ' knocked you into the lava' : ' softened you up for a sky duck', '#fff'], [`  (${wname(m.via)})`, wcolor(m.via)]] : [[m.w === 'lava' ? 'the floor was lava' : 'a duck fell out of the sky on you', '#fff']]);
@@ -1651,8 +1676,9 @@ function frame(t) {
     } : {};
     jumpPressed = false;
     acc += dt;
-    while (acc >= STEP) { stepPlayer(STEP, inp, now); airTick(now); lavaStep(now); inp.jumpPressed = false; acc -= STEP; }
+    while (acc >= STEP) { stepPlayer(STEP, inp, now); carCollide(STEP); airTick(now); lavaStep(now); inp.jumpPressed = false; acc -= STEP; }
     grabStep(now); // held in a shredder's intake
+    oobTick(now); // out of the play area: RETURN TO THE MAP 3 2 1
     econFrame(dt); // Plant & Defuse: barriers, drops, armor on models, spectating
     // spinbot killstreak: lock onto the nearest enemy you can see
     const spinning = ME.alive && now < (G.spinUntil || 0);
@@ -1688,6 +1714,7 @@ function frame(t) {
   const rt = now + G.offset - INTERP_MS;
   if (!RP.active) for (const r of G.remotes.values()) r.update(rt, dt, now);
   else for (const r of G.remotes.values()) { r.ch.root.visible = false; r.rope.visible = false; r.shadow.visible = false; } // the replay has its own copies
+  updateTraffic(dt, now, RP.active);
   updateGibs(dt);
   updateKillFx(dt);
   updateCourt(dt, now);

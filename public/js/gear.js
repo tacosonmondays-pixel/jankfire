@@ -86,7 +86,7 @@ export function updateGear(dt, now) {
   for (const r of G.remotes.values()) remoteCharge(r, dt);
 }
 export function gearSpawn() { quizReset(); gogglesReset(); }
-export function gearLeave() { photoReset(); quizReset(); gogglesReset(); beamsClear(); }
+export function gearLeave() { photoReset(); quizReset(); gogglesReset(true); beamsClear(); } // (leaving the match clears your ears at once)
 // kill feed + death screen lines for the new gear (null = not ours)
 export function gearKillParts(m, kn, kc, vn, vc, wname, wcolor) {
   if (m.w === 'quiz') return m.k ? [[kn, kc], [`  [${wname('quiz')}]  `, wcolor('quiz')], [vn, vc], ['  (failed maths)', '#aaa']] : [[vn, vc], ['  failed a pop quiz', '#7fffd4']];

@@ -244,7 +244,7 @@ export const STREAKS = {
   moonboots: { kills: 3, name: 'Moon Boots', desc: 'low gravity + huge jumps for 25s', auto: true, dur: 25 },
   chickenstrike: { kills: 4, name: 'Chicken Strike', desc: 'rain exploding chickens where you aim', deploy: true },
   scythe: { kills: 5, name: 'Scythe Rifle', desc: 'X: rifle mode · hold V: glitch dash', auto: true },
-  overdrive: { kills: 8, name: 'Overdrive Rig', desc: '25s as a scrap-built juggernaut: overshield, LMB rocket punch, RMB block, E quickhack, G homing missiles, hold Space to leap', auto: true, dur: 25 },
+  overdrive: { kills: 8, name: 'Overdrive Rig', desc: '25s as a scrap-built juggernaut: overshield, LMB rocket punch, RMB block, Space jumps sky high (hold to leap), E thrusters, G homing missiles, R quickhack', auto: true, dur: 25 },
   spinbot: { kills: 6, name: 'Spinbot', desc: 'aimbot + spinbot for 10s. you are now a cheater.', auto: true, dur: 10 },
   wreckingball: { kills: 6, name: 'Wrecking Ball', desc: 'become a giant steel wrecking ball for 20s: ram people (faster = harder), swing on the chain (E, W pumps it), crouch in the air to ground slam (higher = bigger)', auto: true, dur: 20 },
   satellite: { kills: 7, name: 'Spy Satellite', desc: 'see every enemy through walls for 20s', auto: true, dur: 20 },

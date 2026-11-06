@@ -25,12 +25,12 @@ export function audioOut() { return ac ? { ac, master } : null; }
 export function setListener(p, yaw) { L.pos = p; L.yaw = yaw; }
 // sealed in a soap bubble: everything you hear goes through a low pass, like your head is underwater
 let muffle = null;
-export function setMuffle(on, instant) {
+export function setMuffle(on, instant, tc = 0.06) { // tc: how fast it eases there (a time constant, s)
   if (!ac) return;
   if (!muffle) { muffle = ac.createBiquadFilter(); muffle.type = 'lowpass'; muffle.frequency.value = 22000; master.disconnect(); master.connect(muffle); muffle.connect(ac.destination); }
   const f = muffle.frequency, t = ac.currentTime, to = on ? 480 : 22000;
   f.cancelScheduledValues(t);
-  if (instant) f.setValueAtTime(to, t); else f.setTargetAtTime(to, t, 0.06);
+  if (instant) f.setValueAtTime(to, t); else f.setTargetAtTime(to, t, tc);
 }
 
 function dest(pos) {
@@ -239,6 +239,8 @@ export const sfx = {
   glorp(pos) { tone('sine', 130, 560, 0.34, 0.45, pos); tone('triangle', 85, 240, 0.42, 0.22, pos, 0.05); noise(0.35, 0.25, 'lowpass', 1200, 180, pos); },
   bigPop(pos) { noise(0.09, 1, 'highpass', 500, 3500, pos); tone('sine', 1150, 150, 0.14, 0.65, pos); tone('square', 2600, 900, 0.05, 0.12, pos); noise(0.5, 0.3, 'highpass', 5000, 9000, pos, 0.06); },
   blub(pos) { const f = 85 + Math.random() * 90; tone('sine', f, f * 2.7, 0.14, 0.3, pos); },
+  // out of bounds countdown: a harsh two-tone alarm blip per second, the last one higher
+  oob(last) { tone('square', last ? 1320 : 880, last ? 1300 : 860, 0.16, 0.22); tone('square', last ? 660 : 440, last ? 650 : 430, 0.16, 0.14, null, 0.08); },
   error(pos) { tone('square', 880, 880, 0.12, 0.2, pos); tone('square', 660, 660, 0.25, 0.2, pos, 0.14); },
   yeet(pos) { noise(0.7, 0.5, 'bandpass', 400, 3000, pos, 0, 1.5); tone('sine', 300, 1400, 0.6, 0.15, pos); },
   choir(pos) { for (const [f, d] of [[523, 0], [659, 0.05], [784, 0.1], [1046, 0.15]]) tone('sine', f, f * 1.01, 2.2, 0.12, pos, d); },
@@ -475,6 +477,33 @@ Object.assign(sfx, {
   chamber(pos) { tone('square', 1500, 1450, 0.04, 0.2, pos); tone('square', 700, 650, 0.07, 0.2, pos, 0.06); },
 });
 
+// traffic: horns (each kind its own), the ice cream van's song, getting hit, tyres, a car going up, one going past
+Object.assign(sfx, {
+  horn(pos, ty) {
+    if (ty === 'bus' || ty === 'truck') { for (const f of [185, 233]) { tone('sawtooth', f, f * 0.98, 0.75, 0.16, pos); tone('square', f * 2, f * 1.96, 0.75, 0.04, pos); } return; } // air horn
+    if (ty === 'hatch') { for (const d of [0, 0.17]) { tone('square', 620, 610, 0.12, 0.13, pos, d); tone('square', 780, 770, 0.12, 0.08, pos, d); } return; } // meep meep
+    if (ty === 'icecream') { tone('triangle', 880, 880, 0.18, 0.18, pos); tone('triangle', 1320, 1320, 0.25, 0.12, pos, 0.16); return; }
+    for (const f of [405, 510]) { tone('square', f, f * 0.99, 0.42, 0.12, pos); tone('sawtooth', f, f, 0.42, 0.05, pos); } // HONK
+  },
+  jingle(pos) { // an original little tune, slightly out of tune, as is tradition
+    const N = [784, 659, 698, 784, 880, 784, 698, 659, 587, 659, 784, 1046];
+    N.forEach((f, i) => { const w = f * (1 + (Math.random() - 0.5) * 0.012); tone('triangle', w, w, 0.2, 0.09, pos, i * 0.19); tone('sine', w * 2, w * 2, 0.12, 0.03, pos, i * 0.19); });
+  },
+  carHit(pos, k = 0.5) {
+    noise(0.28, 0.5 + k * 0.5, 'lowpass', 1100, 110, pos); tone('sine', 150, 42, 0.3, 0.5 + k * 0.4, pos);
+    tone('square', 320, 180, 0.09, 0.12 + k * 0.15, pos); noise(0.12, 0.3 * k, 'highpass', 2500, 5000, pos, 0.02); // the thump, the panel, the glass
+    if (k > 0.4) noise(0.5, 0.25, 'bandpass', 2900, 2100, pos, 0, 7); // and the tyres
+  },
+  carBoom(pos, big) {
+    noise(1.9, 1, 'lowpass', 2400, 38, pos); tone('sine', 95, 22, 1.6, 0.95, pos); tone('sawtooth', 60, 25, 1.1, 0.25, pos);
+    noise(0.35, 0.7, 'bandpass', 1200, 400, pos, 0.03, 1.2);
+    for (let i = 0; i < 7; i++) noise(0.09, 0.35, 'highpass', 4000, 7000, pos, 0.05 + i * 0.06 + Math.random() * 0.04, 1); // glass going everywhere
+    sfx.clang(pos, 0.8);
+    if (big) { tone('sine', 60, 18, 2.2, 0.6, pos, 0.05); noise(1.2, 0.5, 'lowpass', 600, 50, pos, 0.25); }
+    if (Math.random() < 0.6) for (let i = 0; i < 6; i++) tone('square', i % 2 ? 1320 : 900, i % 2 ? 1320 : 900, 0.2, 0.035, pos, 0.9 + i * 0.22); // somebody's car alarm
+  },
+  carPass(pos, sp) { whoosh(0.9, 0.3, 260, 1100, 1.4, pos); tone('sawtooth', 70 + sp * 2, 50 + sp, 0.8, 0.08, pos); },
+});
 // ------------------------------------------------------------ new gear sounds
 // laser pointer charge: a rising whine (k 0..1) with a wobble on top once it's full. sits in loops (stopLoops shuts it up)
 export function laserWhine(k, pos = null) {

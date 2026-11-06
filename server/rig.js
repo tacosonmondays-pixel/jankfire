@@ -3,7 +3,7 @@
 // slams, quickhacks (range, line of sight, cooldown), the homing missiles (server projectiles) and leap landings.
 // installRig(Room, helpers) adds these methods to Room; server.js calls them from one-line hooks.
 import { FLAGS, STREAKS } from '../shared/weapons.js';
-import { RIG, RIG_BITS, punchDmg, punchDist, dashDir, leapVel, lerpK, inFront } from '../shared/rig.js';
+import { RIG, RIG_BITS, punchDmg, punchDist, dashDir, leapVel, lerpK, inFront, thrustVel, useThrust } from '../shared/rig.js';
 import { raycast, stepProjectile, movePlayer } from '../shared/physics.js';
 
 const P = RIG.punch, M = RIG.miss, L = RIG.leap, H = RIG.hack;
@@ -44,7 +44,7 @@ export function installRig(Room, U) {
       // +1 s: the client's own timer ends it, this only cleans up after a client that never says so
       p.rig = {
         until: n + dur + 1000, shield: RIG.shield, store: 0, punchT: 0, hackT: 0, missT: 0, leapT: 0,
-        ch: { t0: 0, t1: 0 }, lp: { t0: 0, t1: 0 }, dash: null, leap: null, sq: null, sqT: 0,
+        ch: { t0: 0, t1: 0 }, lp: { t0: 0, t1: 0 }, dash: null, leap: null, sq: null, sqT: 0, thr: { n: RIG.thrust.n, next: 0, t: 0 },
       };
       p.g = null; p.hackedUntil = 0;
       this.broadcast({ t: 'rig', k: 'on', id: p.id, dur, sh: RIG.shield });
@@ -122,6 +122,7 @@ export function installRig(Room, U) {
       else if (m.k === 'miss') this.rigMissiles(p, m, n);
       else if (m.k === 'leap') this.rigLeap(p, m, n);
       else if (m.k === 'land') this.rigLand(p, m, n);
+      else if (m.k === 'thrust') this.rigThrust(p, n);
     },
 
     // rocket punch: the client says it let go (and how charged it thinks it is); the server believes the charge it
@@ -319,6 +320,16 @@ export function installRig(Room, U) {
       }
     },
 
+    // thrusters: the server counts the charges (3, one back every 2.6 s, a beat between bursts), so a client can't
+    // spam them: a burst it doesn't believe isn't shown to anyone. a thrust also lets a leap's landing count from the
+    // new top (rigSnap keeps tracking it)
+    rigThrust(p, n) {
+      const R = p.rig;
+      if (!useThrust(R.thr, n)) return false;
+      this.broadcast({ t: 'rig', k: 'thrust', id: p.id, n: R.thr.n }); // (the thruster's own client syncs its charges from n)
+      return true;
+    },
+
     // ------------------------------------------------------------ bots
     // a bot that gets the streak suits up a beat later (bots have no tray: they use it right away)
     rigBotEarn(b) {
@@ -379,12 +390,27 @@ export function installRig(Room, U) {
           const hs = Math.hypot(v[0], v[2]);
           if (hs > 0) { const ns = Math.max(0, hs - Math.max(hs, 3) * D.fric * (wl ? 0.45 : 1) * dt) / hs; v[0] *= ns; v[2] *= ns; }
           if (wl) { const cur = v[0] * wx + v[2] * wz, add = top - cur; if (add > 0) { const a = Math.min(add, D.accel * top * dt); v[0] += a * wx; v[2] += a * wz; } }
-          if (think.jump && B.mode === '' && Math.random() < 0.3) { v[1] = D.hop; b.onGround = false; }
+          // the hop goes ~6 m up: for getting up to someone (or now and then, for the show), not every step
+          const up = t && dv[1] > 2.5 && dist < 30;
+          if (B.mode === '' && (up ? Math.random() < dt * 3 : think.jump && Math.random() < 0.06)) { v[1] = D.hop; b.onGround = false; }
         } else if (wl) { const cur = v[0] * wx + v[2] * wz, add = D.airCap - cur; if (add > 0) { const a = Math.min(add, D.airAccel * dt); v[0] += a * wx; v[2] += a * wz; } }
       }
-      if (!R.bdash) v[1] -= D.grav * dt;
+      // thrusters: climb to someone above, dodge when shot, chase someone far off, and never fall into the void
+      if (!b.onGround && !R.bdash && B.mode === '') {
+        const below = !raycast([b.pos[0], b.pos[1] + 0.5, b.pos[2]], [0, -1, 0], 40, this.boxes);
+        const hitNow = R.sqT && n - R.sqT < 250;
+        const want = below && v[1] < 0 ? 'save' : t && dv[1] > 1.5 && v[1] < 3 ? 'up' : hitNow && Math.random() < 0.4 ? 'dodge' : t && dist > 25 && v[1] < 0 && Math.random() < dt * 2 ? 'chase' : '';
+        if (want && this.rigThrust(b, n)) {
+          let d = look(b);
+          if (want === 'save') { const c = this.map.spawns ? this.map.spawns[0] : [0, 0, 0]; d = [c[0] - b.pos[0], 0, c[2] - b.pos[2]]; }
+          else if (want === 'dodge') { const s = Math.random() < 0.5 ? 1 : -1; d = [Math.cos(b.yaw) * s, 0, -Math.sin(b.yaw) * s]; }
+          thrustVel(v, d);
+        }
+      }
+      if (!R.bdash) v[1] -= D.grav * dt * 0.5; // (half before the move, half after, like the client)
       const was = b.onGround;
       const res = movePlayer(b.pos, v, dt, this.boxes, was);
+      if (!R.bdash && !res.ground) v[1] -= D.grav * dt * 0.5;
       b.onGround = !!res.ground && v[1] <= 0.01;
       if (res.wall && R.bdash) { R.bdash = null; v[0] *= 0.28; v[2] *= 0.28; }
       if (b.onGround && res.ground.pad) { const pd = res.ground.pad; v[0] += pd[0]; v[1] = pd[1]; v[2] += pd[2]; b.onGround = false; }

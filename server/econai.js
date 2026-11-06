@@ -106,16 +106,18 @@ const M = {
     if (!lanes.some((l) => l.side === 'att')) lanes.push(this.econAiFakeLane(c, attC, 'att', g));
     if (!lanes.some((l) => l.side === 'def')) lanes.push(this.econAiFakeLane(c, defC, 'def', g));
     // every spot a bot can stand on around the site and walk to (straight from a lane point near the site, or the centre)
-    const refs = [c];
-    for (const l of lanes) for (let i = Math.max(0, l.si - 1); i < l.pts.length; i++) refs.push(l.pts[i]);
+    const refs = [c], defRefs = [c];
+    for (const l of lanes) for (let i = Math.max(0, l.si - 1); i < l.pts.length; i++) { refs.push(l.pts[i]); if (l.side === 'def') defRefs.push(l.pts[i]); }
+    const walk = (r, q) => Math.abs(r[1] - q[1]) < 1.3 && hyp(r, q) < 30 && this.clearPath(r, [q[0], q[2]]);
     const grid = [];
     for (let x = site.min[0] - 16; x <= site.max[0] + 16; x += 2) {
       for (let z = site.min[2] - 16; z <= site.max[2] + 16; z += 2) {
         const q = this.econAiStand(x, z, y0, 1.6, 3.5) || this.econAiStand(x, z, y0, 4.2, 3.5); // under a ceiling, then galleries
         if (!q || q[1] < y0 - 2.5 || q[1] > y0 + 2.6) continue;
-        const ref = refs.find((r) => Math.abs(r[1] - q[1]) < 1.3 && hyp(r, q) < 30 && this.clearPath(r, [q[0], q[2]]));
+        const ref = refs.find((r) => walk(r, q));
         if (!ref) continue;
-        grid.push({ p: q, node: g ? this.econAiNode(g, q) : -1, on: !!siteAt(this.map, q) });
+        // def: the defenders can walk there from their side (a roof only the attackers' lane climbs onto is no hold)
+        grid.push({ p: q, node: g ? this.econAiNode(g, q) : -1, on: !!siteAt(this.map, q), def: defRefs.some((r) => walk(r, q)) });
       }
     }
     const attE = lanes.filter((l) => l.side === 'att'), defE = lanes.filter((l) => l.side === 'def');
@@ -125,7 +127,7 @@ const M = {
       const cand = [];
       for (const s of grid) {
         const d = hyp(s.p, l.entry);
-        if (d < 8 || d > 26 || !this.econAiSees(s.p, l.entry)) continue;
+        if (!s.def || d < 8 || d > 26 || !this.econAiSees(s.p, l.entry)) continue;
         const sc = 6 - Math.abs(d - 15) * 0.25 + this.econAiCover(s.p, l.entry) * 3.5 + (hyp(s.p, defC) < hyp(l.entry, defC) ? 1.5 : -2) + (s.on ? 0.8 : 0) - (this.econAiSees(s.p, l.stage) ? 0 : -0.5);
         cand.push({ ...s, sc, lane: li, look: l.entry });
       }
@@ -189,7 +191,10 @@ const M = {
     ec.tacT = n + 200;
     const T = this.econAiState();
     if (B.buyUntil) return;
-    if (!T.live) T.live = n;
+    if (!T.live) {
+      T.live = n;
+      if (LOG) this.tacLog(T, `live: ${this.fighters().filter((p) => p.alive).map((p) => `${p.name.replace(' [bot]', '')}(${p.team === B.att ? 'att' : 'def'}) ${xz(p.pos)}`).join(' | ')}`);
+    }
     const S = this.econAiMap();
     // what the bots see: enemies they have eyes on right now, remembered for a few seconds per side
     for (const p of this.fighters()) {
@@ -234,7 +239,10 @@ const M = {
     const s = S.sites[A.site], left = this.econAiLeft();
     const alive = this.econAiAlive(team).length, defAlive = this.econAiAlive(3 - team).length;
     if (B.ph === 'planted') {
-      if (!A.planted) { A.planted = true; A.phase = 'post'; A.post.clear(); this.tacLog(T, `planted at ${B.site} (${xz(B.p)}) by ${this.econAiName(B.planter)}, ${alive}v${defAlive}`); }
+      if (!A.planted) {
+        A.planted = true; A.phase = 'post'; A.post.clear(); this.tacLog(T, `planted at ${B.site} (${xz(B.p)}) by ${this.econAiName(B.planter)}, ${alive}v${defAlive}`);
+        if (LOG && T.Dd) for (const d of this.econAiBots(3 - team)) { const a = T.Dd.assign.get(d.id), sp = a && a.spot; this.tacLog(T, `  defender ${d.name} at ${xz(d.pos)} y${r1(d.pos[1])} (${d.ai.ecTac}) on ${a ? a.site : '?'}${sp ? `, ${Math.round(hyp(d.pos, sp.p))} m from its spot ${xz(sp.p)}` : ''}${d.ai.seenAt ? ', sees someone' : ''}`); }
+      }
       return;
     }
     if (A.phase === 'save') return;
@@ -517,6 +525,7 @@ const M = {
     const a = Dd.assign.get(b.id);
     if (!a) { const s0 = Object.values(S.sites)[0]; Dd.assign.set(b.id, { site: s0.id, spot: this.econAiPickHold(s0, new Set(), 'any') }); return null; }
     const s = S.sites[a.site], h = a.spot;
+    if (process.env.JF_TAC_TRACE && h && n - (b.ai.trT || 0) > 2000) { b.ai.trT = n; const g = this.econAiGraph(); console.log(`[trace] ${b.name} at ${xz(b.pos)} -> spot ${xz(h.p)} node ${h.node}${g && h.node >= 0 ? ' ' + g.pts[h.node].join(',') : ''} route ${(b.ai.rnodes || []).map((i) => g.pts[i].map(Math.round).join(',')).join(' > ')} ri ${b.ai.ri} direct ${b.ai.direct}`); }
     if (!h) return this.econAiTo(b, s.c, this.econAiNodeOf(s.c), 'site' + a.site, { r: 2, tac: 'hold', look: S.attC });
     return this.econAiTo(b, h.p, h.node, 'hold' + xz(h.p), { r: 0.9, tac: 'hold', hold: true, look: h.look });
   },
