@@ -27,9 +27,9 @@ def glyph(px, g, x0, y0, s, color):
 def back_px(px):  # our card back: white margin, red field, yellow diamond lattice, a white oval with JF
     h, w = px.shape[:2]
     px[:] = hexrgb(0xf6f4ee)
-    px[3:h - 3, 3:w - 3] = hexrgb(0xc02040)
+    px[2:h - 2, 2:w - 2] = hexrgb(0xc02040)
     yy, xx = np.mgrid[0:h, 0:w]
-    lat = (((xx + yy) % 8 == 0) | ((xx - yy) % 8 == 0)) & (xx > 4) & (xx < w - 5) & (yy > 4) & (yy < h - 5)
+    lat = (((xx + yy) % 12 == 0) | ((xx - yy) % 12 == 0)) & (xx > 4) & (xx < w - 5) & (yy > 4) & (yy < h - 5)  # sparse: red still reads from far
     px[lat] = hexrgb(0xffd23b)
     px[4, 4:w - 4] = px[h - 5, 4:w - 4] = hexrgb(0xffd23b); px[4:h - 4, 4] = px[4:h - 4, w - 5] = hexrgb(0xffd23b)
     ov = ((xx + 0.5 - w / 2) / (w * 0.3)) ** 2 + ((yy + 0.5 - h / 2) / (h * 0.17)) ** 2
@@ -116,7 +116,9 @@ def deck():
 
 
 def thrown():
-    edge, back = stock()
+    edge, _ = stock()
+    # satin, not gloss: a thrown card is seen edge-on and far away, where a clear coat washes the red out
+    back = mat('cd_back_thrown', 0xffffff, rough=0.55, clearcoat=0.1, tex=tex_canvas('cd_back_thrown_t', 32, 48, back_px))
     c = card('card', 0.18, 0.26, 0.0015, 0.012, back, back, edge, flat=True)
     return finish('pj_card', [c], {'kind': 'proj', 'id': 'card'})
 

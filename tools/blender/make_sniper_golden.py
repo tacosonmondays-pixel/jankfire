@@ -200,7 +200,7 @@ def build():
     tg = box((W(1.2), W(16), W(36)), (-W(29.5), Y(-62), Z(1182)), paper, rot=(-0.5, 0, 0))
     A(tg)
 
-    for p in parts + bolt: uv_box(p, 0.045)
+    for p in parts + bolt: fixmats(p); uv_box(p, 0.045)
     apply_mods(tg); c = tg.matrix_world.translation
     uv_planar(tg, (c.x, c.z, -c.y), (W(36) / 0.94, W(16) / 0.94), '-x')
     # wrap zones (wrapzones.js): it's noWrap anyway (a trophy), but the parts keep the usual split

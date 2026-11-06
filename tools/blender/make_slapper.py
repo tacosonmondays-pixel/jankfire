@@ -79,7 +79,6 @@ class Blob:
 def orient(o, pos, xg, yg, zg):
     """place o at game pos with its local x, y, z along the game vectors xg, yg, zg (made square)"""
     zv = Vector(zg).normalized(); xv = Vector(yg).cross(zv).normalized(); yv = zv.cross(xv)
-    if Vector(xg).dot(xv) < 0: xv = -xv
     cols = [gv(*xv), gv(*yv), gv(*zv)]  # game axes in blender
     # local axes of a lib primitive are game axes too: local x -> blender x, local y -> blender z, local z -> blender -y
     M = Matrix(((cols[0][0], -cols[2][0], cols[1][0], 0), (cols[0][1], -cols[2][1], cols[1][1], 0), (cols[0][2], -cols[2][2], cols[1][2], 0), (0, 0, 0, 1)))
@@ -274,7 +273,6 @@ def slapper():
     hand_parts = zone_join([hand] + nails, 'slaphand', {'sl_rubber': 'b', 'sl_nail': 'n'}, default='b')
     hnode = group('slaphand', hand_parts, HAND_AT)
     body = zone_join(sp, 'slapstick', {'sl_candy': 'a', 'sl_pinkplastic': 'a', 'sl_yellow': 'a'}, default='a')
-    top_y = max(v.co.z for v in hand_parts[0].data.vertices) if hand_parts else 0.02
     meta = {'kind': 'weapon', 'id': 'slapper', 'paint': ['sl_candy'], 'muzzle': [0, 0, -0.7], 'hand': 'slaphand',
             'hatAt': [[0.0, round(top_y_at(hand_parts, -0.55) + 0.001, 4), -0.55], 0.09]}
     return finish('w_slapper', body + [hnode], meta)

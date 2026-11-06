@@ -155,7 +155,7 @@ def build():
     # the sticker: NOT A TOY, on the left side over the grip (where you look)
     st = box((0.001, 0.027, 0.118), (-0.0415, 0.03, -0.035), sticker, rot=(0, math.pi, 0)); A(st); decals.append((st, (0.118, 0.027)))
 
-    for p in parts: uv_box(p, 0.06)
+    for p in parts: fixmats(p); uv_box(p, 0.06)
     for o, sz in decals:
         apply_mods(o); c = o.matrix_world.translation; uv_planar(o, (c.x, c.z, -c.y), sz, '-x')
     WZ = {'ty_body': 'a', 'ty_pink': 'a', 'ty_grey': 'a', 'ty_yellow': 'b', 'ty_orange': 'b', 'ty_clip': 'b', 'ty_dark': 'b'}  # wrap zones (wrapzones.js): a = handle side, b = business end, everything else keeps its look
