@@ -67,6 +67,7 @@ import { installZombies } from './server/zombies.js';
 import { inShredder } from './shared/shredpit.js'; // the Warehouse's shredder pit: its teeth kill like the void
 import { installLobby } from './server/lobby.js'; // mode lobbies: the countdown before a match
 import { LOBBY } from './shared/lobby.js';
+import { sendStatic } from './server/static.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -127,8 +128,7 @@ function serve(req, res) {
     if (!file.startsWith(dir)) { res.writeHead(403).end(); return; }
     fs.stat(file, (err, st) => {
       if (err || !st.isFile()) { res.writeHead(404).end('404'); return; }
-      res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-cache' });
-      fs.createReadStream(file).pipe(res);
+      sendStatic(req, res, file, st, path.extname(file), MIME[path.extname(file)] || 'application/octet-stream'); // (ETag + gzip: server/static.js)
     });
     return;
   }

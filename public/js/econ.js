@@ -13,7 +13,7 @@ import { hud } from './hud.js';
 import { sfx } from './audio.js';
 import { ME, eye, look } from './player.js';
 import { W, setSlots, playVM, rebuildOne, setLoadout, refillAmmo, syncItem, setItem, showSlots } from './weapons.js';
-import { weaponIcon, itemIcon, objIcon } from './icons.js';
+import { weaponIcon, itemIcon, objIcon, isPlaceholder } from './icons.js';
 import { RP } from './replay.js';
 import * as E3 from './econ3d.js';
 import { tacRound, tacSync } from './tactical.js';
@@ -453,7 +453,7 @@ function iconFor(it) {
   if (it.k === 'w') url = weaponIcon(it.id, (G.equipped || {})[it.id]);
   else if (it.k === 'i') url = itemIcon(it.id);
   else url = objIcon('gear:' + it.id + team, () => E3.gearModel(it.id, team));
-  iconCache.set(key, url);
+  if (url && !isPlaceholder(url)) iconCache.set(key, url); // (a loading cube: ask again next time the menu draws)
   return url;
 }
 function buildMenu() {
