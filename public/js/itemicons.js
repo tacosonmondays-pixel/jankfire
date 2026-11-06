@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { ITEMS } from '/shared/weapons.js';
 import { studioIcon, itemIcon, set3dPics } from './icons.js';
 import { buildProjectile, buildWeapon, freeTree } from './models.js';
-import { authored } from './glbkit.js';
+import { authored, nodeIn } from './glbkit.js';
 import { instantCamera, calculator, lcdTexture, nvGoggles } from './gearmodels.js';
 import { wandMesh } from './wand.js';
 
@@ -50,3 +50,16 @@ export function item3d(id, skin) {
 set3dPics(streakPic, item3d);
 
 export function itemPic(id, skin) { return item3d(id, skin) || itemIcon(id); }
+
+// the Customize buttons' props (tools/blender/make_uiicons.py: one file, a node each): backpack, door, wrench, palette,
+// crystal, skull. accent = the shadow colour; hub.js and customize.js put them on the tab bar and the round buttons
+const UI_VIEW = { ui_backpack: { yaw: 2.6 }, ui_door: { yaw: 2.75, pitch: 0.2 }, ui_wrench: { yaw: 3.0, pitch: 0.1, roll: -0.7 }, ui_palette: { yaw: 3.0, pitch: 0.5 }, ui_crystal: { yaw: 2.9, pitch: 0.15 }, ui_skull: { yaw: 2.75, pitch: 0.15 } };
+export function uiPic(name, accent = '#4fd8ff', size = 40) {
+  const v = UI_VIEW[name] || {};
+  return studioIcon('ui:' + name + accent + size, () => {
+    const all = A('x_uiicons'); if (!all) return null;
+    const n = nodeIn(all, name); if (!n) return null;
+    n.removeFromParent(); n.position.set(0, 0, 0);
+    return n;
+  }, { w: size, h: size, accent, yaw: v.yaw, pitch: v.pitch, roll: v.roll });
+}
