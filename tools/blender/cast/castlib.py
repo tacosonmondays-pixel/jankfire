@@ -87,7 +87,9 @@ def rubber(name, color, tex=None, rough=0.42):
     return mat(name, color, rough=rough, clearcoat=0.25, tex=tex)
 
 
-def cloth(name, color, tex=None): return mat(name, color, rough=0.85, tex=tex)
+def cloth(name, color, tex=None):
+    m = mat(name, color, rough=0.85, tex=tex); m.use_backface_culling = False  # (hems and skirts are open shells)
+    return m
 
 
 def parts_root(char_id, parts, meta=None):
@@ -156,3 +158,27 @@ def cast_main(build, char_id, **kw):
         me = o.data; me.calc_loop_triangles(); print('JF_PART', o.name, len(me.loop_triangles))
     if '--no-export' not in argv: export(root, 'cast/c_' + char_id)
     if '--no-sheet' not in argv: cast_sheet(root, char_id, **kw)
+
+
+# ------------------------------------------------------------ authoring in a joint's own frame
+_C = Matrix(((1, 0, 0, 0), (0, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))  # game -> blender axes
+
+
+def joint_matrix(char_id, joint):
+    """the joint's rest world matrix (root space, game axes) as a blender-space Matrix"""
+    e = JOINTS[char_id]['mats'][joint]  # three.js column-major
+    Mg = Matrix(((e[0], e[4], e[8], e[12]), (e[1], e[5], e[9], e[13]), (e[2], e[6], e[10], e[14]), (0, 0, 0, 1)))
+    return _C @ Mg @ _C.inverted()
+
+
+def in_joint(char_id, joint, objs):
+    """objs were built in the joint's local frame (like the code puppet's person() layout): carry them to root space"""
+    Mb = joint_matrix(char_id, joint)
+    out = []
+    for o in objs:
+        if o is None: continue
+        apply_mods(o)
+        o.data.transform(o.matrix_basis.copy()); o.matrix_basis = Matrix.Identity(4)  # (matrix_basis: matrix_world can be stale until the depsgraph runs)
+        o.data.transform(Mb)
+        out.append(o)
+    return out

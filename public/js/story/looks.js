@@ -244,6 +244,7 @@ export const castLoaded = (id) => CAST.has(id);
 export function buildLookCode(id, hint) { const c = CAST.get(id); CAST.delete(id); try { return buildLook(id, hint); } finally { if (c) CAST.set(id, c); } } // (the code puppet, for side-by-sides)
 function dressCast(L, scene) {
   const ch = L.ch, s = ch.root.scale.x;
+  const tilt = ch.head.rotation.z; ch.head.rotation.z = 0; // (parts are modelled untilted; the jank tilt comes back after, for the head and its face together)
   ch.root.scale.setScalar(1); ch.root.position.set(0, 0, 0); ch.root.rotation.set(0, 0, 0); ch.root.updateMatrixWorld(true);
   const keep = L.face ? L.face.root : null, inv = new THREE.Matrix4();
   scene.updateMatrixWorld(true);
@@ -260,7 +261,7 @@ function dressCast(L, scene) {
     inv.copy(G.matrixWorld).invert(); m.applyMatrix4(inv);
     G.add(m); n++;
   });
-  ch.root.scale.setScalar(s); ch.root.updateMatrixWorld(true);
+  ch.head.rotation.z = tilt; ch.root.scale.setScalar(s); ch.root.updateMatrixWorld(true);
   L.blender = n > 0;
 }
 

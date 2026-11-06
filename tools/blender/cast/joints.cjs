@@ -14,13 +14,13 @@ const PORT = process.argv[2] || 3000;
     const res = {};
     for (const id of LOOK_IDS) {
       const L = buildLook(id), ch = L.ch, s = ch.root.scale.x;
-      ch.root.scale.setScalar(1); ch.root.updateMatrixWorld(true);
+      ch.root.scale.setScalar(1); ch.head.rotation.z = 0; ch.root.updateMatrixWorld(true); // (no random head tilt: the game tilts the whole dressed head)
       const wp = (o) => { const v = new THREE.Vector3(); o.getWorldPosition(v); return [+v.x.toFixed(4), +v.y.toFixed(4), +v.z.toFixed(4)]; };
-      const J = {};
-      for (const k of ['body', 'legL', 'legR', 'kneeL', 'kneeR', 'spine', 'neck', 'head', 'armL', 'arm', 'foreL', 'foreR', 'handL', 'handR']) if (ch[k]) J[k] = wp(ch[k]);
+      const J = {}, M = {};
+      for (const k of ['body', 'legL', 'legR', 'kneeL', 'kneeR', 'spine', 'neck', 'head', 'armL', 'arm', 'foreL', 'foreR', 'handL', 'handR']) if (ch[k]) { J[k] = wp(ch[k]); M[k] = ch[k].matrixWorld.elements.map((x) => +x.toFixed(6)); }
       const F = L.face ? { eyes: L.face.eyes.map((e) => wp(e.piv)), eyeR: L.face.eyes[0] && L.face.eyes[0].ball.geometry.parameters.radius, mouth: wp(L.face.mouth), mouthW: L.face.mw } : null;
       const box = new THREE.Box3().setFromObject(ch.head);
-      res[id] = { scale: s, kind: L.kind, joints: J, face: F, headBox: [box.min.toArray().map((x) => +x.toFixed(4)), box.max.toArray().map((x) => +x.toFixed(4))], hunch: ch.spine.rotation.x, legScale: ch.legL.scale.x };
+      res[id] = { scale: s, kind: L.kind, joints: J, mats: M, face: F, headBox: [box.min.toArray().map((x) => +x.toFixed(4)), box.max.toArray().map((x) => +x.toFixed(4))], hunch: ch.spine.rotation.x, legScale: ch.legL.scale.x };
     }
     return res;
   });
