@@ -257,6 +257,11 @@ class Rig:
             body = join(ps, name + '_m')
             bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
             s.full.append(s._attach(body, name)); s.lods.append(s._attach(lod, name))
+        for name in s.order:  # parts built before the joints held these names (head, jaw, neck): take them back
+            if s.J[name].name != name:
+                if name in bpy.data.objects: bpy.data.objects[name].name = name + '_part'
+                s.J[name].name = name
+            assert s.J[name].name == name, name
         return s
 
     def meta(s, **kw):
@@ -1200,9 +1205,9 @@ def stomachdog():
     for leg, shin, s in (('legFL', 'shinFL', -1), ('legFR', 'shinFR', 1), ('legBL', 'shinBL', -1), ('legBR', 'shinBR', 1)):
         a, b = J[leg], J[shin]
         th = limb(a, b, 0.11, 0.095, mf, 'thigh', n=6); uv_tile(th, 0.3)
-        foot = (b[0] + s * 0.005, 0.075, b[2] - 0.02)
+        foot = (b[0] + s * 0.005, 0.08, b[2] - 0.02)
         sh = limb(b, foot, 0.08, 0.078, mf, 'stump', n=6); uv_tile(sh, 0.3)
-        nubs = [ell((b[0] + dx, 0.035, foot[2] - 0.07), (0.022, 0.024, 0.024), me_, 'toe', n=4, rings=3) for dx in (-0.035, 0.0, 0.035)]
+        nubs = [ell((b[0] + dx, 0.026, foot[2] - 0.07), (0.022, 0.024, 0.024), me_, 'toe', n=4, rings=3) for dx in (-0.035, 0.0, 0.035)]
         for o in nubs: uv_tile(o, 0.1)
         rig.add(leg, th); rig.add(shin, sh, nubs)
     # the intestine tail: sausage links that wag
