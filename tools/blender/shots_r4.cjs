@@ -146,14 +146,18 @@ async function session(b, map, ids) {
         await sleep(1100);
         const f = path.join(tmp, `${map}_${v.id}_${v.k}_${pr}_${boxes ? 'box' : 'glb'}.png`);
         let st = 'dead';
-        for (let tries = 0; tries < 4; tries++) {
+        for (let tries = 0; tries < 6; tries++) {
           // still on this map, alive, past a Plant & Defuse buy phase? (a match that ends moves to the next map; a bot can
           // kill you: wait for the respawn; in the buy phase the server holds you in your spawn zone and its walls show)
           st = await pg.evaluate(async (map) => {
             const { MAP } = await import('/shared/map.js'); const { ME } = await import('/js/player.js'); const { G } = await import('/js/ctx.js');
             const busy = () => MAP.id === map && (!ME.alive || (G.eco && G.eco.buyEnd > performance.now()) || performance.now() < (ME.quizUntil || 0)); // (a bot's pop quiz: frozen, a panel up)
-            for (let i = 0; i < 600 && busy(); i++) await new Promise((r) => setTimeout(r, 100));
-            await new Promise((r) => setTimeout(r, 900)); // (re-pinned, the barriers gone)
+            const t0 = performance.now(), wait = (ms) => new Promise((r) => setTimeout(r, ms));
+            while (performance.now() - t0 < 60000) { // (killed again while settling: keep waiting, up to a minute)
+              while (busy() && performance.now() - t0 < 60000) await wait(100);
+              await wait(900); // (re-pinned, the barriers gone)
+              if (!busy()) break;
+            }
             return MAP.id !== map ? 'moved on to ' + MAP.id : busy() ? (ME.alive ? 'buy phase' : 'dead') : 'ok';
           }, map);
           if (st !== 'ok') break;
