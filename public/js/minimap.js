@@ -14,7 +14,7 @@ const SIZES = { s: [124, 36], m: [164, 46], l: [216, 58] }; // [px, metres from 
 const CSS = `
 #mmWrap { position: absolute; left: 16px; top: 46px; display: none; transform: rotate(-1.2deg); pointer-events: none; font-family: var(--font); }
 #mmWrap canvas { display: block; border: 3px solid #ff4fd8; box-shadow: 5px 5px 0 #4fd8ff; background: #0c0614; image-rendering: pixelated; }
-#mmTag { position: absolute; left: -4px; top: -11px; background: #ffe14d; color: #000; border: 2px solid #000; font-size: 10px; font-weight: bold; padding: 0 5px; transform: rotate(-3deg); letter-spacing: 1px; white-space: nowrap; }
+#mmTag { position: absolute; left: -6px; top: -13px; background: #ffe14d; color: #000; border: 2px solid #000; box-shadow: 2px 2px 0 #000; font-size: 13px; line-height: 15px; font-weight: bold; padding: 0 6px; transform: rotate(-1.5deg); letter-spacing: 1.5px; white-space: nowrap; }
 #mmN { position: absolute; right: -7px; top: -9px; width: 16px; height: 16px; line-height: 15px; text-align: center; background: #000; color: #ff4fd8; border: 2px solid #ff4fd8; font-size: 10px; font-weight: bold; }
 body.mmOn #airInd { top: calc(var(--mmB, 220px) + 10px) !important; }
 body.mmOn #nowPlaying.match { top: calc(var(--mmB, 220px) + 12px); } /* the song toast sits under the map, not on it */
@@ -61,7 +61,7 @@ const pings = new Map(); // id -> [x, z, time]: enemies that just fired
 function build() {
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   wrap = document.createElement('div'); wrap.id = 'mmWrap';
-  wrap.innerHTML = '<canvas id="mmCv"></canvas><div id="mmTag">SAT-NAV (mostly right)</div><div id="mmN">N</div>';
+  wrap.innerHTML = '<canvas id="mmCv"></canvas><div id="mmTag">SAT-NAV</div><div id="mmN">N</div>';
   (document.getElementById('hud') || document.body).appendChild(wrap);
   cv = wrap.querySelector('canvas');
 }
@@ -72,10 +72,24 @@ function bake(id) {
   ppm = Math.min(4, 1600 / Math.max(w, h));
   const c = document.createElement('canvas'); c.width = Math.ceil(w * ppm); c.height = Math.ceil(h * ppm);
   const x = c.getContext('2d');
-  x.fillStyle = '#0c0614'; x.fillRect(0, 0, c.width, c.height);
   paintBoxes(x, map, (wx, wz) => [(wx - ext[0]) * ppm, (wz - ext[1]) * ppm], Math.max(c.width, c.height));
   if (map.bounds) { const b = map.bounds; x.strokeStyle = '#ff4fd8'; x.lineWidth = Math.max(2, ppm * 0.6); x.setLineDash([ppm * 3, ppm * 2]); x.strokeRect((b[0] - ext[0]) * ppm, (b[1] - ext[1]) * ppm, (b[2] - b[0]) * ppm, (b[3] - b[1]) * ppm); x.setLineDash([]); } // the edge of the play area
   base = c; baseFor = id;
+}
+
+// off the map: a dark void grid with hatching and a few dead pixels, pinned to the world so it slides as you move
+let voidPat = null;
+function voidPattern(x) {
+  if (voidPat) return voidPat;
+  const t = document.createElement('canvas'); t.width = t.height = 32;
+  const g = t.getContext('2d');
+  g.fillStyle = '#0a0412'; g.fillRect(0, 0, 32, 32);
+  g.strokeStyle = '#1b0c2c'; g.lineWidth = 3;
+  for (let i = -32; i < 64; i += 8) { g.beginPath(); g.moveTo(i, 32); g.lineTo(i + 32, 0); g.stroke(); } // hatching
+  g.fillStyle = '#3a1858'; g.fillRect(0, 0, 32, 1); g.fillRect(0, 0, 1, 32); // the grid
+  g.fillStyle = '#5a2a80'; for (const [a, b] of [[5, 21], [19, 9], [27, 26], [12, 14]]) g.fillRect(a, b, 1, 1); // dead pixels
+  voidPat = x.createPattern(t, 'repeat');
+  return voidPat;
 }
 
 let tapped = false;
@@ -106,17 +120,19 @@ export function minimapFrame(now, opts = {}) {
   if (!on) { if (wrap.style.display !== 'none') { wrap.style.display = 'none'; document.body.classList.remove('mmOn'); } return; }
   if (now - drawT < 45) return; // ~20 fps is plenty
   drawT = now;
-  const [px, R] = SIZES[S.mmSize] || SIZES.m;
+  const [px, R0] = SIZES[S.mmSize] || SIZES.m;
   if (shownSize !== S.mmSize || wrap.style.display !== 'block') {
     shownSize = S.mmSize; cv.width = cv.height = px; wrap.style.display = 'block';
     document.body.classList.add('mmOn'); document.body.style.setProperty('--mmB', `${46 + px + 8}px`);
   }
   if (baseFor !== G.cfg.map) bake(G.cfg.map);
+  const R = Math.min(R0, Math.max(16, Math.max(ext[2] - ext[0], ext[3] - ext[1]) * 0.42)); // small maps (Crate) zoom in so the map fills the frame
   const x = cv.getContext('2d'), rot = S.mmRot !== false, yaw = ME.yaw || 0, s = px / (2 * R), mx = ME.pos[0], mz = ME.pos[2];
   wrap.querySelector('#mmN').style.transform = rot ? `rotate(${yaw}rad)` : '';
   x.setTransform(1, 0, 0, 1, 0, 0);
-  x.fillStyle = '#0c0614'; x.fillRect(0, 0, px, px);
   x.save(); x.translate(px / 2, px / 2); if (rot) x.rotate(yaw); x.scale(s, s); x.translate(-mx, -mz);
+  const vp = voidPattern(x); vp.setTransform(new DOMMatrix().scale(0.25)); // a 32 px tile = 8 m
+  x.fillStyle = vp; x.fillRect(mx - R * 1.5, mz - R * 1.5, R * 3, R * 3);
   x.imageSmoothingEnabled = false;
   x.drawImage(base, ext[0], ext[1], base.width / ppm, base.height / ppm);
   x.restore();

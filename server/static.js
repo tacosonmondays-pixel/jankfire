@@ -7,7 +7,7 @@ import zlib from 'node:zlib';
 const ZIP = new Set(['.glb', '.js', '.css', '.html', '.json', '.svg', '.webmanifest', '.wav']);
 const gz = new Map(); // file -> { tag, buf | promise }
 let gzBytes = 0;
-const GZ_CAP = 64 * 1024 * 1024;
+const GZ_CAP = 32 * 1024 * 1024; // (the models are ~12 MB gzipped, the scripts a few: fits, and leaves room on a 512 MB box)
 
 function gzipOf(file, tag) {
   const c = gz.get(file);

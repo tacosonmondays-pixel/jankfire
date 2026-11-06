@@ -73,6 +73,6 @@ t('the four slice legendaries do their thing', () => {
   assert.deepEqual(killWith(rollWeapon({}, rng(1))), []);
 });
 t('lumps ring falls back to a holdable base', () => { const it = legendaryItem('lumps_ring', rng(1)); assert.equal(it.b, 'slapper'); });
-t('organ core entries wait for WP5 (no crash, no ghost item)', () => { assert.equal(rollEntry({ item: 'core_cracked_punch_clock' }), null); });
+t('organ core entries roll a core with a quality; unknown items roll nothing', () => { const it = rollEntry({ item: 'core_cracked_punch_clock' }, rng(4)); assert.equal(it.b, 'core_cracked_punch_clock'); assert.ok(['bruised', 'fresh', 'prime', 'premium'].includes(it.ql)); assert.equal(rollEntry({ item: 'no_such_thing' }), null); });
 t('seed 0 is a stock item: plain numbers', () => { const s = statsOf({ b: 'ar', r: 'common', s: 0 }); for (const [k] of STATS) assert.equal(s[k], 1, k); });
 console.log(`\n${n} passed (${Object.keys(LEGENDARIES).length} legendaries, ${Object.keys(BRANDS).length} brands, ${Object.keys(MODIFIERS).length} mods, ${Object.keys(LOOT_TABLES).length} tables)`);

@@ -3,7 +3,9 @@ import * as THREE from 'three';
 import { BOXES, MAP, MAPS, MAP_ORDER } from '/shared/map.js';
 import { WEAPONS, ORDER, SLOTS, FLAGS, SLIP_TIME, HIPFIRE, BOT_DIFF, MODES, STREAKS, ITEMS, ITEM_ORDER, validLoadout, validStreaks } from '/shared/weapons.js';
 import { streakIcon, liveIcon } from './icons.js';
-import './itemicons.js'; // registers the 3D item + killstreak pictures (icons.js set3dPics)
+import './itemicons.js';
+import { strikeBird, dressHole, lookFiles, lookFilesOf } from './streaklooks.js';
+import { STREAK_LOOKS } from '/shared/cosmetics.js'; // killstreak looks in the world // registers the 3D item + killstreak pictures (icons.js set3dPics)
 import { stepProjectile, raycast } from '/shared/physics.js';
 import { duckFrame, duckStuck } from './duck.js';
 import { G } from './ctx.js';
@@ -11,7 +13,7 @@ import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisual
 import { setShadowPref } from './lighting.js';
 import { hrFeed, hrDead } from './hrguy.js';
 import { loadTripoModels, buildProjectile, buildPeel, buildHole, makeShadow, tipColor, buildCharacter, teamLook, M } from './models.js';
-import { onLateModel, prefetchLoadout } from './glbkit.js';
+import { onLateModel, prefetchLoadout, prefetch } from './glbkit.js';
 import { initCrosses, crossEvent, crossShot, updateCrosses, clearCrosses } from './bloodcross.js';
 import { net } from './net.js';
 import { hud } from './hud.js';
@@ -177,7 +179,7 @@ loadTripoModels().then((n) => {
   rebuildOne(); // visuals only: a randomizer or pending loadout stays as it is
   refreshMapVisuals(); // Blender props replace their stand-in boxes
   zmModelsLoaded(); // zombies: the wall guns too
-  prefetchLoadout(S.loadout); // your item's and killstreaks' models (they don't come with the startup download)
+  prefetchLoadout(S.loadout); prefetch(lookFiles(validStreaks(S.loadout.streaks))); // (+ your killstreak looks' models) // your item's and killstreaks' models (they don't come with the startup download)
   for (const r of G.remotes.values()) r.build();
   $('status').textContent = `${n} model(s) loaded`;
 });
@@ -577,7 +579,7 @@ function applyLoadout(force) {
   if (G.forcedLoadout) { $('loNote').textContent = G.forcedLoadout.only ? 'this mode hands everyone the same weapons' : 'randomizer is on: you get a random loadout every life'; return; }
   if (W.only) { $('loNote').textContent = 'this mode hands you one weapon: your loadout comes back after the match'; return; }
   const canNow = force || !G.joined || !ME.alive || performance.now() - (G.spawnT || 0) < 5000;
-  prefetchLoadout(S.loadout); // (a new item or killstreak: its model, ahead of time)
+  prefetchLoadout(S.loadout); prefetch(lookFiles(validStreaks(S.loadout.streaks))); // (+ your killstreak looks' models) // (a new item or killstreak: its model, ahead of time)
   if (canNow) { setLoadout(S.loadout); G.pendingLoadout = false; $('loNote').textContent = ''; }
   else { G.pendingLoadout = true; $('loNote').textContent = 'loadout switches when you respawn'; }
 }
@@ -616,7 +618,7 @@ function sendSkins() {
   skinSendT = setTimeout(() => { if (G.joined) net.send({ t: 'skin', s: wantSkins(), fav: myFavs() }); }, 250); // random slots go as 'random': the server rolls them
 }
 // the weapons that show up in COSMETICS (the rifle form of the scythe borrows the scythe's look)
-function skinnable() { return ORDER.filter((id) => WEAPONS[id] && !WEAPONS[id].modeOnly && (SLOTS.includes(WEAPONS[id].slot) || itemModel(id) || id === 'scythe')); }
+function skinnable() { return [...ORDER.filter((id) => WEAPONS[id] && !WEAPONS[id].modeOnly && (SLOTS.includes(WEAPONS[id].slot) || itemModel(id) || id === 'scythe')), ...STREAK_LOOKS]; } // (+ the killstreaks with looks)
 // items you see in your hand wear skins (popper, reverse card). the thrown duck is a plain projectile, so not that
 function itemModel(id) { return Object.values(ITEMS).some((it) => it.w === id); }
 // nothing picked = no entry. a wrap mode that isn't normal is kept even without a wrap, so it's still there when you pick one
@@ -1182,7 +1184,7 @@ function skinOf(owner, wid) { return (owner === G.myId ? W.skinOver || G.equippe
 function spawnProj(m) {
   const w = WEAPONS[m.k];
   if (!w) return;
-  const mesh = buildProjectile(m.k, skinOf(m.o, m.k));
+  const mesh = (m.st && strikeBird(m.o)) || buildProjectile(m.k, skinOf(m.o, m.k)); // (a Chicken Strike bird: the owner's look)
   G.scene.add(mesh);
   const pr = { id: m.id, k: m.k, o: m.o, p: m.p.slice(), v: m.v.slice(), r: w.r, bounce: w.bounce || 0, mesh, spin: 0, tip: m.tip || 0 };
   if (m.k === 'bow' && mesh.userData.tip) mesh.userData.tip.material = M(tipColor(m.tip), true);
@@ -1200,7 +1202,7 @@ function addPeel(m) {
 function addHole(m) {
   const mesh = buildHole();
   mesh.position.set(...m.p);
-  if (m.big) mesh.userData.big = true;
+  if (m.big) { mesh.userData.big = true; dressHole(mesh, m.o); } // the Giant Duck: its circling duck in the owner's look
   G.scene.add(mesh);
   G.holes.set(m.id, { mesh, p: m.p, born: performance.now() - (m.age || 0) * 1000, o: m.o, big: !!m.big, on: m.on || 0 });
   if (m.on && m.age < 0) duckStuck(G.holes.get(m.id), m); // a duck stuck on someone: the hole opens (and hums) in a moment
@@ -1209,6 +1211,7 @@ function addHole(m) {
 function addRemoteInfo(p) {
   G.names.set(p.id, { name: p.name, color: p.color, bot: p.bot, level: p.level, look: p.look, card: p.card || '', skins: p.skins || {}, team: p.team || 0, grap: p.grap });
   G.skins.set(p.id, p.skins || {});
+  const lf = lookFilesOf(p.skins); if (lf.length) prefetch(lf, 3); // their killstreak looks' models, before they use one
 }
 
 // ------------------------------------------------------------ net handlers
@@ -1289,6 +1292,7 @@ net.on('pl', (m) => {
 net.on('sk', (m) => {
   if (m.id === G.myId) { czRolled(m.s); recomputeEquipped(); rebuildOne(); return; } // your random slots, rolled for this life
   G.skins.set(m.id, m.s || {});
+  const lf = lookFilesOf(m.s); if (lf.length) prefetch(lf, 3); // (their new killstreak looks)
   const r = G.remotes.get(m.id);
   if (r) r.setSkins(m.s);
 });
@@ -2631,7 +2635,7 @@ async function doRoll(kind) {
       } else {
       // skins belong to one weapon; everything else can go on whatever you're looking at
       const target = item.type === 'model' ? COSMETICS.model[item.id].weapon : G.cosSel;
-      btn(`PUT IT ON ${WEAPONS[target].name.toUpperCase()}`, () => {
+      btn(`PUT IT ON ${(WEAPONS[target] || STREAKS[target] || { name: 'it' }).name.toUpperCase()}`, () => { // (a killstreak skin goes on its streak)
         const sk = validSkin(S.skins[target]).slice();
         sk[TYPES.indexOf(item.type)] = item.id;
         G.cosSel = target;
