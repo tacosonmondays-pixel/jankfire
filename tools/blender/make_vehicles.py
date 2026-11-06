@@ -66,7 +66,7 @@ g2b, b2g = T.g2b, T.b2g
 
 
 # ------------------------------------------------------------ the trim atlas: the traffic one + this batch's cells
-T.TEX_TRIM = (256, 128)
+T.TEX_TRIM = (256, 192)
 EXTRA = {  # name: (x, y, w, h, colour, roughness, metallic) in the right half
     'glassw': (128, 0, 32, 32, 0x1c2c44, 0.06, 0.6),   # windscreens: dark glass with streaks
     'diamond': (160, 0, 32, 32, 0x8a9098, 0.32, 0.85),  # diamond plate (steps, humps, sills)
@@ -82,8 +82,8 @@ EXTRA = {  # name: (x, y, w, h, colour, roughness, metallic) in the right half
     'paintb': (240, 32, 16, 16, 0xffc418, 0.25, 0.1),   # busyellow for small parts
     'dest': (128, 48, 64, 16, 0x0c0c0e, 0.3, 0.0),      # the destination sign
     'gauge': (192, 48, 64, 16, 0x101014, 0.35, 0.0),    # a dash: dials, warning lights
-    'louvre': (128, 64, 32, 32, 0x18181c, 0.55, 0.2),   # engine louvres
-    'slats': (160, 64, 32, 32, 0xc8ccd2, 0.4, 0.5),     # roller door slats
+    'louvre': (128, 64, 32, 16, 0x18181c, 0.55, 0.2),   # engine louvres
+    'slats': (160, 64, 32, 16, 0xc8ccd2, 0.4, 0.5),     # roller door slats
     'etrack': (192, 64, 64, 8, 0x9ca2aa, 0.35, 0.8),    # E-track logistic rail
     'nosing': (192, 72, 32, 8, 0xffd21a, 0.5, 0.0),     # step nosing
     'scuff': (224, 72, 32, 8, 0x8a6a42, 0.6, 0.0),      # scuff boards
@@ -97,6 +97,20 @@ EXTRA = {  # name: (x, y, w, h, colour, roughness, metallic) in the right half
     'stop': (240, 112, 16, 16, 0xe02020, 0.25, 0.0),    # stop buttons
     'grille2': (128, 80, 32, 16, 0x101012, 0.4, 0.6),   # chrome bar grille
     'tread2': (160, 80, 32, 16, 0x141416, 0.85, 0.0),   # rubber floor ribs (bus steps)
+    # the bottom band (y 128..192): the trucks'
+    'dottape': (0, 128, 64, 8, 0xd8202a, 0.35, 0.0),     # red / white conspicuity tape
+    'alum': (64, 128, 16, 16, 0xc2c6cc, 0.3, 0.85),     # brushed aluminium (posts, rails, tanks)
+    'chromeb': (80, 128, 16, 16, 0xe8ecf2, 0.08, 1.0),   # bumper chrome
+    'grille3': (96, 128, 32, 32, 0x0c0c0e, 0.2, 0.9),   # a truck's chrome bar grille
+    'tank': (128, 128, 32, 16, 0xc8ccd2, 0.22, 0.9),    # a fuel tank's polished skin
+    'mudflap': (160, 128, 32, 32, 0x121214, 0.85, 0.0), # mud flaps (a pink JANK on them)
+    'tapew': (192, 128, 32, 8, 0xf2f2f2, 0.3, 0.0),     # white reflective tape
+    'cabtrim': (224, 128, 16, 16, 0x141418, 0.35, 0.0), # cab rubber + black trim
+    'stencil': (0, 136, 64, 16, 0xf0f0f2, 0.35, 0.05),  # NO RIDERS
+    'boxlogo': (0, 152, 96, 16, 0xf0f0f2, 0.3, 0.05),   # the box's front: CB&C LOGISTICS
+    'sticker4': (96, 160, 64, 16, 0xffe14d, 0.4, 0.0),  # back of the truck
+    'reflect': (160, 160, 16, 16, 0xff2a1a, 0.15, 0.0), # red reflectors
+    'reflecta': (176, 160, 16, 16, 0xff9a1a, 0.15, 0.0),
 }
 for k, v in EXTRA.items(): T.TRIM.setdefault(k, v)
 
@@ -130,9 +144,9 @@ def paint_extra(px, cell, plate='JNK 69', sticker=('HOW IS MY', 'DRIVING? NO')):
     for i, col in enumerate((0xe02020, 0xffae1a, 0x39ff14, 0x2a6cff)): gg[11:13, 46 + i * 4:48 + i * 4] = hexrgb(col)
     gg[4:6, 46:62] = hexrgb(0x3a3a44)
     lv = cell('louvre')
-    for y in range(32): lv[y, :] = hexrgb(0x2c2c32) if y % 4 == 0 else (hexrgb(0x08080a) if y % 4 == 3 else hexrgb(0x18181c))
+    for y in range(lv.shape[0]): lv[y, :] = hexrgb(0x2c2c32) if y % 4 == 0 else (hexrgb(0x08080a) if y % 4 == 3 else hexrgb(0x18181c))
     sl = cell('slats')
-    for y in range(32): sl[y, :] = hexrgb(0xd4d8de) * (0.96 + 0.05 * r.random()) if y % 4 else hexrgb(0x8c9098)
+    for y in range(sl.shape[0]): sl[y, :] = hexrgb(0xd4d8de) * (0.96 + 0.05 * r.random()) if y % 4 else hexrgb(0x8c9098)
     et = cell('etrack'); et[:] = hexrgb(0x9ca2aa); et[2:6, 1::4] = hexrgb(0x2a2c30); et[2:6, 2::4] = hexrgb(0x2a2c30)
     no = cell('nosing'); no[:] = hexrgb(0xffd21a); no[2:6, ::3] = hexrgb(0x1a1a1a)
     sc = cell('scuff'); sc[:] = hexrgb(0x8a6a42) * (0.9 + 0.15 * r.random((8, 32, 1))); sc[0, :] = sc[-1, :] = hexrgb(0x5a4026)
@@ -150,6 +164,22 @@ def paint_extra(px, cell, plate='JNK 69', sticker=('HOW IS MY', 'DRIVING? NO')):
     for y in range(1, 16, 3): gr[y, :] = hexrgb(0xdde2ea); gr[y + 1 if y + 1 < 16 else y, :] = hexrgb(0x7a808a)
     tr = cell('tread2')
     for x in range(32): tr[:, x] = hexrgb(0x2a2a2e) if x % 3 == 0 else hexrgb(0x141416)
+    dt = cell('dottape')
+    for x in range(0, 64, 8): dt[:, x:x + 4] = hexrgb(0xd8202a); dt[:, x + 4:x + 8] = hexrgb(0xf4f4f4)
+    al = cell('alum'); al[:] = hexrgb(0xc2c6cc) * (0.95 + 0.08 * r.random((16, 16, 1)))
+    for y in range(0, 16, 2): al[y, :] *= 0.97
+    g3 = cell('grille3'); g3[:] = hexrgb(0x0a0a0c)
+    for x in range(1, 32, 4): g3[2:30, x:x + 2] = hexrgb(0xdde2ea); g3[2:30, x + 2:x + 3] = hexrgb(0x8a909a)
+    g3[0:2, :] = g3[30:32, :] = hexrgb(0xe8ecf2); g3[:, 0] = g3[:, 31] = hexrgb(0xe8ecf2)
+    tk = cell('tank'); tk[:] = hexrgb(0xd0d4da) * (0.92 + 0.1 * r.random((16, 32, 1))); tk[:, 7:9] = hexrgb(0x2a2c30); tk[:, 23:25] = hexrgb(0x2a2c30)
+    mf = cell('mudflap'); mf[:] = hexrgb(0x121214); text_px(mf, 'JANK', 4, 12, 1, 0xff4fd8); mf[26:28, 2:30] = hexrgb(0xd8d8dc)
+    tw = cell('tapew'); tw[:] = hexrgb(0xf2f2f2); tw[:, ::6] = hexrgb(0xc8c8cc)
+    st = cell('stencil'); st[:] = hexrgb(0xf0f0f2); text_px(st, 'NO RIDERS', 5, 5, 1, 0x2a2a30)
+    bl = cell('boxlogo'); bl[:] = hexrgb(0xf0f0f2); text_px(bl, 'CB&C', 3, 4, 1, 0x19a04a); text_px(bl, 'LOGISTICS', 34, 4, 1, 0x2a2a30)
+    s4 = cell('sticker4'); s4[:] = hexrgb(0xffe14d); s4[0, :] = s4[-1, :] = hexrgb(0x101010)
+    text_px(s4, 'IF U CAN', 8, 1, 1, 0x101010); text_px(s4, 'READ THIS', 5, 8, 1, 0xd8202a)
+    rf = cell('reflect'); rf[:] = hexrgb(0xc81810); px_disc(rf, 8, 8, 6, 0xff3a2a); px_disc(rf, 6, 6, 2, 0xffb0a0)
+    ra = cell('reflecta'); ra[:] = hexrgb(0xd87a10); px_disc(ra, 8, 8, 6, 0xffa22a); px_disc(ra, 6, 6, 2, 0xffe0a0)
 
 
 # ------------------------------------------------------------ painted atlases with world-space views
@@ -489,6 +519,13 @@ def zf_where(o, eps=0.0008):
                 q = p - n2 * n2.dot(p - a2)
                 if qa_check._point_in_tri(q, a2, b2, c2, n2): out.add(tuple(round(v, 3) for v in b2g(cen)))
     print('JF_ZF', o.name, len(out), sorted(out)[:16])
+    import bmesh as _bm
+    bm = _bm.new(); bm.from_mesh(me); bm.verts.ensure_lookup_table()
+    from collections import Counter as _C
+    d = _C((l.vert.index, l.link_loop_next.vert.index) for f in bm.faces for l in f.loops)
+    bad = [k for k, c in d.items() if c > 1]
+    print('JF_WIND', o.name, len(bad), [tuple(round(v, 3) for v in b2g(o.matrix_world @ bm.verts[k[0]].co)) for k in bad[:8]] if bad else '')
+    bm.free()
 
 
 def to_frame(objs, yaw, shift):
@@ -620,9 +657,8 @@ def finish(B, meta, yaw, shift, boxes, air, ok=(), interior=None, ao=0.6):
                     a2 = sum(q[i].x * q[(i + 1) % len(q)].y - q[(i + 1) % len(q)].x * q[i].y for i in range(len(q)))
                     if abs(a2) < 1e-12: print('JF_UVZ', o.name, L.name, len(me.uv_layers), len(q), round(p.area, 6), [tuple(round(c, 4) for c in v) for v in q][:6])
     if arg('qaparts'): Y.qa(B.l0, fid + ':parts', eps=0.0008, tol=0.003)
-    j0 = join(B.l0, fid[2:] + '_lod0'); T.weld(j0, 1e-6)
+    j0 = join(B.l0, fid[2:] + '_lod0')  # (no weld across parts: touching parts' corners would merge into bad edges)
     j1 = join(B.l1, fid[2:] + '_lod1') if B.l1 else None
-    if j1: T.weld(j1, 1e-6)
     for j in (j0, j1):
         if j is None: continue
         bpy.context.view_layer.objects.active = j
@@ -643,9 +679,11 @@ def finish(B, meta, yaw, shift, boxes, air, ok=(), interior=None, ao=0.6):
                     elif fn: v = fn(b2g(me.vertices[me.loops[li].vertex_index].co), gn, mn, ca.data[li].color[0])
                     else: v = None
                     if v is not None: ca.data[li].color = (v, v, v, 1.0)
-    if arg('zfdebug'): zf_where(j0)
+    if arg('zfdebug'):
+        zf_where(j0)
+        if j1: zf_where(j1)
     if arg('qa'):
-        Y.qa([j0], fid + ':lod0', eps=0.0008, tol=0.003)
+        Y.qa([j0], fid + ':lod0', eps=0.0008, tol=0.004 if 'semi' in fid else 0.003)
         if j1: Y.qa([j1], fid + ':lod1', eps=0.0008, tol=0.01)
     root = prop_finish(fid, [j0], [j1] if j1 else [], meta)
     Y.report(root, fid)
@@ -969,14 +1007,743 @@ def build_transitbus():
                   [((0.16, 0.9, 0.16), (11.84, 2.79, 2.44))], ok, interior=lambda g, n, mn, v: 0.86 if mn == 'cabin' else None)
 
 
+# ============================================================ p_boxtruck
+def truck_boxes():
+    """shared/map.js truckBoxes(B, 0, 0, livery, true), in the prop frame (the step crate is p_crate's: it stays)"""
+    out = []
+    def A(x0, y0, z0, x1, y1, z1, m, st=False): out.append(((x0, y0, z0), (x1, y1, z1), m, st))
+    z0, z1 = 0.0, 2.5
+    for wx in (1.4, 5.6, 8.9):
+        for a, b in ((z0 - 0.08, z0 + 0.4), (z1 - 0.4, z1 + 0.08)): A(wx - 0.5, 0, a, wx + 0.5, 1.0, b, 'tire')
+    A(0.3, 0.5, 0.3, 9.9, 0.95, 2.2, 'metal')
+    A(0, 0.95, 0, 7.4, 1.1, 2.5, 'wood')
+    A(0, 1.1, 0, 7.4, 3.8, 0.12, 'truckbox'); A(0, 1.1, 2.38, 7.4, 3.8, 2.5, 'truckbox')
+    A(7.28, 1.1, 0.12, 7.4, 3.8, 2.38, 'truckbox')
+    A(0, 3.8, 0, 7.4, 3.95, 2.5, 'truckbox')
+    A(0.05, 3.3, 0.12, 0.3, 3.8, 2.38, 'metal')
+    A(1, 1.15, -0.03, 6.6, 3.3, 0, 'adtruck2', True); A(1, 1.15, 2.5, 6.6, 3.3, 2.53, 'adtruck2', True)
+    A(-1.1, 0, 0.5, 0, 0.55, 2.0, 'crate', True)
+    A(7.5, 0.95, 0, 10, 2.0, 2.5, 'carred')
+    A(7.6, 2.0, 0.1, 9.4, 2.9, 2.4, 'glass'); A(7.5, 2.9, 0, 9.5, 3.05, 2.5, 'carred')
+    A(10, 1.2, 0.2, 10.05, 1.5, 0.6, 'light'); A(10, 1.2, 1.9, 10.05, 1.5, 2.3, 'light')
+    return out
+
+
+class _CabGlass:
+    """what make_traffic's glass_paint needs: the parts with glass faces, the glass material + its image, the cabin"""
+    def __init__(s, cid, body, glass, img, cabin): s.id, s.body, s.glass, s.gimg, s.cabin = cid, body, glass, img, cabin
+
+
+def truck_paint(PA, CA):
+    red, white, ink, green = 0xd81e30, 0xf0f0f2, 0x2a2a30, 0x19a04a
+    for k, sd in (('L', 31), ('R', 32)): PA.fill(k, white, var=0.025, seed=sd)
+    PA.fill('T', white, var=0.035, seed=33); PA.fill('F', white, var=0.03, seed=34); PA.fill('B', white, var=0.03, seed=35)
+    PA.fill('U', 0x2a2a2e, var=0.05, seed=36)
+    for k, col in (('K', 0x141418), ('D', 0x0e0e10), ('W', white), ('Rd', red)): PA.fill(k, col, var=0.03, seed=37)
+    for k in ('L', 'R'):  # the cab red, the box's dirty bottom, rivet rows, door seams, the name on the door
+        PA.put(k, PA.mask(k, lambda w: w['z'] > 2.45), red)
+        PA.mul(k, lambda w: np.where(w['z'] < 2.45, 1 - 0.22 * np.clip((1.45 - w['y']) / 0.35, 0, 1), 1.0))
+        for zc in np.arange(-4.9, 2.4, 0.61):
+            for y in np.arange(1.2, 3.75, 0.09): PA.rect(k, (0, y, zc - 0.01), (0, y + 0.03, zc + 0.01), 0xc4c6cc)
+        PA.line(k, [(0, 0.98, 2.8), (0, 1.99, 2.8)], 0x7a0c16, 1.0); PA.line(k, [(0, 0.98, 4.15), (0, 1.6, 4.2), (0, 1.99, 4.22)], 0x7a0c16, 1.0)
+        PA.line(k, [(0, 1.55, 3.55), (0, 1.55, 3.7)], 0x2a0408, 1.5)  # the door handle's shadow
+        PA.text(k, (0, 1.35, 3.48), 'CB&C', 1, 0xffffff)
+        PA.rect(k, (0, 1.0, 2.5), (0, 1.06, 5.1), 0x1a1a1e)  # the black rocker strip
+    PA.put('T', PA.mask('T', lambda w: w['z'] > 2.45), red)
+    PA.mul('T', lambda w: np.where(w['z'] < 2.45, 1 - 0.1 * (np.sin(w['z'] * 1.7 + w['x']) > 0.6), 1.0))
+    for zc in np.arange(-4.8, 2.4, 0.6): PA.line('T', [(-1.2, 0, zc), (1.2, 0, zc)], 0xd0d2d6, 1.0)  # roof bows showing through
+    PA.put('F', PA.mask('F', lambda w: w['y'] < 2.95), red)
+    PA.put('B', PA.mask('B', lambda w: w['y'] < 2.95), white)
+    PA.mul('B', lambda w: 1 - 0.25 * np.clip((1.4 - w['y']) / 0.4, 0, 1))
+    # far LOD: the open back as a picture (floor, the dark inside, the rolled door at the top)
+    PA.fill('lB', 0x1c1a18, var=0.05, seed=38)
+    PA.rect('lB', (-1.3, 0.0, 0), (1.3, 1.1, 0), 0x2a2a2e); PA.rect('lB', (-1.13, 1.1, 0), (1.13, 1.4, 0), 0x6a4a2a)
+    PA.rect('lB', (-1.13, 3.3, 0), (1.13, 3.8, 0), 0xb8bcc2)
+    for k in ('lB',):
+        PA.rect(k, (-1.3, 1.1, 0), (-1.13, 3.95, 0), 0xc2c6cc); PA.rect(k, (1.13, 1.1, 0), (1.3, 3.95, 0), 0xc2c6cc); PA.rect(k, (-1.3, 3.8, 0), (1.3, 3.95, 0), 0xc2c6cc)
+    # ---- the box inside: plank floor, scuff boards + panels, the translucent roof with its bows
+    CA.fill('iT', 0x9a6a3a, var=0.05, seed=41)
+    W = CA.world('iT'); sb = CA.sub('iT')
+    gap = (np.abs(((W['x'] + 1.13) % 0.142) - 0.071) > 0.064)
+    sb[gap] = hexrgb(0x4a3018)
+    r = np.random.default_rng(43)
+    for i, x0 in enumerate(np.arange(-1.13, 1.13, 0.142)):
+        sb *= np.where((W['x'] >= x0) & (W['x'] < x0 + 0.142), 0.92 + 0.12 * r.random(), 1.0)[:, :, None]
+        zj = -5 + r.uniform(1, 5)
+        CA.rect('iT', (x0, 0, zj), (x0 + 0.142, 0, zj + 0.02), 0x4a3018)
+    for zc in np.arange(-4.6, 2.2, 0.9):
+        for s in (1, -1): CA.rect('iT', (s * 1.02, 0, zc), (s * 1.1, 0, zc + 0.08), 0x2a2a2e)  # tie-down rings
+    CA.mul('iT', lambda w: (1 - 0.3 * np.exp(-(1.13 - np.abs(w['x'])) / 0.12)) * (1 - 0.25 * np.exp(-(2.28 - w['z']) / 0.2)) * (1 - 0.06 * (np.sin(w['z'] * 3.1) > 0.8)))
+    for k in ('iR', 'iL', 'iB'):
+        CA.fill(k, 0xdcdde0, var=0.02, seed=44)
+        CA.put(k, CA.mask(k, lambda w: w['y'] < 1.56), 0xa87e4e)
+        CA.rect(k, (-2, 1.55, -6) if k == 'iB' else (0, 1.55, -6), (2, 1.57, 3) if k == 'iB' else (0, 1.57, 3), 0x6a4a2a)
+        CA.mul(k, lambda w: (1 - 0.3 * np.exp(-(w['y'] - 1.1) / 0.15)) * (1 - 0.2 * np.exp(-(3.8 - w['y']) / 0.15)))
+    for k in ('iR', 'iL'):
+        for zc in np.arange(-5.0, 2.3, 1.22): CA.line(k, [(0, 1.57, zc), (0, 3.8, zc)], 0xb0b2b8, 1.0)
+    CA.fill('iU', 0xe6ecee, var=0.03, seed=45)
+    for zc in np.arange(-4.8, 2.3, 0.6): CA.rect('iU', (-1.13, 0, zc), (1.13, 0, zc + 0.05), 0xa8acb2)
+    CA.mul('iU', lambda w: 1 - 0.25 * np.exp(-(1.13 - np.abs(w['x'])) / 0.15))
+    CA.fill('iX', 0xdcdde0, seed=46); CA.fill('iK', 0x2a2a2e, seed=47)
+
+
+def build_boxtruck():
+    fid = 'p_boxtruck'
+    PA = Atlas('truck_paint_t', 512, 384, 0xf0f0f2)
+    CA = Atlas('truck_cabin_t', 256, 256, 0xd0d0d4)
+    lo, hi = (-1.3, 0.0, -5.05), (1.3, 3.97, 5.1)  # (car frame: front +z, left +x)
+    PA.view('L', (0, 0, 512, 128), 'L', lo, hi); PA.view('R', (0, 128, 512, 128), 'R', lo, hi)
+    PA.view('T', (0, 256, 512, 64), 'T', lo, hi); PA.view('F', (0, 320, 64, 64), 'F', lo, hi)
+    PA.view('B', (64, 320, 64, 64), 'B', lo, hi); PA.view('U', (128, 320, 128, 32), 'U', lo, hi)
+    PA.view('lB', (256, 320, 64, 64), 'B', lo, hi)
+    for i, k in enumerate(('K', 'D', 'W', 'Rd')): PA.cell(k, (336 + 16 * i, 320, 16, 16))
+    ilo, ihi = (-1.13, 1.1, -5.0), (1.13, 3.8, 2.28)
+    CA.view('iT', (0, 0, 256, 64), 'T', ilo, ihi); CA.view('iU', (0, 64, 256, 64), 'U', ilo, ihi)
+    CA.view('iR', (0, 128, 256, 48), 'R', ilo, ihi); CA.view('iL', (0, 176, 256, 48), 'L', ilo, ihi)
+    CA.view('iB', (0, 224, 64, 32), 'B', ilo, ihi); CA.view('iF', (64, 224, 64, 32), 'F', ilo, ihi)
+    CA.cell('iX', (128, 224, 16, 16)); CA.cell('iK', (144, 224, 16, 16))
+    paint = mat('paint', 0xffffff, rough=0.26, metal=0.08, clearcoat=1.0, tex=PA.img)
+    cabin = mat('cabin', 0xffffff, rough=0.7, metal=0.0, tex=CA.img)
+    trim = T.mat_trim('trim', lambda px, cell: paint_extra(px, cell, 'CB 8C', ('HOW IS MY', 'DRIVING? NO')))
+    gimg = bpy.data.images.new('glass_boxtruck', 4, 4, alpha=False)
+    glass = T.mat_glass('glass', gimg)
+    gh = glow_mat(0xfff2b0)
+    CE = Cells()
+    B = Build(fid, [paint, cabin, trim, glass, gh], [PA, CA, CE, CE, CE])
+    P_, C_, TR, GL, GH = 0, 1, 2, 3, 4
+    tr = lambda k: (TR, k)
+    HW, IN = 1.25, 1.13
+    Z0, Z1, ZF = -5.0, 2.4, 2.28
+    FB, FT, RB, RT = 0.95, 1.1, 3.8, 3.95
+    A1, A2, A3, RW = -3.6, 0.6, 3.9, 0.5
+
+    def body(n, c):  # the box: outside -> paint views, inside -> cabin views; the cab's back / the box's front low down: dark
+        k = kind_of(n)
+        if abs(c.x) < IN + 0.02 and Z0 - 0.02 < c.z < ZF + 0.02 and FT - 0.02 < c.y < RB + 0.02: return (C_, 'i' + k)
+        if k == 'B' and c.z > 2.0: return (P_, 'D')
+        if k == 'F' and c.z < 2.45 and c.y < 3.0: return (P_, 'D')
+        return (P_, k)
+
+    # ---------------- the box: plank floor, walls, front wall, roof
+    B.box((-1.228, FB, Z0 + 0.008), (1.228, FT, Z1 - 0.004), body, bev=0.006, k='floor')
+    for s in (1, -1): B.box((s * IN, FT - 0.01, Z0), (s * HW, RB + 0.01, Z1), body, bev=0.008, k='wall')
+    B.box((-IN + 0.002, FT - 0.01, ZF), (IN - 0.002, RB + 0.01, Z1 - 0.002), body, k='fwall')
+    B.box((-HW + 0.002, RB, Z0 + 0.002), (HW - 0.002, RT, Z1 - 0.002), body, bev=0.01, k='roof')
+    # rails, corner posts, the rear frame (sill, header, the door's tracks), the rolled-up door on its drum
+    for s in (1, -1):
+        B.box((s * 1.23, 0.94, Z0 + 0.004), (s * 1.262, 1.13, Z1 - 0.004), tr('alum'), bev=0.006, k='brail')
+        B.box((s * 1.23, 3.72, Z0 + 0.004), (s * 1.262, 3.962, Z1 - 0.004), tr('alum'), bev=0.006, k='trail')
+        for z0_, z1_ in ((Z0 - 0.018, Z0 + 0.075), (Z1 - 0.075, Z1 + 0.018)):
+            B.box((s * 1.115, 0.935, z0_), (s * 1.268, 3.966, z1_), tr('alum'), bev=0.008, k='post')
+        B.box((s * 1.096, FT, Z0 + 0.02), (s * 1.131, 3.315, Z0 + 0.09), tr('alum'), k='track')
+        for k_ in range(6):  # conspicuity tape along the bottom rail (red / white every 15 cm)
+            z_ = Z0 + 0.15 + k_ * 1.2
+            B.box((s * 1.262, 0.99, z_), (s * 1.266, 1.03, z_ + 1.1), tr('dottape'), k='tape')
+        for z_ in (-4.4, -1.2, 1.9): B.box((s * 1.262, 1.04, z_ - 0.05), (s * 1.272, 1.09, z_ + 0.05), tr('ambl'), k='marker')
+    B.box((-1.2, 0.93, Z0 - 0.012), (1.2, 1.104, Z0 + 0.06), lambda n, c: tr('diamond') if n.y > 0.5 else tr('alum'), k='sill')
+    for k_ in range(2): B.box((-1.1 + k_ * 1.105, 0.95, Z0 - 0.016), (-0.005 + k_ * 1.105, 1.0, Z0 - 0.012), tr('dottape'), k='stape')
+    B.box((-IN, 3.6, Z0 - 0.015), (IN, 3.962, Z0 + 0.048), tr('alum'), bev=0.006, k='header')
+    B.add(xprism(B.nm('coil'), rrect(-4.948, -4.702, 3.302, 3.798, 0.11, 3), -1.128, 1.128), tr('slats'))
+    for s in (1, -1): B.box((s * 1.104, 3.48, -4.9), (s * 1.13, 3.8, -4.74), tr('alum'), k='coilbrk')
+    B.box((-1.1, 3.29, -4.965), (1.1, 3.35, -4.93), tr('alum'), k='doorbar')
+    B.box((-0.12, 3.245, -4.972), (0.12, 3.29, -4.952), tr('black'), k='doorhdl')
+    B.rod((0.0, 3.25, -4.962), (0.04, 3.02, -4.985), 0.011, tr('black'), seg=4, k='strap')
+    for x in (-0.3, 0.0, 0.3): B.box((x - 0.05, 3.83, Z0 - 0.022), (x + 0.05, 3.88, Z0 - 0.012), tr('redl'), k='clear')
+    B.box((-0.62, 3.64, Z0 - 0.02), (-0.02, 3.74, Z0 - 0.0145), tr('sticker4'), k='sticker')
+    # inside: E-track, the dome light, the stencil
+    for s in (1, -1):
+        for y in (1.85, 2.75): B.box((s * 1.116, y, -4.85), (s * 1.131, y + 0.05, 2.15), tr('etrack'), k='etrack')
+    B.box((-0.2, 3.775, -1.5), (0.2, 3.805, -1.1), tr('lens'), bev=0.008, k='dome')
+    B.box((-0.42, 2.45, ZF - 0.004), (0.42, 2.62, ZF + 0.002), tr('stencil'), k='stencil')
+    B.box((-0.8, 3.3, Z1 - 0.004), (0.8, 3.57, Z1 + 0.006), tr('boxlogo'), k='boxlogo')
+    # ---------------- under the box: frame rails, axles, equipment between the wheels, guards, mud flaps, the ICC bar
+    for s in (1, -1): B.box((s * 0.38, 0.5, -4.7), (s * 0.5, 0.82, 4.9), tr('dark'), k='frame')
+    for az in (A1, A2): B.add(cyl(0.07, 1.7, (0, RW, az), None, axis='x', seg=8, name=B.nm('axle')), tr('dark'))
+    B.add(cyl(0.07, 1.6, (0, RW, A3), None, axis='x', seg=8, name=B.nm('axle')), tr('dark'))
+    for az in (A1, A2): B.add(ball(0.17, (0, RW, az), None, seg=8, rings=5, name=B.nm('diff')), tr('dark'))
+    B.add(cyl(0.26, 1.1, (0.98, 0.69, 1.8), None, axis='z', seg=12, name=B.nm('tank')), tr('tank'))
+    for z_ in (1.45, 2.15): B.box((0.7, 0.41, z_), (1.26, 0.97, z_ + 0.05), tr('black'), k='tstrap')
+    B.box((-1.2, 0.5, 1.3), (-0.7, 0.94, 2.3), tr('cabtrim'), bev=0.015, k='batt')
+    B.box((-1.205, 0.92, 1.28), (-0.69, 0.96, 2.32), tr('alum'), k='battlid')
+    B.add(cyl(0.15, 1.5, (0.82, 0.72, -2.1), None, axis='z', seg=10, name=B.nm('airtank')), tr('alum'))
+    B.box((0.66, 0.5, -1.15), (1.18, 0.94, -0.25), tr('alum'), bev=0.015, k='toolbox')
+    B.box((-1.18, 0.5, -2.85), (-0.66, 0.94, -1.55), tr('alum'), bev=0.015, k='toolbox')
+    B.add(cyl(0.15, 1.2, (-0.82, 0.72, -0.85), None, axis='z', seg=10, name=B.nm('airtank')), tr('alum'))
+    for s in (1, -1):
+        for y in (0.55, 0.8): B.box((s * 1.19, y, -3.0), (s * 1.225, y + 0.06, -0.02), tr('alum'), k='guard')
+        for z_ in (-2.9, -1.5, -0.1): B.box((s * 1.18, 0.52, z_ - 0.025), (s * 1.226, 0.9, z_ + 0.025), tr('alum'), k='gpost')
+        for az in (A1, A2):
+            B.box((s * 0.95, 0.18, az - 0.562), (s * 1.3, 0.825, az - 0.548), tr('mudflap'), k='flap')
+            B.box((s * 0.925, 0.82, az - 0.575), (s * 1.27, 0.9, az - 0.538), tr('black'), k='flapbar')
+    B.box((-1.15, 0.505, -4.76), (1.15, 0.63, -4.64), lambda n, c: tr('dottape') if n.z < -0.5 else tr('alum'), k='icc')
+    # the chassis box is solid: dark fairings along its sides between the wheels, its ends and the top in the cab gap
+    gaps = sorted([(az - 0.56, az + 0.56) for az in (A1, A2, A3)])
+    edges = [-4.69] + [v for g in gaps for v in g] + [4.875]
+    for s in (1, -1):
+        for i in range(0, len(edges), 2):
+            if edges[i + 1] - edges[i] > 0.05: B.box((s * 0.93, 0.52, edges[i]), (s * 0.948, 0.932, edges[i + 1]), tr('dark'), k='fairing')
+    B.box((-0.948, 0.52, -4.72), (0.948, 0.93, -4.69), tr('dark'), k='rearend')
+    B.box((-0.944, 0.52, 4.86), (0.944, 0.938, 4.92), tr('dark'), k='valance')
+    B.box((-0.948, 0.93, 2.39), (0.948, 0.952, 2.51), tr('diamond'), k='deck')
+    for x in (-0.7, 0.7): B.box((x - 0.04, 0.6, -4.715), (x + 0.04, 0.96, -4.66), tr('alum'), k='iccpost')
+    B.box((-0.24, 0.515, -4.777), (0.24, 0.62, -4.762), tr('plate2'), k='plate')
+    # ---------------- the cab: a lofted lower body (round nose, the front arch), the glass house, the roof
+    CZ0, CZ1 = 2.5, 5.0
+    arches = [(A3, RW, 0.6)]
+    def chw(z, r=0.16): return HW if z < CZ1 - r else (HW - r) + math.sqrt(max(r * r - (z - (CZ1 - r)) ** 2, 0))
+    def ctop(z, r=0.12): return 2.0 if z < CZ1 - r else (2.0 - r) + math.sqrt(max(r * r - (z - (CZ1 - r)) ** 2, 0))
+    def chalf(z):
+        b, t, H = T.arch_floor(z, arches, FB), ctop(z), chw(z)
+        return [(H - 0.03, b), (H, min(b + 0.04, t - 0.1)), (H, t - 0.07), (H - 0.025, t - 0.018), (H - 0.07, t - 0.002), (0.0, t)]
+    zs = T.stations(CZ0, CZ1, 0.25, arches, extra=[CZ0 + 0.03, CZ1 - 0.16, CZ1 - 0.12, CZ1 - 0.08, CZ1 - 0.045, CZ1 - 0.015], arch_n=7, sill=FB)
+    cab = T.zloft(B.nm('cab'), zs, chalf)
+    B.add(cab, body)
+    for s in (1, -1):  # the glass house's pillars, the frame round the screen, the back wall with its little window
+        B.box((s * 1.03, 1.995, 4.29), (s * 1.15, 2.905, 4.4), body, bev=0.012, k='apil')
+        B.box((s * 1.0, 1.995, 2.6), (s * 1.15, 2.905, 2.75), body, bev=0.012, k='bpil')
+        B.box((s * 1.132, 2.03, 2.75), (s * 1.149, 2.875, 4.29), (GL, 'glass'), k='sideglass')
+        B.box((s * 1.14, 1.995, 2.75), (s * 1.152, 2.035, 4.29), tr('cabtrim'), k='beltseal')
+    B.box((-1.03, 2.84, 4.31), (1.03, 2.905, 4.4), body, k='screentop')
+    B.box((-1.03, 1.995, 4.29), (1.03, 2.065, 4.4), body, k='cowl')
+    B.box((-1.0, 2.065, 4.372), (1.0, 2.84, 4.398), (GL, 'glass'), k='screen')
+    B.box((-1.0, 1.995, 2.6), (1.0, 2.905, 2.65), body, k='cabback')
+    B.box((-0.6, 2.2, 2.594), (0.6, 2.7, 2.61), (GL, 'glass'), k='backglass')
+    B.add(rslab(B.nm('croof'), -HW, HW, CZ0, 4.5, 2.9, 3.05, 0.12, 0.06, 4, 2), body)
+    for x in (-0.45, 0.0, 0.45): B.box((x - 0.06, 3.0, 4.47), (x + 0.06, 3.045, 4.505), tr('ambl'), k='roofmk')
+    for s in (1, -1):
+        B.rod((s * 0.08, 2.09, 4.402), (s * 0.88, 2.34, 4.402), 0.011, tr('black'), seg=4, k='wiper')
+        # west coast mirrors on arms off the A pillars, a spotter under each
+        B.rod((s * 1.15, 2.5, 4.33), (s * 1.42, 2.52, 4.28), 0.016, tr('chromeb'), seg=6, k='marm')
+        B.rod((s * 1.15, 2.12, 4.33), (s * 1.42, 2.1, 4.28), 0.016, tr('chromeb'), seg=6, k='marm')
+        B.box((s * 1.385, 2.06, 4.19), (s * 1.465, 2.58, 4.3), tr('cabtrim'), bev=0.015, k='mirror')
+        B.box((s * 1.395, 2.08, 4.182), (s * 1.455, 2.56, 4.192), tr('glassw'), k='mglass')
+        B.box((s * 0.96, 0.55, 2.95), (s * 1.27, 0.6, 3.3), tr('diamond'), k='cstep')
+        for z_ in (2.98, 3.27): B.rod((s * 1.1, 0.575, z_), (s * 1.1, 0.97, z_), 0.018, tr('black'), seg=4, k='cstepb')
+        # the front: headlamps (the 'light' boxes) in chrome bezels, indicators, the fender lip over the arch
+        B.box((s * 0.63, 1.18, 4.985), (s * 1.07, 1.52, 5.03), tr('chromeb'), bev=0.01, k='hbez')
+        B.box((s * 0.66, 1.21, 5.02), (s * 1.04, 1.49, 5.05), (GH, 'lens'), bev=0.008, k='head')
+        B.box((s * 0.9, 1.55, 4.96), (s * 1.06, 1.63, 5.004), tr('ambl'), bev=0.006, k='ind')
+        B.box((s * 1.24, 1.5, 4.7), (s * 1.258, 1.6, 4.82), tr('ambl'), k='sidemk')
+        pts = [(s * 1.262, RW + 0.64 * math.sin(math.radians(a)), A3 + 0.64 * math.cos(math.radians(a))) for a in range(15, 166, 15)]
+        B.add(sweep(pts, 0.035, None, seg=5, name=B.nm('flare'), squash=(1.0, 0.55)), tr('cabtrim'))
+        B.box((s * 0.86, 0.94, 2.52), (s * 1.24, 0.99, 3.28), tr('cabtrim'), k='cabmount')
+    B.box((-0.6, 1.1, 4.995), (0.6, 1.86, 5.032), tr('grille3'), k='grille')
+    B.box((-0.65, 1.07, 4.99), (0.65, 1.89, 5.02), tr('chromeb'), bev=0.012, k='gframe')
+    B.box((-0.22, 1.9, 4.97), (0.22, 1.95, 5.005), tr('badge'), k='badge')
+    B.box((-1.24, 0.94, 4.96), (1.24, 1.15, 5.07), tr('chromeb'), bev=0.03, k='bumper')
+    B.box((-0.24, 0.98, 5.068), (0.24, 1.09, 5.078), tr('plate2'), k='fplate')
+    # the stack behind the cab (in the gap between box and cab)
+    B.rod((-1.1, 0.97, 2.45), (-1.1, 3.35, 2.45), 0.058, tr('chromeb'), seg=10, k='stack')
+    B.rod((-1.1, 3.35, 2.45), (-1.1, 3.46, 2.39), 0.058, tr('chromeb'), seg=10, k='stack')
+    B.add(cyl(0.075, 0.9, (-1.1, 2.3, 2.45), None, axis='y', seg=10, name=B.nm('shield')), tr('grille2'))
+    # ---------------- wheels: three axles of steel discs (duals on the back two), inside the tyre boxes
+    rr = RW / math.cos(math.pi / 14)
+    for s in (1, -1):
+        for az, w, dual, xo in ((A3, 0.3, 0.0, 1.33), (A2, 0.19, 0.23, 1.27), (A1, 0.19, 0.23, 1.27)):
+            o = T.wheel_mesh(B.nm('wheel'), rr, w, 'truck', trim, seg=14, dual=dual, side=s)
+            o.location = gv(s * (xo - w / 2), RW, az)
+            B.keep(o)
+    # ---------------- far LOD: the box (its open back as a picture), the cab in three blocks, the wheels
+    def far(n, c):
+        k = kind_of(n)
+        if k == 'B' and c.z < -4.9: return (P_, 'lB')
+        return body(n, c) if body(n, c)[0] == P_ else (P_, k)
+    B.box((-HW, FB, Z0), (HW, RT, Z1), far, far=True, k='l1box')
+    B.box((-HW, FB, CZ0), (HW, 2.0, CZ1), far, far=True, k='l1cab')
+    B.box((-1.15, 2.0, 2.6), (1.15, 2.9, 4.4), (GL, 'glass'), far=True, k='l1glass')
+    B.box((-HW, 2.895, CZ0), (HW, 3.05, 4.5), far, far=True, k='l1roof')
+    B.box((-1.24, 0.94, 4.98), (1.24, 1.15, 5.06), tr('chromeb'), far=True, k='l1bump')
+    B.box((-0.95, 0.5, -4.7), (0.95, 0.95, 4.9), tr('dark'), far=True, k='l1frame')
+    r8 = RW / math.cos(math.pi / 8)
+    for s in (1, -1):
+        for az, xo in ((A1, 1.27), (A2, 1.27), (A3, 1.33)):
+            o = T.lathe_x(B.nm('l1w'), [(r8, -0.2), (r8, 0.2), (0.0, 0.2)], 8, trim, T.band_cells(['rubber', 'steel']), phase=0.5)
+            if s < 0: o.data.transform(Matrix.Scale(-1, 4, V3((1, 0, 0)))); o.data.flip_normals()
+            o.data.transform(Matrix.Translation(gv(s * (xo - 0.2), RW, az)))
+            B.keep(o, far=True)
+    truck_paint(PA, CA)
+    PA.write(); CA.write()
+    T.glass_paint(_CabGlass('boxtruck', B.l0, glass, gimg, dict(belt=2.03, top=2.88, rows=[(3.3, 2.62, 0.55)], dash=2.18, wheel=(0.55, 2.3, 0.2, 0.06), far=0x26354a)))
+    ok = tuple(fid + '_' + k for k in ('marm', 'mirror', 'mglass', 'cstep', 'cstepb', 'stack', 'shield', 'strap', 'dome', 'etrack', 'track', 'post'))
+    return finish(B, {'id': 'boxtruck', 'lod': 80, 'tint': False}, math.pi / 2, (5.0, 0.0, 1.25), truck_boxes(),
+                  [((0.02, 1.1, 0.14), (7.26, 3.79, 2.36))], ok, interior=lambda g, n, mn, v: 0.84 if mn == 'cabin' else None)
+
+
+# ============================================================ the trailer (p_semitrailer, the back of p_semi)
+def yard_trailer(AX=(1.2, 2.4), glow=None):
+    """make_yard.py's p_trailer (its parts, built the same way, in its frame: rear at x 0, the kingpin end at +x, z 0..2.6
+    across) with the semi layout's axles at AX and a light bar across the back on glow lenses (the 'tail' box). Returns
+    (lod0 parts, lod1 parts, the materials + atlas rects for parts added to it)"""
+    canvas, grey_noise, rect, shade, ctext, ellipse, tmat, R = Y.canvas, Y.grey_noise, Y.rect, Y.shade, Y.ctext, Y.ellipse, Y.tmat, Y.R
+    mesh_from, uv_proj, prism, chrect, grid_quad, quad, uv_fill = Y.mesh_from, Y.uv_proj, Y.prism, Y.chrect, Y.grid_quad, Y.quad, Y.uv_fill
+    weld, fix_zero_uv, uv_tread, uv_planar_xy, gnorm, gpt, uvl = Y.weld, Y.fix_zero_uv, Y.uv_tread, Y.uv_planar_xy, Y.gnorm, Y.gpt, Y.uvl
+    TL, TWD, Y0, Y1 = 12.5, 2.6, 1.3, 4.1  # trailer() map.js, drawn as built at (x0, z0): rear at x 0, kingpin end at +x
+    # ---------------- body atlas (white glossy panels) 256 x 256
+    bp = canvas(256, 256, 0xeeeef2)
+    rng = np.random.default_rng(91)
+    grey_noise(bp, 0, 0, 256, 48, 0.94, 0.02, 92)  # SIDE: 12.5 x 2.8 m
+    for k in range(21):
+        x = int(round(k * 0.6 / TL * 256)) + 2
+        for y in range(2, 47, 3): bp[y, x] = (0.74, 0.75, 0.78)
+        bp[0:48, x + 1] *= 0.985
+    for y in range(40, 48): bp[y, :] *= 0.97 - 0.012 * (y - 40)
+    for k in range(16): shade(bp, int(rng.integers(0, 250)), 1, 1, int(rng.integers(4, 16)), 0.93)
+    bp[48:56, :] = hexrgb(0xf0f0f4)  # RAIL: the bottom rail's face, conspicuity tape along it (red / white every 0.3 m)
+    for k in range(0, 256, 12): rect(bp, k, 50, 6, 4, 0xd8202a); rect(bp, k + 6, 50, 6, 4, 0xf8f8f8)
+    grey_noise(bp, 0, 56, 256, 40, 0.92, 0.02, 93)  # ROOF
+    for k in range(21): bp[56:96, int(round(k * 0.6 / TL * 256)) + 1] *= 0.92
+    for k in range(10): shade(bp, int(rng.integers(0, 240)), int(rng.integers(58, 92)), int(rng.integers(4, 14)), int(rng.integers(2, 5)), 0.9)
+    # DOORS (rear, seen from behind: the viewer's right = +z), 2.36 x 2.41 m in 64 x 64
+    dx0, dy0 = 0, 96
+    grey_noise(bp, dx0, dy0, 64, 64, 0.94, 0.02, 94)
+    bp[dy0:dy0 + 64, dx0 + 31:dx0 + 33] = (0.25, 0.25, 0.27)  # the seam between the leaves
+    for y in (dy0 + 16, dy0 + 37, dy0 + 55): bp[y, dx0:dx0 + 64] *= 0.86
+    for x in (dx0, dx0 + 63): bp[dy0:dy0 + 64, x] = (0.3, 0.3, 0.32)
+    bp[dy0, dx0:dx0 + 64] = (0.3, 0.3, 0.32); bp[dy0 + 63, dx0:dx0 + 64] = (0.3, 0.3, 0.32)
+    for y in range(dy0 + 56, dy0 + 64): bp[y, dx0:dx0 + 64] *= 0.97 - 0.012 * (y - dy0 - 56)  # road grime
+    # FRONT (2.4 x 2.8 m in 64 x 64): rivet columns, a junction box, NO STEP
+    fx0, fy0 = 64, 96
+    grey_noise(bp, fx0, fy0, 64, 64, 0.93, 0.02, 95)
+    for k in range(1, 8):
+        x = fx0 + k * 8
+        for y in range(fy0 + 2, fy0 + 62, 3): bp[y, x] = (0.74, 0.75, 0.78)
+    rect(bp, fx0 + 27, fy0 + 47, 10, 8, 0x2a2c30); rect(bp, fx0 + 28, fy0 + 48, 8, 6, 0x44474e)
+    # the bumper sticker (its own quad on the right leaf): 0.64 x 0.32 m, 1 cm a pixel
+    kx, ky = 128, 96
+    rect(bp, kx, ky, 64, 32, 0x111111); rect(bp, kx + 1, ky + 1, 62, 30, 0xffe14d)
+    ctext(bp, "HOW'S MY", kx + 32, ky + 3, 1, 0x111111); ctext(bp, 'DRIVING?', kx + 32, ky + 12, 1, 0x111111)
+    rect(bp, kx + 4, ky + 21, 56, 1, 0x111111); ctext(bp, "DON'T CALL", kx + 32, ky + 23, 1, 0xd8202a)
+    bp[96:128, 192:224] = hexrgb(0xeeeef2); grey_noise(bp, 192, 96, 32, 32, 0.93, 0.02, 96)  # PLAIN
+    # LAMPS (tail cluster: black housing, red / amber / white lenses), markers, tape
+    rect(bp, 128, 128, 64, 32, 0x141416)
+    for i, c in enumerate((0xd8101a, 0xd8101a, 0xff8a10, 0xf4f4f0, 0xd8101a)):
+        px_disc(bp, 134 + i * 12.5, 144, 5.2, c); px_disc(bp, 133 + i * 12.5, 142.5, 1.6, 0xffffff)
+    rect(bp, 224, 96, 16, 16, 0xff8a10); px_disc(bp, 230, 102, 2.5, 0xffd080)
+    rect(bp, 240, 96, 16, 16, 0xd8101a); px_disc(bp, 246, 102, 2.5, 0xff8080)
+    for k in range(0, 32, 8): rect(bp, 224 + k, 112, 4, 16, 0xd8202a); rect(bp, 228 + k, 112, 4, 16, 0xf8f8f8)
+    rect(bp, 192, 128, 64, 16, 0x141416)  # CLEAR: three clearance lights on a strip
+    for i in range(3): px_disc(bp, 202 + i * 22, 136, 5, 0xd8101a); px_disc(bp, 201 + i * 22, 134.5, 1.4, 0xff9090)
+    # lod1 pictures
+    grey_noise(bp, 0, 192, 256, 32, 0.93, 0.02, 97)
+    shade(bp, 0, 192, 256, 1, 0.8); bp[220:224, :] *= 0.9; bp[221:223, ::5] = (0.85, 0.12, 0.16)
+    for k in range(21): bp[192:220, int(round(k * 0.6 / TL * 256)) + 1] *= 0.95
+    bp[160:192, 0:32] = bp[96:160:2, 0:64:2]  # rear (the doors, small)
+    bp[160:192, 32:64] = bp[96:160:2, 64:128:2]
+    grey_noise(bp, 0, 224, 256, 32, 0.92, 0.02, 98)
+    body = tmat('tr_body', bp, rough=0.3, clearcoat=0.4)
+    SIDE, RAIL, ROOF = R(0, 0, 256, 48, 256, 256), R(0, 48, 256, 8, 256, 256), R(0, 56, 256, 40, 256, 256)
+    DOORS, FRONT, PLAIN, STICK = R(0, 96, 64, 64, 256, 256, 0), R(64, 96, 64, 64, 256, 256, 0), R(194, 98, 28, 28, 256, 256), R(128, 96, 64, 32, 256, 256, 0)
+    LAMPS, MARKA, MARKR, TAPE, CLEAR = R(128, 128, 64, 32, 256, 256), R(225, 97, 14, 14, 256, 256), R(241, 97, 14, 14, 256, 256), R(224, 112, 32, 16, 256, 256), R(192, 128, 64, 16, 256, 256)
+    L1S, L1R, L1F, L1T = R(0, 192, 256, 32, 256, 256), R(0, 160, 32, 32, 256, 256), R(32, 160, 32, 32, 256, 256), R(0, 224, 256, 32, 256, 256)
+    # ---------------- dark atlas (tyres, chassis, rubber) 128 x 128
+    kp = canvas(128, 128, 0x1c1c1e)
+    grey_noise(kp, 0, 0, 64, 32, 0.1, 0.012, 101)  # TREAD (u round, v across both duals)
+    for v in (4, 9, 14, 22, 27): kp[v:v + 1, 0:64] = (0.05, 0.05, 0.055)
+    kp[15:17, 0:64] = (0.02, 0.02, 0.02)  # the gap between the duals
+    for u in range(0, 64, 4): kp[0:3, u:u + 2] *= 0.6; kp[29:32, u:u + 2] *= 0.6
+    grey_noise(kp, 64, 0, 64, 64, 0.1, 0.012, 102)  # SIDEWALL (seen straight on, the wheel's r 0.5 = 32 px)
+    yy, xx = np.mgrid[0:64, 0:64] + 0.5; rr_ = np.hypot(xx - 32, yy - 32)
+    kp[0:64, 64:128][(rr_ > 26) & (rr_ < 27.2)] = (0.16, 0.16, 0.17)
+    kp[0:64, 64:128][(rr_ > 30.5)] = (0.13, 0.13, 0.14)
+    grey_noise(kp, 0, 32, 32, 32, 0.2, 0.025, 103)  # STEELD (chassis, legs)
+    grey_noise(kp, 32, 32, 32, 32, 0.08, 0.01, 104)  # RUB
+    grey_noise(kp, 0, 64, 128, 32, 0.15, 0.02, 105)  # UNDER: the floor's cross members, every 0.3 m
+    for k in range(0, 128, 3): kp[64:96, k] = (0.07, 0.07, 0.075)
+    grey_noise(kp, 0, 96, 96, 16, 0.16, 0.02, 106)  # XEND: cross-member ends seen from the side
+    for k in range(0, 96, 2): kp[96:112, k] = (0.05, 0.05, 0.055); kp[97, k] = kp[110, k] = (0.22, 0.22, 0.24)
+    grey_noise(kp, 0, 112, 32, 16, 0.07, 0.01, 107)  # FLAP
+    for y in (114, 125): kp[y, 2:30] = (0.75, 0.75, 0.78)
+    kp[96:128, 96:128] = kp[0:64:2, 64:128:2]  # WHEEL1: the far wheel's face (tyre + a grey rim)
+    yy, xx = np.mgrid[0:32, 0:32] + 0.5; r2 = np.hypot(xx - 16, yy - 16)
+    kp[96:128, 96:128][r2 < 9.6] = (0.62, 0.64, 0.68); kp[96:128, 96:128][r2 < 3] = (0.3, 0.3, 0.32)
+    dark = tmat('tr_dark', kp, rough=0.7, metal=0.1)
+    TREAD, SIDEW, STEELD, RUB = R(0, 0, 64, 32, 128, 128, 0), R(64, 0, 64, 64, 128, 128, 0), R(2, 34, 28, 28, 128, 128), R(34, 34, 28, 28, 128, 128)
+    UNDER, XEND, FLAP, WHEEL1 = R(0, 64, 128, 32, 128, 128), R(0, 96, 96, 16, 128, 128), R(0, 112, 32, 16, 128, 128), R(96, 96, 32, 32, 128, 128, 0)
+    # ---------------- steel atlas (disc wheels, rods, hinges) 128 x 64
+    sp = canvas(128, 64, 0xb8bcc4)
+    yy, xx = np.mgrid[0:64, 0:64] + 0.5; rr_ = np.hypot(xx - 32, yy - 32); ang = np.arctan2(yy - 32, xx - 32)
+    disc = sp[:, 0:64]
+    disc[:] = (0.74, 0.76, 0.8)
+    disc[rr_ > 28] = (0.88, 0.9, 0.93); disc[(rr_ > 26.5) & (rr_ < 28)] = (0.5, 0.52, 0.56)
+    for k in range(10):  # hand holes + lug nuts
+        a = 2 * math.pi * k / 10
+        ellipse(disc, 32 + 19 * math.cos(a), 32 + 19 * math.sin(a), 3.2, 3.2, (0.12, 0.12, 0.13))
+        rect(disc, int(32 + 11.5 * math.cos(a + 0.31)) - 1, int(32 + 11.5 * math.sin(a + 0.31)) - 1, 3, 3, (0.95, 0.95, 0.97))
+    disc[rr_ < 8] = (0.55, 0.57, 0.6); disc[rr_ < 4.5] = (0.85, 0.87, 0.9)
+    grey_noise(sp, 64, 0, 32, 32, 0.72, 0.04, 108)  # GALV
+    grey_noise(sp, 96, 0, 32, 32, 0.86, 0.03, 109)  # CHROME
+    grey_noise(sp, 64, 32, 32, 32, 0.32, 0.03, 110)  # DARKSTEEL
+    steel = tmat('tr_steel', sp, rough=0.25, metal=0.9)
+    RIM, GALV, CHROME, DSTEEL = R(0, 0, 64, 64, 128, 64, 0), R(66, 2, 28, 28, 128, 64), R(98, 2, 28, 28, 128, 64), R(66, 34, 28, 28, 128, 64)
+
+    P = []; A = P.append
+    def U(o, rect_): uv_fill(o, rect_); return o
+    # ---------------- the box: skins, rails, roof, the rounded front, the rear frame + doors
+    for zs, out in ((0.004, -1), (TWD - 0.004, 1)):
+        o = mesh_from('tr_skin', [(x, y, zs) for y in (1.44, 1.5, 3.9, 3.98) for x in (0.11, 1.0, 11.5, 12.41)],
+                      [(j * 4 + i, j * 4 + i + 1, (j + 1) * 4 + i + 1, (j + 1) * 4 + i) for j in range(3) for i in range(3)], body, out=(0, 0, out))
+        uv_proj(o, {'+z': (SIDE, (0, Y0, 0), (1, 0, 0), (0, 1, 0), TL, Y1 - Y0), '-z': (SIDE, (0, Y0, 0), (1, 0, 0), (0, 1, 0), TL, Y1 - Y0)}); A(o)
+    for zc in (0.03, TWD - 0.03):
+        A(prism('tr_toprail', chrect(4.035, zc, 0.065, 0.03, 0.012), 0.12, 12.4, 'x', body))
+    for zc in (0.04, TWD - 0.04):
+        o = prism('tr_botrail', chrect(1.375, zc, 0.075, 0.04, 0.012), 0.12, 12.4, 'x', body); A(o)
+    roof = grid_quad('tr_roof', (0.12, 4.088, 0.06), (12.28, 0, 0), (0, 0, TWD - 0.12), 4, 1, body, out=(0, 1, 0))
+    uv_proj(roof, {'+y': (ROOF, (0, 0, 0), (1, 0, 0), (0, 0, 1), TL, TWD)}); A(roof)
+    for (cz, a0, a1) in ((0.1, -90, 0), (TWD - 0.1, 0, 90)):  # rounded front corners
+        sec = [(12.4 + 0.1 * math.cos(math.radians(a0 + (a1 - a0) * i / 4)), cz + 0.1 * math.sin(math.radians(a0 + (a1 - a0) * i / 4))) for i in range(5)]
+        A(prism('tr_corner', [(x, z) for x, z in sec], Y0, Y1, 'y', body, closed=False))
+    fw = grid_quad('tr_front', (TL, Y0, 0.1), (0, 0, TWD - 0.2), (0, Y1 - Y0, 0), 2, 2, body, out=(1, 0, 0))
+    uv_proj(fw, {'+x': (FRONT, (TL, Y0, TWD - 0.1), (0, 0, -1), (0, 1, 0), TWD - 0.2, Y1 - Y0)}); A(fw)
+    for (y, h, c) in ((1.62, 0.07, MARKR), (1.62, 0.07, MARKA)):
+        pass
+    for zc, rr2 in ((1.05, MARKR), (1.55, MARKA)):  # glad hands (red / blue-ish) + the light socket on the front
+        o = box((0.05, 0.07, 0.11), (TL + 0.025, 1.62, zc), steel if rr2 is None else body, name='tr_gladhand'); U(o, rr2); A(o)
+    o = box((0.06, 0.1, 0.1), (TL + 0.03, 1.66, 1.3), dark, name='tr_socket'); U(o, RUB); A(o)
+    for zc in (0.06, TWD - 0.06):  # rear corner posts
+        A(prism('tr_rpost', chrect(0.06, zc, 0.06, 0.06, 0.012), Y0, Y1, 'y', body))
+    A(prism('tr_header', chrect(0.06, 3.98, 0.06, 0.12, 0.012), 0.12, TWD - 0.12, 'z', body))
+    A(prism('tr_sill', chrect(0.07, 1.375, 0.07, 0.075, 0.012), 0.12, TWD - 0.12, 'z', body))
+    for o in P:
+        if o.name.startswith(('tr_toprail', 'tr_corner', 'tr_rpost', 'tr_header', 'tr_sill')): U(o, PLAIN)
+    for o in P:
+        if o.name.startswith('tr_botrail'):  # the conspicuity tape on its outer face
+            apply_mods(o); me = o.data; uv = uvl(o)
+            for p in me.polygons:
+                gn = gnorm(o, p.normal); outer = abs(gn.z) > 0.9 and ((gn.z < 0) == (lib.centre(o)[2] < 1.3))
+                pts = [gpt(o, me.vertices[me.loops[li].vertex_index].co) for li in p.loop_indices]
+                for li, q in zip(p.loop_indices, pts):
+                    if outer: uv[li].uv = (RAIL[0] + q.x / TL * (RAIL[2] - RAIL[0]), RAIL[1] + (q.y - 1.3) / 0.15 * (RAIL[3] - RAIL[1]))
+                    else: uv[li].uv = (PLAIN[0] + 0.5 * (PLAIN[2] - PLAIN[0]) + (q.x / TL - 0.5) * 0.02, PLAIN[1] + 0.5 * (PLAIN[3] - PLAIN[1]) + (q.y + q.z) * 0.005)
+    # rear doors: two leaves 5 cm in (the locking gear sits in front), the picture across both
+    for (za, zb) in ((0.12, 1.298), (1.302, TWD - 0.12)):
+        o = prism('tr_leaf', [(0.09, za), (0.056, za), (0.05, za + 0.006), (0.05, zb - 0.006), (0.056, zb), (0.09, zb)], 1.45, 3.86, 'y', body, closed=False)
+        uv_proj(o, {'-x': (DOORS, (0, 1.45, 0.12), (0, 0, 1), (0, 1, 0), TWD - 0.24, 2.41)}, default=(PLAIN, (0, 0, 0), (0, 0, 1), (0, 1, 0), 40, 40)); A(o)
+    o = quad('tr_sticker', (0.047, 2.25, 1.89), (0, 0, 1), (0, 1, 0), 0.5, 0.25, body, STICK); A(o)  # HOW'S MY DRIVING? on the right leaf
+    steelp = []
+    def S(o, rect_=GALV): A(o); steelp.append((o, rect_)); return o
+    for zr in (0.42, 1.0, 1.6, 2.18):  # lock rods, keepers, guides, handles
+        S(cyl(0.018, 2.56, (0.03, 1.38 + 1.28, zr), steel, axis='y', seg=6, name='tr_rod', cap=False))
+        for y in (1.39, 3.93): S(box((0.05, 0.07, 0.08), (0.02, y, zr), steel, name='tr_keeper'))
+        hz = zr + (0.17 if zr in (0.42, 1.6) else -0.17)
+        S(box((0.022, 0.045, 0.36), (0.008, 1.85, (zr + hz) / 2), steel, name='tr_handle'))
+    for zc in (0.115, TWD - 0.115):  # hinges on the posts
+        for y in (1.75, 2.65, 3.55):
+            S(cyl(0.022, 0.12, (0.035, y, zc), steel, axis='y', seg=6, name='tr_hinge'), DSTEEL)
+            S(box((0.014, 0.1, 0.13), (0.043, y, zc + (0.07 if zc < 1 else -0.07)), steel, name='tr_hstrap'), DSTEEL)
+    # tail lights on the sill, clearance lights on the header, side markers on the bottom rails
+    # the light bar across the back (the semi's 'tail' box: x -0.05..0, y 1.25..1.35 the whole width): red glow lenses
+    o = box((0.055, 0.11, 2.5), (-0.022, 1.3, TWD / 2), dark, name='tr_tailbar'); U(o, STEELD); A(o)
+    for k in range(6):
+        o = box((0.012, 0.07, 0.26), (-0.053, 1.3, 0.3 + k * 0.4), glow or body, name='tr_tail'); A(o)
+        if glow is None: U(o, MARKR)
+        else: uv_fill(o, PLAIN)
+    for zc in (0.08, TWD - 0.08):
+        o = box((0.012, 0.07, 0.07), (-0.053, 1.3, zc), body, name='tr_tailamb'); U(o, MARKA); A(o)
+    o = mesh_from('tr_clear', [(-0.002, 3.95, 1.0), (-0.002, 3.95, 1.6), (-0.002, 4.01, 1.6), (-0.002, 4.01, 1.0)], [(0, 1, 2, 3)], body, out=(-1, 0, 0))
+    uv_proj(o, {'-x': (CLEAR, (0, 3.95, 1.0), (0, 0, 1), (0, 1, 0), 0.6, 0.06)}); A(o)
+    for zs in (-0.015, TWD + 0.015):
+        for x, mk in ((0.35, MARKR), (6.25, MARKA), (12.2, MARKA)):
+            o = box((0.09, 0.05, 0.03), (x, 1.375, zs), body, name='tr_marker'); U(o, mk); A(o)
+    # ---------------- chassis: main beams, floor underside, cross-member ends, slider, axles, air ride, landing gear
+    for zc in (0.75, 1.85):
+        sec = [(1.0, zc - 0.06), (1.0, zc + 0.06), (1.022, zc + 0.06), (1.022, zc + 0.006), (1.278, zc + 0.006), (1.278, zc + 0.06), (1.3, zc + 0.06), (1.3, zc - 0.06),
+               (1.278, zc - 0.06), (1.278, zc - 0.006), (1.022, zc - 0.006), (1.022, zc - 0.06)]
+        o = prism('tr_beam', sec, 2.7, 12.2, 'x', dark, caps=(True, True), concave=True, soft=False); U(o, STEELD); A(o)
+    fl = grid_quad('tr_floor', (0.14, 1.299, 0.08), (12.26, 0, 0), (0, 0, TWD - 0.16), 3, 1, dark, out=(0, -1, 0))
+    uv_proj(fl, {'-y': (UNDER, (0, 0, 0), (1, 0, 0), (0, 0, 1), TL, TWD)}); A(fl)
+    for zs, out in ((0.09, -1), (TWD - 0.09, 1)):
+        o = grid_quad('tr_xend', (2.7, 1.19, zs), (9.6, 0, 0), (0, 0.11, 0), 1, 1, dark, out=(0, 0, out))
+        uv_proj(o, {'-z': (XEND, (2.7, 1.19, 0), (1, 0, 0), (0, 1, 0), 9.6, 0.11), '+z': (XEND, (2.7, 1.19, 0), (1, 0, 0), (0, 1, 0), 9.6, 0.11)}); A(o)
+    for zc in (0.6, 2.0):
+        o = prism('tr_slider', chrect(1.125, zc, 0.175, 0.05, 0.01), AX[0] - 0.6, AX[1] + 0.55, 'x', dark, caps=(True, True)); U(o, STEELD); A(o)
+        for ax_ in AX:
+            o = box((0.12, 0.32, 0.08), (ax_ + 0.45, 0.8, zc), dark, name='tr_hanger'); U(o, STEELD); A(o)
+            o = box((0.92, 0.1, 0.09), (ax_ + 0.03, 0.61, zc), dark, name='tr_arm'); U(o, STEELD); A(o)
+            o = cyl(0.11, 0.3, (ax_ - 0.34, 0.66 + 0.15, zc), dark, axis='y', seg=8, name='tr_airbag', cap=False); U(o, RUB); A(o)
+    for ax_ in AX:
+        o = cyl(0.065, 1.64, (ax_, 0.5, TWD / 2), dark, axis='z', seg=8, name='tr_axle', cap=False); U(o, STEELD); A(o)
+    for zc in (0.3, TWD - 0.3):  # (this layout's axle box is solid: the slider's side rails close it, above the tyres)
+        o = box((AX[1] - AX[0] + 1.19, 0.27, 0.02), ((AX[0] + AX[1]) / 2, 1.14, zc + (0.01 if zc < 1 else -0.01)), dark, name='tr_sliderside'); U(o, STEELD); A(o)
+    for x_ in (AX[0] - 0.6, AX[1] + 0.6):
+        o = box((0.02, 0.31, 1.98), (x_, 1.125, TWD / 2), dark, name='tr_sliderend'); U(o, STEELD); A(o)
+    for zc in (0.4, 2.2):  # landing gear
+        o = prism('tr_leg', chrect(9.5, zc, 0.07, 0.07, 0.01), 0.58, Y0, 'y', dark, caps=(True, False)); U(o, STEELD); A(o)
+        o = prism('tr_legin', chrect(9.5, zc, 0.052, 0.052, 0.008), 0.07, 0.6, 'y', dark); U(o, DSTEEL); A(o)
+        o = box((0.26, 0.05, 0.22), (9.5, 0.025, zc), dark, name='tr_foot'); U(o, STEELD); A(o)
+        o = box((0.12, 0.05, 0.12), (9.5, 0.07, zc), dark, name='tr_pivot'); U(o, STEELD); A(o)
+        o = rod((9.5, 0.78, zc), (10.35, 1.27, zc + (0.35 if zc < 1 else -0.35)), 0.028, dark, seg=6, name='tr_brace'); U(o, STEELD); A(o)
+    o = rod((9.5, 0.82, 0.47), (9.5, 0.82, 2.13), 0.032, dark, seg=6, name='tr_cross'); U(o, STEELD); A(o)
+    o = rod((9.5, 1.05, 0.47), (9.5, 1.05, 2.13), 0.018, steel, seg=6, name='tr_shaft'); S(o, DSTEEL)
+    P.remove(o) if False else None
+    o = box((0.15, 0.2, 0.1), (9.5, 1.05, 2.32), dark, name='tr_gearbox'); U(o, STEELD); A(o)
+    S(rod((9.5, 0.98, 2.37), (9.5, 0.98, 2.48), 0.016, steel, seg=6, name='tr_crank'), DSTEEL)
+    S(rod((9.5, 0.98, 2.48), (9.12, 0.98, 2.48), 0.016, steel, seg=6, name='tr_crank2'), DSTEEL)
+    o = cyl(0.024, 0.12, (9.12, 0.92, 2.48), dark, axis='y', seg=6, name='tr_grip'); U(o, RUB); A(o)
+    o = box((1.4, 0.05, 1.8), (11.7, 1.275, TWD / 2), dark, name='tr_coupler'); U(o, STEELD); A(o)
+    S(cyl(0.045, 0.1, (11.6, 1.2, TWD / 2), steel, axis='y', seg=8, name='tr_kingpin'), DSTEEL)
+    # ---------------- the rear: underride bumper (conspicuity tape on it), mud flaps
+    S(prism('tr_bumper', chrect(0.08, 0.54, 0.06, 0.06, 0.012), 0.3, TWD - 0.3, 'z', steel, caps=(True, True)), DSTEEL)
+    o = mesh_from('tr_btape', [(0.018, 0.5, 0.32), (0.018, 0.5, TWD - 0.32), (0.018, 0.58, TWD - 0.32), (0.018, 0.58, 0.32)], [(0, 1, 2, 3)], body, out=(-1, 0, 0))
+    uv_proj(o, {'-x': (TAPE, (0, 0.5, 0.32), (0, 0, 1), (0, 1, 0), 0.35, 0.08)}); A(o)
+    for zc in (0.5, TWD - 0.5):
+        S(prism('tr_strut', chrect(0.09, zc, 0.04, 0.035, 0.008), 0.6, Y0, 'y', steel), DSTEEL)
+    for zc in (0.3, TWD - 0.3):
+        o = box((0.012, 0.62, 0.44), (AX[0] - 0.6, 0.6, zc), dark, name='tr_flap'); A(o)
+        uv_proj(o, {'-x': (FLAP, (0, 0.29, zc - 0.22), (0, 0, 1), (0, 1, 0), 0.44, 0.62), '+x': (FLAP, (0, 0.29, zc - 0.22), (0, 0, 1), (0, 1, 0), 0.44, 0.62)}, default=(RUB, (0, 0, 0), (1, 0, 0), (0, 1, 0), 9, 9))
+        zr_ = 0.6 if zc < 1 else 2.0  # a bar from the slider rail out over the flap
+        o = box((0.18, 0.04, abs(zc - zr_) + 0.3), (AX[0] - 0.51, 0.93, (zc + zr_) / 2 + (-0.08 if zc < 1 else 0.08)), dark, name='tr_flapbar'); U(o, STEELD); A(o)
+    # ---------------- wheels: four sets of duals (the boxes' 1.0 m tyres, 0.4 wide a side)
+    for ax_ in AX:
+        for (zi, zo) in ((0.5, 0.1), (2.1, 2.5)):
+            sg = 1 if zo > zi else -1  # outward
+            prof = [(0.44, zi), (0.5, zi + sg * 0.04), (0.5, zo - sg * 0.04), (0.488, zo - sg * 0.015), (0.44, zo), (0.3, zo)]
+            ty_ = lathe(prof, (ax_, 0.5, 0), dark, seg=14, axis='z', name='tr_tyre', cap=False)
+            apply_mods(ty_)
+            uv_tread(ty_, TREAD, ax_, 0.5, min(zi, zo) + 0.0, max(zi, zo), sel=lambda n: abs(n.z) < 0.7)
+            uv_planar_xy(ty_, SIDEW, ax_, 0.5, 0.5, sel=lambda n: abs(n.z) >= 0.7)
+            A(ty_)
+            rim = lathe([(0.3, zo), (0.27, zo - sg * 0.012), (0.13, zo - sg * 0.012), (0.06, zo + sg * 0.012), (0.0, zo + sg * 0.012)], (ax_, 0.5, 0), steel, seg=10, axis='z', name='tr_rim', cap=False)
+            apply_mods(rim); uv_planar_xy(rim, RIM, ax_, 0.5, 0.3); A(rim)
+            inner = lathe([(0.445, zi - sg * 0.006), (0.0, zi - sg * 0.006)], (ax_, 0.5, 0), dark, seg=10, axis='z', name='tr_inner', cap=False)
+            U(inner, RUB); A(inner)
+    for o, rect_ in steelp: uv_fill(o, rect_)
+    for o in P: weld(o); fix_zero_uv(o)
+    # ---------------- lod1: the box with pictures, the wheels as octagons, chassis + legs as blocks (2 materials)
+    lb = box((TL, Y1 - Y0, TWD), (TL / 2, (Y0 + Y1) / 2, TWD / 2), body, name='tr_farbox')
+    uv_proj(lb, {'+z': (L1S, (0, Y0, 0), (1, 0, 0), (0, 1, 0), TL, Y1 - Y0), '-z': (L1S, (TL, Y0, 0), (-1, 0, 0), (0, 1, 0), TL, Y1 - Y0),
+                 '-x': (L1R, (0, Y0, 0), (0, 0, 1), (0, 1, 0), TWD, Y1 - Y0), '+x': (L1F, (0, Y0, TWD), (0, 0, -1), (0, 1, 0), TWD, Y1 - Y0),
+                 '+y': (L1T, (0, 0, 0), (1, 0, 0), (0, 0, 1), TL, TWD), '-y': (L1T, (0, 0, 0), (1, 0, 0), (0, 0, 1), TL, TWD)})
+    far = [lb]
+    for ax_ in AX:
+        for (z0, z1) in ((0.1, 0.5), (2.1, 2.5)):
+            w = lathe([(0.0, z0), (0.5, z0), (0.5, z1), (0.0, z1)], (ax_, 0.5, 0), dark, seg=8, axis='z', name='tr_farwheel', cap=False)
+            apply_mods(w); uv_tread(w, TREAD, ax_, 0.5, z0, z1, sel=lambda n: abs(n.z) < 0.7); uv_planar_xy(w, WHEEL1, ax_, 0.5, 0.5, sel=lambda n: abs(n.z) >= 0.7)
+            far.append(w)
+    for (sz, pos, nm) in (((11.9, 0.35, 1.5), (6.35, 1.125, 1.3), 'tr_farchassis'), ((AX[1] - AX[0] + 1.15, 0.5, 1.6), ((AX[0] + AX[1]) / 2 + 0.025, 0.7, 1.3), 'tr_farslider'),
+                          ((0.14, Y0, 0.14), (9.5, Y0 / 2, 0.4), 'tr_farleg'), ((0.14, Y0, 0.14), (9.5, Y0 / 2, 2.2), 'tr_farleg')):
+        o = box(sz, pos, dark, name=nm); U(o, STEELD); far.append(o)
+    rects = dict(SIDE=SIDE, RAIL=RAIL, ROOF=ROOF, PLAIN=PLAIN, MARKA=MARKA, MARKR=MARKR, TAPE=TAPE, CLEAR=CLEAR, TREAD=TREAD, SIDEW=SIDEW,
+                 STEELD=STEELD, RUB=RUB, UNDER=UNDER, FLAP=FLAP, WHEEL1=WHEEL1, RIM=RIM, GALV=GALV, CHROME=CHROME, DSTEEL=DSTEEL)
+    return P, far, dict(body=body, dark=dark, steel=steel, R=rects)
+
+
+def semi_boxes(cab=True):
+    """shared/map.js semiBoxes(L, livery, cab), in its own frame (the trailer's back at z 0, the cab toward +z)"""
+    out = []
+    def A(x0, y0, z0, x1, y1, z1, m, st=False): out.append(((x0, y0, z0), (x1, y1, z1), m, st))
+    A(-1.3, 1.3, 0, 1.3, 4.1, 12.5, 'truckbox')
+    A(-1.33, 1.5, 1, -1.3, 3.9, 11.5, 'adtruck', True); A(1.3, 1.5, 1, 1.33, 3.9, 11.5, 'adtruck', True)
+    A(-1.25, 1.25, -0.05, 1.25, 1.35, 0, 'tail')
+    for wz in (1.2, 2.4):
+        for a, b in ((-1.2, -0.8), (0.8, 1.2)): A(a, 0, wz - 0.5, b, 1.0, wz + 0.5, 'tire')
+    A(-1.0, 0.95, 0.6, 1.0, 1.3, 3.0, 'metal')
+    for px in (-1.0, 0.8): A(px, 0, 9.4, px + 0.2, 1.3, 9.6, 'metal')
+    if not cab: return out
+    A(-1.25, 0.6, 12.7, 1.25, 1.08, 16.6, 'metal')
+    A(-1.25, 1.1, 13.6, 1.25, 3.3, 16.4, 'carred'); A(-1.15, 2.2, 16.4, 1.15, 3.1, 16.45, 'glass')
+    A(-1.2, 1.1, 16.4, 1.2, 2.2, 16.9, 'carred'); A(-1.0, 1.4, 16.9, 1.0, 2.0, 16.95, 'chrome')
+    A(-1.27, 2.3, 14.2, -1.25, 3.0, 15.9, 'glass'); A(1.25, 2.3, 14.2, 1.27, 3.0, 15.9, 'glass')
+    for px in (-1.1, 0.95): A(px, 3.3, 13.6, px + 0.15, 4.6, 13.75, 'chrome')
+    for wz in (13.4, 16):
+        for a, b in ((-1.3, -0.85), (0.85, 1.3)): A(a, 0, wz - 0.55, b, 1.1, wz + 0.55, 'tire')
+    A(-1.25, 1.6, 16.95, -0.8, 1.9, 17, 'light'); A(0.8, 1.6, 16.95, 1.25, 1.9, 17, 'light')
+    return out
+
+
+class _UVCells:
+    """a yard atlas (its rects in UV units) as an Atlas-like thing for uvmap"""
+    def __init__(s, rects):
+        s.W = s.H = 1024
+        s.R = {k: ((r[0] * 1024, (1 - r[3]) * 1024, (r[2] - r[0]) * 1024, (r[3] - r[1]) * 1024), None, None) for k, r in rects.items()}
+
+
+def yard_tyre(name, X, zi, zo, r, M, P):
+    """make_yard's trailer tyre (tread + sidewall pictures, the steel disc, the inner face), axle across at (X, r)"""
+    R_ = M['R']; sg = 1 if zo > zi else -1
+    prof = [(r * 0.88, zi), (r, zi + sg * 0.04), (r, zo - sg * 0.04), (r * 0.976, zo - sg * 0.015), (r * 0.88, zo), (r * 0.6, zo)]
+    ty_ = lathe(prof, (X, r, 0), M['dark'], seg=14, axis='z', name=name + '_tyre', cap=False); apply_mods(ty_)
+    Y.uv_tread(ty_, R_['TREAD'], X, r, min(zi, zo), max(zi, zo), sel=lambda n: abs(n.z) < 0.7)
+    Y.uv_planar_xy(ty_, R_['SIDEW'], X, r, r, sel=lambda n: abs(n.z) >= 0.7)
+    rim = lathe([(r * 0.6, zo), (r * 0.54, zo - sg * 0.012), (r * 0.26, zo - sg * 0.012), (r * 0.12, zo + sg * 0.012), (0.0, zo + sg * 0.012)], (X, r, 0), M['steel'], seg=10, axis='z', name=name + '_rim', cap=False)
+    apply_mods(rim); Y.uv_planar_xy(rim, R_['RIM'], X, r, r * 0.6)
+    inner = lathe([(r * 0.89, zi - sg * 0.006), (0.0, zi - sg * 0.006)], (X, r, 0), M['dark'], seg=10, axis='z', name=name + '_inner', cap=False)
+    Y.uv_fill(inner, R_['RUB'])
+    for o in (ty_, rim, inner): Y.weld(o); Y.fix_zero_uv(o); P.append(o)
+
+
+def build_semitrailer():
+    fid = 'p_semitrailer'
+    P, far, M = yard_trailer((1.2, 2.4), glow_mat(0xff2a2a))
+    B = Build(fid, [], [])
+    for o in P: B.keep(o)
+    for o in far: B.keep(o, far=True)
+    to_frame(B.l0 + B.l1, -math.pi / 2, (1.3, 0.0, 0.0))  # (the yard's frame -> this one: back at z 0, along +z, across x)
+    return finish(B, {'id': 'semitrailer', 'lod': 80, 'tint': False}, 0.0, (0.0, 0.0, 0.0), semi_boxes(False), [], ())
+
+
+def semi_paint(PA):
+    red, ink, chrome = 0xd81e30, 0x1a1016, 0xdde2ea
+    for k, sd in (('L', 51), ('R', 52), ('F', 53), ('B', 54), ('T', 55)): PA.fill(k, red, var=0.03, seed=sd)
+    PA.fill('U', 0x2a2a2e, var=0.05, seed=56)
+    for k, col in (('K', 0x141418), ('D', 0x0e0e10), ('W', 0xf0f0f2), ('Gl', 0x1c2c44)): PA.fill(k, col, var=0.03, seed=57)
+    for k in ('L', 'R'):
+        PA.mul(k, lambda w: 1 - 0.2 * np.clip((1.5 - w['y']) / 0.4, 0, 1))
+        PA.line(k, [(0, 1.15, 14.1), (0, 3.05, 14.1)], 0x6a0a14, 1.0); PA.line(k, [(0, 1.15, 16.0), (0, 3.05, 16.0)], 0x6a0a14, 1.0)  # the door
+        PA.line(k, [(0, 3.05, 14.1), (0, 3.05, 16.0)], 0x6a0a14, 1.0)
+        PA.rect(k, (0, 2.25, 15.75), (0, 2.31, 15.9), 0x2a0408)  # the handle's recess
+        PA.rect(k, (0, 1.88, 13.6), (0, 1.96, 16.9), 0xf0f0f2)  # a white pinstripe, the name on the door
+        PA.text(k, (0, 1.62, 15.05), 'JANK HAUL', 1, 0xffffff, shadow=0x5a0810)
+        PA.text(k, (0, 1.32, 15.05), 'DOT 420 69', 1, 0xf0d0d4)
+    PA.rect('F', (-1.3, 1.38, 0), (1.3, 2.02, 0), 0x0c0c0e)  # behind the grille
+    PA.text('F', (0, 2.78, 0), 'JANK', 1, 0xffffff)
+
+
+def build_semi():
+    fid = 'p_semi'
+    gt = glow_mat(0xff2a2a); gh = glow_mat(0xfff2b0)
+    TP, TF, M = yard_trailer((1.2, 2.4), gt)
+    # the tractor's wheels, made like the trailer's (in the yard frame: x along -> our z, z across = 1.3 - our x)
+    for X, w, nm in ((16.0, 0.32, 'tf'), (13.4, 0.44, 'tr')):
+        yard_tyre(nm + 'l', X, w, 0.0, 0.55, M, TP)
+        yard_tyre(nm + 'r', X, 2.6 - w, 2.6, 0.55, M, TP)
+    for X in (13.4, 16.0):
+        for (z0, z1) in ((0.0, 0.32), (2.28, 2.6)):
+            r8 = 0.55 / math.cos(math.pi / 8)
+            o = lathe([(0.0, z0), (r8, z0), (r8, z1), (0.0, z1)], (X, 0.55, 0), M['dark'], seg=8, axis='z', name='sm_farwheel', cap=False)
+            apply_mods(o); Y.uv_tread(o, M['R']['TREAD'], X, 0.55, z0, z1, sel=lambda n: abs(n.z) < 0.7)
+            Y.uv_planar_xy(o, M['R']['WHEEL1'], X, 0.55, 0.55, sel=lambda n: abs(n.z) >= 0.7); TF.append(o)
+    PA = Atlas('semi_paint_t', 256, 256, 0xd81e30)
+    lo, hi = (-1.3, 0.0, 11.2), (1.3, 4.62, 17.05)
+    PA.view('L', (0, 0, 256, 96), 'L', lo, hi); PA.view('R', (0, 96, 256, 96), 'R', lo, hi)
+    PA.view('T', (0, 192, 128, 64), 'T', lo, hi); PA.view('F', (128, 192, 64, 64), 'F', lo, hi)
+    PA.view('B', (192, 192, 32, 32), 'B', lo, hi); PA.view('U', (192, 224, 32, 32), 'U', lo, hi)
+    for i, k in enumerate(('K', 'D', 'W', 'Gl')): PA.cell(k, (224 + 16 * (i % 2), 192 + 16 * (i // 2), 16, 16))
+    paint = mat('paint', 0xffffff, rough=0.24, metal=0.1, clearcoat=1.0, tex=PA.img)
+    gimg = bpy.data.images.new('glass_semi', 4, 4, alpha=False)
+    glass = T.mat_glass('glass', gimg)
+    YB, YD, YS = _UVCells(M['R']), _UVCells(M['R']), _UVCells(M['R'])
+    B = Build(fid, [paint, glass, gh, M['body'], M['dark'], M['steel']], [PA, PA, PA, YB, YD, YS])
+    P_, GL, GH, BO, DK, ST = 0, 1, 2, 3, 4, 5
+    for o in TP: B.keep(o)
+    for o in TF: B.keep(o, far=True)
+    to_frame(B.l0 + B.l1, -math.pi / 2, (1.3, 0.0, 0.0))
+    nt = len(B.l0)
+    body = lambda n, c: (P_, kind_of(n))
+    chrome, steel, black, plain = (ST, 'CHROME'), (ST, 'DSTEEL'), (DK, 'RUB'), (DK, 'STEELD')
+    # ---------------- chassis: frame rails out under the trailer, the fifth wheel on its kingpin, the deck, the ends
+    for s in (1, -1): B.box((s * 0.42, 0.68, 11.2), (s * 0.54, 1.0, 16.62), plain, k='rail')
+    B.add(cyl(0.56, 0.07, (0, 1.205, 11.7), None, axis='y', seg=14, name=B.nm('fifth')), steel)
+    for s in (1, -1): B.box((s * 0.3, 0.995, 11.35), (s * 0.58, 1.18, 12.05), plain, k='fwmount')
+    B.box((-0.56, 0.995, 12.55), (0.56, 1.09, 13.598), (ST, 'GALV'), k='deck')
+    for az in (13.4, 16.0): B.add(cyl(0.07, 2.62, (0, 0.55, az), None, axis='x', seg=8, name=B.nm('axle')), plain)  # (through the hubs)
+    B.add(ball(0.18, (0, 0.55, 13.4), None, seg=8, rings=5, name=B.nm('diff')), plain)
+    B.box((-0.9, 0.65, 12.7), (0.9, 1.05, 12.74), plain, k='xmember')
+    B.box((-1.2, 0.62, 16.6), (1.2, 1.102, 16.655), black, k='airdam')
+    for s in (1, -1): B.box((s * 0.55, 0.7, 16.62), (s * 0.75, 0.82, 16.7), (BO, 'MARKR'), k='towhook')
+    # fuel tanks (polished, strapped, a step plate on top), battery box under the cab's back corner
+    for s in (1, -1):
+        B.add(cyl(0.235, 1.44, (s * 1.012, 0.84, 14.7), None, axis='z', seg=14, name=B.nm('tank')), chrome)
+        for z_ in (14.2, 15.2): B.box((s * 0.76, 0.598, z_), (s * 1.252, 1.082, z_ + 0.04), plain, k='strap')
+        B.box((s * 0.86, 1.074, 14.3), (s * 1.24, 1.094, 15.1), (ST, 'GALV'), k='tstep')
+        # fenders: quarter ones over the steer wheels, halves over the drives, mud flaps behind
+        pts = [(s * 1.075, 0.55 + 0.6 * math.sin(math.radians(a)), 16.0 + 0.6 * math.cos(math.radians(a))) for a in range(20, 161, 20)]
+        B.add(sweep(pts, 0.24, None, seg=6, name=B.nm('fender'), squash=(0.12, 1.0)), black)
+        pts = [(s * 1.075, 0.55 + 0.6 * math.sin(math.radians(a)), 13.4 + 0.6 * math.cos(math.radians(a))) for a in range(40, 141, 20)]
+        B.add(sweep(pts, 0.24, None, seg=6, name=B.nm('fender'), squash=(0.12, 1.0)), black)
+        B.box((s * 0.84, 0.18, 12.76), (s * 1.3, 0.86, 12.774), (DK, 'FLAP'), k='flap')
+        B.box((s * 0.52, 0.84, 12.75), (s * 1.28, 0.9, 12.79), plain, k='flapbar')
+    # ---------------- the cab: a lofted day cab (rolled roof edges, round corners), the nose, the glass, the trim
+    CZ0, CZ1 = 13.6, 16.4
+    def plan(z, r0=0.09, r1=0.14):
+        if z < CZ0 + r0: return 1.25 - r0 + math.sqrt(max(r0 * r0 - (CZ0 + r0 - z) ** 2, 0))
+        if z > CZ1 - r1: return 1.25 - r1 + math.sqrt(max(r1 * r1 - (z - (CZ1 - r1)) ** 2, 0))
+        return 1.25
+    def chalf(z):
+        H = plan(z)
+        return [(H - 0.03, 1.1), (H, 1.14), (H, 3.04), (H - 0.045, 3.2), (H - 0.16, 3.28), (0.62, 3.3), (0.0, 3.3)]
+    zs = sorted(set([CZ0, CZ0 + 0.02, CZ0 + 0.045, CZ0 + 0.07, CZ0 + 0.09] + [CZ0 + 0.09 + k * (CZ1 - CZ0 - 0.23) / 8 for k in range(9)] + [CZ1 - 0.14, CZ1 - 0.1, CZ1 - 0.065, CZ1 - 0.03, CZ1]))
+    B.add(T.zloft(B.nm('cab'), zs, chalf), body)
+    def nhalf(z, r=0.12):
+        H = 1.2 if z < 16.9 - r else (1.2 - r) + math.sqrt(max(r * r - (z - (16.9 - r)) ** 2, 0))
+        t = 2.2 if z < 16.9 - 0.1 else 2.1 + math.sqrt(max(0.01 - (z - 16.8) ** 2, 0))
+        return [(H - 0.02, 1.102), (H, 1.13), (H, t - 0.08), (H - 0.05, t - 0.01), (0.0, t)]
+    B.add(T.zloft(B.nm('nose'), [16.38, 16.6, 16.78, 16.82, 16.86, 16.885, 16.9], nhalf), body)
+    # windscreen (the glass box on the cab's face) in its gasket, a divider, wipers, the visor + roof lights
+    B.box((-1.148, 2.202, 16.402), (1.148, 3.098, 16.448), (GL, 'Gl'), k='screen')
+    for o in ring_frame(B.nm('sgask'), -1.11, 1.11, 2.24, 3.06, 0.04, 16.39, 16.452, 'z'): B.add(o, black)
+    B.box((-0.02, 2.24, 16.396), (0.02, 3.06, 16.456), black, k='divider')
+    for s in (1, -1):
+        B.rod((s * 0.08, 2.3, 16.458), (s * 0.95, 2.55, 16.458), 0.011, black, seg=4, k='wiper')
+    B.box((-1.18, 3.14, 16.3), (1.18, 3.2, 16.62), black, bev=0.01, k='visor')
+    for x in (-0.6, -0.3, 0.0, 0.3, 0.6): B.box((x - 0.05, 3.2, 16.55), (x + 0.05, 3.235, 16.6), (BO, 'MARKA'), k='roofmk')
+    # side windows on the doors (the glass boxes), a vent divider, mirrors, steps, handles, grab rails
+    for s in (1, -1):
+        B.box((s * 1.249, 2.302, 14.202), (s * 1.268, 2.998, 15.898), (GL, 'Gl'), k='sideglass')
+        for o in ring_frame(B.nm('wgask'), 14.24, 15.86, 2.34, 2.96, 0.035, s * 1.245, s * 1.272, 'x'): B.add(o, black)
+        B.box((s * 1.244, 2.34, 15.55), (s * 1.273, 2.96, 15.585), black, k='vent')
+        B.box((s * 1.25, 2.26, 15.7), (s * 1.275, 2.3, 15.86), chrome, k='handle')
+        B.rod((s * 1.27, 1.4, 14.12), (s * 1.27, 2.6, 14.12), 0.018, chrome, seg=6, k='grab')
+        for y in (1.42, 2.58): B.rod((s * 1.235, y, 14.12), (s * 1.27, y, 14.12), 0.012, chrome, seg=4, k='grabb')
+        B.rod((s * 1.25, 2.8, 16.3), (s * 1.48, 2.82, 16.22), 0.016, chrome, seg=6, k='marm')
+        B.rod((s * 1.25, 2.3, 16.3), (s * 1.48, 2.28, 16.22), 0.016, chrome, seg=6, k='marm')
+        B.box((s * 1.44, 2.22, 16.12), (s * 1.52, 2.86, 16.24), black, bev=0.015, k='mirror')
+        B.box((s * 1.45, 2.24, 16.11), (s * 1.51, 2.84, 16.121), chrome, k='mglass')
+        # the nose: headlamps (the 'light' boxes) in chrome pods, indicators, the bumper, the grille + its bars
+        B.box((s * 0.78, 1.58, 16.88), (s * 1.255, 1.92, 16.96), chrome, bev=0.02, k='hpod')
+        B.box((s * 0.81, 1.61, 16.95), (s * 1.24, 1.89, 16.998), (GH, 'K'), bev=0.008, k='head')
+        B.box((s * 0.9, 1.45, 16.86), (s * 1.18, 1.55, 16.936), (BO, 'MARKA'), k='ind')
+        B.box((s * 1.19, 1.95, 16.6), (s * 1.215, 2.05, 16.75), (BO, 'MARKA'), k='sidemk')
+    B.box((-1.24, 1.096, 16.84), (1.24, 1.38, 17.0), chrome, bev=0.03, seg=2, k='bumper')
+    B.box((-1.02, 1.38, 16.89), (1.02, 2.02, 16.93), chrome, bev=0.015, k='gframe')
+    B.box((-0.96, 1.43, 16.925), (0.96, 1.97, 16.932), black, k='gback')
+    for k_ in range(13): x = -0.9 + k_ * 0.15; B.box((x - 0.022, 1.44, 16.93), (x + 0.022, 1.96, 16.95), chrome, k='gbar')
+    B.box((-0.25, 1.98, 16.92), (0.25, 2.03, 16.955), (BO, 'MARKA'), k='badge')
+    # behind the cab: the stacks (chrome, heat shields), the back window, air lines + the light cord to the trailer
+    for s in (1, -1):
+        x = s * 1.025
+        B.rod((x, 1.0, 13.6), (x, 4.52, 13.6), 0.07, chrome, seg=10, k='stack')  # (on the cab's back, half in its box)
+        B.add(cyl(0.088, 1.2, (x, 2.8, 13.6), None, axis='y', seg=10, name=B.nm('shield')), (ST, 'GALV'))
+        B.rod((x, 4.52, 13.6), (x, 4.6, 13.585), 0.07, chrome, seg=10, k='stacktip')
+        for y in (1.9, 3.15): B.box((s * 0.9, y, 13.5), (s * 0.97, y + 0.06, 13.62), plain, k='stackbr')
+    B.box((-0.55, 2.4, 13.594), (0.55, 2.9, 13.602), (GL, 'Gl'), k='backglass')
+    for x, col in ((0.25, (BO, 'MARKR')), (-0.25, (BO, 'MARKA')), (0.0, black)):
+        pts = [(x * 0.6, 1.75, 13.598)] + [(x * (0.6 + 0.4 * t), 1.75 - 0.25 * math.sin(math.pi * t) - 0.1 * t, 13.598 - 1.07 * t) for t in (0.25, 0.5, 0.75)] + [(x * 1.0 + (0.02 if x == 0 else 0), 1.64, 12.52)]
+        B.add(sweep(pts, 0.016, None, seg=6, name=B.nm('airline')), col)
+    # ---------------- far LOD: the cab and nose as blocks, glass in the paint, the stacks
+    def far(n, c):
+        k = kind_of(n)
+        if 2.25 < c.y < 3.05 and (k in ('L', 'R') and 14.2 < c.z < 15.9 or k == 'F' and c.z > 16.3): return (P_, 'Gl')
+        return (P_, k)
+    B.box((-1.25, 1.1, 13.6), (1.25, 3.3, 16.4), far, far=True, k='l1cab')
+    B.box((-1.15, 2.203, 16.39), (1.15, 3.1, 16.45), (P_, 'Gl'), far=True, k='l1screen')
+    B.box((-1.2, 1.102, 16.395), (1.2, 2.2, 16.9), far, far=True, k='l1nose')
+    B.box((-1.24, 1.098, 16.88), (1.24, 1.38, 17.0), chrome, far=True, k='l1bump')
+    B.box((-1.25, 0.6, 12.7), (1.25, 1.08, 16.6), plain, far=True, k='l1chassis')
+    for s in (1, -1): B.box((s * 0.955, 1.07, 13.53), (s * 1.095, 4.6, 13.67), chrome, far=True, k='l1stack')
+    semi_paint(PA)
+    PA.write()
+    T.glass_paint(_CabGlass('semi', B.l0[nt:], glass, gimg, dict(belt=2.3, top=3.0, rows=[(15.05, 2.95, 0.55)], dash=2.45, wheel=(0.55, 2.55, 0.22, 0.06), far=0x26354a)))
+    ok = tuple(fid + '_' + k for k in ('fifth', 'fwmount', 'rail', 'airline', 'stack', 'shield', 'stacktip', 'stackbr', 'marm', 'mirror', 'mglass', 'grab', 'grabb', 'flap', 'flapbar', 'fender'))
+    return finish(B, {'id': 'semi', 'lod': 80, 'tint': False}, 0.0, (0.0, 0.0, 0.0), semi_boxes(True), [], ok)
+
+
 # ------------------------------------------------------------ driver
-BUILDERS = {'transitbus': build_transitbus}
+BUILDERS = {'transitbus': build_transitbus, 'boxtruck': build_boxtruck, 'semi': build_semi, 'semitrailer': build_semitrailer}
 EXPO = {'transitbus': -0.5, 'boxtruck': -0.6, 'semi': -0.9, 'semitrailer': -1.2}
 VIEWS = {  # close-ups (prop frame, game coords: eye, target, lens), the inside ones at a player's eye
     'transitbus': [('front', (17, 2.4, -4.5), (9, 1.4, 1.3), 30), ('door', (10.5, 1.7, 6.5), (10.3, 1.4, 2.0), 30),
                    ('back', (-5.5, 2.6, 5.5), (1, 1.5, 1.3), 30), ('in_back', (10.6, 2.5, 1.7), (0.5, 1.6, 1.0), 40),
                    ('in_front', (2.0, 2.5, 1.9), (11.5, 1.9, 0.9), 40), ('in_door', (8.6, 2.5, 0.9), (10.6, 1.3, 2.6), 45),
                    ('far0', (55, 30, -60), (6, 1.5, 1.3), 50), ('far1', (55, 30, -60), (6, 1.5, 1.3), 50)],
+    'boxtruck': [('front', (15.5, 2.6, -4.0), (8.0, 1.6, 1.25), 30), ('back', (-5.2, 2.4, 4.8), (1.0, 2.0, 1.25), 30),
+                 ('side', (5.0, 1.7, -7.5), (5.0, 1.8, 1.25), 34), ('in_back', (0.8, 2.7, 1.25), (7.2, 2.0, 1.25), 45),
+                 ('in_front', (6.6, 2.7, 1.6), (0.0, 2.6, 0.9), 45), ('wheel', (2.8, 0.9, -2.6), (1.4, 0.6, 0.2), 35),
+                 ('far0', (45, 25, -50), (5, 1.8, 1.25), 50), ('far1', (45, 25, -50), (5, 1.8, 1.25), 50)],
+    'semi': [('front', (6.5, 2.6, 24.0), (0.0, 2.0, 15.0), 32), ('side', (-9.5, 2.0, 14.0), (0.0, 1.8, 13.5), 32),
+             ('gap', (-5.0, 3.2, 10.5), (0.0, 1.6, 13.0), 32), ('rear', (-4.5, 2.4, -6.5), (0.0, 1.6, 2.0), 30),
+             ('far0', (-50, 30, 60), (0, 2, 8.5), 50), ('far1', (-50, 30, 60), (0, 2, 8.5), 50)],
+    'semitrailer': [('rear', (-4.5, 2.4, -6.5), (0.0, 1.6, 2.0), 30), ('side', (-9.0, 1.4, 6.0), (0.0, 1.4, 5.0), 32),
+                    ('far0', (-45, 25, 50), (0, 2, 6.2), 50), ('far1', (-45, 25, 50), (0, 2, 6.2), 50)],
 }
 
 
