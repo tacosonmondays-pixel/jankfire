@@ -16,6 +16,7 @@ const SCENES = {
   bazaar: { theme: 'desert', flat: true }, // sand all round outside the walls, no cliff
   islands: { theme: 'ocean' },
   backrooms: { theme: 'sealed' },
+  jankburg: { theme: 'industrial', flat: true }, // sheds, stacks and a crane past the outer ring; the megacity is the map's own deco
 };
 const PAL = {
   sky: { mtn: 0x8a7aa8, snow: 0xffffff, floor: 0xffffff },

@@ -2179,3 +2179,5 @@ export function setMap(id) {
   Object.assign(MAP, { id: MAPS[id] ? id : 'islands', name: m.name, killY: m.killY, sky: m.sky, fogNear: m.fogNear, fogFar: m.fogFar, size: m.size });
 }
 setMap('islands');
+// the building kit, for maps built in their own files (shared/jankburg.js)
+export { builder, rng, wall, slab, stairs, windows, shell, car, tree, streetlight, billboard, tower, carve, horizon, home, lollipop, conifer, adBoard, stall, pot, cart, tent, palm, pallets, forklift, groundHoles, unstick };

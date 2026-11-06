@@ -270,7 +270,8 @@ function buildChunked(scene, def) {
     const mk = MAT[b.mat] ? b.mat : 'stone';
     const key = Math.max(sx, sz) > C ? mk : mk + '|' + Math.floor(cx / C) + ',' + Math.floor(cz / C);
     const g = boxGeo(sx, sy, sz);
-    if (!b.fit) worldUV(g, cx, cy, cz, MAT[mk].tile);
+    if (b.rot) { if (!b.fit) worldUV(g, 0, 0, 0, MAT[mk].tile); g.rotateY(b.rot); } // turned render-only boxes (Jankburg's streets)
+    else if (!b.fit) worldUV(g, cx, cy, cz, MAT[mk].tile);
     g.translate(cx, cy, cz);
     if (!groups.has(key)) groups.set(key, { k: mk, list: [] });
     groups.get(key).list.push(g.toNonIndexed());

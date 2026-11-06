@@ -191,6 +191,7 @@ export function stepPlayer(dt, inp, now) {
   if (!ME.alive) return;
   hookFeel(dt, now); // before any early return, so the camera lean keeps easing (e.g. through a dash, the ball or a soap bubble)
   if (ME.ballUntil) { if (now < ME.ballUntil) { feel.lift = 0; ballStep(dt, inp, now); return; } endBall(); } // wrecking ball killstreak (its chain has its own physics)
+  if (G.brStep && G.brStep(dt, inp, now)) return; // jank royale: riding the blimp, falling, the umbrella (royale.js)
   const v = ME.vel, p = ME.pos;
   if (rigStep(dt, inp, now)) return; // overdrive rig: heavy, fast, leaps instead of jumping (rig.js)
   // glitch dash: fly straight where you look, no gravity. letting go keeps all of it.
