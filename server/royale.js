@@ -542,6 +542,14 @@ export function installRoyale(Room, H) {
       if (!s || s.out || s.inBlimp || s.fly || !s.ai) return null;
       const ai = s.ai, n = now(), B = this.br;
       const zn = zoneAt(B.zone, n);
+      // stuck (behind a barrier, on a deck, in a corner): hop and try somewhere else for a few seconds
+      if (!ai.stP || hdist(ai.stP, b.pos) > 1.5) { ai.stP = b.pos.slice(); ai.stT = n; }
+      else if (n - ai.stT > 3000 && !(b.ai.target && b.ai.seenAt)) {
+        const a = Math.random() * Math.PI * 2;
+        ai.unstuck = { p: [b.pos[0] + Math.cos(a) * 12, b.pos[1], b.pos[2] + Math.sin(a) * 12], until: n + 2500 };
+        ai.stT = n; ai.loot = 0; ai.lootT = n + 2500; ai.roam = null;
+      }
+      if (ai.unstuck && n < ai.unstuck.until) { b.ai.navJump = Math.random() < 0.3; ai.why = 'unstuck'; return { p: ai.unstuck.p, force: true, r: 0 }; }
       const t = this.players.get(b.ai.target), fighting = t && t.alive && b.ai.seenAt;
       // 1. the zone: outside (or about to be) = go, even mid-fight
       const dc = Math.hypot(b.pos[0] - zn.c[0], b.pos[2] - zn.c[1]);
