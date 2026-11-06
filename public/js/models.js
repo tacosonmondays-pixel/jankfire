@@ -1,6 +1,5 @@
 // Programmer art. If you generated Tripo models (npm run models), they replace these automatically.
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { jankify } from './jank.js';
 import { applySkin } from './skins.js';
 import { COSMETICS, SKINS_2 } from '/shared/cosmetics.js';
@@ -13,7 +12,7 @@ import { LASSO_MODELS, buildLoopProjectile, lassoLoop, ropeLook } from './lasso_
 import { buildRigMissile } from './rigmodel.js'; // overdrive rig killstreak
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { laserBuild, calculator } from './gearmodels.js'; // the new gear's models (laser pointer, pop quiz calculator)
-import { prepAuthored, authored, AUTHORED, bindAuthored, nodeIn, glossBlade, LAZY, isLazy } from './glbkit.js';
+import { prepAuthored, authored, AUTHORED, bindAuthored, nodeIn, glossBlade, LAZY, isLazy, queueGlb, setGlbList, landed } from './glbkit.js';
 import { SEC_WB, SEC_HATS, secAuthored } from './secmodels.js'; // water pistol, taser, tv remote, radar gun
 import { laserAuthored } from './laserglb.js'; // a Blender laser pointer's charge hooks (leds, lens, button, charm, orb)
 import { nailgunBuild, tennisBuild, cartCannonBuild, tennisBall, cartModel, nailgunStaple, tennisMachine, cartBasket } from './primmodels.js'; // the new primaries + what they shoot
@@ -52,13 +51,14 @@ export const GLB = {};
 
 export async function loadTripoModels() {
   let list = [];
-  try { list = await (await fetch('/models/list')).json(); } catch { return 0; }
+  try { list = await (await fetch('/models/list')).json(); } catch { setGlbList([]); return 0; }
+  setGlbList(list.map((it) => it.id)); // pictures now know what's coming (and stop waiting for what isn't)
   if (!list.length) return 0;
-  const loader = new GLTFLoader();
   for (const it of list) if (isLazy(it.id)) LAZY.set(it.id, it.url); // skins: fetched when first shown (glbkit.js)
   list = list.filter((it) => !LAZY.has(it.id));
+  // through the shared queue (a few at a time): anything a picture is waiting on jumps ahead (glbkit.js want)
   await Promise.all(list.map((it) => new Promise((res) => {
-    loader.load(it.url, (gltf) => { if (!prepAuthored(it.id, gltf.scene)) GLB[it.id] = prep(gltf.scene, it); res(); }, undefined, (e) => { console.warn('model failed', it.id, e); res(); });
+    queueGlb(it.id, it.url, it.id.startsWith('w_') ? 1 : 0.5, (gltf) => { if (!prepAuthored(it.id, gltf.scene)) GLB[it.id] = prep(gltf.scene, it); landed(it.id); res(); }, () => res());
   })));
   return Object.keys(GLB).length + Object.keys(AUTHORED).length;
 }

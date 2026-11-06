@@ -5,9 +5,12 @@
 // an item: { u, b, r, s, n?, q? }
 //   u: its id in this inventory (a number, never reused)   b: the base (a weapon / item / streak id, or STORY_ITEMS)
 //   r: rarity (WP4: common .. premium; 'common' for now)    s: the loot seed (WP4 rebuilds stats from it)
-//   n: a name for named legendaries                          q: how many (stackables only)
+//   n: a custom name (rare)                                  q: how many (stackables only)
+//   br: brand, m: [modifier ids] (max 2), lg: a named legendary's id (loot.js; stats come from s, never stored)
 // an inventory: { bag: [item|null] (cap cells), cap, bar: [u|null] x 8, locker: [item], next }
 import { WEAPONS, ITEMS, STREAKS } from '../weapons.js';
+import { BRANDS, MODIFIERS, LEGENDARIES } from './content/loot.js'; // the writer's loot data (WP4 rolls it in loot.js)
+import { ITEMS as STORY_CONTENT_ITEMS } from './content/items.js'; // key / quest items
 
 export const INV = { bar: 8, bag: 20, bagMax: 60, locker: 200, streakMax: 3, stackMax: 20 };
 export const RARITIES = ['common', 'rare', 'epic', 'legendary', 'premium']; // WP4 rolls these (shared/cosmetics.js colours + ☺ PREMIUM)
@@ -18,7 +21,13 @@ export function addStoryItem(id, def) { if (/^[a-z][a-z0-9_]{0,31}$/.test(id) &&
 addStoryItem('jank_cola', { kind: 'snack', name: 'Jank Cola', color: '#ff3030', desc: 'warm, flat and still fizzing somehow. heals 25.', heal: 25, stack: 10 });
 addStoryItem('bread_heel', { kind: 'snack', name: 'Heel of Bread', color: '#e0a050', desc: 'the end bit. nobody wants it. heals 10.', heal: 10, stack: 10 });
 addStoryItem('bottlecap', { kind: 'junk', name: 'Bottle Cap', color: '#c0c0c0', desc: 'worth nothing. people still take them.', stack: 20, value: 1 });
-addStoryItem('soup_pot', { kind: 'quest', name: 'Soup Pot', color: '#ffe14d', desc: "lumps' soup. don't spill it.", quest: true });
+// the writer's key / quest items (content/items.js): pages, keys and documents are quest things you can't drop.
+// 'weapon' ones are weapons with a name (loot gives them as { b: base, n: name }), so they aren't registered here
+for (const [id, d] of Object.entries(STORY_CONTENT_ITEMS)) {
+  if (d.kind === 'weapon') continue;
+  const kind = d.kind === 'consumable' ? 'snack' : 'quest';
+  addStoryItem(id, { kind, name: d.name, desc: d.desc, color: kind === 'quest' ? '#ffe14d' : '#7dff4f', quest: kind === 'quest' && !!d.keep, keep: !!d.keep });
+}
 
 const HELD = new Set(['primary', 'secondary', 'melee']);
 const has = (T, k) => typeof k === 'string' && Object.hasOwn(T, k);
@@ -34,7 +43,8 @@ export function stackOf(b) { const k = kindOf(b); return k === 'streak' ? INV.st
 export function infoOf(it) {
   const b = it && it.b, k = kindOf(b);
   const d = has(WEAPONS, b) ? WEAPONS[b] : has(ITEMS, b) ? ITEMS[b] : has(STREAKS, b) ? STREAKS[b] : has(STORY_ITEMS, b) ? STORY_ITEMS[b] : null;
-  return d ? { kind: k, name: (it.n || d.name), color: d.color || '#ffe14d', desc: d.desc || '' } : null;
+  const L = it.lg && has(LEGENDARIES, it.lg) ? LEGENDARIES[it.lg] : null;
+  return d ? { kind: k, name: L ? L.name : (it.n || d.name), color: d.color || '#ffe14d', desc: L ? `"${L.flavour}" ${L.quirk}` : d.desc || '' } : null;
 }
 
 export function newInv() { return { bag: Array(INV.bag).fill(null), cap: INV.bag, bar: Array(INV.bar).fill(null), locker: [], next: 1 }; }
@@ -43,10 +53,16 @@ export function makeItem(b, o = {}) {
   if (!kindOf(b)) return null;
   const it = { b, r: RARITIES.includes(o.r) ? o.r : 'common', s: Number.isInteger(o.s) ? o.s >>> 0 : 0 };
   if (typeof o.n === 'string' && o.n) it.n = o.n.slice(0, 40);
+  const k = kindOf(b);
+  if (k === 'gun' || k === 'melee') { // loot rolls (shared/story/loot.js): only real ids survive
+    if (has(BRANDS, o.br)) it.br = o.br;
+    if (Array.isArray(o.m)) { const m = [...new Set(o.m.filter((x) => has(MODIFIERS, x)))].slice(0, 2); if (m.length) it.m = m; }
+    if (has(LEGENDARIES, o.lg)) { it.lg = o.lg; if (!['legendary', 'premium'].includes(it.r)) it.r = LEGENDARIES[o.lg].rarity === 'premium' ? 'premium' : 'legendary'; }
+  }
   if (stackOf(b) > 1) it.q = Math.max(1, Math.min(stackOf(b), o.q | 0 || 1));
   return it;
 }
-const same = (a, b) => a.b === b.b && a.r === b.r && !a.n && !b.n; // stackables only stack with their own kind
+const same = (a, b) => a.b === b.b && a.r === b.r && !a.n && !b.n && !a.lg && !b.lg; // stackables only stack with their own kind
 export const find = (inv, u) => inv.bag.findIndex((x) => x && x.u === u);
 export const itemAt = (inv, u) => { const i = find(inv, u); return i < 0 ? null : inv.bag[i]; };
 export const count = (inv, b) => inv.bag.reduce((n, x) => n + (x && x.b === b ? x.q || 1 : 0), 0);

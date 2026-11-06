@@ -292,6 +292,12 @@ function style(id) {
   if (!styles[id]) styles[id] = DEFS[id]();
   return styles[id];
 }
+// a copy of a skin's hook on its own (the CUSTOMIZE hub's tab picture): shares its geometry, so mark it kept
+export function hookModel(id = 'rope') {
+  const h = style(known(id) ? id : 'rope').hook.clone(true);
+  h.traverse((o) => { if (o.geometry) o.geometry.userData.shared = true; });
+  return h;
+}
 
 // ------------------------------------------------------------ ropes
 // a rope is a Group you add to a scene; show/hide it with .visible
