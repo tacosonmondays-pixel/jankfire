@@ -78,6 +78,7 @@ function linkOf() {
   let m = null;
   const n = nodeIn(a.scene, 'link');
   if (n) n.traverse((o) => { if (!m && o.isMesh) m = o; });
+  if (m && m.material.fog) { m.material.fog = false; m.material.needsUpdate = true; } // (players ignore fog, chain too)
   blLink = m ? { geo: m.geometry.clone().center(), mat: m.material } : null;
   return blLink;
 }
@@ -102,6 +103,7 @@ export function buildWreckBall(color, look, opts = {}) {
   const bl = authored('x_wreck');
   if (bl) { // the Blender ball: its band in your colour, your face in its slot, our outline + chain
     g.add(bl.obj);
+    bl.obj.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) if (m.fog) { m.fog = false; m.needsUpdate = true; } }); // players ignore fog, like ours
     const lnk = nodeIn(bl.obj, 'link'); if (lnk) lnk.removeFromParent(); // (that one's the chain's)
     ownMatByName(g, 'wb_accent', mat(c, 'l', 0.3));
     const slot = nodeIn(bl.obj, 'slot');

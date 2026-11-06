@@ -20,6 +20,7 @@ import { sfx, synth } from './audio.js';
 import { RP, RP_HOOKS, recordEv } from './replay.js';
 import { Rope, sagRope, ringPoints, honda, ropeLook, vmArm, coilGroup } from './lasso_model.js';
 import { jankUniforms } from './jank.js';
+import { authored, AUTHORED } from './glbkit.js';
 import { rigOn } from './rig.js';
 import { K } from './keys.js';
 
@@ -442,9 +443,20 @@ const POSE = {
   idleL: { w: [-0.22, -0.1, -0.45], e: [-0.32, -0.32, -0.25] },
   haulL: { w: [-0.05, -0.22, -0.4], e: [-0.2, -0.42, -0.24] },
 };
+// the coil in your left hand: the Blender lasso (tools/blender/make_lasso.py: coil, keeper, tail, tag) when its file is
+// in, at our first-person coil's size (its loops are R 0.13, ours 0.075); null = ours
+const coilFile = (sk) => 'w_' + (Array.isArray(sk) && typeof sk[3] === 'string' && sk[3] !== 'default' ? sk[3] : 'lasso');
+function blCoil(sk) {
+  const a = authored(coilFile(sk));
+  if (!a) return null;
+  const g = new THREE.Group();
+  a.obj.scale.setScalar(0.58);
+  g.add(a.obj);
+  return g;
+}
 function buildVM() {
   const sk = skinOf(G.myId), lk = G.settings.look || {}, look = ropeLook(sk);
-  const key = JSON.stringify(sk || '') + (lk.skin || '') + (lk.topColor || '') + G.myColor;
+  const key = JSON.stringify(sk || '') + (lk.skin || '') + (lk.topColor || '') + G.myColor + (AUTHORED[coilFile(sk)] ? 'b' : 'c'); // (rebuilt once the file lands)
   if (VM.root && VM.key === key) return VM;
   if (VM.root) G.vmScene.remove(VM.root);
   const skin = new THREE.Color(lk.skin || '#e6cba2').getHex(), sleeve = new THREE.Color(lk.topColor || G.myColor || '#3a5aa0').getHex();
@@ -452,7 +464,7 @@ function buildVM() {
   const armR = vmArm(skin, sleeve), armL = vmArm(skin, sleeve);
   armL.scale.x = -1; // mirrored left hand
   // the coil hangs off the left fist (gravity has it, not the forearm): loops facing you at an angle
-  const coil = coilGroup(look, { R: 0.075, loops: 5, rk: 0.5 });
+  const coil = blCoil(sk) || coilGroup(look, { R: 0.075, loops: 5, rk: 0.5 });
   coil.rotation.order = 'ZXY';
   const loop = new Rope(look, 32, 6), spoke = new Rope(look, 12, 5), haul = new Rope(look, 10, 5);
   const knot = honda(look, 0.55);

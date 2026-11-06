@@ -1,7 +1,7 @@
 // The Overdrive Rig in the real game (Training, the killstreak itself), two ways:
 //   fp: first person: it comes on (the frame assembles), wind-up, rocket punch, block, thrusters, missiles.
 //       screenshots fp_<step>.png at each step (+ a video with --video)
-//   3p: the rig the way other players see it: one stands in front of you on the range and runs through the same pose
+//   3p: the rig the way other players see it: one stands 4 m in front of you on the range and runs through the same pose
 //       code remote rigs use (assemble, stomp about, wind-up + punch, thrusters, missile pods, block, leap), with a video
 // usage: node tools/blender/rig_game.cjs <port> <outDir> [fp|3p|both] [preset=3] [--video]
 //   (start the server first: PORT=<port> node server.js). prints whether the Blender rig was used + page errors
@@ -57,6 +57,7 @@ async function finish(ctx, pg, tag) {
   }
   if (mode === '3p' || mode === 'both') {
     const { ctx, pg, errs } = await open(b, '3p');
+    await pg.addStyleTag({ content: '#hud { visibility: hidden !important; }' }); // (what everyone else sees: no HUD over it)
     // one rig on the range in front of you, driven by poseRig through a timeline (what everyone else sees)
     const res = await pg.evaluate(async () => {
       const THREE = await import('three');
@@ -65,19 +66,21 @@ async function finish(ctx, pg, tag) {
       if (G.vmScene) Object.defineProperty(G.vmScene, 'visible', { get: () => false, set: () => {} }); // (no gun in your hands for this one)
       rm.rigReset();
       const inst = rm.buildRig('#ff4fd8', { outline: true });
-      // walk forward until nothing (the range's fence) stands between you and a rig 5 m further on
+      // walk forward until nothing (the range's fence) stands between you and a rig 4.2 m further on
       const fwd = [-Math.sin(ME.yaw), -Math.cos(ME.yaw)], me = ME.pos.slice();
       for (let i = 0; i < 30; i++) {
-        const e = [me[0], me[1] + 1.6, me[2]], tgt = [me[0] + fwd[0] * 5, me[1] + 1.4, me[2] + fwd[1] * 5], d = [tgt[0] - e[0], tgt[1] - e[1], tgt[2] - e[2]], l = Math.hypot(...d);
+        const e = [me[0], me[1] + 1.6, me[2]], tgt = [me[0] + fwd[0] * 4.2, me[1] + 1.4, me[2] + fwd[1] * 4.2], d = [tgt[0] - e[0], tgt[1] - e[1], tgt[2] - e[2]], l = Math.hypot(...d);
         const h = raycast(e, d.map((x) => x / l), l, BOXES), h2 = raycast([e[0], me[1] + 0.4, e[2]], [fwd[0], 0, fwd[1]], 5.5, BOXES);
         if (!h && !h2) break;
         me[0] += fwd[0]; me[2] += fwd[1];
       }
       const yaw0 = ME.yaw;
       setInterval(() => { ME.pos = me.slice(); ME.vel = [0, 0, 0]; ME.yaw = yaw0; ME.pitch = 0.1; }, 10);
-      const at = [me[0] + fwd[0] * 5, me[1], me[2] + fwd[1] * 5];
+      const at = [me[0] + fwd[0] * 4.2, me[1], me[2] + fwd[1] * 4.2];
       inst.root.position.set(at[0], at[1], at[2]);
-      G.scene.add(inst.root);
+      inst.root.visible = false; G.scene.add(inst.root);
+      await new Promise((r) => setTimeout(r, 1800)); // (the camera gets to its spot first: slow frames in software GL)
+      inst.root.visible = true;
       const T = [ // [t0, t1, state(u 0..1)]
         [0, 1.5, (u) => ({ on: u })],
         [1.5, 2.6, () => ({})],
@@ -99,7 +102,7 @@ async function finish(ctx, pg, tag) {
           const u = (t - seg[0]) / (seg[1] - seg[0]), s = { spd: 0, on: 1, pitch: 0, ...seg[2](u, t) };
           // a little walk forward, a hop on the thrusters, turned three-quarters so you see its side and its pods
           let ry = ME.yaw + Math.PI + 0.55 * Math.sin(t * 0.45);
-          if (s.spd) { at[0] -= Math.sin(ry) * s.spd * dt * 0.4; at[2] -= Math.cos(ry) * s.spd * dt * 0.4; }
+          if (s.spd) { at[0] -= Math.sin(ry) * s.spd * dt * 0.25; at[2] -= Math.cos(ry) * s.spd * dt * 0.25; }
           inst.root.position.set(at[0], y0 + (s.air ? Math.sin(u * Math.PI) * 2.2 : 0), at[2]);
           inst.root.rotation.y = ry;
           rm.poseRig(inst, s, dt);
