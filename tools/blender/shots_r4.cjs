@@ -14,7 +14,7 @@ const [port = '3100', outdir = 'tools/blender/compare', idsArg = 'all', mapsArg 
 const presets = presetsArg.split(',').map(Number), N = Number(nArg), MAPVIEWS = idsArg === 'map';
 const PRESET = ['Potato', 'Crusty', 'Mid', 'Too HD'];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const GAME = { jankburg: 'br' };
+const GAME = { jankburg: 'br' }, gameOf = (m) => GAME[m] || (/_sd$/.test(m) ? 'bomb' : 'dm'); // (the Plant & Defuse layouts are only in that mode's list)
 fs.mkdirSync(outdir, { recursive: true });
 const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'r4shots-'));
 
@@ -40,7 +40,7 @@ async function session(b, map, ids) {
   await pg.goto(`http://localhost:${port}/`); await sleep(2500);
   const T = { timeout: 180000 }; // (a busy machine: the menu can take a while to answer)
   await pg.click('#scr-main [data-pick="bots"]', T); await pg.click('#mpCustom', T);
-  await pg.selectOption('#setupGame', GAME[map] || 'dm', T);
+  await pg.selectOption('#setupGame', gameOf(map), T);
   await pg.selectOption('#setupMap', map, T);
   await pg.locator('#setupBots').fill('1'); await pg.selectOption('#setupDiff', 'easy').catch(() => {}); // (one slow bot: the least it allows)
   await pg.click('#setupGo', T);
