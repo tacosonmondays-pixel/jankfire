@@ -11,6 +11,7 @@ import { emitSkinFx } from './skins.js';
 import { wreckRemote, ballBoxes, wreckDispose } from './wreck.js';
 import { jankify } from './jank.js';
 import { rigRemote, rigBoxes, rigDispose } from './rig.js'; // overdrive rig killstreak
+import { gearLook, dressGear } from './econ3d.js';
 import { newTwirl, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
 import { makeRope, setRope, setRopeSkin } from './grapple.js';
 import { sfx } from './audio.js';
@@ -107,13 +108,15 @@ export class Remote {
     this.ice = null; this.shells = []; this.glow = 0; this.zzz = null;
     // infection: a zombie. otherwise, on a team: team colour, not your clothes
     const color = this.zombie ? INFECT.color : this.color;
-    this.ch = buildCharacter(color, this.zombie ? zombieLook(this.outfit) : teamLook(this.outfit, this.team));
+    this.ch = buildCharacter(color, this.zombie ? zombieLook(this.outfit) : gearLook(teamLook(this.outfit, this.team), this.gear)); // gearLook: no hat under a Plant & Defuse bucket
+    if (this.gear && !this.zombie) dressGear(this.ch, this.gear, teamLook(this.outfit, this.team), this.team); // Plant & Defuse armor they bought
     this.ch.root.scale.setScalar(1.2); // a bit bigger than you so they read at crusty resolutions
     const outline = outlineMat(new THREE.Color(color).getHex());
     const parts = [];
     this.ch.body.traverse((o) => { if (o.isMesh) parts.push(o); });
     for (const o of parts) {
       o.material = visibleMat(o.material);
+      if (o.userData.noShell) continue; // a small armor bit inside a bigger outline (econ3d.js)
       const shell = new THREE.Mesh(o.geometry, outline);
       shell.scale.setScalar(1.12);
       shell.userData.outline = true;
@@ -156,6 +159,8 @@ export class Remote {
     if (this.zzz) for (const z of this.zzz.children) z.material.dispose(); // the Z texture is shared
   }
 
+  // Plant & Defuse: what they bought (vest 1, bucket 2, pliers 4) goes on the model
+  setGear(bits) { bits = bits || 0; if (bits === (this.gear || 0)) return; this.gear = bits; this.setLook(this.outfit); }
   // infection: turn into a zombie (or back). the real look and colour stay put underneath
   setZombie(on) { if (!!this.zombie === on) return; this.zombie = on; this.setLook(this.outfit); }
 
