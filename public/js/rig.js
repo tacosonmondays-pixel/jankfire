@@ -38,7 +38,7 @@ export const rigOn = (now = performance.now()) => RS.on && ME.alive && now < RS.
 function startLocal(dur, sh) {
   const now = performance.now();
   if (!RS.on) RS.startT = now;
-  Object.assign(RS, { on: true, until: now + dur, dur, shield: sh, store: 0, lmb: false, charging: false, charge: 0, dashT: 0, punchCd: now + 500,
+  Object.assign(RS, { on: true, until: now + dur, dur, shield: sh, max: sh, store: 0, lmb: false, charging: false, charge: 0, dashT: 0, punchCd: now + 500,
     hackCd: 0, missCd: 0, hackT: 0, missT: 0, leapCd: now + 400, leapCharging: false, leapK: 0, leapAir: false, airMin: 0, hitStop: 0, thr: { n: RIG.thrust.n, next: 0, t: 0 }, thrT: 0 });
   releaseHook();
   W.held = false; W.aimHeld = false; W.dashHeld = false; W.charge = 0; W.exhale = 0; W.aim = 0; W.zoom = 1; W.scoped = false;
@@ -60,19 +60,22 @@ function startLocal(dur, sh) {
 function endLocal(why) {
   if (!RS.on) return;
   RS.on = false;
-  const dead = why === 'dead';
+  const dead = why === 'dead', broke = why === 'broke'; // broke: its armour ran out (bodyhp.js): it bursts like a death, you walk away
   RS.charging = false; RS.dashT = 0; RS.leapCharging = false; ME.dashing = false;
   W.held = false; W.aimHeld = false; W.zoom = 1; W.swap = 1; // the gun comes back up
   document.body.classList.remove('rigging');
   panel(false); tint(0, true); rigHum({ on: false });
   if (RS.model) {
     hideGhosts(RS.model);
-    if (dead) { placeModel(); rigBurst(RS.model, ME.vel); rigsfx.burst(null); }
+    if (dead || broke) { placeModel(); rigBurst(RS.model, ME.vel); rigsfx.burst(null); }
     RS.model.root.removeFromParent();
   }
   if (dead || why === 'quit') armsHide();
+  else if (broke) armsOff();
   else { armsOff(); rigsfx.off(null); rfx.smoke([ME.pos[0], ME.pos[1] + 1.6, ME.pos[2]], 16, 0xd8dde2, 0.9, 1.5, 1.4, 0.8); hud.msg('OVERDRIVE OFFLINE', 1.2); }
 }
+// the server says its armour ran out (bodyhp.js 'bbreak'): bursts into scrap, you're yourself again
+export function rigBroke() { endLocal('broke'); }
 // the model that follows you (nobody draws it but your afterimages, the intro shot and the scrap when you die)
 function placeModel() {
   const m = RS.model.root;
@@ -446,9 +449,10 @@ function panelUpdate(now) {
   const key = [thN, Math.ceil(left / 100), Math.round(RS.shield), Math.round(RS.charge * 50), Math.ceil(missL / 100), Math.ceil(hackL / 100), W.aimHeld ? 1 : 0, RS.charging ? 1 : 0].join('|');
   if (el.dataset.key === key) return;
   el.dataset.key = key;
-  el.querySelector('.rh-t').textContent = (left / 1000).toFixed(1) + 's';
-  el.querySelector('.rh-time i').style.width = (left / RS.dur) * 100 + '%';
-  el.querySelector('.rh-sh i').style.width = (RS.shield / RIG.shield) * 100 + '%';
+  const mx = RS.max || RIG.shield; // the top bar is its armour now: it lasts until that breaks
+  el.querySelector('.rh-t').textContent = `${Math.max(0, Math.round(RS.shield))} ARMOUR`;
+  el.querySelector('.rh-time i').style.width = Math.max(0, Math.min(1, RS.shield / mx)) * 100 + '%';
+  el.querySelector('.rh-sh i').style.width = (RS.shield / mx) * 100 + '%';
   el.querySelector('.rh-sh em').textContent = Math.round(RS.shield);
   el.querySelector('.rh-pu i').style.width = RS.charge * 100 + '%';
   el.querySelector('.rh-pu em').textContent = W.aimHeld ? (RS.store > 0 ? `BLOCK +${Math.round(RS.store * 100)}%` : 'BLOCKING') : RS.charge >= 1 ? 'FULL' : Math.round(RS.charge * 100) + '%';
@@ -456,7 +460,7 @@ function panelUpdate(now) {
   el.querySelector('.rh-th').classList.toggle('ready', thN > 0);
   el.querySelector('.rh-mi em').textContent = missL > 0 ? (missL / 1000).toFixed(1) + 's' : 'READY';
   el.querySelector('.rh-ha em').textContent = hackL > 0 ? (hackL / 1000).toFixed(1) + 's' : 'READY';
-  el.classList.toggle('low', left < 5000);
+  el.classList.toggle('low', RS.shield < mx * 0.25);
   el.classList.toggle('nosh', RS.shield <= 0);
   el.classList.toggle('full', RS.charge >= 1);
   el.querySelector('.rh-mi').classList.toggle('ready', missL <= 0);
@@ -610,7 +614,7 @@ function rigEvent(m, getR, live) {
         RS.shield = Math.max(0, Number(m.s) || 0); RS.store = clamp(Number(m.st) || 0, 0, 1);
         if (blocked) { armsJolt(Math.min(1.5, 0.4 + m.b / 30)); rigsfx.block(null); flashPanel('blockhit'); if (RS.store >= 1) hud.msg('BLOCK CHARGED · PUNCH!', 0.9, 'brag'); }
         else { rigsfx.shield(null); flashPanel('shhit'); hexScreen(); }
-        if (was > 0 && RS.shield <= 0) { rigsfx.shieldBreak(null); hud.msg('OVERSHIELD DOWN', 1.2, 'slip'); }
+        if (was > 0 && RS.shield <= 0) rigsfx.shieldBreak(null); // (the armour ran out: the rig breaks, bodyhp.js says so)
       } else if (rs && rs.on) {
         const src = Array.isArray(m.p) ? m.p : null, c = at(r);
         let hit = c;

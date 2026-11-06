@@ -3,6 +3,7 @@
 // slams, quickhacks (range, line of sight, cooldown), the homing missiles (server projectiles) and leap landings.
 // installRig(Room, helpers) adds these methods to Room; server.js calls them from one-line hooks.
 import { FLAGS, STREAKS } from '../shared/weapons.js';
+import { BODY } from '../shared/bodyhp.js';
 import { RIG, RIG_BITS, punchDmg, punchDist, dashDir, leapVel, lerpK, inFront, thrustVel, useThrust } from '../shared/rig.js';
 import { raycast, stepProjectile, movePlayer } from '../shared/physics.js';
 
@@ -41,13 +42,14 @@ export function installRig(Room, U) {
     // ------------------------------------------------------------ on / off
     rigStart(p) {
       const n = now(), dur = (STREAKS.overdrive.dur || RIG.dur) * 1000;
-      // +1 s: the client's own timer ends it, this only cleans up after a client that never says so
+      // it lasts until its armour breaks (server/bodyhp.js): dur is only a safety net, +1 s for a client that never says
       p.rig = {
-        until: n + dur + 1000, shield: RIG.shield, store: 0, punchT: 0, hackT: 0, missT: 0, leapT: 0,
+        until: n + dur + 1000, shield: BODY.overdrive.hp, store: 0, punchT: 0, hackT: 0, missT: 0, leapT: 0,
         ch: { t0: 0, t1: 0 }, lp: { t0: 0, t1: 0 }, dash: null, leap: null, sq: null, sqT: 0, thr: { n: RIG.thrust.n, next: 0, t: 0 },
       };
       p.g = null; p.hackedUntil = 0;
-      this.broadcast({ t: 'rig', k: 'on', id: p.id, dur, sh: RIG.shield });
+      this.broadcast({ t: 'rig', k: 'on', id: p.id, dur, sh: BODY.overdrive.hp });
+      this.bodyStart(p, 'overdrive');
     },
     rigEnd(p) {
       p.rig = null; p.f &= ~RIG_BITS;
@@ -94,8 +96,11 @@ export function installRig(Room, U) {
         amt -= blocked;
         R.store = Math.min(1, R.store + blocked / RIG.block.full);
       }
-      const sh = Math.min(R.shield, amt);
-      R.shield -= sh; amt -= sh;
+      // then the armour takes everything (bodySoak: no HP lost; at 0 the rig breaks). the floor / zone still hurt you
+      const before = amt;
+      amt = this.bodySoak(t, amt, attacker, w);
+      const sh = before - amt;
+      R.shield = t.body ? Math.max(0, t.body.hp) : 0;
       if (blocked > 0 || sh > 0) {
         const q = R.sq || (R.sq = { a: 0, b: 0, from: new Set(), src: null });
         q.a += sh + blocked; q.b += blocked;

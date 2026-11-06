@@ -1,6 +1,12 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '4.7', date: '2026-11-06', title: 'UNTIL IT BREAKS', items: [
+    'the WRECKING BALL and the OVERDRIVE RIG have no timer any more: they last until they break. the ball has 900 HP, the rig 1200 armour, and both drain slowly so they end on their own after about a minute.',
+    'shots hit the ball or the rig, not you. no headshot bonus, and no single hit takes more than 120. lava, the zone and the void still get you.',
+    'when it breaks you get knocked up out of the wreckage at your own HP. the kill feed says who BROKE it (it isn\'t a kill), and they get a shout.',
+    'your own health bar for it in the HUD, and a bar over everyone else\'s.',
+  ] },
   { v: '4.6', date: '2026-11-06', title: 'REMODEL', items: [
     'SUBURB, DESERT and BAZAAR got rebuilt from scratch, and each one has its own Plant & Defuse layout now (like Warehouse).',
     'SUBURB: two rows of houses you can go inside, a park with a playground in the middle, a canal with a boardwalk, a Mega-Mart, traffic, and a forest round the edge.',
