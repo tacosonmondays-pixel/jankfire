@@ -16,7 +16,7 @@ Start with [CANON.md](CANON.md): the timeline, why Change is free, the six pages
 | [BOSSES.md](BOSSES.md) | 24 fights, 20 named bosses | 11239 words |
 | [SIDE_QUESTS.md](SIDE_QUESTS.md) | 47 side questlines, 14 activities | 14102 words |
 | [IMPLANTS.md](IMPLANTS.md) | 50 implants (15 secret) and the Drift rules | 4693 words |
-| [LOOT.md](LOOT.md) | 8 brands, 41 named legendaries | 3035 words |
+| [LOOT.md](LOOT.md) | 8 brands, 41 named legendaries | 3045 words |
 | [COLLECTIBLES.md](COLLECTIBLES.md) | 69 collectibles in 6 sets | 3189 words |
 
 **Total: about 101k words, 32 main missions, 33 scenes.**
