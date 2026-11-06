@@ -48,7 +48,7 @@ were always meant to be a workforce.
 - **Dale** (`dale`): Dale Ostrowski, 83. Was servicing the Machine in the mall basement at 17:30, which is why he lived. Paid by ☺ CORP Facilities in batteries to keep it running and file monthly reports. Pressed the button.
 - **Mina Cale** (`mina`): Rory's little sister. 9 at 17:30, waiting at the school gate. Survived the Stampede in the mall vents with a five-year-old boy (Wristband). 70 now. Taken to the Gut by Overtime's collectors in Act I (C4). She says "rory?" as the truck doors shut.
 - **Marion Hask** (`hask`): ☺ CORP Chief Punctuality Officer, 101, kept alive by Gristle & Sons organs taken from the Gut's feedstock. She keeps a ledger of every donor's name and reads it every night.
-- **Mr. Overtime** (`overtime`): Edwin Sallow, Employee #1, reloaded from his pre-war backup every time he dies. Married to **June** (dead). It was their 40th anniversary.
+- **Mr. Overtime** (`overtime`): Edwin Sallow, Employee #1. He died of old age at sixty, two years before the war, and ☺ CORP loaded his recording into the 4.5 m cyborg body: the first recording ever put in a body. June stayed married to him. So at 17:29 on the Final Quarter he was already the cyborg, with an overcoat over his arm. Every time he dies he's reloaded from his last backup (17:30, coat on, at the door), so he never learns the world ended. It was their 40th anniversary.
 - **Pritchard** (`pritchard`): Hask's executive assistant. Keeps her calendar. Can be turned in Act IV.
 - Faction and district leads, bosses and minor characters: see the cast bible.
 

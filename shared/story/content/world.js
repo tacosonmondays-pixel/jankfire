@@ -21,6 +21,7 @@
 //     turf.<district>=<faction>  who runs a district               fate.<cast>=<state> a character's state
 //     cats<op><n>            board cats petted                     frags.<set><op><n>  memory fragments found
 //     act<op><n>             current act                           implant:<implant>   the implant is installed
+//     pages<op><n>           Option C pages collected (0-6)        plan=<lumps|gordo|auntie>  whose plan the raid follows
 //     clock.<district>=<hh:mm-hh:mm>  the district clock is inside that window
 //   actions (`do`, an array of strings, run in order):
 //     flag:<flag>  unflag:<flag>  start:<mission>  give:<item>  take:<item>  coupons:<+n|-n>  standing.<s>:<+n|-n>

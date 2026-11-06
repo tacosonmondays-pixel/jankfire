@@ -337,7 +337,7 @@ export const CAST_MAIN = {
     rel: {
       agnes: "Their boss, two years older, the smartest person they know. Cale would follow her anywhere, and does, until she stops.",
       mina: "Nine years old. Cale has been her parent since their mum went into the Long Ward. She's the only appointment that matters.",
-      overtime: "The nice old man in the lobby who once found Cale's lanyard and gave it back without writing them up.",
+      overtime: "The huge, polite Head of Timekeeping at the lobby desk, who once found Cale's lanyard in the revolving door and gave it back without writing them up.",
     },
     fate: {
       on_time: "Their name goes on a lanyard. The lanyard goes on ten thousand bodies.",
