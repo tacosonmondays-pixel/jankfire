@@ -11,8 +11,8 @@ import { chunkBoxes } from '/shared/city/chunk.js';
 import { ChunkWorld } from '/shared/city/world.js';
 import { cityMaterials, cityUniforms, NL } from './mats.js';
 import { buildPropGroup, freeProps, onPropModel } from './props.js';
-import './propcode.js';
-import { Crowd } from './crowd.js'; // code stand-ins for every story prop (until its Blender model loads)
+import './propcode.js'; // code stand-ins for every story prop (until its Blender model loads)
+import { Crowd } from './crowd.js'; // the people standing about
 
 const KINDS = ['solid', 'flesh', 'glow', 'glass', 'acid'];
 const HYST = 16; // metres past a ring before something is dropped from it (no flicker at the edge)
