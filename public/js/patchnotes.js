@@ -3,7 +3,7 @@
 export const PATCH_NOTES = [
   { v: '3.1', date: '2026-11-06', title: 'PLANT & DEFUSE, BUT TACTICAL', items: [
     'PLANT & DEFUSE ONLY: no enemy outlines and no nametags. you find people the old way.',
-    'hold SHIFT (your sprint key) to slow walk: quiet footsteps, steadier aim. stand still to shoot straight, moving shots spray.',
+    'hold SHIFT (your sprint key) to slow walk: half speed, and nobody hears your footsteps. moving wrecks your aim, so stand still (or crouch) to shoot straight.',
     'guns kick in their own recoil patterns now. learn them.',
     'gimmick weapons (slippers and friends) have limited ammo here, and the strong stuff got nerfed. buy with B, drop with H.',
     'PLAY WITH BOTS: players who join take a bot\'s place. ONLINE rooms are players only now.',
