@@ -49,10 +49,13 @@ function fetchLate(id) {
 // two looks to compare: 'glossy' (default: the materials as made in Blender + a studio reflection) and 'flat'
 // (faceted Lambert like the code models, no gloss, each weapon's own colour from shared/weapons.js on its paint).
 // pick with ?models=flat in the address or localStorage jf_models = 'flat'.
+// a third to try, 'ps1' (?models=ps1): the models that have a PS1 copy (tools/blender/ps1.py, public/models/ps1/: one tiny
+// texture with the shading painted in, a few colours a part, dithered) load that, matte; the rest stay glossy
 function styleFlag() {
   try {
     const q = new URLSearchParams(location.search).get('models');
-    return (q || localStorage.getItem('jf_models') || 'glossy') === 'flat' ? 'flat' : 'glossy';
+    const s = q || localStorage.getItem('jf_models') || 'glossy';
+    return s === 'flat' || s === 'ps1' ? s : 'glossy';
   } catch { return 'glossy'; }
 }
 export const MODEL_STYLE = styleFlag();
@@ -88,9 +91,10 @@ export function metaOf(scene) {
 }
 
 // the flat look: same texture + colour, faceted Lambert, glows kept. paint = the weapon's colour for its paint parts
-function flatOf(m, paint) {
+// (faceted false: smooth, for the PS1 copies, whose texture already carries the shading)
+function flatOf(m, paint, faceted = true) {
   const f = new THREE.MeshLambertMaterial({
-    name: m.name, color: paint ? paint.clone() : m.color.clone(), map: paint ? null : m.map, flatShading: true,
+    name: m.name, color: paint ? paint.clone() : m.color.clone(), map: paint ? null : m.map, flatShading: faceted,
     transparent: m.transparent, opacity: m.opacity, side: m.side, alphaTest: m.alphaTest,
     emissive: m.emissive ? m.emissive.clone() : new THREE.Color(0), emissiveIntensity: m.emissiveIntensity ?? 1, emissiveMap: m.emissiveMap || null,
   });
@@ -103,7 +107,8 @@ export function prepAuthored(id, scene) {
   const meta = metaOf(scene);
   if (!meta) return false;
   const flat = MODEL_STYLE === 'flat';
-  const e = flat ? null : envMap();
+  const ps1 = !flat && !!meta.ps1; // a PS1 copy (only loaded with ?models=ps1): matte, no reflection
+  const e = flat || ps1 ? null : envMap();
   const w = meta.kind === 'weapon' && WEAPONS[meta.id];
   const paint = flat && w && w.color && meta.paint ? new THREE.Color(w.color) : null;
   const swapped = new Map();
@@ -117,11 +122,15 @@ export function prepAuthored(id, scene) {
         return swapped.get(m);
       };
       o.material = Array.isArray(o.material) ? o.material.map(conv) : conv(o.material);
+    } else if (ps1) {
+      const conv = (m) => { if (!swapped.has(m)) swapped.set(m, flatOf(m, null, false)); return swapped.get(m); };
+      o.material = Array.isArray(o.material) ? o.material.map(conv) : conv(o.material);
     }
     const mats = Array.isArray(o.material) ? o.material : [o.material];
     for (const m of mats) {
       for (const k of ['map', 'emissiveMap']) { // crunchy pixels at every preset, like the rest of the game
         if (m[k]) { m[k].magFilter = THREE.NearestFilter; m[k].minFilter = THREE.NearestMipmapNearestFilter; m[k].anisotropy = 1; m[k].needsUpdate = true; }
+        if (m[k] && ps1) { m[k].minFilter = THREE.NearestFilter; m[k].generateMipmaps = false; } // no mipmaps, like the PS1 (on one shared texture they'd smear the parts into each other)
       }
       if (e && 'envMap' in m) { m.envMap = e; m.envMapIntensity = m.metalness > 0.5 ? 0.9 : 0.3; }
       if (m.transparent) { m.depthWrite = false; o.renderOrder = 2; }
