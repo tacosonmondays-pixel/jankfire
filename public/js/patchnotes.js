@@ -1,6 +1,12 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '6.0', date: '2026-11-06', title: 'SERIOUS BUSINESS (MOSTLY)', items: [
+    'PLANT & DEFUSE got a tight, CS-style shop: real guns only. 4 sidearms, 2 SMGs, 2 shotguns, 3 rifles, a DMR, the sniper and an LMG. you start with Plan B and a knife. bananas, bread and the other gimmicks stay home for this one.',
+    'P&D utility is just three things now: night vision goggles (the flash), the smoke bomb and the frag. kill rewards, win money and loss bonuses work like you\'d expect. bots buy like real people (eco, force, full buy) and flash you mid-fight.',
+    'JANK ROYALE: TAB opens your backpack. swap guns, drop stuff, use heals, keep walking. the full scoreboard moved to L.',
+    'royale: no more night vision goggles anywhere. and the grapple has 2 charges now, 8 s each. no more infinite swinging. the ring by your crosshair shows them.',
+  ] },
   { v: '5.9', date: '2026-11-06', title: 'DRESS YOUR KILLSTREAKS', items: [
     'killstreaks have looks now. CUSTOMIZE > KILLSTREAKS: every streak takes a wrap, and most get new models.',
     'wrecking ball: bowling ball, meatball, disco ball. giant duck: pool flamingo, robo duck, golden duck. chicken strike: pigeon raid, drone strike. moon boots: heelys, rocket sneakers, clown shoes. spinbot: halo, anime aura. spy satellite: pizza dish, cctv blimp.',
