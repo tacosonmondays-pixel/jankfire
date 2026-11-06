@@ -13,7 +13,8 @@ const orbit = (r, h, a, pitch) => [Math.sin(a) * r, h, Math.cos(a) * r, a, pitch
 const CAMS = {
   crate: [13.05, 6.85, 13.05, 0.79, -0.25],
   platform: [72, 34, 72, 0.79, -0.33], // far enough to see it's a slab floating over the clouds
-  rooftop: orbit(40, 18, 0.6, -0.35), // the menu orbit already looks straight down at the helipads
+  rooftop: [-60, 22, 40, -0.938, -0.312], // up over the bank: its sign, the party block's pool and palms, the hotel
+  rooftop_sd: [18, 6, 24, 0.633, -0.237], // over a low roof onto the party block: the pool, the cabanas, the penthouse
   suburb: [-45.96, 16.29, -45.96, -2.36, -0.21],
   warehouse: [-29, 4.2, -4.5, -1.571, -0.1], // inside the hall, down an aisle between the racks
   warehouse_sd: [34, 6.5, -27, -0.42, -0.16], // the A site: the red dock, the gantry, the BOMB SITE A board
