@@ -2,7 +2,7 @@
 // pictures (icons.js objIcon caches them): a gold trophy, a cog, a guide book, one of the cats from the board of
 // directors, a clipboard of patch notes. CUSTOMIZE shows your own gun and CONTAINERS the 3D crate (home.js sets those).
 import * as THREE from 'three';
-import { M } from './models.js';
+import { M, buildWeapon } from './models.js';
 import { objIcon } from './icons.js';
 
 const box = (g, w, h, d, c, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), M(c)); m.position.set(x, y, z); g.add(m); return m; };
@@ -49,3 +49,24 @@ const BUILD = {
   },
 };
 export function navPic(id) { return BUILD[id] ? objIcon('nav:' + id, () => { const g = new THREE.Group(); BUILD[id](g); return g; }) : ''; }
+
+// CUSTOMIZE's picture: your equipped gun, made to read at 50 px. turned three-quarters and tipped up (side-on it's a
+// thin dark stick), centred on its own bounds, with its own key light and a pink rim light riding along in the group
+// (the shared icon renderer's lights are tuned for the hotbar, which is bigger). the socket adds a hard outline (css)
+export function navGunPic(id, skin) {
+  const key = 'navgun:' + id + '|' + (Array.isArray(skin) ? skin.join(',') : '');
+  return objIcon(key, () => {
+    const outer = new THREE.Group(), g = buildWeapon(id, skin);
+    g.rotation.set(0, -Math.PI / 2 + 0.75, 0); // muzzle to the right, turned toward you
+    const tilt = new THREE.Group(); tilt.add(g); tilt.rotation.set(0.35, 0, 0.32); // a little from above, nose up
+    tilt.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(tilt), c = box.getCenter(new THREE.Vector3());
+    tilt.position.sub(c); // framed to the model's bounds
+    outer.add(tilt);
+    const keyL = new THREE.DirectionalLight(0xffffff, 3.2); keyL.position.set(0.6, 1.2, 2.5);
+    const fill = new THREE.AmbientLight(0xffffff, 2.2);
+    const rim = new THREE.DirectionalLight(0xff4fd8, 3.5); rim.position.set(-1.5, 1, -2.5);
+    outer.add(keyL, keyL.target, fill, rim, rim.target);
+    return outer;
+  });
+}

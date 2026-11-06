@@ -719,3 +719,8 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
   #scr-main .home-left { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; } #scr-main .home-left > .nav-tag, #scr-main .home-left > .nav-sec, #scr-main .home-left > .nav-util { grid-column: 1 / -1; } .nav-tag { justify-self: start; } }
 #cratesN { font-size: 15px !important; padding: 0 8px !important; background: #39ff14 !important; box-shadow: 2px 2px 0 #000 !important; }
 @media (max-width: 980px), (max-height: 640px) { #cratesN { font-size: 11px !important; padding: 0 4px !important; } }
+/* CUSTOMIZE's gun: the whole gun (not a crop), with a hard outline so it reads on the dark socket */
+.hnav .ni[data-ico=customize] img { object-fit: contain; scale: 1.5; filter: drop-shadow(1.5px 0 0 #000) drop-shadow(-1.5px 0 0 #000) drop-shadow(0 1.5px 0 #000) drop-shadow(0 -1.5px 0 #000) drop-shadow(0 0 1px #ffe14d); }
+/* breathing room above the status strip on short screens */
+#scr-main .home-left { margin-bottom: 14px; }
+@media (max-height: 800px) and (min-width: 981px) { .nav-sec { gap: 4px; margin-top: 2px; } .hnav.sec { padding-top: 1px; padding-bottom: 1px; } .hnav.sec .ni { width: 27px; } .hnav.prim .ni { width: 46px; } .hnav.prim { padding-top: 4px; padding-bottom: 4px; } #scr-main .home-left { gap: 7px; } }
