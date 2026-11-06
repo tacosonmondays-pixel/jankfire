@@ -39,13 +39,10 @@ export function trafficLevel(sel, game, mode) {
 // per map: routes run from a start out past the fog to an end out past the fog (cars appear and vanish where nobody can
 // see), city grids are closed networks with junctions and U-turns at the edge. n = how many cars at once, every = the
 // gap between spawns (s), v = speed range (m/s), mix = car type weights, lights = headlights on (dark maps)
-const SUBURB_A = [[-430, -2.5], [-114, -2.5], [-100, 0], [42, 0], [49, -10.5], [62, -13], [75, -10.5], [76.3, 0], [75, 10.5], [62, 13], [49, 10.5], [42, 2.5], [13, 2.5],
-  [8.5, 5.6], [-12.5, 5.6], [-17, 2.5], [-102, 2.5], [-114, 2.5], [-430, 2.5]];
 export const TRAFFIC = {
-  // the cul-de-sac: in past the barricade (somebody moved two of the barriers), down the middle between the bus and the
-  // truck, round the founder's statue and back out, squeezing past the truck on the way. nobody reads ROAD CLOSED signs
-  suburb: { n: 9, every: [2.5, 6], routes: [{ pts: SUBURB_A, v: [9, 15] }], mix: { hatch: 3, sedan: 3, pickup: 2, van: 1, icecream: 1.2 },
-    open: { box: [-140, -3.8, -104, 3.8], mats: ['jersey', 'wood', 'leaves', 'leaves2', 'blossom', 'hedge'] } },
+  // the loop street round the park: the routes are the map's own (map.traffic, shared/map.js), in from the woods on one
+  // street, round the far end and out on the other
+  suburb: { n: 9, every: [2.5, 6], mix: { hatch: 3, sedan: 3, pickup: 2, van: 1, icecream: 1.2 } },
   // the road past the gate, both ways, out to the horizon
   warehouse: { n: 7, every: [3.5, 9], lights: true, mix: { sedan: 2, hatch: 2, pickup: 2, van: 2, truck: 2.5, bus: 1 },
     // (found from the road itself, so the lanes follow it if the map moves it: two lanes 3 m either side of its middle)
@@ -231,8 +228,8 @@ function cityGrid(o, edges) {
 const NETS = {};
 const LOG = [];
 function build(id) {
-  const cfg = TRAFFIC[id], map = MAPS[id];
-  if (!cfg || !map) return null;
+  const map = MAPS[id], cfg = TRAFFIC[id] && map ? { ...TRAFFIC[id], ...(map.traffic || {}) } : null; // a map can bring its own lanes (map.traffic)
+  if (!cfg) return null;
   const edges = [];
   let junctions = [];
   if (cfg.grid) { // the street height comes from the streets themselves (the y in TRAFFIC is only a fallback)
