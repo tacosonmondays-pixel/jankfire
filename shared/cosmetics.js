@@ -41,6 +41,9 @@ export const COSMETICS = {
     revolver_flint: { name: 'Flintlock', rarity: 'epic', weapon: 'revolver' },
     chicken_turkey: { name: 'Turkey Launcher', rarity: 'rare', weapon: 'chicken' },
     bowling_cannon: { name: 'Hand Cannon', rarity: 'epic', weapon: 'bowling' },
+    nailgun_staple: { name: 'Office Stapler', rarity: 'rare', weapon: 'nailgun' },
+    tennis_machine: { name: 'Ball Machine', rarity: 'epic', weapon: 'tennis' },
+    cart_basket: { name: 'Basket Case', rarity: 'rare', weapon: 'cart' },
     banana_bunch: { name: 'Bunch Blaster', rarity: 'rare', weapon: 'banana' },
     bow_compound: { name: 'Compound Bow', rarity: 'rare', weapon: 'bow' },
     cig_cigar: { name: 'Fat Cigar', rarity: 'rare', weapon: 'cig' },
@@ -198,3 +201,5 @@ export function itemInfo(type, id) {
   const c = COSMETICS[type][id];
   return { type, id, name: c.name, rarity: c.rarity, color: RARITY[c.rarity].color, rarityName: RARITY[c.rarity].name };
 }
+// lasso skin: a garden hose with a brass nozzle for the knot (the rope you throw and swing them on is hose too)
+COSMETICS.model.lasso_hose = { name: 'Garden Hose', rarity: 'rare', weapon: 'lasso' };

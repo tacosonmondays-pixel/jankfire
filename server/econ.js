@@ -26,8 +26,8 @@ const DROP_SLOTS = { primary: 1, secondary: 1, melee: 1, item: 1, kit: 1 };
 const WSLOTS = ['primary', 'secondary', 'melee'];
 const ZONES = new WeakMap(); // map -> side zones
 // what bots buy: full buys pick from the first list, force buys from the second
-const BOT_FULL = ['ar', 'ar', 'redline', 'redline', 'chicken', 'minigun', 'sniper'];
-const BOT_FORCE = ['smg', 'smg', 'shotgun', 'banana', 'bowling'];
+const BOT_FULL = ['ar', 'ar', 'redline', 'redline', 'chicken', 'minigun', 'sniper', 'burst', 'lmg', 'dmr', 'nailgun', 'cart'];
+const BOT_FORCE = ['smg', 'smg', 'shotgun', 'banana', 'bowling', 'lever', 'autoshot', 'tennis'];
 // bots fire hitscan guns and projectiles (botFire); anything else they could only carry
 const botGun = (id) => has(WEAPONS, id) && WEAPONS[id].slot !== 'melee' && (WEAPONS[id].kind === 'hitscan' || WEAPONS[id].kind === 'proj');
 

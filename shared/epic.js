@@ -6,12 +6,14 @@ import { WEAPONS } from './weapons.js';
 // a long kill is harder with some weapons: effective distance = real distance x this (not listed: 1, or 2.5 for melee)
 export const EPIC_W = {
   sniper: 1, scythe_rifle: 1, ar: 0.9, minigun: 1, redline: 1, bowling: 1, chicken: 1, smg: 1.15, revolver: 1.2, slipper: 1.2,
+  burst: 0.95, lmg: 1, dmr: 1, lever: 1.1, autoshot: 2.2,
   banana: 1.3, bow: 1.3, snowball: 1.5, cards: 1.5, cig: 2, shotgun: 2.2, marbles: 2.6,
   bread: 2.5, katana: 2.5, knife: 2.5, slapper: 2.5, spoon: 2.5, scythe: 2.5, popper: 2.5,
 };
 export const epicMul = (w) => EPIC_W[w] || (WEAPONS[w] && WEAPONS[w].kind === 'melee' ? 2.5 : 1); // melee from other branches too
 // nobody aimed these (or the killer could be anywhere by the time they land)
 const NEVER = new Set(['void', 'cough', 'tbag', 'duck', 'frag', 'bomb', 'hook', 'blower', 'car', 'carboom']);
+NEVER.add('lasso'); // a lasso splat: the wall did it, wherever the thrower is by then
 // effective metres each kind of kill needs. two or more style points at once only need `combo`.
 // anti-farm: a victim who hasn't moved `moved` metres in `still` ms is never an epic kill
 export const EPIC = { far: 60, hs: 40, air: 30, rope: 30, fast: 30, hp: 25, ns: 20, combo: 20, airH: 3, kmh: 300, lowHp: 10, still: 5000, moved: 0.6 };

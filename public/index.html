@@ -83,6 +83,7 @@
     </div>
     <nav class="home-left">
       <button class="hlink" data-go="guide"><i>?</i>GUIDE</button>
+      <button class="hlink" data-go="lore"><i>&#9786;</i>LORE</button>
       <button class="hlink" data-go="patchnotes" id="pnBtn"><i>!</i>PATCH NOTES<em id="pnNew" class="hidden">NEW</em></button>
       <button class="hlink" data-go="loadout"><i>&#9776;</i>LOADOUT</button>
       <button class="hlink" data-go="cosmetics"><i>&#9733;</i>COSMETICS</button>
@@ -126,9 +127,17 @@
       <div><h3>everything else</h3><p id="gElse"><b>B</b> menu · <b>TAB</b> scores · <b>T</b> chat</p>
         <p>at the end of a match everyone votes: <b>the mode first, then the map</b>. click a card or press <b id="voteKeys">1-4</b>. humans decide, bots only break ties.</p>
         <p>sick of this mode? type <b>/skip</b> in chat. more than half of the players in the room have to agree (alone, it's instant). you get 30 seconds, and a skipped match pays no containers.</p>
+        <p id="gLore"><b>F</b> next to someone talks to them. some people are hidden around the maps, and so is the board of directors (<b>F</b> to pet). what you find goes in <b>LORE</b>.</p>
         <p>every key can be changed in <b>SETTINGS &gt; KEY BINDINGS</b>.</p></div>
     </div>
     <div class="hint" id="keyHint">WASD move · SHIFT run · C / CTRL crouch (slide when fast) · SPACE jump (hold to bhop, jump while grappling to launch) · RIGHT CLICK aim · E grapple · R reload · F inspect · 1 2 3 switch · G use item · 5 6 7 use killstreaks · Z spray · V/X scythe · B menu · TAB scores · T chat · /skip in chat votes to skip the match</div>
+    <button class="mid back">BACK</button>
+  </div>
+
+  <div class="screen panel hidden" id="scr-lore">
+    <h2>LORE</h2>
+    <div class="note">how society got like this. some employees will tell you, if you find them.</div>
+    <div id="loreList" class="lorelist"></div>
     <button class="mid back">BACK</button>
   </div>
 

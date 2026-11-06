@@ -42,6 +42,7 @@ import { DUCKRAIN } from './shared/modes.js';
 import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
 import { OOB, outOfBounds, boundsCenter } from './shared/bounds.js';
 import { Traffic } from './server/traffic.js'; // cars on the roads (server/traffic.js)
+import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from './shared/secrets.js'; // hidden NPCs + cats
 import { installRoyale } from './server/royale.js'; // Jank Royale (battle royale)
 import { BR } from './shared/royale.js';
 import { tickHR, hrBot } from './server/hrguy.js'; // the Tall Guy From HR (Scary Forest)
@@ -49,10 +50,14 @@ import { HR } from './shared/hr.js';
 import { installGear } from './server/gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
 import { installSec } from './server/secondaries.js'; // water pistol, taser, tv remote, speed trap
 import { SPEED } from './shared/weapons.js';
+import { installRifles, RIFLE_PREF, RIFLE_BOTS } from './server/rifles.js'; // burst rifle, lmg, marksman, lever-action, auto shotgun
 import { installEcon } from './server/econ.js';
+import { installPrimaries } from './server/primaries.js'; // nail gun pins, tennis ball bounces, shopping carts
 import { installTactical } from './server/tactical.js';
 import { TAC } from './shared/tactical.js'; // Plant & Defuse gunplay: spray patterns, moving spread, the hit check
 import { MSLIP, onPatch, patchPreroll } from './shared/marbles.js';
+import { installLasso } from './server/lasso.js'; // lasso (secondary): its Room methods
+import { lassoPreroll } from './shared/lasso.js';
 import { ZM } from './shared/zombies.js';
 import { installZombies } from './server/zombies.js';
 
@@ -126,9 +131,12 @@ const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 40000, perMes
 const COLORS = ['#ff4fd8', '#4fd8ff', '#ffe14d', '#7dff4f', '#ff7a1a', '#b07dff', '#ff4f4f', '#4fffb0', '#ffffff', '#ff9ad5'];
 const DEFAULT_NAMES = ['player', 'guy', 'someone', 'nobody', 'dude', 'person'];
 const BOT_NAMES = ['Gary', 'Linda', 'Steve', 'Brenda', 'Kevin', 'Doug', 'Karen', 'Phil', 'Tina', 'Rick', 'Deb', 'Carl', 'Pam', 'Todd', 'Barb', 'Chad'];
-const BOT_GUNS = ['ar', 'ar', 'smg', 'shotgun', 'shotgun', 'sniper', 'chicken', 'banana', 'minigun', 'revolver', 'redline', 'marbles', 'laser'];
+const BOT_GUNS = ['ar', 'ar', 'smg', 'shotgun', 'shotgun', 'sniper', 'chicken', 'banana', 'minigun', 'revolver', 'redline', 'marbles', 'laser', 'nailgun', 'tennis', 'cart'];
 BOT_GUNS.push('shredder'); // bots suck too (botShred)
 BOT_GUNS.push('water', 'taser', 'remote'); // the new secondaries (server/secondaries.js secBotFire)
+BOT_GUNS.push(...RIFLE_BOTS); // the rifle pack (server/rifles.js)
+if (process.env.JF_PIN_DUR) WEAPONS.nailgun.nails.dur = Number(process.env.JF_PIN_DUR) || WEAPONS.nailgun.nails.dur; // test knob: longer nail gun pins (screenshots)
+if (process.env.JF_BOT_GUNS) BOT_GUNS.splice(0, BOT_GUNS.length, ...process.env.JF_BOT_GUNS.split(',').filter((w) => Object.hasOwn(WEAPONS, w))); // test knob: JF_BOT_GUNS=nailgun,cart
 const SKIN_F = ['default', 'default', 'gold', 'chrome', 'pink', 'camo', 'neon', 'rainbow', 'galaxy', 'lava', 'missing', 'tiger', 'fade', 'carbon', 'tape'];
 const SKIN_H = ['none', 'none', 'none', 'tophat', 'party', 'crown', 'cowboy', 'propeller', 'cone', 'eyes', 'duck'];
 const SKIN_E = ['none', 'none', 'none', 'sparkles', 'flames', 'money', 'smoke'];
@@ -272,7 +280,9 @@ for (const k of ['trap', 'trapx']) REC_T.add(k); // bubble wand: replays draw th
 for (const t of ['parry', 'guard']) REC_T.add(t); // katana parries show up in killcams too
 for (const t of ['snap', 'frame', 'framex', 'quiz', 'quizx']) REC_T.add(t); // instant camera frames + pop quizzes in killcams
 for (const k of ['beam', 'tele', 'nvflash']) REC_FX.add(k); // laser beams, frame teleports, goggle flashes
+REC_FX.add('plough'); // shopping carts running people over
 for (const t of ['mpatch', 'mslip', 'mpx']) REC_T.add(t); // marbles on the floor too
+REC_T.add('lasso'); // lasso throws, catches, flings and splats too
 function newDeck() {
   const d = [];
   for (const s of ['h', 's', 'c', 'd']) for (let r = 1; r <= 13; r++) d.push(s + r);
@@ -520,6 +530,8 @@ class Room {
     send(p, { t: 'tip', tip: p.tip });
     for (const t of this.players.values()) if (t.trap) send(p, { t: 'trap', ...this.trapInfo(t) }); // anyone already floating in a soap bubble
     this.gearJoin(p); // photo frames standing, quizzes going
+    this.cartsFor(p); // shopping carts already out
+    this.lassoJoin(p); // anyone already hanging off a lasso
     send(p, { t: 'court', s: [...this.players.values()].filter((o) => o.streak > 0).map((o) => [o.id, o.streak]) }); // scales of justice: streaks so far
     if (p.air && p.air.ok) send(p, { t: 'air', on: 1, grace: AIR.grace });
     deal(p);
@@ -538,6 +550,7 @@ class Room {
 
   remove(p) {
     flushStats(p);
+    this.lassoDrop(p, 'gone'); // ropes they held (or hung off) drop
     if (this.bomb && this.bomb.carrier === p.id) this.dropBomb(p.pos, p);
     if (this.brOn) this.brLeave(p); // their pockets spill out
     if (this.isEcon()) this.econLeave(p);
@@ -563,6 +576,7 @@ class Room {
       ai: { diff, target: 0, retarget: 0, nextShot: now() + 1500, seenAt: 0, ammo: 0, reloadUntil: 0, jumpT: 0, wp: null, seed: Math.random() * 100, dummy: opts.dummy || null, strafeDir: 1 },
     });
     b.ai.ammo = WEAPONS[b.w].mag || 1;
+    this.lassoArm(b); // some bot-room bots carry the lasso
     if (!opts.dummy && Math.random() < 0.5) b.grap = pick(GRAP_IDS); // bots show off ropes you can roll
     if (!opts.dummy) { this.joinTeam(b); if (b.team) b.pos = this.pickSpawn(true, b); }
     if (!opts.dummy && this.isEcon()) this.econJoin(b);
@@ -671,7 +685,9 @@ class Room {
   botThink(b, dt) {
     const ai = b.ai, n = now(), D = BOT_DIFF[ai.diff] || BOT_DIFF.normal;
     if (b.sleepUntil > n) return { wx: 0, wz: 0, jump: false };
-    if (n < (b.blindUntil || 0)) return this.botBlind(b, dt); // flashed by goggles: stumbling about, can't see a thing
+    if (n < (b.blindUntil || 0)) { if (this.lassoHolding(b)) this.lassoEnd(b, 'drop'); return this.botBlind(b, dt); } // flashed by goggles: stumbling about, can't see a thing (and lets go of the rope)
+    const lt = this.lassoThink(b, dt); // a lasso bot holding someone does the fling routine (server/lasso.js)
+    if (lt) return lt;
     const boxes = this.boxes;
     if (ai.dummy) {
       const d = ai.dummy;
@@ -690,7 +706,7 @@ class Room {
     this.botChaosThink(b, t, n);
     let wx = 0, wz = 0, jump = false;
     const w = WEAPONS[b.w];
-    const pref = b.w === 'sniper' ? [25, 60] : b.w === 'shotgun' ? [3, 9] : b.w === 'marbles' ? [1.5, 4] : b.w === 'chicken' ? [10, 30] : b.w === 'shredder' ? [1.5, 9] : [7, 22];
+    const pref = RIFLE_PREF[b.w] ? [...RIFLE_PREF[b.w]] : b.w === 'sniper' ? [25, 60] : b.w === 'shotgun' ? [3, 9] : b.w === 'marbles' ? [1.5, 4] : b.w === 'chicken' ? [10, 30] : b.w === 'shredder' ? [1.5, 9] : [7, 22];
     if (w.kind === 'melee') { pref[0] = 0; pref[1] = this.chaosKit || this.isEcon() ? 1.2 : w.range * 0.7; } // claws, melee rungs, spoons + knives: get in their face
     if (b.w === 'taser') { pref[0] = 2; pref[1] = 6; } // darts on wires: get close
     if (t && t.alive) {
@@ -931,6 +947,7 @@ class Room {
       if (b.ai.ammo <= 0) { b.ai.ammo = w.mag; b.ai.reloadUntil = n + w.reload * 1000; }
     }
     b.ai.nextShot = n + iv / D.rate + (w.auto ? 0 : Math.random() * 300);
+    this.rifleBotShot(b, w, D); // burst guns: three, then a breath
     const cp = Math.cos(b.pitch);
     let aim = [-Math.sin(b.yaw) * cp, Math.sin(b.pitch), -Math.cos(b.yaw) * cp];
     const o = eyeOf(b);
@@ -979,6 +996,7 @@ class Room {
   }
 
   stepBot(b, dt) {
+    if (this.lassoBot(b)) return; // on the end of a lasso: whoever holds it moves them
     if (b.trap) { this.driftTrapped(b); return; } // in a soap bubble: no thinking, just floating
     if (this.brOn && this.brBotStep(b, dt)) return; // jank royale: riding the blimp, falling, gliding
     if (b.zmz) { this.zmStep(b, dt); return; }
@@ -1248,6 +1266,7 @@ class Room {
   // path onto them (once, and not far): the server's guess started where it last had them and can snag on a ledge
   // their client floats past
   holdTrapped(p, rep) {
+    if (this.lassoHeld(p)) { p.trap.at = p.pos.slice(); p.trap.atT = now(); return; } // lassoed: the bubble swings with them
     const tr = p.trap, d = dist3(p.pos, tr.at);
     if (rep && !tr.ack && d <= Math.min(tr.slack, 3) && dist3(p.vel, tr.v) < 0.3) { tr.ack = 1; tr.at = p.pos.slice(); return this.holdTrapped(p); }
     if (rep) tr.off = d > tr.slack;
@@ -1398,6 +1417,7 @@ class Room {
   kill(t, attacker, w) {
     if (!t.alive) return;
     if (t.trap) this.popTrap(t, 'dead');
+    this.lassoDrop(t, 'dead'); // a rope they held (or hung off) drops
     t.alive = false; t.hp = 0; t.deaths++; t.g = null; t.reverseUntil = 0; t.oobAt = 0;
     this.rigDeath(t); // (every client bursts the frame open from the kill message)
     if (t.ai) { t.ai.hook = null; t.ai.route = null; } // a fresh route from the spawn, not the old waypoint index
@@ -1573,6 +1593,7 @@ class Room {
     ev.unshift(...patchPreroll(this.rec.ev, t0)); // marbles already on the floor
     const had = new Set(ev.map((e) => e.m.t === 'mpatch' && e.m.id)); // still down from before the recording kept: from the live patch
     for (const pt of this.mpatches.values()) if (pt.born < t0 && !had.has(pt.id) && pt.until - t0 > 300) ev.unshift({ s: t0, m: { t: 'mpatch', ...this.patchInfo(pt), left: pt.until - t0 } });
+    ev.unshift(...lassoPreroll(this.rec.ev, t0)); // or already hanging off a lasso
     const info = {};
     for (const f of frames) for (const e of f.p) if (!info[e[0]]) {
       const pl = this.players.get(e[0]);
@@ -1627,10 +1648,13 @@ class Room {
     if (this.isBall(t)) h = 0; // a wrecking ball has no head
     if (this.parryShot(p, t, wid, n, h, d, mul)) return; // katana parry: blocked, or sent back
     const w = WEAPONS[wid], pellets = w.pellets || 1;
-    const dmg = (w.dmg * (n - h) + w.dmg * (w.head || 1) * h) * mul;
-    const k = w.kb * n;
+    const rx = this.rifleShot(p, t, wid, h); // rifle pack: bursts, the lever ramp, quick-scopes
+    if (!rx) return;
+    const dmg = (w.dmg * (n - h) + w.dmg * (w.head || 1) * h) * mul * rx.mul + rx.add;
+    const k = w.kb * n + rx.kb;
     // a sniper headshot from a player always kills (bots keep their softer shots)
     this.hurt(t, p, wid, dmg, [d[0] * k, d[1] * k + (w.kbUp || 0) * (n / pellets), d[2] * k], { hs: h > 0, lethal: wid === 'sniper' && h > 0 && !p.isBot });
+    if (wid === 'nailgun') this.nailHit(p, t, n, d); // enough nails in a row pin them to the wall (server/primaries.js)
   }
 
   // scales of justice: how guilty t is next to p, from what the server knows right now (formula in shared/verdict.js)
@@ -1669,8 +1693,9 @@ class Room {
       if (!this.pairOk(p, t, 'hs' + m.w, (1000 / fireRate(w, p.hp)) * 0.6) || !this.rangeOk(p, t, w.range)) return; // the Redline fires faster as you lose HP
       p.nsHit = m.w === 'sniper' && p.w === 'sniper' && ns; // a no-scope (ns: 1) can make the kill EPIC
       const hp0 = t.hp; // no-scope hype only goes out if the shot really landed
+      p.qsHit = !!w.quick && qs; // Second Opinion quick-scope (server/rifles.js caps what it buys)
       this.applyHitscan(p, t, m.w, n, h, d);
-      p.nsHit = false;
+      p.nsHit = false; p.qsHit = false;
       if (ns && m.w === 'sniper') this.noScope(p, t, h > 0, hp0);
       if (m.w === 'sniper' && !t.alive) this.royalKill(p, t, ns, qs, h > 0); // this shot killed them (a parried / reflected one hurts you, not them)
     } else if (w.kind === 'melee') {
@@ -2023,6 +2048,7 @@ class Room {
   }
 
   spawnProj(p, wid, o, d) {
+    if (wid === 'cart') { this.fireCart(p, o, d); return; } // shopping carts aren't projectiles: they park and stay (server/primaries.js)
     const w = WEAPONS[wid], n = now();
     if (!(w.cd > 0) || n - (p.lastFire[wid] || 0) < w.cd * 750) return; // nothing without a cooldown comes through here
     if (wid === 'slipper') for (const pr of this.projectiles.values()) if (pr.k === 'slipper' && pr.o === p.id) return;
@@ -2269,10 +2295,12 @@ class Room {
       if (pr.k === 'rigmissile') { this.rigMissileStep(pr, dt); continue; } // overdrive rig missiles home in (server/rig.js)
       const age = (n - pr.born) / 1000;
       if (pr.k === 'bloodcross') { this.tickBloodBolt(pr, dt, n); continue; }
+      if (pr.k === 'tennis') { this.tennisStep(pr, dt, n); continue; } // counted bounces (server/primaries.js)
       const owner = this.players.get(pr.o);
       const prev = pr.p.slice();
       let hit = null;
       if (pr.k === 'soap') { this.stepSoap(pr, n, owner, prev, dt); continue; }
+      if (pr.k === 'loop') { this.stepLoop(pr, n, owner, prev, dt); continue; } // lasso loops (server/lasso.js)
       if (pr.k === 'slipper') {
         if (!owner || !owner.alive) { this.removeProj(pr); continue; }
         if (pr.phase === 0) { // homing: curve toward the nearest enemy ahead, and keep going out while locked on
@@ -2710,9 +2738,10 @@ class Room {
 
   // per-life state: cleared on every respawn and on every new round / match / map
   resetLife(p) {
-    p.slipUntil = 0; p.burnUntil = 0; p.burnBy = 0; p.burnTick = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.frostT = 0;
+    p.slipUntil = 0; p.burnUntil = 0; p.burnBy = 0; p.burnTick = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.frostT = 0; p.pinUntil = 0; p.nails = null; p.held = null;
     p.healLeft = 0; p.reverseUntil = 0; p.g = null; p.lastAttacker = 0; p.ground = null;
     this.rigReset(p); // a new round ends the overdrive rig (and any hack)
+    if (p.lz) { this.lassoCut(p, 'gone'); p.lz.fl = null; } // a fresh life: off any rope, no flight still counting
     if (p.ai) { p.ai.hook = null; p.ai.route = null; }
     p.parryT = 0; p.staggerUntil = 0; // katana parry: a new life starts with the guard ready (the client resets too)
     p.ballUntil = 0; p.f &= ~FLAGS.BALL; // a wrecking ball doesn't roll into the next round (or the next mode)
@@ -2723,7 +2752,7 @@ class Room {
   resetWorld() {
     this.resetChaos();
     this.gearWorldReset(); // photo frames come down
-    this.projectiles.clear(); this.peels.clear(); this.holes.clear();
+    this.projectiles.clear(); this.peels.clear(); this.holes.clear(); this.clearCarts();
     this.mpatches.clear(); // clients wipe theirs on 'clear'
     this.broadcast({ t: 'clear' });
     this.clearTags();
@@ -2744,11 +2773,37 @@ class Room {
     if (this.crosses) this.crosses.clear();
   }
 
+  // hidden NPCs + cats (shared/secrets.js). the client opens the chat / pets straight away; this decides whether it
+  // counts: alive, on that map, really next to it, not mid Plant & Defuse, and once per account (gifts too)
+  onSecret(p, m) {
+    const id = m.id;
+    if (typeof id !== 'string' || !Object.hasOwn(SECRETS, id)) return;
+    const t = now();
+    if (t - (p.secT || 0) < SECRET.cd) return; // rate limit
+    p.secT = t;
+    const s = SECRETS[id], no = (why) => send(p, { t: 'sec', id, no: why });
+    if (s.map !== this.cfg.map) return no('map');
+    if (secretsOff(this.game) || this.isEcon()) return no('bomb');
+    if (!p.alive || p.isBot) return no('dead');
+    if (!canReach(p.pos, id, 0.4)) return no('far'); // (a little slack: you were next to it when you pressed F)
+    this.broadcast({ t: 'secfx', id, by: p.id }, p.id); // everyone else sees the cat purr / the NPC turn round
+    if (!p.acct) return send(p, { t: 'sec', id, guest: 1 });
+    if (p.acct.lore.has(id)) return send(p, { t: 'sec', id, again: 1 });
+    p.acct.lore.add(id);
+    let gift = s.gift || null;
+    if (gift && gift.type && owns(p.inv, gift.type, gift.id)) gift = gift.or || null; // already had it: the fallback
+    if (gift) gift = gift.type ? { type: gift.type, id: gift.id } : { roll: gift.roll };
+    if (gift && gift.type) (p.inv[gift.type] ||= []).push(gift.id); // yours from now (kill effect / grapple pickers check p.inv)
+    store.addLore(p.acct.n, id, gift).catch((e) => logErr('lore', e));
+    if (s.kind === 'cat') { p.acct.base.cats = (p.acct.base.cats || 0) + 1; checkAch(p); } // the 5th pet unlocks Board Approved
+    send(p, { t: 'sec', id, first: 1, gift, lore: [...p.acct.lore] });
+  }
   handle(p, m) {
     if (p.quiz && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray'].includes(m.t)) return; // pens down: no attacks during a pop quiz
     if (p.trap && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray'].includes(m.t)) return; // sealed in a soap bubble: no attacks, parries, items, streaks, sprays or planting till it pops
     if (this.brOn && this.brHandle(p, m)) return; // jank royale: the blimp, loot, heals; only guns you carry, with bullets left
     if (this.isEcon() && this.econHandle(p, m)) return;
+    if ((m.t === 'fire' || m.t === 'hit') && this.lassoHolding(p)) return; // both hands are on the lasso
     switch (m.t) {
       case 's': {
         if (!p.alive || m.q !== p.seq) return;
@@ -2764,6 +2819,7 @@ class Room {
         if (only) p.w = only; // everyone sees what you're really allowed to hold
         p.g = vec3(m.g);
         p.f = num(m.f) | 0;
+        this.lassoSnap(p); // on the end of a lasso: the rope has you, not your client (and no grapple). spinning one: noted
         if (raycast([pos[0], pos[1] + 0.3, pos[2]], [0, -1, 0], 0.6, this.boxes)) p.ground = pos.slice(); // standing on something
         this.rigSnap(p); // the rig flags only count from someone who activated it; no rope in the rig or when hacked
         if (p.trap) this.holdTrapped(p, true); // sealed in a soap bubble: you go where it floats
@@ -2778,6 +2834,7 @@ class Room {
       case 'push': this.onPush(p, m); break;
       case 'slam': this.onSlam(p, m); break;
       case 'fire': this.onFire(p, m); break;
+      case 'cart': this.onCart(p, m); break; // hop in / out of a shopping cart
       case 'cough':
         if (p.alive && now() - p.coughT > 800) {
           p.coughT = now();
@@ -2792,6 +2849,7 @@ class Room {
         if (text && now() - p.chatT > 400) { p.chatT = now(); this.broadcast({ t: 'chat', id: p.id, m: text }); }
         break;
       }
+      case 'sec': this.onSecret(p, m); break; // F next to a hidden NPC or cat
       case 'tbag': { // crouch-spammed too hard: your knees explode
         if (this.chaosKit && this.chaosKit.noTbag) break; // one in the chamber: a free area kill that also burns a life
         if (!p.alive || now() - (p.tbagT || 0) < 3000) break;
@@ -2918,6 +2976,8 @@ class Room {
       case 'rig': this.onRig(p, m); break; // overdrive rig: punch, hack, missiles, leap, landing (server/rig.js)
       case 'pi': send(p, { t: 'po', c: Number.isFinite(m.c) ? m.c : 0 }); break; // echo a number, not whatever object came in
       case 'land': this.airFail(p, false); break; // your client saw you touch the ground: run's over
+      case 'lasso': this.onLasso(p, m); break; // throw / let go / wriggle
+      case 'lh': this.onLassoHold(p, m); break; // the body you hold, from your client
     }
   }
 
@@ -3180,7 +3240,7 @@ class Room {
     this.cfg.map = v.map;
     this.setGame(v.game); // (may swap to the version of the map the mode plays: Plant & Defuse -> the S&D one)
     const mapChanged = this.cfg.map !== was;
-    this.projectiles.clear(); this.peels.clear(); this.holes.clear();
+    this.projectiles.clear(); this.peels.clear(); this.holes.clear(); this.clearCarts();
     if (mapChanged) { this.smokes.clear(); this.broadcast({ t: 'cfg', cfg: this.cfg }); }
   }
 
@@ -3225,7 +3285,7 @@ class Room {
     Object.assign(b, { ph: 'live', site: null, p: null, drop: null, explodeAt: 0, act: null, between: 0, ends: now() + (process.env.JF_BOMB_ROUND ? BOMB.roundTime : this.map.roundTime || BOMB.roundTime) * 1000, carrier: 0 }); // per-map round time (the test knob still wins)
     for (const p of this.players.values()) if (p.ai) { p.ai.site = null; p.ai.route = null; }
     if (this.isEcon()) this.econNewRound(first); // buy phase, payouts carried over, the half's credit reset
-    this.projectiles.clear(); this.peels.clear(); this.holes.clear();
+    this.projectiles.clear(); this.peels.clear(); this.holes.clear(); this.clearCarts();
     this.resetWorld();
     this.giveBomb();
     this.broadcast({ t: 'bombev', k: 'round', n: b.n, att: b.att });
@@ -3705,7 +3765,9 @@ class Room {
     if (this.mode === 'training') this.trainingStreaks(n);
     this.tickTraps(n);
     for (const b of this.players.values()) if (b.isBot && b.alive) this.stepBot(b, dt);
+    this.tickLasso(dt);
     this.tickProjectiles(dt);
+    this.tickCarts(dt); // shopping carts: rolling, parked, ridden
     this.tickCrosses();
     this.tickHoles(dt);
     this.tickRig();
@@ -3832,7 +3894,7 @@ class Room {
     const n = now();
     this.trackMoves(n);
     this.recOdd = !this.recOdd;
-    this.rec.frames.push({ s: n, p: ps, odd: this.recOdd, j: [...this.projectiles.values()].map((pr) => [pr.id, pr.k, r2(pr.p[0]), r2(pr.p[1]), r2(pr.p[2]), pr.tip || 0]) });
+    this.rec.frames.push({ s: n, p: ps, odd: this.recOdd, j: [...this.projectiles.values()].map((pr) => [pr.id, pr.k, r2(pr.p[0]), r2(pr.p[1]), r2(pr.p[2]), pr.tip || 0]).concat(this.cartRec()) });
     while (this.rec.frames.length && this.rec.frames[0].s < n - REC_MS) this.rec.frames.shift();
     while (this.rec.ev.length && this.rec.ev[0].s < n - REC_MS) this.rec.ev.shift();
     this.broadcast({ t: 'sn', s: n, p: ps, wave: this.mode === 'coop' ? this.waveInfo() : undefined, round: this.roundInfo() || undefined });
@@ -3843,11 +3905,14 @@ installRoyale(Room, { send, movePlayer });
 installRig(Room, { now, num, vec3, norm, r2, center, safe, REC_T, WEAPONS }); // the overdrive rig's methods (server/rig.js)
 installGear(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm, vec3, stat, liveStats });
 installTactical(Room, { send });
+installRifles(Room, { now, send });
+installPrimaries(Room, { now, send, r2, norm, vec3, REC_T });
 installSec(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm, vec3, REC_T, REC_FX }); // after installGear: it wraps gearJoin / tickGear / gearSnap
 installEcon(Room, {
   send, cleanSkins, enforceSkins, logErr, BOT_GUNS, navGraph,
   refreshInv: async (p) => { if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; } },
 });
+installLasso(Room);
 installZombies(Room, { send, stat, store });
 
 // ---------------------------------------------------------------- account stats
@@ -3970,7 +4035,8 @@ wss.on('connection', (ws) => {
         const u = m.token ? await accounts.verify(m.token).catch(() => null) : null;
         if (u) {
           const base = {}; for (const k of STAT_KEYS) base[k] = u[k] || 0;
-          m._name = u.name; m._acct = { n: u.name_lower, d: {}, since: now(), base, achs: achievementsFrom(base) };
+          base.cats = catsOf(u.inv); // hidden cats petted (inv.lore, not a column: flushStats never sends it)
+          m._name = u.name; m._acct = { n: u.name_lower, d: {}, since: now(), base, achs: achievementsFrom(base), lore: loreOf(u.inv) };
           m._level = levelOf(u.xp); m._inv = u.inv || {}; m._achs = m._acct.achs;
         }
         else {

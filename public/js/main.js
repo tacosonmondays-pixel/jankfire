@@ -36,6 +36,7 @@ import { courtKill, courtVerdict, updateCourt, courtReset, courtSync } from './s
 import { noScope, updateNoScope } from './noscope.js';
 import { makeRope, setRope, setRopeSkin, myGrapple, initGrapplePreview, grappleThumb, showGrapple, renderGrapplePreview } from './grapple.js';
 import { shredKill, shredHit, shredGrab, grabStep, updateShreds, clearShreds } from './shredder.js';
+import { primFx, pinStep, tennisStep, tennisEnd, updatePrims, clearPrims, cartKey } from './primaries.js'; // nail gun, tennis balls, shopping carts
 import { updateSpeedLines } from './speedlines.js';
 import { slipperUpdate, slipperStep } from './slipper.js';
 import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse } from './objective.js';
@@ -63,6 +64,7 @@ import { achInv } from '/shared/cosmetics.js'; // achievement rewards (Golden Sn
 import { achProgress, ROYAL_ALL, ROYAL_FEATS } from '/shared/looks.js';
 import { royalToast, royalUnlock, royalBoxes } from './royal.js';
 import { updateTraffic, carCollide, carKill, carFeedIcon } from './traffic.js'; // cars on the roads
+import { updateLore, updateLoreFx, loreKey, renderLore } from './lore.js'; // hidden NPCs + cats (F), the LORE page
 import { setOnly, coughCloud } from './weapons.js';
 import { renderPatchNotes, markPatchSeen, patchUnseen } from './patchnotes.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
@@ -70,6 +72,8 @@ import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote,
 import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown, esRekey } from './endscreen.js';
 import { initHome, homeShown, homeLeft } from './home.js';
 import { skipVote, skipReset } from './skipvote.js';
+import { lassoFrame, loopFrame, lassoWheel, lassoKey, lassoLate } from './lasso.js'; // lasso (secondary)
+import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + quick-scope callouts register themselves)
 import { K } from './keys.js';
 import { controlsScreen } from './controls.js';
 import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, zmModelsLoaded } from './zombies.js';
@@ -180,6 +184,7 @@ function show(id) {
   if (id === 'match') syncMatchUI();
   if (id === 'profile') { renderProfile(); restore().then((me) => { if (me && screen === 'profile') { renderProfile(); renderAcctBar(); } }); }
   if (id === 'leaders') renderLeaders();
+  if (id === 'lore') renderLore($('loreList'));
   controlsScreen(id === 'controls', saveSettings);
   if (id === 'main') { renderAcctBar(); homeShown(); }
 }
@@ -265,6 +270,7 @@ function clearEntities() {
   G.projs.clear(); G.peels.clear(); G.holes.clear();
   clearCrosses();
   clearPatches();
+  clearPrims();
 }
 function quitToMenu(silent) {
   net.close();
@@ -440,6 +446,7 @@ function renderKeyHints() {
   $('gElse').innerHTML = `${B(L('menu'))} menu · ${B(L('scores'))} scores · ${B(L('chat'))} chat`;
   $('gEcon').innerHTML = `plant &amp; defuse: ${B(ecoKeyLabel('buy'))} buy · ${B(ecoKeyLabel('drop'))} drop what you hold · ${B(L('grapple'))} pick up · ${B(L('sprint'))} slow walk (silent) · stand still to shoot straight`;
   $('voteKeys').textContent = VOTES.map(K.label).join(' ');
+  $('gLore').innerHTML = `${B(L('use'))} next to someone talks to them. some people are hidden around the maps, and so is the board of directors (${B(L('use'))} to pet). what you find goes in ${B('LORE')}.`; // hidden NPCs + cats (lore.js)
   $('sprayKey').textContent = K.label('spray');
   $('loItemKey').textContent = K.label('item');
   $('loStreakKeys').textContent = ['streak1', 'streak2', 'streak3'].map(K.label).join(' / ');
@@ -592,6 +599,7 @@ function rewardsFor(achId) {
   const out = [];
   for (const s2 of LOOK_SLOTS) for (const [k, v] of Object.entries(ACCESSORIES[s2])) if (v.ach === achId) out.push({ slot: s2, id: k, name: v.name });
   for (const [k, v] of Object.entries(BOTTOMS)) if (v.ach === achId) out.push({ slot: 'bottom', id: k, name: v.name }); // (Overalls)
+  for (const [k, v] of Object.entries(TOPS)) if (v.ach === achId) out.push({ slot: 'top', id: k, name: v.name }); // (Maid Dress)
   for (const t of LOOT_TYPES) for (const [k, v] of Object.entries(COSMETICS[t])) if (v.ach === achId) out.push({ type: t, id: k, name: v.name }); // weapon skins live in COSMETICS
   return out;
 }
@@ -654,7 +662,7 @@ function buildCharacterUI() {
   };
   swatches('lk-skin', 'skin', SKIN_TONES, 'mannequin');
   styles('lk-hair', 'hair', HAIRS); swatches('lk-hairColor', 'hairColor', HAIR_COLORS);
-  styles('lk-top', 'top', TOPS); swatches('lk-topColor', 'topColor', CLOTH_COLORS, look.top === 'runner' ? 'hi-vis yellow' : 'same as your colour');
+  styles('lk-top', 'top', TOPS); swatches('lk-topColor', 'topColor', CLOTH_COLORS, look.top === 'runner' ? 'hi-vis yellow' : look.top === 'maid' ? 'classic black' : 'same as your colour');
   styles('lk-bottom', 'bottom', BOTTOMS); swatches('lk-bottomColor', 'bottomColor', CLOTH_COLORS, 'same as your colour');
   for (const slot of LOOK_SLOTS) {
     const el = $('lk-' + slot);
@@ -727,7 +735,7 @@ $('lkRandom').addEventListener('click', () => {
   const achs = myAchs();
   const pick = (arr) => arr[(Math.random() * arr.length) | 0];
   const look = { color: pick(LOOK_COLORS), skin: pick(SKIN_TONES), hair: pick(Object.keys(HAIRS)), hairColor: pick(HAIR_COLORS),
-    top: pick(Object.keys(TOPS)), topColor: pick(CLOTH_COLORS), bottom: pick(Object.entries(BOTTOMS).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k)), bottomColor: pick(CLOTH_COLORS) };
+    top: pick(Object.entries(TOPS).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k)), topColor: pick(CLOTH_COLORS), bottom: pick(Object.entries(BOTTOMS).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k)), bottomColor: pick(CLOTH_COLORS) };
   for (const s2 of LOOK_SLOTS) look[s2] = pick(Object.entries(ACCESSORIES[s2]).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k));
   setLook(look); buildCharacterUI();
 });
@@ -976,10 +984,12 @@ function pressed(e) {
   if ((RP.active || G.killcamPending) && K.matches('skip', e)) { e.preventDefault(); skipReplay(); return; }
   if (esKey(e, VOTES.findIndex((a) => K.matches(a, e)))) { e.preventDefault(); return; } // end screen: the vote keys win over any game action on the same key, arrows switch tabs
   if (brKey(e)) return; // jank royale: F pick up, H heal, space spectates the next one
+  if (loreKey(e, canUse(G.round, ME.pos))) { e.preventDefault(); return; } // the use key next to a hidden NPC / cat (not where it plants, defuses or buys), 1-3 answer in a chat
   if (K.matches('scores', e)) { e.preventDefault(); scoresOpen = true; renderScores(); return; }
   if (K.matches('chat', e)) { e.preventDefault(); openChat(); return; }
   if (K.matches('menu', e)) { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
   if (gearKeyDown(e)) return; // pop quiz answers (1-4), goggles flash (nvgFlash)
+  if (lassoKey(e, true)) return; // holding someone on the lasso: reel keys, fire / aim lets go, no weapon switching. held: jump / move wriggles
   if (K.matches(BUBBLED, e) && stuckInBubble(true)) return; // sealed in a soap bubble: no shooting, aiming, grapple, items, dash, t-bag, sprays or streaks
   if (K.matches(SEC_STOPPED, e) && secBlocked()) return; // tased, paused or jailed: hands off everything
   const now = performance.now(), out = now < (ME.sleepUntil || 0) || now < (ME.quizUntil || 0); // asleep on the floor / pens down for a pop quiz: no shooting
@@ -991,7 +1001,7 @@ function pressed(e) {
   if (K.matches('slot3', e)) switchSlot(2);
   if (K.matches('lastSlot', e)) lastSlot();
   if (K.matches('reload', e)) reload();
-  if (K.matches('use', e) && !e.repeat) { if (canUse(G.round, ME.pos)) startUse(); else inspect(); }
+  if (K.matches('use', e) && !e.repeat) { if (canUse(G.round, ME.pos)) startUse(); else if (!cartKey()) inspect(); } // the use key on a shopping cart: hop in / out
   if (K.matches('dash', e)) W.dashHeld = true;
   if (K.matches('scythe', e) && !e.repeat) toggleScythe();
   if (K.matches('item', e) && !e.repeat) useItem();
@@ -1012,6 +1022,7 @@ const SEC_STOPPED = ['fire', 'aim', 'grapple', 'item', 'dash', 'spray', 'streak1
 // a key or button came up: releases match whatever pressed the action, even if it got rebound since
 function released(e) {
   if (e.type === 'keyup' && K.typing(e)) return; // typed in chat / a text box (opening chat already let go of everything)
+  lassoKey(e, false);
   if (K.up('use', e)) stopUse();
   if (K.up('dash', e)) W.dashHeld = false;
   if (K.up('scores', e)) { scoresOpen = false; hud.scores(false); }
@@ -1036,7 +1047,7 @@ addEventListener('mouseup', released);
 function releaseHeld() { K.clear(); W.held = false; W.aimHeld = false; W.dashHeld = false; stopUse(); releaseHook(); if (scoresOpen) { scoresOpen = false; hud.scores(false); } }
 K.onChange((rebound) => { if (rebound) releaseHeld(); });
 addEventListener('contextmenu', (e) => e.preventDefault());
-addEventListener('wheel', (e) => { if (inGame() && !esActive()) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true }); // not while the end screen is up (its tab panel scrolls)
+addEventListener('wheel', (e) => { if (inGame() && !esActive() && !lassoWheel(e.deltaY)) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true }); // not while the end screen is up (its tab panel scrolls); holding someone on the lasso: the wheel reels
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== canvas) return;
   if (performance.now() < (G.spinUntil || 0)) return; // the aimbot has the wheel
@@ -1513,14 +1524,14 @@ net.on('ps', (m) => {
   spawnProj(m);
   if (m.k === 'bloodcross') { crossShot(m, G.projs.get(m.id)); return; } // a heartbeat, not a pew
   if (m.o !== G.myId) {
-    const s = { chicken: 'squawk', duck: 'squeak', bowling: 'thunk', slipper: 'swing', soap: 'bloop' }[m.k] || 'pew';
+    const s = { chicken: 'squawk', duck: 'squeak', bowling: 'thunk', slipper: 'swing', soap: 'bloop', tennis: 'tennisFire' }[m.k] || 'pew';
     sfx[s](m.p);
   }
 });
 net.on('pu', (m) => {
   const pr = G.projs.get(m.id);
   if (pr && pr.k === 'slipper') return slipperUpdate(pr, m); // homing: steer between updates, ease corrections
-  if (pr) { pr.p = m.p.slice(); pr.v = m.v.slice(); }
+  if (pr) { pr.p = m.p.slice(); pr.v = m.v.slice(); if (Number.isInteger(m.b)) pr.b = m.b; } // b: a tennis ball's bounces so far
 });
 net.on('pd', (m) => {
   const pr = G.projs.get(m.id);
@@ -1528,6 +1539,7 @@ net.on('pd', (m) => {
     G.scene.remove(pr.mesh);
     G.projs.delete(m.id);
     if (pr.k === 'slipper' && pr.o === G.myId) onSlipperBack();
+    if (pr.k === 'tennis') tennisEnd(pr, m);
   }
   if (m.x) {
     recordEv(m);
@@ -1600,6 +1612,7 @@ net.on('he', (m) => {
 net.on('fx', (m) => {
   if (gearFx(m)) return; // laser beams, photo teleports, goggle flashes (gear.js)
   if (secFx(m)) return; // taser zaps, remote pauses + rewinds, radar readings (secondaries.js)
+  if (primFx(m)) return; // carts running people over; nail gun shots leave nails in walls (primaries.js)
   if (m.k === 'shot' || m.k === 'swing' || m.k === 'tbag' || m.k === 'shatter') recordEv(m);
   const r = G.remotes.get(m.id);
   if (m.k === 'shot') {
@@ -1620,7 +1633,7 @@ net.on('fx', (m) => {
       const a = mz && (i === 0 || w.pellets) ? mz : s.slice(0, 3);
       fx.tracer(a, s.slice(3), color(), w.thick || (fast ? 0.03 : 0.045), fast ? 0.07 : 0.2);
     });
-    if (m.s.length) sfx.gun(m.w, m.s[0].slice(0, 3));
+    if (m.s.length) sfx.gun(m.w, m.s[0].slice(0, 3), remoteK(m.id, m.w)); // (a hot Belt Sander gets louder)
   } else if (m.k === 'shatter') {
     fx.spray(m.p, 70, [0xffffff, 0xbfe8ff, 0x7fd0ff], 11, 1.4, 0.2, 14, 0.5);
     sfx.crunch(m.p); sfx.ting(m.p);
@@ -1739,6 +1752,7 @@ function frame(t) {
     acc += dt;
     while (acc >= STEP) { stepPlayer(STEP, inp, now); carCollide(STEP); airTick(now); lavaStep(now); inp.jumpPressed = false; acc -= STEP; }
     grabStep(now); // held in a shredder's intake
+    pinStep(now); // nailed to a wall
     oobTick(now); // out of the play area: RETURN TO THE MAP 3 2 1
     econFrame(dt); // Plant & Defuse: barriers, drops, armor on models, spectating
     // spinbot killstreak: lock onto the nearest enemy you can see
@@ -1763,6 +1777,7 @@ function frame(t) {
     if (spinning) $('cheat').textContent = `JANKHAX v6.9\n[x] AIMBOT\n[x] SPINBOT\n[x] NO SPREAD\n${((G.spinUntil - now) / 1000).toFixed(1)}s left`;
     G.spinning = spinning;
     updateWeapons(dt, now);
+    lassoFrame(dt, now); // lasso: spin + throw, the rope you hold, your hands (before the snapshot: it sets a flag)
     if (ballOn(now)) { W.flags |= FLAGS.BALL; if (BS.snapNow) { BS.snapNow = false; sendT = 0; } } // wrecking ball (a slam dive goes out right away: the server checks it)
 
     sendT -= dt;
@@ -1776,6 +1791,7 @@ function frame(t) {
   if (!RP.active) for (const r of G.remotes.values()) r.update(rt, dt, now);
   else for (const r of G.remotes.values()) { r.ch.root.visible = false; r.rope.visible = false; r.shadow.visible = false; } // the replay has its own copies
   updateTraffic(dt, now, RP.active);
+  updateLore(dt, now); updateLoreFx(now); // (out of a match it clears them away)
   brFrame(dt, now); // jank royale: blimp, zone, loot, hud
   updateGibs(dt);
   updateKillFx(dt);
@@ -1786,6 +1802,7 @@ function frame(t) {
   updateWand(dt, now); // bubble wand: giant soap bubbles round people, the view from inside one, the wand in your hand
   updateGear(dt, now); // laser beams, photo frames, pop quizzes, night vision
   updateSec(dt, now); // soaks, zaps, pauses, rewinds, the radar gun, cages
+  updatePrims(dt, now); // nails in walls, pins, shopping carts
   for (let i = G.smokes.length - 1; i >= 0; i--) {
     const s2 = G.smokes[i];
     if (now > s2.until) { G.smokes.splice(i, 1); continue; }
@@ -1805,6 +1822,8 @@ function frame(t) {
 
   for (const pr of G.projs.values()) {
     if (pr.k === 'soap') { stepSoap(pr, dt, now); continue; } // bubble wand: wobbly bubbles on an exact path (wand.js)
+    if (pr.k === 'tennis') { tennisStep(pr, dt); pr.mesh.visible = !RP.active; continue; } // counted bounces (primaries.js)
+    if (pr.k === 'loop') { loopFrame(pr, dt, now); continue; } // a lasso loop in flight (lasso.js)
     if (pr.k === 'slipper') {
       slipperStep(pr, dt, now);
       pr.spin += dt * 20;
@@ -1902,6 +1921,7 @@ function frame(t) {
   if (RP.active) updateReplay(dt, now, cam); // killcam / play of the round owns the camera
   const specCam = !RP.active && (spectateCam(dt, cam) || econCam(cam, dt) || brCam(dt, cam)); // one in the chamber: out of lives, watching someone; Plant & Defuse: a teammate; jank royale: the blimp ride + spectating
   cam.updateMatrixWorld();
+  lassoLate(dt, now); // lasso ropes between people + from your hand, now that everyone (and the camera) has moved
   updateSpeedLines(dt, G.joined && ME.alive && !RP.active ? Math.hypot(ME.vel[0], ME.vel[1], ME.vel[2]) : 0, ME.vel, cam, ME.dashing ? 0.9 : 0, S.speedLines !== false);
   const rh = G.renderer.domElement.height;
   fx.setScale(rh / (2 * Math.tan((cam.fov * Math.PI) / 360)));

@@ -1,5 +1,6 @@
 // Local player movement: quake-ish air strafing, bhop with NO speed cap, slide, grapple, slipping.
 import { movePlayer, raycast, rayBox, PH } from '/shared/physics.js';
+import { rideStep } from './primaries.js'; // shopping cart riding
 import { BOXES } from '/shared/map.js';
 import { HOOK, SLIP_TIME } from '/shared/weapons.js';
 import { ROPE, classicRopeStep, classicRopeJump } from '/shared/hookphys.js';
@@ -191,10 +192,12 @@ function hookFeel(dt, now) {
 export function stepPlayer(dt, inp, now) {
   if (!ME.alive) return;
   hookFeel(dt, now); // before any early return, so the camera lean keeps easing (e.g. through a dash, the ball or a soap bubble)
+  if (G.lassoStep && G.lassoStep(dt, inp, now)) return; // on the end of a lasso (or tumbling out of a fling): lasso.js moves you
   if (ME.ballUntil) { if (now < ME.ballUntil) { feel.lift = 0; ballStep(dt, inp, now); return; } endBall(); } // wrecking ball killstreak (its chain has its own physics)
   if (G.brStep && G.brStep(dt, inp, now)) return; // jank royale: riding the blimp, falling, the umbrella (royale.js)
   const v = ME.vel, p = ME.pos;
   if (rigStep(dt, inp, now)) return; // overdrive rig: heavy, fast, leaps instead of jumping (rig.js)
+  if (rideStep(dt, inp, now)) return; // riding a shopping cart (primaries.js)
   // glitch dash: fly straight where you look, no gravity. letting go keeps all of it.
   if (ME.dashing) {
     const d = look(), sp = 38;
