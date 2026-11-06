@@ -124,16 +124,6 @@ function laserOrb(g) {
   orb.position.z = -0.42; orb.scale.setScalar(0.001); orb.visible = false; g.add(orb);
   return orb;
 }
-// the Blender laser (buildWeapon swapped it in): its button, LEDs, emitter and cat charm are the file's own nodes,
-// lit and moved exactly like the code model's (beam.js, weapons.js); the charge orb is ours
-export function laserHooks(g, mt) {
-  const ud = g.userData;
-  ud.button = mt.button ? nodeIn(g, mt.button) : null;
-  ud.charm = mt.charm ? nodeIn(g, mt.charm) : null;
-  ud.leds = (Array.isArray(mt.leds) ? mt.leds : []).map((n) => ownMat(g, n, glowMat(0x0b2a08))).filter(Boolean);
-  ud.emit = mt.emit ? ownMat(g, mt.emit, glowMat(0x1d7a10)) : null;
-  ud.orb = laserOrb(g);
-}
 
 // ================================================================ Instant Camera
 let camLabel = null;

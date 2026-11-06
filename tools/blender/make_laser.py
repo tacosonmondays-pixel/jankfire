@@ -6,7 +6,7 @@
 # wired in with hot glue, a 5-LED bar-graph module (the PEW-O-METER) zip-tied to the side you see, a cat charm on the
 # lanyard (cats love these). The yellow warning sticker says CLASS 9000, the aperture label says the beam comes out
 # this end, the body print says MAX OUTPUT: YES.
-# own nodes (meta names them): lz_button_wzN (origin (0, 0.047, -0.07): the game presses it to y 0.042), lz_led0_wzN ..
+# own nodes (meta.laser names them, public/js/laserglb.js binds them): lz_button_wzN (origin (0, 0.047, -0.07): the game presses it to y 0.042), lz_led0_wzN ..
 # lz_led4_wzN (z 0.16 .. 0.064, the game lights them), lz_emit_wzN (the emitter in the lens, the game brightens it),
 # lz_charm_wzN (origin (0, -0.006, 0.338) on the split ring, hangs down -y, the game swings it). The charge orb in
 # front of the lens is the game's. run: blender -b --python tools/blender/make_laser.py  (-- --qa: the asset-QA gate)
@@ -659,7 +659,8 @@ def build():
     lnodes = [part(leds[i], f'lz_led{i}_wzN', pivot=at(0.0517, 0.0042, z)) for i, z in enumerate(LED_Z)]
     meta = {'kind': 'weapon', 'id': 'laser', 'paint': ['lz_grip'], 'muzzle': [0, 0, -0.42],
             'hatAt': [[0, 0.0425, -0.2], 0.08],
-            'button': 'lz_button_wzN', 'leds': [n.name for n in lnodes], 'emit': 'lz_emit_wzN', 'charm': 'lz_charm_wzN'}
+            # the charge hooks, for public/js/laserglb.js (it binds them on any Blender laser: this one or a skin)
+            'laser': {'button': 'lz_button_wzN', 'leds': [n.name for n in lnodes], 'emit': 'lz_emit_wzN', 'charm': 'lz_charm_wzN'}}
     print('JF_META', json.dumps(meta))
     return finish('w_laser', bodies + [bnode, cnode, enode] + lnodes, meta)
 

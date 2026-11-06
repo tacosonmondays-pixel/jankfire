@@ -12,7 +12,7 @@ import { lathe } from './blades/kit.js';
 import { LASSO_MODELS, buildLoopProjectile, lassoLoop, ropeLook } from './lasso_model.js';
 import { buildRigMissile } from './rigmodel.js'; // overdrive rig killstreak
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { laserBuild, laserHooks, calculator } from './gearmodels.js'; // the new gear's models (laser pointer, pop quiz calculator)
+import { laserBuild, calculator } from './gearmodels.js'; // the new gear's models (laser pointer, pop quiz calculator)
 import { prepAuthored, authored, AUTHORED, bindAuthored, nodeIn, glossBlade, LAZY, isLazy } from './glbkit.js';
 import { SEC_WB, SEC_HATS, secAuthored } from './secmodels.js'; // water pistol, taser, tv remote, radar gun
 import { laserAuthored } from './laserglb.js'; // a Blender laser pointer's charge hooks (leds, lens, button, charm, orb)
@@ -1414,7 +1414,6 @@ export function buildWeapon(id, skin) {
     secAuthored(id, g, mt); // the radar gun's speed readout, the water pistol's tank level, the taser's ARMED light
     laserAuthored(id, g, mt); // the laser's charge meter, lens glow, button, charm + the charge orb
     bindRifle(g, mt); // rifle pack: mag, charging handle, lever, feed cover, belt links, barrel heat
-    if (id === 'laser') laserHooks(g, mt); // the Big Laser Pointer's button, LEDs, emitter, cat charm + the charge orb
     if (LASSO_MODELS[variant ? model : id]) lassoLoop(g, ropeLook(skin)); // the lasso's hanging loop is simulated rope: still ours
     if (Array.isArray(mt.glint) && mt.glint.length && mt.glint.every((a) => Array.isArray(a) && a.length === 4 && a.every(Number.isFinite))) addGlint(g, mt.glint);
     applySkin(g, skin);
