@@ -460,7 +460,7 @@ export function installRoyale(Room, H) {
       for (const l of B.loot.values()) {
         const k = Math.floor(l.p[0] / 30) + ',' + Math.floor(l.p[2] / 30), c = cells.get(k) || { v: 0, p: l.p, n: 0, taken: 0 };
         c.v += l.k === 'gun' ? 2 + l.tier : 1; c.n++;
-        if (l.p[1] < 1.6) c.p = l.p; // land on the ground in that area
+        if (l.p[1] < 1.6 && !raycast([l.p[0], l.p[1] + 0.3, l.p[2]], [0, 1, 0], 80, this.boxes)) c.p = l.p; // land on open ground in that area (not on the roof over it)
         cells.set(k, c);
       }
       for (const o of this.fighters()) if (o !== b && o.br && o.br.ai && o.br.ai.cell) { const c = cells.get(o.br.ai.cell); if (c) c.taken++; }
@@ -516,6 +516,8 @@ export function installRoyale(Room, H) {
           return { p: this.brInward(b, nx.c, nx.r * 0.7), force: zn.shrinking && dc > zn.r * 0.8, r: 0 };
         }
       }
+      // gadgets: throw the frag / duck at whoever it's fighting; smoke, bubble or reverse card when it's losing
+      if (fighting && s.gadget && s.gadget.n > 0 && n > (ai.gadT || 0)) this.brBotGadget(b, t, n);
       // 2. heal when it's quiet
       const need = 100 - b.hp;
       if (!fighting && !s.heal && need > 20 && (s.cola || s.medkit) && n > ai.healT) {
@@ -538,6 +540,8 @@ export function installRoyale(Room, H) {
         if (n - ai.lootSince > 9000) { ai.skip.set(l.i, n + 60000); ai.loot = 0; s.skips++; } // can't get there: forget it
         ai.why = 'loot'; if (!fighting || (unarmed && l.k === 'gun' && !(t && dist3(t.pos, b.pos) < 4))) return { p: [l.p[0], l.p[1], l.p[2]], force: !!fighting, r: 0 };
       }
+      // stuck up on a roof with nothing to grab: walk off it (a short drop doesn't hurt)
+      if (b.pos[1] > 2.5 && !l) { ai.why = 'off roof'; const g = this.brInward(b, [b.pos[0], b.pos[2]], 30); return { p: g, force: true, r: 0 }; }
       // 4. nothing to do: drift toward the middle of the (next) circle, somewhere new now and then
       if (!ai.roam || n > ai.roamT || hdist(b.pos, ai.roam) < 4) {
         const c = nx ? nx.c : zn.c, r = nx ? nx.r : zn.r;
@@ -620,6 +624,22 @@ export function installRoyale(Room, H) {
       const s = b.br.slots;
       return v(s[0]) <= v(s[1]) ? 0 : 1;
     },
+    brBotGadget(b, t, n) {
+      const g = b.br.gadget, ai = b.br.ai, d = dist3(t.pos, b.pos);
+      const hurtNow = b.lastAttackT && n - b.lastAttackT < 1500, low = b.hp + b.br.armor < 60;
+      const attack = { frag: [7, 28], duck: [8, 30], wand: [3, 14] }[g.i]; // (no party popper: its hits come from a client)
+      const guard = g.i === 'smoke' || g.i === 'bubble' || g.i === 'reverse';
+      if (attack ? d < attack[0] || d > attack[1] : !(guard && low && hurtNow)) return;
+      ai.gadT = n + 3500 + Math.random() * 2500;
+      const e = [b.pos[0], b.pos[1] + PH.eye, b.pos[2]], to = guard ? [b.pos[0], b.pos[1], b.pos[2]] : [t.pos[0], t.pos[1] + 1, t.pos[2]];
+      const dx = to[0] - e[0], dz = to[2] - e[2], hd = Math.hypot(dx, dz) || 1;
+      const up = g.i === 'frag' || g.i === 'duck' ? Math.min(0.6, hd / 45) : 0; // lob it
+      const dir = guard ? [0, -1, 0] : [dx / hd, (to[1] - e[1]) / hd + up, dz / hd];
+      const l = Math.hypot(...dir);
+      b.item = g.i;
+      this.useItem(b, { i: g.i, o: e, d: dir.map((x) => x / l) });
+      if (LOG) this.br.log.push(`${b.name} used ${g.i} (${guard ? 'saving itself' : `at ${t.name}, ${d | 0} m`})`);
+    },
     // a drop ahead (no floor within 15 m, 2.5 or 5 m out): don't jump, turn round; in the air, steer back to the last floor
     brBotEdge(b, wx, wz, jump) {
       if (!wx && !wz) return [wx, wz, jump];
@@ -648,6 +668,7 @@ export function installRoyale(Room, H) {
       if (mine < 55 && d > 18) return 1e9; // hurt: not looking for trouble
       const hitMe = b.lastAttacker === t.id && now() - (b.lastAttackT || 0) < 2500;
       if (s.slots && !s.slots.some(Boolean) && d > 5 && !hitMe) return 1e9; // bread only: go find a gun first (unless they're on you)
+      if (s.ai && s.ai.cautious > 0.55 && d > 30 && !hitMe && theirs > 60) return 1e9; // careful ones don't start long-range fights
       if (now() - (t.lastAttackT || 0) < 3000 && t.lastAttacker !== b.id) score *= 0.55; // someone's already shooting them: help finish the job
       return score * (0.6 + theirs / 250);
     },
