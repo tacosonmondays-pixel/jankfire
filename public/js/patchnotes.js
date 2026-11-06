@@ -1,6 +1,40 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '3.5', date: '2026-11-06', title: 'HARDWARE STORE', items: [
+    'NAIL GUN: fires nails, fast. land six in a row and they get nailed to the wall behind them like a poster. the nails stay in the walls.',
+    'TENNIS BALL LAUNCHER: fuzzy balls bounce up to 5 times and hit 30% harder every bounce. bank it round a corner for a BANK SHOT.',
+    'SHOPPING CART CANNON: fires a shopping cart that runs people over. it stays parked as cover, or walk up and hop in (your use key) to ride it.',
+    'all three are in Plant & Defuse and the Zombies mystery crate. each comes with a skin.',
+  ] },
+  { v: '3.4', date: '2026-11-06', title: 'THE RIFLE PACK', items: [
+    'HAT TRICK: a burst rifle. three rounds a pull. land all three on one person for a BURST!',
+    'BELT SANDER: an LMG with a 100-round belt you can watch run out and a barrel that glows the longer you hold it. slow to aim, slow to reload.',
+    'SECOND OPINION: a marksman rifle. two to the body or one to the head. quick-scope it for a little extra.',
+    'YEEHAW: lever-action. crank after every shot, and every hit on the same person stings more. spin-cocks on reload, obviously.',
+    'LAWN MOWER: an automatic shotgun with a box mag. less per shot than the pump, but it never stops.',
+    'all five are in Plant & Defuse (with their own spray patterns), the Zombies mystery crate, and three of them hang on the Dead Mall walls.',
+  ] },
+  { v: '3.3', date: '2026-11-06', title: 'YEEHAW', items: [
+    'NEW SECONDARY: THE LASSO. hold fire to spin the loop, let go to throw it. catch someone and they dangle off your rope.',
+    'reel them in or let the rope out with the mouse wheel (or R / F, rebindable). swing them round, walk backwards, flick: click to let go and they fly. walls and floors hurt.',
+    'caught? mash jump or a move key to wriggle free.',
+    'in Plant & Defuse it costs 1100 for 10 throws. not in Jank Royale or Zombies. bots use it too.',
+  ] },
+  { v: '3.2', date: '2026-11-06', title: 'THE BOARD WILL SEE YOU NOW', items: [
+    'HIDDEN PEOPLE: five ☺ CORP employees are hiding around the maps. walk up and press your use key to talk. they know how things got like this, and some of them have something for you.',
+    'every chapter of lore you find goes on the new LORE page in the menu.',
+    'THE BOARD OF DIRECTORS: five cats are hidden on five maps. pet all of them for the BOARD APPROVED achievement: Cat Ears, a Cat Tail and the Maid Dress.',
+    'hint: not everyone is on the ground. bring a grapple.',
+  ] },
+  { v: '3.1', date: '2026-11-06', title: 'PLANT & DEFUSE, BUT TACTICAL', items: [
+    'PLANT & DEFUSE ONLY: no enemy outlines and no nametags. you find people the old way.',
+    'hold SHIFT (your sprint key) to slow walk: half speed, and nobody hears your footsteps. moving wrecks your aim, so stand still (or crouch) to shoot straight.',
+    'guns kick in their own recoil patterns now. learn them.',
+    'gimmick weapons (slippers and friends) have limited ammo here, and the strong stuff got nerfed. buy with B, drop with H (both rebindable in Settings > Key bindings).',
+    'PLAY WITH BOTS: players who join take a bot\'s place. ONLINE rooms are players only now.',
+    'bots plant, hold the sites properly and defuse. defenders no longer wander into the attackers\' spawn on Bazaar.',
+  ] },
   { v: '3.0', date: '2026-11-06', title: 'ZOMBIES', items: [
     'NEW MODE: ZOMBIES. co-op against endless rounds of the undead on a new map, the DEAD MALL. pick it in BOTS (Game: Zombies) or vote for it online.',
     'start with 500 credits, a Revolver and a knife. hits and kills pay, headshots and knife kills pay more. hold your use key on a roller shutter to open an area, on a wall gun to buy it (or its ammo), or on the mystery crate for a random gun.',
@@ -47,7 +81,7 @@ export const PATCH_NOTES = [
     'BIG LASER POINTER: a new primary. hold to charge, let go to fire a thick beam that goes through people. tap for a weak one.',
     'INSTANT CAMERA: G takes a photo of where you stand. G again prints it as a frame. walk into the frame and you are back where you took it (so can anyone else).',
     'POP QUIZ: throw a calculator. whoever it hits freezes and gets a maths question. wrong or too slow and they die. right and they get a buff and a few seconds of invulnerability.',
-    'NIGHT VISION GOGGLES: G puts them on, the dark goes green and people glow. H flashes everyone you can see. flashbangs hurt you more while you wear them.',
+    'NIGHT VISION GOGGLES: G puts them on, the dark goes green and people glow. middle click (or N) flashes everyone you can see. flashbangs hurt you more while you wear them.',
     'the Spoon is gone from the loadout: it is a knife skin now. Gun Game\'s last rung and Spoons & Grapples still hand you one.',
   ] },
   { v: '2.3', date: '2026-11-06', title: 'THE OVERDRIVE UPDATE', items: [

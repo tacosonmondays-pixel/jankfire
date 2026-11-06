@@ -35,6 +35,7 @@ const r2 = (x) => Math.round(x * 100) / 100;
 export function recordSnap(m) {
   const j = [];
   for (const pr of G.projs.values()) j.push([pr.id, pr.k, r2(pr.p[0]), r2(pr.p[1]), r2(pr.p[2]), pr.tip || 0]);
+  if (G.cartRec) j.push(...G.cartRec()); // shopping carts (primaries.js), the yaw in the tip slot
   rec.frames.push({ s: m.s, p: m.p, j });
   while (rec.frames.length && rec.frames[0].s < m.s - KEEP) rec.frames.shift();
   while (rec.ev.length && rec.ev[0].s < m.s - KEEP) rec.ev.shift();
@@ -245,8 +246,10 @@ function updateProjs(t, dt) {
     const px = x + (b[2] - x) * k, py = y + (b[3] - y) * k, pz = z + (b[4] - z) * k;
     const vx = b[2] - x, vy = b[3] - y, vz = b[4] - z;
     mesh.position.set(px, py, pz);
-    if ((kind === 'chicken' || kind === 'bow' || kind === 'card') && Math.hypot(vx, vy, vz) > 0.01) mesh.lookAt(px - vx, py - vy, pz - vz);
+    if (kind === 'cartp') mesh.rotation.set(0, tip || 0, 0); // carts sit upright, turned the way they were
+    else if ((kind === 'chicken' || kind === 'bow' || kind === 'card') && Math.hypot(vx, vy, vz) > 0.01) mesh.lookAt(px - vx, py - vy, pz - vz);
     else { mesh.userData.spin += dt * 14; mesh.rotation.set(mesh.userData.spin, mesh.userData.spin * 0.7, 0); }
+    if (kind === 'loop' && G.lassoLoopGhost) G.lassoLoopGhost(mesh, vx, vy, vz); // a lasso loop flies flat, not tumbling
     if (kind === 'chicken' && Math.random() < dt * 8) fx.feathers([px, py, pz], 1);
   }
   for (const [id, mesh] of st.projs) if (!seen.has(id)) { G.scene.remove(mesh); st.projs.delete(id); }

@@ -21,6 +21,8 @@ export const ACTIONS = [
   ['parry', 'Katana: parry', 'Combat', ['Mouse2'], 'katana'], // its own context: shares right click with aim, wins while the katana is out
   ['reload', 'Reload / redraw', 'Combat', ['KeyR']],
   ['use', 'Use (hold): plant · defuse · zombies buy + revive · inspect', 'Combat', ['KeyF']],
+  ['lassoIn', 'Lasso: reel them in (hold)', 'Combat', ['KeyR'], 'lasso'], // its own context: shares R / F with reload / use, wins while you hold someone
+  ['lassoOut', 'Lasso: let the rope out (hold)', 'Combat', ['KeyF'], 'lasso'],
   ['slot1', 'Primary', 'Weapons', ['Digit1']],
   ['slot2', 'Secondary', 'Weapons', ['Digit2']],
   ['slot3', 'Melee', 'Weapons', ['Digit3']],
@@ -42,6 +44,10 @@ export const ACTIONS = [
   ['vote2', 'Vote: option 2', 'Interface', ['Digit2'], 'vote'],
   ['vote3', 'Vote: option 3', 'Interface', ['Digit3'], 'vote'],
   ['vote4', 'Vote: option 4', 'Interface', ['Digit4'], 'vote'],
+  // Plant & Defuse (econ.js): its own context, so B can be the buy menu there and the pause menu everywhere else
+  ['buy', 'Plant & Defuse: buy menu', 'Interface', ['KeyB'], 'eco'],
+  ['drop', 'Plant & Defuse: drop what you hold (+ Shift: your item)', 'Weapons', ['KeyH'], 'eco'],
+  ['pause', 'Pause menu (also where B buys)', 'Interface', ['KeyP'], 'eco'],
 ].map(([id, label, group, def, ctx]) => ({ id, label, group, def, ctx: ctx || 'game' }));
 
 const BY = Object.assign(Object.create(null), Object.fromEntries(ACTIONS.map((a) => [a.id, a]))); // no prototype: a save key like 'toString' is just unknown

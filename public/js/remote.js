@@ -13,6 +13,7 @@ import { wreckRemote, ballBoxes, wreckDispose } from './wreck.js';
 import { jankify } from './jank.js';
 import { rigRemote, rigBoxes, rigDispose } from './rig.js'; // overdrive rig killstreak
 import { gearLook, dressGear } from './econ3d.js';
+import { tacLook, tacSteps } from './tactical.js';
 import { newTwirl, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
 import { makeRope, setRope, setRopeSkin } from './grapple.js';
 import { sfx } from './audio.js';
@@ -426,6 +427,7 @@ export class Remote {
       this.yaw = s0.yaw; this.pitch = s0.pitch;
     }
     if (i > 3) b.splice(0, i - 3);
+    if (G.lassoPos) G.lassoPos(this, now); // the one you hold on your lasso is where your own simulation has them
 
     const [x, y, z] = this.pos;
     ch.root.position.set(x, y, z);
@@ -511,6 +513,7 @@ export class Remote {
     if (this.shells && Math.abs((this.glow || 0) - glow) > 0.01) { this.glow = glow; for (const sh of this.shells) sh.scale.setScalar(glow); }
     this.tag.scale.set(1.8 * Math.max(1, dist / 22), 0.45 * Math.max(1, dist / 22), 1);
     this.tag.position.y = 2.3 + Math.max(0, dist / 22 - 1) * 0.25;
+    tacLook(this); tacSteps(this, dt); // Plant & Defuse: no outline / tag on enemies, footsteps unless they slow walk
     const targetTilt = slipping ? -1.3 + Math.sin(now * 0.02) * 0.3 : sliding ? -0.6 : 0;
     ch.body.rotation.x += (targetTilt - ch.body.rotation.x) * Math.min(1, dt * 12);
     ch.body.rotation.z = slipping ? Math.sin(now * 0.013) * 0.6 : ch.jank.lean * 0.3;
@@ -521,6 +524,7 @@ export class Remote {
       setRope(this.rope, this.muzzle(), this.g);
     } else this.rope.visible = false;
     wreckRemote(this, dt, now); // wrecking ball killstreak: a steel ball (and a chain) instead of the mannequin
+    if (G.lassoRemote) G.lassoRemote(this, dt, now); // lasso: spinning it, hanging off one (flailing), flung (tumbling)
 
     const sh = raycast([x, y + 0.1, z], [0, -1, 0], 80, BOXES);
     if (sh) { this.shadow.visible = true; this.shadow.position.set(x, sh.point[1] + 0.03, z); } else this.shadow.visible = false;
@@ -552,6 +556,7 @@ export class Remote {
     G.scene.remove(this.rope);
     G.scene.remove(this.shadow);
     wreckDispose(this);
+    if (G.lassoDispose) G.lassoDispose(this);
     this.free();
     rigDispose(this);
     // the rope is a grapple-skin group: its beams + hook share the skin's geometries and materials, nothing to free

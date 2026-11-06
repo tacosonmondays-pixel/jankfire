@@ -84,6 +84,20 @@ class FileStore {
     this.save();
     return true;
   }
+  // a hidden NPC / cat found (shared/secrets.js): the id goes in inv.lore, plus its gift (a cosmetic or a container).
+  // false if this account already had it (nothing is given twice)
+  async addLore(nameLower, id, gift) {
+    const u = this.db.users[nameLower];
+    if (!u) return false;
+    u.inv ||= {};
+    const lore = Array.isArray(u.inv.lore) ? u.inv.lore : (u.inv.lore = []);
+    if (lore.includes(id)) return false;
+    lore.push(id);
+    if (gift && gift.type) (u.inv[gift.type] ||= []).push(gift.id);
+    if (gift && gift.roll && FIELD(gift.roll)) u[FIELD(gift.roll)] = (u[FIELD(gift.roll)] || 0) + 1;
+    this.save();
+    return true;
+  }
   async top(col, n = 15) {
     return Object.values(this.db.users).filter((u) => (u[col] || 0) > 0)
       .sort((a, b) => (b[col] || 0) - (a[col] || 0)).slice(0, n)
@@ -140,6 +154,19 @@ class SupabaseStore {
     // only succeeds if nobody opened that container in the meantime
     const rows = await this.req('PATCH', `?name_lower=eq.${encodeURIComponent(nameLower)}&${f}=eq.${u[f]}`, { [f]: u[f] - 1, inv }, { Prefer: 'return=representation' });
     return !!(rows && rows.length);
+  }
+  async addLore(nameLower, id, gift) {
+    const u = await this.get(nameLower);
+    if (!u) return false;
+    const inv = u.inv || {};
+    const lore = Array.isArray(inv.lore) ? inv.lore : (inv.lore = []);
+    if (lore.includes(id)) return false;
+    lore.push(id);
+    if (gift && gift.type) (inv[gift.type] ||= []).push(gift.id);
+    const patch = { inv }, f = gift && gift.roll && FIELD(gift.roll);
+    if (f) patch[f] = (u[f] || 0) + 1;
+    await this.req('PATCH', `?name_lower=eq.${encodeURIComponent(nameLower)}`, patch, { Prefer: 'return=minimal' });
+    return true;
   }
   async top(col, n = 15) {
     const rows = await this.req('GET', `?select=name,xp,${col}&${col}=gt.0&order=${col}.desc&limit=${n}`);

@@ -31,12 +31,14 @@ export function zmGait(r, roll, jitter = 0.5) {
 }
 
 // every round you get with a gun (the mag plus the spares). melee, the cigarette and the leaf blower don't use ammo
-export const ZM_AMMO = { revolver: 54, smg: 315, ar: 300, redline: 280, shotgun: 54, sniper: 40, minigun: 750, marbles: 22, chicken: 24, bowling: 20, banana: 60, snowball: 50, bow: 40, cards: 50, pistol: 84, akimbo: 280, sawnoff: 30 };
+export const ZM_AMMO = { revolver: 54, smg: 315, ar: 300, redline: 280, shotgun: 54, sniper: 40, minigun: 750, marbles: 22, chicken: 24, bowling: 20, banana: 60, snowball: 50, bow: 40, cards: 50, burst: 300, lmg: 500, dmr: 60, lever: 64, autoshot: 80, pistol: 84, akimbo: 280, sawnoff: 30 };
 export const zmAmmo = (id) => ZM_AMMO[id] ?? null;
 export const zmAmmoPrice = (price) => Math.ceil(price / 20) * 10; // a refill is half the gun's price
 
 // the mystery crate (weights): mostly good stuff, a couple of jokes
-export const ZM_CRATE = { minigun: 6, chicken: 6, marbles: 6, redline: 6, bowling: 5, snowball: 5, cig: 4, cards: 4, sniper: 3, ar: 3, smg: 3, shotgun: 3, bow: 3, banana: 3, spoon: 3, slapper: 2, blower: 2, akimbo: 5, sawnoff: 5, pistol: 1 }; // (Plan B from the crate is a joke)
+export const ZM_CRATE = { minigun: 6, chicken: 6, marbles: 6, redline: 6, bowling: 5, snowball: 5, cig: 4, cards: 4, sniper: 3, ar: 3, smg: 3, shotgun: 3, bow: 3, banana: 3, spoon: 3, slapper: 2, blower: 2, burst: 4, lmg: 5, dmr: 3, lever: 4, autoshot: 5 }; // (Plan B from the crate is a joke)
+Object.assign(ZM_CRATE, { nailgun: 5, tennis: 4, cart: 4 }); // the new primaries: pin zombies to walls, bank balls round corners, bowl carts through the horde
+Object.assign(ZM_CRATE, { akimbo: 5, sawnoff: 5, pistol: 1 }); // the plain sidearms
 export function zmPick(owned = [], rnd = Math.random) {
   const pool = Object.entries(ZM_CRATE).filter(([id]) => !owned.includes(id));
   let t = rnd() * pool.reduce((a, [, w]) => a + w, 0);
