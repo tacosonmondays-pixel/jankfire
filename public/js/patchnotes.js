@@ -1,6 +1,12 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '4.8', date: '2026-11-06', title: 'BLENDER ROUND 3', items: [
+    'the zombie claw, the lasso (+ the Garden Hose skin), the Bubble Wand, the wrecking ball, the laser pointer, the instant camera, the Pop Quiz calculator and the night vision goggles all got real glossy models.',
+    'THE OVERDRIVE RIG got rebuilt: hydraulics, chrome stacks, BONK and HUGS on the knuckles, a bobblehead on the dash. the missiles say RETURN TO SENDER.',
+    'you can watch your instant camera photo develop now (the right way up). other people\'s night vision goggles flip up over their forehead instead of through their chin.',
+    'fixed: the Scary Forest, Dead Mall, Jankburg and Suburb (Plant & Defuse) had no picture on their vote cards.',
+  ] },
   { v: '4.7', date: '2026-11-06', title: 'UNTIL IT BREAKS', items: [
     'the WRECKING BALL and the OVERDRIVE RIG have no timer any more: they last until they break. the ball has 900 HP, the rig 1200 armour, and both drain slowly so they end on their own after about a minute.',
     'shots hit the ball or the rig, not you. no headshot bonus, and no single hit takes more than 120. lava, the zone and the void still get you.',

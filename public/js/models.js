@@ -9,7 +9,7 @@ import { SPOON_LOOK, spoonLookOn } from '/shared/modes.js';
 import { G } from './ctx.js';
 import { BLADES } from './blades/index.js';
 import { lathe } from './blades/kit.js';
-import { LASSO_MODELS, buildLoopProjectile } from './lasso_model.js';
+import { LASSO_MODELS, buildLoopProjectile, lassoLoop, ropeLook } from './lasso_model.js';
 import { buildRigMissile } from './rigmodel.js'; // overdrive rig killstreak
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { laserBuild, calculator } from './gearmodels.js'; // the new gear's models (laser pointer, pop quiz calculator)
@@ -1414,6 +1414,7 @@ export function buildWeapon(id, skin) {
     secAuthored(id, g, mt); // the radar gun's speed readout, the water pistol's tank level, the taser's ARMED light
     laserAuthored(id, g, mt); // the laser's charge meter, lens glow, button, charm + the charge orb
     bindRifle(g, mt); // rifle pack: mag, charging handle, lever, feed cover, belt links, barrel heat
+    if (LASSO_MODELS[variant ? model : id]) lassoLoop(g, ropeLook(skin)); // the lasso's hanging loop is simulated rope: still ours
     if (Array.isArray(mt.glint) && mt.glint.length && mt.glint.every((a) => Array.isArray(a) && a.length === 4 && a.every(Number.isFinite))) addGlint(g, mt.glint);
     applySkin(g, skin);
     return g;
