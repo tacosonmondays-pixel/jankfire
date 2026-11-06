@@ -3908,6 +3908,10 @@ installTactical(Room, { send });
 installRifles(Room, { now, send });
 installPrimaries(Room, { now, send, r2, norm, vec3, REC_T });
 installSec(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm, vec3, REC_T, REC_FX }); // after installGear: it wraps gearJoin / tickGear / gearSnap
+{ // snapshot flags are one bit each, added by many modules: two on the same bit read as each other (it happened 3 times)
+  const seen = new Map();
+  for (const [k, v] of Object.entries(FLAGS)) { if (!v || (v & (v - 1))) console.warn(`FLAGS.${k} = ${v} is not a single bit`); else if (seen.has(v)) console.warn(`FLAGS.${k} and FLAGS.${seen.get(v)} share bit ${Math.log2(v)}`); seen.set(v, k); }
+}
 installEcon(Room, {
   send, cleanSkins, enforceSkins, logErr, BOT_GUNS, navGraph,
   refreshInv: async (p) => { if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; } },
