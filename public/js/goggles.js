@@ -77,11 +77,11 @@ function overlay() {
 
 // ------------------------------------------------------------ getting flashed (reusable: any flash can call this)
 // s = seconds blind. fully white for the first ~40%, then it fades; the blurry afterimage hangs on a bit longer
-const FL = { until: 0, s: 0, t0: 0 };
+const FL = { until: 0, s: 0, t0: 0, ears: 0 }; // ears: when your hearing comes back (outlives a death or a respawn)
 export function flashMe(s, green = false) {
   overlay();
   const now = performance.now();
-  FL.t0 = now; FL.s = Math.max(s, (FL.until - now) / 1000); FL.until = now + FL.s * 1000;
+  FL.t0 = now; FL.s = Math.max(s, (FL.until - now) / 1000); FL.until = now + FL.s * 1000; FL.ears = Math.max(FL.ears, FL.until + 400);
   flashEl.classList.toggle('green', green);
   sfx.tinnitus(FL.s);
   setMuffle(true);
@@ -95,7 +95,9 @@ export function onFlashed(m) {
 }
 function stepFlash(now) {
   if (!flashEl) return;
-  if (now >= FL.until + 400) { if (flashEl.style.opacity !== '0') { flashEl.style.opacity = 0; afterEl.style.opacity = 0; setMuffle(false); } return; }
+  // hearing: stays muffled for the whole flash even if you die or respawn, then eases back over a second or so
+  if (FL.ears && now >= FL.ears) { FL.ears = 0; setMuffle(false, false, 0.35); }
+  if (now >= FL.until + 400) { if (flashEl.style.opacity !== '0') { flashEl.style.opacity = 0; afterEl.style.opacity = 0; } return; }
   const k = (now - FL.t0) / (FL.s * 1000);
   flashEl.style.opacity = k < 0.4 ? 1 : Math.max(0, 1 - (k - 0.4) / 0.6) ** 1.5;
   afterEl.style.opacity = k < 1.3 ? Math.min(1, 1.3 - k) : 0;
@@ -223,7 +225,7 @@ export function updateGoggles(dt, now) {
   if (NV.pop > 0 && NV.amb) { NV.amb.intensity = Math.max(NV.amb.intensity, NV.pop * 3); NV.pop = Math.max(0, NV.pop - dt * 5); }
   if (!RP.active) for (const r of G.remotes.values()) { remoteGoggles(r, now); if (r.nvg) { const c = r.nvg.userData.ir.color; c.lerp(new THREE.Color(0x3a0808), Math.min(1, dt * 6)); } }
 }
-export function gogglesReset() { NV.on = false; NV.k = 0; FL.until = 0; if (flashEl) { flashEl.style.opacity = 0; afterEl.style.opacity = 0; } }
+export function gogglesReset(leaving) { NV.on = false; NV.k = 0; FL.until = 0; if (leaving && FL.ears) { FL.ears = 0; setMuffle(false, true); } if (flashEl) { flashEl.style.opacity = 0; afterEl.style.opacity = 0; } } // the white goes, your ears don't (FL.ears)
 
 // ------------------------------------------------------------ replays: goggle flashes
 RP_HOOKS.push({

@@ -25,12 +25,12 @@ export function audioOut() { return ac ? { ac, master } : null; }
 export function setListener(p, yaw) { L.pos = p; L.yaw = yaw; }
 // sealed in a soap bubble: everything you hear goes through a low pass, like your head is underwater
 let muffle = null;
-export function setMuffle(on, instant) {
+export function setMuffle(on, instant, tc = 0.06) { // tc: how fast it eases there (a time constant, s)
   if (!ac) return;
   if (!muffle) { muffle = ac.createBiquadFilter(); muffle.type = 'lowpass'; muffle.frequency.value = 22000; master.disconnect(); master.connect(muffle); muffle.connect(ac.destination); }
   const f = muffle.frequency, t = ac.currentTime, to = on ? 480 : 22000;
   f.cancelScheduledValues(t);
-  if (instant) f.setValueAtTime(to, t); else f.setTargetAtTime(to, t, 0.06);
+  if (instant) f.setValueAtTime(to, t); else f.setTargetAtTime(to, t, tc);
 }
 
 function dest(pos) {
