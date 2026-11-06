@@ -43,6 +43,7 @@ import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared
 import { OOB, outOfBounds, boundsCenter } from './shared/bounds.js';
 import { installGear } from './server/gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
 import { installSec } from './server/secondaries.js'; // water pistol, taser, tv remote, speed trap
+import { SPEED } from './shared/weapons.js';
 import { installEcon } from './server/econ.js';
 import { MSLIP, onPatch, patchPreroll } from './shared/marbles.js';
 
@@ -229,6 +230,8 @@ if (process.env.JF_INF_HP) INFECT.hp = Number(process.env.JF_INF_HP) || INFECT.h
 if (process.env.JF_LIVES) GAMES.oitc.lives = Number(process.env.JF_LIVES) || GAMES.oitc.lives;
 if (process.env.JF_ROUND_TIME) for (const r of Object.values(ROUND)) r.time = Number(process.env.JF_ROUND_TIME) || r.time;
 if (process.env.JF_DUCKS) DUCKRAIN.n = DUCKRAIN.n.map((x) => x * (Number(process.env.JF_DUCKS) || 1));
+// the new secondaries: every soak / stun / pause / cage / SLOW DOWN lasts JF_SEC_SLOW x longer (screenshot runs on slow headless browsers)
+if (process.env.JF_SEC_SLOW) { const k = Number(process.env.JF_SEC_SLOW) || 1, T = WEAPONS.taser; SPEED.jailT *= k; SPEED.warn *= k; WEAPONS.remote.pause.dur *= k; WEAPONS.water.soak.dur *= k; T.stun *= k; T.chainStun *= k; }
 // /skip vote: how long it stays open and the cooldown after one fails, in ms (test knobs)
 if (process.env.JF_SKIP_WINDOW) SKIP.window = Number(process.env.JF_SKIP_WINDOW) || SKIP.window;
 if (process.env.JF_SKIP_COOL) SKIP.cooldown = Number(process.env.JF_SKIP_COOL) || SKIP.cooldown;

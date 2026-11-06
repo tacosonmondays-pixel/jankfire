@@ -27,7 +27,7 @@ export function ledScreen(w, h, label) {
     const x = cv.getContext('2d');
     x.fillStyle = '#1a0606'; x.fillRect(0, 0, 96, 40);
     x.font = 'bold 30px monospace'; x.textAlign = 'right'; x.textBaseline = 'middle';
-    x.fillStyle = 'rgba(255,40,40,0.13)'; x.fillText('888', 90, 22); // the unlit segments
+    x.fillStyle = 'rgba(255,40,40,0.07)'; x.fillText('888', 90, 22); // the unlit segments
     x.fillStyle = col; x.fillText(String(txt).slice(-3), 90, 22);
     if (label) { x.font = 'bold 9px monospace'; x.textAlign = 'left'; x.fillStyle = '#ff9a9a'; x.fillText(label, 3, 8); }
     tex.needsUpdate = true;

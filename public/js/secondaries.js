@@ -172,10 +172,10 @@ function bolt(a, b, col = 0xe8ff3a, life = 0.35, th = 0.05) {
   return o;
 }
 function jag(o) {
-  const n = o.segs.length, a = o.a, b = o.b, len = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]), k = Math.min(0.5, len * 0.09);
+  const n = o.segs.length, a = o.a, b = o.b, len = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]), k0 = Math.min(0.3, len * 0.05);
   let prev = a;
   for (let i = 0; i < n; i++) {
-    const f = (i + 1) / n, end = i === n - 1;
+    const f = (i + 1) / n, end = i === n - 1, k = k0 * Math.sin(f * Math.PI) * (0.4 + f * 0.6); // tight at your end, wild near them
     const p = end ? b : [a[0] + (b[0] - a[0]) * f + R(k), a[1] + (b[1] - a[1]) * f + R(k), a[2] + (b[2] - a[2]) * f + R(k)];
     setBeam(o.segs[i], prev, p, o.th * (0.6 + Math.random() * 0.8));
     prev = p;
@@ -193,11 +193,13 @@ function waterArc(a, b) {
   let prev = a;
   for (let i = 1; i <= n; i++) {
     const f = i / n, p = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f - Math.sin(f * Math.PI) * sag * (f < 1 ? 1 : 0), a[2] + (b[2] - a[2]) * f];
-    const m = makeBeam(i % 2 ? 0x3fb8ff : 0xbfeaff, 0.8); m.material.depthWrite = false;
-    setBeam(m, prev, p, 0.035 + f * 0.03); G.scene.add(m); segs.push(m); prev = p;
+    const m = makeBeam(i % 2 ? 0x2fa8ff : 0x9fe0ff, 0.92); m.material.depthWrite = false;
+    setBeam(m, prev, p, 0.05 + f * 0.05); G.scene.add(m); segs.push(m);
+    if (i > 1 && Math.random() < 0.5) fx.spray(p, 1, [0x5cc8ff, 0xbfeaff], 0.6, 0.35, 0.06, 14, 0.5); // drops falling off the stream
+    prev = p;
   }
-  streams.push({ segs, life: 0.12, ml: 0.12 });
-  fx.spray(b, 5, [0x3fb8ff, 0xbfeaff, 0xffffff], 3, 0.45, 0.07, 12, 1);
+  streams.push({ segs, life: 0.13, ml: 0.13 });
+  fx.spray(b, 7, [0x3fb8ff, 0xbfeaff, 0xffffff], 3.5, 0.5, 0.09, 12, 1);
 }
 // hitscan water: draw the stream instead of a tracer (true = handled). own: your shot, from your viewmodel's nozzle
 export function secShot(segs, mz) {
@@ -229,7 +231,7 @@ function stepFx(dt, now) {
     const s = streams[i];
     s.life -= dt;
     if (s.life <= 0) { for (const m of s.segs) { G.scene.remove(m); m.material.dispose(); } streams.splice(i, 1); continue; }
-    for (const m of s.segs) m.material.opacity = 0.8 * (s.life / s.ml);
+    for (const m of s.segs) m.material.opacity = 0.92 * Math.min(1, (s.life / s.ml) * 1.6);
   }
   for (let i = trails.length - 1; i >= 0; i--) {
     const t = trails[i];
@@ -274,7 +276,9 @@ function drips() {
 }
 function arcs() {
   const g = new THREE.Group();
-  for (let i = 0; i < 8; i++) { const m = makeBeam(i % 2 ? 0xffffff : 0xe8ff3a, 0.95); m.material.blending = THREE.AdditiveBlending; m.material.depthWrite = false; g.add(m); }
+  for (let i = 0; i < 14; i++) { const m = makeBeam(i % 3 ? 0xe8ff3a : 0xffffff, 0.95); m.material.blending = THREE.AdditiveBlending; m.material.depthWrite = false; g.add(m); }
+  const glow = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2.0, 0.9), new THREE.MeshBasicMaterial({ color: 0xe8ff3a, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false }));
+  glow.userData.glow = true; g.add(glow);
   return g;
 }
 function puddle() {
@@ -306,7 +310,11 @@ function overlay(r, dt, now, live) {
     if (stunned) {
       if (!e.arcN || now > e.arcN) {
         e.arcN = now + 45;
-        e.arcs.children.forEach((m) => { const y = 0.2 + Math.random() * 1.7, a = Math.random() * 6.28, b = a + R(1.4); setBeam(m, [p[0] + Math.cos(a) * 0.35, p[1] + y, p[2] + Math.sin(a) * 0.35], [p[0] + Math.cos(b) * 0.4, p[1] + y + R(0.45), p[2] + Math.sin(b) * 0.4], 0.035); });
+        e.arcs.children.forEach((m) => {
+          if (m.userData.glow) { m.position.set(p[0], p[1] + 1.05, p[2]); m.material.opacity = 0.1 + Math.random() * 0.2; return; }
+          const y = 0.1 + Math.random() * 2.0, a = Math.random() * 6.28, b = a + R(1.8), r0 = 0.3 + Math.random() * 0.35;
+          setBeam(m, [p[0] + Math.cos(a) * r0, p[1] + y, p[2] + Math.sin(a) * r0], [p[0] + Math.cos(b) * (r0 + 0.2), p[1] + y + R(0.7), p[2] + Math.sin(b) * (r0 + 0.2)], 0.05 + Math.random() * 0.04);
+        });
         if (Math.random() < 0.25) sfx.arc(p);
       }
       if (live && r.ch) { r.ch.root.rotation.z = R(0.08); r.ch.root.position.x += R(0.03); }
@@ -316,7 +324,7 @@ function overlay(r, dt, now, live) {
   const paused = vis && !!(f & FLAGS.PAUSE);
   if (paused && !e.pauseL) { e.pauseL = label(240, 80); G.scene.add(e.pauseL); }
   if (e.pauseL) {
-    e.pauseL.visible = paused && Math.floor(now / 400) % 4 !== 3;
+    e.pauseL.visible = paused && Math.floor(now / 250) % 8 !== 7; // a VCR blink
     if (paused) { e.pauseL.userData.set('❚❚ PAUSED', '#ffffff', '#2e7bff', '#ff4fd8'); e.pauseL.position.set(p[0], top + 0.15, p[2]); }
   }
   if (paused && !(e.f & FLAGS.PAUSE)) sfx.pause(p);
@@ -514,7 +522,7 @@ function fxOf(m, live, get) {
   if (m.k === 'rewind') {
     if (!ok3(m.a) || !ok3(m.b)) return true;
     const tr = Array.isArray(m.tr) ? m.tr.filter(ok3) : [];
-    rewindTrail([m.a, ...tr, m.b]);
+    if (!(live && m.id === G.myId)) rewindTrail([m.a, ...tr, m.b]); // (yours is the VHS screen, not boxes in your face)
     sfx.rewind(chest(m.b)); sfx.rewind(chest(m.a));
     fx.ring(m.b, 2, 0xff4fd8, 0.35);
     if (live && m.id === G.myId) {
@@ -585,7 +593,7 @@ export function initSec() {
     if (!Number.isFinite(m.dur)) return;
     S.stun = Math.max(S.stun, nowMs() + m.dur * 1000); releaseHook(); W.held = false; W.aimHeld = false;
     G.shake = Math.max(G.shake || 0, 0.6); sfx.buzz(null, Math.min(1.5, m.dur), 0.8);
-    hud.msg(m.by ? 'TASED' : 'YOU TASED YOURSELF', 1, 'slip');
+    S.stunSelf = !m.by;
   });
   net.on('jail', (m) => { recordEv(m); onJail(m, true, liveOf); });
   net.on('jailx', (m) => { recordEv(m); onJailx(m, true, liveOf); });
@@ -685,7 +693,8 @@ function drawHud(now) {
   else if (S.ticket && now < S.ticket.until + 400) {
     const sp = Math.round(Math.hypot(...ME.vel) * 3.6), left = Math.max(0, Math.ceil((S.ticket.until - now) / 1000));
     banner(`SLOW DOWN! ${left}`, `${sp} km/h · get under ${S.ticket.lim}`, Math.floor(now / 200) % 2 ? 'cop' : 'jail');
-  } else if (now < S.stun) banner('ZZZZT!', 'tased', '');
+  } else if (now < S.stun) banner('ZZZZT!', S.stunSelf ? 'you tased yourself. it was wet.' : 'tased', '');
   else banner('');
 }
 const cdTxt = (t, now) => (t > now ? `${((t - now) / 1000).toFixed(1)}s` : 'ready');
+export const SEC_DEBUG = { ents, cages, S, bolts, streams }; // (tests look in here)

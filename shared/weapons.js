@@ -400,7 +400,7 @@ Object.assign(FLAGS, { SOAK: 1 << 18, STUN: 1 << 19, PAUSE: 1 << 20, JAIL: 1 << 
 WEAPONS.water = {
   slot: 'secondary', kind: 'hitscan', name: 'Water Pistol', color: '#3fb8ff',
   desc: 'A big plastic squirt gun. Whoever it hits gets soaked: they drip, slip a bit and slow down for a few seconds. Puts out fire. Makes tasers a lot worse.',
-  auto: true, rate: 9, mag: 40, reload: 1.6, dmg: 3, head: 1.3, spread: 0.03, kb: 0.6, kbUp: 0, recoil: 0, kick: 0.002, range: 26,
+  auto: true, rate: 9, mag: 40, reload: 1.6, dmg: 1, head: 1.5, spread: 0.03, kb: 0.6, kbUp: 0, recoil: 0, kick: 0.002, range: 26,
   water: true, soak: { dur: 4, slow: 0.72, grip: 0.3 },
   ads: { zoom: 1.2, spread: 0.5, p: [0, -0.1, -0.3] },
 };
@@ -410,7 +410,7 @@ WEAPONS.water = {
 WEAPONS.taser = {
   slot: 'secondary', kind: 'zap', name: 'Taser', color: '#e8ff3a',
   desc: 'Two darts on wires. Whoever they hit is stunned for a second. Wet people conduct: it jumps through everyone soaked nearby. Don\'t fire it wet.',
-  cd: 1.25, range: 9, cone: 0.16, stun: 1.0, dmg: 18, wet: 1.5, chainR: 9, chainMax: 8, chainStun: 1.0, chainDmg: 12, self: 0.4, speedMul: 1.05,
+  cd: 1.25, range: 9, cone: 0.1, stun: 1.0, dmg: 18, wet: 1.5, chainR: 9, chainMax: 8, chainStun: 1.0, chainDmg: 12, self: 0.4, speedMul: 1.05,
 };
 // tv remote: left click PAUSE (frozen dur s, momentum comes back when it ends), right click REWIND (snapped back to where the
 // server saw them back s ago). each has its own cooldown. range m, cone = aim slack (rad). rig: what an overdrive rig takes

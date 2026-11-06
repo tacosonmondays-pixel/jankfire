@@ -79,7 +79,7 @@ const sec = {
       if (t === p || !t.alive || (skip && skip(t)) || this.friendly(p, t)) continue;
       if (t.isBot && t.ai && t.ai.dummy && this.mode !== 'training') continue;
       const c = chestOf(t), v = [c[0] - e[0], c[1] - e[1], c[2] - e[2]], dist = Math.hypot(...v);
-      const slack = 1.2 + Math.hypot(...t.vel) * 0.12 + Math.hypot(...p.vel) * 0.06;
+      const slack = 1.2 + Math.min(30, Math.hypot(...t.vel)) * 0.12 + Math.min(30, Math.hypot(...p.vel)) * 0.06; // (claimed speeds: capped, or a client could claim its way to a huge cone)
       if (dist > range + slack || dist < 0.05) continue;
       const ang = Math.acos(Math.max(-1, Math.min(1, (v[0] * d[0] + v[1] * d[1] + v[2] * d[2]) / dist)));
       const allow = cone + Math.atan2(1.0 + slack * 0.25, dist) + 0.04;
@@ -90,27 +90,34 @@ const sec = {
     }
     return best;
   },
-  // the aim the client sent, if it's close to where the server last saw them look (else the server's)
+  // the aim the client sent, if it's anywhere in front of where the server last saw them look (a flick + click can beat
+  // the snapshot by a frame or two), else the server's
   secAim(p, m) {
     const L = H.lookOf(p), d = H.norm(H.vec3(m.d));
-    return d && d[0] * L[0] + d[1] * L[1] + d[2] * L[2] > 0.55 ? d : L;
+    return d && d[0] * L[0] + d[1] * L[1] + d[2] * L[2] > 0 ? d : L;
   },
-  // how fast t really goes, km/h: the path through the positions the server saw over the last SPEED.window s (10 Hz steps,
-  // so snapshot jitter doesn't add up; a jump of 8 m+ in one step is a teleport, not speed)
+  // how fast t really goes, km/h: the path through the positions the server got over the last SPEED.window s, over the
+  // time they took to arrive (a laggy client's few big steps measure the same as a smooth one's many small ones)
   speedKmh(t, n = H.now()) {
-    const tr = t.trail;
+    const tr = t.strail;
     if (!t.alive || !tr || tr.length < 2) return 0;
     let d = 0, t0 = 0, t1 = 0, last = null;
     for (const s of tr) {
-      if (s[0] < n - SPEED.window * 1000 - 60) continue;
-      if (!last) { last = s; t0 = s[0]; continue; }
-      if (s[0] - last[0] < 95 && s !== tr[tr.length - 1]) continue;
+      if (s[0] < n - SPEED.window * 1000) { last = s; continue; } // (the one just before the window anchors it)
+      if (!last) { last = s; continue; }
       const step = Math.hypot(s[1] - last[1], s[2] - last[2], s[3] - last[3]);
-      if (step < 8) d += step;
-      last = s; t1 = s[0];
+      if (step > 6 && step / Math.max(0.02, (s[0] - last[0]) / 1000) > 120) { last = s; continue; } // a teleport (rewind, photo, respawn), not driving
+      t0 ||= last[0]; t1 = s[0]; d += step; last = s;
     }
     const dt = (t1 - t0) / 1000;
     return dt < 0.2 ? 0 : (d / dt) * 3.6;
+  },
+  // what the speed trap reads from: every position the server got (a player's snapshots as they arrive, a bot's every tick)
+  speedTrail(p, n) {
+    const tr = (p.strail ||= []), l = tr[tr.length - 1];
+    if (l && l[1] === p.pos[0] && l[2] === p.pos[1] && l[3] === p.pos[2] && n - l[0] < 300) return; // the same snapshot again
+    tr.push([n, p.pos[0], p.pos[1], p.pos[2]]);
+    while (tr.length > 2 && tr[0][0] < n - 1200) tr.shift();
   },
 
   // ---------------------------------------------------------------- water pistol
@@ -266,6 +273,7 @@ const sec = {
   radarRead(p, t) {
     const n = H.now(), v = this.speedKmh(t, n);
     this.broadcast({ t: 'fx', k: 'radar', id: p.id, to: t.id, v: ri(v) });
+    if (t.ticket && v >= SPEED.jail && !t.jail && this.secOk(p, t)) { this.broadcast({ t: 'ticketx', id: t.id, ok: 0 }); this.jailP(t, p, v); return; } // floored it during the countdown
     if (v <= SPEED.limit || t.ticket || t.jail || n < (t.radarSafe || 0) || !this.secOk(p, t) || n < (p.ticketT || 0)) return;
     if (!this.radarSpend(p)) return;
     p.ticketT = n + 900;
@@ -297,7 +305,10 @@ const sec = {
   jailP(t, by, v) {
     const n = H.now(), dur = this.rigOn(t) ? SPEED.rigJail : SPEED.jailT;
     t.ticket = null;
-    t.jail = { until: n + dur * 1000, at: t.pos.slice(), by: by ? by.id : 0 };
+    // caught mid-air: the cage drops them onto the floor under them (over the void it just hangs there)
+    const fl = H.raycast([t.pos[0], t.pos[1] + 0.3, t.pos[2]], [0, -1, 0], 40, this.boxes), at = fl && fl.normal[1] > 0.5 ? [t.pos[0], fl.point[1] + 0.02, t.pos[2]] : t.pos.slice();
+    t.pos = at.slice();
+    t.jail = { until: n + dur * 1000, at, by: by ? by.id : 0 };
     t.radarSafe = n + SPEED.safe * 1000;
     t.vel = [0, 0, 0]; t.g = null; t.beam = null; t.laserT = 0; t.pause = null;
     if (by) this.tag(t, by, 'radar');
@@ -322,6 +333,7 @@ const sec = {
       const at = p.jail ? p.jail.at : p.pause ? p.pause.at : null;
       if (at && p.isBot) { p.pos = at.slice(); p.vel = [0, 0, 0]; p.g = null; }
       p.f = (p.f & ~SEC_BITS) | this.secBits(p, n);
+      if (p.isBot) this.speedTrail(p, n);
       if (p.isBot && p.ai && !p.ai.dummy) this.botRadar(p, n);
     }
   },
@@ -332,7 +344,7 @@ const sec = {
   // SLOW DOWN: back under the limit (measured over the last half second) = a warning. out of time = jailed
   tickTicket(p, n) {
     const tk = p.ticket;
-    if (n - tk.at < 300) return; // give the reading a moment to catch up with them braking
+    if (n - tk.at < 500) return; // give the reading a moment to catch up with them braking
     if (this.speedKmh(p, n) <= SPEED.limit) {
       p.ticket = null; p.radarSafe = n + SPEED.warnSafe * 1000;
       this.broadcast({ t: 'ticketx', id: p.id, ok: 1 });
@@ -358,9 +370,10 @@ const sec = {
       else if (age > 350 && H.dist3(p.pos, r.to) > 4 + age * 0.03 && r.n < 3) { r.n++; r.t = n; p.pos = r.to.slice(); H.send(p, { t: 'rwdfix', p: r.to }); }
     }
     if (n < (p.stunUntil || 0)) p.g = null;
+    this.speedTrail(p, n); // (after the cage / pause / rewind had their say)
   },
   secReset(p) {
-    p.soakUntil = 0; p.stunUntil = 0; p.pause = null; p.ticket = null; p.radarOn = 0; p.rwd = null; p.hist = null; p.rmCd = null;
+    p.soakUntil = 0; p.stunUntil = 0; p.pause = null; p.ticket = null; p.radarOn = 0; p.rwd = null; p.hist = null; p.rmCd = null; p.strail = null;
     if (p.jail) this.unjail(p, 'life');
   },
   secDeath(t) { t.pause = null; t.ticket = null; t.stunUntil = 0; t.soakUntil = 0; t.radarOn = 0; if (t.jail) this.unjail(t, 'dead'); },
