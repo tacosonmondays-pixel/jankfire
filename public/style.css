@@ -773,3 +773,8 @@ body.chaos-spec #hotbar, body.chaos-spec #hpbox, body.chaos-spec #crosshair, bod
 #nowPlaying.match.on { transform: rotate(1.5deg); }
 #nowPlaying.match b { font-size: 16px; }
 body.replaying #nowPlaying.match { display: none; }
+
+/* the rifle pack's callouts */
+#center.burst { color: #4f8bff; font-size: 66px; letter-spacing: 3px; text-shadow: 4px 4px 0 #000, -2px -2px 0 #ffe14d; animation: parrypop 0.25s ease-out; }
+#center.lever { color: #ff6b8b; font-size: 46px; text-shadow: 3px 3px 0 #000; animation: parrypop 0.2s ease-out; }
+#center.qscope { color: #b07dff; font-size: 52px; letter-spacing: 2px; text-shadow: 3px 3px 0 #000, 0 0 12px #fff; animation: parrypop 0.25s ease-out; }

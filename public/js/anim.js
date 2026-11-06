@@ -447,11 +447,14 @@ Object.assign(ANIMS, {
   rig_jolt: { arm: 'both', keys: [K(0), K(0.04, [0, 0.025, 0.07], [-0.22, 0, 0], 'snap'), K(0.24)] }, // a blocked hit knocks the guard back
 });
 
+const RIFLE_IDS = ['burst', 'lmg', 'dmr', 'lever', 'autoshot']; // their inspects + draws live in rifles.js
+for (const id of RIFLE_IDS) SPECIAL.add(id);
 SPECIAL.add('bloodcross'); // the Blood Cross blows the blood off its fingertip, every skin
 // what plays when you pull a weapon out
 const HEAVY = new Set(['minigun', 'blower', 'bowling', 'chicken']);
 export function drawFor(id, model) {
   if (model && ANIMS['draw_' + model]) return 'draw_' + model;
+  if (RIFLE_IDS.includes(id) && ANIMS['draw_' + id]) return 'draw_' + id; // the rifle pack brings its own (rifles.js)
   if (id === 'bloodcross') return 'draw_bloodcross';
   if (id === 'knife') return 'draw_knife';
   if (id === 'katana') return 'draw_katana';

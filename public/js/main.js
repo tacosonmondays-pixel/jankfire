@@ -65,6 +65,7 @@ import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote,
 import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown } from './endscreen.js';
 import { initHome, homeShown, homeLeft } from './home.js';
 import { skipVote, skipReset } from './skipvote.js';
+import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + quick-scope callouts register themselves)
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
@@ -1536,7 +1537,7 @@ net.on('fx', (m) => {
       const a = mz && (i === 0 || w.pellets) ? mz : s.slice(0, 3);
       fx.tracer(a, s.slice(3), color(), w.thick || (fast ? 0.03 : 0.045), fast ? 0.07 : 0.2);
     });
-    if (m.s.length) sfx.gun(m.w, m.s[0].slice(0, 3));
+    if (m.s.length) sfx.gun(m.w, m.s[0].slice(0, 3), remoteK(m.id, m.w)); // (a hot Belt Sander gets louder)
   } else if (m.k === 'shatter') {
     fx.spray(m.p, 70, [0xffffff, 0xbfe8ff, 0x7fd0ff], 11, 1.4, 0.2, 14, 0.5);
     sfx.crunch(m.p); sfx.ting(m.p);
