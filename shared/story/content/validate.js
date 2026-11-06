@@ -183,12 +183,56 @@ export function validate(C) {
   for (const [id, b] of Object.entries(C.BOSSES)) {
     const w = `boss ${id}`;
     cast(w, b.who);
-    loc(w, b.arena);
+    loc(w, b.zone);
     if (!Array.isArray(b.phases) || b.phases.length < 2) err(w, 'needs 2+ phases');
     if (b.core && !has(C.IMPLANTS, b.core)) err(w, `unknown core '${b.core}'`);
     for (const d of b.drops || []) if (!has(C.LEGENDARIES, d) && !has(C.LOOT_TABLES, d) && !has(C.ITEMS, d)) err(w, `unknown drop '${d}'`);
     if (b.quest && !isQuest(b.quest)) err(w, `unknown quest '${b.quest}'`);
     if (b.unlock) cond(w, b.unlock);
+  }
+
+  // ---- the fight layer (boss_fights.js): every fight has an arena, layers, weak points, a weakness, adds, a set piece,
+  // a pinata, a dedicated loot table with at least one legendary, scaling, and a twist on every phase
+  const HAZ = new Set(['water', 'lava', 'acid', 'oil', 'electric', 'fire', 'void', 'gas', 'rad', 'paper', 'crush']);
+  const BARS = new Set(['armour', 'shield', 'health']);
+  const ELEM = new Set(['fire', 'water', 'shock', 'frost', 'slip', 'verdict', 'explosive', 'knockback', 'blood', 'sleep', 'grapple']);
+  const SETP = new Set(['chase', 'transform', 'grapple', 'vehicle', 'climb']);
+  for (const [id, b] of Object.entries(C.BOSSES)) {
+    const w = `boss ${id}`;
+    const a = b.arena;
+    if (!a || !a.name || !a.layout || !a.vertical) err(w, 'needs an arena { name, layout, vertical }');
+    else {
+      if (!Array.isArray(a.grapple) || !a.grapple.length) err(w, 'arena needs grapple points');
+      if (!Array.isArray(a.hazards) || !a.hazards.length) err(w, 'arena needs hazards');
+      for (const h of a.hazards || []) if (!HAZ.has(h.kind) || !h.where || !h.effect) err(w, `bad hazard ${JSON.stringify(h)}`);
+      if (!Array.isArray(a.cover) || !a.cover.length) err(w, 'arena needs cover');
+    }
+    if (!Array.isArray(b.layers) || !b.layers.length) err(w, 'needs health layers'); else for (const l of b.layers) if (!BARS.has(l.bar) || !(l.of > 0) || !l.how) err(w, `bad layer ${JSON.stringify(l)}`);
+    if (Array.isArray(b.layers) && b.layers.reduce((n, l) => n + (l.of || 0), 0) !== b.hp) err(w, `layers add up to ${b.layers.reduce((n, l) => n + (l.of || 0), 0)}, not hp ${b.hp}`);
+    if (!Array.isArray(b.weakPoints) || !b.weakPoints.length) err(w, 'needs weak points'); else for (const p of b.weakPoints) if (!p.name || !p.glow || !p.exposedBy || !(p.crit > 1)) err(w, `bad weak point ${p.name}`);
+    if (!b.weakness || !ELEM.has(b.weakness.element) || !b.weakness.why || !Array.isArray(b.weakness.weapons) || !b.weakness.weapons.length) err(w, 'needs a weakness { element, weapons, why }');
+    else if (C.WEAPON_IDS) for (const x of b.weakness.weapons) if (!C.WEAPON_IDS.includes(x)) err(w, `weakness: unknown weapon '${x}'`);
+    if (!Array.isArray(b.adds) || !b.adds.length) err(w, 'needs adds'); else for (const x of b.adds) if (!x.name || !x.personality || !x.does) err(w, `bad add ${x.name}`);
+    if (!Array.isArray(b.setPiece) || !b.setPiece.length) err(w, 'needs a set piece'); else for (const x of b.setPiece) if (!SETP.has(x.kind) || !x.what) err(w, `bad set piece ${JSON.stringify(x)}`);
+    for (const [i, p] of (b.phases || []).entries()) if (!p.twist) err(w, `phase ${i + 1} (${p.name}) has no twist`);
+    for (const u of b.uses || []) if (!has(C.MECHANICS, u)) err(w, `unknown mechanic '${u}'`);
+    if (!(b.uses || []).includes('grapple')) err(w, 'every boss fight uses the grapple');
+    if (!b.pinata) err(w, 'needs a pinata');
+    if (!b.scaling) err(w, 'needs refight scaling');
+    if (!has(C.LOOT_TABLES, b.lootTable)) err(w, `unknown loot table '${b.lootTable}'`);
+    else if (!C.LOOT_TABLES[b.lootTable].entries.some((e) => e.legendary)) err(w, `loot table '${b.lootTable}' has no dedicated legendary`);
+  }
+
+  // ---- mechanics: the bible, and the hooks on missions and side quests
+  for (const [id, m] of Object.entries(C.MECHANICS || {})) {
+    const w = `mechanic ${id}`;
+    if (!m.name || !m.game || !m.story || !m.taught) err(w, 'needs name, game, story, taught');
+    if (m.taught && !isQuest(m.taught.quest)) err(w, `taught in unknown quest '${m.taught.quest}'`);
+    if (C.WEAPON_IDS) for (const x of m.weapons || []) if (!C.WEAPON_IDS.includes(x)) err(w, `unknown weapon '${x}'`);
+  }
+  for (const [id, q] of Object.entries(quests)) {
+    if (q.kind === 'main' && !q.mechanic) err(`quest ${id}`, 'a main mission needs a mechanic hook');
+    if (q.mechanic) { if (!q.mechanic.hook) err(`quest ${id}`, 'mechanic hook text missing'); for (const u of q.mechanic.uses || []) if (!has(C.MECHANICS, u)) err(`quest ${id}`, `unknown mechanic '${u}'`); }
   }
 
   // ---- implants

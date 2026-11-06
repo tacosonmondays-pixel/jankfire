@@ -5,6 +5,7 @@
 //   missions/act*.js (main story) · side/*.js (side questlines) · scenes_act*.js (cutscenes) · endings.js
 //   bosses.js · implants.js (incl. organ cores and secret bio upgrades) · loot.js (brands, modifiers, legendaries,
 //   loot tables) · collectibles.js · activities.js · items.js (key/quest items) · flags.js (every story flag)
+//   mechanics.js (the mechanics bible: every game mechanic and how the story uses it) · boss_fights.js (merged into bosses.js)
 // validate.js checks that every id and reference resolves; tests/story/content.test.mjs runs it.
 // Side quests use the mission schema with kind: 'side' (and optional `parts`: [{ id, title, if, steps, do }] for
 // multi-part questlines that unlock over time).
@@ -41,6 +42,7 @@ import { COLLECTIBLE_SETS, COLLECTIBLES } from './collectibles.js';
 import { ACTIVITIES } from './activities.js';
 import { ITEMS } from './items.js';
 import { FLAGS } from './flags.js';
+import { MECHANICS, GRAPPLE } from './mechanics.js';
 
 export const CAST = { ...CAST_MAIN, ...CAST_DISTRICTS };
 export const MISSIONS = { ...MISSIONS_ACT1, ...MISSIONS_ACT2, ...MISSIONS_ACT3, ...MISSIONS_ACT4, ...MISSIONS_ACT5 };
@@ -51,5 +53,5 @@ export const MISSION_ORDER = Object.keys(MISSIONS).sort((a, b) => MISSIONS[a].n 
 export const CONTENT = {
   DISTRICTS, FACTIONS, LOCATIONS, STANDING, ENDINGS, SPEAKERS,
   CAST, MISSIONS, MISSION_ORDER, SCENES, SIDE, ENDING_SCRIPTS, BOSSES, IMPLANTS,
-  BRANDS, MODIFIERS, LEGENDARIES, LOOT_TABLES, COLLECTIBLE_SETS, COLLECTIBLES, ACTIVITIES, ITEMS, FLAGS,
+  BRANDS, MODIFIERS, LEGENDARIES, LOOT_TABLES, COLLECTIBLE_SETS, COLLECTIBLES, ACTIVITIES, ITEMS, FLAGS, MECHANICS, GRAPPLE,
 };

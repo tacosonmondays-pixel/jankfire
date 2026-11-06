@@ -9,6 +9,7 @@ export const MISSIONS_ACT4 = {
     cast: ["old_pat", "janitor", "tall_guy"],
     requires: { missions: ["m25_tuesday_again"], if: null },
     logline: "At the edge of the world, the Tall Guy From HR can't be killed in his own forest. He just wants somebody to sign.",
+    mechanic: { uses: ["void_edges", "grapple", "lasso"], hook: "Old Pat pushes you into the void to teach Void Edges; the canopy is a grapple route; the Tall Guy only moves when you look away" },
     beats: [
       "The Last Bus Stop. The road ends in the void. Old Pat and the Margin Walkers stake gnomes to hold the ground. The Janitor mops the edge.",
       "Pat: Vacancy's Closing Agent keeps her page in a briefcase at the Show Home, and the Tall Guy walks the forest between here and there.",
@@ -64,6 +65,7 @@ export const MISSIONS_ACT4 = {
     cast: ["penny_plot", "old_pat", "tall_guy", "mr_deposit", "auntie"],
     requires: { missions: ["m26_exit_interview"], if: null },
     logline: "The deal closes today. Vacancy's Closing Agent is selling the Bottom to the void, and her page of Option C is the deed.",
+    mechanic: { uses: ["knockback", "lasso", "void_edges", "grapple"], hook: "blow survey agents off the Edge, lasso Penny's briefcase, and grapple between falling plots" },
     beats: [
       "The Show Home: a perfect show house on the edge, every plot sold marked by a pin on a map of the void. The Bottom is a cluster of red pins with 'PHASE TWO' written over it.",
       "Penny Plot: cheerful, monstrous, in a pink blazer over a hazmat suit. She tries to sell you a plot. She sold her own house at nineteen.",
@@ -118,6 +120,7 @@ export const MISSIONS_ACT4 = {
     cast: ["lumps", "gordo", "auntie", "pritchard", "chad_tempo", "dot"],
     requires: { missions: ["m27_negative_space"], if: null },
     logline: "Whatever you chose at the split, now it has to be built: a headcount, a demolition, or a print run. And whoever you didn't choose does something anyway.",
+    mechanic: { uses: ["grapple", "rocket_jump", "cars"], hook: "each plan is a different playstyle: HEADCOUNT is stealth, DEMOLITION is a climb up the Big Escalator against its direction, PRINT RUN is a heist under the fountain" },
     beats: [
       "One of three versions plays, by plan (parts below). Each ends with the Bottom ready for 03:00.",
       "Whoever's plan you didn't follow acts on their own: Gordo takes his charges up the hill anyway; Lumps, if his mum is still in the Gut, goes to meet Pritchard.",
@@ -221,6 +224,7 @@ export const MISSIONS_ACT4 = {
     cast: ["auntie", "lumps", "gordo", "steering_committee", "mina", "pip", "wristband", "nell", "old_pat"],
     requires: { missions: ["m28_the_plan"], if: null },
     logline: "At 03:00, in the one hour nobody is booked into, the whole Bottom climbs Corp Hill with every ally you earned.",
+    mechanic: { uses: ["on_time", "grapple", "laser_beam", "cars"], hook: "the raid is a rhythm climb (On Time) up Dividend Road; grapple from the Cathedral spire onto the Meeting Room's skid" },
     beats: [
       "C18: the Bleach Line at 02:59, the allies, the clocks turning to face Dividend Road.",
       "The climb: a big set piece up Dividend Road. Allies fight at junctions (each district's ruler holds one).",
@@ -265,6 +269,7 @@ export const MISSIONS_ACT4 = {
     cast: ["twins", "auntie", "lumps", "gordo", "hask", "pritchard"],
     requires: { missions: ["m29_the_missing_hour"], if: null },
     logline: "The same lobby as 17:29. The Twins hold the elevator. Auntie sits down behind the reception desk.",
+    mechanic: { uses: ["verdict", "bounce_shots", "grapple"], hook: "the Twins' join opens when they spin; ricochet round the shield; the Scales find two people guilty in one hit" },
     beats: [
       "The lobby: the marble, the revolving door, the pillar Overtime stepped out from. The game plays the lobby's music from F4.",
       "Boss fight: THE TWINS, holding the elevator.",

@@ -9,6 +9,7 @@ export const SIDE_BOTTOM = {
     locations: ["bottom:landlord_pile", "bottom:soup_kitchen", "bottom:lostfound"], cast: ["sharon", "mr_deposit", "auntie"],
     requires: { missions: ["m02_sauce_run"], if: null },
     logline: "Mr. Deposit has taken a deposit off everyone who's slept near his rubble pile for fifty years. Nobody has ever got one back.",
+    mechanic: { uses: ["fire", "washing_lines", "frag_smoke"], hook: "burn the armchairs off with the Cigarette, ride the washing lines round the shrinking pile, and post a grenade in the deposit box" },
     twist: "He can't stand up: the armchairs grew into him. The deposits are all he has. And his deed is the one Vacancy will staple to the Bottom's sale in Act IV.",
     beats: ["Sharon wants her deposit back (she paid it in soup in her twenties).", "Auntie gives you her itemised invoice: forty years of rent he owes the Lost & Found for 'storage of a man'.", "Serve it. He laughs so hard a key falls out.", "Collect three tenants' receipts (each a small errand: a lost cat, a stuck washing line, a roof leak).", "Boss: MR. DEPOSIT.", "His box bursts: fifty years of deposits rain on the Bottom."],
     steps: [
@@ -32,6 +33,7 @@ export const SIDE_BOTTOM = {
     locations: ["bottom:down_escalator", "gut:tooth_market", "gut:peristalsis"], cast: ["shoe_guy"],
     requires: { missions: ["m03_somethings_digesting"], if: null },
     logline: "A man by the Down Escalator sells one shoe for 10,000 coupons. He doesn't want to sell it. He wants the other one.",
+    mechanic: { uses: ["lasso", "slide"], hook: "learn the lasso on the only thing small and fast enough: a living shoe surfing peristalsis" },
     twist: "The other shoe is in the Gut, and it's alive now: it walks, it has a tongue, and it doesn't want to go back. And Clement was born in a shoe shop on the first night of the Long Dark; the shoes were his dad's.",
     beats: ["Clement and his one brogue.", "Rumours: a shoe has been seen in Tooth Market, walking.", "Chase a living brogue down Peristalsis Avenue (it rides the contractions better than you).", "Catch it with the lasso. It cries.", "Choice: bring it back, or let it go."],
     steps: [
@@ -62,6 +64,7 @@ export const SIDE_BOTTOM = {
     locations: ["bottom:gym", "bottom:long_stairs", "gut:stairs_top"], cast: ["lumps", "dumpling"],
     requires: { missions: ["m02_sauce_run"], if: null },
     logline: "Help Lumps train by carrying fridges up the Long Stairs. Drop one and it rolls all the way down.",
+    mechanic: { uses: ["rig"], hook: "fridge physics up 1,000 steps, and Lumps' 'big one', an Overdrive Rig he built for carrying fridges" },
     twist: "It isn't training. Lumps is carrying the fridges up to the top of the stairs so that one day he can carry his mum down them. He's been practising the weight.",
     beats: ["Lumps' Gym: all the weights are fridges.", "Carry fridges up the Long Stairs (physics: drop one and it bounces down 1,000 steps, flattening bins; Dumpling commentates).", "Ten fridges. At the top, Lumps lines them up and looks over at the Gut.", "He tells you why."],
     steps: [
@@ -83,6 +86,7 @@ export const SIDE_BOTTOM = {
     locations: ["bottom:rooftops", "bottom:school"], cast: ["dumpling", "auntie"],
     requires: { missions: ["m01_return_to_sender"], if: null },
     logline: "The Bottom's satellite dishes are woks. A storm has knocked them all out. Fix them by grappling between roofs while it's still blowing.",
+    mechanic: { uses: ["grapple", "washing_lines"], hook: "a storm grapple puzzle: aim twelve wok dishes at the Spire while the wind swings you" },
     twist: "When the last wok is aligned, every TV in the Bottom picks up the same thing: a dead ☺ CORP channel that only broadcasts at 03:00. A test card, and a voice reading the Schedule. It's the first time anyone in the Bottom has heard the Missing Hour mentioned (and the start of the Satellite Ear trail).",
     beats: ["A storm: wind, rain, washing lines whipping.", "Twelve wok dishes across the stacked roofs. Each one needs aligning (aim it at the Spire) while the wind pushes you.", "Dumpling holds the TV aerial at the Crayon School and shouts.", "The last one: every TV shows a ☺ CORP test card."],
     steps: [
@@ -103,6 +107,7 @@ export const SIDE_BOTTOM = {
     locations: ["bottom:lostfound", "checkout:returns", "commute:ring_road", "pinstripe:restaurant", "numberworks:prime_lane"], cast: ["dale", "wristband", "gary"],
     requires: { missions: ["m01_return_to_sender"], if: null },
     logline: "Return ten items from the Lost & Found to their owners all over the city. One of them is a whole bus.",
+    mechanic: { uses: ["cars", "grapple"], hook: "ten deliveries across the city, one of them a whole bus, one of them only reachable by grapple" },
     twist: "Item ten is a lunchbox with a note taped to it: 'don't be late tonight. it's our forty. love, j.' It has no owner left to return it to. Dale knows whose it is. It's one of Overtime's six memory fragments.",
     beats: ["Dale's ledger of lost things. Ten tags with names on them.", "Items: a pram (to a grandmother in Number Works), a trombone (a Punchline), a dog lead (the dog's still waiting), a wedding ring (Gary's), a bus (to the Unpaid, who are thrilled), a teddy (Wristband's, from the Stampede: he cries and gives it back to you to keep)...", "Item ten: the lunchbox. No owner. Dale tells you."],
     steps: [
@@ -117,5 +122,26 @@ export const SIDE_BOTTOM = {
     choices: [],
     reward: { coupons: 600, standing: { bottom: 5 } },
     grade: { exceeds: "EXCEEDS EXPECTATIONS. everything found its way home.", meets: "MEETS EXPECTATIONS. most things.", see_me: "SEE ME. you kept the bus." },
+  },
+  sq_bottom_line_run: {
+    kind: "side", from: 1, title: "THE WASHING LINE RUN", giver: "dumpling", district: "bottom",
+    locations: ["bottom:lostfound", "bottom:rooftops", "bottom:gym", "gut:stairs_top"], cast: ["dumpling", "sharon"],
+    requires: { missions: ["m01_return_to_sender"], if: null },
+    logline: "Dumpling has a stopwatch and a dare: ride the Bottom's washing lines from the Lost & Found to the Long Stairs without touching the ground.",
+    mechanic: { uses: ["washing_lines", "grapple"], hook: "the first grapple time trial: forty-one lines, never touch the floor" },
+    twist: "Dumpling's big brother did it once, years ago, and never told anyone how: there's a forty-first line, over the gym, that isn't on anyone's map. Ride all forty-one in one go under the gold time and a sock is waiting at the last pole with your name on it (the Sock Tendons secret).",
+    beats: ["Dumpling's start board, in crayon: bronze, silver, gold, and a line marked 'the secret one'.", "The run: forty washing lines across the stacked roofs; touch the ground and Dumpling blows a whistle made of a biro.", "Sharon, from her kitchen window, on every lap: 'mind my sheets.'", "Gold: Dumpling's brother's old time. Then the forty-first line."],
+    steps: [
+      { id: "dare", text: "take dumpling's dare", goal: { type: "talk", who: "dumpling", talk: "dare" }, marker: "bottom:lostfound" },
+      { id: "run", text: "ride the washing lines to the long stairs without touching the ground", goal: { type: "reach", zone: "gut:stairs_top" }, timer: 180, notes: "touching the ground resets you to the last pole; bronze 180 s, silver 120 s, gold 90 s; the timer is the bronze time" },
+      { id: "done", text: "", goal: { type: "talk", who: "dumpling", talk: "time" } },
+    ],
+    talks: {
+      dare: { with: "dumpling", nodes: { start: { say: ["ghost! ghost. i've got a stopwatch. it's dad's. it's for eggs.", "ride the lines from here to the long stairs and don't touch the floor. my brother did it in ninety seconds. he won't say how.", ["sharon", "*from a window* mind my sheets."]] } } },
+      time: { with: "dumpling", nodes: { start: { say: ["*Dumpling looks at the egg timer for a long time.*", "...that's quite good. for a ghost.", "my brother says there's a secret line. over the gym. he says only real ones find it. i think he made it up. he makes a lot up. he's fourteen."], do: ["flag:line_run_done"] } } },
+    },
+    choices: [],
+    reward: { coupons: 250, loot: ["washing_line"], standing: { bottom: 3 } },
+    grade: { exceeds: "EXCEEDS EXPECTATIONS. you didn't touch the floor once.", meets: "MEETS EXPECTATIONS. you touched it a bit.", see_me: "SEE ME. you're in sharon's sheets." },
   },
 };

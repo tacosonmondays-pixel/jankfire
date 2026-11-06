@@ -15,7 +15,9 @@ import { buildWeapon, buildProjectile, freeTree, makeNameTag } from './models.js
 import { BOXES, MAPS } from '/shared/map.js';
 import { raycast, movePlayer } from '/shared/physics.js';
 import { WEAPONS, ITEMS, FLAGS } from '/shared/weapons.js';
-import { BR, TIERS, STUFF, ZONE_COLOR, ARMOR_OF, blimpAt, blimpDone, zoneAt, outsideZone, lootName, lootColor, poiAt } from '/shared/royale.js';
+import { BR, TIERS, STUFF, ZONE_COLOR, ARMOR_OF, blimpAt, blimpDone, zoneAt, outsideZone, lootName, lootColor, poiAt, hookCharges, hookSpend } from '/shared/royale.js';
+import { weaponIcon, itemIcon } from './icons.js';
+import { K } from './keys.js';
 
 const $ = (id) => document.getElementById(id);
 const st = () => performance.now() + (G.offset || 0); // the server's clock
@@ -55,6 +57,39 @@ body.br-on #streakTray { display: none; }
 .hslot .br-am { position: absolute; right: 4px; bottom: 2px; font: bold 12px var(--font); color: #ffe14d; }
 #roundEnd .br-row { display: flex; gap: 10px; justify-content: space-between; }
 #roundEnd .br-row b { color: #ff4fd8; min-width: 40px; }
+#brHook { position: absolute; left: calc(50% + 34px); top: calc(50% + 26px); width: 56px; height: 56px; pointer-events: none; font: bold 11px var(--font); color: #fff; text-shadow: 1px 1px 0 #000; }
+#brHook svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+#brHook .tr { fill: none; stroke: rgba(0,0,0,0.55); stroke-width: 6; } #brHook .fl { fill: none; stroke: #4fd8ff; stroke-width: 6; stroke-linecap: butt; }
+#brHook.full .fl { stroke: #7dff4f; } #brHook.none .fl { stroke: #ff3030; }
+#brHook span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 17px; letter-spacing: -1px; }
+#brHook small { font-size: 12px !important; color: #fff !important; }
+#brHook small { position: absolute; left: 50%; top: 54px; transform: translateX(-50%); white-space: nowrap; font-size: 10px; letter-spacing: 1px; color: #ccc; }
+#brHook.no { animation: brHookNo 0.35s; } @keyframes brHookNo { 0%, 100% { transform: none; } 25% { transform: translateX(-5px) rotate(-6deg); } 75% { transform: translateX(5px) rotate(6deg); } }
+body.br-sky #brHook, body.br-spec #brHook, body.br-inv #brHook { display: none; }
+#brInv { position: absolute; inset: 0; z-index: 20; pointer-events: auto; background: rgba(8,0,16,0.35); display: none; font-family: var(--font); color: #fff; cursor: default; text-shadow: 1px 1px 0 #000; }
+body.br-inv #brInv { display: block; } body.br-inv #crosshair, body.br-inv #brPrompt { visibility: hidden; }
+#brInv .bi { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -54%) rotate(-0.6deg); width: min(860px, 94vw); background: rgba(18,8,24,0.92); border: 4px solid #ff4fd8; box-shadow: 8px 8px 0 #4fd8ff; padding: 12px 16px 14px; box-sizing: border-box; }
+#brInv h2 { margin: 0; font-size: 30px; color: #ffe14d; text-shadow: 3px 3px 0 #ff00dc; letter-spacing: 2px; }
+#brInv .bi-help { font-size: 12px; color: #ccc; margin: 0 0 8px; }
+#brInv .bi-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 220px; gap: 10px; }
+#brInv .bi-h { font-size: 12px; letter-spacing: 2px; color: #4fd8ff; margin: 6px 0 3px; }
+#brInv .bi-t { position: relative; min-height: 118px; background: rgba(255,255,255,0.05); border: 3px solid var(--c, #555); box-shadow: 4px 4px 0 #000; padding: 4px 6px 30px; box-sizing: border-box; }
+#brInv .bi-t.empty { border-style: dashed; border-color: #555; color: #777; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+#brInv .bi-t.drag { opacity: 0.45; } #brInv .bi-t.over { background: rgba(255,225,77,0.18); border-color: #ffe14d; }
+#brInv .bi-t[draggable="true"] { cursor: grab; }
+#brInv .bi-t img { display: block; width: 100%; height: 62px; object-fit: contain; image-rendering: pixelated; }
+#brInv .bi-t b { display: block; font-size: 15px; color: var(--c); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#brInv .bi-t i { font-style: normal; font-size: 12px; color: #ffe14d; }
+#brInv .bi-t kbd { position: absolute; left: -3px; top: -3px; background: #ffe14d; color: #000; border: 2px solid #000; font: bold 12px var(--font); padding: 0 5px; }
+#brInv button { font-family: var(--font); font-size: 12px; padding: 1px 9px; border: 2px solid #000; background: #fff; color: #000; box-shadow: 2px 2px 0 #ff4fd8; cursor: pointer; }
+#brInv button.red { background: #ff3030; color: #fff; } #brInv button.yel { background: #ffe14d; }
+#brInv .bi-t .bi-b { position: absolute; left: 6px; right: 6px; bottom: 5px; display: flex; gap: 5px; justify-content: flex-end; }
+#brInv .bi-swap { display: flex; align-items: center; justify-content: center; }
+#brInv .bi-row { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.15); padding: 3px 6px; margin-bottom: 4px; }
+#brInv .bi-row span { flex: 1; } #brInv .bi-row b { color: #ffe14d; font-size: 17px; }
+#brInv .bi-ar { height: 12px; border: 2px solid #fff; background: rgba(0,0,0,0.5); } #brInv .bi-ar div { height: 100%; background: repeating-linear-gradient(90deg, #4fd8ff 0 14px, #2a9fd0 14px 16px); }
+#brInv .bi-side { background: rgba(0,0,0,0.3); border: 2px solid #ff4fd8; padding: 6px 8px; font-size: 13px; transform: rotate(0.8deg); }
+#brInv .bi-side .big { font-size: 26px; color: #ffe14d; line-height: 1; } #brInv .bi-side ol { margin: 4px 0 0; padding-left: 20px; } #brInv .bi-side li.me { color: #ffe14d; } #brInv .bi-side li.dead { color: #777; text-decoration: line-through; }
 `;
 let el = null;
 function ensureHud() {
@@ -66,13 +101,18 @@ function ensureHud() {
     box: mk('brHud', '<canvas id="brMap" width="176" height="176"></canvas><div id="brStat"></div>'),
     armor: mk('brArmor', '<div></div><span></span>'), heals: mk('brHeals'), prompt: mk('brPrompt'), zone: mk('brZoneFx', '<b>EVICTION NOTICE: GET IN THE ZONE</b>'),
     big: mk('brBig'), healBar: mk('brHealBar', '<div></div><span></span>'),
+    hook: mk('brHook', '<svg viewBox="0 0 46 46"><circle class="tr" cx="23" cy="23" r="19"/><circle class="fl" cx="23" cy="23" r="19"/></svg><span></span><small></small>'),
+    inv: mk('brInv'),
   };
+  el.inv.addEventListener('mousedown', (ev) => ev.stopPropagation()); // clicks in the backpack never fire your gun
+  el.inv.addEventListener('contextmenu', (ev) => ev.preventDefault());
   el.map = $('brMap'); el.stat = $('brStat');
   return el;
 }
 function showHud(v) {
   ensureHud();
-  for (const k of ['box', 'armor', 'heals']) el[k].style.display = v ? '' : 'none';
+  for (const k of ['box', 'armor', 'heals', 'hook']) el[k].style.display = v ? '' : 'none';
+  if (!v) invClose(false);
   if (!v) { el.prompt.style.display = 'none'; el.zone.style.opacity = 0; el.big.style.display = 'none'; el.healBar.style.display = 'none'; }
   document.body.classList.toggle('br-on', v);
 }
@@ -305,16 +345,17 @@ function start(m) {
   R.blimp = new Set(m.blimp); R.out = new Map(m.out); R.total = m.blimp.length + m.out.length;
   R.me = { inBlimp: R.blimp.has(G.myId), fly: null, late: false, place: 0 };
   R.inv = null; R.key = ''; R.held = new Set(); R.reserve = {}; R.shots = {}; R.ar = 0; R.heal = null; R.spec = 0; R.win = -1; R.autoT.clear();
-  W.br = hooks; G.noOob = true; G.brStep = step;
+  R.hook = null; R.hookHad = false; R.hookN = BR.hook.charges;
+  W.br = hooks; G.noOob = true; G.brStep = step; G.hookGate = hookGate;
   twistsReset(); R.leader = m.leader || 0; for (const c of m.crates || []) addCrate(c); for (const id of m.goblins || []) R.goblins.set(id, null);
   if (!blimp) { blimp = buildBlimp(); [zoneWall, zoneNext] = buildZone(); myUmb = umbrella(); myUmb.visible = false; }
   for (const o of [blimp, zoneWall, zoneNext, myUmb]) if (!o.parent) G.scene.add(o);
   showHud(true);
-  if (R.me.inBlimp) { big('JANK ROYALE', 'SPACE to jump out of the blimp · F pick up · H heal', 4); sfx.partyHorn(); }
+  if (R.me.inBlimp) { big('JANK ROYALE', `SPACE to jump out of the blimp · F pick up · H heal · ${K.label('scores')} backpack`, 4); sfx.partyHorn(); }
 }
 function stop() {
   if (!R.on) return;
-  R.on = false; W.br = null; G.noOob = false; G.brStep = null; G.brGlide = false;
+  R.on = false; W.br = null; G.noOob = false; G.brStep = null; G.brGlide = false; G.hookGate = null;
   clearLoot();
   for (const o of [blimp, zoneWall, zoneNext, myUmb]) if (o && o.parent) o.parent.remove(o);
   for (const u of R.umb.values()) if (u.parent) u.parent.remove(u);
@@ -338,6 +379,7 @@ net.on('br', (m) => {
   if (m.k === 'off') { stop(); return; }
   if (!R.on) return;
   const me = m.id === G.myId;
+  if (m.k === 'hook') { R.hook = m.h || null; if (m.no) hookDenied(); return; }
   if (m.k === 'loot') for (const e of m.l) addLoot(e);
   else if (m.k === 'take') { const l = R.loot.get(m.i); if (l && m.by === G.myId) { sfx.cash(); hud.msg(`+ ${lootName(l)}`, 1, 'brag'); } removeLoot(m.i); }
   else if (m.k === 'board') { R.blimp.add(m.id); R.total++; if (me) R.me.inBlimp = true; }
@@ -360,7 +402,7 @@ net.on('br', (m) => {
   else if (m.k === 'late') { R.me.late = true; ME.alive = false; G.deadAt = performance.now(); big('MATCH IN PROGRESS', 'you can watch till the next drop', 4); }
   else twist(m, me);
 });
-net.on('brinv', (m) => { if (R.on) applyInv(m); });
+net.on('brinv', (m) => { if (R.on) { applyInv(m); if (invOpen) invRender(); } });
 net.on('brar', (m) => { R.ar = m.ar; });
 // outgoing shots spend shot-counted ammo here too (the server counts the same 'fire's)
 const send0 = net.send.bind(net);
@@ -437,6 +479,142 @@ function nextSpec() {
   return r;
 }
 
+// ------------------------------------------------------------ grapple charges (BR.hook): the server counts, this shows + predicts
+function hookGate() { // player.js tryHook asks first: true = no charge, no rope
+  if (!R.on || !ME.alive || hookCharges(R.hook, st()).n >= 1) return false;
+  hookDenied();
+  return true;
+}
+function hookDenied() {
+  ME.hook = null; // (the server cut it, or it never fired)
+  const now = performance.now();
+  if (now - (R.noT || 0) < 300) return;
+  R.noT = now;
+  const c = hookCharges(R.hook, st());
+  sfx.hookNo(); hud.msg(`GRAPPLE RECHARGING · ${Math.max(1, Math.ceil((1 - c.k) * BR.hook.cd))}s`, 0.8, 'brag');
+  if (el) { el.hook.classList.remove('no'); void el.hook.offsetWidth; el.hook.classList.add('no'); }
+}
+const RING = 2 * Math.PI * 19;
+function hookFrame() {
+  const roped = !!ME.hook;
+  if (roped && !R.hookHad) R.hook = hookSpend(R.hook, st()) || R.hook; // a new rope: spend one now (the server's count follows)
+  R.hookHad = roped;
+  const H = BR.hook, c = hookCharges(R.hook, st());
+  if (c.n > R.hookN && ME.alive) sfx.hookReady();
+  R.hookN = c.n;
+  const h = el.hook, full = c.n >= H.charges;
+  h.className = full ? 'full' : c.n === 0 ? 'none' : '';
+  h.querySelector('.fl').style.strokeDasharray = `${(full ? 1 : c.k) * RING} ${RING}`;
+  h.querySelector('span').textContent = '●'.repeat(c.n) + '○'.repeat(H.charges - c.n);
+  h.querySelector('small').textContent = full ? `${K.label('grapple')} GRAPPLE` : `${K.label('grapple')} ${Math.ceil((1 - c.k) * H.cd)}s`;
+}
+
+// ------------------------------------------------------------ the backpack (the scoreboard key, Tab): your loot, drop it, swap the gun slots
+// the mouse is free while it's open and you keep moving (wasd still works), like a looter shooter's inventory
+let invOpen = false, invLock = null, invT = 0;
+export const brInvOpen = () => invOpen;
+export function brInvToggle(lock) { // main.js: the scores key in a royale. true = handled
+  if (!R.on || !ME.alive) return false;
+  if (invOpen) { invClose(true); return true; }
+  ensureHud();
+  invOpen = true; invLock = lock || null;
+  document.body.classList.add('br-inv');
+  if (document.pointerLockElement) document.exitPointerLock(); // a real cursor (main.js doesn't pause for this)
+  W.held = false; W.aimHeld = false;
+  invRender(); sfx.click();
+  return true;
+}
+function invClose(relock) {
+  if (!invOpen) return;
+  invOpen = false;
+  document.body.classList.remove('br-inv');
+  if (relock && invLock && G.joined && $('menu').classList.contains('hidden')) invLock();
+}
+const mkEl = (tag, cls, text) => { const d = document.createElement(tag); if (cls) d.className = cls; if (text != null) d.textContent = text; return d; };
+function btn(label, cls, fn) { const b = mkEl('button', cls, label); b.addEventListener('click', (ev) => { ev.stopPropagation(); fn(); sfx.click(); }); return b; }
+function gunTile(m, i) {
+  const g = m.s[i], t = mkEl('div', 'bi-t' + (g ? '' : ' empty'));
+  const kb = mkEl('kbd', '', K.label('slot' + (i + 1)));
+  if (!g) { t.append(kb, mkEl('span', '', 'empty: walk over a gun')); }
+  else {
+    const [w, tier, a] = g, wd = WEAPONS[w];
+    t.style.setProperty('--c', TIERS[tier].color);
+    const img = mkEl('img'); img.alt = ''; img.src = weaponIcon(w, (G.equipped || {})[w]);
+    const ammo = a < 0 ? '∞' : wd.mag ? `${W.ammo[w] || 0} + ${R.reserve[w] || 0}` : `${R.shots[w] ?? a} shots`;
+    const b = mkEl('div', 'bi-b');
+    b.append(btn('⇄ SWAP', 'yel', () => net.send({ t: 'brswap' })), btn('DROP', 'red', () => net.send({ t: 'brdrop', k: 'gun', i })));
+    t.append(kb, img, mkEl('b', '', `${TIERS[tier].name} ${wd.name}`), mkEl('i', '', `ammo ${ammo}`), b);
+    t.draggable = true;
+    t.addEventListener('dragstart', (ev) => { ev.dataTransfer.setData('text/plain', 'brgun' + i); t.classList.add('drag'); });
+    t.addEventListener('dragend', () => t.classList.remove('drag'));
+    t.addEventListener('contextmenu', () => { net.send({ t: 'brdrop', k: 'gun', i }); sfx.click(); }); // right click drops
+  }
+  t.addEventListener('dragover', (ev) => { ev.preventDefault(); t.classList.add('over'); });
+  t.addEventListener('dragleave', () => t.classList.remove('over'));
+  t.addEventListener('drop', (ev) => { ev.preventDefault(); t.classList.remove('over'); const d = ev.dataTransfer.getData('text/plain'); if (d === 'brgun' + (1 - i)) { net.send({ t: 'brswap' }); sfx.click(); } });
+  return t;
+}
+function sideTile(kind, m) {
+  const t = mkEl('div', 'bi-t');
+  if (kind === 'melee') {
+    const [w, tier] = m.m || [BR.melee, 0];
+    t.style.setProperty('--c', TIERS[tier || 0].color);
+    const img = mkEl('img'); img.alt = ''; img.src = weaponIcon(w, (G.equipped || {})[w]);
+    t.append(mkEl('kbd', '', K.label('slot3')), img, mkEl('b', '', `${tier ? TIERS[tier].name + ' ' : ''}${WEAPONS[w] ? WEAPONS[w].name : w}`), mkEl('i', '', w === BR.melee ? 'the loaf stays with you' : 'melee'));
+    if (w !== BR.melee) { const b = mkEl('div', 'bi-b'); b.append(btn('DROP', 'red', () => net.send({ t: 'brdrop', k: 'melee' }))); t.append(b); t.addEventListener('contextmenu', () => net.send({ t: 'brdrop', k: 'melee' })); }
+    return t;
+  }
+  if (!m.g) { t.classList.add('empty'); t.append(mkEl('span', '', 'no gadget')); return t; }
+  const [id, n] = m.g, it = ITEMS[id] || {};
+  t.style.setProperty('--c', it.color || '#9ab04a');
+  const img = mkEl('img'); img.alt = ''; img.src = itemIcon(id);
+  const b = mkEl('div', 'bi-b'); b.append(btn('DROP', 'red', () => net.send({ t: 'brdrop', k: 'gadget' })));
+  t.append(mkEl('kbd', '', K.label('item')), img, mkEl('b', '', it.name || id), mkEl('i', '', `x${n}`), b);
+  t.addEventListener('contextmenu', () => net.send({ t: 'brdrop', k: 'gadget' }));
+  return t;
+}
+function invSide(box) {
+  box.textContent = '';
+  const alive = [...G.remotes.values()].filter((r) => r.alive && !R.out.has(r.id)).length + (ME.alive && !R.out.has(G.myId) ? 1 : 0);
+  box.append(mkEl('div', 'big', `${alive} ALIVE`), mkEl('div', '', `your kills: ${G.kills || 0}`));
+  const zn = zoneAt(R.zone, st());
+  if (zn) { const secs = Math.ceil(zn.left / 1000); box.append(mkEl('div', '', zn.shrinking ? `zone closing ${secs}s` : zn.next ? `zone closes in ${secs}s` : 'final zone')); }
+  box.append(mkEl('div', 'bi-h', 'TOP JANKERS'));
+  const rows = [{ id: G.myId, name: G.myName, k: G.kills || 0, me: true }, ...[...G.remotes.values()].filter((r) => !R.out.has(r.id) || r.k).map((r) => ({ id: r.id, name: r.name, k: r.k || 0 }))];
+  rows.sort((a, b) => b.k - a.k);
+  const ol = mkEl('ol');
+  for (const r of rows.slice(0, 6)) { const li = mkEl('li', (r.me ? 'me' : '') + (R.out.has(r.id) ? ' dead' : ''), `${r.name} · ${r.k}`); ol.append(li); }
+  box.append(ol, mkEl('div', 'bi-help', `hold ${K.label('brScores')}: full scoreboard`));
+}
+function invRender() {
+  ensureHud();
+  const m = R.inv || { s: [0, 0], m: [BR.melee, 0], g: 0, c: 0, k: 0, ar: 0 };
+  const root = el.inv; root.textContent = '';
+  const bi = mkEl('div', 'bi');
+  bi.append(mkEl('h2', '', 'BACKPACK'), mkEl('p', 'bi-help', `drag a gun onto the other slot (or ⇄) to swap · DROP or right click puts it on the floor · ${K.label('scores')} / ESC close · keep walking, it's fine`));
+  const grid = mkEl('div', 'bi-grid');
+  const col = (h, ...kids) => { const d = mkEl('div'); for (let i = 0; i < kids.length; i++) d.append(mkEl('div', 'bi-h', h[i]), kids[i]); return d; };
+  const side = mkEl('div', 'bi-side'); invSide(side);
+  grid.append(col(['GUN 1'], gunTile(m, 0)), col(['GUN 2'], gunTile(m, 1)), col(['MELEE', 'GADGET'], sideTile('melee', m), sideTile('gadget', m)), side);
+  const heals = mkEl('div');
+  heals.append(mkEl('div', 'bi-h', 'HEALS (H) + ARMOUR'));
+  for (const [k, n, cap, name] of [['cola', m.c || 0, BR.cola.n, STUFF.cola.name], ['medkit', m.k || 0, BR.medkit.n, STUFF.medkit.name]]) {
+    const r = mkEl('div', 'bi-row'); r.style.borderLeft = `4px solid ${STUFF[k].color}`;
+    r.append(mkEl('b', '', `${n}/${cap}`), mkEl('span', '', `${name}: +${BR[k].heal} HP`));
+    if (n > 0) r.append(btn('USE', 'yel', () => net.send({ t: 'brheal', k })), btn('DROP 1', 'red', () => net.send({ t: 'brdrop', k, n: 1 })));
+    heals.append(r);
+  }
+  const ar = mkEl('div', 'bi-row'), bar = mkEl('div', 'bi-ar'), fill = mkEl('div');
+  bar.style.flex = '1'; fill.style.width = Math.min(100, R.ar || 0) + '%'; bar.append(fill);
+  ar.append(mkEl('b', '', `${R.ar || 0}`), mkEl('span', '', 'armour'), bar); ar.querySelector('span').style.flex = 'none';
+  heals.append(ar);
+  heals.style.gridColumn = '1 / 4';
+  grid.append(heals);
+  bi.append(grid);
+  root.append(bi);
+  el.invSide = side;
+}
+
 // ------------------------------------------------------------ input
 function nearest() {
   let best = null, bd = 1e9;
@@ -452,6 +630,7 @@ function nearest() {
 }
 export function brKey(e) {
   if (!R.on) return false;
+  if (invOpen && e.code === 'Escape') { invClose(true); return true; }
   if (!ME.alive) {
     if (e.code === 'Space') { e.preventDefault(); if (!e.repeat && !RP.active && !G.killcamPending) nextSpec(); return !RP.active && !G.killcamPending; }
     return false;
@@ -573,6 +752,9 @@ export function brFrame(dt, now) {
     net.send({ t: 'brpick', i: l.i });
   }
   twistFrame(dt, now, t);
+  hookFrame();
+  if (invOpen && !ME.alive) invClose(false);
+  if (invOpen && now > invT && el.invSide) { invT = now + 500; invSide(el.invSide); }
   // HUD: alive, kills, zone clock, armour, heals, healing bar, minimap, outside-the-zone warning
   const alive = [...G.remotes.values()].filter((r) => r.alive && !R.out.has(r.id)).length + (ME.alive && !R.out.has(G.myId) ? 1 : 0);
   const secs = zn ? Math.ceil(zn.left / 1000) : 0, mm = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;

@@ -3,7 +3,7 @@
 // spawn barriers you can't walk through, sitting out and spectating a teammate, round banners. No grapple, no streaks.
 // The rules and numbers are the server's (server/econ.js) and /shared/econ.js; this file only shows them and asks.
 import { WEAPONS, ITEMS, SLOTS } from '/shared/weapons.js';
-import { ECON, GEAR, buyList, ammoSpec, refillPrice, gearPrice } from '/shared/econ.js';
+import { ECON, GEAR, SD, buyList, ammoSpec, refillPrice, gearPrice } from '/shared/econ.js';
 import { TEAMS, BOMB } from '/shared/modes.js';
 import { BOXES } from '/shared/map.js';
 import { raycast, PH } from '/shared/physics.js';
@@ -335,7 +335,7 @@ function drop(item) {
   if (!e || !ME.alive || e.out || !e.inv) return;
   if (item) { if (e.inv.it) { net.send({ t: 'drop', s: 'item' }); sfx.swing(); } else toast('no item to drop'); return; }
   const slot = SLOTS[W.slot], x = e.inv.sl[slot];
-  if (!x || x.def) { toast(`your ${wname(x ? x.id : 'bread')} stays with you`); return; }
+  if (!x || x.def) { toast(`your ${wname(x ? x.id : ECON.defaultMelee)} stays with you`); return; }
   net.send({ t: 'drop', s: slot });
   e.tossT = now() + 260; // toss it, then the next one comes up
   playVM('econ_toss', 'toss');
@@ -441,9 +441,10 @@ export function econCam(cam, dt) {
 export const econHideVM = () => !!(G.eco && !ME.alive); // out this round: no weapon in your face (spectating or not)
 
 // ------------------------------------------------------------ the buy menu
-const COLS = [['primary', 'PRIMARY'], ['secondary', 'SECONDARY'], ['melee', 'MELEE'], ['item', 'ITEMS'], ['gear', 'GEAR']];
+// Search & Destroy columns: sidearms, smgs, shotguns, rifles, snipers + heavy, utility, armour (shared/econ.js SD.cats)
+const COLS = SD.cats.map(([cat, label]) => [cat, label]);
 let LIST = null, qcol = -1, built = false;
-const lists = () => LIST || (LIST = COLS.map(([slot]) => buyList().filter((x) => x.slot === slot)));
+const lists = () => LIST || (LIST = COLS.map(([cat]) => buyList().filter((x) => x.cat === cat)));
 const iconCache = new Map();
 let ammoKey = '', gearKey = '', gearMap = new Map(), slotKey = '';
 function iconFor(it) {
@@ -460,6 +461,7 @@ function buildMenu() {
   const root = $('ecoBuy');
   root.innerHTML = `<div class="eb"><div class="eb-top"><div class="eb-money"><small>CREDITS</small><b></b></div><div class="eb-mid"><div class="eb-timer"></div><div class="eb-status"></div></div><div class="eb-team"></div></div><div class="eb-cols"></div><div class="eb-foot"><span class="eb-help"></span><button class="eb-rebuy">REBUY</button><button class="eb-close">CLOSE (${ecoKeyLabel('buy')})</button></div></div>`;
   const cols = root.querySelector('.eb-cols');
+  cols.style.gridTemplateColumns = `repeat(${COLS.length}, minmax(0, 1fr))`; cols.classList.add('eb-sd');
   lists().forEach((items, c) => {
     const col = document.createElement('div'); col.className = 'eb-col'; col.dataset.c = c;
     const h = document.createElement('div'); h.className = 'eb-h'; h.innerHTML = `<b>${c + 1}</b>${COLS[c][1]}`;
@@ -469,7 +471,7 @@ function buildMenu() {
       const card = document.createElement('div'); card.className = 'eb-card';
       const color = it.k === 'w' ? WEAPONS[it.id].color : it.k === 'i' ? ITEMS[it.id].color || '#9ab04a' : '#c8a46a';
       card.style.setProperty('--c', color);
-      const sub = it.k === 'w' ? `kill +${money(it.kill)} · ${it.ammo ? (it.ammo.clip ? `${it.ammo.mag}+${it.ammo.res}` : `${it.ammo.mag} shots`) : '∞'}` : it.k === 'i' ? `max ${it.limit}` : GEAR[it.id].def ? 'defenders only' : it.id === 'vest' ? '100 armor' : 'vest + headshots';
+      const sub = it.k === 'i' && it.id === 'nvg' ? `the flash · max ${it.limit}` : it.k === 'w' ? `kill +${money(it.kill)} · ${it.ammo ? (it.ammo.clip ? `${it.ammo.mag}+${it.ammo.res}` : `${it.ammo.mag} shots`) : '∞'}` : it.k === 'i' ? `max ${it.limit}` : GEAR[it.id].def ? 'defenders only' : it.id === 'vest' ? '100 armor' : 'vest + headshots';
       card.innerHTML = `<b class="eb-key">${(i + 1) % 10}</b><img alt=""><div class="eb-name"></div><div class="eb-sub"></div><div class="eb-price"></div><div class="eb-tag"></div><button class="eb-sell" title="sell it back (right click)">SELL</button>`;
       card.querySelector('.eb-name').textContent = it.name;
       card.querySelector('.eb-sub').textContent = sub;
@@ -502,7 +504,7 @@ function warmIcons() {
 }
 function helpText() {
   const el = $('ecoBuy').querySelector('.eb-help');
-  if (el) el.textContent = qcol >= 0 ? `${COLS[qcol][1]}: press 1-${Math.min(9, lists()[qcol].length)}${lists()[qcol].length > 9 ? ' or 0' : ''} to buy · BACKSPACE back` : `CLICK buy · RIGHT CLICK sell back · keys: 1-5 then a number · ${ecoKeyLabel('buy')} / ESC close`;
+  if (el) el.textContent = qcol >= 0 ? `${COLS[qcol][1]}: press 1-${Math.min(9, lists()[qcol].length)}${lists()[qcol].length > 9 ? ' or 0' : ''} to buy · BACKSPACE back` : `CLICK buy · RIGHT CLICK sell back · keys: 1-${COLS.length} then a number · ${ecoKeyLabel('buy')} / ESC close`;
 }
 // why you can't buy right now (null = you can)
 function cantBuy() {
