@@ -347,22 +347,37 @@ def make_lod(objs, name, target, small=0.08, parts=None):
         cps.append(c)
     for c in cps:
         if not c.data.uv_layers: uv_fit(c, (0.0, 0.0, 0.02, 0.02))
+    # boxes stay boxes (a collapse would fold them into triangles): only the round/heavy parts get decimated, and the
+    # smallest light parts go first if that is still not enough
+    for c in cps: apply_mods(c)
+    T = {c: tri_count(c) for c in cps}
+    heavy = lambda: [c for c in cps if T[c] > 24]
+    light = lambda: [c for c in cps if T[c] <= 24]
+    while parts is None and sum(T[c] for c in light()) > target * 0.55 and len(light()) > 1:
+        c = min(light(), key=_diag); cps.remove(c); del T[c]; bpy.data.objects.remove(c, do_unlink=True)
+    for _ in range(4):
+        tot = sum(T.values())
+        if tot <= target or not heavy(): break
+        lt = sum(T[c] for c in light()); hv = sum(T[c] for c in heavy())
+        r = max(0.05, (target - lt) / hv * 0.95)
+        for c in heavy():
+            md = c.modifiers.new('dec', 'DECIMATE'); md.decimate_type = 'COLLAPSE'; md.ratio = max(r, 10.0 / T[c])
+            md.use_collapse_triangulate = True
+            apply_mods(c); T[c] = tri_count(c)
+        if sum(T.values()) > target and r <= 0.06:
+            c = min(cps, key=_diag); cps.remove(c); del T[c]; bpy.data.objects.remove(c, do_unlink=True)
+    while sum(T.values()) > target and len(cps) > 1:  # still over: lose the smallest bits
+        c = min(cps, key=_diag); cps.remove(c); del T[c]; bpy.data.objects.remove(c, do_unlink=True)
     lod = join(cps, name)
     if lod.data.has_custom_normals:
         bpy.context.view_layer.objects.active = lod; bpy.ops.mesh.customdata_custom_splitnormals_clear()
-    for _ in range(4):
-        n = tri_count(lod)
-        if n <= target: break
-        md = lod.modifiers.new('dec', 'DECIMATE'); md.decimate_type = 'COLLAPSE'; md.ratio = max(0.02, target / n * 0.92)
-        md.use_collapse_triangulate = True
-        apply_mods(lod)
     smooth(lod, 35)
     while len(lod.data.uv_layers) > 1: lod.data.uv_layers.remove(lod.data.uv_layers[-1])
     bad = lod.data.validate(verbose=False); lod.data.update()
     bm = bmesh.new(); bm.from_mesh(lod.data)  # a clean rebuild: decimate can leave doubled faces / stale arrays
     bmesh.ops.dissolve_degenerate(bm, dist=1e-5, edges=bm.edges[:])
     bm.to_mesh(lod.data); bm.free()
-    for a in [a.name for a in lod.data.attributes if a.domain == 'CORNER' and a.data_type != 'FLOAT2']:
+    for a in [a.name for a in lod.data.attributes if a.domain == 'CORNER' and a.data_type != 'FLOAT2' and not a.name.startswith('.')]:
         try: lod.data.attributes.remove(lod.data.attributes[a])
         except Exception: pass
     lod.data.validate(); lod.data.update()
@@ -393,7 +408,7 @@ def run(builders, sheet_kw=None):
         for o in objs:
             if o.type == 'MESH' and not o.data.uv_layers: uv_fit(o, (0.0, 0.0, 0.02, 0.02))
         full = sum(tri_count(o) for o in objs)
-        lod = make_lod(objs, 's_' + pid + '_lod1', int(full * 0.24), parts=lod_parts)
+        lod = make_lod(objs, 's_' + pid + '_lod1', int(full * 0.245), parts=lod_parts)
         if lod_parts:
             for o in lod_parts:
                 if o.name in bpy.data.objects and o != lod: bpy.data.objects.remove(o, do_unlink=True)
@@ -417,7 +432,7 @@ def run(builders, sheet_kw=None):
             preview_paint(me.materials, PREVIEW[len(done) % len(PREVIEW)])
             lod.parent = None; lod.hide_render = True
             kw = dict(exposure=-0.6); kw.update((sheet_kw or {}).get(pid, {}))
-            sheet(root, fid, **kw)
+            if '--lod-only' not in argv: sheet(root, fid, **kw)
             if LOD_SHEETS:
                 lr = bpy.data.objects.new('lodroot', None); bpy.context.scene.collection.objects.link(lr)
                 lod.parent = lr; lod.hide_render = False; body.hide_render = True

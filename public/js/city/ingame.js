@@ -22,6 +22,11 @@ export function startCity(def, h) {
   propEnv(G.renderer);
   S = new CityStream({ scene: G.scene, city: def.stream, preset: G.settings ? G.settings.jank : 1, boxes: BOXES });
   S.useWas = false;
+  // the city code took a second to arrive and you may have started falling: put you back where the map dropped you
+  // (its spawn if you're near it, else a bit above where you are) and hold you there until the ground is in
+  const sp = def.spawns && def.spawns[0];
+  ME.hold = sp && Math.hypot(ME.pos[0] - sp[0], ME.pos[2] - sp[2]) < 30 ? sp.slice() : [ME.pos[0], ME.pos[1] + 30, ME.pos[2]];
+  S.holding = true;
   return S;
 }
 export function stopCity() { if (S) { S.dispose(); S = null; } }
@@ -41,8 +46,11 @@ export function updateCity(dt) {
     if (sun) { sun.color.copy(e.sun[0]); sun.intensity = e.sun[1]; }
   }
   // the ground under you hasn't streamed in yet: wait for it (no falling through the world on a slow machine)
-  if (ME.alive && !S.ready(ME.pos[0], ME.pos[2])) { ME.vel[0] = ME.vel[1] = ME.vel[2] = 0; if (ME.hold) ME.pos = ME.hold.slice(); }
-  ME.hold = ME.pos.slice();
+  if (S.holding || (ME.alive && !S.ready(ME.pos[0], ME.pos[2]))) {
+    ME.vel[0] = ME.vel[1] = ME.vel[2] = 0;
+    if (ME.hold) { ME.pos[0] = ME.hold[0]; ME.pos[1] = ME.hold[1]; ME.pos[2] = ME.hold[2]; }
+    if (S.ready(ME.pos[0], ME.pos[2])) S.holding = false; // in: let go
+  } else ME.hold = ME.pos.slice();
   // the gimmicks: ziplines (use key), moving streets, lungs, acid
   if (!ME.alive) return;
   const use = K.isDown('use'), press = use && !S.useWas; S.useWas = use;

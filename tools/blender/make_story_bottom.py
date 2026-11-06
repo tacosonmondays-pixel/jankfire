@@ -174,7 +174,14 @@ def build_wokdish():
     c0 = f((0.012, 0.3, -0.08)); c2 = f((0.016, 0.16, -0.28))
     O.append(sweep([c0, c2, (0.035, c2[1] - 0.1, c2[2] + 0.08), (0.045, -0.11, -0.05), (0.04, -0.11, -0.012)], 0.0048, black, seg=4, name='cable'))
     tiled(O, 0.2)
-    return O, {'mount': 'wall', 'note': 'origin on the wall face, sticks out toward -z'}
+    # lod1: bracket, a coarse wok, handle, spoon on its wire
+    L = [box((0.16, 0.26, 0.012), (0, 0, -0.006), paint), box((0.04, 0.04, 0.41), (0, -0.05, -0.215), paint), cyl(0.022, 0.2, (0, 0.03, -0.4), paint, axis='y', seg=4)]
+    LW = [lathe([(0.0, 0.0), (0.24, 0.05), (0.302, 0.15), (0.0, 0.012)], (0, 0, 0), steel, seg=8, axis='y', name='wok'),
+          rod((0.3, 0.14, 0), (0.58, 0.2, 0), 0.018, wood, seg=4), rod((0, 0.15, -0.29), (0, 0.33, 0), 0.006, chrome, seg=3),
+          ball(0.05, (0, 0.35, 0), chrome, scale=(1, 0.5, 1), seg=4, rings=3)]
+    xform(LW, rot=(tilt, 0, 0), move=M); L += LW
+    tiled(L, 0.2)
+    return O, {'_lod': L, 'mount': 'wall', 'note': 'origin on the wall face, sticks out toward -z'}
 
 
 # ------------------------------------------------------------------------------------------------ plastic chair
@@ -194,7 +201,12 @@ def build_pchair():
         O.append(sweep([(-0.215, y, z), (-0.1, y + 0.004, z + 0.018), (0.1, y + 0.004, z + 0.018), (0.215, y, z)], 0.033, paint, seg=4, squash=(1.0, 0.24), name='slat'))
     O.append(cyl(0.0265, 0.06, (0.267, 0.12, -0.257), tape, axis='y', seg=8, rot=(0, 0, 0.04)))  # duct-tape splint on a cracked leg
     tiled(O, 0.3)
-    return O, {'paint': ['pc_paint'], 'sit': [0, 0.47, 0]}
+    L = [box((0.47, 0.035, 0.44), (0, 0.44, -0.005), paint, taper=(1.07, 1.0)), box((0.46, 0.4, 0.03), (0, 0.66, 0.255), paint, rot=(0.21, 0, 0))]
+    for s_ in (-1, 1):
+        L += [rod((s_ * 0.275, 0.0, -0.27), (s_ * 0.248, 0.64, -0.205), 0.024, paint, seg=3), rod((s_ * 0.28, 0.0, 0.275), (s_ * 0.225, 0.445, 0.205), 0.024, paint, seg=3),
+              box((0.05, 0.03, 0.48), (s_ * 0.24, 0.655, 0.0), paint)]
+    tiled(L, 0.3)
+    return O, {'_lod': L, 'paint': ['pc_paint'], 'sit': [0, 0.47, 0]}
 
 
 # ------------------------------------------------------------------------------------------------ sofa
@@ -365,7 +377,12 @@ def build_scooter():
     O.append(uv_fit(box((0.1, 0.05, 0.004), (0, 0.175, 0.452), decal, rot=(-0.35, 0, 0)), A.rect(0, 32, 64, 16)))
     for o in O:
         if o.data.materials and o.data.materials[0] in (paint, chrome, rub, lens): uv_tile(o, 0.2)
-    return O, {'paint': ['sc_paint'], 'lights': [[0, 0.5, -0.37, 0xfff0b8]]}
+    L = [box((0.125, 0.028, 0.58), (0, 0.076, 0.03), paint), rod((0, 0.09, -0.3), (0, 0.865, -0.262), 0.018, chrome, seg=4),
+         box((0.42, 0.024, 0.024), (0, 0.865, -0.262), rub), box((0.3, 0.4, 0.03), (0, 0.42, -0.36), paint, taper=(0.65, 1.0), rot=(-0.14, 0, 0)),
+         box((0.17, 0.06, 0.26), (0, 0.445, 0.23), rub), rod((0, 0.09, 0.2), (0, 0.42, 0.225), 0.014, chrome, seg=3)]
+    for z in (0.345, -0.37): L.append(lathe([(0.062, -0.017), (0.1, 0.0), (0.062, 0.017)], (0, 0.1, z), rub, seg=5, axis='x', name='tyre'))
+    tiled(L, 0.2)
+    return O, {'_lod': L, 'paint': ['sc_paint'], 'lights': [[0, 0.5, -0.37, 0xfff0b8]]}
 
 
 # ------------------------------------------------------------------------------------------------ wall AC
@@ -410,7 +427,11 @@ def build_acunit():
         O.append(rod((x, -0.28, -0.003), (x, -0.03, -0.31), 0.009, metal, seg=4))
     for o in O:
         if o.data.materials and o.data.materials[0] in (dark, metal): uv_tile(o, 0.2)
-    return O, {'paint': ['ac_paint'], 'mount': 'wall', 'note': 'origin on the wall face at the underside of the case'}
+    L = [uv_fit(box((0.76, 0.52, 0.27), (0, 0.26, -0.185), paint), A.rect(0, 0, 32, 32)), cyl(0.2, 0.014, (fx, fy, fz - 0.002), dark, axis='z', seg=8),
+         uv_fit(box((0.13, 0.075, 0.002), (0.24, 0.43, -0.3215), decal), D.rect(0, 0, 64, 40)), uv_fit(rod((0.4, 0.14, -0.25), (0.49, 0.14, 0.01), 0.016, decal, seg=4), wht)]
+    for x in (-0.28, 0.28): L.append(box((0.035, 0.035, 0.34), (x, -0.0175, -0.17), metal))
+    for o in L[1:2] + L[4:]: uv_tile(o, 0.2)
+    return O, {'_lod': L, 'paint': ['ac_paint'], 'mount': 'wall', 'note': 'origin on the wall face at the underside of the case'}
 
 
 # ------------------------------------------------------------------------------------------------ fallen ☺ sign
@@ -580,7 +601,13 @@ def build_stringlights():
         O.append(b)
     for o in O:
         if o.data.materials[0] == cab: uv_tile(o, 0.2)
-    return O, {'span': [-2, 2], 'lights': lights}
+    L = [sweep(bend_path((-2, 0, 0), (2, 0, 0), 0.32, n=4), 0.006, cab, seg=3, name='cable')]
+    uv_tile(L[0], 0.2)
+    for i in range(10):
+        x = -1.8 + i * 0.4
+        b = ball(0.04, (x, yat(x) - 0.06, 0), bulbm, scale=(1, 1.3, 1), seg=3, rings=2)
+        L.append(uv_fit(b, dead if i == 6 else sw[i % 4]))
+    return O, {'_lod': L, 'span': [-2, 2], 'lights': lights}
 
 
 # ------------------------------------------------------------------------------------------------ tie-dye lean-to
@@ -666,7 +693,11 @@ def build_door_bottom():
     O.append(uv_fit(box((0.39, 0.19, 0.19), (0.05, 0.095, -0.2), decal, rot=(0, 0.06, 0)), D.rect(32, 32, 32, 32)))
     for o in O:
         if o.data.materials and o.data.materials[0] == chrome: uv_tile(o, 0.2)
-    return O, {'paint': ['dr_paint'], 'doorway': [1.0, 2.1]}
+    L = [uv_fit(box((0.07, 2.1, 0.12), (0.465, 1.05, 0), woodm), W.rect(0, 16, 64, 16)), uv_fit(box((0.075, 2.08, 0.11), (-0.4625, 1.04, 0.005), woodm), W.rect(0, 0, 64, 16)),
+         uv_fit(box((1.02, 0.075, 0.125), (0, 2.065, 0), woodm), W.rect(0, 32, 64, 16)), uv_fit(box((0.85, 1.98, 0.044), (-0.005, 1.035, 0), paint), P.rect(0, 0, 32, 64)),
+         uv_fit(box((0.34, 0.21, 0.052), (0.04, 0.72, 0)), D.rect(0, 64, 64, 40))]
+    L[-1].data.materials.append(decal)
+    return O, {'_lod': L, 'paint': ['dr_paint'], 'doorway': [1.0, 2.1]}
 
 
 # ------------------------------------------------------------------------------------------------ shuttered window
@@ -721,7 +752,13 @@ def build_shutter():
     for o in O:
         if o.data.materials and o.data.materials[0] in (paint, glass): uv_tile(o, 0.3)
         elif o.data.materials and o.data.materials[0] == metal and o.name not in ('slats',): uv_tile(o, 0.12)
-    return O, {'paint': ['sh_paint'], 'window': [1.5, 1.2], 'note': 'y = 0 is the underside of the sill; the flower box hangs below it'}
+    L = [box((1.5, 0.06, 0.2), (0, 0.03, -0.04), paint), box((1.5, 0.06, 0.12), (0, 1.03, 0), paint), box((1.37, 0.94, 0.006), (0, 0.53, 0.0), glass),
+         cyl(0.085, 1.44, (0, 1.145, -0.1), metal, axis='x', seg=6, cap=False)]
+    for s_ in (-1, 1): L.append(box((0.07, 0.94, 0.12), (s_ * 0.715, 0.53, 0), paint))
+    for o in L: uv_tile(o, 0.3)
+    L.append(uv_fit(box((1.3, 0.17, 0.17), (0, -0.02, -0.235), kit), K.rect(64, 0, 64, 24)))
+    L.append(uv_fit(box((1.1, 0.14, 0.1), (0, 0.13, -0.235), kit), leaf))
+    return O, {'_lod': L, 'paint': ['sh_paint'], 'window': [1.5, 1.2], 'note': 'y = 0 is the underside of the sill; the flower box hangs below it'}
 
 
 # ------------------------------------------------------------------------------------------------ soup crate

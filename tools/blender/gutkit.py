@@ -423,6 +423,11 @@ def finish_lod(root_name, parts, meta, ratio=0.25, drop=(), target=None):
     return root
 
 
+def _clear_rig():  # lib.sheet() adds lights + a camera every call: drop the last prop's so they don't pile up
+    for o in list(bpy.data.objects):
+        if o.type in ('LIGHT', 'CAMERA'): bpy.data.objects.remove(o, do_unlink=True)
+
+
 def run_multi_lod(build, expo=None):
     """export full + _lod1 meshes in one glb; the sheet shows the full model, plus a small sheet of the lod1."""
     argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
@@ -440,9 +445,9 @@ def run_multi_lod(build, expo=None):
         full = [c for c in root.children if not c.name.endswith('_lod1')]
         ex = (expo or {}).get(k, -1.5)
         for c in lods: c.parent = None; c.hide_render = True
-        sheet(root, fid, exposure=ex)
+        _clear_rig(); sheet(root, fid, exposure=ex)
         if lods:
             for c in lods: c.parent = root; c.hide_render = False
             for c in full: c.parent = None; c.hide_render = True
-            sheet(root, fid + '_lod1', views=('persp', 'front', 'back_persp'), exposure=ex)
+            _clear_rig(); sheet(root, fid + '_lod1', views=('persp', 'front', 'back_persp'), exposure=ex)
             for c in full: c.parent = root; c.hide_render = False
