@@ -93,6 +93,16 @@ async function session(b, map, ids) {
         const ps = [...(def.boxes.props || []), ...((def.deco && def.deco.props) || [])].map((p) => p.a || p.p).filter(Boolean);
         if (ps.length) { cx = 0; cz = 0; for (const q of ps) { cx += q[0] / ps.length; cz += q[2] / ps.length; } }
       }
+      if (map === 'deadmall') { // indoors (a roof over everything, walls between): round the props at eye height and 3 m up, the first two spots that see them
+        const t = [cx, s0[1] + 0.6, cz];
+        for (const [D, y] of [[12, 1.7], [9, 3], [7, 1.7], [5, 3]]) for (let i = 0; i < 12 && out.length < 2; i++) {
+          const az = (i / 12) * Math.PI * 2, cam = [cx + Math.sin(az) * D, s0[1] + y, cz + Math.cos(az) * D];
+          if (inBox(...cam) || out.some((o) => Math.hypot(o.p[0] - cam[0], o.p[2] - cam[2]) < 10)) continue;
+          const d = [t[0] - cam[0], t[1] - cam[1], t[2] - cam[2]], L = Math.hypot(...d), h = raycast(cam, d.map((v) => v / L), L, BOXES);
+          if (!h || h.t > L - 1.5) out.push({ id: 'map', k: out.length, ...lookAt(cam, t) });
+        }
+        return out;
+      }
       out.push({ id: 'map', k: 0, ...lookAt([s0[0], s0[1] + 7, s0[2]], [cx, s0[1] + 1, cz]) });
       const d = Math.max(30, Math.hypot(s1[0] - cx, s1[2] - cz));
       out.push({ id: 'map', k: 1, ...lookAt([cx + d * 0.7, s1[1] + d * 0.45 + 8, cz + d * 0.7], [cx, s1[1], cz]) });
