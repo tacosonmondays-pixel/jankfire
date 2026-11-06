@@ -9,6 +9,7 @@
 import * as THREE from 'three';
 import { ANIMS } from './anim.js';
 import { M } from './models.js';
+import { makeHand } from './hands.js';
 import { G } from './ctx.js';
 import { sfx } from './audio.js';
 
@@ -146,10 +147,8 @@ const OFF = new THREE.Vector3(-0.08, -0.3, -0.02); // where it waits, out of vie
 const tA = new THREE.Vector3(), tB = new THREE.Vector3();
 export function offHand(m) {
   if (m.off) return m.off;
-  const h = new THREE.Group();
-  const fist = new THREE.Mesh(new THREE.BoxGeometry(0.034, 0.042, 0.062), M(0xf1c27d));
-  const thumb = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.016, 0.042), M(0xe0b06d)); thumb.position.set(0.021, 0.016, -0.026); thumb.rotation.y = -0.4;
-  h.add(fist, thumb); h.visible = false;
+  const h = new THREE.Group(); // a PS1 left hand (hands.js), fingers half closed, the thumb out to push mags + shells
+  const hh = makeHand('L', { pose: 'pinch', r: 0.011, arm: [-0.3, -1, 0.3] }); hh.position.set(0, -0.006, 0.006); h.add(hh); h.visible = false;
   m.wrap.add(h);
   return (m.off = h);
 }

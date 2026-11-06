@@ -22,7 +22,7 @@ import { rigClash } from './shared/rig.js'; // overdrive rig killstreak
 import { soapAt, trapBoxes, trapPreroll } from './shared/wand.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, mapForGame, canDefuse, LADDER, GUNGAME, INFECT } from './shared/modes.js';
-import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, eventGame } from './shared/vote.js';
+import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, eventGame, inQuickPlay } from './shared/vote.js';
 import { matchReset, matchKill, matchSummary } from './server/match.js';
 import { SKIP, isSkipCmd, skipCommand, skipTick, skipPeople, skipInfo } from './server/skip.js';
 import { WEAPONS, SLOTS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, SLEEP_TIME, validStreaks, fireRate } from './shared/weapons.js';
@@ -31,7 +31,7 @@ import { verdict } from './shared/verdict.js';
 
 import { WRECK, slamSize, ramDmg } from './shared/weapons.js'; // wrecking ball
 import { query } from './shared/physics.js';
-import { epicCheck, epicCamMs, EPIC } from './shared/epic.js';
+import { epicCheck, epicCamMs, EPIC, EPIC_LOCK } from './shared/epic.js';
 import { holeDrag, steer } from './shared/physics.js';
 import { steer as steerTo } from './shared/homing.js'; // homing slippers (steerTo(v, from, to, max)); the duck's steer(v, dir, max) is physics.js's
 import { PARRY } from './shared/weapons.js';
@@ -1410,6 +1410,7 @@ class Room {
     if (t.trap && !this.bubbleBlocks(attacker, t, opts.from) && this.popTrap(t, 'hit', attacker, w)) return null; // in a soap bubble: the first hit (teammates' too) only pops it
     if (this.friendly(attacker, t)) return null;
     if (this.bubbleBlocks(attacker, t, opts.from)) { this.broadcast({ t: 'fx', k: 'bubhit', p: center(t).map(r2) }); return null; }
+    if (w === 'knife' && this.chaosKit && this.chaosKit.oneHit) dmg = Math.max(dmg, t.hp); // spoons & grapples: the spoon (a knife in its spoon look) kills in one
     if (opts.lethal) dmg = Math.max(dmg, t.hp); // sized for whoever was shot: a reverse card bounces that same hit
     if (attacker && attacker !== t && attacker.alive && t.reverseUntil > now()) {
       this.broadcast({ t: 'fx', k: 'reflect', id: t.id, by: attacker.id });
@@ -1478,7 +1479,7 @@ class Room {
     // EPIC kill: the victim (if they have killcams on) has to watch all of it. their respawn waits it out, never past the 9 s cap
     const ep = this.epicOf(killer, t, w, via);
     t.lastEpic = ep;
-    t.epicLock = ep && !t.isBot && t.kc ? Math.min(t.respawnAt, now() + epicCamMs()) : 0;
+    t.epicLock = ep && EPIC_LOCK.has(w) && !t.isBot && t.kc ? Math.min(t.respawnAt, now() + epicCamMs()) : 0; // only snipers + the revolver can't be skipped
     if (t.epicLock) ep.lock = 1;
     if (this.warm) { t.respawnAt = t.minRespawnAt = now() + LOBBY.respawn; t.epicLock = 0; if (ep) ep.lock = 0; } // a lobby's warm-up: straight back in
     if (this.zm) this.zmKilled(t, killer, w); // credits for zombie kills, players go down instead of respawning
@@ -3155,7 +3156,7 @@ class Room {
   startVote() {
     if (this.mode !== 'ffa' && this.mode !== 'bots') return;
     const options = modeCards(MAPS, MAP_ORDER, this.game, Math.random, this.skipped);
-    if (this.mode === 'bots' && GAMES[this.game].zombies && this.skipped !== this.game && options.length && !options.some((o) => o.game === this.game)) options[options.length - 1] = { game: this.game, event: 0 }; // solo zombies: play again is always an option
+    if (this.mode === 'bots' && !inQuickPlay(this.game) && this.skipped !== this.game && options.length && !options.some((o) => o.game === this.game)) options[options.length - 1] = { game: this.game, event: 0 }; // solo zombies: play again is always an option
     this.skipped = null;
     if (this.lobbyVote && this.lobbyVote()) return; // a one-mode lobby (P&D, royale, zombies): only the map is up for a vote
     if (!options.length) return;
@@ -3482,7 +3483,7 @@ class Room {
     if (GAMES[this.game].ladder) this.ggKill(t, killer, kw);
     else if (GAMES[this.game].infect && !this.infAt && !t.inf) this.infect(t, killer);
   }
-  // gun game ends on the spoon kill or the clock, infection on the clock or when nobody's left to infect
+  // gun game ends on the spoon (the knife's last rung) kill or the clock, infection on the clock or when nobody's left to infect
   tickModes(n) {
     const g = GAMES[this.game];
     if (!g.ladder && !g.infect) return false;

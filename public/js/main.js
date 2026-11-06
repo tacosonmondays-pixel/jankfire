@@ -55,7 +55,7 @@ import { account, restore, login, register, logout, saveProfile, leaderboard as 
 import { updateRig, rigDied, rigOn } from './rig.js';
 import { rigClash } from '/shared/rig.js'; // overdrive rig killstreak
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
-import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames } from './royale.js'; // jank royale
+import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset } from './royale.js'; // jank royale
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { ecoKeyLabel } from './econ.js';
 import { initEcon, ecoOn, econKey, econMouse, econMenuOpen, econFrame, econCam, econHideVM, econDead, econWelcome, econSpawn, econKill, econIc, econLoadout, econReset } from './econ.js';
@@ -260,6 +260,7 @@ function resetWorldState() {
   G.bubbles.clear(); G.smokes.length = 0; ME.frozenUntil = 0; G.frost = 0;
   gearLeave();
   secLeave();
+  brReset(); // the zone, eviction notice and loot rules stay with the royale room
   resetItems(); stopUse(); G.activeStreaks = null; G.itemSent = null;
   clearRec();
   clearKillFx();
@@ -1175,6 +1176,7 @@ function addRemoteInfo(p) {
 net.on('welcome', (m) => {
   G.myId = m.id; G.myName = m.name; G.myColor = m.color; G.joined = true; connecting = false;
   airReset();
+  brReset(); // a new room: whatever royale the last one had is over (that room's 'off' never reaches us)
   G.mode = m.mode; G.cfg = m.cfg;
   lobbyMe(m.id); lobbyInfo(m.lobby || null); // a mode lobby: the countdown is on
   G.game = m.game; // (music needs it before the first round info arrives)

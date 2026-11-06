@@ -278,8 +278,9 @@ export function installRoyale(Room, H) {
       if (p.isBot || !s || s.match !== (this.br && this.br.id)) return;
       if (p.forced) { p.forced = false; send(p, { t: 'loadout', lo: null }); }
       if (!s.slots) return;
-      if (s.gadget && s.gadget.n > 0) { p.item = s.gadget.i; p.ic = s.gadget; }
-      send(p, { t: 'brinv', s: s.slots.map((g) => (g ? [g.w, g.tier, g.ammo == null ? -1 : g.ammo] : 0)), m: s.melee ? [s.melee.w, s.melee.tier] : 0, g: s.gadget && s.gadget.n > 0 ? [s.gadget.i, s.gadget.n] : 0, c: s.cola, k: s.medkit, ar: Math.round(s.armor), hl: s.heal ? [s.heal.k, Math.max(0, s.heal.until - now())] : 0 });
+      const gHeld = s.gadget && (s.gadget.n > 0 || (ITEMS[s.gadget.i] && ITEMS[s.gadget.i].keep)); // goggles stay with no flashes left
+      if (gHeld) { p.item = s.gadget.i; p.ic = s.gadget; }
+      send(p, { t: 'brinv', s: s.slots.map((g) => (g ? [g.w, g.tier, g.ammo == null ? -1 : g.ammo] : 0)), m: s.melee ? [s.melee.w, s.melee.tier] : 0, g: gHeld ? [s.gadget.i, s.gadget.n] : 0, c: s.cola, k: s.medkit, ar: Math.round(s.armor), hl: s.heal ? [s.heal.k, Math.max(0, s.heal.until - now())] : 0 });
     },
     // the item key (G) in a royale: whatever gadget you picked up, no recharging
     brIc(p) {

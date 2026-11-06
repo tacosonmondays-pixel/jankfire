@@ -1,6 +1,26 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '4.5', date: '2026-11-06', title: 'NEW HANDS WHO DIS', items: [
+    'NEW HANDS on everything: chunky low-poly PS1 hands with real fingers that wrap round grips, triggers and handles, in your skin tone with your sleeve colour. no more tan boxes.',
+    'the katana and knives got snappier: a wind-up, a whippy cut with a longer smear, a springy settle. knives flip and get caught, the katana twirls on inspect. hit timing hasn\'t changed.',
+    'akimbo gets a real left hand, and so do reloads and the card deck.',
+  ] },
+  { v: '4.4', date: '2026-11-06', title: 'COSMETICS PACK 2', items: [
+    '"too epic to skip" killcams are only for the sniper, Second Opinion and the revolver now. epic kills with anything else still count, but you can skip them.',
+    'THE SPOON IS A KNIFE NOW. one weapon, not two: Gun Game\'s last rung is the knife in the spoon look (first kill with the spoon still wins), Spoons & Grapples is knives in the spoon look with one-hit kills. the Ladle became a knife skin and you keep it if you had it.',
+    '27 NEW SKINS: Keytar (AR), Label Maker (SMG), Brolly (shotgun), Pool Cue (sniper), Take A Number (Hat Trick), Leaf Shredder (Belt Sander), Fountain Pen (Second Opinion), Cap Gun (Yeehaw), Weed Whacker (Lawn Mower), Calculator (Plan B), Walkie Talkies (Lefty & Righty), Pepper Mills (Half a Shotgun), Business Cards, Squirt Flower + Hose Nozzle (water pistol), Bug Zapper (taser), Game Pad (TV remote), Cordless Drill (revolver), Cat Laser, Baguette + Neon Tube katanas, Pizza Cutter, Keycard and Frozen Fish knives, Sliced Loaf, Flip-Flop.',
+    '37 NEW WRAPS (102 total): a camo family, Brushed Steel, Damascus, Anodized Ti, Verdigris, Kitchen Granite, Marble, Jade, Amethyst Geode, Wood Burl, Moss, Sprinkles, Watermelon, Sushi, Memphis 90s, Bowling Alley, Arcade Carpet, Checkered Flag, Jersey, Barcode, QR Code, Organ Donor, Loaded Dice, Number Soup, Candy Corn, Ugly Sweater.',
+    'animated legendaries: Opal, Lava Lamp, Vaporwave, Nebula, Aurora, Black Hole, Market Crash and Neon Hex.',
+  ] },
+  { v: '4.3', date: '2026-11-06', title: 'HOTFIX: EVICTION CANCELLED', items: [
+    'fixed: after a Jank Royale match, every other mode stayed in battle royale (the EVICTION NOTICE, the zone and royale loot rules followed you into quick play and everything else).',
+    'Quick Play\'s vote no longer offers Plant & Defuse, Jank Royale or Zombies. they have their own cards and lobbies now.',
+    'Jank Royale only plays on Jankburg, the big city.',
+    'fixed: night vision goggles vanished after both flashes in Jank Royale and Plant & Defuse. now only the flashes run out; the goggles stay on your face.',
+    'fixed: the Blood Cross shoots again (the rifle pack mistook it for a burst rifle with no ammo).',
+    'BACKROOMS: every doorway goes up to the ceiling now, so you can bhop and grapple through without smacking your head on the frame.',
+  ] },
   { v: '4.2', date: '2026-11-06', title: 'LEGS DAY', items: [
     'everyone moves properly now: real strides for walk, run and sprint (feet stay planted), leaning and arm pumping, and a silly zooming pose past sprint speed.',
     'strafing and backpedalling read sideways and backwards. jumps have a wind-up, a tuck, a landing squash (bigger the further you fell), and bhop chains look rhythmic.',

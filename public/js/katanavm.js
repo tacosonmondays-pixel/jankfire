@@ -3,62 +3,34 @@
 // usual; the channel 'kl' (0..1) says how much the left hand is on the grip (an iai draw is one-handed until the left
 // hand joins, the inspect lets go to turn the blade over). Third person: the left arm reaches round to the kashira.
 import * as THREE from 'three';
+import { makeHand, aimHand, aimCuff, mixPose, POSES } from './hands.js';
 import { M } from './models.js';
 import { G } from './ctx.js';
 import { ANIMS } from './anim.js';
 
-const SKIN = 0xf1c27d, KNUCK = 0xe3ae68;
-const GRIP_R = -0.083, GRIP_L = 0.085; // model z of each fist's centre (the tsuka runs -0.13 .. +0.13, blade to -z)
-const SH_R = new THREE.Vector3(0.27, -0.56, 0.1), SH_L = new THREE.Vector3(-0.2, -0.6, 0.1); // shoulders, camera space
-const REST_L = new THREE.Vector3(-0.2, -0.5, -0.16); // where the left hand waits when it isn't on the grip
-const FORE = 0.36; // forearm length (it's cut off by the screen edge long before the elbow)
-const v1 = new THREE.Vector3(), v2 = new THREE.Vector3(), v3 = new THREE.Vector3(), UP = new THREE.Vector3(0, 1, 0);
+const GRIP_R = -0.083, GRIP_L = 0.085; // model z of each hand's centre (the tsuka runs -0.13 .. +0.13, blade to -z)
+const TSUKA_R = 0.0138; // the tsuka's radius (model units): the fingers wrap a circle this size
+const SH_R = new THREE.Vector3(0.3, -1.1, -0.12), SH_L = new THREE.Vector3(-0.2, -1.1, -0.1); // shoulders, camera space (the cuffs point at them)
+const REST_L = new THREE.Vector3(-0.17, -0.42, -0.2); // where the left hand waits when it isn't on the grip
+const v1 = new THREE.Vector3(), v2 = new THREE.Vector3(), UP = new THREE.Vector3(0, 1, 0);
 
-function sleeveColor() {
-  const lk = (G.settings && G.settings.look) || {};
-  if (!['hoodie', 'jacket', 'suit', 'runner', 'maid'].includes(lk.top)) return null;
-  try { return new THREE.Color(lk.topColor || lk.color || '#2a2440').getHex(); } catch { return 0x2a2440; }
-}
-
-// a fist closed round the tsuka: back of the hand + knuckles on top (the mune side), fingers wrapped under the edge,
-// thumb hooked round the left side
-function fist(left) {
-  const g = new THREE.Group(), sx = left ? -1 : 1;
-  const back = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, 0.074), M(SKIN)); back.position.set(0.004 * sx, 0.022, 0); g.add(back);
-  const fing = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.026, 0.07), M(KNUCK)); fing.position.set(0, -0.021, 0); g.add(fing);
-  const side = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.05, 0.072), M(SKIN)); side.position.set(0.024 * sx, 0, 0); g.add(side); // the palm / heel side
-  for (let i = 0; i < 4; i++) { const k = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.012, 0.016), M(KNUCK)); k.position.set(-0.012 * sx, 0.034, -0.026 + i * 0.0175); g.add(k); }
-  const th = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.034, 0.03), M(SKIN)); th.position.set(-0.026 * sx, 0.004, -0.024); th.rotation.x = 0.35; g.add(th);
-  return g;
-}
-function forearm(sl) {
-  const g = new THREE.Group();
-  const f = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.032, FORE, 7), M(SKIN)); f.position.y = FORE / 2; g.add(f);
-  const wr = new THREE.Mesh(new THREE.CylinderGeometry(0.029, 0.029, 0.03, 7), M(0xff4fd8)); wr.position.y = 0.05; g.add(wr); // a pink sweatband, because of course
-  if (sl != null) { const s = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.042, FORE * 0.55, 7), M(sl)); s.position.y = FORE * 0.78; g.add(s); }
-  return g;
-}
-
-// knives: the same closed fist round the handle instead of the old box under it (the box read as a brick when the
-// inspect turns the knife over). knife models all put the grip axis on y = 0, the hand over z -0.036 .. +0.08
-export function wrapFist(m, hand, z = 0.022, k = 1) {
-  if (hand) hand.visible = false;
-  const f = fist(false); f.scale.setScalar(k); f.position.set(0, 0, z * m.cfg.s); m.wrap.add(f);
-  return f;
-}
-// once per viewmodel build (weapons.js rebuildViewmodels). hand = the default single fist, hidden
+// once per viewmodel build (weapons.js rebuildViewmodels): two PS1 hands round the tsuka, index ends toward the tsuba,
+// backs of the hands up and out, fingers under the edge. a katana skin can say where its hands go: userData.grips [zR, zL]
 export function katanaHands(m, hand) {
   if (hand) hand.visible = false;
-  const s = m.cfg.s, sl = sleeveColor(), kh = {};
-  for (const [k, z] of [['R', GRIP_R], ['L', GRIP_L]]) {
-    const f = fist(k === 'L'); f.scale.setScalar(s); m.wrap.add(f);
-    const a = forearm(sl); m.wrap.add(a);
-    kh[k] = { f, a, z: z * s };
+  const s = m.cfg.s, gz = m.g.userData.grips || [GRIP_R, GRIP_L], kh = {};
+  for (const [k, z, back] of [['R', gz[0], [0.55, 0.85, 0]], ['L', gz[1], [-0.55, 0.85, 0]]]) {
+    const f = makeHand(k, { pose: 'grip', r: TSUKA_R * s, arm: [0, -0.4, 1] });
+    aimHand(f, [0, 0, -1], back);
+    m.wrap.add(f);
+    kh[k] = { f, z: z * s, q: f.quaternion.clone() };
   }
   m.kh = kh;
+  m.pivot = new THREE.Vector3(0, 0, gz[0] * s); // spins + tosses turn round the right hand (bladefeel.js)
 }
 
 // every frame, after the wrap has its pose. kl = left hand on the grip (0..1)
+const OPEN_L = mixPose('grip', 'open', 1);
 export function katanaStep(m, kl) {
   const kh = m.kh;
   if (!kh) return;
@@ -66,21 +38,20 @@ export function katanaStep(m, kl) {
   wrap.updateMatrixWorld(true);
   kl = Math.max(0, Math.min(1, kl));
   for (const k of ['R', 'L']) {
-    const h = kh[k];
-    h.f.position.set(0, 0, h.z); h.f.rotation.set(0, 0, 0);
-    if (k === 'L' && kl < 1) { // off the grip: slide it (in camera space) toward where it rests, turned a bit
-      v1.set(0, 0, h.z); wrap.localToWorld(v1); root.worldToLocal(v1);
-      v1.lerp(REST_L, 1 - kl); root.localToWorld(v1); wrap.worldToLocal(v1);
-      h.f.position.copy(v1); h.f.rotation.set((1 - kl) * 0.9, 0, (1 - kl) * 0.6);
+    const h = kh[k], f = h.f;
+    f.position.set(0, 0, h.z); f.quaternion.copy(h.q);
+    if (k === 'L') {
+      if (kl < 1) { // off the grip: slide it (in camera space) toward where it rests, opening up
+        v1.set(0, 0, h.z); wrap.localToWorld(v1); root.worldToLocal(v1);
+        v1.lerp(REST_L, 1 - kl); root.localToWorld(v1); wrap.worldToLocal(v1);
+        f.position.copy(v1); f.rotateX((1 - kl) * 0.7);
+      }
+      f.userData.hand.pose = kl < 1 ? mixPose(OPEN_L, 'grip', kl) : POSES.grip;
     }
-    h.f.visible = !(k === 'L' && kl < 0.04);
-    // the forearm: from the back of the fist toward that shoulder (camera space -> wrap space)
+    f.visible = !(k === 'L' && kl < 0.04);
+    // the cuff points back at that shoulder (off screen), so the hand reads as attached
     v2.copy(k === 'R' ? SH_R : SH_L); root.localToWorld(v2); wrap.worldToLocal(v2);
-    v1.copy(h.f.position);
-    v3.subVectors(v2, v1); const len = v3.length() || 1; v3.divideScalar(len);
-    h.a.position.copy(v1).addScaledVector(v3, 0.02 * m.cfg.s);
-    h.a.quaternion.setFromUnitVectors(UP, v3);
-    h.a.visible = h.f.visible;
+    aimCuff(f, v2);
   }
 }
 
@@ -105,21 +76,22 @@ const KATANA = {
   // left, the weight carries it on a little, then it's hauled back up into kamae. hit 0.12 = the server's timing
   swing_katana: { hit: 0.12, keys: [
     KK(0),
-    KP(0.07, [0.2, -0.09, -0.42], [0.45, 0.82, 0.35], [-0.45, 0.35, -0.82]), // wind-up: cocked over the right shoulder, edge forward
-    KP(0.12, [0.06, -0.15, -0.5], [-0.55, 0.32, -0.77], [-0.5, -0.8, -0.1], 'linear'), // mid-cut, across the middle
-    KP(0.17, [0, -0.2, -0.42], [-0.9, -0.14, -0.41], [-0.3, -0.6, 0.74], 'snap'), // through, out to the lower left
-    KP(0.28, [-0.02, -0.215, -0.41], [-0.89, -0.2, -0.4], [-0.32, -0.55, 0.77]), // its weight carries on a touch
-    KK(0.5),
-  ], events: [[0.07, 'whoosh']], trail: [0.07, 0.23] },
-  // gyaku: the backhand return, cocked over the left shoulder and down across to the lower right
+    KP(0.055, [0.2, -0.08, -0.42], [0.45, 0.82, 0.35], [-0.45, 0.35, -0.82]), // cocked over the right shoulder, edge forward
+    KP(0.08, [0.21, -0.075, -0.415], [0.42, 0.86, 0.3], [-0.45, 0.35, -0.82], 'linear'), // a hair of hang: then it goes
+    KP(0.12, [0.06, -0.15, -0.5], [-0.55, 0.32, -0.77], [-0.5, -0.8, -0.1], 'linear'), // WHIP across the middle
+    KP(0.16, [0, -0.2, -0.42], [-0.9, -0.14, -0.41], [-0.3, -0.6, 0.74], 'snap'), // through, out low left
+    KP(0.26, [-0.025, -0.22, -0.41], [-0.9, -0.22, -0.38], [-0.32, -0.55, 0.77]), // the weight carries it on, the smear fades
+    KK(0.5, 'back'), // and it springs back into kamae
+  ], events: [[0.07, 'whoosh']], trail: [0.07, 0.25] },
   swing_katana2: { hit: 0.12, keys: [
     KK(0),
-    KP(0.07, [-0.04, -0.08, -0.42], [-0.5, 0.8, 0.33], [0.5, 0.3, -0.81]),
+    KP(0.055, [-0.04, -0.07, -0.42], [-0.5, 0.8, 0.33], [0.5, 0.3, -0.81]),
+    KP(0.08, [-0.05, -0.065, -0.415], [-0.47, 0.84, 0.28], [0.5, 0.3, -0.81], 'linear'),
     KP(0.12, [0.08, -0.15, -0.5], [0.55, 0.3, -0.78], [0.5, -0.82, -0.05], 'linear'),
-    KP(0.17, [0.2, -0.2, -0.42], [0.9, -0.14, -0.41], [0.3, -0.6, 0.74], 'snap'),
-    KP(0.28, [0.22, -0.215, -0.41], [0.89, -0.2, -0.4], [0.32, -0.55, 0.77]),
-    KK(0.5),
-  ], events: [[0.07, 'whoosh']], trail: [0.07, 0.23] },
+    KP(0.16, [0.2, -0.2, -0.42], [0.9, -0.14, -0.41], [0.3, -0.6, 0.74], 'snap'),
+    KP(0.26, [0.225, -0.22, -0.41], [0.9, -0.22, -0.38], [0.32, -0.55, 0.77]),
+    KK(0.5, 'back'),
+  ], events: [[0.07, 'whoosh']], trail: [0.07, 0.25] },
   // iai: the right hand draws from the left hip, edge up, straight into a flat cut across (nukitsuke), the follow-through
   // hangs out right, then the left hand comes off the scabbard onto the kashira and it settles into kamae
   draw_katana: { keys: [
@@ -134,16 +106,17 @@ const KATANA = {
   // then chiburi: up, and a hard flick down to the right to throw the blood off, and both hands back on
   inspect_katana: { keys: [
     KK(0),
-    KP(0.35, [0.07, -0.1, -0.36], [-0.9, 0.12, -0.42], [0.1, 0.85, -0.5]), // flat across, edge up, the face turned to you
-    KP(0.75, [0.07, -0.095, -0.36], [-0.9, 0.14, -0.41], [0.1, 0.85, -0.5]),
-    KP(0.95, [0.07, -0.095, -0.35], [-0.9, 0.14, -0.41], [0.35, 0.1, 0.93]), // rolling over, edge to you
-    KP(1.15, [0.07, -0.1, -0.36], [-0.9, 0.12, -0.42], [0.1, -0.85, -0.5]), // the other face, edge down
-    KP(1.5, [0.07, -0.1, -0.36], [-0.9, 0.1, -0.43], [0.1, -0.85, -0.5]),
-    KP(1.7, [0.17, -0.05, -0.38], [0.3, 0.88, -0.36], [0.3, 0.3, -0.9], 'in'), // up...
-    KP(1.82, [0.12, -0.16, -0.45], [0.86, -0.36, -0.36], [0.2, -0.3, 0.93], 'snap'), // ...FLICK (the blood comes off)
-    KP(2.0, [0.13, -0.165, -0.45], [0.85, -0.4, -0.35], [0.2, -0.3, 0.93]),
-    KK(2.4),
-  ], ch: { kl: [[0, 1], [0.25, 0], [2.0, 0], [2.3, 1]] }, events: [[0.75, 'ting'], [1.7, 'whoosh'], [1.82, 'chiburi']] },
+    KP(0.3, [0.15, -0.2, -0.46], [0.05, 0.95, -0.25], [1, 0, 0.15]), // left hand off, blade up at your right side, the flat to you
+    KP(1.0, [0.15, -0.195, -0.46], [0.05, 0.95, -0.25], [1, 0, 0.15]), // (it twirls round the right hand, a wheel facing you: the toss channel)
+    KP(1.25, [0.07, -0.1, -0.36], [-0.9, 0.12, -0.42], [0.1, 0.85, -0.5], 'back'), // caught flat across, edge up: look down the hamon
+    KP(1.5, [0.07, -0.095, -0.36], [-0.9, 0.14, -0.41], [0.1, 0.85, -0.5]),
+    KP(1.62, [0.07, -0.1, -0.36], [-0.9, 0.12, -0.42], [0.1, -0.85, -0.5], 'snap'), // flip it to the other face
+    KP(1.74, [0.17, -0.05, -0.38], [0.3, 0.88, -0.36], [0.3, 0.3, -0.9], 'in'), // up...
+    KP(1.86, [0.12, -0.16, -0.45], [0.86, -0.36, -0.36], [0.2, -0.3, 0.93], 'snap'), // ...FLICK (chiburi: the blood comes off)
+    KP(2.02, [0.13, -0.165, -0.45], [0.85, -0.4, -0.35], [0.2, -0.3, 0.93]),
+    KK(2.4, 'back'),
+  ], ch: { kl: [[0, 1], [0.2, 0], [2.05, 0], [2.3, 1]], toss: [[0.32, 0, 0, 0, 0, 0, 0], [0.4, 0, 0, 0, 0.25, 0, 0], [0.98, 0, 0, 0, -Math.PI * 4, 0, 0]] },
+  events: [[0.42, 'whoosh'], [0.62, 'whoosh'], [0.82, 'whoosh'], [1.25, 'ting'], [1.74, 'whoosh'], [1.86, 'chiburi']] },
   // parry (right click): both hands snap it up across the face, edge out, tip high left; hold through the 0.35 s
   // window with a little drift so it isn't frozen; drop back. a landed parry adds hit stop + a kick on top
   parry_katana: { keys: [

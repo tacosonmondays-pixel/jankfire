@@ -16,6 +16,7 @@ import { fx, makeBeam, setBeam } from './fx.js';
 import { sfx } from './audio.js';
 import { recordEv, RP_HOOKS, RP } from './replay.js';
 import { buildWeapon, M, freeTree } from './models.js';
+import { gunHand } from './hands.js'; // the radar gun's hand
 import { K } from './keys.js';
 
 const WP = WEAPONS.water, TZ = WEAPONS.taser, RM = WEAPONS.remote;
@@ -382,7 +383,7 @@ function ensureRadarVM() {
   const g = buildWeapon('radar', (G.equipped || {}).radar);
   g.scale.setScalar(0.8);
   radarVM.add(g);
-  const hand = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.062, 0.09), M(0xf1c27d)); hand.position.set(0, -0.042, 0.016); radarVM.add(hand);
+  const hand = gunHand('radar', { hand: [0, -0.042, 0.016] }, g); radarVM.add(hand); // the PS1 hand, index on the trigger
   radarVM.userData.g = g;
   radarVM.visible = false;
   G.vmScene.add(radarVM);

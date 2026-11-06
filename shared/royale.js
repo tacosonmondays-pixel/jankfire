@@ -9,10 +9,7 @@ import { WEAPONS, ITEMS, FLAGS } from './weapons.js';
 FLAGS.GLIDE = 1 << 18; // under an umbrella (everyone sees it open over your head). its own bit: 32768 is the rig's block, which the server clears on anyone not rigged
 
 // maps big enough for it (a walled play area + scenery out to the horizon). mapOk reads this flag
-for (const id of ['desert', 'warehouse', 'suburb']) if (MAPS[id]) MAPS[id].royale ||= {};
-if (MAPS.desert) MAPS.desert.royale = { zone0: [0, 0, 150], blimpY: 115 }; // the first circle covers the whole town
-if (MAPS.warehouse) MAPS.warehouse.royale = { zone0: [13, 0, 150], blimpY: 105 };
-if (MAPS.suburb) MAPS.suburb.royale = { zone0: [1, 0, 130], blimpY: 100 };
+// Jank Royale only plays on Jankburg, the big city (it used to also run on Desert, Warehouse and Suburb)
 // Jankburg: the big one. the first circle covers the city and the outer ring; each district is a POI (see POI below)
 if (MAPS.jankburg) MAPS.jankburg.royale = { zone0: [0, 0, 300], blimpY: 195, pois: JB.districts, loot: 380 };
 // which POI a point is in (null outside them)
@@ -69,7 +66,7 @@ export const GUNS = {
   laser: { tier: 3, w: 2 }, // the Big Laser Pointer (charge it, it beams)
   pistol: { tier: 0, w: 9, mags: 3 }, sawnoff: { tier: 0, w: 6, mags: 6 }, akimbo: { tier: 1, w: 5, mags: 3 }, // the plain sidearms
 };
-export const MELEE = { knife: { tier: 0, w: 4 }, slapper: { tier: 0, w: 3 }, katana: { tier: 1, w: 3 }, slipper: { tier: 1, w: 2 }, scales: { tier: 2, w: 2 }, spoon: { tier: 4, w: 0.6 } };
+export const MELEE = { knife: { tier: 0, w: 4 }, slapper: { tier: 0, w: 3 }, katana: { tier: 1, w: 3 }, slipper: { tier: 1, w: 2 }, scales: { tier: 2, w: 2 } };
 // throwables and gadgets (the G key): how many come in one pick-up
 export const GADGETS = { frag: { tier: 0, n: 2, w: 6 }, smoke: { tier: 0, n: 2, w: 4 }, popper: { tier: 1, n: 2, w: 3 }, duck: { tier: 2, n: 1, w: 2 }, bubble: { tier: 2, n: 1, w: 2 }, wand: { tier: 2, n: 2, w: 2 }, reverse: { tier: 3, n: 1, w: 1 },
   camera: { tier: 2, n: 1, w: 2 }, quiz: { tier: 1, n: 2, w: 3 }, nvg: { tier: 1, n: 2, w: 2 } }; // the new gear: instant camera, pop quiz, night vision goggles
