@@ -18,7 +18,7 @@ def poly(pts): return [P(d, h) for d, h in pts]
 BX = 11.5      # barrel axes at x = +-11.5 mm
 BREECH = 660   # the breech face
 BEAD_H = 15.0  # top of the brass bead
-EYE_UP = 4     # the eye sits a touch over the bead (you see a sliver of rib)
+EYE_UP = 9     # the eye sits a touch over the bead (you see a sliver of rib)
 
 
 def fixmats(o):  # boolean cuts give the new faces an empty material slot: give them the object's own
@@ -90,11 +90,23 @@ def checker(px):  # checkering: a diamond grid cut into walnut
     px[((xx + yy) % 4 == 0) | ((xx - yy) % 4 == 0)] = hexrgb(0x2e1608)
 
 
+def tex_walnut(name, base, dark, size=64, seed=5, lines=6):  # long thin grain lines, gentle wobble, tiles both ways
+    r = np.random.default_rng(seed)
+    y, x = np.mgrid[0:size, 0:size] / size
+    warp = np.zeros_like(x)
+    for f, a in ((1, 0.03), (2, 0.015), (4, 0.006)):
+        warp += a * np.sin(2 * math.pi * (f * x + r.random())) * np.cos(2 * math.pi * (f * y + r.random()))
+    g = 0.5 + 0.5 * np.sin(2 * math.pi * lines * (y + warp))
+    t = np.clip((g > 0.86) * 0.65 + 0.25 * g ** 3 + 0.1 * r.random((size, size)), 0, 1)
+    px = hexrgb(base)[None, None] * (1 - t[:, :, None]) + hexrgb(dark)[None, None] * t[:, :, None]
+    return tex_canvas(name, size, size, lambda p: p.__setitem__(slice(None), px))
+
+
 def build():
     blued = mat('dbl_blued', 0x1c2028, rough=0.26, metal=0.85, tex=tex_noise('dbl_blued_t', 0x1e222a, var=0.06, size=16, seed=151))
     case = mat('dbl_case', 0xffffff, rough=0.3, metal=0.8, tex=tex_canvas('dbl_case_t', 48, 48, case_colours))
     lockm = mat('dbl_lock', 0xffffff, rough=0.3, metal=0.75, tex=tex_canvas('dbl_lock_t', 96, 28, lockplate))
-    walnut = mat('dbl_walnut', 0x7a4520, rough=0.3, clearcoat=0.6, tex=tex_wood('dbl_walnut_t', 0x8a4c24, 0x5a2a10, size=64, seed=152, rings=3.0))
+    walnut = mat('dbl_walnut', 0x7a4520, rough=0.3, clearcoat=0.6, tex=tex_walnut('dbl_walnut_t', 0x8a4c24, 0x4a200a, seed=152, lines=7))
     check = mat('dbl_checker', 0x6a3a1a, rough=0.55, tex=tex_canvas('dbl_checker_t', 16, 16, checker))
     brass = mat('dbl_brass', 0xf0c050, rough=0.18, metal=1.0, emit=0xffd040, strength=0.5)
     steel = mat('dbl_steel', 0x9aa0aa, rough=0.25, metal=1.0)
@@ -142,7 +154,7 @@ def build():
         fn = ball(W(12.8), (sx * W(BX), Y(0.5), Z(BREECH + 2)), case, scale=(1, 1, 0.75), seg=16, rings=10)
         A(fn)
         A(cyl(W(2.4), W(5), (sx * W(BX + 7), Y(6), Z(BREECH + 9)), steel, axis='z', seg=8, rot=(0, -sx * 0.5, 0)))  # strikers
-        A(lathe([(W(12.9), Z(BREECH + 0.2)), (W(12.9), Z(BREECH + 1.6))], (sx * W(BX), Y(0.5), 0), gold, seg=16))  # gold line at the fence
+        A(lathe([(W(12.9), Z(BREECH + 0.2)), (W(12.9), Z(BREECH + 1.6))], (sx * W(BX), Y(0.5), 0), gold, seg=16, cap=False))  # gold line at the fence
     A(cyl(W(5), W(51), (0, Y(-25), Z(572)), steel, axis='x', seg=12, bev=W(0.8)))  # hinge pin
     A(side(poly([(700, 6.5), (770, 3.5), (774, 1), (700, 1)]), W(14), (0, 0, 0), case, bev=W(1.2)))  # top tang
     A(cyl(W(6.5), W(4), (0, Y(10), Z(694)), case, axis='y', seg=14, bev=W(0.8)))  # top lever spindle
@@ -157,13 +169,13 @@ def build():
         for d, h in ((728, -22), (782, -10)):
             A(cyl(W(3.2), W(1.6), (sx * W(25.9), Y(h), Z(d)), steel, axis='x', seg=10))
     # ---------------- hammers (one node): pivot boss on the lock, neck up to the head on the striker, spur back
-    ham_pts = [(714, -12), (703, -10), (699, -2), (692, 4), (682, 8), (674, 7), (671, 11), (676, 14.5), (690, 13.5), (701, 14), (713, 16.5), (724, 18.5), (727, 15.5),
-               (717, 11.5), (713, 7), (717, 0), (718, -8)]
+    ham_pts = [(714, -12), (703, -10), (699, -2), (692, 4), (682, 7), (674, 6), (671, 10), (676, 13.5), (690, 12.5), (701, 12.5), (713, 14), (724, 15.5), (727, 12.5),
+               (717, 9.5), (713, 6), (717, 0), (718, -8)]
     for sx in (-1, 1):
         ham.append(side(poly(ham_pts), W(7), (sx * W(29.2), 0, 0), case, bev=W(1.2)))
         ham.append(cyl(W(6.5), W(2), (sx * W(33.2), Y(-4), Z(708)), steel, axis='x', seg=12))  # tumbler screw
         for k in range(4):  # chequered thumb piece
-            ham.append(box((W(7.4), W(0.8), W(1.6)), (sx * W(29.2), Y(16.6 - k * 0.6), Z(715 + k * 2.6)), black))
+            ham.append(box((W(7.4), W(0.8), W(1.6)), (sx * W(29.2), Y(14.3 - k * 0.5), Z(715 + k * 2.6)), black))
     # ---------------- trigger guard + two triggers
     A(side(poly([(692, -40), (804, -45), (806, -50), (768, -50), (752, -63), (733, -73), (709, -73), (694, -63), (688, -50)]), W(8), (0, 0, 0), blued, bev=W(1.5),
            holes=[poly([(699, -48), (746, -48), (744, -60), (731, -67), (711, -67), (700, -60)])]))
@@ -200,7 +212,7 @@ def build():
     bodies = zone_join(parts, 'dbl_body', WZ, default='n', rule=lambda m, c: 'a' if m in ('dbl_steel', 'dbl_blued') and c[2] > Z(BREECH) else None)
     hn = part(ham, 'dblhammer_wzA', pivot=(0, Y(-4), Z(708)))
     meta = {'kind': 'weapon', 'id': 'shotgun', 'skin': 'shotgun_double', 'paint': ['dbl_walnut'], 'muzzle': [0, BORE_Y, MUZ_Z],
-            'sight': {'y': Y(BEAD_H + EYE_UP), 'z': Z(BREECH) + 0.06}, 'hatAt': [[0, Y(13), Z(BREECH - 120)], 0.11], 'hammer': {'node': 'dblhammer_wzA'}}
+            'sight': {'y': Y(BEAD_H + EYE_UP), 'z': Z(BREECH) + 0.12}, 'hatAt': [[0, Y(13), Z(BREECH - 120)], 0.11], 'hammer': {'node': 'dblhammer_wzA'}}
     return finish('w_shotgun_double', bodies + [hn], meta)
 
 

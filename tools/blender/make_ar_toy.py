@@ -71,15 +71,15 @@ def build():
     for k in range(3):  # and on top
         cut(bx_, box((0.016, 0.03, 0.038), (0, BORE_Y + 0.036, -0.582 + k * 0.058), None, bev=0.005))
     A(fixmats(bx_))
-    A(lathe([(0.018, -0.645), (0.018, -0.36)], (0, BORE_Y, 0), dark, seg=12))  # the inner tube, seen through the vents
+    A(lathe([(0.018, -0.645), (0.018, -0.36)], (0, BORE_Y, 0), dark, seg=12, cap=False))  # the inner tube, seen through the vents
     for z in (-0.4, -0.632):
-        A(lathe([(0.0375, z - 0.006), (0.0375, z + 0.006)], (0, BORE_Y, 0), grey, seg=16))  # collars
+        A(lathe([(0.0375, z - 0.006), (0.0375, z + 0.006)], (0, BORE_Y, 0), grey, seg=16, cap=False))  # collars
     # front sight: a tall molded fin on the barrel, glowing tip on the sight line
     A(side([(FRONT_Z - 0.03, BORE_Y + 0.03), (FRONT_Z + 0.03, BORE_Y + 0.03), (FRONT_Z + 0.012, SIGHT_Y - 0.008), (FRONT_Z - 0.006, SIGHT_Y - 0.008)], 0.006, (0, 0, 0), orange, bev=0.0015))
     A(box((0.009, 0.009, 0.009), (0, SIGHT_Y - 0.0045, FRONT_Z + 0.003), dot, bev=0.002))
     # under-barrel pump grip (pink, ribbed): the bit you hold up front
     pg = lathe([(0.03, -0.555), (0.038, -0.548)] + sum([[(0.038, -0.536 + k * 0.026), (0.034, -0.529 + k * 0.026), (0.038, -0.522 + k * 0.026)] for k in range(5)], []) +
-               [(0.038, -0.41), (0.03, -0.404)], (0, BORE_Y - 0.052, 0), pink, seg=12)
+               [(0.038, -0.41), (0.03, -0.404)], (0, BORE_Y - 0.052, 0), pink, seg=12, cap=False)
     pg.scale = (0.85, 1.0, 1.0)
     A(pg)
     A(box((0.02, 0.03, 0.13), (0, BORE_Y - 0.03, -0.48), grey, bev=0.004))  # its rail under the barrel

@@ -2,7 +2,7 @@
 # Bow: a 62" takedown recurve (23" laminated hardwood riser with a deflexed profile, a leather grip, an arrow shelf
 # with a stick-on rest, limb pockets with brass knurled bolts, short glass-and-maple limbs with candy tip overlays,
 # a Dacron string with servings, a brass nock set and yarn puff silencers), x0.5 so it's the code bow's 0.8 m.
-# Cross-sections are 1.4x real so it reads at that size. A nocked cedar arrow (shield-cut feathers, a printed
+# Cross-sections are ~1.7x real so it reads at that size. A nocked cedar arrow (shield-cut feathers, a printed
 # wrap, a 3-blade broadhead). The game draws it: the arrow node slides back, the limbs flex, the string bends to the
 # nock (meta.bow, glbkit.js bowRig).
 # Made fun: the limbs are labelled THIS END UP and THIS END ALSO UP, and the arrow wrap says SORRY.
@@ -10,6 +10,7 @@
 import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib import *
 from lib import _obj, _link
+
 
 R_STR = 0.0017          # string radius
 ARROW_R = 0.0034        # held arrow shaft radius
@@ -30,10 +31,10 @@ LIMB_K = 22
 LIMB_SLOTS = ['core'] + ['glass'] * 3 + ['top'] * 4 + ['glass'] * 3 + ['core'] + ['glass'] * 3 + ['bot'] * 4 + ['glass'] * 3
 
 
-def limb_section(w, h):
+def limb_section(w, h, ef=0.22):
     """a limb's section: glass faces (top = the side vector's + side, bot = - side), rounded corners and a maple core
-    stripe up each edge. 22 points; LIMB_SLOTS says what each face slot is."""
-    rc = 0.28 * h; e = 0.22 * h; fx = w / 2 - rc
+    stripe up each edge (ef x the thickness each side of the middle). 22 points; LIMB_SLOTS says what each face slot is."""
+    rc = (0.5 - ef) * h; e = ef * h; fx = w / 2 - rc
     pts = [(w / 2, -e), (w / 2, e)]
     pts += [(fx + rc * math.cos(math.radians(a)), (h / 2 - rc) + rc * math.sin(math.radians(a))) for a in (30, 60)]
     pts += [(fx - 2 * fx * k / 4, h / 2) for k in range(4)]
@@ -86,34 +87,6 @@ def pom(r, pos, m, seed):
     return jitter(b, r * 0.28, seed)
 
 
-def ring_patch(z0, z1, r0, r1, a0, a1, m, name, nu=8, na=12, pos=(0, 0, 0), axis_flip=False):
-    """a curved decal on a round thing lying along game z: the part of the cone/cylinder r0 at z0 .. r1 at z1 between
-    angles a0..a1 (radians from +x toward +y). uv: u along z (z0 -> z1), v across the angles (a0 -> a1)."""
-    bm = bmesh.new(); uvl = bm.loops.layers.uv.new()
-    grid = []
-    for i in range(nu + 1):
-        t = i / nu; z = z0 + (z1 - z0) * t; r = r0 + (r1 - r0) * t
-        row = []
-        for j in range(na + 1):
-            a = a0 + (a1 - a0) * j / na
-            row.append(bm.verts.new(gv(pos[0] + math.cos(a) * r, pos[1] + math.sin(a) * r, pos[2] + z)))
-        grid.append(row)
-    for i in range(nu):
-        for j in range(na):
-            vs = (grid[i][j], grid[i + 1][j], grid[i + 1][j + 1], grid[i][j + 1])
-            f = bm.faces.new(vs)
-            for lp, (ii, jj) in zip(f.loops, ((i, j), (i + 1, j), (i + 1, j + 1), (i, j + 1))):
-                lp[uvl].uv = (ii / nu, jj / na)
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    o = _obj(name, bm, m)
-    # outward normals: recalc may point them in, check one face against the radial direction
-    f = o.data.polygons[0]; c = f.center
-    if Vector((c.x - gv(*pos).x, c.y - gv(*pos).y, 0)).dot(Vector((f.normal.x, f.normal.y, 0))) < 0:
-        bm = bmesh.new(); bm.from_mesh(o.data); bmesh.ops.reverse_faces(bm, faces=bm.faces); bm.to_mesh(o.data); bm.free()
-    for p in o.data.polygons: p.use_smooth = True
-    return o
-
-
 def string_rod(p0, p1, r, m, name, seg=8):
     return rod(p0, p1, r, m, seg=seg, name=name)
 
@@ -132,11 +105,11 @@ def lam_px(px):  # laminated riser: maple, walnut and purpleheart lams, with gra
     px[:] *= (0.86 + 0.16 * (0.6 * streak + 0.4 * r.random((h, w))))[:, :, None]
 
 
-def limb_label(text, arrow=True):
+def limb_label(text, arrow=True, edge=0xff4fd8):
     def draw(px):
         h, w = px.shape[:2]
         px[:] = hexrgb(0x121216)
-        px[0, :] = px[-1, :] = hexrgb(0xff4fd8)
+        px[0, :] = px[-1, :] = hexrgb(edge)
         text_px(px, text, 3, 2, 1, 0xf6f4ee)
         if arrow:
             x0 = 3 + len(text) * 6 + 2
@@ -224,15 +197,15 @@ def arrow_mats(pre, shaft_col, shaft_dark, nock_col, fea_col, cock_col, wrap_tex
 
 # ------------------------------------------------------------ the recurve
 Y_END = 0.142           # riser ends
-LIMB_H0 = 0.0076        # limb thickness at the pocket
-LIMB_W0 = 0.025         # limb width at the pocket
-X_R = -0.0025           # riser centre (x): the riser sits a hair left, the arrow passes on its right
-W_R = 0.024             # riser width
+LIMB_H0 = 0.0095        # limb thickness at the pocket
+LIMB_W0 = 0.028         # limb width at the pocket
+X_R = -0.004            # riser centre (x): the riser sits a hair left, the arrow passes on its right
+W_R = 0.027             # riser width
 X_WIN = -0.0045         # sight window face (the arrow at x = 0 just clears it)
 
 
 def riser_c(y): return -0.004 + 0.55 * y * y                    # centre line of the deflexed riser (z)
-def riser_d(y): return 0.0245 - 0.22 * y * y                    # its depth front to back
+def riser_d(y): return 0.034 - 0.38 * y * y                     # its depth front to back
 def grip_bulge(y):  # the grip swells out the back below the shelf (the throat where the hand pushes is at y = -0.012)
     if not -0.098 < y < -0.006: return 0.0
     t = (y + 0.006) / -0.092
@@ -276,17 +249,23 @@ def recurve():
             pz_front = pivot(sgn)[1] - LIMB_H0 / 2 - (Y_END - abs(y)) * math.tan(math.radians(10))
             z = min(z, pz_front + 0.0002)
         return z
-    front = [(riser_c(y) - riser_d(y) / 2, y) for y in ys]
-    back = [(back_z(y), y) for y in ys[::-1]]
-    riser = side(front + back, W_R, (X_R, 0, 0), lam, bev=0.0018, seg=2, name='bw_riser', angle=50)
+    def rring(w, b0, b1, k=20, ex=0.36):  # rounded rectangle: a across x, b from b0 to b1 (front to back)
+        out = []
+        for j in range(k):
+            th = 2 * math.pi * j / k; c_, s_ = math.cos(th), math.sin(th)
+            out.append((w / 2 * math.copysign(abs(c_) ** ex, c_), (b0 + b1) / 2 + (b1 - b0) / 2 * math.copysign(abs(s_) ** ex, s_)))
+        return out
+    rpath = [(X_R, y, riser_c(y)) for y in ys]   # top to bottom: the loft's side vector is +z
+    riser = loft(rpath, lambda i, t: rring(W_R, -riser_d(ys[i]) / 2, back_z(ys[i]) - riser_c(ys[i])), m=lam, name='bw_riser', up=(1, 0, 0), smooth_angle=50)
     # the sight window on the right: the arrow runs past it, resting on the shelf
     win = side_x([(X_WIN, -0.006), (0.03, -0.006), (0.03, 0.132), (0.013, 0.128), (0.005, 0.12), (0.0, 0.111), (-0.003, 0.1), (X_WIN, 0.088)], 0.12, (0, 0, 0), None, name='bw_win')
     cut(riser, win)
+    bevel(riser, 0.0012, 2, 50)
     uv_box(riser, 0.03); A(riser)
-    # leather grip over the swell
-    gys = [-0.007 - 0.09 * i / 24 for i in range(25)]
-    gp = [(riser_c(y) - riser_d(y) / 2 - 0.0007, y) for y in gys] + [(riser_c(y) + riser_d(y) / 2 + grip_bulge(y) + 0.0007, y) for y in gys[::-1]]
-    g = side(gp, W_R + 0.0016, (X_R, 0, 0), grip_m, bev=0.0035, seg=3, name='bw_grip', angle=60)
+    # leather grip: a sleeve over the swell
+    gys = [-0.0055 - 0.095 * i / 15 for i in range(16)]
+    gpath = [(X_R, y, riser_c(y)) for y in gys]
+    g = loft(gpath, lambda i, t: rring(W_R + 0.0026, -riser_d(gys[i]) / 2 - 0.0009, back_z(gys[i]) - riser_c(gys[i]) + 0.0009, 16, 0.55), m=grip_m, name='bw_grip', up=(1, 0, 0), smooth_angle=60)
     uv_box(g, 0.02); A(g)
     # stick-on arrow rest + felt strike plate on the window face, brass inserts, the medallion
     A(box((0.0062, 0.0012, 0.009), (X_WIN + 0.0031, -0.0043, riser_c(0) - 0.001), rest_m, bev=0.0004, name='bw_rest'))
@@ -314,13 +293,13 @@ def recurve():
 
     # ---------------- limbs (they flex about their pivots) with the string's loop + the bit lying on the recurve
     nock_z = 0.122
-    nodes = []; tips = []; limbs = []
+    tips = []; limbs = []
     for sgn, lab, nm in ((1, lab_top, 'bw_limb_top_wzB'), (-1, lab_bot, 'bw_limb_bot_wzB')):
         pv = pivot(sgn)
-        path = limb_path(pv, 0.27, 10, 4, 0.7, -55, sign=sgn)
+        path = limb_path(pv, 0.27, 10, 4, 0.7, -55, sign=sgn, n=28)
         n_s = len(path); K = LIMB_K
-        wf = lambda t: LIMB_W0 - 0.0125 * t ** 0.9
-        hf = lambda t: LIMB_H0 - 0.0034 * t
+        wf = lambda t: LIMB_W0 - 0.014 * t ** 0.9
+        hf = lambda t: LIMB_H0 - 0.004 * t
         lb = loft(path, lambda i, t: limb_section(wf(t), hf(t)), m=glass, name=nm, up=(1, 0, 0), smooth_angle=40)
         lb.data.materials.append(core); lb.data.materials.append(lab)
         uv_box(lb, 0.03)
@@ -341,7 +320,7 @@ def recurve():
                     u = (i - s0) / (s1 - s0)
                     if sgn < 0: u = 1 - u
                     tt_ = i / (n_s - 1)
-                    w = wf(tt_) - 2 * 0.28 * hf(tt_)
+                    w = wf(tt_) - 2 * (0.5 - 0.22) * hf(tt_)
                     uvl[li].uv = (u, 0.5 - v.x / w)
         parts = [lb]
         # candy tip overlay with the string grooves, the string loop round it, the string lying along the recurve
@@ -411,6 +390,256 @@ def pivot(sgn):
     return (y, riser_c(y) + riser_d(y) / 2 - LIMB_H0 / 2 + 0.0006)
 
 
+# ------------------------------------------------------------ the compound (skin bow_compound)
+# A 32" axle-to-axle single-riser compound with split limbs and twin cams, 6.5" brace, x0.9 so it's the code compound's
+# size: a machined black riser (truss cutouts, the window section offset left of the arrow, a wood grip), green
+# anodized limb pockets, short split limbs past 45 degrees, chrome cams with green modules, two buss cables through a
+# slide on the cable guard, a string stop, a whisker-biscuit rest, a 3-pin fibre sight (the pins glow), a stabilizer
+# with a damper, a peep in the string, a D-loop on the nock, a carbon arrow with a lighted nock.
+# Made fun: the limbs say COMPOUND and INTEREST, the sight's yardage tape says 20 30 YOLO.
+CY = 0.366               # cam axles
+CZ = 0.131
+CR = 0.034               # string track radius: the string leaves the cam's back at z = CZ + CR, straight down to the nock
+C_NOCK = CZ + CR
+CPZ = 0.004              # limb pivots (z) at the riser ends
+CPY = 0.255
+C_FLEX = 0.06
+
+
+def c_riser_c(y): return -0.012 + 0.22 * y * y
+def c_riser_d(y): return 0.046 - 0.12 * y * y
+def smoothstep(e0, e1, x):
+    t = max(0.0, min(1.0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t)
+def c_xoff(y):  # the riser jogs left of the arrow through the sight window, back to the middle at the pockets
+    win = smoothstep(-0.03, 0.0, y) * (1 - smoothstep(0.12, 0.17, y))
+    lo = smoothstep(-0.17, -0.12, y) * (1 - smoothstep(-0.03, 0.0, y))
+    return -0.027 * win - 0.012 * lo
+
+
+def cam_outline(cy, cz, sgn, n=28):
+    """an eccentric cam round its axle (y, z): the string track circle and the cable lobe, as one (z, y) outline"""
+    circles = [((cy + sgn * 0.003, cz + 0.0015), CR + 0.0022), ((cy - sgn * 0.012, cz - 0.009), 0.027)]
+    out = []
+    for k in range(n):
+        th = 2 * math.pi * k / n
+        dy, dz = math.sin(th), math.cos(th)
+        best = 0.0
+        for (yc, zc), r in circles:
+            oy, oz = yc - cy, zc - cz
+            b = oy * dy + oz * dz; c = oy * oy + oz * oz - r * r
+            disc = b * b - c
+            if disc >= 0: best = max(best, b + math.sqrt(disc))
+        out.append((cz + dz * best, cy + dy * best))
+    return out
+
+
+def compound():
+    blk = mat('bc_riser', 0x18181e, rough=0.22, metal=0.6, clearcoat=0.6, tex=tex_noise('bc_riser_t', 0x1a1a20, var=0.08, size=16, seed=51))
+    green = mat('bc_green', 0x5cff2a, rough=0.2, metal=0.5, clearcoat=0.8)
+    wood = mat('bc_grip', 0xffffff, rough=0.4, clearcoat=0.6, tex=tex_wood('bc_grip_t', 0x7a3a1c, 0x3a1808, size=32, seed=52, rings=6))
+    glass = mat('bc_limb', 0x0e0e12, rough=0.16, clearcoat=1.0)
+    chrome = mat('bc_chrome', 0xd8dde6, rough=0.12, metal=1.0)
+    steel = mat('bc_steel', 0x5a5e66, rough=0.3, metal=0.9)
+    dark = mat('bc_dark', 0x0a0a0c, rough=0.5)
+    cable_m = mat('bc_cable', 0x46d41e, rough=0.45, clearcoat=0.4)
+    strm = mat('bc_string', 0x3ac4e8, rough=0.45, clearcoat=0.4)
+    serv = mat('bc_serving', 0x101012, rough=0.4)
+    rubber = mat('bc_rubber', 0x5cff2a, rough=0.85)
+    carbon = mat('bc_carbon', 0xffffff, rough=0.3, clearcoat=0.7, tex=tex_stripes('bc_carbon_t', 0x1a1a1e, 0x2e2e34, size=8, width=2, diag=True))
+    bristle = mat('bc_bristle', 0x111114, rough=1.0, tex=tex_noise('bc_bristle_t', 0x141418, var=0.4, size=16, speck=0x3a3a40, speck_p=0.3, seed=53))
+    orange = mat('bc_dloop', 0xff7a1a, rough=0.6)
+    pins = [mat('bc_pin_g', 0x7dff4f, emit=0x7dff4f, strength=4.0), mat('bc_pin_y', 0xffe14d, emit=0xffe14d, strength=4.0), mat('bc_pin_r', 0xff3030, emit=0xff3030, strength=4.0)]
+    vial = mat('bc_vial', 0x9affd0, rough=0.05, alpha=0.5)
+    bub = mat('bc_bubble', 0x7dff4f, emit=0x7dff4f, strength=1.5)
+    def blade_label(word):  # the word in the middle of a long thin strip (the blade's face is 0.16 x 0.009 m), dashes either side
+        def draw(px):
+            h, w = px.shape[:2]
+            px[:] = hexrgb(0x121216); px[0, :] = px[-1, :] = hexrgb(0x5cff2a)
+            tw = len(word) * 6 - 1
+            text_px(px, word, (w - tw) // 2, 2, 1, 0xf6f4ee)
+            for x in list(range(8, (w - tw) // 2 - 6, 8)) + list(range((w + tw) // 2 + 6, w - 8, 8)): px[5, x:x + 4] = hexrgb(0x5cff2a)
+        return draw
+    lab_top = mat('bc_label_top', 0xffffff, rough=0.2, clearcoat=1.0, tex=tex_canvas('bc_label_top_t', 200, 11, blade_label('COMPOUND')))
+    lab_bot = mat('bc_label_bot', 0xffffff, rough=0.2, clearcoat=1.0, tex=tex_canvas('bc_label_bot_t', 200, 11, blade_label('INTEREST')))
+    def tape_px(px):
+        h, w = px.shape[:2]
+        px[:] = hexrgb(0xf6f4ee)
+        for k, (t, c) in enumerate((('20', 0x111111), ('30', 0x111111), ('YOLO', 0xe0202a))):
+            text_px(px, t, 2, 2 + k * 10, 1, c)
+    tape = mat('bc_tape', 0xffffff, rough=0.4, tex=tex_canvas('bc_tape_t', 28, 32, tape_px))
+    body = []; A = body.append
+
+    # ---------------- riser: a loft through the jog, truss cutouts, green pockets, wood grip
+    ys = [0.268 - 0.536 * i / 40 for i in range(41)]
+    def rr(w, b0, b1, k=16, ex=0.34):
+        out = []
+        for j in range(k):
+            th = 2 * math.pi * j / k; c_, s_ = math.cos(th), math.sin(th)
+            out.append((w / 2 * math.copysign(abs(c_) ** ex, c_), (b0 + b1) / 2 + (b1 - b0) / 2 * math.copysign(abs(s_) ** ex, s_)))
+        return out
+    def cw(y): return 0.021 + 0.008 * smoothstep(0.2, 0.25, abs(y))
+    rpath = [(c_xoff(y), y, c_riser_c(y)) for y in ys]
+    riser = loft(rpath, lambda i, t: rr(cw(ys[i]), -c_riser_d(ys[i]) / 2, c_riser_d(ys[i]) / 2), m=blk, name='bc_riser', up=(1, 0, 0), smooth_angle=45)
+    for sg in (1, -1):  # truss cutouts through the beams: a long teardrop and a small one each end
+        for (ya, yb, dz, kz) in ((0.135, 0.19, -0.002, 0.29), (0.198, 0.232, 0.001, 0.25)):
+            ym = sg * (ya + yb) / 2; hz = kz * c_riser_d(ym)
+            hole = cyl(0.5, 0.2, (c_xoff(ym), ym, c_riser_c(ym) + dz), None, axis='x', seg=16)
+            hole.scale = (1.0, hz / 0.5, (yb - ya) / 2 / 0.5)
+            cut(riser, hole)
+    bevel(riser, 0.0012, 1, 70)
+    uv_box(riser, 0.04); A(riser)
+    # wood grip under the arrow (the riser's middle runs through it)
+    gys = [-0.006 - 0.1 * i / 15 for i in range(16)]
+    def gb(y):
+        t = (y + 0.006) / -0.1
+        return 0.019 * math.sin(math.pi * t) ** 0.7 * (1 - 0.3 * t)
+    gpath = [(-0.002, y, c_riser_c(y)) for y in gys]
+    g = loft(gpath, lambda i, t: rr(0.028, -c_riser_d(gys[i]) / 2 - 0.001, c_riser_d(gys[i]) / 2 + gb(gys[i]), 16, 0.55), m=wood, name='bc_grip', up=(1, 0, 0), smooth_angle=60)
+    uv_box(g, 0.03); A(g)
+    # limb pockets (green), their bolts
+    for sg in (1, -1):
+        py = sg * 0.258
+        A(box((0.032, 0.03, 0.05), (0, py, c_riser_c(py) + 0.006), green, bev=0.004, seg=2, rot=(-sg * 0.5, 0, 0), name='bc_pocket'))
+        A(cyl(0.0055, 0.008, (0, sg * 0.243, c_riser_c(0.243) + 0.022), steel, axis='z', seg=6, rot=(-sg * 0.35, 0, 0), name='bc_limbbolt'))
+    # string stop: a rod off the back with a green rubber bumper just in front of the string
+    A(rod((-0.004, -0.115, c_riser_c(-0.115) + 0.012), (-0.004, -0.115, C_NOCK - 0.018), 0.0035, carbon, seg=10, name='bc_stop_rod'))
+    A(cyl(0.009, 0.012, (-0.004, -0.115, C_NOCK - 0.009), rubber, axis='z', seg=14, bev=0.002, name='bc_stop'))
+    # cable guard rod + slide
+    gz0 = c_riser_c(0.05) + c_riser_d(0.05) / 2
+    A(rod((c_xoff(0.05), 0.05, gz0 - 0.004), (-0.016, 0.05, 0.12), 0.0032, carbon, seg=10, name='bc_guard'))
+    A(box((0.008, 0.014, 0.012), (-0.014, 0.05, 0.108), dark, bev=0.002, name='bc_slide'))
+    # whisker biscuit rest round the arrow
+    A(lathe([(0.0125, -0.009), (0.0165, -0.009), (0.0165, -0.002), (0.0125, -0.002), (0.0125, -0.009)], (0, 0, 0), green, seg=24, name='bc_biscuit_ring', cap=False))
+    bis = lathe([(0.0037, -0.0075), (0.0126, -0.008), (0.0126, -0.0035), (0.0037, -0.004), (0.0037, -0.0075)], (0, 0, 0), bristle, seg=20, name='bc_bristles', cap=False)
+    jitter(bis, 0.0006, 7); uv_box(bis, 0.01); A(bis)
+    A(box((0.006, 0.01, 0.006), (-0.018, -0.002, -0.0055), dark, bev=0.001, name='bc_biscuit_arm'))
+    # sight: bracket on the window face, an extension bar, the round pin guard, 3 glowing pins + their fibres, a level
+    sx0 = c_xoff(0.07) + 0.0095
+    A(box((0.006, 0.04, 0.03), (sx0 + 0.003, 0.072, c_riser_c(0.07) - 0.004), dark, bev=0.002, name='bc_sight_plate'))
+    A(box((0.009, 0.012, 0.075), (sx0 + 0.009, 0.074, c_riser_c(0.07) - 0.046), blk, bev=0.002, name='bc_sight_bar'))
+    SC = (0.0, 0.078, -0.098)
+    A(lathe([(0.0205, SC[2] + 0.007), (0.0255, SC[2] + 0.007), (0.0255, SC[2] - 0.007), (0.0205, SC[2] - 0.007), (0.0205, SC[2] + 0.007)], (SC[0], SC[1], 0), blk, seg=28, name='bc_pinguard', cap=False))
+    A(box((0.012, 0.03, 0.016), (SC[0] + 0.027, SC[1], SC[2]), blk, bev=0.002, name='bc_pinblock'))
+    tp = box((0.0008, 0.024, 0.012), (SC[0] + 0.0334, SC[1], SC[2] + 0.003), tape, name='bc_tape'); A(tp)
+    for k, (dy, pm) in enumerate(((0.008, pins[0]), (0.0, pins[1]), (-0.008, pins[2]))):
+        A(rod((SC[0] + 0.0215, SC[1] + dy, SC[2]), (SC[0] + 0.002, SC[1] + dy, SC[2]), 0.0009, steel, seg=6, name='bc_pin'))
+        A(ball(0.0019, (SC[0] + 0.0015, SC[1] + dy, SC[2]), pm, seg=8, rings=6, name='bc_pinhead'))
+        coil = [(SC[0] + 0.0268 * math.cos(a), SC[1] + 0.0268 * math.sin(a), SC[2] - 0.0045 + 0.0045 * k + 0.0008 * math.sin(3 * a)) for a in [math.radians(-60 + i * 22) for i in range(12)]]
+        A(tube(coil, 0.0011, pm, seg=4, name='bc_fibre'))
+    A(cyl(0.0025, 0.012, (SC[0], SC[1] - 0.0165, SC[2]), vial, axis='x', seg=10, name='bc_vial'))
+    A(ball(0.0013, (SC[0] + 0.001, SC[1] - 0.0158, SC[2]), bub, seg=8, rings=6, name='bc_bub'))
+    # stabilizer + damper + weights, and a wrist sling off its mount
+    sy, sz0 = -0.04, c_riser_c(-0.04) - c_riser_d(-0.04) / 2
+    A(cyl(0.0085, 0.012, (-0.002, sy, sz0 - 0.006), blk, axis='z', seg=16, bev=0.0015, name='bc_stab_mount'))
+    A(cyl(0.0072, 0.17, (-0.002, sy, sz0 - 0.1), carbon, axis='z', seg=14, name='bc_stab'))
+    A(lathe([(0.008, sz0 - 0.014), (0.011, sz0 - 0.02), (0.011, sz0 - 0.03), (0.008, sz0 - 0.036)], (-0.002, sy, 0), rubber, seg=16, name='bc_damper'))
+    for k in range(2): A(cyl(0.0125, 0.009, (-0.002, sy, sz0 - 0.19 - k * 0.0095), chrome, axis='z', seg=16, bev=0.0012, name='bc_weight'))
+    sling = [(-0.002 + 0.008 * math.sin(a), sy - 0.012 - 0.045 * (1 - math.cos(a)) / 2, sz0 - 0.014 + 0.012 * math.sin(a * 0.5)) for a in [i * 2 * math.pi / 16 for i in range(17)]]
+    A(tube(sling, 0.0022, rubber, seg=6, name='bc_sling'))
+
+    # ---------------- limbs: split blades to the axles, the cams and their string track (they flex with the limb)
+    tips = []; limbs = []
+    for sgn, lab, nm in ((1, lab_top, 'bc_limb_top_wzB'), (-1, lab_bot, 'bc_limb_bot_wzB')):
+        pv = (sgn * CPY, c_riser_c(CPY) + CPZ)
+        ax = (sgn * CY, CZ)
+        d = Vector((0, ax[0] - pv[0], ax[1] - pv[1])); L = d.length; d.normalize()
+        parts = []
+        for bx in (-0.0105, 0.0105):
+            p0 = Vector((bx, pv[0], pv[1])) - d * 0.035
+            p1 = Vector((bx, ax[0], ax[1])) + d * 0.014
+            path = [tuple(p0 + (p1 - p0) * (k / 8) + Vector((0, 0, 0.004 * math.sin(math.pi * k / 8)))) for k in range(9)]
+            n_s = len(path)
+            wf = lambda t: 0.0095 - 0.0015 * t
+            hf = lambda t: 0.0125 - 0.004 * t
+            lb = loft(path, lambda i, t: limb_section(wf(t), hf(t), 0.36), m=glass, name='bc_blade', up=(1, 0, 0), smooth_angle=40)
+            lb.data.materials.append(green); lb.data.materials.append(lab)
+            uv_box(lb, 0.03)
+            # the label runs along each blade's outer face (its edge slot): reads from that side, upright
+            oslot = 0 if bx > 0 else 11
+            s0, s1 = 1, 7
+            me = lb.data; uvl = me.uv_layers.active.data
+            for f in me.polygons:
+                if f.index >= (n_s - 1) * LIMB_K: continue
+                st, sl = divmod(f.index, LIMB_K)
+                if sl == oslot and s0 <= st < s1:
+                    f.material_index = 2
+                    for li in f.loop_indices:
+                        vi = me.loops[li].vertex_index; i, j = divmod(vi, LIMB_K)
+                        fr = (i - s0) / (s1 - s0)
+                        u = 1 - fr if bx > 0 else fr
+                        v = {0: 0.0, 1: 1.0, 11: 1.0, 12: 0.0}[j]
+                        uvl[li].uv = (u, v)
+            parts.append(lb)
+        # cam: two chrome flanges + the string track between them, lightening holes, a green module, the axle
+        outl = cam_outline(ax[0], ax[1], sgn)
+        holes = []
+        for (hy, hz, hr) in ((0.012, 0.006, 0.007), (-0.01, 0.011, 0.006), (-0.004, -0.014, 0.0055)):
+            holes.append([(ax[1] + hz + hr * math.cos(a), ax[0] + sgn * hy + hr * math.sin(a)) for a in [k * 2 * math.pi / 10 for k in range(10)]])
+        for fx in (-0.0042, 0.0042):
+            parts.append(side(outl, 0.0026, (fx, 0, 0), chrome, name='bc_cam', holes=holes))
+        track = [(ax[1] + (z - ax[1]) * 0.93, ax[0] + (y - ax[0]) * 0.93) for z, y in outl]
+        parts.append(side(track, 0.0064, (0, 0, 0), steel, name='bc_track', holes=holes))
+        parts.append(side([(ax[1] - 0.02, ax[0] - sgn * 0.004), (ax[1] - 0.006, ax[0] - sgn * 0.018), (ax[1] + 0.004, ax[0] - sgn * 0.024), (ax[1] - 0.012, ax[0] - sgn * 0.03), (ax[1] - 0.026, ax[0] - sgn * 0.016)],
+                          0.0098, (0, 0, 0), green, bev=0.001, name='bc_module'))
+        parts.append(cyl(0.0032, 0.03, (0, ax[0], ax[1]), steel, axis='x', seg=10, name='bc_axle'))
+        for fx in (-0.0152, 0.0152): parts.append(cyl(0.0048, 0.0016, (fx, ax[0], ax[1]), chrome, axis='x', seg=12, name='bc_clip'))
+        # the string wraps the back of the track from where it leaves (straight down to the nock) over the top
+        arcp = [(0, ax[0] + sgn * (CR) * math.sin(a), ax[1] + CR * math.cos(a)) for a in [k * math.radians(130) / 10 for k in range(11)]]
+        parts.append(tube(arcp, R_STR * 1.2, strm, seg=6, name='bc_wrap'))
+        # cables: from the cam's cable lobe down to the junction at the pivot height (the rest is on the riser)
+        for cx in (-0.0035, 0.0035):
+            c0 = (cx, ax[0] - sgn * 0.022, ax[1] - 0.018)
+            c1 = (cx * 0.5 - 0.004, pv[0] - sgn * 0.002, 0.11)
+            parts.append(rod(c0, c1, 0.0013, cable_m, seg=6, name='bc_cable'))
+        tips.append([0.0, round(sgn * CY, 5), round(C_NOCK, 5)])
+        limbs.append(part(parts, nm, pivot=(0.0, pv[0], pv[1])))
+    # the middle of the cables, through the slide (static)
+    for cx in (-0.0035, 0.0035):
+        top = (cx * 0.5 - 0.004, CPY - 0.002, 0.11); bot = (cx * 0.5 - 0.004, -CPY + 0.002, 0.11)
+        sl = (-0.014 + cx * 0.4, 0.05, 0.108)
+        A(rod(top, sl, 0.0013, cable_m, seg=6, name='bc_cable_mid'))
+        A(rod(sl, bot, 0.0013, cable_m, seg=6, name='bc_cable_mid'))
+
+    # ---------------- string halves: cam to nock, a peep in the top one
+    halves = []
+    nockp = (0.0, 0.0, C_NOCK)
+    for k, (T, nm) in enumerate(zip(tips, ('bc_string_top_wzN', 'bc_string_bot_wzN'))):
+        T = tuple(T); hp = []
+        if k == 0:
+            py = 0.078; pf = py / CY
+            pc = lerp3(nockp, T, pf)
+            hp.append(rod(T, (0, pc[1] + 0.0065, C_NOCK), R_STR, strm, name='bc_str'))
+            hp.append(rod((0, pc[1] - 0.0065, C_NOCK), nockp, R_STR, strm, name='bc_str'))
+            for sx in (-1, 1): hp.append(tube([(0, pc[1] + 0.0065, C_NOCK), (sx * 0.0052, pc[1] + 0.003, C_NOCK), (sx * 0.0052, pc[1] - 0.003, C_NOCK), (0, pc[1] - 0.0065, C_NOCK)], R_STR * 0.75, strm, seg=4, name='bc_strand'))
+            pe = lathe([(0.0026, C_NOCK - 0.0022), (0.0048, C_NOCK - 0.0022), (0.0052, C_NOCK), (0.0048, C_NOCK + 0.0022), (0.0026, C_NOCK + 0.0022), (0.0026, C_NOCK - 0.0022)], (0, pc[1], 0), green, seg=16, name='bc_peep', cap=False)
+            hp.append(pe)
+        else:
+            hp.append(rod(T, nockp, R_STR, strm, name='bc_str'))
+        hp.append(rod(lerp3(nockp, T, 0.07), nockp, R_STR * 1.35, serv, name='bc_center_serving'))
+        halves.append(part(hp, nm))
+
+    # ---------------- the arrow: carbon, cyan vanes, a lighted nock, a D-loop round the nock (moves with it)
+    am = arrow_mats('bc_ar', 0x1a1a1e, 0x2e2e34, 0x4fd8ff, 0x4fd8ff, 0xf6f4ee, 'JANK', (0x1a1a1e, 0x4fd8ff, 0x4fd8ff), carbon=True)
+    am = (am[0], mat('bc_ar_lit', 0x4fd8ff, rough=0.2, emit=0x4fd8ff, strength=2.5)) + am[2:]
+    ab, ah = arrow_parts('bc_ar', C_NOCK + 0.004, 0.42, ARROW_R * 0.92, am, 0.042, 0.0075, 0.05, 0.03, 0.0095, cock_dir=0.0, nock_len=0.011)
+    dl = [(0, 0.0065, C_NOCK), (0, 0.0055, C_NOCK + 0.011), (0, 0.0, C_NOCK + 0.016), (0, -0.0055, C_NOCK + 0.011), (0, -0.0065, C_NOCK)]
+    ab.append(tube(dl, 0.0014, orange, seg=6, name='bc_dloop'))
+    for yy in (0.0065, -0.0065): ab.append(ball(0.0024, (0, yy, C_NOCK), orange, seg=8, rings=6, name='bc_knot'))
+    arrow = part(ab, 'bowc_arrow_wzA', pivot=(0, 0, 0))
+    head = part(ah, 'bowc_arrowtip_wzN', pivot=(0, 0, C_NOCK + 0.004 - 0.42 + 0.015))
+    head.parent = arrow
+
+    apply_mods(tp); uv_planar(tp, (SC[0] + 0.0334, SC[1], SC[2] + 0.003), (0.012, 0.024), 'x')
+    WZ = {'bc_riser': 'a', 'bc_grip': 'a', 'bc_green': 'b', 'bc_steel': 'b', 'bc_chrome': 'b', 'bc_limb': 'b'}
+    bodies = zone_join(body, 'bowc_body', WZ, default='n')
+    meta = {'kind': 'weapon', 'id': 'bow', 'skin': 'bow_compound', 'paint': ['bc_riser'], 'muzzle': [0, 0, -0.6],
+            'hatAt': [[0, 0.258 + 0.02, c_riser_c(0.258) + 0.004], 0.07],
+            'bow': {'string': ['bc_string_top_wzN', 'bc_string_bot_wzN'], 'tips': tips, 'nock': [0, 0, C_NOCK],
+                    'limbs': ['bc_limb_top_wzB', 'bc_limb_bot_wzB'], 'flex': C_FLEX, 'draw': 0.16, 'arrow': 'bowc_arrow_wzA', 'arrowTip': 'bowc_arrowtip_wzN'}}
+    print('JF_BOWC tips', tips, 'nock', C_NOCK)
+    return finish('w_bow_compound', bodies + limbs + halves + [arrow], meta)
+
+
 # ------------------------------------------------------------ the flying arrow: 0.9 m, centred, nose to -z
 def flying():
     am = arrow_mats('pa', 0xd8a868, 0xa8743c, 0xff4fd8, 0xff4fd8, 0xffe14d, 'SORRY', (0xf6f4ee, 0xe0202a, 0xff4fd8))
@@ -421,4 +650,4 @@ def flying():
     return finish('pj_bow', bodies + [head], {'kind': 'proj', 'id': 'bow', 'tip': 'arrowhead_wzN'})
 
 
-main_multi(lambda: [(recurve(), 'w_bow'), (flying(), 'pj_bow')], exposure=-0.3)
+main_multi(lambda: [(recurve(), 'w_bow'), (compound(), 'w_bow_compound'), (flying(), 'pj_bow')], exposure=-0.8)

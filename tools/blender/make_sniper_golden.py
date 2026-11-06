@@ -80,18 +80,18 @@ def build():
             A(cyl(r * 1.25, r * 0.5, (pos[0] - axis_x * r * 0.15, pos[1], pos[2]), dark, axis='x', seg=10))
 
     # ---------------- muzzle brake (dark gold) with three pairs of side ports, polished barrel with engraved bands
-    mb = lathe([(0, Z(0)), (W(15), Z(0)), (W(16), Z(3)), (W(16), Z(84)), (W(14), Z(88))], (0, BORE_Y, 0), dark, seg=18)
+    mb = lathe([(0, Z(0)), (W(15), Z(0)), (W(16), Z(3)), (W(16), Z(84)), (W(14), Z(88))], (0, BORE_Y, 0), dark, seg=14)
     for d in (14, 34, 54): cut(mb, box((W(50), W(15), W(13)), (0, Y(0), Z(d)), None, bev=W(2)))
     A(fixmats(mb))
-    for d in (8, 76): A(lathe([(W(16.6), Z(d - 2)), (W(16.6), Z(d + 2))], (0, BORE_Y, 0), gold, seg=18))
+    for d in (8, 76): A(lathe([(W(16.6), Z(d - 2)), (W(16.6), Z(d + 2))], (0, BORE_Y, 0), gold, seg=14, cap=False))
     A(lathe([(0, Z(0.5)), (W(5), Z(0.5)), (W(5), Z(9))], (0, BORE_Y, 0), black, seg=10))
-    A(lathe([(W(12), Z(86)), (W(12.5), Z(100)), (W(14), Z(400)), (W(15.5), Z(600)), (W(16.5), Z(694))], (0, BORE_Y, 0), gold, seg=18))
+    A(lathe([(W(12), Z(86)), (W(12.5), Z(100)), (W(14), Z(400)), (W(15.5), Z(600)), (W(16.5), Z(694))], (0, BORE_Y, 0), gold, seg=14))
     for d in (200, 330, 460, 590):
         r = 12.5 + (d - 100) / 300 * 1.5 if d < 400 else 14 + (d - 400) / 200 * 1.5
-        A(lathe([(W(r + 0.4), Z(d - 7)), (W(r + 1.6), Z(d - 5)), (W(r + 1.6), Z(d + 5)), (W(r + 0.4), Z(d + 7))], (0, BORE_Y, 0), engr, seg=18))
-    A(lathe([(W(18), Z(682)), (W(18), Z(696))], (0, BORE_Y, 0), dark, seg=18))
+        A(lathe([(W(r + 0.4), Z(d - 7)), (W(r + 1.6), Z(d - 5)), (W(r + 1.6), Z(d + 5)), (W(r + 0.4), Z(d + 7))], (0, BORE_Y, 0), engr, seg=14, cap=False))
+    A(lathe([(W(18), Z(682)), (W(18), Z(696))], (0, BORE_Y, 0), dark, seg=14, cap=False))
     # ---------------- action (engraved) + dark gold rail + ejection port + bolt-handle cut
-    rc = cyl(W(20), W(215), (0, BORE_Y, Z(797)), engr, axis='z', seg=22, bev=W(1.5))
+    rc = cyl(W(20), W(215), (0, BORE_Y, Z(797)), engr, axis='z', seg=18, bev=W(1.5))
     cut(rc, box((W(16), W(18), W(84)), (W(19), Y(3), Z(788)), None, bev=W(2)))
     cut(rc, box((W(16), W(26), W(48)), (W(19), Y(6), Z(886)), None))
     A(fixmats(rc))
@@ -152,9 +152,9 @@ def build():
     # ---------------- scope: gold tube, dark gold bells + rings, blue lens, engraved saddle, a crown for a turret
     sy = Y(SCOPE_H)
     A(lathe([(W(26.5), Z(557)), (W(29), Z(556)), (W(30), Z(560)), (W(30), Z(608)), (W(26), Z(624)), (W(17.5), Z(646)), (W(17.5), Z(862)),
-             (W(20), Z(873)), (W(23), Z(890)), (W(23), Z(936)), (W(21.5), Z(948))], (0, sy, 0), gold, seg=24))
+             (W(20), Z(873)), (W(23), Z(890)), (W(23), Z(936)), (W(21.5), Z(948))], (0, sy, 0), gold, seg=20))
     for d0, d1, r in ((560, 572, 30.6), (596, 608, 30.6), (900, 912, 23.6), (928, 940, 23.6)):
-        A(lathe([(W(r), Z(d0)), (W(r), Z(d1))], (0, sy, 0), dark, seg=24))
+        A(lathe([(W(r), Z(d0)), (W(r), Z(d1))], (0, sy, 0), dark, seg=20, cap=False))
     A(cyl(W(26.5), W(2), (0, sy, Z(560)), glass, axis='z', seg=28))
     A(cyl(W(20), W(2), (0, sy, Z(946)), ocular, axis='z', seg=24))
     A(box((W(44), W(32), W(72)), (0, sy, Z(755)), engr, bev=W(5), seg=2))
@@ -166,7 +166,7 @@ def build():
         a = k * math.pi / 3
         A(ball(W(3.4), (-W(42.4), sy + math.sin(a) * W(19), Z(755) + math.cos(a) * W(19)), GEMS[k % 3], seg=6, rings=4, scale=(0.5, 1, 1)))
     A(ball(W(6), (-W(42.4), sy, Z(755)), ruby, seg=7, rings=4, scale=(0.5, 1, 1)))
-    A(lathe([(W(24.5), Z(880)), (W(24.5), Z(896))], (0, sy, 0), dark, seg=24))
+    A(lathe([(W(24.5), Z(880)), (W(24.5), Z(896))], (0, sy, 0), dark, seg=24, cap=False))
     A(box((W(5), W(10), W(10)), (W(26), sy + W(6), Z(888)), gold))
     for d in (686, 832):
         A(cyl(W(21.5), W(18), (0, sy, Z(d)), dark, axis='z', seg=20, bev=W(2)))
@@ -189,7 +189,7 @@ def build():
         a2 = a + math.pi / 5
         A(ball(W(3.6), (math.cos(a2) * W(20.4), band_y, Z(755) + math.sin(a2) * W(20.4)), GEMS[k % 3], seg=6, rings=4))
     A(ball(W(6), (0, band_y + W(21), Z(755)), gold, seg=12, rings=8))  # orb
-    A(lathe([(W(6.4), band_y + W(20.5)), (W(6.4), band_y + W(21.5))], (0, 0, Z(755)), dark, seg=12, axis='y'))
+    A(lathe([(W(6.4), band_y + W(20.5)), (W(6.4), band_y + W(21.5))], (0, 0, Z(755)), dark, seg=12, axis='y', cap=False))
     A(box((W(3), W(13), W(3)), (0, band_y + W(32), Z(755)), gold, bev=W(0.6)))  # cross
     A(box((W(9), W(3), W(3)), (0, band_y + W(34), Z(755)), gold, bev=W(0.6)))
     crown_top = band_y + W(38.5)
