@@ -58,6 +58,8 @@ export const rigsfx = {
     for (let i = 0; i < 3 + k * 5; i++) N(0.1, 0.4, 'bandpass', rnd(700, 2200), 260, pos, 0.08 + i * 0.07, 1.4);
   },
   burst(pos) { N(1.2, 1, 'lowpass', 2200, 40, pos); T('sine', 100, 20, 1.2, 0.9, pos); for (let i = 0; i < 10; i++) { metal(pos, 0.3, rnd(0.8, 2.2), 0.3); N(0.06, 0.5, 'bandpass', rnd(1200, 3000), 800, pos, 0.1 + i * 0.09, 1.2); } },
+  // a jet burst: a rising roar of noise over a low thump, a crackle on top
+  thrust(pos, k = 1) { N(0.5, 0.75 * k, 'bandpass', 400, 2600, pos, 0, 0.8); N(0.35, 0.5 * k, 'lowpass', 900, 120, pos); T('sine', 70, 140, 0.3, 0.35 * k, pos); N(0.2, 0.25 * k, 'highpass', 5000, 8000, pos, 0.04); },
   denied() { T('square', 330, 330, 0.07, 0.1); T('square', 220, 220, 0.12, 0.1, null, 0.08); },
   ready() { T('sine', 1320, 1320, 0.08, 0.07); T('sine', 1980, 1980, 0.14, 0.07, null, 0.07); },
 };

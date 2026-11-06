@@ -20,7 +20,7 @@ import { ANIMS, sample, sampleCh, eventsBetween, inspectFor, drawFor } from './a
 import { newTwirl, resetTwirl, twirling, spin, settle, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
 import { partsShot, stepParts } from './glbkit.js';
 import { weaponIcon, clearIcons, itemIcon } from './icons.js';
-import { rigFire, rigItem, rigVM, rigBlockKey } from './rig.js'; // overdrive rig killstreak
+import { rigFire, rigItem, rigVM, rigBlockKey, rigReload } from './rig.js'; // overdrive rig killstreak
 import { tickScalesVM } from './scales.js';
 import { PARRY } from '/shared/weapons.js';
 import { ROYAL } from '/shared/looks.js';
@@ -616,6 +616,7 @@ export function lastSlot() { switchSlot(W.prevSlot); }
 export function cycleSlot(dir) { const n = W.slots.length; switchSlot((W.slot + dir + n) % n); }
 
 export function reload() {
+  if (rigReload()) return; // overdrive rig: R is the quickhack (no gun to reload)
   cancelInspect();
   if (W.cur === 'cards') { redrawCards(); return; }
   const id = W.cur, w = WEAPONS[id];
