@@ -50,7 +50,7 @@ def taper_x(o, z0, z1, s0, s1):  # narrow a part along game z (actions narrow to
 
 def face_mats(o, mats, pick):
     """add materials to o and set each face's material from pick(centre, normal) (game coords) -> index or None"""
-    apply_mods(o)
+    apply_mods(o); bpy.context.view_layer.update()
     me = o.data
     for m in mats: me.materials.append(m)
     mw = o.matrix_world; R = mw.to_3x3()
@@ -129,6 +129,7 @@ def sleeve(c, u, nb, hw, hd, r, t, L, m, segc=3, tilt=0.0, name='sleeve'):
 
 
 def turn(objs, pivot, a):  # rotate objects about the game x axis through pivot (three's rotation.x = a)
+    bpy.context.view_layer.update()
     p = gv(*pivot); M = Matrix.Translation(p) @ Matrix.Rotation(a, 4, 'X') @ Matrix.Translation(-p)
     for o in objs: o.matrix_world = M @ o.matrix_world
 
@@ -229,22 +230,26 @@ def build():
     parts = []; A = parts.append
 
     # ======================================================== the barrels (hinge node): one solid, bored and sawn
-    prof = [(11.5, BF), (11.5, -86), (11.35, -100), (11.15, -120), (11.0, -140), (11.0, -296), (11.0, -302), (11.0, -305.5), (11.0, -308.2), (11.0, -312), (11.0, -318)]
-    br = lathe([(r / 1000, z / 1000) for r, z in prof], g(BX, BY, 0), blued, seg=24)
-    cut(br, lathe([(r / 1000, z / 1000) for r, z in prof], g(-BX, BY, 0), None, seg=24), 'UNION')
-    cut(br, side_x([(-0.004, RIB_TOP / 1000), (0.004, RIB_TOP / 1000), (0.004, 0.0287), (0, 0.022), (-0.004, 0.0287)], (318 + BF) / 1000, g(0, 0, (BF - 318) / 2), None), 'UNION')  # top rib (V bottom: clear of the chambers)
-    cut(br, side_x([(-0.004, 0.0105), (0.004, 0.0105), (0.004, 0.0113), (0, 0.018), (-0.004, 0.0113)], (318 + BF) / 1000, g(0, 0, (BF - 318) / 2), None), 'UNION')  # bottom rib
-    cut(br, side(pz([(-12.5, 8.8), (-34, 8.8), (-34, -6.0), (-23.5, -6.0), (-12.5, 4.6)]), 0.017, (0, 0, 0), None), 'UNION')  # lump (swings into the knuckle)
-    for sx in (-1, 1):
-        cut(br, cyl(0.00925, 0.33, g(sx * BX, BY, -170), None, seg=20))  # bore
-        cut(br, cyl(0.01045, 0.071, g(sx * BX, BY, -46.5), None, seg=24))  # chamber
-        cut(br, cyl(0.01045, 0.012, g(sx * BX, BY, -88), None, seg=24, r2=0.00925))  # forcing cone
-        cut(br, cyl(0.01105, 0.0028, g(sx * BX, BY, -12.4), None, seg=24))  # rim recess
+    # parts are unioned with staggered ends (no coplanar caps), then the breech and the muzzle are cut flat in one go
+    # (22.3 mm forward: a hair over touching, so the two tubes really overlap instead of kissing along a line)
+    prof = [(11.5, -86), (11.38, -100), (11.25, -120), (11.15, -140), (11.15, -296), (11.15, -302), (11.15, -305.5), (11.15, -308.2), (11.15, -312)]
+    br = lathe([(r / 1000, z / 1000) for r, z in [(11.5, BF + 0.5)] + prof + [(11.15, -318)]], g(BX, BY, 0), blued, seg=24)
+    cut(br, lathe([(r / 1000, z / 1000) for r, z in [(11.5, BF + 0.8)] + prof + [(11.15, -317.4)]], g(-BX, BY, 0), None, seg=24), 'UNION')
+    cut(br, side_x([(-0.004, RIB_TOP / 1000), (0.004, RIB_TOP / 1000), (0.004, 0.0287), (0, 0.022), (-0.004, 0.0287)], 0.3056, g(0, 0, -164.2), None), 'UNION')  # top rib (V bottom: clear of the chambers)
+    cut(br, side_x([(-0.004, 0.0105), (0.004, 0.0105), (0.004, 0.0113), (0, 0.018), (-0.004, 0.0113)], 0.3053, g(0, 0, -163.85), None), 'UNION')  # bottom rib
+    cut(br, side(pz([(-11.6, 9.3), (-34, 9.3), (-34, -6.8), (-23.5, -6.8), (-11.6, 5.1)]), 0.017, (0, 0, 0), None), 'UNION')  # lump (swings into the knuckle)
+    cut(br, box((0.1, 0.1, 0.02), g(0, 10, BF + 10), None))  # the breech face, flat
     # the hacksaw cut: a bit crooked (yaw 2.5, pitch 1.5 degrees) through the muzzle point
     ry, rx = math.radians(2.5), math.radians(1.5)
     nm = (-math.sin(ry), math.cos(ry) * math.sin(rx), -math.cos(ry) * math.cos(rx))
     p0 = g(0, BY, MZ)
     cut(br, box((0.1, 0.1, 0.06), tuple(p0[i] + nm[i] * 0.03 for i in range(3)), None, rot=(rx, ry, 0)))
+    for sx in (-1, 1):
+        cut(br, cyl(0.00925, 0.33, g(sx * BX, BY, -170), None, seg=24))  # bore
+        cut(br, cyl(0.01045, 0.0712, g(sx * BX, BY, -46.4), None, seg=24))  # chamber
+        cut(br, cyl(0.01045, 0.0125, g(sx * BX, BY, -87.75), None, seg=24, r2=0.0092))  # forcing cone
+    rr = cut(cyl(0.0111, 0.0028, g(BX, BY, -12.4), None, seg=24), cyl(0.0111, 0.0028, g(-BX, BY, -12.4), None, seg=24), 'UNION')
+    cut(br, rr)  # rim recesses (one cutter: they overlap a hair between the barrels)
     def plane_d(c): return sum((c[i] - p0[i]) * nm[i] for i in range(3))  # > 0 beyond the cut
     def barrel_pick(c, n):
         d = axis_dist(c)
@@ -271,7 +276,7 @@ def build():
     for sx in (-1, 1):
         for k in range(13):
             th = math.radians(-125 + k * 250 / 12) if sx > 0 else math.radians(180 - (-125 + k * 250 / 12))
-            x, y = sx * BX + 11.18 * math.cos(th), BY + 11.18 * math.sin(th)
+            x, y = sx * BX + 11.35 * math.cos(th), BY + 11.35 * math.sin(th)
             z = -296.5 - 0.06 * x + rng.uniform(-0.35, 0.35)
             trim.append(box(g(2.6, 0.35, 2.2), g(x, y, z), dash, rot=(0, 0, th - math.pi / 2)))
     for x in (-2.2, 2.0):
@@ -285,7 +290,7 @@ def build():
     for o in (fe, iron):
         apply_mods(o)
         for sx in (-1, 1):  # carve the top to the barrels' shape (0.25 mm clear)
-            cut(o, lathe([((r + 0.25) / 1000, z / 1000) for r, z in [(11.5, -8), (11.5, -86), (11.35, -100), (11.15, -120), (11.0, -140), (11.0, -180)]], g(sx * BX, BY, 0), None, seg=24))
+            cut(o, lathe([((r + 0.25) / 1000, z / 1000) for r, z in [(11.5, -8), (11.5, -86), (11.38, -100), (11.25, -120), (11.15, -140), (11.15, -180)]], g(sx * BX, BY, 0), None, seg=24))
         cut(o, box(g(8.4, 10, 200), g(0, 15.6, -90), None))  # room for the bottom rib
     firon = [iron]
     firon.append(box(g(6, 1.2, 20), g(0, -13.6, -80), case, bev=0.0004))  # forend latch lever
@@ -391,7 +396,7 @@ def build():
                       0.0084, (hp[0] / 1000 - sx * 0.0004, 0, 0), case2, bev=0.0008, seg=2))  # the head, a bit wider, leaning in to the striker
         for k, (dz, dy, an) in enumerate(((0.6, 31.4, 0.5), (2.6, 32.4, 0.1), (4.6, 32.0, -0.35), (6.3, 30.0, -0.9))):  # checkering on the spur
             h.append(box(g(6.8, 0.6, 0.7), (hp[0] / 1000, (HAM[1] + dy) / 1000, (HAM[2] + dz) / 1000), case2, rot=(an, 0, 0)))
-        turn(h, hp, COCK)
+        turn(h, g(*hp), COCK)
         hams.append((h, hp))
 
     # ======================================================== nodes + metadata
