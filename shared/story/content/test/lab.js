@@ -109,7 +109,7 @@ export const codex = {
 const OT_CARD = { name: 'MR. OVERTIME', job: 'HEAD OF TIMEKEEPING', sub: 'has never been late. has never left.', color: '#ff3030', target: 'ot' };
 export const scenes = {
   lab_cine: {
-    id: 'lab_cine', kind: 'cinematic', skip: true, len: 27, title: 'CLOCKING IN (lab cut)',
+    id: 'lab_cine', kind: 'cinematic', skip: true, len: 27, hideOthers: true, title: 'CLOCKING IN (lab cut)',
     cast: { lumps: {}, gordo: {}, auntie: {}, ot: { look: 'mannequin', name: 'MR. OVERTIME', at: [0, 0, 30], face: Math.PI, scale: 2.4, voice: { kind: 'dialtone', pitch: 1 } } },
     tracks: [
       { t: 0, cam: { shot: 'wide', target: 'lumps', dur: 5, fov: 50 }, face: ['lumps', 'sad'], anim: ['lumps', 'cry'] },
@@ -127,14 +127,14 @@ export const scenes = {
       { t: 19.8, say: ['ot', 'that\'s against policy.'] },
       { t: 21.8, anim: ['ot', 'point'], hitstop: 0.14, impact: 'red', shake: 0.8, sfx: 'splut' },
       { t: 22.4, cam: { shot: 'closeup', target: 'gordo', dur: 2 }, face: ['gordo', 'grin'], say: ['gordo', 'oh good. a fight.'] },
-      { t: 24.4, boss: OT_CARD },
+      { t: 24.4, boss: OT_CARD, cam: { shot: 'whip', target: 'ot', dur: 2.5, fov: 40 } },
     ],
     onEnd: ['flag:sawClockingIn', 'log:lumps|a tall man with a clipboard came to collect. lumps said no.'],
   },
   lab_panels: {
     id: 'lab_panels', kind: 'panels', skip: true, title: 'SOUP TEST',
     panels: [
-      { shot: { target: 'lumps', shot: 'closeup' }, face: ['lumps', 'grin'], anim: ['lumps', 'hold', 1], cap: 'the soup run.', say: ['lumps', 'red soup. the good kind.'] },
+      { shot: { target: 'lumps', shot: 'closeup', offset: [0, 0.25, 0] }, face: ['lumps', 'grin'], cap: 'the soup run.', say: ['lumps', 'red soup. the good kind.'] },
       { shot: { target: 'gordo', shot: 'extreme' }, face: ['gordo', 'squint'], say: ['gordo', 'he means steal a pot. and watch out for interns.'] },
       { shot: { target: 'auntie', shot: 'low' }, face: ['auntie', 'angry'], cap: 'meanwhile, auntie got hungry.', sfx: 'GRRRMBL' },
     ],

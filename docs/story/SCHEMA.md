@@ -98,8 +98,31 @@ sauce: {
   `frag.*` are the Option C fragments.
 
 ## Scenes (`scenes`)
-See TECH_PLAN §6 and DESIGN §8. `{ id, kind: 'cinematic' | 'panels' | 'talk' | 'boss' | 'moment' | 'recap', skip, len,
-cast, tracks: [{ t, ...one track }] }`; the scene player (`public/js/story/scene.js`) documents its track list.
+Played by `public/js/story/scene.js`; examples of every kind in `shared/story/content/test/lab.js`.
+```js
+c4_clocking_in: {
+  id: 'c4_clocking_in', kind: 'cinematic', skip: true, len: 58,
+  cast: { lumps: {}, ot: { look: 'overtime', name: 'MR. OVERTIME', at: 'gut:stairs_top', face: 3.1, scale: 1, voice: {...} } },
+  tracks: [ { t: 0, cam: { shot: 'wide', target: 'lumps', dur: 6 } }, { t: 1, say: ['lumps', '*sniff*'] }, ... ],
+  onEnd: ['flag:sawClockingIn', 'log:lumps|a caption for the recap'],
+}
+```
+- `kind`: `cinematic` · `panels` (`panels: [...]`) · `talk` (`talk: { npc, node }`) · `boss` (`boss: { name, job, sub, color, target, rehired }`)
+  · `moment` (1-3 s, `target`) · `recap` (built from the last 3 `log` entries, `'npc|caption'`).
+- `cast`: `{}` = the actor already in the world with that id; otherwise a temporary actor (`look`, `npc` (copy a def),
+  `at`, `face`, `scale`, `name`, `voice`, `hidden`). Marks: `[x, y, z]`, a zone id, an actor id, `{ near: actor, d, side }`.
+- tracks (`{ t, ... }`, any mix on one entry):
+  `cam: { shot, target, from, dur, fov, roll, offset, cut }` (shots: `closeup`, `extreme`, `over` (from → target), `two`,
+  `lowAngle`, `wide`, `dolly`, `orbit`, `whip`, `top`) or `cam: { path: [marks], look, dur, fov }` ·
+  `say: [who, text, face]` (subtitle + babble + jaw; `*text*` = an action) · `face: [who, face]` · `anim: [who, clip, hold]`
+  (clips: wave, nod, shake, shrug, point, cry, flex, bow, stomp, think, write, hold, shock) · `move: [who, [marks], speed]`
+  · `look: [who, target]` · `hide` / `show: who` · `sfx: name` (tick, tick_loud, stinger, clunk, beep, whoosh, splut, ding,
+  or any `audio.js` sfx) · `fx: name, at` · `shake: 0..1` · `hitstop: s` · `impact: 'red' | 'white'` · `fade: [0..1, s]` ·
+  `letterbox: bool` · `title: [big, small, s]` · `boss: {...}` · `slowmo: [k, s]` · `do: [actions]` · `wait: cond`.
+- a panel: `{ at, shot: { target, shot, ... }, cap, say: [who, text], sfx: 'SPLUT', sound, face: [who, face],
+  anim: [who, clip, t], rect: [x, y, w, h], tilt, bubL }` (3-6 per scene, slammed in about every 1.7 s).
+- Every scene is skippable (hold jump) unless `skip: false`, marks `seen.ID`, runs `onEnd`, and fires the quest event
+  `{ type: 'sceneEnd', scene }`. A quest's `scenes: { start, end }` play on start / completion.
 
 ## Save data
 `toSave(state)` → `{ flags: [], vars: {}, quests: {id: state}, standing, met: [], seen: [], codex: [], log: [], track }`

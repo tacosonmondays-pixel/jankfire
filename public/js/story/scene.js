@@ -54,6 +54,7 @@ export function playScene(id, opts = {}) {
   if (G.vmScene) G.vmScene.visible = false;
   // cast: existing actors by id, or temporary ones spawned at a mark. 'you' = a stand-in for the player
   for (const [k, c] of Object.entries(def.cast || {})) castOne(k, c);
+  if (def.hideOthers) for (const a of actors.values()) if (![...P.cast.values()].includes(a) && !a.hidden) { a.hidden = true; P.hid = (P.hid || []).concat(a); } // (extras out of the shot)
   if (P.kind === 'panels' || P.kind === 'recap') startPanels();
   if (P.kind === 'talk') { const t = def.talk || {}; P.len = 9e9; startTalk(ST.S, t.npc, t.node || 'start', () => { P && (P.len = P.t); }); }
   if (P.kind === 'boss') { bossCard(def.boss || def); P.len = def.len ?? 4.8; }
@@ -75,6 +76,7 @@ function endScene(skipped) {
   if (!P) return;
   const p = P; P = null;
   for (const id of p.temp) despawnActor(id);
+  for (const a of p.hid || []) a.hidden = false;
   for (const a of p.cast.values()) { a.inScene = false; a.faceTarget = null; a.talking = false; a.lookAt = null; a.lookTarget = null; a.hold = false; a.clip = null; a.hidden = false; setFace(a, 'neutral'); if (Math.hypot(a.pos[0] - a.home.p[0], a.pos[2] - a.home.p[2]) > 0.3) walkTo(a, [a.home.p], 1.4); } // (back to their spot)
   bars(false); sub(null); title(null);
   $('stBoss').classList.add('hidden'); $('stPanels').classList.add('hidden'); $('stPanels').innerHTML = ''; $('stSkip').classList.add('hidden');
@@ -219,7 +221,8 @@ export function sceneFrame(dt, now, cam) {
   if (!P) return;
   // skip: hold jump
   const hold = K.isDown('jump') && P.def.skip !== false && P.t > 0.3;
-  P.skipK = hold ? P.skipK + dt / 0.9 : Math.max(0, P.skipK - dt * 2);
+  const rd = Math.min(0.5, (now - (P.lastNow ?? now)) / 1000); P.lastNow = now; // (real time: a slow frame rate doesn't make you hold longer)
+  P.skipK = hold ? P.skipK + rd / 0.9 : Math.max(0, P.skipK - rd * 2);
   const ring = $('stSkipRing'); if (ring) ring.setAttribute('stroke-dashoffset', String(88 * (1 - Math.min(1, P.skipK))));
   if (P.skipK >= 1) { endScene(true); return; }
   // hit-stop: everything holds (actors, the timeline, the camera)
@@ -245,7 +248,7 @@ export function sceneFrame(dt, now, cam) {
   for (const a of P.cast.values()) if (a.lookTarget) { const p = typeof a.lookTarget === 'string' ? (who(a.lookTarget) ? headPos(who(a.lookTarget), new THREE.Vector3()) : null) : new THREE.Vector3(...where(a.lookTarget)); if (p) a.lookAt = [p.x, p.y, p.z]; }
   if (P.panels) P.panels.frame(P.t, sdt);
   else if (P.kind === 'boss' && !P.cam) { const b = P.def.boss || P.def; if (b.target) { P.cam = { shot: 'whip', target: b.target, t0: 0 }; } }
-  else if (P.kind === 'moment' && !P.cam && P.def.target) P.cam = { shot: 'orbit', target: P.def.target, t0: 0, dur: P.len, turn: 1.2 };
+  else if (P.kind === 'moment' && !P.cam && P.def.target) P.cam = { shot: 'orbit', target: P.def.target, t0: 0, dur: P.len, turn: 1.2, r: P.def.r ?? 3.6, up: 0.5 };
   if (!P.panels && P.kind !== 'talk') camFrame();
   if (P.t >= P.len && !talking()) endScene(false);
 }

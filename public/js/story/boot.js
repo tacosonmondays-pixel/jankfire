@@ -131,6 +131,8 @@ export function locked() { return talking() || (ST.scene && ST.scene.playing()) 
 
 export function frame(dt, now, cam) {
   if (!ST.ready) return;
+  // capture mode (tools/scene.cjs): the story advances one fixed step per recorded frame, however slow the renderer is
+  if (ST.capture) { dt = ST.capStep || 0; ST.capStep = 0; now = ST.capNow = (ST.capNow || now) + dt * 1000; }
   stage();
   const S = ST.S, e = eye();
   if (ST.staged) {

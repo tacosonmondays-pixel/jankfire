@@ -118,6 +118,6 @@ body.st-talk #crosshair, body.st-talk #hitmarker, body.st-talk #hotbar, body.st-
 #stPanels .bub { position: absolute; background: #fff; color: #000; border: 3px solid #000; border-radius: 22px; padding: 6px 12px; font-size: 16px; line-height: 1.2; max-width: 60%; box-shadow: 3px 3px 0 #000; }
 #stPanels .bub::after { content: ''; position: absolute; bottom: -14px; left: 26px; border: 8px solid transparent; border-top: 12px solid #000; }
 #stPanels .sfx { position: absolute; font-size: 54px; color: #ffe14d; -webkit-text-stroke: 3px #000; text-shadow: 5px 5px 0 #ff4fd8; transform: rotate(-12deg); letter-spacing: 2px; animation: stSfx 0.3s cubic-bezier(.2, 2, .4, 1) both; }
-#stPanels .rtitle { position: absolute; left: 50%; top: 6%; transform: translateX(-50%) rotate(-2deg); font-size: 40px; color: #ffe14d; text-shadow: 4px 4px 0 #ff4fd8, 7px 7px 0 #000; white-space: nowrap; }
+#stPanels .rtitle { position: absolute; left: 50%; top: 1.2%; z-index: 3; transform: translateX(-50%) rotate(-2deg); font-size: 40px; color: #ffe14d; text-shadow: 4px 4px 0 #ff4fd8, 7px 7px 0 #000; white-space: nowrap; }
 @keyframes stPanel { from { transform: var(--tf) scale(1.6); opacity: 0; } to { transform: var(--tf); } }
 @keyframes stSfx { from { transform: rotate(-30deg) scale(3); opacity: 0; } }
