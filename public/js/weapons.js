@@ -15,6 +15,7 @@ import { sfx, loopSfx, stopLoops } from './audio.js';
 import { shredMotor } from './audio.js';
 import { net } from './net.js';
 import { hud } from './hud.js';
+import { K } from './keys.js';
 import { tracerColor, emitSkinFx } from './skins.js';
 import { ANIMS, sample, sampleCh, eventsBetween, inspectFor, drawFor } from './anim.js';
 import { newTwirl, resetTwirl, twirling, spin, settle, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
@@ -1372,7 +1373,7 @@ export function updateWeapons(dt, now) {
   else if (w.mag) hud.ammo(W.ammo[id], w.mag, !!W.reloadId);
   else hud.ammo(null);
   if (W.reloadId) hud.meter(1 - (W.reloadUntil - now) / (w.reload * 1000), 'RELOADING', '#ffffff');
-  else if (isScythe(id)) hud.meter(W.dashFuel / D.max, ME.dashing ? 'GLITCHING' : 'V: GLITCH DASH · X: SWAP MODE', '#ff00dc');
+  else if (isScythe(id)) hud.meter(W.dashFuel / D.max, ME.dashing ? 'GLITCHING' : `${K.label('dash').toUpperCase()}: GLITCH DASH · ${K.label('scythe').toUpperCase()}: SWAP MODE`, '#ff00dc');
   else if (id === 'bow') { /* set above */ }
   else if (id === 'cards') hud.meter(null);
   else if (id === 'cig') {

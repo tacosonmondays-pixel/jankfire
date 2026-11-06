@@ -13,6 +13,7 @@ import { fx } from './fx.js';
 import { sfx, setMuffle } from './audio.js';
 import { hud } from './hud.js';
 import { RP, RP_HOOKS, recordEv } from './replay.js';
+import { K } from './keys.js';
 
 const NV = { on: false, t: 0, k: 0, vm: null, amb: null, fog: null, lastFlashT: 0 };
 const ease = (x) => x * x * (3 - 2 * x);
@@ -28,8 +29,8 @@ export function nvToggle() {
 }
 export function nvFlashKey() {
   if (!ME.alive) return;
-  if (W.item !== 'nvg') { hud.msg('MIDDLE CLICK / N FLASHES WITH NIGHT VISION GOGGLES (LOADOUT > ITEM)', 1.6); return; }
-  if (!NV.on || NV.k < 0.9) { hud.msg('PUT THE GOGGLES ON FIRST (G)', 1.2, 'slip'); return; }
+  if (W.item !== 'nvg') { hud.msg(`${K.label('nvgFlash').toUpperCase()} FLASHES WITH NIGHT VISION GOGGLES (LOADOUT > ITEM)`, 1.6); return; }
+  if (!NV.on || NV.k < 0.9) { hud.msg(`PUT THE GOGGLES ON FIRST (${K.label('item').toUpperCase()})`, 1.2, 'slip'); return; }
   W.nvFire = true; useItem(); W.nvFire = false;
 }
 

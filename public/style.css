@@ -371,7 +371,7 @@ body.replaying #speedLinesCv { visibility: hidden; }
 #votePanel { position: absolute; right: 16px; top: 34%; width: 300px; background: rgba(10, 0, 20, 0.85); border: 3px solid var(--cyan); padding: 10px 12px; box-shadow: 4px 4px 0 #000; }
 #votePanel .vt { font-size: 14px; color: var(--cyan); margin-bottom: 6px; }
 .vopt { display: flex; align-items: center; gap: 8px; padding: 5px 6px; margin-top: 4px; background: rgba(255, 255, 255, 0.06); font-size: 15px; }
-.vopt b { color: #ffe14d; width: 16px; }
+.vopt b { color: #ffe14d; min-width: 16px; white-space: nowrap; } /* rebound keys can be longer than one digit (Num 1, Mouse 4) */
 .vopt span { flex: 1; }
 .vopt i { font-style: normal; color: #fff; background: rgba(255, 255, 255, 0.15); padding: 0 6px; }
 .vopt.on { outline: 2px solid #ffe14d; }
@@ -753,6 +753,10 @@ body.chaos-spec #hotbar, body.chaos-spec #hpbox, body.chaos-spec #crosshair, bod
 #impactFx.f1 { background: #ff1428; mix-blend-mode: multiply; }
 #impactFx.f2 { background: radial-gradient(circle at center, rgba(255, 70, 60, 0.95) 0 14%, rgba(40, 0, 6, 0.93) 42%); }
 #impactFx.f3 { background: radial-gradient(ellipse at center, rgba(255, 40, 40, 0.12) 25%, rgba(190, 0, 20, 0.6)); mix-blend-mode: screen; }
+/* scary forest: the static when you stare at the tall guy from HR, and his callouts */
+#hrStatic { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; image-rendering: pixelated; mix-blend-mode: screen; pointer-events: none; }
+#center.hr { color: #f4f2ec; font-size: 58px; letter-spacing: 3px; text-shadow: 4px 0 0 #ff3030, -4px 0 0 #4fd8ff, 3px 3px 0 #000; animation: hrshake 0.12s infinite; }
+@keyframes hrshake { 0% { transform: translate(-50%, -50%) rotate(-3deg); } 50% { transform: translate(-49%, -51%) rotate(-2deg) skewX(4deg); } 100% { transform: translate(-51%, -49%) rotate(-4deg); } }
 
 /* wrap mode toggle: NORMAL / REVERSE / FULL, a little knife shows which half the wrap paints */
 .wrapmode { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; flex-wrap: wrap; }
@@ -784,3 +788,61 @@ body.tac #crosshair { visibility: hidden; }
 #tacCross b { position: absolute; left: -1px; top: -1px; width: 2px; height: 2px; background: #fff; box-shadow: 0 0 0 1px #000; }
 #tacCross.wide i { background: #ff6a6a; } /* moving / in the air: your shots go everywhere */
 body.replaying #tacCross, body.eco-spec #tacCross, body.eco-buy #tacCross { visibility: hidden; }
+/* settings > controls (key bindings) */
+#ctlList { columns: 2; column-gap: 26px; }
+@media (max-width: 760px) { #ctlList { columns: 1; } }
+.ctlGroup { break-inside: avoid; padding-bottom: 4px; }
+.ctlGroup h3 { color: var(--yellow); margin: 8px 0 3px; font-size: 17px; }
+.krow { display: grid; grid-template-columns: 1fr 86px 86px 24px; gap: 4px; align-items: center; margin: 2px 0; font-size: 13px; }
+.krow .kname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.krow.changed .kname { color: var(--yellow); }
+.kb, .kreset { font-family: var(--font); font-size: 13px; padding: 2px 4px; background: rgba(255, 255, 255, 0.1); color: #fff; border: 2px solid rgba(255, 255, 255, 0.2); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kb:hover, .kreset:hover:not(:disabled) { border-color: var(--cyan); background: rgba(255, 255, 255, 0.2); }
+.kb.empty { color: #777; }
+.kb.wait { border-color: var(--yellow); color: var(--yellow); animation: kbwait 0.7s steps(2) infinite; }
+@keyframes kbwait { 50% { background: rgba(255, 225, 77, 0.25); } }
+.kreset { padding: 2px 0; }
+.kreset:disabled { opacity: 0.25; cursor: default; }
+#ctlMsg { text-align: center; min-height: 20px; margin: 2px 0 4px; color: var(--cyan); font-size: 14px; }
+#ctlMsg.warn { color: var(--yellow); }
+.ctlPreset { display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 14px; }
+.ctlPreset input { accent-color: var(--pink); width: 16px; height: 16px; }
+.ctlBtns { justify-content: center; margin-top: 12px; }
+#ctlBtn { margin: 6px 0; }
+/* zombies: the round tally (red chalk), credits + popups, friends' credits, the F prompt, round banners, game over */
+#zmHud { position: absolute; inset: 0; pointer-events: none; }
+#zmTally { position: absolute; left: 10px; top: 40px; width: 180px; height: 90px; filter: drop-shadow(0 0 6px rgba(200, 20, 30, 0.4)); transform-origin: 30% 50%; }
+#zmTally.pulse { animation: zmpulse 1.2s ease-in-out infinite; }
+#zmTally.flash { animation: zmflash 1.6s ease-out 1; }
+@keyframes zmpulse { 50% { opacity: 0.5; } }
+@keyframes zmflash { 0% { filter: brightness(5) drop-shadow(0 0 18px #fff); transform: scale(1.35) rotate(-5deg); } 35% { transform: scale(1.12) rotate(2deg); } 100% { transform: none; } }
+#zmCred { position: absolute; right: 18px; bottom: 138px; text-align: right; }
+#zmCred small { display: block; font-size: 12px; color: #c8b878; letter-spacing: 3px; }
+#zmCred b { font-size: 36px; color: #ffe14d; }
+#zmPops { position: absolute; right: 0; bottom: 100%; width: 280px; height: 0; }
+.zpop { position: absolute; bottom: 0; font-size: 20px; font-weight: bold; color: #ffe14d; white-space: nowrap; animation: zmpop 1.1s ease-out forwards; }
+.zpop.big { font-size: 26px; color: #ff7a3a; }
+.zpop.neg { color: #ff4a4a; }
+@keyframes zmpop { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-74px); opacity: 0; } }
+#zmTeam { position: absolute; right: 18px; bottom: 214px; text-align: right; font-size: 15px; display: flex; flex-direction: column; gap: 2px; }
+#zmTeam b { color: #ffe14d; }
+#zmTeam i { color: #ff4a4a; font-style: normal; }
+#zmPrompt { position: absolute; left: 50%; top: 66%; transform: translateX(-50%); font-size: 22px; white-space: nowrap; }
+#zmPrompt.ok { color: #ffe14d; }
+#zmPrompt.no { color: #ff7a7a; }
+#zmBanner { position: absolute; left: 50%; top: 20%; transform: translateX(-50%); text-align: center; opacity: 0; white-space: nowrap; }
+#zmBanner.on { animation: zmbanner 3.4s ease-out forwards; }
+#zmBanner b { display: block; font-size: 76px; color: #d0161f; -webkit-text-stroke: 2px #000; text-shadow: 5px 5px 0 #000; letter-spacing: 4px; transform: rotate(-3deg); }
+#zmBanner.clear b { color: #ffe14d; font-size: 56px; }
+#zmBanner small { display: block; font-size: 19px; color: #ddd; margin-top: 4px; }
+@keyframes zmbanner { 0% { opacity: 0; transform: translateX(-50%) scale(1.7); } 9% { opacity: 1; transform: translateX(-50%) scale(1); } 78% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) scale(0.96); } }
+#roundEnd .zmOver { color: #d0161f; font-size: 50px; -webkit-text-stroke: 1px #000; letter-spacing: 3px; }
+#roundEnd .zmSub { font-size: 20px; margin-bottom: 10px; color: #ddd; }
+#roundEnd:has(.zmOver) { left: min(50%, calc(100% - 540px)); } /* clear of the vote panel on the right */
+.zmRows .zr { display: grid; grid-template-columns: minmax(90px, 1fr) repeat(5, 50px); gap: 4px; font-size: 15px; text-align: right; padding: 1px 0; }
+.zmRows .zr span:first-child { text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zmRows .zr.head { color: #aaa; font-size: 12px; border-bottom: 1px solid #555; }
+body.zm-on #streakTray, body.zm-on #streak { display: none; }
+body.hotbar-right #zmCred { right: auto; left: 50%; transform: translateX(-50%); bottom: 58px; text-align: center; }
+body.hotbar-right #zmTeam { bottom: auto; top: 120px; }
+body.replaying #zmHud { visibility: hidden; }
