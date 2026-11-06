@@ -1,7 +1,8 @@
 # OVERDUE art bible
 
-How story mode looks: a **post-apocalyptic, surreal** city, the ruins of Greater Jankburg after the Final Quarter,
-where the companies that ended the world still run their districts. It builds on the game's existing look (chunky low-poly, bright saturated colours, glossy
+How story mode looks: a **post-apocalyptic, surreal** city sixty-one years after a nuclear war the companies started.
+Greater Jankburg is grown on the war's dead, the people at the bottom are the fallout-born **Off-Spec**, and the
+companies that ended the world still run their districts from the rubble. It builds on the game's existing look (chunky low-poly, bright saturated colours, glossy
 bevelled Blender models, the pink/yellow/cyan comic UI, render presets from Potato to Too HD) and adds the owner's
 references: **rubbery claymation puppets, uncanny faces, bold patterns, pastel and fleshy palettes, stacked surreal
 architecture.** The references are the vibe; no character, costume or set is copied from them.
@@ -17,10 +18,14 @@ The city mixes three body types on purpose. The contrast is the joke and the hor
 | type | who | proportions | read |
 |---|---|---|---|
 | **Mannequins** | the player, Corp workers, shoppers, suburb families, crowd extras | the game's existing jointed mannequin (1.8 m, ~1 : 7.5 heads), ball joints, built-in jank (random tilt, a wrong knee) | "returned product" |
-| **Normals** | survivors, scavengers, shopkeepers, raiders, cops' faces under helmets | chunky low-poly humans in scavenged clothes, 1 : 6 heads, simple faces (dot eyes, a mouth line), boxy hands | "the people trying to get through the day" |
-| **Puppets** | faction characters, quest givers, bosses: the mafia, the jesters, the Gut Choir, Lumps, Wee Gordo, Auntie Spreadsheet | **exaggerated**: head 1 : 2.5 to 1 : 3.5 of the body, or a tiny head on a giant body; hands either tiny or enormous; never "normal" | "a claymation nightmare that loves you" |
+| **Normals** | survivors, scavengers, shopkeepers, raiders, ☺ CORP arcology staff, cops' faces under helmets, the old pre-war survivors (Auntie Spreadsheet, Dale) | chunky low-poly humans in scavenged clothes, 1 : 6 heads, simple faces (dot eyes, a mouth line), boxy hands | "the people trying to get through the day" |
+| **Puppets (the Off-Spec)** | the fallout-born generations and the rich who bought Regrowth to stay young: faction characters, quest givers, bosses (the Family, the jesters, the Gut Choir, Lumps, Wee Gordo) | **exaggerated**: head 1 : 2.5 to 1 : 3.5 of the body, or a tiny head on a giant body; hands either tiny or enormous; never "normal" | "a claymation nightmare that loves you" |
 
 ### Puppet proportion rules
+- **Why they look like this:** the Off-Spec are three generations born after the fallout and Regrowth. The rich got
+  their own version: the Family and the company bosses bought Regrowth treatments to live forever, and it stretched
+  their faces into grins. Mutation is never the joke (DESIGN §7.1): the designs are bold and stylised, and the
+  characters are people first.
 - **One thing is huge, one thing is tiny.** Every puppet gets one oversized feature and one undersized one: Pip
   Grinsworth (huge horned head, tiny praying hands), Long Larry (long body, droopy nose to his chest, tiny feet), Lumps
   (gigantic veiny forearms, small head, tiny legs), Wee Gordo (huge sagging lipped face, hunched tiny body), Don
@@ -90,6 +95,7 @@ Base game palette stays the UI: hot pink `#ff4fd8` / `#ff00dc`, yellow `#ffe14d`
 | **Evergreen Acres** | lawn green, sky blue, pastel house colours | a perfect sitcom-blue sky, perfect sun, a little too saturated |
 | **The Lates** | mustard, beige, fluorescent white, a pink rot creeping in | no sky (a ceiling), buzzing fluorescent light, a faint yellow fog |
 | **The Margins** | dark pine green, grey, void black with a gloss | dusk purple sky, heavy fog, the void reflects nothing |
+| **Hot zones** (blast sites, fallen digits) | glassed black-green, ash grey, toxic green `#39ff14` glow | a sickly green sky, ash snow, glow from below |
 | **The Commute** | sun-bleached tarmac, rust orange, faded car paint, paper white | dusty orange sky, paper storms (white confetti fog), long shadows |
 
 ## 4. Architecture and props per district
@@ -105,6 +111,9 @@ Base game palette stays the UI: hot pink `#ff4fd8` / `#ff00dc`, yellow `#ffe14d`
   small texture, never a brown filter over everything.
 - **Scavenger props everywhere:** barricades of filing cabinets and office chairs, cart walls, burning ☺buck barrels,
   scrap lean-tos, dead traffic jams, hand-painted signs in the lowercase voice ("no interns", "soup 2 coupons").
+- **The war is in everything:** blast shadows burned onto walls, glassed craters, ash drifts, wrecked war machines in
+  division colours (a ☺ CORP tank, a Big Value supply mech), fallen glowing digits, the void's clean black cuts, and
+  under it all the corpse-city (bone in the bricks, roots that are veins).
 - **Corp Hill is the exception:** a perfect clean bubble, with a bleach line on the road where the rubble ends.
 
 General city rules (the game's existing map rules): **big readable blocks**, scenery all around (never a void, except
@@ -181,7 +190,7 @@ vehicle, **L** = landmark.
 | 2 | **Washing line + socks** | P | Bottom | doubles as a grapple rail |
 | 3 | **Wok satellite dish** | P | Bottom | |
 | 4 | **Lost & Found depot + the Machine** | L | Bottom | the hub, a ruined returns depot; the Machine is the original ☺ vending machine, hero-quality (glowing glass with a tiny sim world inside, a tray you get dispensed from) |
-| 5 | **Auntie Spreadsheet** | C | Bottom | puppet, grid dress, crayon behind her ear, huge glasses |
+| 5 | **Auntie Spreadsheet** | C | Bottom | old normal (85, pre-war), grid dress, crayon behind her ear, huge glasses, an old ☺ CORP auditor's badge |
 | 6 | **Lumps** | C | Bottom | small head, gigantic veiny forearms, gold rings, tie-dye tee, sunglasses |
 | 7 | **Wee Gordo** | C | Bottom | huge sagging lipped face, spiky hair, pink sweater, hunched |
 | 8 | **Bottom local (normal) ×3 variants** | C | Bottom | tie-dye, scooter kid, cook |

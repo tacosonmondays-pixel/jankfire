@@ -1,10 +1,11 @@
 # JANKFIRE: OVERDUE (story mode design doc)
 
-> **Logline:** the world ended on the last day of the last quarter, when every division of ☺ CORP tried to hit its
-> numbers at once. Years later (nobody knows how many, time is broken) the companies that ended it are still open for
-> business in the ruins, and every gang of survivors wants a piece of what's left. Now ☺ CORP is about to restart the
-> world, with the dead as its workforce. You are one of the dead: a recording of someone who died that afternoon, let
-> out of the old ☺ vending machine in a mannequin body. You don't remember who you were. They do.
+> **Logline:** the companies bought the politicians, then the states, then the countries, and then they went to war
+> with each other over market share. On the last day of the last quarter they used the nuclear option. Sixty-one years
+> later the survivors live in a city grown on the war's dead, their children born mutated by the fallout. And worst of
+> all, the companies that did it are still here: they gave up the world to be on top of the rubble. Now ☺ CORP is about
+> to restart the world, with the dead as its workforce. You are one of the dead: a recording of someone who died that
+> afternoon, let out of the old ☺ vending machine in a mannequin body. You don't remember who you were. They do.
 
 Working title **OVERDUE**. On the home screen it's the new **STORY** button. Everything here is original: genre ideas
 (a post-apocalyptic open city, crime-sandbox driving, rarity loot, cyber implants) are borrowed, and no names,
@@ -16,90 +17,92 @@ Companion docs: [ART_BIBLE.md](ART_BIBLE.md) · [TECH_PLAN.md](TECH_PLAN.md) · 
 
 ## 1. The world and its rules
 
-**Greater Jankburg** is the walled corporate city from the battle royale (`shared/jankburg.js`), after the end of the
-world. Ten districts are left on a giant hill of rubble: Corp Hill at the top, The Bottom at the bottom, because in this
-city the org chart was always a map. Between them runs **The Commute**: jammed dead highways, paper storms (blizzards of
-shredded paperwork) and raiders.
+**Greater Jankburg** is the walled corporate city from the battle royale (`shared/jankburg.js`), sixty-one years after
+the end of the world. Ten districts are left on a giant hill of rubble, ash and bone: Corp Hill's sealed towers at the
+top, The Bottom at the bottom, because in this city the org chart was always a map. Between them runs **The Commute**:
+jammed dead highways, ash storms full of shredded paperwork, and raiders.
 
-### Before: the merger (what the sims remember)
-Everything players already know from the lore NPCs (`shared/secrets.js`) is the world *before*: ☺ CORP started as one
-vending machine that never gave change, bought the government at an auction, merged with everyone, and made matches
-the job ("kills are the only honest KPI"). The founder is a cat who typed `yyyyyyyyyyyy`. Todd wrote gravity from
-memory. That world is gone. It lives on only as recordings inside the Machine's training sims (below).
+### The history, in order
+| when | what happened |
+|---|---|
+| **The Buyout** (about 90 years ago) | the companies bought politicians, then whole parties, then states, then countries. ☺ CORP bought its government at an auction (it was the only bidder). Borders became market segments; citizens became customers, then employees. |
+| **The Merger** | ☺ CORP merged with everyone. Every company became a **division**, every country belonged to one, and the divisions were ranked against each other every quarter. The bottom division got cut. This is the world the training sims remember (`shared/secrets.js`: matches are the job, kills are the only honest KPI). |
+| **The Market Wars** (about 70 years ago) | ranking turned into war. The divisions sent their countries' armies at each other over market share, and each one built a weapon out of its product line (below). Politicians gave the speeches; the boards gave the orders. |
+| **The Final Quarter** (61 years ago) | the last day of the last quarter, and every division was about to miss its number. Six boards signed **Option C**, "the nuclear option", and at **17:30** they launched everything at once. ☺ CORP's board approved it, because the parent company wins either way: its debts, wages and pensions burned with the world, and its headquarters were built to survive. |
+| **The Long Dark** | decades of fallout and nuclear winter. Billions dead. The companies waited it out in their sealed HQs and bunker towers. |
+| **The corpse-city** | the war's dead were piled in the valleys around the old downtown. Gristle & Sons' bio-weapon got into them, and the dead fused and grew. Over decades the survivors built on top of them. Greater Jankburg is a city grown on its own dead: the ground is bone under the concrete, and in the Gut it's still alive. |
+| **The Off-Spec** | the survivors' children were born changed by the fallout and the bio-weapons: huge heads, tiny hands, enormous arms, rubbery skin, extra teeth. Three generations later, most people at the bottom of the hill are mutated. ☺ CORP's word for them is **off-spec**. They've taken it as a name. |
+| **Now** | the companies came back out of their bunkers and own the rubble. Some divisions didn't survive the war; six did, and each holds a district. They're the reason the world ended, and they're the only ones with power, clean water and ammo. |
 
-### The Final Quarter (the apocalypse)
-After the merger, every company on earth was a **division** of ☺ CORP, and every division had a target for the end of
-Q4. On the last afternoon of the last quarter, all of them shipped whatever would hit the number. The world ended by
-about 17:30.
-
-| division (now its own company again) | what it shipped on the last day | what it did to the world |
+### The weapons of the Market Wars (each company's product, turned into a weapon)
+| company (then a division) | its weapon | what's left of it in the city |
 |---|---|---|
-| **☺ CORP Time & Scheduling** | overclocked **the Schedule** to fit more billable hours into the quarter | **time cracked.** every district runs on its own broken clock, and anything that falls behind rots into meat |
-| **Gristle & Sons Biologics** | the "grow your own lunch" formula, three months early | a whole district grew alive: **The Gut**. it's still growing |
-| **Big Value Retail** | the biggest sale in history, every door opened at once | **the Stampede** flattened half the city. the sale never ended |
-| **Remainder Industries** (the number printers) | enough numbers to make every book balance | inflation went physical: **giant digits fell from the sky** and they're still half-buried everywhere |
-| **Vacancy Holdings** (real estate) | repossessed everything with a late payment, including the ground | **the void**: the edges of the world were sold off as "premium negative space" |
-| **Fazzoletti Family Insurance** | apocalypse cover, sold to everyone that morning | paid out nothing ("act of shareholders") and got very rich |
-
-Then the merger fell apart: **THE DEMERGER**. Each division walked off with its slice of the city and became its own
-company again. The board of directors (the cats) vanished. Nobody was left in charge except whoever had a building and
-a logo.
+| **☺ CORP** (Time & Scheduling) | the **Schedule Bomb**: a weapon that locks a place into one moment | **The Lates**, frozen on the same Tuesday since the Final Quarter. The Schedule's sync network died too, so every district keeps its own broken time |
+| **Gristle & Sons Biologics** | **Regrowth**, made to raise fallen soldiers and send them back in | it raised the dead, but not as soldiers. The war's dead fused into one living tissue: **The Gut**, and the ground the city stands on |
+| **Big Value Retail** | the supply chain: Big Value fed every army and sold the shelters | **the Stampede**: when the sirens went, the ads said every Big Value was a shelter. The doors only opened for members. The Checkout is built on that crush |
+| **Remainder Industries** | the numbers: every target list, every casualty forecast, the orbital billboards that guided the missiles | its giant orbital price-display satellites came down after the war: **glowing digits the size of buildings**, half-buried across the city |
+| **Vacancy Holdings** | **void bombs**, "property-clearing" weapons that delete land outright | **the void** at the edges of the world. Vacancy still sells plots. To the void |
+| **Fazzoletti Family Insurance** | insured every side of the war and sold bunker places at a markup | it paid out nothing ("act of shareholders") and came through untouched: **Pinstripe** |
 
 ### Now
-- **The companies are still open.** Each one runs its district like the end of the world was a slow quarter: shops,
-  security, slogans, prices. They're the reason the world ended, and they're the only ones with power, water and
-  ammo. They fight each other for turf, and they all want to be the one that rebuilds the economy (and owns it).
-- **☺ CORP wants the Re-Merger.** It still runs Corp Hill perfectly ON TIME, holds meetings in the ruins and sends
-  **Late Fees** to survivors for "back pay owed since the Final Quarter". Its plan is to restart the **Master Clock** at
-  the top of the ☺ Spire, put the whole city back on the Schedule and sign everyone back up as employees. By force.
-  What it hasn't told anyone is who the new employees will be (§3).
-- **Lateness rots reality.** Since the Final Quarter, anything that falls behind schedule goes *overdue*: first it gets
-  sticky, then warm, then it gets a pulse. Overdue paperwork grows teeth. Overdue streets grow intestines. The ruins
-  are slowly turning into meat from the bottom of the hill up.
-- **Smaller groups want up.** Survivor towns, raider gangs, feral mascots, a gated suburb with a militia, scavenger
-  surgeons: everyone without a logo is fighting to become the next one, or to make sure nobody does. The biggest of
-  them is **The Bottom**.
+- **The companies are back on top.** They gave up the world to be the biggest thing left in it. Each runs its district
+  like the war was a bad quarter: shops, security, slogans, prices. They fight each other for turf and they all want to
+  be the one that rebuilds the economy (and owns it).
+- **☺ CORP wants the Re-Merger.** Inside its sealed arcology on Corp Hill, life runs on **the Schedule**: air, water,
+  food and power are rationed to the minute, and anyone late loses their slot and gets put outside. It still sends
+  **Late Fees** to everyone in the ruins for "back pay owed since the Final Quarter". Its plan is to restart the
+  **Master Clock** at the top of the ☺ Spire, put the whole city back on the Schedule and sign everyone back up as
+  employees. What it hasn't told anyone is who the new employees will be (§3).
+- **The rot.** Regrowth is still in the fallout. Anything abandoned (a building, a street, a body) slowly grows flesh:
+  first it gets sticky, then warm, then it gets a pulse. ☺ CORP calls written-off places **overdue**. The ruins rot from
+  the bottom of the hill up.
+- **Smaller groups want up.** Off-Spec survivor towns, raider gangs, feral mascots, a fallout-shelter suburb with a
+  militia, scavenger surgeons: everyone without a logo is fighting to become the next one, or to make sure nobody does.
+  The biggest of them is **The Bottom**.
 
 ### The Machine and the training sims (the PvP is in here)
-- The original ☺ vending machine, the one that started it all, was also ☺ CORP's **backup server**. Every employee's
-  mind was recorded into it at the end of every shift, "for continuity". At 17:30 on the Final Quarter it took its last
-  backup: **everyone who died that afternoon is still in there.**
-- It stands in the ruins of the Lost & Found at the Bottom, still humming. Nothing can kill it.
-- Inside it runs the **TRAINING SIMS**: the recordings, living the world from before the end. **Every multiplayer map
+- The original ☺ vending machine, the one that started ☺ CORP, was also its **backup server**. Every employee's mind
+  was recorded into it at the end of every shift, "for continuity". At **17:30 on the Final Quarter** it took its last
+  backup, as the bombs fell: **everyone who died that afternoon is still in there.**
+- It stands in the ruins of the Lost & Found at the Bottom, still humming. It survived a nuclear war. Nothing can kill
+  it.
+- Inside it runs the **TRAINING SIMS**: the recordings, living the world from before the war. **Every multiplayer map
   and mode in JANKFIRE is a sim.** Dead Mall, Suburb, the Warehouse, the Desert, Jankburg's battle royale, Gun Game,
-  Plant & Defuse: simulations of places and jobs that don't exist anymore, played out by people who don't know they're
-  dead.
+  Plant & Defuse: simulations of places and jobs that don't exist anymore, played by people who don't know they're dead.
 - That explains the PvP: respawning is free (it's a sim), Todd's broken gravity (it was recorded that way), the bots
   (recorded employees on their last workday, forever) and the containers that pay out (the Machine dispenses them into
   its tray). The lore NPCs in the sims (Gary, Dale, the Janitor, Mr. Smiles, Todd) are **recordings who don't know the
-  world ended**. In story mode you can find what's left of the real ones.
+  world ended**. In story mode you can find what's left of the real ones, sixty-one years older (or their graves).
 - The companies and gangs rent sim time to train their fighters, which is why everyone fights like a JANKFIRE player.
   Hardly anyone asks who the bots are.
 - **In story mode, the Machine is the multiplayer menu.** Walk up to one of its terminals at a safehouse, press F, and
   you're in the normal PLAY menu: your sim results come back as containers in the tray.
 
 ### Change (the player)
-- You are a **recording of someone who died in the Final Quarter**, loaded into a spare mannequin body. Your recording
+- You are a **recording of someone who died at the Final Quarter**, loaded into a spare mannequin body. Your recording
   kept breaking out of the sims (glitching through walls, refusing to respawn, walking off the edge of the map), so
   **Dale**, who fixes the Machine, finally did what nobody had ever done: he pressed the button. BEEP. CLUNK.
 - You don't remember who you were. The Bottom names you **CHANGE** ("the machine never gave change. then it gave
   you.").
 - Legally you don't exist (no calendar entry, no receipt), so ☺ CORP's systems don't see you properly. The Machine
   still has your backup: when you die it dispenses you again at the nearest terminal, minus a "restocking fee". You
-  can install organs that aren't yours, and stand in overdue places without rotting (much).
+  can install organs that aren't yours, and a plastic body doesn't care about radiation or rot (much).
+- You're also the only person in the city who remembers the world before (in flashes): to the Off-Spec, you're a ghost
+  from the old days.
 - **Who you were** is the story's first mystery (answered in Act II). **What you are** (a person, a copy, a product)
   is its real question, and the ending is your answer.
 
 ### Rules of the world (gameplay-facing)
 | rule | what the player feels |
 |---|---|
-| Time is broken | every district has its own **district clock** in the HUD, running at its own speed. Corp Hill is perfectly on time (shops open, patrols on rounds, trains on time); the Lates is stuck on Tuesday; the Gut doesn't care. |
-| Lateness rots | overdue zones are fleshy, hostile and lucrative. The Gut is permanently overdue; other districts rot at night and when you cause chaos. |
+| Time is broken | every district keeps its own **district clock** in the HUD (the Schedule's network died in the war). Corp Hill is perfectly on time (shops open, patrols on rounds, trains on time); the Lates is stuck on Tuesday; the Gut doesn't care. |
+| The rot | overdue zones are fleshy, hostile and lucrative. The Gut is permanently overdue; other districts rot at night and when you cause chaos. |
+| Fallout | **hot zones** around the old blast sites and fallen digits: a radiation meter drains your HP slowly, the loot is the best in the city, and some implants protect you. |
 | The companies own the turf | every district has a ruler. You can keep it in power or hand it to a smaller group (**Hostile Takeovers**, §6.11). |
 | Momentum never ends (Todd) | all existing movement (bhop, slide, grapple, infinite momentum) works city-wide. Cars keep it too. |
 | Respawning is a backup | death = the Machine dispenses a fresh you at the nearest terminal, minus some Coupons. |
-| Money is coupons | after the Stampede, Big Value's coupons were the only thing that never expired. **Coupons** are the currency now. |
-| The board are cats | the cats are hidden across the ruins. Petting them = promotions (perk points). |
+| Money is coupons | after the war, Big Value's ration coupons were the only thing that said "never expires". **Coupons** are the currency now. |
+| The board are cats | the old board's cats (several generations of them now) are hidden across the ruins. Petting them = promotions (perk points). |
 
 ---
 
@@ -109,10 +112,10 @@ a logo.
 | company | turf | wants | flavour |
 |---|---|---|---|
 | **☺ CORP** | Corp Hill and the ☺ Spire | the **Re-Merger**: restart the Master Clock and own everyone again | smiling, punctual, plastic, in total denial. "business as usual." |
-| **Gristle & Sons Biologics** | The Gut | **organic growth**: grow the Gut over the whole city | the staff stayed at their desks while the building grew around them, and became the **Gut Choir**. The CEO is the Stomach Bishop. |
-| **Big Value Retail** | The Checkout | keep the sale going forever; everyone a customer | Mall Security on segways, the **Forever Shoppers**, coupons as money |
+| **Gristle & Sons Biologics** | The Gut | **organic growth**: grow the Gut over the whole city, and sell Regrowth to whoever fights the next war | the staff stayed at their desks while the building grew around them, and became the **Gut Choir**. The CEO is the Stomach Bishop. |
+| **Big Value Retail** | The Checkout | control every ration in the city; everyone a customer | Mall Security on segways, the **Forever Shoppers** (members who've been shopping since the shelter doors shut), coupons as money |
 | **Fazzoletti Family Insurance** | Pinstripe | protection money from everyone, including the other companies | "a family business since 1850." you're covered. you're always covered. |
-| **Remainder Industries** | Number Works | to decide what everything costs | they print the prices. whoever prints the prices runs the market |
+| **Remainder Industries** | Number Works | to decide what everything costs | they calculated the war; now they print the prices, and whoever prints the prices runs the market |
 | **Vacancy Holdings** | The Margins | to sell what's left of the ground, plot by plot, to the void | estate agents in hazmat suits; they rent the Tall Guy From HR from ☺ CORP |
 
 ☺ CORP's departments the player meets: **Timekeeping Enforcement** (cops, collectors, Mr. Overtime), **HR** (special
@@ -122,15 +125,15 @@ forces, the Tall Guy From HR), **Facilities** (cleaners who scrub the meat back 
 ### The groups grabbing for power
 | group | where | wants | attitude to you |
 |---|---|---|---|
-| **The Bottom** | The Bottom (rebel hub) | to get **up** the hill: a city where nobody owns time | home; they found you |
-| **The Unpaid** | The Commute | to become a company ("we're doing a startup"). Raiders: interns who survived because nobody had counted them, in armour made of office chairs and filing cabinets. They worship Todd as the First Intern. Led by **EMPLOYEE OF THE MONTH**, a warlord who gave himself the award. | they rob you, then offer you an internship |
+| **The Bottom** | The Bottom (rebel hub) | to get **up** the hill: a city where nobody owns time. Mostly Off-Spec families, three generations after the war | home; they found you |
+| **The Unpaid** | The Commute | to become a company ("we're doing a startup"). Raiders: the grandchildren of interns who survived because nobody had counted them, in armour made of office chairs and filing cabinets. They worship Todd as the First Intern. Led by **EMPLOYEE OF THE MONTH**, a warlord who gave himself the award. | they rob you, then offer you an internship |
 | **The Fun Department** | roaming (a carnival convoy on The Commute) | fun, mandatory. Feral ex-Marketing mascots in matted suits. Mr. Smiles quit them | they want you to have fun. they will make you |
 | **The Punchlines** | Pinstripe | to take the Family over. The Don's two jesters, Pip Grinsworth and Long Larry, and every clown he ever laughed at | allies, if you laugh |
-| **The Mall Rats** | The Checkout | to end the sale. Kids who grew up in the mall's air vents after the Stampede (they're 30 now) | allies, sneaky |
+| **The Mall Rats** | The Checkout | to end the sale. Families who've lived in the mall's air vents since the Stampede | allies, sneaky |
 | **The Remainders** | Number Works | to be counted. A union of people stamped with the digits nobody wanted | grumpy allies |
 | **The Meat Mechanics** | Chrome Gristle | the monopoly on organs, scavenged from the Gut | merchants (implant clinics) |
-| **The HOA** | Evergreen Acres | to annex the ruins "for property values". A gated suburb that survived by refusing to admit anything happened, with an armed militia | passive-aggressive, then aggressive |
-| **The Loopers** | The Lates | for it to stop being Tuesday | confused, helpful |
+| **The HOA** | Evergreen Acres | to annex the ruins "for property values". A fallout-shelter suburb that came back up after the war and refuses to admit anything happened, with an armed militia | passive-aggressive, then aggressive |
+| **The Loopers** | The Lates | for it to stop being Tuesday (they've been in the same day for sixty-one years and haven't aged) | confused, helpful |
 | **The Margin Walkers** | The Margins | to keep the void from eating more ground; they stake plots with garden gnomes | lonely, grateful |
 
 The Bottom's people (Auntie Spreadsheet, Lumps, Wee Gordo, Dale) are the core cast: see §3.2 for who they are and what
@@ -165,10 +168,10 @@ a story beat. Every main character wants something clear, and every act asks one
 | **Dale** | the old man who fixes the Machine | to make up for knowing what's in it and keeping quiet | the one who let you out |
 | **Marion Hask** | Chief Punctuality Officer of ☺ CORP; signed Option C; keeps herself alive with Gristle & Sons organs | **order**. After the Final Quarter the city starved in the dark. She believes the Schedule is mercy, and the dead won't mind | a villain with a point, and a body held together by other people's parts |
 | **Mr. Overtime** (Edwin Sallow) | Employee #1, the first recording ever loaded into a body, reloaded every time he dies | to do his job. He doesn't know he's dead | your mirror: what you become if you sign |
-| **R. Cale** | a junior analyst who died at 17:29 on the Final Quarter | (in flashbacks) to get Option C to the press before 17:30 | who you were |
+| **R. Cale** | a junior analyst who died at 17:29 on the Final Quarter | (in flashbacks) to stop the launch: get Option C out before 17:30 | who you were |
 
 Supporting cast: the company bosses (each one a person with a business to protect), Pip Grinsworth and Long Larry
-(the Punchlines), the Mall Rats' leader (the lost child from the Stampede, 40 now), Employee of the Month (the Unpaid's
+(the Punchlines), the Mall Rats' leader (an old man who was the lost child of the Stampede), Employee of the Month (the Unpaid's
 warlord), and the real Gary, Janitor, Mr. Smiles and Todd, who survived.
 
 ### 3.3 The acts
@@ -183,7 +186,7 @@ Five acts, ~25 main missions. Choices tilt **Corp Standing** and **Bottom Standi
    survive the Unpaid.
 3. **Something's Digesting.** In the Gut, the Choir tells you where Gristle & Sons gets its feedstock: ☺ CORP sells it
    the people who fall behind on their back pay. The Bottom's missing people are in the Gut.
-4. **Clocking In.** Mr. Overtime comes to collect the Bottom's "forty quarters of back pay": he takes people for the
+4. **Clocking In.** Mr. Overtime comes to collect the Bottom's "two hundred and forty-four quarters of back pay": he takes people for the
    Gut. First nemesis fight. You crack his punch-clock heart and he retreats.
 5. **Second Stomach.** A Meat Mechanic installs the piece of his heart in you. Implants unlocked.
 - **Act I ends** on Overtime, looking at a security still of you: "that one was deleted. CALE, R. employee 4417. late
@@ -191,15 +194,15 @@ Five acts, ~25 main missions. Choices tilt **Corp Standing** and **Bottom Standi
 
 #### Act II: "Hostile Takeovers" (Pinstripe, The Checkout, Number Works, The Commute). *Who did this?*
 - Auntie explains what she's been hunting for: **Option C**, the document that ended the world. Six divisions signed it
-  and each company kept its signed page. Six pages together are proof that the Final Quarter was a planned bankruptcy,
-  and that every debt ☺ CORP collects is fake. Act II gets three (Pinstripe, the Checkout, Number Works); Gristle &
+  and each company kept its signed page. Six pages together are proof that the companies launched on purpose and wrote off
+  the world to cancel what they owed, and that every debt ☺ CORP collects is fake. Act II gets three (Pinstripe, the Checkout, Number Works); Gristle &
   Sons' page turns up in Act III (the Meat Mechanics stole it), Vacancy Holdings' in Act IV at the Margins, and ☺ CORP's
   own copy is on Hask's desk at the top of the Spire.
 - In each company district you get its page: **DEAL** (the company hands it over for a favour, stays in power, and
   is a shaky ally) or **TAKEOVER** (you help the local group take the district; they're loyal, and the company is your
   enemy there). Pinstripe's Don, the Checkout's Cart Mother and Number Works' Foreman each end their district's story.
 - **Memory missions:** every page you collect unlocks a flashback inside the sims: **"The Last Workday"**, playable as
-  R. Cale, 16:00-17:29 on the Final Quarter, in the ☺ Spire before the end. You find Option C, copy it, and run.
+  R. Cale, 16:00-17:29 on the Final Quarter, in the ☺ Spire before the end. You find Option C (the launch order and the write-off, in one deck), copy it, and run for the lobby to get it out before the launch.
 - Mid-act: Overtime hunts you on The Commute (fight 2, a car chase).
 - **Act II ends** with the last flashback: Cale reaches the lobby with the copy at 17:29, and Mr. Overtime is waiting.
   Auntie confesses: she was Cale's boss. She found Option C, and she sent Cale to leak it because she was too scared to
@@ -207,12 +210,12 @@ Five acts, ~25 main missions. Choices tilt **Corp Standing** and **Bottom Standi
 
 #### Act III: "Off the Clock" (Chrome Gristle, Evergreen Acres, The Lates). *What are they planning?*
 - Using the old Schedule printout, Wee Gordo finds the **Missing Hour** (03:00, an hour nobody is booked into).
-- In the Lates, ground zero of the Final Quarter, you find what the Missing Hour hides, the real plan behind the Re-Merger: **Workforce Restoration**.
+- In the Lates, where ☺ CORP's Schedule Bomb went off, you find what the Missing Hour hides, the real plan behind the Re-Merger: **Workforce Restoration**.
   Mannequin bodies by the hundred thousand, the Machine's archive of the dead, and the Master Clock to schedule them.
   The dead go to work, forever, unpaid and obedient, because a recording can be told what time it is. The living who
   can't pay are sold to Vacancy Holdings for the void. **You** were the prototype: your recording came out without the
   Schedule loaded.
-- **Hask contacts you** through a Machine terminal. She shows you the city after the Final Quarter: the famine, the dark,
+- **Hask contacts you** through a Machine terminal. She shows you the Long Dark after the Final Quarter: the ash, the famine,
   the riots. "the Restoration feeds everyone. i'm offering you a name, a job, and a life that doesn't end. or you can
   go back to the bin."
 - The Bottom splits. Lumps wants to take a deal if it saves the people in the Gut. Wee Gordo wants to blow up the Spire.
@@ -270,8 +273,9 @@ Bosses are **refightable**: their company (or their gang) re-hires them. A beate
 next in-game midnight; walk in for a rematch with harder mods and another core roll.
 
 ### 4.1 The Bottom (slum / rebel hub, the starting district)
-- **Theme:** a survivor town in the rubble at the bottom of the hill, where the Stampede and the Demerger washed
-  everyone who didn't own anything. The bottom of the org chart, stacked on top of itself.
+- **Theme:** an Off-Spec survivor town at the bottom of the hill, built on the crust of the corpse-city (dig anywhere
+  and you hit bone), where everyone who didn't own anything washed up after the Long Dark. The bottom of the org
+  chart, stacked on top of itself.
 - **Look:** a steep street of stacked pastel cube houses (pink, yellow, teal, mint) built out of shipping containers,
   dead vending machines and fallen ☺ signage, washing lines, satellite dishes made of woks, stairs everywhere, tie-dye banners, string lights, a dark purple sky that's always slightly the wrong time.
 - **Landmarks:** the **Lost & Found** (hub safehouse, a ruined returns depot, home of **the Machine**), **The Long Stairs** (1,000 steps up to the
@@ -293,8 +297,9 @@ next in-game midnight; walk in for a rematch with harder mods and another core r
 - **Music:** lo-fi hip hop played on a broken accordion, a warm bass, distant dogs.
 
 ### 4.2 The Gut (the living meat/organ district)
-- **Theme:** Gristle & Sons Biologics' campus, where the "grow your own lunch" formula got out on the Final Quarter.
-  The whole district went overdue and became alive. It digests. It's warm. It loves you. And it's still a company.
+- **Theme:** the valley where the war's dead were piled, and Gristle & Sons' campus beside it. Regrowth was meant to
+  raise fallen soldiers; instead it fused millions of dead into one living tissue. The rest of the corpse-city has a
+  crust on it. The Gut is the part that's still awake. It digests. It's warm. It loves you. And it's still a company.
 - **Look:** streets are intestine tubes with pink ribbed walls, ribcage arches over the avenues, tooth-cobble
   pavements, lungs inflating between buildings, the old shops still visible under skin (a launderette with a tongue for
   a door), vein-wires carrying light, pulsing sphincter doors. Colours: raw pink, liver purple, fat yellow, bile green.
@@ -323,8 +328,8 @@ next in-game midnight; walk in for a rematch with harder mods and another core r
 - **Music:** a choir humming one chord, a giant heartbeat as the kick drum, wet synth pads.
 
 ### 4.3 Pinstripe (the mafia district)
-- **Theme:** Fazzoletti Family Insurance's old-money quarter. It came through the Final Quarter almost untouched,
-  because it was insured (by itself). A family of grotesque puppet-faced giants who think they're elegant, selling
+- **Theme:** Fazzoletti Family Insurance's old-money quarter. The Family insured every side of the Market Wars and sold
+  bunker places at a markup, so its quarter came through the Final Quarter untouched. A family of grotesque puppet-faced giants who think they're elegant, selling
   protection to the ruins.
 - **Look:** gothic stone mansions, marble floors, red-and-white pinstripe awnings, gold medallions, velvet ropes,
   spaghetti restaurants with checkerboard floors (red, blue, black), pink stucco interiors.
@@ -354,8 +359,9 @@ next in-game midnight; walk in for a rematch with harder mods and another core r
 - **Music:** a mandolin and a tuba playing a waltz that slowly detunes, a crooner who only sings vowels.
 
 ### 4.4 The Checkout (the shopping district)
-- **Theme:** Big Value's flagship mall, where the Stampede started. The sale that ended the world never stopped:
-  the shoppers are still in there, and so is the stock.
+- **Theme:** Big Value's flagship mall, the biggest "shelter" in the city. When the sirens went, the doors only opened
+  for members, and the Stampede happened outside them. Inside, the members never left: the sale never stopped, and
+  Big Value now controls the city's rations.
 - **Look:** the Dead Mall scaled up and half-collapsed: a cracked glass dome over the streets, escalators between them, fountains with coins, food courts the size of plazas,
   sale banners, mannequin shoppers in every window, neon SALE signs in pink and yellow. Clean on top, gross in the
   service corridors.
@@ -367,7 +373,7 @@ next in-game midnight; walk in for a rematch with harder mods and another core r
   - *Price Check on Aisle Everything*: scan 30 hidden barcodes with the Instant Camera.
   - *Doorbuster*: a 2-minute stampede survival. Shoppers trample anything between them and the TV.
   - *Mall Walker*: race the Mall Walkers' club of terrifyingly fast grandmas.
-  - *Lost Child*: the lost child from the day of the Stampede is 40 now. He's fine. He runs the Mall Rats.
+  - *Lost Child*: the lost child from the day of the Stampede is 66 now. He still has the wristband. He runs the Mall Rats.
 - **Boss: THE CART MOTHER.** Every lost shopping cart in the city, welded around a single furious shopper who was first
   through the doors at the Stampede and never got her refund. Big Value made her their mascot. She rolls, she stacks, she splits into a swarm of carts and recombines. The Shopping Cart Cannon is the
   counter (shoot carts into her to make her heavier and slower). **Core: Coupon Liver** (Guts slot): 15% of loot drops
@@ -424,8 +430,9 @@ next in-game midnight; walk in for a rematch with harder mods and another core r
 - **Music:** fast synthwave, a koto, rain, a dentist's drill as a lead synth.
 
 ### 4.7 Number Works (the factory district)
-- **Theme:** Remainder Industries' factory, which printed the numbers that crushed the world. Giant digits from the
-  Final Quarter are still half-buried across the city. The presses are still running: whoever prints the prices runs
+- **Theme:** Remainder Industries' factory. They calculated the war: every target list and casualty forecast. Their
+  orbital price-display satellites came down after it, and glowing digits the size of buildings are still half-buried
+  across the city, some of them still hot. The presses are still running: whoever prints the prices runs
   the market.
 - **Look:** yellow and black industrial yards, conveyor belts carrying giant numbers, smokestacks puffing digits,
   lucky 7s and unlucky 13s on everything, chunky friendly machines with faces.
@@ -443,8 +450,8 @@ next in-game midnight; walk in for a rematch with harder mods and another core r
 - **Music:** a drum machine made of stamping presses, an accordion counting out loud.
 
 ### 4.8 Evergreen Acres (the too-nice suburb)
-- **Theme:** the normal-looking district. A gated suburb that survived the end of the world by refusing to admit it
-  happened. Lawns, picket fences, sitcom families, a wall of sandbags painted to look like a hedge. It's the most
+- **Theme:** the normal-looking district. A fallout-shelter suburb that sealed its doors for thirty years, came back
+  up, and refuses to admit anything happened. Lawns, picket fences, sitcom families, a wall of sandbags painted to look like a hedge. It's the most
   horrifying place in the city because it's *fine*. (Liberal Lane's helpings and the Suburb map grow into this.)
 - **Look:** perfect pastel houses, identical cars, sprinklers, a mannequin family waving in every window at the same
   time, a laugh track you can hear in the street.
@@ -461,8 +468,8 @@ next in-game midnight; walk in for a rematch with harder mods and another core r
 - **Music:** a happy sitcom theme on a loop that gets slightly slower and more out of tune every time it repeats.
 
 ### 4.9 The Lates (the overdue liminal zone)
-- **Theme:** ground zero of the Final Quarter, where the overclocked Schedule cracked first. It's been the same
-  Tuesday ever since. The Backrooms are its basement.
+- **Theme:** where ☺ CORP's Schedule Bomb went off on the Final Quarter. It locked the district into one moment, and
+  it's been the same Tuesday ever since. The Backrooms are its basement.
 - **Look:** yellow wallpaper offices, flickering lights, empty car parks, identical streets that repeat, a clock tower
   with no hands, half-flesh carpet where it's started to rot.
 - **Landmarks:** **The Waiting Room** (infinite, with chairs), **Tuesday Tower**, **The Backrooms Stairwell**.
@@ -479,8 +486,8 @@ next in-game midnight; walk in for a rematch with harder mods and another core r
 - **Music:** hold music, a distant phone ringing in key, fluorescent hum.
 
 ### 4.10 The Margins (the void shore / forest edge)
-- **Theme:** the edge of the world, where Vacancy Holdings repossessed the ground itself and keeps selling it to the
-  void, plot by plot. The Scary Forest grows here, and the Tall Guy From HR (on loan from ☺ CORP) walks it.
+- **Theme:** the edge of the world, where Vacancy Holdings' void bombs deleted the land outright. Vacancy still sells
+  plots at the edge, to the void. The Scary Forest grows here, and the Tall Guy From HR (on loan from ☺ CORP) walks it.
 - **Look:** dark pines, crumbling roads that end in nothing, houses half-eaten by a glossy black void, "PREMIUM
   NEGATIVE SPACE" billboards, foreclosure notices nailed to trees.
 - **Landmarks:** **The Last Bus Stop**, **HR Cabin**, **The Edge** (a cliff into the void with a lifeguard tower).
@@ -697,7 +704,7 @@ jank downside. Installed at Meat Mechanics clinics (or by Auntie Spreadsheet, ba
   a ribcage that shows). Other players see it.
 
 ### 6.8 Money, shops, safehouses, saving
-- **Coupons** are money. After the Stampede, Big Value's coupons were the only thing in the city that said "never
+- **Coupons** are money. After the war, Big Value's ration coupons were the only thing in the city that said "never
   expires", so everyone uses them (old ☺bucks are worthless; people burn them for heat). Earned from loot, quests,
   side activities, selling junk, robbing. Remainder Industries prints the prices, so prices change with who runs
   Number Works. Containers (crates, bags, boxes) keep coming out of the Machine's tray as before, for cosmetics.
@@ -722,7 +729,7 @@ jank downside. Installed at Meat Mechanics clinics (or by Auntie Spreadsheet, ba
   Works, Plant & Defuse in Pinstripe), with loot.
 - **Stunt jumps** (huge ramps, MLG overlays), **graffiti** (sprays), **jobs** (taxi, repo man, Corp mail runner).
 - **The real lore NPCs:** the Gary, Dale, Janitor, Mr. Smiles and Todd in the sims are recordings who don't know the
-  world ended. The real ones are out in the ruins, older, with new lines: Gary still runs his site office (the region
+  world ended. The real ones are out in the ruins, sixty-one years older, with new lines: Gary still runs his site office (the region
   is now a crater), the Janitor is still mopping right up to the void, Mr. Smiles hides from the Fun Department, and
   Todd is the Unpaid's prophet, who would like everyone to stop worshipping him.
 
@@ -774,6 +781,8 @@ The owner wants a **legible, serious story** in a cyberpunk vein, with room for 
 - **Goofy lives at the edges:** side quests, item descriptions, boss gimmicks, implant downsides, the radio, NPC
   chatter, the Fun Department, the secret NAP TIME ending. The game's deadpan voice does both: the same flat delivery is
   funny in a side quest and chilling in a ☺ CORP memo.
+- **The war is never the punchline.** Side content can joke about the companies; it never jokes about the dead, the
+  fallout or the Off-Spec. The mutated characters are people first, and their designs are never the joke.
 - **Body horror means something.** Implants and organs are the price of staying alive. Hask is held together by other
   people's organs; you're a dead person in a plastic body. The gore shows what the companies cost people.
 
@@ -786,6 +795,7 @@ hits harder when it shows up.
 |---|---|---|
 | The Gut, the Big Stomach, overdue offices, boss arenas | **10/10** | pulsing walls, intestine streets, half-digested people chatting, eyes in the floor, organ cores pulled out wet, gore and gibs on kills |
 | Pinstripe, Chrome Gristle, The Bottom at night | **6/10** | puppet faces, stretched grins, jars of organs, implant surgery, the occasional twitching thing |
+| Hot zones, blast sites, fallen digits | **7/10, fallout** | glassed craters, blast shadows on walls, ash snow, toxic green glow, wrecked war machines in division colours |
 | The Commute, the ruins | **5/10, wasteland** | dead traffic, skeletons still in lanyards, raider trophies made of office supplies, paper storms; grim but goofy |
 | The Lates, The Margins | **4/10, creepy** | liminal, wrong, quiet; rot creeping into the carpet; the Tall Guy |
 | The Checkout, Number Works, The Bottom by day | **3/10, cartoon** | silly, bright, slapstick violence; mannequin shoppers |
@@ -797,8 +807,9 @@ hits harder when it shows up.
   the end, which makes the ruins outside hit harder.
 - **Mannequin NPCs** (the game's jointed mannequins, built-in jank: tilt, wrong knee) are Corp workers, returns,
   shoppers, suburb families. They're the "extras" of the city.
-- **Puppet people** (huge heads, rubbery skin, uncanny faces) are the district factions' characters: the mafia,
-  the jesters, the Choir, Lumps and Wee Gordo.
+- **The Off-Spec** (puppet people: huge heads, rubbery skin, uncanny faces) are the fallout-born generations and
+  the rich who bought Regrowth: the Family, the jesters, the Choir, Lumps and Wee Gordo. They're people first; their
+  mutations are never the joke.
 - **Body horror is always cartoony and readable**, never realistic: bright saturated flesh, glossy rubber, chunky
   shapes. Gross like claymation, not like a medical photo.
 - **Kills** keep the game's gibs and kill effects; in the Gut they're wetter, in Corp Hill they're confetti.
@@ -871,18 +882,18 @@ to the edges.
   broken clocks and the fallen digits, to the ☺ Spire, the only lit building in the dark. Then it falls back into the
   Machine. Dale has his hand on a button he's never pressed. BEEP. CLUNK. A mannequin drops into the tray. Auntie
   Spreadsheet: "it's never given anything." Dale: "it gave change." Control.
-- **P1b "The Final Quarter"** (6 panels, Auntie narrating in crayon captions). 16:59 on the last afternoon of Q4.
-  ☺ CORP overclocks the Schedule (the clocks crack). Gristle & Sons ships early (a building grows a tongue). Big Value
-  opens its doors (the Stampede). Remainder Industries prints the numbers (a giant 9 lands on a bus). Vacancy Holdings
-  repossesses the ground (a street slides into black). 17:30: every light goes out. "that was the end of the world.
-  you hungry?"
+- **P1b "The Final Quarter"** (6 panels, Auntie narrating in crayon captions). A politician with a ☺ price tag on
+  his collar. Armies in division colours on a map shaped like a sales chart. 16:59 on the last afternoon of Q4: six
+  boards sign Option C. 17:30: the launch (a street frozen mid-step, a battlefield standing back up, a city going
+  black). The Long Dark: ash falling on the only lit windows, the Spire's. Then survivors building houses on a hill
+  that breathes. "that was the end of the world. sixty-one years ago. you hungry?"
 - **P2 "Sauce Run"** briefing: Lumps holds up a pot, then a car key. Wee Gordo: "he means steal a car. and watch out
   for interns."
 - **C3 "It's Breathing"** (40 s). Driving into the Gut for the first time: the street turns from tarmac to pink skin, a
   rib arch rises overhead, and the Choir turns its stretched faces to you all at once. Among them, faces from the
   Bottom, half grown into the wall. One of them knows Lumps' name.
 - **C4 "Clocking In"** (60 s). The Bottom at sunset. Every clock in the settlement stops. Ticking. Huge brogues step down
-  the Long Stairs. Mr. Overtime takes out a clipboard: "the bottom. forty quarters of back pay. i'm here to collect."
+  the Long Stairs. Mr. Overtime takes out a clipboard: "the bottom. two hundred and forty-four quarters of back pay. i'm here to collect."
   His collectors start loading people into a Gristle & Sons truck. Lumps steps in front of it. → **B: MR. OVERTIME**.
 - **Moment "Heart Rip"**: in slow-mo, you tear a piece of the punch-clock out of his chest. It's warm. It ticks.
 - **C5 "Second Stomach"** (45 s). A back-room clinic, a dentist's chair. Auntie holds the core: "this is a terrible
@@ -904,7 +915,7 @@ to the edges.
   Forever Shoppers run. A single cart rolls out of the dust towards you. Then all of them. → **B: THE CART MOTHER**.
 - **F1-F3 "The Last Workday"** (playable flashbacks inside the sims, unlocked by the pages): you play R. Cale on the
   Final Quarter. 16:00, Auntie (younger, scared) shows Cale Option C. 16:45, Cale copies it from the 60th floor. 17:20,
-  the stairs, the alarms, the clocks starting to crack.
+  the stairs, the launch sirens, the clocks starting to crack.
 - **C10 "Rush Hour"** (45 s, opening a chase). The Spiral Freeway on The Commute, through a paper storm, Unpaid war-rigs
   on the horizon. In the mirror: Mr. Overtime, running, at exactly the speed limit.
 - **F4 "17:29"** (the last flashback, 90 s, playable then cinematic). Cale reaches the lobby with the copy. The doors
@@ -923,7 +934,7 @@ to the edges.
   archive, the Master Clock's schedule on the wall with a slot for every one of them. On a screen, your own recording,
   labelled PROTOTYPE 0 (SCHEDULE NOT LOADED).
 - **C14 "The Offer"** (60 s). A Machine terminal flickers and Marion Hask is on it, in a white office, perfectly calm,
-  with a surgical scar under her collar. She shows you the year after the Final Quarter: the dark, the starving, the
+  with a surgical scar under her collar. She shows you the Long Dark: the ash, the starving, the
   fires. "the restoration feeds everyone. the dead don't mind working. you could have a name, a job, and a life that
   doesn't end. or you could go back in the bin."
 - **C15 "The Split"** (60 s). The Lost & Found. Lumps wants to take the deal for the Gut's people. Wee Gordo wants to
