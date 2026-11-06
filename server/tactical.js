@@ -42,8 +42,12 @@ const M = {
     sh.tac = null;
     const q = m.q, i = m.i;
     if (!Number.isInteger(q) || !Number.isInteger(i) || q < T.q || q > T.q + 2 || i < 0 || i > 400) { this.tacNo(p, x, 'q', { q, want: T.q }); return; }
-    const si = T.lastId === x.id && n - T.lastT <= (P ? P.reset : 400) + 120 ? T.i + 1 : 0;
-    if (Math.abs(i - si) > 1) { this.tacNo(p, x, 'i', { i, si }); T.q = q + 1; return; }
+    // the spray index: carrying on (the next shot, within one) after a short gap, or a fresh spray (0, or 1) after a pause.
+    // near the reset time either reading is fine: frames and the network shift the gap a little. a restart still needs a
+    // real pause (75 % of the reset), and carrying on is never more accurate
+    const rs = P ? P.reset : 400, gap = T.lastId === x.id ? n - T.lastT : 1e9;
+    const carry = gap <= rs + 400 && Math.abs(i - (T.i + 1)) <= 1, fresh = gap >= rs * 0.75 && i <= 1;
+    if (!carry && !fresh) { this.tacNo(p, x, 'i', { i, was: T.i, gap }); T.q = q + 1; return; }
     T.q = q + 1; T.i = i; T.lastT = n; T.lastId = x.id;
     const a = Array.isArray(m.a) && m.a.length === 2 && num(m.a[0]) && num(m.a[1]) ? m.a : null;
     if (!a || !num(m.sp) || m.sp < 0 || m.sp > 1) { this.tacNo(p, x, 'a', {}); return; }
