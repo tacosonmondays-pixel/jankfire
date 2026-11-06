@@ -3,8 +3,8 @@
 //
 // it speaks the game's normal protocol to the client (welcome / spawn / tp / po), so the normal player controller,
 // weapons and HUD run unchanged, plus story messages under t: 'sty' ({ t: 'sty', k: kind, ... }).
-// systems plug in with addSystem({ id, init(sim), tick(sim, dt), msg(sim, m) -> true if handled, save(sim) -> part,
-// load(sim, part) }): the quest engine, loot, inventory, implants, late fees each own one, and their save part goes to
+// systems plug in with addSystem({ id, init(sim), join(sim), tick(sim, dt), msg(sim, m) -> true if handled (story 'sty'
+// messages), raw(sim, m) -> true if handled (the normal game messages: 'item', 'fire'...), save(sim) -> part, load(sim, part) }): the quest engine, loot, inventory, implants, late fees each own one, and their save part goes to
 // save.data[id].
 import { TEST } from './testmap.js';
 import { newSave } from './save.js';
@@ -27,7 +27,7 @@ export function createSim({ send, save }) {
   sim.join = (m) => {
     const name = typeof m.name === 'string' && m.name.trim() ? m.name.trim().slice(0, 16) : 'CHANGE';
     const at = sv.at && sv.at.map === TEST.id ? sv.at : { p: TEST.spawn, yaw: TEST.yaw };
-    sim.me = { id: 1, name, pos: at.p.slice(), seq: 1, alive: true, item: typeof m.item === 'string' ? m.item.slice(0, 24) : '' };
+    sim.me = { id: 1, name, pos: at.p.slice(), yaw: at.yaw || 0, hp: 100, seq: 1, alive: true, item: typeof m.item === 'string' ? m.item.slice(0, 24) : '' };
     send({
       t: 'welcome', id: 1, name, color: '#ff4fd8', pos: sim.me.pos, q: sim.me.seq, mode: 'story', game: 'dm',
       cfg: { map: TEST.id, hip: 'normal', bots: 0, diff: 'normal', hr: 'off' },
@@ -36,12 +36,14 @@ export function createSim({ send, save }) {
       ic: { i: sim.me.item, n: 1, next: 0 },
     });
     sim.sty('hello', { slot: sv.slot, act: sv.act, chapter: sv.chapter, yaw: at.yaw || 0, clock: sim.clock, coupons: sv.coupons });
+    for (const s of SYSTEMS) if (s.join) s.join(sim);
   };
 
   sim.msg = (m) => {
     if (!m || typeof m.t !== 'string') return;
     if (m.t === 'join') return sim.join(m);
     if (!sim.me) return;
+    for (const s of SYSTEMS) if (s.raw && s.raw(sim, m)) return; // a system that wants a normal game message ('item', 'fire'...)
     if (m.t === 'pi') return send({ t: 'po', c: m.c });
     if (m.t === 's') { // your movement (client-authoritative, as in multiplayer): keep it for the save, catch the void
       if (m.q !== sim.me.seq || !Array.isArray(m.p) || m.p.length !== 3 || !m.p.every(Number.isFinite)) return;

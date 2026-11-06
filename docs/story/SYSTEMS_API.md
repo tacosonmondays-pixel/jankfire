@@ -46,3 +46,37 @@ Story mode only exists with `?story=1` in the URL or `localStorage.jfStory = '1'
 ## Tests
 `node tests/story/save.test.mjs` (save cleaner + sim protocol), `node tests/story/supamock.test.mjs` (Supabase store,
 fake PostgREST), `node tests/story/api.int.mjs <port>` (endpoints + fuzz against a running server).
+
+## Inventory (WP3)
+**Data** (`shared/story/items.js`, pure): an item is `{ u, b, r, s, n?, q? }` (id in this inventory, base weapon /
+gear / streak / story-item id, rarity, loot seed, name, stack count). An inventory is
+`{ bag: [item|null] x cap (20, up to 60), cap, bar: [u|null] x 8, locker: [item], next }`.
+- `kindOf(b)` -> `gun | melee | gear | streak | snack | junk | quest | null`; `infoOf(item)`; `stackOf(b)`
+  (streaks stack to 3, gear to 5).
+- `makeItem(b, { r, s, n, q })`, `invAdd(inv, item)` -> u (0 = full: `item.q` is what didn't fit), `invTake(inv, u, n)`,
+  `count(inv, b)`, `hasItem(inv, b, n)`, `barWeapons(inv)`, `starterInv(loadout)`, `cleanInv(raw)` (the save cleaner,
+  registered as `savePart('inv')`).
+- `invOp(inv, { op, ... }, { atLocker })` is the only way a client edits: `bar {slot, u|null}`, `move {from, to}`,
+  `drop {u, n?}`, `stash {u}` / `unstash {i}` (only at a locker). Quest items can't be dropped or barred.
+- `addStoryItem(id, { kind, name, color, desc, heal?, stack?, value?, quest? })` registers story things (snacks, junk,
+  quest items). The writer's content can add more.
+
+**In the sim** (`shared/story/invsys.js`): `sim.inv`, `sim.drops`, plus `sim.give(item)` -> u (a full bag drops it at
+your feet), `sim.dropAt(item, p)`, `sim.takeItem(b, n)` -> bool, `sim.hasItem(b, n)`, `sim.invChanged()`. Quests call
+these for `pickup`, `deliver` and rewards.
+- Client -> sim: `sty` `inv` (an op above), `pick {id}` (within 3.2 m), `starter {lo}` (new game only), `gear {u}`
+  (makes it your G item), `eat {u}`. The normal `item` message uses one of the G stack.
+- Sim -> client: `inv {inv, err?}`, `drops {list}`, `drop+ {d}`, `drop- {id}`, plus the normal `ic` and `heal`.
+- `give {b, slot, q}` only works with `?storydev=1` (tests).
+- `shared/story/solohost.js` does the bits of a server room solo needs: the Card Deck's hand for now.
+
+**Client** (`public/js/story/bar.js`, `wheel.js`, `bag.js`):
+- The bar is keys 1-8 (scroll still cycles weapons).
+- The bridge hands the bar's weapons to the normal weapon code: `setSlots` with an empty box for every non-weapon
+  slot. Gear becomes your G item, snacks are eaten, and streaks wait for HYPE (WP5).
+- Hold Q for the wheel: time runs at 20%, the mouse picks, and nothing else gets through.
+- I opens the Tote Bag: drag (or click, then click) to the bar, between cells, onto DROP, or into the Locker.
+- F picks up the nearest drop, or opens the Locker when you're standing at it.
+- `IV.inv` is the last inventory, `IV.on(fn)` runs after each change, and `iconOf(b)` / `itemCell(item)` draw items.
+- Story keys are added at runtime with `keys.js` `extendActions('Story', ...)`, so they only exist (and only show in
+  CONTROLS) while story mode is loaded.

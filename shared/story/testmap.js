@@ -5,6 +5,7 @@ export const TEST = {
   id: 'story_test', name: 'The Lost & Found (test lot)', killY: -30,
   spawn: [0, 0.1, 6], yaw: 0,
   terminal: { p: [0, 0, -14], r: 2.6 }, // the Machine: F within r metres opens the sims (the normal PLAY menu)
+  locker: { p: [6, 0, -14], r: 2.6 }, // the safehouse Locker (WP3): stash / unstash only within r metres
 };
 
 export function buildTestMap(kit) {
@@ -32,6 +33,10 @@ export function buildTestMap(kit) {
   D.add(mx - 0.6, 0.25, mz + 0.5, mx + 0.6, 0.6, mz + 0.75, 'metal');
   D.add(mx - 0.05, 2.7, mz - 0.1, mx + 0.05, 4.2, mz, 'metal');
   D.add(mx - 1.2, 4.2, mz - 0.12, mx + 1.2, 5.2, mz + 0.02, 'yellow');
+  const [lx, , lz] = TEST.locker.p; // the Locker: a dented green filing locker with a padlock
+  B.add(lx - 0.8, 0, lz - 0.5, lx + 0.8, 2.2, lz + 0.4, 'mint');
+  D.add(lx - 0.02, 0.2, lz + 0.4, lx + 0.02, 2.0, lz + 0.45, 'metal');
+  D.add(lx + 0.15, 1.0, lz + 0.4, lx + 0.35, 1.25, lz + 0.5, 'yellow');
   horizon(D, -H - 1, -H - 1, H + 1, H + 1, 900, 'dirt');
   for (let i = 0; i < 26; i++) { const rr = rng(900 + i), a = rr() * Math.PI * 2, d = 70 + rr() * 120; (rr() < 0.5 ? conifer : lollipop)(D.local(0, 0, 0), Math.cos(a) * d, Math.sin(a) * d, 5 + rr() * 4, rr); }
   return {

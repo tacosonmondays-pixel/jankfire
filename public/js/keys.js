@@ -228,3 +228,16 @@ if (typeof addEventListener === 'function') {
   for (const t of ['mousedown', 'mouseup', 'auxclick']) addEventListener(t, (e) => { if (e.button === 3 || e.button === 4) e.preventDefault(); }, true);
   addEventListener('blur', () => K.clear());
 }
+
+// actions a flagged feature adds at runtime (story mode, public/js/story/keys.js): same rows as ACTIONS, their own
+// group + context, so they only show in SETTINGS > CONTROLS (and only bind) while that feature is loaded.
+// the player's saved binds for them come back too (attach skips ids it doesn't know yet)
+export function extendActions(group, rows) {
+  if (!GROUPS.includes(group)) GROUPS.push(group);
+  for (const [id, label, , def, ctx] of rows.map((r) => [r[0], r[1], group, r[2], r[3]])) {
+    if (BY[id]) continue;
+    const a = { id, label, group, def, ctx: ctx || 'game' };
+    ACTIONS.push(a); BY[id] = a;
+  }
+  if (store) K.attach(store); else rebuild();
+}

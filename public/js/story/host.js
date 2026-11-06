@@ -11,7 +11,9 @@ export class WorkerSocket {
       if (this.readyState === 1 && this.onmessage) this.onmessage({ data: e.data });
     };
     this.w.onerror = (e) => { console.error('story worker:', e.message || e); this.close(true); };
-    this.w.postMessage({ init: save || null });
+    let dev = false;
+    try { dev = new URLSearchParams(location.search).get('storydev') === '1'; } catch { /* no url */ }
+    this.w.postMessage({ init: save || null, dev });
   }
   send(s) { if (this.readyState === 1) this.w.postMessage(s); }
   close(crashed) {
