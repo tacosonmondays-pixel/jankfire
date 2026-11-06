@@ -17,7 +17,7 @@ const CAMS = {
   suburb: [-45.96, 16.29, -45.96, -2.36, -0.21],
   warehouse: [-29, 4.2, -4.5, -1.571, -0.1], // inside the hall, down an aisle between the racks
   warehouse_sd: [34, 6.5, -27, -0.42, -0.16], // the A site: the red dock, the gantry, the BOMB SITE A board
-  desert: [56.71, 16.2, 56.71, 0.79, -0.17],
+  desert: [-88, 9, 0, -1.571, -0.102], // down Main Street from the west gate: the saloon, the bell tower, the general store
   bazaar: [50.68, 16.17, 52.68, 0.79, -0.19],
   islands: [52.8, 5.1, 48, 0.8, -0.04],
   skyline: [78.18, 78.31, 76.18, 0.79, -0.13],

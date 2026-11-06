@@ -742,7 +742,7 @@ class Room {
     // in every mode: fights, wandering, the bomb (lane waypoints from laneTo, a dropped bomb), tags
     if (this.map.graph) {
       const gl = goal ? Math.hypot(goal.p[0] - b.pos[0], goal.p[2] - b.pos[2]) : 0;
-      const want = goal && (goal.force || !t || !t.alive || !ai.seenAt) ? (goal.use && gl < goal.r ? null : goal.p) : t && t.alive ? (ai.seenAt ? null : t.pos) : ai.wp;
+      const want = goal && (goal.force || !t || !t.alive || !ai.seenAt) ? (goal.use && gl < goal.r ? null : goal.p) : t && t.alive ? (ai.seenAt && !(n < (ai.edgeT || 0)) ? null : t.pos) : ai.wp; // (seen across a canyon: the edge turned us back, so walk the graph round to them)
       const s = want && navSteer(this.map.graph, ai.nav || (ai.nav = {}), b.pos, want, n);
       if (s) {
         wx = s[0]; wz = s[1];
@@ -799,9 +799,10 @@ class Room {
     }
     if (wl > 0 && b.onGround) {
       const probe = [b.pos[0] + wx * 2.5, b.pos[1] + 0.5, b.pos[2] + wz * 2.5];
-      if (!raycast(probe, [0, -1, 0], Math.max(6, Math.min(15, probe[1] - this.map.killY)), boxes)) { wx = -wx; wz = -wz; ai.strafeDir *= -1; }
+      if (!raycast(probe, [0, -1, 0], Math.max(6, Math.min(15, probe[1] - this.map.killY)), boxes)) { wx = -wx; wz = -wz; ai.strafeDir *= -1; if (this.map.edgeGuard) ai.edgeT = n + 3000; }
     }
-    if (this.brOn) [wx, wz, jump] = this.brBotEdge(b, wx, wz, jump); // jank royale: no hopping into canyons
+    if (this.brOn || this.map.edgeGuard) { const e = this.brBotEdge(b, wx, wz, jump); if (this.map.edgeGuard && (e[0] !== wx || e[1] !== wz)) ai.edgeT = n + 3000; [wx, wz, jump] = e; } // jank royale (and maps with a canyon, map.edgeGuard): no hopping into canyons. turned back from one: find a bridge (above)
+    if (jump && this.map.edgeGuard && b.onGround && [[2, 0], [-2, 0], [0, 2], [0, -2]].some(([dx, dz]) => !raycast([b.pos[0] + dx, b.pos[1] + 0.5, b.pos[2] + dz], [0, -1, 0], 15, boxes))) jump = false; // a drop beside us (a bridge, the lip): no hops. a hop off a parapet's end is how they fell in
     if (this.lavaOn) [wx, wz, jump] = this.botLava(b, wx, wz, jump, t);
     if (this.hr && this.hr.on) { const o = hrBot(this, b, dt, { wx, wz, jump }), l = Math.hypot(o.wx, o.wz); if (l > 1) { o.wx /= l; o.wz /= l; } ({ wx, wz, jump } = o); } // scary forest: don't stare at HR
     return { wx: wx * D.speed, wz: wz * D.speed, jump };

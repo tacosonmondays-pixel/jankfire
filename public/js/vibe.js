@@ -170,4 +170,16 @@ export function addVibe(out, canvasTex, speckle) {
   out.adoffice = ad('#ffe14d', '#120818', ['SITE OFFICE', 'knock. then knock louder.'], 256, 64, { lit: false });
   out.adware = ad('#2a6cff', '#ffe14d', ['DOCK 3', 'no loitering. no not-loitering.'], 256, 96, { small: '#fff', lit: false });
   out.adshred = ad('#ffe14d', '#ff2a3a', ['DANGER', 'industrial shredder. do not feed.'], 256, 96, { stripes: 'rgba(0,0,0,0.14)', small: '#120818', lit: false });
+  // Desert (Dry Gulch): the town's signs
+  out.adsaloon = ad('#7a2a10', '#ffe14d', ['THE THIRSTY CACTUS', 'saloon. no refunds. no cactus.'], 320, 64, { small: '#fff', lit: false });
+  out.adbank = ad('#f2e2b8', '#1a5a2a', ['BANK OF DRY GULCH', 'your gold, our problem'], 320, 64, { small: '#7a2a10', lit: false });
+  out.adsheriff = ad('#2a1a10', '#ffe14d', ['SHERIFF', 'out to lunch since 1887'], 256, 64, { small: '#ff7a1a', lit: false });
+  out.adhotel = ad('#ff4fd8', '#ffe14d', ['HOTEL', 'beds: allegedly'], 256, 64, { small: '#fff' });
+  out.adgeneral = ad('#ffe14d', '#7a2a10', ['GENERAL STORE', 'we have rope. that is it.'], 320, 64, { small: '#120818', lit: false });
+  out.adundertaker = ad('#120818', '#d8d8d8', ['UNDERTAKER', 'pre-dig your plot today'], 256, 64, { small: '#ff4fd8', lit: false });
+  out.adlivery = ad('#7a4a20', '#ffe14d', ['LIVERY', 'horses sold separately'], 256, 64, { small: '#fff', lit: false });
+  out.admine = ad('#ffe14d', '#120818', ['JANK MINING CO.', 'dig deep. ask nothing.'], 256, 96, { stripes: 'rgba(0,0,0,0.12)', small: '#ff2a3a', lit: false });
+  out.addepot = ad('#2a6cff', '#fff', ['DRY GULCH', 'elevation: yes. trains: once'], 256, 64, { small: '#ffe14d', lit: false });
+  out.adwanted = ad('#f2e2b8', '#120818', ['WANTED', 'you. probably.', 'reward: a hat'], 128, 160, { small: '#7a2a10', lit: false });
+  out.adassay = ad('#d8d0b0', '#7a2a10', ['ASSAY OFFICE', 'is it gold? (no)'], 256, 64, { small: '#120818', lit: false });
 }
