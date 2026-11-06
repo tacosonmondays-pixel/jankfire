@@ -12,6 +12,8 @@ import { propEnv } from './props.js';
 import { stepGimmicks } from '/shared/city/gimmicks.js';
 import { K } from '../keys.js';
 import { hud } from '../hud.js';
+import { updateBeds, stopBeds } from './beds.js';
+import { districtWeights } from '/shared/city/plan.js';
 
 let S = null, hooks = null;
 const tmp = new THREE.Color();
@@ -29,7 +31,7 @@ export function startCity(def, h) {
   S.holding = true;
   return S;
 }
-export function stopCity() { if (S) { S.dispose(); S = null; } }
+export function stopCity() { if (S) { S.dispose(); S = null; } stopBeds(); }
 export const cityStream = () => S;
 
 let lastCall = 0;
@@ -37,6 +39,7 @@ export function updateCity(dt) {
   if (!S) return;
   if (G.settings && S.preset !== G.settings.jank) S.setPreset(G.settings.jank);
   S.update(G.camera, dt);
+  updateBeds(districtWeights(S.city, G.camera.position.x, G.camera.position.z, 40), dt); // the district music
   const e = S.env;
   if (S.weather.started) hud.msg('PAPER STORM', 1.6, 'brag');
   if (e && G.scene.fog) {
