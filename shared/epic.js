@@ -11,7 +11,7 @@ export const EPIC_W = {
 };
 export const epicMul = (w) => EPIC_W[w] || (WEAPONS[w] && WEAPONS[w].kind === 'melee' ? 2.5 : 1); // melee from other branches too
 // nobody aimed these (or the killer could be anywhere by the time they land)
-const NEVER = new Set(['void', 'cough', 'tbag', 'duck', 'frag', 'bomb', 'hook', 'blower']);
+const NEVER = new Set(['void', 'cough', 'tbag', 'duck', 'frag', 'bomb', 'hook', 'blower', 'car', 'carboom']);
 NEVER.add('lasso'); // a lasso splat: the wall did it, wherever the thrower is by then
 // effective metres each kind of kill needs. two or more style points at once only need `combo`.
 // anti-farm: a victim who hasn't moved `moved` metres in `still` ms is never an epic kill

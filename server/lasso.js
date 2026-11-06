@@ -7,6 +7,7 @@
 // distance flown are decided here too. Bots get held (they follow the stream) and use it in bot rooms.
 import { LASSO, holdStep, flingVel, splatDmg, aimDir, throwRange, throwSpeed, ropeMax, clampLen } from '../shared/lasso.js';
 import { FLAGS, BOT_DIFF } from '../shared/weapons.js';
+import { GAMES } from '../shared/modes.js';
 import { stepProjectile, raycast, rayBox, movePlayer, PH, query } from '../shared/physics.js';
 
 const now = () => Date.now();
@@ -131,6 +132,8 @@ const M = {
     const n = now(), z = this.lz(p);
     if (p.w !== 'lasso' || z.hold || z.by || p.trap || this.isBall(p, n) || rigged(this, p, n) || busy(p, n) || n < (p.staggerUntil || 0)) return;
     if (this.round && this.round.over) return;
+    const G = GAMES[this.game] || {};
+    if (G.royale || G.zombies) return; // loot / the zombies shop only: no lasso in those
     if (n < z.next) return; // the last one has to come back first
     const d = norm(vec3(m.d));
     if (!d) return;
@@ -432,12 +435,15 @@ const M = {
   },
   // ---------------------------------------------------------- bots with the lasso (bot rooms)
   // some bots carry it instead of a gun (JF_LASSO_BOTS = the share of them, for tests)
-  lassoArm(b) { if (this.mode === 'bots' && b.ai && !b.ai.dummy && Math.random() < BOT_SHARE) { b.w = 'lasso'; b.ai.ammo = 1; } },
+  // only in games where bots keep a loadout (Jank Royale loots, Zombies has its own guns, the economy buys)
+  lassoGame() { const g = GAMES[this.game] || {}; return !g.royale && !g.zombies && !g.random && !g.sites; },
+  lassoArm(b) { if (this.mode === 'bots' && b.ai && !b.ai.dummy && this.lassoGame() && Math.random() < BOT_SHARE) { b.w = 'lasso'; b.ai.ammo = 1; } },
   // botThink hook. not holding: spin up and throw at whoever it's after once they're close and in sight (the normal
   // think keeps it moving and aiming meanwhile). holding: let the rope out, shake them about, walk backwards toward
   // the best place to fling them (a drop, else a wall) and flick round, letting go at the peak
   lassoThink(b, dt) {
     if (b.w !== 'lasso' || !b.ai || b.ai.dummy) return null;
+    if (!this.lassoGame() && !(this.lz(b).hold)) { b.w = 'ar'; b.ai.ammo = 30; return null; } // the game changed under it: a gun instead
     const ai = b.ai, z = this.lz(b), n = now();
     if (z.hold) return this.lassoBotHold(b, z.hold, dt, n);
     const t = this.players.get(ai.target);

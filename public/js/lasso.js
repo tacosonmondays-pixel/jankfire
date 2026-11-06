@@ -21,9 +21,10 @@ import { RP, RP_HOOKS, recordEv } from './replay.js';
 import { Rope, sagRope, ringPoints, honda, ropeLook, vmArm, coilGroup } from './lasso_model.js';
 import { jankUniforms } from './jank.js';
 import { rigOn } from './rig.js';
+import { K } from './keys.js';
 
-// every key the lasso listens to, in one place (a keybinds registry can take these over)
-export const LASSO_KEYS = { reelIn: 'KeyR', reelOut: 'KeyF', release: 2, wriggle: ['Space', 'KeyW', 'KeyA', 'KeyS', 'KeyD'] }; // release: a mouse button (fire always lets go too)
+// the keys are bindings (keys.js): lassoIn / lassoOut reel, fire or aim lets go, jump or any move key wriggles
+const WRIGGLE = ['jump', 'forward', 'back', 'left', 'right'], NO_SWITCH = ['slot1', 'slot2', 'slot3', 'slot4', 'lastSlot', 'scythe'];
 
 const r2 = (x) => Math.round(x * 100) / 100;
 const ease = (x) => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
@@ -112,7 +113,7 @@ function onRel(m) {
   if (fling && sp >= LASSO.yeet && vp) { fx.ring([vp[0], vp[1] + 0.3, vp[2]], 3.5, 0xfff2b0, 0.35); fx.spray([vp[0], vp[1] + 1, vp[2]], 26, [0xffffff, 0xffe14d, 0xff9a3a], 9, 0.6, 0.14, 0, 2); }
   if (m.id === G.myId) {
     const h = S.hold;
-    S.hold = null; S.relT = now; S.cdUntil = Math.max(S.cdUntil, now + 450);
+    S.hold = null; S.relT = now; S.cdUntil = Math.max(S.cdUntil, now + 450); S.reelIn = S.reelOut = false;
     if (h && fling && Array.isArray(m.vel)) S.after = { v: m.v, t0: now, pos: (Array.isArray(m.p) ? m.p : h.body.pos).slice(), vel: m.vel.slice() };
     if (fling && sp >= LASSO.yeet) { hud.msg(`YEET\n${Math.round(sp)} m/s`, 1.6, 'epicbrag'); G.shake = Math.max(G.shake, 0.7); }
     else if (fling && sp > 12) hud.msg(`${Math.round(sp)} m/s`, 0.9, 'brag');
@@ -326,13 +327,11 @@ function tumbleTick(dt) {
 }
 
 // ------------------------------------------------------------ input (main.js forwards these)
-// fire (or the release button, unless that's your grapple) while you hold someone lets go. true = we used the click
-export function lassoClick(button) {
-  if (!S.hold || !ME.alive || !(button === 0 || (button === LASSO_KEYS.release && !G.settings.swapAim))) return false;
+// let go: one last sample of the body as we have it, the server launches them with it
+function letGo() {
   const h = S.hold;
   net.send({ t: 'lasso', k: 'rel', p: h.body.pos.map(r2), v: h.body.vel.map(r2) });
   S.relT = performance.now();
-  return true;
 }
 // the wheel reels while you hold someone (instead of switching weapons)
 export function lassoWheel(dy) {
@@ -340,15 +339,18 @@ export function lassoWheel(dy) {
   S.hold.Lt = clampLen(S.hold.Lt + (dy < 0 ? 1 : -1) * LASSO.wheel); // wheel up = let it out, down = reel in
   return true;
 }
-// keys: R / F reel while holding, no weapon switching while your hands are on the rope; any movement key or jump
-// while you're the one held is a wriggle
+// every key and mouse button in game comes through here first (main.js pressed / released). holding someone: the reel
+// keys reel, fire or aim lets go, no weapon switching while your hands are on the rope. held: jump / move wriggle.
+// true = we used it
 export function lassoKey(e, down) {
-  const c = e.code;
-  if (c === LASSO_KEYS.reelIn) { S.reelIn = down && !!S.hold; if (S.hold) return true; }
-  if (c === LASSO_KEYS.reelOut) { S.reelOut = down && !!S.hold; if (S.hold) return true; }
-  if (!down) return false;
-  if (S.hold && /^(Digit[1-4]|KeyQ|KeyX)$/.test(c)) return true;
-  if (S.held && !e.repeat && LASSO_KEYS.wriggle.includes(c)) wriggle();
+  if (!down) { if (K.up('lassoIn', e)) S.reelIn = false; if (K.up('lassoOut', e)) S.reelOut = false; return false; }
+  if (S.hold && ME.alive) {
+    if (K.matches('lassoIn', e)) { S.reelIn = true; return true; }
+    if (K.matches('lassoOut', e)) { S.reelOut = true; return true; }
+    if (K.matches(['fire', 'aim'], e)) { if (!e.repeat) letGo(); return true; }
+    if (K.matches(NO_SWITCH, e)) return true;
+  }
+  if (S.held && !e.repeat && K.matches(WRIGGLE, e)) wriggle();
   return false;
 }
 function wriggle() {
@@ -417,14 +419,14 @@ function throwIt(now) {
 function holdHud(now) {
   const h = S.hold, sp = Math.hypot(...h.body.vel), left = Math.max(0, LASSO.time - (now - h.t0) / 1000);
   const wr = h.wr > 0.05 ? ` · ${nameOf(h.v)} is wriggling free!` : '';
-  hud.meter(left / LASSO.time, `${nameOf(h.v)} · ${h.L.toFixed(0)} m rope · ${Math.round(sp)} m/s · CLICK to let go · wheel / R / F reel${wr}`, sp >= LASSO.yeet ? '#ffe14d' : '#e0b070');
+  hud.meter(left / LASSO.time, `${nameOf(h.v)} · ${h.L.toFixed(0)} m rope · ${Math.round(sp)} m/s · ${K.label('fire')} to let go · wheel / ${K.label('lassoIn')} / ${K.label('lassoOut')} reel${wr}`, sp >= LASSO.yeet ? '#ffe14d' : '#e0b070');
   // the rope creaks when it's working hard
   if (sp > 18 && now > h.creakT) { h.creakT = now + 350 + Math.random() * 500; snd.creak(null, Math.min(1.4, sp / 40)); }
   return true;
 }
 function heldHud(now, dt) {
   const h = S.held;
-  hud.meter(S.wr, `LASSOED by ${nameOf(h.by)} · mash SPACE / WASD to wriggle free`, '#ff7a1a');
+  hud.meter(S.wr, `LASSOED by ${nameOf(h.by)} · mash ${K.label('jump')} / ${['forward', 'left', 'back', 'right'].map((a) => K.label(a)).join('')} to wriggle free`, '#ff7a1a');
   if (now - S.wrT > 300) S.wr = Math.max(0, S.wr - LASSO.wrDecay * dt);
   return true;
 }

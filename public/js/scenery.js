@@ -5,15 +5,19 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const SCENES = {
-  crate: { theme: 'sky' }, platform: { theme: 'sky' }, range: { theme: 'sky' },
-  rooftop: { theme: 'city', skirt: 'tower' },
+  crate: { theme: 'sealed' }, // a giant playroom: the map draws the room itself
+  platform: { theme: 'ocean' }, // an offshore rig
+  range: { theme: 'hills', flat: true },
+  rooftop: { theme: 'city' }, // the street level (map deco) is the floor now, no skirt
   skyline: { theme: 'city' },
-  suburb: { theme: 'hills', skirt: 'rock' },
-  warehouse: { theme: 'industrial', skirt: 'rock' },
-  desert: { theme: 'desert', skirt: 'rock' },
-  bazaar: { theme: 'desert', skirt: 'rock' },
+  suburb: { theme: 'hills', flat: true }, // a forest out past the tree ring, green hills and more forest into the distance
+  warehouse: { theme: 'industrial', flat: true, skyline: true }, // flat ground past the fence, a city on the horizon
+  desert: { theme: 'desert', flat: true }, // the sand just keeps going: no cliff
+  bazaar: { theme: 'desert', flat: true }, // sand all round outside the walls, no cliff
   islands: { theme: 'ocean' },
   backrooms: { theme: 'sealed' },
+  jankburg: { theme: 'industrial', flat: true }, // sheds, stacks and a crane past the outer ring; the megacity is the map's own deco
+  forest: { theme: 'forest', flat: true }, // the woods go on past the fog: a black tree line against the sky
 };
 const PAL = {
   sky: { mtn: 0x8a7aa8, snow: 0xffffff, floor: 0xffffff },
@@ -22,6 +26,7 @@ const PAL = {
   industrial: { mtn: 0x6a6070, snow: 0xe0e0e8, floor: 0x5a5650, hill: 0x6a645a },
   desert: { mtn: 0xb07a4a, snow: 0xf2dcae, floor: 0xd8b07a, hill: 0xcfa468, mesa: 0xb8683a },
   ocean: { mtn: 0x4a7a6a, snow: 0xf0f4f8, floor: 0x2a6aa8, isle: 0x3a8a3a },
+  forest: { mtn: 0x0b111b, snow: 0x1e2838, floor: 0x0d1118, hill: 0x0a0f16, tree: 0x05080d },
 };
 
 let group = null;
@@ -36,7 +41,7 @@ export function buildScenery(scene, map, id, voidMesh) {
   }
   group = new THREE.Group();
   scene.add(group);
-  const cfg = SCENES[id] || { theme: 'sky' };
+  const cfg = SCENES[id] || (map.base && SCENES[map.base]) || { theme: 'sky' }; // an S&D version stands in its map's world
   if (cfg.theme === 'sealed') { if (voidMesh) voidMesh.visible = false; return; } // indoors all the way round: nothing out there
   const pal = PAL[cfg.theme];
   const fog = map.sky.fog;
@@ -50,7 +55,8 @@ export function buildScenery(scene, map, id, voidMesh) {
   if (x0 > x1) { x0 = -50; x1 = 50; z0 = -50; z1 = 50; }
   for (const b of map.boxes) if (b.max[1] <= 0.5 && b.max[1] > -6 && (b.max[0] - b.min[0]) * (b.max[2] - b.min[2]) > 400) ground = Math.min(ground, b.min[1]);
   const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, R = Math.max(x1 - x0, z1 - z0) / 2;
-  const floorY = map.killY - 35;
+  const floorY = cfg.flat ? -0.06 : map.floorY ?? map.killY - 35; // where the scenery stands (flat: on the map's own ground)
+  const planeY = map.floorY ?? floorY; // the far floor plane: flat maps with holes in them (canyons, pits) put it under the holes // flat: the map's ground goes out a long way, the floor carries on from it
 
   // ---- a ring of mountains, far away (unlit, faded into the sky)
   const mtnMat = basic(fade(pal.mtn, fog, 0.5)), snowMat = basic(fade(pal.snow, fog, 0.35));
@@ -69,7 +75,7 @@ export function buildScenery(scene, map, id, voidMesh) {
   // ---- the floor far below (valley / city streets / ocean / cloud sea)
   if (cfg.theme !== 'sky') {
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000).rotateX(-Math.PI / 2), basic(fade(pal.floor, fog, 0.35)));
-    floor.position.set(cx, floorY, cz);
+    floor.position.set(cx, planeY, cz);
     group.add(floor);
     if (voidMesh) voidMesh.visible = false;
   } else if (voidMesh) { voidMesh.visible = true; voidMesh.position.y = map.killY - 85; } // below the clouds (they reach killY-73), not through them
@@ -128,9 +134,10 @@ export function buildScenery(scene, map, id, voidMesh) {
     for (let yy = 1; yy < 32; yy += 3) for (let xx = 1; xx < 16; xx += 3) { x.fillStyle = Math.random() < 0.4 ? '#ffe9a8' : '#2a3242'; x.fillRect(xx, yy, 2, 2); }
     const tex = new THREE.CanvasTexture(c); tex.magFilter = THREE.NearestFilter; tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     const towerMat = new THREE.MeshBasicMaterial({ map: tex, fog: false, color: new THREE.Color(1, 1, 1).lerp(new THREE.Color(fog), 0.25) });
-    const hMax = Math.max(40, ground - 18 - floorY); // you look down on the city: nothing pokes up to roof level to fake-grapple
+    const hMax = map.cityCap != null ? map.cityCap - floorY : Math.max(40, ground - 18 - floorY); // you look down on the city: nothing pokes up to roof level to fake-grapple
+    const from = map.cityR ? map.cityR - R + 40 : 60; // the map draws its own city out to cityR: these are just the horizon past it
     for (let i = 0; i < 220; i++) {
-      const [px, pz] = near(60, 650);
+      const [px, pz] = near(from, from + 600);
       const w = 14 + r() * 24, h = Math.min(hMax, 40 + r() * 260);
       const g = new THREE.BoxGeometry(w, h, w);
       const uv = g.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * w / 10, uv.getY(k) * h / 20);
@@ -138,6 +145,25 @@ export function buildScenery(scene, map, id, voidMesh) {
       m.position.set(px, floorY + h / 2, pz);
       group.add(m);
     }
+  }
+  if (cfg.skyline) { // a downtown on the horizon: a tight cluster of towers off to one side, windows lit, faded by distance
+    const c = document.createElement('canvas'); c.width = 16; c.height = 32;
+    const x = c.getContext('2d'); x.fillStyle = '#141828'; x.fillRect(0, 0, 16, 32);
+    for (let yy = 1; yy < 32; yy += 3) for (let xx = 1; xx < 16; xx += 3) { const k = Math.random(); x.fillStyle = k < 0.35 ? '#ffe9a8' : k < 0.42 ? '#ff4fd8' : k < 0.48 ? '#19e6ff' : '#262c40'; x.fillRect(xx, yy, 2, 2); }
+    const tex = new THREE.CanvasTexture(c); tex.magFilter = THREE.NearestFilter; tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    const mat = new THREE.MeshBasicMaterial({ map: tex, fog: false, color: new THREE.Color(1, 1, 1).lerp(new THREE.Color(fog), 0.3) });
+    const a0 = -2.4;
+    for (let i = 0; i < 46; i++) {
+      const a = a0 + (r() - 0.5) * 0.9, d = 480 + r() * 260, w = 18 + r() * 30, h = 50 + r() * 240 * (1 - Math.abs(a - a0));
+      const g = new THREE.BoxGeometry(w, h, w);
+      const uv = g.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * w / 10, uv.getY(k) * h / 20);
+      const m = new THREE.Mesh(g, mat); m.position.set(cx + Math.cos(a) * d, floorY + h / 2, cz + Math.sin(a) * d); group.add(m);
+    }
+  }
+  if (cfg.theme === 'forest') { // ridge after ridge of pines, black against the night, out to the mountains
+    const tree = basic(fade(pal.tree, fog, 0.12)), tree2 = basic(fade(pal.tree, fog, 0.32)), hill = basic(fade(pal.hill, fog, 0.2));
+    for (let i = 0; i < 46; i++) { const [x, z] = near(150, 620); const s = 40 + r() * 90; const m = new THREE.Mesh(new THREE.SphereGeometry(s, 7, 4, 0, Math.PI * 2, 0, Math.PI / 2), hill); m.scale.y = 0.3 + r() * 0.35; m.position.set(x, floorY, z); group.add(m); }
+    for (let i = 0; i < 520; i++) { const [x, z] = near(70, 600); const far = Math.hypot(x - cx, z - cz) > R + 300; const h = 14 + r() * 22; const t = new THREE.Mesh(new THREE.ConeGeometry(h * 0.3, h, 5), far ? tree2 : tree); t.position.set(x, floorY + h / 2 + (far ? 6 : 0), z); t.rotation.y = r() * 3; group.add(t); }
   }
   if (cfg.theme === 'sky') { // a sea of clouds below
     // merged into one mesh, the clouds aren't sorted against each other: no depth writes, or near ones cut holes in far ones

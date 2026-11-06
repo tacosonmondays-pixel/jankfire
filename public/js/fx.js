@@ -154,6 +154,7 @@ export const fx = {
     }
   },
   setScale(s) { scaleU.value = s; },
+  parts() { return { fire, smoke, misc }; }, // the raw particle systems, for effects built elsewhere (traffic.js)
   smoke(p, n = 1, spread = 0.05) {
     for (let i = 0; i < n; i++) {
       smoke.spawn(p[0] + R(spread), p[1] + R(spread), p[2] + R(spread), R(0.3), 0.6 + Math.random() * 0.6, R(0.3),

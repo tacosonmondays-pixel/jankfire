@@ -1,6 +1,7 @@
 // Floor Is Lava (and Duck Rain targeting): which surfaces of a map are its ground floor, which are safe,
 // and where people can spawn. Worked out from the boxes alone, so the server and the client agree and new maps just work.
 import { raycast, query, playerOverlap, PH } from './physics.js';
+import { outOfBounds } from './bounds.js';
 
 // lava: damage per touch, seconds it keeps burning, min seconds between touches, how hard it bounces you
 export const LAVA = { dmg: 20, burn: 1.4, burnDmg: 4, every: 0.4, hop: 11.5 };
@@ -22,7 +23,9 @@ export function surfaces(map) {
     const cell = (sx * sz) / (nx * nz);
     let area = 0;
     for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
-      const h = raycast([b.min[0] + ((i + 0.5) * sx) / nx, top + 2.2, b.min[2] + ((j + 0.5) * sz) / nz], down, 2.25, boxes);
+      const px = b.min[0] + ((i + 0.5) * sx) / nx, pz = b.min[2] + ((j + 0.5) * sz) / nz;
+      if (outOfBounds(map, [px, 0, pz])) continue; // outside the play area: not floor (no ducks, spawns or lava out there)
+      const h = raycast([px, top + 2.2, pz], down, 2.25, boxes);
       if (h && Math.abs(h.point[1] - top) < 0.02) area += cell;
     }
     if (area > 0) { tops.push({ b, top, area }); total += area; }
@@ -62,6 +65,7 @@ function safeSpots(map, s) {
     for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
       const x = x0 + ((x1 - x0) * (i + 0.5)) / nx, z = z0 + ((z1 - z0) * (j + 0.5)) / nz;
       const y = t.top;
+      if (outOfBounds(map, [x, y, z])) continue;
       let ok = true;
       for (const [dx, dz] of [[0, 0], [-c, -c], [c, -c], [-c, c], [c, c]]) {
         const h = raycast([x + dx, y + 0.5, z + dz], down, 0.6, boxes);
