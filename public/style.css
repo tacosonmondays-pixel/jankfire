@@ -794,3 +794,40 @@ body.replaying #nowPlaying.match { display: none; }
 .ctlPreset input { accent-color: var(--pink); width: 16px; height: 16px; }
 .ctlBtns { justify-content: center; margin-top: 12px; }
 #ctlBtn { margin: 6px 0; }
+/* zombies: the round tally (red chalk), credits + popups, friends' credits, the F prompt, round banners, game over */
+#zmHud { position: absolute; inset: 0; pointer-events: none; }
+#zmTally { position: absolute; left: 10px; top: 40px; width: 180px; height: 90px; filter: drop-shadow(0 0 6px rgba(200, 20, 30, 0.4)); transform-origin: 30% 50%; }
+#zmTally.pulse { animation: zmpulse 1.2s ease-in-out infinite; }
+#zmTally.flash { animation: zmflash 1.6s ease-out 1; }
+@keyframes zmpulse { 50% { opacity: 0.5; } }
+@keyframes zmflash { 0% { filter: brightness(5) drop-shadow(0 0 18px #fff); transform: scale(1.35) rotate(-5deg); } 35% { transform: scale(1.12) rotate(2deg); } 100% { transform: none; } }
+#zmCred { position: absolute; right: 18px; bottom: 138px; text-align: right; }
+#zmCred small { display: block; font-size: 12px; color: #c8b878; letter-spacing: 3px; }
+#zmCred b { font-size: 36px; color: #ffe14d; }
+#zmPops { position: absolute; right: 0; bottom: 100%; width: 280px; height: 0; }
+.zpop { position: absolute; bottom: 0; font-size: 20px; font-weight: bold; color: #ffe14d; white-space: nowrap; animation: zmpop 1.1s ease-out forwards; }
+.zpop.big { font-size: 26px; color: #ff7a3a; }
+.zpop.neg { color: #ff4a4a; }
+@keyframes zmpop { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-74px); opacity: 0; } }
+#zmTeam { position: absolute; right: 18px; bottom: 214px; text-align: right; font-size: 15px; display: flex; flex-direction: column; gap: 2px; }
+#zmTeam b { color: #ffe14d; }
+#zmTeam i { color: #ff4a4a; font-style: normal; }
+#zmPrompt { position: absolute; left: 50%; top: 66%; transform: translateX(-50%); font-size: 22px; white-space: nowrap; }
+#zmPrompt.ok { color: #ffe14d; }
+#zmPrompt.no { color: #ff7a7a; }
+#zmBanner { position: absolute; left: 50%; top: 20%; transform: translateX(-50%); text-align: center; opacity: 0; white-space: nowrap; }
+#zmBanner.on { animation: zmbanner 3.4s ease-out forwards; }
+#zmBanner b { display: block; font-size: 76px; color: #d0161f; -webkit-text-stroke: 2px #000; text-shadow: 5px 5px 0 #000; letter-spacing: 4px; transform: rotate(-3deg); }
+#zmBanner.clear b { color: #ffe14d; font-size: 56px; }
+#zmBanner small { display: block; font-size: 19px; color: #ddd; margin-top: 4px; }
+@keyframes zmbanner { 0% { opacity: 0; transform: translateX(-50%) scale(1.7); } 9% { opacity: 1; transform: translateX(-50%) scale(1); } 78% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) scale(0.96); } }
+#roundEnd .zmOver { color: #d0161f; font-size: 50px; -webkit-text-stroke: 1px #000; letter-spacing: 3px; }
+#roundEnd .zmSub { font-size: 20px; margin-bottom: 10px; color: #ddd; }
+#roundEnd:has(.zmOver) { left: min(50%, calc(100% - 540px)); } /* clear of the vote panel on the right */
+.zmRows .zr { display: grid; grid-template-columns: minmax(90px, 1fr) repeat(5, 50px); gap: 4px; font-size: 15px; text-align: right; padding: 1px 0; }
+.zmRows .zr span:first-child { text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zmRows .zr.head { color: #aaa; font-size: 12px; border-bottom: 1px solid #555; }
+body.zm-on #streakTray, body.zm-on #streak { display: none; }
+body.hotbar-right #zmCred { right: auto; left: 50%; transform: translateX(-50%); bottom: 58px; text-align: center; }
+body.hotbar-right #zmTeam { bottom: auto; top: 120px; }
+body.replaying #zmHud { visibility: hidden; }

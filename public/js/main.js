@@ -66,11 +66,12 @@ import { initHome, homeShown, homeLeft } from './home.js';
 import { skipVote, skipReset } from './skipvote.js';
 import { K } from './keys.js';
 import { controlsScreen } from './controls.js';
+import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, zmModelsLoaded } from './zombies.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
 const INTERP_MS = 110;
-const wname = (id) => (WEAPONS[id] ? WEAPONS[id].name : id === 'hook' ? 'Grapple' : id === 'tbag' ? 'T-Bag' : id);
+const wname = (id) => (WEAPONS[id] ? WEAPONS[id].name : id === 'hook' ? 'Grapple' : id === 'tbag' ? 'T-Bag' : id === 'bite' ? 'Claws' : id);
 const wcolor = (id) => (WEAPONS[id] ? WEAPONS[id].color : '#ccc');
 
 // ------------------------------------------------------------ settings
@@ -149,6 +150,7 @@ loadTripoModels().then((n) => {
   console.log(`loaded ${n} models`);
   rebuildOne(); // visuals only: a randomizer or pending loadout stays as it is
   refreshMapVisuals(); // Blender props replace their stand-in boxes
+  zmModelsLoaded(); // zombies: the wall guns too
   for (const r of G.remotes.values()) r.build();
   $('status').textContent = `${n} model(s) loaded`;
 });
@@ -233,6 +235,7 @@ function resetWorldState() {
   econReset();
   if (W.only) setOnly(null, S.loadout);
   resetGunGame(); resetInfection();
+  zmReset();
   for (const b of G.bubbles.values()) G.scene.remove(b.mesh);
   G.bubbles.clear(); G.smokes.length = 0; ME.frozenUntil = 0; G.frost = 0;
   gearLeave();
@@ -306,7 +309,8 @@ fillSelect($('setupGame'), gameEntries, 'dm');
 fillSelect($('cfgGame'), gameEntries, 'dm');
 fillSelect($('setupMap'), mapEntries, 'islands');
 // a mode that needs certain maps (bomb sites, a floor to turn into lava) only offers those (the server refuses the rest)
-const mapsOf = (game) => (GAMES[game] && (GAMES[game].sites || GAMES[game].mapOk) ? mapsFor(game, MAPS, MAP_ORDER) : MAP_ORDER);
+const mapsOf = (game) => (GAMES[game] ? mapsFor(game, MAPS, MAP_ORDER) : MAP_ORDER); // (mapsFor also keeps the zombie map for zombies only)
+fillSelect($('setupMap'), mapEntries.filter(([k]) => mapsOf('dm').includes(k)), 'islands'); // the zombie map shows up once Zombies is picked
 $('setupGame').addEventListener('change', () => {
   const keep = $('setupMap').value, list = mapsOf($('setupGame').value);
   fillSelect($('setupMap'), mapEntries.filter(([k]) => list.includes(k)), list.includes(keep) ? keep : list[0]);
@@ -977,8 +981,8 @@ function pressed(e) {
     if (t === 2) { net.send({ t: 'tbag' }); G.shake = 1; }
     else if (t === 1) G.shake = Math.max(G.shake, 0.25);
   }
-  if (K.matches('fire', e) && !e.repeat) fireDown();
-  if (K.matches('aim', e) && !e.repeat) aimDown();
+  if (K.matches('fire', e) && !e.repeat && !out) fireDown();
+  if (K.matches('aim', e) && !e.repeat && !out) aimDown();
 }
 const BUBBLED = ['fire', 'aim', 'grapple', 'item', 'dash', 'crouch', 'spray', 'streak1', 'streak2', 'streak3'];
 // a key or button came up: releases match whatever pressed the action, even if it got rebound since
@@ -1030,6 +1034,7 @@ addEventListener('resize', resizePreview);
 function renderScores() {
   const rows = [{ name: G.myName, color: G.myColor, k: G.kills, d: G.deaths, me: true, card: cardUrlFor(G.myId) }];
   for (const r of G.remotes.values()) if (!(r.bot && r.name === 'Dummy')) rows.push({ id: r.id, name: r.name, color: r.color, k: r.k, d: r.d, card: cardUrlFor(r.id) });
+  zmScoreRows(rows); // zombies: no zombies on it, credits next to names
   rows.sort((a, b) => b.k - a.k || a.d - b.d);
   ggScoreRows(rows); infScoreRows(rows); // gun game: by rung · infection: survivors first, zombies green
   if (G.round && GAMES[G.round.game] && GAMES[G.round.game].teams) {
@@ -1116,6 +1121,7 @@ net.on('welcome', (m) => {
   G.kat.clear(); setMyKatana(0);
   for (const [id, n] of m.kat || []) G.kat.set(id, n);
   setupObjectives(m.cfg.map);
+  zmSetup(m.cfg.map);
   clearTags();
   for (const g of m.tags || []) addTag(g.id, g.p, g.team);
   openVote(m.vote);
@@ -1143,6 +1149,7 @@ net.on('cfg', (m) => {
   G.cfg = m.cfg;
   if (mapChanged) { loadMap(m.cfg.map); clearEntities(); setupObjectives(m.cfg.map); G.smokes.length = 0; } // the server drops its smokes too
   if (mapChanged) clearSprays(); // sprays belong to the map they were painted on
+  if (mapChanged) zmSetup(m.cfg.map);
   updateLabel();
   if (screen === 'match') syncMatchUI();
 });
@@ -1325,7 +1332,7 @@ function startUse() {
   G.using = true;
   net.send({ t: 'use' });
   // F has to still be down: blur, pause and chat clear the keys, so a lost keyup can't root you in place
-  useTimer = setInterval(() => { if (!G.using || !ME.alive || !keys.KeyF) { stopUse(); return; } net.send({ t: 'use' }); }, 200);
+  useTimer = setInterval(() => { if (!G.using || !ME.alive || !K.isDown('use')) { stopUse(); return; } net.send({ t: 'use' }); }, 200);
 }
 function stopUse() { clearInterval(useTimer); useTimer = 0; G.using = false; }
 // the end-of-match vote (mode first, then map) lives on the end screen (endscreen.js)
@@ -1398,6 +1405,7 @@ net.on('kill', (m) => {
     victim.frozenUntil = 0;
   } else if (m.v === G.myId && kfx) playKillFx(kfx, { pos: ME.pos.slice(), vel: m.vel || ME.vel, yaw: ME.yaw, color: G.myColor, look: teamLook(validLook(G.settings.look, myAchs()), G.myTeam), name: G.myName });
   const dummy = victim && victim.bot && victim.name === 'Dummy';
+  if (zmKillFeed(m, victim)) return; // zombies: a zombie went down. no feed line, the credits popup says it
   let parts;
   if (m.w === 'void') {
     parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], ['  into the void', '#aaa']] : [[vn, vc], ['  fell into the void', '#aaa']];
@@ -1739,6 +1747,7 @@ function frame(t) {
   if (G.joined) {
     updateObjectives(dt, now, G.round, ME.pos);
     updateGunGame(); updateInfection(dt);
+    updateZombies(dt, now);
     const a = G.round && G.round.bomb && G.round.bomb.act;
     if (a && a.by === G.myId) hud.meter(a.f, `${a.k === 'plant' ? 'PLANTING' : 'DEFUSING'}... keep holding ${K.label('use')}`, '#ff4f4f');
   }
@@ -1937,8 +1946,8 @@ net.on('streak', (m) => {
     if (!st) return;
     G.streakN = Math.max(G.streakN || 0, m.n - 1); // this arrives just before the 'kill' that counts it
     if (!G.pocket.includes(m.earned)) G.pocket.push(m.earned);
-    if (m.game && GAMES[m.game]) hud.chat(null, null, K.hint(GAMES[m.game].desc));
-    chaosRoundStart(m.game);
+    const key = K.label('streak' + (1 + activeStreaks().indexOf(m.earned)));
+    hud.msg(`${st.name.toUpperCase()} READY · PRESS ${key.toUpperCase()}`, 2.4, 'brag');
     sfx.kill();
     renderStreak(G.streakN);
     return;
@@ -2451,7 +2460,7 @@ function fmtClock(ms) { const s2 = Math.ceil(ms / 1000); return `${Math.floor(s2
 function renderRound(r) {
   const el = $('round');
   if (!r) { el.textContent = ''; return; }
-  const mt = ggRoundText(r) ?? infRoundText(r); // gun game / infection: just the clock, their bars show the rest
+  const mt = zmRoundText(r) ?? ggRoundText(r) ?? infRoundText(r); // zombies: zombies left / the break. gun game / infection: just the clock, their bars show the rest
   if (mt != null) { el.textContent = mt; return; }
   const teamGame = r.game && GAMES[r.game] && GAMES[r.game].teams;
   el.textContent = r.over ? `next round in ${Math.ceil(r.left / 1000)}` : teamGame ? '' : `first to ${r.target} · ${fmtClock(r.left)}`;
@@ -2468,8 +2477,8 @@ net.on('round', (m) => {
     esClose(G.joined && document.pointerLockElement !== canvas); // back in: click to grab the mouse again
     if (m.game) { G.round = { ...(G.round || {}), ...m }; updateLabel(); if (screen === 'match') syncMatchUI(); }
     hud.msg(m.game && m.game !== 'dm' && GAMES[m.game] ? GAMES[m.game].name.toUpperCase() : 'ROUND START', 1.8, 'brag');
-    const key = K.label('streak' + (1 + activeStreaks().indexOf(m.earned)));
-    hud.msg(`${st.name.toUpperCase()} READY · PRESS ${key.toUpperCase()}`, 2.4, 'brag');
+    if (m.game && GAMES[m.game]) hud.chat(null, null, K.hint(GAMES[m.game].desc));
+    chaosRoundStart(m.game);
     return;
   }
   if (!m.over) return;
