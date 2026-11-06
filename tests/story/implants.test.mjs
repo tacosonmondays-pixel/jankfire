@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { IMPLANTS, BODY_SLOTS, newBody, cleanBody, installOp, budget, driftOf, driftBand, perk, eatHp, rollQuality, QUALITY, SLICE_IMPLANTS } from '../../shared/story/implants.js';
 import { newInv, invAdd, invTake, kindOf, count } from '../../shared/story/items.js';
+import { newSave } from '../../shared/story/save.js';
 import { createSim } from '../../shared/story/sim.js';
 import '../../shared/story/invsys.js';
 import '../../shared/story/bodysys.js';
@@ -50,7 +51,7 @@ t('core quality roll', () => { const r = rng(9), c = {}; for (let i = 0; i < 500
 t('hype costs: moon boots 25 .. giant duck 100', () => { assert.equal(hypeCost('moonboots'), 25); assert.equal(hypeCost('giantduck'), 100); assert.ok(hypeCost('satellite') > 25 && hypeCost('satellite') < 100); });
 
 t('sim: clinic buy/install/uninstall, coupons, drift message, save round trip', () => {
-  const out = []; const sim = createSim({ send: (o) => out.push(o) }); sim.msg({ t: 'join' });
+  const out = []; const sim = createSim({ send: (o) => out.push(o), save: newSave(0, 'story_test') }); sim.msg({ t: 'join' });
   assert.equal(sim.save.coupons, 5000, 'test lot coupons');
   const last = (k) => out.filter((o) => o.k === k).at(-1);
   sim.msg({ t: 'sty', k: 'clinic', op: 'buy', id: 'spring_knees' }); assert.equal(last('clinicErr').err, 'find a meat mechanic first');
@@ -69,7 +70,7 @@ t('sim: clinic buy/install/uninstall, coupons, drift message, save round trip', 
   const sim2 = createSim({ send: () => {}, save: sv }); assert.equal(sim2.body.slots.legs.b, 'spring_knees');
 });
 t('sim: HYPE fills, drains when quiet, pays for streak items', () => {
-  const out = []; const sim = createSim({ send: (o) => out.push(o) }); sim.dev = true; sim.msg({ t: 'join' });
+  const out = []; const sim = createSim({ send: (o) => out.push(o), save: newSave(0, 'story_test') }); sim.dev = true; sim.msg({ t: 'join' });
   const mb = sim.inv.bag.length && invAdd(sim.inv, { b: 'moonboots', q: 2 });
   sim.msg({ t: 'sty', k: 'streak', u: mb }); assert.equal(out.at(-1).why, 'short'); assert.equal(count(sim.inv, 'moonboots'), 2);
   sim.addHype(40, 'kill'); sim.msg({ t: 'sty', k: 'streak', u: mb });
@@ -81,7 +82,7 @@ t('sim: HYPE fills, drains when quiet, pays for streak items', () => {
   sim.msg({ t: 'sty', k: 'save' }); assert.equal(cleanSave(out.filter((o) => o.k === 'saved').at(-1).save).save.data.hype, 100);
 });
 t('sim: Second Stomach eats dropped weapons, the third in a row says vomit', () => {
-  const out = []; const sim = createSim({ send: (o) => out.push(o) }); sim.msg({ t: 'join' });
+  const out = []; const sim = createSim({ send: (o) => out.push(o), save: newSave(0, 'story_test') }); sim.msg({ t: 'join' });
   const gun = [...sim.drops.values()].find((d) => kindOf(d.item.b) === 'gun');
   sim.msg({ t: 'sty', k: 'eatDrop', id: gun.id }); assert.match(out.at(-1).err, /one stomach/);
   sim.body.slots.guts = { b: 'core_second_stomach', ql: 'fresh' };

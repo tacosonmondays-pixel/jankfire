@@ -10,7 +10,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   pg.on('pageerror', (e) => errs.push('PAGEERR ' + e.message + ' ' + (e.stack || '').split('\n')[1]));
   pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
   await pg.addInitScript(() => { localStorage.setItem('jankfire', JSON.stringify({ name: 'sweep', loadout: { primary: 'ar', secondary: 'pistol', melee: 'knife', item: 'frag' } })); if (!sessionStorage.getItem('sw')) { sessionStorage.setItem('sw', 1); localStorage.removeItem('jfStorySaves'); } });
-  await pg.goto(`http://localhost:${process.env.PORT}/?story=1&storydev=1`); await sleep(1500);
+  await pg.goto(`http://localhost:${process.env.PORT}/?story=1&storydev=1&storytest=1`); await sleep(1500);
   await pg.click('#storyBtn', { force: true }); await sleep(700); await pg.click('#storyPick .st-btn.yellow', { force: true }); await sleep(3500);
   const ids = await pg.evaluate(async () => { const { WEAPONS, ITEMS } = await import('/shared/weapons.js'); const { kindOf } = await import('/shared/story/items.js'); return { w: Object.keys(WEAPONS).filter((k) => kindOf(k) === 'gun' || kindOf(k) === 'melee'), g: Object.keys(ITEMS) }; });
   await pg.evaluate(async () => { const { net } = await import('/js/net.js'); window.__sent = []; const s0 = net.ws.send.bind(net.ws); net.ws.send = (d) => { try { const m = JSON.parse(d); if (m.t === 'fire' || m.t === 'item' || m.t === 'hit') window.__sent.push(m.t + ':' + (m.w || m.i || '')); } catch {} return s0(d); }; });

@@ -5,6 +5,12 @@ import { createSim } from '../../shared/story/sim.js';
 let n = 0; const t = (name, fn) => { fn(); n++; console.log('ok', name); };
 
 t('fresh save cleans to itself', () => { const s = newSave(1); assert.deepEqual(cleanSave(s, { slot: 1 }).save, { ...s, slot: 1 }); });
+t('a new game starts in the Bottom at its spawn (the city slice), the test lot on request', async () => {
+  const { STORY_SLICE } = await import('../../shared/city/storyworld.js');
+  const out = []; createSim({ send: (o) => out.push(o) }).msg({ t: 'join' });
+  assert.equal(out[0].cfg.map, 'story_slice'); assert.deepEqual(out[0].pos, STORY_SLICE.spawn);
+  const o2 = []; createSim({ send: (o) => o2.push(o), save: newSave(0, 'story_test') }).msg({ t: 'join' }); assert.equal(o2[0].cfg.map, 'story_test');
+});
 t('act can only go up by one', () => {
   assert.equal(cleanSave({ ...newSave(), act: 3 }).error, 'bad act');
   assert.ok(cleanSave({ ...newSave(), act: 3 }, { prev: { act: 2 } }).save);
@@ -35,7 +41,7 @@ t('parts are cleaned, bad keys dropped, position rounded', () => {
 t('card has no data', () => { const c = saveCard(newSave(2)); assert.equal(c.slot, 2); assert.ok(!('data' in c)); assert.equal(saveCard(null), null); });
 t('jsonOk', () => { assert.ok(jsonOk({ a: [1, 'x', null, true] })); assert.ok(!jsonOk({ a: () => 1 })); assert.ok(!jsonOk({ a: new Date() })); });
 t('sim: join -> welcome, ping, void respawn, save snapshot', () => {
-  const out = []; const sim = createSim({ send: (o) => out.push(o) });
+  const out = []; const sim = createSim({ send: (o) => out.push(o), save: newSave(0, 'story_test') });
   sim.msg({ t: 'join', name: 'tester', item: 'popper' });
   const w = out.find((o) => o.t === 'welcome');
   assert.equal(w.mode, 'story'); assert.equal(w.cfg.map, 'story_test'); assert.equal(w.ic.i, 'popper');
@@ -53,7 +59,7 @@ t('sim: join -> welcome, ping, void respawn, save snapshot', () => {
   for (const junk of [null, 1, { t: 5 }, { t: 's', q: 2, p: [NaN, 0, 0] }, { t: 's', q: 2, p: 'x' }]) sim.msg(junk);
 });
 t('sim: resumes where the save was', () => {
-  const out = []; const s = newSave(0); s.at.p = [5, 0.1, 5]; s.at.yaw = 2;
+  const out = []; const s = newSave(0, 'story_test'); delete s.at.fresh; s.at.p = [5, 0.1, 5]; s.at.yaw = 2;
   createSim({ send: (o) => out.push(o), save: s }).msg({ t: 'join' });
   assert.deepEqual(out[0].pos, [5, 0.1, 5]); assert.equal(out[1].yaw, 2); assert.equal(out[0].name, 'CHANGE');
 });

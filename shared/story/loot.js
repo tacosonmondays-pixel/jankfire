@@ -39,7 +39,8 @@ const pick = (a, rand) => a[Math.floor(rand() * a.length) % a.length];
 
 // the weapons a random roll can be: every held gun and melee (no rig fists, no claw, no mode-only kit)
 export const LOOT_BASES = Object.keys(WEAPONS).filter((b) => { const k = kindOf(b); return k === 'gun' || k === 'melee'; });
-// a legendary whose base isn't something you can hold (Lumps' Ring is the rig's rocket punch) gets the nearest thing
+// a guard: a legendary whose base isn't something you can hold gets the nearest thing (the content is fixed, #84;
+// this keeps a future typo from rolling a ghost item)
 const BASE_FALLBACK = { rigpunch: 'slapper' };
 export const legendaryBase = (L) => (kindOf(L.base) ? L.base : BASE_FALLBACK[L.base] || 'slapper');
 

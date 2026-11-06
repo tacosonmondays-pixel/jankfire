@@ -66,7 +66,7 @@ addSystem({
     const err = (e) => { sim.sty('clinicErr', { err: e }); return true; };
     switch (m.k) {
       case 'clinic': {
-        if (!sim.me || !near(sim.me.pos, TEST.clinic.p, TEST.clinic.r + 1)) return err('find a meat mechanic first');
+        if (!sim.me || !near(sim.me.pos, sim.world.clinic.p, sim.world.clinic.r + 1)) return err('find a meat mechanic first');
         if (m.op === 'buy') {
           const I = typeof m.id === 'string' && Object.hasOwn(IMPLANTS, m.id) && IMPLANTS[m.id];
           if (!I || I.kind !== 'shop' || !Number.isFinite(I.cost)) return err("they don't sell that here");
@@ -115,6 +115,7 @@ addSystem({
         if (sim.eats.length >= p.vomitAfter) sim.eats = [];
         return true;
       }
+      case 'qcoupons': { if (Number.isFinite(m.n)) { if (!sim.addCoupons(m.n)) sim.sty('coupons', { v: sim.save.coupons, d: 0, short: Math.round(-m.n) }); } return true; } // the story engine's coupons:+n / -n
       case 'devHp': { if (sim.dev && sim.me && Number.isFinite(m.hp)) sim.me.hp = Math.max(1, Math.min(100, m.hp)); return true; } // tests only (?storydev=1)
       case 'fine': { // the Punch-Clock's 10 HP fine (the client times the clock-in)
         const p = perk(sim.body, 'core_cracked_punch_clock', ctxOf(sim));

@@ -15,7 +15,7 @@ import { buildCharacter } from '../models.js';
 import { showCharacter, renderPreview, resizePreview } from '../preview.js';
 import { IMPLANTS, BODY_SLOTS, perk, UNINSTALL_FEE } from '/shared/story/implants.js';
 import { HYPE, hypeCost } from '/shared/story/bodysys.js';
-import { TEST } from '/shared/story/testmap.js';
+import { worldOf } from '/shared/story/worlds.js';
 import { IV, dropHeld } from './bar.js';
 import { kindOf } from '/shared/story/items.js';
 
@@ -47,7 +47,7 @@ function perks() {
 }
 export function bodyLeave() { ME.jumpMul = 1; st.slowUntil = 0; if (hudEl) hudEl.classList.add('hidden'); if (clinicOn) toggleClinic(false); }
 export const clinicOpen = () => clinicOn;
-export const atClinic = () => Math.hypot(ME.pos[0] - TEST.clinic.p[0], ME.pos[2] - TEST.clinic.p[2]) < TEST.clinic.r;
+export const atClinic = () => { const C = worldOf(G.cfg && G.cfg.map).clinic; return Math.hypot(ME.pos[0] - C.p[0], ME.pos[2] - C.p[2]) < C.r; };
 // the Punch-Clock's low-HP slow (the weapon wheel's 20% is separate, main.js multiplies the two)
 export const bodyTimeScale = () => (performance.now() < st.slowUntil ? P.core_cracked_punch_clock.slowScale : 1);
 // pigeon eyes see loot beams through walls (bar.js asks per drop)

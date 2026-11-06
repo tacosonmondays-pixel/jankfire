@@ -17,7 +17,7 @@ import { buildWeapon } from '../models.js';
 import { RARITY } from '/shared/cosmetics.js';
 import { infoOf, kindOf, itemAt, barWeapons, INV } from '/shared/story/items.js';
 import { PICK } from '/shared/story/invsys.js';
-import { TEST } from '/shared/story/testmap.js';
+import { worldOf } from '/shared/story/worlds.js';
 
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 export const RCOL = { ...Object.fromEntries(Object.entries(RARITY).map(([k, v]) => [k, v.color])), premium: '#ff00dc' }; // ☺ PREMIUM: hot pink
@@ -172,7 +172,7 @@ export function nearestDrop() {
   for (const x of drops.values()) { const dd = Math.hypot(x.d.p[0] - ME.pos[0], x.d.p[1] - ME.pos[1] - 0.6, x.d.p[2] - ME.pos[2]); if (dd < bd) { bd = dd; best = x.d; } }
   return best;
 }
-export const atLocker = () => Math.hypot(ME.pos[0] - TEST.locker.p[0], ME.pos[2] - TEST.locker.p[2]) < TEST.locker.r;
+export const atLocker = () => { const L = worldOf(G.cfg && G.cfg.map).locker; return Math.hypot(ME.pos[0] - L.p[0], ME.pos[2] - L.p[2]) < L.r; };
 export function barTick(dt) {
   for (const x of drops.values()) { x.t += dt; x.m.rotation.y += dt * 1.6; x.m.position.y = Math.sin(x.t * 2.2) * 0.12; const dist = Math.hypot(x.d.p[0] - ME.pos[0], x.d.p[1] - ME.pos[1] - 1.6, x.d.p[2] - ME.pos[2]); x.beam.userData.tick(dt, x.t, dist); xray(x, seesLoot(dist)); }
   STAT.mul = statMul; // rolled stats for whatever's in your hands (weapons.js reads it)

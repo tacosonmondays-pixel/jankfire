@@ -20,10 +20,15 @@ import { MAPS, builder, horizon, rng, lollipop, conifer, unstick } from '/shared
 import { TEST, buildTestMap } from '/shared/story/testmap.js';
 import { newSave, saveCard, SAVE } from '/shared/story/save.js';
 import { WorkerSocket } from './host.js';
+import { worldOf, DEFAULT_WORLD } from '/shared/story/worlds.js';
+import * as THREE from 'three';
+// ?storytest=1: new games start on the test lot (the e2e tests), not in the Bottom
+const testLot = () => { try { return new URLSearchParams(location.search).get('storytest') === '1'; } catch { return false; } };
 import { storyKeys, initBar, barTick, barShow, useBar, dropHeld, nearestDrop, atLocker, clearDrops } from './bar.js'; // WP3
 import { openWheel, closeWheel, wheelOpen, wheelLook, wheelScale } from './wheel.js';
 import { initBag, toggleBag, bagOpen } from './bag.js';
-import { infoOf } from '/shared/story/items.js';
+import { infoOf, count } from '/shared/story/items.js';
+import { IV as IVref } from './bar.js';
 import { LOOT_CSS } from './lootfx.js';
 import { initBody, bodyTick, bodyKey, bodyLeave, clinicOpen, toggleClinic, atClinic, bodyTimeScale, BODY_CSS } from './body.js'; // WP5
 
@@ -41,6 +46,14 @@ export function initStory(a) {
   button();
   net.on('sty', (m) => { const fs = listeners[m.k]; if (fs) for (const f of fs) f(m); });
   G.story = { on, send, save, active, tick, onMain, key, look, uiOpen, timeScale, get cur() { return cur; } };
+  // the bag as the story engine sees it (synchronous; kept fresh by the sim's 'inv' messages) + its host verbs
+  G.story.inv = {
+    has: (b, n = 1) => !!IVref.inv && count(IVref.inv, b) >= n,
+    count: (b) => (IVref.inv ? count(IVref.inv, b) : 0),
+    give: (b, n = 1, o = {}) => send('qgive', { b, n, ...o }),
+    take: (b, n = 1) => send('qtake', { b, n }),
+    coupons: (n) => send('qcoupons', { n }),
+  };
   storyKeys(); initBar(G.story); initBag(G.story); initBody(G.story);
   on('hello', (m) => { ME.yaw = m.yaw || 0; hud.msg('OVERDUE', 2.2, 'brag'); });
   on('saved', (m) => stored(m.save));
@@ -122,7 +135,7 @@ async function openPicker() {
       const go = el('button', 'st-btn yellow', c ? 'CONTINUE' : 'NEW GAME');
       go.addEventListener('click', async () => {
         go.disabled = true;
-        try { const s = c ? await loadSlot(i) : null; picker.classList.add('hidden'); start(s || newSave(i)); }
+        try { const s = c ? await loadSlot(i) : null; picker.classList.add('hidden'); start(s || newSave(i, testLot() ? 'story_test' : DEFAULT_WORLD)); }
         catch (e) { go.disabled = false; api.toast(`couldn't load that slot: ${e.message}`, 3000); }
       });
       card.append(go);
@@ -167,7 +180,7 @@ function tick(dt = 1 / 60) {
   hint.classList.toggle('hidden', !(near || drop || lock || doc) || clinicOpen());
   const inStory = G.joined && G.mode === 'story';
   barShow(inStory);
-  if (inStory) { barTick(dt); bodyTick(dt, G.camera); } else { if (wheelOpen()) closeWheel(false); if (bagOpen()) toggleBag(false); clearDrops(); bodyLeave(); }
+  if (inStory) { barTick(dt); bodyTick(dt, G.camera); standIns(); } else { if (wheelOpen()) closeWheel(false); if (bagOpen()) toggleBag(false); clearDrops(); bodyLeave(); }
   const use = on && K.isDown('use');
   if (near && use && !useWas) terminal();
   useWas = use;
@@ -175,6 +188,20 @@ function tick(dt = 1 / 60) {
   const paused = G.joined && G.mode === 'story' && !$('menu').classList.contains('hidden');
   if (paused && !pausedWas) save('pause'); // the pause menu is where you quit from: keep the spot
   pausedWas = paused;
+}
+// the slice has no Locker or clinic of its own yet: a green locker and a pink chair by the Machine (worlds.js)
+let stands = null;
+function standIns() {
+  const W = worldOf(G.cfg && G.cfg.map), key = W.stand ? W.id : '';
+  if ((stands && stands.userData.key) === key && (!stands || stands.parent === G.scene)) return;
+  if (stands) { G.scene.remove(stands); stands = null; }
+  if (!key) return;
+  stands = new THREE.Group(); stands.userData.key = key;
+  const box = (w, h, d, c, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: c })); m.position.set(x, y, z); stands.add(m); };
+  const [lx, ly, lz] = W.locker.p, [cx, cy, cz] = W.clinic.p;
+  box(1.6, 2.2, 0.9, 0x7dff4f, lx, ly + 1.1, lz); box(0.2, 0.25, 0.1, 0xffe14d, lx + 0.25, ly + 1.1, lz + 0.48);
+  box(1.2, 0.7, 1.2, 0x666677, cx, cy + 0.35, cz); box(1.1, 0.25, 1.1, 0xff4fd8, cx, cy + 0.82, cz); box(1.1, 0.95, 0.2, 0xff4fd8, cx, cy + 1.4, cz - 0.5);
+  G.scene.add(stands);
 }
 let toSim = false;
 // main.js hands every key / mouse button here first while story mode is loaded. true = story used it (stop there)
@@ -201,7 +228,7 @@ function key(e, down) {
   }
   return false;
 }
-const atTerminal = () => Math.hypot(ME.pos[0] - TEST.terminal.p[0], ME.pos[2] - TEST.terminal.p[2]) < TEST.terminal.r;
+const atTerminal = () => { const T = worldOf(G.cfg && G.cfg.map).terminal; return Math.hypot(ME.pos[0] - T.p[0], ME.pos[2] - T.p[2]) < T.r && Math.abs(ME.pos[1] - T.p[1]) < 4; };
 function look(e) { return wheelOpen() && wheelLook(e.movementX, e.movementY); }
 function uiOpen() { return bagOpen() || clinicOpen(); }
 function timeScale() { return G.joined && G.mode === 'story' ? wheelScale(false) * bodyTimeScale() : 1; }

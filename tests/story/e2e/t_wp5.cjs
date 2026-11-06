@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
   pg.on('pageerror', (e) => errs.push('PAGEERR ' + e.message + ' ' + (e.stack || '').split('\n')[1]));
   pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
   await pg.addInitScript(() => { localStorage.setItem('jankfire', JSON.stringify({ name: 'wp5', jank: 3, loadout: { primary: 'ar', secondary: 'pistol', melee: 'knife', item: 'frag' } })); if (!sessionStorage.getItem('w5')) { sessionStorage.setItem('w5', 1); localStorage.removeItem('jfStorySaves'); } });
-  const start = async () => { await pg.goto(`http://localhost:${PORT}/?story=1&storydev=1`); await sleep(1500); await pg.click('#storyBtn', { force: true }); await sleep(700); await pg.click('#storyPick .st-btn.yellow', { force: true }); await sleep(3500); };
+  const start = async () => { await pg.goto(`http://localhost:${PORT}/?story=1&storydev=1&storytest=1`); await sleep(1500); await pg.click('#storyBtn', { force: true }); await sleep(700); await pg.click('#storyPick .st-btn.yellow', { force: true }); await sleep(3500); };
   await start();
   const ev = (f, a) => pg.evaluate(f, a);
   const tp = (p, yaw = 0, pitch = 0) => ev(async ([p, yaw, pitch]) => { const { ME } = await import('/js/player.js'); ME.pos = p.slice(); ME.vel = [0, 0, 0]; ME.yaw = yaw; ME.pitch = pitch; }, [p, yaw, pitch]);
