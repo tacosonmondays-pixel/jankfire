@@ -13,7 +13,7 @@ from corp import *
 AS = Scale(1.26, 0.02, -0.76)
 Z, Y, W, poly = AS.Z, AS.Y, AS.W, AS.poly
 BORE_Y, MUZ_Z = 0.02, -0.76
-SIGHT_H, REAR_D, FRONT_D = 60, 643, 126   # 14 mm over the Lawn Mower's: the engine is fat
+SIGHT_H, REAR_D, FRONT_D = 68, 643, 126   # 22 mm over the Lawn Mower's: the engine is fat
 MAG_D, MAG_H = 543, -52
 CH = (W(21), Y(8), Z(575))
 
@@ -74,31 +74,31 @@ def build():
     A(sweep(loop[2:5], W(10.5), rubber, seg=12))
 
     # ---------------- the engine (receiver): shroud, air filter + primer bulb, starter housing, muffler, plug boot, cooling fins
-    A(side(poly([(410, -46), (440, -48), (740, -48), (744, -6), (724, 10), (640, 16), (520, 18), (470, 14), (430, 6), (410, -10)]), W(72), (0, 0, 0), orange, bev=W(12), seg=3))
+    A(side(poly([(410, -46), (440, -48), (740, -48), (744, -14), (726, -2), (680, 8), (640, 14), (520, 18), (470, 14), (430, 6), (410, -10)]), W(66), (0, 0, 0), orange, bev=W(12), seg=3))
     A(side(poly([(460, -50), (742, -50), (742, -64), (460, -64)]), W(70), (0, 0, 0), black, bev=W(4)))  # the crankcase / tank seat
-    A(box((W(30), W(6), W(170)), (0, Y(19), Z(590)), black, bev=W(1)))  # the top rail (the sight sits on it)
-    for k in range(5): A(box((W(74), W(3), W(6)), (0, Y(-14 + k * 6), Z(470 + k * 2)), black, bev=W(1)))  # cooling slots at the front
+    A(box((W(24), W(6), W(150)), (0, Y(19), Z(580)), black, bev=W(1)))  # the top rail (the sight sits on it)
+    for k in range(5): A(box((W(68), W(3), W(6)), (0, Y(-14 + k * 6), Z(470 + k * 2)), black, bev=W(1)))  # cooling slots at the front
     # starter housing on the right (round, ribbed) + the cord hole
-    A(cyl(W(44), W(10), (W(40), Y(-18), Z(620)), white, axis='x', seg=28, bev=W(3)))
-    A(cyl(W(32), W(2), (W(45.5), Y(-18), Z(620)), black, axis='x', seg=24))
-    A(cyl(W(27), W(2.4), (W(46), Y(-18), Z(620)), white, axis='x', seg=24, bev=W(1)))
+    A(cyl(W(44), W(10), (W(37), Y(-18), Z(620)), white, axis='x', seg=28, bev=W(3)))
+    A(cyl(W(32), W(2), (W(42.5), Y(-18), Z(620)), black, axis='x', seg=24))
+    A(cyl(W(27), W(2.4), (W(43), Y(-18), Z(620)), white, axis='x', seg=24, bev=W(1)))
     for k in range(3):
         a = k * 2 * math.pi / 3 + 0.5
-        A(cyl(W(3.5), W(2), (W(47.5), Y(-18) + math.sin(a) * W(37), Z(620) + math.cos(a) * W(37)), chrome, axis='x', seg=8))
-    A(cyl(W(8), W(6), (W(46), Y(4), Z(590)), black, axis='x', seg=12))
-    lg = box((W(1), W(20), W(80)), (W(38.2), Y(-28), Z(530)), logo, rot=(0, 0, 0)); A(lg); decals.append((lg, (W(80), W(20)), 'x'))
+        A(cyl(W(3.5), W(2), (W(44.5), Y(-18) + math.sin(a) * W(37), Z(620) + math.cos(a) * W(37)), chrome, axis='x', seg=8))
+    A(cyl(W(8), W(6), (W(43), Y(4), Z(590)), black, axis='x', seg=12))
+    lg = box((W(1), W(20), W(80)), (W(33.6), Y(-28), Z(530)), logo, rot=(0, 0, 0)); A(lg); decals.append((lg, (W(80), W(20)), 'x'))
     # air filter cover + primer bulb (left, where it would be on a real one) + choke lever
     A(side(poly([(500, -36), (600, -36), (606, 18), (500, 22)]), W(18), (-W(40), 0, 0), black, bev=W(5)))
-    A(ball(W(10), (-W(52), Y(-6), Z(470)), mat('tr_bulb', 0xf2f0e6, rough=0.15, alpha=0.6), seg=14, rings=8))
+    A(ball(W(10), (-W(49), Y(-6), Z(470)), mat('tr_bulb', 0xf2f0e6, rough=0.15, alpha=0.6), seg=14, rings=8))
     A(box((W(6), W(16), W(20)), (-W(52), Y(16), Z(560)), mat('tr_choke', 0xd01c2a, rough=0.3, clearcoat=0.8), bev=W(2)))
     # muffler + perforated heat guard on the left, tailpipe out the back
-    A(side(poly([(620, -40), (730, -40), (730, 14), (620, 14)]), W(22), (-W(46), 0, 0), steel, bev=W(5)))
+    A(side(poly([(620, -40), (730, -40), (730, 14), (620, 14)]), W(22), (-W(43), 0, 0), steel, bev=W(5)))
     for i in range(4):
         for j in range(3):
-            A(cyl(W(3.5), W(2), (-W(57.5), Y(-26 + j * 16), Z(640 + i * 24)), dark, axis='x', seg=8))
-    A(cyl(W(6), W(30), (-W(46), Y(-10), Z(744)), chrome, axis='z', seg=10))
+            A(cyl(W(3.5), W(2), (-W(54.5), Y(-26 + j * 16), Z(640 + i * 24)), dark, axis='x', seg=8))
+    A(cyl(W(6), W(30), (-W(43), Y(-10), Z(744)), chrome, axis='z', seg=10))
     # spark plug boot on top behind the sight
-    A(cyl(W(9), W(24), (-W(36), Y(2), Z(700)), black, axis='x', seg=12))  # spark plug boot, out the left
+    A(cyl(W(9), W(24), (-W(36), Y(2), Z(700)), black, axis="x", seg=12))  # spark plug boot, out the left
     A(tube([(-W(46), Y(2), Z(700)), (-W(50), Y(-6), Z(716)), (-W(44), Y(-20), Z(732))], W(3), black, seg=6))
 
     # ---------------- rear sight: a ghost ring on the top rail
@@ -111,7 +111,7 @@ def build():
     # ---------------- pull-start T-handle (charge node) on the right, its cord into the starter
     chg.append(box((W(14), W(10), W(10)), (W(50), Y(8), Z(575)), black, bev=W(2)))
     chg.append(cyl(W(6.5), W(46), (W(56), Y(8), Z(575)), mat('tr_tgrip', 0xffe14d, rough=0.3, clearcoat=0.8), axis='y', seg=12, bev=W(2)))
-    chg.append(tube([(W(46), Y(8), Z(588)), (W(48), Y(8), Z(580))], W(1.4), cordm, seg=6))
+    chg.append(tube([(W(44), Y(4), Z(590)), (W(48), Y(8), Z(580))], W(1.4), cordm, seg=6))
 
     # ---------------- throttle handle (pistol grip): throttle trigger, lockout on top, kill switch, the guard
     A(side(poly([(598, -62), (606, -62), (608, -84), (660, -86), (668, -62), (676, -62), (674, -94), (600, -92)]), W(12), (0, 0, 0), black, bev=W(1.5)))
@@ -142,7 +142,7 @@ def build():
     for p in parts + mag + chg: fixmats(p); uv_box(p, 0.04)
     gd_l.data.materials.clear(); gd_l.data.materials.append(resp)  # (not used: the guard's sticker sits better on the engine)
     bpy.data.objects.remove(gd_l, do_unlink=True)
-    rs = box((W(1), W(12), W(86)), (-W(38.2), Y(-30), Z(560)), resp, rot=(0, math.pi, 0)); parts.append(rs); decals.append((rs, (W(86), W(12)), '-x'))
+    rs = box((W(1), W(12), W(86)), (-W(49.2), Y(-30), Z(560)), resp, rot=(0, math.pi, 0)); parts.append(rs); decals.append((rs, (W(86), W(12)), '-x'))
     for o, sz, ax in decals: decal(o, sz, ax)
     WZ = {'tr_orange': 'a', 'tr_black': 'a', 'tr_rubber': 'a', 'tr_foam': 'a', 'tr_white': 'a', 'tr_alu': 'b', 'tr_steel': 'b', 'tr_dark': 'b', 'tr_chrome': 'b'}
     bodies = zone_join(parts, 'trimmer_body', WZ, default='n', rule=lambda m, c: 'b' if m in ('tr_orange', 'tr_black') and c[2] < Z(300) else None)

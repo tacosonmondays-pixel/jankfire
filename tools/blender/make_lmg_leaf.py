@@ -35,7 +35,7 @@ def leaf_outline(n=40, size=1.0, lobes=5):
     for i in range(n):
         a = math.pi / 2 + 2 * math.pi * i / n
         k = abs(math.cos(lobes * (a - math.pi / 2) / 2))
-        r = (0.55 + 0.45 * k ** 3) * (0.25 if abs(math.sin((a - math.pi / 2) / 2)) > 0.97 else 1.0)
+        r = (0.68 + 0.32 * k ** 1.5) * (0.25 if abs(math.sin((a - math.pi / 2) / 2)) > 0.97 else 1.0)
         if math.sin(a) < -0.6: r *= 0.55  # the leaf's base, where the stem goes in
         pts.append((math.cos(a) * r * size, math.sin(a) * r * size * 0.95))
     return pts
@@ -188,7 +188,7 @@ def build():
     outline = leaf_outline(20)
     for i in range(12):
         (x, y), ta = at(i * pitch)
-        s = W(30) * rnd.uniform(0.85, 1.15)
+        s = W(36) * rnd.uniform(0.85, 1.15)
         tw = rnd.uniform(-0.5, 0.5)
         lf = side([(v * s, u * s) for u, v in outline], W(1.6), (x, y, zc), leafm[i % 4], rot=(tw, 0, ta - math.pi / 2 + rnd.uniform(-0.4, 0.4)), bev=0)
         st = rod((x, y, zc + s * 0.4), (x, y, zc + s * 0.85), W(1.2), stemm, seg=5)
