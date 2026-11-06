@@ -76,7 +76,7 @@ async function session(b, map, ids) {
     net.send = (o) => send0(window.__pin && window.__hide && o && o.t === 's' ? { ...o, p: window.__hide.map((v) => Math.round(v * 100) / 100), v: [0, 0, 0] } : o);
     // __life goes up on every death and every new Plant & Defuse round: a shot taken across one is taken again
     window.__life = 0; let was = ME.alive, round = G.eco && G.eco.round;
-    setInterval(() => { if (was && !ME.alive) window.__life++; was = ME.alive; const r = G.eco && G.eco.round; if (r !== round) { round = r; window.__life++; } }, 4);
+    setInterval(() => { if (was && !ME.alive) { window.__life++; window.__lifeT = performance.now(); } was = ME.alive; const r = G.eco && G.eco.round; if (r !== round) { round = r; window.__life++; window.__lifeT = performance.now(); } }, 4);
     // the same picture for both versions: no sparks / smoke / confetti (points) and no bot walking through the shot
     setInterval(() => { for (const o of G.scene.children) if (o.isPoints) o.visible = false; G.remotes.forEach((r) => { if (r.ch && r.ch.root) r.ch.root.visible = false; }); }, 16);
   });
@@ -151,7 +151,7 @@ async function session(b, map, ids) {
           // kill you: wait for the respawn; in the buy phase the server holds you in your spawn zone and its walls show)
           st = await pg.evaluate(async (map) => {
             const { MAP } = await import('/shared/map.js'); const { ME } = await import('/js/player.js'); const { G } = await import('/js/ctx.js');
-            const busy = () => MAP.id === map && (!ME.alive || (G.eco && G.eco.buyEnd > performance.now()) || performance.now() < (ME.quizUntil || 0)); // (a bot's pop quiz: frozen, a panel up)
+            const busy = () => MAP.id === map && (!ME.alive || (G.eco && G.eco.buyEnd > performance.now()) || performance.now() < (ME.quizUntil || 0) || performance.now() - (window.__lifeT || -1e9) < 5000); // (a bot's pop quiz: frozen, a panel up; a death: its kill effect fades first)
             const t0 = performance.now(), wait = (ms) => new Promise((r) => setTimeout(r, ms));
             while (performance.now() - t0 < 60000) { // (killed again while settling: keep waiting, up to a minute)
               while (busy() && performance.now() - t0 < 60000) await wait(100);
