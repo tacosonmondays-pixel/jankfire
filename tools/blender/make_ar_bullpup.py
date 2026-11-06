@@ -146,7 +146,7 @@ def build():
     WZ = {'bp_shell': 'a', 'bp_panel': 'a', 'bp_rubber': 'a', 'bp_gunmetal': 'b', 'bp_dark': 'b', 'bp_mag': 'b', 'bp_orange': 'b'}  # wrap zones (wrapzones.js): a = handle side, b = business end, everything else keeps its look
     bodies = zone_join(parts, 'bp_body', WZ, default='n', rule=lambda m, c: 'a' if m == 'bp_dark' and c[2] > Z(500) and c[1] > Y(-60) else None)
     meta = {'kind': 'weapon', 'id': 'ar', 'skin': 'ar_bullpup', 'paint': ['bp_shell'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(OPT_H), 'z': Z(EYEPIECE) + 0.1},
-            'hatAt': [[0, Y(OPT_H + 30), Z(540)], 0.12]}
+            'hatAt': [[0, Y(OPT_H + 30), Z(540)], 0.12], 'port': [W(36), Y(4), Z(646)]}  # port: the shells fly out of the ejection port, by your cheek
     return finish('w_ar_bullpup', bodies, meta)
 
 

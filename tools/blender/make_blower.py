@@ -4,7 +4,7 @@
 # loop handle with a rubber overmold, throttle trigger, stop switch, primer bulb + choke, perforated muffler guard,
 # a corrugated elbow, a twist-lock tube and a flared nozzle with a bumper ring), about x0.9 so it fills the code
 # blower's box, tube on the code's axis and the muzzle at its mouth.
-# Made fun: a LEAF ME ALONE sticker on top where you look at it, and a leaf stuck in the intake grille.
+# Made fun: LEAF ME ALONE on the badge and on a sticker on top where you look at it, and a leaf stuck in the intake grille.
 # Hair Dryer: a classic pistol-grip salon dryer x2 (candy pink barrel, chrome rear intake ring and grille, hot pink
 # concentrator nozzle, slide switches + a cool-shot button, strain relief, hang loop, a cord with the real-life warning
 # tag on it: DO NOT USE WHILE SLEEPING).
@@ -85,7 +85,7 @@ def blower():
         px_disc(px, c, c, 5, 0x3a3d44)
     grille_t = mat('lb_grille_face', 0xffffff, rough=0.5, tex=tex_canvas('lb_grille_t', 48, 48, grille_px))
     sticker = mat('lb_sticker', 0xffffff, rough=0.55, clearcoat=0.15, tex=tex_canvas('lb_sticker_t', 80, 28, sticker_px([('LEAF ME', 1, 0x111111), ('ALONE', 1, 0xe0202a)], 0xf6f4ee, 0x111111, 0x111111)))
-    badge = mat('lb_badge', 0xffffff, rough=0.3, clearcoat=0.6, tex=tex_canvas('lb_badge_t', 64, 15, sticker_px([('GUST 9000', 1, 0xffffff)], 0x16161a, 0xffffff, 0xff7a1a)))
+    badge = mat('lb_badge', 0xffffff, rough=0.3, clearcoat=0.6, tex=tex_canvas('lb_badge_t', 86, 15, sticker_px([('LEAF ME ALONE', 1, 0xffffff)], 0x16161a, 0xffffff, 0xff7a1a)))
     warn = mat('lb_warn', 0xffffff, rough=0.4, tex=tex_canvas('lb_warn_t', 32, 14, lambda px: (px.__setitem__(slice(None), hexrgb(0xffe14d)),
                 [px_disc(px, 6 + 10 * k, 7, 4, 0x111111) for k in range(3)], [px_disc(px, 6 + 10 * k, 7, 2.2, 0xffe14d) for k in range(3)])))
     parts = []; A = parts.append
@@ -106,8 +106,10 @@ def blower():
     A(box((0.17, 0.086, 0.262), (-0.016, 0.075, 0.055), orange, bev=0.026, seg=3, name='lb_cover', taper=(0.92, 0.72)))
     for k in range(4):  # cooling slots at the front of the engine side
         A(box((0.004, 0.0055, 0.034), (-0.1005, 0.034 - k * 0.011, -0.04), grille, bev=0.0015, name='lb_slot'))
-    st = box((0.072, 0.0012, 0.026), (-0.058, 0.1186, 0.118), sticker, name='lb_sticker'); A(st)   # on top, where you look at it
-    bd = box((0.001, 0.02, 0.09), (0.0695, 0.085, 0.055), badge, name='lb_badge'); A(bd)
+    # on top, where you look at it: stretched along the view like a road marking so it reads at that low angle, and laid on
+    # the cover's slope (its front is tapered down)
+    st = box((0.054, 0.0012, 0.08), (-0.047, 0.1152, 0.11), sticker, name='lb_sticker', rot=(-0.0457, 0, 0)); A(st)
+    bd = box((0.001, 0.02, 0.115), (0.0695, 0.085, 0.055), badge, name='lb_badge'); A(bd)
     wl = box((0.036, 0.001, 0.016), (0.044, 0.1185, 0.13), warn, name='lb_warn'); A(wl)
     # ---------------- loop handle, rubber overmold, trigger, stop switch, cruise lever
     hp = [(0, 0.105, -0.06), (0, 0.17, -0.052), (0, 0.2, -0.025), (0, 0.205, 0.04), (0, 0.2, 0.11), (0, 0.175, 0.15), (0, 0.11, 0.165)]
@@ -160,7 +162,7 @@ def blower():
     A(loft([(0, TY, z) for z in zl], lz, m=grille, name='lb_liner', cap=False, smooth_angle=60))
     A(cyl(0.035, 0.002, (0, TY, -0.8), grille, axis='z', seg=18, name='lb_plug'))
     for p in parts: uv_box(p, 0.06)
-    for o, c, sz, ax in ((st, (-0.058, 0.1186, 0.118), (0.072, 0.026), 'y'), (bd, (0.0695, 0.085, 0.055), (0.09, 0.02), 'x')):
+    for o, c, sz, ax in ((st, (-0.047, 0.1152, 0.11), (0.054, 0.08), 'y'), (bd, (0.0695, 0.085, 0.055), (0.115, 0.02), 'x')):
         apply_mods(o); uv_planar(o, c, sz, ax)
     apply_mods(gf); uv_planar(gf, (0.0615, VC[1], VC[2]), 0.148, 'x')
     apply_mods(wl); uv_planar(wl, (0.044, 0.1185, 0.13), (0.036, 0.016), 'y')

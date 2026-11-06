@@ -107,11 +107,11 @@ async function adsCheck(b) {
         await pick(pg, id);
         await sleep(900);
         const name = `${out}/${ptag}_${tag(id)}_${useGlb ? 'glb' : 'code'}`;
-        await pg.screenshot({ path: `${name}_hip.png` });
+        await pg.screenshot({ path: `${name}_hip.png`, timeout: 120000 }); // (slow, busy machines)
         const ads = await canAim(pg, id);
         if (ads) await aim(pg, true); else await use(pg, true);
         await sleep(700);
-        await pg.screenshot({ path: `${name}_ads.png` });
+        await pg.screenshot({ path: `${name}_ads.png`, timeout: 120000 });
         if (ads) await aim(pg, false); else await use(pg, false);
         await sleep(ads ? 300 : 900);
       }
