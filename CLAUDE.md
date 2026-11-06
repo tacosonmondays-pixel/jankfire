@@ -55,6 +55,7 @@ queued requests live in `HANDOFF.md` on the `claude/handoff` branch (`git show o
   exe still wait for the owner. Render
   auto-deploys `main` to https://jankfire.onrender.com; PLAY ONLINE in the exe loads the game from there. Rebuild the Windows
   exe with `npm run dist:win:zip` (output in `dist/`) when asked. The owner creates GitHub releases themselves.
+- **Patch notes:** every update players notice gets a line in `public/js/patchnotes.js` (PATCH NOTES in the menu, newest first, in the game's voice). Feature sessions describe their change in the PR; the coordinating session adds the patch-notes line when it ships, so parallel PRs don't fight over that file.
 - **Show the work:** send screenshots and short clips (Playwright `recordVideo` + ffmpeg, graphics setting `jank: 3` = Too HD)
   of new features.
 - **Usage is limited:** use effort levels (max for models and animation, high for gameplay and fixes, medium for reviews),

@@ -8,6 +8,9 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { G } from './ctx.js';
 import { marbles } from './marbles.js';
 import { updateBackrooms } from './backrooms.js';
+import { addVibe } from './vibe.js';
+import { addForest } from './forestmats.js';
+import { updateForest, forestMap } from './forest.js';
 import { buildProps, hasProp } from './props.js';
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
@@ -154,7 +157,43 @@ function makeMaterials() {
   // the pool rooms: bright white tiles that seem lit from nowhere
   out.pooltile = lam(canvasTex(16, (g, s) => { speckle(g, s, [234, 242, 242], 5, 4); g.fillStyle = '#a3bcc0'; for (let i = 0; i < s; i += 4) { g.fillRect(i, 0, 1, s); g.fillRect(0, i, s, 1); } }), 1, { emissive: 0x3c4c50 });
   out.poolwater = { mat: new THREE.MeshBasicMaterial({ color: 0x86dbe6, transparent: true, opacity: 0.42, depthWrite: false }), tile: 2 };
+  addVibe(out, canvasTex, speckle); // the map pass look (vibe.js)
+  addForest(out, canvasTex, speckle); // scary forest (forestmats.js)
+  for (const v of Object.values(out)) if (!v.mat.onBeforeCompile || v.mat.onBeforeCompile === THREE.Material.prototype.onBeforeCompile) hazify(v.mat, v.mat.isMeshBasicMaterial ? 0.45 : 1);
   return out;
+}
+
+// a box mesh for a map box. huge ones (the long street, the lawn out to the horizon) get cut into <= 32 m pieces:
+// a single triangle hundreds of metres long with corners behind the camera gets dropped by some GPUs (whole lawns vanished)
+const SEG = (v) => Math.min(48, Math.max(1, Math.ceil(v / 32)));
+const boxGeo = (sx, sy, sz) => new THREE.BoxGeometry(sx, sy, sz, SEG(sx), SEG(sy), SEG(sz));
+
+// height haze (map.haze, the city maps): a fog layer that gets thicker the lower and further you look, so the streets far
+// below are soft shapes and lights in a haze while fights across the rooftops stay clear. one shared set of uniforms,
+// patched into the map materials' fog. glowing stuff (neon, lit windows, signs) only takes part of it: lights shine through
+export const hazeUniforms = { uHaze: { value: new THREE.Vector4(0, 0, -1, 100) }, uHazeColor: { value: new THREE.Color(0) } }; // strength, top y, bottom y, depth scale
+const HAZE_FOG = `#ifdef USE_FOG
+	#ifdef FOG_EXP2
+		float fogFactor = 1.0 - exp( - fogDensity * fogDensity * vFogDepth * vFogDepth );
+	#else
+		float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
+	#endif
+	vec3 fogC = fogColor;
+	if ( uHaze.x > 0.0 ) {
+		float hz = clamp( ( uHaze.y - vHazeY ) / ( uHaze.y - uHaze.z ), 0.0, 1.0 );
+		float hf = uHaze.x * uHazeK * hz * ( 0.35 + 0.65 * hz ) * ( 1.0 - exp( - vFogDepth / uHaze.w ) );
+		fogC = mix( fogColor, uHazeColor, clamp( hf / max( 0.001, fogFactor + hf ), 0.0, 1.0 ) );
+		fogFactor = 1.0 - ( 1.0 - fogFactor ) * ( 1.0 - hf );
+	}
+	gl_FragColor.rgb = mix( gl_FragColor.rgb, fogC, fogFactor );
+#endif`;
+export function hazify(mat, k) {
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uHaze = hazeUniforms.uHaze; sh.uniforms.uHazeColor = hazeUniforms.uHazeColor; sh.uniforms.uHazeK = { value: k };
+    sh.vertexShader = 'varying float vHazeY;\n' + sh.vertexShader.replace('#include <fog_vertex>', '#include <fog_vertex>\n\tvHazeY = ( modelMatrix * vec4( transformed, 1.0 ) ).y;');
+    sh.fragmentShader = 'uniform vec4 uHaze;\nuniform vec3 uHazeColor;\nuniform float uHazeK;\nvarying float vHazeY;\n' + sh.fragmentShader.replace('#include <fog_fragment>', HAZE_FOG);
+  };
+  mat.customProgramCacheKey = () => 'haze';
 }
 
 // world-space UVs: each face picks the two axes it spans, so textures continue across boxes
@@ -182,23 +221,29 @@ function buildMap(scene) {
   if (def && def.chunk) { buildChunked(scene, def); return; }
   const groups = new Map();
   const push = (k, g) => { if (!groups.has(k)) groups.set(k, []); groups.get(k).push(g); };
-  for (const b of BOXES) {
-    if (b.pv && hasProp(b.pv)) continue; // a Blender prop is drawn instead (props.js)
+  // deco: drawn, never bumped into. a Blender prop stands in only for real boxes (props.js draws map.boxes.props): look-only
+  // scenery keeps its boxes (the city alone has hundreds of streetlights and cars, too many models to draw one by one)
+  const all = def && def.deco ? [...BOXES, ...def.deco] : BOXES, nReal = BOXES.length;
+  for (let i = 0; i < all.length; i++) {
+    const b = all[i];
+    if (i < nReal && b.pv && hasProp(b.pv)) continue;
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
     const mk = MAT[b.mat] ? b.mat : 'stone';
+    if (b.fit) { const g = boxGeo(sx, sy, sz); if (b.rot) g.rotateY(b.rot); g.translate(cx, cy, cz); push(mk, g.toNonIndexed()); continue; } // the texture once per face (signs, faces)
+    if (b.rot) { const g = boxGeo(sx, sy, sz); worldUV(g, 0, 0, 0, MAT[mk].tile); g.rotateY(b.rot); g.translate(cx, cy, cz); push(mk, g.toNonIndexed()); continue; } // turned (render-only boxes: angled streets and blocks)
     if (b.mat === 'grass' && sy > 0.6) { // grass on top, dirt on the sides
-      const g = new THREE.BoxGeometry(sx, sy, sz);
+      const g = boxGeo(sx, sy, sz);
       const top = g.clone();
       // split the box faces: index groups 2 = +y
-      const keep = (geo, faces) => { const idx = []; for (const f of faces) for (let i = 0; i < 6; i++) idx.push(geo.index.array[f * 6 + i]); geo.setIndex(idx); return geo; };
+      const keep = (geo, faces) => { const idx = []; for (const f of faces) { const gr = geo.groups[f]; for (let i = gr.start; i < gr.start + gr.count; i++) idx.push(geo.index.array[i]); } geo.setIndex(idx); geo.clearGroups(); return geo; };
       keep(top, [2]); keep(g, [0, 1, 3, 4, 5]);
       worldUV(top, cx, cy, cz, MAT.grass.tile); worldUV(g, cx, cy, cz, MAT.dirt.tile);
       top.translate(cx, cy, cz); g.translate(cx, cy, cz);
       push('grass', top.toNonIndexed()); push('dirt', g.toNonIndexed());
       continue;
     }
-    const g = new THREE.BoxGeometry(sx, sy, sz);
+    const g = boxGeo(sx, sy, sz);
     worldUV(g, cx, cy, cz, MAT[mk].tile);
     g.translate(cx, cy, cz);
     push(mk, g.toNonIndexed());
@@ -219,14 +264,17 @@ function buildMap(scene) {
 // outer walls) go in one mesh per material that's always drawn, or they'd make their whole chunk impossible to cull
 function buildChunked(scene, def) {
   const C = def.chunk, groups = new Map();
-  for (const b of def.deco ? [...BOXES, ...def.deco] : BOXES) {
-    if (b.pv && hasProp(b.pv)) continue;
+  const all = def.deco ? [...BOXES, ...def.deco] : BOXES, nReal = BOXES.length;
+  for (let i = 0; i < all.length; i++) {
+    const b = all[i];
+    if (i < nReal && b.pv && hasProp(b.pv)) continue; // (as in buildMap: only real boxes give way to a prop)
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
     const mk = MAT[b.mat] ? b.mat : 'stone';
     const key = Math.max(sx, sz) > C ? mk : mk + '|' + Math.floor(cx / C) + ',' + Math.floor(cz / C);
-    const g = new THREE.BoxGeometry(sx, sy, sz);
-    worldUV(g, cx, cy, cz, MAT[mk].tile);
+    const g = boxGeo(sx, sy, sz);
+    if (b.rot) { if (!b.fit) worldUV(g, 0, 0, 0, MAT[mk].tile); g.rotateY(b.rot); } // turned render-only boxes (Jankburg's streets)
+    else if (!b.fit) worldUV(g, cx, cy, cz, MAT[mk].tile);
     g.translate(cx, cy, cz);
     if (!groups.has(key)) groups.set(key, { k: mk, list: [] });
     groups.get(key).list.push(g.toNonIndexed());
@@ -268,6 +316,7 @@ function mapLight(map) {
 
 let skyGeo, voidMesh;
 let skyStuff = []; // sun, clouds, void rocks: switched off on sealed maps (map.sealed), where nobody could ever see them
+const voidRocks = []; // and the floating rocks only belong over a void: maps with a real floor (map.floorY) hide them
 function paintSky(sky) {
   const top = new THREE.Color(sky.top), mid = new THREE.Color(sky.mid), bot = new THREE.Color(sky.bot);
   const pos = skyGeo.attributes.position, c = new THREE.Color(), cols = [];
@@ -309,6 +358,7 @@ function buildSky(scene) {
     r.position.set(Math.cos(a) * d, -25 - Math.random() * 30, Math.sin(a) * d);
     r.rotation.set(Math.random() * 3, Math.random() * 3, 0);
     scene.add(r);
+    voidRocks.push(r);
   }
 }
 
@@ -354,10 +404,20 @@ export function loadMap(id) {
   G.scene.fog.color.setHex(MAP.sky.fog);
   G.scene.fog.near = MAP.fogNear;
   G.scene.fog.far = MAP.fogFar;
+  const hz = MAPS[MAP.id] && MAPS[MAP.id].haze; // the city maps' haze layer (off everywhere else)
+  hazeUniforms.uHaze.value.set(hz ? hz.k : 0, hz ? hz.top : 0, hz ? hz.bottom : -1, hz ? hz.dist : 100);
+  if (hz) hazeUniforms.uHazeColor.value.setHex(hz.color);
   voidMesh.position.y = MAP.killY - 25;
   buildScenery(G.scene, MAPS[MAP.id], MAP.id, voidMesh);
   mapLight(MAPS[MAP.id]);
   for (const o of skyStuff) o.visible = !(MAPS[MAP.id] && MAPS[MAP.id].sealed);
+  for (const o of voidRocks) o.visible = !(MAPS[MAP.id] && (MAPS[MAP.id].sealed || MAPS[MAP.id].floorY != null));
+  const night = !!(MAPS[MAP.id] && MAPS[MAP.id].night); // night maps: the sun is a (cube) moon, and no pink clouds
+  sun.material.color.setHex(night ? 0xdfe6ff : 0xffe14d);
+  sun.scale.setScalar(night ? 0.8 : 1);
+  if (night) sun.position.set(-260, 300, -420); else sun.position.set(300, 220, -420);
+  for (const c of clouds) c.visible = !night && !(MAPS[MAP.id] && MAPS[MAP.id].sealed);
+  forestMap(MAPS[MAP.id], MAP.id);
 }
 
 // models finished loading after the map was built: redraw the boxes + props (no gameplay state touched)
@@ -386,6 +446,7 @@ export function updateWorld(dt) {
   sun.rotation.x += dt * 0.17;
   cullChunks();
   if (MAT) updateBackrooms(dt, [MAT.ceilflick.mat, MAT.ceilflick2.mat, MAT.ceilflick3.mat]);
+  updateForest(dt);
 }
 
 export function renderFrame() {
