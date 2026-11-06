@@ -289,8 +289,15 @@ export function frame(dt, now, cam) {
     // what's in reach: a person (talk) or a thing (pick up)
     nearAct = null; nearThing = null;
     if (!locked() && ME.alive) {
-      let bd = 3.0;
-      for (const a of actors.values()) { const d = Math.hypot(e[0] - a.pos[0], e[2] - a.pos[2]); if (d < bd && S.defs.npcs[a.id] && S.defs.npcs[a.id].lines) { bd = d; nearAct = a; } }
+      let bd = 9;
+      // the one you're looking at wins over the one who's merely closest (people stand in groups)
+      const fx = -Math.sin(ME.yaw), fz = -Math.cos(ME.yaw);
+      for (const a of actors.values()) {
+        const dx = a.pos[0] - e[0], dz = a.pos[2] - e[2], d = Math.hypot(dx, dz);
+        if (d > 3.0 || a.hidden || !S.defs.npcs[a.id] || !S.defs.npcs[a.id].lines) continue;
+        const score = d + (1 - (dx * fx + dz * fz) / Math.max(0.01, d)) * 1.5;
+        if (score < bd) { bd = score; nearAct = a; }
+      }
       for (const sp of SPOTS.values()) { sp.mesh.userData.glow.material.opacity = 0.35 + Math.sin(now * 0.006) * 0.25; if (sp.mesh.userData.spin) sp.mesh.userData.spin.rotation.y += dt * 2; if (Math.hypot(ME.pos[0] - sp.p[0], ME.pos[2] - sp.p[2]) < 1.8) nearThing = { spot: sp, t: { name: sp.name.toUpperCase() } }; }
       for (const t of ST.things.values()) {
         t.mesh.visible = S.test(t.t.if) && !ST.bag.has(t.t.item);
