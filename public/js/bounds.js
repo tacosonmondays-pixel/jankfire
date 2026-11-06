@@ -32,7 +32,7 @@ function ensure() {
 // every frame
 export function oobTick(now) {
   const map = MAPS[MAP.id];
-  const out = G.joined && ME.alive && map && map.bounds && outOfBounds(map, ME.pos);
+  const out = G.joined && ME.alive && !G.noOob && map && map.bounds && outOfBounds(map, ME.pos); // (jank royale: the zone is the edge)
   if (!out) {
     if (t0) { t0 = 0; shown = -1; el.style.display = 'none'; }
     return;

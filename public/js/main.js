@@ -52,6 +52,7 @@ import { account, restore, login, register, logout, saveProfile, leaderboard as 
 import { updateRig, rigDied, rigOn } from './rig.js';
 import { rigClash } from '/shared/rig.js'; // overdrive rig killstreak
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
+import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames } from './royale.js'; // jank royale
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { initEcon, ecoOn, econKey, econMouse, econMenuOpen, econFrame, econCam, econHideVM, econDead, econWelcome, econSpawn, econKill, econIc, econLoadout, econReset } from './econ.js';
 import { SPRAY, ownedSpray } from '/shared/cosmetics.js';
@@ -932,6 +933,7 @@ addEventListener('keydown', (e) => {
   if (econKey(e)) return; // buy menu, drop, P pause (econ.js ECON_KEYS)
   if ((RP.active || G.killcamPending) && (e.code === 'Space' || e.code === 'Enter')) { e.preventDefault(); skipReplay(); return; }
   if (esKey(e)) { e.preventDefault(); return; } // end screen: 1-4 vote, arrows switch tabs
+  if (brKey(e)) return; // jank royale: F pick up, H heal, space spectates the next one
   if (e.code === 'Tab') { e.preventDefault(); scoresOpen = true; renderScores(); return; }
   if (e.code === 'KeyT' || e.code === 'Enter') { e.preventDefault(); openChat(); return; }
   if (e.code === 'KeyB') { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
@@ -975,6 +977,7 @@ addEventListener('mousedown', (e) => {
   if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor: no shooting
   if (performance.now() < (ME.quizUntil || 0)) return; // pens down: sitting a pop quiz
   if (stuckInBubble(true)) return; // sealed in a soap bubble: no shooting, aiming or grappling till it pops
+  if (brMouse(e)) return; // jank royale: no shooting from the blimp; out = click to watch someone else
   if (econMouse(e)) return;
   if (gearMouseDown(e)) return; // middle click: the goggles' flash (nvgFlash)
   if (e.button === 0) fireDown();
@@ -1368,7 +1371,8 @@ net.on('dmg', (m) => {
 net.on('kill', (m) => {
   recordEv(m);
   courtKill(m); // scales of justice: streaks + revenge
-  const [kn, kc] = nameOf(m.k), [vn, vc] = nameOf(m.v);
+  let [kn, kc] = nameOf(m.k), [vn, vc] = nameOf(m.v);
+  [kn, vn] = brNames(m, kn, vn); // jank royale: no names in Pronoun Park
   const via = m.w === 'void' || m.w === 'cough' || ((m.w === 'car' || m.w === 'carboom') && m.via) ? m.via : m.w;
   const victim = G.remotes.get(m.v);
   // shredder kills: the pieces go through the killer's machine instead of the usual gibs / kill effect
@@ -1400,6 +1404,7 @@ net.on('kill', (m) => {
   if (gp) parts = gp;
   const hazard = m.w === 'lava' || (m.w === 'duck' && m.sky); // floor is lava / duck rain: nobody owns those
   if (hazard) parts = m.k ? [[kn, kc], [`  [${wname(m.via)}]  `, wcolor(m.via)], [vn, vc], [m.w === 'lava' ? '  into the lava' : '  under a sky duck', '#aaa']] : [[vn, vc], [m.w === 'lava' ? '  touched the floor' : '  got flattened by a sky duck', '#ff8a3a']];
+  const brp = brFeed(m, vn, vc); if (brp) parts = brp; // jank royale: the zone
   if (m.ep && m.k) parts.push([`  EPIC ${Math.round(m.ep.d)}m`, '#ffe14d']);
   const carK = (m.w === 'car' || m.w === 'carboom') && carKill(m, kn, kc, vn, vc, wname, wcolor); // traffic: its own lines and icon
   if (carK) parts = carK.parts;
@@ -1650,7 +1655,7 @@ function sendSnap(now = performance.now()) {
   net.send({
     t: 's', q: ME.seq, p: ME.pos.map(r2), v: ME.vel.map(r2), y: r2(G.spinning ? (now * 0.03) % (Math.PI * 2) : ME.yaw), x: r2(G.spinning ? Math.sin(now * 0.02) * 1.2 : ME.pitch), w: W.cur,
     g: hp ? hp.map(r2) : 0,
-    f: W.flags | (now < ME.slipUntil ? FLAGS.SLIP : 0) | (ME.sliding ? FLAGS.SLIDE : 0) | (ME.crouching ? FLAGS.CROUCH : 0) | (now < (ME.sleepUntil || 0) ? FLAGS.SLEEP : 0) | (ME.walking ? FLAGS.WALK : 0),
+    f: W.flags | (G.brGlide ? FLAGS.GLIDE : 0) | (now < ME.slipUntil ? FLAGS.SLIP : 0) | (ME.sliding ? FLAGS.SLIDE : 0) | (ME.crouching ? FLAGS.CROUCH : 0) | (now < (ME.sleepUntil || 0) ? FLAGS.SLEEP : 0) | (ME.walking ? FLAGS.WALK : 0),
   });
 }
 W.sendSnap = () => { if (ME.alive && G.joined) sendSnap(); };
@@ -1708,13 +1713,14 @@ function frame(t) {
     if (sendT <= 0 && ME.alive) { sendT = 1 / 30; sendSnap(now); }
     pingT -= dt;
     if (pingT <= 0) { pingT = 2; net.send({ t: 'pi', c: performance.now() }); }
-    if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = epicKC ? 'killcam... too epic to skip' : 'killcam... (space to skip)'; else if (epicHold) epicTimer(now); else if (!econDead()) hud.deadTimer(Math.max(0, ((G.respawnMs ?? 2500) - (now - (G.deadAt || now))) / 1000)); }
+    if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = epicKC ? 'killcam... too epic to skip' : 'killcam... (space to skip)'; else if (epicHold) epicTimer(now); else if (!econDead() && !brDead()) hud.deadTimer(Math.max(0, ((G.respawnMs ?? 2500) - (now - (G.deadAt || now))) / 1000)); }
   }
 
   const rt = now + G.offset - INTERP_MS;
   if (!RP.active) for (const r of G.remotes.values()) r.update(rt, dt, now);
   else for (const r of G.remotes.values()) { r.ch.root.visible = false; r.rope.visible = false; r.shadow.visible = false; } // the replay has its own copies
   updateTraffic(dt, now, RP.active);
+  brFrame(dt, now); // jank royale: blimp, zone, loot, hud
   updateGibs(dt);
   updateKillFx(dt);
   updateCourt(dt, now);
@@ -1836,7 +1842,7 @@ function frame(t) {
   fovNow += (fovTarget - fovNow) * Math.min(1, dt * (W.aim > 0 ? 14 : 6));
   if (Math.abs(cam.fov - fovNow) > 0.05) { cam.fov = fovNow; cam.updateProjectionMatrix(); }
   if (RP.active) updateReplay(dt, now, cam); // killcam / play of the round owns the camera
-  const specCam = !RP.active && (spectateCam(dt, cam) || econCam(cam, dt)); // one in the chamber: out of lives, watching someone; Plant & Defuse: a teammate
+  const specCam = !RP.active && (spectateCam(dt, cam) || econCam(cam, dt) || brCam(dt, cam)); // one in the chamber: out of lives, watching someone; Plant & Defuse: a teammate; jank royale: the blimp ride + spectating
   cam.updateMatrixWorld();
   updateSpeedLines(dt, G.joined && ME.alive && !RP.active ? Math.hypot(ME.vel[0], ME.vel[1], ME.vel[2]) : 0, ME.vel, cam, ME.dashing ? 0.9 : 0, S.speedLines !== false);
   const rh = G.renderer.domElement.height;
@@ -2451,6 +2457,7 @@ function renderRound(r) {
   el.textContent = r.over ? `next round in ${Math.ceil(r.left / 1000)}` : teamGame ? '' : `first to ${r.target} · ${fmtClock(r.left)}`;
   const ct = chaosRoundText(r);
   if (ct) el.textContent = ct;
+  if (r.game === 'br' && !r.over) el.textContent = 'last one standing wins'; // jank royale: the zone clock is in its own panel
 }
 net.on('round', (m) => {
   const box = $('roundEnd');
@@ -2490,6 +2497,7 @@ net.on('round', (m) => {
     if (id === G.myId) row.style.color = '#ffe14d';
     box.append(row);
   }
+  brRoundEnd(m, box); // jank royale: placements (the old box; the end screen gets them too)
   esRound(m); // the end screen replaces the old round box (still built above for anything that reads it)
 });
 // play of the round: the server picked the best moment and sent the recording
