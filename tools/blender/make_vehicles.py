@@ -290,19 +290,27 @@ def uvmap(o, mats, atl, rule):
         qs = [pts[me.loops[li].vertex_index] for li in p.loop_indices]
         if kind is not None:
             out = [A.uv(key, q) for q in qs]
-            if T._area2(out) < 1e-10:  # (edge-on to its view: a sliver of the region at its middle)
+            if T._area2(out) < 1e-8:  # (edge-on to its view, or off its edge: a sliver of the region at its middle; UVs are float32)
                 cu = sum(u for u, v in out) / len(out); cv = sum(v for u, v in out) / len(out)
                 out = [(cu + 0.002 * math.cos(2 * math.pi * k / len(out)), cv + 0.002 * math.sin(2 * math.pi * k / len(out))) for k in range(len(out))]
         else:
             out = None
             for ax in sorted(range(3), key=lambda i: -abs(n[i])):
                 a_, b_ = [(2, 1), (0, 2), (0, 1)][ax]
-                out = [T.uv_px(rect, (A.W, A.H), (q[a_] - lo[a_]) / (ext[a_] or 1), (q[b_] - lo[b_]) / (ext[b_] or 1), 1.0) for q in qs]
-                if T._area2(out) > 1e-10: break
-        if abs(T._area2(out)) < 1e-9:  # (still nothing: a sliver round its middle, real area for QA and bakes)
+                fl = (ax == 0 and n.x > 0) or (ax == 2 and n.z < 0) or (ax == 1 and n.y > 0)  # (so a cell's writing reads right from in front)
+                su = lambda q: (q[a_] - lo[a_]) / (ext[a_] or 1)
+                out = [T.uv_px(rect, (A.W, A.H), 1 - su(q) if fl else su(q), (q[b_] - lo[b_]) / (ext[b_] or 1), 1.0) for q in qs]
+                if T._area2(out) > 1e-8: break
+        if abs(T._area2(out)) < 1e-8:  # (still nothing: a sliver round its middle, real area for QA and bakes)
             cu = sum(u for u, v in out) / len(out); cv = sum(v for u, v in out) / len(out)
             out = [(cu + 0.003 * math.cos(2 * math.pi * k / len(out)), cv + 0.003 * math.sin(2 * math.pi * k / len(out))) for k in range(len(out))]
         for li, u in zip(p.loop_indices, out): uv[li].uv = u
+        if arg('uvdebug') and abs(T._area2(out)) < 1e-11: print('JF_UV0', o.name, tuple(round(v, 3) for v in c), tuple(round(v, 2) for v in n), key, len(out), p.area)
+    if arg('uvdebug'):
+        for p in me.polygons:
+            q = [uv[li].uv for li in p.loop_indices]
+            a2 = sum(q[i].x * q[(i + 1) % len(q)].y - q[(i + 1) % len(q)].x * q[i].y for i in range(len(q)))
+            if abs(a2) < 1e-12: print('JF_UVA', o.name, p.index, len(q), [tuple(round(c, 4) for c in v) for v in q][:6], tuple(round(v, 3) for v in b2g(mw @ p.center)))
     return o
 
 
@@ -390,18 +398,28 @@ def rslab(name, x0, x1, z0, z1, y0, y1, rp, rt, n=4, nt=3):
     return o
 
 
-def ring_frame(name, u0, u1, v0, v1, w, d0, d1, plane, open_bottom=False):
-    """a gasket: four bars round an opening u0..u1 x v0..v1 (inner faces on the opening's edges), w wide, d0..d1 deep.
-    plane 'x': the opening is in a wall across x (u = z, v = y); 'z': in a wall across z (u = x, v = y). The side bars
-    stand 2 mm proud of the top / bottom ones (no faces in one plane where they overlap)"""
-    def bar(a0, a1, b0, b1, e0, e1, nm):
-        if plane == 'x': return cb((e0, b0, a0), (e1, b1, a1), nm)
-        return cb((a0, b0, e0), (a1, b1, e1), nm)
-    out = [bar(u0 - w, u0, v0 - (0 if open_bottom else w), v1 + w, d0 - 0.002, d1 + 0.002, name + '_s0'),
-           bar(u1, u1 + w, v0 - (0 if open_bottom else w), v1 + w, d0 - 0.002, d1 + 0.002, name + '_s1'),
-           bar(u0 - w / 2, u1 + w / 2, v1, v1 + w, d0, d1, name + '_t')]
-    if not open_bottom: out.append(bar(u0 - w / 2, u1 + w / 2, v0 - w, v0, d0, d1, name + '_b'))
-    return out
+def ring_frame(name, u0, u1, v0, v1, w, d0, d1, plane):
+    """a gasket round an opening u0..u1 x v0..v1: one closed rectangular ring (its inner faces on the opening's
+    edges), w wide, d0..d1 deep. plane 'x': in a wall across x (u = z, v = y); 'z': in a wall across z (u = x, v = y)"""
+    P = (lambda u, v, d: (d, v, u)) if plane == 'x' else (lambda u, v, d: (u, v, d))
+    rings = []
+    for d in (d0, d1):
+        rings.append([P(u, v, d) for u, v in ((u0 - w, v0 - w), (u1 + w, v0 - w), (u1 + w, v1 + w), (u0 - w, v1 + w))] +
+                     [P(u, v, d) for u, v in ((u0, v0), (u1, v0), (u1, v1), (u0, v1))])
+    verts = rings[0] + rings[1]
+    faces = []
+    for k in range(4):
+        kk = (k + 1) % 4
+        faces.append((k, kk, 4 + kk, 4 + k))                    # the d0 face
+        faces.append((8 + k, 12 + k, 12 + kk, 8 + kk))          # the d1 face
+        faces.append((k, 8 + k, 8 + kk, kk))                    # outside
+        faces.append((4 + k, 4 + kk, 12 + kk, 12 + k))          # inside (the opening's edge)
+    bm = bmesh.new()
+    vs = [bm.verts.new(gv(*p)) for p in verts]
+    for f in faces: bm.faces.new([vs[i] for i in f])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    o = _obj(name, bm, None); smooth(o, 30)
+    return [o]
 
 
 def tube_rod(p0, p1, r, name='rod', seg=8):
@@ -446,6 +464,31 @@ def bake(targets, see, dist=0.6, lo=0.45, samples=24, floor=True):
     if ground: bpy.data.objects.remove(ground, do_unlink=True)
     for o in hidden: o.hide_render = False
     sc.render.engine, sc.render.bake.target = prev, prev_t
+
+
+def zf_where(o, eps=0.0008):
+    """where a mesh's z-fighting triangle pairs are (the QA's own test; it only counts them): game coords"""
+    sys.path.insert(0, os.path.join(lib.ROOT, '.claude', 'skills', 'blender-asset-qa', 'scripts'))
+    import qa_check
+    me = o.data; me.calc_loop_triangles()
+    vs = [o.matrix_world @ v.co for v in me.vertices]
+    tris = [tuple(t.vertices) for t in me.loop_triangles]
+    nrm = [((vs[t[1]] - vs[t[0]]).cross(vs[t[2]] - vs[t[0]])).normalized() for t in tris]
+    bvh = BVHTree.FromPolygons(vs, tris, epsilon=0.0)
+    out = set()
+    for ti, t in enumerate(tris):
+        a, b, c = (vs[i] for i in t); n = nrm[ti]
+        if n.length < 0.5: continue
+        cen = (a + b + c) / 3
+        for p in (cen, cen.lerp(a, .6), cen.lerp(b, .6), cen.lerp(c, .6)):
+            for _, _, tj, _ in bvh.find_nearest_range(p, eps):
+                if tj is None or tj == ti or set(t) & set(tris[tj]): continue
+                n2 = nrm[tj]
+                if n.dot(n2) < 0.999: continue
+                a2, b2, c2 = (vs[i] for i in tris[tj])
+                q = p - n2 * n2.dot(p - a2)
+                if qa_check._point_in_tri(q, a2, b2, c2, n2): out.add(tuple(round(v, 3) for v in b2g(cen)))
+    print('JF_ZF', o.name, len(out), sorted(out)[:16])
 
 
 def to_frame(objs, yaw, shift):
@@ -568,6 +611,14 @@ def finish(B, meta, yaw, shift, boxes, air, ok=(), interior=None, ao=0.6):
             o.data.calc_loop_triangles(); k = o.name[len(fid) + 1:].rsplit('_', 1)[0].split('_')[0]
             tally[k] = tally.get(k, 0) + len(o.data.loop_triangles)
         print('JF_PARTS', fid, sorted(tally.items(), key=lambda kv: -kv[1]))
+    if arg('uvdebug'):
+        for o in B.l0:
+            me = o.data
+            for L in me.uv_layers:
+                for p in me.polygons:
+                    q = [L.data[li].uv for li in p.loop_indices]
+                    a2 = sum(q[i].x * q[(i + 1) % len(q)].y - q[(i + 1) % len(q)].x * q[i].y for i in range(len(q)))
+                    if abs(a2) < 1e-12: print('JF_UVZ', o.name, L.name, len(me.uv_layers), len(q), round(p.area, 6), [tuple(round(c, 4) for c in v) for v in q][:6])
     if arg('qaparts'): Y.qa(B.l0, fid + ':parts', eps=0.0008, tol=0.003)
     j0 = join(B.l0, fid[2:] + '_lod0'); T.weld(j0, 1e-6)
     j1 = join(B.l1, fid[2:] + '_lod1') if B.l1 else None
@@ -592,6 +643,7 @@ def finish(B, meta, yaw, shift, boxes, air, ok=(), interior=None, ao=0.6):
                     elif fn: v = fn(b2g(me.vertices[me.loops[li].vertex_index].co), gn, mn, ca.data[li].color[0])
                     else: v = None
                     if v is not None: ca.data[li].color = (v, v, v, 1.0)
+    if arg('zfdebug'): zf_where(j0)
     if arg('qa'):
         Y.qa([j0], fid + ':lod0', eps=0.0008, tol=0.003)
         if j1: Y.qa([j1], fid + ':lod1', eps=0.0008, tol=0.01)
@@ -788,7 +840,7 @@ def build_transitbus():
         q = [(s * IN, 5.852)] + [(s * (IN + 0.146 * math.cos(math.radians(90 * k / 5))), 5.852 + 0.146 * math.sin(math.radians(90 * k / 5))) for k in range(6)]
         B.add(yprism(B.nm('acol'), q, SL - 0.005, CL + 0.015, bev=0.008), side_part)  # (no box here: the screen's frame)
         q = [(s * (IN + 0.002), -5.782), (s * (HW - 0.002), -5.782)] + \
-            [(s * (IN + 0.148 * math.cos(math.radians(90 * k / 5))), -5.85 - 0.148 * math.sin(math.radians(90 * k / 5))) for k in range(6)]
+            [(s * (IN + 0.002 + 0.146 * math.cos(math.radians(90 * k / 5))), -5.85 - 0.146 * math.sin(math.radians(90 * k / 5))) for k in range(6)]
         B.add(yprism(B.nm('bcol'), q, SL - 0.005, CL + 0.015, bev=0.008), side_part)
     B.box((-IN + 0.001, 2.453, -5.995), (IN - 0.001, CL + 0.015, -5.852), shell, bev=0.01, k='bupper')
     B.box((-1.148, 1.695, 5.882), (1.148, 2.805, 5.978), tr('glassw'), k='screen')
@@ -808,13 +860,13 @@ def build_transitbus():
     B.box((-1.147, 0.47, -5.847), (1.147, 0.87, 5.847), tr('dark'), k='under')
     for s in (1, -1):
         for az in (AR, AF):
-            xo = -1.29 if (s < 0 and az == AF) else s * 1.2
-            B.box((xo, 0.895, az - 0.55), (s * 0.9, 1.105, az + 0.55), tr('diamond'), bev=0.03, k='hump')
+            xo = -1.285 if (s < 0 and az == AF) else s * 1.2
+            B.box((xo, 0.892, az - 0.55), (s * 0.9, 1.105, az + 0.55), tr('diamond'), bev=0.03, k='hump')
     # ---------------- seats on their boxes (plinth, cushion, back, a grab handle), poles, rails, light diffusers
     for i in range(6):
         z0 = -5 + 1.5 * i; zk = z0 + 0.8
         B.box((0.258, 0.895, z0 + 0.004), (1.146, 1.2, z0 + 0.896), tr('shell'), bev=0.015, k='plinth')
-        B.box((0.252, 1.19, z0), (1.148, 1.35, z0 + 0.9), lambda n, c: tr('moq') if n.y > 0.5 or abs(n.x) > 0.5 else tr('moq2'), bev=0.04, seg=2, k='cushion')
+        B.box((0.252, 1.19, z0), (1.148, 1.35, z0 + 0.9), lambda n, c: tr('moq') if n.y > 0.5 or abs(n.x) > 0.5 else tr('moq2'), bev=0.04, k='cushion')
         B.box((0.252, 1.345, zk), (1.148, 2.0, zk + 0.15), lambda n, c: tr('moq') if n.z < -0.6 else (tr('shell') if n.z > 0.6 else tr('moq2')), bev=0.03, k='back')
         for x in (0.34, 1.06): B.rod((x, 1.97, zk + 0.075), (x, 2.045, zk + 0.075), 0.014, tr('chrome'), seg=4, k='hpost')
         B.rod((0.32, 2.04, zk + 0.075), (1.08, 2.04, zk + 0.075), 0.016, tr('chrome'), seg=6, k='handle')
@@ -828,15 +880,15 @@ def build_transitbus():
             B.rod((x, 2.735, z), (x, 2.8, z), 0.01, tr('chrome'), seg=4, k='rbrk'); z += (z1_ - z0_) / 4
     for s in (1, -1): B.box((s * 0.45, 2.772, -5.4), (s * 0.75, 2.795, 5.2), tr('lens'), bev=0.006, k='diffuser')
     # ---------------- the door: gasket round the gap (the leaves are gone), grab rails, hinge stubs, the step
-    for lo_, hi_ in (((-1.322, 0.895, 3.76), (-1.135, 1.72, 3.8)), ((-1.321, 1.705, 3.91), (-1.136, 2.83, 3.95)),
-                     ((-1.32, 1.70, 3.78), (-1.137, 1.74, 3.93)), ((-1.322, 0.895, 5.1), (-1.135, 2.835, 5.14)),
-                     ((-1.318, 2.8, 3.93), (-1.138, 2.84, 5.12))):
+    for lo_, hi_ in (((-1.322, 1.1, 3.76), (-1.133, 1.72, 3.8)), ((-1.324, 1.705, 3.91), (-1.131, 2.83, 3.95)),
+                     ((-1.318, 1.70, 3.78), (-1.137, 1.74, 3.93)), ((-1.322, 0.895, 5.1), (-1.133, 2.835, 5.14)),
+                     ((-1.316, 2.8, 3.93), (-1.139, 2.84, 5.12))):  # (no two of them, or the windows' rings, share a plane)
         B.box(lo_, hi_, tr('rubber'), k='dgask')
     B.rod((-1.08, 1.095, 3.875), (-1.08, 2.6, 3.875), 0.018, tr('chrome'), seg=8, k='drail')
     B.rod((-1.152, 2.45, 3.875), (-1.08, 2.45, 3.875), 0.012, tr('chrome'), seg=6, k='dbrk')
     B.rod((-1.08, 0.9, 5.2), (-1.08, 2.6, 5.2), 0.018, tr('chrome'), seg=8, k='drail')
     for y in (1.05, 2.45): B.rod((-1.152, y, 5.2), (-1.08, y, 5.2), 0.012, tr('chrome'), seg=6, k='dbrk')
-    for y in (1.25, 2.35): B.box((-1.34, y, 5.1), (-1.298, y + 0.12, 5.16), tr('metal'), k='hinge')
+    for y in (1.25, 2.35): B.box((-1.34, y, 5.104), (-1.298, y + 0.12, 5.16), tr('metal'), k='hinge')
     B.box((-1.8, 0.2, 3.85), (-1.29, 0.45, 5.05), lambda n, c: tr('diamond') if n.y > 0.5 else tr('metal'), bev=0.012, k='step')
     B.box((-1.802, 0.437, 3.86), (-1.74, 0.452, 5.04), tr('nosing'), k='stepnose')
     for z in (4.0, 4.83): B.box((-1.72, 0.14, z), (-1.29, 0.205, z + 0.07), tr('metal'), k='stepbr')
@@ -889,10 +941,10 @@ def build_transitbus():
         pts = [(zc - du * 0.01, yc - dv * 0.01), (zc + du * 0.14, yc - dv * 0.01), (zc + du * 0.02, yc + dv * 0.09)]
         B.add(xprism(B.nm('shard'), pts, s * 1.215 - 0.005, s * 1.215 + 0.005), tr('glassw'))
     # ---------------- wheels: steel discs, singles in front, duals behind (in the tyre boxes, tucked under the skirts)
-    rr = RW / math.cos(math.pi / 16)
+    rr = RW / math.cos(math.pi / 14)
     for s in (1, -1):
         for az, w, dual in ((AF, 0.3, 0.0), (AR, 0.165, 0.185)):
-            o = T.wheel_mesh(B.nm('wheel'), rr, w, 'truck', trim, seg=16, dual=dual, side=s)
+            o = T.wheel_mesh(B.nm('wheel'), rr, w, 'truck', trim, seg=14, dual=dual, side=s)
             o.location = gv(s * (1.27 - w / 2), RW, az)
             B.keep(o)
     # ---------------- far LOD: the closed body with its window band painted on, the roof, the wheels
