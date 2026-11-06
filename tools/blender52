@@ -1,0 +1,32 @@
+#!/bin/bash
+# headless Blender 5.2 LTS (pip bpy in /opt/bpy52), callable like the blender binary:
+#   blender52 [-b] [file.blend] [--factory-startup] [--python-exit-code N] (-P script.py | --python-expr CODE) [-- args]
+#   blender52 script.py [args]      (shortcut)
+# set BLENDER_EXE=blender52 for tools that look for a blender binary
+exec /opt/bpy52/bin/python - "$@" <<'PY'
+import sys, runpy
+argv = sys.argv[1:]
+blend = script = expr = None; code = 1; rest = []
+if argv and argv[0].endswith('.py'): script, rest = argv[0], argv[1:]
+else:
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if a == '--': rest = argv[i + 1:]; break
+        if a in ('-P', '--python'): script = argv[i + 1]; i += 2; continue
+        if a == '--python-expr': expr = argv[i + 1]; i += 2; continue
+        if a == '--python-exit-code': code = int(argv[i + 1]); i += 2; continue
+        if a.endswith('.blend'): blend = a
+        elif a == '--version': import bpy; print('Blender', bpy.app.version_string); sys.exit(0)
+        i += 1  # -b, --background, --factory-startup, etc. are implied
+import bpy
+if blend: bpy.ops.wm.open_mainfile(filepath=blend)
+try:
+    if script:
+        sys.argv = ['blender', '--', *rest]  # scripts read args after '--'
+        runpy.run_path(script, run_name='__main__')
+    elif expr: exec(expr, {'__name__': '__main__'})
+except SystemExit as e: sys.exit(e.code)
+except Exception:
+    import traceback; traceback.print_exc(); sys.exit(code)
+PY

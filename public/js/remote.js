@@ -451,6 +451,8 @@ export class Remote {
     }
     const tw = now < this.twitchUntil;
     ch.head.rotation.x = this.pitch * 0.5;
+    const cg = (now - (this.coughT || -1e9)) / 1000; // coughing: three hacking jerks forward, fading out
+    if (cg >= 0 && cg < 1) ch.head.rotation.x += Math.abs(Math.sin(cg * Math.PI * 3)) * (1 - cg) * 0.7;
     ch.head.rotation.y = tw && this.twitch === 'head' ? 1.4 : 0;
     ch.head.rotation.z = ch.jank.tilt + (tw && this.twitch === 'head' ? 0.6 : 0);
     if (tw && this.twitch === 'arm') ch.armL.rotation.z = 1.8; else ch.armL.rotation.z = 0;

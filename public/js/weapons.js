@@ -17,6 +17,7 @@ import { hud } from './hud.js';
 import { tracerColor, emitSkinFx } from './skins.js';
 import { ANIMS, sample, sampleCh, eventsBetween, inspectFor, drawFor } from './anim.js';
 import { newTwirl, resetTwirl, twirling, spin, settle, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
+import { partsShot, stepParts } from './glbkit.js';
 import { weaponIcon, clearIcons, itemIcon } from './icons.js';
 import { tickScalesVM } from './scales.js';
 import { PARRY } from '/shared/weapons.js';
@@ -230,7 +231,8 @@ function adsPose(id, m) {
   if (adsCache.has(key)) return adsCache.get(key);
   let pose;
   const sg = g.userData.sight;
-  if (sg) pose = [0, -sg.y * s, -EYE_RELIEF - sg.z * s]; // sight line exactly through the middle
+  if (g.userData.adsPose) pose = g.userData.adsPose.slice(); // a Blender model with no sights says where it sits while aiming
+  else if (sg) pose = [0, -sg.y * s, -EYE_RELIEF - sg.z * s]; // sight line exactly through the middle
   else {
     // no sights: keep the whole thing under (and a bit right of) the middle of the screen.
     // measured in the gun's own space (no wrap, viewmodel root or scale), so * s below is the only scaling
@@ -766,6 +768,7 @@ function fireHitscan(id, now) {
   if (id === 'shotgun') W.cycle = { name: 'pump_shotgun', t: 0.22 };
   if (id === 'sniper' || id === 'scythe_rifle') W.cycle = { name: 'bolt_sniper', t: 0.32 };
   if (w.fanHammer) revolverShot(w, now);
+  if (models[id]) partsShot(models[id].g); // Blender guns: turn the cylinder, drop the hammer
   if (id === 'sniper' || id === 'shotgun') G.shake = Math.max(G.shake, 0.6);
   sfx.gun(id, null, id === 'redline' ? redlineK() : 0);
   if (w.mag && W.ammo[id] <= 0) reload();
@@ -924,11 +927,19 @@ function resolveSwing(id) {
   }
 }
 
+// a cough: a burst of smoke billows out in front of your face (no fire), thickening as it spreads. others see it too
+export function coughCloud(o, d) {
+  for (let i = 0; i <= 14; i++) {
+    const t = i / 14, k = 0.45 + t * 2.9;
+    fx.smoke([o[0] + d[0] * k, o[1] - 0.12 + d[1] * k + t * 0.25, o[2] + d[2] * k], 2 + Math.round(t * 3), 0.05 + t * 0.45);
+  }
+  fx.spray([o[0] + d[0] * 0.6, o[1] - 0.1 + d[1] * 0.6, o[2] + d[2] * 0.6], 14, [0xd8d8d8, 0xa8a8a8, 0x8a8a8a], 3, 1.1, 0.32, -0.6, 1.6);
+}
 function cough() {
   net.send({ t: 'cough' });
   sfx.cough();
   hud.msg('*cough cough*', 1.2);
-  fx.smoke(eye(), 25, 0.4);
+  coughCloud(eye(), look());
   W.charge = 0;
   W.coughLock = true;
   G.shake = Math.max(G.shake, 0.5);
@@ -964,6 +975,7 @@ export function fireUp() {
     W.draw = 0;
   }
   if (W.cur === 'cig') {
+    if (W.charge > WEAPONS.cig.maxCharge) { cough(); W.coughLock = false; return; } // let go in the TOO MUCH zone: you cough smoke instead of breathing fire
     if (W.charge > 0.12) {
       W.exhale = Math.min(W.charge, WEAPONS.cig.maxCharge) * WEAPONS.cig.exhaleMul;
       W.tick = 0;
@@ -1387,6 +1399,7 @@ export function updateWeapons(dt, now) {
   if (W.inspectSpin > 0) { W.inspectSpin = Math.max(0, W.inspectSpin - dt * 0.8); if (m.g.userData.barrels) m.g.userData.barrels.rotation.z += W.inspectSpin * dt * 30; }
   m.wrap.scale.setScalar(scale);
   if (m.g.userData.barrels) m.g.userData.barrels.rotation.z += W.spin * dt * 40;
+  stepParts(m.g, dt, an, at); // Blender guns: rack the pump, settle the cylinder + hammer, cycle the bolt
   if (blowing || (spinning && W.spin >= 1 && W.held)) { px += (Math.random() - 0.5) * 0.008; py += (Math.random() - 0.5) * 0.008; }
   if (id === 'shredder') shredderVM(m, dt, now, (a, b, c, d, e, f) => { px += a; py += b; pz += c; rx += d; ry += e; rz += f; });
   m.wrap.visible = !(id === 'slipper' && W.slipperOut) && !W.scoped && !ME.dashing;

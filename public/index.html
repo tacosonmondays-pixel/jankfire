@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>JANKFIRE</title>
 <link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/ui.css">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#ff4fd8">
 <link rel="icon" href="/icons/icon-192.png">
@@ -69,34 +70,63 @@
 </div>
 
 <div id="menu">
-  <!-- main -->
-  <div class="screen panel" id="scr-main">
-    <div id="acctBar"></div>
-    <h1>JANKFIRE</h1>
-    <div class="sub">low quality shooter. infinite momentum. bad decisions.</div>
-    <label class="namerow" id="nameRow">name <input id="name" maxlength="16" placeholder="guest name" autocomplete="off"></label>
-    <div class="modes">
-      <button class="big mode" data-mode="ffa"><b>PLAY</b><span>online with real people</span></button>
-      <button class="big mode" data-go="setup"><b>BOTS</b><span>you vs bots</span></button>
+  <!-- main (home) -->
+  <div class="screen home" id="scr-main">
+    <div class="home-frame" id="homeFrame"></div>
+    <div class="home-top">
+      <div id="acctBar"></div>
+    </div>
+    <div class="home-event" id="homeEvent"></div>
+    <div class="home-logo">
+      <h1 class="logo"><span>JANK</span><span>FIRE</span></h1>
+      <div class="sub">low quality shooter. infinite momentum. bad decisions.</div>
+    </div>
+    <nav class="home-left">
+      <button class="hlink" data-go="guide"><i>?</i>GUIDE</button>
+      <button class="hlink" data-go="loadout"><i>&#9776;</i>LOADOUT</button>
+      <button class="hlink" data-go="cosmetics"><i>&#9733;</i>COSMETICS</button>
+      <button class="hlink" data-go="crates" id="cratesBtn"><span id="cratesLbl">CONTAINERS</span></button>
+      <button class="hlink" data-go="leaders"><i>#</i>LEADERBOARD</button>
+      <button class="hlink" data-go="settings"><i>&#9881;</i>SETTINGS</button>
+      <button class="hlink hidden" id="installBtn">INSTALL APP</button>
+    </nav>
+    <div class="home-hero">
+      <div class="hero-stage"><div id="heroSlot"></div></div>
+      <div class="hero-under">
+        <button class="toy" data-go="character">CUSTOMIZE</button>
+        <button class="hero-gun" id="heroGun" data-go="loadout"></button>
+      </div>
+      <label class="namerow" id="nameRow">name <input id="name" maxlength="16" placeholder="guest name" autocomplete="off"></label>
+    </div>
+    <div class="home-right">
+      <button class="big mode play" data-mode="ffa"><b>QUICK MATCH</b><span>online with real people</span></button>
+      <button class="big mode" data-go="setup"><b>BOTS</b><span>you vs bots, any mode, any map</span></button>
       <button class="big mode" data-mode="coop"><b>COOP</b><span>friends vs waves of bots</span></button>
       <button class="big mode" data-mode="training"><b>TRAINING</b><span>dummies + infinite ammo</span></button>
+      <div class="hidden" id="desktopRow">
+        <button class="big mode" id="dChange"><b>HOST / JOIN</b><span>change server, host on this PC</span></button>
+        <div class="drow"><button class="mid" id="dFull">FULLSCREEN</button><button class="mid danger" id="dQuit">QUIT GAME</button></div>
+      </div>
     </div>
-    <div class="row">
-      <button class="mid" data-go="loadout">LOADOUT</button>
-      <button class="mid" data-go="character">CHARACTER</button>
-      <button class="mid" data-go="cosmetics">COSMETICS</button>
-      <button class="mid" data-go="crates" id="cratesBtn">CONTAINERS</button>
-      <button class="mid" data-go="leaders">LEADERBOARD</button>
-      <button class="mid" data-go="settings">SETTINGS</button>
-      <button class="mid hidden" id="installBtn">INSTALL APP</button>
-    </div>
-    <div class="row hidden" id="desktopRow">
-      <button class="mid" id="dChange">CHANGE SERVER</button>
-      <button class="mid" id="dFull">FULLSCREEN</button>
-      <button class="mid danger" id="dQuit">QUIT GAME</button>
-    </div>
+    <div class="home-strip" id="homeStrip"><i class="live"></i><span class="seg">asking the server what's on...</span></div>
     <div id="status"></div>
-    <div class="hint">WASD move · SHIFT run · C / CTRL crouch (slide when fast) · SPACE jump (hold to bhop, jump while grappling to launch) · RIGHT CLICK aim · E grapple · R reload · F inspect · 1 2 3 switch · G use item · 5 6 7 use killstreaks · Z spray · V/X scythe · B menu · TAB scores · T chat</div>
+  </div>
+
+  <!-- guide: controls + how it works -->
+  <div class="screen panel hidden" id="scr-guide">
+    <h2>GUIDE</h2>
+    <div class="note">welcome to your new job. read this or don't. we can't make you.</div>
+    <div class="guide">
+      <div><h3>moving</h3><p><b>WASD</b> move · <b>SHIFT</b> run · <b>C / CTRL</b> crouch, slide when fast · <b>SPACE</b> jump (hold to bhop)</p>
+        <p><b>E</b> grapple · jump while grappling to launch. momentum is infinite. use it irresponsibly.</p></div>
+      <div><h3>fighting</h3><p><b>LEFT CLICK</b> shoot · <b>RIGHT CLICK</b> aim · <b>R</b> reload · <b>F</b> inspect · <b>1 2 3</b> switch · <b>Q</b> last weapon</p>
+        <p><b>G</b> item · <b>5 6 7</b> killstreaks · <b>V / X</b> scythe · <b>Z</b> spray</p></div>
+      <div><h3>everything else</h3><p><b>B</b> menu · <b>TAB</b> scores · <b>T</b> chat</p>
+        <p>at the end of a match everyone votes: <b>the mode first, then the map</b>. click a card or press <b>1-4</b>. humans decide, bots only break ties.</p>
+        <p>sick of this mode? type <b>/skip</b> in chat. more than half of the players in the room have to agree (alone, it's instant). you get 30 seconds, and a skipped match pays no containers.</p></div>
+    </div>
+    <div class="hint">WASD move · SHIFT run · C / CTRL crouch (slide when fast) · SPACE jump (hold to bhop, jump while grappling to launch) · RIGHT CLICK aim · E grapple · R reload · F inspect · 1 2 3 switch · G use item · 5 6 7 use killstreaks · Z spray · V/X scythe · B menu · TAB scores · T chat · /skip in chat votes to skip the match</div>
+    <button class="mid back">BACK</button>
   </div>
 
   <!-- pause (in game) -->

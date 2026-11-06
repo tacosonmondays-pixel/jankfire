@@ -8,6 +8,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { G } from './ctx.js';
 import { marbles } from './marbles.js';
 import { updateBackrooms } from './backrooms.js';
+import { buildProps, hasProp } from './props.js';
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
 export const JANK = [
@@ -182,6 +183,7 @@ function buildMap(scene) {
   const groups = new Map();
   const push = (k, g) => { if (!groups.has(k)) groups.set(k, []); groups.get(k).push(g); };
   for (const b of BOXES) {
+    if (b.pv && hasProp(b.pv)) continue; // a Blender prop is drawn instead (props.js)
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
     const mk = MAT[b.mat] ? b.mat : 'stone';
@@ -218,6 +220,7 @@ function buildMap(scene) {
 function buildChunked(scene, def) {
   const C = def.chunk, groups = new Map();
   for (const b of def.deco ? [...BOXES, ...def.deco] : BOXES) {
+    if (b.pv && hasProp(b.pv)) continue;
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
     const mk = MAT[b.mat] ? b.mat : 'stone';
@@ -346,6 +349,7 @@ export function loadMap(id) {
   marbles.clear();
   resetGrid(BOXES);
   buildMap(G.scene);
+  buildProps(G.scene, MAPS[MAP.id] && MAPS[MAP.id].boxes.props);
   paintSky(MAP.sky);
   G.scene.fog.color.setHex(MAP.sky.fog);
   G.scene.fog.near = MAP.fogNear;
@@ -354,6 +358,13 @@ export function loadMap(id) {
   buildScenery(G.scene, MAPS[MAP.id], MAP.id, voidMesh);
   mapLight(MAPS[MAP.id]);
   for (const o of skyStuff) o.visible = !(MAPS[MAP.id] && MAPS[MAP.id].sealed);
+}
+
+// models finished loading after the map was built: redraw the boxes + props (no gameplay state touched)
+export function refreshMapVisuals() {
+  if (!MAP.id || !G.scene || !MAT) return;
+  buildMap(G.scene);
+  buildProps(G.scene, MAPS[MAP.id] && MAPS[MAP.id].boxes.props);
 }
 
 export function resize() {

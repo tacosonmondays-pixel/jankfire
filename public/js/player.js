@@ -2,7 +2,7 @@
 import { movePlayer, raycast, rayBox, PH } from '/shared/physics.js';
 import { BOXES } from '/shared/map.js';
 import { HOOK, SLIP_TIME } from '/shared/weapons.js';
-import { ropeStep, ropeJump, ROPE } from '/shared/hookphys.js';
+import { ROPE, classicRopeStep, classicRopeJump } from '/shared/hookphys.js';
 import { G } from './ctx.js';
 import { sfx } from './audio.js';
 import { hud } from './hud.js';
@@ -84,7 +84,7 @@ export function applyKb(v) {
   if (v[1] > 0.5 && ME.onGround) { ME.onGround = false; ME.pos[1] += 0.02; }
 }
 
-export function slip(now) {
+export function slip(now, k) { // k: what you slipped on ('marbles', or a banana)
   ME.slipUntil = now + SLIP_TIME * 1000;
   const d = look();
   ME.vel[0] += d[0] * 6; ME.vel[2] += d[2] * 6;
@@ -92,7 +92,8 @@ export function slip(now) {
   ME.onGround = false;
   ME.hook = null;
   sfx.whoops();
-  hud.msg('WHOOPS!', 1.4, 'slip');
+  if (k === 'marbles') sfx.clatter();
+  hud.msg(k === 'marbles' ? 'MARBLES!' : 'WHOOPS!', 1.4, 'slip');
 }
 
 function accelerate(v, wx, wz, wishSpeed, accel, dt) {
@@ -149,8 +150,8 @@ export function releaseHook() { ME.hook = null; }
 function hookStep(dt) {
   const a = hookPoint();
   if (!a) { ME.hook = null; return; }
-  // pendulum rope, same as the bots': reels in at a steady rate, keeps your swing, soft instead of snapping
-  ropeStep(ME.hook, a, ME.pos, ME.vel, dt, C.grav, G.hookMul || 1); // (spoons & grapples pulls harder)
+  // the classic grapple (same as the bots'): a hard pull toward the point and a rope that never lets you drift away
+  classicRopeStep(ME.hook, a, ME.pos, ME.vel, dt, C.grav, G.hookMul || 1); // (spoons & grapples pulls harder)
   feel.lift = 1;
 }
 
@@ -217,15 +218,15 @@ export function stepPlayer(dt, inp, now) {
   let wx = -s * fw + c * st, wz = -c * fw - s * st;
   const wl = Math.hypot(wx, wz);
   if (wl) { wx /= wl; wz /= wl; }
-  // grapple jump: let go and get flung along your swing plus a modest hop, added on top of your momentum.
-  // timing counts a little: on the upswing, swinging the way you look, you get more
+  // grapple jump (classic): let go, keep (and boost) your momentum, get launched up
   if (inp.jumpPressed && ME.hook) {
     ME.hook = null;
-    const q = ropeJump(v, look());
+    classicRopeJump(v);
     ME.onGround = false;
     inp.jumpPressed = false;
-    sfx.ropeJump(q);
-    feel.kick = 0.6 + q * 0.4;
+    sfx.ropeJump(1);
+    feel.kick = 1;
+    hud.msg('GRAPPLE JUMP', 0.6);
   }
   if (inp.jumpPressed) ME.jumpBuf = 0.22;
   const wantJump = (ME.jumpBuf > 0 || inp.jump) && !slipping;

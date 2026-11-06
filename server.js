@@ -14,12 +14,15 @@ import { Accounts, levelOf } from './server/accounts.js';
 import { ownedSkin, ownedKill, ownedGrapple, randomContainer, CONTAINERS, COSMETICS } from './shared/cosmetics.js';
 import { owns, SPRAY } from './shared/cosmetics.js';
 import { validLook, achievementsFrom, ACHIEVEMENTS } from './shared/looks.js';
-import { ROYAL, ROYAL_FEATS } from './shared/looks.js'; // Sniper Royalty
+import { ROYAL, ROYAL_FEATS, featOn } from './shared/looks.js'; // Sniper Royalty
 import { achInv, wrapMode, WRAP_MODES } from './shared/cosmetics.js'; // achievement-locked skins (the Golden Sniper), wrap modes
 import { STAT_KEYS } from './server/store.js';
 import { soapAt, trapBoxes, trapPreroll } from './shared/wand.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, canDefuse, LADDER, GUNGAME, INFECT } from './shared/modes.js';
+import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, eventGame } from './shared/vote.js';
+import { matchReset, matchKill, matchSummary } from './server/match.js';
+import { SKIP, isSkipCmd, skipCommand, skipTick, skipPeople, skipInfo } from './server/skip.js';
 import { WEAPONS, SLOTS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, SLEEP_TIME, validStreaks, fireRate } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
 import { verdict } from './shared/verdict.js';
@@ -30,12 +33,13 @@ import { epicCheck, epicCamMs, EPIC } from './shared/epic.js';
 import { holeDrag, steer } from './shared/physics.js';
 import { steer as steerTo } from './shared/homing.js'; // homing slippers (steerTo(v, from, to, max)); the duck's steer(v, dir, max) is physics.js's
 import { PARRY } from './shared/weapons.js';
-import { ropeStep, ropeJump, ROPE } from './shared/hookphys.js';
+import { ROPE, classicRopeStep, classicRopeJump } from './shared/hookphys.js';
 import { query as boxQuery } from './shared/physics.js';
 import { navSteer } from './shared/nav.js';
 import { DUCKRAIN } from './shared/modes.js';
 import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
 import { installEcon } from './server/econ.js';
+import { MSLIP, onPatch, patchPreroll } from './shared/marbles.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -78,6 +82,12 @@ function serve(req, res) {
     return;
   }
   if (url === '/health') { res.writeHead(200).end('ok ' + humans()); return; }
+  if (url === '/now') { // main menu "now playing" strip: the online room's mode + map, who's around
+    const r = rooms.get('ffa');
+    res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-cache' });
+    res.end(JSON.stringify({ online: humans(), room: r ? r.humans().length : 0, game: r ? r.game : process.env.JF_GAME || 'dm', map: r ? r.cfg.map : 'islands', region: process.env.JF_REGION || process.env.RENDER_REGION || '', ev: eventGame() }));
+    return;
+  }
   if (url.startsWith('/api/')) { accounts.handle(req, res, url); return; }
   for (const [prefix, dir] of ROUTES) {
     if (!url.startsWith(prefix)) continue;
@@ -198,6 +208,7 @@ function onBoxTop(pos, boxes) {
 if (process.env.JF_BOMB_WINS) BOMB.wins = Number(process.env.JF_BOMB_WINS) || BOMB.wins;
 if (process.env.JF_BOMB_FUSE) BOMB.fuse = Number(process.env.JF_BOMB_FUSE) || BOMB.fuse;
 if (process.env.JF_BOMB_ROUND) BOMB.roundTime = Number(process.env.JF_BOMB_ROUND) || BOMB.roundTime;
+if (process.env.JF_MSLIP_LIFE) MSLIP.life = Number(process.env.JF_MSLIP_LIFE) || MSLIP.life; // test knob: marble patches that outlast slow test browsers
 if (process.env.JF_TARGET) for (const t of Object.values(TARGETS)) for (const k of Object.keys(t)) t[k] = Number(process.env.JF_TARGET);
 // test knobs for gun game (everyone starts on a later rung) and infection (round length, patient zero delay, in seconds)
 const GG_START = Math.max(0, Math.min(LADDER.length - 1, Math.floor(Number(process.env.JF_GG_START) || 0)));
@@ -209,6 +220,9 @@ if (process.env.JF_INF_HP) INFECT.hp = Number(process.env.JF_INF_HP) || INFECT.h
 if (process.env.JF_LIVES) GAMES.oitc.lives = Number(process.env.JF_LIVES) || GAMES.oitc.lives;
 if (process.env.JF_ROUND_TIME) for (const r of Object.values(ROUND)) r.time = Number(process.env.JF_ROUND_TIME) || r.time;
 if (process.env.JF_DUCKS) DUCKRAIN.n = DUCKRAIN.n.map((x) => x * (Number(process.env.JF_DUCKS) || 1));
+// /skip vote: how long it stays open and the cooldown after one fails, in ms (test knobs)
+if (process.env.JF_SKIP_WINDOW) SKIP.window = Number(process.env.JF_SKIP_WINDOW) || SKIP.window;
+if (process.env.JF_SKIP_COOL) SKIP.cooldown = Number(process.env.JF_SKIP_COOL) || SKIP.cooldown;
 function randomSkins() {
   const out = {};
   for (const id of Object.keys(WEAPONS)) if (Math.random() < 0.6) out[id] = [pick(SKIN_F), pick(SKIN_H), pick(SKIN_E), id === 'knife' ? pick(['default', 'knife_karambit', 'knife_butterfly', 'knife_switch', 'knife_cleaver']) : 'default', pick(WRAP_MODES)];
@@ -229,6 +243,7 @@ REC_FX.add('verdict'); // scales of justice: highlights show the ruling
 const REC_MS = 12000;
 for (const k of ['trap', 'trapx']) REC_T.add(k); // bubble wand: replays draw the giant soap bubble too
 for (const t of ['parry', 'guard']) REC_T.add(t); // katana parries show up in killcams too
+for (const t of ['mpatch', 'mslip', 'mpx']) REC_T.add(t); // marbles on the floor too
 function newDeck() {
   const d = [];
   for (const s of ['h', 's', 'c', 'd']) for (let r = 1; r <= 13; r++) d.push(s + r);
@@ -317,6 +332,7 @@ class Room {
     this.smokes = new Map(); this.nextSmoke = 1; // smoke clouds: bots can't see through them, late joiners get them
     this.oitcOut = new Set(); // one in the chamber: who ran out of lives this round (by account or name)
     if (mode === 'ffa' && GAMES[process.env.JF_GAME]) this.game = process.env.JF_GAME; // test knob: the online room starts in this mode
+    this.mpatches = new Map(); this.nextMp = 1; // marble shotgun: marbles on the floor you slip on
     this.cfg = { map: mode === 'training' ? 'range' : mode === 'coop' ? 'warehouse' : 'islands', hip: 'normal', bots: 5, diff: 'normal' };
     this.wave = 0; this.toSpawn = 0; this.interUntil = 0;
     this.round = ROUND[mode] ? { target: ROUND[mode].kills, ends: now() + ROUND[mode].time * 1000, over: false, next: 0 } : null;
@@ -332,6 +348,7 @@ class Room {
     for (const p of this.players.values()) if (p.id !== exceptId && p.ws && p.ws.readyState === 1) p.ws.send(s);
   }
   humans() { return [...this.players.values()].filter((p) => !p.isBot); }
+  sendTo(p, m) { send(p, m); } // for server/ modules
   teamsOn() { return (this.mode === 'ffa' || this.mode === 'bots') && !!GAMES[this.game].teams; }
   fighters() { return [...this.players.values()].filter((p) => !(p.isBot && p.ai && p.ai.dummy) && !p.watch); }
   // even teams, humans spread first
@@ -407,13 +424,15 @@ class Room {
     const used = new Set([...this.players.values()].map((p) => p.color));
     const color = opts.color || COLORS.find((c) => !used.has(c)) || COLORS[id % COLORS.length];
     const pos = opts.pos ? opts.pos.slice() : this.pickSpawn(opts.isBot);
-    return {
+    const p = {
       id, ws: opts.ws || null, room: this, name, color, pos, vel: [0, 0, 0], yaw: Math.random() * 6, pitch: 0,
       w: opts.w || 'ar', hp: 100, alive: true, respawnAt: 0, kills: 0, deaths: 0, seq: 1, spawnT: now(), reverseUntil: 0,
       lastAttacker: 0, lastAttackW: null, lastAttackT: 0, lastFire: {}, pair: new Map(), g: null, f: 0,
       chatT: 0, coughT: 0, cfgT: 0, skinT: 0, skins: opts.skins || {}, isBot: !!opts.isBot, ai: opts.ai || null,
       onGround: false, slipUntil: 0, acct: opts.acct || null, level: opts.level || 0,
     };
+    matchReset(p); // this match's report starts now, even for someone joining mid-match
+    return p;
   }
   info(p) { return { id: p.id, name: p.name, color: p.color, skins: p.skins, bot: p.isBot, level: p.level, look: p.look, card: p.card || '', team: p.team || 0, grap: p.grap || 'rope' }; }
 
@@ -457,9 +476,11 @@ class Room {
       smokes: [...this.smokes.values()].map((s) => [...s.p, Math.round(s.until - now())]), ic: this.icInfo(p),
       kat: [...this.players.values()].filter((o) => o.kat).map((o) => [o.id, o.kat]),
       game: this.game, team: p.team || 0, tags: [...this.tags.values()].map((g) => ({ id: g.id, p: g.p, team: g.team })), vote: this.voteInfo(),
-      sprays: this.sprayList(),
+      sprays: this.sprayList(), skip: skipInfo(this),
+      mpatch: this.patchList(),
     });
     this.broadcast({ t: 'pj', ...this.info(p) }, p.id);
+    skipPeople(this); // one more human: a skip vote needs more
     send(p, { t: 'tip', tip: p.tip });
     for (const t of this.players.values()) if (t.trap) send(p, { t: 'trap', ...this.trapInfo(t) }); // anyone already floating in a soap bubble
     send(p, { t: 'court', s: [...this.players.values()].filter((o) => o.streak > 0).map((o) => [o.id, o.streak]) }); // scales of justice: streaks so far
@@ -484,8 +505,9 @@ class Room {
     // whatever they threw goes with them (with no owner it would ignore teams and bubbles); their holes and gas go inert
     for (const pr of this.projectiles.values()) if (pr.o === p.id) this.removeProj(pr);
     this.broadcast({ t: 'pl', id: p.id });
-    if (this.vote && this.vote.votes.delete(p.id)) this.broadcast({ t: 'votes', counts: this.voteInfo().counts });
+    if (this.vote) { if (this.vote.votes.delete(p.id)) this.broadcast({ t: 'votes', ...this.voteCounts() }); this.voteHurry(); } // whoever's left may all have voted now
     if (this.livesOn) this.oitcList(); // so 'N left' drops them
+    if (!p.isBot) skipPeople(this); // a skip vote's majority moved
     if (!p.isBot && (this.mode === 'ffa' || this.mode === 'coop')) this.broadcast({ t: 'chat', id: 0, m: `${p.name} left` });
     if (!this.humans().length) rooms.delete(this.id);
   }
@@ -846,6 +868,7 @@ class Room {
       }
       for (const [victim, h] of hits) this.applyHitscan(b, victim, b.w, h.n, h.h, h.d, 0.7);
       this.broadcast({ t: 'fx', k: 'shot', w: b.w, id: b.id, s: segs.slice(0, 12) });
+      if (w.marbles) this.marblePatch(b, segs.slice(0, 12)); // bots' marbles trip people too
     } else if (w.kind === 'proj') {
       this.spawnProj(b, b.w, o, spreadDir(aim, D.err));
     } else if (w.kind === 'melee') { // zombie claws and the gun game's melee rungs: botThink only gets here in reach
@@ -893,15 +916,14 @@ class Room {
       }
     }
     v[1] -= 26 * dt;
-    // on the rope: the same pendulum rope as a player's grapple (shared/hookphys.js), so bots swing smoothly too.
+    // on the rope: the same classic grapple as a player's (shared/hookphys.js).
     // let go near the point (or when it's been a while) with a grapple jump
     const hk = b.ai && b.ai.hook;
     if (hk) {
-      ropeStep(hk, hk.point, b.pos, v, dt, 26, this.hookMul); // (spoons & grapples pulls harder)
+      classicRopeStep(hk, hk.point, b.pos, v, dt, 26, this.hookMul); // (spoons & grapples pulls harder)
       b.ropeLift = 1;
       if (hk.dist < 4.5 || n > hk.until || slipping) {
-        // grapple jump the way they're facing, a bit up, and never flung into the surface they're hooked on
-        if (!slipping) { const cp = Math.cos(b.pitch); ropeJump(v, [-Math.sin(b.yaw) * cp, Math.max(0.3, Math.sin(b.pitch)), -Math.cos(b.yaw) * cp], hk.n); }
+        if (!slipping) classicRopeJump(v); // hook jump
         b.ai.hook = null; b.g = null; b.ai.route = null; // landed somewhere new: plan again from there
       }
       b.onGround = false;
@@ -1160,10 +1182,10 @@ class Room {
     }
     send(t, { t: 'kb', v: v.map(r2), w });
   }
-  slip(t) {
+  slip(t, k) {
     t.knockT = now(); // sliding on a banana isn't moving either
     if (t.isBot) { t.slipUntil = now() + 1700; t.vel[1] = Math.max(t.vel[1], 6.5); t.onGround = false; return; }
-    send(t, { t: 'slip' });
+    send(t, k ? { t: 'slip', k } : { t: 'slip' }); // k: what you slipped on (the client says MARBLES! for marbles)
   }
   friendly(a, b) {
     if (!a || !b || a === b) return false;
@@ -1287,6 +1309,7 @@ class Room {
     if (killer && killer !== t) {
       killer.kills++;
       killer.streak = (killer.streak || 0) + 1;
+      if (this.round && !this.round.over) matchKill(this, killer, t, via || w);
       if (killer.lastKiller === t.id) killer.lastKiller = 0; // revenge served (scales of justice)
       t.lastKiller = killer.id;
       if (!killer.isBot && this.mode !== 'training' && !this.modeWeapon(killer) && !(this.chaosKit && this.chaosKit.noStreaks) && this.streaksOn()) { // no killstreaks in gun game, as a zombie or in a chaos kit
@@ -1424,6 +1447,9 @@ class Room {
     const frames = this.rec.frames.filter((f) => f.s >= t0 && f.s <= t1 && f.odd);
     const ev = this.rec.ev.filter((e) => e.s >= t0 && e.s <= t1);
     ev.unshift(...trapPreroll(this.rec.ev, t0)); // someone already floating in a soap bubble when the clip starts
+    ev.unshift(...patchPreroll(this.rec.ev, t0)); // marbles already on the floor
+    const had = new Set(ev.map((e) => e.m.t === 'mpatch' && e.m.id)); // still down from before the recording kept: from the live patch
+    for (const pt of this.mpatches.values()) if (pt.born < t0 && !had.has(pt.id) && pt.until - t0 > 300) ev.unshift({ s: t0, m: { t: 'mpatch', ...this.patchInfo(pt), left: pt.until - t0 } });
     const info = {};
     for (const f of frames) for (const e of f.p) if (!info[e[0]]) {
       const pl = this.players.get(e[0]);
@@ -1572,8 +1598,8 @@ class Room {
     if (p.isBot || this.mode === 'training' || (t.isBot && t.ai && t.ai.dummy)) return;
     const n = now();
     if (n - (t.royalMovedT ?? n) >= ROYAL.still) return; // epic's tracker (trackMoves), Royalty's own thresholds
-    // scoped and unscoped at once is a lie: neither counts
-    const bits = (dist3(p.pos, t.pos) >= ROYAL.long ? RB.long : 0) | (qs && !ns ? RB.quick : 0) | (ns && !qs ? RB.noscope : 0) | (hs ? RB.head : 0);
+    // a quick-scope or a no-scope ticks the trick-shot box. scoped and unscoped at once is a lie: that doesn't count
+    const bits = (dist3(p.pos, t.pos) >= ROYAL.long ? RB.long : 0) | (qs !== ns ? RB.trick : 0) | (hs ? RB.head : 0);
     if (bits) royal(p, bits);
   }
 
@@ -1798,6 +1824,7 @@ class Room {
       if (n - (p.lastFire.fx || 0) < iv) return;
       p.lastFire.fx = n;
     }
+    if (w.marbles && p.w === m.w) this.marblePatch(p, segs(m.s)); // marbles on the floor (the server works out where)
     if (w.kind === 'hitscan') { this.broadcast({ t: 'fx', k: 'shot', w: m.w, id: p.id, s: segs(m.s), fan: fan ? 1 : undefined }, p.id); return; } // fan: everyone sees the fanning spin
     if (w.kind === 'melee') { this.broadcast({ t: 'fx', k: 'swing', w: m.w, id: p.id, a: o.map(r2), h: m.heavy === 1 ? 1 : undefined }, p.id); return; }
     const d = norm(vec3(m.d));
@@ -2279,7 +2306,7 @@ class Room {
   duckFly(pr, owner, dt) {
     if (!owner && !pr.sky) return false; // a thrower who left: it just flies
     const w = WEAPONS.duck;
-    // a sky duck (duck rain) belongs to nobody: it homes in on anyone below it, and a shield bubble stops it from outside
+    // a sky duck (duck rain) belongs to nobody: it sticks to whoever it lands on, and a shield bubble stops it from outside
     const skip = owner ? (t) => t.id === pr.o || this.friendly(owner, t) || this.bubbleBlocks(owner, t) : (t) => this.bubbleBlocks(null, t, pr.p);
     let stuck = pr.lp ? this.sweep(pr.lp, pr.p, pr.r + 0.1, skip)[0] : null;
     if (!stuck) for (const t of this.players.values()) { // sat still inside someone (sweep needs movement)
@@ -2295,6 +2322,7 @@ class Room {
       return true;
     }
     pr.lp = pr.p.slice();
+    if (pr.sky) return false; // duck rain falls straight down (no homing, so you can dodge it); only a thrown duck homes in
     // homing: nearest enemy within homeR, inside a 60 degree cone of where it's flying, in plain view
     const sp = Math.hypot(pr.v[0], pr.v[1], pr.v[2]);
     let tgt = null, bd = w.homeR;
@@ -2356,6 +2384,114 @@ class Room {
     }
   }
 
+  // ---------------------------------------------------------- marbles on the floor (Marble Shotgun)
+  // a marble shot leaves a patch where its marbles settle, and anyone who runs over it slips. where: from the shooter's
+  // eye (a position the server tracks) along the pellet directions, with the server's own raycasts to what they hit
+  // and down to the floor. the client's pellet ends only pick the directions and how far (capped at the gun's range).
+  marblePatch(p, ss) {
+    const M = MSLIP, w = WEAPONS.marbles, n = now();
+    if (!p.alive || p.trap || this.isBall(p, n) || !Array.isArray(ss) || !ss.length) return;
+    if (n - (p.mpT || 0) < M.cd * 1000) return; // one patch per real shot, however many fire messages come in
+    p.mpT = n;
+    const e = eyeOf(p), pts = [];
+    for (const s of ss) {
+      const d = norm([s[3] - e[0], s[4] - e[1], s[5] - e[2]]);
+      if (!d) continue;
+      const L = Math.min(w.range, Math.hypot(s[3] - e[0], s[4] - e[1], s[5] - e[2]));
+      const h = raycast(e, d, L, this.boxes);
+      // hit the map: drop off that surface. stopped short of it (a player) or flew the whole way: drop from there
+      const a = h ? h.point.map((x, k) => x + h.normal[k] * 0.1 - d[k] * 0.05) : e.map((x, k) => x + d[k] * L);
+      const f = raycast(a, [0, -1, 0], 40, this.boxes);
+      if (f && f.normal[1] === 1) pts.push([a[0], a[1] - f.t, a[2]]); // (nothing below = it fell into the void)
+    }
+    // the biggest bunch that landed together on one floor
+    let best = [];
+    for (const a of pts) {
+      const c = pts.filter((b) => Math.abs(b[1] - a[1]) < 0.5 && Math.hypot(b[0] - a[0], b[2] - a[2]) < 2.5);
+      if (c.length > best.length) best = c;
+    }
+    if (best.length < Math.max(3, ss.length * 0.3)) return; // sprayed all over (or into the sky): no patch
+    let cx = 0, cz = 0;
+    for (const b of best) { cx += b[0] / best.length; cz += b[2] / best.length; }
+    const top = Math.max(...best.map((b) => b[1]));
+    let f = raycast([cx, top + 0.4, cz], [0, -1, 0], 1.4, this.boxes);
+    if (!f || f.normal[1] !== 1) { // the middle is in a pillar the marbles landed round (or over a gap): use the nearest marble
+      const b = best.reduce((m, b) => (Math.hypot(b[0] - cx, b[2] - cz) < Math.hypot(m[0] - cx, m[2] - cz) ? b : m));
+      cx = b[0]; cz = b[2]; f = raycast([cx, top + 0.4, cz], [0, -1, 0], 1.4, this.boxes);
+      if (!f || f.normal[1] !== 1) return;
+    }
+    const y = top + 0.4 - f.t;
+    const rms = Math.sqrt(best.reduce((s, b) => s + (b[0] - cx) ** 2 + (b[2] - cz) ** 2, 0) / best.length);
+    const r = Math.max(M.rMin, Math.min(M.rMax, 0.9 + rms * 1.3));
+    const pt = { // (more marbles in a bigger patch so it doesn't read as a few specks)
+      id: this.nextMp++, c: [r2(cx), r2(y), r2(cz)], r: r2(r),
+      n: Math.round(M.n * Math.min(1, (best.length / ss.length) * 1.4) * Math.max(0.7, Math.min(1.6, (r / 1.6) ** 2))), o: p.id, team: p.team || 0,
+      born: n, until: n + M.life * 1000, map: this.cfg.map,
+    };
+    // caps: your oldest goes first, then the room's oldest
+    const mine = [...this.mpatches.values()].filter((q) => q.o === p.id);
+    while (mine.length >= M.per) this.dropPatch(mine.shift());
+    while (this.mpatches.size >= M.room) this.dropPatch(this.mpatches.values().next().value);
+    this.mpatches.set(pt.id, pt);
+    this.broadcast({ t: 'mpatch', ...this.patchInfo(pt) });
+  }
+  patchInfo(pt) { return { id: pt.id, c: pt.c, r: pt.r, n: pt.n, o: pt.o, left: Math.max(0, pt.until - now()) }; }
+  patchList() { return [...this.mpatches.values()].filter((pt) => pt.map === this.cfg.map).map((pt) => this.patchInfo(pt)); }
+  dropPatch(pt) { if (this.mpatches.delete(pt.id)) this.broadcast({ t: 'mpx', id: pt.id }); }
+  tickMarbles() {
+    if (!this.mpatches.size) return;
+    const n = now();
+    for (const pt of [...this.mpatches.values()]) {
+      if (n > pt.until || pt.map !== this.cfg.map) { this.dropPatch(pt); continue; }
+      if (n - pt.born < MSLIP.land * 1000) continue; // still flying
+      const owner = this.players.get(pt.o) || null;
+      for (const t of this.players.values()) {
+        if (!this.slipsOn(t, pt, owner, n)) continue;
+        this.marbleSlip(t, pt, owner, n);
+        if (!this.mpatches.has(pt.id)) break;
+      }
+    }
+  }
+  // who slips: anyone on it going faster than a careful walk (the shooter too, it's a janky game). not teammates
+  // (like the banana), a wrecking ball, a soap bubble, frozen or dead people, or someone who just slipped
+  slipsOn(t, pt, owner, n) {
+    if (!t.alive || t.trap || this.isBall(t, n) || n < (t.frozenUntil || 0) || n - (t.mslipT || 0) < MSLIP.immune) return false;
+    if (owner ? owner !== t && this.friendly(owner, t) : this.teamsOn() && pt.team && pt.team === t.team) return false; // (the shooter left: their team is still safe)
+    if (!t.isBot && owner !== t && n - t.spawnT < 1200) return false; // spawn protection
+    if (t.isBot && owner === t && n - pt.born < 1500) return false; // a bot's marbles at its own feet: a moment to stop strafing
+    if (t.isBot ? n < t.slipUntil || !t.onGround || (t.ai.dummy && t.ai.dummy.move) : (t.f & FLAGS.SLIP) || Math.abs(t.vel[1]) > 2) return false; // (players: no vertical speed = on the floor)
+    if (!onPatch(pt, t.pos, 0.15) || this.marbleSpeed(t, n) <= this.marbleWalk(t)) return false;
+    const dx = t.pos[0] - pt.c[0], dz = t.pos[2] - pt.c[2], l = Math.hypot(dx, dz);
+    return !(l > 0.05 && raycast([pt.c[0], pt.c[1] + 0.3, pt.c[2]], [dx / l, 0, dz / l], l, this.boxes)); // a wall between you and the marbles
+  }
+  // how fast you're going over the marbles: what you say, or what the snapshots saw over the last 0.3 s if that's more
+  // (so a client can't run across claiming it stands still). a jump of over 1.5 m between snapshots is a teleport, not running
+  marbleSpeed(t, n) {
+    const v = Math.hypot(t.vel[0], t.vel[2]), tr = t.trail;
+    if (t.isBot || !tr || tr.length < 2) return v;
+    let d = 0, t0 = 0;
+    for (let i = 1; i < tr.length; i++) {
+      if (tr[i][0] < n - 300) continue;
+      t0 ||= tr[i - 1][0];
+      const s = Math.hypot(tr[i][1] - tr[i - 1][1], tr[i][3] - tr[i - 1][3]);
+      if (s < 1.5) d += s;
+    }
+    const dt = t0 ? (tr[tr.length - 1][0] - t0) / 1000 : 0;
+    return dt < 0.15 ? v : Math.max(v, (d / dt) * 0.8); // (-20% for network jitter)
+  }
+  // a crouch walk is safe with any weapon out (a fast weapon crouch-walks faster), up to where crouching turns into a slide
+  marbleWalk(t) { return Math.min(MSLIP.slide, Math.max(MSLIP.walk, MSLIP.crouch * ((WEAPONS[t.w] || {}).speedMul || 1) + 1)); }
+  marbleSlip(t, pt, owner, n) {
+    const M = MSLIP;
+    t.mslipT = n;
+    this.slip(t, 'marbles');
+    if (t.isBot) { const hs = Math.hypot(t.vel[0], t.vel[2]) || 1; t.vel[0] += (t.vel[0] / hs) * 4; t.vel[2] += (t.vel[2] / hs) * 4; } // feet out the way they were going
+    if (owner && owner !== t) this.tag(t, owner, 'marbles'); // slip off a ledge = the shooter's kill
+    pt.n = Math.floor(pt.n * M.thin); pt.r = r2(Math.max(M.minR, pt.r * M.thinR)); // the marbles scatter: thinner every time
+    this.broadcast({ t: 'mslip', id: pt.id, by: t.id, n: pt.n, r: pt.r, p: t.pos.map(r2) });
+    if (pt.n < M.minN) this.dropPatch(pt);
+  }
+
   // ---------------------------------------------------------- sprays (Z): one graffiti per player, a new map wipes them
   onSpray(p, m, fresh) {
     const n = now(), at = vec3(m.p), nm = vec3(m.n);
@@ -2410,6 +2546,7 @@ class Room {
       }
       if (GAMES[this.game].mapOk && !GAMES[this.game].mapOk(this.map)) { changes.push(`mode → Deathmatch (no ${GAMES[this.game].name} on this map)`); this.game = 'dm'; this.assignTeams(); }
       if (fresh) this.startRound();
+      else if (this.round && this.round.over) this.resetWorld(); // the end screen is up: respawn on the new map, the vote still picks what's next
       else if (this.bomb) this.newBombRound(true);
       else if (this.livesOn) { this.vote = null; setTimeout(safe('startRound', () => this.startRound()), 50); } // lives can't be patched mid-match
       else this.resetWorld();
@@ -2443,6 +2580,7 @@ class Room {
   resetWorld() {
     this.resetChaos();
     this.projectiles.clear(); this.peels.clear(); this.holes.clear();
+    this.mpatches.clear(); // clients wipe theirs on 'clear'
     this.broadcast({ t: 'clear' });
     this.clearTags();
     for (const b of this.bubbles.values()) this.broadcast({ t: 'bubx', id: b.id });
@@ -2492,10 +2630,16 @@ class Room {
       case 'slam': this.onSlam(p, m); break;
       case 'fire': this.onFire(p, m); break;
       case 'cough':
-        if (p.alive && now() - p.coughT > 800) { p.coughT = now(); this.damage(p, 12, null, 'cough'); }
+        if (p.alive && now() - p.coughT > 800) {
+          p.coughT = now();
+          const cp = Math.cos(p.pitch || 0); // everyone else sees the smoke burst out of your face, and you double over
+          this.broadcast({ t: 'fx', k: 'cough', id: p.id, p: eyeOf(p).map(r2), d: [-Math.sin(p.yaw || 0) * cp, Math.sin(p.pitch || 0), -Math.cos(p.yaw || 0) * cp].map(r2) }, p.id);
+          this.damage(p, 12, null, 'cough');
+        }
         break;
       case 'chat': {
         const text = typeof m.m === 'string' ? clean(m.m, 120) : '';
+        if (text && isSkipCmd(text)) { skipCommand(this, p); break; } // /skip: a vote to skip this match (server/skip.js), never shown as chat
         if (text && now() - p.chatT > 400) { p.chatT = now(); this.broadcast({ t: 'chat', id: p.id, m: text }); }
         break;
       }
@@ -2590,13 +2734,13 @@ class Room {
       case 'item': this.useItem(p, m); break;
       case 'spray': this.onSpray(p, m); break;
       case 'itemsel': this.selectItem(p, m.i); break;
-      case 'vote': // only a changed vote counts (each one is broadcast to the room)
-        if (this.vote && Number.isInteger(m.i) && m.i >= 0 && m.i < this.vote.options.length && this.vote.votes.get(p.id) !== m.i && now() - (p.voteT || 0) > 250) {
-          p.voteT = now();
-          this.vote.votes.set(p.id, m.i);
-          this.broadcast({ t: 'votes', counts: this.voteInfo().counts });
-        }
+      case 'vote': { // a vote is for the stage that's open now (s, when sent, must match it). one that comes too soon after
+        // the last is kept and counted once the 250 ms are up, so the card you see marked is always the one that counts
+        const v = this.vote;
+        if (!v || v.stage === 'done' || !Number.isInteger(m.i) || m.i < 0 || m.i >= v.options.length || (m.s != null && m.s !== v.stage)) break;
+        if (now() - (p.voteT || 0) > 250) this.castVote(p, m.i); else p.votePend = { i: m.i, stage: v.stage };
         break;
+      }
       case 'respawn': // killcam finished or skipped: respawn now, but never sooner than the mode allows
         if (this.livesOn && p.oitc && p.oitc.out) break; // out of lives: you watch
         if (!p.alive) p.respawnAt = Math.min(p.respawnAt, Math.max(now(), p.minRespawnAt || 0));
@@ -2640,7 +2784,8 @@ class Room {
     const r = this.round;
     if (!r) return;
     const n = now();
-    if (r.over) { if (n >= r.next) this.startRound(); return; }
+    skipTick(this, n);
+    if (r.over) { this.tickVote(n); if (n >= r.next) this.startRound(); return; }
     if (!this.humans().length) return;
     if (this.game === 'bomb' && this.bomb) { this.tickBomb(n); return; }
     if (this.tickModes(n)) return; // gun game + infection end their own way
@@ -2665,15 +2810,15 @@ class Room {
     // a drawn team match has no winner (no roll, no stat): FFA needs at least one kill (or to be the last one standing)
     const winner = this.teamsOn() ? (winTeam && list.find((p) => p.team === winTeam)) || null : list[0] && (list[0].kills > 0 || lastOne) ? list[0] : null;
     this.round.over = true;
-    this.round.next = now() + VOTE_MS + 2000;
+    this.round.next = now() + (this.mode === 'ffa' || this.mode === 'bots' ? voteTotal() : VOTE_MS + 2000);
     this.round.winTeam = winTeam;
     this.airEnd();
     if (this.bomb) { this.bomb.act = null; this.bomb.between = 0; }
-    this.startVote();
     let roll = null;
-    if (winner && !winner.isBot) {
+    if (winner && !winner.isBot && this.round.skipped) roll = { n: 0, why: 'skipped matches pay no containers' };
+    else if (winner && !winner.isBot) {
       const eligible = this.mode === 'ffa' ? this.humans().length >= 2 : list.filter((p) => p.isBot).length >= 3;
-      if (!winner.acct) roll = { n: 0, guest: 1 };
+      if (!winner.acct) { roll = { n: 0, guest: 1 }; if (eligible && winner.kills && winner.m) winner.m.xp += 50; } // the xp they'd have kept
       else if (!eligible) roll = { n: 0, why: this.mode === 'ffa' ? 'need at least 2 real players for a roll' : 'need at least 3 bots for a roll' };
       else if (!winner.kills) roll = { n: 0, why: 'no kills, no roll (hiding is not winning)' }; // last one standing still needs to have fought
       else {
@@ -2683,19 +2828,29 @@ class Room {
         roll = { n: 1, kind, why: 'won the round' };
       }
     }
-    this.broadcast({ t: 'round', over: 1, winner: winner ? winner.id : 0, winTeam, game: this.game, sc: this.teamsOn() ? (this.game === 'bomb' && this.bomb ? [this.bomb.wins[1], this.bomb.wins[2]] : [this.score[1], this.score[2]]) : null,
-      top: list.slice(0, 6).map((p) => [p.id, p.name, p.kills, p.deaths, p.team || 0]), next: VOTE_MS + 2000 });
+    this.broadcast({ t: 'round', over: 1, skipped: this.round.skipped ? 1 : 0, winner: winner ? winner.id : 0, winTeam, game: this.game, sc: this.teamsOn() ? (this.game === 'bomb' && this.bomb ? [this.bomb.wins[1], this.bomb.wins[2]] : [this.score[1], this.score[2]]) : null,
+      top: list.slice(0, 6).map((p) => [p.id, p.name, p.kills, p.deaths, p.team || 0]), next: this.round.next - now(),
+      board: list.map((p, i) => [p.id, p.name, p.kills, p.deaths, p.team || 0, p.isBot ? 1 : 0, matchSummary(p, i, list, this).score]) });
+    // your own match report (end screen: performance / medals / rewards). guests see the xp they would have kept
+    const side = GAMES[this.game].infect && this.round.res && this.round.res.side; // infection: the whole side that took it won
+    const won = (p) => (side ? (side === 'inf') === !!p.inf : p === winner || (winTeam && p.team === winTeam));
+    list.forEach((p, i) => { if (!p.isBot) send(p, { t: 'perf', ...matchSummary(p, i, list, this), won: won(p) ? 1 : 0, acct: p.acct ? 1 : 0 }); });
+    this.startVote(); // after the result: clients open the end screen on 'round', then the vote fills it in
     const r = this.round;
     setTimeout(safe('hl', () => {
       if (this.round !== r || !r.hl || r.hl.pending || !r.hl.clip || !r.hl.clip.frames.length) return;
       const { label, id, name, color, card, clip } = r.hl;
       this.broadcast({ t: 'hl', label, id, name, color, card, clip });
+      // how long it plays: the clip, plus the slow-mo at each of their kills (0.3x for ~0.5 s). the vote's hurry mustn't cut it
+      const fr = clip.frames, kills = clip.ev.filter((e) => e.m && e.m.t === 'kill' && e.m.k === id).length;
+      r.hlEnd = now() + (fr[fr.length - 1].s - fr[0].s) + kills * 1150 + 500;
     }), 1600);
     if (roll) send(winner, { t: 'roll+', ...roll });
   }
   startRound() {
     this.resolveVote();
-    for (const p of this.players.values()) { p.kills = 0; p.deaths = 0; }
+    for (const p of this.players.values()) { p.kills = 0; p.deaths = 0; matchReset(p); }
+    this.firstBlood = 0;
     for (const p of this.players.values()) p.lastKiller = 0; // new match: the court forgets old grudges
     this.round = { target: (TARGETS[this.mode] || TARGETS.ffa)[this.game] || ROUND[this.mode].kills, ends: now() + ROUND[this.mode].time * 1000, over: false, next: 0 };
     this.round.t0 = now();
@@ -2739,7 +2894,7 @@ class Room {
   airEnd() {
     for (const p of this.players.values()) {
       if (p.isBot || !p.air) continue;
-      const ok = p.air.ok;
+      const ok = p.air.ok && !(this.round && this.round.skipped); // a skipped match is too short to count
       p.air = null;
       send(p, { t: 'air', end: 1, ok: ok ? 1 : 0, acct: p.acct ? 1 : 0 });
       if (ok) { console.log(`never landed: ${p.name}`); stat(p, 'airborne', 1); }
@@ -2753,44 +2908,112 @@ class Room {
     return true;
   }
 
-  // ---------------------------------------------------------- map / mode vote between rounds
+  // ---------------------------------------------------------- the end-of-match vote: mode first, then map
+  // stage 'mode' (VOTE.mode ms) -> stage 'map' for the mode that won (VOTE.map ms) -> 'done' (the reveal) -> next round.
+  // humans decide; bots vote too, but only break ties (shared/vote.js)
   startVote() {
     if (this.mode !== 'ffa' && this.mode !== 'bots') return;
-    const games = GAME_ORDER.slice().sort(() => Math.random() - 0.5);
-    const options = [], usedMaps = new Set();
-    for (const g of games) {
-      if (options.length >= 3) break;
-      const maps = mapsFor(g, MAPS, MAP_ORDER).filter((m) => !usedMaps.has(m));
-      if (!maps.length) continue;
-      const m = pick(maps);
-      usedMaps.add(m);
-      options.push({ game: g, map: m });
-    }
-    this.vote = { options, votes: new Map(), ends: now() + VOTE_MS };
+    const options = modeCards(MAPS, MAP_ORDER, this.game, Math.random, this.skipped);
+    this.skipped = null;
+    if (!options.length) return;
+    this.vote = { stage: 'mode', options, votes: new Map(), ends: now() + VOTE.mode, game: null, map: null };
+    this.botVotes();
     this.broadcast({ t: 'vote', ...this.voteInfo() });
+  }
+  castVote(p, i) {
+    const v = this.vote;
+    p.voteT = now(); p.votePend = null;
+    if (v.votes.get(p.id) === i) return;
+    v.votes.set(p.id, i);
+    this.broadcast({ t: 'votes', ...this.voteCounts() });
+    this.voteHurry();
+  }
+  // the next round never starts before the play of the round has finished playing
+  holdForHl() { const r = this.round; if (r && r.over && r.hlEnd) r.next = Math.max(r.next, r.hlEnd); }
+  // every human has voted: no point sitting through the rest of the stage. the bots still get their say first
+  voteHurry() {
+    const v = this.vote, n = now(), soon = n + 2500;
+    if (!v || v.stage === 'done' || v.ends <= soon || !this.humans().every((h) => v.votes.has(h.id))) return;
+    if (this.round && this.round.over) { this.round.next -= v.ends - soon; this.holdForHl(); }
+    v.ends = soon;
+    for (const p of this.players.values()) if (p.voteAt) p.voteAt = Math.min(p.voteAt, n + 300 + Math.random() * 1800);
+    this.broadcast({ t: 'votes', ...this.voteCounts(), left: soon - n, total: this.round && this.round.over ? this.round.next - n : 0 });
+  }
+  // every bot picks a card at some random moment of the stage
+  botVotes() {
+    const v = this.vote, n = now(), span = Math.max(0, Math.min(VOTE.botMax, v.ends - n - 800) - VOTE.botMin);
+    for (const p of this.players.values()) if (p.isBot && !(p.ai && p.ai.dummy)) p.voteAt = n + VOTE.botMin + Math.random() * span;
+  }
+  tickVote(n) {
+    const v = this.vote;
+    if (!v || v.stage === 'done') return;
+    for (const p of this.players.values()) { // re-picks that came in too fast: count them now
+      if (!p.votePend || n - (p.voteT || 0) <= 250) continue;
+      if (p.votePend.stage === v.stage) this.castVote(p, p.votePend.i); else p.votePend = null;
+      if (this.vote !== v || v.stage === 'done') return;
+    }
+    let changed = false;
+    for (const p of this.players.values()) {
+      if (!p.isBot || !p.voteAt || n < p.voteAt || v.votes.has(p.id)) continue;
+      p.voteAt = 0;
+      // bots like the event and whatever's already winning a bit more than the rest
+      const { h, b } = tally(v.options.length, v.votes, (id) => this.players.get(id)?.isBot);
+      const w = v.options.map((o, i) => 1 + (o.event ? 1.2 : 0) + (h[i] + b[i]) * 0.6);
+      let r = Math.random() * w.reduce((x, y) => x + y, 0), i = 0;
+      while (i < w.length - 1 && (r -= w[i]) > 0) i++;
+      v.votes.set(p.id, i); changed = true;
+    }
+    if (changed) this.broadcast({ t: 'votes', ...this.voteCounts() });
+    if (n >= v.ends) this.advanceVote();
+  }
+  // close the open stage (also used to fast-forward a vote when the next round starts early)
+  advanceVote() {
+    const v = this.vote;
+    if (!v || v.stage === 'done') return;
+    const isBot = (id) => this.players.get(id)?.isBot;
+    const win = v.options[voteWinner(v.options.length, v.votes, isBot)];
+    for (const p of this.players.values()) { p.voteT = 0; p.votePend = null; } // a new stage: everyone can pick straight away
+    if (v.stage === 'mode') {
+      v.game = win.game; v.event = win.event;
+      const maps = mapCards(v.game, MAPS, MAP_ORDER, this.cfg.map);
+      if (maps.length > 1) {
+        Object.assign(v, { stage: 'map', options: maps, votes: new Map(), ends: now() + VOTE.map });
+        this.botVotes();
+        if (this.round && this.round.over) this.round.next = Math.max(this.round.next, v.ends + VOTE.reveal);
+        this.broadcast({ t: 'vote', ...this.voteInfo() });
+        return;
+      }
+      v.map = maps.length ? maps[0].map : this.cfg.map;
+    } else v.map = win.map;
+    Object.assign(v, { stage: 'done', options: [], votes: new Map(), ends: now() + VOTE.reveal });
+    if (this.round && this.round.over) { this.round.next = Math.min(this.round.next, now() + VOTE.reveal); this.holdForHl(); }
+    this.broadcast({ t: 'vote', ...this.voteInfo() });
+    this.broadcast({ t: 'chat', id: 0, m: `next up: ${GAMES[v.game].name} on ${MAPS[v.map].name}` });
+  }
+  voteCounts() {
+    const v = this.vote;
+    const { h, b } = tally(v.options.length, v.votes, (id) => this.players.get(id)?.isBot);
+    return { stage: v.stage, counts: h, bots: b };
   }
   voteInfo() {
     const v = this.vote;
     if (!v) return null;
-    const counts = v.options.map(() => 0);
-    for (const i of v.votes.values()) counts[i]++;
-    return { options: v.options.map((o) => ({ ...o, name: GAMES[o.game].name, mapName: MAPS[o.map].name })), counts, left: Math.max(0, v.ends - now()) };
+    const options = v.options.map((o) => (o.game ? { ...o, name: GAMES[o.game].name, teams: GAMES[o.game].teams ? 1 : 0 } : { ...o, mapName: MAPS[o.map].name, size: MAPS[o.map].size }));
+    return { ...this.voteCounts(), options, left: Math.max(0, v.ends - now()), total: this.round && this.round.over ? Math.max(0, this.round.next - now()) : 0,
+      game: v.game || undefined, gameName: v.game ? GAMES[v.game].name : undefined, event: v.event ? 1 : 0,
+      map: v.map || undefined, mapName: v.map ? MAPS[v.map].name : undefined, ev: eventGame() };
   }
   resolveVote() {
+    if (this.vote && this.vote.stage !== 'done') { this.advanceVote(); this.advanceVote(); }
     const v = this.vote;
     this.vote = null;
-    if (!v || !v.options.length) return;
-    const counts = v.options.map(() => 0);
-    for (const i of v.votes.values()) counts[i]++;
-    const max = Math.max(...counts);
-    const top = v.options.filter((o, i) => counts[i] === max);
-    const win = pick(top);
-    const mapChanged = win.map !== this.cfg.map;
-    this.cfg.map = win.map;
-    this.setGame(win.game);
+    for (const p of this.players.values()) { p.voteAt = 0; p.votePend = null; }
+    if (!v || !v.game || !v.map || !MAPS[v.map]) return;
+    const mapChanged = v.map !== this.cfg.map;
+    this.cfg.map = v.map;
+    this.setGame(v.game);
     this.projectiles.clear(); this.peels.clear(); this.holes.clear();
     if (mapChanged) { this.smokes.clear(); this.broadcast({ t: 'cfg', cfg: this.cfg }); }
-    this.broadcast({ t: 'chat', id: 0, m: `next up: ${GAMES[this.game].name} on ${this.map.name}` });
   }
 
   // ---------------------------------------------------------- tags (kill confirmed)
@@ -2907,11 +3130,11 @@ class Room {
           const site = siteAt(this.map, a.pos);
           Object.assign(b, { ph: 'planted', site: site.id, p: [r2(a.pos[0]), r2(a.pos[1] + 0.1), r2(a.pos[2])], explodeAt: n + BOMB.fuse * 1000, carrier: 0, act: null, planter: a.id });
           this.broadcast({ t: 'bombev', k: 'planted', site: site.id, id: a.id });
-          if (a.acct) stat(a, 'xp', 10);
+          if (a.acct) stat(a, 'xp', 10); else if (a.m) a.m.xp += 10;
         } else {
           b.act = null;
           this.broadcast({ t: 'bombev', k: 'defused', id: a.id });
-          if (a.acct) stat(a, 'xp', 15);
+          if (a.acct) stat(a, 'xp', 15); else if (a.m) a.m.xp += 15;
           this.bombRoundWin(3 - b.att, 'defused');
           return;
         }
@@ -3314,6 +3537,7 @@ class Room {
     this.tickHoles(dt);
     this.tickStatus(dt);
     this.tickPeels();
+    this.tickMarbles();
     this.tickBalls();
     this.tickWaves();
     if (this.sprays.size && this.sprayMap !== this.cfg.map) this.sprays.clear(); // the map changed: its graffiti goes with it
@@ -3445,6 +3669,7 @@ installEcon(Room, {
 
 // ---------------------------------------------------------------- account stats
 function stat(p, key, v) {
+  if (key === 'xp' && p.m) p.m.xp += v; // this match's xp, for the end screen (guests too: it shows what they'd keep)
   if (!p.acct) return;
   const d = p.acct.d;
   if (key === 'best_wave' || key === 'top_speed') d[key] = Math.max(d[key] || 0, v);
@@ -3460,18 +3685,18 @@ function checkAch(p) {
   const now2 = achievementsFrom(liveStats(p));
   for (const id of now2) if (!p.acct.achs.has(id)) { p.acct.achs.add(id); send(p, { t: 'ach', id }); }
 }
-// Sniper Royalty feats: bit flags in the sniper_feats stat (bit i = ROYAL_FEATS[i]). d only ever gets bits the account
-// doesn't have yet, so liveStats / flushStats can add them up like any other stat (the store ORs them in).
+// Sniper Royalty feats: bit flags in the sniper_feats stat (each feat's bit, see ROYAL_FEATS). d only ever gets bits the
+// account doesn't have yet, so liveStats / flushStats can add them up like any other stat (the store ORs them in).
 // guests don't keep any: they're told once per feat that it would have counted
-const RB = Object.fromEntries(ROYAL_FEATS.map((f, i) => [f.id, 1 << i]));
+const RB = Object.fromEntries(ROYAL_FEATS.map((f) => [f.id, f.bit]));
 function royal(p, bits) {
   if (!p.acct) {
-    const add = bits & ~(p.royalG || 0);
+    const g = p.royalG || 0, add = bits & ~ROYAL_FEATS.filter((f) => featOn(g, f)).reduce((m, f) => m | f.mask, 0);
     if (add) { p.royalG = (p.royalG || 0) | add; send(p, { t: 'royal', add, all: p.royalG, guest: 1 }); }
     return;
   }
-  const have = liveStats(p).sniper_feats || 0, add = bits & ~have;
-  if (!add) return;
+  const have = liveStats(p).sniper_feats || 0, add = ROYAL_FEATS.some((f) => featOn(have, f)) ? bits & ~have & ~ROYAL_FEATS.filter((f) => featOn(have, f)).reduce((m, f) => m | f.mask, 0) : bits & ~have;
+  if (!add) return; // (a box you've already ticked, another way, doesn't count again)
   p.acct.d.sniper_feats = (p.acct.d.sniper_feats || 0) | add;
   send(p, { t: 'royal', add, all: have | add });
   checkAch(p); // the last box unlocks the achievement (and with it the Golden Sniper)
