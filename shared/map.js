@@ -735,20 +735,20 @@ function facadeHouse(B, D, ox, oz, rot, o, r) {
   lollipop(L, -3.5, 10.5, 4.2 + r() * 1.5, r); if (o.yard === 'toy') L(1.5, 0, 8, 4.5, 3, 11, 'toyface', { fit: 1 });
 }
 // a tall wooden privacy fence along x (z fixed) or z (x fixed), with gaps: gates [[a, b], ...] along it
-function woodFence(B, axis, fixed, a0, a1, gates = [], h = 2.2) {
-  const cuts = [a0, ...gates.flat(), a1];
+function woodFence(B, axis, fixed, a0, a1, gates = [], h = 2.2, side = 0) { // side +-1: the posts stand proud on that side only (the other face is flat: nothing to snag on)
+  const cuts = [a0, ...gates.flat(), a1], p0 = side > 0 ? 0.09 : 0.16, p1 = side < 0 ? 0.09 : 0.16;
   for (let i = 0; i + 1 < cuts.length; i += 2) {
     const s0 = cuts[i], s1 = cuts[i + 1]; if (s1 - s0 < 0.05) continue;
     if (axis === 'x') B.add(s0, 0, fixed - 0.1, s1, h, fixed + 0.1, 'wood'); else B.add(fixed - 0.1, 0, s0, fixed + 0.1, h, s1, 'wood');
-    for (let t = s0; t <= s1 + 0.01; t += 2.4) { if (axis === 'x') B.add(t - 0.08, 0, fixed - 0.16, t + 0.08, h + 0.15, fixed + 0.16, 'wood'); else B.add(fixed - 0.16, 0, t - 0.08, fixed + 0.16, h + 0.15, t + 0.08, 'wood'); }
+    for (let t = s0; t <= s1 + 0.01; t += 2.4) { if (axis === 'x') B.add(t - 0.08, 0, fixed - p0, t + 0.08, h + 0.15, fixed + p1, 'wood'); else B.add(fixed - p0, 0, t - 0.08, fixed + p1, h + 0.15, t + 0.08, 'wood'); }
   }
 }
 // round the play area bx = [x0, z0, x1, z1]: a ring of trees you bump into right on the edge, rows past it that only exist
 // to look at, then a forest that thins into the fog, green hills, the water tower, a power line, and the roads out west
 // (roads: [{ z, hw }], the middle of each and its half width) through gaps in the trees, on out past the fog
-function suburbOutside(B, D, r, bx, roads = []) {
+function suburbOutside(B, D, r, bx, roads = [], clear = []) {
   const [x0, z0, x1, z1] = bx, W = B.local(0, 0, 0), Dw = D.local(0, 0, 0);
-  const onRoad = (x, z) => x < x0 + 2 && roads.some((q) => Math.abs(z - q.z) < q.hw + 4);
+  const onRoad = (x, z) => (x < x0 + 2 && roads.some((q) => Math.abs(z - q.z) < q.hw + 4)) || clear.some((c) => Math.hypot(x - c[0], z - c[1]) < 5); // (and out of the fence's gateways)
   const ring = (T, a0, b0, a1, b1, step, jit) => {
     const t = (x, z) => { if (!onRoad(x, z)) (r() < 0.4 ? conifer : lollipop)(T, x, z, 5 + r() * 3, r); };
     for (let x = a0; x <= a1; x += step) for (const z of [b0, b1]) t(x + (r() - 0.5) * jit, z + (r() - 0.5) * jit);
@@ -951,7 +951,16 @@ function suburb() {
   const r = rng(4242), W = B.local(0, 0, 0), Dw = D.local(0, 0, 0);
   const bounds = [-82, -62, 82, 62];
   add(-260, -3, -200, 260, 0, 200, 'grass');
-  suburbOutside(B, D, r, bounds, [{ z: -19, hw: 5 }, { z: 19, hw: 5 }]);
+  // the back fence's gaps (garden gates every 30-40 m, the lane ends, the two streets out): [along a, along b] per side
+  // (each one clear inside: not behind a bin, the bleachers, the dock or the site office)
+  const FN = [[-43.5, -40.5], [-1.5, 1.5], [28.5, 31.5]], FW = [[-62, -57.2], [-37, -34], [-26, -12], [12, 26], [50.5, 53.5], [57.2, 62]];
+  const FE = [[-62, -57.2], [-43.5, -40.5], [-27, -24], [24, 27], [40.5, 43.5], [57.2, 62]];
+  const gates = [ // [outside x, z, inside x, z] through the middle of each gap
+    ...FN.flatMap(([a, b]) => [[(a + b) / 2, -66, (a + b) / 2, -58], [(a + b) / 2, 66, (a + b) / 2, 58]]),
+    ...FW.map(([a, b]) => [-86, (Math.max(a, -60) + Math.min(b, 60)) / 2, -78, (Math.max(a, -60) + Math.min(b, 60)) / 2]),
+    ...FE.map(([a, b]) => [86, (Math.max(a, -60) + Math.min(b, 60)) / 2, 78, (Math.max(a, -60) + Math.min(b, 60)) / 2]),
+  ];
+  suburbOutside(B, D, r, bounds, [{ z: -19, hw: 5 }, { z: 19, hw: 5 }], gates.map((g) => [g[0], g[1]]));
   // ---- the loop street (north and south run on out west through the trees: that's where the traffic comes from), kerbs
   add(-260, 0, -24, 58, 0.1, -14, 'roadx'); add(-260, 0, 14, 58, 0.1, 24, 'roadx'); // north + south
   add(-58, 0, -14, -46, 0.1, 14, 'roadz'); add(46, 0, -14, 58, 0.1, 14, 'roadz'); // west + east
@@ -975,11 +984,12 @@ function suburb() {
   for (const [x, z, m] of [[-50, -60, 'containerg'], [-6, -60, 'toypink'], [40, -60, 'containerb'], [-30, 59.6, 'containerb'], [14, 59.6, 'containerg']]) W(x, 0.08, z - 1, x + 2.6, 1.5, z + 1, m);
   { const V = B.local(20, -59.6, 0); V(-3.2, 0.45, -1.2, 3.2, 3.0, 1.2, 'carwhite'); V(1.8, 1.5, -1.25, 3.25, 2.6, 1.25, 'glass'); V(-3.3, 3.0, -1.3, 2, 3.4, 1.3, 'toyorange'); for (const x of [-2, 2]) for (const z of [-1.25, 1.05]) V(x - 0.4, 0, z, x + 0.4, 0.8, z + 0.2, 'tire'); }
   car(W, -54, 59.6, 0, 'burnt'); W(52, 0.08, 58, 57, 2.6, 61.4, 'wood'); W(51.8, 2.6, 57.8, 57.2, 2.9, 61.6, 'roofg');
-  // the back fence round the whole estate (just outside the bounds: the trees are past it), open where the two streets
-  // run out west; the building site's end is plywood hoarding
-  woodFence(B, 'x', -62.1, -82.2, 82.2); woodFence(B, 'x', 62.1, -82.2, 82.2);
-  woodFence(B, 'z', -82.1, -62, 62, [[-26, -12], [12, 26]]);
-  woodFence(B, 'z', 82.1, -62, -24); woodFence(B, 'z', 82.1, 24, 62); add(82, 0, -24, 82.2, 2.4, 24, 'plywood');
+  // the back fence round the whole estate (just outside the bounds: the trees are past it), with its gaps (FN/FW/FE up
+  // top): knocked over it, there's usually a way back in before the countdown; a Jank Royale drop outside walks in.
+  // the building site's end is plywood hoarding
+  woodFence(B, 'x', -62.1, -82.2, 82.2, FN, 2.2, 1); woodFence(B, 'x', 62.1, -82.2, 82.2, FN, 2.2, -1); // (posts on the inside)
+  woodFence(B, 'z', -82.1, -62, 62, FW, 2.2, 1);
+  woodFence(B, 'z', 82.1, -62, -24, FE.slice(0, 3), 2.2, -1); woodFence(B, 'z', 82.1, 24, 62, FE.slice(3), 2.2, -1); add(82, 0, -24, 82.2, 2.4, 24, 'plywood');
 
   // ---- the park: the playground (west), the founder's plaza (middle), the pond with a footbridge and the gazebo (east)
   { const P = B.local(-24, 0, 0);
@@ -1098,6 +1108,7 @@ function suburb() {
     name: 'Suburb', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -60, bounds, floorY: -4,
     sky: { top: 0x2f7cf0, mid: 0xffd3ec, bot: 0x7a4a6a, fog: 0xffd3ec }, fogNear: 110, fogFar: 430,
     spawns, teamSpawns: { att: west, def: east },
+    gates, // the gaps in the back fence: [outside, inside] (a bot out past it heads for the nearest)
     // traffic (shared/traffic.js): in from the woods on the north street's inner lane, round the far end, out on the south
     // street's; the other way round on the two outer lanes. the parked cars are on the kerbs outside them
     traffic: { routes: [{ pts: [[-430, -16.5], [49.5, -16.5], [49.5, 16.5], [-430, 16.5]], v: [8, 13], r: 6 }, { pts: [[-430, 20], [53, 20], [53, -20], [-430, -20]], v: [8, 13], r: 6 }] },

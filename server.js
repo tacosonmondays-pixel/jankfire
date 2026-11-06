@@ -777,6 +777,14 @@ class Room {
       let c = boundsCenter(this.map);
       const q = this.map.ceiling != null && b.pos[1] > this.map.ceiling && this.boxes.find((o) => b.pos[0] >= o.min[0] && b.pos[0] <= o.max[0] && b.pos[2] >= o.min[2] && b.pos[2] <= o.max[2] && Math.abs(o.max[1] - b.pos[1]) < 0.6);
       if (q) { const e = [[b.pos[0] - q.min[0], q.min[0] - 6, b.pos[2]], [q.max[0] - b.pos[0], q.max[0] + 6, b.pos[2]], [b.pos[2] - q.min[2], b.pos[0], q.min[2] - 6], [q.max[2] - b.pos[2], b.pos[0], q.max[2] + 6]].sort((u, v) => u[0] - v[0])[0]; c = [e[1], e[2]]; }
+      // a fenced map (map.gates: the gaps in its fence, [x, z] outside each and [x, z] inside): out past the fence, head
+      // for the nearest gap, then in through it (straight at the middle it'd stand against the fence all day)
+      else if (this.map.gates && outOfBounds(this.map, b.pos)) {
+        const d = (x, z) => Math.hypot(x - b.pos[0], z - b.pos[2]), g = this.map.gates.reduce((u, v) => (d(v[0], v[1]) < d(u[0], u[1]) ? v : u));
+        const L = Math.hypot(g[2] - g[0], g[3] - g[1]) || 1, ux = (g[2] - g[0]) / L, uz = (g[3] - g[1]) / L, wx2 = b.pos[0] - g[0], wz2 = b.pos[2] - g[1];
+        const along = wx2 * ux + wz2 * uz, side = Math.abs(wx2 * uz - wz2 * ux); // lined up with the gap (in its corridor): go in; else to its outside end
+        c = d(g[0], g[1]) < 3 || (along > -1 && side < 2.5) ? [g[2], g[3]] : [g[0], g[1]];
+      }
       const dx = c[0] - b.pos[0], dz = c[1] - b.pos[2], l = Math.hypot(dx, dz) || 1;
       wx = dx / l; wz = dz / l;
       if (outOfBounds(this.map, b.pos)) b.yaw = lerpAngle(b.yaw, Math.atan2(-wx, -wz), 8 * dt);
