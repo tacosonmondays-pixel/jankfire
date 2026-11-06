@@ -38,6 +38,8 @@ const RULES = {
   revolver_flint: (c) => c === 0x6b3a1a ? A : B,
   sniper: (c) => is(c, 0x2b2b2b, 0x5a3a1a, 0x222222) ? A : B,
   sniper_musket: (c) => c === 0x6b3a1a ? A : B,
+  // Big Laser Pointer: the anodized pen body + taped-on grip = A; chrome head, tail cap, clip, the D-cells and tape = B; the warning sticker + meter strip stay
+  laser: (c) => is(c, 0xc2287e, 0x26262c, 0x3a3a42) ? A : c === 0x1c1c22 || c === 0xffd400 ? N : B,
   marbles: (c) => is(c, 0x6b3a1a, 0x1a1a1a) ? A : B, // wood vs brass bell + jar lid
   marbles_gumball: (c) => c === 0xd01c2a ? A : B, // red machine vs the chrome
   chicken: (c) => c === 0x3d7a2a ? A : B, // the tube vs grip + the chicken poking out

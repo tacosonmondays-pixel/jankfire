@@ -83,6 +83,7 @@
     </div>
     <nav class="home-left">
       <button class="hlink" data-go="guide"><i>?</i>GUIDE</button>
+      <button class="hlink" data-go="patchnotes" id="pnBtn"><i>!</i>PATCH NOTES<em id="pnNew" class="hidden">NEW</em></button>
       <button class="hlink" data-go="loadout"><i>&#9776;</i>LOADOUT</button>
       <button class="hlink" data-go="cosmetics"><i>&#9733;</i>COSMETICS</button>
       <button class="hlink" data-go="crates" id="cratesBtn"><span id="cratesLbl">CONTAINERS</span></button>
@@ -126,6 +127,13 @@
         <p>sick of this mode? type <b>/skip</b> in chat. more than half of the players in the room have to agree (alone, it's instant). you get 30 seconds, and a skipped match pays no containers.</p></div>
     </div>
     <div class="hint">WASD move · SHIFT run · C / CTRL crouch (slide when fast) · SPACE jump (hold to bhop, jump while grappling to launch) · RIGHT CLICK aim · E grapple · R reload · F inspect · 1 2 3 switch · G use item · 5 6 7 use killstreaks · Z spray · V/X scythe · B menu · TAB scores · T chat · /skip in chat votes to skip the match</div>
+    <button class="mid back">BACK</button>
+  </div>
+
+  <div class="screen panel hidden" id="scr-patchnotes">
+    <h2>PATCH NOTES</h2>
+    <div class="note">what changed. read it, or find out the hard way.</div>
+    <div id="pnList" class="pnlist"></div>
     <button class="mid back">BACK</button>
   </div>
 
@@ -316,6 +324,10 @@
         <label><input type="checkbox" id="speedLines"> speed lines when you go fast</label>
         <h3>audio</h3>
         <label>volume <input id="vol" type="range" min="0" max="1" step="0.05"></label>
+        <label>music volume <input id="musicVol" type="range" min="0" max="1" step="0.05"></label>
+        <label><input type="checkbox" id="musicMatch"> music in matches (new song every match)</label>
+        <label><input type="checkbox" id="musicComp"> ...in competitive too (online, plant &amp; defuse)</label>
+        <label>match music volume <input id="musicMatchVol" type="range" min="0" max="1" step="0.05"></label>
       </div>
       <div class="setcol">
         <h3>controls</h3>

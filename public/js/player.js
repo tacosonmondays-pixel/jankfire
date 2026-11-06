@@ -10,6 +10,7 @@ import { net } from './net.js';
 import { query } from '/shared/physics.js';
 import { WRECK, slamSize } from '/shared/weapons.js';
 import { fx } from './fx.js';
+import { rigStep, rigHook } from './rig.js'; // overdrive rig killstreak
 import { flashRope, myGrapple } from './grapple.js';
 import { WEAPONS } from '/shared/weapons.js';
 import { holeDrag } from '/shared/physics.js';
@@ -117,7 +118,9 @@ export function hookPoint() {
 }
 
 export function tryHook() {
+  if (G.noHook) { G.noHook(); return; } // Plant & Defuse: no grapple, the button picks things up (econ.js)
   const now = performance.now();
+  if (rigHook(now)) return; // overdrive rig: E is the quickhack (and a hacked grapple is fried)
   if (!ME.alive || ME.hook || now < (ME.frozenUntil || 0) || now < (ME.sleepUntil || 0)) return; // frozen or asleep: no grapple
   const o = eye(), d = look();
   const mh = raycast(o, d, HOOK.range, BOXES);
@@ -189,6 +192,7 @@ export function stepPlayer(dt, inp, now) {
   hookFeel(dt, now); // before any early return, so the camera lean keeps easing (e.g. through a dash, the ball or a soap bubble)
   if (ME.ballUntil) { if (now < ME.ballUntil) { feel.lift = 0; ballStep(dt, inp, now); return; } endBall(); } // wrecking ball killstreak (its chain has its own physics)
   const v = ME.vel, p = ME.pos;
+  if (rigStep(dt, inp, now)) return; // overdrive rig: heavy, fast, leaps instead of jumping (rig.js)
   // glitch dash: fly straight where you look, no gravity. letting go keeps all of it.
   if (ME.dashing) {
     const d = look(), sp = 38;

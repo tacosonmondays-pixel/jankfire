@@ -1,5 +1,6 @@
 // Local weapon logic, loadouts, ammo + first-person viewmodels.
 import * as THREE from 'three';
+import { beamStart, beamOn, chargeLook, chargeWhine } from './beam.js'; // Big Laser Pointer
 import { WEAPONS, ORDER, SLOTS, FLAGS, HIPFIRE, ARROW_TIPS, SUITS, RANKS, validLoadout, DEFAULT_LOADOUT, ITEMS, fireRate } from '/shared/weapons.js';
 import { BOXES } from '/shared/map.js';
 import { raycast, rayBox } from '/shared/physics.js';
@@ -19,6 +20,7 @@ import { ANIMS, sample, sampleCh, eventsBetween, inspectFor, drawFor } from './a
 import { newTwirl, resetTwirl, twirling, spin, settle, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
 import { partsShot, stepParts } from './glbkit.js';
 import { weaponIcon, clearIcons, itemIcon } from './icons.js';
+import { rigFire, rigItem, rigVM, rigBlockKey } from './rig.js'; // overdrive rig killstreak
 import { tickScalesVM } from './scales.js';
 import { PARRY } from '/shared/weapons.js';
 import { ROYAL } from '/shared/looks.js';
@@ -59,6 +61,7 @@ const RECOIL = {
   banana: { back: 1.2, up: 3.5, roll: 2, side: 0.3, punch: 0.015 },
   duck: { back: 1.2, up: 4, roll: 3, side: 0.3, punch: 0.015 },
   bow: { back: -1.4, up: 2.5, roll: 1, side: 0.1, punch: 0.012 },
+  laser: { back: 1.8, up: 5, roll: 1.2, side: 0.15, punch: 0.03 },
 };
 const rnd = () => (Math.random() < 0.5 ? -1 : 1) * (0.5 + Math.random() * 0.5);
 function kickVM(id, mul = 1) {
@@ -206,7 +209,7 @@ function updateFlying(dt) {
 }
 
 // ------------------------------------------------------------ card deck
-export function cycleCard() { const n = (G.hand || []).length; if (n) { W.cardSel = (W.cardSel + 1) % n; sfx.click(); } }
+export function cycleCard() { if (rigBlockKey()) { W.aimHeld = true; return; } const n = (G.hand || []).length; if (n) { W.cardSel = (W.cardSel + 1) % n; sfx.click(); } }
 export function redrawCards() { net.send({ t: 'redraw' }); sfx.swing(); }
 function playCard(now) {
   const hand = G.hand || [];
@@ -268,14 +271,16 @@ export function syncItem(id, n, nextMs) { if (!ITEMS[id]) return; W.ic[id] = { n
 export function useItem() {
   if (performance.now() < (ME.ballUntil || 0)) return; // wrecking ball: no hands
   const id = W.item, it = ITEMS[id];
-  if (!it || !ME.alive) return;
+  if (rigItem()) return; // overdrive rig: G fires the missile salvo
+  if (!it || !ME.alive || (W.eco && W.eco.dry('item'))) return;
   const c = charges(id);
   if (performance.now() - (W.itemT || 0) < 420) return; // same spam limit as the server
+  if (W.itemHook && W.itemHook(id)) return; // new gear (gear.js): the camera's free photo, goggles on / off
   if (c.n <= 0) { sfx.empty(); hud.msg(`${it.name}: recharging`, 0.8); return; }
   W.itemT = performance.now();
-  c.n--; if (!c.next) c.next = performance.now() + it.recharge * 1000;
+  c.n--; if (!c.next && !W.eco) c.next = performance.now() + it.recharge * 1000;
   net.send({ t: 'item', i: id, o: eye().map(r2), d: look().map(r2) });
-  if (id === 'wand') return; // no toss: the wand has its own viewmodel and bloops (wand.js)
+  if (id === 'wand' || id === 'camera' || id === 'nvg') return; // no toss: the wand, camera and goggles have their own viewmodels
   if (it.w) popItem(it.w); // party popper / reverse card: pops into your hand (see popEvent for what it does)
   if (!W.anim || W.anim.kind === 'inspect' || W.anim.kind === 'draw') playAnim('toss_item', 'item');
   if (id === 'medkit') sfx.heal(); else if (id === 'bubble') sfx.reverse(); else sfx.swing();
@@ -343,6 +348,7 @@ function updatePop(dt) {
 export function heavyAttack() {
   if (performance.now() < (ME.ballUntil || 0)) return true; // wrecking ball: no hands
   const id = W.cur, w = WEAPONS[id], now = performance.now();
+  if (rigBlockKey()) return false; // overdrive rig: right click is the block (it holds W.aimHeld)
   if (!w || !w.heavy || !ANIMS['stab_' + id]) return false;
   const model = models[id] && models[id].g.userData.model;
   const stab = model && ANIMS['stab_' + model] ? 'stab_' + model : 'stab_' + id;
@@ -443,6 +449,7 @@ const VM = {
   cig: { p: [0.15, -0.17, -0.3], r: [0.15, 0.6, 0.2], s: 1.1 },
   blower: { p: [0.24, -0.27, -0.45], r: [0, 0.05, 0], s: 0.6 },
   shredder: { p: [0.27, -0.26, -0.46], r: [0, 0.16, 0], s: 0.46 },
+  laser: { p: [0.21, -0.215, -0.4], r: [0, 0.05, 0], s: 0.62 },
   popper: { p: [0.17, -0.18, -0.34], r: [0.1, 0.1, 0], s: 0.75 },
   reverse: { p: [0.15, -0.15, -0.34], r: [0.3, -0.3, 0.15], s: 0.65 },
   duck: { p: [0.17, -0.18, -0.4], r: [0.1, 0.5, 0], s: 0.55 },
@@ -484,7 +491,7 @@ export function rebuildViewmodels() {
     if (!VM[id]) continue;
     if (models[id]) { vmRoot.remove(models[id].wrap); freeTree(models[id].wrap); if (models[id].flash) models[id].flash.userData.face.material.dispose(); }
     const wrap = new THREE.Group();
-    const g = buildWeapon(id, (G.equipped || {})[id]);
+    const g = buildWeapon(id, (W.skinOver || G.equipped || {})[id]);
     const cfg = VM[id];
     g.scale.setScalar(cfg.s);
     wrap.add(g);
@@ -530,7 +537,7 @@ export function toggleScythe() {
 }
 
 export function refillAmmo() {
-  for (const id of ORDER) if (WEAPONS[id].mag) W.ammo[id] = WEAPONS[id].mag;
+  for (const id of ORDER) if (WEAPONS[id].mag && !W.eco) W.ammo[id] = WEAPONS[id].mag;
   W.reloadId = null;
   W.fuel.blower = WEAPONS.blower.fuel;
   W.slipperOut = false;
@@ -575,7 +582,7 @@ export function rebuildOne(id) {
 }
 // hotbar: a picture of each weapon you're carrying, with your skin on it
 export function showSlots() {
-  hud.slots(W.slots, W.slots.map((id) => weaponIcon(id, (G.equipped || {})[id])));
+  hud.slots(W.slots, W.slots.map((id) => (id ? weaponIcon(id, (W.skinOver || G.equipped || {})[id]) : '')));
   hud.slotOn(W.slot);
   const iw = ITEMS[W.item] && ITEMS[W.item].w; // popper / reverse card: a picture of the real thing, skin and all
   hud.itemSlot(W.item, (iw && weaponIcon(iw, (G.equipped || {})[iw])) || itemIcon(W.item));
@@ -600,13 +607,26 @@ function equip(i) {
   sfx.click();
 }
 
+// Plant & Defuse (econ.js): the server's inventory fills the slots (null = an empty box). i = the slot to hold now
+// (null keeps the one in hand), anim = how the new one comes in
+export function setSlots(ids, i, anim) {
+  W.slots = ids.slice();
+  if (i != null && W.slots[i]) {
+    if (i !== W.slot) W.prevSlot = W.slot;
+    W.cur = null; equip(i);
+    if (anim) playAnim(anim, 'draw');
+  }
+  showSlots();
+}
+export function playVM(name, kind) { playAnim(name, kind); }
+
 export function switchSlot(i) {
-  if (i < 0 || i >= W.slots.length || i === W.slot) return;
+  if (i < 0 || i >= W.slots.length || i === W.slot || !W.slots[i]) return;
   W.prevSlot = W.slot;
   equip(i);
 }
 export function lastSlot() { switchSlot(W.prevSlot); }
-export function cycleSlot(dir) { const n = W.slots.length; switchSlot((W.slot + dir + n) % n); }
+export function cycleSlot(dir) { const n = W.slots.length; let i = (W.slot + dir + n) % n; while (!W.slots[i] && i !== W.slot) i = (i + dir + n) % n; switchSlot(i); }
 
 export function reload() {
   cancelInspect();
@@ -614,9 +634,11 @@ export function reload() {
   const id = W.cur, w = WEAPONS[id];
   if (W.noReload) return; // one in the chamber: bullets only come from kills
   if (!w.mag || W.reloadId || W.ammo[id] >= w.mag || !ME.alive) return;
+  if (W.eco && !W.eco.canReload(id)) return;
   W.reloadId = id;
   W.reloadUntil = performance.now() + w.reload * 1000;
   sfx.reload();
+  if (W.eco) W.eco.reloading(id);
 }
 
 export function muzzleWorld() {
@@ -737,7 +759,7 @@ function fireHitscan(id, now) {
   const qs = id === 'sniper' && W.scoped && now - W.scopedAt <= ROYAL.quick ? 1 : undefined; // quick-scope: fired right as the scope came up (Sniper Royalty only, never damage)
   for (const [rid, h] of hits) net.send({ t: 'hit', to: rid, w: id, d: h.d.map(r2), n: h.n, h: h.h, ns, qs, fan: fanShot ? 1 : undefined });
   const fast = w.rate > 8;
-  const skin = (G.equipped || {})[id];
+  const skin = (W.skinOver || G.equipped || {})[id];
   if (shots) marbles.shoot(shots, marblePalette(skin));
   else for (const s of segs) fx.tracer(s.slice(0, 3), s.slice(3), tracerColor(skin, w.tracer || 0xfff0a0), w.thick || (fast ? 0.03 : 0.045), fast ? 0.07 : 0.2);
   net.send({ t: 'fire', w: id, o: o.map(r2), s: segs.slice(0, 12).map((s) => s.map(r2)), fan: fanShot ? 1 : undefined });
@@ -819,6 +841,7 @@ function twirlVM(m, dt) {
 
 function fireProj(id, now, fromAnim) {
   const w = WEAPONS[id];
+  if (W.eco && W.eco.dry(id, true)) return;
   if (id === 'slipper') {
     if (W.slipperOut) return;
     if (!fromAnim) { setCd(id, now); playAnim('throw_slipper', 'throw'); W.pendingThrow = ANIMS.throw_slipper.hit; return; }
@@ -932,10 +955,12 @@ function cough() {
 export function fireDown() {
   if (performance.now() < (ME.ballUntil || 0)) return; // wrecking ball: no hands
   W.held = true;
+  if (rigFire(true)) return; // overdrive rig: hold to charge the rocket punch
   cancelInspect();
   const id = W.cur, w = WEAPONS[id], now = performance.now();
   W.fanning.down = now; W.fanning.arm = true; // revolver: keep holding from here to fan the hammer
   if (!ME.alive || W.reloadId === id || !ready(id, now)) return;
+  if (W.eco && W.eco.dry(id)) { W.held = false; return; }
   if (W.anim && W.anim.kind === 'draw') W.anim = null;
   if (w.kind === 'hitscan' && !w.auto && !w.spinup) {
     if (W.ammo[id] > 0) fireHitscan(id, now); else { sfx.empty(); reload(); }
@@ -943,10 +968,54 @@ export function fireDown() {
   else if (w.kind === 'proj' && !w.auto) fireProj(id, now);
   else if (w.kind === 'cards') playCard(now);
   else if (w.kind === 'blood') fireBlood(now);
+  else if (w.kind === 'beam') laserDown(now);
+}
+
+// ------------------------------------------------------------ Big Laser Pointer: hold to charge, let go to fire
+// the server times the charge from the 'ch' we send on the press; ours is only for the looks (meter, whine, orb)
+W.lz = { on: false, t: 0, k: 0, kick: 0 };
+const LZ = WEAPONS.laser;
+const lzK = (now) => Math.max(0, Math.min(1, ((now - W.lz.t) / 1000 - LZ.tap) / (LZ.charge - LZ.tap)));
+function laserDown(now) {
+  if (W.lz.on || beamOn(G.myId)) return;
+  W.lz.on = true; W.lz.t = now;
+  net.send({ t: 'fire', w: 'laser', ch: 1 });
+  sfx.click();
+}
+function laserUp(now) {
+  if (!W.lz.on) return;
+  W.lz.on = false;
+  chargeWhine(0);
+  if (!ME.alive || W.cur !== 'laser') { net.send({ t: 'fire', w: 'laser', ch: 0 }); return; }
+  const k = lzK(now), dur = LZ.dur[0] + (LZ.dur[1] - LZ.dur[0]) * k;
+  W.cd.laser = now + (dur + LZ.cd) * 1000;
+  net.send({ t: 'fire', w: 'laser', o: eye().map(r2), d: look().map(r2) });
+  beamStart(G.myId, k, dur, () => (ME.alive && W.cur === 'laser' && models.laser.wrap.visible ? { o: muzzleWorld(), d: look() } : ME.alive ? { o: eye(), d: look() } : null));
+  W.lz.kick = 0.25 + k * 0.4; W.lz.fireK = k;
+  kickVM('laser', 0.25 + k * 0.55); W.kick = 0.2 + k * 0.3;
+  punchCam(-0.02 - k * 0.05, 0.01 * rnd(), 0.025 * rnd() * k);
+  if (k > 0.5) applyKb(look().map((x) => -x * k * 5)); // a full one shoves you back a bit
+}
+// every frame: the charge (slows you, whines, lights the meter), cancel it if you switched away or died
+function laserTick(id, now, dt) {
+  if (W.lz.on && (id !== 'laser' || !ME.alive)) { W.lz.on = false; chargeWhine(0); net.send({ t: 'fire', w: 'laser', ch: 0 }); }
+  if (W.lz.on) { W.lz.k = lzK(now); ME.speedMul *= LZ.slow; chargeWhine(0.05 + W.lz.k * 0.95); } else W.lz.k = 0;
+  W.lz.kick = Math.max(0, W.lz.kick - dt * 3);
+}
+function laserVM(m, now, pose) {
+  const k = W.lz.on ? W.lz.k : 0, ud = m.g.userData;
+  chargeLook(ud, k, W.lz.on, now);
+  // the longer you hold it the harder it shakes, and you pull it in tight to your shoulder; firing kicks it up
+  const sh = W.lz.on ? 0.0015 + k * k * 0.006 : beamOn(G.myId) ? 0.004 * (W.lz.fireK || 0) : 0;
+  const pull = W.lz.on ? Math.min(1, (now - W.lz.t) / 250) : 0;
+  pose((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh - 0.01 * pull, 0.03 * pull + W.lz.kick * 0.06, W.lz.kick * 0.25, 0, (Math.random() - 0.5) * sh * 3 + 0.04 * pull);
+  if (ud.charm) { ud.charm.rotation.x = Math.sin(now * 0.004) * 0.25 - W.swayY * 4 + W.lz.kick * 1.2; ud.charm.rotation.z = Math.sin(now * 0.0031) * 0.2 + W.swayX * 3; }
 }
 
 export function fireUp() {
   W.held = false;
+  if (rigFire(false)) return; // overdrive rig: let go to throw it
+  if (W.lz.on) laserUp(performance.now());
   W.coughLock = false;
   if (W.cur === 'bow') {
     const now = performance.now();
@@ -1133,13 +1202,14 @@ export function shredderPorts() {
 export function updateWeapons(dt, now) {
   if (ME.alive && now < (ME.ballUntil || 0)) { W.held = false; W.aimHeld = false; W.dashHeld = false; W.exhale = 0; W.charge = 0; } // wrecking ball: no hands
   const id = W.cur, w = WEAPONS[id];
+  if (rigVM(dt, now, vmRoot)) return; // overdrive rig: guns holstered, mechanical fists instead (rig.js)
   const alive = ME.alive;
   let smoking = false, firing = false, blowing = false, spinning = false;
 
   W.fuel.blower = (W.held && id === 'blower') ? W.fuel.blower : Math.min(WEAPONS.blower.fuel, W.fuel.blower + WEAPONS.blower.regen * dt);
   W.bloom = Math.max(0, W.bloom - dt * 0.06);
   if (W.slipperOut && now - W.slipperT > 4000) W.slipperOut = false;
-  if (W.reloadId && now >= W.reloadUntil) { W.ammo[W.reloadId] = WEAPONS[W.reloadId].mag; W.reloadId = null; sfx.click(); }
+  if (W.reloadId && now >= W.reloadUntil) { if (W.eco) W.eco.reloaded(W.reloadId); else W.ammo[W.reloadId] = WEAPONS[W.reloadId].mag; W.reloadId = null; sfx.click(); }
   const canAim = !!w.ads && alive && !W.reloadId;
   W.aim = canAim && W.aimHeld ? Math.min(1, W.aim + dt * 7) : Math.max(0, W.aim - dt * 8);
   W.zoom = w.ads ? 1 + (w.ads.zoom - 1) * W.aim : 1;
@@ -1149,6 +1219,7 @@ export function updateWeapons(dt, now) {
   hud.scope(W.scoped);
   ME.speedMul = (w.speedMul || 1) * (1 - W.aim * 0.25);
   parryTick(now); // katana parry: buffered presses, stagger, cooldown ring
+  laserTick(id, now, dt); // laser pointer charge
 
   if (alive && w.kind === 'hitscan') {
     if (w.spinup) {
@@ -1260,11 +1331,14 @@ export function updateWeapons(dt, now) {
   const reversed = now < W.reverseUntil;
   W.flags = (smoking ? FLAGS.SMOKE : 0) | (firing ? FLAGS.FIRE : 0) | (blowing ? FLAGS.BLOW : 0) | (spinning ? FLAGS.SPIN : 0) | (reversed ? FLAGS.REVERSE : 0) | (ME.dashing ? FLAGS.DASH : 0);
   if (W.shred.on) W.flags |= FLAGS.SUCK;
+  if (W.lz.on) W.flags |= FLAGS.CHARGE; // everyone sees your pointer charging
+  if (W.nvOnFlag) W.flags |= FLAGS.NV; // night vision goggles down (goggles.js)
 
   // ---- HUD
   if (ITEMS[W.item]) { const c = charges(W.item), it = ITEMS[W.item]; hud.item(c.n, it.charges, c.next ? 1 - Math.max(0, c.next - now) / (it.recharge * 1000) : 1); }
   updatePop(dt);
-  if (w.mag) hud.ammo(W.ammo[id], w.mag, !!W.reloadId);
+  if (W.eco) W.eco.hud(id, !!W.reloadId);
+  else if (w.mag) hud.ammo(W.ammo[id], w.mag, !!W.reloadId);
   else hud.ammo(null);
   if (W.reloadId) hud.meter(1 - (W.reloadUntil - now) / (w.reload * 1000), 'RELOADING', '#ffffff');
   else if (isScythe(id)) hud.meter(W.dashFuel / D.max, ME.dashing ? 'GLITCHING' : 'V: GLITCH DASH · X: SWAP MODE', '#ff00dc');
@@ -1281,6 +1355,10 @@ export function updateWeapons(dt, now) {
   else if (w.cd && w.cd >= 1 && !ready(id, now)) hud.meter(1 - ((W.cd[id] - now) / 1000) / w.cd, 'COOLDOWN', w.color);
   else hud.meter(null);
   if (id === 'shredder') { const S = W.shred, f = S.heat / w.fuel; hud.meter(f, S.hot ? 'OVERHEATED · COOLING' : 'HEAT', S.hot ? '#ff3030' : f > 0.7 ? '#ff7a1a' : '#ffb31a'); }
+  if (id === 'laser') {
+    if (W.lz.on) hud.meter(Math.max(0.03, W.lz.k), W.lz.k >= 1 ? 'FULLY CHARGED · LET GO' : (now - W.lz.t) / 1000 < LZ.tap ? 'TAP = LITTLE ZAP' : 'CHARGING', W.lz.k >= 1 ? '#ffffff' : w.color);
+    else if (!ready(id, now)) hud.meter(null);
+  }
 
   // ---- viewmodel animation
   const m = models[id];
@@ -1384,6 +1462,7 @@ export function updateWeapons(dt, now) {
   stepParts(m.g, dt, an, at); // Blender guns: rack the pump, settle the cylinder + hammer, cycle the bolt
   if (blowing || (spinning && W.spin >= 1 && W.held)) { px += (Math.random() - 0.5) * 0.008; py += (Math.random() - 0.5) * 0.008; }
   if (id === 'shredder') shredderVM(m, dt, now, (a, b, c, d, e, f) => { px += a; py += b; pz += c; rx += d; ry += e; rz += f; });
+  if (id === 'laser') laserVM(m, now, (a, b, c, d, e, f) => { px += a; py += b; pz += c; rx += d; ry += e; rz += f; });
   m.wrap.visible = !(id === 'slipper' && W.slipperOut) && !W.scoped && !ME.dashing;
   m.wrap.position.set(px, py, pz);
   m.wrap.rotation.set(rx, ry, rz);

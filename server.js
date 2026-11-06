@@ -17,6 +17,8 @@ import { validLook, achievementsFrom, ACHIEVEMENTS } from './shared/looks.js';
 import { ROYAL, ROYAL_FEATS, featOn } from './shared/looks.js'; // Sniper Royalty
 import { achInv, wrapMode, WRAP_MODES } from './shared/cosmetics.js'; // achievement-locked skins (the Golden Sniper), wrap modes
 import { STAT_KEYS } from './server/store.js';
+import { installRig } from './server/rig.js';
+import { rigClash } from './shared/rig.js'; // overdrive rig killstreak
 import { soapAt, trapBoxes, trapPreroll } from './shared/wand.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, mapForGame, canDefuse, LADDER, GUNGAME, INFECT } from './shared/modes.js';
@@ -39,6 +41,8 @@ import { navSteer } from './shared/nav.js';
 import { DUCKRAIN } from './shared/modes.js';
 import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
 import { OOB, outOfBounds, boundsCenter } from './shared/bounds.js';
+import { installGear } from './server/gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
+import { installEcon } from './server/econ.js';
 import { MSLIP, onPatch, patchPreroll } from './shared/marbles.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -57,7 +61,7 @@ const ROUTES = [
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css',
   '.json': 'application/json', '.glb': 'model/gltf-binary', '.png': 'image/png', '.jpg': 'image/jpeg',
-  '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.wav': 'audio/wav', '.mp3': 'audio/mpeg',
+  '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.wav': 'audio/wav', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg',
   '.webmanifest': 'application/manifest+json',
 };
 
@@ -111,7 +115,7 @@ const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 40000, perMes
 const COLORS = ['#ff4fd8', '#4fd8ff', '#ffe14d', '#7dff4f', '#ff7a1a', '#b07dff', '#ff4f4f', '#4fffb0', '#ffffff', '#ff9ad5'];
 const DEFAULT_NAMES = ['player', 'guy', 'someone', 'nobody', 'dude', 'person'];
 const BOT_NAMES = ['Gary', 'Linda', 'Steve', 'Brenda', 'Kevin', 'Doug', 'Karen', 'Phil', 'Tina', 'Rick', 'Deb', 'Carl', 'Pam', 'Todd', 'Barb', 'Chad'];
-const BOT_GUNS = ['ar', 'ar', 'smg', 'shotgun', 'shotgun', 'sniper', 'chicken', 'banana', 'minigun', 'revolver', 'redline', 'marbles'];
+const BOT_GUNS = ['ar', 'ar', 'smg', 'shotgun', 'shotgun', 'sniper', 'chicken', 'banana', 'minigun', 'revolver', 'redline', 'marbles', 'laser'];
 BOT_GUNS.push('shredder'); // bots suck too (botShred)
 const SKIN_F = ['default', 'default', 'gold', 'chrome', 'pink', 'camo', 'neon', 'rainbow', 'galaxy', 'lava', 'missing', 'tiger', 'fade', 'carbon', 'tape'];
 const SKIN_H = ['none', 'none', 'none', 'tophat', 'party', 'crown', 'cowboy', 'propeller', 'cone', 'eyes', 'duck'];
@@ -210,6 +214,9 @@ if (process.env.JF_BOMB_FUSE) BOMB.fuse = Number(process.env.JF_BOMB_FUSE) || BO
 if (process.env.JF_BOMB_ROUND) BOMB.roundTime = Number(process.env.JF_BOMB_ROUND) || BOMB.roundTime;
 if (process.env.JF_MSLIP_LIFE) MSLIP.life = Number(process.env.JF_MSLIP_LIFE) || MSLIP.life; // test knob: marble patches that outlast slow test browsers
 if (process.env.JF_TARGET) for (const t of Object.values(TARGETS)) for (const k of Object.keys(t)) t[k] = Number(process.env.JF_TARGET);
+// test knobs for the overdrive rig: earn it after this many kills, make it last this many seconds
+if (process.env.JF_RIG) STREAKS.overdrive.kills = Number(process.env.JF_RIG) || STREAKS.overdrive.kills;
+if (process.env.JF_RIG_DUR) STREAKS.overdrive.dur = Number(process.env.JF_RIG_DUR) || STREAKS.overdrive.dur;
 // test knobs for gun game (everyone starts on a later rung) and infection (round length, patient zero delay, in seconds)
 const GG_START = Math.max(0, Math.min(LADDER.length - 1, Math.floor(Number(process.env.JF_GG_START) || 0)));
 if (process.env.JF_GG_TIME) GUNGAME.time = Number(process.env.JF_GG_TIME) || GUNGAME.time;
@@ -243,6 +250,8 @@ REC_FX.add('verdict'); // scales of justice: highlights show the ruling
 const REC_MS = 12000;
 for (const k of ['trap', 'trapx']) REC_T.add(k); // bubble wand: replays draw the giant soap bubble too
 for (const t of ['parry', 'guard']) REC_T.add(t); // katana parries show up in killcams too
+for (const t of ['snap', 'frame', 'framex', 'quiz', 'quizx']) REC_T.add(t); // instant camera frames + pop quizzes in killcams
+for (const k of ['beam', 'tele', 'nvflash']) REC_FX.add(k); // laser beams, frame teleports, goggle flashes
 for (const t of ['mpatch', 'mslip', 'mpx']) REC_T.add(t); // marbles on the floor too
 function newDeck() {
   const d = [];
@@ -350,7 +359,7 @@ class Room {
   humans() { return [...this.players.values()].filter((p) => !p.isBot); }
   sendTo(p, m) { send(p, m); } // for server/ modules
   teamsOn() { return (this.mode === 'ffa' || this.mode === 'bots') && !!GAMES[this.game].teams; }
-  fighters() { return [...this.players.values()].filter((p) => !(p.isBot && p.ai && p.ai.dummy)); }
+  fighters() { return [...this.players.values()].filter((p) => !(p.isBot && p.ai && p.ai.dummy) && !p.watch); }
   // even teams, humans spread first
   assignTeams() {
     const list = this.fighters().sort((a, b) => (a.isBot - b.isBot) || (Math.random() - 0.5));
@@ -370,12 +379,15 @@ class Room {
   // randomizer: a fresh random loadout every life (null = back to your own)
   randomLoadout() {
     const lo = {};
-    for (const slot of ['primary', 'secondary', 'melee']) lo[slot] = pick(Object.keys(WEAPONS).filter((id) => WEAPONS[id].slot === slot));
+    for (const slot of ['primary', 'secondary', 'melee']) lo[slot] = pick(Object.keys(WEAPONS).filter((id) => WEAPONS[id].slot === slot && !WEAPONS[id].modeOnly));
     // weapons only: you keep the item in your own loadout (and its server-side charges). the popper + reverse card are
     // items now, so they left the secondary pool
     return lo;
   }
   sendLoadout(p) {
+    if (p.watch) return;
+    if (this.isEcon()) { this.econLoadout(p); return; } // Plant & Defuse economy: the gear you bought, not a loadout
+    if (p.ec) this.econEnd(p);
     if (this.modeLoadout(p)) return; // gun game rung / zombie claw
     if (this.sendChaosKit(p)) return;
     if (p.isBot) { if (GAMES[this.game].random && !p.ai.dummy) { p.w = pick(BOT_GUNS); p.ai.ammo = WEAPONS[p.w].mag || 1; } return; }
@@ -454,9 +466,11 @@ class Room {
     p.grap = ownedGrapple(m.grap, inv);
     p.kc = !!m.kc;
     p.item = has(ITEMS, m.item) ? m.item : 'frag'; // the client confirms it with 'itemsel' right after 'welcome'
+    if (process.env.JF_WATCH && name.startsWith('watch')) { p.watch = true; p.alive = false; p.hp = 0; p.respawnAt = p.minRespawnAt = Infinity; } // test knob: a ws observer for bots-only matches (never a fighter)
     if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && has(GAMES, m.cfg.game) && !this.humans().length) this.setGame(m.cfg.game);
-    this.joinTeam(p);
+    if (!p.watch) this.joinTeam(p);
     if (p.team) p.pos = this.pickSpawn(false, p);
+    if (this.isEcon() && !p.watch) this.econJoin(p);
     this.players.set(p.id, p);
     // in from the start (or close enough): your Never Landed run counts. the welcome below is your first spawn
     if (this.round && !this.round.over && now() - (this.round.t0 || 0) < AIR.join && !GAMES[this.game].lava) p.air = { ok: !(this.airBad && this.airBad.has(name)), rest: 0 };
@@ -478,6 +492,7 @@ class Room {
     skipPeople(this); // one more human: a skip vote needs more
     send(p, { t: 'tip', tip: p.tip });
     for (const t of this.players.values()) if (t.trap) send(p, { t: 'trap', ...this.trapInfo(t) }); // anyone already floating in a soap bubble
+    this.gearJoin(p); // photo frames standing, quizzes going
     send(p, { t: 'court', s: [...this.players.values()].filter((o) => o.streak > 0).map((o) => [o.id, o.streak]) }); // scales of justice: streaks so far
     if (p.air && p.air.ok) send(p, { t: 'air', on: 1, grace: AIR.grace });
     deal(p);
@@ -486,6 +501,7 @@ class Room {
     if (this.mode === 'ffa' || this.mode === 'coop') this.broadcast({ t: 'chat', id: 0, m: `${name} joined` });
     if (this.mode === 'bots') this.fillBots();
     if (this.mode === 'bots' && this.humans().length === 1 && this.game !== 'dm') this.startRound();
+    if (process.env.JF_FFA_BOMB) this.econTestStart(); // test knob
     if (this.mode === 'training') this.spawnDummies();
     console.log(`+ ${name} (#${p.id}) -> ${this.id}`);
     return p;
@@ -494,6 +510,7 @@ class Room {
   remove(p) {
     flushStats(p);
     if (this.bomb && this.bomb.carrier === p.id) this.dropBomb(p.pos, p);
+    if (this.isEcon()) this.econLeave(p);
     this.players.delete(p.id);
     // whatever they threw goes with them (with no owner it would ignore teams and bubbles); their holes and gas go inert
     for (const pr of this.projectiles.values()) if (pr.o === p.id) this.removeProj(pr);
@@ -516,6 +533,7 @@ class Room {
     b.ai.ammo = WEAPONS[b.w].mag || 1;
     if (!opts.dummy && Math.random() < 0.5) b.grap = pick(GRAP_IDS); // bots show off ropes you can roll
     if (!opts.dummy) { this.joinTeam(b); if (b.team) b.pos = this.pickSpawn(true, b); }
+    if (!opts.dummy && this.isEcon()) this.econJoin(b);
     this.players.set(b.id, b);
     this.sendLoadout(b); // bots added mid-match get the mode's weapons too
     this.broadcast({ t: 'pj', ...this.info(b) });
@@ -568,6 +586,7 @@ class Room {
       if (t === b || !t.alive || (t.isBot && (this.mode === 'coop' || t.ai.dummy))) continue;
       if (this.teamsOn() && t.team === b.team) continue;
       if (t.trap) continue; // sealed in a soap bubble: shooting it would only set them free, wait for the pop
+      if (t.quiz) continue; // sitting a pop quiz: nothing can hurt them till it's marked
       if (this.friendly(b, t)) continue; // infection: zombies hunt survivors, survivors shoot zombies
       const d = dist3(t.pos, b.pos);
       const vis = this.canSee(eyeOf(b), [t.pos[0], t.pos[1] + 1, t.pos[2]]);
@@ -595,6 +614,7 @@ class Room {
   botThink(b, dt) {
     const ai = b.ai, n = now(), D = BOT_DIFF[ai.diff] || BOT_DIFF.normal;
     if (b.sleepUntil > n) return { wx: 0, wz: 0, jump: false };
+    if (n < (b.blindUntil || 0)) return this.botBlind(b, dt); // flashed by goggles: stumbling about, can't see a thing
     const boxes = this.boxes;
     if (ai.dummy) {
       const d = ai.dummy;
@@ -613,7 +633,7 @@ class Room {
     let wx = 0, wz = 0, jump = false;
     const w = WEAPONS[b.w];
     const pref = b.w === 'sniper' ? [25, 60] : b.w === 'shotgun' ? [3, 9] : b.w === 'marbles' ? [1.5, 4] : b.w === 'chicken' ? [10, 30] : b.w === 'shredder' ? [1.5, 9] : [7, 22];
-    if (w.kind === 'melee') { pref[0] = 0; pref[1] = this.chaosKit ? 1.2 : w.range * 0.7; } // claws, melee rungs, spoons + knives: get in their face
+    if (w.kind === 'melee') { pref[0] = 0; pref[1] = this.chaosKit || this.isEcon() ? 1.2 : w.range * 0.7; } // claws, melee rungs, spoons + knives: get in their face
     if (t && t.alive) {
       const e = eyeOf(b), tc = [t.pos[0], t.pos[1] + 1.1, t.pos[2]];
       const dx = tc[0] - e[0], dy = tc[1] - e[1], dz = tc[2] - e[2];
@@ -660,8 +680,9 @@ class Room {
         if (!t || !t.alive || (!ai.seenAt && dist3(t.pos, b.pos) > 12)) b.yaw = lerpAngle(b.yaw, Math.atan2(-wx, -wz), 30 * dt); // look where you walk, not through walls
       }
     }
+    if (goal && goal.tac) [wx, wz] = this.econAiHold(b, goal, t, wx, wz, dt); // Plant & Defuse: hold an angle, watch it
     // grappling: chase people who are far / up high / out of sight, save yourself when falling, show off sometimes
-    if (!ai.hook && n >= (ai.nextHook || 0) && this.mode !== 'training') {
+    if (!ai.hook && n >= (ai.nextHook || 0) && this.mode !== 'training' && !this.hookOff()) {
       const skill = ai.diff === 'easy' ? 0.35 : ai.diff === 'hard' ? 1 : 0.7;
       const below = !b.onGround && !raycast([b.pos[0], b.pos[1] + 0.5, b.pos[2]], [0, -1, 0], 40, boxes);
       let want = null;
@@ -684,6 +705,7 @@ class Room {
       }
     }
     if (ai.hook) jump = false;
+    [wx, wz] = this.botGearSteer(b, wx, wz); // walking into its own photo frame
     const wl = Math.hypot(wx, wz);
     if (wl > 0) { wx /= wl; wz /= wl; }
     // don't walk off the map (bots are dumb, not suicidal). a floor up to 15 m down will do (no fall damage); a box
@@ -801,6 +823,7 @@ class Room {
     return [rt[ai.ri][0], rt[ai.ri][2] ?? b.pos[1], rt[ai.ri][1]];
   }
   botGoal(b) {
+    if (this.isEcon()) { const eg = this.econBotGoal(b); if (eg) return eg; }
     const B = this.bomb;
     if (B && this.game === 'bomb' && B.ph !== 'done' && !B.between) {
       const sites = this.map.sites || [];
@@ -835,8 +858,10 @@ class Room {
 
   botFire(b, t, D) {
     if (this.chaosKit && this.botChaosFire(b, t, D)) return;
+    if (this.isEcon() && !this.econBotShot(b, t, D)) return;
     const w = WEAPONS[b.w], n = now();
     if (b.w === 'shredder') { this.botShred(b); return; } // no shots: it sucks for as long as they're in front of it
+    if (w.kind === 'beam') { this.botLaser(b); return; } // laser pointer: charge, then let go
     const iv = w.rate ? 1000 / fireRate(w, b.hp) : w.cd * 1000;
     if (w.mag) {
       b.ai.ammo--;
@@ -894,6 +919,7 @@ class Room {
     const frozen = n < (b.frozenUntil || 0);
     const think = frozen ? { wx: 0, wz: 0, jump: false } : this.botThink(b, dt);
     if (frozen) { b.vel[0] = 0; b.vel[2] = 0; }
+    if (b.rig && this.rigOn(b, n)) { this.rigBotStep(b, think, dt, n); return; } // overdrive rig: its own movement + plan (server/rig.js)
     const v = b.vel;
     const slipping = n < b.slipUntil;
     if (!b.ai.dummy || !b.ai.dummy.move) {
@@ -967,7 +993,9 @@ class Room {
     this.sendIc(p);
   }
   useItem(p, m) {
+    if (this.rigOn(p)) { this.sendIc(p); return; } // no items in the overdrive rig
     if (!p.alive || !has(ITEMS, m.i)) return;
+    if (this.gearItem(p, m)) return; // instant camera snap (free), goggles flash without goggles on
     const c = this.itemCharges(p);
     // not your item, no charge left, too fast, or a mode with no items (gun game, zombies, the chaos kits): tell the
     // client the real count so its HUD can't drift
@@ -981,6 +1009,7 @@ class Room {
     if (!o || dist3(o, eyeOf(p)) > 4) o = eyeOf(p);
     const d = norm(vec3(m.d)) || [0, 0, -1];
     if (m.i === 'wand') { this.blowWand(p, o, d); return; }
+    if (this.gearUse(p, m, o, d)) return; // print a photo, throw a pop quiz, goggles flash
     if (it.proj) {
       const w = WEAPONS[it.proj];
       const pr = this.makeProj(p, it.proj, [o[0] + d[0] * 0.7, o[1] + d[1] * 0.7, o[2] + d[2] * 0.7],
@@ -1099,6 +1128,7 @@ class Room {
     const it = ITEMS.wand, n = now();
     if (!t.alive || t.trap || n < (t.trapSafe || 0) || (this.round && this.round.over)) return false;
     if (this.isBall(t, n)) return false; // a 2 m steel wrecking ball just bursts the soap (its client rolls it, a bubble can't hold it)
+    if (this.rigOn(t, n)) return false; // so does a 3 m overdrive rig
     if (owner && owner !== t && !t.isBot && n - t.spawnT < 1200) return false; // spawn protection
     for (const b of this.bubbles.values()) if (this.inBubble(b, t)) return false; // soap can't get into a shield bubble
     if (!reflected && owner && owner !== t && owner.alive && t.reverseUntil > n) { // reverse card: the blower gets sealed in instead
@@ -1170,6 +1200,7 @@ class Room {
     t.lastAttacker = attacker.id; t.lastAttackW = w; t.lastAttackT = now();
   }
   knock(t, v, w) {
+    if (this.rigOn(t)) v = this.rigShrug(v); // the overdrive rig shrugs it off
     if (Math.hypot(v[0], v[1], v[2]) >= 1) t.knockT = now(); // EPIC anti-farm: getting shoved around isn't moving (0-knockback bullets don't count)
     if (t.isBot) {
       if (t.ai.dummy && t.ai.dummy.move) return;
@@ -1181,6 +1212,7 @@ class Room {
     send(t, { t: 'kb', v: v.map(r2), w });
   }
   slip(t, k) {
+    if (this.rigOn(t)) return; // a rig doesn't slip on peels (or marbles)
     t.knockT = now(); // sliding on a banana isn't moving either
     if (t.isBot) { t.slipUntil = now() + 1700; t.vel[1] = Math.max(t.vel[1], 6.5); t.onGround = false; return; }
     send(t, k ? { t: 'slip', k } : { t: 'slip' }); // k: what you slipped on (the client says MARBLES! for marbles)
@@ -1196,6 +1228,7 @@ class Room {
     if (!t.alive) return true;
     if (this.round && this.round.over && w !== 'void') return true;
     if (attacker && attacker !== t && now() - t.spawnT < 1200 && !t.isBot) return true; // spawn protection
+    if (attacker && attacker !== t && this.invulnerable(t)) return true; // sitting a pop quiz, or the few seconds after acing one
     return !!this.friendly(attacker, t) || this.bubbleBlocks(attacker, t, from);
   }
   // returns true when the damage was applied
@@ -1204,6 +1237,8 @@ class Room {
     if (t.trap) return false; // sealed in a soap bubble: burning, gas and the like can't get in (a real hit pops it, see hurt)
     if (this.hitBlocked(t, attacker, w, from)) return false;
     if (attacker && attacker.isBot && !t.isBot && this.mode !== 'bots') amt *= 0.6; // coop bots hit softer
+    if (t.rig) { amt = this.rigSoak(t, amt, attacker, w, from); if (amt <= 0) return true; } // overdrive rig: block + overshield first
+    if (this.isEcon()) amt = this.econArmor(t, amt, attacker, w, hs);
     t.hp -= amt;
     if (!attacker || attacker === t) t.selfHurtT = now(); // EPIC: coughing yourself down to 4 HP doesn't make you a clutch hero
     t.lastHs = !!hs;
@@ -1222,6 +1257,7 @@ class Room {
   sleep(t, by, secs) {
     if (!t.alive) return;
     this.tag(t, by, 'bow');
+    if (this.rigOn(t)) return; // the overdrive rig doesn't nap (the arrow still hurt)
     t.sleepUntil = now() + secs * 1000;
     if (t.isBot) { if (t.ai) t.ai.hook = null; t.g = null; return; } // knocked flat: lets go of the rope too (snapshots show FLAGS.SLEEP)
     send(t, { t: 'sleep', dur: secs }); // players send FLAGS.SLEEP themselves while it lasts
@@ -1290,6 +1326,7 @@ class Room {
     if (!t.alive) return;
     if (t.trap) this.popTrap(t, 'dead');
     t.alive = false; t.hp = 0; t.deaths++; t.g = null; t.reverseUntil = 0; t.oobAt = 0;
+    this.rigDeath(t); // (every client bursts the frame open from the kill message)
     if (t.ai) { t.ai.hook = null; t.ai.route = null; } // a fresh route from the spawn, not the old waypoint index
     // the mode's respawn delay; skipping the killcam ('respawn') can't go below it
     t.respawnAt = t.minRespawnAt = now() + (t.isBot && t.ai.dummy ? 700 : this.game === 'bomb' && this.teamsOn() ? BOMB.respawn : 2500);
@@ -1319,7 +1356,7 @@ class Room {
       if (this.round && !this.round.over) matchKill(this, killer, t, via || w);
       if (killer.lastKiller === t.id) killer.lastKiller = 0; // revenge served (scales of justice)
       t.lastKiller = killer.id;
-      if (!killer.isBot && this.mode !== 'training' && !this.modeWeapon(killer) && !(this.chaosKit && this.chaosKit.noStreaks)) { // no killstreaks in gun game, as a zombie or in a chaos kit
+      if (!killer.isBot && this.mode !== 'training' && !this.modeWeapon(killer) && !(this.chaosKit && this.chaosKit.noStreaks) && this.streaksOn()) { // no killstreaks in gun game, as a zombie or in a chaos kit
         // your 3 picked streaks: earn one and it waits in your tray until you use it (keys 5 / 6 / 7)
         for (const id of validStreaks(killer.streaks)) {
           const st = STREAKS[id];
@@ -1330,6 +1367,8 @@ class Room {
           this.broadcast({ t: 'chat', id: 0, m: `${killer.name} earned ${st.name} (${st.kills} kills)` }, killer.id);
         }
       }
+      // bots have no tray, but the overdrive rig is theirs to earn too (they suit up right away)
+      if (killer.isBot && this.mode !== 'training' && !this.modeWeapon(killer) && !(this.chaosKit && this.chaosKit.noStreaks) && killer.streak === STREAKS.overdrive.kills) this.rigBotEarn(killer);
     }
     // killcam: humans who have it on wait for it to finish (or skip it) before respawning
     if (!t.isBot && t.kc && killer && killer !== t && this.mode !== 'training') t.respawnAt = Math.max(t.respawnAt, now() + 9000);
@@ -1363,6 +1402,7 @@ class Room {
     this.chaosKill(t, killer);
     if (t.isBot && this.mode === 'coop') { setTimeout(safe('coop', () => { if (this.players.get(t.id) === t) this.remove(t); }), 50); }
     this.modeKill(t, killer, via || w);
+    if (this.isEcon()) this.econOnKill(t, killer, w, via);
   }
   // is this kill the play of the round? multikills, speed, distance and void kills score higher
   hlCandidate(k, t, w) {
@@ -1453,6 +1493,7 @@ class Room {
     const frames = this.rec.frames.filter((f) => f.s >= t0 && f.s <= t1 && f.odd);
     const ev = this.rec.ev.filter((e) => e.s >= t0 && e.s <= t1);
     ev.unshift(...trapPreroll(this.rec.ev, t0)); // someone already floating in a soap bubble when the clip starts
+    ev.unshift(...this.framePreroll(this.rec.ev, t0)); // photo frames already standing (and the photos in them)
     ev.unshift(...patchPreroll(this.rec.ev, t0)); // marbles already on the floor
     const had = new Set(ev.map((e) => e.m.t === 'mpatch' && e.m.id)); // still down from before the recording kept: from the live patch
     for (const pt of this.mpatches.values()) if (pt.born < t0 && !had.has(pt.id) && pt.until - t0 > 300) ev.unshift({ s: t0, m: { t: 'mpatch', ...this.patchInfo(pt), left: pt.until - t0 } });
@@ -1524,6 +1565,7 @@ class Room {
   }
 
   onHit(p, m) {
+    if (this.rigOn(p)) return; // no guns in the overdrive rig: its hits are judged in server/rig.js
     if (!this.chaosHit(p, m)) return; // chaos kits: only their weapons; one in the chamber's bullet
     const w = has(WEAPONS, m.w) && WEAPONS[m.w];
     const t = this.players.get(m.to);
@@ -1610,6 +1652,7 @@ class Room {
   }
 
   onPush(p, m) {
+    if (this.rigOn(p) || (m.w === 'hook' && p.hackedUntil > now())) return; // no grapple in the rig; a hacked one is fried
     if (m.w !== 'hook' && this.chaosKit && !this.chaosKit.slots.includes(m.w)) return;
     const t = this.players.get(m.to);
     if (!t || t === p || !t.alive || !p.alive) return;
@@ -1811,6 +1854,7 @@ class Room {
   }
 
   onFire(p, m) {
+    if (this.rigOn(p)) return; // no guns in the overdrive rig
     const w = has(WEAPONS, m.w) && WEAPONS[m.w];
     if (!w || !p.alive || this.isBall(p)) return; // no hands in the wrecking ball
     if (!this.allowed(p, m.w)) return; // gun game rung / zombie claw only
@@ -1818,6 +1862,7 @@ class Room {
     // loadout weapons only (plus the scythe once earned, and the one weapon a mode hands you: the zombie claw): items
     // (frag, smoke, duck, popper, reverse card) come from G, grenades and thrown cards from the deck, never 'fire'
     if (!SLOTS.includes(w.slot) && !(w.slot === 'streak' && p.scythe) && this.modeWeapon(p) !== m.w) return;
+    if (w.kind === 'beam') { this.laserFire(p, m); return; } // laser pointer: 'ch' starts the charge, the release fires what we timed
     let o = vec3(m.o);
     if (!o || dist3(o, eyeOf(p)) > 4) o = eyeOf(p);
     const fan = !!(w.fanHammer && m.fan === 1); // revolver: fanning the hammer (validated like every flag: 1 or nothing)
@@ -2140,6 +2185,7 @@ class Room {
     for (const pr of this.projectiles.values()) {
       this.epicProj = pr; // a kill by this projectile counts from where it was fired (epicOf)
       const w = WEAPONS[pr.k];
+      if (pr.k === 'rigmissile') { this.rigMissileStep(pr, dt); continue; } // overdrive rig missiles home in (server/rig.js)
       const age = (n - pr.born) / 1000;
       if (pr.k === 'bloodcross') { this.tickBloodBolt(pr, dt, n); continue; }
       const owner = this.players.get(pr.o);
@@ -2191,6 +2237,7 @@ class Room {
         const ownerImmune = pr.k === 'slipper' ? Infinity : pr.k === 'bowling' ? 0.5 : 0.25;
         const victims = this.sweep(prev, pr.p, pr.r, (t) => (t.id === pr.o && age < ownerImmune) || (pr.hit.has(t.id) && n - pr.hit.get(t.id) < 700) || (this.friendly(owner, t) && !t.trap));
         if (victims.length) {
+          if (pr.k === 'calc') { this.calcHit(pr, owner, victims[0]); continue; } // pop quiz: freeze them with a question
           if (pr.k === 'chicken') { pr.p = victims[0].at; this.projectiles.delete(pr.id); this.explode(pr); continue; }
           if (pr.k === 'snowball') {
             const v = victims[0];
@@ -2578,14 +2625,17 @@ class Room {
   resetLife(p) {
     p.slipUntil = 0; p.burnUntil = 0; p.burnBy = 0; p.burnTick = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.frostT = 0;
     p.healLeft = 0; p.reverseUntil = 0; p.g = null; p.lastAttacker = 0; p.ground = null;
+    this.rigReset(p); // a new round ends the overdrive rig (and any hack)
     if (p.ai) { p.ai.hook = null; p.ai.route = null; }
     p.parryT = 0; p.staggerUntil = 0; // katana parry: a new life starts with the guard ready (the client resets too)
     p.ballUntil = 0; p.f &= ~FLAGS.BALL; // a wrecking ball doesn't roll into the next round (or the next mode)
     p.lavaBurn = 0; p.lavaSeen = 0; // floor is lava: the burn ends with the life
+    this.gearReset(p); // photo, goggles, laser charge, quiz
     if (!p.isBot) { if (p.nextItem) { p.item = p.nextItem; p.nextItem = null; } p.ic = null; } // full charges (sendIc after 'spawn')
   }
   resetWorld() {
     this.resetChaos();
+    this.gearWorldReset(); // photo frames come down
     this.projectiles.clear(); this.peels.clear(); this.holes.clear();
     this.mpatches.clear(); // clients wipe theirs on 'clear'
     this.broadcast({ t: 'clear' });
@@ -2594,7 +2644,7 @@ class Room {
     for (const c of this.clouds.values()) this.broadcast({ t: 'cloudx', id: c.id });
     this.bubbles.clear(); this.clouds.clear();
     for (const p of this.players.values()) {
-      if (p.isBot && p.ai.dummy) continue;
+      if ((p.isBot && p.ai.dummy) || p.watch) continue;
       p.alive = true; p.hp = 100; p.vel = [0, 0, 0]; p.spawnT = now(); p.seq++;
       p.parryT = 0; p.staggerUntil = 0; // katana parry: the client resets on 'spawn', so the server does too
       p.pos = this.pickSpawn(p.isBot, p);
@@ -2608,7 +2658,9 @@ class Room {
   }
 
   handle(p, m) {
+    if (p.quiz && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray'].includes(m.t)) return; // pens down: no attacks during a pop quiz
     if (p.trap && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray'].includes(m.t)) return; // sealed in a soap bubble: no attacks, parries, items, streaks, sprays or planting till it pops
+    if (this.isEcon() && this.econHandle(p, m)) return;
     switch (m.t) {
       case 's': {
         if (!p.alive || m.q !== p.seq) return;
@@ -2625,10 +2677,12 @@ class Room {
         p.g = vec3(m.g);
         p.f = num(m.f) | 0;
         if (raycast([pos[0], pos[1] + 0.3, pos[2]], [0, -1, 0], 0.6, this.boxes)) p.ground = pos.slice(); // standing on something
+        this.rigSnap(p); // the rig flags only count from someone who activated it; no rope in the rig or when hacked
         if (p.trap) this.holdTrapped(p, true); // sealed in a soap bubble: you go where it floats
         if (p.pos[1] < this.map.killY) this.kill(p, null, 'void');
         if ((p.f & FLAGS.BALL) && !(p.ballUntil > now())) p.f &= ~FLAGS.BALL; // only someone who earned the wrecking ball gets to be one
         if (p.ballUntil > now()) this.ballAir(p);
+        this.gearSnap(p); // goggles / laser flags only if the server agrees; pop quiz holds you in place
         break;
       }
       case 'hit': this.onHit(p, m); break;
@@ -2679,7 +2733,9 @@ class Room {
         if (i < 0 || !p.alive || !has(STREAKS, m.r)) break;
         if (this.modeWeapon(p)) break; // no killstreaks in gun game or as a zombie (they keep for later)
         if ((m.r === 'chickenstrike' || m.r === 'giantduck') && !at) break;
+        if (rigClash(m.r, this.rigOn(p), this.isBall(p) || p.ballUntil > now())) break; // overdrive rig vs other body streaks: it keeps in the tray
         p.pocket.splice(i, 1);
+        if (m.r === 'overdrive') this.rigStart(p);
         if (this.mode === 'training') (p.trainCd ||= {})[m.r] = now() + ((STREAKS[m.r].dur || 0) + 3) * 1000;
         (p.usedAt ||= {})[m.r] = now(); // EPIC kills skip the spinbot's (aimbot) and the chicken strike's
         if (m.r === 'scythe') p.scythe = true;
@@ -2738,6 +2794,8 @@ class Room {
       case 'parry': this.startParry(p, m); break;
       case 'lava': this.lavaTouch(p, true); break; // floor is lava: "ouch, I touched it"
       case 'item': this.useItem(p, m); break;
+      case 'ans': this.onAnswer(p, m); break; // pop quiz answer (0-3)
+      case 'nv': this.onNv(p, m); break; // night vision goggles on / off
       case 'spray': this.onSpray(p, m); break;
       case 'itemsel': this.selectItem(p, m.i); break;
       case 'vote': { // a vote is for the stage that's open now (s, when sent, must match it). one that comes too soon after
@@ -2766,6 +2824,7 @@ class Room {
           })().catch((e) => logErr('skin', e));
         }
         break;
+      case 'rig': this.onRig(p, m); break; // overdrive rig: punch, hack, missiles, leap, landing (server/rig.js)
       case 'pi': send(p, { t: 'po', c: Number.isFinite(m.c) ? m.c : 0 }); break; // echo a number, not whatever object came in
       case 'land': this.airFail(p, false); break; // your client saw you touch the ground: run's over
     }
@@ -2781,7 +2840,8 @@ class Room {
       const n = now();
       r.bomb = { att: b.att, ph: b.ph, n: b.n, wins: [b.wins[1], b.wins[2]], carrier: b.carrier, drop: b.drop, p: b.p, site: b.site,
         left: Math.max(0, (b.ph === 'planted' ? b.explodeAt : b.between || b.ends) - n),
-        act: b.act ? { k: b.act.kind, by: b.act.id, f: Math.min(1, (n - b.act.start) / ((b.act.kind === 'plant' ? BOMB.plant : BOMB.defuse) * 1000)) } : 0 };
+        act: b.act ? { k: b.act.kind, by: b.act.id, f: Math.min(1, (n - b.act.start) / this.actMs(b.act)) } : 0 };
+      if (this.isEcon()) this.econRoundInfo(r);
     }
     return r;
   }
@@ -3064,6 +3124,7 @@ class Room {
     b.n++;
     Object.assign(b, { ph: 'live', site: null, p: null, drop: null, explodeAt: 0, act: null, between: 0, ends: now() + (process.env.JF_BOMB_ROUND ? BOMB.roundTime : this.map.roundTime || BOMB.roundTime) * 1000, carrier: 0 }); // per-map round time (the test knob still wins)
     for (const p of this.players.values()) if (p.ai) { p.ai.site = null; p.ai.route = null; }
+    if (this.isEcon()) this.econNewRound(first); // buy phase, payouts carried over, the half's credit reset
     this.projectiles.clear(); this.peels.clear(); this.holes.clear();
     this.resetWorld();
     this.giveBomb();
@@ -3095,6 +3156,7 @@ class Room {
     b.wins[team]++;
     b.ph = 'done'; b.act = null;
     this.broadcast({ t: 'bombev', k: 'win', team, why, wins: [b.wins[1], b.wins[2]] });
+    if (this.isEcon()) this.econRoundEnd(team, why);
     if (b.wins[team] >= BOMB.wins) { this.endRound(); return; }
     b.between = now() + BOMB.between;
   }
@@ -3132,7 +3194,7 @@ class Room {
       const hold = a && a.alive && n - (a.useT || 0) < 600 && dist3(a.pos, b.act.pos) < 1.6;
       const ok = hold && (b.act.kind === 'plant' ? b.carrier === a.id && siteAt(this.map, a.pos) : b.ph === 'planted' && canDefuse(a.pos, b.p, 0.6));
       if (!ok) b.act = null;
-      else if (n - b.act.start >= (b.act.kind === 'plant' ? BOMB.plant : BOMB.defuse) * 1000) {
+      else if (n - b.act.start >= this.actMs(b.act)) {
         if (b.act.kind === 'plant') {
           const site = siteAt(this.map, a.pos);
           Object.assign(b, { ph: 'planted', site: site.id, p: [r2(a.pos[0]), r2(a.pos[1] + 0.1), r2(a.pos[2])], explodeAt: n + BOMB.fuse * 1000, carrier: 0, act: null, planter: a.id });
@@ -3202,6 +3264,7 @@ class Room {
     if ((!w && !p.only) || (p.isBot && p.ai.dummy)) return false;
     if (w === 'claw' && p.alive) { p.hp = INFECT.hp; p.healLeft = 0; }
     if (w && p.ballUntil) { p.ballUntil = 0; p.f &= ~FLAGS.BALL; } // patient zero mid wrecking ball: claws only (the client ends it on 'modew')
+    if (w && p.rig) this.rigEnd(p); // same for the overdrive rig
     if (p.isBot) { p.w = w || pick(BOT_GUNS); p.ai.ammo = WEAPONS[p.w].mag || 1; p.ai.reloadUntil = 0; }
     else {
       if (w && p.forced) { p.forced = false; send(p, { t: 'loadout', lo: null }); }
@@ -3533,6 +3596,7 @@ class Room {
   tick(dt) {
     const n = now();
     this.tickRound();
+    if (this.isEcon()) this.tickEcon(n);
     this.tickTags(n);
     this.tickItems(dt);
     if (this.mode === 'training') this.trainingStreaks(n);
@@ -3541,6 +3605,7 @@ class Room {
     this.tickProjectiles(dt);
     this.tickCrosses();
     this.tickHoles(dt);
+    this.tickRig();
     this.tickStatus(dt);
     this.tickPeels();
     this.tickMarbles();
@@ -3548,6 +3613,7 @@ class Room {
     this.tickWaves();
     if (this.sprays.size && this.sprayMap !== this.cfg.map) this.sprays.clear(); // the map changed: its graffiti goes with it
     this.tickChaos(dt, n);
+    this.tickGear(n); // laser beams, photo frames, pop quizzes, bots' gadgets
     for (const p of this.players.values()) {
       if (!p.alive && n >= p.respawnAt) {
         if (p.isBot && this.mode === 'coop') continue;
@@ -3667,6 +3733,13 @@ class Room {
     this.broadcast({ t: 'sn', s: n, p: ps, wave: this.mode === 'coop' ? this.waveInfo() : undefined, round: this.roundInfo() || undefined });
   }
 }
+
+installRig(Room, { now, num, vec3, norm, r2, center, safe, REC_T, WEAPONS }); // the overdrive rig's methods (server/rig.js)
+installGear(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm, vec3 });
+installEcon(Room, {
+  send, cleanSkins, enforceSkins, logErr, BOT_GUNS, navGraph,
+  refreshInv: async (p) => { if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; } },
+});
 
 // ---------------------------------------------------------------- account stats
 function stat(p, key, v) {

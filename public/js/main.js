@@ -14,6 +14,7 @@ import { hud } from './hud.js';
 import { fx, makeBeam, setBeam, scaleU } from './fx.js';
 import { marbles } from './marbles.js';
 import { initAudio, sfx, setVolume, setListener, stopLoops } from './audio.js';
+import { musicUpdate, musicNewMatch } from './music.js';
 import { ME, stepPlayer, tryHook, releaseHook, applyKb, slip, eye, hookPoint, hspeed, crouchTap } from './player.js';
 import {
   W, initWeapons, rebuildOne, setLoadout, refillAmmo, switchSlot, lastSlot, cycleSlot, reload,
@@ -22,6 +23,7 @@ import {
 } from './weapons.js';
 import { Remote, updateGibs } from './remote.js';
 import { stepSoap, trapStart, trapEnd, updateWand, stuckInBubble } from './wand.js';
+import { initGear, updateGear, gearFx, gearKeyDown, gearSpawn, gearLeave, gearKillParts, gearDeathLine } from './gear.js'; // laser pointer, camera, pop quiz, goggles
 import { parry } from './weapons.js';
 import './parry.js'; // katana parry: sparks, sounds, PARRY!, the guard pose
 import { addPatch, clearPatches } from './mslip.js'; // marble shotgun: marbles on the floor you slip on
@@ -46,14 +48,18 @@ import { hasAcc } from '/shared/looks.js';
 import { airTick, airReset, airFlourish } from './airborne.js';
 import { oobTick } from './bounds.js';
 import { account, restore, login, register, logout, saveProfile, leaderboard as fetchLeaders } from './account.js';
+import { updateRig, rigDied, rigOn } from './rig.js';
+import { rigClash } from '/shared/rig.js'; // overdrive rig killstreak
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
+import { initEcon, ecoOn, econKey, econMouse, econMenuOpen, econFrame, econCam, econHideVM, econDead, econWelcome, econSpawn, econKill, econIc, econLoadout, econReset } from './econ.js';
 import { SPRAY, ownedSpray } from '/shared/cosmetics.js';
 import { sprayAim, sprayFx, addSpray, clearSprays, updateSprays, sprayIcon } from './sprays.js';
 import { achInv } from '/shared/cosmetics.js'; // achievement rewards (Golden Sniper) count as owned once you have the achievement
 import { achProgress, ROYAL_ALL, ROYAL_FEATS } from '/shared/looks.js';
 import { royalToast, royalUnlock, royalBoxes } from './royal.js';
 import { setOnly, coughCloud } from './weapons.js';
+import { renderPatchNotes, markPatchSeen, patchUnseen } from './patchnotes.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
 import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection, infClipInfo } from './infection.js';
 import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown } from './endscreen.js';
@@ -128,6 +134,7 @@ initHome({
   look: () => { const shown = validLook({ ...DEFAULT_LOOK, ...G.settings.look }, myAchs()); return [shown.color || G.myColor || '#ff4fd8', shown]; },
   skin: (id) => G.equipped[id], // what you actually wear
 });
+initEcon({ pause: () => { if (document.pointerLockElement) document.exitPointerLock(); pause(); }, lock }); // Plant & Defuse economy
 
 const myShadow = makeShadow();
 G.scene.add(myShadow);
@@ -157,6 +164,7 @@ function show(id) {
   if (id === 'character') { $('charSlot').append($('preview')); buildCharacterUI(); setTimeout(resizePreview, 0); }
   if (id === 'namecard') cardEditor.open();
   if (id === 'crates') renderCrates();
+  if (id === 'patchnotes') { renderPatchNotes($('pnList')); markPatchSeen(); $('pnNew').classList.add('hidden'); }
   if (id === 'loadout') { if ($('loNote').textContent === DRAFT_NOTE) $('loNote').textContent = ''; streakDraft = null; buildLoadoutUI(); }
   if (id === 'settings') syncDisplay();
   if (id === 'match') syncMatchUI();
@@ -219,10 +227,12 @@ function resetWorldState() {
   stopReplay(true);
   hideReplayUI();
   if (G.forcedLoadout) { G.forcedLoadout = null; setLoadout(S.loadout); }
+  econReset();
   if (W.only) setOnly(null, S.loadout);
   resetGunGame(); resetInfection();
   for (const b of G.bubbles.values()) G.scene.remove(b.mesh);
   G.bubbles.clear(); G.smokes.length = 0; ME.frozenUntil = 0; G.frost = 0;
+  gearLeave();
   resetItems(); stopUse(); G.activeStreaks = null; G.itemSent = null;
   clearRec();
   clearKillFx();
@@ -270,7 +280,7 @@ let wasLocked = false, lockedAt = 0, mouseAvg = 8;
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === canvas;
   if (locked) { lockedAt = performance.now(); esHideClick(); }
-  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull()) pause(); // the end screen lets go of the mouse on purpose
+  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull() && !econMenuOpen()) pause(); // the end screen lets go of the mouse on purpose
   wasLocked = locked;
 });
 canvas.addEventListener('click', () => { if (G.joined && document.pointerLockElement !== canvas && $('menu').classList.contains('hidden')) lock(); });
@@ -357,6 +367,17 @@ $('jank').value = String(S.jank);
 $('jank').addEventListener('change', () => { S.jank = Number($('jank').value); setJank(S.jank); saveSettings(); });
 bindRange('fov', 'fov');
 bindRange('vol', 'vol', null, () => setVolume(S.vol));
+// music has its own volume (the main one still scales it). in matches it's on (quieter, its own slider) for bots, co-op
+// and training, and off in competitive (online room, plant & defuse) unless you turn that on. old saves have none of it
+if (typeof S.musicVol !== 'number') S.musicVol = 0.35;
+if (typeof S.musicMatchVol !== 'number') S.musicMatchVol = 0.15;
+if (typeof S.musicMatch !== 'boolean') S.musicMatch = true;
+S.musicComp = !!S.musicComp;
+bindRange('musicVol', 'musicVol', null, musicUpdate);
+bindRange('musicMatchVol', 'musicMatchVol', null, musicUpdate);
+bindCheck('musicMatch', 'musicMatch', musicUpdate);
+bindCheck('musicComp', 'musicComp', musicUpdate);
+SYNC_KEYS.push('musicVol', 'musicMatch', 'musicComp', 'musicMatchVol');
 bindRange('sens', 'sens', (v) => v.toFixed(1));
 bindRange('adsSens', 'adsSens', (v) => v.toFixed(2));
 bindCheck('fovKick', 'fovKick');
@@ -399,7 +420,7 @@ function buildLoadoutUI() {
     col.innerHTML = '';
     for (const id of ORDER) {
       const w = WEAPONS[id];
-      if (w.slot !== slot) continue;
+      if (w.slot !== slot || w.modeOnly) continue; // mode-only weapons (the spoon) aren't loadout picks
       const b = document.createElement('button');
       b.className = 'wpick' + (S.loadout[slot] === id ? ' on' : '');
       b.textContent = w.name;
@@ -457,6 +478,7 @@ function buildLoadoutUI() {
   }
 }
 function applyLoadout(force) {
+  if (econLoadout()) return; // Plant & Defuse: you buy your gear
   sendItemSel();
   if (G.forcedLoadout) { $('loNote').textContent = G.forcedLoadout.only ? 'this mode hands everyone the same weapons' : 'randomizer is on: you get a random loadout every life'; return; }
   if (W.only) { $('loNote').textContent = 'this mode hands you one weapon: your loadout comes back after the match'; return; }
@@ -499,7 +521,7 @@ function sendSkins() {
   skinSendT = setTimeout(() => { if (G.joined) net.send({ t: 'skin', s: G.equipped }); }, 250);
 }
 // the weapons that show up in COSMETICS (the rifle form of the scythe borrows the scythe's look)
-function skinnable() { return ORDER.filter((id) => WEAPONS[id] && (SLOTS.includes(WEAPONS[id].slot) || itemModel(id) || id === 'scythe')); }
+function skinnable() { return ORDER.filter((id) => WEAPONS[id] && !WEAPONS[id].modeOnly && (SLOTS.includes(WEAPONS[id].slot) || itemModel(id) || id === 'scythe')); }
 // items you see in your hand wear skins (popper, reverse card). the thrown duck is a plain projectile, so not that
 function itemModel(id) { return Object.values(ITEMS).some((it) => it.w === id); }
 // nothing picked = no entry. a wrap mode that isn't normal is kept even without a wrap, so it's still there when you pick one
@@ -894,11 +916,13 @@ function aimUp() { if (!S.toggleAim) W.aimHeld = false; }
 
 addEventListener('keydown', (e) => {
   if (!inGame() || document.activeElement === $('name')) return;
+  if (econKey(e)) return; // buy menu, drop, P pause (econ.js ECON_KEYS)
   if ((RP.active || G.killcamPending) && (e.code === 'Space' || e.code === 'Enter')) { e.preventDefault(); skipReplay(); return; }
   if (esKey(e)) { e.preventDefault(); return; } // end screen: 1-4 vote, arrows switch tabs
   if (e.code === 'Tab') { e.preventDefault(); scoresOpen = true; renderScores(); return; }
   if (e.code === 'KeyT' || e.code === 'Enter') { e.preventDefault(); openChat(); return; }
   if (e.code === 'KeyB') { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
+  if (gearKeyDown(e)) return; // pop quiz answers (1-4), goggles flash (H)
   if (/^(KeyE|KeyG|KeyV|KeyC|KeyZ|ControlLeft|ControlRight|Digit[567])$/.test(e.code) && stuckInBubble(true)) { keys[e.code] = true; return; } // sealed in a soap bubble: no grapple, items, dash, t-bag, sprays or streaks
   if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) jumpPressed = true; }
   if (e.code === 'KeyE' && !e.repeat) { if (S.swapAim) aimDown(); else tryHook(); }
@@ -936,7 +960,9 @@ addEventListener('mousedown', (e) => {
   if (RP.mode === 'killcam' || G.killcamPending) { skipReplay(); return; } // a click skips the killcam
   if (RP.mode === 'hl') return; // ...but not the play of the round
   if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor: no shooting
+  if (performance.now() < (ME.quizUntil || 0)) return; // pens down: sitting a pop quiz
   if (stuckInBubble(true)) return; // sealed in a soap bubble: no shooting, aiming or grappling till it pops
+  if (econMouse(e)) return;
   if (e.button === 0) fireDown();
   if (e.button === 2) { if (S.swapAim) tryHook(); else aimDown(); }
   if (e.button === 3 || e.button === 4) tryHook();
@@ -996,7 +1022,7 @@ function updateLabel() {
 }
 
 // ------------------------------------------------------------ world entities
-function skinOf(owner, wid) { return (owner === G.myId ? G.equipped : (G.skins.get(owner) || {}))[wid]; }
+function skinOf(owner, wid) { return (owner === G.myId ? W.skinOver || G.equipped : (G.skins.get(owner) || {}))[wid]; }
 function spawnProj(m) {
   const w = WEAPONS[m.k];
   if (!w) return;
@@ -1034,6 +1060,8 @@ net.on('welcome', (m) => {
   G.myId = m.id; G.myName = m.name; G.myColor = m.color; G.joined = true; connecting = false;
   airReset();
   G.mode = m.mode; G.cfg = m.cfg;
+  G.game = m.game; // (music needs it before the first round info arrives)
+  musicNewMatch(); // a fresh random song for this match
   loadMap(m.cfg.map);
   ME.pos = m.pos.slice(); ME.vel = [0, 0, 0]; ME.alive = true; ME.hp = 100; ME.seq = m.q;
   ME.yaw = Math.atan2(m.pos[0], m.pos[2]);
@@ -1049,6 +1077,7 @@ net.on('welcome', (m) => {
   renderRound(m.round);
   $('roundEnd').classList.add('hidden');
   G.round = m.round; G.myTeam = m.team || 0;
+  econWelcome(m);
   G.pocket = []; G.streakN = 0; G.activeStreaks = validStreaks(S.loadout.streaks); renderStreak(0);
   G.kat.clear(); setMyKatana(0);
   for (const [id, n] of m.kat || []) G.kat.set(id, n);
@@ -1182,6 +1211,7 @@ net.on('teams', (m) => {
     if (r) { const was = !!r.team; r.team = team; if (r.color !== color || was !== !!team) r.setLook(r.outfit, color); } // team colour beats clothes
   }
   if (G.round) G.round.game = m.game;
+  G.game = m.game;
   updateLabel();
   if (screen === 'match') syncMatchUI();
   if (GAMES[m.game] && GAMES[m.game].teams && G.myTeam) hud.msg(`YOU ARE ${TEAMS[G.myTeam].name}`, 2, 'brag');
@@ -1195,7 +1225,7 @@ net.on('tagx', (m) => {
 net.on('bombyou', () => { hud.msg('YOU HAVE THE BOMB', 2, 'brag'); hud.chat(null, null, 'you have the bomb: get to site A or B and hold F to plant'); });
 net.on('bombev', (m) => {
   const [n] = m.id ? nameOf(m.id) : [''];
-  if (m.k === 'round') { hud.msg(`ROUND ${m.n} · ${G.myTeam === m.att ? 'ATTACK' : 'DEFEND'}`, 2.2, 'brag'); }
+  if (m.k === 'round') { if (!ecoOn()) hud.msg(`ROUND ${m.n} · ${G.myTeam === m.att ? 'ATTACK' : 'DEFEND'}`, 2.2, 'brag'); } // the economy has its own banner
   else if (m.k === 'planted') { hud.msg(`BOMB PLANTED AT ${m.site}`, 2.2, 'brag'); sfx.ting(); hud.chat(null, null, `${n} planted the bomb at ${m.site}`); }
   else if (m.k === 'defused') { hud.msg('BOMB DEFUSED', 2.2, 'brag'); sfx.kill(); hud.chat(null, null, `${n} defused the bomb`); }
   else if (m.k === 'boom') { G.shake = 1; }
@@ -1203,7 +1233,7 @@ net.on('bombev', (m) => {
   else if (m.k === 'pickup') hud.chat(null, null, `${n} picked up the bomb`);
   else if (m.k === 'win') {
     const mine = m.team === G.myTeam;
-    const why = { defused: 'bomb defused', exploded: 'bomb went off', time: 'time ran out' }[m.why] || '';
+    const why = { defused: 'bomb defused', exploded: 'bomb went off', time: 'time ran out', elim: 'team wiped' }[m.why] || '';
     hud.msg(`${TEAMS[m.team].name} WINS THE ROUND`, 3, 'brag');
     hud.chat(null, null, `${TEAMS[m.team].name} wins the round (${why}) · ${m.wins[0]} - ${m.wins[1]}`);
     if (mine) sfx.kill();
@@ -1213,6 +1243,7 @@ net.on('bombev', (m) => {
 // item charges: the server's count is the real one, and so is the item it says you have
 function onIc(m) {
   if (!m || !Object.hasOwn(ITEMS, m.i)) return;
+  if (econIc(m)) return; // Plant & Defuse: the inventory says
   syncItem(m.i, m.n, m.next);
   // (gun game / zombies hand you one weapon and no item, a chaos kit can say no item: the 'ic' doesn't put it back)
   const noItem = W.only || (G.forcedLoadout && G.forcedLoadout.only && G.forcedLoadout.item === 'none');
@@ -1327,6 +1358,7 @@ net.on('kill', (m) => {
     victim.reverseUntil = 0; // the server ends their reverse card on death too
     const vi = G.names.get(m.v) || {};
     const replaced = kfx && playKillFx(kfx, { pos: victim.pos.slice(), vel: m.vel || victim.vel, yaw: victim.yaw, color: victim.color, look: teamLook(vi.look, vi.team), name: vi.name });
+    rigDied(victim, m.vel); // they died in the overdrive rig: the frame bursts apart into scrap
     if (replaced) victim.ch.root.visible = false; else victim.breakApart(m.vel || victim.vel);
     wreckDied(victim, m.vel); // they died as a wrecking ball: it bursts open
     victim.frozenUntil = 0;
@@ -1344,6 +1376,8 @@ net.on('kill', (m) => {
   } else {
     parts = [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc]];
   }
+  const gp = gearKillParts(m, kn, kc, vn, vc, wname, wcolor); // failed a pop quiz, telefragged
+  if (gp) parts = gp;
   const hazard = m.w === 'lava' || (m.w === 'duck' && m.sky); // floor is lava / duck rain: nobody owns those
   if (hazard) parts = m.k ? [[kn, kc], [`  [${wname(m.via)}]  `, wcolor(m.via)], [vn, vc], [m.w === 'lava' ? '  into the lava' : '  under a sky duck', '#aaa']] : [[vn, vc], [m.w === 'lava' ? '  touched the floor' : '  got flattened by a sky duck', '#ff8a3a']];
   if (m.ep && m.k) parts.push([`  EPIC ${Math.round(m.ep.d)}m`, '#ffe14d']);
@@ -1367,8 +1401,11 @@ net.on('kill', (m) => {
         ? [[kn, kc], [' knocked you into the void', '#fff'], [`  (${wname(via)})`, wcolor(via)]]
         : [['killed by ', '#fff'], [kn, kc], [`  (${wname(via)})`, wcolor(via)]]);
     } else hud.dead(true, [[m.w === 'void' ? 'you fell into the void' : m.w === 'tbag' ? 'you t-bagged too hard. your knees exploded.' : 'you smoked too much', '#fff']]);
+    const gd = gearDeathLine(m);
+    if (gd) hud.dead(true, m.k ? [[kn, kc], [' gave you a pop quiz. ', '#fff'], [gd, '#7fffd4']] : [[gd, '#fff']]);
     if (hazard) hud.dead(true, m.k ? [[kn, kc], [m.w === 'lava' ? ' knocked you into the lava' : ' softened you up for a sky duck', '#fff'], [`  (${wname(m.via)})`, wcolor(m.via)]] : [[m.w === 'lava' ? 'the floor was lava' : 'a duck fell out of the sky on you', '#fff']]);
   }
+  econKill(m);
   if (m.k === G.myId && m.v !== G.myId) {
     G.streakN = (G.streakN || 0) + 1; // the server counts every kill too, but only tells you at your picks
     renderStreak(G.streakN);
@@ -1379,6 +1416,7 @@ net.on('kill', (m) => {
 });
 net.on('spawn', (m) => {
   endKillcam();
+  gearSpawn();
   ME.frozenUntil = 0; G.frost = 0; // item charges come from the server's 'ic' (a new round doesn't refill them)
   ME.pos = m.p.slice(); ME.vel = [0, 0, 0]; ME.alive = true; ME.hp = 100; ME.seq = m.q;
   ME.slipUntil = 0; ME.combo = 0; ME.sleepUntil = 0;
@@ -1387,6 +1425,7 @@ net.on('spawn', (m) => {
   refillAmmo();
   if (G.pendingLoadout) applyLoadout(true);
   hud.dead(false);
+  econSpawn(m);
 });
 net.on('ps', (m) => {
   spawnProj(m);
@@ -1477,6 +1516,7 @@ net.on('he', (m) => {
   G.shake = Math.max(G.shake, Math.max(0, 1 - d / 25));
 });
 net.on('fx', (m) => {
+  if (gearFx(m)) return; // laser beams, photo teleports, goggle flashes (gear.js)
   if (m.k === 'shot' || m.k === 'swing' || m.k === 'tbag' || m.k === 'shatter') recordEv(m);
   const r = G.remotes.get(m.id);
   if (m.k === 'shot') {
@@ -1574,6 +1614,8 @@ net.on('ns', (m) => {
   if (hold && G.killcamPending && !RP.active) queueKillcam(m.k, 'sniper', hold); // got no-scoped from far: the overlay plays out first
 });
 
+initGear(); // the new gear's server messages + the G hook
+
 // ------------------------------------------------------------ main loop
 let last = performance.now(), acc = 0, sendT = 0, pingT = 0, fovNow = S.fov, fpsAcc = 0, fpsN = 0;
 const STEP = 1 / 120;
@@ -1588,7 +1630,7 @@ function frame(t) {
   const now = performance.now();
 
   if (G.joined) {
-    const frozen = now < (ME.frozenUntil || 0);
+    const frozen = now < (ME.frozenUntil || 0) || now < (ME.quizUntil || 0); // (pens down: no walking out of a pop quiz)
     if (frozen) { ME.vel[0] = 0; ME.vel[2] = 0; if (ME.hook) releaseHook(); }
     const playing = $('menu').classList.contains('hidden') && !chatOpen && now >= (ME.sleepUntil || 0) && !RP.active && !G.using && !frozen;
     const inp = playing ? {
@@ -1601,6 +1643,7 @@ function frame(t) {
     while (acc >= STEP) { stepPlayer(STEP, inp, now); airTick(now); lavaStep(now); inp.jumpPressed = false; acc -= STEP; }
     grabStep(now); // held in a shredder's intake
     oobTick(now); // out of the play area: RETURN TO THE MAP 3 2 1
+    econFrame(dt); // Plant & Defuse: barriers, drops, armor on models, spectating
     // spinbot killstreak: lock onto the nearest enemy you can see
     const spinning = ME.alive && now < (G.spinUntil || 0);
     if (spinning) {
@@ -1638,7 +1681,7 @@ function frame(t) {
     }
     pingT -= dt;
     if (pingT <= 0) { pingT = 2; net.send({ t: 'pi', c: performance.now() }); }
-    if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = epicKC ? 'killcam... too epic to skip' : 'killcam... (space to skip)'; else if (epicHold) epicTimer(now); else hud.deadTimer(Math.max(0, ((G.respawnMs ?? 2500) - (now - (G.deadAt || now))) / 1000)); }
+    if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = epicKC ? 'killcam... too epic to skip' : 'killcam... (space to skip)'; else if (epicHold) epicTimer(now); else if (!econDead()) hud.deadTimer(Math.max(0, ((G.respawnMs ?? 2500) - (now - (G.deadAt || now))) / 1000)); }
   }
 
   const rt = now + G.offset - INTERP_MS;
@@ -1651,6 +1694,7 @@ function frame(t) {
   updateShreds(dt);
   for (const [id, b] of G.bubbles) { if (now > b.until + 500) { G.scene.remove(b.mesh); G.bubbles.delete(id); continue; } b.mesh.rotation.y += dt * 0.3; b.mesh.material.opacity = 0.18 + Math.sin(now * 0.006) * 0.05; }
   updateWand(dt, now); // bubble wand: giant soap bubbles round people, the view from inside one, the wand in your hand
+  updateGear(dt, now); // laser beams, photo frames, pop quizzes, night vision
   for (let i = G.smokes.length - 1; i >= 0; i--) {
     const s2 = G.smokes[i];
     if (now > s2.until) { G.smokes.splice(i, 1); continue; }
@@ -1764,7 +1808,7 @@ function frame(t) {
   fovNow += (fovTarget - fovNow) * Math.min(1, dt * (W.aim > 0 ? 14 : 6));
   if (Math.abs(cam.fov - fovNow) > 0.05) { cam.fov = fovNow; cam.updateProjectionMatrix(); }
   if (RP.active) updateReplay(dt, now, cam); // killcam / play of the round owns the camera
-  const specCam = !RP.active && spectateCam(dt, cam); // one in the chamber: out of lives, watching someone
+  const specCam = !RP.active && (spectateCam(dt, cam) || econCam(cam, dt)); // one in the chamber: out of lives, watching someone; Plant & Defuse: a teammate
   cam.updateMatrixWorld();
   updateSpeedLines(dt, G.joined && ME.alive && !RP.active ? Math.hypot(ME.vel[0], ME.vel[1], ME.vel[2]) : 0, ME.vel, cam, ME.dashing ? 0.9 : 0, S.speedLines !== false);
   const rh = G.renderer.domElement.height;
@@ -1779,6 +1823,7 @@ function frame(t) {
   if (shHit) myShadow.position.set(ME.pos[0], shHit.point[1] + 0.03, ME.pos[2]);
   updateWreck(dt, now, RP.active, myShadow, myRope); // your own wrecking ball, its chain (instead of your rope), rumble + timer
   if (now < (G.burnUntil || 0)) fx.burn([ME.pos[0] + Math.sin(ME.yaw) * -0.8, ME.pos[1], ME.pos[2] - Math.cos(ME.yaw) * 0.8]);
+  updateRig(dt, now, cam, RP.active); // overdrive rig: you in it (camera, HUD, trail) and its effects
   const revLeft = W.reverseUntil - now; // reverse card: red edges, blinking for the last second
   $('reverseFx').style.opacity = revLeft > 0 ? (revLeft > 1000 || Math.floor(revLeft / 150) % 2 ? 1 : 0.25) : 0;
 
@@ -1797,7 +1842,7 @@ function frame(t) {
   skinTick(dt, now);
   updateWorld(dt);
   updateCrosses(dt, RP.active ? (RP.sp || 1) * (RP.dt != null && dt > 0 ? RP.dt / dt : 1) : 1); // after the projectile loop + replay: it turns blood bolts nose-first
-  G.vmScene.visible = G.joined && !RP.active && !specCam && !asleep;
+  G.vmScene.visible = G.joined && !RP.active && !specCam && !asleep && !econHideVM();
   if (ballOn(now)) G.vmScene.visible = false; // weapons are holstered inside the ball
   renderFrame();
   if ((screen === 'cosmetics' || screen === 'character' || screen === 'main') && !$('menu').classList.contains('hidden')) renderPreview(dt);
@@ -1834,6 +1879,7 @@ function deployStreak(slot) {
   if (W.only) { hud.msg('no killstreaks in this mode (they keep for later)', 1.2); sfx.empty(); return; }
   if (chaosNoStreaks()) { hud.msg('no killstreaks in this mode', 1.2); sfx.empty(); return; }
   if (!G.pocket.includes(id)) { hud.msg(`${STREAKS[id].name}: ${STREAKS[id].kills} kills in a row`, 1.2); sfx.empty(); return; }
+  if (rigClash(id, rigOn(), ballOn(performance.now()))) { hud.msg(id === 'overdrive' ? 'not inside the wrecking ball' : 'not in the overdrive rig (it keeps for later)', 1.2); sfx.empty(); return; }
   const e = eye(), d = lookDir();
   const h = raycast(e, d, 300, BOXES);
   const at = h ? h.point : [e[0] + d[0] * 60, e[1] + d[1] * 60, e[2] + d[2] * 60];
@@ -2175,6 +2221,8 @@ function applySettingsToUI() {
   for (const id of ['fov', 'vol', 'sens', 'adsSens']) { $(id).value = String(S[id]); $(id).dispatchEvent(new Event('input')); }
   for (const id of ['fovKick', 'shake', 'showFps', 'swapAim', 'toggleAim', 'blood', 'killcam', 'showCards', 'speedLines']) $(id).checked = !!S[id];
   setVolume(S.vol);
+  $('musicVol').value = String(S.musicVol); $('musicMatchVol').value = String(S.musicMatchVol);
+  $('musicMatch').checked = S.musicMatch !== false; $('musicComp').checked = !!S.musicComp; musicUpdate();
 }
 
 function renderProfile() {
@@ -2380,6 +2428,8 @@ net.on('round', (m) => {
   const box = $('roundEnd');
   if (m.start) {
     courtReset(); // scales of justice: a new match, a clean record (the server does the same)
+    if (m.game) G.game = m.game;
+    musicNewMatch(true); // (straight after joining, it's the same match: the song stays)
     G.roundOver = false; if (RP.mode === 'hl') stopReplay(true); box.classList.add('hidden'); G.vote = null;
     esClose(G.joined && document.pointerLockElement !== canvas); // back in: click to grab the mouse again
     if (m.game) { G.round = { ...(G.round || {}), ...m }; updateLabel(); if (screen === 'match') syncMatchUI(); }
@@ -2486,3 +2536,6 @@ requestAnimationFrame(frame);
 
 // debug handle for poking at things from the console
 window.JANK = { G, ME, W, net, switchSlot, setLoadout, fireDown, fireUp, tryHook, releaseHook, reload, startMode, quitToMenu, show };
+
+// PATCH NOTES: a NEW badge on the menu link until you've read the latest entry
+if (patchUnseen()) $('pnNew').classList.remove('hidden');
