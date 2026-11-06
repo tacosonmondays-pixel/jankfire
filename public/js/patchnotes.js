@@ -7,6 +7,7 @@ export const PATCH_NOTES = [
     'TASER: a 1 s stun that chains through everyone soaked nearby. bring a friend with a water pistol.',
     'TV REMOTE: left click PAUSES someone for 1.2 s (their momentum comes back after). aim to REWIND them 2 s back to where they were.',
     'all four are in Plant & Defuse, the three secondaries are in the Zombies crate, and bots use them.',
+    'fixed: melee weapons swing on left click again (a stray comment ate it in the rifle pack update).',
   ] },
   { v: '3.6', date: '2026-11-06', title: 'SIDEARMS', items: [
     'PLAN B: a plain semi-auto pistol. for when everything else is empty.',
