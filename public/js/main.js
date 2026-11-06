@@ -55,6 +55,7 @@ import { achInv } from '/shared/cosmetics.js'; // achievement rewards (Golden Sn
 import { achProgress, ROYAL_ALL, ROYAL_FEATS } from '/shared/looks.js';
 import { royalToast, royalUnlock, royalBoxes } from './royal.js';
 import { setOnly, coughCloud } from './weapons.js';
+import { renderPatchNotes, markPatchSeen, patchUnseen } from './patchnotes.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
 import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection, infClipInfo } from './infection.js';
 import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown } from './endscreen.js';
@@ -158,6 +159,7 @@ function show(id) {
   if (id === 'character') { $('charSlot').append($('preview')); buildCharacterUI(); setTimeout(resizePreview, 0); }
   if (id === 'namecard') cardEditor.open();
   if (id === 'crates') renderCrates();
+  if (id === 'patchnotes') { renderPatchNotes($('pnList')); markPatchSeen(); $('pnNew').classList.add('hidden'); }
   if (id === 'loadout') { if ($('loNote').textContent === DRAFT_NOTE) $('loNote').textContent = ''; streakDraft = null; buildLoadoutUI(); }
   if (id === 'settings') syncDisplay();
   if (id === 'match') syncMatchUI();
@@ -2487,3 +2489,6 @@ requestAnimationFrame(frame);
 
 // debug handle for poking at things from the console
 window.JANK = { G, ME, W, net, switchSlot, setLoadout, fireDown, fireUp, tryHook, releaseHook, reload, startMode, quitToMenu, show };
+
+// PATCH NOTES: a NEW badge on the menu link until you've read the latest entry
+if (patchUnseen()) $('pnNew').classList.remove('hidden');
