@@ -4868,7 +4868,7 @@ function deadmall() {
   const power = { at: [36.7, 1.6, -14], n: [-1, 0, 0] };
   // ---- the Cheat Machine (server/zmextra.js): against the arcade's north wall, a random modifier once the power's on
   const mach = { at: [-14, 0, -29.6], n: [0, 0, 1] };
-  B.add(-14.55, 0, -30, -13.45, 2.2, -29.2, 'containerb');
+  B.add(-14.5, 0, -29.97, -13.5, 1.28, -29.25, 'metal'); B.add(-14.5, 1.28, -29.97, -13.5, 2.12, -29.38, 'metal'); // a bit inside the model (the client draws the machine over it), behind its sunken screen
   B.add(36.6, 1.0, -14.5, 37, 2.2, -13.5, 'metal');
 
   // ---- wall guns: an outline on the wall + its price. look at it and hold F (ammo is half price)

@@ -275,6 +275,7 @@ if (process.env.JF_ZM_BLEED) ZM.bleed = Number(process.env.JF_ZM_BLEED) || ZM.bl
 if (process.env.JF_ZM_DROP) ZM.dropMul = Number(process.env.JF_ZM_DROP) || 1; // x drop chance (tests: 99 = every kill drops, still capped a round)
 if (process.env.JF_ZM_DROPCAP) ZM.dropCap = Number(process.env.JF_ZM_DROPCAP) || ZM.dropCap;
 if (process.env.JF_ZM_MACHCD) ZM.machCd = Number(process.env.JF_ZM_MACHCD);
+if (process.env.JF_ZM_MACHSPIN) ZM.machSpin = Number(process.env.JF_ZM_MACHSPIN) || ZM.machSpin; // ms the cheat machine rolls for (screenshots)
 const GRAPH_TTL = (Number(process.env.JF_GRAPH_TTL) || 10) * 60e3; // test knob: minutes a map's bot walk graph outlives the last room on it (then it's dropped, server/graphs.js)
 const GRAPH_SWEEP = (Number(process.env.JF_GRAPH_SWEEP) || 60) * 1e3; // test knob: seconds between the sweeps that drop them
 function randomSkins() {

@@ -205,13 +205,13 @@ function syncDrops(dr, now) {
 const REEL = Object.keys(ZM_MODS);
 function codeMachine() { // no Blender file: a plain cabinet
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(1.1, 2.0, 0.8), M(0x2a1030)); body.position.y = 1.0; g.add(body);
-  const top = new THREE.Mesh(new THREE.BoxGeometry(1.14, 0.3, 0.84), new THREE.MeshBasicMaterial({ color: 0xff4fd8 })); top.position.y = 2.1; top.material.name = 'zm_neon'; g.add(top);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.1, 2.16, 0.8), M(0x2a1030)); body.position.y = 1.08; g.add(body);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.14, 0.3, 0.84), new THREE.MeshBasicMaterial({ color: 0xff4fd8 })); top.position.y = 2.3; top.material.name = 'zm_neon'; g.add(top);
   const lever = new THREE.Group(); lever.name = 'lever'; lever.position.set(0.62, 1.2, 0.1);
   const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 6), M(0xc0c0c8)); arm.position.y = 0.25; lever.add(arm);
   const ball = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), M(0xff3030)); ball.position.y = 0.52; lever.add(ball);
   g.add(lever);
-  const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.16, 8), new THREE.MeshBasicMaterial({ color: 0xffe14d })); lamp.name = 'lamp_wzN'; lamp.position.y = 2.33; g.add(lamp);
+  const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.16, 8), new THREE.MeshBasicMaterial({ color: 0xffe14d })); lamp.name = 'lamp_wzN'; lamp.position.y = 2.53; g.add(lamp);
   return { g, meta: { screen: { c: [0, 1.6, 0.405], w: 0.75, h: 0.5 }, lever: { pivot: [0.62, 1.2, 0.1] } } };
 }
 function buildMach(mc) {
@@ -229,7 +229,7 @@ function buildMach(mc) {
   g.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) if (m && /zm_neon|zm_lamp/.test(m.name || '') && !neon.includes(m)) neon.push(m); });
   for (const m of neon) m.userData.c0 = m.color ? m.color.clone() : null, m.userData.e0 = m.emissive ? m.emissive.clone() : null;
   const light = new THREE.PointLight(0xff4fd8, 0, 7, 1.6); light.position.set(0, 1.8, 0.9); root.add(light);
-  return { root, cv, tex, lever: g.getObjectByName('lever'), lamp: g.getObjectByName('lamp_wzN'), neon, light, drawK: '', pull: 0, win: null, reel: [0, 0, 0], glb: !!bl };
+  return { root, cv, tex, leverPull: (meta && meta.lever && meta.lever.pull) || 1.2, lever: g.getObjectByName('lever'), lamp: g.getObjectByName('lamp_wzN'), neon, light, drawK: '', pull: 0, win: null, reel: [0, 0, 0], glb: !!bl };
 }
 function drawScreen(m, mc, pw, now) {
   const c = m.cv, x = c.getContext('2d'), w = c.width, h = c.height;
@@ -269,7 +269,7 @@ function stepMach(info, dt, now) {
   if (!m) return;
   const pw = !!info.pw, mc = info.mc, spin = mc && mc[0] === 1;
   drawScreen(m, mc, pw, now);
-  if (m.lever) { m.pull = spin ? Math.min(1, m.pull + dt * 6) : Math.max(0, m.pull - dt * 2); m.lever.rotation.x = -m.pull * 1.3; }
+  if (m.lever) { m.pull = spin ? Math.min(1, m.pull + dt * 6) : Math.max(0, m.pull - dt * 2); m.lever.rotation.x = m.pull * m.leverPull; } // the Blender lever swings forward on +x
   if (m.lamp) { m.lamp.rotation.y += dt * (spin ? 14 : pw ? 1.5 : 0); m.lamp.visible = !spin || Math.sin(now * 0.03) > -0.3; }
   for (const mat of m.neon) {
     const k = !pw ? 0.12 : spin ? 0.7 + Math.sin(now * 0.04) * 0.3 : 1;
@@ -400,3 +400,4 @@ net.on('zmach', (m) => {
     hud.chat(null, null, `${nameOf(m.by)} rolled ${d.name}${d.team ? ' for everyone' : ''}`);
   }
 });
+export const zxState = () => X; // (tests)

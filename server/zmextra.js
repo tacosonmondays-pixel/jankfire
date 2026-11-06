@@ -146,8 +146,8 @@ const methods = {
     if (!killer || killer.isBot || !killer.z || zs.dropN >= ZM.dropCap || zs.st === 'over') return;
     if (Math.random() >= ZM.dropChance * (this.zxPerk(killer, 'rabbitfoot') ? 2 : 1) * (ZM.dropMul || 1)) return;
     zs.dropN++;
-    const w = t.zmz.ph !== 'hunt' && this.map.zm.windows[t.zmz.win], p = w ? w.in : t.pos; // shot through the window: it lands inside, not in the alley
-    const d = { id: zs.dropId++, k: zmDropPick(), at: [p[0], Math.max(0, p[1]) + 1.0, p[2]], until: now() + ZM.dropLife };
+    const w = t.zmz.ph !== 'hunt' && this.map.zm.windows[t.zmz.win], p = w ? w.in : t.pos; // shot through the window: it lands inside, not in the alley. chest height, even if it was flung into the ceiling
+    const d = { id: zs.dropId++, k: zmDropPick(), at: [p[0], 1.0, p[2]], until: now() + ZM.dropLife };
     zs.drops.push(d);
     this.broadcast({ t: 'zdrop', k: 'new', id: d.id, kind: d.k, a: d.at.map(r2) });
   },
