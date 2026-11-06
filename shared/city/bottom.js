@@ -70,13 +70,17 @@ function house(B, k, x0, w, seed) {
   if (lr() < 0.12) B.obb(cx, y + 5.4, (zFront + zs) / 2, 0.06, 1.2, LANE - 0.6, Math.PI / 2 * 0 + (lr() - 0.5) * 0.1, lr() < 0.5 ? 'tiedye' : 'tarp', { tint: pick(lr, [0xff7ab0, 0xffe14d, 0x4fd8c6]) });
   if (lr() < 0.3) B.prop('tarp', cx, y, zFront + 1.1, Math.PI, 0.8, 0);
   if (lr() < 0.06) stall(B, cx, y, zFront + 2.5, 2, lr);
-  // street level: a fridge, a scooter, chairs out the front, a soup stack
-  const sr = r();
-  const fz = zFront + 1.2;
-  if (sr < 0.3) B.prop('pchair', cx + (r() - 0.5) * w * 0.6, y, fz, r() * 6.28, 1, (r() * 8) | 0);
-  else if (sr < 0.45) B.prop('fridge', x0 + 0.6, y, fz - 0.4, Math.PI, 1, (r() * 8) | 0);
-  else if (sr < 0.55) B.prop('scooter', cx, y, fz + 0.6, r() * 6.28, 1, (r() * 8) | 0);
-  else if (sr < 0.62) B.prop('crate_soup', cx, y, fz, r() * 6.28, 1, 0);
+  // street level: 1-3 things out the front of every house (chairs, a fridge, scooters, soup, a barrel), and cables
+  // strung across the lane to the lip poles
+  const fz = zFront + 1.0;
+  for (let n = 1 + ((lr() * 3) | 0), i = 0; i < n; i++) {
+    const px = x0 + 0.6 + lr() * (w - 1.2), sr = lr();
+    const id = sr < 0.3 ? 'pchair' : sr < 0.42 ? 'fridge' : sr < 0.54 ? 'scooter' : sr < 0.68 ? 'crate_soup' : sr < 0.76 ? 'firebarrel' : sr < 0.86 ? 'sofa' : 'lostpile';
+    const s0 = id === 'lostpile' ? 0.45 : 1;
+    B.prop(id, px, y, fz + lr() * 1.2, id === 'fridge' || id === 'sofa' ? Math.PI + (lr() - 0.5) * 0.4 : lr() * 6.28, s0, (lr() * 8) | 0);
+    if (id === 'firebarrel') B.light(px, y + 1.5, fz + 0.5, 0xff8a2a, 8, 1);
+  }
+  for (let i = 0; i < 2; i++) if (lr() < 0.6) line(B, [x0 + lr() * w, y + 5 + lr() * 2, zFront + 0.2], [x0 + lr() * w + (lr() - 0.5) * 8, y + 5.5 + lr(), zs - 0.2], { r: 0.015, mat: 'metal', tint: 0x202024, sag: 0.6 });
 }
 
 // the lane along terrace k: paving, a curb, washing-line poles on the lip with ziplines between them
