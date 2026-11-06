@@ -1289,8 +1289,8 @@ function warehouse() {
   add(px0, 0, pz0 - 0.3, px1, 0.6, pz0, 'hazard'); add(px0, 0, pz1, px1, 0.6, pz1 + 0.3, 'hazard');
   add(px0 - 0.3, -48, pz0 - 0.3, px0, -1, pz1 + 0.3, 'rust'); add(px1, -48, pz0 - 0.3, px1 + 0.3, -1, pz1 + 0.3, 'rust');
   add(px0, -48, pz0 - 0.3, px1, -1, pz0, 'rust'); add(px0, -48, pz1, px1, -1, pz1 + 0.3, 'rust');
-  for (let x = px0 + 0.5; x < px1; x += 1.4) D.add(x, -46.5, pz0, x + 0.6, -45, pz1, 'metal');
-  D.add(px0 + 0.5, -44.9, pz0 + 0.05, px1 - 0.5, -44.6, pz1 - 0.05, 'neonred');
+  // (the machine itself, two toothed drums turning 2-3 m down with a red glow under them, is drawn by the client:
+  // public/js/shredpit.js, from map.shredders below. its teeth kill: shared/shredpit.js)
   add((px0 + px1) / 2 - 2, 0, pz0 - 0.62, (px0 + px1) / 2 + 2, 0.6, pz0 - 0.32, 'adshred', { fit: 1 });
   forklift(B, -1, -4.5, 1, 1.4); forklift(B, -12, 14, 0); forklift(B, 21, 4.5, 3, 2.2);
   pallets(B, -2, 12, 6, r); pallets(B, -0.6, 12, 4, r); pallets(B, 16, -14, 7, r); pallets(B, -29, -14, 5, r); pallets(B, -27.6, -14, 3, r);
@@ -1342,6 +1342,7 @@ function warehouse() {
     name: 'Warehouse', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -45, bounds, ceiling: 9, floorY: -50,
     sky: { top: 0x0a0a20, mid: 0x5a2a6a, bot: 0x050508, fog: 0x3a2448 }, fogNear: 70, fogFar: 300,
     spawns, teamSpawns: { att: west, def: east },
+    shredders: [{ box: pit.slice(), y: -1.9, axis: 'z' }], // the shredder: drums along z, the tips of the teeth at y
     get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: bounds[2] - bounds[0] + 2, cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
   };
   return map;

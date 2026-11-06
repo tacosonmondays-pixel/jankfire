@@ -56,6 +56,7 @@ import { installLasso } from './server/lasso.js'; // lasso (secondary): its Room
 import { lassoPreroll } from './shared/lasso.js';
 import { ZM } from './shared/zombies.js';
 import { installZombies } from './server/zombies.js';
+import { inShredder } from './shared/shredpit.js'; // the Warehouse's shredder pit: its teeth kill like the void
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -1045,6 +1046,7 @@ class Room {
     if (b.onGround) b.ground = b.pos.slice(); // last place they stood (void deaths drop their tag here)
     if (n < (b.suckUntil || 0)) b.f |= FLAGS.SUCK; // shredder running: clients draw the suction
     if (b.pos[1] < this.map.killY) this.kill(b, null, 'void');
+    else if (this.map.shredders && inShredder(this.map, b.pos)) { b.pitT = now(); this.kill(b, null, 'void'); } // into the pit's teeth
   }
 
   // ---------------------------------------------------------- items (G): charges refill over time
@@ -1274,6 +1276,7 @@ class Room {
     tr.atT = n;
     b.onGround = false; b.g = null; b.f = 0;
     if (b.pos[1] < this.map.killY) this.kill(b, null, 'void');
+    else if (this.map.shredders && inShredder(this.map, b.pos)) { b.pitT = now(); this.kill(b, null, 'void'); }
   }
 
   // ---------------------------------------------------------- combat
@@ -1486,7 +1489,7 @@ class Room {
       if (killer.isBot && killer.kfx == null) killer.kfx = Math.random() < 0.45 ? pick(KILL_IDS) : 'none'; // bots show off stuff you can roll
       kfx = killer.kfx || 'none';
     }
-    this.broadcast({ t: 'kill', k: killer && killer !== t ? killer.id : 0, v: t.id, w, via, vel: t.vel.map(r2), pos: t.pos.map(r2), yaw: r2(t.yaw || 0), fx: kfx, ep: ep || undefined, rs: Math.max(0, t.minRespawnAt - now()), sky: w === 'duck' && now() - (t.skyT || 0) < 800 ? 1 : undefined });
+    this.broadcast({ t: 'kill', k: killer && killer !== t ? killer.id : 0, v: t.id, w, via, vel: t.vel.map(r2), pos: t.pos.map(r2), yaw: r2(t.yaw || 0), fx: kfx, ep: ep || undefined, rs: Math.max(0, t.minRespawnAt - now()), sky: w === 'duck' && now() - (t.skyT || 0) < 800 ? 1 : undefined, pit: w === 'void' && now() - (t.pitT || 0) < 500 ? 1 : undefined }); // (pit: the shredder pit's teeth)
     t.lastAttacker = 0;
     this.chaosKill(t, killer);
     if (t.isBot && this.mode === 'coop') { setTimeout(safe('coop', () => { if (this.players.get(t.id) === t) this.remove(t); }), 50); }
@@ -2812,6 +2815,7 @@ class Room {
         this.rigSnap(p); // the rig flags only count from someone who activated it; no rope in the rig or when hacked
         if (p.trap) this.holdTrapped(p, true); // sealed in a soap bubble: you go where it floats
         if (p.pos[1] < this.map.killY) this.kill(p, null, 'void');
+        else if (this.map.shredders && inShredder(this.map, p.pos)) { p.pitT = now(); this.kill(p, null, 'void'); } // the shredder pit's teeth
         if ((p.f & FLAGS.BALL) && !(p.ballUntil > now())) p.f &= ~FLAGS.BALL; // only someone who earned the wrecking ball gets to be one
         if (p.ballUntil > now()) this.ballAir(p);
         this.gearSnap(p); // goggles / laser flags only if the server agrees; pop quiz holds you in place
