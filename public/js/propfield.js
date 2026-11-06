@@ -143,9 +143,10 @@ function kindOf(mid, v, turn) {
   });
   // each material is a draw call for every copy: plain materials that shine alike are merged into one (their colours go
   // into the vertex colours), so a model made of many paints costs a few draws. textured, see-through and tint stay apart
-  const build = (map) => {
+  const build = (map, far) => {
     const merged = new Map();
-    for (const { mat, name, list } of map.values()) {
+    for (let { mat, name, list } of map.values()) {
+      if (far && mat.isMeshPhysicalMaterial) { const m2 = new THREE.MeshStandardMaterial().copy(mat); m2.name = mat.name; m2.onBeforeCompile = mat.onBeforeCompile; m2.userData.shared = true; mat = m2; } // (far away the clear coat can't be seen: the plain gloss, a cheaper shader)
       const glow = name === 'glow' || (mat.emissive && mat.emissive.getHex() && mat.emissiveIntensity > 0.5 && !mat.map);
       const tint = name === 'tint' || name === 'car_paint';
       const tex = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap', 'alphaMap'].some((k) => mat[k]);
@@ -169,7 +170,7 @@ function kindOf(mid, v, turn) {
     }).filter((p) => p.geo);
   };
   const meta = a.meta || {};
-  const k = { lod0: build(parts[0]), lod1: build(parts[1]), lo: box.min.clone(), hi: box.max.clone(), lod: Number.isFinite(meta.lod) ? meta.lod : 55, tint: meta.tint !== false, box: null };
+  const k = { lod0: build(parts[0], false), lod1: build(parts[1], true), lo: box.min.clone(), hi: box.max.clone(), lod: Number.isFinite(meta.lod) ? meta.lod : 55, tint: meta.tint !== false, box: null };
   const mb = meta.box; // [[x0, y0, z0], [x1, y1, z1]] in the file's space (turned like the model)
   if (Array.isArray(mb) && mb.length === 2 && mb.every((v) => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite))) {
     k.box = new THREE.Box3(new THREE.Vector3(...mb[0]), new THREE.Vector3(...mb[1])).applyMatrix4(base);
