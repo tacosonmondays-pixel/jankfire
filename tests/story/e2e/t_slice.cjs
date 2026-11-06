@@ -20,7 +20,7 @@ const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
   const W = await ev(async () => { const { worldOf } = await import('/shared/story/worlds.js'); return worldOf('story_slice'); });
   const tp = (p, yaw) => ev(async ([p, yaw]) => { const { ME } = await import('/js/player.js'); ME.pos = p.slice(); ME.vel = [0, 0, 0]; if (yaw != null) ME.yaw = yaw; }, [p, yaw]);
   for (const [name, at] of [['terminal', W.terminal.p], ['locker', W.locker.p], ['clinic', W.clinic.p]]) {
-    await tp([at[0], at[1] + 0.3, at[2] + 1.6], 0); await sleep(1500);
+    await tp([at[0], at[1] + 0.3, at[2] + (name === "terminal" ? 2.4 : 1.6)], 0); await sleep(1500); // (the Machine is 2+ m deep now: stand in front of it)
     const s = await st(); console.log(name, JSON.stringify(s));
     await pg.screenshot({ path: `${OUT}/sl_${name}.png`, timeout: 120000 });
   }
