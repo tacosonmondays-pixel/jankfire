@@ -114,8 +114,10 @@ export class Crowd {
     set('head', Math.sin(t * 0.9) * 0.05 + (n.talk ? Math.sin(t * 3) * 0.04 : 0), headY * 0.75, Math.sin(t * 0.4) * 0.05);
     set('neck', 0, headY * 0.25, 0);
     const gesture = n.talk && !walk ? Math.max(0, Math.sin(t * 0.8)) : 0; // talkers wave a hand about
-    set('armL', -sw * 0.45, 0, 0); set('foreL', -0.15 - Math.max(0, sw) * 0.3, 0, 0);
-    set('armR', sw * 0.45 - gesture * 1.1, 0, -gesture * 0.3); set('foreR', -0.15 - gesture * (0.9 + Math.sin(t * 4) * 0.25), 0, 0);
+    // the models are in an A-pose: drop the arms to the sides first (about z), then swing them (about x)
+    const hang = 0.95 + Math.sin(t * 1.6) * 0.03;
+    set('armL', -sw * 0.45, 0, hang); set('foreL', -0.15 - Math.max(0, sw) * 0.3, 0, 0);
+    set('armR', sw * 0.45 - gesture * 0.4, 0, -hang + gesture * 1.9); set('foreR', -0.15 - gesture * (0.7 + Math.sin(t * 4) * 0.35), 0, 0);
     set('jaw', n.talk ? Math.max(0, Math.sin(t * 13) * Math.sin(t * 2.1)) * 0.3 : 0, 0, 0);
   }
   dispose() { this.root.removeFromParent(); this.live.clear(); }
