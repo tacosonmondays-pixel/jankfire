@@ -668,6 +668,8 @@ export function updateSec(dt, now) {
   if (S.irT && now > S.irT) { S.irT = 0; const m = VMX.model('remote'); if (m && m.g.userData.ir) m.g.userData.ir.material = M(0xff3030, true); }
   radarTick(now);
   updateRadarVM(dt, now);
+  const wm = VMX.model('water'), wl = wm && wm.g.userData.water; // the tank drains as you squirt (refills on reload)
+  if (wl) { const k = Math.max(0.04, Math.min(1, (W.ammo.water ?? WP.mag) / WP.mag)); wl.scale.y += (k - wl.scale.y) * Math.min(1, dt * 10); }
   // others (live): overlays from their flags; anyone gone or hidden gets cleaned up
   if (!RP.active) for (const r of G.remotes.values()) overlay(r, dt, now, true);
   for (const [r, e] of [...ents]) if (now - e.seen > 400 || (!r.ghost && !RP.active && !G.remotes.has(r.id))) dropEnt(r, e);

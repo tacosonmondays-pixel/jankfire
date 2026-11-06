@@ -1,8 +1,9 @@
-# Taser: a conducted-energy pistol built like the real police ones (~19 cm: a single cartridge in the nose, a laser
-# under it, a polymer frame with the trigger guard moulded in, an ambidextrous safety, a battery pack in the butt and
-# a rear info panel with the ARMED light), real millimetres x1.25 so the cartridge face sits on the code model's muzzle.
-# Made fun: acid yellow-green polymer, a black cartridge with a yellow band and chrome-rimmed dart ports (brass dart
-# tips showing), 3-dot sights on a black top strip, and the side label says DO NOT LICK (the other side says OUCH).
+# Taser: a conducted-energy pistol built like the real police ones (~19 cm: a single cartridge in the nose, a two-tone
+# polymer frame, the laser in a chin under the cartridge bay, an ambidextrous safety, a battery pack with a pull tab in
+# the butt and a rear info panel with the ARMED light), real millimetres x1.25 so the cartridge face sits on the code
+# model's muzzle. Made fun: acid yellow-green upper, a black cartridge with a hazard-striped band and chrome-rimmed dart
+# ports (brass dart tips showing), 3-dot sights on a black top strip, a yellow-green trigger, and the side label says
+# DO NOT LICK (the other side says OUCH).
 # The ARMED light is its own node (led_wzN) so the game can switch it.
 # run: blender -b --python tools/blender/make_taser.py
 import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

@@ -1,10 +1,11 @@
 # Water Pistol: a classic pump-action squirt pistol (the 90s backyard kind, ~29 cm), real millimetres x1.3 so the
 # nozzle lands on the code model's muzzle and the trigger sits where the viewmodel hand is. Blue candy-plastic shell
-# with the screws on the left like a real toy, a dark blue finger-groove grip, a big yellow trigger, an orange nozzle,
-# a yellow pump sleeve under the nose on a white pump tube, and the tank: a clear plastic bottle laid along the top,
-# neck back, held by a yellow front collar (with the bead) and a blue rear cradle (with the notch), orange knurled cap
-# facing you. The water inside is its own node (water_wzN, origin on the tank floor so scale.y drains it) and the pump
-# sleeve is pump_wzB. Made fun: the tank label says PROBABLY WATER, the side has a SPLOOSH! starburst.
+# with the screws on the left like a real toy, swept-back vents, a dark blue finger-groove grip, a big yellow trigger,
+# an orange nozzle, a yellow pump sleeve under the nose on a white pump tube, and the tank: a 0.5 l soda bottle laid
+# along the top, neck forward with an orange knurled cap over the nose, its clear base toward you so you can see the
+# water line from behind; a yellow collar at each end carries the sights (a glowing green bead in front, a notch cut
+# 7 mm under the line at the back). The water is its own node (water_wzN, origin on the tank floor so scale.y drains
+# it) and the pump sleeve is pump_wzB. Made fun: the bottle label says PROBABLY WATER, the sides say SPLOOSH!
 # run: blender -b --python tools/blender/make_water.py
 import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib import *
