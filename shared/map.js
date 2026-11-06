@@ -637,11 +637,13 @@ function home(B, ox, oz, rot, o, r) {
   L.B(2.2, 0.6, -15.5, 0.15, 1.2, 0.15, 'wood'); L.B(2.2, 1.35, -15.5, 0.5, 0.35, 0.8, 'toyblue');
   // backyard: picket fence with a gate onto the back lane, a tree, a trampoline onto the roof, a shed
   const fy = 1.3;
-  L(-8, 0, 13.9, -1.2, fy, 14.1, 'picket'); L(1.2, 0, 13.9, 14, fy, 14.1, 'picket');
-  L(-8.1, 0, 6.2, -7.9, fy, 13.9, 'picket');
-  L(13.9, 0, 1.4, 14.1, fy, 11, 'picket');
+  if (!o.noFence) {
+    L(-8, 0, 13.9, -1.2, fy, 14.1, 'picket'); L(1.2, 0, 13.9, 14, fy, 14.1, 'picket');
+    L(-8.1, 0, 6.2, -7.9, fy, 13.9, 'picket');
+    L(13.9, 0, 1.4, 14.1, fy, 11, 'picket');
+  }
   lollipop(L, -4, 12.8, 4 + r() * 2, r);
-  L(2.5, 0, 8.5, 5, 0.25, 11, 'pad', { pad: [0, 21, -4] });
+  if (!o.noPad) L(2.5, 0, 8.5, 5, 0.25, 11, 'pad', { pad: [0, 21, -4] });
   L(8, 0, 9, 12, 2.6, 13, 'wood'); L(7.8, 2.6, 8.8, 12.2, 2.8, 13.2, 'roofg');
   if (o.yard === 'pool') { // above-ground pool
     L(-6.5, 0, 7, -1.5, 1.1, 7.2, 'tile'); L(-6.5, 0, 11.6, -1.5, 1.1, 11.8, 'tile');
@@ -713,140 +715,52 @@ function adBoard(B, x, z, y, along, ad, w = 12, h = 5) {
   L.B(0, 5.9, -0.7, w, 0.2, 1.0, 'grid');
 }
 
-function suburb() {
-  const B = builder(), D = builder(); // D: render-only (the far rows of the tree ring)
-  const r = rng(4242);
-  const W = B.local(0, 0, 0);
-  const bounds = [-114, -54, 116, 54];
-  // the ground: flat lawn a long way out in every direction (no more cliff). past the trees it's just more nothing
-  B.add(-260, -3, -200, 260, 0, 200, 'grass'); // one grass all the way out: the play area doesn't sit on a brighter plate of lawn any more
-  // the street (out west it keeps going, past the barricade, into the out of bounds), the turnaround in the east
-  B.add(-260, 0, -7, 44, 0.1, 7, 'roadx');
-  B.add(44, 0, -12, 80, 0.1, 12, 'road');
-  for (const s of [-1, 1]) { B.add(48, 0, s * 12, 76, 0.1, s * 16, 'road'); B.add(52, 0, s * 16, 72, 0.1, s * 18, 'road'); }
-  // sidewalks (0.25 curbs, steppable)
-  B.add(-260, 0, -10, 44, 0.25, -7, 'sidewalk'); B.add(-260, 0, 7, 44, 0.25, 10, 'sidewalk');
-  for (let x = -104; x <= 40; x += 24) { streetlight(W, x, 9, -1); streetlight(W, x + 12, -9, 1); }
-  for (const [x, z, d] of [[46, -15, 1], [78, 15, -1], [46, 15, 1], [78, -15, -1]]) streetlight(W, x, z, d);
-  // houses: rot 2 faces +z (the north row, across from the south row), rot 0 faces -z
-  const homes = [
-    [-60, -27, 2, { siding: 'sidepink', roof: 'roofteal', car: 'carblue', yard: 'pool' }],
-    [-24, -27, 2, { siding: 'sidelemon', roof: 'roofpink', car: 'carred', yard: 'toy' }],
-    [12, -27, 2, { siding: 'sidelilac', roof: 'roof', car: 'cargreen', yard: 'tub' }],
-    [-66, 27, 0, { siding: 'sidemint', roof: 'roof', car: 'carwhite', yard: 'tub' }],
-    [-30, 27, 0, { siding: 'sideorange', roof: 'roofteal', car: 'carblack', yard: 'pool' }],
-    [6, 27, 0, { siding: 'blue', roof: 'roofpink', car: 'caryellow', yard: 'toy' }],
-    [94, 3, 3, { siding: 'sidemint', roof: 'roofpink', car: 'carred', yard: 'pool' }], // the one at the end of the cul-de-sac
-  ];
-  const spawns = [];
-  for (const [x, z, rot, o] of homes) {
-    home(B, x, z, rot, o, r);
-    const L = B.local(x, z, rot);
-    spawns.push(L.pt(3.5, 0.3, -3.5), L.pt(0, 0.3, 10)); // the living room and the backyard
+// ---- the suburb kit (both Suburb layouts)
+// a show home you can't go into (the S&D layout keeps its lanes clean): solid, with painted-on windows and door, the
+// stepped toy roof, porch, garage, the car on the drive, and its own fences down both sides to the back of the lot
+function facadeHouse(B, D, ox, oz, rot, o, r) {
+  const L = B.local(ox, oz, rot), Ld = D.local(ox, oz, rot);
+  L(-7, 0, -6, 7, 6.8, 6, o.siding);
+  L(-7.2, 6.8, -6.2, 7.2, 7.1, 6.2, o.roof); L(-6.3, 7.1, -5.3, 6.3, 7.55, 5.3, o.roof); L(-4.6, 7.55, -3.8, 4.6, 8.0, 3.8, o.roof);
+  L(-2.8, 8.0, -2.2, 2.8, 8.45, 2.2, o.roof); L(3.4, 7.55, 1.5, 4.4, 9.4, 2.5, 'brick');
+  for (const y of [1.1, 4.5]) for (const x of [-5, -2.2, 2.2, 5]) if (!(y < 2 && Math.abs(x) < 3)) { Ld(x - 0.75, y, -6.05, x + 0.75, y + 1.2, -6.0, 'glass'); Ld(x - 0.75, y, 6.0, x + 0.75, y + 1.2, 6.05, 'glass'); }
+  for (const y of [1.1, 4.5]) for (const z of [-3, 3]) { Ld(-7.05, y, z - 0.75, -7.0, y + 1.2, z + 0.75, 'glass'); Ld(7.0, y, z - 0.75, 7.05, y + 1.2, z + 0.75, 'glass'); }
+  Ld(-1, 0.25, -6.06, 1, 2.6, -6.0, 'wood'); Ld(-1.4, 2.62, -6.12, 1.4, 3.0, -6.06, 'signopen', { fit: 1 });
+  L(-3, 0, -7.6, 3, 0.25, -6, 'wood'); L(-2.9, 0.25, -7.5, -2.6, 3.0, -7.2, 'wood'); L(2.6, 0.25, -7.5, 2.9, 3.0, -7.2, 'wood'); L(-3.2, 3.0, -7.8, 3.2, 3.25, -6.15, o.roof);
+  L(7, 0, -6, 13, 3.2, 1.2, 'brick'); L(6.8, 3.2, -6.2, 13.2, 3.5, 1.4, 'roofg'); Ld(7.6, 0.1, -6.06, 12.4, 2.7, -6.0, 'metal');
+  L(7.4, 0, -17, 12.8, 0.12, -6, 'sidewalk'); car(L, 10.1, -11.5, 1, o.car);
+  L(-1, 0, -17, 1, 0.12, -7.65, 'sidewalk'); L.B(2.2, 0.6, -15.5, 0.15, 1.2, 0.15, 'wood'); L.B(2.2, 1.35, -15.5, 0.5, 0.35, 0.8, 'toyblue');
+  L(-8.1, 0, -6, -7.9, 2.2, 14, 'wood'); L(13.9, 0, -6, 14.1, 2.2, 14, 'wood'); L(13, 0, 1.2, 13.9, 2.2, 1.4, 'wood'); // the lot's side fences
+  lollipop(L, -3.5, 10.5, 4.2 + r() * 1.5, r); if (o.yard === 'toy') L(1.5, 0, 8, 4.5, 3, 11, 'toyface', { fit: 1 });
+}
+// a tall wooden privacy fence along x (z fixed) or z (x fixed), with gaps: gates [[a, b], ...] along it
+function woodFence(B, axis, fixed, a0, a1, gates = [], h = 2.2) {
+  const cuts = [a0, ...gates.flat(), a1];
+  for (let i = 0; i + 1 < cuts.length; i += 2) {
+    const s0 = cuts[i], s1 = cuts[i + 1]; if (s1 - s0 < 0.05) continue;
+    if (axis === 'x') B.add(s0, 0, fixed - 0.1, s1, h, fixed + 0.1, 'wood'); else B.add(fixed - 0.1, 0, s0, fixed + 0.1, h, s1, 'wood');
+    for (let t = s0; t <= s1 + 0.01; t += 2.4) { if (axis === 'x') B.add(t - 0.08, 0, fixed - 0.16, t + 0.08, h + 0.15, fixed + 0.16, 'wood'); else B.add(fixed - 0.16, 0, t - 0.08, fixed + 0.16, h + 0.15, t + 0.08, 'wood'); }
   }
-  // the middle of the street: a bus, a box truck, cars parked along the curbs (one crashed into the bus)
-  bus(B, -32, -4.4);
-  truck(B, -6, 1.6);
-  car(W, -17.6, -2.9, 0, 'carwhite');
-  for (const [x, z, c] of [[-84, 5.2, 'carblue'], [-46, -5.2, 'carblack'], [-40, 5.2, 'cargreen'], [24, -5.2, 'carred'], [30, 5.2, 'caryellow']]) car(W, x, z, 0, c);
-  // the turnaround: a planter with a statue of the founder (a big glossy googly toy) on a plinth
-  B.add(57, 0.1, -5, 67, 0.6, 5, 'stone'); B.add(57.5, 0.6, -4.5, 66.5, 0.7, 4.5, 'lawn');
-  B.add(60.6, 0.7, -1.4, 63.4, 2.6, 1.4, 'chrome');
-  B.add(60.2, 2.6, -1.8, 63.8, 6.2, 1.8, 'toyface', { fit: 1 });
-  B.add(61.2, 1.1, -1.43, 62.8, 1.9, -1.4, 'plaque', { fit: 1 });
-  for (const [x, z] of [[58.5, -3.5], [65.5, 3.5], [58.5, 3.5], [65.5, -3.5]]) W.B(x, 1.3, z, 1.2, 1.2, 1.2, 'hedge');
-
-  // ---- west end: the corner store (north) and a building site (south), then the barricade where the road goes nowhere
-  const C = B.local(-94, -24, 2);
-  shell(C, 18, 12, 1, 4.2, 'brick', { roof: 'roofg', roofAccess: true, backDoor: true });
-  C(-8.5, 0.12, -5.5, -1, 1.1, -4.6, 'wood'); C(1, 0.12, -5.5, 8.5, 1.1, -4.6, 'wood');
-  for (const x of [-6, -2, 2, 6]) C(x - 0.4, 0.12, -1.5, x + 0.4, 1.9, 3.5, 'shelfstock');
-  C(-8, 3.0, -6.55, 8, 4.4, -6.16, 'adstore', { fit: 1 });
-  C(-9.4, 0, 6.2, -7.4, 1.2, 8.2, 'crate'); C(-9.4, 1.2, 6.2, -8.4, 2.4, 7.2, 'crate'); C(-9.4, 2.4, 6.2, -8.9, 3.6, 6.7, 'crate');
-  B.add(-102.9, 0, -18, -85.1, 0.12, -10, 'concrete');
-  for (let x = -101; x < -86; x += 4) B.add(x, 0.12, -17.6, x + 0.15, 0.13, -13, 'white');
-  car(W, -98.9, -15, 1, 'cargreen'); car(W, -90.9, -15, 1, 'carwhite');
-  adBoard(B, -99, -40, 0, 'x', 'adbig1');
-  { // the building site: a slab, a half-framed house, a scaffold, sand, a mixer, the portable toilet
-    B.add(-104, 0, 14, -82, 0.3, 36, 'concrete');
-    for (let x = -101; x <= -86; x += 1.5) for (const z of [17, 31]) if (Math.abs(x + 93.5) > 1.6) B.box(x, 1.95, z, 0.15, 3.3, 0.15, 'plywood');
-    for (let z = 18.5; z < 31; z += 1.5) for (const x of [-101, -86]) if (Math.abs(z - 24) > 1.6) B.box(x, 1.95, z, 0.15, 3.3, 0.15, 'plywood');
-    B.add(-101.1, 3.6, 16.9, -85.9, 3.75, 17.1, 'plywood'); B.add(-101.1, 3.6, 30.9, -85.9, 3.75, 31.1, 'plywood');
-    B.add(-101.1, 3.6, 17.1, -100.9, 3.75, 30.9, 'plywood'); B.add(-86.1, 3.6, 17.1, -85.9, 3.75, 30.9, 'plywood');
-    B.add(-100.9, 3.75, 24, -86.1, 3.95, 30.9, 'plywood'); // half an upstairs
-    stairs(W, -99.5, -98, 19.05, 1, 0.3, 3.95, 'plywood', 0.55);
-    for (const [x, z] of [[-80.5, 20], [-80.5, 26], [-77.5, 20], [-77.5, 26]]) W.B(x, 2.9, z, 0.2, 5.8, 0.2, 'hazard');
-    B.add(-81, 2.8, 19.5, -77, 3, 26.5, 'grid'); B.add(-81, 5.8, 19.5, -77, 6, 26.5, 'grid');
-    for (let i = 0; i < 4; i++) B.add(-95 + i * 0.6, 0.3, 32.5 + i * 0.4, -91 - i * 0.6, 0.65 + i * 0.35, 35.8 - i * 0.3, 'sand');
-    B.add(-90, 0.3, 21, -88.6, 1.2, 22.4, 'metal'); B.add(-90.2, 1.2, 20.8, -88.4, 2.4, 22.6, 'toyorange');
-    B.add(-83.5, 0.3, 33, -82.2, 2.6, 34.3, 'toyblue');
-  }
-  // the barricade: jersey barriers with gaps, a sign, and the road carrying on into the nothing
-  for (let z = -9.5; z < 9.5; z += 3.4) B.add(-110, 0.1, z, -109, 1.1, z + 2.2, 'jersey');
-  adBoard(B, -110, -14, 0, 'z', 'adclosed', 8, 3.5);
-
-  // ---- east corners: the fun zone (north) and the HOA office (south)
-  { const P = B.local(33, -28, 0);
-    P(-11, 0, -14, 11, 0.12, 14, 'rubber'); // the noisiest floor money can buy
-    P(-11.2, 0, -14, 11.2, 0.6, -13.8, 'toyred'); P(-11.2, 0, 14, -1.5, 0.6, 14.2, 'toyred'); P(1.5, 0, 14, 11.2, 0.6, 14.2, 'toyred');
-    P(-11.2, 0, -14, -11, 0.6, 14, 'toyred'); P(11, 0, -14, 11.2, 0.6, 14, 'toyred');
-    // a climbing frame with a slide off the top
-    for (const [x, z] of [[-7, -9], [-3, -9], [-7, -5], [-3, -5]]) P.B(x, 2.7, z, 0.3, 5.4, 0.3, 'toyblue');
-    P(-7.3, 2.9, -9.3, -2.7, 3.2, -4.7, 'toygreen'); P(-7.3, 5.4, -9.3, -2.7, 5.7, -4.7, 'toyred');
-    stairs(P, -6.5, -5, -1.2, -1, 0.12, 3.2, 'toyorange', 0.5);
-    for (let i = 0; i < 8; i++) P(-2.7 + i * 0.7, 0.12, -8.2, -2 + i * 0.7, 3.2 - i * 0.38, -5.8, 'toyteal');
-    // the ball pit: low walls round a pit of glossy cubes
-    P(2, 0.12, 2, 9, 1.0, 2.3, 'toyblue'); P(2, 0.12, 8.7, 9, 1.0, 9, 'toyblue'); P(2, 0.12, 2.3, 2.3, 1.0, 8.7, 'toyblue'); P(8.7, 0.12, 2.3, 9, 1.0, 8.7, 'toyblue');
-    const balls = ['toyred', 'toygreen', 'toyorange', 'toyteal', 'toypink'];
-    for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) P.B(3.1 + i * 1.3, 0.35 + ((i + j) % 2) * 0.12, 3.1 + j * 1.3, 0.9, 0.5 + ((i * j) % 3) * 0.08, 0.9, balls[(i * 3 + j) % 5]);
-    P(-9, 0.12, 6, -5, 4.12, 10, 'toyface', { fit: 1 });
-    P.B(6, 2.6, -11, 0.3, 5.2, 0.3, 'toyred'); P.B(-1, 2.6, -11, 0.3, 5.2, 0.3, 'toyred'); P(-1.2, 5.2, -11.2, 6.2, 5.5, -10.8, 'toyred'); // swings
-    for (const x of [0.5, 2.5, 4.5]) { P.B(x, 3.6, -11, 0.05, 3.2, 0.05, 'chrome'); P.B(x, 1.85, -11, 0.7, 0.12, 0.4, 'toyteal'); }
-    adBoard(B, 33, -45, 0, 'x', 'adfun');
-  }
-  { const H = B.local(33, 28, 0);
-    shell(H, 10, 8, 1, 3.6, 'sidelilac', { roof: 'roofpink', floor: 'tile', backDoor: true });
-    H(-4, 0.12, -1, 0, 1.0, 0, 'wood'); H.B(-2, 1.4, -0.5, 0.8, 0.6, 0.1, 'tvstatic');
-    H(-6.5, 3.0, -4.6, 6.5, 4.3, -4.21, 'adhoa', { fit: 1 });
-    H.B(7, 4, -6, 0.2, 8, 0.2, 'chrome'); H(7.1, 6, -6.1, 9.5, 7.6, -5.9, 'flagcorp', { fit: 1 });
-    for (let i = 0; i < 4; i++) H(-5 + i * 1.3, 0, -9, -4 + i * 1.3, 1.4, -8.3, i % 2 ? 'toyteal' : 'toypink'); // mailbox cluster
-    // a bus stop shelter at the curb
-    H(1, 0, -17.4, 7, 0.35, -15.6, 'concrete'); H(1, 0.35, -15.8, 7, 2.6, -15.6, 'glass'); H(0.8, 2.6, -17.6, 7.2, 2.8, -15.4, 'toyteal');
-    H(1, 0.35, -17.4, 1.15, 2.6, -15.8, 'chrome'); H(6.85, 0.35, -17.4, 7, 2.6, -15.8, 'chrome'); H(2, 0.35, -16.2, 6, 0.8, -15.8, 'seat');
-  }
-  // ---- back lanes behind both rows: dumpsters, a camper van, a burnt-out car, a shed you can climb
-  B.add(-114, 0, -50, 108, 0.08, -42, 'asphalt'); B.add(-114, 0, 42, 108, 0.08, 50, 'asphalt');
-  for (const [x, z, m] of [[-86, -47, 'containerg'], [-40, -44.5, 'containerb'], [-6, -47, 'toypink'], [-78, 44.5, 'containerb'], [-46, 47.5, 'containerg'], [-12, 44.5, 'containerg'], [60, 47, 'toypink']]) W(x, 0.08, z - 1, x + 2.6, 1.5, z + 1, m);
-  { const V = B.local(20, -46, 0); V(-3.2, 0.45, -1.2, 3.2, 3.0, 1.2, 'carwhite'); V(1.8, 1.5, -1.25, 3.25, 2.6, 1.25, 'glass'); V(-3.3, 3.0, -1.3, 2, 3.4, 1.3, 'toyorange'); for (const x of [-2, 2]) for (const z of [-1.25, 1.05]) V(x - 0.4, 0, z, x + 0.4, 0.8, z + 0.2, 'tire'); }
-  car(W, -64, 46, 0, 'burnt');
-  W(-26, 0.08, 44, -20, 3, 49, 'wood'); W(-26.2, 3, 43.8, -19.8, 3.3, 49.2, 'roofg'); W(-27.4, 0.08, 45, -26, 1.5, 46.4, 'crate');
-  W(44, 0.08, -50, 52, 2.4, -48.6, 'brick'); // a garden wall to peek over at the fun zone
-  // side yards between the houses: hedges and junk, never a full wall
-  for (const [x, z, s] of [[-45, -22, -1], [-9, -22, -1], [-45, 22, 1], [-8.5, 22, 1]]) { // s: toward the back lane
-    W(x - 4, 0, z - 0.5, x + 1, 1.4, z + 0.5, 'hedge');
-    W(x + 2, 0, z + s * 6, x + 3.2, 1.1, z + s * 6 + 1.2, 'metal');
-    lollipop(W, x - 1, z + s * 12, 5, r);
-  }
-  W(-46, 0, 30, -43, 0.5, 33, 'toyteal'); W(-45.7, 0.5, 30.3, -43.3, 0.55, 32.7, 'water'); // a kiddie pool
-  W(-6, 0, -34, -3.6, 1.6, -31.6, 'wood'); W(-6.2, 1.6, -34.2, -3.4, 2.0, -31.4, 'roof'); // a doghouse
-
-  // ---- the tree ring: one row you bump into right on the edge, then rows that only exist to look at
-  const ring = (T, x0, z0, x1, z1, step, jit) => {
-    for (let x = x0; x <= x1; x += step) for (const z of [z0, z1]) (r() < 0.4 ? conifer : lollipop)(T, x + (r() - 0.5) * jit, z + (r() - 0.5) * jit, 5 + r() * 3, r);
-    for (let z = z0 + step; z < z1; z += step) for (const x of [x0, x1]) (r() < 0.4 ? conifer : lollipop)(T, x + (r() - 0.5) * jit, z + (r() - 0.5) * jit, 5 + r() * 3, r);
+}
+// round the play area bx = [x0, z0, x1, z1]: a ring of trees you bump into right on the edge, rows past it that only exist
+// to look at, then a forest that thins into the fog, green hills, the water tower, a power line, the road out west (roadZ)
+function suburbOutside(B, D, r, bx, roadZ = null) {
+  const [x0, z0, x1, z1] = bx, W = B.local(0, 0, 0), Dw = D.local(0, 0, 0);
+  const onRoad = (x, z) => roadZ !== null && x < x0 + 2 && Math.abs(z - roadZ) < 11;
+  const ring = (T, a0, b0, a1, b1, step, jit) => {
+    const t = (x, z) => { if (!onRoad(x, z)) (r() < 0.4 ? conifer : lollipop)(T, x, z, 5 + r() * 3, r); };
+    for (let x = a0; x <= a1; x += step) for (const z of [b0, b1]) t(x + (r() - 0.5) * jit, z + (r() - 0.5) * jit);
+    for (let z = b0 + step; z < b1; z += step) for (const x of [a0, a1]) t(x + (r() - 0.5) * jit, z + (r() - 0.5) * jit);
   };
-  ring(W, -117, -57, 119, 57, 6.5, 2);
-  const Dw = D.local(0, 0, 0);
-  ring(Dw, -124, -64, 126, 64, 5.5, 3); ring(Dw, -131, -71, 133, 71, 6, 4);
-  // past the ring, a forest that thins out into the fog (render-only): thick by the ring, patchier further out, a cleared
-  // strip under a power line, green hills with trees on top, a big water tower poking out over the trees
-  const fr = rng(4343), pylonZ = -158;
+  ring(W, x0 - 3, z0 - 3, x1 + 3, z1 + 3, 6.5, 2);
+  ring(Dw, x0 - 10, z0 - 10, x1 + 10, z1 + 10, 5.5, 3); ring(Dw, x0 - 17, z0 - 17, x1 + 17, z1 + 17, 6, 4);
+  const fr = rng(4343), pylonZ = z0 - 100;
   const ftree = (x, z, h, y = 0) => { const L2 = D.local(x, z, 0, y), m = fr() < 0.5 ? 'leaves' : fr() < 0.6 ? 'hedge' : 'leaves2';
     if (fr() < 0.5) { L2.B(0, h / 2, 0, 0.6, h, 0.6, 'wood'); L2.B(0, h + 0.8, 0, 3.4 + fr(), 2.2, 3.4 + fr(), m); L2.B(0, h + 2.4, 0, 2.2, 1.2, 2.2, m); }
     else { L2.B(0, 1, 0, 0.5, 2, 0.5, 'wood'); L2.B(0, 2 + h * 0.3, 0, 4.4, h * 0.6, 4.4, m); L2.B(0, 2 + h * 0.75, 0, 2.6, h * 0.5, 2.6, m); } };
-  for (let x = -334; x <= 334; x += 8) for (let z = -274; z <= 274; z += 8) {
-    const e = Math.max(Math.abs(x) - 134, Math.abs(z) - 74); // how far past the ring
-    if (e < 0 || (x < -118 && Math.abs(z) < 15) || Math.abs(z - pylonZ) < 11) continue; // the road out west, the power line
+  for (let x = x0 - 220; x <= x1 + 220; x += 8) for (let z = z0 - 220; z <= z1 + 220; z += 8) {
+    const e = Math.max(x0 - 20 - x, x - x1 - 20, z0 - 20 - z, z - z1 - 20); // how far past the ring
+    if (e < 0 || (roadZ !== null && x < x0 && Math.abs(z - roadZ) < 15) || Math.abs(z - pylonZ) < 11) continue;
     if (fr() < (e < 40 ? 0.85 : e < 110 ? 0.5 : 0.24)) ftree(x + (fr() - 0.5) * 6, z + (fr() - 0.5) * 6, 5 + fr() * 5);
   }
   for (const [x, z, w, h] of [[-250, -200, 90, 18], [230, 190, 110, 24], [300, -60, 70, 14], [-310, 120, 80, 20], [60, 250, 100, 16], [-120, 240, 70, 12]]) {
@@ -859,34 +773,276 @@ function suburb() {
     T(-6, 26, -6, 6, 34, 6, 'toyteal'); T(-4.5, 34, -4.5, 4.5, 36, 4.5, 'toyteal'); T(-0.6, 36, -0.6, 0.6, 38, 0.6, 'metal');
     T(-5, 28.5, -6.15, 5, 32.5, -6.02, 'adwater', { fit: 1 }); T(-6.6, 25.6, -6.6, 6.6, 26, 6.6, 'grid');
   }
-  for (let x = -330; x <= 330; x += 66) { // a power line on pylons, cables strung along
+  for (let x = -330; x <= 330; x += 66) { // a power line on pylons
     const P = D.local(x, pylonZ, 0);
     P.B(0, 7, 0, 3.6, 14, 3.6, 'metal'); P.B(0, 20, 0, 2.2, 12, 2.2, 'metal'); P.B(0, 29, 0, 1.2, 6, 1.2, 'metal');
     P.B(0, 22, 0, 0.4, 0.4, 13, 'metal'); P.B(0, 28, 0, 0.4, 0.4, 10, 'metal');
     if (x + 66 <= 330) for (const [y, dz] of [[21.4, -6.2], [21.4, 6.2], [27.4, -4.7], [27.4, 4.7]]) D.add(x, y, pylonZ + dz - 0.05, x + 66, y + 0.08, pylonZ + dz + 0.05, 'tire');
   }
-  for (let x = -250; x < -130; x += 30) streetlight(Dw, x, 9, -1); // the road out west: streetlights to nowhere
-  horizon(D, -260, -200, 260, 200, 1500, 'grass'); D.add(-1500, 0, -7, -260, 0.1, 7, 'roadx'); // the forest floor and the road carry on
+  horizon(D, -260, -200, 260, 200, 1500, 'grass');
+  if (roadZ !== null) { for (let x = -250; x < x0 - 20; x += 30) streetlight(Dw, x, roadZ + 9, -1); D.add(-1500, 0, roadZ - 7, -260, 0.1, roadZ + 7, 'roadx'); }
+}
 
-  spawns.push([33, 0.3, -28], [33, 0.3, 26], [-94, 0.3, -24], [-93, 0.5, 24], [-60, 0.2, -46], [-30, 0.2, 46], [40, 0.2, -46], [40, 0.2, 46], [62, 0.2, -10], [-30, 3.3, -3.1]);
-  const att = [[-102, 0.2, -3], [-102, 0.2, 3], [-96, 0.2, 0], [-106, 0.2, 0], [-98, 0.35, 8.5], [-98, 0.35, -8.5], [-92, 0.2, -4]];
-  const def = [[66, 0.2, -8], [66, 0.2, 8], [72, 0.2, 0], [56, 0.2, -10], [56, 0.2, 10], [74, 0.2, -10], [74, 0.2, 10]];
-  spawns.push(...att.slice(0, 3), ...def.slice(0, 3));
+// ------------------------------------------------------------ SUBURB S&D: plant & defuse on HOA election night.
+// an original layout on the bomb-map rules, in the show-home suburb. attackers get off the bus at the entrance (west),
+// defenders hold the far end from the HOA clubhouse (east), which hides their spawn from the street. three lanes:
+//   north: the back alley behind the north row (bins, sheds, a camper van), ends in A main: the building site's gate
+//   mid:   the main street (a planted median, the truck, parked cars) into the cul-de-sac, which joins both sites
+//   south: the creek path behind the south row, ends at the mini-mart's side door: B main
+// one open house in each row runs from the street to its lane (the rest are shut), so mid can split either way.
+// A = the building site (frames, scaffold, a digger, plywood hoarding), B = the MEGA-MART EXPRESS (inside, aisles)
+function suburbSD() {
+  const B = builder(), D = builder();
+  const { add, box } = B;
+  const r = rng(4747), W = B.local(0, 0, 0), Dw = D.local(0, 0, 0);
+  const bounds = [-84, -60, 82, 60];
+  add(-260, -3, -200, 260, 0, 200, 'grass');
+  suburbOutside(B, D, r, bounds, 0);
+  // ---- the main street (on west through the trees to nowhere), sidewalks, the cul-de-sac at the east end
+  add(-140, 0, -7, 14, 0.1, 7, 'roadx');
+  add(-140, 0, -10, 14, 0.25, -7, 'sidewalk'); add(-140, 0, 7, 14, 0.25, 10, 'sidewalk');
+  add(14, 0, -17.6, 56, 0.1, 17.6, 'road');
+  for (let x = -50; x <= 2; x += 13) { add(x - 2.5, 0.1, -1, x + 2.5, 0.5, 1, 'stone'); add(x - 2.3, 0.5, -0.8, x + 2.3, 1.45, 0.8, 'hedge'); } // the median: planters you can duck behind
+  for (const x of [-56, -30, -4]) lollipop(W, x, 0, 5.5, r);
+  for (let x = -70; x <= 10; x += 20) { streetlight(W, x, 8.9, -1); streetlight(W, x + 10, -8.9, 1); }
+  truck(B, -24, 2.2, 'adtruck2'); // the box truck, back open (a crate to climb in)
+  for (const [x, z, c] of [[-44, 5.3, 'carblue'], [-12, -5.3, 'carblack'], [6, 5.3, 'cargreen'], [-36, -5.3, 'carwhite']]) car(W, x, z, 0, c);
+  // the cul-de-sac: the founder's statue on its planter (a big googly toy), hedges, the mailboxes
+  add(29, 0.1, -5, 39, 0.6, 5, 'stone'); add(29.5, 0.6, -4.5, 38.5, 0.7, 4.5, 'lawn');
+  add(32.6, 0.7, -1.4, 35.4, 2.6, 1.4, 'chrome'); add(32.2, 2.6, -1.8, 35.8, 6.2, 1.8, 'toyface', { fit: 1 });
+  for (const [x, z] of [[30.5, -3.5], [37.5, 3.5], [30.5, 3.5], [37.5, -3.5]]) W.B(x, 1.3, z, 1.2, 1.2, 1.2, 'hedge');
+  for (let i = 0; i < 4; i++) add(44 + i * 1.3, 0.1, -12.5, 45 + i * 1.3, 1.5, -11.8, i % 2 ? 'toyteal' : 'toypink');
+  W(46, 0.1, 9, 50, 1.2, 11.5, 'hedge');
+  // the HOA gate where the street meets the cul-de-sac: two gatehouses leave one 8 m way through (mid's choke), the
+  // statue right behind it (no straight look in), the booms stuck up
+  for (const [z0, z1] of [[-17.6, -4], [4, 17.6]]) {
+    add(13.4, 0, z0, 17.4, 3.4, z1, 'sidelilac'); add(13.2, 3.4, z0 - 0.2, 17.6, 3.7, z1 + 0.2, 'roofpink');
+    D.add(13.36, 1.2, (z0 + z1) / 2 - 1.5, 13.4, 2.4, (z0 + z1) / 2 + 1.5, 'glass');
+  }
+  D.add(15.2, 3.7, -4.2, 15.6, 8.2, -3.8, 'hazard'); D.add(15.2, 3.7, 3.8, 15.6, 8.2, 4.2, 'hazard');
+  D.add(13.3, 2.6, -3.6, 13.36, 3.3, 3.6, 'adhoa', { fit: 1 });
+
+  // ---- the house rows: north (facing south) and south (facing north). the middle north house and the east south house
+  // are open (front door -> back door -> a gate in the fence behind): the ways from the street to the alley and the creek
+  const look = [
+    { siding: 'sidepink', roof: 'roofteal', car: 'carblue', yard: 'toy' }, { siding: 'sidelemon', roof: 'roofpink', car: 'carred' },
+    { siding: 'sidelilac', roof: 'roof', car: 'cargreen' }, { siding: 'sidemint', roof: 'roof', car: 'carwhite' },
+    { siding: 'sideorange', roof: 'roofteal', car: 'carblack', yard: 'toy' }, { siding: 'blue', roof: 'roofpink', car: 'caryellow' },
+  ];
+  const openN = -19.4, openS = -2.8;
+  [-42, openN, 3.2].forEach((x, i) => (x === openN ? home(B, x, -27, 2, { ...look[i], yard: 'tub', noPad: true, noFence: true }, r) : facadeHouse(B, D, x, -27, 2, look[i], r)));
+  [-48, -25.4, openS].forEach((x, i) => (x === openS ? home(B, x, 27, 0, { ...look[i + 3], yard: 'pool', noPad: true, noFence: true }, r) : facadeHouse(B, D, x, 27, 0, look[i + 3], r)));
+  for (const [x, rot] of [[openN, 2], [openS, 0]]) { const L = B.local(x, rot ? -27 : 27, rot); L(-8.1, 0, -6, -7.9, 2.2, 14, 'wood'); L(13.9, 0, -6, 14.1, 2.2, 14, 'wood'); L(13, 0, 1.2, 13.9, 2.2, 1.4, 'wood'); }
+  woodFence(B, 'x', -41.3, -60, 13.2, [[-24.2, -20.2]]); // the backs of the north lots, a gate behind the open house
+  woodFence(B, 'x', 41.3, -60, 13.2, [[-2.3, 1.7]]); // the south lots
+  woodFence(B, 'z', 13.1, -41.2, -10.3); woodFence(B, 'z', 13.1, 10.3, 41.2); // the rows' east ends: no way round
+  // ---- ATTACKERS' SPAWN: the bus stop at the entrance. the bus they came on screens the street
+  prop(B.local(-63, 0, 1), 'bus', 0, 0, 0); // (the Blender bus over its two boxes, broadside across the road)
+  barrier(B, -56, -8.5, true); barrier(B, -56, 8.5, true); // (the ways out either side of the bus stay 4 m wide)
+  const SH = B.local(-74, -13, 0); // the bus shelter
+  SH(-3, 0, -0.9, 3, 0.3, 0.9, 'concrete'); SH(-3, 0.3, 0.7, 3, 2.6, 0.9, 'glass'); SH(-3.2, 2.6, -1.1, 3.2, 2.8, 1.1, 'toyteal');
+  SH(-3, 0.3, -0.9, -2.85, 2.6, 0.7, 'chrome'); SH(2.85, 0.3, -0.9, 3, 2.6, 0.7, 'chrome'); SH(-2, 0.3, 0.3, 2, 0.75, 0.7, 'seat');
+  adBoard(B, -76, 18, 0, 'x', 'adbig1'); for (let z = -9.5; z < 9.5; z += 3.4) add(-86, 0.1, z, -85, 1.1, z + 2.2, 'jersey');
+  const att = [[-78, 0.2, -5], [-78, 0.2, 0], [-78, 0.2, 5], [-71, 0.2, -6], [-71, 0.2, -1.5], [-71, 0.2, 3], [-71, 0.2, 7]];
+  // the west ends of both lanes, round the corner from the spawn: a shed, the bins
+  W(-70, 0, -34, -64, 2.6, -29, 'wood'); W(-70.2, 2.6, -34.2, -63.8, 2.9, -28.8, 'roofg'); W(-68, 0, 26, -65.4, 1.5, 28, 'containerg');
+
+  // ---- NORTH: the back alley, A long
+  add(-84, 0, -58, 14, 0.08, -41.4, 'asphalt');
+  for (const [x, z, m] of [[-54, -47, 'containerg'], [-36, -55, 'containerb'], [-8, -46, 'toypink'], [2, -55, 'containerg']]) W(x, 0.08, z - 1, x + 2.6, 1.5, z + 1, m); // bins
+  { const V = B.local(-24, -51, 0); V(-3.2, 0.45, -1.2, 3.2, 3.0, 1.2, 'carwhite'); V(1.8, 1.5, -1.25, 3.25, 2.6, 1.25, 'glass'); V(-3.3, 3.0, -1.3, 2, 3.4, 1.3, 'toyorange'); for (const x of [-2, 2]) for (const z of [-1.25, 1.05]) V(x - 0.4, 0, z, x + 0.4, 0.8, z + 0.2, 'tire'); } // the camper van
+  car(W, -44, -52, 0, 'burnt'); W(-14, 0.08, -57, -9, 2.8, -53, 'wood'); W(-14.2, 2.8, -57.2, -8.8, 3.1, -52.8, 'roofg'); // a burnt-out car, a shed
+  for (const x of [-62, -30, 8]) { W(x, 0.08, -42.3, x + 0.9, 1.0, -41.5, 'barrel'); }
+
+  // ---- A: the building site (plywood hoarding, a frame going up, a scaffold, a digger, sand)
+  add(13.3, 0, -58, 13.5, 2.4, -54.5, 'plywood'); add(13.3, 0, -44.5, 13.5, 2.4, -41.2, 'plywood'); // west: A main, the site gate (from the alley)
+  add(13.3, 0, -41.2, 56, 2.4, -41.0, 'plywood'); // (the hoarding runs on behind the last north house)
+  add(13.3, 0, -18.2, 28, 2.4, -18.0, 'plywood'); add(33, 0, -18.2, 56, 2.4, -18.0, 'plywood'); // south: the gate from the cul-de-sac
+  add(55.8, 0, -58, 56, 2.4, -38, 'plywood'); add(55.8, 0, -32, 56, 2.4, -18.2, 'plywood'); // east: the defenders' gate
+  for (const [x, z, a] of [[20, -18.3, 'adbig1'], [46, -18.3, 'adfun']]) add(x - 5, 0.6, z - 0.06, x + 5, 2.2, z, a, { fit: 1 });
+  add(13.5, 0, -57.9, 55.8, 0.03, -18.2, 'dirt'); add(20, 0, -36, 42, 0.3, -24, 'concrete'); // churned-up dirt, the slab
+  for (let x = 21; x <= 41; x += 2) for (const z of [-35, -25]) if (Math.abs(x - 31) > 2) box(x, 1.95, z, 0.15, 3.3, 0.15, 'plywood'); // a frame going up
+  for (let z = -33; z <= -27; z += 2) for (const x of [21, 41]) box(x, 1.95, z, 0.15, 3.3, 0.15, 'plywood');
+  add(20.9, 3.6, -35.1, 41.1, 3.75, -34.9, 'plywood'); add(20.9, 3.6, -25.1, 41.1, 3.75, -24.9, 'plywood');
+  add(20.9, 3.6, -34.9, 21.1, 3.75, -25.1, 'plywood'); add(40.9, 3.6, -34.9, 41.1, 3.75, -25.1, 'plywood');
+  add(21.1, 3.75, -34.9, 31, 3.95, -25.1, 'plywood'); stairs(W, 22.5, 24, -26.2, -1, 0.3, 3.95, 'plywood', 0.55); // half an upstairs
+  for (const [x, z] of [[46, -50], [46, -44], [50, -50], [50, -44]]) W.B(x, 2.9, z, 0.2, 5.8, 0.2, 'hazard'); // the scaffold tower
+  add(45.6, 2.8, -50.4, 50.4, 3, -43.6, 'grid'); add(45.6, 5.8, -50.4, 50.4, 6, -43.6, 'grid');
+  excavator(B, 30, -50, 1); for (let i = 0; i < 4; i++) add(38 + i * 0.6, 0.1, -55 + i * 0.4, 44 - i * 0.6, 0.45 + i * 0.35, -51 - i * 0.3, 'sand');
+  add(51, 0, -30, 53.4, 2.6, -27.6, 'toyblue'); palletLoad(B, 47, -24, 1); palletLoad(B, 18, -30); W(15, 0, -50, 18, 1.2, -47, 'crate');
+  add(18, 0, -38, 21, 1.6, -36.6, 'containerg'); // a skip
+  siteBoard(D, 33.5, 3.2, -57.7, 'x', 'sitea', 4); siteBoard(D, 30.5, 2.6, -17.92, 'x', 'sitea', 2);
+
+  // ---- the turnaround is the defenders' side: the HOA clubhouse hides their spawn from the street
+  add(56, 0, -12, 61, 7.2, 12, 'sidelilac'); add(55.6, 7.2, -12.4, 61.4, 7.6, 12.4, 'roofpink');
+  for (let z = -9; z <= 9; z += 4.5) for (const y of [1.2, 4.4]) { D.add(55.94, y, z - 1, 55.98, y + 1.8, z + 1, 'glass'); D.add(61.02, y, z - 1, 61.06, y + 1.8, z + 1, 'glass'); }
+  D.add(55.9, 3.0, -5, 55.95, 4.3, 5, 'adhoa', { fit: 1 });
+  W.B(64, 4, -14, 0.2, 8, 0.2, 'chrome'); W(64.1, 6, -14.1, 66.5, 7.6, -13.9, 'flagcorp', { fit: 1 });
+  add(64, 0, -12, 80, 0.06, 12, 'asphalt'); for (let z = -10; z <= 10; z += 4) add(66, 0.06, z, 80, 0.07, z + 0.15, 'white');
+  for (const [z, c] of [[-10, 'carred'], [-2, 'carblue'], [6, 'caryellow']]) car(W, 77, z, 1, c);
+  const def = [[66, 0.2, -8], [66, 0.2, -3], [66, 0.2, 2], [66, 0.2, 7], [71, 0.2, -6], [71, 0.2, 0], [71, 0.2, 6]];
+  // the paths round the clubhouse: north to A's back gate, south to the mini-mart's back door
+  W(68, 0, -32, 70.6, 1.5, -30, 'containerb'); W(66, 0, -46, 70, 1.2, -44, 'hedge'); lollipop(W, 74, -50, 5, r);
+  W(68, 0, 30, 70.6, 1.5, 32, 'containerg'); W(66, 0, 46, 70, 1.2, 48, 'hedge'); lollipop(W, 74, 50, 5, r);
+
+  // ---- B: the MEGA-MART EXPRESS (inside: aisles, the tills, the fridges, the stockroom), its car park
+  const SX0 = 24, SX1 = 50, SZ0 = 30, SZ1 = 54, SH2 = 7.2;
+  wall(W, 'x', SZ0, SX0 - 0.25, SX1 + 0.25, 0, SH2, 0.5, 'brick', [{ a: 33, b: 38, y0: 0, y1: 3.2 }, { a: 26, b: 31, y0: 1, y1: 2.6 }, { a: 40, b: 47, y0: 1, y1: 2.6 }]); // front: doors + big windows
+  wall(W, 'x', SZ1, SX0 - 0.25, SX1 + 0.25, 0, SH2, 0.5, 'brick');
+  wall(W, 'z', SX0, SZ0 + 0.25, SZ1 - 0.25, 0, SH2, 0.5, 'brick', [{ a: 43, b: 47.5, y0: 0, y1: 3.2 }]); // west: B main, the side door
+  wall(W, 'z', SX1, SZ0 + 0.25, SZ1 - 0.25, 0, SH2, 0.5, 'brick', [{ a: 36, b: 40, y0: 0, y1: 3.2 }]); // east: the loading door
+  add(SX0 - 0.25, SH2, SZ0 - 0.25, SX1 + 0.25, SH2 + 0.4, SZ1 + 0.25, 'roofg');
+  add(SX0 + 0.25, 0, SZ0 + 0.25, SX1 - 0.25, 0.03, SZ1 - 0.25, 'floorcyan');
+  D.add(27, 3.6, SZ0 - 0.31, 47, 6, SZ0 - 0.27, 'adstore', { fit: 1 });
+  for (const x of [29, 34, 39, 44]) add(x - 0.5, 0.03, 38, x + 0.5, 1.9, 48, 'shelfstock'); // aisles
+  add(26, 0.03, 32, 31, 1.1, 33.2, 'wood'); add(40, 0.03, 32, 45, 1.1, 33.2, 'wood'); // the tills
+  add(25, 0.03, 52.4, 49, 2.4, 53.7, 'chrome'); for (let x = 25.5; x < 49; x += 3) D.add(x, 0.3, 52.36, x + 2.4, 2.1, 52.4, 'glass'); // the fridges
+  add(44, 0.03, 48.6, 49.6, 2.6, 49, 'brick'); add(44, 0.03, 49, 44.4, 2.6, 52.3, 'brick'); // the stockroom corner
+  cratePile(B, 45, 49.6, 5, r); palletLoad(B, 27, 49);
+  siteBoard(D, 37, 3.4, SZ1 - 0.33, 'x', 'siteb', 3.4); siteBoard(D, SX0 - 0.33, 3.8, 45.2, 'z', 'siteb', 2.2);
+  for (let x = 28; x <= 46; x += 6) { D.add(x - 0.8, SH2 - 0.6, 43 - 0.3, x + 0.8, SH2 - 0.45, 43 + 0.3, 'lamp'); }
+  add(14, 0.1, 18, 56, 0.12, 29.7, 'asphalt'); for (let x = 16; x <= 52; x += 4) add(x, 0.12, 22, x + 0.15, 0.13, 28, 'white'); // the car park
+  for (const [x, c] of [[19, 'carred'], [31, 'carwhite'], [43, 'cargreen']]) car(W, x, 25, 1, c);
+  for (let i = 0; i < 3; i++) W(51 + i * 0.75, 0.12, 20, 51.6 + i * 0.75, 1.1, 21.2, 'chrome'); // trolleys
+  W(52, 0.12, 25, 54.6, 1.6, 27, 'containerg');
+
+  // ---- SOUTH: the creek path, B long
+  add(-84, 0, 47, 24, 0.02, 50, 'sand'); add(-84, 0.02, 47.6, 24, 0.05, 49.4, 'water'); // a little creek you splash through
+  for (const [x, z] of [[-60, 44], [-40, 54], [-18, 45], [-2, 54], [16, 44]]) { W.B(x, 0.7, z, 2.4, 1.4, 1.6, 'hedge'); W.B(x + 1.6, 0.4, z + 0.6, 1.1, 0.8, 1, 'rock'); } // reeds, rocks
+  W(-50, 0, 51.5, -44, 0.9, 52.6, 'wood'); W(-28, 0, 43, -26, 1.1, 46, 'rock'); W(6, 0, 51, 9, 1.4, 53, 'wood'); // a log, a boulder, a bench
+  W(18, 0, 50.5, 20, 2.2, 56, 'wood'); W(20, 0, 41.5, 23.8, 1.2, 43, 'containerg'); // by the mini-mart's side door
+  woodFence(B, 'x', 34, 13.2, 23.75); // the side yard by the store is a dead end to its door, not a way round to the car park
+
+  const spawns = [[-50, 0.2, -48], [-20, 0.2, -45], [4, 0.2, -50], [-40, 0.3, 4], [-6, 0.3, -4], [24, 0.2, 10], [-40, 0.2, 52], [-12, 0.2, 48],
+    [10, 0.2, 54], [34, 0.4, -30], [44, 0.2, -10], [38, 0.2, 42], [72, 0.2, -36], [72, 0.2, 38], [-74, 0.2, 34], [-74, 0.2, -40]];
   let graph = null;
   const map = {
-    name: 'Suburb', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -60, bounds, floorY: -4,
+    name: 'Suburb', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -60, bounds, ceiling: 7, floorY: -4,
     sky: { top: 0x2f7cf0, mid: 0xffd3ec, bot: 0x7a4a6a, fog: 0xffd3ec }, fogNear: 110, fogFar: 430,
     spawns, teamSpawns: { att, def },
-    // bots: a walk graph over the ground (1 m cells): round the houses, through the side yards and gates
-    get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0], z0: bounds[1], n: bounds[2] - bounds[0], cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
+    nav: {
+      A: [
+        [[-70, -16], [-70, -48], [-50, -50], [-30, -46], [-10, -50], [6, -48], [14, -49], [24, -46], [32, -42]], // the alley
+        [[-66, -8], [-58, -7.5], [-40, -4], [-20, -4], [-19.4, -14], [-19.4, -19], [-19.4, -25], [-21.7, -31], [-21.7, -36], [-22.2, -44], [-10, -48], [14, -49], [24, -46], [32, -42]], // the street, the open house
+        [[-66, -8], [-58, -7.5], [-40, -4], [-10, -3], [8, 0], [15.4, 0], [22, -12], [30.5, -15], [30.5, -21], [32, -30]], // the street, the HOA gate, the cul-de-sac
+      ],
+      B: [
+        [[-70, 16], [-70, 46], [-50, 48], [-30, 50], [-10, 49], [10, 48], [20, 46], [26, 45], [32, 44]], // the creek path
+        [[-66, 8], [-58, 7.5], [-40, 4], [-10, 4], [-2.8, 14], [-2.8, 19], [-2.8, 25], [-0.5, 31], [-0.5, 36], [-0.3, 44], [12, 47], [20, 46], [26, 45], [32, 44]], // the street, the open house
+        [[-66, 8], [-58, 7.5], [-40, 4], [-10, 3], [8, 0], [15.4, 0], [22, 12], [35.5, 22], [35.5, 28], [35.5, 34], [36, 40]], // the street, the HOA gate, the car park, the front door
+      ],
+    },
+    sites: [{ id: 'A', min: [16, 0, -56], max: [54, 0, -20] }, { id: 'B', min: [25, 0, 31], max: [49, 0, 52] }],
+    get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: bounds[2] - bounds[0] + 2, cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
   };
   return map;
 }
 
-// ------------------------------------------------------------ WAREHOUSE: big indoor hall, offices, a fenced yard round it
-// inside: rows of blue racking full of boxes, stacked pallets, forklifts, barrels, three shredder shafts in the floor,
-// catwalks round the walls. outside: a chain-link fence round a big yard (containers, trailers, trucks, a parking lot,
-// a smaller shed, a water tower); go over the fence and you get the RETURN TO THE MAP countdown
+// ------------------------------------------------------------ SUBURB: the show-home suburb for every mode but Plant & Defuse.
+// built for flow: a loop street round the park, and everything loops round it. the park in the middle is the arena (the
+// playground's climbing frame, the pond with its footbridge, the gazebo, the founder's statue); five houses face it from
+// each side (every one open: front door, back door, garage, a trampoline onto the roof), the back lanes run behind them,
+// and the two ends are the team sides: the corner store (west) and the building site (east)
+function suburb() {
+  const B = builder(), D = builder();
+  const { add, box } = B;
+  const r = rng(4242), W = B.local(0, 0, 0), Dw = D.local(0, 0, 0);
+  const bounds = [-82, -62, 82, 62];
+  add(-260, -3, -200, 260, 0, 200, 'grass');
+  suburbOutside(B, D, r, bounds);
+  // ---- the loop street, its kerbs, streetlights
+  add(-58, 0, -24, 58, 0.1, -14, 'roadx'); add(-58, 0, 14, 58, 0.1, 24, 'roadx'); // north + south
+  add(-58, 0, -14, -46, 0.1, 14, 'roadz'); add(46, 0, -14, 58, 0.1, 14, 'roadz'); // west + east
+  add(-60, 0, -26, 60, 0.25, -24, 'sidewalk'); add(-60, 0, 24, 60, 0.25, 26, 'sidewalk');
+  add(-60, 0, -24, -58, 0.25, 24, 'sidewalk'); add(58, 0, -24, 60, 0.25, 24, 'sidewalk');
+  add(-46, 0, -14, 46, 0.25, -12, 'sidewalk'); add(-46, 0, 12, 46, 0.25, 14, 'sidewalk'); add(-46, 0, -12, -44, 0.25, 12, 'sidewalk'); add(44, 0, -12, 46, 0.25, 12, 'sidewalk');
+  for (let x = -48; x <= 48; x += 24) { streetlight(W, x, -25.1, 1); streetlight(W, x + 12, 25.1, -1); }
+  bus(B, -22, -21.5); truck(B, 12, 15.4, 'adtruck'); car(W, -30.5, -16.5, 0, 'carwhite'); // the bus, the box truck, a car in the bus
+  for (const [x, z, c] of [[-44, -16.6, 'carblue'], [36, -16.6, 'carred'], [-36, 21.6, 'cargreen'], [32, 21.6, 'caryellow'], [-6, 21.6, 'carblack']]) car(W, x, z, 0, c);
+  // ---- the houses: five a side, all open (a trampoline in every yard throws you onto the roof)
+  const looks = [
+    ['sidepink', 'roofteal', 'carblue', 'pool'], ['sidelemon', 'roofpink', 'carred', 'toy'], ['sidelilac', 'roof', 'cargreen', 'tub'], ['sidemint', 'roofpink', 'carwhite', 'pool'], ['sideorange', 'roofteal', 'carblack', 'toy'],
+    ['blue', 'roofpink', 'caryellow', 'tub'], ['sidepink', 'roof', 'carred', 'toy'], ['sidemint', 'roofteal', 'carblue', 'pool'], ['sidelemon', 'roof', 'cargreen', 'tub'], ['sidelilac', 'roofpink', 'carwhite', 'pool'],
+  ].map(([siding, roof, car, yard]) => ({ siding, roof, car, yard }));
+  const spawns = [];
+  [-41.9, -19.3, 3.3, 25.9, 48.5].forEach((x, i) => { home(B, x, -43, 2, looks[i], r); const L = B.local(x, -43, 2); spawns.push(L.pt(3.5, 0.3, -3.5)); if (i % 2) spawns.push(L.pt(0, 0.3, 10)); });
+  [-48.5, -25.9, -3.3, 19.3, 41.9].forEach((x, i) => { home(B, x, 43, 0, looks[i + 5], r); const L = B.local(x, 43, 0); spawns.push(L.pt(3.5, 0.3, -3.5)); if (i % 2 === 0) spawns.push(L.pt(0, 0.3, 10)); });
+  // the back lanes behind both rows: bins, a camper van, a shed, a burnt-out car
+  add(-82, 0, -62, 82, 0.08, -57.2, 'asphalt'); add(-82, 0, 57.2, 82, 0.08, 62, 'asphalt');
+  for (const [x, z, m] of [[-50, -60, 'containerg'], [-6, -60, 'toypink'], [40, -60, 'containerb'], [-30, 59.6, 'containerb'], [14, 59.6, 'containerg']]) W(x, 0.08, z - 1, x + 2.6, 1.5, z + 1, m);
+  { const V = B.local(20, -59.6, 0); V(-3.2, 0.45, -1.2, 3.2, 3.0, 1.2, 'carwhite'); V(1.8, 1.5, -1.25, 3.25, 2.6, 1.25, 'glass'); V(-3.3, 3.0, -1.3, 2, 3.4, 1.3, 'toyorange'); for (const x of [-2, 2]) for (const z of [-1.25, 1.05]) V(x - 0.4, 0, z, x + 0.4, 0.8, z + 0.2, 'tire'); }
+  car(W, -54, 59.6, 0, 'burnt'); W(52, 0.08, 58, 57, 2.6, 61.4, 'wood'); W(51.8, 2.6, 57.8, 57.2, 2.9, 61.6, 'roofg');
+
+  // ---- the park: the playground (west), the founder's plaza (middle), the pond with a footbridge and the gazebo (east)
+  { const P = B.local(-24, 0, 0);
+    P(-15, 0, -10, 15, 0.12, 10, 'rubber'); // the noisiest floor money can buy
+    P(-15.2, 0, -10.2, 15.2, 0.6, -10, 'toyred'); P(-15.2, 0, 10, -2, 0.6, 10.2, 'toyred'); P(2, 0, 10, 15.2, 0.6, 10.2, 'toyred'); P(-15.2, 0, -10, -15, 0.6, 10, 'toyred');
+    for (const [x, z] of [[-11, -6], [-7, -6], [-11, -2], [-7, -2]]) P.B(x, 2.7, z, 0.3, 5.4, 0.3, 'toyblue'); // a climbing frame with a slide off it
+    P(-11.3, 2.9, -6.3, -6.7, 3.2, -1.7, 'toygreen'); P(-11.3, 5.4, -6.3, -6.7, 5.7, -1.7, 'toyred');
+    stairs(P, -10.5, -9, 1.8, -1, 0.12, 3.2, 'toyorange', 0.5);
+    for (let i = 0; i < 8; i++) P(-6.7 + i * 0.7, 0.12, -5.2, -6 + i * 0.7, 3.2 - i * 0.38, -2.8, 'toyteal');
+    P(2, 0.12, 2, 9, 1.0, 2.3, 'toyblue'); P(2, 0.12, 8.7, 9, 1.0, 9, 'toyblue'); P(2, 0.12, 2.3, 2.3, 1.0, 8.7, 'toyblue'); P(8.7, 0.12, 2.3, 9, 1.0, 8.7, 'toyblue'); // the ball pit
+    const balls = ['toyred', 'toygreen', 'toyorange', 'toyteal', 'toypink'];
+    for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) P.B(3.1 + i * 1.3, 0.35 + ((i + j) % 2) * 0.12, 3.1 + j * 1.3, 0.9, 0.5 + ((i * j) % 3) * 0.08, 0.9, balls[(i * 3 + j) % 5]);
+    P(-13, 0.12, 3, -9, 4.12, 7, 'toyface', { fit: 1 });
+    P.B(10, 2.6, -7, 0.3, 5.2, 0.3, 'toyred'); P.B(3, 2.6, -7, 0.3, 5.2, 0.3, 'toyred'); P(2.8, 5.2, -7.2, 10.2, 5.5, -6.8, 'toyred'); // swings
+    for (const x of [4.5, 6.5, 8.5]) { P.B(x, 3.6, -7, 0.05, 3.2, 0.05, 'chrome'); P.B(x, 1.85, -7, 0.7, 0.12, 0.4, 'toyteal'); }
+  }
+  add(-5, 0, -5, 5, 0.4, 5, 'stone'); add(-4.5, 0.4, -4.5, 4.5, 0.5, 4.5, 'lawn'); // the founder's plaza
+  add(-1.4, 0.5, -1.4, 1.4, 2.4, 1.4, 'chrome'); add(-1.8, 2.4, -1.8, 1.8, 6, 1.8, 'toyface', { fit: 1 }); add(-0.8, 0.9, -1.43, 0.8, 1.7, -1.4, 'plaque', { fit: 1 });
+  for (const [x, z] of [[-3.5, -3.5], [3.5, 3.5], [-3.5, 3.5], [3.5, -3.5]]) W.B(x, 1.1, z, 1.2, 1.2, 1.2, 'hedge');
+  add(8, -0.4, -9, 26, 0.02, 9, 'sand'); add(8.4, 0.02, -8.6, 25.6, 0.06, 8.6, 'water'); // the pond (ankle deep)
+  add(15, 0.06, -9.4, 19, 0.6, 9.4, 'wood'); for (const s of [-1, 1]) add(15, 0.6, s * 9.4 - (s > 0 ? 0.15 : 0), 19, 1.5, s * 9.4 + (s > 0 ? 0 : 0.15), 'wood'); // the footbridge (low rails)
+  for (const [x, z] of [[11, -5], [22, 6], [24, -3]]) W.B(x, 0.5, z, 1.4, 1, 1.2, 'rock');
+  { const G = B.local(35, 0, 0); // the gazebo: posts, a rail, a stepped roof
+    G(-4, 0, -4, 4, 0.4, 4, 'wood');
+    for (const [x, z] of [[-3.7, -3.7], [3.7, -3.7], [-3.7, 3.7], [3.7, 3.7], [0, -3.7], [0, 3.7], [-3.7, 0], [3.7, 0]]) G.B(x, 1.9, z, 0.3, 3, 0.3, 'white');
+    G(-4, 0.4, -4, 4, 1.3, -3.8, 'white'); G(-4, 0.4, 3.8, 4, 1.3, 4, 'white'); G(-4, 0.4, -3.8, -3.8, 1.3, -1.2, 'white'); G(3.8, 0.4, 1.2, 4, 1.3, 3.8, 'white');
+    G(-4.4, 3.4, -4.4, 4.4, 3.7, 4.4, 'roofpink'); G(-3, 3.7, -3, 3, 4.2, 3, 'roofpink'); G(-1.5, 4.2, -1.5, 1.5, 4.7, 1.5, 'roofpink');
+  }
+  for (const [x, z] of [[-40, -8], [-40, 8], [40, -9], [40, 9], [4, -10], [-4, 10], [28, -10]]) lollipop(W, x, z, 5 + r() * 2, r);
+  for (const [x, z, l] of [[-6, -9, 4], [6, 9, 4], [28, 9.5, 3]]) W(x - l / 2, 0, z - 0.6, x + l / 2, 1.3, z + 0.6, 'hedge');
+  for (const x of [-43.6, 42.2]) add(x, 0, -7.5, x + 1.4, 2.6, 7.5, 'hedge'); // tall hedges at the park's ends: in from the corners and the long streets
+  for (const [x, z] of [[-8, -11], [8, 11]]) { W(x - 1.2, 0, z - 0.35, x + 1.2, 0.5, z + 0.35, 'wood'); W(x - 1.2, 0.5, z + 0.2, x + 1.2, 1.0, z + 0.35, 'wood'); } // benches
+
+  // ---- west end (team 1): the corner store, its car park, the bus stop
+  const C = B.local(-71, 0, 1); // front (local -z) faces east, onto the street
+  shell(C, 18, 12, 1, 4.2, 'brick', { roof: 'roofg', roofAccess: true, backDoor: true });
+  C(-8.5, 0.12, -5.5, -1, 1.1, -4.6, 'wood'); C(1, 0.12, -5.5, 8.5, 1.1, -4.6, 'wood');
+  for (const x of [-6, -2, 2, 6]) C(x - 0.4, 0.12, -1.5, x + 0.4, 1.9, 3.5, 'shelfstock');
+  C(-8, 3.0, -6.55, 8, 4.4, -6.16, 'adstore', { fit: 1 });
+  add(-64.6, 0, -24, -60, 0.1, 24, 'asphalt'); for (let z = -22; z <= 22; z += 4) add(-64.4, 0.1, z, -60.2, 0.11, z + 0.15, 'white');
+  car(W, -62.3, -18, 1, 'cargreen'); car(W, -62.3, 18, 1, 'carwhite');
+  { const H = B.local(-68, -22, 1); H(-3, 0, -0.9, 3, 0.3, 0.9, 'concrete'); H(-3, 0.3, 0.7, 3, 2.6, 0.9, 'glass'); H(-3.2, 2.6, -1.1, 3.2, 2.8, 1.1, 'toyteal'); H(-2, 0.3, 0.3, 2, 0.75, 0.7, 'seat'); } // a bus stop
+  adBoard(B, -74, 24, 0, 'x', 'adbig1'); W(-80, 0, 10, -77, 1.2, 13, 'crate'); W(-80, 0, -14, -77.4, 1.5, -12, 'containerg');
+  const west = [[-79.5, 0.2, -6], [-79.5, 0.2, -2], [-79.5, 0.2, 2], [-79.5, 0.2, 6], [-74, 0.3, -6.5], [-74, 0.3, 6.5], [-81, 0.2, 0]]; // behind the store, inside it off the door's line
+  // ---- east end (team 2): the building site: a frame going up, a scaffold, a digger, the site office
+  add(60, 0, -24, 82, 0.03, 24, 'dirt'); add(64, 0, -9, 78, 0.3, 9, 'concrete');
+  for (let x = 65; x <= 77; x += 2) for (const z of [-8, 8]) if (Math.abs(x - 71) > 2) box(x, 1.95, z, 0.15, 3.3, 0.15, 'plywood');
+  for (let z = -6; z <= 6; z += 2) for (const x of [65, 77]) if (Math.abs(z) > 1.5) box(x, 1.95, z, 0.15, 3.3, 0.15, 'plywood');
+  add(64.9, 3.6, -8.1, 77.1, 3.75, -7.9, 'plywood'); add(64.9, 3.6, 7.9, 77.1, 3.75, 8.1, 'plywood'); add(64.9, 3.6, -7.9, 65.1, 3.75, 7.9, 'plywood'); add(76.9, 3.6, -7.9, 77.1, 3.75, 7.9, 'plywood');
+  add(65.1, 3.75, 0, 76.9, 3.95, 7.9, 'plywood'); stairs(W, 66.2, 67.7, 1, 1, 0.3, 3.95, 'plywood', 0.55);
+  for (const [x, z] of [[63, -20], [63, -15], [67, -20], [67, -15]]) W.B(x, 2.9, z, 0.2, 5.8, 0.2, 'hazard');
+  add(62.6, 2.8, -20.4, 67.4, 3, -14.6, 'grid'); add(62.6, 5.8, -20.4, 67.4, 6, -14.6, 'grid');
+  excavator(B, 74, -18, 0); for (let i = 0; i < 4; i++) add(70 + i * 0.6, 0.03, 15 + i * 0.4, 76 - i * 0.6, 0.4 + i * 0.35, 19 - i * 0.3, 'sand');
+  const SO = B.local(78, 19, 1); shell(SO, 8, 4.2, 1, 3, 'containerb', { roof: 'roofg', floor: 'carpet', parapet: false }); SO(-3.5, 3.3, -2.5, 3.5, 4.2, -2.25, 'adoffice', { fit: 1 });
+  add(62, 0.03, 18, 64.4, 2.6, 20.4, 'toyblue'); palletLoad(B, 70, 12); palletLoad(B, 61, 4, 1);
+  add(77.3, 0, -9, 77.5, 2.4, 9, 'plywood'); for (const [z, a] of [[-4.5, 'adbig1'], [4.5, 'adfun']]) D.add(77.5, 0.5, z - 4, 77.56, 2.2, z + 4, a, { fit: 1 }); // hoarding on the frame's far side
+  const east = [[79.5, 0.2, -6], [79.5, 0.2, -2], [79.5, 0.2, 2], [79.5, 0.2, 6], [70, 0.4, -5.5], [70, 0.4, 5.5], [81, 0.2, 0]]; // behind the hoarding, inside the frame
+
+  spawns.push(...west.slice(0, 2), ...east.slice(0, 2), [-30, 0.2, -5], [-18, 0.2, 6], [10, 0.2, -10], [30, 0.2, 9], [35, 0.5, 0], [0, 0.6, -7],
+    [-70, 0.2, -50], [70, 0.2, -50], [-70, 0.2, 50], [70, 0.2, 50], [-71, 0.3, 0], [0, 0.2, -59.5], [0, 0.2, 59.5]);
+  let graph = null;
+  const map = {
+    name: 'Suburb', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -60, bounds, floorY: -4,
+    sky: { top: 0x2f7cf0, mid: 0xffd3ec, bot: 0x7a4a6a, fog: 0xffd3ec }, fogNear: 110, fogFar: 430,
+    spawns, teamSpawns: { att: west, def: east },
+    get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: bounds[2] - bounds[0] + 2, cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
+  };
+  return map;
+}
+
+// ---- the warehouse kit (racking, pallets, forklifts, trailers, semis, crates, building-site machinery): Warehouse, Suburb
 function rack(B, x0, z, len, r) { // blue racking with orange beams, three decks you can climb, boxes on every level
   // in 6 m bays: the Blender rack (shared/props.js) draws the uprights, beams and wire decks over these boxes (same heights)
   len = Math.max(6, Math.round(len / 6) * 6);
@@ -2575,7 +2731,7 @@ function deadmall() {
 }
 
 export const MAPS = {
-  crate: crate(), platform: platform(), rooftop: rooftop(), suburb: suburb(), warehouse: warehouse(), warehouse_sd: warehouseSD(),
+  crate: crate(), platform: platform(), rooftop: rooftop(), suburb: suburb(), suburb_sd: suburbSD(), warehouse: warehouse(), warehouse_sd: warehouseSD(),
   desert: desert(), islands: islands(), skyline: skyline(), bazaar: bazaar(), range: range(), backrooms: backrooms(), forest: forest(),
   deadmall: deadmall(),
 };
