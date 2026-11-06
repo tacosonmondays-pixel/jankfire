@@ -38,6 +38,7 @@ export function updateCity(dt) {
   if (G.settings && S.preset !== G.settings.jank) S.setPreset(G.settings.jank);
   S.update(G.camera, dt);
   const e = S.env;
+  if (S.weather.started) hud.msg('PAPER STORM', 1.6, 'brag');
   if (e && G.scene.fog) {
     G.scene.fog.color.copy(e.fog); G.scene.fog.near = e.near; G.scene.fog.far = e.far;
     if (hooks && hooks.sky) hooks.sky({ top: e.top.getHex(), mid: e.mid.getHex(), bot: e.bot.getHex() });

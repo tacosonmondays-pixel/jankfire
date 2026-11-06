@@ -13,6 +13,7 @@ import { cityMaterials, cityUniforms, NL } from './mats.js';
 import { buildPropGroup, freeProps, onPropModel } from './props.js';
 import './propcode.js'; // code stand-ins for every story prop (until its Blender model loads)
 import { Crowd } from './crowd.js'; // the people standing about
+import { Weather } from './weather.js'; // paper storms
 
 const KINDS = ['solid', 'flesh', 'glow', 'glass', 'acid'];
 const HYST = 16; // metres past a ring before something is dropped from it (no flicker at the edge)
@@ -66,6 +67,7 @@ export class CityStream {
     this.setPreset(preset);
     onPropModel(() => { this.props.key = ''; }); // a Blender prop landed: rebuild the instances with it
     this.crowd = new Crowd(scene); // the people standing about (crowd.js)
+    this.weather = new Weather(scene); this.storm = 0; // 0-1: a paper storm round you (Late Fees can't see you in one)
     this.horizon = null;
     if (this.def.horizon) this.workers[1 % workers].postMessage({ op: 'horizon', city, gen: this.def.horizon });
   }
@@ -150,6 +152,9 @@ export class CityStream {
     this.updateFar(want);
     this.updateProps(want);
     this.applyEnv(p);
+    const commute = (districtWeights(this.city, p.x, p.z, 40).find(([d]) => d.id === 'commute') || [0, 0])[1];
+    this.storm = this.weather.update(camera, dt, commute, this.clock ? this.clock() : Date.now() / 1000);
+    this.weather.fog(this.env);
     this.pickLights(camera);
     this.crowd.update(this.marks(), this.cam, dt);
     const ms = performance.now() - t0;
@@ -293,7 +298,7 @@ export class CityStream {
     for (const w of this.workers) w.terminate();
     for (const r of this.chunks.values()) { freeGroup(r.m0); freeGroup(r.m1); }
     if (this.far.mesh) { this.far.mesh.geometry.dispose(); }
-    freeProps(this.props.group); this.crowd.dispose();
+    freeProps(this.props.group); this.crowd.dispose(); this.weather.dispose();
     this.root.removeFromParent(); this.chunks.clear(); this.world.boxes.length = 0;
   }
 }

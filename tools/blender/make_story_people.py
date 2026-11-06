@@ -1156,8 +1156,8 @@ def stomachdog():
     for v in st.data.vertices:  # gastric folds: wavy ridges running nose to tail, all round the body (its fur)
         g = G.gg(v.co); ph = math.atan2(g[1] - yc, g[0])
         f = max(0.0, math.sin(15 * ph + 1.6 * math.sin(7 * g[2]) + 0.8)) ** 1.6
-        v.co += v.normal * 0.022 * f * (0.4 + 0.6 * min(1, (g[1] - lo[1]) / 0.15))
-    G.decimate(st, 560); G.wet(st); uv_tile(st, 0.35); _smooth(st)
+        v.co += v.normal * 0.034 * f * (0.4 + 0.6 * min(1, (g[1] - lo[1]) / 0.15))
+    G.decimate(st, 460); G.wet(st); uv_tile(st, 0.35); _smooth(st)
     print('JF_DOG body bbox', [round(x, 3) for x in lo], [round(x, 3) for x in hi])
     rig.add('body', st)
     # the oesophagus neck: a ribbed tube up and forward into the head
@@ -1168,14 +1168,14 @@ def stomachdog():
     cr = ell(hc, (0.165, 0.115, 0.17), mf, 'skull', n=10, rings=6); uv_tile(cr, 0.3)
     eyes = []
     for sx in (-1, 1):
-        e = G.eyeball(mey, r=0.055, pos=(sx * 0.075, 1.075, -0.6), rot=(-1.0, sx * 0.35, 0), n=8, polar=(30, 65, 100))
+        e = G.eyeball(mey, r=0.068, pos=(sx * 0.072, 1.07, -0.615), rot=(-1.15, sx * 0.3, 0), n=8, polar=(30, 65, 100))
         _smooth(e); eyes.append(e)
-        lid = ell((sx * 0.075, 1.09, -0.585), (0.066, 0.035, 0.06), mf, 'lid', n=7, rings=4); uv_tile(lid, 0.3); eyes.append(lid)
+        lid = ell((sx * 0.072, 1.1, -0.595), (0.078, 0.034, 0.066), mf, 'lid', n=6, rings=4); uv_tile(lid, 0.3); eyes.append(lid)
     ears = [ell((sx * 0.16, 1.03, -0.47), (0.03, 0.08, 0.06), mf, 'earflap', n=6, rings=4, rot=(0.2, 0, sx * 0.7)) for sx in (-1, 1)]
     for o in ears: uv_tile(o, 0.3)
     arc = lambda r, y, n: [(r * math.sin(a), y, -0.53 - 0.16 * math.cos(a) * 0.98) for a in [(-1.25 + 2.5 * i / n) for i in range(n + 1)]]
     def lipline(y, rx): return [(rx * math.sin(a), y, -0.535 - 0.15 * math.cos(a)) for a in [(-1.35 + 2.7 * i / 10) for i in range(11)]]
-    ul = sweep(lipline(0.915, 0.145), [0.022, 0.03, 0.034, 0.036, 0.036, 0.036, 0.036, 0.036, 0.034, 0.03, 0.022], ml, seg=6, name='upperlip')
+    ul = sweep(lipline(0.938, 0.15)[::2], [0.016, 0.024, 0.027, 0.024, 0.016, 0.012], ml, seg=5, name='upperlip')
     uv_tile(ul, 0.2)
     def teeth(y0, dy, rx, rz, n, name):
         V, F = [], []
@@ -1186,30 +1186,29 @@ def stomachdog():
             F += [(b, b + 1, b + 2), (b + 1, b + 3, b + 2), (b + 3, b, b + 2)]
         o = G.mesh(name, V, F, me_)
         uv_tile(o, 0.1); return o
-    ut = teeth(0.905, -0.032, 0.13, 0.135, 18, 'uppers')
-    roof = blob([(0.912, 0.13, 0.135, 0, -0.535), (0.93, 0.15, 0.15, 0, -0.53)], ml, 'roof', n=10, p=2.0, cap=(0.0, None)); uv_tile(roof, 0.2)
+    ut = teeth(0.93, -0.042, 0.138, 0.142, 16, 'uppers')
+    roof = blob([(0.925, 0.135, 0.14, 0, -0.535), (0.945, 0.15, 0.15, 0, -0.53)], ml, 'roof', n=10, p=2.0, cap=(0.0, None)); uv_tile(roof, 0.2)
     rig.add('head', cr, eyes, ears, ul, ut, roof)
     # the jaw: a soft chin, the lower lip, tiny teeth pointing up, a tongue
-    jw = ell((0, 0.885, -0.53), (0.135, 0.05, 0.15), mf, 'chin', n=10, rings=5); uv_tile(jw, 0.3)
-    faces_uv(jw, lambda c, n: (0.0, 0.0, 1.0, 1.0))
-    for pg in jw.data.polygons: pass
-    ll = sweep(lipline(0.9, 0.135), [0.018, 0.026, 0.03, 0.032, 0.032, 0.032, 0.032, 0.032, 0.03, 0.026, 0.018], ml, seg=6, name='lowerlip'); uv_tile(ll, 0.2)
-    lt = teeth(0.898, 0.028, 0.118, 0.125, 16, 'lowers')
-    tg = ell((0, 0.915, -0.56), (0.07, 0.018, 0.09), ml, 'tongue', n=8, rings=4); uv_tile(tg, 0.2)
-    rig.add('jaw', jw, ll, lt, tg)
+    jw = ell((0, 0.85, -0.52), (0.13, 0.05, 0.145), mf, 'chin', n=10, rings=5); uv_tile(jw, 0.3)
+    gum = blob([(0.875, 0.122, 0.128, 0, -0.535), (0.86, 0.13, 0.135, 0, -0.53)], ml, 'gum', n=10, p=2.0, cap=(0.0, None)); uv_tile(gum, 0.2)
+    ll = sweep(lipline(0.868, 0.14)[::2], [0.014, 0.022, 0.025, 0.022, 0.014, 0.01], ml, seg=5, name='lowerlip'); uv_tile(ll, 0.2)
+    lt = teeth(0.874, 0.036, 0.128, 0.132, 14, 'lowers')
+    tg = ell((0, 0.885, -0.56), (0.07, 0.016, 0.09), ml, 'tongue', n=7, rings=3); uv_tile(tg, 0.2)
+    rig.add('jaw', jw, gum, ll, lt, tg)
     # four stumpy legs, bone-white toe nubs
     for leg, shin, s in (('legFL', 'shinFL', -1), ('legFR', 'shinFR', 1), ('legBL', 'shinBL', -1), ('legBR', 'shinBR', 1)):
         a, b = J[leg], J[shin]
-        th = limb(a, b, 0.085, 0.07, mf, 'thigh', n=7); uv_tile(th, 0.3)
-        foot = (b[0] + s * 0.005, 0.055, b[2] - 0.03)
-        sh = limb(b, foot, 0.068, 0.062, mf, 'stump', n=7); uv_tile(sh, 0.3)
-        nubs = [ell((b[0] + dx, 0.03, foot[2] - 0.058), (0.02, 0.02, 0.022), me_, 'toe', n=5, rings=3) for dx in (-0.03, 0.0, 0.03)]
+        th = limb(a, b, 0.11, 0.095, mf, 'thigh', n=7); uv_tile(th, 0.3)
+        foot = (b[0] + s * 0.005, 0.075, b[2] - 0.02)
+        sh = limb(b, foot, 0.09, 0.078, mf, 'stump', n=7); uv_tile(sh, 0.3)
+        nubs = [ell((b[0] + dx, 0.035, foot[2] - 0.07), (0.022, 0.024, 0.024), me_, 'toe', n=4, rings=3) for dx in (-0.035, 0.0, 0.035)]
         for o in nubs: uv_tile(o, 0.1)
         rig.add(leg, th); rig.add(shin, sh, nubs)
     # the intestine tail: sausage links that wag
     t0, t1, t2 = J['tail'], J['tail2'], (0, 0.86, 0.8)
-    tl = limb(t0, t1, 0.06, 0.05, mf, 'gut1', n=7, mid=((0.33, 0.045), (0.66, 0.058))); uv_tile(tl, 0.3)
-    tl2 = limb(t1, t2, 0.05, 0.03, mf, 'gut2', n=7, mid=((0.5, 0.034),)); uv_tile(tl2, 0.3)
+    tl = limb(t0, t1, 0.06, 0.05, mf, 'gut1', n=6, mid=((0.33, 0.045), (0.66, 0.058))); uv_tile(tl, 0.3)
+    tl2 = limb(t1, t2, 0.05, 0.03, mf, 'gut2', n=6, mid=((0.5, 0.034),)); uv_tile(tl2, 0.3)
     rig.add('tail', tl); rig.add('tail2', tl2)
     poses = [('trot', {'legFL': (0.55, 0, 0), 'shinFL': (-0.5, 0, 0), 'legBR': (0.45, 0, 0), 'shinBR': (-0.2, 0, 0),
                        'legFR': (-0.45, 0, 0), 'shinFR': (-0.2, 0, 0), 'legBL': (-0.5, 0, 0), 'shinBL': (-0.45, 0, 0),
