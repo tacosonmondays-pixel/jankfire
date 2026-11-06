@@ -159,6 +159,9 @@ initHome({
   look: () => { const shown = validLook({ ...DEFAULT_LOOK, ...G.settings.look }, myAchs()); return [shown.color || G.myColor || '#ff4fd8', shown]; },
   skin: (id) => G.equipped[id], // what you actually wear
 });
+// OVERDUE story mode: hidden until the owner approves the slice (?story=1 or localStorage jfStory=1)
+const storyFlag = () => { try { return new URLSearchParams(location.search).get('story') === '1' || localStorage.getItem('jfStory') === '1'; } catch { return false; } };
+if (storyFlag()) import('./story/main.js').then((m) => m.initStory({ startMode, quitToMenu: () => quitToMenu(), toast: (t, ms) => toast(t, ms) })).catch((e) => console.error('story mode failed to load', e));
 initLobby({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), send: (m) => net.send(m), map: () => G.cfg && G.cfg.map });
 initEcon({ pause: () => { if (document.pointerLockElement) document.exitPointerLock(); pause(); }, lock }); // Plant & Defuse economy
 
@@ -187,6 +190,7 @@ onLateModel(() => { // a skin's model downloaded (the first time anyone showed i
 // ------------------------------------------------------------ screens
 let screen = 'main', classicLocker = false;
 function show(id) {
+  if (id === 'main' && G.story && G.story.onMain()) return; // OVERDUE: back from a sim match, straight into the city
   // the CUSTOMIZE hub: LOADOUT and COSMETICS are the customize screen's two modes (the old loadout list is kept, hidden, for scripts)
   if (id === 'loadout') { czMode('loadout'); buildLoadoutUI(); id = 'customize'; }
   if (id === 'cosmetics' && !classicLocker) { czMode('weapons'); id = 'customize'; }
@@ -231,7 +235,7 @@ function resume() {
 
 // ------------------------------------------------------------ playing
 let connecting = false;
-function startMode(mode, cfg) {
+function startMode(mode, cfg, mkSocket) { // mkSocket: story mode's local transport (story/main.js)
   if (S.display === 'fullscreen' && !(window.jf && window.jf.display)) applyDisplay('fullscreen');
   G.settings.name = $('name').value.trim().slice(0, 16);
   saveSettings();
@@ -245,8 +249,8 @@ function startMode(mode, cfg) {
     connecting = false;
     resetWorldState();
     show('main');
-    $('status').textContent = 'Disconnected. Server is down or restarted.';
-  });
+    $('status').textContent = mkSocket ? 'the story crashed. sorry. it saved a minute ago.' : 'Disconnected. Server is down or restarted.';
+  }, mkSocket);
   hideMenu();
   lock();
 }
@@ -2025,6 +2029,7 @@ function frame(t) {
   G.skinFxWorld.update(dt);
   G.skinFxVM.update(dt);
   skinTick(dt, now);
+  if (G.story) G.story.tick(dt, now); // OVERDUE (flagged)
   updateWorld(dt);
   updateCrosses(dt, RP.active ? (RP.sp || 1) * (RP.dt != null && dt > 0 ? RP.dt / dt : 1) : 1); // after the projectile loop + replay: it turns blood bolts nose-first
   G.vmScene.visible = G.joined && !RP.active && !specCam && !asleep && !econHideVM();

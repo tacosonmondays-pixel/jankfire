@@ -5,9 +5,9 @@ export const net = {
   open: false,
   on(t, fn) { handlers[t] = fn; },
   send(o) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(o)); },
-  connect(hello, onClose) {
+  connect(hello, onClose, mkSocket) { // mkSocket: another transport with a WebSocket's surface (story mode's worker, story/host.js)
     const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
-    const ws = this.ws = new WebSocket(url);
+    const ws = this.ws = mkSocket ? mkSocket() : new WebSocket(url);
     ws.onopen = () => { this.open = true; this.send({ t: 'join', ...hello }); };
     ws.onmessage = (e) => {
       if (ws !== this.ws) return;
