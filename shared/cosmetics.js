@@ -325,6 +325,30 @@ export const SKINS_2 = {
   slipper_flipflop: ['Flip-Flop', 'common', 'slipper'],
 };
 for (const [id, [name, rarity, weapon]] of Object.entries(SKINS_2)) COSMETICS.model[id] = { name, rarity, weapon };
+// killstreak skins: other bodies for the streaks (tools/blender/make_streakskins.py, x_<id>.glb, lazy). they're models
+// like the weapon skins (crates, rarities, owns / ownedSkin / modelsFor), keyed by the streak's id instead of a weapon's.
+// the streaks that take a look: their skin slot is [wrap, 'none', 'none', model, wrap mode] (no charms or effects)
+export const STREAK_SKINS = {
+  wreck_bowling: ['Bowling Ball', 'common', 'wreckingball', 'strike. you are the ball.'],
+  wreck_meatball: ['Meatball', 'rare', 'wreckingball', 'one giant meatball, extra sauce. rolls just as hard.'],
+  wreck_disco: ['Disco Ball', 'epic', 'wreckingball', 'a mirror ball. the party comes to them.'],
+  duck_flamingo: ['Pool Flamingo', 'rare', 'giantduck', 'an inflatable flamingo circles the hole. summer vibes, total doom.'],
+  duck_robot: ['Robo Duck', 'epic', 'giantduck', 'a chrome duck with a red visor. it computes your demise.'],
+  duck_gold: ['Golden Duck', 'legendary', 'giantduck', 'solid gold. the black hole is jealous.'],
+  strike_pigeon: ['Pigeon Raid', 'common', 'chickenstrike', 'city pigeons, armed and furious.'],
+  strike_drone: ['Drone Strike', 'epic', 'chickenstrike', 'quadcopters drop the payload. no chickens were harmed.'],
+  moon_heelys: ['Heelys', 'common', 'moonboots', 'wheels in the heels. low gravity, high speed.'],
+  moon_rocket: ['Rocket Sneakers', 'rare', 'moonboots', 'a nozzle on each heel. jump into orbit.'],
+  moon_clown: ['Clown Shoes', 'epic', 'moonboots', 'huge red shoes. honk on landing.'],
+  spin_halo: ['Halo', 'rare', 'spinbot', 'cheating, but holy.'],
+  spin_aura: ['Anime Aura', 'legendary', 'spinbot', 'it is over nine thousand frames per second.'],
+  sat_pizza: ['Pizza Dish', 'rare', 'satellite', 'a pizza on a relay box. extra cheese, extra wallhacks.'],
+  sat_blimp: ['CCTV Blimp', 'epic', 'satellite', 'a blimp with a camera. smile.'],
+};
+for (const [id, [name, rarity, weapon, desc]] of Object.entries(STREAK_SKINS)) COSMETICS.model[id] = { name, rarity, weapon, desc, streak: true };
+// the killstreaks you can dress (the scythe is a weapon already: it has its own skins). overdrive takes wraps only
+export const STREAK_LOOKS = ['moonboots', 'chickenstrike', 'overdrive', 'spinbot', 'wreckingball', 'satellite', 'giantduck'];
+export const isStreakLook = (id) => STREAK_LOOKS.includes(id);
 // retired skins -> the one that replaced them (the spoon merged into the knife: its Ladle is a knife now).
 // accounts are migrated when they load (migrateInv, server/store.js), owns() also takes the old id, old saves map over
 export const SKIN_RENAME = { spoon_ladle: 'knife_ladle' };

@@ -14,7 +14,8 @@ import { ACHIEVEMENTS, achProgress, ROYAL_ALL } from '/shared/looks.js';
 import { validSkin, DEFAULT_SKIN, WRAP_MODES, WRAP_MODE_NAMES, makeHat } from './skins.js';
 import { showPreview, resizePreview, setPreviewRes, previewManual } from './preview.js';
 import { weaponIcon, objIcon, drawIcon, isPlaceholder, PLACEHOLDER, studioIcon, liveIcon } from './icons.js';
-import { uiPic, itemPic } from './itemicons.js';
+import { uiPic, itemPic, streakPic } from './itemicons.js';
+import { isStreakLook } from '/shared/cosmetics.js';
 import { whenGlb, prefetch, want } from './glbkit.js';
 import { defaultCard } from './cards.js';
 import { royalBoxes } from './royal.js';
@@ -23,6 +24,9 @@ import { account } from './account.js';
 import { K } from './keys.js';
 
 export const RAND = 'random';
+// a weapon, or a killstreak with a look (shared/cosmetics.js STREAK_LOOKS): the screen treats both the same
+const WI = (id) => WEAPONS[id] || (STREAKS[id] && { name: STREAKS[id].name, slot: 'streak', kind: 'wraps + skins', color: '#ffe14d', desc: STREAKS[id].desc });
+const picOf = (id, sk) => (isStreakLook(id) ? streakPic(id, sk || null) : weaponIcon(id, sk));
 const $ = (id) => document.getElementById(id);
 const S = G.settings;
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -161,7 +165,7 @@ export function czOpen() {
   root.classList.toggle('lo-mode', mode === 'loadout');
   for (const b of root.querySelectorAll('.hub-tab')) b.classList.toggle('on', b.dataset.hub === (mode === 'loadout' ? 'loadout' : 'weapons'));
   const hn = $('czHub').firstElementChild; if (hn && hn.mark) hn.mark(); // (its pictures: your gun / look may have changed)
-  if (mode === 'loadout' && !SLOTS.includes(WEAPONS[sel].slot)) sel = S.loadout.primary;
+  if (mode === 'loadout' && !SLOTS.includes(WI(sel).slot)) sel = S.loadout.primary;
   $('czStage').append($('preview'));
   setPreviewRes([0.3, 0.45, 0.75, 1][S.jank] ?? 0.5); // potato is crunchy here too
   previewManual(V);
@@ -257,15 +261,15 @@ function renderLeft() {
   list.innerHTML = '';
   const ids = api.skinnable();
   for (const slot of mode === 'loadout' ? SLOTS : [...SLOTS, 'item', 'streak']) {
-    const mine = ids.filter((id) => WEAPONS[id].slot === slot && id !== 'scythe_rifle'); // (skinnable() already keeps only items you hold)
+    const mine = ids.filter((id) => WI(id) && WI(id).slot === slot && id !== 'scythe_rifle'); // (skinnable() already keeps only items you hold)
     if (!mine.length) continue;
     list.append(el('div', 'cz-slot', slot === 'streak' ? 'Killstreak' : slot === 'item' ? `Item (${K.label('item')})` : slot[0].toUpperCase() + slot.slice(1)));
     for (const id of mine) {
-      const w = WEAPONS[id];
+      const w = WI(id);
       const r = el('button', 'cz-row' + (id === sel ? ' on' : ''));
       r.style.setProperty('--c', w.color);
       r.dataset.id = id;
-      const im = el('img'); lazyIcon(im, () => weaponIcon(id, G.equipped[id]));
+      const im = el('img'); lazyIcon(im, () => picOf(id, G.equipped[id]));
       const dressed = S.skins[id] && (S.skins[id].slice(0, 4).some((v, i) => v !== DEFAULT_SKIN[i]));
       const eq = SLOTS.includes(w.slot) && S.loadout[w.slot] === id;
       r.append(im, el('span', 'nm', w.name), el('span', 'dot', mode === 'loadout' ? (eq ? 'E' : '') : dressed ? '★' : ''));
@@ -313,7 +317,7 @@ function bar(label, v, max, txt) {
   return r;
 }
 function renderRight() {
-  const w = WEAPONS[sel], info = $('czInfo');
+  const w = WI(sel), info = $('czInfo');
   let body = info.querySelector('.cz-ibody');
   if (!body) { body = el('div', 'cz-ibody'); info.append(body); }
   body.innerHTML = '';
@@ -361,7 +365,7 @@ function renderRight() {
   b('COPY LOOK TO ALL', () => {
     const sk = curSkin();
     for (const id of api.skinnable()) { const s2 = validSkin(S.skins[id]).slice(); s2[0] = sk[0]; s2[1] = sk[1]; s2[2] = sk[2]; s2[4] = sk[4]; api.storeSkin(id, s2); }
-    api.bulk(); api.toast(`${WEAPONS[sel].name}'s wrap, charm and effect are on everything now`); refresh();
+    api.bulk(); api.toast(`${WI(sel).name}'s wrap, charm and effect are on everything now`); refresh();
   }).title = 'wrap, charm, effect and wrap mode go on every weapon. skins stay';
   b('RESET', () => { api.setSkin(sel, DEFAULT_SKIN.slice()); refresh(); if (tab) renderTiles(); }, 'danger');
   b('RANDOM LOOK', () => { // a random owned wrap, charm, effect and wrap mode on this weapon
@@ -374,6 +378,9 @@ function renderRight() {
 
 function refresh() {
   if (!open) return;
+  const st = isStreakLook(sel); // a killstreak: wraps and skins only (no charms or effects on it)
+  root.classList.toggle('streak-sel', st);
+  if (st && (tab === 'charm' || tab === 'effect')) setTab(null);
   renderLeft();
   renderRight();
   for (const b of $('czTabs').children) b.classList.toggle('on', b.dataset.tab === tab);
@@ -412,7 +419,7 @@ function renderLo() {
   const cur = S.loadout.item || 'frag';
   row(`ITEM (${K.label('item')})`, ITEM_ORDER.map((id) => { const it = ITEMS[id]; return loTile('lo-item', () => itemPic(id, G.equipped[it.w]), it.name, `x${it.charges}`, id === cur, [`ITEM · ${it.charges} CHARGE${it.charges > 1 ? 'S' : ''} · ${it.recharge}s REFILL`, it.desc], it.color, () => { api.setItem(id); refresh(); }); }));
   const picks = draft || validStreaks(S.loadout.streaks);
-  row(`KILLSTREAKS · PICK 3 · ${['streak1', 'streak2', 'streak3'].map((k) => K.label(k)).join(' / ')}`, Object.entries(STREAKS).sort((a, b) => a[1].kills - b[1].kills).map(([id, st]) => loTile('lo-streak', () => streakIcon(id), st.name, `${st.kills}`, picks.includes(id), [`KILLSTREAK · ${st.kills} KILLS IN A ROW`, st.desc], '#ffe14d', () => {
+  row(`KILLSTREAKS · PICK 3 · ${['streak1', 'streak2', 'streak3'].map((k) => K.label(k)).join(' / ')}`, Object.entries(STREAKS).sort((a, b) => a[1].kills - b[1].kills).map(([id, st]) => loTile('lo-streak', () => streakIcon(id, isStreakLook(id) ? G.equipped[id] || null : undefined), st.name, `${st.kills}`, picks.includes(id), [`KILLSTREAK · ${st.kills} KILLS IN A ROW`, st.desc], '#ffe14d', () => {
     if (picks.includes(id)) { draft = picks.filter((x) => x !== id); api.toast('pick another killstreak to fill the slot'); refresh(); return; }
     if (picks.length >= 3) { api.toast('click one of your killstreaks to drop it first'); return; }
     const next = [...picks, id];
@@ -506,7 +513,7 @@ function renderTiles() {
   box.append(tile(T, T.none, cur, 'none'), tile(T, RAND, cur, 'rand'));
   for (const k of list) box.append(tile(T, k, cur));
   $('czN').textContent = `${list.length}/${all.length}`;
-  if (!list.length) box.append(el('div', 'cz-empty', T.type === 'model' && !all.length ? `no skins for the ${WEAPONS[sel].name} yet` : 'nothing matches. try fewer letters'));
+  if (!list.length) box.append(el('div', 'cz-empty', T.type === 'model' && !all.length ? `no skins for the ${WI(sel).name} yet` : 'nothing matches. try fewer letters'));
   if (!tilesIO) { for (const t of box.children) if (t._pic) tileQ.push(t); }
   else for (const t of [...box.children].slice(0, 12).reverse()) if (t._pic) { tilesIO.unobserve(t); tileQ.unshift(t); } // the first screenful right away (the observer can lag a busy frame or two)
 }
@@ -539,8 +546,8 @@ function tile(T, k, cur, kind) {
     pic.append(im);
     const sk = wearing();
     if (T.type === 'hat') t._pic = () => objIcon('czhat:' + k, () => makeHat(k));
-    else if (T.type === 'model') { sk[0] = 'default'; sk[1] = 'none'; sk[2] = 'none'; sk[3] = k; t._pic = () => weaponIcon(sel, sk); }
-    else { sk[0] = k; sk[1] = 'none'; sk[2] = 'none'; t._pic = () => weaponIcon(sel, sk); }
+    else if (T.type === 'model') { sk[0] = 'default'; sk[1] = 'none'; sk[2] = 'none'; sk[3] = k; t._pic = () => picOf(sel, sk); }
+    else { sk[0] = k; sk[1] = 'none'; sk[2] = 'none'; t._pic = () => picOf(sel, sk); }
     t._img = im;
     if (tilesIO) tilesIO.observe(t);
   }

@@ -286,8 +286,8 @@ export function itemIcon2d(id) {
 
 // killstreak pictures (3D from itemicons.js; these drawings are the fallback)
 const streakCache = new Map();
-export function streakIcon(id) {
-  if (pics3d.streak) { const u = pics3d.streak(id); if (u) return u; } // the 3D one (or its loading placeholder)
+export function streakIcon(id, skin) {
+  if (pics3d.streak) { const u = pics3d.streak(id, skin); if (u) return u; } // (skin: a killstreak look; default = what you wear) // the 3D one (or its loading placeholder)
   return streakIcon2d(id);
 }
 // the old drawings: only if the 3D one can't be made (no WebGL, model missing)

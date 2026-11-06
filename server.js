@@ -15,7 +15,7 @@ import { ownedSkin, ownedKill, ownedGrapple, randomContainer, CONTAINERS, COSMET
 import { owns, SPRAY } from './shared/cosmetics.js';
 import { validLook, achievementsFrom, ACHIEVEMENTS } from './shared/looks.js';
 import { ROYAL, ROYAL_FEATS, featOn } from './shared/looks.js'; // Sniper Royalty
-import { achInv, wrapMode, WRAP_MODES } from './shared/cosmetics.js'; // achievement-locked skins (the Golden Sniper), wrap modes
+import { achInv, wrapMode, WRAP_MODES, STREAK_LOOKS, isStreakLook } from './shared/cosmetics.js'; // achievement-locked skins (the Golden Sniper), wrap modes
 import { STAT_KEYS } from './server/store.js';
 import { installRig } from './server/rig.js';
 import { installBody } from './server/bodyhp.js'; // the wrecking ball + rig last until they break
@@ -214,16 +214,17 @@ function clean(s, max) { return String(s || '').replace(/[<>&"'`\u0000-\u001f]/g
 function cleanSkins(s) {
   const out = {};
   if (!s || typeof s !== 'object') return out;
-  for (const id of Object.keys(WEAPONS)) {
+  for (const id of [...Object.keys(WEAPONS), ...STREAK_LOOKS]) { // (killstreak looks are keyed by the streak's id)
     const v = s[id];
     // [wrap, hat, effect, model?, wrap mode?]: older clients send 3 or 4, the mode is checked against WRAP_MODES
     if (Array.isArray(v) && v.length >= 3 && v.length <= 5 && v.every((x) => typeof x === 'string' && SKIN_KEYS.f.test(x))) out[id] = [v[0], v[1], v[2], v[3] || 'default', wrapMode(v[4])];
   }
   return out;
 }
+const ALL_SKINS = process.env.JF_ALL_SKINS ? Object.fromEntries(Object.entries(COSMETICS).map(([t, c]) => [t, Object.keys(c)])) : null; // test knob: everyone owns every cosmetic
 function enforceSkins(skins, inv, achs) {
-  const out = {}, own = achInv(inv, achs); // achievement skins (Golden Sniper) only count from your achievements
-  for (const [id, sk] of Object.entries(skins)) out[id] = ownedSkin(sk, own, id);
+  const out = {}, own = ALL_SKINS || achInv(inv, achs); // achievement skins (Golden Sniper) only count from your achievements
+  for (const [id, sk] of Object.entries(skins)) { out[id] = ownedSkin(sk, own, id); if (isStreakLook(id)) { out[id][1] = 'none'; out[id][2] = 'none'; } } // streaks: a wrap and a skin, no charm or effect
   return out;
 }
 if (process.env.JF_STREAK) STREAKS.scythe.kills = Number(process.env.JF_STREAK) || STREAKS.scythe.kills;
@@ -2113,7 +2114,7 @@ class Room {
     const pr = { id: this.nextProj++, k: wid, o: p.id, r: w.r, bounce: w.bounce || 0, born: now() - 300, phase: 0, hit: new Map(), sync: 0, p: pos.slice(), v: vel.slice(), ...extra };
     pr.ef = p.pos ? this.epicState(p) : null; // EPIC: where (and how) they fired it from (a sky duck has nobody)
     this.projectiles.set(pr.id, pr);
-    this.broadcast({ t: 'ps', id: pr.id, k: pr.k, p: pr.p.map(r2), v: pr.v.map(r2), o: p.id, tip: extra.tip });
+    this.broadcast({ t: 'ps', id: pr.id, k: pr.k, p: pr.p.map(r2), v: pr.v.map(r2), o: p.id, tip: extra.tip, st: extra.st ? 1 : undefined });
     return pr;
   }
 
@@ -2952,7 +2953,7 @@ class Room {
           for (let k = 0; k < 14; k++) setTimeout(safe('strike', () => {
             if (!this.players.has(p.id)) return;
             const a = Math.random() * Math.PI * 2, rr = Math.random() * 10;
-            this.makeProj(p, 'chicken', [at[0] + Math.cos(a) * rr, at[1] + 45, at[2] + Math.sin(a) * rr], [0, -34, 0]);
+            this.makeProj(p, 'chicken', [at[0] + Math.cos(a) * rr, at[1] + 45, at[2] + Math.sin(a) * rr], [0, -34, 0], { st: 1 }); // st: a strike bird (drawn in the owner's Chicken Strike look)
           }), 600 + k * 170);
         } else if (m.r === 'giantduck') {
           this.makeHole([at[0], at[1] + 4, at[2]], p.id, { big: true });
@@ -3828,7 +3829,7 @@ class Room {
     if (this.isEcon()) this.tickEcon(n);
     this.tickTags(n);
     this.tickItems(dt);
-    if (this.mode === 'training') this.trainingStreaks(n);
+    if (this.mode === 'training' || process.env.JF_TRAIN_STREAKS) this.trainingStreaks(n); // (test knob: your 3 killstreaks always ready, any mode)
     this.tickTraps(n);
     for (const b of this.players.values()) if (b.isBot && b.alive) this.stepBot(b, dt);
     this.tickLasso(dt);
