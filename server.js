@@ -60,6 +60,8 @@ import { installLasso } from './server/lasso.js'; // lasso (secondary): its Room
 import { lassoPreroll } from './shared/lasso.js';
 import { ZM } from './shared/zombies.js';
 import { installZombies } from './server/zombies.js';
+import { installLobby } from './server/lobby.js'; // mode lobbies: the countdown before a match
+import { LOBBY } from './shared/lobby.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -106,6 +108,11 @@ function serve(req, res) {
     const r = rooms.get('ffa');
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-cache' });
     res.end(JSON.stringify({ online: humans(), room: r ? r.humans().length : 0, game: r ? r.game : process.env.JF_GAME || 'dm', map: r ? r.cfg.map : 'islands', region: process.env.JF_REGION || process.env.RENDER_REGION || '', ev: eventGame() }));
+    return;
+  }
+  if (url === '/lobbies') { // home menu mode cards: how many real people are in each mode, Online and With Bots
+    res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-cache' });
+    res.end(JSON.stringify(lobbyCounts()));
     return;
   }
   if (url.startsWith('/api/')) { accounts.handle(req, res, url); return; }
@@ -482,7 +489,7 @@ class Room {
   info(p) { return { id: p.id, name: p.name, color: p.color, skins: p.skins, bot: p.isBot, level: p.level, look: p.look, card: p.card || '', team: p.team || 0, grap: p.grap || 'rope' }; }
 
   addHuman(ws, m) {
-    if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && !this.humans().length) {
+    if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && !this.humans().length && !this.lobby) {
       const c = m.cfg;
       if (has(MAPS, c.map) && MAP_ORDER.includes(c.map)) this.cfg.map = c.map;
       if (has(HIPFIRE, c.hip)) this.cfg.hip = c.hip;
@@ -504,14 +511,14 @@ class Room {
     p.kc = !!m.kc;
     p.item = has(ITEMS, m.item) ? m.item : 'frag'; // the client confirms it with 'itemsel' right after 'welcome'
     if (process.env.JF_WATCH && name.startsWith('watch')) { p.watch = true; p.alive = false; p.hp = 0; p.respawnAt = p.minRespawnAt = Infinity; } // test knob: a ws observer for bots-only matches (never a fighter)
-    if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && has(GAMES, m.cfg.game) && !this.humans().length) this.setGame(m.cfg.game);
-    if (this.mode === 'bots' && !this.humans().length && !this.map.zm !== !GAMES[this.game].zombies) this.setGame(this.map.zm ? 'zm' : this.game); // the zombie map only with zombies
+    if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && has(GAMES, m.cfg.game) && !this.humans().length && !this.lobby) this.setGame(m.cfg.game);
+    if (this.mode === 'bots' && !this.humans().length && !this.lobby && !this.map.zm !== !GAMES[this.game].zombies) this.setGame(this.map.zm ? 'zm' : this.game); // the zombie map only with zombies
     if (!p.watch) this.joinTeam(p);
     if (p.team) p.pos = this.pickSpawn(false, p);
     if (this.isEcon() && !p.watch) this.econJoin(p);
     this.players.set(p.id, p);
     // in from the start (or close enough): your Never Landed run counts. the welcome below is your first spawn
-    if (this.round && !this.round.over && now() - (this.round.t0 || 0) < AIR.join && !GAMES[this.game].lava && !GAMES[this.game].royale) p.air = { ok: !(this.airBad && this.airBad.has(name)), rest: 0 };
+    if (this.round && !this.round.over && !this.warm && now() - (this.round.t0 || 0) < AIR.join && !GAMES[this.game].lava && !GAMES[this.game].royale) p.air = { ok: !(this.airBad && this.airBad.has(name)), rest: 0 };
     send(p, {
       t: 'welcome', id: p.id, name, color: p.color, pos: p.pos, q: p.seq, mode: this.mode, cfg: this.cfg,
       players: [...this.players.values()].filter((o) => o !== p).map((o) => this.info(o)),
@@ -523,7 +530,7 @@ class Room {
       smokes: [...this.smokes.values()].map((s) => [...s.p, Math.round(s.until - now())]), ic: this.icInfo(p),
       kat: [...this.players.values()].filter((o) => o.kat).map((o) => [o.id, o.kat]),
       game: this.game, team: p.team || 0, tags: [...this.tags.values()].map((g) => ({ id: g.id, p: g.p, team: g.team })), vote: this.voteInfo(),
-      sprays: this.sprayList(), skip: skipInfo(this),
+      sprays: this.sprayList(), skip: skipInfo(this), lobby: this.warmInfo ? this.warmInfo() || undefined : undefined, lk: this.lobby ? this.lobby.kind : undefined,
       mpatch: this.patchList(),
     });
     this.broadcast({ t: 'pj', ...this.info(p) }, p.id);
@@ -541,9 +548,9 @@ class Room {
     this.sendLoadout(p);
     if (this.mode === 'ffa' || this.mode === 'coop') this.broadcast({ t: 'chat', id: 0, m: `${name} joined` });
     if (this.mode === 'bots') this.fillBots();
-    if (this.mode === 'bots' && this.humans().length === 1 && this.game !== 'dm') this.startRound();
+    if (this.mode === 'bots' && this.humans().length === 1 && this.game !== 'dm' && !this.lobby) this.startRound();
     if (process.env.JF_FFA_BOMB) this.econTestStart(); // test knob
-    if (this.mode === 'ffa' && GAMES[this.game].zombies && !this.zm && this.humans().length === 1) this.startRound(); // JF_GAME=zm: the first one in sets the zombies up
+    if (this.mode === 'ffa' && GAMES[this.game].zombies && !this.zm && this.humans().length === 1 && !this.lobby) this.startRound(); // JF_GAME=zm: the first one in sets the zombies up
     if (this.mode === 'training') this.spawnDummies();
     console.log(`+ ${name} (#${p.id}) -> ${this.id}`);
     return p;
@@ -593,6 +600,7 @@ class Room {
   // replaced by people; when someone leaves, a bot comes back. (the JF_WATCH test observer isn't a player)
   botWant() {
     const h = this.humans().filter((p) => !p.watch).length;
+    if (this.lobby) return GAMES[this.lobby.next] && GAMES[this.lobby.next].zombies ? 0 : Math.max(0, this.lobbySize() - Math.max(1, h)); // a mode lobby: humans take bots' places (no bots in a zombies warm-up)
     const size = this.brOn ? Math.max(clampInt(this.cfg.bots, 0, 12), clampInt(process.env.JF_BR_BOTS || BR.bots, 0, 31)) : clampInt(this.cfg.bots, 0, 12); // a royale wants a crowd
     return Math.max(0, size + 1 - Math.max(1, h));
   }
@@ -1451,7 +1459,7 @@ class Room {
       if (killer.lastKiller === t.id) killer.lastKiller = 0; // revenge served (scales of justice)
       t.lastKiller = killer.id;
       if (this.zm) killer.streak = 0; // zombies: no killstreaks
-      if (!killer.isBot && this.mode !== 'training' && !this.zm && !this.modeWeapon(killer) && !(this.chaosKit && this.chaosKit.noStreaks) && this.streaksOn() && !this.brOn) { // no killstreaks in zombies, gun game, as a zombie or in a chaos kit
+      if (!killer.isBot && this.mode !== 'training' && !this.zm && !this.modeWeapon(killer) && !(this.chaosKit && this.chaosKit.noStreaks) && this.streaksOn() && !this.brOn && !this.warm) { // no killstreaks in zombies, gun game, as a zombie or in a chaos kit
         // your 3 picked streaks: earn one and it waits in your tray until you use it (keys 5 / 6 / 7)
         for (const id of validStreaks(killer.streaks)) {
           const st = STREAKS[id];
@@ -1472,6 +1480,7 @@ class Room {
     t.lastEpic = ep;
     t.epicLock = ep && !t.isBot && t.kc ? Math.min(t.respawnAt, now() + epicCamMs()) : 0;
     if (t.epicLock) ep.lock = 1;
+    if (this.warm) { t.respawnAt = t.minRespawnAt = now() + LOBBY.respawn; t.epicLock = 0; if (ep) ep.lock = 0; } // a lobby's warm-up: straight back in
     if (this.zm) this.zmKilled(t, killer, w); // credits for zombie kills, players go down instead of respawning
     if (killer && killer !== t && this.round && !this.round.over && !(t.isBot && t.ai && t.ai.dummy) && this.mode !== 'training') this.hlCandidate(killer, t, w);
     send(t, { t: 'streak', reset: 1 });
@@ -2695,6 +2704,7 @@ class Room {
 
   // ---------------------------------------------------------- lobby settings
   setCfg(p, m) {
+    if (this.lobby) return; // a mode lobby is everyone's: no one person changes its map, mode or bots
     const n = now();
     if (n - p.cfgT < 1500) return;
     p.cfgT = n;
@@ -2948,6 +2958,7 @@ class Room {
       case 'nv': this.onNv(p, m); break; // night vision goggles on / off
       case 'spray': this.onSpray(p, m); break;
       case 'itemsel': this.selectItem(p, m.i); break;
+      case 'ready': if (this.warm) this.onReady(p, m); break; // mode lobby: READY (everyone ready = 5 s)
       case 'vote': { // a vote is for the stage that's open now (s, when sent, must match it). one that comes too soon after
         // the last is kept and counted once the 250 ms are up, so the card you see marked is always the one that counts
         const v = this.vote;
@@ -2989,6 +3000,7 @@ class Room {
     if (this.teamsOn()) r.sc = [this.score[1], this.score[2]];
     if (GAMES[this.game].infect) { const s = this.survivors().length; r.inf = { s, z: this.fighters().length - s, t0: this.infAt ? Math.max(0, this.infAt - now()) : 0 }; }
     if (this.zm) r.zm = this.zmInfo();
+    if (this.warm) r.warm = this.warmInfo(); // a mode lobby's countdown
     const b = this.bomb;
     if (b) {
       const n = now();
@@ -3004,7 +3016,8 @@ class Room {
     if (!r) return;
     const n = now();
     skipTick(this, n);
-    if (r.over) { this.tickVote(n); if (n >= r.next) this.startRound(); return; }
+    if (this.warm) { this.tickWarm(n); return; } // a mode lobby: the countdown (no skip vote, no kill limit)
+    if (r.over) { this.tickVote(n); if (n >= r.next) { if (this.lobby) this.enterWarm(LOBBY.again); else this.startRound(); } return; } // a mode lobby goes back to a short lobby, so the group stays together
     if (!this.humans().length) return;
     if (this.zm) { this.zmRound(n); return; } // zombies ends when everyone's down
     if (this.game === 'bomb' && this.bomb) { this.tickBomb(n); return; }
@@ -3095,7 +3108,7 @@ class Room {
     this.airBad = new Set(); // names that touched down this match: leaving and rejoining doesn't wipe it
     // Floor Is Lava has no Never Landed run: everyone's kept off the floor there anyway (and the lava bounces you
     // back up), so it would come almost for free
-    if (GAMES[this.game].lava || GAMES[this.game].royale) return; // (a royale starts in the sky)
+    if (GAMES[this.game].lava || GAMES[this.game].royale || this.warm) return; // (a royale starts in the sky. a lobby's warm-up doesn't count)
     for (const p of this.players.values()) {
       if (p.isBot) continue;
       p.air = { ok: true, rest: 0 };
@@ -3144,6 +3157,7 @@ class Room {
     const options = modeCards(MAPS, MAP_ORDER, this.game, Math.random, this.skipped);
     if (this.mode === 'bots' && GAMES[this.game].zombies && this.skipped !== this.game && options.length && !options.some((o) => o.game === this.game)) options[options.length - 1] = { game: this.game, event: 0 }; // solo zombies: play again is always an option
     this.skipped = null;
+    if (this.lobbyVote && this.lobbyVote()) return; // a one-mode lobby (P&D, royale, zombies): only the map is up for a vote
     if (!options.length) return;
     this.vote = { stage: 'mode', options, votes: new Map(), ends: now() + VOTE.mode, game: null, map: null };
     this.botVotes();
@@ -3920,9 +3934,11 @@ installEcon(Room, {
 });
 installLasso(Room);
 installZombies(Room, { send, stat, store });
+installLobby(Room, { send, rooms });
 
 // ---------------------------------------------------------------- account stats
 function stat(p, key, v) {
+  if (p.room && p.room.warm) return; // a lobby's warm-up counts for nothing
   if (key === 'xp' && p.m) p.m.xp += v; // this match's xp, for the end screen (guests too: it shows what they'd keep)
   if (!p.acct) return;
   const d = p.acct.d;
@@ -4005,8 +4021,36 @@ function segs(s) {
   return out;
 }
 
+// real players per mode card: o = Online (quick play is the 'ffa' room), b = With Bots
+function lobbyCounts() {
+  const o = {}, b = {};
+  for (const k of LOBBY.order) { o[k] = 0; b[k] = 0; }
+  for (const r of rooms.values()) {
+    const n = r.humans().filter((p) => !p.watch).length;
+    if (r.id === 'ffa') o.qp += n;
+    else if (r.lobby) (r.lobby.online ? o : b)[r.lobby.kind] += n;
+    else if (r.qp) b.qp += n;
+  }
+  return { o, b };
+}
 function roomFor(mode, ws, cfg) {
   if (!has(MODES, mode)) mode = 'ffa';
+  // mode lobbies (home menu ONLINE / WITH BOTS cards): an open lobby for that mode, or a new one. Online Quick Play is the 'ffa' room below
+  const lk = cfg && typeof cfg === 'object' && typeof cfg.lobby === 'string' && has(LOBBY.kinds, cfg.lobby) ? cfg.lobby : null;
+  if (lk === 'qp' && mode === 'bots') { // With Bots Quick Play: no lobby. drop into a running quick play bots room with a bot to replace, else a new one
+    for (const r of rooms.values()) if (r.mode === 'bots' && r.qp && !r.lobby && !r.closed && r.botWant() > 0) return r;
+    const r = new Room(`bots:qp:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, 'bots');
+    r.qp = true; r.cfg.map = pick(mapsFor('dm', MAPS, MAP_ORDER)) || r.cfg.map;
+    rooms.set(r.id, r);
+    return r;
+  }
+  if (lk && lk !== 'qp' && (mode === 'bots' || mode === 'ffa')) {
+    for (const r of rooms.values()) if (r.lobbyOpen(mode, lk)) return r;
+    const r = new Room(`${mode}:${lk}:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, mode);
+    rooms.set(r.id, r);
+    r.lobbyInit(lk, mode === 'ffa');
+    return r;
+  }
   // Play With Bots: join a running bots room playing the same mode that still has a bot to swap out, else start one
   if (mode === 'bots' && cfg && typeof cfg === 'object' && has(GAMES, cfg.game)) {
     for (const r of rooms.values()) if (r.mode === 'bots' && r.game === cfg.game && r.botWant() > 0 && !r.closed) return r;

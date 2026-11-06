@@ -53,6 +53,8 @@ export function homeShown() {
 }
 // other screens get the crunchy preview back
 export function homeLeft() { setPreviewRes(0.5); }
+// a skin model that downloaded late: put it in the hero's hands
+export function refreshHero() { if (homeOn()) hero(); }
 
 function hero() {
   const lo = G.settings.loadout || {};
@@ -112,7 +114,7 @@ async function pollNow() {
     const game = GAMES[n.game] ? GAMES[n.game].name : 'Deathmatch', map = MAPS[n.map] ? MAPS[n.map].name : '';
     strip.append(el('i', 'live'), seg('NOW PLAYING', `${game} on ${map}`, 'np'));
     strip.append(seg('SERVER', n.region || location.host || 'local'));
-    strip.append(seg('ONLINE', `${n.online} player${n.online === 1 ? '' : 's'}${n.room ? ` · ${n.room} in quick match` : ''}`));
+    strip.append(seg('ONLINE', `${n.online} player${n.online === 1 ? '' : 's'}${n.room ? ` · ${n.room} in quick play` : ''}`));
   } catch {
     clearKids(strip);
     strip.append(el('i', 'live off'), el('span', 'seg', 'server not answering. you can still try.'));

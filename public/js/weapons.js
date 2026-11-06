@@ -135,7 +135,7 @@ function makeFlash(big) {
 function ejectShell(g, color = 0xd9a53a, big = false) {
   if (!G.skinFxVM || !g.userData.muzzle) return;
   g.updateMatrixWorld(true);
-  tmpV.set(0.03, 0.035, g.userData.muzzle.z * 0.35);
+  if (g.userData.port) tmpV.copy(g.userData.port); else tmpV.set(0.03, 0.035, g.userData.muzzle.z * 0.35); // a model can say where its port is
   g.localToWorld(tmpV);
   const sz = big ? 0.03 : 0.018;
   G.skinFxVM.norm.spawn(tmpV.x, tmpV.y, tmpV.z, 0.6 + Math.random() * 0.5, 0.75 + Math.random() * 0.5, 0.1 + Math.random() * 0.25,

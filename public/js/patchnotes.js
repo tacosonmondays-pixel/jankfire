@@ -1,12 +1,27 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '3.9', date: '2026-11-06', title: 'PICK YOUR POISON', items: [
+    'NEW MENU: ONLINE and WITH BOTS. both open four cards: QUICK PLAY, PLANT & DEFUSE, JANK ROYALE and ZOMBIES, and each card shows how many real people are in it right now.',
+    'ONLINE is real players only. no bots, ever. Plant & Defuse and Jank Royale need 2 players to start, Zombies 1.',
+    'LOBBIES for Plant & Defuse, Jank Royale and Zombies: run around in a warm-up (nothing counts) while a 60 s countdown ticks. press Y (rebindable) to READY UP. everyone ready = 5 seconds.',
+    'once a match starts it\'s locked. anyone who picks that mode after gets a fresh lobby. after the match, a quick 10 s lobby keeps your group together.',
+    'QUICK PLAY has no lobby: drop in anytime. with bots you take a bot\'s place. WITH BOTS > CUSTOM is the old setup screen (any mode, map, bots, difficulty).',
+  ] },
+  { v: '3.8', date: '2026-11-06', title: 'FRESHLY MODELLED', items: [
+    'BLENDER ROUND 2: the cigarette and cigar, card deck (and the cards you throw), Reverse and Skip cards, leaf blower, snowball, popper, rubber duck, bread, spoon, slipper, Hand Slapper, the bow and its arrows and the Scythe Rifle all got real glossy models.',
+    'all 29 weapon skins got remade too. the Spoon knife skin is a proper tablespoon now.',
+    'knives and katanas got the same gloss, so they read as polished steel.',
+    'the Zombies wall boards hang the real models.',
+    'fixed: chrome showed up black in the hotbar, the locker and the menu.',
+  ] },
   { v: '3.7', date: '2026-11-06', title: 'LAW & DISORDER', items: [
     'NEW ITEM: SPEED TRAP. hold G to point a radar gun at people. over 100 km/h they get SLOW DOWN 3.. 2.. 1. slow down and it\'s a warning, keep speeding and it\'s JAIL (a cage drops on them for 3.5 s). over 200 is jail on the spot.',
     'WATER PISTOL: soaks people for 4 s. soaked = slower and slidey, and it puts out fire.',
     'TASER: a 1 s stun that chains through everyone soaked nearby. bring a friend with a water pistol.',
     'TV REMOTE: left click PAUSES someone for 1.2 s (their momentum comes back after). aim to REWIND them 2 s back to where they were.',
     'all four are in Plant & Defuse, the three secondaries are in the Zombies crate, and bots use them.',
+    'fixed: melee weapons swing on left click again (a stray comment ate it in the rifle pack update).',
   ] },
   { v: '3.6', date: '2026-11-06', title: 'SIDEARMS', items: [
     'PLAN B: a plain semi-auto pistol. for when everything else is empty.',
