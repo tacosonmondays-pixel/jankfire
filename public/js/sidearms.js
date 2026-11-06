@@ -24,20 +24,20 @@ const SIDE_ANIMS = {
   draw_pistol: { keys: [K(0, [0.05, -0.24, 0.08], [-1.15, 0.3, 0.7]), K(0.13, [0, 0.014, -0.01], [0.1, -0.02, -0.07], 'snap'), K(0.2, [0, -0.003, 0.004], [-0.03, 0, 0.015]), K(0.27)], events: [[0.12, 'click']] },
   // press check (crack the slide, peek at the brass), then turn it to admire the other side
   inspect_pistol: { keys: [
-    K(0), K(0.32, [-0.06, 0.045, 0.03], [0.18, 0.62, 0.42]), K(1.0, [-0.065, 0.05, 0.03], [0.2, 0.66, 0.44]),
-    K(1.35, [-0.05, 0.05, 0.02], [0.22, -0.75, -0.55]), K(1.85, [-0.05, 0.052, 0.02], [0.24, -0.78, -0.57]), K(2.2),
+    K(0), K(0.32, [-0.06, 0.035, -0.04], [0.1, 0.62, 0.42]), K(1.0, [-0.065, 0.04, -0.04], [0.12, 0.66, 0.44]),
+    K(1.35, [-0.05, 0.04, -0.04], [0.12, -0.75, -0.55]), K(1.85, [-0.05, 0.042, -0.04], [0.14, -0.78, -0.57]), K(2.2),
   ], ch: { slide: [[0.4, 0], [0.55, 0.42], [0.85, 0.42], [0.93, 0]] }, events: [[0.55, 'slideBack'], [0.93, 'slideHome']] },
   // tactical reload: tip it, drop the mag, the off hand brings a fresh one up and slaps it home
   reload_pistol: { keys: [
-    K(0), K(0.16, [-0.03, 0.03, 0.03], [0.32, 0.38, 0.55]), K(0.78, [-0.03, 0.028, 0.03], [0.3, 0.38, 0.55]),
-    K(0.84, [-0.03, 0.05, 0.03], [0.4, 0.38, 0.55], 'snap'), K(0.98, [-0.03, 0.03, 0.03], [0.3, 0.38, 0.52]), K(1.35),
+    K(0), K(0.16, [-0.05, 0.02, -0.05], [0.12, 0.3, 0.6]), K(0.78, [-0.05, 0.018, -0.05], [0.11, 0.3, 0.6]),
+    K(0.84, [-0.05, 0.04, -0.05], [0.2, 0.3, 0.6], 'snap'), K(0.98, [-0.05, 0.02, -0.05], [0.12, 0.3, 0.57]), K(1.35),
   ], ch: { mag: [[0.16, 0], [0.2, 0.02], [0.36, 0.3], [0.5, 0.3], [0.51, 0.12], [0.84, 0]], lh: [[0.3, 0, 1], [0.5, 0.65, 1], [0.6, 1, 1], [0.86, 1, 1], [1.05, 0, 1]] },
   events: [[0.18, 'magOut'], [0.84, 'magIn']] },
   // empty: the slide is locked back the whole way, then the thumb drops it at the end
   reload_pistol_empty: { keys: [
-    K(0), K(0.16, [-0.03, 0.03, 0.03], [0.32, 0.38, 0.55]), K(0.76, [-0.03, 0.028, 0.03], [0.3, 0.38, 0.55]),
-    K(0.82, [-0.03, 0.05, 0.03], [0.4, 0.38, 0.55], 'snap'), K(1.02, [-0.03, 0.035, 0.03], [0.26, 0.3, 0.42]),
-    K(1.08, [-0.02, 0.05, 0.02], [0.05, 0.1, 0.1], 'snap'), K(1.35),
+    K(0), K(0.16, [-0.05, 0.02, -0.05], [0.12, 0.3, 0.6]), K(0.76, [-0.05, 0.018, -0.05], [0.11, 0.3, 0.6]),
+    K(0.82, [-0.05, 0.04, -0.05], [0.2, 0.3, 0.6], 'snap'), K(1.02, [-0.04, 0.025, -0.04], [0.1, 0.25, 0.45]),
+    K(1.08, [-0.02, 0.04, -0.02], [0.05, 0.1, 0.1], 'snap'), K(1.35),
   ], ch: { mag: [[0.16, 0], [0.2, 0.02], [0.36, 0.3], [0.48, 0.3], [0.49, 0.12], [0.82, 0]], lh: [[0.28, 0, 1], [0.48, 0.65, 1], [0.58, 1, 1], [0.84, 1, 1], [1.0, 0, 1]], slide: [[1.04, 1], [1.08, 0]] },
   events: [[0.18, 'magOut'], [0.82, 'magIn'], [1.06, 'slideHome']] },
 
@@ -57,21 +57,21 @@ const SIDE_ANIMS = {
   events: [[0.13, 'magOut'], [1.12, 'magIn'], [1.31, 'rack']] },
 
   // Half a Shotgun: comes up broken open and flicks shut
-  draw_sawnoff: { keys: [K(0, [0.05, -0.3, 0.12], [-0.95, 0.2, 0.55]), K(0.24, [0, 0.01, 0], [0.12, 0, 0], 'snap'), K(0.31, [0, 0.03, -0.01], [-0.16, 0, 0], 'snap'), K(0.52)],
+  draw_sawnoff: { keys: [K(0, [0.05, -0.3, 0.12], [-0.95, 0.2, 0.55]), K(0.24, [0, 0.01, 0], [-0.14, 0, 0], 'snap'), K(0.31, [0, 0.03, -0.01], [0.18, 0, 0], 'snap'), K(0.52)],
     ch: { hinge: [[0, 1], [0.26, 1], [0.31, 0]] }, events: [[0.31, 'close']] },
   // break it, look down the chambers, flick it shut like a movie
   inspect_sawnoff: { keys: [
-    K(0), K(0.4, [-0.04, 0.06, 0.04], [0.55, 0.5, 0.35]), K(1.3, [-0.045, 0.065, 0.04], [0.58, 0.52, 0.36]),
-    K(1.42, [-0.01, 0.04, 0], [-0.22, 0.1, 0.05], 'snap'), K(1.6, [0, 0.01, 0], [0.05, 0, 0]), K(2.0),
+    K(0), K(0.4, [-0.1, 0.04, -0.13], [-0.12, 1.05, 0.5]), K(1.3, [-0.105, 0.045, -0.13], [-0.13, 1.08, 0.52]),
+    K(1.42, [-0.01, 0.04, 0], [0.26, 0.1, 0.05], 'snap'), K(1.6, [0, 0.01, 0], [-0.05, 0, 0]), K(2.0),
   ], ch: { hinge: [[0.25, 0], [0.42, 1], [1.36, 1], [1.42, 0]], shells: [[0.42, 0, 0], [0.5, 0.012, 0.012], [1.3, 0.012, 0.012], [1.36, 0, 0]] },
   events: [[0.4, 'break'], [1.42, 'close']] },
   // the reload: break it, both shells pop out, thumb one in, thumb the other in, flick shut, cock both hammers
   reload_sawnoff: { keys: [
-    K(0), K(0.22, [-0.02, 0.04, 0.02], [0.38, 0.3, 0.25]), K(0.42, [-0.02, 0.05, 0.02], [0.44, 0.3, 0.25]),
-    K(0.5, [-0.02, 0.08, 0.0], [0.75, 0.3, 0.2], 'snap'), K(0.66, [-0.02, 0.04, 0.02], [0.4, 0.3, 0.25]), // toss: the shells fly
-    K(1.5, [-0.02, 0.04, 0.02], [0.42, 0.32, 0.26]),
-    K(1.74, [-0.01, 0.06, -0.01], [-0.26, 0.06, 0.04], 'snap'), K(1.84, [0, 0.01, 0], [0.06, 0, 0]),
-    K(1.98, [0, 0.0, 0.01], [0.1, 0, 0]), K(2.3),
+    K(0), K(0.22, [-0.04, 0.0, -0.04], [-0.2, 0.35, 0.3]), K(0.42, [-0.04, 0.0, -0.04], [-0.22, 0.35, 0.3]),
+    K(0.5, [-0.03, 0.05, -0.03], [0.55, 0.3, 0.2], 'snap'), // muzzle up: the shells fly out the back
+    K(0.68, [-0.1, 0.04, -0.13], [-0.12, 1.05, 0.5]), K(1.5, [-0.1, 0.042, -0.13], [-0.13, 1.07, 0.51]), // held out front, breech turned to you to load
+    K(1.74, [-0.01, 0.04, -0.01], [0.28, 0.06, 0.04], 'snap'), K(1.84, [0, 0.01, 0], [-0.05, 0, 0]), // flick up: shut
+    K(1.98, [0, 0.0, 0.01], [0.04, 0, 0]), K(2.3),
   ], ch: {
     hinge: [[0.1, 0], [0.24, 1], [1.68, 1], [1.74, 0]],
     shells: [[0.24, 0, 0], [0.4, 0.03, 0.03], [0.48, 0.2, 0.2], [0.72, 0.2, 0.2], [0.73, 0.075, 0.2], [0.98, 0, 0.2], [1.06, 0, 0.2], [1.07, 0, 0.075], [1.32, 0, 0]],
@@ -142,13 +142,13 @@ export function sideStep(g, id, dt, an, at, st, sampleCh) {
 }
 
 // ------------------------------------------------------------ the off hand (reloads): a fist that follows the mag / a shell
-const OFF = new THREE.Vector3(-0.1, -0.3, 0.14); // where it waits, out of view (wrap space)
+const OFF = new THREE.Vector3(-0.08, -0.3, -0.02); // where it waits, out of view (wrap space)
 const tA = new THREE.Vector3(), tB = new THREE.Vector3();
 export function offHand(m) {
   if (m.off) return m.off;
   const h = new THREE.Group();
-  const fist = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.085), M(0xf1c27d));
-  const thumb = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.02, 0.05), M(0xe0b06d)); thumb.position.set(0.028, 0.02, -0.02);
+  const fist = new THREE.Mesh(new THREE.BoxGeometry(0.034, 0.042, 0.062), M(0xf1c27d));
+  const thumb = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.016, 0.042), M(0xe0b06d)); thumb.position.set(0.021, 0.016, -0.026); thumb.rotation.y = -0.4;
   h.add(fist, thumb); h.visible = false;
   m.wrap.add(h);
   return (m.off = h);
@@ -163,7 +163,7 @@ export function stepOffHand(m, id, an, at, sampleCh) {
   if (f === 1 && p.mag) { p.mag.getWorldPosition(tA); m.wrap.worldToLocal(tA); tgt = tA.add(tB.set(0.004, -0.035, 0.012)); h.rotation.set(-0.35, 0, 0.15); }
   else if ((f === 2 || f === 3) && p.shells[f - 2]) {
     const s = p.shells[f - 2].o; s.getWorldPosition(tA); m.wrap.worldToLocal(tA);
-    tB.set(0, -0.012, 0.05); if (p.hinge) tB.applyQuaternion(p.hinge.quaternion); // behind the rim, along the barrel
+    tB.set(-0.03, -0.034, 0.042); if (p.hinge) tB.applyQuaternion(p.hinge.quaternion); // low and to the left of the rim, so the thumb pushes it home without hiding it
     tgt = tA.add(tB); h.rotation.set(-0.5 - (p.hinge ? p.hinge0 - p.hinge.rotation.x : 0), 0.2, 0.3);
   }
   if (!tgt) { h.visible = false; return; }
