@@ -60,6 +60,7 @@ with a forearm does the work and carries props.
 | `hands_after_closeup.png` | the same, cropped closer so the fingers read |
 | `hand_poses.png` | the rig's poses (grip, trigger, point, open, pinch, hold, a left hand) round a test grip, from four angles |
 | `hands_melee_items_reloads.png` | the hands on the melee weapons, throwables and mid-reload off hands |
+| `hands_new_skins.png` | the cosmetics pack 2 katana + knife skins inheriting the hold (neon tube, baguette, frozen fish, pizza cutter, keycard, ladle) |
 | `blades.mp4`, `blades_sheet.jpg` | the katana (draw, both cuts, parry, the new twirl inspect) and every knife skin's new draws, swings and tossed inspects |
 
 **Hands** (`public/js/hands.js`): one low-poly rig for every first-person hand.
