@@ -14,6 +14,7 @@ import { MAPS } from '/shared/map.js';
 
 // round 1's car paints (the parked car's colours), used for car tints
 const PAINT = { carred: 0xc8202c, carblue: 0x2050b0, carwhite: 0xe8e8e8, carblack: 0x26262a, cargreen: 0x2a8a4a, caryellow: 0xe8c020, burnt: 0x2a2624 };
+const TINT = { cloth: 0xc8302a }; // map materials whose texture averages to mud (red and cream stripes = salmon): their main colour
 const PATTERN = new Set(['leopard', 'camo', 'adfun']); // tints that are a picture, not a colour: their own group, the texture on
 // parked cars: the traffic models (they face +z, the box car faces +x), round 1's car if those aren't there
 const PARKED = ['p_car_sedan', 'p_car_hatch', 'p_car_sedan', 'p_car_hatch', 'p_car_taxi'];
@@ -210,6 +211,7 @@ function tintOf(t) {
   if (tintCache.has(t)) return tintCache.get(t);
   let c = new THREE.Color(1, 1, 1);
   if (PAINT[t] !== undefined) c.setHex(PAINT[t]);
+  else if (TINT[t] !== undefined) c.setHex(TINT[t]);
   else if (MATS && MATS[t]) {
     const m = MATS[t].mat;
     c.copy(m.color || c);
