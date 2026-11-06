@@ -5,7 +5,7 @@ export const PATCH_NOTES = [
     'PLANT & DEFUSE ONLY: no enemy outlines and no nametags. you find people the old way.',
     'hold SHIFT (your sprint key) to slow walk: half speed, and nobody hears your footsteps. moving wrecks your aim, so stand still (or crouch) to shoot straight.',
     'guns kick in their own recoil patterns now. learn them.',
-    'gimmick weapons (slippers and friends) have limited ammo here, and the strong stuff got nerfed. buy with B, drop with H.',
+    'gimmick weapons (slippers and friends) have limited ammo here, and the strong stuff got nerfed. buy with B, drop with H (both rebindable in Settings > Key bindings).',
     'PLAY WITH BOTS: players who join take a bot\'s place. ONLINE rooms are players only now.',
     'bots plant, hold the sites properly and defuse. defenders no longer wander into the attackers\' spawn on Bazaar.',
   ] },
