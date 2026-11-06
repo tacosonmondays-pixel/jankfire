@@ -4,6 +4,7 @@ const out = process.argv[2];
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--mute-audio'] });
   const pg = await b.newPage({ viewport: { width: 800, height: 500 } });
+  const errs = []; pg.on('pageerror', (e) => errs.push(e.message)); // (regress2 wants a 'no errors' line)
   await pg.addInitScript(() => localStorage.setItem('jankfire', JSON.stringify({ name: 'flash', loadout: { primary: 'ar', secondary: 'cards', melee: 'knife' } })));
   await pg.goto('http://localhost:3000/'); await pg.waitForTimeout(500);
   await pg.click('#scr-main [data-mode="training"]'); await pg.waitForTimeout(1500);
@@ -14,5 +15,6 @@ const out = process.argv[2];
   await pg.keyboard.press('Digit2'); await pg.waitForTimeout(500);
   await pg.evaluate(async () => { const w = await import('/js/weapons.js'); w.fireDown(); w.fireUp(); });
   for (const t of [180, 260]) { await pg.waitForTimeout(t === 180 ? 180 : 80); await pg.screenshot({ path: `${out}/an_cardfly_${t}.png`, clip: { x: 200, y: 100, width: 600, height: 400 } }); }
+  console.log(errs.length ? errs.join('\n') : 'no errors');
   await b.close();
 })();

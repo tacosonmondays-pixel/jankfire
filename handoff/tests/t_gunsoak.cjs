@@ -20,7 +20,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await pg.locator('#preview').screenshot({ path: `${out}/skin_${w}_${id}.png` }).catch((e) => errs.push(e.message));
     await pg.goto(`http://localhost:${port}/`); await sleep(400);
   }
-  await pg.click('#scr-main [data-go="setup"]');
+  await pg.click('[data-pick="bots"]'); await pg.waitForTimeout(700); await pg.click('#mpCustom');
   await pg.locator('#setupBots').fill('7');
   await pg.click('#setupGo'); await sleep(2000);
   // make every bot carry a marble shotgun or a redline

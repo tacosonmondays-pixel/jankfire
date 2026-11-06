@@ -52,7 +52,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   // speed lines: fake fast velocity
   await W(async () => { const { ME } = await import('/js/player.js'); const p0 = ME.pos.slice(); window.__sp = setInterval(() => { ME.pos = [p0[0], p0[1] + 6, p0[2]]; ME.vel = [8, 1, -90]; ME.yaw = 0; ME.pitch = 0; }, 4); });
   await sleep(200); await shot('speedlines');
-  console.log('speedlines px', await W(() => { const c = document.getElementById('speedLines'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let a = 0; for (let i = 3; i < d.length; i += 4) a += d[i]; return [c.width, c.height, a, getComputedStyle(c).display, c.getBoundingClientRect().width]; }));
+  console.log('speedlines px', await W(() => { const c = document.getElementById('speedLinesCv'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let a = 0; for (let i = 3; i < d.length; i += 4) a += d[i]; return [c.width, c.height, a, getComputedStyle(c).display, c.getBoundingClientRect().width]; }));
   console.log('speed', await W(async () => { const { ME } = await import('/js/player.js'); return [ME.alive, Math.hypot(...ME.vel).toFixed(1)]; }));
   console.log(errs.join('\n') || 'no errors');
   await b.close();

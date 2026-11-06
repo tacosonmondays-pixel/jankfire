@@ -6,7 +6,7 @@ const { chromium } = require('playwright');
   const errs = []; pg.on('pageerror', (e) => errs.push(e.message));
   await pg.addInitScript(() => localStorage.setItem('jankfire', JSON.stringify({ name: 'rando', killcam: false })));
   await pg.goto('http://localhost:3000/'); await pg.waitForTimeout(500);
-  await pg.click('#scr-main [data-go="setup"]');
+  await pg.click('[data-pick="bots"]'); await pg.waitForTimeout(700); await pg.click('#mpCustom');
   await pg.selectOption('#setupGame', 'rand');
   await pg.locator('#setupBots').fill('3');
   await pg.click('#setupGo'); await pg.waitForTimeout(2500);

@@ -11,7 +11,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
   await pg.addInitScript(() => localStorage.setItem('jankfire', JSON.stringify({ name: 'bomber', killcam: false })));
   await pg.goto('http://localhost:3000/'); await sleep(500);
-  await pg.click('#scr-main [data-go="setup"]');
+  await pg.click('[data-pick="bots"]'); await pg.waitForTimeout(700); await pg.click('#mpCustom');
   await pg.selectOption('#setupGame', 'bomb');
   await pg.selectOption('#setupMap', 'bazaar');
   await pg.locator('#setupBots').fill('7');

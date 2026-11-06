@@ -14,7 +14,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await pg.addInitScript((s) => localStorage.setItem('jankfire', JSON.stringify(s)), { name, ...extra });
     await pg.goto('http://localhost:3000/');
     await pg.waitForTimeout(600);
-    await pg.click('#scr-main [data-mode="ffa"]');
+    await pg.click('[data-pick="online"]'); await pg.waitForTimeout(700); await pg.click('#mpCards .mp-card[data-kind="qp"]', { force: true }); // (the cards wobble forever)
     await pg.waitForTimeout(1500);
     return pg;
   }

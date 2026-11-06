@@ -5,7 +5,7 @@ const { chromium } = require('playwright');
   const pg = await b.newPage({ viewport: { width: 800, height: 500 } });
   const errs = []; pg.on('pageerror', (e) => errs.push(e.message));
   await pg.goto('http://localhost:3000/'); await pg.waitForTimeout(500);
-  await pg.click('#scr-main [data-go="setup"]');
+  await pg.click('[data-pick="bots"]'); await pg.waitForTimeout(700); await pg.click('#mpCustom');
   await pg.selectOption('#setupMap', process.argv[3] || 'skyline');
   await pg.locator('#setupBots').fill('8');
   await pg.selectOption('#setupDiff', 'hard');

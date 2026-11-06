@@ -13,7 +13,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   try {
     await pg.addInitScript((k) => localStorage.setItem('jankfire', JSON.stringify({ name: 'JANKFIRE', killcam: false, jank: 3, loadout: { primary: 'ar', secondary: 'marbles', melee: 'knife', item: 'frag', streaks: [k, 'moonboots', 'satellite'] } })), kind);
     await pg.goto(`http://localhost:${port}/`); await sleep(700);
-    await pg.click('#scr-main [data-go="setup"]'); await sleep(500);
+    await pg.click('[data-pick="bots"]'); await pg.waitForTimeout(700); await pg.click('#mpCustom'); await sleep(500);
     await pg.evaluate(() => { const s = document.getElementById('setupBots'); s.value = '1'; s.dispatchEvent(new Event('input')); });
     await pg.click('#setupGo'); await sleep(4000);
     // glue ourselves 1.5 m behind the bot, aimed at its chest, and pop it with the marble shotgun

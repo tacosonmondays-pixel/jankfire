@@ -44,7 +44,7 @@ const set = (lo, extra) => JSON.stringify({ name: 'JANKFIRE', killcam: false, ja
   await rec('backrooms', async (pg, mark) => {
     await pg.addInitScript((s) => localStorage.setItem('jankfire', s), set({ primary: 'ar', secondary: 'revolver', melee: 'knife', item: 'frag' }));
     await pg.goto(`http://localhost:${port}/`); await sleep(700);
-    await pg.click('#scr-main [data-go="setup"]'); await sleep(500);
+    await pg.click('[data-pick="bots"]'); await pg.waitForTimeout(700); await pg.click('#mpCustom'); await sleep(500);
     await pg.selectOption('#setupMap', 'backrooms');
     await pg.evaluate(() => { const s = document.getElementById('setupBots'); s.value = '1'; s.dispatchEvent(new Event('input')); });
     await pg.click('#setupGo'); await sleep(5000);
