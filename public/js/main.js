@@ -786,7 +786,9 @@ function buildCosmeticsUI() {
   const chips = (elId, type, idx) => {
     const el = $(elId);
     el.innerHTML = '';
-    for (const [k, v] of Object.entries(COSMETICS[type])) {
+    let list = Object.entries(COSMETICS[type]);
+    if (type === 'finish') list = wrapFilterList(list, sk[idx]); // 60-odd wraps: rarity order + the filter row
+    for (const [k, v] of list) {
       const c = document.createElement('button');
       const have = owns(G.inv, type, k);
       c.className = 'chip' + (sk[idx] === k ? ' on' : '') + (have ? '' : ' locked');
@@ -862,6 +864,32 @@ function buildCosmeticsUI() {
     $('skAch').append(box);
   }
   showPreview(id, ownedSkin(sk, G.inv, id));
+}
+// the wrap list's filter row: rarity pills, OWNED, and a search box. the wrap you're wearing always shows
+const WF = { r: 'all', q: '' };
+const RAR_ORDER = ['free', 'common', 'rare', 'epic', 'legendary'];
+function wrapFilterList(list, cur) {
+  const el = $('skWrapFilter');
+  if (!el.dataset.built) { // built once: rebuilding it on every click would eat the search box focus
+    el.dataset.built = '1';
+    for (const r of ['all', 'owned', ...RAR_ORDER.slice(1)]) {
+      const b = document.createElement('button');
+      b.dataset.r = r; b.textContent = r === 'all' ? 'ALL' : r === 'owned' ? 'OWNED' : RARITY[r].name.toUpperCase();
+      if (RARITY[r]) b.style.setProperty('--rc', RARITY[r].color);
+      b.addEventListener('click', () => { WF.r = r; buildCosmeticsUI(); });
+      el.append(b);
+    }
+    const q = document.createElement('input');
+    q.type = 'search'; q.placeholder = 'search wraps'; q.maxLength = 24; q.spellcheck = false;
+    q.addEventListener('input', () => { WF.q = q.value.trim().toLowerCase(); buildCosmeticsUI(); });
+    const n = document.createElement('span'); n.className = 'n';
+    el.append(q, n);
+  }
+  for (const b of el.querySelectorAll('button')) b.classList.toggle('on', b.dataset.r === WF.r);
+  const out = list.filter(([k, v]) => k === cur || ((WF.r === 'all' || (WF.r === 'owned' ? owns(G.inv, 'finish', k) : v.rarity === WF.r)) && (!WF.q || v.name.toLowerCase().includes(WF.q) || k.includes(WF.q))))
+    .sort((a, b) => RAR_ORDER.indexOf(a[1].rarity) - RAR_ORDER.indexOf(b[1].rarity));
+  el.querySelector('.n').textContent = `${out.length}/${list.length}`;
+  return out;
 }
 // NORMAL / REVERSE / FULL: which part of the weapon the wrap paints (wrapzones.js). free, goes with the wrap
 const WRAP_HINT = {

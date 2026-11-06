@@ -1,6 +1,14 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '4.0', date: '2026-11-06', title: 'THE WRAP PACK', items: [
+    '48 NEW WRAPS (65 total). commons come in every colour: Cherry Pop, Tangerine, Lemon Drop, Lime, Mint, Pool Tile, Sky, Navy, Grape Soda, Hot Magenta, Cream, Matte Black, Fridge White, Bubblegum, Creamsicle, Ketchup & Mustard, Hazard Stripes, Hi-Vis.',
+    'PORCELAIN: Grandma\'s China, Crackle Glaze, and the legendary Kintsugi (gold in the cracks).',
+    'JAPANESE: Seigaiha, Asanoha, Shibori, Washi Paper, Sakura Storm, Koi Pond, Big Wave, Urushi Maki-e, and the legendary Tokyo Night.',
+    'AND THEN IT GOT WEIRD: Bubble Wrap, Swiss Cheese, Denim, Dad Plaid, Receipt, Pizza, Leopard, Zebra, Stained Glass, Circuit Board, CRT, Spreadsheet, Corporate Memo, Holo Foil, Liquid Chrome, Datamosh, Meat Suit and ☺ CORP.',
+    'every legendary moves. all of them work on every gun in normal, reverse and full.',
+    'they drop from boxes. the locker\'s wrap list has rarity and owned filters and a search box now.',
+  ] },
   { v: '3.9', date: '2026-11-06', title: 'PICK YOUR POISON', items: [
     'NEW MENU: ONLINE and WITH BOTS. both open four cards: QUICK PLAY, PLANT & DEFUSE, JANK ROYALE and ZOMBIES, and each card shows how many real people are in it right now.',
     'ONLINE is real players only. no bots, ever. Plant & Defuse and Jank Royale need 2 players to start, Zombies 1.',
