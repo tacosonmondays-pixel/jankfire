@@ -9,7 +9,7 @@ export const EPIC_W = {
   burst: 0.95, lmg: 1, dmr: 1, lever: 1.1, autoshot: 2.2,
   banana: 1.3, bow: 1.3, snowball: 1.5, cards: 1.5, cig: 2, shotgun: 2.2, marbles: 2.6,
   pistol: 1.25, akimbo: 1.5, sawnoff: 2.6, // the sidearms: a far Plan B kill is fair, a far sawed-off kill is a miracle
-  bread: 2.5, katana: 2.5, knife: 2.5, slapper: 2.5, spoon: 2.5, scythe: 2.5, popper: 2.5,
+  bread: 2.5, katana: 2.5, knife: 2.5, slapper: 2.5, scythe: 2.5, popper: 2.5,
 };
 export const epicMul = (w) => EPIC_W[w] || (WEAPONS[w] && WEAPONS[w].kind === 'melee' ? 2.5 : 1); // melee from other branches too
 // nobody aimed these (or the killer could be anywhere by the time they land)

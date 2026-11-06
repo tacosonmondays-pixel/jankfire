@@ -291,11 +291,6 @@ export const WEAPONS = {
     desc: 'A big toy hand on a stick. Point blank only. Launches them and makes them slip.',
     cd: 0.8, range: 1.9, cone: 0.8, dmg: 15, kb: 55, kbUp: 14, delay: 0.1, slip: true, radial: true,
   },
-  spoon: { // modeOnly: not in the loadout any more (it's a knife skin now); Gun Game's last rung and Spoons & Grapples still hand it out
-    slot: 'melee', kind: 'melee', name: 'Spoon', color: '#e8e8f0', modeOnly: true,
-    desc: 'Kills in one hit, but only point blank. You run way faster holding it.',
-    cd: 0.7, range: 2.0, cone: 0.9, dmg: 999, kb: 12, kbUp: 6, delay: 0.05, speedMul: 1.8,
-  },
   scales: {
     slot: 'melee', kind: 'melee', name: 'Scales of Justice', color: '#ffc83a',
     desc: 'Hits as hard as they deserve: leaders, streakers and your killer take up to x3.',
@@ -539,3 +534,7 @@ WEAPONS.lasso = {
 WEAPONS.loop = { slot: 'hidden', kind: 'loop', name: 'Lasso', color: '#e0b070', speed: 30, grav: 6, r: 0.55, life: 4 };
 ORDER.push('lasso'); // ORDER was taken before these: the loadout, viewmodels and cosmetics list come from it
 FLAGS.LASSO = 1 << 21; // (was 1 << 20, the same bit as FLAGS.WALK) set in your snapshots while you spin the loop overhead (everyone sees it, killcams too)
+
+// retired weapons: old replays, saves and kill feeds still name them. the spoon is the knife now (in its spoon look)
+export const WEAPON_ALIAS = { spoon: 'knife' };
+export const wAlias = (id) => (typeof id === 'string' && Object.hasOwn(WEAPON_ALIAS, id) ? WEAPON_ALIAS[id] : id);

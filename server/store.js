@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { CONTAINERS } from '../shared/cosmetics.js';
+import { CONTAINERS, migrateInv } from '../shared/cosmetics.js';
 const FIELD = (kind) => (CONTAINERS[kind] ? CONTAINERS[kind].field : null);
 
 export const STAT_KEYS = ['kills', 'deaths', 'bot_kills', 'wins', 'best_wave', 'top_speed', 'xp', 'playtime', 'void_kills', 'headshots', 'tbags'];
@@ -49,7 +49,7 @@ class FileStore {
     this.timer = setTimeout(() => { this.timer = null; try { this.flushNow(); } catch (e) { console.error('db save failed', e.message); } }, 800);
   }
   async secret() { return this.db.secret; }
-  async get(nameLower) { return this.db.users[nameLower] || null; }
+  async get(nameLower) { const u = this.db.users[nameLower] || null; if (u && migrateInv(u.inv)) this.save?.(); return u; } // retired skins -> their new ids
   async create(u) {
     if (this.db.users[u.name_lower]) return false;
     this.db.users[u.name_lower] = { kills: 0, deaths: 0, bot_kills: 0, wins: 0, best_wave: 0, top_speed: 0, xp: 0, playtime: 0, void_kills: 0, headshots: 0, tbags: 0, crates: 1, bags: 1, boxes: 1, inv: {}, profile: {}, created_at: new Date().toISOString(), ...u };
@@ -125,6 +125,7 @@ class SupabaseStore {
   async secret() { return crypto.createHash('sha256').update('jankfire:' + this.key).digest('hex'); }
   async get(nameLower) {
     const rows = await this.req('GET', `?name_lower=eq.${encodeURIComponent(nameLower)}&select=*`);
+    if (rows && rows[0]) migrateInv(rows[0].inv); // retired skins -> their new ids (in memory: the next inv write keeps it)
     return rows && rows[0] ? rows[0] : null;
   }
   async create(u) {

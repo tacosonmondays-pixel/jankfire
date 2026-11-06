@@ -1410,6 +1410,7 @@ class Room {
     if (t.trap && !this.bubbleBlocks(attacker, t, opts.from) && this.popTrap(t, 'hit', attacker, w)) return null; // in a soap bubble: the first hit (teammates' too) only pops it
     if (this.friendly(attacker, t)) return null;
     if (this.bubbleBlocks(attacker, t, opts.from)) { this.broadcast({ t: 'fx', k: 'bubhit', p: center(t).map(r2) }); return null; }
+    if (w === 'knife' && this.chaosKit && this.chaosKit.oneHit) dmg = Math.max(dmg, t.hp); // spoons & grapples: the spoon (a knife in its spoon look) kills in one
     if (opts.lethal) dmg = Math.max(dmg, t.hp); // sized for whoever was shot: a reverse card bounces that same hit
     if (attacker && attacker !== t && attacker.alive && t.reverseUntil > now()) {
       this.broadcast({ t: 'fx', k: 'reflect', id: t.id, by: attacker.id });
@@ -3482,7 +3483,7 @@ class Room {
     if (GAMES[this.game].ladder) this.ggKill(t, killer, kw);
     else if (GAMES[this.game].infect && !this.infAt && !t.inf) this.infect(t, killer);
   }
-  // gun game ends on the spoon kill or the clock, infection on the clock or when nobody's left to infect
+  // gun game ends on the spoon (the knife's last rung) kill or the clock, infection on the clock or when nobody's left to infect
   tickModes(n) {
     const g = GAMES[this.game];
     if (!g.ladder && !g.infect) return false;

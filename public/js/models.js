@@ -4,7 +4,9 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { jankify } from './jank.js';
 import { applySkin } from './skins.js';
 import { COSMETICS, SKINS_2 } from '/shared/cosmetics.js';
-import { SUITS, RANKS, ARROW_TIPS } from '/shared/weapons.js';
+import { SUITS, RANKS, ARROW_TIPS, wAlias } from '/shared/weapons.js';
+import { SPOON_LOOK, spoonLookOn } from '/shared/modes.js';
+import { G } from './ctx.js';
 import { BLADES } from './blades/index.js';
 import { lathe } from './blades/kit.js';
 import { LASSO_MODELS, buildLoopProjectile } from './lasso_model.js';
@@ -164,7 +166,7 @@ function redlineBuild(g, hot) {
   g.add(bx(0.062, 0.018, 0.3, accent, 0, 0.058, -0.04)); // top rail
   g.add(bx(0.062, 0.012, 0.16, accent, 0, -0.03, -0.07)); // stripe
   const grip = bx(0.04, 0.12, 0.05, dark, 0, -0.1, 0.05); grip.rotation.x = -0.3; g.add(grip);
-  g.add(bx(0.036, 0.16, 0.05, dark, 0, -0.12, -0.1)); // mag
+  const mag = bx(0.036, 0.16, 0.05, dark, 0, -0.12, -0.1); mag.name = 'mag'; g.add(mag); // mag
   g.add(bx(0.05, 0.08, 0.16, dark, 0, -0.01, 0.19)); // stock
   g.add(cylZ(0.034, 0.22, hot ? 0xd8dde4 : 0x3a3d45, 0, 0.01, -0.29, 8)); // barrel shroud
   // vents in the shroud glow hotter the lower your HP (weapons.js drives the colour)
@@ -486,7 +488,7 @@ const WB = {
     g.add(bx(0.07, 0.11, 0.5, 0x3b4a2a, 0, 0, -0.05));
     g.add(cylZ(0.018, 0.4, 0x111111, 0, 0.015, -0.5));
     g.add(bx(0.05, 0.05, 0.1, 0x222222, 0, 0.015, -0.42));
-    const mag = bx(0.05, 0.2, 0.08, 0x222222, 0, -0.14, -0.12); mag.rotation.x = -0.25; g.add(mag);
+    const mag = bx(0.05, 0.2, 0.08, 0x222222, 0, -0.14, -0.12); mag.rotation.x = -0.25; mag.name = 'mag'; g.add(mag); // (named: reloads.js drops it)
     g.add(bx(0.05, 0.14, 0.06, 0x222222, 0, -0.12, 0.08));
     g.add(bx(0.06, 0.1, 0.25, 0x3b4a2a, 0, -0.02, 0.32));
     g.add(bx(0.03, 0.04, 0.12, 0x111111, 0, 0.08, -0.05));
@@ -496,7 +498,7 @@ const WB = {
   smg(g) {
     g.add(bx(0.07, 0.11, 0.32, 0x2a2a35, 0, 0, -0.05));
     g.add(cylZ(0.02, 0.16, 0x111111, 0, 0.01, -0.28));
-    g.add(bx(0.04, 0.26, 0.05, 0x111111, 0, -0.17, -0.12));
+    const mag = bx(0.04, 0.26, 0.05, 0x111111, 0, -0.17, -0.12); mag.name = 'mag'; g.add(mag); // (named: reloads.js drops it)
     g.add(bx(0.05, 0.14, 0.06, 0x111111, 0, -0.11, 0.06));
     g.add(bx(0.04, 0.03, 0.2, 0x555566, 0, 0.0, 0.2));
     g.userData.muzzle = new THREE.Vector3(0, 0.01, -0.37);
@@ -515,7 +517,7 @@ const WB = {
     const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.016, 0.03, 8), M(0xc8a050)); neck.position.set(0, 0.045, -0.06); g.add(neck);
     const jar = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.075, 12), glassMat());
     jar.position.set(0, 0.098, -0.06); jar.userData.noWrap = true; jar.renderOrder = 2; g.add(jar);
-    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.012, 12), M(0x2a2a2a)); lid.position.set(0, 0.141, -0.06); g.add(lid);
+    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.012, 12), M(0x2a2a2a)); lid.position.set(0, 0.141, -0.06); lid.name = 'lid'; g.add(lid);
     fillWith(g, MARBLE_COLS, 10, 0, 0.074, -0.06, 0.018, 0, 0.012);
     g.userData.muzzle = new THREE.Vector3(0, 0.012, -0.37);
     g.userData.len = 0.5;
@@ -523,7 +525,7 @@ const WB = {
   shotgun(g) {
     g.add(cylZ(0.025, 0.7, 0x1a1a1a, 0, 0.025, -0.38));
     g.add(cylZ(0.02, 0.55, 0x333333, 0, -0.025, -0.3));
-    g.add(bx(0.07, 0.07, 0.14, 0x8a5a2b, 0, -0.025, -0.32));
+    const pump = bx(0.07, 0.07, 0.14, 0x8a5a2b, 0, -0.025, -0.32); pump.name = 'pump'; g.add(pump); // the forend racks (reloads.js)
     g.add(bx(0.07, 0.1, 0.2, 0x222222, 0, 0, 0.0));
     g.add(bx(0.06, 0.14, 0.3, 0x8a5a2b, 0, -0.04, 0.24));
     g.userData.muzzle = new THREE.Vector3(0, 0.025, -0.74);
@@ -548,7 +550,7 @@ const WB = {
   },
   revolver(g) {
     g.add(cylZ(0.02, 0.22, 0x888888, 0, 0.03, -0.17));
-    g.add(cylZ(0.045, 0.07, 0x666666, 0, 0.02, -0.02, 6));
+    const cyl = cylZ(0.045, 0.07, 0x666666, 0, 0.02, -0.02, 6); cyl.name = 'cyl'; g.add(cyl); // swings out on a reload
     g.add(bx(0.04, 0.06, 0.1, 0x777777, 0, 0.03, 0.04));
     const grip = bx(0.045, 0.13, 0.06, 0x6b3a1a, 0, -0.06, 0.08); grip.rotation.x = 0.35; g.add(grip);
     g.userData.muzzle = new THREE.Vector3(0, 0.03, -0.29);
@@ -704,8 +706,8 @@ const WB = {
     g.add(bx(0.04, 0.1, 0.05, 0x1a1a1a, 0, -0.11, 0.08));
     g.add(cylZ(0.04, 0.26, 0x222222, 0, 0.09, -0.05, 6));
     g.add(bx(0.05, 0.12, 0.25, 0xc8a070, 0, -0.03, 0.28));
-    const folded = bx(0.015, 0.06, 0.7, 0x9aa4b0, 0, -0.06, -0.45); g.add(folded);
-    g.add(bx(0.018, 0.012, 0.7, 0x3ee6c8, 0, -0.09, -0.45, true));
+    const folded = bx(0.015, 0.06, 0.7, 0x9aa4b0, 0, -0.06, -0.45); folded.name = 'fold'; g.add(folded);
+    const fe = bx(0.018, 0.012, 0.7, 0x3ee6c8, 0, -0.09, -0.45, true); fe.name = 'fold2'; g.add(fe); // (the blade swings open on a reload)
     g.userData.muzzle = new THREE.Vector3(0, 0, -1.02);
     g.userData.len = 1.4;
   },
@@ -751,12 +753,6 @@ const WB = {
     g.userData.muzzle = new THREE.Vector3(0, 0.05, -0.1);
     g.userData.len = 0.2;
   },
-  spoon(g) {
-    g.add(cylZ(0.008, 0.16, 0xd8d8e0, 0, 0, -0.02, 5));
-    const bowl = ball(0.035, 0xe8e8f0, 0, 0.005, -0.13); bowl.scale.set(0.8, 0.35, 1.2); g.add(bowl);
-    g.userData.muzzle = new THREE.Vector3(0, 0, -0.17);
-    g.userData.len = 0.22;
-  },
   scales(g) { scalesBuild(g, false); },
   claw(g) { // infection: a rotten green forearm, a torn cuff and four long dirty nails
     const SK = 0x6f9a3a, DK = 0x55782b, NAIL = 0xd8cf9a, y = -0.03;
@@ -784,7 +780,7 @@ const HAT_AT = {
   sniper: [[0, 0.16, -0.05], 0.13], chicken: [[0, 0.075, -0.5], 0.09], bowling: [[0, 0.17, -0.1], 0.15], banana: [[0, 0.185, 0.02], 0.1],
   revolver: [[0, 0.065, -0.02], 0.08], cig: [[0, 0.0125, 0.055], 0.04], blower: [[0, 0.22, 0.05], 0.14], popper: [[0, 0.07, 0.02], 0.07],
   reverse: [[0, 0.09, 0.02], 0.07], duck: [[0, 0.152, -0.072], 0.06], bread: [[0, 0.11, -0.3], 0.16], slipper: [[0, 0.068, -0.08], 0.07],
-  spoon: [[0, 0.017, -0.13], 0.04], slapper: [[0, 0.0125, -0.55], 0.09], scythe: [[0, 0.47, -0.8], 0.14],
+  slapper: [[0, 0.0125, -0.55], 0.09], scythe: [[0, 0.47, -0.8], 0.14],
   scythe_rifle: [[0, 0.13, -0.05], 0.12], bow: [[0, 0.08, 0.0], 0.08], cards: [[0, 0.07, -0.004], 0.07],
   slapper_foam: [[0, 0.03, -0.5], 0.1], slapper_paw: [[0, 0.06, -0.5], 0.1], bread_croissant: [[0, 0.15, -0.6], 0.15],
   shredder: [[0, 0.234, -0.065], 0.11], shredder_chipper: [[0, 0.234, -0.065], 0.11],
@@ -1085,11 +1081,6 @@ const SKIN_BUILD = {
     const c = bx(0.12, 0.12, 0.12, 0xbfe8ff, 0, 0.02, -0.08); c.rotation.set(0.4, 0.6, 0.2); g.add(c);
     g.userData.muzzle = new THREE.Vector3(0, 0.02, -0.16); g.userData.len = 0.18;
   },
-  spoon_ladle(g) {
-    g.add(cylZ(0.01, 0.2, 0xc8c8d0, 0, 0, -0.02, 5));
-    const bowl = ball(0.06, 0xd8d8e0, 0, -0.02, -0.15); bowl.scale.set(1, 0.6, 1); g.add(bowl);
-    g.userData.muzzle = new THREE.Vector3(0, 0, -0.17); g.userData.len = 0.22;
-  },
   slipper_croc(g) { // a croc, holes and all
     g.add(bx(0.13, 0.07, 0.3, 0x7dff4f, 0, 0, -0.02));
     g.add(ball(0.07, 0x7dff4f, 0, 0.03, -0.14));
@@ -1387,7 +1378,17 @@ function addSights(id, g) {
   g.userData.sight = { y: ys - 0.004, z: zr };
 }
 
+// the spoon merged into the knife: an old 'spoon' (replays, kill feeds) is a knife in the spoon look, and in gun game +
+// spoons & grapples every knife wears it (your wrap, hat + effect stay)
+export function lookSkin(id, skin) {
+  if (id !== 'knife' && id !== 'spoon') return skin;
+  if (id === 'knife' && !spoonLookOn(G.mode, G.game)) return skin;
+  const s = Array.isArray(skin) ? skin.slice() : ['default', 'none', 'none', 'default', 'normal'];
+  s[3] = SPOON_LOOK;
+  return s;
+}
 export function buildWeapon(id, skin) {
+  skin = lookSkin(id, skin); id = wAlias(id);
   const g = new THREE.Group();
   const model = skin && skin[3];
   const variant = model && MODEL_BUILD[model] && COSMETICS.model[model] && COSMETICS.model[model].weapon === id;

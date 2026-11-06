@@ -51,7 +51,6 @@ export const COSMETICS = {
     popper_bottle: { name: 'Champagne', rarity: 'epic', weapon: 'popper' },
     reverse_skip: { name: 'Skip Card', rarity: 'common', weapon: 'reverse' },
     snowball_ice: { name: 'Ice Cube', rarity: 'rare', weapon: 'snowball' },
-    spoon_ladle: { name: 'Ladle', rarity: 'common', weapon: 'spoon' },
     slipper_croc: { name: 'Croc', rarity: 'epic', weapon: 'slipper' },
     scythe_reaper: { name: 'Reaper', rarity: 'legendary', weapon: 'scythe' },
     katana_bokken: { name: 'Bokken', rarity: 'common', weapon: 'katana' },
@@ -139,7 +138,7 @@ export function modelsFor(weapon) { return Object.entries(COSMETICS.model).filte
 export function owns(inv, type, id) {
   const c = typeof id === 'string' && Object.hasOwn(COSMETICS, type) && Object.hasOwn(COSMETICS[type], id) && COSMETICS[type][id];
   if (!c) return false;
-  return c.rarity === 'free' || !!(inv && Array.isArray(inv[type]) && inv[type].includes(id));
+  return c.rarity === 'free' || !!(inv && Array.isArray(inv[type]) && (inv[type].includes(id) || (type === 'model' && OLD_SKIN[id] && inv[type].includes(OLD_SKIN[id]))));
 }
 
 // drop anything you don't own (or a skin for the wrong weapon) back to the default. skin = [wrap, hat, effect, model]
@@ -151,6 +150,7 @@ export const wrapMode = (v) => (WRAP_MODES.includes(v) ? v : 'normal');
 export function ownedSkin(skin, inv, weapon) {
   const d = ['default', 'none', 'none', 'default'];
   if (!Array.isArray(skin)) return [...d, 'normal'];
+  if (typeof skin[3] === 'string' && Object.hasOwn(SKIN_RENAME, skin[3])) skin = [skin[0], skin[1], skin[2], SKIN_RENAME[skin[3]], skin[4]]; // an old save
   return [...TYPES.map((t, i) => {
     const v = skin[i] ?? d[i];
     if (t === 'model' && v !== 'default' && (typeof v !== 'string' || !Object.hasOwn(COSMETICS.model, v) || (weapon && COSMETICS.model[v].weapon !== weapon))) return 'default';
@@ -253,6 +253,44 @@ export const WRAP_PACK = {
   glitch: ['Datamosh', 'legendary'],
   meat: ['Meat Suit', 'legendary'],
   corp: ['☺ CORP', 'legendary'],
+  // wrap pack 2
+  urban: ['Urban Camo', 'common'],
+  arctic: ['Arctic Camo', 'common'],
+  desert: ['Desert Camo', 'common'],
+  brushed: ['Brushed Steel', 'common'],
+  granite: ['Kitchen Granite', 'common'],
+  sprinkles: ['Sprinkles', 'common'],
+  watermelon: ['Watermelon', 'common'],
+  jersey: ['Jersey', 'common'],
+  candycorn: ['Candy Corn', 'common'],
+  digital: ['Digital Camo', 'rare'],
+  copper: ['Verdigris', 'rare'],
+  marble: ['Marble', 'rare'],
+  jade: ['Jade', 'rare'],
+  burl: ['Wood Burl', 'rare'],
+  moss: ['Moss', 'rare'],
+  sushi: ['Sushi', 'rare'],
+  memphis: ['Memphis 90s', 'rare'],
+  bowling: ['Bowling Alley', 'rare'],
+  barcode: ['Barcode', 'rare'],
+  damascus: ['Damascus', 'epic'],
+  titanium: ['Anodized Ti', 'epic'],
+  geode: ['Amethyst Geode', 'epic'],
+  arcade: ['Arcade Carpet', 'epic'],
+  racing: ['Checkered Flag', 'epic'],
+  qr: ['QR Code', 'epic'],
+  organ: ['Organ Donor', 'epic'],
+  dice: ['Loaded Dice', 'epic'],
+  numsoup: ['Number Soup', 'epic'],
+  sweater: ['Ugly Sweater', 'epic'],
+  opal: ['Opal', 'legendary'],
+  lavalamp: ['Lava Lamp', 'legendary'],
+  vapor: ['Vaporwave', 'legendary'],
+  nebula: ['Nebula', 'legendary'],
+  aurora: ['Aurora', 'legendary'],
+  blackhole: ['Black Hole', 'legendary'],
+  stonks: ['Market Crash', 'legendary'],
+  hex: ['Neon Hex', 'legendary'],
 };
 for (const [id, [name, rarity]] of Object.entries(WRAP_PACK)) COSMETICS.finish[id] = { name, rarity };
 // cosmetics 2: skins for the guns that had none, and seconds / thirds for the popular ones. all Blender models (w_<id>.glb,
@@ -287,3 +325,14 @@ export const SKINS_2 = {
   slipper_flipflop: ['Flip-Flop', 'common', 'slipper'],
 };
 for (const [id, [name, rarity, weapon]] of Object.entries(SKINS_2)) COSMETICS.model[id] = { name, rarity, weapon };
+// retired skins -> the one that replaced them (the spoon merged into the knife: its Ladle is a knife now).
+// accounts are migrated when they load (migrateInv, server/store.js), owns() also takes the old id, old saves map over
+export const SKIN_RENAME = { spoon_ladle: 'knife_ladle' };
+const OLD_SKIN = Object.fromEntries(Object.entries(SKIN_RENAME).map(([a, b]) => [b, a]));
+export function migrateInv(inv) { // in place. true = something changed
+  if (!inv || !Array.isArray(inv.model)) return false;
+  let ch = false;
+  inv.model = inv.model.map((id) => (Object.hasOwn(SKIN_RENAME, id) ? ((ch = true), SKIN_RENAME[id]) : id));
+  if (ch) inv.model = [...new Set(inv.model)];
+  return ch;
+}
