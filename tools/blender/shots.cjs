@@ -13,7 +13,7 @@ const [port = '3100', out = '.', list = 'ar,shotgun,revolver', presets = '3,0'] 
 const LIMIT = 0.25, CENTRE = 0.4;
 const SIZES = [[1280, 720], [1280, 800], [900, 900]], FOVS = [70, 120];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const SECONDARY = new Set(['revolver', 'pistol', 'akimbo', 'sawnoff', 'marbles', 'cig', 'blower', 'cards', 'snowball', 'bloodcross']);
+const SECONDARY = new Set(['revolver', 'pistol', 'akimbo', 'sawnoff', 'marbles', 'cig', 'blower', 'cards', 'snowball', 'bloodcross', 'water', 'taser', 'remote']);
 const weapons = list.split(',');
 const NO_ADS = new Set(['akimbo']); // no aiming: right click fires the right gun, so there's nothing to check
 

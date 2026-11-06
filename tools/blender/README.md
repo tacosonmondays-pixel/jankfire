@@ -37,6 +37,10 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 | `make_bowling.py` | `w_bowling.glb` | backyard pneumatic cannon (PVC barrel, air tank, sprinkler valve, gauge) |
 | `make_banana.py` | `w_banana.glb` | AKS-74U pattern, x1.1, a real banana as the banana mag, peel muzzle |
 | `make_marbles.py` | `w_marbles.glb` | flintlock blunderbuss pistol, x1.1, mason-jar marble hopper |
+| `make_water.py` | `w_water.glb` | 90s pump squirt pistol, x1.3, a soda bottle tank (neck forward, base toward you); nodes `water_wzN` (origin on the tank floor: scale y = how full) and `pump_wzB` |
+| `make_taser.py` | `w_taser.glb` | conducted-energy pistol, x1.25, cartridge with dart ports, laser chin, 3-dot sights; node `led_wzN` (ARMED light, on the rear panel) |
+| `make_remote.py` | `w_remote.glb` | CRT-era TV remote, life size, printed number pad, raised PAUSE / REWIND symbols, no sights; node `ir_wzN` (the game flashes it) |
+| `make_radar.py` | `w_radar.glb` | hand-held traffic radar, life size, coiled cord; node `lamp_wzN` (blinks), `screen` metadata = the recess the game draws the LED readout in |
 | `make_burst.py` | `w_burst.glb` | Hat Trick: FAMAS F1 pattern bullpup, nodes `mag` + `charge` |
 | `make_lmg.py` | `w_lmg.glb` | Belt Sander: M249 pattern, nodes `mag` (ammo box), `cover` (feed cover hinge), `belt_00`..`belt_11` (links, hidden as the belt empties), `lmg_heat` material (the barrel glows with heat) |
 | `make_dmr.py` | `w_dmr.glb` | Second Opinion: SVD pattern with a PSO-style scope, nodes `mag` + `charge` |

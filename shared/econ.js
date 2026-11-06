@@ -164,3 +164,10 @@ export function gearPrice(id, ar, hm, kit) {
   if (id === 'kit') return kit ? null : GEAR.kit.price;
   return null;
 }
+// the new secondaries + the speed trap (shared/weapons.js): what they cost in Plant & Defuse
+Object.assign(PRICES, {
+  water: { price: 300, kill: 950, pen: 0, mags: 3 },
+  taser: { price: 550, kill: 1000, shots: 8 },
+  remote: { price: 700, kill: 1100, shots: 14 },
+});
+ITEM_PRICES.radar = { price: 350, limit: 2 };
