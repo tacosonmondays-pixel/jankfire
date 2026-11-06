@@ -60,9 +60,11 @@ async function session(b, map, ids) {
     const { G } = await import('/js/ctx.js'); const { ME } = await import('/js/player.js');
     const h = document.getElementById('hud'); if (h) h.style.display = 'none';
     for (const id of ['crosshair', 'killfeed', 'chat', 'minimap']) { const e = document.getElementById(id); if (e) e.style.display = 'none'; }
-    G.vmScene.visible = false;
+    G.vmCamera.layers.disableAll(); // (no gun: main.js turns vmScene back on every frame)
     window.__pin = null;
     setInterval(() => { const q = window.__pin; if (q) { ME.pos = q.p.slice(); ME.vel = [0, 0, 0]; ME.yaw = q.yaw; ME.pitch = q.pitch; ME.hp = 100; } }, 4);
+    // the same picture for both versions: no sparks / smoke / confetti (points) and no bot walking through the shot
+    setInterval(() => { for (const o of G.scene.children) if (o.isPoints) o.visible = false; G.remotes.forEach((r) => { if (r.ch && r.ch.root) r.ch.root.visible = false; }); }, 16);
   });
   // where to look from (in the page: the map data + a ray against the boxes so nothing stands in the way)
   const views = await pg.evaluate(async ({ ids, N, MAPVIEWS, map }) => {
