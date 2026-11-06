@@ -14,12 +14,31 @@
 import { addSystem } from './sim.js';
 import { savePart } from './save.js';
 import { TEST } from './testmap.js';
-import { invAdd, invOp, invTake, cleanInv, starterInv, itemAt, kindOf, hasItem, find, STORY_ITEMS } from './items.js';
+import { invAdd, invOp, invTake, cleanInv, starterInv, itemAt, kindOf, hasItem, find, makeItem, STORY_ITEMS } from './items.js';
 import { ITEMS } from '../weapons.js';
 import { rollTable, rollWeapon, legendaryItem, RARITY_ORDER } from './loot.js'; // WP4
 
 export const PICK = 3.2; // metres
 savePart('inv', (v) => cleanInv(v));
+// loot left on the floor survives a reload: FLOOR per zone (the map / district), oldest goes first past the cap
+export const FLOOR = 40;
+const zoneOf = (sim) => sim.zone || TEST.id;
+function cleanFloor(v) {
+  const out = {};
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return out;
+  for (const z of Object.keys(v).slice(0, 64)) {
+    if (!/^[a-z0-9_:]{1,40}$/.test(z) || !Array.isArray(v[z])) continue;
+    const list = [];
+    for (const d of v[z].slice(-FLOOR)) {
+      if (!d || !Array.isArray(d.p) || d.p.length !== 3 || !d.p.every((x) => Number.isFinite(x) && Math.abs(x) < 1e5)) continue;
+      const it = makeItem(d.item && d.item.b, d.item || {});
+      if (it) list.push({ item: it, p: r2(d.p) });
+    }
+    if (list.length) out[z] = list;
+  }
+  return out;
+}
+savePart('floor', cleanFloor);
 
 const near = (a, b, r) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) <= r;
 const r2 = (p) => p.map((x) => Math.round(x * 100) / 100);
@@ -35,6 +54,8 @@ addSystem({
       const id = ++sim.dropN, d = { id, item: { b: item.b, r: item.r || 'common', s: item.s || 0, ...(item.n ? { n: item.n } : {}), ...(item.q ? { q: item.q } : {}), ...(item.br ? { br: item.br } : {}), ...(item.m ? { m: item.m.slice() } : {}), ...(item.lg ? { lg: item.lg } : {}) }, p: r2(p) };
       sim.drops.set(id, d);
       sim.sty('drop+', { d });
+      const z = [...sim.drops.values()];
+      if (z.length > FLOOR + 20) for (const old of z.slice(0, z.length - FLOOR - 20)) { sim.drops.delete(old.id); sim.sty('drop-', { id: old.id }); } // a floor this full: the oldest rots away
       return id;
     };
     // roll a loot table (shared/story/content/loot.js) and scatter it round p. returns the drop ids
@@ -51,6 +72,8 @@ addSystem({
   load(sim, part) { sim.inv = cleanInv(part); },
   save(sim) { const { fresh, ...inv } = sim.inv; return JSON.parse(JSON.stringify(inv)); },
   join(sim) {
+    const saved = sim.floorSaved && sim.floorSaved[zoneOf(sim)]; // what you left lying here last time
+    if (saved && !sim.floorBack) { sim.floorBack = true; for (const d of saved) sim.dropAt(d.item, d.p); }
     if (sim.save.at.map === TEST.id && !sim.state.flags.testLoot) { // the test lot: a pile of things to try every kind on
       sim.state.flags.testLoot = true;
       const kit = ['redline', 'marbles', 'katana', 'scales', 'shotgun', 'lasso', 'medkit', 'smoke', 'moonboots', 'jank_cola', 'bottlecap'];
@@ -136,3 +159,15 @@ addSystem({
 
 // what the client gets: the bag with names filled in is the client's job (items.js infoOf), so this is just the data
 function view(sim) { const { fresh, ...inv } = sim.inv; return { ...inv, fresh: !!fresh }; }
+
+// the floor as its own save part (save.data.floor): { zone: [{ item, p }] }, newest FLOOR per zone
+addSystem({
+  id: 'floor',
+  load(sim, part) { sim.floorSaved = cleanFloor(part); },
+  save(sim) {
+    const out = { ...(sim.floorSaved || {}) }, z = zoneOf(sim);
+    const here = [...sim.drops.values()].map((d) => ({ item: { ...d.item }, p: d.p.slice() })).slice(-FLOOR);
+    if (here.length) out[z] = here; else delete out[z];
+    return out;
+  },
+});

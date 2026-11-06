@@ -80,3 +80,41 @@ these for `pickup`, `deliver` and rewards.
 - `IV.inv` is the last inventory, `IV.on(fn)` runs after each change, and `iconOf(b)` / `itemCell(item)` draw items.
 - Story keys are added at runtime with `keys.js` `extendActions('Story', ...)`, so they only exist (and only show in
   CONTROLS) while story mode is loaded.
+
+## Loot (WP4)
+**Data** comes from the writer: `shared/story/content/loot.js` (`BRANDS`, `MODIFIERS`, `LEGENDARIES`, `LOOT_TABLES`).
+The engine is `shared/story/loot.js` (pure):
+- A rolled weapon item is `{ b, r, s, br?, m?, lg? }`.
+  - `r` is the rarity: common / rare / epic / legendary / premium.
+  - `s` is the seed; `s: 0` means a stock item with no roll (the starter kit, quest weapons).
+  - `br` is the brand, `m` is up to 2 modifiers, `lg` is a named legendary.
+  - `items.js` keeps only real ids, so a junk brand, mod or legendary is dropped.
+- `rollTable(id, rand, { late })` -> `[item]`: a table's `rolls`, weighted entries, late night doubles premium.
+  - `rollEntry(e)`, `rollWeapon({ rarity, base, brand }, rand)`, `legendaryItem(id, rand)`.
+  - An `item:` entry nothing knows yet (organ cores, before WP5) rolls nothing rather than a ghost item.
+- `statsOf(item)` -> `{ dmg, rate, mag, reload, spread, kb, speed, tags, brand, mods, quirk, part }`.
+  - The numbers are multipliers (1 = base) rebuilt from the seed, never stored.
+  - Rarity ranges: common ±10%, rare 0..15, epic 5..25, legendary 10..35, premium 20..45.
+  - ☺ CORP narrows the roll and tightens spread; Bottom Scrap adds a random extra part; Bouncy ×1.8 knockback,
+    Fleshy ×1.2 mag, On Loan ×1.25 damage.
+  - Behaviour mods and brand rules (sticky, haunted, punctual, overdue, rounded, greasy, rubbery, regen, grudge, jam,
+    numbers) are listed in `tags` for combat to act on.
+- `compare(a, b)` gives the ▲▼ rows; `statsFor(base)` lists the stats a base has (a cigarette has no magazine);
+  `nameOf(item)` is "Bouncy Rounded Cigarette" or the legendary's name.
+- `QUIRKS[lg]`, `hitWith(item, ctx)` -> `{ dmg, fx }` and `killWith(item, ctx)` -> `[fx]` are the hooks combat calls.
+  - Effects are plain objects: `{heal}`, `{say}`, `{slip}`, `{coupons}`, `{splash:{r,cone,dmg}}`,
+    `{puddle:{r,life,kind}}`.
+  - The slice's four are in: Late Bloomer, Grandma's Hands, Mother's Ladle, Severance Package.
+  - Lumps' Ring's base (`rigpunch`) isn't holdable, so it falls back to the Hand Slapper.
+
+**The stat hook** in `public/js/weapons.js`: `STAT.mul = fn(id, key)` for rate, mag, reload time and spread.
+- `story/bar.js` sets it to the held bar item's stats and clears it outside story mode, so the sims are plain.
+- Damage multipliers are applied by the host (the solo worker / StoryRoom), not by `server.js`.
+
+**In the sim:** `sim.lootDrop(table, p, ctx)` rolls a table onto the floor. Floor loot is saved per zone
+(`save.data.floor`: newest 40 per zone, and at most 60 live before the oldest rot away).
+
+**Client:** `story/lootfx.js` has `beamFor(r)` (per-tier beams, legendary and premium spin rays; they fade when you
+stand in them), `lootSound(r, pos, pick)` (blip / chime / double chime / fanfare / choir, made with `audio.js`
+`synth`), and `lootCard(item, vs)` (the zine card with ▲▼ against what you hold). The card shows next to the nearest
+drop and on hover in the Tote Bag.
