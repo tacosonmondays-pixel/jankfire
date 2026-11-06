@@ -39,6 +39,7 @@ const inBox = (s, q, pad) => q[0] >= s.min[0] - pad && q[0] <= s.max[0] + pad &&
 const usable = (x) => x && (WEAPONS[x.id].kind === 'hitscan' || WEAPONS[x.id].kind === 'proj') && WEAPONS[x.id].slot !== 'melee' && (!x.lim || x.m + x.r > 0);
 const RIFLES = ['ar', 'ar', 'ar', 'redline', 'redline', 'chicken', 'burst', 'dmr', 'lmg'];
 const FORCE = ['smg', 'smg', 'shotgun', 'banana', 'bowling', 'lever', 'autoshot', 'tennis'];
+const SIDEARM_BUYS = ['pistol', 'akimbo', 'sawnoff']; // a pistol-round upgrade over the free revolver
 
 const M = {
   // ---------------------------------------------------------- the map's tactical spots (worked out once per map)
@@ -655,6 +656,7 @@ const M = {
       const r = Math.random();
       if (att) { if (r < 0.55) buy('g', 'vest'); else util(2); }
       else if (r < 0.4) buy('g', 'vest'); else { buy('g', 'kit'); util(1); }
+      if (Math.random() < 0.4) gun(SIDEARM_BUYS, 0); // whatever's left: a better sidearm
     } else if (plan.mode === 'full') {
       const gift = plan.gifts.get(b.id);
       if (!hasGun) {
@@ -666,7 +668,7 @@ const M = {
       if (!att && e.$ >= GEAR.kit.price) buy('g', 'kit');
       util(2);
     } else if (plan.mode === 'force') {
-      if (!hasGun && !gun(FORCE, 650) && !gun(FORCE, 0) && e.$ >= 900) buy('w', 'marbles');
+      if (!hasGun && !gun(FORCE, 650) && !gun(FORCE, 0)) gun(['marbles', 'akimbo', 'sawnoff'], 0); // no rifle money: a shotgunny sidearm
       buy('g', 'vest');
       if (!att && e.$ >= GEAR.kit.price + 300) buy('g', 'kit');
       util(1);

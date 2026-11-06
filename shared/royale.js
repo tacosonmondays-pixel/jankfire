@@ -67,6 +67,7 @@ export const GUNS = {
   sniper: { tier: 2, w: 5, mags: 3 }, chicken: { tier: 2, w: 3, shots: 8 }, bloodcross: { tier: 2, w: 3 }, shredder: { tier: 2, w: 2 },
   minigun: { tier: 3, w: 2, mags: 1 },
   laser: { tier: 3, w: 2 }, // the Big Laser Pointer (charge it, it beams)
+  pistol: { tier: 0, w: 9, mags: 3 }, sawnoff: { tier: 0, w: 6, mags: 6 }, akimbo: { tier: 1, w: 5, mags: 3 }, // the plain sidearms
 };
 export const MELEE = { knife: { tier: 0, w: 4 }, slapper: { tier: 0, w: 3 }, katana: { tier: 1, w: 3 }, slipper: { tier: 1, w: 2 }, scales: { tier: 2, w: 2 }, spoon: { tier: 4, w: 0.6 } };
 // throwables and gadgets (the G key): how many come in one pick-up

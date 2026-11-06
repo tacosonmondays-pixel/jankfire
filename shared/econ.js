@@ -65,6 +65,9 @@ export const PRICES = {
   cart: { price: 2600, kill: 450, shots: 3 }, // 3 carts a buy (and only 3 of yours on the map at once)
   // secondary
   revolver: { price: 250, kill: 250, pen: 0.5, mags: 4 },
+  pistol: { price: 200, kill: 300, pen: 0.35, mags: 3 }, // Plan B: cheap and steady (12+36)
+  akimbo: { price: 850, kill: 400, pen: 0.1, mags: 2 }, // Lefty & Righty (a magazine = both hands' 40: 40+80)
+  sawnoff: { price: 700, kill: 750, pen: 0, mags: 3 }, // Half a Shotgun (2+6, like the competitive marbles)
   marbles: { price: 900, kill: 400, pen: 0, mags: 2 }, // competitive: 2+4 (was 2+10)
   cig: { price: 450, kill: 900 },
   blower: { price: 600, kill: 1000 },
@@ -161,3 +164,10 @@ export function gearPrice(id, ar, hm, kit) {
   if (id === 'kit') return kit ? null : GEAR.kit.price;
   return null;
 }
+// the new secondaries + the speed trap (shared/weapons.js): what they cost in Plant & Defuse
+Object.assign(PRICES, {
+  water: { price: 300, kill: 950, pen: 0, mags: 3 },
+  taser: { price: 550, kill: 1000, shots: 8 },
+  remote: { price: 700, kill: 1100, shots: 14 },
+});
+ITEM_PRICES.radar = { price: 350, limit: 2 };

@@ -23,6 +23,7 @@ import { BOXES } from '/shared/map.js';
 import { soapBubble, soapFlail } from './models.js';
 import { TRAP, trapPreroll } from '/shared/wand.js';
 import { patchPreroll } from '/shared/marbles.js';
+import { secShot } from './secondaries.js'; // water pistol streams in replays
 
 const KEEP = 10000;
 // other modules' replay bits (the new gear: photo frames, pop quizzes, laser beams, goggle flashes). each hook may have
@@ -144,6 +145,7 @@ function applyEv(m) {
     if (g && w.fanHammer) g.revShot(!!m.fan); // ghosts twirl their revolvers too
     const fast = w.rate > 8, mz = g ? g.muzzle() : null;
     const col = tracerColor(((info[m.id] || {}).skins || {})[m.w], w.tracer || 0xfff0a0);
+    if (w.water && secShot(m.s, mz)) { if (m.s.length) sfx.gun(m.w, m.s[0].slice(0, 3)); return; } // water pistol: a stream, not a tracer
     if (w.marbles) { const sk = ((info[m.id] || {}).skins || {})[m.w]; marbles.shootSegs(m.s, mz, sk && sk[3] === 'marbles_gumball' ? 'gumball' : 'glass', 2); if (m.s.length) sfx.gun(m.w, m.s[0].slice(0, 3)); return; }
     m.s.forEach((s, i) => fx.tracer(mz && (i === 0 || w.pellets) ? mz : s.slice(0, 3), s.slice(3), col, w.thick || (fast ? 0.03 : 0.045), fast ? 0.07 : 0.2));
     if (m.s.length) sfx.gun(m.w, m.s[0].slice(0, 3));

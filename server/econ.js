@@ -555,14 +555,16 @@ const M = {
     if (!e || !p.alive || !has(WEAPONS, m.w)) return;
     const x = this.econInst(p, m.w), w = WEAPONS[m.w];
     if (!x || !x.cl || x.m >= w.mag || x.r <= 0 || (e.rl && e.rl.u === x.u)) return;
-    e.rl = { u: x.u, at: now() + w.reload * 750, ms: w.reload * 1000 };
+    // Lefty & Righty reloads a hand at a time: n = that hand's rounds (at most half the pair's magazine)
+    const n = w.hands ? Math.max(1, Math.min(Math.floor(w.mag / w.hands), Math.floor(Number(m.n)) || 0)) : 0;
+    e.rl = { u: x.u, at: now() + w.reload * 750, ms: w.reload * 1000, n };
   },
   econFinishReload(p) {
     const e = p.ec, rl = e.rl;
     e.rl = null;
     const x = Object.values(e.sl).find((y) => y && y.u === rl.u);
     if (!x || !x.cl) return;
-    const mv = Math.min(WEAPONS[x.id].mag - x.m, x.r);
+    const mv = Math.min(WEAPONS[x.id].mag - x.m, x.r, rl.n || Infinity);
     x.m += mv; x.r -= mv;
     this.econAm(p, x);
   },
@@ -692,14 +694,14 @@ const M = {
       const ok = list.filter((id) => econWeapon(id) && weaponPrice(id) != null && weaponPrice(id) + keep <= e.$);
       return ok.length > 0 && buy('w', pick(ok));
     };
-    if (mode === 'pistol') { if (Math.random() < 0.6) buy('g', 'vest'); }
+    if (mode === 'pistol') { if (Math.random() < 0.6) buy('g', 'vest'); if (Math.random() < 0.4) gun(['pistol', 'akimbo', 'sawnoff'], 0); } // whatever's left: a better sidearm
     else if (mode === 'full') {
       if (!hasGun) gun(BOT_FULL, 1000) || gun(BOT_FULL, 650) || gun(BOT_FORCE, 650);
       if (!buy('g', 'helm')) buy('g', 'vest');
       if (!att) buy('g', 'kit');
       if (e.$ >= 500) buy('i', 'frag');
     } else if (mode === 'force') {
-      if (!hasGun && !gun(BOT_FORCE, 650) && !gun(BOT_FORCE, 0) && e.$ >= 900) buy('w', 'marbles');
+      if (!hasGun && !gun(BOT_FORCE, 650) && !gun(BOT_FORCE, 0)) gun(['marbles', 'akimbo', 'sawnoff'], 0); // no rifle money: a shotgunny sidearm
       buy('g', 'vest');
     }
     if (e.sl.primary && e.sl.primary.lim && e.sl.primary.m + e.sl.primary.r < 10 && refillPrice(e.sl.primary.id) <= e.$) buy('w', e.sl.primary.id);

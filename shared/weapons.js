@@ -170,6 +170,33 @@ export const WEAPONS = {
     fanHammer: { rate: 6, hold: 0.2, dmg: 28, spread: 0.065, kick: 0.3 },
     ads: { zoom: 1.4, spread: 0.2, p: [0, -0.085, -0.28] },
   },
+  // plain sidearms (public/js/sidearms.js does their moving parts + the akimbo hands)
+  // Plan B: semi-auto, one shot per click (the server holds the rate). the slide locks back on the last round
+  pistol: {
+    slot: 'secondary', kind: 'hitscan', name: 'Plan B', color: '#a0b4ff',
+    desc: 'A plain pistol for when plan A runs dry. Out of the holster in a blink, 12 shots, and the slide locks back to tell you you\'re empty.',
+    rate: 5, mag: 12, reload: 1.35, dmg: 20, head: 2.2, spread: 0.006, bloom: 0.007, maxBloom: 0.03,
+    kb: 0, kbUp: 0, recoil: 0.6, kick: 0.035, range: 220, tracer: 0xb8c8ff, speedMul: 1.05,
+    ads: { zoom: 1.35, spread: 0.25, p: [0, -0.085, -0.28] },
+  },
+  // Lefty & Righty: one machine pistol per hand. left click = left gun, right click = right gun (no aiming), each full
+  // auto at `rate`, each with its own half of `mag` (mag = both hands) and its own reload. `hands` = how many guns
+  // fire at once, so the server lets the pair through at hands x rate
+  akimbo: {
+    slot: 'secondary', kind: 'hitscan', name: 'Lefty & Righty', color: '#00e5a0', hands: 2,
+    desc: 'Two machine pistols, one per hand. Left click fires lefty, right click fires righty, hold both to hose. They reload one at a time, so keep one busy.',
+    auto: true, rate: 9, mag: 40, reload: 1.5, dmg: 6, head: 1.6, spread: 0.045, bloom: 0.003, maxBloom: 0.05,
+    kb: 0, recoil: 0.25, kick: 0.012, range: 140, tracer: 0x7dffd0, speedMul: 1.05,
+  },
+  // Half a Shotgun: a sawed-off double. both shells, a huge shove on whoever eats the pellets, and enough kick that a
+  // shot at your feet hops you off the floor
+  sawnoff: {
+    slot: 'secondary', kind: 'hitscan', name: 'Half a Shotgun', color: '#e05a3a',
+    desc: 'Somebody sawed a shotgun in half. Two shells, and point blank they go flying. Shoot the floor for a little hop.',
+    rate: 1 / 0.3, mag: 2, reload: 2.3, pellets: 12, dmg: 9, head: 1.3, spread: 0.11,
+    kb: 3.4, kbUp: 9, recoil: 10, kick: 0.09, range: 32, tracer: 0xffa060,
+    ads: { zoom: 1.12, spread: 0.7, p: [0, -0.1, -0.3] },
+  },
   marbles: {
     slot: 'secondary', kind: 'hitscan', name: 'Marble Shotgun', color: '#7fd0ff',
     desc: 'A hundred glass marbles per shot. One marble barely tickles, but point blank they all land: one shot, one kill. They stay on the floor after: anyone who runs over them slips (crouch-walk to cross).',
@@ -459,6 +486,48 @@ ITEMS.quiz = { name: 'Pop Quiz', desc: 'A calculator you throw. Whoever it hits 
 export const NVG = { range: 34, cone: 0.62, dur: [0.6, 3.2], nvMul: 2, toggle: 0.35 };
 ITEMS.nvg = { name: 'Night Vision Goggles', desc: 'G puts them on: the dark goes green and people glow. While they\'re on, middle click flashes everyone you can see. Flashes blind you twice as long while you wear them.', charges: 2, recharge: 14, color: '#3dff8a' };
 
+// ------------------------------------------------------------ new secondaries + the speed trap (server half: server/secondaries.js,
+// client half: public/js/secondaries.js). everything here is the server's say: soaks, stuns, pauses, rewinds, readings, cages
+// server-owned states everyone sees in snapshots (the server sets them; a client can't claim any of them)
+Object.assign(FLAGS, { SOAK: 1 << 24, STUN: 1 << 25, PAUSE: 1 << 26, JAIL: 1 << 27, TICKET: 1 << 28, RADAR: 1 << 29 }); // (bits 18-23 are taken: WALK is 1 << 20)
+// water pistol: a plain hitscan squirt gun (mag = the tank). every squirt that lands soaks them for soak.dur s: they move at
+// soak.slow x speed, grip x friction (they slide about), fire goes out, and tasers chain through them
+WEAPONS.water = {
+  slot: 'secondary', kind: 'hitscan', name: 'Water Pistol', color: '#3fb8ff',
+  desc: 'A big plastic squirt gun. Whoever it hits gets soaked: they drip, slip a bit and slow down for a few seconds. Puts out fire. Makes tasers a lot worse.',
+  auto: true, rate: 9, mag: 40, reload: 1.6, dmg: 1, head: 1.5, spread: 0.03, kb: 0.6, kbUp: 0, recoil: 0, kick: 0.002, range: 26,
+  water: true, soak: { dur: 4, slow: 0.72, grip: 0.3 },
+  ads: { zoom: 1.2, spread: 0.5, p: [0, -0.1, -0.3] },
+};
+// taser: darts on wires, short range. range m, cone = aim slack (rad) the server allows around where you pointed, stun s,
+// dmg. wet: a soaked target's stun x this. chain: from every zapped soaked person to every soaked person within chainR m
+// (line of sight), up to chainMax people, each stunned chainStun s for chainDmg. self: s you stun yourself if you fire it wet
+WEAPONS.taser = {
+  slot: 'secondary', kind: 'zap', name: 'Taser', color: '#e8ff3a',
+  desc: 'Two darts on wires. Whoever they hit is stunned for a second. Wet people conduct: it jumps through everyone soaked nearby. Don\'t fire it wet.',
+  cd: 1.25, range: 9, cone: 0.1, stun: 1.0, dmg: 18, wet: 1.5, chainR: 9, chainMax: 8, chainStun: 1.0, chainDmg: 12, self: 0.4, speedMul: 1.05,
+};
+// tv remote: left click PAUSE (frozen dur s, momentum comes back when it ends), right click REWIND (snapped back to where the
+// server saw them back s ago). each has its own cooldown. range m, cone = aim slack (rad). rig: what an overdrive rig takes
+WEAPONS.remote = {
+  slot: 'secondary', kind: 'remote', name: 'TV Remote', color: '#ff5a8a',
+  desc: 'Point and click. Left click PAUSES them for a second. Right click REWINDS them to where they were 2 seconds ago. Batteries not included.',
+  range: 45, cone: 0.09, pause: { dur: 1.2, cd: 3.5, rig: 0.5 }, rewind: { back: 2, cd: 6 }, speedMul: 1.05,
+};
+ORDER.push('water', 'taser', 'remote'); // (ORDER was taken before these were added: the loadout picker + viewmodels walk it)
+// kill-feed tags (not guns): jailed people are on the speed trap, a chained zap is still the taser
+WEAPONS.radar = { slot: 'item', kind: 'radar', name: 'Speed Trap', color: '#2e7bff' }; // slot item: the radar gun wears skins (COSMETICS)
+ORDER.push('radar');
+// speed trap (item, hold G): a reading every scan s of whoever is under your crosshair within range m (cone rad of slack),
+// in km/h from the server's own positions over the last window s. over limit: TICKET, they get warn s to get back under
+// it (warning only) or they're jailed. at jail or more: jailed on the spot. jailed = a cage for jailT s (no moving, no
+// shooting, everyone sees it). safe: s before the same person can be ticketed again after a jail (warnSafe after a warning).
+// a ticket costs a charge, a reading is free. rigJail: s an overdrive rig takes to rip the cage open
+export const SPEED = { range: 70, cone: 0.1, scan: 0.15, window: 0.5, limit: 100, jail: 200, warn: 3, jailT: 3.5, safe: 12, warnSafe: 4, rigJail: 1 };
+ITEMS.radar = { w: 'radar', name: 'Speed Trap', desc: 'Hold G to point a radar gun at someone and read their speed. Over 100 km/h they get 3 seconds to slow down or they\'re jailed. Over 200 they\'re jailed on the spot.', charges: 2, recharge: 16, color: '#2e7bff' };
+ITEM_ORDER.push('radar');
+// km/h from metres per second (what the radar shows)
+export const kmh = (ms) => Math.round(ms * 3.6);
 // ------------------------------------------------------------ lasso (secondary)
 // hold fire to spin the loop, let go to throw it; catch someone and they hang off your rope. the physics + numbers are
 // in shared/lasso.js (the holder's client runs them on the body, the server checks them)
@@ -469,4 +538,4 @@ WEAPONS.lasso = {
 // the loop in flight: a server projectile like any other (it decides who it catches)
 WEAPONS.loop = { slot: 'hidden', kind: 'loop', name: 'Lasso', color: '#e0b070', speed: 30, grav: 6, r: 0.55, life: 4 };
 ORDER.push('lasso'); // ORDER was taken before these: the loadout, viewmodels and cosmetics list come from it
-FLAGS.LASSO = 1 << 20; // set in your snapshots while you spin the loop overhead (everyone sees it, killcams too)
+FLAGS.LASSO = 1 << 21; // (was 1 << 20, the same bit as FLAGS.WALK) set in your snapshots while you spin the loop overhead (everyone sees it, killcams too)

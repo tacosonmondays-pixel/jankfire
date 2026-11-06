@@ -43,6 +43,13 @@ export const hud = {
     a.textContent = reloading ? 'reloading' : `${n} / ${mag}`;
     a.style.color = n === 0 || reloading ? '#ff5050' : n <= mag * 0.25 ? '#ffe14d' : '#fff';
   },
+  // Lefty & Righty: each hand's count (a reloading hand says so)
+  ammo2(l, r, mag, rlL, rlR) {
+    const a = $('ammo');
+    a.style.display = 'block';
+    a.textContent = `L ${rlL ? '..' : l} · R ${rlR ? '..' : r}`;
+    a.style.color = (!l && !r) || (rlL && rlR) ? '#ff5050' : l <= mag * 0.25 || r <= mag * 0.25 ? '#ffe14d' : '#fff';
+  },
   show(v) { $('hud').classList.toggle('hidden', !v); },
   hp(v) {
     const p = Math.max(0, Math.min(100, v));

@@ -1,11 +1,33 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '3.8', date: '2026-11-06', title: 'FRESHLY MODELLED', items: [
+    'BLENDER ROUND 2: the cigarette and cigar, card deck (and the cards you throw), Reverse and Skip cards, leaf blower, snowball, popper, rubber duck, bread, spoon, slipper, Hand Slapper, the bow and its arrows and the Scythe Rifle all got real glossy models.',
+    'all 29 weapon skins got remade too. the Spoon knife skin is a proper tablespoon now.',
+    'knives and katanas got the same gloss, so they read as polished steel.',
+    'the Zombies wall boards hang the real models.',
+    'fixed: chrome showed up black in the hotbar, the locker and the menu.',
+  ] },
+  { v: '3.7', date: '2026-11-06', title: 'LAW & DISORDER', items: [
+    'NEW ITEM: SPEED TRAP. hold G to point a radar gun at people. over 100 km/h they get SLOW DOWN 3.. 2.. 1. slow down and it\'s a warning, keep speeding and it\'s JAIL (a cage drops on them for 3.5 s). over 200 is jail on the spot.',
+    'WATER PISTOL: soaks people for 4 s. soaked = slower and slidey, and it puts out fire.',
+    'TASER: a 1 s stun that chains through everyone soaked nearby. bring a friend with a water pistol.',
+    'TV REMOTE: left click PAUSES someone for 1.2 s (their momentum comes back after). aim to REWIND them 2 s back to where they were.',
+    'all four are in Plant & Defuse, the three secondaries are in the Zombies crate, and bots use them.',
+    'fixed: melee weapons swing on left click again (a stray comment ate it in the rifle pack update).',
+  ] },
+  { v: '3.6', date: '2026-11-06', title: 'SIDEARMS', items: [
+    'PLAN B: a plain semi-auto pistol. for when everything else is empty.',
+    'LEFTY & RIGHTY: two machine pistols. left click fires the left one, your aim key fires the right one. each hand has its own mag and reloads on its own.',
+    'HALF A SHOTGUN: a sawed-off with two shells. point blank it deletes people, knocks them back, and the kick hops you off the floor.',
+    'all three are Jank Royale floor loot, in the Zombies crate (with wall ammo) and in Plant & Defuse with their own spray patterns.',
+  ] },
   { v: '3.5', date: '2026-11-06', title: 'HARDWARE STORE', items: [
     'NAIL GUN: fires nails, fast. land six in a row and they get nailed to the wall behind them like a poster. the nails stay in the walls.',
     'TENNIS BALL LAUNCHER: fuzzy balls bounce up to 5 times and hit 30% harder every bounce. bank it round a corner for a BANK SHOT.',
     'SHOPPING CART CANNON: fires a shopping cart that runs people over. it stays parked as cover, or walk up and hop in (your use key) to ride it.',
     'all three are in Plant & Defuse and the Zombies mystery crate. each comes with a skin.',
+    'fixed: in Plant & Defuse, slow walking with the lasso out made it spin (and spinning it made your footsteps silent).',
   ] },
   { v: '3.4', date: '2026-11-06', title: 'THE RIFLE PACK', items: [
     'HAT TRICK: a burst rifle. three rounds a pull. land all three on one person for a BURST!',

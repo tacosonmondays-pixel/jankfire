@@ -2,6 +2,7 @@
 // transparent image, cached until something about it changes.
 import * as THREE from 'three';
 import { buildWeapon, freeTree } from './models.js';
+import { withEnv } from './glbkit.js';
 
 const IW = 160, IH = 96;
 let r = null, scene = null, cam = null;
@@ -33,6 +34,9 @@ export function weaponIcon(id, skin) {
     const flat = id === 'cards' || id === 'reverse' || g.userData.faceOn; // flat things look at you, everything else side-on
     g.rotation.y = flat ? 0 : -Math.PI / 2; // muzzle to the right, like an inventory picture
     holder.add(g);
+    if (id === 'akimbo') { // Lefty & Righty: the pair, one behind the other and a bit up, muzzles crossed like a poster
+      const g2 = buildWeapon(id, skin); g2.rotation.set(0.32, Math.PI / 2, 0); g2.position.set(0.24, 0, -0.06); g.rotation.x = 0.32; holder.add(g2);
+    }
     holder.rotation.x = flat ? -0.15 : 0.28; // a little from above
     holder.rotation.z = flat ? 0 : 0.06;
     scene.add(holder);
@@ -43,7 +47,7 @@ export function weaponIcon(id, skin) {
     const fit = Math.max(size.x / cam.aspect, size.y) * 1.04;
     cam.position.set(0, 0, fit / (2 * Math.tan((cam.fov * Math.PI) / 360)) + size.z / 2);
     cam.lookAt(0, 0, 0);
-    r.render(scene, cam);
+    withEnv(r, holder, () => r.render(scene, cam)); // (its own reflections, or chrome is black)
     const url = r.domElement.toDataURL('image/png');
     scene.remove(holder);
     freeTree(holder); // only the picture is kept
@@ -70,7 +74,7 @@ export function objIcon(key, build) {
     const fit = Math.max(size.x / cam.aspect, size.y) * 1.06;
     cam.position.set(0, 0, fit / (2 * Math.tan((cam.fov * Math.PI) / 360)) + size.z / 2);
     cam.lookAt(0, 0, 0);
-    r.render(scene, cam);
+    withEnv(r, holder, () => r.render(scene, cam)); // (its own reflections, or chrome is black)
     const url = r.domElement.toDataURL('image/png');
     scene.remove(holder);
     freeTree(holder);
