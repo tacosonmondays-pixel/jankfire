@@ -3,8 +3,9 @@
 // usage: node tools/blender/shots_r4.cjs <port> <outdir> <ids|map> [maps] [presets=3,0] [n=2]
 //   ids: prop ids, comma separated (pine,lollipop,stall...), or "all" for every prop on those maps
 //   maps: comma separated (default: every map that has one of the ids; for "map": jankburg,suburb,skyline)
-//   (start the server first: JF_ROUND_TIME=7200 JF_ROUND_KILLS=999 PORT=<port> node server.js, so the match outlasts the shots.
-//   Cap browsers with pwlock.cjs.)
+//   (start the server first: JF_ROUND_TIME=7200 JF_ROUND_KILLS=999 JF_BOMB_WINS=99 JF_BOMB_ROUND=3600 JF_BUY_TIME=1 JF_ZM_SWIPE=0
+//   PORT=<port> node server.js: the match outlasts the shots, Plant & Defuse keeps going with 1 s buy phases, zombies
+//   don't bite. Cap browsers with pwlock.cjs.)
 // out: <outdir>/r4_<id>.png (rows = copies on their maps, columns = box / Blender per preset) or r4_map_<map>.png
 const { chromium } = require('playwright');
 const { execFileSync } = require('child_process');
@@ -14,7 +15,7 @@ const [port = '3100', outdir = 'tools/blender/compare', idsArg = 'all', mapsArg 
 const presets = presetsArg.split(',').map(Number), N = Number(nArg), MAPVIEWS = idsArg === 'map';
 const PRESET = ['Potato', 'Crusty', 'Mid', 'Too HD'];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const GAME = { jankburg: 'br' }, gameOf = (m) => GAME[m] || (/_sd$/.test(m) ? 'bomb' : 'dm'); // (the Plant & Defuse layouts are only in that mode's list)
+const GAME = { jankburg: 'br', deadmall: 'zm' }, gameOf = (m) => GAME[m] || (/_sd$/.test(m) ? 'bomb' : 'dm'); // (the Plant & Defuse layouts are only in that mode's list)
 fs.mkdirSync(outdir, { recursive: true });
 const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'r4shots-'));
 
@@ -39,11 +40,14 @@ async function session(b, map, ids) {
   await pg.addInitScript(() => localStorage.setItem('jankfire', JSON.stringify({ name: 'SHOTS', killcam: false, jank: 3 })));
   await pg.goto(`http://localhost:${port}/`); await sleep(2500);
   const T = { timeout: 180000 }; // (a busy machine: the menu can take a while to answer)
-  await pg.click('#scr-main [data-pick="bots"]', T); await pg.click('#mpCustom', T);
-  await pg.selectOption('#setupGame', gameOf(map), T);
-  await pg.selectOption('#setupMap', map, T);
-  await pg.locator('#setupBots').fill('1'); await pg.selectOption('#setupDiff', 'easy').catch(() => {}); // (one slow bot: the least it allows)
-  await pg.click('#setupGo', T);
+  if (map === 'range') await pg.click('#scr-main [data-mode="training"]', T); // (the Training range: only Training plays it)
+  else {
+    await pg.click('#scr-main [data-pick="bots"]', T); await pg.click('#mpCustom', T);
+    await pg.selectOption('#setupGame', gameOf(map), T);
+    await pg.selectOption('#setupMap', map, T);
+    await pg.locator('#setupBots').fill('1'); await pg.selectOption('#setupDiff', 'easy').catch(() => {}); // (one slow bot: the least it allows)
+    await pg.click('#setupGo', T);
+  }
   const ok = await pg.evaluate(async (map) => {
     const { G } = await import('/js/ctx.js'); const { MAP } = await import('/shared/map.js');
     for (let i = 0; i < 700 && !(G.joined && MAP.id === map); i++) await new Promise((r) => setTimeout(r, 100));
@@ -59,10 +63,14 @@ async function session(b, map, ids) {
   await pg.evaluate(async () => {
     const { G } = await import('/js/ctx.js'); const { ME } = await import('/js/player.js');
     const h = document.getElementById('hud'); if (h) h.style.display = 'none';
+    const css = document.createElement('style'); css.textContent = '#quizPanel { display: none !important; }'; document.head.append(css);
     for (const id of ['crosshair', 'killfeed', 'chat', 'minimap']) { const e = document.getElementById(id); if (e) e.style.display = 'none'; }
     G.vmCamera.layers.disableAll(); // (no gun: main.js turns vmScene back on every frame)
     window.__pin = null;
     setInterval(() => { const q = window.__pin; if (q) { ME.pos = q.p.slice(); ME.vel = [0, 0, 0]; ME.yaw = q.yaw; ME.pitch = q.pitch; ME.hp = 100; } }, 4);
+    // __life goes up on every death and every new Plant & Defuse round: a shot taken across one is taken again
+    window.__life = 0; let was = ME.alive, round = G.eco && G.eco.round;
+    setInterval(() => { if (was && !ME.alive) window.__life++; was = ME.alive; const r = G.eco && G.eco.round; if (r !== round) { round = r; window.__life++; } }, 4);
     // the same picture for both versions: no sparks / smoke / confetti (points) and no bot walking through the shot
     setInterval(() => { for (const o of G.scene.children) if (o.isPoints) o.visible = false; G.remotes.forEach((r) => { if (r.ch && r.ch.root) r.ch.root.visible = false; }); }, 16);
   });
@@ -116,11 +124,26 @@ async function session(b, map, ids) {
       for (const v of views) {
         await pg.evaluate((v) => { window.__pin = { p: v.p, yaw: v.yaw, pitch: v.pitch }; }, v);
         await sleep(1100);
-        // still on this map, alive? (a match that ends moves to the next map; a bot can kill you: wait for the respawn)
-        const st = await pg.evaluate(async (map) => { const { MAP } = await import('/shared/map.js'); const { ME } = await import('/js/player.js'); for (let i = 0; i < 150 && MAP.id === map && !ME.alive; i++) await new Promise((r) => setTimeout(r, 100)); await new Promise((r) => setTimeout(r, 300)); return MAP.id !== map ? 'moved on to ' + MAP.id : ME.alive ? 'ok' : 'dead'; }, map);
-        if (st !== 'ok') { console.log(map, v.id, v.k, 'skipped:', st, '(start the server with JF_ROUND_TIME=7200 JF_ROUND_KILLS=999)'); if (st.startsWith('moved')) break; continue; }
         const f = path.join(tmp, `${map}_${v.id}_${v.k}_${pr}_${boxes ? 'box' : 'glb'}.png`);
-        await pg.screenshot({ path: f, timeout: 120000 });
+        let st = 'dead';
+        for (let tries = 0; tries < 4; tries++) {
+          // still on this map, alive, past a Plant & Defuse buy phase? (a match that ends moves to the next map; a bot can
+          // kill you: wait for the respawn; in the buy phase the server holds you in your spawn zone and its walls show)
+          st = await pg.evaluate(async (map) => {
+            const { MAP } = await import('/shared/map.js'); const { ME } = await import('/js/player.js'); const { G } = await import('/js/ctx.js');
+            const busy = () => MAP.id === map && (!ME.alive || (G.eco && G.eco.buyEnd > performance.now()) || performance.now() < (ME.quizUntil || 0)); // (a bot's pop quiz: frozen, a panel up)
+            for (let i = 0; i < 600 && busy(); i++) await new Promise((r) => setTimeout(r, 100));
+            await new Promise((r) => setTimeout(r, 900)); // (re-pinned, the barriers gone)
+            return MAP.id !== map ? 'moved on to ' + MAP.id : busy() ? (ME.alive ? 'buy phase' : 'dead') : 'ok';
+          }, map);
+          if (st !== 'ok') break;
+          const before = await pg.evaluate(() => window.__life);
+          await pg.screenshot({ path: f, timeout: 120000 });
+          const after = await pg.evaluate(async () => { const { ME } = await import('/js/player.js'); const { G } = await import('/js/ctx.js'); return ME.alive && !(G.eco && G.eco.buyEnd > performance.now()) && !(performance.now() < (ME.quizUntil || 0)) ? window.__life : -1; });
+          if (after === before) break;
+          st = 'died or a new round during the shot'; console.log(map, v.id, v.k, 'retake:', st);
+        }
+        if (st !== 'ok') { console.log(map, v.id, v.k, 'skipped:', st, '(start the server with JF_ROUND_TIME=7200 JF_ROUND_KILLS=999 JF_BOMB_WINS=99 JF_BOMB_ROUND=3600 JF_BUY_TIME=1 JF_ZM_SWIPE=0)'); if (st.startsWith('moved')) break; continue; }
         shots.push({ map, id: v.id, k: v.k, pr, boxes, f });
       }
     }
