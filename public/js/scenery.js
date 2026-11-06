@@ -6,7 +6,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const SCENES = {
   crate: { theme: 'sealed' }, // a giant playroom: the map draws the room itself
-  platform: { theme: 'ocean' }, // an offshore rig
+  platform: { theme: 'ocean', isles: false }, // an offshore rig in the North Sea (no desert islands out there)
   range: { theme: 'hills', flat: true },
   rooftop: { theme: 'city' }, // the street level (map deco) is the floor now, no skirt
   skyline: { theme: 'city' },
@@ -124,7 +124,7 @@ export function buildScenery(scene, map, id, voidMesh) {
     for (let i = 0; i < 50; i++) { const [x, z] = near(30, 520); const s = 25 + r() * 60; const m = new THREE.Mesh(new THREE.SphereGeometry(s, 7, 4, 0, Math.PI * 2, 0, Math.PI / 2), dune); m.scale.set(1.6, 0.25 + r() * 0.2, 1); m.rotation.y = r() * 3; m.position.set(x, floorY, z); group.add(m); }
     for (let i = 0; i < 14; i++) { const [x, z] = near(120, 520); const h = 40 + r() * 70, rr = 25 + r() * 35; const m = new THREE.Mesh(new THREE.CylinderGeometry(rr, rr * 1.25, h, 7), mesa); m.position.set(x, floorY + h / 2, z); group.add(m); const tp = new THREE.Mesh(new THREE.CylinderGeometry(rr * 1.02, rr * 1.02, 2, 7), mesaTop); tp.position.set(x, floorY + h, z); group.add(tp); }
   }
-  if (cfg.theme === 'ocean') {
+  if (cfg.theme === 'ocean' && cfg.isles !== false) {
     const isle = basic(fade(pal.isle, fog, 0.35)), sand = basic(fade(0xe8d8a0, fog, 0.35)), palm = basic(fade(0x2f6a2a, fog, 0.3));
     for (let i = 0; i < 18; i++) { const [x, z] = near(80, 600); const s = 20 + r() * 50; const b = new THREE.Mesh(new THREE.CylinderGeometry(s, s * 1.2, 3, 8), sand); b.position.set(x, floorY + 1.5, z); group.add(b); const h = new THREE.Mesh(new THREE.ConeGeometry(s * 0.7, s * 0.6, 6), isle); h.position.set(x, floorY + 3 + s * 0.3, z); group.add(h); for (let k = 0; k < 3; k++) { const p = new THREE.Mesh(new THREE.ConeGeometry(3, 8, 5), palm); p.position.set(x + (r() - 0.5) * s, floorY + 8, z + (r() - 0.5) * s); group.add(p); } }
   }

@@ -14,7 +14,8 @@ const CAMS = {
   forest: [-27, 2.4, 32, -0.7, -0.04], // from the campsite trail into the pines (night: the fog and the moon)
   deadmall: [0, 1.75, 25, 0, 0.02], // the entrance hall, looking into the mall
   crate: [13.05, 6.85, 13.05, 0.79, -0.25],
-  platform: [72, 34, 72, 0.79, -0.33], // far enough to see it's a slab floating over the clouds
+  platform: [46, 24, 44, 0.827, -0.286], // the rig from the south-east: the derrick, the living quarters and helideck, THE SNACK RUN
+  platform_sd: [14, 6, 9, 0.24, -0.05], // from THE TOAD on the middle platform across to the rig: the derrick (A), the crew's quarters
   rooftop: [-60, 22, 40, -0.938, -0.312], // up over the bank: its sign, the party block's pool and palms, the hotel
   rooftop_sd: [18, 6, 24, 0.633, -0.237], // over a low roof onto the party block: the pool, the cabanas, the penthouse
   suburb: [-45.96, 16.29, -45.96, -2.36, -0.21],

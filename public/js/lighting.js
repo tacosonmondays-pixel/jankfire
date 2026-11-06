@@ -44,7 +44,7 @@ const GLOW = {
   light: 0xfff2b0, lamp: 0xfff6c8, neonpink: 0xff2ad4, neoncyan: 0x19f0ff, neonyellow: 0xfff04d, neongreen: 0x5aff2a, neonred: 0xff2a3a,
   billboard: 0xffb0e8, signopen: 0xff4fd8, neonbar: 0x19f0ff, neonnoodle: 0xff4fd8, neonhotel: 0xfff04d, neonwork: 0xff2a3a,
   sitea: 0xff3a4a, siteb: 0x19e6ff, adbig1: 0xff4fd8, adstore: 0x19e6ff, adfun: 0x7aff1a, adclosed: 0xffe14d, flagcorp: 0x2a6cff,
-  lantern: 0xffc46a, hazard2: 0xffa21a, lava: 0xff5a14,
+  lantern: 0xffc46a, hazard2: 0xffa21a, lava: 0xff5a14, flame: 0xff7a1a,
   adcity1: 0x19e6ff, adcity2: 0xff2a3a, adcity3: 0x7aff1a, adcity4: 0xffe14d, adcity5: 0xff4fd8, adcity6: 0x19e6ff, tvstatic: 0xa0b0ff,
 };
 

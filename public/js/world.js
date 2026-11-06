@@ -11,6 +11,7 @@ import { updateBackrooms } from './backrooms.js';
 import { addVibe } from './vibe.js';
 import { addForest } from './forestmats.js';
 import { addIslands } from './islandmats.js';
+import { addRig } from './rigmats.js';
 import { updateForest, forestMap } from './forest.js';
 import { shredMap, updateShredPit } from './shredpit.js'; // the Warehouse's shredder pit: the drums, the glow, the grind
 import { buildProps, hasProp } from './props.js';
@@ -163,6 +164,7 @@ function makeMaterials() {
   addVibe(out, canvasTex, speckle); // the map pass look (vibe.js)
   addForest(out, canvasTex, speckle); // scary forest (forestmats.js)
   addIslands(out, canvasTex, speckle); // islands (islandmats.js)
+  addRig(out, canvasTex, speckle); // the oil rig (rigmats.js)
   aoMaterials(out); // baked corner AO in the vertex colours (lighting.js)
   for (const v of Object.values(out)) if (!v.mat.onBeforeCompile || v.mat.onBeforeCompile === THREE.Material.prototype.onBeforeCompile) hazify(v.mat, v.mat.isMeshBasicMaterial ? 0.45 : 1);
   return out;
