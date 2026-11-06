@@ -1,6 +1,13 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '5.0', date: '2026-11-06', title: 'THE LOCKER, REDONE', items: [
+    'NEW CUSTOMIZE SCREEN: your weapons down the left, the one you picked huge in the middle (drag to spin it), its stats and your numbers with it on the right, and tabs along the bottom: SKIN, WRAP, CHARM, EFFECT, FINISHER.',
+    'open a tab for a strip of tiles with a search box and filters. hover one to try it on the gun, click to equip.',
+    'RANDOM: pick it in any tab and you get a random one you own every time you spawn.',
+    'FAVOURITES: heart the ones you like (saved to your account), then tick "only use favourites" so Random only picks from those.',
+    'every weapon has a mastery bar and shows its damage, fire rate, mag, reload and range. grapples and sprays are still under GRAPPLE + SPRAY.',
+  ] },
   { v: '4.9', date: '2026-11-06', title: 'ROOFTOP, REBUILT', items: [
     'ROOFTOP got rebuilt from scratch: a block of rooftops over the city, joined by stair bridges and sky bridges, with a penthouse bar, a rooftop pool deck, a helipad and billboards. it has its own Plant & Defuse version too.',
     'the city below Rooftop and Skyline stopped flickering (stacked neon strips were fighting each other).',
