@@ -20,7 +20,7 @@ export const ACTIONS = [
   ['aim', 'Aim · heavy stab · pick card', 'Combat', ['Mouse2']],
   ['parry', 'Katana: parry', 'Combat', ['Mouse2'], 'katana'], // its own context: shares right click with aim, wins while the katana is out
   ['reload', 'Reload / redraw', 'Combat', ['KeyR']],
-  ['use', 'Plant / defuse (hold) · inspect', 'Combat', ['KeyF']],
+  ['use', 'Use (hold): plant · defuse · zombies buy + revive · inspect', 'Combat', ['KeyF']],
   ['slot1', 'Primary', 'Weapons', ['Digit1']],
   ['slot2', 'Secondary', 'Weapons', ['Digit2']],
   ['slot3', 'Melee', 'Weapons', ['Digit3']],
