@@ -138,7 +138,7 @@ BOT_GUNS.push(...RIFLE_BOTS); // the rifle pack (server/rifles.js)
 BOT_GUNS.push('pistol', 'akimbo', 'sawnoff'); // the plain sidearms
 if (process.env.JF_PIN_DUR) WEAPONS.nailgun.nails.dur = Number(process.env.JF_PIN_DUR) || WEAPONS.nailgun.nails.dur; // test knob: longer nail gun pins (screenshots)
 if (process.env.JF_BOT_GUNS) BOT_GUNS.splice(0, BOT_GUNS.length, ...process.env.JF_BOT_GUNS.split(',').filter((w) => Object.hasOwn(WEAPONS, w))); // test knob: JF_BOT_GUNS=nailgun,cart
-const SKIN_F = ['default', 'default', 'gold', 'chrome', 'pink', 'camo', 'neon', 'rainbow', 'galaxy', 'lava', 'missing', 'tiger', 'fade', 'carbon', 'tape'];
+const SKIN_F = ['default', 'default', 'gold', 'chrome', 'pink', 'camo', 'neon', 'rainbow', 'galaxy', 'lava', 'missing', 'tiger', 'fade', 'carbon', 'tape', 'cherry', 'sky', 'hazard', 'china', 'seigaiha', 'sakura', 'denim', 'pizza', 'tokyo', 'holo', 'corp', 'meat'];
 const SKIN_H = ['none', 'none', 'none', 'tophat', 'party', 'crown', 'cowboy', 'propeller', 'cone', 'eyes', 'duck'];
 const SKIN_E = ['none', 'none', 'none', 'sparkles', 'flames', 'money', 'smoke'];
 const SKIN_KEYS = { f: /^[a-z_]{1,24}$/ };
