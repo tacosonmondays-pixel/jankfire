@@ -7,6 +7,7 @@ import { sideHand } from './sidearms.js'; // Lefty & Righty: the L / R stickers
 import { INFECT } from '/shared/modes.js';
 import { G } from './ctx.js';
 import { buildCharacter, buildWeapon, makeNameTag, makeShadow, cardTex, setKatana, freeTree, teamLook } from './models.js';
+import { katanaRemote } from './katanavm.js';
 import { fx, makeBeam, setBeam } from './fx.js';
 import { emitSkinFx } from './skins.js';
 import { wreckRemote, ballBoxes, wreckDispose } from './wreck.js';
@@ -18,6 +19,7 @@ import { newTwirl, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
 import { makeRope, setRope, setRopeSkin } from './grapple.js';
 import { sfx } from './audio.js';
 import { remoteShredder } from './shredder.js';
+import { locoPose } from './loco.js'; // legs, body and the free arm: walk / run / sprint / zoom, jumps, slide, slip
 
 // players ignore fog, glow a bit, and get an outline in their colour so you can spot them across the map
 const noFog = new Map();
@@ -436,15 +438,11 @@ export class Remote {
     ch.armL.rotation.x = this.pitch;
     ch.armL.rotation.y = this.weaponMeshL ? 0.6 : 0; // akimbo: the left arm out front with its own gun
 
-    // stiff mannequin walk: hips swing, knees only bend one way (unless this one is broken)
-    const hs = Math.hypot(this.vel[0], this.vel[2]);
-    const grounded = Math.abs(this.vel[1]) < 1;
-    this.walk += dt * Math.min(hs, 14) * 1.5;
-    const amp = grounded ? Math.min(1, hs / 8) * 0.8 : 0.35;
-    const sw = Math.sin(this.walk);
-    ch.legL.rotation.x = sw * amp;
-    ch.legR.rotation.x = -sw * amp;
-    // frozen by snowballs: an ice block, no walking
+    // stiff mannequin locomotion (loco.js): stride by distance, gaits by speed, jumps, slide, slip. the broken one's knees bend the wrong way
+    this.rt = rt;
+    locoPose(this, dt, now);
+    const hs = this.lo.spd, grounded = this.lo.grounded;
+    // frozen by snowballs: an ice block, no walking (loco.js holds the pose)
     const frozen = now < (this.frozenUntil || 0);
     if (frozen && !this.ice) {
       this.ice = new THREE.Mesh(new THREE.BoxGeometry(1.0, 2.3, 1.0), new THREE.MeshBasicMaterial({ color: 0xbfe8ff, transparent: true, opacity: 0.45, depthWrite: false }));
@@ -452,13 +450,9 @@ export class Remote {
       ch.root.add(this.ice);
     }
     if (this.ice) this.ice.visible = frozen;
-    if (frozen) this.walk -= dt * Math.min(hs, 14) * 1.5;
     // cape streams out behind you the faster you go (negative tilt = backwards); wings flap in the air
     if (ch.cape) { const tgt = -(0.1 + Math.min(1.15, hs * 0.035) + (hs > 2 ? Math.sin(now * 0.014) * 0.07 : 0)); ch.cape.rotation.x += (tgt - ch.cape.rotation.x) * Math.min(1, dt * 8); }
     if (ch.wings) { const f = grounded ? 0 : Math.sin(now * 0.02) * 0.6; ch.wings[0].rotation.y = 0.25 + f; ch.wings[1].rotation.y = -0.25 - f; }
-    const bend = ch.jank.wrongKnee ? -1 : 1;
-    ch.kneeL.rotation.x = Math.max(0, -sw) * amp * 1.2 * bend + (grounded ? 0 : 0.8);
-    ch.kneeR.rotation.x = Math.max(0, sw) * amp * 1.2 * bend + (grounded ? 0 : 0.8);
 
     // random twitches: head snaps, arm glitches out for a moment
     if (now > this.twitchNext) {
@@ -467,20 +461,13 @@ export class Remote {
       this.twitchNext = now + 1500 + Math.random() * 5000;
     }
     const tw = now < this.twitchUntil;
-    ch.head.rotation.x = this.pitch * 0.5;
+    ch.head.rotation.x = this.pitch * 0.5 + this.lo.hx; // (+ the head keeping level through leans and bounces)
     const cg = (now - (this.coughT || -1e9)) / 1000; // coughing: three hacking jerks forward, fading out
     if (cg >= 0 && cg < 1) ch.head.rotation.x += Math.abs(Math.sin(cg * Math.PI * 3)) * (1 - cg) * 0.7;
     ch.head.rotation.y = tw && this.twitch === 'head' ? 1.4 : 0;
     ch.head.rotation.z = ch.jank.tilt + (tw && this.twitch === 'head' ? 0.6 : 0);
-    if (tw && this.twitch === 'arm') ch.armL.rotation.z = 1.8; else ch.armL.rotation.z = 0;
+    ch.armL.rotation.z = this.lo.az + (tw && this.twitch === 'arm' ? 1.8 : 0); // (az: the free arm's elbow turned back)
 
-    const slipping = this.f & FLAGS.SLIP;
-    const sliding = this.f & FLAGS.SLIDE;
-    const crouching = this.f & FLAGS.CROUCH;
-    // crouch: sink the body and bend the knees
-    const sink = crouching ? 0.45 : 0;
-    ch.body.position.y += (-sink - ch.body.position.y) * Math.min(1, dt * 14);
-    if (crouching) { ch.legL.rotation.x = -0.9; ch.legR.rotation.x = -0.9; ch.kneeL.rotation.x = 1.6; ch.kneeR.rotation.x = 1.6; }
     // melee swing everyone else can see
     const st = (now - (this.swingT || 0)) / 380;
     if (st >= 0 && st < 1) {
@@ -497,7 +484,13 @@ export class Remote {
       ch.arm.rotation.x = this.pitch + (0.35 + jolt - this.pitch) * k;
       ch.arm.rotation.y = 0.75 * k;
       ch.slot.rotation.set(0.85 * k, 0.55 * k, 0);
-    } else if (ch.slot.rotation.x) ch.slot.rotation.set(0, 0, 0);
+      this.parryK = k;
+    } else { if (ch.slot.rotation.x && this.w !== 'katana') ch.slot.rotation.set(0, 0, 0); this.parryK = 0; }
+    // loco.js leans the whole body (sprint, crouch, slide): the arms take the lean back out so the gun still points where
+    // they aim. (before the katana's two-handed grip, which reaches for wherever the blade ended up)
+    const aimLn = this.lo.aimLean;
+    if (aimLn) { ch.arm.rotation.x -= aimLn; if (this.lo.freeK < 0.999) ch.armL.rotation.x -= aimLn * (1 - this.lo.freeK); }
+    katanaRemote(this, this.w === 'katana' && !!this.weaponMesh, this.parryK); // two hands on it: kamae, the left arm on the kashira
     // marker + name tag stay readable far away
     G.camera.getWorldPosition(camPos);
     const dist = camPos.distanceTo(ch.root.position);
@@ -514,9 +507,6 @@ export class Remote {
     this.tag.scale.set(1.8 * Math.max(1, dist / 22), 0.45 * Math.max(1, dist / 22), 1);
     this.tag.position.y = 2.3 + Math.max(0, dist / 22 - 1) * 0.25;
     tacLook(this); tacSteps(this, dt); // Plant & Defuse: no outline / tag on enemies, footsteps unless they slow walk
-    const targetTilt = slipping ? -1.3 + Math.sin(now * 0.02) * 0.3 : sliding ? -0.6 : 0;
-    ch.body.rotation.x += (targetTilt - ch.body.rotation.x) * Math.min(1, dt * 12);
-    ch.body.rotation.z = slipping ? Math.sin(now * 0.013) * 0.6 : ch.jank.lean * 0.3;
     this.updateNap(now);
 
     if (this.g) {
@@ -528,6 +518,7 @@ export class Remote {
 
     const sh = raycast([x, y + 0.1, z], [0, -1, 0], 80, BOXES);
     if (sh) { this.shadow.visible = true; this.shadow.position.set(x, sh.point[1] + 0.03, z); } else this.shadow.visible = false;
+    this.gy = sh ? sh.point[1] : -1e9; // the floor under them: loco.js tells ground from air by it (next frame)
     rigRemote(this, dt, now, sh); // overdrive rig: the exo-frame (and its afterimages) instead of the mannequin
 
     const ld = this.look();

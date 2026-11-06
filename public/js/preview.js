@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { buildWeapon, freeTree, M } from './models.js';
 import { withEnv } from './glbkit.js';
 import { makeSkinSystems, emitSkinFx } from './skins.js';
+import { idlePose } from './loco.js';
 
 let renderer, scene, cam, holder, cur = null, systems, canvas, fit = 1, sway = 0, res = 0.5, swayT = 0;
 const scaleU = { value: 200 };
@@ -34,6 +35,7 @@ export function resizePreview() {
   scaleU.value = (h * res) / (2 * Math.tan((cam.fov * Math.PI) / 360));
 }
 
+let idleT = 0;
 let shown = null; // what's on show, so a skin model that lands late can replace its stand-in
 export function refreshPreview() { if (shown) showPreview(shown[0], shown[1]); }
 export function showPreview(id, skin) {
@@ -83,6 +85,8 @@ export function renderPreview(dt) {
   if (!renderer || !cur) return;
   if (sway) { swayT += dt; holder.rotation.y = sway + Math.sin(swayT * 0.7) * 0.45; holder.position.y = Math.sin(swayT * 1.9) * 0.012; } // main menu: a slow idle sway, not a spin
   else holder.rotation.y += dt * 0.9;
+  const pch = holder.children[0] && holder.children[0].userData.ch; // a mannequin on show: it breathes and shifts its weight
+  if (pch) idlePose(pch, (idleT += dt));
   holder.updateMatrixWorld(true);
   emitSkinFx(systems, cur, dt, Math.min(2, fit * 0.6));
   systems.update(dt);

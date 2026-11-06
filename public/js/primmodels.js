@@ -42,7 +42,7 @@ export function nailgunBuild(g) { // same layout as the Blender one: drive forwa
   grip.add(bx(0.065, 0.03, 0.095, K, 0, -0.085, 0, 'b'));
   g.add(grip);
   g.add(cyl(0.012, 0.04, BR, 0, AY - 0.31, 0.045, 'y', 6, 'n'));
-  const mag = new THREE.Group(); mag.position.set(0, AY - 0.16, -0.24); mag.rotation.x = 0.37;
+  const mag = new THREE.Group(); mag.position.set(0, AY - 0.16, -0.24); mag.rotation.x = 0.37; mag.name = 'mag';
   mag.add(bx(0.036, 0.3, 0.1, 0xb8bec6, 0, 0, 0, 'a'));
   for (let i = 0; i < 12; i++) mag.add(bx(0.04, 0.006, 0.06, 0xc8d0d8, 0, -0.13 + i * 0.022, -0.01, 'n'));
   g.add(mag);
