@@ -440,6 +440,7 @@ export function secFireDown(id, now) {
 // right click with the remote out = REWIND (true = it took the click)
 export function secAimDown() {
   if (W.cur !== 'remote' || !ME.alive) return false;
+  if (W.eco && W.eco.dry('remote')) return true; // Plant & Defuse: out of batteries
   remoteClick(1, nowMs());
   return true;
 }

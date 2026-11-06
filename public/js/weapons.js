@@ -474,7 +474,7 @@ const VM = {
 VM.bloodcross = { p: [0.165, -0.17, -0.33], r: [0.13, 0.43, 0.28], s: 1.22 };
 RECOIL.bloodcross = { back: 0.5, up: 3.5, roll: 1.2, side: 0.15, punch: 0.018 };
 // the new secondaries (secondaries.js): squirt pistol, taser, tv remote held like a pistol, pointed at the screen
-Object.assign(VM, { water: { p: [0.17, -0.165, -0.33], r: [0, 0.06, 0], s: 0.95 }, taser: { p: [0.17, -0.165, -0.31], r: [0, 0.06, 0], s: 1.15 }, remote: { p: [0.16, -0.16, -0.3], r: [0.12, 0.08, -0.05], s: 1.2 } });
+Object.assign(VM, { water: { p: [0.18, -0.18, -0.355], r: [0.02, 0.08, 0], s: 0.74 }, taser: { p: [0.165, -0.14, -0.31], r: [0.03, 0.12, -0.1], s: 0.95 }, remote: { p: [0.15, -0.14, -0.29], r: [0.35, 0.12, -0.12], s: 0.95 } });
 const bcQ = new THREE.Quaternion(), bcY = new THREE.Vector3(0, 1, 0); // opening + closing the fist
 let vmRoot;
 const models = {};
