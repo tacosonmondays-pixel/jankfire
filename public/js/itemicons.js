@@ -11,26 +11,43 @@ import { buildProjectile, buildWeapon, freeTree } from './models.js';
 import { authored, nodeIn } from './glbkit.js';
 import { instantCamera, calculator, lcdTexture, nvGoggles } from './gearmodels.js';
 import { wandMesh } from './wand.js';
+import { lookModel, modelOf, paintLook, wreckShell } from './streaklooks.js'; // killstreak looks
+import { G } from './ctx.js';
 
 const A = (id) => { const b = authored(id); return b ? b.obj : null; };
 const grp = (...o) => { const g = new THREE.Group(); for (const x of o) if (x) g.add(x); return g; };
 // all the parts or nothing (a half-built picture is worse than the drawing)
 const all = (parts, make) => (parts.every(Boolean) ? make(...parts) : (parts.forEach((p) => p && freeTree(p)), null));
 
-// killstreaks: the model, its colour (shadow + rim light), and how it faces the camera
+// killstreaks: the model, its colour (shadow + rim light), and how it faces the camera. sk = the streak's look
+// (streaklooks.js): its own model if it has one (the default until that file lands), in its wrap
+const fitTo = (o, size) => { const bx = new THREE.Box3().setFromObject(o), v = bx.getSize(new THREE.Vector3()); o.scale.multiplyScalar(size / Math.max(v.x, v.y, v.z, 1e-3)); return o; };
+const alt = (sk, id) => lookModel(modelOf(sk, id));
 const STREAK = {
-  moonboots: { c: '#b0b8ff', b: () => A('x_moonboots'), yaw: 2.3 },
-  chickenstrike: { c: '#ff3030', b: () => all([A('x_target'), buildProjectile('chicken')], (t, ch) => { ch.position.set(0.02, 0.42, 0.12); ch.rotation.set(-0.9, Math.PI - 0.5, 0); ch.scale.setScalar(1.25); return grp(t, ch); }), yaw: 0, pitch: 0.75 },
-  scythe: { c: '#3ee6c8', b: () => buildWeapon('scythe'), yaw: -1.35, roll: 0.55 },
+  moonboots: { c: '#b0b8ff', b: (sk) => alt(sk, 'moonboots') || A('x_moonboots'), yaw: 2.3 },
+  chickenstrike: { c: '#ff3030', b: (sk) => { const v = alt(sk, 'chickenstrike'); return all([A('x_target'), v ? fitTo(v, 0.8) : buildProjectile('chicken')], (t, ch) => { ch.position.set(0.02, 0.42, 0.12); ch.rotation.set(-0.9, Math.PI - 0.5, 0); if (!v) ch.scale.setScalar(1.25); if (sk) paintLook(ch, sk); return grp(t, ch); }); }, yaw: 0, pitch: 0.75, own: true },
+  scythe: { c: '#3ee6c8', b: (sk) => buildWeapon('scythe', sk), yaw: -1.35, roll: 0.55, own: true },
   overdrive: { c: '#ff2bd6', b: () => A('x_rig'), yaw: 2.6, rim: '#2ef2ff' },
-  spinbot: { c: '#ff4fd8', b: () => A('x_spinbot'), yaw: 2.95, pitch: 0.08 },
-  wreckingball: { c: '#ffe14d', b: () => A('x_wreck'), yaw: 2.7 },
-  satellite: { c: '#4fa8ff', b: () => A('x_satellite'), yaw: 2.5, pitch: 0.35 },
-  giantduck: { c: '#b07dff', b: () => all([A('x_blackhole'), buildProjectile('duck')], (h, d) => { d.scale.setScalar(0.55); d.position.set(-0.34, 0.06, 0.26); d.rotation.y = Math.PI - 0.9; return grp(h, d); }), yaw: 0, pitch: 0.22 },
+  spinbot: { c: '#ff4fd8', b: (sk) => alt(sk, 'spinbot') || A('x_spinbot'), yaw: 2.95, pitch: 0.08 },
+  wreckingball: { c: '#ffe14d', b: (sk) => { const o = A('x_wreck'); if (o && sk) wreckShell(o, sk); return o; }, yaw: 2.7, own: true },
+  satellite: { c: '#4fa8ff', b: (sk) => alt(sk, 'satellite') || A('x_satellite'), yaw: 2.5, pitch: 0.35 },
+  giantduck: { c: '#b07dff', b: (sk) => { const v = alt(sk, 'giantduck'); return all([A('x_blackhole'), v ? fitTo(v, 0.5) : buildProjectile('duck')], (h, d) => { if (!v) d.scale.setScalar(0.55); d.position.set(-0.34, 0.06, 0.26); d.rotation.y = Math.PI - 0.9; if (sk) paintLook(d, sk); return grp(h, d); }); }, yaw: 0, pitch: 0.22, own: true },
 };
-export function streakPic(id) {
+// the streak's model in a look, for the big Customize view (preview.js); a Group either way
+export function streakModel(id, sk) {
+  const s = STREAK[id], look = Array.isArray(sk) ? sk : null;
+  const o = s && s.b(look);
+  if (o && look && !s.own) paintLook(o, look);
+  const g = new THREE.Group(); if (o) g.add(o);
+  return g;
+}
+// skin: the look to draw (default: what you wear)
+export function streakPic(id, skin) {
   const s = STREAK[id];
-  return s ? studioIcon('streak3d:' + id, s.b, { w: 96, h: 96, accent: s.c, yaw: s.yaw, pitch: s.pitch, roll: s.roll, rim: s.rim }) : '';
+  if (!s) return '';
+  const sk = skin !== undefined ? skin : (G.equipped || {})[id];
+  const look = Array.isArray(sk) ? sk : null;
+  return studioIcon('streak3d:' + id + (look ? '|' + look.join(',') : ''), () => { const o = s.b(look); if (o && look && !s.own) paintLook(o, look); return o; }, { w: 96, h: 96, accent: s.c, yaw: s.yaw, pitch: s.pitch, roll: s.roll, rim: s.rim });
 }
 
 // items: 96 x 60 like the old drawings (the HUD and the loadout tiles size them)

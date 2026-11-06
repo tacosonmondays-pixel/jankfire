@@ -18,6 +18,8 @@ import { buildRig, poseRig, freeRig, setRigColor, rigGhost, updateGhosts, hideGh
 import { armsReady, armsOn, armsOff, armsHide, playArms, armsStep, armsJolt, updateArms } from './rigarms.js';
 import { rigsfx, rigHum } from './rigsfx.js';
 import { whenLate } from './glbkit.js';
+import { lookOf } from './streaklooks.js';
+const rigWrap = (owner) => { const sk = lookOf(owner, 'overdrive'); return sk && sk[0] !== 'default' ? sk[0] : ''; }; // your killstreak look: the plates in a wrap
 
 export { rigBoxes };
 const P = RIG.punch, L = RIG.leap, M = RIG.miss, H = RIG.hack;
@@ -46,7 +48,9 @@ function startLocal(dur, sh) {
   W.held = false; W.aimHeld = false; W.dashHeld = false; W.charge = 0; W.exhale = 0; W.aim = 0; W.zoom = 1; W.scoped = false;
   ME.dashing = false; ME.sliding = false;
   hud.scope(false); hud.ammo(null); hud.meter(null); hud.cards(null);
-  if (!RS.model) RS.model = buildRig(G.myColor);
+  const fin = rigWrap('me');
+  if (RS.model && RS.fin !== fin) { freeRig(RS.model); RS.model = null; } // you changed its wrap since last time
+  if (!RS.model) { RS.model = buildRig(G.myColor, { finish: fin }); RS.fin = fin; }
   else setRigColor(RS.model, G.myColor);
   RS.model.root.scale.setScalar(1.2);
   RS.model.onStep = null;
@@ -505,9 +509,10 @@ export function rigRemote(r, dt, now, floor) {
     return;
   }
   const root = r.ch.root;
-  if (!st || st.root !== root) { // (re)build: first time, or the mannequin was rebuilt (new look / team colour)
+  const fin = rigWrap(r.skins || r.id);
+  if (!st || st.root !== root || st.fin !== fin) { // (re)build: first time, the mannequin was rebuilt (new look / team colour), a new wrap
     if (st) freeRig(st.inst);
-    st = r.rig = { inst: buildRig(r.color, { outline: true }), root, on: false, onT: 0, chT: 0, lpT: 0, thrT: 9, punchT: 9, punchC: 0, dashT: 0, missT: 9, hackT: 9, hitT: 9, landT: 9, landK: 0, wasAir: false, minVy: 0, ghostT: 0, ghostN: 0 };
+    st = r.rig = { inst: buildRig(r.color, { outline: true, finish: fin }), fin, root, on: false, onT: 0, chT: 0, lpT: 0, thrT: 9, punchT: 9, punchC: 0, dashT: 0, missT: 9, hackT: 9, hitT: 9, landT: 9, landK: 0, wasAir: false, minVy: 0, ghostT: 0, ghostN: 0 };
     root.add(st.inst.root);
     st.inst.onStep = (k) => remoteStep(r, k);
   }
