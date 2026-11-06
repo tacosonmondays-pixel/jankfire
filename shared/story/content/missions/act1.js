@@ -282,7 +282,7 @@ export const MISSIONS_ACT1 = {
       withheld: ["Who Mina is (Act II, m10).", "That Overtime is a recording too (Act II)."],
     },
     steps: [
-      { id: "sunset", text: "", goal: { type: "flag", flag: "seen_c4" }, scene: "c4_clocking_in", marker: "bottom:sunset_spot" },
+      { id: "sunset", text: "", goal: { type: "flag", flag: "seen_c4" }, scene: "c4_clocking_in", marker: "bottom:sunset_spot", do: ["fate:mina=gut"] },
       { id: "fight", text: "stop mr. overtime", goal: { type: "killBoss", boss: "overtime_1" }, boss: "overtime_1", marker: "gut:border" },
       { id: "rip", text: "", goal: { type: "flag", flag: "heart_ripped" }, scene: "mo_heart_rip", do: ["give:core_cracked_punch_clock"] },
       { id: "after", text: "", goal: { type: "talk", who: "overtime", talk: "rescheduled" } },

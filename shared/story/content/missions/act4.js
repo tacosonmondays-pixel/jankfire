@@ -129,19 +129,19 @@ export const MISSIONS_ACT4 = {
       withheld: ["Page 6 and the 17:10 call (Act V)."],
     },
     parts: [
-      { id: "headcount", title: "HEADCOUNT (Lumps' plan)", if: "flag:plan_lumps", do: ["flag:headcount_done"],
+      { id: "headcount", title: "HEADCOUNT (Lumps' plan)", if: "flag:plan_lumps", do: ["flag:headcount_done", "flag:plan_built"],
         steps: [
           { id: "onboard", text: "attend hask's onboarding interview at the bleach line", goal: { type: "talk", who: "pritchard", talk: "onboarding" }, marker: "corphill:bleach_line" },
           { id: "table", text: "get the bottom's people onto the staffing table", goal: { type: "interact", target: "corphill:bleach_line" }, notes: "a stealth hack in the onboarding office: type names in while Pritchard keeps the guards talking" },
           { id: "dot", text: "get dot out of the deep wall with the new paperwork", goal: { type: "escort", who: "dot", zone: "bottom:long_stairs" }, if: "fate.dot=gut", do: ["fate:dot=freed"] },
         ] },
-      { id: "demolition", title: "DEMOLITION (Gordo's plan)", if: "flag:plan_gordo", do: ["flag:demolition_done"],
+      { id: "demolition", title: "DEMOLITION (Gordo's plan)", if: "flag:plan_gordo", do: ["flag:demolition_done", "flag:plan_built"],
         steps: [
           { id: "sub", text: "plant charges at the number works substation", goal: { type: "interact", target: "numberworks:press" }, marker: "numberworks:press" },
           { id: "esc", text: "plant charges on the big escalator's motor", goal: { type: "interact", target: "checkout:escalator" }, marker: "checkout:escalator", notes: "a climb up the 2 km escalator against its direction, with Overtime's lanyard on the employee gates" },
           { id: "det", text: "", goal: { type: "talk", who: "gordo", talk: "detonator" } },
         ] },
-      { id: "print_run", title: "PRINT RUN (Auntie's plan)", if: "flag:plan_auntie", do: ["flag:print_ready"],
+      { id: "print_run", title: "PRINT RUN (Auntie's plan)", if: "flag:plan_auntie", do: ["flag:print_ready", "flag:plan_built"],
         steps: [
           { id: "relay", text: "seize the ☺ corp news relay under the smiling fountain", goal: { type: "interact", target: "corphill:fountain" }, marker: "corphill:fountain", talk: "chad" },
           { id: "press", text: "get the price press ready to print six pages", goal: { type: "interact", target: "numberworks:press" }, marker: "numberworks:press" },
