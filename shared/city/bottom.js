@@ -126,8 +126,14 @@ function lostFound(B) {
   B.prop('machine', -189, y + 0.15, z0 + 3.2, Math.PI, 1.35, 0); // (models face -z: turned to face the depot's open front) B.light(-189, y + 4, z0 + 7, 0xff4fd8, 18, 1.4); B.light(-189, y + 2, z0 + 6, 0x4fd8ff, 10, 0.8); B.light(-189, y + 10, z0 + 13, 0xb0a0ff, 14, 0.6); // the Machine glows; moonlight through the hole
   B.add(x0 + 4, y + 0.15, z0 + 14, x0 + 16, y + 1.1, z0 + 15.2, 'wood'); B.prop('returns_counter', x0 + 10, y + 0.15, z0 + 14.6, Math.PI, 1, 0);
   for (let i = 0; i < 4; i++) { const sx = x1 - 6 - i * 0.01; B.add(sx - 1.2, y + 0.15, z0 + 4 + i * 4.5, sx, y + 3.2, z0 + 7 + i * 4.5, 'metal', { tint: 0x9aa8b8 }); B.prop('lostpile', sx - 3, y + 0.15, z0 + 5.5 + i * 4.5, r() * 6.28, 1, i); }
+  // the Locker (the stash) beside the Machine, and Bev's clinic corner under the mezzanine: a chair, jars, a bucket, a lamp
+  for (let i = 0; i < 3; i++) { B.prop('locker', -182.2 + i * 0.55, y + 0.15, z0 + 4.2, Math.PI, 1, i); }
+  B.add(-182.5, y + 0.15, z0 + 3.9, -180.4, y + 1.95, z0 + 4.5, 'metal', { hide: true });
+  B.prop('officechair', -207, y + 0.15, 184.2, 0.3, 1.15, 0); B.prop('organjar', -209.5, y + 0.15, 183.2, 0.5, 1, 0); B.prop('organjar', -210.6, y + 0.15, 184.6, 2, 0.8, 0);
+  B.prop('firebarrel', -204.4, y + 0.15, 183.2, 0, 0.6, 0); B.light(-207, y + 3.2, 185.5, 0x9ae8ff, 8, 1.1);
+  B.out.marks.push({ id: 'bottom.locker', p: [-181, y + 0.15, 184.4] }, { id: 'bottom.clinic', p: [-207, y + 0.15, 186.5] });
   // a hall full of other people's stuff: lost-property heaps, soup crates, chairs round a barrel (a light)
-  for (let i = 0; i < 9; i++) { const lx = x0 + 18 + (i % 3) * 7 + r() * 2, lz = z0 + 9 + Math.floor(i / 3) * 5 + r() * 2; if (Math.abs(lx + 189) < 5 && lz < z0 + 12) continue; B.prop('lostpile', lx, y + 0.15, lz, r() * 6.28, 0.8 + r() * 0.5, i); }
+  for (let i = 0; i < 9; i++) { const lx = x0 + 18 + (i % 3) * 7 + r() * 2, lz = z0 + 9 + Math.floor(i / 3) * 5 + r() * 2; if ((Math.abs(lx + 189) < 5 && lz < z0 + 12) || (Math.abs(lx + 181) < 3 && lz < z0 + 10)) continue; /* (keep the Machine and the Locker clear) */ B.prop('lostpile', lx, y + 0.15, lz, r() * 6.28, 0.8 + r() * 0.5, i); }
   for (let i = 0; i < 4; i++) B.prop('crate_soup', x0 + 3 + i * 1.2, y + 0.15, z1 - 4, r(), 1, 0);
   B.prop('firebarrel', x1 - 14, y + 0.15, z1 - 6, 0, 1, 0); B.light(x1 - 14, y + 1.7, z1 - 6, 0xff8a2a, 10, 1.1);
   for (let i = 0; i < 5; i++) { const a = i * 1.26; B.prop('pchair', x1 - 14 + Math.cos(a) * 2.2, y + 0.15, z1 - 6 + Math.sin(a) * 2.2, -a - Math.PI / 2, 1, i); }

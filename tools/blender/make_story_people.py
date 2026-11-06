@@ -603,7 +603,7 @@ def head_kit(mb, k, hy, face, plain, mouth, nose_r, ear_r, wx=1.0, n=12, nose=(0
         no = ell((0, hy + 0.065 * k, -0.118 * k), tuple(v * k for v in nose), mb, 'nose', n=6, rings=4); fit(no, nose_r); out.append(no)
     if ears:
         for sx in (-1, 1):
-            e = ell((sx * 0.099 * k * wx, hy + 0.07 * k, 0.012 * k), (0.014 * k, 0.03 * k, 0.022 * k), mb, 'ear', n=6, rings=4); fit(e, ear_r); out.append(e)
+            e = ell((sx * 0.099 * k * wx, hy + 0.07 * k, 0.012 * k), (0.014 * k, 0.03 * k, 0.022 * k), mb, 'ear', n=5, rings=4); fit(e, ear_r); out.append(e)
     return out, jw, (0, hy + 0.03 * k, 0.0), hy + 0.104 * k, hy + 0.215 * k
 
 
@@ -804,8 +804,8 @@ def local_cook():
     grime(ap, 0xd8b088, p=0.18, seed=33, blob=7)
     for (x, y, r, c) in ((30, 70, 6, 0xe86a3a), (90, 52, 4, 0xe8b040), (70, 84, 5, 0xb85a2a), (20, 40, 3, 0xe86a3a)): px_disc(ap, x, y, r, c)
     drip(ap, 31, 74, 10, 0xe86a3a, 2); drip(ap, 70, 88, 6, 0xb85a2a, 1)
-    write(ap, 'SOUP', 22, 34, 4, 0xff3030, wob=2, seed=3, bold=True)
-    write(ap, 'hot', 48, 68, 2, INK, wob=1, seed=4)
+    write(ap, 'SOUP', 22, 12, 4, 0xff3030, wob=2, seed=3, bold=True)
+    write(ap, 'hot', 50, 46, 2, INK, wob=1, seed=4)
     tie = T.alloc('tie', 32, 32); crust(tie, 0xf0ece4, 0.05, seed=34)
     mp = mat('lck_apron_paint', 0xffffff, rough=0.8, tex=T.image())
     Gl = Pack('lck_gloss_t', 32)
@@ -815,7 +815,7 @@ def local_cook():
     P = skel(rig, H, sh=0.235, hipw=0.115, legs=0.48, spine_k=0.57, chest_k=0.69)
     k = 1.05; hy = H - 0.215 * k + 0.004
     heads, jw, jawp, eyeH, top = head_kit(mb, k, hy, B.uv('face'), skin, mouth, cheek, cheek, wx=1.14, nose=(0.03, 0.032, 0.03))
-    stc = ell((0, hy + 0.035 * k, -0.115 * k), (0.06, 0.016, 0.022), mb, 'stache', n=6, rings=4); fit(stc, hairc)
+    stc = ell((0, hy + 0.035 * k, -0.115 * k), (0.06, 0.016, 0.022), mb, 'stache', n=6, rings=3); fit(stc, hairc)
     # the hairnet: a bun of hair under a white net, over the top of the head
     nb = blob([(hy + 0.13 * k, 0.106 * k * 1.14, 0.12 * k, 0, 0.006), (hy + 0.18 * k, 0.098 * k * 1.14, 0.114 * k, 0, 0.01),
                (hy + 0.225 * k, 0.07 * k * 1.14, 0.09 * k, 0, 0.016), (hy + 0.25 * k, 0.03 * k, 0.04 * k, 0, 0.02)], mb, 'hairnet', n=10, p=2.4, cap=(None, 0.004))
@@ -841,7 +841,7 @@ def local_cook():
             D['hand'] += [hdl, bowl, sp]
         arm_done(rig, s, D, X)
     rig.add('head', heads, stc, nb); rig.add('jaw', jw)
-    nk = limb((0, P['neck'][1] - 0.02, 0.012), (0, hy + 0.01, 0.012), 0.07, 0.068, mb, 'neck', n=8); fit(nk, skin); rig.add('neck', nk)
+    nk = limb((0, P['neck'][1] - 0.02, 0.012), (0, hy + 0.01, 0.012), 0.07, 0.068, mb, 'neck', n=8, dome=(False, False)); fit(nk, skin); rig.add('neck', nk)
     # big and round: a striped shirt over a huge belly, the SOUP apron hanging off the neck, a towel on the left shoulder
     cy = P['chest'][1]; sy = P['spine'][1]
     ch = blob([(cy - 0.06, 0.27, 0.2, 0, -0.03), (cy + 0.06, 0.275, 0.19, 0, -0.02), (cy + 0.16, 0.268, 0.168, 0, -0.006), (P['armL'][1] - 0.01, 0.235, 0.14, 0, 0.0),
@@ -850,7 +850,7 @@ def local_cook():
     bump = lambda y: math.exp(-((y - (sy + 0.04)) / 0.15) ** 2)  # the belly: rounder and further out at navel height
     def belly(x, y, z):
         if z < 0: z = z * (1 + 0.55 * bump(y)) - 0.02 * bump(y)
-        return (x * (1 + 0.06 * bump(y)), y, z)
+        return (x * (1 + 0.13 * bump(y)), y, z)
     bys = [P['hips'][1] - 0.02, sy - 0.06, sy + 0.04, sy + 0.13, cy]
     bl = blob([(y, 0.27, 0.2, 0, -0.02) for y in bys], mb, 'shirt_belly', n=12, p=2.4, cap=(None, None), fx=belly)
     fit(bl, B.uv('shirt'))
@@ -859,20 +859,23 @@ def local_cook():
     abl = front_shell([(y, 0.282, 0.212, 0, -0.02) for y in [P['hips'][1] + 0.0, sy - 0.06, sy + 0.04, sy + 0.13, cy]],
                       -math.pi / 2 - 0.9, -math.pi / 2 + 0.9, mp, 'apron', cols=6)
     for v in abl.data.vertices: g = G.gg(v.co); v.co = gv(*belly(*g))
-    skirt = front_shell([(0.6, 0.262, 0.2, 0, -0.1), (0.75, 0.272, 0.21, 0, -0.07), (P['hips'][1] + 0.03, 0.28, 0.212, 0, -0.04)],
+    skirt = front_shell([(0.6, 0.262, 0.2, 0, -0.1), (0.75, 0.272, 0.21, 0, -0.07), (P['hips'][1] + 0.0, 0.25, 0.176, 0, -0.02)],
                         -math.pi / 2 - 0.85, -math.pi / 2 + 0.85, mp, 'skirt', cols=6)
     lo = [-0.3, 0.6, -0.5]; hi = [0.3, cy, 0.0]
     for o in (abl, skirt): uv_fit(o, T.uv('apron'), lo=lo, hi=hi)
     fit(bib, T.uv('tie'))
     neckstrap = strip([(-0.13, cy + 0.2, -0.15), (-0.09, P['neck'][1] + 0.03, -0.02), (0, P['neck'][1] + 0.05, 0.07),
                        (0.09, P['neck'][1] + 0.03, -0.02), (0.13, cy + 0.2, -0.15)], 0.03, 0.006, mp, 'neckstrap'); fit(neckstrap, T.uv('tie'))
-    waist = ring_band((0, sy - 0.03, -0.01), 0.296, 0.222, 0.03, 0.006, mp, 'waisttie', n=12); fit(waist, T.uv('tie'))
-    bow = ell((0, sy - 0.03, 0.225), (0.05, 0.025, 0.02), mp, 'bow', n=5, rings=3); fit(bow, T.uv('tie'))
-    tw = strip([(-0.2, cy + 0.02, -0.19), (-0.21, cy + 0.17, -0.15), (-0.2, P['armL'][1] + 0.05, -0.04), (-0.2, P['armL'][1] + 0.06, 0.03),
-                (-0.21, cy + 0.17, 0.15), (-0.2, cy - 0.0, 0.17)], 0.13, 0.016, mb, 'towel'); fit(tw, B.uv('towel'))
-    rig.add('chest', ch, bib, neckstrap, tw); rig.add('spine', bl, abl, waist, bow)
+    waist = ring_band((0, sy - 0.03, -0.01), 0.296, 0.222, 0.03, 0.006, mp, 'waisttie', n=10); fit(waist, T.uv('tie'))
+    bow = bx((0.09, 0.04, 0.02), (0, sy - 0.03, 0.212), mp, bev=0.0, name='bow'); fit(bow, T.uv('tie'))
+    ty = P['armL'][1] + 0.025  # the towel: a front flap, the fold over the shoulder, a back flap (flat capsules)
+    tw = [limb((-0.19, ty, -0.1), (-0.19, cy + 0.0, -0.2), 0.065, 0.068, mb, 'towel_f', n=6, sq=(1.0, 0.22), dome=(False, False)),
+          limb((-0.19, ty + 0.012, -0.11), (-0.19, ty + 0.012, 0.1), 0.066, 0.066, mb, 'towel_t', n=6, sq=(1.0, 0.3), dome=(False, False)),
+          limb((-0.19, ty, 0.1), (-0.19, cy + 0.04, 0.185), 0.065, 0.066, mb, 'towel_b', n=6, sq=(1.0, 0.22), dome=(False, False))]
+    for o in tw: fit(o, B.uv('towel'))
+    rig.add('chest', ch, bib, neckstrap, tw); rig.add('spine', bl, abl, waist, bow)  # the bow sits on the back
     # checked chef trousers, teal clogs
-    seat = blob([(P['legL'][1] - 0.1, 0.22, 0.16, 0, 0.0), (P['hips'][1] - 0.04, 0.262, 0.19, 0, -0.01), (P['hips'][1] + 0.06, 0.262, 0.196, 0, -0.016)],
+    seat = blob([(P['legL'][1] - 0.1, 0.22, 0.16, 0, 0.0), (P['hips'][1] - 0.04, 0.262, 0.19, 0, -0.01), (P['hips'][1] + 0.06, 0.236, 0.17, 0, -0.016)],
                 mb, 'seat', n=12, p=2.6, cap=(0.03, 0.0))
     fit(seat, B.uv('check')); rig.add('hips', seat, skirt)
     for s, sx in (('L', -1), ('R', 1)):
