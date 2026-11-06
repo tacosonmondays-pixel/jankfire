@@ -194,7 +194,7 @@ def union(o, other):
 
 def build():
     mint = mat('ak_mint', 0x00e5a0, rough=0.2, clearcoat=1.0, tex=tex_noise('ak_mint_t', 0x00e5a0, var=0.035, size=16, seed=41))
-    black = mat('ak_black', 0x1d1f24, rough=0.4, metal=0.55, tex=tex_noise('ak_black_t', 0x202328, var=0.1, size=16, seed=42))
+    black = mat('ak_black', 0x24272d, rough=0.38, metal=0.55, tex=tex_noise('ak_black_t', 0x272b31, var=0.1, size=16, seed=42))
     dark = mat('ak_dark', 0x0d0e11, rough=0.6, metal=0.3)
     steel = mat('ak_steel', 0x4e545d, rough=0.3, metal=0.85, tex=tex_noise('ak_steel_t', 0x535a63, var=0.08, size=16, seed=43))
     chrome = mat('ak_chrome', 0xc8ced8, rough=0.12, metal=1.0)
@@ -247,11 +247,12 @@ def build():
 
     # ---------------- cocking knob (brass, its own node): two halves leave the sight groove across the top, stem, the
     # bolt's lug showing in the slot behind it
-    put(cock, lathe([(0, Y(TOP + 0.5)), (W(5.5), Y(TOP + 0.5)), (W(5.5), Y(TOP + 2)), (W(7.6), Y(TOP + 2.6)), (W(8), Y(TOP + 4)), (W(8), Y(TOP + 6.2)),
-                     (W(7.4), Y(TOP + 6.8)), (W(8), Y(TOP + 7.4)), (W(8), Y(TOP + 8.2)), (W(7.8), Y(TOP + 8.4)), (0, Y(TOP + 8.4))], (0, 0, Z(KNOB_D)), brass, seg=20, axis='y'), 'knob')
-    a0 = math.acos(1.6 / 8)
+    KR = 8.5
+    put(cock, lathe([(0, Y(TOP + 0.5)), (W(5.5), Y(TOP + 0.5)), (W(5.5), Y(TOP + 2)), (W(KR - 0.4), Y(TOP + 2.6)), (W(KR), Y(TOP + 4)), (W(KR), Y(TOP + 6.2)),
+                     (W(KR - 0.6), Y(TOP + 6.8)), (W(KR), Y(TOP + 7.4)), (W(KR), Y(TOP + 8.2)), (W(KR - 0.2), Y(TOP + 8.4)), (0, Y(TOP + 8.4))], (0, 0, Z(KNOB_D)), brass, seg=20, axis='y'), 'knob')
+    a0 = math.acos(1.6 / KR)
     for sx in (-1, 1):
-        arc_ = [(sx * 8 * math.cos(t), KNOB_D + 8 * math.sin(t)) for t in [-a0 + 2 * a0 * i / 9 for i in range(10)]]
+        arc_ = [(sx * KR * math.cos(t), KNOB_D + KR * math.sin(t)) for t in [-a0 + 2 * a0 * i / 9 for i in range(10)]]
         put(cock, top_prism(arc_ if sx > 0 else arc_[::-1], TOP + 8.2, TOP + 11.2, brass, bev=W(0.6)), f'knob_top{sx}')
     put(cock, box((W(5.4), W(5), W(5.4)), (0, Y(TOP - 1), Z(KNOB_D)), steel), 'stem')
     put(cock, box((W(6), W(3.4), W(25)), (0, Y(TOP - 3), Z(KNOB_D + 1)), steel, bev=W(0.5)), 'lug')
@@ -315,10 +316,10 @@ def build():
 
     # ---------------- L / R stickers: both sides of the upper + the butt pad (one set shows per hand). R stands a hair
     # further out and a hair bigger, so with both showing (icons, lineups) it covers L cleanly
-    for tag, m, out, sk, sz, lst in (('L', tagL, W(0.45), W(0.5), W(30), tl), ('R', tagR, W(0.75), W(0.8), W(30.6), tr)):
+    for tag, m, out, sk, grow, lst in (('L', tagL, W(0.45), W(0.5), 0, tl), ('R', tagR, W(0.75), W(0.8), W(0.6), tr)):
         for face in ('+x', '-x'):
-            put(lst, sticker(m, (math.copysign(W(25), FACES[face][0][0]), Y(7), Z(212)), sz, face, out, tilt=0.1, sink=sk), f'tag{tag}{face}')
-        put(lst, sticker(m, (0, Y(-10.5), Z(268)), sz, '+z', out, tilt=0.1, sink=sk), f'tag{tag}_back')
+            put(lst, sticker(m, (math.copysign(W(25), FACES[face][0][0]), Y(7), Z(212)), W(32) + grow, face, out, tilt=0.1, sink=sk), f'tag{tag}{face}')
+        put(lst, sticker(m, (0, Y(-10.5), Z(268)), W(34) + grow, '+z', out, tilt=0.1, sink=sk), f'tag{tag}_back')  # the back: what you see most of in first person
 
     allp = A_ + B_ + N_ + cock + magp + tl + tr
     for p in allp:
