@@ -27,6 +27,13 @@ SEAT_D = (-0.08 - MUZ_Z) / S       # 594 mm: the box seat
 REAR_D = (0.0 - MUZ_Z) / S         # 654 mm: rear aperture
 SEAT = (-0.02, -0.1, -0.08)
 OPEN = '--open' in sys.argv
+_box, _side = box, side
+def box(*a, **k):  # small bevels get one segment: same look at viewmodel size, fewer tris
+    if k.get('bev', 0) <= W(2.5): k.setdefault('seg', 1)
+    return _box(*a, **k)
+def side(*a, **k):
+    if k.get('bev', 0) <= W(2.5): k.setdefault('seg', 1)
+    return _side(*a, **k)
 
 
 def mover(name, pivot, groups):
@@ -68,15 +75,19 @@ def build():
             a = -2.3 + k * 4.6 / 5
             px_line(px, 16 + math.sin(a) * 8, 16 - math.cos(a) * 8, 16 + math.sin(a) * 11, 16 - math.cos(a) * 11, 0xffffff, 1.5)
         px_line(px, 16, 16, 16 + math.sin(2.3) * 9, 16 - math.cos(2.3) * 9, 0xff3030, 2.5)
+    def label_draw(px):
+        px[:] = hexrgb(0x111111)
+        text_px(px, 'BELT SANDER', 3, 2, 1, 0xffe14d)
+    label = mat('lmg_label', 0xffffff, rough=0.5, tex=tex_canvas('lmg_label_t', 72, 11, label_draw))
     dial_m = mat('lmg_dial', 0xffffff, rough=0.3, tex=tex_canvas('lmg_dial_t', 32, 32, dial_draw))
 
     parts, cover, magp, belt = [], [], [], []
     A = parts.append
 
     # ---------------- flash hider (slotted cone), barrel (glows), barrel clamp of the carry handle
-    fh = lathe([(0.0, Z(-1)), (W(9), Z(-1)), (W(11), Z(3)), (W(11), Z(50)), (W(9.5), Z(56)), (W(9.5), Z(64))], (0, BORE_Y, 0), dark, seg=14)
-    for k in range(5):
-        a = k * 2 * math.pi / 5 + math.pi / 2
+    fh = lathe([(0.0, Z(-1)), (W(9), Z(-1)), (W(11), Z(3)), (W(11), Z(50)), (W(9.5), Z(56)), (W(9.5), Z(64))], (0, BORE_Y, 0), dark, seg=12)
+    for k in range(4):
+        a = k * math.pi / 2 + math.pi / 4
         cut(fh, box((W(4), W(30), W(34)), (math.cos(a) * W(11), BORE_Y + math.sin(a) * W(11), Z(26)), None, rot=(0, 0, a - math.pi / 2)))
     A(fh)
     A(lathe([(0, Z(0.5)), (W(3), Z(0.5)), (W(3), Z(6))], (0, BORE_Y, 0), black, seg=8))  # dark bore
@@ -114,9 +125,9 @@ def build():
     A(hg)
     for k in range(4):
         A(box((W(64), W(5), W(8)), (0, Y(-40), Z(410 + k * 16)), over, bev=W(1.5)))
-    hs = side(poly([(400, 10), (470, 10), (470, 25), (404, 22)]), W(26), (0, 0, 0), dark, bev=W(2))
-    for k in range(4): cut(hs, box((W(40), W(8), W(8)), (0, Y(20), Z(414 + k * 15)), None))
-    A(hs)
+    A(side(poly([(400, 10), (470, 10), (470, 14), (402, 14)]), W(26), (0, 0, 0), dark, bev=W(1)))  # heat shield base
+    for k in range(5):  # its slats (the hot barrel shows between them)
+        A(box((W(28), W(9), W(7)), (0, Y(18), Z(406 + k * 14)), dark, bev=W(1.2)))
 
     # ---------------- receiver: steel core, orange side shells, feed tray, magwell stub on the left
     A(side(poly([(466, 24), (796, 24), (796, -52), (466, -52)]), W(60), (0, 0, 0), steel, bev=W(2)))
@@ -146,15 +157,15 @@ def build():
     A(box((W(50), W(10), W(10)), (0, Y(30), Z(HINGE_D + 10)), dark, bev=W(2)))
 
     # ---------------- feed tray cover (its own node, hinged at the back) with the rear sight on it
-    cv = side(poly([(556, 22), (HINGE_D + 4, 22), (HINGE_D + 4, 38), (HINGE_D - 6, 42), (568, 42), (556, 34)]), W(62), (0, 0, 0), orange, bev=W(3), seg=2)
+    cv = side(poly([(556, 22), (HINGE_D + 4, 22), (HINGE_D + 4, 36), (HINGE_D - 6, 40), (630, 40), (572, 32), (556, 28)]), W(56), (0, 0, 0), orange, bev=W(3), seg=2)
     cover.append(cv)
-    for k in range(4):  # black ribs across the top
-        cover.append(box((W(50), W(2.5), W(6)), (0, Y(42.5), Z(580 + k * 15)), over, bev=W(0.8)))
+    for k in range(3):  # black ribs across the top, behind the sight
+        cover.append(box((W(46), W(2.5), W(6)), (0, Y(40.5), Z(674 + k * 14)), over, bev=W(0.8)))
     cover.append(cyl(W(6), W(64), (0, Y(32), Z(HINGE_D)), dark, axis='x', seg=10))  # hinge knuckle
     # rear sight: a leaf with an aperture on the sight line
-    cover.append(box((W(22), W(6), W(26)), (0, Y(44.5), Z(REAR_D)), dark, bev=W(1.2)))
+    cover.append(box((W(22), W(6), W(26)), (0, Y(42.5), Z(REAR_D)), dark, bev=W(1.2)))
     for sx in (-1, 1):
-        cover.append(side(poly([(REAR_D - 6, 44), (REAR_D + 6, 44), (REAR_D + 4, 60), (REAR_D - 4, 60)]), W(3), (sx * W(9.5), 0, 0), dark, bev=W(0.6)))
+        cover.append(side(poly([(REAR_D - 6, 44), (REAR_D + 6, 44), (REAR_D + 3, 55), (REAR_D - 3, 55)]), W(2.4), (sx * W(9), 0, 0), dark, bev=W(0.6)))
     ring = cyl(W(5.5), W(3), (0, Y(SIGHT_H), Z(REAR_D)), dark, seg=14)
     cut(ring, cyl(W(2.4), W(10), (0, Y(SIGHT_H), Z(REAR_D)), None, seg=10))
     cover.append(ring)
@@ -178,6 +189,8 @@ def build():
         for k in range(5):
             A(box((W(3), W(8), W(36)), (sx * W(25.5), Y(-8 - k * 13), Z(900 + k * 6)), black, bev=W(1.2)))
     A(side(poly([(812, 20), (1000, 16), (1000, 26), (812, 30)]), W(30), (0, 0, 0), over, bev=W(3)))  # cheek rubber on the comb
+    lb = box((W(1), W(13), W(84)), (-W(26.6), Y(-14), Z(850)), label)  # BELT SANDER moulded label (left side)
+    A(lb)
     A(tube([(0, Y(-112), Z(990)), (0, Y(-128), Z(992)), (0, Y(-128), Z(976)), (0, Y(-112), Z(978))], W(2.4), dark, seg=6))
     cpts = [(0, Y(-110), Z(1036)), (0, Y(-128), Z(1052)), (-W(4), Y(-160), Z(1060)), (-W(10), Y(-200), Z(1050)), (-W(16), Y(-228), Z(1030))]
     A(cyl(W(7), W(22), (0, Y(-104), Z(1034)), over, axis='y', seg=10, r2=W(5)))  # strain relief
@@ -228,7 +241,7 @@ def build():
         (x, y), ta = at(i * pitch)
         bits = []
         # 5.56 cartridge: case (rim, body, shoulder, neck) + bullet, pointing at the muzzle
-        bits.append(lathe([(0, W(28)), (W(4.7), W(28)), (W(4.7), W(26)), (W(4.8), W(24)), (W(4.6), W(-6)), (W(3.2), W(-11)), (W(3.0), W(-17))], (x, y, zc), brass, seg=8))
+        bits.append(lathe([(0, W(28)), (W(4.8), W(28)), (W(4.6), W(-6)), (W(3.2), W(-11)), (W(3.0), W(-17))], (x, y, zc), brass, seg=8))
         bits.append(lathe([(W(2.9), W(-17)), (W(2.8), W(-24)), (W(1.6), W(-29)), (0, W(-31))], (x, y, zc), copper, seg=8))
         # the link: two clips round the case, a bridge toward the next round (alternating front/back like the real thing)
         off = W(6) if i % 2 else -W(6)
@@ -240,7 +253,8 @@ def build():
         belt.append(part(bits, f'belt_{i:02d}', pivot=(x, y, zc)))
 
     for p in parts + cover + magp:
-        if p.data.materials and p.data.materials[0] not in (tag, dial_m): uv_box(p, 0.035)
+        if p.data.materials and p.data.materials[0] not in (tag, dial_m, label): uv_box(p, 0.035)
+    apply_mods(lb); uv_planar(lb, (-W(26.6), Y(-14), Z(850)), (W(84), W(13)), '-x')
     apply_mods(dl); uv_planar(dl, (-W(37), Y(-14), Z(700)), (W(24), W(24)), '-x')
 
     WZ = {'lmg_orange': 'a', 'lmg_over': 'a', 'lmg_grit': 'a', 'lmg_steel': 'b', 'lmg_dark': 'b', 'lmg_box': 'b'}
@@ -256,7 +270,7 @@ def build():
     mag_node = mover('mag', SEAT, zgroups(magp, lambda m: 'N' if m == 'lmg_tag' else 'B'))
     belt_root = bpy.data.objects.new('belt_wzN', None); bpy.context.scene.collection.objects.link(belt_root)
     for b in belt: b.parent = belt_root
-    meta = {'kind': 'weapon', 'id': 'lmg', 'paint': ['lmg_orange'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(SIGHT_H), 'z': Z(REAR_D)},
+    meta = {'kind': 'weapon', 'id': 'lmg', 'paint': ['lmg_orange'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(SIGHT_H), 'z': Z(REAR_D) + 0.04},
             'hatAt': [[0, Y(25), Z(440)], 0.11], 'mag': {'node': 'mag'}, 'cover': {'node': 'cover'},
             'belt': [f'belt_{i:02d}' for i in range(12)], 'heat': 'lmg_heat'}
     root = finish('w_lmg', bodies + [cv_node, mag_node, belt_root], meta)
