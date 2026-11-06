@@ -74,6 +74,14 @@ async function session(b, map, ids) {
     // bots hunt you there instead of shooting the camera out of the sky (a teleport, e.g. a respawn, moves that spot)
     const { net } = await import('/js/net.js'), send0 = net.send.bind(net);
     net.send = (o) => send0(window.__pin && window.__hide && o && o.t === 's' ? { ...o, p: window.__hide.map((v) => Math.round(v * 100) / 100), v: [0, 0, 0] } : o);
+    // each frame as it's drawn: is the camera at your eye, and you about where the pin put you? (a nudge out of a tree
+    // trunk is the same in both versions; a replay, spectating, the ball or a knock-down moves the camera off your eye)
+    const draw = G.renderer.render.bind(G.renderer);
+    G.renderer.render = (sc, cam) => {
+      const q = window.__pin;
+      if (cam === G.camera && q) { const c = cam.position; window.__camOk = Math.hypot(c.x - ME.pos[0], c.y - ME.pos[1] - ME.eyeH, c.z - ME.pos[2]) <= 0.3 && Math.hypot(ME.pos[0] - q.p[0], ME.pos[2] - q.p[2]) <= 1.5; }
+      return draw(sc, cam);
+    };
     // __life goes up on every death and every new Plant & Defuse round: a shot taken across one is taken again
     window.__life = 0; let was = ME.alive, round = G.eco && G.eco.round;
     setInterval(() => { if (was && !ME.alive) { window.__life++; window.__lifeT = performance.now(); } was = ME.alive; const r = G.eco && G.eco.round; if (r !== round) { round = r; window.__life++; window.__lifeT = performance.now(); } }, 4);
@@ -156,7 +164,7 @@ async function session(b, map, ids) {
           // kill you: wait for the respawn; in the buy phase the server holds you in your spawn zone and its walls show)
           st = await pg.evaluate(async (map) => {
             const { MAP } = await import('/shared/map.js'); const { ME } = await import('/js/player.js'); const { G } = await import('/js/ctx.js');
-            const off = () => { const q = window.__pin, c = G.camera.position; return !q || Math.hypot(c.x - q.p[0], c.z - q.p[2]) > 0.5 || Math.abs(c.y - q.p[1] - 1.6) > 0.8; }; // (something else has the camera: a replay, spectating, the ball, a knock-down)
+            const off = () => !window.__camOk || performance.now() < (ME.sleepUntil || 0); // (something else had the camera last frame: a replay, spectating, the ball, a knock-down)
             const busy = () => MAP.id === map && (!ME.alive || (G.eco && G.eco.buyEnd > performance.now()) || performance.now() < (ME.quizUntil || 0) || performance.now() - (window.__lifeT || -1e9) < 5000 || off()); // (a bot's pop quiz: frozen, a panel up; a death: its kill effect fades first)
             const t0 = performance.now(), wait = (ms) => new Promise((r) => setTimeout(r, ms));
             while (performance.now() - t0 < 60000) { // (killed again while settling: keep waiting, up to a minute)
@@ -169,7 +177,7 @@ async function session(b, map, ids) {
           if (st !== 'ok') break;
           const before = await pg.evaluate(() => window.__life);
           await pg.screenshot({ path: f, timeout: 120000 });
-          const after = await pg.evaluate(async () => { const { ME } = await import('/js/player.js'); const { G } = await import('/js/ctx.js'); const q = window.__pin, c = G.camera.position, at = q && Math.hypot(c.x - q.p[0], c.z - q.p[2]) <= 0.5 && Math.abs(c.y - q.p[1] - 1.6) <= 0.8; return at && ME.alive && !(G.eco && G.eco.buyEnd > performance.now()) && !(performance.now() < (ME.quizUntil || 0)) ? window.__life : -1; });
+          const after = await pg.evaluate(async () => { const { ME } = await import('/js/player.js'); const { G } = await import('/js/ctx.js'); const at = window.__camOk && !(performance.now() < (ME.sleepUntil || 0)); return at && ME.alive && !(G.eco && G.eco.buyEnd > performance.now()) && !(performance.now() < (ME.quizUntil || 0)) ? window.__life : -1; });
           if (after === before) break;
           st = 'died or a new round during the shot'; console.log(map, v.id, v.k, 'retake:', st);
         }
