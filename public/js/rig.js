@@ -17,6 +17,7 @@ import { recordEv } from './replay.js';
 import { buildRig, poseRig, freeRig, setRigColor, rigGhost, updateGhosts, hideGhosts, rfx, rmesh, rigBurst, rigHex } from './rigmodel.js';
 import { armsReady, armsOn, armsOff, armsHide, playArms, armsStep, armsJolt, updateArms } from './rigarms.js';
 import { rigsfx, rigHum } from './rigsfx.js';
+import { whenLate } from './glbkit.js';
 
 export { rigBoxes };
 const P = RIG.punch, L = RIG.leap, M = RIG.miss, H = RIG.hack;
@@ -33,6 +34,7 @@ export const RS = {
   airMin: 0, stepPhase: 0, stepSide: 1, dip: 0, hitStop: 0, tint: 0, ghostT: 0, ghostN: 0, lastYaw: 0, lastPitch: 0, swayX: 0, swayY: 0,
   shieldFlash: 0, blockFlash: 0, fov: 0, thr: { n: RIG.thrust.n, next: 0, t: 0 }, thrT: 0,
 };
+whenLate('x_rig', () => { if (RS.model && !RS.on) { freeRig(RS.model); RS.model = null; } }); // the Blender rig landed: yours is rebuilt with it next time (others rebuild with their mannequin)
 export const rigOn = (now = performance.now()) => RS.on && ME.alive && now < RS.until;
 
 function startLocal(dur, sh) {

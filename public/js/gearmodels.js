@@ -11,6 +11,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { box, cyl, sphere, ring, lathe, slab, strip, tube, mat } from './blades/kit.js';
 import { jankify } from './jank.js';
+import { authored, ownMat, nodeIn } from './glbkit.js'; // the Blender versions (tools/blender/make_laser.py, make_gear.py)
 
 const glowMat = (color) => { const m = new THREE.MeshBasicMaterial({ color }); return m; }; // own copy: these get brightened
 const noWrap = (m) => { m.userData.noWrap = true; return m; };
@@ -112,17 +113,42 @@ export function laserBuild(g) {
   }
   cat.add(sphere(0.003, 0xff7ab8, 0, -0.003, -0.0135));
   g.userData.charm = charm;
-  // charge orb at the lens (hidden till you charge): additive, grows with the charge
-  const orb = noWrap(new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), new THREE.MeshBasicMaterial({ color: 0x39ff14, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })));
-  orb.position.z = -0.42; orb.scale.setScalar(0.001); orb.visible = false; g.add(orb);
-  g.userData.orb = orb; g.userData.emit = emit;
+  g.userData.orb = laserOrb(g); g.userData.emit = emit;
   g.userData.muzzle = new THREE.Vector3(0, 0, -0.42);
   g.userData.len = 0.82;
+}
+
+// charge orb at the lens (hidden till you charge): additive, grows with the charge
+function laserOrb(g) {
+  const orb = noWrap(new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), new THREE.MeshBasicMaterial({ color: 0x39ff14, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })));
+  orb.position.z = -0.42; orb.scale.setScalar(0.001); orb.visible = false; g.add(orb);
+  return orb;
+}
+// the Blender laser (buildWeapon swapped it in): its button, LEDs, emitter and cat charm are the file's own nodes,
+// lit and moved exactly like the code model's (beam.js, weapons.js); the charge orb is ours
+export function laserHooks(g, mt) {
+  const ud = g.userData;
+  ud.button = mt.button ? nodeIn(g, mt.button) : null;
+  ud.charm = mt.charm ? nodeIn(g, mt.charm) : null;
+  ud.leds = (Array.isArray(mt.leds) ? mt.leds : []).map((n) => ownMat(g, n, glowMat(0x0b2a08))).filter(Boolean);
+  ud.emit = mt.emit ? ownMat(g, mt.emit, glowMat(0x1d7a10)) : null;
+  ud.orb = laserOrb(g);
 }
 
 // ================================================================ Instant Camera
 let camLabel = null;
 export function instantCamera() {
+  const bl = authored('x_camera');
+  if (bl) { // the Blender camera: the same hooks on its own nodes (photo.js flashes it, kicks the shutter, slides the print out)
+    const g = new THREE.Group(); g.add(bl.obj);
+    const pm = new THREE.MeshBasicMaterial({ color: 0x222222 });
+    const flash = ownMat(g, 'flash', glowMat(0xcfc8b8)), pic = ownMat(g, 'pic', pm), shutter = nodeIn(g, 'shutter'), print = nodeIn(g, 'print');
+    if (flash && pic && shutter && print) {
+      print.visible = false;
+      Object.assign(g.userData, { flash, shutter, print, pic, lensAt: new THREE.Vector3(...(Array.isArray(bl.meta.lensAt) ? bl.meta.lensAt : [0, -0.006, -0.065])), glb: 'blender' });
+      return g;
+    }
+  }
   const g = new THREE.Group();
   const CREAM = 0xf3eee2, CHAR = 0x2c2c33, LILAC = 0xc9a7ff;
   // body: a chunky two-tone brick, the top deck sloping back over the film door
@@ -199,13 +225,8 @@ void main() {
 export function photoFrame(tex) {
   const g = new THREE.Group(), F = FRAME, W = F.pic + F.side * 2, Hh = F.chin + F.pic + F.top;
   const inner = new THREE.Group(); inner.rotation.x = 0.06; g.add(inner); // leans back on its stand a little
-  // the card: one slab with a square hole for the picture so the edges have thickness
-  const outer = new THREE.Shape([[-W / 2, 0], [W / 2, 0], [W / 2, Hh], [-W / 2, Hh]].map((p) => new THREE.Vector2(p[0], p[1])));
-  const hole = new THREE.Path([[-F.pic / 2, F.chin], [-F.pic / 2, F.chin + F.pic], [F.pic / 2, F.chin + F.pic], [F.pic / 2, F.chin]].map((p) => new THREE.Vector2(p[0], p[1])));
-  outer.holes.push(hole);
-  const cg = new THREE.ExtrudeGeometry(outer, { depth: F.thick, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.008, bevelSegments: 1 });
-  cg.translate(0, 0, -F.thick / 2);
-  inner.add(new THREE.Mesh(cg, mat(0xf8f5ec)));
+  const bl = authored('x_photoframe'); // the Blender print: card, back, tape, kickstand, feet (the picture is ours)
+  if (bl) { inner.add(bl.obj); g.userData.glb = 'blender'; } else frameCard(inner, F, W, Hh);
   // the picture, both ways round (from behind you see it mirrored, like a window)
   const pm = new THREE.ShaderMaterial({
     uniforms: { map: { value: tex || null }, uT: { value: 0 }, uDev: { value: 0 }, uFade: { value: 1 }, uHave: { value: tex ? 1 : 0 } },
@@ -214,6 +235,21 @@ export function photoFrame(tex) {
   const pic = noWrap(new THREE.Mesh(new THREE.PlaneGeometry(F.pic, F.pic), pm));
   pic.position.set(0, F.chin + F.pic / 2, 0); pic.rotation.y = Math.PI; // its front faces -Z
   inner.add(pic);
+  // a soft pink glow on the floor in front of it
+  const pool = noWrap(new THREE.Mesh(new THREE.CircleGeometry(1.1, 20), new THREE.MeshBasicMaterial({ color: 0xff4fd8, transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false })));
+  pool.rotation.x = -Math.PI / 2; pool.position.set(0, 0.03, -0.6); pool.scale.set(1, 0.6, 1); g.add(pool);
+  Object.assign(g.userData, { pic, pm, inner, pool, height: Hh });
+  return g;
+}
+// the code-built card: one slab with a square hole for the picture so the edges have thickness, its back, tape, stand
+function frameCard(inner, F, W, Hh) {
+  // the card: one slab with a square hole for the picture so the edges have thickness
+  const outer = new THREE.Shape([[-W / 2, 0], [W / 2, 0], [W / 2, Hh], [-W / 2, Hh]].map((p) => new THREE.Vector2(p[0], p[1])));
+  const hole = new THREE.Path([[-F.pic / 2, F.chin], [-F.pic / 2, F.chin + F.pic], [F.pic / 2, F.chin + F.pic], [F.pic / 2, F.chin]].map((p) => new THREE.Vector2(p[0], p[1])));
+  outer.holes.push(hole);
+  const cg = new THREE.ExtrudeGeometry(outer, { depth: F.thick, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.008, bevelSegments: 1 });
+  cg.translate(0, 0, -F.thick / 2);
+  inner.add(new THREE.Mesh(cg, mat(0xf8f5ec)));
   // the back: dark film backing with the print on it
   const bm = new THREE.MeshBasicMaterial({ map: backTex || (backTex = canvasTex(256, 290, (x, w, h) => {
     x.fillStyle = '#26262c'; x.fillRect(0, 0, w, h);
@@ -235,11 +271,6 @@ export function photoFrame(tex) {
   const legP = new THREE.Group(); legP.position.set(0, Hh * 0.82, F.thick / 2 + 0.02); legP.rotation.x = -0.42; legP.add(leg); inner.add(legP);
   legP.add(box(0.06, 0.06, 0.02, 0x8a7a68, 0, -0.04, -0.02)); // hinge
   for (const sx of [-1, 1]) inner.add(box(0.12, 0.05, 0.12, 0x222226, sx * (W / 2 - 0.12), 0.02, 0));
-  // a soft pink glow on the floor in front of it
-  const pool = noWrap(new THREE.Mesh(new THREE.CircleGeometry(1.1, 20), new THREE.MeshBasicMaterial({ color: 0xff4fd8, transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false })));
-  pool.rotation.x = -Math.PI / 2; pool.position.set(0, 0.03, -0.6); pool.scale.set(1, 0.6, 1); g.add(pool);
-  Object.assign(g.userData, { pic, pm, inner, pool, height: Hh });
-  return g;
 }
 
 // ================================================================ calculator
@@ -303,6 +334,12 @@ export function lcdTexture(lines = ['0.', ''], w = 256, h = 112) {
 }
 let lcdShared = null;
 export function calculator(lcd) {
+  const bl = authored('x_calc');
+  if (bl) { // the Blender calculator: its LCD shows the live sum (quiz.js writes the texture)
+    const g = new THREE.Group(); g.add(bl.obj);
+    const lm = new THREE.MeshBasicMaterial({ map: lcd || lcdShared || (lcdShared = lcdTexture()) });
+    if (ownMat(g, 'screen', lm)) { g.userData.screen = lm; g.userData.glb = 'blender'; return g; }
+  }
   const g = new THREE.Group();
   const BODY = 0x23263a, FACE = 0x2f3350;
   g.add(rbox(0.152, 0.3, 0.026, 0.01, BODY, 0, -0.05, 0));
@@ -329,6 +366,24 @@ export function calculator(lcd) {
 // ================================================================ night vision goggles
 // centred between the eyes, tubes forward (-Z). the mount pivots at the forehead (userData.pivot): rotate x to flip up
 export function nvGoggles(o = {}) {
+  const bl = authored('x_nvg');
+  if (bl) { // the Blender goggles: flip on `pivot`, glowing lenses + IR lamp, the head strap only on someone's head
+    const root = new THREE.Group(); root.add(bl.obj);
+    const pivot = nodeIn(root, 'pivot'), lmL = glowMat(0x1a3a24), lmR = glowMat(0x1a3a24), irm = glowMat(0x3a0808);
+    if (pivot && ownMat(root, 'lensL', lmL) && ownMat(root, 'lensR', lmR)) {
+      ownMat(root, 'ir', irm);
+      const strap = nodeIn(root, 'strap');
+      if (strap && !o.strap) strap.removeFromParent();
+      if (o.big && o.big !== 1) { // chunkier on a cartoon head: scaled about the eyes (the root), not the knuckle
+        const sg = new THREE.Group(); sg.position.set(-pivot.position.x, -pivot.position.y, -pivot.position.z); pivot.add(sg);
+        root.updateMatrixWorld(true);
+        for (const c of [...pivot.children]) if (c !== sg) sg.attach(c);
+        sg.scale.setScalar(o.big);
+      }
+      Object.assign(root.userData, { pivot, lenses: [lmL, lmR], ir: irm, glb: 'blender' });
+      return root;
+    }
+  }
   const root = new THREE.Group(), pivot = new THREE.Group(); root.add(pivot);
   pivot.position.set(0, 0.07, 0.015); // the knuckle on the forehead
   const g = new THREE.Group(); g.position.set(0, -0.07, -0.015); g.scale.setScalar(o.big || 1); pivot.add(g); // cartoon heads want chunkier goggles

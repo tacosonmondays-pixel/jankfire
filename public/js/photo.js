@@ -13,6 +13,7 @@ import { fx } from './fx.js';
 import { sfx } from './audio.js';
 import { hud } from './hud.js';
 import { RP, RP_HOOKS, recordEv } from './replay.js';
+import { whenLate } from './glbkit.js';
 
 const photos = new Map(); // photo n -> { tex, url, by }
 const frames = new Map(); // live frames: id -> F
@@ -187,6 +188,7 @@ function thumb(P) {
 // snap: up to your eye, CLACK, a white flash, back down. print: up in front of you turned round, the print whirrs out of
 // the slot showing your photo (developing), then you flick it forward and it becomes the frame
 const VM = { g: null, print: null, anim: null, t: 0 };
+whenLate('x_camera', () => { if (VM.g && !VM.anim) { VM.g.removeFromParent(); VM.g = null; VM.print = null; } }); // the Blender camera landed: the next snap uses it
 let lastItemT = 0;
 function camVM() {
   if (VM.g) return VM.g;

@@ -8,6 +8,7 @@ import { G } from './ctx.js';
 import { ANIMS, sample, eventsBetween } from './anim.js';
 import { jankify } from './jank.js';
 import { cbox, taper, cyl, cylZ, C, NEON, glowTexture, screenTex, drawScreen } from './rigmodel.js';
+import { AUTHORED, authored, whenLate, glossyPaint } from './glbkit.js'; // the Blender arms (tools/blender/make_rig.py)
 
 const mats = new Map();
 function lam(color, emi = 0.1) {
@@ -25,6 +26,40 @@ function accentMat() { if (!accent) accent = jankify(new THREE.MeshLambertMateri
 const basic = (color) => { const k = 'b' + color; if (!mats.has(k)) mats.set(k, new THREE.MeshBasicMaterial({ color })); return mats.get(k); };
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1);
 
+// the Blender forearm + fist (x_rigarms.glb: armR > fistR, armL > fistL, in arm space before our scale): its meshes go on
+// our root / fist (rg_accent = your colour, rg_cyan / rg_mag = neon); our own animated bits still go on top. false = ours
+let accentBl = null;
+function glbArm(s, root, fist) {
+  const a = AUTHORED.x_rigarms;
+  if (!a) { authored('x_rigarms'); return false; } // (starts the download)
+  const side = s > 0 ? 'R' : 'L', armN = a.scene.getObjectByName('arm' + side), fistN = a.scene.getObjectByName('fist' + side);
+  if (!armN || !fistN) return false;
+  a.scene.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4(), m = new THREE.Matrix4();
+  const own = (mat) => {
+    const k = /^rg_([A-Za-z]+)/.exec(mat.name || '');
+    if (k && k[1] === 'accent') return accentBl || (accentBl = glossyPaint(G.myColor || '#ff4fd8', 0.18));
+    if (k && (k[1] === 'cyan' || k[1] === 'mag')) return basic(k[1] === 'cyan' ? NEON.cyan : NEON.mag);
+    return mat;
+  };
+  const take = (node, grp) => {
+    inv.copy(node.matrixWorld).invert();
+    const visit = (o) => {
+      for (const c of o.children) {
+        if (c === fistN) continue; // the fist's parts go on the fist
+        if (c.isMesh) {
+          const g = c.geometry.clone().applyMatrix4(m.multiplyMatrices(inv, c.matrixWorld));
+          const mesh = new THREE.Mesh(g, Array.isArray(c.material) ? c.material.map(own) : own(c.material));
+          grp.add(mesh);
+        }
+        visit(c);
+      }
+    };
+    visit(node);
+  };
+  take(armN, root); take(fistN, fist);
+  return true;
+}
 // one forearm + fist. built along -z from the elbow (just under the bottom of the screen) to the knuckles
 function buildArm(s) {
   const big = s > 0; // the right arm punches; the left one wears the hack deck
@@ -33,7 +68,8 @@ function buildArm(s) {
   fist.position.set(0, 0, -0.64);
   root.add(fist);
   const groups = new Map();
-  const put = (grp, geo, mat, x, y, z, r = [0, 0, 0]) => {
+  const bl = glbArm(s, root, fist); // the Blender arm: then the parts below aren't made
+  const put = bl ? () => {} : (grp, geo, mat, x, y, z, r = [0, 0, 0]) => {
     _m.compose(_p.set(x * s, y, z), _q.setFromEuler(_e.set(r[0], r[1] * s, r[2] * s)), _one);
     const g = geo.index ? geo.toNonIndexed() : geo;
     g.applyMatrix4(_m);
@@ -134,8 +170,9 @@ export function armsReady() {
   return true;
 }
 export const armsObj = () => arms; // (pose sheets)
+whenLate('x_rigarms', () => { if (arms && hidden) { arms.grp.removeFromParent(); arms = null; } }); // the Blender arms landed: built with them next time
 export function playArms(name, k = 1) { if (ANIMS[name]) { anims.push({ name, t: 0, k }); if (name === 'rig_punch' && arms) punchFrom = arms.charge || null; } }
-export function armsOn() { if (!armsReady()) return; if (accent) { accent.color.set(G.myColor || '#ff4fd8'); accent.emissive.set(G.myColor || '#ff4fd8').multiplyScalar(0.25); } hidden = false; arms.grp.visible = true; anims.length = 0; playArms('rig_on'); }
+export function armsOn() { if (!armsReady()) return; if (accent) { accent.color.set(G.myColor || '#ff4fd8'); accent.emissive.set(G.myColor || '#ff4fd8').multiplyScalar(0.25); } if (accentBl) { accentBl.color.set(G.myColor || '#ff4fd8'); accentBl.emissive.set(G.myColor || '#ff4fd8').multiplyScalar(0.18); } hidden = false; arms.grp.visible = true; anims.length = 0; playArms('rig_on'); }
 export function armsOff() { if (!arms) return; anims.length = 0; playArms('rig_off'); hidden = true; }
 export function armsHide() { if (arms) { arms.grp.visible = false; anims.length = 0; hidden = true; } }
 // a heavy footstep: both arms dip, the one on that side a bit more

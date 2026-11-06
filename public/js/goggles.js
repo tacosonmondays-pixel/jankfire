@@ -14,8 +14,10 @@ import { sfx, setMuffle } from './audio.js';
 import { hud } from './hud.js';
 import { RP, RP_HOOKS, recordEv } from './replay.js';
 import { K } from './keys.js';
+import { whenLate } from './glbkit.js';
 
 const NV = { on: false, t: 0, k: 0, vm: null, amb: null, fog: null, lastFlashT: 0 };
+whenLate('x_nvg', () => { if (NV.vm && !NV.vm.visible) { NV.vm.removeFromParent(); NV.vm = null; } }); // the Blender goggles landed (heads get them with their next rebuild)
 const ease = (x) => x * x * (3 - 2 * x);
 export const nvOn = () => NV.on;
 

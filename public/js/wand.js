@@ -12,6 +12,7 @@ import { fx } from './fx.js';
 import { sfx, loopSfx, setMuffle, stopLoops } from './audio.js';
 import { hud } from './hud.js';
 import { RP } from './replay.js';
+import { authored, whenLate } from './glbkit.js'; // the Blender wand (tools/blender/make_wand.py)
 
 const traps = new Map(); // player id -> { id, until, born, mesh }
 const live = new Map(); // soap bubbles in flight, so we can pop them when the server takes one away
@@ -161,20 +162,29 @@ function reset() {
 // ------------------------------------------------------------ the wand you blow through (viewmodel, bottom left)
 let vm = null, blowT = -1, lastItemT = 0;
 const LOW = [-0.15, -0.34, -0.3], MOUTH = [-0.055, -0.085, -0.22];
-function wandVM() {
-  if (vm) return vm;
-  vm = new THREE.Group();
-  const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.0055, 0.007, 0.15, 6), M(0xff7ad8));
-  stick.position.y = -0.105;
-  vm.add(stick, new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.0055, 6, 16), M(0xff7ad8)));
+// the wand + its soap film. the Blender wand (x_wand.glb) has its ring centre at the origin like ours
+export function wandMesh() {
+  const g = new THREE.Group();
+  const bl = authored('x_wand');
+  if (bl) { g.add(bl.obj); g.userData.glb = 'blender'; } else {
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.0055, 0.007, 0.15, 6), M(0xff7ad8));
+    stick.position.y = -0.105;
+    g.add(stick, new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.0055, 6, 16), M(0xff7ad8)));
+  }
   const film = soapBubble(1, 12, 0);
   film.scale.set(0.03, 0.03, 0.004);
-  vm.add(film);
-  vm.userData.film = film;
+  g.add(film);
+  g.userData.film = film;
+  return g;
+}
+function wandVM() {
+  if (vm) return vm;
+  vm = wandMesh();
   vm.visible = false;
   G.vmScene.add(vm);
   return vm;
 }
+whenLate('x_wand', () => { if (vm && blowT < 0) { vm.removeFromParent(); vm = null; } }); // it landed: the next blow uses it
 function stepVM(dt) {
   if (W.itemT && W.itemT !== lastItemT) { lastItemT = W.itemT; if (W.item === 'wand') blowT = 0; } // you just used it
   if (blowT < 0) return;

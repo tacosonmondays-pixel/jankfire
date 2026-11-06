@@ -7,10 +7,10 @@ import { COSMETICS } from '/shared/cosmetics.js';
 import { SUITS, RANKS, ARROW_TIPS } from '/shared/weapons.js';
 import { BLADES } from './blades/index.js';
 import { lathe } from './blades/kit.js';
-import { LASSO_MODELS, buildLoopProjectile } from './lasso_model.js';
+import { LASSO_MODELS, buildLoopProjectile, lassoLoop, ropeLook } from './lasso_model.js';
 import { buildRigMissile } from './rigmodel.js'; // overdrive rig killstreak
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { laserBuild, calculator } from './gearmodels.js'; // the new gear's models (laser pointer, pop quiz calculator)
+import { laserBuild, laserHooks, calculator } from './gearmodels.js'; // the new gear's models (laser pointer, pop quiz calculator)
 import { prepAuthored, authored, AUTHORED, bindAuthored, nodeIn, glossBlade, LAZY, isLazy } from './glbkit.js';
 import { SEC_WB, SEC_HATS, secAuthored } from './secmodels.js'; // water pistol, taser, tv remote, radar gun
 import { nailgunBuild, tennisBuild, cartCannonBuild, tennisBall, cartModel, nailgunStaple, tennisMachine, cartBasket } from './primmodels.js'; // the new primaries + what they shoot
@@ -1408,6 +1408,8 @@ export function buildWeapon(id, skin) {
     bindAuthored(g, mt); // needle, vents, barrels, ember, card fan, bow string + the pump / cylinder / hammer / bolt that the viewmodel moves
     secAuthored(id, g, mt); // the radar gun's speed readout, the water pistol's tank level, the taser's ARMED light
     bindRifle(g, mt); // rifle pack: mag, charging handle, lever, feed cover, belt links, barrel heat
+    if (id === 'laser') laserHooks(g, mt); // the Big Laser Pointer's button, LEDs, emitter, cat charm + the charge orb
+    if (LASSO_MODELS[variant ? model : id]) lassoLoop(g, ropeLook(skin)); // the lasso's hanging loop is simulated rope: still ours
     if (Array.isArray(mt.glint) && mt.glint.length && mt.glint.every((a) => Array.isArray(a) && a.length === 4 && a.every(Number.isFinite))) addGlint(g, mt.glint);
     applySkin(g, skin);
     return g;
