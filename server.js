@@ -41,6 +41,7 @@ import { navSteer } from './shared/nav.js';
 import { DUCKRAIN } from './shared/modes.js';
 import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
 import { OOB, outOfBounds, boundsCenter } from './shared/bounds.js';
+import { Traffic } from './server/traffic.js'; // cars on the roads (server/traffic.js)
 import { installGear } from './server/gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
 import { installEcon } from './server/econ.js';
 import { MSLIP, onPatch, patchPreroll } from './shared/marbles.js';
@@ -347,6 +348,7 @@ class Room {
     this.round = ROUND[mode] ? { target: ROUND[mode].kills, ends: now() + ROUND[mode].time * 1000, over: false, next: 0 } : null;
     if (mode === 'coop') this.interUntil = now() + 4000;
     if (this.round) this.round.t0 = now();
+    this.traffic = new Traffic(this);
   }
   get map() { return MAPS[this.cfg.map]; }
   get boxes() { return this.map.boxes; }
@@ -918,6 +920,7 @@ class Room {
     const n = now();
     const frozen = n < (b.frozenUntil || 0);
     const think = frozen ? { wx: 0, wz: 0, jump: false } : this.botThink(b, dt);
+    if (!frozen) this.traffic.botYield(b, think); // look both ways (mostly)
     if (frozen) { b.vel[0] = 0; b.vel[2] = 0; }
     if (b.rig && this.rigOn(b, n)) { this.rigBotStep(b, think, dt, n); return; } // overdrive rig: its own movement + plan (server/rig.js)
     const v = b.vel;
@@ -1332,7 +1335,7 @@ class Room {
     t.respawnAt = t.minRespawnAt = now() + (t.isBot && t.ai.dummy ? 700 : this.game === 'bomb' && this.teamsOn() ? BOMB.respawn : 2500);
     t.deadT = now();
     let killer = attacker, via = null;
-    if (w === 'void' || w === 'cough') {
+    if (w === 'void' || w === 'cough' || ((w === 'car' || w === 'carboom') && !attacker)) { // knocked into traffic counts like the void
       killer = null;
       if (t.lastAttacker && now() - t.lastAttackT < 10000 && this.players.has(t.lastAttacker)) {
         killer = this.players.get(t.lastAttacker); via = t.lastAttackW;
@@ -1419,7 +1422,7 @@ class Room {
     const r = this.round;
     if (r.hl && r.hl.score >= score) return;
     const label = ep && multi < 3 ? `EPIC SHOT · ${ep.d}M` : multi >= 5 ? 'RAMPAGE' : multi === 4 ? 'QUAD KILL' : multi === 3 ? 'TRIPLE KILL' : multi === 2 ? 'DOUBLE KILL'
-      : w === 'void' ? 'INTO THE VOID' : spd > 300 ? `${Math.round(spd)} KM/H KILL` : dist > 60 ? `${Math.round(dist)}M SHOT` : t.lastHs ? 'HEADSHOT' : 'NICE KILL';
+      : w === 'void' ? 'INTO THE VOID' : w === 'car' ? 'ROADKILL' : w === 'carboom' ? 'CAR BOMB' : spd > 300 ? `${Math.round(spd)} KM/H KILL` : dist > 60 ? `${Math.round(dist)}M SHOT` : t.lastHs ? 'HEADSHOT' : 'NICE KILL';
     const t0 = Math.max(k.killLog[0] - 3200, n - 8000);
     const hl = { score, pending: true };
     r.hl = hl;
@@ -1999,6 +2002,7 @@ class Room {
   }
   explodeAt(p, owner, wid, R, dmg, kb) {
     this.broadcast({ t: 'boom', p: p.map(r2), r: R });
+    this.traffic.blast(p, R, dmg, kb, owner);
     for (const t of this.players.values()) {
       if (!t.alive) continue;
       const c = center(t), to = [c[0] - p[0], c[1] - p[1], c[2] - p[2]], dist = Math.hypot(...to);
@@ -2014,6 +2018,7 @@ class Room {
     const w = WEAPONS.chicken;
     const owner = this.players.get(pr.o);
     this.broadcast({ t: 'pd', id: pr.id, p: pr.p.map(r2), x: 1 });
+    this.traffic.blast(pr.p, w.radius, w.dmg, w.kb, owner);
     for (const t of this.players.values()) {
       if (!t.alive) continue;
       const c = center(t);
@@ -2218,6 +2223,7 @@ class Room {
         if (pr.k === 'duck' && this.duckFly(pr, owner, dt)) continue; // homing, and it stuck to someone
         hit = stepProjectile(pr, dt, this.boxes, w.grav);
       }
+      if (pr.k !== 'duck' && pr.k !== 'frag' && pr.k !== 'smokegren' && pr.k !== 'slipper' && this.traffic.projHit(pr, prev, owner)) continue; // hit a car
       if (this.parryProj(pr, prev)) continue; // batted back by a katana parry
       if (pr.k === 'duck') {
         // sky ducks (duck rain) open where they land, and their holes are a bit gentler
@@ -2616,6 +2622,7 @@ class Room {
       const c = clampInt(m.bots, 0, 12);
       if (c !== this.cfg.bots) { this.cfg.bots = c; this.fillBots(); changes.push(`bot count → ${c}`); }
     }
+    this.traffic.setCfg(m, changes);
     if (!changes.length) return;
     this.broadcast({ t: 'cfg', cfg: this.cfg, by: p.id });
     if (this.mode === 'ffa' || this.mode === 'coop') this.broadcast({ t: 'chat', id: 0, m: `${p.name} set ${changes.join(', ')}` });
@@ -2686,6 +2693,7 @@ class Room {
         break;
       }
       case 'hit': this.onHit(p, m); break;
+      case 'car': this.traffic.onHit(p, m); break; // shot / bonked a car
       case 'push': this.onPush(p, m); break;
       case 'slam': this.onSlam(p, m); break;
       case 'fire': this.onFire(p, m); break;
@@ -3610,6 +3618,7 @@ class Room {
     this.tickPeels();
     this.tickMarbles();
     this.tickBalls();
+    this.traffic.tick(dt);
     this.tickWaves();
     if (this.sprays.size && this.sprayMap !== this.cfg.map) this.sprays.clear(); // the map changed: its graffiti goes with it
     this.tickChaos(dt, n);

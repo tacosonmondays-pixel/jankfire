@@ -24,6 +24,7 @@ import { rigFire, rigItem, rigVM, rigBlockKey, rigReload } from './rig.js'; // o
 import { tickScalesVM } from './scales.js';
 import { PARRY } from '/shared/weapons.js';
 import { ROYAL } from '/shared/looks.js';
+import { carRay, carHit, carSwing } from './traffic.js'; // cars stop bullets (and take the damage)
 
 export const W = {
   slots: [DEFAULT_LOADOUT.primary, DEFAULT_LOADOUT.secondary, DEFAULT_LOADOUT.melee],
@@ -724,7 +725,7 @@ function fireHitscan(id, now) {
   W.lastShotT = now;
   if (w.fanHammer && models[id]) applyTwirl(models[id].g, 0, models[id].cfg.s); // mid-twirl revolver: the shot leaves the resting muzzle (twirlVM spins it again before the next render)
   const o = eye(), base = look(), mz = muzzleWorld();
-  const hits = new Map();
+  const hits = new Map(), carHits = new Map();
   const segs = [];
   const pellets = w.pellets || 1;
   const shots = w.marbles ? [] : null; // Marble Shotgun: each pellet becomes a marble that bounces off what it hit
@@ -735,6 +736,15 @@ function fireHitscan(id, now) {
       const mh = raycast(from, d, left, BOXES);
       const maxT = mh ? mh.t : left;
       const ph = rayPlayers(from, d, maxT);
+      const ch = carRay(from, d, ph ? ph.t : maxT); // a car in the way takes it
+      if (ch) {
+        const end = [from[0] + d[0] * ch.t, from[1] + d[1] * ch.t, from[2] + d[2] * ch.t];
+        segs.push([...drawFrom, ...end]);
+        if (shots) shots.push({ a: drawFrom, b: end, n: ch.n, player: false });
+        carHits.set(ch.id, (carHits.get(ch.id) || 0) + 1);
+        if (!shots || i % 6 === 0) fx.sparks(end, d.map((x) => -x), 5, false);
+        break;
+      }
       const t = ph ? ph.t : maxT;
       const end = [from[0] + d[0] * t, from[1] + d[1] * t, from[2] + d[2] * t];
       segs.push([...drawFrom, ...end]);
@@ -758,6 +768,7 @@ function fireHitscan(id, now) {
   }
   const ns = id === 'sniper' && !W.scoped ? 1 : undefined; // no-scope: the server only makes it look cool, damage is the same
   const qs = id === 'sniper' && W.scoped && now - W.scopedAt <= ROYAL.quick ? 1 : undefined; // quick-scope: fired right as the scope came up (Sniper Royalty only, never damage)
+  for (const [cid, n] of carHits) { carHit(cid, id, n, base); hud.hit(false); }
   for (const [rid, h] of hits) net.send({ t: 'hit', to: rid, w: id, d: h.d.map(r2), n: h.n, h: h.h, ns, qs, fan: fanShot ? 1 : undefined });
   const fast = w.rate > 8;
   const skin = (W.skinOver || G.equipped || {})[id];
@@ -925,6 +936,7 @@ function resolveSwing(id) {
     G.shake = Math.max(G.shake, hv ? 0.6 : 0.35);
     return;
   }
+  if (carSwing(o, d, hv ? hv.range : reach, id)) { sfx.bonk(); W.hitStop = 0.05; G.shake = Math.max(G.shake, 0.3); return; } // bonked a car
   if (w.pogo) {
     const mh = raycast(o, d, w.range, BOXES);
     if (mh) {
