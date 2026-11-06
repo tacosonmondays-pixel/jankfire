@@ -184,6 +184,8 @@ export const sfx = {
   swing(pos) { noise(0.16, 0.5, 'bandpass', 700, 2600, pos, 0, 2); },
   click() { tone('square', 500, 500, 0.03, 0.08); },
   land() { noise(0.08, 0.3, 'lowpass', 600, 100); },
+  // a wrecking ball / overdrive rig breaking: a sharp crack, a metal crunch and a low thump
+  crack(pos) { noise(0.18, 0.95, 'highpass', 5200, 1600, pos); noise(0.55, 0.75, 'bandpass', 1100, 240, pos, 0.04, 1.4); tone('square', 210, 38, 0.4, 0.32, pos, 0.02); tone('sine', 90, 30, 0.6, 0.7, pos); },
   splat(pos) { noise(0.15, 0.5, 'lowpass', 2000, 300, pos); tone('sine', 200, 60, 0.15, 0.3, pos); },
   gun(id, pos, k = 0) {
     switch (id) {

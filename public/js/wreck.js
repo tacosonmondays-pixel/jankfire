@@ -275,7 +275,8 @@ export function updateWreck(dt, now, replaying, shadow, rope) {
   // what a ram would do right now (the server's rule: rolling, swinging and falling count, rising and the slam dive don't)
   const v = ME.vel, rs = Math.hypot(v[0], v[2], v[1] < 0 && v[1] > 8 - WRECK.slamV ? v[1] : 0);
   const ram = Math.round(ramDmg(rs));
-  hud.ball(Math.max(0, (ME.ballUntil - now) / 1000), me.dur || STREAKS.wreckingball.dur, { ready, h, size: h != null ? slamSize(h) : null, speed: rs, ram });
+  const bh = G.myBody && G.myBody.k === 'wreckingball' ? G.myBody : null; // its HP (bodyhp.js): it lasts until that breaks
+  hud.ball(Math.max(0, (ME.ballUntil - now) / 1000), me.dur || STREAKS.wreckingball.dur, { ready, h, size: h != null ? slamSize(h) : null, speed: rs, ram, hp: bh ? bh.hp : null, max: bh ? bh.max : null });
 }
 
 // third person: a boom straight back from the pivot above the ball along your view, so the crosshair (and your chain)

@@ -58,6 +58,7 @@ import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, ch
 import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset } from './royale.js'; // jank royale
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { ecoKeyLabel } from './econ.js';
+import { bodyReset } from './bodyhp.js'; // the wrecking ball + rig last until they break
 import { initEcon, ecoOn, econKey, econMouse, econMenuOpen, econFrame, econCam, econHideVM, econDead, econWelcome, econSpawn, econKill, econIc, econLoadout, econReset } from './econ.js';
 import { SPRAY, ownedSpray } from '/shared/cosmetics.js';
 import { sprayAim, sprayFx, addSpray, clearSprays, updateSprays, sprayIcon } from './sprays.js';
@@ -234,6 +235,7 @@ function startMode(mode, cfg) {
 }
 
 function resetWorldState() {
+  bodyReset(); // wrecking ball / rig HP bars
   G.joined = false;
   ME.alive = false;
   releaseHook();
