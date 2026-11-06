@@ -3,6 +3,8 @@
 // Rule of thumb for builders: never let two different surfaces sit in the same plane (that flickers).
 import { buildNav, navPath, navLocate, navClear } from './nav.js';
 import { outOfBounds } from './bounds.js';
+import { prop } from './props.js';
+export { prop, PROPS } from './props.js';
 
 function rng(seed) { // mulberry32
   return () => {
@@ -15,6 +17,7 @@ function rng(seed) { // mulberry32
 
 function builder() {
   const boxes = [];
+  boxes.props = []; // Blender props to draw (shared/props.js), visual only
   const add = (x0, y0, z0, x1, y1, z1, mat = 'stone', extra) => {
     if (x1 < x0) [x0, x1] = [x1, x0];
     if (y1 < y0) [y0, y1] = [y1, y0];
@@ -34,7 +37,13 @@ function builder() {
       add(ox + ax, oy + y0, oz + az, ox + bx, oy + y1, oz + bz, mat, extra);
     };
     L.B = (cx, cy, cz, sx, sy, sz, mat, extra) => L(cx - sx / 2, cy - sy / 2, cz - sz / 2, cx + sx / 2, cy + sy / 2, cz + sz / 2, mat, extra);
-    L.P = (x, y, z) => { const [ax, az] = T(x, z); return [ox + ax, oy + y, oz + az]; }; // a local point in world space
+    L.pt = (x, y, z) => { const [ax, az] = T(x, z); return [ox + ax, oy + y, oz + az]; }; // a local point in world space
+    // a prop model at local (x, z), turned r more quarter turns. returns the tag for the boxes it stands in for
+    L.P = (id, x, z, r = 0, o = {}) => {
+      const [ax, az] = T(x, z);
+      boxes.props.push({ id, p: [ox + ax, oy + (o.y || 0), oz + az], r: (rot + r) & 3, v: o.v, color: o.color, s: o.s });
+      return { pv: id };
+    };
     return L;
   };
   return { boxes, add, box, local, obb };
@@ -140,7 +149,8 @@ function shell(L, w, d, floors, F, mat, o = {}) {
 
 // ------------------------------------------------------------ props
 function car(L, x, z, rot, color = 'carred') {
-  const C = (lx0, y0, lz0, lx1, y1, lz1, m) => (rot ? L(x + lz0, y0, z + lx0, x + lz1, y1, z + lx1, m) : L(x + lx0, y0, z + lz0, x + lx1, y1, z + lz1, m));
+  const pv = L.P && L.P('car', x, z, rot ? 1 : 0, { color }); // the Blender car, when it's loaded, stands in for these boxes
+  const C = (lx0, y0, lz0, lx1, y1, lz1, m) => (rot ? L(x + lz0, y0, z + lx0, x + lz1, y1, z + lx1, m, pv) : L(x + lx0, y0, z + lz0, x + lx1, y1, z + lz1, m, pv));
   C(-2.2, 0.32, -0.92, 2.2, 0.95, 0.92, color); // body
   C(-2.3, 0.3, -0.9, -2.2, 0.55, 0.9, 'chrome'); C(2.2, 0.3, -0.9, 2.3, 0.55, 0.9, 'chrome'); // bumpers
   C(-1.1, 0.95, -0.8, 0.9, 1.5, 0.8, 'glass'); // cabin glass
@@ -156,9 +166,10 @@ function tree(L, x, z, h = 4.5) {
   L.B(x, h + 2.2, z, 2.4, 1.0, 2.4, 'leaves');
 }
 function streetlight(L, x, z, armDir = 1) {
-  L.B(x, 3, z, 0.25, 6, 0.25, 'metal');
-  L(x, 5.8, z - 0.12, x + armDir * 1.6, 6.0, z + 0.12, 'metal');
-  L.B(x + armDir * 1.6, 5.8, z, 0.6, 0.25, 0.4, 'light');
+  const pv = L.P && L.P('streetlight', x, z, armDir < 0 ? 2 : 0);
+  L.B(x, 3, z, 0.25, 6, 0.25, 'metal', pv);
+  L(x, 5.8, z - 0.12, x + armDir * 1.6, 6.0, z + 0.12, 'metal', pv);
+  L.B(x + armDir * 1.6, 5.8, z, 0.6, 0.25, 0.4, 'light', pv);
 }
 function acUnit(L, x, z, y) { L.B(x, y + 0.7, z, 2, 1.4, 1.4, 'metal'); L.B(x, y + 1.45, z, 1.2, 0.1, 1.2, 'grid'); }
 function waterTower(L, x, z, y) {
@@ -731,7 +742,7 @@ function suburb() {
   for (const [x, z, rot, o] of homes) {
     home(B, x, z, rot, o, r);
     const L = B.local(x, z, rot);
-    spawns.push(L.P(3.5, 0.3, -3.5), L.P(0, 0.3, 10)); // the living room and the backyard
+    spawns.push(L.pt(3.5, 0.3, -3.5), L.pt(0, 0.3, 10)); // the living room and the backyard
   }
   // the middle of the street: a bus, a box truck, cars parked along the curbs (one crashed into the bus)
   bus(B, -32, -4.4);
@@ -877,14 +888,20 @@ function suburb() {
 // catwalks round the walls. outside: a chain-link fence round a big yard (containers, trailers, trucks, a parking lot,
 // a smaller shed, a water tower); go over the fence and you get the RETURN TO THE MAP countdown
 function rack(B, x0, z, len, r) { // blue racking with orange beams, three decks you can climb, boxes on every level
-  for (let x = x0; x <= x0 + len + 0.01; x += 3) for (const pz of [z - 1.3, z + 1.1]) B.add(x - 0.1, 0, pz, x + 0.1, 7.3, pz + 0.2, 'shelf'); // posts stand proud of the beams (no faces in one plane)
-  B.add(x0, 0, z + 0.75, x0 + len, 2, z + 0.8, 'grid'); // mesh backing up to the first deck: a row is a wall at body height (no heads showing through)
+  // in 6 m bays: the Blender rack (shared/props.js) draws the uprights, beams and wire decks over these boxes (same heights)
+  len = Math.max(6, Math.round(len / 6) * 6);
+  const L = B.local(0, 0, 0), rk = { pv: 'rack' };
+  for (let x = x0; x < x0 + len - 0.01; x += 6) L.P('rack', x, z, 0, { v: 'bay' });
+  L.P('rack', x0 + len, z, 0, { v: 'frame' });
+  for (let x = x0; x <= x0 + len + 0.01; x += 6) for (const pz of [z - 1.3, z + 1.1]) B.add(x - 0.1, 0, pz, x + 0.1, 7.3, pz + 0.2, 'shelf', rk); // posts stand proud of the beams (no faces in one plane)
   for (const lvl of [0, 2.4, 4.8]) {
-    B.add(x0, lvl + 2, z - 1.2, x0 + len, lvl + 2.25, z + 1.2, 'pallet');
-    B.add(x0, lvl + 1.75, z - 1.25, x0 + len, lvl + 2, z - 1.2, 'toyorange'); B.add(x0, lvl + 1.75, z + 1.2, x0 + len, lvl + 2, z + 1.25, 'toyorange');
+    B.add(x0, lvl + 2, z - 1.2, x0 + len, lvl + 2.25, z + 1.2, 'pallet', rk);
+    B.add(x0, lvl + 1.75, z - 1.25, x0 + len, lvl + 2, z - 1.2, 'toyorange', rk); B.add(x0, lvl + 1.75, z + 1.2, x0 + len, lvl + 2, z + 1.25, 'toyorange', rk);
   }
-  for (let x = x0 + 0.3; x + 1.3 < x0 + len; x += 1.5) {
-    for (const lvl of [2.25, 4.65, 7.05]) if (r() < 0.7) { const h = 0.6 + r() * 0.9; B.add(x, lvl, z - 0.9 + r() * 0.3, x + 1 + r() * 0.3, lvl + h, z + 0.6 + r() * 0.3, r() < 0.85 ? 'cardboard' : 'shelfstock'); }
+  B.add(x0, 0, z + 0.75, x0 + len, 2, z + 0.8, 'grid'); // mesh backing up to the first deck: a row is a wall at body height (no heads showing through)
+  for (let bx = x0; bx < x0 + len - 0.01; bx += 6) for (const off of [0.3, 1.75, 3.2, 4.65]) { // four lots a bay, clear of the uprights
+    const x = bx + off;
+    for (const lvl of [2.25, 4.65, 7.05]) if (r() < 0.7) { const h = 0.6 + r() * 0.9; B.add(x, lvl, z - 0.9 + r() * 0.3, x + 0.9 + r() * 0.3, lvl + h, z + 0.6 + r() * 0.3, r() < 0.85 ? 'cardboard' : 'shelfstock'); }
     // every bay on the floor is stocked (with the backing behind it, an empty one would be a pocket you walk into and stick)
     B.add(x, 0, z - 0.9, x + 1.2, 0.15, z + 0.7, 'pallet'); B.add(x + 0.05, 0.15, z - 0.85, x + 1.15, 0.15 + 0.85 + r() * 0.65, z + 0.65, 'cardboard');
   }
@@ -893,16 +910,14 @@ function pallets(B, x, z, n, r, top = true) { // a stack of empty pallets, now a
   for (let i = 0; i < n; i++) B.add(x, i * 0.16, z, x + 1.2, i * 0.16 + 0.15, z + 1.0, 'pallet');
   if (top && r() < 0.6) B.add(x + 0.05, n * 0.16, z + 0.05, x + 1.15, n * 0.16 + 0.5 + r() * 0.7, z + 0.95, 'cardboard');
 }
+// the Blender forklift over its collision boxes (shared/props.js). forks toward local -x; lift: it's carrying a load
 function forklift(B, x, z, rot, lift = 0) {
   const L = B.local(x, z, rot);
-  L(-0.9, 0.25, -0.62, 0.7, 1.25, 0.62, 'toyyellow'); L(0.7, 0.25, -0.62, 1.15, 1.55, 0.62, 'toyorange'); // body + counterweight
-  for (const [px, pz] of [[-0.85, -0.55], [-0.85, 0.47], [0.45, -0.55], [0.45, 0.47]]) L(px, 1.25, pz, px + 0.08, 2.25, pz + 0.08, 'metal');
-  L(-0.9, 2.25, -0.62, 0.55, 2.33, 0.62, 'grid'); L(-0.1, 1.25, -0.35, 0.35, 1.75, 0.35, 'seat');
-  for (const pz of [-0.5, 0.36]) L(-1.12, 0.1, pz, -0.98, 2.9, pz + 0.14, 'metal'); // mast
-  for (const pz of [-0.42, 0.24]) L(-2.25, 0.15 + lift, pz, -1.12, 0.25 + lift, pz + 0.18, 'metal'); // forks
-  if (lift) { L(-2.3, 0.25 + lift, -0.55, -1.15, 0.4 + lift, 0.55, 'pallet'); L(-2.25, 0.4 + lift, -0.5, -1.2, 1.2 + lift, 0.5, 'cardboard'); }
-  for (const [px, pz] of [[-0.55, -0.72], [-0.55, 0.52], [0.8, -0.72], [0.8, 0.52]]) L(px - 0.3, 0, pz, px + 0.3, 0.6, pz + 0.2, 'tire');
+  prop(L, 'forklift', 0, 0, 2);
+  if (lift) prop(L, 'pallet_load', -1.95, 0, 0, { y: 0.2 });
 }
+// a pallet with a load strapped on (the Blender one): small cover
+function palletLoad(B, x, z, rot = 0) { prop(B.local(x, z, rot), 'pallet_load', 0, 0, 0); }
 function trailer(B, x0, z0, livery) { // a semi trailer along x on its landing legs (no cab)
   const z1 = z0 + 2.6;
   B.add(x0, 1.3, z0, x0 + 12.5, 4.1, z1, 'truckbox');
@@ -1028,7 +1043,7 @@ function warehouse() {
     for (let x = -24; x <= 24; x += 12) if (!(x > 18 && z < -8)) { D.add(x - 0.03, H - 3.6, z - 0.03, x + 0.03, H - 1.4, z + 0.03, 'tire'); D.add(x - 0.6, H - 3.9, z - 0.6, x + 0.6, H - 3.6, z + 0.6, 'metal'); D.add(x - 0.45, H - 3.96, z - 0.45, x + 0.45, H - 3.9, z + 0.45, 'lamp'); }
   }
   rack(B, -26, -9, 18, r); rack(B, 7, -9, 12, r); // three rows, each broken by a cross aisle (and the office in the corner)
-  rack(B, -21, 0, 15, r); rack(B, 6, 0, 15, r);
+  rack(B, -21, 0, 18, r); rack(B, 6, 0, 12, r);
   rack(B, -26, 9, 18, r); rack(B, 8, 9, 18, r);
   for (const x of [-7, 6.5]) add(x - 0.08, 0, -HZ + 0.5, x + 0.08, 0.02, HZ - 0.5, 'neonyellow');
   // the foreman's office: two floors and stairs to the roof, in the north-east corner
@@ -1045,7 +1060,7 @@ function warehouse() {
   add((px0 + px1) / 2 - 2, 0, pz0 - 0.62, (px0 + px1) / 2 + 2, 0.6, pz0 - 0.32, 'adshred', { fit: 1 });
   forklift(B, -1, -4.5, 1, 1.4); forklift(B, -12, 14, 0); forklift(B, 21, 4.5, 3, 2.2);
   pallets(B, -2, 12, 6, r); pallets(B, -0.6, 12, 4, r); pallets(B, 16, -14, 7, r); pallets(B, -29, -14, 5, r); pallets(B, -27.6, -14, 3, r);
-  cratePile(B, -16, -16, 6, r); cratePile(B, 26, 13, 5, r);
+  cratePile(B, -16, -16, 6, r); cratePile(B, 26, 13, 5, r); palletLoad(B, -2, -14); palletLoad(B, 14, 14, 1);
   for (let i = 0; i < 6; i++) box(-30.5 + (i % 3) * 0.85, 0.6, -6 + Math.floor(i / 3) * 0.85, 0.75, 1.2, 0.75, i % 2 ? 'barrelr' : 'barrel');
 
   // ---- north: the container yard. stacks in two staggered rows (a little maze), a crane over the middle
@@ -1066,7 +1081,7 @@ function warehouse() {
   for (const [x, z] of [[-48, 28], [40, 28], [-4, 47]]) { add(x, 0, z, x + 2.6, 1.5, z + 1.6, 'containerg'); add(x - 0.05, 1.5, z - 0.05, x + 2.65, 1.62, z + 1.65, 'metal'); }
   forklift(B, -30, 30, 1, 1.2); forklift(B, 30, 34, 3); pallets(B, -8, 30, 6, r); pallets(B, -6.6, 30, 4, r); pallets(B, 52, 30, 7, r); cratePile(B, -64, 32, 6, r);
   barrier(B, 0, 37, false); barrier(B, -24, 37, false); barrier(B, 24, 37, false);
-  cratePile(B, -44, 50, 5, r); cratePile(B, 22, 50, 6, r); pallets(B, -60, 26, 6, r); pallets(B, 64, 24, 5, r); barrier(B, -36, 26, true); barrier(B, 46, 40, true);
+  cratePile(B, -44, 50, 5, r); cratePile(B, 22, 50, 6, r); palletLoad(B, -40, 34); palletLoad(B, 4, 32, 1); palletLoad(B, 40, 46); palletLoad(B, -44, -46); palletLoad(B, 24, -40, 1); pallets(B, -60, 26, 6, r); pallets(B, 64, 24, 5, r); barrier(B, -36, 26, true); barrier(B, 46, 40, true);
   for (let i = 0; i < 6; i++) for (let k = 0; k <= i % 3; k++) box(48 + i * 1.1, 0.15 + k * 0.3, 50, 1, 0.3, 1, 'tire');
 
   // ---- west: the gate side (team 1). the truck that came in, the guard booth
@@ -1196,7 +1211,7 @@ function warehouseSD() {
 
   // ---- the apron (between the attackers and the hall's west door): a little cover, the way into mid
   forklift(B, -44, -10, 1); container(B, -40, 14, true, 1, ['containerg']); barrier(B, -34, -4, true); barrier(B, -50, 4, true);
-  pallets(B, -30, 17, 5, r); pallets(B, -28.6, 17, 3, r); cratePile(B, -54, -16, 5, r);
+  pallets(B, -30, 17, 5, r); pallets(B, -28.6, 17, 3, r); cratePile(B, -54, -16, 5, r); palletLoad(B, -46, 16);
 
   // ---- MID: the hall
   wall(W, 'x', -HZ, -HX - 0.3, HX + 0.3, 0, H, 0.6, 'metal', [{ a: 8, b: 13, y0: 0, y1: 3.6 }, ...windows(2 * HX, 5.5, 0, 2, 8)]); // north: the door to the container yard
@@ -1210,7 +1225,7 @@ function warehouseSD() {
     for (let x = -18; x <= 18; x += 12) { D.add(x - 0.03, H - 3.6, z - 0.03, x + 0.03, H - 1.4, z + 0.03, 'tire'); D.add(x - 0.6, H - 3.9, z - 0.6, x + 0.6, H - 3.6, z + 0.6, 'metal'); D.add(x - 0.45, H - 3.96, z - 0.45, x + 0.45, H - 3.9, z + 0.45, 'lamp'); }
   }
   for (const z of [-7.4, 7.2]) add(-20, 0, z - 0.06, 20, 0.02, z + 0.06, 'neonyellow'); // the aisle lines
-  rack(B, -18, -9, 21, r); rack(B, -3, 9, 21, r); // racking: north side in the west half, south side in the east half
+  rack(B, -18, -9, 18, r); rack(B, 0, 9, 18, r); // racking: north side in the west half, south side in the east half
   const O = B.local(6, 0, 1); // the foreman's office in the middle of the floor (doors west and east, windows all round)
   shell(O, 8, 10, 1, 3.2, 'magenta', { floor: 'leopard', roof: 'roofg', parapet: false, backDoor: true });
   O(-3, 0.12, -1, -1, 0.85, 3, 'wood'); O(1.5, 0.12, -1, 3.5, 0.85, 3, 'wood'); O.B(-2, 1.15, 1, 0.9, 0.6, 0.1, 'tvstatic'); O.B(2.5, 1.15, 1, 0.9, 0.6, 0.1, 'tvstatic');
@@ -1237,7 +1252,7 @@ function warehouseSD() {
   container(B, 45, -44, false, 2, ['containerr', 'containerr']); // the A box
   container(B, 54.75, -33, true, 1, ['containerg'], 6);
   cratePile(B, 32, -33, 6, r); pallets(B, 36, -51, 4, r); pallets(B, 37.4, -51, 6, r); forklift(B, 55, -49, 1, 1.2);
-  barrier(B, 46, -28.5, false);
+  barrier(B, 46, -28.5, false); palletLoad(B, 36, -46); palletLoad(B, 51, -38, 1);
   for (const x of [31.5, 57.5]) box(x, 5, -55.5, 0.9, 10, 0.9, 'toyorange'); // a gantry crane over the dock
   D.add(31, 10, -56, 58, 11, -55, 'toyorange'); D.add(43, 8.6, -56.2, 46, 10, -54.8, 'hazard'); D.add(44.4, 4.2, -55.55, 44.6, 8.6, -55.45, 'tire'); D.add(43.6, 3.4, -56.2, 45.4, 4.2, -54.8, 'metal');
   siteBoard(D, 45, 4.6, -57.85, 'x', 'sitea', 5); siteBoard(D, 51, 0.6, -24.38, 'x', 'sitea', 2.6);
@@ -1247,7 +1262,7 @@ function warehouseSD() {
   shell(DB, 6, 4.4, 1, 2.9, 'toyteal', { roof: 'toyred', floor: 'tile', parapet: false, backDoor: true });
   DB.B(0, 1.15, 1.8, 0.9, 0.6, 0.1, 'tvstatic');
   forklift(B, 33, 12, 0); pallets(B, 48, 14, 6, r); pallets(B, 49.4, 14, 4, r); barrier(B, 31, -16, true); barrier(B, 52, -14, false);
-  trailerS(30, 17, 'adtruck');
+  trailerS(30, 17, 'adtruck'); palletLoad(B, 36, 4); palletLoad(B, 52, 18, 1);
   for (let i = 0; i < 4; i++) box(54 + (i % 2) * 0.85, 0.6, 6 + Math.floor(i / 2) * 0.85, 0.75, 1.2, 0.75, i % 2 ? 'barrel' : 'barrelr');
   add(24.3, 0, 21.7, 30.25, 2.4, 27.75, 'wood'); // the bin store in the corner (no way through to the trailer park)
   // the staff block: the defenders spawn behind it, it hides them from the courtyard
@@ -1284,7 +1299,7 @@ function warehouseSD() {
   for (const x of [-41, -19, 3]) trailerS(x, 40, x === -19 ? 'adtruck' : 'adtruck2');
   for (const x of [-52, -30, -8]) trailerS(x, 51, x === -8 ? 'adtruck2' : 'adtruck');
   for (const [x, z] of [[-60, 36], [-20, 47], [10, 34]]) { add(x, 0, z, x + 2.6, 1.5, z + 1.6, 'containerg'); add(x - 0.05, 1.5, z - 0.05, x + 2.65, 1.62, z + 1.65, 'metal'); } // dumpsters
-  pallets(B, 18, 48, 6, r); pallets(B, 19.4, 48, 4, r); forklift(B, 22, 38, 2, 1.2); barrier(B, 25, 47, true);
+  pallets(B, 18, 48, 6, r); pallets(B, 19.4, 48, 4, r); forklift(B, 22, 38, 2, 1.2); barrier(B, 25, 47, true); palletLoad(B, -36, 47); palletLoad(B, 12, 46, 1);
   for (let i = 0; i < 5; i++) for (let k = 0; k <= i % 3; k++) box(-46 + i * 1.1, 0.15 + k * 0.3, 46, 1, 0.3, 1, 'tire');
 
   const spawns = [[-50, 0.1, -36], [-22, 0.1, -45], [6, 0.1, -30], [-42, 0.1, 0], [-12, 0.1, -14], [13, 0.1, 15], [-30, 0.1, 35], [0, 0.1, 47],

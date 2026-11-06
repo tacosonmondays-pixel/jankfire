@@ -6,7 +6,7 @@ import { streakIcon } from './icons.js';
 import { stepProjectile, raycast } from '/shared/physics.js';
 import { duckFrame, duckStuck } from './duck.js';
 import { G } from './ctx.js';
-import { initWorld, renderFrame, setJank, updateWorld, loadMap } from './world.js';
+import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals } from './world.js';
 import { loadTripoModels, buildProjectile, buildPeel, buildHole, makeShadow, tipColor, buildCharacter, teamLook, M } from './models.js';
 import { initCrosses, crossEvent, crossShot, updateCrosses, clearCrosses } from './bloodcross.js';
 import { net } from './net.js';
@@ -24,7 +24,8 @@ import { Remote, updateGibs } from './remote.js';
 import { stepSoap, trapStart, trapEnd, updateWand, stuckInBubble } from './wand.js';
 import { parry } from './weapons.js';
 import './parry.js'; // katana parry: sparks, sounds, PARRY!, the guard pose
-import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN } from './skins.js';
+import { addPatch, clearPatches } from './mslip.js'; // marble shotgun: marbles on the floor you slip on
+import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN, WRAP_MODES, WRAP_MODE_NAMES } from './skins.js';
 import { initPreview, showPreview, showCharacter, renderPreview, resizePreview } from './preview.js';
 import { playKillFx, updateKillFx, clearKillFx } from './killfx.js';
 import { courtKill, courtVerdict, updateCourt, courtReset, courtSync } from './scales.js';
@@ -50,11 +51,14 @@ import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CON
 import { SPRAY, ownedSpray } from '/shared/cosmetics.js';
 import { sprayAim, sprayFx, addSpray, clearSprays, updateSprays, sprayIcon } from './sprays.js';
 import { achInv } from '/shared/cosmetics.js'; // achievement rewards (Golden Sniper) count as owned once you have the achievement
-import { achProgress } from '/shared/looks.js';
+import { achProgress, ROYAL_ALL, ROYAL_FEATS } from '/shared/looks.js';
 import { royalToast, royalUnlock, royalBoxes } from './royal.js';
-import { setOnly } from './weapons.js';
+import { setOnly, coughCloud } from './weapons.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
 import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection, infClipInfo } from './infection.js';
+import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown } from './endscreen.js';
+import { initHome, homeShown, homeLeft } from './home.js';
+import { skipVote, skipReset } from './skipvote.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
@@ -89,7 +93,7 @@ function recomputeEquipped() {
     const o = ownedSkin(sk, G.inv, id);
     if (o[0] !== 'default' || o[1] !== 'none' || o[2] !== 'none' || o[3] !== 'default') G.equipped[id] = o;
   }
-  if (G.equipped.scythe) G.equipped.scythe_rifle = G.equipped.scythe.slice(0, 3).concat('default'); // both forms look the same
+  if (G.equipped.scythe) G.equipped.scythe_rifle = G.equipped.scythe.slice(0, 3).concat('default', G.equipped.scythe[4]); // both forms look the same
 }
 recomputeEquipped();
 
@@ -102,10 +106,28 @@ const vmScaleU = { value: 300 };
 G.skinFxWorld = makeSkinSystems(G.scene, scaleU);
 G.skinFxVM = makeSkinSystems(G.vmScene, vmScaleU);
 hud.init();
+initEndscreen({
+  note: (id, m) => ggRowNote(id, m) || infRowNote(id, m),
+  title: (m) => { const t = m && !m.pending && infRoundTitle(m); return t ? t[0] : ''; },
+  unlock: () => { if (document.pointerLockElement) document.exitPointerLock(); }, // the cards want a mouse
+  level: () => (account.me ? { level: account.me.level, xp: account.me.xp || 0 } : null),
+  gotXp: (x) => { // keep the account bar honest between matches (the server saved it already)
+    const me = account.me;
+    if (!me || !(x > 0)) return;
+    me.xp = (me.xp || 0) + x;
+    while (me.xp >= me.level * me.level * 40) me.level++;
+    renderAcctBar();
+  },
+});
 initWeapons();
 setLoadout(G.settings.loadout);
 hud.show(false);
 initPreview($('preview'));
+initHome({
+  start: (mode, cfg) => startMode(mode, cfg),
+  look: () => { const shown = validLook({ ...DEFAULT_LOOK, ...G.settings.look }, myAchs()); return [shown.color || G.myColor || '#ff4fd8', shown]; },
+  skin: (id) => G.equipped[id], // what you actually wear
+});
 
 const myShadow = makeShadow();
 G.scene.add(myShadow);
@@ -115,10 +137,11 @@ G.scene.add(myRope);
 
 loadTripoModels().then((n) => {
   if (!n) return;
-  console.log(`loaded ${n} tripo models`);
+  console.log(`loaded ${n} models`);
   rebuildOne(); // visuals only: a randomizer or pending loadout stays as it is
+  refreshMapVisuals(); // Blender props replace their stand-in boxes
   for (const r of G.remotes.values()) r.build();
-  $('status').textContent = `${n} Tripo model(s) loaded`;
+  $('status').textContent = `${n} model(s) loaded`;
 });
 
 // ------------------------------------------------------------ screens
@@ -127,8 +150,10 @@ function show(id) {
   screen = id;
   for (const el of document.querySelectorAll('.screen')) el.classList.toggle('hidden', el.id !== 'scr-' + id);
   $('menu').classList.remove('hidden');
+  $('menu').classList.toggle('home-on', id === 'main');
   hud.show(false);
-  if (id === 'cosmetics') { $('cosSlot').append($('preview')); buildCosmeticsUI(); setTimeout(resizePreview, 0); }
+  if (id !== 'main') homeLeft();
+  if (id === 'cosmetics') { skinAllNow = false; $('cosSlot').append($('preview')); buildCosmeticsUI(); setTimeout(resizePreview, 0); }
   if (id === 'character') { $('charSlot').append($('preview')); buildCharacterUI(); setTimeout(resizePreview, 0); }
   if (id === 'namecard') cardEditor.open();
   if (id === 'crates') renderCrates();
@@ -137,7 +162,7 @@ function show(id) {
   if (id === 'match') syncMatchUI();
   if (id === 'profile') { renderProfile(); restore().then((me) => { if (me && screen === 'profile') { renderProfile(); renderAcctBar(); } }); }
   if (id === 'leaders') renderLeaders();
-  if (id === 'main') renderAcctBar();
+  if (id === 'main') { renderAcctBar(); homeShown(); }
 }
 function hideMenu() {
   $('menu').classList.add('hidden');
@@ -151,7 +176,7 @@ $('quit').addEventListener('click', quitToMenu);
 
 function resume() {
   hideMenu();
-  lock();
+  if (!esFull()) lock(); // the end screen wants the mouse free for its cards
 }
 
 // ------------------------------------------------------------ playing
@@ -206,6 +231,8 @@ function resetWorldState() {
   G.roundOver = false;
   renderRound(null);
   $('roundEnd').classList.add('hidden');
+  esClose(false);
+  skipReset();
   if (account.loggedIn) setTimeout(() => restore().then((me) => { if (me) renderAcctBar(); }), 900); // server saves stats when you leave
 }
 function clearEntities() {
@@ -214,6 +241,7 @@ function clearEntities() {
   for (const h of G.holes.values()) G.scene.remove(h.mesh);
   G.projs.clear(); G.peels.clear(); G.holes.clear();
   clearCrosses();
+  clearPatches();
 }
 function quitToMenu(silent) {
   net.close();
@@ -241,8 +269,8 @@ function pause() {
 let wasLocked = false, lockedAt = 0, mouseAvg = 8;
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === canvas;
-  if (locked) lockedAt = performance.now();
-  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden')) pause();
+  if (locked) { lockedAt = performance.now(); esHideClick(); }
+  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull()) pause(); // the end screen lets go of the mouse on purpose
   wasLocked = locked;
 });
 canvas.addEventListener('click', () => { if (G.joined && document.pointerLockElement !== canvas && $('menu').classList.contains('hidden')) lock(); });
@@ -474,8 +502,10 @@ function sendSkins() {
 function skinnable() { return ORDER.filter((id) => WEAPONS[id] && (SLOTS.includes(WEAPONS[id].slot) || itemModel(id) || id === 'scythe')); }
 // items you see in your hand wear skins (popper, reverse card). the thrown duck is a plain projectile, so not that
 function itemModel(id) { return Object.values(ITEMS).some((it) => it.w === id); }
+// nothing picked = no entry. a wrap mode that isn't normal is kept even without a wrap, so it's still there when you pick one
+const plainSkin = (skin) => skin[0] === 'default' && skin[1] === 'none' && skin[2] === 'none' && (skin[3] || 'default') === 'default' && (skin[4] || 'normal') === 'normal';
 function storeSkin(id, skin) {
-  if (skin[0] === 'default' && skin[1] === 'none' && skin[2] === 'none' && (skin[3] || 'default') === 'default') delete S.skins[id];
+  if (plainSkin(skin)) delete S.skins[id];
   else S.skins[id] = skin;
 }
 // wrap / hat / effect on EVERY weapon at once (each weapon keeps its own model)
@@ -483,9 +513,11 @@ function setPartAll(idx, value) {
   for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[idx] = value; storeSkin(id, sk); }
   saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne(); // visuals only: keeps a randomizer or pending loadout
 }
-const allMode = () => S.skinAll !== false;
+// copy-to-every-weapon starts unticked every time you open COSMETICS (it isn't saved): you dress one weapon unless you ask
+let skinAllNow = false;
+const allMode = () => skinAllNow;
 function setSkin(id, skin) {
-  if (skin[0] === 'default' && skin[1] === 'none' && skin[2] === 'none' && (skin[3] || 'default') === 'default') delete S.skins[id];
+  if (plainSkin(skin)) delete S.skins[id];
   else S.skins[id] = skin;
   saveSettings();
   recomputeEquipped();
@@ -505,6 +537,8 @@ function setLook(look) {
   saveSettings();
   if (G.joined) net.send({ t: 'look', look: validLook(look, myAchs()) });
 }
+// every achievement (and old one), for trying on locked accessories in the preview only: what you wear stays validLook(look, myAchs())
+const ALL_ACHS = new Set([...Object.keys(ACHIEVEMENTS), ...LOOK_SLOTS.flatMap((sl) => Object.values(ACCESSORIES[sl]).map((v) => v.legacy).filter(Boolean))]);
 function buildCharacterUI() {
   const achs = myAchs();
   const look = { ...DEFAULT_LOOK, ...G.settings.look };
@@ -559,6 +593,8 @@ function buildCharacterUI() {
       c.textContent = v.name;
       if (v.ach) c.style.setProperty('--rc', '#ffe14d');
       c.title = v.ach ? `${ACHIEVEMENTS[v.ach].name}: ${ACHIEVEMENTS[v.ach].desc}` : 'free';
+      c.addEventListener('mouseenter', () => { const t = validLook({ ...look, [slot]: k }, ALL_ACHS); showCharacter(buildCharacter, t.color || G.myColor || '#ff4fd8', t); }); // try it on, locked or not
+      c.addEventListener('mouseleave', () => showCharacter(buildCharacter, shown.color || G.myColor || '#ff4fd8', shown));
       if (v.legacy && achs.has(v.legacy) && !achs.has(v.ach)) c.title += ' (yours anyway: you earned them before they moved here)';
       c.addEventListener('click', () => {
         if (!have) { toast(`${v.name}: unlock "${ACHIEVEMENTS[v.ach].name}" (${ACHIEVEMENTS[v.ach].desc})${account.loggedIn ? '' : '. log in so it counts'}`, 3200); return; }
@@ -604,7 +640,7 @@ function buildCharacterUI() {
     const rw = document.createElement('div'); rw.className = 'rw';
     rw.textContent = 'unlocks ' + rewardsFor(id).map((x) => x.name).join(', ');
     d.append(b, t, bar, rw);
-    if (a.feats) d.insertBefore(royalBoxes(done ? (1 << a.feats.length) - 1 : st[a.stat] || 0, 0, a.feats), bar); // the parts, ticked or not
+    if (a.feats) d.insertBefore(royalBoxes(done ? ROYAL_ALL : st[a.stat] || 0, 0, a.feats), bar); // the parts, ticked or not
     list.append(d);
   }
   $('lkNote').textContent = account.loggedIn ? 'other players see this. locked stuff unlocks from achievements.' : 'guest: free accessories only. log in to earn the achievement ones.';
@@ -624,6 +660,13 @@ $('lkRandom').addEventListener('click', () => {
 });
 $('lkReset').addEventListener('click', () => { setLook({ ...DEFAULT_LOOK }); buildCharacterUI(); });
 
+// hover a cosmetic to see it on the weapon in the preview, locked or not; leaving puts your real look back.
+// req: a locked achievement skin whose "what it takes" box shows while hovering
+function tryOn(chip, skinFn, id, sk, req) {
+  const box = () => req && [...$('skAch').children].find((b) => b.dataset.skin === req);
+  chip.addEventListener('mouseenter', () => { showPreview(id, skinFn()); const b = box(); if (b) b.style.display = ''; });
+  chip.addEventListener('mouseleave', () => { showPreview(id, ownedSkin(sk, G.inv, id)); const b = box(); if (b) b.style.display = 'none'; });
+}
 function buildCosmeticsUI() {
   const list = $('cosWeapons');
   list.innerHTML = '';
@@ -637,7 +680,7 @@ function buildCosmeticsUI() {
       const b = document.createElement('button');
       b.className = 'wpick' + (G.cosSel === id ? ' on' : '');
       if (modelsFor(id).length > 1) b.title = 'has skins';
-      b.textContent = w.name + (S.skins[id] ? ' *' : '');
+      b.textContent = w.name + (S.skins[id] && !plainSkin([...S.skins[id].slice(0, 4), 'normal']) ? ' *' : ''); // a wrap mode alone isn't a skin
       b.style.setProperty('--c', w.color);
       b.addEventListener('click', () => { G.cosSel = id; buildCosmeticsUI(); });
       list.append(b);
@@ -660,6 +703,7 @@ function buildCosmeticsUI() {
       c.textContent = v.name;
       c.style.setProperty('--rc', RARITY[v.rarity].color);
       c.title = `${RARITY[v.rarity].name}${have ? '' : ' (locked: roll to unlock)'}`;
+      tryOn(c, () => { const s2 = sk.slice(); s2[idx] = k; return s2; }, id, sk); // hover: try it on, locked or not
       c.addEventListener('click', () => {
         if (!have) { toast(`${v.name} is ${RARITY[v.rarity].name}. win rounds to get rolls.`); return; }
         if (allMode()) setPartAll(idx, k);
@@ -687,6 +731,7 @@ function buildCosmeticsUI() {
     kel.append(c);
   }
   buildSprayUI();
+  wrapModeUI(id, sk);
   chips('sk-finish', 'finish', 0);
   chips('sk-hat', 'hat', 1);
   chips('sk-effect', 'effect', 2);
@@ -703,6 +748,7 @@ function buildCosmeticsUI() {
     c.style.setProperty('--rc', RARITY[v.rarity].color);
     const ach = v.ach && ACHIEVEMENTS[v.ach]; // achievement skins: not in crates, you earn them
     if (ach) { c.classList.add('achchip'); c.title = `${ach.name}: ${ach.desc}`; }
+    tryOn(c, () => { const s2 = sk.slice(); s2[3] = k; return s2; }, id, sk, !have && ach ? k : null); // hover: try it on (+ what it takes)
     c.addEventListener('click', () => {
       if (!have && ach) { toast(`${v.name}: unlock "${ach.name}" (${ach.desc})${account.loggedIn ? '' : '. log in so it counts'}`, 3600); return; }
       if (!have) { toast(`${v.name} is ${RARITY[v.rarity].name}. win rounds to get rolls.`); return; }
@@ -711,43 +757,77 @@ function buildCosmeticsUI() {
     $('sk-model').append(c);
   }
   buildGrappleUI();
-  // next to an achievement skin: what it takes, with the parts you've ticked so far
+  // a locked achievement skin: what it takes, with the parts you've ticked so far. only shown while you hover it
   $('skAch').innerHTML = '';
   for (const k of models) {
     const v = COSMETICS.model[k], a = v.ach && ACHIEVEMENTS[v.ach];
-    if (!a) continue;
+    if (!a || owns(G.inv, 'model', k)) continue;
     const st = (account.me && account.me.stats) || {}, done = myAchs().has(v.ach);
     const box = document.createElement('div'); box.className = 'achskin' + (done ? ' done' : '');
+    box.dataset.skin = k; box.style.display = 'none';
     const h = document.createElement('b'); h.textContent = done ? `★ ${v.name}: yours` : `${v.name} (locked): ${a.name} ${Math.min(a.goal, achProgress(a, st))}/${a.goal}`;
     const t = document.createElement('div'); t.textContent = done ? `${a.name} complete${k === 'sniper_golden' ? '. stays gold under any wrap' : ''}` : a.desc + (account.loggedIn ? '' : '. log in so it counts');
     box.append(h, t);
-    if (a.feats) box.append(royalBoxes(done ? (1 << a.feats.length) - 1 : st[a.stat] || 0, 0, a.feats));
+    if (a.feats) box.append(royalBoxes(done ? ROYAL_ALL : st[a.stat] || 0, 0, a.feats));
     $('skAch').append(box);
   }
   showPreview(id, ownedSkin(sk, G.inv, id));
 }
+// NORMAL / REVERSE / FULL: which part of the weapon the wrap paints (wrapzones.js). free, goes with the wrap
+const WRAP_HINT = {
+  normal: 'normal: the wrap goes on the handle / body. the blade and barrel keep their metal',
+  reverse: 'reverse: the wrap goes on the blade / barrel / business end. the handle keeps its look',
+  full: 'full: the whole weapon, like the old wraps',
+};
+function wrapIcon(mode) { // a tiny knife: the half the wrap paints is pink
+  const on = (z) => (mode === 'full' || mode === z ? '#ff4fd8' : '#9a9aa4');
+  return `<svg viewBox="0 0 46 14"><rect x="1" y="4" width="15" height="6" fill="${on('normal')}" stroke="#000" stroke-width="1.5"/>`
+    + `<rect x="16" y="2" width="3" height="10" fill="${on('normal')}" stroke="#000" stroke-width="1.5"/>`
+    + `<path d="M19 3 L40 3 L45 7 L40 11 L19 11 Z" fill="${on('reverse')}" stroke="#000" stroke-width="1.5"/></svg>`;
+}
+function wrapModeUI(id, sk) {
+  const el = $('sk-wrapmode');
+  el.innerHTML = '';
+  el.classList.toggle('off', sk[0] === 'default');
+  for (const m of WRAP_MODES) {
+    const b = document.createElement('button');
+    b.className = sk[4] === m ? 'on' : '';
+    b.innerHTML = wrapIcon(m);
+    b.append(WRAP_MODE_NAMES[m].toUpperCase());
+    b.title = WRAP_HINT[m];
+    b.addEventListener('click', () => {
+      if (allMode()) setPartAll(4, m);
+      else { const s2 = sk.slice(); s2[4] = m; setSkin(id, s2); }
+      buildCosmeticsUI();
+    });
+    el.append(b);
+  }
+  const h = document.createElement('div'); h.className = 'hint';
+  h.textContent = sk[0] === 'default' ? 'pick a wrap, then choose where it goes' : WRAP_HINT[sk[4]];
+  el.append(h);
+}
 $('skRandom').addEventListener('click', () => {
   const pick = (t) => { const ks = Object.keys(COSMETICS[t]).filter((k) => owns(G.inv, t, k)); return ks[(Math.random() * ks.length) | 0]; };
   if (allMode()) {
-    const parts = ['finish', 'hat', 'effect'].map(pick);
-    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = parts[0]; sk[1] = parts[1]; sk[2] = parts[2]; storeSkin(id, sk); }
+    const parts = ['finish', 'hat', 'effect'].map(pick), wm = WRAP_MODES[(Math.random() * 3) | 0];
+    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = parts[0]; sk[1] = parts[1]; sk[2] = parts[2]; sk[4] = wm; storeSkin(id, sk); }
     saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne();
-  } else setSkin(G.cosSel, TYPES.map(pick));
+  } else setSkin(G.cosSel, [...TYPES.map(pick), WRAP_MODES[(Math.random() * 3) | 0]]);
   buildCosmeticsUI();
 });
 $('skReset').addEventListener('click', () => {
   if (allMode()) {
-    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = 'default'; sk[1] = 'none'; sk[2] = 'none'; storeSkin(id, sk); }
+    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = 'default'; sk[1] = 'none'; sk[2] = 'none'; sk[4] = 'normal'; storeSkin(id, sk); }
     saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne();
   } else setSkin(G.cosSel, DEFAULT_SKIN.slice());
   buildCosmeticsUI();
 });
 $('skAll').addEventListener('click', () => { // copy this weapon's wrap/hat/effect to everything (models stay)
   const sk = validSkin(S.skins[G.cosSel]);
-  for (const id of skinnable()) { const s2 = validSkin(S.skins[id]).slice(); s2[0] = sk[0]; s2[1] = sk[1]; s2[2] = sk[2]; storeSkin(id, s2); }
+  for (const id of skinnable()) { const s2 = validSkin(S.skins[id]).slice(); s2[0] = sk[0]; s2[1] = sk[1]; s2[2] = sk[2]; s2[4] = sk[4]; storeSkin(id, s2); }
   saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne(); buildCosmeticsUI();
 });
-$('skAllMode').addEventListener('change', () => { S.skinAll = $('skAllMode').checked; saveSettings(); buildCosmeticsUI(); });
+$('skAllMode').addEventListener('change', () => { skinAllNow = $('skAllMode').checked; buildCosmeticsUI(); });
 
 // ------------------------------------------------------------ grapple skins (one per player, everyone sees your rope)
 function setGrap(id) {
@@ -815,13 +895,13 @@ function aimUp() { if (!S.toggleAim) W.aimHeld = false; }
 addEventListener('keydown', (e) => {
   if (!inGame() || document.activeElement === $('name')) return;
   if ((RP.active || G.killcamPending) && (e.code === 'Space' || e.code === 'Enter')) { e.preventDefault(); skipReplay(); return; }
+  if (esKey(e)) { e.preventDefault(); return; } // end screen: 1-4 vote, arrows switch tabs
   if (e.code === 'Tab') { e.preventDefault(); scoresOpen = true; renderScores(); return; }
   if (e.code === 'KeyT' || e.code === 'Enter') { e.preventDefault(); openChat(); return; }
   if (e.code === 'KeyB') { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
   if (/^(KeyE|KeyG|KeyV|KeyC|KeyZ|ControlLeft|ControlRight|Digit[567])$/.test(e.code) && stuckInBubble(true)) { keys[e.code] = true; return; } // sealed in a soap bubble: no grapple, items, dash, t-bag, sprays or streaks
   if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) jumpPressed = true; }
   if (e.code === 'KeyE' && !e.repeat) { if (S.swapAim) aimDown(); else tryHook(); }
-  if (G.vote && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) { if (!e.repeat) castVote(Number(e.code.slice(5)) - 1); return; }
   if (e.code === 'Digit1') switchSlot(0);
   if (e.code === 'Digit2') switchSlot(1);
   if (e.code === 'Digit3') switchSlot(2);
@@ -851,7 +931,10 @@ addEventListener('keyup', (e) => {
 });
 addEventListener('mousedown', (e) => {
   if (!inGame()) return;
-  if (RP.mode === 'killcam' || RP.mode === 'hl' || G.killcamPending) { skipReplay(); return; } // a click skips the killcam and the play of the round
+  if (e.target instanceof Element && e.target.closest('#endscreen')) return; // the end screen's cards and tabs take the click, not your gun (or the replay skip)
+  if (esClickShown()) { esHideClick(); lock(); return; } // CLICK TO DROP IN: that click only grabs the mouse
+  if (RP.mode === 'killcam' || G.killcamPending) { skipReplay(); return; } // a click skips the killcam
+  if (RP.mode === 'hl') return; // ...but not the play of the round
   if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor: no shooting
   if (stuckInBubble(true)) return; // sealed in a soap bubble: no shooting, aiming or grappling till it pops
   if (e.button === 0) fireDown();
@@ -864,7 +947,7 @@ addEventListener('mouseup', (e) => {
   if (e.button === 3 || e.button === 4) releaseHook();
 });
 addEventListener('contextmenu', (e) => e.preventDefault());
-addEventListener('wheel', (e) => { if (inGame()) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true });
+addEventListener('wheel', (e) => { if (inGame() && !esActive()) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true }); // not while the end screen is up (its tab panel scrolls)
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== canvas) return;
   if (performance.now() < (G.spinUntil || 0)) return; // the aimbot has the wheel
@@ -973,6 +1056,7 @@ net.on('welcome', (m) => {
   clearTags();
   for (const g of m.tags || []) addTag(g.id, g.p, g.team);
   openVote(m.vote);
+  skipVote(m.skip || null); // a /skip vote that's already on
   refillAmmo();
   resetItems(); // a fresh player on the server: welcome.ic has its real charges
   G.itemSent = null;
@@ -981,14 +1065,15 @@ net.on('welcome', (m) => {
   updateLabel();
   $('status').textContent = '';
   const tips = {
-    ffa: 'T to chat, B for menu. Change the map or hipfire in Match Settings.',
-    bots: 'bots are dumb but there are a lot of them. B for menu.',
+    ffa: 'T to chat, B for menu. Change the map or hipfire in Match Settings. /skip in chat votes to skip the match.',
+    bots: 'bots are dumb but there are a lot of them. B for menu. /skip in chat skips the match.',
     coop: 'survive the waves. bots only hurt humans, no friendly fire.',
     training: 'dummies respawn instantly. knock the ones on the left ledge off. movement playground on the right.',
   };
   hud.chat(null, null, `you are ${m.name}. ${tips[m.mode] || ''}`);
   clearSprays(); sprayT = -1e9;
   for (const s of m.sprays || []) addSpray(s, true); // graffiti that was already on the walls
+  for (const pt of m.mpatch || []) addPatch(pt); // marbles already on the floor
 });
 net.on('cfg', (m) => {
   const mapChanged = m.cfg.map !== G.cfg.map;
@@ -1038,6 +1123,7 @@ net.on('ach', (m) => {
   const rewards = rewardsFor(m.id).map((x) => x.name).join(', ');
   const where = rewardsFor(m.id).some((x) => x.type) ? 'COSMETICS' : 'CHARACTER';
   hud.msg(`ACHIEVEMENT: ${a.name}`, 3, 'brag');
+  esAch({ name: a.name, desc: a.desc });
   hud.chat(null, null, `achievement unlocked: ${a.name} (${a.desc})${rewards ? ' · unlocked ' + rewards + ' in ' + where : ''}`);
   sfx.kill();
   if (m.id === 'airborne') airFlourish();
@@ -1054,7 +1140,7 @@ function unlockSkins(list) {
     storeSkin(w, sk);
   }
   saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne();
-  if (list.some((r) => r.id === 'sniper_golden')) royalUnlock('SNIPER ROYALTY 4/4 · it\'s on your sniper now (swap it in COSMETICS)');
+  if (list.some((r) => r.id === 'sniper_golden')) royalUnlock(`SNIPER ROYALTY ${ROYAL_FEATS.length}/${ROYAL_FEATS.length} · it's on your sniper now (swap it in COSMETICS)`);
 }
 // Sniper Royalty: you just ticked a box (the server decides; a guest is told it would have counted)
 net.on('royal', (m) => {
@@ -1177,29 +1263,11 @@ function startUse() {
   useTimer = setInterval(() => { if (!G.using || !ME.alive || !keys.KeyF) { stopUse(); return; } net.send({ t: 'use' }); }, 200);
 }
 function stopUse() { clearInterval(useTimer); useTimer = 0; G.using = false; }
-// vote for the next match: press 1 / 2 / 3
-let myVote = -1;
-function showVote(v) {
-  const panel = $('votePanel');
-  G.vote = v;
-  if (!v) { panel.classList.add('hidden'); myVote = -1; return; }
-  panel.classList.remove('hidden');
-  const box = $('voteOpts');
-  box.innerHTML = '';
-  v.options.forEach((o, i) => {
-    const d = document.createElement('div');
-    d.className = 'vopt' + (i === myVote ? ' on' : '');
-    const k = document.createElement('b'); k.textContent = String(i + 1);
-    const t = document.createElement('span'); t.textContent = `${o.name} · ${o.mapName}`;
-    const c = document.createElement('i'); c.textContent = String((v.counts || [])[i] || 0);
-    d.append(k, t, c);
-    box.append(d);
-  });
-}
-function castVote(i) { if (!G.vote || i >= G.vote.options.length) return; myVote = i; net.send({ t: 'vote', i }); showVote(G.vote); sfx.click(); }
-function openVote(v) { myVote = -1; if (v) G.voteEnds = performance.now() + (v.left || 0); showVote(v); } // the countdown starts here, not on every re-render
+// the end-of-match vote (mode first, then map) lives on the end screen (endscreen.js)
+function openVote(v) { G.vote = v || null; if (v) esVote(v); }
 net.on('vote', (m) => openVote(m));
-net.on('votes', (m) => { if (G.vote) { G.vote.counts = m.counts; showVote(G.vote); } });
+net.on('votes', (m) => esVotes(m));
+net.on('skipvote', (m) => skipVote(m)); // someone typed /skip (server/skip.js)
 
 // randomizer mode: the server hands you a loadout each life (null = use your own again)
 net.on('loadout', (m) => {
@@ -1214,7 +1282,7 @@ net.on('loadout', (m) => {
 net.on('modew', (m) => { if (m.w) endBall(); setOnly(m.w || null, G.forcedLoadout || S.loadout); }); // (a mode weapon ends a wrecking ball: the server already did)
 net.on('kb', (m) => applyKb(m.v));
 net.on('grab', (m) => shredGrab(m)); // you're in someone's shredder
-net.on('slip', () => slip(performance.now()));
+net.on('slip', (m) => slip(performance.now(), m.k));
 net.on('dmg', (m) => {
   const target = m.to === G.myId ? null : G.remotes.get(m.to);
   if (m.to === G.myId) {
@@ -1438,6 +1506,10 @@ net.on('fx', (m) => {
     if (src) fx.spray([src[0], src[1] + 1.2, src[2]], 16, [0x7dff4f, 0xffffff], 3, 1.0, 0.14, -2, 1);
   } else if (m.k === 'bubhit') {
     fx.spray(m.p, 8, [0x4fd8ff, 0xffffff], 4, 0.3, 0.1, 0, 2); sfx.ricochet(m.p);
+  } else if (m.k === 'cough') { // someone over-smoked the cigarette: they double over and smoke bursts out in front of them
+    if (r) r.coughT = performance.now();
+    const ok = (a) => Array.isArray(a) && a.length === 3 && a.every(Number.isFinite);
+    if (ok(m.p) && ok(m.d)) { coughCloud(m.p, m.d); if (Math.hypot(m.p[0] - ME.pos[0], m.p[2] - ME.pos[2]) < 30) sfx.cough(); }
   } else if (m.k === 'burn') {
     if (r) r.burnUntil = performance.now() + 600;
     if (m.id === G.myId) G.burnUntil = performance.now() + 600;
@@ -1592,7 +1664,6 @@ function frame(t) {
     updateGunGame(); updateInfection(dt);
     const a = G.round && G.round.bomb && G.round.bomb.act;
     if (a && a.by === G.myId) hud.meter(a.f, a.k === 'plant' ? 'PLANTING... keep holding F' : 'DEFUSING... keep holding F', '#ff4f4f');
-    if (G.vote) $('voteLeft').textContent = `${Math.max(0, Math.ceil((G.voteEnds - performance.now()) / 1000))}s`;
   }
   updateChaos(dt, now);
 
@@ -1679,6 +1750,8 @@ function frame(t) {
     ME.yaw = a; ME.pitch = -0.35;
     const mc = MAPS[G.cfg.map] && MAPS[G.cfg.map].menuCam; // sealed maps: orbit inside instead of over the roof
     if (mc) { cam.position.set(Math.sin(a) * mc[0], mc[1], Math.cos(a) * mc[0]); ME.pitch = mc[2]; }
+    const tc = G.thumbCam; // tools/thumbs.cjs parks the camera here to photograph a map: [x, y, z, yaw, pitch]
+    if (tc) { cam.position.set(tc[0], tc[1], tc[2]); ME.yaw = tc[3]; ME.pitch = tc[4]; }
   }
 
   G.shake = S.shake ? Math.max(0, G.shake - dt * 2.2) : 0;
@@ -1727,7 +1800,7 @@ function frame(t) {
   G.vmScene.visible = G.joined && !RP.active && !specCam && !asleep;
   if (ballOn(now)) G.vmScene.visible = false; // weapons are holstered inside the ball
   renderFrame();
-  if ((screen === 'cosmetics' || screen === 'character') && !$('menu').classList.contains('hidden')) renderPreview(dt);
+  if ((screen === 'cosmetics' || screen === 'character' || screen === 'main') && !$('menu').classList.contains('hidden')) renderPreview(dt);
   if (screen === 'cosmetics' && !$('menu').classList.contains('hidden')) renderGrapplePreview(dt);
 }
 
@@ -1929,6 +2002,7 @@ function endKillcam() {
 }
 function skipReplay() {
   if (epicLocked()) { epicNope(); return; }
+  if (RP.active && RP.mode === 'hl') return; // the play of the round can't be skipped: everyone watches it (it still ends when the next match starts)
   if (RP.active) { stopReplay(false); return; }
   if (G.killcamPending) { clearTimeout(killcamT); G.killcamPending = false; net.send({ t: 'respawn' }); }
 }
@@ -2018,7 +2092,7 @@ function totalRolls(me) { const r = (me && me.rolls) || {}; return (r.crate || 0
 function fmtTime(sec) { const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60); return h ? `${h}h ${m}m` : `${m}m`; }
 function renderAcctBar() {
   const tr0 = account.loggedIn ? totalRolls(account.me) : 0;
-  $('cratesBtn').textContent = tr0 ? `CONTAINERS (${tr0})` : 'CONTAINERS';
+  $('cratesLbl').textContent = tr0 ? `CONTAINERS (${tr0})` : 'CONTAINERS'; // the label only: the button keeps its slab
   $('cratesBtn').classList.toggle('glow', tr0 > 0);
   const bar = $('acctBar');
   bar.innerHTML = '';
@@ -2306,7 +2380,8 @@ net.on('round', (m) => {
   const box = $('roundEnd');
   if (m.start) {
     courtReset(); // scales of justice: a new match, a clean record (the server does the same)
-    G.roundOver = false; if (RP.mode === 'hl') stopReplay(true); box.classList.add('hidden'); showVote(null);
+    G.roundOver = false; if (RP.mode === 'hl') stopReplay(true); box.classList.add('hidden'); G.vote = null;
+    esClose(G.joined && document.pointerLockElement !== canvas); // back in: click to grab the mouse again
     if (m.game) { G.round = { ...(G.round || {}), ...m }; updateLabel(); if (screen === 'match') syncMatchUI(); }
     hud.msg(m.game && m.game !== 'dm' && GAMES[m.game] ? GAMES[m.game].name.toUpperCase() : 'ROUND START', 1.8, 'brag');
     if (m.game && GAMES[m.game]) hud.chat(null, null, GAMES[m.game].desc);
@@ -2337,8 +2412,7 @@ net.on('round', (m) => {
     if (id === G.myId) row.style.color = '#ffe14d';
     box.append(row);
   }
-  box.classList.remove('hidden');
-  if (m.winner === G.myId || (m.winTeam && m.winTeam === G.myTeam)) sfx.kill();
+  esRound(m); // the end screen replaces the old round box (still built above for anything that reads it)
 });
 // play of the round: the server picked the best moment and sent the recording
 net.on('hl', (m) => {
@@ -2347,13 +2421,14 @@ net.on('hl', (m) => {
   const box = $('roundEnd');
   box.classList.add('hidden');
   const url = m.id === G.myId ? cardUrlFor(G.myId) : (S.showCards !== false && m.card) || defaultCard(m.name, m.color);
-  showReplayUI('PLAY OF THE ROUND', url, m.name, m.color, m.label, 'SPACE / CLICK to skip'); // skipping is just for you: the round end, vote and next match carry on
+  esMini(true); // the end screen steps aside to a vote rail while the clip plays
+  showReplayUI('PLAY OF THE ROUND', url, m.name, m.color, m.label, 'no skipping. witness greatness'); // unskippable; the round end and vote come after it
   const slow = (m.clip.ev || []).filter((e) => e.m && e.m.t === 'kill' && e.m.k === m.id).map((e) => [e.s - 260, e.s + 220]);
   playClip(m.clip, {
     focus: m.id, mode: 'hl', slow,
     onKill: (k) => replayFeed(k, m.clip.info),
-    onEnd: () => { hideReplayUI(); if (G.roundOver) box.classList.remove('hidden'); },
-    onAbort: () => hideReplayUI(),
+    onEnd: () => { hideReplayUI(); esMini(false); },
+    onAbort: () => { hideReplayUI(); esMini(false); },
   });
   sfx.kill();
 });
@@ -2368,7 +2443,8 @@ net.on('roll+', (m) => {
     toast(`+${m.n} ${c.name}`);
   } else if (m.guest) d.textContent = 'you would have earned a crate, bag or box. log in to keep them.';
   else d.textContent = m.why || '';
-  if (!box.classList.contains('hidden')) box.append(d); else toast(d.textContent, 3500);
+  esRoll(m);
+  if (!esActive()) toast(d.textContent, 3500);
 });
 
 // ------------------------------------------------------------ install as an app (PWA)
