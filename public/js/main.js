@@ -2337,7 +2337,8 @@ function totalRolls(me) { const r = (me && me.rolls) || {}; return (r.crate || 0
 function fmtTime(sec) { const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60); return h ? `${h}h ${m}m` : `${m}m`; }
 function renderAcctBar() {
   const tr0 = account.loggedIn ? totalRolls(account.me) : 0;
-  $('cratesLbl').textContent = tr0 ? `CONTAINERS (${tr0})` : 'CONTAINERS'; // the label only: the button keeps its slab
+  $('cratesLbl').textContent = 'CONTAINERS'; // the label only: the button keeps its slab
+  $('cratesN').textContent = tr0 || ''; $('cratesN').classList.toggle('hidden', !tr0); // how many to open: a badge, not part of the label
   $('cratesBtn').classList.toggle('glow', tr0 > 0);
   const bar = $('acctBar');
   bar.innerHTML = '';
