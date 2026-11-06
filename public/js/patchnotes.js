@@ -1,6 +1,12 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '4.3', date: '2026-11-06', title: 'HOTFIX: EVICTION CANCELLED', items: [
+    'fixed: after a Jank Royale match, every other mode stayed in battle royale (the EVICTION NOTICE, the zone and royale loot rules followed you into quick play and everything else).',
+    'Quick Play\'s vote no longer offers Plant & Defuse, Jank Royale or Zombies. they have their own cards and lobbies now.',
+    'Jank Royale only plays on Jankburg, the big city.',
+    'fixed: night vision goggles vanished after both flashes in Jank Royale and Plant & Defuse. now only the flashes run out; the goggles stay on your face.',
+  ] },
   { v: '4.2', date: '2026-11-06', title: 'LEGS DAY', items: [
     'everyone moves properly now: real strides for walk, run and sprint (feet stay planted), leaning and arm pumping, and a silly zooming pose past sprint speed.',
     'strafing and backpedalling read sideways and backwards. jumps have a wind-up, a tuck, a landing squash (bigger the further you fell), and bhop chains look rhythmic.',

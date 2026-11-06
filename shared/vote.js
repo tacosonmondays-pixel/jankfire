@@ -14,8 +14,11 @@ const shuffle = (a, rnd) => { for (let i = a.length - 1; i > 0; i--) { const j =
 // 4 mode cards: the event, plus 3 others (never all free-for-all or all teams when there's a choice). every mode on a
 // card has at least one map it can be played on
 // avoid: a mode that was just voted off with /skip: not on the cards at all, not even as the event
+// Quick Play's vote rotation: Plant & Defuse, Jank Royale and Zombies have their own cards and lobbies, so they're
+// never voted into a quick play room
+export const inQuickPlay = (g) => !!GAMES[g] && !GAMES[g].sites && !GAMES[g].royale && !GAMES[g].zombies;
 export function modeCards(maps, order, cur, rnd = Math.random, avoid = null) {
-  let ok = GAME_ORDER.filter((g) => mapsFor(g, maps, order).length);
+  let ok = GAME_ORDER.filter((g) => inQuickPlay(g) && mapsFor(g, maps, order).length);
   if (avoid && ok.length > 1) ok = ok.filter((g) => g !== avoid);
   const ev = eventGame();
   const out = ok.includes(ev) ? [ev] : [];
