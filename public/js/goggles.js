@@ -134,7 +134,7 @@ function stepView(dt, now) {
   g.visible = NV.k > 0.01 && NV.k < 0.99 && !RP.active;
   if (g.visible) { // swings down from above your head, right into your face
     g.position.set(0, 0.32 - 0.33 * k, -0.06 - 0.08 * (1 - k));
-    g.userData.pivot.rotation.x = -1.3 * (1 - k);
+    g.userData.pivot.rotation.x = 1.3 * (1 - k); // + = tubes up on the forehead (a flip-down mount), - swung them through your chin
     g.rotation.set(0.15 * (1 - k), 0, 0.05 * Math.sin(now * 0.02) * (1 - k));
   }
   const view = NV.k >= 0.99 && !RP.active;
@@ -172,7 +172,7 @@ function remoteGoggles(r, now) {
   r.nvgK += (on ? 1 : -1) * 0.05;
   r.nvgK = Math.max(0, Math.min(1, r.nvgK));
   r.nvg.visible = r.nvgK > 0;
-  r.nvg.userData.pivot.rotation.x = -1.4 * (1 - ease(r.nvgK)); // flips down from the forehead
+  r.nvg.userData.pivot.rotation.x = 1.4 * (1 - ease(r.nvgK)); // flips down from the forehead (+: up over it, not under the chin)
   for (const l of r.nvg.userData.lenses) l.color.setHex(on ? (Math.sin(now * 0.01 + r.id) > 0.9 ? 0xc8ffc0 : 0x39ff14) : 0x1a3a24);
 }
 // the flash going off on someone's face (or yours)

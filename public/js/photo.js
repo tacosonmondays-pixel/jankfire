@@ -208,11 +208,20 @@ const SNAP = [ // t, pos, rot (x, y, z): up to just under your right eye (the vi
 ];
 const PRINT = [ // turned round so the print comes out toward you (you watch it develop), then flicked forward
   [0, [0.1, -0.45, -0.32], [0.3, Math.PI, 0.4]],
-  [0.2, [0.03, -0.17, -0.25], [0.95, Math.PI, 0.05]],
-  [0.82, [0.03, -0.165, -0.25], [1.0, Math.PI, -0.04]],
-  [1.0, [0.02, -0.1, -0.3], [0.35, Math.PI, 0.0]],
+  [0.2, [0.01, 0.01, -0.44], [0.45, Math.PI, 0.05]], // held up mid-screen, tipped so the print faces you (lower and it slid off the bottom)
+  [0.82, [0, 0.02, -0.44], [0.4, Math.PI, -0.04]],
+  [1.0, [0.02, 0.02, -0.42], [0.2, Math.PI, 0.0]],
   [1.3, [0.04, 0.05, -0.9], [-0.6, Math.PI, 0.3]], // flicked forward
 ];
+// your photo on the print, turned the right way up for you (it comes out toward you top edge first, like a real one).
+// a clone shares the photo's GPU texture, only its uv turn differs; one alive at a time
+function vmPic(tex) {
+  if (VM.pt && VM.pt.src === tex) return VM.pt.t;
+  if (VM.pt) VM.pt.t.dispose();
+  const t = tex.clone(); t.center.set(0.5, 0.5); t.rotation = Math.PI; t.needsUpdate = true;
+  VM.pt = { src: tex, t };
+  return t;
+}
 function samplePath(K, t) {
   if (t >= K[K.length - 1][0]) return null;
   let i = 0; while (i < K.length - 2 && K[i + 1][0] <= t) i++;
@@ -243,7 +252,8 @@ function stepVM(dt, now) {
     VM.print.position.set(0, -0.04, -0.03 - out * 0.075);
     const P = photos.get(W.camN || mine);
     const pm = ud.pic.material;
-    if (P && pm.map !== P.tex) { pm.map = P.tex; pm.needsUpdate = true; }
+    const pt = P && vmPic(P.tex);
+    if (pt && pm.map !== pt) { pm.map = pt; pm.needsUpdate = true; }
     const dev = Math.max(0, Math.min(1, (VM.t - 0.3) / 0.8));
     pm.color.setRGB(0.25 + 0.75 * dev, 0.17 + 0.83 * dev, 0.12 + 0.88 * dev);
     if (t0 < 0.82 && VM.t >= 0.82) sfx.swing();
