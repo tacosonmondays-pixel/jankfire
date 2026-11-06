@@ -1,7 +1,8 @@
 // In-game screenshots of the Blender models next to the code-built ones they replace, plus an aiming check.
 // usage: node tools/blender/shots.cjs <port> <outDir> [weapons=ar,shotgun,revolver] [presets=3,0] [--check-only] [--no-check]
-//   (start the server first: PORT=<port> node server.js)
-// writes <outDir>/<preset>_<weapon>_<glb|code>_<hip|ads>.png and <outDir>/<preset>_lineup.png
+//   (start the server first: PORT=<port> node server.js). a skin is weapon:model, e.g. ar:ar_toy,sniper:sniper_golden
+// writes <outDir>/<preset>_<weapon or model>_<glb|code>_<hip|ads>.png and <outDir>/<preset>_lineup.png
+// (weapons that can't aim get a second shot in use instead: the cigarette lit, the bow drawn, a swing...)
 // (the lineup is code model on top, Blender model under it, in the game's own lights and render preset)
 // ADS check (Blender models, Too HD): with each gun fully aimed, at 1280x720, 1280x800 and 900x900 and FOV 70 and 120,
 // it renders only the viewmodel and measures how much of the screen's centre (the middle 40% x 40%, where you look for
@@ -13,8 +14,8 @@ const [port = '3100', out = '.', list = 'ar,shotgun,revolver', presets = '3,0'] 
 const LIMIT = 0.25, CENTRE = 0.4;
 const SIZES = [[1280, 720], [1280, 800], [900, 900]], FOVS = [70, 120];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const SECONDARY = new Set(['revolver', 'marbles', 'cig', 'blower', 'cards', 'snowball', 'bloodcross']);
 const weapons = list.split(',');
+const wid = (e) => e.split(':')[0], tag = (e) => e.split(':')[1] || e.split(':')[0]; // weapon id, file tag (the skin's model id)
 
 async function session(b, jank, useGlb, viewport = { width: 960, height: 600 }) {
   const pg = await b.newPage({ viewport });
@@ -29,12 +30,16 @@ async function session(b, jank, useGlb, viewport = { width: 960, height: 600 }) 
   return { pg, errs };
 }
 
-const pick = (pg, id) => pg.evaluate(async ([id, slot]) => {
-  const w = await import('/js/weapons.js');
-  const lo = { primary: 'ar', secondary: 'cards', melee: 'knife' }; lo[slot] = id;
-  w.setLoadout(lo); w.switchSlot(slot === 'primary' ? 1 : 0); w.switchSlot(slot === 'primary' ? 0 : 1);
-}, [id, SECONDARY.has(id) ? 'secondary' : 'primary']);
+// hold just this weapon (like gun game), with the skin's model on it if it's a skin
+const pick = (pg, e) => pg.evaluate(async ([id, model]) => {
+  const w = await import('/js/weapons.js'); const { G } = await import('/js/ctx.js');
+  G.equipped = { ...(G.equipped || {}) };
+  if (model) G.equipped[id] = ['default', 'none', 'none', model, 'normal']; else delete G.equipped[id];
+  w.setOnly(id); w.rebuildOne(id);
+}, [wid(e), e.split(':')[1] || null]);
+const canAim = (pg, e) => pg.evaluate(async (id) => { const { WEAPONS } = await import('/shared/weapons.js'); return !!(WEAPONS[id] && WEAPONS[id].ads); }, wid(e));
 const aim = (pg, on) => pg.evaluate(async (on) => { const { W } = await import('/js/weapons.js'); W.aimHeld = on; }, on);
+const use = (pg, on) => pg.evaluate(async (on) => { const w = await import('/js/weapons.js'); if (on) w.fireDown(); else w.fireUp(); }, on);
 
 // share of the screen's centre box covered by the viewmodel (rendered alone into a transparent target)
 const coverage = (pg) => pg.evaluate(async (CENTRE) => {
@@ -62,6 +67,7 @@ async function adsCheck(b) {
     for (const fov of FOVS) {
       await pg.evaluate(async (fov) => { const { G } = await import('/js/ctx.js'); G.settings.fov = fov; }, fov);
       for (const id of weapons) {
+        if (!(await canAim(pg, id))) continue; // melee, items, the cigarette...: nothing to aim
         await pick(pg, id); await sleep(800);
         await aim(pg, true);
         const c = await coverage(pg);
@@ -77,6 +83,7 @@ async function adsCheck(b) {
   let worst = 0;
   for (const id of weapons) {
     const cs = rows.filter((r) => r.id === id);
+    if (!cs.length) continue;
     worst = Math.max(worst, ...cs.map((r) => r.c));
     console.log(id.padEnd(10) + cs.map((r) => (fmt(r.c) + (r.c > LIMIT ? ' FAIL' : '')).padStart(15)).join(''));
   }
@@ -87,19 +94,20 @@ async function adsCheck(b) {
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--mute-audio'] });
   if (!flags.has('--check-only')) for (const jank of presets.split(',').map(Number)) {
-    const tag = ['potato', 'crusty', 'mid', 'toohd'][jank];
+    const ptag = ['potato', 'crusty', 'mid', 'toohd'][jank];
     for (const useGlb of [false, true]) {
       const { pg, errs } = await session(b, jank, useGlb);
       for (const id of weapons) {
         await pick(pg, id);
         await sleep(900);
-        const name = `${out}/${tag}_${id}_${useGlb ? 'glb' : 'code'}`;
+        const name = `${out}/${ptag}_${tag(id)}_${useGlb ? 'glb' : 'code'}`;
         await pg.screenshot({ path: `${name}_hip.png` });
-        await aim(pg, true);
+        const ads = await canAim(pg, id);
+        if (ads) await aim(pg, true); else await use(pg, true);
         await sleep(700);
         await pg.screenshot({ path: `${name}_ads.png` });
-        await aim(pg, false);
-        await sleep(300);
+        if (ads) await aim(pg, false); else await use(pg, false);
+        await sleep(ads ? 300 : 900);
       }
       if (useGlb) { // lineup: every weapon as the code builds it (top) and from Blender (bottom), side on, game lights
         const png = await pg.evaluate(async ([weapons, jank]) => {
@@ -113,28 +121,37 @@ async function adsCheck(b) {
           const sc = new THREE.Scene();
           sc.add(new THREE.HemisphereLight(0xcfe8ff, 0x7a4a6a, 1.8));
           const sun = new THREE.DirectionalLight(0xffffff, 1.5); sun.position.set(2, 3, 4); sc.add(sun);
-          const cam = new THREE.OrthographicCamera(-W / 2, W / 2, H / 2, -H / 2, 0.01, 100); cam.position.set(0, 0, 10); cam.zoom = 300; cam.updateProjectionMatrix();
-          let x = -W / 2 / 300 + 0.15;
-          for (const id of weapons) {
-            const len = 1.25;
-            const keep = AUTHORED['w_' + id]; delete AUTHORED['w_' + id];
-            const a = buildWeapon(id); if (keep) AUTHORED['w_' + id] = keep;
-            const bb = buildWeapon(id);
-            for (const [g, y] of [[a, 0.45], [bb, -0.5]]) {
-              g.rotation.y = -Math.PI / 2;
-              g.position.set(x + len / 2 + 0.0, y, 0);
+          // each one side on (muzzle to the right), spaced by its real length; the camera zooms out until they all fit
+          const row = [];
+          for (const e of weapons) {
+            const [id, model] = e.split(':'), skin = model ? ['default', 'none', 'none', model, 'normal'] : undefined, key = 'w_' + (model || id);
+            const keep = AUTHORED[key]; delete AUTHORED[key];
+            const a = buildWeapon(id, skin); if (keep) AUTHORED[key] = keep;
+            const bb = buildWeapon(id, skin);
+            const bs = [a, bb].map((g) => new THREE.Box3().setFromObject(g));
+            row.push({ a, bb, bs, len: Math.max(0.25, ...bs.map((b) => b.max.z - b.min.z)) + 0.12, tall: Math.max(...bs.map((b) => b.max.y - b.min.y)) });
+          }
+          const total = row.reduce((t, r) => t + r.len, 0) + 0.2, tall = Math.max(0.5, ...row.map((r) => r.tall));
+          const zoom = Math.min(300, W / total, H / (2 * tall + 0.3));
+          const cam = new THREE.OrthographicCamera(-W / 2, W / 2, H / 2, -H / 2, 0.01, 100); cam.position.set(0, 0, 10); cam.zoom = zoom; cam.updateProjectionMatrix();
+          let x = -W / 2 / zoom + 0.1;
+          const rowY = [H / 4 / zoom, -H / 4 / zoom];
+          for (const r of row) {
+            [[r.a, r.bs[0], rowY[0]], [r.bb, r.bs[1], rowY[1]]].forEach(([g, b, y]) => {
+              g.rotation.y = -Math.PI / 2; // -z (muzzle) -> +x
+              g.position.set(x + r.len / 2 + (b.min.z + b.max.z) / 2, y - (b.min.y + b.max.y) / 2, 0);
               sc.add(g);
-            }
-            x += Math.min(len, 1.35) * (id === 'revolver' ? 0.45 : 1);
+            });
+            x += r.len;
           }
           r.render(sc, cam);
           const url = r.domElement.toDataURL('image/png');
           r.dispose();
           return url;
         }, [weapons, jank]);
-        require('fs').writeFileSync(`${out}/${tag}_lineup.png`, Buffer.from(png.split(',')[1], 'base64'));
+        require('fs').writeFileSync(`${out}/${ptag}_lineup.png`, Buffer.from(png.split(',')[1], 'base64'));
       }
-      console.log(tag, useGlb ? 'glb' : 'code', errs.join('\n') || 'no errors');
+      console.log(ptag, useGlb ? 'glb' : 'code', errs.join('\n') || 'no errors');
       await pg.close();
     }
   }

@@ -98,7 +98,7 @@ export function authored(id) {
 }
 export const hasAuthored = (id) => !!AUTHORED[id];
 
-const nodeIn = (g, n) => { let r = null; g.traverse((o) => { if (!r && o.name === n) r = o; }); return r; };
+export const nodeIn = (g, n) => { let r = null; g.traverse((o) => { if (!r && o.name === n) r = o; }); return r; };
 
 // a Blender weapon's hooks into the game, the same ones the code models have: the Redline's tachometer needle and
 // HP-hot vents, the minigun's spinning barrels, and our own moving parts (pump, cylinder, hammer, bolt)
@@ -110,7 +110,62 @@ export function bindAuthored(g, meta) {
     g.traverse((o) => { if (o.isMesh && o.material && o.material.name === meta.vents) { o.material = vm; o.userData.noWrap = true; } });
     g.userData.vents = vm;
   }
+  // the code models' other hooks: the cigarette's ember (weapons.js swells it as you charge), the card fan (weapons.js
+  // deals your hand onto it: each card is its face mesh, back + edge are its children), the slapper's hand, a scythe's blade
+  if (meta.tip) {
+    const t = nodeIn(g, meta.tip);
+    if (t) { if (g.userData.tip && g.userData.tip.isObject3D && g.userData.tip !== t) g.userData.tip.removeFromParent(); g.userData.tip = t; }
+  }
+  for (const k of ['hand', 'blade', 'card']) if (meta[k]) { const n = nodeIn(g, meta[k]); if (n) g.userData[k] = n; }
+  if (Array.isArray(meta.fan)) {
+    const fan = meta.fan.map((n) => nodeIn(g, n)).filter((c) => c && c.isMesh);
+    if (fan.length) { g.userData.fan = fan; for (const c of fan) c.traverse((o) => { o.userData.noWrap = true; }); }
+  }
+  if (meta.bow) bowRig(g, meta.bow);
+  if (meta.noWrap) g.traverse((o) => { if (o.isMesh) o.userData.noWrap = true; }); // trophies (the Golden Sniper): no wrap covers them
   g.userData.parts = findParts(g, meta);
+}
+
+// the bow: weapons.js pulls the arrow back as you draw (and the code bow's whole string with it). here the string stays
+// on the limb tips and bends to the nock instead, and the limbs flex. b = { string: [top, bottom] node names,
+// tips: where each half meets its limb, nock: the arrow's nock at rest, limbs: [top, bottom] nodes (origin = where they
+// leave the riser), flex: radians at full draw, draw: metres of pull at full draw }
+const tmpV3 = new THREE.Vector3();
+function bowRig(g, b) {
+  const halves = (b.string || []).map((n) => nodeIn(g, n));
+  if (halves.length !== 2 || !halves.every(Boolean) || !Array.isArray(b.tips) || !Array.isArray(b.nock)) return;
+  const arrow = nodeIn(g, b.arrow || 'arrow');
+  if (arrow) g.userData.arrow = arrow;
+  if (b.arrowTip) { const t = nodeIn(g, b.arrowTip); if (t && t.isMesh) g.userData.arrowTip = t; }
+  g.userData.string = new THREE.Object3D(); // weapons.js moves this one; the real string follows the arrow below
+  g.updateMatrixWorld(true);
+  const nock = new THREE.Vector3(...b.nock);
+  const rig = { nock, draw: b.draw || 0.16, flex: b.flex || 0, halves: [], limbs: [] };
+  halves.forEach((h, i) => {
+    const T = new THREE.Vector3(...b.tips[i]), v0 = nock.clone().sub(T);
+    const piv = new THREE.Object3D(); // +y of the pivot runs along the string half, so scale.y stretches it
+    piv.position.copy(T); piv.rotation.x = Math.atan2(v0.z, v0.y);
+    h.parent.add(piv); piv.updateMatrixWorld(true); piv.attach(h);
+    rig.halves.push({ piv, T, len: v0.length() });
+  });
+  (b.limbs || []).forEach((n, i) => { const l = nodeIn(g, n); if (l) rig.limbs.push({ l, rx: l.rotation.x, sign: i ? -1 : 1 }); });
+  g.userData.bowRig = rig;
+}
+function stepBow(g) {
+  const r = g.userData.bowRig, a = g.userData.arrow;
+  const d = a ? a.position.z : 0, k = Math.max(0, Math.min(1.2, d / r.draw));
+  const phi = k * r.flex;
+  for (const L of r.limbs) L.l.rotation.x = L.rx + L.sign * phi;
+  r.halves.forEach((h, i) => {
+    const L = r.limbs[i], s = i ? -1 : 1;
+    const T = h.T, P = L ? L.l.position : null;
+    let ty = T.y, tz = T.z;
+    if (P && phi) { const y = T.y - P.y, z = T.z - P.z, c = Math.cos(s * phi), sn = Math.sin(s * phi); ty = P.y + y * c - z * sn; tz = P.z + y * sn + z * c; }
+    h.piv.position.set(T.x, ty, tz);
+    tmpV3.set(r.nock.x, r.nock.y - ty, r.nock.z + d - tz);
+    h.piv.rotation.x = Math.atan2(tmpV3.z, tmpV3.y);
+    h.piv.scale.y = Math.hypot(tmpV3.y, tmpV3.z) / h.len;
+  });
 }
 
 // moving parts of Blender guns (nodes named in the file's metadata): the shotgun's forend racks with the pump
@@ -130,6 +185,7 @@ export function partsShot(g) {
   if (p.hammer) p.hamT = 0;
 }
 export function stepParts(g, dt, an, at) {
+  if (g && g.userData.bowRig) stepBow(g);
   const p = g && g.userData.parts;
   if (!p) return;
   if (p.pump) { // back on the way out, snap home: same timing as the pump_shotgun keys (0.1 s back, 0.17 s home)
@@ -147,4 +203,34 @@ export function stepParts(g, dt, an, at) {
     p.bolt.rotation.z = up * p.lift;
     p.bolt.position.z = p.bolt0 + back * p.btravel;
   }
+}
+
+// knives + katanas (public/js/blades) stay code-built: they're real-reference models already. this gives them the
+// Blender models' studio gloss so they sit with the rest: steel and brass turn metal, wood gets a varnish, dark grips a
+// satin coat, coloured bits candy paint. glows, see-through bits and the flat look stay as they are
+const glossMats = new Map(), hsl = {};
+function glossOf(m) {
+  if (!m || !m.isMeshLambertMaterial || m.transparent || (m.emissive && m.emissive.getHex())) return m;
+  let c = glossMats.get(m);
+  if (c) return c;
+  m.color.getHSL(hsl);
+  const { h, s, l } = hsl;
+  const steel = (s < 0.2 && l > 0.38) || (s < 0.25 && l > 0.6);
+  const brass = h > 0.09 && h < 0.14 && s > 0.45 && s < 0.75 && l > 0.4 && l < 0.62;
+  const wood = !brass && h > 0.02 && h < 0.13 && s > 0.25 && l < 0.85;
+  const metal = steel || brass;
+  c = new THREE.MeshPhysicalMaterial({
+    name: m.name, color: m.color.clone(), map: m.map, side: m.side, flatShading: true,
+    metalness: metal ? 0.85 : 0, roughness: metal ? 0.3 : wood ? 0.55 : l < 0.25 ? 0.42 : 0.36,
+    clearcoat: metal ? 0 : wood ? 0.3 : l < 0.25 ? 0.35 : 0.6, clearcoatRoughness: 0.25,
+    envMap: envMap(), envMapIntensity: metal ? 0.9 : 0.3,
+  });
+  c.userData.shared = true;
+  jankify(c);
+  glossMats.set(m, c);
+  return c;
+}
+export function glossBlade(g) {
+  if (MODEL_STYLE === 'flat' || !Object.keys(AUTHORED).length || !envMap()) return; // comes with the Blender set: no models loaded, no gloss
+  g.traverse((o) => { if (o.isMesh) o.material = Array.isArray(o.material) ? o.material.map(glossOf) : glossOf(o.material); });
 }
