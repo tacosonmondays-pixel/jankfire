@@ -818,7 +818,7 @@ class Room {
     }
     if (this.map.edgeGuard && !b.onGround && this.botFlightLands(b)) { wx = 0; wz = 0; jump = false; } // thrown over the canyon (a jump pad, a hit) onto the far side: let it fly (steering back brakes it into the drop)
     else if (this.brOn || this.map.edgeGuard) { const e = this.brBotEdge(b, wx, wz, jump); if (this.map.edgeGuard && (e[0] !== wx || e[1] !== wz)) ai.edgeT = n + 3000; [wx, wz, jump] = e; } // jank royale (and maps with a canyon, map.edgeGuard): no hopping into canyons. turned back from one: find a bridge (above)
-    if (jump && this.map.edgeGuard && b.onGround && [[2, 0], [-2, 0], [0, 2], [0, -2]].some(([dx, dz]) => !raycast([b.pos[0] + dx, b.pos[1] + 0.5, b.pos[2] + dz], [0, -1, 0], 15, boxes))) jump = false; // a drop beside us (a bridge, the lip): no hops. a hop off a parapet's end is how they fell in
+    if (jump && this.map.edgeGuard && b.onGround && this.botDropNear(b, wx, wz)) jump = false; // a drop beside us or ahead (a bridge, the lip, a roof's edge): no hops. a running hop over a parapet is how they fell
     if (this.lavaOn) [wx, wz, jump] = this.botLava(b, wx, wz, jump, t);
     if (this.hr && this.hr.on) { const o = hrBot(this, b, dt, { wx, wz, jump }), l = Math.hypot(o.wx, o.wz); if (l > 1) { o.wx /= l; o.wz /= l; } ({ wx, wz, jump } = o); } // scary forest: don't stare at HR
     return { wx: wx * D.speed, wz: wz * D.speed, jump };
@@ -2541,6 +2541,13 @@ class Room {
     if (n < (h.syncT || 0)) return;
     h.syncT = n + 500;
     this.broadcast({ t: 'hu', id: h.id, p: h.p, R: h.R, on: h.on || 0, age: r2((n - h.born) / 1000) });
+  }
+  // is there a drop (no floor within 15 m under it) 2 m to any side, or up to 6 m ahead where a running jump would carry
+  // the bot (its speed, or where it wants to go)? edgeGuard maps only
+  botDropNear(b, wx, wz) {
+    const v = b.vel, sp = Math.hypot(v[0], v[2]), wl = Math.hypot(wx, wz), dx = sp > 1 ? v[0] / sp : wl ? wx / wl : 0, dz = sp > 1 ? v[2] / sp : wl ? wz / wl : 0;
+    const probes = [[2, 0], [-2, 0], [0, 2], [0, -2]]; if (dx || dz) for (const d of [3, 4.5, 6]) probes.push([dx * d, dz * d]);
+    return probes.some(([px, pz]) => !raycast([b.pos[0] + px, b.pos[1] + 0.5, b.pos[2] + pz], [0, -1, 0], 15, this.boxes));
   }
   // a bot in the air: does the flight come down on a floor if nobody steers? (a floor near the height it left from)
   botFlightLands(b) {

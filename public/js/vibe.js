@@ -193,4 +193,7 @@ export function addVibe(out, canvasTex, speckle) {
   out.adpottery = ad('#c8642a', '#fff', ['POTS', 'you break it, you are it'], 256, 64, { small: '#120818', lit: false });
   out.addye = ad('#ff4fd8', '#ffe14d', ['DYE WORKS', 'wash your hands. no, the other way'], 256, 64, { small: '#fff', lit: false });
   out.adcaravan = ad('#f2e2b8', '#7a2a10', ['CARAVANSERAI', 'camels park free'], 320, 64, { small: '#120818', lit: false });
+  out.adjankbank = ad('#0a2a5a', '#ffe14d', ['JANK BANK', 'too big to fail. too high to fall?'], 256, 64, { small: '#fff' });
+  out.addj = ad('#120818', '#ff4fd8', ['DJ JANK', 'no requests. ever.'], 256, 64, { small: '#4fd8ff' });
+  out.adparty = ad('#ff4fd8', '#ffe14d', ['THE PENTHOUSE', 'members only. everyone is a member.'], 320, 64, { small: '#120818' });
 }
