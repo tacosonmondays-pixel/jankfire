@@ -7,6 +7,7 @@ import { sideHand } from './sidearms.js'; // Lefty & Righty: the L / R stickers
 import { INFECT } from '/shared/modes.js';
 import { G } from './ctx.js';
 import { buildCharacter, buildWeapon, makeNameTag, makeShadow, cardTex, setKatana, freeTree, teamLook } from './models.js';
+import { katanaRemote } from './katanavm.js';
 import { fx, makeBeam, setBeam } from './fx.js';
 import { emitSkinFx } from './skins.js';
 import { wreckRemote, ballBoxes, wreckDispose } from './wreck.js';
@@ -497,7 +498,9 @@ export class Remote {
       ch.arm.rotation.x = this.pitch + (0.35 + jolt - this.pitch) * k;
       ch.arm.rotation.y = 0.75 * k;
       ch.slot.rotation.set(0.85 * k, 0.55 * k, 0);
-    } else if (ch.slot.rotation.x) ch.slot.rotation.set(0, 0, 0);
+      this.parryK = k;
+    } else { if (ch.slot.rotation.x && this.w !== 'katana') ch.slot.rotation.set(0, 0, 0); this.parryK = 0; }
+    katanaRemote(this, this.w === 'katana' && !!this.weaponMesh, this.parryK); // two hands on it: kamae, the left arm on the kashira
     // marker + name tag stay readable far away
     G.camera.getWorldPosition(camPos);
     const dist = camPos.distanceTo(ch.root.position);

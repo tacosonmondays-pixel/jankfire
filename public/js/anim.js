@@ -82,26 +82,11 @@ export const ANIMS = {
     K(0.13, [0.1, -0.06, -0.12], [-0.2, -0.75, -0.7], 'snap'), // rip down-right
     K(0.22, [0.11, -0.08, -0.1], [-0.25, -0.82, -0.75]), K(0.4),
   ], events: [[0.07, 'whoosh']], trail: [0.06, 0.2] },
-  swing_katana: { hit: 0.12, keys: [
-    K(0), K(0.08, [0.12, 0.1, 0.06], [0.35, -0.9, -0.6], 'in'),
-    K(0.16, [-0.2, -0.08, -0.14], [-0.3, 1.2, 0.8], 'snap'), K(0.27, [-0.22, -0.1, -0.12], [-0.35, 1.3, 0.85]), K(0.5),
-  ], events: [[0.09, 'whoosh']], trail: [0.08, 0.26] },
-  swing_katana2: { hit: 0.12, keys: [
-    K(0), K(0.08, [-0.16, 0.1, 0.05], [0.3, 1.0, 0.7], 'in'),
-    K(0.16, [0.14, -0.08, -0.14], [-0.3, -1.1, -0.8], 'snap'), K(0.27, [0.16, -0.1, -0.12], [-0.35, -1.2, -0.85]), K(0.5),
-  ], events: [[0.09, 'whoosh']], trail: [0.08, 0.26] },
-  draw_katana: { keys: [K(0, [-0.18, -0.2, 0.1], [0.2, 1.2, 0.4]), K(0.22, [0.04, 0.02, -0.04], [-0.1, -0.2, -0.1], 'snap'), K(0.4)], events: [[0.18, 'shing']], trail: [0.1, 0.24] },
-  inspect_katana: { keys: [
-    K(0), K(0.35, [-0.08, 0.06, 0.01], [0.15, 0.9, 0.2]),
-    K(0.8, [-0.08, 0.06, 0.01], [0.15, 0.9, 0.2 + Math.PI]), // look down the edge
-    K(1.2, [-0.08, 0.06, 0.01], [0.15, 0.9, 0.2 + Math.PI]),
-    K(1.45, [0.02, 0.0, -0.02], [-0.4, -0.6, 0.2 + PI2], 'snap'), // flick the blood off
-    K(1.9, [0, 0, 0], [0, 0, PI2]),
-  ], events: [[0.8, 'ting'], [1.45, 'whoosh']] },
+  // (the katana's swings, draw, inspect and parry live in katanavm.js: two-handed, posed by where the blade points)
   stab_knife: { hit: 0.29, keys: [
     K(0), K(0.22, [0.05, 0.07, 0.16], [0.5, 0.15, 0.15], 'in'), // wind up: pull back and raise
-    K(0.29, [-0.04, -0.01, -0.3], [-0.4, -0.05, 0], 'snap'), // thrust
-    K(0.46, [-0.04, -0.02, -0.28], [-0.42, -0.05, 0]), // hold it in
+    K(0.29, [-0.08, 0.02, -0.24], [-0.12, 0.42, 0.12], 'snap'), // thrust in toward the middle, the blade side-on so you see it go in
+    K(0.46, [-0.08, 0.015, -0.23], [-0.14, 0.44, 0.12]), // hold it in
     K(0.85, [0, 0, 0], [0, 0, 0], 'smooth'),
   ], events: [[0.25, 'whooshBig']], trail: [0.23, 0.34] },
   swing_slapper: { hit: 0.17, keys: [
@@ -302,23 +287,7 @@ export const ANIMS = {
     K(0), K(0.22, [0.04, 0.14, 0.12], [-0.6, 0.1, 0.2], 'in'),
     K(0.29, [-0.03, -0.08, -0.26], [0.6, -0.05, 0], 'snap'), K(0.46, [-0.03, -0.09, -0.24], [0.62, -0.05, 0]), K(0.85),
   ], events: [[0.25, 'whooshBig']], trail: [0.23, 0.34] },
-  // butterfly (balisong): the two handles swing round the blade on their hinge
-  draw_knife_butterfly: { keys: [K(0, [0, -0.14, 0], [-0.4, 0, 0]), K(0.2, [0, 0, 0], [0, 0, 0], 'snap'), K(0.5, [0, 0.01, 0], [0.05, 0, 0]), K(0.62)],
-    ch: { handles: [[0, Math.PI, Math.PI], [0.12, Math.PI, Math.PI], [0.26, PI2, Math.PI], [0.4, PI2, 0], [0.54, PI2 * 2, 0]] },
-    events: [[0.26, 'click'], [0.4, 'click'], [0.54, 'click']] },
-  inspect_knife_butterfly: { keys: [
-    K(0), K(0.25, [-0.06, 0.06, 0.01], [0.1, 0.5, 0]),
-    K(1.6, [-0.06, 0.06, 0.01], [0.1, 0.5, 0]),
-    K(1.95, [-0.06, 0.08, 0.03], [0.1 + PI2, 0.5, 0], 'snap'), // aerial: the whole thing flips once
-    K(2.2, [-0.06, 0.06, 0.01], [0.1 + PI2, 0.6, 0.1]),
-    K(2.6, [0, 0, 0], [PI2, 0, 0]),
-  ], ch: { handles: [
-    [0.25, 0, 0], [0.4, Math.PI, 0], [0.55, Math.PI, Math.PI], // close
-    [0.7, PI2, Math.PI], [0.85, PI2, 0], // open
-    [1.0, PI2 + Math.PI, 0], [1.15, PI2 + Math.PI, -Math.PI], // close
-    [1.3, PI2 * 2, -Math.PI], [1.45, PI2 * 2, 0], // open
-    [1.75, PI2 * 2, 0], [1.95, PI2 * 3, -PI2],
-  ] }, events: [[0.4, 'click'], [0.55, 'click'], [0.7, 'click'], [0.85, 'click'], [1.0, 'click'], [1.15, 'click'], [1.3, 'click'], [1.45, 'click'], [1.95, 'shing']] },
+  // (butterfly: draw + inspect live in balisong.js)
   inspect_slapper: { keys: [ // wave hello, then clap
     K(0), K(0.3, [-0.1, 0.12, 0.05], [0.3, 0, 0]),
     K(0.5, [-0.1, 0.12, 0.05], [0.3, 0, 0.6]), K(0.7, [-0.1, 0.12, 0.05], [0.3, 0, -0.6]),
@@ -469,15 +438,7 @@ export function drawFor(id, model) {
   return HEAVY.has(id) ? 'draw_heavy' : 'draw_gun';
 }
 
-// katana parry (right click): the blade snaps up across the body (overshoots a hair), holds through the 0.35 s
-// window with a little drift so it doesn't look frozen, then drops back. a landed parry adds hit stop + a kick on top.
 Object.assign(ANIMS, {
-  parry_katana: { keys: [
-    K(0), K(0.05, [-0.15, 0.16, 0.02], [0.84, 1.03, 0.52], 'snap'), // snap up
-    K(0.1, [-0.13, 0.13, 0], [0.75, 0.95, 0.45]), // settle into the guard
-    K(0.34, [-0.12, 0.125, 0], [0.72, 0.93, 0.43], 'linear'), // hold
-    K(0.56, [0, 0, 0], [0, 0, 0], 'smooth'),
-  ], events: [[0.01, 'whoosh']], trail: [0, 0.07] },
   // your swing got parried: whatever you're holding gets knocked up and away, then you get it back
   staggered: { keys: [
     K(0), K(0.07, [0.08, 0.12, 0.14], [0.75, -0.45, 0.65], 'snap'),
@@ -498,11 +459,35 @@ export function sample(name, t) {
   const u = Math.max(0, Math.min(1, (t - k0.t) / Math.max(1e-6, k1.t - k0.t)));
   const e = (EASE[k1.e] || EASE.smooth)(u);
   const L = (a0, a1) => a0 + (a1 - a0) * e;
+  if (a.slerp) return { p: [L(k0.p[0], k1.p[0]), L(k0.p[1], k1.p[1]), L(k0.p[2], k1.p[2])], r: slerpR(a.slerp, k0.r, k1.r, e), s: L(k0.s, k1.s) };
   return {
     p: [L(k0.p[0], k1.p[0]), L(k0.p[1], k1.p[1]), L(k0.p[2], k1.p[2])],
     r: [L(k0.r[0], k1.r[0]), L(k0.r[1], k1.r[1]), L(k0.r[2], k1.r[2])],
     s: L(k0.s, k1.s),
   };
+}
+
+// anims with slerp: base euler (the katana): keys hold offsets from that base, but the turn between two keys goes the short
+// way round as one rotation (big two-handed cuts would wobble through odd angles if each euler angle eased on its own)
+function quatOf(x, y, z) { // euler XYZ -> quaternion [x, y, z, w]
+  const c1 = Math.cos(x / 2), c2 = Math.cos(y / 2), c3 = Math.cos(z / 2), s1 = Math.sin(x / 2), s2 = Math.sin(y / 2), s3 = Math.sin(z / 2);
+  return [s1 * c2 * c3 + c1 * s2 * s3, c1 * s2 * c3 - s1 * c2 * s3, c1 * c2 * s3 + s1 * s2 * c3, c1 * c2 * c3 - s1 * s2 * s3];
+}
+function eulerOf(q) { // quaternion -> euler XYZ (same as three.js)
+  const [x, y, z, w] = q, m11 = 1 - 2 * (y * y + z * z), m12 = 2 * (x * y - z * w), m13 = 2 * (x * z + y * w), m22 = 1 - 2 * (x * x + z * z), m23 = 2 * (y * z - x * w), m32 = 2 * (y * z + x * w), m33 = 1 - 2 * (x * x + y * y);
+  const ry = Math.asin(Math.max(-1, Math.min(1, m13)));
+  if (Math.abs(m13) < 0.9999999) return [Math.atan2(-m23, m33), ry, Math.atan2(-m12, m11)];
+  return [Math.atan2(m32, m22), ry, 0];
+}
+function slerpR(b, r0, r1, u) {
+  const a = quatOf(b[0] + r0[0], b[1] + r0[1], b[2] + r0[2]), c = quatOf(b[0] + r1[0], b[1] + r1[1], b[2] + r1[2]);
+  let d = a[0] * c[0] + a[1] * c[1] + a[2] * c[2] + a[3] * c[3];
+  if (d < 0) { d = -d; for (let i = 0; i < 4; i++) c[i] = -c[i]; }
+  let ka = 1 - u, kc = u;
+  if (d < 0.9995) { const th = Math.acos(d), sn = Math.sin(th); ka = Math.sin((1 - u) * th) / sn; kc = Math.sin(u * th) / sn; }
+  const q = [0, 1, 2, 3].map((i) => a[i] * ka + c[i] * kc), n = Math.hypot(...q);
+  const e = eulerOf(q.map((v) => v / n));
+  return [e[0] - b[0], e[1] - b[1], e[2] - b[2]];
 }
 
 // extra moving parts (butterfly handles, switchblade blade, karambit ring spin): [[t, ...values]], eased between keys
