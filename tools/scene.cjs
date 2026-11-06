@@ -37,7 +37,7 @@ const PORT = opt('port', 3000), OUT = opt('out', 'docs/story/scenes'), FPS = Num
     await pg.screenshot({ path: path.join(tmp, `f${String(n).padStart(5, '0')}.jpg`), type: 'jpeg', quality: 88 });
     if (!(await pg.evaluate(() => window.JF_STORY.scene.playing()))) break;
   }
-  for (let k = 0; k < FPS * 0.8; k++, n++) { await step(); await pg.screenshot({ path: path.join(tmp, `f${String(n).padStart(5, '0')}.jpg`), type: 'jpeg', quality: 88 }); } // the blend back to gameplay
+  for (let k = 0; k < FPS * 1.2; k++, n++) { await step(); await pg.screenshot({ path: path.join(tmp, `f${String(n).padStart(5, '0')}.jpg`), type: 'jpeg', quality: 88 }); } // the blend back to gameplay
   await b.close();
   fs.mkdirSync(OUT, { recursive: true });
   const mp4 = path.join(OUT, `${ID}.mp4`), sheet = path.join(OUT, `${ID}_sheet.jpg`);
