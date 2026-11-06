@@ -2372,215 +2372,421 @@ function groundHoles(B, x0, z0, x1, z1, y0, y1, mat, holes) {
   }
 }
 
-// ------------------------------------------------------------ BAZAAR: plant & defuse. original layout built on the
-// classic bomb-map rules: three lanes (a long street to A, a covered market hall in the middle, an underground cistern to B),
-// defenders spawn ~2.5x closer to both sites than attackers, every lane ends in a chokepoint, sites have 3 ways in for retakes,
-// sightlines go long (canal street) / mixed (hall) / close (cistern), and each site has its own colours as a landmark.
-function bazaar() {
-  const B = builder();
-  const W = B.local(0, 0, 0);
-  const r = rng(777);
-  const X0 = -64, X1 = 57, Z0 = -76, Z1 = 76;
-  // ground (with the two cistern stairwells and the canal cut out) + the void below it
-  groundHoles(B, X0, Z0, X1, Z1, -0.4, 0, 'sand', [[-46, 52, -40, 56], [-50, -8, -42, -4], [50, -6, 56, 70]]);
-  // boundary walls
-  B.add(X0 - 1, -4, Z0 - 1, X0, 12, Z1 + 1, 'adobe'); B.add(X1, -4, Z0 - 1, X1 + 1, 12, Z1 + 1, 'adobe');
-  B.add(X0, -4, Z0 - 1, X1, 12, Z0, 'adobe'); B.add(X0, -4, Z1, X1, 12, Z1 + 1, 'adobe');
-  const block = (x0, z0, x1, z1, h, mat = 'adobe') => { B.add(x0, 0, z0, x1, h, z1, mat); B.add(x0 + 0.4, h, z0 + 0.4, x1 - 0.4, h + 0.5, z1 - 0.4, 'roof'); };
+// ------------------------------------------------------------ the souk kit (Bazaar, Bazaar S&D)
+// a shop: plastered, a flat roof with a parapet (stairs up), a loud awning out front on two poles, its sign over the
+// door, goods on a counter by the door (o.goods: their material). front at local -z
+function souk(B, D, x, z, rot, w, d, floors, o = {}) {
+  const L = B.local(x, z, rot), Ld = D.local(x, z, rot), F = 3.6, hw = w / 2, hd = d / 2, top = floors * F + 0.3;
+  shell(L, w, d, floors, F, o.paint || 'plaster', { floor: o.floor || 'tile', roof: o.roof || 'roof', roofAccess: o.roofAccess !== false, backDoor: o.backDoor !== false, parapet: true, winSpacing: 3.2 });
+  if (o.awning !== false) { const aw = Math.max(1.5, hw - 2); Ld(-aw, 2.7, -hd - 1.8, aw, 2.85, -hd, o.awning || 'cloth'); for (const s of [-1, 1]) L.B(s * (aw - 0.2), 1.35, -hd - 1.65, 0.15, 2.7, 0.15, 'wood'); } // (cloth: nobody stands on it. in from the corners: a neighbour's round the corner never meets it)
+  if (o.sign) Ld(-Math.min(2.4, hw - 0.6), 2.95, -hd - 0.05, Math.min(2.4, hw - 0.6), 3.5, -hd - 0.02, o.sign, { fit: 1 });
+  if (o.goods) { L(-hw + 0.7, 0, -hd - 1.3, -1.3, 0.9, -hd - 0.45, 'wood'); L(-hw + 0.8, 0.9, -hd - 1.2, -1.4, 1.3, -hd - 0.55, o.goods); }
+  if (o.balcony && floors > 1) { Ld(-2.2, F, -hd - 1.1, 2.2, F + 0.2, -hd - 0.02, 'wood'); Ld(-2.2, F + 0.2, -hd - 1.1, 2.2, F + 1.5, -hd - 1.04, 'wood'); for (const sx of [-1, 1]) Ld(sx > 0 ? 2.14 : -2.2, F + 0.2, -hd - 1.04, sx > 0 ? 2.2 : -2.14, F + 1.5, -hd - 0.02, 'wood'); } // a wooden balcony, screened
+  if (o.canopy) { for (const sx of [-1, 1]) for (const sz of [-1, 1]) L.B(sx * (hw - 0.8), top + 1.1, sz * (hd - 0.8), 0.15, 2.2, 0.15, 'wood'); Ld(-hw + 0.6, top + 2.2, -hd + 0.6, hw - 0.6, top + 2.32, hd - 0.6, o.canopy); } // a canopy over the roof terrace
+  return { L, Ld, top, F };
+}
+// an onion dome out of stacked boxes on a roof (pass B for a solid one: nobody walks into it), a gold finial if nothing
+// comes up through it
+function dome(D, x, y, z, r, mat = 'roofteal', finial = true) {
+  let yy = y;
+  for (const [k, h] of [[1, 0.22], [0.92, 0.2], [0.78, 0.18], [0.58, 0.16], [0.34, 0.14]]) { D.box(x, yy + (h * r) / 2, z, 2 * r * k, h * r, 2 * r * k, mat); yy += h * r; }
+  if (finial) { D.box(x, yy + 0.4, z, 0.3, 0.8, 0.3, 'gold'); D.box(x, yy + 1.1, z, 0.6, 0.6, 0.6, 'gold'); }
+}
+// the Lamp Tower: square, banded, a balcony up top, and on it a giant brass oil lamp (rub it. no.)
+function lampTower(B, D, x, z, h = 18, bands = [7.6, 11, 14.5]) {
+  B.add(x - 2, 0, z - 2, x + 2, h, z + 2, 'tile');
+  for (const y of bands) D.add(x - 2.15, y, z - 2.15, x + 2.15, y + 0.4, z + 2.15, 'gold');
+  D.add(x - 3, h - 2.4, z - 3, x + 3, h - 2.1, z + 3, 'marble'); for (const sx of [-1, 1]) for (const sz of [-1, 1]) D.box(x + sx * 2.8, h - 1.6, z + sz * 2.8, 0.2, 1.0, 0.2, 'marble'); // the balcony
+  D.add(x - 1.8, h, z - 1.2, x + 1.8, h + 1.4, z + 1.2, 'gold'); D.add(x - 1.1, h + 1.4, z - 0.8, x + 1.1, h + 2.0, z + 0.8, 'gold'); D.add(x - 0.4, h + 2.0, z - 0.4, x + 0.4, h + 2.5, z + 0.4, 'gold'); // the lamp, its lid, the knob
+  D.add(x + 1.8, h + 0.6, z - 0.3, x + 3.6, h + 1.0, z + 0.3, 'gold'); D.add(x + 3.4, h + 1.0, z - 0.25, x + 3.9, h + 1.4, z + 0.25, 'gold'); D.add(x + 3.45, h + 1.4, z - 0.15, x + 3.85, h + 2.2, z + 0.15, 'neonred'); // the spout, the flame
+  D.add(x - 2.8, h + 0.4, z - 0.15, x - 1.8, h + 0.7, z + 0.15, 'gold'); D.add(x - 2.8, h + 0.7, z - 0.15, x - 2.5, h + 1.6, z + 0.15, 'gold'); D.add(x - 2.5, h + 1.3, z - 0.15, x - 1.8, h + 1.6, z + 0.15, 'gold'); // the handle
+}
+// a dye vat: a stone rim you can stand on, knee-deep colour inside (render-only: jump in, wade about)
+function dyeVat(B, D, x, z, s, mat) {
+  const h = s / 2, t = 0.4;
+  B.add(x - h, 0, z - h, x + h, 0.9, z - h + t, 'stone'); B.add(x - h, 0, z + h - t, x + h, 0.9, z + h, 'stone');
+  B.add(x - h, 0, z - h + t, x - h + t, 0.9, z + h - t, 'stone'); B.add(x + h - t, 0, z - h + t, x + h, 0.9, z + h - t, 'stone');
+  D.add(x - h + t, 0.02, z - h + t, x + h - t, 0.7, z + h - t, mat);
+}
+// a frame (two posts and a bar) with a hanging carpet or cloth: hides you, doesn't stop a bullet (render-only cloth)
+function hanging(B, D, x0, x1, z, mat, alongX = true, h = 3) {
+  const P = (a, b) => (alongX ? [a, b] : [b, a]);
+  for (const a of [x0, x1]) { const [px, pz] = P(a, z); B.box(px, h / 2, pz, 0.2, h, 0.2, 'wood'); }
+  { const [ax, az] = P(x0 + 0.1, z - 0.06), [bx, bz] = P(x1 - 0.1, z + 0.06); D.add(ax, h - 0.18, az, bx, h - 0.06, bz, 'wood'); }
+  { const [ax, az] = P(x0 + 0.2, z - 0.03), [bx, bz] = P(x1 - 0.2, z + 0.03); D.add(ax, 0.5, az, bx, h - 0.25, bz, mat); }
+}
 
-  // ---- attacker spawn (south): an encampment with three exits (west -> cistern, north -> hall, east -> canal street)
-  wall(W, 'x', 52, -22, 22, 0, 8, 0.8, 'adobe', [{ a: -6, b: 6, y0: 0, y1: 4.5 }]);
-  wall(W, 'z', -22, 52, 76, 0, 8, 0.8, 'adobe', [{ a: 58, b: 66, y0: 0, y1: 4 }]);
-  wall(W, 'z', 22, 52, 76, 0, 8, 0.8, 'adobe', [{ a: 58, b: 66, y0: 0, y1: 4 }]);
-  for (const [x, z, c] of [[-14, 70, 'cloth'], [14, 70, 'cloth'], [0, 73, 'pink']]) { // tents
-    B.add(x - 3, 0, z - 2, x + 3, 0.1, z + 2, 'cloth');
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) B.box(x + sx * 2.8, 1.4, z + sz * 1.8, 0.2, 2.8, 0.2, 'wood');
-    B.add(x - 3.2, 2.8, z - 2.2, x + 3.2, 3.0, z + 2.2, c);
-  }
-  B.box(-10, 0.6, 60, 1.2, 1.2, 1.2, 'crate'); B.box(10, 0.6, 61, 1.2, 1.2, 1.2, 'crate'); B.box(10, 1.8, 61, 1.1, 1.1, 1.1, 'crate');
-  // ---- west corridor -> cistern stairs
-  block(-40, 52, -22, 56, 8); block(-46, 66, -22, 76, 9); block(X0, 52, -46, 76, 9);
-  // ---- east corridor -> canal street
-  block(22, 52, 34, 58, 8); block(22, 66, 34, 70, 9); block(22, 70, X1, 76, 9);
-
-  // ---- MID: the market hall (covered, stalls for cover, banners that hide your head but not your feet)
-  block(X0, -2, -9, 52, 8, 'adobe');
-  block(9, -2, 34, 52, 8, 'adobe');
-  for (const [z0, z1] of [[-2, 8], [13, 28], [33, 52]]) B.add(-9, 7, z0, 9, 7.4, z1, 'roofg'); // roof with two skylights
-  for (let z = 4; z < 48; z += 8) {
-    for (const sx of [-1, 1]) { // stalls along both walls
-      const x = sx * 6.5;
-      B.add(x - 2, 0, z - 1.5, x + 2, 1.1, z + 1.5, 'wood');
-      for (const dz of [-1.4, 1.4]) B.box(x + sx * -1.8, 1.5, z + dz, 0.15, 3, 0.15, 'wood');
-      // awning high enough (counter + 1.9) that you can jump onto the counter and walk over it, under the gallery (3.15)
-      B.add(x - 2.4, 3, z - 1.9, x + 2.4, 3.1, z + 1.9, (z / 8) % 2 ? 'cloth' : 'pink');
+// doors, shuttered windows, lanterns and a plaster cornice on the street faces of solid house blocks (render-only, flat
+// on the wall, nothing sticks out past head height but the awnings). blocks: [x0, z0, x1, z1] with .box (the block's own
+// box). a slot is left bare where anything is already there (a wall butting on, a crate, a sign, the next block), so the
+// dressing never cuts into or z-fights with the map. inside(x, z): the playable town (faces looking out stay bare)
+function dressFacades(B, D, blocks, rv, inside) {
+  const over = (a, b) => a.min[0] < b.max[0] - 0.002 && a.max[0] > b.min[0] + 0.002 && a.min[1] < b.max[1] - 0.002 && a.max[1] > b.min[1] + 0.002 && a.min[2] < b.max[2] - 0.002 && a.max[2] > b.min[2] + 0.002;
+  const pick = (a) => a[(rv() * a.length) | 0];
+  const doorM = ['wood', 'blue', 'mint', 'wood', 'sideorange', 'blue'], shutM = ['blue', 'mint', 'wood', 'sidelilac', 'blue'], awnM = ['cloth', 'toyteal', 'magenta', 'toyyellow'];
+  for (const bk of blocks) {
+    const [x0, z0, x1, z1] = bk, host = bk.box, pad = { min: [x0 - 2.5, -1, z0 - 2.5], max: [x1 + 2.5, 9, z1 + 2.5] };
+    const near = () => [...B.boxes.filter((q) => q !== host && over(q, pad)), ...D.boxes.filter((q) => over(q, pad))];
+    for (const [axis, fixed, a, b, n] of [['x', z0, x0, x1, -1], ['x', z1, x0, x1, 1], ['z', x0, z0, z1, -1], ['z', x1, z0, z1, 1]]) {
+      const SW = 3.6, k = Math.floor((b - a - 1.2) / SW);
+      if (k < 1) continue;
+      // face-local: u along the face, y up, v out from it
+      const Wb = (u0, y0, v0, u1, y1, v1, mat) => { const f0 = fixed + n * v0, f1 = fixed + n * v1, lo = Math.min(f0, f1), hi = Math.max(f0, f1);
+        return axis === 'x' ? { min: [Math.min(u0, u1), y0, lo], max: [Math.max(u0, u1), y1, hi], mat } : { min: [lo, y0, Math.min(u0, u1)], max: [hi, y1, Math.max(u0, u1)], mat }; };
+      const put = (list) => { const ws = list.map((q) => Wb(...q)), nb = near(); if (ws.some((w) => nb.some((q) => over(w, q)))) return false; for (const w of ws) D.add(w.min[0], w.min[1], w.min[2], w.max[0], w.max[1], w.max[2], w.mat); return true; };
+      const u0 = (a + b) / 2 - (k * SW) / 2, done = [];
+      for (let i = 0; i < k; i++) {
+        const c = u0 + (i + 0.5) * SW, [px, pz] = axis === 'x' ? [c, fixed + n * 1.2] : [fixed + n * 1.2, c];
+        if (!inside(px, pz)) { done.push(false); continue; }
+        const it = [], g = rv();
+        if (g < 0.32) { // a door in a plaster frame, maybe an awning over it
+          it.push([c - 0.6, 0, 0, c + 0.6, 2.3, 0.06, pick(doorM)], [c - 0.8, 0, 0, c - 0.6, 2.3, 0.1, 'plaster'], [c + 0.6, 0, 0, c + 0.8, 2.3, 0.1, 'plaster'], [c - 0.8, 2.3, 0, c + 0.8, 2.55, 0.12, 'plaster']);
+          if (rv() < 0.4) { it.push([c - 1.0, 2.75, 0, c + 1.0, 2.83, 1.0, pick(awnM)]); it.awn = true; }
+        } else if (g < 0.6) { // a small barred window
+          it.push([c - 0.45, 1.2, 0, c + 0.45, 2.0, 0.04, 'glass'], [c - 0.6, 1.1, 0, c + 0.6, 1.2, 0.15, 'plaster']);
+          for (const du of [-0.17, 0.17]) it.push([c + du - 0.03, 1.2, 0.04, c + du + 0.03, 2.0, 0.07, 'wood']);
+        }
+        const g2 = rv();
+        if (g2 < 0.7) { // upstairs: shutters open, a carved screen, or a balcony
+          it.push([c - 0.5, 3.6, 0, c + 0.5, 4.9, 0.04, 'glass'], [c - 0.65, 3.5, 0, c + 0.65, 3.6, 0.16, 'plaster'], [c - 0.65, 4.9, 0, c + 0.65, 5.05, 0.1, 'plaster']);
+          const sh = rv();
+          if (sh < 0.55) { const m = pick(shutM); it.push([c - 1.0, 3.6, 0, c - 0.5, 4.9, 0.07, m], [c + 0.5, 3.6, 0, c + 1.0, 4.9, 0.07, m]); }
+          else if (sh < 0.8) it.push([c - 0.5, 3.6, 0.04, c + 0.5, 4.9, 0.1, 'wood']);
+          else it.push([c - 1.1, 3.3, 0, c + 1.1, 3.45, 0.9, 'wood'], [c - 1.1, 3.45, 0.84, c + 1.1, 4.15, 0.9, 'wood'], [c - 1.1, 3.45, 0, c - 1.04, 4.15, 0.84, 'wood'], [c + 1.04, 3.45, 0, c + 1.1, 4.15, 0.84, 'wood']);
+          if (sh < 0.8 && !it.awn && rv() < 0.15) it.push([c - 0.45, 2.55, 0.16, c + 0.45, 3.62, 0.19, pick(['carpet', 'magenta', 'cloth'])]); // a rug airing over the sill
+        }
+        if (rv() < 0.4) it.push([c - 0.35, 6.1, 0, c + 0.35, 6.8, 0.04, 'glass'], [c - 0.45, 6.0, 0, c + 0.45, 6.1, 0.12, 'plaster']); // the top floor
+        done.push(it.length ? put(it) : true);
+      }
+      // lanterns between the slots, a cornice along each run of dressed slots
+      for (let i = 0; i < k - 1; i++) if (done[i] && done[i + 1] && rv() < 0.35) { const u = u0 + (i + 1) * SW; put([[u - 0.03, 3.05, 0, u + 0.03, 3.11, 0.4, 'wood'], [u - 0.14, 2.65, 0.22, u + 0.14, 3.05, 0.5, 'lamp']]); }
+      for (let i = 0; i < k;) {
+        if (!done[i]) { i++; continue; }
+        let j = i; while (j + 1 < k && done[j + 1]) j++;
+        const ua = u0 + i * SW + 0.1, ub = u0 + (j + 1) * SW - 0.1;
+        if (!put([[ua, 7.45, 0, ub, 7.65, 0.14, 'plaster']])) for (let q = i; q <= j; q++) put([[u0 + q * SW + 0.1, 7.45, 0, u0 + (q + 1) * SW - 0.1, 7.65, 0.14, 'plaster']]);
+        i = j + 1;
+      }
     }
   }
-  for (const z of [18, 38]) B.add(-4, 3.2, z - 0.05, 4, 7, z + 0.05, 'cloth'); // hanging banners
-  // upper mid: a wooden gallery along the west wall, over the stalls, so mid fights on two levels
-  stairs(W, -9, -7, -1.5, 1, 0, 3.4, 'wood', 0.5);
-  B.add(-9, 3.15, 2.5, -6.6, 3.4, 46, 'wood');
-  for (const [z0, z1] of [[2.5, 14], [18, 30], [34, 46]]) B.add(-6.6, 3.4, z0, -6.4, 4.3, z1, 'wood'); // railing with gaps to drop
-  B.box(0, 0.5, 26, 2, 1, 1.2, 'crate');
+}
 
-  // ---- mid plaza: the hall opens here. east = stairs up to the Bridge (rooftop over A's approach),
-  // west = the Spice House (door through to B), north = the narrow passage to the defenders
-  B.box(0, 0.4, -12, 3, 0.8, 3, 'stone'); B.box(0, 1.5, -12, 1, 1.4, 1, 'stone'); // a well
-  stairs(W, 16, 20, -4, -1, 0, 3.4, 'adobe', 0.55);
-  B.add(16, 0, -16, 20, 3.4, -8.4, 'adobe'); // landing
-  // Stable: its roof is the Bridge
-  B.add(20, 0, -30, 34, 3.4, -2, 'adobe');
-  B.add(20, 3.4, -30, 34, 4.4, -29.6, 'adobe'); B.add(20, 3.4, -2.4, 34, 4.4, -2, 'adobe');
-  B.add(20, 3.4, -29.6, 20.4, 4.4, -22, 'adobe'); B.add(20, 3.4, -8.4, 20.4, 4.4, -2.4, 'adobe');
-  // the plaza corner north of the landing climbs onto the Bridge too (it was a dead end that walled in anyone heading for the roof)
-  for (let i = 0; i < 8; i++) B.add(16 + i * 0.5, 0, -22, 16.5 + i * 0.5, (i + 1) * 0.425, -16, 'adobe');
-  B.add(33.6, 3.4, -26, 34, 4.4, -2.4, 'adobe'); // east parapet, gap at the A end so you can drop onto the terrace
-  for (const z of [-24, -18, -12, -6]) B.box(27, 3.4 + 0.5, z, 1.2, 1, 1.2, 'crate');
-  // a crate staircase in A's approach: hop up and over the parapet onto the Bridge
-  B.add(37.4, 0, -15, 38.6, 1.2, -13.8, 'crate');
-  B.add(36.2, 0, -15, 37.4, 2.4, -13.8, 'crate');
-  B.add(34, 0, -15, 36.2, 3.6, -13.8, 'crate');
+// ------------------------------------------------------------ BAZAAR: Jank Bazaar, a walled market town (every mode but
+// Plant & Defuse). in the middle the Grand Bazaar, one covered hall (48 m square, stalls in islands, pillars, the fountain,
+// the Lamp Tower up through its dome); its four gates sit off-centre, each a quarter-turn round from the last, so no gate
+// looks straight out of another. round it a ring street, then the town: the caravanserai (north: a courtyard inn with a
+// two-level arcade), the dye works and the canal (south: vats of colour, drying racks, four bridges, ankle-deep water you
+// can wade), the spice market (NW), the carpet yard (NE: carpets on frames, a plank bridge over it roof to roof), the tea
+// house (SW, a roof terrace), the potters (SE, kilns and stacks of pots). the teams start in the west and east gate
+// plazas: between them is the hall, its tower and its staggered gates, so nobody sees the other spawn
+function bazaar() {
+  const B = builder(), D = builder();
+  const r = rng(777), rv = rng(7171), W = B.local(0, 0, 0), Dw = D.local(0, 0, 0), add = B.add;
+  const X = 66, bounds = [-X, -X, X, X];
+  const spawns = [];
+  // ---- the ground (the canal cut out of it), the city wall (its top's over the ceiling), corner towers, shut gates
+  groundHoles(B, -300, -300, 300, 300, -2, 0, 'sand', [[-58.4, 43.6, 58.4, 48.4]]);
+  for (const s of [-1, 1]) { add(-X - 1.2, 0, s > 0 ? X : -X - 1.2, X + 1.2, 11, s > 0 ? X + 1.2 : -X, 'adobe'); add(s > 0 ? X : -X - 1.2, 0, -X, s > 0 ? X + 1.2 : -X, 11, X, 'adobe'); }
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) B.box(sx * (X + 0.6), 7, sz * (X + 0.6), 5, 14, 5, 'adobe');
+  for (const s of [-1, 1]) { // the gatehouses (west and east: the teams came in by them; north and south: shut for the night)
+    const i0 = s * X - s * 0.6, i1 = s * X + s * 2.4, d0 = s * X - s * 0.04, b0 = s * X - s * 0.08, b1 = s * X - s * 0.02;
+    add(i0, 0, -7, i1, 13, -4, 'adobe'); add(i0, 0, 4, i1, 13, 7, 'adobe'); D.add(d0, 0, -4, s * X, 6.5, 4, 'wood'); D.add(b0, 1.4, -3.8, b1, 1.7, 3.8, 'metal');
+    add(-7, 0, i0, -4, 13, i1, 'adobe'); add(4, 0, i0, 7, 13, i1, 'adobe'); D.add(-4, 0, d0, 4, 6.5, s * X, 'wood'); D.add(-3.8, 1.4, b0, 3.8, 1.7, b1, 'metal');
+  }
 
-  // ---- A LONG: Canal Street. long sightline, a sunken canal you can drop into as a lower lane
-  B.add(50, -1.6, -6, 56, -1.2, 70, 'water');
-  B.add(49.6, -1.2, -6, 50, -0.4, 70, 'adobe');
-  B.add(50, -1.6, -6.5, 56, -0.4, -6, 'adobe'); B.add(50, -1.6, 70, 56, -0.4, 70.4, 'adobe');
-  for (const z of [44, 14]) stairs(W, 50, 52.2, z, 1, -1.2, 0, 'stone', 0.6);
-  for (const [x, z, s2] of [[38, 44, 2], [44, 26, 2], [38, 8, 1.6]]) { B.box(x, s2 / 2, z, s2, s2, s2, 'crate'); }
-  B.box(44, 2.4, 26, 1.4, 1.4, 1.4, 'crate');
-  for (const [x, z] of [[36, 60], [47, 30], [36, 2]]) tree(W, x, z, 5 + r() * 1.5);
-  // upper long: a walkway along the west wall, stairs up at the south end, drop off at the north end
-  stairs(W, 34.2, 36.8, 44.4, -1, 0, 3.2, 'wood', 0.5);
-  B.add(34, 2.95, 10, 37, 3.2, 40.8, 'wood');
-  B.add(36.8, 3.2, 10, 37, 4.1, 40.8, 'wood'); // rail
-  for (let z = 12; z <= 40; z += 7) B.box(36.6, 1.5, z, 0.3, 2.95, 0.3, 'wood');
-  B.add(34, 3.2, 9.8, 37, 4.1, 10, 'wood');
-  // the Gate: chokepoint into A, with a hole up high you can jump through (sill 1.2 = one jump from A's side,
-  // 2.2 tall so you fit on the 1 m sill). from the canal you get up via the crate standing in the water under it
-  wall(W, 'x', -6, 34, 56, 0, 6, 1, 'brick', [{ a: 40, b: 46, y0: 0, y1: 4 }, { a: 51, b: 53.5, y0: 1.2, y1: 3.4 }]);
-  B.add(51.1, -1.6, -5.5, 53.4, 0, -4.2, 'crate');
+  // ---- THE GRAND BAZAAR: the covered hall in the middle
+  const HW = 24;
+  add(-HW + 0.3, 0, -HW + 0.3, HW - 0.3, 0.05, HW - 0.3, 'pottery');
+  wall(W, 'z', -HW, -HW - 0.3, HW + 0.3, 0, 7, 0.6, 'adobe', [{ a: -10, b: -6, y0: 0, y1: 4 }]); // west gate (north of the middle)
+  wall(W, 'z', HW, -HW - 0.3, HW + 0.3, 0, 7, 0.6, 'adobe', [{ a: 6, b: 10, y0: 0, y1: 4 }]); // east gate (south of it)
+  wall(W, 'x', -HW, -HW + 0.3, HW - 0.3, 0, 7, 0.6, 'adobe', [{ a: 6, b: 10, y0: 0, y1: 4 }]); // north gate (east of it)
+  wall(W, 'x', HW, -HW + 0.3, HW - 0.3, 0, 7, 0.6, 'adobe', [{ a: -10, b: -6, y0: 0, y1: 4 }]); // south gate (west of it)
+  slab(W, -HW - 0.3, -HW - 0.3, HW + 0.3, HW + 0.3, 7, 7.3, 'roof', [-2, -2, 2, 2]);
+  for (const [x0, z0, x1, z1] of [[-HW - 0.3, -HW - 0.3, HW + 0.3, -HW + 0.3], [-HW - 0.3, HW - 0.3, HW + 0.3, HW + 0.3], [-HW - 0.3, -HW + 0.3, -HW + 0.3, 18.6], [-HW - 0.3, 20.2, -HW + 0.3, HW - 0.3], [HW - 0.3, -HW + 0.3, HW + 0.3, HW - 0.3]]) add(x0, 7.3, z0, x1, 8.1, z1, 'plaster'); // the roof's parapet (a gap where the stairs come up)
+  dome(B, 0, 7.3, 0, 9, 'roofteal', false); for (const [x, z] of [[-14, -14], [14, -14], [-14, 14], [14, 14]]) dome(B, x, 7.3, z, 3.2, 'roofblue'); // (solid: over the ceiling past the first tier)
+  lampTower(B, D, 0, 0, 18, [16.2]);
+  for (const [x0, z0, x1, z1] of [[-4.5, -4.5, 4.5, -4], [-4.5, 4, 4.5, 4.5], [-4.5, -4, -4, 4], [4, -4, 4.5, 4]]) add(x0, 0.05, z0, x1, 0.65, z1, 'marble'); // the fountain round the tower's foot
+  for (const [x0, z0, x1, z1] of [[-4, -4, 4, -2], [-4, 2, 4, 4], [-4, -2, -2, 2], [2, -2, 4, 2]]) D.add(x0, 0.07, z0, x1, 0.45, z1, 'water');
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) for (const [px, pz] of [[8, 8], [16, 16], [8, 16], [16, 8]]) { B.box(sx * px, 3.3, sz * pz, 0.7, 6.6, 0.7, 'plaster'); B.box(sx * px, 6.8, sz * pz, 1.1, 0.4, 1.1, 'gold'); } // pillars under the roof, gold capitals
+  // stall islands in the four quarters of the hall (counters round a rack of goods, an awning over it all), stalls along the walls
+  const goods = ['pottery', 'carpet', 'cloth', 'toyyellow'], awn = ['cloth', 'pink', 'toyteal', 'toyyellow'];
+  [[-12, -12], [12, -12], [-12, 12], [12, 12], [-13, 0], [13, 0], [0, -13], [0, 13]].forEach(([cx, cz], j) => {
+    const i = j % 4;
+    for (const s of [-1, 1]) { add(cx - 3, 0.05, cz + s * 1.2 - 0.45, cx + 3, 1.05, cz + s * 1.2 + 0.45, 'wood'); add(cx - 2.9, 1.05, cz + s * 1.2 - 0.35, cx + 2.9, 1.35, cz + s * 1.2 + 0.35, goods[i]); }
+    add(cx - 2.2, 0.05, cz - 0.4, cx + 2.2, 2.2, cz + 0.4, goods[(i + 2) % 4]); // the rack between the counters
+    for (const px of [-3.2, 3.2]) for (const pz of [-1.9, 1.9]) B.box(cx + px, 1.45, cz + pz, 0.15, 2.8, 0.15, 'wood');
+    add(cx - 3.5, 2.85, cz - 2.2, cx + 3.5, 3.0, cz + 2.2, awn[i]);
+  });
+  for (const [x0, z0, x1, z1, g] of [[-23.6, -20, -22.4, -14, 'pottery'], [-23.6, 14, -22.4, 20, 'cloth'], [22.4, -20, 23.6, -14, 'carpet'], [22.4, 14, 23.6, 20, 'toyyellow'], [-20, -23.6, -14, -22.4, 'carpet'], [14, 22.4, 20, 23.6, 'pottery'], [-20, 22.4, -14, 23.6, 'cloth'], [14, -23.6, 20, -22.4, 'toyyellow']]) {
+    add(x0, 0.05, z0, x1, 1.0, z1, 'wood'); add(x0 + 0.1, 1.0, z0 + 0.1, x1 - 0.1, 1.35, z1 - 0.1, g);
+  }
+  for (const [x, z] of [[-8, 0], [8, 0], [0, -8], [0, 8], [-16, 0], [16, 0], [0, -16], [0, 16]]) D.box(x, 5.4, z, 0.6, 0.6, 0.6, 'lamp'); // lamps hung under the roof
+  const flagM = ['magenta', 'yellow', 'blue', 'mint', 'toyred'];
+  for (const c of [-6, 6]) { D.add(-23.6, 6.2, c - 0.02, 23.6, 6.24, c + 0.02, 'wood'); D.add(c - 0.02, 6.29, -23.6, c + 0.02, 6.33, 23.6, 'wood'); // strings of little flags across the hall (one set a little higher: no crossing in one plane)
+    for (let k = 0; k < 30; k++) { const a = -22 + k * 1.5; if (Math.abs(a - c) < 0.6) continue; D.add(a - 0.25, 5.65, c - 0.02, a + 0.25, 6.2, c + 0.02, flagM[k % 5]); D.add(c - 0.02, 5.74, a - 0.25, c + 0.02, 6.29, a + 0.25, flagM[(k + 2) % 5]); } }
+  for (const [x0, z0, x1, z1] of [[-23.67, 10, -23.64, 14], [23.64, -14, 23.67, -10], [-14, -23.67, -10, -23.64], [10, 23.64, 14, 23.67]]) D.add(x0, 2.0, z0, x1, 6.0, z1, 'carpet'); // carpets hung on the walls
+  for (const [x, z] of [[-19, -19], [19, -19], [-19, 19], [19, 19]]) D.add(x - 2, 0.05, z - 1.6, x + 2, 0.07, z + 1.6, 'carpet'); // rugs
+  D.add(-HW - 0.33, 4.6, -10, -HW - 0.31, 5.8, -6, 'neonbar', { fit: 1 }); D.add(HW + 0.31, 4.6, 6, HW + 0.33, 5.8, 10, 'neonnoodle', { fit: 1 });
+  for (const s of [-1, 1]) { D.add(s > 0 ? HW + 0.3 : -HW - 0.32, 6.0, -HW - 0.32, s > 0 ? HW + 0.32 : -HW - 0.3, 6.5, HW + 0.32, 'tile'); D.add(-HW - 0.3, 6.0, s > 0 ? HW + 0.3 : -HW - 0.32, HW + 0.3, 6.5, s > 0 ? HW + 0.32 : -HW - 0.3, 'tile'); } // a mosaic band all round
+  for (const [ax, fx, a0, a1, out] of [['z', -HW, -10, -6, -1], ['z', HW, 6, 10, 1], ['x', -HW, 6, 10, -1], ['x', HW, -10, -6, 1]]) { // each gate: a tiled frame, an awning on two poles
+    const o0 = fx + out * 0.3, o1 = fx + out * 0.33, aw0 = fx + out * 0.3, aw1 = fx + out * 2.1, P = (a, b, y0, y1, u0, u1, m, L = D) => (ax === 'z' ? L.add(Math.min(u0, u1), y0, a, Math.max(u0, u1), y1, b, m) : L.add(a, y0, Math.min(u0, u1), b, y1, Math.max(u0, u1), m));
+    P(a0 - 0.4, a0, 0, 4.4, o0, o1, 'tile'); P(a1, a1 + 0.4, 0, 4.4, o0, o1, 'tile'); P(a0, a1, 4.0, 4.4, o0, o1, 'tile');
+    P(a0 - 0.6, a1 + 0.6, 4.4, 4.55, aw0, aw1, 'cloth', B); for (const a of [a0 - 0.4, a1 + 0.4]) P(a - 0.075, a + 0.075, 0, 4.4, fx + out * 1.85, fx + out * 2.0, 'wood', B); }
+  // the roof's stairs: a flight up the outside of the west wall (the roof's a fight of its own)
+  stairs(W, -HW - 1.9, -HW - 0.3, 12, 1, 0, 7.3, 'adobe', 0.45);
 
-  // ---- SITE A: the terrace. raised, tiled, orange canopies. ways in: gate ramp (south), Bridge drop (west), garden stairs (north)
-  B.add(34, 0, -50, 56, 1.6, -28, 'tile');
-  stairs(W, 44, 50, -24, -1, 0, 1.6, 'adobe', 1.0);
-  stairs(W, 36, 42, -54, 1, 0, 1.6, 'adobe', 1.0);
-  B.box(40, 2.6, -36, 2, 2, 2, 'crate'); B.box(50, 2.6, -44, 2, 2, 2, 'crate'); B.box(50, 4.4, -44, 1.6, 1.6, 1.6, 'crate');
-  B.add(45, 1.6, -33, 50, 2.6, -32, 'sand'); // sandbags
-  for (const [x, z] of [[44, -48], [54, -48], [44, -40], [54, -40]]) B.box(x, 3.5, z, 0.3, 3.8, 0.3, 'wood');
-  B.add(43.5, 5.4, -48.5, 54.5, 5.6, -39.5, 'pink'); // canopy
-  B.add(56 - 0.3, 1.6, -50, 56, 4.5, -28, 'yellow'); // painted wall: A is warm
+  // ---- NORTH: the caravanserai (a courtyard inn: an arcade all round, a gallery over it, the yard in the middle)
+  { const x0 = -20, x1 = 20, z0 = -58, z1 = -32, t = 0.6, ix0 = -14.7, ix1 = 14.7, iz0 = -52.7, iz1 = -37.3;
+    wall(W, 'x', z1, x0 - t / 2, x1 + t / 2, 0, 7.2, t, 'adobe', [{ a: -3, b: 3, y0: 0, y1: 4.2 }]);
+    wall(W, 'x', z0, x0 - t / 2, x1 + t / 2, 0, 7.2, t, 'adobe', [{ a: 8, b: 10, y0: 0, y1: 2.6 }]);
+    wall(W, 'z', x0, z0 + t / 2, z1 - t / 2, 0, 7.2, t, 'adobe', [{ a: -48, b: -46, y0: 0, y1: 2.6 }]);
+    wall(W, 'z', x1, z0 + t / 2, z1 - t / 2, 0, 7.2, t, 'adobe', [{ a: -44, b: -42, y0: 0, y1: 2.6 }]);
+    slab(W, x0 + t / 2, z0 + t / 2, x1 - t / 2, z1 - t / 2, 3.6, 3.9, 'wood', [ix0, iz0, ix1, iz1]); // the gallery
+    slab(W, x0 - t / 2, z0 - t / 2, x1 + t / 2, z1 + t / 2, 7.2, 7.5, 'roof', [ix0, iz0, ix1, iz1]); // the roof over it
+    for (const [a0, a1, fx, ax] of [[x0 - t / 2, x1 + t / 2, z0 - t / 2 + 0.3, 'x'], [x0 - t / 2, x1 + t / 2, z1 + t / 2 - 0.3, 'x'], [z0 + t / 2, z1 - t / 2, x0 - t / 2 + 0.3, 'z'], [z0 + t / 2, z1 - t / 2, x1 + t / 2 - 0.3, 'z']]) wall(W, ax, fx, a0, a1, 7.5, 8.3, 0.6, 'adobe'); // the roof's parapet
+    const pil = (a0, a1, fixed, ax) => { const n = Math.round((a1 - a0) / 3.7); for (let i = 0; i <= n; i++) { const a = a0 + ((a1 - a0) * i) / n; for (const [y, h] of [[0, 3.6], [3.9, 3.3]]) ax === 'x' ? B.box(a, y + h / 2, fixed, 0.5, h, 0.5, 'plaster') : B.box(fixed, y + h / 2, a, 0.5, h, 0.5, 'plaster'); } };
+    pil(ix0, ix1, iz0, 'x'); pil(ix0, ix1, iz1, 'x'); pil(iz0 + 3.85, iz1 - 3.85, ix0, 'z'); pil(iz0 + 3.85, iz1 - 3.85, ix1, 'z'); // the arcade, both floors
+    for (const [a0, a1, fx, ax] of [[ix0 + 0.3, -1.2, iz1, 'x'], [1.2, ix1 - 0.3, iz1, 'x'], [ix0 + 0.3, ix1 - 0.3, iz0, 'x'], [iz0 + 0.3, -47.2, ix0, 'z'], [-45.3, iz1 - 0.3, ix0, 'z'], [iz0 + 0.3, -44.7, ix1, 'z'], [-42.8, iz1 - 0.3, ix1, 'z']]) wall(W, ax, fx, a0, a1, 4.0, 4.8, 0.12, 'wood'); // the gallery's rail (gaps to drop)
+    for (let k = 0; k < 9; k++) { add(ix0 + (8 - k) * 0.5, 0, -47, ix0 + (9 - k) * 0.5, (k + 1) * 0.433, -45.5, 'wood'); add(ix1 - (9 - k) * 0.5, 0, -44.5, ix1 - (8 - k) * 0.5, (k + 1) * 0.433, -43, 'wood'); } // two flights up to it from the yard
+    add(-1.5, 0, -46.5, 1.5, 0.9, -43.5, 'stone'); D.add(-1.1, 0.9, -46.1, 1.1, 0.92, -43.9, 'water'); for (const [x, z] of [[-1.4, -46.4], [1.4, -46.4], [-1.4, -43.6], [1.4, -43.6]]) B.box(x, 1.9, z, 0.18, 2.0, 0.18, 'wood'); add(-1.9, 2.9, -46.9, 1.9, 3.1, -43.1, 'roofg'); // the well
+    camel(W, -8, -40.5, true); camel(W, 8, -49.5, true); hay(B, 9, -40, 3); cart(W, -7, -50, true); cratePile(B, 11, -48.5, 3, r);
+    D.add(-4, 4.6, z1 + t / 2 + 0.02, 4, 6.4, z1 + t / 2 + 0.05, 'adcaravan', { fit: 1 }); spawns.push([0, 0.2, -40], [-17, 0.2, -36], [17, 4.1, -55]); }
 
-  // ---- defender garden east (CT side of A)
-  block(3, -58, 20, -22, 7);
-  block(20, -50, 34, -30, 7);
-  block(20, Z0, X1, -66, 9);
-  for (const x of [26, 46]) tree(W, x, -60, 5);
-  B.box(30, 0.5, -55, 3, 1, 1, 'hedge');
+  // ---- SOUTH: the dye works, the canal (ankle deep, four bridges), the drying racks
+  { add(-58, -2, 43.6, 58, -0.5, 48.4, 'stone'); D.add(-58, -0.5, 44, 58, -0.3, 48, 'water'); // the canal's bed, its water
+    for (const z0 of [43.6, 48]) add(-58, -0.5, z0, 58, 0.1, z0 + 0.4, 'stone'); // its kerbs
+    for (const sx of [-1, 1]) add(sx * 58, -2, 43.6, sx * 58.4, 0.1, 48.4, 'stone'); // its ends
+    for (const x of [-45, -12, 12, 45]) { add(x - 2.2, 0.1, 43.2, x + 2.2, 0.4, 48.8, 'stone'); for (const s of [-1, 1]) add(x + s * 2.2 - (s > 0 ? 0.3 : 0), 0.4, 43.2, x + s * 2.2 + (s > 0 ? 0 : 0.3), 1.0, 48.8, 'stone'); } // the bridges (low walls)
+    souk(B, D, 0, 33, 2, 16, 6, 1, { paint: 'sidelilac', sign: 'addye', awning: 'magenta', goods: 'cloth' }); // the dye works (its front on the vats)
+    ['magenta', 'yellow', 'blue', 'mint', 'toyred', 'toyteal'].forEach((m, i) => dyeVat(B, D, -17.5 + i * 7, 40.4, 4, m));
+    for (const [z, mats] of [[53, ['magenta', 'blue', 'yellow']], [57.5, ['mint', 'toyred', 'toyteal']]]) mats.forEach((m, i) => hanging(B, D, -21 + i * 14, -9 + i * 14, z, m));
+    spawns.push([0, 0.2, 42], [-25, 0.2, 52], [25, 0.2, 52]); }
 
-  // ---- defender spawn (north): palace plaza
-  for (const x of [-14, -7, 7, 14]) B.box(x, 3, -74.5, 1.2, 6, 1.2, 'stone'); // colonnade on the palace front
-  B.add(-16, 6, -76, 16, 7, -73, 'stone');
-  B.box(0, 0.4, -67, 4, 0.8, 4, 'stone'); B.box(0, 2.4, -67, 1.2, 3.2, 1.2, 'gold'); // statue
+  // ---- NW: the spice market (a square with a shop on each side, open at the corners), sacks, cones of spice, lanterns
+  { const cx = -45, cz = -45;
+    souk(B, D, cx, cz - 11, 2, 10, 8, 1, { paint: 'sideorange', sign: 'adspice', goods: 'toyred', awning: 'toyyellow' });
+    souk(B, D, cx, cz + 11, 0, 10, 8, 2, { paint: 'plaster', goods: 'toyyellow', awning: 'pink', balcony: true });
+    souk(B, D, cx - 11, cz, 1, 10, 8, 1, { paint: 'sidelemon', goods: 'sideorange', awning: 'cloth' });
+    souk(B, D, cx + 11, cz, 3, 10, 8, 2, { paint: 'sidepink', goods: 'pottery', awning: 'toyteal', balcony: true });
+    for (const [x, z] of [[-49, -48], [-41, -48], [-45, -41]]) { add(x - 1.6, 0, z - 0.8, x + 1.6, 0.9, z + 0.8, 'wood'); [['toyred', -1], ['toyyellow', 0], ['sideorange', 1]].forEach(([m, k]) => { D.box(x + k, 1.05, z, 0.8, 0.3, 0.8, m); D.box(x + k, 1.3, z, 0.5, 0.2, 0.5, m); }); } // spice tables
+    for (const [x, z] of [[-50.5, -42], [-39.6, -50.2], [-50, -50]]) B.box(x, 0.45, z, 0.9, 0.9, 0.7, 'cloth');
+    for (const z of [-48, -42]) D.add(-51.5, 3.4, z - 0.02, -38.5, 3.43, z + 0.02, 'wood'); for (const x of [-48, -45, -42]) for (const z of [-48, -42]) D.box(x, 3.0, z, 0.4, 0.5, 0.4, 'lamp'); // lanterns on strings
+    spawns.push([-45, 0.2, -45], [-58, 0.2, -32], [-32, 0.2, -58]); }
 
-  // ---- west: garden + SITE B (fountain court, blue walls, an arcade along the north side)
-  block(X0, Z0, -20, -66, 9);
-  block(-20, -58, -3, -22, 7);
-  block(-30, -52, -20, -30.2, 7);
-  for (let x = -62; x <= -34; x += 4) B.box(x, 2.5, -53, 0.9, 5, 0.9, 'stone');
-  B.add(-63, 5, -55, -33, 5.6, -51, 'roof');
-  for (const [x, h] of [[-61.6, 1.2], [-61.6, 2.4], [-61.6, 3.6], [-61.6, 4.8]]) B.add(x - 0.6, 0, -56 - h * 0.85 - 0.6, x + 0.6, h, -56 - h * 0.85 + 0.6, 'crate');
-  B.add(-63.7, 0, -52, -30, 0.05, -24, 'stone'); // paving
-  // fountain (octagon-ish basin), the middle of B
-  const fx = -46, fz = -38;
-  for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; B.box(fx + Math.cos(a) * 3, 0.45, fz + Math.sin(a) * 3, 2.6, 0.8, 2.6, 'stone'); }
-  B.add(fx - 2, 0.05, fz - 2, fx + 2, 0.5, fz + 2, 'water');
-  B.box(fx, 1.6, fz, 0.8, 2.2, 0.8, 'stone');
-  B.box(-56, 0.6, -46, 1.2, 1.2, 1.2, 'crate'); B.box(-36, 0.6, -32, 2, 1.2, 1.2, 'crate'); B.box(-38, 1.6, -45, 2.4, 3.2, 1.2, 'wood');
-  B.add(-64, 0, -52, -63.7, 6, -24, 'blue'); // painted wall: B is cool
+  // ---- NE: the carpet yard (carpets drying on frames, rolls stacked, a plank bridge over it from roof to roof)
+  { const cx = 45, cz = -45;
+    souk(B, D, cx, cz - 11, 2, 10, 8, 2, { paint: 'sidepink', sign: 'adcarpet', goods: 'carpet', awning: 'magenta', balcony: true });
+    souk(B, D, cx, cz + 11, 0, 10, 8, 2, { paint: 'sidemint', goods: 'carpet', awning: 'cloth', balcony: true });
+    souk(B, D, cx + 11, cz, 3, 10, 8, 1, { paint: 'plaster', goods: 'cloth', awning: 'toyteal' });
+    for (const [z, m] of [[-48.5, 'carpet'], [-45, 'magenta'], [-41.5, 'carpet']]) hanging(B, D, 39, 48, z, m);
+    for (let i = 0; i < 3; i++) add(35.4, i * 0.6, -52 + i * 0.2, 37.8, (i + 1) * 0.6, -48 - i * 0.2, 'carpet'); // rolls, stacked
+    add(44, 8.3, -52.3, 46, 8.5, -37.7, 'wood'); for (const x of [44, 45.9]) add(x, 8.5, -52.3, x + 0.1, 9.3, -37.7, 'wood'); // a plank bridge over the yard, parapet to parapet
+    spawns.push([45, 0.2, -45], [58, 0.2, -32], [32, 0.2, -58]); }
 
-  // ---- the Spice House: two floors between mid plaza and B. door from the plaza, a door onto B with the balcony door right above it
-  const SX0 = -30, SX1 = -20, SZ0 = -30, SZ1 = -6, F = 3.6;
-  B.add(SX0, 0, SZ0, SX1, 0.12, SZ1, 'wood');
-  wall(W, 'z', SX1, SZ0, SZ1, 0, 2 * F, 0.4, 'plaster', [{ a: -18, b: -15, y0: 0, y1: 2.8 }, { a: -11, b: -9, y0: F + 1, y1: F + 2.2 }]);
-  wall(W, 'z', SX0, SZ0, SZ1, 0, 2 * F, 0.4, 'plaster', [{ a: -28, b: -25.5, y0: 0, y1: 2.8 }, { a: -28.15, b: -25.35, y0: F + 0.25, y1: F + 2.7 }]);
-  // balcony over B: walk upstairs, out the door, look down on the site (or drop in through the gap in the rail)
-  B.add(-34, F, -30, -30.2, F + 0.25, -24, 'wood');
-  B.add(-34, F + 0.25, -30, -33.8, F + 1.15, -28.25, 'wood'); B.add(-34, F + 0.25, -25.25, -33.8, F + 1.15, -24, 'wood');
-  B.add(-33.8, F + 0.25, -30, -30.2, F + 1.15, -29.8, 'wood');
-  B.box(-33.8, F / 2, -24.3, 0.3, F, 0.3, 'wood'); B.box(-33.8, F / 2, -29.7, 0.3, F, 0.3, 'wood');
-  wall(W, 'x', SZ0, SX0, SX1, 0, 2 * F, 0.4, 'plaster');
-  wall(W, 'x', SZ1, SX0, SX1, 0, 2 * F, 0.4, 'plaster');
-  slab(W, SX0 + 0.2, SZ0, SX1, SZ1, F, F + 0.25, 'wood', [-23, -12, -21, -6.4]);
-  stairs(W, -23, -21, -12, 1, 0.12, F + 0.25, 'wood', 0.6);
-  B.add(SX0, 2 * F, SZ0, SX1, 2 * F + 0.3, SZ1, 'roof');
-  for (const [x, z] of [[-27, -20], [-24, -9]]) B.box(x, 0.6, z, 1.2, 1.2, 1.2, 'crate');
-  B.add(-29.5, F + 0.25, -24, -28, F + 1.1, -14, 'cloth'); // sacks of spice upstairs
-  block(-30, -5.8, -20, -2, 7);
+  // ---- SW: the tea house (cushions on its roof terrace), houses, a garden, the canal behind
+  { souk(B, D, -45, 36, 0, 16, 10, 2, { paint: 'sidemint', sign: 'adtea', goods: 'pottery', awning: 'pink', balcony: true, canopy: 'pink' }); // (its front north, onto the street)
+    for (const [x, z] of [[-50, 33], [-45, 37], [-40, 33]]) { add(x - 1, 7.5, z - 0.6, x + 1, 7.8, z + 0.6, 'carpet'); add(x - 0.4, 7.8, z - 0.4, x + 0.4, 8.0, z + 0.4, 'wood'); } // cushions, low tables (up top)
+    souk(B, D, -54, 55, 0, 10, 8, 1, { paint: 'plaster', awning: false }); souk(B, D, -36, 55, 0, 12, 8, 1, { paint: 'sidelemon', awning: 'cloth' });
+    for (const [x, z] of [[-60, 51], [-28, 51]]) palm(W, x, z, 6 + rv() * 2, rv); add(-48, 0, 49.6, -42, 0.5, 51.6, 'hedge');
+    spawns.push([-45, 0.5, 46], [-58, 0.2, 32], [-30, 0.2, 36]); }
 
-  // ---- B gate: the cistern comes up here, then an arch (chokepoint) into B
-  block(X0, -24, -52, -2, 8); block(-40, -24, -30, -2, 8);
-  wall(W, 'x', -24, -52, -40, 0, 6, 1, 'adobe', [{ a: -48, b: -44, y0: 0, y1: 3.2 }]);
+  // ---- SE: the potters (two kilns, stacks of pots, the pottery shop), houses
+  { souk(B, D, 52, 36, 3, 12, 10, 1, { paint: 'sideorange', sign: 'adpottery', goods: 'pottery', awning: 'toyyellow' });
+    for (const [x, z] of [[36, 35], [42, 39]]) { add(x - 2, 0, z - 2, x + 2, 2.4, z + 2, 'brick'); add(x - 1.4, 2.4, z - 1.4, x + 1.4, 3.4, z + 1.4, 'brick'); add(x - 0.4, 3.4, z - 0.4, x + 0.4, 4.6, z + 0.4, 'brick'); D.add(x - 0.6, 0.2, z - 2.04, x + 0.6, 1.2, z - 2.0, 'neonred'); } // kilns (red hot)
+    for (const [x, z, n] of [[33, 40.4, 3], [44.6, 32.4, 2], [39, 33, 2]]) for (let i = 0; i < n; i++) B.box(x, 0.35 + i * 0.7, z, 1.4 - i * 0.3, 0.7, 1.4 - i * 0.3, 'pottery'); // pots, stacked
+    souk(B, D, 36, 55, 0, 12, 8, 2, { paint: 'plaster', awning: 'cloth', balcony: true }); souk(B, D, 54, 55, 0, 10, 8, 1, { paint: 'sidepink', awning: false });
+    spawns.push([45, 0.5, 46], [58, 0.2, 32], [30, 0.2, 36]); }
 
-  // ---- the CISTERN: underground tunnel from the attacker side to B. close quarters, pillars, a flooded side chamber
-  B.add(-50, -3.9, -8, -40, -3.5, 56, 'stone');
-  wall(W, 'z', -50.2, -8, 56, -3.5, -0.4, 0.4, 'stone', [{ a: 20, b: 28, y0: -3.5, y1: -0.4 }]);
-  B.add(-40, -3.5, -8, -39.6, -0.4, 56, 'stone');
-  B.add(-50, -3.5, -8.4, -40, -0.4, -8, 'stone'); B.add(-50, -3.5, 56, -40, -0.4, 56.4, 'stone');
-  stairs(W, -50, -42, -4, -1, -3.5, 0, 'stone', 0.5);
-  stairs(W, -46, -40, 52, 1, -3.5, 0, 'stone', 0.5);
-  B.add(-58, -3.9, 18, -50, -3.5, 30, 'stone'); // floor runs right through the doorway (it stopped 0.4 short: a slot into the void)
-  B.add(-58.4, -3.5, 18, -58, -0.4, 30, 'stone'); B.add(-58, -3.5, 17.6, -50.4, -0.4, 18, 'stone'); B.add(-58, -3.5, 30, -50.4, -0.4, 30.4, 'stone');
-  B.add(-56, -3.5, 21, -52, -3.45, 27, 'water');
-  for (const z of [44, 30, 14, 2]) B.box(-45, -1.95, z, 1, 3.1, 1, 'stone');
-  for (const z of [40, 20, 0]) B.box(-49.7, -1.6, z, 0.2, 0.4, 0.6, 'light');
+  // ---- WEST and EAST: the gate plazas (the teams' spawns), a fountain each, the houses round them
+  const att = [[-58, 0.2, -6], [-58, 0.2, -2], [-58, 0.2, 2], [-58, 0.2, 6], [-54, 0.2, -4], [-54, 0.2, 0], [-54, 0.2, 4]];
+  const def = att.map(([x, y, z]) => [-x, y, -z]);
+  for (const s of [-1, 1]) {
+    souk(B, D, s * 52, -22, 2, 12, 12, 2, { paint: s > 0 ? 'sidelemon' : 'sidepink', goods: 'cloth', awning: 'toyteal', balcony: true }); // (the row north of the plaza faces south onto it,
+    souk(B, D, s * 37, -22, 2, 10, 12, 1, { paint: 'plaster', goods: 'pottery', awning: 'pink' });
+    souk(B, D, s * 52, 22, 0, 12, 12, 1, { paint: 'plaster', goods: 'carpet', awning: 'cloth' }); // the row south of it north)
+    souk(B, D, s * 37, 22, 0, 10, 12, 2, { paint: s > 0 ? 'sidemint' : 'sideorange', goods: 'toyyellow', awning: 'magenta', balcony: true });
+    const fx = s * 42; for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; B.box(fx + Math.cos(a) * 2.6, 0.4, Math.sin(a) * 2.6, 2.2, 0.8, 2.2, 'marble'); } D.add(fx - 1.8, 0.05, -1.8, fx + 1.8, 0.6, 1.8, 'water'); B.box(fx, 1.4, 0, 0.7, 2.8, 0.7, 'marble'); // a fountain
+    cart(W, s * 34, s * 8, false); for (const [x, z] of [[s * 46, s * -9], [s * 47, s * -10]]) B.box(x, 0.6, z, 0.75, 1.2, 0.75, 'barrel');
+  }
+  for (const [x, z, rot] of [[-22, -29.8, 2], [-12, -29.8, 2], [14, -29.8, 2], [22, -29.8, 2], [-20, 28.2, 0], [-14, 28.2, 0], [14, 28.2, 0], [20, 28.2, 0], [-28.2, -20, 1], [-28.2, 2, 1], [28.2, -2, 3], [28.2, 20, 3],
+    [-47, -11, 2], [-47, 11, 0], [47, -11, 2], [47, 11, 0]]) stall(W, x, z, rot, rv); // market stalls round the hall and in the plazas
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) { B.box(sx * 30, 0.35, sz * 30, 1.8, 0.7, 1.8, 'stone'); palm(W, sx * 30, sz * 30, 6.5 + rv() * 1.5, rv); } // palms in planters, the ring street's corners
+  spawns.push(att[0], att[3], def[0], def[3], [-27, 0.2, 0], [27, 0.2, 0], [0, 0.2, -27], [0, 0.2, 27], [-20, 0.2, -20], [20, 0.2, 20], [-6, 0.2, 18], [6, 0.2, -18], [-63, 0.2, -40], [63, 0.2, 40], [-40, 0.2, 63], [40, 0.2, -63]);
 
-  const att = [[-12, 0.1, 66], [-6, 0.1, 70], [0, 0.1, 63], [6, 0.1, 70], [12, 0.1, 66], [-16, 0.1, 58], [16, 0.1, 58]];
-  const def = [[-12, 0.1, -70], [-6, 0.1, -63], [0, 0.1, -61], [6, 0.1, -63], [12, 0.1, -70], [-16, 0.1, -62], [16, 0.1, -62]];
-  const spawns = [...att, ...def, [0, 0.1, 20], [42, 0.1, 30], [-45, -3.4, 20], [46, 1.7, -40], [-50, 0.1, -32], [8, 0.1, -12], [27, 3.5, -16], [40, 0.1, -60], [-41, 0.1, -60], [-25, 0.2, -16]];
-  // outside the walls: real sand in every direction (go over a wall: RETURN TO THE MAP), the desert to the horizon
-  groundHoles(B, -260, -260, 260, 260, -2, 0, 'sand', [[X0 - 1, Z0 - 1, X1 + 1, Z1 + 1]]);
-  const D = builder(), neons = ['neonnoodle', 'neonbar', 'neonhotel', 'neonwork'], rv = rng(7171);
-  horizon(D, -260, -260, 260, 260, 1500, 'sand');
-  const Dw = D.local(0, 0, 0);
-  for (let i = 0; i < 40; i++) { const a = rv() * Math.PI * 2, d = 120 + rv() * 220, x = Math.cos(a) * d, z = Math.sin(a) * d; if (Math.abs(z) < 12 && x < 0) continue; dune(D, x, z, 30 + rv() * 60, 18 + rv() * 36, 5 + rv() * 12); }
+  // ---- the ground between it all (look only): sand patches, scrub, the odd tumbleweed, never inside anything
+  { const rg = rng(7373), clear = (x, z, rr) => !B.boxes.some((q) => q.max[1] > 0.06 && q.min[1] < 12 && q.mat !== 'sand' && x + rr > q.min[0] && x - rr < q.max[0] && z + rr > q.min[2] && z - rr < q.max[2]);
+    const ok = (x, z) => Math.max(Math.abs(x), Math.abs(z)) > 25 && !(z > 42 && z < 50);
+    for (let i = 0; i < 70; i++) { const x = -X + 3 + rg() * (2 * X - 6), z = -X + 3 + rg() * (2 * X - 6), s = 0.4 + rg() * 0.5; if (ok(x, z) && clear(x, z, s)) D.box(x, s * 0.35, z, s, s * 0.7, s * 0.9, rg() < 0.5 ? 'hedge' : 'leaves2'); }
+    for (let i = 0; i < 8; i++) { const x = -X + 3 + rg() * (2 * X - 6), z = -X + 3 + rg() * (2 * X - 6); if (ok(x, z) && clear(x, z, 0.6)) D.obb(x, 0.4, z, 0.8, 0.8, 0.8, rg() * 3, 'burnt'); }
+  }
+  // ---- outside the wall (render-only): dunes, rocks, a camp outside the west gate, an oasis, the next town over
+  horizon(D, -300, -300, 300, 300, 1500, 'sand');
+  for (let i = 0; i < 40; i++) { const a = rv() * Math.PI * 2, d = 120 + rv() * 220, x = Math.cos(a) * d, z = Math.sin(a) * d, w = 30 + rv() * 60, dd = 18 + rv() * 36; if (Math.abs(x) - w / 2 < 80 && Math.abs(z) - dd / 2 < 80) continue; dune(D, x, z, w, dd, 5 + rv() * 12); }
   for (let i = 0; i < 12; i++) { const a = rv() * Math.PI * 2, d = 200 + rv() * 220; rocks(D, Math.cos(a) * d, Math.sin(a) * d, 12 + rv() * 20, rv); }
-  // a camp outside the attackers' wall, a dirt track off into the dunes, an oasis to the east, a town on the horizon
-  for (const [x, z, c] of [[-22, 92, 'cloth'], [-8, 96, 'toypink'], [10, 92, 'cloth'], [26, 97, 'toyteal']]) tent(Dw, x, z, c);
-  for (const [x, z, ax] of [[-34, 98, true], [40, 90, false]]) camel(Dw, x, z, ax);
-  D.add(-3, 0, 78, 3, 0.03, 400, 'dirtroad');
+  for (const [x, z, c] of [[-86, -14, 'cloth'], [-92, 6, 'toypink'], [-84, 20, 'toyteal']]) tent(Dw, x, z, c);
+  for (const [x, z, ax] of [[-98, -4, true], [-90, 30, false], [92, -20, true]]) camel(Dw, x, z, ax);
   D.add(130, 0, -40, 170, 0.2, -10, 'lawn'); D.add(136, 0.2, -34, 164, 0.3, -16, 'water');
   for (const [x, z] of [[132, -42], [168, -38], [128, -20], [172, -14], [150, -8], [146, -44]]) palm(Dw, x, z, 6 + rv() * 3, rv);
-  for (let i = 0; i < 26; i++) { // the next town over: flat roofs, a few domes, a water tower
-    const x = -330 + (rv() - 0.5) * 120, z = -180 + (rv() - 0.5) * 140, w = 8 + rv() * 10, h = 4 + rv() * 9;
-    D.add(x - w / 2, 0, z - w / 2, x + w / 2, h, z + w / 2, rv() < 0.7 ? 'adobe' : ['sidepink', 'sidelemon', 'sidemint'][(rv() * 3) | 0]);
-    if (rv() < 0.25) { D.add(x - w * 0.3, h, z - w * 0.3, x + w * 0.3, h + w * 0.25, z + w * 0.3, 'adobe'); D.add(x - w * 0.18, h + w * 0.25, z - w * 0.18, x + w * 0.18, h + w * 0.4, z + w * 0.18, 'adobe'); }
+  for (let i = 0; i < 26; i++) { const x = -330 + (rv() - 0.5) * 120, z = -180 + (rv() - 0.5) * 140, w = 8 + rv() * 10, h = 4 + rv() * 9;
+    D.add(x - w / 2, 0, z - w / 2, x + w / 2, h, z + w / 2, rv() < 0.7 ? 'adobe' : ['sidepink', 'sidelemon', 'sidemint'][(rv() * 3) | 0]); if (rv() < 0.3) dome(D, x, h, z, w * 0.3, rv() < 0.5 ? 'roofteal' : 'roofblue'); }
+
+  let graph = null;
+  const map = { name: 'Bazaar', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -50, floorY: -6, bounds, ceiling: 9,
+    sky: { top: 0x4a8fd8, mid: 0xf2dcae, bot: 0x8a6a40, fog: 0xf0d8a8 }, fogNear: 100, fogFar: 380, spawns, teamSpawns: { att, def },
+    // bots: a walk graph on the ground and on the caravanserai's gallery (up and down by its two flights)
+    get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: bounds[2] - bounds[0] + 2, cell: 1, levels: [0, 3.9], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]),
+      stairs: [{ top: [-15.5, 3.9, -46.25], bot: [-9.5, 0, -46.25] }, { top: [15.5, 3.9, -43.75], bot: [9.5, 0, -43.75] }] })); },
+  };
+  return map;
+}
+
+// ------------------------------------------------------------ BAZAAR S&D: the Jank Bazaar, smugglers vs the bazaar guard
+// (Plant & Defuse). the smugglers (attackers) come in with the caravan at the south gate; the guard (defenders) hold the
+// palace at the north end. three lanes north: west, the spice alleys (a zigzag between the shops) to B; the middle, the
+// Grand Hall (a covered hall, its doors at opposite corners, stalls down the middle) out into the courtyard under the
+// Lamp Tower (mid), then the lamp shop west to B or the tea house east to A; east, the canal (walk the quays or wade it,
+// three bridges) to A. B = the carpet warehouse's yard (rolls, frames of carpets, the warehouse's upstairs windows on
+// it); A = the dye yard (vats to stand on, racks of cloth, the dye house's low roof). the guard come down the palace
+// passage to mid, or round by the north alleys to either site, ~7 s before the smugglers
+function bazaarSD() {
+  const B = builder(), D = builder();
+  const r = rng(7878), rv = rng(7979), W = B.local(0, 0, 0), Dw = D.local(0, 0, 0), add = B.add;
+  const X0 = -60, X1 = 60, Z0 = -72, Z1 = 72, bounds = [X0, Z0, X1, Z1];
+  const spawns = [];
+  const blocks = [], block = (x0, z0, x1, z1, h, mat = 'adobe') => { add(x0, 0, z0, x1, h, z1, mat); blocks.push(Object.assign([x0, z0, x1, z1], { box: B.boxes[B.boxes.length - 1] })); add(x0, h, z0, x1, h + 0.3, z1, 'roof'); }; // a solid block of houses (over the ceiling: no roofs to sit on)
+  // ---- the ground (the canal cut out of it), the wall round it all (its top's over the ceiling), the gates shut
+  groundHoles(B, -300, -300, 300, 300, -2, 0, 'sand', [[39.6, -14.4, 44.4, 56.4]]);
+  for (const s of [-1, 1]) { add(X0 - 1.2, 0, s > 0 ? Z1 : Z0 - 1.2, X1 + 1.2, 9, s > 0 ? Z1 + 1.2 : Z0, 'adobe'); add(s > 0 ? X1 : X0 - 1.2, 0, Z0, s > 0 ? X1 + 1.2 : X0, 9, Z1, 'adobe'); }
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) B.box(sx * (X1 + 0.6), 6, sz * (Z1 + 0.6), 5, 12, 5, 'adobe');
+  for (const s of [-1, 1]) { const i0 = s * Z1 - s * 0.6, i1 = s * Z1 + s * 2.4; add(-8, 0, Math.min(i0, i1), -5, 11, Math.max(i0, i1), 'adobe'); add(5, 0, Math.min(i0, i1), 8, 11, Math.max(i0, i1), 'adobe'); D.add(-5, 0, s > 0 ? Z1 - 0.04 : Z0, 5, 6, s > 0 ? Z1 : Z0 + 0.04, 'wood'); }
+
+  // ---- the caravan camp inside the south gate (the smugglers' spawn): tents, camels, the goods
+  const att = [[-8, 0.2, 65], [-4, 0.2, 63], [0, 0.2, 65], [4, 0.2, 63], [8, 0.2, 65], [-6, 0.2, 68], [6, 0.2, 68]];
+  for (const [x, z, c] of [[-20, 66, 'toypink'], [20, 66, 'cloth'], [-30, 62, 'toyteal']]) tent(W, x, z, c);
+  for (const [x, z, ax] of [[14, 61, true], [-14, 60, false]]) camel(W, x, z, ax);
+  cratePile(B, 26, 60, 4, r); cratePile(B, -26, 56, 3, r); hay(B, 30, 66, 3);
+  // the lower town: the square the three lanes start from
+  for (const [x, z, rot] of [[-30, 56, 0], [30, 56, 0], [-10, 50, 0], [10, 50, 0]]) stall(W, x, z, rot, rv);
+  B.box(0, 0.4, 52, 3, 0.8, 3, 'marble'); B.box(0, 1.4, 52, 0.8, 2, 0.8, 'marble'); // a drinking fountain in the square
+
+  // ---- MID: the Grand Hall (covered, its doors at opposite corners, three stall islands down the middle, side doors
+  // half way: west to the alleys, east to the dyers' passage), then the courtyard under the Lamp Tower
+  const HX = 9, HZ0 = -4, HZ1 = 40;
+  add(-HX + 0.3, 0, HZ0 + 0.3, HX - 0.3, 0.05, HZ1 - 0.3, 'pottery');
+  wall(W, 'x', HZ1, -HX - 0.3, HX + 0.3, 0, 7, 0.6, 'adobe', [{ a: -6, b: -2, y0: 0, y1: 4 }]);
+  wall(W, 'x', HZ0, -HX - 0.3, HX + 0.3, 0, 7, 0.6, 'adobe', [{ a: 2, b: 6, y0: 0, y1: 4 }]);
+  wall(W, 'z', -HX, HZ0 + 0.3, HZ1 - 0.3, 0, 7, 0.6, 'adobe', [{ a: 22, b: 25, y0: 0, y1: 3.4 }]);
+  wall(W, 'z', HX, HZ0 + 0.3, HZ1 - 0.3, 0, 7, 0.6, 'adobe', [{ a: 13, b: 16, y0: 0, y1: 3.4 }]);
+  add(-HX - 0.3, 7, HZ0 - 0.3, HX + 0.3, 7.3, HZ1 + 0.3, 'roof');
+  for (const z of [4, 18, 32]) dome(D, 0, 7.3, z, 3.6, 'roofteal');
+  for (const [cz, g, a] of [[29, 'pottery', 'cloth'], [17, 'carpet', 'pink'], [5, 'toyyellow', 'toyteal']]) { // stall islands (counters round a rack, an awning)
+    for (const s of [-1, 1]) { add(-3, 0.05, cz + s * 1.2 - 0.45, 3, 1.05, cz + s * 1.2 + 0.45, 'wood'); add(-2.9, 1.05, cz + s * 1.2 - 0.35, 2.9, 1.35, cz + s * 1.2 + 0.35, g); }
+    add(-2.2, 0.05, cz - 0.4, 2.2, 2.2, cz + 0.4, g); for (const px of [-3.2, 3.2]) for (const pz of [-1.9, 1.9]) B.box(px, 1.45, cz + pz, 0.15, 2.8, 0.15, 'wood'); add(-3.5, 2.85, cz - 2.2, 3.5, 3.0, cz + 2.2, a);
   }
-  // the look (render-only): neon over the market stalls, ads on the attackers' wall, strips under the hall roof
-  for (let z = 8, i = 0; z <= 40; z += 16, i++) { D.add(8.7, 4.2, z - 2, 8.98, 5.0, z + 2, neons[i % 4], { fit: 1 }); D.add(-8.98, 4.6, z + 6, -8.7, 5.4, z + 10, neons[(i + 2) % 4], { fit: 1 }); }
-  D.add(8.9, 6.6, -2, 8.98, 6.75, 52, 'neonpink'); D.add(-8.98, 6.6, -2, -8.9, 6.75, 52, 'neoncyan');
-  D.add(-15, 4.5, 52.42, -7, 7.5, 52.6, 'adcity4', { fit: 1 }); D.add(7, 4.5, 52.42, 15, 7.5, 52.6, 'adcity1', { fit: 1 });
-  return {
-    name: 'Bazaar', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -50, floorY: -6, bounds: [X0 - 1.5, Z0 - 1.5, X1 + 1.5, Z1 + 1.5],
-    sky: { top: 0x4a8fd8, mid: 0xf2dcae, bot: 0x8a6a40, fog: 0xf0d8a8 }, fogNear: 90, fogFar: 320,
-    spawns, teamSpawns: { att, def },
-    // bot routes along the real lanes, [x, z] points ending on each site. bots walk straight from point to point and
-    // count a point as reached 2.6 m away, so: every leg is clear of props, doors get a point on their centreline more
-    // than 2.6 m in on each side, and the hall lanes (and the plaza point after them, off the well's line) keep to the
-    // middle so a bot shoved behind a stall slides back out
+  for (const [z0, z1, sx, g] of [[30, 36, -1, 'cloth'], [8, 12, -1, 'pottery'], [26, 31, 1, 'carpet'], [0, 6, 1, 'cloth']]) { const x0 = sx > 0 ? HX - 1.5 : -HX + 0.3, x1 = sx > 0 ? HX - 0.3 : -HX + 1.5; add(x0, 0.05, z0, x1, 1.0, z1, 'wood'); add(x0 + 0.1, 1.0, z0 + 0.1, x1 - 0.1, 1.35, z1 - 0.1, g); } // stalls on the walls
+  for (const z of [10, 23, 36]) B.box(0, 3.3, z, 0.7, 6.6, 0.7, 'plaster'); // pillars between the islands
+  const flagM = ['magenta', 'yellow', 'blue', 'mint', 'toyred'];
+  for (const c of [-4.5, 4.5]) { D.add(c - 0.02, 6.2, HZ0 + 0.4, c + 0.02, 6.24, HZ1 - 0.4, 'wood'); for (let k = 0; k < 28; k++) { const z = HZ0 + 1.5 + k * 1.5; D.add(c - 0.02, 5.65, z - 0.25, c + 0.02, 6.2, z + 0.25, flagM[k % 5]); } }
+  for (const z of [0, 12, 24, 36]) D.box(0, 5.4, z, 0.6, 0.6, 0.6, 'lamp');
+  // the courtyard (mid): the Lamp Tower in a fountain, benches; the lamp shop (west, through to B) and the tea house (east, through to A)
+  lampTower(B, D, 0, -15, 18);
+  for (const [x0, z0, x1, z1] of [[-4.5, -19.5, 4.5, -19], [-4.5, -11, 4.5, -10.5], [-4.5, -19, -4, -11], [4, -19, 4.5, -11]]) add(x0, 0, z0, x1, 0.6, z1, 'marble');
+  for (const [x0, z0, x1, z1] of [[-4, -19, 4, -17], [-4, -13, 4, -11], [-4, -17, -2, -13], [2, -17, 4, -13]]) D.add(x0, 0.02, z0, x1, 0.4, z1, 'water');
+  add(-8.5, 0, -7.4, -5.5, 0.5, -6.4, 'wood'); add(5.5, 0, -25.4, 8.5, 0.5, -24.4, 'wood'); // benches
+  // the arcades off the courtyard: west to B (the lamp shop on it), east to A (the tea house on it). pillars on the open
+  // side, a roof (a low perch), the shops' fronts on the other
+  for (const s of [-1, 1]) {
+    const x0 = s > 0 ? 9 : -26, x1 = s > 0 ? 26 : -9;
+    add(x0, 3.4, -24, x1, 3.6, -18, 'roof'); for (let x = x0 + 1; x <= x1 - 0.9; x += 3.4) B.box(x, 1.7, -18.3, 0.45, 3.4, 0.45, 'plaster');
+    souk(B, D, s * 17, -27, 2, 16, 5.7, 1, { // (5.7 deep: shell's walls sit half outside the footprint, so this one's faces meet the wing and the arcade's roof, not cut into them)
+      paint: s > 0 ? 'sidemint' : 'sidelemon', goods: s > 0 ? 'pottery' : 'gold', awning: false, roofAccess: false, backDoor: false });
+    for (const [x, z] of [[s * 13, -22], [s * 22, -21]]) B.box(x, 0.45, z, 0.9, 0.9, 0.7, 'cloth');
+    for (let x = x0 + 2; x < x1 - 1; x += 2.5) D.box(x, 3.1, -21, 0.45, 0.5, 0.45, 'lamp'); // lamps under the arcade's roof
+  }
+
+  // ---- the palace (the guard's spawn): its forecourt, the passage south to mid, the alleys west to B and east to A
+  const def = [[-8, 0.2, -65], [-4, 0.2, -63], [0, 0.2, -65], [4, 0.2, -63], [8, 0.2, -65], [-6, 0.2, -68], [6, 0.2, -68]];
+  for (const x of [-12, -6, 6, 12]) B.box(x, 3, -70.6, 1.2, 6, 1.2, 'marble'); add(-15, 6, -71.4, 15, 7, -69.6, 'marble'); // the palace front (its door's the shut north gate)
+  block(X0, Z0, -16, -56, 8); block(16, Z0, X1, -56, 8); // either side of the forecourt (the north alley runs along their south faces)
+  block(-26, -50, -4, -30, 8); block(4, -50, 26, -30, 8); // the palace wings: the passage south to mid between them
+  block(X0, -50, -46, -46, 8); block(46, -50, X1, -46, 8); // the alley's far ends
+  for (const [x, z] of [[-10, -58], [10, -58]]) B.box(x, 0.6, z, 1.2, 1.2, 1.2, 'crate');
+
+  // ---- WEST LANE: the spice alleys (north, a dog-leg east, north, a dog-leg west, north into B)
+  block(X0, -22, -46, 40, 8); block(X0, -46, -56, -22, 8); // the west side, behind the warehouse
+  block(-42, 26, -9.3, 40, 8); // north of the dog-leg east (which runs on to the hall's side door)
+  block(-30, -2, -9.3, 22, 8); block(-46, -2, -34, 22, 8); // either side of the long run north
+  block(-38, -19.7, -26, -6, 8); block(-26, -18, -9.3, -6, 8); block(-46, -19.7, -42, -2, 8); // round the last dog-leg west and the run north into B
+
+  for (const [x, z] of [[-42.6, 36], [-30.6, 14], [-38.6, -12]]) B.box(x, 0.45, z, 0.9, 0.9, 0.7, 'cloth');
+  for (const [x, z] of [[-22, 25.2]]) { add(x - 1.4, 0, z - 0.7, x + 1.4, 0.9, z + 0.7, 'wood'); for (const [m, k] of [['toyred', -0.8], ['toyyellow', 0], ['sideorange', 0.8]]) D.box(x + k, 1.05, z, 0.6, 0.3, 0.6, m); }
+  D.add(-44, 3.6, 23.98, -12, 3.63, 24.02, 'wood'); for (const x of [-40, -33, -26, -19]) D.box(x, 3.2, 24, 0.4, 0.5, 0.4, 'lamp'); // lanterns over the dog-leg
+
+  // ---- EAST LANE: the canal (quays both sides, three bridges, boats moored, ankle-deep water to wade)
+  add(39.6, -2, -14.4, 44.4, -0.5, 56.4, 'stone'); D.add(40, -0.5, -14, 44, -0.3, 56, 'water');
+  for (const x0 of [39.6, 44]) add(x0, -0.5, -14, x0 + 0.4, 0.1, 56, 'stone'); for (const z of [-14.4, 56]) add(39.6, -2, z, 44.4, 0.1, z + 0.4, 'stone');
+  for (const z of [40, 16, -6]) { add(39.2, 0.1, z - 2, 44.8, 0.4, z + 2, 'stone'); for (const s of [-1, 1]) add(39.2, 0.4, s > 0 ? z + 1.7 : z - 2, 44.8, 1.0, s > 0 ? z + 2 : z - 1.7, 'stone'); } // the bridges
+  for (const [z0, z1] of [[24, 30], [-2, 3]]) { add(40.4, -0.5, z0, 43.6, 0.0, z1, 'wood'); add(40.6, 0.0, z0 + 0.4, 43.4, 0.35, z1 - 0.4, 'wood'); } // boats (stand in them)
+  block(9.3, -18, 26, 12, 8); block(26, -19.7, 35, 12, 8); block(9.3, 17, 35, 40, 8); // the canal's west side: the dyers' passage (from the hall's side door) between
+  block(35, -2, 39.6, 8, 8); // a warehouse built out to the canal's edge: the west quay stops here (cross a bridge, or wade)
+  block(50, -19.7, X1, 40, 8); block(56, -46, X1, -19.7, 8); block(46, -46, 56, -43, 8); block(46, -23, 56, -19.7, 8); // the east bank's warehouses, round the dye house
+  for (const [x, z] of [[47, 33], [36.3, 26], [48.5, 24], [36.3, -10]]) cratePile(B, x, z, 2, r);
+  for (const [x, z] of [[46.5, 46], [36.5, -11]]) B.box(x, 0.6, z, 0.75, 1.2, 0.75, 'barrel');
+
+  // ---- B: the carpet warehouse (its upstairs windows on the yard), the yard: rolls stacked, carpets drying on frames
+  souk(B, D, -51, -34, 1, 23.7, 10, 2, { paint: 'sidepink', sign: 'adcarpet', goods: 'carpet', awning: 'magenta', balcony: true, roofAccess: false, backDoor: false });
+  wall(W, 'x', -20, -46, -26, 0, 3.2, 0.6, 'adobe', [{ a: -42.5, b: -38, y0: 0, y1: 3.2 }]); // the yard's south wall, the alleys' way in
+  wall(W, 'x', -46, -46, -26, 0, 3.2, 0.6, 'adobe', [{ a: -35, b: -30.5, y0: 0, y1: 3.2 }]); // its north wall, the guard's way in
+  wall(W, 'z', -26, -46.3, -24.6, 0, 3.2, 0.6, 'adobe'); // the east side (the lamp shop's back door at its south end)
+  for (const [z, m] of [[-38.5, 'carpet'], [-31, 'magenta']]) hanging(B, D, -42, -32, z, m);
+  for (let i = 0; i < 3; i++) add(-45.4, i * 0.6, -28 + i * 0.2, -43, (i + 1) * 0.6, -24 - i * 0.2, 'carpet'); add(-30, 0, -44.2, -27.6, 1.2, -41.8, 'carpet'); add(-38, 0, -26.4, -35, 0.9, -24.4, 'carpet');
+  cart(W, -34, -35, true); B.box(-29, 0.6, -33, 1.2, 1.2, 1.2, 'crate');
+  siteBoard(D, -38, 0.6, -45.62, 'x', 'siteb', 2.2); siteBoard(D, -44.5, 0.8, -19.62, 'x', 'siteb', 1.6);
+
+  // ---- A: the dye yard (vats to stand on, racks of cloth), the dye house (its low roof looks over it)
+  souk(B, D, 51, -33, 3, 19.7, 10, 1, { paint: 'sidelilac', sign: 'addye', goods: 'cloth', awning: 'toyteal', backDoor: false }); // (its roof's under the ceiling: a perch)
+  wall(W, 'x', -20, 26, 45, 0, 3.2, 0.6, 'adobe', [{ a: 36, b: 40.5, y0: 0, y1: 3.2 }]); // the yard's south wall, the canal's way in
+  wall(W, 'x', -46, 26, 45, 0, 3.2, 0.6, 'adobe', [{ a: 30.5, b: 35, y0: 0, y1: 3.2 }]); // north, the guard's way in
+  wall(W, 'z', 26, -46.3, -24.6, 0, 3.2, 0.6, 'adobe');
+  ['magenta', 'yellow', 'blue', 'mint'].forEach((m, i) => dyeVat(B, D, i % 2 ? 39 : 32, i < 2 ? -40 : -29, 3.6, m));
+  hanging(B, D, 30, 41, -34.5, 'toyred');
+  B.box(42.5, 0.6, -24, 1.2, 1.2, 1.2, 'crate'); B.box(42.5, 1.8, -24, 1.1, 1.1, 1.1, 'crate');
+  siteBoard(D, 38, 0.6, -45.62, 'x', 'sitea', 2.2); siteBoard(D, 43, 0.8, -19.62, 'x', 'sitea', 1.6);
+
+  dressFacades(B, D, blocks, rng(8181), (x, z) => x > X0 + 0.3 && x < X1 - 0.3 && z > Z0 + 0.3 && z < Z1 - 0.3); // (after everything else: it leaves room for it)
+
+  // ---- outside the wall (render-only): dunes, rocks, the caravan's tail outside the south gate, the next town over
+  horizon(D, -300, -300, 300, 300, 1500, 'sand');
+  for (let i = 0; i < 40; i++) { const a = rv() * Math.PI * 2, d = 120 + rv() * 220, x = Math.cos(a) * d, z = Math.sin(a) * d, w = 30 + rv() * 60, dd = 18 + rv() * 36; if (Math.abs(x) - w / 2 < 75 && Math.abs(z) - dd / 2 < 85) continue; dune(D, x, z, w, dd, 5 + rv() * 12); }
+  for (let i = 0; i < 12; i++) { const a = rv() * Math.PI * 2, d = 200 + rv() * 220; rocks(D, Math.cos(a) * d, Math.sin(a) * d, 12 + rv() * 20, rv); }
+  for (const [x, z, c] of [[-14, 86, 'cloth'], [10, 92, 'toypink'], [30, 84, 'toyteal']]) tent(Dw, x, z, c);
+  for (const [x, z, ax] of [[-2, 98, true], [22, 100, false], [-26, 94, true]]) camel(Dw, x, z, ax);
+  D.add(-3, 0, 74, 3, 0.03, 400, 'dirtroad');
+  for (let i = 0; i < 24; i++) { const x = 300 + (rv() - 0.5) * 120, z = -160 + (rv() - 0.5) * 140, w = 8 + rv() * 10, h = 4 + rv() * 9;
+    D.add(x - w / 2, 0, z - w / 2, x + w / 2, h, z + w / 2, rv() < 0.7 ? 'adobe' : ['sidepink', 'sidelemon', 'sidemint'][(rv() * 3) | 0]); if (rv() < 0.3) dome(D, x, h, z, w * 0.3, rv() < 0.5 ? 'roofteal' : 'roofblue'); }
+
+  spawns.push(...att.slice(0, 2), ...def.slice(0, 2), [0, 0.2, 20], [-5, 0.2, 10], [0, 0.2, -24], [-44, 0.2, 44], [-32, 0.2, 12], [-40, 0.2, -12], [37, 0.2, 44], [47, 0.2, 10],
+    [36.5, 0.2, -12], [-36, 0.2, -33], [36, 0.2, -36], [0, 0.2, -40], [-30, 0.2, -53], [30, 0.2, -53], [-18, 0.2, -21], [18, 0.2, -21]);
+  let graph = null;
+  const map = { name: 'Bazaar', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -50, floorY: -6, bounds, ceiling: 7,
+    sky: { top: 0x4a8fd8, mid: 0xf2dcae, bot: 0x8a6a40, fog: 0xf0d8a8 }, fogNear: 100, fogFar: 380, spawns, teamSpawns: { att, def },
+    // the smugglers' lanes (the bomb carriers walk these; the walk graph gets them round whatever's in the way)
     nav: {
       A: [
-        [[16, 62], [28, 62], [42, 62], [42, 30], [43, 6], [43, -3], [43, -10], [47, -21], [47, -27], [46.5, -30.8], [43.5, -31], [42, -38]], // canal street
-        [[0, 56], [2.5, 32], [2.5, 16], [2.5, -1], [3, -4], [18, -2.5], [18, -10], [18, -14], [27, -21], [31, -27.5], [37, -28.5], [44, -38]], // hall -> bridge
-        [[0, -62], [8, -64], [22, -63], [32, -58], [39, -57], [39, -52], [41, -47], [46, -40]], // defenders' garden
+        [[6, 61], [20, 54], [38.2, 50], [38.2, 20], [42, 16], [47, 13], [47, -3], [42, -6], [37.5, -8.5], [38.2, -14], [38.5, -20], [37, -27]], // the canal (over and back by the bridges)
+        [[0, 61], [-4, 50], [-4, 42], [-6, 36], [-6, 22], [-6, 1], [4, -1], [4, -6], [8, -14], [10, -21], [26, -21.5], [32, -26]], // the hall, the courtyard, the tea arcade
+        [[2, 61], [-4, 50], [-4, 42], [6, 34], [6, 20], [7, 14.5], [12, 14.5], [36, 14.5], [42, 16], [47, 13], [47, -3], [42, -6], [37.5, -8.5], [38.2, -14], [38.5, -20], [40, -27]], // the hall, the dyers' passage, the canal
       ],
       B: [
-        [[-16, 62], [-30, 61], [-43, 60], [-43, 57], [-43, 52], [-43, 44], [-43, 30], [-43, 8], [-43, -1], [-44, -9], [-46, -18], [-46, -25], [-44, -31]], // cistern
-        [[0, 56], [-2.5, 32], [-2.5, 16], [-2.5, -1], [-3, -4], [-17, -16.5], [-23, -16.5], [-25, -21], [-26, -26.75], [-33, -26.75], [-37, -28.5], [-41, -33]], // hall -> spice house
-        [[0, -62], [-8, -64], [-22, -62], [-32, -58], [-40, -56], [-40, -50], [-52, -45]], // defenders' arcade
+        [[-6, 61], [-20, 54], [-44, 50], [-44, 30], [-44, 24], [-32.5, 24], [-32.5, 4], [-32, -4], [-40.5, -4], [-40.5, -14], [-40, -20], [-38, -27]], // the spice alleys
+        [[-2, 61], [-4, 50], [-4, 42], [-6, 36], [-6, 22], [-6, 1], [4, -1], [4, -6], [-8, -14], [-10, -21], [-26, -21.5], [-32, -26]], // the hall, the courtyard, the lamp arcade
+        [[-4, 61], [-4, 50], [-4, 42], [-6, 36], [-7, 23.5], [-12, 23.5], [-32.5, 24], [-32.5, 4], [-32, -4], [-40.5, -4], [-40.5, -14], [-40, -20], [-36, -27]], // the hall, the side door, the alleys
       ],
     },
-    sites: [{ id: 'A', min: [36, 1.6, -50], max: [56, 1.6, -30] }, { id: 'B', min: [-60, 0, -50], max: [-34, 0, -28] }],
+    sites: [{ id: 'A', min: [28, 0, -44], max: [46, 0, -22] }, { id: 'B', min: [-46, 0, -44], max: [-28, 0, -22] }],
+    get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: Math.max(bounds[2] - bounds[0], bounds[3] - bounds[1]) + 2, cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
   };
+  return map;
 }
 
 // ------------------------------------------------------------ BACKROOMS: extra large liminal maze, after the "Level 0" internet legend.
@@ -3288,7 +3494,7 @@ function deadmall() {
 
 export const MAPS = {
   crate: crate(), platform: platform(), rooftop: rooftop(), suburb: suburb(), suburb_sd: suburbSD(), warehouse: warehouse(), warehouse_sd: warehouseSD(),
-  desert: desert(), desert_sd: desertSD(), islands: islands(), skyline: skyline(), bazaar: bazaar(), range: range(), backrooms: backrooms(), forest: forest(),
+  desert: desert(), desert_sd: desertSD(), islands: islands(), skyline: skyline(), bazaar: bazaar(), bazaar_sd: bazaarSD(), range: range(), backrooms: backrooms(), forest: forest(),
   deadmall: deadmall(),
 };
 // maps with an S&D version: '<id>_sd' is its own layout on the bomb-map rules, the one Plant & Defuse plays; '<id>' is

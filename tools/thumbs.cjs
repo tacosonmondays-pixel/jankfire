@@ -19,7 +19,8 @@ const CAMS = {
   warehouse_sd: [34, 6.5, -27, -0.42, -0.16], // the A site: the red dock, the gantry, the BOMB SITE A board
   desert: [-88, 9, 0, -1.571, -0.102], // down Main Street from the west gate: the saloon, the bell tower, the general store
   desert_sd: [3, 1.9, 40, -1.661, 0.018], // off the rope bridge onto B: the payroll train, the station, the BOMB SITE B board
-  bazaar: [50.68, 16.17, 52.68, 0.79, -0.19],
+  bazaar: [48, 20, 48, 0.785, -0.259], // high over the potters (south-east): the Grand Bazaar under its dome, the canal, the souks
+  bazaar_sd: [27.5, 2.5, -44, -2.478, -0.074], // the A site: the dye vats, the dye house, cloth on the racks
   islands: [52.8, 5.1, 48, 0.8, -0.04],
   skyline: [78.18, 78.31, 76.18, 0.79, -0.13],
 };

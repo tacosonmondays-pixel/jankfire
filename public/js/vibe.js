@@ -186,4 +186,11 @@ export function addVibe(out, canvasTex, speckle) {
   out.adstage = ad('#1a5a2a', '#ffe14d', ['STAGE CO.', 'arrives eventually. leaves faster.'], 256, 64, { small: '#fff', lit: false });
   out.adpayroll = ad('#ffe14d', '#7a2a10', ['PAYROLL', 'do not rob. please.'], 192, 96, { stripes: 'rgba(0,0,0,0.12)', small: '#120818', lit: false });
   out.adpowder = ad('#ff2a3a', '#ffe14d', ['POWDER', 'no smoking. no fire. no fun.'], 192, 64, { small: '#fff', lit: false });
+  // Bazaar: the souk's signs
+  out.adspice = ad('#ff7a1a', '#ffe14d', ['SPICES', 'hot. hotter. no.'], 256, 64, { small: '#fff', lit: false });
+  out.adcarpet = ad('#7a1a3a', '#ffe14d', ['CARPETS', 'they fly (they do not)'], 256, 64, { small: '#fff', lit: false });
+  out.adtea = ad('#1a7a5a', '#fff', ['TEA HOUSE', 'free refills of hot water'], 256, 64, { small: '#ffe14d', lit: false });
+  out.adpottery = ad('#c8642a', '#fff', ['POTS', 'you break it, you are it'], 256, 64, { small: '#120818', lit: false });
+  out.addye = ad('#ff4fd8', '#ffe14d', ['DYE WORKS', 'wash your hands. no, the other way'], 256, 64, { small: '#fff', lit: false });
+  out.adcaravan = ad('#f2e2b8', '#7a2a10', ['CARAVANSERAI', 'camels park free'], 320, 64, { small: '#120818', lit: false });
 }

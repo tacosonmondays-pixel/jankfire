@@ -101,7 +101,8 @@ export const SECRETS = {
   cat_beans: { kind: 'cat', map: 'suburb', p: [76.55, 1.6, 31.45], face: 2.4, // on a prize pumpkin in the community garden
     name: 'BEANS', title: 'vp of sitting', where: 'Suburb', pose: 'lie', coat: 'tux' },
   cat_gravy: { kind: 'cat', map: 'rooftop', p: [-106.5, 12.4, -12], face: 1.9, name: 'PRINCESS GRAVY', title: 'chair of the board', where: 'Rooftop', pose: 'sit', coat: 'cream' },
-  cat_meatloaf: { kind: 'cat', map: 'bazaar', p: [6.5, 3.1, 28], face: -2.2, name: 'MEATLOAF', title: 'head of synergy', where: 'Bazaar', pose: 'side', coat: 'grey' },
+  cat_meatloaf: { kind: 'cat', map: 'bazaar', p: [-45, 8.0, 37], face: 0, // on the tea table up on the tea house roof (synergy is a nap)
+    name: 'MEATLOAF', title: 'head of synergy', where: 'Bazaar', pose: 'side', coat: 'grey' },
   cat_gremlin: { kind: 'cat', map: 'desert', p: [-44.1, 0.9, -23.0], face: Math.PI, // in the bank vault, on the gold (legal is handling it)
     name: 'GREMLIN', title: 'head of legal', where: 'Desert', pose: 'box', coat: 'calico' },
 };
