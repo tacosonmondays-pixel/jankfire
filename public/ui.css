@@ -632,3 +632,48 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 @media (max-height: 620px) { #scr-customize .cz-tiles { --tw: 78px; --th: 78px; } #scr-customize .cz-tile .glyph { font-size: 28px; } #scr-customize .cz-career { display: none; } }
 @media (max-width: 980px) { #scr-customize { grid-template-columns: 170px 1fr 200px; padding: 8px; gap: 8px; } #scr-customize .cz-row img { width: 40px; } #scr-customize .cz-hover { max-width: 60vw; } }
 @media (max-width: 720px) { #scr-customize { grid-template-columns: 140px 1fr; grid-template-areas: "left stage" "bottom bottom"; } #scr-customize .cz-right { display: none; } }
+
+/* =================================================================== MENU CLEANUP: the short home nav, the CUSTOMIZE hub
+   tabs, loadout inside the customize screen, grapple & spray, the 3D container opening */
+.home-right::before { content: 'PLAY'; font-family: var(--font); font-weight: 700; font-size: 15px; letter-spacing: 4px; color: var(--yellow); text-shadow: 2px 2px 0 #000; margin-bottom: -8px; }
+.hicons { display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
+.hicon { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 0; background: none; border: 0; cursor: pointer; font-family: var(--font); color: #fff; }
+.hicon i { font-style: normal; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #fff; color: #000; border: 3px solid #000; box-shadow: 3px 3px 0 var(--pink); font-size: 20px; font-weight: 700; }
+.hicon span { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-shadow: 2px 2px 0 #000; }
+.hicon:hover i { transform: rotate(-8deg) scale(1.08); box-shadow: 3px 3px 0 var(--cyan); }
+.hicon em { position: absolute; top: -6px; right: -10px; font-style: normal; padding: 0 5px; font-size: 10px; font-weight: 700; background: var(--yellow); color: var(--ink); border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--pink); transform: rotate(8deg); }
+.hero-stage[data-go] { cursor: pointer; }
+/* the hub: one row of tabs on top of loadout / weapons / character / grapple & spray */
+.hub-tabs { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 0 0 10px; }
+.hub-tab { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px 5px 8px; font-family: var(--font); font-weight: 700; font-size: 15px; letter-spacing: 1px; cursor: pointer;
+  background: #fff; color: #000; border: 3px solid #000; box-shadow: 4px 4px 0 #000; }
+.hub-tab i { font-style: normal; font-size: 17px; }
+.hub-tab:hover { transform: rotate(-1.5deg) scale(1.04); box-shadow: 4px 4px 0 var(--cyan); }
+.hub-tab.on { background: var(--yellow); box-shadow: 4px 4px 0 var(--pink); transform: rotate(-1.5deg); }
+#scr-customize .cz-hub { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); z-index: 5; }
+#scr-customize .cz-hub .hub-tabs { margin: 0; flex-wrap: nowrap; }
+#scr-customize .cz-hover { top: 62px; }
+#scr-customize .cz-left, #scr-customize .cz-right { padding-top: 0; }
+@media (max-width: 1100px) { .hub-tab { font-size: 12px; padding: 4px 9px 4px 6px; } .hub-tab i { font-size: 14px; } }
+/* equip to slot, on the info card */
+#scr-customize .cz-equip { display: block; width: 100%; margin: 2px 0 8px; padding: 6px 10px; font-family: var(--font); font-weight: 700; font-size: 16px; letter-spacing: 1px; cursor: pointer;
+  background: var(--yellow); color: #000; border: 3px solid #000; box-shadow: 4px 4px 0 var(--pink); transform: rotate(-1deg); }
+#scr-customize .cz-equip:hover { transform: rotate(1deg) scale(1.03); }
+#scr-customize .cz-equip.on { background: #39ff14; box-shadow: 4px 4px 0 #000; cursor: default; transform: none; }
+#scr-customize .cz-lonote { font-size: 12px; color: var(--yellow); margin: -4px 0 6px; }
+#scr-customize .cz-row.eq .dot { font-weight: 700; color: #000; background: #39ff14; border: 2px solid #000; padding: 0 4px; font-size: 11px; }
+/* loadout mode: the cosmetic tabs and strip step aside for item + killstreak rows */
+#scr-customize.lo-mode .cz-tab:not(.leave), #scr-customize.lo-mode .cz-strip { display: none; }
+#scr-customize:not(.lo-mode) .cz-lo { display: none; }
+#scr-customize .cz-lo { width: 100%; max-width: 1500px; display: flex; flex-direction: column; gap: 6px; background: rgba(18, 8, 24, 0.93); border: 4px solid var(--pink); box-shadow: 8px 8px 0 var(--cyan); padding: 6px 10px; }
+#scr-customize .cz-lorow { display: flex; align-items: center; gap: 10px; min-width: 0; }
+#scr-customize .cz-lot { flex: 0 0 120px; font-size: 12px; font-weight: 700; letter-spacing: 2px; color: var(--yellow); text-shadow: 2px 2px 0 #000; }
+#scr-customize .cz-lo .cz-tiles { --rows: 1; --tw: 92px; --th: 84px; flex: 1; min-width: 0; padding-bottom: 6px; }
+#scr-customize .cz-tile .eq.sub { left: auto; right: 3px; background: #fff; transform: rotate(5deg); }
+@media (max-height: 760px) { #scr-customize .cz-lo .cz-tiles { --tw: 80px; --th: 70px; } #scr-customize .cz-lot { flex-basis: 90px; font-size: 11px; } }
+/* grapple & spray: what's left of the old locker */
+#scr-cosmetics .cos.gs { grid-template-columns: 1fr; }
+/* the container, in 3D, rattling above the roll strip */
+#roll3d { display: block; width: min(520px, 90vw); height: min(240px, 30vh); margin: 0 auto 8px; image-rendering: pixelated; }
+.cratecard img { width: 150px; height: 90px; object-fit: contain; }
+.screen > .hub-tabs + h2 { display: none; } /* the hub tab already says where you are */

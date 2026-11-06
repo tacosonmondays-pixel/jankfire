@@ -81,7 +81,9 @@ import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + q
 import { K } from './keys.js';
 import { initLobby, lobbyInfo, lobbyKey, lobbyMe, lobbyLeave } from './lobby.js'; // ONLINE / WITH BOTS mode picker + the lobby countdown
 import { controlsScreen } from './controls.js';
-import { initCustomize, czOpen, czClose, czFrame, czKill, czLate, czRefresh, czRolled, resolveRand, wantSkins, myFavs } from './customize.js'; // the weapon customize screen (replaces COSMETICS)
+import { containerPic, playContainer, stopContainer } from './crate3d.js'; // containers in 3D: the cards and the opening
+import { hubTabs } from './hub.js'; // the CUSTOMIZE hub's tabs (loadout / weapons / character / grapple & spray)
+import { initCustomize, czMode, czOpen, czClose, czFrame, czKill, czLate, czRefresh, czRolled, resolveRand, wantSkins, myFavs } from './customize.js'; // the weapon customize screen (replaces COSMETICS)
 import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, zmModelsLoaded } from './zombies.js';
 
 const $ = (id) => document.getElementById(id);
@@ -181,7 +183,9 @@ onLateModel(() => { // a skin's model downloaded (the first time anyone showed i
 // ------------------------------------------------------------ screens
 let screen = 'main', classicLocker = false;
 function show(id) {
-  if (id === 'cosmetics' && !classicLocker) id = 'customize'; // COSMETICS is the customize screen now; the classic list is one click away in it
+  // the CUSTOMIZE hub: LOADOUT and COSMETICS are the customize screen's two modes (the old loadout list is kept, hidden, for scripts)
+  if (id === 'loadout') { czMode('loadout'); buildLoadoutUI(); id = 'customize'; }
+  if (id === 'cosmetics' && !classicLocker) { czMode('weapons'); id = 'customize'; }
   classicLocker = false;
   screen = id;
   for (const el of document.querySelectorAll('.screen')) el.classList.toggle('hidden', el.id !== 'scr-' + id);
@@ -192,6 +196,7 @@ function show(id) {
   if (id !== 'customize') czClose();
   if (id === 'customize') czOpen();
   if (id === 'cosmetics') { skinAllNow = false; $('cosSlot').append($('preview')); buildCosmeticsUI(); setTimeout(resizePreview, 0); }
+  for (const n of document.querySelectorAll('.screen > .hub-tabs')) n.mark();
   if (id === 'character') { $('charSlot').append($('preview')); buildCharacterUI(); setTimeout(resizePreview, 0); }
   if (id === 'namecard') cardEditor.open();
   if (id === 'crates') renderCrates();
@@ -309,6 +314,7 @@ function lock() {
 }
 function pause() {
   show('pause');
+  $('pauseMatch').classList.toggle('hidden', !!G.lk); // a mode lobby is everyone's: nobody changes its match
   $('pauseTitle').textContent = `${MODES[G.mode] ? MODES[G.mode].name.toUpperCase() : 'PAUSED'} · ${MAPS[G.cfg.map] ? MAPS[G.cfg.map].name : ''}`;
   W.held = false; W.aimHeld = false;
   K.clear();
@@ -1188,7 +1194,7 @@ net.on('welcome', (m) => {
   G.myId = m.id; G.myName = m.name; G.myColor = m.color; G.joined = true; connecting = false;
   airReset();
   brReset(); // a new room: whatever royale the last one had is over (that room's 'off' never reaches us)
-  G.mode = m.mode; G.cfg = m.cfg;
+  G.mode = m.mode; G.cfg = m.cfg; G.lk = m.lk || null;
   lobbyMe(m.id); lobbyInfo(m.lobby || null); // a mode lobby: the countdown is on
   G.game = m.game; // (music needs it before the first round info arrives)
   musicNewMatch(); // a fresh random song for this match
@@ -2017,9 +2023,19 @@ function frame(t) {
   G.vmScene.visible = G.joined && !RP.active && !specCam && !asleep && !econHideVM();
   if (ballOn(now)) G.vmScene.visible = false; // weapons are holstered inside the ball
   renderFrame();
-  if ((screen === 'cosmetics' || screen === 'character' || screen === 'main') && !$('menu').classList.contains('hidden')) renderPreview(dt);
+  if ((screen === 'character' || (screen === 'main' && heroTick(dt))) && !$('menu').classList.contains('hidden')) renderPreview(heroDt || dt); // (grapple & spray has no weapon preview any more)
   if (screen === 'cosmetics' && !$('menu').classList.contains('hidden')) renderGrapplePreview(dt);
   if (screen === 'customize' && !$('menu').classList.contains('hidden')) { const d = czFrame(dt); if (d) renderPreview(d); } // on demand: only while it turns, you drag, or particles fly
+}
+
+// the home hero turns at 30 fps and rests once nobody has touched the page for a while (the browser stops it when hidden)
+let heroAcc = 0, heroDt = 0, heroPoke = performance.now();
+for (const t of ['pointermove', 'keydown', 'pointerdown']) addEventListener(t, () => { heroPoke = performance.now(); }, { passive: true });
+function heroTick(dt) {
+  heroAcc += dt;
+  if (performance.now() - heroPoke > 20000 || heroAcc < 1 / 30) return false;
+  heroDt = Math.min(heroAcc, 0.1); heroAcc = 0;
+  return true;
 }
 
 // ------------------------------------------------------------ killstreaks
@@ -2321,7 +2337,7 @@ function renderAcctBar() {
     const me = account.me;
     const tr = totalRolls(me);
     bar.append(span(`Lv ${me.level}`, 'lv'), span(me.name), span(`${tr} to open`, 'rolls'),
-      btn('PROFILE', () => show('profile')), btn('LOG OUT', doLogout));
+      btn('PROFILE', () => show('profile'))); // log out lives on the profile page
     $('nameRow').classList.add('hidden');
   } else {
     bar.append(span('playing as guest'), btn('LOG IN', () => openAccount(false)), btn('SIGN UP', () => openAccount(true)));
@@ -2395,10 +2411,17 @@ $('logoutBtn').addEventListener('click', doLogout);
 // the customize screen (customize.js) borrows the locker's own save / equip helpers
 initCustomize({
   setSkin, storeSkin, setPartAll, skinnable, itemModel, setKfx, myKfx, myAchs, toast, show,
+  equip: (slot, id) => { S.loadout[slot] = id; G.cosSel = id; saveSettings(); applyLoadout(false); },
+  setItem: (id) => { S.loadout.item = id; saveSettings(); applyLoadout(false); },
+  setStreaks: (list) => { S.loadout.streaks = validStreaks(list); saveSettings(); applyStreaks(); },
+  loNote: () => $('loNote').textContent,
   bulk: () => { saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne(); },
   save: () => saveSettings(), sendSkins: () => sendSkins(), recompute: () => recomputeEquipped(),
   classic: () => { classicLocker = true; show('cosmetics'); },
 });
+// the same hub on the outfit screen and on grapple & spray
+$('scr-character').prepend(hubTabs('character', show, () => { classicLocker = true; show('cosmetics'); }));
+$('scr-cosmetics').prepend(hubTabs('grapple', show, () => { classicLocker = true; show('cosmetics'); }));
 function applySettingsToUI() {
   $('jank').value = String(S.jank); setJank(S.jank);
   $('shadows').value = S.shadows || 'auto'; setShadowPref(S.shadows);
@@ -2485,7 +2508,7 @@ function renderCrates() {
     const own = c.types.reduce((a, t) => a + Object.keys(COSMETICS[t]).filter((id) => !COSMETICS[t][id].ach && owns(G.inv, t, id)).length, 0);
     const all = c.types.reduce((a, t) => a + Object.keys(COSMETICS[t]).filter((id) => !COSMETICS[t][id].ach).length, 0); // achievement rewards aren't in containers
     const card = document.createElement('div'); card.className = 'cratecard' + (n > 0 ? ' has' : '');
-    const im = document.createElement('img'); im.src = containerArt(kind); im.alt = '';
+    const im = document.createElement('img'); im.src = containerPic(kind) || containerArt(kind); im.alt = ''; // rendered from the 3D one
     const h = document.createElement('b'); h.textContent = c.name;
     const dsc = document.createElement('span'); dsc.textContent = c.desc;
     const prog = document.createElement('small'); prog.textContent = `you own ${own} / ${all}`;
@@ -2538,6 +2561,7 @@ async function doRoll(kind) {
   $('rollResult').innerHTML = '';
   $('rollBtns').innerHTML = '';
   $('rollbox').classList.remove('hidden');
+  playContainer($('roll3d'), kind, item ? RARITY[item.rarity].color : '#ffffff', 4.6, (S.jank | 0) === 0 ? 0.35 : (S.jank | 0) === 1 ? 0.6 : 1); // it rattles while the strip spins, bursts on the reveal
   strip.style.transition = 'none';
   strip.style.transform = 'translateX(0px)';
   const cw = 120; // card + gap
@@ -2595,7 +2619,7 @@ async function doRoll(kind) {
     btn('OK', closeRoll);
   }, 4800);
 }
-function closeRoll() { $('rollbox').classList.add('hidden'); if (screen === 'cosmetics') buildCosmeticsUI(); czRefresh(); if (screen === 'crates') renderCrates(); renderAcctBar(); }
+function closeRoll() { $('rollbox').classList.add('hidden'); stopContainer(); if (screen === 'cosmetics') buildCosmeticsUI(); czRefresh(); if (screen === 'crates') renderCrates(); renderAcctBar(); }
 
 // ------------------------------------------------------------ rounds
 function fmtClock(ms) { const s2 = Math.ceil(ms / 1000); return `${Math.floor(s2 / 60)}:${String(s2 % 60).padStart(2, '0')}`; }
