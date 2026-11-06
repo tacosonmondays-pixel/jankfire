@@ -45,7 +45,7 @@ def build():
     ocular = mat('dm_ocular', 0x101018, rough=0.05, metal=0.5)
     dot = mat('dm_dot', 0x7dff4f, rough=0.4, emit=0x7dff4f, strength=4.0)
     black = mat('dm_black', 0x050505, rough=0.3)
-    tubing = mat('dm_tubing', 0x2b2b33, rough=0.35, clearcoat=0.6)
+    tubing = mat('dm_tubing', 0xff4fd8, rough=0.3, clearcoat=0.8)
     aid_m = mat('dm_bandaid', 0xe8b48a, rough=0.6, tex=tex_canvas('dm_bandaid_t', 32, 8, lambda px: (
         px.__setitem__(slice(None), hexrgb(0xe8b48a)), px.__setitem__((slice(1, 7), slice(12, 20)), hexrgb(0xf6e6d6)),
         [px.__setitem__((y, x), hexrgb(0xb8845a)) for y in (2, 5) for x in (3, 6, 9, 23, 26, 29)])))
@@ -60,12 +60,12 @@ def build():
     A = parts.append
 
     # ---------------- slotted flash hider (five long slots, closed front ring), thin barrel
-    fh = lathe([(0, Z(-0.5)), (W(13), Z(-0.5)), (W(14), Z(3)), (W(14), Z(72)), (W(12.5), Z(78)), (W(11), Z(84))], (0, BORE_Y, 0), steel, seg=20)
+    fh = lathe([(W(7), Z(10)), (W(7), Z(-0.5)), (W(13), Z(-0.5)), (W(14), Z(3)), (W(14), Z(72)), (W(12.5), Z(78)), (W(11), Z(84)), (W(7), Z(84))], (0, BORE_Y, 0), steel, seg=20)
     for k in range(5):
         a = math.pi / 2 + k * 2 * math.pi / 5
         cut(fh, box((W(4.5), W(10), W(56)), (math.cos(a) * W(14), BORE_Y + math.sin(a) * W(14), Z(38)), None, rot=(0, 0, a - math.pi / 2)))
     A(fh)
-    A(lathe([(0, Z(0)), (W(7), Z(0)), (W(7), Z(9))], (0, BORE_Y, 0), black, seg=10))
+    A(cyl(W(7.1), W(1), (0, BORE_Y, Z(9.2)), black, axis='z', seg=10))
     A(lathe([(W(8.5), Z(80)), (W(8.5), Z(360)), (W(10), Z(370)), (W(10), Z(660))], (0, BORE_Y, 0), steel, seg=14))
     # ---------------- front sight: base, hood, post with a glowing tip, bayonet lug, sling swivel
     A(side(poly([(86, -14), (130, -14), (130, 14), (124, 22), (92, 22), (86, 14)]), W(22), (0, 0, 0), steel, bev=W(1.5)))
@@ -126,21 +126,21 @@ def build():
     for sx in (-1, 1):  # the stamped ribs
         mag.append(side(poly([(716, -50), (722, -50), (712, -140), (706, -140)]), W(1.2), (sx * W(12.4), 0, 0), steel))
         mag.append(side(poly([(744, -50), (750, -50), (740, -142), (734, -142)]), W(1.2), (sx * W(12.4), 0, 0), steel))
-    mag.append(cyl(W(4.8), W(52), (W(2.5), Y(-38), Z(740)), brass, axis='z', seg=10))   # top round
+    mag.append(cyl(W(4.8), W(44), (W(2.5), Y(-38), Z(738)), brass, axis='z', seg=10))   # top round
     mag.append(cyl(W(4.6), W(14), (W(2.5), Y(-38), Z(707)), mat('dm_copper', 0xc8683a, rough=0.3, metal=1.0), axis='z', seg=10, r2=W(1.5)))
 
     # ---------------- skeleton thumbhole stock, cheek rest, butt plate
-    stock = side(poly([(872, -36), (906, -36), (906, 8), (920, 12), (1060, 16), (1208, 22), (1212, -156), (1190, -158), (1100, -150), (960, -146), (930, -144),
-                       (914, -132), (900, -96), (884, -62)]), W(40), (0, 0, 0), wood, bev=W(6), seg=3,
-                 holes=[poly([(950, -24)] + arc(1126, -40, 16, 90, 0, 4) + [(1142, -98)] + arc(1126, -98, 16, 0, -90, 4)
-                             + [(976, -114)] + arc(976, -98, 16, -90, -165, 3) + [(946, -44)])])
+    stock = side(poly([(872, -36), (906, -36), (906, 8), (920, 12), (1060, 16), (1216, 22), (1210, -162), (1186, -164), (960, -132), (932, -130),
+                       (914, -120), (900, -90), (884, -60)]), W(40), (0, 0, 0), wood, bev=W(6), seg=3,
+                 holes=[poly([(952, -24)] + arc(1126, -40, 16, 90, 0, 4) + [(1142, -112)] + arc(1126, -112, 16, 0, -90, 4)
+                             + [(976, -107)] + arc(976, -91, 16, -90, -165, 3) + [(946, -44)])])
     A(stock)
     A(side(poly([(980, 16), (1130, 18), (1136, 30), (1124, 42), (996, 40), (980, 30)]), W(38), (0, 0, 0), wood, bev=W(5), seg=3))  # cheek rest
     A(box((W(2), W(12), W(100)), (-W(19.2), Y(28), Z(1058)), dark, bev=W(0.5)))  # the cheek rest's clamp strip
-    A(side(poly([(1208, 24), (1226, 22), (1228, -150), (1210, -154)]), W(42), (0, 0, 0), rubber, bev=W(3)))
+    A(side(poly([(1212, 24), (1230, 22), (1226, -164), (1206, -168)]), W(42), (0, 0, 0), rubber, bev=W(3)))
     for k in range(3):
-        A(box((W(43), W(2), W(6)), (0, Y(0 - k * 50), Z(1226)), dark))
-    A(cyl(W(5), W(10), (-W(20), Y(-128), Z(1150)), steel, axis='x', seg=10))   # rear sling swivel
+        A(box((W(38), W(2), W(6)), (0, Y(-10 - k * 50), Z(1228.5 - k * 1.3)), dark))
+    A(cyl(W(5), W(10), (-W(20), Y(-142), Z(1160)), steel, axis='x', seg=10))   # rear sling swivel
     A(box((W(1), W(8), W(32)), (-W(20.4), Y(-2), Z(1172)), aid_m, rot=(0.6, 0, 0)))  # band-aid on the stock
 
     # ---------------- PSO-style scope: sunshade + objective, tube, turret block, eyepiece, long rubber eyecup
@@ -157,19 +157,19 @@ def build():
         a = k * math.pi / 5
         A(box((W(2.4), W(12), W(2.4)), (math.cos(a) * W(13), sy + W(23), Z(668) + math.sin(a) * W(13)), dark))
     A(cyl(W(7), W(14), (-W(19), sy - W(8), Z(616)), chrome, axis='x', seg=12))   # illumination battery cap
-    A(lathe([(W(17), Z(774)), (W(17), Z(790))], (0, sy, 0), dark, seg=24))         # diopter ring
+    A(lathe([(W(18.6), Z(774)), (W(19.4), Z(776)), (W(19.4), Z(788)), (W(18.6), Z(790))], (0, sy, 0), dark, seg=24))         # diopter ring
     # mount: rail clamp on the left side, arm up to the scope's base
     A(side(poly([(726, -10), (862, -10), (862, 20), (726, 20)]), W(10), (-W(28), 0, 0), dark, bev=W(1.5)))
     A(side(poly([(736, 18), (852, 18), (836, 58), (750, 58)]), W(12), (-W(26), 0, 0), dark, bev=W(2), holes=[poly([(770, 28), (818, 28), (810, 46), (778, 46)])]))
-    A(side(poly([(612, 56), (790, 56), (790, 70), (612, 70)]), W(40), (-W(10), 0, 0), dark, bev=W(2)))
+    A(side(poly([(612, 56), (785, 56), (785, 70), (612, 70)]), W(40), (-W(10), 0, 0), dark, bev=W(2)))
     A(side(poly([(780, -2), (800, -2), (818, -24), (808, -28)]), W(5), (-W(34.5), 0, 0), steel, bev=W(1)))  # clamp lever
     A(box((W(1), W(17), W(58)), (-W(18.6), sy + W(1), Z(668)), sticker))
 
     # ---------------- the stethoscope draped over the scope tube (chest piece on the left, ear tips on the right)
     dz = Z(588)
     loop = [(-W(17), sy + W(6), dz), (-W(11), sy + W(14), dz), (0, sy + W(18), dz), (W(11), sy + W(14), dz), (W(17), sy + W(6), dz)]
-    A(sweep(loop + [(W(19), sy - W(14), dz - W(4)), (W(16), sy - W(40), dz - W(10))], W(2.6), tubing, seg=8))
-    A(sweep(loop[::-1] + [(-W(19), sy - W(14), dz + W(4)), (-W(23), sy - W(42), dz + W(8)), (-W(27), sy - W(57), dz + W(4))], W(2.6), tubing, seg=8))
+    left = [(-W(27), sy - W(57), dz + W(4)), (-W(23), sy - W(42), dz + W(8)), (-W(19), sy - W(14), dz + W(4))]
+    A(sweep(left + loop + [(W(19), sy - W(14), dz - W(4)), (W(16), sy - W(40), dz - W(10))], W(2.6), tubing, seg=8))  # one tube, over the top
     A(cyl(W(11), W(6), (-W(30), sy - W(68), dz + W(4)), chrome, axis='x', seg=18, bev=W(1)))      # chest piece
     A(cyl(W(8), W(1), (-W(33.4), sy - W(68), dz + W(4)), mat('dm_diaphragm', 0xf0f0f0, rough=0.4), axis='x', seg=16))
     for sx in (-1, 1):  # binaural: two chrome tubes with black ear tips

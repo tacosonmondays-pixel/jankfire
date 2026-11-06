@@ -139,7 +139,7 @@ def build():
     lo = bpy.data.objects.new('leaf', me); bpy.context.scene.collection.objects.link(lo); me.materials.append(blue)
     smooth(lo, 30); bevel(lo, W(0.4), 1, 30)
     A(lo)
-    A(box((W(1.4), W(1.4), W(2.6)), (0, Y(SIGHT_H - 3.2), Z(REAR_D) - W(0.2)), bead))  # a tiny gold V insert
+    A(box((W(1.4), W(1.4), W(3.6)), (0, Y(SIGHT_H - 3.2), Z(REAR_D)), bead))  # a tiny gold V insert
 
     # ---------------- forend (walnut, rounded, swells a little toward the receiver)
     fe = side(poly([(304, 3), (488, 4), (488, -31), (304, -30)]), W(30), (0, 0, 0), fore_w, bev=W(8), seg=3)
@@ -190,7 +190,7 @@ def build():
     # ---------------- the hammer (its own node), resting down
     hm = side(poly([(634, -4), (654, -4), (656, 8), (653, 22), (657, 30), (672, 36), (680, 38), (682, 32), (668, 26), (648, 22), (640, 12)]), W(7), (0, 0, 0), case, bev=W(1))
     ham.append(hm)
-    for k in range(4): ham.append(box((W(7.4), W(1), W(1.4)), (0, Y(31.5 + k * 1.6), Z(664 + k * 4.2)), dark, rot=(-0.35, 0, 0)))  # checkered spur
+    for k in range(4): ham.append(box((W(8.4), W(1.2), W(1.6)), (0, Y(31.5 + k * 1.6), Z(664 + k * 4.2)), dark, rot=(-0.35, 0, 0)))  # checkered spur
 
     # ---------------- the big loop lever (its own node, pivot on the front pin), pink leather wrap
     outer = [(546, -40), (556, -37), (660, -38), (690, -40), (706, -36.5), (716, -38), (720, -46), (728, -62), (740, -86), (744, -108), (738, -130), (720, -146), (690, -154), (650, -154), (612, -147), (588, -131), (576, -108), (572, -84), (566, -62), (556, -59), (546, -52)]

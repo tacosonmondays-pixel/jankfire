@@ -65,12 +65,12 @@ def build():
     A = parts.append
 
     # ---------------- muzzle: 22 mm grenade-launcher sleeve with its stop ring and flash ports, then the thin barrel
-    mz = lathe([(0, Z(-0.5)), (W(10.5), Z(-0.5)), (W(11.5), Z(2)), (W(11.5), Z(50)), (W(10.5), Z(53))], (0, BORE_Y, 0), steel, seg=16)
+    mz = lathe([(W(5.5), Z(9)), (W(5.5), Z(-0.5)), (W(10.5), Z(-0.5)), (W(11.5), Z(2)), (W(11.5), Z(50)), (W(10.5), Z(53)), (W(5.5), Z(53))], (0, BORE_Y, 0), steel, seg=16)
     for k in range(6):
         a = k * math.pi / 3 + math.pi / 6
         cut(mz, box((W(4.5), W(10), W(20)), (math.cos(a) * W(11.5), BORE_Y + math.sin(a) * W(11.5), Z(14)), None, rot=(0, 0, a - math.pi / 2)))
     A(mz)
-    A(lathe([(0, Z(0)), (W(5.5), Z(0)), (W(5.5), Z(7))], (0, BORE_Y, 0), black, seg=10))  # dark bore
+    A(cyl(W(5.6), W(1), (0, BORE_Y, Z(8.2)), black, axis='z', seg=10))  # dark bore
     A(lathe([(W(12), Z(53)), (W(14.5), Z(55)), (W(14.5), Z(64)), (W(12), Z(66))], (0, BORE_Y, 0), chrome, seg=18))  # grenade stop ring
     A(lathe([(W(9.5), Z(64)), (W(9.5), Z(150)), (W(10.5), Z(158)), (W(10.5), Z(205))], (0, BORE_Y, 0), steel, seg=14))
 
@@ -93,6 +93,11 @@ def build():
     for sx in (-1, 1):  # pressed panel lines down each side
         A(box((W(1.2), W(4), W(200)), (sx * W(28.3), Y(-26), Z(440)), navy, bev=W(0.5)))
     A(side(poly([(742, 46), (757, 44), (757, -104), (742, -110)]), W(58), (0, 0, 0), rubber, bev=W(3)))  # butt pad
+    A(side(poly([(506, -46), (560, -64), (690, -98), (736, -110), (744, -104), (744, -92), (690, -82), (560, -50), (508, -36)]), W(58), (0, 0, 0), navy, bev=W(3)))  # the lower stock shell
+    A(side(poly([(556, -2), (622, -2), (622, 24), (562, 24)]), W(3), (-W(28.6), 0, 0), navy, bev=W(1)))   # port cover plate (left)
+    A(box((W(60), W(6), W(26)), (0, Y(-84), Z(726)), black))                                            # sling slot through the butt
+    for sx in (-1, 1):  # stippled thumb pads on the grip
+        A(side(poly([(344, -64), (376, -64), (386, -128), (356, -128)]), W(1.5), (sx * W(15.4), 0, 0), navy, bev=W(0.5)))
     for k in range(4):
         A(box((W(60), W(2), W(4)), (0, Y(28 - k * 34), Z(756)), dark))
     # burst dial under the butt (the real FAMAS hides its burst limiter there), painted "3"
@@ -103,12 +108,11 @@ def build():
     ch = side(poly([(212, 18), (250, 18), (262, 46), (580, 46), (604, 40), (640, 40), (640, 62), (214, 62), (210, 50)]), W(22), (0, 0, 0), poly_m, bev=W(3), seg=2,
               holes=[poly([(262, 30), (268, 46), (560, 46), (590, 40), (592, 30)])])
     A(ch)
-    A(box((W(22), W(4), W(380)), (0, Y(48), Z(420)), poly_m, bev=W(1)))             # spine underside lip
     A(box((W(6), W(1.5), W(300)), (0, Y(62.4), Z(380)), dark))                       # sight channel groove (painted)
     for sx in (-1, 1):  # front sight wings, the post between them
         A(side(poly([(218, 62), (240, 62), (238, 90), (226, 90)]), W(4), (sx * W(9), 0, 0), steel, bev=W(1)))
-    A(box((W(2.6), W(20), W(3)), (0, Y(SIGHT_H - 11), Z(FRONT_D)), dark))
-    A(box((W(3), W(3), W(3)), (0, Y(SIGHT_H - 0.5), Z(FRONT_D)), dot, bev=W(0.5)))
+    A(box((W(2.6), W(20), W(2.4)), (0, Y(SIGHT_H - 11), Z(FRONT_D)), dark))
+    A(box((W(4.4), W(4.2), W(4.2)), (0, Y(SIGHT_H - 0.5), Z(FRONT_D)), dot, bev=W(0.6)))
     # rear: drum housing with two ears, a peep ring on the sight line
     A(side(poly([(480, 62), (510, 62), (508, 68), (482, 68)]), W(17), (0, 0, 0), steel, bev=W(1.5)))
     for sx in (-1, 1):
@@ -116,10 +120,10 @@ def build():
     ring = cyl(W(6), W(3), (0, Y(SIGHT_H), Z(REAR_D)), dark, axis='z', seg=16)
     cut(ring, cyl(W(3.4), W(10), (0, Y(SIGHT_H), Z(REAR_D)), None, axis='z', seg=12))
     A(ring)
-    A(box((W(3), W(11), W(3)), (0, Y(SIGHT_H - 11), Z(REAR_D)), dark))
+    A(box((W(3), W(11), W(1.6)), (0, Y(SIGHT_H - 11), Z(REAR_D)), dark))
     A(cyl(W(4.5), W(21), (0, Y(66), Z(REAR_D)), steel, axis='x', seg=12))                # drum axle knob
     # slot in the receiver top that the cocking lever runs in
-    A(box((W(8), W(1.2), W(110)), (0, Y(22.3), Z(392)), black))
+    A(box((W(10), W(1.2), W(110)), (0, Y(22.3), Z(392)), black))
 
     # ---------------- cocking lever (its own node: slides back along +z)
     CH_D, CH_H = 356, 33
@@ -149,7 +153,7 @@ def build():
     mag.append(cyl(W(4.5), W(10), (W(3), Y(-41), Z(447)), mat('bu_copper', 0xc8683a, rough=0.3, metal=1.0), axis='z', seg=10, r2=W(1.5)))
 
     # ---------------- bipod: hinge block at the front of the guard, legs folded back along both sides
-    A(box((W(64), W(14), W(18)), (0, Y(-8), Z(196)), dark, bev=W(2)))
+    A(box((W(64), W(14), W(15)), (0, Y(-8), Z(195)), dark, bev=W(2)))
     for sx in (-1, 1):
         A(cyl(W(5), W(6), (sx * W(32), Y(-8), Z(196)), steel, axis='x', seg=10))
         A(rod((sx * W(31), Y(-10), Z(200)), (sx * W(30.5), Y(-16), Z(400)), W(4.5), steel, seg=8))

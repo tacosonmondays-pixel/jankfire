@@ -61,17 +61,16 @@ def build():
     A = parts.append
 
     # ---------------- big muzzle brake: three side windows a side, a top slot, front ring; grass stuck in it
-    mb = lathe([(0, Z(-0.5)), (W(21), Z(-0.5)), (W(23), Z(3)), (W(23), Z(92)), (W(19), Z(100))], (0, BORE_Y, 0), park, seg=18)
+    mb = lathe([(W(9.5), Z(10)), (W(9.5), Z(-0.5)), (W(21), Z(-0.5)), (W(23), Z(3)), (W(23), Z(92)), (W(19), Z(100)), (W(9.5), Z(100))], (0, BORE_Y, 0), park, seg=18)
     for d in (18, 42, 66):
         cut(mb, box((W(60), W(20), W(15)), (0, Y(0), Z(d)), None, bev=W(3)))
     cut(mb, box((W(10), W(30), W(60)), (0, Y(22), Z(44)), None, bev=W(2)))
     A(mb)
-    A(lathe([(0, Z(0)), (W(9.5), Z(0)), (W(9.5), Z(10))], (0, BORE_Y, 0), black, seg=12))
-    A(lathe([(W(9.5), Z(4)), (W(9.5), Z(90))], (0, BORE_Y, 0), steel, seg=12, cap=False))  # the bore tube seen through the windows
+    A(cyl(W(9.6), W(1), (0, BORE_Y, Z(9.2)), black, axis='z', seg=12))
     for i, (d, a, l) in enumerate(((18, 0.5, 26), (42, -0.4, 22), (66, 0.2, 30), (42, 2.8, 24), (18, 3.4, 20))):
         sx = 1 if i < 3 else -1
         A(cyl(W(2.4), W(l), (sx * W(20 + l * 0.3), Y(4 + 6 * math.sin(a)), Z(d)), grass, axis='x', seg=4, r2=W(0.3), rot=(0, math.pi if sx < 0 else 0, a * 0.4)))
-    A(lathe([(W(14), Z(98)), (W(14), Z(410))], (0, BORE_Y, 0), steel, seg=16))
+    A(lathe([(W(14), Z(98)), (W(14), Z(424))], (0, BORE_Y, 0), steel, seg=16))
     # ---------------- front sight block (AK ears + post) + gas block, gas tube
     A(side(poly([(108, -16), (146, -16), (146, 18), (136, 26), (116, 26), (108, 18)]), W(30), (0, 0, 0), steel, bev=W(1.8)))
     for sx in (-1, 1):
@@ -84,12 +83,12 @@ def build():
     A(tube([(-W(15), Y(-14), Z(160)), (-W(15), Y(-28), Z(164)), (-W(15), Y(-28), Z(180)), (-W(15), Y(-14), Z(184))], W(2), dark, seg=6))
     # ---------------- handguards: upper over the gas tube, lower round the barrel, grass-green candy
     A(side(poly([(300, 16), (408, 16), (408, 38), (400, 42), (310, 42), (300, 36)]), W(40), (0, 0, 0), green, bev=W(5), seg=2))
-    lg = side(poly([(232, 8), (410, 8), (410, -42), (400, -50), (244, -50), (232, -38)]), W(58), (0, 0, 0), green, bev=W(6), seg=3)
+    lg = side(poly([(232, 8), (410, 8), (410, -42), (400, -50), (244, -50), (232, -38)]), W(58), (0, 0, 0), green, bev=W(6), seg=2)
     for k in range(3):
-        cut(lg, box((W(80), W(8), W(30)), (0, Y(-22), Z(270 + k * 46)), None, bev=W(3)))
+        cut(lg, box((W(80), W(8), W(28)), (0, Y(-22), Z(262 + k * 38)), None, bev=W(3)))
     A(lg)
     A(lathe([(W(22), Z(226)), (W(24), Z(230)), (W(24), Z(240)), (W(22), Z(244))], (0, Y(-6), 0), steel, seg=16))  # front retainer
-    A(box((W(1), W(27), W(38)), (-W(29.6), Y(-20), Z(372)), keep_m))  # KEEP FEET CLEAR (left)
+    A(box((W(1), W(27), W(38)), (-W(29.6), Y(-20), Z(379)), keep_m))  # KEEP FEET CLEAR (left)
 
     # ---------------- receiver: long 12-ga AK body, dust cover, rail, rear sight leaf + rail sight, ports, safety
     rc = side(poly([(410, -48), (500, -48), (500, -52), (586, -52), (590, -58), (740, -58), (740, 18), (452, 18), (440, 26), (410, 26)]), W(42), (0, 0, 0), steel, bev=W(2.5))
@@ -112,10 +111,11 @@ def build():
     A(ring)
     # big AK safety lever (right) + its pivot, selector notch, rear trunnion rivets, mag catch
     A(side(poly([(596, -12), (720, 6), (726, 14), (720, 18), (596, 2)]), W(2.5), (W(22), 0, 0), steel, bev=W(0.6)))
-    A(cyl(W(5), W(4), (W(22.5), Y(6), Z(722)), steel, axis='x', seg=10))
+    A(cyl(W(4.5), W(6), (W(24.5), Y(7), Z(721)), chrome, axis='x', seg=10))
     for d in (430, 700):
         for sx in (-1, 1): A(cyl(W(3), W(1.2), (sx * W(21.4), Y(-30), Z(d)), chrome, axis='x', seg=8))
     A(side(poly([(586, -52), (598, -52), (602, -70), (590, -72)]), W(22), (0, 0, 0), dark, bev=W(1.2)))
+    for sx in (-1, 1): A(box((W(1.5), W(16), W(40)), (sx * W(21.2), Y(-24), Z(530)), dark, bev=W(0.5)))  # the stamped magwell dimples
     # ---------------- charging handle (its own node: slides back along +z)
     CH = (W(21), Y(8), Z(575))
     chg.append(box((W(16), W(8), W(12)), (W(29), Y(8), Z(575)), steel, bev=W(1.2)))
@@ -124,28 +124,28 @@ def build():
     A(side(poly([(598, -56), (606, -56), (608, -82), (660, -84), (668, -58), (676, -58), (674, -92), (600, -90)]), W(12), (0, 0, 0), steel, bev=W(1.5)))
     A(side(poly([(626, -58), (632, -58), (635, -68), (631, -80), (625, -78), (628, -68)]), W(5), (0, 0, 0), dark, bev=W(0.8)))
     A(side(poly([(668, -58), (722, -58), (758, -170), (752, -178), (722, -180), (712, -172), (700, -130), (704, -122), (694, -112), (696, -100), (686, -88)]),
-           W(32), (0, 0, 0), green, bev=W(6), seg=3))
+           W(32), (0, 0, 0), green, bev=W(6), seg=2))
     for k in range(4):  # finger-groove ridges on the grip (left + right)
-        A(box((W(33), W(3), W(26)), (0, Y(-128 - k * 11), Z(730 + k * 3.5)), green, bev=W(1.2), rot=(-0.3, 0, 0)))
+        A(box((W(35), W(3), W(26)), (0, Y(-128 - k * 11), Z(730 + k * 3.5)), green, bev=W(1.2), rot=(-0.3, 0, 0)))
 
     # ---------------- the fat 10-round box mag (its own node, origin at its seat)
     MAG_D, MAG_H = 543, -52
-    front = [(500, -50), (498, -110), (490, -170), (476, -240)]
-    back = [(586, -50), (588, -110), (582, -170), (570, -242)]
+    front = [(500, -50), (497, -100), (489, -150), (476, -206)]
+    back = [(586, -50), (589, -100), (584, -150), (574, -208)]
     mag.append(side(poly(front + back[::-1]), W(46), (0, 0, 0), dark, bev=W(3)))
     for sx in (-1, 1):  # moulded ribs
         for k in range(3):
             fd = 512 + k * 22
-            mag.append(side(poly([(fd, -64), (fd + 6, -64), (fd - 6, -226), (fd - 12, -226)]), W(1.5), (sx * W(23.4), 0, 0), steel))
-    mag.append(side(poly([(472, -238), (574, -240), (574, -258), (470, -256)]), W(52), (0, 0, 0), hazard, bev=W(3)))
+            mag.append(side(poly([(fd, -64), (fd + 6, -64), (fd - 6, -194), (fd - 12, -194)]), W(1.5), (sx * W(23.4), 0, 0), steel))
+    mag.append(side(poly([(472, -204), (578, -206), (578, -224), (470, -222)]), W(52), (0, 0, 0), hazard, bev=W(3)))
     mag.append(side(poly([(496, -40), (512, -40), (512, -52), (498, -52)]), W(30), (0, 0, 0), dark, bev=W(1)))  # front lug
-    mag.append(box((W(1), W(20), W(40)), (-W(23.6), Y(-150), Z(532)), mow_m, rot=(-0.12, 0, 0)))
+    mag.append(box((W(1), W(20), W(40)), (-W(23.6), Y(-128), Z(533)), mow_m, rot=(-0.12, 0, 0)))
     mag.append(cyl(W(9), W(10), (0, Y(-46), Z(543)), red, axis='y', seg=14))   # red shell base peeking out the lips
 
     # ---------------- side-folding stock, pulled out: hinge block (left), polymer body with a slot, rubber butt
     A(side(poly([(736, -50), (772, -50), (772, 14), (736, 14)]), W(12), (-W(24), 0, 0), steel, bev=W(2)))
     A(cyl(W(7), W(10), (-W(29), Y(-18), Z(754)), chrome, axis='x', seg=12))        # latch button
-    st = side(poly([(740, 16), (980, 8), (996, 10), (996, -132), (980, -136), (900, -110), (780, -62), (740, -50)]), W(38), (0, 0, 0), green, bev=W(6), seg=3,
+    st = side(poly([(740, 16), (980, 8), (996, 10), (996, -132), (980, -136), (900, -110), (780, -62), (740, -50)]), W(38), (0, 0, 0), green, bev=W(6), seg=2,
               holes=[poly([(800, -14), (940, -18), (940, -34), (820, -40)])])
     A(st)
     A(side(poly([(994, 12), (1006, 10), (1006, -134), (994, -138)]), W(40), (0, 0, 0), rubber, bev=W(3)))
@@ -163,7 +163,7 @@ def build():
             W(2.6), cord, seg=6))
     A(box((W(10), W(14), W(10)), (-W(24), Y(-16), Z(446)), dark, bev=W(1.5)))     # the clip it hangs in
     A(cyl(W(7), W(46), (hx - W(4), Y(-16), Z(436)), rubber, axis='y', seg=12, bev=W(2)))  # T-handle
-    for sy in (-1, 1): A(cyl(W(7.6), W(6), (hx - W(4), Y(-16 + sy * 20), Z(436)), red, axis='y', seg=12))
+    for sy in (-1, 1): A(cyl(W(8.4), W(8), (hx - W(4), Y(-16 + sy * 21), Z(436)), red, axis='y', seg=12))
 
     for p in parts + mag + chg: uv_box(p, 0.03)
     for p in parts + mag:
@@ -175,7 +175,7 @@ def build():
     mn = moving(mag, 'mag', (0, Y(MAG_H), Z(MAG_D)), {'as_dark': 'b', 'as_steel': 'b'}, default='n')
     cn = moving(chg, 'charge', CH, {'as_steel': 'b'}, default='n')
     meta = {'kind': 'weapon', 'id': 'autoshot', 'paint': ['as_green'], 'muzzle': [0, BORE_Y, MUZ_Z],
-            'sight': {'y': Y(SIGHT_H), 'z': Z(REAR_D)}, 'hatAt': [[0, Y(41), Z(540)], 0.12],
+            'sight': {'y': Y(SIGHT_H), 'z': Z(REAR_D) + 0.06}, 'hatAt': [[0, Y(41), Z(540)], 0.12],
             'mag': {'node': 'mag'}, 'charge': {'node': 'charge'}}
     return finish('w_autoshot', bodies + [mn, cn], meta)
 
