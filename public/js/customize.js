@@ -8,13 +8,13 @@
 import { G } from './ctx.js';
 import { WEAPONS, ORDER, SLOTS, ITEMS, ITEM_ORDER, STREAKS, validStreaks } from '/shared/weapons.js';
 import { streakIcon } from './icons.js';
-import { itemPic } from './itemicons.js';
 import { hubTabs } from './hub.js';
 import { COSMETICS, RARITY, CONTAINERS, owns, ownedSkin, modelsFor } from '/shared/cosmetics.js';
 import { ACHIEVEMENTS, achProgress, ROYAL_ALL } from '/shared/looks.js';
 import { validSkin, DEFAULT_SKIN, WRAP_MODES, WRAP_MODE_NAMES, makeHat } from './skins.js';
 import { showPreview, resizePreview, setPreviewRes, previewManual } from './preview.js';
-import { weaponIcon, objIcon, drawIcon, isPlaceholder, PLACEHOLDER } from './icons.js';
+import { weaponIcon, objIcon, drawIcon, isPlaceholder, PLACEHOLDER, studioIcon, liveIcon } from './icons.js';
+import { uiPic, itemPic } from './itemicons.js';
 import { whenGlb, prefetch, want } from './glbkit.js';
 import { defaultCard } from './cards.js';
 import { royalBoxes } from './royal.js';
@@ -36,6 +36,12 @@ const TABS = [
   { id: 'effect', name: 'Effect', ico: '✨', type: 'effect', idx: 2, none: 'none' },
   { id: 'finisher', name: 'Finisher', ico: '💀', type: 'kill', none: 'none', global: true },
 ];
+// the round buttons' props, from the icon studio: a door, a spanner, a palette, the top hat off the charm rack, a crystal, a skull
+const TAB_PIC = {
+  leave: () => uiPic('ui_door', '#ffe14d', 44), skin: () => uiPic('ui_wrench', '#ff4fd8', 44), wrap: () => uiPic('ui_palette', '#4fd8ff', 44),
+  charm: () => studioIcon('cztab:charm', () => makeHat('tophat'), { w: 44, h: 44, accent: '#ff4fd8', pitch: 0.3 }),
+  effect: () => uiPic('ui_crystal', '#ffe14d', 44), finisher: () => uiPic('ui_skull', '#ff3030', 44),
+};
 const TYPE_LABEL = { model: 'Skin', finish: 'Wrap', hat: 'Charm', effect: 'Effect', kill: 'Finisher' };
 const FX_ICO = { smoke: '💨', bubbles: '🫧', sparkles: '✨', music: '🎵', hearts: '💖', electric: '⚡', flames: '🔥', money: '💸', rainbow: '🌈' };
 const KILL_ICO = { none: '🦴', confetti: '🎉', grave: '🪦', cash: '💵', pixel: '👾', balloon: '🎈', chicken: '🐔', bsod: '💻', yeet: '🚀', ascend: '🛸', duck: '🦆', blastzone: '💥' };
@@ -113,7 +119,9 @@ export function initCustomize(a) {
   for (const t of TABS) {
     const b = el('button', 'cz-tab' + (t.id === 'leave' ? ' leave' : ''));
     b.dataset.tab = t.id;
-    b.append(el('span', 'ico', t.ico), el('span', 'lbl', t.name.toUpperCase()));
+    const ico = el('span', 'ico', t.ico);
+    b.append(ico, el('span', 'lbl', t.name.toUpperCase()));
+    requestAnimationFrame(() => { const im = el('img'); im.alt = ''; if (liveIcon(im, TAB_PIC[t.id])) { ico.textContent = ''; ico.append(im); } }); // its 3D prop (the emoji stays if 3D can't draw)
     b.addEventListener('click', () => {
       if (t.id === 'leave') { api.show(G.joined ? 'pause' : 'main'); return; }
       setTab(tab === t.id ? null : t.id);
@@ -152,6 +160,7 @@ export function czOpen() {
   root.classList.toggle('potato', (S.jank | 0) === 0);
   root.classList.toggle('lo-mode', mode === 'loadout');
   for (const b of root.querySelectorAll('.hub-tab')) b.classList.toggle('on', b.dataset.hub === (mode === 'loadout' ? 'loadout' : 'weapons'));
+  const hn = $('czHub').firstElementChild; if (hn && hn.mark) hn.mark(); // (its pictures: your gun / look may have changed)
   if (mode === 'loadout' && !SLOTS.includes(WEAPONS[sel].slot)) sel = S.loadout.primary;
   $('czStage').append($('preview'));
   setPreviewRes([0.3, 0.45, 0.75, 1][S.jank] ?? 0.5); // potato is crunchy here too
