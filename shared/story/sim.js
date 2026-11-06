@@ -1,0 +1,77 @@
+// the OVERDUE story sim: one tick function, two hosts. solo: public/js/story/simworker.js (a web worker in your
+// browser, costs the server nothing). co-op (WP10): server/story.js's StoryRoom. pure: no node, no dom.
+//
+// it speaks the game's normal protocol to the client (welcome / spawn / tp / po), so the normal player controller,
+// weapons and HUD run unchanged, plus story messages under t: 'sty' ({ t: 'sty', k: kind, ... }).
+// systems plug in with addSystem({ id, init(sim), tick(sim, dt), msg(sim, m) -> true if handled, save(sim) -> part,
+// load(sim, part) }): the quest engine, loot, inventory, implants, late fees each own one, and their save part goes to
+// save.data[id].
+import { TEST } from './testmap.js';
+import { newSave } from './save.js';
+
+const SYSTEMS = [];
+export function addSystem(s) { if (!SYSTEMS.some((o) => o.id === s.id)) SYSTEMS.push(s); }
+
+export function createSim({ send, save }) {
+  const sv = save || newSave(0);
+  const sim = {
+    save: sv, send, t: 0, me: null, // me: the (one, solo) player { id, name, pos, seq, alive }
+    clock: (sv.data.clock && Number.isFinite(sv.data.clock.min)) ? sv.data.clock.min : 17 * 60 + 29, // the district clock: stuck at 17:29 for now
+    sty(k, o) { send({ t: 'sty', k, ...o }); },
+  };
+  for (const s of SYSTEMS) if (s.init) s.init(sim);
+  for (const s of SYSTEMS) if (s.load && sv.data[s.id] !== undefined) s.load(sim, sv.data[s.id]);
+
+  sim.join = (m) => {
+    const name = typeof m.name === 'string' && m.name.trim() ? m.name.trim().slice(0, 16) : 'CHANGE';
+    const at = sv.at && sv.at.map === TEST.id ? sv.at : { p: TEST.spawn, yaw: TEST.yaw };
+    sim.me = { id: 1, name, pos: at.p.slice(), seq: 1, alive: true, item: typeof m.item === 'string' ? m.item.slice(0, 24) : '' };
+    send({
+      t: 'welcome', id: 1, name, color: '#ff4fd8', pos: sim.me.pos, q: sim.me.seq, mode: 'story', game: 'dm',
+      cfg: { map: TEST.id, hip: 'normal', bots: 0, diff: 'normal', hr: 'off' },
+      players: [], peels: [], projs: [], holes: [], bubbles: [], smokes: [], kat: [], tags: [], sprays: [], mpatch: [],
+      wave: null, level: 1, account: false, round: null, vote: null, skip: null, team: 0,
+      ic: { i: sim.me.item, n: 1, next: 0 },
+    });
+    sim.sty('hello', { slot: sv.slot, act: sv.act, chapter: sv.chapter, yaw: at.yaw || 0, clock: sim.clock, coupons: sv.coupons });
+  };
+
+  sim.msg = (m) => {
+    if (!m || typeof m.t !== 'string') return;
+    if (m.t === 'join') return sim.join(m);
+    if (!sim.me) return;
+    if (m.t === 'pi') return send({ t: 'po', c: m.c });
+    if (m.t === 's') { // your movement (client-authoritative, as in multiplayer): keep it for the save, catch the void
+      if (m.q !== sim.me.seq || !Array.isArray(m.p) || m.p.length !== 3 || !m.p.every(Number.isFinite)) return;
+      sim.me.pos = m.p.slice();
+      if (Number.isFinite(m.y)) sim.me.yaw = m.y;
+      if (m.p[1] < TEST.killY) { // fell out: the Machine dispenses you again (BEEP. CLUNK.)
+        sim.me.seq++; sim.me.pos = TEST.spawn.slice();
+        send({ t: 'spawn', p: sim.me.pos, q: sim.me.seq });
+        sim.sty('redispensed', {});
+      }
+      return;
+    }
+    if (m.t === 'sty') {
+      for (const s of SYSTEMS) if (s.msg && s.msg(sim, m)) return;
+      if (m.k === 'save') return sim.sty('saved', { save: sim.snapshot(m.why) });
+    }
+  };
+
+  sim.tick = (dt) => {
+    sim.t += dt;
+    sim.save.playtime += dt;
+    for (const s of SYSTEMS) if (s.tick) s.tick(sim, dt);
+  };
+
+  // the save as it stands now (the client posts it to /api/story/save or keeps it locally)
+  sim.snapshot = () => {
+    const out = JSON.parse(JSON.stringify(sim.save));
+    out.playtime = Math.floor(out.playtime);
+    if (sim.me) out.at = { map: TEST.id, p: sim.me.pos.map((x) => Math.round(x * 100) / 100), yaw: Math.round((sim.me.yaw || 0) * 1000) / 1000 };
+    out.data.clock = { min: sim.clock };
+    for (const s of SYSTEMS) if (s.save) out.data[s.id] = s.save(sim);
+    return out;
+  };
+  return sim;
+}
