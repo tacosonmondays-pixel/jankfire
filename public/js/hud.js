@@ -280,14 +280,15 @@ export const hud = {
     el.style.display = 'block';
     const ready = sl.ready >= 1, air = ready && sl.h != null && sl.size;
     const kmh = Math.round((sl.speed || 0) * 3.6), ram = sl.ram || 0;
-    const key = left.toFixed(1) + '|' + Math.round(sl.ready * 20) + '|' + (air ? Math.round(sl.h) : '-') + '|' + kmh + '|' + ram;
+    const hpK = sl.hp != null ? Math.max(0, Math.min(1, sl.hp / (sl.max || 1))) : null; // its HP (it lasts until it breaks)
+    const key = (hpK != null ? 'hp' + Math.round(sl.hp) : left.toFixed(1)) + '|' + Math.round(sl.ready * 20) + '|' + (air ? Math.round(sl.h) : '-') + '|' + kmh + '|' + ram;
     if (el.dataset.key === key) return;
     el.dataset.key = key;
-    el.querySelector('b').textContent = `WRECKING BALL · ${left.toFixed(1)}s`;
-    el.querySelector('.bar i').style.width = Math.max(0, Math.min(1, left / dur)) * 100 + '%';
+    el.querySelector('b').textContent = hpK != null ? `WRECKING BALL · ${Math.max(0, Math.round(sl.hp))} HP` : `WRECKING BALL · ${left.toFixed(1)}s`;
+    el.querySelector('.bar i').style.width = (hpK != null ? hpK : Math.max(0, Math.min(1, left / dur))) * 100 + '%';
     el.querySelector('.spd').textContent = `${kmh} km/h · ${ram ? `RAM ${ram}` : 'too slow to ram'}`;
     el.classList.toggle('ramming', ram >= 60);
-    el.classList.toggle('low', left < 4);
+    el.classList.toggle('low', hpK != null ? hpK < 0.25 : left < 4);
     el.querySelector('.slam i').style.width = (air ? 8 + sl.size.k * 92 : Math.min(1, sl.ready) * 100) + '%';
     el.querySelector('.slam span').textContent = !ready ? 'slam recharging...'
       : air ? `${K.label('crouch').toUpperCase()}: SLAM from ${Math.round(sl.h)} m · ${Math.round(sl.size.dmg)} dmg` : `GROUND SLAM: ${K.label('crouch')} in the air · ${K.label('grapple').toUpperCase()}: chain`;

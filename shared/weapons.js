@@ -333,9 +333,9 @@ export const STREAKS = {
   moonboots: { kills: 3, name: 'Moon Boots', desc: 'low gravity + huge jumps for 25s', auto: true, dur: 25 },
   chickenstrike: { kills: 4, name: 'Chicken Strike', desc: 'rain exploding chickens where you aim', deploy: true },
   scythe: { kills: 5, name: 'Scythe Rifle', desc: 'X: rifle mode · hold V: glitch dash', auto: true },
-  overdrive: { kills: 8, name: 'Overdrive Rig', desc: '25s as a scrap-built juggernaut: overshield, LMB rocket punch, RMB block, Space jumps sky high (hold to leap), E thrusters, G homing missiles, R quickhack', auto: true, dur: 25 },
+  overdrive: { kills: 8, name: 'Overdrive Rig', desc: 'a scrap-built juggernaut until its armour breaks: 1200 armour, LMB rocket punch, RMB block, Space jumps sky high (hold to leap), E thrusters, G homing missiles, R quickhack', auto: true, dur: 65 }, // dur: only a safety net now, it lasts until it breaks (shared/bodyhp.js)
   spinbot: { kills: 6, name: 'Spinbot', desc: 'aimbot + spinbot for 10s. you are now a cheater.', auto: true, dur: 10 },
-  wreckingball: { kills: 6, name: 'Wrecking Ball', desc: 'become a giant steel wrecking ball for 20s: ram people (faster = harder), swing on the chain (E, W pumps it), crouch in the air to ground slam (higher = bigger)', auto: true, dur: 20 },
+  wreckingball: { kills: 6, name: 'Wrecking Ball', desc: 'become a giant steel wrecking ball until it breaks (900 HP): ram people (faster = harder), swing on the chain (E, W pumps it), crouch in the air to ground slam (higher = bigger)', auto: true, dur: 65 }, // (until it breaks: shared/bodyhp.js)
   satellite: { kills: 7, name: 'Spy Satellite', desc: 'see every enemy through walls for 20s', auto: true, dur: 20 },
   giantduck: { kills: 10, name: 'Giant Duck', desc: 'a giant black hole where you aim that pulls in everyone but you and eats their momentum', deploy: true },
 };
