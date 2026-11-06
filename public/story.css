@@ -121,3 +121,5 @@ body.st-talk #crosshair, body.st-talk #hitmarker, body.st-talk #hotbar, body.st-
 #stPanels .rtitle { position: absolute; left: 50%; top: 1.2%; z-index: 3; transform: translateX(-50%) rotate(-2deg); font-size: 40px; color: #ffe14d; text-shadow: 4px 4px 0 #ff4fd8, 7px 7px 0 #000; white-space: nowrap; }
 @keyframes stPanel { from { transform: var(--tf) scale(1.6); opacity: 0; } to { transform: var(--tf); } }
 @keyframes stSfx { from { transform: rotate(-30deg) scale(3); opacity: 0; } }
+/* the systems lane's story HUD (bar.js / main.js: quick bar, loot compare card, use hint) steps aside for scenes and talks */
+body.st-cine .st-lootcard, body.st-cine .st-hint, body.st-cine #storyBar, body.st-talk .st-lootcard, body.st-talk .st-hint { display: none !important; }
