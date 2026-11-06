@@ -60,6 +60,8 @@ export const lightStats = { passes: 0, frames: 0 }; // shadow map renders (tests
 
 export function initLighting(sun, vmSun, noShadow) {
   L.sun = sun; L.vmSun = vmSun; L.vmBase = vmSun.intensity; L.sunBase = sun.intensity;
+  L.vmHemi = G.vmScene.children.find((o) => o.isHemisphereLight) || null; L.vmHemiBase = L.vmHemi ? L.vmHemi.intensity : 1.8;
+  L.hemi = sc.children.find((o) => o.isHemisphereLight) || null;
   const sc = G.scene;
   sc.add(sun.target);
   const s = sun.shadow;
@@ -123,8 +125,12 @@ export function lightingMap(def, id, night, sunMesh) {
   L.sun.shadow.intensity = Math.min(1, md.sh + 0.12);
   // a bit less flat sky light, a bit more sun, so the sunny side and the shade read apart (world.js mapLight reset both
   // just before this, so it never stacks up)
-  const hemi = G.scene.children.find((o) => o.isHemisphereLight);
+  const hemi = L.hemi;
   if (hemi) hemi.intensity *= md.hk ?? 0.82;
+  L.hemiRef = 1.6 * (md.hk ?? 0.82); // what a normal sunny map's sky light is after the balance
+  // your hands and gun (their own scene) take the map's sky colours, so they sit in the same light as the world
+  if (L.vmHemi && hemi) { L.vmHemi.color.copy(hemi.color).lerp(_c.setHex(0xffffff), 0.35); L.vmHemi.groundColor.copy(hemi.groundColor).lerp(_c.setHex(0x7a4a6a), 0.35); }
+  if (L.vmSun) L.vmSun.color.copy(L.sun.color).lerp(_c.setHex(0xffffff), 0.3);
   L.sun.intensity *= md.sk ?? 1.14;
   L.sunBase = L.sun.intensity;
   L.fill.color.setHex(md.fill[0]);
@@ -317,7 +323,10 @@ export function updateLighting(dt) {
   // the gun in your hands darkens in the shade
   if (f % 5 === 0) L.vmT = inSun() ? 1 : 0.5;
   L.vmK += (L.vmT - L.vmK) * Math.min(1, dt * 6);
-  if (L.vmSun) L.vmSun.intensity = L.vmBase * L.vmK;
+  // ...and follows how bright the map is right now (night, the mall's power going off, a flicker), never too dark to read
+  const lit = L.hemi && L.hemiRef ? Math.min(1.1, Math.max(0.5, L.hemi.intensity / L.hemiRef)) : 1;
+  if (L.vmSun) L.vmSun.intensity = L.vmBase * L.vmK * Math.min(1.1, Math.max(0.35, L.sun.intensity / (L.sunBase || 1)));
+  if (L.vmHemi) L.vmHemi.intensity = L.vmHemiBase * lit;
   if (f % 20 === 0) sweep();
   const q = L.q;
   if (!q) return;
