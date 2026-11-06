@@ -73,8 +73,6 @@ const RULES = {
   slapper_paw: (c) => c === 0x6b3a1a ? A : c === 0x5a3a20 ? B : N, // claws + pad stay
   bread: (c) => c === 0xd9a35b ? A : B, // the loaf vs its crust ends + score marks
   bread_croissant: (c) => c === 0xc8904a ? A : B, // alternate rolls
-  spoon: (c) => c === 0xd8d8e0 ? A : B,
-  spoon_ladle: (c) => c === 0xc8c8d0 ? A : B,
   bow: (c) => c === 0x5a3a1a || c === 0xc8a070 ? A : c === 0xff4fd8 ? N : B, // riser + arrow vs limbs + string
   bow_compound: (c) => c === 0x2a2a30 || c === 0x333333 ? A : is(c, 0x7dff4f, 0x4fd8ff) ? N : B,
   scales: (c, p) => is(c, 0xd8202a, 0xf6f6f6, 0xd8c8a0) ? N : p.y > 0.25 ? B : A, // handle + pillar vs beam, chains, pans

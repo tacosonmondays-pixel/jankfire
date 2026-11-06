@@ -66,7 +66,7 @@ export const GUNS = {
   laser: { tier: 3, w: 2 }, // the Big Laser Pointer (charge it, it beams)
   pistol: { tier: 0, w: 9, mags: 3 }, sawnoff: { tier: 0, w: 6, mags: 6 }, akimbo: { tier: 1, w: 5, mags: 3 }, // the plain sidearms
 };
-export const MELEE = { knife: { tier: 0, w: 4 }, slapper: { tier: 0, w: 3 }, katana: { tier: 1, w: 3 }, slipper: { tier: 1, w: 2 }, scales: { tier: 2, w: 2 }, spoon: { tier: 4, w: 0.6 } };
+export const MELEE = { knife: { tier: 0, w: 4 }, slapper: { tier: 0, w: 3 }, katana: { tier: 1, w: 3 }, slipper: { tier: 1, w: 2 }, scales: { tier: 2, w: 2 } };
 // throwables and gadgets (the G key): how many come in one pick-up
 export const GADGETS = { frag: { tier: 0, n: 2, w: 6 }, smoke: { tier: 0, n: 2, w: 4 }, popper: { tier: 1, n: 2, w: 3 }, duck: { tier: 2, n: 1, w: 2 }, bubble: { tier: 2, n: 1, w: 2 }, wand: { tier: 2, n: 2, w: 2 }, reverse: { tier: 3, n: 1, w: 1 },
   camera: { tier: 2, n: 1, w: 2 }, quiz: { tier: 1, n: 2, w: 3 }, nvg: { tier: 1, n: 2, w: 2 } }; // the new gear: instant camera, pop quiz, night vision goggles
