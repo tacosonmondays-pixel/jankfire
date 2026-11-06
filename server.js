@@ -60,6 +60,7 @@ import { installLasso } from './server/lasso.js'; // lasso (secondary): its Room
 import { lassoPreroll } from './shared/lasso.js';
 import { ZM } from './shared/zombies.js';
 import { installZombies } from './server/zombies.js';
+import { inShredder } from './shared/shredpit.js'; // the Warehouse's shredder pit: its teeth kill like the void
 import { installLobby } from './server/lobby.js'; // mode lobbies: the countdown before a match
 import { LOBBY } from './shared/lobby.js';
 
@@ -756,7 +757,7 @@ class Room {
     // in every mode: fights, wandering, the bomb (lane waypoints from laneTo, a dropped bomb), tags
     if (this.map.graph) {
       const gl = goal ? Math.hypot(goal.p[0] - b.pos[0], goal.p[2] - b.pos[2]) : 0;
-      const want = goal && (goal.force || !t || !t.alive || !ai.seenAt) ? (goal.use && gl < goal.r ? null : goal.p) : t && t.alive ? (ai.seenAt ? null : t.pos) : ai.wp;
+      const want = goal && (goal.force || !t || !t.alive || !ai.seenAt) ? (goal.use && gl < goal.r ? null : goal.p) : t && t.alive ? (ai.seenAt && !(n < (ai.edgeT || 0)) ? null : t.pos) : ai.wp; // (seen across a canyon: the edge turned us back, so walk the graph round to them)
       const s = want && navSteer(this.map.graph, ai.nav || (ai.nav = {}), b.pos, want, n);
       if (s) {
         wx = s[0]; wz = s[1];
@@ -799,15 +800,25 @@ class Room {
       let c = boundsCenter(this.map);
       const q = this.map.ceiling != null && b.pos[1] > this.map.ceiling && this.boxes.find((o) => b.pos[0] >= o.min[0] && b.pos[0] <= o.max[0] && b.pos[2] >= o.min[2] && b.pos[2] <= o.max[2] && Math.abs(o.max[1] - b.pos[1]) < 0.6);
       if (q) { const e = [[b.pos[0] - q.min[0], q.min[0] - 6, b.pos[2]], [q.max[0] - b.pos[0], q.max[0] + 6, b.pos[2]], [b.pos[2] - q.min[2], b.pos[0], q.min[2] - 6], [q.max[2] - b.pos[2], b.pos[0], q.max[2] + 6]].sort((u, v) => u[0] - v[0])[0]; c = [e[1], e[2]]; }
+      // a fenced map (map.gates: the gaps in its fence, [x, z] outside each and [x, z] inside): out past the fence, head
+      // for the nearest gap, then in through it (straight at the middle it'd stand against the fence all day)
+      else if (this.map.gates && outOfBounds(this.map, b.pos)) {
+        const d = (x, z) => Math.hypot(x - b.pos[0], z - b.pos[2]), g = this.map.gates.reduce((u, v) => (d(v[0], v[1]) < d(u[0], u[1]) ? v : u));
+        const L = Math.hypot(g[2] - g[0], g[3] - g[1]) || 1, ux = (g[2] - g[0]) / L, uz = (g[3] - g[1]) / L, wx2 = b.pos[0] - g[0], wz2 = b.pos[2] - g[1];
+        const along = wx2 * ux + wz2 * uz, side = Math.abs(wx2 * uz - wz2 * ux); // lined up with the gap (in its corridor): go in; else to its outside end
+        c = d(g[0], g[1]) < 3 || (along > -1 && side < 2.5) ? [g[2], g[3]] : [g[0], g[1]];
+      }
       const dx = c[0] - b.pos[0], dz = c[1] - b.pos[2], l = Math.hypot(dx, dz) || 1;
       wx = dx / l; wz = dz / l;
       if (outOfBounds(this.map, b.pos)) b.yaw = lerpAngle(b.yaw, Math.atan2(-wx, -wz), 8 * dt);
     }
     if (wl > 0 && b.onGround) {
       const probe = [b.pos[0] + wx * 2.5, b.pos[1] + 0.5, b.pos[2] + wz * 2.5];
-      if (!raycast(probe, [0, -1, 0], Math.max(6, Math.min(15, probe[1] - this.map.killY)), boxes)) { wx = -wx; wz = -wz; ai.strafeDir *= -1; }
+      if (!raycast(probe, [0, -1, 0], Math.max(6, Math.min(15, probe[1] - this.map.killY)), boxes)) { wx = -wx; wz = -wz; ai.strafeDir *= -1; if (this.map.edgeGuard) ai.edgeT = n + 3000; }
     }
-    if (this.brOn) [wx, wz, jump] = this.brBotEdge(b, wx, wz, jump); // jank royale: no hopping into canyons
+    if (this.map.edgeGuard && !b.onGround && this.botFlightLands(b)) { wx = 0; wz = 0; jump = false; } // thrown over the canyon (a jump pad, a hit) onto the far side: let it fly (steering back brakes it into the drop)
+    else if (this.brOn || this.map.edgeGuard) { const e = this.brBotEdge(b, wx, wz, jump); if (this.map.edgeGuard && (e[0] !== wx || e[1] !== wz)) ai.edgeT = n + 3000; [wx, wz, jump] = e; } // jank royale (and maps with a canyon, map.edgeGuard): no hopping into canyons. turned back from one: find a bridge (above)
+    if (jump && this.map.edgeGuard && b.onGround && [[2, 0], [-2, 0], [0, 2], [0, -2]].some(([dx, dz]) => !raycast([b.pos[0] + dx, b.pos[1] + 0.5, b.pos[2] + dz], [0, -1, 0], 15, boxes))) jump = false; // a drop beside us (a bridge, the lip): no hops. a hop off a parapet's end is how they fell in
     if (this.lavaOn) [wx, wz, jump] = this.botLava(b, wx, wz, jump, t);
     if (this.hr && this.hr.on) { const o = hrBot(this, b, dt, { wx, wz, jump }), l = Math.hypot(o.wx, o.wz); if (l > 1) { o.wx /= l; o.wz /= l; } ({ wx, wz, jump } = o); } // scary forest: don't stare at HR
     return { wx: wx * D.speed, wz: wz * D.speed, jump };
@@ -1060,6 +1071,7 @@ class Room {
     if (b.onGround) b.ground = b.pos.slice(); // last place they stood (void deaths drop their tag here)
     if (n < (b.suckUntil || 0)) b.f |= FLAGS.SUCK; // shredder running: clients draw the suction
     if (b.pos[1] < this.map.killY) this.kill(b, null, 'void');
+    else if (this.map.shredders && inShredder(this.map, b.pos)) { b.pitT = now(); this.kill(b, null, 'void'); } // into the pit's teeth
   }
 
   // ---------------------------------------------------------- items (G): charges refill over time
@@ -1289,6 +1301,7 @@ class Room {
     tr.atT = n;
     b.onGround = false; b.g = null; b.f = 0;
     if (b.pos[1] < this.map.killY) this.kill(b, null, 'void');
+    else if (this.map.shredders && inShredder(this.map, b.pos)) { b.pitT = now(); this.kill(b, null, 'void'); }
   }
 
   // ---------------------------------------------------------- combat
@@ -1503,7 +1516,7 @@ class Room {
       if (killer.isBot && killer.kfx == null) killer.kfx = Math.random() < 0.45 ? pick(KILL_IDS) : 'none'; // bots show off stuff you can roll
       kfx = killer.kfx || 'none';
     }
-    this.broadcast({ t: 'kill', k: killer && killer !== t ? killer.id : 0, v: t.id, w, via, vel: t.vel.map(r2), pos: t.pos.map(r2), yaw: r2(t.yaw || 0), fx: kfx, ep: ep || undefined, rs: Math.max(0, t.minRespawnAt - now()), sky: w === 'duck' && now() - (t.skyT || 0) < 800 ? 1 : undefined });
+    this.broadcast({ t: 'kill', k: killer && killer !== t ? killer.id : 0, v: t.id, w, via, vel: t.vel.map(r2), pos: t.pos.map(r2), yaw: r2(t.yaw || 0), fx: kfx, ep: ep || undefined, rs: Math.max(0, t.minRespawnAt - now()), sky: w === 'duck' && now() - (t.skyT || 0) < 800 ? 1 : undefined, pit: w === 'void' && now() - (t.pitT || 0) < 500 ? 1 : undefined }); // (pit: the shredder pit's teeth)
     t.lastAttacker = 0;
     this.chaosKill(t, killer);
     if (t.isBot && this.mode === 'coop') { setTimeout(safe('coop', () => { if (this.players.get(t.id) === t) this.remove(t); }), 50); }
@@ -2530,6 +2543,13 @@ class Room {
     h.syncT = n + 500;
     this.broadcast({ t: 'hu', id: h.id, p: h.p, R: h.R, on: h.on || 0, age: r2((n - h.born) / 1000) });
   }
+  // a bot in the air: does the flight come down on a floor if nobody steers? (a floor near the height it left from)
+  botFlightLands(b) {
+    const v = b.vel, g = 26 * (b.gravMul || 1), y0 = (b.ground ? b.ground[1] : b.pos[1]) - 1, h = b.pos[1] - y0;
+    if (h <= 0 || !Number.isFinite(h)) return false;
+    const t = (v[1] + Math.sqrt(v[1] * v[1] + 2 * g * h)) / g;
+    return !!raycast([b.pos[0] + v[0] * t, y0 + 3, b.pos[2] + v[2] * t], [0, -1, 0], 8, this.boxes);
+  }
   // bots inside a black hole lose their momentum like players do (not the thrower or their team) and ropes near the middle snap
   eatMomentum(b, dt) {
     if (!this.holes.size || (b.ai.dummy && b.ai.dummy.move)) return;
@@ -2837,6 +2857,7 @@ class Room {
         this.rigSnap(p); // the rig flags only count from someone who activated it; no rope in the rig or when hacked
         if (p.trap) this.holdTrapped(p, true); // sealed in a soap bubble: you go where it floats
         if (p.pos[1] < this.map.killY) this.kill(p, null, 'void');
+        else if (this.map.shredders && inShredder(this.map, p.pos)) { p.pitT = now(); this.kill(p, null, 'void'); } // the shredder pit's teeth
         if ((p.f & FLAGS.BALL) && !(p.ballUntil > now())) p.f &= ~FLAGS.BALL; // only someone who earned the wrecking ball gets to be one
         if (p.ballUntil > now()) this.ballAir(p);
         this.gearSnap(p); // goggles / laser flags only if the server agrees; pop quiz holds you in place
