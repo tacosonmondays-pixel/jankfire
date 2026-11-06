@@ -2976,7 +2976,7 @@ function backrooms() {
   walls(pid, PY, () => -0.3, 'pooltile', pops); // up into the concrete, past the tiles on the pool ceiling (no seam where they meet)
   for (const pr of prooms) {
     B.add(pr[0], PY - 0.5, pr[1], pr[2], PY, pr[3], 'pooltile');
-    D.add(pr[0], PY, pr[1], pr[2], PY + 0.45, pr[3], 'poolwater');
+    D.add(pr[0], PY, pr[1], pr[2], PY + 0.42, pr[3], 'poolwater'); // (just under the first step's top, 0.45 up: level with it, the two shimmered)
     groundHoles(D, ...pr, -0.63, -0.6, 'pooltile', holes);
   }
   for (let j = 26; j < 48; j += 2) if (j < 36 || j > 39) for (const i of [14, 15]) B.box(gx(i), (PY - 0.3) / 2, gx(j), 0.6, -0.3 - PY, 0.6, 'pooltile');
