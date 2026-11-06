@@ -36,6 +36,15 @@ export const PATTERNS = {
   sniper: { reset: 1100, move: 2.2, wob: 0, kp: [[0, 0, 0]] },
   shotgun: { reset: 800, move: 0.35, wob: 0, kp: [[0, 0, 0]] },
   marbles: { reset: 900, move: 0.2, wob: 0, kp: [[0, 0, 0]] },
+  // the rifle pack. Hat Trick: a short hop per burst (resets inside the burst gap), so tapping bursts stays accurate
+  burst: { reset: 260, move: 0.9, wob: 0.003, kp: [[0, 0, 0], [1, 0.001, 0.008], [2, -0.002, 0.016], [5, 0.006, 0.03], [8, -0.006, 0.036]] },
+  // Belt Sander: climbs a little then wanders wide side to side for the whole belt. terrible on the move
+  lmg: { reset: 520, move: 1.5, wob: 0.016, kp: [[0, 0, 0], [5, 0.004, 0.02], [14, -0.016, 0.04], [26, 0.02, 0.05], [50, -0.012, 0.056], [99, 0.01, 0.06]] },
+  // Second Opinion: fast taps climb, wait between shots and it's dead on
+  dmr: { reset: 700, move: 1.8, wob: 0, kp: [[0, 0, 0], [1, 0.002, 0.02], [3, -0.004, 0.045]] },
+  // Yeehaw: the lever settles it, a small creep up if you keep cranking
+  lever: { reset: 650, move: 1.2, wob: 0, kp: [[0, 0, 0], [1, 0, 0.01], [4, 0.004, 0.03]] },
+  autoshot: { reset: 600, move: 0.45, wob: 0.004, kp: [[0, 0, 0], [3, 0.004, 0.025], [9, -0.006, 0.04]] },
 };
 const FALLBACK_MOVE = 1;
 // a gun nobody wrote a pattern for (a new automatic): one made up from its id, so it's still the same every time

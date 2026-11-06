@@ -92,6 +92,48 @@ export const WEAPONS = {
     slow: 0.72, speedMul: 0.97, tracer: 0x39ff14,
   },
 
+  // ---------------- the rifle pack: real guns, one twist each (server/rifles.js judges the twists, public/js/rifles.js draws them)
+  // base numbers stay plain (spread / bloom / kick / recoil) so a recoil-pattern system can slot in on top later
+  // burst: `burst` shots at `rate`/s, then `burstGap` s before the next burst (hold = keep bursting). 3/3 on one person = BURST!
+  burst: {
+    slot: 'primary', kind: 'hitscan', name: 'Hat Trick', color: '#4f8bff',
+    desc: 'A bullpup that fires three at a time. Land all three on one person for a BURST!. Very accurate, very French.',
+    auto: true, rate: 14, burst: 3, burstGap: 0.28, mag: 30, reload: 2.0, dmg: 15, head: 2, spread: 0.006, bloom: 0.002, maxBloom: 0.018,
+    kb: 0, kbUp: 0, recoil: 0.35, kick: 0.006, range: 320, tracer: 0x4f8bff,
+    ads: { zoom: 1.6, spread: 0.15, p: [0, -0.11, -0.3] },
+  },
+  // heat: 0..1, climbs `heatUp`/s while firing and cools `heatDown`/s. the barrel glows and the gun gets louder (looks only)
+  lmg: {
+    slot: 'primary', kind: 'hitscan', name: 'Belt Sander', color: '#ff5a1f',
+    desc: 'A hundred rounds on a belt you can watch run out. Slow to aim, slow to reload, sands people down. The barrel glows hotter the longer you hold it.',
+    auto: true, rate: 12, mag: 100, reload: 4.2, dmg: 10, head: 1.6, spread: 0.034, bloom: 0.0012, maxBloom: 0.03,
+    kb: 0.25, kbUp: 0, recoil: 0.45, kick: 0.006, range: 260, speedMul: 0.86, adsSpeed: 0.42, heatUp: 0.24, heatDown: 0.4,
+    ads: { zoom: 1.35, spread: 0.4, p: [0, -0.11, -0.3] },
+  },
+  // two body shots or one headshot. `quick` s after the scope comes up = a quick-scope: +qsDmg and a little shove
+  dmr: {
+    slot: 'primary', kind: 'hitscan', name: 'Second Opinion', color: '#b07dff',
+    desc: 'A semi-auto marksman rifle with a little scope. Two to the body or one to the head. Quick-scope it for a bit extra.',
+    rate: 1 / 0.55, mag: 10, reload: 2.1, dmg: 52, head: 2, spread: 0.045, kb: 0, kbUp: 0, recoil: 3, kick: 0.035, range: 400,
+    tracer: 0xb07dff, thick: 0.06, quick: 0.3, qsDmg: 10, qsKb: 9, speedMul: 0.96,
+    ads: { zoom: 2.6, spread: 0, scope: true, p: [0, -0.1, -0.26] },
+  },
+  // every hit on the same person within `chain` s of the last one does `ramp` more (x1, x1.15, x1.3, x1.45 max)
+  lever: {
+    slot: 'primary', kind: 'hitscan', name: 'Yeehaw', color: '#ff6b8b',
+    desc: 'A lever-action you crank after every shot. Keep hitting the same person and every hit stings a bit more. Spin-cocks on reload, obviously.',
+    rate: 1 / 0.42, mag: 8, reload: 2.6, dmg: 30, head: 2, spread: 0.012, kb: 2, kbUp: 0.5, recoil: 2, kick: 0.04, range: 280,
+    tracer: 0xffc0cc, ramp: 0.15, rampMax: 3, chain: 0.8,
+    ads: { zoom: 1.45, spread: 0.2, p: [0, -0.09, -0.29] },
+  },
+  autoshot: {
+    slot: 'primary', kind: 'hitscan', name: 'Lawn Mower', color: '#4ad66b',
+    desc: 'An automatic shotgun with a box mag. Less per shot than the pump, but it never stops. Mows lawns. And people.',
+    auto: true, rate: 3, mag: 10, reload: 2.4, pellets: 8, dmg: 5, head: 1.5, spread: 0.07,
+    kb: 0, kbUp: 0, recoil: 5.5, kick: 0.045, range: 60,
+    ads: { zoom: 1.2, spread: 0.7, p: [0, -0.1, -0.3] },
+  },
+
   // ------------------------------------------------------------ secondary
   revolver: {
     slot: 'secondary', kind: 'hitscan', name: 'Revolver', color: '#e0c070',

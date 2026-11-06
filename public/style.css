@@ -877,3 +877,7 @@ body.replaying #zmHud { visibility: hidden; }
 .lore-cat i { display: block; font-style: normal; font-size: 20px; color: #555; }
 .lore-cat.got { border: 2px solid #ffe14d; color: #fff; } .lore-cat.got i { color: #ff4fd8; }
 .lore-note { text-align: center; font-size: 13px; color: #aaa; }
+/* the rifle pack's callouts */
+#center.burst { color: #4f8bff; font-size: 66px; letter-spacing: 3px; text-shadow: 4px 4px 0 #000, -2px -2px 0 #ffe14d; animation: parrypop 0.25s ease-out; }
+#center.lever { color: #ff6b8b; font-size: 46px; text-shadow: 3px 3px 0 #000; animation: parrypop 0.2s ease-out; }
+#center.qscope { color: #b07dff; font-size: 52px; letter-spacing: 2px; text-shadow: 3px 3px 0 #000, 0 0 12px #fff; animation: parrypop 0.25s ease-out; }

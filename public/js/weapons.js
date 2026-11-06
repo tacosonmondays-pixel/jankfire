@@ -25,6 +25,7 @@ import { rigFire, rigItem, rigVM, rigBlockKey, rigReload } from './rig.js'; // o
 import { tickScalesVM } from './scales.js';
 import { PARRY } from '/shared/weapons.js';
 import { ROYAL } from '/shared/looks.js';
+import { RIFLES, RF, RIFLE_VM, RIFLE_RECOIL, RIFLE_SHELLS, rifleShot, bursting, rifleReset, quickScoped, rifleStep, rifleEvent } from './rifles.js'; // the rifle pack
 import { tacOn, tacShot, tacKick, tacFrame } from './tactical.js'; // Plant & Defuse: spray patterns + moving spread
 import { carRay, carHit, carSwing } from './traffic.js'; // cars stop bullets (and take the damage)
 
@@ -66,6 +67,7 @@ const RECOIL = {
   bow: { back: -1.4, up: 2.5, roll: 1, side: 0.1, punch: 0.012 },
   laser: { back: 1.8, up: 5, roll: 1.2, side: 0.15, punch: 0.03 },
 };
+Object.assign(RECOIL, RIFLE_RECOIL);
 const rnd = () => (Math.random() < 0.5 ? -1 : 1) * (0.5 + Math.random() * 0.5);
 function kickVM(id, mul = 1) {
   const k = RECOIL[id] || { back: 0.8, up: 2.5, roll: 1, side: 0.2, punch: 0.01 };
@@ -127,7 +129,8 @@ function ejectShell(g, color = 0xd9a53a, big = false) {
   G.skinFxVM.norm.spawn(tmpV.x, tmpV.y, tmpV.z, 0.6 + Math.random() * 0.5, 0.75 + Math.random() * 0.5, 0.1 + Math.random() * 0.25,
     0.55, sz, sz * 0.9, color, color, 1, 4.5, 0.4);
 }
-const SHELL_ON_FIRE = new Set(['ar', 'smg', 'redline', 'minigun', 'scythe_rifle']);
+const SHELL_ON_FIRE = new Set(['ar', 'smg', 'redline', 'minigun', 'scythe_rifle', ...RIFLE_SHELLS]);
+for (const id of RIFLES) FLASH_IDS.add(id);
 
 // smear trail: a fading ribbon behind the tip of whatever you swing
 const TRAIL_N = 26;
@@ -474,6 +477,7 @@ const VM = {
 
 // Blood Cross: a bare hand low on the right, turned in side-on and rolled a little so you read it as a finger gun (from straight
 // behind, the thumb hides the finger)
+Object.assign(VM, RIFLE_VM);
 VM.bloodcross = { p: [0.165, -0.17, -0.33], r: [0.13, 0.43, 0.28], s: 1.22 };
 RECOIL.bloodcross = { back: 0.5, up: 3.5, roll: 1.2, side: 0.15, punch: 0.018 };
 const bcQ = new THREE.Quaternion(), bcY = new THREE.Vector3(0, 1, 0); // opening + closing the fist
@@ -501,7 +505,7 @@ export function rebuildViewmodels() {
     g.scale.setScalar(cfg.s);
     wrap.add(g);
     const hand = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.062, 0.09), M(0xf1c27d)); // a fist, not a brick
-    hand.position.set(0.004, -0.042, 0.03);
+    hand.position.set(...(cfg.hand || [0.004, -0.042, 0.03])); // (bullpups hold it further forward)
     wrap.add(hand);
     if (g.userData.bare) { hand.visible = false; g.add(g.userData.bare); } // Blood Cross: the hand is the weapon (+ your forearm)
     wrap.position.set(...cfg.p);
@@ -509,7 +513,7 @@ export function rebuildViewmodels() {
     wrap.visible = id === W.cur;
     vmRoot.add(wrap);
     let flash = null;
-    if (FLASH_IDS.has(id) && g.userData.muzzle) { flash = makeFlash(id === 'shotgun' || id === 'sniper'); flash.position.copy(g.userData.muzzle); g.add(flash); }
+    if (FLASH_IDS.has(id) && g.userData.muzzle) { flash = makeFlash(id === 'shotgun' || id === 'sniper' || id === 'autoshot' || id === 'dmr'); flash.position.copy(g.userData.muzzle); g.add(flash); }
     models[id] = { wrap, g, cfg, flash };
   }
   if (models.katana) setKatana(models.katana.g, W.kat || 0);
@@ -605,6 +609,7 @@ function equip(i) {
   W.slot = i;
   W.swap = 0.2;
   W.heavy = false; W.cycle = null; W.hitStop = 0;
+  rifleReset(); // no half a burst waiting when you come back
   trailPts.length = 0;
   playAnim(drawFor(id, models[id] && models[id].g.userData.model), 'draw');
   for (const k of ORDER) if (models[k]) models[k].wrap.visible = k === id;
@@ -644,7 +649,9 @@ export function reload() {
   if (W.eco && !W.eco.canReload(id)) return;
   W.reloadId = id;
   W.reloadUntil = performance.now() + w.reload * 1000;
-  sfx.reload();
+  rifleReset();
+  if (RIFLES.has(id) && ANIMS['reload_' + id]) playAnim('reload_' + id, 'reload'); // a real mag swap / belt change / spin-cock
+  else sfx.reload();
   if (W.eco) W.eco.reloading(id);
 }
 
@@ -781,7 +788,7 @@ function fireHitscan(id, now) {
     }
   }
   const ns = id === 'sniper' && !W.scoped ? 1 : undefined; // no-scope: the server only makes it look cool, damage is the same
-  const qs = id === 'sniper' && W.scoped && now - W.scopedAt <= ROYAL.quick ? 1 : undefined; // quick-scope: fired right as the scope came up (Sniper Royalty only, never damage)
+  const qs = (id === 'sniper' && W.scoped && now - W.scopedAt <= ROYAL.quick) || quickScoped(w, W, now) ? 1 : undefined; // quick-scope: fired right as the scope came up (Sniper Royalty only, never damage)
   for (const [cid, n] of carHits) { carHit(cid, id, n, base); hud.hit(false); }
   const r4 = (x) => Math.round(x * 10000) / 10000;
   for (const [rid, h] of hits) net.send({ t: 'hit', to: rid, w: id, d: h.d.map(tac ? r4 : r2), n: h.n, h: h.h, ns, qs, fan: fanShot ? 1 : undefined, ...(tac ? tac.msg : null) });
@@ -804,10 +811,11 @@ function fireHitscan(id, now) {
   if (SHELL_ON_FIRE.has(id) && models[id]) ejectShell(models[id].g);
   if (id === 'shotgun') W.cycle = { name: 'pump_shotgun', t: 0.22 };
   if (id === 'sniper' || id === 'scythe_rifle') W.cycle = { name: 'bolt_sniper', t: 0.32 };
+  if (RIFLES.has(id)) rifleShot(id, w, W, now); // bursts, heat, the lever
   if (w.fanHammer) revolverShot(w, now);
   if (models[id]) partsShot(models[id].g); // Blender guns: turn the cylinder, drop the hammer
-  if (id === 'sniper' || id === 'shotgun') G.shake = Math.max(G.shake, 0.6);
-  sfx.gun(id, null, id === 'redline' ? redlineK() : 0);
+  if (id === 'sniper' || id === 'shotgun' || id === 'dmr') G.shake = Math.max(G.shake, 0.6);
+  sfx.gun(id, null, id === 'redline' ? redlineK() : id === 'lmg' ? RF.heat : 0);
   if (w.mag && W.ammo[id] <= 0) reload();
 }
 
@@ -996,7 +1004,7 @@ export function fireDown() {
   if (W.anim && W.anim.kind === 'draw') W.anim = null;
   if (w.kind === 'hitscan' && !w.auto && !w.spinup) {
     if (W.ammo[id] > 0) fireHitscan(id, now); else { sfx.empty(); reload(); }
-  } else if (w.kind === 'melee') swing(id, now);
+  } else if (w.burst) { if (W.ammo[id] > 0) fireHitscan(id, now); } // Hat Trick: the burst starts on the press, a tap finishes it else if (w.kind === 'melee') swing(id, now);
   else if (w.kind === 'proj' && !w.auto) fireProj(id, now);
   else if (w.kind === 'cards') playCard(now);
   else if (w.kind === 'blood') fireBlood(now);
@@ -1114,6 +1122,7 @@ function animEvent(ev, g) {
     case 'startup': shredStartup(); break;
     case 'rev': sfx.rev(); break;
     case 'chains': sfx.chains(); break;
+    default: rifleEvent(ev, g, ejectShell);
   }
 }
 
@@ -1243,7 +1252,7 @@ export function updateWeapons(dt, now) {
   if (W.slipperOut && now - W.slipperT > 4000) W.slipperOut = false;
   if (W.reloadId && now >= W.reloadUntil) { if (W.br) W.br.reloaded(W.reloadId); else if (W.eco) W.eco.reloaded(W.reloadId); else W.ammo[W.reloadId] = WEAPONS[W.reloadId].mag; W.reloadId = null; sfx.click(); }
   const canAim = !!w.ads && alive && !W.reloadId;
-  W.aim = canAim && W.aimHeld ? Math.min(1, W.aim + dt * 7) : Math.max(0, W.aim - dt * 8);
+  W.aim = canAim && W.aimHeld ? Math.min(1, W.aim + dt * 7 * (w.adsSpeed || 1)) : Math.max(0, W.aim - dt * 8);
   W.zoom = w.ads ? 1 + (w.ads.zoom - 1) * W.aim : 1;
   const wasScoped = W.scoped;
   W.scoped = !!(w.ads && w.ads.scope && W.aim > 0.92);
@@ -1258,7 +1267,7 @@ export function updateWeapons(dt, now) {
       W.spin = W.held && !W.reloadId ? Math.min(1, W.spin + dt / w.spinup) : Math.max(0, W.spin - dt / (w.spinup * 1.5));
       spinning = W.spin > 0;
     }
-    if (W.held && (w.auto || w.spinup) && !W.reloadId && (!w.spinup || W.spin >= 1)) {
+    if ((W.held || bursting(w)) && (w.auto || w.spinup) && !W.reloadId && (!w.spinup || W.spin >= 1)) {
       for (let i = 0; i < 4 && ready(id, now); i++) {
         if (W.ammo[id] <= 0) { reload(); break; }
         fireHitscan(id, now);
@@ -1439,7 +1448,7 @@ export function updateWeapons(dt, now) {
   const ra = 1 - W.aim * 0.6;
   px += rec.p[0] * ra; py += rec.p[1] * (1 - W.aim * 0.3); pz += (W.kick * 0.04 + rec.p[2]) * ra;
   rx += (W.kick * 0.12 + rec.r[0]) * ra; rz += rec.r[2] * ra;
-  if (W.reloadId) { const k = Math.sin(Math.min(1, 1 - (W.reloadUntil - now) / (w.reload * 1000)) * Math.PI); py -= k * 0.12; rx -= k * 0.6; rz += k * 0.4; }
+  if (W.reloadId && !(W.anim && W.anim.kind === 'reload')) { const k = Math.sin(Math.min(1, 1 - (W.reloadUntil - now) / (w.reload * 1000)) * Math.PI); py -= k * 0.12; rx -= k * 0.6; rz += k * 0.4; }
   if (id === 'cig') {
     const k = smoking ? 1 : 0;
     m.wrap.userData.k = (m.wrap.userData.k || 0) + (k - (m.wrap.userData.k || 0)) * Math.min(1, dt * 10);
@@ -1494,6 +1503,7 @@ export function updateWeapons(dt, now) {
   m.wrap.scale.setScalar(scale);
   if (m.g.userData.barrels) m.g.userData.barrels.rotation.z += W.spin * dt * 40;
   stepParts(m.g, dt, an, at); // Blender guns: rack the pump, settle the cylinder + hammer, cycle the bolt
+  if (RIFLES.has(id)) rifleStep(id, m, dt, now, W); // mags, charging handles, the lever, the belt, the hot barrel
   if (blowing || (spinning && W.spin >= 1 && W.held)) { px += (Math.random() - 0.5) * 0.008; py += (Math.random() - 0.5) * 0.008; }
   if (id === 'shredder') shredderVM(m, dt, now, (a, b, c, d, e, f) => { px += a; py += b; pz += c; rx += d; ry += e; rz += f; });
   if (id === 'laser') laserVM(m, now, (a, b, c, d, e, f) => { px += a; py += b; pz += c; rx += d; ry += e; rz += f; });

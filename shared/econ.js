@@ -54,6 +54,12 @@ export const PRICES = {
   bow: { price: 1650, kill: 600, pen: 0.5, shots: 10 }, // was 24
   banana: { price: 1400, kill: 650, shots: 18 }, // was 45
   laser: { price: 3400, kill: 250, shots: 6 }, // the Big Laser Pointer: 6 beams a buy (was free-firing, the 2000 default price)
+  // the rifle pack (base numbers live in shared/weapons.js)
+  burst: { price: 2700, kill: 300, pen: 0.35, mags: 3 },
+  lmg: { price: 5000, kill: 150, pen: 0.3, mags: 1 },
+  dmr: { price: 3900, kill: 200, pen: 0.65, mags: 3 },
+  lever: { price: 1800, kill: 450, pen: 0.45, mags: 4 },
+  autoshot: { price: 2600, kill: 600, pen: 0, mags: 3 },
   // secondary
   revolver: { price: 250, kill: 250, pen: 0.5, mags: 4 },
   marbles: { price: 900, kill: 400, pen: 0, mags: 2 }, // competitive: 2+4 (was 2+10)

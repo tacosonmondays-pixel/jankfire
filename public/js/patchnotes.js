@@ -1,6 +1,14 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '3.4', date: '2026-11-06', title: 'THE RIFLE PACK', items: [
+    'HAT TRICK: a burst rifle. three rounds a pull. land all three on one person for a BURST!',
+    'BELT SANDER: an LMG with a 100-round belt you can watch run out and a barrel that glows the longer you hold it. slow to aim, slow to reload.',
+    'SECOND OPINION: a marksman rifle. two to the body or one to the head. quick-scope it for a little extra.',
+    'YEEHAW: lever-action. crank after every shot, and every hit on the same person stings more. spin-cocks on reload, obviously.',
+    'LAWN MOWER: an automatic shotgun with a box mag. less per shot than the pump, but it never stops.',
+    'all five are in Plant & Defuse (with their own spray patterns), the Zombies mystery crate, and three of them hang on the Dead Mall walls.',
+  ] },
   { v: '3.3', date: '2026-11-06', title: 'YEEHAW', items: [
     'NEW SECONDARY: THE LASSO. hold fire to spin the loop, let go to throw it. catch someone and they dangle off your rope.',
     'reel them in or let the rope out with the mouse wheel (or R / F, rebindable). swing them round, walk backwards, flick: click to let go and they fly. walls and floors hurt.',
