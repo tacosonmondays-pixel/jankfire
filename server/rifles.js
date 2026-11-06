@@ -21,7 +21,7 @@ const rifles = {
   // else { mul, add, kb } on top of the normal damage + knockback
   rifleShot(p, t, wid, h) {
     const w = WEAPONS[wid], n = H.now();
-    if (w.burst) {
+    if (w.burst && w.kind === 'hitscan') { // (the Blood Cross's `burst` is its pop delay)
       // a burst is `burst` shots 1/rate apart, then burstGap. any window that long holds at most `burst` hits
       const span = ((w.burst - 1) / w.rate + w.burstGap * 0.8) * 1000;
       const log = (p.burstLog || (p.burstLog = [])).filter((x) => n - x < span);
@@ -50,7 +50,7 @@ const rifles = {
 
   // after botFire set the next shot: burst guns fire their burst, then wait the gap
   rifleBotShot(b, w, D) {
-    if (!w.burst) return;
+    if (!w.burst || w.kind !== 'hitscan') return;
     b.ai.bn = ((b.ai.bn || 0) + 1) % w.burst;
     if (b.ai.bn === 0) b.ai.nextShot += (w.burstGap * 1000) / D.rate;
   },
