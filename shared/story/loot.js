@@ -13,6 +13,7 @@
 //   QUIRKS[lg] = { dmgMul?(ctx), onHit?(ctx) -> [effects], onKill?(ctx) -> [effects] }  (combat calls these)
 import { BRANDS, MODIFIERS, LEGENDARIES, LOOT_TABLES } from './content/loot.js';
 import { kindOf } from './items.js';
+import { IMPLANTS, rollQuality } from './implants.js'; // organ cores (WP5)
 import { WEAPONS } from '../weapons.js';
 
 export { BRANDS, MODIFIERS, LEGENDARIES, LOOT_TABLES };
@@ -67,7 +68,7 @@ function namedOr(r, rand) {
 export function rollEntry(e, rand = Math.random) {
   if (!e) return null;
   if (e.legendary) return legendaryItem(e.legendary, rand);
-  if (e.item) return kindOf(e.item) ? { b: e.item, r: 'common', s: 0 } : null;
+  if (e.item) { const k = kindOf(e.item); if (!k) return null; const it = { b: e.item, r: 'common', s: 0 }; if (k === 'implant' && IMPLANTS[e.item].kind === 'core') it.ql = rollQuality(rand); return it; } // organ cores roll their quality
   if (!e.base && !e.brand && (e.rarity === 'legendary' || e.rarity === 'premium')) return namedOr(e.rarity, rand);
   return rollWeapon({ rarity: e.rarity, base: e.base, brand: e.brand }, rand);
 }

@@ -25,6 +25,7 @@ import { openWheel, closeWheel, wheelOpen, wheelLook, wheelScale } from './wheel
 import { initBag, toggleBag, bagOpen } from './bag.js';
 import { infoOf } from '/shared/story/items.js';
 import { LOOT_CSS } from './lootfx.js';
+import { initBody, bodyTick, bodyKey, bodyLeave, clinicOpen, toggleClinic, atClinic, bodyTimeScale, BODY_CSS } from './body.js'; // WP5
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -40,7 +41,7 @@ export function initStory(a) {
   button();
   net.on('sty', (m) => { const fs = listeners[m.k]; if (fs) for (const f of fs) f(m); });
   G.story = { on, send, save, active, tick, onMain, key, look, uiOpen, timeScale, get cur() { return cur; } };
-  storyKeys(); initBar(G.story); initBag(G.story);
+  storyKeys(); initBar(G.story); initBag(G.story); initBody(G.story);
   on('hello', (m) => { ME.yaw = m.yaw || 0; hud.msg('OVERDUE', 2.2, 'brag'); });
   on('saved', (m) => stored(m.save));
   on('redispensed', () => hud.msg('BEEP. CLUNK. RESTOCKING FEE APPLIED.', 2.2, 'brag'));
@@ -153,20 +154,20 @@ async function stored(s) {
 }
 
 // ------------------------------------------------------------ every frame (main.js calls this)
-function tick() {
+function tick(dt = 1 / 60) {
   const bk = back();
   if (bk && bk.state === 'menu' && G.joined && G.mode !== 'story') setBack({ ...bk, state: 'sim' }); // you picked a sim
   const on = active() && ME.alive;
   const near = on && atTerminal();
   if (bagOpen() && !$('menu').classList.contains('hidden')) toggleBag(false); // the pause menu won over the bag
   if (!hint) { hint = el('div', 'st-hint hidden'); document.body.append(hint); }
-  const drop = on && !near ? nearestDrop() : null, lock = on && !near && !drop && atLocker();
+  const drop = on && !near ? nearestDrop() : null, lock = on && !near && !drop && atLocker(), doc = on && !near && !drop && !lock && atClinic();
   const di = drop && infoOf(drop.item);
-  hint.textContent = near ? `${K.label('use')} · ENTER THE SIMS` : drop ? `${K.label('use')} · PICK UP ${di ? di.name.toUpperCase() : ''}${drop.item.q > 1 ? ' x' + drop.item.q : ''}` : lock ? `${K.label('use')} · OPEN THE LOCKER` : '';
-  hint.classList.toggle('hidden', !(near || drop || lock));
+  hint.textContent = near ? `${K.label('use')} · ENTER THE SIMS` : drop ? `${K.label('use')} · PICK UP ${di ? di.name.toUpperCase() : ''}${drop.item.q > 1 ? ' x' + drop.item.q : ''}` : lock ? `${K.label('use')} · OPEN THE LOCKER` : doc ? `${K.label('use')} · SEE THE MEAT MECHANIC` : '';
+  hint.classList.toggle('hidden', !(near || drop || lock || doc) || clinicOpen());
   const inStory = G.joined && G.mode === 'story';
   barShow(inStory);
-  if (inStory) barTick(1 / 60); else { if (wheelOpen()) closeWheel(false); if (bagOpen()) toggleBag(false); clearDrops(); }
+  if (inStory) { barTick(dt); bodyTick(dt, G.camera); } else { if (wheelOpen()) closeWheel(false); if (bagOpen()) toggleBag(false); clearDrops(); bodyLeave(); }
   const use = on && K.isDown('use');
   if (near && use && !useWas) terminal();
   useWas = use;
@@ -179,7 +180,12 @@ let toSim = false;
 // main.js hands every key / mouse button here first while story mode is loaded. true = story used it (stop there)
 function key(e, down) {
   if (!G.joined || G.mode !== 'story') return false;
-  if (!down) { if (wheelOpen() && K.up('wheel', e)) closeWheel(true); return wheelOpen() || bagOpen(); }
+  if (!down) {
+    if (wheelOpen() && K.up('wheel', e)) closeWheel(true);
+    if (K.up('use', e)) { const r = bodyKey(e, false); if (r && r.pick) send('pick', { id: r.pick }); } // (a tap on a weapon with the Second Stomach still picks it up)
+    return wheelOpen() || bagOpen() || clinicOpen();
+  }
+  if (clinicOpen()) { if (K.matches(['use', 'menu'], e)) toggleClinic(false); return true; }
   if (bagOpen()) { if (K.matches(['bag', 'menu'], e)) toggleBag(false); return true; } // (the bag has the mouse)
   if (wheelOpen()) return true; // nothing leaks out of the wheel: no firing, no slot keys, no jumps
   if (e.repeat && K.matches('wheel', e)) return true;
@@ -189,15 +195,16 @@ function key(e, down) {
   if (K.matches('dropHeld', e)) { dropHeld(); return true; }
   if (K.matches('use', e) && !e.repeat && ME.alive && !atTerminal()) { // (at the Machine, F is the sims: tick() has it)
     const d = nearestDrop();
-    if (d) { send('pick', { id: d.id }); return true; }
+    if (d) { if (bodyKey(e, true, d) !== 'hold') send('pick', { id: d.id }); return true; } // hold F with the Second Stomach: eat it
+    if (atClinic()) { toggleClinic(true); return true; }
     if (atLocker()) { toggleBag(true); return true; }
   }
   return false;
 }
 const atTerminal = () => Math.hypot(ME.pos[0] - TEST.terminal.p[0], ME.pos[2] - TEST.terminal.p[2]) < TEST.terminal.r;
 function look(e) { return wheelOpen() && wheelLook(e.movementX, e.movementY); }
-function uiOpen() { return bagOpen(); }
-function timeScale() { return G.joined && G.mode === 'story' ? wheelScale(false) : 1; }
+function uiOpen() { return bagOpen() || clinicOpen(); }
+function timeScale() { return G.joined && G.mode === 'story' ? wheelScale(false) * bodyTimeScale() : 1; }
 
 function terminal() {
   if (toSim) return; // (one press, one trip)
@@ -259,6 +266,6 @@ function css() {
 .st-drop{background:#ff3030;color:#fff;font-weight:700;border-color:#000}
 .st-locker{margin-top:12px;border:3px dashed #7dff4f;padding:8px}
 .st-bag .st-cell{cursor:grab}.st-cell.over{outline:3px solid #ffe14d}.st-cell.held{outline:3px solid #4fd8ff;transform:rotate(-3deg)}.st-cell.drag{opacity:.4}
-`+ LOOT_CSS;
+`+ LOOT_CSS + BODY_CSS;
   document.head.append(s);
 }
