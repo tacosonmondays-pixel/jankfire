@@ -83,20 +83,20 @@
       <div class="sub">low quality shooter. infinite momentum. bad decisions.</div>
     </div>
     <nav class="home-left">
-      <button class="hlink" data-go="guide"><i>?</i>GUIDE</button>
-      <button class="hlink" data-go="lore"><i>&#9786;</i>LORE</button>
-      <button class="hlink" data-go="patchnotes" id="pnBtn"><i>!</i>PATCH NOTES<em id="pnNew" class="hidden">NEW</em></button>
-      <button class="hlink" data-go="loadout"><i>&#9776;</i>LOADOUT</button>
-      <button class="hlink" data-go="cosmetics"><i>&#9733;</i>COSMETICS</button>
+      <button class="hlink" data-go="loadout" id="navCustomize" title="loadout, weapon skins, outfit, grapple + spray"><i>&#9733;</i>CUSTOMIZE</button>
       <button class="hlink" data-go="crates" id="cratesBtn"><span id="cratesLbl">CONTAINERS</span></button>
       <button class="hlink" data-go="leaders"><i>#</i>LEADERBOARD</button>
-      <button class="hlink" data-go="settings"><i>&#9881;</i>SETTINGS</button>
+      <div class="hicons">
+        <button class="hicon" data-go="settings" title="settings"><i>&#9881;</i><span>SETTINGS</span></button>
+        <button class="hicon" data-go="guide" title="guide: controls + how it works"><i>?</i><span>GUIDE</span></button>
+        <button class="hicon" data-go="lore" title="lore"><i>&#9786;</i><span>LORE</span></button>
+        <button class="hicon" data-go="patchnotes" id="pnBtn" title="patch notes"><i>!</i><span>PATCH NOTES</span><em id="pnNew" class="hidden">NEW</em></button>
+      </div>
       <button class="hlink hidden" id="installBtn">INSTALL APP</button>
     </nav>
     <div class="home-hero">
-      <div class="hero-stage"><div id="heroSlot"></div></div>
+      <div class="hero-stage" data-go="character" title="click to change your outfit"><div id="heroSlot"></div></div>
       <div class="hero-under">
-        <button class="toy" data-go="character">CUSTOMIZE</button>
         <button class="hero-gun" id="heroGun" data-go="loadout"></button>
       </div>
       <label class="namerow" id="nameRow">name <input id="name" maxlength="16" placeholder="guest name" autocomplete="off"></label>
@@ -154,10 +154,8 @@
     <h2 id="pauseTitle">PAUSED</h2>
     <div class="col">
       <button class="big" id="resume"><b>RESUME</b></button>
-      <button class="mid" data-go="loadout">LOADOUT</button>
-      <button class="mid" data-go="character">CHARACTER</button>
-      <button class="mid" data-go="cosmetics">COSMETICS</button>
-      <button class="mid" data-go="match">MATCH SETTINGS</button>
+      <button class="mid" data-go="loadout">CUSTOMIZE</button>
+      <button class="mid" data-go="match" id="pauseMatch">MATCH SETTINGS</button>
       <button class="mid" data-go="settings">SETTINGS</button>
       <button class="mid danger" id="quit">QUIT TO MENU</button>
     </div>
@@ -237,7 +235,7 @@
     <h2 id="profName">PROFILE</h2>
     <div id="profLevel"></div>
     <div id="profStats" class="statgrid"></div>
-    <div class="row"><button class="mid" data-go="cosmetics">COSMETICS</button><button class="mid danger" id="logoutBtn">LOG OUT</button></div>
+    <div class="row"><button class="mid danger" id="logoutBtn">LOG OUT</button></div>
     <button class="mid back">BACK</button>
   </div>
 
@@ -250,11 +248,12 @@
 
   <!-- cosmetics -->
   <div class="screen panel hidden" id="scr-cosmetics">
-    <h2>COSMETICS</h2>
-    <div class="note">crates, duffel bags and boxes are opened in <a href="#" id="toCrates">CONTAINERS</a></div>
-    <div class="cos">
-      <div class="coslist" id="cosWeapons"></div>
+    <h2>GRAPPLE &amp; SPRAY</h2>
+    <div class="note hidden">crates, duffel bags and boxes are opened in <a href="#" id="toCrates">CONTAINERS</a></div>
+    <div class="cos gs">
+      <div class="coslist hidden" id="cosWeapons"></div>
       <div class="cosmain">
+        <div class="gs-old hidden">
         <div id="cosSlot"><canvas id="preview"></canvas></div>
         <div id="cosName"></div>
         <div id="skModelRow"><div class="lt">skin (weapon model)</div><div class="chips" id="sk-model"></div><div id="skAch"></div></div>
@@ -266,10 +265,11 @@
         <div class="lt">hat</div><div class="chips" id="sk-hat"></div>
         <div class="lt">effect</div><div class="chips" id="sk-effect"></div>
         <div class="lt">kill effect (yours, on every kill with any weapon)</div><div class="chips" id="sk-kill"></div>
+        <div class="row"><button class="mid" id="skRandom">RANDOMIZE</button><button class="mid" id="skReset">RESET</button><button class="mid" id="skAll">COPY THIS LOOK TO ALL</button></div>
+        </div>
         <div class="lt">grapple (yours: everyone sees your rope and hook)</div>
         <div class="grap"><canvas id="grapPreview"></canvas><div class="gcards" id="sk-grapple"></div></div>
         <div class="lt">spray (yours: press <span id="sprayKey">Z</span> in a match to paint it where you look)</div><div class="chips sprays" id="sk-spray"></div>
-        <div class="row"><button class="mid" id="skRandom">RANDOMIZE</button><button class="mid" id="skReset">RESET</button><button class="mid" id="skAll">COPY THIS LOOK TO ALL</button></div>
       </div>
     </div>
     <button class="mid back">BACK</button>
@@ -293,7 +293,7 @@
         <div class="lt">head</div><div class="chips" id="lk-head"></div>
         <div class="lt">face</div><div class="chips" id="lk-face"></div>
         <div class="lt">back</div><div class="chips" id="lk-back"></div>
-        <div class="lt">kill effect (what happens to people you kill)</div><div class="chips" id="lk-kill"></div>
+        <div class="hidden"><div class="lt">kill effect (what happens to people you kill)</div><div class="chips" id="lk-kill"></div></div>
         <div class="lt">name card (people see it when you kill them)</div>
         <div class="cardrow"><div id="lkCard"></div><button class="mid" data-go="namecard">EDIT NAME CARD</button></div>
         <div class="row"><button class="mid" id="lkRandom">RANDOMIZE</button><button class="mid" id="lkReset">RESET</button></div>
@@ -308,7 +308,6 @@
     <h2>CONTAINERS</h2>
     <div class="sub">win rounds (or survive 5 coop waves) to earn more. each one opens into something you don't have yet.</div>
     <div id="crateCards" class="cratecards"></div>
-    <div class="row"><button class="mid" data-go="cosmetics">TO COSMETICS</button></div>
     <button class="mid back">BACK</button>
   </div>
 
@@ -385,6 +384,7 @@
 <div id="rollbox" class="hidden">
   <div class="rollinner">
     <div class="rolltitle">COSMETIC ROLL</div>
+    <canvas id="roll3d"></canvas>
     <div class="rollwin"><div id="rollStrip"></div><div class="rollmark"></div></div>
     <div id="rollResult"></div>
     <div class="row" id="rollBtns"></div>
