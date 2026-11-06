@@ -137,23 +137,24 @@ TRAY = (-0.85, 2.35, 0.45, 1.45)
 def mc_atlases():
     # --- sim atlas (glows): the sky behind the shelves + swatches for the little worlds
     S = Atlas('mc_sim_t', 128)
-    sky = S.sub(0, 0, 128, 80)
-    for y in range(80):
-        t = y / 79
-        if t < 0.58: c = hexrgb(0x241048) * (1 - t / 0.58) + hexrgb(0xff4fb8) * (t / 0.58)
-        else: c = hexrgb(0x1a0a2e) * 0.9 + hexrgb(0x3a1460) * 0.1
-        sky[y] = c
+    sky = S.sub(0, 0, 128, 34)  # one shelf's sim sky (a row panel is 3.6 x 0.95 m): sunset, a striped sun, the grid
+    H0 = 20
+    for y in range(34):
+        t = y / H0
+        sky[y] = hexrgb(0x2a1050) * (1 - t) + hexrgb(0xff5ab8) * t if y < H0 else hexrgb(0x1a0a2e)
     rr = np.random.default_rng(4)
-    for k in range(40):  # stars
-        x, y = rr.integers(0, 128), rr.integers(0, 34); sky[y, x] = hexrgb(0xffffff if k % 3 else 0x9ff5ff)
-    px_disc(sky, 64, 46, 15, 0xffe14d)  # the sun, with synth stripes cut out
-    for k, y in enumerate((40, 43, 45)): sky[y:y + 1 + k // 2, 48:80] = hexrgb(0xff4fb8) * 0.95
-    sky[46:80] = sky[46:80] * 0  + hexrgb(0x1a0a2e)
-    for x in range(-200, 330, 14): px_line(sky, 64 + (x - 64) * 0.18, 46, x, 80, 0x4fd8ff, 1.0)  # the floor grid
-    for k, y in enumerate((47, 49, 52, 56, 61, 67, 74)): sky[y] = sky[y] * 0.3 + hexrgb(0x4fd8ff) * 0.7
-    write(sky, 'now loading: tuesday', 4, 3, 1, 0xffffff)
-    sky[12:14, 4:60] = hexrgb(0x3a2a5a); sky[12:14, 4:46] = hexrgb(GREEN)
-    R = {'sky': S.rect(0, 0, 128, 80)}
+    for k in range(26):
+        x, y = rr.integers(0, 128), rr.integers(0, 11); sky[y, x] = hexrgb(0xffffff if k % 3 else 0x9ff5ff)
+    sun = np.zeros((34, 128, 3), np.float32); px_disc(sun, 64, H0, 9, 0xffe14d)
+    m_ = sun.sum(axis=2) > 0
+    for y in (13, 16, 18): m_[y] = False
+    sky[:H0][m_[:H0]] = hexrgb(0xffe14d)
+    for x in range(-260, 400, 16): px_line(sky, 64 + (x - 64) * 0.12, H0, x, 33, 0x4fd8ff, 1.0)
+    for y in (H0, H0 + 1, H0 + 3, H0 + 6, H0 + 10): sky[y] = sky[y] * 0.25 + hexrgb(0x4fd8ff) * 0.75
+    ld = S.sub(0, 34, 128, 46); crust(ld, 0x1a0a2e, 0.05, seed=3)
+    write(ld, 'now loading:', 4, 6, 2, 0xffffff); write(ld, 'tuesday', 4, 24, 2, 0xff8ad8)
+    ld[40:43, 4:124] = hexrgb(0x3a2a5a); ld[40:43, 4:96] = hexrgb(GREEN)
+    R = {'sky': S.rect(0, 0, 128, 34), 'loading': S.rect(0, 34, 128, 46)}
     def blds(x, y, wall, win, name):
         b = S.sub(x, y, 16, 16); crust(b, wall, 0.06, seed=x + y)
         for yy in range(2, 15, 3):
@@ -173,12 +174,12 @@ def mc_atlases():
         R[nm] = S.fill((k % 8) * 16, 96 + (k // 8) * 16, 16, 16, c)
     # --- glow atlas: the header lightbox, the LCD, LEDs, the medallion
     G = Atlas('mc_glow_t', 256, 64)
-    lg = G.sub(0, 0, 256, 40); crust(lg, 0xfff4fa, 0.03, seed=8)
-    lg[0:3] = lg[-3:] = hexrgb(HOT); lg[:, 0:3] = lg[:, -3:] = hexrgb(HOT)
+    lg = G.sub(0, 0, 256, 40); crust(lg, 0xff2fbf, 0.04, seed=8)
+    lg[0:3] = lg[-3:] = hexrgb(0xffe8f8); lg[:, 0:3] = lg[:, -3:] = hexrgb(0xffe8f8)
     smiley(lg, 62, 20, 15, face=0xffe14d, ink=INK)
-    text_px(lg, 'CORP', 88, 3, 5, MAG)
-    for x in range(10, 250, 9): lg[33:36, x:x + 4] = hexrgb(0xffd0ec)  # a dotted rule under it
-    lg[36:38, 190:248] = hexrgb(0xffffff)
+    text_px(lg, 'CORP', 89, 4, 5, 0x6a0050); text_px(lg, 'CORP', 88, 3, 5, 0xffffff)
+    for x in range(10, 250, 9): lg[35:37, x:x + 4] = hexrgb(0xffe14d)  # a dotted rule under it
+    lg[6:30, 222:224] = hexrgb(0x9a1080)  # a dead tube
     lcd = G.sub(0, 40, 64, 24); lcd[:] = hexrgb(0x061a08)
     seg7(lcd, '17:30', 4, 3, 9, 13, 2, GREEN, gap=3, ghost=0x0e3010)
     write(lcd, 'insert life', 1, 17, 1, 0x9fff7a)
@@ -229,14 +230,15 @@ def mc_atlases():
         R[nm] = D.rect(k * 32, 200, 32, 32)
     fl = D.sub(64, 104, 128, 48); crust(fl, 0x2a2236, 0.05, seed=16)
     for k in range(7): px_line(fl, rr.uniform(0, 128), rr.uniform(0, 48), rr.uniform(0, 128), rr.uniform(0, 48), 0x5a4e6a, 1)
-    text_px(fl, 'PUSH', 40, 14, 3, 0xffffff); smiley(fl, 20, 24, 9, face=0xffe14d, ink=INK)
-    write(fl, 'thank u for', 4, 37, 1, 0xff8ad8); write(fl, 'your loyalty', 70, 37, 1, 0xff8ad8)
+    text_px(fl, 'PUSH', 52, 8, 2, 0xffffff); smiley(fl, 40, 14, 6, face=0xffe14d, ink=INK)
+    write(fl, 'thank u for your loyalty', 7, 30, 1, 0xff8ad8)
+    fl[42:45, 10:118] = hexrgb(0x4a3e5a)
     R['flap'] = D.rect(64, 104, 128, 48)
     gr = D.sub(192, 104, 64, 16); gr[:] = hexrgb(0x1a1820); gr[3:13, 1::4] = hexrgb(0x6a6676); gr[3:13, 2::4] = hexrgb(0x4a4656); R['grille'] = D.rect(192, 104, 64, 16)
     sh = D.sub(192, 120, 64, 16); crust(sh, 0x9aa0b4, 0.06, seed=17); sh[0:2] = hexrgb(0xe8ecf4); R['shelf'] = D.rect(192, 120, 64, 16)
     ps = D.sub(64, 152, 192, 16); ps[:] = hexrgb(0xffffff)
-    for k, (lab, c) in enumerate((('A1 MALL', 0xff4fd8), ('A2 LOOT', 0x3fa8ff), ('A3 ???', 0x39c46a), ('B1 FIGHT', 0xff3030), ('B2 CRATE', 0xffb020), ('C1 ISLE', 0x3fd6c6))):
-        x = k * 32; ps[:, x] = hexrgb(0xb0b0b8); text_px(ps, lab[:5], x + 2, 5, 1, c)
+    for k, c in enumerate((0xff4fd8, 0x3fa8ff, 0x39c46a, 0xff3030, 0xffb020, 0x3fd6c6, 0xb48cff, 0xff8a3a)):
+        x = k * 24; ps[:, x] = hexrgb(0xb0b0b8); text_px(ps, 'ABCDEFGH'[k % 8] + str(k % 3 + 1), x + 3, 5, 1, INK); ps[4:12, x + 16:x + 21] = hexrgb(c)
     R['price'] = D.rect(64, 152, 192, 16)
     lab = D.sub(64, 168, 64, 16); crust(lab, 0xb8bcc6, 0.06, seed=18); write(lab, 'dale only', 4, 4, 1, 0xd01830, wob=1, seed=9); R['daleonly'] = D.rect(64, 168, 64, 16)
     mt = D.sub(128, 168, 32, 16); crust(mt, 0x4a4656, 0.06, seed=19); R['motor'] = D.rect(128, 168, 32, 16, 1)
@@ -245,6 +247,11 @@ def mc_atlases():
     for y in range(4, 30, 4): rc[y, 3:29 - (y * 7) % 9] = hexrgb(0x8a8a96)
     write(rc, 'x1', 3, 22, 1, 0xff3030); R['receipt'] = D.rect(192, 168, 32, 32)
     R['grey'] = D.fill(224, 168, 16, 16, 0x6a6676); R['plug'] = D.fill(240, 168, 16, 16, 0xf0ece4)
+    bs = D.sub(64, 200, 56, 56); crust(bs, 0xff4fd0, 0.05, seed=31); px_disc(bs, 28, 28, 27, 0xffe8f6); px_disc(bs, 28, 28, 24.5, 0xffc8ec)
+    smiley(bs, 28, 28, 22, face=0xffe8a0, ink=0x9a1878); grime(bs, 0xff4fd0, 0.3, seed=5, blob=5)
+    for k in range(5): px_line(bs, rr.uniform(0, 56), rr.uniform(0, 56), rr.uniform(0, 56), rr.uniform(0, 56), 0xff4fd0, 1.5)
+    R['bigsmile'] = D.rect(64, 200, 56, 56)
+    cs = D.sub(120, 200, 72, 20); crust(cs, 0xff4fd0, 0.05, seed=32); text_px(cs, 'CORP', 12, 3, 2, 0xffe8f6); grime(cs, 0xff4fd0, 0.3, seed=6, blob=3); R['sidecorp'] = D.rect(120, 200, 72, 20)
     return S, G, D, R
 
 
@@ -273,34 +280,42 @@ def mannequin(hip, rot, m, R, team, pose='aim', gun=True, s=1.0):
 
 def build_machine():
     S, G, D, R = mc_atlases()
-    candy_px = np.zeros((64, 64, 3), np.float32); crust(candy_px, 0xff4fd0, 0.05, seed=31, speck=[(0xffd6f2, 0.012), (0x9a3a2a, 0.01), (0xc8287a, 0.03)])
+    candy_px = np.zeros((128, 128, 3), np.float32); crust(candy_px, 0xff4fd0, 0.04, seed=31, speck=[(0xffd6f2, 0.004), (0x9a3a2a, 0.004), (0xd8309a, 0.03)], block=4)
     r_ = np.random.default_rng(3)
-    for k in range(9): px_line(candy_px, r_.uniform(0, 64), r_.uniform(0, 64), r_.uniform(0, 64), r_.uniform(0, 64), 0xffa8e4, 1)
-    for k in range(3):  # rust blooms with drips
-        x, y = int(r_.uniform(4, 58)), int(r_.uniform(4, 50)); px_disc(candy_px, x, y, 2.2, 0xb0502a); drip(candy_px, x, y, int(r_.uniform(4, 10)), 0xb0502a)
+    for k in range(4): x, y = r_.uniform(0, 128), r_.uniform(0, 128); px_line(candy_px, x, y, x + r_.uniform(-14, 14), y + r_.uniform(-6, 6), 0xffa8e4, 1)
+    for k in range(4):  # rust blooms with drips, chipped primer
+        x, y = int(r_.uniform(4, 120)), int(r_.uniform(4, 110)); px_disc(candy_px, x, y, 2.6, 0xb0502a); drip(candy_px, x, y, int(r_.uniform(5, 14)), 0xb0502a)
+        px_disc(candy_px, int(r_.uniform(4, 120)), int(r_.uniform(4, 120)), 1.8, 0xffe0f4)
     candy = mat('mc_candy', 0xffffff, rough=0.2, clearcoat=1.0, tex=lib._image('mc_candy_t', candy_px))
     chrome = plain('mc_chrome', 0xe4e8f2, rough=0.12, metal=1.0, var=0.05, seed=32)
-    glass = mat('mc_glass', 0xbff4ff, rough=0.04, alpha=0.2, clearcoat=1.0)
+    glass = mat('mc_glass', 0xbff4ff, rough=0.04, alpha=0.13, clearcoat=1.0)
     sim = mat('mc_sim', 0xffffff, rough=0.4, tex=S.image(), emit=0xffffff, strength=1.4, emit_tex=True)
     glow = mat('mc_glow', 0xffffff, rough=0.2, tex=G.image(), emit=0xffffff, strength=3.0, emit_tex=True)
     decal = mat('mc_decal', 0xffffff, rough=0.32, clearcoat=0.5, tex=D.image())
     O = []; L = []
-    T = lambda objs: tiled(objs, 1.0)
+    T = lambda objs: tiled(objs, 2.0)
     # --- the cabinet: dented, then the window and the tray cut in, then bevelled so the gloss catches
     body = box((MW, 5.72, MD), (0, 0.3 + 2.86, 0), candy, name='cabinet')
     subdiv(body, 5)
-    dent(body, (-MW / 2, 4.6, -0.5), 0.8, 0.13); dent(body, (-MW / 2, 1.3, 0.9), 0.5, 0.06)
+    dent(body, (-MW / 2, 1.0, -1.0), 0.55, 0.1); dent(body, (-MW / 2, 5.7, 1.1), 0.5, 0.06)
     dent(body, (MW / 2, 2.4, 0.7), 0.7, 0.1); dent(body, (1.2, 3.0, MD / 2), 0.9, 0.1)
     cut(body, box((WIN[1] - WIN[0], WIN[3] - WIN[2], 2.8), (WCX, (WIN[2] + WIN[3]) / 2, FZ), None))
     cut(body, box((TRAY[1] - TRAY[0], TRAY[3] - TRAY[2], 2.2), ((TRAY[0] + TRAY[1]) / 2, (TRAY[2] + TRAY[3]) / 2, FZ), None))
     bevel(body, 0.05, 2); O.append(body)
-    O.append(box((MW + 0.12, 0.85, MD + 0.12), (0, 6.375, 0), candy, bev=0.14, seg=3, name='header'))
+    hw, hr = MW / 2 + 0.06, 0.62  # the header: rounded shoulders seen from the front (the 50s machine silhouette)
+    prof = [(-hw, 5.95)] + [(-hw + hr - math.cos(math.radians(a)) * hr, 6.8 - hr + math.sin(math.radians(a)) * hr) for a in range(0, 91, 15)]
+    prof += [(hw - hr + math.cos(math.radians(a)) * hr, 6.8 - hr + math.sin(math.radians(a)) * hr) for a in range(90, -1, -15)] + [(hw, 5.95)]
+    O.append(side_x(prof, MD + 0.12, (0, 0, 0), candy, bev=0.05, seg=2))
     O.append(box((MW + 0.06, 0.07, MD + 0.06), (0, 5.985, 0), chrome, bev=0.02, seg=1))
-    O.append(box((MW - 0.2, 0.33, MD - 0.2), (0, 0.165, 0), decal, bev=0.02, seg=1))
+    O.append(box((MW - 0.6, 0.32, MD - 0.6), (0, 0.16, 0), decal, bev=0.02, seg=1))
     T(O[:3]); fit(O[3], R['grille'])
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            O.append(box((0.11, 5.66, 0.11), (sx * MW / 2, 3.16, sz * MD / 2), chrome, bev=0.025, seg=1))  # corner guards
+            O.append(lathe([(0.0, 0.0), (0.22, 0.0), (0.22, 0.05), (0.14, 0.12), (0.11, 0.32), (0.0, 0.32)], (sx * (MW / 2 - 0.32), 0, sz * (MD / 2 - 0.32)), chrome, seg=10, axis='y'))
     # the lit header: lightbox face, chrome lip, and the old ☺ medallion hanging off one bolt
-    O.append(fit(box((5.2, 0.52, 0.08), (0, 6.38, FZ - 0.07), glow, bev=0.015, seg=1), R['logo'], mode='front'))
-    for y in (6.1, 6.66): O.append(box((5.3, 0.04, 0.12), (0, y, FZ - 0.07), chrome, bev=0.01, seg=1))
+    O.append(fit(box((4.9, 0.5, 0.08), (0, 6.36, FZ - 0.07), glow, bev=0.015, seg=1), R['logo'], mode='front'))
+    for y in (6.09, 6.63): O.append(box((5.0, 0.04, 0.12), (0, y, FZ - 0.07), chrome, bev=0.01, seg=1))
     md = cyl(0.44, 0.12, (-2.35, 6.36, FZ - 0.18), glow, axis='z', seg=24, rot=(0, 0, 0.21))
     multi_mat(md, [glow, chrome], lambda n, c: 0 if n[2] < -0.9 else 1); uv_fit(md, R['medal'], mode='front', only={0}); uv_fit(md, (0.95, 0.95, 0.99, 0.99), only={1})
     O.append(md)
@@ -311,8 +326,9 @@ def build_machine():
     for (w, h, cx, cy) in ((x1 - x0 + 0.2, 0.1, WCX, y1 + 0.03), (x1 - x0 + 0.2, 0.1, WCX, y0 - 0.03), (0.1, y1 - y0, x0 - 0.03, (y0 + y1) / 2), (0.1, y1 - y0, x1 + 0.03, (y0 + y1) / 2)):
         O.append(box((w, h, 0.07), (cx, cy, FZ - 0.025), chrome, bev=0.02, seg=1))
     O.append(box((x1 - x0 + 0.02, y1 - y0 + 0.02, 0.03), (WCX, (y0 + y1) / 2, FZ + 0.015), glass, name='glass'))
-    O.append(fit(box((x1 - x0 + 0.01, y1 - y0 + 0.01, 0.04), (WCX, (y0 + y1) / 2, -0.21), sim), R['sky'], mode='front'))
     shelves = [y0, 2.75, 3.75, 4.75]
+    for a, b in zip(shelves, shelves[1:] + [y1]):
+        O.append(fit(box((x1 - x0 + 0.01, b - a, 0.04), (WCX, (a + b) / 2, -0.21), sim), R['sky'], mode='front'))
     for sy in shelves:
         if sy > y0: O.append(fit(box((x1 - x0 + 0.02, 0.05, 1.32), (WCX, sy, -0.86), decal), R['shelf']))
         O.append(fit(box((x1 - x0 - 0.02, 0.1, 0.03), (WCX, sy + 0.04, -1.52), decal), R['price'], mode='front'))

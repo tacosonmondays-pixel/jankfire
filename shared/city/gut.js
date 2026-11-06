@@ -9,7 +9,7 @@ import { cube, stairsZ, line, rubble, stall, flightLen, retaining, PASTEL, pick 
 
 const GY = SLICE.gut.y;
 const inRect = (x0, z0, x1, z1, r) => x0 < r[2] && x1 > r[0] && z0 < r[3] && z1 > r[1];
-const FLESH = [0xff6f91, 0xff8aa6, 0xe85a7a, 0xffa0b4];
+const FLESH = [0xff6f91, 0xff8aa6, 0xe85a7a, 0xffa0b4, 0x9a3a6a, 0xffd27a, 0x7a3a9a]; // raw pink, liver-purple, fat, bruise
 
 // the campus street grid: avenues every 52 m in x (the rib avenue is one of them), streets every 44 m in z
 const AVES = [-286, -234, -182, -130, -44, 8, 60], STREETS = [-232, -188, -100, -60];
@@ -29,7 +29,7 @@ const KEEP = () => [SLICE.arena.rect, SLICE.teeth.rect, [SLICE.choir.x - 26, SLI
 // a sphincter for a door, the Gristle & Sons sign on some, vein cables to the neighbour
 function office(B, x0, z0, x1, z1, r) {
   const h = 9 + Math.floor(r() * 6) * 3, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-  const tint = pick(r, [0xc8c4cc, 0xd8d0c8, 0xb8c0c8, 0xe0d4d8]);
+  const tint = pick(r, [0xc8c4cc, 0xd8d0c8, 0xb8c0c8, 0xe0d4d8, 0xa8d8d0, 0xe8e0b0]); // the old campus: office grey, hospital mint, memo yellow
   B.add(x0, GY, z0, x1, GY + h, z1, 'concrete', { tint });
   for (let y = GY + 3; y < GY + h - 1; y += 3) for (const [a, b, c, d] of [[x0 + 1, z0 - 0.04, x1 - 1, z0], [x0 + 1, z1, x1 - 1, z1 + 0.04]]) B.add(a, y, b, c, y + 1.3, d, r() < 0.7 ? 'window' : 'glass', { nc: true });
   for (let y = GY + 3; y < GY + h - 1; y += 3) for (const [a, b, c, d] of [[x0 - 0.04, z0 + 1, x0, z1 - 1], [x1, z0 + 1, x1 + 0.04, z1 - 1]]) B.add(a, y, b, c, y + 1.3, d, r() < 0.7 ? 'window' : 'glass', { nc: true });

@@ -8,7 +8,7 @@ import { MATS, FAMS, CHUNK } from './plan.js';
 import { FLAGS } from './chunk.js';
 
 const FAM = Object.fromEntries(FAMS.map((f, i) => [f, i]));
-export const TILE_M = { dirt: 3, asphalt: 4, concrete: 3, plaster: 2.5, brick: 2, metal: 2, wood: 1.5, tile: 1, corrug: 1.5, fabric: 2, tiedye: 3, bone: 0.8, paint: 1, rib: 2, window: 2, flesh: 3, glass: 2, glow: 2 };
+export const TILE_M = { dirt: 3, asphalt: 4, concrete: 3, plaster: 2.5, brick: 2, metal: 2, wood: 1.5, tile: 1, corrug: 1.5, fabric: 2, tiedye: 3, bone: 0.8, paint: 1, rib: 1.6, window: 2, flesh: 1.6, glass: 2, glow: 2 };
 export const KINDS = ['solid', 'flesh', 'glow', 'glass', 'acid'];
 
 function sink() {
