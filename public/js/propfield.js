@@ -279,7 +279,8 @@ export function buildPropField(scene, def, mats) {
       const t = p.a ? p.t : p.color, col = k.tint && t && !pat ? tintOf(t) : WHITE;
       cols[i * 3] = col.r; cols[i * 3 + 1] = col.g; cols[i * 3 + 2] = col.b;
     }
-    const kind = { k, n, mats, cols, ctr, meshes: [], lods: [] };
+    const rs = ref || new THREE.Box3(k.lo, k.hi), size = Math.max(rs.max.x - rs.min.x, rs.max.y - rs.min.y, rs.max.z - rs.min.z);
+    const kind = { k, n, mats, cols, ctr, meshes: [], lods: [], farMax: Math.max(70, size * 90) }; // (small things stop drawing where they'd be a few pixels)
     for (const [li, parts] of [[0, k.lod0], [1, k.lod1.length ? k.lod1 : null]]) {
       if (!parts) { kind.lods.push(null); continue; }
       const im = new THREE.InstancedBufferAttribute(new Float32Array(n * 16), 16); im.setUsage(THREE.DynamicDrawUsage);
@@ -291,13 +292,15 @@ export function buildPropField(scene, def, mats) {
         const mesh = new THREE.InstancedMesh(part.geo, mat, n);
         mesh.instanceMatrix = im;
         if (part.tint && !pat) mesh.instanceColor = ic;
-        mesh.count = 0; mesh.visible = false; mesh.frustumCulled = false; // (each copy is culled here, not the whole lot)
+        mesh.count = 0; mesh.visible = false; // (each copy is culled here; the bounding sphere of the drawn ones lets three skip the whole lot, shadow pass too)
         mesh.matrixAutoUpdate = false;
         if (li === 1) mesh.userData.noCast = true; // far copies cast no shadow
         mesh.name = 'prop:' + mf.mid + (li ? ':lod1' : '');
         group.add(mesh); meshes.push(mesh); kind.meshes.push(mesh);
       }
-      kind.lods.push({ im, ic, meshes, idx: new Int32Array(n), count: 0 });
+      const sphere = new THREE.Sphere();
+      for (const m of meshes) m.boundingSphere = sphere;
+      kind.lods.push({ im, ic, meshes, idx: new Int32Array(n), count: 0, sphere });
     }
     kinds.push(kind);
   }
@@ -326,11 +329,11 @@ export function updatePropField(cam, force) {
   let nN = 0, nF = 0, sum = 0;
   for (const kind of field.kinds) {
     const { ctr, mats, cols, n } = kind, L0 = kind.lods[0], L1 = kind.lods[1];
-    const r0 = Math.min(far, kind.k.lod * lodK), r02 = r0 * r0, near2 = 24 * 24, far2 = far * far;
+    const kf = Math.min(far, kind.farMax), r0 = Math.min(kf, kind.k.lod * lodK), r02 = r0 * r0, near2 = 24 * 24, far2 = kf * kf;
     let c0 = 0, c1 = 0;
     for (let i = 0; i < n; i++) {
       const x = ctr[i * 4] - p.x, y = ctr[i * 4 + 1] - p.y, z = ctr[i * 4 + 2] - p.z, rr = ctr[i * 4 + 3], d2 = x * x + y * y + z * z;
-      if (d2 > far2 + 2 * far * rr + rr * rr) continue; // past the fog
+      if (d2 > far2 + 2 * kf * rr + rr * rr) continue; // past the fog (or too small to see from here)
       const close = d2 < near2 + 48 * rr + rr * rr;
       sph.center.set(ctr[i * 4], ctr[i * 4 + 1], ctr[i * 4 + 2]); sph.radius = rr;
       if (!close && !frus.intersectsSphere(sph)) continue;
@@ -342,6 +345,11 @@ export function updatePropField(cam, force) {
       for (let j = 0; j < c; j++) { const i = L.idx[j]; for (let q = 0; q < 16; q++) im[j * 16 + q] = mats[i * 16 + q]; ic[j * 3] = cols[i * 3]; ic[j * 3 + 1] = cols[i * 3 + 1]; ic[j * 3 + 2] = cols[i * 3 + 2]; }
       if (L === L0) for (let j = 0; j < c; j++) sum = (sum + (L.idx[j] + 1) * 2654435761) % 4294967291;
       L.count = c;
+      if (c) { // the drawn copies' bounding sphere (a box round their spheres)
+        let x0 = 1e9, y0 = 1e9, z0 = 1e9, x1 = -1e9, y1 = -1e9, z1 = -1e9;
+        for (let j = 0; j < c; j++) { const i = L.idx[j] * 4, r = ctr[i + 3]; x0 = Math.min(x0, ctr[i] - r); y0 = Math.min(y0, ctr[i + 1] - r); z0 = Math.min(z0, ctr[i + 2] - r); x1 = Math.max(x1, ctr[i] + r); y1 = Math.max(y1, ctr[i + 1] + r); z1 = Math.max(z1, ctr[i + 2] + r); }
+        L.sphere.center.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2); L.sphere.radius = Math.hypot(x1 - x0, y1 - y0, z1 - z0) / 2;
+      }
       L.im.clearUpdateRanges(); L.im.addUpdateRange(0, c * 16); L.im.needsUpdate = true;
       L.ic.clearUpdateRanges(); L.ic.addUpdateRange(0, c * 3); L.ic.needsUpdate = true;
       for (const m of L.meshes) { m.count = c; m.visible = c > 0; }
