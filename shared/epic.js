@@ -12,6 +12,9 @@ export const EPIC_W = {
   bread: 2.5, katana: 2.5, knife: 2.5, slapper: 2.5, scythe: 2.5, popper: 2.5,
 };
 export const epicMul = (w) => EPIC_W[w] || (WEAPONS[w] && WEAPONS[w].kind === 'melee' ? 2.5 : 1); // melee from other branches too
+// only these lock the killcam ("too epic to skip"): the scoped rifles and the revolver. an epic kill with anything else
+// still counts (highlights, the overlay) but you can skip its killcam like any other
+export const EPIC_LOCK = new Set(['sniper', 'dmr', 'revolver']);
 // nobody aimed these (or the killer could be anywhere by the time they land)
 const NEVER = new Set(['void', 'cough', 'tbag', 'duck', 'frag', 'bomb', 'hook', 'blower', 'car', 'carboom']);
 NEVER.add('lasso'); // a lasso splat: the wall did it, wherever the thrower is by then

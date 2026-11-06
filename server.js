@@ -31,7 +31,7 @@ import { verdict } from './shared/verdict.js';
 
 import { WRECK, slamSize, ramDmg } from './shared/weapons.js'; // wrecking ball
 import { query } from './shared/physics.js';
-import { epicCheck, epicCamMs, EPIC } from './shared/epic.js';
+import { epicCheck, epicCamMs, EPIC, EPIC_LOCK } from './shared/epic.js';
 import { holeDrag, steer } from './shared/physics.js';
 import { steer as steerTo } from './shared/homing.js'; // homing slippers (steerTo(v, from, to, max)); the duck's steer(v, dir, max) is physics.js's
 import { PARRY } from './shared/weapons.js';
@@ -1479,7 +1479,7 @@ class Room {
     // EPIC kill: the victim (if they have killcams on) has to watch all of it. their respawn waits it out, never past the 9 s cap
     const ep = this.epicOf(killer, t, w, via);
     t.lastEpic = ep;
-    t.epicLock = ep && !t.isBot && t.kc ? Math.min(t.respawnAt, now() + epicCamMs()) : 0;
+    t.epicLock = ep && EPIC_LOCK.has(w) && !t.isBot && t.kc ? Math.min(t.respawnAt, now() + epicCamMs()) : 0; // only snipers + the revolver can't be skipped
     if (t.epicLock) ep.lock = 1;
     if (this.warm) { t.respawnAt = t.minRespawnAt = now() + LOBBY.respawn; t.epicLock = 0; if (ep) ep.lock = 0; } // a lobby's warm-up: straight back in
     if (this.zm) this.zmKilled(t, killer, w); // credits for zombie kills, players go down instead of respawning

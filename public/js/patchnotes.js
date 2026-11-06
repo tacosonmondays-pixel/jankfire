@@ -2,6 +2,7 @@
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
   { v: '4.4', date: '2026-11-06', title: 'COSMETICS PACK 2', items: [
+    '"too epic to skip" killcams are only for the sniper, Second Opinion and the revolver now. epic kills with anything else still count, but you can skip them.',
     'THE SPOON IS A KNIFE NOW. one weapon, not two: Gun Game\'s last rung is the knife in the spoon look (first kill with the spoon still wins), Spoons & Grapples is knives in the spoon look with one-hit kills. the Ladle became a knife skin and you keep it if you had it.',
     '27 NEW SKINS: Keytar (AR), Label Maker (SMG), Brolly (shotgun), Pool Cue (sniper), Take A Number (Hat Trick), Leaf Shredder (Belt Sander), Fountain Pen (Second Opinion), Cap Gun (Yeehaw), Weed Whacker (Lawn Mower), Calculator (Plan B), Walkie Talkies (Lefty & Righty), Pepper Mills (Half a Shotgun), Business Cards, Squirt Flower + Hose Nozzle (water pistol), Bug Zapper (taser), Game Pad (TV remote), Cordless Drill (revolver), Cat Laser, Baguette + Neon Tube katanas, Pizza Cutter, Keycard and Frozen Fish knives, Sliced Loaf, Flip-Flop.',
     '37 NEW WRAPS (102 total): a camo family, Brushed Steel, Damascus, Anodized Ti, Verdigris, Kitchen Granite, Marble, Jade, Amethyst Geode, Wood Burl, Moss, Sprinkles, Watermelon, Sushi, Memphis 90s, Bowling Alley, Arcade Carpet, Checkered Flag, Jersey, Barcode, QR Code, Organ Donor, Loaded Dice, Number Soup, Candy Corn, Ugly Sweater.',
