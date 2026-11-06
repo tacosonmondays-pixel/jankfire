@@ -6,6 +6,7 @@ export const SIDE_COMMUTE = {
     locations: ["commute:gary_crater", "corphill:spire_lobby"], cast: ["gary"],
     requires: { missions: ["m02_sauce_run"], if: null },
     logline: "Gary, ninety-eight, still runs his site office on the lip of a crater. He's filed a quarterly report every quarter for sixty-one years. Deliver them.",
+    mechanic: { uses: ["cars"], hook: "a heavy crate of reports the raiders want for armour" },
     twist: "244 reports. Every one lists, under ATTENDANCE, the same forty-one names, all marked PRESENT. They're his warehouse floor team. They were on the floor at 17:30; he was in the office, eating lunch late. The region is the crater. He's been taking the register for sixty-one years. When you deliver the reports to the Spire's inbox (a chute in the lobby), the clerk-bot stamps them RECEIVED, and Gary, told, says: 'oh. good. good. it's fine.' and, for once, it is.",
     beats: ["The portacabin, the mug, the walking frame. The sim Gary's voice, older.", "Carry 244 reports (a crate, heavy, on the Commute: raiders want the paper for armour).", "The Spire's inbox chute.", "Back to Gary."],
     steps: [
@@ -31,6 +32,7 @@ export const SIDE_COMMUTE = {
     locations: ["commute:smiles_hideout", "commute:carnival", "commute:spiral_freeway"], cast: ["smiles", "morale_officer"],
     requires: { missions: ["m06_option_c"], if: null },
     logline: "Under a collapsed overpass, a man in the old Mr. Smiles suit is hiding from the Fun Department. He wants to do one fun thing that isn't a job.",
+    mechanic: { uses: ["grapple", "cars"], hook: "build a kite and fly it on the Spiral Freeway in a paper storm" },
     twist: "He was in the suit at a Big Value shelter event at 17:30. The suit saved him from the flash; the face under it didn't make it. He can't take the head off. The fun thing is a kite. He's never flown one; the Fun Department always said kites weren't 'scalable'. You get him to the top of the Spiral Freeway in a paper storm, which is perfect kite weather, and he flies it for a whole minute before the Morale Officer's convoy finds him. (If you've beaten her, it never comes, and he flies it until dark.)",
     beats: ["The hideout: a big round shadow, a little gas stove, mascot gloves drying on a line.", "He tells you about mandatory fun, and a little about 17:30.", "Build a kite (scavenge: a ☺ CORP banner, an umbrella, Gordo's string).", "The Spiral Freeway in a paper storm. The kite.", "The Fun Department arrives (or doesn't)."],
     steps: [
@@ -56,6 +58,7 @@ export const SIDE_COMMUTE = {
     locations: ["commute:todd_shrine", "commute:unpaid_camp", "commute:missing_texture"], cast: ["todd", "eotm", "missing_texture"],
     requires: { missions: ["m06_option_c"], if: null },
     logline: "Todd, about a hundred and twenty, sits in a lawn chair on a bus roof while the Unpaid worship him. Get him off the roof for one day.",
+    mechanic: { uses: ["grapple", "peels", "marbles"], hook: "extract Todd, then fight a bug that can't tell a banana from the floor" },
     twist: "Todd wrote the world's physics on his first day, from memory, and never finished it. There's a bit of the Commute that's just purple and black squares. It's been growing. In part 2 Todd takes you there to finish it, and it fights back. In part 3, if you've fought Employee of the Month, Todd finds out the warlord's intern badge says TODD: Craig is his grandson.",
     beats: ["The shrine: offerings of staplers and mugs; the Unpaid chanting 'the grind never stops'.", "Todd asks you, in a whisper, to get him down. A stealth extraction (or a fight, or an internship: with the Unpaid lanyard you can just walk him down as 'his assistant').", "Part 2: the Unfinished Bit. Secret boss: THE MISSING TEXTURE.", "Part 3: the badge."],
     steps: [
@@ -85,6 +88,7 @@ export const SIDE_COMMUTE = {
     locations: ["commute:unpaid_camp", "commute:ring_road"], cast: ["eotm", "todd"],
     requires: { missions: ["m02_sauce_run"], if: "act>=2" },
     logline: "The Unpaid want to become a company. A company needs a big win. Employee of the Month has decided the big win is you.",
+    mechanic: { uses: ["cars", "grapple", "lasso", "knockback"], hook: "a moving-convoy fight: grapple from rig to rig on the gantries" },
     twist: "What he actually wants is a performance review: someone, anyone, to tell him how he's doing. If you took his internship in m02, you're 'staff' and you can give him one after the fight (a dialogue). Whatever you say, he takes it seriously. 'MEETS EXPECTATIONS' makes him cry. He takes one plaque off his chest and gives it to you. It has your face on it.",
     beats: ["Camp Onboarding: a bus depot made of desks. A job fair that's an ambush.", "World boss: EMPLOYEE OF THE MONTH on his war-rig.", "The review."],
     steps: [
@@ -111,6 +115,7 @@ export const SIDE_COMMUTE = {
     locations: ["commute:carnival"], cast: ["morale_officer", "smiles"],
     requires: { missions: ["m06_option_c"], if: null },
     logline: "The Fun Department's carnival comes out at night on the Commute. Every game is rigged, and losing one is a fight.",
+    mechanic: { uses: ["popper", "chicken_strike", "grapple"], hook: "carnival games where losing is a fight; climb the Ferris wheel by grapple" },
     twist: "The Morale Officer wrote 'every Big Value is a shelter'. The carnival's noise is so she never has to hear the quiet. The way to beat her for good is to stop shooting and wait. Mr. Smiles, if he's with you, takes his own glove off (just the glove) and holds her hand while she takes her heads off.",
     beats: ["The Fun Fair: ring toss, hook-a-duck, whack-a-mole with real moles, a ghost train that's a real ghost train.", "Win three games (each loss is a mascot brawl).", "World boss: THE MORALE OFFICER.", "The quiet."],
     steps: [
@@ -128,6 +133,7 @@ export const SIDE_COMMUTE = {
     locations: ["commute:digit_13", "numberworks:union_hall"], cast: ["nell", "unlucky_13"],
     requires: { missions: ["m15_rounding_down"], if: null },
     logline: "The fallen 13 on the Commute is waking up. It was one of Remainder's orbital billboards that guided the missiles, and its last target list is still loaded.",
+    mechanic: { uses: ["moon_boots", "satellite", "water_taser", "grapple"], hook: "a hot-zone climb up a fallen satellite; soak and tase its panels" },
     twist: "Its last target is the Bottom. It's been trying to fire for sixty-one years and never had the power. The fights you've had near it have been charging it. Nell's union were stamped with 13s because the satellite was a 13: 'they put the number on us that they put on the thing that killed us. management's sense of humour.'",
     beats: ["Nell: the Remainders want it dead. It's personal.", "The hot zone: radiation, glassed craters, toxic green glow.", "World boss: UNLUCKY 13.", "Its last panel: the target list, crossed out."],
     steps: [

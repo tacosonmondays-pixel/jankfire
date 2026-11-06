@@ -8,7 +8,7 @@ import { WEAPONS, ITEMS, BOT_DIFF, FLAGS } from '../shared/weapons.js';
 import { raycast, PH } from '../shared/physics.js';
 import { navSteer } from '../shared/nav.js';
 import { outOfBounds } from '../shared/bounds.js';
-import { poiAt, BR, ZONE, TIERS, GUNS, MELEE, GADGETS, STUFF, ARMOR_OF, ammoFor, bucketFor, blimpAt, blimpDone, zoneAt, outsideZone } from '../shared/royale.js';
+import { poiAt, BR, ZONE, TIERS, GUNS, MELEE, GADGETS, STUFF, ARMOR_OF, ammoFor, bucketFor, blimpAt, blimpDone, zoneAt, outsideZone, hookCharges, hookSpend } from '../shared/royale.js';
 import { onWarm, onForget } from './graphs.js';
 
 const now = () => Date.now();
@@ -311,15 +311,16 @@ export function installRoyale(Room, H) {
       const s = p.br;
       if (!this.br || !s) return m.t === 'respawn' || m.t === 'itemsel' || m.t === 'deploy';
       switch (m.t) {
-        case 's': return !!s.inBlimp; // riding the blimp: the server knows where you are
+        case 's': if (s.inBlimp) return true; this.brHookSnap(p, m); return false; // riding the blimp: the server knows where you are. otherwise: grapple charges
         case 'brjump': this.brJump(p); return true;
         case 'brpick': if (Number.isInteger(m.i) && now() - (p.brPickT || 0) > 80) { p.brPickT = now(); if (!this.brPick(p, m.i, m.f === 1)) this.brLoadout(p); } return true;
         case 'brkick': this.brKick(p); return true;
         case 'brheal': if (m.k === 'cola' || m.k === 'medkit') this.brHeal(p, m.k); return true;
+        case 'brdrop': case 'brswap': if (now() - (p.brInvT || 0) > 120) { p.brInvT = now(); this.brInvAct(p, m); } return true; // the backpack (Tab)
         case 'respawn': case 'itemsel': case 'deploy': return true; // no respawns, items come off the floor, no killstreaks
         case 'fire': case 'hit': case 'push': {
           if (s.inBlimp || s.out) return true;
-          if (m.t === 'push' && m.w === 'hook') return false;
+          if (m.t === 'push' && m.w === 'hook') { if (!this.brHookUse(p)) return true; s.hookPush = now(); return false; } // grabbing a person spends a charge too (none: no tug)
           if (m.t === 'hit' && m.w === 'popper') return false; // the party popper is a gadget (useItem checks it)
           if (typeof m.w !== 'string' || !this.brHas(p, m.w)) return true;
           if (s.heal) { s.heal = null; this.brLoadout(p); } // shooting puts the cola down
@@ -333,6 +334,55 @@ export function installRoyale(Room, H) {
       }
       return false;
     },
+    // ---------------------------------------------------------- the backpack (Tab): drop things, swap the two gun slots
+    // {t:'brswap'} | {t:'brdrop', k: 'gun', i: 0 | 1} | {k: 'melee'} | {k: 'gadget'} | {k: 'cola' | 'medkit', n}
+    brInvAct(p, m) {
+      const s = p.br;
+      if (!s || !s.slots || s.out || s.inBlimp || !p.alive) return;
+      if (m.t === 'brswap') { s.slots = [s.slots[1], s.slots[0]]; this.brLoadout(p); return; }
+      if (m.k === 'gun' && (m.i === 0 || m.i === 1) && s.slots[m.i]) {
+        const g = s.slots[m.i];
+        s.slots[m.i] = null;
+        this.brDrop(p, { k: 'gun', id: g.w, tier: g.tier, a: g.ammo });
+        if (p.w === g.w) p.w = s.melee ? s.melee.w : BR.melee;
+      } else if (m.k === 'melee' && s.melee && s.melee.w !== BR.melee) { // (the loaf stays: you need something to hit with)
+        this.brDrop(p, { k: 'melee', id: s.melee.w, tier: s.melee.tier });
+        if (p.w === s.melee.w) p.w = BR.melee;
+        s.melee = { w: BR.melee, tier: 0 };
+      } else if (m.k === 'gadget' && s.gadget && s.gadget.n > 0) {
+        this.brDrop(p, { k: 'gadget', id: s.gadget.i, tier: (GADGETS[s.gadget.i] || {}).tier || 0, n: s.gadget.n });
+        s.gadget = null; p.ic = { i: p.item, n: 0, next: 0 };
+      } else if ((m.k === 'cola' || m.k === 'medkit') && s[m.k] > 0) {
+        const n = Math.max(1, Math.min(s[m.k], Number.isInteger(m.n) ? m.n : 1));
+        s[m.k] -= n;
+        if (s.heal && s.heal.k === m.k && s[m.k] <= 0) s.heal = null;
+        this.brDrop(p, { k: 'heal', id: m.k, n });
+      } else return;
+      this.brLoadout(p);
+    },
+    // ---------------------------------------------------------- grapple charges (BR.hook): the client asks, the server counts
+    // a new rope (none before, or the point jumped somewhere else) spends a charge; none left = the rope is cut and the
+    // client is told. a person grab (push 'hook') spends it first, so the rope that follows it in the next snapshot is free
+    brHookSnap(p, m) {
+      const s = p.br, g = m.g;
+      if (!p.alive || m.q !== p.seq || !g || !Array.isArray(g) || g.length !== 3 || !g.every(Number.isFinite)) return; // (stale snapshots: the normal path drops them too)
+      if (p.g && Math.hypot(p.g[0] - g[0], p.g[1] - g[1], p.g[2] - g[2]) < 6) return; // the same rope
+      if (now() - (s.hookPush || 0) < 1500) { s.hookPush = 0; return; } // the rope of a person grab we just paid for
+      if (!this.brHookUse(p)) m.g = 0; // cut: everyone sees no rope
+    },
+    brHookUse(p) {
+      const s = p.br, n = now();
+      if (!s) return true;
+      const h = hookSpend(s.hook, n);
+      if (!h) {
+        if (!p.isBot && n - (s.hookNoT || 0) > 350) { s.hookNoT = n; send(p, { t: 'br', k: 'hook', h: s.hook, no: 1 }); }
+        return false;
+      }
+      s.hook = h;
+      if (!p.isBot) send(p, { t: 'br', k: 'hook', h });
+      return true;
+    },
+    brHookReady(b) { return !b.br || hookCharges(b.br.hook, now()).n >= 1; }, // bots: only grapple with a charge (server.js botThink)
     // jump out of the blimp (it has to be moving)
     brJump(p) {
       const B = this.br, s = p.br;

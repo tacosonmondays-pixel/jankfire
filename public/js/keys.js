@@ -37,7 +37,8 @@ export const ACTIONS = [
   ['dash', 'Scythe: glitch dash (hold)', 'Items & streaks', ['KeyV']],
   ['spray', 'Spray', 'Social', ['KeyZ']],
   ['chat', 'Chat', 'Social', ['KeyT', 'Enter']],
-  ['scores', 'Scoreboard (hold)', 'Interface', ['Tab']],
+  ['scores', 'Scoreboard (hold) · Jank Royale: backpack', 'Interface', ['Tab']],
+  ['brScores', 'Jank Royale: scoreboard (hold)', 'Interface', ['KeyL'], 'royale'], // its own context: Tab is the backpack there
   ['menu', 'Pause menu', 'Interface', ['KeyB']],
   ['ready', 'Lobby: ready up (everyone ready = 5 s)', 'Interface', ['KeyY']],
   ['skip', 'Skip killcam / replay', 'Interface', ['Space', 'Enter'], 'replay'],

@@ -22,6 +22,7 @@ import { royalBoxes } from './royal.js';
 import { organic } from './organic.js';
 import { account } from './account.js';
 import { K } from './keys.js';
+import { zlMount, zlRender } from './zmloadout.js'; // QUICK PLAY / ZOMBIES loadout tabs
 
 export const RAND = 'random';
 // a weapon, or a killstreak with a look (shared/cosmetics.js STREAK_LOOKS): the screen treats both the same
@@ -163,6 +164,7 @@ export function czOpen() {
   if (!sel || !api.skinnable().includes(sel)) sel = G.cosSel && api.skinnable().includes(G.cosSel) ? G.cosSel : S.loadout.primary;
   root.classList.toggle('potato', (S.jank | 0) === 0);
   root.classList.toggle('lo-mode', mode === 'loadout');
+  zlMount(root, () => refresh());
   for (const b of root.querySelectorAll('.hub-tab')) b.classList.toggle('on', b.dataset.hub === (mode === 'loadout' ? 'loadout' : 'weapons'));
   const hn = $('czHub').firstElementChild; if (hn && hn.mark) hn.mark(); // (its pictures: your gun / look may have changed)
   if (mode === 'loadout' && !SLOTS.includes(WI(sel).slot)) sel = S.loadout.primary;
@@ -415,6 +417,7 @@ function renderLo() {
   const box = $('czLo');
   box.innerHTML = '';
   if (mode !== 'loadout') return;
+  if (zlRender(box, { loTile, toast: api.toast, save: api.save, redraw: refresh })) return; // the ZOMBIES tab
   const row = (title, list) => { const r = el('div', 'cz-lorow'); r.append(el('div', 'cz-lot', title)); const t = el('div', 'cz-tiles'); t.append(...list); r.append(t); box.append(r); };
   const cur = S.loadout.item || 'frag';
   row(`ITEM (${K.label('item')})`, ITEM_ORDER.map((id) => { const it = ITEMS[id]; return loTile('lo-item', () => itemPic(id, G.equipped[it.w]), it.name, `x${it.charges}`, id === cur, [`ITEM · ${it.charges} CHARGE${it.charges > 1 ? 'S' : ''} · ${it.recharge}s REFILL`, it.desc], it.color, () => { api.setItem(id); refresh(); }); }));

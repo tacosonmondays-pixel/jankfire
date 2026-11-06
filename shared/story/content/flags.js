@@ -269,4 +269,5 @@ export const FLAGS = {
   texture_patched: F(2, "patched the Missing Texture"),
   todd_met_grandson: F(2, "Todd found out Craig is his grandson"),
   eotm_reviewed: F(2, "gave Employee of the Month a performance review"),
+  line_run_done: F(1, "finished the Washing Line Run"),
 };

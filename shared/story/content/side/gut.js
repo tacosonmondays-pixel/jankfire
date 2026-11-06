@@ -6,6 +6,7 @@ export const SIDE_GUT = {
     locations: ["gut:choir_lung", "gut:campus", "lates:waiting_room"], cast: ["sister_agenda", "bishop"],
     requires: { missions: ["m03_somethings_digesting"], if: null },
     logline: "The Choir needs a tenor. Collect three voice boxes from overdue ☺ CORP offices.",
+    mechanic: { uses: ["grapple", "nvg"], hook: "three overdue offices with grapple-only entrances; the Lates call centre is dark" },
     twist: "Sister Agenda doesn't want a tenor. She wants her own voice back: the Bishop made every singer sing on his note, and a voice box from outside the Gut is the only thing that can sing off it. The first time she uses it, she sings a single line of her own, out of tune, and the whole Choir stops to listen.",
     beats: ["Three overdue offices: a Gristle & Sons campus annexe grown shut, a Lates call centre, a Corp Hill switchboard room (Late Fees).", "Each voice box is in a dead switchboard operator's headset; each office has a short, odd encounter (a phone that keeps ringing; a hold queue of 4,000 callers; a recorded voice that still says 'your call is important').", "Bring them to Sister Agenda. She keeps one."],
     steps: [
@@ -27,6 +28,7 @@ export const SIDE_GUT = {
     locations: ["gut:big_stomach", "gut:border"], cast: ["bev"],
     requires: { missions: ["m03_somethings_digesting"], if: null },
     logline: "The acid lake in the Big Stomach is rising. Plug the burping vents with cars before it reaches Bev's clinic.",
+    mechanic: { uses: ["cars"], hook: "a driving puzzle: plug six acid vents with cars before the lake rises" },
     twist: "It's rising because something's been feeding it: the Unpaid have been dumping stolen ☺ CORP paperwork into it, and the Gut can't digest forms. The last vent is plugged with a filing cabinet full of Late Fees notices addressed to the Bottom. Bev reads one and laughs until she has to sit down.",
     beats: ["Six vents round the crater, burping acid on a rhythm.", "Drive cars into them (meat buggies work best: they bleed instead of smoking).", "The last vent: a filing cabinet. Late Fees notices."],
     steps: [
@@ -48,6 +50,7 @@ export const SIDE_GUT = {
     locations: ["gut:peristalsis", "gut:digester_wall"], cast: ["dot"],
     requires: { missions: ["m03_somethings_digesting"], if: null },
     logline: "Something's stuck in Peristalsis Avenue and the whole street is backed up. It's a guy's whole house.",
+    mechanic: { uses: ["wrecking_ball", "duck", "knockback"], hook: "push a whole house down an intestine: knockback works, the wrecking ball works best" },
     twist: "The house's owner is still in it, making tea. He's been travelling down the Gut's digestive tract in his house for nine years and thinks it's a very slow train. When you push the house through, he arrives at the Big Stomach, looks out of the window, and says 'oh. this isn't leeds.'",
     beats: ["Dot mentions the street's been 'a bit blocked'.", "A whole terraced house wedged in the intestine-tube avenue.", "Push it with a car, a lasso, the Shopping Cart Cannon, rockets (all work; the funniest is the sofa-car).", "The man inside offers you tea throughout."],
     steps: [
@@ -67,6 +70,7 @@ export const SIDE_GUT = {
     locations: ["gut:feed_dock", "gut:campus", "bottom:long_stairs"], cast: ["bishop", "sister_agenda", "lumps"],
     requires: { missions: ["m06_option_c"], if: null },
     logline: "Gristle & Sons wants the Gut to hit its growth target this quarter. Feed it, or sabotage the feeding tubes.",
+    mechanic: { uses: ["cars", "frag_smoke"], hook: "escort or blow up Regrowth tankers" },
     twist: "The 'feed' isn't people this time: it's the Gut's own regrowth tubes, pumping Regrowth toward the Long Stairs. Hitting the target means the Gut grows into the Bottom's top terraces. Sabotaging it means the Choir loses a quarter's bonus, and the Bishop makes Sister Agenda write it down as her fault.",
     beats: ["The Bishop himself offers you a contract: 2,000 coupons to escort feeding tankers.", "Sister Agenda, quietly: the tankers go to the Long Stairs.", "Escort them (the Gut spreads) or blow the tubes (the Gut stays put; Agenda takes the blame unless you go back and speak for her)."],
     steps: [
@@ -91,6 +95,7 @@ export const SIDE_GUT = {
     locations: ["gut:big_stomach", "gut:belly_button"], cast: ["gristle_senior", "bishop"],
     requires: { missions: ["m20_the_missing"], if: null },
     logline: "There's a door at the bottom of the Big Stomach. Don't press it.",
+    mechanic: { uses: ["scythe", "verdict", "grapple", "nailgun"], hook: "the arm storm: grapple-run up the frozen arms, nail them to the vault, judge him guilty" },
     twist: "You press it. Behind it is the founding partner of Gristle & Sons, Augustus Gristle, grown into the district's oldest organ, still holding pens. The Bishop sings to him every night. Augustus wants one more contract, and someone to tell his son the truth.",
     beats: ["Signs everywhere around the crater floor, in every hand: DON'T PRESS IT. PLEASE DON'T. IT'S NOT A BUTTON. (It is a button.)", "Drain the lake (side effect of sq_gut_reflux, or after m20) and walk down to it.", "Press it.", "Secret boss: THE FOUNDING PARTNER.", "He signs your arm and asks you to tell his son it was a failure. Optional: tell the Bishop."],
     steps: [

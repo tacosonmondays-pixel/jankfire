@@ -9,6 +9,7 @@ export const MISSIONS_ACT3 = {
     cast: ["gordo", "nell", "mr_sevens", "foreman"],
     requires: { missions: ["m17_minutes"], if: null },
     logline: "With Overtime's lanyard you can pull ☺ CORP's master Schedule off the network. Printed out, it's nine kilometres long, and it has a hole in it.",
+    mechanic: { uses: ["shredder", "late_fees", "grapple"], hook: "the Timekeeping relay is a stealth climb with grapple shortcuts, and the backup shredder clears the paper storm on the way out" },
     beats: [
       "Gordo: if ☺ CORP keeps the dead for a reason, the reason's in the Schedule. Overtime's lanyard opens the Timekeeping relay on the Bleach Line.",
       "A stealth-or-loud job at the relay: plug the lanyard in, download the Schedule to a tape. Late Fees ★3.",
@@ -69,6 +70,7 @@ export const MISSIONS_ACT3 = {
     cast: ["bev", "upsell"],
     requires: { missions: ["m17_minutes"], if: null },
     logline: "Gristle & Sons' page of Option C was stolen and sold. Doctor Upsell bought it, because he knew what it really was: a patent.",
+    mechanic: { uses: ["nailgun", "grapple", "remote"], hook: "Bev pins a kidney to show you the Nail Gun; Upsell's twelve arms are torn off one by one with the grapple" },
     beats: [
       "Bev: Upsell has the Gristle page in a jar in his clinic. He bought it off the Choir black market years ago.",
       "Chrome Gristle at night: neon, rain, jars that blink. Book a consultation at Upsell's clinic (pawn something at Organ Pawn to afford it, or have Bev forge a referral).",
@@ -129,6 +131,7 @@ export const MISSIONS_ACT3 = {
     cast: ["lumps", "sharon", "sister_agenda", "bishop", "dot", "mina", "dumpling"],
     requires: { missions: ["m17_minutes"], if: null },
     logline: "Pages first, then mum. It's then. Go into the Gut for the nine, and for Mina.",
+    mechanic: { uses: ["slide", "grapple", "marbles", "bloodcross", "lasso"], hook: "the rescue is an escort down Peristalsis Avenue on the beat; the Bishop's ulcers, the marble-slip weakness, and the lasso to drag digesters free" },
     beats: [
       "Lumps doesn't ask. He's standing at the Long Stairs with a crowbar and a pot of the yellow soup.",
       "Sharon tells you what the soup is for: Gristle doesn't eat it. It feeds the digester wall. Her soup has kept the Bottom's missing alive.",
@@ -219,6 +222,7 @@ export const MISSIONS_ACT3 = {
     cast: ["linda", "hoa", "gordo", "mailman"],
     requires: { missions: ["m18_nine_kilometres"], if: null },
     logline: "Evergreen Acres is the only district on the Schedule with something booked at 03:00: 'CHARGE'. Every window has a mannequin family waving.",
+    mechanic: { uses: ["fire", "cars", "grapple"], hook: "mow lawns to stop the HOA regrowing, steal a militia golf cart, and swing the porch gutters round the cul-de-sac" },
     beats: [
       "Evergreen: perfect lawns, a laugh track you can hear in the street, a mannequin family in every window waving at the same time.",
       "Linda Fairway and the HOA: 'your lawn is 2 mm too long.' You're fined on sight. Every fine is a debuff.",
@@ -277,6 +281,7 @@ export const MISSIONS_ACT3 = {
     cast: ["pauline", "perpetual_tuesday", "gus"],
     requires: { missions: ["m18_nine_kilometres"], if: null },
     logline: "In the Lates it has been the same Tuesday for sixty-one years. Pauline from Accounts knows every second of it, and she knows a man who has been late for the same meeting twenty-two thousand times.",
+    mechanic: { uses: ["loops", "frost", "remote"], hook: "the Lates teaches Loops (fall forever, keep the speed); freeze or rewind Neville to break his loop" },
     beats: [
       "The Waiting Room: infinite, with chairs. Pauline finds you, because you're new, and nobody is ever new.",
       "She knows the loop: 09:00-17:30, then 09:00 again. Loopers don't age. She's watched a door open in the sky at 03:00 in the gap of the loop.",
@@ -335,6 +340,7 @@ export const MISSIONS_ACT3 = {
     cast: ["pauline", "gordo"],
     requires: { missions: ["m22_the_waiting_room", "m21_property_values", "m19_organ_donor"], if: null },
     logline: "At 03:00, in the hour nobody's booked into, a door opens in the sky over the Lates. Behind it is what ☺ CORP has been planning for the dead.",
+    mechanic: { uses: ["nvg", "grapple"], hook: "the Missing Hour is grey: night vision goggles and a grapple swing down the cable trunks above the rows" },
     beats: [
       "With Neville delivered, the loop lets you stay past 17:30. You wait with Pauline and Gordo on Tuesday Tower.",
       "C13: 03:00, the grey, the door, the warehouse: mannequin bodies to the horizon, cables to the Machine's archive, the Master Clock's schedule. PROTOTYPE 0 (SCHEDULE NOT LOADED).",
@@ -383,6 +389,7 @@ export const MISSIONS_ACT3 = {
     cast: ["hask", "dale", "auntie", "lumps", "gordo", "mina", "pritchard"],
     requires: { missions: ["m23_workforce_restoration", "m20_the_missing"], if: null },
     logline: "Marion Hask calls you on the Machine's own terminal with an offer, and the Bottom splits three ways over what to do about it.",
+    mechanic: { uses: ["implants"], hook: "a talking mission: the split is about what you are, and your installed implants change which lines you're offered" },
     beats: [
       "C14: Hask on Dale's terminal. The Long Dark footage. 'the dead do not mind working.' The offer: a name, a job, a life that doesn't end.",
       "Pritchard rings back on the pager to book you a slot. You can talk to him.",
@@ -452,6 +459,7 @@ export const MISSIONS_ACT3 = {
     cast: ["overtime", "pauline"],
     requires: { missions: ["m24_the_split"], if: null },
     logline: "Overtime comes for you in the Lates, where every minute happens again, and every time it happens he remembers a little more.",
+    mechanic: { uses: ["loops", "frost", "camera", "grapple"], hook: "the loop fight: take a photo of where his weak point was and walk back into it next loop" },
     beats: [
       "The Lates. Pauline warns you: 'he came through the door at 03:00. he's never come through the door before.'",
       "Boss fight: overtime_3 in the loop. His attacks are telegraphed from your last loop; he glitches more every loop.",

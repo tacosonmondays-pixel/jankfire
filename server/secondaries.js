@@ -409,7 +409,7 @@ const sec = {
   },
   // bots with the speed trap watch whoever they're fighting, and anyone zooming past within range
   botRadar(b, n) {
-    if (b.ai.gear !== 'radar' || this.mode === 'training' || this.modeWeapon(b) || (this.chaosKit && this.chaosKit.noItem)) return;
+    if (b.ai.gear !== 'radar' || this.brOn || (this.isEcon && this.isEcon()) || this.mode === 'training' || this.modeWeapon(b) || (this.chaosKit && this.chaosKit.noItem)) return;
     if (this.secStopped(b, n) || b.trap || b.quiz || n < (b.blindUntil || 0) || this.rigOn(b)) return;
     if (n < (b.ai.radarNext || 0)) return;
     b.ai.radarNext = n + 250 + Math.random() * 200;

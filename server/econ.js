@@ -26,8 +26,9 @@ const DROP_SLOTS = { primary: 1, secondary: 1, melee: 1, item: 1, kit: 1 };
 const WSLOTS = ['primary', 'secondary', 'melee'];
 const ZONES = new WeakMap(); // map -> side zones
 // what bots buy: full buys pick from the first list, force buys from the second
-const BOT_FULL = ['ar', 'ar', 'redline', 'redline', 'chicken', 'minigun', 'sniper', 'burst', 'lmg', 'dmr', 'nailgun', 'cart'];
-const BOT_FORCE = ['smg', 'smg', 'shotgun', 'banana', 'bowling', 'lever', 'autoshot', 'tennis'];
+// (only the Search & Destroy arsenal: shared/econ.js SD. anything else is filtered out by econWeapon anyway)
+const BOT_FULL = ['ar', 'ar', 'ar', 'burst', 'burst', 'dmr', 'lmg', 'sniper'];
+const BOT_FORCE = ['smg', 'smg', 'redline', 'shotgun', 'shotgun', 'lever', 'autoshot'];
 // bots fire hitscan guns and projectiles (botFire); anything else they could only carry
 const botGun = (id) => has(WEAPONS, id) && WEAPONS[id].slot !== 'melee' && (WEAPONS[id].kind === 'hitscan' || WEAPONS[id].kind === 'proj');
 
@@ -144,8 +145,9 @@ const M = {
   econSync(p) {
     const e = p.ec;
     if (!e) return;
-    if (e.it && has(ITEMS, e.it.id) && e.it.n > 0) { p.item = e.it.id; p.ic = { i: e.it.id, n: e.it.n, next: 0 }; }
-    else { e.it = null; if (!has(ITEMS, p.item)) p.item = 'frag'; p.ic = { i: p.item, n: 0, next: 0 }; }
+    if (e.it && has(ITEMS, e.it.id) && (e.it.n > 0 || ITEMS[e.it.id].keep)) { p.item = e.it.id; p.ic = { i: e.it.id, n: e.it.n, next: 0 }; } // (goggles stay on with no flashes left)
+    else { e.it = null; if (!has(ITEMS, p.item) || p.item === 'nvg') p.item = 'frag'; p.ic = { i: p.item, n: 0, next: 0 }; } // (no free goggles from your own loadout)
+    if (p.item !== 'nvg') p.nvOn = false;
     const mel = e.sl.melee, kat = mel && mel.id === 'katana' ? mel.kat || 0 : 0;
     if ((p.kat || 0) !== kat) { p.kat = kat; this.broadcast({ t: 'kat', id: p.id, n: kat }); }
     // a weapon shows the skin of whoever bought it (no skin = the default look, not yours)
@@ -694,14 +696,14 @@ const M = {
       const ok = list.filter((id) => econWeapon(id) && weaponPrice(id) != null && weaponPrice(id) + keep <= e.$);
       return ok.length > 0 && buy('w', pick(ok));
     };
-    if (mode === 'pistol') { if (Math.random() < 0.6) buy('g', 'vest'); if (Math.random() < 0.4) gun(['pistol', 'akimbo', 'sawnoff'], 0); } // whatever's left: a better sidearm
+    if (mode === 'pistol') { if (Math.random() < 0.6) buy('g', 'vest'); if (Math.random() < 0.4) gun(['revolver', 'akimbo', 'sawnoff'], 0); } // whatever's left: a better sidearm
     else if (mode === 'full') {
       if (!hasGun) gun(BOT_FULL, 1000) || gun(BOT_FULL, 650) || gun(BOT_FORCE, 650);
       if (!buy('g', 'helm')) buy('g', 'vest');
       if (!att) buy('g', 'kit');
       if (e.$ >= 500) buy('i', 'frag');
     } else if (mode === 'force') {
-      if (!hasGun && !gun(BOT_FORCE, 650) && !gun(BOT_FORCE, 0)) gun(['marbles', 'akimbo', 'sawnoff'], 0); // no rifle money: a shotgunny sidearm
+      if (!hasGun && !gun(BOT_FORCE, 650) && !gun(BOT_FORCE, 0)) gun(['revolver', 'akimbo', 'sawnoff'], 0); // no rifle money: a better sidearm
       buy('g', 'vest');
     }
     if (e.sl.primary && e.sl.primary.lim && e.sl.primary.m + e.sl.primary.r < 10 && refillPrice(e.sl.primary.id) <= e.$) buy('w', e.sl.primary.id);
