@@ -402,7 +402,7 @@ function buildLoadoutUI() {
     col.innerHTML = '';
     for (const id of ORDER) {
       const w = WEAPONS[id];
-      if (w.slot !== slot) continue;
+      if (w.slot !== slot || w.modeOnly) continue; // mode-only weapons (the spoon) aren't loadout picks
       const b = document.createElement('button');
       b.className = 'wpick' + (S.loadout[slot] === id ? ' on' : '');
       b.textContent = w.name;
@@ -502,7 +502,7 @@ function sendSkins() {
   skinSendT = setTimeout(() => { if (G.joined) net.send({ t: 'skin', s: G.equipped }); }, 250);
 }
 // the weapons that show up in COSMETICS (the rifle form of the scythe borrows the scythe's look)
-function skinnable() { return ORDER.filter((id) => WEAPONS[id] && (SLOTS.includes(WEAPONS[id].slot) || itemModel(id) || id === 'scythe')); }
+function skinnable() { return ORDER.filter((id) => WEAPONS[id] && !WEAPONS[id].modeOnly && (SLOTS.includes(WEAPONS[id].slot) || itemModel(id) || id === 'scythe')); }
 // items you see in your hand wear skins (popper, reverse card). the thrown duck is a plain projectile, so not that
 function itemModel(id) { return Object.values(ITEMS).some((it) => it.w === id); }
 // nothing picked = no entry. a wrap mode that isn't normal is kept even without a wrap, so it's still there when you pick one

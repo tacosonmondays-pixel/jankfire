@@ -377,7 +377,7 @@ class Room {
   // randomizer: a fresh random loadout every life (null = back to your own)
   randomLoadout() {
     const lo = {};
-    for (const slot of ['primary', 'secondary', 'melee']) lo[slot] = pick(Object.keys(WEAPONS).filter((id) => WEAPONS[id].slot === slot));
+    for (const slot of ['primary', 'secondary', 'melee']) lo[slot] = pick(Object.keys(WEAPONS).filter((id) => WEAPONS[id].slot === slot && !WEAPONS[id].modeOnly));
     // weapons only: you keep the item in your own loadout (and its server-side charges). the popper + reverse card are
     // items now, so they left the secondary pool
     return lo;
