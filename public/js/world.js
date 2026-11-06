@@ -184,7 +184,7 @@ const HAZE_FOG = `#ifdef USE_FOG
 	}
 	gl_FragColor.rgb = mix( gl_FragColor.rgb, fogC, fogFactor );
 #endif`;
-function hazify(mat, k) {
+export function hazify(mat, k) {
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.uHaze = hazeUniforms.uHaze; sh.uniforms.uHazeColor = hazeUniforms.uHazeColor; sh.uniforms.uHazeK = { value: k };
     sh.vertexShader = 'varying float vHazeY;\n' + sh.vertexShader.replace('#include <fog_vertex>', '#include <fog_vertex>\n\tvHazeY = ( modelMatrix * vec4( transformed, 1.0 ) ).y;');
