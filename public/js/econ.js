@@ -16,6 +16,7 @@ import { W, setSlots, playVM, rebuildOne, setLoadout, refillAmmo, syncItem, setI
 import { weaponIcon, itemIcon, objIcon } from './icons.js';
 import { RP } from './replay.js';
 import * as E3 from './econ3d.js';
+import { tacRound, tacSync } from './tactical.js';
 import { K } from './keys.js';
 
 // every key this mode adds, in one place (the keybinds registry takes them over: buy, pause, drop; pickup is the
@@ -101,7 +102,7 @@ const HOOKS = {
 // counted weapons (bow, launchers, cards, snowballs) spend a shot when a fire message leaves: mirror it here
 const send0 = net.send.bind(net);
 net.send = (o) => {
-  if (G.eco && o && o.t === 'fire') { const x = inst(o.w); if (x && x.lim && !x.cl) W.ammo[o.w] = Math.max(0, (W.ammo[o.w] || 0) - 1); }
+  if (G.eco && o && o.t === 'fire') { const x = inst(o.w); if (x && x.lim && !x.cl && o.ch == null) W.ammo[o.w] = Math.max(0, (W.ammo[o.w] || 0) - 1); }
   return send0(o);
 };
 
@@ -254,6 +255,7 @@ function initNet() {
   net.on('inv', onInv);
   net.on('eround', (m) => {
     const e = on();
+    tacRound(m.n); // this round's shot seed, shot count from 0
     e.round = m; e.buyEnd = now() + (m.buy || 0); e.fresh = true; e.out = false;
     const zs = [];
     if (m.zones && m.zones.att) zs.push({ z: m.zones.att, team: m.att });
@@ -306,6 +308,7 @@ function initNet() {
     const x = inst(m.w);
     if (!x || x.u !== m.u) return;
     x.m = m.m; x.r = m.r; W.ammo[m.w] = m.m; W.res[m.w] = m.r;
+    if (m.q != null) tacSync(m.q); // the server's shot count (it refused one)
   });
   net.on('eno', (m) => { toast(ENO[m.why] || m.why || 'no'); sfx.error(); });
 }
