@@ -47,7 +47,7 @@ export function canDefuse(pos, bp, slack = 0) {
 // the maps a mode can be played on. a map with an S&D version ('<id>_sd', map.sd) is two entries: Plant & Defuse
 // plays the S&D one, every other mode the standard one
 export function mapsFor(game, maps, order) {
-  return order.filter((id) => id !== 'range' && maps[id] && (GAMES[game].sites ? maps[id].sites && maps[id].sites.length : !maps[id].sd) && (!GAMES[game].mapOk || GAMES[game].mapOk(maps[id])));
+  return order.filter((id) => id !== 'range' && maps[id] && !(maps[id].royaleOnly && !GAMES[game].royale) && (GAMES[game].sites ? maps[id].sites && maps[id].sites.length : !maps[id].sd) && (!GAMES[game].mapOk || GAMES[game].mapOk(maps[id])));
 }
 // the version of map `id` that `game` plays (switching mode swaps between a map and its S&D version)
 export function mapForGame(game, maps, id) {

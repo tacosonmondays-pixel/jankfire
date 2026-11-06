@@ -1,6 +1,13 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '2.8', date: '2026-11-06', title: 'JANK ROYALE', items: [
+    'NEW MODE: JANK ROYALE. ride the JANK AIR blimp, jump, glide down under an umbrella, loot the floor, stay in the zone. last idiot standing wins.',
+    'LOOT: guns with real ammo in 5 rarities (Rare and up have light beams), gadgets, Jank Cola and Medkits (H), and armour: Cardboard Plate, Bin Lid Vest, Riot Fridge. F picks up or swaps.',
+    'NEW MAP: JANKBURG, a whole walled city. Liberal Lane (liberal helpings), Pronoun Park (no names, only pronouns), Overdraft Heights (negative gravity), Number Works, Neon Market and Corp Hill each bend a rule while you are inside.',
+    'TWISTS: Return to Sender (die early and get mailed back once), a glowing kill-leader bounty, a zone wall that shoves, supply crates from the blimp and loot goblins that run off with Epics.',
+    'bots play it: they drop somewhere sensible, loot, heal, pick the right gun for the range, third-party fights and rotate with the zone.',
+  ] },
   { v: '2.7', date: '2026-11-06', title: 'THE REAL PLACES UPDATE', items: [
     'TRAFFIC: cars, vans, buses and trucks drive the roads on Suburb, Warehouse, Desert and the city under Skyline and Rooftop. a slow bump shoves you, a fast one sends you flying. two cars crashing explode. shove someone into a car and it is your kill. off in Plant & Defuse.',
     'SMARTY PANTS: answer 3 Pop Quiz questions right to unlock the achievement, the Big Glasses and the Overalls (the first locked pants).',
