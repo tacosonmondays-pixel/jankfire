@@ -52,6 +52,21 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 | `make_spoon.py` | `w_spoon.glb`, `w_spoon_ladle.glb` | tablespoon x1.15 (PROPERTY OF THE CAFETERIA), soup ladle |
 | `make_slipper.py` | `w_slipper.glb`, `pj_slipper.glb`, `w_slipper_croc.glb`, `pj_slipper_croc.glb` | fluffy house slipper (a MOM tag), foam clog with charms; thrown ones x1.6 |
 | `make_projectiles.py` | `pj_chicken`, `pj_bowling`, `pj_banana`, `pj_peel`, `pj_frag`, `pj_smokegren` | the rubber chicken (with a firework on its back), the giant bowling ball, the banana, the peel on the floor, a pineapple frag (PULL ME tag), a canister smoke (DO NOT INHALE) |
+| `make_slapper.py` | `w_slapper.glb`, `w_slapper_foam.glb`, `w_slapper_paw.glb` | jelly-rubber toy hand on a candy stick (real hand x1.35, metaballs, SLAP knuckle tattoos), stadium foam finger (#1 / U R #2), grizzly paw (BEAR ARMS); the slapping end is the `hand` node; `--only=` builds one |
+| `make_scythe.py` | `w_scythe.glb`, `w_scythe_rifle.glb`, `w_scythe_reaper.glb` | the killstreak's two forms from one rifle (Remington-700-size action, 34 mm scope) + an Austrian scythe blade on a hinge (`blade` node); the rifle's `bolt` cycles; the Reaper (bone blade, skull pommel, IF FOUND, YOU'RE NEXT) |
+| `make_revolver_flint.py` | `w_revolver_flint.glb` | late-1700s holster flintlock x1.05 (TOTALLY A REVOLVER); the cock is the `hammer` node (under a flipped empty so +x swings it the right way) |
+| `make_gumball.py` | `w_marbles_gumball.glb` | counter-top gumball machine x1.0 stretched into a pistol: see-through globe, 28 gumballs, the chrome chute is the barrel (NO REFUNDS) |
+| `make_redline_hotrod.py` | `w_redline_hotrod.glb` | the Redline x1.18 in candy cherry with a flame job, chrome, fuzzy dice; zoomie exhaust throats share `redline_vents`, so they glow with your HP; same `needle` |
+| `make_ar_toy.py` | `w_ar_toy.glb` | foam-dart blaster about x1.3 a real toy: clamshell screws, priming slide, see-through dart clip, tall plastic sights (NOT A TOY) |
+| `make_ar_bullpup.py` | `w_ar_bullpup.glb` | original 24in DMR bullpup x1.38, carry-handle optic, smoke mag behind the grip (FRONT TOWARD ENEMY); `port` = shells fly out by your cheek |
+| `make_smg_uzi.py` | `w_smg_uzi.glb` | Uzi-pattern open bolt x1.45, raised sights (FITS MOST POCKETS, your keys on the sling loop) |
+| `make_shotgun_double.py` | `w_shotgun_double.glb` | side-by-side 12-bore hammer gun x1.0; both hammers are the `hammer` node; a gold rubber duck on the lock plate |
+| `make_minigun_gatling.py` | `w_minigun_gatling.glb` | 1874 Camel-pattern Gatling x1.0: the crank is on the barrel axis, inside the `barrels` node (TURN CRANK FASTER) |
+| `make_sniper_musket.py` | `w_sniper_musket.glb` | Brown Bess x1.38 with a 15in bayonet; a brass pirate spyglass lashed on is the scope |
+| `make_sniper_golden.py` | `w_sniper_golden.glb` | the round-1 AWM re-dressed: gold scrollwork, rubies, a crown turret, a PRICELESS tag; `noWrap`, `glint` spots, `bolt` |
+| `make_chicken_turkey.py` | `w_chicken_turkey.glb`, `pj_chicken_turkey.glb` | RPG-style tube with a roast turkey on the muzzle (HEAT 350F); the thrown turkey x3.3 |
+| `make_bowling_cannon.py` | `w_bowling_cannon.glb` | bronze hand mortar with verdigris, slow-match fuse, bowling-pin lifting handles; `ads` pose |
+| `make_banana_bunch.py` | `w_banana_bunch.glb` | the Peel Shooter's AKS-74U in AK-74 plum, the mag is a whole hand of bananas (PRODUCE OF JANK) |
 
 ## Rules that make a model drop straight in
 - **Build in game space**: three.js axes and metres (x right, y up, -z forward); `lib.gv()` converts to Blender. A
@@ -63,8 +78,8 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
   forward to set the eye distance), `hatAt` `[[x, y, z], height]`, moving parts (`pump`, `cylinder`, `hammer`, `bolt`), the code models' hooks
   (`needle`, `vents`, `barrels`, `tip` = the cigarette ember weapons.js swells, `fan` = the card nodes it deals your hand
   onto, `hand`, `blade`, `card`), `bow` (the string rig: the halves stay on the limb tips and bend to the arrow's nock as
-  you draw, the limbs flex), `glint` (spots for the Golden Sniper's star glint), `noWrap` (a trophy no wrap paints) and
-  `paint` (materials the flat look recolours). `id` is the base weapon, `skin` the skin it is.
+  you draw, the limbs flex), `glint` (spots for the Golden Sniper's star glint), `noWrap` (a trophy no wrap paints), `port`
+  (where the shells fly out, if not the default spot) and `paint` (materials the flat look recolours). `id` is the base weapon, `skin` the skin it is.
 - **File names**: a weapon is `w_<id>.glb`, a skin `w_<skin id>.glb` (e.g. `w_ar_toy.glb`), a thrown thing `pj_<kind>.glb`
   (centred, nose to -z) and a skin's thrown one `pj_<skin id>.glb` (a thrown croc is a croc). Anything missing = the code
   model, as before.
@@ -82,6 +97,17 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
   texture (`tex_*` take the colour). Emissive materials stay glowing under weapon skins. Textures are tiny and nearest
   filtered on purpose (ugly-on-purpose, matches Potato through Too HD).
 - **Budget**: weapons up to ~10k tris (viewmodel), props 2-16k. Keep bevels small and segment counts modest.
+
+## Kit gotchas (found the hard way)
+- Raw bmesh UVs: name the layer (`bm.loops.layers.uv.new('UVMap')`). Unnamed it's "Float2", and after a join the
+  exported UVs are all zeros (white textures).
+- `uv_planar` right after making an object reads a stale `matrix_world`: call `bpy.context.view_layer.update()` first.
+- `lathe()` caps both ends by default, so a thin ring becomes a solid disc (a lens cover): pass `cap=False` for bands.
+- Boolean cuts can leave the new faces on an empty material slot (grey in the sheet): the round-2 gun scripts have a
+  small `fixmats()` that hands them the object's own material.
+- Metaballs: positions go through `gv()`, radii are metres too (millimetres made a 70 m blob that hung Blender).
+- One Blender session = unique object names: in a multi-file script give each model's hook nodes their own names and
+  put the exact name in its meta.
 
 ## How the game uses them
 - `public/js/glbkit.js`: `prepAuthored` takes any glb with `jf` metadata: nearest-filtered textures, the Potato vertex

@@ -252,7 +252,8 @@ def dryer():
             uvl[li].uv = ((0.5 - u) if n.x > 0 else (0.5 + u), (gy + 0.438) / 0.042 + 0.5)
     WZ = {'hd_pink': 'a', 'hd_hot': 'b', 'hd_chrome': 'b'}
     bodies = zone_join(parts, 'dryer_body', WZ, default='n', rule=lambda m, c: 'b' if m == 'hd_pink' and c[1] > -0.04 else None)
-    meta = {'kind': 'weapon', 'id': 'blower', 'skin': 'blower_dryer', 'paint': ['hd_pink'], 'muzzle': list(MUZ), 'hatAt': [[0, 0.081, -0.12], 0.1]}
+    meta = {'kind': 'weapon', 'id': 'blower', 'skin': 'blower_dryer', 'paint': ['hd_pink'], 'muzzle': [0, 0, -0.49],  # the air comes out of its nozzle (not the blower's spot 0.4 m further on)
+            'hatAt': [[0, 0.081, -0.12], 0.1]}
     return finish('w_blower_dryer', bodies, meta)
 
 
