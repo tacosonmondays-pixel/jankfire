@@ -214,10 +214,10 @@ const RL = {
   scythe_rifle: { dur: 1.8, keys: [
     K(0), K(0.2, [-0.07, 0.08, -0.05], [0.08, 0.5, 0.35]), K(1.3, [-0.07, 0.082, -0.05], [0.09, 0.5, 0.36]),
     K(1.4, [-0.02, 0.05, 0.0], [0.4, -0.2, 0.4], 'snap'), K(1.52, [-0.01, 0.02, 0.0], [0.05, -0.05, 0.05]), K(1.8),
-  ], ch: { fold: [[0, 0], [0.24, 0], [0.36, 1], [1.32, 1], [1.4, 0]],
+  ], ch: { fold: [[0, 0], [0.24, 0], [0.36, 1], [1.32, 1], [1.4, 0]], bolt: [[0, 0, 0], [0.22, 0, 0], [0.28, 1, 0], [0.34, 1, 1], [1.26, 1, 1], [1.32, 1, 0], [1.38, 0, 0]],
     lh: [[0.3, 0, 0, -0.04, -0.12, -0.14], [0.52, 1, 0, 0, -0.1, -0.15], [0.62, 1, 0, 0, -0.075, -0.15], [0.7, 1, 0, 0, -0.09, -0.15], [0.8, 1, 0, 0, -0.075, -0.15], [0.88, 1, 0, 0, -0.09, -0.15], [0.98, 1, 0, 0, -0.075, -0.15], [1.06, 1, 0, 0, -0.09, -0.15], [1.16, 1, 0, 0, -0.075, -0.15], [1.28, 0, 0, 0, -0.12, -0.14]],
     p_souls: [[0, 1, 0, 0, 0], [0.62, 1, 0, 0, 0], [0.63, 0.75, 0, 0, 0], [0.8, 0.75, 0, 0, 0], [0.81, 0.5, 0, 0, 0], [0.98, 0.5, 0, 0, 0], [0.99, 0.25, 0, 0, 0], [1.16, 0.25, 0, 0, 0], [1.17, 0, 0, 0, 0]] },
-  events: [[0.3, 'shing'], [0.62, 'soulIn'], [0.8, 'soulIn'], [0.98, 'soulIn'], [1.16, 'soulIn'], [1.4, 'shingShut']] },
+  events: [[0.28, 'boltUp'], [0.34, 'boltBack'], [0.3, 'shing'], [1.32, 'boltHome'], [0.62, 'soulIn'], [0.8, 'soulIn'], [0.98, 'soulIn'], [1.16, 'soulIn'], [1.4, 'shingShut']] },
 };
 // where the props sit: on the off hand (hand space, metres) or on the gun (gun units). the minigun's bits sit on its box
 const PROP_AT = {
@@ -246,10 +246,15 @@ function bind(m, id) {
   const ud = g.userData, gp = ud.parts || {}, b = { id, props: {} };
   b.mag = ud.mag || find(g, 'mag'); b.charge = ud.charge || find(g, 'charge');
   b.pump = gp.pump || ud.pump || find(g, 'pump'); b.bolt = gp.bolt || null; b.cyl = gp.cyl || find(g, 'cyl');
-  b.lid = find(g, 'lid'); b.fold = [find(g, 'fold'), find(g, 'fold2')].filter(Boolean); b.water = ud.water || null;
+  b.lid = find(g, 'lid'); b.fold = [find(g, 'fold'), find(g, 'fold2'), find(g, 'folded_wzB')].filter(Boolean); // (code model / Blender model) b.water = ud.water || null;
   for (const k of ['mag', 'charge', 'pump', 'bolt', 'cyl', 'lid', ...b.fold.map((_, i) => 'f' + i)]) {
     const o = k[0] === 'f' && k.length === 2 ? b.fold[Number(k[1])] : b[k];
     if (o) o.userData.rl0 = o.userData.rl0 || { p: o.position.clone(), r: o.rotation.clone() };
+  }
+  if (b.fold.length) { // hinge: the back end of the blade, on its bottom edge (gun space)
+    g.updateMatrixWorld(true); bbA.makeEmpty(); for (const o of b.fold) bbA.expandByObject(o);
+    const lo = bbA.min.clone(), hi = bbA.max.clone(); g.worldToLocal(lo); g.worldToLocal(hi);
+    b.pin = [0, Math.min(lo.y, hi.y), Math.max(lo.z, hi.z)];
   }
   // the off hand: a fist with a thumb and a bit of forearm trailing back off screen
   const h = new THREE.Group(), SK = 0xf1c27d;
@@ -267,6 +272,7 @@ function bind(m, id) {
   return b;
 }
 
+const FOLD_PIN = [0, 0, 0], bbA = new THREE.Box3(); // the reaper blade's hinge (gun units): its back end, worked out per model
 const tA = new THREE.Vector3(), tB = new THREE.Vector3(), eA = new THREE.Euler(), qA = new THREE.Quaternion(), REST = new THREE.Vector3(-0.1, -0.5, -0.2), SHOULDER = new THREE.Vector3(-0.34, -0.6, 0.1), UPV = new THREE.Vector3(0, 1, 0);
 const rest = (o) => { const r = o.userData.rl0; o.position.copy(r.p); o.rotation.copy(r.r); };
 // a spot (gun units) on one of the parts the hand can follow
@@ -293,8 +299,11 @@ export function reloadStep(m, id, an, at, sampleCh, W) {
   }
   if (b.lid) { rest(b.lid); const v = ch('lid'); if (v) { b.lid.rotation.z = v[0] * 2.2; b.lid.position.x -= Math.sin(v[0] * 1.1) * 0.03; b.lid.position.y += Math.sin(v[0] * 2.2) * 0.02; } }
   if (b.fold.length) { // the folded blade swings down off the barrel round its back end
-    const v = ch('fold'), a = v ? v[0] * 0.55 : 0;
-    for (const o of b.fold) { const r = o.userData.rl0, pz = r.p.z + 0.35; o.position.set(r.p.x, r.p.y - 0.35 * Math.sin(a), pz - 0.35 * Math.cos(a)); o.rotation.set(r.r.x - a, r.r.y, r.r.z); }
+    const v = ch('fold'), a = v ? v[0] * 0.38 : 0, FP = b.pin || FOLD_PIN;
+    for (const o of b.fold) { // round a hinge at the blade's back end, whatever the node's own origin is
+      const r = o.userData.rl0, dy = r.p.y - FP[1], dz = r.p.z - FP[2], c = Math.cos(-a), sn = Math.sin(-a);
+      o.position.set(r.p.x, FP[1] + dy * c - dz * sn, FP[2] + dy * sn + dz * c); o.rotation.set(r.r.x - a, r.r.y, r.r.z);
+    }
   }
   if (b.water) { const v = ch('fill'); if (v) { const w = WEAPONS.water, k0 = Math.max(0.04, Math.min(1, (W.ammo.water ?? w.mag) / w.mag)); b.water.scale.y = k0 + (1 - k0) * v[0]; } } // (secondaries.js eases it back to the ammo after)
   if (g.userData.needle) { const v = ch('needle'); if (v) g.userData.needle.rotation.x = -2.3 + 4.6 * Math.min(1, v[0]); }

@@ -605,6 +605,7 @@ export function brFrame(dt, now) {
   }
 }
 export const brState = () => R; // (tests + the console)
+export function brReset() { stop(); } // leaving the room (to the menu, or into another room): no royale left behind
 
 // ------------------------------------------------------------ the twists + POI rules (server decides, this shows them)
 let crown = null;

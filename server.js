@@ -22,7 +22,7 @@ import { rigClash } from './shared/rig.js'; // overdrive rig killstreak
 import { soapAt, trapBoxes, trapPreroll } from './shared/wand.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, mapForGame, canDefuse, LADDER, GUNGAME, INFECT } from './shared/modes.js';
-import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, eventGame } from './shared/vote.js';
+import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, eventGame, inQuickPlay } from './shared/vote.js';
 import { matchReset, matchKill, matchSummary } from './server/match.js';
 import { SKIP, isSkipCmd, skipCommand, skipTick, skipPeople, skipInfo } from './server/skip.js';
 import { WEAPONS, SLOTS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, SLEEP_TIME, validStreaks, fireRate } from './shared/weapons.js';
@@ -3156,7 +3156,7 @@ class Room {
   startVote() {
     if (this.mode !== 'ffa' && this.mode !== 'bots') return;
     const options = modeCards(MAPS, MAP_ORDER, this.game, Math.random, this.skipped);
-    if (this.mode === 'bots' && GAMES[this.game].zombies && this.skipped !== this.game && options.length && !options.some((o) => o.game === this.game)) options[options.length - 1] = { game: this.game, event: 0 }; // solo zombies: play again is always an option
+    if (this.mode === 'bots' && !inQuickPlay(this.game) && this.skipped !== this.game && options.length && !options.some((o) => o.game === this.game)) options[options.length - 1] = { game: this.game, event: 0 }; // solo zombies: play again is always an option
     this.skipped = null;
     if (this.lobbyVote && this.lobbyVote()) return; // a one-mode lobby (P&D, royale, zombies): only the map is up for a vote
     if (!options.length) return;

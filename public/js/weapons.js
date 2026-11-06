@@ -8,6 +8,7 @@ import { raycast, rayBox } from '/shared/physics.js';
 import { G } from './ctx.js';
 import { palOf, crossFired } from './bloodcross.js';
 import { ME, eye, look, applyKb, hspeed } from './player.js';
+import { vmBob } from './vmbob.js';
 import { buildWeapon, M, cardFace, tipColor, setKatana, freeTree } from './models.js';
 import { heatTeeth, spinTeeth } from './models.js';
 import { fx } from './fx.js';
@@ -1170,7 +1171,7 @@ export function fireDown() {
   if (W.anim && W.anim.kind === 'draw') W.anim = null;
   if (w.kind === 'hitscan' && !w.auto && !w.spinup) {
     if (W.ammo[id] > 0) fireHitscan(id, now); else { sfx.empty(); reload(); }
-  } else if (w.burst) { if (W.ammo[id] > 0) fireHitscan(id, now); } // Hat Trick: the burst starts on the press, a tap finishes it
+  } else if (w.burst && w.kind === 'hitscan') { if (W.ammo[id] > 0) fireHitscan(id, now); } // Hat Trick: the burst starts on the press, a tap finishes it (the Blood Cross's `burst` is its pop delay, not a burst)
   else if (w.kind === 'melee') swing(id, now);
   else if (w.kind === 'proj' && !w.auto) fireProj(id, now);
   else if (w.kind === 'cards') playCard(now);
@@ -1578,8 +1579,7 @@ export function updateWeapons(dt, now) {
   const m = models[id];
   const cfg = m.cfg;
   const hs = hspeed();
-  if (ME.onGround) W.bob += dt * Math.min(hs, 12) * 1.1;
-  const bobA = ME.onGround ? Math.min(1, hs / 10) * 0.018 : 0;
+  const vb = vmBob(dt, now, hs); W.bob = vb.ph; // footstep bob by gait + the marbles stumble (vmbob.js). (lasso.js reads W.bob)
   W.kick = Math.max(0, W.kick - dt * 6);
   W.swap = Math.max(0, W.swap - dt * 5);
   W.swing = Math.max(0, W.swing - dt * 3.5);
@@ -1601,12 +1601,12 @@ export function updateWeapons(dt, now) {
   W.runK += ((running ? 1 : 0) - W.runK) * Math.min(1, dt * 8);
   const breathe = now * 0.001;
   // base pose (hip): bob, lag, breathing, run tilt
-  let px = cfg.p[0] + Math.sin(W.bob) * bobA + W.swayX * 0.2 + Math.sin(breathe * 1.3) * 0.0025,
-    py = cfg.p[1] + Math.abs(Math.cos(W.bob)) * bobA - W.swap * 0.3 - W.swayY * 0.12 + Math.sin(breathe * 2.1) * 0.0018 - W.runK * 0.03,
+  let px = cfg.p[0] + vb.x + W.swayX * 0.2 + Math.sin(breathe * 1.3) * 0.0025,
+    py = cfg.p[1] + vb.y - W.swap * 0.3 - W.swayY * 0.12 + Math.sin(breathe * 2.1) * 0.0018 - W.runK * 0.03,
     pz = cfg.p[2];
-  let rx = cfg.r[0] - W.swayY * 0.8 - W.runK * 0.25,
+  let rx = cfg.r[0] + vb.rx - W.swayY * 0.8 - W.runK * 0.25,
     ry = cfg.r[1] + W.swayX * 1.3 + W.runK * 0.35,
-    rz = cfg.r[2] + Math.sin(breathe * 1.1) * 0.008 + W.swayX * 0.6 + W.runK * 0.2 + (ME.sliding ? 0.3 : 0);
+    rz = cfg.r[2] + vb.rz + Math.sin(breathe * 1.1) * 0.008 + W.swayX * 0.6 + W.runK * 0.2 + (ME.sliding ? 0.3 : 0);
   // aim down sights: line the sight up with the exact centre of the screen and let the gun hang below it.
   // guns without sights (launchers, minigun, bow) stay low and to the side so the middle is clear.
   if (w.ads && W.aim > 0) {
