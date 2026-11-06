@@ -10,6 +10,7 @@ const COLORS = {
   dm: ['#ff4f6a', '#3a0a18'], tdm: ['#9a7dff', '#1a0a3a'], tags: ['#4fffb0', '#0a2a1e'], bomb: ['#ffb04f', '#2a1206'],
   rand: ['#ff4fd8', '#2a0624'], gun: ['#ffe14d', '#2a2006'], inf: ['#7dff4f', '#0e2406'], spoons: ['#4fd8ff', '#061e2a'],
   duckrain: ['#4fd8ff', '#0a1a3a'], lava: ['#ff5a1a', '#2a0800'], oitc: ['#e0a040', '#24160a'],
+  br: ['#4fd8ff', '#2a0636'], zm: ['#39ff14', '#0a1a06'],
 };
 export function modeColors(g) { return COLORS[g] || ['#ff4fd8', '#2a0624']; }
 
@@ -50,6 +51,22 @@ function fit(o, size) { // scale a model so its biggest side is `size`, centred,
 const gun = (id, size, rx = 0, ry = 0, rz = 0) => { const g = buildWeapon(id); g.rotation.set(rx, ry, rz); return fit(g, size); };
 const dude = (color, look) => { const ch = buildCharacter(color, { ...DEFAULT_LOOK, ...look }); ch.arm.rotation.x = -0.1; ch.armL.rotation.x = -0.1; return fit(ch.root, 1.25); };
 const BUILD = {
+  // jank royale: someone drifting down under a pink umbrella. zombies: a green one, arms out, after the loaf
+  br: () => {
+    const g = new THREE.Group(), d = dude('#ffe14d', {}); d.rotation.y = 0.5; d.rotation.z = 0.12; g.add(d);
+    const um = new THREE.Group(), can = new THREE.Mesh(new THREE.ConeGeometry(0.66, 0.34, 8), M(0xff4fd8)); um.add(can);
+    const tip = box(0.05, 0.12, 0.05, 0xffe14d); tip.position.y = 0.22; um.add(tip);
+    const stick = box(0.035, 0.7, 0.035, 0x120818); stick.position.y = -0.4; um.add(stick);
+    um.position.set(0.12, 1.75, 0); um.rotation.z = -0.15; g.add(um);
+    const f = fit(g, 1.3); f.position.y -= 0.12; return f;
+  },
+  zm: () => {
+    const g = new THREE.Group(), z = buildCharacter('#39ff14', { ...DEFAULT_LOOK, skin: '#7dff4f' });
+    z.arm.rotation.set(0.15, 0, 0); z.armL.rotation.set(0.05, 0, 0); z.root.rotation.y = 1.1; // arms out, the classic. side on, so they read
+    const zf = fit(z.root, 1.25); zf.position.x = -0.25; g.add(zf);
+    const b = gun('bread', 0.95, 0, 0.4, 0.3); b.position.set(0.55, 0.1, 0.2); b.rotation.z = 0.5; g.add(b);
+    return g;
+  },
   dm: () => { const g = gun('ar', 1.7, 0, -0.75, 0.2); g.position.y += 0.2; return g; },
   tdm: () => { const g = new THREE.Group(); const a = dude('#ff4f4f', { teamed: true }), b = dude('#4fa8ff', { teamed: true }); a.position.x = -0.45; a.rotation.y = -0.9; b.position.x = 0.45; b.rotation.y = 0.9 + Math.PI; g.add(a, b); return g; },
   tags: () => {

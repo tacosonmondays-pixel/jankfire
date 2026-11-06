@@ -77,6 +77,7 @@ import { skipVote, skipReset } from './skipvote.js';
 import { lassoFrame, loopFrame, lassoWheel, lassoKey, lassoLate } from './lasso.js'; // lasso (secondary)
 import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + quick-scope callouts register themselves)
 import { K } from './keys.js';
+import { initLobby, lobbyInfo, lobbyKey, lobbyMe, lobbyLeave } from './lobby.js'; // ONLINE / WITH BOTS mode picker + the lobby countdown
 import { controlsScreen } from './controls.js';
 import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, zmModelsLoaded } from './zombies.js';
 
@@ -149,6 +150,7 @@ initHome({
   look: () => { const shown = validLook({ ...DEFAULT_LOOK, ...G.settings.look }, myAchs()); return [shown.color || G.myColor || '#ff4fd8', shown]; },
   skin: (id) => G.equipped[id], // what you actually wear
 });
+initLobby({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), send: (m) => net.send(m), map: () => G.cfg && G.cfg.map });
 initEcon({ pause: () => { if (document.pointerLockElement) document.exitPointerLock(); pause(); }, lock }); // Plant & Defuse economy
 
 const myShadow = makeShadow();
@@ -264,6 +266,7 @@ function resetWorldState() {
   clearSprays();
   clearShreds();
   G.roundOver = false;
+  lobbyLeave();
   renderRound(null);
   $('roundEnd').classList.add('hidden');
   esClose(false);
@@ -784,7 +787,9 @@ function buildCosmeticsUI() {
   const chips = (elId, type, idx) => {
     const el = $(elId);
     el.innerHTML = '';
-    for (const [k, v] of Object.entries(COSMETICS[type])) {
+    let list = Object.entries(COSMETICS[type]);
+    if (type === 'finish') list = wrapFilterList(list, sk[idx]); // 60-odd wraps: rarity order + the filter row
+    for (const [k, v] of list) {
       const c = document.createElement('button');
       const have = owns(G.inv, type, k);
       c.className = 'chip' + (sk[idx] === k ? ' on' : '') + (have ? '' : ' locked');
@@ -860,6 +865,32 @@ function buildCosmeticsUI() {
     $('skAch').append(box);
   }
   showPreview(id, ownedSkin(sk, G.inv, id));
+}
+// the wrap list's filter row: rarity pills, OWNED, and a search box. the wrap you're wearing always shows
+const WF = { r: 'all', q: '' };
+const RAR_ORDER = ['free', 'common', 'rare', 'epic', 'legendary'];
+function wrapFilterList(list, cur) {
+  const el = $('skWrapFilter');
+  if (!el.dataset.built) { // built once: rebuilding it on every click would eat the search box focus
+    el.dataset.built = '1';
+    for (const r of ['all', 'owned', ...RAR_ORDER.slice(1)]) {
+      const b = document.createElement('button');
+      b.dataset.r = r; b.textContent = r === 'all' ? 'ALL' : r === 'owned' ? 'OWNED' : RARITY[r].name.toUpperCase();
+      if (RARITY[r]) b.style.setProperty('--rc', RARITY[r].color);
+      b.addEventListener('click', () => { WF.r = r; buildCosmeticsUI(); });
+      el.append(b);
+    }
+    const q = document.createElement('input');
+    q.type = 'search'; q.placeholder = 'search wraps'; q.maxLength = 24; q.spellcheck = false;
+    q.addEventListener('input', () => { WF.q = q.value.trim().toLowerCase(); buildCosmeticsUI(); });
+    const n = document.createElement('span'); n.className = 'n';
+    el.append(q, n);
+  }
+  for (const b of el.querySelectorAll('button')) b.classList.toggle('on', b.dataset.r === WF.r);
+  const out = list.filter(([k, v]) => k === cur || ((WF.r === 'all' || (WF.r === 'owned' ? owns(G.inv, 'finish', k) : v.rarity === WF.r)) && (!WF.q || v.name.toLowerCase().includes(WF.q) || k.includes(WF.q))))
+    .sort((a, b) => RAR_ORDER.indexOf(a[1].rarity) - RAR_ORDER.indexOf(b[1].rarity));
+  el.querySelector('.n').textContent = `${out.length}/${list.length}`;
+  return out;
 }
 // NORMAL / REVERSE / FULL: which part of the weapon the wrap paints (wrapzones.js). free, goes with the wrap
 const WRAP_HINT = {
@@ -996,6 +1027,7 @@ function pressed(e) {
   if (K.matches('scores', e)) { e.preventDefault(); scoresOpen = true; renderScores(); return; }
   if (K.matches('chat', e)) { e.preventDefault(); openChat(); return; }
   if (K.matches('menu', e)) { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
+  if (lobbyKey(e)) return; // a mode lobby: ready up
   if (gearKeyDown(e)) return; // pop quiz answers (1-4), goggles flash (nvgFlash)
   if (lassoKey(e, true)) return; // holding someone on the lasso: reel keys, fire / aim lets go, no weapon switching. held: jump / move wriggles
   if (K.matches(BUBBLED, e) && stuckInBubble(true)) return; // sealed in a soap bubble: no shooting, aiming, grapple, items, dash, t-bag, sprays or streaks
@@ -1143,6 +1175,7 @@ net.on('welcome', (m) => {
   G.myId = m.id; G.myName = m.name; G.myColor = m.color; G.joined = true; connecting = false;
   airReset();
   G.mode = m.mode; G.cfg = m.cfg;
+  lobbyMe(m.id); lobbyInfo(m.lobby || null); // a mode lobby: the countdown is on
   G.game = m.game; // (music needs it before the first round info arrives)
   musicNewMatch(); // a fresh random song for this match
   loadMap(m.cfg.map);
@@ -1288,7 +1321,7 @@ net.on('sn', (m) => {
     r.snap(m.s, e);
   }
   if (m.wave) hud.wave(m.wave);
-  if (m.round) { if (!G.round || G.round.game !== m.round.game) { G.round = m.round; updateLabel(); } G.round = m.round; }
+  if (m.round) { if (!G.round || G.round.game !== m.round.game) { G.round = m.round; updateLabel(); } G.round = m.round; lobbyInfo(m.round.warm || null); }
   renderRound(m.round);
   if (scoresOpen) renderScores();
 });
@@ -2541,6 +2574,7 @@ function fmtClock(ms) { const s2 = Math.ceil(ms / 1000); return `${Math.floor(s2
 function renderRound(r) {
   const el = $('round');
   if (!r) { el.textContent = ''; return; }
+  if (r.warm) { el.textContent = 'warm-up · nothing counts'; return; } // a mode lobby: its own big countdown box
   const mt = zmRoundText(r) ?? ggRoundText(r) ?? infRoundText(r); // zombies: zombies left / the break. gun game / infection: just the clock, their bars show the rest
   if (mt != null) { el.textContent = mt; return; }
   const teamGame = r.game && GAMES[r.game] && GAMES[r.game].teams;
@@ -2549,6 +2583,7 @@ function renderRound(r) {
   if (ct) el.textContent = ct;
   if (r.game === 'br' && !r.over) el.textContent = 'last one standing wins'; // jank royale: the zone clock is in its own panel
 }
+net.on('lobby', (m) => lobbyInfo(m)); // the countdown / who's ready / end: the match is on
 net.on('round', (m) => {
   const box = $('roundEnd');
   if (m.start) {
@@ -2558,6 +2593,7 @@ net.on('round', (m) => {
     G.roundOver = false; if (RP.mode === 'hl') stopReplay(true); box.classList.add('hidden'); G.vote = null;
     esClose(G.joined && document.pointerLockElement !== canvas); // back in: click to grab the mouse again
     if (m.game) { G.round = { ...(G.round || {}), ...m }; updateLabel(); if (screen === 'match') syncMatchUI(); }
+    if (m.warm) { hud.msg('WARM-UP', 1.8, 'brag'); hud.chat(null, null, `lobby: run around, nothing counts. ${K.label('ready')} = ready`); chaosRoundStart(m.game); return; } // a mode lobby's warm-up
     hud.msg(m.game && m.game !== 'dm' && GAMES[m.game] ? GAMES[m.game].name.toUpperCase() : 'ROUND START', 1.8, 'brag');
     if (m.game && GAMES[m.game]) hud.chat(null, null, K.hint(GAMES[m.game].desc));
     chaosRoundStart(m.game);

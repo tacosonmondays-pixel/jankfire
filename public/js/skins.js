@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { jankify } from './jank.js';
 import { PSys } from './fx.js';
 import { WRAP_MODES, zoneOf, paints } from './wrapzones.js';
+import { PACK, packMat, packTick } from './wrappack.js';
 export { WRAP_MODES, WRAP_MODE_NAMES } from './wrapzones.js';
 
 export const FINISHES = {
@@ -25,6 +26,7 @@ export const FINISHES = {
   fade: { name: 'Fade', tracer: 0xff6bd0 },
   missing: { name: 'Missing Texture', tracer: 0xff00dc },
 };
+for (const [id, p] of Object.entries(PACK)) FINISHES[id] = { name: p.name, tracer: p.tracer }; // the big wrap pack (wrappack.js)
 export const HATS = {
   none: { name: 'None' }, tophat: { name: 'Top Hat' }, party: { name: 'Party Hat' }, crown: { name: 'Crown' },
   cowboy: { name: 'Cowboy Hat' }, propeller: { name: 'Propeller Cap' }, halo: { name: 'Halo' }, chef: { name: 'Chef Hat' },
@@ -113,13 +115,14 @@ function textures() {
 // ------------------------------------------------------------ finish materials
 const cache = new Map();
 const rainbowMats = [];
-function finishMat(finish, base, zoned) {
+function finishMat(finish, base, zoned, ps = 1) {
   const hsl = {};
   base.getHSL(hsl);
   // full: keeps dark parts dark. a zoned wrap has to read against the unpainted half, so near-black barrels get lifted
   const f = Math.round(Math.min(1.15, zoned ? 0.72 + hsl.l * 0.5 : 0.4 + hsl.l * 1.1) * 10) / 10;
   const key = finish + f;
   if (cache.has(key)) return cache.get(key);
+  if (PACK[finish]) { const k2 = key + 'x' + ps; if (!cache.has(k2)) cache.set(k2, packMat(finish, f, ps)); return cache.get(k2); } // pack wraps build their own shader
   const T = textures();
   const c = (hex) => new THREE.Color(hex).multiplyScalar(f);
   let m;
@@ -243,6 +246,9 @@ export function applySkin(g, skin) {
   if (finish !== 'default') {
     const key = g.userData.model && g.userData.model !== 'default' ? g.userData.model : g.userData.wid;
     if (mode !== 'full') g.updateMatrixWorld(true);
+    // pack patterns are sized in metres: a knife or a card gets them 2.2x finer so a whole motif fits on a handle
+    let ps = 1;
+    if (PACK[finish]) { g.updateMatrixWorld(true); tmpBox.setFromObject(g); tmpBox.getSize(tmpS); ps = Math.max(tmpS.x, tmpS.y, tmpS.z) < 0.5 ? 2.2 : 1; }
     for (const o of meshes) {
       const mats = Array.isArray(o.material) ? o.material : [o.material];
       // glowing bits and black eyes always keep their look
@@ -251,7 +257,7 @@ export function applySkin(g, skin) {
       const base = mats[0].color || new THREE.Color(1, 1, 1);
       // normal paints the handle side, reverse the business end, full the lot (see wrapzones.js); the rest keeps its own material
       if (mode !== 'full' && !paints(mode, zoneOf(o, g, key, base))) continue;
-      const m = finishMat(finish, base, mode !== 'full');
+      const m = finishMat(finish, base, mode !== 'full', ps);
       if (m) o.material = m;
     }
   }
@@ -345,6 +351,7 @@ export function emitSkinFx(sys, g, dt, k = 1, effectOverride) {
 // ------------------------------------------------------------ per-frame animation
 function inScene(o) { while (o.parent) o = o.parent; return o.isScene; }
 export function skinTick(dt, now) {
+  packTick(now);
   const T = textures();
   T.galaxy.offset.x += dt * 0.05; T.galaxy.offset.y += dt * 0.02;
   T.lava.offset.y -= dt * 0.25; T.lava.offset.x = Math.sin(now * 0.001) * 0.2;

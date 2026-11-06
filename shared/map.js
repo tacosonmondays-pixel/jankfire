@@ -1772,6 +1772,10 @@ function watchtower(B, x, z, h = 8) {
   for (let y = 0.45; y < h; y += 0.55) B.add(x + 1.75, y - 0.06, z - 0.5, x + 2.15, y + 0.06, z + 0.5, 'wood'); // ladder rungs
 }
 // boulders along a line (the canyon's rim): low cover, gaps between
+function lipFence(B, x, z0, z1) { // a rail fence along the canyon's lip at x (no strip between it and the drop wide enough to stand in)
+  const n = Math.max(1, Math.round((z1 - z0) / 3)); for (let i = 0; i <= n; i++) B.box(x, 0.6, z0 + ((z1 - z0) * i) / n, 0.2, 1.2, 0.2, 'wood');
+  B.add(x - 0.05, 0.85, z0, x + 0.05, 0.95, z1, 'wood');
+}
 function boulders(B, x0, z0, x1, z1, n, rv, edge = 0, skip = null) { // edge: +-1 = on that rim of the canyon (x +-7), flush with the lip
   for (let i = 0; i < n; i++) { const t = (i + 0.2 + rv() * 0.6) / n, x = x0 + (x1 - x0) * t + (rv() - 0.5) * 1.2, z = z0 + (z1 - z0) * t, s = 0.9 + rv() * 1.3;
     if (rv() < 0.8) { const w = s * (1 + rv() * 0.6); if (!(skip && skip(z, s))) B.box(edge ? edge * (6.7 + w / 2) : x, s * 0.4, z, w, s * 0.8, s, 'rock'); } }
@@ -1897,6 +1901,7 @@ function desert() {
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const px = sx * 7.8, pz = sz * 5; B.box(px, 1.2, pz, 2, 2.4, 1.6, 'stone'); D.box(px, 2.5, pz, 2.2, 0.2, 1.8, 'roofg'); D.box(px, 2.85, pz, 0.5, 0.5, 0.5, 'light'); }
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) B.add(sx > 0 ? 6.8 : -7.6, 0, sz > 0 ? 5.8 : -8.8, sx > 0 ? 7.6 : -6.8, 1.0, sz > 0 ? 8.8 : -5.8, 'stone'); // wing walls on the lip out from each gatepost (the fights at the bridge's ends were knocking people in) // its gateposts, a lantern on each (and no squeezing round the end of a parapet on the lip)
   ropeBridge(B, D, -7, 7, 60);
+  for (const x of [-7.8, 7.8]) for (const [z0, z1] of [[-63.6, -62.2], [-57.8, -54.4], [54.4, 58.4], [61.6, 65.6]]) lipFence(B, x, z0, z1); // the lip beside the trestle's and the rope bridge's ends
   add(-1.2, 0.2, -62.2, 0.4, 1.4, -60.6, 'rust'); D.add(-1.0, 1.4, -62.0, 0.2, 1.65, -60.8, 'rock'); // a cart that jumped the trestle's rails, stuck on one, half over the edge (cover, and a lane past it)
   B.box(-12, 0.15, 33, 2.5, 0.3, 2.5, 'pad', { pad: [26, 18, 0] }); B.box(12, 0.15, -33, 2.5, 0.3, 2.5, 'pad', { pad: [-26, 18, 0] }); // jump pads: over the canyon the fast way
   // ---- EAST BANK: Mine Square (the assay office, the mine company's offices, the well, stalls, the founder's cart)
@@ -2088,6 +2093,7 @@ function desertSD() {
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const px = sx * 7.8, pz = sz * 5; B.box(px, 1.2, pz, 2, 2.4, 1.6, 'stone'); D.box(px, 2.5, pz, 2.2, 0.2, 1.8, 'roofg'); D.box(px, 2.85, pz, 0.5, 0.5, 0.5, 'light'); }
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) B.add(sx > 0 ? 6.8 : -7.6, 0, sz > 0 ? 5.8 : -8.8, sx > 0 ? 7.6 : -6.8, 1.0, sz > 0 ? 8.8 : -5.8, 'stone'); // wing walls on the lip out from each gatepost (the fights at the bridge's ends were knocking people in)
   ropeBridge(B, D, -7, 7, 40);
+  for (const [z0, z1] of [[-43.6, -42.2], [-37.8, -35.6], [35.6, 38.4], [41.6, 43.6]]) lipFence(B, -7.8, z0, z1); // the west lip beside the trestle's and the rope bridge's ends
 
   // ---- EAST BANK. Mine Square (mid): the well, the founder's cart; the assay office (north) and the mining company (south)
   add(7, 0, -8.4, 46.4, 0.03, 8.4, 'dirtroad'); add(28, 0, -28, 38, 0.03, -8.4, 'dirtroad'); add(28, 0, 8.4, 37.4, 0.03, 27, 'dirtroad'); // the square, Mine Road, Depot Road
@@ -2111,7 +2117,7 @@ function desertSD() {
   // the freight shed by Depot Road (the posse's way down to B)
   frontier(B, D, 45, 19, 3, 12, 10, 1, { paint: 'wood', front: 1.2, awning: 'wood' }); hay(B, 54, 22, 4, false); cratePile(B, 55, 32, 4, r);
   // the canyon's east lip: a rail fence along the narrow ways by the drop
-  for (const sz of [-1, 1]) { const z0 = sz > 0 ? 10 : -34, z1 = sz > 0 ? 34 : -10; for (let z = z0; z <= z1; z += 4) B.box(7.8, 0.6, z, 0.2, 1.2, 0.2, 'wood'); add(7.75, 0.85, z0, 7.85, 0.95, z1, 'wood'); }
+  for (const [z0, z1] of [[-51.6, -42.2], [-37.8, -10], [10, 38.4], [41.6, 47]]) lipFence(B, 7.8, z0, z1);
 
   // ---- A: the mine head. the mesa's the north edge: the mine's in it (in at the mouth, along the gallery behind the rock
   // face, out by the posse's end); the headframe over the capped shaft (yellow and black: plant here), the ore loader, the

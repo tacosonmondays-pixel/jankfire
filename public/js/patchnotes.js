@@ -1,6 +1,37 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '4.2', date: '2026-11-06', title: 'LEGS DAY', items: [
+    'everyone moves properly now: real strides for walk, run and sprint (feet stay planted), leaning and arm pumping, and a silly zooming pose past sprint speed.',
+    'strafing and backpedalling read sideways and backwards. jumps have a wind-up, a tuck, a landing squash (bigger the further you fell), and bhop chains look rhythmic.',
+    'MARBLE SLIPS are a proper pratfall: feet fly out, flat on your back with the gun in the air, kicking, then you get back up.',
+    'Plant & Defuse slow walk is a sneaky tiptoe. crouch walking, sliding and hanging off a grapple got matched up.',
+    'fixed: most players\' knees bent backwards (it was meant to be a rare jank quirk). now only the cursed ones do.',
+    'your own gun bobs with your footsteps and stumbles when you slip (calmer with Screen Shake off).',
+  ] },
+  { v: '4.1', date: '2026-11-06', title: 'HOLD IT RIGHT', items: [
+    'THE KATANA IS HELD LIKE A KATANA: two hands on the grip, big two-handed cuts both ways, an iai draw, a proper inspect (with a blood flick) and a two-handed parry. other players see both hands on it too. the timing hasn\'t changed.',
+    'THE BUTTERFLY KNIFE does real flips now: the handles swing round the pivot, with fan, rollover and aerial tricks.',
+    'melee fixes: the knife, spoon, slapper and karambit stabs no longer point the blade away from you, and bread got its own draw.',
+    'EVERY GUN HAS A RELOAD: mag swaps on the AR and SMG, shell by shell on the shotgun, bolt work on the sniper, a speedloader on the revolver.',
+    'the silly ones: a jerry can for the Redline, a tiny arm shoving the minigun belt in, a little hammer for the nail gun, a bag of marbles tipped into the jar, soul shells for the reaper rifle and a juice box for the water pistol.',
+    'reloads now end exactly when the ammo refills, at any framerate.',
+  ] },
+  { v: '4.0', date: '2026-11-06', title: 'THE WRAP PACK', items: [
+    '48 NEW WRAPS (65 total). commons come in every colour: Cherry Pop, Tangerine, Lemon Drop, Lime, Mint, Pool Tile, Sky, Navy, Grape Soda, Hot Magenta, Cream, Matte Black, Fridge White, Bubblegum, Creamsicle, Ketchup & Mustard, Hazard Stripes, Hi-Vis.',
+    'PORCELAIN: Grandma\'s China, Crackle Glaze, and the legendary Kintsugi (gold in the cracks).',
+    'JAPANESE: Seigaiha, Asanoha, Shibori, Washi Paper, Sakura Storm, Koi Pond, Big Wave, Urushi Maki-e, and the legendary Tokyo Night.',
+    'AND THEN IT GOT WEIRD: Bubble Wrap, Swiss Cheese, Denim, Dad Plaid, Receipt, Pizza, Leopard, Zebra, Stained Glass, Circuit Board, CRT, Spreadsheet, Corporate Memo, Holo Foil, Liquid Chrome, Datamosh, Meat Suit and ☺ CORP.',
+    'every legendary moves. all of them work on every gun in normal, reverse and full.',
+    'they drop from boxes. the locker\'s wrap list has rarity and owned filters and a search box now.',
+  ] },
+  { v: '3.9', date: '2026-11-06', title: 'PICK YOUR POISON', items: [
+    'NEW MENU: ONLINE and WITH BOTS. both open four cards: QUICK PLAY, PLANT & DEFUSE, JANK ROYALE and ZOMBIES, and each card shows how many real people are in it right now.',
+    'ONLINE is real players only. no bots, ever. Plant & Defuse and Jank Royale need 2 players to start, Zombies 1.',
+    'LOBBIES for Plant & Defuse, Jank Royale and Zombies: run around in a warm-up (nothing counts) while a 60 s countdown ticks. press Y (rebindable) to READY UP. everyone ready = 5 seconds.',
+    'once a match starts it\'s locked. anyone who picks that mode after gets a fresh lobby. after the match, a quick 10 s lobby keeps your group together.',
+    'QUICK PLAY has no lobby: drop in anytime. with bots you take a bot\'s place. WITH BOTS > CUSTOM is the old setup screen (any mode, map, bots, difficulty).',
+  ] },
   { v: '3.8', date: '2026-11-06', title: 'FRESHLY MODELLED', items: [
     'BLENDER ROUND 2: the cigarette and cigar, card deck (and the cards you throw), Reverse and Skip cards, leaf blower, snowball, popper, rubber duck, bread, spoon, slipper, Hand Slapper, the bow and its arrows and the Scythe Rifle all got real glossy models.',
     'all 29 weapon skins got remade too. the Spoon knife skin is a proper tablespoon now.',

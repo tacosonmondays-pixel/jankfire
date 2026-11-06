@@ -39,6 +39,7 @@ export const ACTIONS = [
   ['chat', 'Chat', 'Social', ['KeyT', 'Enter']],
   ['scores', 'Scoreboard (hold)', 'Interface', ['Tab']],
   ['menu', 'Pause menu', 'Interface', ['KeyB']],
+  ['ready', 'Lobby: ready up (everyone ready = 5 s)', 'Interface', ['KeyY']],
   ['skip', 'Skip killcam / replay', 'Interface', ['Space', 'Enter'], 'replay'],
   ['vote1', 'Vote: option 1', 'Interface', ['Digit1'], 'vote'],
   ['vote2', 'Vote: option 2', 'Interface', ['Digit2'], 'vote'],
