@@ -13,6 +13,7 @@ const now = () => Date.now();
 const rr = ([a, b]) => a + Math.random() * (b - a);
 const r2 = (x) => Math.round(x * 100) / 100;
 const eye = (p) => [p.pos[0], p.pos[1] + PH.eye, p.pos[2]];
+const nv = (p) => !!p.nvOn; // night vision goggles down (server/gear.js): you see him from further out, and he gets you from further out
 const qb = [];
 
 export const hrSetting = (room) => (Object.hasOwn(HR.every, room.cfg.hr) ? room.cfg.hr : 'on');
@@ -47,7 +48,7 @@ function sights(room, at) {
   const out = [];
   for (const p of room.players.values()) {
     if (!p.alive || (p.isBot && p.ai && p.ai.dummy)) continue;
-    const e = eye(p), h = hrSight(e, p.yaw || 0, p.pitch || 0, at, !!p.nvg);
+    const e = eye(p), h = hrSight(e, p.yaw || 0, p.pitch || 0, at, nv(p));
     if ((h.view || h.stare) && lineClear(room, e, h)) out.push([p, h]);
   }
   return out;
@@ -125,7 +126,7 @@ export function tickHR(room, dt) {
   const seen = sights(room, h.p);
   // the meters: staring fills yours, looking away drains it
   const staring = new Set();
-  for (const [p, s] of seen) if (s.stare) { staring.add(p.id); h.stare.set(p.id, Math.min(1, (h.stare.get(p.id) || 0) + stareRate(s.d, !!p.nvg) * dt)); }
+  for (const [p, s] of seen) if (s.stare) { staring.add(p.id); h.stare.set(p.id, Math.min(1, (h.stare.get(p.id) || 0) + stareRate(s.d, nv(p)) * dt)); }
   for (const [id, k] of h.stare) if (!staring.has(id)) { const v = k - HR.decay * dt; if (v <= 0) h.stare.delete(id); else h.stare.set(id, v); }
   for (const [id, k] of h.stare) if (k >= 1) { const p = room.players.get(id); if (p && p.alive) { take(room, p); return; } }
   if (n - h.born > HR.life * 1000 && !seen.length) { leave(room, 'bored'); return; }
@@ -161,9 +162,9 @@ export function tickHR(room, dt) {
 export function hrBot(room, b, dt, out) {
   const h = room.hr;
   if (!h || !h.on || !b.alive) return out;
-  const e = eye(b), s = hrSight(e, b.yaw || 0, b.pitch || 0, h.p, !!b.nvg);
+  const e = eye(b), s = hrSight(e, b.yaw || 0, b.pitch || 0, h.p, nv(b));
   const k = h.stare.get(b.id) || 0;
-  if (s.d > (b.nvg ? HR.seeNVG : HR.see) || !lineClear(room, e, s)) return out;
+  if (s.d > (nv(b) ? HR.seeNVG : HR.see) || !lineClear(room, e, s)) return out;
   const ai = b.ai, to = Math.atan2(-s.dir[0], -s.dir[2]), away = to + Math.PI;
   const turn = (want, rate) => { let d = want - b.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); b.yaw += d * Math.min(1, rate * dt); };
   const fighting = ai.seenAt && room.players.get(ai.target) && room.players.get(ai.target).alive;

@@ -11,7 +11,7 @@ export const HR = {
   life: 60, // seconds he hangs about before he gives up and leaves
   far: [36, 52], // how far from his target he turns up
   see: 66, // how far away you can make him out in the fog
-  seeNVG: 115, // with night-vision goggles on (claude/new-gear): players with p.nvg / ME.nvg see him further out
+  seeNVG: 115, // with night vision goggles down (server: p.nvOn, client: goggles.js nvOn()) you see him further out
   watchAng: 0.85, // inside this angle of where you look he's "in view": he can't move
   stareAng: 0.2, // looking right at him (plus his size at that distance): your meter fills
   rate: [0.13, 0.95], // meter per second while staring: far .. right in your face

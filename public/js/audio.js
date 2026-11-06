@@ -20,15 +20,17 @@ export function initAudio(v) {
 }
 
 export function setVolume(v) { vol = v; if (master) master.gain.value = v; }
+// music.js plays through the same master, so the volume slider scales the music too
+export function audioOut() { return ac ? { ac, master } : null; }
 export function setListener(p, yaw) { L.pos = p; L.yaw = yaw; }
 // sealed in a soap bubble: everything you hear goes through a low pass, like your head is underwater
 let muffle = null;
-export function setMuffle(on, instant) {
+export function setMuffle(on, instant, tc = 0.06) { // tc: how fast it eases there (a time constant, s)
   if (!ac) return;
   if (!muffle) { muffle = ac.createBiquadFilter(); muffle.type = 'lowpass'; muffle.frequency.value = 22000; master.disconnect(); master.connect(muffle); muffle.connect(ac.destination); }
   const f = muffle.frequency, t = ac.currentTime, to = on ? 480 : 22000;
   f.cancelScheduledValues(t);
-  if (instant) f.setValueAtTime(to, t); else f.setTargetAtTime(to, t, 0.06);
+  if (instant) f.setValueAtTime(to, t); else f.setTargetAtTime(to, t, tc);
 }
 
 function dest(pos) {
@@ -44,6 +46,8 @@ function dest(pos) {
   g.connect(p); p.connect(master);
   return g;
 }
+// the overdrive rig makes its own sounds (rigsfx.js) with these: same context, master volume and panning
+export const synth = { tone: (...a) => tone(...a), noise: (...a) => noise(...a), dest: (p) => dest(p), get ac() { return ac; }, get out() { return master; } };
 
 function tone(type, f0, f1, dur, v, pos, delay = 0) {
   if (!ac) return;
@@ -197,6 +201,7 @@ export const sfx = {
   empty() { tone('square', 900, 900, 0.02, 0.1); },
   hammer(pos) { tone('square', 2300, 1500, 0.018, 0.12, pos); noise(0.025, 0.35, 'highpass', 3500, 6000, pos); }, // fanning: slap the hammer back
   twirl(pos) { noise(0.2, 0.16, 'bandpass', 700, 2400, pos, 0.02, 2.5); tone('square', 320, 260, 0.025, 0.06, pos, 0.24); }, // whirr round the finger, tk into the palm
+  clatter(pos) { for (let i = 0; i < 10; i++) { const f = 2000 + Math.random() * 3600; tone('sine', f, f * 0.9, 0.04, 0.1, pos, i * 0.028 + Math.random() * 0.03); } noise(0.3, 0.18, 'highpass', 3000, 5000, pos); }, // a pile of marbles going everywhere
   marble(pos) { const f = 2600 + Math.random() * 2600; tone('sine', f, f * 0.92, 0.035, 0.07, pos); },
   ricochet(pos) { tone('sine', 2600, 900, 0.18, 0.15, pos); },
   squeak(pos) { tone('sine', 1100, 1900, 0.08, 0.3, pos); tone('sine', 1900, 1100, 0.1, 0.3, pos, 0.08); },
@@ -503,3 +508,55 @@ export function hrLevel(k, near) {
   hrN.frequency.setTargetAtTime(1800 + sk * 2600, ac.currentTime, 0.1);
   hrD.gain.setTargetAtTime(nk * 0.22, ac.currentTime, 0.4);
 }
+
+// ------------------------------------------------------------ new gear sounds
+// laser pointer charge: a rising whine (k 0..1) with a wobble on top once it's full. sits in loops (stopLoops shuts it up)
+export function laserWhine(k, pos = null) {
+  if (!ac) return;
+  let l = loops.laser;
+  if (!l) {
+    if (k <= 0.01) return;
+    const g = ac.createGain(); g.gain.value = 0; g.connect(master);
+    const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 200;
+    const o2 = ac.createOscillator(); o2.type = 'sine'; o2.frequency.value = 400;
+    const lfo = ac.createOscillator(); lfo.frequency.value = 9; const lg = ac.createGain(); lg.gain.value = 0; lfo.connect(lg); lg.connect(o2.frequency);
+    const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 2; bp.frequency.value = 900;
+    const og = ac.createGain(); og.gain.value = 0.35;
+    o.connect(bp); bp.connect(og); o2.connect(og); og.connect(g);
+    o.start(); o2.start(); lfo.start();
+    l = loops.laser = { g, on: false, def: { vol: 0.3 }, o, o2, lg, bp };
+  }
+  const on = k > 0.01, t = ac.currentTime;
+  l.o.frequency.setTargetAtTime(140 + k * 520, t, 0.05);
+  l.o2.frequency.setTargetAtTime(600 + k * 1900, t, 0.05);
+  l.bp.frequency.setTargetAtTime(700 + k * 2600, t, 0.05);
+  l.lg.gain.setTargetAtTime(k >= 0.99 ? 120 : 0, t, 0.05);
+  if (on || l.on) l.g.gain.setTargetAtTime(on ? 0.05 + k * 0.2 : 0, t, 0.04);
+  l.on = on;
+}
+Object.assign(sfx, {
+  // laser: a fat BWAAAM for a full one (k = charge), a pew for a tap
+  laserFire(k = 1, pos = null) {
+    tone('sawtooth', 1800, 90, 0.25 + k * 0.5, 0.18 + k * 0.12, pos); tone('square', 900, 60, 0.2 + k * 0.4, 0.1, pos);
+    noise(0.2 + k * 0.4, 0.3 + k * 0.3, 'bandpass', 3000, 400, pos, 0, 1.5);
+    if (k > 0.6) { tone('sine', 70, 40, 0.6, 0.35, pos); noise(0.5, 0.25, 'lowpass', 600, 80, pos, 0.05); }
+  },
+  laserHum(pos) { tone('sawtooth', 220 + Math.random() * 40, 200, 0.12, 0.05, pos); },
+  // instant camera: shutter clack + flash pop, the motor spitting out a print, going through a photo
+  shutter(pos = null) { noise(0.03, 0.6, 'highpass', 4000, 3000, pos); tone('square', 1200, 600, 0.03, 0.15, pos, 0.02); noise(0.05, 0.4, 'bandpass', 2000, 900, pos, 0.07, 2); tone('sine', 3200, 3600, 0.25, 0.05, pos, 0.08); },
+  printWhirr(pos = null) { for (let i = 0; i < 6; i++) tone('square', 160 + i * 6, 150, 0.09, 0.08, pos, i * 0.08); noise(0.5, 0.15, 'bandpass', 1500, 1200, pos, 0, 4); },
+  photoIn(pos = null) { tone('sine', 300, 1400, 0.35, 0.22, pos); tone('triangle', 600, 2600, 0.4, 0.12, pos, 0.05); noise(0.4, 0.3, 'bandpass', 600, 4000, pos, 0, 1.5); },
+  photoOut(pos = null) { tone('sine', 1400, 300, 0.35, 0.22, pos); noise(0.3, 0.3, 'bandpass', 4000, 600, pos, 0, 1.5); tone('square', 880, 1320, 0.08, 0.1, pos, 0.3); },
+  framePop(pos = null) { noise(0.25, 0.35, 'bandpass', 900, 300, pos, 0, 2); tone('triangle', 500, 900, 0.15, 0.15, pos); },
+  // pop quiz: the calculator bonk, a school bell, ticks, a ding for right and a game-show buzzer for wrong
+  calcBonk(pos = null) { tone('square', 700, 300, 0.07, 0.2, pos); noise(0.08, 0.4, 'bandpass', 1800, 900, pos, 0, 3); for (let i = 0; i < 3; i++) tone('square', 1800 + i * 300, 1800 + i * 300, 0.03, 0.06, pos, 0.08 + i * 0.05); },
+  quizBell(pos = null) { for (let i = 0; i < 10; i++) { tone('triangle', 1250, 1240, 0.06, 0.18, pos, i * 0.055); tone('sine', 2500, 2480, 0.05, 0.06, pos, i * 0.055); } },
+  quizTick(hurry) { tone('square', hurry ? 1500 : 1100, hurry ? 1500 : 1100, 0.025, hurry ? 0.12 : 0.07); },
+  quizRight(pos = null) { for (const [f, d] of [[784, 0], [988, 0.09], [1175, 0.18], [1568, 0.3]]) tone('triangle', f, f, 0.22, 0.22, pos, d); tone('sine', 3136, 3136, 0.5, 0.05, pos, 0.3); },
+  quizWrong(pos = null) { tone('sawtooth', 110, 105, 0.7, 0.3, pos); tone('square', 116, 110, 0.7, 0.2, pos); },
+  // goggles: the flip-down clunk + power-up whine, power-down, the flash (pop + capacitor whine) and the ringing after one
+  nvOn() { noise(0.05, 0.5, 'lowpass', 800, 300); tone('square', 120, 80, 0.06, 0.2); tone('sine', 2000, 9000, 0.6, 0.05, null, 0.08); },
+  nvOff() { tone('sine', 9000, 1500, 0.35, 0.05); noise(0.05, 0.4, 'lowpass', 900, 300, null, 0.05); },
+  nvFlash(pos = null) { noise(0.12, 0.9, 'highpass', 2500, 7000, pos); tone('sine', 200, 60, 0.25, 0.3, pos); tone('sine', 3000, 11000, 0.5, 0.06, pos, 0.1); },
+  tinnitus(s = 2) { if (!ac) return; const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(); o.type = 'sine'; o.frequency.value = 6200; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(0.4, s * 1.3)); o.connect(g); g.connect(master); o.start(t); o.stop(t + s * 1.3 + 0.1); },
+});

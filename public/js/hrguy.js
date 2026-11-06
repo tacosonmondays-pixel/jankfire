@@ -12,6 +12,7 @@ import { sfx, hrLevel } from './audio.js';
 import { MAP, MAPS } from '/shared/map.js';
 import { HR, HR_LINES, hrSight } from '/shared/hr.js';
 import { PH } from '/shared/physics.js';
+import { nvOn } from './goggles.js';
 
 const $ = (id) => document.getElementById(id);
 const pick = (a) => a[(Math.random() * a.length) | 0];
@@ -187,7 +188,7 @@ function hrUI() {
   }
   $('cfgHr').addEventListener('change', () => net.send({ t: 'cfg', hr: $('cfgHr').value }));
 }
-export function hrNightVision(on) { // night-vision goggles (claude/new-gear): he isn't hidden by the fog any more
+export function hrNightVision(on) { // night vision goggles down: he isn't hidden by the fog any more
   S.nvg = !!on;
   for (const m of Object.values(mats())) if (m.fog !== !on) { m.fog = !on; m.needsUpdate = true; }
 }
@@ -200,7 +201,7 @@ export function updateHR(dt) {
   staticCanvas();
   const now = performance.now(), here = !!(MAPS[MAP.id] && MAPS[MAP.id].hr) && G.joined;
   if (!here) { if (S.on) { S.on = false; show(false); } hrLevel(0, 0); distort(0, now); return; }
-  if (ME.nvg !== undefined && !!ME.nvg !== S.nvg) hrNightVision(ME.nvg);
+  if (nvOn() !== S.nvg) hrNightVision(nvOn()); // night vision goggles (goggles.js): the fog stops hiding him
   let k = 0, near = 0;
   if (S.on && S.p && ME.alive) {
     const e = [ME.pos[0], ME.pos[1] + PH.eye, ME.pos[2]], s = hrSight(e, ME.yaw, ME.pitch, S.p, S.nvg);
