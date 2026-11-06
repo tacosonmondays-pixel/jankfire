@@ -11,15 +11,15 @@ import { G } from './ctx.js';
 // pool = pooled point lights lit, near = remotes closer than this cast real shadows (the rest keep the blob), spot = your
 // flashlight casts shadows too (Scary Forest)
 export const SHQ = {
-  low: { size: 1024, soft: false, half: 36, every: 3, pool: 2, near: 26, spot: false },
-  med: { size: 2048, soft: false, half: 50, every: 2, pool: 4, near: 40, spot: false },
-  high: { size: 4096, soft: true, half: 64, every: 1, pool: 4, near: 56, spot: true },
+  low: { size: 1024, hard: true, soft: false, half: 36, every: 3, pool: 0, near: 26, spot: false },
+  med: { size: 2048, soft: false, half: 50, every: 2, pool: 2, near: 40, spot: false },
+  high: { size: 3072, soft: true, half: 60, every: 1, pool: 4, near: 56, spot: true },
 };
 const BY_PRESET = ['off', 'low', 'med', 'high']; // Potato, Crusty, Mid, Too HD
-const POOL_N = 4; // point lights that always exist (intensity 0 when unused): adding lights later would recompile everything
+const POOL_N = 4; // point lights made once. only the preset's share is visible (a settings change recompiles shaders anyway)
 
 // per-map mood. el = sun elevation (deg; its compass direction comes from the sun in the sky), sh = how dark shadows get,
-// fill = a coloured light from the other side (bounce off the sky / the room), so the shade isn't flat grey
+// hk / sk = sky / sun brightness multipliers (default 0.82 / 1.14). fill = a coloured light from the other side (bounce off the sky / the room), so the shade isn't flat grey
 const MOOD = {
   def: { el: 42, sh: 0.72, fill: [0x9ab8ff, 0.32] },
   crate: { el: 64, sh: 0.5, fill: [0xffc4ea, 0.3] },
@@ -28,8 +28,8 @@ const MOOD = {
   suburb: { el: 40, sh: 0.74, fill: [0x9ab8ff, 0.34] },
   warehouse: { el: 50, sh: 0.66, fill: [0x8fb4ff, 0.32] },
   warehouse_sd: { el: 50, sh: 0.66, fill: [0x8fb4ff, 0.32] },
-  desert: { el: 52, sh: 0.8, fill: [0xffd8a0, 0.3] },
-  bazaar: { el: 48, sh: 0.8, fill: [0xffe0b0, 0.3] },
+  desert: { el: 52, sh: 0.8, fill: [0xffd8a0, 0.22], sk: 0.95, hk: 0.86 }, // bright sand: no extra sun or it blows out
+  bazaar: { el: 48, sh: 0.8, fill: [0xffe0b0, 0.24], sk: 1.0, hk: 0.86 },
   islands: { el: 30, sh: 0.72, fill: [0xff9ad8, 0.3], az: [170, -230] }, // towards the sun with a face
   skyline: { el: 26, sh: 0.74, fill: [0x7a8aff, 0.38] },
   range: { el: 46, sh: 0.7, fill: [0x9ab8ff, 0.3] },
@@ -44,6 +44,7 @@ const GLOW = {
   light: 0xfff2b0, lamp: 0xfff6c8, neonpink: 0xff2ad4, neoncyan: 0x19f0ff, neonyellow: 0xfff04d, neongreen: 0x5aff2a, neonred: 0xff2a3a,
   billboard: 0xffb0e8, signopen: 0xff4fd8, neonbar: 0x19f0ff, neonnoodle: 0xff4fd8, neonhotel: 0xfff04d, neonwork: 0xff2a3a,
   sitea: 0xff3a4a, siteb: 0x19e6ff, adbig1: 0xff4fd8, adstore: 0x19e6ff, adfun: 0x7aff1a, adclosed: 0xffe14d, flagcorp: 0x2a6cff,
+  lantern: 0xffc46a, hazard2: 0xffa21a,
   adcity1: 0x19e6ff, adcity2: 0xff2a3a, adcity3: 0x7aff1a, adcity4: 0xffe14d, adcity5: 0xff4fd8, adcity6: 0x19e6ff, tvstatic: 0xa0b0ff,
 };
 
@@ -67,7 +68,7 @@ export function initLighting(sun, vmSun, noShadow) {
   s.bias = -0.0004; s.normalBias = 0.035;
   L.fill = new THREE.DirectionalLight(0x9ab8ff, 0); // after the sun: goggles.js / zombies.js take the first one as "the sun"
   sc.add(L.fill, L.fill.target);
-  for (let i = 0; i < POOL_N; i++) { const p = new THREE.PointLight(0xffffff, 0, 13, 2); p.visible = true; sc.add(p); L.pool.push(p); }
+  for (let i = 0; i < POOL_N; i++) { const p = new THREE.PointLight(0xffffff, 0, 13, 2); p.visible = false; sc.add(p); L.pool.push(p); }
   for (const o of noShadow) o.traverse((c) => { c.userData.noShadow = true; });
   G.renderer.shadowMap.type = THREE.PCFShadowMap;
   G.renderer.shadowMap.enabled = false;
@@ -82,7 +83,7 @@ function apply() {
   if (!L.sun) return;
   const r = G.renderer, lv = shadowLevel(), q = SHQ[lv] || null, was = L.q;
   L.q = q;
-  const type = q && q.soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+  const type = q && q.soft ? THREE.PCFSoftShadowMap : q && q.hard ? THREE.BasicShadowMap : THREE.PCFShadowMap; // low: one crunchy hard sample
   const typeChanged = r.shadowMap.type !== type, onChanged = !!was !== !!q;
   r.shadowMap.enabled = !!q; r.shadowMap.type = type;
   L.sun.castShadow = !!q;
@@ -95,6 +96,8 @@ function apply() {
     s.normalBias = 0.02 + (2 * h / q.size) * 0.7; // about a texel: no acne on the box faces, no floating feet
   }
   spotShadow();
+  const np = q ? q.pool : 0; // every visible light costs every pixel, lit or not
+  for (let i = 0; i < POOL_N; i++) L.pool[i].visible = i < np;
   if (typeChanged || onChanged) G.scene.traverse((o) => { const m = o.material; if (!m) return; if (Array.isArray(m)) for (const x of m) x.needsUpdate = true; else m.needsUpdate = true; }); // new shader variant
   L.dirty = true; L.lx = NaN;
 }
@@ -122,7 +125,7 @@ export function lightingMap(def, id, night, sunMesh) {
   // just before this, so it never stacks up)
   const hemi = G.scene.children.find((o) => o.isHemisphereLight);
   if (hemi) hemi.intensity *= md.hk ?? 0.82;
-  L.sun.intensity *= md.sk ?? 1.22;
+  L.sun.intensity *= md.sk ?? 1.14;
   L.sunBase = L.sun.intensity;
   L.fill.color.setHex(md.fill[0]);
   L.fill.position.set(-dir.x, 0.35, -dir.z); L.fill.target.position.set(0, 0, 0);
@@ -144,24 +147,31 @@ function markStatic() {
 
 // ------------------------------------------------------------ who casts / receives (one pass every 20 frames)
 // rules: solid things cast; lit materials receive (all meshes using one material must agree, or three swaps shaders)
-let castOK = true;
+let castOK = true, castAny = false;
+// crumbs (bolts, trims, tiny prop parts) aren't worth a draw call each in the shadow pass
+function big(o) {
+  const g = o.geometry;
+  if (!g) return false;
+  if (!g.boundingSphere) g.computeBoundingSphere();
+  return g.boundingSphere.radius * Math.max(o.scale.x, o.scale.y, o.scale.z) > 0.18 || o.isInstancedMesh;
+}
 function mark(o) {
   if (!o.isMesh) return;
   const m = Array.isArray(o.material) ? o.material[0] : o.material;
   if (!m) return;
   const see = !(m.transparent && m.opacity < 0.95) && m.blending === THREE.NormalBlending && m.side !== THREE.BackSide && m.depthWrite !== false && m.colorWrite !== false;
-  o.castShadow = castOK && see && !o.userData.noShadow && !o.userData.noCast && !o.isPoints;
+  o.castShadow = castOK && see && !o.userData.noShadow && !o.userData.noCast && (castAny || big(o));
   o.receiveShadow = see && !o.userData.noShadow && !m.isMeshBasicMaterial && !m.isShaderMaterial && !m.isMeshNormalMaterial;
 }
 function sweep() {
   const dyn = L.dyn; dyn.length = 0;
   for (const c of G.scene.children) {
     const r = c.userData.lsRemote;
-    castOK = r ? r._lsCast !== false : true;
+    castOK = r ? r._lsCast !== false : true; castAny = !!r; // players keep every part (hands, guns)
     if (!c.userData.lsStatic && !r && (c.isMesh || c.isGroup || c.type === 'Object3D')) dyn.push(c);
     c.traverse(mark);
   }
-  castOK = true;
+  castOK = true; castAny = false;
 }
 
 // ------------------------------------------------------------ light sources: the neon, the lamps, the signs
@@ -247,7 +257,7 @@ function buildCards() {
 // ------------------------------------------------------------ every frame (world.js renderFrame, right before drawing)
 const best = new Int32Array(POOL_N), bestD = new Float32Array(POOL_N), poolSrc = new Int32Array(POOL_N).fill(-1);
 function pickPool() {
-  const want = L.q ? L.q.pool : L.preset >= 1 ? 2 : 0;
+  const want = L.q ? L.q.pool : 0;
   best.fill(-1); bestD.fill(1e9);
   const cam = G.camera.position, src = L.src;
   for (let i = 0; i < L.nSrc && want; i++) {
@@ -264,7 +274,7 @@ function pickPool() {
   }
   for (let j = 0; j < POOL_N; j++) {
     if (best[j] < 0) continue;
-    for (let k = 0; k < POOL_N; k++) if (poolSrc[k] === -1 && L.poolK[k] < 0.02) { poolSrc[k] = best[j]; const i = best[j] * 8, p = L.pool[k]; p.position.set(src[i], src[i + 1] - 0.5, src[i + 2]); p.color.setRGB(src[i + 3], src[i + 4], src[i + 5]); break; }
+    for (let k = 0; k < want; k++) if (poolSrc[k] === -1 && L.poolK[k] < 0.02) { poolSrc[k] = best[j]; const i = best[j] * 8, p = L.pool[k]; p.position.set(src[i], src[i + 1] - 0.5, src[i + 2]); p.color.setRGB(src[i + 3], src[i + 4], src[i + 5]); break; }
   }
   for (let k = 0; k < POOL_N; k++) L.poolT[k] = poolSrc[k] >= 0 ? 1 : 0;
 }
@@ -290,7 +300,7 @@ function remoteShadow(r) {
   if (!root) return;
   root.userData.lsRemote = r;
   const dx = root.position.x - rq.px, dz = root.position.z - rq.pz, cast = dx * dx + dz * dz < rq.near2;
-  if (r._lsCast !== cast) { r._lsCast = cast; castOK = cast; root.traverse(mark); castOK = true; }
+  if (r._lsCast !== cast) { r._lsCast = cast; castOK = cast; castAny = true; root.traverse(mark); castOK = true; castAny = false; }
   const cx = root.position.x - rq.cx, cz = root.position.z - rq.cz;
   if (cast && root.visible && cx * cx + cz * cz < rq.half2) { rq.dyn = true; if (r.shadow) r.shadow.visible = false; }
 }
