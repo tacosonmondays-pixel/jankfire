@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { jankify } from './jank.js';
 import { applySkin } from './skins.js';
-import { COSMETICS } from '/shared/cosmetics.js';
+import { COSMETICS, SKINS_2 } from '/shared/cosmetics.js';
 import { SUITS, RANKS, ARROW_TIPS } from '/shared/weapons.js';
 import { BLADES } from './blades/index.js';
 import { lathe } from './blades/kit.js';
@@ -1355,6 +1355,9 @@ for (const [id, mod] of Object.entries(LASSO_MODELS)) {
   if (mod.hatAt) HAT_AT[id] = mod.hatAt;
 }
 
+// cosmetics 2 skins are Blender-only: until (or unless) the glb lands, each shows its weapon's own code model
+for (const [id, [, , w]] of Object.entries(SKINS_2)) if (!MODEL_BUILD[id] && WB[w]) { MODEL_BUILD[id] = WB[w]; if (HAT_AT[w] && !HAT_AT[id]) HAT_AT[id] = HAT_AT[w]; }
+
 // iron sights: a rear notch + front post (glowing tip) on top of the gun, at one height, so the line of sight
 // runs over the top of the gun. ADS puts that line on the centre of the screen and the gun hangs below it.
 const SIGHTS = { ar: 'iron', smg: 'iron', redline: 'iron', revolver: 'iron', banana: 'iron', shotgun: 'bead' };
@@ -1421,7 +1424,7 @@ export function buildWeapon(id, skin) {
     g.add(glb);
   }
   if (!glb) addSights(id, g);
-  if (BLADES[variant ? model : id]) glossBlade(g); // knives + katanas stay code-built (real-reference models): same gloss as the Blender ones
+  if (BLADES[variant ? model : id] || (variant && Object.hasOwn(SKINS_2, model) && BLADES[id])) glossBlade(g); // knives + katanas stay code-built (real-reference models): same gloss as the Blender ones
   applySkin(g, skin);
   return g;
 }

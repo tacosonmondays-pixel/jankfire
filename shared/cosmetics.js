@@ -255,3 +255,35 @@ export const WRAP_PACK = {
   corp: ['☺ CORP', 'legendary'],
 };
 for (const [id, [name, rarity]] of Object.entries(WRAP_PACK)) COSMETICS.finish[id] = { name, rarity };
+// cosmetics 2: skins for the guns that had none, and seconds / thirds for the popular ones. all Blender models (w_<id>.glb,
+// lazy), each falls back to its weapon's code model until the file lands. [name, rarity, weapon]
+export const SKINS_2 = {
+  laser_cattoy: ['Cat Laser', 'rare', 'laser'],
+  burst_ticket: ['Take A Number', 'epic', 'burst'],
+  lmg_leaf: ['Leaf Shredder', 'epic', 'lmg'],
+  dmr_pen: ['Fountain Pen', 'rare', 'dmr'],
+  lever_capgun: ['Cap Gun', 'common', 'lever'],
+  autoshot_trimmer: ['Weed Whacker', 'rare', 'autoshot'],
+  pistol_calc: ['Calculator', 'common', 'pistol'],
+  akimbo_walkie: ['Walkie Talkies', 'rare', 'akimbo'],
+  sawnoff_pepper: ['Pepper Mills', 'epic', 'sawnoff'],
+  cards_business: ['Business Cards', 'common', 'cards'],
+  water_flower: ['Squirt Flower', 'rare', 'water'],
+  water_hose: ['Hose Nozzle', 'common', 'water'],
+  taser_zapper: ['Bug Zapper', 'rare', 'taser'],
+  remote_pad: ['Game Pad', 'epic', 'remote'],
+  ar_keytar: ['Keytar', 'legendary', 'ar'],
+  smg_label: ['Label Maker', 'rare', 'smg'],
+  shotgun_umbrella: ['Brolly', 'epic', 'shotgun'],
+  sniper_cue: ['Pool Cue', 'epic', 'sniper'],
+  revolver_drill: ['Cordless Drill', 'rare', 'revolver'],
+  katana_baguette: ['Baguette Katana', 'rare', 'katana'],
+  katana_neon: ['Neon Tube', 'legendary', 'katana'],
+  knife_ladle: ['Ladle', 'common', 'knife'], // was the spoon's Ladle: old owners keep it (SKIN_RENAME)
+  knife_pizza: ['Pizza Cutter', 'common', 'knife'],
+  knife_keycard: ['Keycard', 'epic', 'knife'],
+  knife_fish: ['Frozen Fish', 'rare', 'knife'],
+  bread_sliced: ['Sliced Loaf', 'common', 'bread'],
+  slipper_flipflop: ['Flip-Flop', 'common', 'slipper'],
+};
+for (const [id, [name, rarity, weapon]] of Object.entries(SKINS_2)) COSMETICS.model[id] = { name, rarity, weapon };
