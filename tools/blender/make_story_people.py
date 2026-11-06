@@ -1157,11 +1157,11 @@ def stomachdog():
         g = G.gg(v.co); ph = math.atan2(g[1] - yc, g[0])
         f = max(0.0, math.sin(15 * ph + 1.6 * math.sin(7 * g[2]) + 0.8)) ** 1.6
         v.co += v.normal * 0.034 * f * (0.4 + 0.6 * min(1, (g[1] - lo[1]) / 0.15))
-    G.decimate(st, 460); G.wet(st); uv_tile(st, 0.35); _smooth(st)
+    G.decimate(st, 400); G.wet(st); uv_tile(st, 0.35); _smooth(st)
     print('JF_DOG body bbox', [round(x, 3) for x in lo], [round(x, 3) for x in hi])
     rig.add('body', st)
     # the oesophagus neck: a ribbed tube up and forward into the head
-    nk = limb(J['neck'], (0, 0.97, -0.47), 0.1, 0.085, mf, 'oesophagus', n=8, mid=((0.2, 0.08), (0.4, 0.096), (0.6, 0.078), (0.8, 0.092)))
+    nk = limb(J['neck'], (0, 0.97, -0.47), 0.1, 0.085, mf, 'oesophagus', n=7, mid=((0.2, 0.08), (0.4, 0.096), (0.6, 0.078), (0.8, 0.092)))
     uv_tile(nk, 0.3); rig.add('neck', nk)
     # the head: a round bulb, big wet eyes on top, floppy ear-flaps, the upper lip and its row of tiny teeth
     hc = (0, 1.0, -0.53)
@@ -1199,9 +1199,9 @@ def stomachdog():
     # four stumpy legs, bone-white toe nubs
     for leg, shin, s in (('legFL', 'shinFL', -1), ('legFR', 'shinFR', 1), ('legBL', 'shinBL', -1), ('legBR', 'shinBR', 1)):
         a, b = J[leg], J[shin]
-        th = limb(a, b, 0.11, 0.095, mf, 'thigh', n=7); uv_tile(th, 0.3)
+        th = limb(a, b, 0.11, 0.095, mf, 'thigh', n=6); uv_tile(th, 0.3)
         foot = (b[0] + s * 0.005, 0.075, b[2] - 0.02)
-        sh = limb(b, foot, 0.09, 0.078, mf, 'stump', n=7); uv_tile(sh, 0.3)
+        sh = limb(b, foot, 0.08, 0.078, mf, 'stump', n=6); uv_tile(sh, 0.3)
         nubs = [ell((b[0] + dx, 0.035, foot[2] - 0.07), (0.022, 0.024, 0.024), me_, 'toe', n=4, rings=3) for dx in (-0.035, 0.0, 0.035)]
         for o in nubs: uv_tile(o, 0.1)
         rig.add(leg, th); rig.add(shin, sh, nubs)
