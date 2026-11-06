@@ -67,7 +67,8 @@ async function session(b, map, ids) {
     for (const id of ['crosshair', 'killfeed', 'chat', 'minimap']) { const e = document.getElementById(id); if (e) e.style.display = 'none'; }
     G.vmCamera.layers.disableAll(); // (no gun: main.js turns vmScene back on every frame)
     window.__pin = null;
-    setInterval(() => { const q = window.__pin; if (q) { if (!window.__hide || (ME.alive && Math.hypot(ME.pos[0] - q.p[0], ME.pos[2] - q.p[2]) > 2)) window.__hide = ME.pos.slice(); ME.pos = q.p.slice(); ME.vel = [0, 0, 0]; ME.yaw = q.yaw; ME.pitch = q.pitch; ME.hp = 100; } }, 4);
+    let last = null; // (where the pin put you last tick: a jump away from it is the game teleporting you, i.e. a respawn)
+    setInterval(() => { const q = window.__pin; if (q) { if (!window.__hide || (ME.alive && last && Math.hypot(ME.pos[0] - last[0], ME.pos[2] - last[2]) > 2)) window.__hide = ME.pos.slice(); ME.pos = q.p.slice(); last = q.p; ME.vel = [0, 0, 0]; ME.yaw = q.yaw; ME.pitch = q.pitch; ME.hp = 100; } }, 4);
     // the camera floats where the shot wants it, but the server is told you're still standing where you (re)spawned:
     // bots hunt you there instead of shooting the camera out of the sky (a teleport, e.g. a respawn, moves that spot)
     const { net } = await import('/js/net.js'), send0 = net.send.bind(net);
