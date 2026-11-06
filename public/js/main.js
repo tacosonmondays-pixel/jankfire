@@ -61,9 +61,11 @@ import { setOnly, coughCloud } from './weapons.js';
 import { renderPatchNotes, markPatchSeen, patchUnseen } from './patchnotes.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
 import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection, infClipInfo } from './infection.js';
-import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown } from './endscreen.js';
+import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown, esRekey } from './endscreen.js';
 import { initHome, homeShown, homeLeft } from './home.js';
 import { skipVote, skipReset } from './skipvote.js';
+import { K } from './keys.js';
+import { controlsScreen } from './controls.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
@@ -79,7 +81,8 @@ try {
 G.settings.loadout = validLoadout(G.settings.loadout);
 if (!G.settings.skins || typeof G.settings.skins !== 'object') G.settings.skins = {};
 if (!G.settings.look || typeof G.settings.look !== 'object') G.settings.look = { ...DEFAULT_LOOK };
-const SYNC_KEYS = ['jank', 'sens', 'adsSens', 'vol', 'fov', 'swapAim', 'toggleAim', 'blood', 'shake', 'fovKick', 'showFps', 'killcam', 'showCards', 'speedLines'];
+K.attach(G.settings); // key bindings (keys.js): only what you changed is saved, old saves and the old swapAim box still load
+const SYNC_KEYS = ['jank', 'sens', 'adsSens', 'vol', 'fov', 'swapAim', 'toggleAim', 'blood', 'shake', 'fovKick', 'showFps', 'killcam', 'showCards', 'speedLines', 'binds']; // swapAim stays synced (as false) so an old profile's true can't come back
 function profileData() {
   const settings = {};
   for (const k of SYNC_KEYS) settings[k] = G.settings[k];
@@ -169,6 +172,7 @@ function show(id) {
   if (id === 'match') syncMatchUI();
   if (id === 'profile') { renderProfile(); restore().then((me) => { if (me && screen === 'profile') { renderProfile(); renderAcctBar(); } }); }
   if (id === 'leaders') renderLeaders();
+  controlsScreen(id === 'controls', saveSettings);
   if (id === 'main') { renderAcctBar(); homeShown(); }
 }
 function hideMenu() {
@@ -271,7 +275,7 @@ function pause() {
   show('pause');
   $('pauseTitle').textContent = `${MODES[G.mode] ? MODES[G.mode].name.toUpperCase() : 'PAUSED'} · ${MAPS[G.cfg.map] ? MAPS[G.cfg.map].name : ''}`;
   W.held = false; W.aimHeld = false;
-  for (const k in keys) keys[k] = false;
+  K.clear();
   stopUse();
   stopLoops();
 }
@@ -380,7 +384,6 @@ bindRange('adsSens', 'adsSens', (v) => v.toFixed(2));
 bindCheck('fovKick', 'fovKick');
 bindCheck('shake', 'shake');
 bindCheck('showFps', 'showFps');
-bindCheck('swapAim', 'swapAim');
 bindCheck('toggleAim', 'toggleAim');
 bindCheck('blood', 'blood');
 bindCheck('killcam', 'killcam', () => { if (G.joined) net.send({ t: 'kc', on: S.killcam }); });
@@ -409,6 +412,33 @@ const applyHotbar = () => document.body.classList.toggle('hotbar-right', S.hotba
 fillSelect($('hotbarPos'), [['bottom', 'Bottom'], ['right', 'Right side']], S.hotbar === 'right' ? 'right' : 'bottom');
 $('hotbarPos').addEventListener('change', () => { S.hotbar = $('hotbarPos').value; saveSettings(); applyHotbar(); });
 applyHotbar();
+// every key hint outside the HUD follows the bindings (the hotbar, tray and messages ask keys.js when they draw)
+function renderKeyHints() {
+  const L = (id) => K.label(id).toUpperCase(), mv = ['forward', 'left', 'back', 'right'].map(L);
+  const B = (t) => `<b>${String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])}</b>`; // key names are ours, but '<' style labels exist
+  const mvs = mv.every((k) => k.length === 1) ? mv.join('') : mv.join(' ');
+  $('keyHint').textContent = `${mvs} move · ${L('sprint')} run · ${K.labels('crouch').toUpperCase()} crouch (slide when fast) · `
+    + `${L('jump')} jump (hold to bhop, jump while grappling to launch) · ${L('aim')} aim · ${L('grapple')} grapple · ${L('reload')} reload · ${L('use')} inspect · `
+    + `${L('slot1')} ${L('slot2')} ${L('slot3')} switch · ${L('item')} use item · ${L('streak1')} ${L('streak2')} ${L('streak3')} use killstreaks · ${L('spray')} spray · `
+    + `${L('dash')}/${L('scythe')} scythe · ${L('menu')} menu · ${L('scores')} scores · ${L('chat')} chat · /skip in chat votes to skip the match`;
+  $('gMove').innerHTML = `${B(mvs)} move · ${B(L('sprint'))} run · ${B(K.labels('crouch').toUpperCase())} crouch, slide when fast · ${B(L('jump'))} jump (hold to bhop)`;
+  $('gHook').innerHTML = `${B(L('grapple'))} grapple · jump while grappling to launch. momentum is infinite. use it irresponsibly.`;
+  $('gFight').innerHTML = `${B(L('fire'))} shoot · ${B(L('aim'))} aim · ${B(L('parry'))} katana parry · ${B(L('reload'))} reload · ${B(L('use'))} inspect · ${B(`${L('slot1')} ${L('slot2')} ${L('slot3')}`)} switch · ${B(L('lastSlot'))} last weapon`;
+  $('gItems').innerHTML = `${B(L('item'))} item · ${B(L('nvgFlash'))} goggles flash · ${B(`${L('streak1')} ${L('streak2')} ${L('streak3')}`)} killstreaks · ${B(`${L('dash')} / ${L('scythe')}`)} scythe · ${B(L('spray'))} spray`;
+  $('gElse').innerHTML = `${B(L('menu'))} menu · ${B(L('scores'))} scores · ${B(L('chat'))} chat`;
+  $('voteKeys').textContent = VOTES.map(K.label).join(' ');
+  $('sprayKey').textContent = K.label('spray');
+  $('loItemKey').textContent = K.label('item');
+  $('loStreakKeys').textContent = ['streak1', 'streak2', 'streak3'].map(K.label).join(' / ');
+}
+const VOTES = ['vote1', 'vote2', 'vote3', 'vote4'];
+renderKeyHints();
+K.onChange(() => {
+  renderKeyHints();
+  esRekey(); // the vote cards show the vote keys
+  if (W.slots) showSlots(); // hotbar numbers + item key
+  $('streakTray').dataset.key = ''; renderStreak(G.streakN || 0);
+});
 
 // ------------------------------------------------------------ loadout screen
 function buildLoadoutUI() {
@@ -422,14 +452,14 @@ function buildLoadoutUI() {
       b.className = 'wpick' + (S.loadout[slot] === id ? ' on' : '');
       b.textContent = w.name;
       b.style.setProperty('--c', w.color);
-      b.addEventListener('mouseenter', () => { $('loDesc').textContent = `${w.name}: ${w.desc}`; });
+      b.addEventListener('mouseenter', () => { $('loDesc').textContent = `${w.name}: ${K.hint(w.desc)}`; });
       b.addEventListener('click', () => {
         S.loadout[slot] = id;
         G.cosSel = id;
         saveSettings();
         buildLoadoutUI();
         applyLoadout(false);
-        $('loDesc').textContent = `${w.name}: ${w.desc}`;
+        $('loDesc').textContent = `${w.name}: ${K.hint(w.desc)}`;
       });
       col.append(b);
     }
@@ -444,7 +474,7 @@ function buildLoadoutUI() {
     const im = document.createElement('img'); im.src = streakIcon(id); im.alt = '';
     const t = document.createElement('span'); t.textContent = `${st.name} · ${st.kills}`;
     b.append(im, t);
-    b.addEventListener('mouseenter', () => { $('loDesc').textContent = `${st.name} (${st.kills} kills in a row): ${st.desc}`; });
+    b.addEventListener('mouseenter', () => { $('loDesc').textContent = `${st.name} (${st.kills} kills in a row): ${K.hint(st.desc)}`; });
     b.addEventListener('click', () => {
       // a draft under 3 picks is never saved or sent (validStreaks would pad it straight back with the defaults)
       if (picks.includes(id)) { streakDraft = picks.filter((x) => x !== id); $('loNote').textContent = DRAFT_NOTE; buildLoadoutUI(); return; }
@@ -691,7 +721,7 @@ function buildCosmeticsUI() {
   list.innerHTML = '';
   for (const slot of [...SLOTS, 'item', 'streak']) { // items with a model (popper, reverse card) wear skins too
     const h = document.createElement('div');
-    h.className = 'lt'; h.textContent = slot === 'streak' ? 'killstreak' : slot === 'item' ? 'item (G)' : slot;
+    h.className = 'lt'; h.textContent = slot === 'streak' ? 'killstreak' : slot === 'item' ? `item (${K.label('item')})` : slot;
     list.append(h);
     for (const id of ORDER) {
       const w = WEAPONS[id];
@@ -879,13 +909,12 @@ function buildGrappleUI() {
 }
 
 // ------------------------------------------------------------ input
-const keys = {};
 let jumpPressed = false, chatOpen = false, scoresOpen = false;
 const inGame = () => G.joined && !chatOpen && $('menu').classList.contains('hidden');
 
 function openChat() {
   chatOpen = true;
-  for (const k in keys) keys[k] = false;
+  releaseHeld(); // keyups typed in the box don't reach the game, so let go of everything now
   $('chatin').classList.remove('hidden');
   $('chatin').value = '';
   setTimeout(() => $('chatin').focus(), 0);
@@ -906,69 +935,77 @@ $('chatin').addEventListener('keydown', (e) => {
 function aimDown() {
   if (W.cur === 'cards') { cycleCard(); return; }
   if (heavyAttack()) return; // knife: right click is the heavy stab
-  if (parry()) return; // katana: right click parries
+  if (W.cur === 'katana' && !rigOn()) { if (!K.get('parry').some(Boolean)) parry(); return; } // katana: the parry key parries (pressed()); aim only stands in when parry is unbound
   if (S.toggleAim) W.aimHeld = !W.aimHeld; else W.aimHeld = true;
 }
 function aimUp() { if (!S.toggleAim) W.aimHeld = false; }
 
 addEventListener('keydown', (e) => {
-  if (!inGame() || document.activeElement === $('name')) return;
+  if (!inGame() || K.typing(e) || document.activeElement === $('name')) return;
   if (econKey(e)) return; // buy menu, drop, P pause (econ.js ECON_KEYS)
-  if ((RP.active || G.killcamPending) && (e.code === 'Space' || e.code === 'Enter')) { e.preventDefault(); skipReplay(); return; }
-  if (esKey(e)) { e.preventDefault(); return; } // end screen: 1-4 vote, arrows switch tabs
-  if (e.code === 'Tab') { e.preventDefault(); scoresOpen = true; renderScores(); return; }
-  if (e.code === 'KeyT' || e.code === 'Enter') { e.preventDefault(); openChat(); return; }
-  if (e.code === 'KeyB') { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
-  if (gearKeyDown(e)) return; // pop quiz answers (1-4), goggles flash (H)
-  if (/^(KeyE|KeyG|KeyV|KeyC|KeyZ|ControlLeft|ControlRight|Digit[567])$/.test(e.code) && stuckInBubble(true)) { keys[e.code] = true; return; } // sealed in a soap bubble: no grapple, items, dash, t-bag, sprays or streaks
-  if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) jumpPressed = true; }
-  if (e.code === 'KeyE' && !e.repeat) { if (S.swapAim) aimDown(); else tryHook(); }
-  if (e.code === 'Digit1') switchSlot(0);
-  if (e.code === 'Digit2') switchSlot(1);
-  if (e.code === 'Digit3') switchSlot(2);
-  if (e.code === 'KeyQ') lastSlot();
-  if (e.code === 'KeyR') reload();
-  if (e.code === 'KeyF' && !e.repeat) { if (canUse(G.round, ME.pos)) startUse(); else inspect(); }
-  if (e.code === 'KeyV') W.dashHeld = true;
-  if (e.code === 'KeyX' && !e.repeat) toggleScythe();
-  if (e.code === 'KeyG' && !e.repeat) useItem();
-  if (e.code === 'KeyZ' && !e.repeat) spray();
-  if (['Digit5', 'Digit6', 'Digit7'].includes(e.code) && !e.repeat) deployStreak(Number(e.code.slice(5)) - 5);
-  if (e.code === 'Digit4') switchSlot(3);
-  if ((e.code === 'KeyC' || e.code === 'ControlLeft' || e.code === 'ControlRight') && !e.repeat) {
-    if (e.code !== 'KeyC') e.preventDefault();
+  if (K.bound(e) || e.code === 'Tab') e.preventDefault(); // bound keys never scroll, tab focus or click a button
+  pressed(e);
+});
+// a key or a mouse button went down in game. every check goes through the bindings (keys.js), so any action works on either
+function pressed(e) {
+  if ((RP.active || G.killcamPending) && K.matches('skip', e)) { e.preventDefault(); skipReplay(); return; }
+  if (esKey(e, VOTES.findIndex((a) => K.matches(a, e)))) { e.preventDefault(); return; } // end screen: the vote keys win over any game action on the same key, arrows switch tabs
+  if (K.matches('scores', e)) { e.preventDefault(); scoresOpen = true; renderScores(); return; }
+  if (K.matches('chat', e)) { e.preventDefault(); openChat(); return; }
+  if (K.matches('menu', e)) { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
+  if (gearKeyDown(e)) return; // pop quiz answers (1-4), goggles flash (nvgFlash)
+  if (K.matches(BUBBLED, e) && stuckInBubble(true)) return; // sealed in a soap bubble: no shooting, aiming, grapple, items, dash, t-bag, sprays or streaks
+  const now = performance.now(), out = now < (ME.sleepUntil || 0) || now < (ME.quizUntil || 0); // asleep on the floor / pens down for a pop quiz: no shooting
+  if (W.cur === 'katana' && !rigOn() && K.matches('parry', e)) { if (!e.repeat && !out) parry(); return; } // the parry key wins while the katana's out
+  if (K.matches('jump', e)) { e.preventDefault(); if (!e.repeat) jumpPressed = true; }
+  if (K.matches('grapple', e) && !e.repeat && !out) tryHook();
+  if (K.matches('slot1', e)) switchSlot(0);
+  if (K.matches('slot2', e)) switchSlot(1);
+  if (K.matches('slot3', e)) switchSlot(2);
+  if (K.matches('lastSlot', e)) lastSlot();
+  if (K.matches('reload', e)) reload();
+  if (K.matches('use', e) && !e.repeat) { if (canUse(G.round, ME.pos)) startUse(); else inspect(); }
+  if (K.matches('dash', e)) W.dashHeld = true;
+  if (K.matches('scythe', e) && !e.repeat) toggleScythe();
+  if (K.matches('item', e) && !e.repeat) useItem();
+  if (K.matches('spray', e) && !e.repeat) spray();
+  const streak = ['streak1', 'streak2', 'streak3'].findIndex((a) => K.matches(a, e));
+  if (streak >= 0 && !e.repeat) deployStreak(streak);
+  if (K.matches('slot4', e)) switchSlot(3);
+  if (K.matches('crouch', e) && !e.repeat) {
     const t = crouchTap(performance.now());
     if (t === 2) { net.send({ t: 'tbag' }); G.shake = 1; }
     else if (t === 1) G.shake = Math.max(G.shake, 0.25);
   }
-  keys[e.code] = true;
-});
-addEventListener('keyup', (e) => {
-  keys[e.code] = false;
-  if (e.code === 'KeyF') stopUse();
-  if (e.code === 'KeyV') W.dashHeld = false;
-  if (e.code === 'Tab') { scoresOpen = false; hud.scores(false); }
-  if (e.code === 'KeyE') { if (S.swapAim) aimUp(); else releaseHook(); }
-});
+  if (K.matches('fire', e) && !e.repeat) fireDown();
+  if (K.matches('aim', e) && !e.repeat) aimDown();
+}
+const BUBBLED = ['fire', 'aim', 'grapple', 'item', 'dash', 'crouch', 'spray', 'streak1', 'streak2', 'streak3'];
+// a key or button came up: releases match whatever pressed the action, even if it got rebound since
+function released(e) {
+  if (e.type === 'keyup' && K.typing(e)) return; // typed in chat / a text box (opening chat already let go of everything)
+  if (K.up('use', e)) stopUse();
+  if (K.up('dash', e)) W.dashHeld = false;
+  if (K.up('scores', e)) { scoresOpen = false; hud.scores(false); }
+  if (K.up('grapple', e)) releaseHook();
+  if (K.up('fire', e)) fireUp();
+  if (K.up('aim', e)) aimUp();
+}
+addEventListener('keyup', released);
 addEventListener('mousedown', (e) => {
   if (!inGame()) return;
   if (e.target instanceof Element && e.target.closest('#endscreen')) return; // the end screen's cards and tabs take the click, not your gun (or the replay skip)
   if (esClickShown()) { esHideClick(); lock(); return; } // CLICK TO DROP IN: that click only grabs the mouse
   if (RP.mode === 'killcam' || G.killcamPending) { skipReplay(); return; } // a click skips the killcam
   if (RP.mode === 'hl') return; // ...but not the play of the round
-  if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor: no shooting
-  if (performance.now() < (ME.quizUntil || 0)) return; // pens down: sitting a pop quiz
-  if (stuckInBubble(true)) return; // sealed in a soap bubble: no shooting, aiming or grappling till it pops
   if (econMouse(e)) return;
-  if (e.button === 0) fireDown();
-  if (e.button === 2) { if (S.swapAim) tryHook(); else aimDown(); }
-  if (e.button === 3 || e.button === 4) tryHook();
+  if (e.button === 1 && K.bound(e)) e.preventDefault(); // a bound middle button never starts autoscroll
+  pressed(e);
 });
-addEventListener('mouseup', (e) => {
-  if (e.button === 0) fireUp();
-  if (e.button === 2) { if (S.swapAim) releaseHook(); else aimUp(); }
-  if (e.button === 3 || e.button === 4) releaseHook();
-});
+addEventListener('mouseup', released);
+// let go of everything held: losing focus, or the bindings changing under your fingers
+function releaseHeld() { K.clear(); W.held = false; W.aimHeld = false; W.dashHeld = false; stopUse(); releaseHook(); if (scoresOpen) { scoresOpen = false; hud.scores(false); } }
+K.onChange((rebound) => { if (rebound) releaseHeld(); });
 addEventListener('contextmenu', (e) => e.preventDefault());
 addEventListener('wheel', (e) => { if (inGame() && !esActive()) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true }); // not while the end screen is up (its tab panel scrolls)
 addEventListener('mousemove', (e) => {
@@ -987,7 +1024,7 @@ addEventListener('mousemove', (e) => {
   ME.yaw -= mx * s;
   ME.pitch = Math.max(-1.55, Math.min(1.55, ME.pitch - my * s));
 });
-addEventListener('blur', () => { for (const k in keys) keys[k] = false; W.held = false; W.aimHeld = false; stopUse(); }); // the F keyup never comes
+addEventListener('blur', releaseHeld);
 addEventListener('resize', resizePreview);
 
 function renderScores() {
@@ -1091,8 +1128,8 @@ net.on('welcome', (m) => {
   updateLabel();
   $('status').textContent = '';
   const tips = {
-    ffa: 'T to chat, B for menu. Change the map or hipfire in Match Settings. /skip in chat votes to skip the match.',
-    bots: 'bots are dumb but there are a lot of them. B for menu. /skip in chat skips the match.',
+    ffa: `${K.label('chat')} to chat, ${K.label('menu')} for menu. Change the map or hipfire in Match Settings. /skip in chat votes to skip the match.`,
+    bots: `bots are dumb but there are a lot of them. ${K.label('menu')} for menu. /skip in chat skips the match.`,
     coop: 'survive the waves. bots only hurt humans, no friendly fire.',
     training: 'dummies respawn instantly. knock the ones on the left ledge off. movement playground on the right.',
   };
@@ -1219,7 +1256,7 @@ net.on('tagx', (m) => {
   removeTag(m.id);
   if (m.by === G.myId) { hud.msg(m.k === 'confirm' ? 'KILL CONFIRMED +1' : 'KILL DENIED', 1.2, 'brag'); if (m.k === 'confirm') sfx.cash(); else sfx.ting(); }
 });
-net.on('bombyou', () => { hud.msg('YOU HAVE THE BOMB', 2, 'brag'); hud.chat(null, null, 'you have the bomb: get to site A or B and hold F to plant'); });
+net.on('bombyou', () => { hud.msg('YOU HAVE THE BOMB', 2, 'brag'); hud.chat(null, null, `you have the bomb: get to site A or B and hold ${K.label('use')} to plant`); });
 net.on('bombev', (m) => {
   const [n] = m.id ? nameOf(m.id) : [''];
   if (m.k === 'round') { if (!ecoOn()) hud.msg(`ROUND ${m.n} · ${G.myTeam === m.att ? 'ATTACK' : 'DEFEND'}`, 2.2, 'brag'); } // the economy has its own banner
@@ -1631,9 +1668,9 @@ function frame(t) {
     if (frozen) { ME.vel[0] = 0; ME.vel[2] = 0; if (ME.hook) releaseHook(); }
     const playing = $('menu').classList.contains('hidden') && !chatOpen && now >= (ME.sleepUntil || 0) && !RP.active && !G.using && !frozen;
     const inp = playing ? {
-      f: keys.KeyW, b: keys.KeyS, l: keys.KeyA, r: keys.KeyD, jump: keys.Space, jumpPressed,
-      sprint: keys.ShiftLeft || keys.ShiftRight,
-      crouch: keys.KeyC || keys.ControlLeft || keys.ControlRight,
+      f: K.isDown('forward'), b: K.isDown('back'), l: K.isDown('left'), r: K.isDown('right'), jump: K.isDown('jump'), jumpPressed,
+      sprint: K.isDown('sprint'),
+      crouch: K.isDown('crouch'),
     } : {};
     jumpPressed = false;
     acc += dt;
@@ -1677,7 +1714,7 @@ function frame(t) {
     }
     pingT -= dt;
     if (pingT <= 0) { pingT = 2; net.send({ t: 'pi', c: performance.now() }); }
-    if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = epicKC ? 'killcam... too epic to skip' : 'killcam... (space to skip)'; else if (epicHold) epicTimer(now); else if (!econDead()) hud.deadTimer(Math.max(0, ((G.respawnMs ?? 2500) - (now - (G.deadAt || now))) / 1000)); }
+    if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = epicKC ? 'killcam... too epic to skip' : `killcam... (${K.label('skip').toLowerCase()} to skip)`; else if (epicHold) epicTimer(now); else if (!econDead()) hud.deadTimer(Math.max(0, ((G.respawnMs ?? 2500) - (now - (G.deadAt || now))) / 1000)); }
   }
 
   const rt = now + G.offset - INTERP_MS;
@@ -1703,7 +1740,7 @@ function frame(t) {
     updateObjectives(dt, now, G.round, ME.pos);
     updateGunGame(); updateInfection(dt);
     const a = G.round && G.round.bomb && G.round.bomb.act;
-    if (a && a.by === G.myId) hud.meter(a.f, a.k === 'plant' ? 'PLANTING... keep holding F' : 'DEFUSING... keep holding F', '#ff4f4f');
+    if (a && a.by === G.myId) hud.meter(a.f, `${a.k === 'plant' ? 'PLANTING' : 'DEFUSING'}... keep holding ${K.label('use')}`, '#ff4f4f');
   }
   updateChaos(dt, now);
 
@@ -1859,9 +1896,9 @@ function renderStreak(n) {
       const st = STREAKS[id], ready = G.pocket.includes(id);
       const d = document.createElement('div');
       d.className = 'kstreak' + (ready ? ' ready' : '');
-      d.title = `${st.name}: ${st.desc}`;
+      d.title = `${st.name}: ${K.hint(st.desc)}`;
       const im = document.createElement('img'); im.src = streakIcon(id); im.alt = '';
-      const k = document.createElement('b'); k.textContent = String(5 + i);
+      const k = document.createElement('b'); k.textContent = K.label('streak' + (i + 1));
       const c = document.createElement('span'); c.textContent = ready ? 'READY' : `${Math.min(n, st.kills)}/${st.kills}`;
       d.append(im, k, c);
       tray.append(d);
@@ -1900,8 +1937,8 @@ net.on('streak', (m) => {
     if (!st) return;
     G.streakN = Math.max(G.streakN || 0, m.n - 1); // this arrives just before the 'kill' that counts it
     if (!G.pocket.includes(m.earned)) G.pocket.push(m.earned);
-    const key = 5 + activeStreaks().indexOf(m.earned);
-    hud.msg(`${st.name.toUpperCase()} READY · PRESS ${key}`, 2.4, 'brag');
+    if (m.game && GAMES[m.game]) hud.chat(null, null, K.hint(GAMES[m.game].desc));
+    chaosRoundStart(m.game);
     sfx.kill();
     renderStreak(G.streakN);
     return;
@@ -1914,7 +1951,7 @@ net.on('streak', (m) => {
   if (m.reward === 'spinbot') G.spinUntil = performance.now() + st.dur * 1000;
   if (m.reward === 'scythe') grantScythe();
   if (m.reward === 'wreckingball') startBall(m.dur || st.dur);
-  toast(st.desc, 2500);
+  toast(K.hint(st.desc), 2500);
 });
 
 // ------------------------------------------------------------ sprays (Z): paint your graffiti where you look
@@ -1950,7 +1987,7 @@ function buildSprayUI() {
     c.append(im, t);
     c.addEventListener('click', () => {
       if (!have) { toast(`${v.name} (${RARITY[v.rarity].name}): ${v.desc}. find it in boxes`, 3000); return; }
-      setSpray(k); buildSprayUI(); toast(`spray: ${v.name}. press Z in a match`);
+      setSpray(k); buildSprayUI(); toast(`spray: ${v.name}. press ${K.label('spray')} in a match`);
     });
     el.append(c);
   }
@@ -2026,7 +2063,7 @@ function queueKillcam(killer, via, delay = 900) {
     const clip = localClip(deathS - 4500, deathS + 1200, infoOf);
     infClipInfo(clip.info);
     const [kn, kc] = nameOf(killer);
-    showReplayUI('KILLCAM', cardUrlFor(killer), kn, kc, `got you with ${wname(via)}`, 'SPACE / CLICK to skip');
+    showReplayUI('KILLCAM', cardUrlFor(killer), kn, kc, `got you with ${wname(via)}`, `${K.label('skip').toUpperCase()} / CLICK to skip`);
     $('dead').classList.add('hidden');
     playClip(clip, {
       focus: killer, mode: 'killcam', slow: [[deathS - 380, deathS + 220]], end: deathS + 1000,
@@ -2215,7 +2252,8 @@ $('logoutBtn').addEventListener('click', doLogout);
 function applySettingsToUI() {
   $('jank').value = String(S.jank); setJank(S.jank);
   for (const id of ['fov', 'vol', 'sens', 'adsSens']) { $(id).value = String(S[id]); $(id).dispatchEvent(new Event('input')); }
-  for (const id of ['fovKick', 'shake', 'showFps', 'swapAim', 'toggleAim', 'blood', 'killcam', 'showCards', 'speedLines']) $(id).checked = !!S[id];
+  for (const id of ['fovKick', 'shake', 'showFps', 'toggleAim', 'blood', 'killcam', 'showCards', 'speedLines']) $(id).checked = !!S[id];
+  K.attach(S); // the profile may have brought its own key bindings
   setVolume(S.vol);
   $('musicVol').value = String(S.musicVol); $('musicMatchVol').value = String(S.musicMatchVol);
   $('musicMatch').checked = S.musicMatch !== false; $('musicComp').checked = !!S.musicComp; musicUpdate();
@@ -2381,7 +2419,7 @@ async function doRoll(kind) {
       if (item.rarity === 'legendary' || item.rarity === 'epic') sfx.kill(); else sfx.ting();
       if (item.type === 'spray') {
         const im = document.createElement('img'); im.className = 'sprayPic'; im.src = sprayIcon(item.id); im.alt = ''; res.append(im);
-        btn('EQUIP SPRAY', () => { setSpray(item.id); closeRoll(); toast(`spray: ${item.name}. press Z in a match`); });
+        btn('EQUIP SPRAY', () => { setSpray(item.id); closeRoll(); toast(`spray: ${item.name}. press ${K.label('spray')} in a match`); });
       } else if (item.type === 'kill') {
         btn('EQUIP KILL EFFECT', () => { setKfx(item.id); closeRoll(); toast(`kill effect: ${item.name}`); });
       } else if (item.type === 'grapple') {
@@ -2430,8 +2468,8 @@ net.on('round', (m) => {
     esClose(G.joined && document.pointerLockElement !== canvas); // back in: click to grab the mouse again
     if (m.game) { G.round = { ...(G.round || {}), ...m }; updateLabel(); if (screen === 'match') syncMatchUI(); }
     hud.msg(m.game && m.game !== 'dm' && GAMES[m.game] ? GAMES[m.game].name.toUpperCase() : 'ROUND START', 1.8, 'brag');
-    if (m.game && GAMES[m.game]) hud.chat(null, null, GAMES[m.game].desc);
-    chaosRoundStart(m.game);
+    const key = K.label('streak' + (1 + activeStreaks().indexOf(m.earned)));
+    hud.msg(`${st.name.toUpperCase()} READY · PRESS ${key.toUpperCase()}`, 2.4, 'brag');
     return;
   }
   if (!m.over) return;

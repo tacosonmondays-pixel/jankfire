@@ -54,15 +54,17 @@ Notes:
 
 ## Controls
 
+These are the defaults. **Every one can be rebound** in SETTINGS → KEY BINDINGS (a primary and an alternate key or mouse button per action; Esc stays the pause key). The hotbar, the killstreak tray and every "press X" hint show your keys. Right Ctrl (crouch) and Mouse 5 (grapple) are no longer bound by default: add them as alternates if your hands miss them.
+
 | | |
 |---|---|
 | WASD | move |
 | Shift | run |
 | Space | jump (hold to bhop). Jump while grappling to launch off the rope with your momentum |
-| C / Ctrl | crouch; crouch while fast to slide. Spam it too long and your knees explode. As the Wrecking Ball: ground slam (in the air) / brake |
+| C / Left Ctrl | crouch; crouch while fast to slide. Spam it too long and your knees explode. As the Wrecking Ball: ground slam (in the air) / brake |
 | Left mouse | fire / swing / play a card / draw the bow (hold, release) |
 | Right mouse | aim down sights · **Knife: heavy stab** · **Katana: parry** · Card Deck: pick a card |
-| E / mouse side buttons | grapple (hold) |
+| E / Mouse 4 (back side button) | grapple (hold) |
 | R | reload (Card Deck: redraw) |
 | F | inspect your weapon · **Plant & Defuse: hold F to plant / defuse** |
 | G | **use your item** (grenade, medkit, shield bubble, duck, smoke, party popper, reverse card, bubble wand, instant camera, pop quiz). Night Vision Goggles: G puts them on / takes them off |
@@ -76,7 +78,7 @@ Notes:
 | Space / click | skip a killcam (not an EPIC one, and never the play of the round) |
 | B / Esc | pause menu · Tab scoreboard · T / Enter chat |
 
-Settings: display (windowed / windowed fullscreen / fullscreen), grapple on right click instead, toggle aim, sensitivity, ADS sensitivity, fov, fov kick, shake, blood, fps counter, quality, speed lines, killcam, show other players' uploaded name cards.
+Settings: display (windowed / windowed fullscreen / fullscreen), key bindings (with a "right click grapples, E aims" preset), toggle aim, sensitivity, ADS sensitivity, fov, fov kick, shake, blood, fps counter, quality, speed lines, killcam, show other players' uploaded name cards.
 
 **Music:** a soundtrack of original gabber / hard tek tracks (Jank Cola Rave, Spoon Fight Tekno, Rubber Duck Hardcore, Hung Jury Hardcore, Banana Peel Acid, Wrecking Ball Warm-Up) plus the owner's own "Untitled". The menus and end-of-match screens shuffle them; every match picks a new random song and loops it, with a "now playing" sticker. Settings → Audio: **music volume** (menus), **music in matches** (on for bots / co-op / training), **...in competitive too** (off by default: the Online room and Plant & Defuse stay quiet unless you turn it on) and **match music volume**; it dips during killcams, and the main volume scales all of it. It starts on your first click or key press, since browsers block sound before that. The generated tracks are re-rendered from code in `tools/music/` (see its README); credits and licences in `public/music/CREDITS.md`. Adding a song: drop the file in `public/music/` and add one line to `TRACKS` at the top of `public/js/music.js`.
 

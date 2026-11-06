@@ -11,6 +11,7 @@ import { WEAPONS } from '/shared/weapons.js';
 import { onSnap, onPhotoNope, onFrame, onFrameGone, onPhotoTp, teleFx, updatePhoto, photoReset, holdingPhoto } from './photo.js';
 import { onQuiz, onQuizEnd, quizKey, updateQuiz, quizReset, quizDeath } from './quiz.js';
 import { nvToggle, nvFlashKey, onFlashed, nvFlashFx, updateGoggles, gogglesReset } from './goggles.js';
+import { K } from './keys.js';
 
 const L = WEAPONS.laser;
 // G with one of these: true = handled here (no charge spent locally). the camera's first press is a free photo, the
@@ -65,7 +66,7 @@ export function gearFx(m) {
 // keys: 1-4 answer a pop quiz (and nothing else while you sit one), H fires the goggles' flash
 export function gearKeyDown(e) {
   if (quizKey(e)) return true;
-  if (e.code === 'KeyH' && !e.repeat) { nvFlashKey(); return true; }
+  if (K.matches('nvgFlash', e)) { if (!e.repeat) nvFlashKey(); return true; } // rebindable (keys.js 'nvgFlash')
   return false;
 }
 export function updateGear(dt, now) {
