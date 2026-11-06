@@ -45,4 +45,4 @@ Story mode only exists with `?story=1` in the URL or `localStorage.jfStory = '1'
 
 ## Tests
 `node tests/story/save.test.mjs` (save cleaner + sim protocol), `node tests/story/supamock.test.mjs` (Supabase store,
-fake PostgREST), `node tests/story/api.test.mjs <port>` (endpoints + fuzz against a running server).
+fake PostgREST), `node tests/story/api.int.mjs <port>` (endpoints + fuzz against a running server).
