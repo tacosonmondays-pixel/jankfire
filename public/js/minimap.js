@@ -120,12 +120,13 @@ export function minimapFrame(now, opts = {}) {
   if (!on) { if (wrap.style.display !== 'none') { wrap.style.display = 'none'; document.body.classList.remove('mmOn'); } return; }
   if (now - drawT < 45) return; // ~20 fps is plenty
   drawT = now;
-  const [px, R] = SIZES[S.mmSize] || SIZES.m;
+  const [px, R0] = SIZES[S.mmSize] || SIZES.m;
   if (shownSize !== S.mmSize || wrap.style.display !== 'block') {
     shownSize = S.mmSize; cv.width = cv.height = px; wrap.style.display = 'block';
     document.body.classList.add('mmOn'); document.body.style.setProperty('--mmB', `${46 + px + 8}px`);
   }
   if (baseFor !== G.cfg.map) bake(G.cfg.map);
+  const R = Math.min(R0, Math.max(16, Math.max(ext[2] - ext[0], ext[3] - ext[1]) * 0.42)); // small maps (Crate) zoom in so the map fills the frame
   const x = cv.getContext('2d'), rot = S.mmRot !== false, yaw = ME.yaw || 0, s = px / (2 * R), mx = ME.pos[0], mz = ME.pos[2];
   wrap.querySelector('#mmN').style.transform = rot ? `rotate(${yaw}rad)` : '';
   x.setTransform(1, 0, 0, 1, 0, 0);
