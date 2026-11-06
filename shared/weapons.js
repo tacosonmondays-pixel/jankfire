@@ -100,13 +100,13 @@ export const WEAPONS = {
     kb: 0.5, kbUp: 0, recoil: 0.25, kick: 0.006, range: 120, tracer: 0xd8dde4, thick: 0.018,
     // pin: n nails from one shooter inside win s = stuck for dur s to the wall up to reach m behind them (no wall: the
     // floor). safe = s after a pin before the same person can be pinned again. stick = s a nail stays in a wall
-    nails: { n: 6, win: 0.9, dur: 1.1, safe: 2.5, reach: 7, stick: 10, lift: 0.35 },
+    nails: { n: 6, win: 1.2, dur: 1.1, safe: 2.5, reach: 7, stick: 10, lift: 0.35 },
     ads: { zoom: 1.35, spread: 0.35, p: [0, -0.1, -0.3] },
   },
   tennis: {
     slot: 'primary', kind: 'proj', name: 'Tennis Ball Launcher', color: '#d4ff3a',
     desc: 'Fuzzy balls that bounce off everything up to 5 times, hitting harder every bounce. Bank it round a corner.',
-    cd: 0.5, speed: 40, grav: 14, r: 0.1, bounce: 0.8, dmg: 16, kb: 7, kbUp: 2.5, life: 4.5,
+    cd: 0.5, speed: 40, grav: 14, r: 0.1, bounce: 0.8, dmg: 20, kb: 7, kbUp: 2.5, life: 4.5,
     bounces: 5, bonus: 0.3, minBounce: 3, // a bounce counts when it hits faster than minBounce m/s; +bonus x dmg per bounce
     ads: { zoom: 1.3, p: [0.04, -0.13, -0.34] },
   },

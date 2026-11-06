@@ -29,31 +29,27 @@ function rod(a, b, r, c, wz = 'b', seg = 6) { // a thin bar from a to b
 
 // ------------------------------------------------------------ Nail Gun
 export const NAIL_COL = 0xff6f3c;
-export function nailgunBuild(g) {
-  const O = NAIL_COL, K = 0x1c1c20, S = 0x8a9098, BR = 0xd8b048;
-  // piston housing: a fat cylinder up front with a black exhaust cap
-  g.add(cyl(0.055, 0.17, O, 0, 0.035, -0.2, 'z', 14, 'a'));
-  g.add(cyl(0.058, 0.03, K, 0, 0.035, -0.115, 'z', 14, 'a'));
-  g.add(lathe([[0, -0.28], [0.045, -0.29], [0.056, -0.3]], K, { segs: 14, y: 0.035 }));
-  g.add(bx(0.03, 0.02, 0.08, K, 0, 0.1, -0.2, 'a')); // exhaust deflector on top
-  // nose (drive guide) + the safety contact tip with its teeth
-  g.add(bx(0.044, 0.06, 0.09, S, 0, -0.01, -0.33));
-  g.add(bx(0.03, 0.04, 0.05, S, 0, -0.015, -0.395));
-  for (const sx of [-1, 1]) g.add(bx(0.008, 0.012, 0.012, 0x5a5f66, sx * 0.01, -0.035, -0.418));
-  // stick magazine: slopes back under the grip, a row of nail heads showing through the slot
-  const mag = new THREE.Group(); mag.position.set(0, -0.06, -0.15); mag.rotation.x = -0.36;
-  mag.add(bx(0.03, 0.05, 0.34, 0x3a3e46, 0, 0, 0.02));
-  for (let i = 0; i < 12; i++) mag.add(bx(0.012, 0.004, 0.012, BR, 0.016, 0.018, -0.12 + i * 0.022, 'n'));
-  mag.add(bx(0.034, 0.02, 0.03, O, 0, -0.005, 0.19, 'a')); // follower at the back
+export function nailgunBuild(g) { // same layout as the Blender one: drive forward, handle down as a pistol grip, raked stick mag
+  const O = NAIL_COL, K = 0x1c1c20, S = 0x8a9098, BR = 0xd8b048, AY = 0.04;
+  g.add(cyl(0.072, 0.26, O, 0, AY, -0.03, 'z', 14, 'a')); // piston housing
+  g.add(cyl(0.074, 0.03, K, 0, AY, 0.115, 'z', 14, 'b')); // cap
+  g.add(bx(0.048, 0.085, 0.16, S, 0, AY - 0.005, -0.25)); // nose
+  g.add(bx(0.042, 0.03, 0.04, 0x5a5f66, 0, AY, -0.345)); // contact trip
+  g.add(bx(0.026, 0.03, 0.21, 0xe0202a, 0, AY + 0.095, -0.0, 'n')); // the spirit level sight
+  const grip = new THREE.Group(); grip.position.set(0, AY - 0.19, 0.045);
+  grip.add(bx(0.055, 0.2, 0.08, O, 0, 0.04, 0, 'a'));
+  grip.add(bx(0.06, 0.15, 0.085, K, 0, 0.01, 0.002, 'a'));
+  grip.add(bx(0.065, 0.03, 0.095, K, 0, -0.085, 0, 'b'));
+  g.add(grip);
+  g.add(cyl(0.012, 0.04, BR, 0, AY - 0.31, 0.045, 'y', 6, 'n'));
+  const mag = new THREE.Group(); mag.position.set(0, AY - 0.16, -0.24); mag.rotation.x = 0.37;
+  mag.add(bx(0.036, 0.3, 0.1, 0xb8bec6, 0, 0, 0, 'a'));
+  for (let i = 0; i < 12; i++) mag.add(bx(0.04, 0.006, 0.06, 0xc8d0d8, 0, -0.13 + i * 0.022, -0.01, 'n'));
   g.add(mag);
-  // handle back to the air fitting, rubber overmould, trigger
-  g.add(bx(0.04, 0.05, 0.24, O, 0, 0.0, 0.03, 'a'));
-  g.add(bx(0.044, 0.042, 0.14, K, 0, 0.0, 0.07, 'a'));
-  g.add(bx(0.008, 0.035, 0.012, K, 0, -0.04, -0.06));
-  g.add(cyl(0.012, 0.04, BR, 0, 0.0, 0.17, 'z', 8, 'n'));
-  g.add(cyl(0.016, 0.06, 0xff8a1a, 0, -0.01, 0.21, 'z', 8, 'n'));
-  g.userData.muzzle = new THREE.Vector3(0, -0.015, -0.425);
-  g.userData.len = 0.66;
+  g.add(bx(0.03, 0.025, 0.2, K, 0, AY - 0.31, -0.07)); // bracket to the grip
+  g.add(bx(0.01, 0.05, 0.016, 0xe0202a, 0, AY - 0.1, -0.02)); // trigger
+  g.userData.muzzle = new THREE.Vector3(0, AY, -0.358);
+  g.userData.len = 0.5;
 }
 // one nail: shank along -z, head at z = 0
 let nailGeo = null;
@@ -85,7 +81,9 @@ export function tennisBall(r = 0.1) {
 export function tennisBuild(g) {
   const CAN = 0xe8f0e0, LID = 0xf4f4f4, GR = 0x1c1c22, GRIP = 0xf8f6ee;
   // the barrel: a clear ball can, three balls stacked inside, a white lid ring at the mouth
-  g.add(cyl(0.042, 0.42, 0xcfe6d8, 0, 0.03, -0.31, 'z', 14, 'b'));
+  const can = cyl(0.042, 0.42, 0xcfe6d8, 0, 0.03, -0.31, 'z', 14, 'b');
+  can.material = new THREE.MeshLambertMaterial({ color: 0xdff4e8, transparent: true, opacity: 0.35, depthWrite: false }); can.userData.noWrap = true; can.renderOrder = 2;
+  g.add(can); // clear, so you see the balls
   for (let i = 0; i < 3; i++) { const b = tennisBall(0.037); b.position.set(0, 0.03, -0.42 + i * 0.08); b.traverse((o) => { o.userData.wz = 'n'; }); g.add(b); }
   g.add(cyl(0.046, 0.025, LID, 0, 0.03, -0.53, 'z', 14, 'b'));
   g.add(cyl(0.047, 0.03, 0xff4fd8, 0, 0.03, -0.46, 'z', 14, 'n')); // pink sweatband

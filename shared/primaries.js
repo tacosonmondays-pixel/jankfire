@@ -46,7 +46,7 @@ export const CART = {
   L: 0.95, W: 0.6, H: 1.0, // real cart: ~95 cm long, 60 wide, 1 m to the handle
   top: 1.0, // stand / ride on it at this height above its bottom
   max: 6, mine: 3, // most carts in a room at once, and per shooter (the oldest goes)
-  fric: 3.5, airDrag: 0.02, wallBounce: 0.35, restSp: 0.5, restT: 0.25,
+  fric: 6, airDrag: 0.02, wallBounce: 0.35, restSp: 0.5, restT: 0.25,
   minSp: 4, dmgK: 3, dmgMax: 80, kbK: 1.3, kbUp: 7, hitCd: 700, slow: 0.75, ownerSafe: 0.4,
   dropBoost: 0.35, // falling off something turns this much of the fall into forward speed (riding down stairs speeds you up)
   ride: { acc: 7, top: 11, fric: 1.4, turn: 2.6, reach: 1.1, upTol: 0.7, autoSp: 6, maxSp: 26, jump: 9 },

@@ -118,6 +118,8 @@ const DEFAULT_NAMES = ['player', 'guy', 'someone', 'nobody', 'dude', 'person'];
 const BOT_NAMES = ['Gary', 'Linda', 'Steve', 'Brenda', 'Kevin', 'Doug', 'Karen', 'Phil', 'Tina', 'Rick', 'Deb', 'Carl', 'Pam', 'Todd', 'Barb', 'Chad'];
 const BOT_GUNS = ['ar', 'ar', 'smg', 'shotgun', 'shotgun', 'sniper', 'chicken', 'banana', 'minigun', 'revolver', 'redline', 'marbles', 'laser', 'nailgun', 'tennis', 'cart'];
 BOT_GUNS.push('shredder'); // bots suck too (botShred)
+if (process.env.JF_PIN_DUR) WEAPONS.nailgun.nails.dur = Number(process.env.JF_PIN_DUR) || WEAPONS.nailgun.nails.dur; // test knob: longer nail gun pins (screenshots)
+if (process.env.JF_BOT_GUNS) BOT_GUNS.splice(0, BOT_GUNS.length, ...process.env.JF_BOT_GUNS.split(',').filter((w) => Object.hasOwn(WEAPONS, w))); // test knob: JF_BOT_GUNS=nailgun,cart
 const SKIN_F = ['default', 'default', 'gold', 'chrome', 'pink', 'camo', 'neon', 'rainbow', 'galaxy', 'lava', 'missing', 'tiger', 'fade', 'carbon', 'tape'];
 const SKIN_H = ['none', 'none', 'none', 'tophat', 'party', 'crown', 'cowboy', 'propeller', 'cone', 'eyes', 'duck'];
 const SKIN_E = ['none', 'none', 'none', 'sparkles', 'flames', 'money', 'smoke'];

@@ -43,11 +43,12 @@ sfx.gun = (id, pos, k) => (id === 'nailgun' ? sfx.nail(pos) : gun0.call(sfx, id,
 const nails = []; // { m, until }
 function addNail(p, dir, big = 1) {
   const m = nailMesh();
-  m.scale.setScalar(big);
+  m.scale.set(big * (big > 1 ? 1.7 : 1), big * (big > 1 ? 1.7 : 1), big); // pin nails: fat heads that read from the front
   const out = 0.022 * big; // the head sticks out a little
   m.position.set(p[0] - dir[0] * out, p[1] - dir[1] * out, p[2] - dir[2] * out);
   m.lookAt(m.position.x - dir[0], m.position.y - dir[1], m.position.z - dir[2]); // +z away from the wall = the shank goes in
-  m.rotateX((Math.random() - 0.5) * 0.35); m.rotateY((Math.random() - 0.5) * 0.35); // never quite straight
+  const tilt = big > 1 ? 0.9 : 0.35;
+  m.rotateX((Math.random() - 0.5) * tilt); m.rotateY((Math.random() - 0.5) * tilt); // never quite straight
   G.scene.add(m);
   nails.push({ m, until: performance.now() + NAILS.stick * 1000 });
   while (nails.length > 160) G.scene.remove(nails.shift().m);
@@ -72,8 +73,8 @@ function pinFx(m) {
   const spots = into[1] ? [[0.3, 0.05, 0.2], [-0.3, 0.05, -0.2], [0.2, 0.05, -0.3], [-0.2, 0.05, 0.3]] : [[0.35, 1.5, 0], [-0.35, 1.5, 0], [0.18, 0.5, 0], [-0.18, 0.5, 0], [0, 2.05, 0]];
   const side = [into[2], 0, -into[0]]; // across the wall
   for (const [s, y, f] of spots) {
-    const at = into[1] ? [p[0] + s, p[1] + y, p[2] + f] : [p[0] + side[0] * s - into[0] * 0.05, p[1] + y, p[2] + side[2] * s - into[2] * 0.05];
-    list.push(addNail(at, into, 2.2));
+    const at = into[1] ? [p[0] + s, p[1] + y + 0.25, p[2] + f] : [p[0] + side[0] * s - into[0] * 0.3, p[1] + y, p[2] + side[2] * s - into[2] * 0.3]; // heads out in front of them, shanks through into the wall
+    list.push(addNail(at, into, 3.4));
   }
   pins.push({ list, until: n + (m.dur || NAILS.dur) * 1000 + 400 });
   fx.impact([p[0], p[1] + 1.1, p[2]], into.map((x) => -x));
@@ -91,7 +92,21 @@ net.on('pin', (m) => {
     hud.msg(m.n && m.n[1] === 0 ? 'NAILED TO THE WALL' : 'NAILED TO THE FLOOR', m.dur || 1, 'slip');
     G.shake = Math.max(G.shake, 0.6);
   } else if (m.by === G.myId) hud.msg('PINNED!', 0.9, 'brag');
+  const r = G.remotes.get(m.id);
+  if (r) { r.pinUntil = performance.now() + (m.dur || 1) * 1000; r.pinN = m.n; }
 });
+// everyone else sees them flat against the wall like a poster: back to it, arms up in a Y, legs splayed
+function posterPose(r, now) {
+  const ch = r.ch;
+  if (!ch || !(now < (r.pinUntil || 0)) || !r.alive) return;
+  const n = r.pinN || [0, 1, 0], wall = n[1] === 0;
+  if (wall) ch.root.rotation.y = Math.atan2(-n[0], -n[2]);
+  const k = Math.sin(now * 0.02) * 0.05; // a little struggle
+  ch.arm.rotation.set(1.5, 0, -0.5 + k); ch.armL.rotation.set(1.5, 0, 0.5 - k);
+  ch.legL.rotation.set(0, 0, 0.35); ch.legR.rotation.set(0, 0, -0.35);
+  ch.kneeL.rotation.x = 0; ch.kneeR.rotation.x = 0;
+  ch.head.rotation.z = 0.35 + k;
+}
 // pinned: you hang where the nails put you (others can still shoot you, and you can still shoot back)
 export function pinStep(now) {
   const p = ME.pin;
@@ -154,6 +169,7 @@ function upsert(m) {
   c.st = m.st; c.o = m.o; c.r = m.r || 0;
   if (!(mine && c.r === G.myId)) { c.tp = m.p.slice(); c.v = (m.v || [0, 0, 0]).slice(); c.ty = m.y || 0; c.at = performance.now(); }
   if (mine && c.r === G.myId) c.ok = true; // the server agreed: you're riding it
+  else if (mine && c.ok) endRide(); // the server let it go (the rig kicked in, you got pinned...): so do you
   if (!!m.s !== !!c.box) solid(c, !!m.s, m.p, m.y || 0);
   return c;
 }
@@ -290,6 +306,7 @@ export function updatePrims(dt, now) {
   if (ME.alive && !ME.ride && !ME.pin && ME.onGround && !wasGround && Math.hypot(ME.vel[0], ME.vel[2]) > 4) { const c = cartUnder(0.3); if (c && c.st !== 'fly') startRide(c); }
   else if (ME.alive && !ME.ride && ME.onGround && Math.hypot(ME.vel[0], ME.vel[2]) > CART.ride.autoSp + 5) { const c = cartUnder(0.3); if (c) startRide(c); } // sliding into one at speed
   wasGround = ME.onGround;
+  if (!RP.active) for (const r of G.remotes.values()) posterPose(r, now);
   rattleT -= dt;
   for (const c of carts.values()) {
     const mine = ME.ride === c.id;

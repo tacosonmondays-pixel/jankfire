@@ -15,7 +15,7 @@ const plain = (c) => ({ id: c.id, p: c.p.map(H.r2), v: c.v.map(H.r2), y: H.r2(c.
 
 export function installPrimaries(Room, helpers) {
   H = helpers;
-  for (const t of ['pin', 'cart']) H.REC_T.add(t); // pins + carts in killcams and the play of the round
+  H.REC_T.add('pin'); // pins in killcams and the play of the round (carts ride along in the frames' projectile list)
   // parked carts are solid: the room's boxes are the map's plus theirs (rebuilt only when a cart parks or leaves)
   Object.defineProperty(Room.prototype, 'boxes', {
     configurable: true,
@@ -96,6 +96,7 @@ const prims = {
     const n = H.now();
     if (n - (p.lastFire.cart || 0) < CW.cd * 750) return;
     p.lastFire.cart = n;
+    if (p.isBot) { const l = Math.hypot(d[0], d[2]) || 1; d = [d[0] / l * 0.995, -0.1, d[2] / l * 0.995]; } // bots bowl it along the floor at you (it rolls)
     const carts = (this.carts ||= new Map());
     const mine = [...carts.values()].filter((c) => c.o === p.id);
     if (mine.length >= CART.mine) this.dropCart(mine[0], 'old');
@@ -149,8 +150,16 @@ const prims = {
       if (c.st === 'ride') {
         const r = this.players.get(c.rider);
         if (!r || !r.alive || r.ride !== c.id || this.rigOn(r) || this.isBall(r)) { this.cartLetGo(c, r && r.alive ? r.vel : [0, 0, 0]); continue; }
-        c.p = [r.pos[0], r.pos[1] - CART.top, r.pos[2]];
-        c.v = r.vel.slice(0, 3).map((x) => Math.max(-CART.ride.maxSp, Math.min(CART.ride.maxSp, x)));
+        const np = [r.pos[0], r.pos[1] - CART.top, r.pos[2]], step = Math.hypot(np[0] - c.p[0], np[1] - c.p[1], np[2] - c.p[2]);
+        if (step > 1e-4 || n - (c.mvT || 0) > 400) { // a new position from the rider (snapshots come slower than ticks)
+          const moved = step / Math.max(0.03, (n - (c.mvT || n - 50)) / 1000);
+          c.p = np; c.mvT = n;
+          c.v = r.vel.slice(0, 3).map((x) => Math.max(-CART.ride.maxSp, Math.min(CART.ride.maxSp, x)));
+          // it only ploughs as hard as it really moved (a rider who says they're fast but stands still, or jumps 10 m, does nothing)
+          const say = Math.hypot(...c.v);
+          if (moved > CART.ride.maxSp * 2) c.v = [0, 0, 0];
+          else if (say > moved * 1.4 + 1.5) c.v = c.v.map((x) => x * ((moved * 1.4 + 1.5) / say));
+        }
         c.yaw = yawOfV(c.v, c.yaw);
         this.plough(c, r, n);
       } else if (c.st === 'fly' || c.st === 'roll') {
