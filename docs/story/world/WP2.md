@@ -84,3 +84,11 @@ touching boxes are skipped). Too HD in the depot, the densest view: ~576k triang
 ## Not yet (later packages)
 NPC and enemy characters (ART_BIBLE #8, #17, #25: the crowd spots, `npc.*` and `enemy.*` marks are placed), district music
 beds, the paper-storm weather effect, real cars on the highway (WP7). The look-check sheets are in this folder.
+
+## Look-check sheets (Too HD, deviceScaleFactor 2, the city test page)
+- `wp2_sheet_bottom.jpg`: the Machine in the Lost & Found, the Long Stairs, a lane, the roofs, the market, the Gut gate.
+- `wp2_sheet_gut.jpg`: the gate, the Clocking In arena under its ribs, inside Peristalsis Avenue, the Big Stomach, a launderette street.
+- `wp2_sheet_commute.jpg`: the jammed highway, the camp side, the wrecked walker tank, the 17:29 clock.
+- Single shots: `wp2_<district>_<view>.jpg`.
+Weakest so far: the Commute's wasteland (brown terraces, needs more scatter and the camp needs a better angle), and
+the Long Stairs read as a plain concrete flight.
