@@ -16,7 +16,8 @@ RAKE = -0.1  # the MAC's grip rake (three rotation.x): the radio leans back from
 CA, SA = math.cos(RAKE), math.sin(RAKE)
 MAG_DIR = [0.0, round(-CA, 4), round(-SA, 4)]
 X, ZC, ZF, ZB = 0.029, 0.022, 0.040, 0.004  # half width, middle, front (toward you) and back faces
-TOP, PACK, BOT = 0.018, -0.097, -0.137
+TOP, PACK, BOT = 0.075, -0.06, -0.1
+DY = 0.057  # the face's layout was drawn for a top at 0.018: lift it with the radio (so the screen clears your fist)
 PIV = (0, TOP, ZC)  # rake pivot
 
 
@@ -68,28 +69,29 @@ def build():
     A(plate_xz(rrect(0, ZC, 2 * X, ZF - ZB, 0.009, 4), PACK + 0.001, TOP - PACK - 0.001, shell, name='shell', bev=0.004, seg=3))
     for sx in (-1, 1):
         A(box((0.004, 0.07, 0.03), (sx * (X - 0.0012), -0.046, ZC), rubber, bev=0.0015, name='sidegrip'))
-    A(box((0.046, 0.05, 0.003), (0, -0.058, ZF - 0.0006), dark, bev=0.001, name='grillepanel'))
-    for k in range(7):
-        A(box((0.038, 0.0028, 0.002), (0, -0.04 - k * 0.0058, ZF + 0.0012), black, bev=0.0006, name='slot'))
-    A(box((0.046, 0.022, 0.003), (0, -0.012, ZF - 0.0006), dark, bev=0.0012, name='bezel'))
-    decals.append(quad((0, -0.012, ZF + 0.0011), 0.04, 0.0135, lcd, axis='z', name='lcd'))
-    decals.append(quad((0, 0.0085, ZF + 0.0003), 0.05, 0.0088, logo, axis='z', name='logo'))
+    A(box((0.046, 0.06, 0.003), (0, -0.008, ZF - 0.0006), dark, bev=0.001, name='grillepanel'))
+    for k in range(9):
+        A(box((0.038, 0.0028, 0.002), (0, 0.017 - k * 0.0058, ZF + 0.0012), black, bev=0.0006, name='slot'))
+    A(box((0.046, 0.022, 0.003), (0, -0.012 + DY, ZF - 0.0006), dark, bev=0.0012, name='bezel'))
+    decals.append(quad((0, -0.012 + DY, ZF + 0.0011), 0.04, 0.0135, lcd, axis='z', name='lcd'))
+    decals.append(quad((0, 0.0085 + DY, ZF + 0.0003), 0.05, 0.0088, logo, axis='z', name='logo'))
     for k, x in enumerate((-0.015, 0.0, 0.015)):
-        A(cyl(0.0032, 0.0025, (x, -0.0285, ZF + 0.001), pinkm if k == 1 else dark, axis='z', seg=10, bev=0.0008, name='key'))
-    A(box((0.005, 0.034, 0.018), (-X - 0.0012, -0.014, ZC), black, bev=0.0022, name='ptt'))  # push to talk, left side
-    for y in (-0.039, -0.048): A(box((0.0035, 0.006, 0.01), (-X - 0.0006, y, ZC), dark, bev=0.0012, name='sidekey'))
-    A(box((0.004, 0.016, 0.012), (X + 0.0008, -0.004, ZC), rubber, bev=0.0015, name='jackflap'))
-    A(box((0.026, 0.07, 0.003), (0, -0.05, ZB - 0.003), chrome, bev=0.001, name='clip'))
-    A(box((0.026, 0.008, 0.008), (0, -0.016, ZB - 0.002), chrome, bev=0.002, name='clipspring'))
-    decals.append(quad((0, -0.058, ZB - 0.0047), 0.018, 0.0138, clipl, axis='z', sx=-1, name='cliplabel'))
+        A(cyl(0.0032, 0.0025, (x, -0.0285 + DY, ZF + 0.001), pinkm if k == 1 else dark, axis='z', seg=10, bev=0.0008, name='key'))
+    A(box((0.005, 0.034, 0.018), (-X - 0.0012, -0.014 + DY, ZC), black, bev=0.0022, name='ptt'))  # push to talk, left side
+    for y in (-0.039, -0.048): A(box((0.0035, 0.006, 0.01), (-X - 0.0006, y + DY, ZC), dark, bev=0.0012, name='sidekey'))
+    A(box((0.004, 0.016, 0.012), (X + 0.0008, -0.004 + DY, ZC), rubber, bev=0.0015, name='jackflap'))
+    A(box((0.026, 0.06, 0.003), (0, -0.03, ZB - 0.003), chrome, bev=0.001, name='clip'))
+    A(box((0.026, 0.008, 0.008), (0, 0.0, ZB - 0.002), chrome, bev=0.002, name='clipspring'))
+    decals.append(quad((0, -0.036, ZB - 0.0047), 0.018, 0.0138, clipl, axis='z', sx=-1, name='cliplabel'))
     # top: the LED, the antenna's collar + swivel knuckle
     A(cyl(0.0024, 0.002, (-0.018, TOP + 0.001, 0.032), ledm, axis='y', seg=10, name='led'))
-    A(cyl(0.0078, 0.006, (0, TOP + 0.003, 0.013), dark, axis='y', seg=16, bev=0.0012, name='collar'))
+    A(box((0.02, 0.016, 0.006), (0, BORE_Y, ZB - 0.0015), dark, bev=0.002, name='jackboss'))  # the antenna jack on the front face
+    A(cyl(0.004, 0.006, (0.0, TOP + 0.003, 0.012), dark, axis='y', seg=12, bev=0.001, name='gpsnub'))
     rake(body + decals)
     # ---------------- antenna (not raked): knuckle on the collar, a ribbed rubber duck forward to the muzzle
-    ant.append(cyl(0.0068, 0.016, (0, BORE_Y, 0.013), dark, axis='x', seg=16, bev=0.0015, name='knuckle'))
-    ant.append(box((0.008, 0.008, 0.012), (0, BORE_Y - 0.0045, 0.013), dark, bev=0.002, name='knuckle_web'))
-    ant.append(lathe([(0.0055, 0.008), (0.0058, -0.004), (0.0064, -0.01), (0.0064, -0.03)], (0, BORE_Y, 0), chrome, seg=14, name='ferrule'))
+    KZ = rake_pt((0, BORE_Y, ZB))[2] - 0.006  # in front of the raked face
+    ant.append(cyl(0.0068, 0.016, (0, BORE_Y, KZ), dark, axis='x', seg=16, bev=0.0015, name='knuckle'))
+    ant.append(lathe([(0.0055, KZ), (0.0058, -0.004), (0.0064, -0.01), (0.0064, -0.03)], (0, BORE_Y, 0), chrome, seg=14, name='ferrule'))
     prof = [(0.0064, -0.03), (0.0066, -0.034)]
     z = -0.034
     while z > -0.184:  # the rubber duck's coil ribs, thinning to the tip
@@ -113,9 +115,9 @@ def build():
     # ---------------- the stickers, one set per hand: front over the grille (crooked), both sides
     tl, tr = [], []
     for lst, m, lean in ((tl, tagLm, 0.18), (tr, tagRm, -0.16)):
-        q = quad((0, 0, 0), 0.024, 0.027, m, axis='z', name='tag'); q.location = gv(0.006, -0.06, ZF + 0.0028); q.rotation_euler = (0, lean, 0); lst.append(q)  # blender y axis = game -z: a turn in the face's plane
+        q = quad((0, 0, 0), 0.024, 0.027, m, axis='z', name='tag'); q.location = gv(0.006, 0.002, ZF + 0.0028); q.rotation_euler = (0, lean, 0); lst.append(q)  # blender y axis = game -z: a turn in the face's plane
         for sx in (-1, 1):
-            q2 = quad((sx * (X + 0.0028), -0.075, ZC), 0.016, 0.018, m, axis='x', sx=sx, name='tagside'); lst.append(q2)
+            q2 = quad((sx * (X + 0.0028), -0.03, ZC), 0.016, 0.018, m, axis='x', sx=sx, name='tagside'); lst.append(q2)
         rake(lst)
 
     for p in body + cock + pack + ant: apply_mods(p)
@@ -127,8 +129,8 @@ def build():
     dn = join(decals, 'wt_decals_wzN')
     cnode = part(cock, 'cocker_wzN', pivot=rake_pt(KN))
     mnode = part(pack, 'mag_wzB', pivot=rake_pt((0, BOT, ZC)))
-    tln = part(tl, 'tagL_wzN', pivot=rake_pt((0, -0.06, ZF)))
-    trn = part(tr, 'tagR_wzN', pivot=rake_pt((0, -0.06, ZF)))
+    tln = part(tl, 'tagL_wzN', pivot=rake_pt((0, 0.0, ZF)))
+    trn = part(tr, 'tagR_wzN', pivot=rake_pt((0, 0.0, ZF)))
     meta = {'kind': 'weapon', 'id': 'akimbo', 'skin': 'akimbo_walkie', 'paint': ['wt_shell'], 'muzzle': [0, BORE_Y, MUZ_Z],
             'hatAt': [[0, round(TOP + 0.001, 4), 0.026], 0.07],
             'cocker': {'node': 'cocker_wzN', 'travel': 0.012}, 'mag': {'node': 'mag_wzB', 'dir': MAG_DIR},
