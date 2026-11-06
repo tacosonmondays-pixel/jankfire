@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '4.9', date: '2026-11-06', title: 'ROOFTOP, REBUILT', items: [
+    'ROOFTOP got rebuilt from scratch: a block of rooftops over the city, joined by stair bridges and sky bridges, with a penthouse bar, a rooftop pool deck, a helipad and billboards. it has its own Plant & Defuse version too.',
+    'the city below Rooftop and Skyline stopped flickering (stacked neon strips were fighting each other).',
+    'bots on rooftop maps stop jumping off the edge.',
+  ] },
   { v: '4.8', date: '2026-11-06', title: 'BLENDER ROUND 3', items: [
     'the zombie claw, the lasso (+ the Garden Hose skin), the Bubble Wand, the wrecking ball, the laser pointer, the instant camera, the Pop Quiz calculator and the night vision goggles all got real glossy models.',
     'THE OVERDRIVE RIG got rebuilt: hydraulics, chrome stacks, BONK and HUGS on the knuckles, a bobblehead on the dash. the missiles say RETURN TO SENDER.',
