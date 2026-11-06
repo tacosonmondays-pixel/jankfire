@@ -13,6 +13,7 @@ Story mode only exists with `?story=1` in the URL or `localStorage.jfStory = '1'
 - **Co-op (WP10):** `server/story.js` `StoryRoom` will run the same `createSim` per room (stub + room cap of 8 for now).
 
 ## The sim (`shared/story/sim.js`, pure)
+- `sim.state` is the story engine state (`shared/story/state.js` `fromSave(save.data)`); `snapshot()` writes `toSave(sim.state)` back to the top of `save.data`. Pass it to `makeStory({ state: sim.state })`.
 - `createSim({ send, save })` -> `sim` with `msg(m)`, `tick(dt)` (20 Hz), `snapshot()` (the save as it stands),
   `sty(kind, o)` (send `{ t: 'sty', k: kind, ...o }` to the client), `me` (the player), `save`, `clock`.
 - Speaks the normal protocol for the basics: `join` -> `welcome` (mode `story`, map `story_test`), `pi` -> `po`,

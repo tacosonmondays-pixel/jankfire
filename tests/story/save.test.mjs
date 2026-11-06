@@ -57,4 +57,13 @@ t('sim: resumes where the save was', () => {
   createSim({ send: (o) => out.push(o), save: s }).msg({ t: 'join' });
   assert.deepEqual(out[0].pos, [5, 0.1, 5]); assert.equal(out[1].yaw, 2); assert.equal(out[0].name, 'CHANGE');
 });
+t('sim: story engine state round-trips through the save', () => {
+  const s = newSave(0); s.data.flags = ['metChoir']; s.data.met = ['lumps']; s.data.quests = { sauce: { step: 'car', n: [1], t: 3 } }; s.data.track = 'sauce';
+  const out = []; const sim = createSim({ send: (o) => out.push(o), save: cleanSave(s).save });
+  assert.equal(sim.state.flags.metChoir, true); assert.equal(sim.state.quests.sauce.step, 'car');
+  sim.state.flags.newOne = true; sim.state.codex['char.lumps'] = true;
+  sim.msg({ t: 'join' }); sim.msg({ t: 'sty', k: 'save' });
+  const d = cleanSave(out.at(-1).save).save.data;
+  assert.deepEqual(d.flags.sort(), ['metChoir', 'newOne']); assert.deepEqual(d.met, ['lumps']); assert.deepEqual(d.codex, ['char.lumps']); assert.equal(d.track, 'sauce'); assert.equal(d.quests.sauce.n[0], 1);
+});
 console.log(`\n${n} passed (SAVE.v ${SAVE.v})`);

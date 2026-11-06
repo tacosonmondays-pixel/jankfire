@@ -8,6 +8,7 @@
 // save.data[id].
 import { TEST } from './testmap.js';
 import { newSave } from './save.js';
+import { fromSave, toSave } from './state.js'; // the story engine's state (WP8): flags, quests, met, codex, log, track...
 
 const SYSTEMS = [];
 export function addSystem(s) { if (!SYSTEMS.some((o) => o.id === s.id)) SYSTEMS.push(s); }
@@ -18,6 +19,7 @@ export function createSim({ send, save }) {
     save: sv, send, t: 0, me: null, // me: the (one, solo) player { id, name, pos, seq, alive }
     clock: (sv.data.clock && Number.isFinite(sv.data.clock.min)) ? sv.data.clock.min : 17 * 60 + 29, // the district clock: stuck at 17:29 for now
     sty(k, o) { send({ t: 'sty', k, ...o }); },
+    state: fromSave(sv.data), // hand this to makeStory({ state: sim.state }) (shared/story/story.js)
   };
   for (const s of SYSTEMS) if (s.init) s.init(sim);
   for (const s of SYSTEMS) if (s.load && sv.data[s.id] !== undefined) s.load(sim, sv.data[s.id]);
@@ -69,6 +71,7 @@ export function createSim({ send, save }) {
     const out = JSON.parse(JSON.stringify(sim.save));
     out.playtime = Math.floor(out.playtime);
     if (sim.me) out.at = { map: TEST.id, p: sim.me.pos.map((x) => Math.round(x * 100) / 100), yaw: Math.round((sim.me.yaw || 0) * 1000) / 1000 };
+    Object.assign(out.data, toSave(sim.state)); // the engine's keys sit at the top of save.data (TECH_PLAN §7)
     out.data.clock = { min: sim.clock };
     for (const s of SYSTEMS) if (s.save) out.data[s.id] = s.save(sim);
     return out;
