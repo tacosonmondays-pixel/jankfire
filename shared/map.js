@@ -222,7 +222,7 @@ function tower(B, x, z, w, d, h, o = {}) {
   if (kind === 'tank') waterTower(L, hw - 5, hd - 5, 0);
   if (kind === 'antenna') { L.B(2, 9, 2, 0.5, 18, 0.5, 'metal'); L.B(2, 18.4, 2, 3, 0.6, 3, 'pink'); }
   if (kind === 'billboard') billboard(L, 0, hd - 2, 0, 'x');
-  if (kind === 'helipad') L(-5.5, 0, -5.5 + 2, 5.5, 0.15, 5.5 + 2, 'helipad');
+  if (kind === 'helipad') L(-5.5, 0, -5.5 + 2, 5.5, 0.15, 5.5 + 2, 'helipad', { fit: 1 });
   if (kind === 'garden') {
     L(-hw + 0.5, 0, 0, hw - 0.5, 0.3, hd - 0.5, 'grass');
     tree(L, -3, hd - 4, 3); tree(L, 3, hd - 5, 3.5);
@@ -618,7 +618,7 @@ function penthouse(B, D, cx, cz, y, o = {}) {
   L(-7.5, 7.9, -3.0, -7.4, 8.9, 1.5, 'metal'); L(-9.85, 7.9, 1.5, -7.4, 8.9, 1.6, 'metal');
   wall(L, 'x', -8, -10.15, 10.15, 7.9, 8.7, 0.3, 'glassblock'); wall(L, 'x', 8, -10.15, 10.15, 7.9, 8.7, 0.3, 'glassblock');
   wall(L, 'z', -10, -7.85, 7.85, 7.9, 8.7, 0.3, 'glassblock'); wall(L, 'z', 10, -7.85, 7.85, 7.9, 8.7, 0.3, 'glassblock');
-  L(-4.5, 7.9, -4.5, 4.5, 8.0, 4.5, 'helipad');
+  L(-4.5, 7.9, -4.5, 4.5, 8.0, 4.5, 'helipad', { fit: 1 });
   Ld(-10.21, 7.65, -8.21, 10.21, 7.85, -8.15, 'neonpink'); Ld(-10.21, 7.65, 8.15, 10.21, 7.85, 8.21, 'neonpink'); // neon round the roof's edge
   Ld(-10.21, 7.65, -8.15, -10.15, 7.85, 8.15, 'neonpink'); Ld(10.15, 7.65, -8.15, 10.21, 7.85, 8.15, 'neonpink');
   Ld(-5, 6.9, 8.15, 5, 7.5, 8.2, 'adparty', { fit: 1 }); // over the long window, for the pool
@@ -2628,7 +2628,7 @@ function skyGarden(B, D, x, z, y, r) {
 function skyNews(B, D, x, z, y, r) {
   const add = B.add, W = B.local(0, 0, 0);
   {
-    add(x - 7, y, z - 7, x + 3, y + 0.1, z + 7, 'helipad'); chopper(B, D, x - 2, y + 0.1, z, 'toyblue'); D.add(x - 4.5, y + 1.4, z + 1.21, x - 0.5, y + 2.2, z + 1.25, 'adnews', { fit: 1 });
+    add(x - 7, y, z - 7, x + 3, y + 0.1, z + 7, 'helipad', { fit: 1 }); chopper(B, D, x - 2, y + 0.1, z, 'toyblue'); D.add(x - 4.5, y + 1.4, z + 1.21, x - 0.5, y + 2.2, z + 1.25, 'adnews', { fit: 1 });
     add(x - 11, y, z + 8, x - 8, y + 1.2, z + 11, 'metal'); D.add(x - 12.5, y + 1.2, z + 6.5, x - 6.5, y + 1.5, z + 12.5, 'white'); D.add(x - 9.7, y + 1.5, z + 9.3, x - 9.3, y + 3.6, z + 9.7, 'metal'); // the dish
     for (const [lx, lz] of [[6, -10], [9, -10], [6, 10], [9, 10]]) { B.box(x + lx, y + 1.4, z + lz, 0.15, 2.8, 0.15, 'metal'); D.box(x + lx, y + 2.9, z + lz, 0.8, 0.6, 0.5, 'lamp'); }
     for (const lz of [-12.6, 12.6]) { add(x + 4, y, z + lz - 0.6, x + 8, y + 1.6, z + lz + 0.6, 'containerb'); }
@@ -2679,14 +2679,15 @@ function skyObs(B, D, x, z, y, r) {
     D.add(x - 4, y + 1.5, z + 6, x + 4, y + 3.3, z + 6.06, 'adobs', { fit: 1 });
     for (const [bx, bz] of [[-9, 9], [9, 9], [-9, -9], [9, -9]]) add(x + bx - 1.3, y, z + bz - 0.3, x + bx + 1.3, y + 0.5, z + bz + 0.3, 'wood'); }
 }
-// the helipad: the big pad, a parked chopper, fuel tanks, the control booth, a windsock
-function skyHeli(B, D, x, z, y, r) {
+// the helipad: the big pad, a parked chopper, fuel tanks, the control booth, a windsock. f = -1 puts the tanks and the
+// booth on the north side (S&D: out of the line of the attackers' stairs)
+function skyHeli(B, D, x, z, y, r, f = 1) {
   const add = B.add, W = B.local(0, 0, 0);
   {
-    add(x - 8, y, z - 8, x + 8, y + 0.1, z + 8, 'helipad'); chopper(B, D, x + 1, y + 0.1, z - 1, 'toyred');
-    for (const tx of [-11, -8.5]) { add(x + tx - 0.9, y, z + 9.6, x + tx + 0.9, y + 2.6, z + 11.4, 'barrelr'); }
-    add(x + 9, y, z + 9, x + 12.6, y + 2.8, z + 12.6, 'metal'); D.add(x + 8.96, y + 1.2, z + 9.4, x + 9, y + 2.4, z + 12.2, 'glass'); // the booth
-    B.box(x + 12.5, y + 2, z - 12.5, 0.15, 4, 0.15, 'metal'); D.add(x + 12.5, y + 3.4, z - 12.6, x + 14, y + 3.9, z - 12.4, 'hazard'); }
+    add(x - 8, y, z - 8, x + 8, y + 0.1, z + 8, 'helipad', { fit: 1 }); chopper(B, D, x + 1, y + 0.1, z - (f < 0 ? 3 : 1), 'toyred'); // (S&D: off the pad's middle, the site's)
+    for (const tx of [-11, -8.5]) { add(x + tx - 0.9, y, z + f * 9.6, x + tx + 0.9, y + 2.6, z + f * 11.4, 'barrelr'); }
+    add(x + 9, y, z + f * 9, x + 12.6, y + 2.8, z + f * 12.6, 'metal'); D.add(x + 8.96, y + 1.2, z + f * 9.4, x + 9, y + 2.4, z + f * 12.2, 'glass'); // the booth
+    B.box(x + 12.5, y + 2, z - f * 12.5, 0.15, 4, 0.15, 'metal'); D.add(x + 12.5, y + 3.4, z - f * 12.6, x + 14, y + 3.9, z - f * 12.4, 'hazard'); }
 }
 
 // ------------------------------------------------------------ SKYLINE: the high city. nine tops in a three by three grid
@@ -2773,6 +2774,122 @@ function skyline() {
       stairs: [-1, 1].flatMap((sx) => [-1, 1].flatMap((sz) => { const cy = sx === sz ? lo : hi, hiEnd = cy > R;
         const a = { p: [sx * 14.4, R, sz * S], q: [sx * (S - 13.4), cy, sz * S] }, b = { p: [sx * S, R, sz * 14.4], q: [sx * S, cy, sz * (S - 13.4)] };
         return [a, b].map(({ p, q }) => (hiEnd ? { top: q, bot: p } : { top: p, bot: q })); })) })); },
+  };
+  return map;
+}
+
+
+// ------------------------------------------------------------ SKYLINE S&D: the Spire job (Plant & Defuse). the crashers
+// (attackers) come up the Jank Cola tower (south), ☺ CORP's security (defenders) hold their HQ tower (north). in the
+// middle, 4 m down, the Spire's hub deck round its glass shaft (it stands between the spawns). the sites sit either
+// side of the HQ, a stair-bridge up from it to each: B, the observatory's roof (west); A, the helipad's (east). the
+// crashers' ways in: down into mid and up the stair-bridge onto the news / mini-golf roof, or out along the side (down
+// onto the garden / the greenhouse, up onto the news / mini-golf roof), then up one of two stair-bridges onto the site.
+// both spawn towers have a privacy wall along their edge over mid
+function skylineSD() {
+  const B = builder(), D = builder(), r = rng(1338), add = B.add, W = B.local(0, 0, 0), Dw = D.local(0, 0, 0);
+  const base = -120, Cy = 36, pick = (a) => a[(r() * a.length) | 0];
+  // ---- the tops: [x, z, half x, half z, roof y]. middle column x [-14, 14]: the HQ z [-78, -50], the hub z [-40, 2],
+  // the cola tower z [10, 38]. either side x [34, 62]: the sites z [-84, -46], the news / mini-golf roofs z [-39, -9],
+  // the garden / greenhouse z [-2, 26]
+  const tops = { N: [0, -64, 14, 14, 40], C: [0, -19, 14, 21, Cy], S: [0, 24, 14, 14, 40], B: [-48, -65, 14, 19, 46], A: [48, -65, 14, 19, 46],
+    W: [-48, -24, 14, 15, 42], E: [48, -24, 14, 15, 42], SW: [-48, 12, 14, 14, 38], SE: [48, 12, 14, 14, 38] };
+  const gaps = { N: { s: [[-2, 2]], w: [[-66, -62]], e: [[-66, -62]] }, C: { n: [[-2, 2]], s: [[-2, 2]], w: [[-26, -22]], e: [[-26, -22]] }, S: { n: [[-2, 2]], w: [[16, 20]], e: [[16, 20]] },
+    B: { e: [[-66, -62]], s: [[-58, -54], [-42, -38]] }, A: { w: [[-66, -62]], s: [[38, 42], [54, 58]] },
+    W: { n: [[-58, -54], [-42, -38]], e: [[-26, -22]], s: [[-50, -46]] }, E: { n: [[38, 42], [54, 58]], w: [[-26, -22]], s: [[46, 50]] },
+    SW: { n: [[-50, -46]], e: [[16, 20]] }, SE: { n: [[46, 50]], w: [[16, 20]] } };
+  const facade = { N: 'office', C: 'glassblock', S: 'tenement', B: 'tenement', A: 'office', W: 'office', E: 'tenement', SW: 'office', SE: 'tenement' };
+  for (const [k, [x, z, hx, hz, y]] of Object.entries(tops)) {
+    roofTop(B, x - hx, z - hz, x + hx, z + hz, y, facade[k], gaps[k], base);
+    D.add(x - hx + 0.3, y, z - hz + 0.3, x + hx - 0.3, y + 0.02, z + hz - 0.3, k === 'SW' || k === 'E' ? 'lawn' : 'asphalt');
+  }
+  // ---- the links
+  stairBridge(B, false, 2.4, 9.6, 0, Cy, 40); stairBridge(B, false, -40.4, -49.6, 0, Cy, 40); // the hub up to the cola tower, up to the HQ
+  for (const s of [-1, 1]) {
+    stairBridge(B, true, s * 33.6, s * 14.4, 18, 38, 40, 4, true); // the cola tower down to the garden / greenhouse
+    stairBridge(B, false, -2.4, -8.6, s * 48, 38, 42); // the garden / greenhouse up to the news / mini-golf roof
+    for (const x of [40, 56]) stairBridge(B, false, -39.4, -45.6, s * x, 42, 46); // up onto the site (two ways)
+    stairBridge(B, true, s * 14.4, s * 33.6, -24, Cy, 42, 4, true); // mid up to the news / mini-golf roof
+    stairBridge(B, true, s * 14.4, s * 33.6, -64, 40, 46, 4, true); // the HQ up to the site
+  }
+  // privacy walls on the spawn towers' edges over mid (open at the stairs)
+  for (const [x0, x1] of [[-14.4, -2], [2, 14.4]]) { add(x0, 41, 9.6, x1, 43.2, 10, 'glassblock'); D.add(x0, 43.2, 9.54, x1, 43.35, 10.06, 'neonpink'); add(x0, 41, -50, x1, 43.2, -49.6, 'glassblock'); D.add(x0, 43.2, -50.06, x1, 43.35, -49.54, 'neoncyan'); }
+  // ---- mid: the Spire's hub deck, its shaft (four floors, stairs inside, a roof to snipe from), planters, benches, AC
+  shell(B.local(0, -19, 0, Cy), 12, 12, 4, 4.4, 'glassblock', { floor: 'grid', roof: 'roofg', roofAccess: true, backDoor: true, sideDoor: [-1.5, 1.5], winSpacing: 3 });
+  B.box(0, Cy + 17.9 + 7, -19, 0.6, 14, 0.6, 'metal'); D.box(0, Cy + 17.9 + 14.3, -19, 0.6, 0.6, 0.6, 'neonred');
+  for (const [x, z] of [[-9, -36], [9, -36], [-9, -2], [9, -2]]) { add(x - 1.2, Cy, z - 1.2, x + 1.2, Cy + 0.8, z + 1.2, 'stone'); D.add(x - 1.0, Cy + 0.8, z - 1.0, x + 1.0, Cy + 1.6, z + 1.0, 'hedge'); }
+  for (const [x, z] of [[-10, -30], [10, -8]]) add(x - 0.3, Cy, z - 1.5, x + 0.3, Cy + 0.5, z + 1.5, 'wood');
+  acUnit(W, -10, -10, Cy); acUnit(W, 10, -30, Cy); B.box(-4, Cy + 0.6, -33, 1.2, 1.2, 1.2, 'crate'); B.box(5, Cy + 0.6, -4, 1.2, 1.2, 1.2, 'crate');
+  // ---- the set pieces
+  skyObs(B, D, -48, -74, 46, r); skyHeli(B, D, 48, -65, 46, r, -1); // the two sites
+  skyNews(B, D, -48, -24, 42, r); skyPutt(B, D, 48, -24, 42, r); skyGarden(B, D, -48, 12, 38, r); skyGreen(B, D, 48, 12, 38, r);
+  skyCola(B, D, 0, 24, 40, r); // the crashers' tower
+  // more cover on the sites (the bomb wants somewhere to hide)
+  for (const s of [-1, 1]) { acUnit(W, s * 58, -50, 46); acUnit(W, s * 58, -80, 46); B.box(s * 38, 46.6, -80, 1.2, 1.2, 1.2, 'crate'); B.box(s * 39.4, 46.6, -80, 1.2, 1.2, 1.2, 'crate'); B.box(s * 52, 46.45, -50, 0.9, 0.9, 0.9, 'metal'); }
+  // the sites' cover. both: a building in the back corner with the site letter on it (B: a lift house, A: the helipad's
+  // booth), a crate stack, the letter on the tower's face under the attackers' stairs. B: the ticket kiosk, a planter, coin
+  // telescopes. A: the chopper's cargo, jersey barriers by the defenders' way in
+  B.box(-59.5, 47.6, -74.8, 3.8, 3.2, 4.4, 'concrete'); B.box(-59.5, 49.35, -74.8, 4.2, 0.3, 4.8, 'roofg');
+  D.add(-60.4, 46, -72.6, -58.8, 48.2, -72.5, 'metal'); siteBoard(D, -57.52, 46.8, -74.8, 'z', 'siteb', 2.6);
+  siteBoard(D, 58.8, 46.5, -73.92, 'x', 'sitea', 1.8);
+  for (const s of [-1, 1]) siteBoard(D, s * 48, 42.6, -45.92, 'x', s < 0 ? 'siteb' : 'sitea', 3);
+  for (const [x, z, y] of [[-44.5, -61, 46.6], [-44.5, -62.4, 46.6], [-44.4, -61.7, 47.8], [45.1, -54.6, 46.6], [46.5, -54.4, 46.6], [45.8, -54.5, 47.8]]) B.box(x, y, z, 1.2, 1.2, 1.2, 'crate');
+  add(-39.2, 46, -75.2, -36.8, 48.6, -72.8, 'toyteal'); add(-39.4, 48.6, -75.4, -36.6, 48.9, -72.6, 'roofg'); // the kiosk
+  D.add(-39.3, 47.2, -74.6, -39.2, 48.2, -73.4, 'glass'); siteBoard(D, -38, 46.5, -72.72, 'x', 'siteb', 1.8);
+  add(-57, 46, -62, -53, 47, -60.8, 'concrete'); D.add(-56.8, 47, -61.8, -53.2, 47.1, -61, 'lawn'); // the planter
+  for (const x of [-50, -46]) { B.box(x, 46.6, -47.6, 0.2, 1.2, 0.2, 'metal'); B.box(x, 47.45, -47.5, 0.36, 0.36, 0.8, 'toyyellow'); } // coin telescopes
+  for (const z of [-69.5, -58.5]) add(37.6, 46, z - 1.5, 38.4, 46.9, z + 1.5, 'jersey');
+  // B: the radio mast, its plinth the cover between the two stairs. A: the fuel cart by the near stairs. both: roof vents
+  add(-51, 46, -55.6, -47.8, 48.6, -52.4, 'concrete'); add(-51.2, 48.6, -55.8, -47.6, 48.9, -52.2, 'roofg');
+  D.box(-49.4, 53, -54, 0.3, 8.2, 0.3, 'metal'); for (const [y, w] of [[54.4, 2.6], [56.2, 1.6]]) D.box(-49.4, y, -54, w, 0.12, 0.12, 'metal');
+  for (const s of [-1, 1]) D.box(-49.4 + s * 0.55, 51.6, -53.55, 0.8, 1.1, 0.3, 'white'); D.box(-49.4, 57.25, -54, 0.4, 0.3, 0.4, 'neonpink');
+  add(43, 46.5, -52.6, 45, 48.4, -47.4, 'toyred'); add(43.2, 48.4, -52.3, 44.8, 49.0, -48.2, 'chrome'); // the fuel cart
+  for (const z of [-51.6, -48.4]) for (const x of [42.85, 45.15]) D.box(x, 46.4, z, 0.2, 0.8, 0.8, 'tire');
+  for (const [x, z] of [[-60.6, -58], [-35.6, -52], [-60.6, -66], [60.6, -60], [35.6, -78], [60.6, -66]]) { B.box(x, 46.25, z, 0.6, 0.5, 0.6, 'metal'); D.box(x, 46.53, z, 0.4, 0.06, 0.4, 'grid'); }
+  // ☺ CORP HQ (security): the flag on its mast frame, two machine rooms, AC
+  for (const x of [-6, 6]) add(x - 0.2, 40, -77.6, x + 0.2, 47, -77.2, 'metal');
+  D.add(-8, 42.5, -77.42, 8, 46.8, -77.38, 'flagcorp', { fit: 1 });
+  for (const s of [-1, 1]) { add(s * 6, 40, -60, s * 11, 44, -55, 'concrete'); add(s * 5.8, 44, -60.2, s * 11.2, 44.3, -54.8, 'roofg'); acUnit(W, s * 11, -74, 40); }
+  // ---- outside: the city round about (render-only)
+  const rs = rng(4042), plan = [], roofs = {};
+  for (const [x, z, w, h, t] of [[-130, -130, 34, 70, 3], [0, -140, 30, 30, 2], [130, -130, 36, 90, 3], [-130, -20, 30, 20, 2], [130, -20, 34, 60, 3], [-130, 90, 32, 85, 3], [0, 110, 30, 35, 2], [130, 90, 30, 25, 2]]) {
+    const ry = tower(D, x, z, w, w, h, { tiers: t, base, r: rs }); D.box(x, base - 10, z, w, 20, w, 'office'); plan.push([x, z, w, w, h, t]); roofs[`${x},${z}`] = ry;
+  }
+  const ours = Object.values(tops).map(([x, z, hx, hz, y]) => ({ x, z, w: hx * 2, d: hz * 2, y }));
+  for (const o of ours) { D.add(o.x - o.w / 2 - 0.06, o.y - 2.6, o.z - o.d / 2 - 0.06, o.x + o.w / 2 + 0.06, o.y - 2.1, o.z + o.d / 2 + 0.06, pick(['neoncyan', 'neonpink', 'neonyellow'])); D.add(o.x - o.w / 2, base - 20, o.z - o.d / 2, o.x + o.w / 2, base, o.z + o.d / 2, 'office'); }
+  const roads = { xs: [-170, -95, -23, 23, 95, 170], zs: [-170, -103, 48, 150], w: 14 }; // ±23 so the +x streetlight arms clear the tower walls
+  streetLevel(D, -120, [...plan.map(([x, z, w, d]) => ({ x, z, w, d })), ...ours], roads, 200, rs);
+  cityDress(D, plan, roofs, base, rs);
+  cityBeyond(D, -120, 200, 680, rng(4043), { kill: -108, cap: 30, shore: 470, avenues: [[-60, -230, 0.42], [230, 40, -1.05], [-300, 120, 1.25], [80, -420, 0.06], [-250, -250, 2.35]], streets: gridOut(roads.xs, roads.zs, 200, 200) });
+
+  const att = [[-4, 40.2, 30], [0, 40.2, 31], [4, 40.2, 30], [-10, 40.2, 30], [10, 40.2, 30], [-3, 40.2, 36], [3, 40.2, 36]];
+  const def = [[-4, 40.2, -70], [0, 40.2, -71], [4, 40.2, -70], [-10, 40.2, -70], [10, 40.2, -70], [-3, 40.2, -75], [3, 40.2, -75]];
+  const spawns = [...att.slice(0, 3), ...def.slice(0, 3), [-48, 46.2, -52], [48, 46.2, -52], [-56, 42.2, -24], [56, 42.2, -24], [-40, 38.2, 22], [40, 38.2, 25], [0, Cy + 0.2, -34], [-10, Cy + 0.2, -19], [10, Cy + 0.2, -19]];
+  let graph = null;
+  const map = { name: 'Skyline', size: 'huge', boxes: B.boxes, deco: D.boxes, killY: -108, floorY: -128, cityR: 680, cityCap: 30,
+    haze: { k: 0.88, top: 15, bottom: -120, dist: 120, color: 0xc89aa4 },
+    sky: { top: 0x1a2a5a, mid: 0xff9a5a, bot: 0x0a0a1a, fog: 0xd98a6a }, fogNear: 160, fogFar: 700, spawns, teamSpawns: { att, def }, edgeGuard: true,
+    traffic: { grid: { ...roads, S: 200, y: -120 + 0.08, off: 5 } },
+    nav: {
+      A: [
+        [[0, 31], [8, 26], [14, 18], [24, 18], [35, 17], [37, 0], [48, -1], [48, -6], [48, -12], [36, -18], [36, -36], [40, -39], [40, -43], [40, -48], [44, -58]], // the side: the greenhouse roof, mini golf, up the near stairs
+        [[2, 31], [5, 24], [3, 12], [0, 9], [0, 6], [0, 1], [9, -10], [12, -24], [16, -24], [24, -24], [34, -24], [36, -30], [36, -36], [40, -39], [40, -43], [40, -48], [44, -58]], // mid, up to mini golf, up the near stairs
+        [[4, 31], [8, 26], [14, 18], [24, 18], [35, 17], [37, 0], [48, -1], [48, -6], [48, -10], [60, -10], [60, -36], [56, -39], [56, -43], [56, -48], [52, -58]], // the side, round mini golf, up the far stairs
+        [[0, -70, 40], [8, -66, 40], [13, -64, 40], [24, -64, 43], [33, -64, 46], [38, -64, 46], [42, -63, 46]], // security: over the bridge from the HQ
+      ],
+      B: [
+        [[0, 31], [-8, 26], [-14, 18], [-24, 18], [-35, 17], [-34.5, 0], [-48, -1], [-48, -6], [-48, -12], [-36, -18], [-36, -36], [-40, -39], [-40, -43], [-40, -48], [-44, -58]],
+        [[-2, 31], [-5, 24], [-3, 12], [0, 9], [0, 6], [0, 1], [-9, -10], [-12, -24], [-16, -24], [-24, -24], [-34, -24], [-36, -30], [-36, -36], [-40, -39], [-40, -43], [-40, -48], [-44, -58]],
+        [[-4, 31], [-8, 26], [-14, 18], [-24, 18], [-35, 17], [-34.5, 0], [-48, -1], [-48, -6], [-48, -10], [-61, -11], [-61, -38], [-56, -40], [-56, -43], [-56, -48], [-52, -58]],
+        [[0, -70, 40], [-8, -66, 40], [-13, -64, 40], [-24, -64, 43], [-33, -64, 46], [-38, -63, 46], [-42, -62, 46]],
+      ],
+    },
+    sites: [{ id: 'A', min: [36, 46, -82], max: [60, 46, -48] }, { id: 'B', min: [-60, 46, -82], max: [-36, 46, -48] }],
+    get graph() { return graph || (graph = buildNav(B.boxes, { x0: -66, z0: -88, n: 132, cell: 1, levels: [Cy, 38, 40, 42, 46], band: 0.6,
+      stairs: [{ top: [0, 40, 10.6], bot: [0, Cy, 1.4] }, { top: [0, 40, -50.6], bot: [0, Cy, -39.4] }, ...[-1, 1].flatMap((s) => [
+        { top: [s * 13.4, 40, 18], bot: [s * 34.6, 38, 18] }, { top: [s * 48, 42, -9.6], bot: [s * 48, 38, -1.4] },
+        { top: [s * 40, 46, -46.6], bot: [s * 40, 42, -38.4] }, { top: [s * 56, 46, -46.6], bot: [s * 56, 42, -38.4] },
+        { top: [s * 34.6, 42, -24], bot: [s * 13.4, Cy, -24] }, { top: [s * 34.6, 46, -64], bot: [s * 13.4, 40, -64] }])] })); },
   };
   return map;
 }
@@ -3916,7 +4033,7 @@ function deadmall() {
 
 export const MAPS = {
   crate: crate(), platform: platform(), rooftop: rooftop(), rooftop_sd: rooftopSD(), suburb: suburb(), suburb_sd: suburbSD(), warehouse: warehouse(), warehouse_sd: warehouseSD(),
-  desert: desert(), desert_sd: desertSD(), islands: islands(), skyline: skyline(), bazaar: bazaar(), bazaar_sd: bazaarSD(), range: range(), backrooms: backrooms(), forest: forest(),
+  desert: desert(), desert_sd: desertSD(), islands: islands(), skyline: skyline(), skyline_sd: skylineSD(), bazaar: bazaar(), bazaar_sd: bazaarSD(), range: range(), backrooms: backrooms(), forest: forest(),
   deadmall: deadmall(),
 };
 // maps with an S&D version: '<id>_sd' is its own layout on the bomb-map rules, the one Plant & Defuse plays; '<id>' is
