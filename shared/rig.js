@@ -3,8 +3,8 @@
 import { FLAGS } from './weapons.js';
 
 export const RIG = {
-  dur: 25, // seconds (STREAKS.overdrive.dur is the one the server uses)
-  shield: 100, // overshield on top of your HP: it soaks damage first
+  dur: 65, // seconds, a safety net only: the rig lasts until its armour breaks (shared/bodyhp.js)
+  shield: 1200, // its armour (BODY.overdrive.hp): it takes every hit instead of your HP, and the rig breaks at 0
   kbTake: 0.15, // how much knockback still gets through: the rig shrugs hits off
   // movement: ground speed (m/s), sprint multiplier, ground accel, friction, air accel / cap, gravity, tap hop, eye
   // height, the speed where the overdrive trail starts, and how fast it turns its momentum toward where you push

@@ -15,6 +15,7 @@ import { jankify } from './jank.js';
 import { rigRemote, rigBoxes, rigDispose } from './rig.js'; // overdrive rig killstreak
 import { gearLook, dressGear } from './econ3d.js';
 import { tacLook, tacSteps } from './tactical.js';
+import { bodyBar } from './bodyhp.js';
 import { newTwirl, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
 import { makeRope, setRope, setRopeSkin } from './grapple.js';
 import { sfx } from './audio.js';
@@ -506,7 +507,8 @@ export class Remote {
     if (this.shells && Math.abs((this.glow || 0) - glow) > 0.01) { this.glow = glow; for (const sh of this.shells) sh.scale.setScalar(glow); }
     this.tag.scale.set(1.8 * Math.max(1, dist / 22), 0.45 * Math.max(1, dist / 22), 1);
     this.tag.position.y = 2.3 + Math.max(0, dist / 22 - 1) * 0.25;
-    tacLook(this); tacSteps(this, dt); // Plant & Defuse: no outline / tag on enemies, footsteps unless they slow walk
+    tacLook(this); tacSteps(this, dt);
+    bodyBar(this); // the wrecking ball / rig's HP over their head (bodyhp.js) // Plant & Defuse: no outline / tag on enemies, footsteps unless they slow walk
     this.updateNap(now);
 
     if (this.g) {

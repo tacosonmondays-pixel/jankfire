@@ -11,6 +11,7 @@ import { updateBackrooms } from './backrooms.js';
 import { addVibe } from './vibe.js';
 import { addForest } from './forestmats.js';
 import { updateForest, forestMap } from './forest.js';
+import { shredMap, updateShredPit } from './shredpit.js'; // the Warehouse's shredder pit: the drums, the glow, the grind
 import { buildProps, hasProp } from './props.js';
 import { initLighting, lightingMap, lightingRefresh, updateLighting, setLightPreset, aoBegin, aoBake, aoMaterials, setSunBoxes } from './lighting.js';
 
@@ -440,7 +441,8 @@ export function loadMap(id) {
   if (night) sun.position.set(-260, 300, -420); else sun.position.set(300, 220, -420);
   for (const c of clouds) c.visible = !night && !(MAPS[MAP.id] && MAPS[MAP.id].sealed);
   forestMap(MAPS[MAP.id], MAP.id);
-  lightingMap(MAPS[MAP.id], MAP.id, night, sun); // shadows, mood, the neon's lights (after everything above is in)
+  shredMap(MAPS[MAP.id], MAT);
+  lightingMap(MAPS[MAP.id], MAP.id, night, sun); // shadows, mood, the neon's lights (after everything above is in, the pit too)
 }
 
 // models finished loading after the map was built: redraw the boxes + props (no gameplay state touched)
@@ -471,6 +473,7 @@ export function updateWorld(dt) {
   cullChunks();
   if (MAT) updateBackrooms(dt, [MAT.ceilflick.mat, MAT.ceilflick2.mat, MAT.ceilflick3.mat]);
   updateForest(dt);
+  updateShredPit(dt);
 }
 
 let lastT = 0;
