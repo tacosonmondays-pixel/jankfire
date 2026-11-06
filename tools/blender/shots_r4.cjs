@@ -95,7 +95,7 @@ async function session(b, map, ids) {
         } else { c = [p.p[0], p.p[1] + 1, p.p[2]]; size = 2.5 * (p.s || 1); fr = -(p.r || 0) * Math.PI / 2; }
         const D = Math.min(40, Math.max(3.5, size * 1.45 + 2.2)), el = size > 6 ? 0.3 : 0.24;
         for (let k = 0; k < 12; k++) {
-          const az = fr + Math.PI + [0.6, -0.6, 1.2, -1.2, 0, 1.9, -1.9, 2.5, -2.5, 3.14, 0.3, -0.3][k]; // from the front first (local -z), a bit to the side
+          const az = fr + [0.6, -0.6, 1.2, -1.2, 0, 1.9, -1.9, 2.5, -2.5, 3.14, 0.3, -0.3][k]; // from the front first (local -z: the camera at c - (sin az, cos az) D), a bit to the side
           const cam = [c[0] - Math.sin(az) * D * Math.cos(el), c[1] + D * Math.sin(el), c[2] - Math.cos(az) * D * Math.cos(el)];
           if (inBox(...cam)) continue;
           const d = [c[0] - cam[0], c[1] - cam[1], c[2] - cam[2]], L = Math.hypot(...d); d[0] /= L; d[1] /= L; d[2] /= L;
