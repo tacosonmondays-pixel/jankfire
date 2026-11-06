@@ -190,7 +190,20 @@ export function coilGroup(look, o = {}) {
 export function buildLassoModel(g, look) {
   const coil = coilGroup(look, { loops: 4, rk: 1 });
   g.add(coil);
-  // the loop hanging down beside the coil, its knot at the top, the spoke up to the fist
+  const kn = lassoLoop(g, look);
+  if (look.metal) { const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.05, 8), M(look.metal)); cup.position.set(-0.08, -0.02, 0.02); cup.rotation.z = 0.4; g.add(cup); } // the hose's tap end
+  // wrap zones (wrapzones.js): the rope is A (normal wraps paint it), the knot / brass nozzle + tap are B (reverse)
+  g.traverse((o) => { if (o.isMesh) o.userData.wz = 'a'; });
+  kn.traverse((o) => { if (o.isMesh) o.userData.wz = 'b'; });
+  if (look.metal) g.children[g.children.length - 1].userData.wz = 'b';
+  g.userData.muzzle = new THREE.Vector3(0.03, -0.03, -0.04); // the working end leaves the fist here
+  g.userData.len = 0.4;
+  g.userData.faceOn = false;
+  return g;
+}
+// the loop hanging down beside the coil, its knot at the top, the spoke up to the fist: simulated rope, so the Blender
+// coil keeps this one too. returns the knot (wrap zone B); sets userData.loopParts (hidden while the loop is out)
+export function lassoLoop(g, look) {
   const X = 0.075, rope = new Rope(look, 22, 6);
   ringPoints(rope.pts, [X, -0.27, -0.06], [0, 1, 0], [0, 0, 1], 0.12, { seam: Math.PI / 2, nx: 1, ny: 0, nz: 0 });
   rope.update(look.r * 1.1);
@@ -201,16 +214,10 @@ export function buildLassoModel(g, look) {
   for (let i = 0; i <= 6; i++) { const t = i / 6; sp.pts[i].set(X + (0.02 - X) * t, -0.15 + 0.14 * t, -0.06 * (1 - t)); }
   sp.update(look.r * 1.1); sp.mesh.frustumCulled = true; sp.geo.computeBoundingSphere();
   g.add(sp.mesh);
-  if (look.metal) { const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.05, 8), M(look.metal)); cup.position.set(-0.08, -0.02, 0.02); cup.rotation.z = 0.4; g.add(cup); } // the hose's tap end
-  // wrap zones (wrapzones.js): the rope is A (normal wraps paint it), the knot / brass nozzle + tap are B (reverse)
-  g.traverse((o) => { if (o.isMesh) o.userData.wz = 'a'; });
+  rope.mesh.userData.wz = 'a'; sp.mesh.userData.wz = 'a';
   kn.traverse((o) => { if (o.isMesh) o.userData.wz = 'b'; });
-  if (look.metal) g.children[g.children.length - 1].userData.wz = 'b';
-  g.userData.muzzle = new THREE.Vector3(0.03, -0.03, -0.04); // the working end leaves the fist here
   g.userData.loopParts = [rope.mesh, kn, sp.mesh]; // hidden while the loop is out (spinning, flying, round someone)
-  g.userData.len = 0.4;
-  g.userData.faceOn = false;
-  return g;
+  return kn;
 }
 // weapon builders + skins (models.js registers these like the blades)
 export const LASSO_MODELS = {

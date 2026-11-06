@@ -11,6 +11,8 @@ const out = path.join(__dirname, '..', 'public', 'thumbs');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const orbit = (r, h, a, pitch) => [Math.sin(a) * r, h, Math.cos(a) * r, a, pitch]; // the menu backdrop's orbit, frozen at angle a
 const CAMS = {
+  forest: [-27, 2.4, 32, -0.7, -0.04], // from the campsite trail into the pines (night: the fog and the moon)
+  deadmall: [0, 1.75, 25, 0, 0.02], // the entrance hall, looking into the mall
   crate: [13.05, 6.85, 13.05, 0.79, -0.25],
   platform: [72, 34, 72, 0.79, -0.33], // far enough to see it's a slab floating over the clouds
   rooftop: orbit(40, 18, 0.6, -0.35), // the menu orbit already looks straight down at the helipads

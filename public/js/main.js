@@ -9,7 +9,7 @@ import { G } from './ctx.js';
 import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals } from './world.js';
 import { hrFeed, hrDead } from './hrguy.js';
 import { loadTripoModels, buildProjectile, buildPeel, buildHole, makeShadow, tipColor, buildCharacter, teamLook, M } from './models.js';
-import { onLateModel } from './glbkit.js';
+import { onLateModel, prefetchLoadout } from './glbkit.js';
 import { initCrosses, crossEvent, crossShot, updateCrosses, clearCrosses } from './bloodcross.js';
 import { net } from './net.js';
 import { hud } from './hud.js';
@@ -166,6 +166,7 @@ loadTripoModels().then((n) => {
   rebuildOne(); // visuals only: a randomizer or pending loadout stays as it is
   refreshMapVisuals(); // Blender props replace their stand-in boxes
   zmModelsLoaded(); // zombies: the wall guns too
+  prefetchLoadout(S.loadout); // your item's and killstreaks' models (they don't come with the startup download)
   for (const r of G.remotes.values()) r.build();
   $('status').textContent = `${n} model(s) loaded`;
 });
@@ -543,6 +544,7 @@ function applyLoadout(force) {
   if (G.forcedLoadout) { $('loNote').textContent = G.forcedLoadout.only ? 'this mode hands everyone the same weapons' : 'randomizer is on: you get a random loadout every life'; return; }
   if (W.only) { $('loNote').textContent = 'this mode hands you one weapon: your loadout comes back after the match'; return; }
   const canNow = force || !G.joined || !ME.alive || performance.now() - (G.spawnT || 0) < 5000;
+  prefetchLoadout(S.loadout); // (a new item or killstreak: its model, ahead of time)
   if (canNow) { setLoadout(S.loadout); G.pendingLoadout = false; $('loNote').textContent = ''; }
   else { G.pendingLoadout = true; $('loNote').textContent = 'loadout switches when you respawn'; }
 }
