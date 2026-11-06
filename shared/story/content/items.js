@@ -22,4 +22,13 @@ export const ITEMS = {
   mallrat_cart_cannon: { name: "RAT CART CANNON", kind: "weapon", base: "cart", desc: "A Shopping Cart Cannon painted with little green rat faces. Shoot carts into the Cart Mother. She can't help picking them up." },
   overtime_lanyard: { name: "OVERTIME'S LANYARD", kind: "key", keep: true, desc: "Employee #1's access, with ninety years of employee-of-the-month badges. Opens ☺ CORP service doors and the Big Escalator." },
   sevens_call_log: { name: "SEALED ENVELOPE", kind: "document", keep: true, desc: "From Mr. Sevens, 'as insurance against our mutual friend at the top'. A phone log: 17:10, to M. HASK, 4 minutes. Nothing about what was said." },
+  // ---------------------------------------------------------------- act III
+  schedule_printout: { name: "THE SCHEDULE", kind: "document", keep: true, desc: "Nine kilometres of ☺ CORP's city, booked to the minute. There's a white band across it at 03:00 where nobody is." },
+  yellow_soup: { name: "THE YELLOW", kind: "quest", desc: "Sharon's yellow soup. Dot's favourite. It keeps the digesters talking." },
+  late_memo: { name: "NEVILLE'S ENVELOPE", kind: "document", keep: true, desc: "REMAINDER INDUSTRIES · Q4 REVISED (09:00) · TARGET MET (+0.5%). Pencilled: 'the 17:30 thing won't be needed now. N.' Sixty-one years late." },
+  // ---------------------------------------------------------------- act IV
+  tall_guy_file: { name: "HR FILE: G. LONG", kind: "document", desc: "HR Business Partner, 31. On loan to Vacancy Holdings (void survey). Returned: —. An exit interview, unsigned." },
+  sale_agreement: { name: "SALE AGREEMENT", kind: "document", keep: true, desc: "THE BOTTOM (ALL PLOTS, ALL OCCUPANTS). ☺ CORP TO VACANCY HOLDINGS. COMPLETION: ON RE-MERGER. Mr. Deposit's deed stapled to the back." },
+  // ---------------------------------------------------------------- act V
+  cale_tape: { name: "CALE'S TAPE", kind: "document", keep: true, desc: "A ☺ CORP tape cartridge. Option C, copied in the 60th-floor print room at 17:10 on the Final Quarter. Carried down sixty floors. It never got out of the building. Until now." },
 };

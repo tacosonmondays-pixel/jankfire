@@ -16,6 +16,8 @@
 //               fail: { type: 'flag', flag } or { type: 'death', who } or { type: 'timer' }
 //   talks       { talkId: { with: castId, cam?, nodes: { nodeId: node } } }, the dialogue trees. A node is:
 //               { who?, say: [line...], opts?: [[text, nextNode, { if?, do? }?]...], do?: [actions], next?: nodeId, cam? }
+//               branch?: [[condition | null, nodeId]...]  (no player pick: the first true condition wins, null = default;
+//               runs after say/do, instead of opts/next)
 //               a line is a string (spoken by node.who or the talk's `with`) or [speaker, text]. "*...*" is a stage direction.
 //               No opts and no next = the talk ends. `end` is not special here (unlike secrets.js).
 //   choices     [{ id, prompt, options: [{ id, label, if?, do: [actions], consequence (prose) }] }]  the big decisions

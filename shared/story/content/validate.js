@@ -93,6 +93,7 @@ export function validate(C) {
         if (n.who) cast(nw, n.who);
         for (const line of n.say || []) if (Array.isArray(line)) { if (!isSpeaker(line[0])) err(nw, `unknown speaker '${line[0]}'`); } else if (typeof line !== 'string') err(nw, 'bad line');
         if (n.next && !has(nodes, n.next)) err(nw, `next -> missing node '${n.next}'`);
+        for (const br of n.branch || []) { if (!Array.isArray(br) || !has(nodes, br[1])) err(nw, `branch -> missing node '${br && br[1]}'`); else if (br[0] != null) cond(nw, br[0]); }
         for (const o of n.opts || []) {
           if (!Array.isArray(o) || typeof o[0] !== 'string' || typeof o[1] !== 'string') { err(nw, 'bad option'); continue; }
           if (!has(nodes, o[1])) err(nw, `option '${o[0]}' -> missing node '${o[1]}'`);
@@ -128,6 +129,7 @@ export function validate(C) {
     }
   }
   function choices(w, list) {
+    for (const ch of list || []) if (ch.if) cond(`${w} choice ${ch.id}`, ch.if);
     for (const ch of list || []) for (const o of ch.options || []) { const ow = `${w} choice ${ch.id}.${o.id}`; cond(ow, o.if); acts(ow, o.do); if (typeof o.consequence !== 'string') err(ow, 'missing consequence'); }
   }
   function reward(w, r) {
