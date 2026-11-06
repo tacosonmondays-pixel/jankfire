@@ -35,7 +35,7 @@ export function mapExtent(map) {
 function playBand(map) {
   const ys = (map.spawns || []).map((s) => (Array.isArray(s) ? s[1] : s && s.p ? s.p[1] : 0)).filter(Number.isFinite);
   const lo = ys.length ? Math.min(...ys) : 0, hi = ys.length ? Math.max(...ys) : 0;
-  return { floor: lo, top: hi + 7.5, deep: lo - 8 };
+  return { floor: lo, top: Math.min(hi + 7.5, map.ceiling ? map.ceiling + lo - 0.3 : 1e9), head: hi + 3.2, deep: lo - 8 };
 }
 const ROAD = new Set(['road', 'asphalt', 'dirtroad']), GREEN = new Set(['grass', 'moss', 'hedge', 'leaves']), SAND = new Set(['sand', 'dirt']);
 const NEON = (b, k) => (ROAD.has(b.mat) ? '#3a3046' : GREEN.has(b.mat) ? `hsl(120, 38%, ${20 + k * 22}%)` : SAND.has(b.mat) ? `hsl(35, 38%, ${22 + k * 22}%)` : `hsl(${285 - k * 95}, ${40 + k * 30}%, ${24 + k * 40}%)`);
@@ -43,7 +43,7 @@ const ROYALE = (b, k) => (ROAD.has(b.mat) ? '#7a5a3a' : b.mat === 'grass' ? '#3f
 // paint the boxes of a map, lowest first, so roofs and walls end up on top. toMap(wx, wz) -> [px, py] on x
 export function paintBoxes(x, map, toMap, S, opt = {}) {
   const band = playBand(map), royale = opt.style === 'royale';
-  const boxes = map.boxes.filter((b) => !b.noCol && (royale ? b.max[1] > -3 && b.max[1] < 60 : b.max[1] > band.deep && b.min[1] < band.top)).sort((a, b) => a.max[1] - b.max[1]);
+  const boxes = map.boxes.filter((b) => !b.noCol && (royale ? b.max[1] > -3 && b.max[1] < 60 : b.max[1] > band.deep && b.min[1] < band.top && !(b.min[1] > band.head && b.max[1] - b.min[1] < 1.2))).sort((a, b) => a.max[1] - b.max[1]);
   for (const b of boxes) {
     const [px0, pz0] = toMap(b.min[0], b.min[2]), [px1, pz1] = toMap(b.max[0], b.max[2]);
     if (px1 < 0 || pz1 < 0 || px0 > S || pz0 > S) continue;
