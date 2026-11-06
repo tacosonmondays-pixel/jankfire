@@ -4,7 +4,9 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { jankify } from './jank.js';
 import { applySkin } from './skins.js';
 import { COSMETICS, SKINS_2 } from '/shared/cosmetics.js';
-import { SUITS, RANKS, ARROW_TIPS } from '/shared/weapons.js';
+import { SUITS, RANKS, ARROW_TIPS, wAlias } from '/shared/weapons.js';
+import { SPOON_LOOK, spoonLookOn } from '/shared/modes.js';
+import { G } from './ctx.js';
 import { BLADES } from './blades/index.js';
 import { lathe } from './blades/kit.js';
 import { LASSO_MODELS, buildLoopProjectile } from './lasso_model.js';
@@ -751,12 +753,6 @@ const WB = {
     g.userData.muzzle = new THREE.Vector3(0, 0.05, -0.1);
     g.userData.len = 0.2;
   },
-  spoon(g) {
-    g.add(cylZ(0.008, 0.16, 0xd8d8e0, 0, 0, -0.02, 5));
-    const bowl = ball(0.035, 0xe8e8f0, 0, 0.005, -0.13); bowl.scale.set(0.8, 0.35, 1.2); g.add(bowl);
-    g.userData.muzzle = new THREE.Vector3(0, 0, -0.17);
-    g.userData.len = 0.22;
-  },
   scales(g) { scalesBuild(g, false); },
   claw(g) { // infection: a rotten green forearm, a torn cuff and four long dirty nails
     const SK = 0x6f9a3a, DK = 0x55782b, NAIL = 0xd8cf9a, y = -0.03;
@@ -784,7 +780,7 @@ const HAT_AT = {
   sniper: [[0, 0.16, -0.05], 0.13], chicken: [[0, 0.075, -0.5], 0.09], bowling: [[0, 0.17, -0.1], 0.15], banana: [[0, 0.185, 0.02], 0.1],
   revolver: [[0, 0.065, -0.02], 0.08], cig: [[0, 0.0125, 0.055], 0.04], blower: [[0, 0.22, 0.05], 0.14], popper: [[0, 0.07, 0.02], 0.07],
   reverse: [[0, 0.09, 0.02], 0.07], duck: [[0, 0.152, -0.072], 0.06], bread: [[0, 0.11, -0.3], 0.16], slipper: [[0, 0.068, -0.08], 0.07],
-  spoon: [[0, 0.017, -0.13], 0.04], slapper: [[0, 0.0125, -0.55], 0.09], scythe: [[0, 0.47, -0.8], 0.14],
+  slapper: [[0, 0.0125, -0.55], 0.09], scythe: [[0, 0.47, -0.8], 0.14],
   scythe_rifle: [[0, 0.13, -0.05], 0.12], bow: [[0, 0.08, 0.0], 0.08], cards: [[0, 0.07, -0.004], 0.07],
   slapper_foam: [[0, 0.03, -0.5], 0.1], slapper_paw: [[0, 0.06, -0.5], 0.1], bread_croissant: [[0, 0.15, -0.6], 0.15],
   shredder: [[0, 0.234, -0.065], 0.11], shredder_chipper: [[0, 0.234, -0.065], 0.11],
@@ -1085,11 +1081,6 @@ const SKIN_BUILD = {
     const c = bx(0.12, 0.12, 0.12, 0xbfe8ff, 0, 0.02, -0.08); c.rotation.set(0.4, 0.6, 0.2); g.add(c);
     g.userData.muzzle = new THREE.Vector3(0, 0.02, -0.16); g.userData.len = 0.18;
   },
-  spoon_ladle(g) {
-    g.add(cylZ(0.01, 0.2, 0xc8c8d0, 0, 0, -0.02, 5));
-    const bowl = ball(0.06, 0xd8d8e0, 0, -0.02, -0.15); bowl.scale.set(1, 0.6, 1); g.add(bowl);
-    g.userData.muzzle = new THREE.Vector3(0, 0, -0.17); g.userData.len = 0.22;
-  },
   slipper_croc(g) { // a croc, holes and all
     g.add(bx(0.13, 0.07, 0.3, 0x7dff4f, 0, 0, -0.02));
     g.add(ball(0.07, 0x7dff4f, 0, 0.03, -0.14));
@@ -1387,7 +1378,17 @@ function addSights(id, g) {
   g.userData.sight = { y: ys - 0.004, z: zr };
 }
 
+// the spoon merged into the knife: an old 'spoon' (replays, kill feeds) is a knife in the spoon look, and in gun game +
+// spoons & grapples every knife wears it (your wrap, hat + effect stay)
+export function lookSkin(id, skin) {
+  if (id !== 'knife' && id !== 'spoon') return skin;
+  if (id === 'knife' && !spoonLookOn(G.mode, G.game)) return skin;
+  const s = Array.isArray(skin) ? skin.slice() : ['default', 'none', 'none', 'default', 'normal'];
+  s[3] = SPOON_LOOK;
+  return s;
+}
 export function buildWeapon(id, skin) {
+  skin = lookSkin(id, skin); id = wAlias(id);
   const g = new THREE.Group();
   const model = skin && skin[3];
   const variant = model && MODEL_BUILD[model] && COSMETICS.model[model] && COSMETICS.model[model].weapon === id;

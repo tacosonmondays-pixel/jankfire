@@ -1,7 +1,7 @@
 // Weapon pictures for the hotbar: each weapon (with your skin, wrap and hat) rendered side-on into a small
 // transparent image, cached until something about it changes.
 import * as THREE from 'three';
-import { buildWeapon, freeTree } from './models.js';
+import { buildWeapon, freeTree, lookSkin } from './models.js';
 import { withEnv } from './glbkit.js';
 
 const IW = 160, IH = 96;
@@ -25,6 +25,7 @@ function init() {
 export function clearIcons() { cache.clear(); }
 
 export function weaponIcon(id, skin) {
+  skin = lookSkin(id, skin); // (the spoon look in gun game: the icon cache must see it)
   const key = id + '|' + (Array.isArray(skin) ? skin.join(',') : '');
   if (cache.has(key)) return cache.get(key);
   try {

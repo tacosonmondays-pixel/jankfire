@@ -36,7 +36,7 @@ export const zmAmmo = (id) => ZM_AMMO[id] ?? null;
 export const zmAmmoPrice = (price) => Math.ceil(price / 20) * 10; // a refill is half the gun's price
 
 // the mystery crate (weights): mostly good stuff, a couple of jokes
-export const ZM_CRATE = { minigun: 6, chicken: 6, marbles: 6, redline: 6, bowling: 5, snowball: 5, cig: 4, cards: 4, sniper: 3, ar: 3, smg: 3, shotgun: 3, bow: 3, banana: 3, spoon: 3, slapper: 2, blower: 2, burst: 4, lmg: 5, dmr: 3, lever: 4, autoshot: 5 }; // (Plan B from the crate is a joke)
+export const ZM_CRATE = { minigun: 6, chicken: 6, marbles: 6, redline: 6, bowling: 5, snowball: 5, cig: 4, cards: 4, sniper: 3, ar: 3, smg: 3, shotgun: 3, bow: 3, banana: 3, slapper: 2, blower: 2, burst: 4, lmg: 5, dmr: 3, lever: 4, autoshot: 5 }; // (Plan B from the crate is a joke)
 Object.assign(ZM_CRATE, { nailgun: 5, tennis: 4, cart: 4 }); // the new primaries: pin zombies to walls, bank balls round corners, bowl carts through the horde
 Object.assign(ZM_CRATE, { akimbo: 5, sawnoff: 5, pistol: 1 }); // the plain sidearms
 Object.assign(ZM_CRATE, { water: 3, taser: 3, remote: 2 }); // the new secondaries: soak them, tase the whole wet horde, rewind the fast ones
