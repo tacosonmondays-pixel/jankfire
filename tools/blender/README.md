@@ -37,6 +37,7 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 | `make_bowling.py` | `w_bowling.glb` | backyard pneumatic cannon (PVC barrel, air tank, sprinkler valve, gauge) |
 | `make_banana.py` | `w_banana.glb` | AKS-74U pattern, x1.1, a real banana as the banana mag, peel muzzle |
 | `make_marbles.py` | `w_marbles.glb` | flintlock blunderbuss pistol, x1.1, mason-jar marble hopper |
+| `make_akimbo.py` | `w_akimbo.glb` | MAC-10 pattern (stock pushed in), x1.1, one gun the game puts in both hands: `cocker` knob node (snaps back per shot), `mag` node (origin at its base, slides out along `dir`), `tags` L / R sticker nodes (one shows per hand). `-- --qa` runs the asset-QA gate on every part |
 | `make_car.py` | `p_car.glb` | sedan, paint material `car_paint` (recoloured per car) |
 | `make_bus.py` | `p_bus.glb` | conventional school bus |
 | `make_forklift.py` | `p_forklift.glb` | counterbalance forklift |

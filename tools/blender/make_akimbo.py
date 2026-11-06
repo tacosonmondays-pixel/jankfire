@@ -4,11 +4,12 @@
 # rear aperture between two ears, front sling loop, square trigger guard in front of the grip, the mag up through the
 # grip in the middle of the receiver, heel mag release. Real millimetres x1.1 so the muzzle, receiver and grip sit where
 # the code model (sidemodels.js akimboBuild) has them. Made fun: candy mint lower half + grip, satin black upper, chrome
-# barrel and stock rods, brass knob, pins and a round peeking out of the port, a mint strap loop, and big crooked L / R
-# stickers on both sides and the back (the game shows one set per hand).
+# barrel and stock rods, brass knob, pins and a round peeking out of the port, a mint paracord lanyard on the sling loop,
+# stamped markings (LEFTY & RIGHTY / DO NOT HOLD SIDEWAYS), and big crooked L / R stickers on both sides and the back
+# (the back is what you see most of in first person; the game shows one set per hand).
 # own nodes: cocker_wzN (the knob: snaps back on every shot), mag_wzB (origin at the middle of its base, slides out
 # along meta dir), tagL_wzN / tagR_wzN (the stickers).
-# run: blender -b --python tools/blender/make_akimbo.py
+# run: blender -b --python tools/blender/make_akimbo.py   (-- --qa: the blender-asset-qa gate on every part first)
 import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib import *
 import lib
