@@ -2,7 +2,8 @@
 // you're standing at one. drag a thing onto a bar slot to put it there, onto another cell to move it, onto DROP to
 // leave it on the floor, onto the Locker to stash it (and back). click one thing, then a slot, if dragging is a pain.
 // every move is a request: the sim checks it and sends the inventory back.
-import { IV, itemCell, atLocker } from './bar.js';
+import { IV, itemCell, atLocker, heldItem } from './bar.js';
+import { lootCard } from './lootfx.js';
 import { itemAt, infoOf, INV } from '/shared/story/items.js';
 
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -61,11 +62,12 @@ function draw() {
   panel.append(head);
   const info = el('div', 'st-info', held ? 'now click where it goes.' : 'drag things around. click one, then a slot, works too.');
   const grid = el('div', 'st-grid');
+  const cardBox = el('div', 'st-bagcard'); // the item card for whatever you point at (▲▼ against what you hold)
   inv.bag.forEach((it, i) => {
     const c = itemCell(it);
     c.dataset.cell = i;
     wire(c, { from: 'bag', i, u: it ? it.u : null }, { to: 'bag', i });
-    if (it) c.addEventListener('mouseenter', () => { const n = infoOf(it); info.textContent = `${n.name} · ${it.r}${it.q > 1 ? ' · x' + it.q : ''} · ${n.desc}`; });
+    if (it) c.addEventListener('mouseenter', () => { const n = infoOf(it); info.textContent = `${n.name} · ${it.r}${it.q > 1 ? ' · x' + it.q : ''}`; cardBox.innerHTML = ''; cardBox.append(lootCard(it, heldItem())); });
     grid.append(c);
   });
   panel.append(grid, info);
@@ -93,5 +95,5 @@ function draw() {
     wire(lk, null, { to: 'locker' });
     panel.append(lk);
   }
-  root.append(panel);
+  root.append(panel, cardBox);
 }

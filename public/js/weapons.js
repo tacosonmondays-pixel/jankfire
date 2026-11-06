@@ -575,7 +575,7 @@ export function toggleScythe() {
 }
 
 export function refillAmmo() {
-  for (const id of ORDER) if (WEAPONS[id].mag && !W.eco && !W.br) W.ammo[id] = WEAPONS[id].mag; // (jank royale: bullets come off the floor)
+  for (const id of ORDER) if (WEAPONS[id].mag && !W.eco && !W.br) W.ammo[id] = magOf(id); // (jank royale: bullets come off the floor)
   W.reloadId = null;
   W.fuel.blower = WEAPONS.blower.fuel;
   W.slipperOut = false;
@@ -583,6 +583,13 @@ export function refillAmmo() {
   // the server keeps your cooldown and stagger through those
   W.parryT = 0; W.parryCd = 0; W.parryQ = 0; W.staggerUntil = 0;
 }
+
+// per-weapon stat multipliers (OVERDUE loot rolls, story/loot.js sets STAT.mul): fn(id, key) -> number. key: 'rate'
+// (shots per second), 'mag', 'reload' (reload TIME), 'spread'. null / 1 everywhere else, so multiplayer is unchanged
+export const STAT = { mul: null };
+const sm = (id, k) => { const m = STAT.mul && STAT.mul(id, k); return Number.isFinite(m) && m > 0 ? m : 1; };
+export const magOf = (id) => { const w = WEAPONS[id]; return w && w.mag ? Math.max(1, Math.round(w.mag * sm(id, 'mag'))) : (w && w.mag) || 0; };
+const reloadOf = (id) => (WEAPONS[id].reload || 0) * sm(id, 'reload');
 
 export function setLoadout(lo) {
   const v = validLoadout(lo);
@@ -607,7 +614,7 @@ export function setLoadout(lo) {
 W.only = null;
 export function setOnly(id, lo) {
   W.only = WEAPONS[id] ? id : null;
-  if (W.only && WEAPONS[id].mag) W.ammo[id] = WEAPONS[id].mag;
+  if (W.only && WEAPONS[id].mag) W.ammo[id] = magOf(id);
   if (W.reloadId && W.reloadId !== W.only) W.reloadId = null;
   W.slot = 0;
   setLoadout(lo);
@@ -676,11 +683,11 @@ export function reload() {
   const id = W.cur, w = WEAPONS[id];
   if (W.noReload) return; // one in the chamber: bullets only come from kills
   if (w.hands) { akReloadAll(); return; } // Lefty & Righty: each hand reloads its own
-  if (!w.mag || W.reloadId || W.ammo[id] >= w.mag || !ME.alive) return;
+  if (!w.mag || W.reloadId || W.ammo[id] >= magOf(id) || !ME.alive) return;
   if (W.br && !W.br.canReload(id)) return; // jank royale: no spare bullets
   if (W.eco && !W.eco.canReload(id)) return;
   W.reloadId = id;
-  W.reloadUntil = performance.now() + w.reload * 1000;
+  W.reloadUntil = performance.now() + reloadOf(id) * 1000;
   rifleReset();
   const ra = RIFLES.has(id) && ANIMS['reload_' + id] ? 'reload_' + id : reloadAnim(id, W.ammo[id]); // a real mag swap / belt change / spin-cock; the sidearms: mag out, mag in / shells out, shells in
   if (ra) { cancelInspect(); playAnim(ra, 'reload'); } else sfx.reload();
@@ -700,7 +707,7 @@ export function muzzleWorld() {
 }
 
 const ready = (id, now) => (W.cd[id] || 0) <= now;
-function interval(id) { const w = WEAPONS[id]; return w.rate ? 1 / fireRate(w, ME.hp) : w.cd; }
+function interval(id) { const w = WEAPONS[id]; return (w.rate ? 1 / fireRate(w, ME.hp) : w.cd) / sm(id, 'rate'); }
 // Redline: 0 at full HP .. 1 at death's door (drives the needle, the vents and the pitch)
 const redlineK = () => { const w = WEAPONS.redline; return (fireRate(w, ME.hp) - w.rate) / (w.rateMax - w.rate); };
 const marblePalette = (skin) => (skin && skin[3] === 'marbles_gumball' ? 'gumball' : 'glass');
@@ -758,7 +765,7 @@ function currentSpread(w) {
   if (G.spinning) return 0; // spinbot = no spread
   if (fanShot) return fanSpread(w);
   const hip = (HIPFIRE[G.cfg.hip] || HIPFIRE.normal).mul;
-  const base = (w.spread || 0) + W.bloom;
+  const base = (w.spread || 0) * sm(W.cur, 'spread') + W.bloom;
   const ads = w.ads ? base * (w.ads.spread ?? 1) * Math.min(1, hip) : base * hip;
   const hipS = base * hip;
   return hipS + (ads - hipS) * W.aim + (G.heldSpread || 0); // + swinging on the end of someone's lasso
@@ -767,7 +774,7 @@ function currentSpread(w) {
 // the gun's own spread right now, without bloom (Plant & Defuse: the spray pattern replaces bloom; moving adds on top)
 function tacBase(w) {
   if (fanShot) return fanSpread(w);
-  const hip = (HIPFIRE[G.cfg.hip] || HIPFIRE.normal).mul, base = w.spread || 0;
+  const hip = (HIPFIRE[G.cfg.hip] || HIPFIRE.normal).mul, base = (w.spread || 0) * sm(W.cur, 'spread');
   const ads = w.ads ? base * (w.ads.spread ?? 1) * Math.min(1, hip) : base * hip, hipS = base * hip;
   return hipS + (ads - hipS) * W.aim;
 }
@@ -1419,7 +1426,7 @@ export function updateWeapons(dt, now) {
   W.fuel.blower = (W.held && id === 'blower') ? W.fuel.blower : Math.min(WEAPONS.blower.fuel, W.fuel.blower + WEAPONS.blower.regen * dt);
   W.bloom = Math.max(0, W.bloom - dt * 0.06);
   if (W.slipperOut && now - W.slipperT > 4000) W.slipperOut = false;
-  if (W.reloadId && now >= W.reloadUntil) { if (W.br) W.br.reloaded(W.reloadId); else if (W.eco) W.eco.reloaded(W.reloadId); else W.ammo[W.reloadId] = WEAPONS[W.reloadId].mag; W.reloadId = null; sfx.click(); }
+  if (W.reloadId && now >= W.reloadUntil) { if (W.br) W.br.reloaded(W.reloadId); else if (W.eco) W.eco.reloaded(W.reloadId); else W.ammo[W.reloadId] = magOf(W.reloadId); W.reloadId = null; sfx.click(); }
   const canAim = !!w.ads && alive && !W.reloadId;
   W.aim = canAim && W.aimHeld ? Math.min(1, W.aim + dt * 7 * (w.adsSpeed || 1)) : Math.max(0, W.aim - dt * 8);
   W.zoom = w.ads ? 1 + (w.ads.zoom - 1) * W.aim : 1;
@@ -1552,10 +1559,10 @@ export function updateWeapons(dt, now) {
   if (W.br) W.br.hud(id, !!W.reloadId); // jank royale: mag / spare bullets
   else if (W.eco) W.eco.hud(id, !!W.reloadId);
   else if (w.hands) hud.ammo2(W.ak.L.n, W.ak.R.n, AK_HM, !!W.ak.L.rl, !!W.ak.R.rl);
-  else if (w.mag) hud.ammo(W.ammo[id], w.mag, !!W.reloadId);
+  else if (w.mag) hud.ammo(W.ammo[id], magOf(id), !!W.reloadId);
   else hud.ammo(null);
   if (w.hands && (W.ak.L.rl || W.ak.R.rl)) { const h = W.ak.L.rl && (!W.ak.R.rl || W.ak.L.rl < W.ak.R.rl) ? 'L' : 'R'; hud.meter(1 - (W.ak[h].rl - now) / (w.reload * 1000), h === 'L' ? 'LEFTY RELOADING' : 'RIGHTY RELOADING', w.color); }
-  else if (W.reloadId) hud.meter(1 - (W.reloadUntil - now) / (w.reload * 1000), 'RELOADING', '#ffffff');
+  else if (W.reloadId) hud.meter(1 - (W.reloadUntil - now) / (reloadOf(W.reloadId) * 1000), 'RELOADING', '#ffffff');
   else if (isScythe(id)) hud.meter(W.dashFuel / D.max, ME.dashing ? 'GLITCHING' : `${K.label('dash').toUpperCase()}: GLITCH DASH · ${K.label('scythe').toUpperCase()}: SWAP MODE`, '#ff00dc');
   else if (id === 'bow') { /* set above */ }
   else if (id === 'cards') hud.meter(null);
@@ -1620,7 +1627,7 @@ export function updateWeapons(dt, now) {
   px += rec.p[0] * ra; py += rec.p[1] * (1 - W.aim * 0.3); pz += (W.kick * 0.04 + rec.p[2]) * ra;
   rx += (W.kick * 0.12 + rec.r[0]) * ra; rz += rec.r[2] * ra;
   if (!W.reloadId && W.anim && W.anim.kind === 'reload') W.anim = null; // (cancelled: respawn, a refill, a mode reset)
-  if (W.reloadId && !(W.anim && W.anim.kind === 'reload')) { const k = Math.sin(Math.min(1, 1 - (W.reloadUntil - now) / (w.reload * 1000)) * Math.PI); py -= k * 0.12; rx -= k * 0.6; rz += k * 0.4; }
+  if (W.reloadId && !(W.anim && W.anim.kind === 'reload')) { const k = Math.sin(Math.min(1, 1 - (W.reloadUntil - now) / (reloadOf(W.reloadId) * 1000)) * Math.PI); py -= k * 0.12; rx -= k * 0.6; rz += k * 0.4; }
   if (id === 'cig') {
     const k = smoking ? 1 : 0;
     m.wrap.userData.k = (m.wrap.userData.k || 0) + (k - (m.wrap.userData.k || 0)) * Math.min(1, dt * 10);
@@ -1640,7 +1647,7 @@ export function updateWeapons(dt, now) {
   if (W.anim) {
     const t0 = W.anim.t;
     W.anim.t += adt;
-    if (W.anim.kind === 'reload' && W.reloadId === id && w.reload) W.anim.t = Math.max(t0, w.reload - (W.reloadUntil - now) / 1000); // on the reload's own clock: it ends on the frame the ammo comes back, at any frame rate
+    if (W.anim.kind === 'reload' && W.reloadId === id && w.reload) W.anim.t = Math.max(t0, w.reload * (1 - (W.reloadUntil - now) / 1000 / reloadOf(id))); // on the reload's own clock: it ends on the frame the ammo comes back, at any frame rate
     for (const ev of eventsBetween(W.anim.name, t0, W.anim.t)) { animEvent(ev, m.g); if (SIDEARMS.has(id)) { sideEvent(ev, m, id); if (m.left) sideEvent(ev, m.left, id); } }
     const a = sample(W.anim.name, W.anim.t);
     const tw = ANIMS[W.anim.name] && ANIMS[W.anim.name].trail;
