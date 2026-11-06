@@ -47,7 +47,10 @@ function office(B, x0, z0, x1, z1, r) {
   for (const [px, pz] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) if (r() < 0.55) B.prop(r() < 0.5 ? 'fleshblob_a' : 'fleshblob_b', px, GY + (r() < 0.5 ? 0 : h * r()), pz, r() * 6.28, 1 + r() * 0.8, 0);
   // a sphincter door on the street side, a sign above it on one block in three
   const doorZ = r() < 0.5 ? z0 : z1, yaw = doorZ === z0 ? 0 : Math.PI;
-  B.prop('sphincter', cx, GY, doorZ + (doorZ === z0 ? -0.05 : 0.05), yaw, 1, 0);
+  if (r() < 0.2 && x1 - x0 > 10) { // the odd shop still open under the skin: SUDS & SONS, with its tongue out
+    B.prop('launderette', cx, GY, doorZ + (doorZ === z0 ? -0.02 : 0.02), yaw, 1, 0);
+    B.light(cx, GY + 2.5, doorZ + (doorZ === z0 ? -3 : 3), 0xfff0d0, 9, 0.8);
+  } else B.prop(r() < 0.75 ? 'sphincter' : 'tongue', cx, GY, doorZ + (doorZ === z0 ? -0.05 : 0.05), yaw, 1, 0);
   if (r() < 0.35) B.prop('gristlelogo', cx, GY + h - 4, doorZ + (doorZ === z0 ? -0.1 : 0.1), yaw, 1, 0);
   for (let i = 0; i < 3; i++) B.out.marks.push({ id: 'crowd', p: [cx + (r() - 0.5) * (x1 - x0 + 6), GY, doorZ + (doorZ === z0 ? -3 : 3)], kind: pick(r, ['choir', 'digester', 'lost']) });
   return h;
