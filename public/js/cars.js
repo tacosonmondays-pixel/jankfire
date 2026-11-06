@@ -352,7 +352,7 @@ function decalMat(tex, patch) {
 
 // a car you can put in the scene: root (position + heading), body (pitch / roll / bounce), wheels (spin, steer)
 export function makeCar(ty, colHex, ci, patch) {
-  const glb = AUTHORED['p_car_' + ty] && !CODE_CARS && glbCar(ty, colHex, ci); // the Blender car (round 4), when its file is in
+  const glb = AUTHORED['p_car_' + ty] && !CODE_CARS && glbCar(ty, colHex, ci, patch); // the Blender car (round 4), when its file is in
   if (glb) return glb;
   const d = buildDesign(ty, colHex, ci);
   const root = new THREE.Group(), body = new THREE.Group();
@@ -392,7 +392,8 @@ function whiteColors(g) { // carMats.lamp reads vertex colours
   return lampGeo.get(g);
 }
 const PAINT_OF = (ty, col, ci) => ty === 'van' ? ['#f2f2ee', '#e86a22', '#ffe14d', '#ff2fa8'][ci % 4] : ty === 'icecream' ? '#bff5e4' : ty === 'bus' ? BUS_COLS[ci % 4] : ty === 'taxi' ? '#ffd21a' : col;
-function glbCar(ty, colHex, ci) {
+const vanTex = new Map(); // (one livery texture each, not one per van: vans come and go all match)
+function glbCar(ty, colHex, ci, patch) {
   const a = AUTHORED['p_car_' + ty], meta = a.meta || {}, src = a.scene;
   src.updateMatrixWorld(true);
   const find = (re) => { let r = null; src.traverse((o) => { if (!r && re.test(stripN(o.name))) r = o; }); return r; };
@@ -429,6 +430,13 @@ function glbCar(ty, colHex, ci) {
     wheels.push({ pivot, spin, x: hub.x, y: hub.y, z: hub.z, r: Math.max(0.2, size.y / 2), w: size.x, side: hub.x < 0 ? -1 : 1, front: !!front, dual: false });
   }
   if (wheels.length < 4) return null; // (not the parts the traffic needs: the code car)
+  // vans: the code van's livery (plumber, removals, hot dog, cola) on both sides, at the spot the model leaves for it
+  const d = meta.decal;
+  if (ty === 'van' && d && [d.w, d.h, d.x, d.y, d.z].every(Number.isFinite)) {
+    const name = VANS[ci % 4];
+    if (!vanTex.has(name)) vanTex.set(name, LIVERY[name]());
+    for (const sd of [1, -1]) { const g = new THREE.PlaneGeometry(d.w, d.h); g.rotateY(sd * Math.PI / 2); g.translate(sd * d.x, d.y, d.z); body.add(new THREE.Mesh(g, decalMat(vanTex.get(name), patch))); }
+  }
   const fz = wheels.filter((w) => w.front).map((w) => w.z), bz = wheels.filter((w) => !w.front).map((w) => w.z);
   const wb = fz.length && bz.length ? fz[0] - bz[0] : (T ? T.L * 0.6 : 2.6);
   const lampPos = Array.isArray(meta.lamps) && meta.lamps.length ? meta.lamps : [[(T ? T.W : 1.8) / 2 - 0.35, 0.75, (T ? T.L : 4.4) / 2]];
