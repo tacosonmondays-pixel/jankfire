@@ -15,7 +15,8 @@ const CAMS = {
   platform: [72, 34, 72, 0.79, -0.33], // far enough to see it's a slab floating over the clouds
   rooftop: orbit(40, 18, 0.6, -0.35), // the menu orbit already looks straight down at the helipads
   suburb: [-45.96, 16.29, -45.96, -2.36, -0.21],
-  warehouse: [-24.8, 5.11, 20.4, -1.11, -0.06], // inside, under the roof, along the shelving
+  warehouse: [-29, 4.2, -4.5, -1.571, -0.1], // inside the hall, down an aisle between the racks
+  warehouse_sd: [34, 6.5, -27, -0.42, -0.16], // the A site: the red dock, the gantry, the BOMB SITE A board
   desert: [56.71, 16.2, 56.71, 0.79, -0.17],
   bazaar: [50.68, 16.17, 52.68, 0.79, -0.19],
   islands: [52.8, 5.1, 48, 0.8, -0.04],

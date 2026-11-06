@@ -21,7 +21,7 @@ import { installRig } from './server/rig.js';
 import { rigClash } from './shared/rig.js'; // overdrive rig killstreak
 import { soapAt, trapBoxes, trapPreroll } from './shared/wand.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
-import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, canDefuse, LADDER, GUNGAME, INFECT } from './shared/modes.js';
+import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, mapForGame, canDefuse, LADDER, GUNGAME, INFECT } from './shared/modes.js';
 import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, eventGame } from './shared/vote.js';
 import { matchReset, matchKill, matchSummary } from './server/match.js';
 import { SKIP, isSkipCmd, skipCommand, skipTick, skipPeople, skipInfo } from './server/skip.js';
@@ -40,6 +40,7 @@ import { query as boxQuery } from './shared/physics.js';
 import { navSteer } from './shared/nav.js';
 import { DUCKRAIN } from './shared/modes.js';
 import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
+import { OOB, outOfBounds, boundsCenter } from './shared/bounds.js';
 import { installGear } from './server/gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
 import { installEcon } from './server/econ.js';
 import { MSLIP, onPatch, patchPreroll } from './shared/marbles.js';
@@ -700,7 +701,7 @@ class Room {
       if (want) {
         const l = Math.hypot(...want) || 1, d = want.map((v) => v / l), e = eyeOf(b);
         const h = raycast(e, d, HOOK.range, boxes);
-        if (h && h.t > 6 && h.point[1] > b.pos[1] - 1) { ai.hook = { point: h.point, len: h.t, until: n + 2600 }; b.g = h.point; }
+        if (h && h.t > 6 && h.point[1] > b.pos[1] - 1 && (this.map.ceiling == null || h.point[1] < this.map.ceiling - 1.5)) { ai.hook = { point: h.point, len: h.t, until: n + 2600 }; b.g = h.point; } // (not up over a map's ceiling: that's out of bounds)
       }
     }
     if (ai.hook) jump = false;
@@ -709,6 +710,15 @@ class Room {
     if (wl > 0) { wx /= wl; wz /= wl; }
     // don't walk off the map (bots are dumb, not suicidal). a floor up to 15 m down will do (no fall damage); a box
     // far below is no floor: a long fall drifts past it into the void
+    if (this.map.bounds && (outOfBounds(this.map, b.pos) || (wl > 0 && outOfBounds(this.map, [b.pos[0] + wx * 3, 0, b.pos[2] + wz * 3])))) {
+      // back in, toward the middle. up over the ceiling (on a roof): off the nearest edge of whatever it's standing on
+      let c = boundsCenter(this.map);
+      const q = this.map.ceiling != null && b.pos[1] > this.map.ceiling && this.boxes.find((o) => b.pos[0] >= o.min[0] && b.pos[0] <= o.max[0] && b.pos[2] >= o.min[2] && b.pos[2] <= o.max[2] && Math.abs(o.max[1] - b.pos[1]) < 0.6);
+      if (q) { const e = [[b.pos[0] - q.min[0], q.min[0] - 6, b.pos[2]], [q.max[0] - b.pos[0], q.max[0] + 6, b.pos[2]], [b.pos[2] - q.min[2], b.pos[0], q.min[2] - 6], [q.max[2] - b.pos[2], b.pos[0], q.max[2] + 6]].sort((u, v) => u[0] - v[0])[0]; c = [e[1], e[2]]; }
+      const dx = c[0] - b.pos[0], dz = c[1] - b.pos[2], l = Math.hypot(dx, dz) || 1;
+      wx = dx / l; wz = dz / l;
+      if (outOfBounds(this.map, b.pos)) b.yaw = lerpAngle(b.yaw, Math.atan2(-wx, -wz), 8 * dt);
+    }
     if (wl > 0 && b.onGround) {
       const probe = [b.pos[0] + wx * 2.5, b.pos[1] + 0.5, b.pos[2] + wz * 2.5];
       if (!raycast(probe, [0, -1, 0], Math.max(6, Math.min(15, probe[1] - this.map.killY)), boxes)) { wx = -wx; wz = -wz; ai.strafeDir *= -1; }
@@ -1257,11 +1267,21 @@ class Room {
     this.clouds.set(c.id, c);
     this.broadcast({ t: 'cloud', id: c.id, p: c.p });
   }
+  // out of the play area (map.bounds): OOB.secs to get back, then a void death. the client counts it down on its own
+  oobCheck(t, n) {
+    if (!this.map.bounds || t.trap || (t.isBot && t.ai.dummy)) return false;
+    if (!outOfBounds(this.map, t.pos)) { t.oobAt = 0; return false; }
+    if (!t.oobAt) { t.oobAt = n; return false; }
+    if (n - t.oobAt < (OOB.secs + OOB.grace) * 1000) return false;
+    this.kill(t, null, 'void');
+    return true;
+  }
   tickStatus(dt) {
     const n = now();
     for (const t of this.players.values()) {
       if (!t.alive) continue;
       if (t.hp > 100 && !t.inf) t.hp = Math.max(100, t.hp - 2 * dt); // overheal fades (zombie HP doesn't)
+      if (this.oobCheck(t, n)) continue;
       if (t.burnUntil > n) {
         t.burnTick -= dt;
         if (t.burnTick <= 0) { t.burnTick = 0.5; this.damage(t, 5, this.players.get(t.burnBy) || null, 'bow'); this.broadcast({ t: 'fx', k: 'burn', id: t.id }); }
@@ -1305,7 +1325,7 @@ class Room {
   kill(t, attacker, w) {
     if (!t.alive) return;
     if (t.trap) this.popTrap(t, 'dead');
-    t.alive = false; t.hp = 0; t.deaths++; t.g = null; t.reverseUntil = 0;
+    t.alive = false; t.hp = 0; t.deaths++; t.g = null; t.reverseUntil = 0; t.oobAt = 0;
     this.rigDeath(t); // (every client bursts the frame open from the kill message)
     if (t.ai) { t.ai.hook = null; t.ai.route = null; } // a fresh route from the spawn, not the old waypoint index
     // the mode's respawn delay; skipping the killcam ('respawn') can't go below it
@@ -2567,9 +2587,10 @@ class Room {
     if (n - p.cfgT < 1500) return;
     p.cfgT = n;
     const changes = [];
-    if (has(MAPS, m.map) && m.map !== this.cfg.map && this.mode !== 'training' && MAP_ORDER.includes(m.map)) {
-      this.cfg.map = m.map;
-      changes.push(`map → ${MAPS[m.map].name}`);
+    const pickMap = has(MAPS, m.map) && MAP_ORDER.includes(m.map) ? mapForGame(this.game, MAPS, m.map) : null; // the version this mode plays
+    if (pickMap && pickMap !== this.cfg.map && this.mode !== 'training') {
+      this.cfg.map = pickMap;
+      changes.push(`map → ${MAPS[pickMap].name}`);
       this.smokes.clear(); // clients drop theirs with the old map
       let fresh = false;
       if (GAMES[this.game].sites && !(this.map.sites && this.map.sites.length)) {
@@ -2946,8 +2967,11 @@ class Room {
   }
   // switch game type (bots setup / match settings / the vote)
   setGame(g) {
-    if (!has(GAMES, g) || (GAMES[g].sites && !(this.map.sites && this.map.sites.length))) return false;
-    if (GAMES[g].mapOk && !GAMES[g].mapOk(this.map)) return false; // e.g. floor is lava: no real floor here (or nothing to stand on)
+    if (!has(GAMES, g)) return false;
+    const id = mapForGame(g, MAPS, this.cfg.map), m = MAPS[id]; // a map with an S&D version: Plant & Defuse plays that, the rest the standard one
+    if (GAMES[g].sites && !(m.sites && m.sites.length)) return false;
+    if (GAMES[g].mapOk && !GAMES[g].mapOk(m)) return false; // e.g. floor is lava: no real floor here (or nothing to stand on)
+    if (id !== this.cfg.map) { this.cfg.map = id; this.smokes.clear(); } // (the caller sends the new cfg: clients load the other version)
     this.game = g;
     return true;
   }
@@ -3053,9 +3077,10 @@ class Room {
     this.vote = null;
     for (const p of this.players.values()) { p.voteAt = 0; p.votePend = null; }
     if (!v || !v.game || !v.map || !MAPS[v.map]) return;
-    const mapChanged = v.map !== this.cfg.map;
+    const was = this.cfg.map;
     this.cfg.map = v.map;
-    this.setGame(v.game);
+    this.setGame(v.game); // (may swap to the version of the map the mode plays: Plant & Defuse -> the S&D one)
+    const mapChanged = this.cfg.map !== was;
     this.projectiles.clear(); this.peels.clear(); this.holes.clear();
     if (mapChanged) { this.smokes.clear(); this.broadcast({ t: 'cfg', cfg: this.cfg }); }
   }
