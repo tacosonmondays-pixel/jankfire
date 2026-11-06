@@ -20,6 +20,7 @@ import { BOMB, siteAt } from '../shared/modes.js';
 import { ECON, GEAR, weaponPrice, econWeapon, itemSpec, refillPrice } from '../shared/econ.js';
 import { raycast, query, PH } from '../shared/physics.js';
 import { patternOf } from '../shared/tactical.js';
+import { onWarm, onForget } from './graphs.js';
 
 const LOG = !!process.env.JF_ECON_LOG;
 const now = () => Date.now();
@@ -29,6 +30,8 @@ const d3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 const r1 = (x) => Math.round(x * 10) / 10;
 const xz = (q) => `${Math.round(q[0])},${Math.round(q[2])}`;
 const SPOTS = new WeakMap(); // map -> tactical spots
+onWarm((room, m) => { if (m.sites && room.isEcon && room.isEcon()) room.econAiMap(); }); // a Plant & Defuse room starting: work the spots out now (server/graphs.js)
+onForget((m) => SPOTS.delete(m)); // the map's graph was dropped: so are these
 let D = null; // from server.js: navGraph
 export function aiDeps(d) { D = d; }
 const STAGE_D = 20, RETAKE_D = 16; // m back from a site's entry where attackers group up / defenders gather for a retake
