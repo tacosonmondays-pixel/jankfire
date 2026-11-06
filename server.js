@@ -119,6 +119,7 @@ const BOT_NAMES = ['Gary', 'Linda', 'Steve', 'Brenda', 'Kevin', 'Doug', 'Karen',
 const BOT_GUNS = ['ar', 'ar', 'smg', 'shotgun', 'shotgun', 'sniper', 'chicken', 'banana', 'minigun', 'revolver', 'redline', 'marbles', 'laser'];
 BOT_GUNS.push('shredder'); // bots suck too (botShred)
 BOT_GUNS.push(...RIFLE_BOTS); // the rifle pack (server/rifles.js)
+if (process.env.JF_BOT_GUNS) BOT_GUNS.splice(0, BOT_GUNS.length, ...process.env.JF_BOT_GUNS.split(',').filter((id) => WEAPONS[id])); // test knob: JF_BOT_GUNS=burst,lmg
 const SKIN_F = ['default', 'default', 'gold', 'chrome', 'pink', 'camo', 'neon', 'rainbow', 'galaxy', 'lava', 'missing', 'tiger', 'fade', 'carbon', 'tape'];
 const SKIN_H = ['none', 'none', 'none', 'tophat', 'party', 'crown', 'cowboy', 'propeller', 'cone', 'eyes', 'duck'];
 const SKIN_E = ['none', 'none', 'none', 'sparkles', 'flames', 'money', 'smoke'];

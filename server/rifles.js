@@ -27,7 +27,7 @@ const rifles = {
       const log = (p.burstLog || (p.burstLog = [])).filter((x) => n - x < span);
       if (log.length >= w.burst) { p.burstLog = log; return null; }
       log.push(n); p.burstLog = log;
-      const b = p.bst, inBurst = b && n - b.t0 <= ((w.burst - 1) / w.rate) * 1000 + 140;
+      const b = p.bst, inBurst = b && n - b.t0 <= ((w.burst - 1) / w.rate) * 1000 + 220; // (+ network jitter)
       if (!inBurst) p.bst = { to: t.id, k: 1, t0: n };
       else if (b.to === t.id) { b.k++; if (b.k === w.burst && !p.isBot) H.send(p, { t: 'rfx', k: 'burst', v: t.id, hs: h > 0 ? 1 : 0 }); }
       else b.to = -1; // split between two people: no BURST!
