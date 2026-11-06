@@ -6,6 +6,7 @@ const { chromium } = require('playwright');
   const errs = []; pg.on('pageerror', (e) => errs.push(e.message));
   await pg.goto('http://localhost:3000/'); await pg.waitForTimeout(500);
   await pg.click('#scr-main [data-go="cosmetics"]'); await pg.waitForTimeout(300);
+  await pg.click('.cz-btn:has-text("GRAPPLE")', { force: true }); await pg.waitForTimeout(400); // COSMETICS opens the customize screen now; the classic list is behind GRAPPLE + SPRAY
   console.log('all mode default', await pg.isChecked('#skAllMode'));
   await pg.click('#sk-finish .chip:has-text("Pink")');
   await pg.click('#sk-hat .chip:has-text("Traffic Cone")');
