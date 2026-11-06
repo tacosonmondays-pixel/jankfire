@@ -1,6 +1,14 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '4.6', date: '2026-11-06', title: 'REMODEL', items: [
+    'SUBURB, DESERT and BAZAAR got rebuilt from scratch, and each one has its own Plant & Defuse layout now (like Warehouse).',
+    'SUBURB: two rows of houses you can go inside, a park with a playground in the middle, a canal with a boardwalk, a Mega-Mart, traffic, and a forest round the edge.',
+    'DESERT: a western main street with a hotel and saloon, a water tower, an oasis, a railway with a mine tunnel, and a wall round the town. Plant & Defuse plays DRY GULCH, the payroll job.',
+    'BAZAAR: rebuilt market streets with stalls, rooftops and new lanes, plus its own Plant & Defuse version.',
+    'the Warehouse shredder is animated now, and the Backrooms pool water stopped shimmering.',
+    'some hidden people and cats moved house with the remodel. go find them again.',
+  ] },
   { v: '4.5', date: '2026-11-06', title: 'NEW HANDS WHO DIS', items: [
     'NEW HANDS on everything: chunky low-poly PS1 hands with real fingers that wrap round grips, triggers and handles, in your skin tone with your sleeve colour. no more tan boxes.',
     'the katana and knives got snappier: a wind-up, a whippy cut with a longer smear, a springy settle. knives flip and get caught, the katana twirls on inspect. hit timing hasn\'t changed.',
