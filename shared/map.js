@@ -1071,7 +1071,10 @@ function suburb() {
       add(x, 0, z, x + 3.2, 0.45, z + 1.5, 'wood'); D.add(x + 0.12, 0.45, z + 0.12, x + 3.08, 0.47, z + 1.38, 'dirt');
       for (let k = 0; k < 3; k++) D.box(x + 0.6 + k * 1.0, 0.64, z + 0.75, 0.42, 0.34, 0.42, (k + x) % 2 ? 'hedge' : 'leaves2');
     }
-    for (const [x, z, sz] of [[77, 31, 1.6], [79.6, 33.4, 1.1], [75.6, 38.4, 2.5]]) { W.B(x, sz / 2, z, sz, sz, sz * 0.9, 'toyorange'); W.B(x, sz + 0.15, z, 0.22, 0.3, 0.22, 'leaves'); }
+    for (const [x, z, sz] of [[77, 31, 1.6], [79.6, 33.4, 1.1], [75.6, 38.4, 2.5]]) {
+      W.B(x, sz / 2, z, sz, sz, sz * 0.9, 'toyorange'); W.B(x, sz + 0.15, z, 0.22, 0.3, 0.22, 'leaves');
+      D.box(x, sz * 0.5, z, sz * 1.12, sz * 0.7, sz * 0.75, 'toyorange'); D.box(x, sz * 0.5, z, sz * 0.75, sz * 0.7, sz * 1.02, 'toyorange'); // the bulge round its middle (look only)
+    }
     D.add(74.2, 1.6, 37.1, 74.9, 2.3, 37.14, 'toyblue'); // the 1st-prize rosette on the big one
     W.B(66, 1.2, 46, 0.16, 2.4, 0.16, 'wood'); W.B(66, 1.85, 46, 1.6, 0.12, 0.12, 'wood'); W.B(66, 1.55, 46, 0.8, 0.8, 0.36, 'cloth'); W.B(66, 2.32, 46, 0.5, 0.5, 0.5, 'toyface', { fit: 1 }); // the scarecrow
     W(76, 0, 46, 80, 2.4, 49.5, 'wood'); W(75.8, 2.4, 45.8, 80.2, 2.7, 49.7, 'roofg'); D.add(77.3, 0, 45.96, 78.7, 2.0, 46, 'metal'); // the shed
