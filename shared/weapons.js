@@ -133,6 +133,31 @@ export const WEAPONS = {
     kb: 0, kbUp: 0, recoil: 5.5, kick: 0.045, range: 60,
     ads: { zoom: 1.2, spread: 0.7, p: [0, -0.1, -0.3] },
   },
+  // the new primaries: their gimmicks run in server/primaries.js, the shared steps are in shared/primaries.js
+  nailgun: {
+    slot: 'primary', kind: 'hitscan', name: 'Nail Gun', color: '#ff6f3c',
+    desc: 'Fires nails, fast. Land enough in a row and they get nailed to the wall behind them like a poster.',
+    auto: true, rate: 11, mag: 36, reload: 1.9, dmg: 9, head: 1.6, spread: 0.022, bloom: 0.003, maxBloom: 0.045,
+    kb: 0.5, kbUp: 0, recoil: 0.25, kick: 0.006, range: 120, tracer: 0xd8dde4, thick: 0.018,
+    // pin: n nails from one shooter inside win s = stuck for dur s to the wall up to reach m behind them (no wall: the
+    // floor). safe = s after a pin before the same person can be pinned again. stick = s a nail stays in a wall
+    nails: { n: 6, win: 1.2, dur: 1.1, safe: 2.5, reach: 7, stick: 10, lift: 0.35 },
+    ads: { zoom: 1.35, spread: 0.35, p: [0, -0.1, -0.3] },
+  },
+  tennis: {
+    slot: 'primary', kind: 'proj', name: 'Tennis Ball Launcher', color: '#d4ff3a',
+    desc: 'Fuzzy balls that bounce off everything up to 5 times, hitting harder every bounce. Bank it round a corner.',
+    cd: 0.5, speed: 40, grav: 14, r: 0.1, bounce: 0.8, dmg: 20, kb: 7, kbUp: 2.5, life: 4.5,
+    bounces: 5, bonus: 0.3, minBounce: 3, // a bounce counts when it hits faster than minBounce m/s; +bonus x dmg per bounce
+    ads: { zoom: 1.3, p: [0.04, -0.13, -0.34] },
+  },
+  cart: {
+    slot: 'primary', kind: 'proj', name: 'Shopping Cart Cannon', color: '#9b5cff',
+    desc: 'Fires a shopping cart that runs people over. It stays as cover, or hop in (F) and ride it.',
+    cd: 1.6, speed: 22, up: 3.5, grav: 26, r: 0.45, life: 25, speedMul: 0.93,
+    ads: { zoom: 1.2, p: [0.06, -0.17, -0.38] },
+  },
+  cartp: { slot: null, kind: 'cart', name: 'Shopping Cart', color: '#9b5cff' }, // replays draw parked + rolling carts with this
 
   // ------------------------------------------------------------ secondary
   revolver: {

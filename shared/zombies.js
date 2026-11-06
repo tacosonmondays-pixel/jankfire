@@ -37,6 +37,7 @@ export const zmAmmoPrice = (price) => Math.ceil(price / 20) * 10; // a refill is
 
 // the mystery crate (weights): mostly good stuff, a couple of jokes
 export const ZM_CRATE = { minigun: 6, chicken: 6, marbles: 6, redline: 6, bowling: 5, snowball: 5, cig: 4, cards: 4, sniper: 3, ar: 3, smg: 3, shotgun: 3, bow: 3, banana: 3, spoon: 3, slapper: 2, blower: 2, burst: 4, lmg: 5, dmr: 3, lever: 4, autoshot: 5 };
+Object.assign(ZM_CRATE, { nailgun: 5, tennis: 4, cart: 4 }); // the new primaries: pin zombies to walls, bank balls round corners, bowl carts through the horde
 export function zmPick(owned = [], rnd = Math.random) {
   const pool = Object.entries(ZM_CRATE).filter(([id]) => !owned.includes(id));
   let t = rnd() * pool.reduce((a, [, w]) => a + w, 0);
