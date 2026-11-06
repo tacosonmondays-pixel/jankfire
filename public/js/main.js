@@ -80,6 +80,7 @@ import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + q
 import { K } from './keys.js';
 import { initLobby, lobbyInfo, lobbyKey, lobbyMe, lobbyLeave } from './lobby.js'; // ONLINE / WITH BOTS mode picker + the lobby countdown
 import { controlsScreen } from './controls.js';
+import { initCustomize, czOpen, czClose, czFrame, czKill, czLate, czRefresh, czRolled, resolveRand, wantSkins, myFavs } from './customize.js'; // the weapon customize screen (replaces COSMETICS)
 import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, zmModelsLoaded } from './zombies.js';
 
 const $ = (id) => document.getElementById(id);
@@ -101,7 +102,7 @@ const SYNC_KEYS = ['jank', 'sens', 'adsSens', 'vol', 'fov', 'swapAim', 'toggleAi
 function profileData() {
   const settings = {};
   for (const k of SYNC_KEYS) settings[k] = G.settings[k];
-  return { loadout: G.settings.loadout, skins: G.settings.skins, look: G.settings.look, card: G.settings.card || '', kfx: G.settings.kfx || 'none', grap: G.settings.grap || 'rope', settings };
+  return { loadout: G.settings.loadout, skins: G.settings.skins, look: G.settings.look, card: G.settings.card || '', kfx: G.settings.kfx || 'none', grap: G.settings.grap || 'rope', favs: G.settings.favs || undefined, wk: G.settings.wk || undefined, settings };
 }
 function saveSettings() {
   try { localStorage.setItem('jankfire', JSON.stringify(G.settings)); } catch { /* whatever */ }
@@ -113,7 +114,7 @@ G.equipped = {};
 function recomputeEquipped() {
   G.equipped = {};
   for (const [id, sk] of Object.entries(G.settings.skins || {})) {
-    const o = ownedSkin(sk, G.inv, id);
+    const o = ownedSkin(resolveRand(sk, id), G.inv, id); // 'random' slots: this life's roll (customize.js)
     if (o[0] !== 'default' || o[1] !== 'none' || o[2] !== 'none' || o[3] !== 'default') G.equipped[id] = o;
   }
   if (G.equipped.scythe) G.equipped.scythe_rifle = G.equipped.scythe.slice(0, 3).concat('default', G.equipped.scythe[4]); // both forms look the same
@@ -173,18 +174,22 @@ loadTripoModels().then((n) => {
 onLateModel(() => { // a skin's model downloaded (the first time anyone showed it): swap it in everywhere it's on show
   rebuildOne();
   for (const r of G.remotes.values()) r.build();
-  refreshPreview(); refreshHero();
+  refreshPreview(); refreshHero(); czLate();
 });
 
 // ------------------------------------------------------------ screens
-let screen = 'main';
+let screen = 'main', classicLocker = false;
 function show(id) {
+  if (id === 'cosmetics' && !classicLocker) id = 'customize'; // COSMETICS is the customize screen now; the classic list is one click away in it
+  classicLocker = false;
   screen = id;
   for (const el of document.querySelectorAll('.screen')) el.classList.toggle('hidden', el.id !== 'scr-' + id);
   $('menu').classList.remove('hidden');
   $('menu').classList.toggle('home-on', id === 'main');
   hud.show(false);
   if (id !== 'main') homeLeft();
+  if (id !== 'customize') czClose();
+  if (id === 'customize') czOpen();
   if (id === 'cosmetics') { skinAllNow = false; $('cosSlot').append($('preview')); buildCosmeticsUI(); setTimeout(resizePreview, 0); }
   if (id === 'character') { $('charSlot').append($('preview')); buildCharacterUI(); setTimeout(resizePreview, 0); }
   if (id === 'namecard') cardEditor.open();
@@ -226,7 +231,7 @@ function startMode(mode, cfg) {
   if (G.joined) quitToMenu(true);
   connecting = true;
   $('status').textContent = 'connecting...';
-  net.connect({ name: G.settings.name, mode, skins: G.equipped, look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), grap: myGrapple(), kc: G.settings.killcam !== false, streaks: validStreaks(S.loadout.streaks), item: S.loadout.item, cfg, token: account.loggedIn ? account.token : undefined }, () => {
+  net.connect({ name: G.settings.name, mode, skins: wantSkins(), favs: myFavs(), look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), grap: myGrapple(), kc: G.settings.killcam !== false, streaks: validStreaks(S.loadout.streaks), item: S.loadout.item, cfg, token: account.loggedIn ? account.token : undefined }, () => {
     connecting = false;
     resetWorldState();
     show('main');
@@ -580,7 +585,7 @@ G.cosSel = S.loadout.primary;
 let skinSendT = null;
 function sendSkins() {
   clearTimeout(skinSendT);
-  skinSendT = setTimeout(() => { if (G.joined) net.send({ t: 'skin', s: G.equipped }); }, 250);
+  skinSendT = setTimeout(() => { if (G.joined) net.send({ t: 'skin', s: wantSkins(), fav: myFavs() }); }, 250); // random slots go as 'random': the server rolls them
 }
 // the weapons that show up in COSMETICS (the rifle form of the scythe borrows the scythe's look)
 function skinnable() { return ORDER.filter((id) => WEAPONS[id] && !WEAPONS[id].modeOnly && (SLOTS.includes(WEAPONS[id].slot) || itemModel(id) || id === 'scythe')); }
@@ -1251,6 +1256,7 @@ net.on('pl', (m) => {
   if (ME.hook && ME.hook.target === m.id) releaseHook();
 });
 net.on('sk', (m) => {
+  if (m.id === G.myId) { czRolled(m.s); recomputeEquipped(); rebuildOne(); return; } // your random slots, rolled for this life
   G.skins.set(m.id, m.s || {});
   const r = G.remotes.get(m.id);
   if (r) r.setSkins(m.s);
@@ -1477,6 +1483,7 @@ net.on('dmg', (m) => {
 });
 net.on('kill', (m) => {
   recordEv(m);
+  if (m.k === G.myId && m.v !== G.myId && !RP.active) czKill(m.w); // kills with it (the customize screen's mastery bar)
   courtKill(m); // scales of justice: streaks + revenge
   let [kn, kc] = nameOf(m.k), [vn, vc] = nameOf(m.v);
   [kn, vn] = brNames(m, kn, vn); // jank royale: no names in Pronoun Park
@@ -2009,6 +2016,7 @@ function frame(t) {
   renderFrame();
   if ((screen === 'cosmetics' || screen === 'character' || screen === 'main') && !$('menu').classList.contains('hidden')) renderPreview(dt);
   if (screen === 'cosmetics' && !$('menu').classList.contains('hidden')) renderGrapplePreview(dt);
+  if (screen === 'customize' && !$('menu').classList.contains('hidden')) { const d = czFrame(dt); if (d) renderPreview(d); } // on demand: only while it turns, you drag, or particles fly
 }
 
 // ------------------------------------------------------------ killstreaks
@@ -2139,7 +2147,7 @@ function cardUrlFor(id) {
   const n = G.names.get(id) || {};
   return (S.showCards !== false && n.card) || defaultCard(n.name || '???', n.color || '#ffffff');
 }
-function myKfx() { return ownedKill(S.kfx || 'none', G.inv); }
+function myKfx() { return S.kfx === 'random' ? 'random' : ownedKill(S.kfx || 'none', G.inv); } // random: the server rolls one per life
 function setKfx(id) {
   S.kfx = id;
   saveSettings();
@@ -2357,6 +2365,8 @@ function onLoggedIn(me, fresh) {
     if (typeof prof.card === 'string') G.settings.card = prof.card;
     if (typeof prof.kfx === 'string') G.settings.kfx = prof.kfx;
     if (typeof prof.grap === 'string') G.settings.grap = prof.grap;
+    if (prof.favs && typeof prof.favs === 'object') G.settings.favs = prof.favs;
+    if (prof.wk && typeof prof.wk === 'object') G.settings.wk = prof.wk;
     Object.assign(G.settings, prof.settings || {});
     try { localStorage.setItem('jankfire', JSON.stringify(G.settings)); } catch { /* fine */ }
     applySettingsToUI();
@@ -2367,6 +2377,7 @@ function onLoggedIn(me, fresh) {
   rebuildOne();
   if (!fresh && prof.loadout) { applyLoadout(false); applyStreaks(); } // the account's own loadout, by the respawn rule
   renderAcctBar();
+  czRefresh();
 }
 function doLogout() {
   logout();
@@ -2378,6 +2389,13 @@ function doLogout() {
   toast('logged out. locked cosmetics are hidden until you log back in.');
 }
 $('logoutBtn').addEventListener('click', doLogout);
+// the customize screen (customize.js) borrows the locker's own save / equip helpers
+initCustomize({
+  setSkin, storeSkin, setPartAll, skinnable, itemModel, setKfx, myKfx, myAchs, toast, show,
+  bulk: () => { saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne(); },
+  save: () => saveSettings(), sendSkins: () => sendSkins(), recompute: () => recomputeEquipped(),
+  classic: () => { classicLocker = true; show('cosmetics'); },
+});
 function applySettingsToUI() {
   $('jank').value = String(S.jank); setJank(S.jank);
   for (const id of ['fov', 'vol', 'sens', 'adsSens']) { $(id).value = String(S[id]); $(id).dispatchEvent(new Event('input')); }
@@ -2573,7 +2591,7 @@ async function doRoll(kind) {
     btn('OK', closeRoll);
   }, 4800);
 }
-function closeRoll() { $('rollbox').classList.add('hidden'); if (screen === 'cosmetics') buildCosmeticsUI(); if (screen === 'crates') renderCrates(); renderAcctBar(); }
+function closeRoll() { $('rollbox').classList.add('hidden'); if (screen === 'cosmetics') buildCosmeticsUI(); czRefresh(); if (screen === 'crates') renderCrates(); renderAcctBar(); }
 
 // ------------------------------------------------------------ rounds
 function fmtClock(ms) { const s2 = Math.ceil(ms / 1000); return `${Math.floor(s2 / 60)}:${String(s2 % 60).padStart(2, '0')}`; }

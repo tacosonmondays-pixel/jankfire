@@ -41,7 +41,8 @@ export const DEFAULT_SKIN = ['default', 'none', 'none', 'default', 'normal'];
 
 // skin = [wrap, hat, effect, model, wrap mode]. saves from before wrap modes have no 5th slot: they get normal
 export function validSkin(s) {
-  if (!Array.isArray(s) || !FINISHES[s[0]] || !HATS[s[1]] || !EFFECTS[s[2]]) return DEFAULT_SKIN;
+  const ok = (T, v) => v === 'random' || (typeof v === 'string' && Object.hasOwn(T, v)); // 'random': rolled on every spawn (customize.js)
+  if (!Array.isArray(s) || !ok(FINISHES, s[0]) || !ok(HATS, s[1]) || !ok(EFFECTS, s[2])) return DEFAULT_SKIN;
   return [s[0], s[1], s[2], typeof s[3] === 'string' ? s[3] : 'default', WRAP_MODES.includes(s[4]) ? s[4] : 'normal'];
 }
 export function randomSkin() {
@@ -230,7 +231,7 @@ const HAT_BUILD = {
 };
 
 const liveHats = new Set();
-function makeHat(id) {
+export function makeHat(id) {
   const g = new THREE.Group();
   (HAT_BUILD[id] || (() => {}))(g);
   if (g.userData.tick) liveHats.add(g);
