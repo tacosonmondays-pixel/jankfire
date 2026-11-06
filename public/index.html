@@ -82,17 +82,18 @@
       <h1 class="logo"><span>JANK</span><span>FIRE</span></h1>
       <div class="sub">low quality shooter. infinite momentum. bad decisions.</div>
     </div>
-    <nav class="home-left">
-      <button class="hlink" data-go="loadout" id="navCustomize" title="loadout, weapon skins, outfit, grapple + spray"><i>&#9733;</i>CUSTOMIZE</button>
-      <button class="hlink" data-go="crates" id="cratesBtn"><span id="cratesLbl">CONTAINERS</span></button>
-      <button class="hlink" data-go="leaders"><i>#</i>LEADERBOARD</button>
-      <div class="hicons">
-        <button class="hicon" data-go="settings" title="settings"><i>&#9881;</i><span>SETTINGS</span></button>
-        <button class="hicon" data-go="guide" title="guide: controls + how it works"><i>?</i><span>GUIDE</span></button>
-        <button class="hicon" data-go="lore" title="lore"><i>&#9786;</i><span>LORE</span></button>
-        <button class="hicon" data-go="patchnotes" id="pnBtn" title="patch notes"><i>!</i><span>PATCH NOTES</span><em id="pnNew" class="hidden">NEW</em></button>
+    <nav class="home-left" aria-label="menu">
+      <div class="nav-tag">STAFF ENTRANCE</div>
+      <button class="hnav prim" data-go="loadout" id="navCustomize" title="loadout, weapon skins, outfit, grapple + spray"><span class="ni" data-ico="customize"><img alt=""></span><span class="nt"><b>CUSTOMIZE</b><small>loadout · skins · outfit</small></span></button>
+      <button class="hnav prim" data-go="crates" id="cratesBtn" title="open crates, duffel bags and boxes"><span class="ni" data-ico="crates"><img alt=""></span><span class="nt"><b id="cratesLbl">CONTAINERS</b><small>crates · bags · boxes</small></span><em id="cratesN" class="hidden"></em></button>
+      <div class="nav-sec">
+        <button class="hnav sec" data-go="leaders" title="leaderboard"><span class="ni" data-ico="leaders"><img alt=""></span><b>LEADERBOARD</b></button>
+        <button class="hnav sec hicon" data-go="settings" title="settings + key bindings"><span class="ni" data-ico="settings"><img alt=""></span><b>SETTINGS</b></button>
+        <button class="hnav sec hicon" data-go="guide" title="guide: controls + how it works"><span class="ni" data-ico="guide"><img alt=""></span><b>GUIDE</b></button>
+        <button class="hnav sec hicon" data-go="lore" title="lore"><span class="ni" data-ico="lore"><img alt=""></span><b>LORE</b></button>
+        <button class="hnav sec hicon" data-go="patchnotes" id="pnBtn" title="patch notes"><span class="ni" data-ico="patchnotes"><img alt=""></span><b>PATCH NOTES</b><em id="pnNew" class="hidden">NEW</em></button>
       </div>
-      <button class="hlink hidden" id="installBtn">INSTALL APP</button>
+      <button class="nav-util hidden" id="installBtn" title="install JANKFIRE as an app">&#10515; install app</button>
     </nav>
     <div class="home-hero">
       <div class="hero-stage" data-go="character" title="click to change your outfit"><div id="heroSlot"></div></div>
