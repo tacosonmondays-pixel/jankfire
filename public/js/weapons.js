@@ -231,7 +231,8 @@ function adsPose(id, m) {
   if (adsCache.has(key)) return adsCache.get(key);
   let pose;
   const sg = g.userData.sight;
-  if (sg) pose = [0, -sg.y * s, -EYE_RELIEF - sg.z * s]; // sight line exactly through the middle
+  if (g.userData.adsPose) pose = g.userData.adsPose.slice(); // a Blender model with no sights says where it sits while aiming
+  else if (sg) pose = [0, -sg.y * s, -EYE_RELIEF - sg.z * s]; // sight line exactly through the middle
   else {
     // no sights: keep the whole thing under (and a bit right of) the middle of the screen.
     // measured in the gun's own space (no wrap, viewmodel root or scale), so * s below is the only scaling

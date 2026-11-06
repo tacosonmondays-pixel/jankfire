@@ -1,4 +1,4 @@
-# Redline: a PPS-43-pattern stamped carbine (vented barrel jacket with a slot compensator, flip rear sight, curved
+# Redline: a PPS-43-pattern stamped carbine (vented barrel jacket with a slot compensator, tall hot-rod sights, curved
 # 35-round mag, folding skeleton stock pulled out), real millimetres x1.18 so the grip sits under the game's hand.
 # The Redline's gimmick stays: a tachometer bolted to the left side whose needle climbs as your HP drops (node
 # 'needle'), and the barrel inside the jacket glows red-hot through the vents (material 'redline_vents').
@@ -14,7 +14,7 @@ def Z(d): return MUZ_Z + d * S
 def Y(h): return BORE_Y + h * S
 def W(mm): return mm * S
 def poly(pts): return [P(d, h) for d, h in pts]
-SIGHT_H = 37
+SIGHT_H = 54  # a tall hot-rod sight line: Lyman-style aperture on the receiver, a tower up front
 DIAL = (-W(27), Y(15), Z(356))  # tachometer centre (left side of the receiver, over the magwell)
 
 
@@ -63,21 +63,25 @@ def build():
     A(lathe([(W(8), Z(22)), (W(8), Z(300))], (0, BORE_Y, 0), hot, seg=14))  # the barrel: glows red-hot through the vents
     A(lathe([(0, Z(22)), (W(4), Z(22)), (W(4), Z(26))], (0, BORE_Y, 0), black, seg=10))
     A(box((W(6), W(1.5), W(250)), (0, Y(21.6), Z(150)), red))  # racing stripe
-    # front sight: post + ears on the jacket top
-    A(box((W(3), W(16), W(6)), (0, Y(SIGHT_H - 9.5), Z(28)), dark))
-    A(box((W(3.4), W(3.4), W(3.4)), (0, Y(SIGHT_H - 1.7), Z(28)), dot, bev=W(0.6)))
-    for sx in (-1, 1):
-        A(side(poly([(20, 21), (36, 21), (34, 40), (24, 40)]), W(3), (sx * W(7), 0, 0), steel, bev=W(0.8)))
+    # front sight: a tall tower on the jacket front with protective ears, the post's glowing dot on the sight line
+    A(side(poly([(18, 21), (48, 21), (44, 34), (39, 42), (27, 42), (22, 34)]), W(9), (0, 0, 0), steel, bev=W(1.2)))
+    for sx in (-1, 1): A(side(poly([(22, 22), (44, 22), (42, SIGHT_H + 5), (25, SIGHT_H + 5)]), W(2.6), (sx * W(7), 0, 0), steel, bev=W(0.7)))
+    A(box((W(3), W(SIGHT_H - 42), W(4)), (0, Y((SIGHT_H + 42) / 2), Z(33)), dark))
+    A(box((W(3.4), W(3.4), W(3.4)), (0, Y(SIGHT_H), Z(33)), dot, bev=W(0.6)))
     # ---------------- receiver, flip rear sight, ejection port, 8-ball cocking knob
     rcv = side(poly([(276, -22), (522, -22), (522, 14), (512, 24), (282, 24), (276, 18)]), W(34), (0, 0, 0), steel, bev=W(2.5))
     cut(rcv, box((W(12), W(15), W(40)), (W(17), Y(10), Z(338)), None))
     cut(rcv, box((W(12), W(5), W(110)), (W(17), Y(0), Z(392)), None))  # bolt handle slot
     A(rcv)
     A(box((W(1.5), W(13), W(36)), (W(15.5), Y(10), Z(338)), dark))
-    A(side(poly([(296, 24), (324, 24), (324, 28), (296, 28)]), W(22), (0, 0, 0), steel, bev=W(1)))
-    for sx in (-1, 1):
-        A(side(poly([(305, 28), (314, 28), (314, 43), (307, 43)]), W(4), (sx * W(5.5), 0, 0), dark, bev=W(0.6)))  # notch ears
-    A(box((W(7), W(8.5), W(6)), (0, Y(28 + 4.25), Z(310)), dark))  # notch bottom (sight line sits on top of it)
+    # rear sight: a tall Lyman-style aperture on a bridge at the back of the receiver (the Thompson had one like it)
+    A(box((W(24), W(6), W(36)), (0, Y(27), Z(488)), steel, bev=W(1.5)))
+    for sx in (-1, 1): A(side(poly([(474, 28), (502, 28), (498, SIGHT_H + 6), (480, SIGHT_H + 6)]), W(3), (sx * W(8.5), 0, 0), steel, bev=W(0.8)))
+    A(box((W(4), W(SIGHT_H - 6 - 30), W(4)), (0, Y((SIGHT_H - 6 + 30) / 2), Z(488)), dark))
+    ap = cyl(W(6), W(3.5), (0, Y(SIGHT_H), Z(488)), dark, axis='z', seg=16)
+    cut(ap, cyl(W(2.6), W(10), (0, Y(SIGHT_H), Z(488)), None, axis='z', seg=10))
+    A(ap)
+    A(cyl(W(5), W(5), (W(12.5), Y(36), Z(488)), chrome, axis='x', seg=12))  # elevation knob
     A(rod((W(16), Y(0), Z(340)), (W(34), Y(2), Z(340)), W(4), chrome, seg=8))
     A(ball(W(11), (W(44), Y(3), Z(340)), black, seg=18, rings=12))
     A(cyl(W(5.5), W(1.2), (W(54.6), Y(3), Z(340)), white, axis='x', seg=14))
@@ -116,7 +120,7 @@ def build():
     WZ = {'rl_steel': 'a', 'rl_grip': 'a', 'rl_dark': 'a', 'redline_vents': 'b'}  # wrap zones (wrapzones.js): a = handle side, b = business end, everything else keeps its look
     bodies = zone_join(parts, 'redline_body', WZ, default='n', rule=lambda m, c: 'b' if (m in ('rl_steel', 'rl_dark', 'rl_red') and c[2] < Z(276)) or (m == 'rl_dark' and c[1] < Y(-60)) else None)  # jacket, sights, racing stripe + mag
     nd = part(needle, 'needle_wzN', pivot=DIAL)
-    meta = {'kind': 'weapon', 'id': 'redline', 'paint': ['rl_red'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(SIGHT_H), 'z': Z(310)},
+    meta = {'kind': 'weapon', 'id': 'redline', 'paint': ['rl_red'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(SIGHT_H), 'z': Z(488)},
             'hatAt': [[0, Y(24), Z(440)], 0.1], 'needle': 'needle_wzN', 'vents': 'redline_vents'}
     return finish('w_redline', bodies + [nd], meta)
 

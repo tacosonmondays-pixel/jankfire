@@ -2,7 +2,8 @@
 # the rear sight on the top cover, big safety lever, stock folded along the left side), real millimetres x1.1 to the
 # game's Peel Shooter. The joke is the AK nickname: its "banana mag" is a real banana (five-sided, speckled, with the
 # 4011 sticker), and the muzzle device is a banana peel clamped on with a hose clamp, petals flaring like a flash
-# hider. run: blender -b --python tools/blender/make_banana.py
+# hider. You aim through a banana-yellow collimator red dot on a side-rail mount (the real AK way to put an optic on),
+# so the top cover stays down out of the way. run: blender -b --python tools/blender/make_banana.py
 import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib import *
 
@@ -13,7 +14,8 @@ def Z(d): return MUZ_Z + d * S
 def Y(h): return BORE_Y + h * S
 def W(mm): return mm * S
 def poly(pts): return [P(d, h) for d, h in pts]
-SIGHT_H = 33
+SIGHT_H = 33   # the iron sights (low, under the red dot)
+DOT_H = 62     # the red dot's sight line
 
 
 def build():
@@ -69,6 +71,22 @@ def build():
     A(rod((W(15), Y(4), Z(310)), (W(34), Y(6), Z(306)), W(3.8), steel, seg=8))
     A(ball(W(5.5), (W(36), Y(6), Z(306)), steel, seg=10, rings=6))
     for sx in (-1, 1): A(cyl(W(5), W(1.5), (sx * W(15.4), Y(-6), Z(296)), dark, axis='x', seg=10))
+    # ---------------- side-rail mount + a banana-yellow collimator sight riding over the top cover
+    optic = mat('bn_optic', 0xffd23a, rough=0.25, clearcoat=0.8)
+    lens = mat('bn_lens', 0x9fe8ff, rough=0.02, metal=0.3, alpha=0.18)
+    reticle = mat('bn_reticle', 0xff3a1a, rough=0.3, emit=0xff3a1a, strength=5.0)
+    A(side(poly([(326, -3), (426, -3), (426, 9), (326, 9)]), W(3), (-W(16.4), 0, 0), dark, bev=W(0.6)))  # the AK side rail
+    A(side(poly([(334, -6), (418, -6), (418, 38), (404, 46), (348, 46), (334, 38)]), W(4), (-W(18.8), 0, 0), dark, bev=W(1)))  # mount plate
+    A(cyl(W(7), W(6), (-W(22.5), Y(4), Z(376)), dark, axis='x', seg=12))  # clamp knob
+    A(box((W(22), W(6), W(70)), (-W(10), Y(43), Z(376)), dark, bev=W(1.5)))  # arm over the top cover
+    A(box((W(18), W(10), W(56)), (0, Y(DOT_H - 20), Z(376)), dark, bev=W(1.5)))  # saddle under the tube
+    A(lathe([(W(15), Z(400)), (W(17.5), Z(398)), (W(17.5), Z(336)), (W(19), Z(334)), (W(19), Z(326)), (W(16.5), Z(326)), (W(16.5), Z(334)), (W(15), Z(336)), (W(15), Z(398))],
+            (0, Y(DOT_H), 0), optic, seg=24, cap=False))
+    A(cyl(W(15), W(1), (0, Y(DOT_H), Z(338)), lens, axis='z', seg=24))
+    A(cyl(W(1.5), W(1.2), (0, Y(DOT_H), Z(337.5)), reticle, axis='z', seg=10))  # the dot
+    A(cyl(W(5), W(6), (0, Y(DOT_H + 19), Z(372)), dark, axis='y', seg=12))  # elevation turret
+    A(cyl(W(5), W(6), (W(19.5), Y(DOT_H), Z(372)), dark, axis='x', seg=12))  # windage
+    A(cyl(W(6), W(8), (-W(20), Y(DOT_H), Z(360)), dark, axis='x', seg=12))  # battery cap
     # ---------------- trigger guard, trigger, mag catch, grip
     A(side(poly([(330, -24), (338, -24), (340, -48), (390, -50), (396, -28), (404, -24), (408, -28), (400, -56), (336, -58), (330, -48)]), W(12), (0, 0, 0), steel, bev=W(1.8)))
     A(side(poly([(358, -24), (364, -24), (368, -34), (364, -46), (358, -44), (360, -34)]), W(6), (0, 0, 0), dark, bev=W(1)))
@@ -104,9 +122,9 @@ def build():
     bpy.context.view_layer.objects.active = stc; stc.select_set(True)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     uv_planar(stc, (sp[0] - W(16.2), sp[1], sp[2]), (W(22), W(13)), '-x')
-    WZ = {'bn_steel': 'a', 'bn_wood': 'a', 'bn_grip': 'a', 'bn_dark': 'b', 'bn_peel': 'b', 'bn_brown': 'b', 'bn_stem': 'b'}  # wrap zones (wrapzones.js): a = handle side, b = business end, everything else keeps its look
+    WZ = {'bn_steel': 'a', 'bn_wood': 'a', 'bn_grip': 'a', 'bn_dark': 'b', 'bn_peel': 'b', 'bn_brown': 'b', 'bn_stem': 'b', 'bn_optic': 'a'}  # wrap zones (wrapzones.js): a = handle side, b = business end, everything else keeps its look
     bodies = zone_join(parts, 'banana_body', WZ, default='n', rule=None)
-    meta = {'kind': 'weapon', 'id': 'banana', 'paint': ['bn_peel'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(SIGHT_H), 'z': Z(272)},
+    meta = {'kind': 'weapon', 'id': 'banana', 'paint': ['bn_peel'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(DOT_H), 'z': Z(398)},
             'hatAt': [[0, Y(23), Z(420)], 0.1]}
     return finish('w_banana', bodies + [], meta)
 

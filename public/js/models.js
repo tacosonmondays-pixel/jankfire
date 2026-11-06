@@ -1375,6 +1375,7 @@ export function buildWeapon(id, skin) {
     const mt = bl.meta;
     if (mt.muzzle) g.userData.muzzle = new THREE.Vector3(...mt.muzzle);
     if (mt.sight) g.userData.sight = { y: mt.sight.y, z: mt.sight.z };
+    if (Array.isArray(mt.ads) && mt.ads.every(Number.isFinite)) g.userData.adsPose = mt.ads; // no sights: its own aiming pose
     if (mt.hatAt) g.userData.hatAt = mt.hatAt; else delete g.userData.hatAt;
     g.userData.glb = 'blender';
     g.userData.wid = 'bl_' + id; // wrap zones come from the Blender parts' own names (_wzA / _wzB / _wzN), not the code model's rule

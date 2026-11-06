@@ -14,7 +14,9 @@ tools/blender/make_all.sh                                 # everything, 3 at a t
 ```
 Then check it in the real game (start a server first: `PORT=3100 node server.js`):
 ```
-node tools/blender/shots.cjs 3100 <outDir> ar,shotgun,revolver 3,0   # viewmodel hip + ADS, code vs Blender, Too HD + Potato
+node tools/blender/shots.cjs 3100 <outDir> ar,shotgun,revolver 3,0   # viewmodel hip + ADS, code vs Blender, Too HD + Potato,
+                                                                     # then the ADS check (exit code 1 if it fails)
+node tools/blender/shots.cjs 3100 <outDir> ar,smg,shotgun 3 --check-only  # just the ADS check
 node tools/blender/shots_props.cjs 3100 <outDir> 3,0                 # props on Warehouse/Suburb vs their boxes + a showcase
 ```
 Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cli optimize in.glb out.glb --compress quantize
@@ -52,6 +54,11 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
   `muzzle`, `sight` `{ y, z }` (the line of sight; the game puts your eye 0.17 m / scale behind `z`, so push `z` back or
   forward to set the eye distance), `hatAt` `[[x, y, z], height]`, moving parts (`pump`, `cylinder`, `hammer`, `bolt`), the code models' hooks
   (`needle`, `vents`, `barrels`) and `paint` (materials the flat look recolours).
+- **Aiming**: put real sights high enough that the gun stays under the crosshair (the AR's flip-up peep, the shotgun's
+  ghost ring, the Redline's tall aperture, the Peel Shooter's side-mount red dot). Guns without sights can carry `ads`
+  `[x, y, z]`, the viewmodel pose while aiming (the bowling cannon tucks itself down and right). The ADS check in
+  `shots.cjs` aims every gun at 1280x720, 1280x800 and 900x900 and FOV 70 + 120, renders only the viewmodel and fails if
+  it covers more than 25% of the middle 40% x 40% of the screen.
 - **Props**: vehicles face +x like the map builder's `car()`. Make the model match the boxes it stands in for
   (`shared/props.js` `PROPS`), feet on y = 0. Variants are separate nodes; give each its own origin with `part(..., pivot)`.
 - **Look**: glossy and bevelled (the owner's pick, 2026-11-05). `?models=flat` in the address (or localStorage

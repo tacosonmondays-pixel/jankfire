@@ -1,6 +1,7 @@
 # Shotgun: an 870-pattern 12 gauge pump (18.5in barrel, tube mag under it, ribbed forend on twin action bars,
 # milled receiver, walnut stock with a thick recoil pad), real millimetres scaled x1.05 to the game's shotgun.
-# Made fun: a side saddle of glossy red shells, a vent rib with a big brass bead, crusty walnut.
+# Ghost-ring sights like the police 870s (a big aperture on the receiver, a tall post up front), so aiming looks over
+# the gun instead of along it. Made fun: a side saddle of glossy red shells, a vent rib with a big brass bead, crusty walnut.
 # The forend is its own node ('pump') so the game can rack it.
 # run: blender -b --python tools/blender/make_shotgun.py
 import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -13,6 +14,7 @@ def Z(d): return MUZ_Z + d * S
 def Y(h): return BORE_Y + h * S
 def W(mm): return mm * S
 def poly(pts): return [P(d, h) for d, h in pts]
+SIGHT_H = 44  # the sight line: ghost ring centre + top of the front post
 
 
 def build():
@@ -37,6 +39,12 @@ def build():
     for i in range(22):  # rib posts
         A(box((W(5), W(4), W(5)), (0, Y(11.5), Z(40 + i * 20)), blue))
     A(ball(W(3.6), (0, Y(19), Z(14)), bead, seg=12, rings=8))
+    dot = mat('sg_dot', 0x7dff4f, rough=0.4, emit=0x7dff4f, strength=4.0)
+    # ghost-ring front sight: a tower on the barrel, protective ears, a post with a glowing dot on the sight line
+    A(side(poly([(30, 15), (58, 15), (54, 28), (49, 34), (39, 34), (34, 28)]), W(9), (0, 0, 0), blue, bev=W(1.2)))
+    for sx in (-1, 1): A(side(poly([(34, 16), (54, 16), (52, SIGHT_H + 4), (37, SIGHT_H + 4)]), W(2.6), (sx * W(7), 0, 0), blue, bev=W(0.7)))
+    A(box((W(3), W(SIGHT_H - 34), W(4)), (0, Y((SIGHT_H + 34) / 2), Z(44)), dark))
+    A(box((W(3.6), W(3.6), W(3.6)), (0, Y(SIGHT_H), Z(44)), dot, bev=W(0.6)))
     A(lathe([(W(10.5), Z(62)), (W(12.5), Z(66)), (W(12.5), Z(470))], (0, Y(-26), 0), blue, seg=18))  # mag tube
     A(lathe([(W(7), Z(36)), (W(12), Z(40)), (W(13), Z(48)), (W(13), Z(64)), (W(11), Z(68))], (0, Y(-26), 0), dark, seg=12))  # knurled mag cap
     A(side(poly([(70, 12), (96, 12), (96, -40), (70, -40)]), W(20), (0, 0, 0), blue, bev=W(3)))  # barrel ring / clamp
@@ -68,6 +76,13 @@ def build():
         A(cyl(W(11.2), W(10), (sx0 - W(4), Y(-37), Z(d)), brass, axis='y', seg=14))
         A(box((W(10), W(6), W(9)), (sx0 - W(4), Y(-14), Z(d)), nylon, bev=W(1)))  # elastic loop over each shell
 
+    # ghost-ring rear sight on the back of the receiver: base, protective wings, a thin ring on a stem
+    A(box((W(26), W(6), W(44)), (0, Y(18), Z(668)), blue, bev=W(1.5)))
+    for sx in (-1, 1): A(side(poly([(648, 20), (688, 20), (684, SIGHT_H + 9), (656, SIGHT_H + 9)]), W(3), (sx * W(10), 0, 0), blue, bev=W(0.8)))
+    A(box((W(3), W(SIGHT_H - 7 - 21), W(4)), (0, Y((SIGHT_H - 7 + 21) / 2), Z(668)), dark))
+    gr = cyl(W(7.5), W(4), (0, Y(SIGHT_H), Z(668)), dark, axis='z', seg=18)
+    cut(gr, cyl(W(4.8), W(12), (0, Y(SIGHT_H), Z(668)), None, axis='z', seg=14))
+    A(gr)
     # ---------------- trigger plate, guard, trigger, safety, slide release
     A(side(poly([(606, -40), (706, -40), (706, -58), (690, -62), (612, -54)]), W(26), (0, 0, 0), blue, bev=W(2)))
     A(side(poly([(612, -52), (622, -52), (626, -76), (668, -80), (686, -62), (694, -60), (694, -66), (676, -90), (626, -88), (612, -72)]), W(12), (0, 0, 0), blue, bev=W(2),
@@ -90,7 +105,7 @@ def build():
     WZ = {'sg_walnut': 'a', 'sg_forend': 'a', 'sg_rubber': 'a', 'sg_blued': 'b', 'sg_dark': 'b', 'sg_black': 'b'}  # wrap zones (wrapzones.js): a = handle side, b = business end, everything else keeps its look
     bodies = zone_join(parts, 'sg_body', WZ, default='n', rule=None)
     pnode = part(pump, 'pump_wzA', pivot=(0, Y(-24), Z((pd0 + pd1) / 2)))
-    meta = {'kind': 'weapon', 'id': 'shotgun', 'paint': ['sg_walnut', 'sg_forend'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(21), 'z': Z(560) - 0.11},
+    meta = {'kind': 'weapon', 'id': 'shotgun', 'paint': ['sg_walnut', 'sg_forend'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(SIGHT_H), 'z': Z(668)},
             'hatAt': [[0, Y(15), Z(580)], 0.11], 'pump': {'node': 'pump_wzA', 'travel': W(95)}}
     return finish('w_shotgun', bodies + [pnode], meta)
 

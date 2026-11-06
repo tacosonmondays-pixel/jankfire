@@ -118,7 +118,8 @@ def build():
         apply_mods(o); c = o.matrix_world.translation; uv_planar(o, (c.x, c.z, -c.y), sz, '-x')
     WZ = {'bw_pvc': 'a', 'bw_cap': 'a', 'bw_coupling': 'b', 'bw_tank': 'b', 'bw_valve': 'b', 'bw_black': 'b', 'bw_grip': 'b', 'bw_ball': 'b'}  # wrap zones (wrapzones.js): a = handle side, b = business end, everything else keeps its look
     bodies = zone_join(parts, 'bowling_body', WZ, default='n', rule=None)
-    meta = {'kind': 'weapon', 'id': 'bowling', 'paint': ['bw_coupling', 'bw_ball'], 'muzzle': [0, 0, -0.6], 'hatAt': [[0, 0.157, -0.12], 0.15]}
+    meta = {'kind': 'weapon', 'id': 'bowling', 'paint': ['bw_coupling', 'bw_ball'], 'muzzle': [0, 0, -0.6], 'hatAt': [[0, 0.157, -0.12], 0.15],
+            'ads': [0.2, -0.24, -0.42]}  # no sights: aiming tucks the big tube down and right so the middle of the screen stays clear
     return finish('w_bowling', bodies + [], meta)
 
 
