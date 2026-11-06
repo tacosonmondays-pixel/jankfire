@@ -199,6 +199,7 @@ export const sfx = {
   empty() { tone('square', 900, 900, 0.02, 0.1); },
   hammer(pos) { tone('square', 2300, 1500, 0.018, 0.12, pos); noise(0.025, 0.35, 'highpass', 3500, 6000, pos); }, // fanning: slap the hammer back
   twirl(pos) { noise(0.2, 0.16, 'bandpass', 700, 2400, pos, 0.02, 2.5); tone('square', 320, 260, 0.025, 0.06, pos, 0.24); }, // whirr round the finger, tk into the palm
+  clatter(pos) { for (let i = 0; i < 10; i++) { const f = 2000 + Math.random() * 3600; tone('sine', f, f * 0.9, 0.04, 0.1, pos, i * 0.028 + Math.random() * 0.03); } noise(0.3, 0.18, 'highpass', 3000, 5000, pos); }, // a pile of marbles going everywhere
   marble(pos) { const f = 2600 + Math.random() * 2600; tone('sine', f, f * 0.92, 0.035, 0.07, pos); },
   ricochet(pos) { tone('sine', 2600, 900, 0.18, 0.15, pos); },
   squeak(pos) { tone('sine', 1100, 1900, 0.08, 0.3, pos); tone('sine', 1900, 1100, 0.1, 0.3, pos, 0.08); },
@@ -269,6 +270,17 @@ export const sfx = {
   guilty(pos, big) { for (const [f, d, len] of [[196, 0, 0.16], [185, 0.2, 0.16], [147, 0.4, big ? 1.1 : 0.6]]) { tone('sawtooth', f, f * 0.99, len, 0.09, pos, d + 0.15); tone('square', f / 2, f / 2, len, 0.06, pos, d + 0.15); } }, // dun dun DUNNN
   acquit(pos) { tone('sine', 660, 660, 0.18, 0.16, pos, 0.12); tone('sine', 990, 990, 0.35, 0.14, pos, 0.24); tone('triangle', 1320, 1320, 0.4, 0.06, pos, 0.24); },
   chains(pos) { for (let i = 0; i < 6; i++) { const f = 2400 + Math.random() * 2600; tone('square', f, f * 0.9, 0.025, 0.035, pos, i * 0.035 + Math.random() * 0.02); } },
+  // shredder: teeth chewing, a wet spit out of the chute, the overheat hiss, and other people's suction (k = spin)
+  shred(pos) { noise(0.13, 0.75, 'bandpass', 1700, 450, pos, 0, 1.4); tone('square', 95, 55, 0.13, 0.22, pos); noise(0.05, 0.45, 'highpass', 3500, 6000, pos, 0.06); },
+  spit(pos) { noise(0.18, 0.8, 'lowpass', 1500, 180, pos); tone('sine', 300, 70, 0.17, 0.4, pos); },
+  overheat(pos) { noise(1.0, 0.35, 'highpass', 5200, 2400, pos); tone('square', 1300, 1300, 0.07, 0.14, pos); tone('square', 1300, 1300, 0.07, 0.14, pos, 0.13); },
+  startup(pos) { for (let i = 0; i < 3; i++) noise(0.06, 0.55, 'lowpass', 1000, 180, pos, i * 0.075); tone('sawtooth', 45, 150, 0.55, 0.16, pos, 0.2); tone('square', 90, 380, 0.5, 0.05, pos, 0.22); }, // sputter sputter VRRRM
+  suck(pos, k = 1) { noise(0.34, 0.2 + 0.25 * k, 'bandpass', 450 + 1000 * k, 300 + 700 * k, pos, 0, 1.1); tone('sawtooth', 70 + 170 * k, 76 + 180 * k, 0.32, 0.04 + 0.05 * k, pos); },
+  // modes: zombie groans, getting infected, climbing / falling down the gun game ladder
+  groan(pos) { const f = 80 + Math.random() * 45; tone('sawtooth', f, f * 0.7, 1.1, 0.2, pos); tone('sawtooth', f * 1.51, f * 1.02, 1.0, 0.09, pos, 0.06); noise(0.9, 0.22, 'bandpass', 520, 240, pos, 0, 3); },
+  infected() { tone('sawtooth', 110, 52, 1.5, 0.3); tone('sawtooth', 117, 55, 1.5, 0.25); tone('square', 233, 110, 1.2, 0.07, null, 0.05); noise(1.3, 0.45, 'lowpass', 900, 50); },
+  rankUp() { for (const [f, d] of [[523, 0], [659, 0.06], [784, 0.12], [1046, 0.18]]) tone('square', f, f, 0.09, 0.11, null, d); },
+  sad() { for (const [f, d, l] of [[311, 0, 0.28], [294, 0.3, 0.28], [277, 0.6, 0.28], [262, 0.9, 0.9]]) tone('sawtooth', f, f * 0.97, l, 0.16, null, d); },
 };
 // katana parry: a struck blade. a free metal bar rings at 1 : 2.76 : 5.40 : 8.93 (not harmonic, that's what makes it
 // sound like steel), over a scraping hiss, with a hard click on top and a detuned pair for the shimmer.
@@ -342,6 +354,38 @@ const LOOPDEF = {
   roll: { type: 'lowpass', f: 240, q: 1.2, vol: 0.55, osc: ['sawtooth', 34, 0.06] }, // wrecking ball rumbling along the floor
 };
 
+// a tone that swells up instead of dying away (the whine before a blood cross bursts)
+function bcSwell(type, f0, f1, dur, v, pos) {
+  if (!ac) return;
+  const t = ac.currentTime;
+  const o = ac.createOscillator();
+  o.type = type;
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + dur);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0005, t);
+  g.gain.exponentialRampToValueAtTime(v, t + dur * 0.95);
+  g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.05);
+  o.connect(g); g.connect(dest(pos));
+  o.start(t); o.stop(t + dur + 0.08);
+}
+// Blood Cross
+Object.assign(sfx, {
+  bcBeat(pos) { // a wet heartbeat, lub-dub: you just paid 12 HP
+    tone('sine', 95, 36, 0.16, 0.9, pos); noise(0.1, 0.5, 'lowpass', 500, 90, pos);
+    tone('sine', 80, 32, 0.15, 0.6, pos, 0.17); noise(0.13, 0.4, 'bandpass', 700, 160, pos, 0.16, 2);
+  },
+  bcStick(pos) { noise(0.1, 0.6, 'bandpass', 1400, 300, pos, 0, 1.5); tone('sine', 380, 110, 0.09, 0.35, pos); },
+  bcWhine(pos, dur = 0.6) { bcSwell('sawtooth', 170, 1500, dur, 0.12, pos); bcSwell('sine', 340, 2600, dur, 0.1, pos); },
+  bcErupt(pos) { noise(0.22, 0.8, 'bandpass', 2400, 400, pos, 0, 0.9); tone('sawtooth', 140, 45, 0.2, 0.35, pos); tone('square', 900, 1800, 0.05, 0.08, pos); },
+  bcBoom(pos) { // a splattery boom: the bang, then the wet bits landing
+    noise(0.9, 1, 'lowpass', 1600, 60, pos); tone('sine', 120, 30, 0.8, 0.9, pos);
+    for (let i = 0; i < 7; i++) noise(0.06 + Math.random() * 0.06, 0.45, 'bandpass', 900 + Math.random() * 1600, 200, pos, 0.05 + i * 0.045 + Math.random() * 0.03, 1.8);
+  },
+  bcFizzle(pos) { noise(0.35, 0.35, 'highpass', 3500, 6500, pos); tone('sine', 300, 120, 0.12, 0.1, pos, 0.2); },
+  bcRefund() { tone('sine', 220, 660, 0.22, 0.25); tone('triangle', 440, 1320, 0.25, 0.15, null, 0.06); },
+});
+
 export function loopSfx(name, on) {
   if (!ac) return;
   let l = loops[name];
@@ -376,3 +420,55 @@ export function loopLevel(name, k) {
 }
 
 export function stopLoops() { for (const k in loops) loopSfx(k, false); }
+
+// shredder motor: a whine that climbs as the teeth spin up (k 0..1). it sits in loops so stopLoops() shuts it up too
+export function shredMotor(k) {
+  if (!ac) return;
+  let l = loops.shredder;
+  if (!l) {
+    if (k <= 0.01) return;
+    const g = ac.createGain(); g.gain.value = 0; g.connect(master);
+    const s = ac.createBufferSource(); s.buffer = nbuf; s.loop = true;
+    const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.3; f.frequency.value = 300;
+    s.connect(f); f.connect(g); s.start();
+    const og = ac.createGain(); og.gain.value = 0.22; og.connect(g);
+    const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 50; o.connect(og); o.start();
+    const o2 = ac.createOscillator(); o2.type = 'square'; o2.frequency.value = 100; o2.connect(og); o2.start();
+    l = loops.shredder = { g, on: false, def: { vol: 0.45 }, f, o, o2 };
+  }
+  const on = k > 0.01, t = ac.currentTime;
+  l.o.frequency.setTargetAtTime(48 + k * 230, t, 0.06);
+  l.o2.frequency.setTargetAtTime(96 + k * 700, t, 0.06);
+  l.f.frequency.setTargetAtTime(260 + k * 1900, t, 0.06);
+  if (on || l.on) l.g.gain.setTargetAtTime(on ? 0.1 + k * 0.35 : 0, t, 0.05);
+  l.on = on;
+}
+
+// the backrooms hum: mains buzz from old fluorescent ballasts, two tubes slightly out of tune with each other. quiet, constant
+let humG = null, humV = -1;
+export function hum(on, k = 1) {
+  if (!ac) return;
+  const v = on ? 0.5 * k : 0;
+  if (v === humV || (!humG && !v)) return;
+  if (!humG) {
+    humG = ac.createGain(); humG.gain.value = 0; humG.connect(master);
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1400; lp.connect(humG);
+    for (const [type, f, a] of [['sine', 60, 0.06], ['sawtooth', 120, 0.035], ['sawtooth', 120.4, 0.025], ['square', 180, 0.006]]) {
+      const o = ac.createOscillator(); o.type = type; o.frequency.value = f;
+      const g = ac.createGain(); g.gain.value = a; o.connect(g); g.connect(lp); o.start();
+    }
+    const s = ac.createBufferSource(); s.buffer = nbuf; s.loop = true; // the fizz of the tubes
+    const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 5200; bp.Q.value = 4;
+    const ng = ac.createGain(); ng.gain.value = 0.012;
+    s.connect(bp); bp.connect(ng); ng.connect(humG); s.start();
+  }
+  humG.gain.setTargetAtTime(v, ac.currentTime, v ? 0.6 : 0.08);
+  humV = v;
+}
+// chaos modes: a duck falling out of the sky (a whistle that drops as it comes down), lava hissing, a lava rumble
+Object.assign(sfx, {
+  whistle(pos, dur = 1.6) { tone('sine', 2300, 520, dur, 0.2, pos); tone('sine', 2330, 535, dur, 0.08, pos); },
+  sizzle(pos) { noise(0.5, 0.55, 'highpass', 5200, 1800, pos, 0, 0.8); noise(0.25, 0.4, 'bandpass', 900, 300, pos, 0.02, 3); tone('square', 90, 40, 0.18, 0.12, pos); },
+  rumble(pos) { noise(1.6, 0.7, 'lowpass', 260, 40, pos); tone('sawtooth', 55, 30, 1.4, 0.3, pos); for (let i = 0; i < 5; i++) noise(0.12, 0.35, 'highpass', 3000, 1200, pos, 0.2 + i * 0.22, 1); },
+  chamber(pos) { tone('square', 1500, 1450, 0.04, 0.2, pos); tone('square', 700, 650, 0.07, 0.2, pos, 0.06); },
+});

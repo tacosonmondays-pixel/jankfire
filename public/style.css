@@ -308,8 +308,8 @@ body.replaying #weaponName, body.replaying #meter, body.replaying #hand, body.re
 #center.epicbrag::first-line { font-size: 56px; color: #ffd23b; }
 @keyframes epicpop { from { transform: translate(-50%, -50%) rotate(-3deg) scale(2.2); } }
 
-#speedLines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; image-rendering: pixelated; }
-body.replaying #speedLines { visibility: hidden; }
+#speedLinesCv { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; image-rendering: pixelated; }
+body.replaying #speedLinesCv { visibility: hidden; }
 
 .allmode { display: block; font-size: 14px; margin: 4px 0 8px; color: #ffe14d; }
 
@@ -476,6 +476,119 @@ body.replaying #mlg { display: none; }
 .chips.sprays .chip.locked::before { position: absolute; left: 3px; top: 2px; font-size: 11px; }
 .chips.sprays .chip span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #rollResult .sprayPic { display: block; width: 96px; height: 96px; margin: 6px auto 0; image-rendering: pixelated; background: #5d5d66; border: 2px solid #000; }
+/* Sniper Royalty: the gold toast per feat, the four boxes, the GOLDEN SNIPER UNLOCKED moment */
+#royalToast { position: absolute; left: 50%; top: max(12%, 92px); transform: translate(-50%, -12px) scale(0.92); opacity: 0; transition: opacity 0.25s, transform 0.25s; text-align: center; padding: 6px 16px 8px; background: linear-gradient(180deg, rgba(64, 38, 0, 0.85), rgba(26, 13, 0, 0.85)); border: 3px solid #ffc21a; box-shadow: 0 0 18px rgba(255, 194, 26, 0.45), 4px 4px 0 #000; white-space: nowrap; }
+#royalToast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+#royalToast .rt { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 24px; }
+#royalToast .rt b { color: #ffd23b; letter-spacing: 1px; }
+#royalToast .rt span { color: #fff; }
+#royalToast .rsub { font-size: 13px; color: #ffb0e0; margin-top: 2px; }
+.rcrown { width: 34px; height: 26px; }
+.rcrown svg, .rcrownbig svg { width: 100%; height: 100%; display: block; }
+.rfeats { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; margin-top: 4px; font-size: 13px; }
+.rf { display: inline-flex; align-items: center; gap: 5px; color: #a8987a; }
+.rf i { display: inline-block; width: 13px; height: 13px; border: 2px solid currentColor; font-style: normal; font-size: 11px; line-height: 13px; text-align: center; }
+.rf.on { color: #ffd23b; }
+.rf.on i { background: #ffd23b; color: #2a1800; text-shadow: none; }
+.rf.new { animation: rfpop 0.5s 3; }
+@keyframes rfpop { 50% { transform: scale(1.3) rotate(-5deg); color: #fff; } }
+#royalBig { position: absolute; inset: 0; overflow: hidden; opacity: 0; visibility: hidden; transition: opacity 0.4s, visibility 0s 0.4s; background: radial-gradient(ellipse at 50% 56%, rgba(255, 200, 60, 0) 35%, rgba(255, 170, 20, 0.3) 100%); }
+#royalBig.show { opacity: 1; visibility: visible; transition: opacity 0.15s; }
+#royalBig .rrays { position: absolute; left: 50%; top: 56%; width: 150vmax; height: 150vmax; transform: translate(-50%, -50%); background: repeating-conic-gradient(rgba(255, 214, 80, 0.24) 0 7deg, transparent 7deg 18deg); -webkit-mask: radial-gradient(circle, #000 0 10%, transparent 40%); mask: radial-gradient(circle, #000 0 10%, transparent 40%); animation: rrays 7s linear infinite; }
+@keyframes rrays { to { transform: translate(-50%, -50%) rotate(360deg); } }
+#royalBig .rcrownbig { position: absolute; left: 50%; top: 45%; width: 110px; height: 82px; transform: translate(-50%, -50%); filter: drop-shadow(0 0 12px rgba(255, 210, 60, 0.9)) drop-shadow(3px 3px 0 #000); animation: rcrown 0.7s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+@keyframes rcrown { from { transform: translate(-50%, -140%) scale(0.2) rotate(-25deg); } }
+#royalBig .rbig { position: absolute; left: 50%; top: 56%; transform: translate(-50%, -50%) rotate(-3deg); font-size: clamp(30px, 6vw, 68px); white-space: nowrap; text-shadow: none;
+  background: linear-gradient(100deg, #b07410 0%, #ffe27a 30%, #fff8d8 45%, #ffc21a 60%, #b07410 100%); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: #ffd23b;
+  filter: drop-shadow(3px 3px 0 #000) drop-shadow(0 0 10px rgba(255, 190, 40, 0.8)); animation: rshine 1.6s linear infinite, rslam 0.5s cubic-bezier(0.2, 1.8, 0.4, 1) both; }
+@keyframes rshine { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+@keyframes rslam { from { transform: translate(-50%, -50%) rotate(-3deg) scale(2.6); opacity: 0; } }
+#royalBig .rsub { position: absolute; left: 50%; top: 64%; transform: translateX(-50%); width: max-content; max-width: 92vw; font-size: 17px; color: #fff3c0; text-align: center; }
+#royalBig .rsparks { position: absolute; left: 50%; top: 56%; }
+#royalBig .rsparks i { position: absolute; width: 8px; height: 8px; background: #ffe27a; box-shadow: 0 0 8px #ffc21a; transform: rotate(45deg); animation: rspark 1.4s ease-out both; }
+@keyframes rspark { from { transform: translate(0, 0) rotate(45deg) scale(1.4); opacity: 1; } to { transform: translate(var(--dx), var(--dy)) rotate(225deg) scale(0.2); opacity: 0; } }
+/* cosmetics: skins you earn from an achievement */
+.chip.achchip { box-shadow: 0 0 6px rgba(255, 194, 26, 0.55); }
+.chip.achchip.locked { opacity: 0.8; }
+.achskin { margin: 2px 0 6px; padding: 6px 10px; background: rgba(255, 194, 26, 0.08); border: 2px dashed #b08a2a; font-size: 13px; color: #e8dcb8; }
+.achskin b { color: #ffd23b; font-size: 15px; }
+.achskin.done { border-style: solid; border-color: #ffc21a; }
+.achskin .rfeats, .ach .rfeats { justify-content: flex-start; }
+.ach .rfeats { margin: 3px 0 1px; font-size: 12px; }
+@media (max-width: 700px) { #royalToast { white-space: normal; max-width: 94vw; } #royalToast .rt { font-size: 18px; gap: 8px; } }
+/* gun game: rung, weapon now + next, a pip per rung (the leader's gets a marker) */
+#ggBar { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); text-align: center; white-space: nowrap; background: rgba(10, 0, 20, 0.55); border: 2px solid rgba(255, 255, 255, 0.2); padding: 3px 12px 5px; }
+#ggBar .gtop { display: flex; gap: 10px; align-items: baseline; justify-content: center; font-size: 18px; }
+#ggRung { font-size: 24px; color: var(--yellow); }
+#ggNext { font-size: 13px; opacity: 0.85; }
+#ggPips { display: flex; gap: 3px; justify-content: center; margin-top: 3px; }
+#ggPips i { position: relative; width: 12px; height: 7px; border: 1px solid var(--c); background: rgba(0, 0, 0, 0.5); }
+#ggPips i.done { background: var(--c); opacity: 0.5; }
+#ggPips i.on { background: var(--c); border-color: #fff; transform: scaleY(1.7); box-shadow: 0 0 6px var(--c); }
+#ggPips i.lead::after { content: '\25BC'; position: absolute; left: 50%; top: -13px; transform: translateX(-50%); font-size: 10px; color: #ff4f4f; }
+#ggLead { font-size: 12px; color: #ddd; margin-top: 2px; }
+body.mode-gun #streakTray, body.zombie #streakTray { display: none; }
+/* infection: survivors vs zombies bar, the green haze when you're one, the big YOU ARE INFECTED */
+#infBar { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); text-align: center; white-space: nowrap; background: rgba(10, 0, 20, 0.55); border: 2px solid #7dff4f; padding: 3px 12px 6px; }
+#infLine { font-size: 18px; }
+body.zombie #infLine { color: #7dff4f; }
+#infMeter { width: 220px; height: 7px; margin: 4px auto 0; background: #fff; border: 1px solid #000; }
+#infMeter i { display: block; height: 100%; width: 0; background: #7dff4f; transition: width 0.3s; }
+#infFx { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, transparent 45%, rgba(60, 255, 40, 0.38) 100%); transition: opacity 0.6s; }
+body.zombie #infFx { opacity: 1; }
+#infFx.flash { animation: infflash 1.4s ease-out; }
+@keyframes infflash { 0% { opacity: 1; background-color: rgba(70, 255, 40, 0.6); } 100% { background-color: rgba(70, 255, 40, 0); } }
+#infBig { position: absolute; left: 50%; top: 30%; z-index: 5; transform: translate(-50%, -50%); text-align: center; white-space: nowrap; opacity: 0; pointer-events: none; }
+#infBig b { display: block; font-size: 68px; color: #7dff4f; -webkit-text-stroke: 2px #000; text-shadow: 5px 5px 0 #000; }
+#infBig span { font-size: 20px; color: #fff; }
+#infBig.go { animation: infbig 3s ease-out forwards; }
+@keyframes infbig {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(2.6) rotate(-10deg); }
+  10% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-3deg); }
+  14% { transform: translate(-52%, -49%) scale(1.04) rotate(-5deg); }
+  18% { transform: translate(-48%, -51%) scale(1) rotate(-1deg); }
+  22%, 82% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-3deg); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.06) rotate(-3deg); }
+}
+body.replaying #ggBar, body.replaying #infBar, body.replaying #infFx { visibility: hidden; }
+/* chaos modes: floor is lava, duck rain, one in the chamber, spoons */
+#center.lava { color: #ff6a1a; font-size: 64px; text-shadow: 3px 3px 0 #000, 0 0 18px #ff3a00; animation: wobble 0.35s infinite; }
+#lavaGlow { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.6s; background: linear-gradient(0deg, rgba(255, 70, 0, 0.32) 0%, rgba(255, 90, 0, 0.08) 22%, transparent 45%); }
+#lavaGlow.on { opacity: 1; animation: lavapulse 2.4s ease-in-out infinite; }
+@keyframes lavapulse { 50% { filter: brightness(1.35); } }
+#lavaHit { position: absolute; inset: 0; pointer-events: none; opacity: 0; box-shadow: inset 0 0 160px 50px rgba(255, 80, 0, 0.9); }
+#lavaHit.on { animation: lavahit 0.6s ease-out; }
+@keyframes lavahit { from { opacity: 1; } to { opacity: 0; } }
+#chaosHud { position: absolute; right: 18px; bottom: 96px; display: none; flex-direction: column; align-items: flex-end; gap: 4px; font-size: 14px; transform: rotate(-1.5deg); } /* where the ammo counter usually is */
+body.hotbar-right #chaosHud { right: 50%; transform: translateX(50%); bottom: 14px; }
+body.chaos-lives #chaosHud { display: flex; }
+body.chaos-lives #ammo, body.chaos-nostreaks #streakTray, body.chaos-lives #streak { display: none !important; }
+.ch-row { display: flex; align-items: center; gap: 5px; background: rgba(0, 0, 0, 0.45); padding: 3px 8px; }
+.ch-row span { width: 62px; color: #ddd; }
+.ch-bul { display: inline-block; width: 11px; height: 24px; border: 2px solid #6a5420; border-radius: 6px 6px 1px 1px; background: rgba(255, 255, 255, 0.08); }
+.ch-bul.on { background: linear-gradient(180deg, #ffe6a0 0 30%, #d9a43a 30% 100%); border-color: #000; box-shadow: 0 0 8px rgba(255, 210, 90, 0.7); }
+.ch-life { font-size: 22px; color: #555; line-height: 1; }
+.ch-life.on { color: #ff3b5c; text-shadow: 2px 2px 0 #000; }
+#specBar { position: absolute; left: 50%; bottom: 90px; transform: translateX(-50%); display: none; font-size: 20px; color: #ffe14d; background: rgba(10, 0, 20, 0.75); border: 3px solid var(--pink); padding: 6px 16px; white-space: nowrap; }
+#specBar.on { display: block; }
+body.replaying #chaosHud, body.replaying #specBar, body.replaying #lavaGlow { visibility: hidden; }
+#setupMap option:disabled { color: #666; }
+body.chaos-spec #hotbar, body.chaos-spec #hpbox, body.chaos-spec #crosshair, body.chaos-spec #speed, body.chaos-spec #chaosHud { visibility: hidden; }
+
+/* blood cross impact frames (hud.impact) */
+#impactFx { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+#impactFx.f1 { background: #ff1428; mix-blend-mode: multiply; }
+#impactFx.f2 { background: radial-gradient(circle at center, rgba(255, 70, 60, 0.95) 0 14%, rgba(40, 0, 6, 0.93) 42%); }
+#impactFx.f3 { background: radial-gradient(ellipse at center, rgba(255, 40, 40, 0.12) 25%, rgba(190, 0, 20, 0.6)); mix-blend-mode: screen; }
+
+/* wrap mode toggle: NORMAL / REVERSE / FULL, a little knife shows which half the wrap paints */
+.wrapmode { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; flex-wrap: wrap; }
+.wrapmode button { font-family: var(--font); font-weight: bold; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; cursor: pointer; background: #fff; color: #000; border: 3px solid #000; box-shadow: 3px 3px 0 #000; }
+.wrapmode button:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #000; }
+.wrapmode button.on { background: var(--yellow); box-shadow: 4px 4px 0 var(--pink); transform: rotate(-2deg); }
+.wrapmode svg { width: 46px; height: 14px; display: block; }
+.wrapmode .hint { font-size: 13px; color: #ffe14d; flex-basis: 100%; }
+.wrapmode.off { opacity: 0.5; }
 
 /* ---------------- music: now playing (a little zine sticker; in matches it slides in top-left, under the ping) */
 #nowPlaying { position: fixed; right: 18px; bottom: 16px; z-index: 50; pointer-events: none; color: #fff; background: rgba(18, 8, 24, 0.92); border: 3px solid var(--pink); box-shadow: 5px 5px 0 var(--cyan); padding: 5px 12px 6px; transform: rotate(-1.5deg) translateY(14px); opacity: 0; transition: opacity 0.35s, transform 0.35s cubic-bezier(0.2, 1.6, 0.5, 1); text-shadow: 2px 2px 0 #000; max-width: min(420px, 60vw); }

@@ -1,7 +1,7 @@
 // Weapon pictures for the hotbar: each weapon (with your skin, wrap and hat) rendered side-on into a small
 // transparent image, cached until something about it changes.
 import * as THREE from 'three';
-import { buildWeapon } from './models.js';
+import { buildWeapon, freeTree } from './models.js';
 
 const IW = 160, IH = 96;
 let r = null, scene = null, cam = null;
@@ -46,6 +46,7 @@ export function weaponIcon(id, skin) {
     r.render(scene, cam);
     const url = r.domElement.toDataURL('image/png');
     scene.remove(holder);
+    freeTree(holder); // only the picture is kept
     cache.set(key, url);
     return url;
   } catch (e) {

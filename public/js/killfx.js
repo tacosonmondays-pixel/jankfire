@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { G } from './ctx.js';
 import { fx } from './fx.js';
 import { sfx } from './audio.js';
-import { buildCharacter, buildProjectile, M } from './models.js';
+import { buildCharacter, buildProjectile, M, freeTree } from './models.js';
 import { raycast } from '/shared/physics.js';
 import { BOXES } from '/shared/map.js';
 
@@ -15,6 +15,12 @@ function floorAt(p) {
   return h ? h.point[1] : p[1];
 }
 function add(obj, life, step) { G.scene.add(obj); live.push({ obj, age: 0, life, step }); return obj; }
+const own = (m) => { m.userData.own = true; return m; }; // made for one effect: freed with it
+function drop(obj) { // done: give its GPU copies back (the shared M() materials stay)
+  G.scene.remove(obj);
+  freeTree(obj);
+  obj.traverse((o) => { const m = o.material; if (m && m.userData && m.userData.own) { if (m.map) m.map.dispose(); m.dispose(); } });
+}
 
 // a copy of the victim's mannequin to do horrible things to
 function body(c) {
@@ -39,6 +45,9 @@ function textTex(lines, w, h, bg, fg, font) {
   return tex;
 }
 
+// Blast Zone's size (1 = the original big burst). a knob so it's easy to tune
+export const BLASTZONE = { scale: 0.33 }; // one third of the original burst (owner pick, 2026-11-06)
+
 const EFFECTS = {
   confetti(c) {
     const p = [c.pos[0], c.pos[1] + 1.2, c.pos[2]];
@@ -55,7 +64,7 @@ const EFFECTS = {
     slab.position.y = 0.5;
     const top = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.22, 10, 1, false, 0, Math.PI), stone);
     top.rotation.x = Math.PI / 2; top.rotation.z = Math.PI / 2; top.position.y = 1.0;
-    const face = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.7), new THREE.MeshBasicMaterial({ map: textTex([['R.I.P.', 34], [String(c.name || 'bozo').slice(0, 12), 22], ['skill issue', 16]], 200, 170, '#8a8f99', '#2a2a30') }));
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.7), own(new THREE.MeshBasicMaterial({ map: textTex([['R.I.P.', 34], [String(c.name || 'bozo').slice(0, 12), 22], ['skill issue', 16]], 200, 170, '#8a8f99', '#2a2a30') })));
     face.position.set(0, 0.62, 0.115);
     const dirt = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.08, 1.6), M(0x5a3a20));
     dirt.position.set(0, 0.04, 0.8);
@@ -73,7 +82,7 @@ const EFFECTS = {
     const p = [c.pos[0], c.pos[1] + 1.2, c.pos[2]];
     fx.spray(p, 90, [0x3bbf4a, 0x2a8a35, 0xffd21a], 12, 2.2, 0.2, 4, 2.2);
     for (let i = 0; i < 14; i++) {
-      const bill = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.15), new THREE.MeshBasicMaterial({ color: 0x5fd36a, side: THREE.DoubleSide }));
+      const bill = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.15), own(new THREE.MeshBasicMaterial({ color: 0x5fd36a, side: THREE.DoubleSide })));
       bill.position.set(p[0], p[1], p[2]);
       const v = [R(5), 4 + Math.random() * 6, R(5)], av = [R(8), R(8), R(8)];
       add(bill, 3 + Math.random(), (o, dt) => {
@@ -95,6 +104,7 @@ const EFFECTS = {
       G.scene.add(m);
       G.gibs.push({ m, floorY: fy, life: 2.5 + Math.random() * 2, v: [c.vel[0] * 0.3 + R(5), 2 + Math.random() * 5, c.vel[2] * 0.3 + R(5)], av: [R(10), R(10), R(10)] });
     }
+    setTimeout(() => geo.dispose(), 5000); // after the last of those gibs is gone
     fx.glitch([c.pos[0], c.pos[1], c.pos[2]], [0, 0, 0], 40);
     sfx.glitch(c.pos);
     return true;
@@ -146,7 +156,7 @@ const EFFECTS = {
   },
   bsod(c) {
     const tex = textTex([[':(', 60], ['your player ran into a problem', 17], ['and needs to respawn.', 17], ['', 8], [`STOP CODE: ${String(c.name || 'BOZO').toUpperCase().slice(0, 10)}_DIED`, 13]], 320, 200, '#0a57c2', '#ffffff', 'monospace');
-    const panel = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.5), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, fog: false }));
+    const panel = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.5), own(new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, fog: false })));
     panel.position.set(c.pos[0], c.pos[1] + 1.4, c.pos[2]);
     add(panel, 3.2, (o, dt, age) => {
       o.quaternion.copy(G.camera.quaternion);
@@ -171,10 +181,56 @@ const EFFECTS = {
     sfx.yeet(c.pos);
     return true;
   },
+  // blast zone: knocked clean off the screen. they rocket away spinning with a trail, and where they "hit the edge" a
+  // huge burst of colour jets back toward where they got hit, with a shockwave ring. loud
+  blastzone(c) {
+    const ch = body(c);
+    const hv = Math.hypot(c.vel[0], c.vel[2]);
+    const a = hv > 2 ? Math.atan2(c.vel[2], c.vel[0]) : Math.random() * Math.PI * 2;
+    const dir = new THREE.Vector3(Math.cos(a), 0.55, Math.sin(a)).normalize(), sp = 60 * Math.sqrt(BLASTZONE.scale); // a smaller burst = a shorter flight too
+    const start = new THREE.Vector3(c.pos[0], c.pos[1] + 1, c.pos[2]), FLY = 0.55;
+    const tint = new THREE.Color(c.color || '#ff4fd8').getHex();
+    add(ch.root, FLY, (o, dt, age) => {
+      const k = Math.min(1, age / FLY), d = sp * age * (1 - k * 0.15);
+      o.position.set(start.x + dir.x * d, start.y - 1 + dir.y * d, start.z + dir.z * d);
+      o.rotation.x += dt * 22; o.rotation.z += dt * 15;
+      fx.spray([o.position.x, o.position.y + 1, o.position.z], 2, [0xffffff, 0xffe14d, tint], 1.5, 0.35, 0.22, 0, 2); // the streak behind them
+      if (age + dt >= FLY && !o.userData.boom) { o.userData.boom = 1; boom([o.position.x, o.position.y + 1, o.position.z]); }
+    });
+    const boom = (p) => {
+      const at = new THREE.Vector3(...p), back = start.clone().sub(at).normalize(); // the burst points back at the map
+      // ...but stops well short of where they got hit, and of the camera, so it's a big column you see, not a pink screen
+      const cam = G.camera ? G.camera.position.distanceTo(at) : 60, reach = Math.max(8, Math.min(start.distanceTo(at) * 0.75, cam * 0.6));
+      const beam = (len, r, color, spread, life) => {
+        const f = Math.min(1, reach / 46), k = BLASTZONE.scale; len *= f * k; r *= Math.max(0.5, f) * k;
+        const geo = new THREE.ConeGeometry(r, len, 14, 1, true);
+        geo.translate(0, -len / 2, 0); // the tip at the blast point, opening toward the map
+        const m = new THREE.Mesh(geo, own(new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, fog: false }))); // solid colour (not additive) so it reads on bright skies too
+        const d = back.clone().add(new THREE.Vector3(R(spread), R(spread), R(spread))).normalize();
+        m.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), d);
+        m.position.copy(at); m.scale.set(0.2, 0.2, 0.2);
+        add(m, life, (o, dt, age) => {
+          const k = age / life, grow = Math.min(1, age / 0.08);
+          o.scale.set(grow * (1 + k * 0.6), grow * (1 + k * 0.25), grow * (1 + k * 0.6));
+          o.material.opacity = 0.95 * (1 - k) * (1 - k);
+        });
+      };
+      beam(46, 7, 0xffffff, 0, 0.9); // the white core
+      beam(40, 9.5, tint, 0.08, 1.1); // the victim's colour
+      for (const col of [0xff4fd8, 0xffe14d, 0x4fd8ff, 0x7dff4f]) beam(26 + Math.random() * 14, 3 + Math.random() * 2, col, 0.45, 0.8 + Math.random() * 0.4); // rays fanning out
+      const k = BLASTZONE.scale;
+      fx.ring(p, 14 * k, 0xffffff, 0.5); fx.ring(p, 9 * k, tint, 0.7);
+      fx.explosion(p, 6 * k);
+      fx.spray(p, Math.round(80 * k), [0xffffff, 0xffe14d, 0xff4fd8, 0x4fd8ff, tint], 26 * Math.sqrt(k), 1.2, 0.3, 4, 1.5);
+      sfx.boom(p); sfx.airhorn(true);
+    };
+    sfx.yeet(c.pos);
+    return true;
+  },
   ascend(c) {
     const ch = body(c);
     ch.arm.rotation.z = -1.3; ch.armL.rotation.z = 1.3; // t-pose to heaven
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 120, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff6c0, transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 120, 12, 1, true), own(new THREE.MeshBasicMaterial({ color: 0xfff6c0, transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })));
     beam.position.set(c.pos[0], c.pos[1] + 58, c.pos[2]);
     add(beam, 4.2, (o, dt, age) => { o.material.opacity = Math.min(0.55, age * 2) * Math.min(1, (4.2 - age) * 2); });
     const y0 = c.pos[1];
@@ -218,8 +274,8 @@ export function updateKillFx(dt) {
   for (let i = live.length - 1; i >= 0; i--) {
     const l = live[i];
     l.age += dt;
-    if (l.age >= l.life) { G.scene.remove(l.obj); live.splice(i, 1); continue; }
+    if (l.age >= l.life) { drop(l.obj); live.splice(i, 1); continue; }
     l.step(l.obj, dt, l.age);
   }
 }
-export function clearKillFx() { for (const l of live) G.scene.remove(l.obj); live.length = 0; }
+export function clearKillFx() { for (const l of live) drop(l.obj); live.length = 0; }

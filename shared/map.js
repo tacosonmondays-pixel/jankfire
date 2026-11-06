@@ -1,6 +1,8 @@
 // All maps are lists of axis-aligned boxes. Shared by server (physics, bots) and client (rendering).
 // Maps are generated deterministically so server and client always match.
 // Rule of thumb for builders: never let two different surfaces sit in the same plane (that flickers).
+import { buildNav, navPath, navLocate, navClear } from './nav.js';
+export { prop, PROPS } from './props.js';
 
 function rng(seed) { // mulberry32
   return () => {
@@ -13,6 +15,7 @@ function rng(seed) { // mulberry32
 
 function builder() {
   const boxes = [];
+  boxes.props = []; // Blender props to draw (shared/props.js), visual only
   const add = (x0, y0, z0, x1, y1, z1, mat = 'stone', extra) => {
     if (x1 < x0) [x0, x1] = [x1, x0];
     if (y1 < y0) [y0, y1] = [y1, y0];
@@ -30,29 +33,37 @@ function builder() {
       add(ox + ax, oy + y0, oz + az, ox + bx, oy + y1, oz + bz, mat, extra);
     };
     L.B = (cx, cy, cz, sx, sy, sz, mat, extra) => L(cx - sx / 2, cy - sy / 2, cz - sz / 2, cx + sx / 2, cy + sy / 2, cz + sz / 2, mat, extra);
+    // a prop model at local (x, z), turned r more quarter turns. returns the tag for the boxes it stands in for
+    L.P = (id, x, z, r = 0, o = {}) => {
+      const [ax, az] = T(x, z);
+      boxes.props.push({ id, p: [ox + ax, oy + (o.y || 0), oz + az], r: (rot + r) & 3, v: o.v, color: o.color, s: o.s });
+      return { pv: id };
+    };
     return L;
   };
   return { boxes, add, box, local };
 }
 
 // a wall with holes cut in it. axis 'x' = runs along x at z=fixed, 'z' = runs along z at x=fixed.
-// openings: [{ a, b, y0, y1 }] measured along the wall
+// openings: [{ a, b, y0, y1 }] measured along the wall. they may overlap (a door under a balcony door), so the wall
+// is cut at every opening edge and each piece keeps only the heights no opening covers
 function wall(L, axis, fixed, a0, a1, y0, y1, t, mat, openings = []) {
-  const ops = openings.filter((o) => o.b > a0 && o.a < a1).sort((p, q) => p.a - q.a);
+  const ops = openings.filter((o) => o.b > a0 && o.a < a1);
   const seg = (s0, s1, yy0, yy1) => {
     if (s1 - s0 < 0.02 || yy1 - yy0 < 0.02) return;
     if (axis === 'x') L(s0, yy0, fixed - t / 2, s1, yy1, fixed + t / 2, mat);
     else L(fixed - t / 2, yy0, s0, fixed + t / 2, yy1, s1, mat);
   };
-  let cur = a0;
-  for (const o of ops) {
-    const a = Math.max(a0, o.a), b = Math.min(a1, o.b);
-    seg(cur, a, y0, y1);
-    seg(a, b, y0, Math.max(y0, o.y0));
-    seg(a, b, Math.min(y1, o.y1), y1);
-    cur = b;
+  const cuts = [...new Set([a0, a1, ...ops.flatMap((o) => [Math.max(a0, o.a), Math.min(a1, o.b)])])].sort((p, q) => p - q);
+  for (let i = 0; i < cuts.length - 1; i++) {
+    const s0 = cuts[i], s1 = cuts[i + 1], m = (s0 + s1) / 2;
+    let y = y0;
+    for (const o of ops.filter((o) => o.a < m && o.b > m).sort((p, q) => p.y0 - q.y0)) {
+      seg(s0, s1, y, Math.min(y1, o.y0));
+      y = Math.max(y, o.y1);
+    }
+    seg(s0, s1, y, y1);
   }
-  seg(cur, a1, y0, y1);
 }
 
 // slab with a rectangular hole (for stairwells)
@@ -132,7 +143,8 @@ function shell(L, w, d, floors, F, mat, o = {}) {
 
 // ------------------------------------------------------------ props
 function car(L, x, z, rot, color = 'carred') {
-  const C = (lx0, y0, lz0, lx1, y1, lz1, m) => (rot ? L(x + lz0, y0, z + lx0, x + lz1, y1, z + lx1, m) : L(x + lx0, y0, z + lz0, x + lx1, y1, z + lz1, m));
+  const pv = L.P && L.P('car', x, z, rot ? 1 : 0, { color }); // the Blender car, when it's loaded, stands in for these boxes
+  const C = (lx0, y0, lz0, lx1, y1, lz1, m) => (rot ? L(x + lz0, y0, z + lx0, x + lz1, y1, z + lx1, m, pv) : L(x + lx0, y0, z + lz0, x + lx1, y1, z + lz1, m, pv));
   C(-2.2, 0.32, -0.92, 2.2, 0.95, 0.92, color); // body
   C(-2.3, 0.3, -0.9, -2.2, 0.55, 0.9, 'chrome'); C(2.2, 0.3, -0.9, 2.3, 0.55, 0.9, 'chrome'); // bumpers
   C(-1.1, 0.95, -0.8, 0.9, 1.5, 0.8, 'glass'); // cabin glass
@@ -148,9 +160,10 @@ function tree(L, x, z, h = 4.5) {
   L.B(x, h + 2.2, z, 2.4, 1.0, 2.4, 'leaves');
 }
 function streetlight(L, x, z, armDir = 1) {
-  L.B(x, 3, z, 0.25, 6, 0.25, 'metal');
-  L(x, 5.8, z - 0.12, x + armDir * 1.6, 6.0, z + 0.12, 'metal');
-  L.B(x + armDir * 1.6, 5.8, z, 0.6, 0.25, 0.4, 'light');
+  const pv = L.P && L.P('streetlight', x, z, armDir < 0 ? 2 : 0);
+  L.B(x, 3, z, 0.25, 6, 0.25, 'metal', pv);
+  L(x, 5.8, z - 0.12, x + armDir * 1.6, 6.0, z + 0.12, 'metal', pv);
+  L.B(x + armDir * 1.6, 5.8, z, 0.6, 0.25, 0.4, 'light', pv);
 }
 function acUnit(L, x, z, y) { L.B(x, y + 0.7, z, 2, 1.4, 1.4, 'metal'); L.B(x, y + 1.45, z, 1.2, 0.1, 1.2, 'grid'); }
 function waterTower(L, x, z, y) {
@@ -452,9 +465,13 @@ function warehouse() {
   stairs(W, -40, -37, -Z + 3.2, 1, 0, 7.3, 'grid');
   stairs(W, 37, 40, Z - 3.2, -1, 0, 7.3, 'grid');
   // pallet racks: three levels you can climb
+  const RK = B.local(0, 0, 0);
   for (const x of [-44, -14, 14]) for (const z of [-30, 24]) {
-    for (const lvl of [0, 2.4, 4.8]) add(x, lvl + 2, z - 1.2, x + 18, lvl + 2.25, z + 1.2, 'wood');
-    for (const px of [x, x + 6, x + 12, x + 18]) for (const pz of [z - 1.2, z + 1]) add(px - 0.1, 0, pz, px + 0.1, 7.3, pz + 0.2, 'hazard');
+    const rk = { pv: 'rack' }; // three Blender rack bays + an end frame stand in for these boxes
+    for (const bx of [x, x + 6, x + 12]) RK.P('rack', bx, z, 0, { v: 'bay' });
+    RK.P('rack', x + 18, z, 0, { v: 'frame' });
+    for (const lvl of [0, 2.4, 4.8]) add(x, lvl + 2, z - 1.2, x + 18, lvl + 2.25, z + 1.2, 'wood', rk);
+    for (const px of [x, x + 6, x + 12, x + 18]) for (const pz of [z - 1.2, z + 1]) add(px - 0.1, 0, pz, px + 0.1, 7.3, pz + 0.2, 'hazard', rk);
     for (let i = 0; i < 5; i++) box(x + 2 + i * 3.4, 0.6, z, 2, 1.2, 1.6, 'crate');
     box(x + 4, 3.0, z, 2, 1.2, 1.6, 'crate'); box(x + 12, 5.4, z, 2, 1.2, 1.6, 'crate');
   }
@@ -464,7 +481,8 @@ function warehouse() {
   O(-6, 0.12, -1, -2, 0.85, 1, 'wood'); O(2, 0.12, -1, 6, 0.85, 1, 'wood'); O(-6, 3.85, -1, -2, 4.6, 1, 'wood');
   // forklift + pallets + barrels inside
   const Fk = B.local(-4, -10, 0);
-  Fk(-1.2, 0, -0.8, 1.2, 1.4, 0.8, 'caryellow'); Fk(-0.9, 1.4, -0.7, 0.4, 2.4, 0.7, 'glass'); Fk(1.2, 0, -0.4, 2.6, 0.2, 0.4, 'metal'); Fk(1.2, 0, -0.6, 1.4, 3, 0.6, 'metal');
+  const fk = Fk.P('forklift', 0, 0);
+  Fk(-1.2, 0, -0.8, 1.2, 1.4, 0.8, 'caryellow', fk); Fk(-0.9, 1.4, -0.7, 0.4, 2.4, 0.7, 'glass', fk); Fk(1.2, 0, -0.4, 2.6, 0.2, 0.4, 'metal', fk); Fk(1.2, 0, -0.6, 1.4, 3, 0.6, 'metal', fk);
   for (let i = 0; i < 6; i++) box(-10 + (i % 3) * 1.1, 0.6, 10 + Math.floor(i / 3) * 1.1, 0.9, 1.2, 0.9, 'containerb');
   // outdoor loading yard: containers, trucks
   add(X, -1, -Z - 10, X + 50, 0, Z + 10, 'concrete');
@@ -744,8 +762,9 @@ function bazaar() {
     for (const sx of [-1, 1]) { // stalls along both walls
       const x = sx * 6.5;
       B.add(x - 2, 0, z - 1.5, x + 2, 1.1, z + 1.5, 'wood');
-      for (const dz of [-1.4, 1.4]) B.box(x + sx * -1.8, 1.3, z + dz, 0.15, 2.6, 0.15, 'wood');
-      B.add(x - 2.4, 2.6, z - 1.9, x + 2.4, 2.75, z + 1.9, (z / 8) % 2 ? 'cloth' : 'pink');
+      for (const dz of [-1.4, 1.4]) B.box(x + sx * -1.8, 1.5, z + dz, 0.15, 3, 0.15, 'wood');
+      // awning high enough (counter + 1.9) that you can jump onto the counter and walk over it, under the gallery (3.15)
+      B.add(x - 2.4, 3, z - 1.9, x + 2.4, 3.1, z + 1.9, (z / 8) % 2 ? 'cloth' : 'pink');
     }
   }
   for (const z of [18, 38]) B.add(-4, 3.2, z - 0.05, 4, 7, z + 0.05, 'cloth'); // hanging banners
@@ -763,7 +782,9 @@ function bazaar() {
   // Stable: its roof is the Bridge
   B.add(20, 0, -30, 34, 3.4, -2, 'adobe');
   B.add(20, 3.4, -30, 34, 4.4, -29.6, 'adobe'); B.add(20, 3.4, -2.4, 34, 4.4, -2, 'adobe');
-  B.add(20, 3.4, -29.6, 20.4, 4.4, -16, 'adobe'); B.add(20, 3.4, -8.4, 20.4, 4.4, -2.4, 'adobe');
+  B.add(20, 3.4, -29.6, 20.4, 4.4, -22, 'adobe'); B.add(20, 3.4, -8.4, 20.4, 4.4, -2.4, 'adobe');
+  // the plaza corner north of the landing climbs onto the Bridge too (it was a dead end that walled in anyone heading for the roof)
+  for (let i = 0; i < 8; i++) B.add(16 + i * 0.5, 0, -22, 16.5 + i * 0.5, (i + 1) * 0.425, -16, 'adobe');
   B.add(33.6, 3.4, -26, 34, 4.4, -2.4, 'adobe'); // east parapet, gap at the A end so you can drop onto the terrace
   for (const z of [-24, -18, -12, -6]) B.box(27, 3.4 + 0.5, z, 1.2, 1, 1.2, 'crate');
   // a crate staircase in A's approach: hop up and over the parapet onto the Bridge
@@ -785,8 +806,10 @@ function bazaar() {
   B.add(36.8, 3.2, 10, 37, 4.1, 40.8, 'wood'); // rail
   for (let z = 12; z <= 40; z += 7) B.box(36.6, 1.5, z, 0.3, 2.95, 0.3, 'wood');
   B.add(34, 3.2, 9.8, 37, 4.1, 10, 'wood');
-  // the Gate: chokepoint into A, with a hole up high you can jump through
-  wall(W, 'x', -6, 34, 56, 0, 6, 1, 'brick', [{ a: 40, b: 46, y0: 0, y1: 4 }, { a: 51, b: 53.5, y0: 1.9, y1: 3.1 }]);
+  // the Gate: chokepoint into A, with a hole up high you can jump through (sill 1.2 = one jump from A's side,
+  // 2.2 tall so you fit on the 1 m sill). from the canal you get up via the crate standing in the water under it
+  wall(W, 'x', -6, 34, 56, 0, 6, 1, 'brick', [{ a: 40, b: 46, y0: 0, y1: 4 }, { a: 51, b: 53.5, y0: 1.2, y1: 3.4 }]);
+  B.add(51.1, -1.6, -5.5, 53.4, 0, -4.2, 'crate');
 
   // ---- SITE A: the terrace. raised, tiled, orange canopies. ways in: gate ramp (south), Bridge drop (west), garden stairs (north)
   B.add(34, 0, -50, 56, 1.6, -28, 'tile');
@@ -826,14 +849,15 @@ function bazaar() {
   B.box(-56, 0.6, -46, 1.2, 1.2, 1.2, 'crate'); B.box(-36, 0.6, -32, 2, 1.2, 1.2, 'crate'); B.box(-38, 1.6, -45, 2.4, 3.2, 1.2, 'wood');
   B.add(-64, 0, -52, -63.7, 6, -24, 'blue'); // painted wall: B is cool
 
-  // ---- the Spice House: two floors between mid plaza and B. door from the plaza, door + upstairs window onto B
+  // ---- the Spice House: two floors between mid plaza and B. door from the plaza, a door onto B with the balcony door right above it
   const SX0 = -30, SX1 = -20, SZ0 = -30, SZ1 = -6, F = 3.6;
   B.add(SX0, 0, SZ0, SX1, 0.12, SZ1, 'wood');
   wall(W, 'z', SX1, SZ0, SZ1, 0, 2 * F, 0.4, 'plaster', [{ a: -18, b: -15, y0: 0, y1: 2.8 }, { a: -11, b: -9, y0: F + 1, y1: F + 2.2 }]);
-  wall(W, 'z', SX0, SZ0, SZ1, 0, 2 * F, 0.4, 'plaster', [{ a: -28, b: -25.5, y0: 0, y1: 2.8 }, { a: -29.4, b: -26.6, y0: F + 0.25, y1: F + 2.7 }]);
-  // balcony over B: walk upstairs, out the door, look down on the site (or drop in)
+  wall(W, 'z', SX0, SZ0, SZ1, 0, 2 * F, 0.4, 'plaster', [{ a: -28, b: -25.5, y0: 0, y1: 2.8 }, { a: -28.15, b: -25.35, y0: F + 0.25, y1: F + 2.7 }]);
+  // balcony over B: walk upstairs, out the door, look down on the site (or drop in through the gap in the rail)
   B.add(-34, F, -30, -30.2, F + 0.25, -24, 'wood');
-  B.add(-34, F + 0.25, -30, -33.8, F + 1.15, -24, 'wood'); B.add(-33.8, F + 0.25, -30, -30.2, F + 1.15, -29.8, 'wood');
+  B.add(-34, F + 0.25, -30, -33.8, F + 1.15, -28.25, 'wood'); B.add(-34, F + 0.25, -25.25, -33.8, F + 1.15, -24, 'wood');
+  B.add(-33.8, F + 0.25, -30, -30.2, F + 1.15, -29.8, 'wood');
   B.box(-33.8, F / 2, -24.3, 0.3, F, 0.3, 'wood'); B.box(-33.8, F / 2, -29.7, 0.3, F, 0.3, 'wood');
   wall(W, 'x', SZ0, SX0, SX1, 0, 2 * F, 0.4, 'plaster');
   wall(W, 'x', SZ1, SX0, SX1, 0, 2 * F, 0.4, 'plaster');
@@ -868,20 +892,267 @@ function bazaar() {
     name: 'Bazaar', size: 'large', boxes: B.boxes, killY: -30,
     sky: { top: 0x4a8fd8, mid: 0xf2dcae, bot: 0x8a6a40, fog: 0xf0d8a8 }, fogNear: 90, fogFar: 320,
     spawns, teamSpawns: { att, def },
-    // bot routes along the real lanes, [x, z] points ending on each site
+    // bot routes along the real lanes, [x, z] points ending on each site. bots walk straight from point to point and
+    // count a point as reached 2.6 m away, so: every leg is clear of props, doors get a point on their centreline more
+    // than 2.6 m in on each side, and the hall lanes (and the plaza point after them, off the well's line) keep to the
+    // middle so a bot shoved behind a stall slides back out
     nav: {
       A: [
-        [[16, 62], [28, 62], [42, 62], [42, 30], [43, 6], [43, -3], [43, -10], [47, -21], [47, -27], [46, -38]], // canal street
-        [[0, 56], [0, 30], [0, 2], [8, -3], [18, -2.5], [18, -10], [18, -14], [24, -20], [31, -27.5], [37, -28.5], [44, -38]], // hall -> bridge
-        [[8, -64], [22, -62], [32, -58], [39, -57], [39, -52], [41, -47], [46, -40]], // defenders' garden
+        [[16, 62], [28, 62], [42, 62], [42, 30], [43, 6], [43, -3], [43, -10], [47, -21], [47, -27], [46.5, -30.8], [43.5, -31], [42, -38]], // canal street
+        [[0, 56], [2.5, 32], [2.5, 16], [2.5, -1], [3, -4], [18, -2.5], [18, -10], [18, -14], [27, -21], [31, -27.5], [37, -28.5], [44, -38]], // hall -> bridge
+        [[0, -62], [8, -64], [22, -63], [32, -58], [39, -57], [39, -52], [41, -47], [46, -40]], // defenders' garden
       ],
       B: [
-        [[-16, 62], [-30, 61], [-43, 60], [-43, 57], [-43, 52], [-43, 44], [-43, 30], [-43, 8], [-46, -2], [-46, -9], [-46, -18], [-46, -25], [-44, -31]], // cistern
-        [[0, 56], [0, 30], [0, 2], [-8, -8], [-17, -16.5], [-21.5, -16.5], [-25, -21], [-26, -26.7], [-31, -26.7], [-35, -28], [-40, -33]], // hall -> spice house
-        [[-8, -64], [-22, -62], [-32, -58], [-40, -56], [-44, -50], [-52, -45]], // defenders' arcade
+        [[-16, 62], [-30, 61], [-43, 60], [-43, 57], [-43, 52], [-43, 44], [-43, 30], [-43, 8], [-43, -1], [-44, -9], [-46, -18], [-46, -25], [-44, -31]], // cistern
+        [[0, 56], [-2.5, 32], [-2.5, 16], [-2.5, -1], [-3, -4], [-17, -16.5], [-23, -16.5], [-25, -21], [-26, -26.75], [-33, -26.75], [-37, -28.5], [-41, -33]], // hall -> spice house
+        [[0, -62], [-8, -64], [-22, -62], [-32, -58], [-40, -56], [-40, -50], [-52, -45]], // defenders' arcade
       ],
     },
     sites: [{ id: 'A', min: [36, 1.6, -50], max: [56, 1.6, -30] }, { id: 'B', min: [-60, 0, -50], max: [-34, 0, -28] }],
+  };
+}
+
+// ------------------------------------------------------------ BACKROOMS: extra large liminal maze, after the "Level 0" internet legend.
+// 240 x 240 m of mono-yellow rooms on a 4 m grid (the biggest map by far) around a huge open hall in the middle (64 x 64 m,
+// 7.5 m ceiling, sparse pillars: long fights across it). Around it: irregular rooms of every size with doorways, long
+// straight halls, pillar rooms, a few dead-end alcoves, and a hole down into flooded pool rooms one level below.
+// Plant & Defuse: A (the Office) north-east of the hall, B (the Wet Room) north-west of it, defenders spawn at the north end,
+// attackers at the south end. Sealed: no sky, no scenery. Bots get a walk graph (shared/nav.js) to find their way.
+function backrooms() {
+  const B = builder(), D = builder(); // D = render-only boxes: light overlays, pool water, tiles on the pool ceiling
+  const W = B.local(0, 0, 0);
+  const r = rng(1777);
+  const N = 60, U = 4, O = -120, H = 3, HH = 7.5, PY = -4.5, T = 0.2; // grid cells, cell size, map edge, ceilings, pool floor, wall thickness
+  const gx = (i) => O + i * U, mid = (i) => O + (i + 0.5) * U;
+  const pick = (a) => a[(r() * a.length) | 0];
+
+  // ---- the plan: every grid cell belongs to a room. the big set pieces first, random rooms fill the rest
+  const ids = new Int32Array(N * N).fill(-1), rooms = [];
+  const id = (i, j) => (i < 0 || j < 0 || i >= N || j >= N ? -2 : ids[i * N + j]);
+  const room = (i0, j0, i1, j1, kind = 'room', o = {}) => {
+    const rm = { k: rooms.length, i0, j0, i1, j1, kind, deg: 0, ...o };
+    rooms.push(rm);
+    for (let i = i0; i < i1; i++) for (let j = j0; j < j1; j++) ids[i * N + j] = rm.k;
+    return rm;
+  };
+  const hall = room(22, 22, 38, 38, 'hall'); // x, z in [-32, 32]
+  const def = room(25, 1, 35, 5, 'lobby'), att = room(25, 55, 35, 59, 'lobby'); // spawns at the north and south ends
+  const siteA = room(41, 15, 48, 21, 'office'), siteB = room(12, 15, 19, 21, 'wet');
+  room(12, 50, 18, 55, 'drop'); room(12, 35, 17, 40, 'stairs');
+  room(6, 9, 54, 10, 'long'); room(51, 14, 52, 54, 'long'); room(8, 24, 9, 50, 'long'); room(10, 47, 50, 48, 'long'); // long straight halls
+  room(2, 25, 8, 32, 'pillars', { step: 1 }); room(53, 28, 59, 35, 'pillars', { step: 2 }); room(39, 39, 46, 45, 'pillars', { step: 1 });
+  room(40, 2, 47, 8, 'pillars', { step: 2 }); room(8, 1, 14, 7, 'pillars', { step: 2 });
+  const sizes = [1, 2, 2, 2, 3, 3, 3, 4, 4, 5, 6];
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    if (ids[i * N + j] !== -1) continue;
+    let w = pick(sizes), h = pick(sizes);
+    if (r() < 0.2) { const l = 3 + ((r() * 6) | 0); if (r() < 0.5) { w = 1; h = l; } else { w = l; h = 1; } } // a corridor
+    let ww = 0, hh = 0;
+    while (ww < w && i + ww < N && ids[(i + ww) * N + j] === -1) ww++;
+    const rowFree = (jj) => { for (let a = 0; a < ww; a++) if (ids[(i + a) * N + jj] !== -1) return false; return true; };
+    while (hh < h && j + hh < N && rowFree(j + hh)) hh++;
+    room(i, j, i + ww, j + hh, ww * hh >= 16 && Math.min(ww, hh) >= 4 && r() < 0.3 ? 'pillars' : 'room', { step: 2 });
+  }
+
+  // ---- doorways: a random spanning tree so everything connects, then lots of extra ones (the place is full of loops)
+  const pairs = new Map();
+  const edge = (a, b, e) => {
+    if (a < 0 || b < 0 || a === b) return;
+    const key = Math.min(a, b) * 10000 + Math.max(a, b);
+    if (!pairs.has(key)) pairs.set(key, { a: Math.min(a, b), b: Math.max(a, b), edges: [], open: 0 });
+    pairs.get(key).edges.push(e);
+  };
+  for (let j = 1; j < N; j++) for (let i = 0; i < N; i++) edge(id(i, j - 1), id(i, j), { ax: 'x', line: j, k: i });
+  for (let i = 1; i < N; i++) for (let j = 0; j < N; j++) edge(id(i - 1, j), id(i, j), { ax: 'z', line: i, k: j });
+  const opens = new Map();
+  const addOpen = (ops, ax, line, o) => { const k = ax + line; if (!ops.has(k)) ops.set(k, []); ops.get(k).push(o); };
+  const door = (p, wide) => {
+    const es = p.edges, free = es.filter((e) => !e.used);
+    if (!free.length) return;
+    if (wide && !p.open) { // open up most of the shared wall, leaving stubs at the ends
+      const a = gx(es[0].k), b = gx(es[es.length - 1].k + 1), stub = es.length > 1 ? 0.6 + r() * 1.4 : 0.35;
+      addOpen(opens, es[0].ax, es[0].line, { a: a + stub, b: b - stub, y0: 0, y1: H + 0.2 });
+      for (const e of es) e.used = true;
+    } else {
+      const e = pick(free.length > 2 ? free.slice(1, -1) : free), c = mid(e.k), w = 1.5 + r() * 0.7; // not right in a corner
+      addOpen(opens, e.ax, e.line, { a: c - w / 2, b: c + w / 2, y0: 0, y1: r() < 0.55 ? 2.25 + r() * 0.3 : H + 0.2 }); // full height ones cut the wall's top too (it goes up into the ceiling)
+      e.used = true;
+    }
+    if (!p.open) { rooms[p.a].deg++; rooms[p.b].deg++; }
+    p.open++;
+  };
+  const list = [...pairs.values()];
+  for (let i = list.length - 1; i > 0; i--) { const j = (r() * (i + 1)) | 0; [list[i], list[j]] = [list[j], list[i]]; }
+  const par = rooms.map((_, i) => i), find = (x) => (par[x] === x ? x : (par[x] = find(par[x])));
+  const wideP = (p) => r() < (rooms[p.a].kind !== 'room' || rooms[p.b].kind !== 'room' ? 0.04 : 0.17);
+  for (const p of list) { const a = find(p.a), b = find(p.b); if (a !== b) { par[a] = b; door(p, wideP(p)); } }
+  for (const p of list) {
+    const ka = rooms[p.a].kind, kb = rooms[p.b].kind;
+    if (p.open) { if (p.edges.length >= 6 && r() < 0.4) door(p, false); continue; }
+    if (r() < (ka === 'long' || kb === 'long' ? 0.7 : ka === 'hall' || kb === 'hall' ? 0.65 : 0.4)) door(p, wideP(p));
+  }
+  const byRoom = rooms.map(() => []); // each room's neighbours, in the same (shuffled) order as list
+  for (const p of list) { byRoom[p.a].push(p); byRoom[p.b].push(p); }
+  const more = (rm, n) => { // make sure a room has at least n ways in
+    const ps = byRoom[rm.k].filter((p) => !p.open);
+    while (rm.deg < n && ps.length) door(ps.splice((r() * ps.length) | 0, 1)[0], false);
+  };
+  for (const rm of [siteA, siteB, def, att]) more(rm, 4);
+  more(hall, 18);
+  let alcoves = 0; // dead ends: keep a handful of little alcoves, open the rest up
+  for (const rm of rooms) if (rm.deg === 1) { if ((rm.i1 - rm.i0) * (rm.j1 - rm.j0) <= 2 && alcoves < 8) alcoves++; else more(rm, 2); }
+
+  // ---- walls along the grid lines between rooms, in runs with the doorways cut out. the hall's go all the way up
+  const walls = (idf, y0, top, mat, ops) => {
+    const run = (ax, line, at2) => {
+      let s = -1, sh = 0;
+      for (let k = 0; k <= N; k++) {
+        const [a, b] = k < N ? at2(k) : [0, 0], h = a !== b ? top(a, b) : 0;
+        if (s >= 0 && h !== sh) { wall(W, ax, gx(line), gx(s) - T / 2, gx(k) + T / 2, y0, sh, T, mat, ops.get(ax + line) || []); s = -1; }
+        if (h && s < 0) { s = k; sh = h; }
+      }
+    };
+    for (let j = 0; j <= N; j++) run('x', j, (i) => [idf(i, j - 1), idf(i, j)]);
+    for (let i = 0; i <= N; i++) run('z', i, (j) => [idf(i - 1, j), idf(i, j)]);
+  };
+  walls(id, 0, (a, b) => (a === hall.k || b === hall.k ? HH : H) + 0.2, 'wallpaper', opens); // up into the ceiling slab, so no seam and no lintel flush with the ceiling
+
+  // ---- stairs down to the pools (a flight in grid column col: top landing in row jt, the hole in rows jt+1 and jt+2,
+  // bottom landing in row jt+3 on the pool level), and the hole you just fall through
+  const holes = [], stairsNav = [], drops = [];
+  const flight = (col, jt) => {
+    const z0 = gx(jt + 1), zb = gx(jt + 3);
+    stairs(W, gx(col), gx(col + 1), zb, -1, PY, 0, 'pooltile', (zb - z0) / Math.ceil(-PY / 0.45)); // fills the hole edge to edge: no slot to drop the bomb through
+    B.add(gx(col) - 0.12, 0, z0, gx(col), 1.05, zb + 0.12, 'metal'); B.add(gx(col + 1), 0, z0, gx(col + 1) + 0.12, 1.05, zb + 0.12, 'metal'); // rails
+    B.add(gx(col), 0, zb, gx(col + 1), 1.05, zb + 0.12, 'metal');
+    holes.push([gx(col), z0, gx(col + 1), zb]);
+    stairsNav.push({ top: [mid(col), 0, mid(jt)], bot: [mid(col), PY, mid(jt + 3)] });
+  };
+  flight(13, 17); // up into B
+  flight(14, 36); // up into a room west of the hall
+  flight(16, 51); // back up, next to the hole
+  holes.push([gx(13), gx(51), gx(14), gx(53)]); // the hole
+  for (const j of [51, 52]) for (const [fi, fj] of [[12, j], [14, j], [13, j === 51 ? 50 : 53]]) drops.push({ from: [mid(fi), 0, mid(fj)], to: [mid(13), PY, mid(j)] });
+
+  // ---- floors: old damp carpet on a concrete slab. the Office has its own carpet, the Wet Room is tiled
+  const rect = (rm) => [gx(rm.i0), gx(rm.j0), gx(rm.i1), gx(rm.j1)];
+  groundHoles(B, O, O, -O, -O, -0.05, 0, 'carpetb', [...holes, rect(siteA), rect(siteB)]);
+  groundHoles(B, O, O, -O, -O, -0.6, -0.05, 'concrete', holes);
+  B.add(gx(siteA.i0), -0.05, gx(siteA.j0), gx(siteA.i1), 0, gx(siteA.j1), 'officecarpet');
+  groundHoles(B, ...rect(siteB), -0.05, 0, 'pooltile', holes);
+  // ---- ceilings: a low drop ceiling everywhere, the hall's way up high. the light panels are part of the tile texture
+  slab(W, O, O, -O, -O, H, H + 0.3, 'ceiltile', rect(hall));
+  B.add(gx(hall.i0) - T, HH, gx(hall.j0) - T, gx(hall.i1) + T, HH + 0.3, gx(hall.j1) + T, 'ceiltile');
+  const plain = rooms.filter((rm) => rm.kind === 'room' && (rm.i1 - rm.i0) * (rm.j1 - rm.j0) >= 2);
+  for (let n = 0; n < 26; n++) { // some rooms' lights flicker, some are dead
+    const rm = plain.splice((r() * plain.length) | 0, 1)[0];
+    D.add(gx(rm.i0), H - 0.03, gx(rm.j0), gx(rm.i1), H, gx(rm.j1), n < 14 ? ['ceilflick', 'ceilflick2', 'ceilflick3'][n % 3] : 'ceildark'); // three of them, each dying on its own
+  }
+  D.add(gx(8), H - 0.03, gx(30), gx(9), H, gx(41), 'ceildark'); // a long dark stretch of the west hall
+  D.add(gx(20), H - 0.03, gx(9), gx(31), H, gx(10), 'ceilflick2');
+
+  // ---- the big hall: sparse pillars, a few freestanding walls (one has a doorway to nowhere), low walls for cover
+  for (const [x, z] of [[-16, -16], [16, -16], [-16, 16], [16, 16], [0, -24], [0, 24], [-24, 0], [24, 0]]) B.box(x, HH / 2, z, 1.6, HH, 1.6, 'wallpaper');
+  wall(W, 'z', -8, -12, -4, 0, H, T, 'wallpaper', [{ a: -8.9, b: -7.1, y0: 0, y1: 2.3 }]);
+  wall(W, 'x', 8, 4, 12, 0, H, T, 'wallpaper');
+  wall(W, 'z', 20, 8, 16, 0, H, T, 'wallpaper');
+  wall(W, 'x', -20, -24, -16, 0, H, T, 'wallpaper');
+  B.add(-28, 0, 3.9, -20, 1.2, 4.1, 'wallpaper'); B.add(12, 0, -24.1, 20, 1.2, -23.9, 'wallpaper'); B.add(23.9, 0, 20, 24.1, 1.2, 28, 'wallpaper');
+  // a second ring of cover between the pillars, so crossing the hall is a choice and not a death sentence. all on grid
+  // lines (4 m), so they never touch a cell's middle, where spawns and bot nav nodes are
+  wall(W, 'x', 20, -14, -6, 0, H, T, 'wallpaper', [{ a: -11, b: -9, y0: 1.2, y1: 2.1 }]); // with a window to peek through
+  wall(W, 'z', 8, -24, -14, 0, H, T, 'wallpaper');
+  wall(W, 'x', -8, 20, 28, 0, H, T, 'wallpaper');
+  B.add(-6, 0, 11.9, 0, 1.2, 12.1, 'wallpaper'); B.add(3.9, 0, -12, 4.1, 1.2, -4, 'wallpaper'); B.add(-20.1, 0, 10, -19.9, 1.2, 16, 'wallpaper');
+  B.add(-28.1, 0, -12, -27.9, 1.2, -6, 'wallpaper'); B.add(6, 0, 15.9, 12, 1.2, 16.1, 'wallpaper'); B.add(27.9, 0, -24, 28.1, 1.2, -16, 'wallpaper');
+  // ---- pillar rooms
+  for (const rm of rooms) if (rm.kind === 'pillars') for (let i = rm.i0 + 1; i < rm.i1; i += rm.step) for (let j = rm.j0 + 1; j < rm.j1; j += rm.step) B.box(gx(i), H / 2, gx(j), 0.7, H, 0.7, 'wallpaper');
+
+  // ---- SITE A, the Office: grey-blue carpet, cubicles either side of a + shaped aisle, desks, a water cooler
+  const cube = (i0, j0, i1, j1, open) => { // partitions on the inner grid lines, open toward the aisle (open = -1 north, 1 south)
+    const z0 = gx(j0), z1 = gx(j1), back = open > 0 ? z0 : z1, s = open > 0 ? 1 : -1;
+    for (let i = i0 + 1; i < i1; i++) B.add(gx(i) - 0.05, 0, open < 0 ? z0 + 1.2 : z0, gx(i) + 0.05, 1.4, open < 0 ? z1 : z1 - 1.2, 'cubicle');
+    for (let i = i0; i < i1; i++) { // a desk against the back of every cubicle, most with a monitor
+      B.add(mid(i) - 1.3, 0, Math.min(back + s * 0.12, back + s * 0.85), mid(i) + 1.3, 0.75, Math.max(back + s * 0.12, back + s * 0.85), 'plaster');
+      if (r() < 0.7) B.add(mid(i) - 0.3, 0.75, Math.min(back + s * 0.3, back + s * 0.36), mid(i) + 0.3, 1.15, Math.max(back + s * 0.3, back + s * 0.36), 'glass');
+    }
+  };
+  cube(41, 15, 44, 17, 1); cube(45, 15, 48, 17, 1); cube(41, 18, 44, 21, -1); cube(45, 18, 48, 21, -1);
+  B.add(57.7, 0, -59.85, 58.3, 1.1, -59.25, 'white'); B.add(57.75, 1.1, -59.8, 58.25, 1.55, -59.3, 'water'); // water cooler
+
+  // ---- SITE B, the Wet Room: white tiles, the stairs up from the pools, tiled half walls, a couple of pillars, puddles
+  B.add(-60, 0, -52.1, -52, 1.2, -51.9, 'pooltile'); B.add(-48.1, 0, -48, -47.9, 1.2, -40, 'pooltile'); B.add(-68, 0, -56.1, -62, 1.2, -55.9, 'pooltile');
+  B.box(-56, H / 2, -44, 1, H, 1, 'pooltile'); B.box(-48, H / 2, -56, 1, H, 1, 'pooltile');
+  for (const [x, z, s] of [[-58, -46, 3], [-52, -57, 2], [-62, -53, 2.5]]) D.add(x - s / 2, 0.005, z - s / 2.6, x + s / 2, 0.02, z + s / 2.6, 'poolwater');
+  // ---- spawn lobbies: a row of pillars down the middle
+  for (const rm of [def, att]) for (const x of [-12, -4, 4, 12]) B.box(x, H / 2, (gx(rm.j0) + gx(rm.j1)) / 2, 0.8, H, 0.8, 'wallpaper');
+
+  // ---- the pool rooms: flooded, white tiles everywhere, under the west side of the map
+  const pids = new Int32Array(N * N).fill(-1), prooms = [], pops = new Map();
+  const pid = (i, j) => (i < 0 || j < 0 || i >= N || j >= N ? -2 : pids[i * N + j]);
+  for (const [i0, j0, i1, j1] of [[11, 48, 18, 56], [13, 24, 16, 48], [11, 17, 18, 24], [10, 28, 13, 38], [16, 30, 20, 44]]) {
+    for (let i = i0; i < i1; i++) for (let j = j0; j < j1; j++) pids[i * N + j] = prooms.length;
+    prooms.push([gx(i0), gx(j0), gx(i1), gx(j1)]);
+  }
+  for (const j of [48, 24]) addOpen(pops, 'x', j, { a: gx(13) + 0.6, b: gx(16) - 0.6, y0: PY, y1: -0.6 });
+  for (const [i, j] of [[13, 30], [13, 35], [16, 32], [16, 41]]) addOpen(pops, 'z', i, { a: mid(j) - 1, b: mid(j) + 1, y0: PY, y1: PY + 2.6 });
+  walls(pid, PY, () => -0.3, 'pooltile', pops); // up into the concrete, past the tiles on the pool ceiling (no seam where they meet)
+  for (const pr of prooms) {
+    B.add(pr[0], PY - 0.5, pr[1], pr[2], PY, pr[3], 'pooltile');
+    D.add(pr[0], PY, pr[1], pr[2], PY + 0.45, pr[3], 'poolwater');
+    groundHoles(D, ...pr, -0.63, -0.6, 'pooltile', holes);
+  }
+  for (let j = 26; j < 48; j += 2) if (j < 36 || j > 39) for (const i of [14, 15]) B.box(gx(i), (PY - 0.3) / 2, gx(j), 0.6, -0.3 - PY, 0.6, 'pooltile');
+  for (const [i, j] of [[12, 50], [15, 50], [12, 54], [15, 55]]) B.box(gx(i), (PY - 0.3) / 2, gx(j), 0.8, -0.3 - PY, 0.8, 'pooltile');
+
+  // ---- bots: a walk graph over both levels, and routes along the lanes for Plant & Defuse. only the server's bots use
+  // them, so they're built the first time something asks (the browser never pays for it)
+  let graph = null, nav = null;
+  const navGraph = () => graph || (graph = buildNav(B.boxes, { x0: O, z0: O, n: N, cell: U, levels: [0, PY], stairs: stairsNav, drops }));
+  const route = (...via) => { // A* through the via points, then keep only the corners. points are [x, z, y]
+    const graph = navGraph(), ks = [];
+    for (let v = 0; v + 1 < via.length; v++) for (const k of navPath(graph, navLocate(graph, via[v]), navLocate(graph, via[v + 1])) || []) if (ks[ks.length - 1] !== k) ks.push(k);
+    const out = [ks[0]];
+    for (let k = 1; k < ks.length; k++) {
+      const a = graph.nodes[out[out.length - 1]], lv = graph.lvl[out[out.length - 1]], b = graph.nodes[ks[k + 1]];
+      if (b && graph.lvl[ks[k]] === lv && graph.lvl[ks[k + 1]] === lv && navClear(graph, lv, a[0], a[2], b[0], b[2])) continue;
+      out.push(ks[k]);
+    }
+    return out.map((k) => [graph.nodes[k][0], graph.nodes[k][2], graph.nodes[k][1]]);
+  };
+  const A = [58, 0, -46], Bc = [-56, 0, -50];
+  const lanes = () => nav || (nav = {
+    A: [route([16, 0, 108], [86, 0, 90], [86, 0, -40], A), route([0, 0, 102], [0, 0, 28], [28, 0, -8], A), route([16, 0, -108], [60, 0, -82], A)],
+    B: [route([-16, 0, 108], [-62, 0, 90], [mid(13), PY, mid(51)], [mid(14), PY, 0], [mid(13), PY, mid(20)], Bc), route([0, 0, 102], [0, 0, 28], [-28, 0, -8], Bc), route([-16, 0, -108], [-60, 0, -82], Bc)],
+  });
+  // free-for-all spawns spread all over: farthest-point picks from the cells of the roomier rooms (a cell's middle is
+  // never in a wall, a pillar or a desk: they all sit on grid lines), plus two in the pools
+  const cand = [];
+  for (const rm of rooms) if (rm.kind !== 'lobby' && rm.i1 - rm.i0 >= 2 && rm.j1 - rm.j0 >= 2) for (let i = rm.i0; i < rm.i1; i++) for (let j = rm.j0; j < rm.j1; j++) {
+    const x = mid(i), z = mid(j);
+    if (!holes.some((h) => x > h[0] && x < h[2] && z > h[1] && z < h[3])) cand.push([x, z]);
+  }
+  const far = new Float64Array(cand.length).fill(1e9), spawns = [];
+  for (let n = 0, k = (r() * cand.length) | 0; n < 30; n++) {
+    const p = cand[k];
+    spawns.push([p[0], 0.1, p[1]]);
+    cand.forEach((c, i) => { far[i] = Math.min(far[i], Math.hypot(c[0] - p[0], c[1] - p[1])); });
+    k = 0;
+    for (let i = 1; i < cand.length; i++) if (far[i] + r() * 6 > far[k]) k = i;
+  }
+  spawns.push([mid(14), PY + 0.1, mid(30)], [mid(15), PY + 0.1, mid(45)]);
+  const att2 = [[-16, 0.1, 113], [-8, 0.1, 113], [0, 0.1, 113], [8, 0.1, 113], [16, 0.1, 113], [-8, 0.1, 103], [8, 0.1, 103]];
+  const def2 = att2.map(([x, y, z]) => [x, y, -z]);
+  const HZ = 0xb4a35a; // the haze
+  return {
+    name: 'Backrooms', size: 'extra large', boxes: B.boxes, deco: D.boxes, killY: -30,
+    sky: { top: HZ, mid: HZ, bot: HZ, fog: HZ }, fogNear: 6, fogFar: 105,
+    light: { hemi: [0xfff3cc, 0xb2a476, 1.35], sun: [0xffe7a6, 0.5] }, // flat fluorescent light from everywhere
+    chunk: 48, sealed: true, menuCam: [13, 3.4, -0.08], // big: drawn in chunks. sealed: no sky, and the menu orbits inside the hall
+    spawns, spawnSafe: 45, teamSpawns: { att: att2, def: def2 }, teamSpawnsBomb: true, roundTime: 150, // lobbies only for Plant & Defuse (they're 226 m apart); rounds are longer, it's a long walk
+     get nav() { return lanes(); }, get graph() { return navGraph(); },
+    sites: [{ id: 'A', min: [gx(siteA.i0) + 0.5, 0, gx(siteA.j0) + 0.5], max: [gx(siteA.i1) - 0.5, 0, gx(siteA.j1) - 0.5] },
+      { id: 'B', min: [gx(siteB.i0) + 0.5, 0, gx(siteB.j0) + 0.5], max: [gx(siteB.i1) - 0.5, 0, gx(siteB.j1) - 0.5] }],
   };
 }
 
@@ -909,9 +1180,9 @@ function range() {
 
 export const MAPS = {
   crate: crate(), platform: platform(), rooftop: rooftop(), suburb: suburb(), warehouse: warehouse(),
-  desert: desert(), islands: islands(), skyline: skyline(), bazaar: bazaar(), range: range(),
+  desert: desert(), islands: islands(), skyline: skyline(), bazaar: bazaar(), range: range(), backrooms: backrooms(),
 };
-export const MAP_ORDER = ['crate', 'platform', 'rooftop', 'suburb', 'warehouse', 'desert', 'bazaar', 'islands', 'skyline'];
+export const MAP_ORDER = ['crate', 'platform', 'rooftop', 'suburb', 'warehouse', 'desert', 'bazaar', 'islands', 'skyline', 'backrooms'];
 
 // Client convenience: "the current map". These arrays/objects are mutated in place by setMap,
 // so every module that imported them sees the new map.

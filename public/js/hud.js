@@ -103,6 +103,17 @@ export const hud = {
     void el.offsetWidth; // restart the fade
     el.style.transition = `opacity ${dur}s ease-out`; el.style.opacity = 0;
   },
+  // anime-style impact frames: a hard red/black frame, a dark frame with a red burst, then a red glow that fades. k = strength
+  impact(k = 1) {
+    let el = $('impactFx');
+    if (!el) { el = document.createElement('div'); el.id = 'impactFx'; $('hud').prepend(el); }
+    clearTimeout(this.impT); clearTimeout(this.impT2);
+    el.style.transition = 'none'; el.className = 'f1'; el.style.opacity = Math.min(1, k);
+    this.impT = setTimeout(() => {
+      el.className = 'f2';
+      this.impT2 = setTimeout(() => { el.className = 'f3'; void el.offsetWidth; el.style.transition = 'opacity 0.4s ease-out'; el.style.opacity = 0; }, 60);
+    }, 60);
+  },
   scope(on) {
     $('scope').classList.toggle('on', on);
     $('crosshair').style.display = on ? 'none' : '';
@@ -171,7 +182,7 @@ export const hud = {
     const w = WEAPONS[id];
     if (!w) return;
     $('weaponName').innerHTML = '';
-    $('weaponName').append(span(w.name, w.color), document.createElement('br'), span(w.desc, '#fff'));
+    $('weaponName').append(span(w.name, w.color), document.createElement('br'), span((this.descFor && this.descFor[id]) || w.desc, '#fff'));
     $('weaponName').style.opacity = 1;
     weaponT = 3;
   },

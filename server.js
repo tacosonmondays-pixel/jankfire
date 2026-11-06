@@ -14,11 +14,16 @@ import { Accounts, levelOf } from './server/accounts.js';
 import { ownedSkin, ownedKill, ownedGrapple, randomContainer, CONTAINERS, COSMETICS } from './shared/cosmetics.js';
 import { owns, SPRAY } from './shared/cosmetics.js';
 import { validLook, achievementsFrom, ACHIEVEMENTS } from './shared/looks.js';
+import { ROYAL, ROYAL_FEATS, featOn } from './shared/looks.js'; // Sniper Royalty
+import { achInv, wrapMode, WRAP_MODES } from './shared/cosmetics.js'; // achievement-locked skins (the Golden Sniper), wrap modes
 import { STAT_KEYS } from './server/store.js';
 import { soapAt, trapBoxes, trapPreroll } from './shared/wand.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
-import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor } from './shared/modes.js';
-import { WEAPONS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, DEFAULT_LOADOUT, validStreaks, fireRate } from './shared/weapons.js';
+import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, canDefuse, LADDER, GUNGAME, INFECT } from './shared/modes.js';
+import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, eventGame } from './shared/vote.js';
+import { matchReset, matchKill, matchSummary } from './server/match.js';
+import { SKIP, isSkipCmd, skipCommand, skipTick, skipPeople, skipInfo } from './server/skip.js';
+import { WEAPONS, SLOTS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, SLEEP_TIME, validStreaks, fireRate } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
 import { verdict } from './shared/verdict.js';
 
@@ -28,8 +33,12 @@ import { epicCheck, epicCamMs, EPIC } from './shared/epic.js';
 import { holeDrag, steer } from './shared/physics.js';
 import { steer as steerTo } from './shared/homing.js'; // homing slippers (steerTo(v, from, to, max)); the duck's steer(v, dir, max) is physics.js's
 import { PARRY } from './shared/weapons.js';
-import { ropeStep, ropeJump, ROPE } from './shared/hookphys.js';
+import { ROPE, classicRopeStep, classicRopeJump } from './shared/hookphys.js';
 import { query as boxQuery } from './shared/physics.js';
+import { navSteer } from './shared/nav.js';
+import { DUCKRAIN } from './shared/modes.js';
+import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
+import { MSLIP, onPatch, patchPreroll } from './shared/marbles.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -72,6 +81,12 @@ function serve(req, res) {
     return;
   }
   if (url === '/health') { res.writeHead(200).end('ok ' + humans()); return; }
+  if (url === '/now') { // main menu "now playing" strip: the online room's mode + map, who's around
+    const r = rooms.get('ffa');
+    res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-cache' });
+    res.end(JSON.stringify({ online: humans(), room: r ? r.humans().length : 0, game: r ? r.game : process.env.JF_GAME || 'dm', map: r ? r.cfg.map : 'islands', region: process.env.JF_REGION || process.env.RENDER_REGION || '', ev: eventGame() }));
+    return;
+  }
   if (url.startsWith('/api/')) { accounts.handle(req, res, url); return; }
   for (const [prefix, dir] of ROUTES) {
     if (!url.startsWith(prefix)) continue;
@@ -96,6 +111,7 @@ const COLORS = ['#ff4fd8', '#4fd8ff', '#ffe14d', '#7dff4f', '#ff7a1a', '#b07dff'
 const DEFAULT_NAMES = ['player', 'guy', 'someone', 'nobody', 'dude', 'person'];
 const BOT_NAMES = ['Gary', 'Linda', 'Steve', 'Brenda', 'Kevin', 'Doug', 'Karen', 'Phil', 'Tina', 'Rick', 'Deb', 'Carl', 'Pam', 'Todd', 'Barb', 'Chad'];
 const BOT_GUNS = ['ar', 'ar', 'smg', 'shotgun', 'shotgun', 'sniper', 'chicken', 'banana', 'minigun', 'revolver', 'redline', 'marbles'];
+BOT_GUNS.push('shredder'); // bots suck too (botShred)
 const SKIN_F = ['default', 'default', 'gold', 'chrome', 'pink', 'camo', 'neon', 'rainbow', 'galaxy', 'lava', 'missing', 'tiger', 'fade', 'carbon', 'tape'];
 const SKIN_H = ['none', 'none', 'none', 'tophat', 'party', 'crown', 'cowboy', 'propeller', 'cone', 'eyes', 'duck'];
 const SKIN_E = ['none', 'none', 'none', 'sparkles', 'flames', 'money', 'smoke'];
@@ -104,8 +120,33 @@ const SKIN_KEYS = { f: /^[a-z_]{1,24}$/ };
 const now = () => Date.now();
 const r2 = (x) => Math.round(x * 100) / 100;
 const dist3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-const clampInt = (x, lo, hi) => Math.max(lo, Math.min(hi, Math.floor(Number(x) || 0)));
+// client numbers: Number() / | 0 on an object call its own toString / valueOf, and {"toString":1} throws
+const num = (x) => typeof x === 'number' ? x : typeof x === 'string' ? Number(x) : 0;
+const clampInt = (x, lo, hi) => Math.max(lo, Math.min(hi, Math.floor(num(x) || 0)));
 const pick = (a) => a[(Math.random() * a.length) | 0];
+// client data as a table key: only real string keys (no '__proto__', no arrays that stringify forever)
+const has = (T, k) => typeof k === 'string' && Object.hasOwn(T, k);
+// one bad message or tick must not take every room down: log it (at most once per 5 s per kind) and carry on
+const errT = new Map();
+function logErr(kind, e) {
+  const n = Date.now();
+  if (n - (errT.get(kind) || 0) < 5000) return;
+  errT.set(kind, n);
+  console.error(`[${kind}]`, e && e.stack || e);
+}
+const safe = (kind, fn) => (...a) => { try { return fn(...a); } catch (e) { logErr(kind, e); } };
+// the protocol nests 3 deep at most (fire.s, join.skins); anything much deeper is junk
+function tooDeep(v, max = 6) {
+  const st = [v, 0];
+  let objs = 0;
+  while (st.length) {
+    const d = st.pop(), x = st.pop();
+    if (!x || typeof x !== 'object') continue;
+    if (d >= max || ++objs > 4000) return true;
+    for (const k in x) if (x[k] && typeof x[k] === 'object') st.push(x[k], d + 1);
+  }
+  return false;
+}
 function vec3(a) {
   if (!Array.isArray(a) || a.length !== 3) return null;
   for (const x of a) if (typeof x !== 'number' || !Number.isFinite(x) || Math.abs(x) > 1e6) return null;
@@ -129,19 +170,21 @@ function spreadDir(d, s) {
 }
 const center = (p) => [p.pos[0], p.pos[1] + 0.9, p.pos[2]];
 const eyeOf = (p) => [p.pos[0], p.pos[1] + PH.eye, p.pos[2]];
+const lookOf = (p) => { const cp = Math.cos(p.pitch || 0); return [-Math.sin(p.yaw || 0) * cp, Math.sin(p.pitch || 0), -Math.cos(p.yaw || 0) * cp]; };
 function clean(s, max) { return String(s || '').replace(/[<>&"'`\u0000-\u001f]/g, '').trim().slice(0, max); }
 function cleanSkins(s) {
   const out = {};
   if (!s || typeof s !== 'object') return out;
   for (const id of Object.keys(WEAPONS)) {
     const v = s[id];
-    if (Array.isArray(v) && (v.length === 3 || v.length === 4) && v.every((x) => typeof x === 'string' && SKIN_KEYS.f.test(x))) out[id] = v.length === 3 ? [...v, 'default'] : v.slice();
+    // [wrap, hat, effect, model?, wrap mode?]: older clients send 3 or 4, the mode is checked against WRAP_MODES
+    if (Array.isArray(v) && v.length >= 3 && v.length <= 5 && v.every((x) => typeof x === 'string' && SKIN_KEYS.f.test(x))) out[id] = [v[0], v[1], v[2], v[3] || 'default', wrapMode(v[4])];
   }
   return out;
 }
-function enforceSkins(skins, inv) {
-  const out = {};
-  for (const [id, sk] of Object.entries(skins)) out[id] = ownedSkin(sk, inv, id);
+function enforceSkins(skins, inv, achs) {
+  const out = {}, own = achInv(inv, achs); // achievement skins (Golden Sniper) only count from your achievements
+  for (const [id, sk] of Object.entries(skins)) out[id] = ownedSkin(sk, own, id);
   return out;
 }
 if (process.env.JF_STREAK) STREAKS.scythe.kills = Number(process.env.JF_STREAK) || STREAKS.scythe.kills;
@@ -164,15 +207,29 @@ function onBoxTop(pos, boxes) {
 if (process.env.JF_BOMB_WINS) BOMB.wins = Number(process.env.JF_BOMB_WINS) || BOMB.wins;
 if (process.env.JF_BOMB_FUSE) BOMB.fuse = Number(process.env.JF_BOMB_FUSE) || BOMB.fuse;
 if (process.env.JF_BOMB_ROUND) BOMB.roundTime = Number(process.env.JF_BOMB_ROUND) || BOMB.roundTime;
+if (process.env.JF_MSLIP_LIFE) MSLIP.life = Number(process.env.JF_MSLIP_LIFE) || MSLIP.life; // test knob: marble patches that outlast slow test browsers
 if (process.env.JF_TARGET) for (const t of Object.values(TARGETS)) for (const k of Object.keys(t)) t[k] = Number(process.env.JF_TARGET);
+// test knobs for gun game (everyone starts on a later rung) and infection (round length, patient zero delay, in seconds)
+const GG_START = Math.max(0, Math.min(LADDER.length - 1, Math.floor(Number(process.env.JF_GG_START) || 0)));
+if (process.env.JF_GG_TIME) GUNGAME.time = Number(process.env.JF_GG_TIME) || GUNGAME.time;
+if (process.env.JF_INF_TIME) INFECT.time = Number(process.env.JF_INF_TIME) || INFECT.time;
+if (process.env.JF_INF_DELAY) INFECT.delay = Number(process.env.JF_INF_DELAY) || INFECT.delay;
+if (process.env.JF_INF_HP) INFECT.hp = Number(process.env.JF_INF_HP) || INFECT.hp;
+// test knobs for the chaos modes: lives in one in the chamber, round length in seconds, how hard it rains ducks (x), JF_GAME = the online room's first mode
+if (process.env.JF_LIVES) GAMES.oitc.lives = Number(process.env.JF_LIVES) || GAMES.oitc.lives;
+if (process.env.JF_ROUND_TIME) for (const r of Object.values(ROUND)) r.time = Number(process.env.JF_ROUND_TIME) || r.time;
+if (process.env.JF_DUCKS) DUCKRAIN.n = DUCKRAIN.n.map((x) => x * (Number(process.env.JF_DUCKS) || 1));
+// /skip vote: how long it stays open and the cooldown after one fails, in ms (test knobs)
+if (process.env.JF_SKIP_WINDOW) SKIP.window = Number(process.env.JF_SKIP_WINDOW) || SKIP.window;
+if (process.env.JF_SKIP_COOL) SKIP.cooldown = Number(process.env.JF_SKIP_COOL) || SKIP.cooldown;
 function randomSkins() {
   const out = {};
-  for (const id of Object.keys(WEAPONS)) if (Math.random() < 0.6) out[id] = [pick(SKIN_F), pick(SKIN_H), pick(SKIN_E), id === 'knife' ? pick(['default', 'knife_karambit', 'knife_butterfly', 'knife_switch', 'knife_cleaver']) : 'default'];
+  for (const id of Object.keys(WEAPONS)) if (Math.random() < 0.6) out[id] = [pick(SKIN_F), pick(SKIN_H), pick(SKIN_E), id === 'knife' ? pick(['default', 'knife_karambit', 'knife_butterfly', 'knife_switch', 'knife_cleaver']) : 'default', pick(WRAP_MODES)];
   return out;
 }
 function send(p, obj) { if (p.ws && p.ws.readyState === 1) p.ws.send(JSON.stringify(obj)); }
 
-const TIP_IDS = Object.keys(ARROW_TIPS);
+const TIP_IDS = Object.keys(ARROW_TIPS).filter((k) => !process.env.JF_ARROW_TIP || k === process.env.JF_ARROW_TIP); // test knob: JF_ARROW_TIP=sleep
 const KILL_IDS = Object.keys(COSMETICS.kill).filter((k) => k !== 'none');
 const GRAP_IDS = Object.keys(COSMETICS.grapple).filter((k) => k !== 'rope');
 // name cards: a small picture you drew or uploaded, as a data url. anything else is dropped.
@@ -185,6 +242,7 @@ REC_FX.add('verdict'); // scales of justice: highlights show the ruling
 const REC_MS = 12000;
 for (const k of ['trap', 'trapx']) REC_T.add(k); // bubble wand: replays draw the giant soap bubble too
 for (const t of ['parry', 'guard']) REC_T.add(t); // katana parries show up in killcams too
+for (const t of ['mpatch', 'mslip', 'mpx']) REC_T.add(t); // marbles on the floor too
 function newDeck() {
   const d = [];
   for (const s of ['h', 's', 'c', 'd']) for (let r = 1; r <= 13; r++) d.push(s + r);
@@ -196,6 +254,55 @@ function deal(p) {
   if (!p.deck || p.deck.length < 5) p.deck = newDeck();
   p.hand = p.deck.splice(0, 5);
   send(p, { t: 'hand', hand: p.hand, left: p.deck.length });
+}
+
+// bot lanes as a graph: every waypoint is a node, lanes link their neighbours both ways, and lane starts (the spawns)
+// and lane ends (the sites) link to each other, so a bot can get from any lane to any site or to a dropped bomb
+const NAV = new WeakMap();
+function navGraph(map) {
+  if (!map || !map.nav || map.graph) return null; // maze maps have a real walk graph instead (shared/nav.js, navSteer)
+  let g = NAV.get(map);
+  if (g) return g;
+  g = { pts: [], adj: [], ends: {} };
+  const node = (q) => {
+    const x = q[0], z = q[q.length - 1]; // [x, z] (or [x, y, z])
+    let i = g.pts.findIndex((p) => Math.hypot(p[0] - x, p[1] - z) < 1);
+    if (i < 0) { i = g.pts.length; g.pts.push([x, z]); g.adj.push([]); }
+    return i;
+  };
+  const link = (a, b) => {
+    if (a === b || g.adj[a].some((e) => e[0] === b)) return;
+    const d = Math.hypot(g.pts[a][0] - g.pts[b][0], g.pts[a][1] - g.pts[b][1]);
+    g.adj[a].push([b, d]); g.adj[b].push([a, d]);
+  };
+  const near = (list, r) => { for (const a of list) for (const b of list) if (Math.hypot(g.pts[a][0] - g.pts[b][0], g.pts[a][1] - g.pts[b][1]) < r) link(a, b); };
+  const starts = [];
+  for (const [site, lanes] of Object.entries(map.nav)) {
+    g.ends[site] = [];
+    for (const lane of lanes) {
+      if (!lane.length) continue;
+      const ids = lane.map(node);
+      for (let i = 1; i < ids.length; i++) link(ids[i - 1], ids[i]);
+      starts.push(ids[0]); g.ends[site].push(ids[ids.length - 1]);
+    }
+  }
+  near(starts, 22);
+  for (const e of Object.values(g.ends)) near(e, 30);
+  NAV.set(map, g);
+  return g;
+}
+// cheapest path (dijkstra, the graph is tiny) from node a to any of the goal nodes. cost(u, v, d): edge cost (default: length)
+function navPath(g, a, goals, cost) {
+  const n = g.pts.length, dist = new Array(n).fill(Infinity), prev = new Array(n).fill(-1), done = new Array(n).fill(false);
+  dist[a] = 0;
+  for (;;) {
+    let u = -1;
+    for (let i = 0; i < n; i++) if (!done[i] && dist[i] < Infinity && (u < 0 || dist[i] < dist[u])) u = i;
+    if (u < 0) return null;
+    if (goals.includes(u)) { const path = []; for (let v = u; v >= 0; v = prev[v]) path.unshift(v); return { path, cost: dist[u] }; }
+    done[u] = true;
+    for (const [v, d] of g.adj[u]) { const c = dist[u] + (cost ? cost(u, v, d) : d); if (c < dist[v]) { dist[v] = c; prev[v] = u; } }
+  }
 }
 
 let nextId = 1;
@@ -221,6 +328,10 @@ class Room {
     this.vote = null;
     this.bubbles = new Map(); this.nextBub = 1;
     this.sprays = new Map(); this.sprayMap = ''; // owner id -> graffiti, and the map they were painted on
+    this.smokes = new Map(); this.nextSmoke = 1; // smoke clouds: bots can't see through them, late joiners get them
+    this.oitcOut = new Set(); // one in the chamber: who ran out of lives this round (by account or name)
+    if (mode === 'ffa' && GAMES[process.env.JF_GAME]) this.game = process.env.JF_GAME; // test knob: the online room starts in this mode
+    this.mpatches = new Map(); this.nextMp = 1; // marble shotgun: marbles on the floor you slip on
     this.cfg = { map: mode === 'training' ? 'range' : mode === 'coop' ? 'warehouse' : 'islands', hip: 'normal', bots: 5, diff: 'normal' };
     this.wave = 0; this.toSpawn = 0; this.interUntil = 0;
     this.round = ROUND[mode] ? { target: ROUND[mode].kills, ends: now() + ROUND[mode].time * 1000, over: false, next: 0 } : null;
@@ -236,6 +347,7 @@ class Room {
     for (const p of this.players.values()) if (p.id !== exceptId && p.ws && p.ws.readyState === 1) p.ws.send(s);
   }
   humans() { return [...this.players.values()].filter((p) => !p.isBot); }
+  sendTo(p, m) { send(p, m); } // for server/ modules
   teamsOn() { return (this.mode === 'ffa' || this.mode === 'bots') && !!GAMES[this.game].teams; }
   fighters() { return [...this.players.values()].filter((p) => !(p.isBot && p.ai && p.ai.dummy)); }
   // even teams, humans spread first
@@ -258,14 +370,17 @@ class Room {
   randomLoadout() {
     const lo = {};
     for (const slot of ['primary', 'secondary', 'melee']) lo[slot] = pick(Object.keys(WEAPONS).filter((id) => WEAPONS[id].slot === slot));
-    lo.item = pick(Object.keys(ITEMS)); // the popper + reverse card left the secondary pool for this one
+    // weapons only: you keep the item in your own loadout (and its server-side charges). the popper + reverse card are
+    // items now, so they left the secondary pool
     return lo;
   }
   sendLoadout(p) {
+    if (this.modeLoadout(p)) return; // gun game rung / zombie claw
+    if (this.sendChaosKit(p)) return;
     if (p.isBot) { if (GAMES[this.game].random && !p.ai.dummy) { p.w = pick(BOT_GUNS); p.ai.ammo = WEAPONS[p.w].mag || 1; } return; }
     const rnd = (this.mode === 'ffa' || this.mode === 'bots') && GAMES[this.game].random;
-    if (rnd) { p.forced = true; const lo = this.randomLoadout(); p.item = lo.item; send(p, { t: 'loadout', lo }); }
-    else if (p.forced) { p.forced = false; if (p.ownItem) p.item = p.ownItem; send(p, { t: 'loadout', lo: null }); }
+    if (rnd) { p.forced = true; send(p, { t: 'loadout', lo: this.randomLoadout() }); }
+    else if (p.forced) { p.forced = false; send(p, { t: 'loadout', lo: null }); }
   }
   joinTeam(p) {
     if (!p.ownColor) p.ownColor = p.color;
@@ -274,10 +389,17 @@ class Room {
     p.color = TEAMS[p.team].color;
   }
 
+  // could someone standing at spawn s see p? (within the fog, nothing in between)
+  inSight(s, p) {
+    const e = [s[0], s[1] + PH.eye, s[2]], d = [p.pos[0] - e[0], p.pos[1] + 1 - e[1], p.pos[2] - e[2]], l = Math.hypot(...d);
+    return l < (this.map.fogFar || 1e9) && !raycast(e, [d[0] / l, d[1] / l, d[2] / l], l, this.boxes);
+  }
+
   pickSpawn(forBot, who) {
     let spawns = this.map.spawns;
+    if (this.lavaOn) spawns = surfaces(this.map).spawns; // floor is lava: only ever spawn on safe ground
     const ts = this.map.teamSpawns;
-    if (who && who.team && this.teamsOn() && ts) {
+    if (who && who.team && this.teamsOn() && ts && !(this.map.teamSpawnsBomb && this.game !== 'bomb')) { // teamSpawnsBomb: other team modes spawn all over, away from enemies
       const attacking = this.game === 'bomb' ? who.team === (this.bomb ? this.bomb.att : 1) : who.team === 1;
       spawns = attacking ? ts.att : ts.def;
     }
@@ -285,6 +407,8 @@ class Room {
     for (const s of spawns) {
       let d = 1e9;
       for (const p of this.players.values()) if (p.alive && p !== who && (!forBot || !p.isBot) && !(who && who.team && p.team === who.team)) d = Math.min(d, dist3(s, p.pos));
+      if (this.map.spawnSafe) for (const p of this.players.values()) if (p.alive && p !== who && (!forBot || !p.isBot) && !(who && who.team && p.team === who.team) && this.inSight(s, p)) d = Math.min(d, dist3(s, p.pos) * 0.3); // in plain sight down a long hall isn't safe
+      if (this.map.spawnSafe) d = Math.min(d, this.map.spawnSafe); // huge maps: far enough is far enough, then it's random (not always the one corner farthest from you)
       d += Math.random() * 15;
       if (d > bestD) { bestD = d; best = s; }
     }
@@ -296,27 +420,29 @@ class Room {
     const used = new Set([...this.players.values()].map((p) => p.color));
     const color = opts.color || COLORS.find((c) => !used.has(c)) || COLORS[id % COLORS.length];
     const pos = opts.pos ? opts.pos.slice() : this.pickSpawn(opts.isBot);
-    return {
+    const p = {
       id, ws: opts.ws || null, room: this, name, color, pos, vel: [0, 0, 0], yaw: Math.random() * 6, pitch: 0,
       w: opts.w || 'ar', hp: 100, alive: true, respawnAt: 0, kills: 0, deaths: 0, seq: 1, spawnT: now(), reverseUntil: 0,
       lastAttacker: 0, lastAttackW: null, lastAttackT: 0, lastFire: {}, pair: new Map(), g: null, f: 0,
       chatT: 0, coughT: 0, cfgT: 0, skinT: 0, skins: opts.skins || {}, isBot: !!opts.isBot, ai: opts.ai || null,
       onGround: false, slipUntil: 0, acct: opts.acct || null, level: opts.level || 0,
     };
+    matchReset(p); // this match's report starts now, even for someone joining mid-match
+    return p;
   }
   info(p) { return { id: p.id, name: p.name, color: p.color, skins: p.skins, bot: p.isBot, level: p.level, look: p.look, card: p.card || '', team: p.team || 0, grap: p.grap || 'rope' }; }
 
   addHuman(ws, m) {
     if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && !this.humans().length) {
       const c = m.cfg;
-      if (MAPS[c.map] && MAP_ORDER.includes(c.map)) this.cfg.map = c.map;
-      if (HIPFIRE[c.hip]) this.cfg.hip = c.hip;
-      if (BOT_DIFF[c.diff]) this.cfg.diff = c.diff;
+      if (has(MAPS, c.map) && MAP_ORDER.includes(c.map)) this.cfg.map = c.map;
+      if (has(HIPFIRE, c.hip)) this.cfg.hip = c.hip;
+      if (has(BOT_DIFF, c.diff)) this.cfg.diff = c.diff;
       if (c.bots != null) this.cfg.bots = clampInt(c.bots, 0, 12);
     }
     const name = m._name || clean(m.name, 16) || pick(DEFAULT_NAMES) + nextId;
     const inv = m._inv || {};
-    const p = this.newPlayer(name, { ws, skins: enforceSkins(cleanSkins(m.skins), inv), acct: m._acct, level: m._level });
+    const p = this.newPlayer(name, { ws, skins: enforceSkins(cleanSkins(m.skins), inv, m._achs), acct: m._acct, level: m._level });
     p.inv = inv;
     p.tip = pick(TIP_IDS);
     p.look = validLook(m.look, m._achs || new Set());
@@ -326,13 +452,13 @@ class Room {
     p.kfx = ownedKill(m.kfx, inv);
     p.grap = ownedGrapple(m.grap, inv);
     p.kc = !!m.kc;
-    p.item = p.ownItem = this.okItem(m.item) || DEFAULT_LOADOUT.item;
-    if (this.mode === 'bots' && m.cfg && GAMES[m.cfg.game] && !this.humans().length) this.setGame(m.cfg.game);
+    p.item = has(ITEMS, m.item) ? m.item : 'frag'; // the client confirms it with 'itemsel' right after 'welcome'
+    if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && has(GAMES, m.cfg.game) && !this.humans().length) this.setGame(m.cfg.game);
     this.joinTeam(p);
     if (p.team) p.pos = this.pickSpawn(false, p);
     this.players.set(p.id, p);
     // in from the start (or close enough): your Never Landed run counts. the welcome below is your first spawn
-    if (this.round && !this.round.over && now() - (this.round.t0 || 0) < AIR.join) p.air = { ok: !(this.airBad && this.airBad.has(name)), rest: 0 };
+    if (this.round && !this.round.over && now() - (this.round.t0 || 0) < AIR.join && !GAMES[this.game].lava) p.air = { ok: !(this.airBad && this.airBad.has(name)), rest: 0 };
     send(p, {
       t: 'welcome', id: p.id, name, color: p.color, pos: p.pos, q: p.seq, mode: this.mode, cfg: this.cfg,
       players: [...this.players.values()].filter((o) => o !== p).map((o) => this.info(o)),
@@ -341,16 +467,20 @@ class Room {
       holes: [...this.holes.values()].map((h) => ({ id: h.id, p: h.p, o: h.o, big: h.big, on: h.on || 0, age: (now() - h.born) / 1000 })),
       wave: this.waveInfo(), level: p.level, account: !!p.acct, round: this.roundInfo(),
       bubbles: [...this.bubbles.values()].map((b) => ({ id: b.id, p: b.p, r: b.r, left: b.until - now() })),
+      smokes: [...this.smokes.values()].map((s) => [...s.p, Math.round(s.until - now())]), ic: this.icInfo(p),
       kat: [...this.players.values()].filter((o) => o.kat).map((o) => [o.id, o.kat]),
       game: this.game, team: p.team || 0, tags: [...this.tags.values()].map((g) => ({ id: g.id, p: g.p, team: g.team })), vote: this.voteInfo(),
-      sprays: this.sprayList(),
+      sprays: this.sprayList(), skip: skipInfo(this),
+      mpatch: this.patchList(),
     });
     this.broadcast({ t: 'pj', ...this.info(p) }, p.id);
+    skipPeople(this); // one more human: a skip vote needs more
     send(p, { t: 'tip', tip: p.tip });
     for (const t of this.players.values()) if (t.trap) send(p, { t: 'trap', ...this.trapInfo(t) }); // anyone already floating in a soap bubble
     send(p, { t: 'court', s: [...this.players.values()].filter((o) => o.streak > 0).map((o) => [o.id, o.streak]) }); // scales of justice: streaks so far
     if (p.air && p.air.ok) send(p, { t: 'air', on: 1, grace: AIR.grace });
     deal(p);
+    this.modeJoin(p);
     this.sendLoadout(p);
     if (this.mode === 'ffa' || this.mode === 'coop') this.broadcast({ t: 'chat', id: 0, m: `${name} joined` });
     if (this.mode === 'bots') this.fillBots();
@@ -362,10 +492,14 @@ class Room {
 
   remove(p) {
     flushStats(p);
-    if (this.bomb && this.bomb.carrier === p.id) this.dropBomb(p.pos);
+    if (this.bomb && this.bomb.carrier === p.id) this.dropBomb(p.pos, p);
     this.players.delete(p.id);
-    for (const pr of this.projectiles.values()) if (pr.k === 'slipper' && pr.o === p.id) this.removeProj(pr);
+    // whatever they threw goes with them (with no owner it would ignore teams and bubbles); their holes and gas go inert
+    for (const pr of this.projectiles.values()) if (pr.o === p.id) this.removeProj(pr);
     this.broadcast({ t: 'pl', id: p.id });
+    if (this.vote) { if (this.vote.votes.delete(p.id)) this.broadcast({ t: 'votes', ...this.voteCounts() }); this.voteHurry(); } // whoever's left may all have voted now
+    if (this.livesOn) this.oitcList(); // so 'N left' drops them
+    if (!p.isBot) skipPeople(this); // a skip vote's majority moved
     if (!p.isBot && (this.mode === 'ffa' || this.mode === 'coop')) this.broadcast({ t: 'chat', id: 0, m: `${p.name} left` });
     if (!this.humans().length) rooms.delete(this.id);
   }
@@ -382,7 +516,9 @@ class Room {
     if (!opts.dummy && Math.random() < 0.5) b.grap = pick(GRAP_IDS); // bots show off ropes you can roll
     if (!opts.dummy) { this.joinTeam(b); if (b.team) b.pos = this.pickSpawn(true, b); }
     this.players.set(b.id, b);
+    this.sendLoadout(b); // bots added mid-match get the mode's weapons too
     this.broadcast({ t: 'pj', ...this.info(b) });
+    if (!opts.dummy) this.modeJoin(b);
     return b;
   }
   removeBots() { for (const b of [...this.players.values()]) if (b.isBot) this.remove(b); }
@@ -431,12 +567,28 @@ class Room {
       if (t === b || !t.alive || (t.isBot && (this.mode === 'coop' || t.ai.dummy))) continue;
       if (this.teamsOn() && t.team === b.team) continue;
       if (t.trap) continue; // sealed in a soap bubble: shooting it would only set them free, wait for the pop
+      if (this.friendly(b, t)) continue; // infection: zombies hunt survivors, survivors shoot zombies
       const d = dist3(t.pos, b.pos);
-      const vis = !raycast(eyeOf(b), norm([t.pos[0] - b.pos[0], t.pos[1] + 1 - b.pos[1] - PH.eye, t.pos[2] - b.pos[2]]) || [0, 0, 1], d, this.boxes);
+      const vis = this.canSee(eyeOf(b), [t.pos[0], t.pos[1] + 1, t.pos[2]]);
       const score = d * (vis ? 1 : 2.5);
       if (score < bestD) { bestD = score; best = t; }
     }
     return best;
+  }
+  // bot eyesight: walls and smoke clouds block it
+  canSee(a, c) {
+    const d = [c[0] - a[0], c[1] - a[1], c[2] - a[2]], l = Math.hypot(d[0], d[1], d[2]);
+    if (l < 1e-6) return true;
+    return !raycast(a, [d[0] / l, d[1] / l, d[2] / l], l, this.boxes) && !this.smokeBlocks(a, c);
+  }
+  smokeBlocks(a, c) {
+    if (!this.smokes.size) return false;
+    const d = [c[0] - a[0], c[1] - a[1], c[2] - a[2]], l2 = d[0] * d[0] + d[1] * d[1] + d[2] * d[2] || 1;
+    for (const s of this.smokes.values()) { // closest point of the sight line to the cloud's centre
+      const k = Math.max(0, Math.min(1, ((s.p[0] - a[0]) * d[0] + (s.p[1] - a[1]) * d[1] + (s.p[2] - a[2]) * d[2]) / l2));
+      if (Math.hypot(a[0] + d[0] * k - s.p[0], a[1] + d[1] * k - s.p[1], a[2] + d[2] * k - s.p[2]) < s.r) return true;
+    }
+    return false;
   }
 
   botThink(b, dt) {
@@ -454,15 +606,18 @@ class Room {
     }
     if ((this.players.get(ai.target) || {}).trap) ai.retarget = 0; // whoever it was after just got sealed in a soap bubble
     if (n > ai.retarget) { const t = this.botTarget(b); ai.target = t ? t.id : 0; ai.retarget = n + 400 + Math.random() * 600; }
-    const t = this.players.get(ai.target);
+    let t = this.players.get(ai.target);
+    if (t && this.friendly(b, t)) { ai.target = 0; ai.seenAt = 0; t = null; } // teams got reshuffled: that's a teammate now
+    this.botChaosThink(b, t, n);
     let wx = 0, wz = 0, jump = false;
     const w = WEAPONS[b.w];
-    const pref = b.w === 'sniper' ? [25, 60] : b.w === 'shotgun' ? [3, 9] : b.w === 'marbles' ? [1.5, 4] : b.w === 'chicken' ? [10, 30] : [7, 22];
+    const pref = b.w === 'sniper' ? [25, 60] : b.w === 'shotgun' ? [3, 9] : b.w === 'marbles' ? [1.5, 4] : b.w === 'chicken' ? [10, 30] : b.w === 'shredder' ? [1.5, 9] : [7, 22];
+    if (w.kind === 'melee') { pref[0] = 0; pref[1] = this.chaosKit ? 1.2 : w.range * 0.7; } // claws, melee rungs, spoons + knives: get in their face
     if (t && t.alive) {
       const e = eyeOf(b), tc = [t.pos[0], t.pos[1] + 1.1, t.pos[2]];
       const dx = tc[0] - e[0], dy = tc[1] - e[1], dz = tc[2] - e[2];
       const hd = Math.hypot(dx, dz), dist = Math.hypot(dx, dy, dz);
-      const vis = !raycast(e, [dx / dist, dy / dist, dz / dist], dist, boxes);
+      const vis = this.canSee(e, tc);
       if (vis && !ai.seenAt) ai.seenAt = n;
       if (!vis) ai.seenAt = 0;
       const yaw = Math.atan2(-dx, -dz), pitch = Math.atan2(dy, hd);
@@ -471,9 +626,10 @@ class Room {
       const fx = dx / (hd || 1), fz = dz / (hd || 1);
       if (dist > pref[1] || !vis) { wx += fx; wz += fz; } else if (dist < pref[0]) { wx -= fx; wz -= fz; }
       if (Math.random() < dt * 0.6) ai.strafeDir *= -1;
-      wx += -fz * ai.strafeDir * 0.8; wz += fx * ai.strafeDir * 0.8;
+      if (w.kind !== 'melee') { wx += -fz * ai.strafeDir * 0.8; wz += fx * ai.strafeDir * 0.8; } // melee bots circling at 1 m never line up a swing
       let ang = Math.abs(b.yaw - yaw) % (Math.PI * 2); if (ang > Math.PI) ang = Math.PI * 2 - ang;
-      if (vis && ai.seenAt && n - ai.seenAt > D.react && ang < 0.25 && n >= ai.nextShot && n >= ai.reloadUntil && dist < (w.range || 60)) this.botFire(b, t, D);
+      const meleeOk = w.kind === 'melee' && dist < w.range && ang < 0.6; // up close the angle swings too fast for the gun aim check
+      if (vis && (meleeOk || (ai.seenAt && n - ai.seenAt > D.react && ang < 0.25)) && n >= ai.nextShot && n >= ai.reloadUntil && dist < (w.range || 60) + (w.kind === 'melee' ? 1 : 0)) this.botFire(b, t, D);
       if (b.onGround && Math.random() < dt * (dist < 15 ? 1.2 : 0.4)) jump = true;
     } else {
       if (!ai.wp || dist3(ai.wp, b.pos) < 4) ai.wp = pick(this.map.spawns);
@@ -486,8 +642,22 @@ class Room {
     const goal = this.botGoal(b);
     if (goal) {
       const gx = goal.p[0] - b.pos[0], gz = goal.p[2] - b.pos[2], gl = Math.hypot(gx, gz);
-      if (goal.use && gl < goal.r) { wx = 0; wz = 0; jump = false; this.tryUse(b); }
-      else if (goal.force || !t || !t.alive || !ai.seenAt) { wx = gx / (gl || 1); wz = gz / (gl || 1); }
+      if (goal.use && gl < goal.r) { wx = 0; wz = 0; jump = false; this.tryUse(b); ai.progQ = null; }
+      else if (goal.force || !t || !t.alive || !ai.seenAt) { wx = gx / (gl || 1); wz = gz / (gl || 1); if (ai.navJump && b.onGround) jump = true; }
+      else ai.progQ = null; // busy fighting, not walking the route: that doesn't count as stuck
+    }
+    ai.navJump = false;
+    // mazes: follow the map's walk graph (shared/nav.js) to wherever we were about to walk straight at (and into a wall).
+    // in every mode: fights, wandering, the bomb (lane waypoints from laneTo, a dropped bomb), tags
+    if (this.map.graph) {
+      const gl = goal ? Math.hypot(goal.p[0] - b.pos[0], goal.p[2] - b.pos[2]) : 0;
+      const want = goal && (goal.force || !t || !t.alive || !ai.seenAt) ? (goal.use && gl < goal.r ? null : goal.p) : t && t.alive ? (ai.seenAt ? null : t.pos) : ai.wp;
+      const s = want && navSteer(this.map.graph, ai.nav || (ai.nav = {}), b.pos, want, n);
+      if (s) {
+        wx = s[0]; wz = s[1];
+        if (s[2] && b.onGround) jump = true; // hop to get unstuck
+        if (!t || !t.alive || (!ai.seenAt && dist3(t.pos, b.pos) > 12)) b.yaw = lerpAngle(b.yaw, Math.atan2(-wx, -wz), 30 * dt); // look where you walk, not through walls
+      }
     }
     // grappling: chase people who are far / up high / out of sight, save yourself when falling, show off sometimes
     if (!ai.hook && n >= (ai.nextHook || 0) && this.mode !== 'training') {
@@ -497,10 +667,10 @@ class Room {
       if (below && (b.vel[1] < -4 || b.pos[1] < this.map.killY + 25)) { // falling into the void: hook back toward the middle, up high
         const c = this.map.spawns ? this.map.spawns[0] : [0, 0, 0];
         want = [c[0] - b.pos[0], 18 + Math.max(0, c[1] - b.pos[1]), c[2] - b.pos[2]];
-      } else if (t && t.alive && Math.random() < skill) {
+      } else if (t && t.alive && (b.inf || Math.random() < skill)) {
         const dx = t.pos[0] - b.pos[0], dy = t.pos[1] - b.pos[1], dz = t.pos[2] - b.pos[2];
         const hd = Math.hypot(dx, dz);
-        if (hd > pref[1] + 10 || dy > 4 || !ai.seenAt) want = [dx, dy + hd * 0.35 + 6, dz];
+        if (hd > pref[1] + 10 || dy > 4 || !ai.seenAt || (b.inf && hd > 6)) want = [dx, dy + hd * 0.35 + 6, dz];
       } else if (!t && Math.random() < 0.25 * skill) {
         const a = Math.random() * Math.PI * 2;
         want = [Math.cos(a) * 20, 14 + Math.random() * 10, Math.sin(a) * 20];
@@ -515,28 +685,110 @@ class Room {
     if (ai.hook) jump = false;
     const wl = Math.hypot(wx, wz);
     if (wl > 0) { wx /= wl; wz /= wl; }
-    // don't walk off the map (bots are dumb, not suicidal)
+    // don't walk off the map (bots are dumb, not suicidal). a floor up to 15 m down will do (no fall damage); a box
+    // far below is no floor: a long fall drifts past it into the void
     if (wl > 0 && b.onGround) {
       const probe = [b.pos[0] + wx * 2.5, b.pos[1] + 0.5, b.pos[2] + wz * 2.5];
-      if (!raycast(probe, [0, -1, 0], 6, boxes)) { wx = -wx; wz = -wz; ai.strafeDir *= -1; }
+      if (!raycast(probe, [0, -1, 0], Math.max(6, Math.min(15, probe[1] - this.map.killY)), boxes)) { wx = -wx; wz = -wz; ai.strafeDir *= -1; }
     }
+    if (this.lavaOn) [wx, wz, jump] = this.botLava(b, wx, wz, jump, t);
     return { wx: wx * D.speed, wz: wz * D.speed, jump };
   }
 
-  // follow the map's lane waypoints toward a site (bots can't path-find, so maps give them routes)
+  // walk the map's lanes toward a site (bots can't path-find, so maps give them routes: see navGraph)
   routeTo(b, siteId, final) {
+    if (this.map.graph) return this.laneTo(b, siteId, final); // maze maps: the walk graph drives (see laneTo)
+    const g = navGraph(this.map), ends = g && g.ends[siteId];
+    return ends && ends.length ? this.navTo(b, 'site' + siteId, final, ends) : final;
+  }
+  // can a bot walk straight from pos (feet) to q ([x, z])? two rays a body-width apart, at knee and chest height
+  clearPath(pos, q) {
+    const dx = q[0] - pos[0], dz = q[1] - pos[2], l = Math.hypot(dx, dz);
+    if (l < 0.5) return true;
+    const d = [dx / l, 0, dz / l], sx = -d[2] * 0.38, sz = d[0] * 0.38;
+    for (const h of [0.75, 1.5]) for (const s of [-1, 1]) if (raycast([pos[0] + sx * s, pos[1] + h, pos[2] + sz * s], d, l, this.boxes)) return false;
+    return true;
+  }
+  // the nearest waypoint you can walk straight to (or just the nearest one)
+  navEntry(pos, g, avoid = -1) {
+    const order = g.pts.map((q, i) => [Math.hypot(q[0] - pos[0], q[1] - pos[2]), i]).filter((e) => e[1] !== avoid).sort((a, c) => a[0] - c[0]);
+    if (!order.length) return -1;
+    for (const [d, i] of order) if (d < 90 && this.clearPath(pos, g.pts[i])) return i;
+    return order[0][1];
+  }
+  // follow a path through the lane graph to final: go straight once final is in plain sight, cut a corner only when
+  // the next waypoint is, and when it stops getting closer, hop and then plan again from where it stands
+  navTo(b, key, final, goals) {
+    const ai = b.ai, n = now(), g = navGraph(this.map);
+    if (!g) return final;
+    if (ai.navKey !== key) { ai.navKey = key; ai.route = null; ai.avoid = -1; }
+    if (n - (ai.navT || 0) > 500) { ai.progQ = null; ai.losT = 0; } // wasn't routing a moment ago (frozen, asleep, dead)
+    if (ai.hook) ai.progQ = null; // swinging somewhere: plans again when it lets go
+    ai.navT = n;
+    if (n >= (ai.losT || 0)) {
+      ai.losT = n + 250;
+      ai.direct = Math.hypot(final[0] - b.pos[0], final[2] - b.pos[2]) < 25 && this.clearPath(b.pos, [final[0], final[2]]);
+      if (!ai.direct && ai.route && ai.ri + 1 < ai.route.length && this.clearPath(b.pos, ai.route[ai.ri + 1])) ai.ri++;
+    }
+    let tgt = final;
+    if (ai.direct) ai.route = null;
+    else {
+      if (!ai.route) {
+        // a little random cost per waypoint spreads bots over the lanes; legs it got stuck on cost a lot for a while
+        const from = this.navEntry(b.pos, g, ai.avoid), jit = g.pts.map(() => 1 + Math.random() * 0.6), bl = ai.blocked;
+        const r = from >= 0 ? navPath(g, from, goals, (u, v, d) => d * jit[v] + (bl && (bl.get(u + ':' + v) || 0) > n ? 1000 : 0)) : null;
+        ai.rnodes = r ? r.path : []; ai.route = ai.rnodes.map((i) => g.pts[i]); ai.ri = 0;
+      }
+      const rt = ai.route;
+      while (ai.ri < rt.length && Math.hypot(rt[ai.ri][0] - b.pos[0], rt[ai.ri][1] - b.pos[2]) < 1.2) ai.ri++;
+      if (ai.ri < rt.length) tgt = [rt[ai.ri][0], b.pos[1], rt[ai.ri][1]];
+    }
+    const d = Math.hypot(tgt[0] - b.pos[0], tgt[2] - b.pos[2]);
+    if (!ai.progQ || Math.abs(ai.progQ[0] - tgt[0]) + Math.abs(ai.progQ[1] - tgt[2]) > 0.5 || d < ai.progD - 1) { ai.progQ = [tgt[0], tgt[2]]; ai.progD = d; ai.progT = n; }
+    else if (d > 1.5 && n - ai.progT > 1200) {
+      ai.navJump = true;
+      if (n - ai.progT > 2600) {
+        ai.avoid = -1;
+        if (ai.route && ai.ri < ai.rnodes.length) {
+          ai.avoid = ai.rnodes[ai.ri];
+          if (ai.ri > 0) (ai.blocked ||= new Map()).set(ai.rnodes[ai.ri - 1] + ':' + ai.avoid, n + 60000);
+        }
+        ai.route = null; ai.direct = false; ai.losT = n + 1500; ai.progQ = null;
+      }
+    }
+    return tgt;
+  }
+  // a dropped bomb: the one or two attacker bots closest to it by walking distance go get it (re-picked every 1.5 s)
+  dropChasers() {
+    const B = this.bomb, n = now(), key = B.drop.join();
+    if (B.chase && B.chase.key === key && n < B.chase.until) return B.chase.ids;
+    const g = navGraph(this.map), at = B.drop;
+    B.dropNode = g ? this.navEntry([at[0], at[1] - 0.15, at[2]], g) : -1;
+    const cost = (p) => {
+      const d = Math.hypot(p.pos[0] - at[0], p.pos[2] - at[2]);
+      if (B.dropNode < 0 || (d < 25 && this.clearPath(p.pos, [at[0], at[2]]))) return d;
+      const a = this.navEntry(p.pos, g), r = a >= 0 ? navPath(g, a, [B.dropNode]) : null;
+      return r ? Math.hypot(g.pts[a][0] - p.pos[0], g.pts[a][1] - p.pos[2]) + r.cost + Math.hypot(g.pts[B.dropNode][0] - at[0], g.pts[B.dropNode][1] - at[2]) : d * 3;
+    };
+    const ids = this.fighters().filter((p) => p.isBot && p.alive && p.team === B.att).map((p) => [cost(p), p.id]).sort((a, c) => a[0] - c[0]).slice(0, 2).map((e) => e[1]);
+    B.chase = { key, until: n + 1500, ids };
+    return ids;
+  }
+  // maze maps (map.graph, e.g. Backrooms): walk one of the site's lanes waypoint by waypoint (they spread the bots out,
+  // one goes down through the pools); navSteer in botThink walks each leg through the walk graph, stairs and drops
+  laneTo(b, siteId, final) {
     const nav = this.map.nav && this.map.nav[siteId];
     if (!nav) return final;
     const ai = b.ai;
     if (!ai.route || ai.routeSite !== siteId) {
       let best = null, bd = 1e9, bi = 0;
-      for (const rt of nav) rt.forEach((q, i) => { const d = Math.hypot(q[0] - b.pos[0], q[1] - b.pos[2]); if (d < bd) { bd = d; best = rt; bi = i; } });
+      for (const rt of nav) rt.forEach((q, i) => { const d = Math.hypot(q[0] - b.pos[0], q[1] - b.pos[2]) + Math.abs((q[2] ?? b.pos[1]) - b.pos[1]) * 3; if (d < bd) { bd = d; best = rt; bi = i; } });
       ai.route = best; ai.ri = bi; ai.routeSite = siteId;
     }
-    const rt = ai.route;
-    while (ai.ri < rt.length && Math.hypot(rt[ai.ri][0] - b.pos[0], rt[ai.ri][1] - b.pos[2]) < 2.6) ai.ri++;
+    const rt = ai.route; // points are [x, z] or [x, z, y] (routes that go down a level)
+    while (ai.ri < rt.length && Math.hypot(rt[ai.ri][0] - b.pos[0], rt[ai.ri][1] - b.pos[2]) < 2.6 && Math.abs((rt[ai.ri][2] ?? b.pos[1]) - b.pos[1]) < 2) ai.ri++;
     if (ai.ri >= rt.length) return final;
-    return [rt[ai.ri][0], b.pos[1], rt[ai.ri][1]];
+    return [rt[ai.ri][0], rt[ai.ri][2] ?? b.pos[1], rt[ai.ri][1]];
   }
   botGoal(b) {
     const B = this.bomb;
@@ -546,16 +798,18 @@ class Room {
       if (b.team === B.att) {
         if (B.carrier === b.id) {
           b.ai.site = b.ai.site && sites.find((x) => x.id === b.ai.site.id) ? b.ai.site : pick(sites);
-          const inSite = siteAt(this.map, b.pos);
-          return { p: inSite ? b.pos : this.routeTo(b, b.ai.site.id, mid(b.ai.site)), use: true, r: inSite ? 99 : 1.5, force: true };
+          if (siteAt(this.map, b.pos)) return { p: b.pos, use: true, r: 99, force: true };
+          return { p: this.routeTo(b, b.ai.site.id, mid(b.ai.site)), r: 0, force: true };
         }
-        if (B.drop) return { p: B.drop, force: true, r: 0 };
+        if (B.drop && this.dropChasers().includes(b.id)) {
+          return { p: B.dropNode >= 0 ? this.navTo(b, 'drop' + B.chase.key, B.drop, [B.dropNode]) : B.drop, force: true, r: 0 };
+        }
         if (B.ph === 'planted') return { p: this.routeTo(b, B.site, B.p), r: 0 }; // guard it
         if (!b.ai.site) b.ai.site = pick(sites);
         return b.ai.site ? { p: this.routeTo(b, b.ai.site.id, mid(b.ai.site)), r: 0 } : null;
       }
       if (B.ph === 'planted') {
-        const near = dist3(b.pos, B.p) < 8;
+        const near = Math.hypot(b.pos[0] - B.p[0], b.pos[2] - B.p[2]) < 8;
         return { p: near ? B.p : this.routeTo(b, B.site, B.p), use: near, r: BOMB.defuseRange - 0.6, force: true };
       }
       if (!b.ai.site || Math.random() < 0.002) b.ai.site = pick(sites);
@@ -570,7 +824,9 @@ class Room {
   }
 
   botFire(b, t, D) {
+    if (this.chaosKit && this.botChaosFire(b, t, D)) return;
     const w = WEAPONS[b.w], n = now();
+    if (b.w === 'shredder') { this.botShred(b); return; } // no shots: it sucks for as long as they're in front of it
     const iv = w.rate ? 1000 / fireRate(w, b.hp) : w.cd * 1000;
     if (w.mag) {
       b.ai.ammo--;
@@ -600,8 +856,25 @@ class Room {
       }
       for (const [victim, h] of hits) this.applyHitscan(b, victim, b.w, h.n, h.h, h.d, 0.7);
       this.broadcast({ t: 'fx', k: 'shot', w: b.w, id: b.id, s: segs.slice(0, 12) });
+      if (w.marbles) this.marblePatch(b, segs.slice(0, 12)); // bots' marbles trip people too
     } else if (w.kind === 'proj') {
       this.spawnProj(b, b.w, o, spreadDir(aim, D.err));
+    } else if (w.kind === 'melee') { // zombie claws and the gun game's melee rungs: botThink only gets here in reach
+      const d = norm([t.pos[0] - b.pos[0], t.pos[1] - b.pos[1], t.pos[2] - b.pos[2]]) || aim;
+      this.broadcast({ t: 'fx', k: 'swing', w: b.w, id: b.id, a: o.map(r2) });
+      if (this.parryMelee(b, t)) return; // a katana parry shoves the bot off, like a player's swing
+      const vd = w.verdict ? this.verdictOf(b, t) : null; // the scales rung: the court decides how hard it lands
+      const hp0 = t.hp, dmg = w.dmg * (vd ? vd.mult : 1);
+      this.hurt(t, b, b.w, dmg, [d[0] * w.kb, d[1] * w.kb + (w.kbUp || 0), d[2] * w.kb], { slip: !!w.slip });
+      if (vd && t.hp < hp0) this.broadcast({ t: 'fx', k: 'verdict', id: t.id, by: b.id, m: vd.mult, g: vd.g, one: !t.alive && dmg >= 100 ? 1 : 0, p: center(t).map(r2) });
+    } else if (w.kind === 'blood') { // the Blood Cross rung: same HP price and cooldown as a player's
+      this.fireBlood(b, o, spreadDir(aim, D.err));
+    } else if (w.kind === 'bow') { // bots always loose a full draw
+      const d = spreadDir(aim, D.err);
+      const pr = this.makeProj(b, 'bow', [o[0] + d[0] * 0.7, o[1] + d[1] * 0.7, o[2] + d[2] * 0.7], d.map((x) => x * w.speedMax), { tip: pick(TIP_IDS), charge: 1 });
+      pr.born = now();
+    } else if (w.kind === 'cards') { // no hand of cards for bots: they just flick single ones
+      this.spawnProj(b, 'card', o, spreadDir(aim, D.err));
     }
   }
 
@@ -621,7 +894,7 @@ class Room {
           const fr = slipping ? 0.02 : 6;
           if (hs > 0) { const ns = Math.max(0, hs - Math.max(hs, 3) * fr * dt) / hs; v[0] *= ns; v[2] *= ns; }
           if (!slipping) {
-            const cur = v[0] * think.wx + v[2] * think.wz, add = 8.5 - cur;
+            const cur = v[0] * think.wx + v[2] * think.wz, add = 8.5 * this.modeSpeed(b) * (b.ai.spd || 1) - cur;
             if (add > 0 && (think.wx || think.wz)) { const a = Math.min(add, 11 * 8.5 * dt); v[0] += a * think.wx; v[2] += a * think.wz; }
           }
         }
@@ -631,16 +904,15 @@ class Room {
       }
     }
     v[1] -= 26 * dt;
-    // on the rope: the same pendulum rope as a player's grapple (shared/hookphys.js), so bots swing smoothly too.
+    // on the rope: the same classic grapple as a player's (shared/hookphys.js).
     // let go near the point (or when it's been a while) with a grapple jump
     const hk = b.ai && b.ai.hook;
     if (hk) {
-      ropeStep(hk, hk.point, b.pos, v, dt, 26);
+      classicRopeStep(hk, hk.point, b.pos, v, dt, 26, this.hookMul); // (spoons & grapples pulls harder)
       b.ropeLift = 1;
       if (hk.dist < 4.5 || n > hk.until || slipping) {
-        // grapple jump the way they're facing, a bit up, and never flung into the surface they're hooked on
-        if (!slipping) { const cp = Math.cos(b.pitch); ropeJump(v, [-Math.sin(b.yaw) * cp, Math.max(0.3, Math.sin(b.pitch)), -Math.cos(b.yaw) * cp], hk.n); }
-        b.ai.hook = null; b.g = null;
+        if (!slipping) classicRopeJump(v); // hook jump
+        b.ai.hook = null; b.g = null; b.ai.route = null; // landed somewhere new: plan again from there
       }
       b.onGround = false;
     } else if (b.ropeLift > 0) { // let go: the rope's share of their weight fades out like a player's (no one-step drop)
@@ -648,42 +920,53 @@ class Room {
       v[1] += 26 * ROPE.lift * b.ropeLift * dt;
     }
     this.eatMomentum(b, dt);
+    if (b.held && n < b.held.until) { for (let i = 0; i < 3; i++) v[i] = Math.max(-30, Math.min(30, (b.held.at[i] - b.pos[i]) * 9)); b.onGround = false; } // hanging in a shredder
     const was = b.onGround;
     const res = movePlayer(b.pos, v, dt, this.boxes, was);
     b.onGround = !!res.ground && v[1] <= 0.01;
     if (b.onGround && res.ground.pad && !b.ai.dummy) { const pd = res.ground.pad; v[0] += pd[0]; v[1] = pd[1]; v[2] += pd[2]; b.onGround = false; }
-    b.f = slipping ? 16 : 0;
+    b.f = (slipping ? 16 : 0) | (n < (b.sleepUntil || 0) ? FLAGS.SLEEP : 0); // asleep: everyone sees them lying on the floor
+    if (b.onGround) b.ground = b.pos.slice(); // last place they stood (void deaths drop their tag here)
+    if (n < (b.suckUntil || 0)) b.f |= FLAGS.SUCK; // shredder running: clients draw the suction
     if (b.pos[1] < this.map.killY) this.kill(b, null, 'void');
   }
 
   // ---------------------------------------------------------- items (G): charges refill over time
-  // only ITEMS' own keys: '__proto__' / 'constructor' must not reach p.ic (that would write onto Object.prototype)
-  okItem(id) { return typeof id === 'string' && Object.hasOwn(ITEMS, id) ? id : null; }
-  // the item in your loadout ('lo' / join). switching counts right away only before you've used one this life
-  setItem(p, id) {
-    id = this.okItem(id);
-    if (!id || p.forced) return; // randomizer: you get its item
-    p.ownItem = id;
-    if (!p.alive || (now() - p.spawnT < 5500 && (p.itemT || 0) < p.spawnT)) p.item = id;
-  }
-  itemCharges(p, id) {
-    const it = ITEMS[id];
-    p.ic ||= {};
-    let c = p.ic[id];
-    if (!c) c = p.ic[id] = { n: it.charges, next: 0 };
-    const n = now();
+  // one item per loadout (p.item, set with 'itemsel'); its charges are per life and the server's count is the real one.
+  // has() = Object.hasOwn: '__proto__' / 'constructor' never become an item
+  itemCharges(p) {
+    const it = ITEMS[p.item] || ITEMS.frag;
+    if (!p.ic || p.ic.i !== p.item) p.ic = { i: p.item, n: it.charges, next: 0 };
+    const c = p.ic, n = now();
     while (c.n < it.charges && c.next && n >= c.next) { c.n++; c.next = c.n < it.charges ? c.next + it.recharge * 1000 : 0; }
     return c;
   }
+  icInfo(p) { const c = this.itemCharges(p); return { i: p.item, n: c.n, next: c.next ? c.next - now() : 0 }; }
+  sendIc(p) { if (!p.isBot) send(p, { t: 'ic', ...this.icInfo(p) }); }
+  // your loadout item changed: right away while dead or in the first 5 s of a life, otherwise from your next life
+  // (the client's applyLoadout rule; its 5 s start when 'spawn' reaches it, so allow one round trip more)
+  selectItem(p, id) {
+    if (!has(ITEMS, id)) return;
+    if (id === p.item) p.nextItem = null;
+    else if (!p.alive || now() - p.spawnT < 5000 + Math.min(1000, (p.ws && p.ws.rtt) || 250)) {
+      // what you already used this life stays used: swapping doesn't hand out fresh charges
+      const used = ITEMS[p.item].charges - this.itemCharges(p).n, it = ITEMS[id];
+      p.item = id; p.nextItem = null;
+      p.ic = { i: id, n: Math.max(0, it.charges - used), next: used > 0 ? now() + it.recharge * 1000 : 0 };
+    } else p.nextItem = id;
+    this.sendIc(p);
+  }
   useItem(p, m) {
-    const it = Object.hasOwn(ITEMS, m.i) ? ITEMS[m.i] : null;
-    if (!it || !p.alive || m.i !== p.item) return; // only the one item in your loadout
-    const c = this.itemCharges(p, m.i);
-    if (c.n <= 0 || now() - (p.itemT || 0) < 400) return;
+    if (!p.alive || !has(ITEMS, m.i)) return;
+    const c = this.itemCharges(p);
+    // not your item, no charge left, too fast, or a mode with no items (gun game, zombies, the chaos kits): tell the
+    // client the real count so its HUD can't drift
+    if (m.i !== p.item || c.n <= 0 || now() - (p.itemT || 0) < 400 || this.modeWeapon(p) || (this.chaosKit && this.chaosKit.noItem)) { this.sendIc(p); return; }
+    const it = ITEMS[p.item];
     p.itemT = now();
     c.n--;
     if (!c.next) c.next = now() + it.recharge * 1000;
-    send(p, { t: 'ic', i: m.i, n: c.n, next: c.next ? c.next - now() : 0 });
+    this.sendIc(p);
     let o = vec3(m.o);
     if (!o || dist3(o, eyeOf(p)) > 4) o = eyeOf(p);
     const d = norm(vec3(m.d)) || [0, 0, -1];
@@ -693,10 +976,10 @@ class Room {
       const pr = this.makeProj(p, it.proj, [o[0] + d[0] * 0.7, o[1] + d[1] * 0.7, o[2] + d[2] * 0.7],
         [d[0] * w.speed + p.vel[0] * 0.35, d[1] * w.speed + 3 + p.vel[1] * 0.35, d[2] * w.speed + p.vel[2] * 0.35]);
       pr.born = now();
-    } else if (m.i === 'medkit') {
+    } else if (p.item === 'medkit') {
       p.healLeft = it.heal;
       this.broadcast({ t: 'fx', k: 'medkit', id: p.id });
-    } else if (m.i === 'bubble') {
+    } else if (p.item === 'bubble') {
       const b = { id: this.nextBub++, p: [r2(p.pos[0]), r2(p.pos[1] + 1), r2(p.pos[2])], r: it.r, until: now() + it.dur * 1000, o: p.id };
       this.bubbles.set(b.id, b);
       this.broadcast({ t: 'bub+', id: b.id, p: b.p, r: b.r, left: it.dur * 1000 });
@@ -724,35 +1007,36 @@ class Room {
     this.broadcast({ t: 'fx', k: 'reverse', id: p.id, dur });
   }
   inBubble(b, t) { return Math.hypot(t.pos[0] - b.p[0], t.pos[1] + 1 - b.p[1], t.pos[2] - b.p[2]) < b.r; }
-  // a bubble protects whoever is inside from anyone outside it
-  bubbleBlocks(attacker, t) {
-    if (!attacker || attacker === t || !this.bubbles.size) return false;
-    for (const b of this.bubbles.values()) if (this.inBubble(b, t) && !this.inBubble(b, attacker)) return true;
+  // a bubble protects whoever is inside from anyone outside it. damage with no attacker (the bomb) passes from: where it came from
+  bubbleBlocks(attacker, t, from) {
+    if (attacker === t || !this.bubbles.size || (!attacker && !from)) return false;
+    for (const b of this.bubbles.values()) {
+      if (!this.inBubble(b, t)) continue;
+      if (attacker ? !this.inBubble(b, attacker) : Math.hypot(from[0] - b.p[0], from[1] - b.p[1], from[2] - b.p[2]) >= b.r) return true;
+    }
     return false;
   }
-  // snowballs: frost builds up, enough of it freezes you, a snowball to a frozen target shatters them
+  // snowballs: frost builds up, enough of it freezes you, a snowball to a frozen target shatters them.
+  // only call it for a snowball that really landed (hurt() returned the target)
   frost(t, owner) {
     const w = WEAPONS.snowball, n = now();
-    if (t.frozenUntil > n) {
-      t.frozenUntil = 0;
-      this.broadcast({ t: 'fx', k: 'shatter', id: t.id, p: center(t).map(r2) });
-      this.kill(t, owner, 'snowball');
-      return;
-    }
     t.frost = Math.max(0, (t.frost || 0) - Math.floor((n - (t.frostT || 0)) / (w.frostDecay * 1000))) + 1;
     t.frostT = n;
     if (t.frost >= w.freezeAt) {
       t.frost = 0;
       t.frozenUntil = n + w.freeze * 1000;
       t.vel[0] = 0; t.vel[2] = 0;
+      t.g = null; if (t.ai) t.ai.hook = null; // ice doesn't swing on a rope
       this.broadcast({ t: 'freeze', id: t.id, dur: w.freeze * 1000 });
     } else this.broadcast({ t: 'frost', id: t.id, n: t.frost });
   }
   tickItems(dt) {
     const n = now();
     for (const b of [...this.bubbles.values()]) if (n >= b.until) { this.bubbles.delete(b.id); this.broadcast({ t: 'bubx', id: b.id }); }
+    for (const s of [...this.smokes.values()]) if (n >= s.until) this.smokes.delete(s.id);
     for (const p of this.players.values()) {
-      if (p.healLeft > 0 && p.alive) { const a = Math.min(p.healLeft, 26 * dt); p.healLeft -= a; p.hp = Math.min(100, p.hp + a); }
+      if (p.healLeft > 0 && p.alive) { const a = Math.min(p.healLeft, 26 * dt); p.healLeft -= a; if (p.hp < 100) p.hp = Math.min(100, p.hp + a); } // never eats overheal
+      if (!p.isBot && p.ic && p.ic.next && n >= p.ic.next) this.sendIc(p); // a charge came back
     }
   }
 
@@ -763,7 +1047,7 @@ class Room {
     const od = [o[0] - ey[0], o[1] - ey[1], o[2] - ey[2]], ol = Math.hypot(...od);
     if (ol > 1e-3 && raycast(ey, od.map((x) => x / ol), ol, this.boxes)) o = ey; // no blowing from the far side of a wall
     const off = [o[0] - p.pos[0], o[1] - p.pos[1] - 0.15, o[2] - p.pos[2]]; // the wand is at your mouth, a bit under your eyes
-    for (let i = 0; i < it.bubbles; i++) setTimeout(() => {
+    for (let i = 0; i < it.bubbles; i++) setTimeout(safe('wand', () => {
       if (this.players.get(p.id) !== p || !p.alive || p.trap) return;
       const s = spreadDir(d, i ? 0.09 : 0.02), sp = w.speed * (0.85 + Math.random() * 0.3);
       const e = [p.pos[0] + off[0], p.pos[1] + off[1], p.pos[2] + off[2]];
@@ -775,7 +1059,7 @@ class Room {
       const pl = Math.hypot(...p.vel), ik = pl > 25 ? 0.3 * 25 / pl : 0.3;
       const vel = [s[0] * sp + p.vel[0] * ik, s[1] * sp + p.vel[1] * ik + 0.5, s[2] * sp + p.vel[2] * ik].map(r2);
       this.makeProj(p, 'soap', pos, vel, { born: now(), p0: pos.slice(), v0: vel.slice() });
-    }, i * it.gap);
+    }), i * it.gap);
   }
   stepSoap(pr, n, owner, prev, dt) {
     const w = WEAPONS.soap, age = (n - pr.born) / 1000;
@@ -815,7 +1099,7 @@ class Room {
     t.trap = { by: owner ? owner.id : 0, until: n + it.dur * 1000, v: [dir[0] * it.drift, it.rise, dir[2] * it.drift].map(r2), seq: t.seq,
       at: t.pos.slice(), atT: n, slack: 2.5 + Math.min(30, Math.hypot(...t.vel)) * 0.25 };
     t.g = null; t.burnUntil = 0; // no air in there: the fire goes out
-    if (t.ai) t.ai.hook = null;
+    if (t.ai) { t.ai.hook = null; t.ai.route = null; } // floated off its lane: plans again from wherever it drops
     this.tag(t, owner, 'soap');
     this.broadcast({ t: 'trap', ...this.trapInfo(t) });
     return true;
@@ -881,27 +1165,34 @@ class Room {
       if (t.ai.dummy && t.ai.dummy.move) return;
       t.vel[0] += v[0]; t.vel[1] += v[1]; t.vel[2] += v[2];
       if (v[1] > 0.5 && t.onGround) { t.onGround = false; t.pos[1] += 0.02; }
+      if (Math.hypot(v[0], v[2]) > 12) t.ai.route = null; // knocked off the lane: plan again from wherever it lands
       return;
     }
     send(t, { t: 'kb', v: v.map(r2), w });
   }
-  slip(t) {
+  slip(t, k) {
     t.knockT = now(); // sliding on a banana isn't moving either
     if (t.isBot) { t.slipUntil = now() + 1700; t.vel[1] = Math.max(t.vel[1], 6.5); t.onGround = false; return; }
-    send(t, { t: 'slip' });
+    send(t, k ? { t: 'slip', k } : { t: 'slip' }); // k: what you slipped on (the client says MARBLES! for marbles)
   }
   friendly(a, b) {
     if (!a || !b || a === b) return false;
     if (this.mode === 'coop') return a.isBot === b.isBot;
+    if (GAMES[this.game].infect) return !!a.inf === !!b.inf; // infection: survivors vs zombies, no hurting your own side
     return this.teamsOn() && a.team && a.team === b.team;
   }
-  damage(t, amt, attacker, w, hs) {
-    if (!t.alive || amt <= 0) return;
-    if (t.trap) return; // sealed in a soap bubble: burning, gas and the like can't get in (a real hit pops it, see hurt)
-    if (this.round && this.round.over && w !== 'void') return;
-    if (attacker && attacker !== t && now() - t.spawnT < 1200 && !t.isBot) return; // spawn protection
-    if (this.friendly(attacker, t)) return;
-    if (this.bubbleBlocks(attacker, t)) return;
+  // the rules every hit follows: true = it doesn't land
+  hitBlocked(t, attacker, w, from) {
+    if (!t.alive) return true;
+    if (this.round && this.round.over && w !== 'void') return true;
+    if (attacker && attacker !== t && now() - t.spawnT < 1200 && !t.isBot) return true; // spawn protection
+    return !!this.friendly(attacker, t) || this.bubbleBlocks(attacker, t, from);
+  }
+  // returns true when the damage was applied
+  damage(t, amt, attacker, w, hs, from) {
+    if (amt <= 0 || !t.alive) return false;
+    if (t.trap) return false; // sealed in a soap bubble: burning, gas and the like can't get in (a real hit pops it, see hurt)
+    if (this.hitBlocked(t, attacker, w, from)) return false;
     if (attacker && attacker.isBot && !t.isBot && this.mode !== 'bots') amt *= 0.6; // coop bots hit softer
     t.hp -= amt;
     if (!attacker || attacker === t) t.selfHurtT = now(); // EPIC: coughing yourself down to 4 HP doesn't make you a clutch hero
@@ -910,6 +1201,7 @@ class Room {
     this.tag(t, attacker, w);
     this.broadcast({ t: 'dmg', to: t.id, from: attacker ? attacker.id : 0, a: Math.round(Math.min(amt, 999)), w, hs: !!hs, ko: t.hp <= 0 ? 1 : undefined }); // ko: this hit kills (heavier headshot sounds)
     if (t.hp <= 0) this.kill(t, attacker, w);
+    return true;
   }
   heal(p, amt, max = 100) {
     if (!p.alive) return;
@@ -920,8 +1212,9 @@ class Room {
   sleep(t, by, secs) {
     if (!t.alive) return;
     this.tag(t, by, 'bow');
-    if (t.isBot) { t.sleepUntil = now() + secs * 1000; return; }
-    send(t, { t: 'sleep', dur: secs });
+    t.sleepUntil = now() + secs * 1000;
+    if (t.isBot) { if (t.ai) t.ai.hook = null; t.g = null; return; } // knocked flat: lets go of the rope too (snapshots show FLAGS.SLEEP)
+    send(t, { t: 'sleep', dur: secs }); // players send FLAGS.SLEEP themselves while it lasts
   }
   makeCloud(p, owner) {
     const c = { id: this.nextCloud++, p: p.map(r2), o: owner, born: now(), tick: 0 };
@@ -932,7 +1225,7 @@ class Room {
     const n = now();
     for (const t of this.players.values()) {
       if (!t.alive) continue;
-      if (t.hp > 100) t.hp = Math.max(100, t.hp - 2 * dt); // overheal fades
+      if (t.hp > 100 && !t.inf) t.hp = Math.max(100, t.hp - 2 * dt); // overheal fades (zombie HP doesn't)
       if (t.burnUntil > n) {
         t.burnTick -= dt;
         if (t.burnTick <= 0) { t.burnTick = 0.5; this.damage(t, 5, this.players.get(t.burnBy) || null, 'bow'); this.broadcast({ t: 'fx', k: 'burn', id: t.id }); }
@@ -944,6 +1237,7 @@ class Room {
       if (c.tick > 0) continue;
       c.tick = 0.4;
       const owner = this.players.get(c.o);
+      if (!owner) continue; // whoever made it left: it's just fog now
       for (const t of this.players.values()) {
         if (!t.alive || t.id === c.o || this.friendly(owner, t)) continue;
         if (dist3(center(t), c.p) < 5.5) this.damage(t, 4, owner, 'bow');
@@ -951,12 +1245,15 @@ class Room {
     }
   }
 
-  // everything that hurts or shoves a player goes through here so reverse cards work on all of it
+  // everything that hurts or shoves a player goes through here so reverse cards work on all of it.
+  // returns whoever actually took the damage (the attacker when it bounced off a reverse card), or null
+  // opts: hs (headshot), slip, lethal (at least their hp: a player's sniper headshot), from (where ownerless damage came from)
   hurt(t, attacker, w, dmg, kb, opts = {}) {
-    if (!t || !t.alive) return;
-    if (t.trap && !this.bubbleBlocks(attacker, t) && this.popTrap(t, 'hit', attacker, w)) return; // in a soap bubble: the first hit (teammates' too) only pops it
-    if (this.friendly(attacker, t)) return;
-    if (this.bubbleBlocks(attacker, t)) { this.broadcast({ t: 'fx', k: 'bubhit', p: center(t).map(r2) }); return; }
+    if (!t || !t.alive) return null;
+    if (t.trap && !this.bubbleBlocks(attacker, t, opts.from) && this.popTrap(t, 'hit', attacker, w)) return null; // in a soap bubble: the first hit (teammates' too) only pops it
+    if (this.friendly(attacker, t)) return null;
+    if (this.bubbleBlocks(attacker, t, opts.from)) { this.broadcast({ t: 'fx', k: 'bubhit', p: center(t).map(r2) }); return null; }
+    if (opts.lethal) dmg = Math.max(dmg, t.hp); // sized for whoever was shot: a reverse card bounces that same hit
     if (attacker && attacker !== t && attacker.alive && t.reverseUntil > now()) {
       this.broadcast({ t: 'fx', k: 'reflect', id: t.id, by: attacker.id });
       const victim = attacker;
@@ -967,14 +1264,15 @@ class Room {
     if (kb) this.knock(t, kb, w);
     if (opts.slip) this.slip(t);
     this.tag(t, attacker, w);
-    this.damage(t, dmg, attacker, w, opts.hs);
+    return this.damage(t, dmg, attacker, w, opts.hs, opts.from) ? t : null;
   }
   kill(t, attacker, w) {
     if (!t.alive) return;
     if (t.trap) this.popTrap(t, 'dead');
     t.alive = false; t.hp = 0; t.deaths++; t.g = null; t.reverseUntil = 0;
-    if (t.ai) t.ai.hook = null;
-    t.respawnAt = now() + (t.isBot && t.ai.dummy ? 700 : 2500);
+    if (t.ai) { t.ai.hook = null; t.ai.route = null; } // a fresh route from the spawn, not the old waypoint index
+    // the mode's respawn delay; skipping the killcam ('respawn') can't go below it
+    t.respawnAt = t.minRespawnAt = now() + (t.isBot && t.ai.dummy ? 700 : this.game === 'bomb' && this.teamsOn() ? BOMB.respawn : 2500);
     t.deadT = now();
     let killer = attacker, via = null;
     if (w === 'void' || w === 'cough') {
@@ -983,11 +1281,13 @@ class Room {
         killer = this.players.get(t.lastAttacker); via = t.lastAttackW;
       }
     }
+    // sky ducks and lava belong to nobody: whoever hurt you in the last few seconds gets it, else it's on you
+    if (!killer && (w === 'duck' || w === 'lava') && t.lastAttacker && now() - t.lastAttackT < 6000 && this.players.has(t.lastAttacker)) { killer = this.players.get(t.lastAttacker); via = t.lastAttackW; }
     if (killer && killer !== t && this.teamsOn() && killer.team !== t.team && this.round && !this.round.over) {
       if (this.game === 'tdm') this.score[killer.team]++;
-      if (this.game === 'tags') this.dropTag(t);
+      if (this.game === 'tags') this.dropTag(t, killer);
     }
-    if (this.bomb && this.bomb.carrier === t.id) this.dropBomb(t.pos);
+    if (this.bomb && this.bomb.carrier === t.id) this.dropBomb(t.pos, t);
     if (killer && killer !== t && (w === 'katana' || w === 'parry')) { // the katana grows with every kill (parries too)
       killer.kat = Math.min(WEAPONS.katana.growMax, (killer.kat || 0) + 1);
       this.broadcast({ t: 'kat', id: killer.id, n: killer.kat });
@@ -996,9 +1296,10 @@ class Room {
     if (killer && killer !== t) {
       killer.kills++;
       killer.streak = (killer.streak || 0) + 1;
+      if (this.round && !this.round.over) matchKill(this, killer, t, via || w);
       if (killer.lastKiller === t.id) killer.lastKiller = 0; // revenge served (scales of justice)
       t.lastKiller = killer.id;
-      if (!killer.isBot && this.mode !== 'training') {
+      if (!killer.isBot && this.mode !== 'training' && !this.modeWeapon(killer) && !(this.chaosKit && this.chaosKit.noStreaks)) { // no killstreaks in gun game, as a zombie or in a chaos kit
         // your 3 picked streaks: earn one and it waits in your tray until you use it (keys 5 / 6 / 7)
         for (const id of validStreaks(killer.streaks)) {
           const st = STREAKS[id];
@@ -1011,7 +1312,6 @@ class Room {
       }
     }
     // killcam: humans who have it on wait for it to finish (or skip it) before respawning
-    if (this.game === 'bomb' && this.teamsOn()) t.respawnAt = now() + BOMB.respawn;
     if (!t.isBot && t.kc && killer && killer !== t && this.mode !== 'training') t.respawnAt = Math.max(t.respawnAt, now() + 9000);
     // EPIC kill: the victim (if they have killcams on) has to watch all of it. their respawn waits it out, never past the 9 s cap
     const ep = this.epicOf(killer, t, w, via);
@@ -1021,6 +1321,7 @@ class Room {
     if (killer && killer !== t && this.round && !this.round.over && !(t.isBot && t.ai && t.ai.dummy) && this.mode !== 'training') this.hlCandidate(killer, t, w);
     send(t, { t: 'streak', reset: 1 });
     t.streak = 0;
+    if (t.nextStreaks) { t.streaks = t.nextStreaks; t.nextStreaks = null; } // picks changed mid-streak count from this life on
     t.scythe = false; // active stuff ends when you die; earned-but-unused streaks stay in your tray
     t.ballUntil = 0; t.f &= ~FLAGS.BALL; // (or everyone sees a steel ball at the spawn until the respawned client speaks)
     if (this.mode !== 'training') {
@@ -1037,9 +1338,11 @@ class Room {
       if (killer.isBot && killer.kfx == null) killer.kfx = Math.random() < 0.45 ? pick(KILL_IDS) : 'none'; // bots show off stuff you can roll
       kfx = killer.kfx || 'none';
     }
-    this.broadcast({ t: 'kill', k: killer && killer !== t ? killer.id : 0, v: t.id, w, via, vel: t.vel.map(r2), pos: t.pos.map(r2), yaw: r2(t.yaw || 0), fx: kfx, ep: ep || undefined });
+    this.broadcast({ t: 'kill', k: killer && killer !== t ? killer.id : 0, v: t.id, w, via, vel: t.vel.map(r2), pos: t.pos.map(r2), yaw: r2(t.yaw || 0), fx: kfx, ep: ep || undefined, rs: Math.max(0, t.minRespawnAt - now()), sky: w === 'duck' && now() - (t.skyT || 0) < 800 ? 1 : undefined });
     t.lastAttacker = 0;
-    if (t.isBot && this.mode === 'coop') { setTimeout(() => { if (this.players.get(t.id) === t) this.remove(t); }, 50); }
+    this.chaosKill(t, killer);
+    if (t.isBot && this.mode === 'coop') { setTimeout(safe('coop', () => { if (this.players.get(t.id) === t) this.remove(t); }), 50); }
+    this.modeKill(t, killer, via || w);
   }
   // is this kill the play of the round? multikills, speed, distance and void kills score higher
   hlCandidate(k, t, w) {
@@ -1061,10 +1364,10 @@ class Room {
     const hl = { score, pending: true };
     r.hl = hl;
     // grab the clip a moment later so it includes the aftermath
-    setTimeout(() => {
+    setTimeout(safe('clip', () => {
       if (this.round !== r || r.hl !== hl) return;
       Object.assign(hl, { pending: false, label, id: k.id, name: k.name, color: k.color, card: k.card || '', clip: this.clip(t0, now()) });
-    }, 1300);
+    }), 1300);
   }
   // is this kill EPIC? only what the server trusts: its positions, the hit, the killer's state (see shared/epic.js)
   epicOf(k, t, w, via) {
@@ -1097,17 +1400,23 @@ class Room {
       hp: k.alive && !(k.selfHurtT > k.spawnT) ? k.hp : 0, // any self-damage this life: no low-HP bonus
     };
   }
-  // from the snapshots: when everyone last really moved (EPIC.moved metres; a respawn or getting knocked around doesn't count)
-  // and where they were over the last 0.6 s (how fast they're really going)
+  // from the snapshots: when everyone last really moved (a respawn or getting knocked around doesn't count) and where
+  // they were over the last 0.6 s (how fast they're really going). one tracker for both anti-farm rules: EPIC kills
+  // read movedT (EPIC.moved metres), Sniper Royalty reads royalMovedT (ROYAL.moved metres; the same as long as the
+  // two thresholds agree, its own anchor when they don't)
   trackMoves(n) {
+    const gate = (p, at, t, metres) => {
+      if (!p[at]) p[t] = n; // just joined
+      if (!p[at] || !p.trail || dist3(p[at], p.pos) > metres) {
+        if (p[at] && p.trail && n - (p.knockT || 0) > 1200) p[t] = n;
+        p[at] = p.pos.slice();
+      }
+    };
     for (const p of this.players.values()) {
       if (!p.alive) { p.trail = null; continue; }
       if (p.trackSeq !== p.seq) { p.trackSeq = p.seq; p.trail = null; } // respawned or put back at a spawn (round start): that jump isn't moving
-      if (!p.stillAt) p.movedT = n; // just joined
-      if (!p.stillAt || !p.trail || dist3(p.stillAt, p.pos) > EPIC.moved) {
-        if (p.stillAt && p.trail && n - (p.knockT || 0) > 1200) p.movedT = n;
-        p.stillAt = p.pos.slice();
-      }
+      gate(p, 'stillAt', 'movedT', EPIC.moved);
+      if (ROYAL.moved === EPIC.moved) p.royalMovedT = p.movedT; else gate(p, 'royalAt', 'royalMovedT', ROYAL.moved);
       (p.trail ||= []).push([n, p.pos[0], p.pos[1], p.pos[2]]);
       while (p.trail[0][0] < n - 600) p.trail.shift();
     }
@@ -1124,11 +1433,15 @@ class Room {
     const frames = this.rec.frames.filter((f) => f.s >= t0 && f.s <= t1 && f.odd);
     const ev = this.rec.ev.filter((e) => e.s >= t0 && e.s <= t1);
     ev.unshift(...trapPreroll(this.rec.ev, t0)); // someone already floating in a soap bubble when the clip starts
+    ev.unshift(...patchPreroll(this.rec.ev, t0)); // marbles already on the floor
+    const had = new Set(ev.map((e) => e.m.t === 'mpatch' && e.m.id)); // still down from before the recording kept: from the live patch
+    for (const pt of this.mpatches.values()) if (pt.born < t0 && !had.has(pt.id) && pt.until - t0 > 300) ev.unshift({ s: t0, m: { t: 'mpatch', ...this.patchInfo(pt), left: pt.until - t0 } });
     const info = {};
     for (const f of frames) for (const e of f.p) if (!info[e[0]]) {
       const pl = this.players.get(e[0]);
       if (pl) info[e[0]] = { name: pl.name, color: pl.color, skins: pl.skins, bot: pl.isBot, look: pl.look, level: pl.level, grap: pl.grap || 'rope' };
     }
+    if (GAMES[this.game].infect) for (const id of Object.keys(info)) { const pl = this.players.get(Number(id)); if (pl && pl.inf) info[id].zs = pl.infT || 1; } // replays draw zombies as zombies
     return { frames: frames.map((f) => ({ s: f.s, p: f.p, j: f.j })), ev, info };
   }
   pairOk(p, t, key, ms) {
@@ -1158,7 +1471,7 @@ class Room {
   // tap a whole tap away), so a hacked client firing fast gets fan damage. a hit may come up to 40% of a shot early
   // (lag), but the average rate holds. 6 hits, then the next needs a reload-length pause. returns the damage
   // multiplier, 0 = drop it
-  revolverHit(p, t, m, w) {
+  revolverHit(p, t, fan, w) {
     if (!this.rangeOk(p, t, w.range)) return 0;
     const n = now(), f = w.fanHammer, tapMs = 1000 / w.rate, fanMs = 1000 / f.rate;
     let c = p.revCyl;
@@ -1166,7 +1479,7 @@ class Room {
     if (n < c.fan - fanMs * 0.4) return 0;
     if (n - c.t >= w.reload * 750) c.n = 0; // long enough to have reloaded
     if (c.n >= w.mag && this.mode !== 'training') return 0; // training = infinite ammo
-    const tap = !m.fan && n >= c.tap - tapMs * 0.4;
+    const tap = !fan && n >= c.tap - tapMs * 0.4;
     c.fan = Math.max(c.fan, n) + fanMs;
     c.tap = tap ? Math.max(c.tap, n) + tapMs : Math.max(c.tap, n + tapMs);
     c.t = n; c.n++;
@@ -1179,7 +1492,8 @@ class Room {
     const w = WEAPONS[wid], pellets = w.pellets || 1;
     const dmg = (w.dmg * (n - h) + w.dmg * (w.head || 1) * h) * mul;
     const k = w.kb * n;
-    this.hurt(t, p, wid, dmg, [d[0] * k, d[1] * k + (w.kbUp || 0) * (n / pellets), d[2] * k], { hs: h > 0 });
+    // a sniper headshot from a player always kills (bots keep their softer shots)
+    this.hurt(t, p, wid, dmg, [d[0] * k, d[1] * k + (w.kbUp || 0) * (n / pellets), d[2] * k], { hs: h > 0, lethal: wid === 'sniper' && h > 0 && !p.isBot });
   }
 
   // scales of justice: how guilty t is next to p, from what the server knows right now (formula in shared/verdict.js)
@@ -1190,12 +1504,14 @@ class Room {
   }
 
   onHit(p, m) {
-    const w = WEAPONS[m.w];
+    if (!this.chaosHit(p, m)) return; // chaos kits: only their weapons; one in the chamber's bullet
+    const w = has(WEAPONS, m.w) && WEAPONS[m.w];
     const t = this.players.get(m.to);
     const d = norm(vec3(m.d));
     if (!w || !t || !d || t === p || !t.alive || !p.alive) return;
     if (this.isBall(p)) return; // no hands in the wrecking ball
     if (now() < (p.staggerUntil || 0)) return; // got parried: still reeling
+    if (!this.allowed(p, m.w)) return; // gun game rung / zombie claw only
     if ((w.slot === 'streak' || w.kind === 'dash') && !p.scythe) return; // you have to earn it
     if (w.kind === 'dash') {
       if (!(p.f & FLAGS.DASH) || !this.pairOk(p, t, 'dash', 280) || !this.rangeOk(p, t, w.range)) return;
@@ -1208,15 +1524,18 @@ class Room {
     if (w.kind === 'hitscan') {
       const pellets = w.pellets || 1;
       const n = clampInt(m.n, 1, Math.min(pellets, this.maxPellets(w, p, t))), h = clampInt(m.h, 0, n);
-      if (w.fanHammer) { const mul = this.revolverHit(p, t, m, w); if (mul) this.applyHitscan(p, t, m.w, n, h, d, mul); return; } // tap or fan the hammer
+      // the shot's flags (ns: no-scope, qs: quick-scope, fan: fanned revolver) are 1 or absent, anything else is absent
+      const fan = m.fan === 1, ns = m.ns === 1, qs = m.qs === 1;
+      if (w.fanHammer) { const mul = this.revolverHit(p, t, fan, w); if (mul) this.applyHitscan(p, t, m.w, n, h, d, mul); return; } // tap or fan the hammer
       if (!this.pairOk(p, t, 'hs' + m.w, (1000 / fireRate(w, p.hp)) * 0.6) || !this.rangeOk(p, t, w.range)) return; // the Redline fires faster as you lose HP
-      p.nsHit = m.w === 'sniper' && p.w === 'sniper' && (m.ns === 1 || m.ns === true); // a no-scope (ns: 1) can make the kill EPIC
+      p.nsHit = m.w === 'sniper' && p.w === 'sniper' && ns; // a no-scope (ns: 1) can make the kill EPIC
       const hp0 = t.hp; // no-scope hype only goes out if the shot really landed
       this.applyHitscan(p, t, m.w, n, h, d);
       p.nsHit = false;
-      if (m.ns === 1 && m.w === 'sniper') this.noScope(p, t, h > 0, hp0);
+      if (ns && m.w === 'sniper') this.noScope(p, t, h > 0, hp0);
+      if (m.w === 'sniper' && !t.alive) this.royalKill(p, t, ns, qs, h > 0); // this shot killed them (a parried / reflected one hurts you, not them)
     } else if (w.kind === 'melee') {
-      const hv = m.heavy && w.heavy ? w.heavy : null; // knife right click
+      const hv = m.heavy === 1 && w.heavy ? w.heavy : null; // knife right click (the flag is 1 or absent)
       const reach = w.range + (m.w === 'katana' ? (p.kat || 0) * w.grow : 0);
       if (hv) { if (!this.pairOk(p, t, 'mh' + m.w, hv.cd * 750) || !this.rangeOk(p, t, hv.range)) return; }
       else if (!this.pairOk(p, t, 'm' + m.w, w.cd * 750) || !this.rangeOk(p, t, reach)) return;
@@ -1258,9 +1577,24 @@ class Room {
     this.rec.ev.push({ s: n, m: ev }); // so the play of the round gets the fireworks too
   }
 
+  // Sniper Royalty: the boxes a sniper kill ticks. qs / ns are the shooter's word, so they only ever buy progress, never
+  // damage: the kill is the server's, the distance comes from server positions, and a victim who hadn't moved for 5 s
+  // (AFK, a friend standing still) never counts. no training (dummies) and no bots doing the shooting
+  royalKill(p, t, ns, qs, hs) {
+    if (p.isBot || this.mode === 'training' || (t.isBot && t.ai && t.ai.dummy)) return;
+    const n = now();
+    if (n - (t.royalMovedT ?? n) >= ROYAL.still) return; // epic's tracker (trackMoves), Royalty's own thresholds
+    // a quick-scope or a no-scope ticks the trick-shot box. scoped and unscoped at once is a lie: that doesn't count
+    const bits = (dist3(p.pos, t.pos) >= ROYAL.long ? RB.long : 0) | (qs !== ns ? RB.trick : 0) | (hs ? RB.head : 0);
+    if (bits) royal(p, bits);
+  }
+
   onPush(p, m) {
+    if (m.w !== 'hook' && this.chaosKit && !this.chaosKit.slots.includes(m.w)) return;
     const t = this.players.get(m.to);
     if (!t || t === p || !t.alive || !p.alive) return;
+    if (this.isBall(p) || now() < (p.staggerUntil || 0)) return; // no hands in the wrecking ball; parried = still reeling (like 'hit')
+    if (m.w !== 'hook' && !this.allowed(p, m.w)) return; // the grapple always works; otherwise gun game rung / zombie claw only
     const toT = norm([t.pos[0] - p.pos[0], t.pos[1] - p.pos[1], t.pos[2] - p.pos[2]]) || [0, 1, 0];
     if (m.w === 'blower') {
       const w = WEAPONS.blower;
@@ -1270,6 +1604,83 @@ class Room {
       if (!this.pairOk(p, t, 'hook', 400) || !this.rangeOk(p, t, HOOK.range)) return;
       this.hurt(t, p, 'hook', 0, [-toT[0] * HOOK.tug, -toT[1] * HOOK.tug + 5, -toT[2] * HOOK.tug]);
     }
+    if (m.w === 'shredder') this.shredPull(p, t);
+  }
+
+  // ---------------------------------------------------------- shredder
+  // the client only says who is in its cone. everything else comes from server positions: the pull toward the
+  // intake (harder the closer they are, never away from you), and once they're in it: held in the teeth + shredded
+  shredPull(p, t) {
+    const w = WEAPONS.shredder, n = now(), gap = (n - (p.pair.get('shred:' + t.id) || 0)) / 1000;
+    if (p.w !== 'shredder' || !this.pairOk(p, t, 'shred', 70) || !this.rangeOk(p, t, w.range)) return;
+    // damage + pull scale with the time since the last tick on them, so a low-fps client shreds as fast as anyone
+    // (pairOk keeps that gap honest). after a pause it's one normal tick, not a burst
+    const el = gap < 0.3 ? gap : w.tick;
+    if (!p.isBot && !this.shredHeat(p, n)) return;
+    const e = eyeOf(p), L = lookOf(p);
+    const mouth = [e[0] + L[0] * w.mouth, e[1] + L[1] * w.mouth - 0.25, e[2] + L[2] * w.mouth];
+    // in front of you (loosely: positions lag a bit) and not through a wall
+    const c = center(t), fe = [c[0] - e[0], c[1] - e[1], c[2] - e[2]], de = Math.hypot(...fe) || 1e-3;
+    if (de > 3 && (fe[0] * L[0] + fe[1] * L[1] + fe[2] * L[2]) / de < Math.cos(w.cone + 0.45)) return;
+    if (raycast(e, [fe[0] / de, fe[1] / de, fe[2] / de], Math.max(0, de - 0.5), this.boxes)) return;
+    // intake to the nearest bit of their body
+    const by = Math.max(t.pos[1] + 0.2, Math.min(t.pos[1] + 1.7, mouth[1]));
+    const to = [mouth[0] - t.pos[0], mouth[1] - by, mouth[2] - t.pos[2]], d = Math.hypot(...to) || 1e-3;
+    if (d > w.range) return;
+    if (d <= w.grabR) { // the last few metres it just yanks them in; inside shredR the teeth have them
+      const safe = this.friendly(p, t) || this.bubbleBlocks(p, t) || t.reverseUntil > n || (!t.isBot && n - t.spawnT < 1200);
+      // hang them in the air stream just past the mouth, a bit to the right where the gun is, low enough that the
+      // shooter can still see past them (that's their feet: their middle is 0.9 up)
+      const rx = Math.cos(p.yaw || 0), rz = -Math.sin(p.yaw || 0);
+      if (!safe) this.shredHold(t, [mouth[0] + L[0] * 0.75 + rx * 0.3, mouth[1] + L[1] * 0.75 - 1.0, mouth[2] + L[2] * 0.75 + rz * 0.3]);
+      this.hurt(t, p, 'shredder', d <= w.shredR ? w.dps * el : 0, null);
+      return;
+    }
+    if (!t.isBot && n - t.spawnT < 1200) return; // spawn protection covers the pull too: no reeling people in as they spawn
+    // speed-capped so they don't arrive like a bullet (or overshoot through you on a laggy connection)
+    const k = 1 - d / w.range, dir = [to[0] / d, to[1] / d, to[2] / d];
+    const along = (t.vel[0] - p.vel[0]) * dir[0] + (t.vel[1] - p.vel[1]) * dir[1] + (t.vel[2] - p.vel[2]) * dir[2];
+    const dv = Math.max(0, Math.min((w.pull + (w.pullMax - w.pull) * k * k) * (el / w.tick), w.vmax + d * 0.3 - along));
+    this.hurt(t, p, 'shredder', 0, [dir[0] * dv, dir[1] * dv + w.lift * (0.4 + 0.6 * k), dir[2] * dv]);
+  }
+  // stuck in the intake: a human's client gets told where to hang and chases that point every frame; a bot does the
+  // same in stepBot (steering every tick, not once per push, so a shooter's slow or bunched pushes can't fling it)
+  shredHold(t, at) {
+    if (!t.isBot) { send(t, { t: 'grab', p: at.map(r2) }); return; }
+    if (t.ai.dummy && t.ai.dummy.move) return; // moving dummies are on rails
+    t.ai.hook = null; t.g = null; t.ai.route = null; // no grappling out of it; plans its route again once it's spat out
+    t.held = { at, until: now() + 260 };
+  }
+  // ~4 s of sucking overheats it (same numbers the client shows), then it has to cool. a hacked client can't keep it on:
+  // heat charges exactly the time shredPull credits pull + damage for (the whole gap at a steady cadence, one tick
+  // after a pause) and the rest of a pause cools it, so no push cadence shreds for free. that's also the client's own
+  // sum (a tick of suction per push, cooling while let go), so an honest one never gets locked out early
+  shredHeat(p, n) {
+    const w = WEAPONS.shredder, gap = Math.min(10, (n - (p.shredT || 0)) / 1000);
+    if ((p.shredT || 0) < p.spawnT) { p.shredHeat = 0; p.shredHot = false; } // a new life starts cold (the client's does too)
+    p.shredT = n;
+    // overheated: every push is turned away before anything is credited, and only cools it (pushing can't keep it hot)
+    if (p.shredHot) {
+      p.shredHeat = Math.max(0, p.shredHeat - gap * w.regen);
+      if (p.shredHeat <= w.fuel * w.coolTo) p.shredHot = false;
+      return false;
+    }
+    const on = gap < 0.3 ? gap : w.tick;
+    p.shredHeat = Math.max(0, (p.shredHeat || 0) + on - (gap - on) * w.regen);
+    if (p.shredHeat > w.fuel + 0.75) { p.shredHot = true; return false; } // (0.75 s of slack for network jitter)
+    return true;
+  }
+  // bots: suck everyone in front of them through the same rules, with their own heat
+  botShred(b) {
+    const w = WEAPONS.shredder, ai = b.ai, n = now(), gap = Math.min(10, (n - (ai.shT || 0)) / 1000);
+    if (gap < w.tick) return;
+    if ((ai.shT || 0) < b.spawnT) { ai.heat = 0; ai.hot = false; } // respawned: cold again
+    ai.shT = n;
+    if (ai.hot) { ai.heat = Math.max(0, ai.heat - gap * w.regen); if (ai.heat > w.fuel * w.coolTo) return; ai.hot = false; }
+    else ai.heat = gap < 0.25 ? (ai.heat || 0) + gap : Math.max(0, (ai.heat || 0) - gap * w.regen);
+    if (ai.heat >= w.fuel) { ai.hot = true; return; }
+    b.suckUntil = n + 160;
+    for (const t of this.players.values()) if (t !== b && t.alive) this.shredPull(b, t);
   }
 
   // ---------------------------------------------------------- katana parry
@@ -1317,7 +1728,8 @@ class Room {
     this.parryFx(t, p, back, 'shot', this.parrySpot(t, inc), back ? { b: center(p).map(r2) } : {});
     if (back) { // perfect: the same bullets (pellets, headshots) go back into the shooter, credited to the parrier
       const dmg = (w.dmg * (n - h) + w.dmg * (w.head || 1) * h) * mul, k = (w.kb || 0) * n, up = (w.kbUp || 0) * (n / (w.pellets || 1));
-      this.hurt(p, t, 'parry', dmg, k || up ? [-d[0] * k, -d[1] * k + up, -d[2] * k] : null, { hs: h > 0 });
+      // a player's sniper headshot stays lethal on the way back (it's the same bullet); bots' stay soft
+      this.hurt(p, t, 'parry', dmg, k || up ? [-d[0] * k, -d[1] * k + up, -d[2] * k] : null, { hs: h > 0, lethal: wid === 'sniper' && h > 0 && !p.isBot });
     }
     return true;
   }
@@ -1379,22 +1791,36 @@ class Room {
   }
 
   onFire(p, m) {
-    const w = WEAPONS[m.w];
-    if (!w || !p.alive) return;
-    if (w.slot === 'streak' && !p.scythe) return;
-    // only loadout weapons fire. items (popper, reverse card, duck), grenades and thrown cards come from G / the deck
-    if (!['primary', 'secondary', 'melee', 'streak'].includes(w.slot)) return;
+    const w = has(WEAPONS, m.w) && WEAPONS[m.w];
+    if (!w || !p.alive || this.isBall(p)) return; // no hands in the wrecking ball
+    if (!this.allowed(p, m.w)) return; // gun game rung / zombie claw only
+    if (!this.chaosFire(p, m)) return; // chaos kits: only their weapons; one in the chamber's bullet
+    // loadout weapons only (plus the scythe once earned, and the one weapon a mode hands you: the zombie claw): items
+    // (frag, smoke, duck, popper, reverse card) come from G, grenades and thrown cards from the deck, never 'fire'
+    if (!SLOTS.includes(w.slot) && !(w.slot === 'streak' && p.scythe) && this.modeWeapon(p) !== m.w) return;
     let o = vec3(m.o);
     if (!o || dist3(o, eyeOf(p)) > 4) o = eyeOf(p);
-    if (w.kind === 'hitscan') { this.broadcast({ t: 'fx', k: 'shot', w: m.w, id: p.id, s: segs(m.s), fan: (w.fanHammer && m.fan ? 1 : undefined) }, p.id); return; } // fan: everyone sees the fanning spin
-    if (w.kind === 'melee') { this.broadcast({ t: 'fx', k: 'swing', w: m.w, id: p.id, a: o.map(r2), h: m.heavy ? 1 : undefined }, p.id); return; }
+    const fan = !!(w.fanHammer && m.fan === 1); // revolver: fanning the hammer (validated like every flag: 1 or nothing)
+    // shot / swing effects are only relayed, but each goes to everyone: at most ~4x the weapon's rate (frames can bunch up).
+    // one limiter per player, not per weapon: you hold one gun at a time, and cycling ids must not add the rates up.
+    // the rate is the real one: the Redline speeds up as you lose HP, a fanned revolver goes at the fan rate
+    if (w.kind === 'hitscan' || w.kind === 'melee') {
+      const rate = w.rate ? (fan ? Math.max(w.rate, w.fanHammer.rate) : fireRate(w, p.hp)) : 0;
+      const n = now(), iv = rate ? 250 / rate : (w.cd || 0.3) * 250;
+      if (n - (p.lastFire.fx || 0) < iv) return;
+      p.lastFire.fx = n;
+    }
+    if (w.marbles && p.w === m.w) this.marblePatch(p, segs(m.s)); // marbles on the floor (the server works out where)
+    if (w.kind === 'hitscan') { this.broadcast({ t: 'fx', k: 'shot', w: m.w, id: p.id, s: segs(m.s), fan: fan ? 1 : undefined }, p.id); return; } // fan: everyone sees the fanning spin
+    if (w.kind === 'melee') { this.broadcast({ t: 'fx', k: 'swing', w: m.w, id: p.id, a: o.map(r2), h: m.heavy === 1 ? 1 : undefined }, p.id); return; }
     const d = norm(vec3(m.d));
     if (d && w.kind === 'proj') this.spawnProj(p, m.w, o, d);
+    if (d && w.kind === 'blood') this.fireBlood(p, o, d);
     if (d && w.kind === 'bow') {
       const n = now();
       if (n - (p.lastFire.bow || 0) < w.cd * 750) return;
       p.lastFire.bow = n;
-      const c = Math.max(0.15, Math.min(1, Number(m.c) || 0));
+      const c = Math.max(0.15, Math.min(1, num(m.c) || 0));
       const tip = p.tip;
       const sp = (w.speed + (w.speedMax - w.speed) * c) * (tip === 'power' ? 1.3 : 1);
       const pr = this.makeProj(p, 'bow', [o[0] + d[0] * 0.7, o[1] + d[1] * 0.7, o[2] + d[2] * 0.7], d.map((x) => x * sp), { tip, charge: c });
@@ -1449,12 +1875,12 @@ class Room {
       this.knock(p, [d[0] * k, d[1] * k + (ult ? 6 : 2), d[2] * k], 'cards');
     }
     send(p, { t: 'hand', hand: p.hand, left: (p.deck || []).length });
-    if (!p.hand.length) setTimeout(() => { if (this.players.get(p.id) === p) deal(p); }, 1500);
+    if (!p.hand.length) setTimeout(safe('deal', () => { if (this.players.get(p.id) === p) deal(p); }), 1500);
   }
 
   spawnProj(p, wid, o, d) {
     const w = WEAPONS[wid], n = now();
-    if (n - (p.lastFire[wid] || 0) < w.cd * 750) return;
+    if (!(w.cd > 0) || n - (p.lastFire[wid] || 0) < w.cd * 750) return; // nothing without a cooldown comes through here
     if (wid === 'slipper') for (const pr of this.projectiles.values()) if (pr.k === 'slipper' && pr.o === p.id) return;
     p.lastFire[wid] = n;
     const wallHit = raycast(o, d, 0.8, this.boxes);
@@ -1473,7 +1899,7 @@ class Room {
   makeProj(p, wid, pos, vel, extra = {}) {
     const w = WEAPONS[wid];
     const pr = { id: this.nextProj++, k: wid, o: p.id, r: w.r, bounce: w.bounce || 0, born: now() - 300, phase: 0, hit: new Map(), sync: 0, p: pos.slice(), v: vel.slice(), ...extra };
-    pr.ef = this.epicState(p); // EPIC: where (and how) they fired it from
+    pr.ef = p.pos ? this.epicState(p) : null; // EPIC: where (and how) they fired it from (a sky duck has nobody)
     this.projectiles.set(pr.id, pr);
     this.broadcast({ t: 'ps', id: pr.id, k: pr.k, p: pr.p.map(r2), v: pr.v.map(r2), o: p.id, tip: extra.tip });
     return pr;
@@ -1499,9 +1925,10 @@ class Room {
     let kb = [d[0] * 6, 2, d[2] * 6];
     if (tip === 'power') dmg *= 1.8;
     if (tip === 'knockback') { dmg = 15; kb = [d[0] * 60, 15, d[2] * 60]; }
-    if (tip === 'flame') { dmg = 15; this.burn(t, owner, 3); }
+    const shielded = this.bubbleBlocks(owner, t); // the bubble stops the arrow's fire and sleep too, not just its damage
+    if (tip === 'flame') { dmg = 15; if (!shielded) this.burn(t, owner, 3); }
     if (tip === 'gas') dmg = 10;
-    if (tip === 'sleep') { dmg = 10; this.sleep(t, owner, 2.5); }
+    if (tip === 'sleep') { dmg = 10; if (!shielded) this.sleep(t, owner, SLEEP_TIME); }
     const head = pr.p[1] > t.pos[1] + 1.55;
     this.hurt(t, owner, 'bow', dmg * (head ? 1.5 : 1), kb, { hs: head });
   }
@@ -1514,7 +1941,7 @@ class Room {
       const f = 1 - dist / R, dir = dist > 0.1 ? to.map((x) => x / dist) : [0, 1, 0];
       const self = owner && t.id === owner.id;
       const k = kb * (0.4 + 0.6 * f);
-      this.hurt(t, self ? null : owner, wid, self ? 0 : dmg * (0.3 + 0.7 * f), [dir[0] * k, dir[1] * k + 6 * f, dir[2] * k]);
+      this.hurt(t, self ? null : owner, wid, self ? 0 : dmg * (0.3 + 0.7 * f), [dir[0] * k, dir[1] * k + 6 * f, dir[2] * k], { from: owner ? null : p });
     }
   }
 
@@ -1533,6 +1960,103 @@ class Room {
       const self = t.id === pr.o;
       const k = w.kb * (0.4 + 0.6 * f) * (self ? w.selfKb : 1);
       this.hurt(t, self ? null : owner, 'chicken', self ? 0 : w.dmg * (0.3 + 0.7 * f), [dir[0] * k, dir[1] * k + 6 * f, dir[2] * k]);
+    }
+  }
+
+  // ---------------------------------------------------------- Blood Cross: paid in HP, the bolt sticks, a cross bursts out of them, they pop
+  // cross events go to everyone and into the recording, so killcams + the play of the round show the mark, the spikes and the pop
+  crossCast(m) { this.broadcast(m); this.rec.ev.push({ s: now(), m }); }
+  fireBlood(p, o, d) {
+    const w = WEAPONS.bloodcross, n = now();
+    if (this.round && this.round.over) return; // nothing can be hurt between rounds, so don't charge blood for it
+    if (n - (p.lastFire.bloodcross || 0) < w.cd * 750) return;
+    p.lastFire.bloodcross = n; // a refused shot uses the cooldown up too, so spamming it costs the server nothing
+    if (p.hp - w.cost < 1) { send(p, { t: 'bcross', k: 'dry', o: p.id }); return; } // it never takes your last HP, so it can't kill you
+    p.hp -= w.cost;
+    p.selfHurtT = n; // EPIC: bleeding yourself down to low HP doesn't make you a clutch hero (like coughing)
+    if (this.mode === 'training') p.bcPaid = (p.bcPaid || 0) + w.cost; // training hands it back once you stop
+    const wallHit = raycast(o, d, 0.8, this.boxes);
+    const off = wallHit ? Math.max(0, wallHit.t - w.r - 0.05) : 0.8;
+    const pr = {
+      id: this.nextProj++, k: 'bloodcross', o: p.id, r: w.r, bounce: 0, born: n, phase: 0, hit: new Map(), sync: 0, cost: w.cost,
+      p: [o[0] + d[0] * off, o[1] + d[1] * off, o[2] + d[2] * off], v: d.map((x) => x * w.speed), // no gravity, no inherited speed: it goes where you point
+    };
+    this.projectiles.set(pr.id, pr);
+    this.broadcast({ t: 'ps', id: pr.id, k: pr.k, p: pr.p.map(r2), v: pr.v.map(r2), o: p.id });
+  }
+  tickBloodBolt(pr, dt, n) {
+    const w = WEAPONS.bloodcross, owner = this.players.get(pr.o), prev = pr.p.slice();
+    const hit = stepProjectile(pr, dt, this.boxes, 0);
+    // a katana parry bats it back like any projectile: the parrier owns it now (and didn't pay blood for it)
+    if (this.parryProj(pr, prev)) { pr.cost = 0; return; }
+    // only up to the wall, so nobody gets hit through it. a shooter who left can't tell friend from foe: it only finds walls then
+    const vs = owner ? this.sweep(prev, pr.p, pr.r, (t) => t.id === pr.o || this.friendly(owner, t)) : [];
+    if (vs.length) { pr.p = vs[0].at; this.removeProj(pr); this.stickCross(pr, vs[0].t); return; }
+    if (hit) { // walls + floors: a red X that fizzles out, no damage
+      const nrm = [0, 0, 0]; nrm[hit.axis] = hit.sign;
+      this.removeProj(pr);
+      this.crossCast({ t: 'bcross', k: 'wall', id: pr.id, o: pr.o, p: pr.p.map(r2), n: nrm });
+      return;
+    }
+    if ((n - pr.born) / 1000 > w.life || pr.p[1] < this.map.killY) this.removeProj(pr);
+  }
+  // the mark lives in the target's own frame (turned by their yaw), so it turns and moves with them
+  crossAt(t, off) {
+    const c = Math.cos(t.yaw || 0), s = Math.sin(t.yaw || 0);
+    return [t.pos[0] + (off[0] * c + off[2] * s) * 0.15, t.pos[1] + off[1], t.pos[2] + (off[2] * c - off[0] * s) * 0.15];
+  }
+  stickCross(pr, t) {
+    const w = WEAPONS.bloodcross;
+    let dx = pr.p[0] - t.pos[0], dz = pr.p[2] - t.pos[2], l = Math.hypot(dx, dz);
+    if (l < 0.05) { dx = -pr.v[0]; dz = -pr.v[2]; l = Math.hypot(dx, dz) || 1; } // dropped straight onto their head: face where it came from
+    dx /= l; dz /= l;
+    const c = Math.cos(t.yaw || 0), s = Math.sin(t.yaw || 0);
+    // which side it hit (unit, body-local) + how high: shins count as hips so the cross never ends up in the floor
+    const off = [r2(dx * c - dz * s), r2(Math.max(0.9, Math.min(2.15, pr.p[1] - t.pos[1]))), r2(dx * s + dz * c)];
+    const mk = { id: pr.id, o: pr.o, t: t.id, seq: t.seq, off, d: norm(pr.v) || [0, 0, -1], at: now() + w.fuse * 1000, ph: 0, cost: pr.cost ?? w.cost };
+    mk.p = this.crossAt(t, off);
+    (this.crosses ||= new Map()).set(mk.id, mk);
+    this.crossCast({ t: 'bcross', k: 'stick', id: mk.id, o: mk.o, to: t.id, off, p: mk.p.map(r2), f: w.fuse });
+  }
+  tickCrosses() {
+    const n = now(), w = WEAPONS.bloodcross;
+    if (this.mode === 'training') { // infinite ammo there: the blood you spent comes back 2s after your last shot
+      for (const p of this.players.values()) {
+        if (!p.bcPaid || n - (p.lastFire.bloodcross || 0) < 2000) continue;
+        const a = p.alive ? Math.min(p.bcPaid, 100 - p.hp) : 0;
+        if (a > 0) { p.hp += a; send(p, { t: 'bcross', k: 'refill', o: p.id, a: Math.round(a) }); }
+        p.bcPaid = 0;
+      }
+    }
+    if (!this.crosses || !this.crosses.size) return;
+    for (const mk of this.crosses.values()) {
+      const t = this.players.get(mk.t), on = !!(t && t.alive && t.seq === mk.seq);
+      if (on) mk.p = this.crossAt(t, mk.off); // died or respawned: it stays where they were
+      if (mk.ph === 0 && n >= mk.at) { mk.ph = 1; this.crossCast({ t: 'bcross', k: 'erupt', id: mk.id, o: mk.o, to: mk.t, p: mk.p.map(r2) }); }
+      else if (mk.ph === 1 && n >= mk.at + w.burst * 1000) { this.crosses.delete(mk.id); this.blowCross(mk, on ? t : null); }
+    }
+  }
+  blowCross(mk, t) {
+    const w = WEAPONS.bloodcross, owner = this.players.get(mk.o) || null, p = mk.p;
+    this.crossCast({ t: 'bcross', k: 'boom', id: mk.id, o: mk.o, to: mk.t, p: p.map(r2) });
+    // the shooter left before the pop: everyone still sees it, but with no attacker the team, spawn and bubble checks
+    // can't work (it would hit their old team), so it does no damage
+    if (!owner) return;
+    let kills = 0;
+    // never a headshot: it's a fixed delayed pop wherever it stuck, so it stays out of the headshot stats + highlights
+    const pop = (v, dmg, kb) => { const was = v.alive; this.hurt(v, owner, 'bloodcross', dmg, kb); if (was && !v.alive) kills++; };
+    if (t) pop(t, w.dmg, [mk.d[0] * w.kb, 4, mk.d[2] * w.kb]);
+    for (const v of [...this.players.values()]) { // the small blast: everyone else close by, not you (teammates are skipped by hurt)
+      if (v === t || v === owner || !v.alive) continue;
+      const c = center(v), to = [c[0] - p[0], c[1] - p[1], c[2] - p[2]], dist = Math.hypot(...to);
+      if (dist > w.blastR) continue;
+      const f = 1 - dist / w.blastR, dir = dist > 0.1 ? to.map((x) => x / dist) : [0, 1, 0];
+      pop(v, w.blastDmg * f, [dir[0] * w.kb * 1.5 * f, 3 + 3 * f, dir[2] * w.kb * 1.5 * f]);
+    }
+    if (kills && owner.alive) { // blood magic: a kill pays back what the shot cost (never past full)
+      const a = Math.max(0, Math.min(mk.cost, Math.max(100, owner.hp) - owner.hp));
+      owner.hp += a;
+      this.crossCast({ t: 'bcross', k: 'refund', id: mk.id, o: owner.id, a: Math.round(a), p: p.map(r2) });
     }
   }
 
@@ -1597,6 +2121,7 @@ class Room {
       this.epicProj = pr; // a kill by this projectile counts from where it was fired (epicOf)
       const w = WEAPONS[pr.k];
       const age = (n - pr.born) / 1000;
+      if (pr.k === 'bloodcross') { this.tickBloodBolt(pr, dt, n); continue; }
       const owner = this.players.get(pr.o);
       const prev = pr.p.slice();
       let hit = null;
@@ -1629,12 +2154,17 @@ class Room {
       }
       if (this.parryProj(pr, prev)) continue; // batted back by a katana parry
       if (pr.k === 'duck') {
-        if (age >= w.fuse) { this.removeProj(pr); this.makeHole(pr.p, pr.o); continue; }
+        // sky ducks (duck rain) open where they land, and their holes are a bit gentler
+        if (pr.sky ? !!hit || age > 8 : age >= w.fuse) { this.removeProj(pr); const h = this.makeHole(pr.p, pr.o); if (pr.sky) Object.assign(h, DUCKRAIN.hole, { sky: true }); continue; }
       } else if (pr.k === 'frag' || pr.k === 'smokegren') {
         if (age >= w.fuse) {
           this.removeProj(pr);
           if (pr.k === 'frag') this.explodeAt(pr.p, owner, 'frag', w.radius, w.dmg, w.kb);
-          else this.broadcast({ t: 'smoke', p: pr.p.map(r2), r: ITEMS.smoke.r, dur: ITEMS.smoke.dur * 1000 });
+          else {
+            const sm = { id: this.nextSmoke++, p: pr.p.map(r2), r: ITEMS.smoke.r, until: n + ITEMS.smoke.dur * 1000 };
+            this.smokes.set(sm.id, sm);
+            this.broadcast({ t: 'smoke', p: sm.p, r: sm.r, dur: ITEMS.smoke.dur * 1000 });
+          }
           continue;
         }
       } else {
@@ -1649,11 +2179,12 @@ class Room {
             if (v.t.id === pr.o) continue;
             const d = norm(pr.v) || [0, 0, 1];
             if (v.t.trap) { this.hurt(v.t, owner, 'snowball', 0, null); continue; } // a soap bubble takes it (teammates' too): pop, no frost
-            if (!this.bubbleBlocks(owner, v.t) && !this.friendly(owner, v.t)) {
-              const frozen = v.t.frozenUntil > now();
-              if (!frozen) this.hurt(v.t, owner, 'snowball', w.dmg, [d[0] * w.kb, w.kbUp, d[2] * w.kb]);
-              if (v.t.alive) this.frost(v.t, owner);
-            }
+            if (v.t.frozenUntil > n) { // frozen: this one shatters them, if a hit could land at all (and no reverse card)
+              if (v.t.reverseUntil > n || this.hitBlocked(v.t, owner, 'snowball')) continue;
+              v.t.frozenUntil = 0;
+              this.broadcast({ t: 'fx', k: 'shatter', id: v.t.id, p: center(v.t).map(r2) });
+              this.kill(v.t, owner, 'snowball');
+            } else if (this.hurt(v.t, owner, 'snowball', w.dmg, [d[0] * w.kb, w.kbUp, d[2] * w.kb]) === v.t && v.t.alive) this.frost(v.t, owner);
             continue;
           }
         if (pr.k === 'bow' || pr.k === 'card') { pr.p = victims[0].at; this.arrowHit(pr, owner, victims[0].t); continue; }
@@ -1717,6 +2248,7 @@ class Room {
       if (age >= h.time) {
         this.holes.delete(h.id);
         this.broadcast({ t: 'he', id: h.id, p: h.p });
+        if (!owner && !h.sky) continue; // whoever threw it left: it pops harmlessly (a sky duck's hole is nobody's: it works)
         for (const t of this.players.values()) {
           if (!t.alive) continue;
           const c = center(t);
@@ -1728,22 +2260,25 @@ class Room {
           const self = t.id === h.o;
           if (self && h.big) continue;
           const k = h.blastKb * (0.4 + 0.6 * f);
-          this.hurt(t, self ? null : owner, 'duck', self ? 0 : h.blastDmg * f, [dir[0] * k, dir[1] * k + 8 * f, dir[2] * k]);
+          if (h.sky) t.skyT = n; // so the kill feed can tell a sky duck from a thrown one
+          this.hurt(t, self ? null : owner, 'duck', self ? 0 : h.blastDmg * f, [dir[0] * k, dir[1] * k + 8 * f, dir[2] * k], { from: owner ? null : h.p });
         }
         continue;
       }
       h.tick -= dt;
       if (h.tick > 0) continue;
       h.tick = 0.1;
+      if (!owner && !h.sky) continue;
       for (const t of this.players.values()) {
-        if (!t.alive || this.friendly(owner, t) || (h.big && t.id === h.o)) continue;
-        if (t.id === h.on) { this.damage(t, w.stuckDmg, owner, 'duck'); continue; } // the one it's stuck to IS the middle
+        if (!t.alive || this.friendly(owner, t) || (h.big && t.id === h.o) || this.bubbleBlocks(owner, t, owner ? null : h.p)) continue; // no pulling people out of a bubble
+        if (t.id === h.on) { if (h.sky) t.skyT = n; this.damage(t, w.stuckDmg, owner, 'duck'); continue; } // the one it's stuck to IS the middle
         const c = center(t);
         const to = [h.p[0] - c[0], h.p[1] - c[1], h.p[2] - c[2]];
         const dist = Math.hypot(...to);
         if (dist > h.R || dist < 0.05) continue;
         const s = (h.pull * (1 - dist / h.R) + 8) * 0.1 * Math.min(1, dist / 1.5);
         // plus a little lift each pulse: off their feet, ground friction can't hold them back (a duck stuck on someone at floor height pulls sideways)
+        if (h.sky) t.skyT = n;
         this.knock(t, [to[0] / dist * s, to[1] / dist * s + w.lift * Math.min(1, dist / 1.5), to[2] / dist * s], 'duck');
         if (t.id !== h.o) this.tag(t, owner, 'duck');
         if (dist < 2 && t.id !== h.o) this.damage(t, 3, owner, 'duck');
@@ -1755,9 +2290,10 @@ class Room {
   // in flight: latch onto an enemy it touched since last tick, else steer toward the nearest enemy ahead of it.
   // ducks nobody threw (thrower left, ducks from the sky) just fly. true = it stuck and is gone
   duckFly(pr, owner, dt) {
-    if (!owner) return false;
+    if (!owner && !pr.sky) return false; // a thrower who left: it just flies
     const w = WEAPONS.duck;
-    const skip = (t) => t.id === pr.o || this.friendly(owner, t) || this.bubbleBlocks(owner, t);
+    // a sky duck (duck rain) belongs to nobody: it sticks to whoever it lands on, and a shield bubble stops it from outside
+    const skip = owner ? (t) => t.id === pr.o || this.friendly(owner, t) || this.bubbleBlocks(owner, t) : (t) => this.bubbleBlocks(null, t, pr.p);
     let stuck = pr.lp ? this.sweep(pr.lp, pr.p, pr.r + 0.1, skip)[0] : null;
     if (!stuck) for (const t of this.players.values()) { // sat still inside someone (sweep needs movement)
       if (!t.alive || skip(t)) continue;
@@ -1766,11 +2302,13 @@ class Room {
     if (stuck) {
       pr.p = stuck.at;
       this.removeProj(pr);
-      this.makeHole(center(stuck.t), pr.o, { on: stuck.t.id, delay: w.stick });
+      const h = this.makeHole(center(stuck.t), pr.o, { on: stuck.t.id, delay: w.stick });
+      if (pr.sky) { Object.assign(h, DUCKRAIN.hole, { sky: true }); stuck.t.skyT = now(); } // a sky duck's hole, riding them
       this.tag(stuck.t, owner, 'duck');
       return true;
     }
     pr.lp = pr.p.slice();
+    if (pr.sky) return false; // duck rain falls straight down (no homing, so you can dodge it); only a thrown duck homes in
     // homing: nearest enemy within homeR, inside a 60 degree cone of where it's flying, in plain view
     const sp = Math.hypot(pr.v[0], pr.v[1], pr.v[2]);
     let tgt = null, bd = w.homeR;
@@ -1832,6 +2370,114 @@ class Room {
     }
   }
 
+  // ---------------------------------------------------------- marbles on the floor (Marble Shotgun)
+  // a marble shot leaves a patch where its marbles settle, and anyone who runs over it slips. where: from the shooter's
+  // eye (a position the server tracks) along the pellet directions, with the server's own raycasts to what they hit
+  // and down to the floor. the client's pellet ends only pick the directions and how far (capped at the gun's range).
+  marblePatch(p, ss) {
+    const M = MSLIP, w = WEAPONS.marbles, n = now();
+    if (!p.alive || p.trap || this.isBall(p, n) || !Array.isArray(ss) || !ss.length) return;
+    if (n - (p.mpT || 0) < M.cd * 1000) return; // one patch per real shot, however many fire messages come in
+    p.mpT = n;
+    const e = eyeOf(p), pts = [];
+    for (const s of ss) {
+      const d = norm([s[3] - e[0], s[4] - e[1], s[5] - e[2]]);
+      if (!d) continue;
+      const L = Math.min(w.range, Math.hypot(s[3] - e[0], s[4] - e[1], s[5] - e[2]));
+      const h = raycast(e, d, L, this.boxes);
+      // hit the map: drop off that surface. stopped short of it (a player) or flew the whole way: drop from there
+      const a = h ? h.point.map((x, k) => x + h.normal[k] * 0.1 - d[k] * 0.05) : e.map((x, k) => x + d[k] * L);
+      const f = raycast(a, [0, -1, 0], 40, this.boxes);
+      if (f && f.normal[1] === 1) pts.push([a[0], a[1] - f.t, a[2]]); // (nothing below = it fell into the void)
+    }
+    // the biggest bunch that landed together on one floor
+    let best = [];
+    for (const a of pts) {
+      const c = pts.filter((b) => Math.abs(b[1] - a[1]) < 0.5 && Math.hypot(b[0] - a[0], b[2] - a[2]) < 2.5);
+      if (c.length > best.length) best = c;
+    }
+    if (best.length < Math.max(3, ss.length * 0.3)) return; // sprayed all over (or into the sky): no patch
+    let cx = 0, cz = 0;
+    for (const b of best) { cx += b[0] / best.length; cz += b[2] / best.length; }
+    const top = Math.max(...best.map((b) => b[1]));
+    let f = raycast([cx, top + 0.4, cz], [0, -1, 0], 1.4, this.boxes);
+    if (!f || f.normal[1] !== 1) { // the middle is in a pillar the marbles landed round (or over a gap): use the nearest marble
+      const b = best.reduce((m, b) => (Math.hypot(b[0] - cx, b[2] - cz) < Math.hypot(m[0] - cx, m[2] - cz) ? b : m));
+      cx = b[0]; cz = b[2]; f = raycast([cx, top + 0.4, cz], [0, -1, 0], 1.4, this.boxes);
+      if (!f || f.normal[1] !== 1) return;
+    }
+    const y = top + 0.4 - f.t;
+    const rms = Math.sqrt(best.reduce((s, b) => s + (b[0] - cx) ** 2 + (b[2] - cz) ** 2, 0) / best.length);
+    const r = Math.max(M.rMin, Math.min(M.rMax, 0.9 + rms * 1.3));
+    const pt = { // (more marbles in a bigger patch so it doesn't read as a few specks)
+      id: this.nextMp++, c: [r2(cx), r2(y), r2(cz)], r: r2(r),
+      n: Math.round(M.n * Math.min(1, (best.length / ss.length) * 1.4) * Math.max(0.7, Math.min(1.6, (r / 1.6) ** 2))), o: p.id, team: p.team || 0,
+      born: n, until: n + M.life * 1000, map: this.cfg.map,
+    };
+    // caps: your oldest goes first, then the room's oldest
+    const mine = [...this.mpatches.values()].filter((q) => q.o === p.id);
+    while (mine.length >= M.per) this.dropPatch(mine.shift());
+    while (this.mpatches.size >= M.room) this.dropPatch(this.mpatches.values().next().value);
+    this.mpatches.set(pt.id, pt);
+    this.broadcast({ t: 'mpatch', ...this.patchInfo(pt) });
+  }
+  patchInfo(pt) { return { id: pt.id, c: pt.c, r: pt.r, n: pt.n, o: pt.o, left: Math.max(0, pt.until - now()) }; }
+  patchList() { return [...this.mpatches.values()].filter((pt) => pt.map === this.cfg.map).map((pt) => this.patchInfo(pt)); }
+  dropPatch(pt) { if (this.mpatches.delete(pt.id)) this.broadcast({ t: 'mpx', id: pt.id }); }
+  tickMarbles() {
+    if (!this.mpatches.size) return;
+    const n = now();
+    for (const pt of [...this.mpatches.values()]) {
+      if (n > pt.until || pt.map !== this.cfg.map) { this.dropPatch(pt); continue; }
+      if (n - pt.born < MSLIP.land * 1000) continue; // still flying
+      const owner = this.players.get(pt.o) || null;
+      for (const t of this.players.values()) {
+        if (!this.slipsOn(t, pt, owner, n)) continue;
+        this.marbleSlip(t, pt, owner, n);
+        if (!this.mpatches.has(pt.id)) break;
+      }
+    }
+  }
+  // who slips: anyone on it going faster than a careful walk (the shooter too, it's a janky game). not teammates
+  // (like the banana), a wrecking ball, a soap bubble, frozen or dead people, or someone who just slipped
+  slipsOn(t, pt, owner, n) {
+    if (!t.alive || t.trap || this.isBall(t, n) || n < (t.frozenUntil || 0) || n - (t.mslipT || 0) < MSLIP.immune) return false;
+    if (owner ? owner !== t && this.friendly(owner, t) : this.teamsOn() && pt.team && pt.team === t.team) return false; // (the shooter left: their team is still safe)
+    if (!t.isBot && owner !== t && n - t.spawnT < 1200) return false; // spawn protection
+    if (t.isBot && owner === t && n - pt.born < 1500) return false; // a bot's marbles at its own feet: a moment to stop strafing
+    if (t.isBot ? n < t.slipUntil || !t.onGround || (t.ai.dummy && t.ai.dummy.move) : (t.f & FLAGS.SLIP) || Math.abs(t.vel[1]) > 2) return false; // (players: no vertical speed = on the floor)
+    if (!onPatch(pt, t.pos, 0.15) || this.marbleSpeed(t, n) <= this.marbleWalk(t)) return false;
+    const dx = t.pos[0] - pt.c[0], dz = t.pos[2] - pt.c[2], l = Math.hypot(dx, dz);
+    return !(l > 0.05 && raycast([pt.c[0], pt.c[1] + 0.3, pt.c[2]], [dx / l, 0, dz / l], l, this.boxes)); // a wall between you and the marbles
+  }
+  // how fast you're going over the marbles: what you say, or what the snapshots saw over the last 0.3 s if that's more
+  // (so a client can't run across claiming it stands still). a jump of over 1.5 m between snapshots is a teleport, not running
+  marbleSpeed(t, n) {
+    const v = Math.hypot(t.vel[0], t.vel[2]), tr = t.trail;
+    if (t.isBot || !tr || tr.length < 2) return v;
+    let d = 0, t0 = 0;
+    for (let i = 1; i < tr.length; i++) {
+      if (tr[i][0] < n - 300) continue;
+      t0 ||= tr[i - 1][0];
+      const s = Math.hypot(tr[i][1] - tr[i - 1][1], tr[i][3] - tr[i - 1][3]);
+      if (s < 1.5) d += s;
+    }
+    const dt = t0 ? (tr[tr.length - 1][0] - t0) / 1000 : 0;
+    return dt < 0.15 ? v : Math.max(v, (d / dt) * 0.8); // (-20% for network jitter)
+  }
+  // a crouch walk is safe with any weapon out (a fast weapon crouch-walks faster), up to where crouching turns into a slide
+  marbleWalk(t) { return Math.min(MSLIP.slide, Math.max(MSLIP.walk, MSLIP.crouch * ((WEAPONS[t.w] || {}).speedMul || 1) + 1)); }
+  marbleSlip(t, pt, owner, n) {
+    const M = MSLIP;
+    t.mslipT = n;
+    this.slip(t, 'marbles');
+    if (t.isBot) { const hs = Math.hypot(t.vel[0], t.vel[2]) || 1; t.vel[0] += (t.vel[0] / hs) * 4; t.vel[2] += (t.vel[2] / hs) * 4; } // feet out the way they were going
+    if (owner && owner !== t) this.tag(t, owner, 'marbles'); // slip off a ledge = the shooter's kill
+    pt.n = Math.floor(pt.n * M.thin); pt.r = r2(Math.max(M.minR, pt.r * M.thinR)); // the marbles scatter: thinner every time
+    this.broadcast({ t: 'mslip', id: pt.id, by: t.id, n: pt.n, r: pt.r, p: t.pos.map(r2) });
+    if (pt.n < M.minN) this.dropPatch(pt);
+  }
+
   // ---------------------------------------------------------- sprays (Z): one graffiti per player, a new map wipes them
   onSpray(p, m, fresh) {
     const n = now(), at = vec3(m.p), nm = vec3(m.n);
@@ -1851,7 +2497,7 @@ class Room {
     if (!owns(p.inv, 'spray', id)) { // rolled it since you joined? read your inventory again (once) and retry
       if (fresh || !p.acct || n - (p.invT || 0) < 3000) return;
       p.invT = n;
-      store.get(p.acct.n).then((u) => { if (u) p.inv = u.inv || {}; if (this.players.get(p.id) === p) this.onSpray(p, m, true); }).catch(() => {});
+      store.get(p.acct.n).then((u) => { if (u) p.inv = u.inv || {}; if (this.players.get(p.id) === p) this.onSpray(p, m, true); }).catch((e) => logErr('spray', e));
       return;
     }
     p.sprayT = n;
@@ -1874,15 +2520,26 @@ class Room {
     if (n - p.cfgT < 1500) return;
     p.cfgT = n;
     const changes = [];
-    if (m.map && MAPS[m.map] && m.map !== this.cfg.map && this.mode !== 'training' && MAP_ORDER.includes(m.map)) {
+    if (has(MAPS, m.map) && m.map !== this.cfg.map && this.mode !== 'training' && MAP_ORDER.includes(m.map)) {
       this.cfg.map = m.map;
       changes.push(`map → ${MAPS[m.map].name}`);
-      if (GAMES[this.game].sites && !(this.map.sites && this.map.sites.length)) { this.game = 'dm'; this.bomb = null; this.assignTeams(); changes.push('mode → Deathmatch (no bomb sites here)'); }
-      if (this.bomb) this.newBombRound(true); else this.resetWorld();
+      this.smokes.clear(); // clients drop theirs with the old map
+      let fresh = false;
+      if (GAMES[this.game].sites && !(this.map.sites && this.map.sites.length)) {
+        this.game = 'dm'; this.bomb = null; changes.push('mode → Deathmatch (no bomb sites here)');
+        // a new deathmatch round (the bomb round's clock and kills don't carry over). during the vote the vote decides
+        if (this.round && !this.round.over) fresh = true; else this.assignTeams();
+      }
+      if (GAMES[this.game].mapOk && !GAMES[this.game].mapOk(this.map)) { changes.push(`mode → Deathmatch (no ${GAMES[this.game].name} on this map)`); this.game = 'dm'; this.assignTeams(); }
+      if (fresh) this.startRound();
+      else if (this.round && this.round.over) this.resetWorld(); // the end screen is up: respawn on the new map, the vote still picks what's next
+      else if (this.bomb) this.newBombRound(true);
+      else if (this.livesOn) { this.vote = null; setTimeout(safe('startRound', () => this.startRound()), 50); } // lives can't be patched mid-match
+      else this.resetWorld();
     }
-    if (m.hip && HIPFIRE[m.hip] && m.hip !== this.cfg.hip) { this.cfg.hip = m.hip; changes.push(`hipfire → ${HIPFIRE[m.hip].name}`); }
-    if (m.game && GAMES[m.game] && m.game !== this.game && this.mode === 'bots' && this.setGame(m.game)) { changes.push(`mode → ${GAMES[m.game].name}`); this.vote = null; setTimeout(() => this.startRound(), 50); }
-    if (m.diff && BOT_DIFF[m.diff] && m.diff !== this.cfg.diff && this.mode !== 'ffa') {
+    if (has(HIPFIRE, m.hip) && m.hip !== this.cfg.hip) { this.cfg.hip = m.hip; changes.push(`hipfire → ${HIPFIRE[m.hip].name}`); }
+    if (has(GAMES, m.game) && m.game !== this.game && this.mode === 'bots' && this.setGame(m.game)) { changes.push(`mode → ${GAMES[m.game].name}`); this.vote = null; if (this.round) { this.round.over = true; this.round.next = now() + 1000; } setTimeout(safe('startRound', () => this.startRound()), 50); } // over: tickRound mustn't judge the old round by the new mode's rules
+    if (has(BOT_DIFF, m.diff) && m.diff !== this.cfg.diff && this.mode !== 'ffa') {
       this.cfg.diff = m.diff;
       for (const b of this.players.values()) if (b.isBot) b.ai.diff = m.diff;
       changes.push(`bots → ${BOT_DIFF[m.diff].name}`);
@@ -1896,18 +2553,37 @@ class Room {
     if (this.mode === 'ffa' || this.mode === 'coop') this.broadcast({ t: 'chat', id: 0, m: `${p.name} set ${changes.join(', ')}` });
   }
 
+  // per-life state: cleared on every respawn and on every new round / match / map
+  resetLife(p) {
+    p.slipUntil = 0; p.burnUntil = 0; p.burnBy = 0; p.burnTick = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.frostT = 0;
+    p.healLeft = 0; p.reverseUntil = 0; p.g = null; p.lastAttacker = 0; p.ground = null;
+    if (p.ai) { p.ai.hook = null; p.ai.route = null; }
+    p.parryT = 0; p.staggerUntil = 0; // katana parry: a new life starts with the guard ready (the client resets too)
+    p.ballUntil = 0; p.f &= ~FLAGS.BALL; // a wrecking ball doesn't roll into the next round (or the next mode)
+    p.lavaBurn = 0; p.lavaSeen = 0; // floor is lava: the burn ends with the life
+    if (!p.isBot) { if (p.nextItem) { p.item = p.nextItem; p.nextItem = null; } p.ic = null; } // full charges (sendIc after 'spawn')
+  }
   resetWorld() {
+    this.resetChaos();
     this.projectiles.clear(); this.peels.clear(); this.holes.clear();
+    this.mpatches.clear(); // clients wipe theirs on 'clear'
     this.broadcast({ t: 'clear' });
+    this.clearTags();
+    for (const b of this.bubbles.values()) this.broadcast({ t: 'bubx', id: b.id });
+    for (const c of this.clouds.values()) this.broadcast({ t: 'cloudx', id: c.id });
+    this.bubbles.clear(); this.clouds.clear();
     for (const p of this.players.values()) {
       if (p.isBot && p.ai.dummy) continue;
       p.alive = true; p.hp = 100; p.vel = [0, 0, 0]; p.spawnT = now(); p.seq++;
       p.parryT = 0; p.staggerUntil = 0; // katana parry: the client resets on 'spawn', so the server does too
       p.pos = this.pickSpawn(p.isBot, p);
+      this.resetLife(p);
       send(p, { t: 'spawn', p: p.pos, q: p.seq });
+      this.sendIc(p);
       this.sendLoadout(p);
     }
     if (this.mode === 'training') { this.removeBots(); this.spawnDummies(); }
+    if (this.crosses) this.crosses.clear();
   }
 
   handle(p, m) {
@@ -1922,9 +2598,12 @@ class Room {
         if (Number.isFinite(m.y)) p.yaw = m.y;
         if (Number.isFinite(m.x)) p.pitch = m.x;
         this.airCheck(p);
-        if (WEAPONS[m.w]) p.w = m.w;
+        if (has(WEAPONS, m.w) && (!this.chaosKit || this.chaosKit.slots.includes(m.w))) p.w = m.w;
+        const only = this.modeWeapon(p);
+        if (only) p.w = only; // everyone sees what you're really allowed to hold
         p.g = vec3(m.g);
-        p.f = m.f | 0;
+        p.f = num(m.f) | 0;
+        if (raycast([pos[0], pos[1] + 0.3, pos[2]], [0, -1, 0], 0.6, this.boxes)) p.ground = pos.slice(); // standing on something
         if (p.trap) this.holdTrapped(p, true); // sealed in a soap bubble: you go where it floats
         if (p.pos[1] < this.map.killY) this.kill(p, null, 'void');
         if ((p.f & FLAGS.BALL) && !(p.ballUntil > now())) p.f &= ~FLAGS.BALL; // only someone who earned the wrecking ball gets to be one
@@ -1936,14 +2615,21 @@ class Room {
       case 'slam': this.onSlam(p, m); break;
       case 'fire': this.onFire(p, m); break;
       case 'cough':
-        if (p.alive && now() - p.coughT > 800) { p.coughT = now(); this.damage(p, 12, null, 'cough'); }
+        if (p.alive && now() - p.coughT > 800) {
+          p.coughT = now();
+          const cp = Math.cos(p.pitch || 0); // everyone else sees the smoke burst out of your face, and you double over
+          this.broadcast({ t: 'fx', k: 'cough', id: p.id, p: eyeOf(p).map(r2), d: [-Math.sin(p.yaw || 0) * cp, Math.sin(p.pitch || 0), -Math.cos(p.yaw || 0) * cp].map(r2) }, p.id);
+          this.damage(p, 12, null, 'cough');
+        }
         break;
       case 'chat': {
-        const text = clean(m.m, 120);
+        const text = typeof m.m === 'string' ? clean(m.m, 120) : '';
+        if (text && isSkipCmd(text)) { skipCommand(this, p); break; } // /skip: a vote to skip this match (server/skip.js), never shown as chat
         if (text && now() - p.chatT > 400) { p.chatT = now(); this.broadcast({ t: 'chat', id: p.id, m: text }); }
         break;
       }
       case 'tbag': { // crouch-spammed too hard: your knees explode
+        if (this.chaosKit && this.chaosKit.noTbag) break; // one in the chamber: a free area kill that also burns a life
         if (!p.alive || now() - (p.tbagT || 0) < 3000) break;
         p.tbagT = now();
         const c = center(p);
@@ -1960,24 +2646,31 @@ class Room {
         this.kill(p, null, 'tbag');
         break;
       }
-      case 'streaks': p.streaks = validStreaks(m.list); break;
+      case 'streaks': { // with a streak going the new picks wait for your next life (no swapping picks mid-streak)
+        const v = validStreaks(m.list);
+        if (p.streak) p.nextStreaks = v; else { p.streaks = v; p.nextStreaks = null; }
+        break;
+      }
       case 'deploy': { // use a killstreak from your tray (aimed ones land where you looked)
+        if (this.chaosKit && this.chaosKit.noStreaks) break;
         const i = (p.pocket || []).indexOf(m.r);
         const at = vec3(m.at);
-        if (i < 0 || !p.alive || !STREAKS[m.r]) break;
+        if (i < 0 || !p.alive || !has(STREAKS, m.r)) break;
+        if (this.modeWeapon(p)) break; // no killstreaks in gun game or as a zombie (they keep for later)
         if ((m.r === 'chickenstrike' || m.r === 'giantduck') && !at) break;
         p.pocket.splice(i, 1);
+        if (this.mode === 'training') (p.trainCd ||= {})[m.r] = now() + ((STREAKS[m.r].dur || 0) + 3) * 1000;
         (p.usedAt ||= {})[m.r] = now(); // EPIC kills skip the spinbot's (aimbot) and the chicken strike's
         if (m.r === 'scythe') p.scythe = true;
         if (m.r === 'wreckingball') { p.ballUntil = now() + STREAKS.wreckingball.dur * 1000 + 1000; p.slamT = 0; p.ballTop = p.pos[1]; p.ballVy = 0; } // +1s for lag
         send(p, { t: 'streak', reward: m.r, dur: STREAKS[m.r].dur });
         if (m.r === 'chickenstrike') {
           this.broadcast({ t: 'fx', k: 'strikeCall', id: p.id, p: at.map(r2) });
-          for (let k = 0; k < 14; k++) setTimeout(() => {
+          for (let k = 0; k < 14; k++) setTimeout(safe('strike', () => {
             if (!this.players.has(p.id)) return;
             const a = Math.random() * Math.PI * 2, rr = Math.random() * 10;
             this.makeProj(p, 'chicken', [at[0] + Math.cos(a) * rr, at[1] + 45, at[2] + Math.sin(a) * rr], [0, -34, 0]);
-          }, 600 + k * 170);
+          }), 600 + k * 170);
         } else if (m.r === 'giantduck') {
           this.makeHole([at[0], at[1] + 4, at[2]], p.id, { big: true });
         }
@@ -1988,7 +2681,8 @@ class Room {
         if (now() - (p.lookT || 0) < 300) break;
         p.lookT = now();
         p.look = validLook(m.look, p.acct ? p.acct.achs : new Set());
-        if (p.look.color) p.color = p.look.color;
+        // in team games you stay in your team's colour (no dressing up as the other team); your pick shows again after
+        p.color = this.teamsOn() && p.team ? TEAMS[p.team].color : p.look.color || p.color;
         this.broadcast({ t: 'lk', id: p.id, look: p.look, color: p.color });
         break;
       }
@@ -1999,11 +2693,14 @@ class Room {
         this.broadcast({ t: 'cd', id: p.id, card: p.card }, p.id);
         break;
       }
-      case 'kfx':
-        (async () => {
-          if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; }
-          p.kfx = ownedKill(m.id, p.inv);
-        })();
+      case 'kfx': // kill effect: quick clicks batch into one inventory read (like 'grap'), the last pick wins
+        p.kfxWant = typeof m.id === 'string' ? m.id : '';
+        if (!p.kfxQ) p.kfxQ = setTimeout(() => {
+          (async () => {
+            if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; }
+            p.kfx = ownedKill(p.kfxWant, p.inv);
+          })().catch((e) => logErr('kfx', e)).finally(() => { p.kfxQ = null; });
+        }, 250);
         break;
       case 'grap': // grapple skin: free ones or ones you own. quick clicks batch into one inventory read, the last pick wins
         p.grapWant = typeof m.id === 'string' ? m.id : '';
@@ -2018,17 +2715,20 @@ class Room {
       case 'kc': p.kc = !!m.on; break;
       case 'use': this.tryUse(p); break;
       case 'parry': this.startParry(p, m); break;
+      case 'lava': this.lavaTouch(p, true); break; // floor is lava: "ouch, I touched it"
       case 'item': this.useItem(p, m); break;
       case 'spray': this.onSpray(p, m); break;
-      case 'lo': this.setItem(p, m.item); break;
-      case 'vote':
-        if (this.vote && Number.isInteger(m.i) && m.i >= 0 && m.i < this.vote.options.length) {
-          this.vote.votes.set(p.id, m.i);
-          this.broadcast({ t: 'votes', counts: this.voteInfo().counts });
-        }
+      case 'itemsel': this.selectItem(p, m.i); break;
+      case 'vote': { // a vote is for the stage that's open now (s, when sent, must match it). one that comes too soon after
+        // the last is kept and counted once the 250 ms are up, so the card you see marked is always the one that counts
+        const v = this.vote;
+        if (!v || v.stage === 'done' || !Number.isInteger(m.i) || m.i < 0 || m.i >= v.options.length || (m.s != null && m.s !== v.stage)) break;
+        if (now() - (p.voteT || 0) > 250) this.castVote(p, m.i); else p.votePend = { i: m.i, stage: v.stage };
         break;
-      case 'respawn': // killcam finished or skipped
-        if (!p.alive) p.respawnAt = Math.min(p.respawnAt, Math.max(now(), (p.deadT || 0) + 1500));
+      }
+      case 'respawn': // killcam finished or skipped: respawn now, but never sooner than the mode allows
+        if (this.livesOn && p.oitc && p.oitc.out) break; // out of lives: you watch
+        if (!p.alive) p.respawnAt = Math.min(p.respawnAt, Math.max(now(), p.minRespawnAt || 0));
         if (!p.alive && p.epicLock) p.respawnAt = Math.max(p.respawnAt, Math.min(p.epicLock, (p.deadT || 0) + 10500)); // EPIC killcam: no skipping it (9 s cap, 10.5 s after a long no-scope's overlay)
         break;
       case 'redraw':
@@ -2040,12 +2740,12 @@ class Room {
           p.skinT = now();
           (async () => {
             if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; }
-            p.skins = enforceSkins(cleanSkins(m.s), p.inv);
+            p.skins = enforceSkins(cleanSkins(m.s), p.inv, p.acct && p.acct.achs);
             this.broadcast({ t: 'sk', id: p.id, s: p.skins }, p.id);
-          })();
+          })().catch((e) => logErr('skin', e));
         }
         break;
-      case 'pi': send(p, { t: 'po', c: m.c }); break;
+      case 'pi': send(p, { t: 'po', c: Number.isFinite(m.c) ? m.c : 0 }); break; // echo a number, not whatever object came in
       case 'land': this.airFail(p, false); break; // your client saw you touch the ground: run's over
     }
   }
@@ -2054,6 +2754,7 @@ class Room {
     if (!this.round) return null;
     const r = { target: this.round.target, left: Math.max(0, (this.round.over ? this.round.next : this.round.ends) - now()), over: this.round.over, game: this.game };
     if (this.teamsOn()) r.sc = [this.score[1], this.score[2]];
+    if (GAMES[this.game].infect) { const s = this.survivors().length; r.inf = { s, z: this.fighters().length - s, t0: this.infAt ? Math.max(0, this.infAt - now()) : 0 }; }
     const b = this.bomb;
     if (b) {
       const n = now();
@@ -2067,35 +2768,43 @@ class Room {
     const r = this.round;
     if (!r) return;
     const n = now();
-    if (r.over) { if (n >= r.next) this.startRound(); return; }
+    skipTick(this, n);
+    if (r.over) { this.tickVote(n); if (n >= r.next) this.startRound(); return; }
     if (!this.humans().length) return;
     if (this.game === 'bomb' && this.bomb) { this.tickBomb(n); return; }
+    if (this.tickModes(n)) return; // gun game + infection end their own way
     if (this.teamsOn()) { if (this.score[1] >= r.target || this.score[2] >= r.target || n >= r.ends) this.endRound(); return; }
+    if (this.livesOn) { this.tickLives(n); return; }
     let top = null;
     for (const p of this.players.values()) if (!top || p.kills > top.kills) top = p;
     if ((top && top.kills >= r.target) || n >= r.ends) this.endRound();
   }
   endRound() {
     const list = [...this.players.values()].filter((p) => !(p.isBot && p.ai.dummy)).sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
+    this.modeSort(list, this.round.res);
+    const lives = (p) => (p.oitc && !p.oitc.out ? p.oitc.lives : 0);
+    if (this.livesOn) list.sort((a, b) => lives(b) - lives(a) || b.kills - a.kills); // one in the chamber: still standing first
+    const lastOne = this.livesOn && list.filter((p) => lives(p) > 0).length === 1;
     // team games: the winning team takes it, and its best player gets the roll
     let winTeam = 0;
     if (this.teamsOn()) {
       const sc = this.game === 'bomb' && this.bomb ? this.bomb.wins : this.score;
       winTeam = sc[1] === sc[2] ? 0 : sc[1] > sc[2] ? 1 : 2;
     }
-    const pool = winTeam ? list.filter((p) => p.team === winTeam) : list;
-    const winner = pool[0] && (winTeam || pool[0].kills > 0) ? pool[0] : null;
+    // a drawn team match has no winner (no roll, no stat): FFA needs at least one kill (or to be the last one standing)
+    const winner = this.teamsOn() ? (winTeam && list.find((p) => p.team === winTeam)) || null : list[0] && (list[0].kills > 0 || lastOne) ? list[0] : null;
     this.round.over = true;
-    this.round.next = now() + VOTE_MS + 2000;
+    this.round.next = now() + (this.mode === 'ffa' || this.mode === 'bots' ? voteTotal() : VOTE_MS + 2000);
     this.round.winTeam = winTeam;
     this.airEnd();
     if (this.bomb) { this.bomb.act = null; this.bomb.between = 0; }
-    this.startVote();
     let roll = null;
-    if (winner && !winner.isBot) {
+    if (winner && !winner.isBot && this.round.skipped) roll = { n: 0, why: 'skipped matches pay no containers' };
+    else if (winner && !winner.isBot) {
       const eligible = this.mode === 'ffa' ? this.humans().length >= 2 : list.filter((p) => p.isBot).length >= 3;
-      if (!winner.acct) roll = { n: 0, guest: 1 };
+      if (!winner.acct) { roll = { n: 0, guest: 1 }; if (eligible && winner.kills && winner.m) winner.m.xp += 50; } // the xp they'd have kept
       else if (!eligible) roll = { n: 0, why: this.mode === 'ffa' ? 'need at least 2 real players for a roll' : 'need at least 3 bots for a roll' };
+      else if (!winner.kills) roll = { n: 0, why: 'no kills, no roll (hiding is not winning)' }; // last one standing still needs to have fought
       else {
         stat(winner, 'wins', 1); stat(winner, 'xp', 50);
         const kind = randomContainer();
@@ -2103,24 +2812,35 @@ class Room {
         roll = { n: 1, kind, why: 'won the round' };
       }
     }
-    this.broadcast({ t: 'round', over: 1, winner: winner ? winner.id : 0, winTeam, game: this.game, sc: this.teamsOn() ? (this.game === 'bomb' && this.bomb ? [this.bomb.wins[1], this.bomb.wins[2]] : [this.score[1], this.score[2]]) : null,
-      top: list.slice(0, 6).map((p) => [p.id, p.name, p.kills, p.deaths, p.team || 0]), next: VOTE_MS + 2000 });
+    this.broadcast({ t: 'round', over: 1, skipped: this.round.skipped ? 1 : 0, winner: winner ? winner.id : 0, winTeam, game: this.game, sc: this.teamsOn() ? (this.game === 'bomb' && this.bomb ? [this.bomb.wins[1], this.bomb.wins[2]] : [this.score[1], this.score[2]]) : null,
+      top: list.slice(0, 6).map((p) => [p.id, p.name, p.kills, p.deaths, p.team || 0]), next: this.round.next - now(),
+      board: list.map((p, i) => [p.id, p.name, p.kills, p.deaths, p.team || 0, p.isBot ? 1 : 0, matchSummary(p, i, list, this).score]) });
+    // your own match report (end screen: performance / medals / rewards). guests see the xp they would have kept
+    const side = GAMES[this.game].infect && this.round.res && this.round.res.side; // infection: the whole side that took it won
+    const won = (p) => (side ? (side === 'inf') === !!p.inf : p === winner || (winTeam && p.team === winTeam));
+    list.forEach((p, i) => { if (!p.isBot) send(p, { t: 'perf', ...matchSummary(p, i, list, this), won: won(p) ? 1 : 0, acct: p.acct ? 1 : 0 }); });
+    this.startVote(); // after the result: clients open the end screen on 'round', then the vote fills it in
     const r = this.round;
-    setTimeout(() => {
+    setTimeout(safe('hl', () => {
       if (this.round !== r || !r.hl || r.hl.pending || !r.hl.clip || !r.hl.clip.frames.length) return;
       const { label, id, name, color, card, clip } = r.hl;
       this.broadcast({ t: 'hl', label, id, name, color, card, clip });
-    }, 1600);
+      // how long it plays: the clip, plus the slow-mo at each of their kills (0.3x for ~0.5 s). the vote's hurry mustn't cut it
+      const fr = clip.frames, kills = clip.ev.filter((e) => e.m && e.m.t === 'kill' && e.m.k === id).length;
+      r.hlEnd = now() + (fr[fr.length - 1].s - fr[0].s) + kills * 1150 + 500;
+    }), 1600);
     if (roll) send(winner, { t: 'roll+', ...roll });
   }
   startRound() {
     this.resolveVote();
-    for (const p of this.players.values()) { p.kills = 0; p.deaths = 0; }
+    for (const p of this.players.values()) { p.kills = 0; p.deaths = 0; matchReset(p); }
+    this.firstBlood = 0;
     for (const p of this.players.values()) p.lastKiller = 0; // new match: the court forgets old grudges
     this.round = { target: (TARGETS[this.mode] || TARGETS.ffa)[this.game] || ROUND[this.mode].kills, ends: now() + ROUND[this.mode].time * 1000, over: false, next: 0 };
     this.round.t0 = now();
     this.score = { 1: 0, 2: 0 };
     this.clearTags();
+    this.startModes();
     this.assignTeams();
     this.bomb = this.game === 'bomb' && this.teamsOn() ? { att: 1, n: 0, wins: { 1: 0, 2: 0 } } : null;
     if (this.bomb) { this.round.ends = now() + 3600 * 1000; this.newBombRound(true); }
@@ -2133,6 +2853,9 @@ class Room {
   // that never reports can't just stand around. the match end decides.
   airStart() {
     this.airBad = new Set(); // names that touched down this match: leaving and rejoining doesn't wipe it
+    // Floor Is Lava has no Never Landed run: everyone's kept off the floor there anyway (and the lava bounces you
+    // back up), so it would come almost for free
+    if (GAMES[this.game].lava) return;
     for (const p of this.players.values()) {
       if (p.isBot) continue;
       p.air = { ok: true, rest: 0 };
@@ -2155,7 +2878,7 @@ class Room {
   airEnd() {
     for (const p of this.players.values()) {
       if (p.isBot || !p.air) continue;
-      const ok = p.air.ok;
+      const ok = p.air.ok && !(this.round && this.round.skipped); // a skipped match is too short to count
       p.air = null;
       send(p, { t: 'air', end: 1, ok: ok ? 1 : 0, acct: p.acct ? 1 : 0 });
       if (ok) { console.log(`never landed: ${p.name}`); stat(p, 'airborne', 1); }
@@ -2163,54 +2886,132 @@ class Room {
   }
   // switch game type (bots setup / match settings / the vote)
   setGame(g) {
-    if (!GAMES[g] || (GAMES[g].sites && !(this.map.sites && this.map.sites.length))) return false;
+    if (!has(GAMES, g) || (GAMES[g].sites && !(this.map.sites && this.map.sites.length))) return false;
+    if (GAMES[g].mapOk && !GAMES[g].mapOk(this.map)) return false; // e.g. floor is lava: no real floor here (or nothing to stand on)
     this.game = g;
     return true;
   }
 
-  // ---------------------------------------------------------- map / mode vote between rounds
+  // ---------------------------------------------------------- the end-of-match vote: mode first, then map
+  // stage 'mode' (VOTE.mode ms) -> stage 'map' for the mode that won (VOTE.map ms) -> 'done' (the reveal) -> next round.
+  // humans decide; bots vote too, but only break ties (shared/vote.js)
   startVote() {
     if (this.mode !== 'ffa' && this.mode !== 'bots') return;
-    const games = GAME_ORDER.slice().sort(() => Math.random() - 0.5);
-    const options = [], usedMaps = new Set();
-    for (const g of games) {
-      if (options.length >= 3) break;
-      const maps = mapsFor(g, MAPS, MAP_ORDER).filter((m) => !usedMaps.has(m));
-      if (!maps.length) continue;
-      const m = pick(maps);
-      usedMaps.add(m);
-      options.push({ game: g, map: m });
-    }
-    this.vote = { options, votes: new Map(), ends: now() + VOTE_MS };
+    const options = modeCards(MAPS, MAP_ORDER, this.game, Math.random, this.skipped);
+    this.skipped = null;
+    if (!options.length) return;
+    this.vote = { stage: 'mode', options, votes: new Map(), ends: now() + VOTE.mode, game: null, map: null };
+    this.botVotes();
     this.broadcast({ t: 'vote', ...this.voteInfo() });
+  }
+  castVote(p, i) {
+    const v = this.vote;
+    p.voteT = now(); p.votePend = null;
+    if (v.votes.get(p.id) === i) return;
+    v.votes.set(p.id, i);
+    this.broadcast({ t: 'votes', ...this.voteCounts() });
+    this.voteHurry();
+  }
+  // the next round never starts before the play of the round has finished playing
+  holdForHl() { const r = this.round; if (r && r.over && r.hlEnd) r.next = Math.max(r.next, r.hlEnd); }
+  // every human has voted: no point sitting through the rest of the stage. the bots still get their say first
+  voteHurry() {
+    const v = this.vote, n = now(), soon = n + 2500;
+    if (!v || v.stage === 'done' || v.ends <= soon || !this.humans().every((h) => v.votes.has(h.id))) return;
+    if (this.round && this.round.over) { this.round.next -= v.ends - soon; this.holdForHl(); }
+    v.ends = soon;
+    for (const p of this.players.values()) if (p.voteAt) p.voteAt = Math.min(p.voteAt, n + 300 + Math.random() * 1800);
+    this.broadcast({ t: 'votes', ...this.voteCounts(), left: soon - n, total: this.round && this.round.over ? this.round.next - n : 0 });
+  }
+  // every bot picks a card at some random moment of the stage
+  botVotes() {
+    const v = this.vote, n = now(), span = Math.max(0, Math.min(VOTE.botMax, v.ends - n - 800) - VOTE.botMin);
+    for (const p of this.players.values()) if (p.isBot && !(p.ai && p.ai.dummy)) p.voteAt = n + VOTE.botMin + Math.random() * span;
+  }
+  tickVote(n) {
+    const v = this.vote;
+    if (!v || v.stage === 'done') return;
+    for (const p of this.players.values()) { // re-picks that came in too fast: count them now
+      if (!p.votePend || n - (p.voteT || 0) <= 250) continue;
+      if (p.votePend.stage === v.stage) this.castVote(p, p.votePend.i); else p.votePend = null;
+      if (this.vote !== v || v.stage === 'done') return;
+    }
+    let changed = false;
+    for (const p of this.players.values()) {
+      if (!p.isBot || !p.voteAt || n < p.voteAt || v.votes.has(p.id)) continue;
+      p.voteAt = 0;
+      // bots like the event and whatever's already winning a bit more than the rest
+      const { h, b } = tally(v.options.length, v.votes, (id) => this.players.get(id)?.isBot);
+      const w = v.options.map((o, i) => 1 + (o.event ? 1.2 : 0) + (h[i] + b[i]) * 0.6);
+      let r = Math.random() * w.reduce((x, y) => x + y, 0), i = 0;
+      while (i < w.length - 1 && (r -= w[i]) > 0) i++;
+      v.votes.set(p.id, i); changed = true;
+    }
+    if (changed) this.broadcast({ t: 'votes', ...this.voteCounts() });
+    if (n >= v.ends) this.advanceVote();
+  }
+  // close the open stage (also used to fast-forward a vote when the next round starts early)
+  advanceVote() {
+    const v = this.vote;
+    if (!v || v.stage === 'done') return;
+    const isBot = (id) => this.players.get(id)?.isBot;
+    const win = v.options[voteWinner(v.options.length, v.votes, isBot)];
+    for (const p of this.players.values()) { p.voteT = 0; p.votePend = null; } // a new stage: everyone can pick straight away
+    if (v.stage === 'mode') {
+      v.game = win.game; v.event = win.event;
+      const maps = mapCards(v.game, MAPS, MAP_ORDER, this.cfg.map);
+      if (maps.length > 1) {
+        Object.assign(v, { stage: 'map', options: maps, votes: new Map(), ends: now() + VOTE.map });
+        this.botVotes();
+        if (this.round && this.round.over) this.round.next = Math.max(this.round.next, v.ends + VOTE.reveal);
+        this.broadcast({ t: 'vote', ...this.voteInfo() });
+        return;
+      }
+      v.map = maps.length ? maps[0].map : this.cfg.map;
+    } else v.map = win.map;
+    Object.assign(v, { stage: 'done', options: [], votes: new Map(), ends: now() + VOTE.reveal });
+    if (this.round && this.round.over) { this.round.next = Math.min(this.round.next, now() + VOTE.reveal); this.holdForHl(); }
+    this.broadcast({ t: 'vote', ...this.voteInfo() });
+    this.broadcast({ t: 'chat', id: 0, m: `next up: ${GAMES[v.game].name} on ${MAPS[v.map].name}` });
+  }
+  voteCounts() {
+    const v = this.vote;
+    const { h, b } = tally(v.options.length, v.votes, (id) => this.players.get(id)?.isBot);
+    return { stage: v.stage, counts: h, bots: b };
   }
   voteInfo() {
     const v = this.vote;
     if (!v) return null;
-    const counts = v.options.map(() => 0);
-    for (const i of v.votes.values()) counts[i]++;
-    return { options: v.options.map((o) => ({ ...o, name: GAMES[o.game].name, mapName: MAPS[o.map].name })), counts, left: Math.max(0, v.ends - now()) };
+    const options = v.options.map((o) => (o.game ? { ...o, name: GAMES[o.game].name, teams: GAMES[o.game].teams ? 1 : 0 } : { ...o, mapName: MAPS[o.map].name, size: MAPS[o.map].size }));
+    return { ...this.voteCounts(), options, left: Math.max(0, v.ends - now()), total: this.round && this.round.over ? Math.max(0, this.round.next - now()) : 0,
+      game: v.game || undefined, gameName: v.game ? GAMES[v.game].name : undefined, event: v.event ? 1 : 0,
+      map: v.map || undefined, mapName: v.map ? MAPS[v.map].name : undefined, ev: eventGame() };
   }
   resolveVote() {
+    if (this.vote && this.vote.stage !== 'done') { this.advanceVote(); this.advanceVote(); }
     const v = this.vote;
     this.vote = null;
-    if (!v || !v.options.length) return;
-    const counts = v.options.map(() => 0);
-    for (const i of v.votes.values()) counts[i]++;
-    const max = Math.max(...counts);
-    const top = v.options.filter((o, i) => counts[i] === max);
-    const win = pick(top);
-    const mapChanged = win.map !== this.cfg.map;
-    this.cfg.map = win.map;
-    this.setGame(win.game);
+    for (const p of this.players.values()) { p.voteAt = 0; p.votePend = null; }
+    if (!v || !v.game || !v.map || !MAPS[v.map]) return;
+    const mapChanged = v.map !== this.cfg.map;
+    this.cfg.map = v.map;
+    this.setGame(v.game);
     this.projectiles.clear(); this.peels.clear(); this.holes.clear();
-    if (mapChanged) this.broadcast({ t: 'cfg', cfg: this.cfg });
-    this.broadcast({ t: 'chat', id: 0, m: `next up: ${GAMES[this.game].name} on ${this.map.name}` });
+    if (mapChanged) { this.smokes.clear(); this.broadcast({ t: 'cfg', cfg: this.cfg }); }
   }
 
   // ---------------------------------------------------------- tags (kill confirmed)
-  dropTag(t) {
-    const g = { id: this.nextTag++, p: [r2(t.pos[0]), r2(t.pos[1] + 0.9), r2(t.pos[2])], team: t.team, born: now() };
+  // the floor under a point (null over the void)
+  floorAt(p) {
+    if (!p) return null;
+    const h = raycast([p[0], p[1] + 1, p[2]], [0, -1, 0], 60, this.boxes);
+    return h && h.point[1] > this.map.killY ? h.point : null;
+  }
+  // tags land on the floor under the body; off the map they drop where the victim last stood (or at the killer)
+  dropTag(t, killer) {
+    const at = this.floorAt(t.pos) || this.floorAt(t.ground) || (killer && killer.alive && this.floorAt(killer.pos));
+    if (!at) return;
+    const g = { id: this.nextTag++, p: [r2(at[0]), r2(at[1] + 0.9), r2(at[2])], team: t.team, born: now() };
     this.tags.set(g.id, g);
     this.broadcast({ t: 'tag+', id: g.id, p: g.p, team: g.team });
   }
@@ -2236,26 +3037,32 @@ class Room {
     const b = this.bomb;
     if (!first && b.n === BOMB.swapAfter) { b.att = 3 - b.att; this.broadcast({ t: 'chat', id: 0, m: 'SIDES SWAPPED' }); }
     b.n++;
-    Object.assign(b, { ph: 'live', site: null, p: null, drop: null, explodeAt: 0, act: null, between: 0, ends: now() + BOMB.roundTime * 1000, carrier: 0 });
+    Object.assign(b, { ph: 'live', site: null, p: null, drop: null, explodeAt: 0, act: null, between: 0, ends: now() + (process.env.JF_BOMB_ROUND ? BOMB.roundTime : this.map.roundTime || BOMB.roundTime) * 1000, carrier: 0 }); // per-map round time (the test knob still wins)
     for (const p of this.players.values()) if (p.ai) { p.ai.site = null; p.ai.route = null; }
     this.projectiles.clear(); this.peels.clear(); this.holes.clear();
     this.resetWorld();
-    const att = this.fighters().filter((p) => p.team === b.att && p.alive);
-    const carrier = att.find((p) => !p.isBot) || att[0];
-    b.carrier = carrier ? carrier.id : 0;
-    if (carrier) send(carrier, { t: 'bombyou' });
+    this.giveBomb();
     this.broadcast({ t: 'bombev', k: 'round', n: b.n, att: b.att });
   }
-  dropBomb(pos) {
+  // hand the bomb to a random living attacker (humans first, never skip), or leave it at the attackers' spawn
+  giveBomb(skip) {
+    const b = this.bomb;
+    const att = this.fighters().filter((p) => p.team === b.att && p.alive && p !== skip);
+    const hs = att.filter((p) => !p.isBot);
+    const c = hs.length ? pick(hs) : att.length ? pick(att) : null;
+    b.carrier = c ? c.id : 0; b.drop = null; b.idle = null;
+    if (c) { send(c, { t: 'bombyou' }); return; }
+    const s = (this.map.teamSpawns && this.map.teamSpawns.att[0]) || this.map.spawns[0];
+    const f = this.floorAt(s);
+    b.drop = [r2(s[0]), r2((f ? f[1] : s[1]) + 0.15), r2(s[2])]; b.dropT = now();
+  }
+  dropBomb(pos, from) {
     const b = this.bomb;
     if (!b || b.ph !== 'live') return;
-    b.carrier = 0;
-    const h = raycast([pos[0], pos[1] + 1, pos[2]], [0, -1, 0], 60, this.boxes);
-    b.drop = h ? [r2(pos[0]), r2(h.point[1] + 0.15), r2(pos[2])] : null;
-    if (!b.drop) { // fell into the void with it: it comes back to a random attacker
-      const att = this.fighters().filter((p) => p.team === b.att && p.alive);
-      if (att.length) b.carrier = pick(att).id;
-    }
+    b.carrier = 0; b.idle = null;
+    const f = this.floorAt(pos);
+    b.drop = f ? [r2(pos[0]), r2(f[1] + 0.15), r2(pos[2])] : null; b.dropT = now();
+    if (!b.drop) this.giveBomb(from); // fell into the void with it: it comes back to another attacker
     this.broadcast({ t: 'bombev', k: 'drop' });
   }
   bombRoundWin(team, why) {
@@ -2270,29 +3077,46 @@ class Room {
     const b = this.bomb;
     if (b.between) { if (n >= b.between) this.newBombRound(false); return; }
     if (b.ph === 'done') return;
+    if (b.ph === 'live' && !b.drop) {
+      const c = this.players.get(b.carrier);
+      if (!c || !c.alive || c.team !== b.att) this.giveBomb(); // nobody has it (empty side at round start, a carrier who left)
+      else if (!b.idle || b.idle.id !== c.id || dist3(c.pos, b.idle.p) > 1.5) b.idle = { id: c.id, p: c.pos.slice(), t: n };
+      else if (n - b.idle.t > 15000 && !b.act && this.fighters().some((p) => p !== c && p.alive && p.team === b.att)) {
+        // an AFK carrier drops it for the team (and can't grab it straight back)
+        this.dropBomb(c.pos, c);
+        b.noPick = { id: c.id, until: n + 8000 };
+        send(c, { t: 'chat', id: 0, m: 'you stood still too long and dropped the bomb' });
+      }
+    }
     // dropped bomb: any attacker can grab it
     if (b.ph === 'live' && b.drop) {
       for (const p of this.players.values()) {
-        if (!p.alive || p.team !== b.att) continue;
+        if (!p.alive || p.team !== b.att || (b.noPick && b.noPick.id === p.id && n < b.noPick.until)) continue;
         if (Math.hypot(p.pos[0] - b.drop[0], p.pos[1] - b.drop[1], p.pos[2] - b.drop[2]) < BOMB.pickup) { b.carrier = p.id; b.drop = null; send(p, { t: 'bombyou' }); this.broadcast({ t: 'bombev', k: 'pickup', id: p.id }); break; }
+      }
+      // bots can't climb to every ledge: a drop no human attacker is alive to fetch goes back to a bot after 20 s
+      // (only to a living one: with every attacker dead, or no bots at all, it stays where it fell)
+      if (b.drop && n - (b.dropT || n) > 20000 && !this.fighters().some((p) => !p.isBot && p.alive && p.team === b.att) && this.fighters().some((p) => p.isBot && p.alive && p.team === b.att)) {
+        this.giveBomb();
+        if (b.carrier) this.broadcast({ t: 'bombev', k: 'pickup', id: b.carrier });
       }
     }
     // planting / defusing: you have to keep holding F and stay put
     if (b.act) {
       const a = this.players.get(b.act.id);
       const hold = a && a.alive && n - (a.useT || 0) < 600 && dist3(a.pos, b.act.pos) < 1.6;
-      const ok = hold && (b.act.kind === 'plant' ? b.carrier === a.id && siteAt(this.map, a.pos) : b.ph === 'planted' && dist3(a.pos, b.p) < BOMB.defuseRange + 0.6);
+      const ok = hold && (b.act.kind === 'plant' ? b.carrier === a.id && siteAt(this.map, a.pos) : b.ph === 'planted' && canDefuse(a.pos, b.p, 0.6));
       if (!ok) b.act = null;
       else if (n - b.act.start >= (b.act.kind === 'plant' ? BOMB.plant : BOMB.defuse) * 1000) {
         if (b.act.kind === 'plant') {
           const site = siteAt(this.map, a.pos);
           Object.assign(b, { ph: 'planted', site: site.id, p: [r2(a.pos[0]), r2(a.pos[1] + 0.1), r2(a.pos[2])], explodeAt: n + BOMB.fuse * 1000, carrier: 0, act: null, planter: a.id });
           this.broadcast({ t: 'bombev', k: 'planted', site: site.id, id: a.id });
-          if (a.acct) stat(a, 'xp', 10);
+          if (a.acct) stat(a, 'xp', 10); else if (a.m) a.m.xp += 10;
         } else {
           b.act = null;
           this.broadcast({ t: 'bombev', k: 'defused', id: a.id });
-          if (a.acct) stat(a, 'xp', 15);
+          if (a.acct) stat(a, 'xp', 15); else if (a.m) a.m.xp += 15;
           this.bombRoundWin(3 - b.att, 'defused');
           return;
         }
@@ -2315,8 +3139,370 @@ class Room {
     p.useT = now();
     if (b.act) return;
     if (b.ph === 'live' && b.carrier === p.id && siteAt(this.map, p.pos)) b.act = { id: p.id, kind: 'plant', start: now(), pos: p.pos.slice() };
-    else if (b.ph === 'planted' && p.team !== b.att && dist3(p.pos, b.p) < BOMB.defuseRange) b.act = { id: p.id, kind: 'defuse', start: now(), pos: p.pos.slice() };
+    else if (b.ph === 'planted' && p.team !== b.att && canDefuse(p.pos, b.p)) b.act = { id: p.id, kind: 'defuse', start: now(), pos: p.pos.slice() };
     if (b.act) this.broadcast({ t: 'bombev', k: b.act.kind, id: p.id });
+  }
+
+  // training: your 3 picked killstreaks are always in your tray. a used one comes back once it has run out (+3 s)
+  trainingStreaks(n) {
+    if (n - (this.trainT || 0) < 1000) return;
+    this.trainT = n;
+    for (const p of this.players.values()) {
+      if (p.isBot || !p.alive) continue;
+      p.pocket ||= []; p.trainCd ||= {};
+      for (const id of validStreaks(p.streaks)) {
+        if (p.pocket.includes(id) || n < (p.trainCd[id] || 0)) continue;
+        p.pocket.push(id);
+        send(p, { t: 'streak', earned: id, n: 0 });
+      }
+    }
+  }
+  // ---------------------------------------------------------- gun game + infection
+  // the one weapon a mode lets p use: their gun game rung, or the claw once they're a zombie (null = their own loadout)
+  modeWeapon(p) {
+    if (this.mode !== 'ffa' && this.mode !== 'bots') return null;
+    const g = GAMES[this.game];
+    if (g.ladder) return LADDER[Math.min(p.gg || 0, LADDER.length - 1)];
+    if (g.infect && p.inf) return 'claw';
+    return null;
+  }
+  // can p hit / fire with wid? only their mode weapon while a mode hands one out, and the claw only as a zombie
+  allowed(p, wid) {
+    const only = this.modeWeapon(p);
+    return only ? wid === only : !(has(WEAPONS, wid) && WEAPONS[wid].mode === 'inf');
+  }
+  // every spawn: hand out the mode weapon (+ zombie HP), or the normal loadout back once the mode is over
+  modeLoadout(p) {
+    const w = this.modeWeapon(p);
+    if ((!w && !p.only) || (p.isBot && p.ai.dummy)) return false;
+    if (w === 'claw' && p.alive) { p.hp = INFECT.hp; p.healLeft = 0; }
+    if (w && p.ballUntil) { p.ballUntil = 0; p.f &= ~FLAGS.BALL; } // patient zero mid wrecking ball: claws only (the client ends it on 'modew')
+    if (p.isBot) { p.w = w || pick(BOT_GUNS); p.ai.ammo = WEAPONS[p.w].mag || 1; p.ai.reloadUntil = 0; }
+    else {
+      if (w && p.forced) { p.forced = false; send(p, { t: 'loadout', lo: null }); }
+      if (w) p.w = w;
+      send(p, { t: 'modew', w });
+    }
+    p.only = w;
+    return !!w;
+  }
+  // bots run faster holding a mode weapon that says so (the zombie claw)
+  modeSpeed(b) { return b.only ? WEAPONS[b.w].speedMul || 1 : 1; }
+  // joined mid-match: bottom of the ladder, or a zombie if the infection already got going. tell them who's where
+  modeJoin(p) {
+    if (this.mode !== 'ffa' && this.mode !== 'bots') return;
+    const g = GAMES[this.game], live = this.round && !this.round.over;
+    p.gg = GG_START;
+    p.inf = !!(g.infect && live && !this.infAt && this.fighters().some((o) => o.inf));
+    if (p.inf) p.infT = now();
+    if (p.inf) this.broadcast({ t: 'infect', id: p.id, by: 0, late: 1 }, p.id);
+    if (p.isBot) { this.modeLoadout(p); return; }
+    send(p, { t: 'gg', all: g.ladder ? this.fighters().map((o) => [o.id, o.gg || 0]) : [] });
+    send(p, { t: 'infect', all: g.infect ? this.fighters().filter((o) => o.inf).map((o) => o.id) : [] });
+  }
+  // a fresh match: everyone back to the bottom of the ladder and human again
+  startModes() {
+    const g = GAMES[this.game], n = now();
+    for (const p of this.players.values()) { p.gg = g.ladder ? GG_START : 0; p.inf = false; }
+    this.infAt = g.infect ? n + INFECT.delay * 1000 : 0;
+    this.infLast = 0;
+    if (g.ladder) { this.round.target = LADDER.length; this.round.ends = n + GUNGAME.time * 1000; }
+    if (g.infect) { this.round.target = 0; this.round.ends = n + INFECT.time * 1000; }
+    this.broadcast({ t: 'gg', all: g.ladder ? this.fighters().map((p) => [p.id, p.gg]) : [] });
+    this.broadcast({ t: 'infect', all: [] });
+  }
+  // a death under the mode's rules (kw: what really killed them; void kills count for whoever knocked them off)
+  modeKill(t, killer, kw) {
+    if (!this.round || this.round.over || (this.mode !== 'ffa' && this.mode !== 'bots')) return;
+    if (GAMES[this.game].ladder) this.ggKill(t, killer, kw);
+    else if (GAMES[this.game].infect && !this.infAt && !t.inf) this.infect(t, killer);
+  }
+  // gun game ends on the spoon kill or the clock, infection on the clock or when nobody's left to infect
+  tickModes(n) {
+    const g = GAMES[this.game];
+    if (!g.ladder && !g.infect) return false;
+    if (g.infect) this.tickInfect(n);
+    else if (n >= this.round.ends) this.endRound();
+    return true;
+  }
+  // end screen order: gun game by rung, infection with the winning side on top
+  modeSort(list, res) {
+    const g = GAMES[this.game];
+    if (g.ladder) list.sort((a, b) => (b.gg || 0) - (a.gg || 0) || b.kills - a.kills || a.deaths - b.deaths);
+    else if (g.infect && res) list.sort((a, b) => (!!b.inf === (res.side === 'inf')) - (!!a.inf === (res.side === 'inf'))); // stable: by kills within a side
+  }
+
+  // gun game: a kill with your rung's weapon moves you up (the one with the spoon wins), dying to melee knocks you back one
+  ggKill(t, killer, kw) {
+    if (!killer || killer === t) return;
+    const N = LADDER.length;
+    if (kw === LADDER[killer.gg || 0]) {
+      killer.gg = (killer.gg || 0) + 1;
+      this.broadcast({ t: 'gg', id: killer.id, n: killer.gg, k: killer.gg >= N ? 'win' : killer.gg === N - 1 ? 'last' : 'up' });
+      if (killer.gg >= N) { this.endRound(); return; } // modeSort puts them on top
+      this.modeLoadout(killer); // the next weapon, right now
+    }
+    if (WEAPONS[kw] && WEAPONS[kw].kind === 'melee') { // humiliated: they get it on respawn
+      t.gg = Math.max(0, (t.gg || 0) - 1);
+      this.broadcast({ t: 'gg', id: t.id, n: t.gg, k: 'down', by: killer.id });
+    }
+  }
+
+  // infection: p turns. patient zero turns on the spot; the dead come back as zombies
+  infect(p, by, first) {
+    if (p.inf) return;
+    p.inf = true; p.infT = now();
+    if (p.alive) this.modeLoadout(p);
+    this.broadcast({ t: 'infect', id: p.id, by: by && by !== p ? by.id : 0, first: first ? 1 : undefined });
+  }
+  survivors() { return this.fighters().filter((p) => !p.inf); }
+  tickInfect(n) {
+    if (this.infAt) { // patient zero (two in big lobbies) turns a few seconds in, once there's someone to chase
+      if (n < this.infAt) return;
+      const pool = this.fighters();
+      if (pool.length < 2) { this.infAt = n + 1000; if (n >= this.round.ends) this.endInfect('surv'); return; }
+      this.infAt = 0;
+      for (let k = pool.length >= INFECT.two ? 2 : 1; k > 0; k--) this.infect(pool.splice((Math.random() * pool.length) | 0, 1)[0], null, true);
+    }
+    const surv = this.survivors(), z = this.fighters().length - surv.length;
+    if (!surv.length) { this.endInfect('inf'); return; }
+    if (!z) { if (surv.length >= 2) this.infAt = n; else if (n >= this.round.ends) this.endInfect('surv'); return; } // the zombies all left: someone else turns
+    if (surv.length === 1 && this.infLast !== surv[0].id) { this.infLast = surv[0].id; this.broadcast({ t: 'infect', last: surv[0].id }); }
+    if (n >= this.round.ends) this.endInfect('surv');
+  }
+  // the winning side goes on top of the end screen; its best player takes the round (and the roll) only if they
+  // got a kill, like dm, so hiding till the clock runs out doesn't pay. the side's title shows either way
+  endInfect(side) {
+    this.round.res = { side };
+    this.broadcast({ t: 'infect', side });
+    this.endRound();
+  }
+
+  // ---------------------------------------------------------- chaos modes: spoons & grapples, duck rain, floor is lava, one in the chamber
+  get chaosKit() { return ((this.mode === 'ffa' || this.mode === 'bots') && GAMES[this.game].kit) || null; }
+  get lavaOn() { return (this.mode === 'ffa' || this.mode === 'bots') && !!GAMES[this.game].lava && lavaOk(this.map); }
+  get livesOn() { return (this.mode === 'ffa' || this.mode === 'bots') && !!GAMES[this.game].lives; }
+  get hookMul() { return ((this.mode === 'ffa' || this.mode === 'bots') && GAMES[this.game].hookMul) || 1; }
+  // everyone gets the mode's kit (players get told, bots switch guns and get theirs back afterwards). true = handled
+  sendChaosKit(p) {
+    const kit = this.chaosKit;
+    if (p.isBot) {
+      if (p.ai.dummy) return false;
+      if (!kit) { if (p.ai.ownW) { p.w = p.ai.ownW; p.ai.ownW = null; p.ai.ammo = WEAPONS[p.w].mag || 1; } return false; }
+      if (!p.ai.ownW) p.ai.ownW = p.w;
+      p.w = kit.slots[0]; p.ai.ammo = WEAPONS[p.w].mag || 1;
+      if (this.livesOn) this.oitcSpawn(p);
+      return true;
+    }
+    if (!kit) return false;
+    p.forced = true; p.scythe = false;
+    send(p, { t: 'loadout', lo: { only: kit.slots, item: kit.noItem ? 'none' : undefined, noReload: !!kit.noReload, noStreaks: !!kit.noStreaks, desc: kit.desc } });
+    if (this.livesOn) this.oitcSpawn(p);
+    return true;
+  }
+  // only your kit's weapons count. one in the chamber: a revolver hit spends a bullet and always kills
+  chaosHit(p, m) {
+    const kit = this.chaosKit;
+    if (!kit) return true;
+    if (!kit.slots.includes(m.w)) return false;
+    if (!this.livesOn || m.w !== 'revolver') return true;
+    const t = this.players.get(m.to), d = norm(vec3(m.d));
+    if (!t || !d || t === p || !t.alive || !p.alive || !this.rangeOk(p, t, WEAPONS.revolver.range) || !this.oitcShot(p, 'hit')) return false;
+    this.hurt(t, p, 'revolver', 999, null, { hs: clampInt(m.h, 0, 1) > 0 });
+    return false;
+  }
+  chaosFire(p, m) {
+    const kit = this.chaosKit;
+    if (!kit) return true;
+    if (!kit.slots.includes(m.w)) return false;
+    return !this.livesOn || m.w !== 'revolver' || this.oitcShot(p, 'fire');
+  }
+  // a shot sends 'hit' (if it hit someone) and 'fire' a moment apart: both ride on one bullet
+  oitcShot(p, kind) {
+    const o = p.oitc, n = now();
+    if (!o || !p.alive) return false;
+    const s = o.shot;
+    if (s && n - s.t < 250 && !s[kind]) { s[kind] = true; return true; }
+    if (o.bullets <= 0 || (s && n - s.t < 300)) { this.sendOitc(p); return false; }
+    o.bullets--;
+    o.shot = { t: n, [kind]: true };
+    this.sendOitc(p);
+    return true;
+  }
+  // late joiners get as many lives as whoever has the fewest (nobody gets a head start)
+  oitcKey(p) { return p.acct ? 'a:' + p.acct.n : 'n:' + p.name; }
+  oitcSpawn(p) {
+    if (!p.oitc && this.oitcOut.has(this.oitcKey(p))) { // out of lives this round: reconnecting doesn't buy you new ones
+      p.oitc = { lives: 0, bullets: 0, out: true, shot: null }; p.alive = false; p.respawnAt = Infinity; p.deadT = now();
+      this.sendOitc(p); this.oitcList(); return;
+    }
+    if (!p.oitc) {
+      const ins = [...this.players.values()].filter((o) => o !== p && o.oitc && !o.oitc.out);
+      p.oitc = { lives: ins.length ? Math.max(1, Math.min(...ins.map((o) => o.oitc.lives))) : GAMES[this.game].lives, bullets: 0, out: false, shot: null };
+      this.oitcList();
+    }
+    p.oitc.bullets = GAMES[this.game].bullets[0]; p.oitc.shot = null;
+    this.sendOitc(p);
+  }
+  sendOitc(p) { if (!p.isBot && p.oitc) send(p, { t: 'oitc', b: p.oitc.bullets, l: p.oitc.lives, out: p.oitc.out ? 1 : 0 }); }
+  oitcList() { this.broadcast({ t: 'oitcl', list: this.fighters().map((x) => [x.id, x.oitc ? x.oitc.lives : 0]) }); }
+  // a death: one in the chamber takes a life (none left = out, you spectate) and gives the killer a bullet
+  chaosKill(t, killer) {
+    if (!this.livesOn || !this.round || this.round.over) return;
+    const o = t.oitc;
+    if (o && !o.out) {
+      o.lives = Math.max(0, o.lives - 1); o.bullets = 0;
+      if (!o.lives) { o.out = true; t.respawnAt = Infinity; this.oitcOut.add(this.oitcKey(t)); this.broadcast({ t: 'chat', id: 0, m: `${t.name} is out of lives` }); }
+      this.sendOitc(t);
+    }
+    if (killer && killer !== t && killer.oitc && killer.alive) { killer.oitc.bullets = Math.min(GAMES[this.game].bullets[1], killer.oitc.bullets + 1); this.sendOitc(killer); }
+    this.oitcList();
+  }
+  // last one standing wins (once at least two were in it), or on time: most lives, then most kills
+  tickLives(n) {
+    const r = this.round, f = this.fighters();
+    r.peak = Math.max(r.peak || 0, f.length);
+    const ins = f.filter((p) => p.oitc && !p.oitc.out);
+    if ((r.peak >= 2 && ins.length <= 1) || n >= r.ends) this.endRound();
+  }
+  // a new round or map: everyone back in with full lives, the sky clears up
+  resetChaos() {
+    this.rain = null; this.oitcOut = new Set();
+    if (!this.livesOn) return;
+    if (this.round) this.round.target = 0; // no kill limit: last one standing
+    for (const p of this.players.values()) p.oitc = { lives: GAMES[this.game].lives, bullets: 0, out: false, shot: null };
+    this.oitcList();
+  }
+  tickChaos(dt, n) {
+    if (this.mode !== 'ffa' && this.mode !== 'bots') return;
+    if (GAMES[this.game].duckRain) this.tickDuckRain(n);
+    if (this.lavaOn) this.tickLava(n, dt);
+  }
+  // duck rain: a few ducks every couple of seconds, more and more often as the match goes on, half of them near someone
+  tickDuckRain(n) {
+    const r = this.round;
+    if (!r || r.over || !this.humans().length) return;
+    const R = this.rain || (this.rain = { next: n + 3000 });
+    if (n < R.next) return;
+    let top = 0;
+    for (const p of this.players.values()) top = Math.max(top, p.kills);
+    const dur = ROUND[this.mode].time * 1000, k = Math.max(0, Math.min(1, Math.max(1 - (r.ends - n) / dur, top / r.target)));
+    R.next = n + (DUCKRAIN.every[0] + (DUCKRAIN.every[1] - DUCKRAIN.every[0]) * k) * 1000;
+    const s = surfaces(this.map), size = Math.max(0.5, Math.min(1.8, Math.sqrt(s.total / 9000)));
+    const count = Math.max(1, Math.round((DUCKRAIN.n[0] + (DUCKRAIN.n[1] - DUCKRAIN.n[0]) * k) * size + Math.random() - 0.5));
+    const alive = this.fighters().filter((p) => p.alive);
+    for (let i = 0; i < count; i++) for (let tries = 0; tries < 6; tries++) if (this.skyDuck(alive.length && Math.random() < DUCKRAIN.near ? pick(alive) : null, s)) break;
+  }
+  // one duck: falls straight down onto whatever is on top there (a roof keeps you dry) and everyone sees where first
+  skyDuck(near, s) {
+    let x, z;
+    if (near) { const a = Math.random() * Math.PI * 2, d = 2 + Math.random() * 12; x = near.pos[0] + Math.cos(a) * d; z = near.pos[2] + Math.sin(a) * d; }
+    else {
+      let r = Math.random() * s.total, t = s.tops[0];
+      for (const tt of s.tops) { r -= tt.area; if (r <= 0) { t = tt; break; } }
+      if (!t) return false;
+      x = t.b.min[0] + Math.random() * (t.b.max[0] - t.b.min[0]); z = t.b.min[2] + Math.random() * (t.b.max[2] - t.b.min[2]);
+    }
+    const top = s.maxTop + 20, h = raycast([x, top, z], [0, -1, 0], top - this.map.killY, this.boxes);
+    if (!h) return false;
+    const w = WEAPONS.duck, land = h.point, y0 = Math.min(top - 1, land[1] + DUCKRAIN.height);
+    const pr = this.makeProj({ id: 0 }, 'duck', [x, y0, z], [0, -DUCKRAIN.vy, 0], { sky: true });
+    pr.born = now();
+    const v = DUCKRAIN.vy, dy = Math.max(0, y0 - land[1] - w.r), eta = (-v + Math.sqrt(v * v + 2 * w.grav * dy)) / w.grav;
+    this.broadcast({ t: 'skyduck', id: pr.id, p: land.map(r2), ms: Math.round(eta * 1000) });
+    return true;
+  }
+  // floor is lava: bots get checked here, players bounce themselves and tell us (we also look, in case they don't)
+  tickLava(n, dt) {
+    const s = surfaces(this.map);
+    for (const p of this.players.values()) {
+      if (!p.alive || (p.isBot && p.ai.dummy)) continue;
+      if (p.lavaBurn > n && n >= (p.lavaBurnT || 0)) { p.lavaBurnT = n + 300; this.broadcast({ t: 'fx', k: 'burn', id: p.id }); this.damage(p, LAVA.burnDmg, null, 'lava'); }
+      if (!p.alive) continue;
+      if (p.isBot) { if (p.onGround && onLava(s, this.boxes, p.pos)) this.lavaTouch(p, false); continue; }
+      p.lavaSeen = onLava(s, this.boxes, p.pos, 0.03) ? (p.lavaSeen || 0) + dt : 0;
+      if (p.lavaSeen > 0.12) this.lavaTouch(p, false);
+    }
+  }
+  // touching the ground floor: hurts, keeps burning for a moment and pops you back up
+  lavaTouch(p, told) {
+    if (!this.lavaOn || !p.alive || (this.round && this.round.over)) return;
+    const n = now(), s = surfaces(this.map);
+    if (n - (p.lavaT || 0) < LAVA.every * 1000) return;
+    // a player saying "ouch" has to be somewhere above lava (now or a tenth of a second ago)
+    if (told && !lavaBelow(s, this.boxes, [p.pos[0], p.pos[1] + 0.3, p.pos[2]], 6) && !lavaBelow(s, this.boxes, [p.pos[0] - p.vel[0] * 0.1, p.pos[1] + 0.3, p.pos[2] - p.vel[2] * 0.1], 6)) return;
+    p.lavaT = n; p.lavaBurn = n + LAVA.burn * 1000; p.lavaBurnT = n + 300;
+    if (p.isBot) { p.vel[1] = Math.max(p.vel[1], LAVA.hop); p.onGround = false; p.pos[1] += 0.05; }
+    else if (!told) this.knock(p, [0, LAVA.hop, 0], 'lava');
+    this.broadcast({ t: 'sizzle', id: p.id, p: p.pos.map(r2) });
+    this.damage(p, LAVA.dmg, null, 'lava');
+  }
+  // bots: knife when out of bullets or up close, revolver otherwise. melee bots run straight at you, and faster
+  botChaosThink(b, t, n) {
+    const ai = b.ai;
+    if (!this.chaosKit) { if (Math.abs(ai.strafeDir) !== 1) ai.strafeDir = Math.sign(ai.strafeDir) || 1; ai.spd = 1; return; }
+    if (this.livesOn && b.oitc) {
+      const want = b.oitc.bullets > 0 && !(t && t.alive && dist3(t.pos, b.pos) < 2.5) ? 'revolver' : 'knife';
+      if (b.w !== want) { b.w = want; ai.nextShot = Math.max(ai.nextShot, n + 300); }
+    }
+    const melee = WEAPONS[b.w].kind === 'melee';
+    ai.strafeDir = (Math.sign(ai.strafeDir) || 1) * (melee ? 0.3 : 1);
+    ai.spd = melee ? WEAPONS[b.w].speedMul || 1.1 : 1;
+    if (melee && this.hookMul > 1 && t && t.alive && dist3(t.pos, b.pos) > 12) ai.nextHook = Math.min(ai.nextHook || 0, n + 500);
+  }
+  // true = handled. melee: swing if they're in reach. one in the chamber: only take a shot that's worth the bullet
+  botChaosFire(b, t, D) {
+    const w = WEAPONS[b.w], n = now();
+    // a beat to look around first, and nobody fresh off a spawn, or small maps empty out in seconds
+    if (this.livesOn && (n - (b.spawnT || 0) < 2500 || n - (t.spawnT || 0) < 1500)) return true;
+    if (w.kind === 'melee') {
+      b.ai.nextShot = n + (w.cd * 1000) / D.rate;
+      this.broadcast({ t: 'fx', k: 'swing', w: b.w, id: b.id, a: eyeOf(b).map(r2) });
+      if (dist3(b.pos, t.pos) > w.range + 0.9) return true;
+      if (this.livesOn && Math.random() < Math.min(0.7, (0.35 * D.err) / 0.045)) return true; // one in the chamber: knife whiffs too
+      const to = norm([t.pos[0] - b.pos[0], t.pos[1] - b.pos[1], t.pos[2] - b.pos[2]]) || [0, 0, 1];
+      this.hurt(t, b, b.w, w.dmg, [to[0] * w.kb, to[1] * w.kb + (w.kbUp || 0), to[2] * w.kb]);
+      return true;
+    }
+    if (!this.livesOn || b.w !== 'revolver' || !b.oitc) return false;
+    if (b.oitc.bullets <= 0 || dist3(b.pos, t.pos) > (b.ai.diff === 'hard' ? 40 : 26)) return true;
+    b.oitc.bullets--;
+    b.ai.nextShot = n + 700;
+    const cp = Math.cos(b.pitch), o = eyeOf(b);
+    // bots flub some shots (still costs the bullet): easy ~70%, normal ~35%, hard ~14%, so 3 lives last a while
+    const miss = Math.random() < Math.min(0.7, (0.35 * D.err) / 0.045);
+    const d = spreadDir([-Math.sin(b.yaw) * cp, Math.sin(b.pitch), -Math.cos(b.yaw) * cp], (w.spread || 0) + D.err * 0.6 + (miss ? 0.14 : 0));
+    const mh = raycast(o, d, w.range, this.boxes);
+    let maxT = mh ? mh.t : w.range, victim = null, head = false;
+    for (const p of this.players.values()) {
+      if (p === b || !p.alive) continue;
+      for (const hb of playerBoxes(p.pos)) { const h = rayBox(o, d, hb, maxT); if (h && h.t < maxT) { maxT = h.t; victim = p; head = hb.head; } }
+    }
+    this.broadcast({ t: 'fx', k: 'shot', w: 'revolver', id: b.id, s: [[...o, o[0] + d[0] * maxT, o[1] + d[1] * maxT, o[2] + d[2] * maxT].map(r2)] });
+    if (victim) this.hurt(victim, b, 'revolver', 999, null, { hs: head });
+    return true;
+  }
+  // floor is lava bots: look before stepping off something, and if they're in it, jump and grapple back to safe ground
+  botLava(b, wx, wz, jump, t) {
+    const s = surfaces(this.map), ai = b.ai, n = now(), e = eyeOf(b);
+    const hookAt = (to, minT, ms) => {
+      const L = Math.hypot(...to) || 1, h = raycast(e, to.map((v) => v / L), HOOK.range, this.boxes);
+      if (h && h.t > minT) { ai.hook = { point: h.point, len: h.t, until: n + ms }; b.g = h.point; }
+    };
+    const inLava = b.onGround && onLava(s, this.boxes, b.pos);
+    if (inLava || (!b.onGround && !ai.hook && b.vel[1] < 0 && lavaBelow(s, this.boxes, [b.pos[0], b.pos[1] + 0.2, b.pos[2]], 30))) {
+      const safe = nearestSafe(s, b.pos, 45);
+      if (!safe) return [wx, wz, true];
+      const dx = safe[0] - b.pos[0], dz = safe[2] - b.pos[2], l = Math.hypot(dx, dz) || 1;
+      if (!ai.hook && n >= (ai.lavaHookT || 0)) { ai.lavaHookT = n + 700; hookAt([dx, safe[1] + 2.5 - e[1], dz], 2, 2200); }
+      return [dx / l, dz / l, true];
+    }
+    if (b.onGround && (wx || wz) && lavaBelow(s, this.boxes, [b.pos[0] + wx * 1.4, b.pos[1] + 0.5, b.pos[2] + wz * 1.4], 12)) {
+      // lava ahead: stop at the edge, sometimes grapple over toward whoever we're after
+      if (t && t.alive && !ai.hook && n >= (ai.lavaHookT || 0)) { ai.lavaHookT = n + 1500; if (Math.random() < 0.6) hookAt([t.pos[0] - e[0], t.pos[1] + 4 - e[1], t.pos[2] - e[2]], 6, 2600); }
+      return [0, 0, false];
+    }
+    return [wx, wz, jump];
   }
 
   tick(dt) {
@@ -2324,24 +3510,27 @@ class Room {
     this.tickRound();
     this.tickTags(n);
     this.tickItems(dt);
+    if (this.mode === 'training') this.trainingStreaks(n);
     this.tickTraps(n);
     for (const b of this.players.values()) if (b.isBot && b.alive) this.stepBot(b, dt);
     this.tickProjectiles(dt);
+    this.tickCrosses();
     this.tickHoles(dt);
     this.tickStatus(dt);
     this.tickPeels();
+    this.tickMarbles();
     this.tickBalls();
     this.tickWaves();
     if (this.sprays.size && this.sprayMap !== this.cfg.map) this.sprays.clear(); // the map changed: its graffiti goes with it
+    this.tickChaos(dt, n);
     for (const p of this.players.values()) {
       if (!p.alive && n >= p.respawnAt) {
         if (p.isBot && this.mode === 'coop') continue;
         p.alive = true; p.hp = 100; p.vel = [0, 0, 0]; p.spawnT = n; p.seq++;
         p.pos = p.isBot && p.ai.dummy ? p.ai.dummy.home.slice() : this.pickSpawn(p.isBot, p);
-        p.slipUntil = 0; p.burnUntil = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.ic = {}; p.healLeft = 0;
-        p.parryT = 0; p.staggerUntil = 0; // katana parry: a new life starts with the guard ready (the client resets too)
-        if (p.ownItem) p.item = p.ownItem; // a switch made mid-life lands now (sendLoadout swaps in the randomizer's)
+        this.resetLife(p);
         send(p, { t: 'spawn', p: p.pos, q: p.seq });
+        this.sendIc(p);
         this.sendLoadout(p);
         if (!p.isBot) deal(p);
       }
@@ -2456,6 +3645,7 @@ class Room {
 
 // ---------------------------------------------------------------- account stats
 function stat(p, key, v) {
+  if (key === 'xp' && p.m) p.m.xp += v; // this match's xp, for the end screen (guests too: it shows what they'd keep)
   if (!p.acct) return;
   const d = p.acct.d;
   if (key === 'best_wave' || key === 'top_speed') d[key] = Math.max(d[key] || 0, v);
@@ -2470,6 +3660,22 @@ function liveStats(p) {
 function checkAch(p) {
   const now2 = achievementsFrom(liveStats(p));
   for (const id of now2) if (!p.acct.achs.has(id)) { p.acct.achs.add(id); send(p, { t: 'ach', id }); }
+}
+// Sniper Royalty feats: bit flags in the sniper_feats stat (each feat's bit, see ROYAL_FEATS). d only ever gets bits the
+// account doesn't have yet, so liveStats / flushStats can add them up like any other stat (the store ORs them in).
+// guests don't keep any: they're told once per feat that it would have counted
+const RB = Object.fromEntries(ROYAL_FEATS.map((f) => [f.id, f.bit]));
+function royal(p, bits) {
+  if (!p.acct) {
+    const g = p.royalG || 0, add = bits & ~ROYAL_FEATS.filter((f) => featOn(g, f)).reduce((m, f) => m | f.mask, 0);
+    if (add) { p.royalG = (p.royalG || 0) | add; send(p, { t: 'royal', add, all: p.royalG, guest: 1 }); }
+    return;
+  }
+  const have = liveStats(p).sniper_feats || 0, add = ROYAL_FEATS.some((f) => featOn(have, f)) ? bits & ~have & ~ROYAL_FEATS.filter((f) => featOn(have, f)).reduce((m, f) => m | f.mask, 0) : bits & ~have;
+  if (!add) return; // (a box you've already ticked, another way, doesn't count again)
+  p.acct.d.sniper_feats = (p.acct.d.sniper_feats || 0) | add;
+  send(p, { t: 'royal', add, all: have | add });
+  checkAch(p); // the last box unlocks the achievement (and with it the Golden Sniper)
 }
 function flushStats(p) {
   if (!p.acct) return;
@@ -2522,7 +3728,7 @@ function segs(s) {
 }
 
 function roomFor(mode, ws) {
-  if (!MODES[mode]) mode = 'ffa';
+  if (!has(MODES, mode)) mode = 'ffa';
   const id = mode === 'ffa' || mode === 'coop' ? mode : `${mode}:${nextId}:${Math.random().toString(36).slice(2, 7)}`;
   if (!rooms.has(id)) rooms.set(id, new Room(id, mode));
   return rooms.get(id);
@@ -2532,16 +3738,23 @@ function roomFor(mode, ws) {
 wss.on('connection', (ws) => {
   let me = null;
   ws.isAlive = true;
-  ws.on('error', () => {}); // oversized or broken frames: ws closes the socket itself, an unhandled 'error' would kill the whole server
-  ws.on('pong', () => { ws.isAlive = true; });
+  ws.budget = 400; ws.budgetT = now();
+  // ws reports bad frames (too big, broken compression) as 'error': without a listener that would crash the process
+  ws.on('error', (e) => logErr('ws', e && e.message));
+  ws.on('pong', () => { ws.isAlive = true; if (ws.pingT) ws.rtt = now() - ws.pingT; });
   ws.on('message', (data) => {
+    // a generous per-connection budget (a busy client sends ~100/s): floods get dropped, not relayed to the room
+    const t = now();
+    ws.budget = Math.min(400, ws.budget + (t - ws.budgetT) * 0.3); ws.budgetT = t;
+    if (ws.budget < 1) return;
+    ws.budget--;
     let m;
     try { m = JSON.parse(data); } catch { return; }
-    if (!m || typeof m !== 'object') return;
+    if (!m || typeof m !== 'object' || Array.isArray(m) || tooDeep(m)) return;
     if (!me) {
       if (m.t !== 'join' || ws.joining) return;
       ws.joining = true;
-      for (const k of ['_name', '_acct', '_level', '_inv', '_achs']) delete m[k]; // only the server fills these in (from the token), never the client
+      for (const k of Object.keys(m)) if (k[0] === '_') delete m[k]; // _acct, _inv, _name...: only the server sets those
       (async () => {
         const u = m.token ? await accounts.verify(m.token).catch(() => null) : null;
         if (u) {
@@ -2559,23 +3772,27 @@ wss.on('connection', (ws) => {
       })().catch((e) => { console.error('join failed', e); ws.close(); });
       return;
     }
-    me.room.handle(me, m);
+    try { me.room.handle(me, m); } catch (e) { logErr('msg ' + (typeof m.t === 'string' ? m.t.slice(0, 12) : '?'), e); }
   });
-  ws.on('close', () => {
+  ws.on('close', safe('close', () => {
     if (!me) return;
     console.log(`- ${me.name} (#${me.id}) <- ${me.room.id}`);
     me.room.remove(me);
-  });
+  }));
 });
+
+// maze maps build their bots' walk graph (and lanes) the first time they're asked for: do it now, not mid-match
+for (const m of Object.values(MAPS)) if (m.graph) void m.nav;
 
 // ---------------------------------------------------------------- loops
 const TICK = 1 / 60;
-setInterval(() => { for (const r of rooms.values()) r.tick(TICK); }, TICK * 1000);
-setInterval(() => { for (const r of rooms.values()) if (r.players.size) r.snapshot(); }, 50);
+setInterval(() => { for (const r of rooms.values()) try { r.tick(TICK); } catch (e) { logErr('tick ' + r.mode, e); } }, TICK * 1000);
+setInterval(() => { for (const r of rooms.values()) try { if (r.players.size) r.snapshot(); } catch (e) { logErr('snapshot ' + r.mode, e); } }, 50);
 setInterval(() => {
   for (const ws of wss.clients) {
     if (!ws.isAlive) { ws.terminate(); continue; }
     ws.isAlive = false;
+    ws.pingT = now();
     ws.ping();
   }
 }, 10000);
@@ -2595,9 +3812,16 @@ server.listen(PORT, () => {
     try { spawn(cmd[0], cmd[1], { stdio: 'ignore', detached: true }).unref(); } catch { /* no browser, no problem */ }
   }
 });
+// floor is lava + duck rain size up every map once at startup, so a vote never stalls a live match working it out
+setImmediate(() => { for (const id of MAP_ORDER) surfaces(MAPS[id]); });
 // save everyone's stats right now (used on shutdown and by the desktop app when it closes)
 export function shutdown() {
   for (const r of rooms.values()) for (const p of r.players.values()) flushStats(p);
   if (store.flushNow) store.flushNow();
 }
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { shutdown(); setTimeout(() => process.exit(0), 300); });
+// a failed last save must not keep the process alive (the uncaughtException handler below would swallow it)
+for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { try { shutdown(); } catch (e) { logErr('shutdown', e); } setTimeout(() => process.exit(0), 300); });
+// last resort: a bug in one room (or one callback) gets logged instead of dropping every room
+// (a server that can't even start, e.g. the port is taken, still stops; the desktop app reports that itself)
+process.on('uncaughtException', (e) => { logErr('uncaught', e); if (!server.listening && !process.versions.electron) process.exit(1); });
+process.on('unhandledRejection', (e) => logErr('unhandled', e));

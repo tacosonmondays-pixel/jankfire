@@ -26,6 +26,7 @@ export const COSMETICS = {
     knife_switch: { name: 'Switchblade', rarity: 'rare', weapon: 'knife' },
     knife_karambit: { name: 'Karambit', rarity: 'epic', weapon: 'knife' },
     knife_butterfly: { name: 'Butterfly', rarity: 'legendary', weapon: 'knife' },
+    knife_spoon: { name: 'Spoon', rarity: 'epic', weapon: 'knife' }, // a serving spoon. it still stabs
     slapper_foam: { name: 'Foam Finger', rarity: 'rare', weapon: 'slapper' },
     slapper_paw: { name: 'Bear Paw', rarity: 'epic', weapon: 'slapper' },
     bread_croissant: { name: 'Croissant Club', rarity: 'epic', weapon: 'bread' },
@@ -35,6 +36,8 @@ export const COSMETICS = {
     shotgun_double: { name: 'Double Barrel', rarity: 'rare', weapon: 'shotgun' },
     minigun_gatling: { name: 'Old Gatling', rarity: 'epic', weapon: 'minigun' },
     sniper_musket: { name: 'Musket', rarity: 'legendary', weapon: 'sniper' },
+    // ach: never in a container. it's yours once you have that achievement (the server checks, see achInv)
+    sniper_golden: { name: 'Golden Sniper', rarity: 'legendary', weapon: 'sniper', ach: 'royalty' },
     revolver_flint: { name: 'Flintlock', rarity: 'epic', weapon: 'revolver' },
     chicken_turkey: { name: 'Turkey Launcher', rarity: 'rare', weapon: 'chicken' },
     bowling_cannon: { name: 'Hand Cannon', rarity: 'epic', weapon: 'bowling' },
@@ -50,9 +53,11 @@ export const COSMETICS = {
     scythe_reaper: { name: 'Reaper', rarity: 'legendary', weapon: 'scythe' },
     katana_bokken: { name: 'Bokken', rarity: 'common', weapon: 'katana' },
     marbles_gumball: { name: 'Gumball Machine', rarity: 'rare', weapon: 'marbles' },
+    bloodcross_shadow: { name: 'Shadow Cross', rarity: 'epic', weapon: 'bloodcross' }, // a charred hand that bleeds purple
     redline_hotrod: { name: 'Hot Rod', rarity: 'epic', weapon: 'redline' },
     katana_shirasaya: { name: 'Shirasaya', rarity: 'rare', weapon: 'katana' },
     scales_kangaroo: { name: 'Kangaroo Court', rarity: 'rare', weapon: 'scales' },
+    shredder_chipper: { name: 'Wood Chipper', rarity: 'epic', weapon: 'shredder' },
   },
   hat: {
     none: { name: 'None', rarity: 'free' }, party: { name: 'Party Hat', rarity: 'free' }, cone: { name: 'Traffic Cone', rarity: 'free' },
@@ -81,6 +86,7 @@ export const COSMETICS = {
     yeet: { name: 'Yeet', rarity: 'epic', desc: 'launched into orbit. ding.' },
     ascend: { name: 'Ascend', rarity: 'legendary', desc: 'a beam from the sky takes them' },
     duck: { name: 'Big Duck', rarity: 'legendary', desc: 'a giant duck eats them' },
+    blastzone: { name: 'Blast Zone', rarity: 'legendary', desc: 'knocked clean off the screen. it is very loud' },
   },
   // your grappling hook: the rope and the thing on the end. one per player, everyone sees it.
   grapple: {
@@ -128,25 +134,43 @@ export function modelsFor(weapon) { return Object.entries(COSMETICS.model).filte
 
 // inventory = { finish: [...ids], hat: [...], effect: [...] } of things you rolled. Free stuff is always owned.
 export function owns(inv, type, id) {
-  const c = COSMETICS[type] && COSMETICS[type][id];
+  const c = typeof id === 'string' && Object.hasOwn(COSMETICS, type) && Object.hasOwn(COSMETICS[type], id) && COSMETICS[type][id];
   if (!c) return false;
   return c.rarity === 'free' || !!(inv && Array.isArray(inv[type]) && inv[type].includes(id));
 }
 
 // drop anything you don't own (or a skin for the wrong weapon) back to the default. skin = [wrap, hat, effect, model]
+// wrap modes: what part of the weapon the wrap paints (normal = handle side, reverse = business end, full = all of it).
+// free for everyone, and the 5th slot of a skin. old saves have no 5th slot: they read as normal
+export const WRAP_MODES = ['normal', 'reverse', 'full'];
+export const wrapMode = (v) => (WRAP_MODES.includes(v) ? v : 'normal');
+
 export function ownedSkin(skin, inv, weapon) {
   const d = ['default', 'none', 'none', 'default'];
-  if (!Array.isArray(skin)) return d;
-  return TYPES.map((t, i) => {
+  if (!Array.isArray(skin)) return [...d, 'normal'];
+  return [...TYPES.map((t, i) => {
     const v = skin[i] ?? d[i];
-    if (t === 'model' && v !== 'default' && (!COSMETICS.model[v] || (weapon && COSMETICS.model[v].weapon !== weapon))) return 'default';
+    if (t === 'model' && v !== 'default' && (typeof v !== 'string' || !Object.hasOwn(COSMETICS.model, v) || (weapon && COSMETICS.model[v].weapon !== weapon))) return 'default';
     return owns(inv, t, v) ? v : d[i];
-  });
+  }), wrapMode(skin[4])];
 }
 
 export function unowned(inv) {
   const out = [];
-  for (const t of LOOT_TYPES) for (const [id, c] of Object.entries(COSMETICS[t])) if (c.rarity !== 'free' && !owns(inv, t, id)) out.push({ type: t, id, rarity: c.rarity });
+  for (const t of LOOT_TYPES) for (const [id, c] of Object.entries(COSMETICS[t])) if (c.rarity !== 'free' && !c.ach && !owns(inv, t, id)) out.push({ type: t, id, rarity: c.rarity });
+  return out;
+}
+
+// your inventory plus the achievement rewards you've earned (cosmetics with an ach field). achs: Set or array of ids.
+// an ach item only ever counts from the achievement, never from the inventory itself
+export function achInv(inv, achs) {
+  const has = (a) => (achs instanceof Set ? achs.has(a) : Array.isArray(achs) && achs.includes(a));
+  const out = {};
+  for (const t of Object.keys(COSMETICS)) {
+    const ids = inv && Array.isArray(inv[t]) ? inv[t].filter((id) => !(Object.hasOwn(COSMETICS[t], id) && COSMETICS[t][id].ach)) : [];
+    for (const [id, c] of Object.entries(COSMETICS[t])) if (c.ach && has(c.ach)) ids.push(id);
+    if (ids.length) out[t] = ids;
+  }
   return out;
 }
 

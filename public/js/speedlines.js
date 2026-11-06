@@ -7,7 +7,7 @@ let cv = null, x = null, acc = 0, shown = false;
 const v = new THREE.Vector3();
 
 function init() {
-  cv = document.getElementById('speedLines');
+  cv = document.getElementById('speedLinesCv'); // the settings checkbox is #speedLines
   if (!cv) return false;
   cv.width = W; cv.height = H;
   x = cv.getContext('2d');

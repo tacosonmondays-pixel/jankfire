@@ -59,6 +59,12 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   s = await st(); ok(Math.abs(s.level - 0.15 * 0.3) < 1e-6, `killcam ducks to ${s.level.toFixed(3)}`);
   await pg.evaluate(async () => { (await import('/js/replay.js')).RP.mode = null; (await import('/js/music.js')).musicUpdate(); });
 
+  // 4b. the play of the round (end of match, unskippable) ducks the end-of-match music
+  await pg.evaluate(async () => { (await import('/js/ctx.js')).G.roundOver = true; (await import('/js/replay.js')).RP.mode = 'hl'; (await import('/js/music.js')).musicUpdate(); });
+  s = await st(); ok(s.where === 'menu' && Math.abs(s.level - 0.35 * 0.3) < 1e-6, `play of the round ducks the end music to ${s.level.toFixed(3)}`);
+  await pg.evaluate(async () => { (await import('/js/replay.js')).RP.mode = null; (await import('/js/music.js')).musicUpdate(); });
+  s = await st(); ok(s.where === 'menu' && Math.abs(s.level - 0.35) < 1e-6, `end screen / vote: end-of-match music at the menu volume (${s.level})`);
+  await pg.evaluate(async () => { (await import('/js/ctx.js')).G.roundOver = false; (await import('/js/music.js')).musicUpdate(); });
   // 5. music off in matches -> silent; back on
   await pg.evaluate(async () => { const { G } = await import('/js/ctx.js'); G.settings.musicMatch = false; (await import('/js/music.js')).musicUpdate(); });
   s = await st(); ok(s.level === 0, 'match music toggle off -> level 0');

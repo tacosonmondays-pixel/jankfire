@@ -27,7 +27,7 @@ const RESUME_MS = 30000; // music back within 30s picks up where it stopped, lat
 
 let armed = false, bus = null, ac = null, cur = null, nxt = null, loading = false;
 let goal = -1, zeroAt = 0, resume = null, lastI = -1, order = [], toastAt = {};
-let matchI = -1, swap = false, forced = -1, gen = 0; // this match's song, a new match asked for a new song, the song to start next
+let matchI = -1, swap = false, forced = -1, gen = 0, pickedAt = -1e9, joinedAt = -1e9; // this match's song, a new match asked for a new song, the song to start next
 const cache = new Map(), dead = new Set();
 
 // competitive = real people in the Online room, or Plant & Defuse anywhere: music stays off there unless you ask
@@ -42,7 +42,7 @@ function num(v, d) { v = Number(v); return Number.isFinite(v) ? Math.max(0, Math
 function vol() { return num(G.settings.musicVol, 0.35); }
 // how loud the music bus should be right now (0 = off)
 function level() {
-  if (where() === 'menu') return vol();
+  if (where() === 'menu') return RP.mode === 'hl' ? vol() * DUCK : vol(); // the play of the round talks over it too
   if (!matchOn()) return 0;
   const v = num(G.settings.musicMatchVol, 0.15);
   return RP.mode === 'killcam' ? v * DUCK : v; // your killcam (epic ones too) talks over it
@@ -90,7 +90,7 @@ function nowPlaying(i, force) {
   toastAt[i] = now;
   const tr = TRACKS[i];
   if (!npEl) { npEl = document.createElement('div'); npEl.id = 'nowPlaying'; document.body.append(npEl); }
-  npEl.innerHTML = '<span class="np-k">♪ now playing</span> <b></b> <i></i>';
+  npEl.innerHTML = '<span class="np-k">♪ now blasting</span> <b></b> <i></i>';
   npEl.querySelector('b').textContent = tr.title || tr.file;
   npEl.querySelector('i').textContent = tr.artist ? '· ' + tr.artist : '';
   npEl.classList.toggle('match', where() === 'match');
@@ -140,7 +140,10 @@ function chain() {
 }
 // a new match: fade out whatever's playing, the match gets a fresh random song
 function newSong() {
-  swap = false; gen++;
+  const why = swap; swap = false;
+  // joining a room is followed by its match start: that's one match, so one new song, not two back to back
+  if (why === 'start' && performance.now() - joinedAt < 30000 && pickedAt >= joinedAt) return;
+  pickedAt = performance.now(); gen++;
   const old = cur ? cur.i : lastI;
   forced = pick(old); resume = null; matchI = forced;
   if (!cur) return;
@@ -185,7 +188,7 @@ setInterval(() => { try { tick(); } catch (e) { console.warn('music:', e); armed
 // apply a settings change right away instead of on the next tick
 export function musicUpdate() { try { tick(); } catch { /* next tick logs it */ } }
 // joined a room / a new match started: next time we're in the match, it gets a new random song
-export function musicNewMatch() { swap = true; musicUpdate(); }
+export function musicNewMatch(start) { swap = start ? 'start' : 'join'; if (!start) joinedAt = performance.now(); musicUpdate(); }
 // for tests and poking around in the console
 export function musicState() {
   return { armed, goal, gain: bus ? bus.gain.value : 0, ctx: ac ? ac.state : null, t: ac ? ac.currentTime : 0, track: cur ? TRACKS[cur.i].title : null, where: where(), comp: competitive(), level: level(), matchTrack: matchI >= 0 ? TRACKS[matchI].title : null, pos: cur && ac ? ac.currentTime - cur.t0 : 0, next: nxt ? TRACKS[nxt.i].title : null, cached: cache.size, dead: [...dead].map((i) => TRACKS[i].file) };
