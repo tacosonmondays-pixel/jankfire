@@ -62,6 +62,7 @@ export const PRICES = {
   popper: { price: 350, kill: 1200 },
   reverse: { price: 700, kill: 1500 },
   snowball: { price: 400, kill: 900, shots: 36 },
+  lasso: { price: 1100, kill: 900, shots: 10 }, // 10 throws a buy (misses count). splats and void flings pay the kill
   // melee
   bread: { price: null, kill: 1000 }, // the default melee: free, never sold, never dropped
   slipper: { price: 450, kill: 850 },

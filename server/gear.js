@@ -179,6 +179,7 @@ const gear = {
       }
     }
     if (owner && owner !== t && !this.friendly(owner, t)) this.tag(t, owner, 'camera');
+    if (this.lassoCut) this.lassoCut(t, 'drop'); // a lasso rope can't follow you through a photo
     t.g = null; t.pos = to.slice(); t.vel = [0, 0, 0];
     if (t.isBot) { t.yaw = D.y; t.pitch = D.x; t.onGround = false; if (t.ai) { t.ai.hook = null; t.ai.route = null; t.ai.nav = null; t.ai.portal = null; } }
     else H.send(t, { t: 'ptp', p: to, y: D.y, x: D.x, f: fr.id });

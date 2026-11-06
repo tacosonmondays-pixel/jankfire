@@ -202,6 +202,10 @@ export function buildLassoModel(g, look) {
   sp.update(look.r * 1.1); sp.mesh.frustumCulled = true; sp.geo.computeBoundingSphere();
   g.add(sp.mesh);
   if (look.metal) { const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.05, 8), M(look.metal)); cup.position.set(-0.08, -0.02, 0.02); cup.rotation.z = 0.4; g.add(cup); } // the hose's tap end
+  // wrap zones (wrapzones.js): the rope is A (normal wraps paint it), the knot / brass nozzle + tap are B (reverse)
+  g.traverse((o) => { if (o.isMesh) o.userData.wz = 'a'; });
+  kn.traverse((o) => { if (o.isMesh) o.userData.wz = 'b'; });
+  if (look.metal) g.children[g.children.length - 1].userData.wz = 'b';
   g.userData.muzzle = new THREE.Vector3(0.03, -0.03, -0.04); // the working end leaves the fist here
   g.userData.loopParts = [rope.mesh, kn, sp.mesh]; // hidden while the loop is out (spinning, flying, round someone)
   g.userData.len = 0.4;

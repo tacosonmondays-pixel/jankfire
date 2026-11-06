@@ -56,6 +56,16 @@ function inside(boxes, pos) {
   return false;
 }
 
+// the rig (overdrive rig killstreak) is a heavy exo-frame: it can't throw a lasso and a loop slides off it
+const rigged = (room, p, n) => !!(room.rigOn && room.rigOn(p, n));
+// out of action: can't hold a rope like this (asleep on the floor, frozen solid, sitting a pop quiz)
+const busy = (p, n) => n < (p.sleepUntil || 0) || n < (p.frozenUntil || 0) || !!p.quiz;
+// the most the held body's speed can grow per second: the spring's force cap + gravity + the rope swinging them round
+// you, with room for rounding and jitter. a client claiming more than this gets it clamped (no instant 120 m/s flings)
+const GROW = (LASSO.aMax + 26) * 1.35 + 30;
+// a teammate on your rope: a ride, not a weapon. they fly no faster than this and one wriggle press frees them
+const TEAM_CAP = 45;
+
 const M = {
   lz(p) { return p.lz || (p.lz = { hold: null, by: 0, loop: 0, next: 0, spin0: 0, wr: 0, wrT: 0, fl: null }); },
   lassoHeld(p) { return !!(p.lz && p.lz.by); },
@@ -89,8 +99,9 @@ const M = {
   // one sample of the held body: it has to make sense before it counts. a run of bad ones ends the hold
   lassoAccept(h, H, V, pos, vel, n) {
     const dt = Math.max(0.016, Math.min(0.25, (n - H.lastT) / 1000));
-    vel = capLen(vel, LASSO.cap * 1.25);
-    const sp = Math.hypot(vel[0], vel[1], vel[2]);
+    // speed can only grow as fast as the spring can pull (per real second here, so a flood of samples buys nothing)
+    const sp0 = Math.hypot(H.vel[0], H.vel[1], H.vel[2]);
+    vel = capLen(vel, Math.min(LASSO.cap * 1.25, sp0 + GROW * Math.max(0.004, Math.min(0.15, (n - H.lastT) / 1000)) + 1)); // (a long gap buys no more than 0.15 s)
     const e = eyeOf(h), w = [pos[0], pos[1] + W, pos[2]];
     // within the rope of where we have the holder (their position here is up to a snapshot old: slack for that)
     const slack = 2.5 + Math.min(40, Math.hypot(h.vel[0], h.vel[1], h.vel[2])) * 0.1;
@@ -117,7 +128,8 @@ const M = {
   // ---------------------------------------------------------- the throw
   lassoThrow(p, m) {
     const n = now(), z = this.lz(p);
-    if (p.w !== 'lasso' || z.hold || z.by || p.trap || this.isBall(p, n) || n < (p.staggerUntil || 0) || n < (p.frozenUntil || 0)) return;
+    if (p.w !== 'lasso' || z.hold || z.by || p.trap || this.isBall(p, n) || rigged(this, p, n) || busy(p, n) || n < (p.staggerUntil || 0)) return;
+    if (this.round && this.round.over) return;
     if (n < z.next) return; // the last one has to come back first
     const d = norm(vec3(m.d));
     if (!d) return;
@@ -128,6 +140,7 @@ const M = {
     const spun = z.spin0 ? (n - z.spin0) / 1000 / LASSO.spinT + 0.25 : 0.25;
     const s = Math.max(0, Math.min(1, typeof m.s === 'number' && Number.isFinite(m.s) ? m.s : 0, spun));
     if (z.loop && this.projectiles.has(z.loop)) this.removeProj(this.projectiles.get(z.loop));
+    if (!this.lassoPay(p)) return;
     const wall = raycast(ey, d, 0.9, this.boxes), off = wall ? Math.max(0, wall.t - LASSO.r - 0.05) : 0.9;
     const sp = throwSpeed(s), pv = capLen(p.vel, 25); // your momentum carries it, within reason
     const pr = {
@@ -138,6 +151,17 @@ const M = {
     this.projectiles.set(pr.id, pr);
     z.loop = pr.id; z.spin0 = 0; z.next = n + 350;
     this.broadcast({ t: 'lasso', k: 'loop', id: pr.id, o: p.id, p: pr.p.map(r2), v: pr.v.map(r2), s: r2(s), R: r2(pr.R) });
+  },
+  // Plant & Defuse: only if you bought one, never in the buy phase, and each throw spends one of its throws
+  lassoPay(p) {
+    if (!this.isEcon || !this.isEcon()) return true;
+    if (this.econBuying()) return false;
+    const x = this.econInst(p, 'lasso');
+    if (!x) return false;
+    if (!x.lim) return true;
+    if (x.m <= 0) { this.econAm(p, x); return false; }
+    x.m--; x.fresh = false; // (the thrower's client counts it down too: econ.js)
+    return true;
   },
   // the loop in flight (tickProjectiles hands every 'loop' here). phase 0 = flying open, 1 = missed and dropping,
   // 2 = being reeled back to the thrower's hand
@@ -172,7 +196,7 @@ const M = {
   lassoCatchable(by, t, n) {
     if (!t.alive || t === by || (this.round && this.round.over)) return false;
     if (!t.isBot && n - t.spawnT < 1200) return false;
-    if (t.frozenUntil > n) return false;
+    if (t.frozenUntil > n || t.quiz) return false; // frozen solid / sitting a pop quiz: it just drops off them
     return !(t.lz && (t.lz.hold || t.lz.by));
   },
   // the open loop touched t at `at`. true = the loop's done (caught, cut, slid off, blocked)
@@ -196,7 +220,7 @@ const M = {
       }
     }
     // a 2 m steel wrecking ball is far too heavy: the loop slides off
-    if (this.isBall(t, n)) {
+    if (this.isBall(t, n) || rigged(this, t, n)) { // (an overdrive rig too)
       this.broadcast({ t: 'lasso', k: 'slide', id: pr.id, on: t.id, p: at.map(r2) });
       pr.v = [pr.v[0] * -0.15, 5, pr.v[2] * -0.15];
       this.loopPhase(pr, 1, n, z);
@@ -248,7 +272,8 @@ const M = {
     if (zv && zv.by === h.id) zv.by = 0;
     if (!V || !V.alive || V.seq !== H.seq) { this.broadcast({ t: 'lasso', k: 'rel', id: h.id, v: H.v, why: 'gone' }); return; }
     // a fling keeps all their speed x mul plus yours. the rope dropping them (time, wriggling, death) keeps it as is
-    const vel = why === 'fling' ? flingVel(H.vel, capLen(h.vel, 40)) : capLen(H.vel, LASSO.cap);
+    let vel = why === 'fling' ? flingVel(H.vel, capLen(h.vel, 40)) : capLen(H.vel, LASSO.cap);
+    if (this.friendly(h, V)) vel = capLen(vel, TEAM_CAP); // a teammate: a boost, not a trip into the void
     if (V.trap && why === 'fling') this.popTrap(V, 'hit', h, 'lasso'); // yanked out of a soap bubble: it pops, they fly
     V.pos = H.pos.slice(); V.vel = vel.slice();
     if (V.isBot) V.onGround = false;
@@ -267,6 +292,13 @@ const M = {
     if (z.loop && this.projectiles.has(z.loop)) this.removeProj(this.projectiles.get(z.loop));
     z.loop = 0; z.spin0 = 0;
   },
+  // just the ropes (a photo frame teleported them, ...): whatever p holds or hangs off drops, flights and loops stay
+  lassoCut(p, why) {
+    const z = p.lz;
+    if (!z) return;
+    if (z.hold) this.lassoEnd(p, why);
+    if (z.by) { const h = this.players.get(z.by); if (h) this.lassoEnd(h, why); z.by = 0; }
+  },
   // the flight's over: tell everyone how far the fling took them
   lassoLand(V, died) {
     const fl = V.lz.fl;
@@ -282,8 +314,8 @@ const M = {
     const n = now();
     if (n - z.wrT < LASSO.wrGap) return; // presses closer than this don't count (no macros)
     z.wrT = n;
-    z.wr += 1 / LASSO.wriggle;
     const h = this.players.get(z.by);
+    z.wr += h && this.friendly(h, p) ? 1 : 1 / LASSO.wriggle; // a teammate's rope: one press and you're off
     if (z.wr >= 1) { if (h) this.lassoEnd(h, 'wriggle'); return; }
     if ((z.wrN = (z.wrN || 0) + 1) % 3 === 0) { send(p, { t: 'lasso', k: 'wr', n: r2(z.wr) }); if (h) send(h, { t: 'lasso', k: 'wr', id: p.id, n: r2(z.wr) }); }
   },
@@ -329,7 +361,8 @@ const M = {
         const V = this.players.get(H.v);
         if (!h.alive || h.seq !== H.hseq) this.lassoEnd(h, 'dead');
         else if (!V || !V.alive || V.seq !== H.seq) this.lassoEnd(h, 'gone');
-        else if (this.isBall(h, n) || h.trap) this.lassoEnd(h, 'drop'); // turned into a ball / sealed in soap: the rope goes
+        else if (this.isBall(h, n) || h.trap || rigged(this, h, n) || busy(h, n)) this.lassoEnd(h, 'drop'); // turned into a ball / rigged up / sealed in soap / asleep, frozen or quizzed: the rope goes
+        else if (this.isBall(V, n) || rigged(this, V, n) || V.quiz) this.lassoEnd(h, 'drop'); // the one on the end turned into a ball or rigged up (too heavy), or got a pop quiz
         else if (n - H.t0 > LASSO.time * 1000) this.lassoEnd(h, 'time');
         else if (!H.sim && n - H.lastT > QUIET) this.lassoEnd(h, 'lag'); // the holder's stream went quiet
         else if (H.sim) this.lassoSim(h, H, V, dt);
@@ -378,8 +411,9 @@ const M = {
     const lz = this.lz(p);
     if (lz.by) {
       const h = this.players.get(lz.by), H = h && h.lz && h.lz.hold;
-      if (H && H.v === p.id) { p.pos = H.pos.slice(); p.vel = H.vel.slice(); }
+      if (H && H.v === p.id) { p.pos = H.pos.slice(); p.vel = H.vel.slice(); p.g = null; }
     }
+    if ((p.f & FLAGS.LASSO) && p.w !== 'lasso') p.f &= ~FLAGS.LASSO; // only with the lasso out
     if (p.f & FLAGS.LASSO) { if (!lz.spin0) lz.spin0 = now(); } else lz.spin0 = 0;
     if (lz.fl) this.lassoFlight(p, now());
   },

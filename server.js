@@ -2618,6 +2618,7 @@ class Room {
     p.slipUntil = 0; p.burnUntil = 0; p.burnBy = 0; p.burnTick = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.frostT = 0;
     p.healLeft = 0; p.reverseUntil = 0; p.g = null; p.lastAttacker = 0; p.ground = null;
     this.rigReset(p); // a new round ends the overdrive rig (and any hack)
+    if (p.lz) { this.lassoCut(p, 'gone'); p.lz.fl = null; } // a fresh life: off any rope, no flight still counting
     if (p.ai) { p.ai.hook = null; p.ai.route = null; }
     p.parryT = 0; p.staggerUntil = 0; // katana parry: a new life starts with the guard ready (the client resets too)
     p.ballUntil = 0; p.f &= ~FLAGS.BALL; // a wrecking ball doesn't roll into the next round (or the next mode)
@@ -2660,7 +2661,6 @@ class Room {
         const pos = vec3(m.p), vel = vec3(m.v);
         if (!pos || !vel) return;
         p.pos = pos; p.vel = vel;
-        this.lassoSnap(p); // on the end of a lasso: the rope has you, not your client
         if (p.acct) { const kmh = Math.min(20000, Math.hypot(vel[0], vel[2]) * 3.6); if (kmh > (p.acct.d.top_speed || 0)) { p.acct.d.top_speed = kmh; if (kmh > 450) checkAch(p); } }
         if (Number.isFinite(m.y)) p.yaw = m.y;
         if (Number.isFinite(m.x)) p.pitch = m.x;
@@ -2670,6 +2670,7 @@ class Room {
         if (only) p.w = only; // everyone sees what you're really allowed to hold
         p.g = vec3(m.g);
         p.f = num(m.f) | 0;
+        this.lassoSnap(p); // on the end of a lasso: the rope has you, not your client (and no grapple). spinning one: noted
         if (raycast([pos[0], pos[1] + 0.3, pos[2]], [0, -1, 0], 0.6, this.boxes)) p.ground = pos.slice(); // standing on something
         this.rigSnap(p); // the rig flags only count from someone who activated it; no rope in the rig or when hacked
         if (p.trap) this.holdTrapped(p, true); // sealed in a soap bubble: you go where it floats

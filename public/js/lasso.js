@@ -20,6 +20,7 @@ import { sfx, synth } from './audio.js';
 import { RP, RP_HOOKS, recordEv } from './replay.js';
 import { Rope, sagRope, ringPoints, honda, ropeLook, vmArm, coilGroup } from './lasso_model.js';
 import { jankUniforms } from './jank.js';
+import { rigOn } from './rig.js';
 
 // every key the lasso listens to, in one place (a keybinds registry can take these over)
 export const LASSO_KEYS = { reelIn: 'KeyR', reelOut: 'KeyF', release: 2, wriggle: ['Space', 'KeyW', 'KeyA', 'KeyS', 'KeyD'] }; // release: a mouse button (fire always lets go too)
@@ -116,7 +117,7 @@ function onRel(m) {
     if (fling && sp >= LASSO.yeet) { hud.msg(`YEET\n${Math.round(sp)} m/s`, 1.6, 'epicbrag'); G.shake = Math.max(G.shake, 0.7); }
     else if (fling && sp > 12) hud.msg(`${Math.round(sp)} m/s`, 0.9, 'brag');
     else if (m.why === 'wriggle') hud.msg(`${nameOf(m.v)} WRIGGLED FREE`, 1.2, 'slip');
-    else if (m.why === 'time' || m.why === 'lag') hud.msg('the rope slipped', 1, 'slip');
+    else if (m.why === 'time' || m.why === 'lag' || m.why === 'drop') hud.msg('the rope slipped', 1, 'slip');
   }
   if (m.v === G.myId) {
     S.held = null; S.wr = 0;
@@ -369,7 +370,8 @@ export function lassoFrame(dt, now) {
   // spin while fire is held, throw when you let go
   const trapped = now < (ME.trapUntil || 0), ball = now < (ME.ballUntil || 0);
   const loopOut = [...G.projs.values()].some((p) => p.k === 'loop' && p.o === G.myId);
-  const can = alive && W.cur === 'lasso' && !S.hold && !S.held && !trapped && !ball && !loopOut && now >= S.cdUntil && now >= (W.staggerUntil || 0);
+  const out = now < (ME.sleepUntil || 0) || now < (ME.quizUntil || 0) || rigOn(now); // asleep, sitting a quiz, in the rig: no lasso
+  const can = alive && W.cur === 'lasso' && !S.hold && !S.held && !trapped && !ball && !out && !loopOut && now >= S.cdUntil && now >= (W.staggerUntil || 0);
   if (can && W.held) {
     if (!S.spinning) { S.spinning = true; S.spin = 0; }
     S.spin = Math.min(1, S.spin + dt / LASSO.spinT);
@@ -468,7 +470,7 @@ function aimArm(arm, at, roll = 0) {
   if (roll) arm.rotateZ(roll);
 }
 function vmFrame(dt, now) {
-  const show = G.joined && ME.alive && !RP.active && (W.cur === 'lasso' || !!S.hold) && !(now < (ME.ballUntil || 0)) && !W.scoped;
+  const show = G.joined && ME.alive && !RP.active && (W.cur === 'lasso' || !!S.hold) && !(now < (ME.ballUntil || 0)) && !rigOn(now) && !W.scoped;
   const gm = vmModel('lasso');
   if (gm) gm.wrap.visible = false; // we draw our own
   if (!show) { if (VM.root) VM.root.visible = false; VM.grip = null; VM.handW = null; return; }
