@@ -584,7 +584,7 @@ export function installRoyale(Room, H) {
         ai.why = 'loot'; if (!fighting || (unarmed && l.k === 'gun' && !(t && dist3(t.pos, b.pos) < 4))) return { p: [l.p[0], l.p[1], l.p[2]], force: !!fighting, r: 0 };
       }
       // stuck up on a roof with nothing to grab: walk off it (a short drop doesn't hurt)
-      if (b.pos[1] > 2.5 && !l) { ai.why = 'off roof'; const g = this.brInward(b, [b.pos[0], b.pos[2]], 30); return { p: g, force: true, r: 0 }; }
+      if (b.pos[1] > 2.5 && !l) { ai.why = 'off roof'; if (!ai.roofGo || n > ai.roofT) { ai.roofGo = this.brInward(b, [b.pos[0], b.pos[2]], 40, true); ai.roofT = n + 6000; } b.ai.navJump = Math.random() < 0.15; return { p: ai.roofGo, force: true, r: 0 }; } // hop the parapet
       // 4. nothing to do: drift toward the middle of the (next) circle, somewhere new now and then
       if (!ai.roam || n > ai.roamT || hdist(b.pos, ai.roam) < 4) {
         const c = nx ? nx.c : zn.c, r = nx ? nx.r : zn.r;
@@ -596,14 +596,22 @@ export function installRoyale(Room, H) {
       return fighting ? null : { p: ai.roam, force: false, r: 0 };
     },
     // a walkable point near (x, z) inside a circle of radius r round c (bots aim for ground spots)
-    brInward(b, c, r) {
-      const g = groundSpots(this.map);
-      let best = null, bd = 1e9;
-      for (let i = 0; i < 40 && g.length; i++) {
-        const s = g[(Math.random() * g.length) | 0];
-        if (Math.hypot(s.p[0] - c[0], s.p[2] - c[1]) > Math.max(2, r)) continue;
-        const d = hdist(s.p, b.pos);
-        if (d < bd) { bd = d; best = s.p; }
+    brInward(b, c, r, open = false) {
+      // ground spots in a 16 m grid (once per map): look in the cells the circle covers, keep the one nearest the bot
+      const map = this.map;
+      if (!map._brGrid) { const G = new Map(); for (const sp of groundSpots(map)) { const k = Math.floor(sp.p[0] / 16) + ',' + Math.floor(sp.p[2] / 16); if (!G.has(k)) G.set(k, []); G.get(k).push(sp); } map._brGrid = G; }
+      const R = Math.max(2, r), i0 = Math.floor((c[0] - R) / 16), i1 = Math.floor((c[0] + R) / 16), j0 = Math.floor((c[1] - R) / 16), j1 = Math.floor((c[1] + R) / 16);
+      let best = null, bd = 1e9, seen = 0;
+      for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
+        const list = map._brGrid.get(i + ',' + j);
+        if (!list) continue;
+        for (let q = 0; q < list.length; q += 1 + (list.length > 12 ? 2 : 0)) { // (a sample of busy cells)
+          const sp = list[q];
+          if (open && sp.indoor) continue;
+          if (Math.hypot(sp.p[0] - c[0], sp.p[2] - c[1]) > R) continue;
+          const d = hdist(sp.p, b.pos) + Math.random() * 6; seen++;
+          if (d < bd) { bd = d; best = sp.p; }
+        }
       }
       return best ? best.slice() : [c[0], 0, c[1]];
     },

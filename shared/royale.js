@@ -6,7 +6,7 @@ import { MAPS } from './map.js';
 import { PLAN as JB } from './jankburg.js'; // (registers the Jankburg map)
 import { WEAPONS, ITEMS, FLAGS } from './weapons.js';
 
-FLAGS.GLIDE = 8192; // under an umbrella (everyone sees it open over your head)
+FLAGS.GLIDE = 32768; // under an umbrella (everyone sees it open over your head). (8192 is the night vision goggles, 16384 the laser charge)
 
 // maps big enough for it (a walled play area + scenery out to the horizon). mapOk reads this flag
 for (const id of ['desert', 'warehouse', 'suburb']) if (MAPS[id]) MAPS[id].royale ||= {};
