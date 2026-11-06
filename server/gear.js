@@ -231,6 +231,8 @@ const gear = {
     this.broadcast({ t: 'quizx', id: t.id, i, c: q.ok, ok: right ? 1 : 0, gone: gone ? 1 : undefined });
     if (gone) return;
     if (right) {
+      // Smarty Pants: right answers count for logged-in players, from someone else's calculator, outside Training
+      if (t.acct && q.by !== t.id && this.mode !== 'training') { H.stat(t, 'quiz_right', 1); H.send(t, { t: 'quizpt', n: H.liveStats(t).quiz_right || 0 }); }
       t.invulnUntil = H.now() + QUIZ.invuln * 1000;
       t.fastUntil = H.now() + QUIZ.fastT * 1000;
       this.heal(t, QUIZ.heal, 125);
