@@ -469,4 +469,4 @@ WEAPONS.lasso = {
 // the loop in flight: a server projectile like any other (it decides who it catches)
 WEAPONS.loop = { slot: 'hidden', kind: 'loop', name: 'Lasso', color: '#e0b070', speed: 30, grav: 6, r: 0.55, life: 4 };
 ORDER.push('lasso'); // ORDER was taken before these: the loadout, viewmodels and cosmetics list come from it
-FLAGS.LASSO = 1 << 20; // set in your snapshots while you spin the loop overhead (everyone sees it, killcams too)
+FLAGS.LASSO = 1 << 21; // (was 1 << 20, the same bit as FLAGS.WALK) set in your snapshots while you spin the loop overhead (everyone sees it, killcams too)

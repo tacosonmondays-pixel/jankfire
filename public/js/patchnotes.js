@@ -6,6 +6,7 @@ export const PATCH_NOTES = [
     'TENNIS BALL LAUNCHER: fuzzy balls bounce up to 5 times and hit 30% harder every bounce. bank it round a corner for a BANK SHOT.',
     'SHOPPING CART CANNON: fires a shopping cart that runs people over. it stays parked as cover, or walk up and hop in (your use key) to ride it.',
     'all three are in Plant & Defuse and the Zombies mystery crate. each comes with a skin.',
+    'fixed: in Plant & Defuse, slow walking with the lasso out made it spin (and spinning it made your footsteps silent).',
   ] },
   { v: '3.4', date: '2026-11-06', title: 'THE RIFLE PACK', items: [
     'HAT TRICK: a burst rifle. three rounds a pull. land all three on one person for a BURST!',
