@@ -7,6 +7,7 @@ import { stepProjectile, raycast } from '/shared/physics.js';
 import { duckFrame, duckStuck } from './duck.js';
 import { G } from './ctx.js';
 import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals } from './world.js';
+import { hrFeed, hrDead } from './hrguy.js';
 import { loadTripoModels, buildProjectile, buildPeel, buildHole, makeShadow, tipColor, buildCharacter, teamLook, M } from './models.js';
 import { initCrosses, crossEvent, crossShot, updateCrosses, clearCrosses } from './bloodcross.js';
 import { net } from './net.js';
@@ -328,7 +329,7 @@ fillSelect($('cfgHip'), hipEntries);
 fillSelect($('cfgDiff'), diffEntries);
 $('setupBots').addEventListener('input', () => { $('setupBotsN').textContent = $('setupBots').value; });
 $('setupGo').addEventListener('click', () => startMode('bots', {
-  map: $('setupMap').value, bots: Number($('setupBots').value), diff: $('setupDiff').value, hip: $('setupHip').value, game: $('setupGame').value,
+  map: $('setupMap').value, bots: Number($('setupBots').value), diff: $('setupDiff').value, hip: $('setupHip').value, game: $('setupGame').value, hr: $('setupHr').value,
 }));
 function syncMatchUI() {
   { const g = (G.round && G.round.game) || 'dm', list = mapsOf(g); // only the maps (and versions) this mode plays
@@ -1398,6 +1399,7 @@ net.on('kill', (m) => {
   } else {
     parts = [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc]];
   }
+  if (m.w === 'hr') parts = hrFeed(vn, vc); // scary forest: the tall guy from HR got them
   const gp = gearKillParts(m, kn, kc, vn, vc, wname, wcolor); // failed a pop quiz, telefragged
   if (gp) parts = gp;
   const hazard = m.w === 'lava' || (m.w === 'duck' && m.sky); // floor is lava / duck rain: nobody owns those
@@ -1428,6 +1430,7 @@ net.on('kill', (m) => {
         : [['killed by ', '#fff'], [kn, kc], [`  (${wname(via)})`, wcolor(via)]]);
     } else hud.dead(true, [[m.w === 'void' ? 'you fell into the void' : m.w === 'tbag' ? 'you t-bagged too hard. your knees exploded.' : 'you smoked too much', '#fff']]);
     if (carK) hud.dead(true, carK.dead);
+    else if (m.w === 'hr') hud.dead(true, hrDead());
     const gd = gearDeathLine(m);
     if (gd) hud.dead(true, m.k ? [[kn, kc], [' gave you a pop quiz. ', '#fff'], [gd, '#7fffd4']] : [[gd, '#fff']]);
     if (hazard) hud.dead(true, m.k ? [[kn, kc], [m.w === 'lava' ? ' knocked you into the lava' : ' softened you up for a sky duck', '#fff'], [`  (${wname(m.via)})`, wcolor(m.via)]] : [[m.w === 'lava' ? 'the floor was lava' : 'a duck fell out of the sky on you', '#fff']]);

@@ -476,6 +476,38 @@ Object.assign(sfx, {
   rumble(pos) { noise(1.6, 0.7, 'lowpass', 260, 40, pos); tone('sawtooth', 55, 30, 1.4, 0.3, pos); for (let i = 0; i < 5; i++) noise(0.12, 0.35, 'highpass', 3000, 1200, pos, 0.2 + i * 0.22, 1); },
   chamber(pos) { tone('square', 1500, 1450, 0.04, 0.2, pos); tone('square', 700, 650, 0.07, 0.2, pos, 0.06); },
 });
+// scary forest: crickets, an owl, a twig snapping somewhere, a far-off radio squelch from the mast
+Object.assign(sfx, {
+  cricket(pos) { for (let i = 0; i < 3; i++) tone('sine', 4300, 4200, 0.035, 0.05, pos, i * 0.06); },
+  owl(pos) { tone('sine', 410, 380, 0.32, 0.22, pos); tone('sine', 400, 360, 0.5, 0.2, pos, 0.42); tone('sine', 395, 350, 0.3, 0.14, pos, 1.05); },
+  twig(pos) { noise(0.06, 0.6, 'highpass', 2600, 1800, pos); noise(0.05, 0.4, 'bandpass', 1400, 900, pos, 0.07, 3); },
+  squelch(pos) { noise(0.5, 0.25, 'bandpass', 1800, 1200, pos, 0, 2); tone('square', 900, 880, 0.08, 0.04, pos, 0.5); },
+  // the tall guy from HR: he's arrived (a low wrong chord), he moved (a dry paper shuffle), he's got you (everything at once)
+  hrArrive() { tone('sawtooth', 55, 52, 2.2, 0.16); tone('sawtooth', 58.3, 55, 2.2, 0.12); tone('sine', 1760, 1700, 1.2, 0.025); },
+  hrStep(pos) { noise(0.12, 0.5, 'bandpass', 900, 500, pos, 0, 2); noise(0.08, 0.3, 'highpass', 4000, 3000, pos, 0.05); },
+  hrTake() { noise(1.4, 0.9, 'bandpass', 3000, 300, null, 0, 0.6); tone('sawtooth', 220, 30, 1.2, 0.5); tone('square', 880, 40, 0.9, 0.18); for (let i = 0; i < 6; i++) tone('square', 1200 + i * 310, 300, 0.12, 0.08, null, i * 0.09); },
+  hrPing() { tone('sine', 1320, 1318, 0.25, 0.05); tone('sine', 1980, 1975, 0.18, 0.03, null, 0.02); }, // an email notification. from him
+});
+// staring at him: static gets louder the longer you look (k 0..1); near: a drone that rises when he's close, even behind you
+let hrG = null, hrN = null, hrD = null, hrV = [0, 0];
+export function hrLevel(k, near) {
+  if (!ac) return;
+  if (!hrG && !k && !near) return;
+  if (!hrG) {
+    hrG = ac.createGain(); hrG.gain.value = 0; hrG.connect(master);
+    const s = ac.createBufferSource(); s.buffer = nbuf; s.loop = true;
+    hrN = ac.createBiquadFilter(); hrN.type = 'bandpass'; hrN.frequency.value = 2400; hrN.Q.value = 0.7;
+    s.connect(hrN); hrN.connect(hrG); s.start();
+    hrD = ac.createGain(); hrD.gain.value = 0; hrD.connect(master);
+    for (const [f, a] of [[41, 0.5], [43.6, 0.4], [87, 0.12], [131, 0.05]]) { const o = ac.createOscillator(); o.type = f > 80 ? 'sawtooth' : 'sine'; o.frequency.value = f; const g = ac.createGain(); g.gain.value = a; o.connect(g); g.connect(hrD); o.start(); }
+  }
+  const sk = Math.round(k * 50) / 50, nk = Math.round(near * 50) / 50;
+  if (sk === hrV[0] && nk === hrV[1]) return;
+  hrV = [sk, nk];
+  hrG.gain.setTargetAtTime(sk * sk * 0.55, ac.currentTime, 0.08);
+  hrN.frequency.setTargetAtTime(1800 + sk * 2600, ac.currentTime, 0.1);
+  hrD.gain.setTargetAtTime(nk * 0.22, ac.currentTime, 0.4);
+}
 
 // traffic: horns (each kind its own), the ice cream van's song, getting hit, tyres, a car going up, one going past
 Object.assign(sfx, {
