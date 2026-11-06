@@ -2,6 +2,7 @@
 // Maps are generated deterministically so server and client always match.
 // Rule of thumb for builders: never let two different surfaces sit in the same plane (that flickers).
 import { buildNav, navPath, navLocate, navClear } from './nav.js';
+export { prop, PROPS } from './props.js';
 
 function rng(seed) { // mulberry32
   return () => {
@@ -14,6 +15,7 @@ function rng(seed) { // mulberry32
 
 function builder() {
   const boxes = [];
+  boxes.props = []; // Blender props to draw (shared/props.js), visual only
   const add = (x0, y0, z0, x1, y1, z1, mat = 'stone', extra) => {
     if (x1 < x0) [x0, x1] = [x1, x0];
     if (y1 < y0) [y0, y1] = [y1, y0];
@@ -31,6 +33,12 @@ function builder() {
       add(ox + ax, oy + y0, oz + az, ox + bx, oy + y1, oz + bz, mat, extra);
     };
     L.B = (cx, cy, cz, sx, sy, sz, mat, extra) => L(cx - sx / 2, cy - sy / 2, cz - sz / 2, cx + sx / 2, cy + sy / 2, cz + sz / 2, mat, extra);
+    // a prop model at local (x, z), turned r more quarter turns. returns the tag for the boxes it stands in for
+    L.P = (id, x, z, r = 0, o = {}) => {
+      const [ax, az] = T(x, z);
+      boxes.props.push({ id, p: [ox + ax, oy + (o.y || 0), oz + az], r: (rot + r) & 3, v: o.v, color: o.color, s: o.s });
+      return { pv: id };
+    };
     return L;
   };
   return { boxes, add, box, local };
@@ -135,7 +143,8 @@ function shell(L, w, d, floors, F, mat, o = {}) {
 
 // ------------------------------------------------------------ props
 function car(L, x, z, rot, color = 'carred') {
-  const C = (lx0, y0, lz0, lx1, y1, lz1, m) => (rot ? L(x + lz0, y0, z + lx0, x + lz1, y1, z + lx1, m) : L(x + lx0, y0, z + lz0, x + lx1, y1, z + lz1, m));
+  const pv = L.P && L.P('car', x, z, rot ? 1 : 0, { color }); // the Blender car, when it's loaded, stands in for these boxes
+  const C = (lx0, y0, lz0, lx1, y1, lz1, m) => (rot ? L(x + lz0, y0, z + lx0, x + lz1, y1, z + lx1, m, pv) : L(x + lx0, y0, z + lz0, x + lx1, y1, z + lz1, m, pv));
   C(-2.2, 0.32, -0.92, 2.2, 0.95, 0.92, color); // body
   C(-2.3, 0.3, -0.9, -2.2, 0.55, 0.9, 'chrome'); C(2.2, 0.3, -0.9, 2.3, 0.55, 0.9, 'chrome'); // bumpers
   C(-1.1, 0.95, -0.8, 0.9, 1.5, 0.8, 'glass'); // cabin glass
@@ -151,9 +160,10 @@ function tree(L, x, z, h = 4.5) {
   L.B(x, h + 2.2, z, 2.4, 1.0, 2.4, 'leaves');
 }
 function streetlight(L, x, z, armDir = 1) {
-  L.B(x, 3, z, 0.25, 6, 0.25, 'metal');
-  L(x, 5.8, z - 0.12, x + armDir * 1.6, 6.0, z + 0.12, 'metal');
-  L.B(x + armDir * 1.6, 5.8, z, 0.6, 0.25, 0.4, 'light');
+  const pv = L.P && L.P('streetlight', x, z, armDir < 0 ? 2 : 0);
+  L.B(x, 3, z, 0.25, 6, 0.25, 'metal', pv);
+  L(x, 5.8, z - 0.12, x + armDir * 1.6, 6.0, z + 0.12, 'metal', pv);
+  L.B(x + armDir * 1.6, 5.8, z, 0.6, 0.25, 0.4, 'light', pv);
 }
 function acUnit(L, x, z, y) { L.B(x, y + 0.7, z, 2, 1.4, 1.4, 'metal'); L.B(x, y + 1.45, z, 1.2, 0.1, 1.2, 'grid'); }
 function waterTower(L, x, z, y) {
@@ -455,9 +465,13 @@ function warehouse() {
   stairs(W, -40, -37, -Z + 3.2, 1, 0, 7.3, 'grid');
   stairs(W, 37, 40, Z - 3.2, -1, 0, 7.3, 'grid');
   // pallet racks: three levels you can climb
+  const RK = B.local(0, 0, 0);
   for (const x of [-44, -14, 14]) for (const z of [-30, 24]) {
-    for (const lvl of [0, 2.4, 4.8]) add(x, lvl + 2, z - 1.2, x + 18, lvl + 2.25, z + 1.2, 'wood');
-    for (const px of [x, x + 6, x + 12, x + 18]) for (const pz of [z - 1.2, z + 1]) add(px - 0.1, 0, pz, px + 0.1, 7.3, pz + 0.2, 'hazard');
+    const rk = { pv: 'rack' }; // three Blender rack bays + an end frame stand in for these boxes
+    for (const bx of [x, x + 6, x + 12]) RK.P('rack', bx, z, 0, { v: 'bay' });
+    RK.P('rack', x + 18, z, 0, { v: 'frame' });
+    for (const lvl of [0, 2.4, 4.8]) add(x, lvl + 2, z - 1.2, x + 18, lvl + 2.25, z + 1.2, 'wood', rk);
+    for (const px of [x, x + 6, x + 12, x + 18]) for (const pz of [z - 1.2, z + 1]) add(px - 0.1, 0, pz, px + 0.1, 7.3, pz + 0.2, 'hazard', rk);
     for (let i = 0; i < 5; i++) box(x + 2 + i * 3.4, 0.6, z, 2, 1.2, 1.6, 'crate');
     box(x + 4, 3.0, z, 2, 1.2, 1.6, 'crate'); box(x + 12, 5.4, z, 2, 1.2, 1.6, 'crate');
   }
@@ -467,7 +481,8 @@ function warehouse() {
   O(-6, 0.12, -1, -2, 0.85, 1, 'wood'); O(2, 0.12, -1, 6, 0.85, 1, 'wood'); O(-6, 3.85, -1, -2, 4.6, 1, 'wood');
   // forklift + pallets + barrels inside
   const Fk = B.local(-4, -10, 0);
-  Fk(-1.2, 0, -0.8, 1.2, 1.4, 0.8, 'caryellow'); Fk(-0.9, 1.4, -0.7, 0.4, 2.4, 0.7, 'glass'); Fk(1.2, 0, -0.4, 2.6, 0.2, 0.4, 'metal'); Fk(1.2, 0, -0.6, 1.4, 3, 0.6, 'metal');
+  const fk = Fk.P('forklift', 0, 0);
+  Fk(-1.2, 0, -0.8, 1.2, 1.4, 0.8, 'caryellow', fk); Fk(-0.9, 1.4, -0.7, 0.4, 2.4, 0.7, 'glass', fk); Fk(1.2, 0, -0.4, 2.6, 0.2, 0.4, 'metal', fk); Fk(1.2, 0, -0.6, 1.4, 3, 0.6, 'metal', fk);
   for (let i = 0; i < 6; i++) box(-10 + (i % 3) * 1.1, 0.6, 10 + Math.floor(i / 3) * 1.1, 0.9, 1.2, 0.9, 'containerb');
   // outdoor loading yard: containers, trucks
   add(X, -1, -Z - 10, X + 50, 0, Z + 10, 'concrete');

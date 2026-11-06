@@ -7,12 +7,13 @@ import * as cleaver from './cleaver.js';
 import * as switchblade from './switch.js';
 import * as karambit from './karambit.js';
 import * as butterfly from './butterfly.js';
+import * as spoon from './spoon.js';
 import * as katana from './katana.js';
 import * as shirasaya from './shirasaya.js';
 import * as bokken from './bokken.js';
 
 export const BLADES = {
   knife: combat, katana,
-  knife_kitchen: kitchen, knife_bowie: bowie, knife_cleaver: cleaver, knife_switch: switchblade, knife_karambit: karambit, knife_butterfly: butterfly,
+  knife_kitchen: kitchen, knife_bowie: bowie, knife_cleaver: cleaver, knife_switch: switchblade, knife_karambit: karambit, knife_butterfly: butterfly, knife_spoon: spoon,
   katana_shirasaya: shirasaya, katana_bokken: bokken,
 };
