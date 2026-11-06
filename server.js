@@ -44,6 +44,8 @@ import { OOB, outOfBounds, boundsCenter } from './shared/bounds.js';
 import { Traffic } from './server/traffic.js'; // cars on the roads (server/traffic.js)
 import { installRoyale } from './server/royale.js'; // Jank Royale (battle royale)
 import { BR } from './shared/royale.js';
+import { tickHR, hrBot } from './server/hrguy.js'; // the Tall Guy From HR (Scary Forest)
+import { HR } from './shared/hr.js';
 import { installGear } from './server/gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
 import { installEcon } from './server/econ.js';
 import { MSLIP, onPatch, patchPreroll } from './shared/marbles.js';
@@ -345,7 +347,7 @@ class Room {
     this.oitcOut = new Set(); // one in the chamber: who ran out of lives this round (by account or name)
     if (mode === 'ffa' && GAMES[process.env.JF_GAME]) this.game = process.env.JF_GAME; // test knob: the online room starts in this mode
     this.mpatches = new Map(); this.nextMp = 1; // marble shotgun: marbles on the floor you slip on
-    this.cfg = { map: mode === 'training' ? 'range' : mode === 'coop' ? 'warehouse' : 'islands', hip: 'normal', bots: 5, diff: 'normal' };
+    this.cfg = { map: mode === 'training' ? 'range' : mode === 'coop' ? 'warehouse' : 'islands', hip: 'normal', bots: 5, diff: 'normal', hr: 'on' };
     if (GAMES[this.game].mapOk && !GAMES[this.game].mapOk(this.map)) this.cfg.map = mapsFor(this.game, MAPS, MAP_ORDER)[0]; // (the JF_GAME knob: a map the mode can be played on)
     this.wave = 0; this.toSpawn = 0; this.interUntil = 0;
     this.round = ROUND[mode] ? { target: ROUND[mode].kills, ends: now() + ROUND[mode].time * 1000, over: false, next: 0 } : null;
@@ -458,6 +460,7 @@ class Room {
       if (has(HIPFIRE, c.hip)) this.cfg.hip = c.hip;
       if (has(BOT_DIFF, c.diff)) this.cfg.diff = c.diff;
       if (c.bots != null) this.cfg.bots = clampInt(c.bots, 0, 12);
+      if (has(HR.every, c.hr)) this.cfg.hr = c.hr;
     }
     const name = m._name || clean(m.name, 16) || pick(DEFAULT_NAMES) + nextId;
     const inv = m._inv || {};
@@ -738,6 +741,7 @@ class Room {
     }
     if (this.brOn) [wx, wz, jump] = this.brBotEdge(b, wx, wz, jump); // jank royale: no hopping into canyons
     if (this.lavaOn) [wx, wz, jump] = this.botLava(b, wx, wz, jump, t);
+    if (this.hr && this.hr.on) { const o = hrBot(this, b, dt, { wx, wz, jump }), l = Math.hypot(o.wx, o.wz); if (l > 1) { o.wx /= l; o.wz /= l; } ({ wx, wz, jump } = o); } // scary forest: don't stare at HR
     return { wx: wx * D.speed, wz: wz * D.speed, jump };
   }
 
@@ -2637,6 +2641,7 @@ class Room {
       for (const b of this.players.values()) if (b.isBot) b.ai.diff = m.diff;
       changes.push(`bots → ${BOT_DIFF[m.diff].name}`);
     }
+    if (has(HR.every, m.hr) && m.hr !== this.cfg.hr) { this.cfg.hr = m.hr; changes.push(`the tall guy from HR → ${HR.names[m.hr]}`); }
     if (m.bots != null && this.mode === 'bots') {
       const c = clampInt(m.bots, 0, 12);
       if (c !== this.cfg.bots) { this.cfg.bots = c; this.fillBots(); changes.push(`bot count → ${c}`); }
@@ -3638,6 +3643,7 @@ class Room {
     this.tickHoles(dt);
     this.tickRig();
     this.tickStatus(dt);
+    tickHR(this, dt); // scary forest: the tall guy from HR
     this.tickPeels();
     this.tickMarbles();
     this.tickBalls();
