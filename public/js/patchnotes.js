@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '5.3', date: '2026-11-06', title: 'SKYLINE, REBUILT', items: [
+    'SKYLINE got rebuilt from scratch: towers above the dusk city, joined by sky bridges and cranes, with a rooftop park, a putt-putt course, a long neon corridor and helipads.',
+    'Skyline has its own Plant & Defuse version now: A is the helipad, B is the observatory.',
+    'fixed: the Plant & Defuse versions of Suburb, Desert, Bazaar, Rooftop and Skyline now get their own map\'s lighting instead of the default.',
+  ] },
   { v: '5.2', date: '2026-11-06', title: 'TIDY MENU', items: [
     'the home menu is cleaner: CUSTOMIZE, CONTAINERS and LEADERBOARD on the left, a row of small buttons for settings, the guide, lore and patch notes, and PLAY on the right.',
     'your character stands in the middle in 3D holding your gun. click them for CHARACTER, click the gun for LOADOUT.',
