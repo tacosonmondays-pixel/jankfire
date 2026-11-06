@@ -620,8 +620,14 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 #scr-customize .cz-empty { align-self: center; font-size: 14px; color: #aaa; padding: 0 20px; white-space: nowrap; }
 #scr-customize .cz-tabs { display: flex; gap: clamp(8px, 1.4vw, 22px); justify-content: center; align-items: flex-end; }
 #scr-customize .cz-tab { display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: 0; padding: 0; cursor: pointer; font-family: var(--font); color: #fff; }
-#scr-customize .cz-tab .ico { width: clamp(44px, 4.2vw, 62px); height: clamp(44px, 4.2vw, 62px); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: clamp(20px, 2vw, 30px);
-  background: #fff; border: 4px solid #000; box-shadow: 4px 4px 0 #000; }
+#scr-customize .cz-tab .ico { width: clamp(44px, 4.2vw, 62px); height: clamp(44px, 4.2vw, 62px); display: flex; align-items: center; justify-content: center; font-size: clamp(20px, 2vw, 30px);
+  background: #fff; border: 3px solid #000; box-shadow: 4px 4px 0 #000; transform: rotate(-2deg); } /* same slab as the hub tabs: square, hard shadow, a bit off level */
+#scr-customize .cz-tab:nth-child(even) .ico { transform: rotate(2deg); }
+#scr-customize .cz-tab .ico img { width: 86%; height: 86%; object-fit: contain; pointer-events: none; }
+#scr-customize .cz-tab:hover .ico img, .hub-tab:hover img.hub-pic { animation: jfWiggle 0.5s ease-in-out infinite alternate; } /* the 3D prop wobbles while you point at it */
+#scr-customize .cz-tab.on .ico img, .hub-tab.on img.hub-pic { animation: jfBob 1.4s ease-in-out infinite; filter: drop-shadow(0 0 3px #fff); }
+@keyframes jfWiggle { from { transform: rotate(-9deg) translateY(0); } to { transform: rotate(9deg) translateY(-3px); } }
+@keyframes jfBob { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-3px) rotate(3deg); } }
 #scr-customize .cz-tab .lbl { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-shadow: 2px 2px 0 #000; }
 #scr-customize .cz-tab:hover .ico { transform: rotate(-6deg) scale(1.07); box-shadow: 4px 4px 0 var(--cyan); }
 #scr-customize .cz-tab.on .ico { background: var(--yellow); box-shadow: 4px 4px 0 var(--pink); transform: rotate(-4deg) scale(1.1); }
@@ -636,18 +642,13 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 /* =================================================================== MENU CLEANUP: the short home nav, the CUSTOMIZE hub
    tabs, loadout inside the customize screen, grapple & spray, the 3D container opening */
 .home-right::before { content: 'PLAY'; font-family: var(--font); font-weight: 700; font-size: 15px; letter-spacing: 4px; color: var(--yellow); text-shadow: 2px 2px 0 #000; margin-bottom: -8px; }
-.hicons { display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
-.hicon { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 0; background: none; border: 0; cursor: pointer; font-family: var(--font); color: #fff; }
-.hicon i { font-style: normal; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #fff; color: #000; border: 3px solid #000; box-shadow: 3px 3px 0 var(--pink); font-size: 20px; font-weight: 700; }
-.hicon span { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-shadow: 2px 2px 0 #000; }
-.hicon:hover i { transform: rotate(-8deg) scale(1.08); box-shadow: 3px 3px 0 var(--cyan); }
-.hicon em { position: absolute; top: -6px; right: -10px; font-style: normal; padding: 0 5px; font-size: 10px; font-weight: 700; background: var(--yellow); color: var(--ink); border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--pink); transform: rotate(8deg); }
 .hero-stage[data-go] { cursor: pointer; }
 /* the hub: one row of tabs on top of loadout / weapons / character / grapple & spray */
 .hub-tabs { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 0 0 10px; }
 .hub-tab { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px 5px 8px; font-family: var(--font); font-weight: 700; font-size: 15px; letter-spacing: 1px; cursor: pointer;
   background: #fff; color: #000; border: 3px solid #000; box-shadow: 4px 4px 0 #000; }
 .hub-tab i { font-style: normal; font-size: 17px; }
+.hub-tab img.hub-pic { height: 24px; width: auto; margin: -5px 0; } /* the tab's 3D picture (hub.js) */
 .hub-tab:hover { transform: rotate(-1.5deg) scale(1.04); box-shadow: 4px 4px 0 var(--cyan); }
 .hub-tab.on { background: var(--yellow); box-shadow: 4px 4px 0 var(--pink); transform: rotate(-1.5deg); }
 #scr-customize .cz-hub { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); z-index: 5; }
@@ -677,3 +678,49 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 #roll3d { display: block; width: min(520px, 90vw); height: min(240px, 30vh); margin: 0 auto 8px; image-rendering: pixelated; }
 .cratecard img { width: 150px; height: 90px; object-fit: contain; }
 .screen > .hub-tabs + h2 { display: none; } /* the hub tab already says where you are */
+
+/* =================================================================== HOME SIDE MENU: one column, one button language.
+   fleshy plaques with a 3D prop set in a socket on the left (navicons.js / crate3d.js / your own gun). primary = big yellow
+   (like ONLINE), secondary = the same plaque, smaller and dark. the column leans as one; buttons don't each do their own thing */
+#scr-main .home-left { --navw: clamp(258px, 21vw, 390px); width: var(--navw); gap: 10px; align-items: stretch; transform: rotate(-1.2deg); }
+.nav-tag { align-self: flex-start; font-family: var(--font); font-weight: 700; font-size: 11px; letter-spacing: 4px; color: #000; background: var(--pink); padding: 1px 10px; border: 2px solid #000; box-shadow: 3px 3px 0 #000; transform: rotate(-2deg); margin-bottom: 2px; }
+.hnav { position: relative; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; width: 100%; cursor: pointer; text-align: left;
+  font-family: var(--font); color: #fff; background: rgba(18, 8, 24, 0.95); border: 3px solid #000; box-shadow: 4px 4px 0 #000; transition: transform 0.12s; }
+.hnav b { font-weight: 700; letter-spacing: 1px; text-shadow: 2px 2px 0 var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hnav .nt { display: flex; flex-direction: column; min-width: 0; }
+.hnav small { font-size: 11px; letter-spacing: 1px; opacity: 0.75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hnav .ni { display: grid; place-items: center; background: radial-gradient(circle at 40% 35%, #4a2a5a, #120818 75%); border: 2px solid #000; overflow: hidden; }
+.hnav .ni img { width: 100%; height: 100%; object-fit: cover; scale: 1.5; transition: transform 0.15s; }
+.hnav:hover, .hnav:focus-visible { transform: translateX(7px); outline: none; }
+.hnav:hover .ni img, .hnav:focus-visible .ni img { transform: rotate(-10deg) scale(1.12); }
+.hnav:active { transform: translateX(7px) scale(0.97); }
+.hnav.prim { padding: 6px 12px 6px 6px; color: #000; }
+.hnav.prim b { font-size: clamp(18px, 2.5vh, 30px); text-shadow: none; }
+.hnav.prim .ni { width: clamp(50px, 7vh, 80px); aspect-ratio: 1; }
+.hnav.prim small { font-size: clamp(11px, 1.3vh, 15px); }
+.hnav.sec { padding: 3px 10px 3px 4px; gap: 9px; }
+.hnav.sec b { font-size: clamp(13px, 1.8vh, 20px); }
+.hnav.sec .ni { width: clamp(30px, 4.2vh, 46px); aspect-ratio: 1; }
+.nav-sec { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; padding-left: 14px; } /* secondary: tucked in under the two big ones */
+.hnav em { font-style: normal; padding: 0 6px; font-size: 11px; white-space: nowrap; font-weight: 700; background: var(--yellow); color: var(--ink); border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--pink); transform: rotate(6deg); }
+.hnav.org { --fill: rgba(18, 8, 24, 0.95); --rim: var(--pink); --shd: #000; }
+.hnav.org:hover, .hnav.org:focus-visible { --shd: var(--cyan); }
+.hnav.prim.org { --fill: var(--yellow); --rim: #000; --shd: var(--pink); }
+.hnav.prim.org:hover, .hnav.prim.org:focus-visible { --shd: var(--cyan); }
+#cratesBtn::before { content: none; } /* (the old glyph box: the crate is 3D now) */
+#cratesBtn.glow { animation: navglow 1.1s ease-in-out infinite; }
+#cratesBtn.glow .ni img { animation: cratehop 1.1s ease-in-out infinite; }
+@keyframes navglow { 50% { --shd: #39ff14; } }
+@keyframes cratehop { 0%, 100% { transform: none; } 40% { transform: translateY(-3px) rotate(-6deg); } 60% { transform: translateY(0) rotate(4deg); } }
+.nav-util { align-self: flex-start; margin: 2px 0 0 14px; padding: 0 4px; font-family: var(--font); font-size: 12px; font-weight: 700; letter-spacing: 1px; color: #ffd6f4; background: none; border: 0; border-bottom: 2px dashed var(--pink); cursor: pointer; text-shadow: 2px 2px 0 var(--ink); }
+.nav-util:hover { color: var(--yellow); border-bottom-color: var(--yellow); }
+@media (max-width: 980px), (max-height: 640px) { #scr-main .home-left { --navw: 100%; transform: none; justify-self: stretch; flex-direction: column; flex-wrap: nowrap; align-items: stretch; } .nav-sec { padding-left: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; } .nav-sec > [data-go=leaders] { grid-column: 1 / -1; }
+  .hnav.prim { padding: 4px 8px 4px 4px; gap: 6px; } .hnav.prim small { display: none; } .hnav.prim .ni { width: 34px; } .hnav.prim b { font-size: 13px; letter-spacing: 0; } .hnav.sec .ni { width: 26px; } .hnav.sec b { font-size: 12px; letter-spacing: 0; } .hnav em { font-size: 9px; padding: 0 3px; } .hnav { gap: 6px; } .hnav.prim { gap: 9px; }
+  #scr-main .home-left { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; } #scr-main .home-left > .nav-tag, #scr-main .home-left > .nav-sec, #scr-main .home-left > .nav-util { grid-column: 1 / -1; } .nav-tag { justify-self: start; } }
+#cratesN { font-size: 15px !important; padding: 0 8px !important; background: #39ff14 !important; box-shadow: 2px 2px 0 #000 !important; }
+@media (max-width: 980px), (max-height: 640px) { #cratesN { font-size: 11px !important; padding: 0 4px !important; } }
+/* CUSTOMIZE's gun: the whole gun (not a crop), with a hard outline so it reads on the dark socket */
+.hnav .ni[data-ico=customize] img { object-fit: contain; scale: 1.5; filter: drop-shadow(1.5px 0 0 #000) drop-shadow(-1.5px 0 0 #000) drop-shadow(0 1.5px 0 #000) drop-shadow(0 -1.5px 0 #000) drop-shadow(0 0 1px #ffe14d); }
+/* breathing room above the status strip on short screens */
+#scr-main .home-left { margin-bottom: 14px; }
+@media (max-height: 800px) and (min-width: 981px) { .nav-sec { gap: 4px; margin-top: 2px; } .hnav.sec { padding-top: 1px; padding-bottom: 1px; } .hnav.sec .ni { width: 27px; } .hnav.prim .ni { width: 46px; } .hnav.prim { padding-top: 4px; padding-bottom: 4px; } #scr-main .home-left { gap: 7px; } }

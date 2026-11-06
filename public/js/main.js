@@ -2,7 +2,8 @@
 import * as THREE from 'three';
 import { BOXES, MAP, MAPS, MAP_ORDER } from '/shared/map.js';
 import { WEAPONS, ORDER, SLOTS, FLAGS, SLIP_TIME, HIPFIRE, BOT_DIFF, MODES, STREAKS, ITEMS, ITEM_ORDER, validLoadout, validStreaks } from '/shared/weapons.js';
-import { streakIcon } from './icons.js';
+import { streakIcon, liveIcon } from './icons.js';
+import './itemicons.js'; // registers the 3D item + killstreak pictures (icons.js set3dPics)
 import { stepProjectile, raycast } from '/shared/physics.js';
 import { duckFrame, duckStuck } from './duck.js';
 import { G } from './ctx.js';
@@ -523,7 +524,7 @@ function buildLoadoutUI() {
   for (const [id, st] of Object.entries(STREAKS).sort((a, b) => a[1].kills - b[1].kills)) {
     const b = document.createElement('button');
     b.className = 'kpick' + (picks.includes(id) ? ' on' : '');
-    const im = document.createElement('img'); im.src = streakIcon(id); im.alt = '';
+    const im = document.createElement('img'); im.alt = ''; liveIcon(im, () => streakIcon(id)); // (3D: the loading cube until its model lands)
     const t = document.createElement('span'); t.textContent = `${st.name} · ${st.kills}`;
     b.append(im, t);
     b.addEventListener('mouseenter', () => { $('loDesc').textContent = `${st.name} (${st.kills} kills in a row): ${K.hint(st.desc)}`; });
@@ -2063,7 +2064,7 @@ function renderStreak(n) {
       const d = document.createElement('div');
       d.className = 'kstreak' + (ready ? ' ready' : '');
       d.title = `${st.name}: ${K.hint(st.desc)}`;
-      const im = document.createElement('img'); im.src = streakIcon(id); im.alt = '';
+      const im = document.createElement('img'); im.alt = ''; liveIcon(im, () => streakIcon(id)); // (3D: the loading cube until its model lands)
       const k = document.createElement('b'); k.textContent = K.label('streak' + (i + 1));
       const c = document.createElement('span'); c.textContent = ready ? 'READY' : `${Math.min(n, st.kills)}/${st.kills}`;
       d.append(im, k, c);
@@ -2337,7 +2338,8 @@ function totalRolls(me) { const r = (me && me.rolls) || {}; return (r.crate || 0
 function fmtTime(sec) { const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60); return h ? `${h}h ${m}m` : `${m}m`; }
 function renderAcctBar() {
   const tr0 = account.loggedIn ? totalRolls(account.me) : 0;
-  $('cratesLbl').textContent = tr0 ? `CONTAINERS (${tr0})` : 'CONTAINERS'; // the label only: the button keeps its slab
+  $('cratesLbl').textContent = 'CONTAINERS'; // the label only: the button keeps its slab
+  $('cratesN').textContent = tr0 || ''; $('cratesN').classList.toggle('hidden', !tr0); // how many to open: a badge, not part of the label
   $('cratesBtn').classList.toggle('glow', tr0 > 0);
   const bar = $('acctBar');
   bar.innerHTML = '';

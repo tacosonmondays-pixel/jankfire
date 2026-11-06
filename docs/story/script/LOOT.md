@@ -95,9 +95,9 @@ _Generated from `loot.js`. No durability, ever._
 ### LUMPS' RING `lumps_ring`
 > "he made it himself."
 
-**rigpunch** · BOTTOM SCRAP CO.  
+**slapper** · BOTTOM SCRAP CO.  
 **Quirk:** knockback ×3; you cry on kills (a speech bubble: 'sorry. sorry.')  
-**Lore:** One of the gold rings off Lumps' forearm, re-forged into a knuckle for the Overdrive Rig's punch. He made it himself in the gym. He said sorry to it.  
+**Lore:** One of the gold rings off Lumps' forearm. It's too big for any normal hand, so he welded it round the fist of a Hand Slapper in the gym and gave it to you. He said sorry to it.  
 **Drops:** quest `sq_bottom_leg_day`
 
 ### THE RECEIPT `the_receipt`
