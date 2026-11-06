@@ -694,14 +694,14 @@ const M = {
       const ok = list.filter((id) => econWeapon(id) && weaponPrice(id) != null && weaponPrice(id) + keep <= e.$);
       return ok.length > 0 && buy('w', pick(ok));
     };
-    if (mode === 'pistol') { if (Math.random() < 0.6) buy('g', 'vest'); }
+    if (mode === 'pistol') { if (Math.random() < 0.6) buy('g', 'vest'); if (Math.random() < 0.4) gun(['pistol', 'akimbo', 'sawnoff'], 0); } // whatever's left: a better sidearm
     else if (mode === 'full') {
       if (!hasGun) gun(BOT_FULL, 1000) || gun(BOT_FULL, 650) || gun(BOT_FORCE, 650);
       if (!buy('g', 'helm')) buy('g', 'vest');
       if (!att) buy('g', 'kit');
       if (e.$ >= 500) buy('i', 'frag');
     } else if (mode === 'force') {
-      if (!hasGun && !gun(BOT_FORCE, 650) && !gun(BOT_FORCE, 0) && e.$ >= 900) buy('w', 'marbles');
+      if (!hasGun && !gun(BOT_FORCE, 650) && !gun(BOT_FORCE, 0)) gun(['marbles', 'akimbo', 'sawnoff'], 0); // no rifle money: a shotgunny sidearm
       buy('g', 'vest');
     }
     if (e.sl.primary && e.sl.primary.lim && e.sl.primary.m + e.sl.primary.r < 10 && refillPrice(e.sl.primary.id) <= e.$) buy('w', e.sl.primary.id);
