@@ -2273,13 +2273,14 @@ function forest() {
   { const L = B.local(CAB[0], CAB[1], 0);
     const hw = 6.5, hd = 4.5, t = 0.35, Hh = 3.1, F = 0.35;
     L(-hw - 0.4, 0, -hd - 0.4, hw + 0.4, F, hd + 0.4, 'stonebase'); L(-hw + t, F, -hd + t, hw - t, F + 0.05, hd - t, 'planks');
-    const front = [{ a: -1.0, b: 0.6, y0: F, y1: F + 2.3 }, { a: -4.6, b: -3.0, y0: F + 1.0, y1: F + 2.1 }, { a: 2.8, b: 4.4, y0: F + 1.0, y1: F + 2.1 }];
+    // doors 2 m wide on the 1 m grid, so bots' walk graph gets through them
+    const front = [{ a: 0, b: 2.0, y0: F, y1: F + 2.3 }, { a: -4.6, b: -3.0, y0: F + 1.0, y1: F + 2.1 }, { a: 2.8, b: 4.4, y0: F + 1.0, y1: F + 2.1 }];
     wall(L, 'x', hd, -hw, hw, F, F + Hh, t, 'logwall', front); // the front, facing the porch (+z, south)
-    wall(L, 'x', -hd, -hw, hw, F, F + Hh, t, 'logwall', [{ a: 3.4, b: 4.8, y0: F, y1: F + 2.3 }, { a: -3.6, b: -2.2, y0: F + 1.0, y1: F + 2.1 }]); // the back door
+    wall(L, 'x', -hd, -hw, hw, F, F + Hh, t, 'logwall', [{ a: 3.0, b: 5.0, y0: F, y1: F + 2.3 }, { a: -3.6, b: -2.2, y0: F + 1.0, y1: F + 2.1 }]); // the back door
     wall(L, 'z', -hw, -hd + t / 2, hd - t / 2, F, F + Hh, t, 'logwall', [{ a: -0.8, b: 0.8, y0: F + 1.0, y1: F + 2.1 }]);
     wall(L, 'z', hw, -hd + t / 2, hd - t / 2, F, F + Hh, t, 'logwall', [{ a: 1.4, b: 2.6, y0: F + 1.0, y1: F + 2.1 }]);
-    L(-1.2, F, -hd + t / 2, -0.9, F + 2.6, 0.8, 'planks'); // a thin wall splits off the bedroom (west), with a doorway
-    L(-1.2, F, 1.8, -0.9, F + 2.6, hd - t / 2, 'planks'); L(-1.2, F + 2.3, 0.8, -0.9, F + 2.6, 1.8, 'planks');
+    L(-1.2, F, -hd + t / 2, -0.9, F + 2.6, 0.5, 'planks'); // a thin wall splits off the bedroom (west), with a 2 m doorway (bots fit)
+    L(-1.2, F, 2.5, -0.9, F + 2.6, hd - t / 2, 'planks'); L(-1.2, F + 2.3, 0.5, -0.9, F + 2.6, 2.5, 'planks');
     // the roof: stepped slabs to a ridge along x, a little overhang, then a ridge beam
     const top = F + Hh;
     for (let i = 0; i < 5; i++) L(-hw - 0.5, top + i * 0.42, -hd - 0.7 + i * 1.05, hw + 0.5, top + i * 0.42 + 0.42, hd + 0.7 - i * 1.05, i % 2 ? 'cabinroof2' : 'cabinroof');
@@ -2369,7 +2370,7 @@ function forest() {
     const Sd = B.local(mx - 5, mz - 1, 0);
     Sd(-2.5, 0, -2, 2.5, 0.2, 2, 'concrete');
     wall(Sd, 'x', -2, -2.5, 2.5, 0.2, 2.9, 0.2, 'shedmetal', []); wall(Sd, 'x', 2, -2.5, 2.5, 0.2, 2.9, 0.2, 'shedmetal', [{ a: -1.6, b: 0, y0: 1.1, y1: 2.0 }]);
-    wall(Sd, 'z', -2.5, -1.9, 1.9, 0.2, 2.9, 0.2, 'shedmetal', [{ a: -0.6, b: 0.8, y0: 0.2, y1: 2.4 }]); wall(Sd, 'z', 2.5, -1.9, 1.9, 0.2, 2.9, 0.2, 'shedmetal', []);
+    wall(Sd, 'z', -2.5, -1.9, 1.9, 0.2, 2.9, 0.2, 'shedmetal', [{ a: -1.0, b: 1.0, y0: 0.2, y1: 2.4 }]); wall(Sd, 'z', 2.5, -1.9, 1.9, 0.2, 2.9, 0.2, 'shedmetal', []);
     Sd(-2.7, 2.9, -2.2, 2.7, 3.1, 2.2, 'roofg');
     Sd(0.6, 0.2, -1.85, 2.35, 1.0, -0.9, 'metal'); Sd(0.8, 1.0, -1.85, 2.2, 1.8, -1.7, 'radiopanel', { fit: 1 }); Sd(-1.0, 0.2, 1.0, -0.2, 0.7, 1.7, 'officechair');
     B.add(mx + 7, 0, mz - 8, mx + 9.4, 1.3, mz - 6.6, 'generator'); B.add(mx + 7.2, 1.3, mz - 7.9, mx + 7.5, 2.1, mz - 7.6, 'metal');
