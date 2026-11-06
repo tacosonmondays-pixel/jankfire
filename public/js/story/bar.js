@@ -172,7 +172,7 @@ export function nearestDrop() {
   for (const x of drops.values()) { const dd = Math.hypot(x.d.p[0] - ME.pos[0], x.d.p[1] - ME.pos[1] - 0.6, x.d.p[2] - ME.pos[2]); if (dd < bd) { bd = dd; best = x.d; } }
   return best;
 }
-export const atLocker = () => { const L = worldOf(G.cfg && G.cfg.map).locker; return Math.hypot(ME.pos[0] - L.p[0], ME.pos[2] - L.p[2]) < L.r; };
+export const atLocker = () => { const L = worldOf(G.cfg && G.cfg.map).locker; return Math.hypot(ME.pos[0] - L.p[0], ME.pos[2] - L.p[2]) < L.r && Math.abs(ME.pos[1] - L.p[1]) < 3; };
 export function barTick(dt) {
   for (const x of drops.values()) { x.t += dt; x.m.rotation.y += dt * 1.6; x.m.position.y = Math.sin(x.t * 2.2) * 0.12; const dist = Math.hypot(x.d.p[0] - ME.pos[0], x.d.p[1] - ME.pos[1] - 1.6, x.d.p[2] - ME.pos[2]); x.beam.userData.tick(dt, x.t, dist); xray(x, seesLoot(dist)); }
   STAT.mul = statMul; // rolled stats for whatever's in your hands (weapons.js reads it)
