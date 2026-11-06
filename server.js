@@ -36,6 +36,8 @@ import { navSteer } from './shared/nav.js';
 import { DUCKRAIN } from './shared/modes.js';
 import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
 import { OOB, outOfBounds, boundsCenter } from './shared/bounds.js';
+import { installRoyale } from './server/royale.js'; // Jank Royale (battle royale)
+import { BR } from './shared/royale.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -332,7 +334,7 @@ class Room {
   }
   humans() { return [...this.players.values()].filter((p) => !p.isBot); }
   teamsOn() { return (this.mode === 'ffa' || this.mode === 'bots') && !!GAMES[this.game].teams; }
-  fighters() { return [...this.players.values()].filter((p) => !(p.isBot && p.ai && p.ai.dummy)); }
+  fighters() { return [...this.players.values()].filter((p) => !(p.isBot && p.ai && p.ai.dummy) && !p.watch); }
   // even teams, humans spread first
   assignTeams() {
     const list = this.fighters().sort((a, b) => (a.isBot - b.isBot) || (Math.random() - 0.5));
@@ -359,6 +361,7 @@ class Room {
   }
   sendLoadout(p) {
     if (this.modeLoadout(p)) return; // gun game rung / zombie claw
+    if (this.brOn) { this.brLoadout(p); return; } // jank royale: what you picked up
     if (this.sendChaosKit(p)) return;
     if (p.isBot) { if (GAMES[this.game].random && !p.ai.dummy) { p.w = pick(BOT_GUNS); p.ai.ammo = WEAPONS[p.w].mag || 1; } return; }
     const rnd = (this.mode === 'ffa' || this.mode === 'bots') && GAMES[this.game].random;
@@ -434,12 +437,13 @@ class Room {
     p.grap = ownedGrapple(m.grap, inv);
     p.kc = !!m.kc;
     p.item = has(ITEMS, m.item) ? m.item : 'frag'; // the client confirms it with 'itemsel' right after 'welcome'
+    if (process.env.JF_WATCH && name.startsWith('watch')) { p.watch = true; p.alive = false; p.hp = 0; p.respawnAt = p.minRespawnAt = Infinity; } // test knob: a ws observer for bots-only matches (never a fighter)
     if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && has(GAMES, m.cfg.game) && !this.humans().length) this.setGame(m.cfg.game);
-    this.joinTeam(p);
+    if (!p.watch) this.joinTeam(p);
     if (p.team) p.pos = this.pickSpawn(false, p);
     this.players.set(p.id, p);
     // in from the start (or close enough): your Never Landed run counts. the welcome below is your first spawn
-    if (this.round && !this.round.over && now() - (this.round.t0 || 0) < AIR.join && !GAMES[this.game].lava) p.air = { ok: !(this.airBad && this.airBad.has(name)), rest: 0 };
+    if (this.round && !this.round.over && now() - (this.round.t0 || 0) < AIR.join && !GAMES[this.game].lava && !GAMES[this.game].royale) p.air = { ok: !(this.airBad && this.airBad.has(name)), rest: 0 };
     send(p, {
       t: 'welcome', id: p.id, name, color: p.color, pos: p.pos, q: p.seq, mode: this.mode, cfg: this.cfg,
       players: [...this.players.values()].filter((o) => o !== p).map((o) => this.info(o)),
@@ -460,6 +464,7 @@ class Room {
     if (p.air && p.air.ok) send(p, { t: 'air', on: 1, grace: AIR.grace });
     deal(p);
     this.modeJoin(p);
+    if (this.brOn && !p.watch) this.brJoin(p); // jank royale: a seat on the blimp, or watch till the next one
     this.sendLoadout(p);
     if (this.mode === 'ffa' || this.mode === 'coop') this.broadcast({ t: 'chat', id: 0, m: `${name} joined` });
     if (this.mode === 'bots') this.fillBots();
@@ -472,6 +477,7 @@ class Room {
   remove(p) {
     flushStats(p);
     if (this.bomb && this.bomb.carrier === p.id) this.dropBomb(p.pos, p);
+    if (this.brOn) this.brLeave(p); // their pockets spill out
     this.players.delete(p.id);
     // whatever they threw goes with them (with no owner it would ignore teams and bubbles); their holes and gas go inert
     for (const pr of this.projectiles.values()) if (pr.o === p.id) this.removeProj(pr);
@@ -497,11 +503,12 @@ class Room {
     this.sendLoadout(b); // bots added mid-match get the mode's weapons too
     this.broadcast({ t: 'pj', ...this.info(b) });
     if (!opts.dummy) this.modeJoin(b);
+    if (!opts.dummy && this.brOn) this.brJoin(b);
     return b;
   }
   removeBots() { for (const b of [...this.players.values()]) if (b.isBot) this.remove(b); }
   fillBots() {
-    const want = clampInt(this.cfg.bots, 0, 12);
+    const want = this.brOn ? Math.max(clampInt(this.cfg.bots, 0, 12), clampInt(process.env.JF_BR_BOTS || BR.bots, 0, 31)) : clampInt(this.cfg.bots, 0, 12); // a royale wants a crowd
     const bots = [...this.players.values()].filter((p) => p.isBot);
     for (let i = bots.length; i < want; i++) this.addBot();
     for (let i = want; i < bots.length; i++) this.remove(bots[i]);
@@ -546,9 +553,11 @@ class Room {
       if (this.teamsOn() && t.team === b.team) continue;
       if (t.trap) continue; // sealed in a soap bubble: shooting it would only set them free, wait for the pop
       if (this.friendly(b, t)) continue; // infection: zombies hunt survivors, survivors shoot zombies
+      if (this.brOn && !this.brTargetable(t)) continue; // on the blimp / out
       const d = dist3(t.pos, b.pos);
       const vis = this.canSee(eyeOf(b), [t.pos[0], t.pos[1] + 1, t.pos[2]]);
-      const score = d * (vis ? 1 : 2.5);
+      let score = d * (vis ? 1 : 2.5);
+      if (this.brOn) score = this.brBotScore(b, t, score); // pick fights you can win, third-party the hurt ones
       if (score < bestD) { bestD = score; best = t; }
     }
     return best;
@@ -586,6 +595,7 @@ class Room {
     if (n > ai.retarget) { const t = this.botTarget(b); ai.target = t ? t.id : 0; ai.retarget = n + 400 + Math.random() * 600; }
     let t = this.players.get(ai.target);
     if (t && this.friendly(b, t)) { ai.target = 0; ai.seenAt = 0; t = null; } // teams got reshuffled: that's a teammate now
+    if (this.brOn) this.brBotWeapon(b, t && t.alive ? dist3(t.pos, b.pos) : 20); // the right gun for the range
     this.botChaosThink(b, t, n);
     let wx = 0, wz = 0, jump = false;
     const w = WEAPONS[b.w];
@@ -774,6 +784,7 @@ class Room {
     return [rt[ai.ri][0], rt[ai.ri][2] ?? b.pos[1], rt[ai.ri][1]];
   }
   botGoal(b) {
+    if (this.brOn) return this.brBotGoal(b); // jank royale: zone, heals, loot
     const B = this.bomb;
     if (B && this.game === 'bomb' && B.ph !== 'done' && !B.between) {
       const sites = this.map.sites || [];
@@ -808,6 +819,7 @@ class Room {
 
   botFire(b, t, D) {
     if (this.chaosKit && this.botChaosFire(b, t, D)) return;
+    if (this.brOn && !this.brBotShot(b)) return; // jank royale: real bullets
     const w = WEAPONS[b.w], n = now();
     if (b.w === 'shredder') { this.botShred(b); return; } // no shots: it sucks for as long as they're in front of it
     const iv = w.rate ? 1000 / fireRate(w, b.hp) : w.cd * 1000;
@@ -862,6 +874,7 @@ class Room {
 
   stepBot(b, dt) {
     if (b.trap) { this.driftTrapped(b); return; } // in a soap bubble: no thinking, just floating
+    if (this.brOn && this.brBotStep(b, dt)) return; // jank royale: riding the blimp, falling, gliding
     const n = now();
     const frozen = n < (b.frozenUntil || 0);
     const think = frozen ? { wx: 0, wz: 0, jump: false } : this.botThink(b, dt);
@@ -918,6 +931,7 @@ class Room {
   // one item per loadout (p.item, set with 'itemsel'); its charges are per life and the server's count is the real one.
   // has() = Object.hasOwn: '__proto__' / 'constructor' never become an item
   itemCharges(p) {
+    if (this.brOn && p.br) return this.brIc(p); // jank royale: picked up, never recharges
     const it = ITEMS[p.item] || ITEMS.frag;
     if (!p.ic || p.ic.i !== p.item) p.ic = { i: p.item, n: it.charges, next: 0 };
     const c = p.ic, n = now();
@@ -925,7 +939,7 @@ class Room {
     return c;
   }
   icInfo(p) { const c = this.itemCharges(p); return { i: p.item, n: c.n, next: c.next ? c.next - now() : 0 }; }
-  sendIc(p) { if (!p.isBot) send(p, { t: 'ic', ...this.icInfo(p) }); }
+  sendIc(p) { if (!p.isBot && !(this.brOn && p.br && !(p.br.gadget && p.br.gadget.n > 0))) send(p, { t: 'ic', ...this.icInfo(p) }); } // (jank royale: nothing to say without a gadget)
   // your loadout item changed: right away while dead or in the first 5 s of a life, otherwise from your next life
   // (the client's applyLoadout rule; its 5 s start when 'spawn' reaches it, so allow one round trip more)
   selectItem(p, id) {
@@ -1177,6 +1191,7 @@ class Room {
     if (t.trap) return false; // sealed in a soap bubble: burning, gas and the like can't get in (a real hit pops it, see hurt)
     if (this.hitBlocked(t, attacker, w, from)) return false;
     if (attacker && attacker.isBot && !t.isBot && this.mode !== 'bots') amt *= 0.6; // coop bots hit softer
+    if (this.brOn) { amt = this.brDamage(t, amt, attacker, w); if (amt <= 0) return false; } // loot tiers + armour
     t.hp -= amt;
     if (!attacker || attacker === t) t.selfHurtT = now(); // EPIC: coughing yourself down to 4 HP doesn't make you a clutch hero
     t.lastHs = !!hs;
@@ -1206,6 +1221,7 @@ class Room {
   }
   // out of the play area (map.bounds): OOB.secs to get back, then a void death. the client counts it down on its own
   oobCheck(t, n) {
+    if (this.brOn) return false; // jank royale: the zone is the edge of the map
     if (!this.map.bounds || t.trap || (t.isBot && t.ai.dummy)) return false;
     if (!outOfBounds(this.map, t.pos)) { t.oobAt = 0; return false; }
     if (!t.oobAt) { t.oobAt = n; return false; }
@@ -1291,7 +1307,7 @@ class Room {
       killer.streak = (killer.streak || 0) + 1;
       if (killer.lastKiller === t.id) killer.lastKiller = 0; // revenge served (scales of justice)
       t.lastKiller = killer.id;
-      if (!killer.isBot && this.mode !== 'training' && !this.modeWeapon(killer) && !(this.chaosKit && this.chaosKit.noStreaks)) { // no killstreaks in gun game, as a zombie or in a chaos kit
+      if (!killer.isBot && this.mode !== 'training' && !this.modeWeapon(killer) && !(this.chaosKit && this.chaosKit.noStreaks) && !this.brOn) { // no killstreaks in gun game, as a zombie or in a chaos kit
         // your 3 picked streaks: earn one and it waits in your tray until you use it (keys 5 / 6 / 7)
         for (const id of validStreaks(killer.streaks)) {
           const st = STREAKS[id];
@@ -1335,6 +1351,7 @@ class Room {
     this.chaosKill(t, killer);
     if (t.isBot && this.mode === 'coop') { setTimeout(safe('coop', () => { if (this.players.get(t.id) === t) this.remove(t); }), 50); }
     this.modeKill(t, killer, via || w);
+    if (this.brOn) this.brKill(t, killer, w);
   }
   // is this kill the play of the round? multikills, speed, distance and void kills score higher
   hlCandidate(k, t, w) {
@@ -2450,7 +2467,7 @@ class Room {
     for (const c of this.clouds.values()) this.broadcast({ t: 'cloudx', id: c.id });
     this.bubbles.clear(); this.clouds.clear();
     for (const p of this.players.values()) {
-      if (p.isBot && p.ai.dummy) continue;
+      if ((p.isBot && p.ai.dummy) || p.watch) continue;
       p.alive = true; p.hp = 100; p.vel = [0, 0, 0]; p.spawnT = now(); p.seq++;
       p.parryT = 0; p.staggerUntil = 0; // katana parry: the client resets on 'spawn', so the server does too
       p.pos = this.pickSpawn(p.isBot, p);
@@ -2465,6 +2482,7 @@ class Room {
 
   handle(p, m) {
     if (p.trap && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray'].includes(m.t)) return; // sealed in a soap bubble: no attacks, parries, items, streaks, sprays or planting till it pops
+    if (this.brOn && this.brHandle(p, m)) return; // jank royale: the blimp, loot, heals; only guns you carry, with bullets left
     switch (m.t) {
       case 's': {
         if (!p.alive || m.q !== p.seq) return;
@@ -2645,6 +2663,7 @@ class Room {
     if (this.tickModes(n)) return; // gun game + infection end their own way
     if (this.teamsOn()) { if (this.score[1] >= r.target || this.score[2] >= r.target || n >= r.ends) this.endRound(); return; }
     if (this.livesOn) { this.tickLives(n); return; }
+    if (this.brOn) { this.tickBR(n); return; }
     let top = null;
     for (const p of this.players.values()) if (!top || p.kills > top.kills) top = p;
     if ((top && top.kills >= r.target) || n >= r.ends) this.endRound();
@@ -2654,7 +2673,7 @@ class Room {
     this.modeSort(list, this.round.res);
     const lives = (p) => (p.oitc && !p.oitc.out ? p.oitc.lives : 0);
     if (this.livesOn) list.sort((a, b) => lives(b) - lives(a) || b.kills - a.kills); // one in the chamber: still standing first
-    const lastOne = this.livesOn && list.filter((p) => lives(p) > 0).length === 1;
+    const lastOne = this.livesOn ? list.filter((p) => lives(p) > 0).length === 1 : this.brOn && !!this.br && !!this.br.winner;
     // team games: the winning team takes it, and its best player gets the roll
     let winTeam = 0;
     if (this.teamsOn()) {
@@ -2682,7 +2701,7 @@ class Room {
         roll = { n: 1, kind, why: 'won the round' };
       }
     }
-    this.broadcast({ t: 'round', over: 1, winner: winner ? winner.id : 0, winTeam, game: this.game, sc: this.teamsOn() ? (this.game === 'bomb' && this.bomb ? [this.bomb.wins[1], this.bomb.wins[2]] : [this.score[1], this.score[2]]) : null,
+    this.broadcast({ t: 'round', over: 1, winner: winner ? winner.id : 0, winTeam, game: this.game, br: this.brOn && this.br ? this.brBoardInfo() : undefined, sc: this.teamsOn() ? (this.game === 'bomb' && this.bomb ? [this.bomb.wins[1], this.bomb.wins[2]] : [this.score[1], this.score[2]]) : null,
       top: list.slice(0, 6).map((p) => [p.id, p.name, p.kills, p.deaths, p.team || 0]), next: VOTE_MS + 2000 });
     const r = this.round;
     setTimeout(safe('hl', () => {
@@ -2706,6 +2725,7 @@ class Room {
     if (this.bomb) { this.round.ends = now() + 3600 * 1000; this.newBombRound(true); }
     else this.resetWorld();
     this.airStart(); // after the respawns: a client must get its 'spawn' (fresh grace) before the run starts
+    this.brRound(); // jank royale: everyone onto the blimp (or off with the old one)
     this.broadcast({ t: 'round', start: 1, ...this.roundInfo() });
   }
   // ---------------------------------------------------------- Never Landed: a whole match without touching the ground
@@ -2715,7 +2735,7 @@ class Room {
     this.airBad = new Set(); // names that touched down this match: leaving and rejoining doesn't wipe it
     // Floor Is Lava has no Never Landed run: everyone's kept off the floor there anyway (and the lava bounces you
     // back up), so it would come almost for free
-    if (GAMES[this.game].lava) return;
+    if (GAMES[this.game].lava || GAMES[this.game].royale) return; // (a royale starts in the sky)
     for (const p of this.players.values()) {
       if (p.isBot) continue;
       p.air = { ok: true, rest: 0 };
@@ -3021,6 +3041,7 @@ class Room {
   modeSort(list, res) {
     const g = GAMES[this.game];
     if (g.ladder) list.sort((a, b) => (b.gg || 0) - (a.gg || 0) || b.kills - a.kills || a.deaths - b.deaths);
+    else if (g.royale && this.br) this.brSort(list);
     else if (g.infect && res) list.sort((a, b) => (!!b.inf === (res.side === 'inf')) - (!!a.inf === (res.side === 'inf'))); // stable: by kills within a side
   }
 
@@ -3433,6 +3454,8 @@ class Room {
     this.broadcast({ t: 'sn', s: n, p: ps, wave: this.mode === 'coop' ? this.waveInfo() : undefined, round: this.roundInfo() || undefined });
   }
 }
+
+installRoyale(Room, { send, movePlayer });
 
 // ---------------------------------------------------------------- account stats
 function stat(p, key, v) {

@@ -271,7 +271,7 @@ export function useItem() {
   if (performance.now() - (W.itemT || 0) < 420) return; // same spam limit as the server
   if (c.n <= 0) { sfx.empty(); hud.msg(`${it.name}: recharging`, 0.8); return; }
   W.itemT = performance.now();
-  c.n--; if (!c.next) c.next = performance.now() + it.recharge * 1000;
+  c.n--; if (!c.next && !W.br) c.next = performance.now() + it.recharge * 1000; // (jank royale gadgets don't recharge)
   net.send({ t: 'item', i: id, o: eye().map(r2), d: look().map(r2) });
   if (id === 'wand') return; // no toss: the wand has its own viewmodel and bloops (wand.js)
   if (it.w) popItem(it.w); // party popper / reverse card: pops into your hand (see popEvent for what it does)
@@ -528,7 +528,7 @@ export function toggleScythe() {
 }
 
 export function refillAmmo() {
-  for (const id of ORDER) if (WEAPONS[id].mag) W.ammo[id] = WEAPONS[id].mag;
+  for (const id of ORDER) if (WEAPONS[id].mag && !W.br) W.ammo[id] = WEAPONS[id].mag; // (jank royale: bullets come off the floor)
   W.reloadId = null;
   W.fuel.blower = WEAPONS.blower.fuel;
   W.slipperOut = false;
@@ -612,6 +612,7 @@ export function reload() {
   const id = W.cur, w = WEAPONS[id];
   if (W.noReload) return; // one in the chamber: bullets only come from kills
   if (!w.mag || W.reloadId || W.ammo[id] >= w.mag || !ME.alive) return;
+  if (W.br && !W.br.canReload(id)) return; // jank royale: no spare bullets
   W.reloadId = id;
   W.reloadUntil = performance.now() + w.reload * 1000;
   sfx.reload();
@@ -925,6 +926,7 @@ export function fireDown() {
   const id = W.cur, w = WEAPONS[id], now = performance.now();
   W.fanning.down = now; W.fanning.arm = true; // revolver: keep holding from here to fan the hammer
   if (!ME.alive || W.reloadId === id || !ready(id, now)) return;
+  if (W.br && W.br.dry(id)) { W.held = false; return; } // jank royale: out of shots
   if (W.anim && W.anim.kind === 'draw') W.anim = null;
   if (w.kind === 'hitscan' && !w.auto && !w.spinup) {
     if (W.ammo[id] > 0) fireHitscan(id, now); else { sfx.empty(); reload(); }
@@ -1127,7 +1129,7 @@ export function updateWeapons(dt, now) {
   W.fuel.blower = (W.held && id === 'blower') ? W.fuel.blower : Math.min(WEAPONS.blower.fuel, W.fuel.blower + WEAPONS.blower.regen * dt);
   W.bloom = Math.max(0, W.bloom - dt * 0.06);
   if (W.slipperOut && now - W.slipperT > 4000) W.slipperOut = false;
-  if (W.reloadId && now >= W.reloadUntil) { W.ammo[W.reloadId] = WEAPONS[W.reloadId].mag; W.reloadId = null; sfx.click(); }
+  if (W.reloadId && now >= W.reloadUntil) { if (W.br) W.br.reloaded(W.reloadId); else W.ammo[W.reloadId] = WEAPONS[W.reloadId].mag; W.reloadId = null; sfx.click(); }
   const canAim = !!w.ads && alive && !W.reloadId;
   W.aim = canAim && W.aimHeld ? Math.min(1, W.aim + dt * 7) : Math.max(0, W.aim - dt * 8);
   W.zoom = w.ads ? 1 + (w.ads.zoom - 1) * W.aim : 1;
@@ -1252,7 +1254,8 @@ export function updateWeapons(dt, now) {
   // ---- HUD
   if (ITEMS[W.item]) { const c = charges(W.item), it = ITEMS[W.item]; hud.item(c.n, it.charges, c.next ? 1 - Math.max(0, c.next - now) / (it.recharge * 1000) : 1); }
   updatePop(dt);
-  if (w.mag) hud.ammo(W.ammo[id], w.mag, !!W.reloadId);
+  if (W.br) W.br.hud(id, !!W.reloadId); // jank royale: mag / spare bullets
+  else if (w.mag) hud.ammo(W.ammo[id], w.mag, !!W.reloadId);
   else hud.ammo(null);
   if (W.reloadId) hud.meter(1 - (W.reloadUntil - now) / (w.reload * 1000), 'RELOADING', '#ffffff');
   else if (isScythe(id)) hud.meter(W.dashFuel / D.max, ME.dashing ? 'GLITCHING' : 'V: GLITCH DASH · X: SWAP MODE', '#ff00dc');
