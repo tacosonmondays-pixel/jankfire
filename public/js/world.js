@@ -12,7 +12,9 @@ import { addVibe } from './vibe.js';
 import { addForest } from './forestmats.js';
 import { updateForest, forestMap } from './forest.js';
 import { shredMap, updateShredPit } from './shredpit.js'; // the Warehouse's shredder pit: the drums, the glow, the grind
-import { buildProps, hasProp } from './props.js';
+import { buildPropField, updatePropField, drawnByModel, fetchMapProps } from './propfield.js'; // Blender props, instanced (round 4)
+import { TRAFFIC } from '/shared/traffic.js';
+const trafficKinds = (def) => { const t = MAP.id && Object.hasOwn(TRAFFIC, MAP.id) ? TRAFFIC[MAP.id] : null; return t && t.mix ? Object.keys(t.mix) : null; }; // (their Blender cars come with the map)
 import { initLighting, lightingMap, lightingRefresh, updateLighting, setLightPreset, aoBegin, aoBake, aoMaterials, setSunBoxes } from './lighting.js';
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
@@ -237,14 +239,14 @@ function buildMap(scene) {
   if (def && def.chunk) { buildChunked(scene, def); return; }
   const groups = new Map();
   const push = (k, g) => { if (!groups.has(k)) groups.set(k, []); groups.get(k).push(g); };
-  // deco: drawn, never bumped into. a Blender prop stands in only for real boxes (props.js draws map.boxes.props): look-only
-  // scenery keeps its boxes (the city alone has hundreds of streetlights and cars, too many models to draw one by one)
-  const all = def && def.deco ? [...BOXES, ...def.deco] : BOXES, nReal = BOXES.length;
+  // deco: drawn, never bumped into. a box tagged with a Blender prop isn't drawn while its model is loaded: the model is
+  // (propfield.js, one instanced draw per prop type, so the scenery's thousands of trees and lights can be models too)
+  const all = def && def.deco ? [...BOXES, ...def.deco] : BOXES;
   const ncf = noCastFn(def);
   aoBegin(all, ncf); setSunBoxes(all);
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
-    if (i < nReal && b.pv && hasProp(b.pv)) continue;
+    if (b.pv && drawnByModel(b.pv)) continue;
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
     const mk0 = MAT[b.mat] ? b.mat : 'stone', small = aoSmall(sx, sy, sz);
@@ -283,12 +285,12 @@ function buildMap(scene) {
 // outer walls) go in one mesh per material that's always drawn, or they'd make their whole chunk impossible to cull
 function buildChunked(scene, def) {
   const C = def.chunk, groups = new Map();
-  const all = def.deco ? [...BOXES, ...def.deco] : BOXES, nReal = BOXES.length;
+  const all = def.deco ? [...BOXES, ...def.deco] : BOXES;
   const ncf = noCastFn(def);
   aoBegin(all, ncf); setSunBoxes(all);
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
-    if (i < nReal && b.pv && hasProp(b.pv)) continue; // (as in buildMap: only real boxes give way to a prop)
+    if (b.pv && drawnByModel(b.pv)) continue; // (as in buildMap)
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
     const mk = MAT[b.mat] ? b.mat : 'stone', nc = ncf && ncf(b) ? '~' : '';
@@ -422,7 +424,8 @@ export function loadMap(id) {
   marbles.clear();
   resetGrid(BOXES);
   buildMap(G.scene);
-  buildProps(G.scene, MAPS[MAP.id] && MAPS[MAP.id].boxes.props);
+  buildPropField(G.scene, MAPS[MAP.id], MAT);
+  fetchMapProps(MAPS[MAP.id], MAP.id, trafficKinds(MAPS[MAP.id]), refreshMapVisuals); // this map's prop models (once they're in: one redraw)
   paintSky(MAP.sky);
   G.scene.fog.color.setHex(MAP.sky.fog);
   G.scene.fog.near = MAP.fogNear;
@@ -449,7 +452,7 @@ export function loadMap(id) {
 export function refreshMapVisuals() {
   if (!MAP.id || !G.scene || !MAT) return;
   buildMap(G.scene);
-  buildProps(G.scene, MAPS[MAP.id] && MAPS[MAP.id].boxes.props);
+  buildPropField(G.scene, MAPS[MAP.id], MAT);
   lightingRefresh();
 }
 
@@ -479,6 +482,7 @@ export function updateWorld(dt) {
 let lastT = 0;
 export function renderFrame() {
   const r = G.renderer, now = performance.now();
+  updatePropField(G.camera); // which prop copies to draw, near or far (only after a step or a turn)
   updateLighting(Math.min(0.1, (now - (lastT || now)) / 1000)); lastT = now;
   r.clear();
   r.render(G.scene, G.camera);
