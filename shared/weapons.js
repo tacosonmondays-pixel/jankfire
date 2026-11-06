@@ -102,7 +102,7 @@ export const WEAPONS = {
   },
   cig: {
     slot: 'secondary', kind: 'cone', name: 'Cigarette', color: '#ff7a1a',
-    desc: 'Hold to smoke. Let go to breathe fire for as long as you inhaled. Too long and you cough.',
+    desc: 'Hold to smoke. Let go to breathe fire for as long as you inhaled. Hold it into TOO MUCH and you cough smoke instead of fire (and it hurts).',
     range: 13, cone: 0.42, dmg: 5, tick: 0.09, maxCharge: 3, coughAt: 4.5, exhaleMul: 1.2, jet: 6,
   },
   // the shot is paid in your own HP (cost). the bolt sticks, a cross bursts out of them (fuse), then pops (burst) for dmg + a small blast
