@@ -13,7 +13,7 @@ const PORT = opt('port', 3000), OUT = opt('out', 'docs/story/scenes'), FPS = Num
   const pg = await b.newPage({ viewport: { width: W, height: H } });
   const errs = []; pg.on('pageerror', (e) => errs.push(e.message));
   await pg.addInitScript(() => { if (!sessionStorage.getItem('jfInit')) { localStorage.setItem('jankfire', JSON.stringify({ name: 'director', jank: 3 })); sessionStorage.setItem('jfInit', '1'); } });
-  await pg.goto(`http://localhost:${PORT}/?story=1&fresh=1`);
+  await pg.goto(`http://localhost:${PORT}/?story=1&fresh=1&lab=1`);
   const pump = (ms) => new Promise((r) => setTimeout(r, ms));
   const step = async () => { await pg.evaluate((dt) => { window.JF_STORY.capStep = dt; }, 1 / FPS); await pg.waitForFunction(() => window.JF_STORY.capStep === 0, null, { polling: 'raf' }); await pg.evaluate(() => new Promise((r) => requestAnimationFrame(() => r()))); };
   await pump(1500);

@@ -169,3 +169,23 @@ doesn't have yet:
   which is still complete. The pack works around it by running a step's after-actions at the start of the next step.
 - Dialogue stores a `said.*` flag per node visited. A first-option playthrough already reaches 602 flags (394 of them
   `said.*`), over `LIMITS.flags` (600). `said.*` probably wants its own capped store, or a bigger limit.
+
+### Engine support for the additions (WP8, `public/js/story/boot.js` + `scene.js`)
+- `init` runs once per new game (flag `init_done`); `autostart` is offered on load and after every quest ends.
+- Host actions: `talk:NPC/NODE` opens the conversation once whatever is talking now ends (a scene holds its timeline
+  while a choice is open; `choice` has no body, so the box shows without a camera). `boss:ID` plays the boss title
+  card from `bosses[ID].card` / `subtitle`. `implant:ID` puts `implant.ID` in the bag, so `has.implant.ID` works.
+  `turf`, `loot`, `fees`, `call`, `unlock`, `collect` show a toast until their systems land (fees keeps `var.fees`).
+- Vars: `clock.DISTRICT` starts at 17:29 for every district (the sim's clock); `drift` and `cats` wait for their systems.
+- `home: { zone }` and `zones` with `p: null`: until the districts have coordinates the client lays every zone out
+  on the test lot (labelled signs, districts grouped, act I nearest the Lost & Found) and people stand at their zone.
+  A zone's `p` (world coordinates), once the world lane fills it, wins.
+- `things` with `do`: a spot at its zone you can use (once, flag `used.ID`). Steps' `pickup` / `interact` goals get
+  a spot at their `zone` / `marker` / the thing's zone.
+- Scenes in the script's shape (string `cast` values, `dir`, `panel` tracks, string `title` and `boss`, track `if`,
+  `flashback`) are adapted on play: panel tracks become the panel list, lines without a camera get coverage
+  (closeups on the speaker, two-shots), named camera paths fall back to an orbit until the world has them.
+- Characters without a hand-made look get one seeded from their cast entry (`body`, and the `look` text picks the
+  puppet's huge feature).
+- Dialogue memory is `st.said` (not flags): `said.NPC.NODE` in conditions; packed per character in the save.
+- Rehearsal: shift+R fakes the tracked step's next goal (for systems other lanes haven't built yet).

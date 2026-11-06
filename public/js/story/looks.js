@@ -183,13 +183,49 @@ const LOOKS = {
     return { ...p, kind: 'puppet', height: 1.35, eyeY: 1.3 };
   },
 };
+// everyone else in the script gets a seeded look from their cast entry (body: mannequin / normal / puppet) until they
+// get a hand-made one: skin, clothes and pattern from the palette; puppets pick one huge + one tiny feature, and the
+// cast bible's description nudges which (forearms, head, nose, hands, legs, eyes)
+const SKINS = [0xf0a080, 0xe8c0d8, 0xc8e0b0, 0xf6e08a, 0xffc8a0, 0xb8c8e0, 0xd8b8f0, 0xe8b896, 0x9a6a50];
+const CLOTH = [0xff4fd8, 0x4fd8ff, 0xffe14d, 0x7dff4f, 0xff8a3a, 0x8a3a5a, 0x3a5a8a, 0x2a2a3a, 0xf4f4f0, 0xc04030];
+function generic(id, hint = {}) {
+  let sd = 7; for (const ch of id) sd = (sd * 31 + ch.charCodeAt(0)) >>> 0;
+  const r = () => ((sd = (sd * 16807) % 2147483647) / 2147483647), pick = (a) => a[Math.floor(r() * a.length)];
+  const body = hint.body || 'normal', desc = (hint.desc || '').toLowerCase();
+  if (body === 'mannequin' || body === 'cyborg') return LOOKS.mannequin();
+  const SK = pick(SKINS), top = pick(CLOTH), leg = pick([0x2a2a3a, 0x3a5a8a, 0x5a3a2a, 0x3a3a50, top]);
+  const topM = r() < 0.5 ? patMat('k' + top, 64, 64, knit('#' + top.toString(16).padStart(6, '0'), '#000000'), [2, 1]) : flat(top);
+  if (body !== 'puppet') {
+    const p = person({ skin: SK, legCol: leg, shoe: pick([0x2a2420, 0x5a2a3a, 0x111111]), s: 0.95 + r() * 0.15, hunch: r() * 0.15, sleeveMat: topM,
+      torso: (sp, tH) => sp.add(sph(0.2, topM, 0, tH * 0.55, 0, 1.15, 1.2, 0.78)), headR: [0.12, 0.15, 0.13],
+      head: (h, rr, m) => { h.add(sph(1, m, 0, rr[1], 0, rr[0], rr[1], rr[2], 14)); h.add(sph(0.03, m, 0, rr[1] * 0.9, -rr[2], 1, 1.2, 1.1));
+        if (r() < 0.7) h.add(sph(0.13, flat(pick([0x1a1a1a, 0xd8d4cc, 0x8a4a2a, 0xffe14d, 0xff4fd8])), 0, rr[1] * 1.5, 0.03, 1.05, 0.7, 1.05)); },
+      face: { eyeR: 0.028, eyeY: 0.17, iris: pick([0x3fbf5a, 0x5a7ad0, 0x6a5030]), mouthW: 0.07, mouthY: 0.07, lip: 0xc0707a, glasses: r() < 0.25 ? 0x222222 : undefined } });
+    return { ...p, kind: 'normal', height: 1.8, eyeY: 1.72 };
+  }
+  // puppets: one huge, one tiny (ART_BIBLE §1)
+  const want = ['forearm', 'head', 'face', 'nose', 'hand', 'leg', 'eye'].filter((w) => desc.includes(w));
+  const huge = want[0] || pick(['head', 'forearm', 'nose', 'hand']), tiny = pick(['leg', 'head', 'hand'].filter((t) => t !== huge));
+  const bigHead = huge === 'head' || huge === 'face', tinyHead = tiny === 'head';
+  const hr = bigHead ? [0.25, 0.28, 0.24] : tinyHead ? [0.09, 0.11, 0.1] : [0.13, 0.16, 0.14];
+  const skin = patMat('sk' + SK, 64, 64, speckle('#' + SK.toString(16).padStart(6, '0'), ['#a06a60', '#ffffff']), [2, 2], 0.42);
+  const p = person({ skin: SK, skinMat: skin, legCol: leg, shoe: 0x1a1a1a, s: 0.9 + r() * 0.5, legS: tiny === 'leg' ? 0.55 : 0.9, hunch: r() * 0.3,
+    foreS: huge === 'forearm' ? 2.6 : 1, handS: huge === 'hand' ? 2.4 : tiny === 'hand' ? 0.6 : 1, armR: huge === 'forearm' ? 1.2 : 1, fore: huge === 'forearm' ? 0.38 : 0.24, sleeveMat: topM,
+    torso: (sp, tH) => sp.add(sph(huge === 'forearm' ? 0.3 : 0.2, topM, 0, tH * 0.55, 0, 1.15, 1.2, 0.8)), headR: hr, neck: bigHead ? 0 : 0.06,
+    head: (h, rr, m) => { h.add(sph(1, m, 0, rr[1], 0, rr[0], rr[1], rr[2], 16)); const ns = huge === 'nose' ? 2.6 : 1; h.add(sph(0.035 * ns, m, 0, rr[1] * 0.85, -rr[2] * 1.02 - 0.02 * ns, 1, 1.3, 1.6));
+      if (r() < 0.6) for (let i = 0; i < 7; i++) { const a = (i / 6 - 0.5) * 2, sp = mesh(new THREE.ConeGeometry(0.04, 0.16, 5), flat(pick([0x2a1a3a, 0xffe14d, 0x7dff4f])), Math.sin(a) * rr[0] * 0.7, rr[1] * 1.95, 0.02); sp.rotation.z = -a * 0.6; h.add(sp); } },
+    face: { s: bigHead ? 1.5 : tinyHead ? 0.7 : 1, eyeR: huge === 'eye' ? 0.06 : 0.038, eyeY: hr[1] * 1.15, iris: pick([0xe8d030, 0x3fbf5a, 0xd0405a]), redRim: r() < 0.4, mouthW: 0.1, mouthY: hr[1] * 0.45,
+      lip: pick([0xb04870, 0xd0607a, 0x7a3a8a]), teeth: pick(['needle', 'tomb', 'none']), brow: 0x2a1a3a, lidColor: SK, z: -hr[2] * 0.94 } });
+  return { ...p, kind: 'puppet', height: 1.9, eyeY: 1.8 };
+}
 const FACE_LOCK = new WeakMap();
 export const faceLocked = (face) => FACE_LOCK.get(face);
 export const LOOK_IDS = Object.keys(LOOKS);
 
-export function buildLook(id) {
-  const L = (LOOKS[id] || LOOKS.mannequin)();
-  L.look = LOOKS[id] ? id : 'mannequin';
+// hint: { body, desc } from the cast bible, for characters without a hand-made look yet
+export function buildLook(id, hint) {
+  const L = LOOKS[id] ? LOOKS[id]() : hint ? generic(String(id || 'x'), hint) : LOOKS.mannequin();
+  L.look = LOOKS[id] ? id : hint ? 'generic' : 'mannequin';
   L.ch.root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; } });
   return L;
 }

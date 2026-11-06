@@ -40,7 +40,7 @@ export const CLIPS = {
 // def: an npc def (shared/story content). at: [x, y, z] world (already offset by the host). face: yaw
 export function spawnActor(id, def, at, face = 0) {
   despawnActor(id);
-  const L = buildLook(def.look);
+  const L = buildLook(def.look, def.hint);
   const a = {
     id, def, L, ch: L.ch, face: L.face, pos: [...at], yaw: face, home: { p: [...at], face }, voice: voice(def.voice),
     // the fake "remote" locoPose reads (it keeps its own state in r.lo)

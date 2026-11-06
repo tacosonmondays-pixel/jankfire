@@ -42,8 +42,41 @@ export const playing = () => !!P;
 export const sceneList = () => Object.keys(ST.S.defs.scenes);
 
 // ---------------------------------------------------------------- start / stop
+// the script's scenes (shared/story/content/scenes_act*.js) are mostly directions, lines and comic-panel tracks with
+// few cameras: this turns one into what the player runs. cast values that are strings name an npc; panel tracks become
+// the panel list; tracks with `if` are dropped when false; a boss track names a boss; title is a string; flashbacks
+// play as cinematics; and lines without a camera get coverage (a closeup on whoever speaks, a wide on the directions)
+const SHOT_ALIAS = { overShoulder: 'over', insert: 'extreme', pov: 'closeup' };
+function normScene(d) {
+  const S = ST.S, out = { ...d, kind: d.kind === 'flashback' ? 'cinematic' : d.kind, cast: {}, tracks: [] };
+  for (const [k, v] of Object.entries(d.cast || {})) out.cast[k] = typeof v === 'string' ? (k === 'you' || v === 'change' ? { look: 'mannequin', name: 'YOU' } : actors.has(v) ? { actor: v } : { npc: v }) : v;
+  const panels = [];
+  let lastCam = -9, lastSay = null, shotN = 0;
+  const castKeys = Object.keys(out.cast);
+  for (const t0 of d.tracks || []) {
+    if (t0.if && !S.test(t0.if)) continue;
+    const t = { ...t0 };
+    delete t.if; delete t.dir;
+    if (typeof t.title === 'string') t.title = [t.title, '', 2.5];
+    if (t.cam) { t.cam = { ...t.cam }; if (SHOT_ALIAS[t.cam.shot]) { t.cam.from = t.cam.from || 'you'; t.cam.shot = SHOT_ALIAS[t.cam.shot]; } if (typeof t.cam.path === 'string') { t.cam = { shot: 'orbit', target: castKeys.find((k) => k !== 'you') || castKeys[0], dur: t.cam.dur || 8, turn: 0.8, r: 6, up: 2, fov: t.cam.fov }; } lastCam = t.t; }
+    if (typeof t.boss === 'string') { const b = (S.defs.bosses || {})[t.boss] || {}; const [name, job] = String(b.card || t.boss).split(' · '); t.boss = { name, job: job || '', sub: b.subtitle || '', target: castKeys.find((k) => k !== 'you'), rehired: !!(S.st.flags[`beat.${t.boss}`]) }; }
+    if (t.choice && !t.do) delete t.choice;
+    if (t.panel) { const pn = { at: t.t, cap: t.panel.cap, sfx: t.panel.sfx, crayon: /auntie/.test(JSON.stringify(d.cast || {})) && d.kind === 'panels', shot: { target: castKeys[shotN % Math.max(1, castKeys.length)] || 'you', shot: ['closeup', 'lowAngle', 'wide', 'extreme'][shotN % 4] } }; shotN++; panels.push(pn); delete t.panel; }
+    if (t.say && out.kind === 'panels' && panels.length) { const pn = panels[panels.length - 1]; if (!pn.say) pn.say = t.say; }
+    // coverage: cut to whoever speaks (if nothing else has the camera right now)
+    if (t.say && out.kind !== 'panels' && !t.cam && t.t - lastCam > 2.5 && t.say[0] !== lastSay && out.cast[t.say[0]]) { t.cam = { shot: shotN++ % 3 === 2 ? 'two' : 'closeup', target: t.say[0], from: castKeys.find((k) => k !== t.say[0] && k !== 'you'), dur: 4 }; lastCam = t.t; }
+    if (t.say) lastSay = t.say[0];
+    if (Object.keys(t).length > 1) out.tracks.push(t);
+  }
+  if (out.kind === 'cinematic' && !out.tracks.some((t) => t.cam && t.t < 1) && castKeys.length) out.tracks.unshift({ t: 0, cam: { shot: 'wide', target: castKeys.find((k) => k !== 'you') || castKeys[0], dur: 6 } });
+  if (panels.length) { out.panels = panels.slice(0, 6); out.kind = 'panels'; if (panels.length > 6) out.panels = panels.slice(-6); }
+  if (out.kind === 'panels' && !d.len) out.len = undefined;
+  return out;
+}
+
 export function playScene(id, opts = {}) {
-  const def = typeof id === 'object' ? id : ST.S.defs.scenes[id];
+  const def0 = typeof id === 'object' ? id : ST.S.defs.scenes[id];
+  const def = def0 && def0.tracks && def0.tracks.some((t) => t.dir || t.panel || typeof t.title === 'string' || typeof t.boss === 'string' || t.if) || def0 && Object.values(def0.cast || {}).some((v) => typeof v === 'string') ? normScene(def0) : def0;
   if (!def) { console.warn('no scene', id); return false; }
   if (P || (talking() && def.kind !== 'talk')) { queue.push([def, opts]); return true; } // (a scene waits for the one playing, or for the conversation to end)
   P = { def, t: 0, i: 0, tracks: [...(def.tracks || [])].sort((a, b) => a.t - b.t), cast: new Map(), temp: [], hold: 0, stop: 0, slow: 1, sub: null, opts, kind: def.kind || 'cinematic', len: def.len ?? 10, skipK: 0, done: false };
@@ -119,7 +152,7 @@ function runTrack(tr) {
   if (tr.fade) { const f = $('stFade'); f.style.transition = `opacity ${tr.fade[1] ?? 0.5}s`; f.style.opacity = tr.fade[0]; }
   if (tr.letterbox != null) bars(tr.letterbox);
   if (tr.title) title(tr.title);
-  if (tr.boss) bossCard(typeof tr.boss === 'string' ? ST.S.defs.scenes[tr.boss] || { name: tr.boss } : tr.boss);
+  if (tr.boss) bossCard(tr.boss);
   if (tr.slowmo) { P.slow = tr.slowmo[0]; P.slowEnd = P.t + (tr.slowmo[1] ?? 1); }
   if (tr.do) ST.S.run(tr.do, `scene ${P.def.id}`);
   if (tr.wait) P.waitFor = tr.wait;
@@ -231,6 +264,7 @@ export function sceneFrame(dt, now, cam) {
   ST.slowmo = P.slow;
   const sdt = dt * P.slow;
   if (P.waitFor) { if (ST.S.test(P.waitFor)) P.waitFor = null; else return; }
+  if (talking() && P.kind !== 'talk') return; // (a choice opened mid-scene: the scene waits for it)
   P.t += sdt;
   if (P.camN == null) P.camN = 0;
   while (P.i < P.tracks.length && P.tracks[P.i].t <= P.t) runTrack(P.tracks[P.i++]);
@@ -256,6 +290,6 @@ export function sceneFrame(dt, now, cam) {
 export function sceneKey(e) {
   if (!P) return false;
   if (K.matches('menu', e)) return false;
-  if (P.kind === 'talk') return false; // the talk box takes its own keys
+  if (P.kind === 'talk' || talking()) return false; // the talk box takes its own keys
   return true; // a scene eats every other key (hold jump to skip is read in sceneFrame)
 }
