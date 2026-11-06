@@ -119,14 +119,14 @@ for (const k of Object.keys(ANIMS)) if (!ANIMS[k].dur) ANIMS[k].dur = ANIMS[k].k
 export function rifleShot(id, w, W, now) {
   RF.lastShot = now;
   if (w.heatUp) RF.heat = Math.min(1, RF.heat + w.heatUp / w.rate);
-  if (w.burst) {
+  if (w.burst && w.kind === 'hitscan') {
     if (RF.bLeft <= 0) RF.bLeft = w.burst;
     RF.bLeft--;
     if (RF.bLeft <= 0) W.cd[id] += w.burstGap * 1000; // the burst is done: a breath before the next one
   }
   if (id === 'lever') W.cycle = { name: 'lever_cycle', t: 0.04 };
 }
-export const bursting = (w) => !!w.burst && RF.bLeft > 0; // a tap fires the whole burst
+export const bursting = (w) => !!w.burst && w.kind === 'hitscan' && RF.bLeft > 0; // a tap fires the whole burst
 export function rifleReset() { RF.bLeft = 0; }
 export const quickScoped = (w, W, now) => !!w.quick && W.scoped && now - W.scopedAt <= w.quick * 1000;
 

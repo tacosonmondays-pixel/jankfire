@@ -1167,7 +1167,7 @@ export function fireDown() {
   if (W.anim && W.anim.kind === 'draw') W.anim = null;
   if (w.kind === 'hitscan' && !w.auto && !w.spinup) {
     if (W.ammo[id] > 0) fireHitscan(id, now); else { sfx.empty(); reload(); }
-  } else if (w.burst) { if (W.ammo[id] > 0) fireHitscan(id, now); } // Hat Trick: the burst starts on the press, a tap finishes it
+  } else if (w.burst && w.kind === 'hitscan') { if (W.ammo[id] > 0) fireHitscan(id, now); } // Hat Trick: the burst starts on the press, a tap finishes it (the Blood Cross's `burst` is its pop delay, not a burst)
   else if (w.kind === 'melee') swing(id, now);
   else if (w.kind === 'proj' && !w.auto) fireProj(id, now);
   else if (w.kind === 'cards') playCard(now);
