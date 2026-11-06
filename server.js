@@ -23,6 +23,7 @@ import { BODY, bodyKinds } from './shared/bodyhp.js';
 import { rigClash } from './shared/rig.js'; // overdrive rig killstreak
 import { soapAt, trapBoxes, trapPreroll } from './shared/wand.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
+import { warmMap, startGraphSweeper } from './server/graphs.js'; // the bots' walk graphs: built at room start, dropped when no room has used the map for a while
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, mapForGame, canDefuse, LADDER, GUNGAME, INFECT } from './shared/modes.js';
 import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, eventGame, inQuickPlay } from './shared/vote.js';
 import { matchReset, matchKill, matchSummary } from './server/match.js';
@@ -271,6 +272,8 @@ if (process.env.JF_ZM_CREDITS) ZM.start = Number(process.env.JF_ZM_CREDITS) || Z
 if (process.env.JF_ZM_REST) ZM.rest = ZM.first = Number(process.env.JF_ZM_REST) || ZM.rest;
 if (process.env.JF_ZM_SWIPE) ZM.swipe = Number(process.env.JF_ZM_SWIPE); // 0 = zombies can't hurt you (UI tests)
 if (process.env.JF_ZM_BLEED) ZM.bleed = Number(process.env.JF_ZM_BLEED) || ZM.bleed;
+const GRAPH_TTL = (Number(process.env.JF_GRAPH_TTL) || 10) * 60e3; // test knob: minutes a map's bot walk graph outlives the last room on it (then it's dropped, server/graphs.js)
+const GRAPH_SWEEP = (Number(process.env.JF_GRAPH_SWEEP) || 60) * 1e3; // test knob: seconds between the sweeps that drop them
 function randomSkins() {
   const out = {};
   for (const id of Object.keys(WEAPONS)) if (Math.random() < 0.6) out[id] = [pick(SKIN_F), pick(SKIN_H), pick(SKIN_E), id === 'knife' ? pick(['default', 'knife_karambit', 'knife_butterfly', 'knife_switch', 'knife_cleaver']) : 'default', pick(WRAP_MODES)];
@@ -3811,6 +3814,7 @@ class Room {
   }
 
   tick(dt) {
+    if (this._warm !== this.cfg.map) { this._warm = this.cfg.map; warmMap(this, this.cfg.map); } // a new map: its bots' walk graph is built now, before the match gets going
     const n = now();
     if (this.mode === 'bots' && !this.bomb) this.dropLeavers(false); // (Plant & Defuse: the dead stay till the round ends)
     this.tickRound();
@@ -4150,8 +4154,9 @@ wss.on('connection', (ws) => {
   }));
 });
 
-// maze maps build their bots' walk graph (and lanes) the first time they're asked for: do it now, not mid-match
-for (const m of Object.values(MAPS)) if (m.graph) void m.nav;
+// the bots' walk graphs (and the maze maps' lanes) are built when a room starts on a map (Room.tick -> warmMap), not all
+// at boot (together they were ~150 MB of the heap), and dropped once no room has been on a map for GRAPH_TTL
+startGraphSweeper(() => rooms.values(), GRAPH_TTL, GRAPH_SWEEP);
 
 // ---------------------------------------------------------------- loops
 const TICK = 1 / 60;
