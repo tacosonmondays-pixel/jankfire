@@ -1,6 +1,7 @@
 # OVERDUE art bible
 
-How story mode looks. It builds on the game's existing look (chunky low-poly, bright saturated colours, glossy
+How story mode looks: a **post-apocalyptic, surreal** city, the ruins of Greater Jankburg after the Final Quarter,
+where the companies that ended the world still run their districts. It builds on the game's existing look (chunky low-poly, bright saturated colours, glossy
 bevelled Blender models, the pink/yellow/cyan comic UI, render presets from Potato to Too HD) and adds the owner's
 references: **rubbery claymation puppets, uncanny faces, bold patterns, pastel and fleshy palettes, stacked surreal
 architecture.** The references are the vibe; no character, costume or set is copied from them.
@@ -16,7 +17,7 @@ The city mixes three body types on purpose. The contrast is the joke and the hor
 | type | who | proportions | read |
 |---|---|---|---|
 | **Mannequins** | the player, Corp workers, shoppers, suburb families, crowd extras | the game's existing jointed mannequin (1.8 m, ~1 : 7.5 heads), ball joints, built-in jank (random tilt, a wrong knee) | "returned product" |
-| **Normals** | everyday citizens, shopkeepers, cops' faces under helmets | chunky low-poly humans, 1 : 6 heads, simple faces (dot eyes, a mouth line), boxy hands | "the people trying to get to work" |
+| **Normals** | survivors, scavengers, shopkeepers, raiders, cops' faces under helmets | chunky low-poly humans in scavenged clothes, 1 : 6 heads, simple faces (dot eyes, a mouth line), boxy hands | "the people trying to get through the day" |
 | **Puppets** | faction characters, quest givers, bosses: the mafia, the jesters, the Gut Choir, Lumps, Wee Gordo, Auntie Spreadsheet | **exaggerated**: head 1 : 2.5 to 1 : 3.5 of the body, or a tiny head on a giant body; hands either tiny or enormous; never "normal" | "a claymation nightmare that loves you" |
 
 ### Puppet proportion rules
@@ -89,8 +90,22 @@ Base game palette stays the UI: hot pink `#ff4fd8` / `#ff00dc`, yellow `#ffe14d`
 | **Evergreen Acres** | lawn green, sky blue, pastel house colours | a perfect sitcom-blue sky, perfect sun, a little too saturated |
 | **The Lates** | mustard, beige, fluorescent white, a pink rot creeping in | no sky (a ceiling), buzzing fluorescent light, a faint yellow fog |
 | **The Margins** | dark pine green, grey, void black with a gloss | dusk purple sky, heavy fog, the void reflects nothing |
+| **The Commute** | sun-bleached tarmac, rust orange, faded car paint, paper white | dusty orange sky, paper storms (white confetti fog), long shadows |
 
 ## 4. Architecture and props per district
+
+### Ruin rules (the whole city is after the end of the world)
+- **Every district is a ruin with a ruler.** Start from the pre-apocalypse building (the sims' look), then break it in
+  that district's way: the Stampede flattened things (crushed cars, trampled shopfronts), the Gut grew over things
+  (flesh on brick), the digits fell on things (a giant 4 through a roof), the void ate things (clean black cuts).
+- **Then repair it in the ruler's style.** Companies patch with branding (fresh logos and SALE banners on cracked
+  concrete, ☺ CORP's bleach-white plastic panels); groups patch with scrap (office furniture, shopping carts, car
+  doors, vending machines, tarps in tie-dye).
+- **Readable decay, not mud.** Ruins stay bright and saturated: pastel concrete, candy rust, glossy flesh. Grime is a
+  small texture, never a brown filter over everything.
+- **Scavenger props everywhere:** barricades of filing cabinets and office chairs, cart walls, burning ☺buck barrels,
+  scrap lean-tos, dead traffic jams, hand-painted signs in the lowercase voice ("no interns", "soup 2 coupons").
+- **Corp Hill is the exception:** a perfect clean bubble, with a bleach line on the road where the rubble ends.
 
 General city rules (the game's existing map rules): **big readable blocks**, scenery all around (never a void, except
 the Margins where the void is the point), streets wide enough for cars and grapple swings, everything climbable
@@ -99,16 +114,16 @@ balconies), so districts can be assembled from code like Jankburg's `build()`.
 
 | district | architecture | signature props |
 |---|---|---|
-| **The Bottom** | stacked pastel cube houses climbing a steep hill, every roof is someone's floor, external stairs, rebar sticking out | washing lines, wok satellite dishes, sofas, fridges, scooters, plastic chairs, string lights, a sofa-car |
-| **The Gut** | the old buildings grown over with skin; rib arches; intestine tubes as streets; sphincter doors; lungs between buildings | teeth cobbles, vein cables, eyeballs in gutters, stomach-dogs, organ cores in jars, a tongue door |
+| **The Bottom** | stacked pastel cube houses climbing a rubble hill, built from shipping containers, dead vending machines and fallen ☺ signs; every roof is someone's floor, external stairs, rebar sticking out | the Machine, washing lines, wok satellite dishes, sofas, fridges, scooters, plastic chairs, string lights, a sofa-car |
+| **The Gut** | Gristle & Sons' old office campus grown over with skin (the logo still visible under it); rib arches; intestine tubes as streets; sphincter doors; lungs between buildings | teeth cobbles, vein cables, eyeballs in gutters, stomach-dogs, organ cores in jars, a tongue door |
 | **Pinstripe** | gothic stone mansions, marble halls, arched windows, pink stucco restaurant interiors with checkerboard floors | velvet ropes, gold medallions, bocce balls, meatballs (huge), spaghetti, chandeliers, marionette strings from the sky |
-| **The Checkout** | a mall dome over streets, escalators between levels, shopfronts, a food court plaza | shopping carts, mannequins in windows, SALE banners, fountains with coins, kiosks, a cart mountain |
-| **Corp Hill** | white glass towers, the ☺ Spire, perfect lawns, clocks on every corner, open-plan offices inside | public clocks, punch-clocks, water coolers, office chairs, filing cabinets, LED schedule boards |
+| **The Checkout** | a cracked, half-collapsed mall dome over streets, trampled shopfronts from the Stampede, escalators between levels, shopfronts, a food court plaza | shopping carts, mannequins in windows, SALE banners, fountains with coins, kiosks, a cart mountain |
+| **Corp Hill** | the clean bubble: white glass towers, the ☺ Spire, perfect lawns, clocks on every corner, open-plan offices inside | public clocks, punch-clocks, water coolers, office chairs, filing cabinets, LED schedule boards |
 | **Chrome Gristle** | narrow neon lanes, overhanging signs, back-alley clinics, butcher curtains | neon sign letters, surgical chairs, organ jars, noodle carts, arcade cabinets |
-| **Number Works** | factory yards, conveyor bridges, smokestacks, a building-sized calculator | giant digits, presses, pallets, forklifts (existing), number balls (existing `p_numball`) |
-| **Evergreen Acres** | identical pastel houses, picket fences, cul-de-sacs | sprinklers, trampolines, BBQs, mailboxes, garden gnomes, identical cars |
+| **Number Works** | factory yards, conveyor bridges, smokestacks, a building-sized calculator, fallen digits stuck in roofs and roads | giant digits, presses, pallets, forklifts (existing), number balls (existing `p_numball`) |
+| **Evergreen Acres** | identical pastel houses, picket fences, cul-de-sacs, behind a sandbag wall painted like a hedge | sprinklers, trampolines, BBQs, mailboxes, garden gnomes, identical cars |
 | **The Lates** | repeating yellow offices, car parks, a clock tower with no hands | waiting-room chairs, water-stained ceiling tiles, photocopiers, flickering lights |
-| **The Margins** | pine forest, crumbling roads ending in void, half-eaten houses | foreclosure notices, gnomes (the Walkers' stakes), PREMIUM NEGATIVE SPACE billboards, a lifeguard tower |
+| **The Margins** | pine forest, crumbling roads ending in void, half-eaten houses | Vacancy Holdings SOLD signs, foreclosure notices, gnomes (the Walkers' stakes), PREMIUM NEGATIVE SPACE billboards, a lifeguard tower |
 
 ## 5. Building it in the Blender pipeline
 
@@ -165,7 +180,7 @@ vehicle, **L** = landmark.
 | 1 | **Bottom house kit** (stacked cube house: walls, windows, doors, roof-floor, external stairs, balcony) | B | Bottom | pastel vertex colours per instance, 2 m grid |
 | 2 | **Washing line + socks** | P | Bottom | doubles as a grapple rail |
 | 3 | **Wok satellite dish** | P | Bottom | |
-| 4 | **Lost & Found depot** | L | Bottom | the hub: returns bins, conveyor, stamp desk |
+| 4 | **Lost & Found depot + the Machine** | L | Bottom | the hub, a ruined returns depot; the Machine is the original ☺ vending machine, hero-quality (glowing glass with a tiny sim world inside, a tray you get dispensed from) |
 | 5 | **Auntie Spreadsheet** | C | Bottom | puppet, grid dress, crayon behind her ear, huge glasses |
 | 6 | **Lumps** | C | Bottom | small head, gigantic veiny forearms, gold rings, tie-dye tee, sunglasses |
 | 7 | **Wee Gordo** | C | Bottom | huge sagging lipped face, spiky hair, pink sweater, hunched |
@@ -186,11 +201,11 @@ vehicle, **L** = landmark.
 | 22 | **Implant looks: Pigeon Eyes, Spring Knees** | P | — | attach to the mannequin |
 | 23 | **Punctuality Officer** | C | Corp | mannequin cop: whistle, clipboard, peaked cap |
 | 24 | **Timekeeping cruiser** | V | Corp | white/cyan cop car based on the saloon in `cars.js`, clock-face light bar |
-| 25 | **Reminder Drone** | C | Corp | a flying alarm clock (for ★3, after the slice) |
+| 25 | **Unpaid raider** ×2 variants | C | Commute | interns in office-chair and filing-cabinet armour, lanyards, a traffic-cone helmet |
 | 26 | **Late Desk** | P | all | the pay-your-fees kiosk |
 | 27 | **Safehouse props** (bed, locker, wardrobe, garage door) | P | all | |
 | 28 | **Loot crate + rarity beam** | P | all | colour per rarity, ☺ PREMIUM gets a pink choir glow |
-| 29 | **Public clock + clock tower** | P | all | the City Clock in the world |
+| 29 | **Ruin kit** (rubble piles, broken walls, fallen ☺ sign, dead-car shells from `cars.js` models, filing-cabinet barricade, ☺buck fire barrel, a broken district clock) | P | all | instanced scatter |
 | 30 | **Gut border gate** (the place the Bottom turns into the Gut, flesh creeping over pastel houses) | L | Bottom/Gut | the first nemesis arena |
 
 After the slice: Pinstripe (Don Grinaldi, Pip Grinsworth, Long Larry, the Villa, marionette strings), the Checkout

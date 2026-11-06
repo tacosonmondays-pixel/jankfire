@@ -111,7 +111,7 @@ Chunks leave memory in LRU order once outside the near ring + 1.
   2. **Citizens** (~30 active): can be talked to, robbed, flung. Simulated by the sim, networked in co-op at low rate.
   3. **Actors** (quest NPCs, enemies, cops, bosses): full sim, server-owned in co-op, network like bots do today.
 - **The Schedule drives crowds:** each extra has a slot (commute, lunch, home), so Corp Hill empties at night and the
-  Gut is always busy. Cheap: a lookup on the City Clock.
+  Gut is always busy. Cheap: a lookup on the district clock.
 - **Traffic:** `server/traffic.js` already drives lane-following cars with junctions, honking, crashes and
   explosions, for one map. For the city: lanes are part of each chunk (`lanes`), cars only exist in the active +
   near rings around players (spawn at ring edge, despawn behind), ~25 cars per player. In solo it runs in the
@@ -153,7 +153,7 @@ export default {
     { id: 'drive', text: 'deliver soup to the gut border (don\'t spill it)', goal: { type: 'reach', zone: 'gut:border' },
       fail: { type: 'flag', flag: 'soupSpilled' }, timer: 180 },
   ],
-  reward: { cash: 300, item: { roll: 'weapon', rarity: 'rare' }, flags: ['metChoir'], standing: { bottom: 5 } },
+  reward: { coupons: 300, item: { roll: 'weapon', rarity: 'rare' }, flags: ['metChoir'], standing: { bottom: 5 } },
   scenes: { start: 'p2_sauce', end: null },
 };
 ```
@@ -207,7 +207,7 @@ create table if not exists jf_story (
   act         smallint not null default 1,
   chapter     text not null default 'return_to_sender',
   playtime    int not null default 0,          -- seconds
-  cash        bigint not null default 0,
+  coupons     bigint not null default 0,
   data        jsonb not null default '{}'::jsonb, -- flags, quests, standing, inventory, implants, cars, safehouses, position
   updated_at  timestamptz not null default now(),
   primary key (name_lower, slot)
@@ -222,8 +222,9 @@ run, the server falls back to keeping story saves in `inv.story` capped at 1 slo
 before the SQL re-run), and warns in the log the way `store.js` already does for missing columns.
 
 - **`data` shape** (validated on the server, ≤ 64 KB): `{ flags: [], quests: { id: state }, standing: { corp, bottom },
-  bag: [items], bar: [8 refs], locker: [items], implants: { slot: item }, cores: [], cars: [], safehouses: [],
-  at: { safehouse } , clock: minutes, seen: [scene ids] }`. Items are compact: `{ b: base, r: rarity, s: seed, n: name? }`
+  turf: { district: ruler }, outposts: { camp: ruler }, bag: [items], bar: [8 refs], locker: [items],
+  implants: { slot: item }, cores: [], cars: [], safehouses: [], at: { safehouse }, clocks: { district: minutes },
+  seen: [scene ids] }`. Items are compact: `{ b: base, r: rarity, s: seed, n: name? }`
   (stats are rebuilt from the seed, so items stay tiny and can't be hand-edited into stronger ones without the seed
   matching).
 - **When:** saves at safehouses, mission ends, boss kills (rate-limited: max 1 per 10 s per account). Solo saves are
@@ -238,12 +239,20 @@ before the SQL re-run), and warns in the log the way `store.js` already does for
 
 - **Home screen:** a new **STORY** button (`public/js/home.js`) next to PLAY. It opens a save-slot picker (comic
   panels of where you left off), then loads `public/js/story/main.js`.
+- **The PvP is the Machine's training sims** (the story's lore). In story mode, a Machine terminal at a safehouse opens
+  the normal PLAY menu as an overlay: the multiplayer code doesn't change at all, story mode just saves your spot,
+  hands over to the existing lobby, and puts you back at the terminal when you leave the sim. Sim contracts (faction
+  jobs inside a sim) are checked server-side from the match result (map, mode, weapon, win), which the server already
+  knows.
+- **C1's sim-to-real opening** reuses the real multiplayer HUD and a Training-style local match on the Suburb map,
+  then the scene player takes over the camera (a render-to-texture of the match on the Machine's glass).
 - **Shared with the rest of the game:** all weapons and their gimmicks (`shared/weapons.js`, the weapon modules and
   models), movement (`public/js/controls.js`, `shared/physics.js`: bhop, slide, grapple, infinite momentum, lasso),
   the mannequin rig and `anim.js` clips, cosmetics and outfits, the HUD and kill feed, `audio.js`, `fx.js`,
   `killfx.js`, the render presets, the traffic cars.
 - **Story-only (new):** `public/js/story/*` (streaming, scene player, quest HUD, quick bar + wheel, inventory UI,
-  implant UI, car driving, minimap), `shared/story/*` (sim, content), `shared/city/*` (world), `server/story.js`
+  implant UI, car driving, minimap, the turf map), `shared/story/turf.js` (who rules each district and what that
+  changes: shop tables, patrol sets, look variants), `shared/story/*` (sim, content), `shared/city/*` (world), `server/story.js`
   (`StoryRoom`, endpoints), new Blender scripts and models.
 - **Bridges:** the multiplayer code assumes one small map per room and a fixed loadout. Story needs: a box source that
   is a chunk set (§2), a loadout that is the quick bar (8 slots, any items), weapon instances with rolled stats (a

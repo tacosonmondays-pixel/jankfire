@@ -1,7 +1,8 @@
 # OVERDUE vertical slice plan
 
-**The slice:** The Bottom + The Gut, Act I from **C1 "Return to Sender"** to **C5 "Second Stomach"**: wake up in the
-Lost & Found, steal a car, deliver soup to the Gut, meet the Choir, fight Mr. Overtime on the Gut border, rip out his
+**The slice:** The Bottom + The Gut + a strip of The Commute between them, Act I from **C1 "Please Take Your Item"**
+to **C5 "Second Stomach"**: win a sim match and get dispensed out of the Machine into the ruins, steal a car, drive soup
+across The Commute while the Unpaid raid you, meet Gristle & Sons' Choir, fight Mr. Overtime on the Gut border, rip out his
 punch-clock heart, install it. With loot, the quick bar, 3 implants, Late Fees with a car chase, and 2-player co-op
 drop-in. About 45-60 minutes of play.
 
@@ -22,11 +23,13 @@ STORY button, so `main` can take half-built packages without touching multiplaye
 
 ### WP0. Story shell + STORY button (S)
 - **Scope:** the STORY button on the home screen, save-slot picker (empty slots for now), `public/js/story/main.js`
-  entry that loads a test map and the normal player controller; `shared/story/` and `shared/city/` folders;
+  entry that loads a test map and the normal player controller; a **Machine terminal** that opens the normal PLAY menu
+  and brings you back afterwards (the PvP is the sims); `shared/story/` and `shared/city/` folders;
   `server/story.js` with an empty `StoryRoom` and the `/api/story/*` endpoints using the `inv.story` fallback.
 - **Files:** `public/js/home.js` (one button), `public/js/story/main.js`, `server/story.js`, `server.js` (wire-up
   only), `server/store.js` (`getStory` / `putStory`), `supabase.sql` (the `jf_story` block, see TECH_PLAN §7).
-- **Acceptance:** STORY opens the picker; New Game drops you on a test map with your loadout; a save round-trips
+- **Acceptance:** STORY opens the picker; New Game drops you on a test map with your loadout; the terminal round-trips
+  into an Online/Bots match and back to the same spot; a save round-trips
   through the server (ws test); every multiplayer regression passes; endpoints reject bad input (fuzz test).
 - **Depends on:** nothing. **Do first.**
 
@@ -43,10 +46,10 @@ STORY button, so `main` can take half-built packages without touching multiplaye
 - **Depends on:** WP0.
 
 ### WP2. The Bottom + The Gut districts (XL, art max effort)
-- **Scope:** the two district generators (stacked pastel houses on a steep hill, washing-line rails, the Long Stairs,
+- **Scope:** the two district generators plus a Commute strip (stacked pastel scrap houses on a rubble hill, washing-line rails, the Long Stairs,
   the Lost & Found; intestine streets, rib arches, lungs, peristalsis streets, the Big Stomach, the Gut border with
-  flesh creeping over houses), sky/fog/light per district, the first ~18 assets from ART_BIBLE §6 (1-4, 8-15, 17, 27,
-  29, 30), the two traversal gimmicks (washing-line ziplines, peristalsis + lung trampolines), district music beds.
+  flesh creeping over houses, a stretch of dead-traffic highway with a raider camp), sky/fog/light per district, the first ~19 assets from ART_BIBLE §6 (1-4 incl. the Machine, 8-15, 17,
+  25, 27, 29, 30), the two traversal gimmicks (washing-line ziplines, peristalsis + lung trampolines), district music beds.
 - **Files:** `shared/city/bottom.js`, `shared/city/gut.js`, `tools/blender/make_story_*.py`, `public/models/s_*.glb`,
   `public/js/story/gimmicks.js`, `public/js/music.js` (new tracks, additive).
 - **Acceptance:** screenshots + an HD clip of both districts at Too HD and Potato; turnaround sheets for every new
@@ -85,8 +88,9 @@ STORY button, so `main` can take half-built packages without touching multiplaye
   broadcast in co-op); installs persist; other players see the implants; screenshots of each look.
 - **Depends on:** WP3 (items). The Punch-Clock core needs WP9 for its drop, not for its code.
 
-### WP6. Late Fees + a chase (L)
-- **Scope:** the Late Fees meter (★1-★3 in the slice: Punctuality Officers on foot, Timekeeping cruisers, Collections
+### WP6. Late Fees + Unpaid raiders + a chase (L)
+- **Scope:** **Unpaid raiders** (on foot and on a war-rig, built on the existing bot AI) for the Sauce Run ambush and
+  the raider camp; the Late Fees meter (★1-★3 in the slice: Punctuality Officers on foot, Timekeeping cruisers, Collections
   vans with repo hooks), crimes that add fees, line-of-sight search + drain, hiding in the Gut (overdue zone, Corp
   won't follow past ★3), the Late Desk, the ☺ clock-face HUD stars, cop AI on foot and in cars (pursuit, box-in, PIT,
   roadblocks on lanes ahead).
@@ -113,7 +117,8 @@ STORY button, so `main` can take half-built packages without touching multiplaye
   `voice`), the babble voices, the quest HUD + map markers, mission start/end cards; the **scene player** (cinematic
   timelines, comic panels, talk camera, boss intro cards, skip + co-op skip vote); the slice's content: quests *Return
   to Sender*, *Sauce Run*, *Something's Digesting*, *Clocking In*, *Second Stomach*, plus two side quests (*Leg Day*,
-  *Hairball*); scenes **C1, P2, C3, C4, C5**, the Heart Rip moment, the Mr. Overtime title card; characters Auntie
+  *Hairball*); scenes **C1 (sim-to-real), P1b "The Final Quarter", P2, C3, C4,
+  C5**, the Heart Rip moment, the Mr. Overtime title card; characters Auntie
   Spreadsheet, Lumps, Wee Gordo, a Choir singer, the Meat Mechanic (models 5-7, 16, 18) with face rigs.
 - **Files:** `shared/story/quests.js`, `shared/story/dialogue.js`, `shared/story/content/**`, `public/js/story/scene.js`,
   `public/js/story/panels.js`, `public/js/story/talk.js`, `public/js/story/questhud.js`, `public/js/audio.js` (babble,
@@ -190,7 +195,7 @@ last.
 | 3 | quick bar + wheel + inventory | M | 0 |
 | 4 | loot drops | M | 3 |
 | 5 | 3 implants + core install | M | 3 (core drop: 9) |
-| 6 | Late Fees + chase | L | 1, 7 |
+| 6 | Late Fees + raiders + chase | L | 1, 7 |
 | 7 | drivable cars | L | 1 |
 | 8 | questline, dialogue, cutscenes | L | 0 (content: 2) |
 | 9 | Mr. Overtime fight 1 + core | L | 2, 5, 8 (art: none) |
@@ -203,7 +208,8 @@ re-run for `jf_story` (exact click steps go in that PR: Supabase → SQL Editor 
 Run), and when to show the slice to players.
 
 ## After the slice
-Districts ship one at a time as their own package series (district generator + art, its quests and scenes, its boss
-and core, its traversal gimmick): Pinstripe → The Checkout → Number Works → Mr. Overtime fight 2 (freeway chase) →
+Districts ship one at a time as their own package series (district generator + art, its quests and scenes, its
+takeover questline with the DEAL / TAKEOVER choice, its boss and core, its traversal gimmick). **Hostile Takeovers**
+(`shared/story/turf.js`, the turf map, ruler-dependent shops and patrols) lands with the first company district: Pinstripe → The Checkout → Number Works → Mr. Overtime fight 2 (freeway chase) →
 Chrome Gristle → Evergreen Acres → The Lates (fight 3) → The Margins → Corp Hill → Act V and the three endings. Late
 Fees ★4-★5, the radio, races and the other side activities slot in between.
