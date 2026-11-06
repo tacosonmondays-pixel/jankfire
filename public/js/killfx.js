@@ -178,6 +178,51 @@ const EFFECTS = {
     sfx.yeet(c.pos);
     return true;
   },
+  // blast zone: knocked clean off the screen. they rocket away spinning with a trail, and where they "hit the edge" a
+  // huge burst of colour jets back toward where they got hit, with a shockwave ring. loud
+  blastzone(c) {
+    const ch = body(c);
+    const hv = Math.hypot(c.vel[0], c.vel[2]);
+    const a = hv > 2 ? Math.atan2(c.vel[2], c.vel[0]) : Math.random() * Math.PI * 2;
+    const dir = new THREE.Vector3(Math.cos(a), 0.55, Math.sin(a)).normalize(), sp = 60;
+    const start = new THREE.Vector3(c.pos[0], c.pos[1] + 1, c.pos[2]), FLY = 0.55;
+    const tint = new THREE.Color(c.color || '#ff4fd8').getHex();
+    add(ch.root, FLY, (o, dt, age) => {
+      const k = Math.min(1, age / FLY), d = sp * age * (1 - k * 0.15);
+      o.position.set(start.x + dir.x * d, start.y - 1 + dir.y * d, start.z + dir.z * d);
+      o.rotation.x += dt * 22; o.rotation.z += dt * 15;
+      fx.spray([o.position.x, o.position.y + 1, o.position.z], 2, [0xffffff, 0xffe14d, tint], 1.5, 0.35, 0.22, 0, 2); // the streak behind them
+      if (age + dt >= FLY && !o.userData.boom) { o.userData.boom = 1; boom([o.position.x, o.position.y + 1, o.position.z]); }
+    });
+    const boom = (p) => {
+      const at = new THREE.Vector3(...p), back = start.clone().sub(at).normalize(); // the burst points back at the map
+      // ...but stops well short of where they got hit, and of the camera, so it's a big column you see, not a pink screen
+      const cam = G.camera ? G.camera.position.distanceTo(at) : 60, reach = Math.max(8, Math.min(start.distanceTo(at) * 0.75, cam * 0.6));
+      const beam = (len, r, color, spread, life) => {
+        const f = Math.min(1, reach / 46); len *= f; r *= Math.max(0.5, f);
+        const geo = new THREE.ConeGeometry(r, len, 14, 1, true);
+        geo.translate(0, -len / 2, 0); // the tip at the blast point, opening toward the map
+        const m = new THREE.Mesh(geo, own(new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, fog: false }))); // solid colour (not additive) so it reads on bright skies too
+        const d = back.clone().add(new THREE.Vector3(R(spread), R(spread), R(spread))).normalize();
+        m.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), d);
+        m.position.copy(at); m.scale.set(0.2, 0.2, 0.2);
+        add(m, life, (o, dt, age) => {
+          const k = age / life, grow = Math.min(1, age / 0.08);
+          o.scale.set(grow * (1 + k * 0.6), grow * (1 + k * 0.25), grow * (1 + k * 0.6));
+          o.material.opacity = 0.95 * (1 - k) * (1 - k);
+        });
+      };
+      beam(46, 7, 0xffffff, 0, 0.9); // the white core
+      beam(40, 9.5, tint, 0.08, 1.1); // the victim's colour
+      for (const col of [0xff4fd8, 0xffe14d, 0x4fd8ff, 0x7dff4f]) beam(26 + Math.random() * 14, 3 + Math.random() * 2, col, 0.45, 0.8 + Math.random() * 0.4); // rays fanning out
+      fx.ring(p, 14, 0xffffff, 0.5); fx.ring(p, 9, tint, 0.7);
+      fx.explosion(p, 6);
+      fx.spray(p, 80, [0xffffff, 0xffe14d, 0xff4fd8, 0x4fd8ff, tint], 26, 1.2, 0.3, 4, 1.5);
+      sfx.boom(p); sfx.airhorn(true);
+    };
+    sfx.yeet(c.pos);
+    return true;
+  },
   ascend(c) {
     const ch = body(c);
     ch.arm.rotation.z = -1.3; ch.armL.rotation.z = 1.3; // t-pose to heaven

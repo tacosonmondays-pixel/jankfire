@@ -86,6 +86,7 @@ export const COSMETICS = {
     yeet: { name: 'Yeet', rarity: 'epic', desc: 'launched into orbit. ding.' },
     ascend: { name: 'Ascend', rarity: 'legendary', desc: 'a beam from the sky takes them' },
     duck: { name: 'Big Duck', rarity: 'legendary', desc: 'a giant duck eats them' },
+    blastzone: { name: 'Blast Zone', rarity: 'legendary', desc: 'knocked clean off the screen. it is very loud' },
   },
   // your grappling hook: the rope and the thing on the end. one per player, everyone sees it.
   grapple: {

@@ -55,6 +55,9 @@ import { royalToast, royalUnlock, royalBoxes } from './royal.js';
 import { setOnly } from './weapons.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
 import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection, infClipInfo } from './infection.js';
+import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown } from './endscreen.js';
+import { initHome, homeShown, homeLeft } from './home.js';
+import { skipVote, skipReset } from './skipvote.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
@@ -102,10 +105,28 @@ const vmScaleU = { value: 300 };
 G.skinFxWorld = makeSkinSystems(G.scene, scaleU);
 G.skinFxVM = makeSkinSystems(G.vmScene, vmScaleU);
 hud.init();
+initEndscreen({
+  note: (id, m) => ggRowNote(id, m) || infRowNote(id, m),
+  title: (m) => { const t = m && !m.pending && infRoundTitle(m); return t ? t[0] : ''; },
+  unlock: () => { if (document.pointerLockElement) document.exitPointerLock(); }, // the cards want a mouse
+  level: () => (account.me ? { level: account.me.level, xp: account.me.xp || 0 } : null),
+  gotXp: (x) => { // keep the account bar honest between matches (the server saved it already)
+    const me = account.me;
+    if (!me || !(x > 0)) return;
+    me.xp = (me.xp || 0) + x;
+    while (me.xp >= me.level * me.level * 40) me.level++;
+    renderAcctBar();
+  },
+});
 initWeapons();
 setLoadout(G.settings.loadout);
 hud.show(false);
 initPreview($('preview'));
+initHome({
+  start: (mode, cfg) => startMode(mode, cfg),
+  look: () => { const shown = validLook({ ...DEFAULT_LOOK, ...G.settings.look }, myAchs()); return [shown.color || G.myColor || '#ff4fd8', shown]; },
+  skin: (id) => G.equipped[id], // what you actually wear
+});
 
 const myShadow = makeShadow();
 G.scene.add(myShadow);
@@ -128,7 +149,9 @@ function show(id) {
   screen = id;
   for (const el of document.querySelectorAll('.screen')) el.classList.toggle('hidden', el.id !== 'scr-' + id);
   $('menu').classList.remove('hidden');
+  $('menu').classList.toggle('home-on', id === 'main');
   hud.show(false);
+  if (id !== 'main') homeLeft();
   if (id === 'cosmetics') { skinAllNow = false; $('cosSlot').append($('preview')); buildCosmeticsUI(); setTimeout(resizePreview, 0); }
   if (id === 'character') { $('charSlot').append($('preview')); buildCharacterUI(); setTimeout(resizePreview, 0); }
   if (id === 'namecard') cardEditor.open();
@@ -138,7 +161,7 @@ function show(id) {
   if (id === 'match') syncMatchUI();
   if (id === 'profile') { renderProfile(); restore().then((me) => { if (me && screen === 'profile') { renderProfile(); renderAcctBar(); } }); }
   if (id === 'leaders') renderLeaders();
-  if (id === 'main') renderAcctBar();
+  if (id === 'main') { renderAcctBar(); homeShown(); }
 }
 function hideMenu() {
   $('menu').classList.add('hidden');
@@ -152,7 +175,7 @@ $('quit').addEventListener('click', quitToMenu);
 
 function resume() {
   hideMenu();
-  lock();
+  if (!esFull()) lock(); // the end screen wants the mouse free for its cards
 }
 
 // ------------------------------------------------------------ playing
@@ -207,6 +230,8 @@ function resetWorldState() {
   G.roundOver = false;
   renderRound(null);
   $('roundEnd').classList.add('hidden');
+  esClose(false);
+  skipReset();
   if (account.loggedIn) setTimeout(() => restore().then((me) => { if (me) renderAcctBar(); }), 900); // server saves stats when you leave
 }
 function clearEntities() {
@@ -243,8 +268,8 @@ function pause() {
 let wasLocked = false, lockedAt = 0, mouseAvg = 8;
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === canvas;
-  if (locked) lockedAt = performance.now();
-  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden')) pause();
+  if (locked) { lockedAt = performance.now(); esHideClick(); }
+  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull()) pause(); // the end screen lets go of the mouse on purpose
   wasLocked = locked;
 });
 canvas.addEventListener('click', () => { if (G.joined && document.pointerLockElement !== canvas && $('menu').classList.contains('hidden')) lock(); });
@@ -867,13 +892,13 @@ function aimUp() { if (!S.toggleAim) W.aimHeld = false; }
 addEventListener('keydown', (e) => {
   if (!inGame() || document.activeElement === $('name')) return;
   if ((RP.active || G.killcamPending) && (e.code === 'Space' || e.code === 'Enter')) { e.preventDefault(); skipReplay(); return; }
+  if (esKey(e)) { e.preventDefault(); return; } // end screen: 1-4 vote, arrows switch tabs
   if (e.code === 'Tab') { e.preventDefault(); scoresOpen = true; renderScores(); return; }
   if (e.code === 'KeyT' || e.code === 'Enter') { e.preventDefault(); openChat(); return; }
   if (e.code === 'KeyB') { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
   if (/^(KeyE|KeyG|KeyV|KeyC|KeyZ|ControlLeft|ControlRight|Digit[567])$/.test(e.code) && stuckInBubble(true)) { keys[e.code] = true; return; } // sealed in a soap bubble: no grapple, items, dash, t-bag, sprays or streaks
   if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) jumpPressed = true; }
   if (e.code === 'KeyE' && !e.repeat) { if (S.swapAim) aimDown(); else tryHook(); }
-  if (G.vote && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) { if (!e.repeat) castVote(Number(e.code.slice(5)) - 1); return; }
   if (e.code === 'Digit1') switchSlot(0);
   if (e.code === 'Digit2') switchSlot(1);
   if (e.code === 'Digit3') switchSlot(2);
@@ -903,7 +928,10 @@ addEventListener('keyup', (e) => {
 });
 addEventListener('mousedown', (e) => {
   if (!inGame()) return;
-  if (RP.mode === 'killcam' || RP.mode === 'hl' || G.killcamPending) { skipReplay(); return; } // a click skips the killcam and the play of the round
+  if (e.target instanceof Element && e.target.closest('#endscreen')) return; // the end screen's cards and tabs take the click, not your gun (or the replay skip)
+  if (esClickShown()) { esHideClick(); lock(); return; } // CLICK TO DROP IN: that click only grabs the mouse
+  if (RP.mode === 'killcam' || G.killcamPending) { skipReplay(); return; } // a click skips the killcam
+  if (RP.mode === 'hl') return; // ...but not the play of the round
   if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor: no shooting
   if (stuckInBubble(true)) return; // sealed in a soap bubble: no shooting, aiming or grappling till it pops
   if (e.button === 0) fireDown();
@@ -916,7 +944,7 @@ addEventListener('mouseup', (e) => {
   if (e.button === 3 || e.button === 4) releaseHook();
 });
 addEventListener('contextmenu', (e) => e.preventDefault());
-addEventListener('wheel', (e) => { if (inGame()) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true });
+addEventListener('wheel', (e) => { if (inGame() && !esActive()) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true }); // not while the end screen is up (its tab panel scrolls)
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== canvas) return;
   if (performance.now() < (G.spinUntil || 0)) return; // the aimbot has the wheel
@@ -1025,6 +1053,7 @@ net.on('welcome', (m) => {
   clearTags();
   for (const g of m.tags || []) addTag(g.id, g.p, g.team);
   openVote(m.vote);
+  skipVote(m.skip || null); // a /skip vote that's already on
   refillAmmo();
   resetItems(); // a fresh player on the server: welcome.ic has its real charges
   G.itemSent = null;
@@ -1033,8 +1062,8 @@ net.on('welcome', (m) => {
   updateLabel();
   $('status').textContent = '';
   const tips = {
-    ffa: 'T to chat, B for menu. Change the map or hipfire in Match Settings.',
-    bots: 'bots are dumb but there are a lot of them. B for menu.',
+    ffa: 'T to chat, B for menu. Change the map or hipfire in Match Settings. /skip in chat votes to skip the match.',
+    bots: 'bots are dumb but there are a lot of them. B for menu. /skip in chat skips the match.',
     coop: 'survive the waves. bots only hurt humans, no friendly fire.',
     training: 'dummies respawn instantly. knock the ones on the left ledge off. movement playground on the right.',
   };
@@ -1091,6 +1120,7 @@ net.on('ach', (m) => {
   const rewards = rewardsFor(m.id).map((x) => x.name).join(', ');
   const where = rewardsFor(m.id).some((x) => x.type) ? 'COSMETICS' : 'CHARACTER';
   hud.msg(`ACHIEVEMENT: ${a.name}`, 3, 'brag');
+  esAch({ name: a.name, desc: a.desc });
   hud.chat(null, null, `achievement unlocked: ${a.name} (${a.desc})${rewards ? ' · unlocked ' + rewards + ' in ' + where : ''}`);
   sfx.kill();
   if (m.id === 'airborne') airFlourish();
@@ -1230,29 +1260,11 @@ function startUse() {
   useTimer = setInterval(() => { if (!G.using || !ME.alive || !keys.KeyF) { stopUse(); return; } net.send({ t: 'use' }); }, 200);
 }
 function stopUse() { clearInterval(useTimer); useTimer = 0; G.using = false; }
-// vote for the next match: press 1 / 2 / 3
-let myVote = -1;
-function showVote(v) {
-  const panel = $('votePanel');
-  G.vote = v;
-  if (!v) { panel.classList.add('hidden'); myVote = -1; return; }
-  panel.classList.remove('hidden');
-  const box = $('voteOpts');
-  box.innerHTML = '';
-  v.options.forEach((o, i) => {
-    const d = document.createElement('div');
-    d.className = 'vopt' + (i === myVote ? ' on' : '');
-    const k = document.createElement('b'); k.textContent = String(i + 1);
-    const t = document.createElement('span'); t.textContent = `${o.name} · ${o.mapName}`;
-    const c = document.createElement('i'); c.textContent = String((v.counts || [])[i] || 0);
-    d.append(k, t, c);
-    box.append(d);
-  });
-}
-function castVote(i) { if (!G.vote || i >= G.vote.options.length) return; myVote = i; net.send({ t: 'vote', i }); showVote(G.vote); sfx.click(); }
-function openVote(v) { myVote = -1; if (v) G.voteEnds = performance.now() + (v.left || 0); showVote(v); } // the countdown starts here, not on every re-render
+// the end-of-match vote (mode first, then map) lives on the end screen (endscreen.js)
+function openVote(v) { G.vote = v || null; if (v) esVote(v); }
 net.on('vote', (m) => openVote(m));
-net.on('votes', (m) => { if (G.vote) { G.vote.counts = m.counts; showVote(G.vote); } });
+net.on('votes', (m) => esVotes(m));
+net.on('skipvote', (m) => skipVote(m)); // someone typed /skip (server/skip.js)
 
 // randomizer mode: the server hands you a loadout each life (null = use your own again)
 net.on('loadout', (m) => {
@@ -1644,7 +1656,6 @@ function frame(t) {
     updateGunGame(); updateInfection(dt);
     const a = G.round && G.round.bomb && G.round.bomb.act;
     if (a && a.by === G.myId) hud.meter(a.f, a.k === 'plant' ? 'PLANTING... keep holding F' : 'DEFUSING... keep holding F', '#ff4f4f');
-    if (G.vote) $('voteLeft').textContent = `${Math.max(0, Math.ceil((G.voteEnds - performance.now()) / 1000))}s`;
   }
   updateChaos(dt, now);
 
@@ -1731,6 +1742,8 @@ function frame(t) {
     ME.yaw = a; ME.pitch = -0.35;
     const mc = MAPS[G.cfg.map] && MAPS[G.cfg.map].menuCam; // sealed maps: orbit inside instead of over the roof
     if (mc) { cam.position.set(Math.sin(a) * mc[0], mc[1], Math.cos(a) * mc[0]); ME.pitch = mc[2]; }
+    const tc = G.thumbCam; // tools/thumbs.cjs parks the camera here to photograph a map: [x, y, z, yaw, pitch]
+    if (tc) { cam.position.set(tc[0], tc[1], tc[2]); ME.yaw = tc[3]; ME.pitch = tc[4]; }
   }
 
   G.shake = S.shake ? Math.max(0, G.shake - dt * 2.2) : 0;
@@ -1779,7 +1792,7 @@ function frame(t) {
   G.vmScene.visible = G.joined && !RP.active && !specCam && !asleep;
   if (ballOn(now)) G.vmScene.visible = false; // weapons are holstered inside the ball
   renderFrame();
-  if ((screen === 'cosmetics' || screen === 'character') && !$('menu').classList.contains('hidden')) renderPreview(dt);
+  if ((screen === 'cosmetics' || screen === 'character' || screen === 'main') && !$('menu').classList.contains('hidden')) renderPreview(dt);
   if (screen === 'cosmetics' && !$('menu').classList.contains('hidden')) renderGrapplePreview(dt);
 }
 
@@ -1981,6 +1994,7 @@ function endKillcam() {
 }
 function skipReplay() {
   if (epicLocked()) { epicNope(); return; }
+  if (RP.active && RP.mode === 'hl') return; // the play of the round can't be skipped: everyone watches it (it still ends when the next match starts)
   if (RP.active) { stopReplay(false); return; }
   if (G.killcamPending) { clearTimeout(killcamT); G.killcamPending = false; net.send({ t: 'respawn' }); }
 }
@@ -2070,7 +2084,7 @@ function totalRolls(me) { const r = (me && me.rolls) || {}; return (r.crate || 0
 function fmtTime(sec) { const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60); return h ? `${h}h ${m}m` : `${m}m`; }
 function renderAcctBar() {
   const tr0 = account.loggedIn ? totalRolls(account.me) : 0;
-  $('cratesBtn').textContent = tr0 ? `CONTAINERS (${tr0})` : 'CONTAINERS';
+  $('cratesLbl').textContent = tr0 ? `CONTAINERS (${tr0})` : 'CONTAINERS'; // the label only: the button keeps its slab
   $('cratesBtn').classList.toggle('glow', tr0 > 0);
   const bar = $('acctBar');
   bar.innerHTML = '';
@@ -2358,7 +2372,8 @@ net.on('round', (m) => {
   const box = $('roundEnd');
   if (m.start) {
     courtReset(); // scales of justice: a new match, a clean record (the server does the same)
-    G.roundOver = false; if (RP.mode === 'hl') stopReplay(true); box.classList.add('hidden'); showVote(null);
+    G.roundOver = false; if (RP.mode === 'hl') stopReplay(true); box.classList.add('hidden'); G.vote = null;
+    esClose(G.joined && document.pointerLockElement !== canvas); // back in: click to grab the mouse again
     if (m.game) { G.round = { ...(G.round || {}), ...m }; updateLabel(); if (screen === 'match') syncMatchUI(); }
     hud.msg(m.game && m.game !== 'dm' && GAMES[m.game] ? GAMES[m.game].name.toUpperCase() : 'ROUND START', 1.8, 'brag');
     if (m.game && GAMES[m.game]) hud.chat(null, null, GAMES[m.game].desc);
@@ -2389,8 +2404,7 @@ net.on('round', (m) => {
     if (id === G.myId) row.style.color = '#ffe14d';
     box.append(row);
   }
-  box.classList.remove('hidden');
-  if (m.winner === G.myId || (m.winTeam && m.winTeam === G.myTeam)) sfx.kill();
+  esRound(m); // the end screen replaces the old round box (still built above for anything that reads it)
 });
 // play of the round: the server picked the best moment and sent the recording
 net.on('hl', (m) => {
@@ -2399,13 +2413,14 @@ net.on('hl', (m) => {
   const box = $('roundEnd');
   box.classList.add('hidden');
   const url = m.id === G.myId ? cardUrlFor(G.myId) : (S.showCards !== false && m.card) || defaultCard(m.name, m.color);
-  showReplayUI('PLAY OF THE ROUND', url, m.name, m.color, m.label, 'SPACE / CLICK to skip'); // skipping is just for you: the round end, vote and next match carry on
+  esMini(true); // the end screen steps aside to a vote rail while the clip plays
+  showReplayUI('PLAY OF THE ROUND', url, m.name, m.color, m.label, 'no skipping. witness greatness'); // unskippable; the round end and vote come after it
   const slow = (m.clip.ev || []).filter((e) => e.m && e.m.t === 'kill' && e.m.k === m.id).map((e) => [e.s - 260, e.s + 220]);
   playClip(m.clip, {
     focus: m.id, mode: 'hl', slow,
     onKill: (k) => replayFeed(k, m.clip.info),
-    onEnd: () => { hideReplayUI(); if (G.roundOver) box.classList.remove('hidden'); },
-    onAbort: () => hideReplayUI(),
+    onEnd: () => { hideReplayUI(); esMini(false); },
+    onAbort: () => { hideReplayUI(); esMini(false); },
   });
   sfx.kill();
 });
@@ -2420,7 +2435,8 @@ net.on('roll+', (m) => {
     toast(`+${m.n} ${c.name}`);
   } else if (m.guest) d.textContent = 'you would have earned a crate, bag or box. log in to keep them.';
   else d.textContent = m.why || '';
-  if (!box.classList.contains('hidden')) box.append(d); else toast(d.textContent, 3500);
+  esRoll(m);
+  if (!esActive()) toast(d.textContent, 3500);
 });
 
 // ------------------------------------------------------------ install as an app (PWA)
