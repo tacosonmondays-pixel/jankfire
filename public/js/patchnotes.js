@@ -1,6 +1,12 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '2.4', date: '2026-11-06', title: 'THE GADGET UPDATE', items: [
+    'BIG LASER POINTER: a new primary. hold to charge, let go to fire a thick beam that goes through people. tap for a weak one.',
+    'INSTANT CAMERA: G takes a photo of where you stand. G again prints it as a frame. walk into the frame and you are back where you took it (so can anyone else).',
+    'POP QUIZ: throw a calculator. whoever it hits freezes and gets a maths question. wrong or too slow and they die. right and they get a buff and a few seconds of invulnerability.',
+    'NIGHT VISION GOGGLES: G puts them on, the dark goes green and people glow. H flashes everyone you can see. flashbangs hurt you more while you wear them.',
+  ] },
   { v: '2.3', date: '2026-11-06', title: 'THE OVERDRIVE UPDATE', items: [
     'NEW KILLSTREAK: the OVERDRIVE RIG. become a scrap-built exo-frame: rocket punch, block, grapple quickhack, homing missiles, crater leaps. bots use it too.',
     'NEW MENU + END SCREEN: the whole UI went organic. the end of a match plays the play of the round, then you vote the mode, then the map.',
