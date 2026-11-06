@@ -49,10 +49,11 @@ export const PRICES = {
   shotgun: { price: 1100, kill: 750, pen: 0, mags: 4 },
   minigun: { price: 4200, kill: 150, pen: 0.1, mags: 1 },
   sniper: { price: 4750, kill: 100, pen: 0.8, mags: 3 },
-  chicken: { price: 3200, kill: 200, shots: 6 },
-  bowling: { price: 2100, kill: 450, shots: 8 },
-  bow: { price: 1650, kill: 600, pen: 0.5, shots: 24 },
-  banana: { price: 1400, kill: 650, shots: 45 },
+  chicken: { price: 3200, kill: 200, shots: 3 }, // competitive nerfs: fewer uses per buy (was 6)
+  bowling: { price: 2100, kill: 450, shots: 4 }, // was 8
+  bow: { price: 1650, kill: 600, pen: 0.5, shots: 10 }, // was 24
+  banana: { price: 1400, kill: 650, shots: 18 }, // was 45
+  laser: { price: 3400, kill: 250, shots: 6 }, // the Big Laser Pointer: 6 beams a buy (was free-firing, the 2000 default price)
   // the rifle pack (base numbers live in shared/weapons.js)
   burst: { price: 2700, kill: 300, pen: 0.35, mags: 3 },
   lmg: { price: 5000, kill: 150, pen: 0.3, mags: 1 },
@@ -61,16 +62,17 @@ export const PRICES = {
   autoshot: { price: 2600, kill: 600, pen: 0, mags: 3 },
   // secondary
   revolver: { price: 250, kill: 250, pen: 0.5, mags: 4 },
-  marbles: { price: 900, kill: 400, pen: 0, mags: 5 },
+  marbles: { price: 900, kill: 400, pen: 0, mags: 2 }, // competitive: 2+4 (was 2+10)
   cig: { price: 450, kill: 900 },
   blower: { price: 600, kill: 1000 },
-  cards: { price: 750, kill: 650, shots: 40 },
+  cards: { price: 750, kill: 650, shots: 12 }, // was 40
   popper: { price: 350, kill: 1200 },
   reverse: { price: 700, kill: 1500 },
-  snowball: { price: 400, kill: 900, shots: 36 },
+  snowball: { price: 400, kill: 900, shots: 10 }, // was 36
+  bloodcross: { price: 900, kill: 450, shots: 8 }, // 8 bolts a buy (was unlimited at the 600 default)
   // melee
   bread: { price: null, kill: 1000 }, // the default melee: free, never sold, never dropped
-  slipper: { price: 450, kill: 850 },
+  slipper: { price: 450, kill: 850, shots: 4 }, // 4 throws a buy (was unlimited: it comes back)
   katana: { price: 950, kill: 750 },
   knife: { price: 350, kill: 1100, pen: 0.5 },
   slapper: { price: 300, kill: 1050 },

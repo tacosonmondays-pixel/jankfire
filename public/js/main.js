@@ -54,6 +54,7 @@ import { rigClash } from '/shared/rig.js'; // overdrive rig killstreak
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
 import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames } from './royale.js'; // jank royale
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
+import { ecoKeyLabel } from './econ.js';
 import { initEcon, ecoOn, econKey, econMouse, econMenuOpen, econFrame, econCam, econHideVM, econDead, econWelcome, econSpawn, econKill, econIc, econLoadout, econReset } from './econ.js';
 import { SPRAY, ownedSpray } from '/shared/cosmetics.js';
 import { sprayAim, sprayFx, addSpray, clearSprays, updateSprays, sprayIcon } from './sprays.js';
@@ -436,6 +437,7 @@ function renderKeyHints() {
   $('gFight').innerHTML = `${B(L('fire'))} shoot · ${B(L('aim'))} aim · ${B(L('parry'))} katana parry · ${B(L('reload'))} reload · ${B(L('use'))} inspect · ${B(`${L('slot1')} ${L('slot2')} ${L('slot3')}`)} switch · ${B(L('lastSlot'))} last weapon`;
   $('gItems').innerHTML = `${B(L('item'))} item · ${B(L('nvgFlash'))} goggles flash · ${B(`${L('streak1')} ${L('streak2')} ${L('streak3')}`)} killstreaks · ${B(`${L('dash')} / ${L('scythe')}`)} scythe · ${B(L('spray'))} spray`;
   $('gElse').innerHTML = `${B(L('menu'))} menu · ${B(L('scores'))} scores · ${B(L('chat'))} chat`;
+  $('gEcon').innerHTML = `plant &amp; defuse: ${B(ecoKeyLabel('buy'))} buy · ${B(ecoKeyLabel('drop'))} drop what you hold · ${B(L('grapple'))} pick up · ${B(L('sprint'))} slow walk (silent) · stand still to shoot straight`;
   $('voteKeys').textContent = VOTES.map(K.label).join(' ');
   $('sprayKey').textContent = K.label('spray');
   $('loItemKey').textContent = K.label('item');
@@ -963,7 +965,7 @@ function aimUp() { if (!S.toggleAim) W.aimHeld = false; }
 
 addEventListener('keydown', (e) => {
   if (!inGame() || K.typing(e) || document.activeElement === $('name')) return;
-  if (econKey(e)) return; // buy menu, drop, P pause (econ.js ECON_KEYS)
+  if (econKey(e)) return; // buy menu, drop, pause (keys.js 'buy' / 'drop' / 'pause')
   if (K.bound(e) || e.code === 'Tab') e.preventDefault(); // bound keys never scroll, tab focus or click a button
   pressed(e);
 });
@@ -1693,6 +1695,18 @@ initGear(); // the new gear's server messages + the G hook
 
 // ------------------------------------------------------------ main loop
 let last = performance.now(), acc = 0, sendT = 0, pingT = 0, fovNow = S.fov, fpsAcc = 0, fpsN = 0;
+// your state for the server. Plant & Defuse also sends one right before every gun shot (weapons.js), so the server can
+// check the shot against the aim it was really fired at
+function sendSnap(now = performance.now()) {
+  const r2 = (x) => Math.round(x * 100) / 100;
+  const hp = hookPoint();
+  net.send({
+    t: 's', q: ME.seq, p: ME.pos.map(r2), v: ME.vel.map(r2), y: r2(G.spinning ? (now * 0.03) % (Math.PI * 2) : ME.yaw), x: r2(G.spinning ? Math.sin(now * 0.02) * 1.2 : ME.pitch), w: W.cur,
+    g: hp ? hp.map(r2) : 0,
+    f: W.flags | (G.brGlide ? FLAGS.GLIDE : 0) | (now < ME.slipUntil ? FLAGS.SLIP : 0) | (ME.sliding ? FLAGS.SLIDE : 0) | (ME.crouching ? FLAGS.CROUCH : 0) | (now < (ME.sleepUntil || 0) ? FLAGS.SLEEP : 0) | (ME.walking ? FLAGS.WALK : 0),
+  });
+}
+W.sendSnap = () => { if (ME.alive && G.joined) sendSnap(); };
 const STEP = 1 / 120;
 
 const tmpDir = new THREE.Vector3();
@@ -1744,16 +1758,7 @@ function frame(t) {
     if (ballOn(now)) { W.flags |= FLAGS.BALL; if (BS.snapNow) { BS.snapNow = false; sendT = 0; } } // wrecking ball (a slam dive goes out right away: the server checks it)
 
     sendT -= dt;
-    if (sendT <= 0 && ME.alive) {
-      sendT = 1 / 30;
-      const r2 = (x) => Math.round(x * 100) / 100;
-      const hp = hookPoint();
-      net.send({
-        t: 's', q: ME.seq, p: ME.pos.map(r2), v: ME.vel.map(r2), y: r2(G.spinning ? (now * 0.03) % (Math.PI * 2) : ME.yaw), x: r2(G.spinning ? Math.sin(now * 0.02) * 1.2 : ME.pitch), w: W.cur,
-        g: hp ? hp.map(r2) : 0,
-        f: W.flags | (G.brGlide ? FLAGS.GLIDE : 0) | (now < ME.slipUntil ? FLAGS.SLIP : 0) | (ME.sliding ? FLAGS.SLIDE : 0) | (ME.crouching ? FLAGS.CROUCH : 0) | (now < (ME.sleepUntil || 0) ? FLAGS.SLEEP : 0),
-      });
-    }
+    if (sendT <= 0 && ME.alive) { sendT = 1 / 30; sendSnap(now); }
     pingT -= dt;
     if (pingT <= 0) { pingT = 2; net.send({ t: 'pi', c: performance.now() }); }
     if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = epicKC ? 'killcam... too epic to skip' : `killcam... (${K.label('skip').toLowerCase()} to skip)`; else if (epicHold) epicTimer(now); else if (!econDead() && !brDead()) hud.deadTimer(Math.max(0, ((G.respawnMs ?? 2500) - (now - (G.deadAt || now))) / 1000)); }

@@ -49,6 +49,8 @@ import { HR } from './shared/hr.js';
 import { installGear } from './server/gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
 import { installRifles, RIFLE_PREF, RIFLE_BOTS } from './server/rifles.js'; // burst rifle, lmg, marksman, lever-action, auto shotgun
 import { installEcon } from './server/econ.js';
+import { installTactical } from './server/tactical.js';
+import { TAC } from './shared/tactical.js'; // Plant & Defuse gunplay: spray patterns, moving spread, the hit check
 import { MSLIP, onPatch, patchPreroll } from './shared/marbles.js';
 import { ZM } from './shared/zombies.js';
 import { installZombies } from './server/zombies.js';
@@ -546,6 +548,7 @@ class Room {
     if (!p.isBot) skipPeople(this); // a skip vote's majority moved
     if (!p.isBot && (this.mode === 'ffa' || this.mode === 'coop')) this.broadcast({ t: 'chat', id: 0, m: `${p.name} left` });
     if (!this.humans().length) rooms.delete(this.id);
+    else if (!p.isBot && this.mode === 'bots') this.fillBots(); // a human left: a bot takes the place back
   }
 
   // ---------------------------------------------------------- bots
@@ -569,13 +572,34 @@ class Room {
     return b;
   }
   removeBots() { for (const b of [...this.players.values()]) if (b.isBot) this.remove(b); }
+  // Play With Bots: the room is (bot count + 1) players. every human who joins takes a bot's place, so bots are slowly
+  // replaced by people; when someone leaves, a bot comes back. (the JF_WATCH test observer isn't a player)
+  botWant() {
+    const h = this.humans().filter((p) => !p.watch).length;
+    const size = this.brOn ? Math.max(clampInt(this.cfg.bots, 0, 12), clampInt(process.env.JF_BR_BOTS || BR.bots, 0, 31)) : clampInt(this.cfg.bots, 0, 12); // a royale wants a crowd
+    return Math.max(0, size + 1 - Math.max(1, h));
+  }
   fillBots() {
     if (GAMES[this.game].zombies) return; // zombies brings its own bots
-    const want = this.brOn ? Math.max(clampInt(this.cfg.bots, 0, 12), clampInt(process.env.JF_BR_BOTS || BR.bots, 0, 31)) : clampInt(this.cfg.bots, 0, 12); // a royale wants a crowd
-    const bots = [...this.players.values()].filter((p) => p.isBot);
-    for (let i = bots.length; i < want; i++) this.addBot();
-    for (let i = want; i < bots.length; i++) this.remove(bots[i]);
+    const want = this.botWant();
+    const bots = [...this.players.values()].filter((p) => p.isBot && !(p.ai && p.ai.dummy));
+    const staying = bots.filter((b) => !b.leaving);
+    // someone left: a bot that was on its way out stays after all, then new ones fill up
+    for (const b of bots) if (b.leaving && staying.length < want) { b.leaving = false; staying.push(b); }
+    for (let i = staying.length; i < want; i++) this.addBot();
+    if (staying.length <= want) return;
+    // too many: the dead go first (right away), then from the bigger team; alive ones leave when the round ends
+    const c = { 1: 0, 2: 0 };
+    for (const p of this.fighters()) if (p.team && !p.leaving) c[p.team]++;
+    const order = staying.slice().sort((a, b) => (a.alive - b.alive) || ((c[b.team] || 0) - (c[a.team] || 0)));
+    for (const b of order.slice(0, staying.length - want)) this.retireBot(b);
   }
+  retireBot(b) {
+    if (!b.alive) { this.remove(b); return; }
+    b.leaving = true; // round modes: at the round's end. others: as soon as it dies (dropLeavers)
+  }
+  // bots marked to make room for a human: gone once they're dead, and all of them at a round's start
+  dropLeavers(all) { for (const b of [...this.players.values()]) if (b.isBot && b.leaving && (all || !b.alive)) this.remove(b); }
   spawnDummies() {
     if ([...this.players.values()].some((p) => p.isBot)) return;
     const list = this.map.dummies || this.map.spawns.map((s) => ({ p: s }));
@@ -906,14 +930,16 @@ class Room {
     b.ai.nextShot = n + iv / D.rate + (w.auto ? 0 : Math.random() * 300);
     this.rifleBotShot(b, w, D); // burst guns: three, then a breath
     const cp = Math.cos(b.pitch);
-    const aim = [-Math.sin(b.yaw) * cp, Math.sin(b.pitch), -Math.cos(b.yaw) * cp];
+    let aim = [-Math.sin(b.yaw) * cp, Math.sin(b.pitch), -Math.cos(b.yaw) * cp];
     const o = eyeOf(b);
     if (w.kind === 'hitscan') {
       const hip = (HIPFIRE[this.cfg.hip] || HIPFIRE.normal).mul;
       const pellets = w.pellets || 1;
       const hits = new Map(), segs = [];
+      let spr = (w.spread || 0) * Math.max(0.3, hip) + D.err;
+      if (this.isEcon()) [aim, spr] = this.tacBotAim(b, w, aim, spr, D); // Plant & Defuse: the spray pattern + moving spread
       for (let i = 0; i < pellets; i++) {
-        const d = spreadDir(aim, (w.spread || 0) * Math.max(0.3, hip) + D.err);
+        const d = spreadDir(aim, spr);
         const mh = raycast(o, d, w.range, this.boxes);
         let maxT = mh ? mh.t : w.range, victim = null, head = false;
         for (const p of this.players.values()) {
@@ -2047,7 +2073,7 @@ class Room {
     const shielded = this.bubbleBlocks(owner, t); // the bubble stops the arrow's fire and sleep too, not just its damage
     if (tip === 'flame') { dmg = 15; if (!shielded) this.burn(t, owner, 3); }
     if (tip === 'gas') dmg = 10;
-    if (tip === 'sleep') { dmg = 10; if (!shielded) this.sleep(t, owner, SLEEP_TIME); }
+    if (tip === 'sleep') { dmg = 10; if (!shielded) this.sleep(t, owner, this.isEcon() ? TAC.sleep : SLEEP_TIME); } // Plant & Defuse: a short nap (a free kill otherwise)
     const head = pr.p[1] > t.pos[1] + 1.55;
     this.hurt(t, owner, 'bow', dmg * (head ? 1.5 : 1), kb, { hs: head });
   }
@@ -2982,6 +3008,7 @@ class Room {
     if (roll) send(winner, { t: 'roll+', ...roll });
   }
   startRound() {
+    this.dropLeavers(true); // bots that gave their place to a human leave between matches
     this.resolveVote();
     for (const p of this.players.values()) { p.kills = 0; p.deaths = 0; matchReset(p); }
     this.firstBlood = 0;
@@ -3195,6 +3222,7 @@ class Room {
     const b = this.bomb;
     if (!first && b.n === BOMB.swapAfter) { b.att = 3 - b.att; this.broadcast({ t: 'chat', id: 0, m: 'SIDES SWAPPED' }); }
     b.n++;
+    this.dropLeavers(true); // bots that gave their place to a human leave between rounds
     Object.assign(b, { ph: 'live', site: null, p: null, drop: null, explodeAt: 0, act: null, between: 0, ends: now() + (process.env.JF_BOMB_ROUND ? BOMB.roundTime : this.map.roundTime || BOMB.roundTime) * 1000, carrier: 0 }); // per-map round time (the test knob still wins)
     for (const p of this.players.values()) if (p.ai) { p.ai.site = null; p.ai.route = null; }
     if (this.isEcon()) this.econNewRound(first); // buy phase, payouts carried over, the half's credit reset
@@ -3670,6 +3698,7 @@ class Room {
 
   tick(dt) {
     const n = now();
+    if (this.mode === 'bots' && !this.bomb) this.dropLeavers(false); // (Plant & Defuse: the dead stay till the round ends)
     this.tickRound();
     if (this.isEcon()) this.tickEcon(n);
     this.tickTags(n);
@@ -3814,6 +3843,7 @@ class Room {
 installRoyale(Room, { send, movePlayer });
 installRig(Room, { now, num, vec3, norm, r2, center, safe, REC_T, WEAPONS }); // the overdrive rig's methods (server/rig.js)
 installGear(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm, vec3, stat, liveStats });
+installTactical(Room, { send });
 installRifles(Room, { now, send });
 installEcon(Room, {
   send, cleanSkins, enforceSkins, logErr, BOT_GUNS, navGraph,
@@ -3905,8 +3935,12 @@ function segs(s) {
   return out;
 }
 
-function roomFor(mode, ws) {
+function roomFor(mode, ws, cfg) {
   if (!has(MODES, mode)) mode = 'ffa';
+  // Play With Bots: join a running bots room playing the same mode that still has a bot to swap out, else start one
+  if (mode === 'bots' && cfg && typeof cfg === 'object' && has(GAMES, cfg.game)) {
+    for (const r of rooms.values()) if (r.mode === 'bots' && r.game === cfg.game && r.botWant() > 0 && !r.closed) return r;
+  }
   const id = mode === 'ffa' || mode === 'coop' ? mode : `${mode}:${nextId}:${Math.random().toString(36).slice(2, 7)}`;
   if (!rooms.has(id)) rooms.set(id, new Room(id, mode));
   return rooms.get(id);
@@ -3945,7 +3979,7 @@ wss.on('connection', (ws) => {
           if (want && await store.get(want.toLowerCase()).catch(() => null)) m._name = want.slice(0, 10) + ' (guest)';
         }
         if (ws.readyState !== 1) return;
-        const room = roomFor(m.mode, ws);
+        const room = roomFor(m.mode, ws, m.cfg);
         me = room.addHuman(ws, m);
       })().catch((e) => { console.error('join failed', e); ws.close(); });
       return;

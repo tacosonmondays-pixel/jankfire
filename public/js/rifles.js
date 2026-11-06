@@ -63,7 +63,7 @@ Object.assign(ANIMS, {
     K(0), K(0.25, [-0.04, 0.03, 0.03], [0.22, -0.3, 0.9]),
     ...[0, 1, 2, 3, 4].flatMap((i) => [K(0.42 + i * 0.27, [-0.04, 0.03, 0.04], [0.24, -0.3, 0.92], 'snap'), K(0.55 + i * 0.27, [-0.04, 0.03, 0.03], [0.22, -0.3, 0.9])]),
     K(1.85, [0, 0.03, 0.01], [0.05, 0, 0]), K(2.35, [0, 0.05, 0.0], [0.05, 0, 0], 'linear'), K(2.6),
-  ], ch: { twirl: [[0, 0], [1.9, 0], [2.42, -PI2]], lever: [[0, 0], [1.9, 0], [2.02, 1.05], [2.3, 1.05], [2.44, 0]], lhammer: [[0, 0], [2.1, 0], [2.22, -0.5], [2.4, 0]] },
+  ], ch: { twirl: [[0, 0], [1.9, 0], [2.42, -PI2]], lever: [[0, 0], [1.9, 0], [2.02, 0.95], [2.3, 0.95], [2.44, 0]], lhammer: [[0, 0.75], [2.1, 0.75], [2.22, 0.95], [2.4, 0.75]] },
   events: [[0.42, 'shellIn'], [0.69, 'shellIn'], [0.96, 'shellIn'], [1.23, 'shellIn'], [1.5, 'shellIn'], [1.92, 'whoosh'], [2.43, 'leverClack']] },
   reload_autoshot: { keys: [
     K(0), K(0.25, [-0.03, 0.025, 0.05], [0.3, -0.2, 0.55]), K(1.05, [-0.035, 0.025, 0.05], [0.3, -0.22, 0.58]),
@@ -73,7 +73,7 @@ Object.assign(ANIMS, {
 
   // ---- after every Yeehaw shot: throw the lever (spent case flies out the top), cock the hammer, back on target
   lever_cycle: { keys: [K(0), K(0.1, [0, -0.025, 0.035], [0.14, 0, -0.14]), K(0.2, [0, -0.012, 0.015], [0.07, 0, -0.06], 'snap'), K(0.34)],
-    ch: { lever: [[0, 0], [0.1, 1.0], [0.19, 0]], lhammer: [[0, 0.6], [0.08, -0.35], [0.17, 0]] }, events: [[0.1, 'shellUp'], [0.19, 'leverClack']] },
+    ch: { lever: [[0, 0], [0.1, 0.95], [0.19, 0]], lhammer: [[0, 0], [0.08, 0.95], [0.17, 0.75]] }, events: [[0.1, 'shellUp'], [0.19, 'leverClack']] },
 
   // ---- draws
   draw_burst: { keys: [K(0, [0.03, -0.26, 0.06], [-0.9, 0.35, 0.45]), K(0.2, [0, 0.012, 0], [0.09, -0.03, -0.06], 'snap'), K(0.3, [0.005, 0.005, 0.01], [0.04, 0.05, -0.15]), K(0.45)],
@@ -85,7 +85,7 @@ Object.assign(ANIMS, {
   draw_lmg: { keys: [K(0, [0.07, -0.42, 0.14], [-0.7, 0.25, 0.7]), K(0.34, [0, 0.025, 0], [0.12, 0, -0.06], 'snap'), K(0.44, [0, -0.008, 0], [-0.04, 0, 0.02]), K(0.6)],
     events: [[0.32, 'clunk'], [0.36, 'belt']] },
   draw_lever: { keys: [K(0, [0.02, -0.24, 0.04], [-0.8, 0.3, 0.3]), K(0.16, [0, 0.03, 0], [0.06, 0, 0], 'snap'), K(0.52, [0, 0.04, 0], [0.04, 0, 0], 'linear'), K(0.66)], // one-handed spin-cock
-    ch: { twirl: [[0, 0], [0.14, 0], [0.5, -PI2]], lever: [[0, 0], [0.14, 0], [0.22, 1.05], [0.42, 1.05], [0.52, 0]] }, events: [[0.16, 'whoosh'], [0.51, 'leverClack']] },
+    ch: { twirl: [[0, 0], [0.14, 0], [0.5, -PI2]], lever: [[0, 0], [0.14, 0], [0.22, 0.95], [0.42, 0.95], [0.52, 0]] }, events: [[0.16, 'whoosh'], [0.51, 'leverClack']] },
 
   // ---- inspects
   inspect_burst: { keys: [ // look down the side, flip it to check the carry handle, smack the mag
@@ -104,7 +104,7 @@ Object.assign(ANIMS, {
   inspect_lever: { keys: [ // two spin-cocks and a lever flick, yeehaw
     K(0), K(0.2, [0, 0.03, 0], [0.06, 0, 0]), K(1.3, [0, 0.05, 0], [0.06, 0, 0], 'linear'),
     K(1.55, [-0.05, 0.05, 0.03], [0.2, 0.6, 0.3], 'back'), K(1.95, [-0.05, 0.05, 0.03], [0.22, 0.62, 0.3]), K(2.4),
-  ], ch: { twirl: [[0, 0], [0.2, 0], [0.7, -PI2], [1.25, -PI2 * 2]], lever: [[0, 0], [0.22, 1.05], [1.2, 1.05], [1.3, 0], [1.7, 0], [1.78, 1.0], [1.88, 0]] },
+  ], ch: { twirl: [[0, 0], [0.2, 0], [0.7, -PI2], [1.25, -PI2 * 2]], lever: [[0, 0], [0.22, 0.95], [1.2, 0.95], [1.3, 0], [1.7, 0], [1.78, 0.95], [1.88, 0]] },
   events: [[0.22, 'whoosh'], [0.72, 'whoosh'], [1.29, 'leverClack'], [1.6, 'yeehaw'], [1.87, 'leverClack']] },
   inspect_autoshot: { keys: [ // yank the pull cord like a mower (it's not that kind of mower), rack it twice
     K(0), K(0.3, [-0.05, 0.04, 0.03], [0.2, 0.5, 0.35]), K(0.5, [-0.08, 0.08, 0.05], [0.3, 0.7, 0.5], 'snap'),
@@ -157,6 +157,7 @@ function moveCh(o, an, ch, at, fn) {
   if (v) fn(o, v, r);
 }
 const piv = new THREE.Vector3();
+const HAM_COCKED = 0.75;
 const pv = new THREE.Vector3();
 function heatPuff(g, k) {
   const sys = G.skinFxVM, mz = g.userData.muzzle;
@@ -184,8 +185,11 @@ export function rifleStep(id, m, dt, now, W) {
   moveCh(ud.mag, an, 'mag', at, (o, v) => { o.position.y += v[0]; o.position.z += v[1]; o.rotation.x += v[2]; o.visible = v[0] > -0.33; });
   if (ud.mag && !(an && sampleCh(an, 'mag', at))) ud.mag.visible = true;
   moveCh(ud.charge, an, 'charge', at, (o, v) => { o.position.z += v[0]; });
-  moveCh(ud.lever, an, 'lever', at, (o, v) => { o.rotation.x -= v[0]; }); // thrown down and forward
-  moveCh(ud.hammer, an, 'lhammer', at, (o, v) => { o.rotation.x += v[0]; });
+  moveCh(ud.lever, an, 'lever', at, (o, v) => { o.rotation.x += v[0]; }); // + = thrown down and forward
+  if (ud.hammer) { // the model rests with the hammer down (+ cocks it back). between shots it sits cocked; lhammer keys are absolute
+    const v = an ? sampleCh(an, 'lhammer', at) : null;
+    ud.hammer.rotation.x = restOf(ud.hammer).r.x + (v ? v[0] : HAM_COCKED);
+  }
   moveCh(ud.cover, an, 'cover', at, (o, v) => { o.rotation.x += v[0]; });
   // the spin-cock: the whole gun turns round the lever loop (where your fist is)
   const tw = an ? sampleCh(an, 'twirl', at) : null, a = tw ? tw[0] : 0;
