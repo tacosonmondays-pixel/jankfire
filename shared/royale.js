@@ -37,7 +37,23 @@ export const BR = {
   dropNo: 900, // ms before you can pick up what you just dropped
   spotGap: 5.5, // loot spots at least this far apart
   late: 25000, // ms after the start that a late joiner still gets a seat on the blimp
+  // the grapple runs on charges here (no endless swinging across the city): a grab spends one, each one comes back
+  // `cd` s after the last one came back (or after you used one at full). the server counts them too
+  hook: { charges: 2, cd: 8 },
 };
+// grapple charges at time t (ms): h = { n (charges at t0), t0 }. returns { n (whole charges), k (0..1 to the next) }
+export function hookCharges(h, t) {
+  const H = BR.hook;
+  if (!h) return { n: H.charges, k: 1, f: H.charges };
+  const f = Math.min(H.charges, h.n + Math.max(0, t - h.t0) / (H.cd * 1000));
+  return { n: Math.floor(f + 1e-6), k: f >= H.charges ? 1 : f - Math.floor(f), f };
+}
+// spend one (null = none ready). returns the new state
+export function hookSpend(h, t) {
+  const c = hookCharges(h, t);
+  if (c.n < 1) return null;
+  return { n: c.f - 1, t0: t };
+}
 
 // the zone: [wait (s), shrink time (s), new radius as a share of the first one, damage per second outside]
 // a desert match runs about six minutes; the last circle closes to nothing
@@ -69,7 +85,7 @@ export const GUNS = {
 export const MELEE = { knife: { tier: 0, w: 4 }, slapper: { tier: 0, w: 3 }, katana: { tier: 1, w: 3 }, slipper: { tier: 1, w: 2 }, scales: { tier: 2, w: 2 } };
 // throwables and gadgets (the G key): how many come in one pick-up
 export const GADGETS = { frag: { tier: 0, n: 2, w: 6 }, smoke: { tier: 0, n: 2, w: 4 }, popper: { tier: 1, n: 2, w: 3 }, duck: { tier: 2, n: 1, w: 2 }, bubble: { tier: 2, n: 1, w: 2 }, wand: { tier: 2, n: 2, w: 2 }, reverse: { tier: 3, n: 1, w: 1 },
-  camera: { tier: 2, n: 1, w: 2 }, quiz: { tier: 1, n: 2, w: 3 }, nvg: { tier: 1, n: 2, w: 2 } }; // the new gear: instant camera, pop quiz, night vision goggles
+  camera: { tier: 2, n: 1, w: 2 }, quiz: { tier: 1, n: 2, w: 3 } }; // the new gear: instant camera, pop quiz. (no night vision goggles in a royale: owner, 2026-11-06)
 // everything else on the floor (no tier roll): ammo, heals, armour
 export const STUFF = {
   ammo: { name: 'Ammo Bucket', desc: 'a bucket of loose bullets. tops up every gun you carry', color: '#ffb84f' },

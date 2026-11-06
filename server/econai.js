@@ -40,9 +40,10 @@ const SMOKE_R = 6.5;
 const centroid = (list) => { if (!list || !list.length) return null; const c = [0, 0, 0]; for (const q of list) for (let k = 0; k < 3; k++) c[k] += q[k] / list.length; return c; };
 const inBox = (s, q, pad) => q[0] >= s.min[0] - pad && q[0] <= s.max[0] + pad && q[2] >= s.min[2] - pad && q[2] <= s.max[2] + pad;
 const usable = (x) => x && (WEAPONS[x.id].kind === 'hitscan' || WEAPONS[x.id].kind === 'proj') && WEAPONS[x.id].slot !== 'melee' && (!x.lim || x.m + x.r > 0);
-const RIFLES = ['ar', 'ar', 'ar', 'redline', 'redline', 'chicken', 'burst', 'dmr', 'lmg'];
-const FORCE = ['smg', 'smg', 'shotgun', 'banana', 'bowling', 'lever', 'autoshot', 'tennis'];
-const SIDEARM_BUYS = ['pistol', 'akimbo', 'sawnoff']; // a pistol-round upgrade over the free revolver
+// the Search & Destroy arsenal only (shared/econ.js SD): rifles when rich, SMGs / shotguns / the lever rifle on a force
+const RIFLES = ['ar', 'ar', 'ar', 'ar', 'burst', 'burst', 'dmr', 'lmg'];
+const FORCE = ['smg', 'smg', 'redline', 'shotgun', 'shotgun', 'lever', 'autoshot'];
+const SIDEARM_BUYS = ['revolver', 'revolver', 'akimbo', 'sawnoff']; // a pistol-round upgrade over the free Plan B
 
 const M = {
   // ---------------------------------------------------------- the map's tactical spots (worked out once per map)
@@ -606,6 +607,23 @@ const M = {
     return best;
   },
 
+  // the goggles are the flash (Search & Destroy utility): a bot that bought them puts them on once the round is live and
+  // pops a flash at whoever it's fighting, mid range, a real charge each time (econItem -> useItem, like a player's G)
+  econAiFlash(b, n) {
+    const e = b.ec, ai = b.ai;
+    if (!e || !e.it || e.it.id !== 'nvg' || this.econBuying(n) || e.out) { b.nvOn = false; return; }
+    b.nvOn = true;
+    if (e.it.n <= 0 || n < (ai.flashNext || 0) || n < (b.blindUntil || 0)) return;
+    const t = this.players.get(ai.target);
+    if (!t || !t.alive || !ai.seenAt || n - ai.seenAt > 400) return;
+    const o = [b.pos[0], b.pos[1] + PH.eye, b.pos[2]], h = [t.pos[0], t.pos[1] + PH.eye, t.pos[2]], dist = d3(o, h);
+    if (dist < 6 || dist > 26 || Math.random() < 0.5) { ai.flashNext = n + 700; return; } // close: just shoot. far: get closer
+    ai.flashNext = n + 5000 + Math.random() * 4000;
+    const d = [(h[0] - o[0]) / dist, (h[1] - o[1]) / dist, (h[2] - o[2]) / dist];
+    this.econItem(b, { i: 'nvg', o, d }, false);
+    if (this.ec.tac) this.tacLog(this.ec.tac, `${b.name} flashes ${t.name}`);
+  },
+
   // ---------------------------------------------------------- buying: one plan per team and round
   econAiBuyPlan(team) {
     const T = this.econAiState();
@@ -641,7 +659,9 @@ const M = {
       for (const p of poor) { const r = rich.shift(); if (!r) break; plan.gifts.set(r.id, p.id); }
     }
     // utility roles: attackers bring two smokers (the rest frags); defenders frags, one smoke for retakes
-    bots.slice().sort((a, c) => a.id - c.id).forEach((p, i) => plan.role.set(p.id, att ? (i < 2 ? 'smoke' : 'frag') : i === 0 ? 'smoke' : 'frag'));
+    // (the goggles are the flash: one flasher per side, two on a full buy. they go on when the round goes live)
+    const flash = plan.mode === 'full' ? 2 : 1;
+    bots.slice().sort((a, c) => a.id - c.id).forEach((p, i) => plan.role.set(p.id, att ? (i < 2 ? 'smoke' : i < 2 + flash ? 'nvg' : 'frag') : i === 0 ? 'smoke' : i <= flash ? 'nvg' : 'frag'));
     T.buy[team] = plan;
     this.tacLog(T, `${att ? 'ATTACK' : 'DEFENSE'} buy: ${plan.mode.toUpperCase()} (${plan.why})${plan.gifts.size ? `, ${plan.gifts.size} rifle(s) bought for teammates` : ''}`);
     return plan;
@@ -671,7 +691,7 @@ const M = {
       if (!att && e.$ >= GEAR.kit.price) buy('g', 'kit');
       util(2);
     } else if (plan.mode === 'force') {
-      if (!hasGun && !gun(FORCE, 650) && !gun(FORCE, 0)) gun(['marbles', 'akimbo', 'sawnoff'], 0); // no rifle money: a shotgunny sidearm
+      if (!hasGun && !gun(FORCE, 650) && !gun(FORCE, 0)) gun(SIDEARM_BUYS, 0); // no rifle money: a better sidearm
       buy('g', 'vest');
       if (!att && e.$ >= GEAR.kit.price + 300) buy('g', 'kit');
       util(1);
@@ -684,7 +704,7 @@ const M = {
     const e = b.ec, mate = this.players.get(to);
     if (!mate || !mate.alive || !mate.ec || usable(mate.ec.sl.primary) || !usable(e.sl.primary)) return;
     const before = new Set(this.ec.drops.keys());
-    const id = e.sl.primary.id === 'ar' ? 'redline' : 'ar'; // the same gun again would only refill it: buy the other rifle, ours drops
+    const id = e.sl.primary.id === 'ar' ? 'burst' : 'ar'; // the same gun again would only refill it: buy the other rifle, ours drops
     if (!econWeapon(id) || e.$ < weaponPrice(id) || !this.econBuy(b, { k: 'w', id }, true)) return;
     const d = [...this.ec.drops.values()].find((x) => !before.has(x.id) && x.k === 'w');
     if (!d) return;

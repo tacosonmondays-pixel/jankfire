@@ -781,7 +781,7 @@ class Room {
     }
     if (goal && goal.tac) [wx, wz] = this.econAiHold(b, goal, t, wx, wz, dt); // Plant & Defuse: hold an angle, watch it
     // grappling: chase people who are far / up high / out of sight, save yourself when falling, show off sometimes
-    if (!ai.hook && n >= (ai.nextHook || 0) && this.mode !== 'training' && !this.hookOff()) {
+    if (!ai.hook && n >= (ai.nextHook || 0) && this.mode !== 'training' && !this.hookOff() && (!this.brOn || this.brHookReady(b))) { // (jank royale: grapple charges)
       const skill = ai.diff === 'easy' ? 0.35 : ai.diff === 'hard' ? 1 : 0.7;
       const below = !b.onGround && !raycast([b.pos[0], b.pos[1] + 0.5, b.pos[2]], [0, -1, 0], 40, boxes);
       let want = null;
@@ -800,7 +800,7 @@ class Room {
       if (want) {
         const l = Math.hypot(...want) || 1, d = want.map((v) => v / l), e = eyeOf(b);
         const h = raycast(e, d, HOOK.range, boxes);
-        if (h && h.t > 6 && h.point[1] > b.pos[1] - 1 && (this.map.ceiling == null || h.point[1] < this.map.ceiling - 1.5)) { ai.hook = { point: h.point, len: h.t, until: n + 2600 }; b.g = h.point; } // (not up over a map's ceiling: that's out of bounds)
+        if (h && h.t > 6 && h.point[1] > b.pos[1] - 1 && (this.map.ceiling == null || h.point[1] < this.map.ceiling - 1.5)) { ai.hook = { point: h.point, len: h.t, until: n + 2600 }; b.g = h.point; if (this.brOn) this.brHookUse(b); } // (not up over a map's ceiling: that's out of bounds)
       }
     }
     if (ai.hook) jump = false;
