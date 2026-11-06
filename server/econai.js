@@ -37,8 +37,8 @@ const SMOKE_R = 6.5;
 const centroid = (list) => { if (!list || !list.length) return null; const c = [0, 0, 0]; for (const q of list) for (let k = 0; k < 3; k++) c[k] += q[k] / list.length; return c; };
 const inBox = (s, q, pad) => q[0] >= s.min[0] - pad && q[0] <= s.max[0] + pad && q[2] >= s.min[2] - pad && q[2] <= s.max[2] + pad;
 const usable = (x) => x && (WEAPONS[x.id].kind === 'hitscan' || WEAPONS[x.id].kind === 'proj') && WEAPONS[x.id].slot !== 'melee' && (!x.lim || x.m + x.r > 0);
-const RIFLES = ['ar', 'ar', 'ar', 'redline', 'redline', 'chicken'];
-const FORCE = ['smg', 'smg', 'shotgun', 'banana', 'bowling'];
+const RIFLES = ['ar', 'ar', 'ar', 'redline', 'redline', 'chicken', 'burst', 'dmr', 'lmg'];
+const FORCE = ['smg', 'smg', 'shotgun', 'banana', 'bowling', 'lever', 'autoshot'];
 
 const M = {
   // ---------------------------------------------------------- the map's tactical spots (worked out once per map)
