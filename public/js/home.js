@@ -11,8 +11,7 @@ import { showArmed, resizePreview, setPreviewRes } from './preview.js';
 import { modeThumb } from './modeart.js';
 import { fleshFrame } from './flesh.js';
 import { organic, organicRedraw } from './organic.js';
-import { weaponIcon } from './icons.js';
-import { navPic } from './navicons.js'; // the side menu's little 3D props
+import { navPic, navGunPic } from './navicons.js'; // the side menu's little 3D props
 import { containerPic } from './crate3d.js';
 
 const $ = (id) => document.getElementById(id);
@@ -62,7 +61,7 @@ function navIcons() {
   for (const s of document.querySelectorAll('#scr-main .hnav .ni')) {
     const k = s.dataset.ico, im = s.querySelector('img');
     let u = '';
-    if (k === 'customize') { const lo = G.settings.loadout || {}, id = WEAPONS[lo.primary] ? lo.primary : 'ar'; u = weaponIcon(id, opts.skin && opts.skin(id)); }
+    if (k === 'customize') { const lo = G.settings.loadout || {}, id = WEAPONS[lo.primary] ? lo.primary : 'ar'; u = navGunPic(id, opts.skin && opts.skin(id)); }
     else if (k === 'crates') u = containerPic('crate');
     else u = navPic(k);
     if (u && im.getAttribute('src') !== u) im.src = u;
