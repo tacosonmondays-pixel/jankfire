@@ -10,11 +10,11 @@ import { fx } from './fx.js';
 import { ME, C as PC } from './player.js';
 import { W, setLoadout, showSlots, refillAmmo } from './weapons.js';
 import { RP } from './replay.js';
-import { buildWeapon, buildProjectile, freeTree } from './models.js';
+import { buildWeapon, buildProjectile, freeTree, makeNameTag } from './models.js';
 import { BOXES, MAPS } from '/shared/map.js';
 import { raycast, movePlayer } from '/shared/physics.js';
 import { WEAPONS, ITEMS, FLAGS } from '/shared/weapons.js';
-import { BR, TIERS, STUFF, ZONE_COLOR, ARMOR_OF, blimpAt, blimpDone, zoneAt, outsideZone, lootName, lootColor } from '/shared/royale.js';
+import { BR, TIERS, STUFF, ZONE_COLOR, ARMOR_OF, blimpAt, blimpDone, zoneAt, outsideZone, lootName, lootColor, poiAt } from '/shared/royale.js';
 
 const $ = (id) => document.getElementById(id);
 const st = () => performance.now() + (G.offset || 0); // the server's clock
@@ -22,6 +22,7 @@ const R = {
   on: false, path: null, zone: null, phase: '', loot: new Map(), blimp: new Set(), out: new Map(), total: 0,
   me: { inBlimp: false, fly: null, late: false, place: 0 }, inv: null, key: '', held: new Set(), reserve: {}, shots: {},
   ar: 0, heal: null, spec: 0, specSnap: true, win: -1, focus: null, autoT: new Map(), zoneTick: 0, umb: new Map(),
+  leader: 0, crates: new Map(), goblins: new Map(), poi: null, vend: -1, mailAt: 0,
 };
 export const brOn = () => R.on;
 export const brDead = () => R.on && !ME.alive;
@@ -62,7 +63,7 @@ function ensureHud() {
   const mk = (id, html = '') => { const d = document.createElement('div'); d.id = id; d.innerHTML = html; hudEl.append(d); return d; };
   el = {
     box: mk('brHud', '<canvas id="brMap" width="176" height="176"></canvas><div id="brStat"></div>'),
-    armor: mk('brArmor', '<div></div><span></span>'), heals: mk('brHeals'), prompt: mk('brPrompt'), zone: mk('brZoneFx', '<b>GET IN THE ZONE</b>'),
+    armor: mk('brArmor', '<div></div><span></span>'), heals: mk('brHeals'), prompt: mk('brPrompt'), zone: mk('brZoneFx', '<b>EVICTION NOTICE: GET IN THE ZONE</b>'),
     big: mk('brBig'), healBar: mk('brHealBar', '<div></div><span></span>'),
   };
   el.map = $('brMap'); el.stat = $('brStat');
@@ -231,6 +232,12 @@ function drawMap(now, zn) {
     const bp = blimpAt(R.path, st()), [bx, bz] = toMap(bp[0], bp[2]);
     x.fillStyle = '#ff4fd8'; x.fillRect(bx - 4, bz - 3, 8, 6);
   }
+  // POIs, supply crates, the kill leader
+  const pois = MAPS[G.cfg.map].royale && MAPS[G.cfg.map].royale.pois;
+  if (pois) { x.font = 'bold 9px sans-serif'; x.textAlign = 'center'; for (const d of pois) { const [px, pz] = toMap((d.rect[0] + d.rect[2]) / 2, (d.rect[1] + d.rect[3]) / 2); x.fillStyle = '#000'; x.fillText(d.name.toUpperCase(), px + 1, pz + 1); x.fillStyle = d.color; x.fillText(d.name.toUpperCase(), px, pz); } }
+  for (const c of R.crates.values()) { const [px, pz] = toMap(c.x, c.z); x.fillStyle = '#ffe14d'; x.strokeStyle = '#000'; x.lineWidth = 2; x.strokeRect(px - 4, pz - 4, 8, 8); x.fillRect(px - 4, pz - 4, 8, 8); }
+  const ld = R.leader && R.leader !== G.myId && G.remotes.get(R.leader);
+  if (ld && ld.alive) { const [px, pz] = toMap(ld.pos[0], ld.pos[2]), k2 = 3 + Math.sin(now / 150) * 1.5; x.fillStyle = '#ffe14d'; x.beginPath(); x.arc(px, pz, 4 + k2, 0, 7); x.fill(); x.fillStyle = '#ff00dc'; x.beginPath(); x.arc(px, pz, 3, 0, 7); x.fill(); }
   // you: an arrow (or who you're watching)
   const who = ME.alive ? { pos: ME.pos, yaw: ME.yaw } : G.remotes.get(R.spec);
   if (who) {
@@ -305,6 +312,7 @@ function start(m) {
   R.me = { inBlimp: R.blimp.has(G.myId), fly: null, late: false, place: 0 };
   R.inv = null; R.key = ''; R.held = new Set(); R.reserve = {}; R.shots = {}; R.ar = 0; R.heal = null; R.spec = 0; R.win = -1; R.autoT.clear();
   W.br = hooks; G.noOob = true; G.brStep = step;
+  twistsReset(); R.leader = m.leader || 0; for (const c of m.crates || []) addCrate(c); for (const id of m.goblins || []) R.goblins.set(id, null);
   if (!blimp) { blimp = buildBlimp(); [zoneWall, zoneNext] = buildZone(); myUmb = umbrella(); myUmb.visible = false; }
   for (const o of [blimp, zoneWall, zoneNext, myUmb]) if (!o.parent) G.scene.add(o);
   showHud(true);
@@ -317,6 +325,7 @@ function stop() {
   for (const o of [blimp, zoneWall, zoneNext, myUmb]) if (o && o.parent) o.parent.remove(o);
   for (const u of R.umb.values()) if (u.parent) u.parent.remove(u);
   R.umb.clear();
+  twistsReset();
   showHud(false);
   document.body.classList.remove('br-sky', 'br-spec');
   setLoadout(G.forcedLoadout || G.settings.loadout); refillAmmo();
@@ -355,6 +364,7 @@ net.on('br', (m) => {
   } else if (m.k === 'heal') { const r = G.remotes.get(m.id); sfx.heal(r ? r.pos : null); }
   else if (m.k === 'crack') { const r = G.remotes.get(m.id), p = r ? r.pos : ME.pos; sfx.crunch(r ? r.pos : null); fx.ring([p[0], p[1] + 1.1, p[2]], 1.6, 0x4fd8ff); if (me) hud.msg('ARMOUR BROKE', 1, 'brag'); }
   else if (m.k === 'late') { R.me.late = true; ME.alive = false; G.deadAt = performance.now(); big('MATCH IN PROGRESS', 'you can watch till the next drop', 4); }
+  else twist(m, me);
 });
 net.on('brinv', (m) => { if (R.on) applyInv(m); });
 net.on('brar', (m) => { R.ar = m.ar; });
@@ -455,6 +465,7 @@ export function brKey(e) {
   if (R.me.inBlimp && (e.code === 'KeyE' || e.code === 'KeyG' || e.code === 'KeyF')) return true;
   if (R.me.fly && e.code === 'KeyE') return true; // no grapple in the sky (you're holding an umbrella)
   if (e.code === 'KeyF' && !e.repeat && R.focus) { net.send({ t: 'brpick', i: R.focus.i, f: 1 }); return true; }
+  if (e.code === 'KeyF' && !e.repeat && R.vend >= 0) { net.send({ t: 'brkick' }); return true; } // Neon Market: kick the vending machine
   if (e.code === 'KeyH' && !e.repeat) {
     const inv = R.inv || {}, need = 100 - ME.hp;
     if (need <= 0) { hud.msg('ALREADY HEALTHY', 0.8); return true; }
@@ -566,6 +577,7 @@ export function brFrame(dt, now) {
     R.autoT.set(l.i, now + 700);
     net.send({ t: 'brpick', i: l.i });
   }
+  twistFrame(dt, now, t);
   // HUD: alive, kills, zone clock, armour, heals, healing bar, minimap, outside-the-zone warning
   const alive = [...G.remotes.values()].filter((r) => r.alive && !R.out.has(r.id)).length + (ME.alive && !R.out.has(G.myId) ? 1 : 0);
   const secs = zn ? Math.ceil(zn.left / 1000) : 0, mm = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
@@ -588,7 +600,119 @@ export function brFrame(dt, now) {
   if (bigT && now > bigT) { el.big.style.display = 'none'; bigT = 0; }
   if (!ME.alive) {
     const r = G.remotes.get(R.spec), dt2 = $('deadTimer');
-    if (dt2 && !G.killcamPending) dt2.textContent = r ? `spectating ${r.name} · click or space for someone else` : R.me.late ? 'match in progress: the next drop is soon' : 'spectating';
+    if (dt2 && !G.killcamPending && !R.mailAt) dt2.textContent = r ? `spectating ${r.name} · click or space for someone else` : R.me.late ? 'match in progress: the next drop is soon' : 'spectating';
   }
 }
 export const brState = () => R; // (tests + the console)
+
+// ------------------------------------------------------------ the twists + POI rules (server decides, this shows them)
+let crown = null;
+const crateGeo = new THREE.BoxGeometry(1.6, 1.6, 1.6);
+function crateMesh() {
+  const g = new THREE.Group();
+  const box = new THREE.Mesh(crateGeo, mat(0xc9a36a)); g.add(box);
+  for (const s of [-1, 1]) { const band = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.2, 1.7), mat(0xff4fd8)); band.position.y = s * 0.5; g.add(band); }
+  const u = umbrella(); u.scale.setScalar(2.4); u.position.y = 4.2; g.add(u);
+  const beam = new THREE.Mesh(beamGeo, beamMats[4]); beam.scale.set(2, 60, 2); beam.position.y = 30; g.add(beam);
+  return g;
+}
+function addCrate(c) {
+  const [id, x, z, y0, land, v, t0] = c;
+  const cr = { id, x, z, y0, land, v, t0, mesh: crateMesh() };
+  G.scene.add(cr.mesh);
+  R.crates.set(id, cr);
+}
+function goblinMesh() { // a vending machine with legs and googly eyes. it knows what you want
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.9, 0.9), mat(0x39ff14)); body.position.y = 1.65; g.add(body);
+  const win = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.1, 0.05), new THREE.MeshBasicMaterial({ color: 0xff4fd8 })); win.position.set(0, 1.75, -0.47); g.add(win);
+  for (const s of [-1, 1]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff })); eye.position.set(s * 0.25, 2.45, -0.48); g.add(eye);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 4), new THREE.MeshBasicMaterial({ color: 0x000000 })); pupil.position.set(s * 0.25 + 0.04, 2.42, -0.6); g.add(pupil);
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.75, 0.18), mat(0x222222)); leg.position.set(s * 0.35, 0.38, 0); leg.name = 'leg' + s; g.add(leg);
+  }
+  return g;
+}
+function twistsReset() {
+  for (const c of R.crates.values()) G.scene.remove(c.mesh);
+  R.crates.clear();
+  for (const m of R.goblins.values()) if (m) G.scene.remove(m);
+  R.goblins.clear();
+  if (crown && crown.parent) crown.parent.remove(crown);
+  R.leader = 0; R.poi = null; R.vend = -1; R.mailAt = 0;
+  for (const r of G.remotes.values()) if (r.brTag) { r.brTag.visible = false; r.tag.visible = true; }
+}
+const nm = (id) => (id === G.myId ? 'YOU' : (G.names.get(id) || { name: '???' }).name);
+function twist(m, me) {
+  if (m.k === 'mail') {
+    if (me) { R.mailAt = performance.now() + m.ms; big('RETURNED TO SENDER', 'back in 5 seconds, in a box, somewhere in the next circle', 4.5); sfx.cash(); }
+    else hud.chat(null, null, `${nm(m.id)} got RETURNED TO SENDER`);
+  } else if (m.k === 'mailed') {
+    if (me) { R.mailAt = 0; R.me.fly = 'fall'; R.me.inBlimp = false; ME.vel = [0, -4, 0]; big('SPECIAL DELIVERY', 'you, again. fragile. this way up', 2.5); sfx.yeet(); }
+    const r = G.remotes.get(m.id); if (r) r.buf.length = 0;
+  } else if (m.k === 'leader') {
+    R.leader = m.id;
+    if (me) { hud.msg('YOU ARE THE KILL LEADER', 2.2, 'brag'); hud.chat(null, null, 'everyone can see you on the map now. there is a bounty on you'); }
+    else if (m.id) hud.chat(null, null, `${nm(m.id)} is the kill leader (${m.n} kills): the bounty is a Legendary`);
+  } else if (m.k === 'bounty') { hud.msg(`BOUNTY CLAIMED BY ${nm(m.by).toUpperCase()}`, 2.2, 'brag'); if (m.by === G.myId) sfx.cash(); }
+  else if (m.k === 'crate') { addCrate(m.c); hud.msg('SUPPLY DROP INCOMING', 2.2, 'brag'); hud.chat(null, null, 'a supply crate is coming down over the next circle (grab it in the air)'); sfx.partyHorn(); }
+  else if (m.k === 'crateopen') { const c = R.crates.get(m.id); if (c) { fx.ring([c.x, c.land + 0.5, c.z], 4, 0xffe14d); G.scene.remove(c.mesh); R.crates.delete(m.id); } if (m.by === G.myId) { hud.msg('YOU CAUGHT THE SUPPLY CRATE', 2, 'brag'); sfx.cash(); } }
+  else if (m.k === 'goblin') { R.goblins.set(m.id, null); hud.msg('A LOOT GOBLIN APPEARED', 2.2, 'brag'); hud.chat(null, null, 'a vending machine on legs, full of epics. it runs'); }
+  else if (m.k === 'goblinpop') { const g = R.goblins.get(m.id); if (g) { fx.ring([g.position.x, g.position.y + 1.5, g.position.z], 5, 0x39ff14); G.scene.remove(g); } R.goblins.delete(m.id); hud.msg(m.by === G.myId ? 'YOU POPPED THE LOOT GOBLIN' : `${nm(m.by)} popped the loot goblin`, 2, 'brag'); }
+  else if (m.k === 'dividend') { if (me) { hud.msg('SHAREHOLDER DIVIDEND · +25 ARMOUR', 1.8, 'brag'); sfx.cash(); } }
+  else if (m.k === 'num') {
+    const r = me ? null : G.remotes.get(m.id);
+    if (me) hud.msg(m.n === 7 ? 'LUCKY 7' : 'UNLUCKY 13', 0.8, 'brag');
+    else if (r) { const v = new THREE.Vector3(r.pos[0], r.pos[1] + 2.6, r.pos[2]).project(G.camera); if (v.z < 1) hud.dmgNum((v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight - 30, m.n, m.n === 13); }
+  } else if (m.k === 'kick') {
+    if (m.ok && m.id === G.myId) { sfx.clang && sfx.clang(null, 0.6); hud.msg('THE MACHINE COUGHED UP A GADGET', 1.4, 'brag'); }
+    else if (!m.ok) hud.msg("IT'S EMPTY. COME BACK IN A MINUTE", 1.2);
+  }
+}
+// the pronoun park: name tags say THEY while you're in there
+function pronounTag(r, on) {
+  if (on && !r.brTag) { r.brTag = makeNameTag('THEY', '#ff9a3a'); r.brTag.material.fog = false; r.brTag.position.y = r.tag.position.y; r.ch.root.add(r.brTag); }
+  if (r.brTag) r.brTag.visible = on;
+  r.tag.visible = !on;
+}
+export function brNames(m, kn, vn) { // the kill feed in the park: no names
+  if (!R.on || !m.pos) return [kn, vn];
+  const p = poiAt(MAPS[G.cfg.map], m.pos);
+  if (!p || p.mod !== 'pronouns') return [kn, vn];
+  return [m.k === G.myId ? 'YOU' : 'THEY', m.v === G.myId ? 'YOU' : 'THEM'];
+}
+function twistFrame(dt, now, t) {
+  const map = MAPS[G.cfg.map];
+  // crates coming down
+  for (const c of R.crates.values()) { const y = Math.max(c.land, c.y0 - c.v * (t - c.t0) / 1000); c.mesh.position.set(c.x, y + 0.8, c.z); c.mesh.rotation.y += dt * 0.6; c.mesh.visible = !RP.active; }
+  // goblins: the vending machine over the mannequin, legs going
+  for (const [id, g0] of R.goblins) {
+    const r = G.remotes.get(id);
+    if (!r) continue;
+    let g = g0;
+    if (!g) { g = goblinMesh(); G.scene.add(g); R.goblins.set(id, g); }
+    r.ch.root.visible = false; if (r.shadow) r.shadow.visible = false;
+    g.visible = r.alive && !RP.active;
+    g.position.set(r.pos[0], r.pos[1], r.pos[2]); g.rotation.y = r.yaw || 0;
+    const sp = Math.hypot(r.vel[0], r.vel[2]), ph = now * 0.02 * Math.min(1, sp / 4);
+    for (const s of [-1, 1]) { const leg = g.getObjectByName('leg' + s); if (leg) leg.rotation.x = Math.sin(ph + (s > 0 ? Math.PI : 0)) * 0.8; }
+  }
+  // the kill leader wears a crown everyone can see
+  const ld = R.leader && R.leader !== G.myId ? G.remotes.get(R.leader) : null;
+  if (ld && ld.alive && !RP.active) {
+    if (!crown) { crown = new THREE.Group(); const b = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.36, 0.3, 6, 1, true), new THREE.MeshBasicMaterial({ color: 0xffe14d, side: THREE.DoubleSide })); crown.add(b); for (let k = 0; k < 6; k++) { const sp = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.3, 4), new THREE.MeshBasicMaterial({ color: 0xffe14d })); sp.position.set(Math.cos(k) * 0.4, 0.28, Math.sin(k) * 0.4); crown.add(sp); } const beam = new THREE.Mesh(beamGeo, beamMats[4]); beam.scale.set(1, 30, 1); beam.position.y = 15.5; crown.add(beam); }
+    if (!crown.parent) G.scene.add(crown);
+    crown.position.set(ld.pos[0], ld.pos[1] + 2.75, ld.pos[2]); crown.rotation.y += dt * 2;
+  } else if (crown && crown.parent) crown.parent.remove(crown);
+  // POIs: a callout when you walk in, and the rule
+  const me = ME.alive && !R.me.inBlimp;
+  const poi = me ? poiAt(map, ME.pos) : null;
+  if (poi !== R.poi) { R.poi = poi; if (poi) { big(poi.name.toUpperCase(), poi.blurb, 2.6); sfx.ting(); } }
+  if (poi && poi.mod === 'lowgrav' && !R.me.fly) ME.moonUntil = Math.max(ME.moonUntil || 0, performance.now() + 250); // Overdraft Heights: moon gravity
+  for (const r of G.remotes.values()) { const rp = poiAt(map, r.pos); pronounTag(r, !!(rp && rp.mod === 'pronouns') && !R.goblins.has(r.id)); }
+  // Neon Market vending machines: F to kick one
+  R.vend = -1;
+  if (me && !R.focus && poi && poi.mod === 'vending') (map.vending || []).forEach((v, i) => { if (Math.hypot(v[0] - ME.pos[0], v[1] - ME.pos[2]) < 2.2) R.vend = i; });
+  if (R.vend >= 0) { el.prompt.innerHTML = '<kbd>F</kbd><span>KICK THE VENDING MACHINE</span><small>it might cough up a gadget</small>'; el.prompt.style.setProperty('--c', '#ff4fd8'); el.prompt.style.display = 'block'; }
+  if (R.mailAt && !ME.alive) { const dt2 = $('deadTimer'); if (dt2) dt2.textContent = `RETURNED TO SENDER: back in ${Math.max(0, Math.ceil((R.mailAt - performance.now()) / 1000))}`; }
+}

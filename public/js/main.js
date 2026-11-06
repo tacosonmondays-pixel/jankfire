@@ -46,7 +46,7 @@ import { airTick, airReset, airFlourish } from './airborne.js';
 import { oobTick } from './bounds.js';
 import { account, restore, login, register, logout, saveProfile, leaderboard as fetchLeaders } from './account.js';
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
-import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead } from './royale.js'; // jank royale
+import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames } from './royale.js'; // jank royale
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { SPRAY, ownedSpray } from '/shared/cosmetics.js';
 import { sprayAim, sprayFx, addSpray, clearSprays, updateSprays, sprayIcon } from './sprays.js';
@@ -1250,7 +1250,8 @@ net.on('dmg', (m) => {
 net.on('kill', (m) => {
   recordEv(m);
   courtKill(m); // scales of justice: streaks + revenge
-  const [kn, kc] = nameOf(m.k), [vn, vc] = nameOf(m.v);
+  let [kn, kc] = nameOf(m.k), [vn, vc] = nameOf(m.v);
+  [kn, vn] = brNames(m, kn, vn); // jank royale: no names in Pronoun Park
   const via = m.w === 'void' || m.w === 'cough' ? m.via : m.w;
   const victim = G.remotes.get(m.v);
   // shredder kills: the pieces go through the killer's machine instead of the usual gibs / kill effect
