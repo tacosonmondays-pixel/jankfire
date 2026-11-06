@@ -12,9 +12,9 @@ NOT_TONAL = {'kick', 'hats', 'clap', 'perc', 'fx', 'rumble', 'wind', 'snare', 'w
 
 
 def pitch_stats(x, scale):
-    f, t, Z = stft(x, SR, nperseg=8192, noverlap=6144)
+    f, t, Z = stft(x, SR, nperseg=16384, noverlap=12288)
     P = np.abs(Z) ** 2
-    band = (f > 70) & (f < 4200)
+    band = (f > 120) & (f < 4200)  # below ~120 Hz semitones are closer than the bins: key-fit isn't reliable there
     fb = f[band]; Pb = P[band]
     pc = (np.round(12 * np.log2(fb / 440.0)) + 9) % 12
     tot = Pb.sum(1)
@@ -40,7 +40,7 @@ def pitch_stats(x, scale):
 
 def check(slug):
     mod = importlib.import_module('tracks.' + slug)
-    scale = set(mod.KEY)
+    scale = {(k + getattr(mod, 'TRANSPOSE', 0)) % 12 for k in mod.KEY}  # the sounding key
     s = mod.build()
     stems = s.render_stems()
     rep = {}

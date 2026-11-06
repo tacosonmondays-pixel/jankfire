@@ -55,7 +55,7 @@ WORDS = {
 }
 
 
-def say(word, note=50, size=1.0, dur=None, bend=-1.5, breath=0.05, seed=0, vib=0.0, slide=False):
+def say(word, note=50, size=1.0, dur=None, bend=-1.5, breath=0.05, seed=0, vib=0.0, slide=False, vib_delay=0.0, bright=1.0):
     """render one word (key of WORDS or a phoneme list). dur stretches it. returns mono.
     bend: the word starts this many semitones off and settles onto `note` in ~50 ms (so it's in tune), or with
     slide=True it glides across the whole word (for deliberate slurs and screams)"""
@@ -104,8 +104,9 @@ def say(word, note=50, size=1.0, dur=None, bend=-1.5, breath=0.05, seed=0, vib=0
     vamp = butter(vamp, 60); namp = butter(namp, 80)
     # glottal source: saw + jitter, tilted down
     contour = bend * (t / total) if slide else -bend * np.exp(-t / 0.035)
-    f0 = midi_hz(note + contour + vib * np.sin(2 * np.pi * 5.5 * t) + butter(rng.normal(0, 1, n), 20) * 0.03)
-    g = lp(saw(f0), 2500 * size, 0.0) + 0.3 * saw(f0)
+    vib_env = np.clip((t - vib_delay) / 0.12, 0, 1) if vib_delay > 0 else 1.0  # vibrato that blooms on held notes
+    f0 = midi_hz(note + contour + vib * vib_env * np.sin(2 * np.pi * 5.8 * t) + butter(rng.normal(0, 1, n), 20) * 0.03)
+    g = lp(saw(f0), 2500 * size * bright, 0.0) + 0.3 * saw(f0)
     asp = noise(n, seed + 7) * (namp + breath * vamp)
     exc = g * vamp + asp
     bw = np.tile(np.array([80, 110, 160, 220.0]) * size ** 0.5, (n, 1))
@@ -125,3 +126,18 @@ def stutter(word, reps=3, gap=0.09, chop=0.06, **kw):
     for r in range(reps): out[ns(gap) * r:ns(gap) * r + len(c)] += c
     out[ns(gap) * reps:] += w
     return out
+
+
+def sing(song, bus, line, syl, size=1.28, gain=1.0, pan=0.0, vib=0.3, transpose=0, seed=0):
+    """a sung line, vocaloid style: line = [(beat, beats, midi, syllable)], syl = {syllable: phoneme list}.
+    every syllable sits exactly on its note, slides in from the last one (that quick idol portamento), and long notes
+    get a late vibrato. bright young voice: formants scaled by `size`, a brighter source"""
+    prev = None
+    for k, (b, d, m, w) in enumerate(line):
+        m = m + transpose
+        sec = float(song.t(b + d) - song.t(b)) * 0.94
+        bend = 0.0 if prev is None else float(np.clip(m - prev, -5, 5))
+        x = say(syl[w] if w in syl else w, m, size, dur=sec, bend=bend, breath=0.03, seed=seed + k, vib=vib if sec > 0.32 else 0.0,
+                vib_delay=0.22, bright=1.6)
+        song.place(bus, b, x, gain, pan)
+        prev = m

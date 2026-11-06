@@ -20,7 +20,7 @@ def kicks(s, bus, beats, note_at, kind='gabber', gain=1.0, maxlen=0.6, **kw):
     for i, b in enumerate(beats):
         nxt = beats[i + 1] if i + 1 < len(beats) else b + 1
         L = min(maxlen, float(s.t(nxt) - s.t(b)) - 0.002)
-        k = (inst.gabber_kick if kind == 'gabber' else inst.tek_kick)(note_at(b), round(L, 3), **kw)
+        k = (inst.gabber_kick if kind == 'gabber' else inst.tek_kick)(note_at(b) + getattr(s, 'transpose', 0), round(L, 3), **kw)
         s.place(bus, b, k, gain)
         s.kick(b)
 
@@ -73,4 +73,27 @@ def diatonic(notes, steps, scale, sharpen=()):
         nm2 = (o + i // len(sc)) * 12 + sc[i % len(sc)]
         if nm2 % 12 in sharpen: nm2 += 1
         out.append((b, d, nm2, *r))
+    return out
+
+
+def lyric(text, bar0=0):
+    """'I:D5:2 ne:D5:2 _:2 ...' -> [(beat, beats, midi, syllable)]. syllable:NOTE:len16, '_:n' rests n 16ths"""
+    pos = bar0 * 4.0; out = []
+    for tok in text.split():
+        w, _, rest = tok.partition(':')
+        if w == '_': pos += int(rest) * 0.25; continue
+        note, _, ln = rest.partition(':')
+        d = int(ln) * 0.25
+        out.append((pos, d, nm(note), w)); pos += d
+    return out
+
+
+def gate_to_kicks(s, notes):
+    """cut each 808 note off where the next kick lands (it ducks back in after), so the two never ring together"""
+    ks = np.array(sorted(s.kicks))
+    out = []
+    for b, d, *r in notes:
+        i = np.searchsorted(ks, b + 1e-6)
+        if i < len(ks): d = min(d, ks[i] - b)
+        out.append((b, d, *r))
     return out

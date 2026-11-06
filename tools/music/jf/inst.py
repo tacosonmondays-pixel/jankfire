@@ -278,3 +278,34 @@ def piano_ish(notes, n, seed=9):
             x += np.sin(2 * np.pi * f * tl + mod) * np.exp(-tl / 0.7)
         out[a0:a0 + L] += x / len(ms) * v * adsr(L, 0.001, 0.4, 0.4, 0.2, gate=d)
     return out
+
+
+def eight08(notes, n, decay=0.55, drive=2.6, punch=7.0, glide=0.07, tone=2200.0):
+    """heavy 808: a sine sub that drops in from `punch` semitones up, booms long, glides into slide notes
+    (notes: (t0, dur, midi, vel, slide)), then saturated so it's still big on small speakers"""
+    pitch = np.zeros(n); amp = np.zeros(n)
+    for k, nt in enumerate(notes):
+        t0, d, m = nt[0], nt[1], nt[2]
+        v = nt[3] if len(nt) > 3 else 1.0
+        sl = len(nt) > 4 and nt[4] and k > 0
+        a = ns(t0)
+        if a >= n: break
+        e = min(n, ns(notes[k + 1][0]) if k + 1 < len(notes) else a + ns(d + 0.3))
+        tl = (np.arange(a, e) - a) / SR
+        if sl:  # glide from the previous note, keep the boom going (no retrigger)
+            prev = pitch[a - 1] if a > 0 else m
+            pitch[a:e] = m + (prev - m) * np.exp(-tl / (glide / 3))
+            amp[a:e] = (amp[a - 1] if a > 0 else v) * np.exp(-tl / (decay * 1.6))
+        else:
+            pitch[a:e] = m + punch * np.exp(-tl / 0.012)
+            amp[a:e] = v * np.minimum(1, tl / 0.002) * np.exp(-tl / decay)
+        hold = min(e, a + ns(d))
+        if hold < e:  # past the gate: a quick release
+            amp[hold:e] *= np.exp(-(np.arange(hold, e) - hold) / SR / 0.03)
+    f = midi_hz(pitch)
+    x = np.sin(2 * np.pi * np.cumsum(f) / SR) * amp
+    # the grit: a lopsided clip, so the added harmonics are mostly the octave + fifth (not the 5th harmonic's major
+    # third, which rubs against minor keys). the bus high-pass takes out the dc it leaves
+    x = (np.tanh(x * drive + 0.9) - np.tanh(0.9)) / (1 - np.tanh(0.9))
+    x = lp(x, tone, 0.0) * 0.9 + 0.1 * np.sin(2 * np.pi * np.cumsum(f) / SR) * amp
+    return x

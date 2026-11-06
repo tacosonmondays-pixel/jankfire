@@ -1,15 +1,18 @@
-# SPOON FIGHT TEKNO: 155 bpm hard tek in A minor. rolling kick with a rumble tail, bouncy off-beat bass, two
+# SPOON FIGHT TEKNO: 155 bpm hard tek in F# minor (written in A minor, played 3 semitones down: darker), with a
+# heavy distorted 808 sliding under the rolling kick. two
 # squelchy acid lines arguing, spoons clinking instead of hi-hats, robots chanting "OI". joke: halfway the beat
 # stops for a western standoff (whistling, spurs, wind) at half speed, then the spoons clash and it slams back.
 import numpy as np
 from jf.song import Song
 from jf.dsp import ns, nm, midi_hz
 from jf import inst, toys, voice
-from jf.kit import (P, Reverb, Delay, Chorus, Distortion, Compressor, HighpassFilter, LowpassFilter, PeakFilter,
+from jf.kit import (gate_to_kicks, P, Reverb, Delay, Chorus, Distortion, Compressor, HighpassFilter, LowpassFilter, PeakFilter,
                     LowShelfFilter, HighShelfFilter, Phaser, steps, kicks, riff, shift, at_bar, acidpat, diatonic)
 
 TITLE = 'Spoon Fight Tekno'
-KEY = [9, 11, 0, 2, 4, 5, 7]  # A minor
+KEY = [9, 11, 0, 2, 4, 5, 7]  # A minor, as written (riffs move along this)
+TRANSPOSE = -3  # ...and the whole song sounds 3 semitones lower: F# minor
+TF = 2 ** (TRANSPOSE / 12)
 BPM = 155
 TARGET = -8.0
 
@@ -34,12 +37,14 @@ def acid_section(pats, bar0, bar1, transpose_every2=True):
 
 def build():
     s = Song(TITLE, BPM, END, tempo=[(STANDOFF * 4, BPM / 2, 'step'), (DROP3 * 4, BPM, 'step')])
+    s.transpose = TRANSPOSE
     N = s.N
+    say = lambda w, note, *a, **k: voice.say(w, note + TRANSPOSE, *a, **k)
+    clink = lambda f, *a, **k: toys.clink(f * TF, *a, **k)
     s.eq = [LowShelfFilter(60, -3.0, 0.7), PeakFilter(300, -1.5, 0.8), PeakFilter(3000, 2.5, 0.6), HighShelfFilter(8000, 2.0, 0.7)]
-    s.levels = dict(acid=-3.0, bass=-7.5, rumble=-10, perc=-9, hats=-12, vox=-5, toys=-7, whistle=-5, wind=-16)
+    s.levels = dict(acid=-3.0, bass=-5.5, perc=-9, hats=-12, vox=-5, toys=-7, whistle=-5, wind=-16)
     s.bus('kick', 1.0, auto=[(0, 400), (7 * 4, 1500), (8 * 4 - 0.01, 1500), (8 * 4, 20000), (OUTRO * 4 + 16, 20000), (END * 4, 600)])
-    s.bus('rumble', 1.0, duck=0.9, duck_rel=0.05)
-    s.bus('bass', 1.0, P([HighpassFilter(40), Compressor(-15, 4, 2, 60)]), duck=0.85, duck_rel=0.07)
+    s.bus('bass', 1.0, P([HighpassFilter(28), Compressor(-14, 3, 3, 80)]), duck=0.93, duck_rel=0.09)  # the 808: it ducks out of every kick
     s.bus('acid', 1.0, P([HighpassFilter(70), Delay(60 / BPM * 0.75, 0.35, 0.2), Reverb(0.3, 0.5, 0.1, 0.95, 0.6)]), duck=0.45, duck_rel=0.09, width=0.3,
           auto=[(0, 20000), (BREAK * 4, 400), (BREAK * 4 + 28, 9000), (DROP2 * 4, 20000), (OUTRO * 4, 20000), (END * 4, 500)], res=0.35)
     s.bus('acid2', 1.0, P([HighpassFilter(120), Phaser(0.3, 0.6, 900, 0.4, 0.5), Delay(60 / BPM * 0.5, 0.3, 0.2)]), duck=0.45, width=0.5)
@@ -61,14 +66,19 @@ def build():
         kb += [bar * 4 + i for i in range(4)]
         if bar % 8 == 7 and DROP2 <= bar < OUTRO: kb += [bar * 4 + 3.5, bar * 4 + 3.75]
     kicks(s, 'kick', kb, root, 'tek')
-    for b in kb:
-        if (b * 4) % 4 or not (A * 4 <= b < OUTRO * 4): continue
-        s.place('rumble', b + 0.25, inst.rumble(inst.tek_kick(root(b), 0.3), float(s.t(b + 1) - s.t(b + 0.25)) - 0.005))
-    bass = []
+    # the 808: booms between the kicks (never on a kick step), slides up an octave at the ends of bars
+    EVEN = [(2, 0, 0), (6, 0, 0), (10, 0, 0), (11, 12, 1), (14, 0, 0)]
+    ODD = [(2, 0, 0), (5, 0, 0), (9, 0, 0), (13, 7, 0), (15, 12, 1)]
+    hits = []
     for bar in list(range(A, BREAK)) + list(range(DROP2, STANDOFF)) + list(range(DROP3, OUTRO)):
-        pat = '..x.' * 4 if bar < B else ('.xx.' * 4 if bar < BREAK or bar >= DROP3 else '..xx' * 4)
-        for b, _ in steps(pat, bar): bass.append((b, 0.2, root(b) + 12, 1.0))
-    s.add('bass', inst.bass(s.notes(bass), N, cut=700, sub=0.7))
+        pat = EVEN if (bar % 2 == 0 or bar < B) else ODD
+        for st, iv, sl in pat: hits.append((bar * 4 + st / 4, iv, sl))
+    for bar in range(STANDOFF, DROP3): hits.append((bar * 4 + 2, 0, 0))  # big slow booms under the standoff
+    e8 = []
+    for k, (b, iv, sl) in enumerate(hits):
+        nxt = hits[k + 1][0] if k + 1 < len(hits) else b + 1
+        e8.append((b, min(nxt - b, 2.0), root(b) + iv, 1.0, sl))
+    s.add('bass', inst.eight08(s.notes(gate_to_kicks(s, e8)), N, decay=0.5, drive=3.0))
 
     # ---------------- acid
     a1 = acid_section(ACID1, A, BREAK) + acid_section(ACID1, BREAK, DROP2) + acid_section(ACID1, DROP3, END)
@@ -84,25 +94,25 @@ def build():
         for b, c in steps(pat, bar):
             off = (b * 4) % 4
             f = [3136.0, 2637.0, 3520.0, 2349.3][int(off)]  # spoons tuned to G E A D
-            s.place('perc', b, toys.clink(f, 0.2, seed=int(b * 16)), (1.0 if off == 2 else 0.55) * rng.uniform(0.8, 1.0), pan=rng.uniform(-0.5, 0.5))
+            s.place('perc', b, clink(f, 0.2, seed=int(b * 16)), (1.0 if off == 2 else 0.55) * rng.uniform(0.8, 1.0), pan=rng.uniform(-0.5, 0.5))
         if bar >= A and not BREAK <= bar < DROP2:
             for b, _ in steps('..x...x...x...x.', bar): s.place('hats', b, inst.openhat(0.1, 8000))
         if B <= bar < BREAK or DROP2 <= bar < STANDOFF or DROP3 <= bar < OUTRO:
             for b in (bar * 4 + 1, bar * 4 + 3): s.place('clap', b, inst.clap(0.2, 1500))
         if bar % 8 == 7 and bar >= A:  # spoon rattle fill
-            for i in range(8): s.place('perc', bar * 4 + 3 + i / 8, toys.clink([2637.0, 3136.0, 3520.0, 4186.0][i % 4], 0.15, seed=i), 0.6, pan=(i % 2) * 1.2 - 0.6)
+            for i in range(8): s.place('perc', bar * 4 + 3 + i / 8, clink([2637.0, 3136.0, 3520.0, 4186.0][i % 4], 0.15, seed=i), 0.6, pan=(i % 2) * 1.2 - 0.6)
 
     # ---------------- oi oi oi (four slightly different robots)
     def oi(beat, note, gain=1.0):
         for k, (dn, sz, dt, p) in enumerate(((0, 1.0, 0, 0), (0, 1.1, 0.008, -0.6), (0, 0.92, 0.015, 0.6), (12, 1.25, 0.004, 0.2))):
-            s.place('vox', beat + dt, voice.say('oi', note + dn, sz, seed=k * 7 + int(beat), bend=-2.5), gain * (0.5 if k == 3 else 0.8), pan=p)
+            s.place('vox', beat + dt, say('oi', note + dn, sz, seed=k * 7 + int(beat), bend=-2.5), gain * (0.5 if k == 3 else 0.8), pan=p)
     for bar in list(range(B, BREAK)) + list(range(DROP3, OUTRO)):
         if bar % 2 == 1:
             for i in range(3): oi(bar * 4 + 0.5 + i, 50)
     for bar in (BREAK + 7,): oi(bar * 4 + 2, 52); oi(bar * 4 + 3, 55, 1.2)
-    s.place('vox', 4 * 4, voice.say('spoon', 48, 1.0, dur=0.6), 0.9)
-    s.place('vox', 6 * 4, voice.say('spoon', 48, 1.0, dur=0.6), 0.9)
-    s.place('vox', (OUTRO + 4) * 4, voice.say('spoon', 48, 1.0, dur=0.6), 0.8)
+    s.place('vox', 4 * 4, say('spoon', 48, 1.0, dur=0.6), 0.9)
+    s.place('vox', 6 * 4, say('spoon', 48, 1.0, dur=0.6), 0.9)
+    s.place('vox', (OUTRO + 4) * 4, say('spoon', 48, 1.0, dur=0.6), 0.8)
 
     # ---------------- break: snare build into drop 2
     for bar in range(BREAK + 4, DROP2):
@@ -115,7 +125,7 @@ def build():
     # ---------------- boings on the phrase ends
     for bar in range(A + 7, OUTRO, 8):
         if STANDOFF <= bar < DROP3: continue
-        s.place('toys', bar * 4 + 3.5, toys.boing(nm('A3'), 0.6), 0.8)
+        s.place('toys', bar * 4 + 3.5, toys.boing(nm('A3') + TRANSPOSE, 0.6), 0.8)
     for bar in (DROP2, DROP3, A):
         s.place('fx', bar * 4, inst.crash(1.8), 0.6); s.place('fx', bar * 4, inst.impact(1.8, 21), 0.8)
 
@@ -124,8 +134,8 @@ def build():
     s.place('wind', STANDOFF * 4, toys.wind(float(s.t(DROP3 * 4) - s.t(STANDOFF * 4)) + 1.0))
     for bar in range(STANDOFF, DROP3):
         for b in (bar * 4, bar * 4 + 1.5, bar * 4 + 2, bar * 4 + 3.5):
-            s.place('perc', b, toys.clink(5274.0, 0.25, seed=int(b * 3)), 0.25, pan=0.5)
-        s.place('kick', bar * 4, inst.tek_kick(nm('A1'), 0.6), 0.5); s.kick(bar * 4)
-    s.place('toys', DROP3 * 4 - 0.5, toys.clink(2637.0, 0.6) + toys.clink(3520.0, 0.6), 1.2)
-    s.place('vox', DROP3 * 4 - 1, voice.say('oi', 55, 1.0, dur=0.3, bend=-4), 1.1)
+            s.place('perc', b, clink(5274.0, 0.25, seed=int(b * 3)), 0.25, pan=0.5)
+        s.place('kick', bar * 4, inst.tek_kick(nm('A1') + TRANSPOSE, 0.6), 0.5); s.kick(bar * 4)
+    s.place('toys', DROP3 * 4 - 0.5, clink(2637.0, 0.6) + clink(3520.0, 0.6), 1.2)
+    s.place('vox', DROP3 * 4 - 1, say('oi', 55, 1.0, dur=0.3, bend=-4), 1.1)
     return s

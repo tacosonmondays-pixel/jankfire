@@ -103,9 +103,12 @@ class Song:
     def notes(self, items):
         """[(beat, beats_long, midi, *extra)] -> [(sec, sec_long, midi, *extra)] through the tempo map"""
         out = []
+        T = getattr(self, 'transpose', 0)  # a song-wide key shift for everything that goes through here
         for it in items:
             b, d = it[0], it[1]
-            t0 = float(self.t(b)); out.append((t0, float(self.t(b + d)) - t0, *it[2:]))
+            m = it[2]
+            if T and len(it) > 2: m = [x + T for x in m] if isinstance(m, (list, tuple)) else m + T
+            t0 = float(self.t(b)); out.append((t0, float(self.t(b + d)) - t0, m, *it[3:]))
         return out
 
     def kick(self, beat):

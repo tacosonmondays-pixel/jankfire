@@ -1,15 +1,17 @@
-# BANANA PEEL ACID: 150 bpm hard tek / acid in E minor. two 303s arguing, a wonky off-beat bass, banana peels
+# BANANA PEEL ACID: 150 bpm hard tek / acid in C# minor (written in E minor, played 3 semitones down), a heavy
+# sliding 808 under the kick, two 303s arguing, banana peels
 # ripping, toys squeaking a tune in the break. joke: the beat keeps slipping (the tempo stumbles 150 -> 105 -> 150
 # with a slide whistle and a bonk when it lands), and near the end it takes one huge slow-motion fall.
 import numpy as np
 from jf.song import Song
 from jf.dsp import ns, nm, midi_hz
 from jf import inst, toys, voice
-from jf.kit import (P, Reverb, Delay, Chorus, Distortion, Compressor, HighpassFilter, LowpassFilter, PeakFilter, Phaser,
+from jf.kit import (gate_to_kicks, P, Reverb, Delay, Chorus, Distortion, Compressor, HighpassFilter, LowpassFilter, PeakFilter, Phaser,
                     LowShelfFilter, HighShelfFilter, steps, kicks, riff, shift, at_bar, acidpat, diatonic)
 
 TITLE = 'Banana Peel Acid'
-KEY = [4, 6, 7, 9, 11, 0, 2]  # E minor
+KEY = [4, 6, 7, 9, 11, 0, 2]  # E minor, as written (riffs move along this)
+TRANSPOSE = -3  # ...sounding 3 semitones lower: C# minor
 BPM = 150
 TARGET = -8.0
 QUALITY = 5  # busy, noisy track: q6 came out at 4.6 MB
@@ -45,12 +47,13 @@ def acid_sec(pats, bar0, bar1, octave=0):
 
 def build():
     s = Song(TITLE, BPM, END, tempo=tempo_map())
+    s.transpose = TRANSPOSE
+    say = lambda w, note, *a, **k: voice.say(w, note + TRANSPOSE, *a, **k)
     N = s.N
     s.eq = [LowShelfFilter(80, -2.0, 0.7), PeakFilter(300, -2.0, 0.8), PeakFilter(3200, 3.0, 0.6), HighShelfFilter(8000, 2.5, 0.7)]
-    s.levels = dict(acid=-3.5, acid2=-5.0, bass=-8.5, rumble=-11, toys=-6, whistle=-7, squeak=-6, vox=-5, peel=-9, hats=-11)
+    s.levels = dict(acid=-3.5, acid2=-5.0, bass=-5.5, toys=-6, whistle=-7, squeak=-6, vox=-5, peel=-9, hats=-11)
     s.bus('kick', 1.0, auto=[(0, 20000), (OUTRO * 4 + 16, 20000), (END * 4, 600)])
-    s.bus('rumble', 1.0, duck=0.9, duck_rel=0.05)
-    s.bus('bass', 1.0, P([HighpassFilter(40), Compressor(-15, 4, 2, 60)]), duck=0.85, duck_rel=0.07)
+    s.bus('bass', 1.0, P([HighpassFilter(28), Compressor(-14, 3, 3, 80)]), duck=0.93, duck_rel=0.09)  # the 808
     s.bus('acid', 1.0, P([HighpassFilter(110), Distortion(4), Delay(60 / BPM * 0.75, 0.3, 0.18), Reverb(0.3, 0.5, 0.1, 0.95, 0.6)]), duck=0.45, width=0.3,
           auto=[(0, 500), (A * 4, 6000), (A * 4 + 0.01, 20000), (BREAK * 4, 20000), (BREAK * 4 + 1, 350), (DROP * 4 - 1, 12000), (DROP * 4, 20000)], res=0.45)
     s.bus('acid2', 1.0, P([HighpassFilter(150), Phaser(0.2, 0.7, 1200, 0.5, 0.5), Delay(60 / BPM * 0.5, 0.35, 0.22)]), duck=0.4, width=0.6)
@@ -75,14 +78,19 @@ def build():
         if bar == FALL: kb += [bar * 4]; continue
         kb += [bar * 4 + i for i in range(4)]
     kicks(s, 'kick', kb, lambda b: KICKNOTE[int(b // 16) % 4], 'tek')
-    for b in kb:
-        if not (A * 4 <= b < OUTRO * 4) or (b % 1): continue
-        s.place('rumble', b + 0.25, inst.rumble(inst.tek_kick(nm('B1'), 0.3), float(s.t(b + 1) - s.t(b + 0.25)) - 0.005))
-    bass = []
+    # the 808: off the kick steps, a wonky slide up an octave or a fifth in every bar, a huge one when the fall lands
+    EVEN = [(2, 0, 0), (5, 0, 0), (6, 12, 1), (10, 0, 0), (14, 0, 0)]
+    ODD = [(2, 0, 0), (6, 0, 0), (10, 0, 0), (13, 0, 0), (14, 7, 1)]
+    hits = []
     for bar in list(range(A, BREAK)) + list(range(DROP, FALL)) + list(range(DROP2, OUTRO)):
-        pat = '..x...x...x..xx.' if bar % 2 else '..x..xx...x...x.'  # never on the beat: that's the kick's
-        for b, _ in steps(pat, bar): bass.append((b, 0.2, root(b) + 12 * ((b * 4) % 16 == 13), 1.0))
-    s.add('bass', inst.bass(s.notes(bass), N, cut=800, sub=0.7, decay=0.07))
+        for st, iv, sl in (ODD if bar % 2 else EVEN): hits.append((bar * 4 + st / 4, iv, sl))
+    hits.append((FALL * 4 + 14, 0, 0))
+    hits.sort()
+    e8 = []
+    for k, (b, iv, sl) in enumerate(hits):
+        nxt = hits[k + 1][0] if k + 1 < len(hits) else b + 1
+        e8.append((b, min(nxt - b, 3.0), root(b) + iv, 1.0, sl))
+    s.add('bass', inst.eight08(s.notes(gate_to_kicks(s, e8)), N, decay=0.45, drive=3.2))
 
     # ---------------- acids
     a1 = acid_sec(ACID1, INTRO, FALL, 1) + acid_sec(ACID1, DROP2, END, 1)  # an octave up: the bass owns the low end
@@ -97,21 +105,21 @@ def build():
             s.place('hats', b, inst.openhat(0.09, 8000) if c == 'o' else inst.hat(0.025, 10000, seed=int(b * 4)), 1.0 if c == 'o' else 0.4)
         if B <= bar < BREAK or DROP <= bar < FALL or DROP2 <= bar < OUTRO:
             for b in (bar * 4 + 1, bar * 4 + 3): s.place('clap', b, inst.clap(0.2, 1400))
-            for b, _ in steps('...x.....x...x..', bar): s.place('perc', b, toys.bonk(nm('E4') + 7 * ((b * 4) % 8 == 5), 0.12), 0.5, pan=0.5 if (b * 4) % 8 == 5 else -0.5)
+            for b, _ in steps('...x.....x...x..', bar): s.place('perc', b, toys.bonk(nm('E4') + TRANSPOSE + 7 * ((b * 4) % 8 == 5), 0.12), 0.5, pan=0.5 if (b * 4) % 8 == 5 else -0.5)
 
     # ---------------- the slips: peel rip, whistle down, bonk on landing
     for bar in SLIPS:
         b = bar * 4 + 2
         s.place('peel', b - 0.1, toys.peel(0.3, seed=bar), 1.0)
-        s.add('whistle', toys.slidewhistle(float(s.t(b)), float(s.t(b + 1.8) - s.t(b)), N, 71, 95, up=False))
-        s.place('toys', b + 2, toys.bonk(nm('C4'), 0.3), 1.0)
+        s.add('whistle', toys.slidewhistle(float(s.t(b)), float(s.t(b + 1.8) - s.t(b)), N, 71 + TRANSPOSE, 95 + TRANSPOSE, up=False))
+        s.place('toys', b + 2, toys.bonk(nm('C4') + TRANSPOSE, 0.3), 1.0)
     for bar in range(B, OUTRO, 8):
-        if bar not in (BREAK,): s.place('vox', bar * 4 + 4 * 3 + 3, voice.say('slip', 55, 1.15, bend=3), 0.8)
+        if bar not in (BREAK,): s.place('vox', bar * 4 + 4 * 3 + 3, say('slip', 55, 1.15, bend=3), 0.8)
 
     # ---------------- break: toy squeak tune
     sq = at_bar(SQUEAKS[:11], BREAK) + at_bar(SQUEAKS[11:], BREAK + 4)  # break bars 40-43 are C, 44-47 are D
     for b, d, m in sq:
-        s.place('squeak', b, toys.squeak(m, min(0.25, float(s.t(b + d) - s.t(b)) * 0.95), seed=int(b * 9)), 1.0, pan=0.25 * np.sin(b))
+        s.place('squeak', b, toys.squeak(m + TRANSPOSE, min(0.25, float(s.t(b + d) - s.t(b)) * 0.95), seed=int(b * 9)), 1.0, pan=0.25 * np.sin(b))
     for bar in range(BREAK + 4, DROP):
         div = 2 if bar < BREAK + 6 else 4
         for i in range(4 * div):
@@ -124,10 +132,10 @@ def build():
     # ---------------- the big fall (slow motion): long whistle down, "aaah", a bonk, silence, back to it
     f = FALL * 4
     s.place('peel', f + 4, toys.peel(0.5, seed=99), 1.2)
-    s.add('whistle', toys.slidewhistle(float(s.t(f + 4)), float(s.t(f + 14) - s.t(f + 4)), N, 64, 98, up=False, wob=0.6), 1.2)
-    s.place('vox', f + 6, voice.say('ah', 57, 1.1, dur=2.5, bend=-12, vib=0.6, slide=True), 1.0)
-    s.place('toys', f + 14, toys.bonk(nm('G3'), 0.4), 1.3)
-    s.place('toys', f + 14.5, toys.boing(nm('E3'), 0.8, up=12), 0.9)
-    s.place('vox', f + 15, voice.say('yeah', 52, 1.0, bend=-1), 0.9)
-    s.place('vox', 4 * 4 + 12, voice.say('slip', 52, 1.0), 0.8)
+    s.add('whistle', toys.slidewhistle(float(s.t(f + 4)), float(s.t(f + 14) - s.t(f + 4)), N, 64 + TRANSPOSE, 98 + TRANSPOSE, up=False, wob=0.6), 1.2)
+    s.place('vox', f + 6, say('ah', 57, 1.1, dur=2.5, bend=-12, vib=0.6, slide=True), 1.0)
+    s.place('toys', f + 14, toys.bonk(nm('G3') + TRANSPOSE, 0.4), 1.3)
+    s.place('toys', f + 14.5, toys.boing(nm('E3') + TRANSPOSE, 0.8, up=12), 0.9)
+    s.place('vox', f + 15, say('yeah', 52, 1.0, bend=-1), 0.9)
+    s.place('vox', 4 * 4 + 12, say('slip', 52, 1.0), 0.8)
     return s
