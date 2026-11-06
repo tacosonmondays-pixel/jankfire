@@ -14,7 +14,8 @@ import { WEAPONS, FLAGS } from '/shared/weapons.js';
 import { GAMES } from '/shared/modes.js';
 import { ZM, ZM_CRATE, zmTarget, zmAmmo, zmAmmoPrice, zmAreaAt, zmOpenAreas } from '/shared/zombies.js';
 import { buildWeapon, M } from './models.js';
-import { weaponIcon } from './icons.js';
+import { weaponIcon, drawIcon } from './icons.js';
+import { whenGlb } from './glbkit.js';
 import { K } from './keys.js';
 import { zxSetup, zxTick, zxTarget, zxPrompt, zxMeter, zxPrice, zxOff } from './zmextra.js'; // boards, drops, the cheat machine
 const UK = () => K.label('use').toUpperCase(); // the buy / revive key (keys.js 'use', F by default)
@@ -132,7 +133,9 @@ function buyBoard(b) {
   const { t, c } = canvasTex(256, 144, (x, w, h) => drawBoard(x, w, h, b, null));
   const img = new Image();
   img.onload = () => { drawBoard(c.getContext('2d'), c.width, c.height, b, img); t.needsUpdate = true; };
-  img.src = weaponIcon(b.w);
+  const [u, wait] = drawIcon(() => weaponIcon(b.w));
+  img.src = u;
+  if (wait) whenGlb(wait, () => { img.src = weaponIcon(b.w); }); // the chalk outline was the loading cube: redraw it with the real gun
   const m = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.96), new THREE.MeshBasicMaterial({ map: t, color: 0xd8d8d8 })); // unlit: readable in the dark
   m.position.set(b.at[0] + b.n[0] * 0.03, b.at[1], b.at[2] + b.n[2] * 0.03);
   m.rotation.y = Math.atan2(b.n[0], b.n[2]);

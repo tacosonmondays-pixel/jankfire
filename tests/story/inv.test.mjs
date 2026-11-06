@@ -33,7 +33,7 @@ t('ops: only items you have, quest items stay', () => {
   assert.ok(invOp(inv, { op: 'bar', slot: 7, u: inv.bar[0] }).ok); assert.equal(barWeapons(inv)[7], 'redline'); assert.equal(inv.bar[0], null);
   for (const bad of [{ op: 'bar', slot: 8, u: 1 }, { op: 'bar', slot: 0, u: 999 }, { op: 'bar', slot: -1, u: null }, { op: 'bar', slot: '1', u: 1 }, { op: 'move', from: 0, to: 99 }, { op: 'drop', u: 999 }, { op: 'stash', u: 1 }, { op: 'zzz' }, null, { op: 5 }])
     assert.ok(invOp(inv, bad).error, JSON.stringify(bad));
-  const q = invAdd(inv, { b: 'soup_pot' });
+  const q = invAdd(inv, { b: 'page_corp' }); // a keep item (content/items.js): no bar, no drop
   assert.ok(invOp(inv, { op: 'bar', slot: 3, u: q }).error); assert.ok(invOp(inv, { op: 'drop', u: q }).error);
   const d = invOp(inv, { op: 'drop', u: inv.bar[1] }); assert.equal(d.dropped.b, 'marbles'); assert.equal(inv.bar[1], null);
   assert.ok(invOp(inv, { op: 'stash', u: inv.bar[2] }, { atLocker: true }).ok); assert.equal(inv.locker[0].b, 'knife');
@@ -68,11 +68,23 @@ t('sim: starter, pick, drop, gear charges, eat, save round trip', () => {
   sim.msg({ t: 'sty', k: 'save' }); const sv = cleanSave(out.at(-1).save).save;
   assert.ok(sv.data.flags.includes('testLoot')); assert.equal(sv.data.inv.bag.filter(Boolean).length, sim.inv.bag.filter(Boolean).length);
   const out2 = []; const sim2 = createSim({ send: (o) => out2.push(o), save: sv }); sim2.msg({ t: 'join' });
-  assert.deepEqual(sim2.inv.bar, sim.inv.bar); assert.ok(!out2.find((o) => o.k === 'drops').list.length, 'the test pile is only seeded once');
+  assert.deepEqual(sim2.inv.bar, sim.inv.bar); assert.equal(out2.find((o) => o.k === 'drops').list.length, Math.min(40, sim.drops.size), 'the floor comes back as it was (not seeded twice)');
 });
 t('dev give only with the dev flag', () => {
   const out = []; const sim = createSim({ send: (o) => out.push(o) }); sim.msg({ t: 'join' });
   sim.msg({ t: 'sty', k: 'give', b: 'minigun', slot: 2 }); assert.equal(count(sim.inv, 'minigun'), 0);
   sim.dev = true; sim.msg({ t: 'sty', k: 'give', b: 'minigun', slot: 2 }); assert.equal(barWeapons(sim.inv)[2], 'minigun');
 });
-console.log(`\n${n} passed`);
+t('floor loot survives a save (cap per zone, oldest first)', () => {
+  const out = []; const sim = createSim({ send: (o) => out.push(o) }); sim.msg({ t: 'join' });
+  const n0 = sim.drops.size; assert.ok(n0 > 5);
+  sim.msg({ t: 'sty', k: 'save' }); const sv = cleanSave(out.at(-1).save).save;
+  assert.equal(sv.data.floor.story_test.length, Math.min(40, n0));
+  const out2 = []; const sim2 = createSim({ send: (o) => out2.push(o), save: sv }); sim2.msg({ t: 'join' });
+  assert.equal(sim2.drops.size, Math.min(40, n0), 'the pile is back, and not seeded twice');
+  for (let i = 0; i < 80; i++) sim2.dropAt({ b: 'bottlecap' }, [0, 0.6, 0]);
+  assert.equal(sim2.drops.size, 60, 'live cap'); sim2.msg({ t: 'sty', k: 'save' });
+  const f = cleanSave(out2.at(-1).save).save.data.floor.story_test; assert.equal(f.length, 40); assert.ok(f.every((d) => d.item.b === 'bottlecap'), 'newest kept');
+  assert.deepEqual(cleanSave({ ...sv, data: { ...sv.data, floor: { 'BAD ZONE': [], story_test: [{ item: { b: 'nope' }, p: [0, 0, 0] }, { item: { b: 'ar' }, p: [NaN, 1, 1] }] } } }).save?.data.floor ?? {}, {});
+});
+console.log(`${n} passed (+ floor)`);

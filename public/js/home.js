@@ -11,6 +11,10 @@ import { showArmed, resizePreview, setPreviewRes } from './preview.js';
 import { modeThumb } from './modeart.js';
 import { fleshFrame } from './flesh.js';
 import { organic, organicRedraw } from './organic.js';
+import { weaponIcon, iconWaits } from './icons.js';
+import { whenGlb } from './glbkit.js';
+import { navPic, navGunPic, navCratePic } from './navicons.js'; // the side menu's little 3D props
+import { containerPic } from './crate3d.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -23,7 +27,9 @@ export function initHome(o) {
   opts = o; // { start(mode, cfg), look() -> [color, look], skin(id) }
   // the menu's slabs: big play buttons, links, the hero's buttons, the strip
   for (const b of document.querySelectorAll('#scr-main .home-right .big.mode')) organic(b, { rim: 5, wet: false, veins: false, lumps: 4, lumpA: 3.2, shadow: b.classList.contains('play') ? [9, 9] : [6, 6], bandL: b.classList.contains('play') ? 0 : 12 });
-  for (const b of document.querySelectorAll('#scr-main .hlink')) organic(b, { bits: false, wet: false, rim: 3, pad: 6, shadow: [5, 5], wob: 1, lumps: 2, lumpA: 2, bandL: 7, texA: 0.06 });
+  // the side menu: one plaque shape for every button, its 3D prop set in a fleshy socket (primary ones are bigger)
+  for (const b of document.querySelectorAll('#scr-main .hnav')) { const prim = b.classList.contains('prim'); organic(b, { bits: false, wet: false, veins: false, rim: prim ? 4 : 3, pad: prim ? 7 : 5, shadow: prim ? [6, 6] : [4, 4], wob: 1, lumps: prim ? 3 : 2, lumpA: prim ? 2.4 : 1.6, texA: 0.06, holes: [b.querySelector('.ni')] }); }
+  navIcons();
   organic(document.querySelector('#scr-main .hero-under .toy'), { ...SMALL, rim: 4, shadow: [6, 6] });
   organic($('heroGun'), { ...SMALL, rim: 4, shadow: [5, 5] });
   organic($('nameRow'), { ...SMALL, shadow: [5, 5] });
@@ -46,11 +52,26 @@ export function homeShown() {
   $('heroSlot').append($('preview'));
   setPreviewRes(0.75);
   hero();
+  navIcons(); // (a new loadout or skin: the CUSTOMIZE picture follows)
   renderEvent();
   pollNow();
   clearInterval(evT);
   evT = setInterval(() => { if (homeOn()) renderEvent(true); else clearInterval(evT); }, 1000);
 }
+// the side menu's pictures: your own gun on CUSTOMIZE, the 3D crate on CONTAINERS, props on the rest (rendered once, cached)
+function navIcons() {
+  for (const s of document.querySelectorAll('#scr-main .hnav .ni')) {
+    const k = s.dataset.ico, im = s.querySelector('img');
+    let u = '';
+    if (k === 'customize') { const lo = G.settings.loadout || {}, id = WEAPONS[lo.primary] ? lo.primary : 'ar'; u = navGunPic(id, opts.skin && opts.skin(id)); }
+    else if (k === 'crates') u = navCratePic() || containerPic('crate');
+    else u = navPic(k);
+    if (u && im.getAttribute('src') !== u) im.src = u;
+    const w = iconWaits(); // drawn while its model was still coming (the loading cube): again when it lands
+    if (w && !navWait) { navWait = true; whenGlb(w, () => { navWait = false; navIcons(); }); }
+  }
+}
+let navWait = false;
 // other screens get the crunchy preview back
 export function homeLeft() { setPreviewRes(0.5); }
 // a skin model that downloaded late: put it in the hero's hands

@@ -61,12 +61,14 @@ import { installTactical } from './server/tactical.js';
 import { TAC } from './shared/tactical.js'; // Plant & Defuse gunplay: spray patterns, moving spread, the hit check
 import { MSLIP, onPatch, patchPreroll } from './shared/marbles.js';
 import { installLasso } from './server/lasso.js'; // lasso (secondary): its Room methods
+import { installBotFlair } from './server/botflair.js'; // bot outfits, bot chat + bot sprays
 import { lassoPreroll } from './shared/lasso.js';
 import { ZM } from './shared/zombies.js';
 import { installZombies } from './server/zombies.js';
 import { inShredder } from './shared/shredpit.js'; // the Warehouse's shredder pit: its teeth kill like the void
 import { installLobby } from './server/lobby.js'; // mode lobbies: the countdown before a match
 import { LOBBY } from './shared/lobby.js';
+import { sendStatic } from './server/static.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // secrets like SUPABASE_SERVICE_KEY can live in a .env file next to server.js (never commit it, never ship it in the exe)
@@ -127,8 +129,7 @@ function serve(req, res) {
     if (!file.startsWith(dir)) { res.writeHead(403).end(); return; }
     fs.stat(file, (err, st) => {
       if (err || !st.isFile()) { res.writeHead(404).end('404'); return; }
-      res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-cache' });
-      fs.createReadStream(file).pipe(res);
+      sendStatic(req, res, file, st, path.extname(file), MIME[path.extname(file)] || 'application/octet-stream'); // (ETag + gzip: server/static.js)
     });
     return;
   }
@@ -276,6 +277,8 @@ if (process.env.JF_ZM_DROP) ZM.dropMul = Number(process.env.JF_ZM_DROP) || 1; //
 if (process.env.JF_ZM_DROPCAP) ZM.dropCap = Number(process.env.JF_ZM_DROPCAP) || ZM.dropCap;
 if (process.env.JF_ZM_MACHCD) ZM.machCd = Number(process.env.JF_ZM_MACHCD);
 if (process.env.JF_ZM_MACHSPIN) ZM.machSpin = Number(process.env.JF_ZM_MACHSPIN) || ZM.machSpin; // ms the cheat machine rolls for (screenshots)
+// test knobs: JF_BOTCHAT_GAP=ms between bot chat lines in a room (default 6-8 s), JF_BOTCHAT_ALL=1 skips the chance roll
+const BOTCHAT_KNOBS = { ...(Number(process.env.JF_BOTCHAT_GAP) >= 0 && process.env.JF_BOTCHAT_GAP ? { gap: [Number(process.env.JF_BOTCHAT_GAP), Number(process.env.JF_BOTCHAT_GAP)] } : {}), ...(process.env.JF_BOTCHAT_ALL ? { all: true } : {}) };
 const GRAPH_TTL = (Number(process.env.JF_GRAPH_TTL) || 10) * 60e3; // test knob: minutes a map's bot walk graph outlives the last room on it (then it's dropped, server/graphs.js)
 const GRAPH_SWEEP = (Number(process.env.JF_GRAPH_SWEEP) || 60) * 1e3; // test knob: seconds between the sweeps that drop them
 function randomSkins() {
@@ -599,6 +602,7 @@ class Room {
       ai: { diff, target: 0, retarget: 0, nextShot: now() + 1500, seenAt: 0, ammo: 0, reloadUntil: 0, jumpT: 0, wp: null, seed: Math.random() * 100, dummy: opts.dummy || null, strafeDir: 1 },
     });
     b.ai.ammo = WEAPONS[b.w].mag || 1;
+    if (!opts.dummy) this.botDress(b); // its own outfit + weapon skins + chat personality (server/botflair.js)
     this.lassoArm(b); // some bot-room bots carry the lasso
     if (!opts.dummy && Math.random() < 0.5) b.grap = pick(GRAP_IDS); // bots show off ropes you can roll
     if (!opts.dummy) { this.joinTeam(b); if (b.team) b.pos = this.pickSpawn(true, b); }
@@ -1482,10 +1486,12 @@ class Room {
       this.broadcast({ t: 'kat', id: killer.id, n: killer.kat });
     }
     if (t.kat) { t.kat = 0; this.broadcast({ t: 'kat', id: t.id, n: 0 }); }
+    let bcRev = false;
     if (killer && killer !== t) {
       killer.kills++;
       killer.streak = (killer.streak || 0) + 1;
       if (this.round && !this.round.over) matchKill(this, killer, t, via || w);
+      bcRev = killer.lastKiller === t.id; // (for the bot chat)
       if (killer.lastKiller === t.id) killer.lastKiller = 0; // revenge served (scales of justice)
       t.lastKiller = killer.id;
       if (this.zm) killer.streak = 0; // zombies: no killstreaks
@@ -1535,6 +1541,7 @@ class Room {
     this.broadcast({ t: 'kill', k: killer && killer !== t ? killer.id : 0, v: t.id, w, via, vel: t.vel.map(r2), pos: t.pos.map(r2), yaw: r2(t.yaw || 0), fx: kfx, ep: ep || undefined, rs: Math.max(0, t.minRespawnAt - now()), sky: w === 'duck' && now() - (t.skyT || 0) < 800 ? 1 : undefined, pit: w === 'void' && now() - (t.pitT || 0) < 500 ? 1 : undefined }); // (pit: the shredder pit's teeth)
     t.lastAttacker = 0;
     this.chaosKill(t, killer);
+    if (killer && killer.isBot || t.isBot) this.botBrag(killer, t, w, via, { rev: bcRev, clutch: this.botClutch(killer, t) }); // bots brag / cope in chat
     if (t.isBot && this.mode === 'coop') { setTimeout(safe('coop', () => { if (this.players.get(t.id) === t) this.remove(t); }), 50); }
     this.modeKill(t, killer, via || w);
     if (this.brOn) this.brKill(t, killer, w);
@@ -2903,7 +2910,7 @@ class Room {
       case 'chat': {
         const text = typeof m.m === 'string' ? clean(m.m, 120) : '';
         if (text && isSkipCmd(text)) { skipCommand(this, p); break; } // /skip: a vote to skip this match (server/skip.js), never shown as chat
-        if (text && now() - p.chatT > 400) { p.chatT = now(); this.broadcast({ t: 'chat', id: p.id, m: text }); }
+        if (text && now() - p.chatT > 400) { p.chatT = now(); this.broadcast({ t: 'chat', id: p.id, m: text }); this.botReply(p, text); }
         break;
       }
       case 'sec': this.onSecret(p, m); break; // F next to a hidden NPC or cat
@@ -3969,6 +3976,7 @@ class Room {
 }
 
 installRoyale(Room, { send, movePlayer });
+installBotFlair(Room, BOTCHAT_KNOBS); // bot outfits, chat, sprays (server/botflair.js)
 installRig(Room, { now, num, vec3, norm, r2, center, safe, REC_T, WEAPONS }); // the overdrive rig's methods (server/rig.js)
 installBody(Room, { now, send, r2 }); // HP pools for the body killstreaks (server/bodyhp.js)
 installGear(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm, vec3, stat, liveStats });
