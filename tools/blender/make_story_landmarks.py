@@ -343,6 +343,10 @@ def build_machine():
         O.append(fit(ball(0.12, (x, y0 + 0.025 + 0.12, z), sim, seg=8, rings=6), R['loot']))
         O.append(fit(cyl(0.125, 0.03, (x, y0 + 0.025 + 0.12, z), sim, axis='y', seg=8), R['hazard']))
     # --- the sims on the shelves (all glowing: they're the only lit world left)
+    def tilt_row(r0, sy, t, xa, xb):  # high shelves lean toward you (you look up at them from 1.7 m) on a wedge stand
+        f = sy + 0.025
+        xform(O[r0:], rot=(-t, 0, 0), pivot=(0, f, -1.45))
+        O.append(fit(side([(-1.45, f - 0.005), (-0.44, f - 0.005), (-0.44, f + math.sin(t) * 1.0 + 0.01)], xb - xa, ((xa + xb) / 2, 0, 0), decal), R['motor']))
     def base(xa, xb, sy, sw, h=0.07):
         return fit(box((xb - xa, h, 1.0), ((xa + xb) / 2, sy + 0.025 + h / 2, -0.95), sim, bev=0.01, seg=1), R[sw])
     # row 1: DEAD MALL (checker floor, fountain, a shopfront, the escalator, Todd floating upside down)
@@ -357,7 +361,7 @@ def build_machine():
     O += mannequin((0.85, Y + 0.62, -0.95), (math.pi, 0.4, 0.2), sim, R, 'teamB', pose='fly', gun=False)
     O.append(fit(cyl(0.035, 0.14, (0.85, Y + 0.39, -0.95), sim, axis='y', seg=6, r2=0.02), R['fount']))  # the fountain holds Todd up
     # row 2: THE FIGHT in the warehouse (crates, three fighters, a tracer, a muzzle flash)
-    sy = 2.75; Y = sy + 0.025 + 0.07
+    sy = 2.75; Y = sy + 0.025 + 0.07; r0 = len(O)
     O.append(base(-0.95, 1.95, sy, 'conc'))
     O.append(fit(box((2.9, 0.012, 0.06), (0.5, Y + 0.004, -1.42), sim), R['hazard']))
     for (cx, cy, cz, s_, a) in ((1.45, 0.14, -0.85, 0.28, 0.1), (1.45, 0.42, -0.85, 0.28, -0.15), (1.1, 0.12, -0.7, 0.24, 0.3), (-0.6, 0.12, -0.6, 0.24, 0.5)):
@@ -368,8 +372,9 @@ def build_machine():
     O.append(fit(rod((-0.03, Y + 0.27, -1.18), (-0.55, Y + 0.36, -1.02), 0.008, sim, seg=4), R['tracer']))
     for a in (0.0, 1.0):
         O.append(fit(box((0.07, 0.012, 0.012), (-0.02, Y + 0.27, -1.19), sim, rot=(0, 0.5, a)), R['tracer']))
+    tilt_row(r0, sy, 0.18, -0.95, 1.95)
     # row 3: TINY ISLANDS (water, three islands, a palm, a shark) and a DESERT (dunes, cacti)
-    sy = 3.75; Y = sy + 0.025 + 0.05
+    sy = 3.75; Y = sy + 0.025 + 0.05; r0 = len(O)
     O.append(base(-0.95, 0.85, sy, 'water', h=0.05))
     for (ix, iz, r_i) in ((-0.55, -1.0, 0.24), (0.2, -0.75, 0.3), (0.55, -1.25, 0.14)):
         isl = ball(r_i, (ix, Y, iz), sim, scale=(1, 0.32, 1), seg=8, rings=5); jitter(isl, 0.015, seed=int(ix * 10) + 30); O.append(fit(isl, R['sand']))
@@ -386,16 +391,17 @@ def build_machine():
     for (cx, cz, h) in ((1.45, -1.2, 0.36), (1.75, -0.7, 0.26)):
         O.append(fit(cyl(0.035, h, (cx, Y + h / 2, cz), sim, axis='y', seg=6), R['cactus']))
         O.append(fit(sweep([(cx + 0.03, Y + h * 0.5, cz), (cx + 0.09, Y + h * 0.5, cz), (cx + 0.09, Y + h * 0.78, cz)], 0.02, sim, seg=5), R['cactus']))
+    tilt_row(r0, sy, 0.28, -0.95, 1.95)
     # row 4: THE CITY BLOCK (Jankburg in a box) and THE SUBURB
-    sy = 4.75; Y = sy + 0.025 + 0.06
+    sy = 4.75; Y = sy + 0.025 + 0.06; r0 = len(O)
     O.append(base(-0.95, 0.95, sy, 'road', h=0.06))
     rnd = random.Random(8)
     for k, (bx, bz) in enumerate(((-0.75, -0.65), (-0.45, -0.62), (-0.15, -0.68), (0.2, -0.6), (0.55, -0.66), (-0.6, -1.25), (0.4, -1.28))):
-        h = rnd.uniform(0.25, 0.75) if bz > -1 else rnd.uniform(0.15, 0.3)
+        h = rnd.uniform(0.28, 0.55) if bz > -1 else rnd.uniform(0.12, 0.24)
         w = rnd.uniform(0.2, 0.3)
         O.append(fit(box((w, h, 0.26), (bx, Y + h / 2, bz), sim), R[('b_teal', 'b_pink', 'b_yel', 'b_white')[k % 4]]))
-    O.append(fit(cyl(0.05, 0.7, (0.82, Y + 0.35, -0.62), sim, axis='y', seg=6, r2=0.03), R['b_white']))
-    O.append(fit(ball(0.06, (0.82, Y + 0.72, -0.62), sim, seg=6, rings=4), R['hazard']))
+    O.append(fit(cyl(0.05, 0.5, (0.82, Y + 0.25, -0.62), sim, axis='y', seg=6, r2=0.03), R['b_white']))
+    O.append(fit(ball(0.06, (0.82, Y + 0.52, -0.62), sim, seg=6, rings=4), R['hazard']))
     O.append(base(1.05, 1.95, sy, 'grass', h=0.06))
     for (hx, hz) in ((1.3, -0.75), (1.72, -1.15)):
         O.append(fit(box((0.3, 0.2, 0.26), (hx, Y + 0.1, hz), sim), R['b_pink' if hx < 1.5 else 'b_yel']))
@@ -403,6 +409,7 @@ def build_machine():
     for (tx, tz) in ((1.75, -0.6), (1.2, -1.25)):
         O.append(fit(cyl(0.09, 0.26, (tx, Y + 0.18, tz), sim, axis='y', seg=6, r2=0.0), R['leaf']))
         O.append(fit(cyl(0.015, 0.06, (tx, Y + 0.03, tz), sim, axis='y', seg=4), R['trunk']))
+    tilt_row(r0, sy, 0.36, -0.95, 1.95)
     # --- the control column (the viewer's right): plate, LCD, coin slot, bill reader, keypad, THE button, CHANGE
     PZ = FZ - 0.02
     O.append(fit(box((1.3, 4.1, 0.05), (PCX, 3.75 - 0.05, PZ + 0.005), decal), R['panel'], mode='front'))
@@ -442,14 +449,17 @@ def build_machine():
         O.append(fit(box((0.006, 0.12, 1.0), (MW / 2 + 0.003, 2.4, 0.7), decal, rot=(a, 0, 0)), R['tape']))
     for k, (cx, cy, a, L_) in enumerate(((1.95, 2.3, 0.6, 0.9), (2.2, 2.05, -0.3, 0.6), (1.75, 2.0, 1.2, 0.5))):
         O.append(fit(box((L_, 0.1, 0.006), (cx, cy, FZ - 0.003), decal, rot=(0, 0, a)), R['tape']))
-    sgn = fit(box((1.15, 0.5, 0.012), (0.0 + 0.3, 5.3, FZ - 0.004), decal, rot=(0, 0, -0.07)), R['sign'], mode='front'); O.append(sgn)
-    for (cx, cy) in ((-0.2, 5.55), (0.82, 5.5), (-0.2, 5.1), (0.8, 5.03)):
-        O.append(fit(box((0.2, 0.07, 0.004), (cx, cy, FZ - 0.011), decal, rot=(0, 0, 0.7 if cx < 0 else -0.6)), R['tape']))
+    SX, SY = -0.45, 2.3  # the sign, taped on the glass at eye height over the loot coils
+    sgn = fit(box((1.1, 0.48, 0.012), (SX, SY, FZ - 0.004), decal, rot=(0, 0, -0.07)), R['sign'], mode='front'); O.append(sgn)
+    for (dx, dy) in ((-0.5, 0.25), (0.5, 0.21), (-0.52, -0.2), (0.48, -0.25)):
+        O.append(fit(box((0.2, 0.07, 0.004), (SX + dx, SY + dy, FZ - 0.011), decal, rot=(0, 0, 0.7 if dx * dy < 0 else -0.6)), R['tape']))
     for (rect, w, h, pos, a) in (('st_smile', 0.36, 0.36, (2.1, 4.95, FZ + 0.0), 0.2), ('st_norefund', 0.4, 0.15, (0.4, 1.6, FZ + 0.0), -0.08),
                                  ('st_1730', 0.5, 0.2, (PCX - 0.35, 3.0, FZ - 0.042), 0.1), ('st_love', 0.5, 0.2, (PCX + 0.35, 3.08, FZ - 0.042), -0.12)):
         if pos[2] == FZ + 0.0: pos = (pos[0], pos[1], FZ - 0.002)  # on the glass / the cabinet
         O.append(fit(box((w, h, 0.005), pos, decal, rot=(0, 0, a)), R[rect], mode='front'))
-    O.append(fit(box((0.005, 0.5, 0.5), (-MW / 2 - 0.0, 3.8, -1.0), decal, rot=(0.3, 0, 0)), R['st_dye']))
+    O.append(fit(box((0.005, 0.5, 0.5), (-MW / 2 - 0.0, 2.3, -0.9), decal, rot=(0.3, 0, 0)), R['st_dye']))
+    O.append(fit(cyl(1.15, 0.006, (-MW / 2, 4.35, 0.1), decal, axis='x', seg=24), R['bigsmile']))  # the faded ☺ on the flank
+    O.append(fit(box((0.006, 0.42, 1.5), (-MW / 2, 2.95, 0.1), decal), R['sidecorp']))
     O.append(fit(box((0.005, 0.25, 0.62), (MW / 2 + 0.0, 5.4, -0.6), decal, rot=(-0.05, 0, 0)), R['st_1730']))
     O.append(fit(box((0.005, 0.25, 0.62), (MW / 2 + 0.0, 1.4, -0.9), decal, rot=(0.1, 0, 0)), R['st_love']))
     # power: a junction box on the right flank, three fat cables to the floor and off to the depot wall, tape bands
