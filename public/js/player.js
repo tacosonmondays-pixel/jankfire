@@ -15,6 +15,7 @@ import { rigStep, rigHook } from './rig.js'; // overdrive rig killstreak
 import { flashRope, myGrapple } from './grapple.js';
 import { WEAPONS } from '/shared/weapons.js';
 import { holeDrag } from '/shared/physics.js';
+import { TAC } from '/shared/tactical.js';
 
 export const ME = {
   pos: [0, 5, 0], vel: [0, 0, 0], yaw: 0, pitch: 0,
@@ -192,6 +193,7 @@ export function stepPlayer(dt, inp, now) {
   if (!ME.alive) return;
   hookFeel(dt, now); // before any early return, so the camera lean keeps easing (e.g. through a dash, the ball or a soap bubble)
   if (ME.ballUntil) { if (now < ME.ballUntil) { feel.lift = 0; ballStep(dt, inp, now); return; } endBall(); } // wrecking ball killstreak (its chain has its own physics)
+  if (G.brStep && G.brStep(dt, inp, now)) return; // jank royale: riding the blimp, falling, the umbrella (royale.js)
   const v = ME.vel, p = ME.pos;
   if (rigStep(dt, inp, now)) return; // overdrive rig: heavy, fast, leaps instead of jumping (rig.js)
   if (rideStep(dt, inp, now)) return; // riding a shopping cart (primaries.js)
@@ -240,8 +242,9 @@ export function stepPlayer(dt, inp, now) {
   // crouch while fast = slide. crouch while slow = crouch walk. shift = sprint.
   ME.sliding = !!inp.crouch && ME.onGround && hs > C.slideMin && !slipping;
   ME.crouching = !!inp.crouch && !ME.sliding;
-  ME.sprinting = !!inp.sprint && !inp.crouch && fw > 0 && ME.onGround;
-  const moveMul = ME.speedMul * (ME.sprinting ? C.sprintMul : ME.crouching ? C.crouchMul : 1);
+  ME.walking = !!G.eco && !!inp.sprint && !ME.crouching; // Plant & Defuse: shift is a quiet slow walk, not a sprint
+  ME.sprinting = !G.eco && !!inp.sprint && !inp.crouch && fw > 0 && ME.onGround;
+  const moveMul = ME.speedMul * (ME.sprinting ? C.sprintMul : ME.crouching ? C.crouchMul : ME.walking ? TAC.walkMul : 1);
   const eyeT = ME.sliding ? C.slideEye : ME.crouching ? C.crouchEye : C.standEye;
   ME.eyeH += (eyeT - ME.eyeH) * Math.min(1, dt * 14);
 

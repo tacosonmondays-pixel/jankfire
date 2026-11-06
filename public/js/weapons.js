@@ -16,6 +16,7 @@ import { sfx, loopSfx, stopLoops } from './audio.js';
 import { shredMotor } from './audio.js';
 import { net } from './net.js';
 import { hud } from './hud.js';
+import { K } from './keys.js';
 import { tracerColor, emitSkinFx } from './skins.js';
 import { ANIMS, sample, sampleCh, eventsBetween, inspectFor, drawFor } from './anim.js';
 import { newTwirl, resetTwirl, twirling, spin, settle, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
@@ -25,6 +26,8 @@ import { rigFire, rigItem, rigVM, rigBlockKey, rigReload } from './rig.js'; // o
 import { tickScalesVM } from './scales.js';
 import { PARRY } from '/shared/weapons.js';
 import { ROYAL } from '/shared/looks.js';
+import { tacOn, tacShot, tacKick, tacFrame } from './tactical.js'; // Plant & Defuse: spray patterns + moving spread
+import { carRay, carHit, carSwing } from './traffic.js'; // cars stop bullets (and take the damage)
 
 export const W = {
   slots: [DEFAULT_LOADOUT.primary, DEFAULT_LOADOUT.secondary, DEFAULT_LOADOUT.melee],
@@ -282,7 +285,7 @@ export function useItem() {
   if (W.itemHook && W.itemHook(id)) return; // new gear (gear.js): the camera's free photo, goggles on / off
   if (c.n <= 0) { sfx.empty(); hud.msg(`${it.name}: recharging`, 0.8); return; }
   W.itemT = performance.now();
-  c.n--; if (!c.next && !W.eco) c.next = performance.now() + it.recharge * 1000;
+  c.n--; if (!c.next && !W.eco && !W.br) c.next = performance.now() + it.recharge * 1000; // (jank royale gadgets don't recharge either)
   net.send({ t: 'item', i: id, o: eye().map(r2), d: look().map(r2) });
   if (id === 'wand' || id === 'camera' || id === 'nvg') return; // no toss: the wand, camera and goggles have their own viewmodels
   if (it.w) popItem(it.w); // party popper / reverse card: pops into your hand (see popEvent for what it does)
@@ -544,7 +547,7 @@ export function toggleScythe() {
 }
 
 export function refillAmmo() {
-  for (const id of ORDER) if (WEAPONS[id].mag && !W.eco) W.ammo[id] = WEAPONS[id].mag;
+  for (const id of ORDER) if (WEAPONS[id].mag && !W.eco && !W.br) W.ammo[id] = WEAPONS[id].mag; // (jank royale: bullets come off the floor)
   W.reloadId = null;
   W.fuel.blower = WEAPONS.blower.fuel;
   W.slipperOut = false;
@@ -642,6 +645,7 @@ export function reload() {
   const id = W.cur, w = WEAPONS[id];
   if (W.noReload) return; // one in the chamber: bullets only come from kills
   if (!w.mag || W.reloadId || W.ammo[id] >= w.mag || !ME.alive) return;
+  if (W.br && !W.br.canReload(id)) return; // jank royale: no spare bullets
   if (W.eco && !W.eco.canReload(id)) return;
   W.reloadId = id;
   W.reloadUntil = performance.now() + w.reload * 1000;
@@ -724,24 +728,42 @@ function currentSpread(w) {
   return hipS + (ads - hipS) * W.aim;
 }
 
+// the gun's own spread right now, without bloom (Plant & Defuse: the spray pattern replaces bloom; moving adds on top)
+function tacBase(w) {
+  if (fanShot) return fanSpread(w);
+  const hip = (HIPFIRE[G.cfg.hip] || HIPFIRE.normal).mul, base = w.spread || 0;
+  const ads = w.ads ? base * (w.ads.spread ?? 1) * Math.min(1, hip) : base * hip, hipS = base * hip;
+  return hipS + (ads - hipS) * W.aim;
+}
 function fireHitscan(id, now) {
   const w = WEAPONS[id];
+  const tac = W.eco && tacOn() ? tacShot(id, tacBase(w), now) : null; // which spray shot, its spread, its directions
+  if (tac && W.sendSnap) W.sendSnap(); // the server checks the shot against the aim in this snapshot
   if (w.mag && G.mode !== 'training') W.ammo[id]--;
   setCd(id, now);
   W.lastShotT = now;
   if (w.fanHammer && models[id]) applyTwirl(models[id].g, 0, models[id].cfg.s); // mid-twirl revolver: the shot leaves the resting muzzle (twirlVM spins it again before the next render)
   const o = eye(), base = look(), mz = muzzleWorld();
-  const hits = new Map();
+  const hits = new Map(), carHits = new Map();
   const segs = [];
   const pellets = w.pellets || 1;
   const shots = w.marbles ? [] : null; // Marble Shotgun: each pellet becomes a marble that bounces off what it hit
   for (let i = 0; i < pellets; i++) {
-    let d = spreadDir(base, currentSpread(w));
+    let d = tac ? tac.dir(i) : spreadDir(base, currentSpread(w));
     let from = o, left = w.range, bounces = w.ricochet || 0, drawFrom = mz;
     for (;;) {
       const mh = raycast(from, d, left, BOXES);
       const maxT = mh ? mh.t : left;
       const ph = rayPlayers(from, d, maxT);
+      const ch = carRay(from, d, ph ? ph.t : maxT); // a car in the way takes it
+      if (ch) {
+        const end = [from[0] + d[0] * ch.t, from[1] + d[1] * ch.t, from[2] + d[2] * ch.t];
+        segs.push([...drawFrom, ...end]);
+        if (shots) shots.push({ a: drawFrom, b: end, n: ch.n, player: false });
+        carHits.set(ch.id, (carHits.get(ch.id) || 0) + 1);
+        if (!shots || i % 6 === 0) fx.sparks(end, d.map((x) => -x), 5, false);
+        break;
+      }
       const t = ph ? ph.t : maxT;
       const end = [from[0] + d[0] * t, from[1] + d[1] * t, from[2] + d[2] * t];
       segs.push([...drawFrom, ...end]);
@@ -765,17 +787,22 @@ function fireHitscan(id, now) {
   }
   const ns = id === 'sniper' && !W.scoped ? 1 : undefined; // no-scope: the server only makes it look cool, damage is the same
   const qs = id === 'sniper' && W.scoped && now - W.scopedAt <= ROYAL.quick ? 1 : undefined; // quick-scope: fired right as the scope came up (Sniper Royalty only, never damage)
-  for (const [rid, h] of hits) net.send({ t: 'hit', to: rid, w: id, d: h.d.map(r2), n: h.n, h: h.h, ns, qs, fan: fanShot ? 1 : undefined });
+  for (const [cid, n] of carHits) { carHit(cid, id, n, base); hud.hit(false); }
+  const r4 = (x) => Math.round(x * 10000) / 10000;
+  for (const [rid, h] of hits) net.send({ t: 'hit', to: rid, w: id, d: h.d.map(tac ? r4 : r2), n: h.n, h: h.h, ns, qs, fan: fanShot ? 1 : undefined, ...(tac ? tac.msg : null) });
   const fast = w.rate > 8;
   const skin = (W.skinOver || G.equipped || {})[id];
   if (shots) marbles.shoot(shots, marblePalette(skin));
   else for (const s of segs) fx.tracer(s.slice(0, 3), s.slice(3), tracerColor(skin, w.tracer || 0xfff0a0), w.thick || (fast ? 0.03 : 0.045), fast ? 0.07 : 0.2);
-  net.send({ t: 'fire', w: id, o: o.map(r2), s: segs.slice(0, 12).map((s) => s.map(r2)), fan: fanShot ? 1 : undefined });
+  net.send({ t: 'fire', w: id, o: o.map(r2), s: segs.slice(0, 12).map((s) => s.map(r2)), fan: fanShot ? 1 : undefined, ...(tac ? tac.msg : null) });
   if (id === 'nailgun') nailSegs(segs); // nails stay in the wall (primaries.js)
   if (w.recoil) applyKb([-base[0] * w.recoil, -base[1] * w.recoil, -base[2] * w.recoil]);
-  ME.pitch = Math.min(1.55, ME.pitch + (w.kick || 0) * (0.6 + Math.random() * 0.8) * (1 - W.aim * 0.5));
-  ME.yaw += (Math.random() - 0.5) * (w.kick || 0) * 0.5;
-  W.bloom = Math.min(w.maxBloom || 0, W.bloom + (w.bloom || 0));
+  if (tac) tacKick(id, tac.i); // Plant & Defuse: the camera climbs with the pattern (no random kick, no bloom)
+  else {
+    ME.pitch = Math.min(1.55, ME.pitch + (w.kick || 0) * (0.6 + Math.random() * 0.8) * (1 - W.aim * 0.5));
+    ME.yaw += (Math.random() - 0.5) * (w.kick || 0) * 0.5;
+    W.bloom = Math.min(w.maxBloom || 0, W.bloom + (w.bloom || 0));
+  }
   W.kick = Math.min(1, W.kick + (fast ? 0.25 : 1));
   if (W.anim && W.anim.kind === 'draw') W.anim = null;
   kickVM(id, W.aim > 0.5 ? 0.6 : 1);
@@ -935,6 +962,7 @@ function resolveSwing(id) {
     G.shake = Math.max(G.shake, hv ? 0.6 : 0.35);
     return;
   }
+  if (carSwing(o, d, hv ? hv.range : reach, id)) { sfx.bonk(); W.hitStop = 0.05; G.shake = Math.max(G.shake, 0.3); return; } // bonked a car
   if (w.pogo) {
     const mh = raycast(o, d, w.range, BOXES);
     if (mh) {
@@ -971,6 +999,7 @@ export function fireDown() {
   const id = W.cur, w = WEAPONS[id], now = performance.now();
   W.fanning.down = now; W.fanning.arm = true; // revolver: keep holding from here to fan the hammer
   if (!ME.alive || W.reloadId === id || !ready(id, now)) return;
+  if (W.br && W.br.dry(id)) { W.held = false; return; } // jank royale: out of shots
   if (W.eco && W.eco.dry(id)) { W.held = false; return; }
   if (W.anim && W.anim.kind === 'draw') W.anim = null;
   if (w.kind === 'hitscan' && !w.auto && !w.spinup) {
@@ -1220,7 +1249,7 @@ export function updateWeapons(dt, now) {
   W.fuel.blower = (W.held && id === 'blower') ? W.fuel.blower : Math.min(WEAPONS.blower.fuel, W.fuel.blower + WEAPONS.blower.regen * dt);
   W.bloom = Math.max(0, W.bloom - dt * 0.06);
   if (W.slipperOut && now - W.slipperT > 4000) W.slipperOut = false;
-  if (W.reloadId && now >= W.reloadUntil) { if (W.eco) W.eco.reloaded(W.reloadId); else W.ammo[W.reloadId] = WEAPONS[W.reloadId].mag; W.reloadId = null; sfx.click(); }
+  if (W.reloadId && now >= W.reloadUntil) { if (W.br) W.br.reloaded(W.reloadId); else if (W.eco) W.eco.reloaded(W.reloadId); else W.ammo[W.reloadId] = WEAPONS[W.reloadId].mag; W.reloadId = null; sfx.click(); }
   const canAim = !!w.ads && alive && !W.reloadId;
   W.aim = canAim && W.aimHeld ? Math.min(1, W.aim + dt * 7) : Math.max(0, W.aim - dt * 8);
   W.zoom = w.ads ? 1 + (w.ads.zoom - 1) * W.aim : 1;
@@ -1348,11 +1377,13 @@ export function updateWeapons(dt, now) {
   // ---- HUD
   if (ITEMS[W.item]) { const c = charges(W.item), it = ITEMS[W.item]; hud.item(c.n, it.charges, c.next ? 1 - Math.max(0, c.next - now) / (it.recharge * 1000) : 1); }
   updatePop(dt);
-  if (W.eco) W.eco.hud(id, !!W.reloadId);
+  tacFrame(dt, now, W.eco && W.cur && WEAPONS[W.cur] ? W.cur : null, W.cur && WEAPONS[W.cur] ? tacBase(WEAPONS[W.cur]) : 0); // the crosshair shows your spread
+  if (W.br) W.br.hud(id, !!W.reloadId); // jank royale: mag / spare bullets
+  else if (W.eco) W.eco.hud(id, !!W.reloadId);
   else if (w.mag) hud.ammo(W.ammo[id], w.mag, !!W.reloadId);
   else hud.ammo(null);
   if (W.reloadId) hud.meter(1 - (W.reloadUntil - now) / (w.reload * 1000), 'RELOADING', '#ffffff');
-  else if (isScythe(id)) hud.meter(W.dashFuel / D.max, ME.dashing ? 'GLITCHING' : 'V: GLITCH DASH · X: SWAP MODE', '#ff00dc');
+  else if (isScythe(id)) hud.meter(W.dashFuel / D.max, ME.dashing ? 'GLITCHING' : `${K.label('dash').toUpperCase()}: GLITCH DASH · ${K.label('scythe').toUpperCase()}: SWAP MODE`, '#ff00dc');
   else if (id === 'bow') { /* set above */ }
   else if (id === 'cards') hud.meter(null);
   else if (id === 'cig') {
