@@ -174,3 +174,41 @@ drop and on hover in the Tote Bag.
   implants in your bag with INSTALL, the shop with prices, and budget / drift text.
 - `implantLook(character, ids, over)` puts code-built stand-ins on the mannequin. The art lane's models (ART_BIBLE §6,
   items 20-22) replace them later.
+
+## Cars (WP7)
+**Physics** (`shared/story/drive.js`, pure): an arcade car over any box world (`{ query, raycast }`: BOXES on the
+client, a `ChunkWorld` on a server).
+- `newCar(ty, p, h)`, and `stepCar(car, { f, b, l, r, hand, boost }, dt, world, { slip })` -> events
+  `[{ crash, v } | { eject, v } | { land, v } | { overheat }]`.
+- Heading `h`: forward is `(sin h, cos h)`, and steering right lowers `h`.
+- Handling:
+  - top speed by mass (`topOf`): hatch ~35 m/s, bus ~18;
+  - a brake, then a slow reverse;
+  - steering that tightens at speed;
+  - a handbrake drift (grip 2 instead of 11);
+  - a boost (×1.55 top, ×1.8 acceleration) that overheats after 4 s and locks out for 3 s;
+  - kerbs up to 0.65 m are climbed, anything taller is a wall;
+  - no ground means you keep flying (ramps);
+  - wall hits bounce (restitution 0.35): over 13 m/s is a crash (car hp), over 27 m/s throws the driver out.
+- `opts.slip(x, z)` gives a grip multiplier for peels, marbles and soup.
+- `MAXV(ty)` is the most a car can ever do; servers use it to cap claims. `carType`, `seatOf`, `carBoxes`, `fwdOf`,
+  `speedOf`. `STORY_CARS.sofa` is the Bottom's sofa-car.
+
+**In the sim** (`shared/story/carsys.js`):
+- `sim.cars`, `sim.addCar(ty, p, h, col)`, `sim.carOf()`. Parked cars per world (the Bottom has the sofa-car and a
+  hatch by the Machine), saved per zone (`save.data.cars`).
+- Client -> sim: `carIn { id }` (within 4.5 m, nobody in it), `car { id, p, h, v, hp }` (~10/s; the driver only),
+  `carOut { id, p, h }`.
+- Each update is checked: no more than `MAXV × dt + 3` m, no 80 m teleports, no flying up, no claimed speed over the
+  cap, at most 40 updates/s, and hp only goes down.
+- A refused update comes back as `carFix { id, p, h, why }` and the client snaps back. A car left in the void is towed
+  back to the Machine.
+
+**Client** (`public/js/story/drive.js`):
+- F next to a car gets in; F again gets out (the left door, else the right / back / front / sunroof, never inside a wall).
+- `main.js` runs `G.story.drive(STEP, inp)` instead of `stepPlayer` while you drive (W/S/A/D, Space handbrake, Shift
+  boost), and hides the first-person view.
+- A chase camera follows the mouse and is kept out of walls. Only a sidearm fires (drive-bys); getting in switches to
+  your bar's sidearm.
+- The HUD shows boost heat and km/h. Crashes go CRUNCH and shake the screen; a big one throws you out the front.
+- The sofa-car is a code stand-in until the art lane's model 9.
