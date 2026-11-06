@@ -7,6 +7,7 @@ import { net } from './net.js';
 import { hud } from './hud.js';
 import { sfx } from './audio.js';
 import { fx, PSys } from './fx.js';
+import { liquidMaterial } from './liquidmats.js'; // (the shared lava: liquidmats.js)
 import { ME } from './player.js';
 import { W } from './weapons.js';
 import { RP } from './replay.js';
@@ -35,32 +36,7 @@ function el(id, cls) {
 }
 
 // ------------------------------------------------------------ floor is lava
-const LAVA_VS = `
-varying vec3 vW;
-#include <fog_pars_vertex>
-void main() {
-  vec4 wp = modelMatrix * vec4(position, 1.0);
-  vW = wp.xyz;
-  vec4 mvPosition = viewMatrix * wp;
-  gl_Position = projectionMatrix * mvPosition;
-  #include <fog_vertex>
-}`;
-// chunky pixels like the rest of the world, slow blobs drifting, hot yellow veins
-const LAVA_FS = `
-uniform float uTime;
-varying vec3 vW;
-#include <fog_pars_fragment>
-void main() {
-  vec2 p = floor(vW.xz * 3.0) / 3.0;
-  float t = uTime;
-  float n = sin(p.x * 0.8 + t * 0.6) * sin(p.y * 0.7 - t * 0.45) + 0.6 * sin((p.x + p.y) * 0.33 + t * 1.1) + 0.35 * sin(p.x * 2.1 - p.y * 1.6 + t * 1.9);
-  vec3 c = mix(vec3(0.22, 0.008, 0.0), vec3(0.95, 0.12, 0.0), smoothstep(-0.9, 0.55, n));
-  c = mix(c, vec3(1.0, 0.62, 0.06), smoothstep(0.7, 1.25, n));
-  c *= 0.9 + 0.1 * sin(t * 3.0 + p.x * 0.2);
-  gl_FragColor = vec4(c, 1.0);
-  #include <colorspace_fragment>
-  #include <fog_fragment>
-}`;
+// (the lava's look lives in liquids.js now)
 function buildLava(s) {
   const pos = [], idx = [];
   let n = 0;
@@ -74,17 +50,14 @@ function buildLava(s) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   geo.setIndex(idx);
-  const mat = new THREE.ShaderMaterial({
-    uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uTime: { value: 0 } }]),
-    vertexShader: LAVA_VS, fragmentShader: LAVA_FS, fog: true,
-    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4,
-  });
-  const mesh = new THREE.Mesh(geo, mat);
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, liquidMaterial('lava')); // the same flowing lava as the Islands volcano (liquids.js), crust, cracks, bubbles
+  mesh.userData.noShadow = true;
   mesh.frustumCulled = false;
   return mesh;
 }
 function setLava(id) {
-  if (C.mesh) { G.scene.remove(C.mesh); C.mesh.geometry.dispose(); C.mesh.material.dispose(); C.mesh = null; }
+  if (C.mesh) { G.scene.remove(C.mesh); C.mesh.geometry.dispose(); C.mesh = null; } // (the material is shared: liquids.js keeps it)
   C.map = id; C.s = id ? surfaces(MAPS[id]) : null; C.boxes = id ? MAPS[id].boxes : null;
   el('lavaGlow').classList.toggle('on', !!id);
   if (!id) return;
@@ -99,7 +72,6 @@ function particles() {
 }
 // bubbles popping and embers spitting out of the floor around you
 function tickLava(now) {
-  C.mesh.material.uniforms.uTime.value = now / 1000;
   const cam = G.camera.position;
   for (let i = 0; i < 4; i++) {
     const a = Math.random() * Math.PI * 2, r = 2 + Math.random() * 34;

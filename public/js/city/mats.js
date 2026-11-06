@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { FAMS } from '/shared/city/plan.js';
 import { jankUniforms } from '../jank.js';
+import { liquidMaterial } from '../liquidmats.js';
 
 export const NL = 24; // lights at once (the nearest ones round the camera, picked by stream.js every frame)
 export const cityUniforms = {
@@ -156,7 +157,7 @@ export function cityMaterials() {
   const flesh = patch(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.22, metalness: 0.0 }), { flesh: true, pulse: true });
   const glow = patch(new THREE.MeshBasicMaterial({ color: 0xffffff }), { glowWin: true });
   const glass = patch(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.45, depthWrite: false }));
-  const acid = patch(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1, emissive: 0x2a5a00, emissiveIntensity: 1 }), { pulse: true });
+  const acid = liquidMaterial('acid', { city: true }); // the Big Stomach's lake and the bile puddles: real bubbling goo (../liquidmats.js)
   // the far impostor: vertex colour + a procedural window grid, no texture
   const far = new THREE.MeshLambertMaterial({ vertexColors: true });
   far.onBeforeCompile = (sh) => {

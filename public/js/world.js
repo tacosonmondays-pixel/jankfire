@@ -15,6 +15,8 @@ import { addRig } from './rigmats.js';
 import { updateForest, forestMap } from './forest.js';
 import { shredMap, updateShredPit } from './shredpit.js'; // the Warehouse's shredder pit: the drums, the glow, the grind
 import { buildProps, hasProp } from './props.js';
+import { liquidBox, buildLiquids, updateLiquids, liquidsMap, setLiquidQ } from './liquids.js'; // water that moves, lava that flows, splashes
+import { updateFlames } from './flames.js'; // real fire
 import { initLighting, lightingMap, lightingRefresh, updateLighting, setLightPreset, aoBegin, aoBake, aoMaterials, setSunBoxes } from './lighting.js';
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
@@ -161,6 +163,9 @@ function makeMaterials() {
   // the pool rooms: bright white tiles that seem lit from nowhere
   out.pooltile = lam(canvasTex(16, (g, s) => { speckle(g, s, [234, 242, 242], 5, 4); g.fillStyle = '#a3bcc0'; for (let i = 0; i < s; i += 4) { g.fillRect(i, 0, 1, s); g.fillRect(0, i, s, 1); } }), 1, { emissive: 0x3c4c50 });
   out.poolwater = { mat: new THREE.MeshBasicMaterial({ color: 0x86dbe6, transparent: true, opacity: 0.42, depthWrite: false }), tile: 2 };
+  // (liquids.js draws the liquids; these are what a box of one looks like anywhere it isn't a liquid surface)
+  out.greenglass = { mat: new THREE.MeshBasicMaterial({ color: 0x3a9ae8, transparent: true, opacity: 0.75 }), tile: 2 }; // the greenhouse's panes (used to borrow 'water')
+  for (const [k, hex] of Object.entries({ dyemagenta: 0xff4fd8, dyeyellow: 0xffe14d, dyeblue: 0x4f8aff, dyemint: 0x7dffc8, dyetoyred: 0xff3a3a, dyetoyteal: 0x3ff0f0, oil: 0x0a080e, acid: 0x7dff1a, slime: 0x39ff14, cola: 0x3a1206 })) out[k] = { mat: new THREE.MeshBasicMaterial({ color: hex }), tile: 1 };
   addVibe(out, canvasTex, speckle); // the map pass look (vibe.js)
   addForest(out, canvasTex, speckle); // scary forest (forestmats.js)
   addIslands(out, canvasTex, speckle); // islands (islandmats.js)
@@ -244,11 +249,12 @@ function buildMap(scene) {
   // deco: drawn, never bumped into. a Blender prop stands in only for real boxes (props.js draws map.boxes.props): look-only
   // scenery keeps its boxes (the city alone has hundreds of streetlights and cars, too many models to draw one by one)
   const all = def && def.deco ? [...BOXES, ...def.deco] : BOXES, nReal = BOXES.length;
-  const ncf = noCastFn(def);
+  const ncf = noCastFn(def), liq = [];
   aoBegin(all, ncf); setSunBoxes(all);
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
     if (i < nReal && b.pv && hasProp(b.pv)) continue;
+    if (liquidBox(b)) { liq.push(b); continue; } // water, lava, fire: liquids.js / flames.js draw those
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
     const mk0 = MAT[b.mat] ? b.mat : 'stone', small = aoSmall(sx, sy, sz);
@@ -280,6 +286,7 @@ function buildMap(scene) {
     scene.add(m);
     mapMeshes.push(m);
   }
+  buildLiquids(scene, liq, all, def, hazify);
 }
 
 // huge maps (map.chunk metres): one merged mesh per material per chunk, so what's behind you or deep in the fog isn't
@@ -288,11 +295,12 @@ function buildMap(scene) {
 function buildChunked(scene, def) {
   const C = def.chunk, groups = new Map();
   const all = def.deco ? [...BOXES, ...def.deco] : BOXES, nReal = BOXES.length;
-  const ncf = noCastFn(def);
+  const ncf = noCastFn(def), liq = [];
   aoBegin(all, ncf); setSunBoxes(all);
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
     if (i < nReal && b.pv && hasProp(b.pv)) continue; // (as in buildMap: only real boxes give way to a prop)
+    if (liquidBox(b)) { liq.push(b); continue; } // (liquids.js)
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
     const mk = MAT[b.mat] ? b.mat : 'stone', nc = ncf && ncf(b) ? '~' : '';
@@ -314,6 +322,7 @@ function buildChunked(scene, def) {
     mapMeshes.push(m);
     if (key !== k + nc) { merged.computeBoundingSphere(); chunkMeshes.push(m); }
   }
+  buildLiquids(scene, liq, all, def, hazify);
 }
 
 // chunks entirely past the end of the fog are pure fog colour anyway: skip them (needs a sky the colour of the fog)
@@ -418,7 +427,7 @@ export function initWorld(canvas) {
   resize();
 }
 
-export function setJank(i) { jank = JANK[i] || JANK[1]; resize(); setLightPreset(JANK[i] ? i : 1); }
+export function setJank(i) { jank = JANK[i] || JANK[1]; resize(); setLightPreset(JANK[i] ? i : 1); setLiquidQ(JANK[i] ? i : 1); }
 
 // OVERDUE: a streamed map (MAPS[id].stream, the story's city) runs the city streamer instead of one built mesh.
 // loaded on demand, so maps without `stream` (all of PvP) never fetch it
@@ -454,6 +463,7 @@ export function loadMap(id) {
   sun.scale.setScalar(night ? 0.8 : 1);
   if (night) sun.position.set(-260, 300, -420); else sun.position.set(300, 220, -420);
   for (const c of clouds) c.visible = !night && !(MAPS[MAP.id] && MAPS[MAP.id].sealed);
+  liquidsMap(MAPS[MAP.id], MAP.sky, sun.position, night); // what the water reflects and glitters with
   forestMap(MAPS[MAP.id], MAP.id);
   shredMap(MAPS[MAP.id], MAT);
   lightingMap(MAPS[MAP.id], MAP.id, night, sun); // shadows, mood, the neon's lights (after everything above is in, the pit too)
@@ -489,6 +499,8 @@ export function updateWorld(dt) {
   if (MAT) updateBackrooms(dt, [MAT.ceilflick.mat, MAT.ceilflick2.mat, MAT.ceilflick3.mat]);
   updateForest(dt);
   updateShredPit(dt);
+  updateLiquids(dt);
+  updateFlames(dt);
 }
 
 let lastT = 0;

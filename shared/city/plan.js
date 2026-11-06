@@ -16,7 +16,7 @@ export const MATS = [
   ['ground', 'dirt', 0x9a8070], ['asphalt', 'asphalt', 0x55535a], ['concrete', 'concrete', 0xb4b0ac], ['plaster', 'plaster', 0xffffff],
   ['brick', 'brick', 0xc0705a], ['metal', 'metal', 0x9aa0a8], ['rust', 'metal', 0xc0683a], ['wood', 'wood', 0xb07a4a],
   ['tile', 'tile', 0xe8e0d0], ['glass', 'glass', 0x9fd8ff, 'glass'], ['glow', 'glow', 0xffe14d, 'glow'], ['flesh', 'flesh', 0xff6f91, 'flesh'],
-  ['liver', 'flesh', 0x8a2a4a, 'flesh'], ['fat', 'flesh', 0xffd27a, 'flesh'], ['bone', 'bone', 0xf2e8d0], ['bile', 'flesh', 0xa6e22e, 'flesh'],
+  ['liver', 'flesh', 0x8a2a4a, 'flesh'], ['fat', 'flesh', 0xffd27a, 'flesh'], ['bone', 'bone', 0xf2e8d0], ['bile', 'flesh', 0xa6e22e, 'acid'],
   ['pink', 'plaster', 0xffb3c7], ['yellow', 'plaster', 0xffe58a], ['teal', 'plaster', 0x5fd3c6], ['mint', 'plaster', 0xb6f2c8],
   ['lilac', 'plaster', 0xd2b6ff], ['peach', 'plaster', 0xffc8a0], ['container', 'corrug', 0xffffff], ['tarp', 'fabric', 0xffffff],
   ['tiedye', 'tiedye', 0xffffff], ['rubble', 'concrete', 0x9a948e], ['ash', 'dirt', 0x77757a], ['road', 'asphalt', 0x4a484f],

@@ -20,7 +20,7 @@ import { TAC } from '/shared/tactical.js';
 export const ME = {
   pos: [0, 5, 0], vel: [0, 0, 0], yaw: 0, pitch: 0,
   onGround: false, groundTicks: 0, jumpBuf: 0, combo: 0,
-  hook: null, slipUntil: 0, sliding: false, speedMul: 1,
+  hook: null, slipUntil: 0, sliding: false, speedMul: 1, wadeMul: 1, // (wadeMul: wading through water, liquids.js)
   alive: false, hp: 100, seq: 0, airMaxFall: 0,
   crouching: false, sprinting: false, eyeH: 1.6, crouchTaps: [], tbagWarned: 0,
   dashing: false, moonUntil: 0,
@@ -245,7 +245,7 @@ export function stepPlayer(dt, inp, now) {
   ME.crouching = !!inp.crouch && !ME.sliding;
   ME.walking = !!G.eco && !!inp.sprint && !ME.crouching; // Plant & Defuse: shift is a quiet slow walk, not a sprint
   ME.sprinting = !G.eco && !!inp.sprint && !inp.crouch && fw > 0 && ME.onGround;
-  const moveMul = ME.speedMul * (ME.sprinting ? C.sprintMul : ME.crouching ? C.crouchMul : ME.walking ? TAC.walkMul : 1);
+  const moveMul = ME.speedMul * (ME.wadeMul || 1) * (ME.sprinting ? C.sprintMul : ME.crouching ? C.crouchMul : ME.walking ? TAC.walkMul : 1);
   const eyeT = ME.sliding ? C.slideEye : ME.crouching ? C.crouchEye : C.standEye;
   ME.eyeH += (eyeT - ME.eyeH) * Math.min(1, dt * 14);
 
