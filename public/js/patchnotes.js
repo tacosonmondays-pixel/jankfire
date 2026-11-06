@@ -2,6 +2,7 @@
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
   { v: '2.7', date: '2026-11-06', title: 'THE REAL PLACES UPDATE', items: [
+    'TRAFFIC: cars, vans, buses and trucks drive the roads on Suburb, Warehouse, Desert and the city under Skyline and Rooftop. a slow bump shoves you, a fast one sends you flying. two cars crashing explode. shove someone into a car and it is your kill. off in Plant & Defuse.',
     'SMARTY PANTS: answer 3 Pop Quiz questions right to unlock the achievement, the Big Glasses and the Overalls (the first locked pants).',
     'MAP PASS: every map sits in a real place now, with scenery out to the horizon instead of a platform in the void.',
     'SKYLINE + ROOFTOP: a whole city far below the towers, in the haze. the roads run on into the city.',
