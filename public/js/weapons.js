@@ -611,7 +611,7 @@ function equip(i) {
   if (WEAPONS[id] && WEAPONS[id].hands) W.aimHeld = false; // right click is a trigger now: don't walk in with it already pulled
   W.heavy = false; W.cycle = null; W.hitStop = 0;
   trailPts.length = 0;
-  for (const h of [W.ak.L, W.ak.R]) { h.rl = 0; h.t = -1; h.want = false; } // a swap drops the akimbo reloads (the server cancels its one too)
+  for (const h of [W.ak.L, W.ak.R]) { h.rl = 0; h.t = -1; h.want = false; h.paid = false; } // a swap drops the akimbo reloads (the server cancels its one too)
   playAnim(drawFor(id, models[id] && models[id].g.userData.model), 'draw');
   for (const k of ORDER) if (models[k]) models[k].wrap.visible = k === id;
   hud.weapon(id, i);
@@ -859,7 +859,7 @@ function twirlVM(m, dt) {
 // left click = the left gun, right click (W.aimHeld: there's no aiming with these) = the right one. each hand has its
 // own half of the ammo, its own fire cooldown, its own recoil spring and its own reload (in Plant & Defuse the hands
 // take turns, so the server's one reload at a time stays in step). W.ammo.akimbo is the total, like any gun.
-const akHand = () => ({ n: 0, cd: 0, rl: 0, t: -1, want: false, flash: 0, p: [0, 0, 0], pv: [0, 0, 0], r: [0, 0, 0], rv: [0, 0, 0] });
+const akHand = () => ({ n: 0, cd: 0, rl: 0, t: -1, want: false, paid: false, flash: 0, p: [0, 0, 0], pv: [0, 0, 0], r: [0, 0, 0], rv: [0, 0, 0] });
 W.ak = { L: akHand(), R: akHand(), tot: -1 };
 const AKW = WEAPONS.akimbo, AK_HM = AKW.mag / AKW.hands; // rounds per hand
 function akLeftModel(id, cfg, rh) {
@@ -900,7 +900,11 @@ function akSprings(h, dt) {
 function akSync() {
   const tot = W.ammo.akimbo || 0, A = W.ak;
   if (A.L.n + A.R.n === tot && A.tot === tot) return;
-  A.L.rl = A.R.rl = 0; A.L.t = A.R.t = -1; A.L.want = A.R.want = false;
+  // Plant & Defuse: the server finishes a reload a bit before the animation does and tells us the new total. that's
+  // the reloading hand's mag: it's paid (akFinish only has to put the gun back up)
+  const h = A.L.rl && !A.L.paid ? A.L : A.R.rl && !A.R.paid ? A.R : null, diff = tot - A.L.n - A.R.n;
+  if (W.eco && h && diff > 0 && diff <= AK_HM - h.n) { h.n += diff; h.paid = true; A.tot = tot; return; }
+  A.L.rl = A.R.rl = 0; A.L.t = A.R.t = -1; A.L.want = A.R.want = A.L.paid = A.R.paid = false;
   A.R.n = Math.min(AK_HM, Math.ceil(tot / 2)); A.L.n = Math.min(AK_HM, tot - A.R.n);
   A.tot = tot;
 }
@@ -917,6 +921,7 @@ function akReload(side, now = performance.now()) {
 function akReloadAll() { akReload('R'); akReload('L'); }
 function akFinish(side) {
   const h = W.ak[side], need = AK_HM - h.n;
+  if (h.paid) { h.paid = false; h.rl = 0; return; } // the server's ammo message already filled it
   const mv = W.eco ? Math.min(need, W.res.akimbo || 0) : need;
   if (W.eco) W.res.akimbo = (W.res.akimbo || 0) - mv;
   h.n += mv; W.ammo.akimbo = (W.ammo.akimbo || 0) + mv; W.ak.tot = W.ammo.akimbo;
