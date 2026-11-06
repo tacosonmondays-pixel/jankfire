@@ -207,13 +207,33 @@ export function bottom(B, d) {
       stairsZ(B, sx - 1, sx + 1, zn + flightLen(T.rise), -1, yOf(k), yOf(k + 1), 'concrete');
     }
   }
-  // the Long Stairs: 9 flights straight up the middle, banners and bulbs over them
+  // the Long Stairs: 9 flights straight up the middle to the Gut border. every riser painted a different pastel (the
+  // Bottom repaints one a week), plaques for the settlers buried under the steps, lost property left on the landings,
+  // graffiti on the rails, flickering neon on the poles, bulbs and tie-dye banners across
   const LS = SLICE.longStairs;
   if (B.touches([LS.x0 - 4, 0, LS.x1 + 4, 256])) {
+    const RISERS = [0xff7ab0, 0xffe14d, 0x5fd3c6, 0xb6f2c8, 0xd2b6ff, 0xffb070, 0x7ad0ff, 0xff9ec0];
     for (let k = 0; k < T.n; k++) {
       const zs = zSouth(k), top = k === T.n - 1 ? SLICE.border.y : yOf(k + 1), zt = k === T.n - 1 ? 0 : zSouth(k + 1);
-      stairsZ(B, LS.x0, LS.x1, zt + flightLen(top - yOf(k)), -1, yOf(k), top, 'concrete', { tint: 0xf0e0d0 });
-      B.add(LS.x0 - 0.3, yOf(k), zt, LS.x0, yOf(k) + 1, zs, 'metal', { nc: true }); B.add(LS.x1, yOf(k), zt, LS.x1 + 0.3, yOf(k) + 1, zs, 'metal', { nc: true });
+      const sr = rng(hash2(k, 0x57a1)), ya = yOf(k), n = Math.ceil((top - ya) / 0.4), h = (top - ya) / n, z0 = zt + flightLen(top - ya);
+      for (let i = 1; i <= n; i++) {
+        const za = z0 - (i - 1) * 0.55, zb = z0 - i * 0.55;
+        B.add(LS.x0, ya - 0.2, zb, LS.x1, ya + i * h, za, 'concrete', { tint: 0xe8ded4 });
+        B.add(LS.x0, ya + (i - 1) * h, za - 0.004, LS.x1, ya + i * h - 0.02, za + 0.012, 'paint', { nc: true, tint: RISERS[(k * 3 + i) % RISERS.length] }); // the riser's paint
+        if (sr() < 0.18) B.add(LS.x0 + 0.3 + sr() * 5, ya + i * h, zb + 0.1, LS.x0 + 0.7 + sr() * 5.5, ya + i * h + 0.03, zb + 0.4, 'bone', { nc: true, tint: 0xf4ecd8 }); // a name plaque
+      }
+      // rails (graffiti panels on them) and poles with neon that flickers
+      for (const [x, sx] of [[LS.x0 - 0.3, -1], [LS.x1, 1]]) {
+        B.add(x, ya, zt, x + 0.3, ya + 1.05, zs, 'metal', { tint: 0x8890a0 });
+        for (let gz = zt + 2; gz < zs - 2; gz += 4 + sr() * 4) if (sr() < 0.55) B.add(sx < 0 ? x - 0.02 : x + 0.3, ya + 0.1, gz, sx < 0 ? x : x + 0.32, ya + 0.95, gz + 1.5 + sr() * 2, 'paint', { nc: true, tint: pick(sr, [0xff4fd8, 0x4fd8ff, 0xffe14d, 0x7dff4f, 0xff7a1a]) });
+        const pz = zs - 6 - sr() * 8;
+        B.add(x + 0.05, ya, pz, x + 0.25, ya + 6.5, pz + 0.2, 'rust');
+        B.add(x + (sx < 0 ? -1.6 : 0.3), ya + 5.2, pz - 0.05, x + (sx < 0 ? 0 : 1.9), ya + 5.9, pz + 0.25, pick(sr, ['neon', 'cyanglow', 'greenglow']), { nc: true });
+        B.light(x + sx * 0.8, ya + 5, pz, pick(sr, [0xff4fd8, 0x4fd8ff, 0x7dff4f]), 9, 0.8);
+      }
+      // the landing at the top of each flight: lost property people put down and never picked up
+      const lz = zt - 2.5, ly = top;
+      for (let i = 0; i < 2 + (sr() * 3 | 0); i++) B.prop(pick(sr, ['lostpile', 'crate_soup', 'pchair', 'firebarrel', 'scooter']), LS.x0 + 1 + sr() * (LS.x1 - LS.x0 - 2), ly, lz + (sr() - 0.5) * 2, sr() * 6.28, 0.55 + sr() * 0.3, (sr() * 8) | 0);
       if (k % 2 === 0) bulbs(B, [LS.x0 - 0.5, yOf(k) + 6, zs - 4], [LS.x1 + 0.5, yOf(k) + 6, zs - 12], rng(600 + k));
       B.obb((LS.x0 + LS.x1) / 2, yOf(k) + 7.2, zs - 9, 7, 1.4, 0.05, 0, 'tiedye'); // a banner across
     }
