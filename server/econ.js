@@ -619,7 +619,7 @@ const M = {
     p.item = e.it.id; p.ic = { i: e.it.id, n: e.it.n, next: 0 };
     this.useItem(p, m);
     p.ic.next = 0;
-    if (p.ic.n !== e.it.n) { e.it.n = p.ic.n; if (e.it.n <= 0) e.it = null; this.econSync(p); this.econSend(p); }
+    if (p.ic.n !== e.it.n) { e.it.n = p.ic.n; if (e.it.n <= 0 && !(ITEMS[e.it.id] && ITEMS[e.it.id].keep)) e.it = null; this.econSync(p); this.econSend(p); } // (goggles: no flashes left, still on your face)
   },
   econSkin(p, m) {
     if (now() - p.skinT <= 250) return;
