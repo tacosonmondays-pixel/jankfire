@@ -7,6 +7,7 @@ export const PATCH_NOTES = [
     'Jank Royale only plays on Jankburg, the big city.',
     'fixed: night vision goggles vanished after both flashes in Jank Royale and Plant & Defuse. now only the flashes run out; the goggles stay on your face.',
     'fixed: the Blood Cross shoots again (the rifle pack mistook it for a burst rifle with no ammo).',
+    'BACKROOMS: every doorway goes up to the ceiling now, so you can bhop and grapple through without smacking your head on the frame.',
   ] },
   { v: '4.2', date: '2026-11-06', title: 'LEGS DAY', items: [
     'everyone moves properly now: real strides for walk, run and sprint (feet stay planted), leaning and arm pumping, and a silly zooming pose past sprint speed.',
