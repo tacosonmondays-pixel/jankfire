@@ -477,6 +477,7 @@ export function loadMap(id) {
 // models finished loading after the map was built: redraw the boxes + props (no gameplay state touched)
 export function refreshMapVisuals() {
   if (!MAP.id || !G.scene || !MAT) return;
+  fetchMapProps(MAPS[MAP.id], trafficKinds(MAPS[MAP.id]), () => { buildPropField(G.scene, MAPS[MAP.id], MAT); lightingRefresh(); }, refreshMapVisuals); // (the model list may have come after the map)
   buildMap(G.scene);
   buildPropField(G.scene, MAPS[MAP.id], MAT);
   lightingRefresh();

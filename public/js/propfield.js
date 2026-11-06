@@ -230,7 +230,7 @@ function tintOf(t) {
 }
 
 // ---------------------------------------------------------------- placements -> instance matrices
-const _m = new THREE.Matrix4(), _r = new THREE.Matrix4(), _s = new THREE.Matrix4(), _t = new THREE.Matrix4();
+const _m = new THREE.Matrix4(), _r = new THREE.Matrix4(), _s = new THREE.Matrix4(), _t = new THREE.Matrix4(), _a = new THREE.Matrix4(); // (out is often _m: the steps use their own)
 function placeMatrix(p, k, ref, out) {
   if (!p.a) { // round 1: position, quarter turns, uniform scale
     out.makeRotationY(-(p.r || 0) * Math.PI / 2).premultiply(_t.makeTranslation(p.p[0], p.p[1], p.p[2]));
@@ -246,7 +246,7 @@ function placeMatrix(p, k, ref, out) {
   }
   // fitted per axis onto its boxes, in its own frame
   out.makeTranslation(-ml.x, -ml.y, -ml.z).premultiply(_s.makeScale(sc(0), sc(1), sc(2))).premultiply(_t.makeTranslation(p.lo[0], p.lo[1], p.lo[2]))
-    .premultiply(_r.makeRotationY(p.y)).premultiply(_m.makeTranslation(p.a[0], p.a[1], p.a[2]));
+    .premultiply(_r.makeRotationY(p.y)).premultiply(_a.makeTranslation(p.a[0], p.a[1], p.a[2]));
 }
 
 // ---------------------------------------------------------------- build the field for a map
@@ -366,5 +366,5 @@ export function fetchMapProps(def, traffic, onReady, onFail) {
   for (const m of ids) { if (!asked.has(m)) { asked.add(m); whenLate(m, landed); whenFailed(m, lost); } coming.add(m); }
   prefetch(ids);
 }
-export const propInfo = () => ({ ...propStats, cached: kindCache.size });
+export const propInfo = () => ({ ...propStats, cached: kindCache.size, coming: coming.size });
 export function propFieldVisible(v) { if (field) field.group.visible = v; } // (tests: world.js showPropBoxes)

@@ -17,12 +17,13 @@ async function measure(b, map) {
   await pg.addInitScript((jank) => localStorage.setItem('jankfire', JSON.stringify({ name: 'PERF', killcam: false, jank })), Number(preset));
   await pg.goto(`http://localhost:${port}/`); await sleep(2500);
   await pg.evaluate(async () => { const k = await import('/js/glbkit.js'); for (let i = 0; i < 200 && !Object.keys(k.AUTHORED).length; i++) await new Promise((r) => setTimeout(r, 100)); });
-  await pg.click('#scr-main [data-pick="bots"]'); await pg.click('#mpCustom');
-  await pg.selectOption('#setupGame', GAME[map] || 'dm');
-  await pg.selectOption('#setupMap', map);
+  const T = { timeout: 180000 }; // (a busy machine: the menu can take a while to answer)
+  await pg.click('#scr-main [data-pick="bots"]', T); await pg.click('#mpCustom', T);
+  await pg.selectOption('#setupGame', GAME[map] || 'dm', T);
+  await pg.selectOption('#setupMap', map, T);
   await pg.locator('#setupBots').fill('1');
   await pg.selectOption('#setupDiff', 'easy').catch(() => {});
-  await pg.click('#setupGo');
+  await pg.click('#setupGo', T);
   const ok = await pg.evaluate(async (map) => {
     const { G } = await import('/js/ctx.js'); const { MAP } = await import('/shared/map.js');
     for (let i = 0; i < 300 && !(G.joined && MAP.id === map); i++) await new Promise((r) => setTimeout(r, 100));
@@ -30,6 +31,7 @@ async function measure(b, map) {
   }, map);
   if (!ok) { await pg.close(); return { map, error: 'never joined the map', errs }; }
   await sleep(6000); // the map's late models, traffic, the first shadow pass
+  await pg.evaluate(async () => { const k = await import('/js/glbkit.js'); for (let i = 0; i < 600 && k.lateBusy(); i++) await new Promise((r) => setTimeout(r, 100)); await new Promise((r) => setTimeout(r, 2000)); }); // (its prop models, on a branch that has them)
   const res = await pg.evaluate(async (map) => {
     const { G } = await import('/js/ctx.js'); const { ME } = await import('/js/player.js'); const { MAPS } = await import('/shared/map.js');
     const lt = await import('/js/lighting.js');

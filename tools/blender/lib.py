@@ -449,7 +449,9 @@ def sheet(root, file_id, views=('persp', 'left', 'right', 'top', 'front', 'back_
         L = bpy.data.lights.new(kind, kind); L.energy = energy * size * size; L.color = col
         if kind == 'AREA': L.size = sz * size
         o = _link(bpy.data.objects.new(kind, L)); o.location = c + Vector(loc) * size; _look_at(o, c)
+        made.append(o)
         return o
+    made = []  # (lights + camera, removed at the end: several sheets in one session stay lit the same)
     light('AREA', 200, (1.2, -1.4, 1.6), 1.2)
     light('AREA', 70, (-1.6, -0.6, 0.6), 1.5, (0.85, 0.9, 1.0))
     light('AREA', 150, (-0.4, 1.8, 1.2), 0.6, (1.0, 0.8, 0.95))
@@ -516,6 +518,9 @@ def sheet(root, file_id, views=('persp', 'left', 'right', 'top', 'front', 'back_
         if os.path.exists(p): os.remove(p)
     try: os.rmdir(tmp)
     except OSError: pass
+    for o in made + [cam]:
+        d = o.data; bpy.data.objects.remove(o, do_unlink=True)
+        if d is not None and d.users == 0: (bpy.data.lights if isinstance(d, bpy.types.Light) else bpy.data.cameras).remove(d)
     print('JF_SHEET', dst)
     return dst
 
@@ -863,7 +868,7 @@ def prop_stats(root):
     for o in root.children_recursive:
         if o.type != 'MESH': continue
         me = o.evaluated_get(dg).to_mesh(); me.calc_loop_triangles(); n = len(me.loop_triangles); o.evaluated_get(dg).to_mesh_clear()
-        far = any(p.name == 'lod1' for p in [o.parent, getattr(o.parent, 'parent', None)] if p is not None)
+        far = any(p.name.split('.')[0] == 'lod1' for p in [o.parent, getattr(o.parent, 'parent', None)] if p is not None)  # (lod1.001 when several props share a session)
         if far: t1 += n
         else: t0 += n
     print(f'JF_PROP {root.name}: lod0 {t0} tris, lod1 {t1} tris')

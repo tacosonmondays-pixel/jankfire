@@ -3,7 +3,8 @@
 // usage: node tools/blender/shots_r4.cjs <port> <outdir> <ids|map> [maps] [presets=3,0] [n=2]
 //   ids: prop ids, comma separated (pine,lollipop,stall...), or "all" for every prop on those maps
 //   maps: comma separated (default: every map that has one of the ids; for "map": jankburg,suburb,skyline)
-//   (start the server first: PORT=<port> node server.js. Cap browsers with pwlock.cjs.)
+//   (start the server first: JF_ROUND_TIME=7200 JF_ROUND_KILLS=999 PORT=<port> node server.js, so the match outlasts the shots.
+//   Cap browsers with pwlock.cjs.)
 // out: <outdir>/r4_<id>.png (rows = copies on their maps, columns = box / Blender per preset) or r4_map_<map>.png
 const { chromium } = require('playwright');
 const { execFileSync } = require('child_process');
@@ -113,6 +114,9 @@ async function session(b, map, ids) {
       for (const v of views) {
         await pg.evaluate((v) => { window.__pin = { p: v.p, yaw: v.yaw, pitch: v.pitch }; }, v);
         await sleep(1100);
+        // still on this map, alive? (a match that ends moves to the next map; a bot can kill you: wait for the respawn)
+        const st = await pg.evaluate(async (map) => { const { MAP } = await import('/shared/map.js'); const { ME } = await import('/js/player.js'); for (let i = 0; i < 150 && MAP.id === map && !ME.alive; i++) await new Promise((r) => setTimeout(r, 100)); await new Promise((r) => setTimeout(r, 300)); return MAP.id !== map ? 'moved on to ' + MAP.id : ME.alive ? 'ok' : 'dead'; }, map);
+        if (st !== 'ok') { console.log(map, v.id, v.k, 'skipped:', st, '(start the server with JF_ROUND_TIME=7200 JF_ROUND_KILLS=999)'); if (st.startsWith('moved')) break; continue; }
         const f = path.join(tmp, `${map}_${v.id}_${v.k}_${pr}_${boxes ? 'box' : 'glb'}.png`);
         await pg.screenshot({ path: f, timeout: 120000 });
         shots.push({ map, id: v.id, k: v.k, pr, boxes, f });
