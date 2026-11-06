@@ -16,8 +16,9 @@ import { MAPS } from '/shared/map.js';
 const PAINT = { carred: 0xc8202c, carblue: 0x2050b0, carwhite: 0xe8e8e8, carblack: 0x26262a, cargreen: 0x2a8a4a, caryellow: 0xe8c020, burnt: 0x2a2624 };
 const TINT = { cloth: 0xc8302a }; // map materials whose texture averages to mud (red and cream stripes = salmon): their main colour
 const PATTERN = new Set(['leopard', 'camo', 'adfun']); // tints that are a picture, not a colour: their own group, the texture on
-// parked cars: the traffic models (they face +z, the box car faces +x), round 1's car if those aren't there
-const PARKED = ['p_car_sedan', 'p_car_hatch', 'p_car_sedan', 'p_car_hatch', 'p_car_taxi'];
+// parked cars: the traffic models (they face +z, the box car faces +x), round 1's car if those aren't there. the map's
+// yellow cars are taxis (the taxi keeps its livery; every other car keeps the colour the map gave it)
+const PARKED = ['p_car_sedan', 'p_car_hatch'], TAXI = ['p_car_taxi', 'p_car_sedan', 'p_car_hatch'];
 const stripN = (n) => (n || '').replace(/\.\d+$/, ''); // (Blender keeps names unique in one session: lod1.001, tint.002)
 const isLod1 = (o) => { for (let p = o; p; p = p.parent) if (stripN(p.name) === 'lod1') return true; return false; };
 
@@ -31,8 +32,8 @@ function modelFor(p) {
   if (SKIP.has(p.id)) return null;
   if (!p.a) return AUTHORED['p_' + p.id] ? { mid: 'p_' + p.id, turn: 0 } : null; // round 1's records ({ p, r, s })
   if (p.id === 'car') {
-    const k = (hash(p.a[0], p.a[2]) * PARKED.length) | 0;
-    for (let i = 0; i < PARKED.length; i++) { const m = PARKED[(k + i) % PARKED.length]; if (AUTHORED[m]) return { mid: m, turn: Math.PI / 2 }; }
+    const list = p.t === 'caryellow' ? TAXI : PARKED, k = p.t === 'caryellow' ? 0 : (hash(p.a[0], p.a[2]) * list.length) | 0;
+    for (let i = 0; i < list.length; i++) { const m = list[(k + i) % list.length]; if (AUTHORED[m]) return { mid: m, turn: Math.PI / 2 }; }
     return AUTHORED.p_car ? { mid: 'p_car', turn: 0 } : null;
   }
   return AUTHORED['p_' + p.id] ? { mid: 'p_' + p.id, turn: 0 } : null;
@@ -45,14 +46,14 @@ export function propsOff(v) { off = !!v; }
 const has = (m) => !!AUTHORED[m] || coming.has(m);
 export function drawnByModel(pv) {
   if (off || SKIP.has(pv)) return false;
-  if (pv === 'car') return PARKED.some(has) || has('p_car');
+  if (pv === 'car') return PARKED.some(has) || has('p_car'); // (every parked car can be drawn: yellow ones fall back to a saloon)
   return has('p_' + pv);
 }
 // the files a map needs (+ the traffic models if it has traffic)
 export function modelsFor(def, traffic) {
   const ids = new Set();
   for (const l of [def && def.boxes && def.boxes.props, def && def.deco && def.deco.props]) for (const p of l || []) {
-    if (p.id === 'car' && p.a) { for (const m of PARKED) ids.add(m); ids.add('p_car'); } else ids.add('p_' + p.id);
+    if (p.id === 'car' && p.a) { for (const m of TAXI) ids.add(m); ids.add('p_car'); } else ids.add('p_' + p.id);
   }
   if (traffic) for (const t of traffic) ids.add('p_car_' + t);
   return [...ids];
