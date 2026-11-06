@@ -8,7 +8,7 @@ import { SUITS, RANKS, ARROW_TIPS } from '/shared/weapons.js';
 import { BLADES } from './blades/index.js';
 import { lathe } from './blades/kit.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { prepAuthored, authored, AUTHORED, bindAuthored, nodeIn, glossBlade } from './glbkit.js';
+import { prepAuthored, authored, AUTHORED, bindAuthored, nodeIn, glossBlade, LAZY, isLazy } from './glbkit.js';
 
 // ------------------------------------------------------------ playing card faces (canvas, cached)
 const cardFaces = new Map();
@@ -44,6 +44,8 @@ export async function loadTripoModels() {
   try { list = await (await fetch('/models/list')).json(); } catch { return 0; }
   if (!list.length) return 0;
   const loader = new GLTFLoader();
+  for (const it of list) if (isLazy(it.id)) LAZY.set(it.id, it.url); // skins: fetched when first shown (glbkit.js)
+  list = list.filter((it) => !LAZY.has(it.id));
   await Promise.all(list.map((it) => new Promise((res) => {
     loader.load(it.url, (gltf) => { if (!prepAuthored(it.id, gltf.scene)) GLB[it.id] = prep(gltf.scene, it); res(); }, undefined, (e) => { console.warn('model failed', it.id, e); res(); });
   })));
@@ -1755,13 +1757,14 @@ export function makeShadow() {
 
 // ------------------------------------------------------------ projectiles
 export function buildProjectile(k, skin) {
-  const g = buildProjectileRaw(k);
+  const g = buildProjectileRaw(k, skin && typeof skin[3] === 'string' ? skin[3] : null);
   if (!g.userData.glb) g.userData.hatAt = HAT_AT['p_' + k];
   return applySkin(g, skin);
 }
-function buildProjectileRaw(k) {
+function buildProjectileRaw(k, model) {
   const g = new THREE.Group();
-  const bl = authored('pj_' + k); // made in Blender (tools/blender): as built, centred, nose to -z
+  // made in Blender (tools/blender): as built, centred, nose to -z. a skin can have its own (a thrown croc is a croc)
+  const bl = (model && COSMETICS.model[model] && COSMETICS.model[model].weapon === k && authored('pj_' + model)) || authored('pj_' + k);
   if (bl) {
     g.add(bl.obj);
     g.userData.glb = 'blender';

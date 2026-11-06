@@ -25,6 +25,12 @@ async function session(b, jank, useGlb, viewport = { width: 960, height: 600 }) 
   if (!useGlb) await pg.route('**/models/list', (r) => r.fulfill({ contentType: 'application/json', body: '[]' }));
   await pg.addInitScript((jank) => localStorage.setItem('jankfire', JSON.stringify({ name: 'shots', killcam: false, jank })), jank);
   await pg.goto(`http://localhost:${port}/`); await sleep(1500);
+  if (useGlb) await pg.evaluate(async (keys) => { // skin models download on first use: ask for them now and wait
+    const k = await import('/js/glbkit.js');
+    for (let i = 0; i < 100 && !Object.keys(k.AUTHORED).length; i++) await new Promise((r) => setTimeout(r, 100)); // the base set first
+    for (const id of keys) k.authored(id);
+    for (let i = 0; i < 150 && k.lateBusy(); i++) await new Promise((r) => setTimeout(r, 100));
+  }, weapons.filter((e) => e.includes(':')).map((e) => 'w_' + e.split(':')[1]));
   await pg.click('#scr-main [data-mode="training"]'); await sleep(2500);
   await pg.evaluate(async () => { const { ME } = await import('/js/player.js'); window.__h = setInterval(() => { ME.pitch = -0.05; ME.yaw = 0.6; ME.vel = [0, 0, 0]; }, 10); });
   return { pg, errs };

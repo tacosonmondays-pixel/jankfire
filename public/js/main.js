@@ -8,6 +8,7 @@ import { duckFrame, duckStuck } from './duck.js';
 import { G } from './ctx.js';
 import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals } from './world.js';
 import { loadTripoModels, buildProjectile, buildPeel, buildHole, makeShadow, tipColor, buildCharacter, teamLook, M } from './models.js';
+import { onLateModel } from './glbkit.js';
 import { initCrosses, crossEvent, crossShot, updateCrosses, clearCrosses } from './bloodcross.js';
 import { net } from './net.js';
 import { hud } from './hud.js';
@@ -26,7 +27,7 @@ import { parry } from './weapons.js';
 import './parry.js'; // katana parry: sparks, sounds, PARRY!, the guard pose
 import { addPatch, clearPatches } from './mslip.js'; // marble shotgun: marbles on the floor you slip on
 import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN, WRAP_MODES, WRAP_MODE_NAMES } from './skins.js';
-import { initPreview, showPreview, showCharacter, renderPreview, resizePreview } from './preview.js';
+import { initPreview, showPreview, showCharacter, renderPreview, resizePreview, refreshPreview } from './preview.js';
 import { playKillFx, updateKillFx, clearKillFx } from './killfx.js';
 import { courtKill, courtVerdict, updateCourt, courtReset, courtSync } from './scales.js';
 import { noScope, updateNoScope } from './noscope.js';
@@ -56,7 +57,7 @@ import { setOnly, coughCloud } from './weapons.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
 import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection, infClipInfo } from './infection.js';
 import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown } from './endscreen.js';
-import { initHome, homeShown, homeLeft } from './home.js';
+import { initHome, homeShown, homeLeft, refreshHero } from './home.js';
 import { skipVote, skipReset } from './skipvote.js';
 
 const $ = (id) => document.getElementById(id);
@@ -141,6 +142,11 @@ loadTripoModels().then((n) => {
   refreshMapVisuals(); // Blender props replace their stand-in boxes
   for (const r of G.remotes.values()) r.build();
   $('status').textContent = `${n} model(s) loaded`;
+});
+onLateModel(() => { // a skin's model downloaded (the first time anyone showed it): swap it in everywhere it's on show
+  rebuildOne();
+  for (const r of G.remotes.values()) r.build();
+  refreshPreview(); refreshHero();
 });
 
 // ------------------------------------------------------------ screens

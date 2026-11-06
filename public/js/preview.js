@@ -33,8 +33,11 @@ export function resizePreview() {
   scaleU.value = (h * res) / (2 * Math.tan((cam.fov * Math.PI) / 360));
 }
 
+let shown = null; // what's on show, so a skin model that lands late can replace its stand-in
+export function refreshPreview() { if (shown) showPreview(shown[0], shown[1]); }
 export function showPreview(id, skin) {
   if (!holder) return;
+  shown = [id, skin];
   sway = 0; holder.rotation.y = 0; camHome(); dropPlinth();
   freeTree(holder); holder.clear(); // the last thing shown is gone for good
   const g = buildWeapon(id, skin);
@@ -55,6 +58,7 @@ export function showPreview(id, skin) {
 // show a mannequin with a look instead of a weapon (character screen)
 export function showCharacter(build, color, look) {
   if (!holder) return;
+  shown = null;
   sway = 0; holder.rotation.y = 0; camHome(); dropPlinth();
   freeTree(holder); holder.clear(); // the last thing shown is gone for good
   const ch = build(color, look);
@@ -88,6 +92,7 @@ export function renderPreview(dt) {
 export function setPreviewRes(r) { res = r; resizePreview(); }
 // main menu hero: the mannequin with your gun up, swaying in place (it faces you, a bit to the side)
 export function showArmed(build, color, look, weapon) {
+  shown = null;
   if (!holder) return;
   showCharacter(build, color, look);
   const wrap = holder.children[0];

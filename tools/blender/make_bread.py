@@ -113,10 +113,10 @@ def bread():
 
 def croissant():
     glaze = mat('cr_glaze', 0xffffff, rough=0.36, clearcoat=0.45, tex=tex_noise('cr_glaze_t', 0xa85a1e, var=0.12, size=32, speck=0xe09a4a, speck_p=0.1, seed=11))
-    crown = mat('cr_crown', 0xffffff, rough=0.35, clearcoat=0.6, tex=tex_noise('cr_crown_t', 0x6a3410, var=0.14, size=32, speck=0x5a2808, speck_p=0.1, seed=12))
+    crown = mat('cr_crown', 0xffffff, rough=0.35, clearcoat=0.6, tex=tex_noise('cr_crown_t', 0x7e4216, var=0.14, size=32, speck=0x5a2808, speck_p=0.1, seed=12))
     groove = mat('cr_groove', 0xffffff, rough=0.6, clearcoat=0.2, tex=tex_noise('cr_groove_t', 0xd8a050, var=0.1, size=16, speck=0xf6d8a0, speck_p=0.2, seed=13))
-    N, Kc, ROLLS, RMAX = 96, 30, 6, 0.2
-    Z0, Z1, BEND = 0.08, -1.32, -0.24
+    N, Kc, ROLLS, RMAX = 96, 30, 6, 0.158
+    Z0, Z1, BEND = 0.08, -1.32, -0.19
     def path(t): return (BEND * math.sin(math.pi * t) + 0.05 * math.sin(2 * math.pi * t) ** 3, 0.0, Z0 + (Z1 - Z0) * t)
     pts = [path(i / (N - 1)) for i in range(N)]
     def prof(t): return 0.02 + (RMAX - 0.02) * math.sin(math.pi * t) ** 0.85
@@ -126,7 +126,7 @@ def croissant():
         for j in range(Kc):
             th = 2 * math.pi * j / Kc
             g = roll(t, th) ** 0.45
-            k = (0.8 + 0.24 * g) * r
+            k = (0.84 + 0.2 * g) * r
             c, sn = math.cos(th), math.sin(th)
             out.append(((0.78 * sn if sn >= 0 else -0.5 * abs(sn) ** 0.6) * k, c * k))
         return out
@@ -136,7 +136,7 @@ def croissant():
         st, sl = divmod(f.index, Kc)
         if st >= N - 1: continue
         g = roll((st + 0.5) / (N - 1), 2 * math.pi * (sl + 0.5) / Kc)
-        f.material_index = 2 if g < 0.1 else 1 if g > 0.93 else 0
+        f.material_index = 2 if g < 0.06 else 1 if g > 0.97 else 0
     uv_box(cro, 0.06)
     tm = 0.478
     top = path(tm)

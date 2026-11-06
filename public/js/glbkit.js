@@ -4,11 +4,32 @@
 // Visual only: collisions stay boxes. Anything missing or broken falls back to the code-built model.
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { jankify } from './jank.js';
 import { G } from './ctx.js';
 import { WEAPONS } from '/shared/weapons.js';
+import { COSMETICS } from '/shared/cosmetics.js';
 
 export const AUTHORED = {}; // id -> { scene, meta }
+
+// skin models (w_<skin>.glb, pj_<skin>.glb) aren't downloaded up front: only the first time someone shows that skin
+// (you, another player, the locker). Until then it's the code model; when it lands, onLateModel's callback rebuilds.
+export const LAZY = new Map(); // id -> url
+export const isLazy = (id) => { const m = /^(?:w|pj)_(.+)$/.exec(id); return !!(m && m[1] !== 'default' && Object.hasOwn(COSMETICS.model, m[1])); };
+const late = { fn: null, t: 0, busy: 0 };
+export function onLateModel(fn) { late.fn = fn; }
+export const lateBusy = () => late.busy; // skins still downloading (tests wait for them)
+function fetchLate(id) {
+  const url = LAZY.get(id);
+  LAZY.delete(id);
+  late.busy++;
+  new GLTFLoader().load(url, (gltf) => {
+    late.busy--;
+    if (!prepAuthored(id, gltf.scene)) return;
+    clearTimeout(late.t);
+    late.t = setTimeout(() => { if (late.fn) late.fn(id); }, 120); // a few at once: one rebuild
+  }, undefined, (e) => { late.busy--; console.warn('model failed', id, e); });
+}
 
 // two looks to compare: 'glossy' (default: the materials as made in Blender + a studio reflection) and 'flat'
 // (faceted Lambert like the code models, no gloss, each weapon's own colour from shared/weapons.js on its paint).
@@ -91,7 +112,7 @@ export function prepAuthored(id, scene) {
 // a fresh copy of an authored model (geometry + materials shared), or null
 export function authored(id) {
   const a = AUTHORED[id];
-  if (!a) return null;
+  if (!a) { if (LAZY.has(id)) fetchLate(id); return null; }
   const c = a.scene.clone(true);
   c.userData.glbId = id;
   return { obj: c, meta: a.meta };
