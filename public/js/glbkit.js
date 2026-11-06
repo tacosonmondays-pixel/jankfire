@@ -154,6 +154,8 @@ export function bindAuthored(g, meta) {
     const fan = meta.fan.map((n) => nodeIn(g, n)).filter((c) => c && c.isMesh);
     if (fan.length) { g.userData.fan = fan; for (const c of fan) c.traverse((o) => { o.userData.noWrap = true; }); }
   }
+  // a katana skin's blade (grows with kills, setKatana in models.js): a node straight under the root, pointing -z, katLen = origin to tip
+  if (meta.katBlade && Number.isFinite(meta.katLen)) { const n = nodeIn(g, meta.katBlade); if (n) { g.userData.katBlade = n; g.userData.katLen = meta.katLen; } }
   if (meta.bow) bowRig(g, meta.bow);
   if (meta.noWrap) g.traverse((o) => { if (o.isMesh) o.userData.noWrap = true; }); // trophies (the Golden Sniper): no wrap covers them
   g.userData.parts = findParts(g, meta);

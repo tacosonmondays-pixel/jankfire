@@ -31,6 +31,9 @@ import { tickScalesVM } from './scales.js';
 import { PARRY } from '/shared/weapons.js';
 import { SIDEARMS, reloadAnim, sideParts, sideHand, sideShot, sideStep, stepOffHand, sideEvent } from './sidearms.js'; // Plan B, Lefty & Righty, Half a Shotgun
 import { ROYAL } from '/shared/looks.js';
+import { GAMES, spoonLookOn } from '/shared/modes.js';
+// a mode kit's run speed (spoons & grapples), on top of the weapon's own
+const kitSpeed = () => ((G.mode === 'ffa' || G.mode === 'bots') && GAMES[G.game] && GAMES[G.game].kit && GAMES[G.game].kit.speedMul) || 1;
 import { secFireDown, secShot } from './secondaries.js'; // taser, tv remote, water pistol streams
 import { RIFLES, RF, RIFLE_VM, RIFLE_RECOIL, RIFLE_SHELLS, rifleShot, bursting, rifleReset, quickScoped, rifleStep, rifleEvent } from './rifles.js'; // the rifle pack
 import { tacOn, tacShot, tacKick, tacFrame } from './tactical.js'; // Plant & Defuse: spray patterns + moving spread
@@ -520,6 +523,7 @@ export function rebuildViewmodels() {
   for (const id of ORDER) {
     if (!VM[id]) continue;
     if (models[id]) { vmRoot.remove(models[id].wrap); freeTree(models[id].wrap); if (models[id].flash) models[id].flash.userData.face.material.dispose(); }
+    if (models[id] && models[id].left) { vmRoot.remove(models[id].left.wrap); freeTree(models[id].left.wrap); } // Lefty & Righty's left gun too (it was left on screen after a rebuild)
     const wrap = new THREE.Group();
     const g = buildWeapon(id, (W.skinOver || G.equipped || {})[id]);
     const cfg = VM[id];
@@ -1116,7 +1120,7 @@ function resolveSwing(id) {
       const p = tg.r.pos;
       fx.blast([p[0], p[1] + 1.4, p[2]], hv ? 1.1 : 0.6, 0xffffff, 0xffe14d); // impact flash
     }
-    if (id === 'spoon') sfx.ting(); else if (id !== 'popper') sfx.bonk();
+    if (id === 'spoon' || (id === 'knife' && spoonLookOn(G.mode, G.game))) sfx.ting(); else if (id !== 'popper') sfx.bonk();
     if (hv) sfx.crunch();
     // hit stop: the swing freezes for a few frames on contact so it feels like it connected
     W.hitStop = hv ? 0.11 : 0.06;
@@ -1423,7 +1427,7 @@ export function updateWeapons(dt, now) {
   W.scoped = !!(w.ads && w.ads.scope && W.aim > 0.92);
   if (W.scoped && !wasScoped) W.scopedAt = now; // quick-scopes count from the moment the scope is fully up
   hud.scope(W.scoped);
-  ME.speedMul = (w.speedMul || 1) * (1 - W.aim * 0.25);
+  ME.speedMul = (w.speedMul || 1) * (1 - W.aim * 0.25) * kitSpeed(); // (spoons & grapples: you run with your spoon)
   parryTick(now); // katana parry: buffered presses, stagger, cooldown ring
   laserTick(id, now, dt); // laser pointer charge
 
