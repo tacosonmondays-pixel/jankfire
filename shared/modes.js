@@ -8,8 +8,9 @@ export const GAMES = {
   rand: { name: 'Randomizer', desc: 'everyone gets a random loadout every life. first to the kill limit', teams: false, random: true },
   gun: { name: 'Gun Game', desc: 'one weapon at a time. a kill moves you up the ladder, a melee death knocks you back. first kill with the spoon wins', teams: false, ladder: true },
   inf: { name: 'Infection', desc: 'someone starts infected. whoever the zombies kill turns into one. survive the timer', teams: false, infect: true },
+  zm: { name: 'Zombies', desc: 'co-op vs endless rounds of zombies. hits and kills earn credits: look at a door, wall gun or the crate and hold F to buy. hold F on a downed friend to revive them', teams: false, zombies: true },
 };
-export const GAME_ORDER = ['dm', 'tdm', 'tags', 'bomb', 'rand', 'gun', 'inf'];
+export const GAME_ORDER = ['dm', 'tdm', 'tags', 'bomb', 'rand', 'gun', 'inf', 'zm'];
 export const TEAMS = { 1: { name: 'RED', color: '#ff4f4f' }, 2: { name: 'BLUE', color: '#4fa8ff' } };
 // kill / point limits per room type
 export const TARGETS = { ffa: { dm: 20, tdm: 40, tags: 25, rand: 20 }, bots: { dm: 15, tdm: 30, tags: 20, rand: 15 } };
@@ -47,6 +48,7 @@ export function canDefuse(pos, bp, slack = 0) {
 // the maps a mode can be played on. a map with an S&D version ('<id>_sd', map.sd) is two entries: Plant & Defuse
 // plays the S&D one, every other mode the standard one
 export function mapsFor(game, maps, order) {
+  order = order.filter((id) => !GAMES[game].zombies === !(maps[id] && maps[id].zm)); // zombie maps go with zombies and nothing else
   return order.filter((id) => id !== 'range' && maps[id] && !(maps[id].royaleOnly && !GAMES[game].royale) && (GAMES[game].sites ? maps[id].sites && maps[id].sites.length : !maps[id].sd) && (!GAMES[game].mapOk || GAMES[game].mapOk(maps[id])));
 }
 // the version of map `id` that `game` plays (switching mode swaps between a map and its S&D version)

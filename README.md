@@ -54,19 +54,21 @@ Notes:
 
 ## Controls
 
+These are the defaults. **Every one can be rebound** in SETTINGS → KEY BINDINGS (a primary and an alternate key or mouse button per action; Esc stays the pause key). The hotbar, the killstreak tray and every "press X" hint show your keys. Right Ctrl (crouch) and Mouse 5 (grapple) are no longer bound by default: add them as alternates if your hands miss them.
+
 | | |
 |---|---|
 | WASD | move |
 | Shift | run |
 | Space | jump (hold to bhop). Jump while grappling to launch off the rope with your momentum |
-| C / Ctrl | crouch; crouch while fast to slide. Spam it too long and your knees explode. As the Wrecking Ball: ground slam (in the air) / brake |
+| C / Left Ctrl | crouch; crouch while fast to slide. Spam it too long and your knees explode. As the Wrecking Ball: ground slam (in the air) / brake |
 | Left mouse | fire / swing / play a card / draw the bow (hold, release) |
 | Right mouse | aim down sights · **Knife: heavy stab** · **Katana: parry** · Card Deck: pick a card |
-| E / mouse side buttons | grapple (hold) |
+| E / Mouse 4 (back side button) | grapple (hold) |
 | R | reload (Card Deck: redraw) |
-| F | inspect your weapon · **Plant & Defuse: hold F to plant / defuse** |
+| F | inspect your weapon · **Plant & Defuse: hold F to plant / defuse** · **Zombies: hold F to buy (doors, wall guns, the crate) or revive a friend** |
 | G | **use your item** (grenade, medkit, shield bubble, duck, smoke, party popper, reverse card, bubble wand, instant camera, pop quiz). Night Vision Goggles: G puts them on / takes them off |
-| H | **Night Vision Goggles: flash** everyone you can see (goggles on) |
+| Middle mouse / N | **Night Vision Goggles: flash** everyone you can see (goggles on) |
 | 1 / 2 / 3 / 4 (in a pop quiz) | answer the question |
 | Z | **spray** your graffiti on the wall, floor or ceiling you're looking at (one at a time, every 10 s) |
 | 5 / 6 / 7 | **use your killstreaks** (the tray on the right shows which are ready) |
@@ -76,7 +78,7 @@ Notes:
 | Space / click | skip a killcam (not an EPIC one, and never the play of the round) |
 | B / Esc | pause menu · Tab scoreboard · T / Enter chat |
 
-Settings: display (windowed / windowed fullscreen / fullscreen), grapple on right click instead, toggle aim, sensitivity, ADS sensitivity, fov, fov kick, shake, blood, fps counter, quality, speed lines, killcam, show other players' uploaded name cards.
+Settings: display (windowed / windowed fullscreen / fullscreen), key bindings (with a "right click grapples, E aims" preset), toggle aim, sensitivity, ADS sensitivity, fov, fov kick, shake, blood, fps counter, quality, speed lines, killcam, show other players' uploaded name cards.
 
 **Music:** a soundtrack of original gabber / hard tek tracks (Jank Cola Rave, Spoon Fight Tekno, Rubber Duck Hardcore, Hung Jury Hardcore, Banana Peel Acid, Wrecking Ball Warm-Up) plus the owner's own "Untitled". The menus and end-of-match screens shuffle them; every match picks a new random song and loops it, with a "now playing" sticker. Settings → Audio: **music volume** (menus), **music in matches** (on for bots / co-op / training), **...in competitive too** (off by default: the Online room and Plant & Defuse stay quiet unless you turn it on) and **match music volume**; it dips during killcams, and the main volume scales all of it. It starts on your first click or key press, since browsers block sound before that. The generated tracks are re-rendered from code in `tools/music/` (see its README); credits and licences in `public/music/CREDITS.md`. Adding a song: drop the file in `public/music/` and add one line to `TRACKS` at the top of `public/js/music.js`.
 
@@ -104,6 +106,15 @@ Game modes (Play + Bots):
 | Duck Rain | deathmatch, but rubber ducks rain from the sky (a drop every 2.4 s down to 1.1 s as the match goes on, 1-4 ducks each depending on map size, half of them near someone) and land as black holes. A red ring and a shadow on the ground plus a falling whistle show where each one lands. A sky duck kill is a suicide unless someone hurt you in the last 6 s (they get it). Sky ducks are the real Rubber Duck: they fall straight down (no homing, so you can dodge the red ring), but one that lands on you sticks and the hole rides you. Only a thrown duck homes in. |
 | Floor Is Lava | the map's ground floor burns: 20 damage per touch, then 4 every 0.3 s for 1.4 s, and it bounces you back up. Crates, roofs, walls and ledges are safe, spawns are always on safe ground. The ground floor is worked out per map (the lowest height with a real amount of floor, plus curbs half a metre above it). Only on maps that have one (not Platform or Skyline). No Never Landed run here (the lava keeps everyone off the floor anyway). |
 | One in the Chamber | a Revolver with one bullet (any hit kills, no reloading) and a knife. Each kill gives a bullet (max 3). 3 lives each, out of lives = spectate (click to watch the next one). Last one standing wins. |
+| Zombies | co-op vs endless rounds of zombies on the Dead Mall (below). Its own map, and that map is only for it. |
+
+**Zombies** (Bots room solo, or with friends in Online when the vote picks it): you start in the mall's entrance hall with 500 credits, the Revolver and a knife. Zombie bots climb in through boarded windows (only in areas you've opened) and walk the map to whoever is closest, through open doors only.
+
+- **Credits:** +10 a hit on a zombie (its first 10 hits), +60 a kill, +100 for a headshot or melee kill. The HUD shows them with +N popups; Tab shows everyone's.
+- **Hold F** while looking at something: a **shutter** opens an area (750-1250), a **wall gun** (a chalk outline with its price) buys that weapon or, if you have it, its ammo for half price, the **mystery crate** (950) spins through weapons and offers you a random one (hold F again to take it). You carry 2 guns + a melee; a new gun replaces the one in your hands. Guns have real ammo here.
+- **Power switch** in the Loading Dock: lights the mall and powers the **Jank Cola** machine in the Atrium (2500: zombies hit you half as hard, you heal faster, lost if you go down).
+- **Rounds:** every round has more zombies with more HP (40 in round 1, +22 a round, then +9% from round 10). Shamblers early, runners from round 4, sprinters from round 9. 10 s between rounds; the round counter is red chalk tally marks.
+- **Going down:** no hits for 4 s and you heal. If you go down a friend can hold F on you for 3 s within 30 s to revive you; otherwise you're back (with the Revolver) when the next round starts. Everyone down = game over: the round you reached and everyone's kills / headshots / downs / revives / credits, then the vote. No killstreaks in this mode.
 
 Bots play the objectives too: they carry and plant the bomb, defuse it, and grab tags. They also use the grapple to chase, to get up high, and to save themselves from the void. On maps with bomb lanes (Bazaar and the classic maps) they walk the lanes as a graph and re-plan when they get stuck; on the Backrooms a walk graph of the whole maze (both levels, stairs and drops) steers them in every mode.
 In the chaos modes they rush you with the spoon (grappling in from afar), stop at lava edges and grapple back out when they fall in, and in One in the Chamber only spend their bullet on a close enough shot, knifing you otherwise.
@@ -252,8 +263,11 @@ Pick **3** in LOADOUT. Kills in one life (the count resets when you die) earn th
 | Skyline | huge | real towers with floors, sky bridges, a construction site with a crane |
 | **Backrooms** | extra large | the biggest by far: an endless yellow maze round a huge hall (below) |
 | **Scary Forest** | large | a pine forest at night, in the fog, with something tall in it (below) |
+| **Dead Mall** | medium | the Zombies map: a closed-down mall, one floor, six areas round the atrium |
 
 Every map has scenery around it now: plateaus with cliffs down to a valley, mesas and dunes, a city of lit towers below, an ocean, a cloud sea, mountains on the horizon.
+
+**Dead Mall** is the Zombies map: the Entrance Hall (start) plus five areas behind roller shutters (Food Court, Toy Store, Atrium, Arcade, Loading Dock), laid out in a ring round the Atrium so you can run loops (and loops inside them: the kiosk, the food court tables, the toy shelves, the elevator core, the arcade rows). Low ceilings and nothing tall to stand on, so there's no perch the zombies can't reach. Every area has boarded windows onto little back alleys where the zombies come from. Wall guns: Revolver, SMG (hall), Bread, Peel Shooter (food court), Shotgun, Bow (toy store), Assault Rifle (atrium), Sniper (arcade), Katana (dock). The mystery crate sits under its light beam at the north end of the Atrium.
 
 **Bazaar** is an original market town built on classic bomb-map rules (the same ones that make Dust 2 work):
 - three lanes: **Canal Street** (a long street with a sunken canal you can drop into), the **Market Hall** in the middle (covered, stalls for cover, banners that hide your head but not your feet), and the **Cistern** (an underground tunnel to B)
@@ -362,8 +376,8 @@ Prompts live in `tools/models.json`; models land in `public/models/<id>.glb` and
 ## How it works
 
 - `server.js`: static files + WebSocket `/ws`. Rooms: shared Online and Coop, private Bots and Training. Movement is client-authoritative; the server owns HP, kills, projectiles, arrows, cards, items, frost, streaks, modes (teams, tags, the bomb), the map/mode vote, cosmetics ownership, achievements, round recordings for highlights, and bots (including their objective routes and grappling).
-- `server/`: accounts, stats, containers, leaderboard (`/api/*`), stored in a local file or Supabase.
-- `shared/`: `map.js` maps + box physics + bot routes · `modes.js` game modes, teams, bomb rules, vote timing · `weapons.js` weapons, items, killstreaks, loadout rules · `cosmetics.js` skins/wraps/effects/kill effects/hats + crates · `looks.js` character outfits · `verdict.js` the Scales of Justice verdict (server decides, client previews) · `epic.js` EPIC kill rules · `hookphys.js` the pendulum grapple rope (players and bots) · `homing.js` homing slippers · `wand.js` soap-bubble traps · `nav.js` walk graphs for maze maps (Backrooms bots) · `lava.js` Floor Is Lava's floor + safe ground · `hr.js` the Tall Guy From HR's rules (server: `server/hrguy.js`).
-- `public/js/`: `main.js` menus + net + loop · `player.js` movement · `weapons.js` viewmodels, recoil springs, ADS, items · `anim.js` swing/inspect keyframes (per-knife styles) · `speedlines.js` · `remote.js` other players · `replay.js` killcam + highlights · `killfx.js` kill effects · `royal.js` Sniper Royalty toasts + the Golden Sniper unlock · `scales.js` Scales of Justice: verdict readout, tipping beam, pendulum pans, stamps · `sprays.js` sprays (drawn on a canvas, decals cut to the map) · `cards.js` name cards · `objective.js` bomb sites, tags, team bar · `icons.js` hotbar/item/streak pictures · `models.js` · `skins.js` · `fx.js` · `world.js` · `scenery.js` the land around each map · `hud.js` · `audio.js` · `shredder.js` · `bloodcross.js` · `gungame.js` + `infection.js` · `chaos.js` the chaos modes · `backrooms.js` the Backrooms' hum, flicker and visitor · `forest.js` + `forestmats.js` the Scary Forest's flashlights, blinkers, ambience and materials · `hrguy.js` the Tall Guy From HR (model, static, sounds).
+- `server/`: accounts, stats, containers, leaderboard (`/api/*`), stored in a local file or Supabase · `zombies.js` the Zombies mode (rounds, the zombies' nav grid and AI, the shop, revives).
+- `shared/`: `map.js` maps + box physics + bot routes · `modes.js` game modes, teams, bomb rules, vote timing · `zombies.js` the Zombies rules, prices, ammo and what F is pointing at · `weapons.js` weapons, items, killstreaks, loadout rules · `cosmetics.js` skins/wraps/effects/kill effects/hats + crates · `looks.js` character outfits · `verdict.js` the Scales of Justice verdict (server decides, client previews) · `epic.js` EPIC kill rules · `hookphys.js` the pendulum grapple rope (players and bots) · `homing.js` homing slippers · `wand.js` soap-bubble traps · `nav.js` walk graphs for maze maps (Backrooms bots) · `lava.js` Floor Is Lava's floor + safe ground. · `hr.js` the Tall Guy From HR's rules (server: `server/hrguy.js`).
+- `public/js/`: `main.js` menus + net + loop · `player.js` movement · `weapons.js` viewmodels, recoil springs, ADS, items · `anim.js` swing/inspect keyframes (per-knife styles) · `speedlines.js` · `remote.js` other players · `replay.js` killcam + highlights · `killfx.js` kill effects · `royal.js` Sniper Royalty toasts + the Golden Sniper unlock · `scales.js` Scales of Justice: verdict readout, tipping beam, pendulum pans, stamps · `sprays.js` sprays (drawn on a canvas, decals cut to the map) · `cards.js` name cards · `objective.js` bomb sites, tags, team bar · `icons.js` hotbar/item/streak pictures · `models.js` · `skins.js` · `fx.js` · `world.js` · `scenery.js` the land around each map · `hud.js` · `audio.js` · `shredder.js` · `bloodcross.js` · `gungame.js` + `infection.js` · `chaos.js` the chaos modes · `backrooms.js` the Backrooms' hum, flicker and visitor · `zombies.js` the Zombies HUD, prompts, shutters, wall guns, the crate and the power · `forest.js` + `forestmats.js` the Scary Forest's flashlights, blinkers, ambience and materials · `hrguy.js` the Tall Guy From HR (model, static, sounds).
 - `desktop/`: the Electron app (launcher, in-app server, display modes).
 - Overdrive Rig (killstreak): `shared/rig.js` its numbers · `server/rig.js` the server side (overshield, block, punch dash, wall slams, quickhacks, missiles, landings) · `public/js/rig.js` the controller, HUD panel, trail and tint · `rigmodel.js` the frame, its animation, afterimages, scrap burst and missiles · `rigarms.js` the first-person forearms · `rigsfx.js` its sounds. · tests: `tests/rig/t_rig.cjs` (training, Playwright: every ability fires, the tap jump is 4.5 m+, 3 thrusts then a refusal, it runs out cleanly; server `JF_RIG_DUR=28`), `tests/rig/t_rigthrust.cjs` (ws only: the server refuses thrust spam and refills one charge) and `tests/rig/t_rigbots.cjs` (ws only: bots earn it and use every move, thrusters included; server `JF_RIG=2`)

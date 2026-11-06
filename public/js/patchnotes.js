@@ -1,6 +1,13 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '3.0', date: '2026-11-06', title: 'ZOMBIES', items: [
+    'NEW MODE: ZOMBIES. co-op against endless rounds of the undead on a new map, the DEAD MALL. pick it in BOTS (Game: Zombies) or vote for it online.',
+    'start with 500 credits, a Revolver and a knife. hits and kills pay, headshots and knife kills pay more. hold your use key on a roller shutter to open an area, on a wall gun to buy it (or its ammo), or on the mystery crate for a random gun.',
+    'find the power switch in the Loading Dock: lights on, and the JANK COLA machine works (zombies hit you half as hard). a friend goes down? hold use on them to revive. everyone down = game over.',
+    'KEY BINDINGS: Settings > Key bindings. rebind every action to a key or a mouse button, with a second slot for each. new: Katana parry (right click) and Goggles flash (middle mouse or N, off H).',
+    'the guide, the vote cards and every prompt show your own keys.',
+  ] },
   { v: '2.9', date: '2026-11-06', title: 'THE SCARY FOREST', items: [
     'NEW MAP: SCARY FOREST. a pine forest at night, in the fog, by a lake. cabins, a dirt road and not much light.',
     'the TALL GUY FROM HR lives here. he only moves when nobody is looking at him. staring at him fills your screen with static. if he reaches you, you get transferred.',

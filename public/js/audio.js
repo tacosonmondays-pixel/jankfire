@@ -348,6 +348,15 @@ Object.assign(sfx, {
   fwBang(pos) { const [q, dl] = far(pos); noise(0.06, 1, 'highpass', 1500, 5000, q, dl); noise(1.3, 1, 'lowpass', 2400, 60, q, dl); tone('sine', 110, 28, 0.7, 0.9, q, dl); },
   fwCrackle(pos) { const [q, dl] = far(pos); for (let i = 0; i < 22; i++) noise(0.02 + Math.random() * 0.03, 0.25 + Math.random() * 0.35, 'highpass', 2500 + Math.random() * 3000, 6000, q, dl + 0.35 + Math.random() * 1.1); },
 });
+// zombies (zmGroan / rollShutter: infection's groan and the camera's shutter have the plain names): groans, a shutter rolling up, the crate's music box, the round coming in / going out, the power coming on
+Object.assign(sfx, {
+  zmGroan(pos) { const f = 60 + Math.random() * 55, d = 0.7 + Math.random() * 0.6; tone('sawtooth', f, f * 0.62, d, 0.2, pos); tone('square', f * 1.5, f * 0.9, d * 0.8, 0.05, pos, 0.05); noise(d, 0.12, 'bandpass', 500, 220, pos, 0, 3); },
+  rollShutter(pos) { for (let i = 0; i < 10; i++) noise(0.07, 0.45, 'bandpass', 700 + i * 70, 500, pos, i * 0.075, 2); tone('square', 95, 55, 0.8, 0.1, pos); },
+  musicBox(pos) { [784, 659, 523, 659, 784, 1046, 988, 784, 659, 523, 587, 523].forEach((f, i) => tone('triangle', f, f, 0.32, 0.13, pos, i * 0.29)); },
+  roundStart() { for (const [f, d] of [[98, 0], [92.5, 0.04], [146.8, 0.08]]) tone('sawtooth', f, f * 0.94, 2.2, 0.16, null, d); noise(1.8, 0.22, 'lowpass', 260, 50); tone('square', 49, 45, 1.4, 0.1, null, 0.6); },
+  roundEnd() { [392, 523, 659, 784].forEach((f, i) => tone('triangle', f, f, 0.6, 0.14, null, i * 0.16)); },
+  powerOn(pos) { tone('sawtooth', 38, 240, 1.6, 0.28, pos); tone('square', 30, 120, 1.6, 0.08, pos); noise(0.35, 0.55, 'highpass', 2000, 6000, pos, 1.3); },
+});
 
 const LOOPDEF = {
   fire: { type: 'lowpass', f: 900, q: 0.7, vol: 0.55 },

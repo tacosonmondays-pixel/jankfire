@@ -2451,9 +2451,133 @@ function adSign(B, x, z, mat, along = 'x') { // a wooden sign on two posts, the 
   L.B(0, 1.75, 0, 2.8, 1.1, 0.12, 'planks'); L.B(0, 1.75, 0, 2.6, 0.95, 0.16, mat, { fit: 1 });
 }
 
+// ------------------------------------------------------------ DEAD MALL: the zombies map. a closed-down mall on one floor.
+// six areas in a ring round the atrium (so you can run loops and drag a crowd behind you), the start in the entrance
+// hall, everything else behind roller shutters you buy open. low ceilings everywhere and nothing tall to stand on, so
+// there's no perch the zombies can't swipe you off. every area has boarded windows onto little back alleys: that's
+// where zombies climb in (only open areas spawn them). the extras (`zm`) are read by the zombies mode on both sides.
+function deadmall() {
+  const B = builder();
+  const W = B.local(0, 0, 0);
+  const H = 4; // ceiling height
+  const X0 = -37, X1 = 37, Z0 = -30, Z1 = 28;
+  const areas = [
+    { id: 'hall', name: 'Entrance Hall', r: [-11, 12, 11, 28], floor: 'tile', ceil: 'plaster' },
+    { id: 'food', name: 'Food Court', r: [-37, 4, -11, 28], floor: 'tile', ceil: 'plaster' },
+    { id: 'toys', name: 'Toy Store', r: [11, 4, 37, 28], floor: 'wood', ceil: 'plaster' },
+    { id: 'atrium', name: 'Atrium', r: [-11, -30, 11, 12], floor: 'stone', ceil: 'plaster' },
+    { id: 'arcade', name: 'Arcade', r: [-37, -30, -11, 4], floor: 'carpet', ceil: 'roofg' },
+    { id: 'dock', name: 'Loading Dock', r: [11, -30, 37, 4], floor: 'concrete', ceil: 'grid' },
+  ];
+  for (const a of areas) { const [x0, z0, x1, z1] = a.r; B.add(x0, -0.4, z0, x1, 0, z1, a.floor); B.add(x0, H, z0, x1, H + 0.4, z1, a.ceil); }
+
+  // ---- windows: an opening in the outside wall (sill 0.9 m) onto a boarded-up back alley the zombies come from
+  const holes = { w: [], e: [], n: [], s: [] }, windows = [];
+  const win = (side, c, area) => {
+    holes[side].push({ a: c - 1, b: c + 1, y0: 0.9, y1: 2.9 });
+    const [ox, oz] = { w: [-1, 0], e: [1, 0], n: [0, -1], s: [0, 1] }[side];
+    const face = side === 'w' ? X0 - 0.6 : side === 'e' ? X1 + 0.6 : side === 'n' ? Z0 - 0.6 : Z1 + 0.6; // outer face of the wall
+    const P = (d, l) => (ox ? [face + ox * d, l] : [l, face + oz * d]); // d metres out, l along the wall
+    const box = (d0, d1, l0, l1, y0, y1, mat) => { const [ax, az] = P(d0, l0), [bx, bz] = P(d1, l1); B.add(ax, y0, az, bx, y1, bz, mat); };
+    box(0, 3, c - 1.8, c + 1.8, -0.4, 0, 'road'); // alley floor
+    box(0, 3.3, c - 2.1, c + 2.1, 3.2, 3.5, 'roofg'); // a lid on it (nobody leaves this way)
+    box(3, 3.3, c - 2.1, c + 2.1, -0.4, 3.2, 'brick');
+    box(0, 3, c - 2.1, c - 1.8, -0.4, 3.2, 'brick'); box(0, 3, c + 1.8, c + 2.1, -0.4, 3.2, 'brick');
+    box(2.2, 2.9, c + 0.6, c + 1.6, 0, 0.5, 'tire'); // bin bags
+    const out = P(1.5, c), inn = P(-1.6, c), at = P(-0.3, c);
+    windows.push({ area, out: [out[0], 0, out[1]], in: [inn[0], 0, inn[1]], at: [at[0], 1.9, at[1]], yaw: Math.atan2(ox, oz), n: [-ox, 0, -oz] });
+  };
+  win('s', -6, 'hall'); win('s', 6, 'hall');
+  win('w', 10, 'food'); win('w', 22, 'food'); win('s', -24, 'food');
+  win('e', 10, 'toys'); win('e', 22, 'toys'); win('s', 24, 'toys');
+  win('n', -6, 'atrium'); win('n', 6, 'atrium');
+  win('w', -22, 'arcade'); win('w', -6, 'arcade'); win('n', -24, 'arcade');
+  win('e', -22, 'dock'); win('e', -6, 'dock'); win('n', 24, 'dock');
+  // outside walls: plaster inside, brick outside, both with the window holes
+  for (const [mat, t0] of [['plaster', 0], ['brick', 0.3]]) {
+    wall(W, 'z', X0 - 0.15 - t0, Z0 - 0.6, Z1 + 0.6, -0.4, H + 0.4, 0.3, mat, holes.w);
+    wall(W, 'z', X1 + 0.15 + t0, Z0 - 0.6, Z1 + 0.6, -0.4, H + 0.4, 0.3, mat, holes.e);
+    wall(W, 'x', Z0 - 0.15 - t0, X0, X1, -0.4, H + 0.4, 0.3, mat, holes.n);
+    wall(W, 'x', Z1 + 0.15 + t0, X0, X1, -0.4, H + 0.4, 0.3, mat, holes.s);
+  }
+
+  // ---- doors: roller shutters in the inside walls. they're not map boxes: the mode adds the closed ones to the room
+  const doors = [];
+  const gap = (c) => ({ a: c - 2, b: c + 2, y0: 0, y1: 3 });
+  const door = (axis, fixed, c, a, b, price) => {
+    const box = axis === 'z' ? { min: [fixed - 0.15, 0, c - 2], max: [fixed + 0.15, 3, c + 2], mat: 'metal' } : { min: [c - 2, 0, fixed - 0.15], max: [c + 2, 3, fixed + 0.15], mat: 'metal' };
+    doors.push({ a, b, price, name: areas.find((x) => x.id === b).name, box, at: axis === 'z' ? [fixed, 1.5, c] : [c, 1.5, fixed] });
+    return gap(c);
+  };
+  const dHF = door('z', -11, 20, 'hall', 'food', 750), dHT = door('z', 11, 20, 'hall', 'toys', 750);
+  const dHA = door('x', 12, 0, 'hall', 'atrium', 1000);
+  const dFA = door('x', 4, -24, 'food', 'arcade', 1000), dTD = door('x', 4, 24, 'toys', 'dock', 1000);
+  const dAA = door('z', -11, -12, 'atrium', 'arcade', 1250), dAD = door('z', 11, -12, 'atrium', 'dock', 1250);
+  wall(W, 'z', -11, Z0, Z1, 0, H, 0.4, 'plaster', [dHF, dAA]);
+  wall(W, 'z', 11, Z0, Z1, 0, H, 0.4, 'plaster', [dHT, dAD]);
+  wall(W, 'x', 12, -10.8, 10.8, 0, H, 0.4, 'plaster', [dHA]);
+  wall(W, 'x', 4, X0, -11.2, 0, H, 0.4, 'plaster', [dFA]);
+  wall(W, 'x', 4, 11.2, X1, 0, H, 0.4, 'plaster', [dTD]);
+  for (const { box: { min, max } } of doors) { // the shutter's housing, striped, sticking out of the wall over the doorway
+    const ex = max[0] - min[0] < 1 ? 0.11 : 0.1, ez = max[2] - min[2] < 1 ? 0.11 : 0.1;
+    B.add(min[0] - ex, 2.95, min[2] - ez, max[0] + ex, 3.3, max[2] + ez, 'hazard');
+  }
+
+  // ---- ENTRANCE HALL (start): an info kiosk to run round, two pillars, benches under the boarded entrance
+  B.add(-2.6, 0, 18.6, 2.6, 1.1, 21.4, 'wood'); B.add(-2.8, 1.1, 18.4, 2.8, 1.2, 21.6, 'tile');
+  B.add(-0.5, 1.2, 19.5, 0.5, H, 20.5, 'plaster'); // the sign post holds the ceiling up (and stops kiosk camping)
+  for (const x of [-6, 6]) B.add(x - 0.4, 0, 15.1, x + 0.4, H, 15.9, 'plaster');
+  B.add(-1.6, 0, 26.3, 1.6, 0.45, 26.9, 'wood');
+  for (const x of [-9.6, 9.6]) B.add(x - 0.8, 0, 26.4, x + 0.8, 0.7, 27.6, 'hedge');
+  // ---- FOOD COURT: tables in a 3x3 grid (lanes between them), a burger counter in the corner
+  for (const x of [-31, -24, -17]) for (const z of [10, 16, 22]) B.box(x, 0.375, z, 1.6, 0.75, 1.6, 'wood');
+  B.add(-36.6, 0, 25.6, -29.5, 1.05, 27.2, 'tile'); B.add(-36.6, 1.05, 25.4, -29.3, 1.15, 27.4, 'carred');
+  // ---- TOY STORE: three full-height shelves = three loops
+  for (const [z, mat] of [[10, 'pink'], [16, 'blue'], [22, 'yellow']]) B.add(17, 0, z - 0.4, 31, H, z + 0.4, mat);
+  for (const [x, z, m] of [[14, 25, 'pink'], [14.8, 25.4, 'mint'], [34, 7, 'mint'], [33.4, 6.4, 'yellow'], [34.5, 13, 'blue']]) B.box(x, 0.25, z, 0.5, 0.5, 0.5, m);
+  // ---- ATRIUM: the elevator core in the middle (the big loop), planters, the mystery crate on the north stage
+  B.add(-3.5, 0, -10, 3.5, H, -2, 'glassblock');
+  for (const x of [-7, 7]) for (const z of [-19, 5]) B.box(x, 0.35, z, 2, 0.7, 2, 'hedge');
+  for (const z of [-15, 1]) B.add(-1.5, 0, z - 0.3, 1.5, 0.45, z + 0.3, 'wood');
+  const crate = { at: [0, 0, -28.55], price: 950 };
+  B.add(-0.9, 0, -29, 0.9, 0.9, -28.1, 'crate');
+  const cola = { at: [-10.4, 0, -24], n: [1, 0, 0] };
+  B.add(-10.8, 0, -24.6, -10.0, 2.1, -23.4, 'containerr');
+  // ---- ARCADE: three rows of back-to-back cabinets (gaps halfway down), screens glowing on both sides
+  for (const x of [-31, -24, -17]) for (const [z0, z1] of [[-24, -15], [-13, -4]]) {
+    B.add(x - 0.9, 0, z0, x + 0.9, 1.9, z1, x === -24 ? 'containerr' : 'containerb');
+    B.add(x - 0.96, 1.15, z0 + 0.3, x - 0.9, 1.65, z1 - 0.3, 'light'); B.add(x + 0.9, 1.15, z0 + 0.3, x + 0.96, 1.65, z1 - 0.3, 'light');
+  }
+  // ---- LOADING DOCK: crates, pallets, a forklift, the power switch on the east wall
+  for (const [x, z, n] of [[16, -24, 2], [17.3, -24, 1], [29, -18, 2], [21, -8, 1], [32, -27, 1], [15.2, -1.5, 1]]) for (let k = 0; k < n; k++) B.box(x, 0.6 + k * 1.2, z, 1.2, 1.2, 1.2, 'crate');
+  B.add(23, 0, -15, 26, 0.25, -12, 'wood'); B.add(30, 0, -6, 31.4, 1.4, -4, 'caryellow'); B.add(30.2, 1.4, -5.8, 31.2, 2.2, -4.6, 'glass');
+  const power = { at: [36.7, 1.6, -14], n: [-1, 0, 0] };
+  B.add(36.6, 1.0, -14.5, 37, 2.2, -13.5, 'metal');
+
+  // ---- wall guns: an outline on the wall + its price. look at it and hold F (ammo is half price)
+  const buys = [
+    { w: 'revolver', price: 300, at: [-7, 1.55, 12.21], n: [0, 0, 1] },
+    { w: 'smg', price: 900, at: [7, 1.55, 12.21], n: [0, 0, 1] },
+    { w: 'bread', price: 600, at: [-32, 1.55, 4.21], n: [0, 0, 1] },
+    { w: 'banana', price: 750, at: [-36.99, 1.55, 16], n: [1, 0, 0] },
+    { w: 'shotgun', price: 1200, at: [16, 1.55, 4.21], n: [0, 0, 1] },
+    { w: 'bow', price: 1000, at: [32, 1.55, 4.21], n: [0, 0, 1] },
+    { w: 'ar', price: 1200, at: [10.79, 1.55, 0], n: [-1, 0, 0] },
+    { w: 'sniper', price: 1500, at: [-36.99, 1.55, -14], n: [1, 0, 0] },
+    { w: 'katana', price: 2000, at: [11.21, 1.55, -24], n: [1, 0, 0] },
+  ];
+  const spawns = [[-4, 0.1, 24], [4, 0.1, 24], [-7, 0.1, 17.5], [7, 0.1, 17.5], [0, 0.1, 25], [-8, 0.1, 22], [8, 0.1, 22], [0, 0.1, 15]];
+  return {
+    name: 'Dead Mall', size: 'medium', boxes: B.boxes, killY: -20,
+    sky: { top: 0x06050c, mid: 0x1a1220, bot: 0x05040a, fog: 0x140e18 }, fogNear: 16, fogFar: 80, spawns,
+    zm: { bounds: [X0 - 4, Z0 - 4, X1 + 4, Z1 + 4], H, start: 'hall', areas, doors, windows, buys, crate, power, cola },
+  };
+}
+
 export const MAPS = {
   crate: crate(), platform: platform(), rooftop: rooftop(), suburb: suburb(), warehouse: warehouse(), warehouse_sd: warehouseSD(),
   desert: desert(), islands: islands(), skyline: skyline(), bazaar: bazaar(), range: range(), backrooms: backrooms(), forest: forest(),
+  deadmall: deadmall(),
 };
 // maps with an S&D version: '<id>_sd' is its own layout on the bomb-map rules, the one Plant & Defuse plays; '<id>' is
 // the one every other mode plays. switching mode swaps between them (modes.js mapForGame, the server's setGame)
@@ -2467,7 +2591,7 @@ function unstick(boxes, list) {
   }
 }
 for (const m of Object.values(MAPS)) unstick(m.boxes, [...m.spawns, ...(m.teamSpawns ? [...m.teamSpawns.att, ...m.teamSpawns.def] : [])]);
-export const MAP_ORDER = ['crate', 'platform', 'rooftop', 'suburb', 'warehouse', 'desert', 'bazaar', 'islands', 'skyline', 'backrooms', 'forest'].flatMap((id) => (MAPS[id + '_sd'] ? [id, id + '_sd'] : [id]));
+export const MAP_ORDER = ['crate', 'platform', 'rooftop', 'suburb', 'warehouse', 'desert', 'bazaar', 'islands', 'skyline', 'backrooms', 'forest', 'deadmall'].flatMap((id) => (MAPS[id + '_sd'] ? [id, id + '_sd'] : [id]));
 
 // Client convenience: "the current map". These arrays/objects are mutated in place by setMap,
 // so every module that imported them sees the new map.
