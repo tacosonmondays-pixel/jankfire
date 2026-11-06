@@ -402,6 +402,7 @@ let tilesIO = null;
 function renderTiles() {
   const T = TAB();
   if (!T) return;
+  hoverOff(); // the tile under the mouse is about to go: no mouseleave will come
   for (const p of $('czPills').children) p.classList.toggle('on', p.dataset.r === F.r);
   renderExtra(T);
   const box = $('czTiles');
@@ -469,7 +470,7 @@ function tile(T, k, cur, kind) {
     else setPart(T.idx, k);
     if (k === RAND) api.toast(`random ${TYPE_LABEL[T.type].toLowerCase()}: a different one${favOnly(T.type) ? ' of your favourites' : ''} every spawn`);
     renderTiles();
-    if (hovering) hoverOn(T, k, v, have, ach, kind);
+    hoverOn(T, k, v, have, ach, kind); // still under the mouse (the strip was rebuilt under it)
   });
   return t;
 }

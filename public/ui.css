@@ -519,10 +519,11 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 /* hover title: big, up top, in the rarity colour */
 #scr-customize .cz-hover { position: absolute; left: 50%; top: 14px; transform: translateX(-50%) rotate(-1deg); z-index: 4; max-width: min(640px, 52vw); text-align: center; pointer-events: none;
   padding: 8px 18px 10px; background: rgba(18, 8, 24, 0.94); border: 4px solid var(--rc, var(--pink)); box-shadow: 7px 7px 0 var(--cyan); }
-#scr-customize .cz-hover b { display: block; font-size: clamp(24px, 2.6vw, 40px); line-height: 1.05; color: var(--rc, #fff); text-shadow: 3px 3px 0 #000; }
-#scr-customize .cz-hover i { display: block; font-style: normal; font-size: 12px; letter-spacing: 3px; color: var(--yellow); margin: 3px 0 4px; }
-#scr-customize .cz-hover span { display: block; font-size: 15px; color: #fff; }
+#scr-customize .cz-hover > b { display: block; font-size: clamp(24px, 2.6vw, 40px); line-height: 1.05; color: var(--rc, #fff); text-shadow: 3px 3px 0 #000; }
+#scr-customize .cz-hover > i { display: block; font-style: normal; font-size: 12px; letter-spacing: 3px; color: var(--yellow); margin: 3px 0 4px; }
+#scr-customize .cz-hover > span { display: block; font-size: 15px; color: #fff; }
 #scr-customize .cz-hover .req { font-size: 13px; color: #ffd35a; margin-top: 4px; }
+#scr-customize .cz-hover .req b { display: block; font-size: 14px; }
 #scr-customize .cz-hover .req:empty { display: none; }
 /* left: career card + weapons by slot */
 #scr-customize .cz-left { grid-area: left; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
