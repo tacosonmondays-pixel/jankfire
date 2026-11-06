@@ -101,12 +101,12 @@ def knife_spoon():
     return spoon('w_knife_spoon', 'kspoon', meta, xf)
 
 
-def ladle():
+def ladle(fid='w_spoon_ladle', pre='ladle', meta=None, dy=0.0, extra=None):
     steel = mat('ld_steel', 0xd2d7de, rough=0.16, metal=1.0)
     stamp = mat('ld_stamp', 0xffffff, rough=0.25, metal=1.0, tex=tex_canvas('ld_stamp_t', 40, 11, stamp_px('SOUP', 40, 11, 0xd2d7de, 0x5a6068)))
     C = (0, -0.034, -0.168); R = 0.047
     bowl = shell(C, R, 0.042, R, steel, seg=28, rings=16, thick=0.0016, name='ladle_bowl', dent=(0.03, -0.03, -0.02, 0.014, 0.12))
-    rim = lathe([(R + 0.0012, -0.0016), (R + 0.0024, 0.0), (R + 0.0012, 0.0016), (R - 0.0004, 0.0)], (C[0], C[1], C[2]), steel, seg=28, axis='y', name='rim')
+    rim = lathe([(R + 0.0012, -0.0016), (R + 0.0024, 0.0), (R + 0.0012, 0.0016), (R - 0.0004, 0.0), (R + 0.0012, -0.0016)], (C[0], C[1], C[2]), steel, seg=28, axis='y', name='rim', cap=False)
     # the handle: leaves the back of the rim, climbs, runs back flat, hooks down at the end
     path = [(0, C[1] + 0.002, C[2] + R - 0.002), (0, -0.018, -0.105), (0, -0.004, -0.07), (0, 0.004, -0.03), (0, 0.009, 0.02),
             (0, 0.012, 0.07), (0, 0.012, 0.098), (0, 0.007, 0.11), (0, -0.002, 0.116), (0, -0.011, 0.117)]
@@ -125,8 +125,46 @@ def ladle():
     hd = loft(pts, ring, m=steel, name='ladle_handle', smooth_angle=50)
     hd.data.materials.append(stamp)
     stamp_faces(hd, 1, 0.0, 0.06, 0.06, 0.0085)
-    meta = {'kind': 'weapon', 'id': 'spoon', 'skin': 'spoon_ladle', 'paint': [], 'muzzle': [0, 0, -0.17], 'hatAt': [[0, 0.016, 0.04], 0.045]}
-    return finish('w_spoon_ladle', zone_join([hd], 'ladle_handle', {'ld_steel': 'a'}) + zone_join([bowl, rim], 'ladle_bowl', {'ld_steel': 'b'}), meta)
+    meta = meta or {'kind': 'weapon', 'id': 'spoon', 'skin': 'spoon_ladle', 'paint': [], 'muzzle': [0, 0, -0.17], 'hatAt': [[0, 0.016, 0.04], 0.045]}
+    hs, bs = [hd], [bowl, rim]
+    if dy:  # drop it so the handle runs along the grip axis (y = 0)
+        for o in hs + bs: o.location.z += dy  # blender z = game up
+    parts = zone_join(hs, pre + '_handle', {'ld_steel': 'a'}) + zone_join(bs, pre + '_bowl', {'ld_steel': 'b'})
+    if extra: parts += extra((C[0], C[1] + dy, C[2]), R)
+    return finish(fid, parts, meta)
 
 
-main_multi(lambda: [(spoon(), 'w_spoon'), (ladle(), 'w_spoon_ladle'), (knife_spoon(), 'w_knife_spoon')], exposure=-0.4)
+def soup(C, R):
+    # chicken noodle, still in it: a golden broth surface just under the rim, carrot coins, a parsley fleck, and one
+    # noodle slung over the front rim. it stays in there however hard you swing (that's the jank)
+    broth = mat('kl_broth', 0xffffff, rough=0.08, clearcoat=0.8, tex=tex_noise('kl_broth_t', 0xb87420, var=0.1, size=16, speck=0xe8b04a, speck_p=0.18, seed=21))
+    carrot = mat('kl_carrot', 0xff4a0a, rough=0.4, clearcoat=0.4)
+    noodle = mat('kl_noodle', 0xf6e0a0, rough=0.4, clearcoat=0.3)
+    herb = mat('kl_herb', 0x39b81a, rough=0.5)
+    sy = C[1] - 0.009; r = math.sqrt(R * R - 0.009 ** 2) - 0.0015
+    surf = lathe([(0.0, 0.0012), (r * 0.55, 0.0008), (r, -0.0006)], (C[0], sy, C[2]), broth, seg=28, axis='y', name='kl_soup')
+    uv_box(surf, 0.03)
+    bits = [surf]
+    for k, (dx, dz, rr) in enumerate(((-0.017, 0.01, 0.0085), (0.013, -0.014, 0.008), (0.021, 0.017, 0.007))):
+        c = cyl(rr, 0.0028, (C[0] + dx, sy + 0.0022, C[2] + dz), carrot, axis='y', seg=12, bev=0.0008, name='kl_carrot')
+        c.rotation_euler = (0.18 * (k - 1), 0.12 * k, 0); bits.append(c)
+    bits.append(box((0.006, 0.0012, 0.004), (C[0] - 0.004, sy + 0.0016, C[2] - 0.022), herb, rot=(0, 0.5, 0), name='kl_herb'))
+    # the noodle: floats in the middle, rides up over the front rim, hangs down the outside
+    fz = C[2] - R
+    pts = [(C[0] + 0.006, sy + 0.0014, C[2] + 0.006), (C[0] + 0.004, sy + 0.0016, C[2] - 0.016), (C[0] + 0.002, sy + 0.003, fz + 0.008),
+           (C[0], C[1] + 0.0035, fz + 0.0005), (C[0] - 0.001, C[1] + 0.001, fz - 0.0042), (C[0] - 0.002, C[1] - 0.012, fz - 0.0044),
+           (C[0] - 0.004, C[1] - 0.026, fz - 0.002), (C[0] - 0.003, C[1] - 0.034, fz + 0.0005)]
+    bits.append(sweep(pts, 0.0018, noodle, seg=6, name='kl_noodle', squash=(1.0, 1.3)))
+    return zone_join(bits, 'kladle_soup', {'kl_broth': 'n', 'kl_carrot': 'n', 'kl_noodle': 'n', 'kl_herb': 'n'}, default='n')
+
+
+def knife_ladle():
+    # the Knife's Ladle skin: the soup ladle at its own size, held the way you hold a ladle (bowl down, handle flat in
+    # the fist): dropped 9 mm so the flat runs along the knife's grip axis (y = 0) under the hand (z -0.036 .. +0.08),
+    # the hook behind the fist. muzzle = the bowl's front rim.
+    meta = {'kind': 'weapon', 'id': 'knife', 'skin': 'knife_ladle', 'paint': [], 'muzzle': [0, -0.043, -0.215], 'hatAt': [[0, 0.003, 0.035], 0.045]}
+    return ladle('w_knife_ladle', 'kladle', meta, dy=-0.009, extra=soup)
+
+
+# (the Spoon weapon is gone: w_spoon / w_spoon_ladle aren't built any more; spoon() and ladle() stay for the knife skins)
+main_multi(lambda: [(knife_spoon(), 'w_knife_spoon'), (knife_ladle(), 'w_knife_ladle')], exposure=-0.4)
