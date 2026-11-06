@@ -2,8 +2,9 @@
 
 > **Logline:** the world ended on the last day of the last quarter, when every division of ☺ CORP tried to hit its
 > numbers at once. Years later (nobody knows how many, time is broken) the companies that ended it are still open for
-> business in the ruins, and every gang of survivors wants a piece of what's left. You're a mannequin the old ☺ vending
-> machine finally spat out: the first change it ever gave. Everything you know, you learned in its training sims.
+> business in the ruins, and every gang of survivors wants a piece of what's left. Now ☺ CORP is about to restart the
+> world, with the dead as its workforce. You are one of the dead: a recording of someone who died that afternoon, let
+> out of the old ☺ vending machine in a mannequin body. You don't remember who you were. They do.
 
 Working title **OVERDUE**. On the home screen it's the new **STORY** button. Everything here is original: genre ideas
 (a post-apocalyptic open city, crime-sandbox driving, rarity loot, cyber implants) are borrowed, and no names,
@@ -51,6 +52,7 @@ a logo.
 - **☺ CORP wants the Re-Merger.** It still runs Corp Hill perfectly ON TIME, holds meetings in the ruins and sends
   **Late Fees** to survivors for "back pay owed since the Final Quarter". Its plan is to restart the **Master Clock** at
   the top of the ☺ Spire, put the whole city back on the Schedule and sign everyone back up as employees. By force.
+  What it hasn't told anyone is who the new employees will be (§3).
 - **Lateness rots reality.** Since the Final Quarter, anything that falls behind schedule goes *overdue*: first it gets
   sticky, then warm, then it gets a pulse. Overdue paperwork grows teeth. Overdue streets grow intestines. The ruins
   are slowly turning into meat from the bottom of the hill up.
@@ -59,28 +61,34 @@ a logo.
   them is **The Bottom**.
 
 ### The Machine and the training sims (the PvP is in here)
-- The original ☺ vending machine, the one that started it all, survived the Final Quarter. Nothing can kill it. It
-  stands in the ruins of the Lost & Found at the Bottom, still humming, still not giving change.
-- Inside it runs the **TRAINING SIMS**: recordings of the world from before the end. **Every multiplayer map and mode
-  in JANKFIRE is a sim.** Dead Mall, Suburb, the Warehouse, the Desert, Jankburg's battle royale, Gun Game, Plant &
-  Defuse: all simulations of places and jobs that don't exist anymore.
-- That explains the jank in the PvP: respawning is free (it's a sim), Todd's broken gravity (it was recorded that way),
-  the bots (recorded employees), and the containers that pay out (the Machine dispenses them into its tray). The lore
-  NPCs you meet in the sims (Gary, Dale, the Janitor, Mr. Smiles, Todd) are **recordings who don't know the world
-  ended**. In story mode you can find what's left of the real ones.
-- The companies and gangs buy sim time to train their fighters, which is why every faction fights like a JANKFIRE
-  player. The Bottom uses it to train its own.
+- The original ☺ vending machine, the one that started it all, was also ☺ CORP's **backup server**. Every employee's
+  mind was recorded into it at the end of every shift, "for continuity". At 17:30 on the Final Quarter it took its last
+  backup: **everyone who died that afternoon is still in there.**
+- It stands in the ruins of the Lost & Found at the Bottom, still humming. Nothing can kill it.
+- Inside it runs the **TRAINING SIMS**: the recordings, living the world from before the end. **Every multiplayer map
+  and mode in JANKFIRE is a sim.** Dead Mall, Suburb, the Warehouse, the Desert, Jankburg's battle royale, Gun Game,
+  Plant & Defuse: simulations of places and jobs that don't exist anymore, played out by people who don't know they're
+  dead.
+- That explains the PvP: respawning is free (it's a sim), Todd's broken gravity (it was recorded that way), the bots
+  (recorded employees on their last workday, forever) and the containers that pay out (the Machine dispenses them into
+  its tray). The lore NPCs in the sims (Gary, Dale, the Janitor, Mr. Smiles, Todd) are **recordings who don't know the
+  world ended**. In story mode you can find what's left of the real ones.
+- The companies and gangs rent sim time to train their fighters, which is why everyone fights like a JANKFIRE player.
+  Hardly anyone asks who the bots are.
 - **In story mode, the Machine is the multiplayer menu.** Walk up to one of its terminals at a safehouse, press F, and
   you're in the normal PLAY menu: your sim results come back as containers in the tray.
 
 ### Change (the player)
-- At the start of the story the Machine goes BEEP, then CLUNK, and drops a mannequin into its tray: you. Sim-trained,
-  never scheduled, no receipt. The Bottom's people take one look and name you **CHANGE**: "the machine never gave
-  change. then it gave you."
-- Legally you don't exist (no calendar entry), so ☺ CORP's laws don't quite apply to you. You can respawn (a backup
-  copy is in the Machine: die and it dispenses you again at the nearest terminal, minus a "restocking fee"), install
-  organs that aren't yours, and stand in overdue places without rotting (much).
-- Why did the Machine dispense you? That's the last mystery of the story (Act V).
+- You are a **recording of someone who died in the Final Quarter**, loaded into a spare mannequin body. Your recording
+  kept breaking out of the sims (glitching through walls, refusing to respawn, walking off the edge of the map), so
+  **Dale**, who fixes the Machine, finally did what nobody had ever done: he pressed the button. BEEP. CLUNK.
+- You don't remember who you were. The Bottom names you **CHANGE** ("the machine never gave change. then it gave
+  you.").
+- Legally you don't exist (no calendar entry, no receipt), so ☺ CORP's systems don't see you properly. The Machine
+  still has your backup: when you die it dispenses you again at the nearest terminal, minus a "restocking fee". You
+  can install organs that aren't yours, and stand in overdue places without rotting (much).
+- **Who you were** is the story's first mystery (answered in Act II). **What you are** (a person, a copy, a product)
+  is its real question, and the ending is your answer.
 
 ### Rules of the world (gameplay-facing)
 | rule | what the player feels |
@@ -125,91 +133,124 @@ forces, the Tall Guy From HR), **Facilities** (cleaners who scrub the meat back 
 | **The Loopers** | The Lates | for it to stop being Tuesday | confused, helpful |
 | **The Margin Walkers** | The Margins | to keep the void from eating more ground; they stake plots with garden gnomes | lonely, grateful |
 
-**The Bottom's leaders:**
-- **Auntie Spreadsheet**, ex-accountant, runs the Lost & Found settlement and keeps the Bottom's books in crayon. She
-  was in the Final Quarter's last meeting. She doesn't talk about it.
-- **Lumps**, a huge rubber-faced man with enormous veiny forearms and a lot of gold rings, the Bottom's muscle. Gentle.
-  Cries at sunsets. The Bottom's clock is broken, so the sunset comes at a random time every day and he's never ready.
-- **Wee Gordo**, small, hunched, sagging lipped face, spiky hair, pink sweater. Lumps' best friend and the actual brains.
-- **Dale** (the real one, older, still fixing the Machine). He's the only one who's ever looked inside it.
+The Bottom's people (Auntie Spreadsheet, Lumps, Wee Gordo, Dale) are the core cast: see §3.2 for who they are and what
+they want.
 
 ---
 
 ## 3. The main story
 
-Five acts, ~25 main missions, each one an excuse for set pieces. Your choices tilt **Corp Standing** and **Bottom
-Standing** (two hidden meters) and decide who runs each district (**turf**), which picks your allies in Act IV and the
-ending in Act V.
+The main story is **serious**. It's a cyberpunk story about who owns your time, your body and your self, told in the
+game's world. The jokes live around it (side quests, item text, bosses' gimmicks, NPC chatter), and they never undercut
+a story beat. Every main character wants something clear, and every act asks one question and answers it.
 
-### Act I: "Please Take Your Item" (The Bottom, The Gut)
-1. **Please Take Your Item.** You're in a sim match (it looks exactly like normal JANKFIRE PvP: HUD, kill feed, the
-   lot). You win. "TRAINING COMPLETE." The world freezes and the camera pulls out through the Machine's glass into the
-   ruins: the match was inside it. CLUNK. You drop into the tray. Auntie Spreadsheet and Dale stare at you. Tutorial in
-   the Lost & Found: Bread, movement, the grapple on the washing lines.
-2. **Sauce Run.** Gristle & Sons trades medicine for soup. Lumps needs a car. Steal one (car basics), and drive the soup
-   across the edge of The Commute to the Gut border while **The Unpaid** raid you.
-3. **Something's Digesting.** In the Gut you meet the Choir (Gristle & Sons' old staff) and find out ☺ CORP is
-   **selling them late people** as feedstock, in exchange for meat-power for the Master Clock.
-4. **Clocking In.** ☺ CORP sends **Mr. Overtime** to collect forty quarters of back pay from the Bottom. First nemesis
-   fight (see §5) on the Gut border. You crack his punch-clock heart, he retreats, a piece of it falls out: your first
-   **organ core**. ("THAT'S A HEART. YOU CAN'T JUST HAVE A HEART." "watch me.")
-5. **Second Stomach.** A Meat Mechanic installs the core. Implants unlocked. The Bottom now believes you're useful.
+### 3.1 The story at a glance
+| | |
+|---|---|
+| **Premise** | years after the companies ended the world on purpose, ☺ CORP is about to restart it, with the dead as its workforce |
+| **Hero** | **Change**: a dead person's recording in a mannequin body, the first one the Machine ever let out |
+| **What they want** | first, to find out who they were; then, to decide what happens to everyone else still inside the Machine |
+| **Villain** | **Marion Hask**, ☺ CORP's Chief Punctuality Officer, who signed the end of the world and wants to sign its restart. Her enforcer is **Mr. Overtime**, a recording just like you |
+| **Stakes** | the **Re-Merger** loads every recording in the Machine into a body that works forever on the Schedule, unpaid and unable to quit. The living who can't pay (the Bottom) are sold to the void |
+| **The question** | are you a person, or a product? |
+| **Themes** | who owns your time; what's left of you when your body is replaceable; whether order is worth what it costs |
 
-### Act II: "Hostile Takeovers" (Pinstripe, The Checkout, Number Works)
-To climb the hill, the Bottom needs allies, coupons and roads. Three company districts, in any order. In each one you
-either **make a deal** with the company (it stays in power, owes you, and is a shaky ally) or run a **takeover** with
-the district's smaller group (they take over the district and become a loyal ally, the company becomes an enemy).
-- **Pinstripe:** the Fazzoletti Family will fund the Bottom if you collect protection money... from ☺ CORP. Or help the
-  Punchlines take the Family over. Either way it ends with **Don Grinaldi** (deal: he betrays you at the handshake;
-  takeover: you cut his strings).
-- **The Checkout:** Big Value is holding some of the Bottom's people in the Infinite Queue. Get them out by buying out
-  their debt (deal) or by helping the Mall Rats end the sale (takeover). Boss: **The Cart Mother**.
-- **Number Works:** steal the old Schedule printout (9 km of paper, the city's whole timetable from before the end).
-  Deal with Remainder Industries, or let the Remainders union seize the presses. Boss: **Foreman Remainder**.
-- Mid-act: Mr. Overtime ambushes you on The Commute (second nemesis fight, a car chase), and the Unpaid join the chase
-  to rob whoever loses.
-
-### Act III: "Off the Clock" (Chrome Gristle, Evergreen Acres, The Lates)
-With the printout, Wee Gordo finds a hole: there's an hour on the Schedule that nobody is booked into, the **Missing
-Hour** at 03:00. The Bottom plans to sneak up the hill during it. You recruit (or take over) the Meat Mechanics in
-Chrome Gristle, break the HOA's blockade in Evergreen Acres, and go to **The Lates**, where the Schedule first cracked
-and it's been Tuesday ever since.
-- **The twist:** the Final Quarter **wasn't an accident**. ☺ CORP crashed the world on purpose. It was a
-  *restructuring*: by going bankrupt at the end of Q4, ☺ CORP cancelled every wage, debt and pension it owed. Auntie
-  Spreadsheet was in the meeting where they signed it off. She took minutes.
-- The Missing Hour is where ☺ CORP keeps everything it needs for the **Re-Merger**: a sealed tank of overdue time (and
-  the people it bought back from the Gut). Restart the Master Clock with it, and Q1 begins: everyone's back on the
-  Schedule, back on the payroll, and back in debt. When that gets expensive, they can end the world again.
-- The sims: ☺ CORP's been buying the Machine's sim time for years to train the security for the Re-Merger.
-- Mr. Overtime fight 3, in the Lates: a time-loop arena where his punches arrive before he throws them.
-
-### Act IV: "Quarterly Review" (The Margins, Corp Hill)
-- The Missing Hour raid. The Bottom climbs the hill at 03:00. A mass battle up Dividend Road with everyone you
-  allied with: whoever runs each district you dealt with or took over turns up (the Punchlines with pie cannons, the
-  Mall Rats on rocket carts, the Remainders with a giant 7, or the shaky company allies, who might switch sides).
-- At the Margins you learn that Vacancy Holdings has bought the Bottom from ☺ CORP: after the Re-Merger, the void
-  gets it.
-- You reach the ☺ Spire. **The Twins** (VP of Synergy) block the elevator.
-- Choice point: Auntie Spreadsheet asks you to blow up the Master Clock; the Chief Punctuality Officer offers you a
-  calendar, a name and a dental plan if you hand over the Bottom's leaders. You can also do neither.
-
-### Act V: "Overdue" (the Master Clock), three endings
-Final fight: **Mr. Overtime, Fully Billable**, wired into the Master Clock, in a clock tower made of gears, office
-furniture and an enormous beating meat pendulum. Your allies and your choice decide who fights next to you.
-
-The last mystery: in the clock room there's a second ☺ vending machine, identical to the one at the Bottom. Inside it,
-asleep on the buttons, is **the founder** (a cat). It's been napping on the Machine's network since the Final Quarter.
-The day you were dispensed, it rolled over onto the button. Legally, that's a yes.
-
-| ending | how | what happens | epilogue line |
+### 3.2 The cast (and what each of them wants)
+| character | who they are | wants | arc |
 |---|---|---|---|
-| **ON TIME** (☺ CORP) | hand over the Bottom; kill Overtime and take his job | the Re-Merger works. The lights come back on, the streets get scrubbed, the old world returns, and everyone is an employee again. You're the new Mr. Overtime: your punch-clock heart ticks in the HUD. The Bottom is sold to the void. | "welcome back to the economy. your first meeting was yesterday." |
-| **LATE** (the Bottom) | smash the Master Clock with the Bottom and your allies | nobody owns time anymore. The companies lose their grip, the ruins belong to whoever lives in them, and the whole city slowly grows a pulse. Each district's epilogue depends on who you put in charge. | "nobody knows what time it is. lumps is crying at a sunset. it's the wrong time for it. he's thrilled." |
-| **NAP TIME** (neither) | pet the founder 12 times instead | the founder wakes up, stretches across the Master Clock's keyboard and types `zzzzzzzzzzzz`. Legally, that's a nap. Every contract in the city is suspended: no Schedule, no Re-Merger, no rot, no back pay. The companies and the gangs just have to share. | "the board has entered a meeting. the meeting is a nap. it will run late." |
+| **Change** (the player) | a recording in a mannequin body | the truth, then a choice | from a thing that came out of a machine to someone who decides what happens to the city |
+| **Auntie Spreadsheet** (Agnes Pell) | ex-☺ CORP auditor, runs the Lost & Found settlement, keeps the books in crayon | to **open the books**: prove every debt and back-pay claim is fake, and cancel them | carries the guilt of the Final Quarter; in Act IV she pays for it |
+| **Lumps** | the Bottom's muscle: a huge rubber-faced man with enormous forearms, gentle, cries at sunsets | for his people to be **safe**. He'd take ☺ CORP's deal if it meant nobody else gets fed to the Gut | the loyal friend who might go the other way |
+| **Wee Gordo** | small, hunched, sharp; the Bottom's planner | to **burn the Spire down**. No deals, no new bosses | the radical; right about ☺ CORP, wrong about what comes after |
+| **Dale** | the old man who fixes the Machine | to make up for knowing what's in it and keeping quiet | the one who let you out |
+| **Marion Hask** | Chief Punctuality Officer of ☺ CORP; signed Option C; keeps herself alive with Gristle & Sons organs | **order**. After the Final Quarter the city starved in the dark. She believes the Schedule is mercy, and the dead won't mind | a villain with a point, and a body held together by other people's parts |
+| **Mr. Overtime** (Edwin Sallow) | Employee #1, the first recording ever loaded into a body, reloaded every time he dies | to do his job. He doesn't know he's dead | your mirror: what you become if you sign |
+| **R. Cale** | a junior analyst who died at 17:29 on the Final Quarter | (in flashbacks) to get Option C to the press before 17:30 | who you were |
 
-After any ending the city stays open (post-game), with the ending's look applied (LATE turns the fleshy look on in
-every district; ON TIME scrubs the ruins white and makes the cops friendly to you; NAP TIME puts a sleeping cat on every
-roof). The Machine keeps running the sims, whatever you chose.
+Supporting cast: the company bosses (each one a person with a business to protect), Pip Grinsworth and Long Larry
+(the Punchlines), the Mall Rats' leader (the lost child from the Stampede, 40 now), Employee of the Month (the Unpaid's
+warlord), and the real Gary, Janitor, Mr. Smiles and Todd, who survived.
+
+### 3.3 The acts
+Five acts, ~25 main missions. Choices tilt **Corp Standing** and **Bottom Standing** and decide who runs each district
+(**turf**, §6.11), which sets your allies in Act IV and the shape of the ending.
+
+#### Act I: "Please Take Your Item" (The Bottom, The Gut). *What am I?*
+1. **Please Take Your Item.** A normal-looking PvP match. You win. "TRAINING COMPLETE." The camera pulls out through
+   the Machine's glass into the ruins, and you're dispensed into the tray. Dale and Auntie Spreadsheet take you in.
+   Tutorial in the Lost & Found.
+2. **Sauce Run.** The Bottom trades soup to Gristle & Sons for medicine. Steal a car, cross the edge of The Commute,
+   survive the Unpaid.
+3. **Something's Digesting.** In the Gut, the Choir tells you where Gristle & Sons gets its feedstock: ☺ CORP sells it
+   the people who fall behind on their back pay. The Bottom's missing people are in the Gut.
+4. **Clocking In.** Mr. Overtime comes to collect the Bottom's "forty quarters of back pay": he takes people for the
+   Gut. First nemesis fight. You crack his punch-clock heart and he retreats.
+5. **Second Stomach.** A Meat Mechanic installs the piece of his heart in you. Implants unlocked.
+- **Act I ends** on Overtime, looking at a security still of you: "that one was deleted. CALE, R. employee 4417. late
+  for a meeting at 17:30." Now you have a name. You don't know whose it is.
+
+#### Act II: "Hostile Takeovers" (Pinstripe, The Checkout, Number Works, The Commute). *Who did this?*
+- Auntie explains what she's been hunting for: **Option C**, the document that ended the world. Six divisions signed it
+  and each company kept its signed page. Six pages together are proof that the Final Quarter was a planned bankruptcy,
+  and that every debt ☺ CORP collects is fake. Act II gets three (Pinstripe, the Checkout, Number Works); Gristle &
+  Sons' page turns up in Act III (the Meat Mechanics stole it), Vacancy Holdings' in Act IV at the Margins, and ☺ CORP's
+  own copy is on Hask's desk at the top of the Spire.
+- In each company district you get its page: **DEAL** (the company hands it over for a favour, stays in power, and
+  is a shaky ally) or **TAKEOVER** (you help the local group take the district; they're loyal, and the company is your
+  enemy there). Pinstripe's Don, the Checkout's Cart Mother and Number Works' Foreman each end their district's story.
+- **Memory missions:** every page you collect unlocks a flashback inside the sims: **"The Last Workday"**, playable as
+  R. Cale, 16:00-17:29 on the Final Quarter, in the ☺ Spire before the end. You find Option C, copy it, and run.
+- Mid-act: Overtime hunts you on The Commute (fight 2, a car chase).
+- **Act II ends** with the last flashback: Cale reaches the lobby with the copy at 17:29, and Mr. Overtime is waiting.
+  Auntie confesses: she was Cale's boss. She found Option C, and she sent Cale to leak it because she was too scared to
+  go herself. You were the person she got killed.
+
+#### Act III: "Off the Clock" (Chrome Gristle, Evergreen Acres, The Lates). *What are they planning?*
+- Using the old Schedule printout, Wee Gordo finds the **Missing Hour** (03:00, an hour nobody is booked into).
+- In the Lates, ground zero of the Final Quarter, you find what the Missing Hour hides, the real plan behind the Re-Merger: **Workforce Restoration**.
+  Mannequin bodies by the hundred thousand, the Machine's archive of the dead, and the Master Clock to schedule them.
+  The dead go to work, forever, unpaid and obedient, because a recording can be told what time it is. The living who
+  can't pay are sold to Vacancy Holdings for the void. **You** were the prototype: your recording came out without the
+  Schedule loaded.
+- **Hask contacts you** through a Machine terminal. She shows you the city after the Final Quarter: the famine, the dark,
+  the riots. "the Restoration feeds everyone. i'm offering you a name, a job, and a life that doesn't end. or you can
+  go back to the bin."
+- The Bottom splits. Lumps wants to take a deal if it saves the people in the Gut. Wee Gordo wants to blow up the Spire.
+  Auntie wants to publish Option C. You pick whose plan the raid follows (it changes Act IV's missions).
+- Fight 3 with Overtime in the Lates' time loop. Every loop he glitches a little more, and on the last one he says
+  something that isn't in his script: "i was going home at 17:30. why didn't i go home?"
+
+#### Act IV: "Quarterly Review" (The Margins, Corp Hill). *Who do you stand with?*
+- At the Margins you learn Vacancy Holdings has already bought the Bottom. The void is coming up the hill.
+- **The Missing Hour raid.** At 03:00 everyone climbs: the Bottom plus every ally your takeovers and deals earned. Shaky
+  company allies can turn on you if your Corp Standing is low.
+- In the ☺ Spire, the Twins hold the elevator. **Auntie Spreadsheet stays behind** to hold the lobby so you can go up
+  ("i sent you up these stairs once. this time i'm staying."). She doesn't come back.
+- At the top, Hask makes her final offer.
+
+#### Act V: "Overdue" (the Master Clock). *What do you become?*
+- **Mr. Overtime, Fully Billable**, wired into the Master Clock. If you found all six of his memory fragments (hidden in
+  the districts and the sims), you can **talk him down** mid-fight: you show him his own last backup, 17:29, the end of
+  his shift. He clocks out. "first time i've left on time." Otherwise you destroy him.
+- **Marion Hask** is the last fight: the executive under the suit, held together by Gristle & Sons organs, fighting
+  with the Master Clock's controls. Then you choose.
+
+### 3.4 The endings
+| ending | your choice | what happens | the cost |
+|---|---|---|---|
+| **ON TIME** | sign. Take Overtime's job | the Restoration runs. Lights come on across the ruins, food arrives on schedule, the streets are safe. The dead go to work in mannequin bodies. You get your name back on a lanyard: R. CALE, HEAD OF TIMEKEEPING | the Bottom is sold to the void; nobody in the city is free, including you. Your recording is copied ten thousand times. (If the raid followed Lumps' plan, the Gut's people are spared and given jobs. It's still a job.) |
+| **LATE** | smash the Master Clock (Wee Gordo's plan) | nobody owns time again. The Restoration dies with the Clock. The companies lose their grip and the districts belong to whoever holds them (each district's epilogue follows its ruler). The rot spreads, and some of it grows into something new | it's free and it's dangerous. Without the Clock there's no light on Corp Hill, no food on schedule, and nobody to stop the next warlord. Lumps won't forgive you if you got the Gut's people killed on the way |
+| **OFF THE BOOKS** | take the archive and publish Option C (Auntie's plan) | Option C goes to every screen in the city: the debts are void and ☺ CORP's claim to anything is gone. You open the sims to the dead as their own place, no work, no Schedule, an afterlife they run themselves (the PvP keeps going, but the bots are free now). The companies survive, weakened, and have to bargain | a cold peace with the people who ended the world still standing. You walk out onto The Commute alone; the Bottom has to build the rest |
+
+- **Turf matters:** each district's epilogue panel depends on who runs it, and allies you made show up in the endings.
+- **Overtime matters:** talked down, he's in the epilogue: an old man in a suit, sitting on the Bottom's stairs at
+  sunset, with nowhere to be.
+- **The secret joke ending, NAP TIME** (the one goofy ending, unlocked by petting all the board cats): the founder (a
+  cat) is asleep in a second Machine in the clock room. Pet it twelve times and it walks across the keyboard and types
+  `zzzzzzzzzzzz`. Legally, that's a nap. Every contract in the city is suspended and everyone lies down. It's
+  non-canon, and the credits say so.
+
+After any ending the city stays open (post-game) with the ending's look applied. The Machine keeps running the sims.
 
 ---
 
@@ -476,8 +517,14 @@ cars from the evening rush hour of the Final Quarter, collapsed overpasses, gian
 
 ## 5. The nemesis: MR. OVERTIME
 
-> Head of Timekeeping Enforcement. Employee #1. Has never been late. Has never left. He didn't notice the end of the
-> world; he just noted that everyone else was absent. Now he's collecting forty quarters of back pay from the ruins.
+> Head of Timekeeping Enforcement. Employee #1. Has never been late. Has never left.
+
+**Who he is:** **Edwin Sallow**, the first employee ☺ CORP ever recorded, and the first recording ever loaded into a
+body. Every time he dies, the Machine prints a new one, so he has been on shift since before the end of the world and
+he doesn't know it ended. To him, everyone else is just absent. He killed R. Cale in the Spire lobby at 17:29 on the
+Final Quarter, because Cale was running and running was against policy. He's polite, he's tired, and he is what you'll
+become if you sign. Over his four fights he slowly remembers he died: his lines change, his moves glitch, and in the
+last fight you can end it without killing him (§3.3, Act V).
 
 **Look:** a 4.5 m corporate cyborg in a grey suit stretched over pistons, with a huge **punch-clock built into his
 chest** (the time-card slot glows, the clock face is his heart and it ticks loudly), **two heavy-duty stapler arms**, a
@@ -500,8 +547,8 @@ He steams when angry. He's polite. "this will only take a minute. it will take e
 |---|---|---|---|---|
 | 1 | the Gut border, Act I | *Clocking In* | basic moveset in a small arena; Gut lungs bounce you over his slams | crack the clock: he retreats; drops **Cracked Punch-Clock** core |
 | 2 | the Spiral Freeway on The Commute, Act II | *Rush Hour* | a car chase: he runs after your car (on time!), staples cars into barricades; fight from the car and on the roofs | he's left behind in the jams; you steal his lanyard (☺ CORP access) |
-| 3 | The Lates, Act III | *Tuesday Again* | time loop arena: he knows what you'll do (his attacks are telegraphed from your *last* loop) | his time card is torn: Late Fees can't reach ★5 for a while |
-| 4 | the Master Clock, Act V | *Overdue* | "Fully Billable": fused with the clock, the arena is a vertical gearwork; every phase changes the clock speed (slow-mo / fast-forward rounds) | the ending you chose |
+| 3 | The Lates, Act III | *Tuesday Again* | time loop arena: he knows what you'll do (his attacks are telegraphed from your *last* loop), and he glitches more every loop | he stops mid-fight and asks why he didn't go home at 17:30; his time card is torn, so Late Fees can't reach ★5 for a while |
+| 4 | the Master Clock, Act V | *Overdue* | "Fully Billable": fused with the clock, the arena is a vertical gearwork; every phase changes the clock speed (slow-mo / fast-forward rounds) | talk him down (with all six of his **memory fragments**) and he clocks out, or destroy him |
 
 Refights: after Act II, Overtime is the "★5 boss" of the Late Fees system (§6.2), and his rehired version can be fought
 again at the Punctuality Museum for core rerolls.
@@ -642,6 +689,10 @@ jank downside. Installed at Meat Mechanics clinics (or by Auntie Spreadsheet, ba
   core's **quality** (Bruised / Fresh / Prime / Premium) which scales its perk (and sometimes its downside).
 - **Overload:** you can install more than your **Body Budget** allows (budget grows with promotions = cats petted and
   the story). Over budget, the downsides get louder (rejection: your body visibly lumps and twitches).
+- **Drift (the serious side of implants):** you're a recording of R. Cale. Every implant past your Body Budget pushes
+  you further from who Cale was: some memory flashes stop coming, some dialogue options change (colder, more like
+  Overtime), and the endings comment on it. Fully drifted, Hask says "you'd make a perfect employee." Nothing is locked
+  out; it changes how the story talks to you.
 - **Visible:** each implant adds a model change on your mannequin (a third arm, a clock in your chest, a big smile,
   a ribcage that shows). Other players see it.
 
@@ -658,6 +709,8 @@ jank downside. Installed at Meat Mechanics clinics (or by Auntie Spreadsheet, ba
   account, stored server-side (TECH_PLAN §7).
 
 ### 6.9 Side activities
+- **Memory fragments:** six of Mr. Overtime's lost backups (and a dozen of R. Cale's) are hidden in the districts and
+  inside the sims. Overtime's six unlock the talk-down in the final fight; Cale's add memory flashes and lines.
 - **Cat Board Hunt:** the board of directors (cats) hide across the city. Pet them for promotions (+1 Body Budget).
 - **Rampages:** "OVERTIME!" kill-frenzy challenges with a weapon the game hands you.
 - **Delivery runs** in silly vehicles (soup van, ice cream van, a hearse full of balloons).
@@ -689,6 +742,8 @@ The companies caused the end of the world and still hold the turf; the smaller g
 - **Every district has a ruler**, shown on the map in its colours: ☺ CORP, Gristle & Sons, Big Value, the Family,
   Remainder Industries, Vacancy Holdings, or a group (the Bottom, the Punchlines, the Mall Rats, the Remainders, the
   Meat Mechanics, the HOA, the Margin Walkers, the Unpaid).
+- **Each company district holds one signed page of Option C** (the main story's evidence, §3.3 Act II), so the
+  takeovers are the main plot, not a side system.
 - **Each company district has a takeover questline** (3-5 missions) that ends with the district's boss. At its last
   mission you choose: **DEAL** (the company stays, owes you, gives you a discount and a shaky ally) or **TAKEOVER** (the
   group runs it, the company becomes hostile there, the group is a loyal ally).
@@ -705,6 +760,24 @@ The companies caused the end of the world and still hold the turf; the smaller g
 ---
 
 ## 7. Tone guide (where the gross lives)
+
+### 7.1 Story tone: serious centre, goofy edges
+The owner wants a **legible, serious story** in a cyberpunk vein, with room for the game's goofiness around it.
+- **The main plot plays it straight.** Hask, Overtime, Auntie, Lumps, Wee Gordo, Dale and Cale talk like people with
+  something to lose. Their dialogue can be dry and funny, but nobody does a bit during a story beat: no gags in a
+  confession, a death or a choice.
+- **Every scene answers who wants what.** If a scene doesn't move a character's goal forward, it's a side scene.
+- **Consequences stick.** People taken to the Gut stay taken unless you get them out. Auntie dies in Act IV. Choices
+  change who's alive and who runs what, and the endings show it.
+- **The world is absurd, the people take it seriously.** A city where time rots into meat is surreal; the survivors
+  treat it like weather. That's the cyberpunk "high tech, low life" here: absurd corporate systems, real human costs.
+- **Goofy lives at the edges:** side quests, item descriptions, boss gimmicks, implant downsides, the radio, NPC
+  chatter, the Fun Department, the secret NAP TIME ending. The game's deadpan voice does both: the same flat delivery is
+  funny in a side quest and chilling in a ☺ CORP memo.
+- **Body horror means something.** Implants and organs are the price of staying alive. Hask is held together by other
+  people's organs; you're a dead person in a plastic body. The gore shows what the companies cost people.
+
+### 7.2 Where the gross lives
 
 The owner wants it nasty: pulsing flesh, puppet faces, body horror, gore, intestines. **But not everywhere**, so it
 hits harder when it shows up.
@@ -783,98 +856,116 @@ Big yellow-on-black slam text, the boss's colour, ALL CAPS, one deadpan subtitle
 | The Tall Guy From HR | **THE TALL GUY FROM HR** · HUMAN RESOURCES | "he just wants a quick word." |
 | Employee of the Month | **EMPLOYEE OF THE MONTH** · THE UNPAID | "every month. since the end of the world." |
 | Mr. Overtime, Fully Billable | **MR. OVERTIME** · FULLY BILLABLE | "the meeting is now. the meeting is forever." |
+| Marion Hask | **MARION HASK** · CHIEF PUNCTUALITY OFFICER | "she signed the end of the world. she'll sign the next one." |
 
 ### 8.3 The story's scene list
-**C** = cinematic, **P** = comic panels, **B** = boss intro. About 45 scenes, ~38 minutes of cinematics in total.
+**C** = cinematic, **P** = comic panels, **F** = a playable flashback in the sims, **B** = boss intro. About 45
+scenes, ~40 minutes of cinematics. The main-story scenes play it straight: real stakes, real faces, the jokes kept
+to the edges.
 
 **Act I: Please Take Your Item**
 - **C1 "Please Take Your Item"** (opening, 90 s). It starts as a normal JANKFIRE match: the real HUD, the kill feed,
-  the Suburb map, your loadout. You get the last kill. "TRAINING COMPLETE." Everything freezes. The camera pulls back
-  through the glass of a vending machine: the match was inside it, a tiny glowing world behind the Jank Cola cans. It
-  keeps pulling back, out of the ruined Lost & Found, up over the Bottom, up the whole rubble hill (the title card flies
-  past: **JANKFIRE: OVERDUE**), the Gut breathing, Pinstripe's strings, the broken clocks, all the way to the ☺ Spire,
-  the only lit building in the dark. Then it falls all the way back down into the Machine. BEEP. CLUNK. A mannequin
-  drops into the tray: you. Dale and Auntie Spreadsheet stare at you. "it's never given anything." "it gave change."
-  Your wrong knee clicks into place. Control.
-- **P1b "The Final Quarter"** (the flashback, 6 panels, Auntie narrating in crayon captions): 16:59, the last
-  afternoon of Q4. ☺ CORP turns the Schedule up to 11 (the clocks crack). Gristle & Sons ships early (a building grows
-  a tongue). Big Value opens the doors (*STAMPEDE*). Remainder Industries prints the numbers (a giant 9 lands on a
-  bus). Vacancy Holdings repossesses the ground (a street slides into black). 17:30: a cat walks across a keyboard.
-  "and that was the end of the world. anyway. you hungry?"
-- **P2 "Sauce Run"** briefing: Lumps holds up a pot. Lumps holds up a car key. Lumps cries. Wee Gordo: "he means
-  steal a car. and watch out for interns."
-- **C3 "It's Breathing"** (40 s). Driving into the Gut for the first time: the camera pulls ahead of your car as the
-  street turns from tarmac to pink skin, a rib arch rises overhead, the Choir turns its stretched faces to you all at
-  once and starts humming.
-- **C4 "Clocking In"** (60 s). The Bottom. The sunset comes early today, and Lumps is crying at it. Every clock in the Bottom stops.
-  Ticking. Huge brogues step down the Long Stairs, crushing them. Mr. Overtime ducks under a washing line, takes out a
-  clipboard. "the bottom. you owe forty quarters of back pay. i'm here to collect." He staples Lumps to a wall. → **B: MR.
-  OVERTIME**.
-- **Moment "Heart Rip"**: in slow-mo, you yank a piece of the punch-clock out of his chest. It's warm. It ticks.
-- **C5 "Second Stomach"** (45 s). A Meat Mechanic clinic, a dentist's chair, a lamp swings. Auntie holds the core.
-  "this is a terrible idea." The Mechanic: "you'll be fine." Cut to black. *SQUELCH*. *TICK*. You wake up with a clock
-  ticking in your chest. Implants unlocked.
+  the Suburb map. You get the last kill. "TRAINING COMPLETE." The bots don't respawn; they stand still and look at you.
+  The camera pulls back through the glass of a vending machine: the match was inside it. It keeps pulling back, out of
+  the ruined Lost & Found and up the whole rubble hill (title: **JANKFIRE: OVERDUE**), past the breathing Gut, the
+  broken clocks and the fallen digits, to the ☺ Spire, the only lit building in the dark. Then it falls back into the
+  Machine. Dale has his hand on a button he's never pressed. BEEP. CLUNK. A mannequin drops into the tray. Auntie
+  Spreadsheet: "it's never given anything." Dale: "it gave change." Control.
+- **P1b "The Final Quarter"** (6 panels, Auntie narrating in crayon captions). 16:59 on the last afternoon of Q4.
+  ☺ CORP overclocks the Schedule (the clocks crack). Gristle & Sons ships early (a building grows a tongue). Big Value
+  opens its doors (the Stampede). Remainder Industries prints the numbers (a giant 9 lands on a bus). Vacancy Holdings
+  repossesses the ground (a street slides into black). 17:30: every light goes out. "that was the end of the world.
+  you hungry?"
+- **P2 "Sauce Run"** briefing: Lumps holds up a pot, then a car key. Wee Gordo: "he means steal a car. and watch out
+  for interns."
+- **C3 "It's Breathing"** (40 s). Driving into the Gut for the first time: the street turns from tarmac to pink skin, a
+  rib arch rises overhead, and the Choir turns its stretched faces to you all at once. Among them, faces from the
+  Bottom, half grown into the wall. One of them knows Lumps' name.
+- **C4 "Clocking In"** (60 s). The Bottom at sunset. Every clock in the settlement stops. Ticking. Huge brogues step down
+  the Long Stairs. Mr. Overtime takes out a clipboard: "the bottom. forty quarters of back pay. i'm here to collect."
+  His collectors start loading people into a Gristle & Sons truck. Lumps steps in front of it. → **B: MR. OVERTIME**.
+- **Moment "Heart Rip"**: in slow-mo, you tear a piece of the punch-clock out of his chest. It's warm. It ticks.
+- **C5 "Second Stomach"** (45 s). A back-room clinic, a dentist's chair. Auntie holds the core: "this is a terrible
+  idea." The Meat Mechanic: "they're all terrible ideas. this one works." Black. *TICK*. You wake up with a clock in
+  your chest, and for a second you remember a lobby, a running man's shoes, and the time: 17:29.
+- **P5b "Employee 4417"**: Overtime in his spotless office, alone, looking at a security still of you. "CALE, R.
+  deleted. late for a meeting." He takes out a new clipboard.
 
 **Act II: Hostile Takeovers**
-- **P6 "Meanwhile at ☺ CORP"**: Mr. Overtime in a spotless boardroom at the top of a ruined world, with empty chairs
-  and one cat. "a nobody. with my heart." The cat yawns. That's a yes.
-- **P6b "Deal or Takeover"** (one per district, at the choice): split panels, the company's boss on one side with a
-  contract, the group's leader on the other with a crowbar. Your pick slams in with a stamp: DEAL or TAKEOVER.
-- **C7 "An Offer"** (Pinstripe, 60 s). A checkerboard restaurant. Pip Grinsworth and Long Larry flank the door with
-  praying hands. The Don leans down from the ceiling on his strings, his grin unfolding wider and wider. "you got a lot
-  of heart. i heard it's not yours."
-- **C8 "Doorbusters"** (Checkout, 40 s). The doors open at 09:00. 10,000 Forever Shoppers stampede in slow-mo; a
-  single shopping cart rolls out of the dust towards you. Then another. Then all of them. → **B: THE CART MOTHER**.
-- **P9 "Nine Kilometres"**: the Schedule printout unrolls down the Number Works' chimneys; Wee Gordo reads it and
-  gasps. "there's an hour missing."
-- **C10 "Rush Hour"** (45 s, opening a chase). The Spiral Freeway on The Commute, through the jams and a paper storm.
-  Your car. Unpaid war-rigs on the horizon. In the mirror: Mr. Overtime, running,
-  at exactly the speed limit. He checks his watch.
+- **C6 "Option C"** (60 s). Auntie lays out her wall of evidence: six company logos, six empty frames. "six companies
+  signed the end of the world. each one kept its page. get me the pages and i can prove every debt they collect is a
+  lie." She doesn't say how she knows.
+- **P6b "Deal or Takeover"** (one per district, at the choice): split panels, the company boss with a contract on one
+  side, the local group's leader with a crowbar on the other. Your pick slams in: DEAL or TAKEOVER.
+- **C7 "An Offer"** (Pinstripe, 60 s). A checkerboard restaurant. Pip Grinsworth and Long Larry by the door. The Don
+  leans down from the ceiling on his strings, his grin unfolding wider and wider. "everybody wants that page. nobody
+  wants what comes with it."
+- **C8 "Doorbusters"** (the Checkout, 40 s). The doors open at 09:00 like they have every day since the Stampede. The
+  Forever Shoppers run. A single cart rolls out of the dust towards you. Then all of them. → **B: THE CART MOTHER**.
+- **F1-F3 "The Last Workday"** (playable flashbacks inside the sims, unlocked by the pages): you play R. Cale on the
+  Final Quarter. 16:00, Auntie (younger, scared) shows Cale Option C. 16:45, Cale copies it from the 60th floor. 17:20,
+  the stairs, the alarms, the clocks starting to crack.
+- **C10 "Rush Hour"** (45 s, opening a chase). The Spiral Freeway on The Commute, through a paper storm, Unpaid war-rigs
+  on the horizon. In the mirror: Mr. Overtime, running, at exactly the speed limit.
+- **F4 "17:29"** (the last flashback, 90 s, playable then cinematic). Cale reaches the lobby with the copy. The doors
+  are right there. Mr. Overtime steps out from behind a pillar. "you're running. that's against policy." Cut to black
+  at 17:29:59.
+- **C11 "Minutes of the Meeting"** (70 s). The Lost & Found at night. Auntie, holding her crayon notebook, can't look at
+  you. She was Cale's boss. She found Option C and sent Cale to leak it because she was too scared to go herself. "i
+  got you killed. and then the machine gave you back to me." You can forgive her, or not (a dialogue choice that
+  changes her last scene in Act IV).
 
 **Act III: Off the Clock**
-- **C11 "The Missing Hour"** (90 s). The Lates. A clock tower with no hands. At 03:00 the world goes grey and silent
-  and a door appears in the sky. Inside: a tank the size of a district, full of glowing overdue time, and pipes going
-  down the hill. Down to the Gut. Through the glass: people. "they're feeding it *us*."
-- **C11b "Minutes of the Meeting"** (50 s). Auntie Spreadsheet finally opens her crayon notebook: she took the minutes
-  of the last ☺ CORP meeting before the Final Quarter. Flashback in sepia comic panels: the board room, the execs
-  (the Twins, before the merger merged them), a slide that says RESTRUCTURING: OPTION C (END OF WORLD). Everyone votes
-  yes. "it wasn't an accident. it was a write-off."
-- **P12 "Tuesday Again"**: the same panel four times. In the fourth, Mr. Overtime is already standing behind you.
-- **C13 "Lumps' Speech"** (50 s). The Lost & Found, everyone from every district you helped (whoever runs them now:
-  the scene is cast from your turf choices). Lumps stands on a
-  fridge. He cries. He says one word ("up."). Everyone cheers. Wee Gordo explains the actual plan.
+- **P12 "Nine Kilometres"**: the Schedule printout unrolls down the Number Works chimneys; Wee Gordo finds the gap.
+  "03:00. nobody's booked. not even them."
+- **C13 "Workforce Restoration"** (90 s). The Lates at 03:00. The world goes grey and silent and a door appears in the
+  sky. Inside: a warehouse the size of a district, mannequin bodies in rows to the horizon, cables to the Machine's
+  archive, the Master Clock's schedule on the wall with a slot for every one of them. On a screen, your own recording,
+  labelled PROTOTYPE 0 (SCHEDULE NOT LOADED).
+- **C14 "The Offer"** (60 s). A Machine terminal flickers and Marion Hask is on it, in a white office, perfectly calm,
+  with a surgical scar under her collar. She shows you the year after the Final Quarter: the dark, the starving, the
+  fires. "the restoration feeds everyone. the dead don't mind working. you could have a name, a job, and a life that
+  doesn't end. or you could go back in the bin."
+- **C15 "The Split"** (60 s). The Lost & Found. Lumps wants to take the deal for the Gut's people. Wee Gordo wants to
+  blow up the Spire. Auntie wants to publish Option C. Everyone looks at you. (You choose whose plan the raid follows.)
+- **P16 "Tuesday Again"**: the same panel four times. In the fourth, Overtime has stopped attacking. "i was going home
+  at 17:30. why didn't i go home?"
 
 **Act IV: Quarterly Review**
-- **C14 "03:00"** (60 s). The Missing Hour. The Bottom marches up Dividend Road in silence with every ally you made:
-  the sofa-cars, the Punchlines or the Family's limos, the Mall Rats on rocket carts or Big Value's segways, a
-  Wrecking Ball on a chain. Corp Hill's clocks all turn to face them.
-- **C15 "Negative Space"** (40 s). The Margins. A house slides into the void. The Tall Guy From HR hands you a
-  folder: SALE AGREEMENT: THE BOTTOM, ☺ CORP TO VACANCY HOLDINGS. He's sad about it. He's tall about it.
-- **C16 "The Offer"** (60 s, the choice). The Spire's top floor. Two doors. Auntie Spreadsheet on a walkie: "blow it
-  up." The Chief Punctuality Officer (a mannequin with a perfect smile and a lanyard to the floor) holds out a
-  calendar with your name on it. A cat sleeps on the desk between them. The game asks you: **ON TIME**, **LATE**,
-  or... (pet the cat).
+- **C17 "Negative Space"** (40 s). The Margins. A house slides into the void. The Tall Guy From HR hands you a folder:
+  SALE AGREEMENT, THE BOTTOM, ☺ CORP TO VACANCY HOLDINGS. He's sad about it.
+- **C18 "03:00"** (60 s). The Missing Hour. The Bottom climbs Dividend Road in silence with every ally you earned: the
+  sofa-cars, the Punchlines or the Family's limos, the Mall Rats on rocket carts or Big Value's segways. Every clock on
+  Corp Hill turns to face them.
+- **C19 "The Lobby"** (60 s). The same lobby as 17:29. Auntie Spreadsheet sits down behind the old reception desk with
+  a shotgun and the crayon notebook. "i sent you up these stairs once. this time i'm staying." The elevator closes on
+  her (her last line depends on whether you forgave her).
+- **C20 "Final Offer"** (60 s, the choice is set up). The top floor. Hask, the Master Clock behind her, a lanyard
+  with your old name on the desk.
 
 **Act V: Overdue**
-- **C17 "Fully Billable"** (60 s). The Master Clock opens like a ribcage. Mr. Overtime plugs his stapler arms into
-  the gears, his suit tears, the meat pendulum swings. "your appointment is now." → **B: FULLY BILLABLE**.
-- **Endings** (2-3 min each, the longest scenes in the game):
-  - **E1 ON TIME**: you're issued a suit. The clock in your chest stops ticking and starts *keeping* time. A montage of
-    the lights coming back on across the ruins, district by district, the rubble scrubbed white, everyone in a lanyard
-    again, and the Bottom's houses folding into the void one by one. Your first meeting. The chair has your name on
-    it. It's already warm.
-  - **E2 LATE**: the Master Clock bursts. Every clock in the city melts. A wave of pink flesh rolls down the hill (from
-    the top this time), soft and warm. ☺ CORP workers look at their wrists and see nothing. One of them laughs. One
-    epilogue panel per district, by who runs it. Lumps cries at a sunset at 14:10. Wee Gordo puts his feet up.
-  - **E3 NAP TIME**: the founder is asleep in the second vending machine in the clock room (it's been dispensing
-    things in its sleep, including you). You pet it twelve times. It purrs, walks across the keyboard, types `zzzzzzzzzzzz`, and
-    curls up on the Master Clock. Everything in the city slows, stops, and lies down: cops, shoppers, the Choir, Mr.
-    Overtime (he gets a blanket). Credits roll over a city-wide nap. The cats are awake.
-- **Credits**: rolled over a drive down the whole hill (you can drive; it's playable), with every NPC you met waving
-  from the roadside.
+- **C21 "Fully Billable"** (60 s). The Master Clock opens like a ribcage. Overtime plugs his arms into the gears.
+  "your appointment is now." → **B: FULLY BILLABLE**.
+- **C22 "Clocking Out"** (only if you talk him down, 60 s). You show him his last backup: 17:29, the end of his shift.
+  He looks at his watch for a long time. He unplugs. "first time i've left on time." He sits down.
+- **C23 "Fully Vested"** (40 s). Hask steps into the Clock's controls and the suit opens: under it, a body made of other
+  people's organs, all of them still working. → **B: MARION HASK**.
+- **Endings** (2-3 min each):
+  - **E1 ON TIME**: you sign. The lights come on across the ruins district by district, food trucks arrive on schedule,
+    the dead walk out of the warehouse in neat rows and go to work. The Bottom's houses fold into the void one by one.
+    A lanyard: R. CALE, HEAD OF TIMEKEEPING. Last shot: ten thousand of you, clocking in.
+  - **E2 LATE**: you smash the Clock. Every clock in the city stops at once, and then nothing tells anyone what time it
+    is. Corp Hill goes dark. One epilogue panel per district, by who runs it. The rot spreads, and on the Long Stairs
+    something green grows out of it. Wee Gordo looks at the dark city: "ok. now the hard part."
+  - **E3 OFF THE BOOKS**: Option C on every screen in the city, all six pages. The debts are gone. You open the sims to
+    the dead: in the Suburb sim, the bots stop fighting and sit down on the lawn. The companies bargain at a table in
+    the ruins. You walk out onto The Commute alone, and Dale lets the Machine's tray stay empty.
+  - **NAP TIME** (secret, non-canon): the founder cat, asleep in a second Machine in the clock room, types
+    `zzzzzzzzzzzz`. Everyone in the city lies down. The credits say "this didn't happen."
+- **Credits**: a playable drive down the hill, past everyone who's still alive, in the ending's light.
 
-**Side quest scenes:** every side questline gets a comic-panel opener and closer; big ones get a short cinematic
-(Two Jesters gets three, because they insist).
+**Side quest scenes:** every side questline gets a comic-panel opener and closer; big ones get a short cinematic. The
+side content keeps the game's goofy voice (Two Jesters gets three scenes, because they insist).
 
 ### 8.4 Other story presentation
 - **Mission start / end cards**: comic slam title ("MISSION: SAUCE RUN"), and an end card that grades you like a

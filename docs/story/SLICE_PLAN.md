@@ -118,7 +118,7 @@ STORY button, so `main` can take half-built packages without touching multiplaye
   timelines, comic panels, talk camera, boss intro cards, skip + co-op skip vote); the slice's content: quests *Return
   to Sender*, *Sauce Run*, *Something's Digesting*, *Clocking In*, *Second Stomach*, plus two side quests (*Leg Day*,
   *Hairball*); scenes **C1 (sim-to-real), P1b "The Final Quarter", P2, C3, C4,
-  C5**, the Heart Rip moment, the Mr. Overtime title card; characters Auntie
+  C5, P5b "Employee 4417"** (the Act I hook), the Heart Rip moment, the Mr. Overtime title card; characters Auntie
   Spreadsheet, Lumps, Wee Gordo, a Choir singer, the Meat Mechanic (models 5-7, 16, 18) with face rigs.
 - **Files:** `shared/story/quests.js`, `shared/story/dialogue.js`, `shared/story/content/**`, `public/js/story/scene.js`,
   `public/js/story/panels.js`, `public/js/story/talk.js`, `public/js/story/questhud.js`, `public/js/audio.js` (babble,
