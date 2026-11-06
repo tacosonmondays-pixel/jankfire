@@ -684,6 +684,7 @@ class Room {
       const probe = [b.pos[0] + wx * 2.5, b.pos[1] + 0.5, b.pos[2] + wz * 2.5];
       if (!raycast(probe, [0, -1, 0], Math.max(6, Math.min(15, probe[1] - this.map.killY)), boxes)) { wx = -wx; wz = -wz; ai.strafeDir *= -1; }
     }
+    if (this.brOn) [wx, wz, jump] = this.brBotEdge(b, wx, wz, jump); // jank royale: no hopping into canyons
     if (this.lavaOn) [wx, wz, jump] = this.botLava(b, wx, wz, jump, t);
     return { wx: wx * D.speed, wz: wz * D.speed, jump };
   }

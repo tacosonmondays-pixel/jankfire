@@ -12,6 +12,7 @@ const now = () => Date.now();
 const r2 = (x) => Math.round(x * 100) / 100;
 const pick = (a) => a[(Math.random() * a.length) | 0];
 const hdist = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
+const dist3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 const num = (x) => (typeof x === 'number' ? x : 0);
 const wpick = (tbl) => { // weighted pick from { id: { w } }
   let s = 0;
@@ -121,7 +122,7 @@ export function installRoyale(Room, H) {
     brLootInfo(l) { return [l.i, l.k, l.id, l.tier || 0, l.n || 0, l.a == null ? -1 : l.a, l.p[0], l.p[1], l.p[2]]; },
     // on board: fresh pockets (a loaf of bread), full HP, riding along
     brBoard(p) {
-      p.br = { match: this.br.id, slots: [null, null], melee: { w: BR.melee, tier: 0 }, gadget: null, cola: 0, medkit: 0, armor: 0, inBlimp: true, fly: null, out: false, place: 0, heal: null, ai: null, kills: 0 };
+      p.br = { match: this.br.id, slots: [null, null], melee: { w: BR.melee, tier: 0 }, gadget: null, cola: 0, medkit: 0, armor: 0, inBlimp: true, fly: null, out: false, place: 0, heal: null, ai: null, kills: 0, picks: 0, gunT: 0, skips: 0, landT: 0 };
       p.alive = true; p.hp = 100; p.vel = [0, 0, 0]; p.healLeft = 0;
       p.respawnAt = 0;
       const bp = blimpAt(this.br.path, now());
@@ -226,7 +227,7 @@ export function installRoyale(Room, H) {
           let k = s.slots.indexOf(null);
           if (k < 0) {
             if (!manual) return false;
-            k = Math.max(0, s.slots.findIndex((g) => g && g.w === p.w)); // swap the one in your hands (holding the bread: the first)
+            k = p.isBot ? this.brWorstSlot(p) : Math.max(0, s.slots.findIndex((g) => g && g.w === p.w)); // swap the one in your hands (holding the bread: the first); bots drop their worst
             const old = s.slots[k];
             this.brDrop(p, { k: 'gun', id: old.w, tier: old.tier, a: old.ammo });
           }
@@ -259,6 +260,7 @@ export function installRoyale(Room, H) {
       }
       if (!took) return false;
       B.loot.delete(i);
+      s.picks++; if (l.k === 'gun' && !s.gunT) s.gunT = now();
       this.broadcast({ t: 'br', k: 'take', i, by: p.id });
       this.brLoadout(p);
       return true;
@@ -363,13 +365,13 @@ export function installRoyale(Room, H) {
       s.place = left + 1;
       B.out.push({ id: t.id, place: s.place });
       if (killer && killer !== t && killer.br) killer.br.kills++;
+      const kit = (s.slots || []).filter(Boolean).map((g) => `${TIERS[g.tier].name[0]}-${g.w}(${g.ammo == null ? 'inf' : g.ammo})`).join('+') || 'bread only';
       this.brDropAll(t);
       this.broadcast({ t: 'br', k: 'out', id: t.id, place: s.place, by: killer && killer !== t ? killer.id : 0, w, left });
       if (LOG) {
         const why = w === 'zone' ? 'the zone' : w === 'void' ? (killer ? `${killer.name} (knocked into the void)` : 'the void') : killer && killer !== t ? `${killer.name} with ${w}` : w;
         const hp = killer && killer !== t ? ` (killer had ${Math.round(killer.hp)} hp, ${Math.round(killer.br ? killer.br.armor : 0)} armour)` : '';
-        const kit = (s.slots || []).filter(Boolean).map((g) => `${TIERS[g.tier].name[0]}-${g.w}`).join('+') || 'bread only';
-        B.log.push(`#${s.place} ${t.name} died to ${why}${hp}, carried ${kit}, ${s.kills} kills, ${Math.round((now() - B.t0) / 1000)}s in`);
+        B.log.push(`#${s.place} ${t.name} died to ${why}${hp}, carried ${kit}, ${Math.round(s.armor)} armour, ${s.kills} kills, ${s.picks} pick-ups (first gun ${s.gunT ? Math.round((s.gunT - s.landT) / 1000) + 's after landing' : 'never'}), gave up on ${s.skips}, ${Math.round((now() - B.t0) / 1000)}s in`);
       }
     },
     brAlive() { return this.fighters().filter((p) => p.br && !p.br.out && p.br.match === this.br.id); },
@@ -408,6 +410,10 @@ export function installRoyale(Room, H) {
         B.zoneT = n;
         const zn = zoneAt(B.zone, n);
         for (const p of alive) if (!p.br.inBlimp && outsideZone(zn, p.pos)) this.damage(p, zn.dps * 0.5, null, 'zone');
+      }
+      if (LOG && process.env.JF_BR_DUMP && n - (B.dumpT || 0) > 8000) { // test knob: what every bot is up to
+        B.dumpT = n;
+        for (const p of alive) if (p.isBot && p.br.ai) { const ai = p.br.ai, l = B.loot.get(ai.loot); console.log(`[dump] ${p.name}#${p.id} ${p.br.inBlimp ? 'blimp' : p.br.fly || 'ground'} at ${p.pos.map((x) => x | 0)} hp ${p.hp | 0} w ${p.w} target ${p.ai.target || '-'}${p.ai.seenAt ? '(seen)' : ''} loot ${l ? l.id + '@' + l.p.map((x) => x | 0) : '-'} goal ${p.br.ai.why || '?'} picks ${p.br.picks}`); }
       }
       // last one standing (or nobody: the zone got the last two at once)
       const left = this.brAlive();
@@ -467,7 +473,7 @@ export function installRoyale(Room, H) {
       }
       const drop = best ? best[1].p.slice() : (spots[0] ? spots[0].p.slice() : [0, 0, 0]);
       if (LOG) B.log.push(`${b.name} wants to land at ${drop[0] | 0},${drop[2] | 0} (${aggro > 0.75 ? 'hot drop' : 'quiet'})`);
-      return { drop, cell: best ? best[0] : null, aggro, jumpR: 25 + Math.random() * 25, lastD: null, loot: 0, lootT: 0, skip: new Map(), roam: null, roamT: 0, pickT: 0, healT: 0, wT: 0 };
+      return { drop, cell: best ? best[0] : null, aggro, cautious: Math.random(), jumpR: 25 + Math.random() * 25, lastD: null, loot: 0, lootT: 0, skip: new Map(), roam: null, roamT: 0, pickT: 0, healT: 0, wT: 0 };
     },
     // falling, then the umbrella: steer at the drop spot
     brBotFly(b, dt) {
@@ -482,7 +488,7 @@ export function installRoyale(Room, H) {
       b.yaw = Math.atan2(-tx, -tz);
       const moved = this.brMove(b, dt);
       b.f = s.fly === 'glide' ? FLAGS.GLIDE : 0;
-      if (moved && b.onGround) { s.fly = null; b.f = 0; if (LOG) this.br.log.push(`${b.name} landed ${Math.round(tl)} m from where it wanted`); }
+      if (moved && b.onGround) { s.fly = null; b.f = 0; s.landT = now(); if (LOG) this.br.log.push(`${b.name} landed ${Math.round(tl)} m from where it wanted`); }
       if (b.pos[1] < this.map.killY) this.kill(b, null, 'void');
     },
     brMove(b, dt) { const res = H.movePlayer(b.pos, b.vel, dt, this.boxes, false); b.onGround = !!res.ground && b.vel[1] <= 0.01; return true; },
@@ -496,12 +502,19 @@ export function installRoyale(Room, H) {
       const t = this.players.get(b.ai.target), fighting = t && t.alive && b.ai.seenAt;
       // 1. the zone: outside (or about to be) = go, even mid-fight
       const dc = Math.hypot(b.pos[0] - zn.c[0], b.pos[2] - zn.c[1]);
-      if (dc > zn.r - 3) return { p: this.brInward(b, zn.c, zn.r), force: true, r: 0 };
+      if (dc > zn.r - 3) { ai.why = 'zone'; return { p: this.brInward(b, zn.c, zn.r), force: true, r: 0 }; }
       // rotate ahead of the circle: once the next one is known and the wait is running out
       const nx = zn.next;
       if (nx) {
-        const dn = Math.hypot(b.pos[0] - nx.c[0], b.pos[2] - nx.c[1]), soon = zn.shrinking || zn.left < 22000 + dn / 6 * 1000;
-        if (soon && dn > nx.r * 0.8) return { p: this.brInward(b, nx.c, nx.r * 0.7), force: zn.shrinking && dc > zn.r * 0.8, r: 0 };
+        // how long the walk in takes (bots walk ~7 m/s with the odd detour), plus a margin: leave when that's all that's left
+        const dn = Math.hypot(b.pos[0] - nx.c[0], b.pos[2] - nx.c[1]), walk = Math.max(0, dn - nx.r * 0.75) / 6.5 + 8 + ai.cautious * 10;
+        const soon = (zn.shrinking && dn > nx.r * 0.9) || zn.left < walk * 1000;
+        if (soon && dn > nx.r * 0.75) {
+          ai.why = 'rotate';
+          const l = this.brBotLoot(b, 10); // grab what's right on the way
+          if (l && zn.left > (walk + 6) * 1000) { const it = B.loot.get(l); if (hdist(b.pos, it.p) < BR.pickR) this.brPick(b, l, true); else return { p: it.p.slice(), force: false, r: 0 }; }
+          return { p: this.brInward(b, nx.c, nx.r * 0.7), force: zn.shrinking && dc > zn.r * 0.8, r: 0 };
+        }
       }
       // 2. heal when it's quiet
       const need = 100 - b.hp;
@@ -510,19 +523,20 @@ export function installRoyale(Room, H) {
         this.brHeal(b, need > 45 && s.medkit ? 'medkit' : s.cola ? 'cola' : 'medkit');
       }
       if (s.heal) return fighting ? null : { p: b.pos, force: true, r: 0 };
-      // 3. loot: the best thing nearby that's actually an upgrade
+      // 3. loot: the best thing nearby that's actually an upgrade (no gun yet: a gun, now)
       if (n > ai.lootT) { ai.lootT = n + 450; ai.loot = this.brBotLoot(b); }
       const l = ai.loot && B.loot.get(ai.loot);
+      const unarmed = !s.slots.some(Boolean);
       if (l) {
         const d = hdist(b.pos, l.p);
         if (d < BR.pickR && Math.abs(l.p[1] - b.pos[1]) < 1.6) {
-          if (!this.brPick(b, l.i, true)) ai.skip.set(l.i, n + 60000);
+          if (!this.brPick(b, l.i, true)) { ai.skip.set(l.i, n + 60000); s.skips++; }
           ai.loot = 0; ai.lootT = 0;
           return null;
         }
         if (!ai.lootSince || ai.lootFor !== l.i) { ai.lootFor = l.i; ai.lootSince = n; }
-        if (n - ai.lootSince > 9000) { ai.skip.set(l.i, n + 60000); ai.loot = 0; } // can't get there: forget it
-        if (!fighting) return { p: [l.p[0], l.p[1], l.p[2]], force: false, r: 0 };
+        if (n - ai.lootSince > 9000) { ai.skip.set(l.i, n + 60000); ai.loot = 0; s.skips++; } // can't get there: forget it
+        ai.why = 'loot'; if (!fighting || (unarmed && l.k === 'gun' && !(t && dist3(t.pos, b.pos) < 4))) return { p: [l.p[0], l.p[1], l.p[2]], force: !!fighting, r: 0 };
       }
       // 4. nothing to do: drift toward the middle of the (next) circle, somewhere new now and then
       if (!ai.roam || n > ai.roamT || hdist(b.pos, ai.roam) < 4) {
@@ -531,6 +545,7 @@ export function installRoyale(Room, H) {
         ai.roam = this.brInward(b, [c[0] + Math.cos(a) * d, c[1] + Math.sin(a) * d], 1);
         ai.roamT = n + 12000 + Math.random() * 8000;
       }
+      ai.why = fighting ? 'fight' : 'roam';
       return fighting ? null : { p: ai.roam, force: false, r: 0 };
     },
     // a walkable point near (x, z) inside a circle of radius r round c (bots aim for ground spots)
@@ -552,7 +567,7 @@ export function installRoyale(Room, H) {
         const same = s.slots.find((g) => g && g.w === l.id);
         if (same) return l.tier > same.tier ? 3 : same.ammo != null && same.ammo < 30 ? 1.5 : 0;
         if (s.slots.includes(null)) return 4 + l.tier + (GUNS[l.id] ? GUNS[l.id].tier : 0);
-        const worst = Math.min(...s.slots.map((g) => g.tier + (GUNS[g.w] ? GUNS[g.w].tier : 0) + (g.ammo === 0 ? -9 : 0)));
+        const worst = Math.min(...s.slots.map((g) => g.tier + (GUNS[g.w] ? GUNS[g.w].tier : 0) + (g.ammo === 0 ? -9 : 0))); // (brWorstSlot is the one that goes)
         const v = l.tier + (GUNS[l.id] ? GUNS[l.id].tier : 0);
         return v > worst + 0.5 ? 2 + v - worst : 0;
       }
@@ -563,12 +578,13 @@ export function installRoyale(Room, H) {
       if (l.k === 'melee') return s.melee.w === BR.melee ? 1 + l.tier : MELEE[l.id] && l.tier > s.melee.tier ? 1 : 0;
       return 0;
     },
-    brBotLoot(b) {
+    brBotLoot(b, range = 45) {
       const B = this.br, ai = b.br.ai, n = now(), zn = zoneAt(B.zone, n);
       let best = 0, bv = 0;
       for (const l of B.loot.values()) {
         const d = hdist(b.pos, l.p);
-        if (d > 45 || Math.abs(l.p[1] - b.pos[1]) > 1.8 || (ai.skip.get(l.i) || 0) > n) continue;
+        if (d > range || Math.abs(l.p[1] - b.pos[1]) > 1.8 || (ai.skip.get(l.i) || 0) > n) continue;
+        if (l.by === b.id && n - l.byT < 45000) continue; // what it just put down
         if (outsideZone(zn, l.p)) continue;
         const w = this.brBotWant(b, l);
         if (w <= 0) continue;
@@ -599,6 +615,20 @@ export function installRoyale(Room, H) {
       }
       if (b.w !== best) { b.w = best; b.ai.ammo = Math.min(WEAPONS[best].mag || 1, this.brAmmo(b, best)); b.ai.nextShot = Math.max(b.ai.nextShot, n + 350); b.ai.reloadUntil = 0; }
     },
+    brWorstSlot(b) {
+      const v = (g) => g.tier + (GUNS[g.w] ? GUNS[g.w].tier : 0) + (g.ammo === 0 ? -9 : 0);
+      const s = b.br.slots;
+      return v(s[0]) <= v(s[1]) ? 0 : 1;
+    },
+    // a drop ahead (no floor within 15 m, 2.5 or 5 m out): don't jump, turn round; in the air, steer back to the last floor
+    brBotEdge(b, wx, wz, jump) {
+      if (!wx && !wz) return [wx, wz, jump];
+      const deep = (d) => !raycast([b.pos[0] + wx * d, b.pos[1] + 0.5, b.pos[2] + wz * d], [0, -1, 0], 15, this.boxes);
+      if (!deep(2.5) && !deep(5)) return [wx, wz, jump];
+      if (!b.onGround && b.ground) { const dx = b.ground[0] - b.pos[0], dz = b.ground[2] - b.pos[2], l = Math.hypot(dx, dz) || 1; return [dx / l, dz / l, false]; }
+      if (deep(2.5)) return [-wx, -wz, false];
+      return [wx, wz, false];
+    },
     brAmmo(b, w) { const g = b.br && b.br.slots.find((x) => x && x.w === w); return g && g.ammo != null ? g.ammo : 1e9; },
     // a bot's shot spends a real bullet (false = that gun's empty: swap)
     brBotShot(b) {
@@ -616,7 +646,8 @@ export function installRoyale(Room, H) {
       if (!s || !t.br) return score;
       const mine = b.hp + (s.armor || 0), theirs = t.hp + (t.br.armor || 0), d = Math.hypot(t.pos[0] - b.pos[0], t.pos[2] - b.pos[2]);
       if (mine < 55 && d > 18) return 1e9; // hurt: not looking for trouble
-      if (s.slots && !s.slots.some(Boolean) && d > 10) return 1e9; // bread only: go find a gun first
+      const hitMe = b.lastAttacker === t.id && now() - (b.lastAttackT || 0) < 2500;
+      if (s.slots && !s.slots.some(Boolean) && d > 5 && !hitMe) return 1e9; // bread only: go find a gun first (unless they're on you)
       if (now() - (t.lastAttackT || 0) < 3000 && t.lastAttacker !== b.id) score *= 0.55; // someone's already shooting them: help finish the job
       return score * (0.6 + theirs / 250);
     },
