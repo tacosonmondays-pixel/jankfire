@@ -37,7 +37,8 @@ function where() {
   if (G.joined && G.roundOver) return 'menu'; // scoreboard, play of the round, the map vote: menu music, menu volume
   return 'match';
 }
-function matchOn() { return competitive() ? !!G.settings.musicComp : G.settings.musicMatch !== false; }
+function matchOn() { if (G.cityBeds) return false; // OVERDUE's streamed city plays its own district beds (city/beds.js)
+  return competitive() ? !!G.settings.musicComp : G.settings.musicMatch !== false; }
 function num(v, d) { v = Number(v); return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : d; }
 function vol() { return num(G.settings.musicVol, 0.35); }
 // how loud the music bus should be right now (0 = off)
