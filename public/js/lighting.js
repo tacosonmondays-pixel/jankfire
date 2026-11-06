@@ -61,8 +61,8 @@ export const lightStats = { passes: 0, frames: 0 }; // shadow map renders (tests
 export function initLighting(sun, vmSun, noShadow) {
   L.sun = sun; L.vmSun = vmSun; L.vmBase = vmSun.intensity; L.sunBase = sun.intensity;
   L.vmHemi = G.vmScene.children.find((o) => o.isHemisphereLight) || null; L.vmHemiBase = L.vmHemi ? L.vmHemi.intensity : 1.8;
-  L.hemi = sc.children.find((o) => o.isHemisphereLight) || null;
   const sc = G.scene;
+  L.hemi = sc.children.find((o) => o.isHemisphereLight) || null;
   sc.add(sun.target);
   const s = sun.shadow;
   s.autoUpdate = false; // we say when (world.js renders every frame)
