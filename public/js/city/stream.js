@@ -11,7 +11,8 @@ import { chunkBoxes } from '/shared/city/chunk.js';
 import { ChunkWorld } from '/shared/city/world.js';
 import { cityMaterials, cityUniforms, NL } from './mats.js';
 import { buildPropGroup, freeProps, onPropModel } from './props.js';
-import './propcode.js'; // code stand-ins for every story prop (until its Blender model loads)
+import './propcode.js';
+import { Crowd } from './crowd.js'; // code stand-ins for every story prop (until its Blender model loads)
 
 const KINDS = ['solid', 'flesh', 'glow', 'glass', 'acid'];
 const HYST = 16; // metres past a ring before something is dropped from it (no flicker at the edge)
@@ -64,6 +65,7 @@ export class CityStream {
     this.time = 0; this.cam = new THREE.Vector3(); this.first = true;
     this.setPreset(preset);
     onPropModel(() => { this.props.key = ''; }); // a Blender prop landed: rebuild the instances with it
+    this.crowd = new Crowd(scene); // the people standing about (crowd.js)
     this.horizon = null;
     if (this.def.horizon) this.workers[1 % workers].postMessage({ op: 'horizon', city, gen: this.def.horizon });
   }
@@ -149,6 +151,7 @@ export class CityStream {
     this.updateProps(want);
     this.applyEnv(p);
     this.pickLights(camera);
+    this.crowd.update(this.marks(), this.cam, dt);
     const ms = performance.now() - t0;
     this.st.frameMs = ms; if (ms > 50 && !this.first) this.st.hitches++;
   }
@@ -278,14 +281,19 @@ export class CityStream {
     this._trig = out; this._trigV = this.world.version;
     return out;
   }
-  marks() { const out = []; for (const id of this.world.chunks.keys()) { const r = this.chunks.get(id); if (r && r.packed) out.push(...r.packed.marks); } return out; }
+  marks() {
+    if (this._markV === this.world.version) return this._marks;
+    const out = []; for (const id of this.world.chunks.keys()) { const r = this.chunks.get(id); if (r && r.packed) out.push(...r.packed.marks); }
+    this._marks = out; this._markV = this.world.version;
+    return out;
+  }
   // is everything round (x, z) that you could stand on loaded? (hold the player until it is)
   ready(x, z) { return this.world.readyAt(this.city, x, z); }
   dispose() {
     for (const w of this.workers) w.terminate();
     for (const r of this.chunks.values()) { freeGroup(r.m0); freeGroup(r.m1); }
     if (this.far.mesh) { this.far.mesh.geometry.dispose(); }
-    freeProps(this.props.group);
+    freeProps(this.props.group); this.crowd.dispose();
     this.root.removeFromParent(); this.chunks.clear(); this.world.boxes.length = 0;
   }
 }
