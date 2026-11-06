@@ -178,9 +178,12 @@ async function session(b, map, ids) {
           if (st !== 'ok') break;
           const before = await pg.evaluate(() => window.__life);
           await pg.screenshot({ path: f, timeout: 120000 });
-          const after = await pg.evaluate(async () => { const { ME } = await import('/js/player.js'); const { G } = await import('/js/ctx.js'); const at = window.__camOk && !(performance.now() < (ME.sleepUntil || 0)); return at && ME.alive && !(G.eco && G.eco.buyEnd > performance.now()) && !(performance.now() < (ME.quizUntil || 0)) ? window.__life : -1; });
-          if (after === before) break;
-          st = 'died or a new round during the shot'; console.log(map, v.id, v.k, 'retake:', st);
+          const after = await pg.evaluate(async (before) => {
+            const { ME } = await import('/js/player.js'); const { G } = await import('/js/ctx.js'); const n = performance.now();
+            return window.__life !== before ? 'died or a new round' : !ME.alive ? 'dead' : !window.__camOk ? 'the camera wasn\'t at the pin' : n < (ME.sleepUntil || 0) ? 'knocked flat' : G.eco && G.eco.buyEnd > n ? 'buy phase' : n < (ME.quizUntil || 0) ? 'pop quiz' : 'ok';
+          }, before);
+          if (after === 'ok') break;
+          st = after + ' during the shot'; console.log(map, v.id, v.k, 'retake:', st);
         }
         if (st !== 'ok') { console.log(map, v.id, v.k, 'skipped:', st, '(start the server with JF_ROUND_TIME=7200 JF_ROUND_KILLS=999 JF_BOMB_WINS=99 JF_BOMB_ROUND=3600 JF_BUY_TIME=1 JF_ZM_SWIPE=0)'); if (st.startsWith('moved')) break; continue; }
         shots.push({ map, id: v.id, k: v.k, pr, boxes, f });
