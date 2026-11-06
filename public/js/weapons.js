@@ -15,6 +15,7 @@ import { sfx, loopSfx, stopLoops } from './audio.js';
 import { shredMotor } from './audio.js';
 import { net } from './net.js';
 import { hud } from './hud.js';
+import { K } from './keys.js';
 import { tracerColor, emitSkinFx } from './skins.js';
 import { ANIMS, sample, sampleCh, eventsBetween, inspectFor, drawFor } from './anim.js';
 import { newTwirl, resetTwirl, twirling, spin, settle, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
@@ -25,6 +26,7 @@ import { tickScalesVM } from './scales.js';
 import { PARRY } from '/shared/weapons.js';
 import { SIDEARMS, reloadAnim, sideParts, sideHand, sideShot, sideStep, stepOffHand, sideEvent } from './sidearms.js'; // Plan B, Lefty & Righty, Half a Shotgun
 import { ROYAL } from '/shared/looks.js';
+import { carRay, carHit, carSwing } from './traffic.js'; // cars stop bullets (and take the damage)
 
 export const W = {
   slots: [DEFAULT_LOADOUT.primary, DEFAULT_LOADOUT.secondary, DEFAULT_LOADOUT.melee],
@@ -282,7 +284,7 @@ export function useItem() {
   if (W.itemHook && W.itemHook(id)) return; // new gear (gear.js): the camera's free photo, goggles on / off
   if (c.n <= 0) { sfx.empty(); hud.msg(`${it.name}: recharging`, 0.8); return; }
   W.itemT = performance.now();
-  c.n--; if (!c.next && !W.eco) c.next = performance.now() + it.recharge * 1000;
+  c.n--; if (!c.next && !W.eco && !W.br) c.next = performance.now() + it.recharge * 1000; // (jank royale gadgets don't recharge either)
   net.send({ t: 'item', i: id, o: eye().map(r2), d: look().map(r2) });
   if (id === 'wand' || id === 'camera' || id === 'nvg') return; // no toss: the wand, camera and goggles have their own viewmodels
   if (it.w) popItem(it.w); // party popper / reverse card: pops into your hand (see popEvent for what it does)
@@ -546,7 +548,7 @@ export function toggleScythe() {
 }
 
 export function refillAmmo() {
-  for (const id of ORDER) if (WEAPONS[id].mag && !W.eco) W.ammo[id] = WEAPONS[id].mag;
+  for (const id of ORDER) if (WEAPONS[id].mag && !W.eco && !W.br) W.ammo[id] = WEAPONS[id].mag; // (jank royale: bullets come off the floor)
   W.reloadId = null;
   W.fuel.blower = WEAPONS.blower.fuel;
   W.slipperOut = false;
@@ -647,6 +649,7 @@ export function reload() {
   if (W.noReload) return; // one in the chamber: bullets only come from kills
   if (w.hands) { akReloadAll(); return; } // Lefty & Righty: each hand reloads its own
   if (!w.mag || W.reloadId || W.ammo[id] >= w.mag || !ME.alive) return;
+  if (W.br && !W.br.canReload(id)) return; // jank royale: no spare bullets
   if (W.eco && !W.eco.canReload(id)) return;
   W.reloadId = id;
   W.reloadUntil = performance.now() + w.reload * 1000;
@@ -737,7 +740,7 @@ function fireHitscan(id, now, hand) { // hand: 'L' / 'R' = which of Lefty & Righ
   W.lastShotT = now;
   if (w.fanHammer && models[id]) applyTwirl(models[id].g, 0, models[id].cfg.s); // mid-twirl revolver: the shot leaves the resting muzzle (twirlVM spins it again before the next render)
   const o = eye(), base = look(), mz = hand ? akMuzzle(hand) : muzzleWorld();
-  const hits = new Map();
+  const hits = new Map(), carHits = new Map();
   const segs = [];
   const pellets = w.pellets || 1;
   const shots = w.marbles ? [] : null; // Marble Shotgun: each pellet becomes a marble that bounces off what it hit
@@ -748,6 +751,15 @@ function fireHitscan(id, now, hand) { // hand: 'L' / 'R' = which of Lefty & Righ
       const mh = raycast(from, d, left, BOXES);
       const maxT = mh ? mh.t : left;
       const ph = rayPlayers(from, d, maxT);
+      const ch = carRay(from, d, ph ? ph.t : maxT); // a car in the way takes it
+      if (ch) {
+        const end = [from[0] + d[0] * ch.t, from[1] + d[1] * ch.t, from[2] + d[2] * ch.t];
+        segs.push([...drawFrom, ...end]);
+        if (shots) shots.push({ a: drawFrom, b: end, n: ch.n, player: false });
+        carHits.set(ch.id, (carHits.get(ch.id) || 0) + 1);
+        if (!shots || i % 6 === 0) fx.sparks(end, d.map((x) => -x), 5, false);
+        break;
+      }
       const t = ph ? ph.t : maxT;
       const end = [from[0] + d[0] * t, from[1] + d[1] * t, from[2] + d[2] * t];
       segs.push([...drawFrom, ...end]);
@@ -771,6 +783,7 @@ function fireHitscan(id, now, hand) { // hand: 'L' / 'R' = which of Lefty & Righ
   }
   const ns = id === 'sniper' && !W.scoped ? 1 : undefined; // no-scope: the server only makes it look cool, damage is the same
   const qs = id === 'sniper' && W.scoped && now - W.scopedAt <= ROYAL.quick ? 1 : undefined; // quick-scope: fired right as the scope came up (Sniper Royalty only, never damage)
+  for (const [cid, n] of carHits) { carHit(cid, id, n, base); hud.hit(false); }
   for (const [rid, h] of hits) net.send({ t: 'hit', to: rid, w: id, d: h.d.map(r2), n: h.n, h: h.h, ns, qs, fan: fanShot ? 1 : undefined, hd: hand === 'L' ? 1 : undefined });
   const fast = w.rate > 8;
   const skin = (W.skinOver || G.equipped || {})[id];
@@ -911,6 +924,7 @@ function akSync() {
 function akReload(side, now = performance.now()) {
   const h = W.ak[side], other = W.ak[side === 'L' ? 'R' : 'L'];
   if (h.rl || h.n >= AK_HM || !ME.alive || W.noReload) return;
+  if (W.br && !W.br.canReload('akimbo')) return; // jank royale: no spare bullets
   if (W.eco) {
     if ((W.res.akimbo || 0) <= 0) { W.eco.canReload('akimbo'); return; } // says OUT OF AMMO
     if (other.rl) { h.want = true; return; } // one at a time here: the server runs one reload per gun
@@ -922,7 +936,7 @@ function akReloadAll() { akReload('R'); akReload('L'); }
 function akFinish(side) {
   const h = W.ak[side], need = AK_HM - h.n;
   if (h.paid) { h.paid = false; h.rl = 0; return; } // the server's ammo message already filled it
-  const mv = W.eco ? Math.min(need, W.res.akimbo || 0) : need;
+  const mv = W.br ? W.br.take('akimbo', need) : W.eco ? Math.min(need, W.res.akimbo || 0) : need;
   if (W.eco) W.res.akimbo = (W.res.akimbo || 0) - mv;
   h.n += mv; W.ammo.akimbo = (W.ammo.akimbo || 0) + mv; W.ak.tot = W.ammo.akimbo;
   h.rl = 0;
@@ -1066,6 +1080,7 @@ function resolveSwing(id) {
     G.shake = Math.max(G.shake, hv ? 0.6 : 0.35);
     return;
   }
+  if (carSwing(o, d, hv ? hv.range : reach, id)) { sfx.bonk(); W.hitStop = 0.05; G.shake = Math.max(G.shake, 0.3); return; } // bonked a car
   if (w.pogo) {
     const mh = raycast(o, d, w.range, BOXES);
     if (mh) {
@@ -1103,6 +1118,7 @@ export function fireDown() {
   W.fanning.down = now; W.fanning.arm = true; // revolver: keep holding from here to fan the hammer
   if (w.hands) return; // Lefty & Righty: akimboFrame fires whichever triggers are held
   if (!ME.alive || W.reloadId === id || !ready(id, now)) return;
+  if (W.br && W.br.dry(id)) { W.held = false; return; } // jank royale: out of shots
   if (W.eco && W.eco.dry(id)) { W.held = false; return; }
   if (W.anim && W.anim.kind === 'draw') W.anim = null;
   if (w.kind === 'hitscan' && !w.auto && !w.spinup) {
@@ -1352,7 +1368,7 @@ export function updateWeapons(dt, now) {
   W.fuel.blower = (W.held && id === 'blower') ? W.fuel.blower : Math.min(WEAPONS.blower.fuel, W.fuel.blower + WEAPONS.blower.regen * dt);
   W.bloom = Math.max(0, W.bloom - dt * 0.06);
   if (W.slipperOut && now - W.slipperT > 4000) W.slipperOut = false;
-  if (W.reloadId && now >= W.reloadUntil) { if (W.eco) W.eco.reloaded(W.reloadId); else W.ammo[W.reloadId] = WEAPONS[W.reloadId].mag; W.reloadId = null; sfx.click(); }
+  if (W.reloadId && now >= W.reloadUntil) { if (W.br) W.br.reloaded(W.reloadId); else if (W.eco) W.eco.reloaded(W.reloadId); else W.ammo[W.reloadId] = WEAPONS[W.reloadId].mag; W.reloadId = null; sfx.click(); }
   const canAim = !!w.ads && alive && !W.reloadId;
   W.aim = canAim && W.aimHeld ? Math.min(1, W.aim + dt * 7) : Math.max(0, W.aim - dt * 8);
   W.zoom = w.ads ? 1 + (w.ads.zoom - 1) * W.aim : 1;
@@ -1481,13 +1497,14 @@ export function updateWeapons(dt, now) {
   // ---- HUD
   if (ITEMS[W.item]) { const c = charges(W.item), it = ITEMS[W.item]; hud.item(c.n, it.charges, c.next ? 1 - Math.max(0, c.next - now) / (it.recharge * 1000) : 1); }
   updatePop(dt);
-  if (W.eco) W.eco.hud(id, !!W.reloadId);
+  if (W.br) W.br.hud(id, !!W.reloadId); // jank royale: mag / spare bullets
+  else if (W.eco) W.eco.hud(id, !!W.reloadId);
   else if (w.hands) hud.ammo2(W.ak.L.n, W.ak.R.n, AK_HM, !!W.ak.L.rl, !!W.ak.R.rl);
   else if (w.mag) hud.ammo(W.ammo[id], w.mag, !!W.reloadId);
   else hud.ammo(null);
   if (w.hands && (W.ak.L.rl || W.ak.R.rl)) { const h = W.ak.L.rl && (!W.ak.R.rl || W.ak.L.rl < W.ak.R.rl) ? 'L' : 'R'; hud.meter(1 - (W.ak[h].rl - now) / (w.reload * 1000), h === 'L' ? 'LEFTY RELOADING' : 'RIGHTY RELOADING', w.color); }
   else if (W.reloadId) hud.meter(1 - (W.reloadUntil - now) / (w.reload * 1000), 'RELOADING', '#ffffff');
-  else if (isScythe(id)) hud.meter(W.dashFuel / D.max, ME.dashing ? 'GLITCHING' : 'V: GLITCH DASH · X: SWAP MODE', '#ff00dc');
+  else if (isScythe(id)) hud.meter(W.dashFuel / D.max, ME.dashing ? 'GLITCHING' : `${K.label('dash').toUpperCase()}: GLITCH DASH · ${K.label('scythe').toUpperCase()}: SWAP MODE`, '#ff00dc');
   else if (id === 'bow') { /* set above */ }
   else if (id === 'cards') hud.meter(null);
   else if (id === 'cig') {

@@ -416,4 +416,4 @@ ITEMS.quiz = { name: 'Pop Quiz', desc: 'A calculator you throw. Whoever it hits 
 // and cone rad of your crosshair is blinded for dur[0] (looking away) .. dur[1] s (looking at you). wearing goggles
 // yourself makes any flash last nvMul x longer
 export const NVG = { range: 34, cone: 0.62, dur: [0.6, 3.2], nvMul: 2, toggle: 0.35 };
-ITEMS.nvg = { name: 'Night Vision Goggles', desc: 'G puts them on: the dark goes green and people glow. While they\'re on, H flashes everyone you can see. Flashes blind you twice as long while you wear them.', charges: 2, recharge: 14, color: '#3dff8a' };
+ITEMS.nvg = { name: 'Night Vision Goggles', desc: 'G puts them on: the dark goes green and people glow. While they\'re on, middle click flashes everyone you can see. Flashes blind you twice as long while you wear them.', charges: 2, recharge: 14, color: '#3dff8a' };

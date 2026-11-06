@@ -16,6 +16,7 @@ import { W, setSlots, playVM, rebuildOne, setLoadout, refillAmmo, syncItem, setI
 import { weaponIcon, itemIcon, objIcon } from './icons.js';
 import { RP } from './replay.js';
 import * as E3 from './econ3d.js';
+import { K } from './keys.js';
 
 // every key this mode adds, in one place (the keybinds registry takes them over: buy, pause, drop; pickup is the
 // grapple's key, because tryHook() hands the press to us)
@@ -25,7 +26,7 @@ export const ECON_KEYS = {
   drop: 'KeyH', // drop what you hold; Shift + it drops your item. not Z: Z is the spray
   idle: ['Digit4', 'Digit5', 'Digit6', 'Digit7', 'KeyV'], // scythe slot, killstreaks, dash: nothing to use here
 };
-const pickKey = () => (G.settings.swapAim ? 'RIGHT CLICK' : 'E'); // the grapple button
+const pickKey = () => K.label('grapple').toUpperCase(); // the grapple button (keys.js)
 const keyIs = (e, k) => e.code === ECON_KEYS[k];
 
 const $ = (id) => document.getElementById(id);
