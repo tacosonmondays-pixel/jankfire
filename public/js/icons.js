@@ -2,6 +2,7 @@
 // transparent image, cached until something about it changes.
 import * as THREE from 'three';
 import { buildWeapon, freeTree } from './models.js';
+import { withEnv } from './glbkit.js';
 
 const IW = 160, IH = 96;
 let r = null, scene = null, cam = null;
@@ -43,7 +44,7 @@ export function weaponIcon(id, skin) {
     const fit = Math.max(size.x / cam.aspect, size.y) * 1.04;
     cam.position.set(0, 0, fit / (2 * Math.tan((cam.fov * Math.PI) / 360)) + size.z / 2);
     cam.lookAt(0, 0, 0);
-    r.render(scene, cam);
+    withEnv(r, holder, () => r.render(scene, cam)); // (its own reflections, or chrome is black)
     const url = r.domElement.toDataURL('image/png');
     scene.remove(holder);
     freeTree(holder); // only the picture is kept
@@ -70,7 +71,7 @@ export function objIcon(key, build) {
     const fit = Math.max(size.x / cam.aspect, size.y) * 1.06;
     cam.position.set(0, 0, fit / (2 * Math.tan((cam.fov * Math.PI) / 360)) + size.z / 2);
     cam.lookAt(0, 0, 0);
-    r.render(scene, cam);
+    withEnv(r, holder, () => r.render(scene, cam)); // (its own reflections, or chrome is black)
     const url = r.domElement.toDataURL('image/png');
     scene.remove(holder);
     freeTree(holder);

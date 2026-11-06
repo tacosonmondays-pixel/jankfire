@@ -51,6 +51,18 @@ function envMap() { // one small studio reflection for glossy toy plastic and me
   return env;
 }
 
+// the hotbar pictures, the locker / menu hero and the mode art draw with their own renderers (other WebGL contexts),
+// where the game's reflection map is just black (mirror chrome came out as a black shape): each gets its own while it draws
+const sideEnv = new WeakMap();
+export function withEnv(renderer, root, draw) {
+  if (!env || !renderer || renderer === G.renderer) return draw();
+  let e = sideEnv.get(renderer);
+  if (!e) { const pm = new THREE.PMREMGenerator(renderer); e = pm.fromScene(new RoomEnvironment(), 0.04).texture; pm.dispose(); sideEnv.set(renderer, e); }
+  const swapped = [];
+  root.traverse((o) => { if (o.material) for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (m && m.envMap === env) { m.envMap = e; swapped.push(m); } });
+  try { return draw(); } finally { for (const m of swapped) m.envMap = env; } // (materials are shared with the game's copies)
+}
+
 export function metaOf(scene) {
   let meta = null;
   scene.traverse((o) => {

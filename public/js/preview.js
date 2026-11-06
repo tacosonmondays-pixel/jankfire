@@ -1,6 +1,7 @@
 // Spinning weapon preview for the cosmetics screen. Its own tiny renderer so it works from the menu.
 import * as THREE from 'three';
 import { buildWeapon, freeTree, M } from './models.js';
+import { withEnv } from './glbkit.js';
 import { makeSkinSystems, emitSkinFx } from './skins.js';
 
 let renderer, scene, cam, holder, cur = null, systems, canvas, fit = 1, sway = 0, res = 0.5, swayT = 0;
@@ -85,7 +86,7 @@ export function renderPreview(dt) {
   holder.updateMatrixWorld(true);
   emitSkinFx(systems, cur, dt, Math.min(2, fit * 0.6));
   systems.update(dt);
-  renderer.render(scene, cam);
+  withEnv(renderer, scene, () => renderer.render(scene, cam)); // its own reflections for the Blender models
 }
 
 // render resolution (1 = full, 0.5 = the crunchy default)

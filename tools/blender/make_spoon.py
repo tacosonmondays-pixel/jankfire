@@ -4,6 +4,7 @@
 # Mirror polished. Made fun: PROPERTY OF THE CAFETERIA stamped along the handle.
 # Ladle: a stainless soup ladle (a 90 mm hemisphere bowl with a rolled rim, a flat handle rising out of it, a hook on
 # the end) at the code ladle's size. Made fun: SOUP stamped on it, with a dent.
+# Knife skin "Spoon" (w_knife_spoon): the same tablespoon held like a knife, at the code skin's size and spots.
 # run: blender -b --python tools/blender/make_spoon.py
 import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib import *
@@ -59,7 +60,7 @@ def stamp_faces(o, mat_index, z0, z1, axis_len, x_half):
                 uvl[li].uv = ((z1 - (-v.y)) / axis_len, (x_half - v.x) / (2 * x_half))  # reads from your hand toward the bowl
 
 
-def spoon():
+def spoon(fid='w_spoon', pre='spoon', meta=None, xf=None):
     steel = mat('sp_steel', 0xdfe3ea, rough=0.1, metal=1.0)
     stamp = mat('sp_stamp', 0xffffff, rough=0.2, metal=1.0, tex=tex_canvas('sp_stamp_t', 116, 11, stamp_px('PROPERTY OF THE CAFETERIA', 116, 11, 0xdfe3ea, 0x6a7078)))
     Z_END, Z_NECK, Z_BOWL = 0.058, -0.078, -0.128
@@ -81,8 +82,23 @@ def spoon():
     stamp_faces(handle, 1, -0.052, 0.046, 0.098, 0.013)
     bowl = shell((0, -0.0055, Z_BOWL), 0.0255, 0.0125, 0.049, steel, egg=0.1, name='bowl')
     WZ = {'sp_steel': 'b'}
-    meta = {'kind': 'weapon', 'id': 'spoon', 'paint': [], 'muzzle': [0, 0, -0.17], 'hatAt': [[0, 0.004, 0.02], 0.04]}
-    return finish('w_spoon', zone_join([handle], 'spoon_handle', {'sp_steel': 'a'}) + zone_join([bowl], 'spoon_bowl', WZ), meta)
+    if xf:  # bake a game-space transform into the meshes (the nodes stay at identity)
+        C = Matrix(((1, 0, 0, 0), (0, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))  # game -> blender axes
+        B = C @ xf @ C.inverted()
+        for o in (handle, bowl):
+            o.data.transform(B @ o.matrix_world); o.matrix_world = Matrix.Identity(4)
+    meta = meta or {'kind': 'weapon', 'id': 'spoon', 'paint': [], 'muzzle': [0, 0, -0.17], 'hatAt': [[0, 0.004, 0.02], 0.04]}
+    return finish(fid, zone_join([handle], pre + '_handle', {'sp_steel': 'a'}) + zone_join([bowl], pre + '_bowl', WZ), meta)
+
+
+def knife_spoon():
+    # the Knife's Spoon skin: the same cafeteria tablespoon held like a knife, the way blades/spoon.js holds its serving
+    # spoon: x0.915 so it runs butt z 0.092 to bowl tip z -0.123 (215 mm), rolled onto its side (bowl facing +x, like
+    # a knife's flat), grip axis y = 0. muzzle (the tip) and hat spot are the code skin's.
+    k, dz = 0.215 / 0.235, 0.092 - 0.058 * (0.215 / 0.235)
+    xf = Matrix.Translation((0, 0, dz)) @ Matrix.Diagonal((k, k, k, 1)) @ Matrix.Rotation(-math.pi / 2, 4, 'Z')
+    meta = {'kind': 'weapon', 'id': 'knife', 'skin': 'knife_spoon', 'paint': [], 'muzzle': [-0.0012, 0, -0.123], 'hatAt': [[0, 0.0095, 0.035], 0.045]}
+    return spoon('w_knife_spoon', 'kspoon', meta, xf)
 
 
 def ladle():
@@ -113,4 +129,4 @@ def ladle():
     return finish('w_spoon_ladle', zone_join([hd], 'ladle_handle', {'ld_steel': 'a'}) + zone_join([bowl, rim], 'ladle_bowl', {'ld_steel': 'b'}), meta)
 
 
-main_multi(lambda: [(spoon(), 'w_spoon'), (ladle(), 'w_spoon_ladle')], exposure=-0.4)
+main_multi(lambda: [(spoon(), 'w_spoon'), (ladle(), 'w_spoon_ladle'), (knife_spoon(), 'w_knife_spoon')], exposure=-0.4)

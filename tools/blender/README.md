@@ -49,7 +49,7 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 | `make_cig.py` | `w_cig.glb`, `w_cig_cigar.glb` | king-size filter cigarette x2.2 (MAY CAUSE JANK), fat gordo cigar x1.45; the ember is the `tip` node |
 | `make_cards.py` | `w_cards.glb`, `pj_card.glb`, `w_reverse.glb`, `w_reverse_skip.glb` | rounded glossy cards: the deck's `fan` (`card0`..`card4` face meshes, weapons.js deals your hand onto them), the thrown card, the Reverse / Skip cards (`card` node) |
 | `make_bread.py` | `w_bread.glb`, `w_bread_croissant.glb` | baguette x2.7 with real scores, in a bakery sleeve that says BREAD; croissant x8.7 |
-| `make_spoon.py` | `w_spoon.glb`, `w_spoon_ladle.glb` | tablespoon x1.15 (PROPERTY OF THE CAFETERIA), soup ladle |
+| `make_spoon.py` | `w_spoon.glb`, `w_spoon_ladle.glb`, `w_knife_spoon.glb` | tablespoon x1.15 (PROPERTY OF THE CAFETERIA), soup ladle; the Knife's Spoon skin is the same tablespoon held like a knife (x0.915, on its side, the code skin's tip and hat spot) |
 | `make_slipper.py` | `w_slipper.glb`, `pj_slipper.glb`, `w_slipper_croc.glb`, `pj_slipper_croc.glb` | fluffy house slipper (a MOM tag), foam clog with charms; thrown ones x1.6 |
 | `make_projectiles.py` | `pj_chicken`, `pj_bowling`, `pj_banana`, `pj_peel`, `pj_frag`, `pj_smokegren` | the rubber chicken (with a firework on its back), the giant bowling ball, the banana, the peel on the floor, a pineapple frag (PULL ME tag), a canister smoke (DO NOT INHALE) |
 | `make_slapper.py` | `w_slapper.glb`, `w_slapper_foam.glb`, `w_slapper_paw.glb` | jelly-rubber toy hand on a candy stick (real hand x1.35, metaballs, SLAP knuckle tattoos), stadium foam finger (#1 / U R #2), grizzly paw (BEAR ARMS); the slapping end is the `hand` node; `--only=` builds one |
