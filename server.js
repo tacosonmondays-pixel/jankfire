@@ -319,6 +319,7 @@ class Room {
     this.oitcOut = new Set(); // one in the chamber: who ran out of lives this round (by account or name)
     if (mode === 'ffa' && GAMES[process.env.JF_GAME]) this.game = process.env.JF_GAME; // test knob: the online room starts in this mode
     this.cfg = { map: mode === 'training' ? 'range' : mode === 'coop' ? 'warehouse' : 'islands', hip: 'normal', bots: 5, diff: 'normal' };
+    if (GAMES[this.game].mapOk && !GAMES[this.game].mapOk(this.map)) this.cfg.map = mapsFor(this.game, MAPS, MAP_ORDER)[0]; // (the JF_GAME knob: a map the mode can be played on)
     this.wave = 0; this.toSpawn = 0; this.interUntil = 0;
     this.round = ROUND[mode] ? { target: ROUND[mode].kills, ends: now() + ROUND[mode].time * 1000, over: false, next: 0 } : null;
     if (mode === 'coop') this.interUntil = now() + 4000;
@@ -491,7 +492,8 @@ class Room {
   // ---------------------------------------------------------- bots
   addBot(opts = {}) {
     const diff = this.cfg.diff;
-    const b = this.newPlayer(opts.dummy ? 'Dummy' : `${pick(BOT_NAMES)} [bot]`, {
+    const taken = new Set([...this.players.values()].map((p) => p.name)), free = BOT_NAMES.filter((n) => !taken.has(`${n} [bot]`)); // no two Garys if it can help it
+    const b = this.newPlayer(opts.dummy ? 'Dummy' : `${pick(free.length ? free : BOT_NAMES)} [bot]`, {
       isBot: true, pos: opts.pos, color: opts.dummy ? '#cccccc' : '#aaaaaa',
       w: opts.dummy ? 'ar' : pick(BOT_GUNS), skins: opts.dummy ? {} : randomSkins(),
       ai: { diff, target: 0, retarget: 0, nextShot: now() + 1500, seenAt: 0, ammo: 0, reloadUntil: 0, jumpT: 0, wp: null, seed: Math.random() * 100, dummy: opts.dummy || null, strafeDir: 1 },

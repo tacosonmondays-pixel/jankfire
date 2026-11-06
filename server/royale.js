@@ -62,7 +62,7 @@ function groundSpots(map) {
 // a tier for a find: its base tier, plus luck (better spots roll higher)
 function rollTier(base, q) {
   let t = base;
-  while (t < 4 && Math.random() < 0.22 + q * 0.28) t++;
+  while (t < 4 && Math.random() < 0.14 + q * 0.22) t++;
   return t;
 }
 
@@ -381,8 +381,10 @@ export function installRoyale(Room, H) {
     // ---------------------------------------------------------- the clock: blimp, zone damage, heals, the winner
     tickBR(n) {
       const B = this.br;
+      if (this.brOn && (!B || B.match === undefined && !B.id)) { if (!B) this.startRound(); return; } // switched in without a fresh match (a room that starts in this mode): start one
       if (!B || !this.brOn) return;
       const alive = this.brAlive();
+      B.peak = Math.max(B.peak, alive.length); // (late boarders count too)
       // the blimp: riders move with it; at the end of the line everyone still on it gets thrown out
       if (B.phase === 'blimp') {
         const bp = blimpAt(B.path, n), done = blimpDone(B.path, n);
