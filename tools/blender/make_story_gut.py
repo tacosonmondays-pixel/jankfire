@@ -9,6 +9,10 @@ from gutkit import *
 from gutkit import _image, _obj, _link, _place, _waves
 
 
+LODT.update({'s_ribarch': dict(target=1200, drop=('enamel',)), 's_sphincter': dict(drop=('enamel',)), 's_tongue': dict(drop=('enamel',)),
+             's_tooth': dict(target=14), 's_tooth_b': dict(target=14), 's_eyeball': dict(target=44), 's_lung': dict(ratio=0.22)})
+
+
 def meta_of(id_, **kw):
     d = {'kind': 'prop', 'id': id_, 'story': True, 'district': 'gut'}; d.update(kw); return d
 
@@ -101,7 +105,7 @@ def build_ribarch(M):
     lump(sac, 0.04, 4.0, seed=9); A(sac)
     A(lathe([(0.0, 8.36), (0.36, 8.36), (0.44, 8.42), (0.38, 8.53), (0.17, 8.6), (0.0, 8.62)], (0, 0, 0), flesh, seg=10, axis='y', name='ra_lantern_cap'))
     parts = pack(P, 'ribarch', 0.6)
-    return finish('s_ribarch', parts, meta_of('ribarch', col=[16, 12, 2], feet=[[-7.25, 0, 0], [7.25, 0, 0]], footR=1.4,
+    return finish_lod('s_ribarch', parts, meta_of('ribarch', col=[16, 12, 2], feet=[[-7.25, 0, 0], [7.25, 0, 0]], footR=1.4,
                                               lights=[[0, 7.8, 0, 0xff4f7a], [0, 10.9, 0, 0xff4f7a]],
                                               note='one pair of ribs off a two-vertebra spine; collide only the feet and the arch, never a 16 m box'))
 
@@ -118,7 +122,7 @@ def build_lung(M):
     lobes = []
     for sx in (-1, 1):
         # one lung: a blown-up dome, flat inner side, narrower apex toward the front, a fissure, a cardiac notch on the left
-        bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=22, v_segments=12, radius=1.0)
+        bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=18, v_segments=11, radius=1.0)
         for v in bm.verts:
             x, y, z = gg(v.co)
             med = x * sx < 0
@@ -162,7 +166,7 @@ def build_lung(M):
         grow(sx * 1.05, -0.55, math.atan2(1.0, sx * 0.45), 1.15, 0.13, 0)
     print('JF_LUNG branches', len(branches))
     for pts, rads in branches:
-        A(sweep(pts, rads, br, seg=5, name='lung_br'))
+        A(sweep(pts, rads, br, seg=4, name='lung_br'))
     # the windpipe: comes in from the front between the lungs and forks into the two main bronchi, ribbed with
     # cartilage, the open end rearing up like a snorkel (dark inside)
     tp = [(0.0, 1.55, -1.05), (0.0, 1.6, -1.7), (0.0, 1.75, -2.3), (0.0, 2.15, -2.75), (0.0, 2.65, -2.95)]
@@ -172,7 +176,7 @@ def build_lung(M):
         f = t * (len(tp) - 1); k = min(int(f), len(tp) - 2); u = f - k
         path.append(tuple(Vector(tp[k]).lerp(Vector(tp[k + 1]), u))); rads.append(0.3 if i % 2 == 0 else 0.35)
     rads[-1] = 0.38
-    tr = sweep(path, rads, br, seg=10, name='lung_trachea')
+    tr = sweep(path, rads, br, seg=8, name='lung_trachea')
     tr.data.materials.append(dark)
     max(tr.data.polygons, key=lambda p: (len(p.vertices), p.center.z)).material_index = 1
     A(tr)
@@ -185,23 +189,23 @@ def build_lung(M):
             x, z = gx * 0.72, gz * 0.75 + 0.25
             if (x / 3.2) ** 2 + ((z - 0.2) / 2.65) ** 2 < 1:
                 balls.append(((x + rnd.uniform(-0.12, 0.12), 0.0, z + rnd.uniform(-0.12, 0.12)), rnd.uniform(0.85, 1.0)))
-    fb = meta(balls, res=0.15, m=fat, target=460, name='lung_fatbed', clamp=lambda p: (p[0], max(p[1], -0.02), p[2]))
+    fb = meta(balls, res=0.15, m=fat, target=340, name='lung_fatbed', clamp=lambda p: (p[0], max(p[1], -0.02), p[2]))
     lump(fb, 0.05, 2.2, seed=6); A(fb)
     parts = pack(P, 'lung', 0.7)
-    return finish('s_lung', parts, meta_of('lung', col=[6.0, 2.8, 5.0], bounce=True, note='trampoline: the two domes are the bouncy top; lung_* materials breathe'))
+    return finish_lod('s_lung', parts, meta_of('lung', col=[6.0, 2.8, 5.0], bounce=True, note='trampoline: the two domes are the bouncy top; lung_* materials breathe'))
 
 
 # ---------------------------------------------------------------- 3. tooth cobbles (scatter: instanced thousands of times)
 def build_tooth(M):
     o = molar(M['enamel'], name='tooth_molar', seed=3)
     uv_box(o, 0.4)
-    return finish('s_tooth', [o], meta_of('tooth', scatter=True, col=[0.36, 0.22, 0.34]))
+    return finish_lod('s_tooth', [o], meta_of('tooth', scatter=True, col=[0.36, 0.22, 0.34]))
 
 
 def build_tooth_b(M):
     o = canine(M['enamel'], name='tooth_canine', seed=4)
     uv_box(o, 0.4)
-    return finish('s_tooth_b', [o], meta_of('tooth_b', scatter=True, col=[0.16, 0.35, 0.2]))
+    return finish_lod('s_tooth_b', [o], meta_of('tooth_b', scatter=True, col=[0.16, 0.35, 0.2]))
 
 
 # ---------------------------------------------------------------- 4. gutter eyeball
@@ -213,18 +217,18 @@ def build_eyeball(M):
                 wob=lambda a: 1 + 0.2 * math.sin(3 * a) + 0.12 * math.sin(2 * a + 1) + 0.25 * max(0, math.sin(a)))
     P.append(rim)
     parts = pack(P, 'eyeball', 0.15)
-    return finish('s_eyeball', parts, meta_of('eyeball', scatter=True, col=[0.5, 0.3, 0.5], note='looks up and toward -z'))
+    return finish_lod('s_eyeball', parts, meta_of('eyeball', scatter=True, col=[0.5, 0.3, 0.5], note='looks up and toward -z'))
 
 
 # ---------------------------------------------------------------- 5. sphincter door
 def build_sphincter(M):
     musc = mat('sp_muscle_pulse', 0xffffff, rough=0.2, clearcoat=1.0, tex=tex_canvas('sp_muscle_t', 64, 32, _paint_sphincter))
     dark = mat('sp_throat_pulse', 0xffffff, rough=0.25, clearcoat=0.6, tex=tex_flesh('sp_throat_t', 0x5a0c26, 0x2a0410, 0x8a2a4a, size=16, seed=41))
-    NA, NF, TW = 60, 10, 0.75
+    NA, NF, TW = 40, 8, 0.75
     # rings: (radius, z (wall at 0, -z out of the wall), fold amount, material)
     R = [(1.5, 0.12, 0.0, 0), (1.62, -0.05, 0.0, 0), (1.58, -0.24, 0.02, 0), (1.45, -0.33, 0.04, 0)]
-    for i in range(9):
-        t = i / 8; r = 1.3 - 0.86 * t
+    for i in range(7):
+        t = i / 6; r = 1.3 - 0.86 * t
         R.append((r, -0.3 - 0.26 * t ** 0.8, 0.05 + 0.2 * t ** 0.8, 0))
     R += [(0.4, -0.6, 0.14, 0), (0.33, -0.55, 0.07, 1), (0.3, -0.36, 0.03, 1), (0.27, -0.1, 0.0, 1), (0.22, 0.06, 0.0, 1)]
     w_ = _waves(44)
@@ -262,8 +266,8 @@ def build_sphincter(M):
     o['keepuv'] = 1
     P = [o]
     # little teeth round the lip, pointing into the hole
-    for k in range(10):
-        a = 2 * math.pi * (k + 0.5) / 10
+    for k in range(8):
+        a = 2 * math.pi * (k + 0.5) / 8
         x, y = math.cos(a) * 0.36, 1.5 + math.sin(a) * 0.36
         P.append(canine(M['enamel'], pos=(x, y, -0.42), rot=(0, 0, a + math.pi / 2), s=0.42, name='sp_tooth', seed=k))
     # veins rooting out over the wall: fat at the rim, one fork each, flattened against the brick
@@ -276,7 +280,7 @@ def build_sphincter(M):
             pts.append((math.cos(aa) * r, 1.5 + math.sin(aa) * r, z0 * (1 - t) - 0.035 * t))
         pts = [p for p in pts if p[1] > 0.12]
         if len(pts) > 2:
-            P.append(sweep(pts, [rad * (1 - 0.6 * i / (len(pts) - 1)) for i in range(len(pts))], M['vein'], seg=6, name='sp_vein', squash=(1.0, 0.75)))
+            P.append(sweep(pts, [rad * (1 - 0.6 * i / (len(pts) - 1)) for i in range(len(pts))], M['vein'], seg=5, name='sp_vein', squash=(1.0, 0.75)))
         return pts
     for k in range(6):
         a = 2 * math.pi * k / 6 + 0.35 + rnd.uniform(-0.2, 0.2)
@@ -286,7 +290,7 @@ def build_sphincter(M):
             q = main[2]; am = math.atan2(q[1] - 1.5, q[0]); rm = math.hypot(q[0], q[1] - 1.5)
             vein(am, rm, ln * 0.65, 0.08, rnd.choice((-0.45, 0.45)), q[2])
     parts = pack(P, 'sphincter', 0.4)
-    return finish('s_sphincter', parts, meta_of('sphincter', mount='wall', wallZ=0, col=[3.2, 3.2, 0.7], hole=[0, 1.5, 0.3],
+    return finish_lod('s_sphincter', parts, meta_of('sphincter', mount='wall', wallZ=0, col=[3.2, 3.2, 0.7], hole=[0, 1.5, 0.3],
                                                 note='origin bottom centre on the wall plane, front -z; the dark hole is 0.65 m across'))
 
 
@@ -381,7 +385,7 @@ def build_tongue(M):
         f = canine if k in (1, 2) else molar
         P.append(f(M['enamel'], pos=(x * 0.95, 0.3, 0.16), rot=(0.2, 0, 0.1 * (x > 0) - 0.05), s=0.75 if f is canine else 0.6, name='tg_tooth', seed=k))
     parts = pack(P, 'tongue', 0.5)
-    return finish('s_tongue', parts, meta_of('tongue', mount='door', col=[1.6, 0.5, 3.0], ramp=[[0, 0.78, 0.6], [0, 0.22, -2.6]],
+    return finish_lod('s_tongue', parts, meta_of('tongue', mount='door', col=[1.6, 0.5, 3.0], ramp=[[0, 0.78, 0.6], [0, 0.22, -2.6]],
                                              note='origin on the doorway threshold (wall plane z = 0); the root goes 0.6 m into the door, the tip lies 2.8 m out toward -z'))
 
 
@@ -396,20 +400,20 @@ def build_heartlamp(M):
     sp = [(0, -0.05, 0), (0.02, 0.6, 0), (-0.03, 1.4, 0.02), (0.02, 2.3, -0.02), (0.0, 3.2, 0.0), (0.04, 3.95, 0), (0.18, 4.55, 0),
           (0.45, 4.88, 0), (0.78, 4.95, 0), (1.05, 4.8, 0), (1.15, 4.6, 0)]
     rr = [0.15, 0.12, 0.11, 0.105, 0.1, 0.095, 0.09, 0.085, 0.085, 0.09, 0.1]
-    o = sweep(sp, rr, pole, seg=8, name='hl_pole'); lump(o, 0.012, 9, seed=8); A(o)
+    o = sweep(sp, rr, pole, seg=6, name='hl_pole'); lump(o, 0.012, 9, seed=8); A(o)
     # an artery twisting up round it, glowing
     hel = []
-    for i in range(23):
-        t = i / 22; y = 0.15 + 3.75 * t; w = t * 2 * math.pi * 3.5
+    for i in range(17):
+        t = i / 16; y = 0.15 + 3.75 * t; w = t * 2 * math.pi * 3.5
         hel.append((math.cos(w) * 0.115, y, math.sin(w) * 0.115))
-    A(sweep(hel, 0.04, art, seg=5, name='hl_artery'))
+    A(sweep(hel, 0.045, art, seg=4, name='hl_artery'))
     # roots into the street
     for k in range(3):
         a = 2 * math.pi * k / 3 + 0.5
-        A(sweep([(0, 0.35, 0), (math.cos(a) * 0.3, 0.12, math.sin(a) * 0.3), (math.cos(a) * 0.55, 0.0, math.sin(a) * 0.55)], [0.09, 0.07, 0.04], pole, seg=5, name='hl_root'))
+        A(sweep([(0, 0.35, 0), (math.cos(a) * 0.3, 0.12, math.sin(a) * 0.3), (math.cos(a) * 0.55, 0.0, math.sin(a) * 0.55)], [0.09, 0.07, 0.04], pole, seg=4, name='hl_root'))
     A(meta([((0, 0.0, 0), 0.42), ((0.12, 0.12, 0.05), 0.3)], res=0.1, m=M['flesh'], target=90, name='hl_base', clamp=lambda p: (p[0], max(p[1], -0.03), p[2])))
     # the heart: a squashed sphere with an apex, two atria on top, a crooked aorta, pulmonary stubs
-    bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=10, v_segments=8, radius=1.0)
+    bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=10, v_segments=7, radius=1.0)
     for v in bm.verts:
         x, y, z = gg(v.co)
         k = 1.0 - 0.45 * max(0, -y) ** 1.3  # narrow to the apex
@@ -420,9 +424,9 @@ def build_heartlamp(M):
     hobj = _obj('hl_heart', bm, heart); smooth(hobj, 80); lump(hobj, 0.02, 7, seed=12); A(hobj)
     A(sweep([(1.1, 4.3, 0), (1.15, 4.48, 0), (1.15, 4.62, 0)], [0.14, 0.11, 0.1], heart, seg=8, name='hl_aorta'))
     for dx, dz in ((-0.1, 0.07), (0.12, -0.05)):
-        A(sweep([(1.15 + dx * 0.8, 4.3, dz * 0.6), (1.15 + dx * 2.0, 4.5, dz * 1.4), (1.15 + dx * 2.6, 4.55, dz * 2.0)], [0.08, 0.065, 0.06], heart, seg=6, name='hl_stub'))
+        A(sweep([(1.15 + dx * 0.8, 4.3, dz * 0.6), (1.15 + dx * 2.0, 4.5, dz * 1.4), (1.15 + dx * 2.6, 4.55, dz * 2.0)], [0.08, 0.065, 0.06], heart, seg=5, name='hl_stub'))
     parts = pack(P, 'heartlamp', 0.4)
-    return finish('s_heartlamp', parts, meta_of('heartlamp', col=[0.4, 5.0, 0.4], lights=[[1.15, 3.9, 0, 0xff3a66]], note='arm and heart reach +x like the streetlight'))
+    return finish_lod('s_heartlamp', parts, meta_of('heartlamp', col=[0.4, 5.0, 0.4], lights=[[1.15, 3.9, 0, 0xff3a66]], note='arm and heart reach +x like the streetlight'))
 
 
 def _paint_heart(px):
@@ -473,7 +477,7 @@ def build_organjar(M):
         uv_box(br, 0.18); br['keepuv'] = 1; A(br)
     A(sweep([(0, 0.42, 0.06), (0.02, 0.32, 0.08), (0.05, 0.24, 0.06)], [0.05, 0.04, 0.03], organ, seg=6, name='oj_stem'))
     parts = pack(P, 'organjar', 0.25)
-    return finish('s_organjar', parts, meta_of('organjar', col=[0.9, 1.2, 0.9], lights=[[0, 0.5, 0, 0xa6e22e]]))
+    return finish_lod('s_organjar', parts, meta_of('organjar', col=[0.9, 1.2, 0.9], lights=[[0, 0.5, 0, 0xa6e22e]]))
 
 
 def _paint_brain(px):
@@ -519,7 +523,7 @@ def build_veincable(M):
         if any(abs(t - c) < 0.055 for c in nodes): p.material_index = 1
     parts = pack([o], 'veincable', 0.2)
     lights = [[-2 + 4 * c, -0.62 * 4 * c * (1 - c), 0, 0xff4f7a] for c in nodes]
-    return finish('s_veincable', parts, meta_of('veincable', span=[[-2, 0, 0], [2, 0, 0]], sag=0.62, lights=lights,
+    return finish_lod('s_veincable', parts, meta_of('veincable', span=[[-2, 0, 0], [2, 0, 0]], sag=0.62, lights=lights,
                                                 note='hangs between (-2,0,0) and (2,0,0); scale x to fit a span'))
 
 
@@ -574,7 +578,7 @@ def build_choirpipe(M):
         uv_cyl(ob, axis='y', a0=0, a1=1.5)
         ob['keepuv'] = 1
     parts = pack(P, 'choirpipe', 0.3)
-    return finish('s_choirpipe', parts, meta_of('choirpipe', col=[0.9, 6.0, 0.9], note='mouth (lips) faces -z at 1.1-1.4 m'))
+    return finish_lod('s_choirpipe', parts, meta_of('choirpipe', col=[0.9, 6.0, 0.9], note='mouth (lips) faces -z at 1.1-1.4 m'))
 
 
 BUILDS = {'ribarch': build_ribarch, 'lung': build_lung, 'tooth': build_tooth, 'tooth_b': build_tooth_b, 'eyeball': build_eyeball,
@@ -593,4 +597,5 @@ def build():
 
 
 EXPO = {'tooth': -2.0, 'tooth_b': -2.0, 'eyeball': -1.8, 'ribarch': -1.8, 'choirpipe': -2.2}
-run_multi(build, EXPO)
+if __name__ == '__main__':
+    run_multi_lod(build, EXPO)

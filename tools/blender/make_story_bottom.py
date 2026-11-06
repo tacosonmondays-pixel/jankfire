@@ -148,38 +148,31 @@ def build_wokdish():
     black = plain('wk_black', 0x1a181c, rough=0.45, var=0.05, seed=7)
     O = []
     # wall bracket: plate, arm, brace, post
-    O.append(box((0.16, 0.26, 0.012), (0, 0, -0.006), paint, bev=0.003, seg=1))
-    for x in (-0.055, 0.055):
-        for y in (-0.1, 0.1): O.append(cyl(0.011, 0.012, (x, y, -0.016), chrome, axis='z', seg=6))
-    O.append(box((0.04, 0.04, 0.41), (0, -0.05, -0.215), paint, bev=0.004, seg=1))
-    O.append(rod((0, -0.122, -0.01), (0, -0.065, -0.3), 0.011, paint, seg=6))
-    O.append(cyl(0.022, 0.2, (0, 0.03, -0.4), paint, axis='y', seg=8))
-    O.append(box((0.07, 0.05, 0.06), (0, 0.13, -0.4), chrome, bev=0.006, seg=1))
-    O.append(cyl(0.01, 0.09, (0, 0.14, -0.4), chrome, axis='x', seg=6))
+    O.append(box((0.16, 0.26, 0.012), (0, 0, -0.006), paint))
+    for y in (-0.1, 0.1): O.append(cyl(0.011, 0.012, (0, y, -0.016), chrome, axis='z', seg=5))
+    O.append(box((0.04, 0.04, 0.41), (0, -0.05, -0.215), paint))
+    O.append(rod((0, -0.122, -0.01), (0, -0.065, -0.3), 0.011, paint, seg=4))
+    O.append(cyl(0.022, 0.2, (0, 0.03, -0.4), paint, axis='y', seg=6))
+    O.append(box((0.07, 0.05, 0.06), (0, 0.13, -0.4), chrome))
     # the wok, built bowl-up round its outer bottom, then tipped to face forward and up
     W = []
-    prof = [(0.0, 0.0), (0.12, 0.015), (0.22, 0.055), (0.28, 0.11), (0.302, 0.145), (0.298, 0.153), (0.272, 0.117), (0.215, 0.064), (0.118, 0.023), (0.0, 0.008)]
-    W.append(lathe(prof, (0, 0, 0), steel, seg=16, axis='y', name='wok'))
-    W.append(box((0.09, 0.03, 0.09), (0, -0.008, 0), chrome, bev=0.006, seg=1))  # clamp on the wok's back
-    W.append(rod((0.296, 0.14, 0), (0.37, 0.16, 0), 0.013, steel, seg=6))
-    W.append(rod((0.365, 0.158, 0), (0.58, 0.2, 0), 0.019, wood, seg=8, r1=0.016))
-    W.append(cyl(0.02, 0.012, (0.585, 0.201, 0), black, axis='x', seg=8, rot=(0, 0, 0.18)))
-    W.append(tube([(-0.288, 0.136, -0.045), (-0.34, 0.142, -0.04), (-0.358, 0.142, 0), (-0.34, 0.142, 0.04), (-0.288, 0.136, 0.045)], 0.0055, chrome, seg=6))
-    # coat-hanger arm from the low rim (with its hook still on) out to the focus, holding a spoon as the feed horn
-    hook = [(0, 0.15, -0.315), (0, 0.128, -0.325), (0, 0.118, -0.305), (0, 0.13, -0.29), (0, 0.15, -0.29)]
-    arm = [(0, 0.15, -0.29), (0, 0.18, -0.245), (0, 0.24, -0.16), (0, 0.29, -0.075), (0, 0.318, -0.02)]
-    W.append(sweep(hook + arm[1:], 0.0038, chrome, seg=4, name='hanger'))
-    W.append(sweep([(0.012, 0.15, -0.29), (0.014, 0.2, -0.22), (0.012, 0.27, -0.11), (0.006, 0.31, -0.045)], 0.0036, chrome, seg=4, name='hanger2'))
-    W.append(lathe([(0.0, 0.372), (0.03, 0.365), (0.046, 0.348), (0.05, 0.334), (0.045, 0.333), (0.041, 0.345), (0.027, 0.358), (0.0, 0.364)], (0, 0, 0), chrome, seg=10, axis='y', name='spoon'))
-    W.append(rod((0, 0.352, -0.044), (0, 0.29, -0.12), 0.0062, chrome, seg=6))
-    for a, b in (((0, 0.31, -0.065), (0, 0.29, -0.095)), ((0, 0.205, -0.21), (0, 0.185, -0.235))):
-        W.append(rod(a, b, 0.012, black, seg=8))
+    prof = [(0.0, 0.0), (0.17, 0.03), (0.27, 0.1), (0.302, 0.15), (0.272, 0.118), (0.17, 0.046), (0.0, 0.01)]
+    W.append(lathe(prof, (0, 0, 0), steel, seg=14, axis='y', name='wok'))
+    W.append(box((0.09, 0.03, 0.09), (0, -0.008, 0), chrome))  # clamp on the wok's back
+    W.append(rod((0.296, 0.14, 0), (0.37, 0.16, 0), 0.013, steel, seg=4))
+    W.append(rod((0.365, 0.158, 0), (0.58, 0.2, 0), 0.019, wood, seg=6, r1=0.016))
+    W.append(sweep([(-0.288, 0.136, -0.045), (-0.352, 0.142, -0.025), (-0.352, 0.142, 0.025), (-0.288, 0.136, 0.045)], 0.0055, chrome, seg=4, name='loop'))
+    # coat-hanger arm from the low rim (its hook still on) out to the focus, holding a spoon as the feed horn
+    W.append(sweep([(0, 0.145, -0.318), (0, 0.118, -0.305), (0, 0.15, -0.29), (0, 0.2, -0.22), (0, 0.27, -0.12), (0, 0.318, -0.02)], 0.004, chrome, seg=4, name='hanger'))
+    W.append(lathe([(0.0, 0.372), (0.036, 0.362), (0.052, 0.334), (0.044, 0.336), (0.0, 0.358)], (0, 0, 0), chrome, seg=8, axis='y', name='spoon'))
+    W.append(rod((0, 0.352, -0.044), (0, 0.29, -0.12), 0.0065, chrome, seg=4))
+    W.append(rod((0, 0.31, -0.06), (0, 0.285, -0.1), 0.013, black, seg=6))
     tilt = -0.96; M = (0, 0.155, -0.4)
     xform(W, rot=(tilt, 0, 0), move=M)
     O.extend(W)
     f = mpt(rot=(tilt, 0, 0), move=M)
-    c0 = f((0.008, 0.36, -0.02)); c1 = f((0.016, 0.25, -0.15)); c2 = f((0.016, 0.16, -0.28))
-    O.append(sweep([c0, c1, c2, (0.03, c2[1] - 0.08, c2[2] + 0.06), (0.04, -0.06, -0.2), (0.045, -0.11, -0.05), (0.04, -0.11, -0.012)], 0.0048, black, seg=4, name='cable'))
+    c0 = f((0.012, 0.3, -0.08)); c2 = f((0.016, 0.16, -0.28))
+    O.append(sweep([c0, c2, (0.035, c2[1] - 0.1, c2[2] + 0.08), (0.045, -0.11, -0.05), (0.04, -0.11, -0.012)], 0.0048, black, seg=4, name='cable'))
     tiled(O, 0.2)
     return O, {'mount': 'wall', 'note': 'origin on the wall face, sticks out toward -z'}
 
@@ -331,57 +324,44 @@ def build_scooter():
     chrome = plain('sc_chrome', 0xdde1ea, rough=0.14, metal=1.0, var=0.05, seed=18)
     rub = plain('sc_rubber', 0x24222a, rough=0.6, var=0.12, seed=19, speck=0x4a4652, p=0.1)
     A = Atlas('sc_decal_t', 64)
-    st = [A.fill(k * 8, 0, 8, 32, c) for k, c in enumerate((0xff4fd8, 0xffe14d, 0x4fd8ff, 0x7dff4f, 0xff6fae, 0xffffff))]
+    st = [A.fill(k * 8, 0, 8, 32, c) for k, c in enumerate((0xff4fd8, 0xffe14d, 0x4fd8ff, 0x7dff4f))]
     plate = A.sub(0, 32, 64, 16); plate[:] = hexrgb(0xffe14d); plate[0] = plate[-1] = hexrgb(INK); write(plate, 'LIL ZOOM', 8, 4, 1, INK)
-    tp = A.fill(0, 48, 16, 16, 0xc0c4cc)
     decal = mat('sc_decal', 0xffffff, rough=0.45, clearcoat=0.3, tex=A.image())
     lens = mat('sc_lens', 0xfff4d0, rough=0.1, emit=0xfff0b8, strength=6.0)
     O = []
     O.append(box((0.125, 0.028, 0.58), (0, 0.076, 0.03), paint, bev=0.01, seg=1))
-    O.append(box((0.106, 0.004, 0.46), (0, 0.0905, 0.04), rub))
-    def wheel_x(z):
-        P = [lathe([(0.072, -0.015), (0.094, -0.015), (0.1, 0.0), (0.094, 0.015), (0.072, 0.015)], (0, 0.1, z), rub, seg=10, axis='x', name='tyre')]
-        P.append(cyl(0.073, 0.022, (0, 0.1, z), paint, axis='x', seg=8))
-        P.append(cyl(0.014, 0.05, (0, 0.1, z), chrome, axis='x', seg=6))
-        return P
-    O += wheel_x(0.345) + wheel_x(-0.37)
+    for z in (0.345, -0.37):  # fat little tyres, capped (the cap is the hub)
+        O.append(lathe([(0.062, -0.017), (0.1, 0.0), (0.062, 0.017)], (0, 0.1, z), rub, seg=8, axis='x', name='tyre'))
+    O.append(box((0.06, 0.05, 0.1), (0, 0.095, 0.3), chrome))
+    O.append(box((0.05, 0.13, 0.03), (0, 0.17, -0.355), chrome, rot=(-0.15, 0, 0)))
+    O.append(sweep([(0, 0.1 + 0.112 * math.sin(math.radians(a)), 0.345 - 0.112 * math.cos(math.radians(a))) for a in (20, 55, 90, 125)], 0.036, paint, seg=4, squash=(0.13, 1.0), name='guard'))
+    O.append(rod((0, 0.085, -0.255), (0, 0.24, -0.335), 0.019, chrome, seg=4))
+    O.append(rod((0, 0.22, -0.345), (0, 0.865, -0.262), 0.016, chrome, seg=5))
+    O.append(rod((-0.2, 0.865, -0.262), (0.2, 0.865, -0.262), 0.011, chrome, seg=4))
     for s in (-1, 1):
-        O.append(box((0.01, 0.05, 0.1), (s * 0.026, 0.095, 0.3), chrome))
-        O.append(rod((s * 0.024, 0.1, -0.37), (s * 0.02, 0.24, -0.345), 0.008, chrome, seg=6))
-    O.append(sweep([(0, 0.1 + 0.112 * math.sin(math.radians(a)), 0.345 - 0.112 * math.cos(math.radians(a))) for a in range(15, 130, 15)], 0.036, paint, seg=6, squash=(0.13, 1.0), name='guard'))
-    O.append(rod((0, 0.085, -0.255), (0, 0.24, -0.335), 0.019, chrome, seg=8))
-    O.append(cyl(0.024, 0.07, (0, 0.24, -0.342), chrome, axis='y', seg=8, rot=(-0.12, 0, 0)))
-    O.append(rod((0, 0.22, -0.345), (0, 0.865, -0.262), 0.016, chrome, seg=8))
-    O.append(rod((-0.2, 0.865, -0.262), (0.2, 0.865, -0.262), 0.011, chrome, seg=6))
-    for s in (-1, 1):
-        O.append(cyl(0.019, 0.1, (s * 0.165, 0.865, -0.262), rub, axis='x', seg=8))
-        for k in range(3):
-            x0 = s * 0.216; dz = (k - 1) * 0.008; dy = (k - 1) * 0.006
-            pts = [(x0, 0.865 + dy, -0.262 + dz), (x0 + s * 0.012, 0.82 + dy, -0.23 + dz), (x0 + s * 0.022, 0.75, -0.19 + dz * 2), (x0 + s * (0.03 + k * 0.006), 0.66 - k * 0.03, -0.16 + dz * 3)]
-            O.append(uv_fit(sweep(pts, 0.0075, decal, seg=4, squash=(1.0, 0.2), name='streamer'), st[(k + (0 if s < 0 else 3)) % 6]))
-        O.append(cyl(0.021, 0.012, (s * 0.21, 0.865, -0.262), chrome, axis='x', seg=8))
-    O.append(ball(0.022, (0.085, 0.89, -0.262), chrome, scale=(1, 0.7, 1), seg=8, rings=5))
+        O.append(cyl(0.019, 0.1, (s * 0.165, 0.865, -0.262), rub, axis='x', seg=5))
+        for k in range(2):
+            x0 = s * 0.212; dz = (k - 0.5) * 0.012
+            pts = [(x0, 0.865, -0.262 + dz), (x0 + s * 0.02, 0.77, -0.21 + dz), (x0 + s * (0.03 + k * 0.01), 0.66 - k * 0.04, -0.16 + dz * 2)]
+            O.append(uv_fit(sweep(pts, 0.009, decal, seg=4, squash=(1.0, 0.2), name='streamer'), st[(k + (0 if s < 0 else 2)) % 4]))
     # moped bits: leg shield, headlight, seat, exhaust, plate
     pts = []
-    for j in range(5):
-        y = 0.2 + j * 0.105; row = []
-        hw = 0.09 + (y - 0.2) / 0.42 * 0.085 - (0.03 if j == 4 else 0)
-        for i in range(7):
-            u = i / 6 * 2 - 1; x = u * hw
-            row.append((x, y + (0.03 * (1 - u * u) if j == 4 else 0), -0.372 + (y - 0.2) * 0.14 + 2.2 * x * x))
+    for j in range(4):
+        y = 0.2 + j * 0.14; row = []
+        hw = 0.09 + (y - 0.2) / 0.42 * 0.085 - (0.025 if j == 3 else 0)
+        for i in range(4):
+            u = i / 3 * 2 - 1; x = u * hw
+            row.append((x, y + (0.03 * (1 - u * u) if j == 3 else 0), -0.372 + (y - 0.2) * 0.14 + 2.2 * x * x))
         pts.append(row)
     sh = sheet_grid(pts[::-1], paint, 'shield')
     sol = sh.modifiers.new('sol', 'SOLIDIFY'); sol.thickness = 0.012; sol.offset = 0.0
     apply_mods(sh)
     bmx = bmesh.new(); bmx.from_mesh(sh.data); bmesh.ops.recalc_face_normals(bmx, faces=bmx.faces); bmx.to_mesh(sh.data); bmx.free()
     O.append(sh)
-    O.append(cyl(0.064, 0.034, (0, 0.5, -0.338), chrome, axis='z', seg=12, rot=(-0.14, 0, 0), bev=0.006))
-    O.append(cyl(0.052, 0.012, (0, 0.502, -0.357), lens, axis='z', seg=12, rot=(-0.14, 0, 0)))
-    O.append(rod((0, 0.09, 0.2), (0, 0.42, 0.225), 0.013, chrome, seg=6))
-    O.append(pillow((0.17, 0.06, 0.26), (0, 0.445, 0.23), rub, puff=0.25, rot=(-0.05, 0, 0)))
-    O.append(uv_fit(box((0.06, 0.004, 0.08), (0.03, 0.477, 0.25), decal, rot=(-0.05, 0.4, 0)), tp))
-    O.append(sweep([(0.03, 0.06, 0.14), (0.065, 0.062, 0.27), (0.075, 0.09, 0.4), (0.078, 0.1, 0.44)], 0.015, chrome, seg=5, name='exhaust'))
-    O.append(cyl(0.021, 0.05, (0.078, 0.1, 0.455), chrome, axis='z', seg=8))
+    O.append(cyl(0.056, 0.03, (0, 0.5, -0.345), lens, axis='z', seg=8, rot=(-0.14, 0, 0)))
+    O.append(rod((0, 0.09, 0.2), (0, 0.42, 0.225), 0.013, chrome, seg=4))
+    O.append(box((0.17, 0.06, 0.26), (0, 0.445, 0.23), rub, rot=(-0.05, 0, 0), taper=(0.75, 1.0)))
+    O.append(sweep([(0.03, 0.06, 0.14), (0.07, 0.07, 0.3), (0.078, 0.1, 0.45)], 0.016, chrome, seg=4, name='exhaust'))
     O.append(uv_fit(box((0.1, 0.05, 0.004), (0, 0.175, 0.452), decal, rot=(-0.35, 0, 0)), A.rect(0, 32, 64, 16)))
     for o in O:
         if o.data.materials and o.data.materials[0] in (paint, chrome, rub, lens): uv_tile(o, 0.2)
@@ -400,44 +380,36 @@ def build_acunit():
     paint = mat('ac_paint', 0xffffff, rough=0.35, clearcoat=0.4, tex=A.image())
     dark = plain('ac_dark', 0x1c1a22, rough=0.5, var=0.1, seed=22)
     metal = plain('ac_metal', 0xaab0b8, rough=0.3, metal=0.9, var=0.12, seed=23, speck=0x8a6a4a, p=0.05)
-    copper = plain('ac_copper', 0xd08a5a, rough=0.25, metal=1.0, var=0.1, seed=24)
     D = Atlas('ac_decal_t', 64)
     stk = D.sub(0, 0, 64, 40); stk[:] = hexrgb(0xffffff); stk[0:12] = hexrgb(0x4fd8ff)
     smiley(stk, 7, 6, 5, face=0xffe14d, ink=INK); write(stk, 'CORP', 15, 3, 1, INK)
     write(stk, 'COOLING', 3, 15, 1, 0x2a5a9a); px_line(stk, 2, 18, 46, 18, 0xff3030, 1.6)
     write(stk, 'cold-ish', 6, 26, 1, 0xff3030, wob=1, seed=4, bold=True)
-    wht = D.fill(0, 40, 16, 16, 0xf2f2f2); blu = D.fill(16, 40, 16, 16, 0x7ad0ff); tpe = D.fill(32, 40, 16, 16, 0x8a8a90)
+    wht = D.fill(0, 40, 16, 16, 0xf2f2f2); blu = D.fill(16, 40, 16, 16, 0x7ad0ff); cop = D.fill(32, 40, 16, 16, 0xd08a5a)
     decal = mat('ac_decal', 0xffffff, rough=0.25, clearcoat=0.5, tex=D.image())
     O = []
     case = box((0.76, 0.52, 0.27), (0, 0.26, -0.185), paint, bev=0.014, seg=1); O.append(uv_fit(case, A.rect(0, 0, 32, 32)))
-    O.append(uv_fit(box((0.004, 0.36, 0.2), (0.381, 0.27, -0.19), paint), A.rect(32, 0, 32, 32)))
-    O.append(uv_fit(box((0.004, 0.36, 0.2), (-0.381, 0.27, -0.19), paint), A.rect(32, 0, 32, 32)))
-    O.append(uv_fit(box((0.3, 0.2, 0.003), (-0.1, 0.11, -0.3215), paint), A.rect(0, 32, 64, 32)))
+    O.append(uv_fit(box((0.004, 0.36, 0.2), (0.381, 0.27, -0.19), paint), A.rect(32, 0, 32, 32)))  # louvres (pipe side)
+    O.append(uv_fit(box((0.3, 0.2, 0.003), (-0.1, 0.11, -0.3215), paint), A.rect(0, 32, 64, 32)))  # the drip stain
     fx, fy, fz = -0.1, 0.27, -0.32
-    O.append(cyl(0.2, 0.012, (fx, fy, fz - 0.002), dark, axis='z', seg=14))
-    O.append(cyl(0.042, 0.03, (fx, fy, fz - 0.018), dark, axis='z', seg=8))
-    for k in range(3):
-        a = k * 2 * math.pi / 3 + 0.3
-        O.append(box((0.15, 0.065, 0.006), (fx + math.cos(a) * 0.1, fy + math.sin(a) * 0.1, fz - 0.022), dark, rot=(0, 0.35, a)))
-    for R_ in (0.195, 0.11):
-        O.append(torus(R_, 0.0045, (fx, fy, fz - 0.04), metal, axis='z', seg=14 if R_ > 0.15 else 10, sides=3))
-    for k in range(4):
-        a = k * math.pi / 2 + math.pi / 4
-        O.append(rod((fx + math.cos(a) * 0.03, fy + math.sin(a) * 0.03, fz - 0.04), (fx + math.cos(a) * 0.2, fy + math.sin(a) * 0.2, fz - 0.035), 0.0045, metal, seg=4))
-    O.append(rod((fx, fy, fz - 0.044), (fx, fy, fz - 0.005), 0.012, metal, seg=6))
+    O.append(cyl(0.2, 0.012, (fx, fy, fz - 0.002), dark, axis='z', seg=10))
+    for k in range(2):
+        a = k * math.pi + 0.5
+        O.append(box((0.3, 0.07, 0.006), (fx, fy, fz - 0.016), dark, rot=(0, 0.35, a)))
+    O.append(torus(0.195, 0.0045, (fx, fy, fz - 0.03), metal, axis='z', seg=12, sides=3))
+    for a in (math.pi / 4, -math.pi / 4):
+        O.append(box((0.39, 0.009, 0.006), (fx, fy, fz - 0.03), metal, rot=(0, 0, a)))
     O.append(uv_fit(box((0.13, 0.075, 0.002), (0.24, 0.43, -0.3215), decal, rot=(0, 0, 0.05)), D.rect(0, 0, 64, 40)))
-    O.append(box((0.03, 0.13, 0.09), (0.392, 0.11, -0.26), paint, bev=0.004, seg=1))
-    O.append(sweep([(0.4, 0.085, -0.26), (0.44, 0.085, -0.255), (0.455, 0.085, -0.22), (0.455, 0.085, -0.04), (0.455, 0.085, 0.01)], 0.008, copper, seg=6, name='pipe'))
-    O.append(uv_fit(sweep([(0.4, 0.14, -0.26), (0.47, 0.14, -0.255), (0.49, 0.14, -0.22), (0.49, 0.14, -0.04), (0.49, 0.14, 0.01)], 0.015, decal, seg=6, name='insul'), wht))
-    for z in (-0.15, -0.06): O.append(uv_fit(cyl(0.017, 0.03, (0.49, 0.14, z), decal, axis='z', seg=6), tpe))
-    O.append(uv_fit(sweep([(0.3, 0.005, -0.2), (0.3, -0.04, -0.205), (0.31, -0.12, -0.2), (0.315, -0.17, -0.19)], 0.006, decal, seg=5, name='drain'), wht))
-    O.append(uv_fit(ball(0.011, (0.315, -0.186, -0.19), decal, scale=(1, 1.5, 1), seg=8, rings=5), blu))
+    O.append(box((0.03, 0.13, 0.09), (0.392, 0.11, -0.26), paint))
+    O.append(uv_fit(sweep([(0.4, 0.14, -0.26), (0.48, 0.14, -0.25), (0.49, 0.14, -0.04), (0.49, 0.14, 0.01)], 0.016, decal, seg=4, name='insul'), wht))
+    O.append(uv_fit(rod((0.4, 0.085, -0.26), (0.46, 0.085, -0.26), 0.008, decal, seg=4), cop))
+    O.append(uv_fit(sweep([(0.3, 0.005, -0.2), (0.3, -0.08, -0.205), (0.315, -0.17, -0.19)], 0.006, decal, seg=4, name='drain'), wht))
+    O.append(uv_fit(ball(0.011, (0.315, -0.186, -0.19), decal, scale=(1, 1.5, 1), seg=6, rings=3), blu))
     for x in (-0.28, 0.28):
-        O.append(box((0.035, 0.035, 0.34), (x, -0.0175, -0.17), metal, bev=0.003, seg=1))
-        O.append(box((0.035, 0.3, 0.012), (x, -0.15, -0.006), metal, bev=0.003, seg=1))
-        O.append(rod((x, -0.28, -0.012), (x, -0.03, -0.31), 0.009, metal, seg=6))
+        O.append(box((0.035, 0.035, 0.34), (x, -0.0175, -0.17), metal))
+        O.append(rod((x, -0.28, -0.003), (x, -0.03, -0.31), 0.009, metal, seg=4))
     for o in O:
-        if o.data.materials and o.data.materials[0] in (dark, metal, copper): uv_tile(o, 0.2)
+        if o.data.materials and o.data.materials[0] in (dark, metal): uv_tile(o, 0.2)
     return O, {'paint': ['ac_paint'], 'mount': 'wall', 'note': 'origin on the wall face at the underside of the case'}
 
 
@@ -592,7 +564,7 @@ def build_stringlights():
     bulbm = mat('sl_bulb', 0xffffff, rough=0.1, emit=0xffffff, strength=4.0, tex=A.image(), emit_tex=True)
     cab = plain('sl_cable', 0x1a181e, rough=0.4, var=0.06, seed=40)
     O = []
-    path = bend_path((-2, 0, 0), (2, 0, 0), 0.32, n=16)
+    path = bend_path((-2, 0, 0), (2, 0, 0), 0.32, n=10)
     O.append(sweep(path, 0.0055, cab, seg=4, name='cable'))
     def yat(x):
         t = (x + 2) / 4
@@ -600,9 +572,9 @@ def build_stringlights():
     lights = []
     for i in range(10):
         x = -1.8 + i * 0.4; y = yat(x)
-        O.append(cyl(0.0125, 0.045, (x, y - 0.02, 0), cab, axis='y', seg=5, cap=False))
+        O.append(cyl(0.0125, 0.045, (x, y - 0.02, 0), cab, axis="y", seg=4, cap=False))
         k = i % 4
-        b = ball(0.034, (x, y - 0.075, 0), bulbm, scale=(1, 1.25, 1), seg=6, rings=4)
+        b = ball(0.034, (x, y - 0.075, 0), bulbm, scale=(1, 1.25, 1), seg=6, rings=3)
         if i == 6: uv_fit(b, dead)
         else: uv_fit(b, sw[k]); lights.append([round(x, 2), round(y - 0.075, 3), 0, cols[k]])
         O.append(b)
@@ -676,28 +648,22 @@ def build_door_bottom():
     write(kn, 'knock', 3, 4, 2, 0x1a1a20, wob=1, seed=6); write(kn, 'loud', 10, 22, 2, 0xc0182a, wob=1, seed=8, bold=True)
     decal = mat('dr_decal', 0xffffff, rough=0.3, clearcoat=0.4, tex=D.image())
     O = []
-    O.append(uv_fit(box((0.07, 2.1, 0.12), (0.465, 1.05, 0), woodm, bev=0.006, seg=1, rot=(0, 0, 0.006)), W.rect(0, 16, 64, 16)))
-    O.append(uv_fit(box((0.075, 2.08, 0.11), (-0.4625, 1.04, 0.005), woodm, bev=0.006, seg=1, rot=(0, 0, -0.004)), W.rect(0, 0, 64, 16)))
-    O.append(uv_fit(box((1.02, 0.075, 0.125), (0, 2.065, 0), woodm, bev=0.006, seg=1, rot=(0, 0, 0.012)), W.rect(0, 32, 64, 16)))
+    O.append(uv_fit(box((0.07, 2.1, 0.12), (0.465, 1.05, 0), woodm, rot=(0, 0, 0.006)), W.rect(0, 16, 64, 16)))
+    O.append(uv_fit(box((0.075, 2.08, 0.11), (-0.4625, 1.04, 0.005), woodm, rot=(0, 0, -0.004)), W.rect(0, 0, 64, 16)))
+    O.append(uv_fit(box((1.02, 0.075, 0.125), (0, 2.065, 0), woodm, rot=(0, 0, 0.012)), W.rect(0, 32, 64, 16)))
     leaf = box((0.85, 1.98, 0.044), (-0.005, 1.035, 0), paint, bev=0.006, seg=1, rot=(0, 0, 0.006))
     O.append(uv_fit(leaf, P.rect(0, 0, 32, 64)))
-    for z, s in ((-0.0245, -1), (0.0245, 1)):
-        O.append(uv_fit(box((0.14, 0.6, 0.002), (-0.2, 1.5, z), decal), D.rect(64, 0, 16, 64)))
-        for (sx, sy, px_, py_) in ((0.17, 0.016, -0.2, 1.808), (0.17, 0.016, -0.2, 1.192), (0.016, 0.6, -0.283, 1.5), (0.016, 0.6, -0.117, 1.5)):
-            O.append(box((sx, sy, 0.008), (px_, py_, z + s * 0.002), chrome))
-        O.append(cyl(0.03, 0.012, (-0.35, 1.0, z + s * 0.004), chrome, axis='z', seg=10, bev=0.003))
-        O.append(rod((-0.35, 1.0, z + s * 0.012), (-0.35, 1.0, z + s * 0.05), 0.009, chrome, seg=6))
-        O.append(rod((-0.35, 1.0, z + s * 0.05), (-0.235, 0.995, z + s * 0.055), 0.009, chrome, seg=6))
-        O.append(cyl(0.013, 0.008, (-0.35, 0.9, z + s * 0.002), chrome, axis='z', seg=8))
+    O.append(uv_fit(box((0.15, 0.6, 0.05), (-0.2, 1.5, 0), decal), D.rect(64, 0, 16, 64)))  # wired vision panel, both faces
+    O.append(cyl(0.03, 0.06, (-0.35, 1.0, 0), chrome, axis='z', seg=6))  # roses, both sides in one
+    for s_ in (-1, 1): O.append(box((0.12, 0.018, 0.016), (-0.3, 1.0, s_ * 0.048), chrome))
     O.append(uv_fit(box((0.3, 0.075, 0.003), (0.08, 1.68, -0.0235), decal, rot=(0, 0, -0.02)), D.rect(0, 0, 64, 16)))
     O.append(uv_fit(box((0.3, 0.07, 0.002), (0.09, 1.585, -0.024), decal, rot=(0, 0, 0.04)), D.rect(0, 16, 64, 16)))
     O.append(uv_fit(box((0.2, 0.1, 0.002), (0.18, 1.33, -0.024), decal, rot=(0, 0, -0.08)), D.rect(80, 0, 48, 24)))
     O.append(uv_fit(box((0.14, 0.14, 0.002), (0.24, 1.12, -0.024), decal, rot=(0, 0, 0.15)), D.rect(80, 24, 24, 24)))
     O.append(uv_fit(box((0.34, 0.21, 0.004), (0.04, 0.72, -0.0245), decal, rot=(0, 0, -0.05)), D.rect(0, 64, 64, 40)))
-    for x in (-0.12, 0.2): O.append(cyl(0.008, 0.01, (x, 0.8 + (0.016 if x < 0 else -0.0), -0.028), chrome, axis='z', seg=6))
-    O.append(uv_fit(box((0.22, 0.22, 0.054), (0.08, 0.2, 0), decal, bev=0.004, seg=1), D.rect(0, 32, 32, 32)))
-    for y in (0.3, 1.0, 1.75): O.append(cyl(0.012, 0.09, (0.428, y, -0.024), chrome, axis='y', seg=6))
-    O.append(uv_fit(box((0.39, 0.19, 0.19), (0.05, 0.095, -0.2), decal, bev=0.01, seg=1, rot=(0, 0.06, 0)), D.rect(32, 32, 32, 32)))
+    O.append(uv_fit(box((0.22, 0.22, 0.054), (0.08, 0.2, 0), decal), D.rect(0, 32, 32, 32)))
+    for y in (0.3, 1.0, 1.75): O.append(cyl(0.012, 0.09, (0.428, y, -0.024), chrome, axis='y', seg=4))
+    O.append(uv_fit(box((0.39, 0.19, 0.19), (0.05, 0.095, -0.2), decal, rot=(0, 0.06, 0)), D.rect(32, 32, 32, 32)))
     for o in O:
         if o.data.materials and o.data.materials[0] == chrome: uv_tile(o, 0.2)
     return O, {'paint': ['dr_paint'], 'doorway': [1.0, 2.1]}
@@ -720,41 +686,38 @@ def build_shutter():
     kit = mat('sh_kit', 0xffffff, rough=0.7, tex=K.image())
     O = []
     O.append(box((1.5, 0.06, 0.2), (0, 0.03, -0.04), paint, bev=0.01, seg=1))
-    for s in (-1, 1): O.append(box((0.07, 0.94, 0.12), (s * 0.715, 0.53, 0), paint, bev=0.008, seg=1))
-    O.append(box((1.5, 0.06, 0.12), (0, 1.03, 0), paint, bev=0.008, seg=1))
-    O.append(box((0.04, 0.94, 0.06), (0, 0.53, 0), paint, bev=0.005, seg=1))
+    for s_ in (-1, 1): O.append(box((0.07, 0.94, 0.12), (s_ * 0.715, 0.53, 0), paint))
+    O.append(box((1.5, 0.06, 0.12), (0, 1.03, 0), paint))
+    O.append(box((0.04, 0.94, 0.06), (0, 0.53, 0), paint))
     O.append(box((1.37, 0.94, 0.006), (0, 0.53, 0.0), glass))
-    for s in (-1, 1):  # curtains pulled to the sides inside
-        xs = [s * (0.66 - k * 0.07) for k in range(6)]
+    for s_ in (-1, 1):  # curtains pulled to the sides inside
+        xs = [s_ * (0.66 - k * 0.09) for k in range(4)]
         rows = []
-        for j in range(4):
-            y = 0.98 - j * 0.27; rows.append([(x - s * (0.07 * (1 - abs(j - 1.6) / 1.6)) * (k / 5), y, 0.05 + 0.015 * math.sin(k * 2.4)) for k, x in enumerate(xs)])
+        for j in range(3):
+            y = 0.98 - j * 0.4; rows.append([(x - s_ * (0.08 if j == 1 else 0.0) * (k / 3), y, 0.05 + 0.015 * math.sin(k * 2.4)) for k, x in enumerate(xs)])
         c = sheet_grid(rows, kit, 'curtain'); face_toward(c, (0, 0, -1)); O.append(uv_fit(c, K.rect(0, 0, 64, 64), mode='front'))
-    O.append(cyl(0.085, 1.44, (0, 1.145, -0.1), metal, axis='x', seg=12))
-    for s in (-1, 1):
-        O.append(box((0.02, 0.2, 0.2), (s * 0.73, 1.13, -0.08), metal, bev=0.004, seg=1))
-        O.append(box((0.035, 0.94, 0.04), (s * 0.68, 0.53, -0.08), metal, bev=0.003, seg=1))
+    O.append(cyl(0.085, 1.44, (0, 1.145, -0.1), metal, axis='x', seg=8, cap=False))
+    for s_ in (-1, 1):
+        O.append(box((0.02, 0.2, 0.2), (s_ * 0.73, 1.13, -0.08), metal))
+        O.append(box((0.035, 0.94, 0.04), (s_ * 0.68, 0.53, -0.08), metal))
     rows = []
-    for j in range(7):
-        y = 1.07 - j * 0.03; rows.append([(-0.67 + 1.34 * i, y, -0.08 - 0.006 * (j % 2)) for i in range(2)])
+    for j in range(3):
+        y = 1.07 - j * 0.07; rows.append([(-0.67 + 1.34 * i, y, -0.08 - 0.006 * (j % 2)) for i in range(2)])
     sh = sheet_grid(rows, metal, 'slats'); face_toward(sh, (0, 0, -1)); O.append(uv_fit(sh, (0, 0, 1, 1), mode='front'))
-    O.append(box((1.34, 0.025, 0.03), (0, 0.885, -0.08), metal, bev=0.004, seg=1))
-    O.append(uv_fit(box((0.03, 0.45, 0.003), (0.52, 0.66, -0.098), kit, rot=(0, 0, 0.03)), strap))
-    for s in (-1, 1):
-        O.append(box((0.03, 0.03, 0.26), (s * 0.5, -0.12, -0.18), metal, bev=0.003, seg=1))
-        O.append(box((0.03, 0.15, 0.012), (s * 0.5, -0.05, -0.066), metal))
-    O.append(uv_fit(box((1.3, 0.17, 0.17), (0, -0.02, -0.235), kit, bev=0.008, seg=1), K.rect(64, 0, 64, 24)))
+    O.append(box((1.34, 0.025, 0.03), (0, 0.9, -0.08), metal))
+    for s_ in (-1, 1): O.append(box((0.03, 0.03, 0.26), (s_ * 0.5, -0.12, -0.18), metal))
+    O.append(uv_fit(box((1.3, 0.17, 0.17), (0, -0.02, -0.235), kit), K.rect(64, 0, 64, 24)))
     O.append(uv_fit(box((1.26, 0.02, 0.14), (0, 0.058, -0.235), kit), soil))
     rnd = random.Random(5)
-    for k in range(3):
-        x = -0.42 + k * 0.42
-        O.append(uv_fit(ball(0.085, (x, 0.08, -0.235), kit, scale=(1.4, 0.7, 0.9), seg=6, rings=3), leaf))
-    for k in range(7):
-        x = -0.55 + k * 0.183 + rnd.uniform(-0.03, 0.03); h = rnd.uniform(0.2, 0.32); z = -0.235 + rnd.uniform(-0.04, 0.04)
-        droop = k == 4
+    for k in range(2):
+        x = -0.3 + k * 0.62
+        O.append(uv_fit(ball(0.1, (x, 0.08, -0.235), kit, scale=(1.5, 0.7, 0.85), seg=5, rings=3), leaf))
+    for k in range(4):
+        x = -0.48 + k * 0.32 + rnd.uniform(-0.03, 0.03); h = rnd.uniform(0.2, 0.32); z = -0.235 + rnd.uniform(-0.04, 0.04)
+        droop = k == 2
         top = (x + (0.06 if droop else rnd.uniform(-0.03, 0.03)), 0.06 + h * (0.75 if droop else 1), z - 0.02)
-        O.append(uv_fit(rod((x, 0.05, z), top, 0.005, kit, seg=4), stem))
-        O.append(uv_fit(cyl(0.04, 0.012, (top[0], top[1] + 0.005, top[2]), kit, axis='z', seg=6, rot=((1.6 if droop else -0.45), 0, rnd.uniform(0, 1))), fls[k % 4]))
+        O.append(uv_fit(rod((x, 0.05, z), top, 0.006, kit, seg=3), stem))
+        O.append(uv_fit(cyl(0.045, 0.012, (top[0], top[1] + 0.005, top[2]), kit, axis='z', seg=5, rot=((1.6 if droop else -0.45), 0, rnd.uniform(0, 1))), fls[k % 4]))
     for o in O:
         if o.data.materials and o.data.materials[0] in (paint, glass): uv_tile(o, 0.3)
         elif o.data.materials and o.data.materials[0] == metal and o.name not in ('slats',): uv_tile(o, 0.12)
@@ -788,17 +751,17 @@ def build_crate_soup():
         O.append(uv_fit(box((0.02, 0.16, 0.36), (s * 0.25, 0.08, 0), woodm, bev=0.004, seg=1), E))
         for y in (0.035, 0.12):
             O.append(uv_fit(box((0.52, 0.065, 0.012), (0, y, s * 0.174), woodm, rot=(0, 0, 0.006 * s)), G))
-    for z in (-0.12, 0.0, 0.12): O.append(uv_fit(box((0.48, 0.012, 0.1), (0, 0.006, z), woodm), G))
+    O.append(uv_fit(box((0.48, 0.012, 0.34), (0, 0.006, 0), woodm), G))
     LR = C.rect(0, 0, 128, 40); LD = C.rect(0, 40, 32, 32)
-    def can(x, y, z, turn=0.0, lie=None):
-        o = cyl(0.074, 0.18, (x, y, z), canm, axis='y', seg=10)
+    def can(x, y, z, turn=0.0, lie=None, seg=10):
+        o = cyl(0.074, 0.18, (x, y, z), canm, axis='y', seg=seg)
         apply_mods(o)
         uv_can(o, x, z, y - 0.09, y + 0.09, LR, LD, turn=turn)
         if lie is not None: xform([o], rot=lie, pivot=(x, y, z))
         return o
     rnd = random.Random(3)
     for x in (-0.155, 0.0, 0.155):
-        for z in (-0.08, 0.08): O.append(can(x, 0.102, z, rnd.uniform(0, 6)))
+        for z in (-0.08, 0.08): O.append(can(x, 0.102, z, rnd.uniform(0, 6), seg=8))
     O.append(can(-0.08, 0.283, 0.0, 1.0)); O.append(can(0.075, 0.283, 0.01, 2.0))
     O.append(can(-0.004, 0.464, 0.004, 4.0))
     O.append(can(0.34, 0.074, -0.3, 0.5, lie=(0, 0.6, math.pi / 2)))

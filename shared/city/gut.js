@@ -160,8 +160,17 @@ export function gut(B, d) {
       for (let a = x; a < xe; a += 4) for (let b = z; b < ze; b += 4) if (stomachD(a + 2, b + 2) > S.r + 2) B.add(a, -4, b, Math.min(xe, a + 4), GY, Math.min(ze, b + 4), 'flesh', { tint: 0xd86a80 });
       continue;
     }
-    B.add(x, -4, z, xe, GY, ze, 'flesh', { tint: 0xd86a80 });
+    const gr = rng(hash2(Math.floor(x / 16), Math.floor(z / 16), 0x9f));
+    B.add(x, -4, z, xe, GY, ze, gr() < 0.7 ? 'flesh' : gr() < 0.5 ? 'liver' : 'bruise', { tint: pick(gr, [0xd86a80, 0xc85a78, 0xe07a8a, 0xb84a6a, 0xd0607a]) });
   }
+  // bile puddles (glowing), fat mounds, a tissue membrane overhead here and there ("it's a ceiling in places")
+  for (let i = 0; i < 5; i++) {
+    const x = X0 + r() * (X1 - X0 - 6), z = Z0 + r() * (Z1 - Z0 - 6), w = 2 + r() * 5, d0 = 2 + r() * 4;
+    if (stomachD(x, z) < S.r + 4 || KEEP().slice(0, 1).some((q) => inRect(x, z, x + w, z + d0, q))) continue;
+    B.add(x, GY, z, x + w, GY + 0.05, z + d0, 'bile', { nc: true, tint: 0xb8ff4a });
+    if (i < 2) B.light(x + w / 2, GY + 0.6, z + d0 / 2, 0xa6e22e, 6, 0.6);
+  }
+  if (r() < 0.5) { const mx = X0 + 10 + r() * (X1 - X0 - 20), mz = Z0 + 10 + r() * (Z1 - Z0 - 20); if (stomachD(mx, mz) > S.r + 30) B.shape({ kind: 'blob', c: [mx, GY + 26 + r() * 8, mz], r: [18 + r() * 10, 2.2, 14 + r() * 8], seg: 14, mat: 'flesh', tint: 0xc85070, pulse: 7 }); }
   // streets: tooth cobbles (texture) with real teeth scattered at the edges, eyes in the gutters, heart lamps
   for (let x = Math.floor(X0 / 2) * 2; x < X1; x += 2) for (let z = Math.floor(Z0 / 2) * 2; z < Z1; z += 2) {
     const s = streetAt(x + 1, z + 1);

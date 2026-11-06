@@ -64,6 +64,12 @@ function house(B, k, x0, w, seed) {
     if (row === 0 && Math.abs(lastTop - wallTop) < 1.2 && k < T.n - 1) B.add(cx - 1, Math.min(lastTop, wallTop) - 0.2, zBack - 1.2, cx + 1, Math.max(lastTop, wallTop) + 0.05, zBack + 0.6, 'wood');
     rowZ += d + 0.6;
   }
+  // across the lane: bulbs from the house front to the lip, a banner now and then, an awning over the door
+  const lr = rng(seed ^ 0x5eed);
+  if (lr() < 0.45) bulbs(B, [cx + (lr() - 0.5) * w, y + 4.2 + lr(), zFront + 0.3], [cx + (lr() - 0.5) * 10, y + 4.5 + lr(), zs - 0.3], lr);
+  if (lr() < 0.12) B.obb(cx, y + 5.4, (zFront + zs) / 2, 0.06, 1.2, LANE - 0.6, Math.PI / 2 * 0 + (lr() - 0.5) * 0.1, lr() < 0.5 ? 'tiedye' : 'tarp', { tint: pick(lr, [0xff7ab0, 0xffe14d, 0x4fd8c6]) });
+  if (lr() < 0.3) B.prop('tarp', cx, y, zFront + 1.1, Math.PI, 0.8, 0);
+  if (lr() < 0.06) stall(B, cx, y, zFront + 2.5, 2, lr);
   // street level: a fridge, a scooter, chairs out the front, a soup stack
   const sr = r();
   const fz = zFront + 1.2;

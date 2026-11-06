@@ -411,8 +411,12 @@ def lod1(parts, ratio=0.25, drop=(), target=None):
     return out
 
 
+LODT = {}  # root name -> lod1 kwargs (ratio / drop / target), set by the scripts
+
+
 def finish_lod(root_name, parts, meta, ratio=0.25, drop=(), target=None):
-    lods = lod1(parts, ratio, drop, target)
+    kw = LODT.get(root_name, {})
+    lods = lod1(parts, kw.get('ratio', ratio), kw.get('drop', drop), kw.get('target', target))
     meta = dict(meta)
     meta['tris'] = sum(tris_of(p) for p in parts); meta['tris_lod1'] = sum(tris_of(p) for p in lods)
     root = finish(root_name, parts + lods, meta)

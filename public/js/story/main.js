@@ -30,6 +30,7 @@ let pausedWas = false, api = null, picker = null, hint = null, cur = null, useWa
 export function initStory(a) {
   api = a; // { startMode(mode, cfg, mkSocket), quitToMenu(), toast(text, ms) }
   if (!MAPS[TEST.id]) { const m = buildTestMap({ builder, horizon, rng, lollipop, conifer }); unstick(m.boxes, m.spawns); MAPS[TEST.id] = m; } // client only: never in MAP_ORDER, so no menu lists it
+  import('../city/storymap.js').then((m) => m.registerStoryMaps(MAPS)).catch(() => {}); // the world lane's streamed city (story_slice)
   css();
   button();
   net.on('sty', (m) => { const fs = listeners[m.k]; if (fs) for (const f of fs) f(m); });

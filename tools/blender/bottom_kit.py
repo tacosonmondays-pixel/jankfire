@@ -261,14 +261,11 @@ def garment(rows, ncols, m, x0=0.0, y0=0.0, z0=0.0, dip=None, amp=0.02, wave=0.2
 
 
 def peg(x, y, z, m, rect, rot=0.0):
-    """a plastic clothes peg clamped on the line at (x, y, z): two prongs and a steel spring"""
-    P = []
-    for s in (-1, 1):
-        P.append(box((0.011, 0.072, 0.0055), (x, y + 0.008, z + s * 0.0045), m, rot=(s * 0.06, 0, rot)))
-    for o in P: uv_fit(o, rect)
-    sp = cyl(0.0042, 0.016, (x, y + 0.016, z), m, axis='x', seg=6, rot=(0, 0, rot))
-    uv_fit(sp, rect)
-    return P + [sp]
+    """a plastic clothes peg clamped on the line at (x, y, z): one chunky tapered block (it's instanced a lot)"""
+    o = box((0.012, 0.07, 0.013), (x, y + 0.008, z), m, rot=(0, 0, rot), taper=None)
+    for v in o.data.vertices:  # the jaw end is thinner
+        if v.co.z < 0: v.co.y *= 0.55
+    return [uv_fit(o, rect)]
 
 
 def dent(o, c, radius, depth, axis=None):
@@ -325,8 +322,60 @@ def preview_paint(mats, col):
         else: mix.inputs[1].default_value = b.inputs['Base Color'].default_value
         nt.links.new(mix.outputs[0], b.inputs['Base Color'])
 
+def tri_count(o):
+    dg = bpy.context.evaluated_depsgraph_get(); e = o.evaluated_get(dg)
+    me = e.to_mesh(); me.calc_loop_triangles(); n = len(me.loop_triangles); e.to_mesh_clear()
+    return n
+
+
+def _diag(o):
+    pts = [o.matrix_world @ Vector(c) for c in o.bound_box]
+    return (Vector(map(max, *pts)) - Vector(map(min, *pts))).length
+
+
+def make_lod(objs, name, target, small=0.08, parts=None):
+    """the _lod1 mesh: copies of the parts without their bevels, the small bits dropped (or the builder's own simple
+    parts), collapsed down to target tris. same materials, same placement."""
+    bpy.context.view_layer.update()
+    big = max((_diag(o) for o in objs), default=1.0)
+    src = parts if parts is not None else [o for o in objs if _diag(o) >= small * big]
+    cps = []
+    for o in src:
+        c = o.copy(); c.data = o.data.copy(); bpy.context.scene.collection.objects.link(c)
+        for md in list(c.modifiers):
+            if md.type == 'BEVEL': c.modifiers.remove(md)
+        cps.append(c)
+    for c in cps:
+        if not c.data.uv_layers: uv_fit(c, (0.0, 0.0, 0.02, 0.02))
+    lod = join(cps, name)
+    if lod.data.has_custom_normals:
+        bpy.context.view_layer.objects.active = lod; bpy.ops.mesh.customdata_custom_splitnormals_clear()
+    for _ in range(4):
+        n = tri_count(lod)
+        if n <= target: break
+        md = lod.modifiers.new('dec', 'DECIMATE'); md.decimate_type = 'COLLAPSE'; md.ratio = max(0.02, target / n * 0.92)
+        md.use_collapse_triangulate = True
+        apply_mods(lod)
+    smooth(lod, 35)
+    while len(lod.data.uv_layers) > 1: lod.data.uv_layers.remove(lod.data.uv_layers[-1])
+    bad = lod.data.validate(verbose=False); lod.data.update()
+    bm = bmesh.new(); bm.from_mesh(lod.data)  # a clean rebuild: decimate can leave doubled faces / stale arrays
+    bmesh.ops.dissolve_degenerate(bm, dist=1e-5, edges=bm.edges[:])
+    bm.to_mesh(lod.data); bm.free()
+    for a in [a.name for a in lod.data.attributes if a.domain == 'CORNER' and a.data_type != 'FLOAT2']:
+        try: lod.data.attributes.remove(lod.data.attributes[a])
+        except Exception: pass
+    lod.data.validate(); lod.data.update()
+    if bad: print('JF_LOD_FIXED', name)
+    return lod
+
+
+LOD_SHEETS = os.environ.get('JF_LOD_SHEETS')  # a scratch folder for the lod1 check sheets (not in the repo)
+
+
 def run(builders, sheet_kw=None):
-    """builders: [(id, fn)]; fn() -> (objs, meta extras). Writes public/models/story/s_<id>.glb and the sheet.
+    """builders: [(id, fn)]; fn() -> (objs, meta extras). Writes public/models/story/s_<id>.glb (full mesh + a
+    <id>_lod1 mesh at <= 25% of the tris) and the sheet. extras '_lod': the builder's own parts for the lod1.
     flags after '--': --only a,b  --no-sheet  --no-export"""
     argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
     only = None; done = []
@@ -335,28 +384,48 @@ def run(builders, sheet_kw=None):
         if only and pid not in only: continue
         reset(); lib._mats.clear()
         objs, extra = fn()
+        extra = dict(extra or {})
+        lod_parts = extra.pop('_lod', None)
         objs = [o for o in objs if o is not None]
-        keep = set(objs)
+        keep = set(objs) | set(lod_parts or [])
         for o in list(bpy.context.scene.objects):  # leftovers (filtered parts) would show in the sheet
             if o not in keep: bpy.data.objects.remove(o, do_unlink=True)
         for o in objs:
             if o.type == 'MESH' and not o.data.uv_layers: uv_fit(o, (0.0, 0.0, 0.02, 0.02))
+        full = sum(tri_count(o) for o in objs)
+        lod = make_lod(objs, 's_' + pid + '_lod1', int(full * 0.24), parts=lod_parts)
+        if lod_parts:
+            for o in lod_parts:
+                if o.name in bpy.data.objects and o != lod: bpy.data.objects.remove(o, do_unlink=True)
         bake_normals(objs)
         body = join(objs, 's_' + pid + '_mesh')
         me = body.data
         while len(me.uv_layers) > 1: me.uv_layers.remove(me.uv_layers[-1])
-        root = finish('s_' + pid, [body], {})
-        tris, lo, hi = stats(root)
+        root = finish('s_' + pid, [body, lod], {})
+        tris, lt = tri_count(body), tri_count(lod)
+        print('JF_DATA', body.data.name, lod.data.name, len(lod.data.loops), len(lod.data.polygons))
+        _, lo, hi = stats(root)
         meta = {'kind': 'prop', 'id': pid, 'story': True, 'district': 'bottom'}
         meta['col'] = [round(hi[k] - lo[k], 2) for k in range(3)]
-        meta.update(extra or {})
+        meta['tris'] = [tris, lt]
+        meta.update(extra)
         root['jf'] = json.dumps(meta)
         fid = STORY + '/s_' + pid
         if '--no-export' not in argv: export(root, fid)
+        print(f'JF_TRIS s_{pid}: full {tris} lod1 {lt} ({100 * lt // max(1, tris)}%)')
         if '--no-sheet' not in argv:
             preview_paint(me.materials, PREVIEW[len(done) % len(PREVIEW)])
+            lod.parent = None; lod.hide_render = True
             kw = dict(exposure=-0.6); kw.update((sheet_kw or {}).get(pid, {}))
             sheet(root, fid, **kw)
+            if LOD_SHEETS:
+                lr = bpy.data.objects.new('lodroot', None); bpy.context.scene.collection.objects.link(lr)
+                lod.parent = lr; lod.hide_render = False; body.hide_render = True
+                for o in bpy.context.scene.objects:
+                    if o.type == 'LIGHT' or o.type == 'CAMERA': bpy.data.objects.remove(o, do_unlink=True)
+                old = lib.SHEETS; lib.SHEETS = LOD_SHEETS
+                sheet(lr, 's_' + pid + '_lod1', views=('persp', 'front', 'back_persp'), res=(480, 320), exposure=-0.6)
+                lib.SHEETS = old
         done.append(pid)
         print(f'JF_MATS s_{pid}: ' + ', '.join(m.name for m in me.materials))
     tmp = os.path.join(lib.SHEETS, '_tmp')

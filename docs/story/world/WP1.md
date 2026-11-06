@@ -60,6 +60,15 @@ with 5 bots, 0 page errors, no FLAGS warnings, and never requests a story file.
 `wp1_stress_3_roofs.jpg`, `wp1_stress_3_high.jpg` (Too HD), `wp1_stress_0_roofs.jpg`, `wp1_stress_0_walk.jpg` (Potato),
 `wp1_stress_overview_toohd.jpg`.
 
+## In the real game
+A map with `stream: '<city>'` in `MAPS` is drawn by the streamer instead of world.js's one-mesh map: world.js
+dynamic-imports `public/js/city/ingame.js` only for such a map (PvP never fetches it), the stream fills the game's own
+`BOXES`, the district sky / fog / light go onto the scene, you're held in place until the ground under you is in,
+and the gimmicks run on the real player. `public/js/city/storymap.js` registers `story_slice` (the story shell does this
+at start-up). `shared/city/storyworld.js` `STORY_SLICE` is the sim-side data (id, spawn, yaw, killY, terminal = the
+Machine) shaped like `shared/story/testmap.js` `TEST`: when the sim uses it instead of `TEST`, STORY drops you out of
+the Machine into the Bottom. Test: `node tools/city/ingame.cjs <port> <out>`.
+
 ## Hooks for the other lanes
 - WP0 / the story shell: `new CityStream({ scene, city: 'slice', preset, boxes: BOXES })` and `stream.update(camera, dt)`
   every frame; pass the game's `BOXES` array and every existing collision call works on the city. `stream.ready(x, z)`
