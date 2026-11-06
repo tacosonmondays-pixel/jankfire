@@ -15,6 +15,7 @@ import { prepAuthored, authored, AUTHORED, bindAuthored } from './glbkit.js';
 import { nailgunBuild, tennisBuild, cartCannonBuild, tennisBall, cartModel, nailgunStaple, tennisMachine, cartBasket } from './primmodels.js'; // the new primaries + what they shoot
 import { catEars, catTail, maidDress } from './catwear.js'; // Board Approved: cat ears, cat tail, maid dress
 import { RIFLE_WB, bindRifle } from './riflemodels.js'; // the rifle pack (burst rifle, lmg, marksman, lever-action, auto shotgun)
+import { pistolBuild, akimboBuild, sawnoffBuild } from './sidemodels.js'; // Plan B, Lefty & Righty, Half a Shotgun
 
 // ------------------------------------------------------------ playing card faces (canvas, cached)
 const cardFaces = new Map();
@@ -1335,6 +1336,8 @@ const MODEL_BUILD = {
 WB.laser = laserBuild; // Big Laser Pointer (gearmodels.js)
 WB.nailgun = nailgunBuild; WB.tennis = tennisBuild; WB.cart = cartCannonBuild; // the new primaries (primmodels.js)
 Object.assign(MODEL_BUILD, { nailgun_staple: nailgunStaple, tennis_machine: tennisMachine, cart_basket: cartBasket }); // ...and their skins
+Object.assign(WB, { pistol: pistolBuild, akimbo: akimboBuild, sawnoff: sawnoffBuild }); // plain sidearms (sidemodels.js)
+Object.assign(HAT_AT, { pistol: [[0, 0.05, -0.07], 0.07], akimbo: [[0, 0.06, -0.08], 0.07], sawnoff: [[0, 0.047, 0.02], 0.08] });
 // knives + swords live in blades/ (one file each, real proportions): base weapons go in WB, skins in MODEL_BUILD
 for (const [id, mod] of Object.entries(BLADES)) {
   (COSMETICS.model[id] ? MODEL_BUILD : WB)[id] = mod.build;
@@ -1393,6 +1396,7 @@ export function buildWeapon(id, skin) {
     if (Array.isArray(mt.ads) && mt.ads.every(Number.isFinite)) g.userData.adsPose = mt.ads; // no sights: its own aiming pose
     if (mt.hatAt) g.userData.hatAt = mt.hatAt; else delete g.userData.hatAt;
     g.userData.glb = 'blender';
+    g.userData.jf = mt; // the sidearms read their moving parts' names from it (sidearms.js)
     g.userData.wid = 'bl_' + id; // wrap zones come from the Blender parts' own names (_wzA / _wzB / _wzN), not the code model's rule
     bindAuthored(g, mt); // needle, vents, barrels + the pump / cylinder / hammer / bolt that the viewmodel moves
     bindRifle(g, mt); // rifle pack: mag, charging handle, lever, feed cover, belt links, barrel heat

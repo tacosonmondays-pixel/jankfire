@@ -250,6 +250,7 @@ function drawMap(now, zn) {
 // ------------------------------------------------------------ inventory from the server
 const hooks = {
   canReload(id) { return (R.reserve[id] ?? 0) > 0; },
+  take(id, n) { const got = Math.min(n, R.reserve[id] || 0); R.reserve[id] = (R.reserve[id] || 0) - got; return got; }, // one akimbo hand's mag
   reloaded(id) { const w = WEAPONS[id], want = w.mag - (W.ammo[id] || 0), got = Math.min(want, R.reserve[id] || 0); W.ammo[id] = (W.ammo[id] || 0) + got; R.reserve[id] = (R.reserve[id] || 0) - got; },
   dry(id) { // shot-counted weapons (no magazine): out = no shooting
     if (!R.on || WEAPONS[id].mag || R.shots[id] == null) return false;

@@ -46,6 +46,13 @@ export const PATTERNS = {
   lever: { reset: 650, move: 1.2, wob: 0, kp: [[0, 0, 0], [1, 0, 0.01], [4, 0.004, 0.03]] },
   autoshot: { reset: 600, move: 0.45, wob: 0.004, kp: [[0, 0, 0], [3, 0.004, 0.025], [9, -0.006, 0.04]] },
 };
+// the plain sidearms. Plan B: fast taps creep up a bit, a pause and it's dead on. Lefty & Righty: both hands share the
+// count, so a two-handed hose climbs twice as fast and wobbles wide. Half a Shotgun: just the pellets
+Object.assign(PATTERNS, {
+  pistol: { reset: 450, move: 0.9, wob: 0.002, kp: [[0, 0, 0], [1, 0.001, 0.01], [3, -0.002, 0.024], [6, 0.003, 0.036]] },
+  akimbo: { reset: 300, move: 0.5, wob: 0.014, kp: [[0, 0, 0], [4, 0.004, 0.012], [12, -0.01, 0.024], [24, 0.012, 0.03], [40, 0, 0.032]] },
+  sawnoff: { reset: 800, move: 0.3, wob: 0, kp: [[0, 0, 0]] },
+});
 const FALLBACK_MOVE = 1;
 // a gun nobody wrote a pattern for (a new automatic): one made up from its id, so it's still the same every time
 const made = new Map();
