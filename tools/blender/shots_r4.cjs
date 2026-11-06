@@ -67,7 +67,11 @@ async function session(b, map, ids) {
     for (const id of ['crosshair', 'killfeed', 'chat', 'minimap']) { const e = document.getElementById(id); if (e) e.style.display = 'none'; }
     G.vmCamera.layers.disableAll(); // (no gun: main.js turns vmScene back on every frame)
     window.__pin = null;
-    setInterval(() => { const q = window.__pin; if (q) { ME.pos = q.p.slice(); ME.vel = [0, 0, 0]; ME.yaw = q.yaw; ME.pitch = q.pitch; ME.hp = 100; } }, 4);
+    setInterval(() => { const q = window.__pin; if (q) { if (!window.__hide || (ME.alive && Math.hypot(ME.pos[0] - q.p[0], ME.pos[2] - q.p[2]) > 2)) window.__hide = ME.pos.slice(); ME.pos = q.p.slice(); ME.vel = [0, 0, 0]; ME.yaw = q.yaw; ME.pitch = q.pitch; ME.hp = 100; } }, 4);
+    // the camera floats where the shot wants it, but the server is told you're still standing where you (re)spawned:
+    // bots hunt you there instead of shooting the camera out of the sky (a teleport, e.g. a respawn, moves that spot)
+    const { net } = await import('/js/net.js'), send0 = net.send.bind(net);
+    net.send = (o) => send0(window.__pin && window.__hide && o && o.t === 's' ? { ...o, p: window.__hide.map((v) => Math.round(v * 100) / 100), v: [0, 0, 0] } : o);
     // __life goes up on every death and every new Plant & Defuse round: a shot taken across one is taken again
     window.__life = 0; let was = ME.alive, round = G.eco && G.eco.round;
     setInterval(() => { if (was && !ME.alive) window.__life++; was = ME.alive; const r = G.eco && G.eco.round; if (r !== round) { round = r; window.__life++; } }, 4);
