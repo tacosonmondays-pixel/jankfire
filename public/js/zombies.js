@@ -230,7 +230,8 @@ function sceneLights() {
 function setLights(mode) { // 'off' = the dark mall, 'on' = the power's on, '' = any other map
   if (Z.lit === mode) return;
   Z.lit = mode;
-  const L = sceneLights(), [h, s] = mode === 'off' ? [0.62, 0.4] : mode === 'on' ? [1.15, 0.85] : [L.h0, L.s0];
+  if (!mode) return; // leaving the mall: loadMap (mapLight + lighting.js) already set the new map's own light, keep it
+  const L = sceneLights(), [h, s] = mode === 'off' ? [0.62, 0.4] : [1.15, 0.85];
   if (L.hemi) L.hemi.intensity = h;
   if (L.sun) L.sun.intensity = s;
 }
