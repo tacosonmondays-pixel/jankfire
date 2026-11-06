@@ -18,6 +18,7 @@
 import * as THREE from 'three';
 import { ANIMS } from './anim.js';
 import { M } from './models.js';
+import { makeHand, aimCuff } from './hands.js'; // the off hand
 import { WEAPONS } from '/shared/weapons.js';
 import { G } from './ctx.js';
 import { sfx } from './audio.js';
@@ -257,11 +258,10 @@ function bind(m, id) {
     b.pin = [0, Math.min(lo.y, hi.y), Math.max(lo.z, hi.z)];
   }
   // the off hand: a fist with a thumb and a bit of forearm trailing back off screen
-  const h = new THREE.Group(), SK = 0xf1c27d;
-  h.add(box(0.036, 0.042, 0.058, SK), box(0.014, 0.016, 0.04, 0xe3ae68, 0.021, 0.016, -0.024));
+  // the off hand: a PS1 left hand (hands.js), a loose pinch so whatever it carries sits in the fingers
+  const h = new THREE.Group(), hh = makeHand('L', { pose: 'pinch', r: 0.012 });
+  hh.position.set(0, -0.012, 0.004); h.add(hh); b.hh = hh; // (the old fist's centre was a bit above where the fingers close)
   h.visible = false; m.wrap.add(h); b.hand = h;
-  const fa = new THREE.Group(), fm = cyl(0.022, 0.3, SK, 0, 0.15, 0, 7); fa.add(fm); fa.add(cyl(0.025, 0.026, 0xff4fd8, 0, 0.04, 0, 7)); // forearm (+ the sweatband)
-  fa.visible = false; m.wrap.add(fa); b.fore = fa;
   for (const [name, at] of Object.entries(PROP_AT[id] || {})) {
     const o = PROPS[name](); o.visible = false;
     o.userData.base = { p: new THREE.Vector3(...(at.p || [0, 0, 0])), r: new THREE.Euler(...(at.r || [0, 0, 0])), s: o.scale.x };
@@ -273,7 +273,7 @@ function bind(m, id) {
 }
 
 const FOLD_PIN = [0, 0, 0], bbA = new THREE.Box3(); // the reaper blade's hinge (gun units): its back end, worked out per model
-const tA = new THREE.Vector3(), tB = new THREE.Vector3(), eA = new THREE.Euler(), qA = new THREE.Quaternion(), REST = new THREE.Vector3(-0.1, -0.5, -0.2), SHOULDER = new THREE.Vector3(-0.34, -0.6, 0.1), UPV = new THREE.Vector3(0, 1, 0);
+const tA = new THREE.Vector3(), tB = new THREE.Vector3(), eA = new THREE.Euler(), qA = new THREE.Quaternion(), REST = new THREE.Vector3(-0.1, -0.5, -0.2), SHOULDER = new THREE.Vector3(-0.3, -1.1, -0.1), UPV = new THREE.Vector3(0, 1, 0);
 const rest = (o) => { const r = o.userData.rl0; o.position.copy(r.p); o.rotation.copy(r.r); };
 // a spot (gun units) on one of the parts the hand can follow
 function anchor(b, g, f, out) { // (Blender parts sit a group or two down inside g: go through the world)
@@ -320,13 +320,11 @@ export function reloadStep(m, id, an, at, sampleCh, W) {
     h.position.copy(tB).lerp(tA, Math.min(1, lh[0]));
     eA.set(lh[5] || 0, lh[6] || 0, lh[7] || 0); qA.setFromEuler(eA);
     h.quaternion.copy(g.quaternion).multiply(qA);
-    // the forearm runs from the wrist back to your left shoulder (off screen), so the hand never floats
-    m.wrap.updateMatrixWorld(true);
-    tB.copy(SHOULDER); m.wrap.parent.localToWorld(tB); m.wrap.worldToLocal(tB);
-    tB.sub(h.position).normalize();
-    b.fore.position.copy(h.position).addScaledVector(tB, 0.02); b.fore.quaternion.setFromUnitVectors(UPV, tB);
+    // the cuff points back at your left shoulder (off screen), so the hand reads as attached
+    m.wrap.updateMatrixWorld(true); h.updateMatrixWorld(true);
+    tB.copy(SHOULDER); m.wrap.parent.localToWorld(tB); h.worldToLocal(tB);
+    aimCuff(b.hh, tB);
   }
-  b.fore.visible = h.visible;
   // ---- props
   for (const [name, o] of Object.entries(b.props)) {
     const v = ch('p_' + name), base = o.userData.base;
