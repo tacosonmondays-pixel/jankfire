@@ -91,6 +91,8 @@ import { containerPic, playContainer, stopContainer } from './crate3d.js'; // co
 import { hubTabs } from './hub.js'; // the CUSTOMIZE hub's tabs (loadout / weapons / character / grapple & spray)
 import { initCustomize, czMode, czOpen, czClose, czFrame, czKill, czLate, czRefresh, czRolled, resolveRand, wantSkins, myFavs } from './customize.js'; // the weapon customize screen (replaces COSMETICS)
 import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, zmModelsLoaded } from './zombies.js';
+import { zxHurt } from './zmextra.js'; // zombies: which way the claws came from
+import { zlWant } from './zmloadout.js'; // your zombies loadout
 let story = null; // OVERDUE's story engine (WP8: quests, talk, cutscenes), loaded with the story flag below. null = every hook is a no-op
 
 const $ = (id) => document.getElementById(id);
@@ -112,7 +114,7 @@ const SYNC_KEYS = ['jank', 'sens', 'adsSens', 'vol', 'fov', 'swapAim', 'toggleAi
 function profileData() {
   const settings = {};
   for (const k of SYNC_KEYS) settings[k] = G.settings[k];
-  return { loadout: G.settings.loadout, skins: G.settings.skins, look: G.settings.look, card: G.settings.card || '', kfx: G.settings.kfx || 'none', grap: G.settings.grap || 'rope', favs: G.settings.favs || undefined, wk: G.settings.wk || undefined, settings };
+  return { loadout: G.settings.loadout, skins: G.settings.skins, look: G.settings.look, card: G.settings.card || '', kfx: G.settings.kfx || 'none', grap: G.settings.grap || 'rope', favs: G.settings.favs || undefined, wk: G.settings.wk || undefined, zload: G.settings.zload || undefined, settings };
 }
 function saveSettings() {
   try { localStorage.setItem('jankfire', JSON.stringify(G.settings)); } catch { /* whatever */ }
@@ -250,7 +252,7 @@ function startMode(mode, cfg, mkSocket) { // mkSocket: story mode's local transp
   if (G.joined) quitToMenu(true);
   connecting = true;
   $('status').textContent = 'connecting...';
-  net.connect({ name: G.settings.name, mode, skins: wantSkins(), favs: myFavs(), look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), grap: myGrapple(), kc: G.settings.killcam !== false, streaks: validStreaks(S.loadout.streaks), item: S.loadout.item, cfg, token: account.loggedIn ? account.token : undefined }, () => {
+  net.connect({ name: G.settings.name, mode, skins: wantSkins(), favs: myFavs(), look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), grap: myGrapple(), kc: G.settings.killcam !== false, streaks: validStreaks(S.loadout.streaks), item: S.loadout.item, zl: zlWant(), cfg, token: account.loggedIn ? account.token : undefined }, () => {
     connecting = false;
     resetWorldState();
     show('main');
@@ -1498,6 +1500,7 @@ net.on('dmg', (m) => {
     hud.hp(ME.hp);
     hud.hurt(m.a);
     if (m.hs) sfx.headshotTaken(m.ko); else sfx.hurt();
+    zxHurt(m); // zombies: an arrow toward whatever clawed you
     if (m.w === 'cig') G.burnUntil = performance.now() + 600;
   }
   if (target) {
@@ -2425,6 +2428,7 @@ function onLoggedIn(me, fresh) {
     if (typeof prof.grap === 'string') G.settings.grap = prof.grap;
     if (prof.favs && typeof prof.favs === 'object') G.settings.favs = prof.favs;
     if (prof.wk && typeof prof.wk === 'object') G.settings.wk = prof.wk;
+    if (prof.zload && typeof prof.zload === 'object') G.settings.zload = prof.zload; // the zombies loadout (zmloadout.js checks it)
     Object.assign(G.settings, prof.settings || {});
     try { localStorage.setItem('jankfire', JSON.stringify(G.settings)); } catch { /* fine */ }
     applySettingsToUI();
