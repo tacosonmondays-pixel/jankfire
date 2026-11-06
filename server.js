@@ -48,6 +48,8 @@ import { BR } from './shared/royale.js';
 import { tickHR, hrBot } from './server/hrguy.js'; // the Tall Guy From HR (Scary Forest)
 import { HR } from './shared/hr.js';
 import { installGear } from './server/gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
+import { installSec } from './server/secondaries.js'; // water pistol, taser, tv remote, speed trap
+import { SPEED } from './shared/weapons.js';
 import { installRifles, RIFLE_PREF, RIFLE_BOTS } from './server/rifles.js'; // burst rifle, lmg, marksman, lever-action, auto shotgun
 import { installEcon } from './server/econ.js';
 import { installPrimaries } from './server/primaries.js'; // nail gun pins, tennis ball bounces, shopping carts
@@ -131,6 +133,7 @@ const DEFAULT_NAMES = ['player', 'guy', 'someone', 'nobody', 'dude', 'person'];
 const BOT_NAMES = ['Gary', 'Linda', 'Steve', 'Brenda', 'Kevin', 'Doug', 'Karen', 'Phil', 'Tina', 'Rick', 'Deb', 'Carl', 'Pam', 'Todd', 'Barb', 'Chad'];
 const BOT_GUNS = ['ar', 'ar', 'smg', 'shotgun', 'shotgun', 'sniper', 'chicken', 'banana', 'minigun', 'revolver', 'redline', 'marbles', 'laser', 'nailgun', 'tennis', 'cart'];
 BOT_GUNS.push('shredder'); // bots suck too (botShred)
+BOT_GUNS.push('water', 'taser', 'remote'); // the new secondaries (server/secondaries.js secBotFire)
 BOT_GUNS.push(...RIFLE_BOTS); // the rifle pack (server/rifles.js)
 BOT_GUNS.push('pistol', 'akimbo', 'sawnoff'); // the plain sidearms
 if (process.env.JF_PIN_DUR) WEAPONS.nailgun.nails.dur = Number(process.env.JF_PIN_DUR) || WEAPONS.nailgun.nails.dur; // test knob: longer nail gun pins (screenshots)
@@ -245,6 +248,8 @@ if (process.env.JF_INF_HP) INFECT.hp = Number(process.env.JF_INF_HP) || INFECT.h
 if (process.env.JF_LIVES) GAMES.oitc.lives = Number(process.env.JF_LIVES) || GAMES.oitc.lives;
 if (process.env.JF_ROUND_TIME) for (const r of Object.values(ROUND)) r.time = Number(process.env.JF_ROUND_TIME) || r.time;
 if (process.env.JF_DUCKS) DUCKRAIN.n = DUCKRAIN.n.map((x) => x * (Number(process.env.JF_DUCKS) || 1));
+// the new secondaries: every soak / stun / pause / cage / SLOW DOWN lasts JF_SEC_SLOW x longer (screenshot runs on slow headless browsers)
+if (process.env.JF_SEC_SLOW) { const k = Number(process.env.JF_SEC_SLOW) || 1, T = WEAPONS.taser; SPEED.jailT *= k; SPEED.warn *= k; WEAPONS.remote.pause.dur *= k; WEAPONS.water.soak.dur *= k; T.stun *= k; T.chainStun *= k; }
 // /skip vote: how long it stays open and the cooldown after one fails, in ms (test knobs)
 if (process.env.JF_SKIP_WINDOW) SKIP.window = Number(process.env.JF_SKIP_WINDOW) || SKIP.window;
 if (process.env.JF_SKIP_COOL) SKIP.cooldown = Number(process.env.JF_SKIP_COOL) || SKIP.cooldown;
@@ -704,6 +709,7 @@ class Room {
     const w = WEAPONS[b.w];
     const pref = RIFLE_PREF[b.w] ? [...RIFLE_PREF[b.w]] : b.w === 'sniper' ? [25, 60] : b.w === 'shotgun' ? [3, 9] : b.w === 'sawnoff' ? [1.5, 6] : b.w === 'akimbo' ? [4, 13] : b.w === 'marbles' ? [1.5, 4] : b.w === 'chicken' ? [10, 30] : b.w === 'shredder' ? [1.5, 9] : [7, 22];
     if (w.kind === 'melee') { pref[0] = 0; pref[1] = this.chaosKit || this.isEcon() ? 1.2 : w.range * 0.7; } // claws, melee rungs, spoons + knives: get in their face
+    if (b.w === 'taser') { pref[0] = 2; pref[1] = 6; } // darts on wires: get close
     if (t && t.alive) {
       const e = eyeOf(b), tc = [t.pos[0], t.pos[1] + 1.1, t.pos[2]];
       const dx = tc[0] - e[0], dy = tc[1] - e[1], dz = tc[2] - e[2];
@@ -3903,6 +3909,7 @@ installGear(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm, vec3, st
 installTactical(Room, { send });
 installRifles(Room, { now, send });
 installPrimaries(Room, { now, send, r2, norm, vec3, REC_T });
+installSec(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm, vec3, REC_T, REC_FX }); // after installGear: it wraps gearJoin / tickGear / gearSnap
 { // snapshot flags are one bit each, added by many modules: two on the same bit read as each other (it happened 3 times)
   const seen = new Map();
   for (const [k, v] of Object.entries(FLAGS)) { if (!v || (v & (v - 1))) console.warn(`FLAGS.${k} = ${v} is not a single bit`); else if (seen.has(v)) console.warn(`FLAGS.${k} and FLAGS.${seen.get(v)} share bit ${Math.log2(v)}`); seen.set(v, k); }

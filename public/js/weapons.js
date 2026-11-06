@@ -27,6 +27,7 @@ import { tickScalesVM } from './scales.js';
 import { PARRY } from '/shared/weapons.js';
 import { SIDEARMS, reloadAnim, sideParts, sideHand, sideShot, sideStep, stepOffHand, sideEvent } from './sidearms.js'; // Plan B, Lefty & Righty, Half a Shotgun
 import { ROYAL } from '/shared/looks.js';
+import { secFireDown, secShot } from './secondaries.js'; // taser, tv remote, water pistol streams
 import { RIFLES, RF, RIFLE_VM, RIFLE_RECOIL, RIFLE_SHELLS, rifleShot, bursting, rifleReset, quickScoped, rifleStep, rifleEvent } from './rifles.js'; // the rifle pack
 import { tacOn, tacShot, tacKick, tacFrame } from './tactical.js'; // Plant & Defuse: spray patterns + moving spread
 import { carRay, carHit, carSwing } from './traffic.js'; // cars stop bullets (and take the damage)
@@ -494,6 +495,8 @@ const VM = {
 Object.assign(VM, RIFLE_VM);
 VM.bloodcross = { p: [0.165, -0.17, -0.33], r: [0.13, 0.43, 0.28], s: 1.22 };
 RECOIL.bloodcross = { back: 0.5, up: 3.5, roll: 1.2, side: 0.15, punch: 0.018 };
+// the new secondaries (secondaries.js): squirt pistol, taser, tv remote held like a pistol, pointed at the screen
+Object.assign(VM, { water: { p: [0.18, -0.18, -0.355], r: [0.02, 0.08, 0], s: 0.74 }, taser: { p: [0.165, -0.14, -0.31], r: [0.03, 0.12, -0.1], s: 0.95 }, remote: { p: [0.15, -0.14, -0.29], r: [0.35, 0.12, -0.12], s: 0.95 } });
 const bcQ = new THREE.Quaternion(), bcY = new THREE.Vector3(0, 1, 0); // opening + closing the fist
 let vmRoot;
 const models = {};
@@ -674,6 +677,8 @@ export function reload() {
   if (W.eco) W.eco.reloading(id);
 }
 
+// for secondaries.js: kick the viewmodel, the muzzle in the world, a viewmodel by id
+export const VMX = { kick: (id, k) => kickVM(id, k), muzzle: () => muzzleWorld(), model: (id) => models[id] };
 export function muzzleWorld() {
   const m = models[W.cur];
   vmRoot.updateMatrixWorld(true);
@@ -814,7 +819,7 @@ function fireHitscan(id, now, hand) { // hand: 'L' / 'R' = which of Lefty & Righ
   const fast = w.rate > 8;
   const skin = (W.skinOver || G.equipped || {})[id];
   if (shots) marbles.shoot(shots, marblePalette(skin));
-  else for (const s of segs) fx.tracer(s.slice(0, 3), s.slice(3), tracerColor(skin, w.tracer || 0xfff0a0), w.thick || (fast ? 0.03 : 0.045), fast ? 0.07 : 0.2);
+  else if (!(w.water && secShot(segs, mz))) for (const s of segs) fx.tracer(s.slice(0, 3), s.slice(3), tracerColor(skin, w.tracer || 0xfff0a0), w.thick || (fast ? 0.03 : 0.045), fast ? 0.07 : 0.2);
   net.send({ t: 'fire', w: id, o: o.map(r2), s: segs.slice(0, 12).map((s) => s.map(r2)), fan: fanShot ? 1 : undefined, ...(tac ? tac.msg : null), hd: hand === 'L' ? 1 : undefined });
   if (id === 'nailgun') nailSegs(segs); // nails stay in the wall (primaries.js)
   if (w.recoil) applyKb([-base[0] * w.recoil, -base[1] * w.recoil, -base[2] * w.recoil]);
@@ -1161,6 +1166,7 @@ export function fireDown() {
   else if (w.kind === 'cards') playCard(now);
   else if (w.kind === 'blood') fireBlood(now);
   else if (w.kind === 'beam') laserDown(now);
+  else if (w.kind === 'zap' || w.kind === 'remote') secFireDown(id, now);
 }
 
 // ------------------------------------------------------------ Big Laser Pointer: hold to charge, let go to fire
