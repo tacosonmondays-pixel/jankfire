@@ -32,17 +32,28 @@ Careful bots skip long-range fights and leave for the next circle early; the res
 Typical deaths: hot-drop bread fights in the first 20 s; mid-game kills with real kits (minigun, redline, chicken); late game is decided by armour and who already rotated.
 Run your own: `JF_WATCH=1 JF_BR_LOG=1 node server.js`, then join a Bots room as `watch...` (the watcher never fights). `JF_BR_DUMP=1` prints what every bot is doing every 8 s; `JF_BR_BOTS=n` sets the bot count.
 
-## Ideas: what makes it ours (brainstorm, not built yet)
-**POI modifiers.** Each named place bends one rule while you're inside it. The minimap and a callout show it when you walk in.
-- **Liberal Lane**: liberal helpings. Every pick-up there comes in a large (double ammo and heals, +1 rarity tier). It's the hottest drop.
-- **Pronoun Park**: inside the park, name tags and the kill feed show pronouns instead of names ("THEY [AR] YOU"). Nobody knows who's who, so third-partying is a gamble.
-- **Overdraft Heights** (the silly one): your credit score went negative, and so did gravity. Moon jumps, slow falls, and the umbrella works off every roof.
-- Also: **Number Works** (damage numbers hit for their own value: 7s and 13s), **Neon Market** (vending machines spit out a random gadget when shot), **Corp Hill** (each kill there pays a "shareholder dividend" of armour).
+## Jankburg (the big map)
+Plan: `docs/jankburg/master_plan.png`. As built: `docs/jankburg/built_map.png`. Code: `shared/jankburg.js` (PLAN = the numbers both are drawn from).
+- A walled city 360 m across, with an outer ring out to 250 m and a megacity in the haze past that. The firewall is 14 m tall and you can run along the top. Towers have jump pads at their feet. There are 4 gates with side passages and 3 breaches with rubble ramps.
+- Avenues run gate to gate, crossing at a tiled plaza with a giant smiling fountain. There's an octagonal ring road and crooked side streets with diagonal cuts. A canal runs out to the river.
+- Houses line every street, facing it, in 12 variants. Solid blocks and courtyards fill the space behind them. Cars, street lights, buses, forklifts, pallets and number balls are the glossy Blender props.
+- Landmarks: the Cathedral of Shareholder Value (bell tower sniper perch), JankCorp HQ (152 m), Neon Market Hall, the Number Works smokestacks, THEY / YOU / WE in toy letters, and a crashed blimp outside.
 
-**Rules other BRs don't have:**
-- **Return to Sender**: your first death before circle 2 mails you back in a cardboard box from the blimp, once.
-- **Kill-leader bounty**: whoever has the most kills glows on everyone's minimap and drops a Legendary when they die.
-- **The zone is an eviction notice**: the wall shoves you as well as hurting you, so ride it with a grapple.
-- **Supply blimp**: twice a match the blimp drops a crate that you have to grapple onto before it lands.
-- **Loot goblin**: a running vending machine full of Epics. Shoot it and everything inside spills out.
-- **Daily rumours**: each match two random POIs get a modifier, announced on the blimp ("today at Pronoun Park: LOW GRAVITY").
+## Points of interest (each bends one rule while you're inside it)
+| POI | Rule |
+|---|---|
+| **Liberal Lane** | liberal helpings: loot there is better, with double ammo, heals and gadgets |
+| **Pronoun Park** | name tags say THEY, and the kill feed says THEY / YOU / THEM |
+| **Overdraft Heights** | low gravity (your credit score went negative and so did gravity) |
+| **Number Works** | every hit is a LUCKY 7 (x0.7) or an UNLUCKY 13 (x1.3) |
+| **Neon Market** | press F next to a vending machine to kick it and get a gadget (once a minute per machine) |
+| **Corp Hill** | a kill there pays a shareholder dividend of +25 armour |
+
+## Twists (every royale)
+- **Return to Sender:** your first death before circle 2 closes mails you back. Five seconds later you fall into the next circle with only bread.
+- **Kill-leader bounty:** the leader (2+ kills) wears a gold crown with a beam and shows on everyone's minimap. Killing them drops a Legendary.
+- **Eviction notice:** outside the zone you get shoved back in as well as hurt, harder every circle.
+- **Supply blimp:** twice a match a crate floats down on an umbrella over the next circle. Grab it in the air or when it lands (Legendary + Epic gun, Riot Fridge, medkits).
+- **Loot goblins:** twice a match a vending machine on legs (250 HP) runs away from everyone. Pop it for Epics.
+
+Jankburg bots test (15 bots): matches run 2:45 to 4:40 and the server holds 18-20 snapshots/s. Return to Sender, crates, goblins and the bounty all fire every match.
