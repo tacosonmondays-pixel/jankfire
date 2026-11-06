@@ -80,6 +80,7 @@ async function session(b, map, ids) {
     G.renderer.render = (sc, cam) => {
       const q = window.__pin;
       if (cam === G.camera && q) { const c = cam.position; window.__camOk = Math.hypot(c.x - ME.pos[0], c.y - ME.pos[1] - ME.eyeH, c.z - ME.pos[2]) <= 0.3 && Math.hypot(ME.pos[0] - q.p[0], ME.pos[2] - q.p[2]) <= 1.5; }
+      if (cam === G.camera && q) { for (const pr of G.projs.values()) if (pr.mesh) pr.mesh.visible = false; G.remotes.forEach((r) => { if (r.ch && r.ch.root) r.ch.root.visible = false; }); } // (no bullets, thrown stuff or players flying through the shot)
       return draw(sc, cam);
     };
     // __life goes up on every death and every new Plant & Defuse round: a shot taken across one is taken again
