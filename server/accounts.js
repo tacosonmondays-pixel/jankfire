@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import { STAT_KEYS } from './store.js';
 import { rollPick, itemInfo, CONTAINERS } from '../shared/cosmetics.js';
 import { achievementsFrom } from '../shared/looks.js';
+import { catsOf } from '../shared/secrets.js';
 
 const scrypt = promisify(crypto.scrypt);
 const NAME_RE = /^[A-Za-z0-9_]{3,16}$/;
@@ -43,6 +44,7 @@ export class Accounts {
   public(u) {
     const stats = {};
     for (const k of STAT_KEYS) stats[k] = u[k] || 0;
+    stats.cats = catsOf(u.inv); // hidden cats petted (kept in inv.lore, not a column)
     return { name: u.name, level: levelOf(u.xp), xp: u.xp || 0, stats, achs: [...achievementsFrom(stats)], profile: u.profile || {}, inv: u.inv || {}, rolls: { crate: u.crates || 0, bag: u.bags || 0, box: u.boxes || 0 }, created: u.created_at };
   }
 

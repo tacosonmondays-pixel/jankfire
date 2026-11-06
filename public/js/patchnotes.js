@@ -1,6 +1,18 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '3.3', date: '2026-11-06', title: 'YEEHAW', items: [
+    'NEW SECONDARY: THE LASSO. hold fire to spin the loop, let go to throw it. catch someone and they dangle off your rope.',
+    'reel them in or let the rope out with the mouse wheel (or R / F, rebindable). swing them round, walk backwards, flick: click to let go and they fly. walls and floors hurt.',
+    'caught? mash jump or a move key to wriggle free.',
+    'in Plant & Defuse it costs 1100 for 10 throws. not in Jank Royale or Zombies. bots use it too.',
+  ] },
+  { v: '3.2', date: '2026-11-06', title: 'THE BOARD WILL SEE YOU NOW', items: [
+    'HIDDEN PEOPLE: five ☺ CORP employees are hiding around the maps. walk up and press your use key to talk. they know how things got like this, and some of them have something for you.',
+    'every chapter of lore you find goes on the new LORE page in the menu.',
+    'THE BOARD OF DIRECTORS: five cats are hidden on five maps. pet all of them for the BOARD APPROVED achievement: Cat Ears, a Cat Tail and the Maid Dress.',
+    'hint: not everyone is on the ground. bring a grapple.',
+  ] },
   { v: '3.1', date: '2026-11-06', title: 'PLANT & DEFUSE, BUT TACTICAL', items: [
     'PLANT & DEFUSE ONLY: no enemy outlines and no nametags. you find people the old way.',
     'hold SHIFT (your sprint key) to slow walk: half speed, and nobody hears your footsteps. moving wrecks your aim, so stand still (or crouch) to shoot straight.',

@@ -70,6 +70,7 @@ export const PRICES = {
   reverse: { price: 700, kill: 1500 },
   snowball: { price: 400, kill: 900, shots: 10 }, // was 36
   bloodcross: { price: 900, kill: 450, shots: 8 }, // 8 bolts a buy (was unlimited at the 600 default)
+  lasso: { price: 1100, kill: 900, shots: 10 }, // 10 throws a buy (misses count). splats and void flings pay the kill
   // melee
   bread: { price: null, kill: 1000 }, // the default melee: free, never sold, never dropped
   slipper: { price: 450, kill: 850, shots: 4 }, // 4 throws a buy (was unlimited: it comes back)

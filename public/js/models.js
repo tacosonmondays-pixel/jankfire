@@ -7,10 +7,12 @@ import { COSMETICS } from '/shared/cosmetics.js';
 import { SUITS, RANKS, ARROW_TIPS } from '/shared/weapons.js';
 import { BLADES } from './blades/index.js';
 import { lathe } from './blades/kit.js';
+import { LASSO_MODELS, buildLoopProjectile } from './lasso_model.js';
 import { buildRigMissile } from './rigmodel.js'; // overdrive rig killstreak
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { laserBuild, calculator } from './gearmodels.js'; // the new gear's models (laser pointer, pop quiz calculator)
 import { prepAuthored, authored, AUTHORED, bindAuthored } from './glbkit.js';
+import { catEars, catTail, maidDress } from './catwear.js'; // Board Approved: cat ears, cat tail, maid dress
 import { RIFLE_WB, bindRifle } from './riflemodels.js'; // the rifle pack (burst rifle, lmg, marksman, lever-action, auto shotgun)
 
 // ------------------------------------------------------------ playing card faces (canvas, cached)
@@ -1335,6 +1337,11 @@ for (const [id, mod] of Object.entries(BLADES)) {
   (COSMETICS.model[id] ? MODEL_BUILD : WB)[id] = mod.build;
   if (mod.hatAt) HAT_AT[id] = mod.hatAt;
 }
+// the lasso + its skins live in lasso_model.js, registered the same way
+for (const [id, mod] of Object.entries(LASSO_MODELS)) {
+  (COSMETICS.model[id] ? MODEL_BUILD : WB)[id] = mod.build;
+  if (mod.hatAt) HAT_AT[id] = mod.hatAt;
+}
 
 // iron sights: a rear notch + front post (glowing tip) on top of the gun, at one height, so the line of sight
 // runs over the top of the gun. ADS puts that line on the centre of the screen and the gun hangs below it.
@@ -1492,6 +1499,7 @@ function addAccessories(ch, look, c) {
     case 'helmet': { const d = ball(0.2, c, 0, 0.16, 0); d.scale.set(1, 1.05, 1.05); H.add(d); at(H, bx(0.26, 0.07, 0.03, 0x111122, 0, 0.17, -0.19, true)); break; }
     case 'hardhat': { const d = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), M(0xffd21a)); d.position.y = y0 - 0.05; H.add(d); at(H, new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.015, 10), M(0xffd21a))).position.y = y0 - 0.05; break; }
     case 'icepack': at(H, bx(0.14, 0.04, 0.14, 0x6ad0ff, 0, y0 + 0.01, 0)); break;
+    case 'catears': ch.ears = catEars(H, look); break;
   }
   const fz = -0.15; // front of the face
   switch (look.face) {
@@ -1510,7 +1518,7 @@ function addAccessories(ch, look, c) {
   }
   // back stuff hangs off the upper back (chest back surface ~z 0.15) and is strapped over the shoulders
   const thick = look.top === 'runner' ? 0.04 : look.top === 'jacket' || look.top === 'suit' || look.top === 'hoodie' ? 0.03 : 0;
-  if (look.bottom === 'overalls') overallsBib(Bd, overallsColor(look, c), thick);
+  if (look.bottom === 'overalls' && look.top !== 'maid') overallsBib(Bd, overallsColor(look, c), thick); // (the apron covers it)
   const bk = 0.15 + thick;
   const straps = (col) => { for (const sx of [-1, 1]) { at(Bd, bx(0.045, 0.025, 0.32, col, sx * 0.11, 1.52, 0.0)); at(Bd, bx(0.045, 0.3, 0.025, col, sx * 0.11, 1.37, -0.16 - thick)); } };
   switch (look.back) {
@@ -1550,6 +1558,7 @@ function addAccessories(ch, look, c) {
       }
       straps(0x333333);
       break;
+    case 'cattail': catTail(ch, look, look.top === 'maid' ? 0.2 : look.bottom === 'skirt' ? 0.19 : 0.125); break; // out from under the skirt
   }
 }
 
@@ -1725,9 +1734,10 @@ export function buildCharacter(color, look) {
       leg.add(knee);
       body.add(leg);
     }
-    if (bottom === 'skirt') { const sk = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.28, 0.36, 8), M(BOT)); sk.position.y = 0.88; body.add(sk); }
+    if (top === 'maid') { /* the dress has its own skirt (and covers the top of the pants) */ } else if (bottom === 'skirt') { const sk = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.28, 0.36, 8), M(BOT)); sk.position.y = 0.88; body.add(sk); }
     else body.add(bx(0.34, 0.18, 0.23, LEG, 0, 0.98, 0)); // shorts / top of the pants
-    body.add(limb(0.1, 0.12, 0.16, top === 'none' || top === 'tank' ? SK : TOP, 1.13)); // waist
+    const MAID = lk.topColor ? TOP : lk.teamed ? c : 0x17141c; // the maid dress: black unless you pick a colour
+    body.add(limb(0.1, 0.12, 0.16, top === 'none' || top === 'tank' ? SK : top === 'maid' ? MAID : TOP, 1.13)); // waist
     const chest = ball(0.2, SK, 0, 1.34, 0); chest.scale.set(1.2, 1.1, 0.72); body.add(chest);
     if (top === 'tank') { const sash = bx(0.09, 0.56, 0.31, TOP, 0, 1.31, 0); sash.rotation.z = 0.65; body.add(sash); }
     if (top === 'tee' || top === 'hoodie') { const sh = ball(0.215, TOP, 0, 1.34, 0); sh.scale.set(1.2, 1.1, 0.74); body.add(sh); }
@@ -1747,6 +1757,7 @@ export function buildCharacter(color, look) {
       if (top === 'suit') body.add(bx(0.04, 0.26, 0.02, 0xc02030, 0, 1.36, -0.165)); // tie
     }
     if (top === 'runner') runnerJacket(body, arm, armL, lk, lk.topColor ? TOP : lk.teamed ? c : RUN_YELLOW, jank); // teamed: team colour
+    if (top === 'maid') maidDress({ body, arm, armL, kneeL, kneeR, head }, lk, MAID, legs);
     body.add(limb(0.045, 0.05, 0.12, SK, 1.57));
     head.position.set(0, 1.62, 0);
     const egg = ball(0.14, SK, 0, 0.14, 0); egg.scale.set(0.85, 1.22, 0.95); head.add(egg);
@@ -1816,6 +1827,7 @@ export function buildProjectile(k, skin) {
 }
 function buildProjectileRaw(k) {
   const g = new THREE.Group();
+  if (k === 'loop') return buildLoopProjectile(g); // a lasso loop (lasso.js animates it live; this is for replays + late joiners)
   const sizes = { chicken: 0.7, banana: 0.4, bowling: 0.9, duck: 0.5, slipper: 0.45, bow: 0.9, card: 0.25 };
   const glb = fitted('p_' + k, { size: sizes[k] || 0.5, alignZ: true });
   if (glb) { g.add(glb); g.userData.glb = true; return g; }
