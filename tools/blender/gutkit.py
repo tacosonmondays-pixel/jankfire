@@ -406,6 +406,7 @@ def lod1(parts, ratio=0.25, drop=(), target=None):
         c.modifiers.clear()
         md = c.modifiers.new('dec', 'DECIMATE'); md.ratio = max(0.02, min(1.0, goal / have)); md.use_collapse_triangulate = True
         apply_mods(c)
+        _drop_crumbs(c)
         if any(PULSE.search(x.name) for x in c.data.materials if x): wet(c)
         out.append(c)
     return out
@@ -463,3 +464,28 @@ def mirror_parts(parts):
         bm = bmesh.new(); bm.from_mesh(p.data); bmesh.ops.reverse_faces(bm, faces=bm.faces); bm.to_mesh(p.data); bm.free()
         p.data.update()
     return parts
+
+
+def _drop_crumbs(o, keep=3):
+    """decimation leaves lone triangles behind: delete islands of fewer than `keep` faces."""
+    bm = bmesh.new(); bm.from_mesh(o.data); bm.faces.ensure_lookup_table()
+    seen = set(); kill = []
+    for f in bm.faces:
+        if f.index in seen: continue
+        grp = []; stack = [f]; seen.add(f.index)
+        while stack:
+            x = stack.pop(); grp.append(x)
+            for e in x.edges:
+                for y in e.link_faces:
+                    if y.index not in seen: seen.add(y.index); stack.append(y)
+        if len(grp) < keep: kill += grp
+    if kill: bmesh.ops.delete(bm, geom=kill, context='FACES')
+    bm.to_mesh(o.data); bm.free()
+
+
+def orient_to(o, pos, n):
+    """point an object's local +y (game up) along game normal n, origin at game pos (avoids euler-order mixups)."""
+    up = gv(0, 1, 0); nb = gv(*n)
+    q = up.rotation_difference(nb.normalized())
+    o.matrix_world = Matrix.Translation(gv(*pos)) @ q.to_matrix().to_4x4()
+    return o

@@ -129,7 +129,7 @@ def build_launderette(M):
     brk(1.8, 5.0, 3.1, 2.5)                # right pier
     brk(3.55, 2.1, -1.875, 3.95)           # over the window
     brk(1.4, 2.6, 1.5, 3.7)                # over the door
-    sw(box((3.55, 0.7, 0.2), (-1.875, 0.35, -0.5), None, bev=0.02, seg=1), 3)  # teal stall riser under the window
+    sw(box((3.5, 0.7, 0.2), (-1.875, 0.35, -0.48), None, bev=0.02, seg=1), 3)  # teal stall riser under the window
     sw(box((8.1, 0.25, 0.75), (0, 4.88, -0.375), None, bev=0.03, seg=1), 0)    # cornice
     # the fascia sign, proud of the brick, on a yellow frame
     sg = box((6.4, 0.86, 0.12), (-0.55, 3.55, -0.68), None, bev=0.02, seg=1)
@@ -159,9 +159,9 @@ def build_launderette(M):
     sw(box((3.4, 0.06, 0.4), (-1.875, 2.2, -0.22), None), 8)  # a shelf with the detergent
     for k, x in enumerate((-3.3, -2.9, -2.1, -1.5, -0.7)):
         sw(box((0.18, 0.3, 0.14), (x, 2.38, -0.25), None, bev=0.02, seg=1), (9, 4, 3, 9, 11)[k])
-    card = box((0.42, 0.28, 0.01), (-0.5, 1.2, -0.47), None); bpy.context.view_layer.update()
-    A(AT.region(card, 'card', front_proj(-0.5, 1.2, 0.42, 0.28)))
-    gl = box((3.55, 2.2, 0.02), (-1.875, 1.8, -0.5), glass); uv_box(gl, 1.0); gl['keepuv'] = 1; A(gl)
+    card = box((0.42, 0.28, 0.01), (-0.5, 2.62, -0.47), None); bpy.context.view_layer.update()
+    A(AT.region(card, 'card', front_proj(-0.5, 2.62, 0.42, 0.28)))
+    gl = box((3.4, 2.04, 0.02), (-1.875, 1.8, -0.5), glass); uv_box(gl, 1.0); gl['keepuv'] = 1; A(gl)
     for xx in (-3.6, -0.15): sw(box((0.1, 2.2, 0.12), (xx + (0.05 if xx < 0 else -0.05) * (1 if xx < -1 else 1), 1.8, -0.52), None, bev=0.01, seg=1), 0)
     sw(box((3.55, 0.1, 0.14), (-1.875, 2.85, -0.53), None, bev=0.01, seg=1), 0)
     sw(box((3.55, 0.08, 0.16), (-1.875, 0.74, -0.54), None, bev=0.01, seg=1), 0)
@@ -261,7 +261,7 @@ def build_gristlelogo(M):
     sw(cyl(0.05, 0.05, (bx + 0.16, by + 0.3, -0.56), None, axis='z', seg=8), 4)
     # coat collar and bow tie
     for ex in (-1, 1):
-        sw(box((0.32, 0.22, 0.06), (bx + ex * 0.17, by - 0.62, -0.33), None, rot=(0, 0, ex * 0.6), bev=0.02, seg=1), 3)
+        sw(box((0.32, 0.22, 0.06), (bx + ex * 0.17, by - 0.62, -0.33 - 0.012 * ex), None, rot=(0, 0, ex * 0.6), bev=0.02, seg=1), 3)
         sw(lathe([(0.0, 0.0), (0.09, 0.05), (0.1, 0.2), (0.0, 0.22)], (bx + ex * 0.02, by - 0.58, -0.42), None, seg=8, axis='x', rot=(0, 0, 0) if ex > 0 else (0, math.pi, 0), name='gl_bow'), 1)
     # the cleaver, raised in a cheerful wave
     cl = box((0.42, 0.3, 0.05), (bx + 0.78, by + 0.55, -0.4), None, rot=(0, 0, -0.35), bev=0.015, seg=1); sw(cl, 7)
@@ -278,7 +278,7 @@ def build_gristlelogo(M):
     A(AT.region(eyeball(None, 0.2, (1.85, 0.6, -0.62), rot=(-math.pi / 2 + 0.05, 0, -0.1), name='gl_eye'), 'eye',
                 lambda g: ((g[0] - 1.85) / 0.4 + 0.5, (g[1] - 0.6) / 0.4 + 0.5)))
     for k, (x, y, a) in enumerate(((1.25, 0.15, 0.3), (-1.6, 0.05, -0.2))):
-        sw(canine(None, pos=(x, y, -0.55), rot=(-math.pi / 2 + 0.6, 0, a), s=0.8, name='gl_tooth', seed=k), 9)
+        sw(canine(None, pos=(x, y + 0.12, -0.38), rot=(-math.pi / 2 + 0.6, 0, a), s=0.8, name='gl_tooth', seed=k), 9)
     for pts in ([(2.3, 1.75, -0.3), (2.0, 1.95, -0.24), (1.5, 1.8, -0.24), (0.9, 1.97, -0.24), (0.2, 1.85, -0.24)],
                 [(1.3, 0.85, -0.3), (0.8, 1.1, -0.24), (0.1, 1.0, -0.24), (-0.4, 1.2, -0.24)],
                 [(-0.55, 0.3, -0.38), (-0.3, 0.6, -0.3), (-0.2, 1.1, -0.27), (-0.1, 1.6, -0.25)]):
@@ -299,15 +299,12 @@ def _blob_bits(M, P, bvh, rnd, n_pus, teeth, eyes, veins, sz, wall=False):
         A(ball(r, tuple(Vector(q) + Vector(n) * r * 0.35), M['pus'], seg=6, rings=4, name='fb_pus'))
     for k, p in enumerate(teeth):
         q, n = surf(p, 0.0); N = Vector(n)
-        rot = Vector((0, 1, 0)).rotation_difference(N).to_euler('XYZ')
         f = molar if k % 2 else canine
-        A(f(M['enamel'], pos=tuple(Vector(q) - N * 0.12), rot=(rot.x, rot.y, rot.z), s=1.1, name='fb_tooth', seed=k))
+        A(orient_to(f(M['enamel'], s=1.1, name='fb_tooth', seed=k), tuple(Vector(q) - N * 0.12), n))
     for p, r in eyes:
         q, n = surf(p, 0.0); N = Vector(n)
-        rot = Vector((0, 1, 0)).rotation_difference(N).to_euler('XYZ')
-        A(eyeball(M['eye'], r, tuple(Vector(q) - N * r * 0.2), rot=(rot.x, rot.y, rot.z), name='fb_eye'))
-        A(torus(r * 1.02, r * 0.3, M['flesh'], tuple(Vector(q) + N * r * 0.05), rot=(rot.x, rot.y, rot.z), n=10, k=4, name='fb_lid',
-                wob=lambda a: 1 + 0.4 * max(0, math.sin(a))))
+        A(orient_to(eyeball(M['eye'], r, name='fb_eye'), tuple(Vector(q) - N * r * 0.2), n))
+        A(orient_to(torus(r * 1.02, r * 0.3, M['flesh'], n=10, k=4, name='fb_lid', wob=lambda a: 1 + 0.4 * max(0, math.sin(a))), tuple(Vector(q) + N * r * 0.05), n))
     for k, (p, d, st) in enumerate(veins):
         pts = crawl(bvh, p, d, st, 0.28, 0.025, seed=k + 3, wig=0.35)
         A(sweep(pts, [0.06 - 0.03 * i / (len(pts) - 1) for i in range(len(pts))], M['vein'], seg=4, name='fb_vein'))

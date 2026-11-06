@@ -161,7 +161,7 @@ def build_lung(M):
         if depth < 2 and len(pts) == 6:
             ex, ez = x + math.cos(ang) * ln, z + math.sin(ang) * ln
             for da in (-0.5, 0.55):
-                grow(ex, ez, ang + da + rnd.uniform(-0.12, 0.12), ln * rnd.uniform(0.75, 0.9), rad * 0.72, depth + 1)
+                grow(ex - math.cos(ang) * 0.06, ez - math.sin(ang) * 0.06, ang + da + rnd.uniform(-0.12, 0.12), ln * rnd.uniform(0.75, 0.9), rad * 0.62, depth + 1)
     for sx in (-1, 1):
         grow(sx * 1.05, -0.55, math.atan2(1.0, sx * 0.45), 1.15, 0.13, 0)
     print('JF_LUNG branches', len(branches))
@@ -410,7 +410,7 @@ def build_heartlamp(M):
     # roots into the street
     for k in range(3):
         a = 2 * math.pi * k / 3 + 0.5
-        A(sweep([(0, 0.35, 0), (math.cos(a) * 0.3, 0.12, math.sin(a) * 0.3), (math.cos(a) * 0.55, 0.0, math.sin(a) * 0.55)], [0.09, 0.07, 0.04], pole, seg=4, name='hl_root'))
+        A(sweep([(math.cos(a) * 0.04, 0.33 + 0.03 * k, math.sin(a) * 0.04), (math.cos(a) * 0.3, 0.12, math.sin(a) * 0.3), (math.cos(a) * 0.55, 0.0, math.sin(a) * 0.55)], [0.085 - 0.006 * k, 0.07, 0.04], pole, seg=4, name='hl_root'))
     A(meta([((0, 0.0, 0), 0.42), ((0.12, 0.12, 0.05), 0.3)], res=0.1, m=M['flesh'], target=90, name='hl_base', clamp=lambda p: (p[0], max(p[1], -0.03), p[2])))
     # the heart: a squashed sphere with an apex, two atria on top, a crooked aorta, pulmonary stubs
     bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=10, v_segments=7, radius=1.0)
