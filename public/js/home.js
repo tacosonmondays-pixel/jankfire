@@ -11,6 +11,8 @@ import { showArmed, resizePreview, setPreviewRes } from './preview.js';
 import { modeThumb } from './modeart.js';
 import { fleshFrame } from './flesh.js';
 import { organic, organicRedraw } from './organic.js';
+import { weaponIcon, iconWaits } from './icons.js';
+import { whenGlb } from './glbkit.js';
 import { navPic, navGunPic } from './navicons.js'; // the side menu's little 3D props
 import { containerPic } from './crate3d.js';
 
@@ -65,8 +67,11 @@ function navIcons() {
     else if (k === 'crates') u = containerPic('crate');
     else u = navPic(k);
     if (u && im.getAttribute('src') !== u) im.src = u;
+    const w = iconWaits(); // drawn while its model was still coming (the loading cube): again when it lands
+    if (w && !navWait) { navWait = true; whenGlb(w, () => { navWait = false; navIcons(); }); }
   }
 }
+let navWait = false;
 // other screens get the crunchy preview back
 export function homeLeft() { setPreviewRes(0.5); }
 // a skin model that downloaded late: put it in the hero's hands
