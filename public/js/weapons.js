@@ -17,6 +17,7 @@ import { hud } from './hud.js';
 import { tracerColor, emitSkinFx } from './skins.js';
 import { ANIMS, sample, sampleCh, eventsBetween, inspectFor, drawFor } from './anim.js';
 import { newTwirl, resetTwirl, twirling, spin, settle, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
+import { partsShot, stepParts } from './glbkit.js';
 import { weaponIcon, clearIcons, itemIcon } from './icons.js';
 import { tickScalesVM } from './scales.js';
 import { PARRY } from '/shared/weapons.js';
@@ -230,7 +231,8 @@ function adsPose(id, m) {
   if (adsCache.has(key)) return adsCache.get(key);
   let pose;
   const sg = g.userData.sight;
-  if (sg) pose = [0, -sg.y * s, -EYE_RELIEF - sg.z * s]; // sight line exactly through the middle
+  if (g.userData.adsPose) pose = g.userData.adsPose.slice(); // a Blender model with no sights says where it sits while aiming
+  else if (sg) pose = [0, -sg.y * s, -EYE_RELIEF - sg.z * s]; // sight line exactly through the middle
   else {
     // no sights: keep the whole thing under (and a bit right of) the middle of the screen.
     // measured in the gun's own space (no wrap, viewmodel root or scale), so * s below is the only scaling
@@ -751,6 +753,7 @@ function fireHitscan(id, now) {
   if (id === 'shotgun') W.cycle = { name: 'pump_shotgun', t: 0.22 };
   if (id === 'sniper' || id === 'scythe_rifle') W.cycle = { name: 'bolt_sniper', t: 0.32 };
   if (w.fanHammer) revolverShot(w, now);
+  if (models[id]) partsShot(models[id].g); // Blender guns: turn the cylinder, drop the hammer
   if (id === 'sniper' || id === 'shotgun') G.shake = Math.max(G.shake, 0.6);
   sfx.gun(id, null, id === 'redline' ? redlineK() : 0);
   if (w.mag && W.ammo[id] <= 0) reload();
@@ -1369,6 +1372,7 @@ export function updateWeapons(dt, now) {
   if (W.inspectSpin > 0) { W.inspectSpin = Math.max(0, W.inspectSpin - dt * 0.8); if (m.g.userData.barrels) m.g.userData.barrels.rotation.z += W.inspectSpin * dt * 30; }
   m.wrap.scale.setScalar(scale);
   if (m.g.userData.barrels) m.g.userData.barrels.rotation.z += W.spin * dt * 40;
+  stepParts(m.g, dt, an, at); // Blender guns: rack the pump, settle the cylinder + hammer, cycle the bolt
   if (blowing || (spinning && W.spin >= 1 && W.held)) { px += (Math.random() - 0.5) * 0.008; py += (Math.random() - 0.5) * 0.008; }
   if (id === 'shredder') shredderVM(m, dt, now, (a, b, c, d, e, f) => { px += a; py += b; pz += c; rx += d; ry += e; rz += f; });
   m.wrap.visible = !(id === 'slipper' && W.slipperOut) && !W.scoped && !ME.dashing;
