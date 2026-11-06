@@ -1,6 +1,12 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '5.4', date: '2026-11-06', title: 'ISLANDS, REBUILT', items: [
+    'ISLANDS got rebuilt from scratch: Mount Kaboom in the middle (a tiki village, a lava crater and a human cannonball pad), the Soggy Biscuit shipwreck with a crow\'s nest, a climbable lighthouse, Fort Splinter and Skull Rock, joined by rope bridges, a pier and sandbars.',
+    'shallows round every beach, so you fall in the sea a lot less (the old Islands lost most deaths to falls). if you do go in, you sleep with the fishes.',
+    'Islands has its own Plant & Defuse version: the Treasure Tour. tourists attack, pirates defend; A is the wreck, B is the lighthouse.',
+    'fixed: an AFK bomb carrier could stall a Plant & Defuse round. bots that fall in the sea grapple back to land.',
+  ] },
   { v: '5.3', date: '2026-11-06', title: 'SKYLINE, REBUILT', items: [
     'SKYLINE got rebuilt from scratch: towers above the dusk city, joined by sky bridges and cranes, with a rooftop park, a putt-putt course, a long neon corridor and helipads.',
     'Skyline has its own Plant & Defuse version now: A is the helipad, B is the observatory.',

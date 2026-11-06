@@ -1,6 +1,6 @@
 // JANKFIRE client entry: menus, modes, input, net handlers and the main loop.
 import * as THREE from 'three';
-import { BOXES, MAPS, MAP_ORDER } from '/shared/map.js';
+import { BOXES, MAP, MAPS, MAP_ORDER } from '/shared/map.js';
 import { WEAPONS, ORDER, SLOTS, FLAGS, SLIP_TIME, HIPFIRE, BOT_DIFF, MODES, STREAKS, ITEMS, ITEM_ORDER, validLoadout, validStreaks } from '/shared/weapons.js';
 import { streakIcon } from './icons.js';
 import { stepProjectile, raycast } from '/shared/physics.js';
@@ -1517,7 +1517,8 @@ net.on('kill', (m) => {
   if (m.w === 'void' && m.pit) { // the shredder pit
     parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], ['  fed to the shredder', '#ff5a3a']] : [[vn, vc], ['  fed themselves to the shredder', '#ff5a3a']];
   } else if (m.w === 'void') {
-    parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], ['  into the void', '#aaa']] : [[vn, vc], ['  fell into the void', '#aaa']];
+    const sea = MAPS[MAP.id] && MAPS[MAP.id].sea; // (sea maps: you went in the water)
+    parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], [sea ? '  into the sea' : '  into the void', '#aaa']] : [[vn, vc], [sea ? '  sleeps with the fishes' : '  fell into the void', '#aaa']];
   } else if (m.w === 'tbag' && m.k === 0) {
     parts = [[vn, vc], ['  t-bagged too hard and exploded', '#ff9a3a']];
   } else if (m.w === 'cough') {
@@ -1554,9 +1555,9 @@ net.on('kill', (m) => {
     if (m.k && m.k !== G.myId && S.killcam !== false && G.mode !== 'training') queueKillcam(m.k, via);
     if (m.k) {
       hud.dead(true, m.w === 'void'
-        ? [[kn, kc], [m.pit ? ' fed you to the shredder' : ' knocked you into the void', '#fff'], [`  (${wname(via)})`, wcolor(via)]]
+        ? [[kn, kc], [m.pit ? ' fed you to the shredder' : MAPS[MAP.id] && MAPS[MAP.id].sea ? ' knocked you into the sea' : ' knocked you into the void', '#fff'], [`  (${wname(via)})`, wcolor(via)]]
         : [['killed by ', '#fff'], [kn, kc], [`  (${wname(via)})`, wcolor(via)]]);
-    } else hud.dead(true, [[m.w === 'void' ? (m.pit ? 'the shredder ate you. it was not hungry.' : 'you fell into the void') : m.w === 'tbag' ? 'you t-bagged too hard. your knees exploded.' : 'you smoked too much', '#fff']]);
+    } else hud.dead(true, [[m.w === 'void' ? (m.pit ? 'the shredder ate you. it was not hungry.' : MAPS[MAP.id] && MAPS[MAP.id].sea ? 'you sleep with the fishes now' : 'you fell into the void') : m.w === 'tbag' ? 'you t-bagged too hard. your knees exploded.' : 'you smoked too much', '#fff']]);
     if (carK) hud.dead(true, carK.dead);
     else if (m.w === 'hr') hud.dead(true, hrDead());
     const gd = gearDeathLine(m);
