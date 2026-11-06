@@ -14,7 +14,7 @@ const CAR = [[-2.2, 0.3, -0.92, 2.2, 0.95, 0.92], [-1.1, 0.95, -0.8, 0.9, 1.55, 
 function wreck(B, x, y, z, yaw4, r, id = 'carwreck') {
   const L = B.local(x, z, yaw4, y);
   for (const [a, b, c, d, e, f] of CAR) L(a, b, c, d, e, f, 'rust', { hide: true });
-  L.P(id, 0, 0, 0, (r() - 0.5) * 0.3, 1, (r() * 8) | 0);
+  L.P(id, 0, 0, 0, -Math.PI / 2 + (r() - 0.5) * 0.3, 1, (r() * 8) | 0); // the model's front is -z, the boxes' +x
 }
 
 export function commute(B, d) {

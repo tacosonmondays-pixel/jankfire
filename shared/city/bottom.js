@@ -115,7 +115,7 @@ function lostFound(B) {
   // front: two pillars and a big lintel with the sign; the middle is wide open
   B.add(x0, y, z1 - 0.6, x0 + 10, y + H, z1, 'brick', { tint: 0xffb3c7 }); B.add(x1 - 10, y, z1 - 0.6, x1, y + H, z1, 'brick', { tint: 0xffb3c7 });
   B.add(x0 + 10, y + 7.5, z1 - 0.6, x1 - 10, y + H, z1, 'brick', { tint: 0xf8c0d0 });
-  B.prop('lostfound_sign', (x0 + x1) / 2, y + 8.2, z1 + 0.05, 0, 1, 0); B.light((x0 + x1) / 2, y + 7, z1 + 3, 0xffe14d, 12, 1);
+  B.prop('lostfound_sign', (x0 + x1) / 2, y + 8.2, z1 + 0.05, Math.PI, 1, 0); B.light((x0 + x1) / 2, y + 7, z1 + 3, 0xffe14d, 12, 1);
   // roof with a collapsed hole over the middle (light falls on the Machine)
   B.add(x0, y + H, z0, x1, y + H + 0.4, z0 + 9, 'concrete'); B.add(x0, y + H, z0 + 17, x1, y + H + 0.4, z1, 'concrete');
   B.add(x0, y + H, z0 + 9, x0 + 16, y + H + 0.4, z0 + 17, 'concrete'); B.add(x1 - 16, y + H, z0 + 9, x1, y + H + 0.4, z0 + 17, 'concrete');
@@ -123,13 +123,13 @@ function lostFound(B) {
   rubble(B, (x0 + x1) / 2 + 6, y + 0.15, z0 + 13, 4, r);
   // the Machine at the back, the returns counter, shelves of lost things, a mezzanine with stairs
   B.add(-195, y + 0.15, z0 + 1, -183, y + 7.2, z0 + 5, 'metal', { hide: true }); // the Machine's collision
-  B.prop('machine', -189, y + 0.15, z0 + 3.2, 0, 1, 0); B.light(-189, y + 4, z0 + 7, 0xff4fd8, 18, 1.4); B.light(-189, y + 2, z0 + 6, 0x4fd8ff, 10, 0.8); B.light(-189, y + 10, z0 + 13, 0xb0a0ff, 14, 0.6); // the Machine glows; moonlight through the hole
-  B.add(x0 + 4, y + 0.15, z0 + 14, x0 + 16, y + 1.1, z0 + 15.2, 'wood'); B.prop('returns_counter', x0 + 10, y + 0.15, z0 + 14.6, 0, 1, 0);
+  B.prop('machine', -189, y + 0.15, z0 + 3.2, Math.PI, 1, 0); // (models face -z: turned to face the depot's open front) B.light(-189, y + 4, z0 + 7, 0xff4fd8, 18, 1.4); B.light(-189, y + 2, z0 + 6, 0x4fd8ff, 10, 0.8); B.light(-189, y + 10, z0 + 13, 0xb0a0ff, 14, 0.6); // the Machine glows; moonlight through the hole
+  B.add(x0 + 4, y + 0.15, z0 + 14, x0 + 16, y + 1.1, z0 + 15.2, 'wood'); B.prop('returns_counter', x0 + 10, y + 0.15, z0 + 14.6, Math.PI, 1, 0);
   for (let i = 0; i < 4; i++) { const sx = x1 - 6 - i * 0.01; B.add(sx - 1.2, y + 0.15, z0 + 4 + i * 4.5, sx, y + 3.2, z0 + 7 + i * 4.5, 'metal', { tint: 0x9aa8b8 }); B.prop('lostpile', sx - 3, y + 0.15, z0 + 5.5 + i * 4.5, r() * 6.28, 1, i); }
   B.add(x0 + 0.6, y + 4.2, z0 + 0.6, x0 + 12, y + 4.5, z0 + 12, 'wood'); // mezzanine: the bunks (the safehouse)
   stairsZ(B, x0 + 12.2, x0 + 13.6, z0 + 12.5, -1, y + 0.15, y + 4.5, 'metal');
   B.prop('bed', x0 + 3, y + 4.5, z0 + 3, 0, 1, 0); B.prop('locker', x0 + 8, y + 4.5, z0 + 1.2, 0, 1, 3); B.prop('wardrobe', x0 + 10.5, y + 4.5, z0 + 1.4, 0, 1, 0);
-  B.prop('garagedoor', x1 - 5, y + 0.15, z1 - 0.1, 0, 1, 0);
+  B.prop('garagedoor', x1 - 5, y + 0.15, z1 - 0.1, Math.PI, 1, 0);
   bulbs(B, [x0 + 2, y + 9.5, z1 - 2], [x1 - 2, y + 9.5, z0 + 3], rng(77)); bulbs(B, [x1 - 2, y + 9.5, z1 - 2], [x0 + 2, y + 9.5, z0 + 3], rng(78));
   // the way in: steps from terrace 1 up to the depot floor (it covers terrace 2's lip)
   stairsZ(B, x0 + 12, x1 - 12, z1 + flightLen(y + 0.15 - yOf(1)), -1, yOf(1), y + 0.15, 'concrete');

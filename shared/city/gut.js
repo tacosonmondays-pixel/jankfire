@@ -284,7 +284,7 @@ export function border(B, d) {
   }
   // the gate: the arch at the top of the Long Stairs, flesh-swallowed pastel, the Gristle & Sons sign over it
   if (B.inside(G.x, G.z)) {
-    B.prop('gutgate', G.x, y, G.z, 0, 1, 0);
+    B.prop('gutgate', G.x, y, G.z, Math.PI, 1, 0); // faces the Long Stairs (south)
     B.add(G.x - 9, y, G.z - 1.5, G.x - 6, y + 12, G.z + 1.5, 'flesh', { hide: true }); B.add(G.x + 6, y, G.z - 1.5, G.x + 9, y + 12, G.z + 1.5, 'flesh', { hide: true });
     B.add(G.x - 9, y + 10, G.z - 1.5, G.x + 9, y + 13, G.z + 1.5, 'flesh', { hide: true });
     B.out.marks.push({ id: 'gut:stairs_top', p: [G.x, y, G.z + 6], face: 0 });
