@@ -194,11 +194,30 @@ export const sfx = {
       case 'minigun': noise(0.05, 0.4, 'lowpass', 4000, 500, pos); break;
       case 'revolver': noise(0.35, 0.9, 'lowpass', 6000, 150, pos); tone('square', 1200, 300, 0.06, 0.2, pos); break;
       case 'sniper': sfx.sniper(pos); break;
+      // the sidearms: Plan B a crisp snap, Lefty & Righty a light tinny brrt (two at once = a buzz), Half a Shotgun a huge boom
+      case 'pistol': noise(0.16, 0.75, 'lowpass', 5200, 220, pos); tone('square', 950, 240, 0.045, 0.2, pos); noise(0.03, 0.3, 'highpass', 4000, 7000, pos); break;
+      case 'akimbo': noise(0.065, 0.45, 'lowpass', 5600, 500, pos); tone('square', 340 + Math.random() * 60, 130, 0.04, 0.15, pos); break;
+      case 'sawnoff': noise(0.6, 1, 'lowpass', 2200, 60, pos); tone('sine', 75, 24, 0.45, 0.95, pos); noise(0.06, 0.6, 'highpass', 2500, 5000, pos); tone('square', 220, 90, 0.08, 0.25, pos, 0.02); break;
       default: noise(0.1, 0.5, 'lowpass', 3000, 300, pos);
     }
   },
   reload() { tone('square', 400, 380, 0.04, 0.12); tone('square', 250, 240, 0.05, 0.12, null, 0.18); },
   empty() { tone('square', 900, 900, 0.02, 0.1); },
+  // sidearm reload bits (sidearms.js): mags, slides, the sawed-off breaking open, shells popping out and thumbed in
+  mech(k, pos) {
+    switch (k) {
+      case 'magOut': tone('square', 620, 480, 0.03, 0.1, pos); noise(0.05, 0.25, 'bandpass', 1800, 1200, pos, 0.02, 2); break;
+      case 'magIn': tone('square', 380, 300, 0.03, 0.16, pos); noise(0.04, 0.35, 'lowpass', 2200, 400, pos); tone('square', 900, 850, 0.015, 0.08, pos, 0.04); break;
+      case 'slideBack': noise(0.07, 0.25, 'bandpass', 2600, 1600, pos, 0, 3); tone('square', 1300, 1100, 0.02, 0.07, pos); break;
+      case 'slideHome': tone('square', 1500, 700, 0.03, 0.16, pos); noise(0.05, 0.35, 'highpass', 2500, 5000, pos); break;
+      case 'rack': noise(0.05, 0.3, 'bandpass', 2400, 1500, pos, 0, 3); tone('square', 1200, 600, 0.025, 0.12, pos, 0.05); break;
+      case 'break': tone('square', 300, 170, 0.06, 0.18, pos); noise(0.08, 0.35, 'bandpass', 1400, 700, pos, 0, 2); break;
+      case 'eject': for (let i = 0; i < 2; i++) { tone('sine', 1500 + i * 220, 1200, 0.05, 0.12, pos, 0.02 + i * 0.05); noise(0.04, 0.2, 'bandpass', 900, 600, pos, 0.03 + i * 0.05, 2); } break;
+      case 'thumb': noise(0.05, 0.3, 'lowpass', 1500, 300, pos); tone('square', 520, 430, 0.025, 0.1, pos, 0.03); break;
+      case 'close': tone('square', 260, 120, 0.08, 0.3, pos); noise(0.1, 0.55, 'lowpass', 2600, 200, pos); tone('square', 1800, 1500, 0.015, 0.08, pos, 0.01); break;
+      case 'cock': tone('square', 1700, 1300, 0.02, 0.12, pos); tone('square', 900, 700, 0.025, 0.1, pos, 0.04); break;
+    }
+  },
   hammer(pos) { tone('square', 2300, 1500, 0.018, 0.12, pos); noise(0.025, 0.35, 'highpass', 3500, 6000, pos); }, // fanning: slap the hammer back
   twirl(pos) { noise(0.2, 0.16, 'bandpass', 700, 2400, pos, 0.02, 2.5); tone('square', 320, 260, 0.025, 0.06, pos, 0.24); }, // whirr round the finger, tk into the palm
   clatter(pos) { for (let i = 0; i < 10; i++) { const f = 2000 + Math.random() * 3600; tone('sine', f, f * 0.9, 0.04, 0.1, pos, i * 0.028 + Math.random() * 0.03); } noise(0.3, 0.18, 'highpass', 3000, 5000, pos); }, // a pile of marbles going everywhere

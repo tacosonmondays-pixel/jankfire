@@ -431,6 +431,7 @@ export function inspectFor(id, model) {
   return SPECIAL.has(id) ? 'inspect_' + id : 'inspect_gun';
 }
 SPECIAL.add('shredder'); // inspect_shredder
+for (const id of ['pistol', 'akimbo', 'sawnoff']) SPECIAL.add(id); // their inspects live in sidearms.js
 
 // overdrive rig: the giant mechanical forearms that replace your guns (rigarms.js plays these). arm: which forearm the
 // keys move ('both' = the two, mirrored). offsets are camera space, on top of the arms' rest pose
@@ -452,6 +453,7 @@ SPECIAL.add('bloodcross'); // the Blood Cross blows the blood off its fingertip,
 const HEAVY = new Set(['minigun', 'blower', 'bowling', 'chicken']);
 export function drawFor(id, model) {
   if (model && ANIMS['draw_' + model]) return 'draw_' + model;
+  if (ANIMS['draw_' + id]) return 'draw_' + id; // weapons with their own draw (the sidearms add theirs in sidearms.js)
   if (id === 'bloodcross') return 'draw_bloodcross';
   if (id === 'knife') return 'draw_knife';
   if (id === 'katana') return 'draw_katana';

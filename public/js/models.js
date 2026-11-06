@@ -1384,6 +1384,7 @@ export function buildWeapon(id, skin) {
     if (Array.isArray(mt.ads) && mt.ads.every(Number.isFinite)) g.userData.adsPose = mt.ads; // no sights: its own aiming pose
     if (mt.hatAt) g.userData.hatAt = mt.hatAt; else delete g.userData.hatAt;
     g.userData.glb = 'blender';
+    g.userData.jf = mt; // the sidearms read their moving parts' names from it (sidearms.js)
     g.userData.wid = 'bl_' + id; // wrap zones come from the Blender parts' own names (_wzA / _wzB / _wzN), not the code model's rule
     bindAuthored(g, mt); // needle, vents, barrels + the pump / cylinder / hammer / bolt that the viewmodel moves
     applySkin(g, skin);

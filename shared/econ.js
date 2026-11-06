@@ -55,6 +55,9 @@ export const PRICES = {
   banana: { price: 1400, kill: 650, shots: 45 },
   // secondary
   revolver: { price: 250, kill: 250, pen: 0.5, mags: 4 },
+  pistol: { price: 200, kill: 300, pen: 0.35, mags: 4 }, // Plan B: cheap and steady
+  akimbo: { price: 850, kill: 400, pen: 0.1, mags: 3 }, // Lefty & Righty (a magazine = both hands' 40)
+  sawnoff: { price: 700, kill: 750, pen: 0, mags: 7 }, // Half a Shotgun (2 shells a magazine: 14 spare)
   marbles: { price: 900, kill: 400, pen: 0, mags: 5 },
   cig: { price: 450, kill: 900 },
   blower: { price: 600, kill: 1000 },

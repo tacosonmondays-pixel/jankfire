@@ -910,9 +910,10 @@ function aimDown() {
   if (W.cur === 'cards') { cycleCard(); return; }
   if (heavyAttack()) return; // knife: right click is the heavy stab
   if (parry()) return; // katana: right click parries
+  if (W.cur === 'akimbo') { W.aimHeld = true; return; } // Lefty & Righty: right click is the right gun's trigger (never a toggle)
   if (S.toggleAim) W.aimHeld = !W.aimHeld; else W.aimHeld = true;
 }
-function aimUp() { if (!S.toggleAim) W.aimHeld = false; }
+function aimUp() { if (!S.toggleAim || W.cur === 'akimbo') W.aimHeld = false; }
 
 addEventListener('keydown', (e) => {
   if (!inGame() || document.activeElement === $('name')) return;
@@ -1524,7 +1525,7 @@ net.on('fx', (m) => {
     if (!w) return;
     if (r && w.fanHammer) r.revShot(!!m.fan); // their revolver twirls too
     const fast = w.rate > 8;
-    const mz = r ? r.muzzle() : null;
+    const mz = r ? r.muzzle(m.hd === 1) : null; // hd: the left gun of Lefty & Righty
     const color = () => tracerColor((G.skins.get(m.id) || {})[m.w], w.tracer || 0xfff0a0);
     if (w.marbles) {
       const sk = (G.skins.get(m.id) || {})[m.w];

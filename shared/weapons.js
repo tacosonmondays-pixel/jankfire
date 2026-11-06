@@ -127,7 +127,7 @@ export const WEAPONS = {
     slot: 'secondary', kind: 'hitscan', name: 'Half a Shotgun', color: '#e05a3a',
     desc: 'Somebody sawed a shotgun in half. Two shells, and point blank they go flying. Shoot the floor for a little hop.',
     rate: 1 / 0.3, mag: 2, reload: 2.3, pellets: 12, dmg: 9, head: 1.3, spread: 0.11,
-    kb: 3.4, kbUp: 9, recoil: 11, kick: 0.09, range: 32, tracer: 0xffa060,
+    kb: 3.4, kbUp: 9, recoil: 10, kick: 0.09, range: 32, tracer: 0xffa060,
     ads: { zoom: 1.12, spread: 0.7, p: [0, -0.1, -0.3] },
   },
   marbles: {

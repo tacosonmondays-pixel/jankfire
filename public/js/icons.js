@@ -33,6 +33,9 @@ export function weaponIcon(id, skin) {
     const flat = id === 'cards' || id === 'reverse' || g.userData.faceOn; // flat things look at you, everything else side-on
     g.rotation.y = flat ? 0 : -Math.PI / 2; // muzzle to the right, like an inventory picture
     holder.add(g);
+    if (id === 'akimbo') { // Lefty & Righty: the pair, one behind the other and a bit up, muzzles crossed like a poster
+      const g2 = buildWeapon(id, skin); g2.rotation.set(0.32, Math.PI / 2, 0); g2.position.set(0.24, 0, -0.06); g.rotation.x = 0.32; holder.add(g2);
+    }
     holder.rotation.x = flat ? -0.15 : 0.28; // a little from above
     holder.rotation.z = flat ? 0 : 0.06;
     scene.add(holder);

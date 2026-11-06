@@ -552,14 +552,16 @@ const M = {
     if (!e || !p.alive || !has(WEAPONS, m.w)) return;
     const x = this.econInst(p, m.w), w = WEAPONS[m.w];
     if (!x || !x.cl || x.m >= w.mag || x.r <= 0 || (e.rl && e.rl.u === x.u)) return;
-    e.rl = { u: x.u, at: now() + w.reload * 750, ms: w.reload * 1000 };
+    // Lefty & Righty reloads a hand at a time: n = that hand's rounds (at most half the pair's magazine)
+    const n = w.hands ? Math.max(1, Math.min(Math.floor(w.mag / w.hands), Math.floor(Number(m.n)) || 0)) : 0;
+    e.rl = { u: x.u, at: now() + w.reload * 750, ms: w.reload * 1000, n };
   },
   econFinishReload(p) {
     const e = p.ec, rl = e.rl;
     e.rl = null;
     const x = Object.values(e.sl).find((y) => y && y.u === rl.u);
     if (!x || !x.cl) return;
-    const mv = Math.min(WEAPONS[x.id].mag - x.m, x.r);
+    const mv = Math.min(WEAPONS[x.id].mag - x.m, x.r, rl.n || Infinity);
     x.m += mv; x.r -= mv;
     this.econAm(p, x);
   },
