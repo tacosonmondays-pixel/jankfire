@@ -452,7 +452,7 @@ const VM = {
   bowling: { p: [0.24, -0.24, -0.42], r: [0, 0.04, 0], s: 0.6 },
   banana: { p: [0.2, -0.2, -0.38], r: [0, 0.05, 0], s: 0.8 },
   revolver: { p: [0.17, -0.16, -0.32], r: [0, 0.06, 0], s: 1.0 },
-  pistol: { p: [0.165, -0.155, -0.31], r: [0, 0.06, 0], s: 1.0 },
+  pistol: { p: [0.165, -0.155, -0.31], r: [0, 0.06, 0], s: 1.0, handGlb: [0.004, -0.042, -0.008] }, // a real 1911's grip sits further forward
   akimbo: { p: [0.215, -0.165, -0.4], r: [0, 0.13, 0], s: 0.8 }, // the right gun; the left one is this mirrored
   sawnoff: { p: [0.19, -0.18, -0.34], r: [0, 0.05, 0], s: 0.85 },
   cig: { p: [0.15, -0.17, -0.3], r: [0.15, 0.6, 0.2], s: 1.1 },
@@ -505,7 +505,7 @@ export function rebuildViewmodels() {
     g.scale.setScalar(cfg.s);
     wrap.add(g);
     const hand = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.062, 0.09), M(0xf1c27d)); // a fist, not a brick
-    hand.position.set(...(cfg.hand || [0.004, -0.042, 0.03]));
+    hand.position.set(...((g.userData.glb === 'blender' && cfg.handGlb) || cfg.hand || [0.004, -0.042, 0.03])); // handGlb: the Blender model's grip sits elsewhere
     wrap.add(hand);
     if (g.userData.bare) { hand.visible = false; g.add(g.userData.bare); } // Blood Cross: the hand is the weapon (+ your forearm)
     wrap.position.set(...cfg.p);

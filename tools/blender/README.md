@@ -38,6 +38,8 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 | `make_banana.py` | `w_banana.glb` | AKS-74U pattern, x1.1, a real banana as the banana mag, peel muzzle |
 | `make_marbles.py` | `w_marbles.glb` | flintlock blunderbuss pistol, x1.1, mason-jar marble hopper |
 | `make_akimbo.py` | `w_akimbo.glb` | MAC-10 pattern (stock pushed in), x1.1, one gun the game puts in both hands: `cocker` knob node (snaps back per shot), `mag` node (origin at its base, slides out along `dir`), `tags` L / R sticker nodes (one shows per hand). `-- --qa` runs the asset-QA gate on every part |
+| `make_sawnoff.py` | `w_sawnoff.glb` | 12 ga side-by-side hammer coach gun, sawn off (300 mm barrels, stock cut to a pistol grip), x1.0: `hinge_wzB` node (the barrels break open round the pin; `forend_wzA`, `shell1_wzN` / `shell2_wzN` ride on it), `hammerR_wzN` / `hammerL_wzN` (modelled cocked, the game drops them 0.75 rad onto the strikers) |
+| `make_pistol.py` | `w_pistol.glb` | Plan B: 1911A1 / Government pattern .45 (5in), x1.5 like the revolver: `slide_wzB` (kicks back / locks open, the gold barrel stays and pokes out), `mag_wzB` (origin at the base pad's middle, slides out along `dir` = the 18 degree grip rake), `hammer_wzN` (ring hammer modelled cocked, origin on its pin). Gold-filled roll marks (PLAN B / TOLD YOU SO), pearl grips with B medallions |
 | `make_car.py` | `p_car.glb` | sedan, paint material `car_paint` (recoloured per car) |
 | `make_bus.py` | `p_bus.glb` | conventional school bus |
 | `make_forklift.py` | `p_forklift.glb` | counterbalance forklift |

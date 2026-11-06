@@ -134,6 +134,31 @@ def turn(objs, pivot, a):  # rotate objects about the game x axis through pivot 
     for o in objs: o.matrix_world = M @ o.matrix_world
 
 
+def tidy(o):  # apply the modifiers and dissolve the hair-thin faces bevels + booleans leave behind
+    apply_mods(o)
+    n = max(1, len(o.data.materials))
+    for p in o.data.polygons:
+        if p.material_index >= n: p.material_index = 0  # (side()'s own hole boolean leaves junk indices too)
+    bm = bmesh.new(); bm.from_mesh(o.data)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=2e-6)
+    bmesh.ops.dissolve_degenerate(bm, dist=2e-6, edges=bm.edges)
+    bm.to_mesh(o.data); bm.free()
+    return o
+
+
+def uv_face_planar(o, center, size, axis):
+    """lib's uv_planar, but only on the faces that look along axis ('-x' or 'z'); the rest keep their box UVs"""
+    me = o.data; uv = me.uv_layers.active.data; mw = o.matrix_world; R = mw.to_3x3()
+    su, sv = size if isinstance(size, (tuple, list)) else (size, size)
+    for poly in me.polygons:
+        n = R @ poly.normal
+        if (axis == '-x' and n.x > -0.9) or (axis == 'z' and -n.y < 0.9): continue
+        for li in poly.loop_indices:
+            v = mw @ me.vertices[me.loops[li].vertex_index].co
+            u, w = (-v.y - center[2], v.z - center[1]) if axis == '-x' else (v.x - center[0], v.z - center[1])
+            uv[li].uv = (u / su + 0.5, w / sv + 0.5)
+
+
 def adopt(child, parent):  # child node that moves with its parent (keeps where it is)
     bpy.context.view_layer.update()
     child.parent = parent; child.matrix_parent_inverse = parent.matrix_world.inverted()
@@ -165,12 +190,12 @@ def ramp(v, stops):
 def tex_case(name, size=64, seed=21):
     """colour case hardening: swirled patches of blue, purple, straw and amber over grey steel (turned up for fun)"""
     r = np.random.default_rng(seed)
-    w = smooth_noise(r, size, 4)
-    n = 0.55 * smooth_noise(r, size, 4) + 0.3 * smooth_noise(r, size, 8) + 0.15 * smooth_noise(r, size, 16)
-    s = np.sin(2 * math.pi * (2.0 * n + 1.1 * w)) * 0.5 + 0.5  # the swirl bands
-    v = 0.5 * n + 0.5 * s; v = (v - v.min()) / (np.ptp(v) + 1e-6)
-    px = ramp(v, [(0.0, 0x1a2470), (0.16, 0x3550c8), (0.3, 0x7a46b0), (0.42, 0x8c8a9c), (0.54, 0xcfd2da), (0.64, 0xe6c068), (0.76, 0xc07a30), (0.88, 0x3c8ad0), (1.0, 0x22306e)])
-    px *= (0.9 + 0.2 * r.random((size, size)))[..., None]  # crusty speckle
+    w1, w2 = smooth_noise(r, size, 4), smooth_noise(r, size, 4)
+    n = 0.6 * smooth_noise(r, size, 4) + 0.4 * smooth_noise(r, size, 8)
+    s = np.sin(2 * math.pi * (1.8 * n + 0.9 * w1 + 0.5 * w2)) * 0.5 + 0.5  # watered swirl bands
+    v = 0.35 * n + 0.65 * s; v = (v - v.min()) / (np.ptp(v) + 1e-6)
+    px = ramp(v, [(0.0, 0x161c40), (0.13, 0x24398a), (0.26, 0x3f6cc8), (0.38, 0x6c48a6), (0.5, 0x7a7a86), (0.62, 0xd0a24c), (0.74, 0x8a562c), (0.87, 0x2e4e98), (1.0, 0x1a1f36)])
+    px *= (0.96 + 0.08 * r.random((size, size)))[..., None]  # a little crust
     return tex_canvas(name, size, size, lambda a: a.__setitem__(slice(None), px))
 
 
@@ -194,7 +219,7 @@ def tex_sawcut(name, size=32, seed=9):  # bright raw steel with saw striations
     def draw(px):
         yy, xx = np.mgrid[0:size, 0:size].astype(np.float32)
         k = np.sin(xx * 1.3 + yy * 0.45 + np.sin(yy * 0.25) * 2) * 0.5 + 0.5
-        px[:] = hexrgb(0xdfe3ea)[None, None] * (0.72 + 0.3 * k[..., None]) * (0.9 + 0.15 * r.random((size, size)))[..., None]
+        px[:] = hexrgb(0xf4f6fa)[None, None] * (0.82 + 0.2 * k[..., None]) * (0.92 + 0.1 * r.random((size, size)))[..., None]
     return tex_canvas(name, size, size, draw)
 
 
@@ -202,10 +227,15 @@ def build():
     # ---------------- materials
     blued = mat('so_blued', 0x222a3c, rough=0.26, metal=0.8, tex=tex_noise('so_blued_t', 0x232c40, var=0.07, size=16, seed=31))
     ribtop = mat('so_ribtop', 0x1a1f2a, rough=0.62, metal=0.6, tex=tex_stripes('so_ribtop_t', 0x161a24, 0x262c3a, size=16, width=1, diag=False))
-    case = mat('so_case', 0xa0a4b0, rough=0.22, metal=0.85, tex=tex_case('so_case_t', 64, 21))
-    case2 = mat('so_case_ham', 0xa0a4b0, rough=0.2, metal=0.85, tex=tex_case('so_case_ham_t', 32, 47))
-    sawn = mat('so_cut', 0xdfe3ea, rough=0.32, metal=1.0, tex=tex_sawcut('so_cut_t'))
-    bore = mat('so_bore', 0x060607, rough=0.5, metal=0.3)
+    case = mat('so_case', 0x8a8e9a, rough=0.26, metal=0.75, tex=tex_case('so_case_t', 64, 21))
+    case2 = mat('so_hammer', 0x262e40, rough=0.22, metal=0.85, tex=tex_noise('so_hammer_t', 0x283044, var=0.08, size=16, seed=47))  # blued: they have to read when they drop
+    def chk(px):
+        yy, xx = np.mgrid[0:8, 0:8]; px[:] = np.where((((xx // 2) + (yy // 2)) % 2)[..., None] == 0, hexrgb(0x23262e), hexrgb(0x5a6070))
+    checker = mat('so_checker', 0x40444e, rough=0.5, metal=0.6, tex=tex_canvas('so_checker_t', 8, 8, chk))
+    glue = mat('so_glue', 0x8c8c92, rough=0.7)
+    sawn = mat('so_cut', 0xf0f2f6, rough=0.26, metal=1.0, tex=tex_sawcut('so_cut_t'))
+    bore = mat('so_bore', 0x030303, rough=1.0)
+    bore.node_tree.nodes['Principled BSDF'].inputs['Specular IOR Level'].default_value = 0.0  # no grazing sheen down the barrel
     chamber = mat('so_chamber', 0x34363c, rough=0.35, metal=0.8)
     breech = mat('so_breech', 0x9ca2ae, rough=0.24, metal=1.0, tex=tex_noise('so_breech_t', 0xa2a8b4, var=0.08, size=16, seed=33))
     screw = mat('so_screw', 0xd6dbe4, rough=0.16, metal=1.0)
@@ -244,41 +274,47 @@ def build():
     nm = (-math.sin(ry), math.cos(ry) * math.sin(rx), -math.cos(ry) * math.cos(rx))
     p0 = g(0, BY, MZ)
     cut(br, box((0.1, 0.1, 0.06), tuple(p0[i] + nm[i] * 0.03 for i in range(3)), None, rot=(rx, ry, 0)))
-    for sx in (-1, 1):
-        cut(br, cyl(0.00925, 0.33, g(sx * BX, BY, -170), None, seg=24))  # bore
-        cut(br, cyl(0.01045, 0.0712, g(sx * BX, BY, -46.4), None, seg=24))  # chamber
-        cut(br, cyl(0.01045, 0.0125, g(sx * BX, BY, -87.75), None, seg=24, r2=0.0092))  # forcing cone
-    rr = cut(cyl(0.0111, 0.0028, g(BX, BY, -12.4), None, seg=24), cyl(0.0111, 0.0028, g(-BX, BY, -12.4), None, seg=24), 'UNION')
-    cut(br, rr)  # rim recesses (one cutter: they overlap a hair between the barrels)
+    # bored in one go: each barrel's rim recess, chamber, forcing cone and bore as one stepped cutter (separate
+    # coaxial cutters left slivers where their walls met), the two unioned first (the recesses overlap between the barrels)
+    bp = [(r / 1000, z / 1000) for r, z in [(11.15, -11.0), (11.15, BF - 1.5), (10.45, BF - 1.5), (10.45, -82.0), (9.25, -94.0), (9.25, -335)]]
+    cut(br, cut(lathe(bp, g(BX, BY, 0), None, seg=24), lathe(bp, g(-BX, BY, 0), None, seg=24), 'UNION'))
     def plane_d(c): return sum((c[i] - p0[i]) * nm[i] for i in range(3))  # > 0 beyond the cut
     def barrel_pick(c, n):
         d = axis_dist(c)
         if n[2] < -0.95 and plane_d(c) > -0.0004: return 1  # the sawn face
-        if plane_d(c) > -0.0026 and d > 10.8 and abs(n[2]) < 0.3: return 1  # bright ring where the file deburred it
+        if plane_d(c) > -0.0049 and d > 10.8 and abs(n[2]) < 0.3: return 1  # bright ring where the file deburred it
         if d < 9.6 and abs(n[2]) < 0.5: return 2  # bore
         if d < 11.2 and abs(n[2]) < 0.9 and c[2] > -0.095: return 3  # chamber + forcing cone + recess walls
         if n[2] > 0.95 and c[2] > -0.0145: return 4  # breech face + recess floors
         if n[1] > 0.95 and c[1] > 0.033 and abs(c[0]) < 0.0045: return 5  # matted rib top
         return None
+    bm = bmesh.new(); bm.from_mesh(br.data)  # tidy the boolean slivers
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=2e-6)
+    bmesh.ops.dissolve_degenerate(bm, dist=2e-6, edges=bm.edges)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bad = (sum(len(e.link_faces) != 2 for e in bm.edges), sum(not e.is_contiguous for e in bm.edges if len(e.link_faces) == 2))
+    if any(bad): print('JF_WARN barrel solid: %d open/non-manifold edges, %d flipped' % bad)
+    bm.to_mesh(br.data); bm.free()
     uv_box(br, 0.04)
     face_mats(br, [sawn, bore, chamber, breech, ribtop], barrel_pick)
     btrim = split_mats(br, {'so_cut', 'so_bore'}, 'btrim')
     hinge = [br]
     # extractor: a bright plate between the rims under the bore line
-    ex = side_x([(x / 1000, y / 1000) for x, y in [(0, 17.2), (0.75, 15), (2.13, 13), (4.17, 11), (6.0, 9.6), (6.5, 7.5), (-6.5, 7.5), (-6.0, 9.6), (-4.17, 11), (-2.13, 13), (-0.75, 15)]], 0.0006, g(0, 0, BF - 0.25), screw)
+    ex = side_x([(x / 1000, y / 1000) for x, y in [(0, 17.2), (0.75, 15), (2.13, 13), (4.17, 11), (6.0, 9.6), (6.5, 7.5), (-6.5, 7.5), (-6.0, 9.6), (-4.17, 11), (-2.13, 13), (-0.75, 15)]], 0.0006, g(0, 0, BF - 0.05), screw)
     hinge.append(ex)
     trim = [btrim]
+    for sx in (-1, 1): trim.append(cyl(0.0092, 0.001, g(sx * BX, BY, -120), bore, axis='z', seg=24))  # dark down the bore, both ways
     # brass bead on a stem, near the cut
-    trim.append(ball(BEAD_R / 1000, g(0, BEAD_C, -302), brass, seg=12, rings=8))
+    trim.append(ball(BEAD_R / 1000, g(0, BEAD_C, -302), brass, seg=10, rings=6))
     trim.append(cyl(0.0011, 0.002, g(0, RIB_TOP + 0.6, -302), brass, axis='y', seg=8))
     # the dashed "cut here" line they drew... and then sawed somewhere else (crooked the other way)
     rng = random.Random(4)
     for sx in (-1, 1):
-        for k in range(13):
-            th = math.radians(-125 + k * 250 / 12) if sx > 0 else math.radians(180 - (-125 + k * 250 / 12))
+        for k in range(10):
+            th = math.radians(-125 + k * 250 / 9) if sx > 0 else math.radians(180 - (-125 + k * 250 / 9))
             x, y = sx * BX + 11.35 * math.cos(th), BY + 11.35 * math.sin(th)
             z = -296.5 - 0.06 * x + rng.uniform(-0.35, 0.35)
-            trim.append(box(g(2.6, 0.35, 2.2), g(x, y, z), dash, rot=(0, 0, th - math.pi / 2)))
+            trim.append(box(g(3.4, 0.35, 2.2), g(x, y, z), dash, rot=(0, 0, th - math.pi / 2)))
     for x in (-2.2, 2.0):
         trim.append(box(g(2.6, 0.35, 2.2), g(x, RIB_TOP + 0.15, -296.5 - 0.06 * x + 0.1), dash))
 
@@ -286,13 +322,13 @@ def build():
     fe = side(pz([(-45, 16), (-150, 16), (-158, 14), (-164, 9), (-166.5, 2), (-165, -4), (-160, -9), (-150, -12.5), (-120, -13.3), (-60, -13.3), (-46, -13.0)]), 0.036, (0, 0, 0), candy, bev=0.004, seg=3)
     taper_x(fe, -0.045, -0.166, 1.0, 32 / 36)
     arc_pts = [(PIN[2] - 16 * math.cos(math.radians(a)), PIN[1] + 16 * math.sin(math.radians(a))) for a in (-50, -33, -16, 0, 16)]
-    iron = side(pz([(-27.4, 16), (-46.5, 16), (-46.5, -13.2), (-26.0, -12.6)] + arc_pts), 0.035, (0, 0, 0), case, bev=0.0012, seg=2)
-    for o in (fe, iron):
+    iron = side(pz([(-27.4, 16), (-46.5, 16), (-46.5, -13.2), (-26.0, -12.6)] + arc_pts), 0.035, (0, 0, 0), case, bev=0.0012, seg=1)
+    for o, gap in ((fe, 0.25), (iron, 0.5)):
         apply_mods(o)
-        for sx in (-1, 1):  # carve the top to the barrels' shape (0.25 mm clear)
-            cut(o, lathe([((r + 0.25) / 1000, z / 1000) for r, z in [(11.5, -8), (11.5, -86), (11.38, -100), (11.25, -120), (11.15, -140), (11.15, -180)]], g(sx * BX, BY, 0), None, seg=24))
-        cut(o, box(g(8.4, 10, 200), g(0, 15.6, -90), None))  # room for the bottom rib
-    firon = [iron]
+        for sx in (-1, 1):  # carve the top to the barrels' shape (0.25 mm clear; the iron a bit more, so the two never share a surface)
+            cut(o, lathe([((r + gap) / 1000, z / 1000) for r, z in [(11.5, -8), (11.5, -86), (11.38, -100), (11.25, -120), (11.15, -140), (11.15, -180)]], g(sx * BX, BY, 0), None, seg=24))
+        cut(o, box(g(8.4 + gap, 10, 200), g(0, 15.6, -90), None))  # room for the bottom rib
+    firon = [tidy(iron)]
     firon.append(box(g(6, 1.2, 20), g(0, -13.6, -80), case, bev=0.0004))  # forend latch lever
     firon.append(box(g(6, 3.2, 3), g(0, -14.6, -90.5), case, bev=0.0005))
     for sx in (-1, 1): firon.append(cyl(0.0021, 0.0008, g(sx * 17.65, 1.5, -38), screw, axis='x', seg=10))
@@ -300,38 +336,40 @@ def build():
     # ======================================================== the shells (ride on the hinge), rims flush with the breech face
     shells = []
     for sx in (1, -1):
-        s = [cyl(0.0109, 0.0003, g(sx * BX, BY, BF - 0.15), headstamp, axis='z', seg=24)]
-        s.append(lathe([(r / 1000, z / 1000) for r, z in [(10.9, BF - 0.3), (10.9, BF - 1.4), (10.35, BF - 1.6), (10.35, BF - 12)]], g(sx * BX, BY, 0), brass, seg=24))
-        s.append(lathe([(r / 1000, z / 1000) for r, z in [(10.18, BF - 11.7), (10.18, BF - 66.5), (9.95, BF - 68.2), (9.0, BF - 69.4), (6.0, BF - 69.8), (0, BF - 69.0)]], g(sx * BX, BY, 0), hull, seg=24))
+        hd = lathe([(r / 1000, z / 1000) for r, z in [(10.95, BF), (10.95, BF - 1.4), (10.35, BF - 1.6), (10.35, BF - 12)]], g(sx * BX, BY, 0), brass, seg=20)
+        face_mats(hd, [headstamp], lambda c, n: 1 if n[2] > 0.9 and c[2] > (BF - 0.1) / 1000 else None)  # the base gets the headstamp
+        s = [hd]
+        s.append(lathe([(r / 1000, z / 1000) for r, z in [(10.18, BF - 11.7), (10.18, BF - 66.5), (9.95, BF - 68.2), (9.0, BF - 69.4), (6.0, BF - 69.8), (0, BF - 69.0)]], g(sx * BX, BY, 0), hull, seg=20))
         shells.append(s)
 
     # ======================================================== the action (static): body, knuckle, fences, hammer slots
     knuck = [(PIN[2] - 15.5 * math.cos(math.radians(a)), PIN[1] + 15.5 * math.sin(math.radians(a))) for a in (-90, -75, -60, -45)]
-    act = side(pz([(-12, 4), (-12, 26), (0, 26), (4, 27.5), (8, 30.5), (12, RIB_TOP), (56, RIB_TOP), (61, 32.5), (63.5, 30), (63.5, -11.5)] + knuck), 0.046, (0, 0, 0), case, bev=0.002, seg=3)
+    act = side(pz([(-12, 4), (-12, 26), (0, 26), (4, 27.5), (8, 30.5), (12, RIB_TOP), (56, RIB_TOP), (61, 32.5), (63.5, 30), (63.5, 23), (60.5, 19.5), (58.6, 13), (60, 6.5), (63.5, 3), (63.5, -11.5)] + knuck), 0.046, (0, 0, 0), case, bev=0.002, seg=2)
     taper_x(act, -0.012, 0.0635, 1.0, 41 / 46)
     slots = [box(g(7.6, 22, 36), g(sx * HAM[0], 30, 55), None) for sx in (-1, 1)]
     for c_ in slots: cut(act, c_, keep=True)
-    A(act)
+    A(tidy(act))
     for sx in (-1, 1):  # fences: the rounded shoulders round each barrel's breech
-        A(lathe([(r / 1000, z / 1000) for r, z in [(12.3, -11.8), (12.3, -9), (11.8, -5), (10.5, -1), (8.5, 3), (5.5, 6.5), (0.5, 8.5)]], g(sx * BX, BY, 0), case, seg=24))
+        A(lathe([(r / 1000, z / 1000) for r, z in [(12.3, -11.4 - 0.3 * (sx < 0)), (12.3, -9), (11.8, -5), (10.5, -1), (8.5, 3), (5.5, 6.5), (0.5, 8.5)]], g(sx * BX, BY, 0), case, seg=14))
         sxw = 23 - 2.5 * (66 / 75.5)
         A(cyl(0.0036, 0.0016, g(sx * 23.3, PIN[1], PIN[2]), screw, axis='x', seg=14, bev=0.0004))  # hinge pin heads
         A(cyl(0.0032, 0.0016, g(sx * (sxw + 0.3), HAM[1], HAM[2]), screw, axis='x', seg=14, bev=0.0004))  # hammer pivot pins
         A(lathe([(r / 1000, y / 1000) for r, y in [(2.6, 32.6), (2.6, 34.0), (1.9, 34.7), (0, 34.9)]], g(sx * 12, 0, 31), screw, seg=12, axis='y'))  # strikers
         A(cyl(0.0028, 0.0005, g(sx * BX, BY, -12.0), screw, axis='z', seg=14))  # firing pin bushings
-        A(cyl(0.0009, 0.0005, g(sx * BX, BY, -12.02), black, axis='z', seg=8))
-        A(cyl(0.0062, 0.00525, g(sx * 20.375, PIN[1], PIN[2]), case, axis='x', seg=20))  # knuckle cheeks round the pin
+        A(lathe([(r / 1000, z / 1000) for r, z in [(1.0, -11.4), (1.0, -12.27), (0.6, -12.33), (0, -12.36)]], g(sx * BX, BY, 0), black, seg=8))  # the pin tips
+        A(cyl(0.0062, 0.00485, g(sx * 20.175, PIN[1], PIN[2]), case, axis='x', seg=20))  # knuckle cheeks round the pin (a hair inside the action's side)
     # top lever: lies flat on the top strap between the hammers, thumb pad at the back
     A(box(g(7, 1.5, 40), g(0, RIB_TOP + 0.7, 38), blued, bev=0.0005))
-    A(cyl(0.005, 0.0015, g(0, RIB_TOP + 0.7, 18), blued, axis='y', seg=16, bev=0.0004))
-    A(cyl(0.0025, 0.0007, g(0, RIB_TOP + 1.6, 18), screw, axis='y', seg=10))
-    A(box(g(11, 1.6, 12), g(1.2, RIB_TOP + 0.8, 61), blued, bev=0.0006, rot=(0, -0.12, 0)))
-    for k in range(4): A(box(g(10, 0.5, 0.7), g(1.2, RIB_TOP + 1.75, 56.5 + k * 2.6), blued, rot=(0, -0.12, 0)))
+    A(cyl(0.005, 0.0024, g(0, RIB_TOP + 0.7, 18), blued, axis='y', seg=16, bev=0.0004))
+    A(cyl(0.0025, 0.0007, g(0, RIB_TOP + 1.95, 18), screw, axis='y', seg=10))
+    A(box(g(11, 1.6, 12), g(1.2, RIB_TOP + 1.05, 61), blued, bev=0.0006, rot=(0, -0.12, 0)))
+    for k in range(4): A(box(g(10, 0.5, 0.7), g(1.2, RIB_TOP + 2.0, 56.5 + k * 2.6), blued, rot=(0, -0.12, 0)))
     # trigger guard (blued) + two brass triggers (front = right barrel, back = left)
     A(side(pz([(3, -10.5), (3.2, -18), (5.5, -27), (11, -35), (20, -40.5), (34, -43), (48, -42.5), (58, -38.5), (65, -32), (69.5, -24), (72, -16), (60, -10.5)]), 0.008, (0, 0, 0), blued, bev=0.0012,
-           holes=[pz([(6.5, -11.0), (6.7, -18), (8.6, -25.5), (13.3, -32.4), (21, -37.2), (34, -39.8), (47, -39.3), (56, -35.8), (61.5, -30.5), (64.5, -24), (65.5, -16), (62, -11.0)])]))
-    A(side(pz([(19.5, -10.5), (24.5, -10.5), (25, -16), (26.5, -22), (29.5, -27.5), (32.5, -30.5), (31, -32.2), (27, -29.5), (23.5, -24), (21.5, -17)]), 0.0045, (0, 0, 0), brass, bev=0.0009))
-    A(side(pz([(35.5, -10.5), (40.5, -10.5), (41, -16), (42.5, -21.5), (45.3, -26.3), (48, -28.8), (46.6, -30.5), (43, -28), (39.5, -23), (37.5, -16.5)]), 0.0045, (0, 0, 0), brass, bev=0.0009))
+           holes=[pz([(6.5, -11.0), (6.7, -18), (8.6, -25.5), (13.3, -32.4), (21, -37.2), (34, -39.8), (47, -39.3), (56, -35.8), (61.5, -30.5), (64.5, -24), (65.5, -16), (62, -11.0)])], seg=1))
+    tidy(parts[-1])
+    A(side(pz([(19.5, -10.1), (24.5, -10.1), (25, -16), (26.5, -22), (29.5, -27.5), (32.5, -30.5), (31, -32.2), (27, -29.5), (23.5, -24), (21.5, -17)]), 0.0045, (0, 0, 0), brass, bev=0.0009, seg=1))
+    A(side(pz([(35.5, -10.1), (40.5, -10.1), (41, -16), (42.5, -21.5), (45.3, -26.3), (48, -28.8), (46.6, -30.5), (43, -28), (39.5, -23), (37.5, -16.5)]), 0.0045, (0, 0, 0), brass, bev=0.0009, seg=1))
 
     # ======================================================== the grip: the stock's wrist, sawn off
     back = [(59, 32.5), (66, 31.5), (74, 28.5), (82, 22.5), (89, 13.5), (95, 4)]
@@ -339,8 +377,8 @@ def build():
     far = lambda p, t: (p[0] + U[0] * t, p[1] + U[1] * t)
     gp = side(pz(back + [far((95, 4), t) for t in (40, 70, 100)] + [(150, -90), (125, -108)] + [far((67, -22.5), t) for t in (95, 60, 30)] + front + [(56, 0), (56, 20)]), 0.034, (0, 0, 0), candy, bev=0.006, seg=3)
     apply_mods(gp)
-    for c_ in slots: cut(gp, c_, keep=True)
     for c_ in slots: bpy.data.objects.remove(c_, do_unlink=True)
+    for sx in (-1, 1): cut(gp, box(g(8.1, 22.6, 37), g(sx * HAM[0], 29.7, 55.5), None))
     # the saw cut: 7 degrees off square, through the grip axis 105 mm down
     M0 = (81, -9.25)  # on the grip's centre line
     C = far(M0, 94)
@@ -365,7 +403,7 @@ def build():
             tz, ty = q1[0] - q0[0], q1[1] - q0[1]; L = math.hypot(tz, ty); nz, ny = -ty / L, tz / L  # left normal of the polyline
             pts.append((p, nz, ny))
         poly = [(p[0] + nz * hi, p[1] + ny * hi) for p, nz, ny in pts] + [(p[0] + nz * lo, p[1] + ny * lo) for p, nz, ny in pts[::-1]]
-        return side(pz(poly), w, (0, 0, 0), m, bev=0.0005)
+        return side(pz(poly), w, (0, 0, 0), m, bev=0.0005, seg=1)
     A(strap([(61.5, 32.8), (66, 31.5), (74, 28.5), (82, 22.5), (86.5, 17)], -0.6, 1.0, 0.009, case))  # (the back line runs top -> down: its left is outward)
     A(strap([far((67, -22.5), t) for t in (30, 16, 4)], -0.6, 1.2, 0.007, blued))  # guard tang (drawn bottom -> up)
     for (pz_, py_), nz, ny in (((85.2, 18.6), 0.78, 0.62), (far((67, -22.5), 26), -NB[0], -NB[1])):
@@ -374,14 +412,17 @@ def build():
     tc = far(M0, 30)
     u3, nb3 = (0, U[1], U[0]), (0, NB[1], NB[0])
     A(sleeve(g(0, tc[1], tc[0]), u3, nb3, 0.0174, 0.01925, 0.0062, 0.0005, 0.03, tape, tilt=0.05))
-    tail_dir = [-(0.94 * nb3[i] + 0.34 * (1, 0, 0)[i]) for i in range(3)]
+    ca, sa = math.cos(math.radians(32)), math.sin(math.radians(32))
+    tail_dir = [-(ca * nb3[i] + sa * (1, 0, 0)[i]) for i in range(3)]
+    t_ax = [sa * nb3[i] - ca * (1, 0, 0)[i] for i in range(3)]  # out of the flap's black side
     t0 = [tc[0] / 1000 + U[0] * 0.0075, tc[1] / 1000 + U[1] * 0.0075]  # the last wrap's end lifts off
-    A(obox([-0.01815 + tail_dir[0] * 0.0045, t0[1] + 0.004 * NB[1] + tail_dir[1] * 0.0045, t0[0] + 0.004 * NB[0] + tail_dir[2] * 0.0045],
-           [tail_dir, u3, [0.34 * nb3[i] - 0.94 * (1, 0, 0)[i] for i in range(3)]], (0.0045, 0.0072, 0.00025), tape))
+    tcen = [-0.01795 + tail_dir[0] * 0.0045, t0[1] + 0.005 * NB[1] + tail_dir[1] * 0.0045, t0[0] + 0.005 * NB[0] + tail_dir[2] * 0.0045]
+    A(obox(tcen, [tail_dir, u3, t_ax], (0.0045, 0.0072, 0.0002), tape))
+    A(obox([tcen[i] - t_ax[i] * 0.0003 for i in range(3)], [tail_dir, u3, t_ax], (0.0041, 0.0068, 0.00015), glue))
     # the price sticker, slapped on crooked (left side of the action, the side you see)
     sxw = 23 - 2.5 * (32 / 75.5)
-    lb = box(g(0.3, 12.5, 20), g(-sxw - 0.25, 9.5, 20), sticker)
-    apply_mods(lb); uv_planar(lb, (-(sxw + 0.25) / 1000, 0.0095, 0.02), (0.02, 0.0125), '-x')
+    lb = box(g(0.3, 12.5, 20), g(-sxw - 0.45, 9.5, 20), sticker)
+    apply_mods(lb); bpy.context.view_layer.update(); uv_box(lb, 0.04); uv_face_planar(lb, (-(sxw + 0.45) / 1000, 0.0095, 0.02), (0.02, 0.0125), '-x')
     lb.rotation_euler = Euler((0.14, 0, math.atan(2.5 / 75.5)), 'YZX')  # crooked, and along the action's taper
     A(lb)
 
@@ -389,21 +430,26 @@ def build():
     hams = []
     for sx in (1, -1):
         hp = (sx * HAM[0], HAM[1], HAM[2])
-        out = [(0, -6.5), (-4.6, -4.6), (-6.5, 0), (-9.5, 3.8), (-15.5, 6.3), (-17.5, 7.0), (-28.5, 7.0), (-30.5, 8.5), (-31, 11), (-29.5, 13.6), (-25, 14.6), (-18, 14.6),
-               (-13, 15.2), (-7.5, 17.5), (-4, 21.5), (-2, 26.5), (0, 30.5), (2.8, 32.3), (5.8, 31.3), (6.6, 28), (6.3, 22), (6.6, 14), (6.6, 4), (4.6, -4.6)]
-        h = [side(pz([(HAM[2] + dz, HAM[1] + dy) for dz, dy in out]), 0.0064, (hp[0] / 1000, 0, 0), case2, bev=0.001, seg=2)]
-        h.append(side(pz([(HAM[2] + dz, HAM[1] + dy) for dz, dy in [(-17.5, 7.0), (-28.5, 7.0), (-30.5, 8.5), (-31, 11), (-29.5, 13.6), (-25, 14.6), (-18, 14.6), (-16.5, 11)]]),
-                      0.0084, (hp[0] / 1000 - sx * 0.0004, 0, 0), case2, bev=0.0008, seg=2))  # the head, a bit wider, leaning in to the striker
-        for k, (dz, dy, an) in enumerate(((0.6, 31.4, 0.5), (2.6, 32.4, 0.1), (4.6, 32.0, -0.35), (6.3, 30.0, -0.9))):  # checkering on the spur
-            h.append(box(g(6.8, 0.6, 0.7), (hp[0] / 1000, (HAM[1] + dy) / 1000, (HAM[2] + dz) / 1000), case2, rot=(an, 0, 0)))
+        out = [(0, -6.5), (-4.6, -4.6), (-6.3, -1.0), (-8.0, 2.6), (-11.5, 5.4), (-15.5, 6.5), (-16.5, 7.4), (-27.2, 7.4), (-29.1, 8.3), (-29.9, 10.0), (-29.2, 12.0), (-27.0, 13.2),
+               (-21.0, 13.5), (-15.5, 15.4), (-10.5, 18.0), (-6.0, 21.6), (-1.0, 24.8), (4.5, 27.4), (8.6, 28.4), (10.8, 27.3), (10.3, 25.2), (6.8, 23.6), (3.0, 20.8),
+               (5.0, 15.0), (6.4, 8.0), (6.4, 2.0), (4.6, -4.6)]
+        h = [side(pz([(HAM[2] + dz, HAM[1] + dy) for dz, dy in out]), 0.0064, (hp[0] / 1000, 0, 0), case2, bev=0.0009, seg=2)]
+        h.append(side(pz([(HAM[2] + dz, HAM[1] + dy) for dz, dy in [(-16.5, 7.0), (-27.5, 7.0), (-29.5, 8.0), (-30.3, 10.0), (-29.6, 12.2), (-27.2, 13.6), (-21.0, 13.9), (-15.5, 15.0), (-14.8, 10.5)]]),
+                      0.0084, (hp[0] / 1000 - sx * 0.0004, 0, 0), case2, bev=0.0012, seg=2))  # the nose, a bit wider, leaning in to the striker
+        sp = Vector((0, 0.351, 0.937))  # along the spur's top (game y, z)
+        h.append(obox(((hp[0]) / 1000, (HAM[1] + 26.79) / 1000, (HAM[2] + 3.73) / 1000), [tuple(sp), (1, 0, 0), (0, 0.937, -0.351)], (0.0046, 0.0033, 0.00025), checker))  # checkered thumb pad
+        for o in h: tidy(o)
         turn(h, g(*hp), COCK)
         hams.append((h, hp))
 
     # ======================================================== nodes + metadata
     for p in parts + hinge + trim + firon + [fe] + sum(shells, []) + sum([h for h, _ in hams], []):
-        if not p.data.uv_layers: uv_box(p, 0.04)
-    for s in shells:
-        apply_mods(s[0]); uv_planar(s[0], (s[0].matrix_world.translation.x, BY / 1000, BF / 1000), 0.0218, 'z')
+        mn = p.data.materials[0].name if p.data.materials else ''
+        if not p.data.uv_layers: uv_box(p, 0.012 if mn in ('so_tape', 'so_checker') else 0.055 if mn == 'so_case' else 0.04)
+    bpy.context.view_layer.update()
+    for s, sx in zip(shells, (1, -1)):
+        apply_mods(s[0]); uv_face_planar(s[0], (sx * BX / 1000, BY / 1000, BF / 1000), 0.0219, 'z')
+    if '--qa' in sys.argv: qa(parts + hinge + trim + firon + [fe] + sum(shells, []) + sum([h for h, _ in hams], []))
     WZ = {'so_candy': 'a', 'so_case': 'b', 'so_blued': 'b', 'so_ribtop': 'b', 'so_breech': 'b', 'so_chamber': 'b'}  # wrap zones: a = furniture, b = metal, the rest keeps its look
     bodies = zone_join(parts, 'so_body', WZ, default='n')
     hn = part(hinge, 'hinge_wzB', pivot=g(*PIN))
@@ -417,6 +463,20 @@ def build():
             'hinge': {'node': 'hinge_wzB', 'open': 0.7, 'rides': ['forend_wzA', 'shell1_wzN', 'shell2_wzN']},
             'shells': ['shell1_wzN', 'shell2_wzN'], 'hammers': ['hammerR_wzN', 'hammerL_wzN']}
     return finish('w_sawnoff', bodies + [hn, fn] + sn + hm, meta)
+
+
+def qa(objs):
+    """the blender-asset-qa gate on every part before the joins (a finding names the part). eps 0.2 mm: the gun is tiny"""
+    sys.path.insert(0, os.path.join(ROOT, '.claude', 'skills', 'blender-asset-qa', 'scripts'))
+    import qa_check
+    for o in objs: apply_mods(o)
+    bpy.context.view_layer.update()
+    for o in objs:
+        c = centre(o); print('QA_MAP', o.name, o.data.materials[0].name if o.data.materials else '-', 'mm', tuple(round(v * 1000, 1) for v in c), len(o.data.polygons))
+    res = qa_check.run(objects=[o.name for o in objs], profile='game', eps=0.0002, tol=0.0006)
+    print('QA_PASS', res.get('pass'))
+    for k in ('errors', 'warnings'):
+        for e in res.get(k, []): print('QA_' + k.upper()[:-1], e)
 
 
 main(build, 'w_sawnoff')
