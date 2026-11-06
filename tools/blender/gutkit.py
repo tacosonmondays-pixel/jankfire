@@ -451,3 +451,15 @@ def run_multi_lod(build, expo=None):
             for c in full: c.parent = None; c.hide_render = True
             _clear_rig(); sheet(root, fid + '_lod1', views=('persp', 'front', 'back_persp'), exposure=ex)
             for c in full: c.parent = root; c.hide_render = False
+
+
+def mirror_parts(parts):
+    """flip a built prop left-right (x -> -x) with its uvs kept, so text painted for a viewer reads right from -z
+    (seen from the front, +x is on the viewer's left)."""
+    for p in parts:
+        apply_mods(p)
+        p.data.transform(p.matrix_world); p.matrix_world = Matrix.Identity(4)
+        p.data.transform(Matrix.Scale(-1, 4, Vector((1, 0, 0))))
+        bm = bmesh.new(); bm.from_mesh(p.data); bmesh.ops.reverse_faces(bm, faces=bm.faces); bm.to_mesh(p.data); bm.free()
+        p.data.update()
+    return parts

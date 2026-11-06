@@ -495,9 +495,9 @@ def _paint_jarlabel(px):
     px[:] = hexrgb(0xfff3d0)
     px[1:3, :] = hexrgb(0x8a2a4a); px[-3:-1, :] = hexrgb(0x8a2a4a)
     text_px(px, 'GRISTLE', 3, 6, 2, 0x8a2a4a)
-    text_px(px, '& SONS', 56, 6, 1, 0x8a2a4a)
-    text_px(px, 'SPECIMEN 07', 3, 24, 1, 0x3e2470)
-    text_px(px, 'DO NOT TAP', 3, 34, 1, 0xd8203a)
+    text_px(px, '& SONS', 3, 22, 1, 0x8a2a4a)
+    text_px(px, 'SPECIMEN 07', 3, 31, 1, 0x3e2470)
+    text_px(px, 'DO NOT TAP', 3, 39, 1, 0xd8203a)
     px_disc(px, 82, 30, 7, 0xff6f91); px_disc(px, 82, 30, 4, 0xfff3d0)  # a little smiling stamp
     px[27, 79:86] = hexrgb(0x8a2a4a)
 

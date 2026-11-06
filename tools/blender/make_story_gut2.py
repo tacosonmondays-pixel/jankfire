@@ -151,6 +151,14 @@ def build_launderette(M):
         if k == 2:  # a length of intestine spilling out of the door like a stray sock, down to the floor
             A(sweep([(x - 0.05, 0.9, -0.47), (x - 0.12, 0.85, -0.53), (x - 0.2, 0.75, -0.52), (x - 0.18, 0.6, -0.5), (x - 0.25, 0.45, -0.47)],
                     [0.06, 0.07, 0.07, 0.065, 0.06], flesh, seg=6, name='ld_gut'))
+    for k, x in enumerate((-3.05, -2.05, -1.05)):  # a row of stacked dryers above, one door hanging open
+        sw(box((0.9, 0.7, 0.34), (x, 1.82, -0.23), None, bev=0.03, seg=1), 0)
+        A(AT.swatch(lathe([(0.22, -0.02), (0.24, 0.0), (0.22, 0.03), (0.18, 0.03), (0.17, 0.0)], (x, 1.8, -0.415), None, seg=12, axis='z', cap=False, name='ld_ring2'), 1))
+        dk = cyl(0.18, 0.02, (x, 1.8, -0.41), None, axis='z', seg=12); bpy.context.view_layer.update()
+        A(AT.region(dk, 'suds', lambda g, x=x: ((g[0] - x) / 0.38 + 0.5, (g[1] - 1.8) / 0.38 * 0.4 + 0.75)))
+    sw(box((3.4, 0.06, 0.4), (-1.875, 2.2, -0.22), None), 8)  # a shelf with the detergent
+    for k, x in enumerate((-3.3, -2.9, -2.1, -1.5, -0.7)):
+        sw(box((0.18, 0.3, 0.14), (x, 2.38, -0.25), None, bev=0.02, seg=1), (9, 4, 3, 9, 11)[k])
     card = box((0.42, 0.28, 0.01), (-0.5, 1.2, -0.47), None); bpy.context.view_layer.update()
     A(AT.region(card, 'card', front_proj(-0.5, 1.2, 0.42, 0.28)))
     gl = box((3.55, 2.2, 0.02), (-1.875, 1.8, -0.5), glass); uv_box(gl, 1.0); gl['keepuv'] = 1; A(gl)
@@ -176,8 +184,8 @@ def build_launderette(M):
     rnd = random.Random(73)
     for k in range(15):
         x = -3.6 + k * 0.42 + rnd.uniform(-0.05, 0.05)
-        if k % 3 == 1: t = canine(None, pos=(x, 2.76, -1.23), rot=(math.pi + rnd.uniform(-0.15, 0.15), 0, rnd.uniform(-0.2, 0.2)), s=rnd.uniform(0.7, 0.9), name='ld_tooth', seed=k)
-        else: t = molar(None, pos=(x, 2.78, -1.23), rot=(math.pi + rnd.uniform(-0.1, 0.1), rnd.uniform(0, 1), 0), s=rnd.uniform(0.6, 0.75), name='ld_tooth', seed=k)
+        if k % 3 == 1: t = canine(None, pos=(x, 2.76, -1.23), rot=(math.pi + rnd.uniform(-0.15, 0.15), 0, rnd.uniform(-0.2, 0.2)), s=rnd.uniform(1.0, 1.25), name='ld_tooth', seed=k)
+        else: t = molar(None, pos=(x, 2.78, -1.23), rot=(math.pi + rnd.uniform(-0.1, 0.1), rnd.uniform(0, 1), 0), s=rnd.uniform(0.85, 1.0), name='ld_tooth', seed=k)
         sw(t, 7)
     # skin growing over the brick: a big creep down from the top left over the sign's end, one round the right pier's
     # foot, a smear across the cornice; veins crawl over the sign
@@ -200,9 +208,10 @@ def build_launderette(M):
                              [(-2.8, 4.6, -0.78), (-1.8, 4.5, -0.8), (-0.6, 4.55, -0.8), (0.6, 4.4, -0.78), (1.6, 4.5, -0.78), (2.4, 4.75, -0.7)],
                              [(3.6, 1.1, -0.66), (3.3, 1.6, -0.64), (3.0, 2.4, -0.63), (2.7, 3.1, -0.65), (2.6, 3.4, -0.75), (2.4, 3.7, -0.77)])):
         A(sweep(pts, [0.08 - 0.035 * i / (len(pts) - 1) for i in range(len(pts))], vein, seg=5, name='ld_vein'))
+    mirror_parts(P)  # built as drawn on paper; flipped so the sign reads from the street (the door ends up on the right)
     parts = pack(P, 'launderette', 1.0)
-    return finish_lod('s_launderette', parts, meta_of('launderette', mount='wall', wallZ=0, col=[8, 5, 0.6], door=[1.5, 0, -0.6],
-                      ramp=[[1.5, 0.64, -0.1], [1.5, 0.18, -2.75]], lights=[[-1.9, 1.8, -0.3, 0x9fd8ff]],
+    return finish_lod('s_launderette', parts, meta_of('launderette', mount='wall', wallZ=0, col=[8, 5, 0.6], door=[-1.5, 0, -0.6],
+                      ramp=[[-1.5, 0.64, -0.1], [-1.5, 0.18, -2.75]], lights=[[1.9, 1.8, -0.3, 0x9fd8ff]],
                       note='origin bottom centre on the wall plane; facade 0.6 m deep, awning + teeth to z -1.3, tongue door to z -2.9'), ratio=0.25)
 
 
@@ -210,10 +219,10 @@ def build_launderette(M):
 def _gl_text(px):
     px[:] = hexrgb(0xfff3d0)
     px[2:5, :] = hexrgb(0x8a2a4a); px[-5:-2, :] = hexrgb(0x8a2a4a)
-    text_px(px, 'GRISTLE', 13, 10, 4, 0x8a2a4a)
-    text_px(px, '& SONS', 25, 42, 4, 0x8a2a4a)
-    text_px(px, 'BIOLOGICS', 42, 72, 2, 0xff4f7a)
-    text_px(px, 'WE LOVE YOU BACK', 48, 87, 1, 0x5b3a8f)
+    text_px(px, 'GRISTLE', 20, 10, 4, 0x8a2a4a)
+    text_px(px, '& SONS', 34, 42, 4, 0x8a2a4a)
+    text_px(px, 'BIOLOGICS', 50, 72, 2, 0xff4f7a)
+    text_px(px, 'WE LOVE YOU BACK', 56, 87, 1, 0x5b3a8f)
 
 
 GL_SW = [0xffe14d, 0xd8203a, 0xffc9a8, 0xffffff, 0x1a1030, 0xff8aa8, 0x7a3a28, 0xc8ccd4, 0x8a2a4a, 0xf8ecd2, 0x4fd8ff]
@@ -226,9 +235,9 @@ def build_gristlelogo(M):
     P = []; A = P.append
     sw = lambda o, k: A(AT.swatch(o, k))
     # the words panel
-    tp = box((3.2, 1.6, 0.22), (0.85, 1.25, -0.11), None, bev=0.04, seg=1); bpy.context.view_layer.update()
-    A(AT.region(tp, 'text', front_proj(0.85, 1.25, 3.2, 1.6)))
-    sw(box((3.36, 1.76, 0.12), (0.85, 1.25, -0.06), None, bev=0.03, seg=1), 1)
+    tp = box((3.0, 1.6, 0.22), (1.1, 1.25, -0.11), None, bev=0.04, seg=1); bpy.context.view_layer.update()
+    A(AT.region(tp, 'text', front_proj(1.1, 1.25, 3.0, 1.6)))
+    sw(box((3.16, 1.76, 0.12), (1.1, 1.25, -0.06), None, bev=0.03, seg=1), 1)
     # the badge: a yellow disc in a red rim, the smiling butcher-doctor on it
     bx, by = -1.35, 1.32
     sw(cyl(1.15, 0.26, (bx, by, -0.13), None, axis='z', seg=28, bev=0.03), 0)
@@ -272,19 +281,20 @@ def build_gristlelogo(M):
         sw(canine(None, pos=(x, y, -0.55), rot=(-math.pi / 2 + 0.6, 0, a), s=0.8, name='gl_tooth', seed=k), 9)
     for pts in ([(2.3, 1.75, -0.3), (2.0, 1.95, -0.24), (1.5, 1.8, -0.24), (0.9, 1.97, -0.24), (0.2, 1.85, -0.24)],
                 [(1.3, 0.85, -0.3), (0.8, 1.1, -0.24), (0.1, 1.0, -0.24), (-0.4, 1.2, -0.24)],
-                [(-1.0, 0.55, -0.4), (-0.75, 0.85, -0.4), (-0.6, 1.3, -0.3), (-0.4, 1.7, -0.26)]):
+                [(-0.55, 0.3, -0.38), (-0.3, 0.6, -0.3), (-0.2, 1.1, -0.27), (-0.1, 1.6, -0.25)]):
         A(sweep(pts, [0.07 - 0.03 * i / (len(pts) - 1) for i in range(len(pts))], vein, seg=5, name='gl_vein'))
+    mirror_parts(P)  # so the words read from the street, the badge on the viewer's left
     parts = pack(P, 'gristlelogo', 0.5)
     return finish_lod('s_gristlelogo', parts, meta_of('gristlelogo', mount='wall', wallZ=0, col=[5.0, 2.6, 0.6],
                       note='origin bottom centre on the wall plane; put it 4-8 m up a campus building'), ratio=0.25)
 
 
 # ---------------------------------------------------------------- 12. flesh blobs (creep over the Bottom's houses)
-def _blob_bits(M, P, bvh, rnd, n_pus, teeth, eyes, veins, sz):
+def _blob_bits(M, P, bvh, rnd, n_pus, teeth, eyes, veins, sz, wall=False):
     A = P.append
     def surf(p, off): return onsurf(bvh, p, off)
     for k in range(n_pus):  # pustules, half sunk (they breathe with the blob)
-        q, n = surf((rnd.uniform(-sz[0], sz[0]), rnd.uniform(0.3, sz[1]), rnd.uniform(-sz[2], sz[2])), 0.0)
+        q, n = surf((rnd.uniform(-sz[0], sz[0]), rnd.uniform(0.3, sz[1]), -rnd.uniform(0.5, 1.0) * sz[2] - 0.5 if wall else rnd.uniform(-sz[2], sz[2])), 0.0)
         r = rnd.uniform(0.08, 0.15)
         A(ball(r, tuple(Vector(q) + Vector(n) * r * 0.35), M['pus'], seg=6, rings=4, name='fb_pus'))
     for k, p in enumerate(teeth):
@@ -307,7 +317,7 @@ def build_fleshblob_a(M):
     rnd = random.Random(121)
     balls = [((0, 0.2, 0), 1.25), ((0.7, 0.5, 0.3), 0.95), ((-0.75, 0.35, -0.25), 0.9), ((0.2, 0.95, -0.2), 0.75), ((-0.3, 0.7, 0.6), 0.7),
              ((1.15, 0.1, -0.5), 0.6), ((-1.2, 0.05, 0.6), 0.55), ((0.5, 1.25, 0.25), 0.45), ((-0.15, 0.0, -1.0), 0.6), ((0.9, 0.0, 0.9), 0.5)]
-    o = meta(balls, res=0.1, m=M['flesh'], target=640, name='fb_a', clamp=lambda p: (p[0], max(p[1], -0.03), p[2]))
+    o = meta(balls, res=0.1, m=M['flesh'], target=600, name='fb_a', clamp=lambda p: (p[0], max(p[1], -0.03), p[2]))
     lump(o, 0.05, 2.4, seed=12)
     P = [o]
     bvh = bvh_of(o)
@@ -321,14 +331,15 @@ def build_fleshblob_b(M):
     rnd = random.Random(122)
     # a wall splat: flat back on the wall (z = 0), a big mass at head height, drips down to the ground, a tendril up
     balls = [((0, 1.9, -0.2), 0.9), ((0.55, 1.6, -0.2), 0.75), ((-0.6, 2.1, -0.18), 0.7), ((0.25, 2.45, -0.15), 0.6), ((-0.2, 1.3, -0.2), 0.65),
-             ((0.8, 1.05, -0.15), 0.4), ((0.85, 0.6, -0.12), 0.33), ((0.9, 0.2, -0.15), 0.38), ((-0.5, 0.85, -0.15), 0.45), ((-0.55, 0.35, -0.12), 0.35),
-             ((-0.5, 0.0, -0.18), 0.45), ((-0.9, 2.6, -0.12), 0.35), ((-1.05, 2.95, -0.1), 0.28), ((0.1, 0.95, -0.12), 0.3)]
+             ((0.75, 1.05, -0.12), 0.32), ((0.8, 0.7, -0.1), 0.24), ((0.82, 0.45, -0.1), 0.2), ((0.84, 0.25, -0.1), 0.22),
+             ((-0.45, 0.9, -0.12), 0.34), ((-0.48, 0.55, -0.1), 0.25), ((-0.5, 0.2, -0.12), 0.27), ((-0.6, 0.0, -0.15), 0.4), ((-0.2, 0.0, -0.12), 0.32),
+             ((0.2, 0.9, -0.1), 0.24), ((0.22, 0.65, -0.08), 0.18), ((-0.9, 2.6, -0.12), 0.35), ((-1.05, 2.95, -0.1), 0.28)]
     o = meta(balls, res=0.09, m=M['flesh'], target=640, name='fb_b', clamp=lambda p: (p[0], max(p[1], -0.03), min(p[2], 0.0)))
     lump(o, 0.04, 2.6, seed=13, mask=lambda p: min(1, -p[2] * 4))
     P = [o]
     bvh = bvh_of(o)
     _blob_bits(M, P, bvh, rnd, 4, [(0.6, 1.4, -0.8), (-0.7, 1.9, -0.8)], [((0.1, 2.0, -1.0), 0.18)],
-               [((-0.5, 2.3, -0.8), (1, -0.4, 0), 8), ((0.6, 1.9, -0.8), (0.2, -1, 0), 8), ((-0.3, 1.1, -0.7), (-0.3, -1, 0), 6)], (0.8, 2.6, 0.6))
+               [((-0.5, 2.3, -0.8), (1, -0.4, 0), 8), ((0.6, 1.9, -0.8), (0.2, -1, 0), 8), ((-0.3, 1.1, -0.7), (-0.3, -1, 0), 6)], (0.8, 2.6, 0.6), wall=True)
     for p in P:  # nothing pokes through the wall behind it
         apply_mods(p)
         for v in p.data.vertices:
