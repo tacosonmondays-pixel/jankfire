@@ -49,7 +49,7 @@ Notes:
 - The **secret key is a secret.** It only ever goes in `.env` or Render's environment settings. Never in the exe, never in `desktop/config.json`, never in chat or a public repo. The exe talks to your server; only the server talks to Supabase.
 - `render.yaml` uses the **Starter** plan (about $7/month) so it never sleeps. The free plan works but sleeps after 15 idle minutes and takes ~30-60 s to wake.
 - Without Supabase, accounts live in `data/jankfire-db.json` (or the app's user-data folder for the exe). Fine on your own PC, wiped whenever a host like Render restarts.
-- Set up Supabase with an older version? Run `supabase.sql` again after updating: it adds new stat columns (like `sniper_feats` for Sniper Royalty) and keeps every account. `npm run check-supabase` tells you if one is missing.
+- Set up Supabase with an older version? Run `supabase.sql` again after updating: it adds new stat columns (like `sniper_feats` for Sniper Royalty and `quiz_right` for Smarty Pants) and keeps every account. `npm run check-supabase` tells you if one is missing.
 - Any Node host with WebSockets works (Railway, Fly.io, a VPS). The server reads `PORT`.
 
 ## Controls
@@ -277,9 +277,9 @@ Sign up from the main menu. Accounts save loadout, cosmetics, character, name ca
 
 ## Character
 
-**CHARACTER** on the main menu: your colour (name + outline), skin tone, hair (9 styles, any colour), top (sash, t-shirt, hoodie, jacket, suit, runner jacket, nothing) and bottom (shorts, pants, skirt) with their colours, a head, face and back accessory, your kill effect and your name card. Everyone sees your look. The runner jacket is an oversized hi-vis bomber: the top colour paints its body (hi-vis yellow if you don't pick one), the black panels and reflective tape stay. Capes hang from your shoulders and stream behind you when you're fast, wings flap in the air, backpacks and jetpacks have straps.
+**CHARACTER** on the main menu: your colour (name + outline), skin tone, hair (9 styles, any colour), top (sash, t-shirt, hoodie, jacket, suit, runner jacket, nothing) and bottom (shorts, pants, skirt, and the Overalls once you've earned them) with their colours, a head, face and back accessory, your kill effect and your name card. Everyone sees your look. The runner jacket is an oversized hi-vis bomber: the top colour paints its body (hi-vis yellow if you don't pick one), the black panels and reflective tape stay. Capes hang from your shoulders and stream behind you when you're fast, wings flap in the air, backpacks and jetpacks have straps.
 
-Achievement unlocks (accessories, plus one weapon skin):
+Achievement unlocks (accessories, one bottoms style, plus one weapon skin):
 
 | Achievement | How | Unlocks |
 |---|---|---|
@@ -294,6 +294,7 @@ Achievement unlocks (accessories, plus one weapon skin):
 | No Life | play 5 hours | Jetpack |
 | Never Landed | finish a whole match without touching the ground after any spawn | Wings |
 | Sniper Royalty | three kinds of sniper kill (below) | **Golden Sniper** (a sniper skin) |
+| Smarty Pants | get 3 Pop Quiz questions right | **Big Glasses** (face) + **Overalls** (bottom) |
 
 **Never Landed:** be in the match from the start (or join in the first 5 seconds) until the end-of-match screen. After every spawn you get 3 seconds to leave the ground; after that, any touch of a floor, roof, box top or platform ends the run for that match, even a single bhop tick. Walls, the grapple and jump pads (as long as you don't stand on them) are fine, and so is dying: every respawn gives a fresh 3 seconds. A **NEVER LANDED** tag with a little wing shows on the left while your run is clean; **YOU TOUCHED GRASS** when it breaks. Your client reports the touch, and the server also checks your snapshots against the map (resting on a box top twice in a row = landed), so a client that just never reports doesn't get it. Leaving and rejoining doesn't wipe a broken run. Online and Bots matches, logged-in players only.
 
@@ -303,6 +304,8 @@ The Wings used to come from Frequent Flyer: everyone who had Frequent Flyer befo
 - Logged-in players only (a guest is told what would have counted: "log in so it counts"). Kills on bots count too; training dummies don't.
 - Anti-farm: a kill on someone who hadn't really moved for 5 s (the server tracks it from the snapshots; respawning or being knocked around doesn't count as moving) never ticks a box, so no farming it on an AFK player or a friend standing still.
 - Quick-scope and no-scope are the shooter's word (`qs: 1` / `ns: 1` on sniper hits), so they only ever buy progress, never damage, and claiming both at once counts for neither.
+
+**Smarty Pants → Big Glasses + Overalls.** Answer 3 Pop Quiz questions right, over any number of matches (the server counts them; each one pops `SMARTY PANTS 2/3` after the gold star). Logged-in players only, someone else has to have thrown the calculator (a self-bounced one doesn't count), and Training doesn't count. Wrong answers never count. **Big Glasses**: oversized round nerd glasses with thick black rims and tape round the broken bridge. **Overalls**: denim (or your bottoms colour) with a bib, a pocket with a pencil in it, straps over the shoulders with brass buckles, rolled-up cuffs and work boots. Both show locked in CHARACTER until you have them; hover a locked one to try it on.
 
 ## Name cards, killcam, play of the round
 

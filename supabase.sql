@@ -22,7 +22,8 @@ create table if not exists jf_users (
   void_kills  int  not null default 0,
   headshots   int  not null default 0,
   tbags       int  not null default 0,
-  sniper_feats int not null default 0
+  sniper_feats int not null default 0,
+  quiz_right  int  not null default 0
 );
 -- Lock the table down: only the game server (service key) can read or write it. Browsers never talk to it directly.
 alter table jf_users enable row level security;
@@ -40,3 +41,6 @@ end $$;
 
 -- Sniper Royalty (bit flags for its four sniper feats; it unlocks the Golden Sniper). Safe to run again.
 alter table jf_users add column if not exists sniper_feats int not null default 0;
+
+-- Smarty Pants (pop quiz questions answered right; 3 unlock the Big Glasses and the Overalls). Safe to run again.
+alter table jf_users add column if not exists quiz_right int not null default 0;
