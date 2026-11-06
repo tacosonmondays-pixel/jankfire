@@ -37,11 +37,12 @@ async function session(b, map, ids) {
   pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text().slice(0, 200)); });
   await pg.addInitScript(() => localStorage.setItem('jankfire', JSON.stringify({ name: 'SHOTS', killcam: false, jank: 3 })));
   await pg.goto(`http://localhost:${port}/`); await sleep(2500);
-  await pg.click('#scr-main [data-pick="bots"]'); await pg.click('#mpCustom');
-  await pg.selectOption('#setupGame', GAME[map] || 'dm');
-  await pg.selectOption('#setupMap', map);
+  const T = { timeout: 180000 }; // (a busy machine: the menu can take a while to answer)
+  await pg.click('#scr-main [data-pick="bots"]', T); await pg.click('#mpCustom', T);
+  await pg.selectOption('#setupGame', GAME[map] || 'dm', T);
+  await pg.selectOption('#setupMap', map, T);
   await pg.locator('#setupBots').fill('1'); await pg.selectOption('#setupDiff', 'easy').catch(() => {}); // (one slow bot: the least it allows)
-  await pg.click('#setupGo');
+  await pg.click('#setupGo', T);
   const ok = await pg.evaluate(async (map) => {
     const { G } = await import('/js/ctx.js'); const { MAP } = await import('/shared/map.js');
     for (let i = 0; i < 700 && !(G.joined && MAP.id === map); i++) await new Promise((r) => setTimeout(r, 100));
@@ -107,18 +108,18 @@ async function session(b, map, ids) {
   for (const pr of presets) {
     await pg.evaluate(async (pr) => { const { G } = await import('/js/ctx.js'); const w = await import('/js/world.js'); G.settings.jank = pr; w.setJank(pr); }, pr);
     for (const boxes of [false, true]) {
-      await pg.evaluate(async (boxes) => { const pf = await import('/js/propfield.js'); const w = await import('/js/world.js'); pf.propsOff(boxes); w.refreshMapVisuals(); }, boxes);
-      await sleep(1500);
+      await pg.evaluate(async (boxes) => { const w = await import('/js/world.js'); w.showPropBoxes(boxes); }, boxes); // (the prop boxes drawn over the map as it is: no rebuild)
+      await sleep(1200);
       for (const v of views) {
         await pg.evaluate((v) => { window.__pin = { p: v.p, yaw: v.yaw, pitch: v.pitch }; }, v);
         await sleep(1100);
         const f = path.join(tmp, `${map}_${v.id}_${v.k}_${pr}_${boxes ? 'box' : 'glb'}.png`);
-        await pg.screenshot({ path: f });
+        await pg.screenshot({ path: f, timeout: 120000 });
         shots.push({ map, id: v.id, k: v.k, pr, boxes, f });
       }
     }
   }
-  await pg.evaluate(async () => { const pf = await import('/js/propfield.js'); pf.propsOff(false); });
+  await pg.evaluate(async () => { const w = await import('/js/world.js'); w.showPropBoxes(false); });
   if (errs.length) console.log(map, 'page errors:\n  ' + errs.slice(0, 6).join('\n  '));
   await pg.close();
   return shots;

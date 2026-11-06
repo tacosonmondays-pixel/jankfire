@@ -12,7 +12,7 @@ import { addVibe } from './vibe.js';
 import { addForest } from './forestmats.js';
 import { updateForest, forestMap } from './forest.js';
 import { shredMap, updateShredPit } from './shredpit.js'; // the Warehouse's shredder pit: the drums, the glow, the grind
-import { buildPropField, updatePropField, drawnByModel, fetchMapProps } from './propfield.js'; // Blender props, instanced (round 4)
+import { buildPropField, updatePropField, drawnByModel, fetchMapProps, propFieldVisible } from './propfield.js'; // Blender props, instanced (round 4)
 import { TRAFFIC } from '/shared/traffic.js';
 const trafficKinds = (def) => { const t = MAP.id && Object.hasOwn(TRAFFIC, MAP.id) ? TRAFFIC[MAP.id] : null; return t && t.mix ? Object.keys(t.mix) : null; }; // (their Blender cars come with the map)
 import { initLighting, lightingMap, lightingRefresh, updateLighting, setLightPreset, aoBegin, aoBake, aoMaterials, setSunBoxes } from './lighting.js';
@@ -278,6 +278,30 @@ function buildMap(scene) {
     scene.add(m);
     mapMeshes.push(m);
   }
+}
+
+// tests (tools/blender/shots_r4.cjs): the box version of the props on top of the map as it is, the models hidden, so
+// box and Blender can be shot from the same camera without building the map again
+const propBoxMeshes = [];
+export function showPropBoxes(on) {
+  for (const m of propBoxMeshes) { G.scene.remove(m); m.geometry.dispose(); }
+  propBoxMeshes.length = 0;
+  propFieldVisible(!on);
+  if (on && MAT && MAP.id) {
+    const def = MAPS[MAP.id], all = def && def.deco ? [...BOXES, ...def.deco] : BOXES, groups = new Map();
+    for (const b of all) {
+      if (!(b.pv && drawnByModel(b.pv))) continue;
+      const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
+      const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2, mk = MAT[b.mat] ? b.mat : 'stone';
+      const g = boxGeo(sx, sy, sz);
+      if (b.rot) { if (!b.fit) worldUV(g, 0, 0, 0, MAT[mk].tile); g.rotateY(b.rot); } else if (!b.fit) worldUV(g, cx, cy, cz, MAT[mk].tile);
+      g.translate(cx, cy, cz);
+      if (!groups.has(mk)) groups.set(mk, []);
+      groups.get(mk).push(aoBake(g, aoSmall(sx, sy, sz)).toNonIndexed());
+    }
+    for (const [k, list] of groups) { const merged = mergeGeometries(list, false); for (const g of list) g.dispose(); if (!merged) continue; const m = mapMesh(G.scene, k, merged); G.scene.add(m); propBoxMeshes.push(m); }
+  }
+  lightingRefresh();
 }
 
 // huge maps (map.chunk metres): one merged mesh per material per chunk, so what's behind you or deep in the fog isn't

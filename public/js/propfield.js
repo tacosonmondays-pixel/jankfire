@@ -27,6 +27,7 @@ const kindCache = new Map(); // model id + variant -> { lod0, lod1, lo, hi, lod,
 // ---------------------------------------------------------------- which model draws a placement
 const hash = (x, z) => { const s = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453; return s - Math.floor(s); };
 function modelFor(p) {
+  if (SKIP.has(p.id)) return null;
   if (!p.a) return AUTHORED['p_' + p.id] ? { mid: 'p_' + p.id, turn: 0 } : null; // round 1's records ({ p, r, s })
   if (p.id === 'car') {
     const k = (hash(p.a[0], p.a[2]) * PARKED.length) | 0;
@@ -36,11 +37,13 @@ function modelFor(p) {
   return AUTHORED['p_' + p.id] ? { mid: 'p_' + p.id, turn: 0 } : null;
 }
 // world.js: does a model draw this tag's boxes? (the boxes are skipped then)
-let off = false; // (tests: the box version, for side-by-side sheets: tools/blender/shots_r4.cjs)
+const Q = (() => { try { return new URLSearchParams(location.search).get('props') || ''; } catch { return ''; } })(); // tests: ?props=off, ?props=skip:pine,stall
+let off = Q === 'off'; // (tests: the box version)
+const SKIP = new Set(Q.startsWith('skip:') ? Q.slice(5).split(',') : []);
 export function propsOff(v) { off = !!v; }
 const has = (m) => !!AUTHORED[m] || coming.has(m);
 export function drawnByModel(pv) {
-  if (off) return false;
+  if (off || SKIP.has(pv)) return false;
   if (pv === 'car') return PARKED.some(has) || has('p_car');
   return has('p_' + pv);
 }
@@ -138,11 +141,33 @@ function kindOf(mid, v, turn) {
       parts[far].get(k).list.push(c);
     }
   });
-  const build = (map) => [...map.values()].map(({ mat, name, list }) => {
-    const geo = list.length > 1 ? mergeGeometries(list, false) : list[0];
-    const glow = name === 'glow' || (mat.emissive && mat.emissive.getHex() && mat.emissiveIntensity > 0.5 && !mat.map);
-    return { geo, mat: propMat(mat, glow), tint: name === 'tint' || name === 'car_paint', glow };
-  }).filter((p) => p.geo);
+  // each material is a draw call for every copy: plain materials that shine alike are merged into one (their colours go
+  // into the vertex colours), so a model made of many paints costs a few draws. textured, see-through and tint stay apart
+  const build = (map) => {
+    const merged = new Map();
+    for (const { mat, name, list } of map.values()) {
+      const glow = name === 'glow' || (mat.emissive && mat.emissive.getHex() && mat.emissiveIntensity > 0.5 && !mat.map);
+      const tint = name === 'tint' || name === 'car_paint';
+      const tex = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap', 'alphaMap'].some((k) => mat[k]);
+      const own = tex || tint || mat.transparent || mat.alphaTest > 0 || mat.side !== THREE.FrontSide || (!glow && mat.emissive && mat.emissive.getHex());
+      const key = own ? 'own:' + mat.uuid : glow ? 'glow' : 'std:' + ((mat.metalness || 0) > 0.5 ? 'm' : 'd') + Math.round((mat.roughness ?? 1) * 4) + (mat.flatShading ? 'f' : '') + ((mat.clearcoat || 0) > 0.3 ? 'c' : '') + ((mat.sheen || 0) > 0.3 || (mat.transmission || 0) > 0 ? 'u' + mat.uuid : '') + (mat.type || '');
+      if (!merged.has(key)) merged.set(key, { mat, name, glow, tint, own, list: [] });
+      const e = merged.get(key);
+      for (const g of list) {
+        if (!own) { // the material's colour into the vertex colours (glows: just their colour, no shade)
+          const c = glow ? (mat.emissive && mat.emissive.getHex() ? mat.emissive : mat.color) : mat.color, col = g.getAttribute('color');
+          for (let i = 0; i < col.count; i++) col.setXYZ(i, glow ? c.r : col.getX(i) * c.r, glow ? c.g : col.getY(i) * c.g, glow ? c.b : col.getZ(i) * c.b);
+        }
+        e.list.push(g);
+      }
+    }
+    return [...merged.values()].map(({ mat, name, glow, tint, own, list }) => {
+      const geo = list.length > 1 ? mergeGeometries(list, false) : list[0];
+      let m = propMat(mat, glow);
+      if (!own) { m.color.setRGB(1, 1, 1); m.vertexColors = true; } // (the colours are in the vertices now)
+      return { geo, mat: m, tint, glow, name };
+    }).filter((p) => p.geo);
+  };
   const meta = a.meta || {};
   const k = { lod0: build(parts[0]), lod1: build(parts[1]), lo: box.min.clone(), hi: box.max.clone(), lod: Number.isFinite(meta.lod) ? meta.lod : 55, tint: meta.tint !== false, box: null };
   const mb = meta.box; // [[x0, y0, z0], [x1, y1, z1]] in the file's space (turned like the model)
@@ -313,7 +338,7 @@ export function updatePropField(cam, force) {
     for (const [L, c] of [[L0, c0], [L1, c1]]) {
       if (!L) continue;
       const im = L.im.array, ic = L.ic.array;
-      for (let j = 0; j < c; j++) { const i = L.idx[j]; im.set(mats.subarray(i * 16, i * 16 + 16), j * 16); ic[j * 3] = cols[i * 3]; ic[j * 3 + 1] = cols[i * 3 + 1]; ic[j * 3 + 2] = cols[i * 3 + 2]; }
+      for (let j = 0; j < c; j++) { const i = L.idx[j]; for (let q = 0; q < 16; q++) im[j * 16 + q] = mats[i * 16 + q]; ic[j * 3] = cols[i * 3]; ic[j * 3 + 1] = cols[i * 3 + 1]; ic[j * 3 + 2] = cols[i * 3 + 2]; }
       if (L === L0) for (let j = 0; j < c; j++) sum = (sum + (L.idx[j] + 1) * 2654435761) % 4294967291;
       L.count = c;
       L.im.clearUpdateRanges(); L.im.addUpdateRange(0, c * 16); L.im.needsUpdate = true;
@@ -342,3 +367,4 @@ export function fetchMapProps(def, traffic, onReady, onFail) {
   prefetch(ids);
 }
 export const propInfo = () => ({ ...propStats, cached: kindCache.size });
+export function propFieldVisible(v) { if (field) field.group.visible = v; } // (tests: world.js showPropBoxes)

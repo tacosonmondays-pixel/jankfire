@@ -352,7 +352,7 @@ function decalMat(tex, patch) {
 
 // a car you can put in the scene: root (position + heading), body (pitch / roll / bounce), wheels (spin, steer)
 export function makeCar(ty, colHex, ci, patch) {
-  const glb = AUTHORED['p_car_' + ty] && glbCar(ty, colHex, ci); // the Blender car (round 4), when its file is in
+  const glb = AUTHORED['p_car_' + ty] && !CODE_CARS && glbCar(ty, colHex, ci); // the Blender car (round 4), when its file is in
   if (glb) return glb;
   const d = buildDesign(ty, colHex, ci);
   const root = new THREE.Group(), body = new THREE.Group();
@@ -377,6 +377,7 @@ export function makeCar(ty, colHex, ci, patch) {
 // ------------------------------------------------------------ the Blender cars (tools/blender/make_traffic.py, round 4)
 // same parts as the code car: a body (the paint is the `tint` material: each car its own colour), the lamps, tails and
 // indicators (the code car's materials, so traffic.js switches them the same way), a wheel each on a hub pivot
+const CODE_CARS = (() => { try { return /[?&]cars=code/.test(location.search); } catch { return false; } })(); // (tests: ?cars=code)
 const glbPaint = new Map();
 const stripN = (n) => (n || '').replace(/\.\d+$/, '');
 function paintOf(m, hex) {
@@ -384,11 +385,11 @@ function paintOf(m, hex) {
   if (!glbPaint.has(k)) { const c = m.clone(); c.color.set(hex); c.onBeforeCompile = m.onBeforeCompile; c.userData.shared = true; glbPaint.set(k, c); }
   return glbPaint.get(k);
 }
+const lampGeo = new WeakMap(); // (one per model, not one per car: cars come and go all match)
 function whiteColors(g) { // carMats.lamp reads vertex colours
   if (g.getAttribute('color')) return g;
-  g = g.clone(); const n = g.getAttribute('position').count;
-  g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3).fill(1), 3));
-  return g;
+  if (!lampGeo.has(g)) { const c = g.clone(), n = c.getAttribute('position').count; c.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3).fill(1), 3)); c.userData.shared = true; lampGeo.set(g, c); }
+  return lampGeo.get(g);
 }
 const PAINT_OF = (ty, col, ci) => ty === 'van' ? ['#f2f2ee', '#e86a22', '#ffe14d', '#ff2fa8'][ci % 4] : ty === 'icecream' ? '#bff5e4' : ty === 'bus' ? BUS_COLS[ci % 4] : ty === 'taxi' ? '#ffd21a' : col;
 function glbCar(ty, colHex, ci) {

@@ -179,10 +179,22 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 - Knives and katanas (`public/js/blades/`) stay code-built: they are real-reference models already. `glossBlade` gives
   them the Blender set's studio gloss (steel and brass turn metal, wood varnished, grips satin) whenever the Blender
   models are loaded.
-- Props: a map's boxes carry `{ pv: id }`; while `p_<id>` is loaded `world.js` skips drawing those boxes and `props.js`
-  draws the model at the spot `L.P()` recorded. Collisions never change. In a map builder:
+- World props (round 4, `p_<id>.glb`): the map kit functions in `shared/map.js` / `shared/jankburg.js` wrap their boxes
+  in `propOf()` (`shared/propcap.js`): the boxes get `{ pv: id }` and one placement goes in the builder's `props` list
+  (anchor, turn, the boxes' extent, a tint = a map material). Crates, barrels, pallets, cardboard, containers and jersey
+  blocks are spotted by material and size wherever a map adds them. Collisions, nav, spawns never change (every map's
+  boxes hash the same as without it). `public/js/propfield.js` draws them: one InstancedMesh per prop, material and LOD
+  for the whole map (plain materials that shine alike are merged first), each copy fitted onto its boxes (`meta.box`, or
+  the one size every copy has, or the model's bounding box), `tint` = the copy's map colour, near copies = lod0 + shadows,
+  far = the `lod1` node, out of view / past the fog = not drawn. A map's prop files download when it loads (they're lazy
+  like skins), the map is built without the boxes of props on their way, and a file that never comes gets its boxes
+  back. Traffic: `cars.js` builds a car from `p_car_<type>` (`wheel_*` hubs, `lamps` / `tails` / `inds`, `tint` paint)
+  when it's loaded; parked cars use the same models.
   ```js
-  prop(L, 'forklift', x, z, r)                  // catalog boxes (shared/props.js) + the model
-  const pv = L.P('bus', x, z, r); L(..., 'caryellow', pv)   // your own boxes, drawn only when the model is missing
+  propOf('stall', L.pt(x, 0, z), L.yaw, () => { /* the kit's own boxes */ }, { t: awning, keep: (b) => b.rug })
   ```
-  `r` = quarter turns (like `B.local`), opts `{ v: variant, color: 'carblue', s: scale, y }`.
+  Check them in the game: `node tools/blender/shots_r4.cjs <port> <dir> <ids|map> [maps] [presets] [n]` (box version vs
+  Blender, same camera), `node tools/blender/props_r4.mjs [--md]` (copies per map, tris and materials per model),
+  `node tools/blender/perf_props.cjs <port> <out.json> [maps]` (draw calls + triangles).
+- Round 1's props (forklift, bus, number balls, racks, pallet loads) still use `prop(L, id, x, z, r)` / `L.P()`
+  (shared/props.js: catalog boxes + a placement at a spot with quarter turns); they draw through the same instancing.
