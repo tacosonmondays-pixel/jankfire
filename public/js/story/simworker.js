@@ -3,6 +3,7 @@
 import { createSim } from '/shared/story/sim.js';
 import { cleanSave } from '/shared/story/save.js';
 import '/shared/story/invsys.js'; // the Tote Bag + quick bar (WP3)
+import '/shared/story/bodysys.js'; // implants, HYPE, coupons (WP5)
 import '/shared/story/solohost.js'; // the card deck's hand and other server-side bits solo needs
 
 let sim = null, last = 0;

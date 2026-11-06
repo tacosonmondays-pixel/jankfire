@@ -16,6 +16,8 @@ async function run(port, tag) {
   require('fs').writeFileSync(process.env.SP + '/dom_' + tag + '.html', dom.html.replace(/></g, '>\n<'));
   dom.controlsRows = await pg.evaluate(async () => { const k = await import('/js/keys.js'); return k.ACTIONS.length + '/' + k.GROUPS.join('|'); });
   console.log(tag, 'controls', dom.controlsRows);
+  // the home has random bits on every load (slab seeds and sizes, wobbly clip-paths, canvas-rendered pictures): ignore those
+  dom.html = dom.html.replace(/data-org-(seed|size)="[^"]*"/g, '').replace(/\d+ model\(s\) loaded/g, '').replace(/clip-path: path\([^)]*\)/g, '').replace(/src="data:image[^"]*"/g, 'src=PIC').replace(/\s+/g, '');
   const h = crypto.createHash('sha1').update(dom.html).digest('hex').slice(0, 12);
   await pg.screenshot({ path: `${process.env.SP}/shots/off_${tag}_home.png` });
   // a bots match: the WITH BOTS picker -> quickest path is the start api the event card uses

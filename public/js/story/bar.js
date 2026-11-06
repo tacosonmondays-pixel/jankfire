@@ -11,12 +11,13 @@ import { ME } from '../player.js';
 import { W, setSlots, STAT } from '../weapons.js';
 import { beamFor, lootSound, lootCard } from './lootfx.js'; // WP4
 import { statsOf } from '/shared/story/loot.js';
+import { seesLoot } from './body.js'; // pigeon eyes
 import { weaponIcon, itemIcon, streakIcon } from '../icons.js';
 import { buildWeapon } from '../models.js';
 import { RARITY } from '/shared/cosmetics.js';
 import { infoOf, kindOf, itemAt, barWeapons, INV } from '/shared/story/items.js';
 import { PICK } from '/shared/story/invsys.js';
-import { TEST } from '/shared/story/testmap.js';
+import { worldOf } from '/shared/story/worlds.js';
 
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 export const RCOL = { ...Object.fromEntries(Object.entries(RARITY).map(([k, v]) => [k, v.color])), premium: '#ff00dc' }; // ☺ PREMIUM: hot pink
@@ -120,7 +121,7 @@ export function useBar(i) {
   if (k === 'gun' || k === 'melee') { bridge(); if (W.cur !== it.b || W.slot !== i) { const ids = barWeapons(inv); if (W.slot !== i) W.prevSlot = W.slot; setSlots(ids, i); wanted = ids.join(','); } }
   else if (k === 'gear') { story.send('gear', { u }); hud.msg(`G: ${infoOf(it).name.toUpperCase()}`, 1); }
   else if (k === 'snack') story.send('eat', { u });
-  else if (k === 'streak') hud.msg('STREAKS NEED HYPE. HYPE IS COMING.', 1.6);
+  else if (k === 'streak') story.send('streak', { u }); // pays HYPE in the sim (bodysys.js), then the normal streak switches on
   setTimeout(render, 0);
 }
 export function dropHeld() {
@@ -163,15 +164,17 @@ function addDrop(d) {
   drops.set(d.id, { d, g, m, beam, t: Math.random() * 6 });
 }
 function removeDrop(id) { const x = drops.get(id); if (!x) return; G.scene.remove(x.g); x.g.traverse((o) => { if (o.geometry && o.geometry !== dropGeo) o.geometry.dispose(); }); drops.delete(id); }
+// pigeon eyes: a drop's beam draws on top of walls
+function xray(x, on) { if (x.xr === on) return; x.xr = on; x.beam.traverse((o) => { if (o.material) { o.material.depthTest = !on; o.renderOrder = on ? 10 : 0; } }); }
 export function clearDrops() { for (const id of [...drops.keys()]) removeDrop(id); }
 export function nearestDrop() {
   let best = null, bd = PICK;
   for (const x of drops.values()) { const dd = Math.hypot(x.d.p[0] - ME.pos[0], x.d.p[1] - ME.pos[1] - 0.6, x.d.p[2] - ME.pos[2]); if (dd < bd) { bd = dd; best = x.d; } }
   return best;
 }
-export const atLocker = () => Math.hypot(ME.pos[0] - TEST.locker.p[0], ME.pos[2] - TEST.locker.p[2]) < TEST.locker.r;
+export const atLocker = () => { const L = worldOf(G.cfg && G.cfg.map).locker; return Math.hypot(ME.pos[0] - L.p[0], ME.pos[2] - L.p[2]) < L.r && Math.abs(ME.pos[1] - L.p[1]) < 3; };
 export function barTick(dt) {
-  for (const x of drops.values()) { x.t += dt; x.m.rotation.y += dt * 1.6; x.m.position.y = Math.sin(x.t * 2.2) * 0.12; x.beam.userData.tick(dt, x.t, Math.hypot(x.d.p[0] - ME.pos[0], x.d.p[1] - ME.pos[1] - 1.6, x.d.p[2] - ME.pos[2])); }
+  for (const x of drops.values()) { x.t += dt; x.m.rotation.y += dt * 1.6; x.m.position.y = Math.sin(x.t * 2.2) * 0.12; const dist = Math.hypot(x.d.p[0] - ME.pos[0], x.d.p[1] - ME.pos[1] - 1.6, x.d.p[2] - ME.pos[2]); x.beam.userData.tick(dt, x.t, dist); xray(x, seesLoot(dist)); }
   STAT.mul = statMul; // rolled stats for whatever's in your hands (weapons.js reads it)
   const near = nearestDrop();
   if (!cardEl) { cardEl = el('div', 'st-lootcard hidden'); document.body.append(cardEl); }

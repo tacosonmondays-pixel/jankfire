@@ -6,7 +6,7 @@
 // systems plug in with addSystem({ id, init(sim), join(sim), tick(sim, dt), msg(sim, m) -> true if handled (story 'sty'
 // messages), raw(sim, m) -> true if handled (the normal game messages: 'item', 'fire'...), save(sim) -> part, load(sim, part) }): the quest engine, loot, inventory, implants, late fees each own one, and their save part goes to
 // save.data[id].
-import { TEST } from './testmap.js';
+import { worldOf } from './worlds.js'; // the Bottom (the city slice) or the test lot
 import { newSave } from './save.js';
 import { fromSave, toSave } from './state.js'; // the story engine's state (WP8): flags, quests, met, codex, log, track...
 
@@ -15,7 +15,9 @@ export function addSystem(s) { if (!SYSTEMS.some((o) => o.id === s.id)) SYSTEMS.
 
 export function createSim({ send, save }) {
   const sv = save || newSave(0);
+  const W = worldOf(sv.at && sv.at.map); // where this run is: save.at.map, else the city slice
   const sim = {
+    world: W, zone: W.id,
     save: sv, send, t: 0, me: null, // me: the (one, solo) player { id, name, pos, seq, alive }
     clock: (sv.data.clock && Number.isFinite(sv.data.clock.min)) ? sv.data.clock.min : 17 * 60 + 29, // the district clock: stuck at 17:29 for now
     sty(k, o) { send({ t: 'sty', k, ...o }); },
@@ -26,11 +28,11 @@ export function createSim({ send, save }) {
 
   sim.join = (m) => {
     const name = typeof m.name === 'string' && m.name.trim() ? m.name.trim().slice(0, 16) : 'CHANGE';
-    const at = sv.at && sv.at.map === TEST.id ? sv.at : { p: TEST.spawn, yaw: TEST.yaw };
+    const at = sv.at && sv.at.map === W.id && !sv.at.fresh ? sv.at : { p: W.spawn, yaw: W.yaw };
     sim.me = { id: 1, name, pos: at.p.slice(), yaw: at.yaw || 0, hp: 100, seq: 1, alive: true, item: typeof m.item === 'string' ? m.item.slice(0, 24) : '' };
     send({
       t: 'welcome', id: 1, name, color: '#ff4fd8', pos: sim.me.pos, q: sim.me.seq, mode: 'story', game: 'dm',
-      cfg: { map: TEST.id, hip: 'normal', bots: 0, diff: 'normal', hr: 'off' },
+      cfg: { map: W.id, hip: 'normal', bots: 0, diff: 'normal', hr: 'off' },
       players: [], peels: [], projs: [], holes: [], bubbles: [], smokes: [], kat: [], tags: [], sprays: [], mpatch: [],
       wave: null, level: 1, account: false, round: null, vote: null, skip: null, team: 0,
       ic: { i: sim.me.item, n: 1, next: 0 },
@@ -49,8 +51,8 @@ export function createSim({ send, save }) {
       if (m.q !== sim.me.seq || !Array.isArray(m.p) || m.p.length !== 3 || !m.p.every(Number.isFinite)) return;
       sim.me.pos = m.p.slice();
       if (Number.isFinite(m.y)) sim.me.yaw = m.y;
-      if (m.p[1] < TEST.killY) { // fell out: the Machine dispenses you again (BEEP. CLUNK.)
-        sim.me.seq++; sim.me.pos = TEST.spawn.slice();
+      if (m.p[1] < W.killY) { // fell out: the Machine dispenses you again (BEEP. CLUNK.)
+        sim.me.seq++; sim.me.pos = W.spawn.slice();
         send({ t: 'spawn', p: sim.me.pos, q: sim.me.seq });
         sim.sty('redispensed', {});
       }
@@ -72,7 +74,7 @@ export function createSim({ send, save }) {
   sim.snapshot = () => {
     const out = JSON.parse(JSON.stringify(sim.save));
     out.playtime = Math.floor(out.playtime);
-    if (sim.me) out.at = { map: TEST.id, p: sim.me.pos.map((x) => Math.round(x * 100) / 100), yaw: Math.round((sim.me.yaw || 0) * 1000) / 1000 };
+    if (sim.me) out.at = { map: W.id, p: sim.me.pos.map((x) => Math.round(x * 100) / 100), yaw: Math.round((sim.me.yaw || 0) * 1000) / 1000 };
     Object.assign(out.data, toSave(sim.state)); // the engine's keys sit at the top of save.data (TECH_PLAN §7)
     out.data.clock = { min: sim.clock };
     for (const s of SYSTEMS) if (s.save) out.data[s.id] = s.save(sim);

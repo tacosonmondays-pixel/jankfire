@@ -13,6 +13,7 @@
 //   QUIRKS[lg] = { dmgMul?(ctx), onHit?(ctx) -> [effects], onKill?(ctx) -> [effects] }  (combat calls these)
 import { BRANDS, MODIFIERS, LEGENDARIES, LOOT_TABLES } from './content/loot.js';
 import { kindOf } from './items.js';
+import { IMPLANTS, rollQuality } from './implants.js'; // organ cores (WP5)
 import { WEAPONS } from '../weapons.js';
 
 export { BRANDS, MODIFIERS, LEGENDARIES, LOOT_TABLES };
@@ -38,7 +39,8 @@ const pick = (a, rand) => a[Math.floor(rand() * a.length) % a.length];
 
 // the weapons a random roll can be: every held gun and melee (no rig fists, no claw, no mode-only kit)
 export const LOOT_BASES = Object.keys(WEAPONS).filter((b) => { const k = kindOf(b); return k === 'gun' || k === 'melee'; });
-// a legendary whose base isn't something you can hold (Lumps' Ring is the rig's rocket punch) gets the nearest thing
+// a guard: a legendary whose base isn't something you can hold gets the nearest thing (the content is fixed, #84;
+// this keeps a future typo from rolling a ghost item)
 const BASE_FALLBACK = { rigpunch: 'slapper' };
 export const legendaryBase = (L) => (kindOf(L.base) ? L.base : BASE_FALLBACK[L.base] || 'slapper');
 
@@ -67,7 +69,7 @@ function namedOr(r, rand) {
 export function rollEntry(e, rand = Math.random) {
   if (!e) return null;
   if (e.legendary) return legendaryItem(e.legendary, rand);
-  if (e.item) return kindOf(e.item) ? { b: e.item, r: 'common', s: 0 } : null;
+  if (e.item) { const k = kindOf(e.item); if (!k) return null; const it = { b: e.item, r: 'common', s: 0 }; if (k === 'implant' && IMPLANTS[e.item].kind === 'core') it.ql = rollQuality(rand); return it; } // organ cores roll their quality
   if (!e.base && !e.brand && (e.rarity === 'legendary' || e.rarity === 'premium')) return namedOr(e.rarity, rand);
   return rollWeapon({ rarity: e.rarity, base: e.base, brand: e.brand }, rand);
 }
