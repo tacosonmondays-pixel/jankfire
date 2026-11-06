@@ -27,7 +27,7 @@ def notatoy(px):
     px[:] = hexrgb(0x111111)
     px[2:-2, 2:-2] = hexrgb(0xffe14d)
     px[4:-4, 4:-4] = hexrgb(0xe0102a)
-    text_px(px, 'NOT A TOY', 7, 7, 2, 0xffffff)
+    text_px(px, 'NOT A TOY', 8, 7, 2, 0xffffff)
 
 
 def age(px):
@@ -54,7 +54,7 @@ def build():
     foam = mat('ty_foam', 0x2a7bff, rough=0.85, tex=tex_noise('ty_foam_t', 0x2a7bff, var=0.12, size=16, seed=206))
     dtip = mat('ty_darttip', 0xff6a10, rough=0.5)
     dot = mat('ty_dot', 0x7dff4f, rough=0.4, emit=0x7dff4f, strength=3.0)
-    sticker = mat('ty_sticker', 0xffffff, rough=0.3, clearcoat=0.5, tex=tex_canvas('ty_sticker_t', 68, 24, notatoy))
+    sticker = mat('ty_sticker', 0xffffff, rough=0.3, clearcoat=0.5, tex=tex_canvas('ty_sticker_t', 122, 28, notatoy))
     agem = mat('ty_age', 0xffffff, rough=0.3, tex=tex_canvas('ty_age_t', 16, 13, age))
     pullm = mat('ty_pull', 0xffffff, rough=0.3, tex=tex_canvas('ty_pull_t', 27, 11, arrow))
     parts, decals = [], []
@@ -62,7 +62,7 @@ def build():
 
     # ---------------- orange safety tip (hollow, ribbed), barrel extension with vent slots, inner tube
     A(lathe([(0.026, -0.646), (0.026, -0.708), (0.036, -0.712), (0.043, -0.706), (0.044, -0.684), (0.041, -0.68), (0.044, -0.676), (0.044, -0.664),
-             (0.041, -0.66), (0.044, -0.656), (0.044, -0.646), (0.037, -0.64)], (0, BORE_Y, 0), orange, seg=24))
+             (0.041, -0.66), (0.044, -0.656), (0.044, -0.646), (0.037, -0.64)], (0, BORE_Y, 0), orange, seg=20))
     A(lathe([(0.0, -0.66), (0.0262, -0.66), (0.0262, -0.708)], (0, BORE_Y, 0), dark, seg=16, cap=False))
     bx_ = lathe([(0.03, -0.645), (0.036, -0.642), (0.036, -0.38), (0.039, -0.376), (0.039, -0.35)], (0, BORE_Y, 0), accent, seg=16)
     for k in range(4):  # vent slots both sides
@@ -78,8 +78,8 @@ def build():
     A(side([(FRONT_Z - 0.03, BORE_Y + 0.03), (FRONT_Z + 0.03, BORE_Y + 0.03), (FRONT_Z + 0.012, SIGHT_Y - 0.008), (FRONT_Z - 0.006, SIGHT_Y - 0.008)], 0.006, (0, 0, 0), orange, bev=0.0015))
     A(box((0.009, 0.009, 0.009), (0, SIGHT_Y - 0.0045, FRONT_Z + 0.003), dot, bev=0.002))
     # under-barrel pump grip (pink, ribbed): the bit you hold up front
-    pg = lathe([(0.03, -0.555), (0.038, -0.548)] + sum([[(0.038, -0.54 + k * 0.024), (0.034, -0.534 + k * 0.024), (0.034, -0.53 + k * 0.024), (0.038, -0.524 + k * 0.024)] for k in range(6)], []) +
-               [(0.038, -0.41), (0.03, -0.404)], (0, BORE_Y - 0.052, 0), pink, seg=14)
+    pg = lathe([(0.03, -0.555), (0.038, -0.548)] + sum([[(0.038, -0.536 + k * 0.026), (0.034, -0.529 + k * 0.026), (0.038, -0.522 + k * 0.026)] for k in range(5)], []) +
+               [(0.038, -0.41), (0.03, -0.404)], (0, BORE_Y - 0.052, 0), pink, seg=12)
     pg.scale = (0.85, 1.0, 1.0)
     A(pg)
     A(box((0.02, 0.03, 0.13), (0, BORE_Y - 0.03, -0.48), grey, bev=0.004))  # its rail under the barrel
@@ -104,9 +104,9 @@ def build():
     A(side([(-0.29, 0.012), (-0.29, 0.058), (-0.15, 0.058), (-0.15, 0.012)], 0.006, (0.0395, 0, 0), grey, bev=0.002))
     A(box((0.006, 0.014, 0.016), (0.043, 0.035, -0.158), orange, bev=0.002))
     # tactical rail on top: chunky teeth
-    A(box((0.04, 0.008, 0.36), (0, 0.079, -0.14), grey, bev=0.002))
-    for k in range(9):
-        A(box((0.046, 0.009, 0.022), (0, 0.0875, -0.3 + k * 0.04), grey, bev=0.002))
+    rl = [(-0.32, 0.075), (-0.32, 0.083)]
+    for k in range(9): rl += [(-0.311 + k * 0.04, 0.083), (-0.311 + k * 0.04, 0.092), (-0.289 + k * 0.04, 0.092), (-0.289 + k * 0.04, 0.083)]
+    A(side(rl + [(0.04, 0.083), (0.04, 0.075)], 0.044, (0, 0, 0), grey, bev=0.0015, seg=1))
     # priming slide: a grey T-handle on the back of the body (pull it back to prime), the slide rails
     A(side([(0.12, 0.056), (0.2, 0.056), (0.214, 0.05), (0.214, 0.03), (0.12, 0.03)], 0.05, (0, 0, 0), grey, bev=0.006))
     A(side([(0.196, 0.02), (0.232, 0.02), (0.244, 0.044), (0.24, 0.07), (0.226, 0.074), (0.206, 0.064), (0.2, 0.05)], 0.07, (0, 0, 0), grey, bev=0.008, seg=3))
@@ -136,8 +136,8 @@ def build():
     for i in range(7):
         y = -0.062 - i * 0.0168
         z0 = -0.153 + (i * 0.0003)
-        A(cyl(0.0078, 0.07, (0, y, z0 + 0.008), foam, axis='z', seg=10))
-        A(cyl(0.0078, 0.012, (0, y, z0 - 0.033), dtip, axis='z', seg=10, r2=0.0068, bev=0.002))
+        A(cyl(0.0078, 0.07, (0, y, z0 + 0.008), foam, axis='z', seg=8))
+        A(cyl(0.0078, 0.012, (0, y, z0 - 0.033), dtip, axis='z', seg=8, r2=0.0062))
     A(box((0.026, 0.006, 0.075), (0, -0.0625 - 7 * 0.0168 + 0.002, -0.153), grey))  # follower
 
     # ---------------- trigger guard, orange trigger, pink grip with finger bumps, stock
@@ -145,15 +145,15 @@ def build():
            0.03, (0, 0, 0), pink, bev=0.006, seg=2))
     A(side([(-0.046, -0.044), (-0.032, -0.044), (-0.024, -0.064), (-0.03, -0.088), (-0.042, -0.086), (-0.038, -0.064)], 0.016, (0, 0, 0), orange, bev=0.004))
     A(side([(0.012, -0.044), (0.084, -0.044), (0.124, -0.21), (0.118, -0.226), (0.076, -0.232), (0.066, -0.222), (0.056, -0.188), (0.061, -0.176), (0.05, -0.156),
-            (0.044, -0.128), (0.048, -0.116), (0.036, -0.096), (0.026, -0.064)], 0.05, (0, 0, 0), pink, bev=0.012, seg=3))
+            (0.044, -0.128), (0.048, -0.116), (0.036, -0.096), (0.026, -0.064)], 0.05, (0, 0, 0), pink, bev=0.012, seg=2))
     for k in range(4): A(box((0.052, 0.004, 0.012), (0, -0.12 - k * 0.024, 0.086 + k * 0.007), grey, bev=0.0015, rot=(0.24, 0, 0)))  # grip texture ribs (back strap)
     # skeleton stock: a frame with a big hole + a grey butt pad
-    A(side([(0.19, 0.055), (0.42, 0.04), (0.44, 0.06), (0.458, 0.06), (0.462, -0.13), (0.444, -0.142), (0.42, -0.12), (0.3, -0.07), (0.19, -0.03)], 0.05, (0, 0, 0), pink, bev=0.01, seg=3,
+    A(side([(0.19, 0.055), (0.42, 0.04), (0.44, 0.06), (0.458, 0.06), (0.462, -0.13), (0.444, -0.142), (0.42, -0.12), (0.3, -0.07), (0.19, -0.03)], 0.05, (0, 0, 0), pink, bev=0.01, seg=2,
            holes=[[(0.23, 0.032), (0.4, 0.022), (0.41, -0.06), (0.37, -0.088), (0.3, -0.052), (0.23, -0.014)]]))
     A(side([(0.456, 0.062), (0.474, 0.062), (0.478, -0.138), (0.46, -0.146)], 0.056, (0, 0, 0), grey, bev=0.006))
     ag = box((0.001, 0.026, 0.032), (-0.0262, -0.036, 0.43), agem, rot=(0, math.pi, 0)); A(ag); decals.append((ag, (0.032, 0.026)))
     # the sticker: NOT A TOY, on the left side over the grip (where you look)
-    st = box((0.001, 0.034, 0.096), (-0.0415, 0.026, -0.03), sticker, rot=(0, math.pi, 0)); A(st); decals.append((st, (0.096, 0.034)))
+    st = box((0.001, 0.027, 0.118), (-0.0415, 0.03, -0.035), sticker, rot=(0, math.pi, 0)); A(st); decals.append((st, (0.118, 0.027)))
 
     for p in parts: uv_box(p, 0.06)
     for o, sz in decals:

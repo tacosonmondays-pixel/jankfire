@@ -45,7 +45,8 @@ def stamp_px(text, w, h, base, ink):
 
 
 def stamp_faces(o, mat_index, z0, z1, axis_len, x_half):
-    """give the handle's top faces between z0..z1 the stamp material, uvs along -z (letters' up = +x)"""
+    """give the handle's top faces between z0..z1 the stamp material, uvs along -z (letters' up = -x: you read it
+    from where you hold it, looking down the handle)"""
     me = o.data
     uvl = (me.uv_layers.active or me.uv_layers.new()).data
     for f in me.polygons:
@@ -55,7 +56,7 @@ def stamp_faces(o, mat_index, z0, z1, axis_len, x_half):
             f.material_index = mat_index
             for li in f.loop_indices:
                 v = me.vertices[me.loops[li].vertex_index].co
-                uvl[li].uv = ((z1 - (-v.y)) / axis_len, (v.x + x_half) / (2 * x_half))
+                uvl[li].uv = ((z1 - (-v.y)) / axis_len, (x_half - v.x) / (2 * x_half))  # reads from your hand toward the bowl
 
 
 def spoon():

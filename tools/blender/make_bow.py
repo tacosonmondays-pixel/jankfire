@@ -17,13 +17,32 @@ ARROW_R = 0.0034        # held arrow shaft radius
 
 # ------------------------------------------------------------ shared helpers
 def section(w, h, k=14, ex=0.42):
-    """a rounded-rectangle limb section: (a = across x, b = along the path's side vector) points"""
+    """a rounded-rectangle section: (a = across x, b = along the path's side vector) points"""
     out = []
     for j in range(k):
         th = 2 * math.pi * j / k
         c, s = math.cos(th), math.sin(th)
         out.append((w / 2 * math.copysign(abs(c) ** ex, c), h / 2 * math.copysign(abs(s) ** ex, s)))
     return out
+
+
+LIMB_K = 22
+LIMB_SLOTS = ['core'] + ['glass'] * 3 + ['top'] * 4 + ['glass'] * 3 + ['core'] + ['glass'] * 3 + ['bot'] * 4 + ['glass'] * 3
+
+
+def limb_section(w, h):
+    """a limb's section: glass faces (top = the side vector's + side, bot = - side), rounded corners and a maple core
+    stripe up each edge. 22 points; LIMB_SLOTS says what each face slot is."""
+    rc = 0.28 * h; e = 0.22 * h; fx = w / 2 - rc
+    pts = [(w / 2, -e), (w / 2, e)]
+    pts += [(fx + rc * math.cos(math.radians(a)), (h / 2 - rc) + rc * math.sin(math.radians(a))) for a in (30, 60)]
+    pts += [(fx - 2 * fx * k / 4, h / 2) for k in range(4)]
+    pts += [(-fx - rc * math.sin(math.radians(a)), (h / 2 - rc) + rc * math.cos(math.radians(a))) for a in (0, 30, 60)]
+    pts += [(-w / 2, e), (-w / 2, -e)]
+    pts += [(-fx - rc * math.cos(math.radians(a)), -(h / 2 - rc) - rc * math.sin(math.radians(a))) for a in (30, 60)]
+    pts += [(-fx + 2 * fx * k / 4, -h / 2) for k in range(4)]
+    pts += [(fx + rc * math.sin(math.radians(a)), -(h / 2 - rc) - rc * math.cos(math.radians(a))) for a in (0, 30, 60)]
+    return pts
 
 
 def limb_path(p0, L, a0, a_mid, u_mid, a_tip, sign=1, n=36):
@@ -247,7 +266,7 @@ def recurve():
     body = []; A = body.append
 
     # ---------------- riser: deflexed side profile, limb pockets cut into the back at both ends, grip swell
-    ys = [Y_END - (2 * Y_END) * i / 80 for i in range(81)]
+    ys = [Y_END - (2 * Y_END) * i / 44 for i in range(45)]
     def back_z(y):
         z = riser_c(y) + riser_d(y) / 2 + grip_bulge(y)
         if abs(y) > Y_END - 0.031:  # the pocket: the riser's back is cut down to where the limb butt sits
@@ -282,10 +301,10 @@ def recurve():
         pv = pivot(sgn); d = limb_dir0(sgn)
         p0 = (0.0, pv[0] - d[0] * 0.031, pv[1] - d[1] * 0.031)
         bpath = [lerp3(p0, (0.0, pv[0], pv[1]), t / 4) for t in range(5)]
-        butt = loft(bpath, lambda i, t: section(LIMB_W0, LIMB_H0), m=glass, name='bw_butt', up=(1, 0, 0), smooth_angle=50)
+        butt = loft(bpath, lambda i, t: limb_section(LIMB_W0, LIMB_H0), m=glass, name='bw_butt', up=(1, 0, 0), smooth_angle=50)
         butt.data.materials.append(core)
         for f in butt.data.polygons:
-            if f.index < 4 * 14: f.material_index = 1 if abs(math.cos(2 * math.pi * (f.index % 14 + 0.5) / 14)) > 0.75 else 0
+            if f.index < 4 * LIMB_K and LIMB_SLOTS[f.index % LIMB_K] == 'core': f.material_index = 1
         uv_box(butt, 0.03); A(butt)
         bc = lerp3(p0, (0.0, pv[0], pv[1]), 0.45)
         nrm = (0.0, -d[1] * sgn, d[0] * sgn)  # the butt's belly normal (toward the archer)
@@ -299,35 +318,36 @@ def recurve():
     for sgn, lab, nm in ((1, lab_top, 'bw_limb_top_wzB'), (-1, lab_bot, 'bw_limb_bot_wzB')):
         pv = pivot(sgn)
         path = limb_path(pv, 0.27, 10, 4, 0.7, -55, sign=sgn)
-        n_s = len(path); K = 14
+        n_s = len(path); K = LIMB_K
         wf = lambda t: LIMB_W0 - 0.0125 * t ** 0.9
         hf = lambda t: LIMB_H0 - 0.0034 * t
-        lb = loft(path, lambda i, t: section(wf(t), hf(t), K), m=glass, name=nm, up=(1, 0, 0), smooth_angle=45)
+        lb = loft(path, lambda i, t: limb_section(wf(t), hf(t)), m=glass, name=nm, up=(1, 0, 0), smooth_angle=40)
         lb.data.materials.append(core); lb.data.materials.append(lab)
         uv_box(lb, 0.03)
         belly = -1 if sgn > 0 else 1   # which side of the section (b) faces the archer
+        bslot = 'bot' if sgn > 0 else 'top'
         s0, s1 = 3, 3 + int(n_s * 0.42)
         uvl = lb.data.uv_layers.active.data
         me = lb.data
         for f in me.polygons:
             if f.index >= (n_s - 1) * K: continue
             st, sl = divmod(f.index, K)
-            th = 2 * math.pi * (sl + 0.5) / K
-            if abs(math.cos(th)) > 0.75: f.material_index = 1
-            if s0 <= st < s1 and math.sin(th) * belly > 0.8:
+            if LIMB_SLOTS[sl] == 'core': f.material_index = 1
+            if s0 <= st < s1 and LIMB_SLOTS[sl] == bslot:
                 f.material_index = 2
                 for li in f.loop_indices:
                     vi = me.loops[li].vertex_index; i, j = divmod(vi, K)
                     v = me.vertices[vi].co
                     u = (i - s0) / (s1 - s0)
                     if sgn < 0: u = 1 - u
-                    w = wf(i / (n_s - 1)) * 0.62
+                    tt_ = i / (n_s - 1)
+                    w = wf(tt_) - 2 * 0.28 * hf(tt_)
                     uvl[li].uv = (u, 0.5 - v.x / w)
         parts = [lb]
         # candy tip overlay with the string grooves, the string loop round it, the string lying along the recurve
         t_ov = n_s - 6
         ov = loft(path[t_ov:] + [tuple(Vector(path[-1]) + (Vector(path[-1]) - Vector(path[-2])) * 2.2)],
-                  lambda i, t: section((wf(1.0) + 0.0016) * (1 - 0.55 * t ** 3), (hf(1.0) + 0.0026) * (1 - 0.45 * t ** 3), K),
+                  lambda i, t: section((wf(1.0) + 0.0016) * (1 - 0.55 * t ** 3), (hf(1.0) + 0.0026) * (1 - 0.45 * t ** 3), 16),
                   m=tipm, name='bw_overlay', up=(1, 0, 0), close=(False, True), smooth_angle=50)
         parts.append(ov)
         il = n_s - 3
