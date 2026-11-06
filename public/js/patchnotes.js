@@ -1,6 +1,12 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '5.1', date: '2026-11-06', title: 'LIGHTS ON', items: [
+    'REAL SHADOWS: the sun casts shadows from buildings, props and players now, and they follow you around the map.',
+    'every map got its own lighting mood with coloured bounce light. neon signs and lamps throw little pools of light, and corners and overhangs get darker.',
+    'your hands and gun get darker in the shade and pick up the map\'s light. on Too HD the Scary Forest flashlights cast shadows.',
+    'new setting: Settings > Shadows (auto / off / low / med / high). auto follows your graphics preset: off on Potato, high on Too HD. if your frame rate drops, turn it down.',
+  ] },
   { v: '5.0', date: '2026-11-06', title: 'THE LOCKER, REDONE', items: [
     'NEW CUSTOMIZE SCREEN: your weapons down the left, the one you picked huge in the middle (drag to spin it), its stats and your numbers with it on the right, and tabs along the bottom: SKIN, WRAP, CHARM, EFFECT, FINISHER.',
     'open a tab for a strip of tiles with a search box and filters. hover one to try it on the gun, click to equip.',
