@@ -32,10 +32,14 @@ export function commute(B, d) {
     for (let z = Math.max(Z0, H.zTop); z < Math.min(Z1, H.zLow); z += 1.5) {
       if (z + 1.5 > GAP[0] && z < GAP[1]) continue;
       const y = hwY(z + 0.75);
-      B.add(hx0, y - 1.2, z, hx1, y, Math.min(z + 1.5, Z1), 'road', { tint: 0x5a5658 });
+      B.add(hx0, y - 1.2, z, hx1, y, Math.min(z + 1.5, Z1), 'road', { tint: 0x5a5658, hide: true }); // collision steps (0.11 m: you just roll up them)
+      const ze = Math.min(z + 1.5, Z1), ya = hwY(z) + 0.07, yb = hwY(ze) + 0.07; // ...drawn as one smooth slope just above them
+      B.shape({ kind: 'quad', q: [[hx0, ya, z], [hx1, ya, z], [hx1, yb, ze], [hx0, yb, ze]], mat: 'road', tint: 0x5a5658, at: [hx0, ya, z] });
+      B.shape({ kind: 'quad', q: [[hx0, ya - 1.2, z], [hx0, ya, z], [hx0, yb, ze], [hx0, yb - 1.2, ze]], mat: 'concrete', tint: 0xa8a098, at: [hx0, ya, z] });
+      B.shape({ kind: 'quad', q: [[hx1, ya, z], [hx1, ya - 1.2, z], [hx1, yb - 1.2, ze], [hx1, yb, ze]], mat: 'concrete', tint: 0xa8a098, at: [hx1, ya, z] });
       B.add(hx0 - 0.6, y, z, hx0, y + 1, Math.min(z + 1.5, Z1), 'concrete', { tint: 0xd0c8c0 });
       B.add(hx1, y, z, hx1 + 0.6, y + 1, Math.min(z + 1.5, Z1), 'concrete', { tint: 0xd0c8c0 });
-      if (Math.floor(z / 6) % 2 === 0) B.add((hx0 + hx1) / 2 - 0.12, y, z, (hx0 + hx1) / 2 + 0.12, y + 0.02, Math.min(z + 1.5, Z1), 'paint', { nc: true, tint: 0xffe14d });
+      if (Math.floor(z / 6) % 2 === 0) B.shape({ kind: 'quad', q: [[(hx0 + hx1) / 2 - 0.12, ya + 0.02, z], [(hx0 + hx1) / 2 + 0.12, ya + 0.02, z], [(hx0 + hx1) / 2 + 0.12, yb + 0.02, ze], [(hx0 + hx1) / 2 - 0.12, yb + 0.02, ze]], mat: 'paint', tint: 0xffe14d, at: [(hx0 + hx1) / 2, ya, z] });
     }
     // pillars under the deck where it's high
     for (let z = Math.ceil(Math.max(Z0, H.zTop) / 24) * 24; z < Math.min(Z1, H.zLow); z += 24) {

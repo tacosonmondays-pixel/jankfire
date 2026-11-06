@@ -111,6 +111,12 @@ function shapeInto(S, s, lod) {
       const a0 = base0 + i * (seg + 1) + k, a1 = a0 + 1, b0 = a0 + seg + 1, b1 = b0 + 1;
       if (s.inside) { S.t(a0, b0, a1); S.t(a1, b0, b1); } else { S.t(a0, a1, b0); S.t(a1, b1, b0); }
     }
+  } else if (s.kind === 'quad') { // a flat 4-corner surface (smooth ramps drawn over stepped collision): q = 4 points, ccw from above
+    const q = s.q, base = S.n;
+    const e1 = [q[1][0] - q[0][0], q[1][1] - q[0][1], q[1][2] - q[0][2]], e2 = [q[3][0] - q[0][0], q[3][1] - q[0][1], q[3][2] - q[0][2]];
+    let n = norm(cross(e2, e1)); if (n[1] < 0) n = [-n[0], -n[1], -n[2]];
+    for (const p of q) S.v(p[0], p[1], p[2], n[0], n[1], n[2], p[0] / tile, p[2] / tile, r, g, b, a);
+    if (n[1] >= 0 && cross(e2, e1)[1] >= 0) { S.t(base, base + 3, base + 2); S.t(base, base + 2, base + 1); } else { S.t(base, base + 1, base + 2); S.t(base, base + 2, base + 3); }
   } else if (s.kind === 'blob' || s.kind === 'lathe') {
     const prof = s.kind === 'lathe' ? s.prof : null, rows = prof ? prof.length - 1 : Math.max(3, Math.round(seg * 0.6));
     const R = s.kind === 'blob' ? (Array.isArray(s.r) ? s.r : [s.r, s.r, s.r]) : [1, 1, 1], c = s.c, base0 = S.n;
