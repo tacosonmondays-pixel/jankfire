@@ -264,6 +264,7 @@ const gear = {
   onNv(p, m) {
     const n = H.now();
     if (!p.alive || p.item !== 'nvg' || n - (p.nvT || 0) < NVG.toggle * 700) return;
+    if (this.brOn || (this.isEcon && this.isEcon() && !(p.ec && p.ec.it && p.ec.it.id === 'nvg'))) { p.nvOn = false; return; } // no goggles in a royale; bought ones only in S&D
     if (this.modeWeapon(p) || (this.chaosKit && this.chaosKit.noItem)) return;
     p.nvT = n;
     p.nvOn = m.on === 1;
@@ -337,6 +338,9 @@ const gear = {
   },
   botGear(b, n) {
     const ai = b.ai;
+    // jank royale: bots use what they picked up (brBotGadget). Search & Destroy: only what they bought (the goggles flash)
+    if (this.brOn) { b.nvOn = false; return; }
+    if (this.isEcon && this.isEcon()) { if (this.econAiFlash) this.econAiFlash(b, n); else b.nvOn = false; return; }
     if (ai.gear === undefined) ai.gear = process.env.JF_BOT_GEAR ? (process.env.JF_BOT_GEAR === 'none' ? null : process.env.JF_BOT_GEAR) : GEAR[(Math.random() * GEAR.length) | 0]; // test knob: JF_BOT_GEAR=quiz
     const g = ai.gear;
     if (!g || b.zmz || this.mode === 'training' || this.modeWeapon(b) || (this.chaosKit && this.chaosKit.noItem)) { b.nvOn = false; return; } // zombies don't carry gear

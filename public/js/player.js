@@ -124,6 +124,7 @@ export function tryHook() {
   const now = performance.now();
   if (rigHook(now)) return; // overdrive rig: E is the quickhack (and a hacked grapple is fried)
   if (!ME.alive || ME.hook || now < (ME.frozenUntil || 0) || now < (ME.sleepUntil || 0)) return; // frozen or asleep: no grapple
+  if (G.hookGate && G.hookGate()) return; // jank royale: grapple charges (royale.js)
   const o = eye(), d = look();
   const mh = raycast(o, d, HOOK.range, BOXES);
   const maxT = mh ? mh.t : HOOK.range;
