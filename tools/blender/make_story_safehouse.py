@@ -73,7 +73,7 @@ def build_bed():
         rows.append(row)
     bk = sheet_grid(rows, cloth, 'blanket'); face_toward(bk, (0, 1, 0))
     O.append(uv_remap(bk, C.rect(0, 0, 128, 96)))
-    pw = pillow((0.62, 0.13, 0.4), (-0.02, 0.43, -0.68), cloth, puff=0.3, pinch=0.1, rot=(-0.12, 0.08, 0.03))
+    pw = pillow((0.62, 0.13, 0.4), (-0.02, 0.405, -0.68), cloth, puff=0.3, pinch=0.1, rot=(-0.12, 0.08, 0.03))
     O.append(uv_fit(pw, C.rect(0, 96, 64, 32)))
     return O, {'use': 'bed', 'lie': [0, 0.4, 0]}
 
@@ -152,17 +152,19 @@ def build_wardrobe():
     panel = mat('vw_panel', 0xffffff, rough=0.2, clearcoat=0.5, tex=Pn.image(), emit=0xffffff, strength=2.5, emit_tex=True)
     O = []
     body = L.rect(0, 0, 64, 64); liv = L.rect(64, 0, 64, 128)
-    O.append(uv_fit(box((0.95, 1.83, 0.04), (0, 0.915, 0.405), paint, bev=0.006, seg=1), body))
+    O.append(uv_fit(box((0.9, 1.82, 0.04), (0, 0.915, 0.4), paint, bev=0.006, seg=1), body))
     for s in (-1, 1): O.append(uv_fit(box((0.04, 1.83, 0.85), (s * 0.455, 0.915, 0), paint, bev=0.008, seg=1), liv))
-    O.append(uv_fit(box((0.95, 0.06, 0.85), (0, 1.8, 0), paint, bev=0.008, seg=1), body))
-    O.append(uv_fit(box((0.95, 0.14, 0.85), (0, 0.07, 0), paint, bev=0.008, seg=1), body))
+    O.append(uv_fit(box((0.98, 0.06, 0.87), (0, 1.805, 0), paint, bev=0.008, seg=1), body))
+    O.append(uv_fit(box((0.86, 0.14, 0.8), (0, 0.072, -0.01), paint, bev=0.008, seg=1), body))
     O.append(uv_fit(box((0.87, 0.2, 0.05), (0, 1.67, -0.395), paint, bev=0.005, seg=1), body))
     O.append(uv_fit(box((0.7, 0.13, 0.004), (0, 1.67, -0.4215), panel), Pn.rect(32, 0, 64, 16)))
     # inside: a clothes rail with hangers, three garments, sneakers and one leftover product spiral holding a sock
     O.append(rod((-0.435, 1.45, 0.05), (0.435, 1.45, 0.05), 0.011, metal, seg=8))
-    def hanger(x):
-        pts = [(0, 1.47, 0.06), (0, 1.49, 0.05), (0, 1.48, 0.035), (0, 1.455, 0.04), (0, 1.43, 0.05), (0, 1.36, 0.25), (0, 1.35, 0.25), (0, 1.35, -0.15), (0, 1.36, -0.15), (0, 1.43, 0.05)]
-        return sweep([(x, y, z) for _, y, z in pts], 0.0035, metal, seg=4, name='hanger')
+    def hanger(x):  # wire coat hanger: hook over the rail, two shoulders, a bar
+        P = [torus(0.017, 0.003, (x, 1.452, 0.05), metal, axis='x', seg=6, sides=3)]
+        for a, b in (((x, 1.43, 0.05), (x, 1.355, 0.27)), ((x, 1.43, 0.05), (x, 1.355, -0.17)), ((x, 1.352, 0.27), (x, 1.352, -0.17))):
+            P.append(rod(a, b, 0.0035, metal, seg=4))
+        return join(P, 'hanger')
     tee = [(0, -0.2, 0.2), (-0.08, -0.205, 0.205), (-0.17, -0.21, 0.21), (-0.19, -0.15, 0.15), (-0.6, -0.155, 0.155)]
     for x, ln, rect, seed in ((-0.3, 0.62, C.rect(0, 0, 64, 64), 1), (-0.1, 0.8, C.rect(64, 0, 64, 64), 2), (0.12, 0.58, C.rect(0, 64, 64, 64), 3)):
         O.append(hanger(x))
@@ -178,12 +180,12 @@ def build_wardrobe():
     hp = [(0.3 + 0.06 * math.cos(t / 20 * 3 * 2 * math.pi), 0.9 + 0.06 * math.sin(t / 20 * 3 * 2 * math.pi), -0.3 + t / 20 * 0.66) for t in range(21)]
     O.append(sweep(hp, 0.006, metal, seg=4, name='spiral'))
     O.append(rod((0.3, 0.9, 0.36), (0.42, 0.9, 0.36), 0.01, metal, seg=6))
-    sk = garment([(0, -0.035, 0.035), (-0.12, -0.035, 0.035), (-0.16, -0.035, 0.08), (-0.19, -0.03, 0.085)], 3, cloth, 0.3, 0.93, -0.1, amp=0.004, sway=0.0, seed=4, name='sock')
+    sk = garment([(0, -0.035, 0.035), (-0.12, -0.035, 0.035), (-0.16, -0.035, 0.08), (-0.19, -0.03, 0.085)], 3, cloth, 0.35, 0.875, -0.1, amp=0.004, sway=0.0, seed=4, name='sock')
     O.append(uv_fit(sk, sock, mode='front'))
     # the door: glass, control panel, frame, swung open on its left hinge
     D = []
-    for (sx, sy, x, y) in ((0.95, 0.05, 0, 1.535), (0.95, 0.06, 0, 0.17), (0.05, 1.42, 0.45, 0.85), (0.05, 1.42, -0.45, 0.85), (0.04, 1.32, -0.2, 0.85)):
-        D.append(uv_fit(box((sx, sy, 0.05), (x, y, -0.45), paint, bev=0.006, seg=1), body))
+    for (sx, sy, sz, x, y) in ((0.9, 0.05, 0.05, 0, 1.535), (0.9, 0.06, 0.05, 0, 0.17), (0.05, 1.4, 0.056, 0.45, 0.85), (0.05, 1.4, 0.056, -0.45, 0.85), (0.04, 1.32, 0.046, -0.2, 0.85)):
+        D.append(uv_fit(box((sx, sy, sz), (x, y, -0.45), paint, bev=0.006, seg=1), body))
     D.append(box((0.61, 1.31, 0.008), (0.125, 0.85, -0.45), glass))
     D.append(uv_fit(box((0.21, 1.31, 0.03), (-0.325, 0.85, -0.445), panel), Pn.rect(0, 0, 32, 64)))
     D.append(uv_fit(box((0.5, 0.12, 0.01), (0.125, 0.29, -0.47), panel), Pn.rect(32, 16, 32, 16)))
@@ -222,7 +224,7 @@ def build_garagedoor():
     O.append(box((3.0, 0.38, 0.42), (0, 2.41, 0.0), paint, bev=0.015, seg=1))
     for s in (-1, 1):
         O.append(box((0.08, 2.24, 0.1), (s * 1.46, 1.11, -0.03), metal, bev=0.006, seg=1))
-        O.append(box((0.12, 0.05, 0.14), (s * 1.44, 2.2, -0.03), metal, bev=0.004, seg=1))
+        O.append(box((0.1, 0.05, 0.14), (s * 1.44, 2.2, -0.03), metal, bev=0.004, seg=1))
     rows = []
     ys = []
     for k in range(22):

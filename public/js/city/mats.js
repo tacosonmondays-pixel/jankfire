@@ -53,7 +53,26 @@ function drawTile(g, fam, r) {
     case 'paint': line('#fff', 0, 0, S, S); break;
     case 'rib': speck(230, 12, 2); for (let y = 0; y < S; y += 8) { line('rgba(120,20,50,0.45)', 0, y, S, 2); line('rgba(255,255,255,0.18)', 0, y + 3, S, 1); } break;
     case 'window': line('#7a6a50', 0, 0, S, S); for (let x = 2; x < S; x += 16) { line('#fff6d0', x, 6, 12, 22); line('#fff6d0', x, 38, 12, 22); line('rgba(90,60,30,0.6)', x + 5, 6, 2, 22); } break;
-    case 'flesh': speck(225, 26, 2); for (let i = 0; i < 9; i++) { g.strokeStyle = 'rgba(110,10,40,0.55)'; g.lineWidth = 1.5; g.beginPath(); let x = r() * S, y = r() * S; g.moveTo(x, y); for (let k = 0; k < 5; k++) { x += (r() - 0.5) * 18; y += (r() - 0.5) * 18; g.lineTo(x, y); } g.stroke(); } break;
+    case 'flesh': { // wet skin: soft mottling, pores, and a few branching veins drawn wrapped so the tile repeats
+      speck(222, 18, 2);
+      for (let i = 0; i < 14; i++) { g.fillStyle = `rgba(${r() < 0.5 ? '160,40,80' : '255,220,200'},0.14)`; const x = r() * S, y = r() * S, rr = 4 + r() * 9; for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) { g.beginPath(); g.arc(x + ox, y + oy, rr, 0, 6.3); g.fill(); } }
+      for (let i = 0; i < 40; i++) line('rgba(90,20,40,0.35)', r() * S, r() * S, 1, 1); // pores
+      const vein = (x, y, a, len, w) => {
+        for (let k = 0; k < 2 && len > 4; k++) {
+          const x2 = x + Math.cos(a) * len, y2 = y + Math.sin(a) * len, cxp = (x + x2) / 2 + (r() - 0.5) * len * 0.6, cyp = (y + y2) / 2 + (r() - 0.5) * len * 0.6;
+          for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) {
+            g.strokeStyle = 'rgba(110,30,90,0.5)'; g.lineWidth = w; g.lineCap = 'round';
+            g.beginPath(); g.moveTo(x + ox, y + oy); g.quadraticCurveTo(cxp + ox, cyp + oy, x2 + ox, y2 + oy); g.stroke();
+            g.strokeStyle = 'rgba(190,90,150,0.35)'; g.lineWidth = Math.max(0.6, w * 0.35);
+            g.beginPath(); g.moveTo(x + ox, y + oy - 0.5); g.quadraticCurveTo(cxp + ox, cyp + oy - 0.5, x2 + ox, y2 + oy - 0.5); g.stroke();
+          }
+          vein(x2, y2, a + (r() - 0.5) * 1.6, len * 0.6, w * 0.7);
+          a += (r() < 0.5 ? 1 : -1) * (0.5 + r() * 0.6);
+        }
+      };
+      for (let i = 0; i < 3; i++) vein(r() * S, r() * S, r() * 6.28, 18 + r() * 14, 2.4);
+      break;
+    }
     case 'glass': line('#ccc', 0, 0, S, S); line('rgba(255,255,255,0.7)', 6, 6, 3, 30); line('rgba(255,255,255,0.5)', 12, 6, 1, 20); break;
     case 'glow': speck(245, 10, 4); break;
     default: speck(200, 30, 2);

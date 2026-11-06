@@ -404,8 +404,10 @@ def lod1(parts, ratio=0.25, drop=(), target=None):
     for p in keep:
         c = p.copy(); c.data = p.data.copy(); _link(c); c.name = p.name + '_lod1'
         c.modifiers.clear()
+        if tris_of(c) < 40: out.append(c); continue  # glass panes, labels: already as cheap as they get
         md = c.modifiers.new('dec', 'DECIMATE'); md.ratio = max(0.02, min(1.0, goal / have)); md.use_collapse_triangulate = True
         apply_mods(c)
+        _drop_crumbs(c)
         if any(PULSE.search(x.name) for x in c.data.materials if x): wet(c)
         out.append(c)
     return out
@@ -451,3 +453,40 @@ def run_multi_lod(build, expo=None):
             for c in full: c.parent = None; c.hide_render = True
             _clear_rig(); sheet(root, fid + '_lod1', views=('persp', 'front', 'back_persp'), exposure=ex)
             for c in full: c.parent = root; c.hide_render = False
+
+
+def mirror_parts(parts):
+    """flip a built prop left-right (x -> -x) with its uvs kept, so text painted for a viewer reads right from -z
+    (seen from the front, +x is on the viewer's left)."""
+    for p in parts:
+        apply_mods(p)
+        p.data.transform(p.matrix_world); p.matrix_world = Matrix.Identity(4)
+        p.data.transform(Matrix.Scale(-1, 4, Vector((1, 0, 0))))
+        bm = bmesh.new(); bm.from_mesh(p.data); bmesh.ops.reverse_faces(bm, faces=bm.faces); bm.to_mesh(p.data); bm.free()
+        p.data.update()
+    return parts
+
+
+def _drop_crumbs(o, keep=6):
+    """decimation leaves lone triangles behind: delete islands of fewer than `keep` faces."""
+    bm = bmesh.new(); bm.from_mesh(o.data); bm.faces.ensure_lookup_table()
+    seen = set(); kill = []
+    for f in bm.faces:
+        if f.index in seen: continue
+        grp = []; stack = [f]; seen.add(f.index)
+        while stack:
+            x = stack.pop(); grp.append(x)
+            for e in x.edges:
+                for y in e.link_faces:
+                    if y.index not in seen: seen.add(y.index); stack.append(y)
+        if len(grp) < keep: kill += grp
+    if kill: bmesh.ops.delete(bm, geom=kill, context='FACES')
+    bm.to_mesh(o.data); bm.free()
+
+
+def orient_to(o, pos, n):
+    """point an object's local +y (game up) along game normal n, origin at game pos (avoids euler-order mixups)."""
+    up = gv(0, 1, 0); nb = gv(*n)
+    q = up.rotation_difference(nb.normalized())
+    o.matrix_world = Matrix.Translation(gv(*pos)) @ q.to_matrix().to_4x4()
+    return o

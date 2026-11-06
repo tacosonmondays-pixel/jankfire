@@ -152,7 +152,7 @@ def build_wokdish():
     for y in (-0.1, 0.1): O.append(cyl(0.011, 0.012, (0, y, -0.016), chrome, axis='z', seg=5))
     O.append(box((0.04, 0.04, 0.41), (0, -0.05, -0.215), paint))
     O.append(rod((0, -0.122, -0.01), (0, -0.065, -0.3), 0.011, paint, seg=4))
-    O.append(cyl(0.022, 0.2, (0, 0.03, -0.4), paint, axis='y', seg=6))
+    O.append(cyl(0.022, 0.19, (0, 0.035, -0.4), paint, axis='y', seg=6))
     O.append(box((0.07, 0.05, 0.06), (0, 0.13, -0.4), chrome))
     # the wok, built bowl-up round its outer bottom, then tipped to face forward and up
     W = []
@@ -175,7 +175,7 @@ def build_wokdish():
     O.append(sweep([c0, c2, (0.035, c2[1] - 0.1, c2[2] + 0.08), (0.045, -0.11, -0.05), (0.04, -0.11, -0.012)], 0.0048, black, seg=4, name='cable'))
     tiled(O, 0.2)
     # lod1: bracket, a coarse wok, handle, spoon on its wire
-    L = [box((0.16, 0.26, 0.012), (0, 0, -0.006), paint), box((0.04, 0.04, 0.41), (0, -0.05, -0.215), paint), cyl(0.022, 0.2, (0, 0.03, -0.4), paint, axis='y', seg=4)]
+    L = [box((0.16, 0.26, 0.012), (0, 0, -0.006), paint), box((0.04, 0.04, 0.41), (0, -0.05, -0.215), paint), cyl(0.022, 0.19, (0, 0.035, -0.4), paint, axis='y', seg=4)]
     LW = [lathe([(0.0, 0.0), (0.24, 0.05), (0.302, 0.15), (0.0, 0.012)], (0, 0, 0), steel, seg=8, axis='y', name='wok'),
           rod((0.3, 0.14, 0), (0.58, 0.2, 0), 0.018, wood, seg=4), rod((0, 0.15, -0.29), (0, 0.33, 0), 0.006, chrome, seg=3),
           ball(0.05, (0, 0.35, 0), chrome, scale=(1, 0.5, 1), seg=4, rings=3)]
@@ -225,7 +225,7 @@ def build_sofa():
     O = []
     O.append(box((1.96, 0.24, 0.8), (0, 0.2, 0.0), paint, bev=0.035, seg=1))
     for s in (-1, 1):
-        O.append(box((0.22, 0.5, 0.84), (s * 0.88, 0.335, 0.0), paint, bev=0.04, seg=1))
+        O.append(box((0.22, 0.48, 0.84), (s * 0.88, 0.345, 0.0), paint, bev=0.04, seg=1))
         O.append(cyl(0.125, 0.86, (s * 0.89, 0.59, 0.0), paint, axis='z', seg=8, bev=0.02))
     O.append(box((1.56, 0.42, 0.22), (0, 0.53, 0.3), paint, bev=0.04, seg=1))
     for i, x in enumerate((-0.515, 0.0, 0.515)):
@@ -312,7 +312,7 @@ def build_fridge():
     O.append(sweep([(-0.285, 1.02, -0.39), (-0.292, 1.035, -0.43), (-0.295, 0.99, -0.452), (-0.295, 0.9, -0.452), (-0.29, 0.86, -0.44)], 0.014, chrome, seg=6, squash=(1.0, 0.7), name='handle'))
     O.append(box((0.6, 0.014, 0.006), (0, 1.05, -0.377), chrome))
     O.append(uv_fit(box((0.22, 0.045, 0.006), (0, 1.13, -0.377), decal), A.rect(48, 0, 80, 16)))
-    O.append(uv_fit(box((0.64, 0.075, 0.02), (0, 0.105, -0.33), decal, bev=0.004, seg=1), A.rect(48, 16, 64, 16)))
+    O.append(uv_fit(box((0.64, 0.075, 0.02), (0, 0.115, -0.33), decal, bev=0.004, seg=1), A.rect(48, 16, 64, 16)))
     for x in (-0.3, 0.3):
         for z in (-0.26, 0.26): O.append(cyl(0.026, 0.075, (x, 0.04, z), chrome, axis='y', seg=8, r2=0.02))
     # magnets + the note
@@ -320,7 +320,7 @@ def build_fridge():
     for k, (x, y, a) in enumerate(((-0.17, 0.86, 0.1), (-0.12, 0.85, -0.08), (-0.07, 0.865, 0.05), (-0.02, 0.85, -0.12), (0.035, 0.862, 0.18))):
         O.append(uv_fit(box((0.04, 0.05, 0.01), (x, y, zf), decal, rot=(0, 0, a)), letters[k]))
     O.append(uv_fit(box((0.17, 0.2, 0.002), (0.12, 0.6, -0.3765), decal, rot=(0, 0, -0.06)), A.rect(0, 0, 48, 56)))
-    O.append(uv_fit(cyl(0.017, 0.01, (0.12, 0.69, -0.381), decal, axis='z', seg=8), red))
+    O.append(uv_fit(cyl(0.017, 0.01, (0.12, 0.69, -0.384), decal, axis='z', seg=8), red))
     bn = sweep([(0.18, 0.95, zf), (0.21, 0.93, zf), (0.24, 0.935, zf), (0.265, 0.96, zf)], [0.006, 0.011, 0.011, 0.005], decal, seg=6, squash=(1.0, 0.6), name='banana')
     O.append(uv_fit(bn, ban))
     pz = side_x([(-0.03, 0.03), (0.03, 0.03), (0.0, -0.045)], 0.008, (-0.2, 0.42, zf), decal, bev=0.002, seg=1)
@@ -412,7 +412,7 @@ def build_acunit():
     O.append(cyl(0.2, 0.012, (fx, fy, fz - 0.002), dark, axis='z', seg=10))
     for k in range(2):
         a = k * math.pi + 0.5
-        O.append(box((0.3, 0.07, 0.006), (fx, fy, fz - 0.016), dark, rot=(0, 0.35, a)))
+        O.append(box((0.3, 0.07, 0.006), (fx, fy, fz - 0.016 - 0.007 * k), dark, rot=(0, 0.35, a)))
     O.append(torus(0.195, 0.0045, (fx, fy, fz - 0.03), metal, axis='z', seg=12, sides=3))
     for a in (math.pi / 4, -math.pi / 4):
         O.append(box((0.39, 0.009, 0.006), (fx, fy, fz - 0.03), metal, rot=(0, 0, a)))
@@ -470,7 +470,7 @@ def build_smilesign():
     uv_fit(disc, (0, 0, 1, 1), mode='front', only={0}); uv_fit(disc, rim_r, only={1})
     chunk_poly = [(-2.3, -0.3), (-1.55, -0.55), (-1.25, -0.95), (-0.95, -1.15), (-1.05, -1.55), (-0.7, -2.4), (-2.4, -2.4)]
     piece = dup(disc)
-    cut(disc, side_x(chunk_poly, 1.0, (0, 0, 0), rim))
+    cut(disc, side_x([(x + 0.02, y + 0.02) for x, y in chunk_poly], 1.0, (0, 0, 0), rim))  # a hair inside the rim's cut
     cut(piece, side_x(chunk_poly, 1.0, (0, 0, 0), rim), op='INTERSECT')
     S.append(disc)
     ring = lathe([(1.95, -0.13), (2.06, -0.13), (2.06, -0.22), (1.95, -0.22), (1.95, -0.13)], (0, 0, 0), rim, seg=32, axis='z', name='rim', cap=False)
@@ -638,7 +638,7 @@ def build_tarp():
     for x in (-1.2, 0.0, 1.2): O.append(uv_fit(torus(0.035, 0.007, (x, 2.33, 0.98), kit, axis='x', seg=8, sides=3), rope))
     for s in (-1, 1):
         x, z = s * 1.42, -1.15
-        O.extend(broom(x, z, 1.95, kit, kit, K.rect(0, 0, 32, 32), brush if s < 0 else brushh, lean=(s * 0.03, 0.02)))
+        O.extend(broom(x, z, 1.95, kit, kit, K.rect(0, 0, 32, 32), brush if s < 0 else brushh, lean=(s * 0.03, 0.02), y0=0.05))
         O.append(uv_fit(cyl(0.12, 0.2, (x, 0.1, z), kit, axis='y', seg=10, bev=0.006), K.rect(0, 32, 32, 32)))
         O.append(uv_fit(cyl(0.11, 0.01, (x, 0.2, z), kit, axis='y', seg=10), conc))
         O.append(uv_fit(torus(0.03, 0.007, (x + s * 0.03, 1.93, z + 0.02), kit, axis='y', seg=8, sides=3), rope))
@@ -787,7 +787,7 @@ def build_crate_soup():
     for s in (-1, 1):
         O.append(uv_fit(box((0.02, 0.16, 0.36), (s * 0.25, 0.08, 0), woodm, bev=0.004, seg=1), E))
         for y in (0.035, 0.12):
-            O.append(uv_fit(box((0.52, 0.065, 0.012), (0, y, s * 0.174), woodm, rot=(0, 0, 0.006 * s)), G))
+            O.append(uv_fit(box((0.49, 0.065, 0.012), (0, y, s * 0.174), woodm, rot=(0, 0, 0.006 * s)), G))
     O.append(uv_fit(box((0.48, 0.012, 0.34), (0, 0.006, 0), woodm), G))
     LR = C.rect(0, 0, 128, 40); LD = C.rect(0, 40, 32, 32)
     def can(x, y, z, turn=0.0, lie=None, seg=10):

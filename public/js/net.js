@@ -1,9 +1,11 @@
 const handlers = {};
+const taps = []; // extra listeners that see every message (the minimap's enemy pings), after the handler
 
 export const net = {
   ws: null,
   open: false,
   on(t, fn) { handlers[t] = fn; },
+  tap(fn) { taps.push(fn); },
   send(o) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(o)); },
   connect(hello, onClose, mkSocket) { // mkSocket: another transport with a WebSocket's surface (story mode's worker, story/host.js)
     const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
@@ -15,6 +17,7 @@ export const net = {
       try { m = JSON.parse(e.data); } catch { return; }
       const h = handlers[m.t];
       if (h) h(m);
+      for (const f of taps) try { f(m); } catch (err) { console.error(err); }
     };
     ws.onclose = () => { if (ws !== this.ws) return; this.open = false; if (onClose) onClose(); };
   },

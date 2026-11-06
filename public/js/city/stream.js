@@ -135,7 +135,11 @@ export class CityStream {
     for (const r of this.chunks.values()) {
       const live = r.used === this.time, ring = live ? r.ring : 9;
       const showNear = ring === 1 && r.m0, showMid = (ring === 2 && r.m1) || (ring === 1 && !r.m0 && r.m1) || (ring === 2 && !r.m1 && r.m0);
-      if (r.m0) r.m0.visible = !!showNear || (ring === 2 && !r.m1);
+      if (r.m0) {
+        r.m0.visible = !!showNear || (ring === 2 && !r.m1);
+        const cast = r.d < 64; // only the chunks round you cast sun shadows (the shadow pass was half the triangles)
+        if (r.m0.userData.cast !== cast) { r.m0.userData.cast = cast; for (const m of r.m0.children) m.castShadow = cast && m.userData.kind !== 'glass' && m.userData.kind !== 'glow'; }
+      }
       if (r.m1) r.m1.visible = !!showMid && !showNear;
       if (r.m0 && (!live || r.d > R.near + HYST + CHUNK)) { freeGroup(r.m0); r.m0 = null; r.req.mesh0 = false; }
       if (r.m1 && (!live || r.d > R.mid + HYST + CHUNK || ring === 1 && r.m0 && r.d < R.near - CHUNK)) { freeGroup(r.m1); r.m1 = null; r.req.mesh1 = false; }
@@ -191,7 +195,7 @@ export class CityStream {
 
   updateProps(want) {
     const list = want.filter((r) => r.d <= this.R.props && r.packed);
-    const hiCell = this.R.propsHi ? Math.floor(this.cam.x / 16) + ',' + Math.floor(this.cam.z / 16) : ''; // the hi-detail bubble moves with you
+    const hiCell = Math.floor(this.cam.x / 16) + ',' + Math.floor(this.cam.z / 16); // the detail bubbles move with you
     const key = list.map((r) => r.id).sort().join(';') + '|' + hiCell;
     if (key === this.props.key || this.time - this.props.t < 0.3) return;
     this.props.key = key; this.props.t = this.time;
@@ -201,7 +205,7 @@ export class CityStream {
       for (let i = 0; i < P.length; i += 7) inst.push({ id: ids[P[i]], x: P[i + 1], y: P[i + 2], z: P[i + 3], yaw: P[i + 4], s: P[i + 5], v: P[i + 6] });
     }
     freeProps(this.props.group);
-    this.props.group = buildPropGroup(inst, this.R.propsHi, this.cam); this.props.n = inst.length;
+    this.props.group = buildPropGroup(inst, this.R.propsHi, this.cam, this.R.props / 224); this.props.n = inst.length;
     this.root.add(this.props.group);
   }
 
