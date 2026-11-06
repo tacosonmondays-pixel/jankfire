@@ -20,6 +20,8 @@ export function initAudio(v) {
 }
 
 export function setVolume(v) { vol = v; if (master) master.gain.value = v; }
+// music.js plays through the same master, so the volume slider scales the music too
+export function audioOut() { return ac ? { ac, master } : null; }
 export function setListener(p, yaw) { L.pos = p; L.yaw = yaw; }
 // sealed in a soap bubble: everything you hear goes through a low pass, like your head is underwater
 let muffle = null;

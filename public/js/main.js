@@ -14,6 +14,7 @@ import { hud } from './hud.js';
 import { fx, makeBeam, setBeam, scaleU } from './fx.js';
 import { marbles } from './marbles.js';
 import { initAudio, sfx, setVolume, setListener, stopLoops } from './audio.js';
+import { musicUpdate, musicNewMatch } from './music.js';
 import { ME, stepPlayer, tryHook, releaseHook, applyKb, slip, eye, hookPoint, hspeed, crouchTap } from './player.js';
 import {
   W, initWeapons, rebuildOne, setLoadout, refillAmmo, switchSlot, lastSlot, cycleSlot, reload,
@@ -360,6 +361,17 @@ $('jank').value = String(S.jank);
 $('jank').addEventListener('change', () => { S.jank = Number($('jank').value); setJank(S.jank); saveSettings(); });
 bindRange('fov', 'fov');
 bindRange('vol', 'vol', null, () => setVolume(S.vol));
+// music has its own volume (the main one still scales it). in matches it's on (quieter, its own slider) for bots, co-op
+// and training, and off in competitive (online room, plant & defuse) unless you turn that on. old saves have none of it
+if (typeof S.musicVol !== 'number') S.musicVol = 0.35;
+if (typeof S.musicMatchVol !== 'number') S.musicMatchVol = 0.15;
+if (typeof S.musicMatch !== 'boolean') S.musicMatch = true;
+S.musicComp = !!S.musicComp;
+bindRange('musicVol', 'musicVol', null, musicUpdate);
+bindRange('musicMatchVol', 'musicMatchVol', null, musicUpdate);
+bindCheck('musicMatch', 'musicMatch', musicUpdate);
+bindCheck('musicComp', 'musicComp', musicUpdate);
+SYNC_KEYS.push('musicVol', 'musicMatch', 'musicComp', 'musicMatchVol');
 bindRange('sens', 'sens', (v) => v.toFixed(1));
 bindRange('adsSens', 'adsSens', (v) => v.toFixed(2));
 bindCheck('fovKick', 'fovKick');
@@ -1039,6 +1051,8 @@ net.on('welcome', (m) => {
   G.myId = m.id; G.myName = m.name; G.myColor = m.color; G.joined = true; connecting = false;
   airReset();
   G.mode = m.mode; G.cfg = m.cfg;
+  G.game = m.game; // (music needs it before the first round info arrives)
+  musicNewMatch(); // a fresh random song for this match
   loadMap(m.cfg.map);
   ME.pos = m.pos.slice(); ME.vel = [0, 0, 0]; ME.alive = true; ME.hp = 100; ME.seq = m.q;
   ME.yaw = Math.atan2(m.pos[0], m.pos[2]);
@@ -1187,6 +1201,7 @@ net.on('teams', (m) => {
     if (r) { const was = !!r.team; r.team = team; if (r.color !== color || was !== !!team) r.setLook(r.outfit, color); } // team colour beats clothes
   }
   if (G.round) G.round.game = m.game;
+  G.game = m.game;
   updateLabel();
   if (screen === 'match') syncMatchUI();
   if (GAMES[m.game] && GAMES[m.game].teams && G.myTeam) hud.msg(`YOU ARE ${TEAMS[G.myTeam].name}`, 2, 'brag');
@@ -2191,6 +2206,8 @@ function applySettingsToUI() {
   for (const id of ['fov', 'vol', 'sens', 'adsSens']) { $(id).value = String(S[id]); $(id).dispatchEvent(new Event('input')); }
   for (const id of ['fovKick', 'shake', 'showFps', 'swapAim', 'toggleAim', 'blood', 'killcam', 'showCards', 'speedLines']) $(id).checked = !!S[id];
   setVolume(S.vol);
+  $('musicVol').value = String(S.musicVol); $('musicMatchVol').value = String(S.musicMatchVol);
+  $('musicMatch').checked = S.musicMatch !== false; $('musicComp').checked = !!S.musicComp; musicUpdate();
 }
 
 function renderProfile() {
@@ -2396,6 +2413,8 @@ net.on('round', (m) => {
   const box = $('roundEnd');
   if (m.start) {
     courtReset(); // scales of justice: a new match, a clean record (the server does the same)
+    if (m.game) G.game = m.game;
+    musicNewMatch(true); // (straight after joining, it's the same match: the song stays)
     G.roundOver = false; if (RP.mode === 'hl') stopReplay(true); box.classList.add('hidden'); G.vote = null;
     esClose(G.joined && document.pointerLockElement !== canvas); // back in: click to grab the mouse again
     if (m.game) { G.round = { ...(G.round || {}), ...m }; updateLabel(); if (screen === 'match') syncMatchUI(); }
