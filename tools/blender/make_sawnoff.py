@@ -1,10 +1,12 @@
 # Half a Shotgun: a 12 gauge side-by-side hammer double (coach-gun pattern) with the barrels hacksawed to 300 mm and
 # the buttstock cut off behind the wrist into a pistol grip. Real millimetres x1.0 (1 mm = 0.001), built on the code
 # model's numbers (sidemodels.js sawnoffBuild): bore line y 20 with the barrels at x +-11, muzzle at z -310, breech
-# face + hinge pin at z -12, the grip raking back from (0, 0, 73).
+# face at z -12, the grip raking back from (0, 0, 73). The hinge is where a real side-by-side has it: the action bar runs
+# 38 mm forward under the chambers to a round knuckle with the pin at (0, -2, -50), so breaking it lifts the chambers up
+# and out of the action and the shells come out over the top, clear of the standing breech.
 # Real parts: two barrels (23 mm at the chambers, 22 at the cut, 18.5 mm bores) on a top rib + bottom rib + lump, a
-# splinter forend with its iron, the action with fences, knuckle, hinge pin, strikers, top lever and two exposed hammers,
-# two triggers in one guard, the stock wrist ending in a rough saw cut.
+# splinter forend with its iron wrapping the knuckle, the action with fences, bar + flats + lump slot, knuckle, hinge pin,
+# strikers, top lever and two exposed hammers, two triggers in one guard, the stock wrist ending in a rough saw cut.
 # Made fun: candy red-orange furniture, colour case-hardened action (blue / straw / purple swirls), blued barrels with a
 # crooked bright hacksaw cut (and a dashed "cut here" line it missed), brass bead + triggers, electrical tape on the
 # grip with the end peeling, raw sawn end grain, a HALF OFF price sticker.
@@ -17,7 +19,8 @@ from lib import *
 def g(*v): return tuple(a / 1000 for a in v)  # game millimetres -> metres
 def pz(pts): return [(z / 1000, y / 1000) for z, y in pts]  # side outlines in mm (z, y)
 BY, BX, MZ, HZ = 20, 11, -310, -12  # bore line, barrel axes at x +-11, muzzle, breech face (mm)
-PIN = (0, 4, -12)  # hinge pin: the barrels, forend and shells swing round it
+PIN = (0, -2, -50)  # hinge pin, in the knuckle at the front of the action bar: the barrels, forend and shells swing round it
+KR, FLAT, ABOT = 10.2, 8.2, -12.2  # knuckle radius, top of the action flats (the barrels sit 0.3 mm above), bottom of the action
 BF = -12.3  # the barrels' breech face (0.3 mm off the standing breech)
 HAM = (13, 28, 54)  # hammer pivot (x mirrored)
 COCK = 0.75  # the game drops the hammers this far (rad) from the modelled cocked pose onto the strikers
@@ -245,7 +248,6 @@ def build():
     tape = mat('so_tape', 0x18181b, rough=0.38, tex=tex_stripes('so_tape_t', 0x151517, 0x24242a, size=16, width=3, diag=True))
     hull = mat('so_hull', 0xd8202c, rough=0.18, clearcoat=1.0)
     dash = mat('so_dash', 0xffe14d, rough=0.5)
-    black = mat('so_black', 0x050505, rough=0.4)
     def head_draw(px):  # the shell's base: brass, primer, a headstamp
         h, w = px.shape[:2]
         px[:] = hexrgb(0xd9a53a)
@@ -267,7 +269,8 @@ def build():
     cut(br, lathe([(r / 1000, z / 1000) for r, z in [(11.5, BF + 0.8)] + prof + [(11.15, -317.4)]], g(-BX, BY, 0), None, seg=24), 'UNION')
     cut(br, side_x([(-0.004, RIB_TOP / 1000), (0.004, RIB_TOP / 1000), (0.004, 0.0287), (0, 0.022), (-0.004, 0.0287)], 0.3056, g(0, 0, -164.2), None), 'UNION')  # top rib (V bottom: clear of the chambers)
     cut(br, side_x([(-0.004, 0.0105), (0.004, 0.0105), (0.004, 0.0113), (0, 0.018), (-0.004, 0.0113)], 0.3053, g(0, 0, -163.85), None), 'UNION')  # bottom rib
-    cut(br, side(pz([(-11.6, 9.3), (-34, 9.3), (-34, -6.8), (-23.5, -6.8), (-11.6, 5.1)]), 0.017, (0, 0, 0), None), 'UNION')  # lump (swings into the knuckle)
+    # the lump: hangs between the barrels into the slot in the action bar (V top tucks into the barrel walls under the chambers)
+    cut(br, side_x([(x / 1000, y / 1000) for x, y in [(-6.2, -0.5), (6.2, -0.5), (6.2, 10.2), (4.0, 11.8), (0, 13.5), (-4.0, 11.8), (-6.2, 10.2)]], 0.0369, g(0, 0, -30.05), None), 'UNION')
     cut(br, box((0.1, 0.1, 0.02), g(0, 10, BF + 10), None))  # the breech face, flat
     # the hacksaw cut: a bit crooked (yaw 2.5, pitch 1.5 degrees) through the muzzle point
     ry, rx = math.radians(2.5), math.radians(1.5)
@@ -300,7 +303,7 @@ def build():
     btrim = split_mats(br, {'so_cut', 'so_bore'}, 'btrim')
     hinge = [br]
     # extractor: a bright plate between the rims under the bore line
-    ex = side_x([(x / 1000, y / 1000) for x, y in [(0, 17.2), (0.75, 15), (2.13, 13), (4.17, 11), (6.0, 9.6), (6.5, 7.5), (-6.5, 7.5), (-6.0, 9.6), (-4.17, 11), (-2.13, 13), (-0.75, 15)]], 0.0006, g(0, 0, BF - 0.05), screw)
+    ex = side_x([(x / 1000, y / 1000) for x, y in [(0, 17.2), (0.75, 15), (2.13, 13), (4.17, 11), (6.0, 9.6), (6.3, 8.7), (-6.3, 8.7), (-6.0, 9.6), (-4.17, 11), (-2.13, 13), (-0.75, 15)]], 0.0006, g(0, 0, BF - 0.05), screw)
     hinge.append(ex)
     trim = [btrim]
     for sx in (-1, 1): trim.append(cyl(0.0092, 0.001, g(sx * BX, BY, -120), bore, axis='z', seg=24))  # dark down the bore, both ways
@@ -319,36 +322,43 @@ def build():
         trim.append(box(g(2.6, 0.35, 2.2), g(x, RIB_TOP + 0.15, -296.5 - 0.06 * x + 0.1), dash))
 
     # ======================================================== the forend (rides on the hinge) + its iron
-    fe = side(pz([(-45, 16), (-150, 16), (-158, 14), (-164, 9), (-166.5, 2), (-165, -4), (-160, -9), (-150, -12.5), (-120, -13.3), (-60, -13.3), (-46, -13.0)]), 0.036, (0, 0, 0), candy, bev=0.004, seg=3)
-    taper_x(fe, -0.045, -0.166, 1.0, 32 / 36)
-    arc_pts = [(PIN[2] - 16 * math.cos(math.radians(a)), PIN[1] + 16 * math.sin(math.radians(a))) for a in (-50, -33, -16, 0, 16)]
-    iron = side(pz([(-27.4, 16), (-46.5, 16), (-46.5, -13.2), (-26.0, -12.6)] + arc_pts), 0.035, (0, 0, 0), case, bev=0.0012, seg=1)
+    fe = side(pz([(-78, 16), (-182, 16), (-189, 14), (-194, 9), (-196.5, 2), (-195, -4), (-190, -9), (-181, -12.5), (-150, -13.3), (-90, -13.3), (-79, -13.0)]), 0.036, (0, 0, 0), candy, bev=0.004, seg=3)
+    taper_x(fe, -0.078, -0.1965, 1.0, 32 / 36)
+    # the iron: its back is a hollow round the knuckle (0.3 mm clear) from over the pin down to 60 degrees under it, so
+    # when the gun breaks its tail slides round the knuckle and passes under the bar instead of into it
+    arc_pts = [(PIN[2] - (KR + 0.3) * math.cos(math.radians(a)), PIN[1] + (KR + 0.3) * math.sin(math.radians(a))) for a in (-60, -40, -20, 0, 20, 40, 60, 85)]
+    iron = side(pz([(-50.9, 16), (-80.5, 16), (-80.5, -13.1), (-58.2, -12.9)] + arc_pts), 0.040, (0, 0, 0), case, bev=0.0012, seg=1)
     for o, gap in ((fe, 0.25), (iron, 0.5)):
         apply_mods(o)
         for sx in (-1, 1):  # carve the top to the barrels' shape (0.25 mm clear; the iron a bit more, so the two never share a surface)
-            cut(o, lathe([((r + gap) / 1000, z / 1000) for r, z in [(11.5, -8), (11.5, -86), (11.38, -100), (11.25, -120), (11.15, -140), (11.15, -180)]], g(sx * BX, BY, 0), None, seg=24))
-        cut(o, box(g(8.4 + gap, 10, 200), g(0, 15.6, -90), None))  # room for the bottom rib
+            cut(o, lathe([((r + gap) / 1000, z / 1000) for r, z in [(11.5, -8), (11.5, -86), (11.38, -100), (11.25, -120), (11.15, -140), (11.15, -215)]], g(sx * BX, BY, 0), None, seg=24))
+        cut(o, box(g(8.4 + gap, 10, 260), g(0, 15.85 - gap, -120), None))  # room for the bottom rib
     firon = [tidy(iron)]
-    firon.append(box(g(6, 1.2, 20), g(0, -13.6, -80), case, bev=0.0004))  # forend latch lever
-    firon.append(box(g(6, 3.2, 3), g(0, -14.6, -90.5), case, bev=0.0005))
-    for sx in (-1, 1): firon.append(cyl(0.0021, 0.0008, g(sx * 17.65, 1.5, -38), screw, axis='x', seg=10))
+    firon.append(box(g(6, 1.2, 20), g(0, -13.6, -105), case, bev=0.0004))  # forend latch lever
+    firon.append(box(g(6, 3.2, 3), g(0, -14.6, -115.5), case, bev=0.0005))
+    for sx in (-1, 1): firon.append(cyl(0.0021, 0.0008, g(sx * 20.15, 1.5, -67), screw, axis='x', seg=10))
 
     # ======================================================== the shells (ride on the hinge), rims flush with the breech face
     shells = []
     for sx in (1, -1):
-        hd = lathe([(r / 1000, z / 1000) for r, z in [(10.95, BF), (10.95, BF - 1.4), (10.35, BF - 1.6), (10.35, BF - 12)]], g(sx * BX, BY, 0), brass, seg=20)
+        hd = lathe([(r / 1000, z / 1000) for r, z in [(10.95, BF), (10.95, BF - 1.3), (10.25, BF - 1.45), (10.25, BF - 12)]], g(sx * BX, BY, 0), brass, seg=20)
         face_mats(hd, [headstamp], lambda c, n: 1 if n[2] > 0.9 and c[2] > (BF - 0.1) / 1000 else None)  # the base gets the headstamp
         s = [hd]
-        s.append(lathe([(r / 1000, z / 1000) for r, z in [(10.18, BF - 11.7), (10.18, BF - 66.5), (9.95, BF - 68.2), (9.0, BF - 69.4), (6.0, BF - 69.8), (0, BF - 69.0)]], g(sx * BX, BY, 0), hull, seg=20))
+        s.append(lathe([(r / 1000, z / 1000) for r, z in [(10.08, BF - 11.7), (10.08, BF - 66.5), (9.85, BF - 68.2), (9.0, BF - 69.4), (6.0, BF - 69.8), (0, BF - 69.0)]], g(sx * BX, BY, 0), hull, seg=20))
         shells.append(s)
 
     # ======================================================== the action (static): body, knuckle, fences, hammer slots
-    knuck = [(PIN[2] - 15.5 * math.cos(math.radians(a)), PIN[1] + 15.5 * math.sin(math.radians(a))) for a in (-90, -75, -60, -45)]
-    act = side(pz([(-12, 4), (-12, 26), (0, 26), (4, 27.5), (8, 30.5), (12, RIB_TOP), (56, RIB_TOP), (61, 32.5), (63.5, 30), (63.5, 23), (60.5, 19.5), (58.6, 13), (60, 6.5), (63.5, 3), (63.5, -11.5)] + knuck), 0.046, (0, 0, 0), case, bev=0.002, seg=2)
+    # the bar runs forward under the chambers (its top = the flats the barrels sit on) to the knuckle round the pin
+    knuck = [(PIN[2] - KR * math.cos(math.radians(a)), PIN[1] + KR * math.sin(math.radians(a))) for a in range(-90, 91, 15)]
+    act = side(pz([(-12, ABOT), (-12, 26), (0, 26), (4, 27.5), (8, 30.5), (12, RIB_TOP), (56, RIB_TOP), (61, 32.5), (63.5, 30), (63.5, 23), (60.5, 19.5), (58.6, 13), (60, 6.5), (63.5, 3), (63.5, ABOT)]), 0.046, (0, 0, 0), case, bev=0.002, seg=2)
     taper_x(act, -0.012, 0.0635, 1.0, 41 / 46)
     slots = [box(g(7.6, 22, 36), g(sx * HAM[0], 30, 55), None) for sx in (-1, 1)]
     for c_ in slots: cut(act, c_, keep=True)
     A(tidy(act))
+    # its own part, so the corner between the flats and the standing breech stays square (a bevel there would fill it)
+    bar = side(pz([(-11.5, FLAT)] + knuck[::-1] + [(-12.4, ABOT), (-11.5, ABOT + 0.6)]), 0.0452, (0, 0, 0), case, bev=0.002, seg=2)
+    cut(bar, box(g(13.0, 10.5, 50.7), g(0, 4.25, -36.35), None))  # the slot the lump drops into (the breech face is its end wall)
+    A(tidy(bar))
     for sx in (-1, 1):  # fences: the rounded shoulders round each barrel's breech
         A(lathe([(r / 1000, z / 1000) for r, z in [(12.3, -11.4 - 0.3 * (sx < 0)), (12.3, -9), (11.8, -5), (10.5, -1), (8.5, 3), (5.5, 6.5), (0.5, 8.5)]], g(sx * BX, BY, 0), case, seg=14))
         sxw = 23 - 2.5 * (66 / 75.5)
@@ -356,8 +366,6 @@ def build():
         A(cyl(0.0032, 0.0016, g(sx * (sxw + 0.3), HAM[1], HAM[2]), screw, axis='x', seg=14, bev=0.0004))  # hammer pivot pins
         A(lathe([(r / 1000, y / 1000) for r, y in [(2.6, 32.6), (2.6, 34.0), (1.9, 34.7), (0, 34.9)]], g(sx * 12, 0, 31), screw, seg=12, axis='y'))  # strikers
         A(cyl(0.0028, 0.0005, g(sx * BX, BY, -12.0), screw, axis='z', seg=14))  # firing pin bushings
-        A(lathe([(r / 1000, z / 1000) for r, z in [(1.0, -11.4), (1.0, -12.27), (0.6, -12.33), (0, -12.36)]], g(sx * BX, BY, 0), black, seg=8))  # the pin tips
-        A(cyl(0.0062, 0.00485, g(sx * 20.175, PIN[1], PIN[2]), case, axis='x', seg=20))  # knuckle cheeks round the pin (a hair inside the action's side)
     # top lever: lies flat on the top strap between the hammers, thumb pad at the back
     A(box(g(7, 1.5, 40), g(0, RIB_TOP + 0.7, 38), blued, bev=0.0005))
     A(cyl(0.005, 0.0024, g(0, RIB_TOP + 0.7, 18), blued, axis='y', seg=16, bev=0.0004))

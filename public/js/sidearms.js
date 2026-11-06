@@ -127,7 +127,7 @@ export function sideStep(g, id, dt, an, at, st, sampleCh) {
   if (p.slide) { const c = ch('slide'); const k = c ? c[0] : st.empty ? 1 : kick(p.kick); p.slide.position.z = p.slide0 + k * p.travel; }
   if (p.cocker) { const c = ch('cocker'); p.cocker.position.z = p.cock0 + (c ? c[0] : kick(p.kick * 1.4)) * p.ctravel; }
   if (p.mag) { const c = ch('mag'), d = c ? c[0] : 0; p.mag.position.copy(p.mag0).addScaledVector(p.magDir, d); p.mag.visible = d < 0.18; }
-  if (p.hinge) { const c = ch('hinge'); p.hinge.rotation.x = p.hinge0 - (c ? c[0] : 0) * p.open; }
+  if (p.hinge) { const c = ch('hinge'); p.openK = c ? c[0] : 0; p.hinge.rotation.x = p.hinge0 - p.openK * p.open; } // (a hat on the action hides while it's broken: the breech swings up through it)
   if (p.shells.length) { const c = ch('shells'); p.shells.forEach((s, i) => { const d = c ? c[i] : 0; s.o.position.z = s.z + d; s.o.visible = d < 0.15; }); }
   if (p.hammers.length) {
     const c = ch('cock');

@@ -1642,7 +1642,7 @@ export function updateWeapons(dt, now) {
   m.wrap.rotation.set(rx, ry, rz);
   if (models.akimbo && models.akimbo.left) { const L = models.akimbo.left; L.wrap.visible = id === 'akimbo' && !ME.dashing; L.flash.visible = L.wrap.visible && W.ak.L.flash > 0; if (L.flash.visible) { L.flash.userData.face.rotation.z = Math.random() * 6.28; L.flash.scale.setScalar(0.8 + Math.random() * 0.6); } }
   if (ud.court) tickScalesVM(m.g, dt, now); // scales of justice: tip toward the verdict, swing the pans
-  if (m.g.userData.hat) m.g.userData.hat.visible = W.aim < 0.3;
+  if (m.g.userData.hat) m.g.userData.hat.visible = W.aim < 0.3 && !(ud.sp && ud.sp.openK > 0.05); // Half a Shotgun broken open: the breech goes through the hat
   hud.crossFade(m.g.userData.sight ? Math.max(0, 1 - W.aim * 1.6) : 1);
   // muzzle flash
   W.flashT = Math.max(0, W.flashT - dt);
