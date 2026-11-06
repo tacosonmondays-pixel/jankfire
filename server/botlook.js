@@ -31,14 +31,16 @@ export const PRESETS = {
 export const PRESET_IDS = keys(PRESETS);
 
 // a random look that still looks dressed: top and bottom never the same colour, accessories now and then
+// achievement items show up on bots, but rarer than the free stuff (or every lobby is all maid dresses)
+const pkRare = (r, T, ks) => { let k = pk(r, ks); if (T[k] && T[k].ach && r() < 0.65) k = pk(r, ks); return k; };
 function rollLook(r) {
-  const top = pk(r, keys(TOPS)), topColor = pk(r, CLOTH_COLORS);
+  const top = pkRare(r, TOPS, keys(TOPS)), topColor = pk(r, CLOTH_COLORS);
   let bottomColor = pk(r, CLOTH_COLORS);
   if (bottomColor === topColor) bottomColor = pk(r, CLOTH_COLORS.filter((c) => c !== topColor));
-  const acc = (slot, p) => (r() < p ? pk(r, keys(ACCESSORIES[slot]).filter((k) => k !== 'none')) : 'none');
+  const acc = (slot, p) => (r() < p ? pkRare(r, ACCESSORIES[slot], keys(ACCESSORIES[slot]).filter((k) => k !== 'none')) : 'none');
   return {
     color: pk(r, LOOK_COLORS), skin: pk(r, SKIN_TONES), hair: pk(r, keys(HAIRS)), hairColor: pk(r, HAIR_COLORS),
-    top, topColor, bottom: pk(r, keys(BOTTOMS)), bottomColor, head: acc('head', 0.6), face: acc('face', 0.45), back: acc('back', 0.35),
+    top, topColor, bottom: pkRare(r, BOTTOMS, keys(BOTTOMS)), bottomColor, head: acc('head', 0.6), face: acc('face', 0.45), back: acc('back', 0.35),
   };
 }
 

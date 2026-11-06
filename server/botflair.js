@@ -59,11 +59,11 @@ export function installBotFlair(Room, knobs = {}) {
         const air = t.isBot ? t.onGround === false : !raycast([t.pos[0], t.pos[1] + 0.2, t.pos[2]], [0, -1, 0], 1.6, this.boxes);
         let ev = 'kill', ch = 0.08;
         if (ctx.clutch) ev = 'clutch', ch = 0.95;
-        else if (killer.bcKills.length >= 2) ev = 'multi', ch = 0.7;
+        else if (killer.bcKills.length >= 3 || (killer.bcKills.length === 2 && !t.isBot)) ev = 'multi', ch = 0.6; // two bots in a crowd isn't news: three is, or two with a person in it
         else if (ctx.rev) ev = 'revenge', ch = 0.5;
         else if (wd && wd.slot === 'melee') ev = 'melee', ch = 0.35;
         else if (wid === 'sniper' && !t.isBot) ev = 'noscope', ch = 0.55; // bots never scope in: every bot sniper kill is a no-scope
-        else if (d > 45) ev = 'far', ch = 0.45;
+        else if (d > 45 && w !== 'void' && wd && (wd.slot === 'primary' || wd.slot === 'secondary')) ev = 'far', ch = 0.45; // (not someone knocked flying off the map)
         else if (t.g) ev = 'grapple', ch = 0.5;
         else if (air) ev = 'air', ch = 0.35;
         else if (GOOFY.has(wid)) ev = 'goofy', ch = 0.3;
