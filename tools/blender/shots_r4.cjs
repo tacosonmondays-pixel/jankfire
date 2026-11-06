@@ -64,7 +64,7 @@ async function session(b, map, ids) {
   await pg.evaluate(async () => {
     const { G } = await import('/js/ctx.js'); const { ME } = await import('/js/player.js');
     const h = document.getElementById('hud'); if (h) h.style.display = 'none';
-    const css = document.createElement('style'); css.textContent = '#quizPanel { display: none !important; }'; document.head.append(css);
+    const css = document.createElement('style'); css.textContent = 'body > :not(#game) { display: none !important; }'; document.head.append(css); // (only the 3D view: no flash, quiz or out-of-bounds overlays)
     for (const id of ['crosshair', 'killfeed', 'chat', 'minimap']) { const e = document.getElementById(id); if (e) e.style.display = 'none'; }
     G.vmCamera.layers.disableAll(); // (no gun: main.js turns vmScene back on every frame)
     window.__pin = null;
