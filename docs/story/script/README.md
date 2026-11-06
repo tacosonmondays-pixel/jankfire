@@ -7,19 +7,20 @@ Start with [CANON.md](CANON.md): the timeline, why Change is free, the six pages
 | file | what | size |
 |---|---|---|
 | [CAST.md](CAST.md) | the cast bible: 54 characters | 18636 words |
-| [ACT_1.md](ACT_1.md) | Act 1: "Please Take Your Item": 5 missions | 8262 words |
-| [ACT_2.md](ACT_2.md) | Act 2: "Hostile Takeovers": 12 missions | 13794 words |
-| [ACT_3.md](ACT_3.md) | Act 3: "Off the Clock": 8 missions | 9362 words |
-| [ACT_4.md](ACT_4.md) | Act 4: "Quarterly Review": 5 missions | 5721 words |
-| [ACT_5.md](ACT_5.md) | Act 5: "Overdue": 2 missions | 4605 words |
+| [ACT_1.md](ACT_1.md) | Act 1: "Please Take Your Item": 5 missions | 8578 words |
+| [ACT_2.md](ACT_2.md) | Act 2: "Hostile Takeovers": 12 missions | 14161 words |
+| [ACT_3.md](ACT_3.md) | Act 3: "Off the Clock": 8 missions | 9607 words |
+| [ACT_4.md](ACT_4.md) | Act 4: "Quarterly Review": 5 missions | 5887 words |
+| [ACT_5.md](ACT_5.md) | Act 5: "Overdue": 2 missions | 4678 words |
 | [ENDINGS.md](ENDINGS.md) | ON TIME, LATE, OFF THE BOOKS, NAP TIME | 4059 words |
-| [BOSSES.md](BOSSES.md) | 24 fights, 20 named bosses | 11239 words |
-| [SIDE_QUESTS.md](SIDE_QUESTS.md) | 47 side questlines, 14 activities | 14102 words |
-| [IMPLANTS.md](IMPLANTS.md) | 50 implants (15 secret) and the Drift rules | 4693 words |
-| [LOOT.md](LOOT.md) | 8 brands, 41 named legendaries | 3045 words |
+| [BOSSES.md](BOSSES.md) | 24 fights, 20 named bosses | 19322 words |
+| [SIDE_QUESTS.md](SIDE_QUESTS.md) | 48 side questlines, 15 activities | 15518 words |
+| [IMPLANTS.md](IMPLANTS.md) | 55 implants (17 secret) and the Drift rules | 5227 words |
+| [LOOT.md](LOOT.md) | 8 brands, 43 named legendaries | 3199 words |
+| [../MECHANICS.md](../MECHANICS.md) | the mechanics bible: 47 mechanics, the grapple, coverage | 9127 words |
 | [COLLECTIBLES.md](COLLECTIBLES.md) | 69 collectibles in 6 sets | 3189 words |
 
-**Total: about 101k words, 32 main missions, 33 scenes.**
+**Total: about 121k words, 32 main missions, 33 scenes.**
 
 ## Main story at a glance
 

@@ -3,7 +3,7 @@
 // SCHEMA: BOSSES[id] = {
 //   name, card, subtitle      the Boss Intro title card (DESIGN §8.2): NAME · JOB TITLE, and one deadpan subtitle
 //   who        cast id           kind: 'nemesis' | 'story' | 'district' | 'world' | 'secret' | 'final'
-//   district, arena (LOCATIONS id), quest (the mission or side quest it ends), unlock? (condition for world/secret bosses)
+//   district, zone (the arena's LOCATIONS id), quest (the mission or side quest it ends), unlock? (condition for world/secret bosses)
 //   hp         base HP for one player (co-op: +60% per extra player, DESIGN §6.10)
 //   look       body type per the art bible: 'puppet' | 'off-spec' | 'cyborg' | 'thing' + a line for the modeller
 //   why        why they're here, in one or two sentences
@@ -14,15 +14,19 @@
 //   refight    { mods: [..] (POSITION REFILLED rematch changes), line, card } (null = no refight)
 //   drops      legendaries / loot tables / items it can drop
 //   talk       optional mid-fight talk hook (a talk id in its quest)
+//   + the fight layer from boss_fights.js (arena, layers, weakPoints, weakness, adds, setPiece, pinata, lootTable,
+//     scaling, and a `twist` on every phase), merged in below
 // }
+
+import { FIGHTS } from "./boss_fights.js";
 
 const REHIRE = "POSITION REFILLED";
 
-export const BOSSES = {
+const BASE = {
   // ================================================================ MR. OVERTIME (the nemesis)
   overtime_1: {
     name: "MR. OVERTIME", card: "MR. OVERTIME · HEAD OF TIMEKEEPING", subtitle: "has never been late. has never left.",
-    who: "overtime", kind: "nemesis", district: "gut", arena: "gut:border", quest: "m04_clocking_in", hp: 4200,
+    who: "overtime", kind: "nemesis", district: "gut", zone: "gut:border", quest: "m04_clocking_in", hp: 4200,
     look: "cyborg: the full nemesis model (cast bible), first fight version: pristine suit, polished brogues, the clock face glowing white.",
     why: "He came to collect two hundred and forty-four quarters of back pay from the Bottom, in people. Lumps stood in front of the truck.",
     phases: [
@@ -48,7 +52,7 @@ export const BOSSES = {
   },
   overtime_2: {
     name: "MR. OVERTIME", card: "MR. OVERTIME · HEAD OF TIMEKEEPING", subtitle: "he's not speeding. you are.",
-    who: "overtime", kind: "nemesis", district: "commute", arena: "commute:spiral_freeway", quest: "m13_rush_hour", hp: 6000,
+    who: "overtime", kind: "nemesis", district: "commute", zone: "commute:spiral_freeway", quest: "m13_rush_hour", hp: 6000,
     look: "cyborg: a steel plate over the chest wound from fight 1, bungee tie streaming, running upright like a man late for a train.",
     why: "Now he knows your name. He chases your car up the Spiral Freeway on foot, at exactly the speed limit.",
     phases: [
@@ -74,7 +78,7 @@ export const BOSSES = {
   },
   overtime_3: {
     name: "MR. OVERTIME", card: "MR. OVERTIME · HEAD OF TIMEKEEPING", subtitle: "you've seen this one. so has he.",
-    who: "overtime", kind: "nemesis", district: "lates", arena: "lates:waiting_room", quest: "m25_tuesday_again", hp: 8000,
+    who: "overtime", kind: "nemesis", district: "lates", zone: "lates:waiting_room", quest: "m25_tuesday_again", hp: 8000,
     look: "cyborg: suit scorched, static on the visor, his movements stutter like a skipping tape. A torn time card in his chest slot.",
     why: "He came through the door at 03:00 for the first time. He's been doing the same slam in a car park for six hours. He's waiting for you.",
     phases: [
@@ -104,7 +108,7 @@ export const BOSSES = {
   },
   overtime_4: {
     name: "MR. OVERTIME", card: "MR. OVERTIME · FULLY BILLABLE", subtitle: "the meeting is now. the meeting is forever.",
-    who: "overtime", kind: "final", district: "corphill", arena: "corphill:master_clock", quest: "m31_fully_billable", hp: 16000,
+    who: "overtime", kind: "final", district: "corphill", zone: "corphill:master_clock", quest: "m31_fully_billable", hp: 16000,
     look: "cyborg: suit in tatters, cables from the Master Clock into his back, stapler arms driven into the gears; the clock in his chest is huge and cracked; he's a part of the Clock now.",
     why: "Hask told him that if the Clock restarts, everyone who's absent comes back on time. Including June.",
     talk: "processing",
@@ -133,7 +137,7 @@ export const BOSSES = {
   },
   overtime_rehire: {
     name: "MR. OVERTIME", card: "MR. OVERTIME · REHIRED", subtitle: "he's been rescheduled.",
-    who: "overtime", kind: "nemesis", district: "corphill", arena: "corphill:museum", quest: "sq_corphill_punctuality_museum", unlock: "done:m13_rush_hour", hp: 9000,
+    who: "overtime", kind: "nemesis", district: "corphill", zone: "corphill:museum", quest: "sq_corphill_punctuality_museum", unlock: "done:m13_rush_hour", hp: 9000,
     look: "cyborg: a fresh body from the spares, the suit still creased from the packaging, a REHIRED sticker on the lapel.",
     why: "After Act II, ☺ CORP keeps printing new ones. The newest stands in the Punctuality Museum's main hall among exhibits about being on time, and he's also the ★5 Late Fees boss in the open world.",
     phases: [
@@ -157,7 +161,7 @@ export const BOSSES = {
   // ================================================================ THE BOTTOM
   landlord: {
     name: "MR. DEPOSIT", card: "MR. DEPOSIT · THE LANDLORD", subtitle: "you're not getting it back.",
-    who: "mr_deposit", kind: "district", district: "bottom", arena: "bottom:landlord_pile", quest: "sq_bottom_deposit", hp: 5000,
+    who: "mr_deposit", kind: "district", district: "bottom", zone: "bottom:landlord_pile", quest: "sq_bottom_deposit", hp: 5000,
     look: "off-spec: a gigantic rubber-faced man grown into a mound of stuffed armchairs and keys, a brass deposit box for a belly.",
     why: "Vacancy's last agent in the Bottom, collecting deposits on a pile of rubble for fifty years. He keeps them in his body. He's never returned one.",
     phases: [
@@ -186,7 +190,7 @@ export const BOSSES = {
   // ================================================================ THE GUT
   bishop: {
     name: "THE STOMACH BISHOP", card: "THE STOMACH BISHOP · GUT CHOIR", subtitle: "he's already digesting you. spiritually.",
-    who: "bishop", kind: "story", district: "gut", arena: "gut:big_stomach", quest: "m20_the_missing", hp: 11000,
+    who: "bishop", kind: "story", district: "gut", zone: "gut:big_stomach", quest: "m20_the_missing", hp: 11000,
     look: "off-spec: a tall pale smiling puppet priest whose robe is one big stomach, conducting with a femur baton; 10 m tall in phase 2's interior.",
     why: "The Choir's song holds the Gut together, and holds the Bottom's missing in the wall. To free anyone, the song has to stop.",
     phases: [
@@ -215,7 +219,7 @@ export const BOSSES = {
   },
   founding_partner: {
     name: "THE FOUNDING PARTNER", card: "AUGUSTUS GRISTLE · FOUNDING PARTNER", subtitle: "he'd like you to sign something.",
-    who: "gristle_senior", kind: "secret", district: "gut", arena: "gut:belly_button", quest: "sq_gut_belly_button", unlock: "done:m20_the_missing", hp: 14000,
+    who: "gristle_senior", kind: "secret", district: "gut", zone: "gut:belly_button", quest: "sq_gut_belly_button", unlock: "done:m20_the_missing", hp: 14000,
     look: "thing: a cathedral-sized organ that was once a man, a huge kindly old face, tiny reading glasses, hundreds of arms each holding a pen.",
     why: "Behind the door you were told not to press: the first man ever treated with Regrowth, and the author of 'post-event workforce recovery'.",
     phases: [
@@ -244,7 +248,7 @@ export const BOSSES = {
   // ================================================================ PINSTRIPE
   don: {
     name: "DON GRINALDI FAZZOLETTO", card: "DON GRINALDI FAZZOLETTO · HEAD OF THE FAMILY", subtitle: "he's got people. on strings.",
-    who: "don", kind: "district", district: "pinstripe", arena: "pinstripe:villa", quest: "m08_family_business", hp: 9000,
+    who: "don", kind: "district", district: "pinstripe", zone: "pinstripe:villa", quest: "m08_family_business", hp: 9000,
     look: "puppet: a 7 m marionette in pinstripes, huge face and hands, tiny waist, strings up into the Villa ceiling; the grin unfolds wider than the head.",
     why: "The Family 'assesses' anyone who wants the page: an underwriter's assessment, in the marble ballroom.",
     phases: [
@@ -275,7 +279,7 @@ export const BOSSES = {
   // ================================================================ THE CHECKOUT
   cart_mother: {
     name: "THE CART MOTHER", card: "THE CART MOTHER · CUSTOMER SINCE 1999", subtitle: "she wants to speak to your manager. you don't have one.",
-    who: "cart_mother", kind: "district", district: "checkout", arena: "checkout:food_court", quest: "m11_no_refunds", hp: 9500,
+    who: "cart_mother", kind: "district", district: "checkout", zone: "checkout:food_court", quest: "m11_no_refunds", hp: 9500,
     look: "thing: every lost shopping cart in the city welded into a rolling mountain around one furious shopper in a fleece and visor holding a receipt.",
     why: "She swallowed Big Value's page with her receipt. Every morning at 09:00 she comes out when the doors open.",
     phases: [
@@ -305,7 +309,7 @@ export const BOSSES = {
   // ================================================================ NUMBER WORKS
   foreman: {
     name: "FOREMAN REMAINDER", card: "FOREMAN REMAINDER · NUMBER WORKS", subtitle: "carries the one. and you.",
-    who: "foreman", kind: "district", district: "numberworks", arena: "numberworks:yard", quest: "m15_rounding_down", hp: 9800,
+    who: "foreman", kind: "district", district: "numberworks", zone: "numberworks:yard", quest: "m15_rounding_down", hp: 9800,
     look: "cyborg: a huge crane-armed foreman with a calculator face, hydraulic legs, a 7 and a 13 welded to the shoulders.",
     why: "He comes down for the 06:00 print run. Remainder's page is stored in his face.",
     phases: [
@@ -334,7 +338,7 @@ export const BOSSES = {
   // ================================================================ CHROME GRISTLE
   upsell: {
     name: "DOCTOR UPSELL", card: "DOCTOR UPSELL · MEAT MECHANIC", subtitle: "would you like fries with that kidney?",
-    who: "upsell", kind: "district", district: "chromegristle", arena: "chromegristle:upsell_clinic", quest: "m19_organ_donor", hp: 10000,
+    who: "upsell", kind: "district", district: "chromegristle", zone: "chromegristle:upsell_clinic", quest: "m19_organ_donor", hp: 10000,
     look: "off-spec: a twelve-armed surgeon in a stained coat and a kidney tie, each arm a tool; two of the arms are Bev's old hands, and they wave.",
     why: "He has the Gristle page in a jar, and he'd like your punch-clock heart.",
     phases: [
@@ -363,7 +367,7 @@ export const BOSSES = {
   // ================================================================ EVERGREEN ACRES
   hoa: {
     name: "THE HOA", card: "THE HOA · HOMEOWNERS ASSOCIATION", subtitle: "your lawn is 2 mm too long.",
-    who: "hoa", kind: "district", district: "evergreen", arena: "evergreen:culdesac", quest: "m21_property_values", hp: 10500,
+    who: "hoa", kind: "district", district: "evergreen", zone: "evergreen:culdesac", quest: "m21_property_values", hp: 10500,
     look: "thing: every homeowner merged into a giant hedge beast covered in KEEP OFF THE GRASS signs, gnome teeth, a clipboard face, Linda's voice from a sprinkler.",
     why: "You found the pilot. The HOA votes to remove you.",
     phases: [
@@ -393,7 +397,7 @@ export const BOSSES = {
   // ================================================================ THE LATES
   perpetual_tuesday: {
     name: "THE PERPETUAL TUESDAY", card: "THE PERPETUAL TUESDAY · LATE FOR A MEETING", subtitle: "you've seen this one.",
-    who: "perpetual_tuesday", kind: "district", district: "lates", arena: "lates:tuesday_tower", quest: "m22_the_waiting_room", hp: 10000,
+    who: "perpetual_tuesday", kind: "district", district: "lates", zone: "lates:tuesday_tower", quest: "m22_the_waiting_room", hp: 10000,
     look: "thing: a huge running office worker made of a hundred copies of the same man in the same brown suit, briefcases and watches, one Neville at the heart holding an envelope.",
     why: "The loop resets every time Neville misses his meeting. Getting him there means getting through him.",
     phases: [
@@ -421,7 +425,7 @@ export const BOSSES = {
   },
   prototype: {
     name: "EMPLOYEE 4417", card: "R. CALE · EMPLOYEE OF THE QUARTER", subtitle: "the one who signed.",
-    who: "prototype", kind: "secret", district: "lates", arena: "lates:warehouse", quest: "sq_lates_quality_control", unlock: "done:m23_workforce_restoration", hp: 12000,
+    who: "prototype", kind: "secret", district: "lates", zone: "lates:warehouse", quest: "sq_lates_quality_control", unlock: "done:m23_workforce_restoration", hp: 12000,
     look: "mannequin: your own body, perfectly clean, no tilt, no wrong knee, in a ☺ CORP uniform, a punch-clock heart; it copies your outfit's colours in corporate white.",
     why: "Hask had a copy of PROTOTYPE 0 built with the Schedule forced in, to see what you'd be on the payroll. It's very happy.",
     phases: [
@@ -450,7 +454,7 @@ export const BOSSES = {
   // ================================================================ THE MARGINS
   tall_guy: {
     name: "THE TALL GUY FROM HR", card: "THE TALL GUY FROM HR · HUMAN RESOURCES", subtitle: "he just wants a quick word.",
-    who: "tall_guy", kind: "district", district: "margins", arena: "margins:forest", quest: "m26_exit_interview", unlock: "flag:fought_tall_guy", hp: 9000,
+    who: "tall_guy", kind: "district", district: "margins", zone: "margins:forest", quest: "m26_exit_interview", unlock: "flag:fought_tall_guy", hp: 9000,
     look: "thing: a very tall thin man in a grey suit, arms as long as he wants, a polite smile, a manila folder.",
     why: "Only if you crossed out his place of work instead of signing him out. Then he's killable, and very disappointed.",
     phases: [
@@ -477,7 +481,7 @@ export const BOSSES = {
   },
   penny_plot: {
     name: "PENNY PLOT", card: "PENNY PLOT · CLOSING AGENT", subtitle: "the deal closes today. so do you.",
-    who: "penny_plot", kind: "story", district: "margins", arena: "margins:edge", quest: "m27_negative_space", hp: 11500,
+    who: "penny_plot", kind: "story", district: "margins", zone: "margins:edge", quest: "m27_negative_space", hp: 11500,
     look: "normal: an estate agent in a white hazmat suit and pink blazer, a SOLD sign on a pole, a briefcase handcuffed to her wrist.",
     why: "Her briefcase is the Bottom's deed. She's closing the sale today.",
     phases: [
@@ -506,7 +510,7 @@ export const BOSSES = {
   // ================================================================ CORP HILL
   meeting_room: {
     name: "THE MEETING ROOM", card: "THE MEETING ROOM · STEERING COMMITTEE", subtitle: "this could have been an email.",
-    who: "steering_committee", kind: "story", district: "corphill", arena: "corphill:cathedral", quest: "m29_the_missing_hour", hp: 14000,
+    who: "steering_committee", kind: "story", district: "corphill", zone: "corphill:cathedral", quest: "m29_the_missing_hour", hp: 14000,
     look: "a flying conference-room gunship on four rotors with a projector eye, a long table inside and three monitor-headed executives in swivel chairs.",
     why: "☺ CORP's air defence for the raid: a meeting that never ends, armed.",
     phases: [
@@ -534,7 +538,7 @@ export const BOSSES = {
   },
   twins: {
     name: "THE TWINS", card: "THE TWINS · VP OF SYNERGY", subtitle: "they agree.",
-    who: "twins", kind: "story", district: "corphill", arena: "corphill:spire_lobby", quest: "m30_the_lobby", hp: 13000,
+    who: "twins", kind: "story", district: "corphill", zone: "corphill:spire_lobby", quest: "m30_the_lobby", hp: 13000,
     look: "cyborg: two executives merged at the hip in one double-breasted suit, one smile across two faces; one has a pistol arm, the other a riot-shield arm.",
     why: "They hold the elevator. Win and Win: they've never once disagreed in public.",
     phases: [
@@ -558,7 +562,7 @@ export const BOSSES = {
   },
   hask: {
     name: "MARION HASK", card: "MARION HASK · CHIEF PUNCTUALITY OFFICER", subtitle: "she signed the end of the world. she'll sign the next one.",
-    who: "hask", kind: "final", district: "corphill", arena: "corphill:master_clock", quest: "m32_fully_vested", hp: 18000,
+    who: "hask", kind: "final", district: "corphill", zone: "corphill:master_clock", quest: "m32_fully_vested", hp: 18000,
     look: "cyborg: the white suit open like a cabinet; a clear ☺ CORP frame holding a body of other people's organs, each tagged with a paper label; she fights from the Clock's control cockpit.",
     why: "The last thing between you and the Clock. She never begs. She fights with the Master Clock's controls.",
     phases: [
@@ -588,7 +592,7 @@ export const BOSSES = {
   // ================================================================ THE COMMUTE (world bosses)
   eotm: {
     name: "EMPLOYEE OF THE MONTH", card: "EMPLOYEE OF THE MONTH · THE UNPAID", subtitle: "every month. since the end of the world.",
-    who: "eotm", kind: "world", district: "commute", arena: "commute:ring_road", quest: "sq_commute_eotm", unlock: "act>=2", hp: 13000,
+    who: "eotm", kind: "world", district: "commute", zone: "commute:ring_road", quest: "sq_commute_eotm", unlock: "act>=2", hp: 13000,
     look: "normal: a huge raider in office-chair and filing-cabinet armour, 732 plaques of his own face; the fight is on a war-rig made of a bus, forty desks and a photocopier.",
     why: "The Unpaid want to be a company. A company needs a big win. You're the big win.",
     phases: [
@@ -616,7 +620,7 @@ export const BOSSES = {
   },
   morale_officer: {
     name: "THE MORALE OFFICER", card: "THE MORALE OFFICER · THE FUN DEPARTMENT", subtitle: "smile. that's not a request.",
-    who: "morale_officer", kind: "world", district: "commute", arena: "commute:carnival", quest: "sq_commute_mandatory_fun", unlock: "act>=2", hp: 12500,
+    who: "morale_officer", kind: "world", district: "commute", zone: "commute:carnival", quest: "sq_commute_mandatory_fun", unlock: "act>=2", hp: 12500,
     look: "thing: a towering mascot made of a dozen matted ex-Marketing costumes stitched together, a megaphone, a confetti cannon, tired eyes in the top head's mouth.",
     why: "The Fun Department's carnival on the Commute, only at night, where losing a game is a fight.",
     phases: [
@@ -643,7 +647,7 @@ export const BOSSES = {
   },
   unlucky_13: {
     name: "UNLUCKY 13", card: "UNLUCKY 13 · REMAINDER ORBITAL ASSET", subtitle: "price check: everything.",
-    who: "unlucky_13", kind: "world", district: "commute", arena: "commute:digit_13", quest: "sq_commute_unlucky_13", unlock: "done:m15_rounding_down", hp: 15000,
+    who: "unlucky_13", kind: "world", district: "commute", zone: "commute:digit_13", quest: "sq_commute_unlucky_13", unlock: "done:m15_rounding_down", hp: 15000,
     look: "thing: a glowing fallen 13 the size of a building in a glassed crater, display panels still flickering prices, a targeting array on top, toxic green glow.",
     why: "One of Remainder's orbital billboards that guided the missiles. Its last target list is still loaded. Its last target is the Bottom.",
     phases: [
@@ -670,7 +674,7 @@ export const BOSSES = {
   },
   missing_texture: {
     name: "THE MISSING TEXTURE", card: "THE MISSING TEXTURE · TODO", subtitle: "it was supposed to be patched.",
-    who: "missing_texture", kind: "secret", district: "commute", arena: "commute:missing_texture", quest: "sq_commute_first_intern", unlock: "flag:todd_off_the_roof", hp: 11000,
+    who: "missing_texture", kind: "secret", district: "commute", zone: "commute:missing_texture", quest: "sq_commute_first_intern", unlock: "flag:todd_off_the_roof", hp: 11000,
     look: "thing: a creature of purple-and-black checkerboard squares, unshaded, flickering between a cube, a T-pose, a floating hand and a half-loaded car, green code scrolling over it.",
     why: "The first thing Todd forgot to code, on his first day. It's been growing out of the Unfinished Bit ever since.",
     phases: [
@@ -696,3 +700,10 @@ export const BOSSES = {
     drops: ["the_missing_texture", "lt_boss_missing_texture"],
   },
 };
+
+// every boss with its fight layer: phases get their twist, the rest is added as is
+export const BOSSES = Object.fromEntries(Object.entries(BASE).map(([id, b]) => {
+  const f = FIGHTS[id] || {};
+  const { twists, ...rest } = f;
+  return [id, { ...b, ...rest, phases: b.phases.map((p, i) => ({ ...p, twist: twists && twists[i] })) }];
+}));

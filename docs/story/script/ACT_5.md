@@ -10,6 +10,8 @@ _Mr. Overtime, wired into the Master Clock, holds the door one last time. If you
 **Who:** MR. OVERTIME, JUNE, LUMPS, WEE GORDO  
 **Giver:** — · **Needs:** m30_the_lobby
 
+**Mechanic hook:** the showpiece: climb the gears, ride the pendulum, tear the cables out of his back with the grapple, and parry staples into the teeth _(uses: the grapple, katana parry and growth, the lasso, the redline)_
+
 **Beats**
 - C21: the Clock opens like a ribcage. Overtime plugs his stapler arms into the gears. 'your appointment is now.'
 - Boss fight: MR. OVERTIME, FULLY BILLABLE (overtime_4). A vertical gearwork arena; every phase changes the clock speed (slow-mo rounds, fast-forward rounds).
@@ -107,6 +109,8 @@ _Marion Hask shows you the last page and the body under her suit, and then it's 
 **Where:** The Master Clock (CORP HILL), The Top Floor (CORP HILL), The Clock Room (CORP HILL)  
 **Who:** MARION HASK, LUMPS, WEE GORDO, MINA, THE FOUNDER  
 **Giver:** — · **Needs:** m31_fully_billable
+
+**Mechanic hook:** make the most punctual woman in the world late: pause her, slip her, freeze her; the Scales rate her GUILTY at x3 _(uses: scales of justice (verdicts), tv remote (pause / rewind), the redline)_
 
 **Beats**
 - C23: page six on the console. 'I signed at 16:59. At 17:10 Remainder telephoned me.' They'd hit target by half a percent. She launched anyway. The suit opens: a body of other people's organs, each one tagged with a name.

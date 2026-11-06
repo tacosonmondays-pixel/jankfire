@@ -10,6 +10,8 @@ _Auntie lays out her wall of evidence: six companies signed the end of the world
 **Who:** AUNTIE SPREADSHEET, WEE GORDO, LUMPS, DALE  
 **Giver:** AUNTIE SPREADSHEET · **Needs:** m05_second_stomach
 
+**Mechanic hook:** Gordo's den is up a grapple-only stack of containers; his string map doubles as the first look at every district's swing route _(uses: the grapple)_
+
 **Beats**
 - C6: the wall, the six frames. Auntie explains Option C. Gordo asks how she knows; she dodges again.
 - Dale: the Machine has a sim in it that's never been played, locked, and the lock is a document.
@@ -109,6 +111,8 @@ _In Pinstripe the Don makes you an offer you could refuse, and his jesters make 
 **Where:** Respect Bridge (PINSTRIPE), Mamma Polizza's (PINSTRIPE), The Green Room (PINSTRIPE), The Bleach Line (CORP HILL)  
 **Who:** DON GRINALDI FAZZOLETTO, PIP GRINSWORTH, LONG LARRY  
 **Giver:** DON GRINALDI FAZZOLETTO · **Needs:** m06_option_c
+
+**Mechanic hook:** the tax-office run on the Bleach Line is your first ★2 chase, and Pinstripe's marionette strings are the escape route _(uses: late fees, the grapple)_
 
 **Beats**
 - Respect Bridge: pay respect (coupons, or a compliment to a goon, who's touched).
@@ -228,6 +232,8 @@ _The Family's page is up in Villa Fazzoletto. So is whoever works the Don's stri
 **Who:** DON GRINALDI FAZZOLETTO, NONNA FAZZOLETTO, PIP GRINSWORTH, LONG LARRY  
 **Giver:** PIP GRINSWORTH · **Needs:** m07_an_offer
 
+**Mechanic hook:** cut the Don's strings with the katana, parry his slaps, and climb his own strings into the rafters _(uses: katana parry and growth, the grapple, banana peels)_
+
 **Beats**
 - Into the Villa: as a guest (did_don_job), through the Punchlines' green room (did_pip_job), or up Larry's crawlspace (larry_crawlspace).
 - The Don 'assesses' you: an underwriter's assessment, in the marble ballroom. Boss fight: DON GRINALDI FAZZOLETTO. Shoot the strings, drop the limbs.
@@ -332,6 +338,8 @@ _The first page unlocks a sim nobody has ever played: you, as R. Cale, on the 60
 **Where:** The Machine (THE BOTTOM), The Lobby (17:29) (THE TRAINING SIMS), Spire, 60th Floor (16:00) (THE TRAINING SIMS)  
 **Who:** R. CALE, AGNES, MR. OVERTIME, DALE, AUNTIE SPREADSHEET  
 **Giver:** DALE · **Needs:** pages>=1
+
+**Mechanic hook:** no grapple in the sims of the last workday: Cale walks, carries six coffees, and spots a fake invoice; the lack of jank is the point _(uses: instant camera)_
 
 **Beats**
 - Dale opens the locked sim. Auntie watches from the doorway and leaves before it starts.
@@ -478,6 +486,8 @@ _In the Big Value mall's air vents, the lost child from the Stampede is sixty-si
 **Who:** WRISTBAND, GAIL ON THE PA, THE CART MOTHER  
 **Giver:** WRISTBAND · **Needs:** m06_option_c
 
+**Mechanic hook:** the Mall Rats teach marbles under segways and give you the Rat Cart Cannon; the vents are a grapple maze above the dome _(uses: marble slip, shopping cart cannon, the grapple)_
+
 **Beats**
 - The Checkout: the Infinite Queue, the dome, mannequin shoppers in every window. Gail on the PA. 'we're sorry for any inconvenience.'
 - Cart surfing and escalators to the vents, chased by Mall Security on segways.
@@ -572,6 +582,8 @@ _The doors open at 09:00, like they have every day since the Stampede, and every
 **Where:** The Big Doors (THE CHECKOUT), Food Court Colosseum (THE CHECKOUT), The Cart Corral (THE CHECKOUT), The PA Booth (THE CHECKOUT)  
 **Who:** THE CART MOTHER, WRISTBAND, GAIL ON THE PA  
 **Giver:** WRISTBAND · **Needs:** m10_doorbusters
+
+**Mechanic hook:** fire carts into the Cart Mother to make her heavy, grapple carts out of her pile, then cart-surf her own swarm _(uses: shopping cart cannon, the grapple, shove and knockback)_
 
 **Beats**
 - C8 Doorbusters. The Cart Mother.
@@ -677,6 +689,8 @@ _16:45 on the last workday. Copy the end of the world onto a tape drive that is 
 **Who:** R. CALE, AGNES, MARION HASK, DALE  
 **Giver:** DALE · **Needs:** m09_workday_1600, pages>=2
 
+**Mechanic hook:** a stealth level with a progress bar: copy the tape while an officer does rounds _(uses: instant camera)_
+
 **Beats**
 - Back in the sim. 16:43. Agnes gets you into the print room on 60. She keeps watch.
 - The tape drive: an ancient ☺ CORP cartridge unit. The copy takes four minutes. A progress bar.
@@ -756,6 +770,8 @@ _On the Spiral Freeway, in a paper storm, Mr. Overtime chases your car on foot, 
 **Who:** WEE GORDO, MR. OVERTIME  
 **Giver:** WEE GORDO · **Needs:** m06_option_c, pages>=1
 
+**Mechanic hook:** a chase where the boss chases you at the speed limit: grapple his tie to be towed, get out onto the bhop road of car roofs, and radar him at exactly 70 _(uses: cars and traffic, the grapple, bhop and infinite momentum, speed trap (radar gun), shove and knockback)_
+
 **Beats**
 - Gordo needs a ride up the Spiral Freeway to the Number Works side of the hill (or back from it).
 - C10: the paper storm, the mirror, Overtime running. 'please pull over. you're in breach of your schedule.'
@@ -832,6 +848,8 @@ _Number Works prints the city's prices every morning at 06:00. The union stamped
 **Where:** The Number Yard (NUMBER WORKS), Union Hall 13 (NUMBER WORKS), The Price Press (NUMBER WORKS), The Smokestacks (NUMBER WORKS)  
 **Who:** NELL THIRTEEN, FOREMAN REMAINDER, MR. SEVENS  
 **Giver:** NELL THIRTEEN · **Needs:** m06_option_c
+
+**Mechanic hook:** the union votes you onto the press roof by rocket jump, and the print run is a fight on stamping presses _(uses: rocket and shotgun jumps, bank shots)_
 
 **Beats**
 - The Number Yard: conveyors of giant numbers, smokestacks puffing digits, a shift of workers stamped 13, 0 and 0.5.
@@ -915,6 +933,8 @@ _Foreman Remainder comes down for the print run, and the page is in his face._
 **Who:** FOREMAN REMAINDER, NELL THIRTEEN, MR. SEVENS  
 **Giver:** NELL THIRTEEN · **Needs:** m14_price_of_everything
 
+**Mechanic hook:** yank the Foreman's crane arms with the grapple to tip him face-down, tase his rolls into 13s, and quiz the rounding crews _(uses: the grapple, pop quiz, soak and shock)_
+
 **Beats**
 - Boss fight: FOREMAN REMAINDER on the conveyor yard and up the Big Calculator. He multiplies and divides.
 - Beaten, his face flickers and shows one number before it dies: 4,112,006,551. You've seen it before, on slide 31.
@@ -981,6 +1001,8 @@ _Sixty floors of Stairwell B at 17:20, with the sirens going and the clocks star
 **Who:** R. CALE, AGNES, DALE  
 **Giver:** DALE · **Needs:** m12_workday_1645, pages>=3
 
+**Mechanic hook:** sixty floors of stairs against the sirens: slide down the banisters (Cale did it as a kid) _(uses: slide)_
+
 **Beats**
 - 17:20: the lifts lock. The sirens start. Cale and Agnes go into Stairwell B.
 - A descent level: floors counting down, staff panicking on landings, Timekeeping officers locking floor doors, a man carrying a fish tank, the clocks on every landing cracking from the middle out (the Schedule Bomb warming up downtown).
@@ -1045,6 +1067,8 @@ _17:29. Cale reaches the lobby with the copy, and Mr. Overtime is waiting. Then 
 **Where:** The Machine (THE BOTTOM), The Lobby (17:29) (THE TRAINING SIMS), The Lost & Found (THE BOTTOM)  
 **Who:** R. CALE, MR. OVERTIME, AUNTIE SPREADSHEET, DALE  
 **Giver:** DALE · **Needs:** m16_workday_1720, m13_rush_hour
+
+**Mechanic hook:** the last flashback's run across the lobby is the only time the game asks you to run as fast as you can and then takes it away _(uses: bhop and infinite momentum)_
 
 **Beats**
 - Dale: one more. She's been holding it back. It's the last few minutes.

@@ -10,6 +10,8 @@ _At the edge of the world, the Tall Guy From HR can't be killed in his own fores
 **Who:** OLD PAT, THE JANITOR, THE TALL GUY FROM HR  
 **Giver:** OLD PAT · **Needs:** m25_tuesday_again
 
+**Mechanic hook:** Old Pat pushes you into the void to teach Void Edges; the canopy is a grapple route; the Tall Guy only moves when you look away _(uses: void edges, the grapple, the lasso)_
+
 **Beats**
 - The Last Bus Stop. The road ends in the void. Old Pat and the Margin Walkers stake gnomes to hold the ground. The Janitor mops the edge.
 - Pat: Vacancy's Closing Agent keeps her page in a briefcase at the Show Home, and the Tall Guy walks the forest between here and there.
@@ -104,6 +106,8 @@ _The deal closes today. Vacancy's Closing Agent is selling the Bottom to the voi
 **Who:** PENNY PLOT, OLD PAT, THE TALL GUY FROM HR, MR. DEPOSIT, AUNTIE SPREADSHEET  
 **Giver:** OLD PAT · **Needs:** m26_exit_interview
 
+**Mechanic hook:** blow survey agents off the Edge, lasso Penny's briefcase, and grapple between falling plots _(uses: shove and knockback, the lasso, void edges, the grapple)_
+
 **Beats**
 - The Show Home: a perfect show house on the edge, every plot sold marked by a pin on a map of the void. The Bottom is a cluster of red pins with 'PHASE TWO' written over it.
 - Penny Plot: cheerful, monstrous, in a pink blazer over a hazmat suit. She tries to sell you a plot. She sold her own house at nineteen.
@@ -172,6 +176,8 @@ _Whatever you chose at the split, now it has to be built: a headcount, a demolit
 **Where:** The Lost & Found (THE BOTTOM), The Price Press (NUMBER WORKS), The Big Escalator (THE CHECKOUT), The Smiling Fountain (CORP HILL), The Digester Wall (THE GUT), The Bleach Line (CORP HILL)  
 **Who:** LUMPS, WEE GORDO, AUNTIE SPREADSHEET, PRITCHARD, CHAD TEMPO, DOT  
 **Giver:** — · **Needs:** m27_negative_space
+
+**Mechanic hook:** each plan is a different playstyle: HEADCOUNT is stealth, DEMOLITION is a climb up the Big Escalator against its direction, PRINT RUN is a heist under the fountain _(uses: the grapple, rocket and shotgun jumps, cars and traffic)_
 
 **Beats**
 - One of three versions plays, by plan (parts below). Each ends with the Bottom ready for 03:00.
@@ -294,6 +300,8 @@ _At 03:00, in the one hour nobody is booked into, the whole Bottom climbs Corp H
 **Who:** AUNTIE SPREADSHEET, LUMPS, WEE GORDO, THE STEERING COMMITTEE, MINA, PIP GRINSWORTH, WRISTBAND, NELL THIRTEEN, OLD PAT  
 **Giver:** WEE GORDO · **Needs:** m28_the_plan
 
+**Mechanic hook:** the raid is a rhythm climb (On Time) up Dividend Road; grapple from the Cathedral spire onto the Meeting Room's skid _(uses: on time, the grapple, big laser pointer, cars and traffic)_
+
 **Beats**
 - C18: the Bleach Line at 02:59, the allies, the clocks turning to face Dividend Road.
 - The climb: a big set piece up Dividend Road. Allies fight at junctions (each district's ruler holds one).
@@ -356,6 +364,8 @@ _The same lobby as 17:29. The Twins hold the elevator. Auntie sits down behind t
 **Where:** The ☺ Spire Lobby (CORP HILL), The Top Floor (CORP HILL)  
 **Who:** THE TWINS, AUNTIE SPREADSHEET, LUMPS, WEE GORDO, MARION HASK, PRITCHARD  
 **Giver:** — · **Needs:** m29_the_missing_hour
+
+**Mechanic hook:** the Twins' join opens when they spin; ricochet round the shield; the Scales find two people guilty in one hit _(uses: scales of justice (verdicts), bank shots, the grapple)_
 
 **Beats**
 - The lobby: the marble, the revolving door, the pillar Overtime stepped out from. The game plays the lobby's music from F4.

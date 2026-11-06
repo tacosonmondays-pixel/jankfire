@@ -189,3 +189,34 @@ doesn't have yet:
   puppet's huge feature).
 - Dialogue memory is `st.said` (not flags): `said.NPC.NODE` in conditions; packed per character in the save.
 - Rehearsal: shift+R fakes the tracked step's next goal (for systems other lanes haven't built yet).
+
+## Boss fights and mechanics (proposed, `claude/overdue-mechanics`)
+The script's boss and mechanics data, for the systems and boss lanes. WP9, the first Overtime fight, is the first one
+to build against it. Everything below is exported by the `overdue` pack as `bosses`, `mechanics` and `grapple`, and
+checked by `validate.js`.
+
+**Boss fight layer**: `shared/story/content/boss_fights.js`, merged into `bosses.js`. Every boss entry has:
+- `zone`: the arena's zone id. (This field was called `arena` before; that name now holds the arena design below.)
+- `arena: { name, layout, vertical, grapple: [..], hazards: [{ kind, where, effect }], cover: [{ what, breaks }] }`.
+  - Hazard kinds: water, lava, acid, oil, electric, fire, void, gas, rad, paper, crush.
+  - Liquids are written as hazards, so they can light up as the liquid system lands.
+- `layers: [{ bar: 'armour' | 'shield' | 'health', of, how }]`: the health bars, top bar first. `how` says what
+  strips each one best. A boss can have two `health` bars (the Twins: one per half).
+- `weakPoints: [{ name, glow, exposedBy, crit }]`: the glowing crit spots. `exposedBy` is the action that opens one:
+  grapple an armour plate off, parry, slip, shoot inside a slot, and so on.
+- `weakness: { element, weapons: [weapon ids], why }`.
+  - Elements: fire, water, shock, frost, slip, verdict, explosive, knockback, blood, sleep, grapple.
+  - The listed weapons do well against that boss. Every fight is still beatable with anything.
+- `adds: [{ name, count, personality, does }]`: minions, each with a personality.
+- `setPiece: [{ kind: 'chase' | 'transform' | 'grapple' | 'vehicle' | 'climb', when, what }]`.
+- `phases[i].twist`: the mechanical twist each phase adds, on top of its `mechanics` (each with a `tell`).
+- `pinata`: the death burst. An organ core (`core`) is always guaranteed.
+- `lootTable`: the boss's own loot table. It always has at least one dedicated legendary, so refights farm it.
+- `scaling`: how refights scale.
+- `uses`: the mechanics ids the fight asks of you. Every fight uses `grapple`.
+
+**Mechanics**: `shared/story/content/mechanics.js`.
+- `MECHANICS[id] = { name, kind, game, src, weapons, story: { traversal, puzzles, combat, bosses, side }, taught: { quest, how } }`.
+- `GRAPPLE` holds the grapple's own section: routes, shortcuts, secrets, chases, fights, puzzles, races and upgrades.
+- Every main mission (and most side quests) has a hook: `mechanic: { uses: [mechanics ids], hook }`.
+- `docs/story/MECHANICS.md` is generated from all of this, with the coverage table.
