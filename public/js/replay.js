@@ -23,6 +23,7 @@ import { BOXES } from '/shared/map.js';
 import { soapBubble, soapFlail } from './models.js';
 import { TRAP, trapPreroll } from '/shared/wand.js';
 import { patchPreroll } from '/shared/marbles.js';
+import { secShot } from './secondaries.js'; // water pistol streams in replays
 
 const KEEP = 10000;
 // other modules' replay bits (the new gear: photo frames, pop quizzes, laser beams, goggle flashes). each hook may have
@@ -35,6 +36,7 @@ const r2 = (x) => Math.round(x * 100) / 100;
 export function recordSnap(m) {
   const j = [];
   for (const pr of G.projs.values()) j.push([pr.id, pr.k, r2(pr.p[0]), r2(pr.p[1]), r2(pr.p[2]), pr.tip || 0]);
+  if (G.cartRec) j.push(...G.cartRec()); // shopping carts (primaries.js), the yaw in the tip slot
   rec.frames.push({ s: m.s, p: m.p, j });
   while (rec.frames.length && rec.frames[0].s < m.s - KEEP) rec.frames.shift();
   while (rec.ev.length && rec.ev[0].s < m.s - KEEP) rec.ev.shift();
@@ -143,6 +145,7 @@ function applyEv(m) {
     if (g && w.fanHammer) g.revShot(!!m.fan); // ghosts twirl their revolvers too
     const fast = w.rate > 8, mz = g ? g.muzzle() : null;
     const col = tracerColor(((info[m.id] || {}).skins || {})[m.w], w.tracer || 0xfff0a0);
+    if (w.water && secShot(m.s, mz)) { if (m.s.length) sfx.gun(m.w, m.s[0].slice(0, 3)); return; } // water pistol: a stream, not a tracer
     if (w.marbles) { const sk = ((info[m.id] || {}).skins || {})[m.w]; marbles.shootSegs(m.s, mz, sk && sk[3] === 'marbles_gumball' ? 'gumball' : 'glass', 2); if (m.s.length) sfx.gun(m.w, m.s[0].slice(0, 3)); return; }
     m.s.forEach((s, i) => fx.tracer(mz && (i === 0 || w.pellets) ? mz : s.slice(0, 3), s.slice(3), col, w.thick || (fast ? 0.03 : 0.045), fast ? 0.07 : 0.2));
     if (m.s.length) sfx.gun(m.w, m.s[0].slice(0, 3));
@@ -245,7 +248,8 @@ function updateProjs(t, dt) {
     const px = x + (b[2] - x) * k, py = y + (b[3] - y) * k, pz = z + (b[4] - z) * k;
     const vx = b[2] - x, vy = b[3] - y, vz = b[4] - z;
     mesh.position.set(px, py, pz);
-    if ((kind === 'chicken' || kind === 'bow' || kind === 'card') && Math.hypot(vx, vy, vz) > 0.01) mesh.lookAt(px - vx, py - vy, pz - vz);
+    if (kind === 'cartp') mesh.rotation.set(0, tip || 0, 0); // carts sit upright, turned the way they were
+    else if ((kind === 'chicken' || kind === 'bow' || kind === 'card') && Math.hypot(vx, vy, vz) > 0.01) mesh.lookAt(px - vx, py - vy, pz - vz);
     else { mesh.userData.spin += dt * 14; mesh.rotation.set(mesh.userData.spin, mesh.userData.spin * 0.7, 0); }
     if (kind === 'loop' && G.lassoLoopGhost) G.lassoLoopGhost(mesh, vx, vy, vz); // a lasso loop flies flat, not tumbling
     if (kind === 'chicken' && Math.random() < dt * 8) fx.feathers([px, py, pz], 1);

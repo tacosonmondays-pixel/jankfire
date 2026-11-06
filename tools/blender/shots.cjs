@@ -16,6 +16,7 @@ const SIZES = [[1280, 720], [1280, 800], [900, 900]], FOVS = [70, 120];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const weapons = list.split(',');
 const wid = (e) => e.split(':')[0], tag = (e) => e.split(':')[1] || e.split(':')[0]; // weapon id, file tag (the skin's model id)
+const NO_ADS = new Set(['akimbo']); // no aiming: right click fires the right gun, so there's nothing to check
 
 async function session(b, jank, useGlb, viewport = { width: 960, height: 600 }) {
   const pg = await b.newPage({ viewport });
@@ -72,7 +73,7 @@ async function adsCheck(b) {
     await pg.setViewportSize({ width: vw, height: vh }); await sleep(600);
     for (const fov of FOVS) {
       await pg.evaluate(async (fov) => { const { G } = await import('/js/ctx.js'); G.settings.fov = fov; }, fov);
-      for (const id of weapons) {
+      for (const id of weapons.filter((w) => !NO_ADS.has(wid(w)))) {
         if (!(await canAim(pg, id))) continue; // melee, items, the cigarette...: nothing to aim
         await pick(pg, id); await sleep(800);
         await aim(pg, true);
@@ -87,7 +88,7 @@ async function adsCheck(b) {
   console.log(`\nADS check: share of the centre ${CENTRE * 100}% x ${CENTRE * 100}% the gun covers while aiming (limit ${LIMIT * 100}%)`);
   console.log('gun'.padEnd(10) + SIZES.flatMap(([w, h]) => FOVS.map((f) => `${w}x${h}@${f}`.padStart(15))).join(''));
   let worst = 0;
-  for (const id of weapons) {
+  for (const id of weapons.filter((w) => !NO_ADS.has(wid(w)))) {
     const cs = rows.filter((r) => r.id === id);
     if (!cs.length) continue;
     worst = Math.max(worst, ...cs.map((r) => r.c));

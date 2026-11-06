@@ -39,6 +39,21 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 | `make_bowling.py` | `w_bowling.glb` | backyard pneumatic cannon (PVC barrel, air tank, sprinkler valve, gauge) |
 | `make_banana.py` | `w_banana.glb` | AKS-74U pattern, x1.1, a real banana as the banana mag, peel muzzle |
 | `make_marbles.py` | `w_marbles.glb` | flintlock blunderbuss pistol, x1.1, mason-jar marble hopper |
+| `make_water.py` | `w_water.glb` | 90s pump squirt pistol, x1.3, a soda bottle tank (neck forward, base toward you); nodes `water_wzN` (origin on the tank floor: scale y = how full) and `pump_wzB` |
+| `make_taser.py` | `w_taser.glb` | conducted-energy pistol, x1.25, cartridge with dart ports, laser chin, 3-dot sights; node `led_wzN` (ARMED light, on the rear panel) |
+| `make_remote.py` | `w_remote.glb` | CRT-era TV remote, life size, printed number pad, raised PAUSE / REWIND symbols, no sights; node `ir_wzN` (the game flashes it) |
+| `make_radar.py` | `w_radar.glb` | hand-held traffic radar, life size, coiled cord; node `lamp_wzN` (blinks), `screen` metadata = the recess the game draws the LED readout in |
+| `make_burst.py` | `w_burst.glb` | Hat Trick: FAMAS F1 pattern bullpup, nodes `mag` + `charge` |
+| `make_lmg.py` | `w_lmg.glb` | Belt Sander: M249 pattern, nodes `mag` (ammo box), `cover` (feed cover hinge), `belt_00`..`belt_11` (links, hidden as the belt empties), `lmg_heat` material (the barrel glows with heat) |
+| `make_dmr.py` | `w_dmr.glb` | Second Opinion: SVD pattern with a PSO-style scope, nodes `mag` + `charge` |
+| `make_lever.py` | `w_lever.glb` | Yeehaw: Winchester 1892 pattern, nodes `lever` (front pin) + `lhammer` (spin-cock + lever throw are in `public/js/rifles.js`) |
+| `make_autoshot.py` | `w_autoshot.glb` | Lawn Mower: Saiga-12 pattern auto shotgun, nodes `mag` + `charge` |
+| `make_nailgun.py` | `w_nailgun.glb` | 21-degree framing nailer x1.6, turned so the drive points forward: handle = pistol grip, stick magazine of nails raked under the nose, spirit level taped on as the sight |
+| `make_tennis.py` | `w_tennis.glb` | garage ball launcher x1.1: clear ball can barrel, side-fed hopper can, CO2 bottle foregrip, a tennis racket's handle + throat as the grip, a bit of strung head as the trigger guard |
+| `make_cart.py` | `w_cart.glb`, `p_cart.glb` | the Shopping Cart Cannon (6in PVC, a cart basket wrapped round the barrel, cart handle foregrip, coin lock, castor monopod) + the real-size cart it fires (nodes `wheel_*`, spun by the game) |
+| `make_akimbo.py` | `w_akimbo.glb` | MAC-10 pattern (stock pushed in), x1.1, one gun the game puts in both hands: `cocker` knob node (snaps back per shot), `mag` node (origin at its base, slides out along `dir`), `tags` L / R sticker nodes (one shows per hand). `-- --qa` runs the asset-QA gate on every part |
+| `make_sawnoff.py` | `w_sawnoff.glb` | 12 ga side-by-side hammer coach gun, sawn off (300 mm barrels, stock cut to a pistol grip), x1.0: `hinge_wzB` node (the barrels break open round the pin in the knuckle at (0, -0.002, -0.05), like a real side-by-side, so the shells come out over the action; `forend_wzA`, `shell1_wzN` / `shell2_wzN` ride on it), `hammerR_wzN` / `hammerL_wzN` (modelled cocked, the game drops them 0.75 rad onto the strikers) |
+| `make_pistol.py` | `w_pistol.glb` | Plan B: 1911A1 / Government pattern .45 (5in), x1.5 like the revolver: `slide_wzB` (kicks back / locks open, the gold barrel stays and pokes out), `mag_wzB` (origin at the base pad's middle, slides out along `dir` = the 18 degree grip rake), `hammer_wzN` (ring hammer modelled cocked, origin on its pin). Gold-filled roll marks (PLAN B / TOLD YOU SO), pearl grips with B medallions |
 | `make_car.py` | `p_car.glb` | sedan, paint material `car_paint` (recoloured per car) |
 | `make_bus.py` | `p_bus.glb` | conventional school bus |
 | `make_forklift.py` | `p_forklift.glb` | counterbalance forklift |

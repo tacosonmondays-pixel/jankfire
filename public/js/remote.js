@@ -2,7 +2,8 @@
 import * as THREE from 'three';
 import { BOXES } from '/shared/map.js';
 import { raycast, playerBoxes } from '/shared/physics.js';
-import { FLAGS } from '/shared/weapons.js';
+import { FLAGS, WEAPONS } from '/shared/weapons.js';
+import { sideHand } from './sidearms.js'; // Lefty & Righty: the L / R stickers
 import { INFECT } from '/shared/modes.js';
 import { G } from './ctx.js';
 import { buildCharacter, buildWeapon, makeNameTag, makeShadow, cardTex, setKatana, freeTree, teamLook } from './models.js';
@@ -180,6 +181,7 @@ export class Remote {
     if (this.weaponMesh) freeTree(this.weaponMesh);
     this.ch.slot.clear();
     this.weaponMesh = null;
+    if (this.weaponMeshL) { this.weaponMeshL.parent.removeFromParent(); freeTree(this.weaponMeshL); this.weaponMeshL = null; }
     if (w) {
       this.weaponMesh = buildWeapon(w, this.skins[w]);
       this.weaponMesh.traverse((o) => { // blade-kit meshes carry a [flat, bevel] material pair
@@ -191,6 +193,15 @@ export class Remote {
       this.weaponMesh.scale.setScalar(w === 'bread' ? 1.0 : 1.5);
       if (w === 'katana') setKatana(this.weaponMesh, this.katN || 0);
       this.ch.slot.add(this.weaponMesh);
+      if (WEAPONS[w] && WEAPONS[w].hands) { // Lefty & Righty: the second gun goes in the left hand (the arm swings out to hold it forward)
+        sideHand(this.weaponMesh, w, 'R');
+        const L = buildWeapon(w, this.skins[w]);
+        L.traverse((o) => { if (o.isMesh && !o.material.transparent && !Array.isArray(o.material)) o.material = visibleMat(o.material); });
+        L.scale.setScalar(1.5); sideHand(L, w, 'L');
+        const sl = new THREE.Group(); sl.position.set(0.045, -0.04, -0.625); sl.rotation.y = -0.6; sl.add(L);
+        this.ch.armL.add(sl);
+        this.weaponMeshL = L;
+      }
     }
   }
 
@@ -322,11 +333,12 @@ export class Remote {
     return [-Math.sin(this.yaw) * cp, Math.sin(this.pitch), -Math.cos(this.yaw) * cp];
   }
 
-  muzzle() {
+  muzzle(hd) {
     if (!this.weaponMesh) return [this.pos[0], this.pos[1] + 1.2, this.pos[2]];
     this.ch.root.updateMatrixWorld(true);
-    tmpV.copy(this.weaponMesh.userData.muzzle);
-    this.weaponMesh.localToWorld(tmpV);
+    const g = hd && this.weaponMeshL ? this.weaponMeshL : this.weaponMesh; // hd: the left of Lefty & Righty fired
+    tmpV.copy(g.userData.muzzle);
+    g.localToWorld(tmpV);
     return [tmpV.x, tmpV.y, tmpV.z];
   }
 
@@ -422,6 +434,7 @@ export class Remote {
     ch.root.rotation.y = this.yaw;
     ch.arm.rotation.x = this.pitch;
     ch.armL.rotation.x = this.pitch;
+    ch.armL.rotation.y = this.weaponMeshL ? 0.6 : 0; // akimbo: the left arm out front with its own gun
 
     // stiff mannequin walk: hips swing, knees only bend one way (unless this one is broken)
     const hs = Math.hypot(this.vel[0], this.vel[2]);
@@ -531,6 +544,7 @@ export class Remote {
     const holding = !!this.itemMesh && this.itemMesh.parent === this.ch.slot && now < this.itemUntil;
     if (this.itemMesh && !holding) { this.itemMesh.removeFromParent(); this.itemMesh = null; }
     if (this.weaponMesh) this.weaponMesh.visible = !holding;
+    if (this.weaponMeshL) this.weaponMeshL.visible = !holding;
     if (now < this.burnUntil && Math.random() < 0.7) fx.burn(this.pos);
     if (this.w !== 'revolver') this.tw = null;
     else if (this.tw && this.weaponMesh) applyTwirl(this.weaponMesh, stepTwirl(this.tw, dt), this.weaponMesh.scale.x);

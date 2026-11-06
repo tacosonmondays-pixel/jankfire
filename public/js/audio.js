@@ -195,11 +195,37 @@ export const sfx = {
       case 'minigun': noise(0.05, 0.4, 'lowpass', 4000, 500, pos); break;
       case 'revolver': noise(0.35, 0.9, 'lowpass', 6000, 150, pos); tone('square', 1200, 300, 0.06, 0.2, pos); break;
       case 'sniper': sfx.sniper(pos); break;
+      case 'water': sfx.squirt(pos); break;
+      // the rifle pack. k = the Belt Sander's heat: fatter, louder and sizzling the longer it runs
+      case 'burst': noise(0.09, 0.62, 'lowpass', 5200, 380, pos); tone('square', 200, 75, 0.055, 0.2, pos); noise(0.02, 0.25, 'highpass', 5000, 8000, pos); break;
+      case 'lmg': noise(0.11 + k * 0.06, 0.5 + k * 0.55, 'lowpass', 2800 + k * 2400, 180, pos); tone('square', 120 - k * 25, 45, 0.08 + k * 0.03, 0.2 + k * 0.25, pos); if (k > 0.5) noise(0.06, (k - 0.5) * 0.5, 'highpass', 6000, 9000, pos); break;
+      case 'dmr': noise(0.42, 0.95, 'lowpass', 6500, 130, pos); tone('sawtooth', 260, 38, 0.3, 0.42, pos); tone('square', 1500, 240, 0.07, 0.16, pos); break;
+      case 'lever': noise(0.32, 0.85, 'lowpass', 5200, 120, pos); tone('sine', 150, 42, 0.26, 0.55, pos); tone('square', 900, 260, 0.05, 0.12, pos); break;
+      case 'autoshot': noise(0.3, 0.9, 'lowpass', 2400, 90, pos); tone('sine', 85, 30, 0.25, 0.65, pos); tone('square', 260, 180, 0.04, 0.16, pos, 0.04); break;
+      // the sidearms: Plan B a crisp snap, Lefty & Righty a light tinny brrt (two at once = a buzz), Half a Shotgun a huge boom
+      case 'pistol': noise(0.16, 0.75, 'lowpass', 5200, 220, pos); tone('square', 950, 240, 0.045, 0.2, pos); noise(0.03, 0.3, 'highpass', 4000, 7000, pos); break;
+      case 'akimbo': noise(0.065, 0.45, 'lowpass', 5600, 500, pos); tone('square', 340 + Math.random() * 60, 130, 0.04, 0.15, pos); break;
+      case 'sawnoff': noise(0.6, 1, 'lowpass', 2200, 60, pos); tone('sine', 75, 24, 0.45, 0.95, pos); noise(0.06, 0.6, 'highpass', 2500, 5000, pos); tone('square', 220, 90, 0.08, 0.25, pos, 0.02); break;
       default: noise(0.1, 0.5, 'lowpass', 3000, 300, pos);
     }
   },
   reload() { tone('square', 400, 380, 0.04, 0.12); tone('square', 250, 240, 0.05, 0.12, null, 0.18); },
   empty() { tone('square', 900, 900, 0.02, 0.1); },
+  // sidearm reload bits (sidearms.js): mags, slides, the sawed-off breaking open, shells popping out and thumbed in
+  mech(k, pos) {
+    switch (k) {
+      case 'magOut': tone('square', 620, 480, 0.03, 0.1, pos); noise(0.05, 0.25, 'bandpass', 1800, 1200, pos, 0.02, 2); break;
+      case 'magIn': tone('square', 380, 300, 0.03, 0.16, pos); noise(0.04, 0.35, 'lowpass', 2200, 400, pos); tone('square', 900, 850, 0.015, 0.08, pos, 0.04); break;
+      case 'slideBack': noise(0.07, 0.25, 'bandpass', 2600, 1600, pos, 0, 3); tone('square', 1300, 1100, 0.02, 0.07, pos); break;
+      case 'slideHome': tone('square', 1500, 700, 0.03, 0.16, pos); noise(0.05, 0.35, 'highpass', 2500, 5000, pos); break;
+      case 'rack': noise(0.05, 0.3, 'bandpass', 2400, 1500, pos, 0, 3); tone('square', 1200, 600, 0.025, 0.12, pos, 0.05); break;
+      case 'break': tone('square', 300, 170, 0.06, 0.18, pos); noise(0.08, 0.35, 'bandpass', 1400, 700, pos, 0, 2); break;
+      case 'eject': for (let i = 0; i < 2; i++) { tone('sine', 1500 + i * 220, 1200, 0.05, 0.12, pos, 0.02 + i * 0.05); noise(0.04, 0.2, 'bandpass', 900, 600, pos, 0.03 + i * 0.05, 2); } break;
+      case 'thumb': noise(0.05, 0.3, 'lowpass', 1500, 300, pos); tone('square', 520, 430, 0.025, 0.1, pos, 0.03); break;
+      case 'close': tone('square', 260, 120, 0.08, 0.3, pos); noise(0.1, 0.55, 'lowpass', 2600, 200, pos); tone('square', 1800, 1500, 0.015, 0.08, pos, 0.01); break;
+      case 'cock': tone('square', 1700, 1300, 0.02, 0.12, pos); tone('square', 900, 700, 0.025, 0.1, pos, 0.04); break;
+    }
+  },
   hammer(pos) { tone('square', 2300, 1500, 0.018, 0.12, pos); noise(0.025, 0.35, 'highpass', 3500, 6000, pos); }, // fanning: slap the hammer back
   twirl(pos) { noise(0.2, 0.16, 'bandpass', 700, 2400, pos, 0.02, 2.5); tone('square', 320, 260, 0.025, 0.06, pos, 0.24); }, // whirr round the finger, tk into the palm
   clatter(pos) { for (let i = 0; i < 10; i++) { const f = 2000 + Math.random() * 3600; tone('sine', f, f * 0.9, 0.04, 0.1, pos, i * 0.028 + Math.random() * 0.03); } noise(0.3, 0.18, 'highpass', 3000, 5000, pos); }, // a pile of marbles going everywhere
@@ -597,4 +623,58 @@ Object.assign(sfx, {
   nvFlash(pos = null) { noise(0.12, 0.9, 'highpass', 2500, 7000, pos); tone('sine', 200, 60, 0.25, 0.3, pos); tone('sine', 3000, 11000, 0.5, 0.06, pos, 0.1); },
   tinnitus(s = 2) { if (!ac) return; const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(); o.type = 'sine'; o.frequency.value = 6200; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(0.4, s * 1.3)); o.connect(g); g.connect(master); o.start(t); o.stop(t + s * 1.3 + 0.1); },
 });
+// the new secondaries + the speed trap (secondaries.js)
+Object.assign(sfx, {
+  squirt(pos) { noise(0.09, 0.32, 'bandpass', 2600, 1200, pos, 0, 2.5); tone('sine', 520 + Math.random() * 120, 260, 0.06, 0.08, pos); },
+  splash(pos, v = 1) { noise(0.22, 0.45 * v, 'lowpass', 4200, 600, pos); for (let i = 0; i < 3; i++) tone('sine', 900 + Math.random() * 900, 1800 + Math.random() * 900, 0.05, 0.06 * v, pos, 0.03 + i * 0.04); },
+  sizzle(pos) { noise(0.6, 0.4, 'highpass', 3000, 7000, pos); tone('sine', 1200, 300, 0.4, 0.06, pos); }, // fire going out
+  taser(pos) { tone('square', 1900, 900, 0.05, 0.16, pos); noise(0.06, 0.6, 'highpass', 1800, 4000, pos); }, // the darts going pop
+  buzz(pos, len = 0.6, v = 1) { // TZZZZT: a sawtooth chopped at 60 Hz-ish with crackle on top
+    if (!ac) return;
+    const t = ac.currentTime, o = ac.createOscillator(), lfo = ac.createOscillator(), lg = ac.createGain(), g = ac.createGain();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(118, t); o.frequency.linearRampToValueAtTime(96, t + len);
+    lfo.type = 'square'; lfo.frequency.value = 31; lg.gain.value = 0.1 * v;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12 * v, t + 0.02); g.gain.setValueAtTime(0.12 * v, t + len - 0.06); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    lfo.connect(lg); lg.connect(g.gain); o.connect(g); g.connect(dest(pos));
+    o.start(t); lfo.start(t); o.stop(t + len + 0.05); lfo.stop(t + len + 0.05);
+    for (let i = 0; i < Math.round(len * 14); i++) noise(0.025, 0.35 * v, 'highpass', 3000 + Math.random() * 3000, 6000, pos, Math.random() * len);
+  },
+  arc(pos) { noise(0.08, 0.5, 'highpass', 2500, 8000, pos); tone('square', 2400 + Math.random() * 1500, 600, 0.06, 0.07, pos); },
+  remoteClick(pos) { tone('square', 2600, 2600, 0.012, 0.08, pos); noise(0.02, 0.2, 'highpass', 4000, 6000, pos); },
+  pause(pos) { tone('square', 988, 988, 0.07, 0.12, pos); tone('square', 659, 659, 0.12, 0.12, pos, 0.08); }, // bip-boop
+  unpause(pos) { tone('square', 659, 659, 0.06, 0.1, pos); tone('square', 988, 988, 0.1, 0.1, pos, 0.07); },
+  rewind(pos) { // the tape squealing backwards
+    noise(0.55, 0.3, 'bandpass', 900, 3800, pos, 0, 4);
+    for (let i = 0; i < 9; i++) tone('sawtooth', 1400 + i * 260, 2200 + i * 300, 0.05, 0.05, pos, i * 0.055);
+    tone('sine', 180, 60, 0.15, 0.25, pos, 0.5); // ka-chunk
+  },
+  radarBeep(pos, hi) { tone('square', hi ? 1760 : 1320, hi ? 1760 : 1320, 0.05, 0.07, pos); },
+  siren(pos, len = 1.2) { for (let i = 0; i < Math.round(len / 0.3); i++) tone('sawtooth', i % 2 ? 960 : 720, i % 2 ? 720 : 960, 0.3, 0.07, pos, i * 0.3); },
+  cageSlam(pos) { noise(0.5, 0.9, 'lowpass', 2200, 90, pos); tone('square', 210, 60, 0.25, 0.35, pos); for (let i = 0; i < 6; i++) tone('triangle', 900 + Math.random() * 1600, 500, 0.3, 0.07, pos, 0.02 + i * 0.03); },
+  cageUp(pos) { tone('triangle', 500, 1400, 0.3, 0.12, pos); noise(0.25, 0.25, 'bandpass', 1500, 4000, pos, 0, 2); },
+  cageBreak(pos) { sfx.clang(pos, 1); noise(0.4, 0.7, 'highpass', 900, 3000, pos); },
+  warning(pos) { tone('sine', 880, 880, 0.1, 0.12, pos); tone('sine', 1175, 1175, 0.18, 0.12, pos, 0.11); },
+});
 
+// the rifle pack's handling noises + callouts (rifles.js)
+Object.assign(sfx, {
+  rifle(k, n = 0) {
+    switch (k) {
+      case 'magOut': tone('square', 340, 300, 0.035, 0.12); noise(0.06, 0.25, 'bandpass', 1400, 900, null, 0.02, 3); break;
+      case 'magIn': tone('square', 520, 480, 0.03, 0.16); noise(0.05, 0.35, 'bandpass', 2200, 1500, null, 0, 3); tone('square', 260, 240, 0.03, 0.1, null, 0.04); break;
+      case 'chargeBack': noise(0.07, 0.3, 'bandpass', 2600, 1800, null, 0, 4); tone('square', 700, 600, 0.03, 0.1); break;
+      case 'chargeHome': tone('square', 880, 420, 0.04, 0.18); noise(0.05, 0.35, 'bandpass', 3000, 1500, null, 0, 3); break;
+      case 'coverUp': tone('square', 300, 520, 0.05, 0.12); noise(0.06, 0.2, 'bandpass', 1800, 2400, null, 0, 3); break;
+      case 'coverSlam': tone('square', 180, 90, 0.08, 0.28); noise(0.1, 0.45, 'lowpass', 1800, 200); break;
+      case 'belt': for (let i = 0; i < 7; i++) tone('triangle', 2200 + Math.random() * 1400, 1800, 0.03, 0.06, null, i * 0.03); break;
+      case 'shellIn': tone('square', 1100, 900, 0.025, 0.1); noise(0.04, 0.2, 'bandpass', 2600, 2000, null, 0.01, 4); break;
+      case 'leverOpen': tone('square', 420, 300, 0.035, 0.13); break;
+      case 'leverClack': tone('square', 640, 380, 0.04, 0.18); noise(0.04, 0.3, 'bandpass', 2400, 1400, null, 0, 3); break;
+      case 'yeehaw': tone('sawtooth', 380, 760, 0.14, 0.1); tone('sawtooth', 760, 520, 0.22, 0.1, null, 0.14); tone('triangle', 520, 900, 0.16, 0.08, null, 0.34); break;
+      case 'mower': for (let i = 0; i < 6; i++) tone('sawtooth', 70 + i * 6, 60 + i * 5, 0.07, 0.12, null, 0.05 + i * 0.07); noise(0.4, 0.2, 'lowpass', 900, 200); break;
+      case 'burst': for (const [f, d] of [[1046, 0], [1318, 0.05], [1568, 0.1]]) tone('square', f, f, 0.07, 0.12, null, d); if (n) tone('sine', 3136, 3136, 0.25, 0.08, null, 0.15); break; // ding-ding-DING
+      case 'ramp': tone('triangle', 500 + n * 220, 600 + n * 260, 0.08, 0.12); tone('square', 1000 + n * 440, 1000 + n * 440, 0.04, 0.05, null, 0.05); break;
+      case 'qs': tone('sine', 900, 2400, 0.12, 0.14); tone('square', 2400, 2400, 0.05, 0.08, null, 0.12); break;
+    }
+  },
+});

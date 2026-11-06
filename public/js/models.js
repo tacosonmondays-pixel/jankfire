@@ -12,7 +12,11 @@ import { buildRigMissile } from './rigmodel.js'; // overdrive rig killstreak
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { laserBuild, calculator } from './gearmodels.js'; // the new gear's models (laser pointer, pop quiz calculator)
 import { prepAuthored, authored, AUTHORED, bindAuthored, nodeIn, glossBlade, LAZY, isLazy } from './glbkit.js';
+import { SEC_WB, SEC_HATS, secAuthored } from './secmodels.js'; // water pistol, taser, tv remote, radar gun
+import { nailgunBuild, tennisBuild, cartCannonBuild, tennisBall, cartModel, nailgunStaple, tennisMachine, cartBasket } from './primmodels.js'; // the new primaries + what they shoot
 import { catEars, catTail, maidDress } from './catwear.js'; // Board Approved: cat ears, cat tail, maid dress
+import { RIFLE_WB, bindRifle } from './riflemodels.js'; // the rifle pack (burst rifle, lmg, marksman, lever-action, auto shotgun)
+import { pistolBuild, akimboBuild, sawnoffBuild } from './sidemodels.js'; // Plan B, Lefty & Righty, Half a Shotgun
 
 // ------------------------------------------------------------ playing card faces (canvas, cached)
 const cardFaces = new Map();
@@ -772,6 +776,9 @@ const WB = {
 };
 
 // where a hat sits on each weapon (local position) and how tall it is. hand placed so every hat fits every weapon.
+Object.assign(WB, SEC_WB); // the new secondaries + the radar gun (secmodels.js)
+
+Object.assign(WB, RIFLE_WB);
 const HAT_AT = {
   ar: [[0, 0.1, 0.02], 0.12], smg: [[0, 0.055, 0.0], 0.1], shotgun: [[0, 0.05, 0.0], 0.11], minigun: [[0, 0.17, 0.05], 0.14],
   sniper: [[0, 0.16, -0.05], 0.13], chicken: [[0, 0.075, -0.5], 0.09], bowling: [[0, 0.17, -0.1], 0.15], banana: [[0, 0.185, 0.02], 0.1],
@@ -785,6 +792,7 @@ const HAT_AT = {
   p_chicken: [[0, 0.31, -0.28], 0.15], p_bowling: [[0, 0.45, 0], 0.3], p_duck: [[0, 0.418, -0.2], 0.2], p_slipper: [[0, 0.11, -0.13], 0.1], p_banana: [[0, 0.24, 0], 0.12],
   scales: [[0, 0.555, 0], 0.07], scales_kangaroo: [[0, 0.6, 0.004], 0.05],
 };
+Object.assign(HAT_AT, SEC_HATS);
 
 // weapon skins: a different model for the same weapon
 let skipTexture = null;
@@ -1332,6 +1340,10 @@ const MODEL_BUILD = {
   },
 };
 WB.laser = laserBuild; // Big Laser Pointer (gearmodels.js)
+WB.nailgun = nailgunBuild; WB.tennis = tennisBuild; WB.cart = cartCannonBuild; // the new primaries (primmodels.js)
+Object.assign(MODEL_BUILD, { nailgun_staple: nailgunStaple, tennis_machine: tennisMachine, cart_basket: cartBasket }); // ...and their skins
+Object.assign(WB, { pistol: pistolBuild, akimbo: akimboBuild, sawnoff: sawnoffBuild }); // plain sidearms (sidemodels.js)
+Object.assign(HAT_AT, { pistol: [[0, 0.05, -0.07], 0.07], akimbo: [[0, 0.06, -0.08], 0.07], sawnoff: [[0, 0.047, 0.02], 0.08] });
 // knives + swords live in blades/ (one file each, real proportions): base weapons go in WB, skins in MODEL_BUILD
 for (const [id, mod] of Object.entries(BLADES)) {
   (COSMETICS.model[id] ? MODEL_BUILD : WB)[id] = mod.build;
@@ -1391,8 +1403,11 @@ export function buildWeapon(id, skin) {
     if (Array.isArray(mt.port) && mt.port.length === 3 && mt.port.every(Number.isFinite)) g.userData.port = new THREE.Vector3(...mt.port); // where its shells fly out (a bullpup's port is by your cheek)
     if (mt.hatAt) g.userData.hatAt = mt.hatAt; else delete g.userData.hatAt;
     g.userData.glb = 'blender';
+    g.userData.jf = mt; // the sidearms read their moving parts' names from it (sidearms.js)
     g.userData.wid = 'bl_' + (variant ? model : id); // wrap zones come from the Blender parts' own names (_wzA / _wzB / _wzN), not the code model's rule
     bindAuthored(g, mt); // needle, vents, barrels, ember, card fan, bow string + the pump / cylinder / hammer / bolt that the viewmodel moves
+    secAuthored(id, g, mt); // the radar gun's speed readout, the water pistol's tank level, the taser's ARMED light
+    bindRifle(g, mt); // rifle pack: mag, charging handle, lever, feed cover, belt links, barrel heat
     if (Array.isArray(mt.glint) && mt.glint.length && mt.glint.every((a) => Array.isArray(a) && a.length === 4 && a.every(Number.isFinite))) addGlint(g, mt.glint);
     applySkin(g, skin);
     return g;
@@ -1823,6 +1838,7 @@ export function makeShadow() {
 // ------------------------------------------------------------ projectiles
 export function buildProjectile(k, skin) {
   if (k === 'rigmissile') return buildRigMissile(); // overdrive rig missiles: they turn along their flight themselves
+  if (k === 'cartp') return buildCart(); // shopping carts (replays draw them from the projectile list)
   const g = buildProjectileRaw(k, skin && typeof skin[3] === 'string' ? skin[3] : null);
   if (!g.userData.glb) g.userData.hatAt = HAT_AT['p_' + k];
   return applySkin(g, skin);
@@ -1877,6 +1893,8 @@ function buildProjectileRaw(k, model) {
     duck(g, 2.2);
   } else if (k === 'slipper') {
     slipper(g, 1.6);
+  } else if (k === 'tennis') {
+    g.add(tennisBall(0.1));
   } else if (k === 'calc') {
     g.add(calculator()); // pop quiz
   } else if (k === 'soap') {
@@ -1889,6 +1907,13 @@ function buildProjectileRaw(k, model) {
   return g;
 }
 
+// a shopping cart: the Blender one (p_cart) when it's loaded, else the code one. feet at y 0, nose at -z
+export function buildCart() {
+  const bl = authored('p_cart');
+  const g = new THREE.Group();
+  if (bl) { g.add(bl.obj); g.userData.glb = true; } else g.add(cartModel());
+  return g;
+}
 export function buildHole() {
   const g = new THREE.Group();
   g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0x000000 })));

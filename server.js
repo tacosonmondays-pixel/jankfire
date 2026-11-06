@@ -48,7 +48,11 @@ import { BR } from './shared/royale.js';
 import { tickHR, hrBot } from './server/hrguy.js'; // the Tall Guy From HR (Scary Forest)
 import { HR } from './shared/hr.js';
 import { installGear } from './server/gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
+import { installSec } from './server/secondaries.js'; // water pistol, taser, tv remote, speed trap
+import { SPEED } from './shared/weapons.js';
+import { installRifles, RIFLE_PREF, RIFLE_BOTS } from './server/rifles.js'; // burst rifle, lmg, marksman, lever-action, auto shotgun
 import { installEcon } from './server/econ.js';
+import { installPrimaries } from './server/primaries.js'; // nail gun pins, tennis ball bounces, shopping carts
 import { installTactical } from './server/tactical.js';
 import { TAC } from './shared/tactical.js'; // Plant & Defuse gunplay: spray patterns, moving spread, the hit check
 import { MSLIP, onPatch, patchPreroll } from './shared/marbles.js';
@@ -127,8 +131,13 @@ const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 40000, perMes
 const COLORS = ['#ff4fd8', '#4fd8ff', '#ffe14d', '#7dff4f', '#ff7a1a', '#b07dff', '#ff4f4f', '#4fffb0', '#ffffff', '#ff9ad5'];
 const DEFAULT_NAMES = ['player', 'guy', 'someone', 'nobody', 'dude', 'person'];
 const BOT_NAMES = ['Gary', 'Linda', 'Steve', 'Brenda', 'Kevin', 'Doug', 'Karen', 'Phil', 'Tina', 'Rick', 'Deb', 'Carl', 'Pam', 'Todd', 'Barb', 'Chad'];
-const BOT_GUNS = ['ar', 'ar', 'smg', 'shotgun', 'shotgun', 'sniper', 'chicken', 'banana', 'minigun', 'revolver', 'redline', 'marbles', 'laser'];
+const BOT_GUNS = ['ar', 'ar', 'smg', 'shotgun', 'shotgun', 'sniper', 'chicken', 'banana', 'minigun', 'revolver', 'redline', 'marbles', 'laser', 'nailgun', 'tennis', 'cart'];
 BOT_GUNS.push('shredder'); // bots suck too (botShred)
+BOT_GUNS.push('water', 'taser', 'remote'); // the new secondaries (server/secondaries.js secBotFire)
+BOT_GUNS.push(...RIFLE_BOTS); // the rifle pack (server/rifles.js)
+BOT_GUNS.push('pistol', 'akimbo', 'sawnoff'); // the plain sidearms
+if (process.env.JF_PIN_DUR) WEAPONS.nailgun.nails.dur = Number(process.env.JF_PIN_DUR) || WEAPONS.nailgun.nails.dur; // test knob: longer nail gun pins (screenshots)
+if (process.env.JF_BOT_GUNS) BOT_GUNS.splice(0, BOT_GUNS.length, ...process.env.JF_BOT_GUNS.split(',').filter((w) => Object.hasOwn(WEAPONS, w))); // test knob: JF_BOT_GUNS=nailgun,cart
 const SKIN_F = ['default', 'default', 'gold', 'chrome', 'pink', 'camo', 'neon', 'rainbow', 'galaxy', 'lava', 'missing', 'tiger', 'fade', 'carbon', 'tape'];
 const SKIN_H = ['none', 'none', 'none', 'tophat', 'party', 'crown', 'cowboy', 'propeller', 'cone', 'eyes', 'duck'];
 const SKIN_E = ['none', 'none', 'none', 'sparkles', 'flames', 'money', 'smoke'];
@@ -239,6 +248,8 @@ if (process.env.JF_INF_HP) INFECT.hp = Number(process.env.JF_INF_HP) || INFECT.h
 if (process.env.JF_LIVES) GAMES.oitc.lives = Number(process.env.JF_LIVES) || GAMES.oitc.lives;
 if (process.env.JF_ROUND_TIME) for (const r of Object.values(ROUND)) r.time = Number(process.env.JF_ROUND_TIME) || r.time;
 if (process.env.JF_DUCKS) DUCKRAIN.n = DUCKRAIN.n.map((x) => x * (Number(process.env.JF_DUCKS) || 1));
+// the new secondaries: every soak / stun / pause / cage / SLOW DOWN lasts JF_SEC_SLOW x longer (screenshot runs on slow headless browsers)
+if (process.env.JF_SEC_SLOW) { const k = Number(process.env.JF_SEC_SLOW) || 1, T = WEAPONS.taser; SPEED.jailT *= k; SPEED.warn *= k; WEAPONS.remote.pause.dur *= k; WEAPONS.water.soak.dur *= k; T.stun *= k; T.chainStun *= k; }
 // /skip vote: how long it stays open and the cooldown after one fails, in ms (test knobs)
 if (process.env.JF_SKIP_WINDOW) SKIP.window = Number(process.env.JF_SKIP_WINDOW) || SKIP.window;
 if (process.env.JF_SKIP_COOL) SKIP.cooldown = Number(process.env.JF_SKIP_COOL) || SKIP.cooldown;
@@ -270,6 +281,7 @@ for (const k of ['trap', 'trapx']) REC_T.add(k); // bubble wand: replays draw th
 for (const t of ['parry', 'guard']) REC_T.add(t); // katana parries show up in killcams too
 for (const t of ['snap', 'frame', 'framex', 'quiz', 'quizx']) REC_T.add(t); // instant camera frames + pop quizzes in killcams
 for (const k of ['beam', 'tele', 'nvflash']) REC_FX.add(k); // laser beams, frame teleports, goggle flashes
+REC_FX.add('plough'); // shopping carts running people over
 for (const t of ['mpatch', 'mslip', 'mpx']) REC_T.add(t); // marbles on the floor too
 REC_T.add('lasso'); // lasso throws, catches, flings and splats too
 function newDeck() {
@@ -519,6 +531,7 @@ class Room {
     send(p, { t: 'tip', tip: p.tip });
     for (const t of this.players.values()) if (t.trap) send(p, { t: 'trap', ...this.trapInfo(t) }); // anyone already floating in a soap bubble
     this.gearJoin(p); // photo frames standing, quizzes going
+    this.cartsFor(p); // shopping carts already out
     this.lassoJoin(p); // anyone already hanging off a lasso
     send(p, { t: 'court', s: [...this.players.values()].filter((o) => o.streak > 0).map((o) => [o.id, o.streak]) }); // scales of justice: streaks so far
     if (p.air && p.air.ok) send(p, { t: 'air', on: 1, grace: AIR.grace });
@@ -694,8 +707,9 @@ class Room {
     this.botChaosThink(b, t, n);
     let wx = 0, wz = 0, jump = false;
     const w = WEAPONS[b.w];
-    const pref = b.w === 'sniper' ? [25, 60] : b.w === 'shotgun' ? [3, 9] : b.w === 'marbles' ? [1.5, 4] : b.w === 'chicken' ? [10, 30] : b.w === 'shredder' ? [1.5, 9] : [7, 22];
+    const pref = RIFLE_PREF[b.w] ? [...RIFLE_PREF[b.w]] : b.w === 'sniper' ? [25, 60] : b.w === 'shotgun' ? [3, 9] : b.w === 'sawnoff' ? [1.5, 6] : b.w === 'akimbo' ? [4, 13] : b.w === 'marbles' ? [1.5, 4] : b.w === 'chicken' ? [10, 30] : b.w === 'shredder' ? [1.5, 9] : [7, 22];
     if (w.kind === 'melee') { pref[0] = 0; pref[1] = this.chaosKit || this.isEcon() ? 1.2 : w.range * 0.7; } // claws, melee rungs, spoons + knives: get in their face
+    if (b.w === 'taser') { pref[0] = 2; pref[1] = 6; } // darts on wires: get close
     if (t && t.alive) {
       const e = eyeOf(b), tc = [t.pos[0], t.pos[1] + 1.1, t.pos[2]];
       const dx = tc[0] - e[0], dy = tc[1] - e[1], dz = tc[2] - e[2];
@@ -928,12 +942,13 @@ class Room {
     const w = WEAPONS[b.w], n = now();
     if (b.w === 'shredder') { this.botShred(b); return; } // no shots: it sucks for as long as they're in front of it
     if (w.kind === 'beam') { this.botLaser(b); return; } // laser pointer: charge, then let go
-    const iv = w.rate ? 1000 / fireRate(w, b.hp) : w.cd * 1000;
+    const iv = w.rate ? 1000 / (fireRate(w, b.hp) * (w.hands || 1)) : w.cd * 1000; // Lefty & Righty: both hands going
     if (w.mag) {
       b.ai.ammo--;
       if (b.ai.ammo <= 0) { b.ai.ammo = w.mag; b.ai.reloadUntil = n + w.reload * 1000; }
     }
     b.ai.nextShot = n + iv / D.rate + (w.auto ? 0 : Math.random() * 300);
+    this.rifleBotShot(b, w, D); // burst guns: three, then a breath
     const cp = Math.cos(b.pitch);
     let aim = [-Math.sin(b.yaw) * cp, Math.sin(b.pitch), -Math.cos(b.yaw) * cp];
     const o = eyeOf(b);
@@ -958,7 +973,7 @@ class Room {
         if (victim) { const h = hits.get(victim) || { n: 0, h: 0, d }; h.n++; if (head) h.h++; hits.set(victim, h); }
       }
       for (const [victim, h] of hits) this.applyHitscan(b, victim, b.w, h.n, h.h, h.d, 0.7);
-      this.broadcast({ t: 'fx', k: 'shot', w: b.w, id: b.id, s: segs.slice(0, 12) });
+      this.broadcast({ t: 'fx', k: 'shot', w: b.w, id: b.id, s: segs.slice(0, 12), hd: w.hands && (b.ai.hd = !b.ai.hd) ? 1 : undefined }); // a bot's Lefty & Righty takes turns
       if (w.marbles) this.marblePatch(b, segs.slice(0, 12)); // bots' marbles trip people too
     } else if (w.kind === 'proj') {
       this.spawnProj(b, b.w, o, spreadDir(aim, D.err));
@@ -1634,10 +1649,13 @@ class Room {
     if (this.isBall(t)) h = 0; // a wrecking ball has no head
     if (this.parryShot(p, t, wid, n, h, d, mul)) return; // katana parry: blocked, or sent back
     const w = WEAPONS[wid], pellets = w.pellets || 1;
-    const dmg = (w.dmg * (n - h) + w.dmg * (w.head || 1) * h) * mul;
-    const k = w.kb * n;
+    const rx = this.rifleShot(p, t, wid, h); // rifle pack: bursts, the lever ramp, quick-scopes
+    if (!rx) return;
+    const dmg = (w.dmg * (n - h) + w.dmg * (w.head || 1) * h) * mul * rx.mul + rx.add;
+    const k = w.kb * n + rx.kb;
     // a sniper headshot from a player always kills (bots keep their softer shots)
     this.hurt(t, p, wid, dmg, [d[0] * k, d[1] * k + (w.kbUp || 0) * (n / pellets), d[2] * k], { hs: h > 0, lethal: wid === 'sniper' && h > 0 && !p.isBot });
+    if (wid === 'nailgun') this.nailHit(p, t, n, d); // enough nails in a row pin them to the wall (server/primaries.js)
   }
 
   // scales of justice: how guilty t is next to p, from what the server knows right now (formula in shared/verdict.js)
@@ -1673,11 +1691,13 @@ class Room {
       // the shot's flags (ns: no-scope, qs: quick-scope, fan: fanned revolver) are 1 or absent, anything else is absent
       const fan = m.fan === 1, ns = m.ns === 1, qs = m.qs === 1;
       if (w.fanHammer) { const mul = this.revolverHit(p, t, fan, w); if (mul) this.applyHitscan(p, t, m.w, n, h, d, mul); return; } // tap or fan the hammer
-      if (!this.pairOk(p, t, 'hs' + m.w, (1000 / fireRate(w, p.hp)) * 0.6) || !this.rangeOk(p, t, w.range)) return; // the Redline fires faster as you lose HP
+      const hd = w.hands && m.hd === 1 ? 'L' : ''; // Lefty & Righty: each gun has its own schedule (claiming the other hand buys at most the pair's real rate)
+      if (!this.pairOk(p, t, 'hs' + m.w + hd, (1000 / fireRate(w, p.hp)) * 0.6) || !this.rangeOk(p, t, w.range)) return; // the Redline fires faster as you lose HP
       p.nsHit = m.w === 'sniper' && p.w === 'sniper' && ns; // a no-scope (ns: 1) can make the kill EPIC
       const hp0 = t.hp; // no-scope hype only goes out if the shot really landed
+      p.qsHit = !!w.quick && qs; // Second Opinion quick-scope (server/rifles.js caps what it buys)
       this.applyHitscan(p, t, m.w, n, h, d);
-      p.nsHit = false;
+      p.nsHit = false; p.qsHit = false;
       if (ns && m.w === 'sniper') this.noScope(p, t, h > 0, hp0);
       if (m.w === 'sniper' && !t.alive) this.royalKill(p, t, ns, qs, h > 0); // this shot killed them (a parried / reflected one hurts you, not them)
     } else if (w.kind === 'melee') {
@@ -1956,13 +1976,13 @@ class Room {
     // one limiter per player, not per weapon: you hold one gun at a time, and cycling ids must not add the rates up.
     // the rate is the real one: the Redline speeds up as you lose HP, a fanned revolver goes at the fan rate
     if (w.kind === 'hitscan' || w.kind === 'melee') {
-      const rate = w.rate ? (fan ? Math.max(w.rate, w.fanHammer.rate) : fireRate(w, p.hp)) : 0;
+      const rate = w.rate ? (fan ? Math.max(w.rate, w.fanHammer.rate) : fireRate(w, p.hp) * (w.hands || 1)) : 0; // Lefty & Righty: both hands
       const n = now(), iv = rate ? 250 / rate : (w.cd || 0.3) * 250;
       if (n - (p.lastFire.fx || 0) < iv) return;
       p.lastFire.fx = n;
     }
     if (w.marbles && p.w === m.w) this.marblePatch(p, segs(m.s)); // marbles on the floor (the server works out where)
-    if (w.kind === 'hitscan') { this.broadcast({ t: 'fx', k: 'shot', w: m.w, id: p.id, s: segs(m.s), fan: fan ? 1 : undefined }, p.id); return; } // fan: everyone sees the fanning spin
+    if (w.kind === 'hitscan') { this.broadcast({ t: 'fx', k: 'shot', w: m.w, id: p.id, s: segs(m.s), fan: fan ? 1 : undefined, hd: w.hands && m.hd === 1 ? 1 : undefined }, p.id); return; } // fan: everyone sees the fanning spin; hd: the left of Lefty & Righty
     if (w.kind === 'melee') { this.broadcast({ t: 'fx', k: 'swing', w: m.w, id: p.id, a: o.map(r2), h: m.heavy === 1 ? 1 : undefined }, p.id); return; }
     const d = norm(vec3(m.d));
     if (d && w.kind === 'proj') this.spawnProj(p, m.w, o, d);
@@ -2030,6 +2050,7 @@ class Room {
   }
 
   spawnProj(p, wid, o, d) {
+    if (wid === 'cart') { this.fireCart(p, o, d); return; } // shopping carts aren't projectiles: they park and stay (server/primaries.js)
     const w = WEAPONS[wid], n = now();
     if (!(w.cd > 0) || n - (p.lastFire[wid] || 0) < w.cd * 750) return; // nothing without a cooldown comes through here
     if (wid === 'slipper') for (const pr of this.projectiles.values()) if (pr.k === 'slipper' && pr.o === p.id) return;
@@ -2276,6 +2297,7 @@ class Room {
       if (pr.k === 'rigmissile') { this.rigMissileStep(pr, dt); continue; } // overdrive rig missiles home in (server/rig.js)
       const age = (n - pr.born) / 1000;
       if (pr.k === 'bloodcross') { this.tickBloodBolt(pr, dt, n); continue; }
+      if (pr.k === 'tennis') { this.tennisStep(pr, dt, n); continue; } // counted bounces (server/primaries.js)
       const owner = this.players.get(pr.o);
       const prev = pr.p.slice();
       let hit = null;
@@ -2718,7 +2740,7 @@ class Room {
 
   // per-life state: cleared on every respawn and on every new round / match / map
   resetLife(p) {
-    p.slipUntil = 0; p.burnUntil = 0; p.burnBy = 0; p.burnTick = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.frostT = 0;
+    p.slipUntil = 0; p.burnUntil = 0; p.burnBy = 0; p.burnTick = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.frostT = 0; p.pinUntil = 0; p.nails = null; p.held = null;
     p.healLeft = 0; p.reverseUntil = 0; p.g = null; p.lastAttacker = 0; p.ground = null;
     this.rigReset(p); // a new round ends the overdrive rig (and any hack)
     if (p.lz) { this.lassoCut(p, 'gone'); p.lz.fl = null; } // a fresh life: off any rope, no flight still counting
@@ -2732,7 +2754,7 @@ class Room {
   resetWorld() {
     this.resetChaos();
     this.gearWorldReset(); // photo frames come down
-    this.projectiles.clear(); this.peels.clear(); this.holes.clear();
+    this.projectiles.clear(); this.peels.clear(); this.holes.clear(); this.clearCarts();
     this.mpatches.clear(); // clients wipe theirs on 'clear'
     this.broadcast({ t: 'clear' });
     this.clearTags();
@@ -2814,6 +2836,7 @@ class Room {
       case 'push': this.onPush(p, m); break;
       case 'slam': this.onSlam(p, m); break;
       case 'fire': this.onFire(p, m); break;
+      case 'cart': this.onCart(p, m); break; // hop in / out of a shopping cart
       case 'cough':
         if (p.alive && now() - p.coughT > 800) {
           p.coughT = now();
@@ -3219,7 +3242,7 @@ class Room {
     this.cfg.map = v.map;
     this.setGame(v.game); // (may swap to the version of the map the mode plays: Plant & Defuse -> the S&D one)
     const mapChanged = this.cfg.map !== was;
-    this.projectiles.clear(); this.peels.clear(); this.holes.clear();
+    this.projectiles.clear(); this.peels.clear(); this.holes.clear(); this.clearCarts();
     if (mapChanged) { this.smokes.clear(); this.broadcast({ t: 'cfg', cfg: this.cfg }); }
   }
 
@@ -3264,7 +3287,7 @@ class Room {
     Object.assign(b, { ph: 'live', site: null, p: null, drop: null, explodeAt: 0, act: null, between: 0, ends: now() + (process.env.JF_BOMB_ROUND ? BOMB.roundTime : this.map.roundTime || BOMB.roundTime) * 1000, carrier: 0 }); // per-map round time (the test knob still wins)
     for (const p of this.players.values()) if (p.ai) { p.ai.site = null; p.ai.route = null; }
     if (this.isEcon()) this.econNewRound(first); // buy phase, payouts carried over, the half's credit reset
-    this.projectiles.clear(); this.peels.clear(); this.holes.clear();
+    this.projectiles.clear(); this.peels.clear(); this.holes.clear(); this.clearCarts();
     this.resetWorld();
     this.giveBomb();
     this.broadcast({ t: 'bombev', k: 'round', n: b.n, att: b.att });
@@ -3746,6 +3769,7 @@ class Room {
     for (const b of this.players.values()) if (b.isBot && b.alive) this.stepBot(b, dt);
     this.tickLasso(dt);
     this.tickProjectiles(dt);
+    this.tickCarts(dt); // shopping carts: rolling, parked, ridden
     this.tickCrosses();
     this.tickHoles(dt);
     this.tickRig();
@@ -3872,7 +3896,7 @@ class Room {
     const n = now();
     this.trackMoves(n);
     this.recOdd = !this.recOdd;
-    this.rec.frames.push({ s: n, p: ps, odd: this.recOdd, j: [...this.projectiles.values()].map((pr) => [pr.id, pr.k, r2(pr.p[0]), r2(pr.p[1]), r2(pr.p[2]), pr.tip || 0]) });
+    this.rec.frames.push({ s: n, p: ps, odd: this.recOdd, j: [...this.projectiles.values()].map((pr) => [pr.id, pr.k, r2(pr.p[0]), r2(pr.p[1]), r2(pr.p[2]), pr.tip || 0]).concat(this.cartRec()) });
     while (this.rec.frames.length && this.rec.frames[0].s < n - REC_MS) this.rec.frames.shift();
     while (this.rec.ev.length && this.rec.ev[0].s < n - REC_MS) this.rec.ev.shift();
     this.broadcast({ t: 'sn', s: n, p: ps, wave: this.mode === 'coop' ? this.waveInfo() : undefined, round: this.roundInfo() || undefined });
@@ -3883,6 +3907,13 @@ installRoyale(Room, { send, movePlayer });
 installRig(Room, { now, num, vec3, norm, r2, center, safe, REC_T, WEAPONS }); // the overdrive rig's methods (server/rig.js)
 installGear(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm, vec3, stat, liveStats });
 installTactical(Room, { send });
+installRifles(Room, { now, send });
+installPrimaries(Room, { now, send, r2, norm, vec3, REC_T });
+installSec(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm, vec3, REC_T, REC_FX }); // after installGear: it wraps gearJoin / tickGear / gearSnap
+{ // snapshot flags are one bit each, added by many modules: two on the same bit read as each other (it happened 3 times)
+  const seen = new Map();
+  for (const [k, v] of Object.entries(FLAGS)) { if (!v || (v & (v - 1))) console.warn(`FLAGS.${k} = ${v} is not a single bit`); else if (seen.has(v)) console.warn(`FLAGS.${k} and FLAGS.${seen.get(v)} share bit ${Math.log2(v)}`); seen.set(v, k); }
+}
 installEcon(Room, {
   send, cleanSkins, enforceSkins, logErr, BOT_GUNS, navGraph,
   refreshInv: async (p) => { if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; } },
