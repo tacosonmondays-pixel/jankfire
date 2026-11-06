@@ -878,13 +878,15 @@ function suburb() {
 // a smaller shed, a water tower); go over the fence and you get the RETURN TO THE MAP countdown
 function rack(B, x0, z, len, r) { // blue racking with orange beams, three decks you can climb, boxes on every level
   for (let x = x0; x <= x0 + len + 0.01; x += 3) for (const pz of [z - 1.3, z + 1.1]) B.add(x - 0.1, 0, pz, x + 0.1, 7.3, pz + 0.2, 'shelf'); // posts stand proud of the beams (no faces in one plane)
+  B.add(x0, 0, z + 0.75, x0 + len, 2, z + 0.8, 'grid'); // mesh backing up to the first deck: a row is a wall at body height (no heads showing through)
   for (const lvl of [0, 2.4, 4.8]) {
     B.add(x0, lvl + 2, z - 1.2, x0 + len, lvl + 2.25, z + 1.2, 'pallet');
     B.add(x0, lvl + 1.75, z - 1.25, x0 + len, lvl + 2, z - 1.2, 'toyorange'); B.add(x0, lvl + 1.75, z + 1.2, x0 + len, lvl + 2, z + 1.25, 'toyorange');
   }
   for (let x = x0 + 0.3; x + 1.3 < x0 + len; x += 1.5) {
     for (const lvl of [2.25, 4.65, 7.05]) if (r() < 0.7) { const h = 0.6 + r() * 0.9; B.add(x, lvl, z - 0.9 + r() * 0.3, x + 1 + r() * 0.3, lvl + h, z + 0.6 + r() * 0.3, r() < 0.85 ? 'cardboard' : 'shelfstock'); }
-    if (Math.floor((x - x0) / 3) % 2 === 0 && r() < 0.8) { B.add(x, 0, z - 0.9, x + 1.2, 0.15, z + 0.7, 'pallet'); B.add(x + 0.05, 0.15, z - 0.85, x + 1.15, 0.15 + 0.6 + r() * 0.8, z + 0.65, 'cardboard'); }
+    // every bay on the floor is stocked (with the backing behind it, an empty one would be a pocket you walk into and stick)
+    B.add(x, 0, z - 0.9, x + 1.2, 0.15, z + 0.7, 'pallet'); B.add(x + 0.05, 0.15, z - 0.85, x + 1.15, 0.15 + 0.85 + r() * 0.65, z + 0.65, 'cardboard');
   }
 }
 function pallets(B, x, z, n, r, top = true) { // a stack of empty pallets, now and then with boxes on top
@@ -920,7 +922,7 @@ function semi(B, x, z, rot, livery, cab = true) {
   L(-1.0, 0.95, 0.6, 1.0, 1.3, 3.0, 'metal');
   for (const px of [-1.0, 0.8]) L(px, 0, 9.4, px + 0.2, 1.3, 9.6, 'metal'); // landing legs
   if (!cab) return;
-  L(-1.25, 0.6, 12.7, 1.25, 1.1, 16.6, 'metal'); // chassis under the cab
+  L(-1.25, 0.6, 12.7, 1.25, 1.08, 16.6, 'metal'); // chassis under the cab
   L(-1.25, 1.1, 13.6, 1.25, 3.3, 16.4, 'carred'); L(-1.15, 2.2, 16.4, 1.15, 3.1, 16.45, 'glass'); // cab + windscreen
   L(-1.2, 1.1, 16.4, 1.2, 2.2, 16.9, 'carred'); L(-1.0, 1.4, 16.9, 1.0, 2.0, 16.95, 'chrome'); // nose + grille
   L(-1.27, 2.3, 14.2, -1.25, 3.0, 15.9, 'glass'); L(1.25, 2.3, 14.2, 1.27, 3.0, 15.9, 'glass');
@@ -982,181 +984,331 @@ function cones(Bd, x0, z0, x1, z1, n) {
   for (let i = 0; i < n; i++) { const t = n > 1 ? i / (n - 1) : 0, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t; Bd.box(x, 0.06, z, 0.6, 0.12, 0.6, 'tire'); Bd.box(x, 0.45, z, 0.38, 0.7, 0.38, 'toyorange'); Bd.box(x, 0.5, z, 0.42, 0.14, 0.42, 'white'); }
 }
 
+// ------------------------------------------------------------ WAREHOUSE: the depot for every mode but Plant & Defuse.
+// built for flow: no dead ends, everything loops. the hall in the middle is a grid of racking aisles (long aisles, cross
+// aisles, an end aisle at each end) with the foreman's two-floor office in one corner (its roof looks over the floor, and
+// everyone can see you up there) and a shredder pit to keep you honest. north of it the container yard (a small maze, a
+// crane), south the truck dock (four dock doors into the hall, trailers to fight round), and the two team sides at the
+// ends: the gate (west) and the staff car park (east). the hall stands between those two, so no team spawn sees the other
 function warehouse() {
-  const B = builder(), D = builder(); // D: render-only (lamps, trusses, barbed wire)
+  const B = builder(), D = builder();
   const { add, box } = B;
-  const r = rng(616);
-  const X = 60, Z = 40, H = 16;
-  const FX0 = -90, FX1 = 140, FZ = 75; // the fence
-  const RX0 = -114, RX1 = -102; // the road past the gate, running left-right to the horizon (centred on the texture's line)
-  const bounds = [RX0 - 1, -FZ - 2, FX1 + 2, FZ + 2]; // the fence, and on the gate side the far edge of the road
-  // hall floor with three shredder shafts into the void
-  const pits = [[-30, -6, -22, 6], [-4, 18, 4, 30], [26, -26, 34, -16]];
-  add(-X, -1, -Z, X, 0, -26, 'concrete');
-  add(-X, -1, -16, X, 0, -6, 'concrete');
-  add(-X, -1, -26, 26, 0, -16, 'concrete'); add(34, -1, -26, X, 0, -16, 'concrete');
-  add(-X, -1, -6, -30, 0, 6, 'concrete'); add(-22, -1, -6, X, 0, 6, 'concrete');
-  add(-X, -1, 6, X, 0, 18, 'concrete');
-  add(-X, -1, 30, X, 0, Z, 'concrete');
-  add(-X, -1, 18, -4, 0, 30, 'concrete'); add(4, -1, 18, X, 0, 30, 'concrete');
-  for (const [x0, z0, x1, z1] of pits) {
-    add(x0, 0, z0 - 0.3, x1, 0.6, z0, 'hazard'); add(x0, 0, z1, x1, 0.6, z1 + 0.3, 'hazard');
-    // the shaft: walls going down into the dark, a sign, and teeth at the bottom (you never get that far)
-    add(x0 - 0.3, -48, z0 - 0.3, x0, -1, z1 + 0.3, 'rust'); add(x1, -48, z0 - 0.3, x1 + 0.3, -1, z1 + 0.3, 'rust');
-    add(x0, -48, z0 - 0.3, x1, -1, z0, 'rust'); add(x0, -48, z1, x1, -1, z1 + 0.3, 'rust');
-    for (let x = x0 + 0.5; x < x1; x += 1.4) D.add(x, -46.5, z0, x + 0.6, -45, z1, 'metal'); // the teeth sit right at the kill line
-    D.add(x0 + 1, -44.9, z0 + 0.05, x1 - 1, -44.6, z1 - 0.05, 'neonred');
-    add(x0 + (x1 - x0) / 2 - 2, 0, z0 - 0.62, x0 + (x1 - x0) / 2 + 2, 0.6, z0 - 0.32, 'adshred', { fit: 1 });
-  }
-  // painted walkways on the hall floor
-  for (const z of [-34, 34]) add(-56, 0, z - 0.08, 56, 0.02, z + 0.08, 'neonyellow');
-  for (const x of [-30, 8, 40]) add(x - 0.08, 0, -26, x + 0.08, 0.02, -20, 'neonyellow');
-  // walls: roller doors on the east side to the loading yard (the middle one half down, somebody tagged it), a door in
-  // the west wall and one in the north wall to the yard
-  const W = B.local(0, 0, 0);
-  wall(W, 'x', -Z, -X, X, 0, H, 0.6, 'metal', [...windows(2 * X, 8, 1, 3, 10), { a: 20, b: 26, y0: 0, y1: 4.5 }]);
-  wall(W, 'x', Z, -X, X, 0, H, 0.6, 'metal', [...windows(2 * X, 8, 1, 3, 10), { a: -34, b: -28, y0: 0, y1: 4.5 }]);
-  wall(W, 'z', -X, -Z, Z, 0, H, 0.6, 'metal', [...windows(2 * Z, 8, 1, 3, 10), { a: -3, b: 3, y0: 0, y1: 5 }]);
-  wall(W, 'z', X, -Z, Z, 0, H, 0.6, 'metal', [{ a: -28, b: -18, y0: 0, y1: 6 }, { a: -6, b: 4, y0: 0, y1: 6 }, { a: 16, b: 26, y0: 0, y1: 6 }]);
-  add(X - 0.25, 3.2, -6, X + 0.25, 6, 4, 'graffiti');
-  add(X + 0.3, 6.4, -9, X + 0.45, 9.4, 7, 'adware', { fit: 1 });
-  add(-6, 9, -Z - 0.45, 6, 12, -Z - 0.3, 'neonwork', { fit: 1 });
-  // roof (blue, corrugated) with a skylight strip, rafters, and render-only trusses and hanging lamps
-  add(-X, H, -Z, -6, H + 0.6, Z, 'roofblue'); add(6, H, -Z, X, H + 0.6, Z, 'roofblue');
-  for (let z = -32; z <= 32; z += 8) {
-    add(-X, H - 1.6, z - 0.3, X, H - 1, z + 0.3, 'wood');
-    for (let x = -54; x <= 54; x += 6) D.add(x - 0.12, H - 1, z - 0.12, x + 0.12, H, z + 0.12, 'metal');
-    for (let x = -48; x <= 48; x += 16) { D.add(x - 0.03, H - 4, z - 0.03, x + 0.03, H - 1.6, z + 0.03, 'tire'); D.add(x - 0.6, H - 4.3, z - 0.6, x + 0.6, H - 4, z + 0.6, 'metal'); D.add(x - 0.45, H - 4.36, z - 0.45, x + 0.45, H - 4.3, z + 0.45, 'lamp'); }
-  }
-  // catwalks round three walls at 7.3, stairs up at both ends that actually arrive at them (with a gap in the rail)
-  add(-X + 0.3, 7, -Z + 0.3, X - 0.3, 7.3, -Z + 3, 'grid');
-  add(-X + 0.3, 7, Z - 3, X - 0.3, 7.3, Z - 0.3, 'grid');
-  add(-X + 0.3, 7, -Z + 3, -X + 3, 7.3, Z - 3, 'grid');
-  add(-X + 3, 7.3, -Z + 3, -24.2, 8.3, -Z + 3.3, 'metal'); add(-20.8, 7.3, -Z + 3, X - 0.3, 8.3, -Z + 3.3, 'metal');
-  add(-X + 3, 7.3, Z - 3.3, 36.8, 8.3, Z - 3, 'metal'); add(40.2, 7.3, Z - 3.3, X - 0.3, 8.3, Z - 3, 'metal');
-  stairs(W, -24, -21, -Z + 3 + 17 * 0.5, -1, 0, 7.3, 'grid');
-  stairs(W, 37, 40, Z - 3 - 17 * 0.5, 1, 0, 7.3, 'grid');
-  // racking: the old rows, plus two more rows across the middle
-  for (const x of [-44, -14, 14]) for (const z of [-30, 24]) rack(B, x, z, 18, r);
-  rack(B, -56, -20, 15, r); rack(B, -10, -20, 30, r); rack(B, 8, 10, 15, r); rack(B, 32, 10, 21, r);
-  // two-floor office block in the north-west corner: magenta walls, leopard carpet (nobody asked)
-  const O = B.local(-46, 12, 2);
-  shell(O, 16, 12, 2, 3.6, 'magenta', { floor: 'leopard', roof: 'roofg', roofAccess: true });
-  O(-6, 0.12, -1, -2, 0.85, 1, 'wood'); O(2, 0.12, -1, 6, 0.85, 1, 'wood'); O(-6, 3.85, -1, -2, 4.6, 1, 'wood');
-  O.B(-4, 1.15, 0, 0.9, 0.6, 0.1, 'tvstatic'); O.B(4, 1.15, 0, 0.9, 0.6, 0.1, 'tvstatic');
-  // floor clutter: forklifts, pallet stacks, barrels, tyres
-  forklift(B, -4, -10, 0, 1.4); forklift(B, 20, -4, 1); forklift(B, -40, 32, 2, 2.2); forklift(B, 46, -34, 3);
-  for (const [x, z, n] of [[-10, 10, 6], [-8.6, 10, 3], [-10, 11.2, 4], [44, 2, 7], [45.4, 2, 5], [-50, -34, 4], [-34, -10, 8], [22, 32, 5], [-20, 33, 6]]) pallets(B, x, z, n, r);
-  for (let i = 0; i < 7; i++) box(-12 + (i % 4) * 0.85, 0.6, -14 + Math.floor(i / 4) * 0.85, 0.75, 1.2, 0.75, i % 3 ? 'barrel' : 'barrelr');
-  for (let i = 0; i < 5; i++) box(52 + (i % 3) * 0.85, 0.6, 20 + Math.floor(i / 3) * 0.85, 0.75, 1.2, 0.75, i % 2 ? 'barrelr' : 'barrel');
-  for (let i = 0; i < 4; i++) box(50, 0.15 + i * 0.3, -2, 1, 0.3, 1, 'tire'); for (let i = 0; i < 3; i++) box(51.1, 0.15 + i * 0.3, -2, 1, 0.3, 1, 'tire');
+  const r = rng(616), W = B.local(0, 0, 0);
+  const trailerS = (x0, z0, liv) => { trailer(B, x0, z0, liv); add(x0 + 0.3, 0, z0 + 0.55, x0 + 12.2, 1.3, z0 + 2.05, 'metal'); };
+  const semiS = (x, z, rot, liv, cab) => { semi(B, x, z, rot, liv, cab); B.local(x, z, rot)(-0.75, 0, 0.3, 0.75, 1.3, 12.2, 'metal'); };
+  const FX = 75, FZ = 55, F = { x0: -FX, z0: -FZ, x1: FX, z1: FZ }, bounds = [-FX, -FZ, FX, FZ];
+  const HX = 32, HZ = 18, H = 10; // the hall
+  // ---- the ground (a hole for the shredder), asphalt where the trucks go, paint
+  const pit = [-28, 11.5, -24, 15.5]; // (far enough off the wall that the strip behind it isn't a trap for bots)
+  groundHoles(B, -FX, -FZ, FX, FZ, -1, 0, 'concrete', [pit]);
+  add(-FX, 0, -FZ, FX, 0.03, -HZ - 0.4, 'asphalt2'); // the container yard
+  add(-FX, 0, HZ + 0.4, FX, 0.03, FZ, 'asphalt2'); // the truck dock
+  add(HX + 0.4, 0, -HZ - 0.4, FX, 0.03, HZ + 0.4, 'asphalt2'); // the staff car park
+  for (let x = 52; x <= 70; x += 4.5) add(x, 0.03, 6, x + 0.15, 0.045, 16, 'white');
+  for (const z of [-HZ - 1.2, HZ + 1.2]) add(-HX + 2, 0.03, z - 0.1, HX - 2, 0.045, z + 0.1, 'neonyellow');
+  // ---- the fence (the gate's shut), the world outside, light masts
+  chainFence(B, D, -FX, -FZ, FX, -FZ); chainFence(B, D, -FX, FZ, FX, FZ); chainFence(B, D, FX, -FZ, FX, FZ);
+  chainFence(B, D, -FX, -FZ, -FX, -6); chainFence(B, D, -FX, 6, -FX, FZ);
+  add(-FX - 0.3, 0.05, -5.9, -FX - 0.15, 4.2, 5.9, 'fence');
+  depotOutside(B, D, r, F);
+  for (const [x, z] of [[-71, -51], [-71, 51], [71, -51], [71, 51], [0, -51], [0, 51]]) { box(x, 7, z, 0.5, 14, 0.5, 'metal'); D.box(x, 14.2, z, 2.6, 0.5, 1, 'lamp'); }
 
-  // ---- outside: the ground, the yard, the fence
-  // the ground: grass all round (inside the fence and out), paved where the trucks and forklifts work
-  groundHoles(B, -230, -190, 260, 190, -1, 0, 'grass', [[-X, -Z, X, Z], [X, -50, 110, 50]]);
-  add(FX0, 0, -6, -X, 0.03, 6, 'asphalt2'); // the drive from the gate to the hall's west door
-  add(-64, 0, Z, 60, 0.03, 66, 'asphalt2'); // the dock apron (south)
-  add(-72, 0, -72, 110, 0.03, -Z, 'asphalt2'); // the service yard and parking (north)
-  add(110, 0, -FZ, FX1, 0.03, FZ, 'asphalt2'); // the container yard (east)
-  add(X, -1, -50, 110, 0, 50, 'concrete'); // the loading yard
-  add(X, 0, -50, 110, 0.04, -49.7, 'hazard');
-  add(RX0, 0, -190, RX1, 0.06, 190, 'roadz'); add(RX1, 0, -6, FX0, 0.05, 6, 'concrete'); // the road, and the drive in to the gate
-  for (const x of [RX0 + 0.4, RX1 - 0.6]) add(x, 0.06, -190, x + 0.2, 0.07, 190, 'white');
-  for (const s2 of [-1, 1]) D.add(RX0, 0, s2 > 0 ? 190 : -900, RX1, 0.06, s2 > 0 ? 900 : -190, 'roadz'); // ...on out past the fog both ways
-  for (let z = -180; z <= 180; z += 30) { streetlight(W, RX0 - 1, z, 1); }
-  for (let z = -870; z <= 870; z += 45) if (Math.abs(z) > 190) streetlight(D.local(0, 0, 0), RX0 - 1, z, 1);
-  const Y = B.local(X + 25, 0, 0);
-  const cont = (x, z, y, rot, m) => (rot ? Y(x - 1.25, y, z - 6, x + 1.25, y + 2.6, z + 6, m) : Y(x - 6, y, z - 1.25, x + 6, y + 2.6, z + 1.25, m));
-  cont(-10, -30, 0, 0, 'containerr'); cont(-10, -30, 2.6, 0, 'containerb'); cont(4, -30, 0, 0, 'containerg');
-  cont(-10, 30, 0, 0, 'containerb'); cont(4, 30, 0, 0, 'containerr'); cont(4, 30, 2.6, 0, 'containerg');
-  cont(18, 0, 0, 1, 'containerr'); cont(18, 0, 2.6, 1, 'containerg'); cont(21, -14, 0, 1, 'containerb');
-  for (const [x, z] of [[-12, -18], [-12, 10]]) { // trucks backed up to the doors
-    Y(x - 6, 0.6, z - 1.3, x + 6, 3.8, z + 1.3, 'white');
-    Y(x - 5, 0.9, z - 1.33, x + 5, 3.5, z - 1.3, 'adtruck2', { fit: 1 });
-    Y(x + 6.3, 0, z - 1.2, x + 9.3, 2.6, z + 1.2, 'carred'); Y(x + 6.4, 2.6, z - 1.1, x + 8.6, 3.4, z + 1.1, 'glass');
-    for (const wx of [x - 4, x + 3, x + 8]) for (const wz of [z - 1.35, z + 1.05]) Y(wx - 0.5, 0, wz, wx + 0.5, 1, wz + 0.3, 'tire');
+  // ---- the hall: doors on every side (the west and east ones off the same line), racking in a grid of aisles
+  const dock = [-24, -8, 8, 24]; // dock doors along the south wall
+  wall(W, 'x', -HZ, -HX - 0.3, HX + 0.3, 0, H, 0.6, 'metal', [{ a: -18, b: -13, y0: 0, y1: 4 }, { a: 10, b: 15, y0: 0, y1: 4 }, ...windows(2 * HX, 6, 0, 2, 8)]);
+  wall(W, 'x', HZ, -HX - 0.3, HX + 0.3, 0, H, 0.6, 'metal', [...dock.map((x) => ({ a: x - 2.5, b: x + 2.5, y0: 0, y1: 4.2 })), ...windows(2 * HX, 6, 0, 2, 8)]);
+  wall(W, 'z', -HX, -HZ + 0.3, HZ - 0.3, 0, H, 0.6, 'metal', [{ a: 3, b: 10, y0: 0, y1: 5 }]);
+  wall(W, 'z', HX, -HZ + 0.3, HZ - 0.3, 0, H, 0.6, 'metal', [{ a: -10, b: -3, y0: 0, y1: 5 }]);
+  add(-HX - 0.3, H, -HZ - 0.3, HX + 0.3, H + 0.5, HZ + 0.3, 'roofblue');
+  for (const x of dock) { D.add(x - 2.7, 4.3, HZ + 0.31, x + 2.7, 4.5, HZ + 0.35, 'hazard'); D.add(x - 1, 4.7, HZ + 0.31, x + 1, 5.7, HZ + 0.36, 'neonyellow'); }
+  D.add(-HX - 0.5, 6.2, 3.5, -HX - 0.36, 8.4, 9.5, 'adware', { fit: 1 }); D.add(HX + 0.36, 6.2, -9.5, HX + 0.5, 8.4, -3.5, 'neonwork', { fit: 1 });
+  add(-6, 9.4, -HZ - 0.5, 6, 11.4, -HZ - 0.35, 'adtruck2', { fit: 1 }); // the company, over the yard doors
+  for (let z = -15; z <= 15; z += 6) {
+    add(-HX, H - 1.4, z - 0.25, HX, H - 0.9, z + 0.25, 'wood');
+    for (let x = -24; x <= 24; x += 12) if (!(x > 18 && z < -8)) { D.add(x - 0.03, H - 3.6, z - 0.03, x + 0.03, H - 1.4, z + 0.03, 'tire'); D.add(x - 0.6, H - 3.9, z - 0.6, x + 0.6, H - 3.6, z + 0.6, 'metal'); D.add(x - 0.45, H - 3.96, z - 0.45, x + 0.45, H - 3.9, z + 0.45, 'lamp'); }
   }
-  Y(-24, 0, -6, -20, 1.2, 6, 'concrete');
-  Y(22, 0, 18, 24, 1.3, 20, 'crate'); Y(22, 1.3, 18, 24, 2.6, 20, 'crate');
-  // east yard beyond the loading yard: more container stacks (a little maze), a trailer, a forklift
-  for (const [x, z, h, rot, ms] of [[118, -40, 2, 0, ['containerg', 'containerr']], [118, -22, 1, 0, ['containerb']], [130, -30, 3, 1, ['containerr', 'containerb', 'containerg']], [118, 22, 2, 0, ['containerb', 'containerg']], [132, 30, 1, 1, ['toypink']], [120, 44, 2, 0, ['containerr', 'containerb']]]) {
-    for (let k = 0; k < h; k++) { const m = ms[k % ms.length]; if (rot) add(x - 1.25, k * 2.6, z - 6, x + 1.25, (k + 1) * 2.6, z + 6, m); else add(x - 6, k * 2.6, z - 1.25, x + 6, (k + 1) * 2.6, z + 1.25, m); }
-  }
-  trailer(B, 112, 4, 'adtruck'); forklift(B, 128, 8, 1, 2);
-  // north yard: a smaller shed with a blue roof, a parking lot, light masts
-  const S2 = B.local(-60, -60, 0);
-  shell(S2, 24, 14, 1, 5, 'containerb', { roof: 'roofblue', floor: 'concrete', roofAccess: true, backDoor: true, winSpacing: 6 });
-  for (const x of [-9, -3, 3]) rack(B, -60 + x, -60 + 2.5, 3, r);
-  add(-20, 0, -66, 50, 0.04, -50, 'asphalt2');
-  for (let x = -18; x < 50; x += 4.5) add(x, 0.04, -65, x + 0.15, 0.05, -60, 'white');
-  for (const [x, c] of [[-14, 'carred'], [-5, 'caryellow'], [9, 'carblue'], [18, 'burnt'], [36, 'cargreen']]) car(W, x + 1.2, -62.5, 1, c);
-  // south yard: trailers in a row, pallets and tyres piled up
-  add(-58, 0, 40.3, -38, 1.2, 44, 'concrete'); add(-24, 0, 40.3, 26, 1.2, 44, 'concrete'); // the loading dock (the door at -34..-28 stays)
-  for (const [a, b] of [[-58, -38], [-24, 26]]) { add(a, 1.2, 43.9, b, 1.24, 44, 'hazard'); for (let x = a + 1.5; x < b - 1; x += 4) add(x, 0.3, 44, x + 0.5, 1.1, 44.35, 'tire'); add(b, 0, 41, b + 1.2, 0.6, 43.5, 'crate'); }
-  for (const [x, door] of [[-53, 'metal'], [-43, 'graffiti'], [-18, 'metal'], [-6, 'metal'], [6, 'graffiti'], [18, 'metal']]) D.add(x - 2.8, 1.2, 40.3, x + 2.8, 5.2, 40.36, door); // dock doors (shut)
-  semi(B, -53, 44.4, 0, 'adtruck2'); semi(B, -6, 44.4, 0, 'adtruck'); semi(B, 18, 44.4, 0, 'adtruck2', false);
-  forklift(B, -43, 47, 1, 1.2); forklift(B, 6, 48, 3);
-  for (const [x, z, n] of [[24, 50, 9], [25.3, 50, 6], [24, 51.1, 3], [40, 60, 8], [-70, 50, 5], [-71.3, 50, 7]]) pallets(B, x, z, n, r, false);
-  for (let i = 0; i < 6; i++) for (let k = 0; k <= i % 3; k++) box(52 + i * 1.1, 0.15 + k * 0.3, 62, 1, 0.3, 1, 'tire');
-  forklift(B, 34, 66, 0);
-  for (const [x, z, n] of [[-30, 62, 9], [48, 50, 7], [-80, 40, 8], [-70, -44, 6], [70, -62, 9], [100, -62, 5], [100, 62, 8]]) cratePile(B, x, z, n, r);
-  for (const [x, z] of [[-60, 58], [-58.6, 58], [-60, 59.2], [-46, 66], [-44.6, 66], [80, 66], [81.4, 66], [80, 67.2], [-82, 46], [-82, 47.2], [64, -58], [65.4, -58]]) pallets(B, x, z, 3 + ((x * 7 + z) & 3), r, true);
-  forklift(B, -76, 52, 2, 1.6); forklift(B, 90, -60, 0);
-  for (const [x, z, m] of [[-86, -36, 'containerr'], [-86, -62, 'containerb']]) add(x, 0, z, x + 2.5, 2.6, z + 12, m);
-  // west yard: the gate (open, the sliding panel parked beside it) with a guard booth, a water tower to grapple
-  waterTower(W, -76, 30, 0);
-  const GB = B.local(-84, 10.9, 0); // the guard booth by the gate, a boom barrier (up: they gave up)
+  rack(B, -26, -9, 18, r); rack(B, 7, -9, 12, r); // three rows, each broken by a cross aisle (and the office in the corner)
+  rack(B, -21, 0, 15, r); rack(B, 6, 0, 15, r);
+  rack(B, -26, 9, 18, r); rack(B, 8, 9, 18, r);
+  for (const x of [-7, 6.5]) add(x - 0.08, 0, -HZ + 0.5, x + 0.08, 0.02, HZ - 0.5, 'neonyellow');
+  // the foreman's office: two floors and stairs to the roof, in the north-east corner
+  const O = B.local(26, -13.5, 0);
+  shell(O, 11, 8.4, 2, 3.6, 'magenta', { floor: 'leopard', roof: 'roofg', roofAccess: true, backDoor: true });
+  O(-4.5, 0.12, -1.5, -1.5, 0.85, 0.5, 'wood'); O(1.5, 3.85, -1.5, 4.5, 4.6, 0.5, 'wood'); O.B(-3, 1.15, -0.5, 0.9, 0.6, 0.1, 'tvstatic'); O.B(3, 4.9, -0.5, 0.9, 0.6, 0.1, 'tvstatic');
+  // the shredder (into the void) by the west door: rails on two sides, a sign
+  const [px0, pz0, px1, pz1] = pit;
+  add(px0, 0, pz0 - 0.3, px1, 0.6, pz0, 'hazard'); add(px0, 0, pz1, px1, 0.6, pz1 + 0.3, 'hazard');
+  add(px0 - 0.3, -48, pz0 - 0.3, px0, -1, pz1 + 0.3, 'rust'); add(px1, -48, pz0 - 0.3, px1 + 0.3, -1, pz1 + 0.3, 'rust');
+  add(px0, -48, pz0 - 0.3, px1, -1, pz0, 'rust'); add(px0, -48, pz1, px1, -1, pz1 + 0.3, 'rust');
+  for (let x = px0 + 0.5; x < px1; x += 1.4) D.add(x, -46.5, pz0, x + 0.6, -45, pz1, 'metal');
+  D.add(px0 + 0.5, -44.9, pz0 + 0.05, px1 - 0.5, -44.6, pz1 - 0.05, 'neonred');
+  add((px0 + px1) / 2 - 2, 0, pz0 - 0.62, (px0 + px1) / 2 + 2, 0.6, pz0 - 0.32, 'adshred', { fit: 1 });
+  forklift(B, -1, -4.5, 1, 1.4); forklift(B, -12, 14, 0); forklift(B, 21, 4.5, 3, 2.2);
+  pallets(B, -2, 12, 6, r); pallets(B, -0.6, 12, 4, r); pallets(B, 16, -14, 7, r); pallets(B, -29, -14, 5, r); pallets(B, -27.6, -14, 3, r);
+  cratePile(B, -16, -16, 6, r); cratePile(B, 26, 13, 5, r);
+  for (let i = 0; i < 6; i++) box(-30.5 + (i % 3) * 0.85, 0.6, -6 + Math.floor(i / 3) * 0.85, 0.75, 1.2, 0.75, i % 2 ? 'barrelr' : 'barrel');
+
+  // ---- north: the container yard. stacks in two staggered rows (a little maze), a crane over the middle
+  for (const [x, z, alongZ, n, ms, len] of [
+    [-56, -40, true, 2, ['containerg', 'containerr']], [-40, -28, false, 1, ['containerb']], [-24, -46, false, 2, ['containerr', 'containerb']],
+    [-6, -31, true, 1, ['containerg'], 8], [10, -45, false, 2, ['containerb', 'containerg']], [28, -30, false, 1, ['containerr']],
+    [44, -44, true, 2, ['containerg', 'containerr']], [60, -30, false, 1, ['containerb'], 8], [-62, -26, false, 1, ['containerr'], 8], [60, -50, false, 1, ['containerg'], 10]]) container(B, x, z, alongZ, n, ms, len);
+  cratePile(B, -12, -52, 6, r); cratePile(B, 30, -50, 5, r); pallets(B, -32, -38, 6, r); pallets(B, -30.6, -38, 4, r); pallets(B, 20, -36, 5, r);
+  cratePile(B, -68, -50, 6, r); pallets(B, -46, -24, 5, r); pallets(B, 50, -24, 6, r); pallets(B, 51.4, -24, 4, r); cratePile(B, 66, -38, 5, r); barrier(B, -64, -34, false); barrier(B, 70, -24, true);
+  forklift(B, -18, -24, 0, 1.2); forklift(B, 35, -52, 2);
+  barrier(B, -48, -36, true); barrier(B, 2, -40, false); barrier(B, 36, -36, true);
+  for (const x of [-30, 30]) box(x, 5, -36, 0.9, 10, 0.9, 'toyorange');
+  D.add(-30.5, 10, -36.5, 30.5, 11, -35.5, 'toyorange'); D.add(-3, 8.6, -36.7, 0, 10, -35.3, 'hazard'); D.add(-1.6, 4.2, -36.05, -1.4, 8.6, -35.95, 'tire'); D.add(-2.4, 3.4, -36.7, -0.6, 4.2, -35.3, 'metal');
+
+  // ---- south: the truck dock. two semis backed up beside the dock doors, a row of trailers further out
+  semiS(-16, HZ + 1.5, 0, 'adtruck', true); semiS(16, HZ + 1.5, 0, 'adtruck2', true);
+  for (const [x, liv] of [[-58, 'adtruck2'], [-36, 'adtruck'], [8, 'adtruck2'], [34, 'adtruck']]) trailerS(x, 42, liv);
+  for (const [x, z] of [[-48, 28], [40, 28], [-4, 47]]) { add(x, 0, z, x + 2.6, 1.5, z + 1.6, 'containerg'); add(x - 0.05, 1.5, z - 0.05, x + 2.65, 1.62, z + 1.65, 'metal'); }
+  forklift(B, -30, 30, 1, 1.2); forklift(B, 30, 34, 3); pallets(B, -8, 30, 6, r); pallets(B, -6.6, 30, 4, r); pallets(B, 52, 30, 7, r); cratePile(B, -64, 32, 6, r);
+  barrier(B, 0, 37, false); barrier(B, -24, 37, false); barrier(B, 24, 37, false);
+  cratePile(B, -44, 50, 5, r); cratePile(B, 22, 50, 6, r); pallets(B, -60, 26, 6, r); pallets(B, 64, 24, 5, r); barrier(B, -36, 26, true); barrier(B, 46, 40, true);
+  for (let i = 0; i < 6; i++) for (let k = 0; k <= i % 3; k++) box(48 + i * 1.1, 0.15 + k * 0.3, 50, 1, 0.3, 1, 'tire');
+
+  // ---- west: the gate side (team 1). the truck that came in, the guard booth
+  semiS(-66, -36, 0, 'adtruck2', true); // (parked up the side, out of the spawn's way)
+  const GB = B.local(-68, 14, 2);
   shell(GB, 4, 3.4, 1, 2.8, 'toyteal', { roof: 'toyred', floor: 'tile', parapet: false });
   GB(-1.6, 0.12, 0.4, 1.6, 0.95, 1.4, 'wood'); GB.B(0.8, 1.2, 0.9, 0.7, 0.45, 0.1, 'tvstatic');
-  add(-88, 0, 6.6, -87.4, 1.1, 7.2, 'hazard'); add(-87.78, 1.1, 6.83, -87.62, 5.1, 6.97, 'hazard');
-  const SO = B.local(-80, -16, 1); // the site office: a portacabin
+  barrier(B, -50, -8, true); barrier(B, -46, 12, true); cratePile(B, -54, 2, 5, r);
+  const west = [[-70, 0.1, -6], [-70, 0.1, 0], [-70, 0.1, 6], [-62, 0.1, -9], [-62, 0.1, -2], [-62, 0.1, 5], [-62, 0.1, 11]];
+  // ---- east: the staff car park (team 2). the site office, cars
+  const SO = B.local(52, -10, 0);
   shell(SO, 10, 4.2, 1, 3, 'containerb', { roof: 'roofg', floor: 'carpet', parapet: false });
-  SO(-4, 3.3, -2.5, 4, 4.2, -2.25, 'adoffice', { fit: 1 }); SO(-1.2, 0, -3.2, 1.2, 0.12, -2.1, 'grid');
-  SO(-4.5, 0.12, 0.6, -1.5, 0.85, 1.9, 'wood'); SO(1.5, 0.12, 0.6, 4.5, 0.85, 1.9, 'wood');
-  adBoard(B, -124, 0, 0, 'z', 'adcity2', 26, 10); // JANK COLA, by the road, facing the gate
-  adBoard(D, -128, -260, 0, 'z', 'adcity1', 22, 9); adBoard(D, -128, 300, 0, 'z', 'adcity3', 22, 9);
-  for (const [x, z] of [[-70, -30], [-80, -50], [-74, 60]]) { add(x, 0, z, x + 2.6, 1.5, z + 1.6, 'containerg'); }
-  // light masts
-  for (const [x, z] of [[-84, -70], [134, -70], [-84, 70], [134, 70], [30, -70], [30, 70]]) { box(x, 7, z, 0.5, 14, 0.5, 'metal'); box(x, 14.2, z, 2.6, 0.5, 1, 'lamp'); }
-  // the fence: chain link on posts with barbed wire on top, gate in the west side
-  const fence = (x0, z0, x1, z1) => {
-    const alongX = z0 === z1, len = alongX ? x1 - x0 : z1 - z0;
-    if (alongX) add(x0, 0, z0 - 0.04, x1, 4.2, z0 + 0.04, 'fence'); else add(x0 - 0.04, 0, z0, x0 + 0.04, 4.2, z1, 'fence');
-    for (let t = 0; t <= len + 0.01; t += 6) { const px = alongX ? x0 + t : x0, pz = alongX ? z0 : z0 + t; box(px, 2.25, pz, 0.14, 4.5, 0.14, 'metal'); }
-    if (alongX) { D.add(x0, 4.5, z0 - 0.02, x1, 4.53, z0 + 0.02, 'tire'); D.add(x0, 4.75, z0 - 0.02, x1, 4.78, z0 + 0.02, 'tire'); }
-    else { D.add(x0 - 0.02, 4.5, z0, x0 + 0.02, 4.53, z1, 'tire'); D.add(x0 - 0.02, 4.75, z0, x0 + 0.02, 4.78, z1, 'tire'); }
-  };
-  fence(FX0, -FZ, FX1, -FZ); fence(FX0, FZ, FX1, FZ); fence(FX1, -FZ, FX1, FZ);
-  fence(FX0, -FZ, FX0, -6); fence(FX0, 6, FX0, FZ);
-  add(FX0 - 0.3, 0, 6.2, FX0 - 0.15, 4.2, 18, 'fence'); // the sliding gate, open
-  // the world outside (render-only): trees just outside the fence (none in the yard: it's a yard), then scattered ones
-  const Dw = D.local(0, 0, 0);
-  const tree = (x, z, h) => { if (x > RX0 - 6 && x < FX0 + 2 && Math.abs(z) < 200) return; (r() < 0.45 ? conifer : lollipop)(Dw, x, z, h, r); }; // never on the road or by the gate
-  for (let k = 0; k < 5; k++) { // a woodland belt round the fence, five rows deep
-    for (let x = FX0 - 30; x < FX1 + 40; x += 6.5) for (const sz of [-1, 1]) if (r() < 0.85) tree(x + (r() - 0.5) * 3, sz * (FZ + 6 + k * 7) + (r() - 0.5) * 3, 5 + r() * 3.5);
-    for (let z = -FZ - 40; z <= FZ + 40; z += 6.5) if (r() < 0.85) tree(FX1 + 6 + k * 7 + (r() - 0.5) * 3, z + (r() - 0.5) * 3, 5 + r() * 3.5);
-    for (let z = -190; z <= 190; z += 6.5) if (r() < 0.85 && (Math.abs(z) > 16 || k > 2) && Math.abs(z + 260) > 14 && Math.abs(z - 300) > 14) tree(RX0 - 8 - k * 7 + (r() - 0.5) * 3, z + (r() - 0.5) * 3, 5 + r() * 3.5); // across the road
-  }
-  for (let i = 0; i < 260; i++) { const a = r() * Math.PI * 2, d = 140 + r() * 200, x = 25 + Math.cos(a) * d * 1.2, z = Math.sin(a) * d; if (x > FX0 - 40 && x < FX1 + 40 && Math.abs(z) < FZ + 40) continue; tree(x, z, 6 + r() * 5); }
-  horizon(D, -230, -190, 260, 190, 1500, 'grass');
-  // machinery outside the gate: between the fence and the road (solid, cover) and a machine yard across the road (look only)
-  excavator(B, -96, -26, 3); bulldozer(B, -96, 24, 1); generatorTower(B, -95.5, 44, 1); pipeStack(B, -96.5, -46, true); gravelPile(B, -96, 62, 7);
-  cones(B, -101, -7.5, -91, -7.5, 5); cones(B, -101, 7.5, -91, 7.5, 5);
-  mixerTruck(D, -132, -30, 1); roller(D, -130, 26, 2); excavator(D, -142, 40, 0); bulldozer(D, -146, -48, 1); mixerTruck(D, -150, 18, 3);
-  gravelPile(D, -140, -14, 12, 'dirt'); gravelPile(D, -128, 52, 9); gravelPile(D, -152, -24, 10, 'sand');
-  cones(D, -118, -40, -118, -16, 6); cones(D, -118, 16, -118, 40, 6);
-  const spawns = [[-52, 0.1, -34], [52, 0.1, 34], [-52, 0.1, 34], [52, 0.1, -34], [0, 0.1, -12], [0, 0.1, 12], [84, 0.1, 0], [-46, 0.2, 12],
-    [-75, 0.1, 0], [-60, 0.2, -60], [10, 0.1, -58], [126, 0.1, -10], [10, 0.1, 66], [-46, 1.3, 42], [100, 0.1, 40], [-30, 7.4, -38.5]];
+  SO(-4, 3.3, -2.5, 4, 4.2, -2.25, 'adoffice', { fit: 1 }); SO(-4.5, 0.12, 0.6, -1.5, 0.85, 1.9, 'wood'); SO(1.5, 0.12, 0.6, 4.5, 0.85, 1.9, 'wood');
+  for (const [x, c] of [[54, 'carred'], [58.5, 'carblue'], [63, 'caryellow'], [67.5, 'cargreen']]) car(W, x, 11, 0, c);
+  barrier(B, 44, 2, true); barrier(B, 46, -16, false);
+  const east = [[70, 0.1, -6], [70, 0.1, 0], [70, 0.1, 4], [62, 0.1, -14], [62, 0.1, -2], [62, 0.1, 2], [70, 0.1, -12]];
+
+  const spawns = [...west.slice(0, 3), ...east.slice(0, 3),
+    [-50, 0.1, -46], [-14, 0.1, -38], [20, 0.1, -50], [52, 0.1, -36], [-66, 0.1, -40], [66, 0.1, -42],
+    [-22, 0.1, -13.5], [0, 0.1, 4.5], [22, 0.1, 13.5], [-12, 0.1, 4.5],
+    [-44, 0.1, 30], [-10, 0.1, 40], [24, 0.1, 30], [60, 0.1, 40], [-66, 0.1, 46], [0, 0.1, 52]];
   let graph = null;
   const map = {
-    name: 'Warehouse', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -45, bounds, floorY: -50,
+    name: 'Warehouse', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -45, bounds, ceiling: 9, floorY: -50,
     sky: { top: 0x0a0a20, mid: 0x5a2a6a, bot: 0x050508, fog: 0x3a2448 }, fogNear: 70, fogFar: 300,
-    spawns,
-    // bots: a walk graph over the floor and the catwalks, joined by the two stairs
-    get graph() {
-      return graph || (graph = buildNav(B.boxes, { x0: bounds[0], z0: bounds[1], n: bounds[2] - bounds[0], cell: 1, levels: [0, 7.3], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]),
-        stairs: [{ bot: [-22.5, 0, -27.5], top: [-22.5, 7.3, -38.5] }, { bot: [38.5, 0, 27.5], top: [38.5, 7.3, 38.5] }] }));
+    spawns, teamSpawns: { att: west, def: east },
+    get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: bounds[2] - bounds[0] + 2, cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
+  };
+  return map;
+}
+
+// ---- the depot kit (both Warehouse layouts)
+// a chain-link fence on posts with barbed wire on top (solid: you can't walk through it, you can see out)
+function chainFence(B, D, x0, z0, x1, z1) {
+  const alongX = z0 === z1, len = alongX ? x1 - x0 : z1 - z0;
+  if (alongX) B.add(x0, 0, z0 - 0.04, x1, 4.2, z0 + 0.04, 'fence'); else B.add(x0 - 0.04, 0, z0, x0 + 0.04, 4.2, z1, 'fence');
+  for (let t = 0; t <= len + 0.01; t += 6) { const px = alongX ? x0 + t : x0, pz = alongX ? z0 : z0 + t; B.box(px, 2.25, pz, 0.14, 4.5, 0.14, 'metal'); }
+  if (alongX) { D.add(x0, 4.5, z0 - 0.02, x1, 4.53, z0 + 0.02, 'tire'); D.add(x0, 4.75, z0 - 0.02, x1, 4.78, z0 + 0.02, 'tire'); }
+  else { D.add(x0 - 0.02, 4.5, z0, x0 + 0.02, 4.53, z1, 'tire'); D.add(x0 - 0.02, 4.75, z0, x0 + 0.02, 4.78, z1, 'tire'); }
+}
+// a shipping container (12 m, or len) along x or z, n high
+function container(B, x, z, alongZ, n, mats, len = 12) {
+  for (let k = 0; k < n; k++) {
+    const m = mats[k % mats.length], y = k * 2.6;
+    if (alongZ) B.add(x - 1.25, y, z - len / 2, x + 1.25, y + 2.6, z + len / 2, m); else B.add(x - len / 2, y, z - 1.25, x + len / 2, y + 2.6, z + 1.25, m);
+  }
+}
+// a concrete jersey barrier: waist-high cover you can vault
+function barrier(B, x, z, alongZ, len = 3) {
+  if (alongZ) B.add(x - 0.35, 0, z - len / 2, x + 0.35, 1.05, z + len / 2, 'concrete'); else B.add(x - len / 2, 0, z - 0.35, x + len / 2, 1.05, z + 0.35, 'concrete');
+}
+// a bomb site board (render-only): the letter, s wide, its face toward +-x ('x') or +-z ('z'), a hair off the wall
+function siteBoard(D, x, y, z, along, mat, s = 4) {
+  if (along === 'x') D.add(x - s / 2, y, z - 0.08, x + s / 2, y + s, z + 0.08, mat, { fit: 1 }); else D.add(x - 0.08, y, z - s / 2, x + 0.08, y + s, z + s / 2, mat, { fit: 1 });
+}
+// the world outside the fence F: the fence is the edge of the play area. the ground just past it is real (get over the
+// fence and you land on grass with the countdown going, not in an invisible void), everything else is render-only: grass
+// to the horizon, a wood round the fence, the road past the gate (west) with streetlights, a machine yard across it,
+// billboards. the scenery adds the city on the horizon
+function depotOutside(B, D, r, F) {
+  const { x0, z0, x1, z1 } = F, RX0 = x0 - 30, RX1 = x0 - 18, R = 170;
+  const Dw = D.local(0, 0, 0);
+  groundHoles(B, x0 - 40, z0 - 40, x1 + 40, z1 + 40, -1, 0, 'grass', [[x0, z0, x1, z1], [x0 - 18, -6, x0, 6], [RX0, z0 - 40, RX1, z1 + 40]]);
+  groundHoles(D, x0 - R, z0 - R, x1 + R, z1 + R, -1, 0, 'grass', [[x0 - 40, z0 - 40, x1 + 40, z1 + 40], [RX0, z0 - R, RX1, z1 + R]]);
+  horizon(D, x0 - R, z0 - R, x1 + R, z1 + R, 1500, 'grass');
+  B.add(x0 - 18, -1, -6, x0, 0.04, 6, 'concrete'); // the drive from the road to the gate
+  B.add(RX0, -1, z0 - 40, RX1, 0.06, z1 + 40, 'roadz'); D.add(RX0, -1, -900, RX1, 0.06, z0 - 40, 'roadz'); D.add(RX0, -1, z1 + 40, RX1, 0.06, 900, 'roadz');
+  for (const x of [RX0 + 0.4, RX1 - 0.6]) D.add(x, 0.06, z0 - R, x + 0.2, 0.07, z1 + R, 'white');
+  for (let z = -870; z <= 870; z += 36) streetlight(Dw, RX0 - 1, z, 1);
+  const tree = (x, z, h) => { if (x > RX0 - 5 && x < RX1 + 5) return; if (x > x0 - 20 && x < x0 && Math.abs(z) < 12) return; (r() < 0.45 ? conifer : lollipop)(Dw, x, z, h, r); };
+  for (let k = 0; k < 5; k++) { // a woodland belt round the fence, five rows deep (none across the road or the drive)
+    for (let x = x0 - 10; x < x1 + 40; x += 6.5) for (const sz of [-1, 1]) if (r() < 0.85) tree(x + (r() - 0.5) * 3, (sz < 0 ? z0 - 6 - k * 7 : z1 + 6 + k * 7) + (r() - 0.5) * 3, 5 + r() * 3.5);
+    for (let z = z0 - 40; z <= z1 + 40; z += 6.5) if (r() < 0.85) tree(x1 + 6 + k * 7 + (r() - 0.5) * 3, z + (r() - 0.5) * 3, 5 + r() * 3.5);
+    for (let z = z0 - 160; z <= z1 + 160; z += 6.5) if (r() < 0.85) tree(RX0 - 12 - k * 7 + (r() - 0.5) * 3, z + (r() - 0.5) * 3, 5 + r() * 3.5); // across the road
+  }
+  for (let i = 0; i < 260; i++) { const a = r() * Math.PI * 2, d = 130 + r() * 220, x = (x0 + x1) / 2 + Math.cos(a) * d * 1.2, z = Math.sin(a) * d; if (x > x0 - 40 && x < x1 + 40 && z > z0 - 40 && z < z1 + 40) continue; tree(x, z, 6 + r() * 5); }
+  // machinery between the fence and the road, and a machine yard across it
+  excavator(D, x0 - 8, z0 + 18, 3); bulldozer(D, x0 - 8, z1 - 22, 1); generatorTower(D, x0 - 7.5, z1 - 10, 1); pipeStack(D, x0 - 8.5, -24, true); gravelPile(D, x0 - 8, 26, 7);
+  cones(D, x0 - 16, -7.5, x0 - 3, -7.5, 5); cones(D, x0 - 16, 7.5, x0 - 3, 7.5, 5);
+  mixerTruck(D, RX0 - 14, -30, 1); roller(D, RX0 - 12, 26, 2); excavator(D, RX0 - 24, 40, 0); bulldozer(D, RX0 - 28, -48, 1); mixerTruck(D, RX0 - 32, 18, 3);
+  gravelPile(D, RX0 - 22, -14, 12, 'dirt'); gravelPile(D, RX0 - 10, 52, 9); gravelPile(D, RX0 - 34, -24, 10, 'sand');
+  adBoard(D, RX0 - 8, 0, 0, 'z', 'adcity2', 26, 10); // JANK COLA, across the road from the gate
+  adBoard(D, RX0 - 10, -260, 0, 'z', 'adcity1', 22, 9); adBoard(D, RX0 - 10, 300, 0, 'z', 'adcity3', 22, 9);
+}
+
+// ------------------------------------------------------------ WAREHOUSE S&D: plant & defuse at a depot on the night shift.
+// an original layout on the bomb-map rules. attackers come in at the west gate, defenders hold the east end, and the hall
+// stands between the two spawns (neither can see the other). three lanes:
+//   north: the container yard, long and open (sightlines for the long guns), ends in the A main choke between two stacks
+//   mid:   the hall: racking down both sides, the foreman's office in the middle (no straight line through), a door north
+//          to the end of the container yard, a door south to the trailer park, and the east door into the courtyard
+//   south: the trailer park, tight (rows of trailers to weave through), ends at B's roller door
+// the courtyard behind the hall joins both sites on the defenders' side: they rotate through it in ~5 s, attackers go back
+// round through the hall. A = the container dock (outside, red), B = the parcel shed (inside, cyan), 3 ways into each
+function warehouseSD() {
+  const B = builder(), D = builder();
+  const { add, box } = B;
+  const r = rng(6161), W = B.local(0, 0, 0);
+  // trailers here get side skirts down to the ground: no shooting under them (the tight lanes stay tight)
+  const trailerS = (x0, z0, liv) => { trailer(B, x0, z0, liv); add(x0 + 0.3, 0, z0 + 0.55, x0 + 12.2, 1.3, z0 + 2.05, 'metal'); };
+  const semiS = (x, z, rot, liv, cab) => { semi(B, x, z, rot, liv, cab); B.local(x, z, rot)(-0.75, 0, 0.3, 0.75, 1.3, 12.2, 'metal'); };
+  const FX = 80, FZ = 58, F = { x0: -FX, z0: -FZ, x1: FX, z1: FZ }, bounds = [-FX, -FZ, FX, FZ];
+  const HX = 24, HZ = 22, H = 9; // the hall
+  // ---- the ground: one concrete slab, asphalt where the trucks go, paint
+  add(-FX, -1, -FZ, FX, 0, FZ, 'concrete');
+  add(-FX, 0, -FZ, 24, 0.03, -HZ - 0.4, 'asphalt2'); // the container yard
+  add(-FX, 0, HZ + 0.4, 24.2, 0.03, FZ, 'asphalt2'); // the trailer park
+  add(-FX, 0, -HZ - 0.4, -HX - 0.4, 0.03, HZ + 0.4, 'asphalt2'); // the apron in front of the hall and the gate
+  add(61.2, 0, -FZ, FX, 0.03, FZ, 'asphalt2'); // the staff car park and the paths round the staff block
+  for (let x = 66; x <= 78; x += 4) add(x, 0.03, -16, x + 0.15, 0.045, 16, 'white'); // parking bays
+  for (const z of [-HZ - 1.2, HZ + 1.2]) add(-60, 0.03, z - 0.1, 22, 0.045, z + 0.1, 'neonyellow'); // walkway lines along the hall
+  // ---- the fence (the gate in the west side is shut behind the attackers' truck)
+  chainFence(B, D, -FX, -FZ, FX, -FZ); chainFence(B, D, -FX, FZ, FX, FZ); chainFence(B, D, FX, -FZ, FX, FZ);
+  chainFence(B, D, -FX, -FZ, -FX, -6); chainFence(B, D, -FX, 6, -FX, FZ);
+  add(-FX - 0.3, 0.05, -5.9, -FX - 0.15, 4.2, 5.9, 'fence'); // the sliding gate, shut
+  depotOutside(B, D, r, F);
+  for (const [x, z] of [[-76, -54], [-76, 54], [76, -54], [76, 54], [0, -54], [0, 54], [44, -12]]) { box(x, 7, z, 0.5, 14, 0.5, 'metal'); D.box(x, 14.2, z, 2.6, 0.5, 1, 'lamp'); } // light masts
+
+  // ---- ATTACKERS' SPAWN: inside the gate, behind their trailers
+  semiS(-61, -15, 0, 'adtruck', false); semiS(-61, 2.5, 0, 'adtruck2', false); // two trailers screen it (a gap between them)
+  semiS(-76.5, 9, 0, 'adtruck2', true); // the truck that brought them
+  const GB = B.local(-75, -13, 0); // the guard booth (nobody home)
+  shell(GB, 4, 3.4, 1, 2.8, 'toyteal', { roof: 'toyred', floor: 'tile', parapet: false });
+  GB(-1.6, 0.12, 0.4, 1.6, 0.95, 1.4, 'wood'); GB.B(0.8, 1.2, 0.9, 0.7, 0.45, 0.1, 'tvstatic');
+  barrier(B, -66, -20, false); barrier(B, -66, 20, false);
+  const att = [[-73, 0.1, -6], [-73, 0.1, 0], [-73, 0.1, 5], [-67, 0.1, -9], [-67, 0.1, -3], [-67, 0.1, 3], [-67, 0.1, 9]];
+
+  // ---- the apron (between the attackers and the hall's west door): a little cover, the way into mid
+  forklift(B, -44, -10, 1); container(B, -40, 14, true, 1, ['containerg']); barrier(B, -34, -4, true); barrier(B, -50, 4, true);
+  pallets(B, -30, 17, 5, r); pallets(B, -28.6, 17, 3, r); cratePile(B, -54, -16, 5, r);
+
+  // ---- MID: the hall
+  wall(W, 'x', -HZ, -HX - 0.3, HX + 0.3, 0, H, 0.6, 'metal', [{ a: 8, b: 13, y0: 0, y1: 3.6 }, ...windows(2 * HX, 5.5, 0, 2, 8)]); // north: the door to the container yard
+  wall(W, 'x', HZ, -HX - 0.3, HX + 0.3, 0, H, 0.6, 'metal', [{ a: -4, b: 1, y0: 0, y1: 3.6 }, ...windows(2 * HX, 5.5, 0, 2, 8)]); // south: to the trailer park
+  wall(W, 'z', -HX, -HZ + 0.3, HZ - 0.3, 0, H, 0.6, 'metal', [{ a: 2, b: 10, y0: 0, y1: 5 }]); // west: the big roller door
+  wall(W, 'z', HX, -HZ + 0.3, HZ - 0.3, 0, H, 0.6, 'metal', [{ a: -10, b: -3, y0: 0, y1: 4.5 }]); // east: to the courtyard
+  add(-HX - 0.3, H, -HZ - 0.3, HX + 0.3, H + 0.5, HZ + 0.3, 'roofblue');
+  D.add(-HX - 0.35, 5.2, 0.5, -HX - 0.31, 5.9, 11.5, 'hazard'); D.add(-HX - 0.5, 6.2, 2, -HX - 0.36, 8.2, 10, 'adware', { fit: 1 }); // over the roller door
+  for (let z = -18; z <= 18; z += 6) {
+    add(-HX, H - 1.4, z - 0.25, HX, H - 0.9, z + 0.25, 'wood'); // rafters
+    for (let x = -18; x <= 18; x += 12) { D.add(x - 0.03, H - 3.6, z - 0.03, x + 0.03, H - 1.4, z + 0.03, 'tire'); D.add(x - 0.6, H - 3.9, z - 0.6, x + 0.6, H - 3.6, z + 0.6, 'metal'); D.add(x - 0.45, H - 3.96, z - 0.45, x + 0.45, H - 3.9, z + 0.45, 'lamp'); }
+  }
+  for (const z of [-7.4, 7.2]) add(-20, 0, z - 0.06, 20, 0.02, z + 0.06, 'neonyellow'); // the aisle lines
+  rack(B, -18, -9, 21, r); rack(B, -3, 9, 21, r); // racking: north side in the west half, south side in the east half
+  const O = B.local(6, 0, 1); // the foreman's office in the middle of the floor (doors west and east, windows all round)
+  shell(O, 8, 10, 1, 3.2, 'magenta', { floor: 'leopard', roof: 'roofg', parapet: false, backDoor: true });
+  O(-3, 0.12, -1, -1, 0.85, 3, 'wood'); O(1.5, 0.12, -1, 3.5, 0.85, 3, 'wood'); O.B(-2, 1.15, 1, 0.9, 0.6, 0.1, 'tvstatic'); O.B(2.5, 1.15, 1, 0.9, 0.6, 0.1, 'tvstatic');
+  forklift(B, -12, 15, 0, 1.4); forklift(B, 17, -15, 3);
+  pallets(B, -21, -18, 6, r); pallets(B, -19.6, -18, 4, r); pallets(B, 18, 16, 7, r); pallets(B, 19.4, 16, 5, r);
+  cratePile(B, -8, -17, 6, r);
+  for (let i = 0; i < 5; i++) box(20 + (i % 3) * 0.85, 0.6, -19 + Math.floor(i / 3) * 0.85, 0.75, 1.2, 0.75, i % 2 ? 'barrelr' : 'barrel');
+
+  // ---- NORTH: the container yard, A long
+  container(B, -50, -46, false, 2, ['containerg', 'containerr']);
+  container(B, -34, -32, true, 1, ['containerb']);
+  container(B, -20, -52, false, 1, ['containerr']); cratePile(B, -12, -55, 5, r);
+  container(B, -6, -40, false, 2, ['containerb', 'containerg']);
+  container(B, 16, -32, false, 1, ['containerg']);
+  pallets(B, -40, -55, 6, r); pallets(B, 4, -50, 5, r); pallets(B, 5.4, -50, 3, r);
+  container(B, 26.75, -54, true, 2, ['containerr', 'containerb'], 8); // A main: between this stack...
+  container(B, 26.75, -32.15, true, 2, ['containerg', 'containerr'], 15.7); // ...and this one
+  add(24.3, 0, -24.3, 25.5, 2.6, -21.7, 'concrete'); // (the corner by the hall: no way through to the courtyard)
+
+  // ---- A: the container dock (outside, red)
+  add(24, 0, -24.3, 40, 3.4, -23.7, 'concrete'); add(46, 0, -24.3, 61, 3.4, -23.7, 'concrete'); // its wall to the courtyard (the A gate between)
+  add(60.4, 0, -FZ, 61, 3.4, -38, 'concrete'); add(60.4, 0, -32, 61, 3.4, -24.3, 'concrete'); // to the staff path (the back way in)
+  add(28, 0.03, -57.9, 60.4, 0.05, -24.3, 'dockred');
+  container(B, 45, -44, false, 2, ['containerr', 'containerr']); // the A box
+  container(B, 54.75, -33, true, 1, ['containerg'], 6);
+  cratePile(B, 32, -33, 6, r); pallets(B, 36, -51, 4, r); pallets(B, 37.4, -51, 6, r); forklift(B, 55, -49, 1, 1.2);
+  barrier(B, 46, -28.5, false);
+  for (const x of [31.5, 57.5]) box(x, 5, -55.5, 0.9, 10, 0.9, 'toyorange'); // a gantry crane over the dock
+  D.add(31, 10, -56, 58, 11, -55, 'toyorange'); D.add(43, 8.6, -56.2, 46, 10, -54.8, 'hazard'); D.add(44.4, 4.2, -55.55, 44.6, 8.6, -55.45, 'tire'); D.add(43.6, 3.4, -56.2, 45.4, 4.2, -54.8, 'metal');
+  siteBoard(D, 45, 4.6, -57.85, 'x', 'sitea', 5); siteBoard(D, 51, 0.6, -24.38, 'x', 'sitea', 2.6);
+
+  // ---- the courtyard: the defenders' side, between the hall's east door and both sites
+  const DB = B.local(40, -4, 1); // the dispatch booth (in the line from the hall's east door)
+  shell(DB, 6, 4.4, 1, 2.9, 'toyteal', { roof: 'toyred', floor: 'tile', parapet: false, backDoor: true });
+  DB.B(0, 1.15, 1.8, 0.9, 0.6, 0.1, 'tvstatic');
+  forklift(B, 33, 12, 0); pallets(B, 48, 14, 6, r); pallets(B, 49.4, 14, 4, r); barrier(B, 31, -16, true); barrier(B, 52, -14, false);
+  trailerS(30, 17, 'adtruck');
+  for (let i = 0; i < 4; i++) box(54 + (i % 2) * 0.85, 0.6, 6 + Math.floor(i / 2) * 0.85, 0.75, 1.2, 0.75, i % 2 ? 'barrel' : 'barrelr');
+  add(24.3, 0, 21.7, 30.25, 2.4, 27.75, 'wood'); // the bin store in the corner (no way through to the trailer park)
+  // the staff block: the defenders spawn behind it, it hides them from the courtyard
+  add(58, 0, -18, 63, 7.2, 18, 'magenta'); add(57.6, 7.2, -18.4, 63.4, 7.6, 18.4, 'roofg'); // (its roof is over the ceiling: no perch over the spawn)
+  for (let z = -14; z <= 14; z += 4) for (const y of [1.2, 4.4]) { D.add(57.96, y, z - 1, 57.98, y + 1.8, z + 1, 'glass'); D.add(63.02, y, z - 1, 63.04, y + 1.8, z + 1, 'glass'); }
+  D.add(57.9, 3.3, -6, 57.95, 4.2, 6, 'neonwork', { fit: 1 });
+
+  // ---- DEFENDERS' SPAWN: the staff car park
+  for (const [z, c] of [[-12, 'carred'], [-4, 'carblue'], [4, 'caryellow'], [12, 'cargreen']]) car(W, 77, z, 1, c);
+  const def = [[67, 0.1, -9], [67, 0.1, -3], [67, 0.1, 3], [67, 0.1, 9], [72, 0.1, -6], [72, 0.1, 0], [72, 0.1, 6]];
+  // the staff paths round the block: north to A's back way, south to B's back door
+  container(B, 70, -42, true, 1, ['containerb']); pallets(B, 74, -28, 5, r); barrier(B, 66, -24, false);
+  container(B, 70, 44, true, 1, ['containerr']); pallets(B, 74, 26, 6, r); barrier(B, 66, 24, false);
+
+  // ---- B: the parcel shed (inside, cyan)
+  const BX0 = 30, BX1 = 58, BZ0 = 28, BZ1 = 56, BH = 7.5;
+  wall(W, 'x', BZ0, BX0 - 0.25, BX1 + 0.25, 0, BH, 0.5, 'containerb', [{ a: 40, b: 45, y0: 0, y1: 3.4 }]); // north: from the courtyard
+  wall(W, 'x', BZ1, BX0 - 0.25, BX1 + 0.25, 0, BH, 0.5, 'containerb');
+  wall(W, 'z', BX0, BZ0 + 0.25, BZ1 - 0.25, 0, BH, 0.5, 'containerb', [{ a: 38, b: 46, y0: 0, y1: 4.5 }]); // west: B main, the roller door
+  wall(W, 'z', BX1, BZ0 + 0.25, BZ1 - 0.25, 0, BH, 0.5, 'containerb', [{ a: 32, b: 37, y0: 0, y1: 3.4 }]); // east: the defenders' back door
+  add(BX0 - 0.25, BH, BZ0 - 0.25, BX1 + 0.25, BH + 0.5, BZ1 + 0.25, 'roofblue');
+  add(BX0 + 0.25, 0, BZ0 + 0.25, BX1 - 0.25, 0.03, BZ1 - 0.25, 'floorcyan');
+  add(34, 0, 44.5, 50, 1.0, 45.7, 'metal'); add(34, 1.0, 44.6, 50, 1.06, 45.6, 'tire'); // the sorting belt
+  for (let x = 35; x < 49; x += 2.6) add(x, 1.06, 44.75, x + 0.7 + r() * 0.4, 1.5 + r() * 0.4, 45.45, 'cardboard');
+  add(44, 0, 33, 48, 2.6, 37, 'toyteal'); add(43.9, 1.1, 32.9, 48.1, 1.5, 37.1, 'hazard'); // the sorter
+  for (const [x, z] of [[36, 32], [52, 34], [53, 50], [35, 51], [41, 50]]) { add(x, 0, z, x + 1.4, 1.8, z + 1.4, 'grid'); add(x + 0.15, 0, z + 0.15, x + 1.25, 1.1, z + 1.25, 'cardboard'); } // parcel cages
+  pallets(B, 51, 41, 5, r); pallets(B, 52.4, 41, 3, r); cratePile(B, 36, 37, 5, r);
+  for (let x = 34; x <= 54; x += 10) { D.add(x - 0.6, BH - 1.2, 42 - 0.6, x + 0.6, BH - 0.9, 42 + 0.6, 'metal'); D.add(x - 0.45, BH - 1.26, 42 - 0.45, x + 0.45, BH - 1.2, 42 + 0.45, 'lamp'); }
+  siteBoard(D, 44, 3.2, BZ1 - 0.33, 'x', 'siteb', 3.4); siteBoard(D, BX0 - 0.33, 4.8, 42, 'z', 'siteb', 2.6);
+  D.add(BX0 + 0.26, 4.6, 38, BX0 + 0.3, 4.75, 46, 'neoncyan'); D.add(BX0 - 0.3, 4.6, 38, BX0 - 0.26, 4.75, 46, 'neoncyan');
+
+  // ---- SOUTH: the trailer park, B long. three rows of trailers to weave through, the B yard at the end
+  for (const x of [-52, -30, -8]) trailerS(x, 29, x === -30 ? 'adtruck2' : 'adtruck');
+  for (const x of [-41, -19, 3]) trailerS(x, 40, x === -19 ? 'adtruck' : 'adtruck2');
+  for (const x of [-52, -30, -8]) trailerS(x, 51, x === -8 ? 'adtruck2' : 'adtruck');
+  for (const [x, z] of [[-60, 36], [-20, 47], [10, 34]]) { add(x, 0, z, x + 2.6, 1.5, z + 1.6, 'containerg'); add(x - 0.05, 1.5, z - 0.05, x + 2.65, 1.62, z + 1.65, 'metal'); } // dumpsters
+  pallets(B, 18, 48, 6, r); pallets(B, 19.4, 48, 4, r); forklift(B, 22, 38, 2, 1.2); barrier(B, 25, 47, true);
+  for (let i = 0; i < 5; i++) for (let k = 0; k <= i % 3; k++) box(-46 + i * 1.1, 0.15 + k * 0.3, 46, 1, 0.3, 1, 'tire');
+
+  const spawns = [[-50, 0.1, -36], [-22, 0.1, -45], [6, 0.1, -30], [-42, 0.1, 0], [-12, 0.1, -14], [13, 0.1, 15], [-30, 0.1, 35], [0, 0.1, 47],
+    [20, 0.1, 33], [40, 0.1, -40], [46, 0.1, 6], [44, 0.1, 42], [70, 0.1, -36], [70, 0.1, 36], [-70, 0.1, 30], [-70, 0.1, -30]];
+  let graph = null;
+  const map = {
+    name: 'Warehouse', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -45, bounds, ceiling: 7, floorY: -50,
+    sky: { top: 0x0a0a20, mid: 0x5a2a6a, bot: 0x050508, fog: 0x3a2448 }, fogNear: 70, fogFar: 300,
+    spawns, teamSpawns: { att, def },
+    // bot routes down the three lanes (each leg walked through the walk graph)
+    nav: {
+      A: [
+        [[-64, -18], [-56, -30], [-40, -38], [-26, -46], [-6, -47], [12, -45], [22, -45], [30, -45], [38, -38]], // the container yard
+        [[-60, 0], [-40, 6], [-24, 6], [-14, 6], [-1, 0], [0, -6], [10.5, -15], [10.5, -27], [20, -40], [30, -45], [40, -38]], // the hall, north door
+        [[-60, 0], [-40, 6], [-24, 6], [-10, 6], [14, 6], [20, -6.5], [30, -6.5], [36, -14], [43, -20], [43, -28], [43, -34]], // the hall, the courtyard
+      ],
+      B: [
+        [[-64, 18], [-56, 26], [-45, 36], [-25, 36], [-2, 36], [18, 36], [26, 42], [34, 42], [42, 42]], // the trailer park
+        [[-60, 0], [-40, 6], [-24, 6], [-14, 6], [-8, 14], [-1.5, 16], [-1.5, 26], [10, 36], [26, 42], [36, 42]], // the hall, south door
+        [[-60, 0], [-40, 6], [-24, 6], [-10, 6], [14, 6], [20, -6.5], [30, -6.5], [34, 6], [42.5, 22], [42.5, 31], [42.5, 38]], // the hall, the courtyard
+      ],
     },
+    sites: [{ id: 'A', min: [31, 0, -54], max: [58, 0, -27] }, { id: 'B', min: [32, 0, 30], max: [56, 0, 54] }],
+    get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: bounds[2] - bounds[0] + 2, cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
   };
   return map;
 }
@@ -1983,9 +2135,12 @@ function range() {
 }
 
 export const MAPS = {
-  crate: crate(), platform: platform(), rooftop: rooftop(), suburb: suburb(), warehouse: warehouse(),
+  crate: crate(), platform: platform(), rooftop: rooftop(), suburb: suburb(), warehouse: warehouse(), warehouse_sd: warehouseSD(),
   desert: desert(), islands: islands(), skyline: skyline(), bazaar: bazaar(), range: range(), backrooms: backrooms(),
 };
+// maps with an S&D version: '<id>_sd' is its own layout on the bomb-map rules, the one Plant & Defuse plays; '<id>' is
+// the one every other mode plays. switching mode swaps between them (modes.js mapForGame, the server's setGame)
+for (const [id, m] of Object.entries(MAPS)) if (id.endsWith('_sd') && MAPS[id.slice(0, -3)]) { m.sd = true; m.base = id.slice(0, -3); MAPS[m.base].sdMap = id; }
 // a spawn whose body would start inside a box (a column, a roof garden, a helipad) gets lifted onto whatever it's in
 function unstick(boxes, list) {
   for (const p of list) for (let k = 0; k < 3; k++) {
@@ -1995,7 +2150,7 @@ function unstick(boxes, list) {
   }
 }
 for (const m of Object.values(MAPS)) unstick(m.boxes, [...m.spawns, ...(m.teamSpawns ? [...m.teamSpawns.att, ...m.teamSpawns.def] : [])]);
-export const MAP_ORDER = ['crate', 'platform', 'rooftop', 'suburb', 'warehouse', 'desert', 'bazaar', 'islands', 'skyline', 'backrooms'];
+export const MAP_ORDER = ['crate', 'platform', 'rooftop', 'suburb', 'warehouse', 'desert', 'bazaar', 'islands', 'skyline', 'backrooms'].flatMap((id) => (MAPS[id + '_sd'] ? [id, id + '_sd'] : [id]));
 
 // Client convenience: "the current map". These arrays/objects are mutated in place by setMap,
 // so every module that imported them sees the new map.

@@ -19,7 +19,7 @@ import { achInv } from './shared/cosmetics.js'; // achievement-locked skins (the
 import { STAT_KEYS } from './server/store.js';
 import { soapAt, trapBoxes, trapPreroll } from './shared/wand.js';
 import { MAPS, MAP_ORDER } from './shared/map.js';
-import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, canDefuse, LADDER, GUNGAME, INFECT } from './shared/modes.js';
+import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, mapForGame, canDefuse, LADDER, GUNGAME, INFECT } from './shared/modes.js';
 import { WEAPONS, SLOTS, HOOK, HIPFIRE, BOT_DIFF, MODES, STREAKS, FLAGS, ARROW_TIPS, ITEMS, SLEEP_TIME, validStreaks, fireRate } from './shared/weapons.js';
 import { stepProjectile, rayBox, raycast, playerBoxes, movePlayer, PH } from './shared/physics.js';
 import { verdict } from './shared/verdict.js';
@@ -657,7 +657,7 @@ class Room {
       if (want) {
         const l = Math.hypot(...want) || 1, d = want.map((v) => v / l), e = eyeOf(b);
         const h = raycast(e, d, HOOK.range, boxes);
-        if (h && h.t > 6 && h.point[1] > b.pos[1] - 1) { ai.hook = { point: h.point, len: h.t, until: n + 2600 }; b.g = h.point; }
+        if (h && h.t > 6 && h.point[1] > b.pos[1] - 1 && (this.map.ceiling == null || h.point[1] < this.map.ceiling - 1.5)) { ai.hook = { point: h.point, len: h.t, until: n + 2600 }; b.g = h.point; } // (not up over a map's ceiling: that's out of bounds)
       }
     }
     if (ai.hook) jump = false;
@@ -666,7 +666,11 @@ class Room {
     // don't walk off the map (bots are dumb, not suicidal). a floor up to 15 m down will do (no fall damage); a box
     // far below is no floor: a long fall drifts past it into the void
     if (this.map.bounds && (outOfBounds(this.map, b.pos) || (wl > 0 && outOfBounds(this.map, [b.pos[0] + wx * 3, 0, b.pos[2] + wz * 3])))) {
-      const c = boundsCenter(this.map), dx = c[0] - b.pos[0], dz = c[1] - b.pos[2], l = Math.hypot(dx, dz) || 1; // back in, toward the middle
+      // back in, toward the middle. up over the ceiling (on a roof): off the nearest edge of whatever it's standing on
+      let c = boundsCenter(this.map);
+      const q = this.map.ceiling != null && b.pos[1] > this.map.ceiling && this.boxes.find((o) => b.pos[0] >= o.min[0] && b.pos[0] <= o.max[0] && b.pos[2] >= o.min[2] && b.pos[2] <= o.max[2] && Math.abs(o.max[1] - b.pos[1]) < 0.6);
+      if (q) { const e = [[b.pos[0] - q.min[0], q.min[0] - 6, b.pos[2]], [q.max[0] - b.pos[0], q.max[0] + 6, b.pos[2]], [b.pos[2] - q.min[2], b.pos[0], q.min[2] - 6], [q.max[2] - b.pos[2], b.pos[0], q.max[2] + 6]].sort((u, v) => u[0] - v[0])[0]; c = [e[1], e[2]]; }
+      const dx = c[0] - b.pos[0], dz = c[1] - b.pos[2], l = Math.hypot(dx, dz) || 1;
       wx = dx / l; wz = dz / l;
       if (outOfBounds(this.map, b.pos)) b.yaw = lerpAngle(b.yaw, Math.atan2(-wx, -wz), 8 * dt);
     }
@@ -2399,9 +2403,10 @@ class Room {
     if (n - p.cfgT < 1500) return;
     p.cfgT = n;
     const changes = [];
-    if (has(MAPS, m.map) && m.map !== this.cfg.map && this.mode !== 'training' && MAP_ORDER.includes(m.map)) {
-      this.cfg.map = m.map;
-      changes.push(`map → ${MAPS[m.map].name}`);
+    const pickMap = has(MAPS, m.map) && MAP_ORDER.includes(m.map) ? mapForGame(this.game, MAPS, m.map) : null; // the version this mode plays
+    if (pickMap && pickMap !== this.cfg.map && this.mode !== 'training') {
+      this.cfg.map = pickMap;
+      changes.push(`map → ${MAPS[pickMap].name}`);
       this.smokes.clear(); // clients drop theirs with the old map
       let fresh = false;
       if (GAMES[this.game].sites && !(this.map.sites && this.map.sites.length)) {
@@ -2746,8 +2751,11 @@ class Room {
   }
   // switch game type (bots setup / match settings / the vote)
   setGame(g) {
-    if (!has(GAMES, g) || (GAMES[g].sites && !(this.map.sites && this.map.sites.length))) return false;
-    if (GAMES[g].mapOk && !GAMES[g].mapOk(this.map)) return false; // e.g. floor is lava: no real floor here (or nothing to stand on)
+    if (!has(GAMES, g)) return false;
+    const id = mapForGame(g, MAPS, this.cfg.map), m = MAPS[id]; // a map with an S&D version: Plant & Defuse plays that, the rest the standard one
+    if (GAMES[g].sites && !(m.sites && m.sites.length)) return false;
+    if (GAMES[g].mapOk && !GAMES[g].mapOk(m)) return false; // e.g. floor is lava: no real floor here (or nothing to stand on)
+    if (id !== this.cfg.map) { this.cfg.map = id; this.smokes.clear(); } // (the caller sends the new cfg: clients load the other version)
     this.game = g;
     return true;
   }
@@ -2784,9 +2792,10 @@ class Room {
     const max = Math.max(...counts);
     const top = v.options.filter((o, i) => counts[i] === max);
     const win = pick(top);
-    const mapChanged = win.map !== this.cfg.map;
+    const was = this.cfg.map;
     this.cfg.map = win.map;
     this.setGame(win.game);
+    const mapChanged = this.cfg.map !== was;
     this.projectiles.clear(); this.peels.clear(); this.holes.clear();
     if (mapChanged) { this.smokes.clear(); this.broadcast({ t: 'cfg', cfg: this.cfg }); }
     this.broadcast({ t: 'chat', id: 0, m: `next up: ${GAMES[this.game].name} on ${this.map.name}` });

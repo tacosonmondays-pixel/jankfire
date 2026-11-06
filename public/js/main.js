@@ -34,7 +34,7 @@ import { shredKill, shredHit, shredGrab, grabStep, updateShreds, clearShreds } f
 import { updateSpeedLines } from './speedlines.js';
 import { slipperUpdate, slipperStep } from './slipper.js';
 import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse } from './objective.js';
-import { GAMES, GAME_ORDER, TEAMS, mapsFor } from '/shared/modes.js';
+import { GAMES, GAME_ORDER, TEAMS, mapsFor, mapForGame } from '/shared/modes.js';
 import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
 import { EPIC_CAM, epicMul, epicCamMs } from '/shared/epic.js';
@@ -263,16 +263,17 @@ const diffEntries = Object.entries(BOT_DIFF).map(([k, v]) => [k, v.name]);
 const gameEntries = GAME_ORDER.map((k) => [k, GAMES[k].name]);
 fillSelect($('setupGame'), gameEntries, 'dm');
 fillSelect($('cfgGame'), gameEntries, 'dm');
-fillSelect($('setupMap'), mapEntries, 'islands');
-// a mode that needs certain maps (bomb sites, a floor to turn into lava) only offers those (the server refuses the rest)
-const mapsOf = (game) => (GAMES[game] && (GAMES[game].sites || GAMES[game].mapOk) ? mapsFor(game, MAPS, MAP_ORDER) : MAP_ORDER);
+// a mode only offers the maps it can be played on (bomb sites, a floor to turn into lava; Plant & Defuse the S&D versions,
+// the other modes the standard ones). the server refuses the rest
+const mapsOf = (game) => (GAMES[game] ? mapsFor(game, MAPS, MAP_ORDER) : MAP_ORDER);
+fillSelect($('setupMap'), mapEntries.filter(([k]) => mapsOf('dm').includes(k)), 'islands');
 $('setupGame').addEventListener('change', () => {
   const keep = $('setupMap').value, list = mapsOf($('setupGame').value);
   fillSelect($('setupMap'), mapEntries.filter(([k]) => list.includes(k)), list.includes(keep) ? keep : list[0]);
 });
 $('cfgGame').addEventListener('change', () => {
   const g = $('cfgGame').value, list = mapsOf(g);
-  if (!list.includes(G.cfg.map)) {
+  if (!list.includes(mapForGame(g, MAPS, G.cfg.map))) { // (a map with an S&D version swaps to the version the mode plays)
     toast(`${GAMES[g].name} needs ${GAMES[g].sites ? 'a map with bomb sites' : 'another map'} (${list.map((k) => MAPS[k].name).join(', ')}): change the map first`, 3200);
     $('cfgGame').value = (G.round && G.round.game) || 'dm';
     return;
@@ -290,7 +291,8 @@ $('setupGo').addEventListener('click', () => startMode('bots', {
   map: $('setupMap').value, bots: Number($('setupBots').value), diff: $('setupDiff').value, hip: $('setupHip').value, game: $('setupGame').value,
 }));
 function syncMatchUI() {
-  $('cfgMap').value = G.cfg.map;
+  { const g = (G.round && G.round.game) || 'dm', list = mapsOf(g); // only the maps (and versions) this mode plays
+    fillSelect($('cfgMap'), mapEntries.filter(([k]) => list.includes(k) || k === G.cfg.map), G.cfg.map); }
   $('cfgMap').disabled = G.mode === 'training';
   $('cfgHip').value = G.cfg.hip;
   $('cfgDiff').value = G.cfg.diff;
