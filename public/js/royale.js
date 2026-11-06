@@ -708,7 +708,7 @@ function twistFrame(dt, now, t) {
   const me = ME.alive && !R.me.inBlimp;
   const poi = me ? poiAt(map, ME.pos) : null;
   if (poi !== R.poi) { R.poi = poi; if (poi) { big(poi.name.toUpperCase(), poi.blurb, 2.6); sfx.ting(); } }
-  if (poi && poi.mod === 'lowgrav' && !R.me.fly) ME.moonUntil = Math.max(ME.moonUntil || 0, performance.now() + 250); // Overdraft Heights: moon gravity
+  if (poi && poi.mod === 'lowgrav' && !R.me.fly) ME.moonUntil = Math.max(ME.moonUntil || 0, performance.now() + 600); // Overdraft Heights: moon gravity (a margin for slow frames)
   for (const r of G.remotes.values()) { const rp = poiAt(map, r.pos); pronounTag(r, !!(rp && rp.mod === 'pronouns') && !R.goblins.has(r.id)); }
   // Neon Market vending machines: F to kick one
   R.vend = -1;

@@ -469,7 +469,7 @@ export function installRoyale(Room, H) {
           console.log('[br] ' + B.log.join('\n[br] '));
         }
       }
-      if (B.endAt && n >= B.endAt && !this.round.over) this.endRound();
+      if (B.endAt && n >= B.endAt && !this.round.over) { for (const g of [...this.players.values()]) if (g.goblin) this.remove(g); this.endRound(); } // (goblins don't go on the leaderboard)
     },
     // the end screen: by placement (the winner first), then kills
     brSort(list) {
