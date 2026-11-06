@@ -59,6 +59,7 @@ import { achInv } from '/shared/cosmetics.js'; // achievement rewards (Golden Sn
 import { achProgress, ROYAL_ALL, ROYAL_FEATS } from '/shared/looks.js';
 import { royalToast, royalUnlock, royalBoxes } from './royal.js';
 import { updateTraffic, carCollide, carKill, carFeedIcon } from './traffic.js'; // cars on the roads
+import { updateLore, updateLoreFx, loreKey, renderLore } from './lore.js'; // hidden NPCs + cats (F), the LORE page
 import { setOnly, coughCloud } from './weapons.js';
 import { renderPatchNotes, markPatchSeen, patchUnseen } from './patchnotes.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
@@ -171,6 +172,7 @@ function show(id) {
   if (id === 'match') syncMatchUI();
   if (id === 'profile') { renderProfile(); restore().then((me) => { if (me && screen === 'profile') { renderProfile(); renderAcctBar(); } }); }
   if (id === 'leaders') renderLeaders();
+  if (id === 'lore') renderLore($('loreList'));
   if (id === 'main') { renderAcctBar(); homeShown(); }
 }
 function hideMenu() {
@@ -930,6 +932,7 @@ function aimUp() { if (!S.toggleAim) W.aimHeld = false; }
 addEventListener('keydown', (e) => {
   if (!inGame() || document.activeElement === $('name')) return;
   if (econKey(e)) return; // buy menu, drop, P pause (econ.js ECON_KEYS)
+  if (loreKey(e)) { e.preventDefault(); return; } // F next to a hidden NPC / cat, F + 1-3 in a chat
   if ((RP.active || G.killcamPending) && (e.code === 'Space' || e.code === 'Enter')) { e.preventDefault(); skipReplay(); return; }
   if (esKey(e)) { e.preventDefault(); return; } // end screen: 1-4 vote, arrows switch tabs
   if (e.code === 'Tab') { e.preventDefault(); scoresOpen = true; renderScores(); return; }
@@ -1711,6 +1714,7 @@ function frame(t) {
   if (!RP.active) for (const r of G.remotes.values()) r.update(rt, dt, now);
   else for (const r of G.remotes.values()) { r.ch.root.visible = false; r.rope.visible = false; r.shadow.visible = false; } // the replay has its own copies
   updateTraffic(dt, now, RP.active);
+  if (G.joined) updateLore(dt, now); updateLoreFx(now);
   updateGibs(dt);
   updateKillFx(dt);
   updateCourt(dt, now);

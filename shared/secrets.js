@@ -39,7 +39,7 @@ export const SECRETS = {
     },
   },
   dale: {
-    kind: 'npc', map: 'suburb', p: [-92.6, 0, -31.3], face: 0, chapter: 'machine', look: 'dale',
+    kind: 'npc', map: 'suburb', p: [-92.6, 0, -31.3], face: Math.PI, chapter: 'machine', look: 'dale',
     name: 'DALE', title: 'vending machine guy', where: 'somewhere in Suburb', gift: { roll: 'box' },
     lines: {
       start: { say: ['careful. she bites.', 'that\'s a Jank Cola machine. i\'m the guy who fixes them. been fixing this one since tuesday. not sure which tuesday.'],
@@ -68,7 +68,7 @@ export const SECRETS = {
     },
   },
   smiles: {
-    kind: 'npc', map: 'skyline', p: [-98, 119.2, 102], face: -Math.PI / 2, chapter: 'founder', look: 'smiles', sit: true,
+    kind: 'npc', map: 'skyline', p: [-99.25, 119.2, 102], face: Math.PI / 2, chapter: 'founder', look: 'smiles', sit: true,
     name: 'MR. SMILES', title: 'mascot (retired)', where: 'somewhere very high in Skyline', gift: { type: 'kill', id: 'balloon', or: { roll: 'bag' } },
     lines: {
       start: { say: ['oh! a fan! nobody climbs up here. that\'s the point of up here.', 'i used to be the mascot. Mr. Smiles. the big happy face of ☺ CORP. now i\'m a guy in a hot suit on a crane.'],
@@ -97,7 +97,7 @@ export const SECRETS = {
     },
   },
   // ---------------------------------------------------------------- the board of directors (cats)
-  cat_biscuit: { kind: 'cat', map: 'warehouse', p: [13.6, 7.05, 9.5], face: 2.6, name: 'BISCUIT', title: 'chief financial officer', where: 'Warehouse', pose: 'loaf', coat: 'tabby' },
+  cat_biscuit: { kind: 'cat', map: 'warehouse', p: [14.78, 7.05, 9.45], face: 0, name: 'BISCUIT', title: 'chief financial officer', where: 'Warehouse', pose: 'loaf', coat: 'tabby' },
   cat_beans: { kind: 'cat', map: 'suburb', p: [-64.1, 1.6, 46], face: -1.3, name: 'BEANS', title: 'vp of sitting', where: 'Suburb', pose: 'lie', coat: 'tux' },
   cat_gravy: { kind: 'cat', map: 'rooftop', p: [-106.5, 12.4, -12], face: 1.9, name: 'PRINCESS GRAVY', title: 'chair of the board', where: 'Rooftop', pose: 'sit', coat: 'cream' },
   cat_meatloaf: { kind: 'cat', map: 'bazaar', p: [6.5, 3.1, 28], face: -2.2, name: 'MEATLOAF', title: 'head of synergy', where: 'Bazaar', pose: 'side', coat: 'grey' },
