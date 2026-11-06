@@ -11,7 +11,7 @@ import { LASSO_MODELS, buildLoopProjectile } from './lasso_model.js';
 import { buildRigMissile } from './rigmodel.js'; // overdrive rig killstreak
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { laserBuild, calculator } from './gearmodels.js'; // the new gear's models (laser pointer, pop quiz calculator)
-import { prepAuthored, authored, AUTHORED, bindAuthored } from './glbkit.js';
+import { prepAuthored, authored, AUTHORED, bindAuthored, nodeIn, glossBlade, LAZY, isLazy } from './glbkit.js';
 import { SEC_WB, SEC_HATS, secAuthored } from './secmodels.js'; // water pistol, taser, tv remote, radar gun
 import { nailgunBuild, tennisBuild, cartCannonBuild, tennisBall, cartModel, nailgunStaple, tennisMachine, cartBasket } from './primmodels.js'; // the new primaries + what they shoot
 import { catEars, catTail, maidDress } from './catwear.js'; // Board Approved: cat ears, cat tail, maid dress
@@ -52,6 +52,8 @@ export async function loadTripoModels() {
   try { list = await (await fetch('/models/list')).json(); } catch { return 0; }
   if (!list.length) return 0;
   const loader = new GLTFLoader();
+  for (const it of list) if (isLazy(it.id)) LAZY.set(it.id, it.url); // skins: fetched when first shown (glbkit.js)
+  list = list.filter((it) => !LAZY.has(it.id));
   await Promise.all(list.map((it) => new Promise((res) => {
     loader.load(it.url, (gltf) => { if (!prepAuthored(it.id, gltf.scene)) GLB[it.id] = prep(gltf.scene, it); res(); }, undefined, (e) => { console.warn('model failed', it.id, e); res(); });
   })));
@@ -859,7 +861,7 @@ function glintTex() { // a star: four long rays, four short ones, a hot core
 // the glint: one star that flashes on a different bit of metal every 1.6 s. it animates itself whenever it's drawn,
 // so it works on your viewmodel, other players' guns, replays and the menu preview alike
 const GLINT_AT = [[0, 0.112, -0.245, 0.11], [0, 0.25, -0.05, 0.1], [0.018, 0.05, -0.7, 0.13], [0.04, 0.03, 0.02, 0.1], [0, 0.048, -1.18, 0.12], [0.035, 0.03, 0.4, 0.1]];
-function addGlint(g) {
+function addGlint(g, spots = GLINT_AT) {
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glintTex(), color: 0xfff2b8, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
   s.scale.setScalar(1e-4);
   s.frustumCulled = false;
@@ -867,7 +869,7 @@ function addGlint(g) {
   const phase = Math.random() * 20, PER = 1.6, FLASH = 0.42;
   s.onBeforeRender = () => {
     const t = performance.now() / 1000 + phase, u = (t % PER) / FLASH;
-    const at = GLINT_AT[Math.floor(t / PER) % GLINT_AT.length], k = u < 1 ? Math.sin(u * Math.PI) ** 2 : 0;
+    const at = spots[Math.floor(t / PER) % spots.length], k = u < 1 ? Math.sin(u * Math.PI) ** 2 : 0;
     s.position.set(at[0], at[1], at[2]);
     s.scale.setScalar(Math.max(1e-4, at[3] * k));
     s.material.rotation = u * 1.4;
@@ -1390,7 +1392,7 @@ export function buildWeapon(id, skin) {
   g.userData.model = variant ? model : 'default';
   g.userData.wid = id; // wrap zones look up their rule by model (or weapon) id
   g.userData.hatAt = HAT_AT[variant ? model : id];
-  const bl = variant ? null : authored('w_' + id); // made in Blender, in this model's own space: swap it in as is
+  const bl = authored('w_' + (variant ? model : id)); // made in Blender, in this model's own space: swap it in as is (skins too)
   if (bl) {
     for (const c of [...g.children]) if (c !== g.userData.tip) g.remove(c);
     g.add(bl.obj);
@@ -1398,13 +1400,15 @@ export function buildWeapon(id, skin) {
     if (mt.muzzle) g.userData.muzzle = new THREE.Vector3(...mt.muzzle);
     if (mt.sight) g.userData.sight = { y: mt.sight.y, z: mt.sight.z };
     if (Array.isArray(mt.ads) && mt.ads.every(Number.isFinite)) g.userData.adsPose = mt.ads; // no sights: its own aiming pose
+    if (Array.isArray(mt.port) && mt.port.length === 3 && mt.port.every(Number.isFinite)) g.userData.port = new THREE.Vector3(...mt.port); // where its shells fly out (a bullpup's port is by your cheek)
     if (mt.hatAt) g.userData.hatAt = mt.hatAt; else delete g.userData.hatAt;
     g.userData.glb = 'blender';
     g.userData.jf = mt; // the sidearms read their moving parts' names from it (sidearms.js)
-    g.userData.wid = 'bl_' + id; // wrap zones come from the Blender parts' own names (_wzA / _wzB / _wzN), not the code model's rule
-    bindAuthored(g, mt); // needle, vents, barrels + the pump / cylinder / hammer / bolt that the viewmodel moves
+    g.userData.wid = 'bl_' + (variant ? model : id); // wrap zones come from the Blender parts' own names (_wzA / _wzB / _wzN), not the code model's rule
+    bindAuthored(g, mt); // needle, vents, barrels, ember, card fan, bow string + the pump / cylinder / hammer / bolt that the viewmodel moves
     secAuthored(id, g, mt); // the radar gun's speed readout, the water pistol's tank level, the taser's ARMED light
     bindRifle(g, mt); // rifle pack: mag, charging handle, lever, feed cover, belt links, barrel heat
+    if (Array.isArray(mt.glint) && mt.glint.length && mt.glint.every((a) => Array.isArray(a) && a.length === 4 && a.every(Number.isFinite))) addGlint(g, mt.glint);
     applySkin(g, skin);
     return g;
   }
@@ -1417,6 +1421,7 @@ export function buildWeapon(id, skin) {
     g.add(glb);
   }
   if (!glb) addSights(id, g);
+  if (BLADES[variant ? model : id]) glossBlade(g); // knives + katanas stay code-built (real-reference models): same gloss as the Blender ones
   applySkin(g, skin);
   return g;
 }
@@ -1834,13 +1839,22 @@ export function makeShadow() {
 export function buildProjectile(k, skin) {
   if (k === 'rigmissile') return buildRigMissile(); // overdrive rig missiles: they turn along their flight themselves
   if (k === 'cartp') return buildCart(); // shopping carts (replays draw them from the projectile list)
-  const g = buildProjectileRaw(k);
+  const g = buildProjectileRaw(k, skin && typeof skin[3] === 'string' ? skin[3] : null);
   if (!g.userData.glb) g.userData.hatAt = HAT_AT['p_' + k];
   return applySkin(g, skin);
 }
-function buildProjectileRaw(k) {
+function buildProjectileRaw(k, model) {
   const g = new THREE.Group();
   if (k === 'loop') return buildLoopProjectile(g); // a lasso loop (lasso.js animates it live; this is for replays + late joiners)
+  // made in Blender (tools/blender): as built, centred, nose to -z. a skin can have its own (a thrown croc is a croc)
+  const bl = (model && COSMETICS.model[model] && COSMETICS.model[model].weapon === k && authored('pj_' + model)) || authored('pj_' + k);
+  if (bl) {
+    g.add(bl.obj);
+    g.userData.glb = 'blender';
+    if (bl.meta.hatAt) g.userData.hatAt = bl.meta.hatAt;
+    if (bl.meta.tip) { const t = nodeIn(bl.obj, bl.meta.tip); if (t && t.isMesh) g.userData.tip = t; } // the arrowhead shows the tip type
+    return g;
+  }
   const sizes = { chicken: 0.7, banana: 0.4, bowling: 0.9, duck: 0.5, slipper: 0.45, bow: 0.9, card: 0.25 };
   const glb = fitted('p_' + k, { size: sizes[k] || 0.5, alignZ: true });
   if (glb) { g.add(glb); g.userData.glb = true; return g; }
@@ -1969,6 +1983,8 @@ export function soapFlail(ch, t) {
 
 export function buildPeel() {
   const g = new THREE.Group();
+  const bl = authored('pj_peel');
+  if (bl) { g.add(bl.obj); return g; }
   const glb = fitted('peel', { size: 0.6, feet: true });
   if (glb) { g.add(glb); return g; }
   g.add(bx(0.16, 0.08, 0.16, 0xffe135, 0, 0.04, 0));

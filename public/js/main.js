@@ -9,6 +9,7 @@ import { G } from './ctx.js';
 import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals } from './world.js';
 import { hrFeed, hrDead } from './hrguy.js';
 import { loadTripoModels, buildProjectile, buildPeel, buildHole, makeShadow, tipColor, buildCharacter, teamLook, M } from './models.js';
+import { onLateModel } from './glbkit.js';
 import { initCrosses, crossEvent, crossShot, updateCrosses, clearCrosses } from './bloodcross.js';
 import { net } from './net.js';
 import { hud } from './hud.js';
@@ -30,7 +31,7 @@ import { parry } from './weapons.js';
 import './parry.js'; // katana parry: sparks, sounds, PARRY!, the guard pose
 import { addPatch, clearPatches } from './mslip.js'; // marble shotgun: marbles on the floor you slip on
 import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN, WRAP_MODES, WRAP_MODE_NAMES } from './skins.js';
-import { initPreview, showPreview, showCharacter, renderPreview, resizePreview } from './preview.js';
+import { initPreview, showPreview, showCharacter, renderPreview, resizePreview, refreshPreview } from './preview.js';
 import { playKillFx, updateKillFx, clearKillFx } from './killfx.js';
 import { courtKill, courtVerdict, updateCourt, courtReset, courtSync } from './scales.js';
 import { noScope, updateNoScope } from './noscope.js';
@@ -70,7 +71,7 @@ import { renderPatchNotes, markPatchSeen, patchUnseen } from './patchnotes.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
 import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection, infClipInfo } from './infection.js';
 import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown, esRekey } from './endscreen.js';
-import { initHome, homeShown, homeLeft } from './home.js';
+import { initHome, homeShown, homeLeft, refreshHero } from './home.js';
 import { skipVote, skipReset } from './skipvote.js';
 import { lassoFrame, loopFrame, lassoWheel, lassoKey, lassoLate } from './lasso.js'; // lasso (secondary)
 import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + quick-scope callouts register themselves)
@@ -165,6 +166,11 @@ loadTripoModels().then((n) => {
   zmModelsLoaded(); // zombies: the wall guns too
   for (const r of G.remotes.values()) r.build();
   $('status').textContent = `${n} model(s) loaded`;
+});
+onLateModel(() => { // a skin's model downloaded (the first time anyone showed it): swap it in everywhere it's on show
+  rebuildOne();
+  for (const r of G.remotes.values()) r.build();
+  refreshPreview(); refreshHero();
 });
 
 // ------------------------------------------------------------ screens

@@ -28,9 +28,10 @@ def srgb(h):  # 0xRRGGBB (what the game code uses) -> linear rgba for blender
 
 
 _mats = {}
-def mat(name, color=0x808080, rough=0.5, metal=0.0, emit=None, strength=1.0, alpha=None, tex=None, clearcoat=0.0):
+def mat(name, color=0x808080, rough=0.5, metal=0.0, emit=None, strength=1.0, alpha=None, tex=None, clearcoat=0.0, emit_tex=False):
     """principled material. tex = an image from the tex_* helpers (its colours already baked in, nearest filtered).
-    the glTF exporter keeps: base colour/texture, roughness, metallic, emission, alpha."""
+    emit_tex = the texture glows too (embers, screens). the glTF exporter keeps: base colour/texture, roughness, metallic,
+    emission, alpha."""
     if name in _mats: return _mats[name]
     m = bpy.data.materials.new(name)
     m.use_nodes = True
@@ -51,6 +52,7 @@ def mat(name, color=0x808080, rough=0.5, metal=0.0, emit=None, strength=1.0, alp
         n.image = tex
         n.interpolation = 'Closest'
         m.node_tree.links.new(n.outputs['Color'], b.inputs['Base Color'])
+        if emit_tex: m.node_tree.links.new(n.outputs['Color'], b.inputs['Emission Color'])
     m['jf_color'] = color
     _mats[name] = m
     return m
@@ -130,6 +132,11 @@ FONT = {
     'X': ['10001', '10001', '01010', '00100', '01010', '10001', '10001'], 'V': ['10001', '10001', '10001', '10001', '01010', '01010', '00100'],
     '!': ['00100', '00100', '00100', '00100', '00100', '00000', '00100'], ' ': ['00000'] * 7, '-': ['00000', '00000', '00000', '11111', '00000', '00000', '00000'],
     '.': ['00000'] * 6 + ['00100'], '#': ['01010', '11111', '01010', '01010', '01010', '11111', '01010'],
+    'Q': ['01110', '10001', '10001', '10001', '10101', '10010', '01101'], 'Z': ['11111', '00001', '00010', '00100', '01000', '10000', '11111'],
+    ':': ['00000', '00100', '00000', '00000', '00000', '00100', '00000'], '?': ['01110', '10001', '00001', '00010', '00100', '00000', '00100'],
+    '/': ['00001', '00010', '00010', '00100', '01000', '01000', '10000'], '+': ['00000', '00100', '00100', '11111', '00100', '00100', '00000'],
+    "'": ['00100', '00100', '01000', '00000', '00000', '00000', '00000'], '&': ['01100', '10010', '10100', '01000', '10101', '10010', '01101'],
+    '<': ['00000', '01010', '11111', '11111', '01110', '00100', '00000'],  # a heart
 }
 
 
@@ -417,8 +424,9 @@ def _look_at(cam, target):
     cam.rotation_euler = d.to_track_quat('-Z', 'Y').to_euler()
 
 
-def sheet(root, file_id, views=('persp', 'left', 'right', 'top', 'front', 'back_persp'), res=(640, 420), bg=0x3a3346, extra_note=''):
-    """renders the model from several sides with a studio rig and tiles them into tools/blender/sheets/<id>.png"""
+def sheet(root, file_id, views=('persp', 'left', 'right', 'top', 'front', 'back_persp'), res=(640, 420), bg=0x3a3346, extra_note='', exposure=0.0):
+    """renders the model from several sides with a studio rig and tiles them into tools/blender/sheets/<id>.png
+    (exposure < 0 for white things: paper, cards, snow, so they don't blow out)"""
     sc = bpy.context.scene
     sc.render.engine = 'BLENDER_EEVEE'
     ee = sc.eevee
@@ -428,6 +436,7 @@ def sheet(root, file_id, views=('persp', 'left', 'right', 'top', 'front', 'back_
     sc.render.resolution_x, sc.render.resolution_y = res
     sc.render.film_transparent = False
     sc.view_settings.view_transform = 'Standard'
+    sc.view_settings.exposure = exposure
     w = bpy.data.worlds.new('w'); sc.world = w; w.use_nodes = True
     w.node_tree.nodes['Background'].inputs['Color'].default_value = srgb(bg)
     w.node_tree.nodes['Background'].inputs['Strength'].default_value = 0.55
@@ -703,3 +712,87 @@ def zone_join(parts, name, zones, default='b', rule=None):
         z = (rule(mn, centre(p)) if rule else None) or zones.get(mn, default)
         groups.setdefault(z.upper(), []).append(p)
     return [join(objs, f'{name}_wz{k}') for k, objs in sorted(groups.items())]
+
+
+def uv_cyl(o, axis='z', a0=0.0, a1=1.0, turn=0.0):
+    """wrap-around UVs for labels on round things (cigarettes, cans, bottles): u runs along the game axis from a0 (u=0)
+    to a1 (u=1), v goes once round (from angle `turn`, radians, measured from game +x toward +y for axis z, from +x
+    toward -z for axis y). Faces never straddle the seam."""
+    me = o.data
+    if not me.uv_layers: me.uv_layers.new()
+    uv = me.uv_layers.active.data
+    mw = o.matrix_world
+    for poly in me.polygons:
+        ls = []
+        for li in poly.loop_indices:
+            v = mw @ me.vertices[me.loops[li].vertex_index].co
+            gx, gy, gz = v.x, v.z, -v.y
+            a, t = {'z': (math.atan2(gy, gx), gz), 'y': (math.atan2(-gz, gx), gy), 'x': (math.atan2(gy, -gz), gx)}[axis]
+            ls.append([li, (t - a0) / (a1 - a0), (a - turn) / (2 * math.pi)])
+        ref = ls[0][2]
+        for e in ls:
+            while e[2] - ref > 0.5: e[2] -= 1
+            while e[2] - ref < -0.5: e[2] += 1
+        for li, u, w in ls: uv[li].uv = (u, w)
+
+
+def jitter(o, amount, seed=1, along_normal=True):
+    """push every vertex in or out a random bit (fur, ash, crumbs, knobbly snow). apply modifiers first."""
+    apply_mods(o)
+    r = random.Random(seed)
+    me = o.data
+    for v in me.vertices:
+        k = (r.random() * 2 - 1) * amount
+        v.co += (v.normal * k) if along_normal else Vector((r.uniform(-1, 1), r.uniform(-1, 1), r.uniform(-1, 1))) * amount
+    me.update()
+    return o
+
+
+def loft(centres, ring, m=None, name='loft', cap=True, up=(0, 1, 0), smooth_angle=60, close=(False, False)):
+    """a skin through cross-sections along a path of game points (loaves, croissants, slippers, ducks). ring(i, t) returns
+    the i-th section as a list of (up, side) offsets (game metres) in the frame at that point: up = the game `up`
+    vector made square to the path, side = path x up. t = 0..1 along the path. close = (start, end): pinch that end to
+    a point instead of a flat cap. Every section must have the same number of points. Returns the object; its faces
+    know their station and slot (face index = station * n + slot) for per-face materials."""
+    P = [Vector(c) for c in centres]
+    n_s = len(P)
+    U = Vector(up)
+    rings = []
+    bm = bmesh.new()
+    for i, c in enumerate(P):
+        t = (P[min(i + 1, n_s - 1)] - P[max(i - 1, 0)]).normalized()
+        N = (U - t * t.dot(U)).normalized()
+        B = t.cross(N)
+        sec = ring(i, i / (n_s - 1))
+        rings.append([bm.verts.new(gv(*(c + N * a + B * b))) for a, b in sec])
+    k = len(rings[0])
+    for a, b in zip(rings, rings[1:]):
+        for j in range(k):
+            jj = (j + 1) % k
+            bm.faces.new((a[j], a[jj], b[jj], b[j]))
+    for end, ring_v, i in ((0, rings[0], 0), (1, rings[-1], n_s - 1)):
+        if close[end]:
+            tip = bm.verts.new(gv(*P[i]))
+            for j in range(k):
+                jj = (j + 1) % k
+                bm.faces.new((ring_v[j], ring_v[jj], tip) if end else (ring_v[jj], ring_v[j], tip))
+        elif cap:
+            bm.faces.new(ring_v)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    o = _obj(name, bm, m)
+    smooth(o, smooth_angle)
+    return o
+
+
+def clone_scaled(objs, k, suffix='_s'):
+    """copies of objects (own mesh data) scaled by k about the game origin: a thrown slipper is the held one x1.6"""
+    out = []
+    for o in objs:
+        apply_mods(o)
+        c = o.copy(); c.data = o.data.copy(); c.name = o.name + suffix
+        _link(c)
+        c.data.transform(o.matrix_world); c.matrix_world = Matrix.Identity(4)
+        c.data.transform(Matrix.Scale(k, 4))
+        c.parent = None
+        out.append(c)
+    return out
