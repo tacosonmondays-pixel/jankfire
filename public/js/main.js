@@ -7,6 +7,7 @@ import { stepProjectile, raycast } from '/shared/physics.js';
 import { duckFrame, duckStuck } from './duck.js';
 import { G } from './ctx.js';
 import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals } from './world.js';
+import { setShadowPref } from './lighting.js';
 import { hrFeed, hrDead } from './hrguy.js';
 import { loadTripoModels, buildProjectile, buildPeel, buildHole, makeShadow, tipColor, buildCharacter, teamLook, M } from './models.js';
 import { onLateModel } from './glbkit.js';
@@ -394,6 +395,8 @@ function bindCheck(id, key, apply) {
 }
 $('jank').value = String(S.jank);
 $('jank').addEventListener('change', () => { S.jank = Number($('jank').value); setJank(S.jank); saveSettings(); });
+$('shadows').value = S.shadows || 'auto'; setShadowPref(S.shadows);
+$('shadows').addEventListener('change', () => { S.shadows = $('shadows').value; setShadowPref(S.shadows); saveSettings(); });
 bindRange('fov', 'fov');
 bindRange('vol', 'vol', null, () => setVolume(S.vol));
 // music has its own volume (the main one still scales it). in matches it's on (quieter, its own slider) for bots, co-op
@@ -2372,6 +2375,7 @@ function doLogout() {
 $('logoutBtn').addEventListener('click', doLogout);
 function applySettingsToUI() {
   $('jank').value = String(S.jank); setJank(S.jank);
+  $('shadows').value = S.shadows || 'auto'; setShadowPref(S.shadows);
   for (const id of ['fov', 'vol', 'sens', 'adsSens']) { $(id).value = String(S[id]); $(id).dispatchEvent(new Event('input')); }
   for (const id of ['fovKick', 'shake', 'showFps', 'toggleAim', 'blood', 'killcam', 'showCards', 'speedLines']) $(id).checked = !!S[id];
   K.attach(S); // the profile may have brought its own key bindings

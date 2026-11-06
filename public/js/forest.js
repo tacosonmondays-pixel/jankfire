@@ -70,7 +70,7 @@ export function forestMap(map, id) {
   if (!on) return;
   group = new THREE.Group();
   G.scene.add(group);
-  mine = spot(0);
+  mine = spot(0); mine.userData.mine = true; // lighting.js: yours can cast shadows (Too HD)
   for (let i = 0; i < POOL; i++) pool.push(spot(i + 1));
   flies = fireflies();
   if (id === 'forest') wires();

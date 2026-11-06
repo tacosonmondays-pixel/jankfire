@@ -12,6 +12,7 @@ import { addVibe } from './vibe.js';
 import { addForest } from './forestmats.js';
 import { updateForest, forestMap } from './forest.js';
 import { buildProps, hasProp } from './props.js';
+import { initLighting, lightingMap, lightingRefresh, updateLighting, setLightPreset, aoBegin, aoBake, aoMaterials, setSunBoxes } from './lighting.js';
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
 export const JANK = [
@@ -159,6 +160,7 @@ function makeMaterials() {
   out.poolwater = { mat: new THREE.MeshBasicMaterial({ color: 0x86dbe6, transparent: true, opacity: 0.42, depthWrite: false }), tile: 2 };
   addVibe(out, canvasTex, speckle); // the map pass look (vibe.js)
   addForest(out, canvasTex, speckle); // scary forest (forestmats.js)
+  aoMaterials(out); // baked corner AO in the vertex colours (lighting.js)
   for (const v of Object.values(out)) if (!v.mat.onBeforeCompile || v.mat.onBeforeCompile === THREE.Material.prototype.onBeforeCompile) hazify(v.mat, v.mat.isMeshBasicMaterial ? 0.45 : 1);
   return out;
 }
@@ -208,6 +210,19 @@ function worldUV(geo, cx, cy, cz, tile) {
   }
 }
 
+// indoor maps (sealed, the mall): the ceiling slabs don't cast sun shadows, so the "sun" reads as the overhead lights
+function noCastFn(def) {
+  if (!def || !(def.sealed || def.zm)) return null;
+  return (b) => b.min[1] >= 3.4 && b.max[1] - b.min[1] <= 1.5 && (b.max[0] - b.min[0]) * (b.max[2] - b.min[2]) >= 6;
+}
+const aoSmall = (sx, sy, sz) => Math.max(sx, sy, sz) < 0.35; // tiny trims: not worth the samples
+function mapMesh(scene, k, merged) { // one merged map mesh. keys ending in '~' are ceilings that cast no shadow
+  const nc = k.endsWith('~'), mk = nc ? k.slice(0, -1) : k;
+  const m = new THREE.Mesh(merged, MAT[mk].mat);
+  if (nc) m.userData.noCast = true;
+  return m;
+}
+
 let MAT = null;
 const mapMeshes = [];
 const chunkMeshes = [];
@@ -224,14 +239,17 @@ function buildMap(scene) {
   // deco: drawn, never bumped into. a Blender prop stands in only for real boxes (props.js draws map.boxes.props): look-only
   // scenery keeps its boxes (the city alone has hundreds of streetlights and cars, too many models to draw one by one)
   const all = def && def.deco ? [...BOXES, ...def.deco] : BOXES, nReal = BOXES.length;
+  const ncf = noCastFn(def);
+  aoBegin(all, ncf); setSunBoxes(all);
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
     if (i < nReal && b.pv && hasProp(b.pv)) continue;
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
-    const mk = MAT[b.mat] ? b.mat : 'stone';
-    if (b.fit) { const g = boxGeo(sx, sy, sz); if (b.rot) g.rotateY(b.rot); g.translate(cx, cy, cz); push(mk, g.toNonIndexed()); continue; } // the texture once per face (signs, faces)
-    if (b.rot) { const g = boxGeo(sx, sy, sz); worldUV(g, 0, 0, 0, MAT[mk].tile); g.rotateY(b.rot); g.translate(cx, cy, cz); push(mk, g.toNonIndexed()); continue; } // turned (render-only boxes: angled streets and blocks)
+    const mk0 = MAT[b.mat] ? b.mat : 'stone', small = aoSmall(sx, sy, sz);
+    const mk = ncf && ncf(b) ? mk0 + '~' : mk0;
+    if (b.fit) { const g = boxGeo(sx, sy, sz); if (b.rot) g.rotateY(b.rot); g.translate(cx, cy, cz); push(mk, aoBake(g, small).toNonIndexed()); continue; } // the texture once per face (signs, faces)
+    if (b.rot) { const g = boxGeo(sx, sy, sz); worldUV(g, 0, 0, 0, MAT[mk0].tile); g.rotateY(b.rot); g.translate(cx, cy, cz); push(mk, aoBake(g, small).toNonIndexed()); continue; } // turned (render-only boxes: angled streets and blocks)
     if (b.mat === 'grass' && sy > 0.6) { // grass on top, dirt on the sides
       const g = boxGeo(sx, sy, sz);
       const top = g.clone();
@@ -240,19 +258,19 @@ function buildMap(scene) {
       keep(top, [2]); keep(g, [0, 1, 3, 4, 5]);
       worldUV(top, cx, cy, cz, MAT.grass.tile); worldUV(g, cx, cy, cz, MAT.dirt.tile);
       top.translate(cx, cy, cz); g.translate(cx, cy, cz);
-      push('grass', top.toNonIndexed()); push('dirt', g.toNonIndexed());
+      push('grass', aoBake(top, small).toNonIndexed()); push('dirt', aoBake(g, small).toNonIndexed());
       continue;
     }
     const g = boxGeo(sx, sy, sz);
-    worldUV(g, cx, cy, cz, MAT[mk].tile);
+    worldUV(g, cx, cy, cz, MAT[mk0].tile);
     g.translate(cx, cy, cz);
-    push(mk, g.toNonIndexed());
+    push(mk, aoBake(g, small).toNonIndexed());
   }
   for (const [k, list] of groups) {
     const merged = mergeGeometries(list, false);
     for (const g of list) g.dispose();
     if (!merged) continue;
-    const m = new THREE.Mesh(merged, MAT[k].mat);
+    const m = mapMesh(scene, k, merged);
     if (k === 'water') m.renderOrder = 2;
     scene.add(m);
     mapMeshes.push(m);
@@ -265,29 +283,31 @@ function buildMap(scene) {
 function buildChunked(scene, def) {
   const C = def.chunk, groups = new Map();
   const all = def.deco ? [...BOXES, ...def.deco] : BOXES, nReal = BOXES.length;
+  const ncf = noCastFn(def);
+  aoBegin(all, ncf); setSunBoxes(all);
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
     if (i < nReal && b.pv && hasProp(b.pv)) continue; // (as in buildMap: only real boxes give way to a prop)
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
-    const mk = MAT[b.mat] ? b.mat : 'stone';
-    const key = Math.max(sx, sz) > C ? mk : mk + '|' + Math.floor(cx / C) + ',' + Math.floor(cz / C);
+    const mk = MAT[b.mat] ? b.mat : 'stone', nc = ncf && ncf(b) ? '~' : '';
+    const key = Math.max(sx, sz) > C ? mk + nc : mk + '|' + Math.floor(cx / C) + ',' + Math.floor(cz / C) + nc;
     const g = boxGeo(sx, sy, sz);
     if (b.rot) { if (!b.fit) worldUV(g, 0, 0, 0, MAT[mk].tile); g.rotateY(b.rot); } // turned render-only boxes (Jankburg's streets)
     else if (!b.fit) worldUV(g, cx, cy, cz, MAT[mk].tile);
     g.translate(cx, cy, cz);
-    if (!groups.has(key)) groups.set(key, { k: mk, list: [] });
-    groups.get(key).list.push(g.toNonIndexed());
+    if (!groups.has(key)) groups.set(key, { k: mk, nc, list: [] });
+    groups.get(key).list.push(aoBake(g, aoSmall(sx, sy, sz)).toNonIndexed());
   }
-  for (const [key, { k, list }] of groups) {
+  for (const [key, { k, nc, list }] of groups) {
     const merged = mergeGeometries(list, false);
     for (const g of list) g.dispose();
     if (!merged) continue;
-    const m = new THREE.Mesh(merged, MAT[k].mat);
+    const m = mapMesh(scene, k + nc, merged);
     if (k === 'water' || k === 'poolwater') m.renderOrder = 2;
     scene.add(m);
     mapMeshes.push(m);
-    if (key !== k) { merged.computeBoundingSphere(); chunkMeshes.push(m); }
+    if (key !== k + nc) { merged.computeBoundingSphere(); chunkMeshes.push(m); }
   }
 }
 
@@ -386,12 +406,14 @@ export function initWorld(canvas) {
   const n0 = scene.children.length;
   buildSky(scene);
   skyStuff = scene.children.slice(n0).filter((o) => o !== voidMesh && o.geometry !== skyGeo);
+  initLighting(sunLight, vmSun, scene.children.slice(n0)); // sky, sun cube, clouds, void, rocks: never in the shadows
+  setLightPreset(G.settings ? G.settings.jank : 1);
   buildMap(scene);
   addEventListener('resize', resize);
   resize();
 }
 
-export function setJank(i) { jank = JANK[i] || JANK[1]; resize(); }
+export function setJank(i) { jank = JANK[i] || JANK[1]; resize(); setLightPreset(JANK[i] ? i : 1); }
 
 // swap the whole level (called when the server says the map changed)
 export function loadMap(id) {
@@ -418,6 +440,7 @@ export function loadMap(id) {
   if (night) sun.position.set(-260, 300, -420); else sun.position.set(300, 220, -420);
   for (const c of clouds) c.visible = !night && !(MAPS[MAP.id] && MAPS[MAP.id].sealed);
   forestMap(MAPS[MAP.id], MAP.id);
+  lightingMap(MAPS[MAP.id], MAP.id, night, sun); // shadows, mood, the neon's lights (after everything above is in)
 }
 
 // models finished loading after the map was built: redraw the boxes + props (no gameplay state touched)
@@ -425,6 +448,7 @@ export function refreshMapVisuals() {
   if (!MAP.id || !G.scene || !MAT) return;
   buildMap(G.scene);
   buildProps(G.scene, MAPS[MAP.id] && MAPS[MAP.id].boxes.props);
+  lightingRefresh();
 }
 
 export function resize() {
@@ -449,8 +473,10 @@ export function updateWorld(dt) {
   updateForest(dt);
 }
 
+let lastT = 0;
 export function renderFrame() {
-  const r = G.renderer;
+  const r = G.renderer, now = performance.now();
+  updateLighting(Math.min(0.1, (now - (lastT || now)) / 1000)); lastT = now;
   r.clear();
   r.render(G.scene, G.camera);
   r.clearDepth();
