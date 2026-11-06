@@ -1,6 +1,6 @@
 // overdrive rig, end to end in training: it comes on (key 7), the frame replaces your guns, a charged punch at a dummy
 // lands (the server says 'hit'), block, missiles (salvo + explosions), quickhack attempt, a leap + landing, then it
-// runs out and the gun comes back. server: JF_RIG_DUR=14. usage: node t_rig.cjs <outDir>
+// runs out and the gun comes back. server: JF_RIG_DUR=20. usage: node t_rig.cjs <outDir>
 require(__dirname + '/pwlock.cjs');
 const { chromium } = require('playwright');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -32,7 +32,7 @@ const PORT = process.env.PORT || 3000, OUT = process.argv[2] || '.';
   await aim(14); await pg.keyboard.press('KeyE'); await sleep(400);
   await pg.keyboard.down('Space'); await sleep(900); await pg.keyboard.up('Space'); await sleep(2200);
   const s2 = await st(); console.log('mid', JSON.stringify(s2));
-  await sleep(9000);
+  await sleep(13000);
   const s3 = await st(); console.log('after', JSON.stringify(s3));
   const ev = s3.ev.split(','), has = (k) => ev.includes(k);
   const bad = [];
