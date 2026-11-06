@@ -182,4 +182,8 @@ export function addVibe(out, canvasTex, speckle) {
   out.addepot = ad('#2a6cff', '#fff', ['DRY GULCH', 'elevation: yes. trains: once'], 256, 64, { small: '#ffe14d', lit: false });
   out.adwanted = ad('#f2e2b8', '#120818', ['WANTED', 'you. probably.', 'reward: a hat'], 128, 160, { small: '#7a2a10', lit: false });
   out.adassay = ad('#d8d0b0', '#7a2a10', ['ASSAY OFFICE', 'is it gold? (no)'], 256, 64, { small: '#120818', lit: false });
+  // Desert S&D (the payroll job)
+  out.adstage = ad('#1a5a2a', '#ffe14d', ['STAGE CO.', 'arrives eventually. leaves faster.'], 256, 64, { small: '#fff', lit: false });
+  out.adpayroll = ad('#ffe14d', '#7a2a10', ['PAYROLL', 'do not rob. please.'], 192, 96, { stripes: 'rgba(0,0,0,0.12)', small: '#120818', lit: false });
+  out.adpowder = ad('#ff2a3a', '#ffe14d', ['POWDER', 'no smoking. no fire. no fun.'], 192, 64, { small: '#fff', lit: false });
 }

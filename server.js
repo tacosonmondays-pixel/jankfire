@@ -808,7 +808,8 @@ class Room {
       const probe = [b.pos[0] + wx * 2.5, b.pos[1] + 0.5, b.pos[2] + wz * 2.5];
       if (!raycast(probe, [0, -1, 0], Math.max(6, Math.min(15, probe[1] - this.map.killY)), boxes)) { wx = -wx; wz = -wz; ai.strafeDir *= -1; if (this.map.edgeGuard) ai.edgeT = n + 3000; }
     }
-    if (this.brOn || this.map.edgeGuard) { const e = this.brBotEdge(b, wx, wz, jump); if (this.map.edgeGuard && (e[0] !== wx || e[1] !== wz)) ai.edgeT = n + 3000; [wx, wz, jump] = e; } // jank royale (and maps with a canyon, map.edgeGuard): no hopping into canyons. turned back from one: find a bridge (above)
+    if (this.map.edgeGuard && !b.onGround && this.botFlightLands(b)) { wx = 0; wz = 0; jump = false; } // thrown over the canyon (a jump pad, a hit) onto the far side: let it fly (steering back brakes it into the drop)
+    else if (this.brOn || this.map.edgeGuard) { const e = this.brBotEdge(b, wx, wz, jump); if (this.map.edgeGuard && (e[0] !== wx || e[1] !== wz)) ai.edgeT = n + 3000; [wx, wz, jump] = e; } // jank royale (and maps with a canyon, map.edgeGuard): no hopping into canyons. turned back from one: find a bridge (above)
     if (jump && this.map.edgeGuard && b.onGround && [[2, 0], [-2, 0], [0, 2], [0, -2]].some(([dx, dz]) => !raycast([b.pos[0] + dx, b.pos[1] + 0.5, b.pos[2] + dz], [0, -1, 0], 15, boxes))) jump = false; // a drop beside us (a bridge, the lip): no hops. a hop off a parapet's end is how they fell in
     if (this.lavaOn) [wx, wz, jump] = this.botLava(b, wx, wz, jump, t);
     if (this.hr && this.hr.on) { const o = hrBot(this, b, dt, { wx, wz, jump }), l = Math.hypot(o.wx, o.wz); if (l > 1) { o.wx /= l; o.wz /= l; } ({ wx, wz, jump } = o); } // scary forest: don't stare at HR
@@ -2531,6 +2532,13 @@ class Room {
     if (n < (h.syncT || 0)) return;
     h.syncT = n + 500;
     this.broadcast({ t: 'hu', id: h.id, p: h.p, R: h.R, on: h.on || 0, age: r2((n - h.born) / 1000) });
+  }
+  // a bot in the air: does the flight come down on a floor if nobody steers? (a floor near the height it left from)
+  botFlightLands(b) {
+    const v = b.vel, g = 26 * (b.gravMul || 1), y0 = (b.ground ? b.ground[1] : b.pos[1]) - 1, h = b.pos[1] - y0;
+    if (h <= 0 || !Number.isFinite(h)) return false;
+    const t = (v[1] + Math.sqrt(v[1] * v[1] + 2 * g * h)) / g;
+    return !!raycast([b.pos[0] + v[0] * t, y0 + 3, b.pos[2] + v[2] * t], [0, -1, 0], 8, this.boxes);
   }
   // bots inside a black hole lose their momentum like players do (not the thrower or their team) and ropes near the middle snap
   eatMomentum(b, dt) {

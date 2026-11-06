@@ -1663,21 +1663,22 @@ function headframe(B, D, x, y0, z, h = 14) {
   D.add(x - 1.3, y0 + h + 0.8, z - 0.24, x + 1.3, y0 + h + 3.4, z + 0.24, 'grid'); // its spokes
   D.add(x + 1.2, y0, z - 0.04, x + 1.28, y0 + h + 2, z + 0.04, 'tire'); // the cable
 }
-// a train stopped along z, going +z: the engine (boiler, stack, cab, cowcatcher), tender, a boxcar with both doors
-// open (walk through it), a flatcar of crates, the caboose. its rails under it. returns where it ends
-function train(B, D, x, z0) {
-  const rails = (a, b) => { for (const s of [-1, 1]) D.add(x + s * 0.75 - 0.06, 0, a, x + s * 0.75 + 0.06, 0.14, b, 'metal'); for (let t = a; t < b; t += 0.7) D.add(x - 1.2, 0, t, x + 1.2, 0.08, t + 0.25, 'wood'); };
+// a train stopped along z: the engine (its nose at -z: the cowcatcher, the lamp, the stack; the cab at the back), the
+// tender behind it, a boxcar with both doors open (walk through it), a flatcar of crates, the caboose. its rails under
+// it (ext: how far they run on past each end). returns where it ends. (B, D can be turned frames: { add: L, box: L.B })
+function train(B, D, x, z0, ext = [30, 40]) {
+  const rails = (a, b) => { for (const s of [-1, 1]) D.add(x + s * 0.75 - 0.06, 0, a, x + s * 0.75 + 0.06, 0.14, b, 'metal'); for (let t = a + 0.12; t < b; t += 0.7) D.add(x - 1.2, 0, t, x + 1.2, 0.08, t + 0.25, 'wood'); }; // (the first tie a bit in from the rails' end: no faces in one plane)
   const wheels = (a, b) => { for (let t = a + 0.7; t < b - 0.5; t += 1.6) for (const s of [-1, 1]) D.add(x + s * 1.47 - 0.08, 0.08, t - 0.55, x + s * 1.47 + 0.08, 1.18, t + 0.55, 'tire'); }; // (just outboard of every car's sides)
   let z = z0;
-  // the engine
+  // the engine (nose first: the tender's coupled on behind the cab, where a tender goes)
   B.add(x - 1.3, 0.25, z, x + 1.3, 1.3, z + 11, 'metal');
-  B.add(x - 1.1, 1.3, z + 3.2, x + 1.1, 3.5, z + 11, 'burnt'); // boiler
-  B.add(x - 0.4, 3.5, z + 9, x + 0.4, 5.1, z + 9.8, 'burnt'); D.add(x - 0.6, 5.1, z + 8.8, x + 0.6, 5.5, z + 10, 'burnt'); // stack
-  B.add(x - 0.5, 3.5, z + 6.2, x + 0.5, 4.2, z + 7.2, 'gold'); // the dome
-  for (const [a, b] of [[-1.5, -1.3], [1.3, 1.5]]) B.add(x + a, 1.3, z + 0.2, x + b, 4.2, z + 3, 'carred'); // cab sides (open in the middle: climb in)
-  B.add(x - 1.5, 1.3, z, x + 1.5, 4.2, z + 0.2, 'carred'); B.add(x - 1.65, 4.2, z - 0.2, x + 1.65, 4.45, z + 3.3, 'roofg'); // cab back + roof
-  for (const t of [0.4, 0.8, 1.2]) D.add(x - 1.3 + t * 0.3, 0.2, z + 11 + t * 0.4, x + 1.3 - t * 0.3, 1.1 - t * 0.5, z + 11.4 + t * 0.4, 'toyred'); // cowcatcher
-  D.add(x - 0.35, 3.0, z + 11, x + 0.35, 3.5, z + 11.06, 'light'); D.add(x - 1.12, 2.35, z + 3.25, x + 1.12, 2.65, z + 11.02, 'gold'); // the lamp, a brass band
+  B.add(x - 1.1, 1.3, z, x + 1.1, 3.5, z + 7.8, 'burnt'); // boiler
+  B.add(x - 0.4, 3.5, z + 1.2, x + 0.4, 5.1, z + 2, 'burnt'); D.add(x - 0.6, 5.1, z + 1, x + 0.6, 5.5, z + 2.2, 'burnt'); // stack
+  B.add(x - 0.5, 3.5, z + 3.8, x + 0.5, 4.2, z + 4.8, 'gold'); // the dome
+  for (const [a, b] of [[-1.5, -1.3], [1.3, 1.5]]) B.add(x + a, 1.3, z + 8, x + b, 4.2, z + 10.8, 'carred'); // cab sides (open in the middle: climb in)
+  B.add(x - 1.5, 1.3, z + 10.8, x + 1.5, 4.2, z + 11, 'carred'); B.add(x - 1.65, 4.2, z + 7.7, x + 1.65, 4.45, z + 11.2, 'roofg'); // cab back + roof
+  for (const t of [0.4, 0.8, 1.2]) D.add(x - 1.3 + t * 0.3, 0.2, z - 0.4 - t * 0.4, x + 1.3 - t * 0.3, 1.1 - t * 0.5, z - t * 0.4, 'toyred'); // cowcatcher
+  D.add(x - 0.35, 3.0, z - 0.06, x + 0.35, 3.5, z, 'light'); D.add(x - 1.12, 2.35, z - 0.02, x + 1.12, 2.65, z + 7.75, 'gold'); // the lamp, a brass band
   wheels(z, z + 11);
   z += 11.6;
   // the tender
@@ -1702,7 +1703,7 @@ function train(B, D, x, z0) {
   B.add(x - 1.6, 3.6, z - 0.2, x + 1.6, 3.8, z + 7.2, 'roofg'); B.add(x - 0.9, 3.8, z + 2.5, x + 0.9, 4.9, z + 4.5, 'carred');
   wheels(z, z + 7);
   z += 7;
-  rails(z0 - 30, z + 40);
+  rails(z0 - ext[0], z + ext[1]);
   return z;
 }
 // over the canyon (along x, from x0 to x1, centred on z): the mine's timber trestle (narrow, rails on it, a cart);
@@ -1893,7 +1894,8 @@ function desert() {
   // ---- over the canyon
   trestle(B, D, -7, 7, -60);
   stoneBridge(B, D, -7, 7, 0, 10);
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const px = sx * 7.8, pz = sz * 5; B.box(px, 1.2, pz, 2, 2.4, 1.6, 'stone'); D.box(px, 2.5, pz, 2.2, 0.2, 1.8, 'roofg'); D.box(px, 2.85, pz, 0.5, 0.5, 0.5, 'light'); } // its gateposts, a lantern on each (and no squeezing round the end of a parapet on the lip)
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const px = sx * 7.8, pz = sz * 5; B.box(px, 1.2, pz, 2, 2.4, 1.6, 'stone'); D.box(px, 2.5, pz, 2.2, 0.2, 1.8, 'roofg'); D.box(px, 2.85, pz, 0.5, 0.5, 0.5, 'light'); }
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) B.add(sx > 0 ? 6.8 : -7.6, 0, sz > 0 ? 5.8 : -8.8, sx > 0 ? 7.6 : -6.8, 1.0, sz > 0 ? 8.8 : -5.8, 'stone'); // wing walls on the lip out from each gatepost (the fights at the bridge's ends were knocking people in) // its gateposts, a lantern on each (and no squeezing round the end of a parapet on the lip)
   ropeBridge(B, D, -7, 7, 60);
   add(-1.2, 0.2, -62.2, 0.4, 1.4, -60.6, 'rust'); D.add(-1.0, 1.4, -62.0, 0.2, 1.65, -60.8, 'rock'); // a cart that jumped the trestle's rails, stuck on one, half over the edge (cover, and a lane past it)
   B.box(-12, 0.15, 33, 2.5, 0.3, 2.5, 'pad', { pad: [26, 18, 0] }); B.box(12, 0.15, -33, 2.5, 0.3, 2.5, 'pad', { pad: [-26, 18, 0] }); // jump pads: over the canyon the fast way
@@ -1984,6 +1986,211 @@ function desert() {
     edgeGuard: true, // bots don't dodge-jump next to the canyon (server.js: brBotEdge in every mode here)
     // bots: a walk graph over the town (1 m cells), over the bridges, round everything
     get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0], z0: bounds[1], n: bounds[2] - bounds[0], cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
+  };
+  return map;
+}
+
+// ------------------------------------------------------------ DESERT S&D: Dry Gulch, the payroll job (Plant & Defuse).
+// the bandits (attackers) come in on the stage by the west gate; the posse (defenders) holds the east bank from behind
+// the jail. the canyon's the front line and its three ways over are the three lanes. north: the mine's trestle, straight
+// into A (the mine head: the headframe over the capped shaft, the ore loader, the powder store, the mine's tunnel).
+// middle: the stone bridge into Mine Square (mid), then up Mine Road to A or down Depot Road to B. south: the rope bridge
+// onto the end of the platform, B (the depot: the payroll train stopped at the platform, the station). the posse gets to
+// either site ~7 s first and swaps sites through the square; the bandits' way round is back over their own bank. the
+// stage office and the jail stand between the spawns, a solid wall inside each (no look straight through the windows)
+function desertSD() {
+  const B = builder(), D = builder();
+  const r = rng(9494), rv = rng(9393), W = B.local(0, 0, 0), Dw = D.local(0, 0, 0), add = B.add;
+  const X0 = -96, X1 = 72, Z0 = -62, Z1 = 62, bounds = [X0, Z0, X1, Z1];
+  const spawns = [];
+  // ---- the ground, the canyon (x -7..7; its walls solid: fall in and grapple out), the river a long way down
+  add(-300, -2, -300, -7, 0, 300, 'sand'); add(7, -2, -300, 300, 0, 300, 'sand');
+  for (const x0 of [-9, 7]) add(x0, -66, -300, x0 + 2, -2, 300, 'rock');
+  D.add(-7, -67, -300, 7, -66, 300, 'sand'); D.add(-3.5, -66, -300, 3.5, -65.8, 300, 'water');
+  for (const z of [-150, -34, 22, 118]) D.add(-5 + rv() * 3, -65.8, z, -1 + rv() * 3, -64.6 + rv(), z + 2 + rv() * 3, 'rock');
+  // ---- the town wall (its top's over the ceiling): the west gate the stage came in by (shut behind it), north and south
+  // walls cut by the canyon (a tower on each lip), the east wall behind the jail; the mesa's the north edge east of the canyon
+  const wall = (x0, z0, x1, z1) => add(x0, 0, z0, x1, 9, z1, 'adobe');
+  wall(X0 - 0.6, Z0 - 0.6, X0 + 0.6, -7); wall(X0 - 0.6, 7, X0 + 0.6, Z1 + 0.6);
+  wall(X0 + 0.6, Z0 - 0.6, -10, Z0 + 0.6); wall(X0 + 0.6, Z1 - 0.6, -10, Z1 + 0.6); wall(10, Z1 - 0.6, X1 - 0.6, Z1 + 0.6); wall(X1 - 0.6, -52, X1 + 0.6, Z1 - 0.6);
+  for (const [x, z] of [[X0, Z0], [X0, Z1], [X1, Z1], [-9, Z0], [-9, Z1], [9, Z1]]) B.box(x, 6, z, 4, 12, 4, 'adobe');
+  for (const sz of [-1, 1]) add(X0 - 3, 0, sz > 0 ? 6.5 : -11, X0 + 3, 12, sz > 0 ? 11 : -6.5, 'adobe'); // the gate's towers
+  add(X0 - 0.3, 0, -6.5, X0 + 0.3, 6.2, 6.5, 'wood'); add(X0 - 0.6, 6.2, -6.5, X0 + 0.6, 9, 6.5, 'adobe'); // the gate, shut
+  for (const y of [1.2, 4.6]) D.add(X0 + 0.3, y, -6.3, X0 + 0.34, y + 0.3, 6.3, 'metal'); // its iron bands
+  { const mer = (a, b, fixed, alongX, out) => { for (let t = a; t <= b; t += 3) if (alongX) D.add(t - 0.6, 9, out > 0 ? fixed + 0.1 : fixed - 0.6, t + 0.6, 10, out > 0 ? fixed + 0.6 : fixed - 0.1, 'adobe'); else D.add(out > 0 ? fixed + 0.1 : fixed - 0.6, 9, t - 0.6, out > 0 ? fixed + 0.6 : fixed - 0.1, 10, t + 0.6, 'adobe'); };
+    mer(X0 + 4, -13, Z0, true, -1); mer(X0 + 4, -13, Z1, true, 1); mer(13, X1 - 4, Z1, true, 1); mer(Z0 + 4, -14, X0, false, -1); mer(14, Z1 - 4, X0, false, -1); mer(-49, Z1 - 4, X1, false, 1); } // battlements, on the outer edge
+
+  // ---- WEST BANK. the stage stop (the bandits' spawn) inside the shut gate; the stage office across the end of the street
+  const att = [[-91, 0.2, -6], [-91, 0.2, -2], [-91, 0.2, 2], [-91, 0.2, 6], [-87, 0.2, -4], [-87, 0.2, 0], [-87, 0.2, 4]];
+  add(X0 + 0.6, 0, -10, -80.6, 0.03, 10, 'dirtroad'); add(-68, 0, -5.4, -7, 0.03, 5.4, 'dirtroad');
+  wagon(B, D, -86, -13.5, true, true); // the stage (it made it. just)
+  for (const [x, z] of [[-93, 12], [-92.2, 12.8], [-80, 12.6]]) B.box(x, 0.6, z, 0.75, 1.2, 0.75, 'barrel');
+  add(-84, 0, 12, -81.5, 0.8, 13.2, 'wood'); D.add(-83.8, 0.8, 12.2, -81.7, 0.82, 13.0, 'water'); // a trough
+  const stage = frontier(B, D, -73, 0, 3, 16, 10, 1, { paint: 'sidemint', sign: 'adstage', awning: 'toyyellow', roofAccess: false });
+  { const L = stage.L; L(-7.7, 0.12, -1.15, -4.4, 3.6, -0.85, 'wood'); L(-3.0, 0.12, -1.15, 7.7, 3.6, -0.85, 'wood'); // the ticket wall (its door off to one side)
+    L(-2.6, 0.12, -3.6, 2.6, 1.1, -3.0, 'wood'); L(-2.6, 1.1, -3.65, 2.6, 1.2, -2.95, 'chrome'); for (const x of [-6.6, -5.6]) L.B(x, 0.5, 2.6, 0.8, 0.76, 2.4, 'crate'); L.B(5.5, 0.6, 3, 1.6, 0.96, 1.0, 'crate'); } // the counter, the luggage
+  // Main Street: the saloon, the bank, the general store (north row); the undertaker, the hotel, the livery (south row)
+  const north = [[-57, 16, 12, 2, 'sidemint', 'adsaloon', { balcony: true, awning: 'toypink', roofAccess: false }], [-40, 12, 12, 1, 'adobe', 'adbank', { front: 2.6 }], [-26, 10, 10, 1, 'sideorange', 'adgeneral', { awning: 'toyyellow' }]];
+  const south = [[-58, 12, 10, 1, 'magenta', 'adundertaker', { front: 1.8 }], [-43, 14, 12, 2, 'sidelemon', 'adhotel', { balcony: true, awning: 'toyteal', roofAccess: false }], [-27, 12, 12, 1, 'wood', 'adlivery', { front: 3.4 }]];
+  const bld = {};
+  for (const [x, w, d, n, paint, sign, o] of north) bld[sign] = frontier(B, D, x, -8 - d / 2, 2, w, d, n, { paint, sign, ...o });
+  for (const [x, w, d, n, paint, sign, o] of south) bld[sign] = frontier(B, D, x, 8 + d / 2, 0, w, d, n, { paint, sign, ...o });
+  { const L = bld.adsaloon.L; L(-5.8, 0.12, 3.6, 3, 1.15, 4.6, 'wood'); L(-5.8, 1.15, 3.4, 3, 1.25, 4.8, 'chrome'); L(4.5, 0.12, 2.4, 7.6, 0.6, 5.6, 'wood'); L(5.2, 0.6, 3.6, 7.0, 1.8, 4.6, 'burnt'); // the bar, the stage, a piano
+    for (const [tx, tz] of [[-5, -2], [-1, -3.2], [3, -1.5]]) L.B(tx, 0.5, tz, 1.4, 0.76, 1.4, 'wood'); }
+  { const L = bld.adbank.L; L(-5.6, 0.12, -1.0, 5.6, 1.2, -0.6, 'wood'); L(-5.6, 1.2, -0.95, 5.6, 2.6, -0.85, 'grid'); // the counter, its bars
+    L(-3.6, 0.12, 2.2, -1.2, 3.0, 2.5, 'metal'); L(1.2, 0.12, 2.2, 3.6, 3.0, 2.5, 'metal'); L(-1.2, 2.4, 2.2, 1.2, 3.0, 2.5, 'metal'); // the vault (a doorway in its front),
+    L(-3.6, 0.12, 2.5, -3.3, 3.0, 5.6, 'metal'); L(3.3, 0.12, 2.5, 3.6, 3.0, 5.6, 'metal'); L(-3.6, 3.0, 2.2, 3.6, 3.3, 5.6, 'metal'); // sides, roof
+    L(1.25, 0.12, 0.5, 1.4, 2.4, 2.15, 'gold'); L(-2.8, 0.12, 4.2, -1.0, 0.9, 5.4, 'gold'); L(0.6, 0.12, 4.4, 2.6, 0.6, 5.4, 'gold'); } // its door open, the gold (cleaned out next)
+  { const L = bld.adundertaker.L; for (const cx of [-3.2, -1.9]) L(cx, 0.35, -6.4, cx + 0.8, 2.3, -6.1, 'wood'); } // coffins stood up on the boardwalk
+  hay(B, -31, 22.6, 4); camel(W, -24, 23.4, true); // behind the livery
+  wagon(B, D, -45, 2.2, true, false); for (const [x, z] of [[-36, -3.6], [-35.2, -4.4], [-62, 3.8], [-18, 3.4]]) B.box(x, 0.6, z, 0.75, 1.2, 0.75, 'barrel');
+  cratePile(B, -30, -3.4, 4, r); cratePile(B, -52, 3.6, 3, r);
+  // the lot by the canyon: the water tower (north), the wind pump (south), and the jump pads: over into the square, the fast way
+  waterTank(B, D, -14, -16, 7.5); windpump(B, D, -14, 18);
+  for (const sz of [-1, 1]) B.box(-15, 0.15, sz * 5.6, 2.5, 0.3, 2.5, 'pad', { pad: [26, 18, 0] });
+  // ---- the north back lots: the corral, the blacksmith, the outhouses, the rail spur out to the trestle and its dock
+  for (const [x0, z0, x1, z1] of [[-90, -50, -74, -50], [-90, -32, -84, -32], [-80, -32, -74, -32]]) add(x0, 0, z0 - 0.1, x1, 1.3, z1 + 0.1, 'wood');
+  for (const x of [-90, -74]) add(x - 0.1, 0, -50, x + 0.1, 1.3, -32, 'wood');
+  hay(B, -86, -44, 4); hay(B, -78, -40, 3, false); add(-84, 0, -48, -81.5, 0.75, -47, 'wood'); D.add(-83.8, 0.75, -47.8, -81.7, 0.77, -47.2, 'water'); camel(W, -80, -36, false);
+  { const S2 = B.local(-58, -44, 0); for (const sx of [-1, 1]) for (const sz of [-1, 1]) S2.B(sx * 4.5, 1.6, sz * 3, 0.3, 3.2, 0.3, 'wood'); S2(-5, 3.2, -3.4, 5, 3.45, 3.4, 'roofg');
+    S2(-4.5, 0, -3.2, -1.5, 1.4, -1.0, 'brick'); D.box(-58 - 3, 1.45, -44 - 2.1, 1.6, 0.1, 1.2, 'neonred'); S2(1.0, 0, -0.5, 2.6, 0.8, 0.5, 'metal'); S2(0.8, 0.8, -0.3, 2.8, 1.05, 0.3, 'metal'); } // the forge, the anvil
+  for (const x of [-48, -45.6]) { add(x - 0.7, 0, -57.2, x + 0.7, 2.4, -55.8, 'wood'); add(x - 0.8, 2.4, -57.3, x + 0.8, 2.55, -55.7, 'roofg'); D.add(x - 0.15, 1.8, -55.79, x + 0.15, 2.0, -55.75, 'yellow'); } // outhouses
+  for (let x = -40; x < -7; x += 0.7) D.add(x, 0, -41.2, x + 0.25, 0.06, -38.8, 'wood');
+  for (const s of [-1, 1]) D.add(-40, 0.06, -40 + s * 0.75 - 0.06, -7, 0.2, -40 + s * 0.75 + 0.06, 'metal'); // the spur
+  add(-44, 0, -48.5, -32, 1.2, -43.6, 'wood'); stairs(W, -42, -40.5, -43.6, 1, 0, 1.2, 'wood', 0.5); // the loading dock
+  for (const x of [-27, -18]) { add(x - 0.8, 0.2, -40.7, x + 0.8, 1.3, -39.3, 'rust'); D.add(x - 0.6, 1.3, -40.5, x + 0.6, 1.55, -39.5, 'rock'); } // ore carts, waiting
+  for (const [x, z, sx, sy, sz] of [[-84, -57, 9, 4.5, 6], [-62, -56, 6, 3, 6], [-30, -57, 8, 4, 6], [-18, -52, 5, 2.6, 4]]) { W.B(x, sy / 2, z, sx, sy, sz, 'rock'); W.B(x + sx * 0.15, sy + 0.4, z - sz * 0.1, sx * 0.6, 0.8, sz * 0.6, 'rock'); }
+  for (const [x, z, h] of [[-66, -46, 4.2], [-38, -30, 3.6], [-22, -46, 4.4], [-92, -24, 3.8]]) saguaro(W, x, z, h);
+  // ---- the south back lots: the church and its bell tower, the cemetery, a wagon that didn't make it
+  { const C = B.local(-44, 38, 0); shell(C, 14, 16, 1, 5, 'white', { floor: 'wood', roof: 'roofpink', roofAccess: false, backDoor: true, parapet: false, winSpacing: 3.5 });
+    C(-6.4, 5.3, -7.4, 6.4, 6.0, 7.4, 'roofpink'); C(-4.4, 6.0, -7.4, 4.4, 6.7, 7.4, 'roofpink'); C(-2.2, 6.7, -7.4, 2.2, 7.4, 7.4, 'roofpink'); // a stepped roof
+    for (let i = 0; i < 4; i++) C(-4 + i * 2.2, 0.12, -1, -2.6 + i * 2.2, 0.6, 5, 'wood'); // pews
+    add(-58, 0, 31, -52, 14.4, 37, 'white'); for (const y of [4.6, 9.6]) D.add(-58.04, y, 30.96, -51.96, y + 0.3, 37.04, 'roofpink'); // the bell tower (solid: its top's over the ceiling, a landmark not a perch)
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) D.box(-55 + sx * 2.7, 16.1, 34 + sz * 2.7, 0.3, 3.4, 0.3, 'white'); D.add(-58.2, 17.8, 30.8, -51.8, 18.1, 37.2, 'roofpink'); D.add(-57, 18.1, 32, -53, 18.9, 36, 'roofpink');
+    D.box(-55, 16.4, 34, 1.4, 1.2, 1.4, 'gold'); D.box(-55, 17.35, 34, 0.2, 0.7, 0.2, 'metal'); } // the belfry, the bell
+  for (const [x0, z0, x1, z1] of [[-90, 34, -62, 34.15], [-90, 58, -62, 58.15]]) add(x0, 0, z0, x1, 1.0, z1, 'picket');
+  add(-90, 0, 34.15, -89.85, 1.0, 58, 'picket'); add(-62.15, 0, 34.15, -62, 1.0, 44, 'picket'); add(-62.15, 0, 48, -62, 1.0, 58, 'picket');
+  { let k = 0; for (let gx = -86; gx <= -66; gx += 4.4) for (let gz = 38; gz <= 55; gz += 5.6) if (!(gx > -78 && gx < -72 && gz < 46)) grave(W, gx, gz, k++); }
+  add(-77, 0, 38, -72, 3.0, 42, 'stone'); add(-77.3, 3.0, 37.7, -71.7, 3.4, 42.3, 'stone'); // the crypt
+  { const tx = -66, tz = 52; W.B(tx, 2.2, tz, 0.5, 4.4, 0.5, 'burnt'); W.B(tx + 0.9, 3.6, tz, 1.6, 0.25, 0.25, 'burnt'); W.B(tx - 0.7, 3.0, tz + 0.4, 0.25, 0.25, 1.2, 'burnt'); } // a dead tree
+  wagon(B, D, -28, 48, false, true); B.box(-28, 0.6, 52.5, 0.75, 1.2, 0.75, 'barrel');
+  for (const [x, z, sx, sy, sz] of [[-84, 22, 4, 2.2, 3], [-20, 56, 6, 3.4, 5], [-50, 56, 7, 3, 5]]) { W.B(x, sy / 2, z, sx, sy, sz, 'rock'); W.B(x - sx * 0.15, sy + 0.35, z + sz * 0.1, sx * 0.55, 0.7, sz * 0.55, 'rock'); }
+  for (const [x, z, h] of [[-36, 54, 4.4], [-16, 30, 3.6], [-92, 46, 4]]) saguaro(W, x, z, h);
+  // the canyon's west lip: boulders flush with it between the crossings, a rail fence here and there
+  const fenced = (z, s) => Math.abs(z) + s / 2 > 17 && Math.abs(z) - s / 2 < 31;
+  boulders(B, -8.4, -60, -8.4, -44, 3, r, -1); boulders(B, -8.4, -35, -8.4, -10, 5, r, -1, fenced); boulders(B, -8.4, 10, -8.4, 35, 5, r, -1, fenced); boulders(B, -8.4, 44, -8.4, 60, 3, r, -1);
+  for (const sz of [-1, 1]) { const z0 = sz > 0 ? 18 : -30, z1 = sz > 0 ? 30 : -18; for (let z = z0; z <= z1; z += 3) B.box(-7.8, 0.6, z, 0.2, 1.2, 0.2, 'wood'); add(-7.85, 0.85, z0, -7.75, 0.95, z1, 'wood'); }
+
+  // ---- over the canyon: the trestle (north, the cart that jumped its rails), the stone bridge (its gateposts), the rope bridge
+  trestle(B, D, -7, 7, -40);
+  add(-1.2, 0.2, -42.2, 0.4, 1.4, -40.6, 'rust'); D.add(-1.0, 1.4, -42.0, 0.2, 1.65, -40.8, 'rock');
+  stoneBridge(B, D, -7, 7, 0, 10);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const px = sx * 7.8, pz = sz * 5; B.box(px, 1.2, pz, 2, 2.4, 1.6, 'stone'); D.box(px, 2.5, pz, 2.2, 0.2, 1.8, 'roofg'); D.box(px, 2.85, pz, 0.5, 0.5, 0.5, 'light'); }
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) B.add(sx > 0 ? 6.8 : -7.6, 0, sz > 0 ? 5.8 : -8.8, sx > 0 ? 7.6 : -6.8, 1.0, sz > 0 ? 8.8 : -5.8, 'stone'); // wing walls on the lip out from each gatepost (the fights at the bridge's ends were knocking people in)
+  ropeBridge(B, D, -7, 7, 40);
+
+  // ---- EAST BANK. Mine Square (mid): the well, the founder's cart; the assay office (north) and the mining company (south)
+  add(7, 0, -8.4, 46.4, 0.03, 8.4, 'dirtroad'); add(28, 0, -28, 38, 0.03, -8.4, 'dirtroad'); add(28, 0, 8.4, 37.4, 0.03, 27, 'dirtroad'); // the square, Mine Road, Depot Road
+  frontier(B, D, 20, -17, 2, 16, 12, 1, { paint: 'adobe', sign: 'adassay', awning: 'cloth' });
+  frontier(B, D, 20, 17, 0, 16, 12, 1, { paint: 'brick', sign: 'admine', awning: 'toyred' });
+  add(18.8, 0, -1.2, 21.2, 0.9, 1.2, 'stone'); D.add(19.2, 0.9, -0.8, 20.8, 0.92, 0.8, 'water'); for (const [x, z] of [[18.9, -1.1], [21.1, -1.1], [18.9, 1.1], [21.1, 1.1]]) B.box(x, 1.9, z, 0.18, 2.0, 0.18, 'wood'); add(18.4, 2.9, -1.6, 21.6, 3.1, 1.6, 'roofg'); // the well
+  add(31, 0, -2, 35, 1.4, 2, 'stone'); add(31.3, 1.4, -1.6, 34.7, 3.0, 1.6, 'rust'); D.add(31.5, 3.0, -1.4, 34.5, 3.4, 1.4, 'gold'); // the founder's ore cart on its plinth (gold. painted)
+  for (const [x, z] of [[25, -6.4], [25.8, -7.2], [41, 6.6], [13, 6.6]]) B.box(x, 0.6, z, 0.75, 1.2, 0.75, 'barrelr');
+  cratePile(B, 42, -6.4, 3, r);
+  // the jail (the posse's back door onto the square): its desk, then a solid wall (its door at one end), then the cells
+  const jail = frontier(B, D, 54, 0, 3, 18, 10, 1, { paint: 'adobe', sign: 'adsheriff', wanted: -2.5, roofAccess: false });
+  { const L = jail.L; L(-8.7, 0.12, 0.85, 4.6, 3.6, 1.15, 'adobe'); L(6.0, 0.12, 0.85, 8.7, 3.6, 1.15, 'adobe');
+    L(-4.6, 0.12, -3.4, -1.6, 0.85, -2.0, 'wood'); L(2.0, 0.12, -3.6, 4.4, 1.0, -2.6, 'wood'); // the desk, the gun rack's bench
+    for (let gx = -4.6; gx < 7.8; gx += 0.45) L(gx, 0.12, 3.0, gx + 0.08, 3.0, 3.08, 'metal'); L(-4.6, 3.0, 3.0, 7.8, 3.4, 3.08, 'metal'); } // the cells (bars)
+  // the posse's camp behind the jail (their spawn): the chuck wagon, the horses (camels: it's a budget posse), a fire
+  const def = [[64, 0.2, -7], [64, 0.2, -2.5], [64, 0.2, 2.5], [64, 0.2, 7], [68, 0.2, -5], [68, 0.2, 0], [68, 0.2, 5]];
+  wagon(B, D, 64, 13.5, true, true); for (const [x, z] of [[62, -12.5], [67, -13]]) camel(W, x, z, true); hay(B, 70, -10, 3, false);
+  add(69, 0, 9, 71, 0.4, 11, 'stone'); D.add(69.5, 0.4, 9.5, 70.5, 1.0, 10.5, 'neonred'); // the fire
+  // the mine yard between the square and A (the posse's way up): the water tower, timber, a wagon
+  waterTank(B, D, 48, -20, 7); add(40, 0, -15, 45, 1.2, -13.4, 'wood'); D.add(40.2, 1.2, -14.8, 44.8, 1.25, -13.6, 'wood'); wagon(B, D, 56, -24, false, false);
+  // the freight shed by Depot Road (the posse's way down to B)
+  frontier(B, D, 45, 19, 3, 12, 10, 1, { paint: 'wood', front: 1.2, awning: 'wood' }); hay(B, 54, 22, 4, false); cratePile(B, 55, 32, 4, r);
+  // the canyon's east lip: a rail fence along the narrow ways by the drop
+  for (const sz of [-1, 1]) { const z0 = sz > 0 ? 10 : -34, z1 = sz > 0 ? 34 : -10; for (let z = z0; z <= z1; z += 4) B.box(7.8, 0.6, z, 0.2, 1.2, 0.2, 'wood'); add(7.75, 0.85, z0, 7.85, 0.95, z1, 'wood'); }
+
+  // ---- A: the mine head. the mesa's the north edge: the mine's in it (in at the mouth, along the gallery behind the rock
+  // face, out by the posse's end); the headframe over the capped shaft (yellow and black: plant here), the ore loader, the
+  // rails in off the trestle (carts on them), the powder store, timber
+  add(7, 0, Z0 - 0.6, 24, 10, -52, 'rock'); add(28, 0, -54, 58, 10, -52, 'rock'); add(24, 0, Z0 - 0.6, 62, 10, -58, 'rock'); add(62, 0, Z0 - 0.6, X1 + 0.6, 10, -52, 'rock');
+  add(24, 3.6, -58, 62, 10, -54, 'rock'); add(24, 3.6, -54, 28, 10, -52, 'rock'); add(58, 3.6, -54, 62, 10, -52, 'rock'); // the gallery's roof, the mouth's, the far end's
+  for (const [y0, y1] of [[2.4, 2.8], [6.2, 6.5]]) D.add(7, y0, -51.95, 24, y1, -51.9, 'dirt'); // bands in the rock face
+  for (const x0 of [23.7, 57.7]) { add(x0, 0, -52.3, x0 + 0.5, 3.5, -51.7, 'wood'); add(x0 + 4.1, 0, -52.3, x0 + 4.6, 3.5, -51.7, 'wood'); add(x0, 3.5, -52.3, x0 + 4.6, 4.3, -51.7, 'wood'); } // the timber frames at both ends
+  D.add(24.4, 3.6, -51.68, 27.6, 4.2, -51.64, 'admine', { fit: 1 });
+  for (let x = 26; x < 60; x += 7) D.add(x, 3.3, -56.4, x + 0.8, 3.5, -55.6, 'lamp'); for (const z of [-53.4]) for (const x of [25.6, 59.6]) D.add(x, 3.3, z - 0.4, x + 0.8, 3.5, z + 0.4, 'lamp');
+  for (const [x, z] of [[33, -56.8], [47, -56.6]]) add(x - 0.8, 0.2, z - 0.7, x + 0.8, 1.3, z + 0.7, 'rust'); add(40, 0, -57.6, 42.4, 1.2, -56.6, 'crate'); // carts, crates
+  headframe(B, D, 36, 0, -41, 13); add(34.6, 0, -42.4, 37.4, 0.15, -39.6, 'hazard'); // the headframe, the shaft's cap
+  { for (const sx of [-1, 1]) for (const sz of [-1, 1]) B.box(22 + sx * 1.7, 1.7, -46 + sz * 1.7, 0.35, 3.4, 0.35, 'wood'); add(20, 3.4, -48, 24, 6.4, -44, 'wood'); // the ore loader: its bin up on legs
+    for (const y of [4.2, 5.6]) D.add(19.98, y, -48.02, 24.02, y + 0.15, -43.98, 'rust');
+    for (let i = 0; i < 3; i++) D.add(21.5, 3.0 - i * 0.4, -44 + i, 22.5, 3.15 - i * 0.4, -43 + i, 'rust'); } // its chute
+  for (let x = 7.2; x < 31; x += 0.7) D.add(x, 0, -41.2, x + 0.25, 0.06, -38.8, 'wood');
+  for (const s of [-1, 1]) D.add(7, 0.06, -40 + s * 0.75 - 0.06, 31, 0.2, -40 + s * 0.75 + 0.06, 'metal'); // the rails in off the trestle
+  add(31, 0, -41.2, 31.6, 0.9, -38.8, 'wood'); D.add(31.6, 0.3, -40.9, 31.65, 0.7, -39.1, 'toyred'); // the buffer stop
+  for (const x of [13, 25.6]) { add(x - 0.8, 0.2, -40.7, x + 0.8, 1.3, -39.3, 'rust'); D.add(x - 0.6, 1.3, -40.5, x + 0.6, 1.55, -39.5, 'rock'); } // ore carts
+  add(41, 0, -35.5, 47, 2.6, -30.5, 'stone'); add(40.8, 2.6, -35.7, 47.2, 2.9, -30.3, 'roofg'); D.add(40.96, 0, -33.6, 41.0, 2.0, -32.4, 'toyred'); D.add(40.96, 2.05, -34.4, 41.0, 2.55, -31.6, 'adpowder', { fit: 1 }); // the powder store
+  for (const [x, z, y] of [[39.4, -35, 0.45], [39.6, -36.2, 0.45], [39.5, -35.6, 1.35]]) B.box(x, y, z, 0.9, 0.9, 0.9, 'toyred'); // crates of something loud
+  add(27.5, 0, -32.2, 32.5, 1.25, -30.6, 'wood'); for (const x of [28.4, 31.6]) D.add(x, 0.02, -32.24, x + 0.2, 1.29, -30.56, 'rust'); // timber, strapped
+  wagon(B, D, 46, -45, true, true);
+  siteBoard(D, 36, 4.6, -51.9, 'x', 'sitea', 5); siteBoard(D, 21.5, 2.5, -23.1, 'x', 'sitea', 1.4);
+
+  // ---- B: the depot. the payroll train stopped at the platform (its nose to the rope bridge), the station behind the
+  // platform (in through it from Depot Road), the yard behind the train (a boxcar on the siding, the water tank)
+  const stn = frontier(B, D, 30, 31, 2, 16, 8, 1, { paint: 'sidelemon', sign: 'addepot', awning: 'roofg' });
+  { const L = stn.L; L(4.4, 0.12, 2.4, 7.7, 1.1, 3.0, 'wood'); L(-4.4, 0.12, -1.6, -1.6, 0.5, -1.0, 'wood'); } // the ticket counter, a bench
+  add(12, 0, 37.6, 48, 0.45, 41.4, 'wood'); D.add(12, 0.45, 40.9, 48, 0.47, 41.2, 'yellow'); // the platform (stand back from the yellow line)
+  { const RB = B.local(13, 44.5, 3), RD = D.local(13, 44.5, 3); train({ add: RB, box: RB.B }, { add: RD, box: RD.B }, 0, 0, [4, 10]); }
+  for (const [x0, z] of [[30.6, 43.06], [37, 43.06], [30.6, 45.91], [37, 45.91]]) D.add(x0, 2.0, z, x0 + 2.8, 3.4, z + 0.03, 'adpayroll', { fit: 1 }); // PAYROLL on the boxcar (both sides)
+  for (let x = 14; x < 62; x += 0.7) D.add(x, 0, 52.8, x + 0.25, 0.06, 55.2, 'wood');
+  for (const s of [-1, 1]) D.add(14, 0.06, 54 + s * 0.75 - 0.06, 62, 0.2, 54 + s * 0.75 + 0.06, 'metal'); // the siding
+  add(30, 0.25, 52.6, 40, 1.25, 55.4, 'metal'); add(30, 1.25, 52.6, 40, 3.9, 55.4, 'containerr'); add(29.8, 3.9, 52.5, 40.2, 4.1, 55.5, 'containerr'); // a boxcar on the siding
+  for (let t = 30.7; t < 39.5; t += 1.6) for (const z of [52.45, 55.55]) D.add(t - 0.55, 0.08, z - 0.08, t + 0.55, 1.18, z + 0.08, 'tire');
+  waterTank(B, D, 18, 58.5, 6.5); cratePile(B, 47, 56, 4, r); hay(B, 54, 49, 3);
+  B.box(9.6, 0.6, 33.5, 0.75, 1.2, 0.75, 'barrel'); add(12.6, 0, 31, 15.2, 1.1, 33.2, 'crate'); // by the rope bridge's end
+  siteBoard(D, 21.9, 1.4, 33.5, 'z', 'siteb', 2); siteBoard(D, 38.1, 1.4, 31, 'z', 'siteb', 2);
+
+  // ---- the ground between it all (look only): dirt patches, sagebrush, the odd tumbleweed. never inside anything
+  { const rg = rng(9595), clear = (x, z, rr) => !B.boxes.some((q) => q.max[1] > 0.06 && q.min[1] < 12 && q.mat !== 'dirtroad' && q.mat !== 'sand' && x + rr > q.min[0] && x - rr < q.max[0] && z + rr > q.min[2] && z - rr < q.max[2]);
+    const ok = (x, z) => Math.abs(x) > 10 && !(Math.abs(z) < 9 && x > -70 && x < 47);
+    for (let i = 0; i < 40; i++) { const x = X0 + 3 + rg() * (X1 - X0 - 6), z = Z0 + 3 + rg() * (Z1 - Z0 - 6), w = 2 + rg() * 4, d = 2 + rg() * 4; if (ok(x, z) && clear(x, z, Math.max(w, d) / 2)) D.box(x, 0.0075, z, w, 0.015, d, 'dirt'); }
+    for (let i = 0; i < 110; i++) { const x = X0 + 3 + rg() * (X1 - X0 - 6), z = Z0 + 3 + rg() * (Z1 - Z0 - 6), s = 0.4 + rg() * 0.6; if (ok(x, z) && clear(x, z, s)) { D.box(x, s * 0.35, z, s, s * 0.7, s * 0.9, rg() < 0.5 ? 'hedge' : 'leaves2'); if (rg() < 0.4) D.box(x + s * 0.4, s * 0.25, z - s * 0.3, s * 0.6, s * 0.5, s * 0.5, 'leaves2'); } }
+    for (let i = 0; i < 10; i++) { const x = X0 + 3 + rg() * (X1 - X0 - 6), z = Z0 + 3 + rg() * (Z1 - Z0 - 6); if (ok(x, z) && clear(x, z, 0.6)) D.obb(x, 0.4, z, 0.8, 0.8, 0.8, rg() * 3, 'burnt'); }
+  }
+  // ---- outside the wall (render-only): dunes, rock formations, palms, the caravan, the thing in the sand
+  const ro = rng(9091);
+  for (let i = 0; i < 46; i++) { const a = ro() * Math.PI * 2, d = 130 + ro() * 230, x = Math.cos(a) * d, z = Math.sin(a) * d, w = 30 + ro() * 60, dd = 18 + ro() * 36, h = 5 + ro() * 12;
+    if (Math.abs(x) < 26 || Math.abs(z) < 14 || (Math.abs(x) - w / 2 < 106 && Math.abs(z) - dd / 2 < 106)) continue; dune(D, x, z, w, dd, h); }
+  for (let i = 0; i < 16; i++) { const a = ro() * Math.PI * 2, d = 190 + ro() * 220, x = Math.cos(a) * d, z = Math.sin(a) * d; if (Math.abs(x) < 30 || Math.abs(z) < 20) continue; rocks(D, x, z, 12 + ro() * 20, ro); }
+  for (const [x, z, c] of [[104, -14, 'cloth'], [114, 10, 'toyyellow'], [126, -6, 'leopard']]) tent(Dw, x, z, c);
+  for (const [x, z, ax] of [[98, 18, true], [108, 22, false], [122, 16, true]]) camel(Dw, x, z, ax);
+  for (let i = 0; i < 26; i++) { const a = ro() * Math.PI * 2, d = 110 + ro() * 120, x = Math.cos(a) * d, z = Math.sin(a) * d; if (Math.abs(x) < 20 || Math.abs(z) < 10) continue; palm(Dw, x, z, 6 + ro() * 4, ro); }
+  D.add(-260, 0, -210, -230, 26, -180, 'toyface', { fit: 1 }); // something enormous, half buried, smiling
+  horizon(D, -300, -300, 300, 300, 1500, 'sand');
+
+  spawns.push(...att.slice(0, 2), ...def.slice(0, 2), [-60, 0.2, 0], [-30, 0.2, 0], [-56, 0.2, -38], [-44, 0.2, 26], [-80, 0.2, -40], [-20, 0.2, 44],
+    [20, 0.2, 4], [36, 0.2, -18], [33, 0.2, 18], [28, 0.2, -36], [40, 0.2, -46], [24, 0.2, 49], [40, 0.6, 39.5], [56, 0.2, -36], [56, 0.2, 40]);
+  let graph = null;
+  const map = { name: 'Desert', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -50, bounds, ceiling: 8.5, floorY: -69,
+    sky: { top: 0x3f7fd0, mid: 0xf2d9a0, bot: 0x6a4a28, fog: 0xead6a6 }, fogNear: 120, fogFar: 480, spawns, teamSpawns: { att, def },
+    edgeGuard: true, // bots don't dodge-jump next to the canyon (server.js: brBotEdge in every mode here)
+    // the bandits' lanes (the bomb carriers walk these; the walk graph gets them round whatever's in the way)
+    nav: {
+      A: [
+        [[-87, -7], [-82, -14], [-70, -24], [-50, -34], [-30, -37], [-16, -37.6], [-7, -39.4], [7, -39.4], [11, -37.4], [20, -36], [32, -36]], // the north lots, the trestle
+        [[-86, -1], [-82, -10], [-70, -10], [-66.5, -5], [-60, -1], [-20, -1], [-9, -1], [9, -1], [20, -4], [30, -6], [33, -14], [33, -26], [33, -34]], // Main Street, the bridge, Mine Road
+        [[-86, 2], [-82, 10], [-70, 10], [-66.5, 5], [-60, 1], [-20, 1], [-9, 1], [9, 1], [9.8, -10], [9.8, -26], [14, -32], [24, -36]], // Main Street, the bridge, the lip past the assay office
+      ],
+      B: [
+        [[-87, 7], [-82, 14], [-70, 24], [-50, 26], [-30, 28], [-16, 38], [-7, 40], [7, 40], [11, 39.5], [22, 39.5], [32, 39.5]], // the south lots, the rope bridge, the platform
+        [[-86, 1], [-82, 10], [-70, 10], [-66.5, 5], [-60, 1], [-20, 1], [-9, 1], [9, 1], [20, 4], [30, 6], [33, 14], [33, 24], [27.7, 25.6], [27.7, 28], [29.5, 33], [30, 38.5]], // the bridge, Depot Road, through the station
+        [[-86, -2], [-82, -10], [-70, -10], [-66.5, -5], [-60, -1], [-20, -1], [-9, -1], [9, -1], [9.8, 10], [9.8, 26], [13, 35], [22, 39.5]], // the bridge, the lip past the mining company
+      ],
+    },
+    sites: [{ id: 'A', min: [16, 0, -52], max: [50, 0, -28] }, { id: 'B', min: [12, 0, 30], max: [48, 0, 50] }],
+    get graph() { return graph || (graph = buildNav(B.boxes, { x0: bounds[0] - 1, z0: bounds[1] - 1, n: bounds[2] - bounds[0] + 2, cell: 1, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) })); },
   };
   return map;
 }
@@ -3075,7 +3282,7 @@ function deadmall() {
 
 export const MAPS = {
   crate: crate(), platform: platform(), rooftop: rooftop(), suburb: suburb(), suburb_sd: suburbSD(), warehouse: warehouse(), warehouse_sd: warehouseSD(),
-  desert: desert(), islands: islands(), skyline: skyline(), bazaar: bazaar(), range: range(), backrooms: backrooms(), forest: forest(),
+  desert: desert(), desert_sd: desertSD(), islands: islands(), skyline: skyline(), bazaar: bazaar(), range: range(), backrooms: backrooms(), forest: forest(),
   deadmall: deadmall(),
 };
 // maps with an S&D version: '<id>_sd' is its own layout on the bomb-map rules, the one Plant & Defuse plays; '<id>' is
