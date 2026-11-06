@@ -5,3 +5,4 @@ dist/
 .DS_Store
 tools/music/.cache/
 __pycache__/
+tools/blender/sheets/_tmp_people/

@@ -112,7 +112,7 @@ function lungPad(B, x, z, s = 1) {
 // Clocking In: the old time office (punch clocks on the wall), a plaza with lungs to bounce over his slams
 function arena(B) {
   const [x0, z0, x1, z1] = SLICE.arena.rect, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-  B.add(x0, GY - 0.02, z0, x1, GY + 0.05, z1, 'teeth', { nc: true, tint: 0xf0e4d0 });
+  B.add(x0, GY - 0.02, z0, x1, GY + 0.05, z1, 'gums', { nc: true });
   // ribs over the plaza (it's a ribcage now), mounds round the edge, the old time-office's queue rails
   for (const az of [z0 + 18, z1 - 16]) if (B.inside(cx, az)) { B.prop('ribarch', cx, GY, az, 0, 1.5, 0); B.add(cx - 13, GY, az - 1.2, cx - 10.5, GY + 9, az + 1.2, 'bone', { hide: true }); B.add(cx + 10.5, GY, az - 1.2, cx + 13, GY + 9, az + 1.2, 'bone', { hide: true }); }
   for (const [mx, mz] of [[x0 + 4, cz], [x1 - 4, cz - 8], [x0 + 26, z1 - 4], [x1 - 26, z0 + 22]]) if (B.inside(mx, mz)) B.prop(mx < cx ? 'fleshblob_a' : 'fleshblob_b', mx, GY, mz, mx < cx ? 0.5 : -0.5, 1.6, 0);
@@ -147,7 +147,7 @@ function choir(B, r) {
 
 function toothMarket(B, r) {
   const [x0, z0, x1, z1] = SLICE.teeth.rect;
-  B.add(x0, GY - 0.02, z0, x1, GY + 0.05, z1, 'teeth', { nc: true });
+  B.add(x0, GY - 0.02, z0, x1, GY + 0.05, z1, 'gums', { nc: true });
   for (let i = 0; i < 10; i++) stall(B, x0 + 6 + (i % 5) * 12, GY, z0 + 8 + Math.floor(i / 5) * 30, i < 5 ? 0 : 2, r);
   for (let i = 0; i < 6; i++) B.prop('organjar', x0 + 8 + i * 9, GY, z0 + 20, r() * 6.28, 1, 0);
   const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
@@ -172,18 +172,19 @@ export function gut(B, d) {
     B.add(x, -4, z, xe, GY, ze, gr() < 0.7 ? 'flesh' : gr() < 0.5 ? 'liver' : 'bruise', { tint: pick(gr, [0xd86a80, 0xc85a78, 0xe07a8a, 0xb84a6a, 0xd0607a]) });
   }
   // bile puddles (glowing), fat mounds, a tissue membrane overhead here and there ("it's a ceiling in places")
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 9; i++) {
     const x = X0 + r() * (X1 - X0 - 6), z = Z0 + r() * (Z1 - Z0 - 6), w = 2 + r() * 5, d0 = 2 + r() * 4;
-    if (stomachD(x, z) < S.r + 4 || KEEP().slice(0, 1).some((q) => inRect(x, z, x + w, z + d0, q))) continue;
-    B.add(x, GY, z, x + w, GY + 0.05, z + d0, 'bile', { nc: true, tint: 0xb8ff4a });
-    if (i < 2) B.light(x + w / 2, GY + 0.6, z + d0 / 2, 0xa6e22e, 6, 0.6);
+    if (stomachD(x, z) < S.r + 4 || KEEP().slice(1, 2).some((q) => inRect(x, z, x + w, z + d0, q))) continue;
+    const blood = i % 2 === 1;
+    B.add(x, GY, z, x + w, GY + 0.07, z + d0, blood ? 'blood' : 'bile', { nc: true, tint: blood ? 0x8a0a20 : 0xb8ff4a });
+    if (!blood && i < 2) B.light(x + w / 2, GY + 0.6, z + d0 / 2, 0xa6e22e, 6, 0.6);
   }
 
   // streets: tooth cobbles (texture) with real teeth scattered at the edges, eyes in the gutters, heart lamps
   for (let x = Math.floor(X0 / 2) * 2; x < X1; x += 2) for (let z = Math.floor(Z0 / 2) * 2; z < Z1; z += 2) {
     const s = streetAt(x + 1, z + 1);
     if (!s || s === 'peri' || stomachD(x, z) < S.r + 3) continue;
-    B.add(x, GY, z, x + 2, GY + 0.03, z + 2, 'teeth', { nc: true });
+    B.add(x, GY, z, x + 2, GY + 0.03, z + 2, 'gums', { nc: true });
     if (r() < 0.06) B.prop(r() < 0.7 ? 'tooth' : 'tooth_b', x + r() * 2, GY, z + r() * 2, r() * 6.28, 0.8 + r() * 0.6, 0);
   }
   for (const a of AVES) if (a > X0 - 6 && a < X1 + 6) for (let z = Math.ceil(Z0 / 16) * 16; z < Z1; z += 16) {
