@@ -53,13 +53,14 @@ import { achInv } from '/shared/cosmetics.js'; // achievement rewards (Golden Sn
 import { achProgress } from '/shared/looks.js';
 import { royalToast, royalUnlock, royalBoxes } from './royal.js';
 import { setOnly } from './weapons.js';
+import { updateTraffic, carCollide, carKill, carFeedIcon } from './traffic.js'; // cars on the roads
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
 import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection, infClipInfo } from './infection.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
 const INTERP_MS = 110;
-const wname = (id) => (WEAPONS[id] ? WEAPONS[id].name : id === 'hook' ? 'Grapple' : id === 'tbag' ? 'T-Bag' : id);
+const wname = (id) => (WEAPONS[id] ? WEAPONS[id].name : id === 'hook' ? 'Grapple' : id === 'tbag' ? 'T-Bag' : id === 'carboom' ? 'Car Bomb' : id === 'car' ? 'Car' : id);
 const wcolor = (id) => (WEAPONS[id] ? WEAPONS[id].color : '#ccc');
 
 // ------------------------------------------------------------ settings
@@ -1248,7 +1249,7 @@ net.on('kill', (m) => {
   recordEv(m);
   courtKill(m); // scales of justice: streaks + revenge
   const [kn, kc] = nameOf(m.k), [vn, vc] = nameOf(m.v);
-  const via = m.w === 'void' || m.w === 'cough' ? m.via : m.w;
+  const via = m.w === 'void' || m.w === 'cough' || ((m.w === 'car' || m.w === 'carboom') && m.via) ? m.via : m.w;
   const victim = G.remotes.get(m.v);
   // shredder kills: the pieces go through the killer's machine instead of the usual gibs / kill effect
   if (m.w === 'shredder' && shredKill(m, G.remotes, m.v === G.myId ? { pos: ME.pos.slice(), yaw: ME.yaw, color: G.myColor, look: teamLook(validLook(G.settings.look, myAchs()), G.myTeam) } : null)) m.fx = 'none'; // (team colour beats clothes)
@@ -1277,7 +1278,10 @@ net.on('kill', (m) => {
   const hazard = m.w === 'lava' || (m.w === 'duck' && m.sky); // floor is lava / duck rain: nobody owns those
   if (hazard) parts = m.k ? [[kn, kc], [`  [${wname(m.via)}]  `, wcolor(m.via)], [vn, vc], [m.w === 'lava' ? '  into the lava' : '  under a sky duck', '#aaa']] : [[vn, vc], [m.w === 'lava' ? '  touched the floor' : '  got flattened by a sky duck', '#ff8a3a']];
   if (m.ep && m.k) parts.push([`  EPIC ${Math.round(m.ep.d)}m`, '#ffe14d']);
+  const carK = (m.w === 'car' || m.w === 'carboom') && carKill(m, kn, kc, vn, vc, wname, wcolor); // traffic: its own lines and icon
+  if (carK) parts = carK.parts;
   if (!dummy) hud.feed(parts);
+  if (carK && !dummy) carFeedIcon();
   if (m.v === G.myId) epicKC = m.ep && m.ep.lock && m.k && m.k !== G.myId && S.killcam !== false && G.mode !== 'training' ? { ...m.ep, w: via } : null; // too epic to skip (the server holds your respawn)
   if (m.v === G.myId) epicHold = !!(m.ep && m.ep.lock); // ...until it spawns you, killcam or not
   if (m.v === G.myId) {
@@ -1297,6 +1301,7 @@ net.on('kill', (m) => {
         ? [[kn, kc], [' knocked you into the void', '#fff'], [`  (${wname(via)})`, wcolor(via)]]
         : [['killed by ', '#fff'], [kn, kc], [`  (${wname(via)})`, wcolor(via)]]);
     } else hud.dead(true, [[m.w === 'void' ? 'you fell into the void' : m.w === 'tbag' ? 'you t-bagged too hard. your knees exploded.' : 'you smoked too much', '#fff']]);
+    if (carK) hud.dead(true, carK.dead);
     if (hazard) hud.dead(true, m.k ? [[kn, kc], [m.w === 'lava' ? ' knocked you into the lava' : ' softened you up for a sky duck', '#fff'], [`  (${wname(m.via)})`, wcolor(m.via)]] : [[m.w === 'lava' ? 'the floor was lava' : 'a duck fell out of the sky on you', '#fff']]);
   }
   if (m.k === G.myId && m.v !== G.myId) {
@@ -1524,7 +1529,7 @@ function frame(t) {
     } : {};
     jumpPressed = false;
     acc += dt;
-    while (acc >= STEP) { stepPlayer(STEP, inp, now); airTick(now); lavaStep(now); inp.jumpPressed = false; acc -= STEP; }
+    while (acc >= STEP) { stepPlayer(STEP, inp, now); carCollide(STEP); airTick(now); lavaStep(now); inp.jumpPressed = false; acc -= STEP; }
     grabStep(now); // held in a shredder's intake
     oobTick(now); // out of the play area: RETURN TO THE MAP 3 2 1
     // spinbot killstreak: lock onto the nearest enemy you can see
@@ -1570,6 +1575,7 @@ function frame(t) {
   const rt = now + G.offset - INTERP_MS;
   if (!RP.active) for (const r of G.remotes.values()) r.update(rt, dt, now);
   else for (const r of G.remotes.values()) { r.ch.root.visible = false; r.rope.visible = false; r.shadow.visible = false; } // the replay has its own copies
+  updateTraffic(dt, now, RP.active);
   updateGibs(dt);
   updateKillFx(dt);
   updateCourt(dt, now);

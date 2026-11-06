@@ -471,3 +471,31 @@ Object.assign(sfx, {
   rumble(pos) { noise(1.6, 0.7, 'lowpass', 260, 40, pos); tone('sawtooth', 55, 30, 1.4, 0.3, pos); for (let i = 0; i < 5; i++) noise(0.12, 0.35, 'highpass', 3000, 1200, pos, 0.2 + i * 0.22, 1); },
   chamber(pos) { tone('square', 1500, 1450, 0.04, 0.2, pos); tone('square', 700, 650, 0.07, 0.2, pos, 0.06); },
 });
+
+// traffic: horns (each kind its own), the ice cream van's song, getting hit, tyres, a car going up, one going past
+Object.assign(sfx, {
+  horn(pos, ty) {
+    if (ty === 'bus' || ty === 'truck') { for (const f of [185, 233]) { tone('sawtooth', f, f * 0.98, 0.75, 0.16, pos); tone('square', f * 2, f * 1.96, 0.75, 0.04, pos); } return; } // air horn
+    if (ty === 'hatch') { for (const d of [0, 0.17]) { tone('square', 620, 610, 0.12, 0.13, pos, d); tone('square', 780, 770, 0.12, 0.08, pos, d); } return; } // meep meep
+    if (ty === 'icecream') { tone('triangle', 880, 880, 0.18, 0.18, pos); tone('triangle', 1320, 1320, 0.25, 0.12, pos, 0.16); return; }
+    for (const f of [405, 510]) { tone('square', f, f * 0.99, 0.42, 0.12, pos); tone('sawtooth', f, f, 0.42, 0.05, pos); } // HONK
+  },
+  jingle(pos) { // an original little tune, slightly out of tune, as is tradition
+    const N = [784, 659, 698, 784, 880, 784, 698, 659, 587, 659, 784, 1046];
+    N.forEach((f, i) => { const w = f * (1 + (Math.random() - 0.5) * 0.012); tone('triangle', w, w, 0.2, 0.09, pos, i * 0.19); tone('sine', w * 2, w * 2, 0.12, 0.03, pos, i * 0.19); });
+  },
+  carHit(pos, k = 0.5) {
+    noise(0.28, 0.5 + k * 0.5, 'lowpass', 1100, 110, pos); tone('sine', 150, 42, 0.3, 0.5 + k * 0.4, pos);
+    tone('square', 320, 180, 0.09, 0.12 + k * 0.15, pos); noise(0.12, 0.3 * k, 'highpass', 2500, 5000, pos, 0.02); // the thump, the panel, the glass
+    if (k > 0.4) noise(0.5, 0.25, 'bandpass', 2900, 2100, pos, 0, 7); // and the tyres
+  },
+  carBoom(pos, big) {
+    noise(1.9, 1, 'lowpass', 2400, 38, pos); tone('sine', 95, 22, 1.6, 0.95, pos); tone('sawtooth', 60, 25, 1.1, 0.25, pos);
+    noise(0.35, 0.7, 'bandpass', 1200, 400, pos, 0.03, 1.2);
+    for (let i = 0; i < 7; i++) noise(0.09, 0.35, 'highpass', 4000, 7000, pos, 0.05 + i * 0.06 + Math.random() * 0.04, 1); // glass going everywhere
+    sfx.clang(pos, 0.8);
+    if (big) { tone('sine', 60, 18, 2.2, 0.6, pos, 0.05); noise(1.2, 0.5, 'lowpass', 600, 50, pos, 0.25); }
+    if (Math.random() < 0.6) for (let i = 0; i < 6; i++) tone('square', i % 2 ? 1320 : 900, i % 2 ? 1320 : 900, 0.2, 0.035, pos, 0.9 + i * 0.22); // somebody's car alarm
+  },
+  carPass(pos, sp) { whoosh(0.9, 0.3, 260, 1100, 1.4, pos); tone('sawtooth', 70 + sp * 2, 50 + sp, 0.8, 0.08, pos); },
+});
