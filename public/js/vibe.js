@@ -196,4 +196,7 @@ export function addVibe(out, canvasTex, speckle) {
   out.adjankbank = ad('#0a2a5a', '#ffe14d', ['JANK BANK', 'too big to fail. too high to fall?'], 256, 64, { small: '#fff' });
   out.addj = ad('#120818', '#ff4fd8', ['DJ JANK', 'no requests. ever.'], 256, 64, { small: '#4fd8ff' });
   out.adparty = ad('#ff4fd8', '#ffe14d', ['THE PENTHOUSE', 'members only. everyone is a member.'], 320, 64, { small: '#120818' });
+  out.adnews = ad('#c81a2a', '#fff', ['JANK NEWS 24', 'all of the news. none of the facts.'], 256, 64, { small: '#ffe14d' });
+  out.adputt = ad('#1a8a3a', '#ffe14d', ['PUTT PUTT PALACE', 'mind the drop. it is a par 160'], 320, 64, { small: '#fff' });
+  out.adobs = ad('#0a1430', '#4fd8ff', ['OBSERVATORY', 'the stars are fake. the view is real'], 320, 64, { small: '#ffe14d' });
 }

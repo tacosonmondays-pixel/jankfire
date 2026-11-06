@@ -554,12 +554,12 @@ function roofTop(B, x0, z0, x1, z1, y, facade, gaps = {}, base = -152, holes = n
 }
 // solid concrete steps over a gap (along x, or z if !alongX) from a0 at height ya to a1 at yb, w wide round the line c,
 // steel rails up both sides. nothing under it but 150 m of air
-function stairBridge(B, alongX, a0, a1, c, ya, yb, w = 4) {
+function stairBridge(B, alongX, a0, a1, c, ya, yb, w = 4, thin = false) { // (thin: each step a 0.4 m slab, not solid down to the low end)
   const n = Math.max(1, Math.ceil(Math.abs(yb - ya) / 0.45)), h = Math.abs(yb - ya) / n, y0 = Math.min(ya, yb), run = (a1 - a0) / n;
   const P = (p0, q0, p1, q1, yA, yB, m) => (alongX ? B.add(p0, yA, q0, p1, yB, q1, m) : B.add(q0, yA, p0, q1, yB, p1, m));
   for (let i = 1; i <= n; i++) { // step i counted from the low end
     const lowA = ya < yb, s0 = lowA ? a0 + (i - 1) * run : a1 - (i - 1) * run, s1 = lowA ? a0 + i * run : a1 - i * run, top = y0 + i * h;
-    P(s0, c - w / 2, s1, c + w / 2, y0, top, 'concrete');
+    P(s0, c - w / 2, s1, c + w / 2, thin ? Math.max(y0, top - 0.4) : y0, top, 'concrete');
     P(s0, c - w / 2, s1, c - w / 2 + 0.1, top, top + 1, 'metal'); P(s0, c + w / 2 - 0.1, s1, c + w / 2, top, top + 1, 'metal');
   }
 }
@@ -2568,84 +2568,213 @@ function islands() {
     spawns: [[10, 0.1, 10], [-10, 0.1, -10], [10, 0.1, -10], [-10, 0.1, 10], [8, 0.1, -88], [8, 0.1, 82], [88, 0.1, 8], [-88, 0.1, 8]] };
 }
 
-// ------------------------------------------------------------ SKYLINE: huge, a real downtown of skyscrapers
-function skyline() {
-  const B = builder();
-  const r = rng(1337);
-  const base = -120;
-  // [x, z, w, d, height, tiers, roof]
-  const plan = [
-    [-100, -100, 30, 30, 60, 2, 'tank'], [-35, -100, 34, 30, 96, 3, 'antenna'], [100, -100, 28, 28, 50, 1, 'ac'],
-    [-100, -35, 32, 32, 75, 2, 'billboard'], [-35, -35, 30, 30, 55, 1, 'helipad'], [35, -35, 30, 30, 55, 1, 'ac'], [100, -35, 30, 30, 110, 3, 'antenna'],
-    [-100, 35, 34, 34, 45, 1, 'garden'], [-35, 35, 30, 30, 80, 2, 'tank'], [35, 35, 36, 36, 65, 2, 'helipad'], [100, 35, 30, 30, 65, 1, 'billboard'],
-    [-100, 100, 28, 28, 100, 3, 'antenna'], [-35, 100, 32, 32, 50, 1, 'garden'], [35, 100, 30, 30, 85, 2, 'ac'], [100, 100, 34, 34, 40, 1, 'tank'],
-  ];
-  const spawns = [];
-  const roofs = {};
-  for (const [x, z, w, d, h, tiers, roof] of plan) {
-    const ry = tower(B, x, z, w, d, h, { base, tiers, roof, r, pad: r() < 0.5 ? [(r() - 0.5) * 40, 30, (r() - 0.5) * 40] : null });
-    B.box(x, base - 10, z, w, 20, d, 'office'); // a foundation down to the (lowered) street
-    roofs[`${x},${z}`] = ry;
-    spawns.push([x + 4, ry + 0.1, z + 4]);
-  }
-  // construction site: open floors, columns, a crane
+// ------------------------------------------------------------ the skyline kit (Skyline, Skyline S&D)
+// an enclosed glass tube from roof to roof (along x, or z if !alongX) at height y round the line c: a concrete deck,
+// glass-block walls, a roof, neon and lamps inside. cover from the sides, its two ends the only ways in
+function tubeBridge(B, D, alongX, a0, a1, c, y, w = 4) {
+  const P = (bx, p0, yA, q0, p1, yB, q1, m) => (alongX ? bx.add(p0, yA, q0, p1, yB, q1, m) : bx.add(q0, yA, p0, q1, yB, p1, m));
+  P(B, a0, y - 0.3, c - w / 2, a1, y, c + w / 2, 'concrete');
+  P(B, a0, y, c - w / 2, a1, y + 2.8, c - w / 2 + 0.2, 'glassblock'); P(B, a0, y, c + w / 2 - 0.2, a1, y + 2.8, c + w / 2, 'glassblock');
+  P(B, a0, y + 2.8, c - w / 2, a1, y + 3.1, c + w / 2, 'roofg');
+  P(D, a0, y + 2.45, c - w / 2 + 0.2, a1, y + 2.55, c - w / 2 + 0.26, 'neoncyan'); P(D, a0, y + 2.45, c + w / 2 - 0.26, a1, y + 2.55, c + w / 2 - 0.2, 'neoncyan');
+  for (let a = Math.min(a0, a1) + 4; a < Math.max(a0, a1) - 3; a += 8) P(D, a - 0.4, y + 2.74, c - 0.3, a + 0.4, y + 2.8, c + 0.3, 'lamp');
+}
+// a tower crane on a roof at (x, z, y): the mast, the jib out toward +x (len), the counter-jib and its weights, the cab,
+// a hook hanging off the jib at hookAt. returns the jib's top (y)
+function crane(B, D, x, z, y, h = 32, len = 50, hookAt = 30) {
+  const top = y + h;
+  B.add(x - 1, y, z - 1, x + 1, top, z + 1, 'hazard'); // the mast
+  for (let k = y + 4; k < top - 1; k += 4) D.add(x - 1.06, k, z - 1.06, x + 1.06, k + 0.12, z + 1.06, 'metal'); // its bracing
+  B.add(x - 1.5, top, z - 1.5, x + 1.5, top + 2.4, z + 1.5, 'toyyellow'); D.add(x + 1.5, top + 1.0, z - 1.2, x + 1.55, top + 2.0, z + 1.2, 'glass'); // the cab
+  B.add(x - 14, top + 2.4, z - 0.6, x + len, top + 3.6, z + 0.6, 'hazard'); // the jib and counter-jib
+  B.add(x - 14, top + 3.6, z - 1.2, x - 8, top + 6.6, z + 1.2, 'concrete'); // the counterweights
+  D.add(x - 0.4, top + 3.6, z - 0.4, x + 0.4, top + 9, z + 0.4, 'hazard'); D.add(x + 0.4, top + 8.7, z - 0.1, x + len * 0.6, top + 8.8, z + 0.1, 'metal'); D.add(x - 13.5, top + 6.6, z - 0.1, x - 0.4, top + 8.8, z + 0.1, 'metal'); // the tie bars
+  D.add(x + hookAt - 0.05, top - 14, z - 0.05, x + hookAt + 0.05, top + 2.4, z + 0.05, 'metal'); B.add(x + hookAt - 0.6, top - 15.2, z - 0.6, x + hookAt + 0.6, top - 14, z + 0.6, 'toyred'); // the hook
+  return top + 3.6;
+}
+// a helicopter parked at (x, y, z), nose to +x: body, glass, tail boom, fin, skids (bumped into), rotors (drawn)
+function chopper(B, D, x, y, z, livery = 'toyyellow') {
+  B.add(x - 2.4, y + 0.6, z - 1.2, x + 2.2, y + 2.8, z + 1.2, livery); B.add(x + 2.2, y + 0.9, z - 1.0, x + 3.4, y + 2.4, z + 1.0, 'glass');
+  B.add(x - 8.4, y + 1.7, z - 0.3, x - 2.4, y + 2.3, z + 0.3, livery); B.add(x - 8.8, y + 1.7, z - 0.1, x - 8.0, y + 3.8, z + 0.1, livery);
+  for (const s of [-1, 1]) { B.add(x - 2.6, y, z + s * 1.3 - 0.1, x + 2.8, y + 0.15, z + s * 1.3 + 0.1, 'metal'); for (const k of [-1.4, 1.4]) D.add(x + k - 0.06, y + 0.15, z + s * 1.3 - 0.06, x + k + 0.06, y + 0.6, z + s * 1.3 + 0.06, 'metal'); }
+  D.add(x - 0.3, y + 2.8, z - 0.3, x + 0.3, y + 3.3, z + 0.3, 'metal'); D.add(x - 6, y + 3.3, z - 0.18, x + 6, y + 3.38, z + 0.18, 'tire'); D.add(x - 0.18, y + 3.3, z - 6, x + 0.18, y + 3.38, z + 6, 'tire');
+  D.add(x - 8.5, y + 2.6, z + 0.1, x - 8.3, y + 2.68, z + 1.2, 'tire'); D.add(x - 8.5, y + 2.6, z - 1.2, x - 8.3, y + 2.68, z - 0.1, 'tire');
+}
+
+// the skyline's set pieces, one per top (x, z: the top's middle, y: its roof)
+// Jank Cola HQ: the giant can, vending machines, crates of bottles, the billboard
+function skyCola(B, D, x, z, y, r) {
+  const add = B.add, W = B.local(0, 0, 0);
   {
-    const cx = 35, cz = -100, w = 30, F = 4.5;
-    B.box(cx, (base + 0) / 2, cz, w, 0 - base, w, 'concrete'); B.box(cx, base - 10, cz, w, 20, w, 'concrete');
-    for (let f = 0; f < 12; f++) {
-      const y = f * F;
-      if (f % 4 !== 3) B.box(cx, y + 0.25, cz, w, 0.5, w, 'concrete');
-      else { B.add(cx - w / 2, y, cz - w / 2, cx + 4, y + 0.5, cz + w / 2, 'concrete'); } // some floors only half done
-      for (const ox of [-w / 2 + 0.5, 0, w / 2 - 0.5]) for (const oz of [-w / 2 + 0.5, 0, w / 2 - 0.5]) B.box(cx + ox, y + 0.5 + (F - 0.5) / 2, cz + oz, 0.8, F - 0.5, 0.8, 'metal');
-      if (f % 2 === 0) B.add(cx - w / 2, y + 0.5, cz - w / 2, cx + w / 2, y + 1.6, cz - w / 2 + 0.2, 'hazard');
-    }
-    // stairs up the open floors along one edge
-    const L = B.local(cx, cz, 0);
-    for (let f = 0; f < 11; f++) {
-      const y = f * F + 0.5;
-      if (f % 2 === 0) stairs(L, w / 2 - 3, w / 2 - 1, -8, 1, y, y + F, 'grid', 0.5);
-      else stairs(L, w / 2 - 6, w / 2 - 4, 2, -1, y, y + F, 'grid', 0.5);
-    }
-    roofs[`${cx},${cz}`] = 11 * F + 0.5;
-    // crane
-    B.box(cx - 8, 11 * F + 20, cz - 8, 2, 40, 2, 'hazard');
-    B.box(cx - 8 + 12, 11 * F + 40.5, cz - 8, 50, 1.2, 1.6, 'hazard');
-    B.box(cx - 8 - 12, 11 * F + 39, cz - 8, 6, 3, 3, 'concrete');
-    B.box(cx - 8 + 30, 11 * F + 34, cz - 8, 0.2, 12, 0.2, 'metal');
-    B.box(cx - 8 + 30, 11 * F + 27.5, cz - 8, 3, 1, 3, 'pink');
-    spawns.push([cx + 5, 0.6, cz + 5], [cx + 5, 4 * F + 0.6, cz + 5]); // (the first one used to be inside the middle column)
+    add(x - 2.1, y, z - 7.1, x + 2.1, y + 9, z - 2.9, 'toyred'); // the can: a core you bump into inside an octagon (four turned slabs)
+    for (let k = 0; k < 4; k++) { D.obb(x, y + 4.5, z - 5, 6, 9, 2.49, (k * Math.PI) / 4, 'toyred'); D.obb(x, y + 9.15, z - 5, 5.4, 0.3, 2.2, (k * Math.PI) / 4, 'chrome'); for (const y0 of [0.6, 8.0]) D.obb(x, y + y0 + 0.2, z - 5, 6.12, 0.4, 2.54, (k * Math.PI) / 4, 'chrome'); }
+    D.add(x - 1.5, y + 9.3, z - 5.4, x + 1.5, y + 9.5, z - 4.6, 'chrome'); // the ring pull
+    for (const dx of [-9, -6.5, 6.5, 9]) { add(x + dx - 1, y, z + 9, x + dx + 1, y + 2.4, z + 10.2, dx < 0 ? 'toyred' : 'toyblue'); D.add(x + dx - 0.8, y + 0.8, z + 8.96, x + dx + 0.8, y + 2.1, z + 9, 'glass'); } // vending machines
+    cratePile({ add: B.local(0, 0, 0, y) }, x - 12, z - 10, 5, r); cratePile({ add: B.local(0, 0, 0, y) }, x + 9, z - 10, 4, r);
+    billboard(W, x, z - 11.6, y, 'x'); }
+}
+// the rooftop garden: trees, hedges, a fountain, a gazebo, benches
+function skyGarden(B, D, x, z, y, r) {
+  const add = B.add, W = B.local(0, 0, 0);
+  {
+    for (const [tx, tz] of [[-11, 4], [11, 4], [-11, 9], [11, 9], [-6, 10], [6, 10]]) lollipop(B.local(x + tx, z + tz, 0, y), 0, 0, 3 + r() * 1.5, r);
+    for (const [hx0, hz0, hx1, hz1] of [[-12, -3, -6, -2.2], [6, -3, 12, -2.2], [-3, 5, 3, 5.8]]) add(x + hx0, y, z + hz0, x + hx1, y + 1.1, z + hz1, 'hedge');
+    for (const [fx0, fz0, fx1, fz1] of [[-3, -8.6, 3, -8], [-3, -2.6, 3, -2], [-3, -8, -2.4, -2.6], [2.4, -8, 3, -2.6]]) add(x + fx0, y, z + fz0, x + fx1, y + 0.6, z + fz1, 'marble');
+    D.add(x - 2.4, y + 0.02, z - 8, x + 2.4, y + 0.45, z - 2.6, 'water'); B.box(x, y + 1.0, z - 5.3, 0.6, 2, 0.6, 'marble'); D.box(x, y + 2.2, z - 5.3, 1.2, 0.4, 1.2, 'marble');
+    for (const dx of [-2, 2]) for (const dz of [-2, 2]) B.box(x + 8 + dx, y + 1.3, z - 7 + dz, 0.15, 2.6, 0.15, 'white'); D.add(x + 5.6, y + 2.6, z - 9.4, x + 10.4, y + 2.8, z - 4.6, 'roofteal'); D.add(x + 6.4, y + 2.8, z - 8.6, x + 9.6, y + 3.1, z - 5.4, 'roofteal'); // the gazebo
+    for (const bx of [-9, 9]) add(x + bx - 1.4, y, z - 6.4, x + bx + 1.4, y + 0.5, z - 5.8, 'wood'); }
+}
+// the news studio: the news chopper on its pad, the dish, studio lights, JANK NEWS 24
+function skyNews(B, D, x, z, y, r) {
+  const add = B.add, W = B.local(0, 0, 0);
+  {
+    add(x - 7, y, z - 7, x + 3, y + 0.1, z + 7, 'helipad'); chopper(B, D, x - 2, y + 0.1, z, 'toyblue'); D.add(x - 4.5, y + 1.4, z + 1.21, x - 0.5, y + 2.2, z + 1.25, 'adnews', { fit: 1 });
+    add(x - 11, y, z + 8, x - 8, y + 1.2, z + 11, 'metal'); D.add(x - 12.5, y + 1.2, z + 6.5, x - 6.5, y + 1.5, z + 12.5, 'white'); D.add(x - 9.7, y + 1.5, z + 9.3, x - 9.3, y + 3.6, z + 9.7, 'metal'); // the dish
+    for (const [lx, lz] of [[6, -10], [9, -10], [6, 10], [9, 10]]) { B.box(x + lx, y + 1.4, z + lz, 0.15, 2.8, 0.15, 'metal'); D.box(x + lx, y + 2.9, z + lz, 0.8, 0.6, 0.5, 'lamp'); }
+    for (const lz of [-12.6, 12.6]) { add(x + 4, y, z + lz - 0.6, x + 8, y + 1.6, z + lz + 0.6, 'containerb'); }
+    for (const px of [-11]) for (const pz of [-12]) { add(x + px - 1.2, y, z + pz - 1.2, x + px + 1.2, y + 2.2, z + pz + 1.2, 'metal'); }
+    D.add(x - 12.6, y + 2.5, z - 14.42, x - 2.6, y + 5.5, z - 14.38, 'adnews', { fit: 1 }); for (const px of [-11.6, -3.6]) add(x + px - 0.2, y, z - 14.6, x + px + 0.2, y + 5.8, z - 14.2, 'metal'); }
+}
+// Putt Putt Palace: mini golf on the roof (little walls, a windmill, the clown, sand traps)
+function skyPutt(B, D, x, z, y, r) {
+  const add = B.add, W = B.local(0, 0, 0);
+  {
+    for (const [a0, b0, a1, b1] of [[-10, -12, -2, -11.6], [-10, -6, -2, -5.6], [2, 5.6, 10, 6], [2, 11.6, 10, 12], [-2.4, -11.6, -2, -6], [2, 6, 2.4, 11.6]]) add(x + a0, y, z + b0, x + a1, y + 0.4, z + b1, 'wood');
+    add(x + 4, y, z - 11, x + 7, y + 4.5, z - 8, 'white'); D.add(x + 3.6, y + 4.5, z - 11.4, x + 7.4, y + 5.1, z - 7.6, 'roofpink'); D.add(x + 4.5, y + 5.1, z - 10.5, x + 6.5, y + 5.6, z - 8.5, 'roofpink');
+    D.box(x + 5.5, y + 3.6, z - 7.88, 6.6, 0.35, 0.12, 'wood'); D.box(x + 5.5, y + 3.6, z - 7.88, 0.35, 6.6, 0.12, 'wood'); D.box(x + 5.5, y + 3.6, z - 7.78, 0.6, 0.6, 0.12, 'toyred'); // the windmill's sails
+    D.add(x - 10, y + 0.02, z + 6, x - 4, y + 0.06, z + 10, 'sand'); D.add(x + 1, y + 0.02, z - 4, x + 4, y + 0.06, z - 1, 'sand');
+    add(x - 4, y, z - 1.5, x - 1, y + 3, z + 1.5, 'toyface', { fit: 1 }); // the clown (putt into its mouth. you can't)
+    for (const [hx, hz] of [[-6, -9], [6, 9], [-7, 2], [8, -3]]) { D.add(x + hx - 0.25, y + 0.02, z + hz - 0.25, x + hx + 0.25, y + 0.04, z + hz + 0.25, 'tire'); D.add(x + hx - 0.03, y, z + hz - 0.03, x + hx + 0.03, y + 1.4, z + hz + 0.03, 'white'); D.add(x + hx + 0.03, y + 1.0, z + hz - 0.02, x + hx + 0.6, y + 1.35, z + hz + 0.02, 'toyred'); } // holes, flags
+    D.add(x - 5, y + 2.4, z - 14.42, x + 5, y + 5.4, z - 14.38, 'adputt', { fit: 1 }); for (const px of [-4, 4]) add(x + px - 0.2, y, z - 14.6, x + px + 0.2, y + 5.7, z - 14.2, 'metal'); }
+}
+// the building site: bare columns, steel stacks, the site hut, the crane (Mr. Smiles sits up its jib)
+function skyBuild(B, D, x, z, y, r) {
+  const add = B.add, W = B.local(0, 0, 0);
+  {
+    for (let cx = -10.5; cx <= 10.5; cx += 7) for (let cz = -10.5; cz <= 10.5; cz += 7) if (!(Math.abs(cx) < 4 && Math.abs(cz) < 4)) B.box(x + cx, y + 2, z + cz, 0.8, 4, 0.8, 'metal');
+    for (const [sx0, sz0] of [[-8, 5], [3, -8]]) { for (let k = 0; k < 3; k++) add(x + sx0, y + k * 0.35, z + sz0 + k * 0.1, x + sx0 + 5, y + (k + 1) * 0.35, z + sz0 + 0.6 + k * 0.1, 'rust'); }
+    add(x + 5, y, z + 5, x + 10, y + 2.6, z + 8, 'containerr'); D.add(x + 5.6, y + 1.0, z + 4.96, x + 8.4, y + 2.0, z + 5, 'adclosed', { fit: 1 }); // the site hut
+    for (const [bx, bz] of [[-3, -11], [0, -11], [3, -11]]) add(x + bx - 1.2, y, z + bz - 0.3, x + bx + 1.2, y + 1.0, z + bz + 0.3, 'jersey');
+    crane(B, D, x - 8, z - 8, y, 32, 50, 34); }
+}
+// the greenhouse: glass panes on a steel frame, planting beds inside, water tanks, solar panels
+function skyGreen(B, D, x, z, y, r) {
+  const add = B.add, W = B.local(0, 0, 0);
+  { const gx0 = x - 9, gx1 = x + 5, gz0 = z - 10, gz1 = z + 4;
+    for (let a = gx0; a <= gx1 + 0.01; a += 3.5) for (const zz of [gz0, gz1]) B.box(a, y + 1.525, zz, 0.15, 3.05, 0.15, 'metal'); // (a hair into the glass roof)
+    for (let a = gz0 + 3.5; a < gz1 - 0.01; a += 3.5) for (const xx of [gx0, gx1]) B.box(xx, y + 1.525, a, 0.15, 3.05, 0.15, 'metal');
+    D.add(gx0 + 0.08, y, gz0 - 0.03, gx1 - 0.08, y + 3, gz0 + 0.03, 'water'); D.add(gx0 + 0.08, y, gz1 - 0.03, gx1 - 0.08, y + 3, gz1 + 0.03, 'water');
+    D.add(gx0 - 0.03, y, gz0 + 0.08, gx0 + 0.03, y + 3, gz0 + 5, 'water'); D.add(gx0 - 0.03, y, gz0 + 9, gx0 + 0.03, y + 3, gz1 - 0.08, 'water'); D.add(gx1 - 0.03, y, gz0 + 0.08, gx1 + 0.03, y + 3, gz1 - 0.08, 'water'); // (a doorway in the west side)
+    D.add(gx0, y + 3, gz0, gx1, y + 3.1, gz1, 'water'); D.add(gx0 + 2, y + 3.1, gz0 + 2, gx1 - 2, y + 3.8, gz1 - 2, 'water');
+    for (const bz of [gz0 + 2, gz0 + 6, gz0 + 10]) { add(gx0 + 1.5, y, bz - 0.6, gx1 - 1.5, y + 0.7, bz + 0.6, 'wood'); D.add(gx0 + 1.7, y + 0.7, bz - 0.4, gx1 - 1.7, y + 1.2, bz + 0.4, 'leaves'); }
+    for (const tz of [-11, 9]) waterTower(W, x + 10, z + tz, y);
+    for (const pz of [7, 10]) { add(x - 11, y, z + pz - 0.5, x - 3, y + 0.6, z + pz + 0.5, 'metal'); D.add(x - 11, y + 0.6, z + pz - 0.9, x - 3, y + 0.68, z + pz + 0.9, 'glassblock'); } } // solar panels
+}
+// the observatory: its dome, the telescope out of the slit, benches
+function skyObs(B, D, x, z, y, r) {
+  const add = B.add, W = B.local(0, 0, 0);
+  {
+    add(x - 6, y, z - 6, x + 6, y + 4, z + 6, 'white'); dome(D, x, y + 4, z, 6, 'chrome', false);
+    D.add(x - 0.6, y + 6.2, z + 2, x + 0.6, y + 7.2, z + 9, 'metal'); D.add(x - 0.8, y + 6.0, z + 8.6, x + 0.8, y + 7.4, z + 9.2, 'glass'); // the telescope
+    D.add(x - 4, y + 1.5, z + 6, x + 4, y + 3.3, z + 6.06, 'adobs', { fit: 1 });
+    for (const [bx, bz] of [[-9, 9], [9, 9], [-9, -9], [9, -9]]) add(x + bx - 1.3, y, z + bz - 0.3, x + bx + 1.3, y + 0.5, z + bz + 0.3, 'wood'); }
+}
+// the helipad: the big pad, a parked chopper, fuel tanks, the control booth, a windsock
+function skyHeli(B, D, x, z, y, r) {
+  const add = B.add, W = B.local(0, 0, 0);
+  {
+    add(x - 8, y, z - 8, x + 8, y + 0.1, z + 8, 'helipad'); chopper(B, D, x + 1, y + 0.1, z - 1, 'toyred');
+    for (const tx of [-11, -8.5]) { add(x + tx - 0.9, y, z + 9.6, x + tx + 0.9, y + 2.6, z + 11.4, 'barrelr'); }
+    add(x + 9, y, z + 9, x + 12.6, y + 2.8, z + 12.6, 'metal'); D.add(x + 8.96, y + 1.2, z + 9.4, x + 9, y + 2.4, z + 12.2, 'glass'); // the booth
+    B.box(x + 12.5, y + 2, z - 12.5, 0.15, 4, 0.15, 'metal'); D.add(x + 12.5, y + 3.4, z - 12.6, x + 14, y + 3.9, z - 12.4, 'hazard'); }
+}
+
+// ------------------------------------------------------------ SKYLINE: the high city. nine tops in a three by three grid
+// over a downtown at dusk, 72 m apart, the street 160 m under them. in the middle the Spire: the hub deck at 40 and its
+// glass shaft up five floors to a sniper's nest at 62 (pads up there fling you back out). round it four towers at 40,
+// each a set piece (Jank Cola's HQ with its giant can, a rooftop garden, the news studio's helipad, mini golf), joined to
+// the hub by glass tubes (north and south) and open girder bridges (east and west). on the corners two low towers at
+// 30 (the building site with its crane, the greenhouse: the teams' ends) and two high ones at 52 (the observatory, the
+// helipad: sniper roofs), long stair-bridges up and down to the ring
+function skyline() {
+  const B = builder(), D = builder(), r = rng(1337), add = B.add, W = B.local(0, 0, 0), Dw = D.local(0, 0, 0);
+  const base = -120, S = 72, R = 40, pick = (a) => a[(r() * a.length) | 0];
+  const hi = 52, lo = 30;
+  // ---- the nine tops (half sizes): the Spire 13 x 13, the ring 15 x 13 (north/south) / 13 x 15 (east/west), the corners 14 x 14
+  const tops = { C: [0, 0, 13, 13, R], N: [0, -S, 15, 13, R], S: [0, S, 15, 13, R], W: [-S, 0, 13, 15, R], E: [S, 0, 13, 15, R],
+    NW: [-S, -S, 14, 14, lo], SE: [S, S, 14, 14, lo], NE: [S, -S, 14, 14, hi], SW: [-S, S, 14, 14, hi] };
+  const gaps = { C: { n: [[-2, 2]], s: [[-2, 2]], w: [[-2, 2]], e: [[-2, 2]] }, N: { s: [[-2, 2]], w: [[-S - 2, -S + 2]], e: [[-S - 2, -S + 2]] }, S: { n: [[-2, 2]], w: [[S - 2, S + 2]], e: [[S - 2, S + 2]] },
+    W: { e: [[-2, 2]], n: [[-S - 2, -S + 2]], s: [[-S - 2, -S + 2]] }, E: { w: [[-2, 2]], n: [[S - 2, S + 2]], s: [[S - 2, S + 2]] },
+    NW: { e: [[-S - 2, -S + 2]], s: [[-S - 2, -S + 2]] }, NE: { w: [[-S - 2, -S + 2]], s: [[S - 2, S + 2]] }, SW: { e: [[S - 2, S + 2]], n: [[-S - 2, -S + 2]] }, SE: { w: [[S - 2, S + 2]], n: [[S - 2, S + 2]] } };
+  const facade = { C: 'glassblock', N: 'office', S: 'tenement', W: 'office', E: 'tenement', NW: 'concrete', SE: 'office', NE: 'tenement', SW: 'office' };
+  for (const [k, [x, z, hx, hz, y]] of Object.entries(tops)) {
+    roofTop(B, x - hx, z - hz, x + hx, z + hz, y, facade[k], gaps[k], base);
+    D.add(x - hx + 0.3, y, z - hz + 0.3, x + hx - 0.3, y + 0.02, z + hz - 0.3, k === 'S' ? 'lawn' : k === 'E' ? 'lawn' : 'asphalt'); // the roof's skin
   }
-  // sky bridges between equal-height neighbours (enclosed glass tubes), roof edge to roof edge, with a doorway cut
-  // through the parapet at both ends. ax/bx: where each roof's edge really is (the top tier, not the base: one of them
-  // used to start at the lower tier's edge and stick out 4 m into the air past the roof it was meant to reach)
-  const edge = (w, tiers) => Math.max(10, w - 8 * (tiers - 1)) / 2 + 0.4;
-  const bridge = (ta, tb, z, y) => {
-    const ax = ta[0] + edge(ta[2], ta[5]), bx = tb[0] - edge(tb[2], tb[5]);
-    B.add(ax, y - 0.3, z - 2, bx, y, z + 2, 'concrete');
-    B.add(ax, y, z - 2, bx, y + 2.6, z - 1.8, 'glassblock'); B.add(ax, y, z + 1.8, bx, y + 2.6, z + 2, 'glassblock');
-    B.add(ax, y + 2.6, z - 2, bx, y + 2.9, z + 2, 'roofg');
-    B.add(ax, y + 2.3, z - 1.8, bx, y + 2.4, z - 1.7, 'neoncyan'); B.add(ax, y + 2.3, z + 1.7, bx, y + 2.4, z + 1.8, 'neoncyan');
-    for (const x of [ax, bx]) carve(B, x - 1, y + 0.001, z - 1.8, x + 0.001, y + 1.2, z + 1.8, (q) => q.mat === 'concrete' && q.min[1] >= y - 0.01);
-  };
-  const T = (x, z) => plan.find((q) => q[0] === x && q[1] === z);
-  bridge(T(-35, -35), T(35, -35), -35, roofs['-35,-35']);
-  bridge(T(35, 35), T(100, 35), 35, roofs['35,35']);
-  // window washer platforms and ledges to grapple
-  for (let i = 0; i < 18; i++) {
-    const [x, z, w, d, h] = plan[(r() * plan.length) | 0];
-    const side = (r() * 4) | 0, y = base + 60 + r() * (h - base - 70);
-    const off = [[0, -d / 2 - 1], [0, d / 2 + 1], [-w / 2 - 1, 0], [w / 2 + 1, 0]][side];
-    B.box(x + off[0], y, z + off[1], side < 2 ? 6 : 1.6, 0.4, side < 2 ? 1.6 : 6, 'metal');
+  // ---- the links: the hub to the ring (glass tubes north and south, girder bridges east and west), the ring to the corners
+  tubeBridge(B, D, false, -13.4, -S + 13.4, 0, R); tubeBridge(B, D, false, 13.4, S - 13.4, 0, R);
+  skyBridge(B, D, true, -S + 13.4, -13.4, 0, R, 4); skyBridge(B, D, true, 13.4, S - 13.4, 0, R, 4, {}, ['neonpink', 'neonyellow']);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const cy = sx === sz ? lo : hi; // NW and SE are the low corners
+    stairBridge(B, true, sx * 15.4, sx * (S - 14.4), sz * S, R, cy, 4, true); // from the north / south tower along x
+    stairBridge(B, false, sz * 15.4, sz * (S - 14.4), sx * S, R, cy, 4, true); // from the west / east tower along z
   }
-  for (let k = 0; k < 10; k++) B.box((r() - 0.5) * 300, 140 + r() * 40, (r() - 0.5) * 300, 5, 1.5, 5, 'gold');
-  // ---- the look (all render-only): the street far below, a neon band round every crown, cables with ads between towers
-  const D = builder(), towers = [...plan.map(([x, z, w, d]) => ({ x, z, w, d })), { x: 35, z: -100, w: 30, d: 30 }];
-  streetLevel(D, -120, towers, { xs: [-135, -67.5, 0, 67.5, 135], zs: [-135, -67.5, 0, 67.5, 135], w: 18 }, 190, r);
-  cityDress(D, plan, roofs, base, r);
-  cityBeyond(D, -120, 190, 680, rng(4040), { kill: -108, cap: 30, shore: 470, avenues: [[-60, -230, 0.42], [230, 40, -1.05], [-300, 120, 1.25], [80, -420, 0.06], [-250, -250, 2.35]], streets: gridOut([-135, -67.5, 0, 67.5, 135], [-135, -67.5, 0, 67.5, 135], 190, 230) });
-  return { name: 'Skyline', size: 'huge', boxes: B.boxes, deco: D.boxes, killY: -108, floorY: -128, cityR: 680, cityCap: 30,
+
+  // ---- C, the Spire: the hub deck round its glass shaft (five floors of windows, stairs inside, a sniper's nest on top)
+  const Sp = B.local(0, 0, 0, R);
+  shell(Sp, 12, 12, 5, 4.4, 'glassblock', { floor: 'grid', roof: 'roofg', roofAccess: true, backDoor: true, sideDoor: [-1.5, 1.5], winSpacing: 3 });
+  B.box(0, R + 22.3 + 9, 0, 0.6, 18, 0.6, 'metal'); D.box(0, R + 22.3 + 18.3, 0, 0.6, 0.6, 0.6, 'neonred'); D.box(0, R + 22.3 + 12, 0, 1.2, 0.3, 1.2, 'neonpink'); // the mast on the nest
+  for (const [x, z] of [[-9, -9], [9, -9], [-9, 9], [9, 9]]) { add(x - 1.2, R, z - 1.2, x + 1.2, R + 0.8, z + 1.2, 'stone'); D.add(x - 1.0, R + 0.8, z - 1.0, x + 1.0, R + 1.6, z + 1.0, 'hedge'); } // planters at the deck's corners
+  for (const [x, z, al] of [[-9.5, -4, false], [9.5, 4, false], [-4, 9.5, true]]) add(al ? x - 1.5 : x - 0.3, R, al ? z - 0.3 : z - 1.5, al ? x + 1.5 : x + 0.3, R + 0.5, al ? z + 0.3 : z + 1.5, 'wood'); // benches
+  for (const [px, pz, v] of [[0, -4.5, [0, 14, -30]], [0, 4.5, [0, 14, 30]], [-4.5, -3, [-30, 14, 0]], [4.5, 0, [30, 14, 0]]]) add(px - 1, R + 22.3, pz - 1, px + 1, R + 23.2, pz + 1, 'pad', { pad: v }); // off the nest, out to the ring (on pedestals over the parapet's top: hop up, get flung)
+
+  // ---- the set pieces on the tops (the skyline kit, below the map)
+  skyCola(B, D, 0, -S, R, r);
+  skyGarden(B, D, 0, S, R, r);
+  skyNews(B, D, -S, 0, R, r);
+  skyPutt(B, D, S, 0, R, r);
+  skyBuild(B, D, -S, -S, lo, r);
+  skyGreen(B, D, S, S, lo, r);
+  skyObs(B, D, S, -S, hi, r);
+  skyHeli(B, D, -S, S, hi, r);
+  // ---- grapple bait: window washers' platforms on the towers' faces, gold blocks hanging over the gaps
+  for (const [k, [x, z, hx, hz, y]] of Object.entries(tops)) for (const [nx, nz] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+    if (r() < 0.45) continue;
+    const py = y - 14 - r() * 20, fx = x + nx * (hx + 1), fz = z + nz * (hz + 1), off = (r() - 0.5) * 6;
+    B.box(nx ? fx : x + off, py, nz ? fz : z + off, nx ? 1.6 : 6, 0.4, nx ? 6 : 1.6, 'metal');
+  }
+  for (const [gx, gy, gz] of [[-36, 70, -36], [36, 74, 36], [-36, 66, 36], [36, 70, -36], [0, 80, -36], [0, 80, 36], [-36, 76, 0], [36, 76, 0]]) B.box(gx, gy, gz, 4, 1.2, 4, 'gold');
+
+  // ---- spawns: the two low corners are the teams' ends (the Spire stands between them); the rest everywhere
+  const att = [[-S - 6, lo + 0.2, -S + 2], [-S - 2, lo + 0.2, -S + 2], [-S + 2, lo + 0.2, -S + 2], [-S - 6, lo + 0.2, -S - 2], [-S + 6, lo + 0.2, -S - 3], [-S - 2, lo + 0.2, -S + 9], [-S + 2, lo + 0.2, -S - 6]];
+  const def = att.map(([x, y, z]) => [-x, y, -z]);
+  const spawns = [...att.slice(0, 3), ...def.slice(0, 3), [0, R + 0.2, -9], [0, R + 0.2, 9], [-9, R + 0.2, 0], [9, R + 0.2, 0], [0, R + 0.2, -S + 6], [0, R + 0.2, S - 11], [-S + 6, R + 0.2, 0], [S - 6, R + 0.2, 0],
+    [S - 8, hi + 0.2, -S - 8], [S + 8, hi + 0.2, -S + 8], [-S + 8, hi + 0.2, S + 8], [-S - 8, hi + 0.2, S - 8], [0, R + 0.4, 0], [3, R + 22.5, 3]];
+
+  // ---- the look (render-only): the street far below, crowns and cables round the towers, the city to the fog
+  const rs = rng(4041), plan = [], roofs = {};
+  for (const [x, z, w, h, t] of [[-150, -150, 34, 70, 3], [0, -150, 30, 20, 2], [150, -150, 36, 90, 3], [-150, 0, 30, 10, 2], [150, 0, 34, 60, 3], [-150, 150, 32, 85, 3], [0, 150, 36, 35, 2], [150, 150, 30, 15, 2],
+    [-75, -150, 26, -20, 1], [75, -150, 28, 45, 2], [-150, -75, 26, 30, 2], [150, 75, 26, -10, 1], [-75, 150, 30, 55, 3], [75, 150, 24, 0, 1], [-150, 75, 28, 40, 2], [150, -75, 30, 25, 2]]) {
+    const ry = tower(D, x, z, w, w, h, { tiers: t, base, r: rs }); D.box(x, base - 10, z, w, 20, w, 'office'); plan.push([x, z, w, w, h, t]); roofs[`${x},${z}`] = ry;
+  }
+  const ours = Object.values(tops).map(([x, z, hx, hz, y]) => ({ x, z, w: hx * 2, d: hz * 2, y }));
+  for (const o of ours) { D.add(o.x - o.w / 2 - 0.06, o.y - 2.6, o.z - o.d / 2 - 0.06, o.x + o.w / 2 + 0.06, o.y - 2.1, o.z + o.d / 2 + 0.06, pick(['neoncyan', 'neonpink', 'neonyellow'])); D.add(o.x - o.w / 2, base - 20, o.z - o.d / 2, o.x + o.w / 2, base, o.z + o.d / 2, 'office'); }
+  const roads = { xs: [-185, -110, -36, 36, 110, 185], zs: [-185, -110, -36, 36, 110, 185], w: 18 };
+  streetLevel(D, -120, [...plan.map(([x, z, w, d]) => ({ x, z, w, d })), ...ours], roads, 200, rs);
+  cityDress(D, plan, roofs, base, rs);
+  cityBeyond(D, -120, 200, 680, rng(4040), { kill: -108, cap: 30, shore: 470, avenues: [[-60, -230, 0.42], [230, 40, -1.05], [-300, 120, 1.25], [80, -420, 0.06], [-250, -250, 2.35]], streets: gridOut(roads.xs, roads.zs, 200, 200) });
+
+  let graph = null;
+  const map = { name: 'Skyline', size: 'huge', boxes: B.boxes, deco: D.boxes, killY: -108, floorY: -128, cityR: 680, cityCap: 30,
     haze: { k: 0.88, top: 15, bottom: -120, dist: 120, color: 0xc89aa4 }, // look down: the city through a dusk haze
-    sky: { top: 0x1a2a5a, mid: 0xff9a5a, bot: 0x0a0a1a, fog: 0xd98a6a }, fogNear: 160, fogFar: 700, spawns };
+    sky: { top: 0x1a2a5a, mid: 0xff9a5a, bot: 0x0a0a1a, fog: 0xd98a6a }, fogNear: 160, fogFar: 700, spawns, teamSpawns: { att, def }, edgeGuard: true,
+    traffic: { grid: { ...roads, S: 200, y: -120 + 0.08, off: 5 } },
+    get graph() { return graph || (graph = buildNav(B.boxes, { x0: -90, z0: -90, n: 180, cell: 1, levels: [lo, R, hi], band: 0.6,
+      stairs: [-1, 1].flatMap((sx) => [-1, 1].flatMap((sz) => { const cy = sx === sz ? lo : hi, hiEnd = cy > R;
+        const a = { p: [sx * 14.4, R, sz * S], q: [sx * (S - 13.4), cy, sz * S] }, b = { p: [sx * S, R, sz * 14.4], q: [sx * S, cy, sz * (S - 13.4)] };
+        return [a, b].map(({ p, q }) => (hiEnd ? { top: q, bot: p } : { top: p, bot: q })); })) })); },
+  };
+  return map;
 }
 
 // ------------------------------------------------------------ RANGE: training room
