@@ -197,8 +197,8 @@ export const WEAPONS = {
     desc: 'A big toy hand on a stick. Point blank only. Launches them and makes them slip.',
     cd: 0.8, range: 1.9, cone: 0.8, dmg: 15, kb: 55, kbUp: 14, delay: 0.1, slip: true, radial: true,
   },
-  spoon: {
-    slot: 'melee', kind: 'melee', name: 'Spoon', color: '#e8e8f0',
+  spoon: { // modeOnly: not in the loadout any more (it's a knife skin now); Gun Game's last rung and Spoons & Grapples still hand it out
+    slot: 'melee', kind: 'melee', name: 'Spoon', color: '#e8e8f0', modeOnly: true,
     desc: 'Kills in one hit, but only point blank. You run way faster holding it.',
     cd: 0.7, range: 2.0, cone: 0.9, dmg: 999, kb: 12, kbUp: 6, delay: 0.05, speedMul: 1.8,
   },
@@ -274,7 +274,7 @@ export const ITEM_ORDER = ['frag', 'medkit', 'bubble', 'duck', 'smoke', 'popper'
 const has = (T, k) => typeof k === 'string' && Object.hasOwn(T, k);
 export function validLoadout(lo) {
   const out = { ...DEFAULT_LOADOUT };
-  if (lo) for (const s of SLOTS) if (has(WEAPONS, lo[s]) && WEAPONS[lo[s]].slot === s) out[s] = lo[s];
+  if (lo) for (const s of SLOTS) if (has(WEAPONS, lo[s]) && WEAPONS[lo[s]].slot === s && !WEAPONS[lo[s]].modeOnly) out[s] = lo[s];
   if (lo && has(ITEMS, lo.item)) out.item = lo.item;
   out.streaks = validStreaks(lo && lo.streaks);
   return out;
