@@ -15,7 +15,11 @@ import { raycast, resetGrid, movePlayer } from '/shared/physics.js';
 import { NAILS, CART, cartBox, stepBall, yawOfV } from '/shared/primaries.js';
 import { buildCart } from './models.js';
 import { nailMesh } from './primmodels.js';
-import { recordEv, RP, RP_HOOKS } from './replay.js';
+// replay.js is loaded lazily: importing it from here (player.js and weapons.js import this file) would make it start
+// evaluating before the modules that register replay hooks on it at load time
+let RPM = null;
+const RP = { get active() { return !!(RPM && RPM.RP.active); } };
+const recordEv = (m) => { if (RPM) RPM.recordEv(m); };
 
 const TW = WEAPONS.tennis;
 const R2 = (x) => Math.round(x * 100) / 100;
@@ -222,7 +226,8 @@ function cartUnder(tol = 0.45) {
   for (const c of carts.values()) {
     if (c.st === 'fly' || (c.r && c.r !== G.myId)) continue;
     const top = c.p[1] + CART.top, d = Math.hypot(ME.pos[0] - c.p[0], ME.pos[2] - c.p[2]);
-    if (Math.abs(ME.pos[1] - top) < tol && d < CART.ride.reach && d < bd) { best = c; bd = d; }
+    const inside = !c.box && ME.pos[1] > c.p[1] - 0.1 && ME.pos[1] < top + tol; // not solid yet (someone was standing in it): stepping into it works too
+    if ((Math.abs(ME.pos[1] - top) < tol || inside) && d < CART.ride.reach && d < bd) { best = c; bd = d; }
   }
   return best;
 }
@@ -259,7 +264,7 @@ export function rideStep(dt, inp, now) {
   if (!ME.ride) return false;
   const c = carts.get(ME.ride);
   if (!c || !ME.alive || ME.pin || now < (ME.trapUntil || 0) || now < (ME.ballUntil || 0) || ME.dashing) { if (c) hopOff(false); else endRide(); return false; }
-  if (!c.ok && now - ME.rideAsk > 800) { endRide(); return false; } // the server said no
+  if (!c.ok && now - ME.rideAsk > 800) { endRide(); net.send({ t: 'cart', k: 'off', v: [0, 0, 0] }); return false; } // the server said no (or never heard): make sure it lets go
   const R = CART.ride, v = ME.vel, top = CART.top;
   if (inp.jumpPressed) { inp.jumpPressed = false; hopOff(true); sfx.jump(); return false; }
   // steer: the cart turns toward where you look; its speed follows the heading (castors don't skid much)
@@ -333,11 +338,11 @@ export function updatePrims(dt, now) {
 }
 
 // replays: the pins (carts and balls come in with the projectiles)
-RP_HOOKS.push({
+import('./replay.js').then((m) => { RPM = m; m.RP_HOOKS.push({
   ev(m) {
     if (m.t === 'fx' && m.k === 'plough' && Array.isArray(m.p)) { sfx.cartCrash(m.p, 1); fx.spray(m.p, 16, [0xc8ccd4, 0xe0202a, 0x9b5cff], 6, 0.6, 0.1, 12, 1); return true; }
     if (m.t !== 'pin' || !Array.isArray(m.p)) return false;
     pinFx(m); return true;
   },
   stop() {},
-});
+}); });

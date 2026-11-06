@@ -2713,7 +2713,7 @@ class Room {
 
   // per-life state: cleared on every respawn and on every new round / match / map
   resetLife(p) {
-    p.slipUntil = 0; p.burnUntil = 0; p.burnBy = 0; p.burnTick = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.frostT = 0; p.pinUntil = 0; p.nails = null;
+    p.slipUntil = 0; p.burnUntil = 0; p.burnBy = 0; p.burnTick = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.frostT = 0; p.pinUntil = 0; p.nails = null; p.held = null;
     p.healLeft = 0; p.reverseUntil = 0; p.g = null; p.lastAttacker = 0; p.ground = null;
     this.rigReset(p); // a new round ends the overdrive rig (and any hack)
     if (p.ai) { p.ai.hook = null; p.ai.route = null; }

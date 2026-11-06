@@ -17,10 +17,12 @@ export function installPrimaries(Room, helpers) {
   H = helpers;
   H.REC_T.add('pin'); // pins in killcams and the play of the round (carts ride along in the frames' projectile list)
   // parked carts are solid: the room's boxes are the map's plus theirs (rebuilt only when a cart parks or leaves)
+  // (wraps the room's own getter: Zombies swaps in its shutter boxes there)
+  const own = Object.getOwnPropertyDescriptor(Room.prototype, 'boxes'), baseOf = own && own.get ? own.get : function () { return this.map.boxes; };
   Object.defineProperty(Room.prototype, 'boxes', {
     configurable: true,
     get() {
-      const base = this.map.boxes, cb = this.cartBoxes;
+      const base = baseOf.call(this), cb = this.cartBoxes;
       if (!cb || !cb.list.length) return base;
       if (cb.base !== base || !cb.all) { cb.base = base; cb.all = base.concat(cb.list); }
       return cb.all;
@@ -35,6 +37,7 @@ const prims = {
   nailHit(p, t, n, d) {
     if (!t || !t.alive || t === p) return;
     const now = H.now(), N = NAILS;
+    if (t.reverseUntil > now) return; // a reverse card sent the nails back: nobody gets pinned
     const list = (t.nails ||= []).filter((x) => now - x.at < N.win * 1000);
     for (let i = 0; i < n; i++) list.push({ at: now, by: p.id });
     t.nails = list.slice(-24);
@@ -149,7 +152,8 @@ const prims = {
       const was = c.st;
       if (c.st === 'ride') {
         const r = this.players.get(c.rider);
-        if (!r || !r.alive || r.ride !== c.id || this.rigOn(r) || this.isBall(r)) { this.cartLetGo(c, r && r.alive ? r.vel : [0, 0, 0]); continue; }
+        const far = r && Math.hypot(r.pos[0] - c.p[0], r.pos[1] - CART.top - c.p[1], r.pos[2] - c.p[2]) > 3.5; // they left it without saying so
+        if (!r || !r.alive || r.ride !== c.id || this.rigOn(r) || this.isBall(r) || r.trap || this.pinned(r, n) || far) { this.cartLetGo(c, [0, 0, 0]); continue; }
         const np = [r.pos[0], r.pos[1] - CART.top, r.pos[2]], step = Math.hypot(np[0] - c.p[0], np[1] - c.p[1], np[2] - c.p[2]);
         if (step > 1e-4 || n - (c.mvT || 0) > 400) { // a new position from the rider (snapshots come slower than ticks)
           const moved = step / Math.max(0.03, (n - (c.mvT || n - 50)) / 1000);
@@ -210,7 +214,7 @@ const prims = {
       c.hit.set(t.id, n);
       hits++;
       const kb = [dir[0] * P.kb, P.up, dir[2] * P.kb];
-      if (!att || t === att) { this.knock(t, kb, 'cart'); continue; } // nobody to blame (they left) / your own cart: just the shove
+      if (!att || t === att) { if (t.isBot || n - t.spawnT >= 1200) this.knock(t, kb, 'cart'); continue; } // nobody to blame (they left) / your own cart: just the shove (not on someone who just spawned)
       this.epicProj = c; // a kill counts from where it was fired
       this.hurt(t, att, 'cart', P.dmg, kb);
       this.epicProj = null;
@@ -223,15 +227,17 @@ const prims = {
   // { t: 'cart', k: 'ride', id } hop in (standing on it / landing on it) · { t: 'cart', k: 'off', v } hop out
   onCart(p, m) {
     const n = H.now();
-    if (n - (p.cartMsgT || 0) < 150) return; // a few a second at most
-    p.cartMsgT = n;
-    if (!p.alive || !this.carts) return;
-    if (m.k === 'off') {
+    if (!this.carts) return;
+    if (m.k === 'off') { // never rate limited: a dropped 'off' would leave the cart glued to you
       const c = this.carts.get(p.ride);
       if (!c || c.rider !== p.id) { p.ride = 0; return; }
-      this.cartLetGo(c, H.vec3(m.v) || p.vel);
+      // it keeps rolling the way you were going, but never faster than the server saw the cart go
+      const v = H.vec3(m.v) || p.vel, sp = Math.hypot(v[0], v[2]), cap = Math.hypot(c.v[0], c.v[2]) + 2;
+      this.cartLetGo(c, sp > cap ? [v[0] * cap / sp, 0, v[2] * cap / sp] : [v[0], 0, v[2]]);
       return;
     }
+    if (n - (p.cartMsgT || 0) < 150 || !p.alive) return; // hop-ins: a few a second at most
+    p.cartMsgT = n;
     if (m.k !== 'ride' || !Number.isInteger(m.id) || p.ride || this.rigOn(p) || this.isBall(p) || p.trap || n < (p.pinUntil || 0)) return;
     const c = this.carts.get(m.id);
     if (!c || c.rider || c.st === 'fly' || hyp2(c.v) > 14) return;
