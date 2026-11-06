@@ -83,7 +83,7 @@ export const PLAN = {
 };
 
 // ------------------------------------------------------------ the build
-import { MAPS, MAP_ORDER, builder, rng, wall, stairs, shell, car, tree, streetlight, tower, horizon, home, lollipop, conifer, adBoard, stall, pot, groundHoles, unstick } from './map.js';
+import { MAPS, MAP_ORDER, prop, builder, rng, wall, stairs, shell, car, tree, streetlight, tower, horizon, home, lollipop, conifer, adBoard, stall, pot, groundHoles, unstick } from './map.js';
 import { buildNav } from './nav.js';
 import { outOfBounds } from './bounds.js';
 
@@ -295,7 +295,7 @@ function jankburg() {
     if (s.end) { const [ex, ez, er] = s.end; for (let k = 0; k < 4; k++) D.obb(ex, 0.025, ez, er * 2, 0.05, er * 2 * 0.42, k * Math.PI / 4, 'asphalt'); D.obb(ex, 0.04, ez, er * 0.9, 0.05, er * 0.9, 0.4, 'lawn'); }
   }
   const P = PLAN.plaza;
-  D.add(P[0], 0, P[1], P[2], 0.07, P[3], 'marble'); reserved.push([P[0] - 2, P[1] - 2, P[2] + 2, P[3] + 2]);
+  D.add(P[0], 0, P[1], P[2], 0.07, P[3], 'tile'); reserved.push([P[0] - 2, P[1] - 2, P[2] + 2, P[3] + 2]);
   for (const s of [-1, 1]) { D.add(-10, 0, s * 34 - 2, 10, 0.08, s * 34 + 2, 'crosswalk'); D.add(s * 34 - 2, 0, -10, s * 34 + 2, 0.08, 10, 'crosswalk'); }
 
   // ---- landmarks first (they reserve their ground)
@@ -382,6 +382,8 @@ function jankburg() {
       else L0.B(px, 0.45, pz, 0.5, 0.9, 0.5, 'hazard');
     }
   }
+  // buses parked at the kerb of the avenues (the Blender bus)
+  for (const [x, z, rr] of [[7, -122, 1], [-7, 64, 3], [7, 152, 1], [62, -7, 0], [-128, 7, 2], [150, 7, 2]]) prop(L0, 'bus', x, z, rr);
   // overhead cables and signs across the narrow streets (cover from the sky, not from bullets)
   for (const s of PLAN.streets) {
     if (s.path || s.w > 8) continue;
@@ -522,8 +524,9 @@ function numberWorks(B, D, cx, cz, rv) {
   for (const vx of [-160, -146, -132]) { L(vx - 3.5, 0, 136, vx + 3.5, 7, 143, 'rust'); L(vx - 3.8, 7, 135.7, vx + 3.8, 7.4, 143.3, 'chrome'); Ld(vx - 3.2, 7.05, 136.3, vx + 3.2, 7.2, 142.7, 'neongreen'); }
   for (const z of [110, 126]) { L(-132, 7, z - 0.6, -110, 8.2, z + 0.6, 'chrome'); for (let x = -128; x < -110; x += 8) L(x - 0.3, 0, z - 0.3, x + 0.3, 7, z + 0.3, 'metal'); }
   L(-131.6, 7, 117, -130.4, 8.2, 134, 'chrome');
-  // giant glossy number balls rolled out into the yard
-  [[-120, 96, 'toyred'], [-122, 142, 'toyblue'], [-170, 92, 'toyyellow'], [-140, 92, 'toypink'], [-172, 140, 'toygreen']].forEach(([x, z, m]) => ball(L, x, 2.4, z, 2.4, m, 0.8));
+  // giant glossy number balls rolled out into the yard (the Blender ones, digits and all: a lucky 7, an unlucky 1 3)
+  [[-120, 96, 7], [-124, 143, 1], [-118.5, 143, 3], [-170, 92, 0], [-140, 92, 9], [-172, 140, 4]].forEach(([x, z, v]) => prop(L, 'numball', x, z, (x | 0) & 3, { v, s: 4.4 }));
+  prop(L, 'forklift', -132, 97, 1); prop(L, 'pallet_load', -128, 94, 0); prop(L, 'pallet_load', -126.6, 94, 0); prop(L, 'pallet', -127.3, 95.4, 1);
   // a fence round the yard, with gaps for the roads
   for (const [x0, z0, x1, z1] of [[-176, 88, -150, 88.3], [-140, 88, -100, 88.3], [-176, 149.7, -130, 150], [-120, 149.7, -100, 150], [-176, 88, -175.7, 112], [-176, 122, -175.7, 150]]) L(x0, 0, z0, x1, 2.4, z1, 'fence');
 }
@@ -601,6 +604,7 @@ function pronounPark(B, D, rv) {
   // the quay: bollards, crates, a little crane
   for (let x = 64; x < 176; x += 9) L.B(x, 0.4, 146.6, 0.5, 0.8, 0.5, 'metal');
   for (const x of [72, 98, 152]) { L(x, 0, 143.5, x + 2.4, 2.4, 146, 'crate'); L(x + 0.4, 2.4, 143.8, x + 2, 3.8, 145.6, 'crate'); }
+  prop(L, 'forklift', 88, 144.8, 0); prop(L, 'pallet_load', 92, 145, 0); prop(L, 'pallet_load', 93.4, 145, 0); prop(L, 'forklift', 140, 144.8, 2); prop(L, 'pallet_load', 135, 145, 1);
   L(118, 0, 143, 121, 9, 146, 'busyellow'); L(118, 9, 143.8, 121, 10, 156, 'busyellow'); L(119.2, 3, 154.6, 119.8, 9, 155.2, 'metal');
 }
 function cityWall(B, D, r) {
