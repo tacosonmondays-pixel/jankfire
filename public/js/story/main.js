@@ -20,6 +20,11 @@ import { MAPS, builder, horizon, rng, lollipop, conifer, unstick } from '/shared
 import { TEST, buildTestMap } from '/shared/story/testmap.js';
 import { newSave, saveCard, SAVE } from '/shared/story/save.js';
 import { WorkerSocket } from './host.js';
+import { storyKeys, initBar, barTick, barShow, useBar, dropHeld, nearestDrop, atLocker, clearDrops } from './bar.js'; // WP3
+import { openWheel, closeWheel, wheelOpen, wheelLook, wheelScale } from './wheel.js';
+import { initBag, toggleBag, bagOpen } from './bag.js';
+import { infoOf } from '/shared/story/items.js';
+import { LOOT_CSS } from './lootfx.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -30,10 +35,12 @@ let pausedWas = false, api = null, picker = null, hint = null, cur = null, useWa
 export function initStory(a) {
   api = a; // { startMode(mode, cfg, mkSocket), quitToMenu(), toast(text, ms) }
   if (!MAPS[TEST.id]) { const m = buildTestMap({ builder, horizon, rng, lollipop, conifer }); unstick(m.boxes, m.spawns); MAPS[TEST.id] = m; } // client only: never in MAP_ORDER, so no menu lists it
+  import('../city/storymap.js').then((m) => m.registerStoryMaps(MAPS)).catch(() => {}); // the world lane's streamed city (story_slice)
   css();
   button();
   net.on('sty', (m) => { const fs = listeners[m.k]; if (fs) for (const f of fs) f(m); });
-  G.story = { on, send, save, active, tick, onMain, get cur() { return cur; } };
+  G.story = { on, send, save, active, tick, onMain, key, look, uiOpen, timeScale, get cur() { return cur; } };
+  storyKeys(); initBar(G.story); initBag(G.story);
   on('hello', (m) => { ME.yaw = m.yaw || 0; hud.msg('OVERDUE', 2.2, 'brag'); });
   on('saved', (m) => stored(m.save));
   on('redispensed', () => hud.msg('BEEP. CLUNK. RESTOCKING FEE APPLIED.', 2.2, 'brag'));
@@ -150,10 +157,16 @@ function tick() {
   const bk = back();
   if (bk && bk.state === 'menu' && G.joined && G.mode !== 'story') setBack({ ...bk, state: 'sim' }); // you picked a sim
   const on = active() && ME.alive;
-  const near = on && Math.hypot(ME.pos[0] - TEST.terminal.p[0], ME.pos[2] - TEST.terminal.p[2]) < TEST.terminal.r;
+  const near = on && atTerminal();
+  if (bagOpen() && !$('menu').classList.contains('hidden')) toggleBag(false); // the pause menu won over the bag
   if (!hint) { hint = el('div', 'st-hint hidden'); document.body.append(hint); }
-  hint.textContent = `${K.label('use')} · ENTER THE SIMS`;
-  hint.classList.toggle('hidden', !near);
+  const drop = on && !near ? nearestDrop() : null, lock = on && !near && !drop && atLocker();
+  const di = drop && infoOf(drop.item);
+  hint.textContent = near ? `${K.label('use')} · ENTER THE SIMS` : drop ? `${K.label('use')} · PICK UP ${di ? di.name.toUpperCase() : ''}${drop.item.q > 1 ? ' x' + drop.item.q : ''}` : lock ? `${K.label('use')} · OPEN THE LOCKER` : '';
+  hint.classList.toggle('hidden', !(near || drop || lock));
+  const inStory = G.joined && G.mode === 'story';
+  barShow(inStory);
+  if (inStory) barTick(1 / 60); else { if (wheelOpen()) closeWheel(false); if (bagOpen()) toggleBag(false); clearDrops(); }
   const use = on && K.isDown('use');
   if (near && use && !useWas) terminal();
   useWas = use;
@@ -163,6 +176,29 @@ function tick() {
   pausedWas = paused;
 }
 let toSim = false;
+// main.js hands every key / mouse button here first while story mode is loaded. true = story used it (stop there)
+function key(e, down) {
+  if (!G.joined || G.mode !== 'story') return false;
+  if (!down) { if (wheelOpen() && K.up('wheel', e)) closeWheel(true); return wheelOpen() || bagOpen(); }
+  if (bagOpen()) { if (K.matches(['bag', 'menu'], e)) toggleBag(false); return true; } // (the bag has the mouse)
+  if (wheelOpen()) return true; // nothing leaks out of the wheel: no firing, no slot keys, no jumps
+  if (e.repeat && K.matches('wheel', e)) return true;
+  if (K.matches('wheel', e)) { openWheel(); return true; }
+  if (K.matches('bag', e)) { toggleBag(true); return true; }
+  for (let i = 0; i < 8; i++) if (K.matches(`bar${i + 1}`, e)) { useBar(i); return true; }
+  if (K.matches('dropHeld', e)) { dropHeld(); return true; }
+  if (K.matches('use', e) && !e.repeat && ME.alive && !atTerminal()) { // (at the Machine, F is the sims: tick() has it)
+    const d = nearestDrop();
+    if (d) { send('pick', { id: d.id }); return true; }
+    if (atLocker()) { toggleBag(true); return true; }
+  }
+  return false;
+}
+const atTerminal = () => Math.hypot(ME.pos[0] - TEST.terminal.p[0], ME.pos[2] - TEST.terminal.p[2]) < TEST.terminal.r;
+function look(e) { return wheelOpen() && wheelLook(e.movementX, e.movementY); }
+function uiOpen() { return bagOpen(); }
+function timeScale() { return G.joined && G.mode === 'story' ? wheelScale(false) : 1; }
+
 function terminal() {
   if (toSim) return; // (one press, one trip)
   toSim = true;
@@ -199,6 +235,30 @@ function css() {
 .st-btn.yellow{background:#ffe14d;box-shadow:4px 4px 0 #ff4fd8;transform:rotate(-2deg)}
 .st-btn:disabled{opacity:.5}
 .st-hint{position:fixed;left:50%;top:62%;transform:translateX(-50%) rotate(-1.5deg);z-index:20;font-family:var(--font);font-weight:700;font-size:22px;color:#000;background:#ffe14d;border:3px solid #000;box-shadow:5px 5px 0 #ff4fd8;padding:6px 14px;pointer-events:none}
-`;
+.st-on #hotbar{display:none}
+.st-bar{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);display:flex;gap:6px;z-index:15;pointer-events:none}
+.st-bar.hidden,.st-wheel.hidden{display:none}
+.st-cell{position:relative;width:62px;height:52px;background:rgba(18,8,24,.85);border:3px solid #444;box-shadow:3px 3px 0 #000;display:flex;align-items:center;justify-content:center;font-family:var(--font);color:#fff;user-select:none}
+.st-cell img{max-width:56px;max-height:44px;image-rendering:auto;pointer-events:none}
+.st-cell.empty{border-color:#333;opacity:.75}
+.st-cell.on{transform:translateY(-6px) rotate(-2deg);box-shadow:4px 4px 0 #ff4fd8;background:#3a1040}
+.st-cell.gear::after{content:'G';position:absolute;right:2px;top:0;font-weight:700;color:#ffe14d}
+.st-key{position:absolute;left:3px;top:0;font-style:normal;font-size:12px;font-weight:700;color:#ffe14d}
+.st-q{position:absolute;right:3px;bottom:0;font-size:13px;color:#fff;text-shadow:1px 1px 0 #000}
+.st-wheel{position:fixed;inset:0;z-index:40;background:radial-gradient(circle,rgba(18,8,24,.55) 0,rgba(18,8,24,.25) 60%,transparent 70%);pointer-events:none;font-family:var(--font)}
+.st-wedge{position:absolute;transform:translate(-50%,-50%) scale(1.15)}
+.st-wedge.pick{transform:translate(-50%,-50%) scale(1.45) rotate(-3deg);box-shadow:5px 5px 0 #4fd8ff;z-index:2}
+.st-tag{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-style:normal;font-size:11px;font-weight:700;color:#4fd8ff;white-space:nowrap}
+.st-wname{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-2deg);background:#ffe14d;color:#000;border:3px solid #000;box-shadow:4px 4px 0 #ff4fd8;padding:4px 12px;font-weight:700;font-size:20px}
+.st-bag{width:min(760px,96vw);transform:rotate(-.5deg)}
+.st-bagtop{display:flex;align-items:center;gap:14px}.st-bagtop h2{font-size:38px}.st-bagtop .st-btn{margin-left:auto}
+.st-grid{display:grid;grid-template-columns:repeat(10,62px);gap:6px;margin:8px 0}
+.st-grid.small{grid-template-columns:repeat(10,62px);min-height:52px}
+.st-info{min-height:22px;color:#ffe14d;margin:2px 0 10px}
+.st-barrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.st-lbl{color:#4fd8ff;margin-right:6px}
+.st-drop{background:#ff3030;color:#fff;font-weight:700;border-color:#000}
+.st-locker{margin-top:12px;border:3px dashed #7dff4f;padding:8px}
+.st-bag .st-cell{cursor:grab}.st-cell.over{outline:3px solid #ffe14d}.st-cell.held{outline:3px solid #4fd8ff;transform:rotate(-3deg)}.st-cell.drag{opacity:.4}
+`+ LOOT_CSS;
   document.head.append(s);
 }

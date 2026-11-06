@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '5.6', date: '2026-11-06', title: 'THE STAFF ENTRANCE', items: [
+    'the home screen\'s side menu got rebuilt as one thing instead of four different ideas glued together: fleshy plaques, each with a little 3D prop in a socket.',
+    'CUSTOMIZE shows your own equipped gun, CONTAINERS is a crate that hops when you have some to open (with a count badge).',
+    'leaderboard, settings, guide, lore and patch notes all match now (trophy, cog, guide book, a board-of-directors cat, clipboard). install app is a small link at the bottom.',
+  ] },
   { v: '5.5', date: '2026-11-06', title: 'PLATFORM, REBUILT', items: [
     'PLATFORM is not a flat slab any more: it\'s GLUG OIL\'s offshore rig. a grated cellar deck over the sea, a main deck of pipes and containers, a drill floor under a 30 m derrick, living quarters with a galley and bunks, a helideck with a chopper on top, cranes, a flare boom, and THE SNACK RUN supply boat tied up below.',
     'Platform has its own Plant & Defuse version, the Snack Attack: the crew defends the rig, SLURP OIL raiders attack from a riser platform. A is the drill floor, B is the cellar wellbay.',
