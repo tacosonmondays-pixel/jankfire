@@ -100,6 +100,7 @@ const HOOKS = {
 const send0 = net.send.bind(net);
 net.send = (o) => {
   if (G.eco && o && o.t === 'fire') { const x = inst(o.w); if (x && x.lim && !x.cl && o.ch == null) W.ammo[o.w] = Math.max(0, (W.ammo[o.w] || 0) - 1); }
+  if (G.eco && o && o.t === 'lasso' && o.k === 'throw') { const x = inst('lasso'); if (x && x.lim) W.ammo.lasso = Math.max(0, (W.ammo.lasso || 0) - 1); } // a lasso throw spends one too
   return send0(o);
 };
 

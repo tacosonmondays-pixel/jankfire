@@ -249,6 +249,7 @@ function updateProjs(t, dt) {
     if (kind === 'cartp') mesh.rotation.set(0, tip || 0, 0); // carts sit upright, turned the way they were
     else if ((kind === 'chicken' || kind === 'bow' || kind === 'card') && Math.hypot(vx, vy, vz) > 0.01) mesh.lookAt(px - vx, py - vy, pz - vz);
     else { mesh.userData.spin += dt * 14; mesh.rotation.set(mesh.userData.spin, mesh.userData.spin * 0.7, 0); }
+    if (kind === 'loop' && G.lassoLoopGhost) G.lassoLoopGhost(mesh, vx, vy, vz); // a lasso loop flies flat, not tumbling
     if (kind === 'chicken' && Math.random() < dt * 8) fx.feathers([px, py, pz], 1);
   }
   for (const [id, mesh] of st.projs) if (!seen.has(id)) { G.scene.remove(mesh); st.projs.delete(id); }

@@ -47,7 +47,8 @@ function dest(pos) {
   return g;
 }
 // the overdrive rig makes its own sounds (rigsfx.js) with these: same context, master volume and panning
-export const synth = { tone: (...a) => tone(...a), noise: (...a) => noise(...a), dest: (p) => dest(p), get ac() { return ac; }, get out() { return master; } };
+export const synth = { tone: (...a) => tone(...a), noise: (...a) => noise(...a), whoosh: (...a) => whoosh(...a), // (whoosh: lasso.js)
+  dest: (p) => dest(p), get ac() { return ac; }, get out() { return master; } };
 
 function tone(type, f0, f1, dur, v, pos, delay = 0) {
   if (!ac) return;
@@ -596,3 +597,4 @@ Object.assign(sfx, {
   nvFlash(pos = null) { noise(0.12, 0.9, 'highpass', 2500, 7000, pos); tone('sine', 200, 60, 0.25, 0.3, pos); tone('sine', 3000, 11000, 0.5, 0.06, pos, 0.1); },
   tinnitus(s = 2) { if (!ac) return; const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(); o.type = 'sine'; o.frequency.value = 6200; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(0.4, s * 1.3)); o.connect(g); g.connect(master); o.start(t); o.stop(t + s * 1.3 + 0.1); },
 });
+

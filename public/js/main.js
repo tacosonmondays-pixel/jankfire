@@ -71,6 +71,7 @@ import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote,
 import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown, esRekey } from './endscreen.js';
 import { initHome, homeShown, homeLeft } from './home.js';
 import { skipVote, skipReset } from './skipvote.js';
+import { lassoFrame, loopFrame, lassoWheel, lassoKey, lassoLate } from './lasso.js'; // lasso (secondary)
 import { K } from './keys.js';
 import { controlsScreen } from './controls.js';
 import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, zmModelsLoaded } from './zombies.js';
@@ -442,6 +443,7 @@ function renderKeyHints() {
   $('gElse').innerHTML = `${B(L('menu'))} menu · ${B(L('scores'))} scores · ${B(L('chat'))} chat`;
   $('gEcon').innerHTML = `plant &amp; defuse: ${B(ecoKeyLabel('buy'))} buy · ${B(ecoKeyLabel('drop'))} drop what you hold · ${B(L('grapple'))} pick up · ${B(L('sprint'))} slow walk (silent) · stand still to shoot straight`;
   $('voteKeys').textContent = VOTES.map(K.label).join(' ');
+  $('gLore').innerHTML = `${B(L('use'))} next to someone talks to them. some people are hidden around the maps, and so is the board of directors (${B(L('use'))} to pet). what you find goes in ${B('LORE')}.`; // hidden NPCs + cats (lore.js)
   $('sprayKey').textContent = K.label('spray');
   $('loItemKey').textContent = K.label('item');
   $('loStreakKeys').textContent = ['streak1', 'streak2', 'streak3'].map(K.label).join(' / ');
@@ -983,6 +985,7 @@ function pressed(e) {
   if (K.matches('chat', e)) { e.preventDefault(); openChat(); return; }
   if (K.matches('menu', e)) { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
   if (gearKeyDown(e)) return; // pop quiz answers (1-4), goggles flash (nvgFlash)
+  if (lassoKey(e, true)) return; // holding someone on the lasso: reel keys, fire / aim lets go, no weapon switching. held: jump / move wriggles
   if (K.matches(BUBBLED, e) && stuckInBubble(true)) return; // sealed in a soap bubble: no shooting, aiming, grapple, items, dash, t-bag, sprays or streaks
   const now = performance.now(), out = now < (ME.sleepUntil || 0) || now < (ME.quizUntil || 0); // asleep on the floor / pens down for a pop quiz: no shooting
   if (W.cur === 'katana' && !rigOn() && K.matches('parry', e)) { if (!e.repeat && !out) parry(); return; } // the parry key wins while the katana's out
@@ -1013,6 +1016,7 @@ const BUBBLED = ['fire', 'aim', 'grapple', 'item', 'dash', 'crouch', 'spray', 's
 // a key or button came up: releases match whatever pressed the action, even if it got rebound since
 function released(e) {
   if (e.type === 'keyup' && K.typing(e)) return; // typed in chat / a text box (opening chat already let go of everything)
+  lassoKey(e, false);
   if (K.up('use', e)) stopUse();
   if (K.up('dash', e)) W.dashHeld = false;
   if (K.up('scores', e)) { scoresOpen = false; hud.scores(false); }
@@ -1037,7 +1041,7 @@ addEventListener('mouseup', released);
 function releaseHeld() { K.clear(); W.held = false; W.aimHeld = false; W.dashHeld = false; stopUse(); releaseHook(); if (scoresOpen) { scoresOpen = false; hud.scores(false); } }
 K.onChange((rebound) => { if (rebound) releaseHeld(); });
 addEventListener('contextmenu', (e) => e.preventDefault());
-addEventListener('wheel', (e) => { if (inGame() && !esActive()) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true }); // not while the end screen is up (its tab panel scrolls)
+addEventListener('wheel', (e) => { if (inGame() && !esActive() && !lassoWheel(e.deltaY)) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true }); // not while the end screen is up (its tab panel scrolls); holding someone on the lasso: the wheel reels
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== canvas) return;
   if (performance.now() < (G.spinUntil || 0)) return; // the aimbot has the wheel
@@ -1763,6 +1767,7 @@ function frame(t) {
     if (spinning) $('cheat').textContent = `JANKHAX v6.9\n[x] AIMBOT\n[x] SPINBOT\n[x] NO SPREAD\n${((G.spinUntil - now) / 1000).toFixed(1)}s left`;
     G.spinning = spinning;
     updateWeapons(dt, now);
+    lassoFrame(dt, now); // lasso: spin + throw, the rope you hold, your hands (before the snapshot: it sets a flag)
     if (ballOn(now)) { W.flags |= FLAGS.BALL; if (BS.snapNow) { BS.snapNow = false; sendT = 0; } } // wrecking ball (a slam dive goes out right away: the server checks it)
 
     sendT -= dt;
@@ -1807,6 +1812,7 @@ function frame(t) {
   for (const pr of G.projs.values()) {
     if (pr.k === 'soap') { stepSoap(pr, dt, now); continue; } // bubble wand: wobbly bubbles on an exact path (wand.js)
     if (pr.k === 'tennis') { tennisStep(pr, dt); pr.mesh.visible = !RP.active; continue; } // counted bounces (primaries.js)
+    if (pr.k === 'loop') { loopFrame(pr, dt, now); continue; } // a lasso loop in flight (lasso.js)
     if (pr.k === 'slipper') {
       slipperStep(pr, dt, now);
       pr.spin += dt * 20;
@@ -1904,6 +1910,7 @@ function frame(t) {
   if (RP.active) updateReplay(dt, now, cam); // killcam / play of the round owns the camera
   const specCam = !RP.active && (spectateCam(dt, cam) || econCam(cam, dt) || brCam(dt, cam)); // one in the chamber: out of lives, watching someone; Plant & Defuse: a teammate; jank royale: the blimp ride + spectating
   cam.updateMatrixWorld();
+  lassoLate(dt, now); // lasso ropes between people + from your hand, now that everyone (and the camera) has moved
   updateSpeedLines(dt, G.joined && ME.alive && !RP.active ? Math.hypot(ME.vel[0], ME.vel[1], ME.vel[2]) : 0, ME.vel, cam, ME.dashing ? 0.9 : 0, S.speedLines !== false);
   const rh = G.renderer.domElement.height;
   fx.setScale(rh / (2 * Math.tan((cam.fov * Math.PI) / 360)));
