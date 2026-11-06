@@ -20,6 +20,12 @@ const nameOf = (id) => (id === G.myId ? G.myName : (G.names.get(id) || {}).name 
 const fmt = (ms) => { const s = Math.ceil(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 
 // the big moment: green flash, huge wobbly text, a groan and a sting
+// the banner + flash are one-shot CSS animations: take the class off when they finish, or pausing (the HUD is hidden
+// while the menu is up) and resuming replays them and tells you you're infected again
+for (const [id, cls] of [['infBig', 'go'], ['infFx', 'flash']]) {
+  const el = $(id);
+  if (el) el.addEventListener('animationend', () => el.classList.remove(cls));
+}
 function bigMoment(title, sub) {
   const el = $('infBig');
   el.innerHTML = '';

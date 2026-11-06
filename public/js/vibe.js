@@ -62,6 +62,9 @@ export function addVibe(out, canvasTex, speckle) {
   // city pavement (the kerbed blocks and the sidewalks): dark wet violet slate with the street's neon in the puddles, a step
   // up from the asphalt so the kerbs still read, never the pale grey slab it used to be against the dark streets
   out.pavecity = lam(canvasTex(16, (g, s) => { speckle(g, s, [60, 56, 76], 10, 2); blobs(g, s, ['rgba(255,60,200,0.08)', 'rgba(60,220,255,0.08)'], 4, 1, 3); g.fillStyle = '#2c2938'; g.fillRect(0, 0, s, 1); g.fillRect(0, 0, 1, s); }), 3);
+  // bomb site floors: each site its own colour underfoot too (A red, B cyan)
+  out.dockred = lam(canvasTex(32, (g, s) => { speckle(g, s, [116, 42, 50], 16, 2); blobs(g, s, ['rgba(0,0,0,0.22)', 'rgba(255,90,90,0.12)'], 7, 2, 6); g.fillStyle = 'rgba(255,220,80,0.55)'; g.fillRect(0, 0, s, 1); }), 6);
+  out.floorcyan = lam(canvasTex(32, (g, s) => { speckle(g, s, [36, 92, 104], 12, 2); blobs(g, s, ['rgba(120,255,255,0.08)'], 5, 2, 5); g.fillStyle = 'rgba(10,30,40,0.7)'; g.fillRect(0, 0, s, 1); g.fillRect(0, 0, 1, s); }), 4);
   out.asphaltn = lam(canvasTex(32, (g, s) => { speckle(g, s, [36, 36, 48], 14, 2); blobs(g, s, ['rgba(255,60,200,0.06)', 'rgba(60,220,255,0.06)'], 9, 2, 6); }), 14); // the far city's streets, wet
   out.seawater = { mat: new THREE.MeshPhongMaterial({ color: 0x0c2238, emissive: 0x040a16, specular: 0x88aacc, shininess: 70 }), tile: 1 };
   { // brick tenements with windows: some lit (they glow), some not
@@ -139,6 +142,9 @@ export function addVibe(out, canvasTex, speckle) {
     return { mat: o.lit === false ? new THREE.MeshLambertMaterial({ map: t }) : new THREE.MeshBasicMaterial({ map: t }), tile: 1 };
   };
   const neon = (txt, col) => ad('#0a0614', col, [txt], 256, 64, {});
+  // bomb site boards: a huge letter you can read from across the map, each site its own colour
+  out.sitea = ad('#14060c', '#ff3a4a', ['A', 'BOMB SITE A'], 192, 192, { small: '#ffe14d' });
+  out.siteb = ad('#06101a', '#19e6ff', ['B', 'BOMB SITE B'], 192, 192, { small: '#ffe14d' });
   out.signopen = neon('OPEN HOUSE', '#ff4fd8');
   out.adbig1 = ad('#ff4fd8', '#ffe14d', ['SUBURBIA™', 'OWN A HOME*', '*rented by the hour'], 256, 96, { small: '#fff' });
   out.adstore = ad('#19e6ff', '#ff2a3a', ['MEGA-MART EXPRESS', 'OPEN 25 HOURS'], 320, 64, { small: '#120818' });

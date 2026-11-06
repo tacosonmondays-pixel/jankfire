@@ -10,6 +10,8 @@ import { fx, makeBeam, setBeam } from './fx.js';
 import { emitSkinFx } from './skins.js';
 import { wreckRemote, ballBoxes, wreckDispose } from './wreck.js';
 import { jankify } from './jank.js';
+import { rigRemote, rigBoxes, rigDispose } from './rig.js'; // overdrive rig killstreak
+import { gearLook, dressGear } from './econ3d.js';
 import { newTwirl, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
 import { makeRope, setRope, setRopeSkin } from './grapple.js';
 import { sfx } from './audio.js';
@@ -106,13 +108,15 @@ export class Remote {
     this.ice = null; this.shells = []; this.glow = 0; this.zzz = null;
     // infection: a zombie. otherwise, on a team: team colour, not your clothes
     const color = this.zombie ? INFECT.color : this.color;
-    this.ch = buildCharacter(color, this.zombie ? zombieLook(this.outfit) : teamLook(this.outfit, this.team));
+    this.ch = buildCharacter(color, this.zombie ? zombieLook(this.outfit) : gearLook(teamLook(this.outfit, this.team), this.gear)); // gearLook: no hat under a Plant & Defuse bucket
+    if (this.gear && !this.zombie) dressGear(this.ch, this.gear, teamLook(this.outfit, this.team), this.team); // Plant & Defuse armor they bought
     this.ch.root.scale.setScalar(1.2); // a bit bigger than you so they read at crusty resolutions
     const outline = outlineMat(new THREE.Color(color).getHex());
     const parts = [];
     this.ch.body.traverse((o) => { if (o.isMesh) parts.push(o); });
     for (const o of parts) {
       o.material = visibleMat(o.material);
+      if (o.userData.noShell) continue; // a small armor bit inside a bigger outline (econ3d.js)
       const shell = new THREE.Mesh(o.geometry, outline);
       shell.scale.setScalar(1.12);
       shell.userData.outline = true;
@@ -155,6 +159,8 @@ export class Remote {
     if (this.zzz) for (const z of this.zzz.children) z.material.dispose(); // the Z texture is shared
   }
 
+  // Plant & Defuse: what they bought (vest 1, bucket 2, pliers 4) goes on the model
+  setGear(bits) { bits = bits || 0; if (bits === (this.gear || 0)) return; this.gear = bits; this.setLook(this.outfit); }
   // infection: turn into a zombie (or back). the real look and colour stay put underneath
   setZombie(on) { if (!!this.zombie === on) return; this.zombie = on; this.setLook(this.outfit); }
 
@@ -202,6 +208,7 @@ export class Remote {
   hitboxes() {
     if ((this.f & FLAGS.BALL) && this.alive) return ballBoxes(this.pos, this.distScale || 1); // a wrecking ball is one big ball
     const k = (this.distScale || 1);
+    if (this.rigOn) return rigBoxes(this.pos, k); // the overdrive rig is a much bigger target
     const boxes = this.nap && this.napK > 0.5 ? this.napBoxes() : playerBoxes(this.pos);
     if (k === 1) return boxes;
     const [x, y, z] = this.pos;
@@ -446,6 +453,8 @@ export class Remote {
     }
     const tw = now < this.twitchUntil;
     ch.head.rotation.x = this.pitch * 0.5;
+    const cg = (now - (this.coughT || -1e9)) / 1000; // coughing: three hacking jerks forward, fading out
+    if (cg >= 0 && cg < 1) ch.head.rotation.x += Math.abs(Math.sin(cg * Math.PI * 3)) * (1 - cg) * 0.7;
     ch.head.rotation.y = tw && this.twitch === 'head' ? 1.4 : 0;
     ch.head.rotation.z = ch.jank.tilt + (tw && this.twitch === 'head' ? 0.6 : 0);
     if (tw && this.twitch === 'arm') ch.armL.rotation.z = 1.8; else ch.armL.rotation.z = 0;
@@ -502,6 +511,7 @@ export class Remote {
 
     const sh = raycast([x, y + 0.1, z], [0, -1, 0], 80, BOXES);
     if (sh) { this.shadow.visible = true; this.shadow.position.set(x, sh.point[1] + 0.03, z); } else this.shadow.visible = false;
+    rigRemote(this, dt, now, sh); // overdrive rig: the exo-frame (and its afterimages) instead of the mannequin
 
     const ld = this.look();
     const head = [x + ld[0] * 0.45, y + 1.5, z + ld[2] * 0.45];
@@ -529,6 +539,7 @@ export class Remote {
     G.scene.remove(this.shadow);
     wreckDispose(this);
     this.free();
+    rigDispose(this);
     // the rope is a grapple-skin group: its beams + hook share the skin's geometries and materials, nothing to free
     this.shadow.geometry.dispose(); this.shadow.material.dispose();
   }

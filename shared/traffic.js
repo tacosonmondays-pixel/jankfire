@@ -20,7 +20,8 @@ export const CARS = {
 export const CAR_IDS = Object.keys(CARS);
 export const CAR_COLORS = ['#e8323c', '#2f6fe0', '#f2f2ee', '#26262c', '#3fae5a', '#f2c230', '#ff7ab8', '#7a4ad8', '#5ad8e8', '#b0b4bc', '#e86a22', '#8a1f2c'];
 
-// how busy the roads are. auto: Plant & Defuse is calm (half the cars, slower, hits only shove), training has none
+// how busy the roads are. auto: none in Plant & Defuse (it's the competitive one, with an economy) or training. calm =
+// half the cars, slower, hits only shove
 export const TRAFFIC_LEVELS = {
   auto: { name: 'Auto' },
   on: { name: 'On', n: 1, v: 1, lethal: true, reckless: 1 },
@@ -31,7 +32,7 @@ export const TRAFFIC_LEVELS = {
 export const TRAFFIC_ORDER = ['auto', 'on', 'calm', 'rush', 'off'];
 export function trafficLevel(sel, game, mode) {
   if (mode === 'training') return TRAFFIC_LEVELS.off;
-  if (!Object.hasOwn(TRAFFIC_LEVELS, sel) || sel === 'auto') return game === 'bomb' ? TRAFFIC_LEVELS.calm : TRAFFIC_LEVELS.on;
+  if (!Object.hasOwn(TRAFFIC_LEVELS, sel) || sel === 'auto') return game === 'bomb' ? TRAFFIC_LEVELS.off : TRAFFIC_LEVELS.on; // competitive: no cars unless the host asks
   return TRAFFIC_LEVELS[sel];
 }
 
@@ -47,7 +48,9 @@ export const TRAFFIC = {
     open: { box: [-140, -3.8, -104, 3.8], mats: ['jersey', 'wood', 'leaves', 'leaves2', 'blossom', 'hedge'] } },
   // the road past the gate, both ways, out to the horizon
   warehouse: { n: 7, every: [3.5, 9], lights: true, mix: { sedan: 2, hatch: 2, pickup: 2, van: 2, truck: 2.5, bus: 1 },
-    routes: [{ pts: [[-105, -430], [-105, 430]], v: [14, 22] }, { pts: [[-111, 430], [-111, -430]], v: [14, 22] }] },
+    // (found from the road itself, so the lanes follow it if the map moves it: two lanes 3 m either side of its middle)
+    routes: (map) => { const r = map.boxes.filter((b) => b.mat === 'roadz').sort((a, b) => (b.max[2] - b.min[2]) - (a.max[2] - a.min[2]))[0]; if (!r) return [];
+      const cx = (r.min[0] + r.max[0]) / 2; return [{ pts: [[cx + 3, -430], [cx + 3, 430]], v: [14, 22] }, { pts: [[cx - 3, 430], [cx - 3, -430]], v: [14, 22] }]; } },
   // a desert track past the west gate, out on the sand (jump off the battlements and it's right there). north-south,
   // because east-west would have to jump the canyon
   desert: { n: 3, every: [7, 16], mix: { pickup: 4, van: 1, hatch: 1.2 },
@@ -59,6 +62,8 @@ export const TRAFFIC = {
   rooftop: { n: 12, lights: true, mix: { taxi: 4, sedan: 3, hatch: 2, van: 1.2, bus: 0.8, truck: 0.8 }, v: [8, 15],
     grid: { xs: [-140, -55, 55, 140], zs: [-140, -55, 55, 140], w: 18, S: 180, y: -142 + 0.08, off: 5 } },
 };
+
+TRAFFIC.warehouse_sd = TRAFFIC.warehouse; // the Plant & Defuse version keeps the same road (traffic there is off unless the host turns it on)
 
 // ------------------------------------------------------------ geometry
 // an oriented box on the ground plane: centre (x, z), unit axis (ux, uz) with half length hu, the other axis half hv
@@ -230,8 +235,11 @@ function build(id) {
   if (!cfg || !map) return null;
   const edges = [];
   let junctions = [];
-  if (cfg.grid) junctions = cityGrid(cfg.grid, edges);
-  for (const r of cfg.routes || []) {
+  if (cfg.grid) { // the street height comes from the streets themselves (the y in TRAFFIC is only a fallback)
+    const X = cfg.grid.xs[0], road = map.deco.find((b) => b.mat === 'wetroadz' && !b.rot && b.min[0] <= X && b.max[0] >= X && b.max[2] - b.min[2] > 100);
+    junctions = cityGrid(road ? { ...cfg.grid, y: road.max[1] } : cfg.grid, edges);
+  }
+  for (const r of (typeof cfg.routes === 'function' ? cfg.routes(map) : cfg.routes) || []) {
     const e = makeEdge(fillet(r.pts, r.r || 14), 0, { src: true, sink: true, v: r.v, route: true });
     edges.push(e);
   }

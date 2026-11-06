@@ -16,6 +16,7 @@ import { fx } from './fx.js';
 import { sfx } from './audio.js';
 import { ME } from './player.js';
 import { hud } from './hud.js';
+import { recordEv, RP_HOOKS } from './replay.js';
 
 const LAG = 130; // ms behind the server clock (a bit more than the players: cars only update 12 times a second)
 const F = { BRAKE: 1, HORN: 2, FREE: 4, SMOKE: 8, FIRE: 16, WRECK: 32, FLIP: 64 };
@@ -69,7 +70,7 @@ function lightMats() {
 const POOL_GEO = new THREE.PlaneGeometry(5, 9).rotateX(-Math.PI / 2);
 
 // ------------------------------------------------------------ one car on screen
-function addCar(id, code) {
+function addCar(id, code, set = cars) {
   init();
   const ty = CAR_IDS[code >> 4] || 'sedan', ci = code & 15, T = CARS[ty];
   const v = makeCar(ty, CAR_COLORS[ci % CAR_COLORS.length], ci, patch);
@@ -80,12 +81,12 @@ function addCar(id, code) {
   v.body.add(beams); v.root.add(pool);
   const car = { id, ty, T, ci, v, beams, pool, snaps: [], seen: 0, f: 0, pf: 0, x: 0, y: 0, z: 0, h: 0, sp: 0, pitch: 0, roll: 0, lastH: null, yawRate: 0, lastV: 0, acc: 0, wheelA: 0,
     hornT: 0, smokeT: 0, jingleT: Math.random() * 4000, passT: 0, wrecked: false, gone: 0, blink: 0 };
-  cars.set(id, car);
+  set.set(id, car);
   return car;
 }
-function removeCar(c) {
+function removeCar(c, set = cars) {
   G.scene.remove(c.v.root);
-  cars.delete(c.id);
+  set.delete(c.id);
 }
 function wreckLook(c) {
   if (c.wrecked) return;
@@ -101,18 +102,23 @@ function wreckLook(c) {
 
 // ------------------------------------------------------------ network
 net.on('trc', () => clearTraffic());
-net.on('tr', (m) => {
-  if (!G.scene) return;
+function ingest(set, m) {
   for (const r of m.c) {
     const [id, code, x, y, z, h, sp, f, pitch, roll] = r;
-    const c = cars.get(id) || addCar(id, code);
+    const c = set.get(id) || addCar(id, code, set);
     c.snaps.push({ s: m.s, x, y, z, h, sp, f, pitch, roll });
     if (c.snaps.length > 10) c.snaps.shift();
     c.seen = m.s;
   }
-  for (const c of cars.values()) if (c.seen !== m.s && !c.gone) c.gone = m.s; // dropped: out past the fog, or a wreck towed away
+  for (const c of set.values()) if (c.seen !== m.s && !c.gone) c.gone = m.s; // dropped: out past the fog, or a wreck towed away
+}
+net.on('tr', (m) => {
+  if (!G.scene) return;
+  ingest(cars, m);
+  recordEv(m); // (so your killcam has the cars too)
 });
 net.on('carx', (m) => {
+  recordEv(m);
   const c = cars.get(m.id), p = m.p, big = m.r > 10;
   boomFx(p, m.r, c);
   if (c) wreckLook(c);
@@ -124,6 +130,7 @@ net.on('carx', (m) => {
   else if (m.o && d < 70 && m.id < m.o) hud.msg(pick(['TRAFFIC ACCIDENT', 'FENDER BENDER', 'CAR-NAGE', 'NO INSURANCE']), 1.2, 'brag');
 });
 net.on('carhit', (m) => {
+  recordEv(m);
   lastHit.set(m.to, m.ty);
   const p = m.p, hard = m.s > 25;
   sfx.carHit(p, Math.min(1, m.s / 50));
@@ -222,10 +229,13 @@ export function updateTraffic(dt, now, hide) {
   if (MAP.id !== mapId) { mapId = MAP.id; clearTraffic(); const net0 = trafficNet(mapId); lightsOn = !!(net0 && net0.lights); }
   syncUI();
   updateDebris(dt);
-  if (!cars.size) return;
-  const rt = now + G.offset - LAG, cam = G.camera.position;
-  for (const c of [...cars.values()]) {
-    if (c.gone && rt > c.gone + 200) { removeCar(c); continue; }
+  if (cars.size) drawSet(cars, now + G.offset - LAG, dt, now, hide);
+}
+// move + animate one set of cars to time rt (server clock): the live ones, or a replay's ghosts
+function drawSet(set, rt, dt, now, hide) {
+  const cam = G.camera.position;
+  for (const c of [...set.values()]) {
+    if (c.gone && rt > c.gone + 200) { removeCar(c, set); continue; }
     const sn = c.snaps;
     if (!sn.length) continue;
     let a = sn[0], b = sn[0];
@@ -378,7 +388,7 @@ function syncUI() {
     const lab = document.createElement('label');
     lab.textContent = 'traffic ';
     sel = document.createElement('select'); sel.id = 'cfgTraffic';
-    for (const k of TRAFFIC_ORDER) { const o = document.createElement('option'); o.value = k; o.textContent = TRAFFIC_LEVELS[k].name + (k === 'auto' ? ' (calm in Plant & Defuse)' : ''); sel.append(o); }
+    for (const k of TRAFFIC_ORDER) { const o = document.createElement('option'); o.value = k; o.textContent = TRAFFIC_LEVELS[k].name + (k === 'auto' ? ' (off in Plant & Defuse)' : ''); sel.append(o); }
     lab.append(sel);
     hip.parentElement.after(lab);
     sel.addEventListener('change', () => net.send({ t: 'cfg', traffic: sel.value }));
@@ -388,3 +398,18 @@ function syncUI() {
   sel.parentElement.style.display = G.mode === 'training' || !trafficNet(G.cfg && G.cfg.map) ? 'none' : '';
 }
 export const trafficDebug = () => [...cars.values()].map((c) => [c.id, c.ty, Math.round(c.x), Math.round(c.z), Math.round(c.sp), c.f]); // (tests and clip recorders read this)
+
+// ------------------------------------------------------------ killcams + the play of the round: ghost cars
+// the clips carry the cars' updates ('tr') and their crashes and hits as events; this draws them at replay time
+const ghosts = new Map();
+RP_HOOKS.push({
+  ev(m) {
+    if (m.t === 'tr') { if (G.scene) ingest(ghosts, m); return true; }
+    if (m.t === 'carx') { const c = ghosts.get(m.id); boomFx(m.p, m.r, c); if (c) wreckLook(c); return true; }
+    if (m.t === 'carhit') { sfx.carHit(m.p, Math.min(1, m.s / 50)); fx.dust([m.p[0], m.p[1] - 0.9, m.p[2]], 10); return true; }
+    return false;
+  },
+  step(t, _g, dt) { if (ghosts.size) drawSet(ghosts, t - 90, dt, performance.now(), false); },
+  stop() { for (const c of [...ghosts.values()]) removeCar(c, ghosts); },
+});
+export const trafficGhosts = () => [...ghosts.values()].filter((c) => c.v.root.visible).map((c) => [c.id, c.ty, Math.round(c.x), Math.round(c.z)]); // (tests)

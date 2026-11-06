@@ -6,7 +6,7 @@ import { streakIcon } from './icons.js';
 import { stepProjectile, raycast } from '/shared/physics.js';
 import { duckFrame, duckStuck } from './duck.js';
 import { G } from './ctx.js';
-import { initWorld, renderFrame, setJank, updateWorld, loadMap } from './world.js';
+import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals } from './world.js';
 import { loadTripoModels, buildProjectile, buildPeel, buildHole, makeShadow, tipColor, buildCharacter, teamLook, M } from './models.js';
 import { initCrosses, crossEvent, crossShot, updateCrosses, clearCrosses } from './bloodcross.js';
 import { net } from './net.js';
@@ -14,6 +14,7 @@ import { hud } from './hud.js';
 import { fx, makeBeam, setBeam, scaleU } from './fx.js';
 import { marbles } from './marbles.js';
 import { initAudio, sfx, setVolume, setListener, stopLoops } from './audio.js';
+import { musicUpdate, musicNewMatch } from './music.js';
 import { ME, stepPlayer, tryHook, releaseHook, applyKb, slip, eye, hookPoint, hspeed, crouchTap } from './player.js';
 import {
   W, initWeapons, rebuildOne, setLoadout, refillAmmo, switchSlot, lastSlot, cycleSlot, reload,
@@ -22,9 +23,11 @@ import {
 } from './weapons.js';
 import { Remote, updateGibs } from './remote.js';
 import { stepSoap, trapStart, trapEnd, updateWand, stuckInBubble } from './wand.js';
+import { initGear, updateGear, gearFx, gearKeyDown, gearSpawn, gearLeave, gearKillParts, gearDeathLine } from './gear.js'; // laser pointer, camera, pop quiz, goggles
 import { parry } from './weapons.js';
 import './parry.js'; // katana parry: sparks, sounds, PARRY!, the guard pose
-import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN } from './skins.js';
+import { addPatch, clearPatches } from './mslip.js'; // marble shotgun: marbles on the floor you slip on
+import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN, WRAP_MODES, WRAP_MODE_NAMES } from './skins.js';
 import { initPreview, showPreview, showCharacter, renderPreview, resizePreview } from './preview.js';
 import { playKillFx, updateKillFx, clearKillFx } from './killfx.js';
 import { courtKill, courtVerdict, updateCourt, courtReset, courtSync } from './scales.js';
@@ -34,7 +37,7 @@ import { shredKill, shredHit, shredGrab, grabStep, updateShreds, clearShreds } f
 import { updateSpeedLines } from './speedlines.js';
 import { slipperUpdate, slipperStep } from './slipper.js';
 import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse } from './objective.js';
-import { GAMES, GAME_ORDER, TEAMS, mapsFor } from '/shared/modes.js';
+import { GAMES, GAME_ORDER, TEAMS, mapsFor, mapForGame } from '/shared/modes.js';
 import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
 import { EPIC_CAM, epicMul, epicCamMs } from '/shared/epic.js';
@@ -45,17 +48,24 @@ import { hasAcc } from '/shared/looks.js';
 import { airTick, airReset, airFlourish } from './airborne.js';
 import { oobTick } from './bounds.js';
 import { account, restore, login, register, logout, saveProfile, leaderboard as fetchLeaders } from './account.js';
+import { updateRig, rigDied, rigOn } from './rig.js';
+import { rigClash } from '/shared/rig.js'; // overdrive rig killstreak
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
+import { initEcon, ecoOn, econKey, econMouse, econMenuOpen, econFrame, econCam, econHideVM, econDead, econWelcome, econSpawn, econKill, econIc, econLoadout, econReset } from './econ.js';
 import { SPRAY, ownedSpray } from '/shared/cosmetics.js';
 import { sprayAim, sprayFx, addSpray, clearSprays, updateSprays, sprayIcon } from './sprays.js';
 import { achInv } from '/shared/cosmetics.js'; // achievement rewards (Golden Sniper) count as owned once you have the achievement
-import { achProgress } from '/shared/looks.js';
+import { achProgress, ROYAL_ALL, ROYAL_FEATS } from '/shared/looks.js';
 import { royalToast, royalUnlock, royalBoxes } from './royal.js';
-import { setOnly } from './weapons.js';
 import { updateTraffic, carCollide, carKill, carFeedIcon } from './traffic.js'; // cars on the roads
+import { setOnly, coughCloud } from './weapons.js';
+import { renderPatchNotes, markPatchSeen, patchUnseen } from './patchnotes.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
 import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection, infClipInfo } from './infection.js';
+import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown } from './endscreen.js';
+import { initHome, homeShown, homeLeft } from './home.js';
+import { skipVote, skipReset } from './skipvote.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
@@ -90,7 +100,7 @@ function recomputeEquipped() {
     const o = ownedSkin(sk, G.inv, id);
     if (o[0] !== 'default' || o[1] !== 'none' || o[2] !== 'none' || o[3] !== 'default') G.equipped[id] = o;
   }
-  if (G.equipped.scythe) G.equipped.scythe_rifle = G.equipped.scythe.slice(0, 3).concat('default'); // both forms look the same
+  if (G.equipped.scythe) G.equipped.scythe_rifle = G.equipped.scythe.slice(0, 3).concat('default', G.equipped.scythe[4]); // both forms look the same
 }
 recomputeEquipped();
 
@@ -103,10 +113,29 @@ const vmScaleU = { value: 300 };
 G.skinFxWorld = makeSkinSystems(G.scene, scaleU);
 G.skinFxVM = makeSkinSystems(G.vmScene, vmScaleU);
 hud.init();
+initEndscreen({
+  note: (id, m) => ggRowNote(id, m) || infRowNote(id, m),
+  title: (m) => { const t = m && !m.pending && infRoundTitle(m); return t ? t[0] : ''; },
+  unlock: () => { if (document.pointerLockElement) document.exitPointerLock(); }, // the cards want a mouse
+  level: () => (account.me ? { level: account.me.level, xp: account.me.xp || 0 } : null),
+  gotXp: (x) => { // keep the account bar honest between matches (the server saved it already)
+    const me = account.me;
+    if (!me || !(x > 0)) return;
+    me.xp = (me.xp || 0) + x;
+    while (me.xp >= me.level * me.level * 40) me.level++;
+    renderAcctBar();
+  },
+});
 initWeapons();
 setLoadout(G.settings.loadout);
 hud.show(false);
 initPreview($('preview'));
+initHome({
+  start: (mode, cfg) => startMode(mode, cfg),
+  look: () => { const shown = validLook({ ...DEFAULT_LOOK, ...G.settings.look }, myAchs()); return [shown.color || G.myColor || '#ff4fd8', shown]; },
+  skin: (id) => G.equipped[id], // what you actually wear
+});
+initEcon({ pause: () => { if (document.pointerLockElement) document.exitPointerLock(); pause(); }, lock }); // Plant & Defuse economy
 
 const myShadow = makeShadow();
 G.scene.add(myShadow);
@@ -116,10 +145,11 @@ G.scene.add(myRope);
 
 loadTripoModels().then((n) => {
   if (!n) return;
-  console.log(`loaded ${n} tripo models`);
+  console.log(`loaded ${n} models`);
   rebuildOne(); // visuals only: a randomizer or pending loadout stays as it is
+  refreshMapVisuals(); // Blender props replace their stand-in boxes
   for (const r of G.remotes.values()) r.build();
-  $('status').textContent = `${n} Tripo model(s) loaded`;
+  $('status').textContent = `${n} model(s) loaded`;
 });
 
 // ------------------------------------------------------------ screens
@@ -128,17 +158,20 @@ function show(id) {
   screen = id;
   for (const el of document.querySelectorAll('.screen')) el.classList.toggle('hidden', el.id !== 'scr-' + id);
   $('menu').classList.remove('hidden');
+  $('menu').classList.toggle('home-on', id === 'main');
   hud.show(false);
-  if (id === 'cosmetics') { $('cosSlot').append($('preview')); buildCosmeticsUI(); setTimeout(resizePreview, 0); }
+  if (id !== 'main') homeLeft();
+  if (id === 'cosmetics') { skinAllNow = false; $('cosSlot').append($('preview')); buildCosmeticsUI(); setTimeout(resizePreview, 0); }
   if (id === 'character') { $('charSlot').append($('preview')); buildCharacterUI(); setTimeout(resizePreview, 0); }
   if (id === 'namecard') cardEditor.open();
   if (id === 'crates') renderCrates();
+  if (id === 'patchnotes') { renderPatchNotes($('pnList')); markPatchSeen(); $('pnNew').classList.add('hidden'); }
   if (id === 'loadout') { if ($('loNote').textContent === DRAFT_NOTE) $('loNote').textContent = ''; streakDraft = null; buildLoadoutUI(); }
   if (id === 'settings') syncDisplay();
   if (id === 'match') syncMatchUI();
   if (id === 'profile') { renderProfile(); restore().then((me) => { if (me && screen === 'profile') { renderProfile(); renderAcctBar(); } }); }
   if (id === 'leaders') renderLeaders();
-  if (id === 'main') renderAcctBar();
+  if (id === 'main') { renderAcctBar(); homeShown(); }
 }
 function hideMenu() {
   $('menu').classList.add('hidden');
@@ -152,7 +185,7 @@ $('quit').addEventListener('click', quitToMenu);
 
 function resume() {
   hideMenu();
-  lock();
+  if (!esFull()) lock(); // the end screen wants the mouse free for its cards
 }
 
 // ------------------------------------------------------------ playing
@@ -195,10 +228,12 @@ function resetWorldState() {
   stopReplay(true);
   hideReplayUI();
   if (G.forcedLoadout) { G.forcedLoadout = null; setLoadout(S.loadout); }
+  econReset();
   if (W.only) setOnly(null, S.loadout);
   resetGunGame(); resetInfection();
   for (const b of G.bubbles.values()) G.scene.remove(b.mesh);
   G.bubbles.clear(); G.smokes.length = 0; ME.frozenUntil = 0; G.frost = 0;
+  gearLeave();
   resetItems(); stopUse(); G.activeStreaks = null; G.itemSent = null;
   clearRec();
   clearKillFx();
@@ -207,6 +242,8 @@ function resetWorldState() {
   G.roundOver = false;
   renderRound(null);
   $('roundEnd').classList.add('hidden');
+  esClose(false);
+  skipReset();
   if (account.loggedIn) setTimeout(() => restore().then((me) => { if (me) renderAcctBar(); }), 900); // server saves stats when you leave
 }
 function clearEntities() {
@@ -215,6 +252,7 @@ function clearEntities() {
   for (const h of G.holes.values()) G.scene.remove(h.mesh);
   G.projs.clear(); G.peels.clear(); G.holes.clear();
   clearCrosses();
+  clearPatches();
 }
 function quitToMenu(silent) {
   net.close();
@@ -242,8 +280,8 @@ function pause() {
 let wasLocked = false, lockedAt = 0, mouseAvg = 8;
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === canvas;
-  if (locked) lockedAt = performance.now();
-  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden')) pause();
+  if (locked) { lockedAt = performance.now(); esHideClick(); }
+  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull() && !econMenuOpen()) pause(); // the end screen lets go of the mouse on purpose
   wasLocked = locked;
 });
 canvas.addEventListener('click', () => { if (G.joined && document.pointerLockElement !== canvas && $('menu').classList.contains('hidden')) lock(); });
@@ -264,16 +302,17 @@ const diffEntries = Object.entries(BOT_DIFF).map(([k, v]) => [k, v.name]);
 const gameEntries = GAME_ORDER.map((k) => [k, GAMES[k].name]);
 fillSelect($('setupGame'), gameEntries, 'dm');
 fillSelect($('cfgGame'), gameEntries, 'dm');
-fillSelect($('setupMap'), mapEntries, 'islands');
-// a mode that needs certain maps (bomb sites, a floor to turn into lava) only offers those (the server refuses the rest)
-const mapsOf = (game) => (GAMES[game] && (GAMES[game].sites || GAMES[game].mapOk) ? mapsFor(game, MAPS, MAP_ORDER) : MAP_ORDER);
+// a mode only offers the maps it can be played on (bomb sites, a floor to turn into lava; Plant & Defuse the S&D versions,
+// the other modes the standard ones). the server refuses the rest
+const mapsOf = (game) => (GAMES[game] ? mapsFor(game, MAPS, MAP_ORDER) : MAP_ORDER);
+fillSelect($('setupMap'), mapEntries.filter(([k]) => mapsOf('dm').includes(k)), 'islands');
 $('setupGame').addEventListener('change', () => {
   const keep = $('setupMap').value, list = mapsOf($('setupGame').value);
   fillSelect($('setupMap'), mapEntries.filter(([k]) => list.includes(k)), list.includes(keep) ? keep : list[0]);
 });
 $('cfgGame').addEventListener('change', () => {
   const g = $('cfgGame').value, list = mapsOf(g);
-  if (!list.includes(G.cfg.map)) {
+  if (!list.includes(mapForGame(g, MAPS, G.cfg.map))) { // (a map with an S&D version swaps to the version the mode plays)
     toast(`${GAMES[g].name} needs ${GAMES[g].sites ? 'a map with bomb sites' : 'another map'} (${list.map((k) => MAPS[k].name).join(', ')}): change the map first`, 3200);
     $('cfgGame').value = (G.round && G.round.game) || 'dm';
     return;
@@ -291,7 +330,8 @@ $('setupGo').addEventListener('click', () => startMode('bots', {
   map: $('setupMap').value, bots: Number($('setupBots').value), diff: $('setupDiff').value, hip: $('setupHip').value, game: $('setupGame').value,
 }));
 function syncMatchUI() {
-  $('cfgMap').value = G.cfg.map;
+  { const g = (G.round && G.round.game) || 'dm', list = mapsOf(g); // only the maps (and versions) this mode plays
+    fillSelect($('cfgMap'), mapEntries.filter(([k]) => list.includes(k) || k === G.cfg.map), G.cfg.map); }
   $('cfgMap').disabled = G.mode === 'training';
   $('cfgHip').value = G.cfg.hip;
   $('cfgDiff').value = G.cfg.diff;
@@ -328,6 +368,17 @@ $('jank').value = String(S.jank);
 $('jank').addEventListener('change', () => { S.jank = Number($('jank').value); setJank(S.jank); saveSettings(); });
 bindRange('fov', 'fov');
 bindRange('vol', 'vol', null, () => setVolume(S.vol));
+// music has its own volume (the main one still scales it). in matches it's on (quieter, its own slider) for bots, co-op
+// and training, and off in competitive (online room, plant & defuse) unless you turn that on. old saves have none of it
+if (typeof S.musicVol !== 'number') S.musicVol = 0.35;
+if (typeof S.musicMatchVol !== 'number') S.musicMatchVol = 0.15;
+if (typeof S.musicMatch !== 'boolean') S.musicMatch = true;
+S.musicComp = !!S.musicComp;
+bindRange('musicVol', 'musicVol', null, musicUpdate);
+bindRange('musicMatchVol', 'musicMatchVol', null, musicUpdate);
+bindCheck('musicMatch', 'musicMatch', musicUpdate);
+bindCheck('musicComp', 'musicComp', musicUpdate);
+SYNC_KEYS.push('musicVol', 'musicMatch', 'musicComp', 'musicMatchVol');
 bindRange('sens', 'sens', (v) => v.toFixed(1));
 bindRange('adsSens', 'adsSens', (v) => v.toFixed(2));
 bindCheck('fovKick', 'fovKick');
@@ -370,7 +421,7 @@ function buildLoadoutUI() {
     col.innerHTML = '';
     for (const id of ORDER) {
       const w = WEAPONS[id];
-      if (w.slot !== slot) continue;
+      if (w.slot !== slot || w.modeOnly) continue; // mode-only weapons (the spoon) aren't loadout picks
       const b = document.createElement('button');
       b.className = 'wpick' + (S.loadout[slot] === id ? ' on' : '');
       b.textContent = w.name;
@@ -428,6 +479,7 @@ function buildLoadoutUI() {
   }
 }
 function applyLoadout(force) {
+  if (econLoadout()) return; // Plant & Defuse: you buy your gear
   sendItemSel();
   if (G.forcedLoadout) { $('loNote').textContent = G.forcedLoadout.only ? 'this mode hands everyone the same weapons' : 'randomizer is on: you get a random loadout every life'; return; }
   if (W.only) { $('loNote').textContent = 'this mode hands you one weapon: your loadout comes back after the match'; return; }
@@ -470,11 +522,13 @@ function sendSkins() {
   skinSendT = setTimeout(() => { if (G.joined) net.send({ t: 'skin', s: G.equipped }); }, 250);
 }
 // the weapons that show up in COSMETICS (the rifle form of the scythe borrows the scythe's look)
-function skinnable() { return ORDER.filter((id) => WEAPONS[id] && (SLOTS.includes(WEAPONS[id].slot) || itemModel(id) || id === 'scythe')); }
+function skinnable() { return ORDER.filter((id) => WEAPONS[id] && !WEAPONS[id].modeOnly && (SLOTS.includes(WEAPONS[id].slot) || itemModel(id) || id === 'scythe')); }
 // items you see in your hand wear skins (popper, reverse card). the thrown duck is a plain projectile, so not that
 function itemModel(id) { return Object.values(ITEMS).some((it) => it.w === id); }
+// nothing picked = no entry. a wrap mode that isn't normal is kept even without a wrap, so it's still there when you pick one
+const plainSkin = (skin) => skin[0] === 'default' && skin[1] === 'none' && skin[2] === 'none' && (skin[3] || 'default') === 'default' && (skin[4] || 'normal') === 'normal';
 function storeSkin(id, skin) {
-  if (skin[0] === 'default' && skin[1] === 'none' && skin[2] === 'none' && (skin[3] || 'default') === 'default') delete S.skins[id];
+  if (plainSkin(skin)) delete S.skins[id];
   else S.skins[id] = skin;
 }
 // wrap / hat / effect on EVERY weapon at once (each weapon keeps its own model)
@@ -482,9 +536,11 @@ function setPartAll(idx, value) {
   for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[idx] = value; storeSkin(id, sk); }
   saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne(); // visuals only: keeps a randomizer or pending loadout
 }
-const allMode = () => S.skinAll !== false;
+// copy-to-every-weapon starts unticked every time you open COSMETICS (it isn't saved): you dress one weapon unless you ask
+let skinAllNow = false;
+const allMode = () => skinAllNow;
 function setSkin(id, skin) {
-  if (skin[0] === 'default' && skin[1] === 'none' && skin[2] === 'none' && (skin[3] || 'default') === 'default') delete S.skins[id];
+  if (plainSkin(skin)) delete S.skins[id];
   else S.skins[id] = skin;
   saveSettings();
   recomputeEquipped();
@@ -504,6 +560,8 @@ function setLook(look) {
   saveSettings();
   if (G.joined) net.send({ t: 'look', look: validLook(look, myAchs()) });
 }
+// every achievement (and old one), for trying on locked accessories in the preview only: what you wear stays validLook(look, myAchs())
+const ALL_ACHS = new Set([...Object.keys(ACHIEVEMENTS), ...LOOK_SLOTS.flatMap((sl) => Object.values(ACCESSORIES[sl]).map((v) => v.legacy).filter(Boolean))]);
 function buildCharacterUI() {
   const achs = myAchs();
   const look = { ...DEFAULT_LOOK, ...G.settings.look };
@@ -558,6 +616,8 @@ function buildCharacterUI() {
       c.textContent = v.name;
       if (v.ach) c.style.setProperty('--rc', '#ffe14d');
       c.title = v.ach ? `${ACHIEVEMENTS[v.ach].name}: ${ACHIEVEMENTS[v.ach].desc}` : 'free';
+      c.addEventListener('mouseenter', () => { const t = validLook({ ...look, [slot]: k }, ALL_ACHS); showCharacter(buildCharacter, t.color || G.myColor || '#ff4fd8', t); }); // try it on, locked or not
+      c.addEventListener('mouseleave', () => showCharacter(buildCharacter, shown.color || G.myColor || '#ff4fd8', shown));
       if (v.legacy && achs.has(v.legacy) && !achs.has(v.ach)) c.title += ' (yours anyway: you earned them before they moved here)';
       c.addEventListener('click', () => {
         if (!have) { toast(`${v.name}: unlock "${ACHIEVEMENTS[v.ach].name}" (${ACHIEVEMENTS[v.ach].desc})${account.loggedIn ? '' : '. log in so it counts'}`, 3200); return; }
@@ -603,7 +663,7 @@ function buildCharacterUI() {
     const rw = document.createElement('div'); rw.className = 'rw';
     rw.textContent = 'unlocks ' + rewardsFor(id).map((x) => x.name).join(', ');
     d.append(b, t, bar, rw);
-    if (a.feats) d.insertBefore(royalBoxes(done ? (1 << a.feats.length) - 1 : st[a.stat] || 0, 0, a.feats), bar); // the parts, ticked or not
+    if (a.feats) d.insertBefore(royalBoxes(done ? ROYAL_ALL : st[a.stat] || 0, 0, a.feats), bar); // the parts, ticked or not
     list.append(d);
   }
   $('lkNote').textContent = account.loggedIn ? 'other players see this. locked stuff unlocks from achievements.' : 'guest: free accessories only. log in to earn the achievement ones.';
@@ -623,6 +683,13 @@ $('lkRandom').addEventListener('click', () => {
 });
 $('lkReset').addEventListener('click', () => { setLook({ ...DEFAULT_LOOK }); buildCharacterUI(); });
 
+// hover a cosmetic to see it on the weapon in the preview, locked or not; leaving puts your real look back.
+// req: a locked achievement skin whose "what it takes" box shows while hovering
+function tryOn(chip, skinFn, id, sk, req) {
+  const box = () => req && [...$('skAch').children].find((b) => b.dataset.skin === req);
+  chip.addEventListener('mouseenter', () => { showPreview(id, skinFn()); const b = box(); if (b) b.style.display = ''; });
+  chip.addEventListener('mouseleave', () => { showPreview(id, ownedSkin(sk, G.inv, id)); const b = box(); if (b) b.style.display = 'none'; });
+}
 function buildCosmeticsUI() {
   const list = $('cosWeapons');
   list.innerHTML = '';
@@ -636,7 +703,7 @@ function buildCosmeticsUI() {
       const b = document.createElement('button');
       b.className = 'wpick' + (G.cosSel === id ? ' on' : '');
       if (modelsFor(id).length > 1) b.title = 'has skins';
-      b.textContent = w.name + (S.skins[id] ? ' *' : '');
+      b.textContent = w.name + (S.skins[id] && !plainSkin([...S.skins[id].slice(0, 4), 'normal']) ? ' *' : ''); // a wrap mode alone isn't a skin
       b.style.setProperty('--c', w.color);
       b.addEventListener('click', () => { G.cosSel = id; buildCosmeticsUI(); });
       list.append(b);
@@ -659,6 +726,7 @@ function buildCosmeticsUI() {
       c.textContent = v.name;
       c.style.setProperty('--rc', RARITY[v.rarity].color);
       c.title = `${RARITY[v.rarity].name}${have ? '' : ' (locked: roll to unlock)'}`;
+      tryOn(c, () => { const s2 = sk.slice(); s2[idx] = k; return s2; }, id, sk); // hover: try it on, locked or not
       c.addEventListener('click', () => {
         if (!have) { toast(`${v.name} is ${RARITY[v.rarity].name}. win rounds to get rolls.`); return; }
         if (allMode()) setPartAll(idx, k);
@@ -686,6 +754,7 @@ function buildCosmeticsUI() {
     kel.append(c);
   }
   buildSprayUI();
+  wrapModeUI(id, sk);
   chips('sk-finish', 'finish', 0);
   chips('sk-hat', 'hat', 1);
   chips('sk-effect', 'effect', 2);
@@ -702,6 +771,7 @@ function buildCosmeticsUI() {
     c.style.setProperty('--rc', RARITY[v.rarity].color);
     const ach = v.ach && ACHIEVEMENTS[v.ach]; // achievement skins: not in crates, you earn them
     if (ach) { c.classList.add('achchip'); c.title = `${ach.name}: ${ach.desc}`; }
+    tryOn(c, () => { const s2 = sk.slice(); s2[3] = k; return s2; }, id, sk, !have && ach ? k : null); // hover: try it on (+ what it takes)
     c.addEventListener('click', () => {
       if (!have && ach) { toast(`${v.name}: unlock "${ach.name}" (${ach.desc})${account.loggedIn ? '' : '. log in so it counts'}`, 3600); return; }
       if (!have) { toast(`${v.name} is ${RARITY[v.rarity].name}. win rounds to get rolls.`); return; }
@@ -710,43 +780,77 @@ function buildCosmeticsUI() {
     $('sk-model').append(c);
   }
   buildGrappleUI();
-  // next to an achievement skin: what it takes, with the parts you've ticked so far
+  // a locked achievement skin: what it takes, with the parts you've ticked so far. only shown while you hover it
   $('skAch').innerHTML = '';
   for (const k of models) {
     const v = COSMETICS.model[k], a = v.ach && ACHIEVEMENTS[v.ach];
-    if (!a) continue;
+    if (!a || owns(G.inv, 'model', k)) continue;
     const st = (account.me && account.me.stats) || {}, done = myAchs().has(v.ach);
     const box = document.createElement('div'); box.className = 'achskin' + (done ? ' done' : '');
+    box.dataset.skin = k; box.style.display = 'none';
     const h = document.createElement('b'); h.textContent = done ? `★ ${v.name}: yours` : `${v.name} (locked): ${a.name} ${Math.min(a.goal, achProgress(a, st))}/${a.goal}`;
     const t = document.createElement('div'); t.textContent = done ? `${a.name} complete${k === 'sniper_golden' ? '. stays gold under any wrap' : ''}` : a.desc + (account.loggedIn ? '' : '. log in so it counts');
     box.append(h, t);
-    if (a.feats) box.append(royalBoxes(done ? (1 << a.feats.length) - 1 : st[a.stat] || 0, 0, a.feats));
+    if (a.feats) box.append(royalBoxes(done ? ROYAL_ALL : st[a.stat] || 0, 0, a.feats));
     $('skAch').append(box);
   }
   showPreview(id, ownedSkin(sk, G.inv, id));
 }
+// NORMAL / REVERSE / FULL: which part of the weapon the wrap paints (wrapzones.js). free, goes with the wrap
+const WRAP_HINT = {
+  normal: 'normal: the wrap goes on the handle / body. the blade and barrel keep their metal',
+  reverse: 'reverse: the wrap goes on the blade / barrel / business end. the handle keeps its look',
+  full: 'full: the whole weapon, like the old wraps',
+};
+function wrapIcon(mode) { // a tiny knife: the half the wrap paints is pink
+  const on = (z) => (mode === 'full' || mode === z ? '#ff4fd8' : '#9a9aa4');
+  return `<svg viewBox="0 0 46 14"><rect x="1" y="4" width="15" height="6" fill="${on('normal')}" stroke="#000" stroke-width="1.5"/>`
+    + `<rect x="16" y="2" width="3" height="10" fill="${on('normal')}" stroke="#000" stroke-width="1.5"/>`
+    + `<path d="M19 3 L40 3 L45 7 L40 11 L19 11 Z" fill="${on('reverse')}" stroke="#000" stroke-width="1.5"/></svg>`;
+}
+function wrapModeUI(id, sk) {
+  const el = $('sk-wrapmode');
+  el.innerHTML = '';
+  el.classList.toggle('off', sk[0] === 'default');
+  for (const m of WRAP_MODES) {
+    const b = document.createElement('button');
+    b.className = sk[4] === m ? 'on' : '';
+    b.innerHTML = wrapIcon(m);
+    b.append(WRAP_MODE_NAMES[m].toUpperCase());
+    b.title = WRAP_HINT[m];
+    b.addEventListener('click', () => {
+      if (allMode()) setPartAll(4, m);
+      else { const s2 = sk.slice(); s2[4] = m; setSkin(id, s2); }
+      buildCosmeticsUI();
+    });
+    el.append(b);
+  }
+  const h = document.createElement('div'); h.className = 'hint';
+  h.textContent = sk[0] === 'default' ? 'pick a wrap, then choose where it goes' : WRAP_HINT[sk[4]];
+  el.append(h);
+}
 $('skRandom').addEventListener('click', () => {
   const pick = (t) => { const ks = Object.keys(COSMETICS[t]).filter((k) => owns(G.inv, t, k)); return ks[(Math.random() * ks.length) | 0]; };
   if (allMode()) {
-    const parts = ['finish', 'hat', 'effect'].map(pick);
-    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = parts[0]; sk[1] = parts[1]; sk[2] = parts[2]; storeSkin(id, sk); }
+    const parts = ['finish', 'hat', 'effect'].map(pick), wm = WRAP_MODES[(Math.random() * 3) | 0];
+    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = parts[0]; sk[1] = parts[1]; sk[2] = parts[2]; sk[4] = wm; storeSkin(id, sk); }
     saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne();
-  } else setSkin(G.cosSel, TYPES.map(pick));
+  } else setSkin(G.cosSel, [...TYPES.map(pick), WRAP_MODES[(Math.random() * 3) | 0]]);
   buildCosmeticsUI();
 });
 $('skReset').addEventListener('click', () => {
   if (allMode()) {
-    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = 'default'; sk[1] = 'none'; sk[2] = 'none'; storeSkin(id, sk); }
+    for (const id of skinnable()) { const sk = validSkin(S.skins[id]).slice(); sk[0] = 'default'; sk[1] = 'none'; sk[2] = 'none'; sk[4] = 'normal'; storeSkin(id, sk); }
     saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne();
   } else setSkin(G.cosSel, DEFAULT_SKIN.slice());
   buildCosmeticsUI();
 });
 $('skAll').addEventListener('click', () => { // copy this weapon's wrap/hat/effect to everything (models stay)
   const sk = validSkin(S.skins[G.cosSel]);
-  for (const id of skinnable()) { const s2 = validSkin(S.skins[id]).slice(); s2[0] = sk[0]; s2[1] = sk[1]; s2[2] = sk[2]; storeSkin(id, s2); }
+  for (const id of skinnable()) { const s2 = validSkin(S.skins[id]).slice(); s2[0] = sk[0]; s2[1] = sk[1]; s2[2] = sk[2]; s2[4] = sk[4]; storeSkin(id, s2); }
   saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne(); buildCosmeticsUI();
 });
-$('skAllMode').addEventListener('change', () => { S.skinAll = $('skAllMode').checked; saveSettings(); buildCosmeticsUI(); });
+$('skAllMode').addEventListener('change', () => { skinAllNow = $('skAllMode').checked; buildCosmeticsUI(); });
 
 // ------------------------------------------------------------ grapple skins (one per player, everyone sees your rope)
 function setGrap(id) {
@@ -813,14 +917,16 @@ function aimUp() { if (!S.toggleAim) W.aimHeld = false; }
 
 addEventListener('keydown', (e) => {
   if (!inGame() || document.activeElement === $('name')) return;
+  if (econKey(e)) return; // buy menu, drop, P pause (econ.js ECON_KEYS)
   if ((RP.active || G.killcamPending) && (e.code === 'Space' || e.code === 'Enter')) { e.preventDefault(); skipReplay(); return; }
+  if (esKey(e)) { e.preventDefault(); return; } // end screen: 1-4 vote, arrows switch tabs
   if (e.code === 'Tab') { e.preventDefault(); scoresOpen = true; renderScores(); return; }
   if (e.code === 'KeyT' || e.code === 'Enter') { e.preventDefault(); openChat(); return; }
   if (e.code === 'KeyB') { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
+  if (gearKeyDown(e)) return; // pop quiz answers (1-4), goggles flash (H)
   if (/^(KeyE|KeyG|KeyV|KeyC|KeyZ|ControlLeft|ControlRight|Digit[567])$/.test(e.code) && stuckInBubble(true)) { keys[e.code] = true; return; } // sealed in a soap bubble: no grapple, items, dash, t-bag, sprays or streaks
   if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) jumpPressed = true; }
   if (e.code === 'KeyE' && !e.repeat) { if (S.swapAim) aimDown(); else tryHook(); }
-  if (G.vote && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) { if (!e.repeat) castVote(Number(e.code.slice(5)) - 1); return; }
   if (e.code === 'Digit1') switchSlot(0);
   if (e.code === 'Digit2') switchSlot(1);
   if (e.code === 'Digit3') switchSlot(2);
@@ -850,9 +956,14 @@ addEventListener('keyup', (e) => {
 });
 addEventListener('mousedown', (e) => {
   if (!inGame()) return;
-  if (RP.mode === 'killcam' || RP.mode === 'hl' || G.killcamPending) { skipReplay(); return; } // a click skips the killcam and the play of the round
+  if (e.target instanceof Element && e.target.closest('#endscreen')) return; // the end screen's cards and tabs take the click, not your gun (or the replay skip)
+  if (esClickShown()) { esHideClick(); lock(); return; } // CLICK TO DROP IN: that click only grabs the mouse
+  if (RP.mode === 'killcam' || G.killcamPending) { skipReplay(); return; } // a click skips the killcam
+  if (RP.mode === 'hl') return; // ...but not the play of the round
   if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor: no shooting
+  if (performance.now() < (ME.quizUntil || 0)) return; // pens down: sitting a pop quiz
   if (stuckInBubble(true)) return; // sealed in a soap bubble: no shooting, aiming or grappling till it pops
+  if (econMouse(e)) return;
   if (e.button === 0) fireDown();
   if (e.button === 2) { if (S.swapAim) tryHook(); else aimDown(); }
   if (e.button === 3 || e.button === 4) tryHook();
@@ -863,7 +974,7 @@ addEventListener('mouseup', (e) => {
   if (e.button === 3 || e.button === 4) releaseHook();
 });
 addEventListener('contextmenu', (e) => e.preventDefault());
-addEventListener('wheel', (e) => { if (inGame()) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true });
+addEventListener('wheel', (e) => { if (inGame() && !esActive()) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true }); // not while the end screen is up (its tab panel scrolls)
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== canvas) return;
   if (performance.now() < (G.spinUntil || 0)) return; // the aimbot has the wheel
@@ -912,7 +1023,7 @@ function updateLabel() {
 }
 
 // ------------------------------------------------------------ world entities
-function skinOf(owner, wid) { return (owner === G.myId ? G.equipped : (G.skins.get(owner) || {}))[wid]; }
+function skinOf(owner, wid) { return (owner === G.myId ? W.skinOver || G.equipped : (G.skins.get(owner) || {}))[wid]; }
 function spawnProj(m) {
   const w = WEAPONS[m.k];
   if (!w) return;
@@ -950,6 +1061,8 @@ net.on('welcome', (m) => {
   G.myId = m.id; G.myName = m.name; G.myColor = m.color; G.joined = true; connecting = false;
   airReset();
   G.mode = m.mode; G.cfg = m.cfg;
+  G.game = m.game; // (music needs it before the first round info arrives)
+  musicNewMatch(); // a fresh random song for this match
   loadMap(m.cfg.map);
   ME.pos = m.pos.slice(); ME.vel = [0, 0, 0]; ME.alive = true; ME.hp = 100; ME.seq = m.q;
   ME.yaw = Math.atan2(m.pos[0], m.pos[2]);
@@ -965,6 +1078,7 @@ net.on('welcome', (m) => {
   renderRound(m.round);
   $('roundEnd').classList.add('hidden');
   G.round = m.round; G.myTeam = m.team || 0;
+  econWelcome(m);
   G.pocket = []; G.streakN = 0; G.activeStreaks = validStreaks(S.loadout.streaks); renderStreak(0);
   G.kat.clear(); setMyKatana(0);
   for (const [id, n] of m.kat || []) G.kat.set(id, n);
@@ -972,6 +1086,7 @@ net.on('welcome', (m) => {
   clearTags();
   for (const g of m.tags || []) addTag(g.id, g.p, g.team);
   openVote(m.vote);
+  skipVote(m.skip || null); // a /skip vote that's already on
   refillAmmo();
   resetItems(); // a fresh player on the server: welcome.ic has its real charges
   G.itemSent = null;
@@ -980,14 +1095,15 @@ net.on('welcome', (m) => {
   updateLabel();
   $('status').textContent = '';
   const tips = {
-    ffa: 'T to chat, B for menu. Change the map or hipfire in Match Settings.',
-    bots: 'bots are dumb but there are a lot of them. B for menu.',
+    ffa: 'T to chat, B for menu. Change the map or hipfire in Match Settings. /skip in chat votes to skip the match.',
+    bots: 'bots are dumb but there are a lot of them. B for menu. /skip in chat skips the match.',
     coop: 'survive the waves. bots only hurt humans, no friendly fire.',
     training: 'dummies respawn instantly. knock the ones on the left ledge off. movement playground on the right.',
   };
   hud.chat(null, null, `you are ${m.name}. ${tips[m.mode] || ''}`);
   clearSprays(); sprayT = -1e9;
   for (const s of m.sprays || []) addSpray(s, true); // graffiti that was already on the walls
+  for (const pt of m.mpatch || []) addPatch(pt); // marbles already on the floor
 });
 net.on('cfg', (m) => {
   const mapChanged = m.cfg.map !== G.cfg.map;
@@ -1037,6 +1153,7 @@ net.on('ach', (m) => {
   const rewards = rewardsFor(m.id).map((x) => x.name).join(', ');
   const where = rewardsFor(m.id).some((x) => x.type) ? 'COSMETICS' : 'CHARACTER';
   hud.msg(`ACHIEVEMENT: ${a.name}`, 3, 'brag');
+  esAch({ name: a.name, desc: a.desc });
   hud.chat(null, null, `achievement unlocked: ${a.name} (${a.desc})${rewards ? ' · unlocked ' + rewards + ' in ' + where : ''}`);
   sfx.kill();
   if (m.id === 'airborne') airFlourish();
@@ -1053,7 +1170,7 @@ function unlockSkins(list) {
     storeSkin(w, sk);
   }
   saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne();
-  if (list.some((r) => r.id === 'sniper_golden')) royalUnlock('SNIPER ROYALTY 4/4 · it\'s on your sniper now (swap it in COSMETICS)');
+  if (list.some((r) => r.id === 'sniper_golden')) royalUnlock(`SNIPER ROYALTY ${ROYAL_FEATS.length}/${ROYAL_FEATS.length} · it's on your sniper now (swap it in COSMETICS)`);
 }
 // Sniper Royalty: you just ticked a box (the server decides; a guest is told it would have counted)
 net.on('royal', (m) => {
@@ -1095,6 +1212,7 @@ net.on('teams', (m) => {
     if (r) { const was = !!r.team; r.team = team; if (r.color !== color || was !== !!team) r.setLook(r.outfit, color); } // team colour beats clothes
   }
   if (G.round) G.round.game = m.game;
+  G.game = m.game;
   updateLabel();
   if (screen === 'match') syncMatchUI();
   if (GAMES[m.game] && GAMES[m.game].teams && G.myTeam) hud.msg(`YOU ARE ${TEAMS[G.myTeam].name}`, 2, 'brag');
@@ -1108,7 +1226,7 @@ net.on('tagx', (m) => {
 net.on('bombyou', () => { hud.msg('YOU HAVE THE BOMB', 2, 'brag'); hud.chat(null, null, 'you have the bomb: get to site A or B and hold F to plant'); });
 net.on('bombev', (m) => {
   const [n] = m.id ? nameOf(m.id) : [''];
-  if (m.k === 'round') { hud.msg(`ROUND ${m.n} · ${G.myTeam === m.att ? 'ATTACK' : 'DEFEND'}`, 2.2, 'brag'); }
+  if (m.k === 'round') { if (!ecoOn()) hud.msg(`ROUND ${m.n} · ${G.myTeam === m.att ? 'ATTACK' : 'DEFEND'}`, 2.2, 'brag'); } // the economy has its own banner
   else if (m.k === 'planted') { hud.msg(`BOMB PLANTED AT ${m.site}`, 2.2, 'brag'); sfx.ting(); hud.chat(null, null, `${n} planted the bomb at ${m.site}`); }
   else if (m.k === 'defused') { hud.msg('BOMB DEFUSED', 2.2, 'brag'); sfx.kill(); hud.chat(null, null, `${n} defused the bomb`); }
   else if (m.k === 'boom') { G.shake = 1; }
@@ -1116,7 +1234,7 @@ net.on('bombev', (m) => {
   else if (m.k === 'pickup') hud.chat(null, null, `${n} picked up the bomb`);
   else if (m.k === 'win') {
     const mine = m.team === G.myTeam;
-    const why = { defused: 'bomb defused', exploded: 'bomb went off', time: 'time ran out' }[m.why] || '';
+    const why = { defused: 'bomb defused', exploded: 'bomb went off', time: 'time ran out', elim: 'team wiped' }[m.why] || '';
     hud.msg(`${TEAMS[m.team].name} WINS THE ROUND`, 3, 'brag');
     hud.chat(null, null, `${TEAMS[m.team].name} wins the round (${why}) · ${m.wins[0]} - ${m.wins[1]}`);
     if (mine) sfx.kill();
@@ -1126,6 +1244,7 @@ net.on('bombev', (m) => {
 // item charges: the server's count is the real one, and so is the item it says you have
 function onIc(m) {
   if (!m || !Object.hasOwn(ITEMS, m.i)) return;
+  if (econIc(m)) return; // Plant & Defuse: the inventory says
   syncItem(m.i, m.n, m.next);
   // (gun game / zombies hand you one weapon and no item, a chaos kit can say no item: the 'ic' doesn't put it back)
   const noItem = W.only || (G.forcedLoadout && G.forcedLoadout.only && G.forcedLoadout.item === 'none');
@@ -1176,29 +1295,11 @@ function startUse() {
   useTimer = setInterval(() => { if (!G.using || !ME.alive || !keys.KeyF) { stopUse(); return; } net.send({ t: 'use' }); }, 200);
 }
 function stopUse() { clearInterval(useTimer); useTimer = 0; G.using = false; }
-// vote for the next match: press 1 / 2 / 3
-let myVote = -1;
-function showVote(v) {
-  const panel = $('votePanel');
-  G.vote = v;
-  if (!v) { panel.classList.add('hidden'); myVote = -1; return; }
-  panel.classList.remove('hidden');
-  const box = $('voteOpts');
-  box.innerHTML = '';
-  v.options.forEach((o, i) => {
-    const d = document.createElement('div');
-    d.className = 'vopt' + (i === myVote ? ' on' : '');
-    const k = document.createElement('b'); k.textContent = String(i + 1);
-    const t = document.createElement('span'); t.textContent = `${o.name} · ${o.mapName}`;
-    const c = document.createElement('i'); c.textContent = String((v.counts || [])[i] || 0);
-    d.append(k, t, c);
-    box.append(d);
-  });
-}
-function castVote(i) { if (!G.vote || i >= G.vote.options.length) return; myVote = i; net.send({ t: 'vote', i }); showVote(G.vote); sfx.click(); }
-function openVote(v) { myVote = -1; if (v) G.voteEnds = performance.now() + (v.left || 0); showVote(v); } // the countdown starts here, not on every re-render
+// the end-of-match vote (mode first, then map) lives on the end screen (endscreen.js)
+function openVote(v) { G.vote = v || null; if (v) esVote(v); }
 net.on('vote', (m) => openVote(m));
-net.on('votes', (m) => { if (G.vote) { G.vote.counts = m.counts; showVote(G.vote); } });
+net.on('votes', (m) => esVotes(m));
+net.on('skipvote', (m) => skipVote(m)); // someone typed /skip (server/skip.js)
 
 // randomizer mode: the server hands you a loadout each life (null = use your own again)
 net.on('loadout', (m) => {
@@ -1213,7 +1314,7 @@ net.on('loadout', (m) => {
 net.on('modew', (m) => { if (m.w) endBall(); setOnly(m.w || null, G.forcedLoadout || S.loadout); }); // (a mode weapon ends a wrecking ball: the server already did)
 net.on('kb', (m) => applyKb(m.v));
 net.on('grab', (m) => shredGrab(m)); // you're in someone's shredder
-net.on('slip', () => slip(performance.now()));
+net.on('slip', (m) => slip(performance.now(), m.k));
 net.on('dmg', (m) => {
   const target = m.to === G.myId ? null : G.remotes.get(m.to);
   if (m.to === G.myId) {
@@ -1258,6 +1359,7 @@ net.on('kill', (m) => {
     victim.reverseUntil = 0; // the server ends their reverse card on death too
     const vi = G.names.get(m.v) || {};
     const replaced = kfx && playKillFx(kfx, { pos: victim.pos.slice(), vel: m.vel || victim.vel, yaw: victim.yaw, color: victim.color, look: teamLook(vi.look, vi.team), name: vi.name });
+    rigDied(victim, m.vel); // they died in the overdrive rig: the frame bursts apart into scrap
     if (replaced) victim.ch.root.visible = false; else victim.breakApart(m.vel || victim.vel);
     wreckDied(victim, m.vel); // they died as a wrecking ball: it bursts open
     victim.frozenUntil = 0;
@@ -1275,6 +1377,8 @@ net.on('kill', (m) => {
   } else {
     parts = [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc]];
   }
+  const gp = gearKillParts(m, kn, kc, vn, vc, wname, wcolor); // failed a pop quiz, telefragged
+  if (gp) parts = gp;
   const hazard = m.w === 'lava' || (m.w === 'duck' && m.sky); // floor is lava / duck rain: nobody owns those
   if (hazard) parts = m.k ? [[kn, kc], [`  [${wname(m.via)}]  `, wcolor(m.via)], [vn, vc], [m.w === 'lava' ? '  into the lava' : '  under a sky duck', '#aaa']] : [[vn, vc], [m.w === 'lava' ? '  touched the floor' : '  got flattened by a sky duck', '#ff8a3a']];
   if (m.ep && m.k) parts.push([`  EPIC ${Math.round(m.ep.d)}m`, '#ffe14d']);
@@ -1302,8 +1406,11 @@ net.on('kill', (m) => {
         : [['killed by ', '#fff'], [kn, kc], [`  (${wname(via)})`, wcolor(via)]]);
     } else hud.dead(true, [[m.w === 'void' ? 'you fell into the void' : m.w === 'tbag' ? 'you t-bagged too hard. your knees exploded.' : 'you smoked too much', '#fff']]);
     if (carK) hud.dead(true, carK.dead);
+    const gd = gearDeathLine(m);
+    if (gd) hud.dead(true, m.k ? [[kn, kc], [' gave you a pop quiz. ', '#fff'], [gd, '#7fffd4']] : [[gd, '#fff']]);
     if (hazard) hud.dead(true, m.k ? [[kn, kc], [m.w === 'lava' ? ' knocked you into the lava' : ' softened you up for a sky duck', '#fff'], [`  (${wname(m.via)})`, wcolor(m.via)]] : [[m.w === 'lava' ? 'the floor was lava' : 'a duck fell out of the sky on you', '#fff']]);
   }
+  econKill(m);
   if (m.k === G.myId && m.v !== G.myId) {
     G.streakN = (G.streakN || 0) + 1; // the server counts every kill too, but only tells you at your picks
     renderStreak(G.streakN);
@@ -1314,6 +1421,7 @@ net.on('kill', (m) => {
 });
 net.on('spawn', (m) => {
   endKillcam();
+  gearSpawn();
   ME.frozenUntil = 0; G.frost = 0; // item charges come from the server's 'ic' (a new round doesn't refill them)
   ME.pos = m.p.slice(); ME.vel = [0, 0, 0]; ME.alive = true; ME.hp = 100; ME.seq = m.q;
   ME.slipUntil = 0; ME.combo = 0; ME.sleepUntil = 0;
@@ -1322,6 +1430,7 @@ net.on('spawn', (m) => {
   refillAmmo();
   if (G.pendingLoadout) applyLoadout(true);
   hud.dead(false);
+  econSpawn(m);
 });
 net.on('ps', (m) => {
   spawnProj(m);
@@ -1412,6 +1521,7 @@ net.on('he', (m) => {
   G.shake = Math.max(G.shake, Math.max(0, 1 - d / 25));
 });
 net.on('fx', (m) => {
+  if (gearFx(m)) return; // laser beams, photo teleports, goggle flashes (gear.js)
   if (m.k === 'shot' || m.k === 'swing' || m.k === 'tbag' || m.k === 'shatter') recordEv(m);
   const r = G.remotes.get(m.id);
   if (m.k === 'shot') {
@@ -1441,6 +1551,10 @@ net.on('fx', (m) => {
     if (src) fx.spray([src[0], src[1] + 1.2, src[2]], 16, [0x7dff4f, 0xffffff], 3, 1.0, 0.14, -2, 1);
   } else if (m.k === 'bubhit') {
     fx.spray(m.p, 8, [0x4fd8ff, 0xffffff], 4, 0.3, 0.1, 0, 2); sfx.ricochet(m.p);
+  } else if (m.k === 'cough') { // someone over-smoked the cigarette: they double over and smoke bursts out in front of them
+    if (r) r.coughT = performance.now();
+    const ok = (a) => Array.isArray(a) && a.length === 3 && a.every(Number.isFinite);
+    if (ok(m.p) && ok(m.d)) { coughCloud(m.p, m.d); if (Math.hypot(m.p[0] - ME.pos[0], m.p[2] - ME.pos[2]) < 30) sfx.cough(); }
   } else if (m.k === 'burn') {
     if (r) r.burnUntil = performance.now() + 600;
     if (m.id === G.myId) G.burnUntil = performance.now() + 600;
@@ -1505,6 +1619,8 @@ net.on('ns', (m) => {
   if (hold && G.killcamPending && !RP.active) queueKillcam(m.k, 'sniper', hold); // got no-scoped from far: the overlay plays out first
 });
 
+initGear(); // the new gear's server messages + the G hook
+
 // ------------------------------------------------------------ main loop
 let last = performance.now(), acc = 0, sendT = 0, pingT = 0, fovNow = S.fov, fpsAcc = 0, fpsN = 0;
 const STEP = 1 / 120;
@@ -1519,7 +1635,7 @@ function frame(t) {
   const now = performance.now();
 
   if (G.joined) {
-    const frozen = now < (ME.frozenUntil || 0);
+    const frozen = now < (ME.frozenUntil || 0) || now < (ME.quizUntil || 0); // (pens down: no walking out of a pop quiz)
     if (frozen) { ME.vel[0] = 0; ME.vel[2] = 0; if (ME.hook) releaseHook(); }
     const playing = $('menu').classList.contains('hidden') && !chatOpen && now >= (ME.sleepUntil || 0) && !RP.active && !G.using && !frozen;
     const inp = playing ? {
@@ -1532,6 +1648,7 @@ function frame(t) {
     while (acc >= STEP) { stepPlayer(STEP, inp, now); carCollide(STEP); airTick(now); lavaStep(now); inp.jumpPressed = false; acc -= STEP; }
     grabStep(now); // held in a shredder's intake
     oobTick(now); // out of the play area: RETURN TO THE MAP 3 2 1
+    econFrame(dt); // Plant & Defuse: barriers, drops, armor on models, spectating
     // spinbot killstreak: lock onto the nearest enemy you can see
     const spinning = ME.alive && now < (G.spinUntil || 0);
     if (spinning) {
@@ -1569,7 +1686,7 @@ function frame(t) {
     }
     pingT -= dt;
     if (pingT <= 0) { pingT = 2; net.send({ t: 'pi', c: performance.now() }); }
-    if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = epicKC ? 'killcam... too epic to skip' : 'killcam... (space to skip)'; else if (epicHold) epicTimer(now); else hud.deadTimer(Math.max(0, ((G.respawnMs ?? 2500) - (now - (G.deadAt || now))) / 1000)); }
+    if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = epicKC ? 'killcam... too epic to skip' : 'killcam... (space to skip)'; else if (epicHold) epicTimer(now); else if (!econDead()) hud.deadTimer(Math.max(0, ((G.respawnMs ?? 2500) - (now - (G.deadAt || now))) / 1000)); }
   }
 
   const rt = now + G.offset - INTERP_MS;
@@ -1583,6 +1700,7 @@ function frame(t) {
   updateShreds(dt);
   for (const [id, b] of G.bubbles) { if (now > b.until + 500) { G.scene.remove(b.mesh); G.bubbles.delete(id); continue; } b.mesh.rotation.y += dt * 0.3; b.mesh.material.opacity = 0.18 + Math.sin(now * 0.006) * 0.05; }
   updateWand(dt, now); // bubble wand: giant soap bubbles round people, the view from inside one, the wand in your hand
+  updateGear(dt, now); // laser beams, photo frames, pop quizzes, night vision
   for (let i = G.smokes.length - 1; i >= 0; i--) {
     const s2 = G.smokes[i];
     if (now > s2.until) { G.smokes.splice(i, 1); continue; }
@@ -1596,7 +1714,6 @@ function frame(t) {
     updateGunGame(); updateInfection(dt);
     const a = G.round && G.round.bomb && G.round.bomb.act;
     if (a && a.by === G.myId) hud.meter(a.f, a.k === 'plant' ? 'PLANTING... keep holding F' : 'DEFUSING... keep holding F', '#ff4f4f');
-    if (G.vote) $('voteLeft').textContent = `${Math.max(0, Math.ceil((G.voteEnds - performance.now()) / 1000))}s`;
   }
   updateChaos(dt, now);
 
@@ -1683,6 +1800,8 @@ function frame(t) {
     ME.yaw = a; ME.pitch = -0.35;
     const mc = MAPS[G.cfg.map] && MAPS[G.cfg.map].menuCam; // sealed maps: orbit inside instead of over the roof
     if (mc) { cam.position.set(Math.sin(a) * mc[0], mc[1], Math.cos(a) * mc[0]); ME.pitch = mc[2]; }
+    const tc = G.thumbCam; // tools/thumbs.cjs parks the camera here to photograph a map: [x, y, z, yaw, pitch]
+    if (tc) { cam.position.set(tc[0], tc[1], tc[2]); ME.yaw = tc[3]; ME.pitch = tc[4]; }
   }
 
   G.shake = S.shake ? Math.max(0, G.shake - dt * 2.2) : 0;
@@ -1695,7 +1814,7 @@ function frame(t) {
   fovNow += (fovTarget - fovNow) * Math.min(1, dt * (W.aim > 0 ? 14 : 6));
   if (Math.abs(cam.fov - fovNow) > 0.05) { cam.fov = fovNow; cam.updateProjectionMatrix(); }
   if (RP.active) updateReplay(dt, now, cam); // killcam / play of the round owns the camera
-  const specCam = !RP.active && spectateCam(dt, cam); // one in the chamber: out of lives, watching someone
+  const specCam = !RP.active && (spectateCam(dt, cam) || econCam(cam, dt)); // one in the chamber: out of lives, watching someone; Plant & Defuse: a teammate
   cam.updateMatrixWorld();
   updateSpeedLines(dt, G.joined && ME.alive && !RP.active ? Math.hypot(ME.vel[0], ME.vel[1], ME.vel[2]) : 0, ME.vel, cam, ME.dashing ? 0.9 : 0, S.speedLines !== false);
   const rh = G.renderer.domElement.height;
@@ -1710,6 +1829,7 @@ function frame(t) {
   if (shHit) myShadow.position.set(ME.pos[0], shHit.point[1] + 0.03, ME.pos[2]);
   updateWreck(dt, now, RP.active, myShadow, myRope); // your own wrecking ball, its chain (instead of your rope), rumble + timer
   if (now < (G.burnUntil || 0)) fx.burn([ME.pos[0] + Math.sin(ME.yaw) * -0.8, ME.pos[1], ME.pos[2] - Math.cos(ME.yaw) * 0.8]);
+  updateRig(dt, now, cam, RP.active); // overdrive rig: you in it (camera, HUD, trail) and its effects
   const revLeft = W.reverseUntil - now; // reverse card: red edges, blinking for the last second
   $('reverseFx').style.opacity = revLeft > 0 ? (revLeft > 1000 || Math.floor(revLeft / 150) % 2 ? 1 : 0.25) : 0;
 
@@ -1728,10 +1848,10 @@ function frame(t) {
   skinTick(dt, now);
   updateWorld(dt);
   updateCrosses(dt, RP.active ? (RP.sp || 1) * (RP.dt != null && dt > 0 ? RP.dt / dt : 1) : 1); // after the projectile loop + replay: it turns blood bolts nose-first
-  G.vmScene.visible = G.joined && !RP.active && !specCam && !asleep;
+  G.vmScene.visible = G.joined && !RP.active && !specCam && !asleep && !econHideVM();
   if (ballOn(now)) G.vmScene.visible = false; // weapons are holstered inside the ball
   renderFrame();
-  if ((screen === 'cosmetics' || screen === 'character') && !$('menu').classList.contains('hidden')) renderPreview(dt);
+  if ((screen === 'cosmetics' || screen === 'character' || screen === 'main') && !$('menu').classList.contains('hidden')) renderPreview(dt);
   if (screen === 'cosmetics' && !$('menu').classList.contains('hidden')) renderGrapplePreview(dt);
 }
 
@@ -1765,6 +1885,7 @@ function deployStreak(slot) {
   if (W.only) { hud.msg('no killstreaks in this mode (they keep for later)', 1.2); sfx.empty(); return; }
   if (chaosNoStreaks()) { hud.msg('no killstreaks in this mode', 1.2); sfx.empty(); return; }
   if (!G.pocket.includes(id)) { hud.msg(`${STREAKS[id].name}: ${STREAKS[id].kills} kills in a row`, 1.2); sfx.empty(); return; }
+  if (rigClash(id, rigOn(), ballOn(performance.now()))) { hud.msg(id === 'overdrive' ? 'not inside the wrecking ball' : 'not in the overdrive rig (it keeps for later)', 1.2); sfx.empty(); return; }
   const e = eye(), d = lookDir();
   const h = raycast(e, d, 300, BOXES);
   const at = h ? h.point : [e[0] + d[0] * 60, e[1] + d[1] * 60, e[2] + d[2] * 60];
@@ -1933,6 +2054,7 @@ function endKillcam() {
 }
 function skipReplay() {
   if (epicLocked()) { epicNope(); return; }
+  if (RP.active && RP.mode === 'hl') return; // the play of the round can't be skipped: everyone watches it (it still ends when the next match starts)
   if (RP.active) { stopReplay(false); return; }
   if (G.killcamPending) { clearTimeout(killcamT); G.killcamPending = false; net.send({ t: 'respawn' }); }
 }
@@ -2022,7 +2144,7 @@ function totalRolls(me) { const r = (me && me.rolls) || {}; return (r.crate || 0
 function fmtTime(sec) { const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60); return h ? `${h}h ${m}m` : `${m}m`; }
 function renderAcctBar() {
   const tr0 = account.loggedIn ? totalRolls(account.me) : 0;
-  $('cratesBtn').textContent = tr0 ? `CONTAINERS (${tr0})` : 'CONTAINERS';
+  $('cratesLbl').textContent = tr0 ? `CONTAINERS (${tr0})` : 'CONTAINERS'; // the label only: the button keeps its slab
   $('cratesBtn').classList.toggle('glow', tr0 > 0);
   const bar = $('acctBar');
   bar.innerHTML = '';
@@ -2105,6 +2227,8 @@ function applySettingsToUI() {
   for (const id of ['fov', 'vol', 'sens', 'adsSens']) { $(id).value = String(S[id]); $(id).dispatchEvent(new Event('input')); }
   for (const id of ['fovKick', 'shake', 'showFps', 'swapAim', 'toggleAim', 'blood', 'killcam', 'showCards', 'speedLines']) $(id).checked = !!S[id];
   setVolume(S.vol);
+  $('musicVol').value = String(S.musicVol); $('musicMatchVol').value = String(S.musicMatchVol);
+  $('musicMatch').checked = S.musicMatch !== false; $('musicComp').checked = !!S.musicComp; musicUpdate();
 }
 
 function renderProfile() {
@@ -2310,7 +2434,10 @@ net.on('round', (m) => {
   const box = $('roundEnd');
   if (m.start) {
     courtReset(); // scales of justice: a new match, a clean record (the server does the same)
-    G.roundOver = false; if (RP.mode === 'hl') stopReplay(true); box.classList.add('hidden'); showVote(null);
+    if (m.game) G.game = m.game;
+    musicNewMatch(true); // (straight after joining, it's the same match: the song stays)
+    G.roundOver = false; if (RP.mode === 'hl') stopReplay(true); box.classList.add('hidden'); G.vote = null;
+    esClose(G.joined && document.pointerLockElement !== canvas); // back in: click to grab the mouse again
     if (m.game) { G.round = { ...(G.round || {}), ...m }; updateLabel(); if (screen === 'match') syncMatchUI(); }
     hud.msg(m.game && m.game !== 'dm' && GAMES[m.game] ? GAMES[m.game].name.toUpperCase() : 'ROUND START', 1.8, 'brag');
     if (m.game && GAMES[m.game]) hud.chat(null, null, GAMES[m.game].desc);
@@ -2341,8 +2468,7 @@ net.on('round', (m) => {
     if (id === G.myId) row.style.color = '#ffe14d';
     box.append(row);
   }
-  box.classList.remove('hidden');
-  if (m.winner === G.myId || (m.winTeam && m.winTeam === G.myTeam)) sfx.kill();
+  esRound(m); // the end screen replaces the old round box (still built above for anything that reads it)
 });
 // play of the round: the server picked the best moment and sent the recording
 net.on('hl', (m) => {
@@ -2351,13 +2477,14 @@ net.on('hl', (m) => {
   const box = $('roundEnd');
   box.classList.add('hidden');
   const url = m.id === G.myId ? cardUrlFor(G.myId) : (S.showCards !== false && m.card) || defaultCard(m.name, m.color);
-  showReplayUI('PLAY OF THE ROUND', url, m.name, m.color, m.label, 'SPACE / CLICK to skip'); // skipping is just for you: the round end, vote and next match carry on
+  esMini(true); // the end screen steps aside to a vote rail while the clip plays
+  showReplayUI('PLAY OF THE ROUND', url, m.name, m.color, m.label, 'no skipping. witness greatness'); // unskippable; the round end and vote come after it
   const slow = (m.clip.ev || []).filter((e) => e.m && e.m.t === 'kill' && e.m.k === m.id).map((e) => [e.s - 260, e.s + 220]);
   playClip(m.clip, {
     focus: m.id, mode: 'hl', slow,
     onKill: (k) => replayFeed(k, m.clip.info),
-    onEnd: () => { hideReplayUI(); if (G.roundOver) box.classList.remove('hidden'); },
-    onAbort: () => hideReplayUI(),
+    onEnd: () => { hideReplayUI(); esMini(false); },
+    onAbort: () => { hideReplayUI(); esMini(false); },
   });
   sfx.kill();
 });
@@ -2372,7 +2499,8 @@ net.on('roll+', (m) => {
     toast(`+${m.n} ${c.name}`);
   } else if (m.guest) d.textContent = 'you would have earned a crate, bag or box. log in to keep them.';
   else d.textContent = m.why || '';
-  if (!box.classList.contains('hidden')) box.append(d); else toast(d.textContent, 3500);
+  esRoll(m);
+  if (!esActive()) toast(d.textContent, 3500);
 });
 
 // ------------------------------------------------------------ install as an app (PWA)
@@ -2414,3 +2542,6 @@ requestAnimationFrame(frame);
 
 // debug handle for poking at things from the console
 window.JANK = { G, ME, W, net, switchSlot, setLoadout, fireDown, fireUp, tryHook, releaseHook, reload, startMode, quitToMenu, show };
+
+// PATCH NOTES: a NEW badge on the menu link until you've read the latest entry
+if (patchUnseen()) $('pnNew').classList.remove('hidden');

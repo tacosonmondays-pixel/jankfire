@@ -344,7 +344,7 @@ export class Traffic {
     this.unhook(c);
     c.mode = 'wreck'; c.wreckAt = n; c.hp = 0; c.boomAt = 0;
     c.vel[1] = rnd(5, 8) / Math.sqrt(T.mass); c.wp = rnd(-2, 2); c.wr = rnd(-3, 3); c.wy += rnd(-2, 2); // the bang throws it about
-    room.broadcast({ t: 'carx', id: c.id, p: at.map(r2), r: R, ty: c.ty, by: by ? by.id : 0, o: other ? other.id : 0 });
+    this.cast({ t: 'carx', id: c.id, p: at.map(r2), r: R, ty: c.ty, by: by ? by.id : 0, o: other ? other.id : 0 });
     // people: hurt and thrown, not through walls. whoever shot/shoved it gets the kills
     for (const t of room.players.values()) {
       if (!t.alive) continue;
@@ -406,7 +406,7 @@ export class Traffic {
         if (lethal) dmg = Math.max(dmg, t.hp + 50);
         if (!L.lethal) dmg = Math.min(dmg, 30);
         if (protectedT) dmg = 0;
-        room.broadcast({ t: 'carhit', id: c.id, to: t.id, s: Math.round(impact * 3.6), ty: c.ty, p: [t.pos[0], t.pos[1] + 1, t.pos[2]].map(r2), ko: dmg >= t.hp ? 1 : undefined });
+        this.cast({ t: 'carhit', id: c.id, to: t.id, s: Math.round(impact * 3.6), ty: c.ty, p: [t.pos[0], t.pos[1] + 1, t.pos[2]].map(r2), ko: dmg >= t.hp ? 1 : undefined });
         if (dmg >= t.hp && !t.isBot) t.vel = kb.slice();
         if (dmg > 0) room.hurt(t, null, 'car', dmg, kb, { from: c.pos.slice() });
         else room.knock(t, kb, 'car');
@@ -531,6 +531,9 @@ export class Traffic {
     }
   }
 
+  // to everyone and into the recording (killcams / the play of the round show crashes and hits)
+  cast(m) { this.room.broadcast(m); this.room.rec.ev.push({ s: now(), m }); }
+
   // ---------------------------------------------------------- what everyone sees
   send() {
     const room = this.room, n = now(), rows = [];
@@ -547,7 +550,10 @@ export class Traffic {
     }
     if (!rows.length && !this.sentAny) return;
     this.sentAny = rows.length > 0;
-    room.broadcast({ t: 'tr', s: n, c: rows });
+    const m = { t: 'tr', s: n, c: rows };
+    room.broadcast(m);
+    this.recOdd = !this.recOdd;
+    if (this.recOdd || rows.some((r) => r[7] & F.FREE)) room.rec.ev.push({ s: n, m }); // the play of the round gets the cars (6 a second, all of them while one's flying)
   }
 }
 export { TRAFFIC_ORDER, TRAFFIC_LEVELS };
