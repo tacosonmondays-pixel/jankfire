@@ -522,6 +522,7 @@ export function rebuildViewmodels() {
   for (const id of ORDER) {
     if (!VM[id]) continue;
     if (models[id]) { vmRoot.remove(models[id].wrap); freeTree(models[id].wrap); if (models[id].flash) models[id].flash.userData.face.material.dispose(); }
+    if (models[id] && models[id].left) { vmRoot.remove(models[id].left.wrap); freeTree(models[id].left.wrap); } // Lefty & Righty's left gun too (it was left on screen after a rebuild)
     const wrap = new THREE.Group();
     const g = buildWeapon(id, (W.skinOver || G.equipped || {})[id]);
     const cfg = VM[id];
