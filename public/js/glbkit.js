@@ -22,6 +22,9 @@ export const isLazy = (id) => { if (/^x_/.test(id) || (/^p_/.test(id) && id !== 
 const late = { fn: null, t: 0, busy: 0, by: new Map() };
 export function onLateModel(fn) { late.fn = fn; }
 export function whenLate(id, fn) { if (!late.by.has(id)) late.by.set(id, []); late.by.get(id).push(fn); } // that model just landed: drop a cached copy built without it
+const failed = new Map();
+export function whenFailed(id, fn) { if (!failed.has(id)) failed.set(id, []); failed.get(id).push(fn); } // it never came (or wasn't a Blender model): put the old look back
+const fail = (id) => { for (const f of failed.get(id) || []) try { f(id); } catch (e) { console.warn('late model', id, e); } };
 export const lateBusy = () => late.busy; // skins still downloading (tests wait for them)
 export function prefetch(ids) { for (const id of ids) if (LAZY.has(id)) fetchLate(id); }
 // what each item / killstreak shows: fetched as soon as it's in your loadout (killstreaks take a while to earn), so the
@@ -40,12 +43,12 @@ function fetchLate(id) {
   late.busy++;
   new GLTFLoader().load(url, (gltf) => {
     late.busy--;
-    if (!prepAuthored(id, gltf.scene)) return;
+    if (!prepAuthored(id, gltf.scene)) { fail(id); return; }
     for (const f of late.by.get(id) || []) try { f(id); } catch (e) { console.warn('late model', id, e); }
     clearTimeout(late.t);
     if (/^p_/.test(id)) return; // (a map prop: the map redraws itself, nobody's model changed)
     late.t = setTimeout(() => { if (late.fn) late.fn(id); }, 120); // a few at once: one rebuild
-  }, undefined, (e) => { late.busy--; console.warn('model failed', id, e); });
+  }, undefined, (e) => { late.busy--; console.warn('model failed', id, e); fail(id); });
 }
 
 // two looks to compare: 'glossy' (default: the materials as made in Blender + a studio reflection) and 'flat'

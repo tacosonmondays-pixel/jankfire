@@ -6,7 +6,7 @@
 // fog aren't drawn. A map's prop files download when the map loads (glbkit.js LAZY) and are shared between maps.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { AUTHORED, LAZY, prefetch, whenLate } from './glbkit.js';
+import { AUTHORED, LAZY, prefetch, whenLate, whenFailed } from './glbkit.js';
 import { hazeUniforms } from './world.js';
 import { shadowDirty } from './lighting.js';
 import { G } from './ctx.js';
@@ -38,10 +38,11 @@ function modelFor(p) {
 // world.js: does a model draw this tag's boxes? (the boxes are skipped then)
 let off = false; // (tests: the box version, for side-by-side sheets: tools/blender/shots_r4.cjs)
 export function propsOff(v) { off = !!v; }
+const has = (m) => !!AUTHORED[m] || coming.has(m);
 export function drawnByModel(pv) {
   if (off) return false;
-  if (pv === 'car') return PARKED.some((m) => AUTHORED[m]) || !!AUTHORED.p_car;
-  return !!AUTHORED['p_' + pv];
+  if (pv === 'car') return PARKED.some(has) || has('p_car');
+  return has('p_' + pv);
 }
 // the files a map needs (+ the traffic models if it has traffic)
 export function modelsFor(def, traffic) {
@@ -327,15 +328,17 @@ export function updatePropField(cam, force) {
 }
 
 // ---------------------------------------------------------------- per-map downloads
-let want = null; // the map whose props are on their way
-const asked = new Set();
-export function fetchMapProps(def, id, traffic, onReady) {
-  want = id;
-  const ids = modelsFor(def, traffic).filter((m) => !AUTHORED[m] && (LAZY.has(m) || asked.has(m))); // (not there yet, and has a file)
-  if (!ids.length) return;
-  let left = ids.length, t = 0;
-  const done = () => { clearTimeout(t); t = setTimeout(() => { if (want === id) onReady(); }, left ? 900 : 60); }; // (one rebuild for a burst of files)
-  for (const m of ids) { asked.add(m); whenLate(m, () => { left--; done(); }); }
+// the map is built without the boxes of props whose files are on their way (one map build, not two): the props pop in
+// when their files land (onReady: just the props redrawn). A file that never comes puts its boxes back (onFail: the map
+// redrawn)
+let ready = null, failed = null, t = 0;
+const asked = new Set(), coming = new Set();
+const landed = (m) => { coming.delete(m); clearTimeout(t); t = setTimeout(() => ready && ready(), coming.size ? 700 : 30); }; // (one redraw for a burst of files)
+const lost = (m) => { coming.delete(m); if (failed) failed(); };
+export function fetchMapProps(def, traffic, onReady, onFail) {
+  ready = onReady; failed = onFail;
+  const ids = modelsFor(def, traffic).filter((m) => !AUTHORED[m] && (LAZY.has(m) || coming.has(m))); // (not there yet, and has a file)
+  for (const m of ids) { if (!asked.has(m)) { asked.add(m); whenLate(m, landed); whenFailed(m, lost); } coming.add(m); }
   prefetch(ids);
 }
 export const propInfo = () => ({ ...propStats, cached: kindCache.size });

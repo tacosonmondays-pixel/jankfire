@@ -423,9 +423,11 @@ export function loadMap(id) {
   setMap(id);
   marbles.clear();
   resetGrid(BOXES);
+  // this map's prop models: asked for first, so the map is built once, without the boxes they stand in for (they pop in
+  // when they land: only the props are redrawn; one that never comes gets its boxes back)
+  fetchMapProps(MAPS[MAP.id], trafficKinds(MAPS[MAP.id]), () => { buildPropField(G.scene, MAPS[MAP.id], MAT); lightingRefresh(); }, refreshMapVisuals);
   buildMap(G.scene);
   buildPropField(G.scene, MAPS[MAP.id], MAT);
-  fetchMapProps(MAPS[MAP.id], MAP.id, trafficKinds(MAPS[MAP.id]), refreshMapVisuals); // this map's prop models (once they're in: one redraw)
   paintSky(MAP.sky);
   G.scene.fog.color.setHex(MAP.sky.fog);
   G.scene.fog.near = MAP.fogNear;
