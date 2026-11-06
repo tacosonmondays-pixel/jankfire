@@ -673,6 +673,7 @@ export function installRoyale(Room, H) {
       let best = s.melee ? s.melee.w : BR.melee, bv = dist < 3.5 ? 2.2 : 0.2;
       for (const g of s.slots) {
         if (!g || (g.ammo != null && g.ammo <= 0)) continue;
+        if ((WEAPONS[g.w].kind === 'cone' && g.w !== 'shredder') || WEAPONS[g.w].kind === 'beam') continue; // bots can't work a cig, a leaf blower or the laser
         const v = fit(g.w) * TIERS[g.tier].mul;
         if (v > bv) { bv = v; best = g.w; }
       }

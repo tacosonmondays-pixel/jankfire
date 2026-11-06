@@ -66,10 +66,12 @@ export const GUNS = {
   bowling: { tier: 1, w: 3, shots: 8 }, cig: { tier: 1, w: 2 }, blower: { tier: 1, w: 2 },
   sniper: { tier: 2, w: 5, mags: 3 }, chicken: { tier: 2, w: 3, shots: 8 }, bloodcross: { tier: 2, w: 3 }, shredder: { tier: 2, w: 2 },
   minigun: { tier: 3, w: 2, mags: 1 },
+  laser: { tier: 3, w: 2 }, // the Big Laser Pointer (charge it, it beams)
 };
 export const MELEE = { knife: { tier: 0, w: 4 }, slapper: { tier: 0, w: 3 }, katana: { tier: 1, w: 3 }, slipper: { tier: 1, w: 2 }, scales: { tier: 2, w: 2 }, spoon: { tier: 4, w: 0.6 } };
 // throwables and gadgets (the G key): how many come in one pick-up
-export const GADGETS = { frag: { tier: 0, n: 2, w: 6 }, smoke: { tier: 0, n: 2, w: 4 }, popper: { tier: 1, n: 2, w: 3 }, duck: { tier: 2, n: 1, w: 2 }, bubble: { tier: 2, n: 1, w: 2 }, wand: { tier: 2, n: 2, w: 2 }, reverse: { tier: 3, n: 1, w: 1 } };
+export const GADGETS = { frag: { tier: 0, n: 2, w: 6 }, smoke: { tier: 0, n: 2, w: 4 }, popper: { tier: 1, n: 2, w: 3 }, duck: { tier: 2, n: 1, w: 2 }, bubble: { tier: 2, n: 1, w: 2 }, wand: { tier: 2, n: 2, w: 2 }, reverse: { tier: 3, n: 1, w: 1 },
+  camera: { tier: 2, n: 1, w: 2 }, quiz: { tier: 1, n: 2, w: 3 }, nvg: { tier: 1, n: 2, w: 2 } }; // the new gear: instant camera, pop quiz, night vision goggles
 // everything else on the floor (no tier roll): ammo, heals, armour
 export const STUFF = {
   ammo: { name: 'Ammo Bucket', desc: 'a bucket of loose bullets. tops up every gun you carry', color: '#ffb84f' },
