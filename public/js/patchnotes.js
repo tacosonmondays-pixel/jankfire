@@ -1,6 +1,12 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '3.5', date: '2026-11-06', title: 'HARDWARE STORE', items: [
+    'NAIL GUN: fires nails, fast. land six in a row and they get nailed to the wall behind them like a poster. the nails stay in the walls.',
+    'TENNIS BALL LAUNCHER: fuzzy balls bounce up to 5 times and hit 30% harder every bounce. bank it round a corner for a BANK SHOT.',
+    'SHOPPING CART CANNON: fires a shopping cart that runs people over. it stays parked as cover, or walk up and hop in (your use key) to ride it.',
+    'all three are in Plant & Defuse and the Zombies mystery crate. each comes with a skin.',
+  ] },
   { v: '3.4', date: '2026-11-06', title: 'THE RIFLE PACK', items: [
     'HAT TRICK: a burst rifle. three rounds a pull. land all three on one person for a BURST!',
     'BELT SANDER: an LMG with a 100-round belt you can watch run out and a barrel that glows the longer you hold it. slow to aim, slow to reload.',
