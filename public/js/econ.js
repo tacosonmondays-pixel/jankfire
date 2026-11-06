@@ -16,17 +16,16 @@ import { W, setSlots, playVM, rebuildOne, setLoadout, refillAmmo, syncItem, setI
 import { weaponIcon, itemIcon, objIcon } from './icons.js';
 import { RP } from './replay.js';
 import * as E3 from './econ3d.js';
+import { tacRound, tacSync } from './tactical.js';
+import { K } from './keys.js';
 
-// every key this mode adds, in one place (the keybinds registry takes them over: buy, pause, drop; pickup is the
-// grapple's key, because tryHook() hands the press to us)
-export const ECON_KEYS = {
-  buy: 'KeyB', // the buy menu. this mode only: everywhere else B still pauses
-  pause: 'KeyP', // pause in every mode (Esc pauses too, by leaving pointer lock)
-  drop: 'KeyH', // drop what you hold; Shift + it drops your item. not Z: Z is the spray
-  idle: ['Digit4', 'Digit5', 'Digit6', 'Digit7', 'KeyV'], // scythe slot, killstreaks, dash: nothing to use here
-};
-const pickKey = () => (G.settings.swapAim ? 'RIGHT CLICK' : 'E'); // the grapple button
-const keyIs = (e, k) => e.code === ECON_KEYS[k];
+// this mode's keys are actions in keys.js (rebindable in Settings > Key bindings): 'buy' (B: the buy menu here, the
+// pause menu everywhere else), 'drop' (H; Shift + it drops your item), 'pause' (P, every mode: Esc pauses too).
+// pick up / swap is the grapple's key, because tryHook() hands the press to us
+const IDLE = ['slot4', 'streak1', 'streak2', 'streak3', 'dash', 'scythe']; // scythe slot, killstreaks, dash: nothing to use here
+const pickKey = () => K.label('grapple').toUpperCase(); // the grapple button (keys.js)
+const keyIs = (e, k) => K.matches(k, e);
+export const ecoKeyLabel = (k) => K.label(k).toUpperCase();
 
 const $ = (id) => document.getElementById(id);
 const S = G.settings;
@@ -54,7 +53,7 @@ function on() {
   G.noHook = pick;
   ammoKey = ''; slotKey = ''; gearKey = '';
   for (const id of ['ecoMoney', 'ecoArmor']) $(id).classList.remove('hidden');
-  hud.chat(null, null, `Plant & Defuse: buy your gear in the buy phase (${ECON_KEYS.buy.slice(3)}) · ${ECON_KEYS.drop.slice(3)} drops what you hold (Shift: your item) · ${pickKey()} picks up / swaps · ${ECON_KEYS.pause.slice(3)} pauses`);
+  hud.chat(null, null, `Plant & Defuse: buy your gear in the buy phase (${ecoKeyLabel('buy')}) · ${ecoKeyLabel('drop')} drops what you hold (Shift: your item) · ${pickKey()} picks up / swaps · ${ecoKeyLabel('pause')} pauses · ${K.label('sprint').toUpperCase()} slow walks`);
   return e;
 }
 // the mode ended (inv {off:1}) or you left: back to your own loadout, skins and item
@@ -100,7 +99,7 @@ const HOOKS = {
 // counted weapons (bow, launchers, cards, snowballs) spend a shot when a fire message leaves: mirror it here
 const send0 = net.send.bind(net);
 net.send = (o) => {
-  if (G.eco && o && o.t === 'fire') { const x = inst(o.w); if (x && x.lim && !x.cl) W.ammo[o.w] = Math.max(0, (W.ammo[o.w] || 0) - 1); }
+  if (G.eco && o && o.t === 'fire') { const x = inst(o.w); if (x && x.lim && !x.cl && o.ch == null) W.ammo[o.w] = Math.max(0, (W.ammo[o.w] || 0) - 1); }
   return send0(o);
 };
 
@@ -243,7 +242,7 @@ function banner(m) {
   if (m.pistol) tags.push('PISTOL ROUND');
   if (m.n === BOMB.swapAfter) tags.push('LAST ROUND OF THE HALF');
   if (Math.max(...wins) >= BOMB.wins - 1) tags.push('MATCH POINT');
-  el.innerHTML = `<div class="rs"><span class="r">ROUND ${m.n}</span><span class="s" style="color:${col}">${mine ? 'ATTACK' : 'DEFEND'}</span></div><div class="t">${['BUY PHASE · B to shop', ...tags].map((x) => `<span>${x}</span>`).join('')}</div>`;
+  el.innerHTML = `<div class="rs"><span class="r">ROUND ${m.n}</span><span class="s" style="color:${col}">${mine ? 'ATTACK' : 'DEFEND'}</span></div><div class="t">${[`BUY PHASE · ${ecoKeyLabel('buy')} to shop`, ...tags].map((x) => `<span>${x}</span>`).join('')}</div>`;
   el.classList.remove('hidden', 'go'); void el.offsetWidth; el.classList.add('go');
   clearTimeout(el._t); el._t = setTimeout(() => el.classList.add('hidden'), 3600);
 }
@@ -253,6 +252,7 @@ function initNet() {
   net.on('inv', onInv);
   net.on('eround', (m) => {
     const e = on();
+    tacRound(m.n); // this round's shot seed, shot count from 0
     e.round = m; e.buyEnd = now() + (m.buy || 0); e.fresh = true; e.out = false;
     const zs = [];
     if (m.zones && m.zones.att) zs.push({ z: m.zones.att, team: m.att });
@@ -305,6 +305,7 @@ function initNet() {
     const x = inst(m.w);
     if (!x || x.u !== m.u) return;
     x.m = m.m; x.r = m.r; W.ammo[m.w] = m.m; W.res[m.w] = m.r;
+    if (m.q != null) tacSync(m.q); // the server's shot count (it refused one)
   });
   net.on('eno', (m) => { toast(ENO[m.why] || m.why || 'no'); sfx.error(); });
 }
@@ -456,7 +457,7 @@ function iconFor(it) {
 }
 function buildMenu() {
   const root = $('ecoBuy');
-  root.innerHTML = `<div class="eb"><div class="eb-top"><div class="eb-money"><small>CREDITS</small><b></b></div><div class="eb-mid"><div class="eb-timer"></div><div class="eb-status"></div></div><div class="eb-team"></div></div><div class="eb-cols"></div><div class="eb-foot"><span class="eb-help"></span><button class="eb-rebuy">REBUY</button><button class="eb-close">CLOSE (B)</button></div></div>`;
+  root.innerHTML = `<div class="eb"><div class="eb-top"><div class="eb-money"><small>CREDITS</small><b></b></div><div class="eb-mid"><div class="eb-timer"></div><div class="eb-status"></div></div><div class="eb-team"></div></div><div class="eb-cols"></div><div class="eb-foot"><span class="eb-help"></span><button class="eb-rebuy">REBUY</button><button class="eb-close">CLOSE (${ecoKeyLabel('buy')})</button></div></div>`;
   const cols = root.querySelector('.eb-cols');
   lists().forEach((items, c) => {
     const col = document.createElement('div'); col.className = 'eb-col'; col.dataset.c = c;
@@ -500,7 +501,7 @@ function warmIcons() {
 }
 function helpText() {
   const el = $('ecoBuy').querySelector('.eb-help');
-  if (el) el.textContent = qcol >= 0 ? `${COLS[qcol][1]}: press 1-${Math.min(9, lists()[qcol].length)}${lists()[qcol].length > 9 ? ' or 0' : ''} to buy · BACKSPACE back` : 'CLICK buy · RIGHT CLICK sell back · keys: 1-5 then a number · B / ESC close';
+  if (el) el.textContent = qcol >= 0 ? `${COLS[qcol][1]}: press 1-${Math.min(9, lists()[qcol].length)}${lists()[qcol].length > 9 ? ' or 0' : ''} to buy · BACKSPACE back` : `CLICK buy · RIGHT CLICK sell back · keys: 1-5 then a number · ${ecoKeyLabel('buy')} / ESC close`;
 }
 // why you can't buy right now (null = you can)
 function cantBuy() {
@@ -654,7 +655,7 @@ export function econKey(e) {
   }
   if (keyIs(e, 'buy')) { if (!e.repeat) openMenu(); return true; }
   if (keyIs(e, 'drop')) { if (!e.repeat) drop(e.shiftKey); return true; }
-  if (ECON_KEYS.idle.includes(e.code)) return true;
+  if (IDLE.some((a) => K.matches(a, e))) return true;
   if (ec.spec && e.code === 'Space' && !RP.active && !G.killcamPending) { if (!e.repeat) nextSpec(1); return true; }
   return false;
 }
@@ -691,7 +692,7 @@ export function econIc(m) { const e = G.eco; if (!e) return false; e.lastIc = m;
 // applyLoadout: the menu loadout waits for the mode to end (cosmetics still apply)
 export function econLoadout() {
   if (!G.eco) return false;
-  $('loNote').textContent = 'Plant & Defuse: you buy your weapons (B). your loadout is back after the match';
+  $('loNote').textContent = `Plant & Defuse: you buy your weapons (${ecoKeyLabel('buy')}). your loadout is back after the match`;
   return true;
 }
 // the dead screen's line (true = handled)
@@ -733,7 +734,7 @@ export function econFrame(dt) {
   // the buy phase countdown
   const tm = $('ecoTimer');
   if (left > 0) {
-    const s = Math.ceil(left / 1000), txt = `<b>BUY PHASE 0:${String(s).padStart(2, '0')}</b><span>barriers drop in ${s} · ${ECON_KEYS.buy.slice(3)}: buy menu</span>`;
+    const s = Math.ceil(left / 1000), txt = `<b>BUY PHASE 0:${String(s).padStart(2, '0')}</b><span>barriers drop in ${s} · ${ecoKeyLabel('buy')}: buy menu</span>`;
     if (tm._k !== txt) { tm._k = txt; tm.innerHTML = txt; tm.classList.toggle('low', s <= 3); }
     tm.classList.remove('hidden');
   } else if (!tm.classList.contains('hidden')) tm.classList.add('hidden');

@@ -1,7 +1,8 @@
 // Plant & Defuse economy, server side: credits, a buy phase behind spawn barriers, gear that drops when you die, ammo the
 // server counts per weapon, armor, the defuse kit, no grapple, no killstreaks, bots that buy. The rules and numbers live in
 // shared/econ.js; this file adds econ* methods to Room (installEcon, called from server.js). See DESIGN.md (wf_econ).
-import { WEAPONS, ITEMS } from '../shared/weapons.js';
+import { WEAPONS, ITEMS, FLAGS } from '../shared/weapons.js';
+import { TAC } from '../shared/tactical.js';
 import { BOMB } from '../shared/modes.js';
 import { ECON, ARMOR, BLAST, GEAR, econWeapon, weaponPrice, refillPrice, killReward, armorPen, ammoSpec, itemSpec, gearPrice } from '../shared/econ.js';
 import { raycast, PH } from '../shared/physics.js';
@@ -393,6 +394,8 @@ const M = {
       case 's': { // the weapon you say you hold must be one you have; there's no grapple to report
         if (has(WEAPONS, m.w) && !this.econOwns(p, m.w)) m.w = undefined;
         m.g = null;
+        // slow walk (silent footsteps) only at slow walk speed: running with the flag on just clears it
+        if (typeof m.f === 'number' && (m.f & FLAGS.WALK) && Array.isArray(m.v) && Math.hypot(Number(m.v[0]) || 0, Number(m.v[2]) || 0) > TAC.run * TAC.walkMul + 1) m.f &= ~FLAGS.WALK;
         if (p.ec && p.alive && m.q === p.seq && Array.isArray(m.p) && m.p.length === 3 && m.p.every((v) => typeof v === 'number' && Number.isFinite(v))) p.ec.said = m.p.slice(0, 3);
         const rl = p.ec && p.ec.rl;
         if (rl && has(WEAPONS, m.w)) { const x = this.econInst(p, m.w); if (!x || x.u !== rl.u) p.ec.rl = null; } // switched away: reload cancelled
@@ -563,10 +566,10 @@ const M = {
     x.m += mv; x.r -= mv;
     this.econAm(p, x);
   },
-  econAm(p, x) { if (!p.isBot) D.send(p, { t: 'am', u: x.u, w: x.id, m: x.m, r: x.r }); },
+  econAm(p, x) { if (!p.isBot) D.send(p, { t: 'am', u: x.u, w: x.id, m: x.m, r: x.r, q: p.tac ? p.tac.q : undefined }); },
   // a hitscan shot reaches the server as its 'hit' messages (one per target) and then its 'fire'. the first of them
   // pays the round; the rest of that shot rides on it. no round left = no shot (and no damage)
-  econShot(p, x, w, isHit) {
+  econShot(p, x, w, isHit, m) {
     const n = now(), s = x.shot, open = s && !s.fired && n - s.t < 150;
     if (isHit && open) { if (s.hits >= ((w.pellets || 1) > 1 ? 6 : 1)) return false; s.hits++; return true; }
     if (!isHit && open) { s.fired = true; return true; }
@@ -577,6 +580,7 @@ const M = {
     }
     x.m--; x.fresh = false;
     x.shot = { t: n, hits: isHit ? 1 : 0, fired: !isHit };
+    if (m && !p.isBot) this.tacOpen(p, x, w, m); // which spray shot this is, and is it honest (server/tactical.js)
     return true;
   },
   econFire(p, m, buying) {
@@ -586,7 +590,7 @@ const M = {
     if (!x) return; // not yours
     if (!x.lim) { this.onFire(p, m); return; } // melee, cones, the reverse card: no ammo
     if (w.kind === 'hitscan') {
-      if (!this.econShot(p, x, w, false)) { this.econAm(p, x); return; }
+      if (!this.econShot(p, x, w, false, m)) { this.econAm(p, x); return; }
       this.onFire(p, m);
       return;
     }
@@ -602,7 +606,7 @@ const M = {
     if (!w) return false;
     const x = this.econInst(p, m.w);
     if (!x) return false;
-    if (w.kind === 'hitscan' && x.lim) return this.econShot(p, x, w, true);
+    if (w.kind === 'hitscan' && x.lim) return this.econShot(p, x, w, true, m) && this.tacHitOk(p, x, w, m);
     return true;
   },
   // {t:'item', i, o, d}: the charges are the ones you bought; they don't come back

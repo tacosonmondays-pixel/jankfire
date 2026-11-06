@@ -29,6 +29,7 @@ export const ACHIEVEMENTS = {
   nolife: { name: 'No Life', desc: 'play for 5 hours', stat: 'playtime', goal: 18000 },
   airborne: { name: 'Never Landed', desc: 'finish a whole match without touching the ground after any spawn', stat: 'airborne', goal: 1 },
   royalty: { name: 'Sniper Royalty', desc: 'sniper kills: a 50 m+ long shot, a quick-scope or no-scope, and a headshot', stat: 'sniper_feats', goal: 3, feats: ROYAL_FEATS },
+  smarty: { name: 'Smarty Pants', desc: 'get 3 pop quiz questions right (someone else has to throw them)', stat: 'quiz_right', goal: 3 },
 };
 // hidden unlocks that aren't in the list: the Wings used to come from Frequent Flyer, and whoever had them by then keeps them
 export const LEGACY_ACHS = { oldwings: { stat: 'wings_old', goal: 1 } };
@@ -51,7 +52,7 @@ export const ACCESSORIES = {
   face: {
     none: { name: 'None' }, shades: { name: 'Sunglasses' }, mustache: { name: 'Mustache' }, clown: { name: 'Clown Nose' },
     eyepatch: { name: 'Eyepatch' }, bandana: { name: 'Bandana', ach: 'firstblood' }, visor: { name: 'Visor', ach: 'sharp' },
-    goggles: { name: 'Flight Goggles', ach: 'flyer' },
+    goggles: { name: 'Flight Goggles', ach: 'flyer' }, bigglasses: { name: 'Big Glasses', ach: 'smarty' },
   },
   back: {
     none: { name: 'None' }, backpack: { name: 'Backpack' }, cape: { name: 'Cape' },
@@ -65,7 +66,7 @@ export const HAIR_COLORS = ['#1a1a1a', '#4a2a10', '#8a5a2b', '#d9b45a', '#f2e6c8
 export const CLOTH_COLORS = ['#ff4fd8', '#4fd8ff', '#ffe14d', '#7dff4f', '#ff7a1a', '#b07dff', '#ff4f4f', '#4fffb0', '#ffffff', '#ff9ad5', '#3a3a44', '#8a5a2b', '#1a1a1a', '#2a4a8a', '#3a6a2a', '#c8b48a'];
 export const HAIRS = { none: { name: 'Bald' }, short: { name: 'Short' }, bowl: { name: 'Bowl Cut' }, spiky: { name: 'Spiky' }, mohawk: { name: 'Mohawk' }, long: { name: 'Long' }, ponytail: { name: 'Ponytail' }, bun: { name: 'Bun' }, afro: { name: 'Afro' } };
 export const TOPS = { tank: { name: 'Sash' }, tee: { name: 'T-Shirt' }, hoodie: { name: 'Hoodie' }, jacket: { name: 'Jacket' }, suit: { name: 'Suit' }, runner: { name: 'Runner Jacket' }, none: { name: 'Nothing' } };
-export const BOTTOMS = { shorts: { name: 'Shorts' }, pants: { name: 'Pants' }, skirt: { name: 'Skirt' } };
+export const BOTTOMS = { shorts: { name: 'Shorts' }, pants: { name: 'Pants' }, skirt: { name: 'Skirt' }, overalls: { name: 'Overalls', ach: 'smarty' } }; // bottoms can be achievement-locked too (hasAcc)
 export const OUTFIT = { skin: SKIN_TONES, hairColor: HAIR_COLORS, topColor: CLOTH_COLORS, bottomColor: CLOTH_COLORS };
 export const DEFAULT_LOOK = { color: '', head: 'none', face: 'none', back: 'none', skin: '', hair: 'none', hairColor: '#1a1a1a', top: 'tank', topColor: '', bottom: 'shorts', bottomColor: '' };
 
@@ -89,7 +90,7 @@ export function validLook(look, achs) {
   }
   if (has(HAIRS, look.hair)) out.hair = look.hair;
   if (has(TOPS, look.top)) out.top = look.top;
-  if (has(BOTTOMS, look.bottom)) out.bottom = look.bottom;
+  if (has(BOTTOMS, look.bottom) && hasAcc(BOTTOMS[look.bottom], achs)) out.bottom = look.bottom;
   for (const [k, list] of Object.entries(OUTFIT)) if (list.includes(look[k])) out[k] = look[k];
   return out;
 }

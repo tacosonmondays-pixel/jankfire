@@ -231,6 +231,8 @@ const gear = {
     this.broadcast({ t: 'quizx', id: t.id, i, c: q.ok, ok: right ? 1 : 0, gone: gone ? 1 : undefined });
     if (gone) return;
     if (right) {
+      // Smarty Pants: right answers count for logged-in players, from someone else's calculator, outside Training
+      if (t.acct && q.by !== t.id && this.mode !== 'training') { H.stat(t, 'quiz_right', 1); H.send(t, { t: 'quizpt', n: H.liveStats(t).quiz_right || 0 }); }
       t.invulnUntil = H.now() + QUIZ.invuln * 1000;
       t.fastUntil = H.now() + QUIZ.fastT * 1000;
       this.heal(t, QUIZ.heal, 125);
@@ -336,7 +338,7 @@ const gear = {
     const ai = b.ai;
     if (ai.gear === undefined) ai.gear = process.env.JF_BOT_GEAR ? (process.env.JF_BOT_GEAR === 'none' ? null : process.env.JF_BOT_GEAR) : GEAR[(Math.random() * GEAR.length) | 0]; // test knob: JF_BOT_GEAR=quiz
     const g = ai.gear;
-    if (!g || this.mode === 'training' || this.modeWeapon(b) || (this.chaosKit && this.chaosKit.noItem)) { b.nvOn = false; return; }
+    if (!g || b.zmz || this.mode === 'training' || this.modeWeapon(b) || (this.chaosKit && this.chaosKit.noItem)) { b.nvOn = false; return; } // zombies don't carry gear
     if (b.trap || b.quiz || n < (b.frozenUntil || 0) || n < (b.sleepUntil || 0) || n < (b.blindUntil || 0)) return;
     const t = this.players.get(ai.target), cd = ITEMS[g].recharge * 1000;
     const vis = t && t.alive && ai.seenAt && n - ai.seenAt > (BOT_DIFF[ai.diff] || BOT_DIFF.normal).react;

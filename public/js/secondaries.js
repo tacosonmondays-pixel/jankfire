@@ -16,6 +16,7 @@ import { fx, makeBeam, setBeam } from './fx.js';
 import { sfx } from './audio.js';
 import { recordEv, RP_HOOKS, RP } from './replay.js';
 import { buildWeapon, M, freeTree } from './models.js';
+import { K } from './keys.js';
 
 const WP = WEAPONS.water, TZ = WEAPONS.taser, RM = WEAPONS.remote;
 const r2 = (x) => Math.round(x * 100) / 100;
@@ -371,12 +372,17 @@ function reading(r, v) {
 // ---------------------------------------------------------------- the radar gun in your hand (hold G)
 let radarVM = null, radarK = 0;
 function ensureRadarVM() {
-  if (radarVM || !G.vmScene) return radarVM;
+  if (!G.vmScene) return radarVM;
+  // built on the first frame, before the Blender model had loaded (or in an old skin): build it again as it comes out
+  const key = JSON.stringify((G.equipped || {}).radar || '');
+  if (radarVM && S.radar && radarK <= 0.01 && (radarVM.userData.key !== key || radarVM.userData.g.userData.glb !== 'blender')) { G.vmScene.remove(radarVM); freeTree(radarVM); radarVM = null; }
+  if (radarVM) return radarVM;
   radarVM = new THREE.Group();
+  radarVM.userData.key = key;
   const g = buildWeapon('radar', (G.equipped || {}).radar);
-  g.scale.setScalar(1.05);
+  g.scale.setScalar(0.8);
   radarVM.add(g);
-  const hand = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.062, 0.09), M(0xf1c27d)); hand.position.set(0, -0.05, 0.03); radarVM.add(hand);
+  const hand = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.062, 0.09), M(0xf1c27d)); hand.position.set(0, -0.042, 0.016); radarVM.add(hand);
   radarVM.userData.g = g;
   radarVM.visible = false;
   G.vmScene.add(radarVM);
@@ -389,8 +395,8 @@ function updateRadarVM(dt, now) {
   vm.visible = radarK > 0.01;
   if (!vm.visible) return;
   const e = 1 - (1 - radarK) ** 3;
-  vm.position.set(-0.15, -0.16 - (1 - e) * 0.28, -0.34);
-  vm.rotation.set(0.05 + (1 - e) * 0.6, -0.1, 0.04 + Math.sin(now * 0.004) * 0.01);
+  vm.position.set(-0.17, -0.15 - (1 - e) * 0.28, -0.36); // low left, the readout turned toward your eye
+  vm.rotation.set(-0.06 + (1 - e) * 0.6, 0.12, 0.04 + Math.sin(now * 0.004) * 0.01);
   const g = vm.userData.g, scr = g.userData.screen;
   if (scr) {
     const v = S.radarV;
@@ -587,7 +593,8 @@ export function initSec() {
     if (id === 'radar') return radarDown();
     return prev ? prev(id) : false;
   };
-  addEventListener('keyup', (e) => { if (e.code === 'KeyG') radarUp(); });
+  const up = (e) => { if (K.up('item', e)) radarUp(); }; // let go of the item key (rebindable, keys.js)
+  addEventListener('keyup', up); addEventListener('mouseup', up);
   addEventListener('blur', radarUp);
   net.on('soak', (m) => { recordEv(m); onSoak(m, true, liveOf); });
   net.on('stun', (m) => {
@@ -686,7 +693,7 @@ function drawHud(now) {
   if (S.radar) ro.firstChild.textContent = S.radarV == null ? '--- km/h' : `${S.radarV} km/h`;
   // the big banner: whatever matters most right now
   const tip = $('secTip');
-  tip.textContent = alive && W.cur === 'remote' ? `LMB ❚❚ pause ${cdTxt(S.rmCd.pause, now)}   ·   RMB ◀◀ rewind ${cdTxt(S.rmCd.rewind, now)}` : alive && S.radar ? `limit ${SPEED.limit} km/h · over ${SPEED.jail} = straight to jail` : '';
+  tip.textContent = alive && W.cur === 'remote' ? `${K.label('fire')} ❚❚ pause ${cdTxt(S.rmCd.pause, now)}   ·   ${K.label('aim')} ◀◀ rewind ${cdTxt(S.rmCd.rewind, now)}` : alive && S.radar ? `limit ${SPEED.limit} km/h · over ${SPEED.jail} = straight to jail` : '';
   if (now < bannerUntil) return;
   if (bannerLock) { bannerLock = ''; banner(''); }
   if (!alive) { banner(''); return; }
