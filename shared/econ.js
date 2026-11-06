@@ -53,6 +53,9 @@ export const PRICES = {
   bowling: { price: 2100, kill: 450, shots: 8 },
   bow: { price: 1650, kill: 600, pen: 0.5, shots: 24 },
   banana: { price: 1400, kill: 650, shots: 45 },
+  nailgun: { price: 2300, kill: 300, pen: 0.2, mags: 3 },
+  tennis: { price: 1600, kill: 500, shots: 30 },
+  cart: { price: 2600, kill: 450, shots: 5 }, // 5 carts a round (and still only 3 of yours on the map at once)
   // secondary
   revolver: { price: 250, kill: 250, pen: 0.5, mags: 4 },
   marbles: { price: 900, kill: 400, pen: 0, mags: 5 },

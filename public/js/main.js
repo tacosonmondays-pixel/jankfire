@@ -34,6 +34,7 @@ import { courtKill, courtVerdict, updateCourt, courtReset, courtSync } from './s
 import { noScope, updateNoScope } from './noscope.js';
 import { makeRope, setRope, setRopeSkin, myGrapple, initGrapplePreview, grappleThumb, showGrapple, renderGrapplePreview } from './grapple.js';
 import { shredKill, shredHit, shredGrab, grabStep, updateShreds, clearShreds } from './shredder.js';
+import { primFx, pinStep, tennisStep, tennisEnd, updatePrims, clearPrims, cartKey } from './primaries.js'; // nail gun, tennis balls, shopping carts
 import { updateSpeedLines } from './speedlines.js';
 import { slipperUpdate, slipperStep } from './slipper.js';
 import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse } from './objective.js';
@@ -252,6 +253,7 @@ function clearEntities() {
   G.projs.clear(); G.peels.clear(); G.holes.clear();
   clearCrosses();
   clearPatches();
+  clearPrims();
 }
 function quitToMenu(silent) {
   net.close();
@@ -931,7 +933,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'Digit3') switchSlot(2);
   if (e.code === 'KeyQ') lastSlot();
   if (e.code === 'KeyR') reload();
-  if (e.code === 'KeyF' && !e.repeat) { if (canUse(G.round, ME.pos)) startUse(); else inspect(); }
+  if (e.code === 'KeyF' && !e.repeat) { if (canUse(G.round, ME.pos)) startUse(); else if (!cartKey()) inspect(); } // F on a shopping cart: hop in / out
   if (e.code === 'KeyV') W.dashHeld = true;
   if (e.code === 'KeyX' && !e.repeat) toggleScythe();
   if (e.code === 'KeyG' && !e.repeat) useItem();
@@ -1431,14 +1433,14 @@ net.on('ps', (m) => {
   spawnProj(m);
   if (m.k === 'bloodcross') { crossShot(m, G.projs.get(m.id)); return; } // a heartbeat, not a pew
   if (m.o !== G.myId) {
-    const s = { chicken: 'squawk', duck: 'squeak', bowling: 'thunk', slipper: 'swing', soap: 'bloop' }[m.k] || 'pew';
+    const s = { chicken: 'squawk', duck: 'squeak', bowling: 'thunk', slipper: 'swing', soap: 'bloop', tennis: 'tennisFire' }[m.k] || 'pew';
     sfx[s](m.p);
   }
 });
 net.on('pu', (m) => {
   const pr = G.projs.get(m.id);
   if (pr && pr.k === 'slipper') return slipperUpdate(pr, m); // homing: steer between updates, ease corrections
-  if (pr) { pr.p = m.p.slice(); pr.v = m.v.slice(); }
+  if (pr) { pr.p = m.p.slice(); pr.v = m.v.slice(); if (Number.isInteger(m.b)) pr.b = m.b; } // b: a tennis ball's bounces so far
 });
 net.on('pd', (m) => {
   const pr = G.projs.get(m.id);
@@ -1446,6 +1448,7 @@ net.on('pd', (m) => {
     G.scene.remove(pr.mesh);
     G.projs.delete(m.id);
     if (pr.k === 'slipper' && pr.o === G.myId) onSlipperBack();
+    if (pr.k === 'tennis') tennisEnd(pr, m);
   }
   if (m.x) {
     recordEv(m);
@@ -1517,6 +1520,7 @@ net.on('he', (m) => {
 });
 net.on('fx', (m) => {
   if (gearFx(m)) return; // laser beams, photo teleports, goggle flashes (gear.js)
+  if (primFx(m)) return; // carts running people over; nail gun shots leave nails in walls (primaries.js)
   if (m.k === 'shot' || m.k === 'swing' || m.k === 'tbag' || m.k === 'shatter') recordEv(m);
   const r = G.remotes.get(m.id);
   if (m.k === 'shot') {
@@ -1642,6 +1646,7 @@ function frame(t) {
     acc += dt;
     while (acc >= STEP) { stepPlayer(STEP, inp, now); airTick(now); lavaStep(now); inp.jumpPressed = false; acc -= STEP; }
     grabStep(now); // held in a shredder's intake
+    pinStep(now); // nailed to a wall
     oobTick(now); // out of the play area: RETURN TO THE MAP 3 2 1
     econFrame(dt); // Plant & Defuse: barriers, drops, armor on models, spectating
     // spinbot killstreak: lock onto the nearest enemy you can see
@@ -1695,6 +1700,7 @@ function frame(t) {
   for (const [id, b] of G.bubbles) { if (now > b.until + 500) { G.scene.remove(b.mesh); G.bubbles.delete(id); continue; } b.mesh.rotation.y += dt * 0.3; b.mesh.material.opacity = 0.18 + Math.sin(now * 0.006) * 0.05; }
   updateWand(dt, now); // bubble wand: giant soap bubbles round people, the view from inside one, the wand in your hand
   updateGear(dt, now); // laser beams, photo frames, pop quizzes, night vision
+  updatePrims(dt, now); // nails in walls, pins, shopping carts
   for (let i = G.smokes.length - 1; i >= 0; i--) {
     const s2 = G.smokes[i];
     if (now > s2.until) { G.smokes.splice(i, 1); continue; }
@@ -1713,6 +1719,7 @@ function frame(t) {
 
   for (const pr of G.projs.values()) {
     if (pr.k === 'soap') { stepSoap(pr, dt, now); continue; } // bubble wand: wobbly bubbles on an exact path (wand.js)
+    if (pr.k === 'tennis') { tennisStep(pr, dt); pr.mesh.visible = !RP.active; continue; } // counted bounces (primaries.js)
     if (pr.k === 'slipper') {
       slipperStep(pr, dt, now);
       pr.spin += dt * 20;

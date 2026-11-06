@@ -1,5 +1,6 @@
 // Local weapon logic, loadouts, ammo + first-person viewmodels.
 import * as THREE from 'three';
+import { nailSegs } from './primaries.js'; // the nail gun's nails in walls
 import { beamStart, beamOn, chargeLook, chargeWhine } from './beam.js'; // Big Laser Pointer
 import { WEAPONS, ORDER, SLOTS, FLAGS, HIPFIRE, ARROW_TIPS, SUITS, RANKS, validLoadout, DEFAULT_LOADOUT, ITEMS, fireRate } from '/shared/weapons.js';
 import { BOXES } from '/shared/map.js';
@@ -62,6 +63,9 @@ const RECOIL = {
   duck: { back: 1.2, up: 4, roll: 3, side: 0.3, punch: 0.015 },
   bow: { back: -1.4, up: 2.5, roll: 1, side: 0.1, punch: 0.012 },
   laser: { back: 1.8, up: 5, roll: 1.2, side: 0.15, punch: 0.03 },
+  nailgun: { back: 0.8, up: 2.6, roll: 1.8, side: 0.25, punch: 0.01 }, // the new primaries: a pneumatic tap,
+  tennis: { back: 1.6, up: 4.5, roll: 1.4, side: 0.2, punch: 0.025 }, // a felt THWOCK,
+  cart: { back: 4.2, up: 7, roll: 2.4, side: 0.4, punch: 0.07 }, // and a whole cart leaving your shoulder
 };
 const rnd = () => (Math.random() < 0.5 ? -1 : 1) * (0.5 + Math.random() * 0.5);
 function kickVM(id, mul = 1) {
@@ -99,7 +103,7 @@ function flashTex() {
   flashTexture.magFilter = THREE.NearestFilter; flashTexture.minFilter = THREE.NearestFilter;
   return flashTexture;
 }
-const FLASH_IDS = new Set(['ar', 'smg', 'redline', 'marbles', 'shotgun', 'minigun', 'sniper', 'revolver', 'scythe_rifle', 'chicken', 'bowling', 'banana']);
+const FLASH_IDS = new Set(['ar', 'smg', 'redline', 'marbles', 'shotgun', 'minigun', 'sniper', 'revolver', 'scythe_rifle', 'chicken', 'bowling', 'banana', 'cart']);
 function makeFlash(big) {
   const grp = new THREE.Group();
   const mat = new THREE.MeshBasicMaterial({ map: flashTex(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
@@ -450,6 +454,9 @@ const VM = {
   blower: { p: [0.24, -0.27, -0.45], r: [0, 0.05, 0], s: 0.6 },
   shredder: { p: [0.27, -0.26, -0.46], r: [0, 0.16, 0], s: 0.46 },
   laser: { p: [0.21, -0.215, -0.4], r: [0, 0.05, 0], s: 0.62 },
+  nailgun: { p: [0.2, -0.2, -0.38], r: [0, 0.05, 0], s: 0.72 },
+  tennis: { p: [0.21, -0.21, -0.4], r: [0, 0.04, 0], s: 0.68 },
+  cart: { p: [0.24, -0.25, -0.44], r: [0, 0.04, 0], s: 0.58 },
   popper: { p: [0.17, -0.18, -0.34], r: [0.1, 0.1, 0], s: 0.75 },
   reverse: { p: [0.15, -0.15, -0.34], r: [0.3, -0.3, 0.15], s: 0.65 },
   duck: { p: [0.17, -0.18, -0.4], r: [0.1, 0.5, 0], s: 0.55 },
@@ -764,6 +771,7 @@ function fireHitscan(id, now) {
   if (shots) marbles.shoot(shots, marblePalette(skin));
   else for (const s of segs) fx.tracer(s.slice(0, 3), s.slice(3), tracerColor(skin, w.tracer || 0xfff0a0), w.thick || (fast ? 0.03 : 0.045), fast ? 0.07 : 0.2);
   net.send({ t: 'fire', w: id, o: o.map(r2), s: segs.slice(0, 12).map((s) => s.map(r2)), fan: fanShot ? 1 : undefined });
+  if (id === 'nailgun') nailSegs(segs); // nails stay in the wall (primaries.js)
   if (w.recoil) applyKb([-base[0] * w.recoil, -base[1] * w.recoil, -base[2] * w.recoil]);
   ME.pitch = Math.min(1.55, ME.pitch + (w.kick || 0) * (0.6 + Math.random() * 0.8) * (1 - W.aim * 0.5));
   ME.yaw += (Math.random() - 0.5) * (w.kick || 0) * 0.5;
@@ -855,9 +863,11 @@ function fireProj(id, now, fromAnim) {
   if (id === 'chicken') sfx.squawk();
   else if (id === 'duck') sfx.squeak();
   else if (id === 'bowling') sfx.thunk();
+  else if (id === 'tennis') sfx.tennisFire();
+  else if (id === 'cart') { sfx.cartFire(); G.shake = Math.max(G.shake, 0.5); applyKb(look().map((x) => -x * 6)); } // it shoves you back a step
   else if (id === 'slipper') { /* the throw animation already whooshed */ }
   else sfx.pew();
-  W.kick = id === 'chicken' || id === 'bowling' ? 0.8 : 0.35;
+  W.kick = id === 'chicken' || id === 'bowling' || id === 'cart' ? 0.8 : 0.35;
   if (id !== 'slipper') {
     if (W.anim && W.anim.kind === 'draw') W.anim = null;
     kickVM(id);
