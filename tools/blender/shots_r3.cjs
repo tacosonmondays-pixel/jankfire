@@ -52,7 +52,10 @@ const FILES = { camera: ['x_camera'], frame: ['x_photoframe'], calc: ['x_calc'],
         scene.remove(obj);
         return c;
       };
-      const strip = (cs) => { const c = document.createElement('canvas'); c.width = W * cs.length; c.height = H; const x = c.getContext('2d'); cs.forEach((p, i) => x.drawImage(p, i * W, 0)); return c.toDataURL('image/png'); };
+      const strip = (cs) => { // panels side by side, a dark rule between them
+        const c = document.createElement('canvas'); c.width = cs.reduce((n, p) => n + p.width, 0); c.height = H; const x = c.getContext('2d');
+        let at = 0; cs.forEach((p, i) => { x.drawImage(p, at, 0); if (i) { x.fillStyle = '#120818'; x.fillRect(at - 2, 0, 4, H); } at += p.width; }); return c.toDataURL('image/png');
+      };
       const code = (ids, fn) => { const keep = ids.map((id) => k.AUTHORED[id]); ids.forEach((id) => delete k.AUTHORED[id]); try { return fn(); } finally { ids.forEach((id, i) => { if (keep[i]) k.AUTHORED[id] = keep[i]; }); } };
       const testTex = () => { // a stand-in photo: sky, a sun, a mannequin, the date stamp
         const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
@@ -128,15 +131,17 @@ const FILES = { camera: ['x_camera'], frame: ['x_photoframe'], calc: ['x_calc'],
               ra.armsReset(); ra.armsOn(); for (let i = 0; i < 30; i++) ra.updateArms(1 / 60, { visible: true }); // (settled at rest first)
               if (setup) setup();
               for (let i = 0; i < n; i++) ra.updateArms(1 / 60, { visible: true, ...st });
-              const vc = G.vmCamera.clone(); vc.aspect = W / H; vc.updateProjectionMatrix();
+              const VW = Math.round(H * 16 / 9), vc = G.vmCamera.clone(); vc.aspect = VW / H; vc.updateProjectionMatrix(); // (a 16:9 screen, the arms where you see them)
               const A = ra.armsObj(), ts = new THREE.Scene(); // just the arms, in the viewmodel's own lights
               for (const o of G.vmScene.children) if (o.isLight) ts.add(o.clone());
               if (!ts.children.length) { ts.add(new THREE.HemisphereLight(0xcfe8ff, 0x7a4a6a, 1.8)); const d = new THREE.DirectionalLight(0xffffff, 1.5); d.position.set(2, 3, 4); ts.add(d); }
               ts.add(A.grp);
+              r.setSize(Math.floor(VW * sc), Math.floor(H * sc), false);
               k.withEnv(r, ts, () => { r.setClearColor(0x3a3048); r.render(ts, vc); });
               G.vmScene.add(A.grp);
-              const c = document.createElement('canvas'); c.width = W; c.height = H;
-              const x = c.getContext('2d'); x.imageSmoothingEnabled = jank === 3; x.drawImage(r.domElement, 0, 0, W, H);
+              const c = document.createElement('canvas'); c.width = VW; c.height = H;
+              const x = c.getContext('2d'); x.imageSmoothingEnabled = jank === 3; x.drawImage(r.domElement, 0, 0, VW, H);
+              r.setSize(Math.floor(W * sc), Math.floor(H * sc), false);
               x.font = 'bold 20px sans-serif'; const tw = x.measureText(label).width; x.fillStyle = 'rgba(0,0,0,0.6)'; x.fillRect(6, 6, tw + 14, 30);
               x.fillStyle = label.startsWith('OLD') ? '#ffffff' : '#ffe14d'; x.fillText(label, 13, 28);
               return c;

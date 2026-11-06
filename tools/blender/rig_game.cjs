@@ -42,12 +42,14 @@ async function finish(ctx, pg, tag) {
     const { ctx, pg, errs } = await open(b, 'fp');
     const slot = await pg.evaluate(async () => { const { G } = await import('/js/ctx.js'); const { ME } = await import('/js/player.js'); ME.pitch = -0.05; return (G.activeStreaks || []).indexOf('overdrive'); });
     await pg.mouse.move(480, 270);
-    const shot = (n) => pg.screenshot({ path: `${out}/fp_${n}.png` });
+    // (with --video no screenshots: in software GL each one stalls the game for a second and the rig only lasts 25 s.
+    //  the moves that matter come first: assemble, wind-up + punch, thrusters, missiles, then the block)
+    const shot = (n) => video ? Promise.resolve() : pg.screenshot({ path: `${out}/fp_${n}.png` });
     await pg.keyboard.press('Digit' + (5 + Math.max(0, slot))); await sleep(300); await shot('assembling'); await sleep(2000); await shot('on');
     await pg.mouse.down(); await sleep(900); await shot('charge'); await pg.mouse.up(); await sleep(110); await shot('punch'); await sleep(900);
-    await pg.mouse.down({ button: 'right' }); await sleep(600); await shot('block'); await pg.mouse.up({ button: 'right' }); await sleep(500);
     await pg.keyboard.press('KeyE'); await sleep(160); await shot('thrusters'); await sleep(1300);
     await pg.keyboard.press('KeyG'); await sleep(450); await shot('missiles'); await sleep(1500);
+    await pg.mouse.down({ button: 'right' }); await sleep(600); await shot('block'); await pg.mouse.up({ button: 'right' }); await sleep(500);
     const st = await pg.evaluate(async () => { const { RS } = await import('/js/rig.js'); const rm = await import('/js/rigmodel.js'); const ra = await import('/js/rigarms.js'); const k = await import('/js/glbkit.js'); return { on: RS.on, rig: rm.rigIsBlender(), arms: !!k.AUTHORED.x_rigarms, missile: !!k.AUTHORED.pj_rigmissile, armsBuilt: !!ra.armsObj() }; });
     console.log('fp', JSON.stringify(st), errs.length ? '\n' + errs.join('\n') : '(no page errors)');
     bad += errs.length;

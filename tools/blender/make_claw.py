@@ -7,7 +7,8 @@
 # talon nails (cracked, dirt in the cuticles). Sickly green skin with mottling, bruises, dark veins and sores, paler on
 # the palm, grubby at the fingertips; a torn maroon flannel sleeve with a ragged hem.
 # The gag: a hospital ID wristband: PATIENT ZERO, a barcode and a red alert sticker that says BITES.
-# Wrap zones: skin + sleeve A, nails B, wristband N. No moving parts. muzzle = the code's.
+# Wrap zones like the code claw: forearm + palm + sleeve A, fingers + thumb + nails B, the wristband + the stitched gash N.
+# No moving parts. muzzle = the code's.
 # run: blender -b --python tools/blender/make_claw.py   (-- --no-sheet, -- --qa = the blender-asset-qa gate)
 import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib import *
@@ -338,6 +339,43 @@ def split_mats(o, pale, dirt, fp):
         elif n.y < -0.55 and g.z < -60: p.material_index = 1
 
 
+def split_fingers(o, fp):
+    """the fingers + thumb past the knuckles become their own mesh (the wrap's B zone, like the code claw's fingers),
+    the arm + palm stay. custom normals from the whole skin keep the shading smooth across the cut"""
+    segs = [(fp[n], 9.0) for n in ('index', 'middle', 'ring', 'pinky')] + [(fp['thumb'][1:], 2.0)]
+    def is_finger(g):
+        for pts, s0 in segs:
+            best, acc = None, 0.0
+            for a, b in zip(pts, pts[1:]):
+                d = b - a; L = d.length
+                t = max(0.0, min(1.0, (g - a).dot(d) / (L * L)))
+                dist = (g - (a + d * t)).length
+                if best is None or dist < best[0]: best = (dist, acc + t * L)
+                acc += L
+            if best[0] < 21.0 and best[1] > s0: return True
+        return False
+    me = o.data
+    key = lambda co: (round(co.x, 6), round(co.y, 6), round(co.z, 6))
+    vn = {key(v.co): v.normal.copy() for v in me.vertices}
+    for s_ in bpy.context.view_layer.objects.selected: s_.select_set(False)
+    bpy.context.view_layer.objects.active = o; o.select_set(True)
+    bpy.ops.object.mode_set(mode='EDIT')
+    bm = bmesh.from_edit_mesh(me)
+    for f in bm.faces:
+        c = f.calc_center_median()
+        f.select = is_finger(Vector((c.x, c.z, -c.y)) / mm)
+    bmesh.update_edit_mesh(me)
+    bpy.ops.mesh.separate(type='SELECTED')
+    bpy.ops.object.mode_set(mode='OBJECT')
+    fingers = [x for x in bpy.context.view_layer.objects.selected if x is not o][0]
+    fingers.name = 'claw_fingers'
+    for ob in (o, fingers):
+        m2 = ob.data
+        if hasattr(m2, 'use_auto_smooth'): m2.use_auto_smooth = True
+        m2.normals_split_custom_set([vn.get(key(m2.vertices[l.vertex_index].co), m2.vertices[l.vertex_index].normal) for l in m2.loops])
+    return fingers
+
+
 # ------------------------------------------------------------ nails: curved talons growing out of each fingertip
 def nail(name, m, bvh, pts, rad, length, curve, width):
     """a loft along the distal phalanx's back and on past the tip, curving down (claw), lens-shaped section"""
@@ -657,9 +695,12 @@ def build():
     for p in band[3:] + threads + cuts: uv_box(p, 0.02)
     allp = [arm, sl] + threads + cuts + nails + band
     for p in allp: apply_mods(p); uv_unzero(p)
+    fingers = split_fingers(arm, fp)
+    allp.insert(1, fingers)
     if '--qa' in ARGV: qa(allp)
-    zones = {'cl_skin': 'a', 'cl_cloth': 'a', 'cl_thread': 'a', 'cl_wound': 'a', 'cl_stitch': 'a', 'cl_nail': 'b', 'cl_band': 'n', 'cl_label': 'n', 'cl_alert': 'n', 'cl_snap': 'n'}
-    parts = zone_join(allp, 'claw', zones, default='a')
+    # wrap zones like the code claw: arm + palm + sleeve A, fingers + thumb + nails B, the wristband + the stitched gash N
+    zones = {'cl_skin': 'a', 'cl_cloth': 'a', 'cl_thread': 'a', 'cl_wound': 'n', 'cl_stitch': 'n', 'cl_nail': 'b', 'cl_band': 'n', 'cl_label': 'n', 'cl_alert': 'n', 'cl_snap': 'n'}
+    parts = zone_join(allp, 'claw', zones, default='a', rule=lambda mn, c: 'b' if mn.startswith('cl_skin') and c[2] < -0.2 else None)
     hy = top_y_at(parts, -0.15, -0.005)
     meta = {'kind': 'weapon', 'id': 'claw', 'paint': ['cl_skin', 'cl_skin_pale', 'cl_skin_dirt'], 'muzzle': [0, -0.03, -0.33],
             'hatAt': [[-0.005, round(hy + 0.001, 4), -0.15], 0.07]}

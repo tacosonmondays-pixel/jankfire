@@ -20,6 +20,10 @@ node tools/blender/shots.cjs 3100 <outDir> ar:ar_toy,cig,bow 3      # skins are 
                                                                      # "in use" shot instead (lit, drawn, swung)
 node tools/blender/shots.cjs 3100 <outDir> ar,smg,shotgun 3 --check-only  # just the ADS check
 node tools/blender/shots_props.cjs 3100 <outDir> 3,0                 # props on Warehouse/Suburb vs their boxes + a showcase
+node tools/blender/shots_r3.cjs 3100 <outDir> camera,frame,calc,nvg,wand,wreck,rig,arms,missile 3,0
+                                     # the gear, wrecking ball and Overdrive Rig: OLD | BLENDER | IN USE strips in the game's lights
+node tools/blender/rig_game.cjs 3100 <outDir> both 3 --video         # the Overdrive Rig in Training: first person (the real
+                                     # killstreak) + third person (the pose code on the range), screenshots or a clip each
 ```
 Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cli optimize in.glb out.glb --compress quantize
 --texture-compress false`. Don't use Draco or meshopt: the client has no decoders (and the apt Blender has no Draco).
@@ -84,6 +88,7 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 | `make_banana_bunch.py` | `w_banana_bunch.glb` | the Peel Shooter's AKS-74U in AK-74 plum, the mag is a whole hand of bananas (PRODUCE OF JANK) |
 | `make_laser.py` | `w_laser.glb` | Big Laser Pointer: an office laser pointer pen x4.7 (leg-sized) with a lime toy-pistol grip duct-taped under it, D-cells, a PEW-O-METER LED bar and a cat charm; hook nodes `lz_button_wzN` (pressed), `lz_led0_wzN`..`lz_led4_wzN` (lit with the charge), `lz_emit_wzN`, `lz_charm_wzN` (swings); the charge orb is the game's |
 | `make_gear.py` | `x_camera.glb`, `x_photoframe.glb`, `x_calc.glb`, `x_nvg.glb` | the gear (`x_` = not a weapon, loaded only when someone carries it): instant camera at real size (`flash`, `shutter`, `print` > `pic`, the photo the game paints), the photo portal (a 2.1 m print on an easel back, the live picture fills its opening), the Pop Quiz calculator (`screen` shows the sum), flip-up night vision goggles (`pivot` at the forehead knuckle, `lensL` / `lensR` / `ir` glow, `strap` only on other people's heads); `-- --only=camera,frame,calc,nvg` |
+| `make_rig.py` | `x_rig.glb`, `x_rigarms.glb`, `pj_rigmissile.glb` | the Overdrive Rig, jointed exactly like the code rig (`public/js/rigmodel.js`): one empty per joint (names, parents and rest spots in the `joints` meta, so the leg IK and every pose still fit), each joint's plates as one mesh per material in its space; `rg_*` materials are the game's (`rg_accent` = your colour, visor, core, glows, the hack deck's `rg_screen`), `*_sm` parts stay out of the outline / shield / afterimage; pistons, hoses, glows and flames stay code and have mounts. Excavator-breaker forearms, forklift-mast spine, ammo-crate missile pods, chrome stacks, BONK / HUGS knuckles, a bobblehead on the dash. The first-person forearms (`armR` > `fistR`, `armL` > `fistL`) and the missile (RETURN TO SENDER). `-- --only=rig,arms,missile`, `--qa` (per joint), `--stats` |
 
 ## Rules that make a model drop straight in
 - **Build in game space**: three.js axes and metres (x right, y up, -z forward); `lib.gv()` converts to Blender. A
@@ -135,6 +140,15 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 - Weapons: `buildWeapon` (models.js) swaps in `w_<id>` (or `w_<skin>` for a skin model) as built (no fitting) and reads
   muzzle/sight/hat/hooks from it. A missing or broken file = the code model, as before. Finishes, wraps, hats and
   effects work on top. Thrown things: `buildProjectile` takes `pj_<skin>` / `pj_<kind>`, `buildPeel` takes `pj_peel`.
+- Loaded late: weapon skins, the gear, the wrecking ball and the Overdrive Rig (`x_*`, `pj_rigmissile`) download only
+  when they're in your loadout (`prefetchLoadout`) or someone near you uses one: `authored(id)` starts the download, the
+  code model stands in until it lands, and `whenLate(id, fn)` lets a module rebuild then. Side renderers (icons, the
+  locker preview, tests) draw through `withEnv(renderer, root, draw)` so chrome keeps its reflections there.
+- Gear hooks (`gearmodels.js`): the game swaps "own" node materials for its live ones (`ownMat`: the camera's `pic`,
+  the calculator's `screen`, the goggles' lenses, the laser's LEDs) and moves the hook nodes (shutter, print, pivot).
+- The Overdrive Rig: `rigmodel.js` finds each joint of `x_rig` by name, merges its meshes per material, swaps `rg_*`
+  for the game's materials (your colour, glows, the hack screen) and keeps its own pistons, hoses, glows and flames;
+  `rigarms.js` does the same with `x_rigarms` for first person, and the missiles use `pj_rigmissile`.
 - Knives and katanas (`public/js/blades/`) stay code-built: they are real-reference models already. `glossBlade` gives
   them the Blender set's studio gloss (steel and brass turn metal, wood varnished, grips satin) whenever the Blender
   models are loaded.
