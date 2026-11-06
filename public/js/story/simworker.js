@@ -2,6 +2,7 @@
 // host.js's WorkerSocket exactly like a WebSocket: json strings both ways. the first message is { init: save }.
 import { createSim } from '/shared/story/sim.js';
 import { cleanSave } from '/shared/story/save.js';
+import '/shared/story/enginesys.js'; // the story engine's state rides along in the save (WP8)
 import '/shared/story/invsys.js'; // the Tote Bag + quick bar (WP3)
 import '/shared/story/bodysys.js'; // implants, HYPE, coupons (WP5)
 import '/shared/story/carsys.js'; // story cars (WP7)

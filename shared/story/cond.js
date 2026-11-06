@@ -27,7 +27,8 @@ export function lookup(st, name, h) {
     case 'standing': return st.standing[p[1]] ?? 0;
     case 'met': return !!st.met[p[1]];
     case 'seen': return !!st.seen[p[1]];
-    case 'codex': return !!st.codex[p[1]];
+    case 'codex': return !!st.codex[p.slice(1).join('.')];
+    case 'said': return !!(st.said && st.said[p.slice(1).join('.')]); // said.lumps.soup: heard that node
     case 'has': return !!(h && h.has && h.has(p.slice(1).join('.')));
     case 'q': {
       const q = st.quests[p[1]], k = p[2] || 'active';
