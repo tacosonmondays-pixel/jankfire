@@ -24,6 +24,7 @@ import { rigFire, rigItem, rigVM, rigBlockKey } from './rig.js'; // overdrive ri
 import { tickScalesVM } from './scales.js';
 import { PARRY } from '/shared/weapons.js';
 import { ROYAL } from '/shared/looks.js';
+import { tacOn, tacShot, tacKick, tacFrame } from './tactical.js'; // Plant & Defuse: spray patterns + moving spread
 
 export const W = {
   slots: [DEFAULT_LOADOUT.primary, DEFAULT_LOADOUT.secondary, DEFAULT_LOADOUT.melee],
@@ -716,8 +717,17 @@ function currentSpread(w) {
   return hipS + (ads - hipS) * W.aim;
 }
 
+// the gun's own spread right now, without bloom (Plant & Defuse: the spray pattern replaces bloom; moving adds on top)
+function tacBase(w) {
+  if (fanShot) return fanSpread(w);
+  const hip = (HIPFIRE[G.cfg.hip] || HIPFIRE.normal).mul, base = w.spread || 0;
+  const ads = w.ads ? base * (w.ads.spread ?? 1) * Math.min(1, hip) : base * hip, hipS = base * hip;
+  return hipS + (ads - hipS) * W.aim;
+}
 function fireHitscan(id, now) {
   const w = WEAPONS[id];
+  const tac = W.eco && tacOn() ? tacShot(id, tacBase(w), now) : null; // which spray shot, its spread, its directions
+  if (tac && W.sendSnap) W.sendSnap(); // the server checks the shot against the aim in this snapshot
   if (w.mag && G.mode !== 'training') W.ammo[id]--;
   setCd(id, now);
   W.lastShotT = now;
@@ -728,7 +738,7 @@ function fireHitscan(id, now) {
   const pellets = w.pellets || 1;
   const shots = w.marbles ? [] : null; // Marble Shotgun: each pellet becomes a marble that bounces off what it hit
   for (let i = 0; i < pellets; i++) {
-    let d = spreadDir(base, currentSpread(w));
+    let d = tac ? tac.dir(i) : spreadDir(base, currentSpread(w));
     let from = o, left = w.range, bounces = w.ricochet || 0, drawFrom = mz;
     for (;;) {
       const mh = raycast(from, d, left, BOXES);
@@ -757,16 +767,20 @@ function fireHitscan(id, now) {
   }
   const ns = id === 'sniper' && !W.scoped ? 1 : undefined; // no-scope: the server only makes it look cool, damage is the same
   const qs = id === 'sniper' && W.scoped && now - W.scopedAt <= ROYAL.quick ? 1 : undefined; // quick-scope: fired right as the scope came up (Sniper Royalty only, never damage)
-  for (const [rid, h] of hits) net.send({ t: 'hit', to: rid, w: id, d: h.d.map(r2), n: h.n, h: h.h, ns, qs, fan: fanShot ? 1 : undefined });
+  const r4 = (x) => Math.round(x * 10000) / 10000;
+  for (const [rid, h] of hits) net.send({ t: 'hit', to: rid, w: id, d: h.d.map(tac ? r4 : r2), n: h.n, h: h.h, ns, qs, fan: fanShot ? 1 : undefined, ...(tac ? tac.msg : null) });
   const fast = w.rate > 8;
   const skin = (W.skinOver || G.equipped || {})[id];
   if (shots) marbles.shoot(shots, marblePalette(skin));
   else for (const s of segs) fx.tracer(s.slice(0, 3), s.slice(3), tracerColor(skin, w.tracer || 0xfff0a0), w.thick || (fast ? 0.03 : 0.045), fast ? 0.07 : 0.2);
-  net.send({ t: 'fire', w: id, o: o.map(r2), s: segs.slice(0, 12).map((s) => s.map(r2)), fan: fanShot ? 1 : undefined });
+  net.send({ t: 'fire', w: id, o: o.map(r2), s: segs.slice(0, 12).map((s) => s.map(r2)), fan: fanShot ? 1 : undefined, ...(tac ? tac.msg : null) });
   if (w.recoil) applyKb([-base[0] * w.recoil, -base[1] * w.recoil, -base[2] * w.recoil]);
-  ME.pitch = Math.min(1.55, ME.pitch + (w.kick || 0) * (0.6 + Math.random() * 0.8) * (1 - W.aim * 0.5));
-  ME.yaw += (Math.random() - 0.5) * (w.kick || 0) * 0.5;
-  W.bloom = Math.min(w.maxBloom || 0, W.bloom + (w.bloom || 0));
+  if (tac) tacKick(id, tac.i); // Plant & Defuse: the camera climbs with the pattern (no random kick, no bloom)
+  else {
+    ME.pitch = Math.min(1.55, ME.pitch + (w.kick || 0) * (0.6 + Math.random() * 0.8) * (1 - W.aim * 0.5));
+    ME.yaw += (Math.random() - 0.5) * (w.kick || 0) * 0.5;
+    W.bloom = Math.min(w.maxBloom || 0, W.bloom + (w.bloom || 0));
+  }
   W.kick = Math.min(1, W.kick + (fast ? 0.25 : 1));
   if (W.anim && W.anim.kind === 'draw') W.anim = null;
   kickVM(id, W.aim > 0.5 ? 0.6 : 1);
@@ -1337,6 +1351,7 @@ export function updateWeapons(dt, now) {
   // ---- HUD
   if (ITEMS[W.item]) { const c = charges(W.item), it = ITEMS[W.item]; hud.item(c.n, it.charges, c.next ? 1 - Math.max(0, c.next - now) / (it.recharge * 1000) : 1); }
   updatePop(dt);
+  tacFrame(dt, now, W.eco && W.cur && WEAPONS[W.cur] ? W.cur : null, W.cur && WEAPONS[W.cur] ? tacBase(WEAPONS[W.cur]) : 0); // the crosshair shows your spread
   if (W.eco) W.eco.hud(id, !!W.reloadId);
   else if (w.mag) hud.ammo(W.ammo[id], w.mag, !!W.reloadId);
   else hud.ammo(null);

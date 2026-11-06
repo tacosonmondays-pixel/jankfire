@@ -773,3 +773,14 @@ body.chaos-spec #hotbar, body.chaos-spec #hpbox, body.chaos-spec #crosshair, bod
 #nowPlaying.match.on { transform: rotate(1.5deg); }
 #nowPlaying.match b { font-size: 16px; }
 body.replaying #nowPlaying.match { display: none; }
+/* ================= Plant & Defuse gunplay (tactical.js): the crosshair opens with your spread ================= */
+body.tac #crosshair { visibility: hidden; }
+#tacCross { position: absolute; left: 50%; top: 50%; width: 0; height: 0; --g: 4px; pointer-events: none; }
+#tacCross i { position: absolute; background: #fff; box-shadow: 0 0 0 1px #000; transition: transform 0.06s linear; }
+#tacCross .t, #tacCross .b { width: 2px; height: 8px; left: -1px; }
+#tacCross .l, #tacCross .r { width: 8px; height: 2px; top: -1px; }
+#tacCross .t { top: calc(-8px - var(--g)); } #tacCross .b { top: var(--g); }
+#tacCross .l { left: calc(-8px - var(--g)); } #tacCross .r { left: var(--g); }
+#tacCross b { position: absolute; left: -1px; top: -1px; width: 2px; height: 2px; background: #fff; box-shadow: 0 0 0 1px #000; }
+#tacCross.wide i { background: #ff6a6a; } /* moving / in the air: your shots go everywhere */
+body.replaying #tacCross, body.eco-spec #tacCross, body.eco-buy #tacCross { visibility: hidden; }

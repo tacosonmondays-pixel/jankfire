@@ -19,6 +19,7 @@ import { WEAPONS } from '../shared/weapons.js';
 import { BOMB, siteAt } from '../shared/modes.js';
 import { ECON, GEAR, weaponPrice, econWeapon, itemSpec, refillPrice } from '../shared/econ.js';
 import { raycast, query, PH } from '../shared/physics.js';
+import { patternOf } from '../shared/tactical.js';
 
 const LOG = !!process.env.JF_ECON_LOG;
 const now = () => Date.now();
@@ -535,8 +536,13 @@ const M = {
       }
     }
     if (goal.hold && gl < Math.max(1.6, goal.r + 0.6) && !goal.use) {
-      if (fighting) { const s = ai.strafeDir * 0.35; return [Math.cos(b.yaw) * s, -Math.sin(b.yaw) * s]; } // a little jiggle, no charge
+      if (fighting) { const s = ai.strafeDir * 0.12; return [Math.cos(b.yaw) * s, -Math.sin(b.yaw) * s]; } // a tiny jiggle, no charge (moving ruins your aim)
       if (gl < goal.r) { wx = 0; wz = 0; }
+    }
+    // moving wrecks a gun's aim in this mode (shared/tactical.js): with someone in sight and in range, stop to shoot
+    if (fighting && !goal.force) {
+      const w = WEAPONS[b.w], P = patternOf(b.w), t2 = t && Math.hypot(t.pos[0] - b.pos[0], t.pos[2] - b.pos[2]);
+      if (w && w.kind === 'hitscan' && P && P.move >= 0.7 && t2 < Math.min(w.range || 60, 45)) { wx *= 0.12; wz *= 0.12; }
     }
     if (goal.look && !fighting && (gl < 6 || goal.tac === 'stage' || goal.tac === 'stack')) {
       const e = [b.pos[0], b.pos[1] + PH.eye, b.pos[2]], dx = goal.look[0] - e[0], dy = goal.look[1] + 1.1 - e[1], dz = goal.look[2] - e[2];

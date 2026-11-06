@@ -1615,6 +1615,18 @@ initGear(); // the new gear's server messages + the G hook
 
 // ------------------------------------------------------------ main loop
 let last = performance.now(), acc = 0, sendT = 0, pingT = 0, fovNow = S.fov, fpsAcc = 0, fpsN = 0;
+// your state for the server. Plant & Defuse also sends one right before every gun shot (weapons.js), so the server can
+// check the shot against the aim it was really fired at
+function sendSnap(now = performance.now()) {
+  const r2 = (x) => Math.round(x * 100) / 100;
+  const hp = hookPoint();
+  net.send({
+    t: 's', q: ME.seq, p: ME.pos.map(r2), v: ME.vel.map(r2), y: r2(G.spinning ? (now * 0.03) % (Math.PI * 2) : ME.yaw), x: r2(G.spinning ? Math.sin(now * 0.02) * 1.2 : ME.pitch), w: W.cur,
+    g: hp ? hp.map(r2) : 0,
+    f: W.flags | (now < ME.slipUntil ? FLAGS.SLIP : 0) | (ME.sliding ? FLAGS.SLIDE : 0) | (ME.crouching ? FLAGS.CROUCH : 0) | (now < (ME.sleepUntil || 0) ? FLAGS.SLEEP : 0) | (ME.walking ? FLAGS.WALK : 0),
+  });
+}
+W.sendSnap = () => { if (ME.alive && G.joined) sendSnap(); };
 const STEP = 1 / 120;
 
 const tmpDir = new THREE.Vector3();
@@ -1665,16 +1677,7 @@ function frame(t) {
     if (ballOn(now)) { W.flags |= FLAGS.BALL; if (BS.snapNow) { BS.snapNow = false; sendT = 0; } } // wrecking ball (a slam dive goes out right away: the server checks it)
 
     sendT -= dt;
-    if (sendT <= 0 && ME.alive) {
-      sendT = 1 / 30;
-      const r2 = (x) => Math.round(x * 100) / 100;
-      const hp = hookPoint();
-      net.send({
-        t: 's', q: ME.seq, p: ME.pos.map(r2), v: ME.vel.map(r2), y: r2(G.spinning ? (now * 0.03) % (Math.PI * 2) : ME.yaw), x: r2(G.spinning ? Math.sin(now * 0.02) * 1.2 : ME.pitch), w: W.cur,
-        g: hp ? hp.map(r2) : 0,
-        f: W.flags | (now < ME.slipUntil ? FLAGS.SLIP : 0) | (ME.sliding ? FLAGS.SLIDE : 0) | (ME.crouching ? FLAGS.CROUCH : 0) | (now < (ME.sleepUntil || 0) ? FLAGS.SLEEP : 0),
-      });
-    }
+    if (sendT <= 0 && ME.alive) { sendT = 1 / 30; sendSnap(now); }
     pingT -= dt;
     if (pingT <= 0) { pingT = 2; net.send({ t: 'pi', c: performance.now() }); }
     if (!ME.alive) { if (G.killcamPending) $('deadTimer').textContent = epicKC ? 'killcam... too epic to skip' : 'killcam... (space to skip)'; else if (epicHold) epicTimer(now); else if (!econDead()) hud.deadTimer(Math.max(0, ((G.respawnMs ?? 2500) - (now - (G.deadAt || now))) / 1000)); }

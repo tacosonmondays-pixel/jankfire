@@ -317,6 +317,7 @@ export const SLIP_TIME = 1.7;
 // overdrive rig killstreak: in the rig, blocking, winding up a punch, crouched for a leap. the server only believes
 // them from someone it saw activate the streak (the numbers are RIG in shared/rig.js)
 Object.assign(FLAGS, { RIG: 16384, RIG_BLOCK: 32768, RIG_CHARGE: 65536, RIG_LEAP: 131072 });
+FLAGS.WALK = 1048576; // Plant & Defuse: shift = slow walk. nobody hears your footsteps
 // not guns: what the rig's hits are called in the kill feed (its missiles fly as server projectiles)
 Object.assign(WEAPONS, {
   rigpunch: { slot: null, kind: 'rig', name: 'Rocket Punch', color: '#ff2a6d' },
