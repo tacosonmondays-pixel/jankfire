@@ -171,6 +171,7 @@ export function armsReady() {
 }
 export const armsObj = () => arms; // (pose sheets)
 whenLate('x_rigarms', () => { if (arms && hidden) { arms.grp.removeFromParent(); arms = null; } }); // the Blender arms landed: built with them next time
+export function armsReset() { if (arms) { arms.grp.removeFromParent(); arms = null; } anims.length = 0; hidden = true; } // (sheets)
 export function playArms(name, k = 1) { if (ANIMS[name]) { anims.push({ name, t: 0, k }); if (name === 'rig_punch' && arms) punchFrom = arms.charge || null; } }
 export function armsOn() { if (!armsReady()) return; if (accent) { accent.color.set(G.myColor || '#ff4fd8'); accent.emissive.set(G.myColor || '#ff4fd8').multiplyScalar(0.25); } if (accentBl) { accentBl.color.set(G.myColor || '#ff4fd8'); accentBl.emissive.set(G.myColor || '#ff4fd8').multiplyScalar(0.18); } hidden = false; arms.grp.visible = true; anims.length = 0; playArms('rig_on'); }
 export function armsOff() { if (!arms) return; anims.length = 0; playArms('rig_off'); hidden = true; }
