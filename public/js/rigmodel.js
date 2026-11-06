@@ -445,12 +445,28 @@ export function buildRig(color, opts = {}) {
     j[nm].add(g);
     return g;
   });
+  // thruster plumes (the grapple key in the rig): out of both boots and two nozzles low on the back, pointing down.
+  // a hot inner core inside a magenta / orange outer flame
+  const jetMat = [new THREE.MeshBasicMaterial({ color: 0xff5a2a, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide }),
+    new THREE.MeshBasicMaterial({ color: 0xfff0c0, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })];
+  // (flipped so the wide end sits at the nozzle and the tip points down)
+  const jetGeo = [new THREE.ConeGeometry(0.16, 0.9, 8, 1, true).rotateX(Math.PI).translate(0, -0.45, 0), new THREE.ConeGeometry(0.07, 0.5, 6).rotateX(Math.PI).translate(0, -0.25, 0)];
+  const jets = [['footL', [0, -0.15, 0.05]], ['footR', [0, -0.15, 0.05]], ['torso', [0.3, 0.3, 0.42]], ['torso', [-0.3, 0.3, 0.42]]].map(([nm, p]) => {
+    const g = new THREE.Group(); g.position.fromArray(p);
+    if (nm !== 'torso') g.scale.setScalar(1.45); // (boot jets: big enough to read from the front)
+    for (let k = 0; k < 2; k++) { const m = new THREE.Mesh(jetGeo[k], jetMat[k]); m.renderOrder = 7; g.add(m); }
+    if (nm === 'torso') { const n = new THREE.Mesh(cyl(0.07, 0.09, 0.12, 8), lam(C.gun)); n.position.y = 0.04; g.add(n); } // the back nozzles are always there
+    g.userData.flame = g.children.slice(0, 2);
+    for (const f of g.userData.flame) f.visible = false;
+    j[nm].add(g);
+    return g;
+  });
   // torso: lean, then twist round the hips. shoulders: twist along the arm, then out to the side, then swing (so a
   // raised arm can still turn its forearm inward: the block crosses them in front of the helm)
   j.torso.rotation.order = 'YXZ';
   j.shoulderL.rotation.order = j.shoulderR.rotation.order = 'XZY';
   const inst = {
-    root, j, nodes, own, outlineMat, shieldMat, shield, pist, hoses, anchors, glows, flames, H_SEG, H_RAD,
+    root, j, nodes, own, outlineMat, shieldMat, shield, pist, hoses, anchors, glows, flames, jets, jetGeo, jetMat, H_SEG, H_RAD,
     // pose state: gait phase, springs, timers
     phase: 0, plant: [0, 0], bob: 0, bobV: 0, sp: {}, look: 0, lookT: 0, lookNext: 1, t: 0, hexT: 9, hexK: 0, pods: 0,
   };
@@ -471,6 +487,8 @@ export function freeRig(inst) {
   inst.shieldMat.dispose();
   for (const g of inst.glows) g.material.dispose();
   for (const f of inst.flames) { f.geometry.dispose(); f.material.dispose(); }
+  for (const g of inst.jetGeo) g.dispose();
+  for (const m of inst.jetMat) m.dispose();
   if (inst.ghosts) for (const g of inst.ghosts) { g.mesh.removeFromParent(); g.mesh.geometry.dispose(); g.mesh.material.dispose(); }
   inst.ghosts = null;
 }
@@ -619,6 +637,12 @@ export function poseRig(inst, s, dt) {
   inst.flames[0].visible = fl > 0;
   if (fl > 0) inst.flames[0].scale.set(1 + Math.random() * 0.3, fl * (0.8 + Math.random() * 0.6), 1 + Math.random() * 0.3);
   inst.flames[1].visible = false;
+  // thrusters: a big flicker for the burst, tapering over 0.45 s
+  const th = (s.thrustT ?? 9) < 0.45 ? 1 - (s.thrustT ?? 9) / 0.45 : 0;
+  for (const g of inst.jets) for (const f of g.userData.flame) {
+    f.visible = th > 0;
+    if (th > 0) f.scale.set(0.8 + th * 0.4 + Math.random() * 0.2, th * (0.7 + Math.random() * 0.6), 0.8 + th * 0.4 + Math.random() * 0.2);
+  }
   // ---- assembly (when it comes on): the plates fly in and snap shut, joint by joint
   const on = s.on ?? 1;
   // each part flies in from outside along its own direction (up and out), grows and snaps shut, feet first, pods last

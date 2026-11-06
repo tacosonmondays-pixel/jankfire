@@ -1,6 +1,6 @@
 // overdrive rig, end to end in training: it comes on (key 7), the frame replaces your guns, a charged punch at a dummy
 // lands (the server says 'hit'), block, missiles (salvo + explosions), quickhack attempt, a leap + landing, then it
-// runs out and the gun comes back. server: JF_RIG_DUR=20. usage: node t_rig.cjs <outDir>
+// runs out and the gun comes back. server: JF_RIG_DUR=28. usage: node t_rig.cjs <outDir>
 require(__dirname + '/pwlock.cjs');
 const { chromium } = require('playwright');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -24,21 +24,50 @@ const PORT = process.env.PORT || 3000, OUT = process.argv[2] || '.';
     ME.yaw = 0; ME.pitch = -0.05; return true; }, back);
   await pg.keyboard.press('Digit7'); await sleep(1500);
   const s1 = await st(); console.log('on', JSON.stringify(s1));
+  // (driven inside the page on its own frames: a slow test browser's key timing from out here is meaningless)
+  const inPage = (thrusts) => pg.evaluate(async (thrusts) => {
+    const { ME } = await import('/js/player.js'); const { RS } = await import('/js/rig.js');
+    const frame = () => new Promise((r) => requestAnimationFrame(r));
+    const key = (code, type) => dispatchEvent(new KeyboardEvent(type, { code, key: code === 'Space' ? ' ' : code.slice(3).toLowerCase(), bubbles: true }));
+    for (let i = 0; i < 60 && !ME.onGround; i++) await frame();
+    const y0 = ME.pos[1]; let top = y0, used = 0, tries = 0, lastT = 0;
+    key('Space', 'keydown'); await frame(); await frame(); key('Space', 'keyup');
+    for (let i = 0; i < 400; i++) {
+      await frame();
+      top = Math.max(top, ME.pos[1]);
+      const t = performance.now();
+      // thrusters: once the hop tops out, a burst every time it starts to fall, 4 tries (the 4th has no charge)
+      if (thrusts && tries < 4 && !ME.onGround && ME.vel[1] < 0 && t - lastT > 300) { const n0 = RS.thr.n; key('KeyE', 'keydown'); key('KeyE', 'keyup'); tries++; lastT = t; if (RS.thr.n < n0) used++; }
+      if (ME.onGround && i > 5 && (!thrusts || tries >= 4)) break;
+    }
+    return { h: +(top - y0).toFixed(2), used, tries, n: RS.thr.n };
+  }, thrusts);
+  // (right where you spawned: open floor, nowhere to fall off)
+  const H = await inPage(false), hop = H.h;
+  await sleep(800);
+  const F = await inPage(true), fly = F.h;
+  const thr = await pg.evaluate(async () => ({ sent: window.__ev.filter((k) => k === 'thrust').length, hud: (document.querySelector('#rigHud .rh-th em') || {}).textContent }));
+  Object.assign(thr, { used: F.used, tries: F.tries, n: F.n });
+  console.log('hop', hop, 'm · hop + thrusters', fly, 'm ·', JSON.stringify(thr));
   await aim(6); await sleep(400); await aim(6);
   await pg.mouse.down(); await sleep(900); await aim(6); await pg.mouse.up(); await sleep(900);
   await pg.screenshot({ path: OUT + '/rig_punch.png' });
   await pg.mouse.down({ button: 'right' }); await sleep(500); await pg.mouse.up({ button: 'right' });
   await aim(14); await pg.keyboard.press('KeyG'); await sleep(2500);
-  await aim(14); await pg.keyboard.press('KeyE'); await sleep(400);
+  await aim(14); await pg.keyboard.press('KeyR'); await sleep(400); // quickhack is R in the rig
   await pg.keyboard.down('Space'); await sleep(900); await pg.keyboard.up('Space'); await sleep(2200);
   const s2 = await st(); console.log('mid', JSON.stringify(s2));
-  await sleep(13000);
+  // the hop (a tap of Space) goes way up, then thrusters (E) in the air: 3 bursts, the 4th refused, higher than the hop
+  await sleep(16000);
   const s3 = await st(); console.log('after', JSON.stringify(s3));
   const ev = s3.ev.split(','), has = (k) => ev.includes(k);
   const bad = [];
   if (!s1.on || !s1.arms || s1.hud !== 'block' || s1.eye < 1.9) bad.push('did not come on properly');
   if (!s2.armsOk) bad.push('arms flew off screen');
-  for (const k of ['on', 'punch', 'hit', 'miss', 'boom', 'land', 'off']) if (!has(k)) bad.push('no ' + k + ' event');
+  for (const k of ['on', 'punch', 'hit', 'miss', 'boom', 'hack', 'land', 'thrust', 'off']) if (!has(k)) bad.push('no ' + k + ' event');
+  if (!(hop >= 4.5)) bad.push(`hop only ${hop} m`);
+  if (!(fly > hop + 2)) bad.push(`thrusters didn't add height (${fly} m vs hop ${hop} m)`);
+  if (thr.used !== 3 || thr.tries !== 4 || thr.sent !== 3) bad.push(`thrust charges wrong ${JSON.stringify(thr)}`);
   if (s3.on || s3.arms) bad.push('did not run out');
   if (bad.length) console.log('FAIL: ' + bad.join('; '));
   console.log(errs.join('\n') || (bad.length ? '' : 'no errors'));

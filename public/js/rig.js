@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { BOXES } from '/shared/map.js';
 import { raycast, movePlayer } from '/shared/physics.js';
 import { FLAGS } from '/shared/weapons.js';
-import { RIG, dashDir, leapVel, punchDist, rigBoxes } from '/shared/rig.js';
+import { RIG, dashDir, leapVel, punchDist, rigBoxes, thrustVel, useThrust, thrustCharges } from '/shared/rig.js';
 import { G } from './ctx.js';
 import { ME, eye, look, hspeed, releaseHook } from './player.js';
 import { W, punchCam, isFriend } from './weapons.js';
@@ -31,7 +31,7 @@ export const RS = {
   lmb: false, charging: false, chargeT0: 0, charge: 0, punchCd: 0, dashT: 0, dashDir: [0, 0, -1], dashHit: new Set(), punchC: 0, punchT: 0,
   hackCd: 0, missCd: 0, hackT: 0, missT: 0, leapCd: 0, leapCharging: false, leapT0: 0, leapK: 0, leapAir: false, landT: 9, landK: 0,
   airMin: 0, stepPhase: 0, stepSide: 1, dip: 0, hitStop: 0, tint: 0, ghostT: 0, ghostN: 0, lastYaw: 0, lastPitch: 0, swayX: 0, swayY: 0,
-  shieldFlash: 0, blockFlash: 0, fov: 0,
+  shieldFlash: 0, blockFlash: 0, fov: 0, thr: { n: RIG.thrust.n, next: 0, t: 0 }, thrT: 0,
 };
 export const rigOn = (now = performance.now()) => RS.on && ME.alive && now < RS.until;
 
@@ -39,7 +39,7 @@ function startLocal(dur, sh) {
   const now = performance.now();
   if (!RS.on) RS.startT = now;
   Object.assign(RS, { on: true, until: now + dur, dur, shield: sh, store: 0, lmb: false, charging: false, charge: 0, dashT: 0, punchCd: now + 500,
-    hackCd: 0, missCd: 0, hackT: 0, missT: 0, leapCd: now + 400, leapCharging: false, leapK: 0, leapAir: false, airMin: 0, hitStop: 0 });
+    hackCd: 0, missCd: 0, hackT: 0, missT: 0, leapCd: now + 400, leapCharging: false, leapK: 0, leapAir: false, airMin: 0, hitStop: 0, thr: { n: RIG.thrust.n, next: 0, t: 0 }, thrT: 0 });
   releaseHook();
   W.held = false; W.aimHeld = false; W.dashHeld = false; W.charge = 0; W.exhale = 0; W.aim = 0; W.zoom = 1; W.scoped = false;
   ME.dashing = false; ME.sliding = false;
@@ -54,7 +54,7 @@ function startLocal(dur, sh) {
   G.shake = Math.max(G.shake, 0.7);
   punchCam(-0.05, 0, 0.02);
   hud.msg('OVERDRIVE ONLINE', 1.6, 'brag');
-  hud.chat(null, null, 'overdrive rig: hold LMB to charge a rocket punch · hold RMB to block (it charges the punch) · E quickhack · G missiles · hold Space to leap');
+  hud.chat(null, null, 'overdrive rig: hold LMB to charge a rocket punch · hold RMB to block (it charges the punch) · Space jumps way up (hold to leap) · E thrusters (in the air too) · G missiles · R quickhack');
   panel(true);
 }
 function endLocal(why) {
@@ -111,11 +111,36 @@ function releasePunch(now) {
   G.shake = Math.max(G.shake, 0.25 + c * 0.45);
   RS.fov = 1;
 }
-// E (or whatever grapples): the quickhack in the rig; a fried grapple when you've been hacked
+// E (or whatever grapples): the thrusters in the rig; a fried grapple when you've been hacked
 export function rigHook(now = performance.now()) {
-  if (rigOn(now)) { tryHack(now); return true; }
+  if (rigOn(now)) { tryThrust(now); return true; }
   if (now < (ME.hackedUntil || 0)) { hud.msg(`GRAPPLE FRIED · ${((ME.hackedUntil - now) / 1000).toFixed(1)}s`, 0.7, 'slip'); rigsfx.denied(); return true; }
   return false;
+}
+// R (reload: no gun to reload in the rig): the quickhack
+export function rigReload() { const now = performance.now(); if (!rigOn(now)) return false; tryHack(now); return true; }
+// thrusters: a burst of lift from the back jets and the boots, in the air too. 3 charges, one back every 2.6 s (the
+// server counts them too: it only shows everyone a burst it believes)
+function tryThrust(now) {
+  if (thrustCharges(RS.thr, now) < 1) { hud.msg(`THRUSTERS ${(Math.max(0, RS.thr.next - now) / 1000).toFixed(1)}s`, 0.6); rigsfx.denied(); return; }
+  if (!useThrust(RS.thr, now)) return;
+  if (RS.leapCharging) { RS.leapCharging = false; RS.leapK = 0; } // (a thrust off the floor cancels a wind-up)
+  thrustVel(ME.vel, look());
+  ME.onGround = false; ME.pos[1] += 0.02; RS.airMin = Math.min(0, RS.airMin * 0.3); RS.thrT = now;
+  net.send({ t: 'rig', k: 'thrust' });
+  rigsfx.thrust(null, 1);
+  playArms('rig_miss', 0.8); // (the rack kicks on your back)
+  G.shake = Math.max(G.shake, 0.3); punchCam(0.02, 0, 0); RS.fov = Math.max(RS.fov, 0.5);
+  jetFx(ME.pos, ME.yaw);
+}
+// jet flame + smoke out of the boots and the back, pointing down
+function jetFx(p, yaw) {
+  const s = Math.sin(yaw), c = Math.cos(yaw);
+  for (const [x, z, y] of [[0.3, 0, 0], [-0.3, 0, 0], [0.35, 0.45, 1.9], [-0.35, 0.45, 1.9]]) {
+    const at = [p[0] + c * x + s * z, p[1] + y, p[2] - s * x + c * z];
+    rfx.sparks(at, 10, 7, [0xffffff, 0xffd060, 0xff7ae8, 0xff4a20], 0.35, 0.1, [0, -1, 0]);
+    rfx.smoke(at, 4, 0xbfc4ca, 0.7, 0.9, 1.1, 0.5);
+  }
 }
 function tryHack(now) {
   if (now < RS.hackCd) { hud.msg(`QUICKHACK ${((RS.hackCd - now) / 1000).toFixed(1)}s`, 0.6); rigsfx.denied(); return; }
@@ -195,10 +220,11 @@ export function rigStep(dt, inp, now) {
     RS.leapK = Math.min(1, (now - RS.leapT0) / (L.charge * 1000));
     if (!inp.jump || !ME.onGround) leap(now);
   }
-  v[1] -= RIG.grav * dt;
+  v[1] -= RIG.grav * dt * 0.5; // (half before the move, half after: the same jump height at any frame rate)
   const was = ME.onGround;
   if (!was) RS.airMin = Math.min(RS.airMin, v[1]);
   const res = movePlayer(p, v, dt, BOXES, was);
+  if (!res.ground) v[1] -= RIG.grav * dt * 0.5;
   ME.onGround = !!res.ground && v[1] <= 0.01;
   if (ME.onGround && !was) land(now);
   if (ME.onGround && res.ground.pad) { const pd = res.ground.pad; v[0] += pd[0]; v[1] = pd[1]; v[2] += pd[2]; ME.onGround = false; }
@@ -241,7 +267,7 @@ function leap(now) {
   RS.leapK = 0;
   if (!ME.onGround) return;
   const v = ME.vel;
-  if (k < 0.15) { v[1] = RIG.hop; rigsfx.stomp(null, 0.4); }
+  if (k < L.tap) { v[1] = RIG.hop; rigsfx.leap(null, 0.35); rfx.dust(ME.pos, 8, 0.7, 3); G.shake = Math.max(G.shake, 0.25); playArms('rig_leap', 0.45); } // a tap: way up (several times a normal jump)
   else {
     const lv = leapVel(k, look());
     v[0] = lv[0] + v[0] * 0.25; v[1] = lv[1]; v[2] = lv[2] + v[2] * 0.25;
@@ -351,7 +377,7 @@ export function updateRig(dt, now, cam, replaying) {
     spd: ME.onGround ? hs : 0, fwd: -(ME.vel[0] * s + ME.vel[2] * c), side: ME.vel[0] * c - ME.vel[2] * s, air: !ME.onGround, vy: ME.vel[1],
     block: W.aimHeld ? 1 : 0, charge: RS.charging ? RS.charge : 0, leap: RS.leapCharging ? RS.leapK : 0,
     punchT: (now - RS.punchT) / 1000, dash: RS.dashT > 0, missT: (now - RS.missT) / 1000, hackT: (now - RS.hackT) / 1000,
-    landT: (now - RS.landT) / 1000, landK: RS.landK, pitch: ME.pitch, on: clamp((now - RS.startT) / 700, 0, 1),
+    landT: (now - RS.landT) / 1000, landK: RS.landK, pitch: ME.pitch, on: clamp((now - RS.startT) / 700, 0, 1), thrustT: (now - RS.thrT) / 1000,
   }, dt);
   // the overdrive trail: afterimages along your path when you're going fast
   const fast = hs > RIG.trail || RS.dashT > 0;
@@ -407,7 +433,7 @@ function panel(on) {
     el.innerHTML = '<div class="rh-top"><b>OVERDRIVE RIG</b><span class="rh-t"></span></div><div class="rh-bar rh-time"><i></i></div>'
       + '<div class="rh-row rh-sh"><span>SHIELD</span><div class="rh-bar"><i></i></div><em></em></div>'
       + '<div class="rh-row rh-pu"><span>PUNCH</span><div class="rh-bar"><i></i></div><em></em></div>'
-      + '<div class="rh-ab"><div class="rh-mi"><kbd>G</kbd> MISSILES <em></em></div><div class="rh-ha"><kbd>E</kbd> QUICKHACK <em></em></div></div>';
+      + '<div class="rh-ab"><div class="rh-th"><kbd>E</kbd> THRUST <em></em></div><div class="rh-mi"><kbd>G</kbd> MISSILES <em></em></div><div class="rh-ha"><kbd>R</kbd> HACK <em></em></div></div>';
     $('hud').append(el);
   }
   el.style.display = on ? 'block' : 'none';
@@ -416,7 +442,8 @@ function panel(on) {
 function panelUpdate(now) {
   if (!el) return;
   const left = Math.max(0, RS.until - now), missL = Math.max(0, RS.missCd - now), hackL = Math.max(0, RS.hackCd - now);
-  const key = [Math.ceil(left / 100), Math.round(RS.shield), Math.round(RS.charge * 50), Math.ceil(missL / 100), Math.ceil(hackL / 100), W.aimHeld ? 1 : 0, RS.charging ? 1 : 0].join('|');
+  const thN = thrustCharges(RS.thr, now);
+  const key = [thN, Math.ceil(left / 100), Math.round(RS.shield), Math.round(RS.charge * 50), Math.ceil(missL / 100), Math.ceil(hackL / 100), W.aimHeld ? 1 : 0, RS.charging ? 1 : 0].join('|');
   if (el.dataset.key === key) return;
   el.dataset.key = key;
   el.querySelector('.rh-t').textContent = (left / 1000).toFixed(1) + 's';
@@ -425,6 +452,8 @@ function panelUpdate(now) {
   el.querySelector('.rh-sh em').textContent = Math.round(RS.shield);
   el.querySelector('.rh-pu i').style.width = RS.charge * 100 + '%';
   el.querySelector('.rh-pu em').textContent = W.aimHeld ? (RS.store > 0 ? `BLOCK +${Math.round(RS.store * 100)}%` : 'BLOCKING') : RS.charge >= 1 ? 'FULL' : Math.round(RS.charge * 100) + '%';
+  el.querySelector('.rh-th em').textContent = '\u25cf'.repeat(thN) + '\u25cb'.repeat(RIG.thrust.n - thN);
+  el.querySelector('.rh-th').classList.toggle('ready', thN > 0);
   el.querySelector('.rh-mi em').textContent = missL > 0 ? (missL / 1000).toFixed(1) + 's' : 'READY';
   el.querySelector('.rh-ha em').textContent = hackL > 0 ? (hackL / 1000).toFixed(1) + 's' : 'READY';
   el.classList.toggle('low', left < 5000);
@@ -459,7 +488,7 @@ function hackedUi(now) {
 }
 
 // ------------------------------------------------------------ everyone else (and replay ghosts): Remote.update calls this
-const RFX = new Set(['punch', 'hit', 'wall', 'sh', 'hack', 'miss', 'boom', 'leap', 'land']);
+const RFX = new Set(['punch', 'hit', 'wall', 'sh', 'hack', 'miss', 'boom', 'leap', 'land', 'thrust']);
 export function rigRemote(r, dt, now, floor) {
   if (r.hackedUntil > now && r.alive && Math.random() < dt * 30) rfx.glitch([r.pos[0], r.pos[1] + 1.2, r.pos[2]], 2, 0.7); // fried grapple
   const on = !!(r.f & FLAGS.RIG) && r.alive && r.buf.length > 0;
@@ -472,7 +501,7 @@ export function rigRemote(r, dt, now, floor) {
   const root = r.ch.root;
   if (!st || st.root !== root) { // (re)build: first time, or the mannequin was rebuilt (new look / team colour)
     if (st) freeRig(st.inst);
-    st = r.rig = { inst: buildRig(r.color, { outline: true }), root, on: false, onT: 0, chT: 0, lpT: 0, punchT: 9, punchC: 0, dashT: 0, missT: 9, hackT: 9, hitT: 9, landT: 9, landK: 0, wasAir: false, minVy: 0, ghostT: 0, ghostN: 0 };
+    st = r.rig = { inst: buildRig(r.color, { outline: true }), root, on: false, onT: 0, chT: 0, lpT: 0, thrT: 9, punchT: 9, punchC: 0, dashT: 0, missT: 9, hackT: 9, hitT: 9, landT: 9, landK: 0, wasAir: false, minVy: 0, ghostT: 0, ghostN: 0 };
     root.add(st.inst.root);
     st.inst.onStep = (k) => remoteStep(r, k);
   }
@@ -492,7 +521,7 @@ export function rigRemote(r, dt, now, floor) {
   const f = r.f, vx = r.vel[0], vz = r.vel[2], s = Math.sin(r.yaw), c = Math.cos(r.yaw);
   st.chT = f & FLAGS.RIG_CHARGE ? st.chT + dt : 0;
   st.lpT = f & FLAGS.RIG_LEAP ? st.lpT + dt : 0;
-  for (const k of ['punchT', 'missT', 'hackT', 'hitT', 'landT']) st[k] += dt;
+  for (const k of ['punchT', 'missT', 'hackT', 'hitT', 'landT', 'thrT']) st[k] += dt;
   st.dashT = Math.max(0, st.dashT - dt);
   const air = Math.abs(r.vel[1]) > 1.5 && !(floor && r.pos[1] - floor.point[1] < 0.25);
   if (air) st.minVy = Math.min(st.minVy, r.vel[1]);
@@ -506,7 +535,7 @@ export function rigRemote(r, dt, now, floor) {
     spd: air ? 0 : hs, fwd: -(vx * s + vz * c), side: vx * c - vz * s, air, vy: r.vel[1],
     block: f & FLAGS.RIG_BLOCK ? 1 : 0, charge: st.chT > 0 ? Math.min(1, st.chT / P.charge) : 0, leap: st.lpT > 0 ? Math.min(1, st.lpT / L.charge) : 0,
     punchT: st.punchT, dash: st.dashT > 0, missT: st.missT, hackT: st.hackT, hitT: st.hitT, landT: st.landT, landK: st.landK,
-    pitch: r.pitch, on: Math.min(1, st.onT / 0.7),
+    pitch: r.pitch, on: Math.min(1, st.onT / 0.7), thrustT: st.thrT,
   }, dt);
   // the overdrive trail: their afterimages
   st.ghostT -= dt;
@@ -612,6 +641,7 @@ function rigEvent(m, getR, live) {
       if (live) shakeNear(m.p, 0.5, 22);
       break;
     }
+    case 'thrust': if (me) { RS.thr.n = Math.min(RS.thr.n, Number(m.n) || 0); break; } if (r) { if (rs) rs.thrT = 0; rigsfx.thrust(r.pos, 0.9); jetFx(r.pos, r.yaw || 0); } break;
     case 'leap': if (r && !me) { rigsfx.leap(r.pos, m.c || 0.5); rfx.dust(r.pos, 12, 0.9, 5); } break;
     case 'land': {
       if (me || !Array.isArray(m.p)) break; // (you saw your own already)
