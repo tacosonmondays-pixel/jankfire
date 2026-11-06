@@ -1,6 +1,14 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '4.2', date: '2026-11-06', title: 'LEGS DAY', items: [
+    'everyone moves properly now: real strides for walk, run and sprint (feet stay planted), leaning and arm pumping, and a silly zooming pose past sprint speed.',
+    'strafing and backpedalling read sideways and backwards. jumps have a wind-up, a tuck, a landing squash (bigger the further you fell), and bhop chains look rhythmic.',
+    'MARBLE SLIPS are a proper pratfall: feet fly out, flat on your back with the gun in the air, kicking, then you get back up.',
+    'Plant & Defuse slow walk is a sneaky tiptoe. crouch walking, sliding and hanging off a grapple got matched up.',
+    'fixed: most players\' knees bent backwards (it was meant to be a rare jank quirk). now only the cursed ones do.',
+    'your own gun bobs with your footsteps and stumbles when you slip (calmer with Screen Shake off).',
+  ] },
   { v: '4.1', date: '2026-11-06', title: 'HOLD IT RIGHT', items: [
     'THE KATANA IS HELD LIKE A KATANA: two hands on the grip, big two-handed cuts both ways, an iai draw, a proper inspect (with a blood flick) and a two-handed parry. other players see both hands on it too. the timing hasn\'t changed.',
     'THE BUTTERFLY KNIFE does real flips now: the handles swing round the pivot, with fan, rollover and aerial tricks.',
