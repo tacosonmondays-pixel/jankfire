@@ -105,14 +105,14 @@ export const WEAPONS = {
   },
   marbles: {
     slot: 'secondary', kind: 'hitscan', name: 'Marble Shotgun', color: '#7fd0ff',
-    desc: 'A hundred glass marbles per shot. One marble barely tickles, but point blank they all land: one shot, one kill. They bounce round the floor after.',
+    desc: 'A hundred glass marbles per shot. One marble barely tickles, but point blank they all land: one shot, one kill. They stay on the floor after: anyone who runs over them slips (crouch-walk to cross).',
     rate: 1 / 0.9, mag: 2, reload: 1.9, pellets: 100, dmg: 1.15, head: 1.3, spread: 0.27,
     kb: 0, kbUp: 0, recoil: 4, kick: 0.07, range: 30, marbles: true,
     ads: { zoom: 1.15, spread: 0.8, p: [0, -0.1, -0.3] },
   },
   cig: {
     slot: 'secondary', kind: 'cone', name: 'Cigarette', color: '#ff7a1a',
-    desc: 'Hold to smoke. Let go to breathe fire for as long as you inhaled. Too long and you cough.',
+    desc: 'Hold to smoke. Let go to breathe fire for as long as you inhaled. Hold it into TOO MUCH and you cough smoke instead of fire (and it hurts).',
     range: 13, cone: 0.42, dmg: 5, tick: 0.09, maxCharge: 3, coughAt: 4.5, exhaleMul: 1.2, jet: 6,
   },
   // the shot is paid in your own HP (cost). the bolt sticks, a cross bursts out of them (fuse), then pops (burst) for dmg + a small blast

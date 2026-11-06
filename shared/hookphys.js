@@ -138,3 +138,28 @@ export function ropeJump(v, look, n) {
   v[1] += J.up * Math.max(0.75 + 0.25 * q, smooth(-dy / 0.3)) + J.hang * (1 - smooth(sp / 10));
   return q;
 }
+
+// the classic grapple (update 1), back by popular demand: the newer pendulum rope had less oomph.
+// a flat 42 m/s² pull toward the point (off inside 2 m), the rope takes 35% of your weight, and it never lets you drift
+// further away (len only ever shrinks, and outward speed at full length is cancelled), so long grapples build big speed.
+// same signature as ropeStep, and it keeps h.dist / h.n / h.pull filled in for the camera lean and the bots.
+export function classicRopeStep(h, a, p, v, dt, grav, mul = 1) {
+  const dx = a[0] - p[0], dy = a[1] - (p[1] + 1), dz = a[2] - p[2];
+  const dist = Math.hypot(dx, dy, dz);
+  h.dist = dist;
+  if (dist < 0.01) { h.pull = 0; return 0; }
+  const nx = dx / dist, ny = dy / dist, nz = dz / dist, pull = dist > 2 ? HOOK.pull * mul : 0;
+  if (pull) { v[0] += nx * pull * dt; v[1] += ny * pull * dt; v[2] += nz * pull * dt; }
+  v[1] += grav * ROPE.lift * dt;
+  h.len = Math.min(h.len == null ? dist : h.len, dist);
+  const radial = v[0] * nx + v[1] * ny + v[2] * nz;
+  if (dist >= h.len - 0.05 && radial < 0) { v[0] -= nx * radial; v[1] -= ny * radial; v[2] -= nz * radial; }
+  h.n = [nx, ny, nz]; h.pull = pull;
+  return pull;
+}
+// the classic grapple jump: let go, keep your momentum and boost it 12%, and get launched up
+export const CLASSIC_JUMP = { mul: 1.12, up: 11 };
+export function classicRopeJump(v) {
+  v[0] *= CLASSIC_JUMP.mul; v[2] *= CLASSIC_JUMP.mul;
+  v[1] = Math.max(v[1], 0) * CLASSIC_JUMP.mul + CLASSIC_JUMP.up;
+}
