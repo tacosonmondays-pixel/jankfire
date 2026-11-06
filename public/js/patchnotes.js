@@ -2,6 +2,7 @@
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
   { v: '5.1', date: '2026-11-06', title: 'LIGHTS ON', items: [
+    'fixed: leaving the Dead Mall no longer steals the next map\'s lighting (the Scary Forest came out lit like a sunny day).',
     'REAL SHADOWS: the sun casts shadows from buildings, props and players now, and they follow you around the map.',
     'every map got its own lighting mood with coloured bounce light. neon signs and lamps throw little pools of light, and corners and overhangs get darker.',
     'your hands and gun get darker in the shade and pick up the map\'s light. on Too HD the Scary Forest flashlights cast shadows.',
