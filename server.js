@@ -2274,7 +2274,7 @@ class Room {
   duckFly(pr, owner, dt) {
     if (!owner && !pr.sky) return false; // a thrower who left: it just flies
     const w = WEAPONS.duck;
-    // a sky duck (duck rain) belongs to nobody: it homes in on anyone below it, and a shield bubble stops it from outside
+    // a sky duck (duck rain) belongs to nobody: it sticks to whoever it lands on, and a shield bubble stops it from outside
     const skip = owner ? (t) => t.id === pr.o || this.friendly(owner, t) || this.bubbleBlocks(owner, t) : (t) => this.bubbleBlocks(null, t, pr.p);
     let stuck = pr.lp ? this.sweep(pr.lp, pr.p, pr.r + 0.1, skip)[0] : null;
     if (!stuck) for (const t of this.players.values()) { // sat still inside someone (sweep needs movement)
@@ -2290,6 +2290,7 @@ class Room {
       return true;
     }
     pr.lp = pr.p.slice();
+    if (pr.sky) return false; // duck rain falls straight down (no homing, so you can dodge it); only a thrown duck homes in
     // homing: nearest enemy within homeR, inside a 60 degree cone of where it's flying, in plain view
     const sp = Math.hypot(pr.v[0], pr.v[1], pr.v[2]);
     let tgt = null, bd = w.homeR;
