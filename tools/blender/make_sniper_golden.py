@@ -19,6 +19,15 @@ def poly(pts): return [P(d, h) for d, h in pts]
 SCOPE_H = 62
 
 
+def fixmats(o):  # boolean cuts give the new faces an empty material slot: give them the object's own
+    me = o.data
+    if len(me.materials) < 2: return o
+    for p in me.polygons:
+        if me.materials[p.material_index] is None: p.material_index = 0
+    while len(me.materials) > 1 and me.materials[-1] is None: me.materials.pop()
+    return o
+
+
 def scroll(px):  # engraved scrollwork: a border, a vine with curls and leaves, three rows (square tile, square texels)
     h, w = px.shape[:2]
     gold, hi, line = hexrgb(0xf2b62c), hexrgb(0xffe07a), hexrgb(0x8a560c)
@@ -50,7 +59,7 @@ def tag(px):  # a paper price tag
 def build():
     engr = mat('gs_engraved', 0xffffff, rough=0.24, metal=1.0, tex=tex_canvas('gs_engraved_t', 48, 48, scroll))
     gold = mat('gs_gold', 0xffc93a, rough=0.13, metal=1.0)
-    dark = mat('gs_dark', 0xa06a14, rough=0.3, metal=1.0)
+    dark = mat('gs_dark', 0x8a5410, rough=0.34, metal=1.0)
     velvet = mat('gs_velvet', 0x9a0f2a, rough=0.95, tex=tex_noise('gs_velvet_t', 0x9a0f2a, var=0.14, size=16, speck=0xc8304a, speck_p=0.05, seed=141))
     ruby = mat('gs_ruby', 0xff1f45, rough=0.04, clearcoat=1.0, emit=0xff1f45, strength=0.35)
     sapph = mat('gs_sapphire', 0x2a6bff, rough=0.04, clearcoat=1.0, emit=0x2a6bff, strength=0.35)
@@ -66,14 +75,14 @@ def build():
     A = parts.append
 
     def gem(r, pos, m, axis_x=0):  # a faceted cabochon: a low-poly squashed ball in a dark gold bezel
-        A(ball(r, pos, m, seg=8, rings=5, scale=(0.55, 1, 1) if axis_x else (1, 1, 1)))
+        A(ball(r, pos, m, seg=7, rings=4, scale=(0.55, 1, 1) if axis_x else (1, 1, 1)))
         if axis_x:
-            A(cyl(r * 1.25, r * 0.5, (pos[0] - axis_x * r * 0.15, pos[1], pos[2]), dark, axis='x', seg=12))
+            A(cyl(r * 1.25, r * 0.5, (pos[0] - axis_x * r * 0.15, pos[1], pos[2]), dark, axis='x', seg=10))
 
     # ---------------- muzzle brake (dark gold) with three pairs of side ports, polished barrel with engraved bands
     mb = lathe([(0, Z(0)), (W(15), Z(0)), (W(16), Z(3)), (W(16), Z(84)), (W(14), Z(88))], (0, BORE_Y, 0), dark, seg=18)
     for d in (14, 34, 54): cut(mb, box((W(50), W(15), W(13)), (0, Y(0), Z(d)), None, bev=W(2)))
-    A(mb)
+    A(fixmats(mb))
     for d in (8, 76): A(lathe([(W(16.6), Z(d - 2)), (W(16.6), Z(d + 2))], (0, BORE_Y, 0), gold, seg=18))
     A(lathe([(0, Z(0.5)), (W(5), Z(0.5)), (W(5), Z(9))], (0, BORE_Y, 0), black, seg=10))
     A(lathe([(W(12), Z(86)), (W(12.5), Z(100)), (W(14), Z(400)), (W(15.5), Z(600)), (W(16.5), Z(694))], (0, BORE_Y, 0), gold, seg=18))
@@ -85,9 +94,10 @@ def build():
     rc = cyl(W(20), W(215), (0, BORE_Y, Z(797)), engr, axis='z', seg=22, bev=W(1.5))
     cut(rc, box((W(16), W(18), W(84)), (W(19), Y(3), Z(788)), None, bev=W(2)))
     cut(rc, box((W(16), W(26), W(48)), (W(19), Y(6), Z(886)), None))
-    A(rc)
-    A(box((W(22), W(10), W(268)), (0, Y(25), Z(772)), dark, bev=W(1)))
-    for k in range(26): A(box((W(22), W(5), W(5.5)), (0, Y(32), Z(644 + k * 10)), dark, bev=W(0.7)))
+    A(fixmats(rc))
+    rail = [(638, 20), (638, 30)]  # the rail + its teeth in one crenellated piece
+    for k in range(26): rail += [(641.25 + k * 10, 30), (641.25 + k * 10, 34.5), (646.75 + k * 10, 34.5), (646.75 + k * 10, 30)]
+    A(side(poly(rail + [(906, 30), (906, 20)]), W(22), (0, 0, 0), dark, bev=0))
     # ---------------- the bolt: polished gold body, dark gold shroud, gold handle, a big ruby knob (its own node)
     bolt.append(cyl(W(11), W(180), (0, BORE_Y, Z(812)), gold, axis='z', seg=16))
     bolt.append(lathe([(W(16), Z(902)), (W(16), Z(918)), (W(12), Z(930)), (0, Z(932))], (0, BORE_Y, 0), dark, seg=16))
@@ -95,9 +105,9 @@ def build():
     bolt.append(cyl(W(9), W(6), (W(46), Y(-22), Z(898)), dark, axis='x', seg=12, rot=(0, 0, -0.5)))
     bolt.append(ball(W(12.5), (W(52), Y(-26), Z(899)), ruby, seg=8, rings=6))
     # ---------------- chassis (engraved gold): forend with vents, action bed, mag, guard + gold trigger
-    fe = side(poly([(395, -16), (705, -16), (705, -64), (420, -64), (397, -50)]), W(64), (0, 0, 0), engr, bev=W(8), seg=3)
+    fe = side(poly([(395, -16), (705, -16), (705, -64), (420, -64), (397, -50)]), W(64), (0, 0, 0), engr, bev=W(8), seg=2)
     for k in range(4): cut(fe, box((W(90), W(11), W(34)), (0, Y(-40), Z(470 + k * 52)), None, bev=W(5)))
-    A(fe)
+    A(fixmats(fe))
     for k in range(4):  # velvet showing through the vents (it's lined)
         A(box((W(58), W(10), W(32)), (0, Y(-40), Z(470 + k * 52)), velvet))
     A(side(poly([(700, -16), (906, -16), (906, -64), (700, -64)]), W(52), (0, 0, 0), engr, bev=W(5)))
@@ -113,52 +123,53 @@ def build():
         gem(W(7), (sx * W(13.6), Y(-88), Z(786)), ruby, axis_x=sx)
     # ---------------- thumbhole stock (engraved), red velvet cheek rest with gold studs, velvet butt pad, monopod
     A(side(poly([(903, -16), (955, 6), (1190, 8), (1216, 12), (1220, -128), (1200, -138), (1020, -132), (962, -150), (930, -150), (918, -124), (921, -100), (911, -86), (906, -64)]),
-           W(44), (0, 0, 0), engr, bev=W(7), seg=3,
+           W(44), (0, 0, 0), engr, bev=W(7), seg=2,
            holes=[poly([(972, -34), (1036, -28), (1054, -42), (1056, -88), (1040, -106), (992, -112), (976, -96)])]))
     A(side(poly([(1000, 14), (1168, 14), (1172, 34), (1160, 40), (1012, 40), (1000, 32)]), W(40), (0, 0, 0), velvet, bev=W(5), seg=3))
     A(side(poly([(996, 8), (1172, 8), (1172, 16), (996, 16)]), W(42), (0, 0, 0), gold, bev=W(2)))  # gold piping under the cushion
     for d in (1012, 1054, 1096, 1138):
-        for sx in (-1, 1): A(ball(W(3.2), (sx * W(20.2), Y(28), Z(d)), gold, seg=8, rings=6))  # upholstery studs
+        for sx in (-1, 1): A(ball(W(3.2), (sx * W(20.2), Y(28), Z(d)), gold, seg=6, rings=4))  # upholstery studs
     for d in (1030, 1140): A(cyl(W(4), W(10), (0, Y(10), Z(d)), gold, axis='y', seg=8))
     A(side(poly([(1212, 13), (1218, 13), (1222, -132), (1216, -136)]), W(46), (0, 0, 0), dark))
     A(side(poly([(1218, 14), (1242, 12), (1244, -128), (1224, -142)]), W(46), (0, 0, 0), velvet, bev=W(4)))
-    for sx in (-1, 1):  # a crowned cartouche on each side of the butt: dark gold oval, an emerald in it
-        cart = cyl(W(22), W(2), (sx * W(22.6), Y(-62), Z(1150)), dark, axis='x', seg=20)
+    CD, CH = 1112, -84  # a cartouche on each side of the butt: dark gold oval, an emerald in it, pearls round it
+    for sx in (-1, 1):
+        cart = cyl(W(22), W(2), (sx * W(22.6), Y(CH), Z(CD)), dark, axis='x', seg=16)
         cart.scale = (1.0, 1.0, 0.7)  # blender z = game up: an oval
         A(cart)
-        gem(W(7.5), (sx * W(23.6), Y(-62), Z(1150)), emer, axis_x=sx)
-        for k in range(8):  # pearls round it
-            a = k * math.pi / 4
-            A(ball(W(2.6), (sx * W(23.4), Y(-62) + math.sin(a) * W(15.5), Z(1150) + math.cos(a) * W(21)), pearl, seg=8, rings=6))
+        gem(W(7.5), (sx * W(23.6), Y(CH), Z(CD)), emer, axis_x=sx)
+        for k in range(6):
+            a = k * math.pi / 3
+            A(ball(W(2.8), (sx * W(23.4), Y(CH) + math.sin(a) * W(15.5), Z(CD) + math.cos(a) * W(21)), pearl, seg=6, rings=4))
     A(cyl(W(5), W(40), (0, Y(-152), Z(1150)), dark, axis='y', seg=10))
     A(cyl(W(12), W(8), (0, Y(-146), Z(1150)), gold, axis='y', seg=16))
     A(cyl(W(10), W(5), (0, Y(-172), Z(1150)), velvet, axis='y', seg=14))
     # ---------------- folded bipod under the forend tip (dark gold, velvet feet)
     A(side(poly([(412, -62), (452, -62), (452, -76), (412, -76)]), W(40), (0, 0, 0), dark, bev=W(2)))
     for sx in (-1, 1):
-        A(rod((sx * W(15), Y(-74), Z(440)), (sx * W(15), Y(-80), Z(262)), W(5), dark, seg=8))
+        A(rod((sx * W(15), Y(-74), Z(440)), (sx * W(15), Y(-80), Z(262)), W(5), dark, seg=6))
         A(ball(W(7), (sx * W(15), Y(-80), Z(256)), velvet, seg=10, rings=6))
     # ---------------- scope: gold tube, dark gold bells + rings, blue lens, engraved saddle, a crown for a turret
     sy = Y(SCOPE_H)
     A(lathe([(W(26.5), Z(557)), (W(29), Z(556)), (W(30), Z(560)), (W(30), Z(608)), (W(26), Z(624)), (W(17.5), Z(646)), (W(17.5), Z(862)),
-             (W(20), Z(873)), (W(23), Z(890)), (W(23), Z(936)), (W(21.5), Z(948))], (0, sy, 0), gold, seg=28))
+             (W(20), Z(873)), (W(23), Z(890)), (W(23), Z(936)), (W(21.5), Z(948))], (0, sy, 0), gold, seg=24))
     for d0, d1, r in ((560, 572, 30.6), (596, 608, 30.6), (900, 912, 23.6), (928, 940, 23.6)):
-        A(lathe([(W(r), Z(d0)), (W(r), Z(d1))], (0, sy, 0), dark, seg=28))
+        A(lathe([(W(r), Z(d0)), (W(r), Z(d1))], (0, sy, 0), dark, seg=24))
     A(cyl(W(26.5), W(2), (0, sy, Z(560)), glass, axis='z', seg=28))
     A(cyl(W(20), W(2), (0, sy, Z(946)), ocular, axis='z', seg=24))
-    A(box((W(44), W(32), W(72)), (0, sy, Z(755)), engr, bev=W(5), seg=3))
+    A(box((W(44), W(32), W(72)), (0, sy, Z(755)), engr, bev=W(5), seg=2))
     for sx in (-1, 1): gem(W(6), (sx * W(22.6), sy - W(8), Z(735)), sapph, axis_x=sx)
     A(cyl(W(15), W(24), (W(32), sy, Z(755)), dark, axis='x', seg=22, bev=W(2)))
     A(cyl(W(21), W(16), (-W(30), sy, Z(755)), dark, axis='x', seg=24, bev=W(2)))
     A(cyl(W(27), W(4), (-W(40), sy, Z(755)), gold, axis='x', seg=24, bev=W(1)))  # side focus wheel
     for k in range(6):  # jewels round the focus wheel, you see them on the left
         a = k * math.pi / 3
-        A(ball(W(3.4), (-W(42.4), sy + math.sin(a) * W(19), Z(755) + math.cos(a) * W(19)), GEMS[k % 3], seg=8, rings=5, scale=(0.5, 1, 1)))
-    A(ball(W(6), (-W(42.4), sy, Z(755)), ruby, seg=8, rings=5, scale=(0.5, 1, 1)))
+        A(ball(W(3.4), (-W(42.4), sy + math.sin(a) * W(19), Z(755) + math.cos(a) * W(19)), GEMS[k % 3], seg=6, rings=4, scale=(0.5, 1, 1)))
+    A(ball(W(6), (-W(42.4), sy, Z(755)), ruby, seg=7, rings=4, scale=(0.5, 1, 1)))
     A(lathe([(W(24.5), Z(880)), (W(24.5), Z(896))], (0, sy, 0), dark, seg=24))
     A(box((W(5), W(10), W(10)), (W(26), sy + W(6), Z(888)), gold))
     for d in (686, 832):
-        A(cyl(W(21.5), W(18), (0, sy, Z(d)), dark, axis='z', seg=24, bev=W(2)))
+        A(cyl(W(21.5), W(18), (0, sy, Z(d)), dark, axis='z', seg=20, bev=W(2)))
         A(box((W(32), W(18), W(18)), (0, Y(39), Z(d)), dark, bev=W(1.5)))
         A(cyl(W(3), W(40), (0, Y(36), Z(d)), gold, axis='x', seg=8))
     # the crown (it is the elevation turret): gold band, five points with pearls, gems round the band, velvet cap,
@@ -174,9 +185,9 @@ def build():
         x, z = math.cos(a) * W(18.6), Z(755) + math.sin(a) * W(18.6)
         pt = cyl(W(5), W(16), (x, band_y + W(13), z), gold, axis='y', seg=4, r2=W(0.8))
         A(pt)
-        A(ball(W(3), (x, band_y + W(22), z), pearl, seg=8, rings=6))
+        A(ball(W(3), (x, band_y + W(22), z), pearl, seg=6, rings=4))
         a2 = a + math.pi / 5
-        A(ball(W(3.6), (math.cos(a2) * W(20.4), band_y, Z(755) + math.sin(a2) * W(20.4)), GEMS[k % 3], seg=8, rings=5))
+        A(ball(W(3.6), (math.cos(a2) * W(20.4), band_y, Z(755) + math.sin(a2) * W(20.4)), GEMS[k % 3], seg=6, rings=4))
     A(ball(W(6), (0, band_y + W(21), Z(755)), gold, seg=12, rings=8))  # orb
     A(lathe([(W(6.4), band_y + W(20.5)), (W(6.4), band_y + W(21.5))], (0, 0, Z(755)), dark, seg=12, axis='y'))
     A(box((W(3), W(13), W(3)), (0, band_y + W(32), Z(755)), gold, bev=W(0.6)))  # cross
@@ -185,8 +196,8 @@ def build():
     # ---------------- sling studs + the price tag hanging off the left one (the side you see)
     for d in (500, 1150):
         A(cyl(W(6), W(8), (-W(23), Y(-40), Z(d)), gold, axis='x', seg=10))
-    A(tube([(-W(28), Y(-40), Z(1150)), (-W(28.5), Y(-52), Z(1148)), (-W(29), Y(-64), Z(1144))], W(0.9), string, seg=4))
-    tg = box((W(1.2), W(16), W(36)), (-W(29.5), Y(-74), Z(1130)), paper, rot=(0.35, 0, 0))
+    A(tube([(-W(28), Y(-40), Z(1150)), (-W(28.5), Y(-50), Z(1156)), (-W(29), Y(-58), Z(1162))], W(0.9), string, seg=4))
+    tg = box((W(1.2), W(16), W(36)), (-W(29.5), Y(-62), Z(1182)), paper, rot=(-0.5, 0, 0))
     A(tg)
 
     for p in parts + bolt: uv_box(p, 0.045)
@@ -197,7 +208,7 @@ def build():
     bodies = zone_join(parts, 'gsniper_body', WZ, default='n', rule=lambda m, c: 'a' if m in ('gs_gold', 'gs_dark') and c[2] > Z(690) and c[1] < Y(40) else None)
     bn = part(bolt, 'gsbolt_wzB', pivot=(0, BORE_Y, Z(812)))
     glint = [[0, sy + W(31), Z(590), 0.11], [0, crown_top, Z(755), 0.1], [-W(14), Y(5), Z(330), 0.13], [-W(28), Y(-39), Z(781), 0.1],
-             [-W(16), Y(3), Z(44), 0.12], [-W(23), Y(-62), Z(1150), 0.1]]
+             [-W(16), Y(3), Z(44), 0.12], [-W(23), Y(CH), Z(CD), 0.1]]
     meta = {'kind': 'weapon', 'id': 'sniper', 'skin': 'sniper_golden', 'paint': [], 'noWrap': True, 'muzzle': [0, BORE_Y, MUZ_Z],
             'sight': {'y': Y(SCOPE_H), 'z': Z(948)}, 'hatAt': [[0, crown_top, Z(755)], 0.09], 'glint': [[round(v, 4) for v in g] for g in glint],
             'bolt': {'node': 'gsbolt_wzB', 'lift': 1.05, 'travel': W(84)}}

@@ -227,8 +227,8 @@ export function stepParts(g, dt, an, at) {
 }
 
 // knives + katanas (public/js/blades) stay code-built: they're real-reference models already. this gives them the
-// Blender models' studio gloss so they sit with the rest: steel and brass turn metal, wood gets a varnish, dark grips a
-// satin coat, coloured bits candy paint. glows, see-through bits and the flat look stay as they are
+// Blender models' studio gloss so they sit with the rest: steel and brass get a satin metal sheen, wood a varnish, dark
+// grips a satin coat, coloured bits candy paint. glows, see-through bits and the flat look stay as they are
 const glossMats = new Map(), hsl = {};
 function glossOf(m) {
   if (!m || !m.isMeshLambertMaterial || m.transparent || (m.emissive && m.emissive.getHex())) return m;
@@ -242,9 +242,11 @@ function glossOf(m) {
   const metal = steel || brass;
   c = new THREE.MeshPhysicalMaterial({
     name: m.name, color: m.color.clone(), map: m.map, side: m.side, flatShading: true,
-    metalness: metal ? 0.85 : 0, roughness: metal ? 0.3 : wood ? 0.55 : l < 0.25 ? 0.42 : 0.36,
+    // steel stays as bright as the code blade: mostly its own colour + a strong studio reflection (full metalness
+    // turned the flats dark grey whenever they face away from the lights)
+    metalness: metal ? 0.35 : 0, roughness: metal ? 0.22 : wood ? 0.55 : l < 0.25 ? 0.42 : 0.36,
     clearcoat: metal ? 0 : wood ? 0.3 : l < 0.25 ? 0.35 : 0.6, clearcoatRoughness: 0.25,
-    envMap: envMap(), envMapIntensity: metal ? 0.9 : 0.3,
+    envMap: envMap(), envMapIntensity: metal ? 1.5 : 0.3,
   });
   c.userData.shared = true;
   jankify(c);
