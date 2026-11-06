@@ -80,6 +80,21 @@ def weld(o, dist=1e-6, sliver=1e-7):
     return o
 
 
+def uv_unzero(o, eps=2e-3):
+    """faces whose uvs collapsed to a point (tube caps, a pinched tip) get a tiny spread: no zero-area uv faces"""
+    me = o.data
+    if not me.uv_layers: return o
+    uv = me.uv_layers.active.data
+    for p in me.polygons:
+        pts = [uv[li].uv.copy() for li in p.loop_indices]
+        a2 = sum(pts[i].x * pts[(i + 1) % len(pts)].y - pts[(i + 1) % len(pts)].x * pts[i].y for i in range(len(pts)))
+        if abs(a2) < 1e-9:
+            for k, li in enumerate(p.loop_indices):
+                a = 2 * math.pi * k / len(pts)
+                uv[li].uv = (pts[0].x + eps * math.cos(a), pts[0].y + eps * math.sin(a))
+    return o
+
+
 def bvh_world(objs):
     """one BVH over these objects in world (blender) space"""
     bpy.context.view_layer.update()
@@ -142,23 +157,27 @@ def wrap_line(px, pts, color, w=1.0):
 
 
 def skin_px(base, seed, veins=True, sores=True, bruise=True, dirt=0.0):
-    """rotten skin: mottled sickly green, darker blotches, purple-grey bruises, dark veins, crusty sores"""
+    """rotten skin: mottled sickly green, darker blotches, bruises (purple middles, yellow edges), dark veins, sores"""
     def draw(px):
         h, w = px.shape[:2]
         r = np.random.default_rng(seed)
-        n = fbm(w, r); m2 = fbm(w, r, ((3, 0.6), (6, 0.4)))
-        c0, c1, c2 = hexrgb(base), hexrgb(0x4f7d24), hexrgb(0xb8d65a)
-        px[:] = c0[None, None] * (1 - 0.45 * n[:, :, None]) + c1[None, None] * 0.45 * n[:, :, None]
-        hi = np.clip((m2 - 0.62) / 0.3, 0, 1)[:, :, None]  # yellowish waxy patches
-        px[:] = px * (1 - 0.5 * hi) + c2[None, None] * 0.5 * hi
+        n = fbm(w, r, ((3, 0.45), (6, 0.35), (12, 0.2)))
+        c0, c1, c2 = hexrgb(base), hexrgb(0x4c7a22), hexrgb(0xc2d870)
+        k = np.clip((n - 0.25) / 0.6, 0, 1)[:, :, None]
+        px[:] = c0[None, None] * (1 - 0.6 * k) + c1[None, None] * 0.6 * k
+        hi = np.clip((fbm(w, r, ((4, 0.6), (8, 0.4))) - 0.68) / 0.25, 0, 1)[:, :, None]  # waxy yellow patches
+        px[:] = px * (1 - 0.35 * hi) + c2[None, None] * 0.35 * hi
         if bruise:
-            b = np.clip((fbm(w, r, ((3, 0.7), (7, 0.3))) - 0.7) / 0.18, 0, 1)[:, :, None]
-            px[:] = px * (1 - 0.55 * b) + hexrgb(0x6a4a78)[None, None] * 0.55 * b
+            b = fbm(w, r, ((3, 0.7), (6, 0.3)))
+            ring = np.clip(1 - abs(b - 0.74) / 0.06, 0, 1)[:, :, None]  # yellowing edge
+            core = np.clip((b - 0.77) / 0.1, 0, 1)[:, :, None]
+            px[:] = px * (1 - 0.35 * ring) + hexrgb(0xb8b84a)[None, None] * 0.35 * ring
+            px[:] = px * (1 - 0.7 * core) + hexrgb(0x553a6a)[None, None] * 0.7 * core
         if dirt:
             d = np.clip((fbm(w, r, ((5, 0.5), (11, 0.5))) - (0.6 - dirt * 0.5)) / 0.25, 0, 1)[:, :, None]
             px[:] = px * (1 - 0.7 * d) + hexrgb(0x3a3020)[None, None] * 0.7 * d
         if veins:  # branching random walks
-            for k in range(5):
+            for k_ in range(5):
                 x, y = r.random() * w, r.random() * h
                 a = r.random() * 2 * math.pi
                 pts = [(x, y)]
@@ -171,10 +190,10 @@ def skin_px(base, seed, veins=True, sores=True, bruise=True, dirt=0.0):
                         for _ in range(6):
                             ba += r.normal(0, 0.4); bx_ += math.cos(ba) * 2.2; by_ += math.sin(ba) * 2.2; bp.append((bx_, by_))
                         wrap_line(px, bp, 0x3c5a3a, 1.0)
-                wrap_line(px, pts, 0x34503a if k % 2 else 0x3f4f5e, 1.0)
-        px[r.random((h, w)) < 0.025] = hexrgb(0x3b5a22)  # pores / speckle
+                wrap_line(px, pts, 0x34503a if k_ % 2 else 0x3f4f5e, 1.0)
+        px[r.random((h, w)) < 0.015] = hexrgb(0x3b5a22)  # pores
         if sores:
-            for k in range(3):
+            for k_ in range(3):
                 cx, cy, rr = r.random() * w, r.random() * h, r.uniform(1.6, 2.8)
                 for ox in (-w, 0, w):
                     for oy in (-h, 0, h):
@@ -251,10 +270,10 @@ def tab_px(px):
 # name, MCP (knuckle) centre, yaw (deg, + toward +x = the pinky side), phalanges (mm), flex per joint (deg, + curls
 # down), radii per phalanx
 FINGERS = [
-    ('index', (-37, -27, -192), -9, (50, 31, 24), (4, 24, 17), (11.6, 10.4, 9.0)),
-    ('middle', (-12, -26, -198), -2, (56, 35, 26), (3, 25, 17), (12.1, 10.9, 9.4)),
-    ('ring', (13, -27, -192), 6, (53, 33, 25), (4, 26, 18), (11.4, 10.2, 8.9)),
-    ('pinky', (36, -29, -176), 14, (42, 25, 21), (6, 28, 19), (9.9, 8.9, 7.9)),
+    ('index', (-37, -27, -192), -9, (50, 31, 24), (3, 21, 10), (11.6, 10.4, 9.0)),
+    ('middle', (-12, -26, -198), -2, (56, 35, 26), (2, 21, 10), (12.1, 10.9, 9.4)),
+    ('ring', (13, -27, -192), 6, (53, 33, 25), (3, 23, 11), (11.4, 10.2, 8.9)),
+    ('pinky', (36, -29, -176), 14, (42, 25, 21), (5, 25, 12), (9.9, 8.9, 7.9)),
 ]
 THUMB = ((-30, -38, -102), [((-0.56, -0.30, -0.77), 46), ((-0.34, -0.36, -0.87), 33), ((-0.16, -0.5, -0.85), 27)], (15.0, 12.6, 10.6))
 
@@ -279,7 +298,7 @@ def hand_mesh(m):
     B = Blob('claw_mb', res=0.0023)
     # forearm: flat at the wrist, rounder and thicker toward the elbow, under the sleeve to z 0.19
     for p, half in (((0, -31, -74), (38, 26, 22)), ((0, -31, -40), (42, 30, 28)), ((2, -30, 5), (47, 35, 30)), ((3, -29, 50), (51, 40, 30)),
-                    ((3, -28, 95), (53, 44, 30)), ((3, -27, 140), (54, 46, 28)), ((3, -27, 168), (53, 45, 24))):
+                    ((3, -28, 95), (51, 42, 30)), ((3, -27, 140), (50, 41, 28)), ((3, -27, 168), (48, 40, 24))):
         B.ellipsoid(p, half, s=2.0)
     B.capsule((-33, -18, -30), (-25, -14, 140), 9.5, s=3.0)  # brachioradialis ridge on the thumb side
     B.capsule((36, -30, -70), (41, -32, 140), 7.0, s=4.0)  # the ulna's edge along the pinky side (gaunt)
@@ -293,8 +312,8 @@ def hand_mesh(m):
     fp = {}
     for name, mcp, yaw, lens, flex, rad in FINGERS:
         pts = finger_pts(mcp, yaw, lens, flex); fp[name] = pts
-        for i in range(3): B.capsule(pts[i], pts[i + 1], rad[i], s=6.0)
-        for j in (1, 2): B.ball(tuple(pts[j] + Vector((0, rad[j] * 0.3, 0))), rad[j] * 1.06, s=6.5)  # knobbly joints
+        for i in range(3): B.capsule(pts[i], pts[i + 1], rad[i] * 0.88, s=6.0)
+        for j in (1, 2): B.ball(tuple(pts[j] + Vector((0, rad[j] * 0.25, 0))), rad[j] * 1.04, s=6.5)  # knobbly joints
         B.ball(tuple(Vector(mcp) + Vector((0, 8, 3))), 8.5, s=4.2)  # knuckle bump
         B.capsule((mcp[0] * 0.35, -15, -98), (mcp[0], -15, mcp[2] + 10), 3.4, s=5.0)  # tendon to the knuckle
         tip = pts[3] - (pts[3] - pts[2]).normalized() * 2.0
@@ -303,7 +322,7 @@ def hand_mesh(m):
     tp = thumb_pts(); fp['thumb'] = tp
     for i, r in enumerate(THUMB[2]): B.capsule(tuple(tp[i]), tuple(tp[i + 1]), r, s=5.0 if i else 3.0)
     B.ball(tuple(tp[2] + Vector((0, 4, 0))), THUMB[2][2] * 1.08, s=6.0)
-    o = B.mesh('claw_skin', m, tris=6200)
+    o = B.mesh('claw_skin', m, tris=5900)
     return o, fp
 
 
@@ -371,88 +390,140 @@ def nail(name, m, bvh, pts, rad, length, curve, width):
 
 
 # ------------------------------------------------------------ the torn sleeve
-def sleeve(m, m_in, bvh):
-    """a loose flannel sleeve: resting on top of the forearm, sagging underneath, ragged torn hem, closed at the elbow"""
-    N = 30
-    zb, zc = 248, 236  # back cap tip, where the cap starts
+def arm_radius(z, a):
+    """distance from the forearm's axis (x 3, y -29 mm) to its skin at z (mm), angle a (0 = +x, pi/2 = up)"""
+    key = (round(z, 2), round(a, 4))
+    if key not in _rc:
+        dx, dy = math.cos(a), math.sin(a)
+        h = hit(_BVH[0], ((3 + dx * 90) * mm, (-29 + dy * 90) * mm, z * mm), (-dx, -dy, 0))
+        _rc[key] = ((h[0] / mm) - Vector((3, -29, z))).length if h else None
+    return _rc[key]
+
+
+_rc = {}
+_BVH = [None]
+
+
+def sleeve(m, m_in, m_thread):
+    """a loose flannel sleeve: resting on top of the forearm, sagging underneath, a ragged torn hem with flaps and
+    loose threads, a rounded closed end at the elbow"""
+    N = 26
+    Z_END = 190  # the round back end starts (the arm stops at ~0.19 under it)
     rng = random.Random(14)
     hem = []
-    for j in range(N):  # a ragged front edge: mostly 80-100 mm, three long torn flaps
-        z = 92 + rng.uniform(-9, 9)
-        for jc, depth in ((4, 44), (13, 36), (21, 30), (26, 20)):
+    for j in range(N):  # a ragged front edge: mostly 78-94 mm, a few long torn flaps
+        z = 86 + rng.uniform(-8, 8)
+        for jc, depth in ((4, 40), (11, 30), (18, 34), (22, 18)):
             dj = min(abs(j - jc), N - abs(j - jc))
-            if dj <= 1: z -= depth * (1.0 if dj == 0 else 0.45)
+            if dj <= 1: z -= depth * (1.0 if dj == 0 else 0.42)
         hem.append(z)
-    rows = 9
+    rows = 13
+    caps = [(0.3, 0.95), (0.62, 0.8), (0.86, 0.55)]  # the round end: (how far back, radius left)
     outer, inner = [], []
     for j in range(N):
         a = 2 * math.pi * j / N
         dx, dy = math.cos(a), math.sin(a)
         col_o, col_i = [], []
+        r_end = arm_radius(Z_END - 20, a) or 48
+        for cz, ck in caps[::-1]:  # the end cap, from the back toward the front
+            ri = (r_end + 2.0) * ck
+            z = Z_END + 26 * cz
+            col_o.append((3 + dx * (ri + 2.4), -29 + dy * (ri + 2.4) - 2 * (1 - ck), z)); col_i.append((3 + dx * ri, -29 + dy * ri - 2 * (1 - ck), z))
         for i in range(rows):
             t = i / (rows - 1)
-            z = zc + (hem[j] - zc) * t
-            rr = radii_cache(z)[j]
-            gap = -0.3 + 1.5 * (1 - dy) + 8.0 * max(0.0, -dy)  # resting on top of the arm, sagging underneath
-            fl = 3.0 * t ** 3  # the hem flares a bit
-            droop = (6.0 * t ** 2) if dy < 0.2 and hem[j] < 70 else 0.0  # the long flaps hang down
+            z = Z_END + (hem[j] - Z_END) * t
+            rr = arm_radius(z, a) or 48
+            gap = (-0.15 if dy > 0.985 else 0.7) + 1.6 * (1 - dy) + 7.0 * max(0.0, -dy)  # resting on top of the arm, sagging underneath
+            fl = 3.5 * t ** 3  # the hem flares out a bit
+            droop = (7.0 * t ** 2) if dy < 0.25 and hem[j] < 70 else 0.0  # the long flaps hang down
             ri = rr + gap + fl
-            ro = ri + 2.4
-            cx, cy = 3, -29 - droop
-            col_o.append((cx + dx * ro, cy + dy * ro, z))
-            col_i.append((cx + dx * ri, cy + dy * ri, z))
+            col_o.append((3 + dx * (ri + 2.4), -29 + dy * (ri + 2.4) - droop, z)); col_i.append((3 + dx * ri, -29 + dy * ri - droop, z))
         outer.append(col_o); inner.append(col_i)
+    R_ = len(outer[0])
     verts, faces, uvs = [], [], []
     def V(p): verts.append(G(*p)); return len(verts) - 1
     oi = [[V(p) for p in col] for col in outer]
     ii = [[V(p) for p in col] for col in inner]
-    cap_o = V((3, -27, zb)); cap_i = V((3, -27, zb - 5))
-    UV_K = 1 / 70.0
-    def uvo(j, i): return (j / N * 3.0, (zc - outer[j % N][i][2]) * UV_K)
+    tip_o = V((3, -30, Z_END + 27)); tip_i = V((3, -30, Z_END + 24))
+    def uv(col, i, j): return (j / N * 3.0, (Z_END + 25 - col[j % N][i][2]) / 70.0)
     for j in range(N):
         jj = (j + 1) % N
-        for i in range(rows - 1):
+        u0, u1 = j / N * 3.0, (j + 1) / N * 3.0
+        for i in range(R_ - 1):
             faces.append([oi[j][i], oi[jj][i], oi[jj][i + 1], oi[j][i + 1]])
-            uvs.append([uvo(j, i), (uvo(j, i)[0] + 3.0 / N, uvo(jj, i)[1]), (uvo(j, i)[0] + 3.0 / N, uvo(jj, i + 1)[1]), uvo(j, i + 1)])
+            uvs.append([(u0, uv(outer, i, j)[1]), (u1, uv(outer, i, jj)[1]), (u1, uv(outer, i + 1, jj)[1]), (u0, uv(outer, i + 1, j)[1])])
             faces.append([ii[j][i + 1], ii[jj][i + 1], ii[jj][i], ii[j][i]])
-            uvs.append([uvo(j, i + 1), (uvo(j, i)[0] + 3.0 / N, uvo(jj, i + 1)[1]), (uvo(j, i)[0] + 3.0 / N, uvo(jj, i)[1]), uvo(j, i)])
-        faces.append([oi[j][rows - 1], oi[jj][rows - 1], ii[jj][rows - 1], ii[j][rows - 1]])  # the hem's cut edge
-        uvs.append([uvo(j, rows - 1), (uvo(j, rows - 1)[0] + 3.0 / N, uvo(jj, rows - 1)[1]), (uvo(j, rows - 1)[0] + 3.0 / N, uvo(jj, rows - 1)[1] + 0.03), (uvo(j, rows - 1)[0], uvo(j, rows - 1)[1] + 0.03)])
-        faces.append([oi[jj][0], oi[j][0], cap_o])  # closed at the elbow
-        uvs.append([(uvo(j, 0)[0] + 3.0 / N, 0), (uvo(j, 0)[0], 0), (uvo(j, 0)[0] + 1.5 / N, -0.2)])
-        faces.append([ii[j][0], ii[jj][0], cap_i])
-        uvs.append([(0, 0), (0.1, 0), (0.05, 0.1)])
+            uvs.append([(u0, uv(inner, i + 1, j)[1]), (u1, uv(inner, i + 1, jj)[1]), (u1, uv(inner, i, jj)[1]), (u0, uv(inner, i, j)[1])])
+        e = R_ - 1  # the hem's cut edge
+        faces.append([oi[j][e], oi[jj][e], ii[jj][e], ii[j][e]])
+        v0 = uv(outer, e, j)[1]
+        uvs.append([(u0, v0), (u1, v0), (u1, v0 + 0.03), (u0, v0 + 0.03)])
+        faces.append([oi[jj][0], oi[j][0], tip_o]); uvs.append([(u1, 0.0), (u0, 0.0), ((u0 + u1) / 2, -0.04)])
+        faces.append([ii[j][0], ii[jj][0], tip_i]); uvs.append([(u0, 0.0), (u1, 0.0), ((u0 + u1) / 2, -0.04)])
+    # the round end: flat-projected plaid (seen from behind), so the checks don't pinch into a star
+    ncap = len(caps)
+    for k, f in enumerate(faces):
+        zs = [verts[i][2] / mm for i in f]
+        if min(zs) >= Z_END + 26 * caps[0][0] - 0.5 or (all(z >= Z_END - 0.5 for z in zs) and len(f) == 3):
+            uvs[k] = [(verts[i][0] / mm / 70.0, verts[i][1] / mm / 70.0) for i in f]
     o = mesh_from('sleeve', verts, faces, m, uvs)
     weld(o, 1e-7)
     o.data.materials.append(m_in)
-    me = o.data
-    for p in me.polygons:  # inside faces: the dark lining
+    for p in o.data.polygons:  # inside faces: the dark lining
         c = Vector((p.center.x, p.center.z, -p.center.y)) / mm
         n = Vector((p.normal.x, p.normal.z, -p.normal.y))
         radial = Vector((c.x - 3, c.y + 29, 0))
-        if radial.length > 1 and n.dot(radial.normalized()) < -0.3: p.material_index = 1
+        if c.z < Z_END and radial.length > 1 and n.dot(radial.normalized()) < -0.3: p.material_index = 1
     smooth(o, 70)
-    return o
-
-
-_rc = {}
-def radii_cache(z):
-    return _rc[round(z, 3)] if round(z, 3) in _rc else _rc.setdefault(round(z, 3), _radii_fn(z))
-
-
-def _radii_fn(z):
-    N = 30
-    out = []
-    for j in range(N):
+    # loose threads hanging off the torn edge
+    threads = []
+    for k, j in enumerate((3, 8, 13, 17, 21, 25)):
         a = 2 * math.pi * j / N
-        dx, dy = math.cos(a), math.sin(a)
-        c = (3, -29, z)
-        h = hit(_BVH[0], ((c[0] + dx * 90) * mm, (c[1] + dy * 90) * mm, z * mm), (-dx, -dy, 0))
-        out.append(((h[0] / mm) - Vector(c)).length if h else 45)
-    return out
+        p0 = Vector(outer[j][-1]) - Vector((math.cos(a), math.sin(a), 0)) * 1.2 + Vector((0, 0, 2.5))
+        L = rng.uniform(9, 20)
+        pts = [p0]
+        d = Vector((math.cos(a) * 0.35, -1.0, -0.55)).normalized()
+        for s_ in range(5):
+            d = (d + Vector((rng.uniform(-0.3, 0.3), -0.25, rng.uniform(-0.3, 0.1)))).normalized()
+            pts.append(pts[-1] + d * (L / 5))
+        threads.append(sweep([G(*q) for q in pts], [0.75 * mm] * 5 + [0.45 * mm], m_thread, seg=5, name=f'thread{k}'))
+    return o, threads
 
 
-_BVH = [None]
+# ------------------------------------------------------------ a stitched-up gash on the forearm (you see it in first person)
+def gash(m_wound, m_thread, bvh):
+    """a split in the skin across the top of the forearm, sewn shut with big black X stitches"""
+    a0, a1 = Vector((14, 0, -36)), Vector((-20, 0, 28))  # (x, -, z) over the top
+    def surf(x, z, out=0.0):
+        h = hit(bvh, (x * mm, 0.08, z * mm), (0, -1, 0), 0.3)
+        if not h: return None
+        p, n = h[0] / mm, h[1]
+        return p + n * out, n
+    pts = []
+    for i in range(13):
+        t = i / 12
+        q = a0 + (a1 - a0) * t
+        s_ = surf(q.x + math.sin(t * 9) * 1.2, q.z, 0.25)
+        if s_: pts.append(s_[0])
+    w = sweep([G(*p) for p in pts], [0.6 * mm] + [2.1 * mm] * (len(pts) - 2) + [0.6 * mm], m_wound, seg=6, name='gash', squash=(0.35, 1.0))
+    st = []
+    d = (a1 - a0).normalized()
+    side = Vector((d.z, 0, -d.x))
+    for k in range(5):
+        t = 0.14 + 0.72 * k / 4
+        c = a0 + (a1 - a0) * t
+        for sgn in (-1, 1):  # an X: two crossing stitches
+            e0 = c + side * 6.5 + d * (3.2 * sgn)
+            e1 = c - side * 6.5 - d * (3.2 * sgn)
+            path = []
+            for i in range(6):
+                f = i / 5
+                q = e0 + (e1 - e0) * f
+                s_ = surf(q.x, q.z, 0.5 + 1.1 * math.sin(f * math.pi))
+                if s_: path.append(s_[0])
+            if len(path) >= 3:
+                st.append(sweep([G(*p) for p in path], 0.62 * mm, m_thread, seg=5, name=f'stitch{k}{sgn}'))
+    return [w] + st
 
 
 # ------------------------------------------------------------ the wristband
@@ -505,7 +576,7 @@ def wristband(m_band, m_label, m_tab, m_snap, bvh, zc=-64):
             p = pts[j] * (1 - k) + pts[(j + 1) % N] * k
             rdir = Vector((p.x - cen.x, p.y - cen.y, 0)).normalized()
             q = p + rdir * off
-            return (q.x, q.y, z)
+            return (q.x, q.y, zc + z)
         grid = []
         for i in range(segs + 1):
             a = a0 + (a1 - a0) * i / segs
@@ -555,7 +626,7 @@ def top_y_at(objs, z, x=0.0):
 
 # ------------------------------------------------------------ build
 def build():
-    skin = mat('cl_skin', 0xffffff, rough=0.42, clearcoat=0.55, tex=tex_canvas('cl_skin_t', 64, 64, skin_px(0x86b842, 31)))
+    skin = mat('cl_skin', 0xffffff, rough=0.5, clearcoat=0.32, tex=tex_canvas('cl_skin_t', 64, 64, skin_px(0x86b842, 31)))
     pale = mat('cl_skin_pale', 0xffffff, rough=0.5, clearcoat=0.4, tex=tex_canvas('cl_pale_t', 64, 64, skin_px(0xa8c862, 32, veins=False, sores=False)))
     dirt = mat('cl_skin_dirt', 0xffffff, rough=0.55, clearcoat=0.3, tex=tex_canvas('cl_dirt_t', 32, 32, skin_px(0x6e9a36, 33, veins=False, sores=False, dirt=0.8)))
     nailm = mat('cl_nail', 0xffffff, rough=0.42, clearcoat=0.3, tex=tex_canvas('cl_nail_t', 32, 8, nail_px))
@@ -564,7 +635,10 @@ def build():
     bandm = mat('cl_band', 0xffffff, rough=0.32, clearcoat=0.5, tex=tex_noise('cl_band_t', 0x9cc8ee, var=0.05, size=16, speck=0x7aa8d8, speck_p=0.08, seed=23))
     labm = mat('cl_label', 0xffffff, rough=0.4, tex=tex_canvas('cl_label_t', 78, 26, label_px))
     tabm = mat('cl_alert', 0xffffff, rough=0.3, clearcoat=0.6, tex=tex_canvas('cl_alert_t', 34, 13, tab_px))
-    snapm = mat('cl_snap', 0x9fd0ff, rough=0.25, clearcoat=0.8)
+    snapm = mat('cl_snap', 0xe8f0ff, rough=0.25, clearcoat=0.8)
+    thread = mat('cl_thread', 0xffffff, rough=0.9, tex=tex_noise('cl_thread_t', 0x9a3a48, var=0.15, size=8, seed=24))
+    wound = mat('cl_wound', 0xffffff, rough=0.25, clearcoat=0.9, tex=tex_noise('cl_wound_t', 0x6a1a26, var=0.25, size=16, speck=0xc8a040, speck_p=0.08, seed=25))
+    stitch = mat('cl_stitch', 0x14121a, rough=0.6)
 
     arm, fp = hand_mesh(skin)
     weld(arm, 1e-6)
@@ -573,23 +647,32 @@ def build():
     bvh = bvh_world([arm]); _BVH[0] = bvh
     # five nails: (finger, length mm, curve deg, width mm)
     nails = []
-    for name, L, cv, w in (('index', 44, 26, 14.0), ('middle', 48, 24, 14.8), ('ring', 45, 28, 14.0), ('pinky', 37, 30, 12.2), ('thumb', 34, 22, 16.5)):
+    for name, L, cv, w in (('index', 45, 17, 14.2), ('middle', 46, 15, 15.0), ('ring', 45, 18, 14.2), ('pinky', 38, 20, 12.4), ('thumb', 34, 20, 16.5)):
         pts = fp[name]
         rad = {'index': 8.8, 'middle': 9.2, 'ring': 8.7, 'pinky': 7.7, 'thumb': 10.6}[name]
         nails.append(nail('nail_' + name, nailm, bvh, pts, rad, L, math.radians(cv), w))
-    sl = sleeve(cloth, lining, bvh)
+    sl, threads = sleeve(cloth, lining, thread)
+    cuts = gash(wound, stitch, bvh)
     band = wristband(bandm, labm, tabm, snapm, bvh)
-    for p in band[3:]: uv_box(p, 0.02)
-    allp = [arm, sl] + nails + band
-    for p in allp: apply_mods(p)
+    for p in band[3:] + threads + cuts: uv_box(p, 0.02)
+    allp = [arm, sl] + threads + cuts + nails + band
+    for p in allp: apply_mods(p); uv_unzero(p)
     if '--qa' in ARGV: qa(allp)
-    zones = {'cl_skin': 'a', 'cl_cloth': 'a', 'cl_nail': 'b', 'cl_band': 'n', 'cl_label': 'n', 'cl_alert': 'n', 'cl_snap': 'n'}
+    zones = {'cl_skin': 'a', 'cl_cloth': 'a', 'cl_thread': 'a', 'cl_wound': 'a', 'cl_stitch': 'a', 'cl_nail': 'b', 'cl_band': 'n', 'cl_label': 'n', 'cl_alert': 'n', 'cl_snap': 'n'}
     parts = zone_join(allp, 'claw', zones, default='a')
     hy = top_y_at(parts, -0.15, -0.005)
     meta = {'kind': 'weapon', 'id': 'claw', 'paint': ['cl_skin', 'cl_skin_pale', 'cl_skin_dirt'], 'muzzle': [0, -0.03, -0.33],
             'hatAt': [[-0.005, round(hy + 0.001, 4), -0.15], 0.07]}
     print('JF_META', json.dumps(meta))
-    return finish('w_claw', parts, meta)
+    root = finish('w_claw', parts, meta)
+    for a_ in ARGV:
+        if a_.startswith('--close='):
+            sys.path.insert(0, '/tmp/claude-0/-workspace-jankfire/86957797-7d93-5698-a006-852e0a15c9f9/scratchpad/agents/misc')
+            import closeup
+            closeup.shots(root, [('fp', (-0.121, 0.2985, 0.2099), (-0.073, 0.149, -0.265), 19), ('wrist', (0.02, 0.12, 0.05), (0.0, -0.01, -0.07), 50),
+                                 ('nails', (-0.12, 0.02, -0.42), (0.0, -0.05, -0.28), 40), ('hem', (0.13, -0.05, -0.06), (0.0, -0.04, 0.08), 32),
+                                 ('palm', (0.1, -0.3, -0.2), (0, -0.04, -0.18), 35), ('back', (0.25, 0.15, 0.45), (0, -0.03, 0.05), 35)], a_.split('=', 1)[1], 'claw', exposure=-0.3)
+    return root
 
 
 def qa(parts):

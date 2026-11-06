@@ -82,6 +82,8 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 | `make_chicken_turkey.py` | `w_chicken_turkey.glb`, `pj_chicken_turkey.glb` | RPG-style tube with a roast turkey on the muzzle (HEAT 350F); the thrown turkey x3.3 |
 | `make_bowling_cannon.py` | `w_bowling_cannon.glb` | bronze hand mortar with verdigris, slow-match fuse, bowling-pin lifting handles; `ads` pose |
 | `make_banana_bunch.py` | `w_banana_bunch.glb` | the Peel Shooter's AKS-74U in AK-74 plum, the mag is a whole hand of bananas (PRODUCE OF JANK) |
+| `make_laser.py` | `w_laser.glb` | Big Laser Pointer: an office laser pointer pen x4.7 (leg-sized) with a lime toy-pistol grip duct-taped under it, D-cells, a PEW-O-METER LED bar and a cat charm; hook nodes `lz_button_wzN` (pressed), `lz_led0_wzN`..`lz_led4_wzN` (lit with the charge), `lz_emit_wzN`, `lz_charm_wzN` (swings); the charge orb is the game's |
+| `make_gear.py` | `x_camera.glb`, `x_photoframe.glb`, `x_calc.glb`, `x_nvg.glb` | the gear (`x_` = not a weapon, loaded only when someone carries it): instant camera at real size (`flash`, `shutter`, `print` > `pic`, the photo the game paints), the photo portal (a 2.1 m print on an easel back, the live picture fills its opening), the Pop Quiz calculator (`screen` shows the sum), flip-up night vision goggles (`pivot` at the forehead knuckle, `lensL` / `lensR` / `ir` glow, `strap` only on other people's heads); `-- --only=camera,frame,calc,nvg` |
 
 ## Rules that make a model drop straight in
 - **Build in game space**: three.js axes and metres (x right, y up, -z forward); `lib.gv()` converts to Blender. A
@@ -123,6 +125,9 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 - Metaballs: positions go through `gv()`, radii are metres too (millimetres made a 70 m blob that hung Blender).
 - One Blender session = unique object names: in a multi-file script give each model's hook nodes their own names and
   put the exact name in its meta.
+- A plane the game paints with its own canvas texture (the camera's `pic`, the calculator's `screen`, the rig's
+  `rg_screen`): the glTF exporter writes v as 1 - v and the game's canvas textures are flipY, so author that plane's V
+  flipped (v = 1 on the bottom edge) or the game's picture shows upside down.
 
 ## How the game uses them
 - `public/js/glbkit.js`: `prepAuthored` takes any glb with `jf` metadata: nearest-filtered textures, the Potato vertex
