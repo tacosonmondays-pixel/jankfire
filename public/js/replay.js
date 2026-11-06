@@ -11,6 +11,7 @@ import { marbles } from './marbles.js';
 import { sfx } from './audio.js';
 import { tracerColor } from './skins.js';
 import { playKillFx } from './killfx.js';
+import { rigFx, rigDied } from './rig.js'; // overdrive rig killstreak
 import { courtReplay } from './scales.js';
 import { replayNoScope } from './noscope.js';
 import { shredKill } from './shredder.js';
@@ -163,6 +164,7 @@ function applyEv(m) {
       if (replaced) v.ch.root.visible = false; else v.breakApart(m.vel || v.vel);
       v.alive = false; v.downAt = 0; // now they're down
       v.iceUntil = 0;
+      rigDied(v, m.vel); // died in the overdrive rig: it bursts into scrap
       v.rpAlive = false; // gone from here on, even if the frame saying so is a few ms later
     }
     if (st.opts.onKill) st.opts.onKill(m);
@@ -175,6 +177,8 @@ function applyEv(m) {
     fx.explosion(m.p, WEAPONS.chicken.radius); sfx.boom(m.p);
   } else if (m.t === 'he') {
     fx.blast(m.p, WEAPONS.duck.blastR); sfx.holePop(m.p);
+  } else if (m.t === 'rig') {
+    rigFx(m, st.ghosts); // overdrive rig punches, hacks, missiles, landings (the ghosts wear the rig from their snapshots)
   } else if (m.t === 'ns') { // no-scope headshot: the fireworks again, on a faster fuse
     replayNoScope(m, (info[m.k] || {}).name);
   } else if (m.t === 'kat') {

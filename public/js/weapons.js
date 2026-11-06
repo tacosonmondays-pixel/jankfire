@@ -19,6 +19,7 @@ import { ANIMS, sample, sampleCh, eventsBetween, inspectFor, drawFor } from './a
 import { newTwirl, resetTwirl, twirling, spin, settle, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
 import { partsShot, stepParts } from './glbkit.js';
 import { weaponIcon, clearIcons, itemIcon } from './icons.js';
+import { rigFire, rigItem, rigVM, rigBlockKey } from './rig.js'; // overdrive rig killstreak
 import { tickScalesVM } from './scales.js';
 import { PARRY } from '/shared/weapons.js';
 import { ROYAL } from '/shared/looks.js';
@@ -206,7 +207,7 @@ function updateFlying(dt) {
 }
 
 // ------------------------------------------------------------ card deck
-export function cycleCard() { const n = (G.hand || []).length; if (n) { W.cardSel = (W.cardSel + 1) % n; sfx.click(); } }
+export function cycleCard() { if (rigBlockKey()) { W.aimHeld = true; return; } const n = (G.hand || []).length; if (n) { W.cardSel = (W.cardSel + 1) % n; sfx.click(); } }
 export function redrawCards() { net.send({ t: 'redraw' }); sfx.swing(); }
 function playCard(now) {
   const hand = G.hand || [];
@@ -268,6 +269,7 @@ export function syncItem(id, n, nextMs) { if (!ITEMS[id]) return; W.ic[id] = { n
 export function useItem() {
   if (performance.now() < (ME.ballUntil || 0)) return; // wrecking ball: no hands
   const id = W.item, it = ITEMS[id];
+  if (rigItem()) return; // overdrive rig: G fires the missile salvo
   if (!it || !ME.alive) return;
   const c = charges(id);
   if (performance.now() - (W.itemT || 0) < 420) return; // same spam limit as the server
@@ -343,6 +345,7 @@ function updatePop(dt) {
 export function heavyAttack() {
   if (performance.now() < (ME.ballUntil || 0)) return true; // wrecking ball: no hands
   const id = W.cur, w = WEAPONS[id], now = performance.now();
+  if (rigBlockKey()) return false; // overdrive rig: right click is the block (it holds W.aimHeld)
   if (!w || !w.heavy || !ANIMS['stab_' + id]) return false;
   const model = models[id] && models[id].g.userData.model;
   const stab = model && ANIMS['stab_' + model] ? 'stab_' + model : 'stab_' + id;
@@ -932,6 +935,7 @@ function cough() {
 export function fireDown() {
   if (performance.now() < (ME.ballUntil || 0)) return; // wrecking ball: no hands
   W.held = true;
+  if (rigFire(true)) return; // overdrive rig: hold to charge the rocket punch
   cancelInspect();
   const id = W.cur, w = WEAPONS[id], now = performance.now();
   W.fanning.down = now; W.fanning.arm = true; // revolver: keep holding from here to fan the hammer
@@ -947,6 +951,7 @@ export function fireDown() {
 
 export function fireUp() {
   W.held = false;
+  if (rigFire(false)) return; // overdrive rig: let go to throw it
   W.coughLock = false;
   if (W.cur === 'bow') {
     const now = performance.now();
@@ -1133,6 +1138,7 @@ export function shredderPorts() {
 export function updateWeapons(dt, now) {
   if (ME.alive && now < (ME.ballUntil || 0)) { W.held = false; W.aimHeld = false; W.dashHeld = false; W.exhale = 0; W.charge = 0; } // wrecking ball: no hands
   const id = W.cur, w = WEAPONS[id];
+  if (rigVM(dt, now, vmRoot)) return; // overdrive rig: guns holstered, mechanical fists instead (rig.js)
   const alive = ME.alive;
   let smoking = false, firing = false, blowing = false, spinning = false;
 

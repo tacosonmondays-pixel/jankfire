@@ -45,6 +45,8 @@ import { updateWreck, ballCam, wreckFx, wreckDied } from './wreck.js';
 import { hasAcc } from '/shared/looks.js';
 import { airTick, airReset, airFlourish } from './airborne.js';
 import { account, restore, login, register, logout, saveProfile, leaderboard as fetchLeaders } from './account.js';
+import { updateRig, rigDied, rigOn } from './rig.js';
+import { rigClash } from '/shared/rig.js'; // overdrive rig killstreak
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { SPRAY, ownedSpray } from '/shared/cosmetics.js';
@@ -1324,6 +1326,7 @@ net.on('kill', (m) => {
     victim.reverseUntil = 0; // the server ends their reverse card on death too
     const vi = G.names.get(m.v) || {};
     const replaced = kfx && playKillFx(kfx, { pos: victim.pos.slice(), vel: m.vel || victim.vel, yaw: victim.yaw, color: victim.color, look: teamLook(vi.look, vi.team), name: vi.name });
+    rigDied(victim, m.vel); // they died in the overdrive rig: the frame bursts apart into scrap
     if (replaced) victim.ch.root.visible = false; else victim.breakApart(m.vel || victim.vel);
     wreckDied(victim, m.vel); // they died as a wrecking ball: it bursts open
     victim.frozenUntil = 0;
@@ -1775,6 +1778,7 @@ function frame(t) {
   if (shHit) myShadow.position.set(ME.pos[0], shHit.point[1] + 0.03, ME.pos[2]);
   updateWreck(dt, now, RP.active, myShadow, myRope); // your own wrecking ball, its chain (instead of your rope), rumble + timer
   if (now < (G.burnUntil || 0)) fx.burn([ME.pos[0] + Math.sin(ME.yaw) * -0.8, ME.pos[1], ME.pos[2] - Math.cos(ME.yaw) * 0.8]);
+  updateRig(dt, now, cam, RP.active); // overdrive rig: you in it (camera, HUD, trail) and its effects
   const revLeft = W.reverseUntil - now; // reverse card: red edges, blinking for the last second
   $('reverseFx').style.opacity = revLeft > 0 ? (revLeft > 1000 || Math.floor(revLeft / 150) % 2 ? 1 : 0.25) : 0;
 
@@ -1830,6 +1834,7 @@ function deployStreak(slot) {
   if (W.only) { hud.msg('no killstreaks in this mode (they keep for later)', 1.2); sfx.empty(); return; }
   if (chaosNoStreaks()) { hud.msg('no killstreaks in this mode', 1.2); sfx.empty(); return; }
   if (!G.pocket.includes(id)) { hud.msg(`${STREAKS[id].name}: ${STREAKS[id].kills} kills in a row`, 1.2); sfx.empty(); return; }
+  if (rigClash(id, rigOn(), ballOn(performance.now()))) { hud.msg(id === 'overdrive' ? 'not inside the wrecking ball' : 'not in the overdrive rig (it keeps for later)', 1.2); sfx.empty(); return; }
   const e = eye(), d = lookDir();
   const h = raycast(e, d, 300, BOXES);
   const at = h ? h.point : [e[0] + d[0] * 60, e[1] + d[1] * 60, e[2] + d[2] * 60];

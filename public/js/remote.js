@@ -10,6 +10,7 @@ import { fx, makeBeam, setBeam } from './fx.js';
 import { emitSkinFx } from './skins.js';
 import { wreckRemote, ballBoxes, wreckDispose } from './wreck.js';
 import { jankify } from './jank.js';
+import { rigRemote, rigBoxes, rigDispose } from './rig.js'; // overdrive rig killstreak
 import { newTwirl, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
 import { makeRope, setRope, setRopeSkin } from './grapple.js';
 import { sfx } from './audio.js';
@@ -202,6 +203,7 @@ export class Remote {
   hitboxes() {
     if ((this.f & FLAGS.BALL) && this.alive) return ballBoxes(this.pos, this.distScale || 1); // a wrecking ball is one big ball
     const k = (this.distScale || 1);
+    if (this.rigOn) return rigBoxes(this.pos, k); // the overdrive rig is a much bigger target
     const boxes = this.nap && this.napK > 0.5 ? this.napBoxes() : playerBoxes(this.pos);
     if (k === 1) return boxes;
     const [x, y, z] = this.pos;
@@ -504,6 +506,7 @@ export class Remote {
 
     const sh = raycast([x, y + 0.1, z], [0, -1, 0], 80, BOXES);
     if (sh) { this.shadow.visible = true; this.shadow.position.set(x, sh.point[1] + 0.03, z); } else this.shadow.visible = false;
+    rigRemote(this, dt, now, sh); // overdrive rig: the exo-frame (and its afterimages) instead of the mannequin
 
     const ld = this.look();
     const head = [x + ld[0] * 0.45, y + 1.5, z + ld[2] * 0.45];
@@ -531,6 +534,7 @@ export class Remote {
     G.scene.remove(this.shadow);
     wreckDispose(this);
     this.free();
+    rigDispose(this);
     // the rope is a grapple-skin group: its beams + hook share the skin's geometries and materials, nothing to free
     this.shadow.geometry.dispose(); this.shadow.material.dispose();
   }
