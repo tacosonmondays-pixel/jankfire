@@ -7,7 +7,7 @@ import { validate } from '../../shared/story/content/validate.js';
 import { ORDER } from '../../shared/weapons.js';
 import { SECRETS } from '../../shared/secrets.js';
 
-const C = { ...CONTENT, WEAPON_IDS: [...ORDER, 'rigpunch'] };
+const C = { ...CONTENT, WEAPON_IDS: ORDER };
 
 test('every story reference resolves', () => {
   const errs = validate(C);
