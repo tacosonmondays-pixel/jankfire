@@ -16,6 +16,18 @@ def poly(pts): return [P(d, h) for d, h in pts]
 SIGHT_H = 44
 
 
+def moving(objs, name, pivot, zones, default='b'):
+    """a moving part (reloads): an empty called `name` with its origin at pivot (game coords), one mesh per wrap zone"""
+    meshes = zone_join(objs, name, zones, default)
+    e = bpy.data.objects.new(name, None); bpy.context.scene.collection.objects.link(e)
+    pv = gv(*pivot); e.location = pv
+    for m in meshes:
+        m.data.transform(m.matrix_world); m.matrix_world = Matrix.Identity(4)
+        m.data.transform(Matrix.Translation(-pv))
+        m.parent = e; m.matrix_parent_inverse = Matrix.Identity(4); m.location = (0, 0, 0)
+    return e
+
+
 def build():
     steel = mat('smg_steel', 0x25272c, rough=0.42, metal=0.55, tex=tex_noise('smg_steel_t', 0x2a2c32, var=0.08, size=16, seed=61))
     dark = mat('smg_dark', 0x121316, rough=0.5, metal=0.45)
@@ -49,8 +61,8 @@ def build():
     A(hood)
     A(box((W(2.6), W(8), W(3)), (0, Y(SIGHT_H - 5.5), Z(106)), dark))
     A(box((W(3.2), W(3), W(3.2)), (0, Y(SIGHT_H - 1.5), Z(106)), dot, bev=W(0.6)))
-    A(rod((-W(13), Y(20), Z(104)), (-W(32), Y(27), Z(96)), W(3.5), dark, seg=8))
-    A(ball(W(6), (-W(33), Y(27.5), Z(95.5)), dark, seg=10, rings=8))
+    chg = [rod((-W(13), Y(20), Z(104)), (-W(32), Y(27), Z(96)), W(3.5), dark, seg=8),  # cocking lever (its own node: slapped on a reload)
+           ball(W(6), (-W(33), Y(27.5), Z(95.5)), dark, seg=10, rings=8)]
     # ---------------- receiver: stamped, pressed ribs, slot, ejection port, end cap
     rcv = side(poly([(120, -14), (470, -14), (470, 26), (462, 33), (130, 33), (120, 26)]), W(36), (0, 0, 0), steel, bev=W(2.5))
     cut(rcv, box((W(10), W(17), W(42)), (W(18), Y(10), Z(318)), None))  # ejection port (right)
@@ -81,6 +93,7 @@ def build():
     # ---------------- magwell + curved 30-round mag with a teal pull tab
     A(side(poly([(250, -14), (318, -14), (316, -60), (252, -60)]), W(31), (0, 0, 0), steel, bev=W(2)))
     A(side(poly([(318, -48), (328, -48), (328, -64), (318, -60)]), W(20), (0, 0, 0), dark, bev=W(1)))  # paddle release
+    i_mag = len(parts)  # the mag + its ribs: their own node, origin at the seat
     front = [(255, -58), (252, -100), (244, -150), (231, -200)]
     back = [(312, -58), (309, -100), (300, -150), (287, -202)]
     A(side(poly(front + back[::-1]), W(22), (0, 0, 0), dark, bev=W(2)))
@@ -88,6 +101,7 @@ def build():
     A(side(poly([(244, -210), (270, -210), (268, -232), (246, -232)]), W(4), (0, 0, 0), teal, bev=W(1)))
     for sx in (-1, 1):  # the stamped rib down each side of the mag
         A(side(poly([(270, -60), (276, -60), (264, -190), (258, -190)]), W(1.2), (sx * W(11.4), 0, 0), dark))
+    mag = parts[i_mag:]; del parts[i_mag:]
     # ---------------- trigger pack, guard, trigger, selector, grip
     A(side(poly([(322, -14), (460, -14), (460, -30), (448, -42), (330, -42), (322, -34)]), W(30), (0, 0, 0), poly_m, bev=W(2)))
     A(side(poly([(330, -40), (342, -40), (344, -62), (392, -64), (396, -42), (404, -42), (402, -70), (336, -72), (330, -62)]), W(13), (0, 0, 0), poly_m, bev=W(1.8)))
@@ -107,15 +121,17 @@ def build():
     A(side(poly([(486, -56), (473, -71), (479, -71), (466, -87), (473, -87), (461, -101), (482, -101), (482, -107), (490, -107),
                  (490, -101), (511, -101), (499, -87), (506, -87), (493, -71), (499, -71)]), W(1.2), (-W(29.5), 0, 0), tree_t))  # the freshener (a pine tree, obviously)
 
-    for p in parts: uv_box(p, 0.03)
+    for p in parts + mag + chg: uv_box(p, 0.03)
     for p in parts:
         if p.data.materials and p.data.materials[0] is tree_t:
             apply_mods(p); uv_planar(p, (-W(29.5), Y(-81), Z(486)), W(52), '-x')
     WZ = {'smg_steel': 'a', 'smg_polymer': 'a', 'smg_teal': 'a', 'smg_rubber': 'a', 'smg_dark': 'b', 'smg_black': 'b'}  # wrap zones (wrapzones.js): a = handle side, b = business end, everything else keeps its look
     bodies = zone_join(parts, 'smg_body', WZ, default='n', rule=lambda m, c: 'b' if m == 'smg_steel' and c[2] < Z(120) else 'a' if m == 'smg_dark' and c[2] > Z(468) else None)  # sight hood with the barrel, stock with the body
     meta = {'kind': 'weapon', 'id': 'smg', 'paint': ['smg_teal'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(SIGHT_H), 'z': Z(452) + 0.02},
-            'hatAt': [[0, Y(34), Z(300)], 0.1]}
-    return finish('w_smg', bodies + [], meta)
+            'hatAt': [[0, Y(34), Z(300)], 0.1], 'mag': {'node': 'mag'}, 'charge': {'node': 'charge'}}
+    mn = moving(mag, 'mag', (0, Y(-58), Z(282)), WZ, default='b')
+    cn = moving(chg, 'charge', (0, Y(20), Z(104)), WZ, default='b')
+    return finish('w_smg', bodies + [mn, cn], meta)
 
 
 main(build, 'w_smg')

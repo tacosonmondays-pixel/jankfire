@@ -678,3 +678,40 @@ Object.assign(sfx, {
     }
   },
 });
+
+// reload + flip handling noises (reloads.js, balisong.js): punchy little clacks, a few silly ones
+Object.assign(sfx, {
+  reloadFx(k) {
+    switch (k) {
+      case 'casings': for (let i = 0; i < 6; i++) { const f = 2400 + Math.random() * 1600; tone('sine', f, f * 0.85, 0.06, 0.08, null, 0.12 + i * 0.045 + Math.random() * 0.02); } tone('square', 700, 500, 0.03, 0.1); break; // the ejector, then brass tinkling on the floor
+      case 'cylOut': tone('square', 900, 600, 0.03, 0.12); noise(0.05, 0.25, 'bandpass', 2200, 1600, null, 0, 3); break;
+      case 'cylIn': tone('square', 500, 260, 0.05, 0.22); noise(0.06, 0.4, 'bandpass', 2600, 1200, null, 0, 2); tone('square', 1800, 1700, 0.015, 0.08, null, 0.03); break;
+      case 'loaderIn': noise(0.05, 0.3, 'bandpass', 1800, 1000, null, 0, 2); tone('square', 620, 520, 0.03, 0.12); break;
+      case 'loaderTwist': tone('square', 1400, 1100, 0.02, 0.1); tone('square', 1100, 900, 0.02, 0.08, null, 0.04); break;
+      case 'spinCyl': for (let i = 0; i < 9; i++) tone('square', 2200 - i * 80, 2000 - i * 80, 0.012, 0.05 - i * 0.004, null, i * (0.03 + i * 0.006)); break; // tktktktk... tk
+      case 'pumpBack': noise(0.08, 0.35, 'bandpass', 1500, 900, null, 0, 2); tone('square', 340, 260, 0.05, 0.16); break;
+      case 'pumpHome': tone('square', 280, 520, 0.05, 0.22); noise(0.06, 0.4, 'bandpass', 2000, 1400, null, 0, 2); break;
+      case 'hkSlap': noise(0.05, 0.5, 'bandpass', 1600, 900, null, 0, 1.5); tone('square', 820, 380, 0.05, 0.22); break;
+      case 'boltUp': tone('square', 1200, 950, 0.025, 0.1); break;
+      case 'boltBack': noise(0.08, 0.3, 'bandpass', 2800, 1600, null, 0, 4); tone('square', 700, 520, 0.035, 0.1); break;
+      case 'boltHome': noise(0.06, 0.3, 'bandpass', 2400, 3200, null, 0, 4); tone('square', 520, 760, 0.035, 0.14); break;
+      case 'boltDown': tone('square', 900, 1300, 0.02, 0.14); break;
+      case 'glug': tone('sine', 180, 320, 0.09, 0.3); tone('sine', 220, 120, 0.08, 0.18, null, 0.09); break; // bloop
+      case 'revUp': tone('sawtooth', 70, 260, 0.22, 0.2); tone('square', 140, 520, 0.22, 0.08); tone('sawtooth', 260, 200, 0.2, 0.12, null, 0.22); noise(0.3, 0.15, 'lowpass', 900, 300); break; // VRRRAAP
+      case 'boxPop': tone('square', 300, 900, 0.05, 0.14); noise(0.05, 0.3, 'bandpass', 1500, 2500, null, 0, 2); break;
+      case 'tinyHi': tone('triangle', 900, 1500, 0.07, 0.12); tone('triangle', 1500, 1200, 0.08, 0.1, null, 0.07); break; // a squeaky little "hi!"
+      case 'tinyGrunt': tone('square', 520, 380, 0.1, 0.07); tone('triangle', 760, 600, 0.08, 0.06, null, 0.02); break; // hnngh
+      case 'tinyYes': for (const [f, d] of [[1046, 0], [1318, 0.07], [1568, 0.14]]) tone('triangle', f, f, 0.06, 0.1, null, d); break; // ta-da
+      case 'nailIn': tone('square', 640, 480, 0.03, 0.14); noise(0.04, 0.25, 'bandpass', 2600, 1800, null, 0.01, 3); break;
+      case 'bonk': tone('sine', 900, 300, 0.08, 0.3); noise(0.03, 0.4, 'bandpass', 2200, 1500, null, 0, 2); break;
+      case 'bonkBig': tone('sine', 700, 180, 0.14, 0.45); noise(0.05, 0.6, 'bandpass', 2000, 900, null, 0, 1.5); tone('sine', 2400, 2300, 0.2, 0.08, null, 0.03); break; // BONK (ting)
+      case 'soulIn': tone('sine', 600, 1400, 0.16, 0.12); tone('triangle', 1400, 700, 0.18, 0.06, null, 0.1); break; // an eerie little wooo
+      case 'shingShut': tone('sine', 3200, 2900, 0.4, 0.22); noise(0.12, 0.35, 'highpass', 3000, 6000); tone('square', 300, 140, 0.06, 0.2); break;
+      case 'slurp': noise(0.25, 0.25, 'bandpass', 700, 1400, null, 0, 4); tone('sine', 300, 500, 0.2, 0.1); break;
+      case 'squish': noise(0.12, 0.35, 'bandpass', 500, 300, null, 0, 1.5); tone('sine', 260, 160, 0.1, 0.16); break; // squelch
+      case 'boing': tone('sine', 300, 900, 0.12, 0.15); tone('sine', 900, 500, 0.15, 0.1, null, 0.12); break;
+      case 'latch': tone('square', 2400, 2000, 0.012, 0.1); tone('square', 1600, 1500, 0.015, 0.07, null, 0.03); break; // balisong latch: tk-tk
+      case 'balClack': tone('square', 1900 + Math.random() * 400, 1300, 0.018, 0.13); noise(0.025, 0.25, 'highpass', 3500, 6000); break; // handles slapping the tang pins
+    }
+  },
+});

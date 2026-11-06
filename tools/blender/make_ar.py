@@ -14,6 +14,18 @@ def W(mm): return mm * S
 def poly(pts): return [P(d, h) for d, h in pts]
 
 
+def moving(objs, name, pivot, zones, default='b'):
+    """a moving part (reloads): an empty called `name` with its origin at pivot (game coords), one mesh per wrap zone"""
+    meshes = zone_join(objs, name, zones, default)
+    e = bpy.data.objects.new(name, None); bpy.context.scene.collection.objects.link(e)
+    pv = gv(*pivot); e.location = pv
+    for m in meshes:
+        m.data.transform(m.matrix_world); m.matrix_world = Matrix.Identity(4)
+        m.data.transform(Matrix.Translation(-pv))
+        m.parent = e; m.matrix_parent_inverse = Matrix.Identity(4); m.location = (0, 0, 0)
+    return e
+
+
 def build():
     gun = mat('ar_gunmetal', 0x2c3036, rough=0.34, metal=0.6)
     dark = mat('ar_dark', 0x141519, rough=0.45, metal=0.5)
@@ -84,8 +96,8 @@ def build():
     A(box((W(21), W(6), W(196)), (0, Y(25), Z(468)), gun, bev=W(0.8)))  # rail base
     for i in range(18):  # picatinny teeth
         A(box((W(21), W(5), W(6)), (0, Y(30), Z(378 + i * 10.5)), dark, bev=W(0.7)))
-    A(box((W(52), W(7), W(14)), (0, Y(17), Z(574)), dark, bev=W(2)))  # charging handle T
-    A(box((W(12), W(6), W(20)), (0, Y(17), Z(564)), dark, bev=W(1)))
+    chg = [box((W(52), W(7), W(14)), (0, Y(17), Z(574)), dark, bev=W(2)),  # charging handle T (its own node: it gets yanked on a reload)
+           box((W(12), W(6), W(20)), (0, Y(17), Z(564)), dark, bev=W(1))]
     A(box((W(3), W(3), W(16)), (W(14.6), Y(-8), Z(400)), neon, bev=W(0.5)))  # status LED on the side (it's 2077 somewhere)
 
     # ---------------- rear flip-up sight on the rail (aperture on the sight line)
@@ -126,6 +138,7 @@ def build():
     A(loop)
 
     # ---------------- curved 30-round mag: see-through bubblegum plastic, brass inside, chunky floorplate
+    i_mag = len(parts)  # everything from here to the charm is the mag (its own node, origin at the seat)
     front = [(374, -76), (371, -120), (363, -165), (350, -210), (338, -246)]
     back = [(457, -76), (455, -120), (448, -168), (437, -214), (426, -250)]
     A(side(poly(front + back[::-1]), W(23), (0, 0, 0), mag_m, bev=W(2.5)))
@@ -146,6 +159,8 @@ def build():
         tip = cyl(W(4.5), W(14), (x, Y(h), Z(dmid - 23)), copper, axis='z', seg=10, r2=W(1.5), rot=(-ang, 0, 0))
         A(case); A(tip)
 
+    mag = parts[i_mag:]; del parts[i_mag:]
+
     # ---------------- glossy toy charm hanging off the sling loop: a pink blob with googly eyes
     cx, cy, cz = 0, Y(-160), Z(736)
     A(tube([(0, Y(-128), Z(736)), (0, Y(-140), Z(737)), (0, Y(-150), Z(736))], W(1.3), brass, seg=6))
@@ -154,13 +169,15 @@ def build():
         A(ball(W(5.5), (ex * W(6), cy + W(4), cz - W(12.5)), white, seg=12, rings=8, scale=(1, 1, 0.6)))
         A(ball(W(2.6), (ex * W(6) + ex * W(1.2), cy + W(2.5), cz - W(15.5)), black, seg=8, rings=6, scale=(1, 1, 0.6)))
 
-    for p in parts:
+    for p in parts + mag + chg:
         uv_box(p, 0.03)
     WZ = {'ar_olive': 'a', 'ar_grip': 'a', 'ar_rubber': 'a', 'ar_gunmetal': 'a', 'ar_dark': 'b', 'ar_mag': 'b', 'ar_magbase': 'b'}  # wrap zones (wrapzones.js): a = handle side, b = business end, everything else keeps its look
     bodies = zone_join(parts, 'ar_body', WZ, default='n', rule=lambda m, c: 'b' if m == 'ar_gunmetal' and c[2] < Z(350) else None)  # the front sight base + delta ring ride with the barrel
     meta = {'kind': 'weapon', 'id': 'ar', 'paint': ['ar_olive', 'ar_grip'], 'muzzle': [0, BORE_Y, MUZ_Z], 'sight': {'y': Y(sight_h), 'z': Z(548) + 0.11},
-            'hatAt': [[0, Y(33), Z(440)], 0.12], 'tip': None}
-    return finish('w_ar', bodies + [], meta)
+            'hatAt': [[0, Y(33), Z(440)], 0.12], 'tip': None, 'mag': {'node': 'mag'}, 'charge': {'node': 'charge'}}
+    mn = moving(mag, 'mag', (0, Y(-76), Z(415)), WZ, default='b')
+    cn = moving(chg, 'charge', (0, Y(17), Z(570)), WZ, default='b')
+    return finish('w_ar', bodies + [mn, cn], meta)
 
 
 main(build, 'w_ar')
