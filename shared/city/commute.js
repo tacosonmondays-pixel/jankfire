@@ -65,7 +65,7 @@ export function commute(B, d) {
       B.add(x, H.yTop - 1.2, Math.max(za, Z0), Math.min(x + 1.5, X1), H.yTop, Math.min(zb, Z1), 'road', { tint: 0x5a5658 });
     }
     B.add(Math.max(X0, hx0), H.yTop - 1.2, Math.max(Z0, H.westZ[0]), Math.min(X1, hx1), H.yTop, Math.min(Z1, H.zTop), 'road', { tint: 0x5a5658 });
-    if (B.inside(182, 236)) B.out.marks.push({ id: 'commute.highway', p: [182, hwY(236), 236] });
+    if (B.inside(182, 236)) B.out.marks.push({ id: 'commute:ring_road', p: [182, hwY(236), 236] });
   }
   // ruined shells on the wasteland: broken walls of pre-war shops, sun-bleached, no roofs
   const keepOut = [[hx0 - 6, -256, hx1 + 6, 256], [SLICE.camp.x - 26, SLICE.camp.z - 22, SLICE.camp.x + 26, SLICE.camp.z + 22], [SLICE.digit.x - 14, SLICE.digit.z - 14, SLICE.digit.x + 14, SLICE.digit.z + 14]];
@@ -94,19 +94,22 @@ export function commute(B, d) {
     for (let i = 0; i < 5; i++) { const x = C.x - 14 + i * 7, z = C.z - 8 + (i % 2) * 14; if (B.inside(x, z) && !(x > hx0 - 2 && x < hx1 + 2)) { B.prop('raidertent', x, y, z, i * 1.3, 1, 0); B.add(x - 1.5, y, z - 1.5, x + 1.5, y + 2, z + 1.5, 'tarp', { hide: true }); } }
     for (let i = 0; i < 4; i++) { const x = C.x + (cr() - 0.5) * 30, z = C.z + (cr() - 0.5) * 24; if (B.inside(x, z)) B.prop('firebarrel', x, y, z, 0, 1, 0); B.light(x, y + 1.6, z, 0xff8a2a, 11, 1.2); }
     if (B.inside(C.x + 12, C.z + 4)) { B.prop('bus', C.x + 12, y, C.z + 4, 0.2, 1, 0); B.add(C.x + 6, y, C.z + 2.7, C.x + 18, y + 3.1, C.z + 5.3, 'rust', { hide: true }); }
-    if (B.inside(C.x, C.z)) B.out.marks.push({ id: 'commute.raider_camp', p: [C.x, y, C.z + 20] }, ...Array.from({ length: 8 }, (_, k) => ({ id: 'enemy.unpaid', p: [C.x + Math.cos(k) * 12, y, C.z + Math.sin(k) * 10], face: k })));
+    if (B.inside(C.x, C.z)) B.out.marks.push({ id: 'commute:unpaid_camp', p: [C.x, y, C.z + 20] }, ...Array.from({ length: 8 }, (_, k) => ({ id: 'enemy.unpaid', p: [C.x + Math.cos(k) * 12, y, C.z + Math.sin(k) * 10], face: k })));
   }
-  // the fallen 7: a giant glowing digit stuck in the tarmac, a ring of glassed ground (a hot zone)
+  // the fallen 13: a giant glowing orbital digit stuck in the tarmac, a ring of glassed ground (a hot zone)
   const D = SLICE.digit;
   if (B.touches([D.x - 14, D.z - 14, D.x + 14, D.z + 14])) {
     const y = hwY(D.z, true);
     B.light(D.x, y + 6, D.z, 0x39ff14, 30, 1.3);
     B.add(Math.max(X0, D.x - 12), y, Math.max(Z0, D.z - 12), Math.min(X1, D.x + 12), y + 0.06, Math.min(Z1, D.z + 12), 'ash', { nc: true, tint: 0x2a3a2a });
     if (B.inside(D.x, D.z)) {
-      B.obb(D.x, y + 13, D.z, 12, 3, 3, 0.25, 'greenglow'); // the bar of the 7
-      B.obb(D.x + 2.5, y + 6, D.z, 3, 13, 3, 0.25 + 0.4, 'greenglow'); // the stroke, leaning
+      // the 13, leaning half-buried: the 1, then the 3 (three bars and two uprights on the right)
+      const L = B.local(D.x, D.z, 0, y);
+      L.O(-5, 7, 0, 3, 14, 3, 0.35, 'greenglow'); L.O(-6.2, 12.5, 0, 2.4, 2, 3, 0.35, 'greenglow');
+      for (const yy of [1.5, 7, 12.5]) L.O(1.5, yy, 0, 7, 2.4, 3, 0.35, 'greenglow');
+      L.O(4.6, 4.2, 0, 2.4, 6, 3, 0.35, 'greenglow'); L.O(4.6, 9.8, 0, 2.4, 6, 3, 0.35, 'greenglow');
       B.add(D.x - 6, y, D.z - 1.5, D.x + 6, y + 14, D.z + 1.5, 'metal', { hide: true });
-      B.out.marks.push({ id: 'commute.digit', p: [D.x, y, D.z + 10] });
+      B.out.marks.push({ id: 'commute:digit_13', p: [D.x, y, D.z + 10] });
       B.out.triggers.push({ kind: 'hot', box: [D.x - 12, y - 1, D.z - 12, D.x + 12, y + 20, D.z + 12], name: 'HOT ZONE' });
     }
   }

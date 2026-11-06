@@ -224,7 +224,7 @@ def build_eyeball(M):
 def build_sphincter(M):
     musc = mat('sp_muscle_pulse', 0xffffff, rough=0.2, clearcoat=1.0, tex=tex_canvas('sp_muscle_t', 64, 32, _paint_sphincter))
     dark = mat('sp_throat_pulse', 0xffffff, rough=0.25, clearcoat=0.6, tex=tex_flesh('sp_throat_t', 0x5a0c26, 0x2a0410, 0x8a2a4a, size=16, seed=41))
-    NA, NF, TW = 40, 8, 0.75
+    NA, NF, TW = 36, 9, 0.75
     # rings: (radius, z (wall at 0, -z out of the wall), fold amount, material)
     R = [(1.5, 0.12, 0.0, 0), (1.62, -0.05, 0.0, 0), (1.58, -0.24, 0.02, 0), (1.45, -0.33, 0.04, 0)]
     for i in range(7):
@@ -266,8 +266,8 @@ def build_sphincter(M):
     o['keepuv'] = 1
     P = [o]
     # little teeth round the lip, pointing into the hole
-    for k in range(8):
-        a = 2 * math.pi * (k + 0.5) / 8
+    for k in range(7):
+        a = 2 * math.pi * (k + 0.5) / 7
         x, y = math.cos(a) * 0.36, 1.5 + math.sin(a) * 0.36
         P.append(canine(M['enamel'], pos=(x, y, -0.42), rot=(0, 0, a + math.pi / 2), s=0.42, name='sp_tooth', seed=k))
     # veins rooting out over the wall: fat at the rim, one fork each, flattened against the brick
@@ -280,7 +280,7 @@ def build_sphincter(M):
             pts.append((math.cos(aa) * r, 1.5 + math.sin(aa) * r, z0 * (1 - t) - 0.035 * t))
         pts = [p for p in pts if p[1] > 0.12]
         if len(pts) > 2:
-            P.append(sweep(pts, [rad * (1 - 0.6 * i / (len(pts) - 1)) for i in range(len(pts))], M['vein'], seg=5, name='sp_vein', squash=(1.0, 0.75)))
+            P.append(sweep(pts, [rad * (1 - 0.6 * i / (len(pts) - 1)) for i in range(len(pts))], M['vein'], seg=4, name='sp_vein', squash=(1.0, 0.75)))
         return pts
     for k in range(6):
         a = 2 * math.pi * k / 6 + 0.35 + rnd.uniform(-0.2, 0.2)
@@ -403,8 +403,8 @@ def build_heartlamp(M):
     o = sweep(sp, rr, pole, seg=6, name='hl_pole'); lump(o, 0.012, 9, seed=8); A(o)
     # an artery twisting up round it, glowing
     hel = []
-    for i in range(17):
-        t = i / 16; y = 0.15 + 3.75 * t; w = t * 2 * math.pi * 3.5
+    for i in range(15):
+        t = i / 14; y = 0.15 + 3.75 * t; w = t * 2 * math.pi * 3.0
         hel.append((math.cos(w) * 0.115, y, math.sin(w) * 0.115))
     A(sweep(hel, 0.045, art, seg=4, name='hl_artery'))
     # roots into the street

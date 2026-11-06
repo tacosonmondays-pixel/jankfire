@@ -129,7 +129,7 @@ function lostFound(B) {
   bulbs(B, [x0 + 2, y + 9.5, z1 - 2], [x1 - 2, y + 9.5, z0 + 3], rng(77)); bulbs(B, [x1 - 2, y + 9.5, z1 - 2], [x0 + 2, y + 9.5, z0 + 3], rng(78));
   // the way in: steps from terrace 1 up to the depot floor (it covers terrace 2's lip)
   stairsZ(B, x0 + 12, x1 - 12, z1 + flightLen(y + 0.15 - yOf(1)), -1, yOf(1), y + 0.15, 'concrete');
-  B.out.marks.push({ id: 'bottom.machine', p: [-189, y + 0.15, z0 + 7], r: 0 }, { id: 'bottom.lost_found', p: [(x0 + x1) / 2, y + 0.15, z1 - 4] });
+  B.out.marks.push({ id: 'bottom:machine', p: [-189, y + 0.15, z0 + 7], r: 0 }, { id: 'bottom:lostfound', p: [(x0 + x1) / 2, y + 0.15, z1 - 4] });
   B.out.spawns.push([-189, y + 0.3, z0 + 8]);
 }
 
@@ -140,7 +140,7 @@ function plaza(B) {
   for (let i = 0; i < 14; i++) stall(B, x0 + 6 + (i % 7) * 12.5, 0, z0 + 6 + Math.floor(i / 7) * 12, r() < 0.5 ? 0 : 2, r);
   for (let i = 0; i < 6; i++) { const fx = x0 + 10 + i * 14 + r() * 4, fz = z0 + 12 + r() * 6; B.prop('firebarrel', fx, 0, fz, 0, 1, 0); B.light(fx, 1.6, fz, 0xff8a2a, 11, 1.2); }
   for (let i = 0; i < 6; i++) bulbs(B, [x0 + 2 + i * 15, 6.5, z0 + 1], [x0 + 10 + i * 15, 6.5, z1 - 1], rng(400 + i));
-  B.out.marks.push({ id: 'bottom.plaza', p: [(x0 + x1) / 2, 0, (z0 + z1) / 2] });
+  B.out.marks.push({ id: 'bottom:soup_kitchen', p: [(x0 + x1) / 2, 0, (z0 + z1) / 2] });
   for (let i = 0; i < 24; i++) B.out.marks.push({ id: 'crowd', p: [x0 + 4 + r() * (x1 - x0 - 8), 0, z0 + 4 + r() * (z1 - z0 - 8)], kind: 'shopper' }); // NPC crowd spots
 }
 
@@ -152,7 +152,7 @@ function gym(B) {
   B.add(x0 - 0.5, y + 5, z0 - 0.5, x1 + 0.5, y + 5.4, z1 + 0.5, 'container', { tint: 0xff7a9a });
   for (let i = 0; i < 10; i++) B.prop('fridge', x0 + 3 + (i % 5) * 6, y + 0.2, z0 + 5 + Math.floor(i / 5) * 9, r() * 6.28, 0.9 + r() * 0.3, (r() * 8) | 0);
   B.add(x0 + 12, y + 0.2, z0 + 9, x1 - 12, y + 1.0, z0 + 10, 'metal', { tint: 0x3a3a40 }); // the bench (a bus stop seat)
-  B.out.marks.push({ id: 'bottom.gym', p: [(x0 + x1) / 2, y + 0.2, (z0 + z1) / 2] }, { id: 'npc.lumps', p: [x0 + 16, y + 0.2, z0 + 12], face: Math.PI });
+  B.out.marks.push({ id: 'bottom:gym', p: [(x0 + x1) / 2, y + 0.2, (z0 + z1) / 2] }, { id: 'npc.lumps', p: [x0 + 16, y + 0.2, z0 + 12], face: Math.PI });
 }
 
 // the Down Escalator: a dead mall escalator bridging from terrace 8 down over terrace 7 to terrace 6. it only goes down
@@ -166,7 +166,7 @@ function escalator(B) {
   for (const s of [-1, 1]) B.shape({ kind: 'tube', pts: [[x + s * 1.1, ya + 1, za], [x + s * 1.1, yb + 1, zb]], r: 0.08, seg: 6, mat: 'rust', at: [x, ya, za] });
   B.add(x - 1.2, yb - 0.5, zb, x + 1.2, ya, zb + 0.5, 'metal', { nc: true, tint: 0x606878 });
   B.out.triggers.push({ kind: 'conveyor', box: [x - 1, yb - 0.5, za, x + 1, ya + 2, zb], dir: [0, 0, 1], speed: 6, name: 'DOWN ESCALATOR' });
-  B.out.marks.push({ id: 'bottom.escalator', p: [x, ya, za] });
+  B.out.marks.push({ id: 'bottom:down_escalator', p: [x, ya, za] });
 }
 
 export function bottom(B, d) {
@@ -207,7 +207,7 @@ export function bottom(B, d) {
       if (k % 2 === 0) bulbs(B, [LS.x0 - 0.5, yOf(k) + 6, zs - 4], [LS.x1 + 0.5, yOf(k) + 6, zs - 12], rng(600 + k));
       B.obb((LS.x0 + LS.x1) / 2, yOf(k) + 7.2, zs - 9, 7, 1.4, 0.05, 0, 'tiedye'); // a banner across
     }
-    B.out.marks.push({ id: 'bottom.long_stairs', p: [(LS.x0 + LS.x1) / 2, 0, 236] });
+    B.out.marks.push({ id: 'bottom:long_stairs', p: [(LS.x0 + LS.x1) / 2, 0, 236] });
   }
   if (B.touches(SLICE.lostFound.rect, 6)) lostFound(B);
   if (B.touches(SLICE.plaza.rect, 2)) plaza(B);

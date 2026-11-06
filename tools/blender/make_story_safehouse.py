@@ -112,10 +112,10 @@ def build_locker():
     O.append(uv_fit(sweep([(hx - 0.013, 0.82, -0.262), (hx - 0.013, 0.845, -0.262), (hx, 0.858, -0.262), (hx + 0.013, 0.845, -0.262), (hx + 0.013, 0.82, -0.262)], 0.004, metal, seg=6, name='shackle'), chrome))
     zf = -0.2435
     O.append(uv_fit(box((0.09, 0.05, 0.002), (0, 1.68, zf), decal), D.rect(80, 0, 32, 18)))
-    O.append(uv_fit(box((0.27, 0.06, 0.002), (0.02, 1.46, zf), decal, rot=(0, 0, -0.04)), D.rect(0, 0, 80, 18)))
-    O.append(uv_fit(box((0.07, 0.07, 0.002), (0.12, 1.12, zf), decal, rot=(0, 0, 0.2)), D.rect(0, 18, 24, 24)))
-    O.append(uv_fit(box((0.08, 0.08, 0.002), (0.1, 0.48, zf - 0.006), decal, rot=(0, 0, -0.12)), D.rect(24, 18, 24, 24)))
-    O.append(uv_fit(box((0.12, 0.04, 0.002), (0.05, 1.0, zf), decal, rot=(0, 0, 0.06)), D.rect(48, 18, 48, 16)))
+    O.append(uv_fit(box((0.36, 0.08, 0.002), (0.02, 1.46, zf), decal, rot=(0, 0, -0.04)), D.rect(0, 0, 80, 18)))
+    O.append(uv_fit(box((0.11, 0.11, 0.002), (0.1, 1.12, zf), decal, rot=(0, 0, 0.2)), D.rect(0, 18, 24, 24)))
+    O.append(uv_fit(box((0.13, 0.13, 0.002), (0.08, 0.5, zf - 0.006), decal, rot=(0, 0, -0.12)), D.rect(24, 18, 24, 24)))
+    O.append(uv_fit(box((0.18, 0.06, 0.002), (0.04, 1.0, zf), decal, rot=(0, 0, 0.06)), D.rect(48, 18, 48, 16)))
     O.append(uv_fit(box((0.002, 0.07, 0.09), (0.2515, 1.3, 0.05), decal, rot=(0.1, 0, 0)), D.rect(96, 18, 32, 24)))
     for o in O:
         if o.data.materials and o.data.materials[0] == paint: uv_tile(o, 0.3)
@@ -142,12 +142,12 @@ def build_wardrobe():
     hd = C.sub(0, 64, 64, 64); crust(hd, 0xff9ac8, 0.05, seed=9); hd[44:52, 16:48] = hexrgb(0xff6fae); write(hd, 'JANK', 20, 20, 1, 0xffffff)
     sh_ = C.fill(64, 64, 16, 16, 0xffffff); shp = C.fill(80, 64, 16, 16, 0x7dff4f); sock = C.fill(96, 64, 16, 16, 0xffe14d)
     cloth = mat('vw_cloth', 0xffffff, rough=0.8, tex=C.image())
-    Pn = Atlas('vw_panel_t', 64)
+    Pn = Atlas('vw_panel_t', 96, 64)
     pn = Pn.sub(0, 0, 32, 64); pn[:] = hexrgb(0x1a1820); pn[4:14, 4:28] = hexrgb(0x0a2a1a); write(pn, '--', 9, 6, 1, 0x39ff14)
     for r_ in range(4):
         for c_ in range(3): pn[20 + r_ * 6:24 + r_ * 6, 5 + c_ * 8:11 + c_ * 8] = hexrgb(0xff4fd8 if (r_, c_) in ((1, 2), (3, 0)) else 0x3a3844)
     pn[48:58, 13:19] = hexrgb(0x5a5864); pn[52:54, 14:18] = hexrgb(0x0a0a0a)
-    hdr = Pn.sub(32, 0, 32, 16); hdr[:] = hexrgb(0x120818); write(hdr, 'OUT', 7, 1, 1, 0xff4fd8); write(hdr, 'OF ORDER', 2, 8, 1, 0xff4fd8)
+    hdr = Pn.sub(32, 0, 64, 16); hdr[:] = hexrgb(0x120818); write(hdr, 'OUT OF', 14, 0, 1, 0xff4fd8); write(hdr, 'ORDER', 17, 8, 1, 0xff4fd8)
     fl = Pn.sub(32, 16, 32, 16); fl[:] = hexrgb(0x16141c); write(fl, 'PUSH', 4, 5, 1, 0x5a5864)
     panel = mat('vw_panel', 0xffffff, rough=0.2, clearcoat=0.5, tex=Pn.image(), emit=0xffffff, strength=2.5, emit_tex=True)
     O = []
@@ -157,7 +157,7 @@ def build_wardrobe():
     O.append(uv_fit(box((0.95, 0.06, 0.85), (0, 1.8, 0), paint, bev=0.008, seg=1), body))
     O.append(uv_fit(box((0.95, 0.14, 0.85), (0, 0.07, 0), paint, bev=0.008, seg=1), body))
     O.append(uv_fit(box((0.87, 0.2, 0.05), (0, 1.67, -0.395), paint, bev=0.005, seg=1), body))
-    O.append(uv_fit(box((0.7, 0.13, 0.004), (0, 1.67, -0.4215), panel), Pn.rect(32, 0, 32, 16)))
+    O.append(uv_fit(box((0.7, 0.13, 0.004), (0, 1.67, -0.4215), panel), Pn.rect(32, 0, 64, 16)))
     # inside: a clothes rail with hangers, three garments, sneakers and one leftover product spiral holding a sock
     O.append(rod((-0.435, 1.45, 0.05), (0.435, 1.45, 0.05), 0.011, metal, seg=8))
     def hanger(x):

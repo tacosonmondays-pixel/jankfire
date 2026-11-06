@@ -69,13 +69,13 @@ export class CityCache {
   // chunk builds share one time budget per 50 ms tick across ALL rooms, so 8 rooms driving into new streets at once
   // never stall the process (the rest wait a tick or two; their players stand on whatever is already in)
   canBuild() { const w = Math.floor(this.clock() / 50); if (w !== this.win) { this.win = w; this.spent = 0; } return this.spent < CITY_BUDGET.buildMsPerTick; }
-  peek(city, cx, cz) { return this.map.get(chunkId(city, cx, cz)) || null; }
+  peek(city, cx, cz) { const e = this.map.get(chunkId(city, cx, cz)) || null; if (e) e.used = this.clock(); return e; }
   // the chunk, built if needed. pinned chunks (in some room's view) are never evicted
   get(city, cx, cz) {
     if (!CITIES[city] || !Number.isInteger(cx) || !Number.isInteger(cz) || !inCity(city, cx, cz)) return null;
     const id = chunkId(city, cx, cz);
     let e = this.map.get(id);
-    if (e) { this.map.delete(id); this.map.set(id, e); return e; } // LRU order = Map order
+    if (e) { this.map.delete(id); this.map.set(id, e); e.used = this.clock(); return e; } // LRU order = Map order
     const t = performance.now();
     const packed = packChunk(buildChunk(city, cx, cz)), boxes = chunkBoxes(packed), nav = buildChunkNav(packed);
     const ms = performance.now() - t;
@@ -92,6 +92,16 @@ export class CityCache {
       if (e.pins > 0) continue;
       this.map.delete(id); this.bytes -= e.bytes; this.evicted++;
     }
+  }
+  // the same lifecycle as the PvP walk graphs (server/graphs.js): chunks no room has held for ttl ms are dropped (the
+  // walk graphs in the worker go with them), and once nothing is left the worker thread is shut down too. call it from
+  // the graph sweep (server.js startGraphSweeper's interval) or on its own timer: startCitySweeper(ttl, every)
+  sweep(ttl = (Number(process.env.JF_GRAPH_TTL) || 10) * 60e3, now = this.clock()) {
+    let n = 0, mb = 0;
+    for (const [id, e] of this.map) if (e.pins <= 0 && now - (e.used || 0) > ttl) { this.map.delete(id); this.bytes -= e.bytes; mb += e.bytes; n++; }
+    if (n) console.log(`[graphs] dropped ${n} story city chunks (${(mb / 1048576).toFixed(1)} MB), ${this.map.size} left`);
+    if (!this.map.size && !this.rooms.size && this.w && !(this.pending && this.pending.size)) { this.w.terminate(); this.w = null; this.navBytes = 0; console.log('[graphs] story city worker stopped (no rooms)'); }
+    return n;
   }
   stats() { return { chunks: this.map.size, mb: +(this.bytes / 1048576).toFixed(1), workerNavMB: +((this.navBytes || 0) / 1048576).toFixed(1), rooms: this.rooms.size, pending: this.pending ? this.pending.size : 0, builds: this.builds, evicted: this.evicted, avgBuildMs: this.builds ? +(this.buildMs / this.builds).toFixed(1) : 0, maxBuildMs: +this.maxBuildMs.toFixed(1) }; }
 }
@@ -130,6 +140,8 @@ export class CityView {
       this.world.set(id, e.boxes); if (e.nav) this.nav.set(cx, cz, e.nav);
     }
     for (const [id, e] of this.held) if (!want.has(id)) { e.pins--; this.held.delete(id); this.world.drop(id); this.nav.drop(e.cx, e.cz); }
+    const now = this.cache.clock();
+    for (const e of this.held.values()) e.used = now; // held = in use (the sweep leaves it)
     this.world.sync();
     return builds;
   }
@@ -140,3 +152,4 @@ export class CityView {
 }
 
 export const cityCache = new CityCache(); // the process's one cache
+export function startCitySweeper(ttl, every = 60e3) { const t = setInterval(() => cityCache.sweep(ttl), every); t.unref(); return t; }

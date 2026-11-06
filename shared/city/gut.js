@@ -69,6 +69,7 @@ function peri(B) {
   // the walls of the tube are solid where the tube is (you ride it, you don't wander off through the side)
   B.out.triggers.push({ kind: 'conveyor', box: [x0, GY - 0.5, P.z0, x1, GY + 3, P.z1], dir: [1, 0, 0], speed: 16, beat: true, name: 'PERISTALSIS' });
   for (let x = Math.ceil(x0 / 9) * 9; x < x1; x += 9) B.prop('eyeball', x, GY, P.z0 + 0.2, Math.PI / 2, 1, 0);
+  if (B.inside(-120, zc)) B.out.marks.push({ id: 'gut:peristalsis', p: [-120, GY, zc] });
 }
 
 // the Big Stomach: a crater ringed with teeth, its walls a ribbed stomach lining, acid lake at the bottom
@@ -95,7 +96,7 @@ function stomach(B, r) {
     B.shape({ kind: 'blob', c: [xa, GY - 4, za], r: [5, 3, 5], seg: 10, mat: pick(r, ['flesh', 'fat', 'liver']), pulse: 6 });
   }
   B.prop('sphincter', S.x, S.floor, S.z - S.r * 0.42, 0, 2, 0); // the belly button door (don't press it)
-  if (B.inside(S.x, S.z)) B.out.marks.push({ id: 'gut.big_stomach', p: [S.x, GY, S.z + S.r + 4] }, { id: 'gut.belly_button', p: [S.x, S.floor, S.z - S.r * 0.42] });
+  if (B.inside(S.x, S.z)) B.out.marks.push({ id: 'gut:big_stomach', p: [S.x, GY, S.z + S.r + 4] }, { id: 'gut:belly_button', p: [S.x, S.floor, S.z - S.r * 0.42] });
 }
 
 // a lung trampoline: the model + a bounce pad
@@ -117,7 +118,7 @@ function arena(B) {
   for (const [lx, lz] of [[x0 + 12, z0 + 12], [x1 - 12, z0 + 12], [x0 + 12, z1 - 12], [x1 - 12, z1 - 12]]) if (B.inside(lx, lz)) lungPad(B, lx, lz, 0.9);
   // low flesh walls round the edge (cover, and a ring he can't charge out of)
   for (const [a, b, c, d] of [[x0, z1 - 1, cx - 8, z1], [cx + 8, z1 - 1, x1, z1], [x0, z0, x0 + 1, z1], [x1 - 1, z0, x1, z1]]) B.add(a, GY, b, c, GY + 1.4, d, 'flesh', { tint: 0xd85a78 });
-  if (B.inside(cx, cz)) B.out.marks.push({ id: 'gut.overtime_arena', p: [cx, GY, cz] }, { id: 'boss.overtime.spawn', p: [cx, GY, z0 + 8], face: 0 }, { id: 'boss.overtime.entry', p: [cx, GY, z1 - 3], face: Math.PI });
+  if (B.inside(cx, cz)) B.out.marks.push({ id: 'gut:border', p: [cx, GY, cz] }, { id: 'boss.overtime.spawn', p: [cx, GY, z0 + 8], face: 0 }, { id: 'boss.overtime.entry', p: [cx, GY, z1 - 3], face: Math.PI });
 }
 
 function choir(B, r) {
@@ -133,7 +134,7 @@ function choir(B, r) {
     B.prop('choirpipe', x, GY + 10, z, -a, 1, 0);
   }
   B.add(C.x - 20, GY + 9, C.z - 24, C.x + 20, GY + 10, C.z + 16, 'flesh', { hide: true }); // the inside ceiling (collision for grapples)
-  if (B.inside(C.x, C.z)) B.out.marks.push({ id: 'gut.choir_lung', p: [C.x, GY, C.z + 18] });
+  if (B.inside(C.x, C.z)) B.out.marks.push({ id: 'gut:choir_lung', p: [C.x, GY, C.z + 18] });
   for (let i = 0; i < 8; i++) B.out.marks.push({ id: 'crowd', p: [C.x + (r() - 0.5) * 30, GY, C.z - 4 + (r() - 0.5) * 26], kind: 'choir' });
 }
 
@@ -144,7 +145,7 @@ function toothMarket(B, r) {
   for (let i = 0; i < 6; i++) B.prop('organjar', x0 + 8 + i * 9, GY, z0 + 20, r() * 6.28, 1, 0);
   const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
   B.prop('tooth_b', cx, GY, cz, 0.4, 14, 0); B.add(cx - 3, GY, cz - 3, cx + 3, GY + 9, cz + 3, 'teeth', { hide: true }); // the Wisdom Tooth
-  if (B.inside(cx, cz)) B.out.marks.push({ id: 'gut.tooth_market', p: [cx, GY, z1 - 4] }, { id: 'gut.wisdom_tooth', p: [cx, GY, cz] });
+  if (B.inside(cx, cz)) B.out.marks.push({ id: 'gut:tooth_market', p: [cx, GY, z1 - 4] }, { id: 'gut.wisdom_tooth', p: [cx, GY, cz] });
 }
 
 export function gut(B, d) {
@@ -283,7 +284,7 @@ export function border(B, d) {
     B.prop('gutgate', G.x, y, G.z, 0, 1, 0);
     B.add(G.x - 9, y, G.z - 1.5, G.x - 6, y + 12, G.z + 1.5, 'flesh', { hide: true }); B.add(G.x + 6, y, G.z - 1.5, G.x + 9, y + 12, G.z + 1.5, 'flesh', { hide: true });
     B.add(G.x - 9, y + 10, G.z - 1.5, G.x + 9, y + 13, G.z + 1.5, 'flesh', { hide: true });
-    B.out.marks.push({ id: 'gut.border_gate', p: [G.x, y, G.z + 6], face: 0 });
+    B.out.marks.push({ id: 'gut:stairs_top', p: [G.x, y, G.z + 6], face: 0 });
   }
   for (let i = 0; i < 4; i++) { const cx = X0 + r0() * (X1 - X0), cz = Z0 + r0() * (Z1 - Z0); if (cz > -21 && cz < -19) B.out.marks.push({ id: 'crowd', p: [cx, y, cz], kind: 'lost' }); }
 }

@@ -27,7 +27,7 @@ export const SLICE = {
   choir: { x: -268, z: -214 }, // the Choir Lung
   teeth: { rect: [10, -220, 70, -170] }, // Tooth Market
   camp: { x: 236, z: 40 }, // the Unpaid raider camp under the highway
-  digit: { x: 280, z: -60 }, // a fallen giant 7, glowing (a hot zone)
+  digit: { x: 280, z: -60 }, // the fallen 13: a giant glowing orbital digit (a hot zone)
 };
 
 // ground height of the open ground (not counting buildings) at (x, z)
@@ -46,23 +46,29 @@ export function hwY(z, ground) {
 }
 export const terraceOf = (z) => Math.min(SLICE.bottom.n - 1, Math.max(0, Math.floor((256 - z) / SLICE.bottom.terr)));
 
-// places the quests and scenes refer to (match shared/story location ids when the writer's data lands)
+// places the quests and scenes refer to: ids are the writer's LOCATIONS (shared/story/content/world.js), checked by
+// tools/city/places.mjs. (where a place has no spot yet it isn't here)
 export const PLACES = {
-  'bottom.lost_found': { p: [-189, 8, 200], name: 'the Lost & Found' },
-  'bottom.machine': { p: [-189, 8, 185], name: 'the Machine' },
-  'bottom.plaza': { p: [-105, 0, 238], name: 'the Bottom market' },
-  'bottom.long_stairs': { p: [-44, 0, 236], name: 'the Long Stairs' },
-  'bottom.gym': { p: [24, 16, 137], name: "Lumps' Gym" },
-  'bottom.escalator': { p: [-112, 32, 48], name: 'the Down Escalator' },
-  'gut.border_gate': { p: [-44, 36, -18], name: 'the Gut border' },
-  'gut.overtime_arena': { p: [-44, 40, -80], name: 'Clocking In (the old time office)' },
-  'gut.big_stomach': { p: [-170, 40, -128], name: 'the Big Stomach' },
-  'gut.peristalsis': { p: [-120, 40, -130], name: 'Peristalsis Avenue' },
-  'gut.choir_lung': { p: [-268, 40, -196], name: 'the Choir Lung' },
-  'gut.tooth_market': { p: [40, 40, -174], name: 'Tooth Market' },
-  'commute.highway': { p: [182, 0, 236], name: 'the Commute' },
-  'commute.raider_camp': { p: [236, 0, 40], name: 'the Unpaid camp' },
-  'commute.digit': { p: [280, 0, -60], name: 'the fallen 7' },
+  'bottom:lostfound': { p: [-189, 8, 200], name: 'the Lost & Found' },
+  'bottom:machine': { p: [-189, 8, 185], name: 'the Machine' },
+  'bottom:soup_kitchen': { p: [-105, 0, 238], name: 'the Bottom market' },
+  'bottom:long_stairs': { p: [-44, 0, 236], name: 'the Long Stairs' },
+  'bottom:gym': { p: [24, 16, 137], name: "Lumps' Gym" },
+  'bottom:down_escalator': { p: [-112, 32, 48], name: 'the Down Escalator' },
+  'gut:stairs_top': { p: [-44, 36, -18], name: 'the Gut border' },
+  'gut:border': { p: [-44, 40, -80], name: 'Clocking In (the old time office)' },
+  'gut:big_stomach': { p: [-170, 40, -128], name: 'the Big Stomach' },
+  'gut:peristalsis': { p: [-120, 40, -130], name: 'Peristalsis Avenue' },
+  'gut:choir_lung': { p: [-268, 40, -196], name: 'the Choir Lung' },
+  'gut:tooth_market': { p: [40, 40, -174], name: 'Tooth Market' },
+  'commute:ring_road': { p: [182, 0, 236], name: 'the Commute' },
+  'commute:unpaid_camp': { p: [236, 0, 40], name: 'the Unpaid camp' },
+  'commute:digit_13': { p: [280, 0, -60], name: 'the fallen 13' },
+  'commute:smiles_hideout': { p: [182, 0, 93], name: 'the overpass hideout (under the collapsed span)' },
+  'bottom:sunset_spot': { p: [-200, 32, 6], name: 'the Sunset Wall (top terrace)' },
+  'bottom:dale_shed': { p: [-170, 8, 180], name: "Dale's Shed (behind the Machine)" },
+  'bottom:rooftops': { p: [-260, 20, 120], name: 'the Wok Roofs' },
+  'gut:campus': { p: [-200, 40, -80], name: 'Gristle & Sons Campus' },
 };
 
 const fogLight = (hemi, hemiG, hk, sun, sk) => ({ hemi: [hemi, hemiG, hk], sun: [sun, sk] });
