@@ -94,6 +94,8 @@ async function session(b, map, ids) {
     const { MAPS, BOXES } = await import('/shared/map.js'); const { raycast } = await import('/shared/physics.js');
     const def = MAPS[map], out = [];
     const inBox = (x, y, z) => [...BOXES, ...(def.deco || [])].some((b) => !b.rot && x > b.min[0] - 0.3 && x < b.max[0] + 0.3 && y > b.min[1] - 0.3 && y < b.max[1] + 0.3 && z > b.min[2] - 0.3 && z < b.max[2] + 0.3);
+    // the whole player fits there (feet 1.6 m under the camera): a body inside a crate stack gets shoved off the spot every frame
+    const bodyFree = (x, y, z) => !BOXES.some((b) => b.max[0] > x - 0.45 && b.min[0] < x + 0.45 && b.max[1] > y - 1.62 && b.min[1] < y + 0.25 && b.max[2] > z - 0.45 && b.min[2] < z + 0.45);
     const lookAt = (cam, c) => { const dx = c[0] - cam[0], dy = c[1] - cam[1], dz = c[2] - cam[2]; return { p: [cam[0], cam[1] - 1.6, cam[2]], yaw: Math.atan2(-dx, -dz), pitch: Math.atan2(dy, Math.hypot(dx, dz)) }; };
     if (MAPVIEWS) { // two views a map: a spawn looking in at 7 m up, and high over the middle
       const sp = def.spawns.length ? def.spawns : [[0, 2, 0]], s0 = sp[0], s1 = sp[Math.floor(sp.length / 2)];
@@ -139,7 +141,7 @@ async function session(b, map, ids) {
         for (let k = 0; k < 12; k++) {
           const az = fr + [0.6, -0.6, 1.2, -1.2, 0, 1.9, -1.9, 2.5, -2.5, 3.14, 0.3, -0.3][k]; // from the front first (local -z: the camera at c - (sin az, cos az) D), a bit to the side
           const cam = [c[0] - Math.sin(az) * D * Math.cos(el), c[1] + D * Math.sin(el), c[2] - Math.cos(az) * D * Math.cos(el)];
-          if (inBox(...cam)) continue;
+          if (inBox(...cam) || !bodyFree(...cam)) continue;
           const d = [c[0] - cam[0], c[1] - cam[1], c[2] - cam[2]], L = Math.hypot(...d); d[0] /= L; d[1] /= L; d[2] /= L;
           const h = raycast(cam, d, L, BOXES);
           if (h && h.t < L - size * 0.5 && h.box.pv !== id) continue;
