@@ -103,7 +103,12 @@ async function session(b, map, ids) {
         }
         return out;
       }
-      out.push({ id: 'map', k: 0, ...lookAt([s0[0], s0[1] + 7, s0[2]], [cx, s0[1] + 1, cz]) });
+      let v0 = s0; // (the first spawn whose 7 m view in isn't blocked close by: a wall or a gallery in the way shows nothing)
+      for (const s of sp) {
+        const cam = [s[0], s[1] + 7, s[2]], d = [cx - cam[0], s[1] + 1 - cam[1], cz - cam[2]], L = Math.hypot(...d), h = L > 1 && raycast(cam, d.map((v) => v / L), L, BOXES);
+        if (L > 1 && (!h || h.t > Math.min(25, L * 0.6))) { v0 = s; break; }
+      }
+      out.push({ id: 'map', k: 0, ...lookAt([v0[0], v0[1] + 7, v0[2]], [cx, v0[1] + 1, cz]) });
       const d = Math.max(30, Math.hypot(s1[0] - cx, s1[2] - cz));
       out.push({ id: 'map', k: 1, ...lookAt([cx + d * 0.7, s1[1] + d * 0.45 + 8, cz + d * 0.7], [cx, s1[1], cz]) });
       return out;
@@ -151,7 +156,8 @@ async function session(b, map, ids) {
           // kill you: wait for the respawn; in the buy phase the server holds you in your spawn zone and its walls show)
           st = await pg.evaluate(async (map) => {
             const { MAP } = await import('/shared/map.js'); const { ME } = await import('/js/player.js'); const { G } = await import('/js/ctx.js');
-            const busy = () => MAP.id === map && (!ME.alive || (G.eco && G.eco.buyEnd > performance.now()) || performance.now() < (ME.quizUntil || 0) || performance.now() - (window.__lifeT || -1e9) < 5000); // (a bot's pop quiz: frozen, a panel up; a death: its kill effect fades first)
+            const off = () => { const q = window.__pin, c = G.camera.position; return !q || Math.hypot(c.x - q.p[0], c.z - q.p[2]) > 0.5 || Math.abs(c.y - q.p[1] - 1.6) > 0.8; }; // (something else has the camera: a replay, spectating, the ball, a knock-down)
+            const busy = () => MAP.id === map && (!ME.alive || (G.eco && G.eco.buyEnd > performance.now()) || performance.now() < (ME.quizUntil || 0) || performance.now() - (window.__lifeT || -1e9) < 5000 || off()); // (a bot's pop quiz: frozen, a panel up; a death: its kill effect fades first)
             const t0 = performance.now(), wait = (ms) => new Promise((r) => setTimeout(r, ms));
             while (performance.now() - t0 < 60000) { // (killed again while settling: keep waiting, up to a minute)
               while (busy() && performance.now() - t0 < 60000) await wait(100);
@@ -163,7 +169,7 @@ async function session(b, map, ids) {
           if (st !== 'ok') break;
           const before = await pg.evaluate(() => window.__life);
           await pg.screenshot({ path: f, timeout: 120000 });
-          const after = await pg.evaluate(async () => { const { ME } = await import('/js/player.js'); const { G } = await import('/js/ctx.js'); return ME.alive && !(G.eco && G.eco.buyEnd > performance.now()) && !(performance.now() < (ME.quizUntil || 0)) ? window.__life : -1; });
+          const after = await pg.evaluate(async () => { const { ME } = await import('/js/player.js'); const { G } = await import('/js/ctx.js'); const q = window.__pin, c = G.camera.position, at = q && Math.hypot(c.x - q.p[0], c.z - q.p[2]) <= 0.5 && Math.abs(c.y - q.p[1] - 1.6) <= 0.8; return at && ME.alive && !(G.eco && G.eco.buyEnd > performance.now()) && !(performance.now() < (ME.quizUntil || 0)) ? window.__life : -1; });
           if (after === before) break;
           st = 'died or a new round during the shot'; console.log(map, v.id, v.k, 'retake:', st);
         }
