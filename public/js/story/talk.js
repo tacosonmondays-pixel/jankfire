@@ -49,9 +49,10 @@ function showLine() {
   if (!l) { endTalk(); return; }
   T.typed = 0; T.full = l.act ? l.t.replace(/\*/g, '') : l.t;
   const who = l.who === 'you' ? null : (S.defs.npcs[l.who] || S.defs.npcs[T.npc]);
-  U.name.textContent = l.who === 'you' ? 'YOU' : who ? who.name : '';
+  U.name.textContent = l.act ? '' : l.who === 'you' ? 'YOU' : who ? who.name : ''; // (stage directions have no speaker)
+  U.name.style.display = U.name.textContent ? '' : 'none';
   U.name.className = l.who === 'you' ? 'you' : '';
-  U.title.textContent = l.who === 'you' ? '' : who ? who.title || '' : '';
+  U.title.textContent = l.act || l.who === 'you' ? '' : who ? who.title || '' : '';
   U.text.className = 'st-text' + (l.act ? ' act' : '') + (l.who === 'you' ? ' you' : '');
   U.port.classList.toggle('you', l.who === 'you');
   const sp = speakerOf(l);

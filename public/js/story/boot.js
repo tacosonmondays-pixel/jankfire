@@ -14,7 +14,7 @@ import { makeStory } from '/shared/story/story.js';
 import { toSave, fromSave } from '/shared/story/state.js';
 import * as lab from '/shared/story/content/test/lab.js';
 import * as overdue from '/shared/story/content/overdue.js'; // the full script, as an engine pack (PR #76)
-import { actors, spawnActor, clearActors, updateActors, dropTo, play } from './actors.js';
+import { actors, spawnActor, despawnActor, clearActors, updateActors, dropTo, play } from './actors.js';
 import { startTalk, talkKey, talkFrame, talking } from './talk.js';
 import { questHud, card as card0, toast } from './questhud.js';
 import { toggleCodex, codexOpen } from './codex.js';
@@ -298,13 +298,14 @@ export function frame(dt, now, cam) {
         const score = d + (1 - (dx * fx + dz * fz) / Math.max(0.01, d)) * 1.5;
         if (score < bd) { bd = score; nearAct = a; }
       }
-      for (const sp of SPOTS.values()) { sp.mesh.userData.glow.material.opacity = 0.35 + Math.sin(now * 0.006) * 0.25; if (sp.mesh.userData.spin) sp.mesh.userData.spin.rotation.y += dt * 2; if (Math.hypot(ME.pos[0] - sp.p[0], ME.pos[2] - sp.p[2]) < 1.8) nearThing = { spot: sp, t: { name: sp.name.toUpperCase() } }; }
+      for (const sp of SPOTS.values()) { sp.mesh.visible = true; sp.mesh.userData.glow.material.opacity = 0.35 + Math.sin(now * 0.006) * 0.25; if (sp.mesh.userData.spin) sp.mesh.userData.spin.rotation.y += dt * 2; if (Math.hypot(ME.pos[0] - sp.p[0], ME.pos[2] - sp.p[2]) < 1.8) nearThing = { spot: sp, t: { name: sp.name.toUpperCase() } }; }
       for (const t of ST.things.values()) {
         t.mesh.visible = S.test(t.t.if) && !ST.bag.has(t.t.item);
         if (t.mesh.visible) { t.mesh.userData.glow.material.opacity = 0.35 + Math.sin(now * 0.006) * 0.25; if (Math.hypot(ME.pos[0] - t.p[0], ME.pos[2] - t.p[2]) < 1.8) nearThing = t; }
       }
     }
   }
+  if (locked()) for (const sp of SPOTS.values()) sp.mesh.visible = false; // (markers stay out of the talk and scene shots)
   const pr = $('stPrompt');
   const txt = nearThing ? `<b>${K.label('use')}</b> ${nearThing.spot && nearThing.spot.kind !== 'pickup' ? 'USE' : 'PICK UP'} ${nearThing.t.name}` : nearAct ? `<b>${K.label('use')}</b> TALK TO ${S.defs.npcs[nearAct.id].name}` : '';
   if (pr.innerHTML !== txt) pr.innerHTML = txt;
