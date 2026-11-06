@@ -21,6 +21,9 @@ import { tracerColor, emitSkinFx } from './skins.js';
 import { ANIMS, sample, sampleCh, eventsBetween, inspectFor, drawFor } from './anim.js';
 import { newTwirl, resetTwirl, twirling, spin, settle, twirlShot, stepTwirl, applyTwirl } from './twirl.js';
 import { partsShot, stepParts } from './glbkit.js';
+import { balisongStep } from './balisong.js'; // real balisong flips
+import { reloadStep, reloadEvent } from './reloads.js'; // proper reloads for the guns that only dipped
+import { katanaHands, katanaStep, katanaEvent, wrapFist, KAT_VM } from './katanavm.js'; // two hands on the katana
 import { weaponIcon, clearIcons, itemIcon } from './icons.js';
 import { rigFire, rigItem, rigVM, rigBlockKey, rigReload } from './rig.js'; // overdrive rig killstreak
 import { tickScalesVM } from './scales.js';
@@ -479,7 +482,7 @@ const VM = {
   snowball: { p: [0.17, -0.19, -0.33], r: [0.2, 0.2, 0.1], s: 0.75 },
   spoon: { p: [0.15, -0.15, -0.3], r: [0.2, 0.25, 0.1], s: 1.3 },
   knife: { p: [0.16, -0.17, -0.3], r: [0.15, 0.2, 0.15], s: 1.3 },
-  katana: { p: [0.2, -0.22, -0.34], r: [0.35, 0.25, -0.15], s: 0.85 },
+  katana: KAT_VM, // kamae: both hands on the tsuka, blade up and forward (katanavm.js)
   bow: { p: [0.1, -0.12, -0.36], r: [0, 0.05, 0.3], s: 1.0 },
   cards: { p: [0.1, -0.15, -0.3], r: [-0.35, 0.15, 0.05], s: 1.15 },
   slapper: { p: [0.22, -0.24, -0.42], r: [0.25, 0.1, 0], s: 0.7 },
@@ -534,6 +537,8 @@ export function rebuildViewmodels() {
     models[id] = { wrap, g, cfg, flash };
     if (WEAPONS[id].hands) models[id].left = akLeftModel(id, cfg, hand); // Lefty & Righty: a second gun for the left hand
     if (SIDEARMS.has(id)) sideHand(g, id, 'R');
+    if (id === 'katana') katanaHands(models[id], hand); // held like a katana: both fists on the tsuka
+    if (id === 'knife' || id === 'spoon') wrapFist(models[id], hand, id === 'spoon' ? 0.03 : 0.022, id === 'spoon' ? 0.85 : 1); // a fist closed round the handle (every knife skin)
   }
   if (models.katana) setKatana(models.katana.g, W.kat || 0);
   if (!trail) initTrail();
@@ -1281,7 +1286,7 @@ function animEvent(ev, g) {
     case 'startup': shredStartup(); break;
     case 'rev': sfx.rev(); break;
     case 'chains': sfx.chains(); break;
-    default: rifleEvent(ev, g, ejectShell);
+    default: if (!katanaEvent(ev, g, sys, sfx) && !reloadEvent(ev, g)) rifleEvent(ev, g, ejectShell);
   }
 }
 
@@ -1502,7 +1507,7 @@ export function updateWeapons(dt, now) {
     hud.cards(hand, W.cardSel);
   } else hud.cards(null);
   if (W.pendingSwing > 0 && W.hitStop <= 0) { W.pendingSwing -= dt; if (W.pendingSwing <= 0 && alive) resolveSwing(W.swingId); }
-  if (W.cycle) { W.cycle.t -= dt; if (W.cycle.t <= 0) { if (W.cycle.name && id === (W.cycle.name === 'pump_shotgun' ? 'shotgun' : id)) playAnim(W.cycle.name, 'cycle'); W.cycle = null; } }
+  if (W.cycle) { W.cycle.t -= dt; if (W.cycle.t <= 0) { if (W.cycle.name && id === (W.cycle.name === 'pump_shotgun' ? 'shotgun' : id) && !(W.reloadId && W.anim && W.anim.kind === 'reload')) playAnim(W.cycle.name, 'cycle'); W.cycle = null; } }
   updateFlying(dt);
   if (W.pendingThrow > 0) { W.pendingThrow -= dt; if (W.pendingThrow <= 0 && alive && id === 'slipper') fireProj('slipper', now, true); }
   if (W.aimHeld) cancelInspect();
@@ -1610,6 +1615,7 @@ export function updateWeapons(dt, now) {
   const ra = 1 - W.aim * 0.6;
   px += rec.p[0] * ra; py += rec.p[1] * (1 - W.aim * 0.3); pz += (W.kick * 0.04 + rec.p[2]) * ra;
   rx += (W.kick * 0.12 + rec.r[0]) * ra; rz += rec.r[2] * ra;
+  if (!W.reloadId && W.anim && W.anim.kind === 'reload') W.anim = null; // (cancelled: respawn, a refill, a mode reset)
   if (W.reloadId && !(W.anim && W.anim.kind === 'reload')) { const k = Math.sin(Math.min(1, 1 - (W.reloadUntil - now) / (w.reload * 1000)) * Math.PI); py -= k * 0.12; rx -= k * 0.6; rz += k * 0.4; }
   if (id === 'cig') {
     const k = smoking ? 1 : 0;
@@ -1629,6 +1635,7 @@ export function updateWeapons(dt, now) {
   if (W.anim) {
     const t0 = W.anim.t;
     W.anim.t += adt;
+    if (W.anim.kind === 'reload' && W.reloadId === id && w.reload) W.anim.t = Math.max(t0, w.reload - (W.reloadUntil - now) / 1000); // on the reload's own clock: it ends on the frame the ammo comes back, at any frame rate
     for (const ev of eventsBetween(W.anim.name, t0, W.anim.t)) { animEvent(ev, m.g); if (SIDEARMS.has(id)) { sideEvent(ev, m, id); if (m.left) sideEvent(ev, m.left, id); } }
     const a = sample(W.anim.name, W.anim.t);
     const tw = ANIMS[W.anim.name] && ANIMS[W.anim.name].trail;
@@ -1644,7 +1651,7 @@ export function updateWeapons(dt, now) {
     ud.needle.rotation.x += (target - ud.needle.rotation.x) * Math.min(1, dt * 12);
     if (ud.vents) ud.vents.color.setRGB(0.25 + 0.75 * k, 0.04 + 0.3 * k * k, 0.02 + (firingNow ? 0.15 * k : 0));
   }
-  if (ud.handles) { const h = an && sampleCh(an, 'handles', at); ud.handles[0].rotation.x = h ? h[0] : 0; ud.handles[1].rotation.x = h ? h[1] : 0; }
+  if (ud.handles) balisongStep(m, an, at, sampleCh); // butterfly: the blade + free handle swing round the pivot, the held one stays put
   if (ud.index) { // Blood Cross: the finger flicks, the thumb drops like a hammer, the fist opens + closes, the fingertip beats
     const f = an && sampleCh(an, 'index', at), t = an && sampleCh(an, 'thumb', at), c = an && sampleCh(an, 'curl', at);
     ud.index.rotation.x = f ? f[0] : 0; ud.thumb.rotation.x = t ? t[0] : 0;
@@ -1672,6 +1679,7 @@ export function updateWeapons(dt, now) {
     if (m.left && !W.ak.L.rl) sideStep(m.left.g, id, dt, an, at, st, sampleCh);
     stepOffHand(m, id, an, at, sampleCh);
   }
+  reloadStep(m, id, an, at, sampleCh, W); // mag / bolt / cylinder / pump + the off hand and its props (reloads.js)
   if (blowing || (spinning && W.spin >= 1 && W.held)) { px += (Math.random() - 0.5) * 0.008; py += (Math.random() - 0.5) * 0.008; }
   if (id === 'shredder') shredderVM(m, dt, now, (a, b, c, d, e, f) => { px += a; py += b; pz += c; rx += d; ry += e; rz += f; });
   if (id === 'laser') laserVM(m, now, (a, b, c, d, e, f) => { px += a; py += b; pz += c; rx += d; ry += e; rz += f; });
@@ -1683,6 +1691,7 @@ export function updateWeapons(dt, now) {
   }
   m.wrap.position.set(px, py, pz);
   m.wrap.rotation.set(rx, ry, rz);
+  if (m.kh) { const kl = an && sampleCh(an, 'kl', at); katanaStep(m, kl ? kl[0] : 1); } // katana: the left hand on the grip (or off it)
   if (models.akimbo && models.akimbo.left) { const L = models.akimbo.left; L.wrap.visible = id === 'akimbo' && !ME.dashing; L.flash.visible = L.wrap.visible && W.ak.L.flash > 0; if (L.flash.visible) { L.flash.userData.face.rotation.z = Math.random() * 6.28; L.flash.scale.setScalar(0.8 + Math.random() * 0.6); } }
   if (ud.court) tickScalesVM(m.g, dt, now); // scales of justice: tip toward the verdict, swing the pans
   if (m.g.userData.hat) m.g.userData.hat.visible = W.aim < 0.3 && !(ud.sp && ud.sp.openK > 0.05); // Half a Shotgun broken open: the breech goes through the hat
