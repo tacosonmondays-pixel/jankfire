@@ -197,7 +197,8 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
   propOf('stall', L.pt(x, 0, z), L.yaw, () => { /* the kit's own boxes */ }, { t: awning, keep: (b) => b.rug })
   ```
   Check them in the game: `node tools/blender/shots_r4.cjs <port> <dir> <ids|map> [maps] [presets] [n]` (box version vs
-  Blender, same camera), `node tools/blender/props_r4.mjs [--md]` (copies per map, tris and materials per model),
+  Blender, same camera), `node tools/blender/shots_traffic.cjs <port> <dir>` (every traffic car, code vs Blender),
+  `node tools/blender/props_r4.mjs [--md]` (copies per map, tris and materials per model),
   `node tools/blender/perf_props.cjs <port> <out.json> [maps]` (draw calls + triangles).
 - Round 1's props (forklift, bus, number balls, racks, pallet loads) still use `prop(L, id, x, z, r)` / `L.P()`
   (shared/props.js: catalog boxes + a placement at a spot with quarter turns); they draw through the same instancing.
