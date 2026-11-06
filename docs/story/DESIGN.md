@@ -536,7 +536,7 @@ last fight you can end it without killing him (§3.3, Act V).
 **Look:** a 4.5 m corporate cyborg in a grey suit stretched over pistons, with a huge **punch-clock built into his
 chest** (the time-card slot glows, the clock face is his heart and it ticks loudly), **two heavy-duty stapler arms**, a
 small human head sunk between his shoulders with a puppet-like stretched smile and a desk-lamp visor, a lanyard
-with forty years of employee-of-the-month badges, and polished brogues the size of cars. The tie is a bungee cord.
+with ninety years of employee-of-the-month badges, and polished brogues the size of cars. The tie is a bungee cord.
 He steams when angry. He's polite. "this will only take a minute. it will take exactly a minute."
 
 **Moveset (shared by every fight, remixed):**

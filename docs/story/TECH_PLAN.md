@@ -172,7 +172,7 @@ export default {
     { t: 1, say: ['lumps', '*sniff*'] },
     { t: 6, fx: 'clocksStop', sfx: 'tick_loud' },
     { t: 9, anim: ['ot', 'stair_step'], cam: { shot: 'lowAngle', target: 'ot', dur: 4 }, shake: 0.4 },
-    { t: 20, say: ['ot', 'the bottom. you are forty years late. i\'m here to collect.'], face: ['ot', 'grin'] },
+    { t: 20, say: ['ot', 'the bottom. two hundred and forty-four quarters of back pay. i\'m here to collect.'], face: ['ot', 'grin'] },
     { t: 31, anim: ['ot', 'staple_shot'], hitstop: 0.12, impact: 'red' },
     { t: 56, boss: 'overtime' }, // boss intro card, then gameplay
   ],
