@@ -50,6 +50,7 @@ import { HR } from './shared/hr.js';
 import { installGear } from './server/gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
 import { installRifles, RIFLE_PREF, RIFLE_BOTS } from './server/rifles.js'; // burst rifle, lmg, marksman, lever-action, auto shotgun
 import { installEcon } from './server/econ.js';
+import { installPrimaries } from './server/primaries.js'; // nail gun pins, tennis ball bounces, shopping carts
 import { installTactical } from './server/tactical.js';
 import { TAC } from './shared/tactical.js'; // Plant & Defuse gunplay: spray patterns, moving spread, the hit check
 import { MSLIP, onPatch, patchPreroll } from './shared/marbles.js';
@@ -128,10 +129,11 @@ const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 40000, perMes
 const COLORS = ['#ff4fd8', '#4fd8ff', '#ffe14d', '#7dff4f', '#ff7a1a', '#b07dff', '#ff4f4f', '#4fffb0', '#ffffff', '#ff9ad5'];
 const DEFAULT_NAMES = ['player', 'guy', 'someone', 'nobody', 'dude', 'person'];
 const BOT_NAMES = ['Gary', 'Linda', 'Steve', 'Brenda', 'Kevin', 'Doug', 'Karen', 'Phil', 'Tina', 'Rick', 'Deb', 'Carl', 'Pam', 'Todd', 'Barb', 'Chad'];
-const BOT_GUNS = ['ar', 'ar', 'smg', 'shotgun', 'shotgun', 'sniper', 'chicken', 'banana', 'minigun', 'revolver', 'redline', 'marbles', 'laser'];
+const BOT_GUNS = ['ar', 'ar', 'smg', 'shotgun', 'shotgun', 'sniper', 'chicken', 'banana', 'minigun', 'revolver', 'redline', 'marbles', 'laser', 'nailgun', 'tennis', 'cart'];
 BOT_GUNS.push('shredder'); // bots suck too (botShred)
 BOT_GUNS.push(...RIFLE_BOTS); // the rifle pack (server/rifles.js)
-if (process.env.JF_BOT_GUNS) BOT_GUNS.splice(0, BOT_GUNS.length, ...process.env.JF_BOT_GUNS.split(',').filter((id) => WEAPONS[id])); // test knob: JF_BOT_GUNS=burst,lmg
+if (process.env.JF_PIN_DUR) WEAPONS.nailgun.nails.dur = Number(process.env.JF_PIN_DUR) || WEAPONS.nailgun.nails.dur; // test knob: longer nail gun pins (screenshots)
+if (process.env.JF_BOT_GUNS) BOT_GUNS.splice(0, BOT_GUNS.length, ...process.env.JF_BOT_GUNS.split(',').filter((w) => Object.hasOwn(WEAPONS, w))); // test knob: JF_BOT_GUNS=nailgun,cart
 const SKIN_F = ['default', 'default', 'gold', 'chrome', 'pink', 'camo', 'neon', 'rainbow', 'galaxy', 'lava', 'missing', 'tiger', 'fade', 'carbon', 'tape'];
 const SKIN_H = ['none', 'none', 'none', 'tophat', 'party', 'crown', 'cowboy', 'propeller', 'cone', 'eyes', 'duck'];
 const SKIN_E = ['none', 'none', 'none', 'sparkles', 'flames', 'money', 'smoke'];
@@ -273,6 +275,7 @@ for (const k of ['trap', 'trapx']) REC_T.add(k); // bubble wand: replays draw th
 for (const t of ['parry', 'guard']) REC_T.add(t); // katana parries show up in killcams too
 for (const t of ['snap', 'frame', 'framex', 'quiz', 'quizx']) REC_T.add(t); // instant camera frames + pop quizzes in killcams
 for (const k of ['beam', 'tele', 'nvflash']) REC_FX.add(k); // laser beams, frame teleports, goggle flashes
+REC_FX.add('plough'); // shopping carts running people over
 for (const t of ['mpatch', 'mslip', 'mpx']) REC_T.add(t); // marbles on the floor too
 REC_T.add('lasso'); // lasso throws, catches, flings and splats too
 function newDeck() {
@@ -522,6 +525,7 @@ class Room {
     send(p, { t: 'tip', tip: p.tip });
     for (const t of this.players.values()) if (t.trap) send(p, { t: 'trap', ...this.trapInfo(t) }); // anyone already floating in a soap bubble
     this.gearJoin(p); // photo frames standing, quizzes going
+    this.cartsFor(p); // shopping carts already out
     this.lassoJoin(p); // anyone already hanging off a lasso
     send(p, { t: 'court', s: [...this.players.values()].filter((o) => o.streak > 0).map((o) => [o.id, o.streak]) }); // scales of justice: streaks so far
     if (p.air && p.air.ok) send(p, { t: 'air', on: 1, grace: AIR.grace });
@@ -1644,6 +1648,7 @@ class Room {
     const k = w.kb * n + rx.kb;
     // a sniper headshot from a player always kills (bots keep their softer shots)
     this.hurt(t, p, wid, dmg, [d[0] * k, d[1] * k + (w.kbUp || 0) * (n / pellets), d[2] * k], { hs: h > 0, lethal: wid === 'sniper' && h > 0 && !p.isBot });
+    if (wid === 'nailgun') this.nailHit(p, t, n, d); // enough nails in a row pin them to the wall (server/primaries.js)
   }
 
   // scales of justice: how guilty t is next to p, from what the server knows right now (formula in shared/verdict.js)
@@ -2037,6 +2042,7 @@ class Room {
   }
 
   spawnProj(p, wid, o, d) {
+    if (wid === 'cart') { this.fireCart(p, o, d); return; } // shopping carts aren't projectiles: they park and stay (server/primaries.js)
     const w = WEAPONS[wid], n = now();
     if (!(w.cd > 0) || n - (p.lastFire[wid] || 0) < w.cd * 750) return; // nothing without a cooldown comes through here
     if (wid === 'slipper') for (const pr of this.projectiles.values()) if (pr.k === 'slipper' && pr.o === p.id) return;
@@ -2283,6 +2289,7 @@ class Room {
       if (pr.k === 'rigmissile') { this.rigMissileStep(pr, dt); continue; } // overdrive rig missiles home in (server/rig.js)
       const age = (n - pr.born) / 1000;
       if (pr.k === 'bloodcross') { this.tickBloodBolt(pr, dt, n); continue; }
+      if (pr.k === 'tennis') { this.tennisStep(pr, dt, n); continue; } // counted bounces (server/primaries.js)
       const owner = this.players.get(pr.o);
       const prev = pr.p.slice();
       let hit = null;
@@ -2725,7 +2732,7 @@ class Room {
 
   // per-life state: cleared on every respawn and on every new round / match / map
   resetLife(p) {
-    p.slipUntil = 0; p.burnUntil = 0; p.burnBy = 0; p.burnTick = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.frostT = 0;
+    p.slipUntil = 0; p.burnUntil = 0; p.burnBy = 0; p.burnTick = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.frostT = 0; p.pinUntil = 0; p.nails = null; p.held = null;
     p.healLeft = 0; p.reverseUntil = 0; p.g = null; p.lastAttacker = 0; p.ground = null;
     this.rigReset(p); // a new round ends the overdrive rig (and any hack)
     if (p.lz) { this.lassoCut(p, 'gone'); p.lz.fl = null; } // a fresh life: off any rope, no flight still counting
@@ -2739,7 +2746,7 @@ class Room {
   resetWorld() {
     this.resetChaos();
     this.gearWorldReset(); // photo frames come down
-    this.projectiles.clear(); this.peels.clear(); this.holes.clear();
+    this.projectiles.clear(); this.peels.clear(); this.holes.clear(); this.clearCarts();
     this.mpatches.clear(); // clients wipe theirs on 'clear'
     this.broadcast({ t: 'clear' });
     this.clearTags();
@@ -2821,6 +2828,7 @@ class Room {
       case 'push': this.onPush(p, m); break;
       case 'slam': this.onSlam(p, m); break;
       case 'fire': this.onFire(p, m); break;
+      case 'cart': this.onCart(p, m); break; // hop in / out of a shopping cart
       case 'cough':
         if (p.alive && now() - p.coughT > 800) {
           p.coughT = now();
@@ -3226,7 +3234,7 @@ class Room {
     this.cfg.map = v.map;
     this.setGame(v.game); // (may swap to the version of the map the mode plays: Plant & Defuse -> the S&D one)
     const mapChanged = this.cfg.map !== was;
-    this.projectiles.clear(); this.peels.clear(); this.holes.clear();
+    this.projectiles.clear(); this.peels.clear(); this.holes.clear(); this.clearCarts();
     if (mapChanged) { this.smokes.clear(); this.broadcast({ t: 'cfg', cfg: this.cfg }); }
   }
 
@@ -3271,7 +3279,7 @@ class Room {
     Object.assign(b, { ph: 'live', site: null, p: null, drop: null, explodeAt: 0, act: null, between: 0, ends: now() + (process.env.JF_BOMB_ROUND ? BOMB.roundTime : this.map.roundTime || BOMB.roundTime) * 1000, carrier: 0 }); // per-map round time (the test knob still wins)
     for (const p of this.players.values()) if (p.ai) { p.ai.site = null; p.ai.route = null; }
     if (this.isEcon()) this.econNewRound(first); // buy phase, payouts carried over, the half's credit reset
-    this.projectiles.clear(); this.peels.clear(); this.holes.clear();
+    this.projectiles.clear(); this.peels.clear(); this.holes.clear(); this.clearCarts();
     this.resetWorld();
     this.giveBomb();
     this.broadcast({ t: 'bombev', k: 'round', n: b.n, att: b.att });
@@ -3753,6 +3761,7 @@ class Room {
     for (const b of this.players.values()) if (b.isBot && b.alive) this.stepBot(b, dt);
     this.tickLasso(dt);
     this.tickProjectiles(dt);
+    this.tickCarts(dt); // shopping carts: rolling, parked, ridden
     this.tickCrosses();
     this.tickHoles(dt);
     this.tickRig();
@@ -3879,7 +3888,7 @@ class Room {
     const n = now();
     this.trackMoves(n);
     this.recOdd = !this.recOdd;
-    this.rec.frames.push({ s: n, p: ps, odd: this.recOdd, j: [...this.projectiles.values()].map((pr) => [pr.id, pr.k, r2(pr.p[0]), r2(pr.p[1]), r2(pr.p[2]), pr.tip || 0]) });
+    this.rec.frames.push({ s: n, p: ps, odd: this.recOdd, j: [...this.projectiles.values()].map((pr) => [pr.id, pr.k, r2(pr.p[0]), r2(pr.p[1]), r2(pr.p[2]), pr.tip || 0]).concat(this.cartRec()) });
     while (this.rec.frames.length && this.rec.frames[0].s < n - REC_MS) this.rec.frames.shift();
     while (this.rec.ev.length && this.rec.ev[0].s < n - REC_MS) this.rec.ev.shift();
     this.broadcast({ t: 'sn', s: n, p: ps, wave: this.mode === 'coop' ? this.waveInfo() : undefined, round: this.roundInfo() || undefined });
@@ -3891,6 +3900,7 @@ installRig(Room, { now, num, vec3, norm, r2, center, safe, REC_T, WEAPONS }); //
 installGear(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm, vec3, stat, liveStats });
 installTactical(Room, { send });
 installRifles(Room, { now, send });
+installPrimaries(Room, { now, send, r2, norm, vec3, REC_T });
 installEcon(Room, {
   send, cleanSkins, enforceSkins, logErr, BOT_GUNS, navGraph,
   refreshInv: async (p) => { if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; } },

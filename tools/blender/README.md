@@ -42,6 +42,9 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
 | `make_dmr.py` | `w_dmr.glb` | Second Opinion: SVD pattern with a PSO-style scope, nodes `mag` + `charge` |
 | `make_lever.py` | `w_lever.glb` | Yeehaw: Winchester 1892 pattern, nodes `lever` (front pin) + `lhammer` (spin-cock + lever throw are in `public/js/rifles.js`) |
 | `make_autoshot.py` | `w_autoshot.glb` | Lawn Mower: Saiga-12 pattern auto shotgun, nodes `mag` + `charge` |
+| `make_nailgun.py` | `w_nailgun.glb` | 21-degree framing nailer x1.6, turned so the drive points forward: handle = pistol grip, stick magazine of nails raked under the nose, spirit level taped on as the sight |
+| `make_tennis.py` | `w_tennis.glb` | garage ball launcher x1.1: clear ball can barrel, side-fed hopper can, CO2 bottle foregrip, a tennis racket's handle + throat as the grip, a bit of strung head as the trigger guard |
+| `make_cart.py` | `w_cart.glb`, `p_cart.glb` | the Shopping Cart Cannon (6in PVC, a cart basket wrapped round the barrel, cart handle foregrip, coin lock, castor monopod) + the real-size cart it fires (nodes `wheel_*`, spun by the game) |
 | `make_car.py` | `p_car.glb` | sedan, paint material `car_paint` (recoloured per car) |
 | `make_bus.py` | `p_bus.glb` | conventional school bus |
 | `make_forklift.py` | `p_forklift.glb` | counterbalance forklift |

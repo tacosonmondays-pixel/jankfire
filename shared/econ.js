@@ -60,6 +60,9 @@ export const PRICES = {
   dmr: { price: 3900, kill: 200, pen: 0.65, mags: 3 },
   lever: { price: 1800, kill: 450, pen: 0.45, mags: 4 },
   autoshot: { price: 2600, kill: 600, pen: 0, mags: 3 },
+  nailgun: { price: 2300, kill: 300, pen: 0.2, mags: 3 },
+  tennis: { price: 1600, kill: 500, shots: 12 }, // in line with the competitive nerfs above
+  cart: { price: 2600, kill: 450, shots: 3 }, // 3 carts a buy (and only 3 of yours on the map at once)
   // secondary
   revolver: { price: 250, kill: 250, pen: 0.5, mags: 4 },
   marbles: { price: 900, kill: 400, pen: 0, mags: 2 }, // competitive: 2+4 (was 2+10)
