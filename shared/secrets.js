@@ -68,7 +68,7 @@ export const SECRETS = {
     },
   },
   smiles: {
-    kind: 'npc', map: 'skyline', p: [-99.25, 119.2, 102], face: Math.PI / 2, chapter: 'founder', look: 'smiles', sit: true,
+    kind: 'npc', map: 'skyline', p: [-60, 65.6, -80], face: -Math.PI / 2, chapter: 'founder', look: 'smiles', sit: true, // up the building site's crane, on the jib, looking at the Spire
     name: 'MR. SMILES', title: 'mascot (retired)', where: 'somewhere very high in Skyline', gift: { type: 'kill', id: 'balloon', or: { roll: 'bag' } },
     lines: {
       start: { say: ['oh! a fan! nobody climbs up here. that\'s the point of up here.', 'i used to be the mascot. Mr. Smiles. the big happy face of ☺ CORP. now i\'m a guy in a hot suit on a crane.'],
