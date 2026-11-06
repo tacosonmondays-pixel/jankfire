@@ -50,8 +50,8 @@ function setup(canvas) {
   const scene = new THREE.Scene();
   scene.add(new THREE.HemisphereLight(0xffffff, 0x6a3a6a, 2.6));
   const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(1, 2, 1.5); scene.add(sun);
-  const cam = new THREE.PerspectiveCamera(38, 2, 0.1, 50);
-  cam.position.set(0, 1.5, 4.0); cam.lookAt(0, 0.55, 0);
+  const cam = new THREE.PerspectiveCamera(40, 2, 0.1, 50);
+  cam.position.set(0, 1.05, 2.5); cam.lookAt(0, 0.42, 0); // close: the thing fills the box
   R = { canvas, renderer, scene, cam, obj: null, bits: [], t: 0, dur: 4.6, burst: false, raf: 0, last: 0, color: 0xffffff, res: 1 };
   return R;
 }
@@ -68,7 +68,7 @@ export function playContainer(canvas, kind, color, dur = 4.6, res = 1) {
   R.obj = buildContainer(kind);
   R.scene.add(R.obj);
   R.t = 0; R.dur = dur; R.burst = false; R.color = new THREE.Color(color || '#ffffff').getHex();
-  R.last = performance.now();
+  R.last = R.t0 = performance.now();
   R.raf = requestAnimationFrame(frame);
 }
 export function stopContainer() {
@@ -83,7 +83,7 @@ function burst() {
   const lid = R.obj.userData.lid;
   lid.userData.v = new THREE.Vector3((Math.random() - 0.5) * 2, 5.5, (Math.random() - 0.5) * 2); lid.userData.w = new THREE.Vector3(6, 2, 4);
   const conf = [R.color, R.color, 0xffe14d, 0xff4fd8, 0x4fd8ff, 0xffffff];
-  for (let i = 0; i < 60; i++) { // confetti + a few planks
+  for (let i = 0; i < 90; i++) { // confetti + a few planks
     const big = i < 6;
     const m = new THREE.Mesh(new THREE.BoxGeometry(big ? 0.5 : 0.11, big ? 0.06 : 0.11, big ? 0.12 : 0.03), M(big ? 0x8a5a2a : conf[i % conf.length]));
     m.position.set((Math.random() - 0.5) * 0.6, 0.7, (Math.random() - 0.5) * 0.4);
@@ -94,8 +94,8 @@ function burst() {
 }
 function frame(now) {
   if (!R || !R.obj) return;
-  const dt = Math.min(0.05, (now - R.last) / 1000); R.last = now;
-  R.t += dt;
+  const dt = Math.min(0.1, (now - R.last) / 1000); R.last = now;
+  R.t = (now - R.t0) / 1000; // wall clock: it bursts right on the reveal however slow the frames are
   const o = R.obj, k = Math.min(1, R.t / R.dur);
   if (!R.burst) {
     const amp = 0.01 + k * k * 0.09, f = 20 + k * 30; // a rattle that grows

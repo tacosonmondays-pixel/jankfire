@@ -378,7 +378,8 @@ function loTile(cls, pic, name, sub, on, tip, color, fn) {
   t.append(p, el('span', 'nm', name));
   if (sub) t.append(el('span', 'eq sub', sub));
   if (on) t.append(el('span', 'eq', 'ON'));
-  t._pic = pic; t._img = im; tileQ.push(t);
+  t._pic = pic; t._img = im;
+  if (cls === 'lo-streak') im.src = pic(); else tileQ.push(t); // streak pictures are cheap drawings: right away
   t.addEventListener('mouseenter', () => { const h = $('czHover'); h.classList.remove('hidden'); h.style.setProperty('--rc', color); h.querySelector('b').textContent = name; h.querySelector('i').textContent = tip[0]; h.querySelector('span').textContent = tip[1]; h.querySelector('.req').innerHTML = ''; });
   t.addEventListener('mouseleave', () => $('czHover').classList.add('hidden'));
   t.addEventListener('click', fn);
