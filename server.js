@@ -50,6 +50,7 @@ import { BR } from './shared/royale.js';
 import { tickHR, hrBot } from './server/hrguy.js'; // the Tall Guy From HR (Scary Forest)
 import { HR } from './shared/hr.js';
 import { installGear } from './server/gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
+import { installRandSkin, rollSkins, rollKfx, cleanFavs, hasRandom } from './server/randskin.js'; // Random cosmetics: rolled again on every spawn
 import { installSec } from './server/secondaries.js'; // water pistol, taser, tv remote, speed trap
 import { SPEED } from './shared/weapons.js';
 import { installRifles, RIFLE_PREF, RIFLE_BOTS } from './server/rifles.js'; // burst rifle, lmg, marksman, lever-action, auto shotgun
@@ -503,14 +504,15 @@ class Room {
     }
     const name = m._name || clean(m.name, 16) || pick(DEFAULT_NAMES) + nextId;
     const inv = m._inv || {};
-    const p = this.newPlayer(name, { ws, skins: enforceSkins(cleanSkins(m.skins), inv, m._achs), acct: m._acct, level: m._level });
-    p.inv = inv;
+    const skinWant = cleanSkins(m.skins), favs = cleanFavs(m.favs); // (random slots are rolled from what you own)
+    const p = this.newPlayer(name, { ws, skins: rollSkins(skinWant, inv, m._achs, favs, enforceSkins), acct: m._acct, level: m._level });
+    p.inv = inv; p.skinWant = skinWant; p.favs = favs; p.kfxWant = typeof m.kfx === 'string' ? m.kfx : 'none';
     p.tip = pick(TIP_IDS);
     p.look = validLook(m.look, m._achs || new Set());
     if (p.look.color) p.color = p.look.color;
     p.card = cleanCard(m.card);
     p.streaks = validStreaks(m.streaks);
-    p.kfx = ownedKill(m.kfx, inv);
+    p.kfx = rollKfx(p.kfxWant, inv, favs);
     p.grap = ownedGrapple(m.grap, inv);
     p.kc = !!m.kc;
     p.item = has(ITEMS, m.item) ? m.item : 'frag'; // the client confirms it with 'itemsel' right after 'welcome'
@@ -540,6 +542,7 @@ class Room {
     this.broadcast({ t: 'pj', ...this.info(p) }, p.id);
     skipPeople(this); // one more human: a skip vote needs more
     send(p, { t: 'tip', tip: p.tip });
+    if (hasRandom(p.skinWant)) send(p, { t: 'sk', id: p.id, s: p.skins }); // your random slots' first roll
     for (const t of this.players.values()) if (t.trap) send(p, { t: 'trap', ...this.trapInfo(t) }); // anyone already floating in a soap bubble
     this.gearJoin(p); // photo frames standing, quizzes going
     this.cartsFor(p); // shopping carts already out
@@ -2968,7 +2971,7 @@ class Room {
         if (!p.kfxQ) p.kfxQ = setTimeout(() => {
           (async () => {
             if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; }
-            p.kfx = ownedKill(p.kfxWant, p.inv);
+            p.kfx = rollKfx(p.kfxWant, p.inv, p.favs);
           })().catch((e) => logErr('kfx', e)).finally(() => { p.kfxQ = null; });
         }, 250);
         break;
@@ -3014,8 +3017,10 @@ class Room {
           p.skinT = now();
           (async () => {
             if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; }
-            p.skins = enforceSkins(cleanSkins(m.s), p.inv, p.acct && p.acct.achs);
-            this.broadcast({ t: 'sk', id: p.id, s: p.skins }, p.id);
+            p.skinWant = cleanSkins(m.s);
+            if (m.fav !== undefined) p.favs = cleanFavs(m.fav);
+            p.skins = rollSkins(p.skinWant, p.inv, p.acct && p.acct.achs, p.favs, enforceSkins);
+            this.broadcast({ t: 'sk', id: p.id, s: p.skins }, hasRandom(p.skinWant) ? undefined : p.id); // random slots: you get the roll too
           })().catch((e) => logErr('skin', e));
         }
         break;
@@ -3958,6 +3963,7 @@ installGear(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm, vec3, st
 installTactical(Room, { send });
 installRifles(Room, { now, send });
 installPrimaries(Room, { now, send, r2, norm, vec3, REC_T });
+installRandSkin(Room, { enforceSkins });
 installSec(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm, vec3, REC_T, REC_FX }); // after installGear: it wraps gearJoin / tickGear / gearSnap
 { // snapshot flags are one bit each, added by many modules: two on the same bit read as each other (it happened 3 times)
   const seen = new Map();

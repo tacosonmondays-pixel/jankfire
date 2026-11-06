@@ -84,6 +84,7 @@ export function showCharacter(build, color, look) {
 export function renderPreview(dt) {
   if (!renderer || !cur) return;
   if (sway) { swayT += dt; holder.rotation.y = sway + Math.sin(swayT * 0.7) * 0.45; holder.position.y = Math.sin(swayT * 1.9) * 0.012; } // main menu: a slow idle sway, not a spin
+  else if (manual) holder.rotation.set(manual.pitch, manual.yaw, 0);
   else holder.rotation.y += dt * 0.9;
   const pch = holder.children[0] && holder.children[0].userData.ch; // a mannequin on show: it breathes and shifts its weight
   if (pch) idlePose(pch, (idleT += dt));
@@ -117,7 +118,10 @@ export function showArmed(build, color, look, weapon) {
   holder.add(plinthObj || (plinthObj = plinth())); // built once, reused on every visit
   cam.position.set(0, 0.12, 2.75); cam.lookAt(0, -0.1, 0); // pulled back a bit so the plinth fits under the feet
 }
-function camHome() { cam.position.set(0, 0.3, 2.2); cam.lookAt(0, 0, 0); }
+function camHome() { if (manual) { cam.position.set(0, 0.22, manual.dist); cam.lookAt(0, 0.02, 0); return; } cam.position.set(0, 0.3, 2.2); cam.lookAt(0, 0, 0); }
+// the customize screen turns the weapon itself (drag / its own slow spin) and stands back a bit: m = { yaw, pitch, dist } or null
+let manual = null;
+export function previewManual(m) { manual = m; camHome(); }
 let plinthObj = null;
 function dropPlinth() { if (plinthObj && plinthObj.parent) plinthObj.parent.remove(plinthObj); } // out before freeTree, so it isn't freed
 // the turntable you stand on: a chunky 8-sided concrete slab, a pink trim band, a black lip, bolts. feet at y = -0.625
