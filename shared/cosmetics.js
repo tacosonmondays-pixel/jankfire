@@ -198,3 +198,5 @@ export function itemInfo(type, id) {
   const c = COSMETICS[type][id];
   return { type, id, name: c.name, rarity: c.rarity, color: RARITY[c.rarity].color, rarityName: RARITY[c.rarity].name };
 }
+// lasso skin: a garden hose with a brass nozzle for the knot (the rope you throw and swing them on is hose too)
+COSMETICS.model.lasso_hose = { name: 'Garden Hose', rarity: 'rare', weapon: 'lasso' };

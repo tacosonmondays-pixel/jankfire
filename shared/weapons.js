@@ -370,7 +370,7 @@ export function slamSize(h) {
 // ------------------------------------------------------------ new gear: instant camera, pop quiz, night vision goggles
 // (the Big Laser Pointer is up with the primaries). the server's half is server/gear.js
 FLAGS.NV = 8192; // night vision goggles on: everyone sees them on your face, lenses glowing
-FLAGS.CHARGE = 16384; // charging the Big Laser Pointer: everyone sees the tip glow and hears the whine
+FLAGS.CHARGE = 1 << 19; // (was 16384, the same bit as FLAGS.RIG) charging the Big Laser Pointer: everyone sees the tip glow and hears the whine
 // kill-feed tags (not guns): telefrags + frames, and failed quizzes
 WEAPONS.camera = { slot: null, kind: 'photo', name: 'Instant Camera', color: '#c9a7ff' };
 WEAPONS.quiz = { slot: null, kind: 'quiz', name: 'Pop Quiz', color: '#7fffd4' };
@@ -391,3 +391,15 @@ ITEMS.quiz = { name: 'Pop Quiz', desc: 'A calculator you throw. Whoever it hits 
 // yourself makes any flash last nvMul x longer
 export const NVG = { range: 34, cone: 0.62, dur: [0.6, 3.2], nvMul: 2, toggle: 0.35 };
 ITEMS.nvg = { name: 'Night Vision Goggles', desc: 'G puts them on: the dark goes green and people glow. While they\'re on, middle click flashes everyone you can see. Flashes blind you twice as long while you wear them.', charges: 2, recharge: 14, color: '#3dff8a' };
+
+// ------------------------------------------------------------ lasso (secondary)
+// hold fire to spin the loop, let go to throw it; catch someone and they hang off your rope. the physics + numbers are
+// in shared/lasso.js (the holder's client runs them on the body, the server checks them)
+WEAPONS.lasso = {
+  slot: 'secondary', kind: 'lasso', name: 'Lasso', color: '#e0b070',
+  desc: 'Hold to spin the loop, let go to throw. Catch someone and they swing on your rope: wheel (or R / F) reels it in and out. Long rope, shake them side to side, walk backwards and flick round: click to let go and they fly. Walls and floors hurt.',
+};
+// the loop in flight: a server projectile like any other (it decides who it catches)
+WEAPONS.loop = { slot: 'hidden', kind: 'loop', name: 'Lasso', color: '#e0b070', speed: 30, grav: 6, r: 0.55, life: 4 };
+ORDER.push('lasso'); // ORDER was taken before these: the loadout, viewmodels and cosmetics list come from it
+FLAGS.LASSO = 1 << 20; // set in your snapshots while you spin the loop overhead (everyone sees it, killcams too)
