@@ -75,7 +75,7 @@ export const quests = {
   lab_soup: {
     id: 'lab_soup', title: 'SOUP TEST', giver: 'lumps', act: 1, kind: 'main', blurb: 'auntie needs the red soup. the interns want it too.',
     steps: [
-      { id: 'pot', text: 'grab the soup pot', goal: { type: 'pickup', item: 'soup_pot', zone: 'lab:pot', marker: 'lab:pot' } },
+      { id: 'pot', text: 'grab the soup pot', do: ['log:lumps|lumps asked you for soup. the red kind.'], goal: { type: 'pickup', item: 'soup_pot', zone: 'lab:pot', marker: 'lab:pot' } },
       { id: 'interns', text: 'deal with the interns', any: true, goals: [
         { type: 'kill', kind: 'dummy', n: 2, text: 'bonk 2 interns' },
         { type: 'flag', flag: 'bribedGordo', text: 'or pay wee gordo to call them off', marker: 'gordo', to: 'sneak' },
@@ -84,7 +84,8 @@ export const quests = {
         fail: { type: 'flag', flag: 'soupSpilled' }, goal: { type: 'deliver', item: 'soup_pot', to: 'auntie' }, next: 'end:fought' },
       { id: 'sneak', text: 'sneak the soup to auntie', goal: { type: 'deliver', item: 'soup_pot', to: 'auntie' }, next: 'end:bribed' },
     ],
-    ends: { fought: { grade: 'EXCEEDS EXPECTATIONS', do: ['flag:soupHero'] }, bribed: { grade: 'MEETS EXPECTATIONS', do: ['flag:soupDeal'] } },
+    ends: { fought: { grade: 'EXCEEDS EXPECTATIONS', do: ['flag:soupHero', 'log:auntie|you fought the interns for the soup. auntie wrote it down.'] },
+      bribed: { grade: 'MEETS EXPECTATIONS', do: ['flag:soupDeal', 'log:gordo|you paid wee gordo to call off the interns. he remembers.'] } },
     reward: { coupons: 300, flags: ['lab_done'], standing: { bottom: 5 }, codex: ['frag.option_c_2'] },
     scenes: { start: 'lab_panels', end: 'lab_moment' },
   },
@@ -103,4 +104,47 @@ export const codex = {
   'char.clerk': { kind: 'char', title: 'TEMP #22', text: 'a temp. the smile is painted on.' },
 };
 
-export const scenes = {};
+// one scene of each kind (DESIGN §8.1). marks are lab offsets like the npc homes. 'ot' is a stand-in for mr. overtime
+// (his real model is the boss lane's, WP9)
+const OT_CARD = { name: 'MR. OVERTIME', job: 'HEAD OF TIMEKEEPING', sub: 'has never been late. has never left.', color: '#ff3030', target: 'ot' };
+export const scenes = {
+  lab_cine: {
+    id: 'lab_cine', kind: 'cinematic', skip: true, len: 27, title: 'CLOCKING IN (lab cut)',
+    cast: { lumps: {}, gordo: {}, auntie: {}, ot: { look: 'mannequin', name: 'MR. OVERTIME', at: [0, 0, 30], face: Math.PI, scale: 2.4, voice: { kind: 'dialtone', pitch: 1 } } },
+    tracks: [
+      { t: 0, cam: { shot: 'wide', target: 'lumps', dur: 5, fov: 50 }, face: ['lumps', 'sad'], anim: ['lumps', 'cry'] },
+      { t: 0.6, say: ['lumps', '*sniff*'] },
+      { t: 3, fx: 'clocksStop', sfx: 'tick_loud', shake: 0.15 },
+      { t: 3.4, cam: { shot: 'closeup', target: 'auntie', dur: 2.5 }, face: ['auntie', 'shock'] },
+      { t: 3.6, say: ['auntie', 'the clocks stopped.'] },
+      { t: 5.6, move: ['ot', [[0, 0, 22], [0, 0, 18]], 1.3], cam: { shot: 'lowAngle', target: 'ot', dur: 5, fov: 38 }, shake: 0.3 },
+      { t: 6.4, sfx: 'clunk', shake: 0.35 }, { t: 7.6, sfx: 'clunk', shake: 0.35 }, { t: 8.8, sfx: 'clunk', shake: 0.35 },
+      { t: 10.6, cam: { shot: 'closeup', target: 'ot', dur: 4, fov: 40 } },
+      { t: 10.8, say: ['ot', 'the bottom. two hundred and forty-four quarters of back pay. i\'m here to collect.'] },
+      { t: 16, cam: { shot: 'dolly', target: 'lumps', dur: 3.5 }, face: ['lumps', 'angry'], move: ['lumps', [[-1, 0, 15]], 1.6] },
+      { t: 17.2, anim: ['lumps', 'flex'], say: ['lumps', 'no.'] },
+      { t: 19.4, cam: { shot: 'two', target: 'ot', from: 'lumps', dur: 3 } },
+      { t: 19.8, say: ['ot', 'that\'s against policy.'] },
+      { t: 21.8, anim: ['ot', 'point'], hitstop: 0.14, impact: 'red', shake: 0.8, sfx: 'splut' },
+      { t: 22.4, cam: { shot: 'closeup', target: 'gordo', dur: 2 }, face: ['gordo', 'grin'], say: ['gordo', 'oh good. a fight.'] },
+      { t: 24.4, boss: OT_CARD },
+    ],
+    onEnd: ['flag:sawClockingIn', 'log:lumps|a tall man with a clipboard came to collect. lumps said no.'],
+  },
+  lab_panels: {
+    id: 'lab_panels', kind: 'panels', skip: true, title: 'SOUP TEST',
+    panels: [
+      { shot: { target: 'lumps', shot: 'closeup' }, face: ['lumps', 'grin'], anim: ['lumps', 'hold', 1], cap: 'the soup run.', say: ['lumps', 'red soup. the good kind.'] },
+      { shot: { target: 'gordo', shot: 'extreme' }, face: ['gordo', 'squint'], say: ['gordo', 'he means steal a pot. and watch out for interns.'] },
+      { shot: { target: 'auntie', shot: 'low' }, face: ['auntie', 'angry'], cap: 'meanwhile, auntie got hungry.', sfx: 'GRRRMBL' },
+    ],
+  },
+  lab_talk: { id: 'lab_talk', kind: 'talk', talk: { npc: 'dale', node: 'start' } },
+  lab_boss: { id: 'lab_boss', kind: 'boss', cast: { ot: { look: 'mannequin', name: 'MR. OVERTIME', at: [3, 0, 20], face: Math.PI, scale: 2.4 } }, boss: { ...OT_CARD, rehired: false } },
+  lab_rehired: { id: 'lab_rehired', kind: 'boss', cast: { ot: { look: 'mannequin', name: 'MR. OVERTIME', at: [3, 0, 20], face: Math.PI, scale: 2.4 } }, boss: { ...OT_CARD, rehired: true } },
+  lab_moment: {
+    id: 'lab_moment', kind: 'moment', len: 2.6, target: 'lumps',
+    tracks: [{ t: 0, slowmo: [0.35, 1.8], anim: ['lumps', 'flex'], face: ['lumps', 'grin'], fx: 'confetti', at: 'lumps', sfx: 'ding' }, { t: 0.05, impact: 'white' }],
+  },
+  lab_recap: { id: 'lab_recap', kind: 'recap', skip: true },
+};

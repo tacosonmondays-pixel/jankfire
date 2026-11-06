@@ -1,0 +1,123 @@
+/* OVERDUE story UI: the talk box, portraits, quest tracker, waypoints, cards, the codex, cutscene bars and panels.
+   Loaded only in story mode (public/js/story/boot.js). The zine look: Comic Neue, dark purple-black slabs, pink rims,
+   hard offset cyan shadows, yellow keys. Slabs get organic() lumpy outlines (organic.js). */
+#stLayer { position: fixed; inset: 0; pointer-events: none; z-index: 40; font-family: var(--font, 'Comic Neue', cursive); font-weight: 700; color: #fff; }
+#stLayer .hidden { display: none !important; }
+body.st-cine #hud > :not(#toast) { opacity: 0 !important; transition: opacity 0.3s; }
+body.st-talk #crosshair, body.st-talk #hitmarker, body.st-talk #hotbar, body.st-talk #ammo, body.st-talk #streakTray, body.st-talk #weaponName, body.st-talk #center, body.st-talk #speed { opacity: 0 !important; }
+
+/* ---- prompt */
+#stPrompt { position: absolute; left: 50%; top: 60%; transform: translateX(-50%) rotate(-1deg); font-size: 17px; letter-spacing: 1px; text-shadow: 2px 2px 0 #000; }
+#stPrompt b { display: inline-block; min-width: 22px; padding: 0 5px; margin-right: 6px; text-align: center; color: #000; background: #ffe14d; border: 2px solid #000; box-shadow: 3px 3px 0 #ff4fd8; text-shadow: none; }
+
+/* ---- the talk box */
+#stTalk { position: absolute; left: 50%; bottom: 46px; transform: translateX(-50%); width: min(860px, 92vw); display: flex; align-items: flex-end; gap: 14px; }
+#stTalk .st-port { flex: 0 0 auto; width: 168px; height: 168px; position: relative; transform: rotate(-2.5deg); margin-bottom: 10px;
+  --fill: #2a1638; --rim: #ffe14d; --shd: #ff4fd8; }
+#stTalk .st-port canvas { position: absolute; inset: 9px; width: calc(100% - 18px); height: calc(100% - 18px); border-radius: 3px; }
+#stTalk .st-port.you canvas { filter: saturate(0.5); }
+#stTalk .st-box { flex: 1 1 auto; position: relative; padding: 26px 24px 12px; min-height: 120px; --fill: rgba(18, 8, 24, 0.94); --rim: #ff4fd8; --shd: #4fd8ff; }
+#stTalk .st-name { position: absolute; left: 18px; top: -18px; display: flex; align-items: baseline; gap: 8px; z-index: 2; }
+#stTalk .st-name b { font-size: 20px; color: #000; background: #ffe14d; border: 3px solid #000; box-shadow: 4px 4px 0 #ff4fd8; padding: 1px 10px; transform: rotate(-2deg); letter-spacing: 1px; }
+#stTalk .st-name b.you { background: #4fd8ff; box-shadow: 4px 4px 0 #000; }
+#stTalk .st-name span { font-size: 14px; color: #4fd8ff; text-shadow: 2px 2px 0 #000; }
+#stTalk .st-text { font-size: 20px; line-height: 1.35; min-height: 54px; }
+#stTalk .st-text.act { color: #c9b8d8; font-style: italic; }
+#stTalk .st-text.you { color: #bff2ff; }
+#stTalk .st-opts { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; pointer-events: auto; }
+#stTalk .st-opt { align-self: flex-start; font-size: 17px; color: #000; background: #fff; border: 3px solid #000; box-shadow: 3px 3px 0 #000; padding: 3px 12px 3px 4px; cursor: pointer; }
+#stTalk .st-opt:nth-child(odd) { transform: rotate(-0.6deg); } #stTalk .st-opt:nth-child(even) { transform: rotate(0.5deg); }
+#stTalk .st-opt:hover { background: #ffe14d; box-shadow: 3px 3px 0 #ff4fd8; }
+#stTalk .st-opt i { font-style: normal; display: inline-block; width: 22px; margin-right: 8px; text-align: center; background: #ff4fd8; color: #000; border: 2px solid #000; }
+#stTalk .st-opt.new::after { content: '!'; margin-left: 8px; color: #ff3030; }
+#stTalk .st-hint { text-align: right; font-size: 12px; color: #aaa; margin-top: 6px; }
+#stTalk .st-hint b { color: #ffe14d; }
+
+/* ---- quest tracker (top right) + timer */
+#stQuest { position: absolute; right: 18px; top: 92px; width: 290px; padding: 12px 14px 10px; transform: rotate(0.8deg); --fill: rgba(18, 8, 24, 0.88); --rim: #ff4fd8; --shd: #4fd8ff; }
+#stQuest .q-title { font-size: 15px; color: #ffe14d; letter-spacing: 1px; text-shadow: 2px 2px 0 #000; }
+#stQuest .q-title i { font-style: normal; color: #ff4fd8; margin-right: 6px; }
+#stQuest .q-step { font-size: 16px; margin-top: 4px; }
+#stQuest .q-goal { font-size: 14px; color: #d8c8e8; margin-top: 3px; padding-left: 14px; position: relative; }
+#stQuest .q-goal::before { content: '▢'; position: absolute; left: 0; color: #4fd8ff; }
+#stQuest .q-goal.done { color: #7dff4f; text-decoration: line-through; }
+#stQuest .q-goal.done::before { content: '☑'; color: #7dff4f; }
+#stQuest .q-timer { font-size: 22px; color: #ff3030; text-shadow: 2px 2px 0 #000; margin-top: 4px; }
+#stQuest .q-more { font-size: 12px; color: #9a88aa; margin-top: 6px; }
+#stQuest.flash { animation: stFlash 0.5s 2; }
+@keyframes stFlash { 50% { transform: rotate(0.8deg) scale(1.06); } }
+
+/* ---- waypoints */
+.st-wp { position: absolute; transform: translate(-50%, -100%); text-align: center; font-size: 13px; text-shadow: 2px 2px 0 #000; white-space: nowrap; }
+.st-wp .pin { display: inline-block; width: 26px; height: 26px; line-height: 22px; background: #ffe14d; color: #000; border: 3px solid #000; box-shadow: 3px 3px 0 #ff4fd8; transform: rotate(45deg); }
+.st-wp .pin b { display: inline-block; transform: rotate(-45deg); }
+.st-wp.off .pin { background: #ff4fd8; box-shadow: 3px 3px 0 #000; }
+.st-wp .d { display: block; margin-top: 4px; color: #ffe14d; }
+
+/* ---- big cards: mission start / end, step done, codex found */
+.st-card { position: absolute; left: 50%; top: 24%; transform: translate(-50%, -50%) rotate(-3deg); text-align: center; padding: 18px 40px 16px; --fill: rgba(18, 8, 24, 0.95); --rim: #ffe14d; --shd: #ff4fd8; animation: stSlam 0.35s cubic-bezier(.2, 1.6, .4, 1) both; }
+.st-card .k { font-size: 18px; color: #4fd8ff; letter-spacing: 3px; text-shadow: 2px 2px 0 #000; }
+.st-card .t { font-size: 54px; color: #ffe14d; letter-spacing: 2px; text-shadow: 4px 4px 0 #ff4fd8, 7px 7px 0 #000; line-height: 1.05; }
+.st-card .s { font-size: 18px; margin-top: 6px; color: #fff; }
+.st-card .grade { display: inline-block; margin-top: 10px; font-size: 26px; color: #000; background: #7dff4f; border: 3px solid #000; box-shadow: 4px 4px 0 #000; padding: 2px 14px; transform: rotate(4deg); }
+.st-card.fail .t { color: #ff3030; text-shadow: 4px 4px 0 #000; }
+.st-card.out { animation: stOut 0.4s ease-in both; }
+@keyframes stSlam { from { transform: translate(-50%, -50%) rotate(-12deg) scale(2.4); opacity: 0; } }
+@keyframes stOut { to { transform: translate(-50%, -80%) rotate(4deg) scale(0.7); opacity: 0; } }
+.st-toast { position: absolute; right: 18px; top: 50%; padding: 8px 14px; font-size: 15px; transform: rotate(-1deg); --fill: rgba(18, 8, 24, 0.94); --rim: #4fd8ff; --shd: #ff4fd8; animation: stSlide 0.3s ease-out both; max-width: 320px; }
+.st-toast b { color: #ffe14d; }
+@keyframes stSlide { from { transform: translateX(120%) rotate(-1deg); } }
+
+/* ---- codex (J) */
+#stCodex { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-0.5deg); width: min(820px, 92vw); height: min(560px, 82vh); display: flex; flex-direction: column; padding: 18px 22px; pointer-events: auto;
+  --fill: rgba(18, 8, 24, 0.96); --rim: #ff4fd8; --shd: #4fd8ff; }
+#stCodex h2 { margin: 0 0 8px; font-size: 30px; color: #ffe14d; text-shadow: 3px 3px 0 #ff4fd8; }
+#stCodex .tabs { display: flex; gap: 8px; margin-bottom: 10px; }
+#stCodex .tabs span { font-size: 15px; color: #000; background: #fff; border: 3px solid #000; box-shadow: 3px 3px 0 #000; padding: 2px 10px; cursor: pointer; }
+#stCodex .tabs span.on { background: #ffe14d; box-shadow: 3px 3px 0 #ff4fd8; }
+#stCodex .list { overflow-y: auto; flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; align-content: start; padding: 4px 8px 4px 2px; }
+#stCodex .ent { background: #2a1638; border: 3px solid #000; box-shadow: 4px 4px 0 #000; padding: 8px 10px; font-size: 14px; line-height: 1.3; color: #e8d8f0; }
+#stCodex .ent b { display: block; font-size: 16px; color: #4fd8ff; margin-bottom: 3px; }
+#stCodex .ent.frag { background: #f4f0e0; color: #222; transform: rotate(0.7deg); font-family: Georgia, serif; font-weight: 400; }
+#stCodex .ent.frag b { color: #c0202a; font-family: var(--font); font-weight: 700; }
+#stCodex .ent.lock { color: #6a587a; } #stCodex .ent.lock b { color: #6a587a; }
+#stCodex .foot { font-size: 12px; color: #9a88aa; margin-top: 8px; text-align: right; }
+
+/* ---- cutscenes: letterbox bars, subtitles, skip ring, fades, impact frames */
+#stBars::before, #stBars::after { content: ''; position: absolute; left: 0; right: 0; height: 0; background: #ff4fd8; transition: height 0.45s ease; box-shadow: 0 0 0 3px #000; }
+#stBars::before { top: 0; } #stBars::after { bottom: 0; }
+#stBars.on::before, #stBars.on::after { height: 11vh; }
+#stBars { position: absolute; inset: 0; }
+#stSub { position: absolute; left: 50%; bottom: 13vh; transform: translateX(-50%); text-align: center; max-width: 76vw; font-size: 24px; line-height: 1.3; text-shadow: 3px 3px 0 #000, -1px -1px 0 #000; }
+#stSub b { display: inline-block; font-size: 16px; color: #000; background: #ffe14d; border: 2px solid #000; padding: 0 8px; margin-bottom: 4px; transform: rotate(-2deg); text-shadow: none; }
+#stSub.act span { color: #d8c8e8; font-style: italic; }
+#stSkip { position: absolute; right: 26px; bottom: 13vh; font-size: 13px; color: #fff; text-shadow: 2px 2px 0 #000; display: flex; align-items: center; gap: 8px; opacity: 0.8; }
+#stSkip svg { width: 30px; height: 30px; }
+#stSkip b { color: #000; background: #ffe14d; border: 2px solid #000; padding: 0 5px; }
+#stFade { position: absolute; inset: 0; background: #000; opacity: 0; }
+#stImpact { position: absolute; inset: 0; opacity: 0; mix-blend-mode: normal; }
+#stTitle { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); text-align: center; }
+
+/* ---- boss title card */
+#stBoss { position: absolute; inset: 0; overflow: hidden; }
+#stBoss .band { position: absolute; left: -5%; right: -5%; top: 50%; height: 36vh; transform: translateY(-50%) rotate(-4deg); background: #000; border-top: 6px solid var(--bc, #ff3030); border-bottom: 6px solid var(--bc, #ff3030); box-shadow: 0 14px 0 #ffe14d; }
+#stBoss .speed { position: absolute; inset: 0; background: repeating-linear-gradient(-4deg, transparent 0 22px, rgba(255, 255, 255, 0.07) 22px 26px); }
+#stBoss .name { position: absolute; left: 9%; top: 41%; font-size: clamp(48px, 9vw, 128px); color: #ffe14d; letter-spacing: 3px; transform: rotate(-4deg); text-shadow: 6px 6px 0 var(--bc, #ff3030), 10px 10px 0 #000; line-height: 0.95; white-space: nowrap; }
+#stBoss .job { position: absolute; left: 10%; top: 34%; font-size: clamp(16px, 2.2vw, 30px); color: #000; background: var(--bc, #ff3030); padding: 2px 14px; transform: rotate(-4deg); letter-spacing: 4px; border: 3px solid #000; }
+#stBoss .sub { position: absolute; left: 12%; top: 61%; font-size: clamp(16px, 2vw, 26px); color: #fff; transform: rotate(-4deg); font-style: italic; text-shadow: 2px 2px 0 #000; }
+#stBoss .stamp { position: absolute; right: 10%; top: 26%; font-size: 64px; color: #ff3030; border: 7px solid #ff3030; padding: 0 16px; transform: rotate(14deg); opacity: 0.92; letter-spacing: 4px; }
+
+/* ---- comic panels + recap */
+#stPanels { position: absolute; inset: 0; background: #120818; }
+#stPanels .halftone { position: absolute; inset: 0; background-image: radial-gradient(rgba(255, 79, 216, 0.22) 1.6px, transparent 1.8px); background-size: 9px 9px; }
+#stPanels .pnl { position: absolute; background: #000; border: 6px solid #fff; box-shadow: 9px 9px 0 #4fd8ff, 9px 9px 0 3px #000; overflow: hidden; animation: stPanel 0.28s cubic-bezier(.2, 1.5, .4, 1) both; }
+#stPanels .pnl canvas { width: 100%; height: 100%; display: block; }
+#stPanels .pnl .dots { position: absolute; inset: 0; background-image: radial-gradient(rgba(0, 0, 0, 0.35) 1.2px, transparent 1.5px); background-size: 6px 6px; mix-blend-mode: multiply; }
+#stPanels .cap { position: absolute; left: 8px; top: 8px; max-width: 70%; background: #ffe14d; color: #000; border: 3px solid #000; padding: 3px 8px; font-size: 15px; line-height: 1.2; transform: rotate(-1.5deg); box-shadow: 3px 3px 0 #000; }
+#stPanels .cap.crayon { background: #f4f0e0; font-family: 'Comic Neue', cursive; color: #c0202a; font-size: 17px; transform: rotate(1.2deg); }
+#stPanels .bub { position: absolute; background: #fff; color: #000; border: 3px solid #000; border-radius: 22px; padding: 6px 12px; font-size: 16px; line-height: 1.2; max-width: 60%; box-shadow: 3px 3px 0 #000; }
+#stPanels .bub::after { content: ''; position: absolute; bottom: -14px; left: 26px; border: 8px solid transparent; border-top: 12px solid #000; }
+#stPanels .sfx { position: absolute; font-size: 54px; color: #ffe14d; -webkit-text-stroke: 3px #000; text-shadow: 5px 5px 0 #ff4fd8; transform: rotate(-12deg); letter-spacing: 2px; animation: stSfx 0.3s cubic-bezier(.2, 2, .4, 1) both; }
+#stPanels .rtitle { position: absolute; left: 50%; top: 6%; transform: translateX(-50%) rotate(-2deg); font-size: 40px; color: #ffe14d; text-shadow: 4px 4px 0 #ff4fd8, 7px 7px 0 #000; white-space: nowrap; }
+@keyframes stPanel { from { transform: var(--tf) scale(1.6); opacity: 0; } to { transform: var(--tf); } }
+@keyframes stSfx { from { transform: rotate(-30deg) scale(3); opacity: 0; } }

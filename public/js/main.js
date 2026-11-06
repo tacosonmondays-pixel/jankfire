@@ -85,6 +85,10 @@ import { containerPic, playContainer, stopContainer } from './crate3d.js'; // co
 import { hubTabs } from './hub.js'; // the CUSTOMIZE hub's tabs (loadout / weapons / character / grapple & spray)
 import { initCustomize, czMode, czOpen, czClose, czFrame, czKill, czLate, czRefresh, czRolled, resolveRand, wantSkins, myFavs } from './customize.js'; // the weapon customize screen (replaces COSMETICS)
 import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, zmModelsLoaded } from './zombies.js';
+// OVERDUE story mode (WP8): only with ?story=1 or localStorage jfStory=1. without the flag nothing loads and every hook below is a no-op
+const STORY_ON = /[?&]story=1\b/.test(location.search) || (() => { try { return localStorage.getItem('jfStory') === '1'; } catch { return false; } })();
+let story = null;
+if (STORY_ON) import('./story/boot.js').then((m) => { story = m; return m.init(); }).catch((e) => console.error('story mode failed to load', e));
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
@@ -1040,6 +1044,7 @@ addEventListener('keydown', (e) => {
 // a key or a mouse button went down in game. every check goes through the bindings (keys.js), so any action works on either
 function pressed(e) {
   if ((RP.active || G.killcamPending) && K.matches('skip', e)) { e.preventDefault(); skipReplay(); return; }
+  if (story && story.key(e)) { e.preventDefault(); return; } // story mode: talk, pick up, cutscene skip, the codex
   if (esKey(e, VOTES.findIndex((a) => K.matches(a, e)))) { e.preventDefault(); return; } // end screen: the vote keys win over any game action on the same key, arrows switch tabs
   if (brKey(e)) return; // jank royale: F pick up, H heal, space spectates the next one
   if (loreKey(e, canUse(G.round, ME.pos))) { e.preventDefault(); return; } // the use key next to a hidden NPC / cat (not where it plants, defuses or buys), 1-3 answer in a chat
@@ -1111,6 +1116,7 @@ addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== canvas) return;
   if (performance.now() < (G.spinUntil || 0)) return; // the aimbot has the wheel
   if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor: no looking around either
+  if (story && story.locked()) return; // story mode: talking / a cutscene has the camera
   const s = 0.0022 * S.sens * (W.aim > 0.5 ? S.adsSens / W.zoom : 1);
   const mx = e.movementX, my = e.movementY;
   // Chrome's pointer lock sometimes reports one giant fake jump (often the wrong way) when you move far or fast.
@@ -1809,7 +1815,7 @@ function frame(t) {
   if (G.joined) {
     const frozen = now < (ME.frozenUntil || 0) || now < (ME.quizUntil || 0) || secFrozen(now); // (pens down: no walking out of a pop quiz; tased, paused, jailed)
     if (frozen) { ME.vel[0] = 0; ME.vel[2] = 0; if (ME.hook) releaseHook(); }
-    const playing = $('menu').classList.contains('hidden') && !chatOpen && now >= (ME.sleepUntil || 0) && !RP.active && !G.using && !frozen;
+    const playing = $('menu').classList.contains('hidden') && !chatOpen && now >= (ME.sleepUntil || 0) && !RP.active && !G.using && !frozen && !(story && story.locked());
     const inp = playing ? {
       f: K.isDown('forward'), b: K.isDown('back'), l: K.isDown('left'), r: K.isDown('right'), jump: K.isDown('jump'), jumpPressed,
       sprint: K.isDown('sprint'),
@@ -2023,6 +2029,7 @@ function frame(t) {
   updateCrosses(dt, RP.active ? (RP.sp || 1) * (RP.dt != null && dt > 0 ? RP.dt / dt : 1) : 1); // after the projectile loop + replay: it turns blood bolts nose-first
   G.vmScene.visible = G.joined && !RP.active && !specCam && !asleep && !econHideVM();
   if (ballOn(now)) G.vmScene.visible = false; // weapons are holstered inside the ball
+  if (story) story.frame(dt, now, cam); // story mode: actors, quests, the talk cam, cutscenes
   renderFrame();
   if ((screen === 'character' || (screen === 'main' && heroTick(dt))) && !$('menu').classList.contains('hidden')) renderPreview(heroDt || dt); // (grapple & spray has no weapon preview any more)
   if (screen === 'cosmetics' && !$('menu').classList.contains('hidden')) renderGrapplePreview(dt);
