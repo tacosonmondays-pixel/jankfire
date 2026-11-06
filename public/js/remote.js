@@ -224,7 +224,8 @@ export class Remote {
     if ((this.f & FLAGS.BALL) && this.alive) return ballBoxes(this.pos, this.distScale || 1); // a wrecking ball is one big ball
     const k = (this.distScale || 1);
     if (this.rigOn) return rigBoxes(this.pos, k); // the overdrive rig is a much bigger target
-    const boxes = this.nap && this.napK > 0.5 ? this.napBoxes() : playerBoxes(this.pos);
+    let boxes = this.nap && this.napK > 0.5 ? this.napBoxes() : playerBoxes(this.pos);
+    if (this.zmBig) boxes = [boxes[0], { min: [this.pos[0] - 0.75, this.pos[1] + 1.45, this.pos[2] - 0.75], max: [this.pos[0] + 0.75, this.pos[1] + 2.9, this.pos[2] + 0.75], head: true }]; // zombies BIG HEAD MODE (zmextra.js)
     if (k === 1) return boxes;
     const [x, y, z] = this.pos;
     return boxes.map((b) => ({
