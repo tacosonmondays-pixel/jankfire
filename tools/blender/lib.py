@@ -796,3 +796,75 @@ def clone_scaled(objs, k, suffix='_s'):
         c.parent = None
         out.append(c)
     return out
+
+
+# ------------------------------------------------------------ round 4: map props (the game instances them)
+def bake_ao(objs, dist=0.6, samples=24, floor=True, lo=0.45):
+    """bake ambient occlusion into a vertex colour layer 'AO' on each mesh (exported as COLOR_0: the game multiplies it
+    in, like the map's baked box AO), with a ground plane under the prop for the contact shade. Only objs and the
+    ground are seen by the bake (everything else is hidden from render meanwhile), so several props can share a
+    scene. Values are remapped to lo..1 (never pitch black, like the map's AO)."""
+    sc = bpy.context.scene
+    prev, prev_target = sc.render.engine, sc.render.bake.target
+    sc.render.engine = 'CYCLES'; sc.cycles.device = 'CPU'; sc.cycles.samples = samples
+    sc.world = sc.world or bpy.data.worlds.new('jf_world')
+    sc.world.light_settings.distance = dist
+    sc.render.bake.target = 'VERTEX_COLORS'  # (blender 4.0: the bake op's own target argument isn't enough)
+    objs = [o for o in objs if o is not None and o.type == 'MESH']
+    hidden = [o for o in sc.objects if o.type == 'MESH' and o not in objs and not o.hide_render]
+    for o in hidden: o.hide_render = True
+    ground = box((400, 0.02, 400), pos=(0, -0.0105, 0), m=mat('jf_ao_floor', 0x808080), name='jf_ao_floor') if floor else None
+    for o in objs:
+        apply_mods(o)  # (the layer has to match the mesh the bake sees)
+        me = o.data
+        for c in list(me.color_attributes): me.color_attributes.remove(c)
+        ca = me.color_attributes.new('AO', 'BYTE_COLOR', 'CORNER')
+        me.color_attributes.active_color = ca
+        for s in bpy.context.view_layer.objects.selected: s.select_set(False)
+        o.select_set(True); bpy.context.view_layer.objects.active = o
+        bpy.ops.object.bake(type='AO', target='VERTEX_COLORS')
+        for d in ca.data:
+            v = lo + (1 - lo) * d.color[0]
+            d.color = (v, v, v, 1.0)
+    if ground: bpy.data.objects.remove(ground, do_unlink=True)
+    for o in hidden: o.hide_render = False
+    sc.render.engine, sc.render.bake.target = prev, prev_target
+    return objs
+
+
+def lod_decimate(objs, ratio=0.12, name='lod1_mesh'):
+    """the far LOD of hard-surface parts: joined copies of objs, collapsed to ~ratio of the triangles (keeps their
+    materials + UVs). Trees and other soft shapes look better with a hand-made silhouette instead."""
+    cp = [dup(o) for o in objs if o is not None]
+    j = join(cp, name)
+    md = j.modifiers.new('jf_dec', 'DECIMATE'); md.ratio = ratio; md.use_collapse_triangulate = True
+    apply_mods(j)
+    return j
+
+
+def prop_finish(file_id, lod0, lod1, meta):
+    """a round-4 map prop: lod0 parts under the root (what you see up close; it casts the shadows), lod1 parts under an
+    empty called 'lod1' (the far one). meta goes on the root as jf (kind 'prop', size = the box version's extent at the
+    reference parameters, tint, lod = the switch distance in metres...)."""
+    meta = dict(meta); meta.setdefault('kind', 'prop')
+    root = finish(file_id, lod0, meta)
+    if lod1:
+        e = _link(bpy.data.objects.new('lod1', None)); e.parent = root
+        for p in lod1:
+            apply_mods(p)
+            p.parent = e
+    return root
+
+
+def prop_stats(root):
+    """triangles per LOD + the lod0 extent (game axes), printed as JF_PROP"""
+    dg = bpy.context.evaluated_depsgraph_get()
+    t0 = t1 = 0
+    for o in root.children_recursive:
+        if o.type != 'MESH': continue
+        me = o.evaluated_get(dg).to_mesh(); me.calc_loop_triangles(); n = len(me.loop_triangles); o.evaluated_get(dg).to_mesh_clear()
+        far = any(p.name == 'lod1' for p in [o.parent, getattr(o.parent, 'parent', None)] if p is not None)
+        if far: t1 += n
+        else: t0 += n
+    print(f'JF_PROP {root.name}: lod0 {t0} tris, lod1 {t1} tris')
+    return t0, t1
