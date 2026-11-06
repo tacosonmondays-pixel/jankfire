@@ -390,3 +390,46 @@ ITEMS.quiz = { name: 'Pop Quiz', desc: 'A calculator you throw. Whoever it hits 
 // yourself makes any flash last nvMul x longer
 export const NVG = { range: 34, cone: 0.62, dur: [0.6, 3.2], nvMul: 2, toggle: 0.35 };
 ITEMS.nvg = { name: 'Night Vision Goggles', desc: 'G puts them on: the dark goes green and people glow. While they\'re on, H flashes everyone you can see. Flashes blind you twice as long while you wear them.', charges: 2, recharge: 14, color: '#3dff8a' };
+
+// ------------------------------------------------------------ new secondaries + the speed trap (server half: server/secondaries.js,
+// client half: public/js/secondaries.js). everything here is the server's say: soaks, stuns, pauses, rewinds, readings, cages
+// server-owned states everyone sees in snapshots (the server sets them; a client can't claim any of them)
+Object.assign(FLAGS, { SOAK: 1 << 18, STUN: 1 << 19, PAUSE: 1 << 20, JAIL: 1 << 21, TICKET: 1 << 22, RADAR: 1 << 23 });
+// water pistol: a plain hitscan squirt gun (mag = the tank). every squirt that lands soaks them for soak.dur s: they move at
+// soak.slow x speed, grip x friction (they slide about), fire goes out, and tasers chain through them
+WEAPONS.water = {
+  slot: 'secondary', kind: 'hitscan', name: 'Water Pistol', color: '#3fb8ff',
+  desc: 'A big plastic squirt gun. Whoever it hits gets soaked: they drip, slip a bit and slow down for a few seconds. Puts out fire. Makes tasers a lot worse.',
+  auto: true, rate: 9, mag: 40, reload: 1.6, dmg: 3, head: 1.3, spread: 0.03, kb: 0.6, kbUp: 0, recoil: 0, kick: 0.002, range: 26,
+  water: true, soak: { dur: 4, slow: 0.72, grip: 0.3 },
+  ads: { zoom: 1.2, spread: 0.5, p: [0, -0.1, -0.3] },
+};
+// taser: darts on wires, short range. range m, cone = aim slack (rad) the server allows around where you pointed, stun s,
+// dmg. wet: a soaked target's stun x this. chain: from every zapped soaked person to every soaked person within chainR m
+// (line of sight), up to chainMax people, each stunned chainStun s for chainDmg. self: s you stun yourself if you fire it wet
+WEAPONS.taser = {
+  slot: 'secondary', kind: 'zap', name: 'Taser', color: '#e8ff3a',
+  desc: 'Two darts on wires. Whoever they hit is stunned for a second. Wet people conduct: it jumps through everyone soaked nearby. Don\'t fire it wet.',
+  cd: 1.25, range: 9, cone: 0.16, stun: 1.0, dmg: 18, wet: 1.5, chainR: 9, chainMax: 8, chainStun: 1.0, chainDmg: 12, self: 0.4, speedMul: 1.05,
+};
+// tv remote: left click PAUSE (frozen dur s, momentum comes back when it ends), right click REWIND (snapped back to where the
+// server saw them back s ago). each has its own cooldown. range m, cone = aim slack (rad). rig: what an overdrive rig takes
+WEAPONS.remote = {
+  slot: 'secondary', kind: 'remote', name: 'TV Remote', color: '#ff5a8a',
+  desc: 'Point and click. Left click PAUSES them for a second. Right click REWINDS them to where they were 2 seconds ago. Batteries not included.',
+  range: 45, cone: 0.09, pause: { dur: 1.2, cd: 3.5, rig: 0.5 }, rewind: { back: 2, cd: 6 }, speedMul: 1.05,
+};
+ORDER.push('water', 'taser', 'remote'); // (ORDER was taken before these were added: the loadout picker + viewmodels walk it)
+// kill-feed tags (not guns): jailed people are on the speed trap, a chained zap is still the taser
+WEAPONS.radar = { slot: 'item', kind: 'radar', name: 'Speed Trap', color: '#2e7bff' }; // slot item: the radar gun wears skins (COSMETICS)
+ORDER.push('radar');
+// speed trap (item, hold G): a reading every scan s of whoever is under your crosshair within range m (cone rad of slack),
+// in km/h from the server's own positions over the last window s. over limit: TICKET, they get warn s to get back under
+// it (warning only) or they're jailed. at jail or more: jailed on the spot. jailed = a cage for jailT s (no moving, no
+// shooting, everyone sees it). safe: s before the same person can be ticketed again after a jail (warnSafe after a warning).
+// a ticket costs a charge, a reading is free. rigJail: s an overdrive rig takes to rip the cage open
+export const SPEED = { range: 70, cone: 0.1, scan: 0.15, window: 0.5, limit: 100, jail: 200, warn: 3, jailT: 3.5, safe: 12, warnSafe: 4, rigJail: 1 };
+ITEMS.radar = { w: 'radar', name: 'Speed Trap', desc: 'Hold G to point a radar gun at someone and read their speed. Over 100 km/h they get 3 seconds to slow down or they\'re jailed. Over 200 they\'re jailed on the spot.', charges: 2, recharge: 16, color: '#2e7bff' };
+ITEM_ORDER.push('radar');
+// km/h from metres per second (what the radar shows)
+export const kmh = (ms) => Math.round(ms * 3.6);

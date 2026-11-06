@@ -24,6 +24,7 @@ import { rigFire, rigItem, rigVM, rigBlockKey, rigReload } from './rig.js'; // o
 import { tickScalesVM } from './scales.js';
 import { PARRY } from '/shared/weapons.js';
 import { ROYAL } from '/shared/looks.js';
+import { secFireDown, secShot } from './secondaries.js'; // taser, tv remote, water pistol streams
 
 export const W = {
   slots: [DEFAULT_LOADOUT.primary, DEFAULT_LOADOUT.secondary, DEFAULT_LOADOUT.melee],
@@ -472,6 +473,8 @@ const VM = {
 // behind, the thumb hides the finger)
 VM.bloodcross = { p: [0.165, -0.17, -0.33], r: [0.13, 0.43, 0.28], s: 1.22 };
 RECOIL.bloodcross = { back: 0.5, up: 3.5, roll: 1.2, side: 0.15, punch: 0.018 };
+// the new secondaries (secondaries.js): squirt pistol, taser, tv remote held like a pistol, pointed at the screen
+Object.assign(VM, { water: { p: [0.17, -0.165, -0.33], r: [0, 0.06, 0], s: 0.95 }, taser: { p: [0.17, -0.165, -0.31], r: [0, 0.06, 0], s: 1.15 }, remote: { p: [0.16, -0.16, -0.3], r: [0.12, 0.08, -0.05], s: 1.2 } });
 const bcQ = new THREE.Quaternion(), bcY = new THREE.Vector3(0, 1, 0); // opening + closing the fist
 let vmRoot;
 const models = {};
@@ -642,6 +645,8 @@ export function reload() {
   if (W.eco) W.eco.reloading(id);
 }
 
+// for secondaries.js: kick the viewmodel, the muzzle in the world, a viewmodel by id
+export const VMX = { kick: (id, k) => kickVM(id, k), muzzle: () => muzzleWorld(), model: (id) => models[id] };
 export function muzzleWorld() {
   const m = models[W.cur];
   vmRoot.updateMatrixWorld(true);
@@ -762,7 +767,7 @@ function fireHitscan(id, now) {
   const fast = w.rate > 8;
   const skin = (W.skinOver || G.equipped || {})[id];
   if (shots) marbles.shoot(shots, marblePalette(skin));
-  else for (const s of segs) fx.tracer(s.slice(0, 3), s.slice(3), tracerColor(skin, w.tracer || 0xfff0a0), w.thick || (fast ? 0.03 : 0.045), fast ? 0.07 : 0.2);
+  else if (!(w.water && secShot(segs, mz))) for (const s of segs) fx.tracer(s.slice(0, 3), s.slice(3), tracerColor(skin, w.tracer || 0xfff0a0), w.thick || (fast ? 0.03 : 0.045), fast ? 0.07 : 0.2);
   net.send({ t: 'fire', w: id, o: o.map(r2), s: segs.slice(0, 12).map((s) => s.map(r2)), fan: fanShot ? 1 : undefined });
   if (w.recoil) applyKb([-base[0] * w.recoil, -base[1] * w.recoil, -base[2] * w.recoil]);
   ME.pitch = Math.min(1.55, ME.pitch + (w.kick || 0) * (0.6 + Math.random() * 0.8) * (1 - W.aim * 0.5));
@@ -970,6 +975,7 @@ export function fireDown() {
   else if (w.kind === 'cards') playCard(now);
   else if (w.kind === 'blood') fireBlood(now);
   else if (w.kind === 'beam') laserDown(now);
+  else if (w.kind === 'zap' || w.kind === 'remote') secFireDown(id, now);
 }
 
 // ------------------------------------------------------------ Big Laser Pointer: hold to charge, let go to fire

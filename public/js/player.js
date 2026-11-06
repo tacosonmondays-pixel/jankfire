@@ -251,7 +251,7 @@ export function stepPlayer(dt, inp, now) {
       ME.onGround = false; ME.jumpBuf = 0;
       sfx.jump();
     } else {
-      const fr = slipping ? 0.02 : ME.sliding ? C.slideFric : C.fric;
+      const fr = (slipping ? 0.02 : ME.sliding ? C.slideFric : C.fric) * (slipping ? 1 : ME.wetGrip || 1); // soaked by a water pistol: slidey
       if (hs > 0) {
         const ctrl = Math.max(hs, C.stop);
         const ns = Math.max(0, hs - ctrl * fr * dt) / hs;

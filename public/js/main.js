@@ -24,6 +24,7 @@ import {
 import { Remote, updateGibs } from './remote.js';
 import { stepSoap, trapStart, trapEnd, updateWand, stuckInBubble } from './wand.js';
 import { initGear, updateGear, gearFx, gearKeyDown, gearSpawn, gearLeave, gearKillParts, gearDeathLine } from './gear.js'; // laser pointer, camera, pop quiz, goggles
+import { initSec, updateSec, secFx, secAimDown, secFrozen, secBlocked, secShot, secSpawn, secLeave } from './secondaries.js'; // water pistol, taser, tv remote, speed trap
 import { parry } from './weapons.js';
 import './parry.js'; // katana parry: sparks, sounds, PARRY!, the guard pose
 import { addPatch, clearPatches } from './mslip.js'; // marble shotgun: marbles on the floor you slip on
@@ -233,6 +234,7 @@ function resetWorldState() {
   for (const b of G.bubbles.values()) G.scene.remove(b.mesh);
   G.bubbles.clear(); G.smokes.length = 0; ME.frozenUntil = 0; G.frost = 0;
   gearLeave();
+  secLeave();
   resetItems(); stopUse(); G.activeStreaks = null; G.itemSent = null;
   clearRec();
   clearKillFx();
@@ -907,6 +909,7 @@ $('chatin').addEventListener('keydown', (e) => {
 });
 
 function aimDown() {
+  if (secAimDown()) return; // tv remote: right click rewinds
   if (W.cur === 'cards') { cycleCard(); return; }
   if (heavyAttack()) return; // knife: right click is the heavy stab
   if (parry()) return; // katana: right click parries
@@ -924,6 +927,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyB') { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
   if (gearKeyDown(e)) return; // pop quiz answers (1-4), goggles flash (H)
   if (/^(KeyE|KeyG|KeyV|KeyC|KeyZ|ControlLeft|ControlRight|Digit[567])$/.test(e.code) && stuckInBubble(true)) { keys[e.code] = true; return; } // sealed in a soap bubble: no grapple, items, dash, t-bag, sprays or streaks
+  if (/^(KeyE|KeyG|KeyV|KeyZ|Digit[567])$/.test(e.code) && secBlocked()) { keys[e.code] = true; return; } // stunned, paused or caged: no grapple, items, dash, sprays or streaks
   if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) jumpPressed = true; }
   if (e.code === 'KeyE' && !e.repeat) { if (S.swapAim) aimDown(); else tryHook(); }
   if (e.code === 'Digit1') switchSlot(0);
@@ -962,6 +966,7 @@ addEventListener('mousedown', (e) => {
   if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor: no shooting
   if (performance.now() < (ME.quizUntil || 0)) return; // pens down: sitting a pop quiz
   if (stuckInBubble(true)) return; // sealed in a soap bubble: no shooting, aiming or grappling till it pops
+  if (secBlocked()) return; // tased, paused or jailed
   if (econMouse(e)) return;
   if (e.button === 0) fireDown();
   if (e.button === 2) { if (S.swapAim) tryHook(); else aimDown(); }
@@ -1417,6 +1422,7 @@ net.on('kill', (m) => {
 net.on('spawn', (m) => {
   endKillcam();
   gearSpawn();
+  secSpawn();
   ME.frozenUntil = 0; G.frost = 0; // item charges come from the server's 'ic' (a new round doesn't refill them)
   ME.pos = m.p.slice(); ME.vel = [0, 0, 0]; ME.alive = true; ME.hp = 100; ME.seq = m.q;
   ME.slipUntil = 0; ME.combo = 0; ME.sleepUntil = 0;
@@ -1517,6 +1523,7 @@ net.on('he', (m) => {
 });
 net.on('fx', (m) => {
   if (gearFx(m)) return; // laser beams, photo teleports, goggle flashes (gear.js)
+  if (secFx(m)) return; // taser zaps, remote pauses + rewinds, radar readings (secondaries.js)
   if (m.k === 'shot' || m.k === 'swing' || m.k === 'tbag' || m.k === 'shatter') recordEv(m);
   const r = G.remotes.get(m.id);
   if (m.k === 'shot') {
@@ -1526,6 +1533,7 @@ net.on('fx', (m) => {
     const fast = w.rate > 8;
     const mz = r ? r.muzzle() : null;
     const color = () => tracerColor((G.skins.get(m.id) || {})[m.w], w.tracer || 0xfff0a0);
+    if (w.water && secShot(m.s, mz)) { if (m.s.length) sfx.gun(m.w, m.s[0].slice(0, 3)); return; } // water pistol: a stream
     if (w.marbles) {
       const sk = (G.skins.get(m.id) || {})[m.w];
       marbles.shootSegs(m.s, mz, sk && sk[3] === 'marbles_gumball' ? 'gumball' : 'glass');
@@ -1615,6 +1623,7 @@ net.on('ns', (m) => {
 });
 
 initGear(); // the new gear's server messages + the G hook
+initSec(); // the new secondaries + the speed trap (after initGear: it wraps the G hook)
 
 // ------------------------------------------------------------ main loop
 let last = performance.now(), acc = 0, sendT = 0, pingT = 0, fovNow = S.fov, fpsAcc = 0, fpsN = 0;
@@ -1630,7 +1639,7 @@ function frame(t) {
   const now = performance.now();
 
   if (G.joined) {
-    const frozen = now < (ME.frozenUntil || 0) || now < (ME.quizUntil || 0); // (pens down: no walking out of a pop quiz)
+    const frozen = now < (ME.frozenUntil || 0) || now < (ME.quizUntil || 0) || secFrozen(now); // (pens down: no walking out of a pop quiz; tased, paused, jailed)
     if (frozen) { ME.vel[0] = 0; ME.vel[2] = 0; if (ME.hook) releaseHook(); }
     const playing = $('menu').classList.contains('hidden') && !chatOpen && now >= (ME.sleepUntil || 0) && !RP.active && !G.using && !frozen;
     const inp = playing ? {
@@ -1695,6 +1704,7 @@ function frame(t) {
   for (const [id, b] of G.bubbles) { if (now > b.until + 500) { G.scene.remove(b.mesh); G.bubbles.delete(id); continue; } b.mesh.rotation.y += dt * 0.3; b.mesh.material.opacity = 0.18 + Math.sin(now * 0.006) * 0.05; }
   updateWand(dt, now); // bubble wand: giant soap bubbles round people, the view from inside one, the wand in your hand
   updateGear(dt, now); // laser beams, photo frames, pop quizzes, night vision
+  updateSec(dt, now); // soaks, zaps, pauses, rewinds, the radar gun, cages
   for (let i = G.smokes.length - 1; i >= 0; i--) {
     const s2 = G.smokes[i];
     if (now > s2.until) { G.smokes.splice(i, 1); continue; }

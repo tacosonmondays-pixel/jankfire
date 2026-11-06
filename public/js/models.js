@@ -11,6 +11,7 @@ import { buildRigMissile } from './rigmodel.js'; // overdrive rig killstreak
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { laserBuild, calculator } from './gearmodels.js'; // the new gear's models (laser pointer, pop quiz calculator)
 import { prepAuthored, authored, AUTHORED, bindAuthored } from './glbkit.js';
+import { SEC_WB, SEC_HATS, secAuthored } from './secmodels.js'; // water pistol, taser, tv remote, radar gun
 
 // ------------------------------------------------------------ playing card faces (canvas, cached)
 const cardFaces = new Map();
@@ -768,6 +769,8 @@ const WB = {
 };
 
 // where a hat sits on each weapon (local position) and how tall it is. hand placed so every hat fits every weapon.
+Object.assign(WB, SEC_WB); // the new secondaries + the radar gun (secmodels.js)
+
 const HAT_AT = {
   ar: [[0, 0.1, 0.02], 0.12], smg: [[0, 0.055, 0.0], 0.1], shotgun: [[0, 0.05, 0.0], 0.11], minigun: [[0, 0.17, 0.05], 0.14],
   sniper: [[0, 0.16, -0.05], 0.13], chicken: [[0, 0.075, -0.5], 0.09], bowling: [[0, 0.17, -0.1], 0.15], banana: [[0, 0.185, 0.02], 0.1],
@@ -781,6 +784,7 @@ const HAT_AT = {
   p_chicken: [[0, 0.31, -0.28], 0.15], p_bowling: [[0, 0.45, 0], 0.3], p_duck: [[0, 0.418, -0.2], 0.2], p_slipper: [[0, 0.11, -0.13], 0.1], p_banana: [[0, 0.24, 0], 0.12],
   scales: [[0, 0.555, 0], 0.07], scales_kangaroo: [[0, 0.6, 0.004], 0.05],
 };
+Object.assign(HAT_AT, SEC_HATS);
 
 // weapon skins: a different model for the same weapon
 let skipTexture = null;
@@ -1383,6 +1387,7 @@ export function buildWeapon(id, skin) {
     g.userData.glb = 'blender';
     g.userData.wid = 'bl_' + id; // wrap zones come from the Blender parts' own names (_wzA / _wzB / _wzN), not the code model's rule
     bindAuthored(g, mt); // needle, vents, barrels + the pump / cylinder / hammer / bolt that the viewmodel moves
+    secAuthored(id, g, mt); // the radar gun's speed readout, the water pistol's tank level, the taser's ARMED light
     applySkin(g, skin);
     return g;
   }

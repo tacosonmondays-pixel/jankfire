@@ -42,6 +42,7 @@ import { DUCKRAIN } from './shared/modes.js';
 import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
 import { OOB, outOfBounds, boundsCenter } from './shared/bounds.js';
 import { installGear } from './server/gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
+import { installSec } from './server/secondaries.js'; // water pistol, taser, tv remote, speed trap
 import { installEcon } from './server/econ.js';
 import { MSLIP, onPatch, patchPreroll } from './shared/marbles.js';
 
@@ -117,6 +118,7 @@ const DEFAULT_NAMES = ['player', 'guy', 'someone', 'nobody', 'dude', 'person'];
 const BOT_NAMES = ['Gary', 'Linda', 'Steve', 'Brenda', 'Kevin', 'Doug', 'Karen', 'Phil', 'Tina', 'Rick', 'Deb', 'Carl', 'Pam', 'Todd', 'Barb', 'Chad'];
 const BOT_GUNS = ['ar', 'ar', 'smg', 'shotgun', 'shotgun', 'sniper', 'chicken', 'banana', 'minigun', 'revolver', 'redline', 'marbles', 'laser'];
 BOT_GUNS.push('shredder'); // bots suck too (botShred)
+BOT_GUNS.push('water', 'taser', 'remote'); // the new secondaries (server/secondaries.js secBotFire)
 const SKIN_F = ['default', 'default', 'gold', 'chrome', 'pink', 'camo', 'neon', 'rainbow', 'galaxy', 'lava', 'missing', 'tiger', 'fade', 'carbon', 'tape'];
 const SKIN_H = ['none', 'none', 'none', 'tophat', 'party', 'crown', 'cowboy', 'propeller', 'cone', 'eyes', 'duck'];
 const SKIN_E = ['none', 'none', 'none', 'sparkles', 'flames', 'money', 'smoke'];
@@ -634,6 +636,7 @@ class Room {
     const w = WEAPONS[b.w];
     const pref = b.w === 'sniper' ? [25, 60] : b.w === 'shotgun' ? [3, 9] : b.w === 'marbles' ? [1.5, 4] : b.w === 'chicken' ? [10, 30] : b.w === 'shredder' ? [1.5, 9] : [7, 22];
     if (w.kind === 'melee') { pref[0] = 0; pref[1] = this.chaosKit || this.isEcon() ? 1.2 : w.range * 0.7; } // claws, melee rungs, spoons + knives: get in their face
+    if (b.w === 'taser') { pref[0] = 2; pref[1] = 6; } // darts on wires: get close
     if (t && t.alive) {
       const e = eyeOf(b), tc = [t.pos[0], t.pos[1] + 1.1, t.pos[2]];
       const dx = tc[0] - e[0], dy = tc[1] - e[1], dz = tc[2] - e[2];
@@ -3736,6 +3739,7 @@ class Room {
 
 installRig(Room, { now, num, vec3, norm, r2, center, safe, REC_T, WEAPONS }); // the overdrive rig's methods (server/rig.js)
 installGear(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm, vec3 });
+installSec(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm, vec3, REC_T, REC_FX }); // after installGear: it wraps gearJoin / tickGear / gearSnap
 installEcon(Room, {
   send, cleanSkins, enforceSkins, logErr, BOT_GUNS, navGraph,
   refreshInv: async (p) => { if (p.acct) { const u = await store.get(p.acct.n).catch(() => null); if (u) p.inv = u.inv || {}; } },
