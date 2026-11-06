@@ -474,3 +474,29 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 .pn li { margin: 5px 0; color: #e8def0; line-height: 1.35; }
 .pn li b { color: var(--yellow); }
 .pn.latest { border-color: var(--yellow); box-shadow: 8px 8px 0 var(--pink); }
+
+/* ---------------------------------------------------------------- ONLINE / WITH BOTS mode picker (lobby.js) */
+#scr-modes.panel { width: min(1240px, 96vw); }
+#scr-modes h2 { transform: rotate(-1.5deg); }
+.mp-cards { padding: 14px 0 10px; flex-wrap: wrap; }
+.mp-card { width: clamp(180px, min(21vw, 34vh), 290px); }
+.mp-card .key { font-size: 19px; }
+.mp-card .foot { min-height: 40px; }
+.mp-card .playing { flex: 1; font-size: 13px; font-weight: 700; letter-spacing: 1px; color: #c8b8d8; text-transform: uppercase; }
+.mp-card.busy .playing { color: #39ff14; }
+.mp-card.busy .cnt { background: var(--yellow); animation: leadpulse 1.4s ease-in-out infinite; }
+.mp-card .desc { -webkit-line-clamp: 3; }
+.mp-row { display: flex; gap: 12px; justify-content: center; margin-top: 10px; }
+.mp-row .mid, .mp-row .back { min-width: 140px; margin: 0; display: inline-block; }
+
+/* ---------------------------------------------------------------- the lobby countdown (in game) */
+#lobbyBox { position: absolute; left: 50%; top: 58px; translate: -50% 0; rotate: -1deg; z-index: 6; min-width: 340px; padding: 10px 22px 14px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; color: #fff; pointer-events: auto; }
+#lobbyBox small { font-size: 14px; font-weight: 700; letter-spacing: 2px; color: var(--cyan); text-shadow: 2px 2px 0 var(--ink); }
+#lobbyBox b#lbClock { font-size: 74px; line-height: 0.95; color: var(--yellow); -webkit-text-stroke: 5px #000; paint-order: stroke fill; text-shadow: 6px 6px 0 var(--pink); letter-spacing: 2px; }
+#lobbyBox.hurry b#lbClock { color: #fff; text-shadow: 6px 6px 0 #ff3030; animation: beat 1s ease-in-out infinite; }
+#lobbyBox span#lbInfo { font-size: 14px; font-weight: 700; text-shadow: 2px 2px 0 var(--ink); max-width: 420px; }
+#lbReady { margin-top: 8px; font-family: var(--font); font-size: 20px; font-weight: 700; padding: 6px 18px; background: #fff; color: #000; border: 3px solid #000; box-shadow: 4px 4px 0 var(--pink); rotate: 1.5deg; cursor: pointer; }
+#lbReady i { font-style: normal; display: inline-block; margin-left: 6px; padding: 0 6px; background: #000; color: var(--yellow); }
+#lbReady.on { background: #39ff14; box-shadow: 4px 4px 0 #000; }
+@media (min-width: 761px) { #mpCards .mp-card .desc { display: -webkit-box; } } /* the picker has room for the one-liner, even on short screens */

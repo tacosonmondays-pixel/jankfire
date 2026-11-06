@@ -1,6 +1,13 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '3.9', date: '2026-11-06', title: 'PICK YOUR POISON', items: [
+    'NEW MENU: ONLINE and WITH BOTS. both open four cards: QUICK PLAY, PLANT & DEFUSE, JANK ROYALE and ZOMBIES, and each card shows how many real people are in it right now.',
+    'ONLINE is real players only. no bots, ever. Plant & Defuse and Jank Royale need 2 players to start, Zombies 1.',
+    'LOBBIES for Plant & Defuse, Jank Royale and Zombies: run around in a warm-up (nothing counts) while a 60 s countdown ticks. press Y (rebindable) to READY UP. everyone ready = 5 seconds.',
+    'once a match starts it\'s locked. anyone who picks that mode after gets a fresh lobby. after the match, a quick 10 s lobby keeps your group together.',
+    'QUICK PLAY has no lobby: drop in anytime. with bots you take a bot\'s place. WITH BOTS > CUSTOM is the old setup screen (any mode, map, bots, difficulty).',
+  ] },
   { v: '3.8', date: '2026-11-06', title: 'FRESHLY MODELLED', items: [
     'BLENDER ROUND 2: the cigarette and cigar, card deck (and the cards you throw), Reverse and Skip cards, leaf blower, snowball, popper, rubber duck, bread, spoon, slipper, Hand Slapper, the bow and its arrows and the Scythe Rifle all got real glossy models.',
     'all 29 weapon skins got remade too. the Spoon knife skin is a proper tablespoon now.',

@@ -29,6 +29,7 @@
   <div id="modeLabel"></div>
   <div id="wave"></div>
   <div id="round"></div>
+  <div id="lobbyBox" class="hidden"><small id="lbTitle">LOBBY</small><b id="lbClock">1:00</b><span id="lbInfo"></span><button id="lbReady"><span>READY UP</span> <i>Y</i></button></div>
   <div id="roundEnd" class="hidden"></div>
   <div id="teamBar" class="hidden"><span class="t1"></span><span class="mid"></span><span class="t2"></span></div>
   <div id="objective"></div>
@@ -101,8 +102,8 @@
       <label class="namerow" id="nameRow">name <input id="name" maxlength="16" placeholder="guest name" autocomplete="off"></label>
     </div>
     <div class="home-right">
-      <button class="big mode play" data-mode="ffa"><b>QUICK MATCH</b><span>online with real people</span></button>
-      <button class="big mode" data-go="setup"><b>BOTS</b><span>you vs bots, any mode, any map</span></button>
+      <button class="big mode play" data-pick="online"><b>ONLINE</b><span>real players only: quick play, plant &amp; defuse, royale, zombies</span></button>
+      <button class="big mode" data-pick="bots"><b>WITH BOTS</b><span>lobbies with bots and people. or make your own</span></button>
       <button class="big mode" data-mode="coop"><b>COOP</b><span>friends vs waves of bots</span></button>
       <button class="big mode" data-mode="training"><b>TRAINING</b><span>dummies + infinite ammo</span></button>
       <div class="hidden" id="desktopRow">
@@ -160,6 +161,14 @@
       <button class="mid" data-go="settings">SETTINGS</button>
       <button class="mid danger" id="quit">QUIT TO MENU</button>
     </div>
+  </div>
+
+  <!-- ONLINE / WITH BOTS: pick a mode (lobby.js) -->
+  <div class="screen panel hidden" id="scr-modes">
+    <h2 id="mpTitle">ONLINE</h2>
+    <div class="note" id="mpNote"></div>
+    <div class="es-cards mp-cards deal" id="mpCards"></div>
+    <div class="mp-row"><button class="mid hidden" id="mpCustom" title="today's bots setup: any mode, map, bot count and difficulty">CUSTOM</button><button class="mid back">BACK</button></div>
   </div>
 
   <!-- bots setup -->
