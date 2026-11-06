@@ -58,6 +58,8 @@ import { updateRig, rigDied, rigOn } from './rig.js';
 import { rigClash } from '/shared/rig.js'; // overdrive rig killstreak
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
 import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset } from './royale.js'; // jank royale
+import { brActive } from './royale.js';
+import { initMinimap, minimapFrame } from './minimap.js'; // the HUD minimap (SAT-NAV)
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { ecoKeyLabel } from './econ.js';
 import { bodyReset } from './bodyhp.js'; // the wrecking ball + rig last until they break
@@ -133,6 +135,7 @@ const vmScaleU = { value: 300 };
 G.skinFxWorld = makeSkinSystems(G.scene, scaleU);
 G.skinFxVM = makeSkinSystems(G.vmScene, vmScaleU);
 hud.init();
+initMinimap();
 initEndscreen({
   note: (id, m) => ggRowNote(id, m) || infRowNote(id, m),
   title: (m) => { const t = m && !m.pending && infRoundTitle(m); return t ? t[0] : ''; },
@@ -439,6 +442,17 @@ bindCheck('blood', 'blood');
 bindCheck('killcam', 'killcam', () => { if (G.joined) net.send({ t: 'kc', on: S.killcam }); });
 bindCheck('showCards', 'showCards');
 bindCheck('speedLines', 'speedLines');
+// minimap (on, M, turns with you) + bot chatter (on): old saves have none of it
+if (typeof S.mmOn !== 'boolean') S.mmOn = true;
+if (typeof S.mmRot !== 'boolean') S.mmRot = true;
+if (!['s', 'm', 'l'].includes(S.mmSize)) S.mmSize = 'm';
+if (typeof S.botChat !== 'boolean') S.botChat = true;
+bindCheck('mmOn', 'mmOn');
+bindCheck('mmRot', 'mmRot');
+bindCheck('botChat', 'botChat');
+$('mmSize').value = S.mmSize;
+$('mmSize').addEventListener('change', () => { S.mmSize = $('mmSize').value; saveSettings(); });
+SYNC_KEYS.push('mmOn', 'mmRot', 'mmSize', 'botChat');
 // display: windowed / windowed fullscreen (maximized, desktop app only) / fullscreen
 const DISPLAY = window.jf && window.jf.display
   ? [['windowed', 'Windowed'], ['maximized', 'Windowed fullscreen'], ['fullscreen', 'Fullscreen']]
@@ -1771,6 +1785,7 @@ net.on('fx', (m) => {
 });
 net.on('chat', (m) => {
   if (!m.id) { hud.chat(null, null, m.m); return; }
+  if (S.botChat === false && G.remotes.get(m.id) && G.remotes.get(m.id).bot) return; // bot chatter off
   const [n, c] = nameOf(m.id);
   hud.chat(n, c, m.m);
 });
@@ -1864,6 +1879,7 @@ function frame(t) {
   updateTraffic(dt, now, RP.active);
   updateLore(dt, now); updateLoreFx(now); // (out of a match it clears them away)
   brFrame(dt, now); // jank royale: blimp, zone, loot, hud
+  minimapFrame(now, { royale: brActive(), endscreen: esActive() }); // the HUD minimap (hidden in replays, dead, royale, story)
   updateGibs(dt);
   updateKillFx(dt);
   updateCourt(dt, now);
@@ -2437,6 +2453,7 @@ function applySettingsToUI() {
   setVolume(S.vol);
   $('musicVol').value = String(S.musicVol); $('musicMatchVol').value = String(S.musicMatchVol);
   $('musicMatch').checked = S.musicMatch !== false; $('musicComp').checked = !!S.musicComp; musicUpdate();
+  $('mmOn').checked = S.mmOn !== false; $('mmRot').checked = S.mmRot !== false; $('botChat').checked = S.botChat !== false; if (['s', 'm', 'l'].includes(S.mmSize)) $('mmSize').value = S.mmSize; // minimap + bot chatter
 }
 
 function renderProfile() {
