@@ -12,6 +12,7 @@ const FIELD = (kind) => (CONTAINERS[kind] ? CONTAINERS[kind].field : null);
 export const STAT_KEYS = ['kills', 'deaths', 'bot_kills', 'wins', 'best_wave', 'top_speed', 'xp', 'playtime', 'void_kills', 'headshots', 'tbags'];
 STAT_KEYS.push('airborne', 'wings_old'); // Never Landed + the grandfathered Wings
 STAT_KEYS.push('sniper_feats'); // Sniper Royalty (bit flags, see BIT_KEYS)
+STAT_KEYS.push('quiz_right'); // Smarty Pants: pop quiz questions answered right
 const MAX_KEYS = new Set(['best_wave', 'top_speed']); // these keep the max instead of adding up
 const BIT_KEYS = new Set(['sniper_feats']); // bit flags (Sniper Royalty feats): OR'd in, so a feat never counts twice or turns off
 

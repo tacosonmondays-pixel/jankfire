@@ -551,6 +551,7 @@ function myAchs() { return new Set((account.me && account.me.achs) || []); }
 function rewardsFor(achId) {
   const out = [];
   for (const s2 of LOOK_SLOTS) for (const [k, v] of Object.entries(ACCESSORIES[s2])) if (v.ach === achId) out.push({ slot: s2, id: k, name: v.name });
+  for (const [k, v] of Object.entries(BOTTOMS)) if (v.ach === achId) out.push({ slot: 'bottom', id: k, name: v.name }); // (Overalls)
   for (const t of LOOT_TYPES) for (const [k, v] of Object.entries(COSMETICS[t])) if (v.ach === achId) out.push({ type: t, id: k, name: v.name }); // weapon skins live in COSMETICS
   return out;
 }
@@ -595,9 +596,19 @@ function buildCharacterUI() {
     el.innerHTML = '';
     for (const [k, v] of Object.entries(cat)) {
       const c = document.createElement('button');
-      c.className = 'chip' + ((look[key] || DEFAULT_LOOK[key]) === k ? ' on' : '');
+      const have = hasAcc(v, achs); // achievement-locked styles (Overalls) work like locked accessories: a chip you can try on
+      c.className = 'chip' + ((look[key] || DEFAULT_LOOK[key]) === k ? ' on' : '') + (have ? '' : ' locked');
       c.textContent = v.name;
-      c.addEventListener('click', () => { setLook({ ...look, [key]: k }); buildCharacterUI(); });
+      if (v.ach) {
+        c.style.setProperty('--rc', '#ffe14d');
+        c.title = `${ACHIEVEMENTS[v.ach].name}: ${ACHIEVEMENTS[v.ach].desc}`;
+        c.addEventListener('mouseenter', () => { const t = validLook({ ...look, [key]: k }, ALL_ACHS); showCharacter(buildCharacter, t.color || G.myColor || '#ff4fd8', t); });
+        c.addEventListener('mouseleave', () => showCharacter(buildCharacter, shown.color || G.myColor || '#ff4fd8', shown));
+      }
+      c.addEventListener('click', () => {
+        if (!have) { toast(`${v.name}: unlock "${ACHIEVEMENTS[v.ach].name}" (${ACHIEVEMENTS[v.ach].desc})${account.loggedIn ? '' : '. log in so it counts'}`, 3200); return; }
+        setLook({ ...look, [key]: k }); buildCharacterUI();
+      });
       el.append(c);
     }
   };
@@ -676,7 +687,7 @@ $('lkRandom').addEventListener('click', () => {
   const achs = myAchs();
   const pick = (arr) => arr[(Math.random() * arr.length) | 0];
   const look = { color: pick(LOOK_COLORS), skin: pick(SKIN_TONES), hair: pick(Object.keys(HAIRS)), hairColor: pick(HAIR_COLORS),
-    top: pick(Object.keys(TOPS)), topColor: pick(CLOTH_COLORS), bottom: pick(Object.keys(BOTTOMS)), bottomColor: pick(CLOTH_COLORS) };
+    top: pick(Object.keys(TOPS)), topColor: pick(CLOTH_COLORS), bottom: pick(Object.entries(BOTTOMS).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k)), bottomColor: pick(CLOTH_COLORS) };
   for (const s2 of LOOK_SLOTS) look[s2] = pick(Object.entries(ACCESSORIES[s2]).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k));
   setLook(look); buildCharacterUI();
 });
@@ -1171,6 +1182,12 @@ function unlockSkins(list) {
   saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne();
   if (list.some((r) => r.id === 'sniper_golden')) royalUnlock(`SNIPER ROYALTY ${ROYAL_FEATS.length}/${ROYAL_FEATS.length} · it's on your sniper now (swap it in COSMETICS)`);
 }
+// Smarty Pants: a pop quiz answer that counted (the server's count)
+net.on('quizpt', (m) => {
+  const n = Number(m.n) || 0, goal = ACHIEVEMENTS.smarty.goal;
+  if (account.me) account.me.stats = { ...(account.me.stats || {}), quiz_right: n };
+  if (n < goal) setTimeout(() => hud.msg(`SMARTY PANTS ${n}/${goal}`, 1.6, 'brag'), 1900); // after the GOLD STAR callout
+});
 // Sniper Royalty: you just ticked a box (the server decides; a guest is told it would have counted)
 net.on('royal', (m) => {
   const all = m.all | 0, add = m.add | 0;
