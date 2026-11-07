@@ -21,6 +21,7 @@ import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, even
 import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
 import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from './shared/secrets.js'; // hidden NPCs + cats
 import { sendStatic } from './server/static.js';
+import { browsableServer } from './server/browsable.js'; // the room code the story's solo referee runs in the browser
 import { rooms, roomFor, lobbyCounts, humans, flushStats, logErr, safe, tooDeep, clean, now, GRAPH_TTL, GRAPH_SWEEP, setRoomDeps } from './server/room.js'; // the game rooms (class Room + its helpers)
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -30,6 +31,7 @@ setRoomDeps({ store });
 const accounts = new Accounts(store);
 
 // ---------------------------------------------------------------- static files
+const serverFile = browsableServer(ROOT); // /server/<file>: only server/room.js and what it imports
 const ROUTES = [
   ['/vendor/three/', path.join(ROOT, 'node_modules/three/')],
   ['/shared/', path.join(ROOT, 'shared/')],
@@ -75,6 +77,12 @@ function serve(req, res) {
     return;
   }
   if (url.startsWith('/api/')) { accounts.handle(req, res, url); return; }
+  if (url.startsWith('/server/')) { // the story's solo referee (a web worker) runs the real room code
+    const file = serverFile(url);
+    if (!file) { res.writeHead(404).end('404'); return; }
+    fs.stat(file, (err, st) => { if (err || !st.isFile()) { res.writeHead(404).end('404'); return; } sendStatic(req, res, file, st, '.js', MIME['.js']); });
+    return;
+  }
   for (const [prefix, dir] of ROUTES) {
     if (!url.startsWith(prefix)) continue;
     const file = path.normalize(path.join(dir, url.slice(prefix.length) || 'index.html'));

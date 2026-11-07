@@ -39,21 +39,38 @@ function shopfront(B, s) {
   const [ox, oz] = OUT[s.open], w = x1 - x0, d = z1 - z0;
   if (!B.touches(s.rect, 3)) return;
   B.add(x0, y - 2, z0, x1, y, z1, 'concrete', { tint: 0xc8bcb4 }); // its own floor slab (the Commute's ground steps)
-  cube(B, cx, y, cz, w, d, s.h, r, { open: s.open, door: s.open, tint: s.tint === 0xfff0f0 ? 0xf4f4f4 : undefined });
-  // the counter across the shop, 40% of the way in; the keeper behind it; you in front of it
-  const depth = s.open % 2 ? w : d, across = s.open % 2 ? d : w, at = (k) => [cx + ox * (depth / 2 - depth * k), cz + oz * (depth / 2 - depth * k)];
-  const [kx, kz] = at(0.6), [px, pz] = at(0.42), [qx, qz] = at(0.82), [dx, dz] = at(-0.15);
-  const ca = across - 2.4;
-  if (s.open % 2) B.add(kx - ox * 0.4 - 0.4, y, kz - ca / 2, kx - ox * 0.4 + 0.4, y + 1.05, kz + ca / 2, 'wood', { tint: 0xb07a4a });
-  else B.add(kx - ca / 2, y, kz - oz * 0.4 - 0.4, kx + ca / 2, y + 1.05, kz - oz * 0.4 + 0.4, 'wood', { tint: 0xb07a4a });
-  // shelves along the back wall (crates / jars / fridges by kind) and the sign over the front
-  const stuff = { guns: ['crate_soup', 'locker'], outfits: ['wardrobe', 'laundry_a'], meat_mechanic: ['organjar', 'organjar', 'fridge'], car_dealer: ['filecab', 'officechair'], tooth_stall: ['tooth'], vending: [] }[s.kind];
-  for (let i = 0; i < 3; i++) { const t = (i + 0.5) / 3 - 0.5, sx = s.open % 2 ? qx : cx + t * (across - 2), sz = s.open % 2 ? cz + t * (across - 2) : qz; B.prop(stuff[i % stuff.length], sx, y, sz, YAW[s.open], 1, i); }
+  cube(B, cx, y, cz, w, d, s.h, r, { open: s.open, door: -1, tint: s.tint === 0xfff0f0 ? 0xf4f4f4 : undefined });
+  // the inside, in the shop's own frame: u = metres in from the open front, v = across (right of the doorway +)
+  const depth = s.open % 2 ? w : d, across = s.open % 2 ? d : w, rx = -oz, rz = ox;
+  const W = (u, v) => [cx + ox * (depth / 2 - u) + rx * v, cz + oz * (depth / 2 - u) + rz * v];
+  const box = (u0, v0, u1, v1, y0, y1, mat, o) => { const [ax, az] = W(u0, v0), [bx, bz] = W(u1, v1); B.add(Math.min(ax, bx), y + y0, Math.min(az, bz), Math.max(ax, bx), y + y1, Math.max(az, bz), mat, o); };
+  const yawTo = (dx, dz) => Math.atan2(-dx, -dz); // (0 looks -z)
+  const put = (id, u, v, face, i = 0) => { const [x, z] = W(u, v); B.prop(id, x, y, z, face, 1, i); };
+  const inward = YAW[s.open] + Math.PI, outward = YAW[s.open], toRight = yawTo(rx, rz), toLeft = yawTo(-rx, -rz);
+  // the counter (a gap at the right end so the keeper can get out), the till on it; the keeper's nook behind it (a
+  // stool, a lamp); a partition with a doorway into the back room (stock, a fridge, the kettle); displays down the walls
+  const cu = depth * 0.5, half = across / 2, pu = Math.max(cu + 2.2, depth * 0.78);
+  box(cu - 0.4, -half + 0.3, cu + 0.4, half - 1.6, 0, 1.05, 'wood', { tint: s.kind === 'meat_mechanic' ? 0xf0f0f0 : 0xb07a4a });
+  put('till', cu, -half * 0.35, outward);
+  put('pchair', cu + 1.2, -half * 0.35 + 0.8, outward, 1); B.light(...(([x, z]) => [x, y + 2.2, z])(W(cu + 1.4, 0)), 0xffd8a0, 6, 0.8);
+  if (pu < depth - 1.2) {
+    box(pu, -half + 0.25, pu + 0.2, half - 1.9, 0, s.h, 'plaster', { tint: 0xd8ccc4 }); box(pu, half - 0.7, pu + 0.2, half - 0.25, 0, s.h, 'plaster', { tint: 0xd8ccc4 }); // (the doorway between)
+    box(pu, half - 1.9, pu + 0.2, half - 0.7, 2.2, s.h, 'plaster', { tint: 0xd8ccc4 });
+    put('crate_soup', depth - 0.9, -half + 1, inward, 2); put('crate_soup', depth - 0.9, -half + 2.2, inward, 3); put('fridge', depth - 0.7, 0.2, inward, 4);
+  }
+  const KIND = {
+    guns: { wall: ['gun_rack', 'gun_rack'], back: 'gun_rack' }, outfits: { wall: ['clothes_rail', 'clothes_rail'], back: 'shelf_wall', window: 'mannequin' },
+    meat_mechanic: { wall: ['dentist_chair', 'jar_shelf'], back: 'jar_shelf' }, car_dealer: { wall: ['shelf_wall', 'officechair'], back: 'filecab' },
+  }[s.kind] || { wall: ['shelf_wall'], back: 'shelf_wall' };
+  for (const [side, face] of [[-1, toRight], [1, toLeft]]) KIND.wall.forEach((id, k) => { const u = 1.4 + k * Math.max(1.6, (cu - 2) / KIND.wall.length); if (u < cu - 0.8) put(id, u, side * (half - 0.55), face, k + (side > 0 ? 5 : 0)); });
+  for (const v of [-half * 0.55, half * 0.15]) put(KIND.back, pu - 0.35, v, outward, 7);
+  if (KIND.window) for (const v of [-half + 1.2, half - 1.2]) put(KIND.window, 0.7, v, outward, 8);
+  const [px, pz] = W(cu - 1.3, -half * 0.35), [kx, kz] = W(cu + 1.1, -half * 0.35), [dx, dz] = W(-1.2, 0);
   const sy = y + s.h + 0.1, fx = cx + ox * (depth / 2 + 0.1), fz = cz + oz * (depth / 2 + 0.1);
   if (s.open % 2) B.add(fx - 0.1, sy, cz - across / 2 + 0.5, fx + 0.1, sy + 1.3, cz + across / 2 - 0.5, 'glow', { nc: true, tint: s.tint });
   else B.add(cx - across / 2 + 0.5, sy, fz - 0.1, cx + across / 2 - 0.5, sy + 1.3, fz + 0.1, 'glow', { nc: true, tint: s.tint });
   B.light(fx + ox * 2, sy, fz + oz * 2, s.tint, 12, 0.9); B.light(cx, y + s.h - 0.6, cz, 0xffe8c0, 8, 0.7);
-  if (B.inside(cx, cz)) B.out.marks.push({ id: 'shop', shop: s.kind, sid: s.sid, name: s.name, p: [px, y, pz], keeper: [kx - ox * 1.2, y, kz - oz * 1.2], face: YAW[s.open], door: [dx, y, dz] });
+  if (B.inside(cx, cz)) B.out.marks.push({ id: 'shop', shop: s.kind, sid: s.sid, name: s.name, p: [px, y, pz], keeper: [kx, y, kz], face: YAW[s.open], door: [dx, y, dz] });
   // a car dealer's forecourt: bunting, stock spots (park marks with sale: true)
   if (s.lot) {
     const [lx0, lz0, lx1, lz1] = s.lot;

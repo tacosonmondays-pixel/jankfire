@@ -98,7 +98,7 @@ function results(kind, n, r, inner, fast) {
   const ok = el('button', 'mid glow', 'OK'); ok.addEventListener('click', close); row.append(ok);
   inner.append(row);
 }
-function close() { box.classList.add('hidden'); box.innerHTML = ''; api.after(); }
+function close() { giftOpen = false; box.classList.add('hidden'); box.innerHTML = ''; api.after(); }
 function glyph(it) {
   if (it.type === 'effect') return FX_ICO[it.id] || '✨';
   if (it.type === 'kill') return KILL_ICO[it.id] || '💀';
@@ -121,7 +121,7 @@ function pumpPics() {
 }
 
 function picFor(it) {
-  if (it.type === 'model') { const w = COSMETICS.model[it.id] && COSMETICS.model[it.id].weapon; return w && WEAPONS[w] ? weaponIcon(w, ['default', 'none', 'none', it.id, 'normal']) : w && STREAKS[w] ? streakIcon(w) : ''; } // (a killstreak's skin: that killstreak's picture)
+  if (it.type === 'model') { const w = COSMETICS.model[it.id] && COSMETICS.model[it.id].weapon; return w && WEAPONS[w] ? weaponIcon(w, ['default', 'none', 'none', it.id, 'normal']) : w && STREAKS[w] ? streakIcon(w, ['default', 'none', 'none', it.id, 'normal']) : ''; } // (a killstreak's skin: that streak in this look)
   if (it.type === 'finish') return weaponIcon('ar', [it.id, 'none', 'none', 'default', 'full']);
   if (it.type === 'hat') return weaponIcon('ar', ['default', it.id, 'none', 'default', 'normal']);
   if (it.type === 'spray') return sprayIcon(it.id);
@@ -157,12 +157,16 @@ export function showGift(gifts, guestLogin) {
   box.append(inner);
   box.classList.add('flash-l'); setTimeout(() => box.classList.remove('flash-l'), 900);
   try { sfx.kill(); } catch { /* audio not started yet */ }
+  giftOpen = true; // Esc or a click outside the memo puts it away (it never stands between a guest and the PLAY cards)
 }
+let giftOpen = false;
+addEventListener('keydown', (e) => { if (giftOpen && e.key === 'Escape') { e.stopPropagation(); close(); } }, true);
+addEventListener('pointerdown', (e) => { if (giftOpen && box && !e.target.closest('.mo-in')) close(); }, true);
 // a guest sees the running gift once (per gift), with "log in to claim"
 export function guestGiftOnce(login) {
   const g = activeGifts()[0];
   if (!g) return;
   const k = 'jf_giftseen_' + g.id;
-  try { if (localStorage.getItem(k)) return; localStorage.setItem(k, '1'); } catch { return; }
+  try { if (localStorage.getItem(k) || localStorage.getItem('jf_giftseen_all')) return; localStorage.setItem(k, '1'); } catch { return; } // (jf_giftseen_all: test scripts skip every gift popup)
   showGift([g], login);
 }
