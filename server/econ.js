@@ -6,6 +6,7 @@ import { TAC } from '../shared/tactical.js';
 import { BOMB } from '../shared/modes.js';
 import { ECON, ARMOR, BLAST, GEAR, econWeapon, weaponPrice, refillPrice, killReward, armorPen, ammoSpec, itemSpec, gearPrice } from '../shared/econ.js';
 import { raycast, PH } from '../shared/physics.js';
+import { installSdTune } from './sdtune.js'; // S&D: damage per zone + range, 5v5
 import AI, { aiDeps } from './econai.js'; // the team tactics (buying, executes, holds, rotations, retakes)
 
 // test knobs: JF_ECON=0 turns the economy off (Plant & Defuse as before), short buy phases, start / max credits
@@ -821,5 +822,6 @@ export function installEcon(Room, deps) {
     if (k in Room.prototype) throw new Error('econ: Room already has ' + k);
     Room.prototype[k] = fn;
   }
+  installSdTune(Room);
 }
 export { dropView, instView };

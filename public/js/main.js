@@ -63,6 +63,7 @@ import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, ch
 import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset, brOn, brInvOpen, brInvToggle } from './royale.js'; // jank royale
 import { brActive } from './royale.js';
 import { BR } from '/shared/royale.js'; // (the grapple charges, for the help text)
+import { tacZoneOf } from './tactical.js'; // plant & defuse hit markers by zone
 import { initMinimap, minimapFrame } from './minimap.js'; // the HUD minimap (SAT-NAV)
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { ecoKeyLabel } from './econ.js';
@@ -447,6 +448,7 @@ bindCheck('shake', 'shake');
 bindCheck('showFps', 'showFps');
 bindCheck('toggleAim', 'toggleAim');
 bindCheck('blood', 'blood');
+bindCheck('sdNoCross', 'sdNoCross'); // plant & defuse: no spread crosshair (tactical.js)
 bindCheck('killcam', 'killcam', () => { if (G.joined) net.send({ t: 'kc', on: S.killcam }); });
 bindCheck('showCards', 'showCards');
 bindCheck('speedLines', 'speedLines');
@@ -1517,7 +1519,7 @@ net.on('dmg', (m) => {
   }
   if (m.w === 'shredder') shredHit(m);
   if (m.from === G.myId && m.to !== G.myId) {
-    hud.hit(m.hs);
+    hud.hit(m.hs, tacZoneOf(m.to)); // (plant & defuse: body / legs markers too)
     if (m.hs) sfx.headshot(m.ko); else sfx.hit();
     if (target) {
       const v = new THREE.Vector3(target.pos[0], target.pos[1] + 2, target.pos[2]).project(G.camera);

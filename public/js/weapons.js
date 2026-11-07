@@ -39,7 +39,8 @@ import { GAMES, spoonLookOn } from '/shared/modes.js';
 const kitSpeed = () => ((G.mode === 'ffa' || G.mode === 'bots') && GAMES[G.game] && GAMES[G.game].kit && GAMES[G.game].kit.speedMul) || 1;
 import { secFireDown, secShot } from './secondaries.js'; // taser, tv remote, water pistol streams
 import { RIFLES, RF, RIFLE_VM, RIFLE_RECOIL, RIFLE_SHELLS, rifleShot, bursting, rifleReset, quickScoped, rifleStep, rifleEvent } from './rifles.js'; // the rifle pack
-import { tacOn, tacShot, tacKick, tacFrame } from './tactical.js'; // Plant & Defuse: spray patterns + moving spread
+import { tacOn, tacShot, tacKick, tacFrame, tacZone } from './tactical.js'; // Plant & Defuse: spray patterns + moving spread
+import { sdRow } from '/shared/sdgun.js'; // S&D: each gun's first-shot spread (hip / sights)
 import { carRay, carHit, carSwing } from './traffic.js'; // cars stop bullets (and take the damage)
 
 export const W = {
@@ -731,7 +732,7 @@ function rayPlayers(o, d, maxT) {
     if (!r.alive || (isFriend(r) && !(r.trapUntil > performance.now()))) continue; // a teammate in a soap bubble can be shot free
     for (const hb of r.hitboxes()) {
       const h = rayBox(o, d, hb, best ? best.t : maxT);
-      if (h && (!best || h.t < best.t)) best = { t: h.t, r, head: hb.head };
+      if (h && (!best || h.t < best.t)) best = { t: h.t, r, head: hb.head, leg: !hb.head && o[1] + d[1] * h.t - r.pos[1] < 0.78 * (r.distScale || 1) }; // (legs: S&D damage)
     }
   }
   return best;
@@ -779,6 +780,8 @@ function currentSpread(w) {
 // the gun's own spread right now, without bloom (Plant & Defuse: the spray pattern replaces bloom; moving adds on top)
 function tacBase(w) {
   if (fanShot) return fanSpread(w);
+  const sd = sdRow(W.cur);
+  if (sd) { const hip = (HIPFIRE[G.cfg.hip] || HIPFIRE.normal).mul, hipS = sd.fs * hip, ads = (sd.ads ?? sd.fs) * Math.min(1, hip); return hipS + (ads - hipS) * W.aim; } // S&D: the table's first shot
   const hip = (HIPFIRE[G.cfg.hip] || HIPFIRE.normal).mul, base = (w.spread || 0) * sm(W.cur, 'spread');
   const ads = w.ads ? base * (w.ads.spread ?? 1) * Math.min(1, hip) : base * hip, hipS = base * hip;
   return hipS + (ads - hipS) * W.aim;
@@ -817,8 +820,8 @@ function fireHitscan(id, now, hand) { // hand: 'L' / 'R' = which of Lefty & Righ
       segs.push([...drawFrom, ...end]);
       if (shots) shots.push({ a: drawFrom, b: end, n: !ph && mh ? mh.normal : null, player: !!ph });
       if (ph) {
-        const h = hits.get(ph.r.id) || { n: 0, h: 0, d };
-        h.n++; if (ph.head) h.h++; h.d = d;
+        const h = hits.get(ph.r.id) || { n: 0, h: 0, lg: 0, d };
+        h.n++; if (ph.head) h.h++; else if (ph.leg) h.lg++; h.d = d;
         hits.set(ph.r.id, h);
         break;
       }
@@ -837,7 +840,7 @@ function fireHitscan(id, now, hand) { // hand: 'L' / 'R' = which of Lefty & Righ
   const qs = (id === 'sniper' && W.scoped && now - W.scopedAt <= ROYAL.quick) || quickScoped(w, W, now) ? 1 : undefined; // quick-scope: fired right as the scope came up (Sniper Royalty only, never damage)
   for (const [cid, n] of carHits) { carHit(cid, id, n, base); hud.hit(false); }
   const r4 = (x) => Math.round(x * 10000) / 10000;
-  for (const [rid, h] of hits) net.send({ t: 'hit', to: rid, w: id, d: h.d.map(tac ? r4 : r2), n: h.n, h: h.h, ns, qs, fan: fanShot ? 1 : undefined, ...(tac ? tac.msg : null), hd: hand === 'L' ? 1 : undefined });
+  for (const [rid, h] of hits) { if (tac) tacZone(rid, h); net.send({ t: 'hit', to: rid, w: id, d: h.d.map(tac ? r4 : r2), n: h.n, h: h.h, lg: tac && h.lg ? h.lg : undefined, ns, qs, fan: fanShot ? 1 : undefined, ...(tac ? tac.msg : null), hd: hand === 'L' ? 1 : undefined }); }
   const fast = w.rate > 8;
   const skin = (W.skinOver || G.equipped || {})[id];
   if (shots) marbles.shoot(shots, marblePalette(skin));

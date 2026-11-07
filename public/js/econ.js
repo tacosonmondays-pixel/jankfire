@@ -825,3 +825,11 @@ export function initEcon(callbacks) {
   initNet();
   wrapHud();
 }
+// the bots setup screen: Plant & Defuse is always 5v5 (the server tops both teams up with bots), so the slider rests
+{
+  const g = document.getElementById('setupGame'), b = document.getElementById('setupBots'), n = document.getElementById('setupBotsN');
+  if (g && b && n) {
+    const sync = () => { const sd = g.value === 'bomb'; b.disabled = sd; n.textContent = sd ? '5v5' : b.value; };
+    g.addEventListener('change', sync); b.addEventListener('input', sync); sync();
+  }
+}

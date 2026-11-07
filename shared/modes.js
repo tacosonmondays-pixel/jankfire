@@ -4,7 +4,7 @@ export const GAMES = {
   dm: { name: 'Deathmatch', desc: 'everyone for themselves. first to the kill limit', teams: false },
   tdm: { name: 'Team Deathmatch', desc: 'red vs blue. first team to the kill limit', teams: true },
   tags: { name: 'Tags', desc: "kills drop tags. grab enemy tags to score, grab your own team's to deny them", teams: true },
-  bomb: { name: 'Plant & Defuse', desc: 'attackers plant the bomb at A or B (hold F). defenders stop them or defuse it', teams: true, sites: true },
+  bomb: { name: 'Plant & Defuse', desc: '5v5. attackers plant the bomb at A or B (hold F). defenders stop them or defuse it', teams: true, sites: true },
   rand: { name: 'Randomizer', desc: 'everyone gets a random loadout every life. first to the kill limit', teams: false, random: true },
   gun: { name: 'Gun Game', desc: 'one weapon at a time. a kill moves you up the ladder, a melee death knocks you back. first kill with the spoon wins', teams: false, ladder: true, spoonLook: true },
   inf: { name: 'Infection', desc: 'someone starts infected. whoever the zombies kill turns into one. survive the timer', teams: false, infect: true },
