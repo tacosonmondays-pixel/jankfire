@@ -30,3 +30,11 @@ bots and hits keep the boxes exactly as they were (`node tools/arch/gamehash.mjs
   (only shards in the corners), doors are swung back against the wall, nothing big hangs out where you'd try to stand.
 - Visual steps sit exactly on the collision steps (the treads are the step tops). Relief stays shallow (a few cm).
 - Paint comes from the map (`paint: { siding, roof }` = map material keys, colours in `archfield.js` `PAINT`).
+
+## Next to tools/blender/ps1.py (PR #83)
+`ps1.py` repaints one finished model into a single baked PS1 texture (guns, props, vehicles). Architecture uses this kit
+instead: buildings are huge and tile, so they get small seamless textures in world-scale UVs plus vertex AO. Both
+use the same treatment: a small palette per texture, 15-bit colour, ordered dither, matte, no mipmaps up close. Shared
+conventions for glbs that use the kit: no embedded images; each material carries extras `tex` (kit image name), `tile`,
+`col` (hex factor), and optionally `paint` (a slot the map repaints), `alpha` (1-bit cutout), `glow` / `glowmap`
+(emissive) and `nocast` (no sun shadow). The client loads each kit image once by name (archfield.js `tex()`).
