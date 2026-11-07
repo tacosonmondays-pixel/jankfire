@@ -7,8 +7,9 @@
 //     (or a ricochet of it). Pellet guns: inside the cone.
 // A hit that fails does nothing. Bots use the same patterns and moving spread, and pull down against them by difficulty.
 import { WEAPONS, HIPFIRE, FLAGS } from '../shared/weapons.js';
-import { TAC, patternOf, shotOffset, shotDir, shotSeed, tacSpread, angleBetween } from '../shared/tactical.js';
+import { TAC, patternOf, shotOffset, shotDir, shotSeed, tacSpread, angleBetween, landK } from '../shared/tactical.js';
 import { raycast, PH } from '../shared/physics.js';
+import { sdRow, sdMinBase, sdBase } from '../shared/sdgun.js'; // S&D: first-shot spread + bloom per gun
 
 const now = () => Date.now();
 const LOG = !!process.env.JF_TAC_LOG;
@@ -28,12 +29,13 @@ const M = {
     return !raycast([p.pos[0], p.pos[1] + 0.3, p.pos[2]], [0, -1, 0], 0.9, this.boxes);
   },
   // the least spread this shot can honestly have
-  tacMinSpread(p, w, id, fan) {
+  tacMinSpread(p, w, id, fan, i = 0) {
     const hip = (HIPFIRE[this.cfg.hip] || HIPFIRE.normal).mul;
     let base = (w.spread || 0) * hip * (w.ads ? Math.min(1, w.ads.spread ?? 1) : 1);
+    if (sdRow(id)) { const r = sdRow(id); base = Math.min(r.fs * hip, (r.ads ?? r.fs) * Math.min(1, hip)); } // (sights or hip: the lower one)
     if (fan && w.fanHammer) base = w.fanHammer.spread * hip;
     const speed = Math.hypot(p.vel[0], p.vel[2]);
-    return tacSpread(id, base, speed, this.tacAir(p), !!(p.f & FLAGS.CROUCH));
+    return tacSpread(id, base, speed, this.tacAir(p), !!(p.f & FLAGS.CROUCH), i, landK((p.tacAirT || -1e9) - 200, now())); // (200 ms grace: snapshots lag)
   },
   // econShot opened a new shot from message m: is it the next one, at the right spray index?
   tacOpen(p, x, w, m) {
@@ -53,7 +55,7 @@ const M = {
     if (!a || !num(m.sp) || m.sp < 0 || m.sp > 1) { this.tacNo(p, x, 'a', {}); return; }
     // the aim you claim is the aim of the snapshot you just sent
     if (Math.abs(wrapA(a[0] - (p.yaw || 0))) > TAC.aimTol || Math.abs(a[1] - (p.pitch || 0)) > TAC.aimTol) { this.tacNo(p, x, 'aim', { a, y: p.yaw, x: p.pitch }); return; }
-    const min = this.tacMinSpread(p, w, x.id, m.fan === 1);
+    const min = this.tacMinSpread(p, w, x.id, m.fan === 1, i);
     if (m.sp < min * TAC.spTol - 0.002) { this.tacNo(p, x, 'sp', { sp: m.sp, min }); return; }
     sh.tac = { q, i, a, sp: m.sp, off: shotOffset(x.id, i), seed: T.seed };
   },
@@ -101,8 +103,21 @@ const M = {
     const cp = Math.cos(b.pitch + o[1] * (1 - comp)), yaw = b.yaw - o[0] * (1 - comp);
     const a = [-Math.sin(yaw) * cp, Math.sin(b.pitch + o[1] * (1 - comp)), -Math.cos(yaw) * cp];
     const speed = Math.hypot(b.vel[0], b.vel[2]);
-    const sp = tacSpread(b.w, spread, speed, !b.onGround, false);
+    if (sdRow(b.w)) { // S&D: the gun's own first shot + bloom (as if aiming), plus a smaller difficulty wobble
+      const hip = (HIPFIRE[this.cfg.hip] || HIPFIRE.normal).mul;
+      spread = sdBase(b.w, 1) * Math.min(1, hip) + (D && D.err ? D.err * 0.55 : 0);
+      this.tacBotTrigger(b, w, t.i, n);
+    }
+    const sp = tacSpread(b.w, spread, speed, !b.onGround, false, sdRow(b.w) ? t.i : 0);
     return [a, sp];
+  },
+  // S&D trigger discipline: tap at range (wait out the spray reset), short bursts at mid range, hold it up close
+  tacBotTrigger(b, w, i, n) {
+    const ai = b.ai, tg = this.players.get(ai.target), P = patternOf(b.w);
+    if (!w.auto || !tg || !P) return;
+    const d = Math.hypot(tg.pos[0] - b.pos[0], tg.pos[2] - b.pos[2]);
+    const burst = d > 28 ? 1 : d > 14 ? 3 : 99;
+    if ((i + 1) % burst === 0) ai.nextShot = Math.max(ai.nextShot, n + P.reset + 40 + Math.random() * 120);
   },
 };
 
