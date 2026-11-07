@@ -1,6 +1,14 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '6.3', date: '2026-11-07', title: 'TACTICAL MODE (ALLEGEDLY)', items: [
+    'PLANT & DEFUSE is 5v5 now. bots fill the empty spots, and a real player takes a bot\'s place. matches are 15 rounds at most: first to 8, sides swap after round 7, 7-7 goes to a decider.',
+    'P&D gunplay works like a proper tactical shooter: the first shot standing still is near-perfect, every shot after it blooms, and each gun has its own spray pattern. tap and burst, don\'t hold.',
+    'moving ruins your aim. walking is shaky, running sprays everywhere and jumping is a prayer. stop, then shoot.',
+    'damage depends on where you hit: the AR one-taps heads up close, the DMR one-taps heads anywhere, the sniper one-shots bodies, shotguns only work close up. the crosshair shows your spread (settings can hide it), and hit markers show head / body / legs.',
+    'dead in P&D? you spectate through your teammate\'s own eyes now. when spectating anywhere else, a little first-person box in the corner shows what they see.',
+    'the gunplay changes are only in plant & defuse. everywhere else is still chaos.',
+  ] },
   { v: '6.2', date: '2026-11-07', title: 'WHO\'S THE BEST AT WHAT', items: [
     'the LEADERBOARD has tabs now: OVERALL, QUICK PLAY, PLANT & DEFUSE, ZOMBIES and JANK ROYALE, each with its own boards.',
     'plant & defuse: rounds won, plants, defuses, clutches, combat score per round, headshot %. zombies: highest round, zombies killed, revives, planks nailed, credits spent, cheat machine rolls. royale: wins, top 3s, kills, damage, longest kill.',
