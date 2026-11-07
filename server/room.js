@@ -52,6 +52,7 @@ import { installBotFlair } from './botflair.js'; // bot outfits, bot chat + bot 
 import { lassoPreroll } from '../shared/lasso.js';
 import { ZM } from '../shared/zombies.js';
 import { installZombies } from './zombies.js';
+import { installStoryRef } from './storyref.js'; // story rooms: the OVERDUE referee's rules (enemies, sides, events)
 import { installModeStats } from './modestats.js'; // per-mode leaderboard stats
 import { inShredder } from '../shared/shredpit.js'; // the Warehouse's shredder pit: its teeth kill like the void
 import { installLobby } from './lobby.js'; // mode lobbies: the countdown before a match
@@ -3931,6 +3932,7 @@ installEcon(Room, {
 installLasso(Room);
 installZombies(Room, { send, stat, store });
 installLobby(Room, { send, rooms });
+installStoryRef(Room); // story rooms (before installModeStats, which stays last)
 installModeStats(Room, { store }); // per-mode leaderboard stats (last: it wraps zombies' zmGive)
 
 // ---------------------------------------------------------------- account stats

@@ -16,9 +16,9 @@ function deal(sim) {
 }
 addSystem({
   id: 'solohost',
-  join(sim) { deal(sim); },
+  join(sim) { if (!sim.ref) deal(sim); }, // (the referee's room deals its own hand once it's up)
   raw(sim, m) {
-    if (m.t !== 'redraw') return false;
+    if (m.t !== 'redraw' || sim.ref) return false;
     if (sim.t - (sim.redrawT ?? -9) > 2.5) { sim.redrawT = sim.t; deal(sim); }
     return true;
   },
