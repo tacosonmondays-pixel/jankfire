@@ -722,3 +722,24 @@ Object.assign(sfx, {
   hookNo() { tone('sawtooth', 420, 140, 0.16, 0.12); noise(0.06, 0.18, 'bandpass', 1800, 600, null, 0, 3); tone('square', 220, 200, 0.05, 0.1, null, 0.14); },
   hookReady() { tone('square', 1500, 1500, 0.02, 0.08); tone('triangle', 1900, 2300, 0.06, 0.09, null, 0.04); },
 });
+
+// liquids (liquids.js, flames.js): a sploosh that grows with how hard you went in, wading steps, a bullet plipping into
+// water, goo going gloop, lava burping, fire crackling
+Object.assign(sfx, {
+  liqSplash(pos, k = 1) { // (the water pistol keeps its own sfx.splash)
+    const big = Math.min(1, k / 1.5);
+    noise(0.18 + big * 0.5, 0.35 + big * 0.55, 'bandpass', 1800 - big * 700, 260, pos, 0, 0.9); // the sploosh
+    noise(0.08 + big * 0.12, 0.3 + big * 0.3, 'highpass', 2500, 5000, pos, 0.01); // the spray
+    if (k > 0.6) tone('sine', 90, 40, 0.3 + big * 0.3, 0.3 + big * 0.4, pos); // the thump of a body going in
+    for (let i = 0; i < 2 + Math.round(big * 4); i++) { const f = 300 + Math.random() * 500; tone('sine', f, f * 2.4, 0.05 + Math.random() * 0.04, 0.12, pos, 0.12 + i * 0.07 + Math.random() * 0.05); } // bloop bloop
+  },
+  wade(pos, k = 0.5, me = false) { // shlp: quieter for other people's legs
+    const v = me ? 0.32 : 0.2;
+    noise(0.14 + k * 0.08, v * (0.6 + k * 0.6), 'bandpass', 1300 + Math.random() * 500, 420, pos, 0, 1.4);
+    tone('sine', 380 + Math.random() * 200, 900 + Math.random() * 300, 0.05, v * 0.4, pos, 0.04);
+  },
+  plip(pos) { tone('sine', 1400 + Math.random() * 600, 500, 0.06, 0.12, pos); noise(0.05, 0.18, 'highpass', 3000, 6000, pos); },
+  gloop(pos, k = 0.5) { tone('sine', 160, 420, 0.12 + k * 0.08, 0.2 + k * 0.15, pos); tone('sine', 260, 120, 0.1, 0.12, pos, 0.1); noise(0.16, 0.2 + k * 0.2, 'lowpass', 900, 200, pos); },
+  blorp(pos) { tone('sine', 70 + Math.random() * 30, 160, 0.16, 0.22, pos); tone('sine', 140, 60, 0.12, 0.14, pos, 0.14); noise(0.1, 0.12, 'lowpass', 600, 150, pos, 0.12); },
+  crackle(pos, k = 1) { for (let i = 0; i < 1 + (Math.random() * 3 | 0); i++) noise(0.012 + Math.random() * 0.02, (0.06 + Math.random() * 0.1) * k, 'highpass', 1800 + Math.random() * 3000, 1200, pos, i * 0.03 + Math.random() * 0.02, 1); },
+});
