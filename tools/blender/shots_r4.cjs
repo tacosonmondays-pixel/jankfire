@@ -6,6 +6,7 @@
 //   (start the server first: JF_ROUND_TIME=7200 JF_ROUND_KILLS=999 JF_BOMB_WINS=99 JF_BOMB_ROUND=3600 JF_BUY_TIME=1 JF_ZM_SWIPE=0
 //   PORT=<port> node server.js: the match outlasts the shots, Plant & Defuse keeps going with 1 s buy phases, zombies
 //   don't bite. Cap browsers with pwlock.cjs.)
+//   JF_SHOT_FOV=45: a narrower lens than the game's for the shots (big props like the buses fill more of the picture)
 // out: <outdir>/r4_<id>.png (rows = copies on their maps, columns = box / Blender per preset) or r4_map_<map>.png
 const { chromium } = require('playwright');
 const { execFileSync } = require('child_process');
@@ -61,6 +62,7 @@ async function session(b, map, ids) {
   }, map);
   if (ok !== true) { console.log(map, 'never joined:', ok, errs.slice(0, 3).join(' / ')); await pg.close(); return []; }
   // the camera: pinned where we want it, no HUD, no gun
+  await pg.evaluate((f) => { window.__fov = f; }, Number(process.env.JF_SHOT_FOV) || 0);
   await pg.evaluate(async () => {
     const { G } = await import('/js/ctx.js'); const { ME } = await import('/js/player.js');
     const h = document.getElementById('hud'); if (h) h.style.display = 'none';
@@ -79,6 +81,7 @@ async function session(b, map, ids) {
     const draw = G.renderer.render.bind(G.renderer);
     G.renderer.render = (sc, cam) => {
       const q = window.__pin;
+      if (cam === G.camera && q && window.__fov && cam.fov !== window.__fov) { cam.fov = window.__fov; cam.updateProjectionMatrix(); }
       if (cam === G.camera && q) { const c = cam.position; window.__camOk = Math.hypot(c.x - ME.pos[0], c.y - ME.pos[1] - ME.eyeH, c.z - ME.pos[2]) <= 0.3 && Math.hypot(ME.pos[0] - q.p[0], ME.pos[2] - q.p[2]) <= 1.5 && Math.abs(ME.pos[1] - q.p[1]) <= 0.8; if (!window.__camOk) window.__camBadT = performance.now(); } // (when it last wasn't: a frame or two off between checks counts too)
       if (cam === G.camera && q) { for (const pr of G.projs.values()) if (pr.mesh) pr.mesh.visible = false; G.remotes.forEach((r) => { if (r.ch && r.ch.root) r.ch.root.visible = false; }); } // (no bullets, thrown stuff or players flying through the shot)
       return draw(sc, cam);
