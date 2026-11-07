@@ -230,7 +230,7 @@ export function gut(B, d) {
   for (let i = 0; i < 4; i++) {
     const ax = X0 + 6 + r() * (X1 - X0 - 12), az = Z0 + 6 + r() * (Z1 - Z0 - 12), ang = r() * 6.283, len = 14 + r() * 22;
     const bx = ax + Math.cos(ang) * len, bz = az + Math.sin(ang) * len, h = 6 + r() * 10, rad = 1.1 + r() * 1.6;
-    if (keepG.slice(0, 1).some((q) => inRect(Math.min(ax, bx), Math.min(az, bz), Math.max(ax, bx), Math.max(az, bz), q)) || stomachD(ax, az) < S.r + 4) continue;
+    if ([keepG[0], ...shopRects('gut')].some((q) => inRect(Math.min(ax, bx) - 4, Math.min(az, bz) - 4, Math.max(ax, bx) + 4, Math.max(az, bz) + 4, q)) || stomachD(ax, az) < S.r + 4) continue; // (not over the arena or a shopfront)
     const mx = (ax + bx) / 2 + (r() - 0.5) * 8, mz = (az + bz) / 2 + (r() - 0.5) * 8;
     B.shape({ kind: 'tube', pts: [[ax, GY - 1.5, az], [ax + (mx - ax) * 0.4, GY + h * 0.8, az + (mz - az) * 0.4], [mx, GY + h, mz], [bx + (mx - bx) * 0.4, GY + h * 0.8, bz + (mz - bz) * 0.4], [bx, GY - 1.5, bz]], r: rad, seg: 10, ribs: 0.12, mat: r() < 0.7 ? 'flesh' : 'fat', tint: pick(r, FLESH), step: 1.0, pulse: 5 });
     B.shape({ kind: 'blob', c: [ax, GY, az], r: [rad * 2, rad * 0.9, rad * 2], seg: 8, mat: 'liver', pulse: 3 });

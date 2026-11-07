@@ -227,4 +227,12 @@ function frame() {
 }
 requestAnimationFrame(frame);
 
+// ?roads=1: draw the GTA net over the city (roads yellow, pavements cyan, parking pink, shops green): the systems lane's view
+if (Q.get('roads') === '1') import('/shared/city/slice_gta.js').then(async ({ default: N }) => {
+  const { allMarks } = await import('/shared/city/marks.js');
+  const strip = (list, col, h) => { const pos = []; for (const l of list) for (let i = 0; i + 1 < l.pts.length; i++) { const a = l.pts[i], b = l.pts[i + 1]; pos.push(a[0], a[1] + h, a[2], b[0], b[1] + h, b[2]); } const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); const m = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: col, depthTest: false })); m.renderOrder = 9; scene.add(m); };
+  strip(N.roads, 0xffe14d, 0.6); strip(N.walks, 0x4fd8ff, 0.3);
+  const dot = (p, col, s) => { const m = new THREE.Mesh(new THREE.BoxGeometry(s, s, s), new THREE.MeshBasicMaterial({ color: col, depthTest: false })); m.position.set(p[0], p[1] + 0.8, p[2]); m.renderOrder = 9; scene.add(m); };
+  for (const m of allMarks('slice')) if (m.id === 'park') dot(m.p, 0xff4fd8, 0.9); else if (m.id === 'shop' || m.id === 'garage') dot(m.p, 0x39ff14, 1.6);
+});
 window.__city = { hp: () => hp, stream, scene, camera, renderer, me, setPreset, shoot, callout, city, resetWorst: () => { frameMax = 0; frames = 0; }, worst: () => frameMax, fps: () => fps };
