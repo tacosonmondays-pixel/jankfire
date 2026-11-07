@@ -22,7 +22,7 @@ async function measure(b, map) {
   await pg.click('#scr-main [data-pick="bots"]', T); await pg.click('#mpCustom', T);
   await pg.selectOption('#setupGame', GAME[map] || 'dm', T);
   await pg.selectOption('#setupMap', map, T);
-  await pg.locator('#setupBots').fill('1');
+  const bots = pg.locator('#setupBots'); if (await bots.isVisible() && await bots.isEnabled()) await bots.fill('1'); // (a fixed-size mode greys it out)
   await pg.selectOption('#setupDiff', 'easy').catch(() => {});
   await pg.click('#setupGo', T);
   const ok = await pg.evaluate(async (map) => {

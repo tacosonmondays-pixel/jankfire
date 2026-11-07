@@ -50,7 +50,7 @@ async function session(b, map, ids) {
     await pg.click('#scr-main [data-pick="bots"]', T); await pg.click('#mpCustom', T);
     await pg.selectOption('#setupGame', gameOf(map), T);
     await pg.selectOption('#setupMap', map, T);
-    const bots = pg.locator('#setupBots'); if (await bots.isVisible()) await bots.fill('1'); // (one slow bot: the least it allows; Zombies has none)
+    const bots = pg.locator('#setupBots'); if (await bots.isVisible() && await bots.isEnabled()) await bots.fill('1'); // (one slow bot: the least it allows; Zombies has none, Plant & Defuse is a fixed 5v5)
     await pg.selectOption('#setupDiff', 'easy', { timeout: 3000 }).catch(() => {});
     await pg.click('#setupGo', T);
   }
