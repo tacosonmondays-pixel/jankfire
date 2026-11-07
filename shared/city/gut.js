@@ -8,6 +8,8 @@ import { rng, hash2 } from './plan.js';
 import { cube, stairsZ, line, rubble, stall, flightLen, retaining, PASTEL, pick, hook } from './kit.js';
 import { playGut } from './playground.js';
 import { gateArena, inGateArena } from './arenas.js';
+import { shops, shopRects } from './shops.js';
+import { GUT_LINK } from './roads.js';
 
 const GY = SLICE.gut.y;
 const inRect = (x0, z0, x1, z1, r) => x0 < r[2] && x1 > r[0] && z0 < r[3] && z1 > r[1];
@@ -25,7 +27,7 @@ function streetAt(x, z) {
   return null;
 }
 const stomachD = (x, z) => Math.hypot(x - SLICE.stomach.x, z - SLICE.stomach.z);
-const KEEP = () => [SLICE.arena.rect, SLICE.teeth.rect, [SLICE.choir.x - 26, SLICE.choir.z - 30, SLICE.choir.x + 26, SLICE.choir.z + 22], [SLICE.stomach.x - SLICE.stomach.r - 14, SLICE.stomach.z - SLICE.stomach.r - 14, SLICE.stomach.x + SLICE.stomach.r + 14, SLICE.stomach.z + SLICE.stomach.r + 14]];
+const KEEP = () => [SLICE.arena.rect, SLICE.teeth.rect, [SLICE.choir.x - 26, SLICE.choir.z - 30, SLICE.choir.x + 26, SLICE.choir.z + 22], [SLICE.stomach.x - SLICE.stomach.r - 14, SLICE.stomach.z - SLICE.stomach.r - 14, SLICE.stomach.x + SLICE.stomach.r + 14, SLICE.stomach.z + SLICE.stomach.r + 14], ...shopRects('gut'), GUT_LINK.rect];
 
 // a campus office block grown over: grey office box, lit windows, flesh coating patches, blobs on the corners,
 // a sphincter for a door, the Gristle & Sons sign on some, vein cables to the neighbour
@@ -254,6 +256,7 @@ export function gut(B, d) {
   choir(B, r);
   if (B.touches(SLICE.teeth.rect, 2)) toothMarket(B, r);
   playGut(B); // grapple rings, the Wishbone (playground.js)
+  shops(B, 'gut'); // Meat Mechanics, Bone Arms, the Tooth Market's stalls, vending (shops.js)
 }
 
 // the border: the Bottom's top houses, half eaten. ground creeps from pastel to flesh going north; the gate at the
