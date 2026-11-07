@@ -1,6 +1,10 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '6.8', date: '2026-11-07', title: 'SPRAY RANGE', items: [
+    'TRAINING has a SPRAY RANGE now: a wall left of the firing line with a head ring 10 m out. step onto the sand and the plant & defuse guns kick like they do in P&D. hold fire, pull down, and the last spray\'s holes stay on the wall in hot pink. the rest of training is as dumb as ever.',
+    'the little first-person spectate box in royale sits under the stats now instead of on top of them.',
+  ] },
   { v: '6.7', date: '2026-11-07', title: 'LEARN YOUR SPRAY', items: [
     'plant & defuse sprays are learnable now: every auto gun climbs straight up, then sways left-right-left at the top, the SAME way every time. pull down against it and it stays on a head. running or jumping still sprays everywhere.',
     'online plant & defuse lobbies fill the empty slots with bots, so it\'s always 5v5.',
