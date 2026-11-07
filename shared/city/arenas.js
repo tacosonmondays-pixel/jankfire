@@ -62,13 +62,13 @@ export function gateArena(B) {
     B.out.marks.push(
       { id: 'gut:border', p: [G.x, y, -14] }, // (the writer's LOCATIONS id for this arena)
       { id: 'arena.overtime_1', p: [G.x, y, -14], rect: GATE_ARENA.rect, y, name: 'THE GUT BORDER GATE' },
-      { id: 'arena.boss', p: [G.x + 2, y, -26], face: 0 },
+      { id: 'arena.boss', p: [G.x + 2, y, -26], face: Math.PI }, // (facing the stairs)
       // Overtime's beats (story lane WP8 names): he walks in through the gate, sits on the top step of the Long Stairs for
       // the Coffee Break (facing the landing), and retreats up the bone stairs into the Gut. face = yaw (0 looks north, -z)
       { id: 'ot_enter', p: [G.x, y, -30], face: Math.PI },
       { id: 'ot_stairs', p: [G.x + 1.5, y - 0.2, 1.2], face: 0 },
       { id: 'ot_retreat', p: [G.x, SLICE.gut.y, -52], face: 0 },
-      { id: 'arena.player', p: [G.x, y, -2], face: Math.PI },
+      { id: 'arena.player', p: [G.x, y, -2], face: 0 }, // (facing the gate)
       ...[[-34, -6], [-30, -4], [-24, -14], [-38, -20]].map(([x, z]) => ({ id: 'arena.add', p: [x, y, z], kind: 'collector' })),
       // the Gristle & Sons truck: backed onto the landing (rear south, the ramp toward the stairs), the loading crane on
       // its left side reaching over the box (a grapple point), the ramp is the crush zone
