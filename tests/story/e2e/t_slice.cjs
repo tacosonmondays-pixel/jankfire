@@ -2,6 +2,7 @@
 // run: SP=<dir with pwlock.cjs> PORT=<port> node tests/story/e2e/t_slice.cjs
 require(process.env.SP + '/pwlock.cjs');
 const { chromium } = require('playwright');
+const skipIntro = require('./skipintro.cjs'); // the intro cinematic holds the keys: skip it
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
 (async () => {
@@ -12,7 +13,7 @@ const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
   pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
   await pg.addInitScript(() => { localStorage.setItem('jankfire', JSON.stringify({ name: 'slice', loadout: { primary: 'ar', secondary: 'pistol', melee: 'knife', item: 'frag' } })); if (!sessionStorage.getItem('sl')) { sessionStorage.setItem('sl', 1); localStorage.removeItem('jfStorySaves'); } });
   await pg.goto(`http://localhost:${PORT}/?story=1`); await sleep(1500);
-  await pg.click('#storyBtn', { force: true }); await sleep(700); await pg.click('#storyPick .st-btn.yellow', { force: true }); await sleep(9000);
+  await pg.click('#storyBtn', { force: true }); await sleep(700); await pg.click('#storyPick .st-btn.yellow', { force: true }); await sleep(9000); await skipIntro(pg);
   const ev = (f, a) => pg.evaluate(f, a);
   const st = () => ev(async () => { const { G } = await import('/js/ctx.js'); const { ME } = await import('/js/player.js'); return { map: G.cfg && G.cfg.map, pos: ME.pos.map((x) => +x.toFixed(1)), ground: ME.onGround, hint: document.querySelector('.st-hint') && !document.querySelector('.st-hint').classList.contains('hidden') ? document.querySelector('.st-hint').textContent : '' }; });
   console.log('spawned', JSON.stringify(await st()));

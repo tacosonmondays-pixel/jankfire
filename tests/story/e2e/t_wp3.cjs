@@ -2,6 +2,7 @@
 // WP3 e2e: starter bar, pick up test loot, bar keys equip each kind, wheel (no input leaks, slow time), bag drag, locker, drop, save/load
 require(process.env.SP + '/pwlock.cjs');
 const { chromium } = require('playwright');
+const skipIntro = require('./skipintro.cjs'); // the intro cinematic holds the keys: skip it
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
 (async () => {
@@ -13,7 +14,7 @@ const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
   await pg.addInitScript(() => { localStorage.setItem('jankfire', JSON.stringify({ name: 'wp3', jank: 3, loadout: { primary: 'ar', secondary: 'snowball', melee: 'knife', item: 'frag' } })); if (!sessionStorage.getItem('w3')) { sessionStorage.setItem('w3', 1); localStorage.removeItem('jfStorySaves'); } });
   await pg.goto(`http://localhost:${PORT}/?story=1&storytest=1`); await sleep(1500);
   await pg.click('#storyBtn', { force: true }); await sleep(700);
-  await pg.click('#storyPick .st-btn.yellow', { force: true }); await sleep(3500);
+  await pg.click('#storyPick .st-btn.yellow', { force: true }); await sleep(3500); await skipIntro(pg);
   const S = () => pg.evaluate(async () => {
     const { G } = await import('/js/ctx.js'); const { ME } = await import('/js/player.js'); const { W } = await import('/js/weapons.js'); const { IV } = await import('/js/story/bar.js');
     const inv = IV.inv; const it = (u) => inv.bag.find((x) => x && x.u === u);
@@ -75,7 +76,7 @@ const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
   const before = await S(); console.log('after H', JSON.stringify(before));
   await pg.keyboard.press('KeyB'); await sleep(800); await pg.click('#quit', { force: true }); await sleep(1000);
   await pg.goto(`http://localhost:${PORT}/?story=1&storytest=1`); await sleep(1500);
-  await pg.click('#storyBtn', { force: true }); await sleep(700); await pg.click('#storyPick .st-btn.yellow', { force: true }); await sleep(3500);
+  await pg.click('#storyBtn', { force: true }); await sleep(700); await pg.click('#storyPick .st-btn.yellow', { force: true }); await sleep(3500); await skipIntro(pg);
   const after = await S(); console.log('reloaded', JSON.stringify(after), 'same bar', after.bar === before.bar);
   console.log('ERRORS', errs.length, errs.slice(0, 8).join('\n'));
   await b.close();

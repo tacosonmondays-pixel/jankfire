@@ -298,3 +298,4 @@ export function updateChaos(dt, now) {
   };
   setTimeout(step, 1500);
 }
+export const chaosSpecId = () => (C.specOn ? C.spec : 0); // who you're watching once you're out (pip.js shows their eyes)

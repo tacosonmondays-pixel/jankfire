@@ -30,6 +30,7 @@ import { initBag, toggleBag, bagOpen } from './bag.js';
 import { infoOf, count } from '/shared/story/items.js';
 import { IV as IVref } from './bar.js';
 import { LOOT_CSS } from './lootfx.js';
+import { initDrive, driveStep, driveTick, driving, tryEnter, endDrive, nearestCar, carName, clearCars, blockFire, DRIVE_CSS } from './drive.js'; // WP7
 import { initBody, bodyTick, bodyKey, bodyLeave, clinicOpen, toggleClinic, atClinic, bodyTimeScale, BODY_CSS } from './body.js'; // WP5
 
 const $ = (id) => document.getElementById(id);
@@ -45,7 +46,7 @@ export function initStory(a) {
   css();
   button();
   net.on('sty', (m) => { const fs = listeners[m.k]; if (fs) for (const f of fs) f(m); });
-  G.story = { on, send, save, active, tick, onMain, key, look, uiOpen, timeScale, get cur() { return cur; } };
+  G.story = { on, send, save, active, tick, onMain, key, look, uiOpen, timeScale, drive: driveStep, hideVM: driving, get cur() { return cur; } };
   // the bag as the story engine sees it (synchronous; kept fresh by the sim's 'inv' messages) + its host verbs
   G.story.inv = {
     has: (b, n = 1) => !!IVref.inv && count(IVref.inv, b) >= n,
@@ -54,10 +55,10 @@ export function initStory(a) {
     take: (b, n = 1) => send('qtake', { b, n }),
     coupons: (n) => send('qcoupons', { n }),
   };
-  storyKeys(); initBar(G.story); initBag(G.story); initBody(G.story);
+  storyKeys(); initBar(G.story); initBag(G.story); initBody(G.story); initDrive(G.story);
   on('hello', (m) => { ME.yaw = m.yaw || 0; hud.msg('OVERDUE', 2.2, 'brag'); });
   on('saved', (m) => stored(m.save));
-  on('redispensed', () => hud.msg('BEEP. CLUNK. RESTOCKING FEE APPLIED.', 2.2, 'brag'));
+  on('redispensed', () => { if (driving()) endDrive(true); hud.msg('BEEP. CLUNK. RESTOCKING FEE APPLIED.', 2.2, 'brag'); });
 }
 function on(k, fn) { (listeners[k] ||= []).push(fn); }
 function send(k, o) { net.send({ t: 'sty', k, ...o }); }
@@ -174,13 +175,14 @@ function tick(dt = 1 / 60) {
   const near = on && atTerminal();
   if (bagOpen() && !$('menu').classList.contains('hidden')) toggleBag(false); // the pause menu won over the bag
   if (!hint) { hint = el('div', 'st-hint hidden'); document.body.append(hint); }
-  const drop = on && !near ? nearestDrop() : null, lock = on && !near && !drop && atLocker(), doc = on && !near && !drop && !lock && atClinic();
+  const car = on && !near && !driving() ? nearestCar() : null;
+  const drop = on && !near && !car ? nearestDrop() : null, lock = on && !near && !drop && atLocker(), doc = on && !near && !drop && !lock && atClinic();
   const di = drop && infoOf(drop.item);
-  hint.textContent = near ? `${K.label('use')} · ENTER THE SIMS` : drop ? `${K.label('use')} · PICK UP ${di ? di.name.toUpperCase() : ''}${drop.item.q > 1 ? ' x' + drop.item.q : ''}` : lock ? `${K.label('use')} · OPEN THE LOCKER` : doc ? `${K.label('use')} · SEE THE MEAT MECHANIC` : '';
-  hint.classList.toggle('hidden', !(near || drop || lock || doc) || clinicOpen());
+  hint.textContent = car ? `${K.label('use')} · DRIVE ${carName(car)}` : near ? `${K.label('use')} · ENTER THE SIMS` : drop ? `${K.label('use')} · PICK UP ${di ? di.name.toUpperCase() : ''}${drop.item.q > 1 ? ' x' + drop.item.q : ''}` : lock ? `${K.label('use')} · OPEN THE LOCKER` : doc ? `${K.label('use')} · SEE THE MEAT MECHANIC` : '';
+  hint.classList.toggle('hidden', !(car || near || drop || lock || doc) || clinicOpen());
   const inStory = G.joined && G.mode === 'story';
   barShow(inStory);
-  if (inStory) { barTick(dt); bodyTick(dt, G.camera); standIns(); } else { if (wheelOpen()) closeWheel(false); if (bagOpen()) toggleBag(false); clearDrops(); bodyLeave(); }
+  if (inStory) { barTick(dt); bodyTick(dt, G.camera); standIns(); driveTick(dt, G.camera); } else { if (wheelOpen()) closeWheel(false); if (bagOpen()) toggleBag(false); clearDrops(); bodyLeave(); clearCars(); }
   const use = on && K.isDown('use');
   if (near && use && !useWas) terminal();
   useWas = use;
@@ -220,6 +222,12 @@ function key(e, down) {
   if (K.matches('bag', e)) { toggleBag(true); return true; }
   for (let i = 0; i < 8; i++) if (K.matches(`bar${i + 1}`, e)) { useBar(i); return true; }
   if (K.matches('dropHeld', e)) { dropHeld(); return true; }
+  if (driving()) { // in a car: F gets out, the rest is the car's (main.js turns movement keys into the car's pedals)
+    if (K.matches('use', e) && !e.repeat) { endDrive(true); return true; }
+    if (K.matches('fire', e) && blockFire()) { hud.msg('SIDEARMS ONLY FROM THE DRIVER\'S SEAT', 1.2); return true; }
+    if (K.matches(['bag', 'wheel'], e)) return true;
+  }
+  if (K.matches('use', e) && !e.repeat && ME.alive && !driving() && nearestCar() && !atTerminal()) { tryEnter(); return true; }
   if (K.matches('use', e) && !e.repeat && ME.alive && !atTerminal()) { // (at the Machine, F is the sims: tick() has it)
     const d = nearestDrop();
     if (d) { if (bodyKey(e, true, d) !== 'hold') send('pick', { id: d.id }); return true; } // hold F with the Second Stomach: eat it
@@ -293,6 +301,6 @@ function css() {
 .st-drop{background:#ff3030;color:#fff;font-weight:700;border-color:#000}
 .st-locker{margin-top:12px;border:3px dashed #7dff4f;padding:8px}
 .st-bag .st-cell{cursor:grab}.st-cell.over{outline:3px solid #ffe14d}.st-cell.held{outline:3px solid #4fd8ff;transform:rotate(-3deg)}.st-cell.drag{opacity:.4}
-`+ LOOT_CSS + BODY_CSS;
+`+ LOOT_CSS + BODY_CSS + DRIVE_CSS;
   document.head.append(s);
 }
