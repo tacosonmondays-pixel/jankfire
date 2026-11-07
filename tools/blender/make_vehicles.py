@@ -843,6 +843,7 @@ def build_transitbus():
 
     def side_part(n, c):  # side panels / pillars: faces across the length are in arches and openings: dark
         if abs(n.z) > 0.7 and abs(c.z) < 5.8: return (P_, 'D')
+        if abs(n.x) > 0.7 and n.x * c.x < 0 and abs(c.x) < IN + 0.025: return (C_, 'i' + kind_of(n))  # (the inner wall: the arches pull its centre under the floor)
         return shell(n, c)
 
     # ---------------- the sides below the windows (skirt + wall, arches and the door cut out), the pillars, gaskets
@@ -1733,6 +1734,7 @@ VIEWS = {  # close-ups (prop frame, game coords: eye, target, lens), the inside 
     'transitbus': [('front', (17, 2.4, -4.5), (9, 1.4, 1.3), 30), ('door', (10.5, 1.7, 6.5), (10.3, 1.4, 2.0), 30),
                    ('back', (-5.5, 2.6, 5.5), (1, 1.5, 1.3), 30), ('in_back', (10.6, 2.5, 1.7), (0.5, 1.6, 1.0), 40),
                    ('in_front', (2.0, 2.5, 1.9), (11.5, 1.9, 0.9), 40), ('in_door', (8.6, 2.5, 0.9), (10.6, 1.3, 2.6), 45),
+                   ('in_wall_seats', (6.0, 2.4, 1.9), (6.0, 1.2, 0.0), 55), ('in_wall_door', (6.0, 2.4, 0.9), (6.0, 1.2, 2.6), 55),
                    ('far0', (55, 30, -60), (6, 1.5, 1.3), 50), ('far1', (55, 30, -60), (6, 1.5, 1.3), 50)],
     'boxtruck': [('front', (15.5, 2.6, -4.0), (8.0, 1.6, 1.25), 30), ('back', (-5.2, 2.4, 4.8), (1.0, 2.0, 1.25), 30),
                  ('side', (5.0, 1.7, -7.5), (5.0, 1.8, 1.25), 34), ('in_back', (0.8, 2.7, 1.25), (7.2, 2.0, 1.25), 45),
