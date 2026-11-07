@@ -6,6 +6,7 @@
 import { SLICE, hwY } from './slice.js';
 import { rng, hash2 } from './plan.js';
 import { rubble, line, PASTEL, pick } from './kit.js';
+import { playCommute } from './playground.js';
 
 const H = SLICE.highway;
 const GAP = [86, 100]; // the collapsed span (z)
@@ -176,4 +177,5 @@ export function commute(B, d) {
   // the war, still lying where it stopped: a ☺ CORP walker tank, one leg gone, half sunk in the wasteland
   if (B.inside(262, -150)) { const y = hwY(-150, true); B.prop('warmech', 262, y, -150, 0.6, 1, 0); B.add(256, y, -156, 268, y + 6, -144, 'metal', { hide: true }); B.out.marks.push({ id: 'commute.warmech', p: [262, y, -138] }); }
   B.out.triggers.push({ kind: 'paper', box: [X0, -10, Z0, X1, 80, Z1] });
+  playCommute(B); // sign gantries, rings, the Pile-Up, the Smile's Hat (playground.js)
 }

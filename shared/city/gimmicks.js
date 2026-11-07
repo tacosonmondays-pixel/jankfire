@@ -6,9 +6,12 @@
 //   acid     { box, dps }                  the Big Stomach's lake: it digests you
 //   hot      { box }                       fallout hot zones (the fallen 7)
 //   paper    { box }                       the Commute's paper storms (weather)
+//   pad      { box, v: [vx, vy, vz] }      jump pads (the PvP ones): step on and get thrown along v
+//   slip     { box, what }                 banana peels / marbles in the markets: you go flying (the client's slip())
+//   slide    { box, dir, speed }           slide chutes (THE BANISTER): the floor speeds you up along dir, more if you slide
 // step() mutates the player state { pos, vel, ground, zip } and returns events for the client's juice.
 
-export const GIM = { zipGrab: 2.6, zipMax: 24, zipAccel: 16, zipHang: 2.0, bounceCool: 0.35 };
+export const GIM = { zipGrab: 2.6, zipMax: 24, zipAccel: 16, zipHang: 2.0, bounceCool: 0.35, padCool: 0.5, slipCool: 2.5, slideAcc: 18, slideAccSlide: 34 };
 
 const inBox = (p, b, pad = 0) => p[0] > b[0] - pad && p[0] < b[3] + pad && p[1] > b[1] - pad && p[1] < b[4] + pad && p[2] > b[2] - pad && p[2] < b[5] + pad;
 
@@ -78,7 +81,20 @@ export function stepGimmicks(me, trigs, dt, input = {}) {
     } else if (g.kind === 'acid' && inBox(feet, g.box)) ev.push({ kind: 'acid', dmg: g.dps * dt });
     else if (g.kind === 'hot' && inBox(feet, g.box)) ev.push({ kind: 'hot' });
     else if (g.kind === 'paper' && inBox(feet, g.box)) ev.push({ kind: 'paper' });
+    else if (g.kind === 'pad' && inBox(feet, g.box, 0.15) && !(me.padT > 0)) {
+      me.vel[0] = g.v[0]; me.vel[1] = g.v[1]; me.vel[2] = g.v[2]; me.ground = false; me.padT = GIM.padCool;
+      ev.push({ kind: 'pad', name: g.name, v: g.v[1] });
+    } else if (g.kind === 'slip' && me.ground && inBox(feet, g.box, 0.1) && !(me.slipT > 0) && Math.hypot(me.vel[0], me.vel[2]) > 2.5) {
+      me.slipT = GIM.slipCool; ev.push({ kind: 'slip', what: g.what || 'banana' }); // the client throws you (player.js slip())
+    } else if (g.kind === 'slide' && me.ground && inBox(feet, g.box, 0.2)) {
+      // the chute: speeds you up along it to its top speed (slide on it to get there faster), never slows you down
+      const along = me.vel[0] * g.dir[0] + me.vel[2] * g.dir[2], top = g.speed * (input.sliding ? 1.25 : 1);
+      if (along < top) { const a = (input.sliding ? GIM.slideAccSlide : GIM.slideAcc) * dt; me.vel[0] += g.dir[0] * a; me.vel[2] += g.dir[2] * a; }
+      ev.push({ kind: 'slide', name: g.name, v: along });
+    }
   }
   if (me.bounceT > 0) me.bounceT -= dt;
+  if (me.padT > 0) me.padT -= dt;
+  if (me.slipT > 0) me.slipT -= dt;
   return ev;
 }

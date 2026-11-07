@@ -49,7 +49,7 @@ const stream = new CityStream({ scene, city, preset, boxes });
 if (Q.has('storm')) stream.clock = () => 20 + performance.now() / 1e6; // test knob: storm=1 holds a paper storm on
 const C = CITIES[city];
 // the player: feet position, like the game's
-const me = { pos: [...(C.spawn || [0, 2, 0])], vel: [0, 0, 0], yaw: Q.has('yaw') ? +Q.get('yaw') : 0, pitch: 0, ground: false, fly: Q.get('fly') === '1', hook: null, held: 0 };
+const me = { pos: [...(C.spawn || [0, 2, 0])], vel: [0, 0, 0], yaw: Q.has('yaw') ? +Q.get('yaw') : 0, pitch: Q.has('pitch') ? +Q.get('pitch') : 0, ground: false, fly: Q.get('fly') === '1', hook: null, held: 0 };
 if (Q.has('at')) { const a = Q.get('at').split(',').map(Number); if (a.length >= 3 && a.every(Number.isFinite)) me.pos = a; }
 
 function setPreset(i) {
@@ -106,6 +106,9 @@ function gimFx(e) {
   else if (e.kind === 'zipOff' && e.speed > 16) callout('SOCK RUN');
   else if (e.kind === 'sock') { const m = new THREE.Mesh(sockGeo, sockMats[(Math.random() * 4) | 0]); m.position.set(...e.p); m.rotation.set(Math.random() * 3, Math.random() * 3, 0); scene.add(m); socks.push([m, 2.5, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2]); }
   else if (e.kind === 'bounce') callout(e.v > 30 ? 'BIG BREATH' : 'LUNG!');
+  else if (e.kind === 'pad') callout(e.name || 'BOING');
+  else if (e.kind === 'slip') { me.vel[1] = Math.max(me.vel[1], 6.5); me.vel[0] *= 1.6; me.vel[2] *= 1.6; me.ground = false; callout(e.what === 'marbles' ? 'MARBLES!' : 'PEELED'); }
+  else if (e.kind === 'slide' && e.v > 18 && calloutT <= 0) callout(e.v > 26 ? 'BANISTER BURN' : 'THE BANISTER');
   else if (e.kind === 'carry' && performance.now() - lastCarry > 4000) { callout(e.name === 'PERISTALSIS' ? 'THE STREET IS DIGESTING YOU' : 'IT ONLY GOES DOWN'); lastCarry = performance.now(); }
   else if (e.kind === 'surf') callout('RIDING THE BEAT');
   else if (e.kind === 'acid') { hp -= e.dmg; if (hp <= 0) { hp = 100; me.pos = [...(C.spawn || [0, 2, 0])]; me.vel = [0, 0, 0]; callout('DIGESTED'); } else if (calloutT <= 0) callout("YOU'RE BEING DIGESTED"); }
@@ -122,6 +125,20 @@ function callout(t) { const el = document.getElementById('callout'); el.textCont
 
 // ---------------------------------------------------------------- step
 function step(dt) {
+  // replaying a swing (tools/city/swingclip.cjs feeds window.__replay = { pts: [[x, y, z, on, ax, ay, az] at 30 Hz] }
+  // from tools/city/grapple.mjs --path: the real rope's flight): fly the camera along it, rope on, facing the way you go
+  if (window.__replay) {
+    const R = window.__replay, nowR = performance.now(); if (R.t0 == null) { R.t0 = nowR; R.wall0 = Date.now(); } R.t = (nowR - R.t0) / 1000 * (R.speed || 1); // wall clock: a slow frame drops frames, never slows the swing
+    const f = R.t * 30, i = Math.floor(f);
+    if (i >= R.pts.length - 1) { R.done = true; R.wall1 = Date.now(); window.__replayed = R; window.__replay = null; me.hook = null; return; }
+    const a = R.pts[i], b = R.pts[i + 1], u = f - i;
+    for (let k = 0; k < 3; k++) me.pos[k] = a[k] + (b[k] - a[k]) * u;
+    me.hook = a[3] ? [a[4], a[5], a[6]] : null;
+    const j = Math.min(R.pts.length - 1, i + 8), vx = R.pts[j][0] - a[0], vz = R.pts[j][2] - a[2];
+    if (Math.hypot(vx, vz) > 0.3) { let d = Math.atan2(-vx, -vz) - me.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); me.yaw += d * Math.min(1, dt * 2.5); }
+    me.pitch += ((me.hook ? 0.12 : -0.1) - me.pitch) * Math.min(1, dt * 2);
+    return;
+  }
   const f = [-Math.sin(me.yaw), 0, -Math.cos(me.yaw)], r = [Math.cos(me.yaw), 0, -Math.sin(me.yaw)];
   let ix = 0, iz = 0;
   if (keys.has('KeyW')) iz += 1; if (keys.has('KeyS')) iz -= 1; if (keys.has('KeyD')) ix += 1; if (keys.has('KeyA')) ix -= 1;
@@ -159,6 +176,16 @@ function step(dt) {
   if (me.pos[1] < -60) { me.pos = [...(C.spawn || [0, 2, 0])]; me.vel = [0, 0, 0]; callout('INTO THE VOID'); }
 }
 
+// the rope: a yellow cord from your hand to the hook point
+const rope = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 1), new THREE.MeshBasicMaterial({ color: 0xffe14d })); rope.visible = false; scene.add(rope);
+const ropeA = new THREE.Vector3(), ropeB = new THREE.Vector3();
+function drawRope() {
+  rope.visible = !!me.hook;
+  if (!me.hook) return;
+  const f = fwd(), rx = Math.cos(me.yaw), rz = -Math.sin(me.yaw);
+  ropeA.set(me.pos[0] + f[0] * 0.6 + rx * 0.35, me.pos[1] + 1.25, me.pos[2] + f[2] * 0.6 + rz * 0.35); ropeB.set(...me.hook);
+  rope.position.copy(ropeA).lerp(ropeB, 0.5); rope.scale.set(1, 1, ropeA.distanceTo(ropeB)); rope.lookAt(ropeB);
+}
 // ---------------------------------------------------------------- loop
 const perf = document.getElementById('perf');
 let last = performance.now(), fps = 60, frameMax = 0, frames = 0;
@@ -168,6 +195,7 @@ function frame() {
   fps = fps * 0.95 + (1 / Math.max(1e-3, dt)) * 0.05; frames++;
   if (frames > 30) frameMax = Math.max(frameMax, dt * 1000);
   step(dt); stepSocks(dt);
+  drawRope();
   camera.position.set(...eyeP()); camera.rotation.set(me.pitch, me.yaw, 0);
   stream.update(camera, dt);
   const env = stream.env;

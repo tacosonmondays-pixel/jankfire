@@ -69,6 +69,7 @@ import { pipFrame } from './pip.js'; // the first-person corner box while specta
 import { chaosSpecId } from './chaos.js';
 import { brSpecId } from './royale.js';
 import { initMinimap, minimapFrame } from './minimap.js'; // the HUD minimap (SAT-NAV)
+import { initLeaderTabs, showLeaders } from './leadmodes.js'; // per-mode leaderboard tabs
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { ecoKeyLabel } from './econ.js';
 import { bodyReset } from './bodyhp.js'; // the wrecking ball + rig last until they break
@@ -225,7 +226,7 @@ function show(id) {
   if (id === 'settings') syncDisplay();
   if (id === 'match') syncMatchUI();
   if (id === 'profile') { renderProfile(); restore().then((me) => { if (me && screen === 'profile') { renderProfile(); renderAcctBar(); } }); }
-  if (id === 'leaders') renderLeaders();
+  if (id === 'leaders') { initLeaderTabs(renderLeaders); showLeaders(); } // OVERALL + one tab per mode (leadmodes.js)
   if (id === 'lore') renderLore($('loreList'));
   controlsScreen(id === 'controls', saveSettings);
   if (id === 'main') { renderAcctBar(); homeShown(); }
@@ -1861,7 +1862,7 @@ function frame(t) {
     } : {};
     jumpPressed = false;
     acc += dt;
-    while (acc >= STEP) { stepPlayer(STEP, inp, now); carCollide(STEP); airTick(now); lavaStep(now); inp.jumpPressed = false; acc -= STEP; }
+    while (acc >= STEP) { if (!(G.story && G.story.drive(STEP, inp, now))) stepPlayer(STEP, inp, now); carCollide(STEP); airTick(now); lavaStep(now); inp.jumpPressed = false; acc -= STEP; } // (OVERDUE: in a story car, the car steps instead)
     grabStep(now); // held in a shredder's intake
     pinStep(now); // nailed to a wall
     oobTick(now); // out of the play area: RETURN TO THE MAP 3 2 1
@@ -2070,6 +2071,7 @@ function frame(t) {
   const fpSpec = specCam && specFPOn(); // plant & defuse: their gun in your hands (specfp.js)
   G.vmScene.visible = G.joined && !RP.active && (!specCam || fpSpec) && !asleep && (!econHideVM() || fpSpec);
   if (ballOn(now)) G.vmScene.visible = false; // weapons are holstered inside the ball
+  if (G.story && G.story.hideVM()) G.vmScene.visible = false; // (OVERDUE: driving, third person)
   if (story) story.frame(dt, now, cam); // story mode: actors, quests, the talk cam, cutscenes
   renderFrame();
   pipFrame(dt, G.joined && !RP.active && !G.killcamPending ? chaosSpecId() || brSpecId() : 0); // spectating from behind: their eyes in a corner box (pip.js)

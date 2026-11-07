@@ -56,7 +56,7 @@ export const PLACES = {
   'bottom:gym': { p: [24, 16, 137], name: "Lumps' Gym" },
   'bottom:down_escalator': { p: [-112, 32, 48], name: 'the Down Escalator' },
   'gut:stairs_top': { p: [-44, 36, -18], name: 'the Gut border' },
-  'gut:border': { p: [-44, 40, -80], name: 'Clocking In (the old time office)' },
+  'gut:border': { p: [-44, 36, -14], name: 'the Gut Border Gate (Overtime fight 1)' }, // (arenas.js; was the old time office at -44, 40, -80)
   'gut:big_stomach': { p: [-170, 40, -128], name: 'the Big Stomach' },
   'gut:peristalsis': { p: [-120, 40, -130], name: 'Peristalsis Avenue' },
   'gut:choir_lung': { p: [-268, 40, -196], name: 'the Choir Lung' },

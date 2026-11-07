@@ -5,7 +5,8 @@
 // Landmarks: the Lost & Found (the Machine), the market, Lumps' Gym, the Down Escalator.
 import { SLICE, terraceOf } from './slice.js';
 import { rng, hash2 } from './plan.js';
-import { cube, stairsZ, sideStair, line, bulbs, retaining, rubble, stall, flightLen, PASTEL, pick } from './kit.js';
+import { cube, stairsZ, sideStair, line, bulbs, retaining, rubble, stall, flightLen, PASTEL, pick, hook } from './kit.js';
+import { playBottom, BANISTER } from './playground.js';
 
 const T = SLICE.bottom, LANE = 7;
 const zSouth = (k) => 256 - T.terr * k; // the downhill edge of terrace k
@@ -87,7 +88,7 @@ function house(B, k, x0, w, seed) {
 function lane(B, k, x0, x1) {
   const y = yOf(k), zs = zSouth(k), r = rng(hash2(k, 777));
   B.add(x0, y - 0.02, zs - LANE, x1, y + 0.02, zs, 'concrete', { nc: true, tint: 0xcab8b0 });
-  if (k > 0) for (const [a, b] of [[x0, Math.min(x1, SLICE.longStairs.x0)], [Math.max(x0, SLICE.longStairs.x1), x1]]) if (b > a) B.add(a, y, zs - 0.4, b, y + 0.9, zs, 'concrete', { tint: 0xe0d0c8 }); // the lip wall (you can jump it; open where the Long Stairs come up)
+  if (k > 0) for (const [a, b] of [[x0, Math.min(x1, SLICE.longStairs.x0)], [Math.max(x0, SLICE.longStairs.x1), Math.min(x1, BANISTER[0])], [Math.max(x0, BANISTER[1]), x1]]) if (b > a) B.add(a, y, zs - 0.4, b, y + 0.9, zs, 'concrete', { tint: 0xe0d0c8 }); // the lip wall (you can jump it; open where the Long Stairs come up)
   // poles every 14-22 m along the lip, a line between neighbours: laundry on most, bulbs on some
   let px = -316 + r() * 6;
   const poles = [];
@@ -97,7 +98,7 @@ function lane(B, k, x0, x1) {
     if (p < x0 - 30 || p > x1 + 30) continue;
     if (KEEP_OUT().some((q) => inRect(p - 1, zs - 1, p + 1, zs + 1, q))) continue;
     const h = 5.2 + (hash2(k, i) % 7) * 0.2;
-    if (p >= x0 && p < x1) { B.add(p - 0.1, y, zs - 0.3, p + 0.1, y + h, zs - 0.1, 'rust'); }
+    if (p >= x0 && p < x1) { B.add(p - 0.1, y, zs - 0.3, p + 0.1, y + h, zs - 0.1, 'rust'); if (i % 2 === 0) hook(B, p, y + h + 0.5, zs - 0.2, { s: 1.2 }); } // (a grapple ring on every other pole)
     const q = poles[i + 1];
     if (q === undefined || KEEP_OUT().some((rr) => inRect(Math.min(p, q), zs - 1, Math.max(p, q), zs + 1, rr))) continue;
     const hq = 5.2 + (hash2(k, i + 1) % 7) * 0.2, a = [p, y + h, zs - 0.2], b = [q, y + hq, zs - 0.2];
@@ -252,6 +253,7 @@ export function bottom(B, d) {
   if (B.touches(SLICE.plaza.rect, 2)) plaza(B);
   if (B.touches(SLICE.gym.rect, 2)) gym(B);
   if (B.touches([SLICE.escalator.x - 3, 0, SLICE.escalator.x + 3, 100])) escalator(B);
+  playBottom(B); // grapple rings, the Banister, pads, peels (playground.js)
   // crowd spots along the lanes (WP8 / the crowd sim fills them)
   const cr = rng(hash2(B.out.cx, B.out.cz, 55));
   for (let i = 0; i < 6; i++) { const x = X0 + cr() * (X1 - X0), z = Z0 + cr() * (Z1 - Z0), k = terraceOf(z); if (z < zSouth(k) - 0.5 && z > zSouth(k) - LANE + 0.5) B.out.marks.push({ id: 'crowd', p: [x, yOf(k), z], kind: pick(cr, ['local', 'scooter', 'cook']) }); }
