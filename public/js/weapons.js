@@ -1559,6 +1559,7 @@ export function updateWeapons(dt, now) {
   if (W.shred.on) W.flags |= FLAGS.SUCK;
   if (W.lz.on) W.flags |= FLAGS.CHARGE; // everyone sees your pointer charging
   if (W.nvOnFlag) W.flags |= FLAGS.NV; // night vision goggles down (goggles.js)
+  if (W.aim > 0.5) W.flags |= FLAGS.AIM; // (spectators see you aim: specfp.js)
 
   // ---- HUD
   if (ITEMS[W.item]) { const c = charges(W.item), it = ITEMS[W.item]; hud.item(c.n, it.charges, c.next ? 1 - Math.max(0, c.next - now) / (it.recharge * 1000) : 1); }
@@ -1725,3 +1726,6 @@ export function updateWeapons(dt, now) {
   updateTrail(now, m, trailOn && m.wrap.visible, TRAIL_COLOR[id] || 0xffffff, TRAIL_LIFE[id]);
   if (m.wrap.visible && G.skinFxVM) { m.wrap.updateMatrixWorld(true); emitSkinFx(G.skinFxVM, m.g, dt, 0.3 * cfg.s); }
 }
+// first-person spectating (specfp.js): where a viewmodel sits, its sights, and hiding your own hands meanwhile
+export const specVMKit = { pose: (id) => VM[id] || null, ads: (id, g) => adsPose(id, { g, cfg: VM[id] }), own: (v) => { if (vmRoot) vmRoot.visible = v; } };
+

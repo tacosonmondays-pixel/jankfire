@@ -29,7 +29,9 @@ export const SDG = {
 };
 // how moving spreads every gun here (the TAC numbers in shared/tactical.js, but meaner): walking costs a little,
 // running a lot, jumping everything. counter-strafing works because it's all from your speed right now
-export const SDMOVE = { walk: 5.4, walkSpread: 0.022, runSpread: 0.12, airSpread: 0.24, crouch: 0.55 };
+// owner, twice: "moving and jumping while shooting makes it super inaccurate". running ~= a 12 degree cone (rarely lands past
+// 10 m), in the air / on a rope ~= 26 degrees (point-blank shotguns only). landing: `land` spread on touchdown, gone after landMs
+export const SDMOVE = { walk: 5.4, walkSpread: 0.05, runSpread: 0.21, airSpread: 0.45, crouch: 0.55, land: 0.16, landMs: 450 };
 // bots: a body hit lands in the legs this often (a player's client says which zone it hit)
 export const BOT_LEGS = 0.18;
 

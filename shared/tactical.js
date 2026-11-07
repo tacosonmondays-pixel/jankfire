@@ -100,11 +100,14 @@ export function moveSpread(id, speed, air, crouch) {
   return TAC.runSpread * mv * k * (crouch ? 0.8 : 1);
 }
 // the whole spread of a shot: the gun's own (after aiming down sights and the room's hipfire setting) plus moving
-// i: which shot of the spray (S&D guns bloom with it; 0 or omitted = none)
-export function tacSpread(id, base, speed, air, crouch, i = 0) {
+// i: which shot of the spray (S&D guns bloom with it; 0 or omitted = none). land: 0..1, how fresh a landing is (S&D)
+export function tacSpread(id, base, speed, air, crouch, i = 0, land = 0) {
   const still = !air && speed <= TAC.still;
-  return (base + sdBloom(id, i)) * (still && crouch ? (sdRow(id) ? SDMOVE.crouch : TAC.crouch) : 1) + moveSpread(id, speed, air, crouch);
+  const P = patternOf(id), landing = sdRow(id) && !air && land > 0 ? SDMOVE.land * (P ? P.move : 1) * Math.min(1, land) : 0;
+  return (base + sdBloom(id, i)) * (still && crouch ? (sdRow(id) ? SDMOVE.crouch : TAC.crouch) : 1) + moveSpread(id, speed, air, crouch) + landing;
 }
+// how fresh a landing is (1 = just touched down, 0 = settled), from when you were last in the air
+export const landK = (airT, now) => Math.max(0, 1 - (now - airT) / SDMOVE.landMs);
 
 // ------------------------------------------------------------ the per-shot random number both sides know
 export function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }

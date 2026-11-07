@@ -7,7 +7,7 @@
 //     (or a ricochet of it). Pellet guns: inside the cone.
 // A hit that fails does nothing. Bots use the same patterns and moving spread, and pull down against them by difficulty.
 import { WEAPONS, HIPFIRE, FLAGS } from '../shared/weapons.js';
-import { TAC, patternOf, shotOffset, shotDir, shotSeed, tacSpread, angleBetween } from '../shared/tactical.js';
+import { TAC, patternOf, shotOffset, shotDir, shotSeed, tacSpread, angleBetween, landK } from '../shared/tactical.js';
 import { raycast, PH } from '../shared/physics.js';
 import { sdRow, sdMinBase, sdBase } from '../shared/sdgun.js'; // S&D: first-shot spread + bloom per gun
 
@@ -35,7 +35,7 @@ const M = {
     if (sdRow(id)) { const r = sdRow(id); base = Math.min(r.fs * hip, (r.ads ?? r.fs) * Math.min(1, hip)); } // (sights or hip: the lower one)
     if (fan && w.fanHammer) base = w.fanHammer.spread * hip;
     const speed = Math.hypot(p.vel[0], p.vel[2]);
-    return tacSpread(id, base, speed, this.tacAir(p), !!(p.f & FLAGS.CROUCH), i);
+    return tacSpread(id, base, speed, this.tacAir(p), !!(p.f & FLAGS.CROUCH), i, landK((p.tacAirT || -1e9) - 200, now())); // (200 ms grace: snapshots lag)
   },
   // econShot opened a new shot from message m: is it the next one, at the right spray index?
   tacOpen(p, x, w, m) {

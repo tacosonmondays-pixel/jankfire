@@ -2,7 +2,7 @@
 // crosshair that shows it, quiet slow walk, footsteps you can hear, and no outlines / name tags on enemies.
 // Everything here is off outside the mode (G.eco unset).
 import { WEAPONS, FLAGS } from '/shared/weapons.js';
-import { TAC, patternOf, patternAt, shotOffset, shotDir, shotSeed, tacSpread } from '/shared/tactical.js';
+import { TAC, patternOf, patternAt, shotOffset, shotDir, shotSeed, tacSpread, landK } from '/shared/tactical.js';
 import { G } from './ctx.js';
 import { ME } from './player.js';
 import { synth } from './audio.js';
@@ -20,7 +20,8 @@ const hs = () => Math.hypot(ME.vel[0], ME.vel[2]);
 // the spread a shot would have right now, from the gun's own spread (`base`: sights, hipfire setting, no bloom)
 export function tacSpreadNow(id, base, i = 0) {
   const v = ME.vel.map((x) => Math.round(x * 100) / 100); // what the server will see in the snapshot
-  return tacSpread(id, base, Math.hypot(v[0], v[2]), !ME.onGround, ME.crouching, i);
+  if (!ME.onGround || ME.hook) T.airT = performance.now(); // (on a rope counts as the air)
+  return tacSpread(id, base, Math.hypot(v[0], v[2]), !ME.onGround || !!ME.hook, ME.crouching, i, landK(T.airT || -1e9, performance.now()));
 }
 // the spray index the next shot would get right now (for the crosshair's bloom)
 function nextI(id, now) { const P = patternOf(id); return id === T.lastId && now - T.lastT <= (P ? P.reset : 400) ? T.i + 1 : 0; }
@@ -70,7 +71,7 @@ function cross(sp) {
   if (!on) return;
   // spread (rad) -> pixels at this field of view
   const cam = G.camera, h = G.renderer ? G.renderer.domElement.clientHeight : 720;
-  const px = Math.round(Math.max(3, Math.min(90, (Math.tan(sp) * h) / (2 * Math.tan(((cam ? cam.fov : 90) * Math.PI) / 360)))));
+  const px = Math.round(Math.max(3, Math.min(260, (Math.tan(sp) * h) / (2 * Math.tan(((cam ? cam.fov : 90) * Math.PI) / 360)))));
   if (px !== T.px) { T.px = px; T.cross.style.setProperty('--g', px + 'px'); }
   const bad = sp > 0.05;
   if (bad !== T.bad) { T.bad = bad; T.cross.classList.toggle('wide', bad); }

@@ -16,7 +16,7 @@ export const TEAMS = { 1: { name: 'RED', color: '#ff4f4f' }, 2: { name: 'BLUE', 
 export const TARGETS = { ffa: { dm: 20, tdm: 40, tags: 25, rand: 20 }, bots: { dm: 15, tdm: 30, tags: 20, rand: 15 } };
 export const BOMB = {
   plant: 3, defuse: 5, fuse: 35, // seconds
-  roundTime: 110, wins: 4, swapAfter: 3, // first to 4 rounds, sides swap after round 3
+  roundTime: 110, wins: 8, swapAfter: 7, // first to 8 rounds, sides swap after round 7: 15 rounds at most (7-7 = a decider) (owner, 2026-11-07)
   radius: 18, dmg: 220, pickup: 1.7, defuseRange: 2.6, respawn: 4500, between: 5000,
 };
 export const TAG_LIFE = 30000;
