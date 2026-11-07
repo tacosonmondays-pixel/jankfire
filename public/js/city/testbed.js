@@ -9,6 +9,7 @@ import { jankUniforms } from '../jank.js';
 import { propEnv } from './props.js';
 import { stepGimmicks } from '/shared/city/gimmicks.js';
 import { cityUniforms } from './mats.js';
+import { tickLiquids } from '../liquidmats.js';
 import '/shared/city/slice.js'; // registers the slice city (The Bottom + The Gut + the Commute)
 
 const Q = new URLSearchParams(location.search);
@@ -195,6 +196,7 @@ function frame() {
   fps = fps * 0.95 + (1 / Math.max(1e-3, dt)) * 0.05; frames++;
   if (frames > 30) frameMax = Math.max(frameMax, dt * 1000);
   step(dt); stepSocks(dt);
+  tickLiquids(now / 1000); // the acid bubbles (liquids are on their own clock)
   drawRope();
   camera.position.set(...eyeP()); camera.rotation.set(me.pitch, me.yaw, 0);
   stream.update(camera, dt);
