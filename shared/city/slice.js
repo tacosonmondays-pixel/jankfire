@@ -88,5 +88,5 @@ registerCity('slice', {
     { id: 'commute', name: 'The Commute', rect: SLICE.commute.rect, gen: 'commute', margin: 40,
       sky: { top: 0x3a4a8a, mid: 0xe0904a, bot: 0x7a5038, fog: 0xd8a070 }, fogNear: 60, fogFar: 600, night: 0.2, light: fogLight(0xffe0b0, 0x7a5a40, 1.4, 0xffd090, 1.9) },
   ],
-  post: 'edges',
+  post: 'slicepost', // (gens.js: the edges + the road net)
 });
