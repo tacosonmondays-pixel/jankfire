@@ -248,6 +248,7 @@ const LOOKS = {
         for (let i = 0; i < 6; i++) { const c = cyl(0.03, 0.03, 0.08, flat([0xff4fd8, 0xffe14d, 0x4fd8ff][i % 3]), -0.1 + (i % 3) * 0.1, r[1] * 1.7 + ((i / 3) | 0) * 0.02, -0.03 + ((i / 3) | 0) * 0.08, 8); c.rotation.z = Math.PI / 2; h.add(c); } },
       face: { eyeR: 0.032, eyeSep: 0.055, eyeY: 0.16, iris: 0x6a5030, mouthW: 0.08, mouthY: 0.06, lip: 0xc0505a, teeth: 'tomb', brow: 0x6a4a3a, lidColor: SK } });
     p.ch.handR.add(cyl(0.015, 0.015, 0.25, steel, 0, -0.14, 0, 8)); p.ch.handR.add(sph(0.06, steel, 0, -0.28, -0.02, 1, 0.55, 1));
+    p.ch.armRest = [0.75, 0.2]; p.ch.arm.rotation.x = p.ch.armL.rotation.x = 0.8; p.ch.foreR.rotation.x = p.ch.foreL.rotation.x = 0.42; // (forearms on top of the wall, not in it)
     return { ...p, kind: 'puppet', height: 1.5, eyeY: 1.45 };
   },
   // BEV (puppet): a four-armed surgeon. butcher's apron, a headlamp, magnifier lenses on a hinge, a cigarette behind each ear
@@ -256,7 +257,7 @@ const LOOKS = {
     const apron = patMat('bevapron', 64, 64, speckle('#f4f0e8', ['#c04030', '#8a2a20'], 60, 4), [1, 1], 0.7);
     const p = person({ skin: SK, skinMat: skin, legCol: 0x3a5a5a, shoe: 0xf4f4f0, s: 1.05, hunch: 0.18, torsoH: 0.58, shW: 0.24, sleeveMat: flat(0x6aa8a0),
       torso: (sp, tH) => { sp.add(sph(0.22, flat(0x6aa8a0), 0, tH * 0.55, 0, 1.1, 1.25, 0.8)); sp.add(box(0.36, 0.66, 0.03, apron, 0, tH * 0.28, -0.17));
-        for (const sx of [-1, 1]) { const a = g(sx * 0.2, tH * 0.5, -0.04); a.rotation.set(-0.9, 0, sx * 0.2); a.add(cap(0.04, 0.2, skin, 0, -0.14, 0)); const f = g(0, -0.26, 0); f.rotation.x = -0.9; f.add(cap(0.036, 0.18, skin, 0, -0.1, 0)); f.add(box(0.06, 0.08, 0.04, skin, 0, -0.22, 0)); a.add(f); sp.add(a); } }, // the busy pair
+        for (const sx of [-1, 1]) { const a = g(sx * 0.2, tH * 0.5, -0.04); a.rotation.set(0.7, 0, sx * 0.2); a.userData.codeOnly = true; a.add(cap(0.04, 0.2, skin, 0, -0.14, 0)); const f = g(0, -0.26, 0); f.rotation.x = 0.8; f.add(cap(0.036, 0.18, skin, 0, -0.1, 0)); f.add(box(0.06, 0.08, 0.04, skin, 0, -0.22, 0)); a.add(f); sp.add(a); } }, // the busy pair
       headR: [0.12, 0.15, 0.13], neck: 0.07,
       head: (h, r, m) => { h.add(sph(1, m, 0, r[1], 0, r[0], r[1], r[2], 16)); h.add(sph(0.13, flat(0x2a2a3a), 0, r[1] * 1.6, 0.05, 1, 0.65, 1.0));
         h.add(cyl(0.128, 0.128, 0.03, flat(0x2a2a2a), 0, r[1] * 1.55, 0, 14)); const lamp = cyl(0.03, 0.03, 0.03, flat(0xfff6c0), 0, r[1] * 1.6, -0.13, 10); lamp.rotation.x = Math.PI / 2; h.add(lamp); // headlamp
@@ -337,7 +338,7 @@ function dressCast(L, scene) {
     if (!m0) return;
     const G = ch[m0[1]];
     if (!G) return;
-    if (!G.userData.dressed) { for (const c of [...G.children]) if (c.isMesh && c !== keep) G.remove(c); G.userData.dressed = true; }
+    if (!G.userData.dressed) { for (const c of [...G.children]) if ((c.isMesh && c !== keep) || c.userData.codeOnly) G.remove(c); G.userData.dressed = true; } // (codeOnly: a code group the model replaces, bev's extra arms)
     const m = o.clone(); m.matrix.copy(o.matrixWorld); m.matrix.decompose(m.position, m.quaternion, m.scale);
     inv.copy(G.matrixWorld).invert(); m.applyMatrix4(inv);
     G.add(m); n++;
