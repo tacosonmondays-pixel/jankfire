@@ -2,6 +2,7 @@
 // WP0 e2e: flag on -> STORY -> NEW GAME -> walk -> Machine terminal -> Training sim -> quit -> back at the same spot
 require(process.env.SP + '/pwlock.cjs');
 const { chromium } = require('playwright');
+const skipIntro = require('./skipintro.cjs'); // the intro cinematic holds the keys: skip it
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
 (async () => {
@@ -15,7 +16,7 @@ const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
   await pg.screenshot({ path: `${OUT}/s0_home.png` });
   await pg.click('#storyBtn', { force: true }); await sleep(800);
   await pg.screenshot({ path: `${OUT}/s0_picker.png` });
-  await pg.click('#storyPick .st-btn.yellow', { force: true }); await sleep(3000);
+  await pg.click('#storyPick .st-btn.yellow', { force: true }); await sleep(3000); await skipIntro(pg);
   const st = () => pg.evaluate(async () => { const { G } = await import('/js/ctx.js'); const { ME } = await import('/js/player.js'); return { joined: G.joined, mode: G.mode, map: G.cfg && G.cfg.map, pos: ME.pos.map((x) => +x.toFixed(2)), menu: !document.getElementById('menu').classList.contains('hidden'), hint: !document.querySelector('.st-hint').classList.contains('hidden') }; });
   console.log('in story', JSON.stringify(await st()));
   await pg.screenshot({ path: `${OUT}/s0_lot.png` });

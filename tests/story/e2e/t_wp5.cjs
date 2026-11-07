@@ -3,6 +3,7 @@
 // Punch-Clock free mag + low-HP slow, save/load keeps the body
 require(process.env.SP + '/pwlock.cjs');
 const { chromium } = require('playwright');
+const skipIntro = require('./skipintro.cjs'); // the intro cinematic holds the keys: skip it
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
 (async () => {
@@ -12,7 +13,7 @@ const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
   pg.on('pageerror', (e) => errs.push('PAGEERR ' + e.message + ' ' + (e.stack || '').split('\n')[1]));
   pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
   await pg.addInitScript(() => { localStorage.setItem('jankfire', JSON.stringify({ name: 'wp5', jank: 3, loadout: { primary: 'ar', secondary: 'pistol', melee: 'knife', item: 'frag' } })); if (!sessionStorage.getItem('w5')) { sessionStorage.setItem('w5', 1); localStorage.removeItem('jfStorySaves'); } });
-  const start = async () => { await pg.goto(`http://localhost:${PORT}/?story=1&storydev=1&storytest=1`); await sleep(1500); await pg.click('#storyBtn', { force: true }); await sleep(700); await pg.click('#storyPick .st-btn.yellow', { force: true }); await sleep(3500); };
+  const start = async () => { await pg.goto(`http://localhost:${PORT}/?story=1&storydev=1&storytest=1`); await sleep(1500); await pg.click('#storyBtn', { force: true }); await sleep(700); await pg.click('#storyPick .st-btn.yellow', { force: true }); await sleep(3500); await skipIntro(pg); };
   await start();
   const ev = (f, a) => pg.evaluate(f, a);
   const tp = (p, yaw = 0, pitch = 0) => ev(async ([p, yaw, pitch]) => { const { ME } = await import('/js/player.js'); ME.pos = p.slice(); ME.vel = [0, 0, 0]; ME.yaw = yaw; ME.pitch = pitch; }, [p, yaw, pitch]);
@@ -26,6 +27,7 @@ const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
   const h0 = await jumpH();
   // the clinic: F at the chair, buy Spring Knees + Pigeon Eyes, install both
   await tp([-5.1, 0.1, -14], 1.57, -0.2); await sleep(400);
+  await skipIntro.clearF(pg); // (a memory / quest marker nearby takes F first)
   const hint = await ev(() => document.querySelector('.st-hint').textContent);
   await key('KeyF'); await sleep(600);
   const open = await ev(() => !document.getElementById('storyClinic').classList.contains('hidden'));
