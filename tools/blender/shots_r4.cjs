@@ -74,12 +74,12 @@ async function session(b, map, ids) {
     // bots hunt you there instead of shooting the camera out of the sky (a teleport, e.g. a respawn, moves that spot)
     const { net } = await import('/js/net.js'), send0 = net.send.bind(net);
     net.send = (o) => send0(window.__pin && window.__hide && o && o.t === 's' ? { ...o, p: window.__hide.map((v) => Math.round(v * 100) / 100), v: [0, 0, 0] } : o);
-    // each frame as it's drawn: is the camera at your eye, and you about where the pin put you? (a nudge out of a tree
+    // each frame as it's drawn: is the camera at your eye, and you about where the pin put you (not shoved up onto a roof)? (a nudge out of a tree
     // trunk is the same in both versions; a replay, spectating, the ball or a knock-down moves the camera off your eye)
     const draw = G.renderer.render.bind(G.renderer);
     G.renderer.render = (sc, cam) => {
       const q = window.__pin;
-      if (cam === G.camera && q) { const c = cam.position; window.__camOk = Math.hypot(c.x - ME.pos[0], c.y - ME.pos[1] - ME.eyeH, c.z - ME.pos[2]) <= 0.3 && Math.hypot(ME.pos[0] - q.p[0], ME.pos[2] - q.p[2]) <= 1.5; if (!window.__camOk) window.__camBadT = performance.now(); } // (when it last wasn't: a frame or two off between checks counts too)
+      if (cam === G.camera && q) { const c = cam.position; window.__camOk = Math.hypot(c.x - ME.pos[0], c.y - ME.pos[1] - ME.eyeH, c.z - ME.pos[2]) <= 0.3 && Math.hypot(ME.pos[0] - q.p[0], ME.pos[2] - q.p[2]) <= 1.5 && Math.abs(ME.pos[1] - q.p[1]) <= 0.8; if (!window.__camOk) window.__camBadT = performance.now(); } // (when it last wasn't: a frame or two off between checks counts too)
       if (cam === G.camera && q) { for (const pr of G.projs.values()) if (pr.mesh) pr.mesh.visible = false; G.remotes.forEach((r) => { if (r.ch && r.ch.root) r.ch.root.visible = false; }); } // (no bullets, thrown stuff or players flying through the shot)
       return draw(sc, cam);
     };

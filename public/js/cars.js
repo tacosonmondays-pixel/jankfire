@@ -403,7 +403,7 @@ function glbCar(ty, colHex, ci, patch) {
   const inv = new THREE.Matrix4().copy(src.matrixWorld).invert(), mw = new THREE.Matrix4();
   const place = (o, into) => { const c = o.clone(false); mw.multiplyMatrices(inv, o.matrixWorld); mw.decompose(c.position, c.quaternion, c.scale); into.add(c); return c; };
   let lamps = null, tails = null, inds = null;
-  const under = (o, re) => { for (let p = o; p; p = p.parent) if (re.test(stripN(p.name))) return true; return false; };
+  const under = (o, re) => { for (let p = o; p; p = p.parent) if (re.test(stripN(p.userData.name ?? p.name))) return true; return false; }; // (the file's own name: three drops the dots)
   src.traverse((o) => {
     if (!o.isMesh || under(o, /^lod1$/) || under(o, /^wheel_/)) return;
     const n = stripN(o.name), mn = stripN(o.material && o.material.name);

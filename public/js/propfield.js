@@ -20,7 +20,7 @@ const PATTERN = new Set(['leopard', 'camo', 'adfun']); // tints that are a pictu
 // yellow cars are taxis (the taxi keeps its livery; every other car keeps the colour the map gave it)
 const PARKED = ['p_car_sedan', 'p_car_hatch'], TAXI = ['p_car_taxi', 'p_car_sedan', 'p_car_hatch'];
 const stripN = (n) => (n || '').replace(/\.\d+$/, ''); // (Blender keeps names unique in one session: lod1.001, tint.002)
-const isLod1 = (o) => { for (let p = o; p; p = p.parent) if (stripN(p.name) === 'lod1') return true; return false; };
+const isLod1 = (o) => { for (let p = o; p; p = p.parent) if (stripN(p.userData.name ?? p.name) === 'lod1') return true; return false; }; // (three drops the dot from node names: lod1.001 arrives as lod1001, the file's name is in userData)
 
 let field = null; // { group, kinds: [...], cam: {...} }
 const lit = new Set(); // every lit prop material (its studio reflection follows the map's light)
