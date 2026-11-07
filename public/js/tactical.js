@@ -6,6 +6,8 @@ import { TAC, patternOf, patternAt, shotOffset, shotDir, shotSeed, tacSpread, la
 import { G } from './ctx.js';
 import { ME } from './player.js';
 import { synth } from './audio.js';
+import { sdRow } from '/shared/sdgun.js';
+import { inSprayRange } from './sprayrange.js';
 
 const $ = (id) => document.getElementById(id);
 export const tacOn = () => !!G.eco;
@@ -49,7 +51,7 @@ export function tacKick(id, i) {
 }
 // every frame: after a pause the view drifts back down from the climb; the crosshair opens with your spread
 export function tacFrame(dt, now, id, base) {
-  if (!tacOn()) { if (T.cross) T.cross.classList.add('hidden'); document.body.classList.remove('tac'); return; }
+  if (!tacOn() && !(id && sdRow(id) && inSprayRange())) { if (T.cross) T.cross.classList.add('hidden'); document.body.classList.remove('tac'); return; } // (Training's spray range too)
   const P = id && patternOf(id);
   if (P && now - T.lastT > P.reset * 0.6 && (T.kick[0] || T.kick[1])) {
     const k = Math.min(1, dt * 7), dx = T.kick[0] * k, dy = T.kick[1] * k;

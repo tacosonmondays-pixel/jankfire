@@ -66,6 +66,7 @@ import { BR } from '/shared/royale.js'; // (the grapple charges, for the help te
 import { tacZoneOf } from './tactical.js'; // plant & defuse hit markers by zone
 import { specFPOn } from './specfp.js'; // plant & defuse: first-person spectating
 import { pipFrame } from './pip.js'; // the first-person corner box while spectating
+import { sprayRangeFrame } from './sprayrange.js'; // Training's spray range
 import { chaosSpecId } from './chaos.js';
 import { brSpecId } from './royale.js';
 import { initMinimap, minimapFrame } from './minimap.js'; // the HUD minimap (SAT-NAV)
@@ -2076,6 +2077,7 @@ function frame(t) {
   if (ballOn(now)) G.vmScene.visible = false; // weapons are holstered inside the ball
   if (G.story && G.story.hideVM()) G.vmScene.visible = false; // (OVERDUE: driving, third person)
   if (story) story.frame(dt, now, cam); // story mode: actors, quests, the talk cam, cutscenes
+  if (G.joined) sprayRangeFrame(); // Training's spray range: its sign, the last spray's holes
   renderFrame();
   pipFrame(dt, G.joined && !RP.active && !G.killcamPending ? chaosSpecId() || brSpecId() : 0); // spectating from behind: their eyes in a corner box (pip.js)
   if ((screen === 'character' || (screen === 'main' && heroTick(dt))) && !$('menu').classList.contains('hidden')) renderPreview(heroDt || dt); // (grapple & spray has no weapon preview any more)
