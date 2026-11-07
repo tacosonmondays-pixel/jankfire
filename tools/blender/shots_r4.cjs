@@ -3,7 +3,7 @@
 // usage: node tools/blender/shots_r4.cjs <port> <outdir> <ids|map> [maps] [presets=3,0] [n=2]
 //   ids: prop ids, comma separated (pine,lollipop,stall...), or "all" for every prop on those maps
 //   maps: comma separated (default: every map that has one of the ids; for "map": jankburg,suburb,skyline)
-//   (start the server first: JF_ROUND_TIME=7200 JF_ROUND_KILLS=999 JF_BOMB_WINS=99 JF_BOMB_ROUND=3600 JF_BUY_TIME=1 JF_ZM_SWIPE=0
+//   (start the server first: JF_ROUND_TIME=7200 JF_ROUND_KILLS=999 JF_BOMB_WINS=99 JF_BOMB_ROUND=3600 JF_BUY_TIME=1 JF_ZM_SWIPE=0 JF_SD_SIZE=2
 //   PORT=<port> node server.js: the match outlasts the shots, Plant & Defuse keeps going with 1 s buy phases, zombies
 //   don't bite. Cap browsers with pwlock.cjs.)
 //   JF_SHOT_FOV=45: a narrower lens than the game's for the shots (big props like the buses fill more of the picture)
@@ -211,7 +211,7 @@ async function session(b, map, ids) {
           if (after === 'ok') break;
           st = after + ' during the shot'; console.log(map, v.id, v.k, 'retake:', st);
         }
-        if (st !== 'ok') { console.log(map, v.id, v.k, 'skipped:', st, '(start the server with JF_ROUND_TIME=7200 JF_ROUND_KILLS=999 JF_BOMB_WINS=99 JF_BOMB_ROUND=3600 JF_BUY_TIME=1 JF_ZM_SWIPE=0)'); if (st.startsWith('moved')) break; continue; }
+        if (st !== 'ok') { console.log(map, v.id, v.k, 'skipped:', st, '(start the server with JF_ROUND_TIME=7200 JF_ROUND_KILLS=999 JF_BOMB_WINS=99 JF_BOMB_ROUND=3600 JF_BUY_TIME=1 JF_ZM_SWIPE=0 JF_SD_SIZE=2)'); if (st.startsWith('moved')) break; continue; }
         shots.push({ map, id: v.id, k: v.k, pr, boxes, f, label: v.label });
       }
     }
