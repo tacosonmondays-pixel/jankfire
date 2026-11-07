@@ -21,7 +21,7 @@ function load(ac, slug) {
 // weights: [[district, w], ...] (plan.js districtWeights). call every frame or so
 export function updateBeds(weights, dt) {
   const out = audioOut();
-  G.cityBeds = true;
+  if (weights && weights.length) G.cityBeds = true;
   if (!out) return;
   const { ac, master } = out, want = {};
   const on = G.settings ? G.settings.musicMatch !== false : true;
@@ -42,6 +42,7 @@ export function updateBeds(weights, dt) {
     l.gain.gain.setTargetAtTime(g, ac.currentTime, 0.8);
     if (g <= 0.001 && l.gain.gain.value < 0.003) { l.src.stop(); l.src.disconnect(); l.gain.disconnect(); live.delete(slug); }
   }
+  if (!(weights && weights.length) && !live.size) G.cityBeds = false; // faded out (back on the menu): the playlist's turn
   void dt;
 }
 export function stopBeds() {
@@ -49,3 +50,5 @@ export function stopBeds() {
   for (const l of live.values()) { try { l.src.stop(); } catch { /* already */ } l.src.disconnect(); l.gain.disconnect(); }
   live = new Map();
 }
+// what's playing (tools/city/musiccheck.cjs): [{ slug, gain }]
+export const bedsState = () => [...live.entries()].map(([slug, l]) => ({ slug, gain: +l.gain.gain.value.toFixed(3) }));

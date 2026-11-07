@@ -40,7 +40,7 @@ export function updateCity(dt) {
   if (!S) return;
   if (G.settings && S.preset !== G.settings.jank) S.setPreset(G.settings.jank);
   S.update(G.camera, dt);
-  updateBeds(districtWeights(S.city, G.camera.position.x, G.camera.position.z, 40), dt); // the district music
+  updateBeds(G.joined ? districtWeights(S.city, G.camera.position.x, G.camera.position.z, 40) : [], dt); // the district music (fades out on the menu: the menu song is on)
   const e = S.env;
   if (S.weather.started) hud.msg('PAPER STORM', 1.6, 'brag');
   if (e && G.scene.fog) {
