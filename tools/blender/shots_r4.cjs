@@ -79,7 +79,7 @@ async function session(b, map, ids) {
     const draw = G.renderer.render.bind(G.renderer);
     G.renderer.render = (sc, cam) => {
       const q = window.__pin;
-      if (cam === G.camera && q) { const c = cam.position; window.__camOk = Math.hypot(c.x - ME.pos[0], c.y - ME.pos[1] - ME.eyeH, c.z - ME.pos[2]) <= 0.3 && Math.hypot(ME.pos[0] - q.p[0], ME.pos[2] - q.p[2]) <= 1.5; }
+      if (cam === G.camera && q) { const c = cam.position; window.__camOk = Math.hypot(c.x - ME.pos[0], c.y - ME.pos[1] - ME.eyeH, c.z - ME.pos[2]) <= 0.3 && Math.hypot(ME.pos[0] - q.p[0], ME.pos[2] - q.p[2]) <= 1.5; if (!window.__camOk) window.__camBadT = performance.now(); } // (when it last wasn't: a frame or two off between checks counts too)
       if (cam === G.camera && q) { for (const pr of G.projs.values()) if (pr.mesh) pr.mesh.visible = false; G.remotes.forEach((r) => { if (r.ch && r.ch.root) r.ch.root.visible = false; }); } // (no bullets, thrown stuff or players flying through the shot)
       return draw(sc, cam);
     };
@@ -178,11 +178,11 @@ async function session(b, map, ids) {
             return MAP.id !== map ? 'moved on to ' + MAP.id : busy() ? (ME.alive ? 'buy phase' : 'dead') : 'ok';
           }, map);
           if (st !== 'ok') break;
-          const before = await pg.evaluate(() => window.__life);
+          const before = await pg.evaluate(() => ({ life: window.__life, t: performance.now() }));
           await pg.screenshot({ path: f, timeout: 120000 });
           const after = await pg.evaluate(async (before) => {
             const { ME } = await import('/js/player.js'); const { G } = await import('/js/ctx.js'); const n = performance.now();
-            return window.__life !== before ? 'died or a new round' : !ME.alive ? 'dead' : !window.__camOk ? 'the camera wasn\'t at the pin' : n < (ME.sleepUntil || 0) ? 'knocked flat' : G.eco && G.eco.buyEnd > n ? 'buy phase' : n < (ME.quizUntil || 0) ? 'pop quiz' : 'ok';
+            return window.__life !== before.life ? 'died or a new round' : !ME.alive ? 'dead' : !window.__camOk || (window.__camBadT || 0) >= before.t ? 'the camera wasn\'t at the pin' : n < (ME.sleepUntil || 0) ? 'knocked flat' : G.eco && G.eco.buyEnd > n ? 'buy phase' : n < (ME.quizUntil || 0) ? 'pop quiz' : 'ok';
           }, before);
           if (after === 'ok') break;
           st = after + ' during the shot'; console.log(map, v.id, v.k, 'retake:', st);
