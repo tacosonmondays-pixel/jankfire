@@ -24,6 +24,8 @@ let group = null, loader = null, hazeFn = null;
 export const hasArch = (id) => !off && !!models[id];
 export function setArchHaze(fn) { hazeFn = fn; } // world.js hands over its fog patch (no import loop)
 
+// one THREE texture per kit image, shared by every model that uses the kit (props too: propfield.js can import this)
+export function kitTexture(name, decal = name === 'decals') { return tex(name, decal); }
 function tex(name, decal) {
   if (texCache.has(name)) return texCache.get(name);
   const t = new THREE.TextureLoader().load(`/models/arch/kit/${name}.png`);
