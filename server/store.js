@@ -95,6 +95,29 @@ class FileStore {
     this.save();
     return true;
   }
+  // open n of a kind in one go: one decrement by n, every item pushed, one write. false if you have fewer than n
+  async spendRolls(nameLower, kind, n, items) {
+    const u = this.db.users[nameLower], f = FIELD(kind);
+    if (!u || !f || !(n > 0) || !((u[f] || 0) >= n)) return false;
+    u[f] -= n;
+    u.inv ||= {};
+    for (const it of items) if (it) (u.inv[it.type] ||= []).push(it.id);
+    this.save();
+    return true;
+  }
+  // a gift from the management (shared/gifts.js): its containers, once per account (the id goes in inv.gifts).
+  // the file store is one process with no await in between: two logins at once can't both get past the check
+  async claimGift(nameLower, gift) {
+    const u = this.db.users[nameLower];
+    if (!u) return false;
+    u.inv ||= {};
+    const had = Array.isArray(u.inv.gifts) ? u.inv.gifts : (u.inv.gifts = []);
+    if (had.includes(gift.id)) return false;
+    had.push(gift.id);
+    for (const [kind, n] of Object.entries(gift.rolls || {})) { const f = FIELD(kind); if (f) u[f] = (u[f] || 0) + n; }
+    this.save();
+    return true;
+  }
   // a hidden NPC / cat found (shared/secrets.js): the id goes in inv.lore, plus its gift (a cosmetic or a container).
   // false if this account already had it (nothing is given twice)
   async addLore(nameLower, id, gift) {
@@ -197,6 +220,33 @@ class SupabaseStore {
     // only succeeds if nobody opened that container in the meantime
     const rows = await this.req('PATCH', `?name_lower=eq.${encodeURIComponent(nameLower)}&${f}=eq.${u[f]}`, { [f]: u[f] - 1, inv }, { Prefer: 'return=representation' });
     return !!(rows && rows.length);
+  }
+  // n at once: the row only changes if the count is still what we read (a parallel open or a double click loses)
+  async spendRolls(nameLower, kind, n, items) {
+    const u = await this.get(nameLower), f = FIELD(kind);
+    if (!u || !f || !(n > 0) || !((u[f] || 0) >= n)) return false;
+    const inv = u.inv || {};
+    for (const it of items) if (it) (inv[it.type] ||= []).push(it.id);
+    const rows = await this.req('PATCH', `?name_lower=eq.${encodeURIComponent(nameLower)}&${f}=eq.${u[f]}`, { [f]: u[f] - n, inv }, { Prefer: 'return=representation' });
+    return !!(rows && rows.length);
+  }
+  // a gift, once: the PATCH only lands if all three container counts are still what we read, so of two logins at once
+  // one wins and the other reads again, sees the gift id and stops. (a container opened in between: try again)
+  async claimGift(nameLower, gift) {
+    for (let tries = 0; tries < 4; tries++) {
+      const u = await this.get(nameLower);
+      if (!u) return false;
+      const inv = u.inv || {};
+      const had = Array.isArray(inv.gifts) ? inv.gifts : (inv.gifts = []);
+      if (had.includes(gift.id)) return false;
+      had.push(gift.id);
+      const patch = { inv };
+      for (const [kind, n] of Object.entries(gift.rolls || {})) { const f = FIELD(kind); if (f) patch[f] = (u[f] || 0) + n; }
+      const cond = ['crates', 'bags', 'boxes'].map((f) => `&${f}=eq.${u[f] || 0}`).join('');
+      const rows = await this.req('PATCH', `?name_lower=eq.${encodeURIComponent(nameLower)}${cond}`, patch, { Prefer: 'return=representation' });
+      if (rows && rows.length) return true;
+    }
+    return false;
   }
   async addLore(nameLower, id, gift) {
     const u = await this.get(nameLower);

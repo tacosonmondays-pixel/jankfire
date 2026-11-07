@@ -5,6 +5,7 @@ try { token = localStorage.getItem(TOKEN_KEY); } catch { /* private mode */ }
 
 export const account = {
   me: null, // { name, level, stats, profile }
+  gifts: [], // gifts the server just gave this account (shared/gifts.js): main.js shows the popup, then empties it
   get token() { return token; },
   get loggedIn() { return !!(token && this.me); },
 };
@@ -28,7 +29,7 @@ function setToken(t) {
 
 export async function restore() {
   if (!token) return null;
-  try { account.me = (await api('me')).me; return account.me; }
+  try { const r = await api('me'); account.me = r.me; if (r.gifts && r.gifts.length) account.gifts = r.gifts; return account.me; }
   catch { setToken(null); account.me = null; return null; }
 }
 export async function refresh() { return restore(); }
@@ -37,12 +38,14 @@ export async function login(name, pass) {
   const r = await api('login', { name, pass });
   setToken(r.token);
   account.me = r.me;
+  if (r.gifts && r.gifts.length) account.gifts = r.gifts;
   return r.me;
 }
 export async function register(name, pass) {
   const r = await api('register', { name, pass });
   setToken(r.token);
   account.me = r.me;
+  if (r.gifts && r.gifts.length) account.gifts = r.gifts;
   return r.me;
 }
 export function logout() { setToken(null); account.me = null; }

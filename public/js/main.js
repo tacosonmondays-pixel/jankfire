@@ -94,7 +94,8 @@ import { K } from './keys.js';
 import { initLobby, lobbyInfo, lobbyKey, lobbyMe, lobbyLeave } from './lobby.js'; // ONLINE / WITH BOTS mode picker + the lobby countdown
 import { controlsScreen } from './controls.js';
 import { containerPic, playContainer, stopContainer } from './crate3d.js'; // containers in 3D: the cards and the opening
-import { hubTabs } from './hub.js'; // the CUSTOMIZE hub's tabs (loadout / weapons / character / grapple & spray)
+import { hubTabs } from './hub.js';
+import { initMultiOpen, openMany, showGift, guestGiftOnce, containerIcon } from './multiopen.js'; // OPEN x5 / x10 / ALL + the management's gift popup // the CUSTOMIZE hub's tabs (loadout / weapons / character / grapple & spray)
 import { initCustomize, czMode, czOpen, czClose, czFrame, czKill, czLate, czRefresh, czRolled, resolveRand, wantSkins, myFavs } from './customize.js'; // the weapon customize screen (replaces COSMETICS)
 import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, zmModelsLoaded } from './zombies.js';
 import { zxHurt } from './zmextra.js'; // zombies: which way the claws came from
@@ -2451,6 +2452,7 @@ function onLoggedIn(me, fresh) {
   if (!fresh && prof.loadout) { applyLoadout(false); applyStreaks(); } // the account's own loadout, by the respawn rule
   renderAcctBar();
   czRefresh();
+  if (account.gifts && account.gifts.length) { const g = account.gifts; account.gifts = []; setTimeout(() => showGift(g), 600); } // the management's gift, just landed
 }
 function doLogout() {
   logout();
@@ -2563,13 +2565,20 @@ function renderCrates() {
     const own = c.types.reduce((a, t) => a + Object.keys(COSMETICS[t]).filter((id) => !COSMETICS[t][id].ach && owns(G.inv, t, id)).length, 0);
     const all = c.types.reduce((a, t) => a + Object.keys(COSMETICS[t]).filter((id) => !COSMETICS[t][id].ach).length, 0); // achievement rewards aren't in containers
     const card = document.createElement('div'); card.className = 'cratecard' + (n > 0 ? ' has' : '');
-    const im = document.createElement('img'); im.src = containerPic(kind) || containerArt(kind); im.alt = ''; // rendered from the 3D one
+    const im = document.createElement('img'); im.src = containerIcon(kind) || containerPic(kind) || containerArt(kind); im.alt = ''; // rendered from the 3D one (icon studio)
     const h = document.createElement('b'); h.textContent = c.name;
     const dsc = document.createElement('span'); dsc.textContent = c.desc;
     const prog = document.createElement('small'); prog.textContent = `you own ${own} / ${all}`;
-    const btn = document.createElement('button'); btn.className = 'mid'; btn.textContent = n > 0 ? `OPEN (${n})` : 'NONE LEFT'; btn.disabled = n <= 0;
-    btn.addEventListener('click', () => doRoll(kind));
-    card.append(im, h, dsc, prog, btn);
+    // one at a time (the strip + the 3D one rattling), or a pile at once (multiopen.js): x5, x10, ALL (100 a go)
+    const cnt = document.createElement('b'); cnt.className = 'ccount'; cnt.textContent = n > 0 ? `${n} to open` : 'none left';
+    const row = document.createElement('div'); row.className = 'openrow';
+    for (const [lab, k] of [['OPEN', 1], ['x5', 5], ['x10', 10], ['ALL', Math.min(n, 100)]]) {
+      const b = document.createElement('button'); b.className = 'mid' + (lab === 'OPEN' ? ' glow' : ''); b.dataset.n = lab === 'ALL' ? 'all' : String(k);
+      b.textContent = lab === 'ALL' && n > 100 ? 'ALL (100)' : lab; b.disabled = n < k || n <= 0 || (lab === 'ALL' && n < 2);
+      b.addEventListener('click', () => (k === 1 ? doRoll(kind) : openMany(kind, k)));
+      row.append(b);
+    }
+    card.append(im, h, dsc, prog, cnt, row);
     box.append(card);
   }
 }
@@ -2798,7 +2807,22 @@ if (window.jf && window.jf.desktop) {
 
 // ------------------------------------------------------------ boot
 renderAcctBar();
-restore().then((me) => { if (me) onLoggedIn(me, false); });
+restore().then((me) => { if (me) onLoggedIn(me, false); else setTimeout(() => guestGiftOnce(() => openAccount(false)), 1500); }); // a guest hears about the gift once
+// what an EQUIP button does for something you just got (the bulk open's result cards): null = nothing to equip it on
+function rollEquip(item) {
+  if (item.type === 'spray') return ['EQUIP', () => setSpray(item.id)];
+  if (item.type === 'kill') return ['EQUIP', () => setKfx(item.id)];
+  if (item.type === 'grapple') return ['EQUIP', () => setGrap(item.id)];
+  const target = item.type === 'model' ? COSMETICS.model[item.id] && COSMETICS.model[item.id].weapon : G.cosSel;
+  const idx = TYPES.indexOf(item.type);
+  if (!target || !WEAPONS[target] || idx < 0) return null;
+  return [`PUT ON ${WEAPONS[target].name.toUpperCase()}`, () => { const sk = validSkin(S.skins[target]).slice(); sk[idx] = item.id; G.cosSel = target; setSkin(target, sk); }];
+}
+initMultiOpen({
+  equip: rollEquip, toast,
+  toCrates: () => show('crates'),
+  after: () => { if (account.me) G.inv = achInv(account.me.inv, account.me.achs); recomputeEquipped(); renderAcctBar(); if (screen === 'crates') renderCrates(); czRefresh(); },
+});
 
 show('main');
 requestAnimationFrame(frame);
