@@ -32,7 +32,14 @@ async function measure(b, map) {
   }, map);
   if (!ok) { await pg.close(); return { map, error: 'never joined the map', errs }; }
   await sleep(6000); // the map's late models, traffic, the first shadow pass
-  await pg.evaluate(async () => { const k = await import('/js/glbkit.js'); for (let i = 0; i < 600 && k.lateBusy(); i++) await new Promise((r) => setTimeout(r, 100)); await new Promise((r) => setTimeout(r, 2000)); }); // (its prop models, on a branch that has them)
+  // its prop models, on a branch that has them (main has no propfield.js): all in before it measures
+  const coming = await pg.evaluate(async () => {
+    const k = await import('/js/glbkit.js'), pf = await import('/js/propfield.js').catch(() => null);
+    const busy = () => k.lateBusy() || (pf && pf.propInfo ? pf.propInfo().coming : 0);
+    for (let i = 0; i < 1200 && busy(); i++) await new Promise((r) => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, 2000));
+    return pf && pf.propInfo ? pf.propInfo().coming : null;
+  });
   const res = await pg.evaluate(async (map) => {
     const { G } = await import('/js/ctx.js'); const { ME } = await import('/js/player.js'); const { MAPS } = await import('/shared/map.js');
     const lt = await import('/js/lighting.js');
@@ -66,7 +73,7 @@ async function measure(b, map) {
     const avg = (k) => Math.round(views.reduce((s, v) => s + v[k], 0) / views.length), max = (k) => Math.max(...views.map((v) => v[k]));
     return { map, calls: avg('calls'), callsMax: max('calls'), tris: avg('tris'), trisMax: max('tris'), views, scene: { meshes, instancedMeshes: inst, instances, tris: Math.round(tris) }, geometries: r.info.memory.geometries, textures: r.info.memory.textures };
   }, map);
-  res.errs = errs;
+  res.errs = errs; res.propsComing = coming; // (should be 0: a prop file still on its way when it measured)
   await pg.close();
   return res;
 }
@@ -77,7 +84,7 @@ async function measure(b, map) {
   for (const m of list.split(',')) {
     const r = await measure(b, m);
     all.push(r);
-    console.log(`${m}: calls avg ${r.calls} max ${r.callsMax}, tris avg ${r.tris} max ${r.trisMax}; scene ${JSON.stringify(r.scene)}${r.error ? ' ERROR ' + r.error : ''}${r.errs && r.errs.length ? '\n  ' + r.errs.slice(0, 6).join('\n  ') : ' (no page errors)'}`);
+    console.log(`${m}: calls avg ${r.calls} max ${r.callsMax}, tris avg ${r.tris} max ${r.trisMax}; scene ${JSON.stringify(r.scene)}${r.propsComing ? ' (' + r.propsComing + ' prop files still coming!)' : ''}${r.error ? ' ERROR ' + r.error : ''}${r.errs && r.errs.length ? '\n  ' + r.errs.slice(0, 6).join('\n  ') : ' (no page errors)'}`);
   }
   fs.writeFileSync(out, JSON.stringify(all, null, 1));
   await b.close();

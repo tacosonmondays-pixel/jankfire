@@ -381,7 +381,7 @@ export function fetchMapProps(def, traffic, onReady, onFail) {
   ready = onReady; failed = onFail;
   const ids = modelsFor(def, traffic).filter((m) => !AUTHORED[m] && (LAZY.has(m) || coming.has(m))); // (not there yet, and has a file)
   for (const m of ids) { if (!asked.has(m)) { asked.add(m); whenLate(m, landed); whenFailed(m, lost); } coming.add(m); }
-  prefetch(ids);
+  prefetch(ids, 2); // (this screen: ahead of the startup download's guns, behind a picture that's on screen right now)
 }
 export const propInfo = () => ({ ...propStats, cached: kindCache.size, coming: coming.size });
 export function propFieldVisible(v) { if (field) field.group.visible = v; } // (tests: world.js showPropBoxes)
