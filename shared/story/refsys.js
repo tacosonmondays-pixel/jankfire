@@ -21,6 +21,15 @@ export const ENEMY_KINDS = {
   corp_temp: { hp: 80, w: 'pistol', name: 'Corp Temp', tags: ['corp'] },
   raider: { hp: 120, w: 'shotgun', name: 'Raider', tags: ['raider'] },
 };
+// the story engine's own enemy table (shared/story/content/enemies.js, WP8): name, hp, weapon, tags, faction (= side:
+// factions don't cover for each other, interns and temps will happily shoot through one another to get to you)
+let CONTENT = null;
+function loadKinds() { return import('./content/enemies.js').then((m) => { CONTENT = m.ENEMIES || null; }).catch(() => { CONTENT = null; }); } // (not there yet: the defaults)
+function kindOf(id) {
+  const c = CONTENT && Object.hasOwn(CONTENT, id) ? CONTENT[id] : null;
+  if (c) return { hp: c.hp, w: c.weapon, name: c.name, tags: Array.isArray(c.tags) ? c.tags : [], side: c.faction || 'enemy' };
+  return Object.hasOwn(ENEMY_KINDS, id) ? ENEMY_KINDS[id] : ENEMY_KINDS.dummy;
+}
 const isId = (s) => typeof s === 'string' && /^[a-z0-9_:-]{1,40}$/i.test(s);
 const v3 = (a) => Array.isArray(a) && a.length === 3 && a.every((x) => Number.isFinite(x) && Math.abs(x) < 1e5);
 const r2 = (x) => Math.round(x * 100) / 100;
@@ -46,7 +55,7 @@ function boot(sim) {
   if (sim.refBooting) return;
   sim.refBooting = true;
   shimProcess();
-  Promise.all([import('../../server/room.js'), mapFor(sim.zone)]).then(([R, mapId]) => {
+  Promise.all([import('../../server/room.js'), mapFor(sim.zone), loadKinds()]).then(([R, mapId]) => {
     if (!mapId || !sim.me) { sim.refOff = mapId ? '' : 'no map'; return; }
     const room = new R.Room(`story:${sim.zone}`, 'story');
     room.cfg.map = mapId; room.cfg.bots = 0; room.cfg.hr = 'off';
@@ -83,9 +92,9 @@ function report(sim, ev) {
 function spawnOne(sim, m, at) {
   const R = sim.ref; if (!R) return 0;
   if ([...R.room.players.values()].filter((p) => p.sk && p.alive).length >= REF.maxAlive) return 0;
-  const base = Object.hasOwn(ENEMY_KINDS, m.kind) ? ENEMY_KINDS[m.kind] : ENEMY_KINDS.dummy;
+  const base = kindOf(m.kind);
   const def = { kind: m.kind, name: typeof m.name === 'string' ? m.name.slice(0, 24) : base.name, hp: Number.isFinite(m.hp) ? Math.max(1, Math.min(REF.maxHp, m.hp)) : base.hp,
-    w: typeof m.w === 'string' ? m.w : base.w, tags: base.tags, npc: isId(m.npc) ? m.npc : '', boss: false, side: m.side === 'you' ? 'you' : 'enemy' };
+    w: typeof m.w === 'string' ? m.w : base.w, tags: base.tags, npc: isId(m.npc) ? m.npc : '', boss: false, side: m.side === 'you' ? 'you' : isId(base.side) ? base.side : 'enemy' };
   const b = R.room.storySpawn(def, at);
   if (isId(m.id)) b.storyId = m.id;
   return b.id;
