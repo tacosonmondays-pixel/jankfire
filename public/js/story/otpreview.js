@@ -55,7 +55,7 @@ const CLIP_HOLD = new Set(['ot_idle', 'ot_stalk', 'ot_coffee', 'ot_kneel', 'ot_c
 function render() { P.cap.innerHTML = `${P.label}<div style="font-size:18px;color:#4fd8ff;min-height:22px">${P.marks.join(' ')}</div><div style="font-size:13px;color:#fff;opacity:.7">mr. overtime rehearsal · ${P.i + 1}/${PROGRAM.length} · no damage</div>`; }
 export function previewFrame(dt) {
   if (!P) return;
-  P.t += dt;
+  P.t += dt; P.total = (P.total || 0) + dt; window.JF_OTP = { total: P.total, step: P.i, label: P.label }; // (the recorder retimes its video with this)
   if (P.markT > 0) { P.markT -= dt; render(); }
   if (P.t >= P.len) next();
 }
