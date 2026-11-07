@@ -1,8 +1,12 @@
 // story boss fights, the presentation half: who's in the arena, the phase cutscenes, the boss's clips and damage states,
 // driven by the combat referee's events (it owns HP, hits and the real attacks). until those land, rehearsal fakes them:
 // JF_STORY.boss.test('overtime_1', 0.49) = he's at 49% HP.
-// events in (G.story.on or G.story.combat): { type: 'hit', kind, target, hp, max, head } { type: 'kill', kind, boss }
-// { type: 'phase', kind, phase } { type: 'plate' } (the referee says the plate came off)
+// events in (G.story.combat, from the systems lane's referee, or G.story.on): the referee owns HP, phases and timing:
+// { type: 'hit', target, kind, hp, max, head, crit, part }   a flinch on crits
+// { type: 'phase', target, kind, phase, invuln }           the phase cutscene + his pose for it
+// { type: 'part', target, kind, part, state }              damage states: plate_off, cracked, sparking (OT.dmg)
+// { type: 'act', target, clip, t0 }                        play an attack clip (its marks are in c_overtime.parts.json)
+// { type: 'kill', target, kind, boss }                      the quest's killBoss
 import { G } from '../ctx.js';
 import { ME } from '../player.js';
 import { actors, spawnActor, play } from './actors.js';
@@ -14,7 +18,6 @@ export const HOOKS = {
   overtime_1: {
     actor: 'overtime', at: 'gut:border', quest: 'm04_clocking_in', fight: 'fight',
     start: { clip: 'ot_idle', hold: true, dmg: 'fresh' },
-    plate: 0.75, // (the plate comes off at 75% unless the referee says otherwise)
     phases: [null, { scene: 'ot1_coffee', clip: 'ot_coffee', hold: true, dmg: 'cracked' }, { scene: 'ot1_punching_in', clip: 'ot_stalk', hold: true, dmg: 'sparking' }],
     steps: { rip: { dmg: 'ripped', clip: 'ot_kneel', hold: true }, after: { clip: 'ot_kneel', hold: true } },
     stepDone: { after: 'ot1_retreat' },
@@ -47,26 +50,31 @@ export function makeBoss(ST, { where, playScene }) {
     if (ph.scene && S().defs.scenes[ph.scene]) playScene(ph.scene, { done: after }); else after();
     const a = actorOf(b); if (a && ph.dmg) OT.dmg(a, ph.dmg);
   }
-  function hp(b, f) {
-    const h = HOOKS[b], a = actorOf(b); if (!h) return;
+  function hp(b, f, crit) {
+    const a = actorOf(b); if (!HOOKS[b]) return;
     const was = B.hp; B.hp = Math.max(0, Math.min(1, f));
-    if (a && was - B.hp > 0.015 && !a.clip?.hold) play(a, 'ot_flinch');
-    if (!B.plateOff && h.plate != null && B.hp <= h.plate) { B.plateOff = true; if (a) play(a, 'ot_plate_rip'); }
-    const D = S().defs.bosses?.[b] || (S().bosses || {})[b];
-    // phase thresholds: from content (phases[i].hp = [from, to] in %), else the hooks' order
-    const ranges = (D && D.phases) ? D.phases.map((p) => (p.hp ? p.hp[0] / 100 : 1)) : null;
-    for (let i = h.phases.length - 1; i > 0; i--) { const below = ranges ? ranges[i] : 1 - i / h.phases.length; if (B.hp < below) { setPhase(b, i); break; } }
+    if (a && (crit || was - B.hp > 0.03) && !(a.clip && a.clip.hold && a.clip.name === 'ot_coffee')) play(a, 'ot_flinch');
   }
   B.combat = (ev) => {
     if (!ev || typeof ev !== 'object') return;
     const b = bossOfKind(ev.boss || ev.kind || ev.target) || B.on; if (!b || !HOOKS[b]) return;
-    if (ev.type === 'hit' && Number.isFinite(ev.hp) && Number.isFinite(ev.max) && ev.max > 0) hp(b, ev.hp / ev.max);
-    if (ev.type === 'hit' && ev.head) { const a = actorOf(b); if (a) play(a, 'ot_flinch'); }
+    if (B.on !== b) enter(b);
+    const a = actorOf(b);
+    if (ev.type === 'hit' && Number.isFinite(ev.hp) && Number.isFinite(ev.max) && ev.max > 0) hp(b, ev.hp / ev.max, !!(ev.crit || ev.head));
     if (ev.type === 'phase' && Number.isFinite(ev.phase)) setPhase(b, ev.phase);
-    if (ev.type === 'plate') { B.plateOff = true; const a = actorOf(b); if (a) play(a, 'ot_plate_rip'); }
+    if (ev.type === 'part' && a && typeof ev.state === 'string') { OT.dmg(a, ev.state); if (ev.state === 'plate_off' && !B.plateOff) { B.plateOff = true; a.clip = null; play(a, 'ot_plate_rip'); } }
+    if (ev.type === 'act' && a && typeof ev.clip === 'string' && /^ot_[a-z_]+$/.test(ev.clip)) { a.clip = null; play(a, ev.clip); }
     if (ev.type === 'kill' && (ev.boss || HOOKS[b])) S().emit({ type: 'killBoss', boss: b });
   };
-  B.test = (b, f) => { if (B.on !== b) enter(b); hp(b, f); return { hp: B.hp, phase: B.phase }; };
+  // rehearsal stand-in for the referee: hp fraction -> the hit, the plate at 75%, the phases from content/bosses.js
+  B.test = (b, f) => {
+    if (B.on !== b) enter(b);
+    const D = S().defs.bosses?.[b], ph = D && D.phases ? D.phases.map((p) => (p.hp ? p.hp[0] / 100 : 1)) : [1, 0.5, 0.45];
+    B.combat({ type: 'hit', boss: b, hp: f * 100, max: 100 });
+    if (f <= 0.75 && !B.plateOff) B.combat({ type: 'part', boss: b, part: 'plate', state: 'plate_off' });
+    for (let i = ph.length - 1; i > 0; i--) if (f < ph[i]) { B.combat({ type: 'phase', boss: b, phase: i }); break; }
+    return { hp: B.hp, phase: B.phase };
+  };
   // the quest side: entering the fight step sets him up; later steps pose him; some steps play a scene when done
   B.frame = () => {
     const objs = S().quests.objectives ? S().quests.objectives() : [];

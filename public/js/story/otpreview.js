@@ -3,6 +3,7 @@
 import { ME } from '../player.js';
 import { spawnActor, actors, walkTo, dropTo } from './actors.js';
 import { OT, MARKS } from './overtime.js';
+import { where, LAB } from './boot.js';
 
 // [clip, seconds, what to do first, caption]
 const PROGRAM = [
@@ -25,8 +26,12 @@ const PROGRAM = [
 let P = null;
 export function start() {
   if (P) return;
+  // in the city: the Gut border landing (open, 40 m across), you at the stairs end looking north at the gate
+  const land = !LAB && where('gut:stairs_top');
+  if (land) { ME.pos = [land[0], land[1], land[2] + 10]; ME.vel = [0, 0, 0]; ME.yaw = 0; ME.pitch = 0.12; }
   const f = [-Math.sin(ME.yaw), -Math.cos(ME.yaw)];
   const at = [ME.pos[0] + f[0] * 13, ME.pos[1], ME.pos[2] + f[1] * 13]; at[1] = dropTo(at, 3);
+  if (land) { at[0] = land[0]; at[2] = land[2] + 1; at[1] = dropTo([at[0], land[1] + 2, at[2]], 4); }
   const a = spawnActor('ot_preview', { look: 'overtime', voice: { kind: 'dialtone', pitch: 0.7, rate: 0.9 }, name: 'MR. OVERTIME' }, at, Math.atan2(f[0], f[1]));
   a.lookAt = null; a.home.face = a.yaw;
   const cap = document.createElement('div'); cap.id = 'otPrev';

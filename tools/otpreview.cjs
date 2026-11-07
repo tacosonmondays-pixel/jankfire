@@ -1,4 +1,4 @@
-// records MR. OVERTIME's rehearsal (?otpreview=1: his whole move set on a loop, no damage) on the story test lot, in
+// records MR. OVERTIME's rehearsal (?otpreview=1: his whole move set on a loop, no damage) on the Gut border landing, in
 // capture mode (each frame = 1/fps of story time): an mp4 + a contact sheet.
 // usage: node tools/otpreview.cjs [--port 3000] [--out docs/story/scenes] [--fps 12] [--secs 44] [--name ot_preview]
 const { chromium } = require('playwright');
@@ -12,7 +12,7 @@ const W = Number(opt('w', 960)), H = Number(opt('h', 540)), TILE = opt('tile', '
   const pg = await b.newPage({ viewport: { width: W, height: H } });
   const errs = []; pg.on('pageerror', (e) => errs.push(e.message));
   await pg.addInitScript(() => { if (!sessionStorage.getItem('jfInit')) { localStorage.setItem('jankfire', JSON.stringify({ name: 'director', jank: 3 })); sessionStorage.setItem('jfInit', '1'); } });
-  await pg.goto(`http://localhost:${PORT}/?story=1&fresh=1&lab=1&otpreview=1`);
+  await pg.goto(`http://localhost:${PORT}/?story=1&otpreview=1`);
   const pump = (ms) => new Promise((r) => setTimeout(r, ms));
   await pump(1500);
   for (let i = 0; i < 100 && !(await pg.evaluate(() => !!document.getElementById('storyBtn'))); i++) await pump(100);
@@ -20,7 +20,7 @@ const W = Number(opt('w', 960)), H = Number(opt('h', 540)), TILE = opt('tile', '
   for (let i = 0; i < 100 && !(await pg.evaluate(() => !!document.querySelector('#storyPick .st-slot .st-btn'))); i++) await pump(100);
   await pg.evaluate(() => document.querySelector('#storyPick .st-slot .st-btn').click());
   for (let i = 0; i < 300 && !(await pg.evaluate(() => !!(window.JF_STORY && window.JF_STORY.on))); i++) await pump(100);
-  await pg.evaluate(async () => { const { ME } = await import('/js/player.js'); ME.pitch = 0.1; window.JF_STORY.capture = true; });
+  await pg.evaluate(async () => { const { ME } = await import('/js/player.js'); window.JF_STORY.capture = true; });
   const step = async () => { await pg.evaluate((dt) => { window.JF_STORY.capStep = dt; }, 1 / FPS); await pg.waitForFunction(() => window.JF_STORY.capStep === 0, null, { polling: 'raf' }); await pg.evaluate(() => new Promise((r) => requestAnimationFrame(() => r()))); };
   for (let i = 0; i < 6; i++) await step(); // (he spawns)
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'otp-'));

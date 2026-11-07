@@ -289,7 +289,7 @@ const LOOKS = {
     const slot = grp('slot', c.spine, 0, tH * 0.28, -0.29); slot.add(box(0.2, 0.03, 0.03, flat(0xffe14d), 0, 0, 0));
     const card = grp('card', c.spine, 0.2, tH * 0.72, -0.27); card.add(box(0.06, 0.1, 0.01, white, 0, 0, 0));
     const tie = grp('tie', c.spine, 0, tH * 0.85, -0.29); tie.add(cyl(0.015, 0.015, 0.45, flat(0x1a1a1a), 0, -0.22, 0, 6));
-    grp('tieEnd', c.spine, 0, tH * 0.85 - 0.46, -0.29, false);
+    grp('tieEnd', c.spine, 0, 0.16, -0.38, false); // (the hook on the end of the bungee)
     const cables = grp('cables', c.spine, 0, tH * 0.55, 0.27); for (const sx of [-1, 0, 1]) cables.add(cyl(0.025, 0.025, 0.5, flat(0x2a2a30), sx * 0.08, 0, 0, 6));
     // the stapler arms: the forearm IS a stapler (magazine on top, the head at the hand), the muzzle marker at the tip
     for (const [f, h, nm] of [[c.foreR, c.handR, 'R'], [c.foreL, c.handL, 'L']]) {
