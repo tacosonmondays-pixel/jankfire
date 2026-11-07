@@ -1,72 +1,69 @@
-# JANKFIRE handoff (2026-11-04)
+# JANKFIRE handoff (2026-11-07, coordinator session)
 
-Read this first in a new session. Everything below is on GitHub (tacosonmondays-pixel/jankfire).
-The old session's scratch folder is gone, so the test tooling was copied into `handoff/` on this branch.
+Live: https://jankfire.onrender.com (Render auto-deploys `main`). Latest shipped patch notes: **v6.8**. Read CLAUDE.md first.
 
-## What's live (main, auto-deployed to https://jankfire.onrender.com by Render)
-- Update 1 (PR #1): the review fixes (74 findings), strict server input validation, guns update (Marble Shotgun, Redline),
-  one hotbar (bottom/right), corner killstreaks, rebuilt knife/katana models, sniper headshots kill, revolver headshot 96.
-- Update 1.1 (PR #2): sniper knockback back (minigun + sniper are the only guns that shove); killcam victim stays until the
-  killing shot, then explodes.
-- Update 1.2 (PR #3): sleep arrow knocks you flat for 4 s (everyone sees it); the play of the round is skippable.
-- PR #4: Training gives you your 3 picked killstreaks, always (a used one comes back 3 s after it runs out).
-- A Windows exe of all that was built and sent (JANKFIRE-1.2-win.zip, `npm run dist:win:zip`).
+## How the coordinator works
+- Lane sessions build on their own branch and open draft PRs. The coordinator re-tests each one on latest `main` and merges it (owner's standing OK).
+  - Merge with `git checkout -B ship-check origin/main && git merge <branch>`, then `node --check` on the changed files.
+  - Boot with `node --max-old-space-size=256 server.js`. It must print no "share bit" warnings.
+  - Smoke scripts: handoff/tests (t_all404, t_melee, t_mm, t_zm3, t_story0, t_lobby with `JF_LOBBY_WAIT=9000`, t_lb). They pre-set `jf_giftseen_all` so the gift popup doesn't cover the menu.
+  - Story tests: `node --test tests/story/*.test.mjs tests/browsable.test.mjs`.
+- Add a line to `public/js/patchnotes.js` for anything players notice, push it to the PR branch, then merge with the full 40-char `expectedHeadSha`. Wait until the new version string shows up in /js/patchnotes.js on the live site.
+- Look choices, `supabase.sql` re-runs and exe builds wait for the owner. Original designs only. Secrets never leave the server.
+- Server code: `class Room` now lives in **server/room.js** (#111). New installers go there, and `installModeStats` must stay the LAST installer.
 
-## Update 2: almost done -> `claude/int-features` (head 2b29c0a)
-Already merged and fixed in it: update 1, plus
-bubble wand, Scales of Justice, Wrecking Ball, revolver twirl + fan, unskippable EPIC killcams, no-scope hype, grapple skins,
-duck rework, headshot DINK/TONK + homing slippers, katana parry, pendulum grapple, sprays (Z), popper/reverse as items (8 items),
-Never Landed (wings), Shredder, Blood Cross, Golden Sniper (Sniper Royalty), Backrooms map, Gun Game, Infection,
-Spoons & Grapples, Duck Rain, Floor Is Lava, One in the Chamber, Runner Jacket.
-Since then also on it: Blood Cross is a big upright cross (not an X) with red anime impact frames (482573e).
-Its own commits explain every cross-feature decision (`git log --oneline be76a3a..claude/int-features`).
+## Shipped this run (all on main)
+- Minimap + bot outfits + bot chatter (#82, #92)
+- Fast model loading + 3D icons + streak looks (#86, #87, #95)
+- Side-menu polish (#80, #85, #88)
+- Royale backpack/grapple charges + S&D tactical shop (#89)
+- Zombies:
+  - boards, drops, Cheat Machine, loadouts (#90)
+  - squad bots, cap of 4 (#113, #118)
+- Per-mode leaderboards (#106)
+- Liquids (#103)
+- Gift + bulk container opening (#108, #114)
+- S&D 5v5, 15 rounds, Valorant-style gunplay, learnable sprays, first-person spectate + corner box, Training SPRAY RANGE (#109, #117, #121, #123)
+- Room move (#111)
+- OVERDUE (story, hidden behind `?story=1`):
+  - script (#75, #76, #84, #100 mechanics/bosses)
+  - systems WP3/4/5/7 (#78, #81, #98, #105, #112)
+  - world WP1/2, grapple, GTA data, Gate arena, shops (#79, #91, #99, #101, #107, #110, #116)
+  - WP8 engine + Act I + cast (#77, #102, #104)
+  - solo combat referee v1 (#120)
 
-To ship it:
-1. `git merge origin/main` into claude/int-features (brings in 1.1 + 1.2; expect small conflicts in replay.js / remote.js /
-   main.js / server.js around the killcam alive-flag fix and the sleep knock-down flag).
-2. Run the regression: `handoff/tests/regress2.sh <checkout> <port>` (fix the absolute scratchpad paths in the scripts first:
-   they point at the old session's folder; pwlock.cjs caps headless browsers at 2). Baseline on update 1:
-   `handoff/baseline-main.txt` (18 pass; t_anim and t_flash were already stale/failing).
-3. The owner must re-run `supabase.sql` in Supabase (update 2 adds columns: airborne, wings_old, sniper_feats);
-   `check-supabase` reports what's missing.
-4. PR to main (draft first, owner marks ready + merges), rebuild the exe (`desktop/`, build-desktop.yml).
+## Open PRs / in flight
+- **#122 Overtime model/anims/cutscenes** (session_01Ayo4emQj6kDyzTHXfVXb6p). BLOCKED: `tests/story/ref.test.mjs` hardcodes the old enemy name/tags ('Corp Temp', ['corp']), but its enemies.js now says "☺ CORP TEMP" / ['corp','ranged']. The test should read from ENEMIES. The lane was told to fix this.
+- **#71 Blender round 4 props**, glossy (session_01Ayo4eoPw2pkw8sSnE3MaPX). Finishing the vehicles. After it: a game-wide `docs/blender/INVENTORY.md` of everything still code-built, then a PS1/Cruelty Squad look test (car, palm, TV, pool ladder).
+- **#115 Architecture look test**, PS1/Cruelty Squad buildings + real stairs on Suburb/Skyline (session_01Ayo4en8Pcv3HrjSrvgFhEV). **Waiting for the owner's OK** before converting every map.
+- **#119 Grudge Ledger design** (OVERDUE "nemesis"-style system, kept distinct from WB's patent). **Waiting for the owner's OK** plus 3 questions:
+  - is a 35% file chance right?
+  - do they steal a cosmetic every time or only the first?
+  - OVERDUE only, or multiplayer bots too?
+- **#83 PS1 texture test**: parked by the owner (back burner). The pipeline at tools/blender/ps1.py is reused by the art lanes.
+- **#6**: an old CSS reskin, stale; ignore it.
+- Systems lane (session_01Ayo4epRiUAHmUrMzDPYwVi), next steps:
+  - bosses PR (Overtime 1 at the Gut Border Gate, using #122's parts.json)
+  - the slice world in the worker
+  - civilians (killable, respawning), Late Fees wanted level, shops
+  - grudge hooks
+- World lane (session_01Ayo4enhVSVnYw2M1PfCmzD): standing by for boss-arena needs; swaps stand-ins to the PS1 kit after the look test is approved.
 
-## Update 3 branches (all pushed)
-Finished and reviewed, not merged anywhere yet (built on e8fe212 = int-features before update 1 unless noted):
-- `claude/f-zombies` (e8bc3b5, based on ac5f9eb): co-op Zombies on the Dead Mall (credits, shutters, wall guns, crate, power, Jank Cola, revives).
-- `claude/f-slip` (73b54ae): parry window 0.6 s (perfect 0.25 s) + marbles on the floor make people slip.
-  The commit after it (4fb8e6b) is a WIP parry-animation polish: unfinished, test before keeping.
-- `claude/f-music` (c1e3378): music system + the owner's track (public/music/untitled.mp3, listed as "Untitled": ask for the real name).
-- `claude/f-keys` (cc1fe7c): rebindable keybinds (Settings > Controls), built + reviewed + fixed.
-Partly built (WIP, untested):
-- `claude/f-econ`: competitive Plant & Defuse. Server side DONE and tested (c56d5bf; design in `handoff/econ_DESIGN.md`).
-  Client (buy menu, HUD, drops, armor models) is WIP in e599992.
-- `claude/f-lasso` (495ee7b): lasso secondary with holder-run spring physics (the Roblox fling trick). Build was in progress.
-- `claude/f-pip` (48940b1, WIP): killcam picture-in-picture (killer's POV box + LIVE reaction box).
-- `claude/f-rig` (3e09b6e, WIP, based on update 1): OVERDRIVE RIG killstreak (cyber exo-frame: speed + afterimages,
-  shield, charged punch + block, grapple quickhack, homing missiles, charged leap). Original design, no copied names.
+## Owner decisions still open
+1. Approve the PS1/Cruelty Squad look (#115). Then: convert all maps, and should the existing glossy models be re-baked?
+2. Grudge Ledger design + its 3 questions (#119).
+3. S&D: is the moving inaccuracy harsh enough? Keep bots at 0.7x damage?
+4. Streak-skin rarities in crates OK? (Disco Ball epic, Golden Duck legendary.)
 
-## Queued requests (not started)
-- NEW MODE: BATTLE ROYALE. Original design: a big map (or a new one), everyone drops in, loot on the ground (weapons,
-  items, armor), a shrinking zone that hurts outside it, last one standing wins; works in Online and Bots rooms.
-  TEACH THE BOTS TO PLAY IT: drop somewhere sensible, loot and upgrade their kit, rotate ahead of the zone, avoid or
-  third-party fights, heal/use items, fight at the right ranges, don't die to the zone. Test with a full bots match.
-- IMPROVED SEARCH & DESTROY = the competitive Plant & Defuse (`claude/f-econ`). TEACH THE BOTS TO PLAY IT PROPERLY:
-  sensible buys per economy (eco / force / full, drop weapons for teammates), attackers group up and execute a site
-  (smokes/frags first), plant in safe spots, post-plant positions; defenders split onto sites, hold angles, rotate on
-  info, retake together, defuse with a kit when safe; nobody wanders alone; pick up better weapons; save when the round
-  is lost. The server already has basic bot buying + pickups (server/econ.js); this is the full tactical behaviour.
-  Test: whole bots-only matches, check both sides win rounds for real reasons.
-- Map pass: `handoff/map_todo/MAP_FIXES.md` (+ 2 screenshots): Suburb bigger and Nuketown-like with a tree border,
-  Skyline/Rooftop streets below, Warehouse props + fenced yard, Bazaar gaps, out-of-bounds "RETURN 3 2 1" countdown.
-- Two-stage end-of-match vote: mode first, then map (about 12 modes now).
-- Parry: a dedicated rebindable "Parry" action once keybinds land.
+## Goals the owner set
+- **Everything Blender-made** in the PS1 + Cruelty Squad style: props, buildings, real staircases, vehicles, planes, TVs, pools, trees, terrain, characters. Gameplay and collision stay identical; check with a hash per map.
+- OVERDUE demo: the slice is Act I solo through the first Overtime fight.
+  - Missing: bosses, the slice world in the referee, and polish.
+  - Optional for the first demo: co-op, Late Fees.
+- OVERDUE features: GTA-style driving (done), killable respawning civilians, wanted level, shops, grapple-heavy traversal, Borderlands-style bosses.
 
-## Rules that stay in force
-- The Supabase secret key (sb_secret_..., service_role) stays server-side only (.env / Render env). Never in the exe,
-  desktop/config.json, chat or the repo. Don't ask for or accept the DB password.
-- Commits: identity `Claude <noreply@anthropic.com>`, messages end with the Co-Authored-By + Claude-Session trailers.
-- Original designs only (no copied characters, logos or names from other games/shows).
-- The owner merges PRs on GitHub; GitHub releases are created by the owner (release creation is blocked from sessions).
-- Workflow subagents only see the user's LATEST message as "the request": for work asked earlier, use plain agents with the
-  request quoted in the prompt, or they refuse.
+## Known gotchas
+- The guest gift memo (g20261107, open until 2026-12-07) shows once per browser. Tests must set `jf_giftseen_all`.
+- A merged PR can't take new commits. If a lane pushes after a merge, open a new PR from that branch.
+- Stacked PRs auto-close when their base branch is merged. Reopen them as new PRs against main.
+- Headless runs are slow (SwiftShader). Perf numbers are noisy; use the bench method from #103.
