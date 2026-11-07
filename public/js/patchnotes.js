@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '6.2', date: '2026-11-07', title: 'WHO\'S THE BEST AT WHAT', items: [
+    'the LEADERBOARD has tabs now: OVERALL, QUICK PLAY, PLANT & DEFUSE, ZOMBIES and JANK ROYALE, each with its own boards.',
+    'plant & defuse: rounds won, plants, defuses, clutches, combat score per round, headshot %. zombies: highest round, zombies killed, revives, planks nailed, credits spent, cheat machine rolls. royale: wins, top 3s, kills, damage, longest kill.',
+    'real matches and accounts only. the per-mode boards start counting from today, so go take the #1 spots while they say "nobody yet".',
+  ] },
   { v: '6.1', date: '2026-11-06', title: 'BOARD UP THE WINDOWS', items: [
     'ZOMBIES hurt less: a claw does 15 in round 1 (it was 40), going up 1 a round. after a claw lands nothing else can claw you for a split second, and an arrow shows where it came from.',
     'every window in the Dead Mall has 6 planks of mall junk nailed over it. zombies rip them off before they climb in. hold F near a window to nail them back (+10 a plank, first 20 a round).',
