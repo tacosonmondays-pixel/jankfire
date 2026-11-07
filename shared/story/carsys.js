@@ -17,8 +17,8 @@ const okTy = (ty) => typeof ty === 'string' && (Object.hasOwn(CARS, ty) || Objec
 const v3 = (a, lim = 1e5) => Array.isArray(a) && a.length === 3 && a.every((x) => Number.isFinite(x) && Math.abs(x) < lim);
 const r2 = (x) => Math.round(x * 100) / 100;
 // where cars are parked on a fresh game, per world (open floor, checked by the e2e): the Bottom's sofa-car by the Machine
-const PARKED = {
-  story_slice: [['sofa', [-195, 8.15, 191], Math.PI, '#ff7ab8'], ['hatch', [-188, 8.15, 196], Math.PI, '#f2c230']],
+export const PARKED = {
+  story_slice: [['sofa', [-195, 8.15, 191], Math.PI, '#ff7ab8'], ['hatch', [-200, 8.15, 198], Math.PI, '#f2c230']],
   story_test: [['sofa', [-36, 0, 30], Math.PI, '#ff7ab8'], ['sedan', [-14, 0, 14], 0.4, '#2f6fe0'], ['pickup', [22, 0, 6], -1.2, '#3fae5a']],
 };
 function cleanCars(v) {

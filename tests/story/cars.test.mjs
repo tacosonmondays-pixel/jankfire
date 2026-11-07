@@ -2,13 +2,20 @@
 import assert from 'node:assert/strict';
 import { createSim } from '../../shared/story/sim.js';
 import '../../shared/story/carsys.js';
-import { CARSYS } from '../../shared/story/carsys.js';
+import { CARSYS, PARKED } from '../../shared/story/carsys.js';
+import { WORLDS } from '../../shared/story/worlds.js';
 import { MAXV } from '../../shared/story/drive.js';
 import { newSave, cleanSave } from '../../shared/story/save.js';
 let n = 0; const t = (name, fn) => { fn(); n++; console.log('ok', name); };
 const mk = (world = 'story_test', save) => { const out = []; const sim = createSim({ send: (o) => out.push(o), save: save || newSave(0, world) }); sim.msg({ t: 'join' }); return { sim, out, last: (k) => out.filter((o) => o.k === k).at(-1) }; };
 const at = (sim, p) => sim.msg({ t: 's', q: sim.me.seq, p, v: [0, 0, 0] });
 
+t('no parked car sits on (or next to) the spawn: you come out of the Machine, not into a bonnet', () => {
+  for (const [w, list] of Object.entries(PARKED)) for (const [ty, p] of list) {
+    const sp = WORLDS[w].spawn, d = Math.hypot(p[0] - sp[0], p[2] - sp[2]);
+    assert.ok(d >= 5, `${w} ${ty} is ${d.toFixed(1)} m from the spawn`);
+  }
+});
 t('fresh worlds have parked cars (the Bottom has the sofa-car)', () => {
   assert.ok(mk('story_slice').sim.cars.size >= 2); assert.ok([...mk('story_slice').sim.cars.values()].some((c) => c.ty === 'sofa'));
   assert.ok(mk('story_test').last('cars').list.length >= 3);
