@@ -85,6 +85,11 @@ const HOST = {
       case 'talk': { const [n, node] = arg.split('/'); if (S0().defs.npcs[n]) (ST.talkQ ||= []).push([n, node || 'start']); break; } // (opens next frame, after whatever's talking now)
       case 'turf': { const [d, f] = arg.split('='); toast(`<b>${String(d).toUpperCase()}</b> is run by <b>${String(f).toUpperCase()}</b> now`); break; }
       case 'boss': { const b = S0().defs.bosses[arg] || {}; const [name, job] = String(b.card || arg).split(' · '); if (ST.scene) ST.scene.playScene({ id: 'boss_' + arg, kind: 'boss', skip: true, boss: { name, job: job || '', sub: b.subtitle || '' } }); break; }
+      // enemies, for the systems lane's referee (the story worker's Room): spawn:<kind>@<zone>*<n> despawn:<kind|id> hurt:<id>=<dmg>
+      case 'spawn': { const m = /^([a-z0-9_]+)(?:@([^*]+))?(?:\*(\d+))?$/.exec(arg); if (!m) break; const at = m[2] ? where(m[2]) : [ME.pos[0], ME.pos[1], ME.pos[2]];
+        if (at && G.story && G.story.send) G.story.send('spawn', { kind: m[1], at: [...at], n: Math.min(20, Number(m[3]) || 1), ...(S0().defs.npcs[m[1]] ? { id: m[1], look: m[1] } : {}) }); break; }
+      case 'despawn': if (G.story && G.story.send) G.story.send('despawn', /^[a-z0-9_]+$/.test(arg) ? (actors.has(arg) || S0().defs.npcs[arg] ? { id: arg } : { kind: arg }) : {}); break;
+      case 'hurt': { const [id, d] = arg.split('='); const dmg = Number(d); if (G.story && G.story.send && /^[a-z0-9_]+$/.test(id) && Number.isFinite(dmg)) G.story.send('damage', { id, dmg, why: 'script' }); break; }
       case 'loot': toast(`LOOT DROP: <b>${arg.replace(/_/g, ' ')}</b>`); break;
       case 'implant': if (INV()) INV().give(arg, 1); ST.bag.add('implant.' + arg); toast(`IMPLANT: <b>${arg.replace(/_/g, ' ')}</b>`); break;
       case 'fees': S0().st.vars.fees = Math.max(0, (S0().st.vars.fees || 0) + (Number(arg) || 0)); toast(`LATE FEES <b>${'☺'.repeat(Math.min(5, S0().st.vars.fees))}</b>`); break;

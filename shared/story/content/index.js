@@ -23,6 +23,7 @@ import { SCENES_ACT2 } from './scenes_act2.js';
 import { SCENES_ACT3 } from './scenes_act3.js';
 import { SCENES_ACT4 } from './scenes_act4.js';
 import { SCENES_ACT5 } from './scenes_act5.js';
+export { ENEMIES, ADDS } from './enemies.js'; // (non-boss enemies, for the combat referee and kill goals)
 import { SCENES_OVERTIME } from './scenes_overtime.js'; // (WP9: overtime's fight-1 phase and retreat scenes)
 import { SIDE_BOTTOM } from './side/bottom.js';
 import { SIDE_GUT } from './side/gut.js';
