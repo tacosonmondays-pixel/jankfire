@@ -1608,8 +1608,7 @@ def build_semi():
         yard_tyre(nm + 'r', X, 2.6 - w, 2.6, 0.55, M, TP)
     for X in (13.4, 16.0):
         for (z0, z1) in ((0.0, 0.32), (2.28, 2.6)):
-            r8 = 0.55 / math.cos(math.pi / 8)
-            o = lathe([(0.0, z0), (r8, z0), (r8, z1), (0.0, z1)], (X, 0.55, 0), M['dark'], seg=8, axis='z', name='sm_farwheel', cap=False)
+            o = lathe([(0.0, z0), (0.55, z0), (0.55, z1), (0.0, z1)], (X, 0.55, 0), M['dark'], seg=8, axis='z', name='sm_farwheel', cap=False)  # (a corner on the ground, like the trailer's)
             apply_mods(o); Y.uv_tread(o, M['R']['TREAD'], X, 0.55, z0, z1, sel=lambda n: abs(n.z) < 0.7)
             Y.uv_planar_xy(o, M['R']['WHEEL1'], X, 0.55, 0.55, sel=lambda n: abs(n.z) >= 0.7); TF.append(o)
     PA = Atlas('semi_paint_t', 256, 256, 0xd81e30)
