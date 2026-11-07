@@ -76,6 +76,18 @@ await t('enemies fight you, not each other; going down and coming back up are re
   assert.equal(sim.me.seq, me.seq, 'the sim mirrors your seq');
 });
 
+await t('hold: a held enemy stands still and holds its fire; let go, it moves again', async () => {
+  const R = sim.ref;
+  sim.msg({ t: 'sty', k: 'spawn', kind: 'raider', at: [3, 0.1, -14], id: 'held' });
+  sim.msg({ t: 'sty', k: 'hold', id: 'held', on: true });
+  const e = sim.refEnemies().find((p) => p.storyId === 'held'), p0 = e.pos.slice();
+  await run(2);
+  assert.deepEqual(e.pos.map((x) => Math.round(x * 10)), p0.map((x) => Math.round(x * 10)), 'stood still');
+  sim.msg({ t: 'sty', k: 'hold', id: 'held', on: false });
+  assert.equal(e.sk.hold, false);
+  sim.msg({ t: 'sty', k: 'despawn', id: 'held' });
+});
+
 await t('the save still works with the referee up (you, where the room has you)', async () => {
   const s = sim.snapshot('test');
   assert.deepEqual(s.at.p, sim.ref.me.pos.map((x) => Math.round(x * 100) / 100));

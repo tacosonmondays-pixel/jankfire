@@ -6,6 +6,7 @@
 //                  { t: 'sty', k: 'spawn', kind, at, n?, id?, name?, hp?, w? }  enemies (n of them, around at)
 //                  { t: 'sty', k: 'despawn', id? | kind? }                       gone (no kill, no loot)
 //                  { t: 'sty', k: 'damage', id, dmg }                            a scripted hurt ('me' = you)
+//                  { t: 'sty', k: 'hold', id? | kind? | all: true, on }          freeze / let go (cutscenes, talks)
 //   sim -> client  the room's own messages, as in a match (enemies are remote players), and
 //                  { t: 'sty', k: 'combat', ev }  ev in the format agreed with the story engine (WP8):
 //                  hit { target, kind, dmg, by, weapon, head, hp, max } · kill { target, kind, by, weapon, head, at,
@@ -119,7 +120,7 @@ addSystem({
   },
   msg(sim, m) {
     const R = sim.ref;
-    if (!R && (m.k === 'spawn' || m.k === 'despawn' || m.k === 'damage')) { if (!sim.refOff && sim.refQ.length < 32) sim.refQ.push(m); return true; } // (the room is still loading)
+    if (!R && (m.k === 'spawn' || m.k === 'despawn' || m.k === 'damage' || m.k === 'hold')) { if (!sim.refOff && sim.refQ.length < 32) sim.refQ.push(m); return true; } // (the room is still loading)
     switch (m.k) {
       case 'spawn': {
         if (!R || typeof m.kind !== 'string' || !isId(m.kind) || !v3(m.at)) return true;
@@ -131,6 +132,11 @@ addSystem({
       case 'despawn': {
         if (!R) return true;
         for (const p of sim.refEnemies()) if ((isId(m.id) && idOf(sim, p) === m.id) || (isId(m.kind) && !m.id && p.sk.kind === m.kind)) R.room.storyDespawn(p);
+        return true;
+      }
+      case 'hold': {
+        if (!R) return true;
+        for (const p of sim.refEnemies()) if (m.all === true || (isId(m.id) && idOf(sim, p) === m.id) || (isId(m.kind) && !m.id && p.sk.kind === m.kind)) p.sk.hold = m.on !== false;
         return true;
       }
       case 'damage': {

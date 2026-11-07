@@ -6,6 +6,7 @@
 //   - sides instead of teams: the same side doesn't hurt or hunt itself (you and your allies are side 'you')
 //   - enemies stay down when they die (refsys clears the body); you respawn as usual (the Machine dispenses you)
 //   - every hit and kill is reported through room.onStory(ev) with the real numbers
+//   - sk.hold: the enemy stands still and holds its fire (cutscenes, talks)
 import { WEAPONS } from '../shared/weapons.js';
 
 export const STORY_SIDE = 'you';
@@ -13,7 +14,9 @@ const sideOf = (p) => (p.sk ? p.sk.side || 'enemy' : STORY_SIDE);
 
 export function installStoryRef(Room) {
   const P = Room.prototype;
-  const damage0 = P.damage, kill0 = P.kill, friendly0 = P.friendly;
+  const damage0 = P.damage, kill0 = P.kill, friendly0 = P.friendly, stepBot0 = P.stepBot;
+  // held enemies (a cutscene, a talk, a scripted beat) stand still and don't shoot until they're let go
+  P.stepBot = function (b, dt) { if (this.mode === 'story' && b.sk && b.sk.hold) { b.vel = [0, 0, 0]; return; } return stepBot0.call(this, b, dt); };
   P.damage = function (t, amt, attacker, w, hs, from) {
     if (this.mode !== 'story') return damage0.call(this, t, amt, attacker, w, hs, from);
     const sk = t.sk, k = sk ? 100 / sk.max : 1; // a 400 HP brute takes a quarter of each hit off its 100
