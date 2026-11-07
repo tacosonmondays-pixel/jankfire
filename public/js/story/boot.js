@@ -16,6 +16,7 @@ import * as lab from '/shared/story/content/test/lab.js';
 import * as overdue from '/shared/story/content/overdue.js'; // the full script, as an engine pack (PR #76)
 import { PLACES } from '/shared/city/slice.js'; // the world lane's real spots for the script's zones (the slice city)
 import { actors, spawnActor, despawnActor, clearActors, updateActors, dropTo, play } from './actors.js';
+import { otFrame } from './overtime.js'; // (mr. overtime's clips, marks, damage and fx)
 import { startTalk, talkKey, talkFrame, talking } from './talk.js';
 import { questHud, card as card0, toast } from './questhud.js';
 import { toggleCodex, codexOpen } from './codex.js';
@@ -29,6 +30,7 @@ const card = (...a) => { if (locked()) cardQ.push(a); else card0(...a); };
 export const ST = { S: null, slot: 0, bag: new Set(), staged: '', anchor: [0, 0, 0], things: new Map(), inZone: new Set(), kills: 0, saveT: 0, ready: false, scene: null };
 // the content: the script (default), or the small engine lab (?lab=1, and always on the Training range ?storylab=1)
 export const LAB = /[?&](lab|storylab)=1\b/.test(location.search);
+const OTPREV = /[?&]otpreview=1\b/.test(location.search);
 const PACKS = LAB ? [lab] : [overdue];
 
 function merge(packs) {
@@ -54,6 +56,7 @@ export async function init() {
   ST.where = where; ST.offYaw = (y) => offYaw(y);
   window.JF_STORY = ST; // (tests drive it from here)
   try { const sc = await import('./scene.js'); ST.scene = sc; sc.initScenes(ST); } catch (e) { console.warn('story scenes not loaded', e); }
+  try { const bf = await import('./bossfight.js'); ST.boss = bf.makeBoss(ST, { where, playScene: (id, o) => ST.scene && ST.scene.playScene(id, o) }); } catch (e) { console.warn('boss hooks not loaded', e); } // (phases, cutscenes, the boss's poses)
 }
 
 // ---------------------------------------------------------------- the host: what the engine asks the world to do
@@ -82,6 +85,11 @@ const HOST = {
       case 'talk': { const [n, node] = arg.split('/'); if (S0().defs.npcs[n]) (ST.talkQ ||= []).push([n, node || 'start']); break; } // (opens next frame, after whatever's talking now)
       case 'turf': { const [d, f] = arg.split('='); toast(`<b>${String(d).toUpperCase()}</b> is run by <b>${String(f).toUpperCase()}</b> now`); break; }
       case 'boss': { const b = S0().defs.bosses[arg] || {}; const [name, job] = String(b.card || arg).split(' · '); if (ST.scene) ST.scene.playScene({ id: 'boss_' + arg, kind: 'boss', skip: true, boss: { name, job: job || '', sub: b.subtitle || '' } }); break; }
+      // enemies, for the systems lane's referee (the story worker's Room): spawn:<kind>@<zone>*<n> despawn:<kind|id> hurt:<id>=<dmg>
+      case 'spawn': { const m = /^([a-z0-9_]+)(?:@([^*]+))?(?:\*(\d+))?$/.exec(arg); if (!m) break; const at = m[2] ? where(m[2]) : [ME.pos[0], ME.pos[1], ME.pos[2]];
+        if (at && G.story && G.story.send) G.story.send('spawn', { kind: m[1], at: [...at], n: Math.min(20, Number(m[3]) || 1), ...(S0().defs.npcs[m[1]] ? { id: m[1], look: m[1] } : {}) }); break; }
+      case 'despawn': if (G.story && G.story.send) G.story.send('despawn', /^[a-z0-9_]+$/.test(arg) ? (actors.has(arg) || S0().defs.npcs[arg] ? { id: arg } : { kind: arg }) : {}); break;
+      case 'hurt': { const [id, d] = arg.split('='); const dmg = Number(d); if (G.story && G.story.send && /^[a-z0-9_]+$/.test(id) && Number.isFinite(dmg)) G.story.send('damage', { id, dmg, why: 'script' }); break; }
       case 'loot': toast(`LOOT DROP: <b>${arg.replace(/_/g, ' ')}</b>`); break;
       case 'implant': if (INV()) INV().give(arg, 1); ST.bag.add('implant.' + arg); toast(`IMPLANT: <b>${arg.replace(/_/g, ' ')}</b>`); break;
       case 'fees': S0().st.vars.fees = Math.max(0, (S0().st.vars.fees || 0) + (Number(arg) || 0)); toast(`LATE FEES <b>${'☺'.repeat(Math.min(5, S0().st.vars.fees))}</b>`); break;
@@ -183,6 +191,7 @@ function thingMesh(look) { // a big red soup pot (things get real models with th
 export function where(m) {
   if (Array.isArray(m)) return LAB ? off(m) : m;
   const a = actors.get(m); if (a) return a.pos;
+  const mk = ST.marks && ST.marks[m]; if (mk) return LAB ? off(mk) : mk; // (the world lane's arena marks: ot_enter, arena.boss...)
   const z = ST.S.defs.zones[m]; if (z) return z.p ? (LAB ? off(z.p) : z.p) : REH.zones[m] || null;
   const r = ROSTER.get(m); if (r) return r.p;
   return null;
@@ -289,6 +298,10 @@ export function frame(dt, now, cam) {
     if (inStory() && (ST.syncT = (ST.syncT || 0) + dt) > 2) { ST.syncT = 0; sync(); } // (the shell's own auto / pause saves get it too)
     if (!LAB && (ST.rT = (ST.rT || 0) + dt) > 0.25) { ST.rT = 0; roster(e); spots(); }
     updateActors(dt * (ST.slowmo ?? 1), now, e);
+    otFrame(dt * (ST.slowmo ?? 1), cam);
+    if (ST.boss && (ST.bT = (ST.bT || 0) + dt) > 0.25) { ST.bT = 0; ST.boss.frame(); }
+    { const busy = !!(ST.scene && ST.scene.playing()) || talking(); if (busy !== !!ST.held) { ST.held = busy; if (G.story && G.story.send) G.story.send('hold', { all: true, on: busy }); } } // (the referee freezes enemies through cutscenes and talks)
+    if (OTPREV && (ST.otW = (ST.otW || 0) + dt) > 3) { if (!ST.otPrev) { ST.otPrev = import('./otpreview.js').then((m) => { m.start(); ST.otPrevM = m; }); } else if (ST.otPrevM) ST.otPrevM.previewFrame(dt * (ST.slowmo ?? 1)); } // (?otpreview=1: overtime's rehearsal)
     if (ST.talkQ && ST.talkQ.length && !talking()) { const [n, node] = ST.talkQ.shift(); startTalk(ST.S, n, node, () => save('talk')); }
     S.tick(dt);
     // zones: walking in / out
