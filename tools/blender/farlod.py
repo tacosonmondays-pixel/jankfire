@@ -12,10 +12,11 @@ from lib import gv, _obj
 import lod_splice
 
 
-def far_wheel(r, w, pos, tire, hub, seg=8, hub_k=0.62, out=None, name='far_wheel'):
+def far_wheel(r, w, pos, tire, hub, seg=8, hub_k=0.42, out=None, name='far_wheel'):
     """an octagon tyre for a far LOD: the tread and the outer wall in `tire`, the hub disc in the middle of it in `hub`
     (one mesh, so nothing floats or fights). Its flats sit on r: the bottom one on the ground for a wheel at height r.
-    No inner wall (it's inside the body). out = +1 / -1 which way along game z the outside is (default: away from 0)."""
+    No inner wall (it's inside the body). out = +1 / -1 which way along game z the outside is (default: away from 0).
+    hub_k 0.42: round 1's wheels are a black disc with light spokes, about that much light from far away."""
     s = out or (1 if pos[2] >= 0 else -1)
     R = r / math.cos(math.pi / seg)
     bm = bmesh.new()
@@ -44,6 +45,7 @@ def far_wheel(r, w, pos, tire, hub, seg=8, hub_k=0.62, out=None, name='far_wheel
 def attach_far(parent, parts, name='lod1'):
     """hang far-LOD parts under an empty named lod1 under parent (the game draws whatever is under it from far away),
     keeping where they are in the world"""
+    bpy.context.view_layer.update()  # (fresh matrix_world for parts placed this session)
     e = lib._link(bpy.data.objects.new(name, None))
     e.parent = parent; e.matrix_parent_inverse = parent.matrix_world.inverted()
     for p in parts:
@@ -101,13 +103,15 @@ def main(build, file_id, **sheet_kw):
             print(f'JF_SPLICE {file_id}: lod0 kept as shipped, {n} lod1 under {sorted(set(under))}, {os.path.getsize(shipped) // 1024} KB')
             os.remove(fresh); os.rmdir(os.path.dirname(fresh))
     if '--no-sheet' not in argv:
-        # lod0 alone (as round 1's sheet), then the far one alone, each under its own root so the label counts its tris
+        # the far one alone, under its own root so the label counts its tris. lod0's sheet only for a --fresh export
+        # (kept as shipped, round 1's sheet still shows it: a rebuild's booleans can come out a bit different)
         homes = [(e, e.parent) for e in far]
         hold = lib._link(bpy.data.objects.new(file_id + '_lod1', None))
         _move(far, hold)
-        for o in l1: o.hide_render = True
-        lib.sheet(root, file_id, **sheet_kw)
-        for o in l1: o.hide_render = False
+        if '--fresh' in argv or not os.path.exists(os.path.join(lib.SHEETS, file_id + '.jpg')):
+            for o in l1: o.hide_render = True
+            lib.sheet(root, file_id, **sheet_kw)
+            for o in l1: o.hide_render = False
         for o in l0: o.hide_render = True
         lib.sheet(hold, file_id + '_lod1', **sheet_kw)
         for o in l0: o.hide_render = False
