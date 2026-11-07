@@ -109,9 +109,10 @@ export function playGut(B) {
   // crown, lungs on the pavements between them (bounce to keep your height), down to the rim
   const P = SLICE.peri, pz = (P.z0 + P.z1) / 2, S0 = SLICE.stomach;
   for (let i = 0, x = rx - 18; x > S0.x + 8; i++, x -= 17) {
-    if (B.inside(x, pz)) { B.prop('ribarch', x, GY, pz, Math.PI / 2, 1, 0); B.add(x - 0.9, GY, pz - 8.6, x + 0.9, GY + 7, pz - 7, 'bone', { hide: true }); B.add(x - 0.9, GY, pz + 7, x + 0.9, GY + 7, pz + 8.6, 'bone', { hide: true }); }
-    hook(B, x, GY + 11.6, pz, { s: 1.8, yaw: Math.PI / 2 });
-    const lx = x - 8.5, lz = i % 2 ? P.z0 - 3.5 : P.z1 + 3.5;
+    // (x1.35: the avenue is a tube 8.5 m round, so the arches straddle it, legs on the pavements, crown over the top)
+    if (B.inside(x, pz)) { B.prop('ribarch', x, GY, pz, Math.PI / 2, 1.35, 0); B.add(x - 1.2, GY, pz - 11.6, x + 1.2, GY + 9.5, pz - 9.4, 'bone', { hide: true }); B.add(x - 1.2, GY, pz + 9.4, x + 1.2, GY + 9.5, pz + 11.6, 'bone', { hide: true }); }
+    hook(B, x, GY + 16.8, pz, { s: 2, yaw: Math.PI / 2 });
+    const lx = x - 8.5, lz = i % 2 ? P.z0 - 5.5 : P.z1 + 5.5;
     if (B.inside(lx, lz)) { B.prop('lung', lx, GY, lz, i, 0.6, 0); B.add(lx - 1.6, GY, lz - 1.6, lx + 1.6, GY + 0.7, lz + 1.6, 'flesh', { hide: true }); B.out.triggers.push({ kind: 'bounce', box: [lx - 1.7, GY + 0.4, lz - 1.7, lx + 1.7, GY + 2.2, lz + 1.7], v: 22, name: 'LUNG' }); }
   }
   if (B.inside(S0.x + 4, pz)) B.out.marks.push({ id: 'route.rib_run_end', p: [S0.x + 4, GY, S0.z + S0.r + 2] });

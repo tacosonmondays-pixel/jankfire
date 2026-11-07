@@ -19,6 +19,7 @@ export const ROUTES = {
   ribave: { from: [-44, 40.3, -64], to: [-44, 40.3, -240], r: 10, note: 'the Gut: down Rib Avenue arch to arch' },
   ribrun: { from: [-44, 40.3, -112], to: [-160, 40.3, -128], r: 12, note: 'the Gut: THE RIB RUN over Peristalsis Avenue to the stomach rim' },
   gate_roofs: { from: [-44, 36.3, -4], to: [-73, 44.7, -13], r: 2.6, note: 'Overtime 1: from the stairs top up onto the highest roof' },
+  gantries: { from: [182, 9.2, 196], to: [182, 31.6, -70], r: 14, note: 'the Commute: THE GANTRIES, sign to sign up the Ring Road' },
   pileup: { from: [212, 27, -20], to: [222, 34.5, -20], r: 3, note: 'the Commute: onto the Pile-Up' },
   crows_nest: { from: [-160, 8.3, 200], to: [-154, 29.8, 182], r: 2.2, walk: true, note: 'secret: the Crow\'s Nest (Lost & Found crane)' },
   wishbone: { from: [-44, 40.3, -196], to: [-44, 59, -213], r: 2.2, walk: true, note: 'secret: the Wishbone (Rib Avenue)' },
@@ -54,7 +55,7 @@ function fly(W, p0, a, hold, jump, goal) {
     }
     const r = W.movePlayer(p, v, DT, ground);
     ground = !!r.ground; t += DT;
-    if (k % 6 === 0) path.push(p.map((x) => +x.toFixed(1)));
+    if (k % 2 === 0) path.push([...p.map((x) => +x.toFixed(2)), on ? 1 : 0, ...(on ? a.map((x) => +x.toFixed(2)) : [0, 0, 0])]); // 30 Hz, for --path
     if (p[1] < -30) return null;
     if (!on && ground && t > 0.1) return { p, t, path };
   }
@@ -91,7 +92,7 @@ export function search(from, to, o = {}) {
         sims++;
         const f = fly(W, n.p, pt, hold, jump, to);
         if (!f) continue;
-        const hop = { at: pt.map((x) => +x.toFixed(1)), land: f.p.map((x) => +x.toFixed(1)), hold, jump };
+        const hop = { at: pt.map((x) => +x.toFixed(1)), land: f.p.map((x) => +x.toFixed(1)), hold, jump, path: f.path };
         if (close(f.p)) return { ok: true, hops: [...n.hops, hop], sims, anchors: anchors.length, rings: anchors.filter((a) => a.ring).length };
         const k = key(f.p);
         if (seen.has(k)) continue;
@@ -131,7 +132,7 @@ if (import.meta.url === 'file://' + process.argv[1]) {
   const a = process.argv.slice(2), arg = (k) => { const i = a.indexOf(k); return i >= 0 ? a[i + 1] : null; };
   const jobs = [];
   if (arg('--from')) jobs.push(['custom', { from: arg('--from').split(',').map(Number), to: arg('--to').split(',').map(Number), r: +(arg('--r') || 4), walk: a.includes('--walk') }]);
-  else for (const n of a.filter((x) => !x.startsWith('-')).length ? a.filter((x) => !x.startsWith('-')) : Object.keys(ROUTES)) jobs.push([n, ROUTES[n]]);
+  else { const names = a.filter((x, i) => !x.startsWith('-') && !(i > 0 && /^--(path|hooks|r)$/.test(a[i - 1]))); for (const n of names.length ? names : Object.keys(ROUTES)) jobs.push([n, ROUTES[n]]); }
   let bad = 0;
   for (const [name, r] of jobs) {
     const t0 = Date.now(), res = search(r.from, r.to, { r: r.r, hooks: +(arg('--hooks') || 10) });
@@ -141,6 +142,7 @@ if (import.meta.url === 'file://' + process.argv[1]) {
     if (!ok) bad++;
     console.log(`${ok ? 'OK  ' : 'FAIL'} ${name}: ${res.ok ? res.hops.length + ' hooks' : 'no swing found (best ' + (res.best || []).map((x) => x.toFixed(0)) + ')'}${r.walk ? (foot ? ', but WALKABLE too' : ', grapple-only') : ''} · ${res.rings} rings + ${res.anchors - res.rings} roof edges · ${res.sims} flights · ${Date.now() - t0} ms${r.note ? ' · ' + r.note : ''}`);
     if (res.ok && a.includes('-v')) for (const h of res.hops) console.log('   hook', h.at.join(','), 'hold', h.hold, h.jump ? 'jump' : '', '-> land', h.land.join(','));
+    if (res.ok && arg('--path')) { const fs = await import('node:fs'); fs.writeFileSync(arg('--path'), JSON.stringify({ route: name, from: r.from, pts: res.hops.flatMap((h) => h.path) })); }
   }
   process.exit(bad ? 1 : 0);
 }
