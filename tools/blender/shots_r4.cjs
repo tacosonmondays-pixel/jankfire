@@ -8,12 +8,16 @@
 //   don't bite. Cap browsers with pwlock.cjs.)
 //   JF_SHOT_FOV=45: a narrower lens than the game's for the shots (big props like the buses fill more of the picture)
 // out: <outdir>/r4_<id>.png (rows = copies on their maps, columns = box / Blender per preset) or r4_map_<map>.png
+// or ids = targets:<file.json>: spots to look at as they are now (docs/blender/INVENTORY.md's sheets), each
+//   { sheet, map, label, c: [x, y, z], size: [x, y, z] } (framed like a prop) or { sheet, map, label, cam, at };
+//   out: <outdir>/<sheet>.png, 4 across, one cell per spot
 const { chromium } = require('playwright');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const [port = '3100', outdir = 'tools/blender/compare', idsArg = 'all', mapsArg = '', presetsArg = '3,0', nArg = '2'] = process.argv.slice(2);
 const presets = presetsArg.split(',').map(Number), N = Number(nArg), MAPVIEWS = idsArg === 'map';
+const TARGETS = /^targets:/.test(idsArg) ? JSON.parse(fs.readFileSync(idsArg.slice(8), 'utf8')) : null;
 const PRESET = ['Potato', 'Crusty', 'Mid', 'Too HD'];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const GAME = { jankburg: 'br', deadmall: 'zm' }, gameOf = (m) => GAME[m] || (/_sd$/.test(m) ? 'bomb' : 'dm'); // (the Plant & Defuse layouts are only in that mode's list)
@@ -93,13 +97,30 @@ async function session(b, map, ids) {
     setInterval(() => { for (const o of G.scene.children) if (o.isPoints) o.visible = false; G.remotes.forEach((r) => { if (r.ch && r.ch.root) r.ch.root.visible = false; }); }, 16);
   });
   // where to look from (in the page: the map data + a ray against the boxes so nothing stands in the way)
-  const views = await pg.evaluate(async ({ ids, N, MAPVIEWS, map }) => {
+  const views = await pg.evaluate(async ({ ids, N, MAPVIEWS, map, tg }) => {
     const { MAPS, BOXES } = await import('/shared/map.js'); const { raycast } = await import('/shared/physics.js');
     const def = MAPS[map], out = [];
     const inBox = (x, y, z) => [...BOXES, ...(def.deco || [])].some((b) => !b.rot && x > b.min[0] - 0.3 && x < b.max[0] + 0.3 && y > b.min[1] - 0.3 && y < b.max[1] + 0.3 && z > b.min[2] - 0.3 && z < b.max[2] + 0.3);
     // the whole player fits there (feet 1.6 m under the camera): a body inside a crate stack gets shoved off the spot every frame
     const bodyFree = (x, y, z) => !BOXES.some((b) => b.max[0] > x - 0.45 && b.min[0] < x + 0.45 && b.max[1] > y - 1.62 && b.min[1] < y + 0.25 && b.max[2] > z - 0.45 && b.min[2] < z + 0.45);
     const lookAt = (cam, c) => { const dx = c[0] - cam[0], dy = c[1] - cam[1], dz = c[2] - cam[2]; return { p: [cam[0], cam[1] - 1.6, cam[2]], yaw: Math.atan2(-dx, -dz), pitch: Math.atan2(dy, Math.hypot(dx, dz)) }; };
+    if (tg) { // the inventory's spots: framed like a prop (a clear line in from one of 12 sides), or a camera given outright
+      for (const [k, t] of tg.entries()) {
+        if (t.cam) { out.push({ id: t.sheet, k, label: t.label, ...lookAt(t.cam, t.at) }); continue; }
+        const c = t.c, size = Math.max(...t.size), D = Math.min(45, Math.max(3.5, size * 1.2 + 2.2)), el = size > 6 ? 0.3 : 0.24;
+        for (let j = 0; j < 12; j++) {
+          const az = [0.6, -0.6, 1.2, -1.2, 0, 1.9, -1.9, 2.5, -2.5, 3.14, 0.3, -0.3][j];
+          const cam = [c[0] - Math.sin(az) * D * Math.cos(el), c[1] + D * Math.sin(el), c[2] - Math.cos(az) * D * Math.cos(el)];
+          if (inBox(...cam) || !bodyFree(...cam)) continue;
+          const d = [c[0] - cam[0], c[1] - cam[1], c[2] - cam[2]], L = Math.hypot(...d); d[0] /= L; d[1] /= L; d[2] /= L;
+          const h = raycast(cam, d, L, BOXES);
+          if (h && h.t < L - size * 0.5) continue;
+          out.push({ id: t.sheet, k, label: t.label, ...lookAt(cam, c) }); break;
+        }
+        if (!out.some((o) => o.k === k)) out.push({ id: t.sheet, k, label: t.label + ' (no clear view: from above)', ...lookAt([c[0] + 1, c[1] + D, c[2] + D * 0.4], c) });
+      }
+      return out;
+    }
     if (MAPVIEWS) { // two views a map: a spawn looking in at 7 m up, and high over the middle
       const sp = def.spawns.length ? def.spawns : [[0, 2, 0]], s0 = sp[0], s1 = sp[Math.floor(sp.length / 2)];
       let cx = 0, cz = 0; for (const s of sp) { cx += s[0] / sp.length; cz += s[2] / sp.length; }
@@ -153,11 +174,11 @@ async function session(b, map, ids) {
       }
     }
     return out;
-  }, { ids, N, MAPVIEWS, map });
+  }, { ids, N, MAPVIEWS, map, tg: TARGETS ? TARGETS.filter((t) => t.map === map) : null });
   const shots = [];
   for (const pr of presets) {
     await pg.evaluate(async (pr) => { const { G } = await import('/js/ctx.js'); const w = await import('/js/world.js'); G.settings.jank = pr; w.setJank(pr); }, pr);
-    for (const boxes of [false, true]) {
+    for (const boxes of TARGETS ? [false] : [false, true]) { // (targets: just as it is now)
       await pg.evaluate(async (boxes) => { const w = await import('/js/world.js'); w.showPropBoxes(boxes); }, boxes); // (the prop boxes drawn over the map as it is: no rebuild)
       await sleep(1200);
       for (const v of views) {
@@ -191,7 +212,7 @@ async function session(b, map, ids) {
           st = after + ' during the shot'; console.log(map, v.id, v.k, 'retake:', st);
         }
         if (st !== 'ok') { console.log(map, v.id, v.k, 'skipped:', st, '(start the server with JF_ROUND_TIME=7200 JF_ROUND_KILLS=999 JF_BOMB_WINS=99 JF_BOMB_ROUND=3600 JF_BUY_TIME=1 JF_ZM_SWIPE=0)'); if (st.startsWith('moved')) break; continue; }
-        shots.push({ map, id: v.id, k: v.k, pr, boxes, f });
+        shots.push({ map, id: v.id, k: v.k, pr, boxes, f, label: v.label });
       }
     }
   }
@@ -223,7 +244,8 @@ function sheet(name, rows) {
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--mute-audio'] });
   let plan;
-  if (MAPVIEWS) plan = Object.fromEntries((mapsArg || 'jankburg,suburb,skyline').split(',').map((m) => [m, ['map']]));
+  if (TARGETS) plan = Object.fromEntries([...new Set(TARGETS.map((t) => t.map))].map((m) => [m, ['targets']]));
+  else if (MAPVIEWS) plan = Object.fromEntries((mapsArg || 'jankburg,suburb,skyline').split(',').map((m) => [m, ['map']]));
   else {
     const has = await mapsWith(b, idsArg);
     plan = {};
@@ -232,6 +254,25 @@ function sheet(name, rows) {
   const all = [];
   for (const [map, ids] of Object.entries(plan)) { console.log('map', map, ids.join(',')); all.push(...await session(b, map, ids)); }
   await b.close();
+  if (TARGETS) { // one sheet per group: the spots in the file's order, 4 across, labelled
+    for (const name of [...new Set(TARGETS.map((t) => t.sheet))]) {
+      const W = 480, H = 270, cells = [];
+      TARGETS.forEach((t, i) => {
+        if (t.sheet !== name) return;
+        const k = TARGETS.filter((u) => u.map === t.map).indexOf(t), s = all.find((x) => x.map === t.map && x.k === k && x.id === name);
+        const lab = `${t.label} - ${t.map}${s ? '' : ' (no clean shot)'}`.replace(/[:']/g, ' ').slice(0, 58), o = path.join(tmp, `t_${i}.png`);
+        const src = s ? ['-i', s.f] : ['-f', 'lavfi', '-i', `color=c=0x120818:s=${W}x${H}:d=1`, '-frames:v', '1'];
+        execFileSync('ffmpeg', ['-loglevel', 'error', '-y', ...src, '-vf', `scale=${W}:${H},drawbox=x=0:y=0:w=${W}:h=22:color=black@0.6:t=fill,drawtext=text='${lab}':x=8:y=4:fontsize=15:fontcolor=yellow`, o]);
+        cells.push(o);
+      });
+      const args = []; for (const c of cells) args.push('-i', c);
+      const lay = cells.map((_, i) => `${(i % 4) * W}_${Math.floor(i / 4) * H}`).join('|'), out = path.join(outdir, `${name}.png`);
+      execFileSync('ffmpeg', ['-loglevel', 'error', '-y', ...args, '-filter_complex', cells.length > 1 ? `xstack=inputs=${cells.length}:layout=${lay}:fill=black` : 'null', out]);
+      console.log('wrote', out);
+    }
+    fs.rmSync(tmp, { recursive: true, force: true });
+    return;
+  }
   const by = new Map();
   for (const s of all) { const key = s.id === 'map' ? 'map_' + s.map : s.id; if (!by.has(key)) by.set(key, new Map()); const rk = s.map + '|' + s.k; if (!by.get(key).has(rk)) by.get(key).set(rk, []); by.get(key).get(rk).push(s); }
   for (const [key, rowsMap] of by) {

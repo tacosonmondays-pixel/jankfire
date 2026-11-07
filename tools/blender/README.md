@@ -206,5 +206,9 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
   Blender, same camera), `node tools/blender/shots_traffic.cjs <port> <dir>` (every traffic car, code vs Blender),
   `node tools/blender/props_r4.mjs [--md]` (copies per map, tris and materials per model),
   `node tools/blender/perf_props.cjs <port> <out.json> [maps]` (draw calls + triangles).
+- What's still code-built (`docs/blender/INVENTORY.md`): `node tools/blender/inventory_maps.mjs [out.md]` lists every
+  box each map still draws as a box, by the builder that made it, sorted into props / architecture / terrain (re-run it
+  as models land); `shots_r4.cjs <port> <dir> targets:<spots.json> "" 3 1` photographs spots on maps,
+  `node tools/blender/shots_lineup.cjs <port> <dir> <items.json>` lines up code-built models on the Training range.
 - Round 1's props (forklift, bus, number balls, racks, pallet loads) still use `prop(L, id, x, z, r)` / `L.P()`
   (shared/props.js: catalog boxes + a placement at a spot with quarter turns); they draw through the same instancing.
