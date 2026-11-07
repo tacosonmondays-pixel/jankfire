@@ -13,6 +13,7 @@ import { makeCar, initCarMats, carMats } from './cars.js';
 import { jankify } from './jank.js';
 import { hazify } from './world.js';
 import { fx } from './fx.js';
+import { flameAt } from './flames.js';
 import { sfx } from './audio.js';
 import { ME } from './player.js';
 import { hud } from './hud.js';
@@ -278,13 +279,17 @@ function drawSet(set, rt, dt, now, hide) {
     if (f & F.HORN && !(c.pf & F.HORN) && now > c.hornT) { c.hornT = now + 450; sfx.horn(pos, c.ty); }
     if (c.ty === 'icecream' && !c.wrecked && near < 80 && now > c.jingleT) { c.jingleT = now + 6500; sfx.jingle(pos); }
     if (!c.wrecked && sp > 9 && near < 6 && now > c.passT) { c.passT = now + 1500; sfx.carPass(pos, sp); }
-    // smoke and fire
+    // smoke and fire (real flames on the hood, the whole wreck going up once it's wrecked: flames.js)
+    if (f & (F.FIRE | F.WRECK)) {
+      if (c.wrecked) { flameAt('car' + c.id, [x, y + c.T.H * 0.15, z], c.T.W * 1.4, c.T.H * 2.1, 1.1); flameAt('car' + c.id + 'b', [x + Math.sin(h) * c.T.L * 0.3, y + c.T.H * 0.3, z + Math.cos(h) * c.T.L * 0.3], c.T.W * 1.0, c.T.H * 1.6, 1.2); }
+      else flameAt('car' + c.id, [x + Math.sin(h) * c.T.L * 0.32, y + c.T.H * 0.62, z + Math.cos(h) * c.T.L * 0.32], c.T.W * 0.75, 1.8, 1);
+    }
     c.smokeT -= dt;
     if (c.smokeT <= 0 && f & (F.SMOKE | F.FIRE | F.WRECK)) {
       c.smokeT = f & F.WRECK ? 0.03 : 0.08;
       const hood = c.wrecked ? [x, y + c.T.H * 0.6, z] : [x + Math.sin(h) * c.T.L * 0.32, y + c.T.H * 0.75, z + Math.cos(h) * c.T.L * 0.32];
       const P = fx.parts && fx.parts();
-      if (f & (F.FIRE | F.WRECK)) { const n = c.wrecked ? 3 : 1; for (let i = 0; i < n; i++) fx.burn([hood[0] + R(c.wrecked ? c.T.W * 0.4 : 0.3), hood[1] - 0.6, hood[2] + R(c.wrecked ? c.T.L * 0.3 : 0.3)]); }
+      if (f & (F.FIRE | F.WRECK) && Math.random() < 0.3) fx.burn([hood[0] + R(c.wrecked ? c.T.W * 0.4 : 0.3), hood[1] - 0.6, hood[2] + R(c.wrecked ? c.T.L * 0.3 : 0.3)]); // (a few loose sparks)
       if (P) P.smoke.spawn(hood[0] + R(0.3), hood[1], hood[2] + R(0.3), R(0.4), 1.6 + Math.random(), R(0.4), 2.4 + Math.random(), 0.4, c.wrecked ? 3.4 : 2, f & (F.FIRE | F.WRECK) ? 0x2a2626 : 0xd8d8d8, f & (F.FIRE | F.WRECK) ? 0x0e0c0c : 0x8a8a8a, 0.6, -0.4, 0.4);
       else fx.smoke(hood, 1, 0.2);
     }
