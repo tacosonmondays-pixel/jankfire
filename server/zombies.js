@@ -9,6 +9,7 @@ import { GAMES, VOTE_MS } from '../shared/modes.js';
 import { raycast, movePlayer, query } from '../shared/physics.js';
 import { randomContainer } from '../shared/cosmetics.js';
 import { installZmExtra } from './zmextra.js';
+import { installZmBots } from './zmbots.js';
 import { ZM, zmCount, zmHp, zmMaxAlive, zmGap, zmGait, zmAmmo, zmAmmoPrice, zmPick, zmTarget, zmAreaAt, zmOpenAreas } from '../shared/zombies.js';
 
 let send = () => {}, stat = () => {}, store = null;
@@ -127,7 +128,7 @@ const methods = {
   zmReset() {
     const on = !!GAMES[this.game].zombies && (this.mode === 'ffa' || this.mode === 'bots') && !!this.map.zm;
     const had = !!this.zs;
-    for (const p of [...this.players.values()]) if (p.isBot && (p.zmz || (on && !p.ai.dummy))) this.remove(p); // regular bots sit this one out
+    for (const p of [...this.players.values()]) if (p.isBot && (p.zmz || (on && !p.ai.dummy && !p.zmh) || (!on && p.zmh))) this.remove(p); // regular bots sit this one out (the squad's bots stay for the next game)
     for (const p of this.players.values()) { p.z = null; p.zu = null; if (!on) this.zxLeave(p); }
     this.zs = null;
     if (!on) { if (had && this.mode === 'bots') this.fillBots(); return; }
@@ -140,7 +141,7 @@ const methods = {
     this.zxReset(); // barricades, drops, the cheat machine
     this.zs.boxes = this.zmBoxes();
     this.zs.areas = this.zmAreas();
-    const hs = this.humans();
+    const hs = this.zmSquad();
     for (const p of hs) { this.zmJoin(p); p.team = 1; } // one team, so friends' bullets pass through each other on screen
     this.broadcast({ t: 'teams', game: this.game, list: hs.map((p) => [p.id, 1, p.color]) });
   },
@@ -161,19 +162,21 @@ const methods = {
     if (!p.z) { // joined mid-game: mid-round you sit it out like the dead (so rejoining isn't a free revive and a fresh 500)
       this.zmJoin(p);
       const zs = this.zs;
-      if (zs.st === 'live' && zs.n > 0 && this.humans().some((h) => h !== p && h.alive)) { p.alive = false; p.hp = 0; p.respawnAt = Infinity; p.z.dead = true; send(p, { t: 'zbench' }); }
+      if (zs.st === 'live' && zs.n > 0 && this.zmSquad().some((h) => h !== p && h.alive)) { p.alive = false; p.hp = 0; p.respawnAt = Infinity; p.z.dead = true; send(p, { t: 'zbench' }); }
     }
     if (p.team !== 1) { p.team = 1; this.broadcast({ t: 'teams', game: this.game, list: [[p.id, 1, p.color]] }); }
     p.forced = true; // so the next mode hands their own loadout back
     send(p, { t: 'zl', slots: [...p.z.guns, p.z.melee], ammo: p.z.ammo, want: want || undefined, c: p.z.c, it: p.item });
   },
+  // the squad: the people playing (not a test watcher) and the bots filling their empty slots (server/zmbots.js)
+  zmSquad() { return [...this.players.values()].filter((p) => (!p.isBot && !p.watch) || p.zmh); },
   // the room's collision: the map plus every shutter that's still down
   zmBoxes() { return this.map.boxes.concat(this.map.zm.doors.filter((d, i) => !this.zs.open[i]).map((d) => d.box)); },
   zmAreas() { return zmOpenAreas(this.map.zm, this.zs.open); }, // only open areas spawn zombies and sell you things
   // what everyone needs to draw it (rides along in every snapshot via roundInfo)
   zmInfo() {
     const zs = this.zs, n = now(), dn = [], pts = [];
-    for (const h of this.humans()) {
+    for (const h of this.zmSquad()) {
       const z = h.z;
       if (!z) continue;
       pts.push([h.id, z.c, h.alive ? 1 : z.down ? 2 : 3]);
@@ -200,7 +203,7 @@ const methods = {
     zs.list.length = 0;
     for (const p of this.players.values()) if (p.zmz && p.alive) zs.list.push(p);
     if (zs.st === 'over') return;
-    const hs = this.humans();
+    const hs = this.zmSquad(); // the people and the squad's bots
     this.zmFields(n, hs);
     this.zmPlayers(n, dt, hs);
     this.zmCrate(n);
@@ -272,7 +275,7 @@ const methods = {
   zmGameOver() {
     const zs = this.zs, n = now(), r = this.round;
     zs.st = 'over';
-    const hs = this.humans().sort((a, b) => ((b.z && b.z.kills) || 0) - ((a.z && a.z.kills) || 0));
+    const hs = this.zmSquad().sort((a, b) => ((b.z && b.z.kills) || 0) - ((a.z && a.z.kills) || 0));
     r.over = true; r.next = n + VOTE_MS + 2000; r.winTeam = 0;
     this.startVote();
     this.broadcast({ t: 'round', over: 1, winner: 0, winTeam: 0, game: this.game, sc: null, top: hs.slice(0, 6).map((p) => [p.id, p.name, p.kills, p.deaths, 0]), next: VOTE_MS + 2000 });
@@ -294,7 +297,7 @@ const methods = {
     if (t.zmz) {
       zs.dead.push(t);
       this.zxDrop(t, killer); // maybe a power-up
-      if (killer && killer !== t && !killer.isBot && killer.z) {
+      if (killer && killer !== t && killer.z && !killer.zmz) {
         const melee = !!WEAPONS[w] && (WEAPONS[w].kind === 'melee' || w === 'slipper'), head = !!t.lastHs && !melee;
         this.zmGive(killer, melee || head ? ZM.bonus : ZM.kill, melee ? 'melee' : head ? 'head' : 'kill');
         killer.z.kills++;
@@ -302,10 +305,10 @@ const methods = {
       }
       return;
     }
-    if (t.isBot || !t.z) return;
+    if (!t.z) return; // (people and the squad's bots go down)
     const z = t.z;
     z.downs++; z.cola = false;
-    z.down = zs.st !== 'over' && this.humans().some((h) => h !== t && h.alive) ? { at: t.pos.slice(), until: now() + ZM.bleed * (this.zxPerk(t, 'stubborn') ? 2000 : 1000) } : null;
+    z.down = zs.st !== 'over' && this.zmSquad().some((h) => h !== t && h.alive) ? { at: t.pos.slice(), until: now() + ZM.bleed * (this.zxPerk(t, 'stubborn') ? 2000 : 1000) } : null;
     z.dead = !z.down;
     this.broadcast({ t: 'zdown', id: t.id, k: z.down ? 'down' : 'dead' });
   },
@@ -335,13 +338,13 @@ const methods = {
     const n = now();
     if (t.zmz) {
       const z = t.zmz;
-      if (a && !a.isBot && a.z && amt > 0 && z.hits < ZM.hitCap && n - (z.hitAt[a.id] || 0) >= ZM.hitGap) { z.hitAt[a.id] = n; z.hits++; this.zmGive(a, ZM.hit, 'hit'); }
-      return a && !a.isBot && a.z ? this.zxHit(t, amt, a) : amt; // the cheat machine's modifiers
+      if (a && a.z && !a.zmz && amt > 0 && z.hits < ZM.hitCap && n - (z.hitAt[a.id] || 0) >= ZM.hitGap) { z.hitAt[a.id] = n; z.hits++; this.zmGive(a, ZM.hit, 'hit'); }
+      return a && a.z && !a.zmz ? this.zxHit(t, amt, a) : amt; // the cheat machine's modifiers
     }
-    if (t.isBot || !t.z) return amt;
+    if (!t.z) return amt;
     t.z.hurtT = n;
     if (!a || !a.zmz) return amt;
-    return (amt * (DIFF[this.cfg.diff] || DIFF.normal).dmg * (t.z.cola ? 0.5 : 1)) / (this.mode === 'bots' ? 1 : 0.6); // damage() softens bots outside the Bots room: not these
+    return (amt * (DIFF[this.cfg.diff] || DIFF.normal).dmg * (t.z.cola ? 0.5 : 1)) / (this.mode === 'bots' || t.isBot ? 1 : 0.6); // damage() softens bots hitting people outside the Bots room: not these (the squad's bots aren't softened)
   },
   // hit / fire / push hooks: only weapons you own, and guns need ammo. one shot = its fire message and its hits,
   // which all arrive within a fraction of the gun's fire interval
@@ -362,7 +365,7 @@ const methods = {
   // ---------------------------------------------------------- F: doors, wall guns, the crate, power, cola, revives
   zmView(p) {
     const down = [];
-    for (const h of this.humans()) if (!h.alive && h.z && h.z.down) down.push([h.id, ...h.z.down.at]);
+    for (const h of this.zmSquad()) if (!h.alive && h.z && h.z.down) down.push([h.id, ...h.z.down.at]);
     return { open: this.zs.open, power: this.zs.power, down, me: p.id };
   },
   // tryUse hook: 'use' arrives every 200 ms while F is held. hold it on the same thing long enough and it happens once.
@@ -456,6 +459,8 @@ const methods = {
       swingAt: 0, nextSwing: 0, hits: 0, hitAt: {}, seen: n, chk: n, chkPos: pos.slice(), stuck: 0 };
     this.players.set(b.id, b);
     this.broadcast({ t: 'pj', ...this.info(b) });
+    (zs.zinfo ||= new Map()).set(b.id, { name: b.name, color: b.color, skins: {}, bot: true, look: b.look, level: 0, grap: 'rope', t: n }); // for replays after it's gone
+    if (zs.zinfo.size > 400) for (const [id, i] of zs.zinfo) if (n - i.t > 60000 && !this.players.has(id)) zs.zinfo.delete(id);
     zs.toSpawn--;
     return true;
   },
@@ -479,7 +484,7 @@ const methods = {
         tx += dx * k; tz += dz * k;
       }
       for (const h of this.players.values()) { // and don't walk into the people they're clawing at (players don't collide)
-        if (h.isBot || !h.alive) continue;
+        if (h.zmz || !h.alive) continue;
         const dx = b.pos[0] - h.pos[0], dz = b.pos[2] - h.pos[2], d2 = dx * dx + dz * dz;
         if (d2 > 0.64 || d2 < 1e-6 || Math.abs(b.pos[1] - h.pos[1]) > 1.6) continue;
         const d = Math.sqrt(d2), k = ((0.8 - d) * 10) / d;
@@ -516,7 +521,7 @@ const methods = {
     const zs = this.zs, nav = zs.nav, c = cellOf(nav, b.pos);
     let best = null, bd = Infinity, bf = null;
     for (const h of this.players.values()) {
-      if (h.isBot || !h.alive) continue;
+      if (h.zmz || !h.z || !h.alive) continue; // people and the squad's bots
       const f = zs.fields.get(h.id);
       let d = f && c >= 0 ? f.d[c] : Infinity;
       if (d === Infinity && f && c >= 0) for (const [di, dj, w] of D8) { const i = (c % nav.W) + di, j = ((c / nav.W) | 0) + dj; if (i >= 0 && j >= 0 && i < nav.W && j < nav.D) d = Math.min(d, f.d[j * nav.W + i] + w); }
@@ -582,10 +587,34 @@ const methods = {
   },
 };
 
+export { flow, downhill, cellOf, center, walkable }; // the squad's bots find their way on the same grid (server/zmbots.js)
 export function installZombies(Room, h) {
   ({ send, stat, store } = h);
   // zombies is on: this room has a zombies state, for the map it's playing on (stale between a map change and the next match)
   Object.defineProperty(Room.prototype, 'zm', { get() { return !!this.zs && this.zs.map === this.cfg.map; } });
   Object.assign(Room.prototype, methods);
   installZmExtra(Room, h);
+  installZmBots(Room, h);
+  const P = Room.prototype, wrap = (name, fn) => { const orig = P[name]; P[name] = function (...a) { return fn.call(this, orig, ...a); }; };
+  // zombies: no cosmetic kill effects (finishers), on zombies or on people. everyone just dies the normal way
+  wrap('kill', function (orig, t, attacker, w) {
+    if (!this.zm || !attacker || !attacker.kfx || attacker.kfx === 'none') return orig.call(this, t, attacker, w);
+    const k = attacker.kfx; attacker.kfx = 'none';
+    try { return orig.call(this, t, attacker, w); } finally { attacker.kfx = k; }
+  });
+  // replays (the play of the game, the end highlight): zombies that died since are still drawn as zombies, and only
+  // the ones near the squad are kept (a clip with 24 zombies in it all over the mall is a lot to send)
+  wrap('clip', function (orig, t0, t1) {
+    const c = orig.call(this, t0, t1), zi = this.zs && this.zs.zinfo;
+    if (!this.zm || !zi || !c || !c.frames) return c;
+    const isZ = (id) => zi.has(id) || !!(this.players.get(id) || {}).zmz;
+    for (const f of c.frames) {
+      const sq = f.p.filter((e) => !isZ(e[0]));
+      f.p = f.p.filter((e) => !isZ(e[0]) || sq.some((q) => Math.hypot(q[1] - e[1], q[3] - e[3]) < 32));
+    }
+    const keep = new Set(c.frames.flatMap((f) => f.p.map((e) => e[0])));
+    for (const id of keep) if (!c.info[id] && zi.has(id)) { const { t, ...i } = zi.get(id); c.info[id] = i; }
+    for (const id of Object.keys(c.info)) if (!keep.has(Number(id)) && isZ(Number(id))) delete c.info[id];
+    return c;
+  });
 }

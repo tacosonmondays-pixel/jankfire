@@ -94,7 +94,8 @@ import { K } from './keys.js';
 import { initLobby, lobbyInfo, lobbyKey, lobbyMe, lobbyLeave } from './lobby.js'; // ONLINE / WITH BOTS mode picker + the lobby countdown
 import { controlsScreen } from './controls.js';
 import { containerPic, playContainer, stopContainer } from './crate3d.js'; // containers in 3D: the cards and the opening
-import { hubTabs } from './hub.js'; // the CUSTOMIZE hub's tabs (loadout / weapons / character / grapple & spray)
+import { hubTabs } from './hub.js';
+import { initMultiOpen, openMany, showGift, guestGiftOnce, containerIcon } from './multiopen.js'; // OPEN x5 / x10 / ALL + the management's gift popup // the CUSTOMIZE hub's tabs (loadout / weapons / character / grapple & spray)
 import { initCustomize, czMode, czOpen, czClose, czFrame, czKill, czLate, czRefresh, czRolled, resolveRand, wantSkins, myFavs } from './customize.js'; // the weapon customize screen (replaces COSMETICS)
 import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, zmModelsLoaded } from './zombies.js';
 import { zxHurt } from './zmextra.js'; // zombies: which way the claws came from
@@ -1301,6 +1302,8 @@ net.on('pj', (m) => addRemoteInfo(m));
 net.on('pl', (m) => {
   const r = G.remotes.get(m.id);
   if (r) { r.dispose(); G.remotes.delete(m.id); }
+  const nm = G.names.get(m.id);
+  if (nm && nm.bot && nm.name === 'Zombie') { G.gone.set(m.id, nm); if (G.gone.size > 300) G.gone.delete(G.gone.keys().next().value); } // a dead zombie still shows up in your killcam
   G.names.delete(m.id);
   G.skins.delete(m.id);
   if (ME.hook && ME.hook.target === m.id) releaseHook();
@@ -1544,7 +1547,7 @@ net.on('kill', (m) => {
   if (m.pit && m.w === 'void') pitKill(m, victim ? victim.color : m.v === G.myId ? G.myColor : null); // into the shredder pit's teeth (sets m.vel: the bits fly back up)
   // shredder kills: the pieces go through the killer's machine instead of the usual gibs / kill effect
   if (m.w === 'shredder' && shredKill(m, G.remotes, m.v === G.myId ? { pos: ME.pos.slice(), yaw: ME.yaw, color: G.myColor, look: teamLook(validLook(G.settings.look, myAchs()), G.myTeam) } : null)) m.fx = 'none'; // (team colour beats clothes)
-  const kfx = m.fx && m.fx !== 'none' ? m.fx : null;
+  const kfx = m.fx && m.fx !== 'none' && !(G.round && G.round.zm) ? m.fx : null; // zombies: no finishers
   if (victim) {
     victim.reverseUntil = 0; // the server ends their reverse card on death too
     const vi = G.names.get(m.v) || {};
@@ -2228,7 +2231,7 @@ function setKfx(id) {
 net.on('cd', (m) => { const n = G.names.get(m.id); if (n) n.card = m.card || ''; });
 function infoOf(id) {
   if (id === G.myId) return { name: G.myName, color: G.myColor, skins: G.equipped, look: validLook(S.look, myAchs()), bot: false, grap: myGrapple(), team: G.myTeam || 0, kat: W.kat || 0 };
-  const n = G.names.get(id) || {};
+  const n = G.names.get(id) || G.gone.get(id) || {};
   return { name: n.name || '???', color: n.color || '#ffffff', skins: G.skins.get(id) || {}, look: n.look || null, bot: !!n.bot, level: n.level, grap: n.grap, team: n.team || 0, kat: G.kat.get(id) || 0 };
 }
 // the death screen shows whoever killed you, on their name card
@@ -2451,6 +2454,7 @@ function onLoggedIn(me, fresh) {
   if (!fresh && prof.loadout) { applyLoadout(false); applyStreaks(); } // the account's own loadout, by the respawn rule
   renderAcctBar();
   czRefresh();
+  if (account.gifts && account.gifts.length) { const g = account.gifts; account.gifts = []; setTimeout(() => showGift(g), 600); } // the management's gift, just landed
 }
 function doLogout() {
   logout();
@@ -2563,13 +2567,20 @@ function renderCrates() {
     const own = c.types.reduce((a, t) => a + Object.keys(COSMETICS[t]).filter((id) => !COSMETICS[t][id].ach && owns(G.inv, t, id)).length, 0);
     const all = c.types.reduce((a, t) => a + Object.keys(COSMETICS[t]).filter((id) => !COSMETICS[t][id].ach).length, 0); // achievement rewards aren't in containers
     const card = document.createElement('div'); card.className = 'cratecard' + (n > 0 ? ' has' : '');
-    const im = document.createElement('img'); im.src = containerPic(kind) || containerArt(kind); im.alt = ''; // rendered from the 3D one
+    const im = document.createElement('img'); im.src = containerIcon(kind) || containerPic(kind) || containerArt(kind); im.alt = ''; // rendered from the 3D one (icon studio)
     const h = document.createElement('b'); h.textContent = c.name;
     const dsc = document.createElement('span'); dsc.textContent = c.desc;
     const prog = document.createElement('small'); prog.textContent = `you own ${own} / ${all}`;
-    const btn = document.createElement('button'); btn.className = 'mid'; btn.textContent = n > 0 ? `OPEN (${n})` : 'NONE LEFT'; btn.disabled = n <= 0;
-    btn.addEventListener('click', () => doRoll(kind));
-    card.append(im, h, dsc, prog, btn);
+    // one at a time (the strip + the 3D one rattling), or a pile at once (multiopen.js): x5, x10, ALL (100 a go)
+    const cnt = document.createElement('b'); cnt.className = 'ccount'; cnt.textContent = n > 0 ? `${n} to open` : 'none left';
+    const row = document.createElement('div'); row.className = 'openrow';
+    for (const [lab, k] of [['OPEN', 1], ['x5', 5], ['x10', 10], ['ALL', Math.min(n, 100)]]) {
+      const b = document.createElement('button'); b.className = 'mid' + (lab === 'OPEN' ? ' glow' : ''); b.dataset.n = lab === 'ALL' ? 'all' : String(k);
+      b.textContent = lab === 'ALL' && n > 100 ? 'ALL (100)' : lab; b.disabled = n < k || n <= 0 || (lab === 'ALL' && n < 2);
+      b.addEventListener('click', () => (k === 1 ? doRoll(kind) : openMany(kind, k)));
+      row.append(b);
+    }
+    card.append(im, h, dsc, prog, cnt, row);
     box.append(card);
   }
 }
@@ -2798,7 +2809,24 @@ if (window.jf && window.jf.desktop) {
 
 // ------------------------------------------------------------ boot
 renderAcctBar();
-restore().then((me) => { if (me) onLoggedIn(me, false); });
+restore().then((me) => { if (me) onLoggedIn(me, false); else setTimeout(() => guestGiftOnce(() => openAccount(false)), 1500); }); // a guest hears about the gift once
+// what an EQUIP button does for something you just got (the bulk open's result cards): null = nothing to equip it on
+function rollEquip(item) {
+  if (item.type === 'spray') return ['EQUIP', () => setSpray(item.id)];
+  if (item.type === 'kill') return ['EQUIP', () => setKfx(item.id)];
+  if (item.type === 'grapple') return ['EQUIP', () => setGrap(item.id)];
+  const target = item.type === 'model' ? COSMETICS.model[item.id] && COSMETICS.model[item.id].weapon : G.cosSel;
+  if (item.type === 'model' && target && STREAKS[target] && !WEAPONS[target]) // a killstreak's look: it's a skin slot keyed by the streak (streaklooks.js)
+    return [`PUT ON ${STREAKS[target].name.toUpperCase()}`, () => { const sk = validSkin(S.skins[target]).slice(); sk[3] = item.id; setSkin(target, sk); }];
+  const idx = TYPES.indexOf(item.type);
+  if (!target || !WEAPONS[target] || idx < 0) return null;
+  return [`PUT ON ${WEAPONS[target].name.toUpperCase()}`, () => { const sk = validSkin(S.skins[target]).slice(); sk[idx] = item.id; G.cosSel = target; setSkin(target, sk); }];
+}
+initMultiOpen({
+  equip: rollEquip, toast,
+  toCrates: () => show('crates'),
+  after: () => { if (account.me) G.inv = achInv(account.me.inv, account.me.achs); recomputeEquipped(); renderAcctBar(); if (screen === 'crates') renderCrates(); czRefresh(); },
+});
 
 show('main');
 requestAnimationFrame(frame);

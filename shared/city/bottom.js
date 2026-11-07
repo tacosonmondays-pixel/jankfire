@@ -7,12 +7,13 @@ import { SLICE, terraceOf } from './slice.js';
 import { rng, hash2 } from './plan.js';
 import { cube, stairsZ, sideStair, line, bulbs, retaining, rubble, stall, flightLen, PASTEL, pick, hook } from './kit.js';
 import { playBottom, BANISTER } from './playground.js';
+import { shops, shopRects } from './shops.js';
 
 const T = SLICE.bottom, LANE = 7;
 const zSouth = (k) => 256 - T.terr * k; // the downhill edge of terrace k
 const yOf = (k) => k * T.rise;
 const inRect = (x0, z0, x1, z1, r) => x0 < r[2] && x1 > r[0] && z0 < r[3] && z1 > r[1];
-const KEEP_OUT = () => [SLICE.lostFound.rect, SLICE.plaza.rect, SLICE.gym.rect, [SLICE.longStairs.x0 - 5, 0, SLICE.longStairs.x1 + 5, 256], [SLICE.escalator.x - 5, 40, SLICE.escalator.x + 5, 90], [SLICE.bottom.rect[2] - 6, 0, SLICE.bottom.rect[2] + 2, 256]];
+const KEEP_OUT = () => [SLICE.lostFound.rect, SLICE.plaza.rect, SLICE.gym.rect, [SLICE.longStairs.x0 - 5, 0, SLICE.longStairs.x1 + 5, 256], [SLICE.escalator.x - 5, 40, SLICE.escalator.x + 5, 90], [SLICE.bottom.rect[2] - 6, 0, SLICE.bottom.rect[2] + 2, 256], ...shopRects('bottom')];
 
 // the lots of terrace k: [x0, w, seed], laid out once along the whole terrace (deterministic, cached)
 const lotCache = new Map();
@@ -254,6 +255,7 @@ export function bottom(B, d) {
   if (B.touches(SLICE.gym.rect, 2)) gym(B);
   if (B.touches([SLICE.escalator.x - 3, 0, SLICE.escalator.x + 3, 100])) escalator(B);
   playBottom(B); // grapple rings, the Banister, pads, peels (playground.js)
+  shops(B, 'bottom'); // shopfronts, vending, the safehouse garage (shops.js)
   // crowd spots along the lanes (WP8 / the crowd sim fills them)
   const cr = rng(hash2(B.out.cx, B.out.cz, 55));
   for (let i = 0; i < 6; i++) { const x = X0 + cr() * (X1 - X0), z = Z0 + cr() * (Z1 - Z0), k = terraceOf(z); if (z < zSouth(k) - 0.5 && z > zSouth(k) - LANE + 0.5) B.out.marks.push({ id: 'crowd', p: [x, yOf(k), z], kind: pick(cr, ['local', 'scooter', 'cook']) }); }

@@ -116,6 +116,39 @@ export const LINES = {
     any: ['ty', 'thanks', 'i know', 'thx :3'],
     tryhard: ['obviously'], polite: ['thank you!!'], unhinged: ['NICE NICE NICE'], corpo: ['appreciate the feedback'],
   },
+  // zombies: the squad's bots (server/zmbots.js)
+  zmhi: {
+    any: ['squad up', 'i brought snacks', 'which way are the zombies', 'ok im here, where is the gun wall', 'reporting for zombie duty'],
+    tryhard: ['dont worry i got this', 'i will carry, stay behind me'], polite: ['hi team!! lets do our best :3', 'nice to meet you all'], unhinged: ['I HAVE BEEN WAITING FOR THIS', 'i love the smell of zombie in the morning'], corpo: ['onboarding complete', 'happy to join this initiative'],
+  },
+  zmleave: {
+    any: ['ok {v} you can have my spot', 'my mom is calling, {v} take over', 'tagging out, {v} is in', 'gotta go feed my cat, good luck {v}', 'this is where i get off. go {v}', 'ok i lagged out on purpose. {v} has the controls'],
+    tryhard: ['fine, {v} can try to fill my shoes', 'leaving before i carry too hard'], polite: ['bye everyone!! {v} take care of them :3', 'sorry, gotta go! welcome {v}'], unhinged: ['I MUST RETURN TO THE VOID. {v} INHERITS MY CREDITS. not really', 'goodbye forever (5 minutes)'], corpo: ['handing off to {v}, see the doc', 'my contract has ended. {v} is the new hire'],
+  },
+  zmdown: {
+    any: ['IM DOWN', 'help im on the floor', 'revive meeee', 'i am horizontal', 'someone pick me up', 'floor time again'],
+    tryhard: ['lag. revive me', 'that was not my fault'], polite: ['sorry, could someone help me up', 'oops im down, sorry!'], unhinged: ['the floor is nice actually', 'IM A RUG NOW'], corpo: ['requesting immediate support', 'escalating: i am on the ground'],
+  },
+  zmrevive: {
+    any: ['up you get {v}', 'got you {v}', 'no dying on my watch', 'stand up {v}, we have work', 'revived, thats 10 bucks'],
+    tryhard: ['carried you again {v}', 'you owe me one {v}'], polite: ['there you go {v}!! careful :3', 'are you ok {v}?'], unhinged: ['RISE {v} RISE', 'i put your soul back in, mostly'], corpo: ['{v} has been reinstated', 'back to work {v}'],
+  },
+  zmthanks: {
+    any: ['ty {v}', 'thanks {v}', 'ok i owe you', 'saved by {v}', 'back in the game'],
+    tryhard: ['i was about to get up anyway'], polite: ['thank you so much {v}!!', 'youre the best {v} :3'], unhinged: ['{v} I WOULD DIE FOR YOU. again'], corpo: ['thank you {v}, noted for your review'],
+  },
+  zmbuy: {
+    any: ['bought the {w}', 'new toy: {w}', '{w} acquired', 'shopping spree', 'cha ching, {w}'],
+    tryhard: ['{w}, best gun on the wall', 'ok now its fair: {w}'], polite: ['i got the {w}, hope thats ok', 'look, a {w}!'], unhinged: ['THE {w} SPOKE TO ME', 'i licked the {w}'], corpo: ['procured one (1) {w}', '{w} expensed to the company'],
+  },
+  zmmach: {
+    any: ['gambling time', 'feed the machine', 'lets go cheats', 'come on come on come on', 'one more spin'],
+    tryhard: ['rolling for the best one'], polite: ['i hope i get a good one!'], unhinged: ['THE MACHINE HUNGERS', 'i gave it my lunch money and my soul'], corpo: ['investing in synergy', 'high risk, high reward'],
+  },
+  zmround: {
+    any: ['round {v} done', 'still alive lol', 'is that all they got', 'another one down', 'board the windows guys'],
+    tryhard: ['too easy, next', 'round {v}, i did most of it'], polite: ['good job team!!', 'we did it, round {v}!'], unhinged: ['MORE ZOMBIES. I NEED MORE', 'round {v} and i can taste colours'], corpo: ['round {v} closed on schedule', 'quarterly zombie targets: met'],
+  },
 };
 
 // personalities: how chatty (a multiplier on every chance) and how salty they are when they die

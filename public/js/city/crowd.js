@@ -8,7 +8,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const KINDS = { // crowd mark kind -> the characters it can be
   local: ['local_tiedye', 'local_cook', 'local_scooter'], shopper: ['local_tiedye', 'local_cook'], cook: ['local_cook'], scooter: ['local_scooter'],
-  lost: ['local_tiedye'], choir: ['local_tiedye'], digester: ['local_cook'], unpaid: ['raider_chair', 'raider_cabinet'], dog: ['stomachdog'],
+  lost: ['local_tiedye'], choir: ['local_tiedye'], digester: ['local_cook'], unpaid: ['raider_chair', 'raider_cabinet'], dog: ['stomachdog'], queue: ['local_tiedye', 'local_cook', 'local_scooter'],
 };
 const MAX = 40, RANGE = 70;
 const loader = new GLTFLoader();
@@ -69,7 +69,7 @@ export class Crowd {
       const tint = new THREE.Color().setHSL(h * 7 % 1, 0.55, 0.62);
       obj.traverse((o) => { if (o.isMesh && o.material && /paint/.test(o.material.name)) { o.material = o.material.clone(); o.material.color.multiply(tint); } });
       this.root.add(obj);
-      this.live.set(key, { obj, J, kind, id, home: m.p.slice(), face, ph: h * 100, wander: kind !== 'unpaid' && h > 0.55, talk: h > 0.3 && h < 0.6, dog: kind === 'dog' });
+      this.live.set(key, { obj, J, kind, id, home: m.p.slice(), face, ph: h * 100, wander: kind !== 'unpaid' && kind !== 'queue' && h > 0.55, talk: h > 0.3 && h < 0.6, dog: kind === 'dog' });
     }
     for (const [key, n] of this.live) if (!keep.has(key)) { n.obj.removeFromParent(); this.live.delete(key); }
     for (const n of this.live.values()) this.animate(n, cam);

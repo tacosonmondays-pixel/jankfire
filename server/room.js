@@ -219,7 +219,7 @@ const GRAP_IDS = Object.keys(COSMETICS.grapple).filter((k) => k !== 'rope');
 const CARD_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/;
 function cleanCard(c) { return typeof c === 'string' && c.length <= 24000 && CARD_RE.test(c) ? c : ''; }
 // replays: the server keeps the last few seconds of everything so it can send the play of the round
-const REC_T = new Set(['kill', 'boom', 'fx', 'pd', 'he']);
+const REC_T = new Set(['kill', 'boom', 'fx', 'pd', 'he', 'zplank']); // (zplank: zombies planks, so replays show them ripped off and nailed back)
 const REC_FX = new Set(['shot', 'swing', 'tbag', 'reflect']);
 REC_FX.add('verdict'); // scales of justice: highlights show the ruling
 const REC_MS = 12000;
@@ -3131,9 +3131,15 @@ class Room {
   // ---------------------------------------------------------- the end-of-match vote: mode first, then map
   // stage 'mode' (VOTE.mode ms) -> stage 'map' for the mode that won (VOTE.map ms) -> 'done' (the reveal) -> next round.
   // humans decide; bots vote too, but only break ties (shared/vote.js)
+  // zombies is a squad of 4 people (bots fill the rest): too many people here for a zombies match?
+  zmCrowd() { return this.humans().filter((p) => !p.watch).length > (LOBBY.kinds.zm.cap || 4); }
   startVote() {
     if (this.mode !== 'ffa' && this.mode !== 'bots') return;
-    const options = modeCards(MAPS, MAP_ORDER, this.game, Math.random, this.skipped);
+    let options = modeCards(MAPS, MAP_ORDER, this.game, Math.random, this.skipped);
+    if (this.zmCrowd() && options.some((o) => GAMES[o.game].zombies)) { // more than 4 of you: no zombies card, another mode in its place
+      options = options.filter((o) => !GAMES[o.game].zombies);
+      for (const o of modeCards(MAPS, MAP_ORDER, this.game, Math.random, 'zm')) if (options.length < VOTE.cards && !GAMES[o.game].zombies && !options.some((x) => x.game === o.game)) options.push(o);
+    }
     if (this.mode === 'bots' && !inQuickPlay(this.game) && this.skipped !== this.game && options.length && !options.some((o) => o.game === this.game)) options[options.length - 1] = { game: this.game, event: 0 }; // solo zombies: play again is always an option
     this.skipped = null;
     if (this.lobbyVote && this.lobbyVote()) return; // a one-mode lobby (P&D, royale, zombies): only the map is up for a vote
@@ -3193,7 +3199,13 @@ class Room {
     const v = this.vote;
     if (!v || v.stage === 'done') return;
     const isBot = (id) => this.players.get(id)?.isBot;
-    const win = v.options[voteWinner(v.options.length, v.votes, isBot)];
+    let win = v.options[voteWinner(v.options.length, v.votes, isBot)];
+    if (v.stage === 'mode' && win && GAMES[win.game].zombies && this.zmCrowd()) { // someone joined during the vote and now it's 5+: the runner-up
+      const keep = v.options.map((o, i) => i).filter((i) => !GAMES[v.options[i].game].zombies), votes = new Map();
+      for (const [id, i] of v.votes) if (keep.includes(i)) votes.set(id, keep.indexOf(i));
+      win = keep.length ? v.options[keep[voteWinner(keep.length, votes, isBot)]] : win;
+      if (win && !GAMES[win.game].zombies) this.broadcast({ t: 'chat', id: 0, m: 'zombies is 4 players max: next best pick instead' });
+    }
     for (const p of this.players.values()) { p.voteT = 0; p.votePend = null; } // a new stage: everyone can pick straight away
     if (v.stage === 'mode') {
       v.game = win.game; v.event = win.event;
@@ -4043,6 +4055,15 @@ function roomFor(mode, ws, cfg) {
     for (const r of rooms.values()) if (r.mode === 'bots' && r.game === cfg.game && r.botWant() > 0 && !r.closed) return r;
   }
   const id = mode === 'ffa' || mode === 'coop' ? mode : `${mode}:${nextId}:${Math.random().toString(36).slice(2, 7)}`;
+  // Online is playing zombies (or just voted for it) with a full squad of 4: you get a zombies lobby of your own instead (bots fill it)
+  const ffa = mode === 'ffa' && rooms.get('ffa');
+  if (ffa && (GAMES[ffa.game].zombies || (ffa.vote && ffa.vote.game && GAMES[ffa.vote.game].zombies)) && ffa.humans().filter((p) => !p.watch).length >= (LOBBY.kinds.zm.cap || 4)) {
+    for (const r of rooms.values()) if (r.lobbyOpen('ffa', 'zm')) return r;
+    const r = new Room(`ffa:zm:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, 'ffa');
+    rooms.set(r.id, r);
+    r.lobbyInit('zm', true);
+    return r;
+  }
   if (!rooms.has(id)) rooms.set(id, new Room(id, mode));
   return rooms.get(id);
 }

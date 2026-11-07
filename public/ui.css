@@ -725,3 +725,54 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 /* breathing room above the status strip on short screens */
 #scr-main .home-left { margin-bottom: 14px; }
 @media (max-height: 800px) and (min-width: 981px) { .nav-sec { gap: 4px; margin-top: 2px; } .hnav.sec { padding-top: 1px; padding-bottom: 1px; } .hnav.sec .ni { width: 27px; } .hnav.prim .ni { width: 46px; } .hnav.prim { padding-top: 4px; padding-bottom: 4px; } #scr-main .home-left { gap: 7px; } }
+
+/* =================================================================== CONTAINERS: OPEN x1 / x5 / x10 / ALL, the bulk reveal
+   (multiopen.js) and the management's gift popup */
+.cratecard .ccount { font-size: 14px; color: var(--yellow); letter-spacing: 1px; }
+.cratecard .openrow { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.cratecard .openrow button.mid { padding: 4px 10px; font-size: 15px; }
+.cratecard .openrow button.mid:disabled { opacity: 0.35; cursor: default; transform: none; }
+.mo { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(10, 0, 20, 0.9); font-family: var(--font); color: #fff; }
+.mo-in { width: min(1100px, 100%); max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.mo-title { font-size: clamp(26px, 4vh, 44px); font-weight: 700; color: var(--yellow); letter-spacing: 2px; text-shadow: 3px 3px 0 #000, 6px 6px 0 var(--pink); transform: rotate(-1.5deg); text-align: center; }
+.mo-title.big { font-size: clamp(30px, 5.4vh, 60px); max-width: 900px; line-height: 1.05; }
+.mo-kicker { font-size: 13px; font-weight: 700; letter-spacing: 5px; background: var(--pink); color: #000; padding: 2px 12px; border: 2px solid #000; box-shadow: 3px 3px 0 #000; transform: rotate(-2deg); }
+.mo-sum { font-size: 17px; color: #ffd6f4; text-shadow: 2px 2px 0 #000; text-align: center; }
+.mo-skip { position: fixed; right: 24px; bottom: 24px; }
+/* the pile: everything rattles together, harder as it goes, then bursts */
+.mo-shake { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; max-width: 980px; }
+.mo-shake img { width: var(--sz, 84px); height: var(--sz, 84px); object-fit: contain; rotate: var(--r); }
+.mo-shake.go img { animation: rattle 0.16s linear infinite, rattlegrow 1.7s ease-in forwards; animation-delay: var(--d), 0s; }
+@keyframes rattle { 0%, 100% { translate: 0 0; } 25% { translate: -2px 1px; } 50% { translate: 2px -2px; } 75% { translate: -1px -1px; } }
+@keyframes rattlegrow { from { scale: 1; filter: none; } to { scale: 1.18; filter: drop-shadow(0 0 10px #fff); } }
+.mo.popped .mo-shake img { animation: pop 0.36s ease-out forwards; }
+@keyframes pop { 40% { scale: 1.6; opacity: 1; filter: brightness(3); } to { scale: 0.2; opacity: 0; } }
+/* results: rarest first, dropping in one after another */
+.mo-res { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; width: 100%; }
+.mo-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 6px 8px; text-align: center; background: #241232; border: 3px solid #000;
+  border-bottom: 7px solid var(--rc, #888); box-shadow: 4px 4px 0 #000; animation: drop 0.32s cubic-bezier(.2, 1.5, .4, 1) backwards; animation-delay: calc(var(--i) * 45ms); }
+@keyframes drop { from { translate: 0 -24px; scale: 0.6; opacity: 0; } }
+.mo-card .pic { width: 100%; height: 62px; display: grid; place-items: center; background: radial-gradient(ellipse, color-mix(in srgb, var(--rc, #888) 40%, transparent), transparent 70%); font-size: 20px; font-weight: 700; color: var(--yellow); }
+.mo-card .pic img { max-width: 100%; max-height: 62px; object-fit: contain; }
+.mo-card .pic img:not([src]) { display: none; }
+.mo-card .glyph { font-size: 36px; text-shadow: 3px 3px 0 #000; }
+.mo-card b { font-size: 14px; line-height: 1.1; }
+.mo-card small { font-size: 11px; color: #bbb; }
+.mo-card.r-legendary { border-color: #ffb31a; box-shadow: 4px 4px 0 #000, 0 0 18px #ffb31a; }
+.mo-card.r-epic { border-color: #c46bff; box-shadow: 4px 4px 0 #000, 0 0 12px #c46bff; }
+.mo-card.dupe { opacity: 0.7; border-bottom-color: #555; }
+.mo-eq { margin-top: 4px; font-family: var(--font); font-weight: 700; font-size: 11px; padding: 2px 6px; cursor: pointer; background: var(--yellow); color: #000; border: 2px solid #000; box-shadow: 2px 2px 0 var(--pink); }
+.mo-eq:disabled { background: #39ff14; cursor: default; }
+.mo-btns { gap: 12px; }
+.mo.flash-l::after, .mo.flash-e::after { content: ''; position: fixed; inset: 0; pointer-events: none; animation: moflash 0.9s ease-out forwards; }
+.mo.flash-l::after { background: radial-gradient(circle, #fff 0%, #ffb31a 40%, transparent 75%); }
+.mo.flash-e::after { background: radial-gradient(circle, #fff 0%, #c46bff 40%, transparent 75%); }
+@keyframes moflash { from { opacity: 0.95; } to { opacity: 0; } }
+/* the gift */
+.mo-in.gift { gap: 16px; }
+.gift-row { display: flex; gap: clamp(12px, 3vw, 40px); justify-content: center; flex-wrap: wrap; }
+.gift-c { display: flex; flex-direction: column; align-items: center; padding: 8px 18px 12px; background: rgba(18, 8, 24, 0.95); border: 4px solid #000; box-shadow: 7px 7px 0 var(--ac); animation: drop 0.5s cubic-bezier(.2, 1.6, .4, 1) backwards; }
+.gift-c:nth-child(2) { animation-delay: 0.12s; transform: rotate(2deg); } .gift-c:nth-child(3) { animation-delay: 0.24s; transform: rotate(-2deg); } .gift-c:first-child { transform: rotate(-1deg); }
+.gift-c img { width: clamp(90px, 13vh, 150px); height: clamp(90px, 13vh, 150px); object-fit: contain; animation: rattle 0.5s linear infinite; }
+.gift-c b { font-size: clamp(34px, 5.5vh, 58px); line-height: 1; color: var(--ac); text-shadow: 3px 3px 0 #000; }
+.gift-c span { font-size: 15px; font-weight: 700; letter-spacing: 3px; }
