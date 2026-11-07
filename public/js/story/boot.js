@@ -45,6 +45,7 @@ export async function init() {
   const q = new URLSearchParams(location.search);
   ST.slot = Math.max(0, Math.min(2, Number(q.get('slot')) || 0));
   if (q.get('fresh') === '1') clearSlot(ST.slot);
+  try { const { loadCast, LOOK_IDS } = await import('./looks.js'); await loadCast(LOOK_IDS, 12000); } catch (e) { console.warn('cast models', e); } // (the Blender cast; missing = code puppets)
   const data = await loadSlot(ST.slot);
   const st = fromSave(data);
   if (data && Array.isArray(data.bagStub)) for (const i of data.bagStub.slice(0, 64)) if (typeof i === 'string') ST.bag.add(i);

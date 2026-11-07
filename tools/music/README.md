@@ -17,6 +17,7 @@ python3 -m venv /opt/music
 ```sh
 /opt/music/bin/python tools/music/render.py                     # all tracks
 /opt/music/bin/python tools/music/render.py spoon_fight_tekno   # one
+/opt/music/bin/python tools/music/render.py --story          # the OVERDUE district beds -> public/music/story/
 ```
 
 Each run writes `public/music/<slug>.ogg` (Vorbis q6) and prints a JSON report; scratch files (wav, mix, spectrogram

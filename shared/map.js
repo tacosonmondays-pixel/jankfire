@@ -4866,6 +4866,9 @@ function deadmall() {
   for (const [x, z, n] of [[16, -24, 2], [17.3, -24, 1], [29, -18, 2], [21, -8, 1], [32, -27, 1], [15.2, -1.5, 1]]) for (let k = 0; k < n; k++) B.box(x, 0.6 + k * 1.2, z, 1.2, 1.2, 1.2, 'crate');
   B.add(23, 0, -15, 26, 0.25, -12, 'wood'); B.add(30, 0, -6, 31.4, 1.4, -4, 'caryellow'); B.add(30.2, 1.4, -5.8, 31.2, 2.2, -4.6, 'glass');
   const power = { at: [36.7, 1.6, -14], n: [-1, 0, 0] };
+  // ---- the Cheat Machine (server/zmextra.js): against the arcade's north wall, a random modifier once the power's on
+  const mach = { at: [-14, 0, -29.6], n: [0, 0, 1] };
+  B.add(-14.5, 0, -29.97, -13.5, 1.28, -29.25, 'metal'); B.add(-14.5, 1.28, -29.97, -13.5, 2.12, -29.38, 'metal'); // a bit inside the model (the client draws the machine over it), behind its sunken screen
   B.add(36.6, 1.0, -14.5, 37, 2.2, -13.5, 'metal');
 
   // ---- wall guns: an outline on the wall + its price. look at it and hold F (ammo is half price)
@@ -4887,7 +4890,7 @@ function deadmall() {
   return {
     name: 'Dead Mall', size: 'medium', boxes: B.boxes, killY: -20,
     sky: { top: 0x06050c, mid: 0x1a1220, bot: 0x05040a, fog: 0x140e18 }, fogNear: 16, fogFar: 80, spawns,
-    zm: { bounds: [X0 - 4, Z0 - 4, X1 + 4, Z1 + 4], H, start: 'hall', areas, doors, windows, buys, crate, power, cola },
+    zm: { bounds: [X0 - 4, Z0 - 4, X1 + 4, Z1 + 4], H, start: 'hall', areas, doors, windows, buys, crate, power, cola, mach },
   };
 }
 

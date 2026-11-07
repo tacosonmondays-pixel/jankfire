@@ -717,3 +717,8 @@ Object.assign(sfx, {
     }
   },
 });
+// jank royale grapple charges: a limp rope that won't fire (not ready), and a little reel-click when a charge comes back
+Object.assign(sfx, {
+  hookNo() { tone('sawtooth', 420, 140, 0.16, 0.12); noise(0.06, 0.18, 'bandpass', 1800, 600, null, 0, 3); tone('square', 220, 200, 0.05, 0.1, null, 0.14); },
+  hookReady() { tone('square', 1500, 1500, 0.02, 0.08); tone('triangle', 1900, 2300, 0.06, 0.09, null, 0.04); },
+});

@@ -6,6 +6,7 @@ export const SIDE_NUMBERWORKS = {
     locations: ["numberworks:yard", "numberworks:prime_lane", "numberworks:calculator"], cast: ["nell"],
     requires: { missions: ["m14_price_of_everything"], if: null },
     logline: "Escort a giant 1 across Number Works. Everybody wants it: you can't carry anything without one.",
+    mechanic: { uses: ["bounce_shots", "cars"], hook: "escort a giant 1; the union banks tennis balls off digits" },
     twist: "Halfway, the 1 gets a 3 attached to it by Remainder's 'rounding' crews and becomes a 13, and the union refuses to touch an unlucky number. Nell holds a vote, mid-ambush, on whether a 13 is still a 1 with friends. It passes 7-6. You carry the 13.",
     beats: ["A building-sized 1 on a flatbed, from the Smokestacks to the Big Calculator.", "Ambushes by rounding crews.", "The vote."],
     steps: [
@@ -24,6 +25,7 @@ export const SIDE_NUMBERWORKS = {
     locations: ["numberworks:archive", "numberworks:pit", "numberworks:press"], cast: ["nell", "mr_sevens", "foreman"],
     requires: { missions: ["m14_price_of_everything"], if: null },
     logline: "Someone's been stealing halves. Every worker's wage has been rounded down by 0.5 coupons for sixty-one years. Find out who.",
+    mechanic: { uses: ["camera"], hook: "a stakeout in the Remainder Pit" },
     twist: "It's the Price Press itself: Remainder's oldest program, still running the rule it was given on the Final Quarter: 'round all outstanding values down by 0.5 until the books balance'. The books will never balance, because the 0.5 it's trying to make up is the 0.5% Q4 revision that came in that morning and was ignored. In the Forecast Archive you find the original rule card, with a note from the 09:00 forecasting team: 'we hit it. tell the board.' (A clue toward the Act III memo, and a Cale memory flash if Drift is low: Agnes saying 'remainder's always half a percent out.')",
     beats: ["Payslips from union members: every one 0.5 short.", "A stakeout in the Remainder Pit (where leftover numbers go): a conveyor of halves going into the Price Press.", "The Forecast Archive: spools of paper, a rule card.", "Choice: turn the rule off (wages go up 0.5; Remainder notices) or leave it and take the card to Mr. Sevens (he pays you to keep quiet)."],
     steps: [
@@ -50,6 +52,7 @@ export const SIDE_NUMBERWORKS = {
     locations: ["numberworks:calculator", "numberworks:smokestacks"], cast: ["foreman"],
     requires: { missions: ["m15_rounding_down"], if: null },
     logline: "There's a button on top of the Big Calculator labelled ÷0. Every sign in Number Works says don't.",
+    mechanic: { uses: ["rocket_jump", "grapple", "quiz"], hook: "an hour of NaN: gravity reverses, digits walk, and pop quizzes have no right answer" },
     twist: "You do. For one in-game hour Number Works stops making sense: gravity's a suggestion, prices are NaN (everything costs nothing and also infinity, so shops give you whatever you can carry), smokestacks puff the wrong way, and the giant digits get up and walk around. The Foreman (rehired) shows up and, for the first time since he was nine, laughs. 'i always wanted to press that.' The secret: at the top of the tallest Smokestack, a Lucky Thirteenth Rib (secret implant) is just sitting there, because in NaN-time nothing is unlucky.",
     beats: ["Climb the Big Calculator (conveyors, digit-riding).", "Press ÷0.", "An hour of chaos: loot the shops, ride the digits.", "The Foreman on the roof."],
     steps: [

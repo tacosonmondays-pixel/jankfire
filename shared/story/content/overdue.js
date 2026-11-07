@@ -213,4 +213,5 @@ const P = build();
 export const { npcs, quests, scenes, codex, zones, things, init, autostart } = P;
 export const cast = C.CAST, bosses = C.BOSSES, implants = C.IMPLANTS, items = C.ITEMS, collectibles = C.COLLECTIBLES, collectibleSets = C.COLLECTIBLE_SETS;
 export const loot = { brands: C.BRANDS, modifiers: C.MODIFIERS, legendaries: C.LEGENDARIES, tables: C.LOOT_TABLES };
+export const mechanics = C.MECHANICS, grapple = C.GRAPPLE;
 export const endings = C.ENDING_SCRIPTS, activities = C.ACTIVITIES, districts = C.DISTRICTS, factions = C.FACTIONS, storyFlags = C.FLAGS;

@@ -6,6 +6,7 @@ export const SIDE_CHROMEGRISTLE = {
     locations: ["chromegristle:jar_alley", "chromegristle:arcade", "chromegristle:noodle_shrine"], cast: ["bev"],
     requires: { missions: ["m17_minutes"], if: null },
     logline: "A kidney got up and left Bev's clinic before its install. Retrieve it.",
+    mechanic: { uses: ["grapple", "lasso"], hook: "chase a kidney along the neon sign line" },
     twist: "The kidney has been regrown so many times by different Meat Mechanics that it's become a little person: it has a job (it's working the noodle stall at the Noodle Shrine), friends, and a tiny paper hat. Its original owner, a man on the Commute, doesn't want it back: 'it's got a life now. i've got two.' You can leave it be, and it waves at you every time you pass.",
     beats: ["A chase through Jar Alley (jars blink at you).", "Arcade Row: it's been playing the old JANKFIRE cabinet and has the high score.", "The Noodle Shrine: it's working the stall.", "Talk to its original owner by pager."],
     steps: [
@@ -30,6 +31,7 @@ export const SIDE_CHROMEGRISTLE = {
     locations: ["chromegristle:pawn", "chromegristle:upsell_clinic", "gut:clinic_bev"], cast: ["bev", "upsell"],
     requires: { missions: ["m17_minutes"], if: null },
     logline: "Get two Meat Mechanics to diagnose the same rash. They disagree violently.",
+    mechanic: { uses: ["implants"], hook: "the grid rash is Drift you can see" },
     twist: "The rash is on you: a pattern spreading under your plastic where your implants join, shaped exactly like the Schedule's grid. Both diagnoses are right. Bev says it's rejection; Upsell says it's 'the body accepting the schedule'. It's the first visible sign of Drift, and it fades if you uninstall parts or lower your Drift (the game tells you, in Bev's words, without a number).",
     beats: ["A rash. Bev's diagnosis.", "Upsell's diagnosis (book a consultation, or if he's beaten, his rehired self).", "They meet. They fight (a gunfight between two clinics).", "The truth."],
     steps: [
@@ -50,6 +52,7 @@ export const SIDE_CHROMEGRISTLE = {
     locations: ["chromegristle:arcade"], cast: [],
     requires: { missions: ["m17_minutes"], if: null },
     logline: "Beat the high score on an Arcade Row cabinet that runs the old JANKFIRE.",
+    mechanic: { uses: ["spinbot"], hook: "beat your own high score; the cabinet's cheat code is a Spinbot" },
     twist: "The cabinet is a tiny piece of the Machine's sims, salvaged. The high score belongs to CALE R. 4417, from sixty-one years ago, set on a lunch break. You're trying to beat yourself. When you do, the cabinet asks for initials, and if you type RC it plays a ten-second Cale memory: a lunch break, a cheap sandwich, Agnes leaning on the cabinet saying 'you're wasting your break, rory.' 'it's the only bit of the day that's mine.'",
     beats: ["The cabinet. The score: 4417 points, CALE R.", "Play (a short arcade-rules match against bots on a tiny map).", "Beat it. Enter initials."],
     steps: [
@@ -66,6 +69,7 @@ export const SIDE_CHROMEGRISTLE = {
     locations: ["chromegristle:pawn"], cast: ["lumps"],
     requires: { missions: ["m20_the_missing"], if: null },
     logline: "Organ Pawn has a kidney in its window with a tag: D. PELL. Lumps saw it.",
+    mechanic: { uses: ["nvg", "grapple"], hook: "a pawn-shop heist past blinking jars" },
     twist: "Dot sold it, years ago, to pay for Lumps' tenth birthday (a bike made of a shopping trolley). The pawn tag has accrued sixty-one per cent a year in fees. It costs more than the Bottom earns in a year. Lumps can't afford it and won't let you pay. The only way is a Pawn Heist (a stealth job) or the Gold Member legendary's loot magnet, or simply... letting it go. Dot, told, says: 'it was a lovely bike.'",
     beats: ["Lumps, frozen at the shop window.", "The price.", "The choice: heist it, buy it with your own coupons (Lumps is cross and grateful), or leave it."],
     steps: [

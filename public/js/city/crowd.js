@@ -1,6 +1,6 @@
 // The city's crowd: the people standing about at the generators' crowd spots (chunk marks 'crowd', 'enemy.unpaid',
 // 'npc.*'), drawn near the camera only (the 40 nearest), animated procedurally on their joint nodes (the Blender
-// characters are segmented puppets: hips > spine > chest > neck > head > jaw, arms, legs; s_<id>.glb, make_story_people.py).
+// characters are segmented puppets (L = -x, R = +x: they face -z; knees bend -x, elbows +x, jaws open -x): hips > spine > chest > neck > head > jaw, arms, legs; s_<id>.glb, make_story_people.py).
 // Look only: no collision, no AI. Each one idles (breath, sway, a look round), some wander a few metres and back,
 // some talk (the jaw flaps), the stomach-dogs trot about. The sim's real NPCs (WP8) can reuse the same rigs.
 import * as THREE from 'three';
@@ -92,14 +92,14 @@ export class Crowd {
       set('legFL', Math.sin(st) * 0.7 * walk, 0, 0); set('legBR', Math.sin(st) * 0.7 * walk, 0, 0);
       set('legFR', -Math.sin(st) * 0.7 * walk, 0, 0); set('legBL', -Math.sin(st) * 0.7 * walk, 0, 0);
       set('tail', 0, Math.sin(t * 11) * 0.6, 0); set('tail2', 0, Math.sin(t * 11 - 1) * 0.7, 0);
-      set('head', Math.sin(t * 1.3) * 0.15, Math.sin(t * 0.7) * 0.4, 0); set('jaw', Math.max(0, Math.sin(t * 5)) * 0.35, 0, 0);
+      set('head', Math.sin(t * 1.3) * 0.15, Math.sin(t * 0.7) * 0.4, 0); set('jaw', -Math.max(0, Math.sin(t * 5)) * 0.35, 0, 0);
       set('body', 0, 0, Math.sin(st) * 0.06);
       return;
     }
     const st = t * 6.2, sw = Math.sin(st) * walk;
     // walk: legs swing, knees bend on the back swing, arms counter-swing, a bob and a hip roll (with the game's jank)
     set('legL', sw * 0.55, 0, 0); set('legR', -sw * 0.55, 0, 0);
-    set('shinL', Math.max(0, -Math.sin(st)) * 0.8 * walk, 0, 0); set('shinR', Math.max(0, Math.sin(st)) * 0.8 * walk, 0, 0);
+    set('shinL', -Math.max(0, -Math.sin(st)) * 0.8 * walk, 0, 0); set('shinR', -Math.max(0, Math.sin(st)) * 0.8 * walk, 0, 0); // knees bend back (-x)
     set('footL', -sw * 0.2, 0, 0); set('footR', sw * 0.2, 0, 0);
     const breathe = Math.sin(t * 1.6) * 0.03, look = Math.sin(t * 0.37) * 0.6 + Math.sin(t * 0.13) * 0.4;
     // idle: breathing, a slow weight shift, looking round (and at you when you're close)
@@ -116,9 +116,9 @@ export class Crowd {
     const gesture = n.talk && !walk ? Math.max(0, Math.sin(t * 0.8)) : 0; // talkers wave a hand about
     // the models are in an A-pose: drop the arms to the sides first (about z), then swing them (about x)
     const hang = 0.95 + Math.sin(t * 1.6) * 0.03;
-    set('armL', -sw * 0.45, 0, hang); set('foreL', -0.15 - Math.max(0, sw) * 0.3, 0, 0);
-    set('armR', sw * 0.45 - gesture * 0.4, 0, -hang + gesture * 1.9); set('foreR', -0.15 - gesture * (0.7 + Math.sin(t * 4) * 0.35), 0, 0);
-    set('jaw', n.talk ? Math.max(0, Math.sin(t * 13) * Math.sin(t * 2.1)) * 0.3 : 0, 0, 0);
+    set('armL', -sw * 0.45, 0, hang); set('foreL', 0.15 + Math.max(0, sw) * 0.3, 0, 0); // elbows bend forward (+x)
+    set('armR', sw * 0.45 + gesture * 0.4, 0, -hang + gesture * 1.9); set('foreR', 0.15 + gesture * (0.7 + Math.sin(t * 4) * 0.35), 0, 0);
+    set('jaw', n.talk ? -Math.max(0, Math.sin(t * 13) * Math.sin(t * 2.1)) * 0.3 : 0, 0, 0); // the jaw opens down (-x)
   }
   dispose() { this.root.removeFromParent(); this.live.clear(); }
 }
