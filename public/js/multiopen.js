@@ -4,9 +4,9 @@
 // first. legendary / epic ones flash. SKIP (or a click anywhere) jumps straight to the results.
 // Gift: "THE MANAGEMENT FEELS GENEROUS", the 3D crate, bag and box with how many of each, once per gift.
 import { COSMETICS, CONTAINERS, RARITY, TYPE_NAMES_ALL as TYPE_NAMES } from '/shared/cosmetics.js';
-import { WEAPONS } from '/shared/weapons.js';
+import { WEAPONS, STREAKS } from '/shared/weapons.js';
 import { activeGifts } from '/shared/gifts.js';
-import { studioIcon, weaponIcon, liveIcon } from './icons.js';
+import { studioIcon, weaponIcon, liveIcon, streakIcon } from './icons.js';
 import { buildContainer } from './crate3d.js';
 import { sprayIcon } from './sprays.js';
 import { grappleThumb } from './grapple.js';
@@ -121,7 +121,7 @@ function pumpPics() {
 }
 
 function picFor(it) {
-  if (it.type === 'model') { const w = COSMETICS.model[it.id] && COSMETICS.model[it.id].weapon; return w && WEAPONS[w] ? weaponIcon(w, ['default', 'none', 'none', it.id, 'normal']) : ''; }
+  if (it.type === 'model') { const w = COSMETICS.model[it.id] && COSMETICS.model[it.id].weapon; return w && WEAPONS[w] ? weaponIcon(w, ['default', 'none', 'none', it.id, 'normal']) : w && STREAKS[w] ? streakIcon(w) : ''; } // (a killstreak's skin: that killstreak's picture)
   if (it.type === 'finish') return weaponIcon('ar', [it.id, 'none', 'none', 'default', 'full']);
   if (it.type === 'hat') return weaponIcon('ar', ['default', it.id, 'none', 'default', 'normal']);
   if (it.type === 'spray') return sprayIcon(it.id);
