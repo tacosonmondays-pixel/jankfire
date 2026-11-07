@@ -48,7 +48,7 @@ export function liquidBox(b) {
 
 // ------------------------------------------------------------ shared uniforms (one set: every liquid material points at them)
 export const SH = {
-  uTime: { value: 0 }, uQ: { value: 3 },
+  uTime: { value: 0 }, uQ: { value: 3 }, uNoiseT: { value: null },
   uMask: { value: null }, uMR: { value: new THREE.Vector4(1e9, 1e9, 0, 0) }, // shore map: rect x0, z0, 1/w, 1/h
   uSun: { value: new THREE.Vector3(0.5, 0.6, -0.6).normalize() }, uSunC: { value: new THREE.Color(0xfff6d8) },
   uSkyT: { value: new THREE.Color(0x6ab8ff) }, uSkyM: { value: new THREE.Color(0xcfe8ff) }, uNight: { value: 0 },
@@ -63,6 +63,8 @@ vec3 lqN(vec2 p) { // value noise + its gradient
   return vec3(a + (b - a) * u.x + (c - a) * u.y + (a - b - c + d) * u.x * u.y, du * (vec2(b - a, c - a) + (a - b - c + d) * u.yx));
 }
 float lqF(vec2 p) { return lqN(p).x * 0.55 + lqN(p * 2.03 + 7.1).x * 0.3 + lqN(p * 4.1 - 3.7).x * 0.15; }
+uniform sampler2D uNoiseT;
+vec3 lqT(vec2 p) { vec4 n = texture2D(uNoiseT, p * 0.0625); return vec3(n.b, (n.rg - 0.5) * 3.0); } // the same noise baked into a tiling texture (16 cells): one fetch
 vec4 lqMask(vec2 xz) { // r = shore distance, g = depth, b = is liquid (outside the baked rect: open, deep water)
   vec2 mu = (xz - uMR.xy) * uMR.zw;
   if (mu.x < 0.0 || mu.y < 0.0 || mu.x > 1.0 || mu.y > 1.0) return vec4(1.0);
@@ -72,14 +74,14 @@ vec4 lqMask(vec2 xz) { // r = shore distance, g = depth, b = is liquid (outside 
 const WAVES = `
 vec3 lqWaves(vec2 p, float t) {
   vec3 r = vec3(0.0);
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 3; i++) { // (three octaves: the fourth was too small to see)
     float fi = float(i), a = 0.6 + fi * 2.13, L = uLen * pow(0.6, fi), k = 6.2832 / L, w = sqrt(9.8 * k) * 0.55, A = pow(0.55, fi);
     vec2 d = vec2(cos(a), sin(a));
     float ph = dot(d, p) * k - w * t + fi * 1.7, s = sin(ph) * 0.5 + 0.5;
     r.x += A * (s * s * 2.0 - 0.6); // pointy tops, flat troughs
     r.yz += A * 2.0 * s * cos(ph) * k * d;
   }
-  return r / 2.02;
+  return r / 1.85;
 }`;
 const SNAP = `
   { vec4 js = gl_Position; js.xyz /= js.w; js.xy = floor(js.xy * uSnap + 0.5) / uSnap; js.xyz *= js.w; gl_Position = js; }`;
@@ -121,23 +123,25 @@ const WATER_FS = HEAD + NOISE + `
 uniform vec3 uDeep; uniform vec3 uShal; uniform vec2 uA; uniform float uFoam; uniform float uSpark; uniform float uRefl; uniform float uSheen; uniform float uCaus;
 uniform vec3 uSun; uniform vec3 uSunC; uniform vec3 uSkyT; uniform vec3 uSkyM; uniform float uNight;
 #include <fog_pars_fragment>
-float lqCaus(vec2 p, float t) { // the old "water turbulence" trick: three warped passes make a web of bright lines
-  vec2 i = p; float c = 1.0;
-  for (int n = 0; n < 2; n++) { // (two passes: half the cost of three, still a web)
-    float tt = t * (1.0 - 3.5 / float(n + 1));
-    i = p + vec2(cos(tt - i.x) + sin(tt + i.y), sin(tt - i.y) + cos(tt + i.x));
-    c += 1.0 / length(vec2(p.x / (sin(i.x + tt) / 0.006), p.y / (cos(i.y + tt) / 0.006)));
-  }
-  c /= 2.0; c = 1.17 - pow(c, 1.4);
-  return pow(abs(c), 8.0);
+float lqCaus(vec2 p, float t) { // a web of bright wobbly lines: two warped sine grids, where either is near zero
+  float a = abs(sin(p.x * 1.9 + sin(p.y * 1.3 + t) * 1.4)), b = abs(sin(p.y * 1.7 + sin(p.x * 1.1 - t * 0.8) * 1.4));
+  return 1.0 - min(a, b);
 }
 void main() {
   vec3 V = normalize(cameraPosition - vW);
   float top = step(0.5, vNw.y);
   float depth = vMk.g * ${DEPTH}.0, shore = vMk.r * ${SHORE}.0, t = uTime;
-  // ripples: two noise layers drifting different ways (one on Potato)
-  vec2 g = lqN(vW.xz * 0.9 + vec2(t * 0.23, t * 0.11)).yz * 0.9;
-  if (uQ > 1.5) g += lqN(vW.xz * 2.3 - vec2(t * 0.19, -t * 0.27)).yz * 0.55;
+  // how far: close up gets everything, the far sea a cheap version (it's tiny on screen and half fog anyway)
+  float dc = length(cameraPosition - vW);
+  // ripples: two noise layers drifting different ways near you, one further out, two sines far away
+#ifdef LQ_CHEAP
+  vec2 g = vec2(sin(vW.x * 0.8 + t * 1.1), cos(vW.z * 0.7 - t * 0.9)) * 0.5; // (Potato: two sines, no noise)
+#else
+  vec2 g = lqT(vW.xz * 0.9 + vec2(t * 0.23, t * 0.11)).yz * 0.9;
+#endif
+#ifdef LQ_RIP2
+  if (dc < 45.0) g += lqT(vW.xz * 2.3 - vec2(t * 0.19, -t * 0.27)).yz * 0.55;
+#endif
   vec3 N = normalize(vNw + vec3(-g.x, 0.0, -g.y) * 0.06 * top);
   float ndv = max(dot(N, V), 0.0), fr = 0.03 + 0.97 * pow(1.0 - ndv, 5.0);
   float dk = smoothstep(0.0, 2.6, depth);
@@ -150,24 +154,44 @@ void main() {
   vec3 sky = mix(uSkyM, uSkyT, smoothstep(0.0, 0.55, R.y));
   col = mix(col, sky, fr * uRefl * top);
   // oil: a rainbow sliding over it with the ripples
-  if (uSheen > 0.0) { float hn = lqF(vW.xz * 0.35 + t * 0.05) + fr * 1.5 + g.x * 0.6; float band = step(0.55, fract(hn * 2.2)) * step(0.45, lqF(vW.xz * 0.12 - t * 0.02)); // streaks, not a whole rainbow
+#ifdef LQ_SHEEN
+  { float hn = lqF(vW.xz * 0.35 + t * 0.05) + fr * 1.5 + g.x * 0.6; float band = step(0.55, fract(hn * 2.2)) * step(0.45, lqF(vW.xz * 0.12 - t * 0.02)); // streaks, not a whole rainbow
     col += uSheen * (0.5 + 0.5 * cos(6.2832 * (vec3(0.0, 0.33, 0.67) + hn * 1.3))) * 0.16 * band * (0.3 + fr); }
+#endif
   // caustics: only where it's shallow and you're looking into it
-  if (uQ > 1.5 && uCaus > 0.0) {
-    float sk = (1.0 - smoothstep(0.08, 2.4, depth)) * (1.0 - fr) * top * uCaus;
-    if (sk > 0.01) col += mix(uShal, vec3(1.0), 0.6) * step(0.45, lqCaus(vW.xz * 0.55, t * 0.45)) * 0.38 * sk;
-  }
+#ifdef LQ_CAUS
+  { float sk = (1.0 - smoothstep(0.08, 2.4, depth)) * (1.0 - fr) * top * uCaus * (1.0 - smoothstep(30.0, 45.0, dc));
+    col += mix(uShal, vec3(1.0), 0.6) * step(0.9, lqCaus(vW.xz * 0.55, t * 0.45)) * 0.38 * sk; }
+#endif
   // foam: a bright line on every edge, lines of it rolling in, whitecaps on the swell. noise breaks it up
-  float fn = lqN(vW.xz * 1.4 + vec2(t * 0.35, -t * 0.22)).x;
-  float foam = step(0.62, 1.0 - shore / (0.22 + 0.3 * uFoam) + fn * 0.35);
-  foam = max(foam, step(0.88, sin(shore * 3.4 - t * 2.3 + fn * 2.5)) * step(0.45, fn) * (1.0 - smoothstep(0.5, 1.8 * uFoam, shore)));
-  float chunk = uQ > 1.5 ? lqN(vW.xz * 4.3 - t * 0.5).x : fn;
-  foam = max(foam, uSwell * step(1.12, vH * 0.9 + fn * 0.12 + chunk * 0.45)) * step(0.01, uFoam) * top; // whitecaps, only on the tallest crests
+  float foam = 0.0;
+  bool edgy = shore < 2.0 * uFoam + 0.6, crest = uSwell > 0.0 && vH > 0.45;
+#ifdef LQ_FOAM
+  if (edgy || crest) { // (open water away from the crests: no noise on a real GPU)
+#ifdef LQ_CHEAP
+    float fn = 0.5 + 0.5 * sin(vW.x * 1.7 + t) * sin(vW.z * 1.3 - t * 0.8);
+#else
+    float fn = lqT(vW.xz * 1.4 + vec2(t * 0.35, -t * 0.22)).x;
+#endif
+    if (edgy) {
+      foam = step(0.62, 1.0 - shore / (0.22 + 0.3 * uFoam) + fn * 0.35);
+      foam = max(foam, step(0.88, sin(shore * 3.4 - t * 2.3 + fn * 2.5)) * step(0.45, fn) * (1.0 - smoothstep(0.5, 1.8 * uFoam, shore)));
+    }
+    if (crest) { float chunk = fn;
+#ifdef LQ_RIP2
+      chunk = lqT(vW.xz * 4.3 - t * 0.5).x;
+#endif
+ foam = max(foam, uSwell * step(1.12, vH * 0.9 + fn * 0.12 + chunk * 0.45)); } // whitecaps, only on the tallest crests
+    foam *= top;
+  }
+#endif
   // the sun glinting off it: hard cartoon sparkles that twinkle
   float sp = pow(max(dot(R, uSun), 0.0), 140.0) * 2.0;
   float tw = lqH(floor(vW.xz * 3.0) + floor(t * 5.0));
   float spark = step(0.9, sp * tw * tw) * uSpark * top;
-  if (uQ > 0.5) spark = max(spark, step(0.985, tw) * step(0.6, l) * step(0.3, fr) * uSpark * 0.8 * top * (1.0 - uNight * 0.5));
+#ifdef LQ_SPARK2
+  spark = max(spark, step(0.985, tw) * step(0.6, l) * step(0.3, fr) * uSpark * 0.8 * top * (1.0 - uNight * 0.5));
+#endif
   col = mix(col, vec3(1.0), clamp(foam * 0.85, 0.0, 1.0));
   col = mix(col, uSunC * 1.2 + 0.25, clamp(spark, 0.0, 1.0));
   float a = mix(uA.x, uA.y, dk);
@@ -231,10 +255,28 @@ void main() {
 
 // ------------------------------------------------------------ materials (one per liquid, made once, shared by every map)
 const MATS = new Map();
+// value noise with its gradient, baked once: 16 x 16 random lattice (wraps), 8 texels a cell. b = value, rg = gradient
+function noiseTex() {
+  const C = 16, P = 8, N = C * P, lat = new Float32Array(C * C).map(() => Math.random()), px = new Uint8Array(N * N * 4);
+  const L = (i, j) => lat[((j % C + C) % C) * C + ((i % C + C) % C)];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const fx = x / P, fy = y / P, i = Math.floor(fx), j = Math.floor(fy), u = fx - i, v = fy - j;
+    const su = u * u * (3 - 2 * u), sv = v * v * (3 - 2 * v), du = 6 * u * (1 - u), dv = 6 * v * (1 - v);
+    const a = L(i, j), b = L(i + 1, j), c = L(i, j + 1), d = L(i + 1, j + 1), k = a - b - c + d;
+    const val = a + (b - a) * su + (c - a) * sv + k * su * sv, gx = du * (b - a + k * sv), gy = dv * (c - a + k * su);
+    const o = (y * N + x) * 4;
+    px[o] = Math.max(0, Math.min(255, Math.round((gx / 3 + 0.5) * 255))); px[o + 1] = Math.max(0, Math.min(255, Math.round((gy / 3 + 0.5) * 255)));
+    px[o + 2] = Math.round(val * 255); px[o + 3] = 255;
+  }
+  const t = new THREE.DataTexture(px, N, N, THREE.RGBAFormat);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearFilter; t.needsUpdate = true;
+  return t;
+}
 let HAZE = null; // world.js hazify (the city maps' height haze), handed over by liquids.js
 export function setLiquidHaze(f) { HAZE = f; }
 const col3 = (hex) => new THREE.Color(hex);
 export function liquidMaterial(key, opts = {}) {
+  if (!SH.uNoiseT.value) SH.uNoiseT.value = noiseTex();
   const ck = key + (opts.city ? ':city' : '');
   if (MATS.has(ck)) return MATS.get(ck);
   const L = LIQ[key] || LIQ.water;
@@ -255,7 +297,8 @@ export function liquidMaterial(key, opts = {}) {
     transparent: water, depthWrite: true, opacity: water ? 0.9 : 1 }); // (opacity < 0.95: lighting.js never makes it cast shadows)
   if (!water) { m.polygonOffset = true; m.polygonOffsetFactor = -2; m.polygonOffsetUnits = -4; } // sits on top of a floor it's painted onto (floor is lava)
   if (key === 'oil') { m.polygonOffset = true; m.polygonOffsetFactor = -3; m.polygonOffsetUnits = -6; }
-  m.userData.liquid = key;
+  m.userData.liquid = key; m.userData.L = L;
+  lqDefines(m);
   if (HAZE && !opts.city) HAZE(m, water ? 0.6 : 0.45);
   MATS.set(ck, m);
   return m;
@@ -263,4 +306,20 @@ export function liquidMaterial(key, opts = {}) {
 
 
 export function tickLiquids(sec) { SH.uTime.value = sec % 3600; }
-export function setLiquidQ(i) { SH.uQ.value = i; }
+// the expensive bits are compiled in only where they're used (a GPU skips an off branch, a weak one or software GL
+// doesn't): the oil's rainbow, caustics (Mid and up), the second ripple layer + whitecap detail (Mid and up), the extra
+// sparkles (not on Potato), foam. a preset change recompiles them (it recompiles everything anyway)
+function lqDefines(m) {
+  const L = m.userData.L, q = SH.uQ.value, d = {};
+  if (L.kind === 'water') {
+    if (L.sheen) d.LQ_SHEEN = '';
+    if (L.caus > 0 && q >= 2) d.LQ_CAUS = '';
+    if (q >= 2) d.LQ_RIP2 = '';
+    if (q >= 1) d.LQ_SPARK2 = '';
+    if (L.foam > 0) d.LQ_FOAM = '';
+    if (q === 0) d.LQ_CHEAP = '';
+  }
+  const k = JSON.stringify(d);
+  if (m.userData.dk !== k) { m.defines = d; m.userData.dk = k; m.needsUpdate = true; }
+}
+export function setLiquidQ(i) { SH.uQ.value = i; for (const m of MATS.values()) lqDefines(m); }

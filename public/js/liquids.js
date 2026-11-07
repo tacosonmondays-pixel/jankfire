@@ -17,6 +17,15 @@ export { LIQ, liquidMaterial, liquidBox };
 // ------------------------------------------------------------ the map's liquids
 const S = { surfs: [], meshes: [], grid: new Map(), big: [], mask: null, mw: 0, mh: 0, mr: [0, 0, 1, 1], tex: null, wr: new Map(), lavaS: [], q: 3, scene: null };
 const CELL = 16;
+S.splashN = 0; // (tests: how many splashes there have been)
+// is (x, z) really this liquid's open surface? the sea's box runs on under the islands, so ask the shore map: a beach,
+// a rock, a pier is dry even though it's inside the sea's footprint (only flat liquids are in the shore map)
+function wet(s, x, z) {
+  if (!s.flat || !S.mask) return true;
+  const u = (x - S.mr[0]) / S.mr[2], v = (z - S.mr[1]) / S.mr[3];
+  if (u < 0 || v < 0 || u > 1 || v > 1) return true;
+  return maskAt(x, z)[2] > 0.5;
+}
 function obbOf(b) { // footprint: centre, half extents, rotation (deco boxes can be turned)
   const cx = (b.min[0] + b.max[0]) / 2, cz = (b.min[2] + b.max[2]) / 2, hx = (b.max[0] - b.min[0]) / 2, hz = (b.max[2] - b.min[2]) / 2, r = b.rot || 0;
   const c = Math.cos(r), s = Math.sin(r), ex = Math.abs(c) * hx + Math.abs(s) * hz, ez = Math.abs(s) * hx + Math.abs(c) * hz;
@@ -36,6 +45,7 @@ function clearMap() {
 
 // world.js: every liquid box of the map (liquidBox), all the map's boxes (for the shore map), the map def
 export function buildLiquids(scene, list, all, def, hazify) {
+  S.last = [scene, list, all, def, hazify]; // (a Potato <-> the rest switch rebuilds with a different sea grid)
   if (hazify) setLiquidHaze(hazify);
   clearMap();
   S.scene = scene;
@@ -88,6 +98,7 @@ function bakeShore(all, def) {
       const o = obbOf(b);
       if (o.x1 < s.o.x0 || o.x0 > s.o.x1 || o.z1 < s.o.z0 || o.z0 > s.o.z1) continue;
       if (o.x1 - o.x0 > 400 && o.z1 - o.z0 > 400) continue; // a ground slab under everything isn't a shore
+      if (Math.hypot((o.x0 + o.x1) / 2, (o.z0 + o.z1) / 2) > 230) continue; // scenery far out (the other rigs, a tanker): lost in the fog, not worth the waves
       grow(Math.max(o.x0, s.o.x0) - 6, Math.max(o.z0, s.o.z0) - 6, Math.min(o.x1, s.o.x1) + 6, Math.min(o.z1, s.o.z1) + 6);
     }
   }
@@ -195,7 +206,7 @@ function surfGeo(key, list) {
     if (s.big && s.wr && !o.s) { // the sea: a fine grid over its wave area, four flat pieces round it
       const [wx0, wz0, wx1, wz1] = s.wr, toL = (x, z) => [x - o.cx, z - o.cz];
       const [ax, az] = toL(wx0, wz0), [bx, bz] = toL(wx1, wz1);
-      grid(s, ax, az, bx, bz, Math.max(3.2, Math.max(bx - ax, bz - az) / 130), 150); // (~3 m cells: the swell is 20-30 m long)
+      grid(s, ax, az, bx, bz, S.q === 0 ? Math.max(6.4, Math.max(bx - ax, bz - az) / 65) : Math.max(3.2, Math.max(bx - ax, bz - az) / 130), 150); // (~3 m cells: the swell is 20-30 m long. Potato: 6 m)
       if (az > -hz) grid(s, -hx, -hz, hx, az, 1e9, 8); if (bz < hz) grid(s, -hx, bz, hx, hz, 1e9, 8);
       if (ax > -hx) grid(s, -hx, az, ax, bz, 1e9, 8); if (bx < hx) grid(s, bx, az, hx, bz, 1e9, 8);
     } else {
@@ -234,12 +245,12 @@ function waveH(s, x, z) {
   if (damp <= 0) return 0;
   const t = SH.uTime.value, len = L.len || 4;
   let r = 0;
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 3; i++) {
     const a = 0.6 + i * 2.13, Ln = len * 0.6 ** i, k = 6.2832 / Ln, w = Math.sqrt(9.8 * k) * 0.55, A = 0.55 ** i;
     const ph = (Math.cos(a) * x + Math.sin(a) * z) * k - w * t + i * 1.7, sn = Math.sin(ph) * 0.5 + 0.5;
     r += A * (sn * sn * 2 - 0.6);
   }
-  return (r / 2.02) * L.amp * damp;
+  return (r / 1.85) * L.amp * damp;
 }
 // the liquid surface over (x, z) whose top is within [y - below, y + above] (null if none). returns the surface
 export function liquidAt(x, y, z, below = 3, above = 0.6) {
@@ -247,7 +258,7 @@ export function liquidAt(x, y, z, below = 3, above = 0.6) {
   let best = null;
   const test = (s) => {
     if (!s.flat || y < s.top - below - (s.big ? 1e4 : 0) || y > s.top + above) return;
-    if (!inObb(s.o, x, z)) return;
+    if (!inObb(s.o, x, z) || !wet(s, x, z)) return;
     if (!best || s.top > best.top) best = s;
   };
   const c = S.grid.get(Math.floor(x / CELL) * 65536 + Math.floor(z / CELL));
@@ -300,7 +311,8 @@ function addRing(s, x, z, size, life = 0.9) {
 const R = (k = 1) => (Math.random() * 2 - 1) * k;
 // something hit the surface s at (x, z). k: how big (0.1 = a bullet, 0.3 = a step, 1 = a player belly flop, 2 = a boom)
 export function splash(s, x, z, k = 1, quiet = false) {
-  if (!s) return;
+  if (!s || !wet(s, x, z)) return;
+  S.splashN++;
   const y = surfaceY(s, x, z), P = fx.parts && fx.parts(), L = LIQ[s.key];
   addRing(s, x, z, 0.6 + k * 2.2, 0.6 + k * 0.5);
   if (k > 0.5) addRing(s, x, z, 1.2 + k * 3.4, 1.1 + k * 0.5);
@@ -331,7 +343,7 @@ function tracerHit(a, b) {
     const t = (s.top - a[1]) / (b[1] - a[1]);
     if (!(t > 0 && t < 1) || t >= bt) continue;
     const x = a[0] + (b[0] - a[0]) * t, z = a[2] + (b[2] - a[2]) * t;
-    if (!inObb(s.o, x, z)) continue;
+    if (!inObb(s.o, x, z) || !wet(s, x, z)) continue;
     best = [s, x, z]; bt = t;
   }
   if (!best) return;
@@ -431,5 +443,5 @@ export function liquidsMap(def, sky, sunPos, night) {
   SH.uSunC.value.setHex(night ? 0xc8d8ff : 0xfff2c8);
   SH.uNight.value = night ? 1 : 0;
 }
-export function setLiquidQ(i) { S.q = i; setQ(i); }
-export function liquidInfo() { return { surfs: S.surfs.length, meshes: S.meshes.length, mask: S.mask ? [S.mw, S.mh, S.mr.map((v) => Math.round(v))] : null, rings: ringList.length, keys: [...new Set(S.surfs.map((s) => s.key))] }; }
+export function setLiquidQ(i) { const was = S.q; S.q = i; setQ(i); if ((was === 0) !== (i === 0) && S.last && S.surfs.length) buildLiquids(...S.last); }
+export function liquidInfo() { return { splashes: S.splashN, surfs: S.surfs.length, meshes: S.meshes.length, mask: S.mask ? [S.mw, S.mh, S.mr.map((v) => Math.round(v))] : null, rings: ringList.length, keys: [...new Set(S.surfs.map((s) => s.key))] }; }
