@@ -1,0 +1,36 @@
+== main jank3 r1
+islands jank3 {"msWith":146.8,"msNoWater":145.4,"waterMs":1.4,"waterMeshes":2}
+platform jank3 {"msWith":210.6,"msNoWater":207,"waterMs":3.6,"waterMeshes":1}
+== liquids jank3 r1
+islands jank3 {"msWith":142,"msNoWater":132.4,"waterMs":9.7,"waterMeshes":3}
+platform jank3 {"msWith":235.2,"msNoWater":190.9,"waterMs":44.4,"waterMeshes":2}
+== main jank0 r1
+islands jank0 {"msWith":45.3,"msNoWater":42.6,"waterMs":2.7,"waterMeshes":2}
+platform jank0 {"msWith":45.5,"msNoWater":42.9,"waterMs":2.6,"waterMeshes":1}
+== liquids jank0 r1
+islands jank0 {"msWith":47.2,"msNoWater":34.8,"waterMs":12.4,"waterMeshes":3}
+platform jank0 {"msWith":43.3,"msNoWater":38,"waterMs":5.3,"waterMeshes":2}
+== main jank3 r2
+islands jank3 {"msWith":135.3,"msNoWater":137.7,"waterMs":-2.4,"waterMeshes":2}
+platform jank3 {"msWith":212.9,"msNoWater":238.5,"waterMs":-25.5,"waterMeshes":1}
+== liquids jank3 r2
+islands jank3 {"msWith":165,"msNoWater":120.6,"waterMs":44.3,"waterMeshes":3}
+platform jank3 {"msWith":236,"msNoWater":208.2,"waterMs":27.8,"waterMeshes":2}
+== main jank0 r2
+islands jank0 {"msWith":46.4,"msNoWater":41.9,"waterMs":4.5,"waterMeshes":2}
+platform jank0 {"msWith":41.6,"msNoWater":42.8,"waterMs":-1.3,"waterMeshes":1}
+== liquids jank0 r2
+islands jank0 {"msWith":53.4,"msNoWater":36.2,"waterMs":17.1,"waterMeshes":3}
+platform jank0 {"msWith":53.3,"msNoWater":50,"waterMs":3.3,"waterMeshes":2}
+== main r1
+islands jank0 {"msWith":42.1,"msNoWater":33.9,"waterMs":8.2,"waterMeshes":2}
+platform jank0 {"msWith":38.7,"msNoWater":42.4,"waterMs":-3.7,"waterMeshes":1}
+== liquids r1
+islands jank0 {"msWith":46.5,"msNoWater":44.2,"waterMs":2.3,"waterMeshes":3}
+platform jank0 {"msWith":51.9,"msNoWater":39.7,"waterMs":12.2,"waterMeshes":2}
+== main r2
+islands jank0 {"msWith":35.9,"msNoWater":41.1,"waterMs":-5.2,"waterMeshes":2}
+platform jank0 {"msWith":41.9,"msNoWater":38.6,"waterMs":3.3,"waterMeshes":1}
+== liquids r2
+islands jank0 {"msWith":43.7,"msNoWater":36.6,"waterMs":7.1,"waterMeshes":3}
+platform jank0 {"msWith":51.5,"msNoWater":40,"waterMs":11.5,"waterMeshes":2}
