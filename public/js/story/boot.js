@@ -186,6 +186,7 @@ function thingMesh(look) { // a big red soup pot (things get real models with th
 export function where(m) {
   if (Array.isArray(m)) return LAB ? off(m) : m;
   const a = actors.get(m); if (a) return a.pos;
+  const mk = ST.marks && ST.marks[m]; if (mk) return LAB ? off(mk) : mk; // (the world lane's arena marks: ot_enter, arena.boss...)
   const z = ST.S.defs.zones[m]; if (z) return z.p ? (LAB ? off(z.p) : z.p) : REH.zones[m] || null;
   const r = ROSTER.get(m); if (r) return r.p;
   return null;

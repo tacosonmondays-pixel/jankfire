@@ -14,9 +14,14 @@ import { OT } from './overtime.js';
 
 // per boss: where he stands, his phases (hp fraction they start below: from content/bosses.js), and what each quest
 // step does to him. clip + hold = the pose he keeps afterwards
+// the world lane's arena marks (shared/city/arenas.js gateArena, on main since #107; names are fixed, it tells us
+// if one moves). marks.js will serve them from the chunks; until then, these
+export const ARENA_MARKS = {
+  'arena.boss': [-42, 36, -26], 'arena.player': [-44, 36, -2], ot_enter: [-44, 36, -30], ot_stairs: [-42.5, 35.8, 1.2], ot_retreat: [-44, 40, -52],
+};
 export const HOOKS = {
   overtime_1: {
-    actor: 'overtime', at: 'gut:border', quest: 'm04_clocking_in', fight: 'fight',
+    actor: 'overtime', at: 'arena.boss', quest: 'm04_clocking_in', fight: 'fight',
     start: { clip: 'ot_idle', hold: true, dmg: 'fresh' },
     phases: [null, { scene: 'ot1_coffee', clip: 'ot_coffee', hold: true, dmg: 'cracked' }, { scene: 'ot1_punching_in', clip: 'ot_stalk', hold: true, dmg: 'sparking' }],
     steps: { rip: { dmg: 'ripped', clip: 'ot_kneel', hold: true }, after: { clip: 'ot_kneel', hold: true } },
@@ -32,6 +37,7 @@ for (const h of Object.values(HOOKS)) h.start.variant ??= 1;
 
 export function makeBoss(ST, { where, playScene }) {
   const B = { on: null, hp: 1, phase: 0, plateOff: false, last: {} };
+  ST.marks = { ...ARENA_MARKS, ...(ST.marks || {}) };
   const S = () => ST.S;
   const bossOfKind = (k) => (HOOKS[k] ? k : Object.keys(HOOKS).find((b) => HOOKS[b].actor === k || (k && String(k).startsWith(HOOKS[b].actor))));
   const actorOf = (b) => actors.get(HOOKS[b].actor);
