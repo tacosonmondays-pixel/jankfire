@@ -27,7 +27,8 @@ let CONTENT = null;
 function loadKinds() { return import('./content/enemies.js').then((m) => { CONTENT = m.ENEMIES || null; }).catch(() => { CONTENT = null; }); } // (not there yet: the defaults)
 function kindOf(id) {
   const c = CONTENT && Object.hasOwn(CONTENT, id) ? CONTENT[id] : null;
-  if (c) return { hp: c.hp, w: c.weapon, name: c.name, tags: Array.isArray(c.tags) ? c.tags : [], side: c.faction || 'enemy' };
+  const tags = c && Array.isArray(c.tags) ? c.tags : [];
+  if (c) return { hp: c.hp, w: c.weapon, name: c.name, tags, side: c.faction === 'bottom' || tags.includes('ally') ? 'you' : c.faction || 'enemy' }; // (the Bottom's own people are never against you)
   return Object.hasOwn(ENEMY_KINDS, id) ? ENEMY_KINDS[id] : ENEMY_KINDS.dummy;
 }
 const isId = (s) => typeof s === 'string' && /^[a-z0-9_:-]{1,40}$/i.test(s);
