@@ -6,6 +6,7 @@ import { ITEMS, STREAKS } from '../shared/weapons.js';
 import { ZM, ZM_DROPS, ZM_MODS, ZM_PISTOLS, ZM_PASSIVES, zmAmmo, zmDropPick, zmModPick, zmMachPrice, zmValidLoadout, zmBoardTarget, zmClaw } from '../shared/zombies.js';
 
 let send = () => {};
+export const BOT_DROPS = new Set(['tipjar', 'restock', 'aisle5', 'chickenstrike', 'giantduck']); // what the squad's bots can pick up (the rest only work in a person's hands)
 const now = () => Date.now();
 const r2 = (x) => Math.round(x * 100) / 100;
 const has = (o, k) => typeof k === 'string' && Object.hasOwn(o, k);
@@ -22,7 +23,7 @@ const methods = {
   zxRound() { // a new round: drops and the machine's price start over, so does what boarding pays
     const zs = this.zs;
     zs.dropN = 0; zs.mach.uses = 0;
-    for (const h of this.humans()) if (h.z) h.z.boardN = 0;
+    for (const h of this.zmSquad()) if (h.z) h.z.boardN = 0;
   },
   // your zombies loadout, checked (the 'zload' message and the join message both land here)
   zxSetLoadout(p, lo) { p.zl = zmValidLoadout(lo, ITEMS); },
@@ -75,7 +76,7 @@ const methods = {
     for (let i = zs.drops.length - 1; i >= 0; i--) {
       const d = zs.drops[i];
       if (n >= d.until) { zs.drops.splice(i, 1); this.broadcast({ t: 'zdrop', k: 'gone', id: d.id }); continue; }
-      const by = hs.find((h) => h.alive && h.z && Math.hypot(h.pos[0] - d.at[0], h.pos[2] - d.at[2]) < ZM.dropReach && Math.abs(h.pos[1] + 0.9 - d.at[1]) < 2.2);
+      const by = hs.find((h) => h.alive && h.z && (!h.isBot || BOT_DROPS.has(d.k)) && Math.hypot(h.pos[0] - d.at[0], h.pos[2] - d.at[2]) < ZM.dropReach && Math.abs(h.pos[1] + 0.9 - d.at[1]) < 2.2);
       if (by) { zs.drops.splice(i, 1); this.zxGrab(by, d); }
     }
   },
@@ -86,7 +87,8 @@ const methods = {
     const zs = this.zs;
     if (!zs.planks || zs.planks[z.win] <= 0) return false;
     if (zs.st === 'over') return true;
-    if (!z.tearAt) { z.tearAt = n + 400 + Math.random() * 600; return true; }
+    if (!z.tearAt) { z.tearAt = n + 400 + Math.random() * 600; z.tear0 = n; return true; }
+    if (n - z.tear0 > 45000) return false; // 45 s of planks going back up as fast as it rips them: it climbs through anyway
     if (n < z.tearAt) return true;
     const slow = this.zxMod('brainfreeze') ? 2.2 : 1;
     z.tearAt = n + (z.run ? ZM.tearRun : ZM.tear) * (0.8 + Math.random() * 0.4) * slow;
@@ -143,7 +145,7 @@ const methods = {
   // ---------------------------------------------------------- drops
   zxDrop(t, killer) { // zmKilled hook: maybe a power-up where the zombie fell
     const zs = this.zs;
-    if (!killer || killer.isBot || !killer.z || zs.dropN >= ZM.dropCap || zs.st === 'over') return;
+    if (!killer || killer.zmz || !killer.z || zs.dropN >= ZM.dropCap || zs.st === 'over') return;
     if (Math.random() >= ZM.dropChance * (this.zxPerk(killer, 'rabbitfoot') ? 2 : 1) * (ZM.dropMul || 1)) return;
     zs.dropN++;
     const w = t.zmz.ph !== 'hunt' && this.map.zm.windows[t.zmz.win], p = w ? w.in : t.pos; // shot through the window: it lands inside, not in the alley. chest height, even if it was flung into the ceiling
@@ -155,7 +157,7 @@ const methods = {
     const zs = this.zs, def = ZM_DROPS[d.k];
     this.broadcast({ t: 'zdrop', k: 'take', id: d.id, kind: d.k, by: p.id, a: d.at.map(r2) });
     if (!def) return;
-    const hs = this.humans().filter((h) => h.z);
+    const hs = this.zmSquad().filter((h) => h.z);
     if (d.k === 'tipjar') { for (const h of hs) this.zmGive(h, 400, 'drop'); return; }
     if (d.k === 'restock') {
       for (const h of hs) { for (const w of h.z.guns) { const max = this.zxMaxAmmo(h, w); if (max != null) h.z.ammo[w] = max; } if (h.alive) this.zmLoadout(h); }

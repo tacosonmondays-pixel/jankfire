@@ -2,6 +2,7 @@
 export const G = {
   myId: 0, myName: '', myColor: '#fff', joined: false,
   names: new Map(),      // id -> {name, color}
+  gone: new Map(),       // id -> {name, color, look} of zombies that died (killcams still draw them)
   remotes: new Map(),    // id -> Remote
   projs: new Map(),      // id -> projectile visual
   peels: new Map(),      // id -> peel mesh

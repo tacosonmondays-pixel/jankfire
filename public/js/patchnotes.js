@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '6.6', date: '2026-11-07', title: 'THE SQUAD', items: [
+    'ZOMBIES is always a squad of 4 now: bots fill the empty slots. when someone joins, a bot clocks out (with a few words in chat), and when someone leaves, a bot comes back. you can start zombies alone with 3 bots.',
+    'squad bots actually play: they shoot, buy doors and guns, nail planks back on, grab drops, flip the power and revive you (people first).',
+    'zombies show up in the end-of-match highlight now (it used to look like everyone died to nothing). and no kill effects in zombies: they just die like zombies.',
+  ] },
   { v: '6.5', date: '2026-11-07', title: 'THE MANAGEMENT FEELS GENEROUS', items: [
     'every account gets +30 CRATES, +25 DUFFEL BAGS and +70 BOXES. log in and they\'re waiting (once per account, until dec 7).',
     'CONTAINERS: open them in bulk with x5, x10 or ALL. they all rattle and pop at once, the loot lands rarest first, and you can equip straight from the results. skip if you\'re impatient.',
