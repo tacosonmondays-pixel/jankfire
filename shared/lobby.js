@@ -15,7 +15,7 @@ export const LOBBY = {
     qp: { name: 'QUICK PLAY', game: null, lobby: false, min: 1, desc: 'drop in anytime, you take a bot\'s place. vote the next mode', art: 'dm' },
     bomb: { name: 'PLANT & DEFUSE', game: 'bomb', min: 2, desc: 'attackers plant, defenders defuse. buy guns between rounds', art: 'bomb' },
     br: { name: 'JANK ROYALE', game: 'br', min: 2, desc: 'blimp, umbrella, loot, shrinking zone. last one standing', art: 'br' },
-    zm: { name: 'ZOMBIES', game: 'zm', min: 1, desc: 'you and your friends vs endless rounds of zombies. buy doors', art: 'zm' },
+    zm: { name: 'ZOMBIES', game: 'zm', min: 1, cap: 4, squad: 4, desc: 'you and your friends vs endless rounds of zombies. buy doors', art: 'zm' },
   },
   order: ['qp', 'bomb', 'br', 'zm'],
 };
