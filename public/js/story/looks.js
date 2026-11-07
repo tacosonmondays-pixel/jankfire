@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { jankify } from '../jank.js';
 import { buildFace, skinMat } from './face.js';
+import { glbLoader } from '../glbkit.js';
 
 const HIP = 0.92;
 const g = (x = 0, y = 0, z = 0) => { const o = new THREE.Group(); o.position.set(x, y, z); return o; };
@@ -222,10 +223,53 @@ const FACE_LOCK = new WeakMap();
 export const faceLocked = (face) => FACE_LOCK.get(face);
 export const LOOK_IDS = Object.keys(LOOKS);
 
+// ---------------------------------------------------------------- Blender cast models (tools/blender/cast/)
+// public/models/cast/c_<id>.glb: the body as part_<joint> meshes modelled in root space at the rest pose. each one
+// goes into that joint of the code skeleton (so loco.js walks it and the gestures pose it) and the joint's code meshes
+// go. the code face rig stays on the head. no file (or not loaded yet) = the code puppet
+const CAST = new Map();
+export async function loadCast(ids, ms = 15000) {
+  const L = glbLoader();
+  await Promise.race([Promise.all(ids.map((id) => L.loadAsync(`/models/cast/c_${id}.glb`).then((g) => { prepCast(g.scene); CAST.set(id, g.scene); }).catch(() => {}))), new Promise((r) => setTimeout(r, ms))]);
+  return [...CAST.keys()];
+}
+function prepCast(scene) {
+  scene.traverse((o) => {
+    if (!o.isMesh) return;
+    o.castShadow = true; o.receiveShadow = true; o.geometry.userData.shared = true;
+    for (const m of [].concat(o.material)) { if (m.map) { m.map.magFilter = THREE.NearestFilter; m.map.colorSpace = THREE.SRGBColorSpace; } jankify(m); }
+  });
+}
+export const castLoaded = (id) => CAST.has(id);
+export function buildLookCode(id, hint) { const c = CAST.get(id); CAST.delete(id); try { return buildLook(id, hint); } finally { if (c) CAST.set(id, c); } } // (the code puppet, for side-by-sides)
+function dressCast(L, scene) {
+  const ch = L.ch, s = ch.root.scale.x;
+  const tilt = ch.head.rotation.z; ch.head.rotation.z = 0; // (parts are modelled untilted; the jank tilt comes back after, for the head and its face together)
+  ch.root.scale.setScalar(1); ch.root.position.set(0, 0, 0); ch.root.rotation.set(0, 0, 0); ch.root.updateMatrixWorld(true);
+  const keep = L.face ? L.face.root : null, inv = new THREE.Matrix4();
+  scene.updateMatrixWorld(true);
+  let n = 0;
+  scene.traverse((o) => {
+    if (!o.isMesh) return;
+    let p = o; while (p && !/^part_[A-Za-z]+/.test(p.name)) p = p.parent; // (a part with several materials is a group of meshes)
+    const m0 = p && /^part_([A-Za-z]+)/.exec(p.name);
+    if (!m0) return;
+    const G = ch[m0[1]];
+    if (!G) return;
+    if (!G.userData.dressed) { for (const c of [...G.children]) if (c.isMesh && c !== keep) G.remove(c); G.userData.dressed = true; }
+    const m = o.clone(); m.matrix.copy(o.matrixWorld); m.matrix.decompose(m.position, m.quaternion, m.scale);
+    inv.copy(G.matrixWorld).invert(); m.applyMatrix4(inv);
+    G.add(m); n++;
+  });
+  ch.head.rotation.z = tilt; ch.root.scale.setScalar(s); ch.root.updateMatrixWorld(true);
+  L.blender = n > 0;
+}
+
 // hint: { body, desc } from the cast bible, for characters without a hand-made look yet
 export function buildLook(id, hint) {
   const L = LOOKS[id] ? LOOKS[id]() : hint ? generic(String(id || 'x'), hint) : LOOKS.mannequin();
   L.look = LOOKS[id] ? id : hint ? 'generic' : 'mannequin';
+  if (CAST.has(L.look)) dressCast(L, CAST.get(L.look));
   L.ch.root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; } });
   return L;
 }
