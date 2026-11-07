@@ -17,6 +17,7 @@ const W = Number(opt('w', 960)), H = Number(opt('h', 540)), TILE = opt('tile', '
   await pg.addInitScript(() => { if (!sessionStorage.getItem('jfInit')) { localStorage.setItem('jankfire', JSON.stringify({ name: 'director', jank: 3 })); sessionStorage.setItem('jfInit', '1'); } });
   await pg.goto(`http://localhost:${PORT}/?story=1&otpreview=1`);
   const pump = (ms) => new Promise((r) => setTimeout(r, ms));
+  const dismiss = () => pg.evaluate(() => { for (const b of document.querySelectorAll('button')) if (/^(LATER|NICE)$/.test(b.textContent.trim()) && b.offsetParent) b.click(); }).catch(() => {}); // (the shell's gift memo)
   await pump(1500);
   for (let i = 0; i < 100 && !(await pg.evaluate(() => !!document.getElementById('storyBtn'))); i++) await pump(100);
   await pg.evaluate(() => { localStorage.removeItem('jfStorySaves'); document.getElementById('storyBtn').click(); });
@@ -24,9 +25,10 @@ const W = Number(opt('w', 960)), H = Number(opt('h', 540)), TILE = opt('tile', '
   await pg.evaluate(() => document.querySelector('#storyPick .st-slot .st-btn').click());
   for (let i = 0; i < 600 && !(await pg.evaluate(() => !!window.JF_OTP)); i++) await pump(250);
   // story time vs video time: from the preview's first counted second to SECS later
+  await dismiss();
   const g0 = await pg.evaluate(() => window.JF_OTP.total), r0 = (Date.now() - T0) / 1000;
   let g1 = g0;
-  for (;;) { await pump(2000); g1 = await pg.evaluate(() => window.JF_OTP.total); if (g1 - g0 >= SECS) break; }
+  for (;;) { await pump(2000); await dismiss(); g1 = await pg.evaluate(() => window.JF_OTP.total); if (g1 - g0 >= SECS) break; }
   const r1 = (Date.now() - T0) / 1000;
   await ctx.close(); await b.close();
   const raw = path.join(vdir, fs.readdirSync(vdir).find((f) => f.endsWith('.webm')));

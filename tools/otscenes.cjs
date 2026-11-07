@@ -20,13 +20,14 @@ const SETUP = {
   await pg.addInitScript(() => { if (!sessionStorage.getItem('jfInit')) { localStorage.setItem('jankfire', JSON.stringify({ name: 'director', jank: 3 })); sessionStorage.setItem('jfInit', '1'); } });
   await pg.goto(`http://localhost:${PORT}/?story=1`);
   const pump = (ms) => new Promise((r) => setTimeout(r, ms));
+  const dismiss = () => pg.evaluate(() => { for (const b of document.querySelectorAll('button')) if (/^(LATER|NICE)$/.test(b.textContent.trim()) && b.offsetParent) b.click(); }).catch(() => {}); // (the shell's gift memo)
   await pump(1500);
   for (let i = 0; i < 100 && !(await pg.evaluate(() => !!document.getElementById('storyBtn'))); i++) await pump(100);
   await pg.evaluate(() => { localStorage.removeItem('jfStorySaves'); document.getElementById('storyBtn').click(); });
   for (let i = 0; i < 100 && !(await pg.evaluate(() => !!document.querySelector('#storyPick .st-slot .st-btn'))); i++) await pump(100);
   await pg.evaluate(() => document.querySelector('#storyPick .st-slot .st-btn').click());
   for (let i = 0; i < 300 && !(await pg.evaluate(() => !!(window.JF_STORY && window.JF_STORY.on))); i++) await pump(100);
-  await pump(1500);
+  await pump(1500); await dismiss();
   const step = async () => { await pg.evaluate((dt) => { window.JF_STORY.capStep = dt; }, 1 / FPS); await pg.waitForFunction(() => window.JF_STORY.capStep === 0, null, { polling: 'raf', timeout: 180000 }); await pg.evaluate(() => new Promise((r) => requestAnimationFrame(() => r()))); };
   for (const ID of IDS) {
     const set = SETUP[ID] || {};
