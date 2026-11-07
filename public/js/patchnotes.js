@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '6.7', date: '2026-11-07', title: 'LEARN YOUR SPRAY', items: [
+    'plant & defuse sprays are learnable now: every auto gun climbs straight up, then sways left-right-left at the top, the SAME way every time. pull down against it and it stays on a head. running or jumping still sprays everywhere.',
+    'online plant & defuse lobbies fill the empty slots with bots, so it\'s always 5v5.',
+    'spectating no longer crashes when the player you watch pulls out a knife while aiming. the little first-person box sits lower so it doesn\'t cover the royale stats.',
+  ] },
   { v: '6.6', date: '2026-11-07', title: 'THE SQUAD', items: [
     'ZOMBIES is always a squad of 4 now: bots fill the empty slots. when someone joins, a bot clocks out (with a few words in chat), and when someone leaves, a bot comes back. you can start zombies alone with 3 bots.',
     'squad bots actually play: they shoot, buy doors and guns, nail planks back on, grab drops, flip the power and revive you (people first).',
