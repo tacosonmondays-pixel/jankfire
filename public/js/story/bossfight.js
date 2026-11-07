@@ -18,6 +18,7 @@ import { OT } from './overtime.js';
 // if one moves). marks.js will serve them from the chunks; until then, these
 export const ARENA_MARKS = {
   'arena.boss': [-42, 36, -26], 'arena.player': [-44, 36, -2], ot_enter: [-44, 36, -30], ot_stairs: [-42.5, 35.8, 1.2], ot_retreat: [-44, 40, -52],
+  'cam.wide': [-22, 45, 6], 'cam.gate': [-41, 38.2, -15], 'cam.roofs': [-73, 47.5, -4], // (arena.cam marks, #116: the gate's intro cameras)
 };
 export const HOOKS = {
   overtime_1: {

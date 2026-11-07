@@ -36,7 +36,7 @@ export const SCENES_OVERTIME = {
       { t: 1.4, anim: ["ot", "ot_limp", true] },
       { t: 2.0, sfx: "tick" },
       { t: 2.6, move: ["ot", ["ot_retreat"], 1.6] },
-      { t: 4.0, cam: { shot: "highAngle", target: "ot", dur: 6 } },
+      { t: 4.0, cam: { path: ["cam.roofs"], look: "ot", dur: 6 } },
       { t: 6.5, title: ["RESCHEDULED", "he'll be back. on time.", 2.6] },
     ],
   },
