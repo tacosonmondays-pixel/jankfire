@@ -99,6 +99,7 @@ export function playClip(clip, opts = {}) {
     g.setGrapple(i.grap);
     if (i.zs && i.zs <= clip.frames[0].s) g.setZombie(true); // infection: already a zombie when the clip starts
     if (id === opts.focus) g.tag.visible = false;
+    if (i.bot && i.name === 'Zombie') { g.tag.visible = false; g.zmGhost = true; } // zombies: no name tag, like in the match
     ghosts.set(id, g);
   }
   const frames = clip.frames, t0 = frames[0].s;
@@ -185,7 +186,7 @@ function applyEv(m) {
     if (v && m.w === 'shredder' && shredKill(m, st.ghosts)) m.fx = 'none'; // through the killer's machine
     if (v) {
       const vi = info[m.v] || {};
-      const replaced = m.fx && m.fx !== 'none' && playKillFx(m.fx, { pos: v.pos.slice(), vel: m.vel || v.vel, yaw: v.yaw, color: v.color, look: teamLook(vi.look, v.team), name: vi.name });
+      const replaced = m.fx && m.fx !== 'none' && !(G.round && G.round.zm) && playKillFx(m.fx, { pos: v.pos.slice(), vel: m.vel || v.vel, yaw: v.yaw, color: v.color, look: teamLook(vi.look, v.team), name: vi.name });
       wreckDied(v, m.vel); // they died as a wrecking ball: it bursts open
       if (replaced) v.ch.root.visible = false; else v.breakApart(m.vel || v.vel);
       v.alive = false; v.downAt = 0; // now they're down

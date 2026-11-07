@@ -47,7 +47,7 @@ const methods = {
   },
   zhAdd() {
     const zs = this.zs, b = this.addBot(); // its look, skins and personality (server/botflair.js)
-    b.zmh = true; b.team = 1; b.grap = b.grap || 'rope';
+    b.zmh = true; b.team = 1; b.grap = b.grap || 'rope'; b.kfx = 'none'; // (no finishers in zombies)
     b.zl = { ...(KIT[b.persona] || KIT.polite) };
     this.zmJoin(b);
     b.pos = this.pickSpawn(false, b); b.vel = [0, 0, 0];

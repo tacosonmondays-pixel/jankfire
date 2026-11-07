@@ -459,6 +459,8 @@ const methods = {
       swingAt: 0, nextSwing: 0, hits: 0, hitAt: {}, seen: n, chk: n, chkPos: pos.slice(), stuck: 0 };
     this.players.set(b.id, b);
     this.broadcast({ t: 'pj', ...this.info(b) });
+    (zs.zinfo ||= new Map()).set(b.id, { name: b.name, color: b.color, skins: {}, bot: true, look: b.look, level: 0, grap: 'rope', t: n }); // for replays after it's gone
+    if (zs.zinfo.size > 400) for (const [id, i] of zs.zinfo) if (n - i.t > 60000 && !this.players.has(id)) zs.zinfo.delete(id);
     zs.toSpawn--;
     return true;
   },
@@ -593,4 +595,26 @@ export function installZombies(Room, h) {
   Object.assign(Room.prototype, methods);
   installZmExtra(Room, h);
   installZmBots(Room, h);
+  const P = Room.prototype, wrap = (name, fn) => { const orig = P[name]; P[name] = function (...a) { return fn.call(this, orig, ...a); }; };
+  // zombies: no cosmetic kill effects (finishers), on zombies or on people. everyone just dies the normal way
+  wrap('kill', function (orig, t, attacker, w) {
+    if (!this.zm || !attacker || !attacker.kfx || attacker.kfx === 'none') return orig.call(this, t, attacker, w);
+    const k = attacker.kfx; attacker.kfx = 'none';
+    try { return orig.call(this, t, attacker, w); } finally { attacker.kfx = k; }
+  });
+  // replays (the play of the game, the end highlight): zombies that died since are still drawn as zombies, and only
+  // the ones near the squad are kept (a clip with 24 zombies in it all over the mall is a lot to send)
+  wrap('clip', function (orig, t0, t1) {
+    const c = orig.call(this, t0, t1), zi = this.zs && this.zs.zinfo;
+    if (!this.zm || !zi || !c || !c.frames) return c;
+    const isZ = (id) => zi.has(id) || !!(this.players.get(id) || {}).zmz;
+    for (const f of c.frames) {
+      const sq = f.p.filter((e) => !isZ(e[0]));
+      f.p = f.p.filter((e) => !isZ(e[0]) || sq.some((q) => Math.hypot(q[1] - e[1], q[3] - e[3]) < 32));
+    }
+    const keep = new Set(c.frames.flatMap((f) => f.p.map((e) => e[0])));
+    for (const id of keep) if (!c.info[id] && zi.has(id)) { const { t, ...i } = zi.get(id); c.info[id] = i; }
+    for (const id of Object.keys(c.info)) if (!keep.has(Number(id)) && isZ(Number(id))) delete c.info[id];
+    return c;
+  });
 }
