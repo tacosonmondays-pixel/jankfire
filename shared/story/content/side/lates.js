@@ -6,6 +6,7 @@ export const SIDE_LATES = {
     locations: ["lates:canteen"], cast: ["gus", "pauline"],
     requires: { missions: ["m22_the_waiting_room"], if: null },
     logline: "Gus has been trying to finish the same lasagne for 22,000 days. Something interrupts him at the last bite every time.",
+    mechanic: { uses: ["remote", "loops"], hook: "eleven chained interruptions in one loop; rewind the fork" },
     twist: "Every interruption is a different Looper's small Tuesday disaster (a fire alarm, a dropped tray, a fight over a stapler), and fixing one makes the next one happen. When you finally clear all eleven, Gus holds up the last bite and doesn't eat it. 'if i finish it, it'll be wednesday. and my wife will be dead.' You can tell him to eat it, or not. Either is kind.",
     beats: ["Gus and the lasagne.", "Eleven interruptions, each a micro-puzzle across one loop (a chain: fix the alarm at 12:31 and the tray falls at 12:33).", "The last bite."],
     steps: [
@@ -29,6 +30,7 @@ export const SIDE_LATES = {
     locations: ["lates:remainder_office", "lates:waiting_room"], cast: ["pauline"],
     requires: { missions: ["m22_the_waiting_room"], if: null },
     logline: "You're locked in an office in the Lates. The only way out is to photocopy yourself.",
+    mechanic: { uses: ["camera"], hook: "photocopy yourself out: a co-op puzzle with your own delayed copies" },
     twist: "Each copy is a little worse (blurrier, a wrong colour, a knee that bends two ways), and each copy needs to stand on a pressure plate. By copy six you're arguing with yourself. The last copy, very faded, asks the original: 'are we the same person?' The puzzle's answer is no; the door opens when you say so.",
     beats: ["An office, a copier, six pressure plates.", "Copies follow your inputs with a delay (a co-op puzzle with yourself).", "The faded copy's question."],
     steps: [ { id: "copy", text: "photocopy yourself out", goal: { type: "interact", target: "lates:remainder_office" }, talk: "copy" } ],
@@ -47,6 +49,7 @@ export const SIDE_LATES = {
     locations: ["lates:waiting_room", "lates:stairwell", "lates:tuesday_tower"], cast: ["pauline"],
     requires: { missions: ["m22_the_waiting_room"], if: null },
     logline: "The Lates' hold music plays everywhere, all day. Nobody knows where it comes from. Find the source.",
+    mechanic: { uses: ["nvg", "loops"], hook: "follow a sound down the Backrooms Stairwell in the dark" },
     twist: "It's a woman in the Backrooms Stairwell, deep down, at a switchboard, humming into the line to keep 4,000 callers company: the Lates' Remainder call centre has had 4,000 people on hold since 17:29. She's been humming for sixty-one years. One of the held calls is from the Spire's lobby security desk, 17:29: in the background, a running man's footsteps and a polite voice saying 'that's against policy'. It's one of Overtime's memory fragments.",
     beats: ["Follow the music (it gets louder near certain walls; a Backrooms descent).", "The switchboard.", "The held calls; one from the lobby."],
     steps: [
@@ -64,6 +67,7 @@ export const SIDE_LATES = {
     locations: ["lates:missing_door", "lates:warehouse"], cast: ["prototype"],
     requires: { missions: ["m23_workforce_restoration"], if: null },
     logline: "Go back through the door at 03:00. At the end of a row there was an empty dock with your name on it. It isn't empty any more.",
+    mechanic: { uses: ["marbles", "peels", "lasso"], hook: "beat a version of you with no jank by being janky" },
     twist: "Hask had a copy of you built with the Schedule forced in, to see what you'd be on the payroll. It's happy. It remembers Mina and doesn't think she's important. Beating it gets you its chip: the strongest head implant in the game, which loads a little of the Schedule into you. It costs two permanent Drift. The game asks you twice.",
     beats: ["Any night after m23, at 03:00, the door is there for anyone who knows.", "The dock: CALE R. 4417 · EMPLOYEE OF THE QUARTER.", "Secret boss: EMPLOYEE 4417.", "It asks what time it is."],
     steps: [

@@ -11,6 +11,7 @@
 import { WEAPONS, ITEMS, STREAKS } from '../weapons.js';
 import { BRANDS, MODIFIERS, LEGENDARIES } from './content/loot.js'; // the writer's loot data (WP4 rolls it in loot.js)
 import { ITEMS as STORY_CONTENT_ITEMS } from './content/items.js'; // key / quest items
+import { IMPLANTS } from './content/implants.js'; // implants + organ cores (WP5: shared/story/implants.js)
 
 export const INV = { bar: 8, bag: 20, bagMax: 60, locker: 200, streakMax: 3, stackMax: 20 };
 export const RARITIES = ['common', 'rare', 'epic', 'legendary', 'premium']; // WP4 rolls these (shared/cosmetics.js colours + ☺ PREMIUM)
@@ -37,12 +38,13 @@ export function kindOf(b) {
   if (has(ITEMS, b)) return 'gear';
   if (has(STREAKS, b)) return 'streak';
   if (has(STORY_ITEMS, b)) return STORY_ITEMS[b].kind;
+  if (has(IMPLANTS, b)) return 'implant';
   return null;
 }
 export function stackOf(b) { const k = kindOf(b); return k === 'streak' ? INV.streakMax : k === 'gear' ? 5 : has(STORY_ITEMS, b) ? STORY_ITEMS[b].stack || 1 : 1; }
 export function infoOf(it) {
   const b = it && it.b, k = kindOf(b);
-  const d = has(WEAPONS, b) ? WEAPONS[b] : has(ITEMS, b) ? ITEMS[b] : has(STREAKS, b) ? STREAKS[b] : has(STORY_ITEMS, b) ? STORY_ITEMS[b] : null;
+  const d = has(WEAPONS, b) ? WEAPONS[b] : has(ITEMS, b) ? ITEMS[b] : has(STREAKS, b) ? STREAKS[b] : has(STORY_ITEMS, b) ? STORY_ITEMS[b] : has(IMPLANTS, b) ? { name: IMPLANTS[b].name, color: '#ff4fd8', desc: `${IMPLANTS[b].text} perk: ${IMPLANTS[b].perk}. downside: ${IMPLANTS[b].downside}.` } : null;
   const L = it.lg && has(LEGENDARIES, it.lg) ? LEGENDARIES[it.lg] : null;
   return d ? { kind: k, name: L ? L.name : (it.n || d.name), color: d.color || '#ffe14d', desc: L ? `"${L.flavour}" ${L.quirk}` : d.desc || '' } : null;
 }
@@ -54,6 +56,7 @@ export function makeItem(b, o = {}) {
   const it = { b, r: RARITIES.includes(o.r) ? o.r : 'common', s: Number.isInteger(o.s) ? o.s >>> 0 : 0 };
   if (typeof o.n === 'string' && o.n) it.n = o.n.slice(0, 40);
   const k = kindOf(b);
+  if (k === 'implant' && ['bruised', 'fresh', 'prime', 'premium'].includes(o.ql)) it.ql = o.ql; // an organ core's quality
   if (k === 'gun' || k === 'melee') { // loot rolls (shared/story/loot.js): only real ids survive
     if (has(BRANDS, o.br)) it.br = o.br;
     if (Array.isArray(o.m)) { const m = [...new Set(o.m.filter((x) => has(MODIFIERS, x)))].slice(0, 2); if (m.length) it.m = m; }
@@ -62,7 +65,7 @@ export function makeItem(b, o = {}) {
   if (stackOf(b) > 1) it.q = Math.max(1, Math.min(stackOf(b), o.q | 0 || 1));
   return it;
 }
-const same = (a, b) => a.b === b.b && a.r === b.r && !a.n && !b.n && !a.lg && !b.lg; // stackables only stack with their own kind
+const same = (a, b) => a.b === b.b && a.r === b.r && !a.n && !b.n && !a.lg && !b.lg && a.ql === b.ql; // stackables only stack with their own kind
 export const find = (inv, u) => inv.bag.findIndex((x) => x && x.u === u);
 export const itemAt = (inv, u) => { const i = find(inv, u); return i < 0 ? null : inv.bag[i]; };
 export const count = (inv, b) => inv.bag.reduce((n, x) => n + (x && x.b === b ? x.q || 1 : 0), 0);

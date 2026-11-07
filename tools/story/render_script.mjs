@@ -46,6 +46,7 @@ export function render(C) {
   function quest(id, q) {
     const out = [`### ${q.n ? `${q.n}. ` : ''}${q.title} \`${id}\``, `_${q.logline}_`, ''];
     out.push(`**Where:** ${(q.locations || []).map(loc).join(', ')}  `, `**Who:** ${(q.cast || []).map(name).join(', ')}  `, `**Giver:** ${q.giver ? name(q.giver) : '—'} · **Needs:** ${[...((q.requires && q.requires.missions) || []), (q.requires && q.requires.if) || ''].filter(Boolean).join(', ') || '—'}`);
+    if (q.mechanic) out.push('', `**Mechanic hook:** ${q.mechanic.hook} _(uses: ${q.mechanic.uses.map((u) => C.MECHANICS[u].name.toLowerCase()).join(', ')})_`);
     if (q.twist) out.push('', `**The twist:** ${q.twist}`);
     if (q.beats) out.push('', '**Beats**', ...q.beats.map((b) => `- ${b}`));
     if (q.reveals) out.push('', '**The mystery**', `- _learn:_ ${q.reveals.learn.join(' ')}`, `- _suspect:_ ${q.reveals.suspect.join(' ') || '—'}`, `- _withheld:_ ${q.reveals.withheld.join(' ') || '—'}`);
@@ -97,11 +98,19 @@ export function render(C) {
   {
     const out = ['# Bosses', '', '_Generated from `bosses.js`. Who they are is in CAST.md._', ''];
     for (const [id, b] of Object.entries(C.BOSSES)) {
-      out.push(`## ${b.card} \`${id}\``, `> "${b.subtitle}"`, '', `**${b.kind}** · ${loc(b.arena)} · quest \`${b.quest}\`${b.unlock ? ` · unlocks: ${b.unlock}` : ''} · HP ${b.hp} (+60% per extra co-op player)`, '', `**Look:** ${b.look}`, '', `**Why they're here:** ${b.why}`, '');
-      for (const p of b.phases) { out.push(`### Phase: ${p.name} (${p.hp[0]}% → ${p.hp[1]}%)`, `> "${p.line}"`, ''); for (const m of p.mechanics) out.push(`- **${m.name}** · tell: ${m.tell} · ${m.effect} · _counter:_ ${m.counter}`); out.push(''); }
+      out.push(`## ${b.card} \`${id}\``, `> "${b.subtitle}"`, '', `**${b.kind}** · ${loc(b.zone)} · quest \`${b.quest}\`${b.unlock ? ` · unlocks: ${b.unlock}` : ''} · HP ${b.hp} (+60% per extra co-op player)`, '', `**Look:** ${b.look}`, '', `**Why they're here:** ${b.why}`, '');
+      const A = b.arena;
+      out.push(`### Arena: ${A.name}`, A.layout, '', `- **Levels:** ${A.vertical}`, `- **Grapple:** ${A.grapple.join('; ')}`, `- **Hazards:** ${A.hazards.map((h) => `${h.kind} (${h.where}): ${h.effect}`).join('; ')}`, `- **Cover:** ${A.cover.map((c) => `${c.what} (${c.breaks})`).join('; ')}`, '');
+      out.push(`**Bars:** ${b.layers.map((l) => `${l.bar} ${l.of} (${l.how})`).join(' → ')}`, '');
+      out.push('**Weak points**', ...b.weakPoints.map((w) => `- **${w.name}** ×${w.crit}: ${w.glow}. Opened by: ${w.exposedBy}`), '');
+      out.push(`**Weakness (${b.weakness.element}):** ${b.weakness.weapons.join(', ')}. ${b.weakness.why} (Beatable with anything.)`, '');
+      out.push('**Adds**', ...b.adds.map((x) => `- **${x.name}** ×${x.count}: _${x.personality}_. ${x.does}`), '');
+      out.push('**Set pieces**', ...b.setPiece.map((x) => `- **${x.kind}** (${x.when}): ${x.what}`), '');
+      for (const p of b.phases) { out.push(`### Phase: ${p.name} (${p.hp[0]}% → ${p.hp[1]}%)`, `> "${p.line}"`, '', `**Twist:** ${p.twist}`, ''); for (const m of p.mechanics) out.push(`- **${m.name}** · tell: ${m.tell} · ${m.effect} · _counter:_ ${m.counter}`); out.push(''); }
       out.push('**Lines**', `- intro: "${b.lines.intro}"`, `- hurt: ${b.lines.hurt.map((x) => `"${x}"`).join(', ')}`, `- kills you: ${b.lines.kill.map((x) => `"${x}"`).join(', ')}`, `- low: "${b.lines.low}"`, `- defeat: "${b.lines.defeat}"`, '', `**Defeat:** ${b.defeat}`, '');
       if (b.core) { const i = C.IMPLANTS[b.core]; out.push(`**Organ core: ${i.name}** (${i.slot}): ${i.perk}. _Downside:_ ${i.downside}.`, ''); }
       if (b.refight) out.push(`**Refight (${b.refight.card}):** "${b.refight.line}" Mods: ${b.refight.mods.join('; ')}.`, '');
+      out.push(`**Piñata:** ${b.pinata}`, '', `**Loot table:** \`${b.lootTable}\` (${C.LOOT_TABLES[b.lootTable].entries.filter((e) => e.legendary).map((e) => C.LEGENDARIES[e.legendary].name).join(', ')}) · **Refights:** ${b.scaling}`, '');
       out.push(`**Drops:** ${b.drops.map((d) => (C.LEGENDARIES[d] ? C.LEGENDARIES[d].name : d)).join(', ')}`, '', '---', '');
     }
     files['BOSSES.md'] = out.join('\n');
@@ -156,6 +165,36 @@ export function render(C) {
     }
     files['COLLECTIBLES.md'] = out.join('\n');
   }
+  // ---- mechanics (docs/story/MECHANICS.md)
+  {
+    const QS = { ...C.MISSIONS, ...C.SIDE };
+    const usedBy = (id, kind) => Object.entries(QS).filter(([, q]) => (kind === 'main' ? q.kind !== 'side' : q.kind === 'side') && q.mechanic && q.mechanic.uses.includes(id)).map(([qid]) => qid);
+    const bossBy = (m, id) => Object.entries(C.BOSSES).filter(([, b]) => b.uses.includes(id) || m.weapons.some((w) => b.weakness.weapons.includes(w))).map(([bid]) => bid);
+    const out = ['# OVERDUE mechanics bible', '', '_Generated from `shared/story/content/mechanics.js`, the `mechanic` hooks on every mission and side quest, and the boss fight layer (`boss_fights.js`). Edit the data, then run `node tools/story/render_script.mjs`._', '',
+      'Everything here is a mechanic the game already has (the `src` column says where). The story is built to use all of it, and it teaches each one in a mission or side quest, usually with a joke. The grapple is the star: every district has a swing route, and every boss arena has grapple points.', '',
+      '## Coverage', '', '| mechanic | kind | taught in | main missions | side quests | boss fights |', '|---|---|---|---|---|---|'];
+    for (const [id, m] of Object.entries(C.MECHANICS)) out.push(`| ${m.name} | ${m.kind} | ${QS[m.taught.quest].title} | ${usedBy(id, 'main').length} | ${usedBy(id, 'side').length} | ${bossBy(m, id).length} |`);
+    out.push('', '## The grapple', '', C.MECHANICS.grapple.game, '', '### Swing routes (one per district)', ...Object.entries(C.GRAPPLE.routes).map(([d, r]) => `- **${C.DISTRICTS[d].name}:** ${r}`), '',
+      '### Shortcuts', ...C.GRAPPLE.shortcuts.map((x) => `- ${x}`), '', '### Secrets', ...C.GRAPPLE.secrets.map((x) => `- ${x}`), '', '### Chases', ...C.GRAPPLE.chases.map((x) => `- ${x}`), '',
+      '### Swinging fights', ...C.GRAPPLE.fights.map((x) => `- ${x}`), '', '### Grapple puzzles', ...C.GRAPPLE.puzzles.map((x) => `- ${x}`), '', '### Races', C.GRAPPLE.races, '', '### Upgrades', ...C.GRAPPLE.upgrades.map((x) => `- ${x}`), '',
+      '### Grapple points in every boss arena', ...Object.entries(C.BOSSES).map(([id, b]) => `- **${b.name}** (${b.arena.name}): ${b.arena.grapple.join('; ')}`), '', '## Every mechanic', '');
+    for (const [id, m] of Object.entries(C.MECHANICS)) {
+      out.push(`### ${m.name} \`${id}\``, `_${m.kind} · ${m.src}${m.weapons.length ? ` · weapons: ${m.weapons.join(', ')}` : ''}_`, '', m.game, '');
+      for (const [k, v] of Object.entries(m.story)) out.push(`- **${k}:** ${v}`);
+      out.push(`- **taught:** ${QS[m.taught.quest].title} (\`${m.taught.quest}\`): ${m.taught.how}`);
+      const mm = usedBy(id, 'main'), ss = usedBy(id, 'side');
+      if (mm.length) out.push(`- **main missions:** ${mm.map((q) => QS[q].title).join(', ')}`);
+      if (ss.length) out.push(`- **side quests:** ${ss.map((q) => QS[q].title).join(', ')}`);
+      const bb = bossBy(m, id);
+      if (bb.length) out.push(`- **boss fights:** ${bb.map((b) => C.BOSSES[b].name).join(', ')}`);
+      out.push('');
+    }
+    out.push('## Every mission\'s mechanic hook', '', '| mission | uses | hook |', '|---|---|---|');
+    for (const [qid, q] of Object.entries(QS)) if (q.mechanic) out.push(`| ${q.title} | ${q.mechanic.uses.join(', ')} | ${q.mechanic.hook} |`);
+    out.push('', '## Boss weaknesses', '', '| boss | element | weapons that shine | weak points |', '|---|---|---|---|');
+    for (const [id, b] of Object.entries(C.BOSSES)) out.push(`| ${b.card} | ${b.weakness.element} | ${b.weakness.weapons.join(', ')} | ${b.weakPoints.map((w) => w.name).join(', ')} |`);
+    files['../MECHANICS.md'] = out.join('\n') + '\n';
+  }
   // ---- index
   {
     const total = Object.values(files).reduce((n, t) => n + words(t), 0);
@@ -171,6 +210,7 @@ export function render(C) {
       `| [SIDE_QUESTS.md](SIDE_QUESTS.md) | ${Object.keys(C.SIDE).length} side questlines, ${Object.keys(C.ACTIVITIES).length} activities | ${words(files['SIDE_QUESTS.md'])} words |`,
       `| [IMPLANTS.md](IMPLANTS.md) | ${Object.keys(C.IMPLANTS).length} implants (${Object.values(C.IMPLANTS).filter((i) => i.kind === 'secret').length} secret) and the Drift rules | ${words(files['IMPLANTS.md'])} words |`,
       `| [LOOT.md](LOOT.md) | ${Object.keys(C.BRANDS).length} brands, ${Object.keys(C.LEGENDARIES).length} named legendaries | ${words(files['LOOT.md'])} words |`,
+      `| [../MECHANICS.md](../MECHANICS.md) | the mechanics bible: ${Object.keys(C.MECHANICS).length} mechanics, the grapple, coverage | ${words(files['../MECHANICS.md'])} words |`,
       `| [COLLECTIBLES.md](COLLECTIBLES.md) | ${Object.keys(C.COLLECTIBLES).length} collectibles in ${Object.keys(C.COLLECTIBLE_SETS).length} sets | ${words(files['COLLECTIBLES.md'])} words |`,
       '', `**Total: about ${Math.round(total / 1000)}k words, ${ms.length} main missions, ${Object.keys(C.SCENES).length} scenes.**`, '',
       '## Main story at a glance', '', '| # | act | mission | logline |', '|---|---|---|---|',

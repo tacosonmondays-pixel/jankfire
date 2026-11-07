@@ -23,9 +23,10 @@ export const MATS = [
   ['paint', 'paint', 0xffffff], ['teeth', 'bone', 0xfff4dc], ['rib', 'rib', 0xff8aa6, 'flesh'], ['bruise', 'flesh', 0x5b3a8f, 'flesh'],
   ['neon', 'glow', 0xff4fd8, 'glow'], ['cyanglow', 'glow', 0x4fd8ff, 'glow'], ['greenglow', 'glow', 0x39ff14, 'glow'], ['window', 'window', 0xffd88a, 'glow'],
   ['acid', 'flesh', 0xb8ff3a, 'acid'], ['sky', 'glow', 0x2a1840, 'glow'],
+  ['gums', 'gumcobble', 0xffffff, 'flesh'], ['blood', 'flesh', 0x7a0a1c, 'flesh'],
 ];
 export const MAT_ID = Object.fromEntries(MATS.map((m, i) => [m[0], i]));
-export const FAMS = ['dirt', 'asphalt', 'concrete', 'plaster', 'brick', 'metal', 'wood', 'tile', 'corrug', 'fabric', 'tiedye', 'bone', 'paint', 'rib', 'window', 'flesh', 'glass', 'glow'];
+export const FAMS = ['dirt', 'asphalt', 'concrete', 'plaster', 'brick', 'metal', 'wood', 'tile', 'corrug', 'fabric', 'tiedye', 'bone', 'paint', 'rib', 'window', 'flesh', 'glass', 'glow', 'gumcobble'];
 
 // render presets (world.js JANK index): ring radii in metres. active = collision + props, near = full meshes,
 // mid = one merged lod1 mesh per chunk, far = the heightfield impostor (one draw call for every far chunk).

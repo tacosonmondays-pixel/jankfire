@@ -58,3 +58,13 @@ test('the generated script docs are up to date', async () => {
   const { readFileSync } = await import('node:fs');
   for (const [file, text] of Object.entries(render(CONTENT))) assert.equal(readFileSync(new URL(`../../docs/story/script/${file}`, import.meta.url), 'utf8'), text, `${file} is stale: run node tools/story/render_script.mjs`);
 });
+
+test('every mechanic is used somewhere, and every main mission and boss uses the grapple or says why not', () => {
+  const QS = { ...C.MISSIONS, ...C.SIDE }, unused = [];
+  for (const id of Object.keys(C.MECHANICS)) {
+    const n = Object.values(QS).filter((q) => q.mechanic && q.mechanic.uses.includes(id)).length + Object.values(C.BOSSES).filter((b) => b.uses.includes(id)).length;
+    if (n < 2) unused.push(`${id} (${n})`);
+  }
+  assert.deepEqual(unused, [], 'mechanics used fewer than twice');
+  for (const [id, b] of Object.entries(C.BOSSES)) assert.ok(b.arena.grapple.length >= 2, `${id} needs 2+ grapple points`);
+});

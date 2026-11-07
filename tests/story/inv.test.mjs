@@ -1,8 +1,10 @@
 // node tests/story/inv.test.mjs : the Tote Bag / quick bar / locker (shared/story/items.js) and the inventory sim system
 import assert from 'node:assert/strict';
 import { newInv, invAdd, invOp, invTake, cleanInv, kindOf, barWeapons, starterInv, count, INV, makeItem } from '../../shared/story/items.js';
+import { newSave } from '../../shared/story/save.js';
 import { createSim } from '../../shared/story/sim.js';
 import '../../shared/story/invsys.js';
+import '../../shared/story/bodysys.js'; // coupons
 import { cleanSave } from '../../shared/story/save.js';
 import { WEAPONS, ITEMS, STREAKS } from '../../shared/weapons.js';
 let n = 0; const t = (name, fn) => { fn(); n++; console.log('ok', name); };
@@ -47,7 +49,7 @@ t('clean a hand-edited inventory', () => {
   assert.deepEqual(cleanInv('junk').bag.length, INV.bag);
 });
 t('sim: starter, pick, drop, gear charges, eat, save round trip', () => {
-  const out = []; const sim = createSim({ send: (o) => out.push(o) });
+  const out = []; const sim = createSim({ send: (o) => out.push(o), save: newSave(0, 'story_test') });
   sim.msg({ t: 'join', name: 'x', item: 'frag' });
   const drops = out.find((o) => o.k === 'drops').list; assert.ok(drops.length >= 8);
   sim.msg({ t: 'sty', k: 'starter', lo: { primary: 'ar', secondary: 'pistol', melee: 'bread', item: 'medkit' } });
@@ -71,12 +73,12 @@ t('sim: starter, pick, drop, gear charges, eat, save round trip', () => {
   assert.deepEqual(sim2.inv.bar, sim.inv.bar); assert.equal(out2.find((o) => o.k === 'drops').list.length, Math.min(40, sim.drops.size), 'the floor comes back as it was (not seeded twice)');
 });
 t('dev give only with the dev flag', () => {
-  const out = []; const sim = createSim({ send: (o) => out.push(o) }); sim.msg({ t: 'join' });
+  const out = []; const sim = createSim({ send: (o) => out.push(o), save: newSave(0, 'story_test') }); sim.msg({ t: 'join' });
   sim.msg({ t: 'sty', k: 'give', b: 'minigun', slot: 2 }); assert.equal(count(sim.inv, 'minigun'), 0);
   sim.dev = true; sim.msg({ t: 'sty', k: 'give', b: 'minigun', slot: 2 }); assert.equal(barWeapons(sim.inv)[2], 'minigun');
 });
 t('floor loot survives a save (cap per zone, oldest first)', () => {
-  const out = []; const sim = createSim({ send: (o) => out.push(o) }); sim.msg({ t: 'join' });
+  const out = []; const sim = createSim({ send: (o) => out.push(o), save: newSave(0, 'story_test') }); sim.msg({ t: 'join' });
   const n0 = sim.drops.size; assert.ok(n0 > 5);
   sim.msg({ t: 'sty', k: 'save' }); const sv = cleanSave(out.at(-1).save).save;
   assert.equal(sv.data.floor.story_test.length, Math.min(40, n0));
@@ -88,3 +90,14 @@ t('floor loot survives a save (cap per zone, oldest first)', () => {
   assert.deepEqual(cleanSave({ ...sv, data: { ...sv.data, floor: { 'BAD ZONE': [], story_test: [{ item: { b: 'nope' }, p: [0, 0, 0] }, { item: { b: 'ar' }, p: [NaN, 1, 1] }] } } }).save?.data.floor ?? {}, {});
 });
 console.log(`${n} passed (+ floor)`);
+t('the story engine verbs: qgive / qtake / qcoupons', () => {
+  const out = []; const sim = createSim({ send: (o) => out.push(o), save: newSave(0, 'story_test') }); sim.msg({ t: 'join' });
+  sim.msg({ t: 'sty', k: 'qgive', b: 'soup_pot' }); assert.equal(count(sim.inv, 'soup_pot'), 1);
+  sim.msg({ t: 'sty', k: 'qgive', b: 'jank_cola', n: 4 }); assert.equal(count(sim.inv, 'jank_cola'), 4);
+  sim.msg({ t: 'sty', k: 'qtake', b: 'jank_cola', n: 3 }); assert.equal(count(sim.inv, 'jank_cola'), 1);
+  sim.msg({ t: 'sty', k: 'qtake', b: 'fridge' }); assert.equal(out.at(-1).k, 'qtakeFail');
+  sim.msg({ t: 'sty', k: 'qgive', b: 'not_a_thing' }); sim.msg({ t: 'sty', k: 'qgive', b: 5 });
+  const c0 = sim.save.coupons; sim.msg({ t: 'sty', k: 'qcoupons', n: 300 }); assert.equal(sim.save.coupons, c0 + 300);
+  sim.msg({ t: 'sty', k: 'qcoupons', n: -1e9 }); assert.equal(sim.save.coupons, c0 + 300, "can't go negative");
+});
+console.log(`${n} passed (+ engine verbs)`);

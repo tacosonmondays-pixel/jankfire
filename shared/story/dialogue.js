@@ -5,7 +5,7 @@
 // Every node you enter is a quest event { type: 'talk', npc, node }, so a goal can wait for a line to be heard.
 import { GOALS } from './quests.js';
 
-const saidKey = (npc, node, i) => `said.${npc}.${node}${i == null ? '' : '.' + i}`;
+const saidKey = (npc, node, i) => `${npc}.${node}${i == null ? '' : '.' + i}`; // (in st.said, not the flags)
 
 function normLine(l, npc) {
   if (typeof l === 'string') return { who: l.startsWith('*') ? '' : npc, t: l, act: l.startsWith('*') };
@@ -28,8 +28,8 @@ export function openTalk(S, npcId, nodeId = 'start') {
     // go: redirects checked on entry, first match wins ([[cond, node]] or [{ if, to }])
     if (n.go) for (const g of n.go) { const [c, to] = Array.isArray(g) ? g : [g.if, g.to]; if (S.test(c)) { if (to !== id) return enter(to, hops + 1); break; } }
     if (n.if && !S.test(n.if)) { T.end = true; return; }
-    const again = st.flags[saidKey(npcId, id)];
-    st.flags[saidKey(npcId, id)] = true;
+    const again = st.said[saidKey(npcId, id)];
+    st.said[saidKey(npcId, id)] = true;
     T.node = id; T.i = 0; T.opts = null; T.cam = n.cam || npc.cam || null; T.face = n.face || null;
     const L = again && n.again ? n.again : n.say || [];
     T.lines = L.map((l) => normLine(l, npcId)).filter((l) => !l.if || S.test(l.if));
@@ -44,7 +44,7 @@ export function openTalk(S, npcId, nodeId = 'start') {
   function arrive() {
     const n = npc.lines[T.node];
     if (!n || !n.opts) return;
-    T.opts = n.opts.map(normOpt).map((o, i) => ({ ...o, i })).filter((o) => (!o.if || S.test(o.if)) && !(o.once && st.flags[saidKey(npcId, T.node, o.i)]));
+    T.opts = n.opts.map(normOpt).map((o, i) => ({ ...o, i })).filter((o) => (!o.if || S.test(o.if)) && !(o.once && st.said[saidKey(npcId, T.node, o.i)]));
     if (!T.opts.length) T.opts = null;
   }
   T.line = () => T.lines[T.i] || null;
@@ -62,7 +62,7 @@ export function openTalk(S, npcId, nodeId = 'start') {
     if (!T.opts || T.i < T.lines.length - 1) return false;
     const o = T.opts[k];
     if (!o) return false;
-    st.flags[saidKey(npcId, T.node, o.i)] = true;
+    st.said[saidKey(npcId, T.node, o.i)] = true;
     T.history.push([T.node, o.i]);
     if (o.do) S.run(o.do, `answer ${npcId}/${T.node}`);
     if (o.to) enter(o.to); else { T.end = true; T.opts = null; }

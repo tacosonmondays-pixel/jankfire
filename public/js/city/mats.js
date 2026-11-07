@@ -74,6 +74,21 @@ function drawTile(g, fam, r) {
       for (let i = 0; i < 3; i++) vein(r() * S, r() * S, r() * 6.28, 18 + r() * 14, 2.4);
       break;
     }
+    case 'gumcobble': { // tooth cobbles set in wet gum: pink gum, rows of ivory teeth with dark gaps and a shine
+      line('rgb(214,96,128)', 0, 0, S, S);
+      for (let i = 0; i < 30; i++) line('rgba(120,20,60,0.3)', r() * S, r() * S, 2, 1);
+      // irregular cobbles: jittered rows, mixed sizes and tilts, packed tight (so it reads as teeth, not polka dots)
+      for (let row = 0; row < 6; row++) for (let c = 0; c < 6; c++) {
+        const w = 6 + r() * 6, h = 5 + r() * 5, x = c * 10.7 + (row % 2) * 5 + (r() - 0.5) * 3, y = row * 10.7 + (r() - 0.5) * 3, a = (r() - 0.5) * 0.8;
+        for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) {
+          g.fillStyle = 'rgba(70,10,30,0.55)'; g.beginPath(); g.ellipse(x + ox + 1, y + oy + 1.5, w / 2 + 0.5, h / 2 + 0.5, a, 0, 6.3); g.fill();
+          g.fillStyle = `rgb(${232 + r() * 18 | 0},${220 + r() * 20 | 0},${190 + r() * 28 | 0})`; g.beginPath(); g.ellipse(x + ox, y + oy, w / 2, h / 2, a, 0, 6.3); g.fill();
+          g.fillStyle = 'rgba(255,255,255,0.65)'; g.fillRect(x + ox - w / 4, y + oy - h / 4, 2, 1);
+          if (r() < 0.2) { g.fillStyle = 'rgba(150,110,60,0.45)'; g.fillRect(x + ox - 1, y + oy - h / 3, 1, h * 0.6); } // a crack, a cavity
+        }
+      }
+      break;
+    }
     case 'glass': line('#ccc', 0, 0, S, S); line('rgba(255,255,255,0.7)', 6, 6, 3, 30); line('rgba(255,255,255,0.5)', 12, 6, 1, 20); break;
     case 'glow': speck(245, 10, 4); break;
     default: speck(200, 30, 2);
@@ -136,7 +151,9 @@ function patch(mat, opts = {}) {
       float veins = smoothstep(0.55, 0.0, abs(sin(vWpos.x * 1.3 + sin(vWpos.y * 2.1 + uTime * 0.3) * 1.5 + vWpos.z * 0.9)));
       diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.55, 0.12, 0.25), veins * 0.45);
       diffuseColor.rgb *= 0.92 + 0.16 * uBeat;` : ''}
-      ${opts.glowWin ? 'diffuseColor.rgb *= mix(0.55, 1.15, uNight);' : ''}`);
+      ${opts.glowWin ? `diffuseColor.rgb *= mix(0.55, 1.15, uNight);
+      { float id = floor(vWpos.x * 0.4) + floor(vWpos.z * 0.4) * 7.0 + floor(vWpos.y * 0.5) * 13.0; // one sign in eight is on the blink
+        if (fract(sin(id * 12.9898) * 43758.5453) > 0.875) diffuseColor.rgb *= 0.25 + 0.75 * step(0.35, fract(sin(floor(uTime * 9.0 + id) * 78.233) * 43758.5)); }` : ''}`);
     if (opts.horizon) fs = fs.replace('#include <dithering_fragment>', `#include <dithering_fragment>
       { float d = length(vWpos.xz - cameraPosition.xz); float hz = 0.45 + 0.5 * smoothstep(300.0, 1700.0, d);
         gl_FragColor.rgb = mix(gl_FragColor.rgb, uHaze, hz); }`);

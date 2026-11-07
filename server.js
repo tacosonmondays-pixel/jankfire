@@ -274,6 +274,10 @@ if (process.env.JF_ZM_CREDITS) ZM.start = Number(process.env.JF_ZM_CREDITS) || Z
 if (process.env.JF_ZM_REST) ZM.rest = ZM.first = Number(process.env.JF_ZM_REST) || ZM.rest;
 if (process.env.JF_ZM_SWIPE) ZM.swipe = Number(process.env.JF_ZM_SWIPE); // 0 = zombies can't hurt you (UI tests)
 if (process.env.JF_ZM_BLEED) ZM.bleed = Number(process.env.JF_ZM_BLEED) || ZM.bleed;
+if (process.env.JF_ZM_DROP) ZM.dropMul = Number(process.env.JF_ZM_DROP) || 1; // x drop chance (tests: 99 = every kill drops, still capped a round)
+if (process.env.JF_ZM_DROPCAP) ZM.dropCap = Number(process.env.JF_ZM_DROPCAP) || ZM.dropCap;
+if (process.env.JF_ZM_MACHCD) ZM.machCd = Number(process.env.JF_ZM_MACHCD);
+if (process.env.JF_ZM_MACHSPIN) ZM.machSpin = Number(process.env.JF_ZM_MACHSPIN) || ZM.machSpin; // ms the cheat machine rolls for (screenshots)
 // test knobs: JF_BOTCHAT_GAP=ms between bot chat lines in a room (default 6-8 s), JF_BOTCHAT_ALL=1 skips the chance roll
 const BOTCHAT_KNOBS = { ...(Number(process.env.JF_BOTCHAT_GAP) >= 0 && process.env.JF_BOTCHAT_GAP ? { gap: [Number(process.env.JF_BOTCHAT_GAP), Number(process.env.JF_BOTCHAT_GAP)] } : {}), ...(process.env.JF_BOTCHAT_ALL ? { all: true } : {}) };
 const GRAPH_TTL = (Number(process.env.JF_GRAPH_TTL) || 10) * 60e3; // test knob: minutes a map's bot walk graph outlives the last room on it (then it's dropped, server/graphs.js)
@@ -523,6 +527,7 @@ class Room {
     p.grap = ownedGrapple(m.grap, inv);
     p.kc = !!m.kc;
     p.item = has(ITEMS, m.item) ? m.item : 'frag'; // the client confirms it with 'itemsel' right after 'welcome'
+    this.zxSetLoadout(p, m.zl); // zombies loadout: start pistol, item, passive (server/zmextra.js checks it)
     if (process.env.JF_WATCH && name.startsWith('watch')) { p.watch = true; p.alive = false; p.hp = 0; p.respawnAt = p.minRespawnAt = Infinity; } // test knob: a ws observer for bots-only matches (never a fighter)
     if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && has(GAMES, m.cfg.game) && !this.humans().length && !this.lobby) this.setGame(m.cfg.game);
     if (this.mode === 'bots' && !this.humans().length && !this.lobby && !this.map.zm !== !GAMES[this.game].zombies) this.setGame(this.map.zm ? 'zm' : this.game); // the zombie map only with zombies
@@ -781,7 +786,7 @@ class Room {
     }
     if (goal && goal.tac) [wx, wz] = this.econAiHold(b, goal, t, wx, wz, dt); // Plant & Defuse: hold an angle, watch it
     // grappling: chase people who are far / up high / out of sight, save yourself when falling, show off sometimes
-    if (!ai.hook && n >= (ai.nextHook || 0) && this.mode !== 'training' && !this.hookOff()) {
+    if (!ai.hook && n >= (ai.nextHook || 0) && this.mode !== 'training' && !this.hookOff() && (!this.brOn || this.brHookReady(b))) { // (jank royale: grapple charges)
       const skill = ai.diff === 'easy' ? 0.35 : ai.diff === 'hard' ? 1 : 0.7;
       const below = !b.onGround && !raycast([b.pos[0], b.pos[1] + 0.5, b.pos[2]], [0, -1, 0], 40, boxes);
       let want = null;
@@ -800,7 +805,7 @@ class Room {
       if (want) {
         const l = Math.hypot(...want) || 1, d = want.map((v) => v / l), e = eyeOf(b);
         const h = raycast(e, d, HOOK.range, boxes);
-        if (h && h.t > 6 && h.point[1] > b.pos[1] - 1 && (this.map.ceiling == null || h.point[1] < this.map.ceiling - 1.5)) { ai.hook = { point: h.point, len: h.t, until: n + 2600 }; b.g = h.point; } // (not up over a map's ceiling: that's out of bounds)
+        if (h && h.t > 6 && h.point[1] > b.pos[1] - 1 && (this.map.ceiling == null || h.point[1] < this.map.ceiling - 1.5)) { ai.hook = { point: h.point, len: h.t, until: n + 2600 }; b.g = h.point; if (this.brOn) this.brHookUse(b); } // (not up over a map's ceiling: that's out of bounds)
       }
     }
     if (ai.hook) jump = false;
@@ -1105,6 +1110,7 @@ class Room {
   // (the client's applyLoadout rule; its 5 s start when 'spawn' reaches it, so allow one round trip more)
   selectItem(p, id) {
     if (!has(ITEMS, id)) return;
+    if (this.zm && p.z && p.zl) { if (p.zPrevItem != null) p.zPrevItem = id; id = p.zl.item; } // zombies: your zombies item (your pick comes back after)
     if (id === p.item) p.nextItem = null;
     else if (!p.alive || now() - p.spawnT < 5000 + Math.min(1000, (p.ws && p.ws.rtt) || 250)) {
       // what you already used this life stays used: swapping doesn't hand out fresh charges
@@ -2934,7 +2940,7 @@ class Room {
       }
       case 'deploy': { // use a killstreak from your tray (aimed ones land where you looked)
         if (this.chaosKit && this.chaosKit.noStreaks) break;
-        if (this.zm) break; // zombies: no killstreaks, not even ones carried over
+        if (this.zm && !p.zmDeploy) break; // zombies: no killstreaks, not even ones carried over (only drops set them off)
         const i = (p.pocket || []).indexOf(m.r);
         const at = vec3(m.at);
         if (i < 0 || !p.alive || !has(STREAKS, m.r)) break;
@@ -3005,6 +3011,7 @@ class Room {
       case 'nv': this.onNv(p, m); break; // night vision goggles on / off
       case 'spray': this.onSpray(p, m); break;
       case 'itemsel': this.selectItem(p, m.i); break;
+      case 'zload': if (now() - (p.zloadT || 0) > 300 && !tooDeep(m.zl, 3)) { p.zloadT = now(); this.zxSetLoadout(p, m.zl); } break; // zombies loadout: used from your next zombies game
       case 'ready': if (this.warm) this.onReady(p, m); break; // mode lobby: READY (everyone ready = 5 s)
       case 'vote': { // a vote is for the stage that's open now (s, when sent, must match it). one that comes too soon after
         // the last is kept and counted once the 250 ms are up, so the card you see marked is always the one that counts

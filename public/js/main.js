@@ -60,8 +60,9 @@ import { account, restore, login, register, logout, saveProfile, leaderboard as 
 import { updateRig, rigDied, rigOn } from './rig.js';
 import { rigClash } from '/shared/rig.js'; // overdrive rig killstreak
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
-import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset } from './royale.js'; // jank royale
+import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset, brOn, brInvOpen, brInvToggle } from './royale.js'; // jank royale
 import { brActive } from './royale.js';
+import { BR } from '/shared/royale.js'; // (the grapple charges, for the help text)
 import { initMinimap, minimapFrame } from './minimap.js'; // the HUD minimap (SAT-NAV)
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { ecoKeyLabel } from './econ.js';
@@ -90,6 +91,9 @@ import { containerPic, playContainer, stopContainer } from './crate3d.js'; // co
 import { hubTabs } from './hub.js'; // the CUSTOMIZE hub's tabs (loadout / weapons / character / grapple & spray)
 import { initCustomize, czMode, czOpen, czClose, czFrame, czKill, czLate, czRefresh, czRolled, resolveRand, wantSkins, myFavs } from './customize.js'; // the weapon customize screen (replaces COSMETICS)
 import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, zmModelsLoaded } from './zombies.js';
+import { zxHurt } from './zmextra.js'; // zombies: which way the claws came from
+import { zlWant } from './zmloadout.js'; // your zombies loadout
+let story = null; // OVERDUE's story engine (WP8: quests, talk, cutscenes), loaded with the story flag below. null = every hook is a no-op
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
@@ -110,7 +114,7 @@ const SYNC_KEYS = ['jank', 'sens', 'adsSens', 'vol', 'fov', 'swapAim', 'toggleAi
 function profileData() {
   const settings = {};
   for (const k of SYNC_KEYS) settings[k] = G.settings[k];
-  return { loadout: G.settings.loadout, skins: G.settings.skins, look: G.settings.look, card: G.settings.card || '', kfx: G.settings.kfx || 'none', grap: G.settings.grap || 'rope', favs: G.settings.favs || undefined, wk: G.settings.wk || undefined, settings };
+  return { loadout: G.settings.loadout, skins: G.settings.skins, look: G.settings.look, card: G.settings.card || '', kfx: G.settings.kfx || 'none', grap: G.settings.grap || 'rope', favs: G.settings.favs || undefined, wk: G.settings.wk || undefined, zload: G.settings.zload || undefined, settings };
 }
 function saveSettings() {
   try { localStorage.setItem('jankfire', JSON.stringify(G.settings)); } catch { /* whatever */ }
@@ -164,6 +168,7 @@ initHome({
 // OVERDUE story mode: hidden until the owner approves the slice (?story=1 or localStorage jfStory=1)
 const storyFlag = () => { try { return new URLSearchParams(location.search).get('story') === '1' || localStorage.getItem('jfStory') === '1'; } catch { return false; } };
 if (storyFlag()) import('./story/main.js').then((m) => m.initStory({ startMode, quitToMenu: () => quitToMenu(), toast: (t, ms) => toast(t, ms) })).catch((e) => console.error('story mode failed to load', e));
+if (storyFlag()) import('./story/boot.js').then((m) => { story = m; return m.init(); }).catch((e) => console.error('story engine failed to load', e));
 initLobby({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), send: (m) => net.send(m), map: () => G.cfg && G.cfg.map });
 initEcon({ pause: () => { if (document.pointerLockElement) document.exitPointerLock(); pause(); }, lock }); // Plant & Defuse economy
 
@@ -247,7 +252,7 @@ function startMode(mode, cfg, mkSocket) { // mkSocket: story mode's local transp
   if (G.joined) quitToMenu(true);
   connecting = true;
   $('status').textContent = 'connecting...';
-  net.connect({ name: G.settings.name, mode, skins: wantSkins(), favs: myFavs(), look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), grap: myGrapple(), kc: G.settings.killcam !== false, streaks: validStreaks(S.loadout.streaks), item: S.loadout.item, cfg, token: account.loggedIn ? account.token : undefined }, () => {
+  net.connect({ name: G.settings.name, mode, skins: wantSkins(), favs: myFavs(), look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), grap: myGrapple(), kc: G.settings.killcam !== false, streaks: validStreaks(S.loadout.streaks), item: S.loadout.item, zl: zlWant(), cfg, token: account.loggedIn ? account.token : undefined }, () => {
     connecting = false;
     resetWorldState();
     show('main');
@@ -335,7 +340,7 @@ let wasLocked = false, lockedAt = 0, mouseAvg = 8;
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === canvas;
   if (locked) { lockedAt = performance.now(); esHideClick(); }
-  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull() && !econMenuOpen() && !(G.story && G.story.uiOpen())) pause(); // the end screen lets go of the mouse on purpose
+  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull() && !econMenuOpen() && !brInvOpen() && !(G.story && G.story.uiOpen())) pause(); // the end screen lets go of the mouse on purpose
   wasLocked = locked;
 });
 canvas.addEventListener('click', () => { if (G.joined && document.pointerLockElement !== canvas && $('menu').classList.contains('hidden')) lock(); });
@@ -487,12 +492,12 @@ function renderKeyHints() {
   $('keyHint').textContent = `${mvs} move · ${L('sprint')} run · ${K.labels('crouch').toUpperCase()} crouch (slide when fast) · `
     + `${L('jump')} jump (hold to bhop, jump while grappling to launch) · ${L('aim')} aim · ${L('grapple')} grapple · ${L('reload')} reload · ${L('use')} inspect · `
     + `${L('slot1')} ${L('slot2')} ${L('slot3')} switch · ${L('item')} use item · ${L('streak1')} ${L('streak2')} ${L('streak3')} use killstreaks · ${L('spray')} spray · `
-    + `${L('dash')}/${L('scythe')} scythe · ${L('menu')} menu · ${L('scores')} scores · ${L('chat')} chat · /skip in chat votes to skip the match`;
+    + `${L('dash')}/${L('scythe')} scythe · ${L('menu')} menu · ${L('scores')} scores (jank royale: backpack, ${L('brScores')} scores) · ${L('chat')} chat · /skip in chat votes to skip the match`;
   $('gMove').innerHTML = `${B(mvs)} move · ${B(L('sprint'))} run · ${B(K.labels('crouch').toUpperCase())} crouch, slide when fast · ${B(L('jump'))} jump (hold to bhop)`;
   $('gHook').innerHTML = `${B(L('grapple'))} grapple · jump while grappling to launch. momentum is infinite. use it irresponsibly.`;
   $('gFight').innerHTML = `${B(L('fire'))} shoot · ${B(L('aim'))} aim · ${B(L('parry'))} katana parry · ${B(L('reload'))} reload · ${B(L('use'))} inspect · ${B(`${L('slot1')} ${L('slot2')} ${L('slot3')}`)} switch · ${B(L('lastSlot'))} last weapon`;
   $('gItems').innerHTML = `${B(L('item'))} item · ${B(L('nvgFlash'))} goggles flash · ${B(`${L('streak1')} ${L('streak2')} ${L('streak3')}`)} killstreaks · ${B(`${L('dash')} / ${L('scythe')}`)} scythe · ${B(L('spray'))} spray`;
-  $('gElse').innerHTML = `${B(L('menu'))} menu · ${B(L('scores'))} scores · ${B(L('chat'))} chat`;
+  $('gElse').innerHTML = `${B(L('menu'))} menu · ${B(L('scores'))} scores · ${B(L('chat'))} chat · jank royale: ${B(L('scores'))} backpack, ${B(L('brScores'))} scores, the grapple has ${BR.hook.charges} charges`;
   $('gEcon').innerHTML = `plant &amp; defuse: ${B(ecoKeyLabel('buy'))} buy · ${B(ecoKeyLabel('drop'))} drop what you hold · ${B(L('grapple'))} pick up · ${B(L('sprint'))} slow walk (silent) · stand still to shoot straight`;
   $('voteKeys').textContent = VOTES.map(K.label).join(' ');
   $('gLore').innerHTML = `${B(L('use'))} next to someone talks to them. some people are hidden around the maps, and so is the board of directors (${B(L('use'))} to pet). what you find goes in ${B('LORE')}.`; // hidden NPCs + cats (lore.js)
@@ -1061,10 +1066,12 @@ addEventListener('keydown', (e) => {
 // a key or a mouse button went down in game. every check goes through the bindings (keys.js), so any action works on either
 function pressed(e) {
   if ((RP.active || G.killcamPending) && K.matches('skip', e)) { e.preventDefault(); skipReplay(); return; }
+  if (story && story.key(e)) { e.preventDefault(); return; } // story mode: talk, pick up, cutscene skip, the codex
   if (esKey(e, VOTES.findIndex((a) => K.matches(a, e)))) { e.preventDefault(); return; } // end screen: the vote keys win over any game action on the same key, arrows switch tabs
   if (brKey(e)) return; // jank royale: F pick up, H heal, space spectates the next one
   if (loreKey(e, canUse(G.round, ME.pos))) { e.preventDefault(); return; } // the use key next to a hidden NPC / cat (not where it plants, defuses or buys), 1-3 answer in a chat
-  if (K.matches('scores', e)) { e.preventDefault(); scoresOpen = true; renderScores(); return; }
+  if (brOn() && K.matches('scores', e) && !e.repeat && brInvToggle(lock)) { e.preventDefault(); return; } // jank royale: the scores key opens your backpack (alive)
+  if (K.matches(brOn() && ME.alive ? 'brScores' : 'scores', e)) { e.preventDefault(); scoresOpen = true; renderScores(); return; } // (royale: its own key)
   if (K.matches('chat', e)) { e.preventDefault(); openChat(); return; }
   if (K.matches('menu', e)) { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
   if (G.story && G.story.key(e, true)) return; // OVERDUE (flagged): quick bar 1-8, the wheel, the tote bag, pick up
@@ -1107,7 +1114,7 @@ function released(e) {
   lassoKey(e, false);
   if (K.up('use', e)) stopUse();
   if (K.up('dash', e)) W.dashHeld = false;
-  if (K.up('scores', e)) { scoresOpen = false; hud.scores(false); }
+  if (K.up(['scores', 'brScores'], e)) { scoresOpen = false; hud.scores(false); }
   if (K.up('grapple', e)) releaseHook();
   if (K.up('fire', e)) fireUp();
   if (K.up('aim', e)) aimUp();
@@ -1135,6 +1142,7 @@ addEventListener('mousemove', (e) => {
   if (G.story && G.story.look(e)) return; // the weapon wheel steers with the mouse
   if (performance.now() < (G.spinUntil || 0)) return; // the aimbot has the wheel
   if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor: no looking around either
+  if (story && story.locked()) return; // story mode: talking / a cutscene has the camera
   const s = 0.0022 * S.sens * (W.aim > 0.5 ? S.adsSens / W.zoom : 1);
   const mx = e.movementX, my = e.movementY;
   // Chrome's pointer lock sometimes reports one giant fake jump (often the wrong way) when you move far or fast.
@@ -1492,6 +1500,7 @@ net.on('dmg', (m) => {
     hud.hp(ME.hp);
     hud.hurt(m.a);
     if (m.hs) sfx.headshotTaken(m.ko); else sfx.hurt();
+    zxHurt(m); // zombies: an arrow toward whatever clawed you
     if (m.w === 'cig') G.burnUntil = performance.now() + 600;
   }
   if (target) {
@@ -1837,7 +1846,7 @@ function frame(t) {
   if (G.joined) {
     const frozen = now < (ME.frozenUntil || 0) || now < (ME.quizUntil || 0) || secFrozen(now); // (pens down: no walking out of a pop quiz; tased, paused, jailed)
     if (frozen) { ME.vel[0] = 0; ME.vel[2] = 0; if (ME.hook) releaseHook(); }
-    const playing = $('menu').classList.contains('hidden') && !chatOpen && now >= (ME.sleepUntil || 0) && !RP.active && !G.using && !frozen;
+    const playing = $('menu').classList.contains('hidden') && !chatOpen && now >= (ME.sleepUntil || 0) && !RP.active && !G.using && !frozen && !(story && story.locked());
     const inp = playing ? {
       f: K.isDown('forward'), b: K.isDown('back'), l: K.isDown('left'), r: K.isDown('right'), jump: K.isDown('jump'), jumpPressed,
       sprint: K.isDown('sprint'),
@@ -2053,6 +2062,7 @@ function frame(t) {
   updateCrosses(dt, RP.active ? (RP.sp || 1) * (RP.dt != null && dt > 0 ? RP.dt / dt : 1) : 1); // after the projectile loop + replay: it turns blood bolts nose-first
   G.vmScene.visible = G.joined && !RP.active && !specCam && !asleep && !econHideVM();
   if (ballOn(now)) G.vmScene.visible = false; // weapons are holstered inside the ball
+  if (story) story.frame(dt, now, cam); // story mode: actors, quests, the talk cam, cutscenes
   renderFrame();
   if ((screen === 'character' || (screen === 'main' && heroTick(dt))) && !$('menu').classList.contains('hidden')) renderPreview(heroDt || dt); // (grapple & spray has no weapon preview any more)
   if (screen === 'cosmetics' && !$('menu').classList.contains('hidden')) renderGrapplePreview(dt);
@@ -2418,6 +2428,7 @@ function onLoggedIn(me, fresh) {
     if (typeof prof.grap === 'string') G.settings.grap = prof.grap;
     if (prof.favs && typeof prof.favs === 'object') G.settings.favs = prof.favs;
     if (prof.wk && typeof prof.wk === 'object') G.settings.wk = prof.wk;
+    if (prof.zload && typeof prof.zload === 'object') G.settings.zload = prof.zload; // the zombies loadout (zmloadout.js checks it)
     Object.assign(G.settings, prof.settings || {});
     try { localStorage.setItem('jankfire', JSON.stringify(G.settings)); } catch { /* fine */ }
     applySettingsToUI();

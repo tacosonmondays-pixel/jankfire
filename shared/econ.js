@@ -106,7 +106,7 @@ export const FALLBACK = {
 const has = (T, k) => typeof k === 'string' && Object.hasOwn(T, k);
 const row = (id) => (has(PRICES, id) ? PRICES[id] : null);
 // can this weapon be bought / held in this mode at all? (loadout slots only: no streak, hidden or item weapons)
-export function econWeapon(id) { return has(WEAPONS, id) && SLOTS.includes(WEAPONS[id].slot); }
+export function econWeapon(id) { return has(WEAPONS, id) && SLOTS.includes(WEAPONS[id].slot) && SD.weapons.has(id); } // (SD: the tight arsenal, end of file)
 export function weaponPrice(id) {
   if (!econWeapon(id)) return null;
   const r = row(id);
@@ -137,20 +137,19 @@ export function ammoSpec(id) {
   return null;
 }
 export function itemSpec(id) {
-  if (!has(ITEMS, id)) return null;
+  if (!has(ITEMS, id) || !SD.items.has(id)) return null;
   const r = has(ITEM_PRICES, id) ? ITEM_PRICES[id] : { price: FALLBACK.item.price, limit: Math.max(1, Math.min(2, ITEMS[id].charges || FALLBACK.item.limit)) };
   return { price: r.price, limit: r.limit };
 }
 // everything in the buy menu, in menu order: { k: 'w' | 'i' | 'g', id, slot, price, name }
 export function buyList() {
   const out = [];
-  for (const slot of SLOTS) for (const id of Object.keys(WEAPONS)) {
-    if (WEAPONS[id].slot !== slot || WEAPONS[id].modeOnly) continue; // the spoon is mode-only
+  for (const [cat, , ids] of SD.cats) for (const id of ids) {
+    if (cat === 'gear') { if (has(GEAR, id)) out.push({ k: 'g', id, slot: 'gear', cat, price: GEAR[id].price, name: GEAR[id].name }); continue; }
+    if (cat === 'item') { const s = itemSpec(id); if (s) out.push({ k: 'i', id, slot: 'item', cat, price: s.price, limit: s.limit, name: ITEMS[id].name }); continue; }
     const price = weaponPrice(id);
-    if (price != null) out.push({ k: 'w', id, slot, price, name: WEAPONS[id].name, kill: killReward(id), ammo: ammoSpec(id) });
+    if (price != null && !WEAPONS[id].modeOnly) out.push({ k: 'w', id, slot: WEAPONS[id].slot, cat, price, name: WEAPONS[id].name, kill: killReward(id), ammo: ammoSpec(id) });
   }
-  for (const id of Object.keys(ITEMS)) { const s = itemSpec(id); out.push({ k: 'i', id, slot: 'item', price: s.price, limit: s.limit, name: ITEMS[id].name }); }
-  for (const id of Object.keys(GEAR)) out.push({ k: 'g', id, slot: 'gear', price: GEAR[id].price, name: GEAR[id].name });
   return out;
 }
 // the price of a gear id for someone with this armor / helmet / kit right now (null = nothing to buy)
@@ -170,3 +169,46 @@ Object.assign(PRICES, {
   remote: { price: 700, kill: 1100, shots: 14 },
 });
 ITEM_PRICES.radar = { price: 350, limit: 2 };
+
+// ------------------------------------------------------------ the Search & Destroy arsenal (owner, 2026-11-06)
+// a tight, CS-style shop: only the real guns, three kinds of utility, the knife for free. nothing else can be bought,
+// held, dropped or handed out in the economy (econWeapon / itemSpec say no to the rest). Quick Play and Royale keep everything
+// cats: the buy menu's columns, in order (slot 'item' / 'gear' rows come from ITEM_PRICES / GEAR)
+export const SD = {
+  cats: [
+    ['side', 'SIDEARMS', ['pistol', 'sawnoff', 'akimbo', 'revolver']],
+    ['smg', 'SMGS', ['smg', 'redline']],
+    ['shot', 'SHOTGUNS', ['shotgun', 'autoshot']],
+    ['rifle', 'RIFLES', ['lever', 'burst', 'ar']],
+    ['snipe', 'SNIPERS + LMG', ['dmr', 'sniper', 'lmg']],
+    ['item', 'UTILITY', ['nvg', 'smoke', 'frag']],
+    ['gear', 'ARMOUR', ['vest', 'helm', 'kit']],
+  ],
+};
+SD.weapons = new Set([...SD.cats.filter((c) => c[0] !== 'item' && c[0] !== 'gear').flatMap((c) => c[2]), 'knife']);
+SD.items = new Set(SD.cats.find((c) => c[0] === 'item')[2]);
+SD.catOf = Object.fromEntries(SD.cats.flatMap(([k, , ids]) => ids.map((id) => [id, k])));
+// the starting kit: Plan B in the holster, the knife in your boot (free, never sold, never dropped)
+Object.assign(ECON, { defaultSecondary: 'pistol', defaultMelee: 'knife' });
+// CS-ish money: a win pays for a rifle + armour, losing climbs to a full buy by the fourth loss in a row
+Object.assign(ECON, { win: { elim: 3000, time: 3000, defused: 3300, exploded: 3300 }, loss: [1400, 1900, 2400, 2900, 3400] });
+// prices and kill rewards: cheap guns pay more per kill (eco frags matter), the big sniper pays the least
+Object.assign(PRICES, {
+  pistol: { price: 200, kill: 300, pen: 0.35, mags: 3 }, // the starter (free at the start of a half and after dying)
+  sawnoff: { price: 300, kill: 600, pen: 0, mags: 3 }, // the pocket shotgun
+  akimbo: { price: 500, kill: 300, pen: 0.1, mags: 2 },
+  revolver: { price: 700, kill: 300, pen: 0.6, mags: 4 }, // the hand cannon
+  smg: { price: 1250, kill: 600, pen: 0.15, mags: 3 },
+  redline: { price: 1600, kill: 600, pen: 0.2, mags: 3 },
+  shotgun: { price: 1100, kill: 900, pen: 0, mags: 4 },
+  autoshot: { price: 2000, kill: 900, pen: 0, mags: 3 },
+  lever: { price: 1800, kill: 300, pen: 0.45, mags: 4 },
+  burst: { price: 2250, kill: 300, pen: 0.35, mags: 3 },
+  ar: { price: 2900, kill: 300, pen: 0.35, mags: 3 },
+  dmr: { price: 2500, kill: 300, pen: 0.65, mags: 3 },
+  sniper: { price: 4700, kill: 100, pen: 0.85, mags: 3 },
+  lmg: { price: 3200, kill: 300, pen: 0.3, mags: 1 },
+  knife: { price: null, kill: 1500, pen: 0.5 }, // free melee: a knife kill is the big flex
+});
+// utility: the goggles are the flash (each buy = one flash, the goggles stay on your face), one smoke, one frag
+Object.assign(ITEM_PRICES, { nvg: { price: 200, limit: 2 }, smoke: { price: 300, limit: 1 }, frag: { price: 300, limit: 1 } });

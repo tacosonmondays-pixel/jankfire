@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
   pg.on('pageerror', (e) => errs.push('PAGEERR ' + e.message + ' ' + (e.stack || '').split('\n')[1]));
   pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
   await pg.addInitScript(() => { localStorage.setItem('jankfire', JSON.stringify({ name: 'wp4', jank: 3, loadout: { primary: 'ar', secondary: 'pistol', melee: 'knife', item: 'frag' } })); if (!sessionStorage.getItem('w4')) { sessionStorage.setItem('w4', 1); localStorage.removeItem('jfStorySaves'); } });
-  await pg.goto(`http://localhost:${PORT}/?story=1&storydev=1`); await sleep(1500);
+  await pg.goto(`http://localhost:${PORT}/?story=1&storydev=1&storytest=1`); await sleep(1500);
   await pg.click('#storyBtn', { force: true }); await sleep(700); await pg.click('#storyPick .st-btn.yellow', { force: true }); await sleep(3500);
   const tp = (p, yaw = 0, pitch = 0) => pg.evaluate(async ([p, yaw, pitch]) => { const { ME } = await import('/js/player.js'); ME.pos = p.slice(); ME.vel = [0, 0, 0]; ME.yaw = yaw; ME.pitch = pitch; }, [p, yaw, pitch]);
   // the row of rarities by the north wall (z = -24): stand back and look at it
@@ -45,7 +45,7 @@ const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
   await pg.keyboard.press('KeyB'); await sleep(600); await pg.click('#quit', { force: true }); await sleep(3500);
   // reload the page: the premium still has its seed, brand, mods
   await pg.keyboard.press('KeyB'); await sleep(800); await pg.click('#quit', { force: true }); await sleep(1000);
-  await pg.goto(`http://localhost:${PORT}/?story=1&storydev=1`); await sleep(1500);
+  await pg.goto(`http://localhost:${PORT}/?story=1&storydev=1&storytest=1`); await sleep(1500);
   await pg.click('#storyBtn', { force: true }); await sleep(700); await pg.click('#storyPick .st-btn.yellow', { force: true }); await sleep(3500);
   const back = await pg.evaluate(async () => { const { IV } = await import('/js/story/bar.js'); return IV.inv.bag.find((x) => x && x.r === 'premium') || null; });
   console.log('after reload', JSON.stringify(back), 'same', JSON.stringify({ ...back, u: 0 }) === JSON.stringify({ ...r.it, u: 0 }));
