@@ -7,7 +7,7 @@ Start with [CANON.md](CANON.md): the timeline, why Change is free, the six pages
 | file | what | size |
 |---|---|---|
 | [CAST.md](CAST.md) | the cast bible: 54 characters | 18636 words |
-| [ACT_1.md](ACT_1.md) | Act 1: "Please Take Your Item": 5 missions | 8578 words |
+| [ACT_1.md](ACT_1.md) | Act 1: "Please Take Your Item": 5 missions | 8582 words |
 | [ACT_2.md](ACT_2.md) | Act 2: "Hostile Takeovers": 12 missions | 14161 words |
 | [ACT_3.md](ACT_3.md) | Act 3: "Off the Clock": 8 missions | 9607 words |
 | [ACT_4.md](ACT_4.md) | Act 4: "Quarterly Review": 5 missions | 5887 words |
@@ -20,7 +20,7 @@ Start with [CANON.md](CANON.md): the timeline, why Change is free, the six pages
 | [../MECHANICS.md](../MECHANICS.md) | the mechanics bible: 47 mechanics, the grapple, coverage | 9127 words |
 | [COLLECTIBLES.md](COLLECTIBLES.md) | 69 collectibles in 6 sets | 3189 words |
 
-**Total: about 121k words, 32 main missions, 33 scenes.**
+**Total: about 121k words, 32 main missions, 36 scenes.**
 
 ## Main story at a glance
 

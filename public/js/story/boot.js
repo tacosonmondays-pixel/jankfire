@@ -16,6 +16,7 @@ import * as lab from '/shared/story/content/test/lab.js';
 import * as overdue from '/shared/story/content/overdue.js'; // the full script, as an engine pack (PR #76)
 import { PLACES } from '/shared/city/slice.js'; // the world lane's real spots for the script's zones (the slice city)
 import { actors, spawnActor, despawnActor, clearActors, updateActors, dropTo, play } from './actors.js';
+import { otFrame } from './overtime.js'; // (mr. overtime's clips, marks, damage and fx)
 import { startTalk, talkKey, talkFrame, talking } from './talk.js';
 import { questHud, card as card0, toast } from './questhud.js';
 import { toggleCodex, codexOpen } from './codex.js';
@@ -29,6 +30,7 @@ const card = (...a) => { if (locked()) cardQ.push(a); else card0(...a); };
 export const ST = { S: null, slot: 0, bag: new Set(), staged: '', anchor: [0, 0, 0], things: new Map(), inZone: new Set(), kills: 0, saveT: 0, ready: false, scene: null };
 // the content: the script (default), or the small engine lab (?lab=1, and always on the Training range ?storylab=1)
 export const LAB = /[?&](lab|storylab)=1\b/.test(location.search);
+const OTPREV = /[?&]otpreview=1\b/.test(location.search);
 const PACKS = LAB ? [lab] : [overdue];
 
 function merge(packs) {
@@ -54,6 +56,7 @@ export async function init() {
   ST.where = where; ST.offYaw = (y) => offYaw(y);
   window.JF_STORY = ST; // (tests drive it from here)
   try { const sc = await import('./scene.js'); ST.scene = sc; sc.initScenes(ST); } catch (e) { console.warn('story scenes not loaded', e); }
+  try { const bf = await import('./bossfight.js'); ST.boss = bf.makeBoss(ST, { where, playScene: (id, o) => ST.scene && ST.scene.playScene(id, o) }); } catch (e) { console.warn('boss hooks not loaded', e); } // (phases, cutscenes, the boss's poses)
 }
 
 // ---------------------------------------------------------------- the host: what the engine asks the world to do
@@ -289,6 +292,9 @@ export function frame(dt, now, cam) {
     if (inStory() && (ST.syncT = (ST.syncT || 0) + dt) > 2) { ST.syncT = 0; sync(); } // (the shell's own auto / pause saves get it too)
     if (!LAB && (ST.rT = (ST.rT || 0) + dt) > 0.25) { ST.rT = 0; roster(e); spots(); }
     updateActors(dt * (ST.slowmo ?? 1), now, e);
+    otFrame(dt * (ST.slowmo ?? 1), cam);
+    if (ST.boss && (ST.bT = (ST.bT || 0) + dt) > 0.25) { ST.bT = 0; ST.boss.frame(); }
+    if (OTPREV) { if (!ST.otPrev) { ST.otPrev = import('./otpreview.js').then((m) => { m.start(); ST.otPrevM = m; }); } else if (ST.otPrevM) ST.otPrevM.previewFrame(dt * (ST.slowmo ?? 1)); } // (?otpreview=1: overtime's rehearsal)
     if (ST.talkQ && ST.talkQ.length && !talking()) { const [n, node] = ST.talkQ.shift(); startTalk(ST.S, n, node, () => save('talk')); }
     S.tick(dt);
     // zones: walking in / out
