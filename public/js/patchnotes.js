@@ -1,6 +1,12 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '6.4', date: '2026-11-07', title: 'WATER IS WET NOW', items: [
+    'real water everywhere: waves sized to the pool or sea, a swell on the open sea, foam where it meets the shore, sky reflections, sun sparkles, and light wobbling on pool floors.',
+    'splashes when anything hits water (you, bots, gibs, grenades, bullets, explosions). shallow water slows you down and goes shlp shlp. falling in the sea still means sleeping with the fishes.',
+    'lava actually flows now: a cracking crust drifting over the glow, bubbles that pop into embers (islands volcano + floor is lava).',
+    'fire actually burns: animated flames, smoke and embers with a flickering light on burning cars and the oil rig flare. platform has an oil slick, the bazaar dye vats are real dye.',
+  ] },
   { v: '6.3', date: '2026-11-07', title: 'TACTICAL MODE (ALLEGEDLY)', items: [
     'PLANT & DEFUSE is 5v5 now. bots fill the empty spots, and a real player takes a bot\'s place. matches are 15 rounds at most: first to 8, sides swap after round 7, 7-7 goes to a decider.',
     'P&D gunplay works like a proper tactical shooter: the first shot standing still is near-perfect, every shot after it blooms, and each gun has its own spray pattern. tap and burst, don\'t hold.',
