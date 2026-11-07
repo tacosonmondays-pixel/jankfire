@@ -77,10 +77,16 @@ class _Out:
             return im
         return s._add('images', src, i, make)
 
+    def sampler(s, src, i):  # (the same filters = the same sampler)
+        sm = src[0]['samplers'][i]
+        for k, o in enumerate(s.j['samplers']):
+            if o == sm: return k
+        return s._add('samplers', src, i, lambda: _deep(sm))
+
     def texture(s, src, i):
         def make():
             t = _deep(src[0]['textures'][i])
-            if 'sampler' in t: t['sampler'] = s._add('samplers', src, t['sampler'], lambda: _deep(src[0]['samplers'][t['sampler']]))
+            if 'sampler' in t: t['sampler'] = s.sampler(src, t['sampler'])
             if 'source' in t: t['source'] = s.image(src, t['source'])
             for k, e in (t.get('extensions') or {}).items():
                 s.ext.add(k)
