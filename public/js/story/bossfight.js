@@ -71,6 +71,8 @@ export function makeBoss(ST, { where, playScene }) {
   B.combat = (ev) => {
     if (!ev || typeof ev !== 'object') return;
     const id = ev.boss || ev.kind || ev.target;
+    // everyone else: a kill counts for the quests (goals match the enemy id or the named npc)
+    if (ev.type === 'kill' && !ev.boss && !HOOKS[id] && !(B.on && HOOKS[B.on].actor === id)) { if (typeof ev.kind === 'string') S().emit({ type: 'kill', kind: ev.kind, npc: typeof ev.npc === 'string' ? ev.npc : ev.kind, n: 1 }); return; }
     const b = HOOKS[id] ? id : (B.on && HOOKS[B.on].actor === id ? B.on : bossOfKind(id) || B.on); if (!b || !HOOKS[b]) return; // ('overtime' = whichever fight is on)
     if (B.on !== b) enter(b);
     const a = actorOf(b);
