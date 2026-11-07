@@ -4451,9 +4451,13 @@ function range() {
   box(32, 9, -55, 3, 18, 3, 'stone');
   box(-32, -1, -40, 16, 2, 30, 'stone');
   box(-38, 1, -40, 1, 2, 30, 'missing');
+  // the SPRAY RANGE (owner, 2026-11-07): a wall 10 m from a marked firing spot, left of the line. stand in it and S&D guns
+  // shoot with the Plant & Defuse spray patterns (public/js/sprayrange.js); the rest of Training stays chaos
+  box(-54, 3, -12.25, 16, 6, 0.5, 'stone');
   groundHoles({ add: (...a) => boxes.push({ min: [a[0], a[1], a[2]], max: [a[3], a[4], a[5]], mat: a[6] }) }, -220, -280, 220, 160, -2, 0, 'grass', [[-20, -135, 20, 15], [22, -60, 42, -20], [-40, -55, -24, -25]]);
   const D = builder();
   horizon(D, -220, -280, 220, 160, 1500, 'grass'); // the same grass as the field you stand on
+  D.add(-58, 0.01, -2.3, -50, 0.07, -1.7, 'sand'); // the spray range's firing line (10 m from its wall)
   D.add(-60, 0, -175, 60, 12, -160, 'dirt'); D.add(-50, 12, -172, 50, 16, -163, 'dirt'); // the berm the bullets end up in
   for (let x = -18; x <= 18; x += 3.2) D.add(x, 0, 6.4, x + 3, 0.8, 7.4, 'sand'); // sandbags on the firing line
   for (const [x, z] of [[-30, 20], [30, 20]]) { for (const sx of [-1, 1]) for (const sz of [-1, 1]) D.box(x + sx * 1.6, 4, z + sz * 1.6, 0.3, 8, 0.3, 'wood'); D.add(x - 2.2, 8, z - 2.2, x + 2.2, 8.3, z + 2.2, 'wood'); D.add(x - 2.4, 10.5, z - 2.4, x + 2.4, 10.8, z + 2.4, 'roofg'); } // watchtowers
@@ -4461,6 +4465,7 @@ function range() {
   for (let i = 0; i < 30; i++) { const rr = rng(400 + i), a = rr() * Math.PI * 2, d = 150 + rr() * 150; (rr() < 0.5 ? conifer : lollipop)(D.local(0, 0, 0), Math.cos(a) * d, -60 + Math.sin(a) * d, 6 + rr() * 4, rr); }
   adBoard(D, -26, -70, 0, 'z', 'adcity6', 14, 6); adBoard(D, -26, -110, 0, 'z', 'adcity3', 14, 6); adBoard(D, 0, -130, 0, 'x', 'adcity2', 24, 9);
   return { name: 'Range', size: 'training', boxes, deco: D.boxes, killY: -60, floorY: -4, bounds: [-90, -175, 90, 40],
+    sprayRange: { min: [-63, -1, -12], max: [-45, 8, 16], wall: -12, stand: [-54, 0, -2] }, // (inside it: S&D gunplay)
     sky: { top: 0x3a7bd5, mid: 0xbfe3ff, bot: 0x203040, fog: 0xbfe3ff }, fogNear: 120, fogFar: 420,
     spawns: [[0, 0.1, 10], [5, 0.1, 10], [-5, 0.1, 10]],
     dummies: [
