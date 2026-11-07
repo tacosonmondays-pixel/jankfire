@@ -894,3 +894,4 @@ function twistFrame(dt, now, t) {
   if (R.vend >= 0) { el.prompt.innerHTML = '<kbd>F</kbd><span>KICK THE VENDING MACHINE</span><small>it might cough up a gadget</small>'; el.prompt.style.setProperty('--c', '#ff4fd8'); el.prompt.style.display = 'block'; }
   if (R.mailAt && !ME.alive) { const dt2 = $('deadTimer'); if (dt2) dt2.textContent = `RETURNED TO SENDER: back in ${Math.max(0, Math.ceil((R.mailAt - performance.now()) / 1000))}`; }
 }
+export const brSpecId = () => (R.on && !ME.alive && !R.me.inBlimp ? R.spec : 0); // who you're watching (pip.js shows their eyes)

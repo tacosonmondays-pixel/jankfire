@@ -539,3 +539,4 @@ FLAGS.LASSO = 1 << 21; // (was 1 << 20, the same bit as FLAGS.WALK) set in your 
 // retired weapons: old replays, saves and kill feeds still name them. the spoon is the knife now (in its spoon look)
 export const WEAPON_ALIAS = { spoon: 'knife' };
 export const wAlias = (id) => (typeof id === 'string' && Object.hasOwn(WEAPON_ALIAS, id) ? WEAPON_ALIAS[id] : id);
+FLAGS.AIM = 1 << 10; // aiming down sights (cosmetic: Plant & Defuse first-person spectating shows it)
