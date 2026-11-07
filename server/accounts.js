@@ -7,6 +7,7 @@ import { rollPick, itemInfo, CONTAINERS } from '../shared/cosmetics.js';
 import { achievementsFrom } from '../shared/looks.js';
 import { catsOf } from '../shared/secrets.js';
 import { storyApi } from './story.js'; // OVERDUE save slots (/api/story/*)
+import { MODE_STATS, modeBoard, boardValue } from '../shared/modestats.js'; // per-mode leaderboards
 
 const scrypt = promisify(crypto.scrypt);
 const NAME_RE = /^[A-Za-z0-9_]{3,16}$/;
@@ -84,6 +85,23 @@ export class Accounts {
     return { wins: lv(wins), kills: lv(kills), speed: lv(speed), wave: lv(wave), xp: lv(xp) };
   }
 
+  // one mode's boards (/api/leaderboard/<mode>) or one board (/api/leaderboard/<mode>/<board>). a ratio board ranks
+  // the top 200 by its minimum's stat, so it only lists people who played enough. cached 20 s per mode
+  async modeBoard(mode, id) {
+    const M = MODE_STATS[mode], boards = id ? [modeBoard(mode, id)] : M.boards, n = Date.now();
+    this.mbCache ||= new Map();
+    const key = mode + '/' + (id || ''), hit = this.mbCache.get(key);
+    if (hit && n - hit.t < 20000) return hit.v;
+    const out = { mode, name: M.name, boards: {} };
+    await Promise.all(boards.map(async (b) => {
+      const rows = await this.store.modeRows(mode, b.ratio ? (b.min || b.ratio)[0] : b.key, b.ratio ? 200 : 15);
+      out.boards[b.id] = rows.map((r) => ({ name: r.name, level: levelOf(r.xp), value: boardValue(b, r.ms) })).filter((r) => r.value != null)
+        .sort((a, c) => c.value - a.value).slice(0, 15);
+    }));
+    this.mbCache.set(key, { t: n, v: out });
+    return out;
+  }
+
   async roll(u, kind) {
     const c = CONTAINERS[kind];
     if (!c) return { error: 'open a crate, duffel bag or box' };
@@ -140,8 +158,17 @@ export class Accounts {
           return send(r.error ? 400 : 200, r);
         }
         case '/api/leaderboard': return send(200, await this.leaderboard());
+        case '/api/leaderboard/modes': return send(200, Object.fromEntries(Object.entries(MODE_STATS).map(([m, M]) => [m, { name: M.name, boards: M.boards.map((b) => [b.id, b.title]) }])));
         case '/api/status': return send(200, { store: this.store.kind });
-        default: return send(404, { error: 'nope' });
+        default: {
+          const lb = /^\/api\/leaderboard\/([a-z]{1,8})(?:\/([a-z0-9]{1,12}))?$/.exec(url); // per-mode boards: mode + board checked against MODE_STATS
+          if (lb) {
+            if (!Object.hasOwn(MODE_STATS, lb[1])) return send(400, { error: 'unknown mode' });
+            if (lb[2] && !modeBoard(lb[1], lb[2])) return send(400, { error: 'unknown board' });
+            return send(200, await this.modeBoard(lb[1], lb[2]));
+          }
+          return send(404, { error: 'nope' });
+        }
       }
     } catch (e) {
       console.error('api error', url, e.message);
