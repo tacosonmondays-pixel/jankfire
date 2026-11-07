@@ -126,16 +126,18 @@ export const OT_CLIPS = {
     c.arm.rotation.x -= 0.1 * k; c.arm.rotation.z += 0.05 * k; c.head.rotation.z -= (0.16 + hitch * 0.08) * k; c.head.rotation.x -= 0.1 * k;
     c.body.position.y -= hitch * 0.03 * k;
   } },
-  // clocking out: checks the watch one last time, the knees go, he kneels, then folds forward onto the floor. held
+  // clocking out: checks the watch one last time, the knees go, he kneels, then folds forward from the waist until his
+  // staplers are on the floor and his little head hangs between them. held
   ot_clockout: { len: 9e9, f(c, t, k) {
-    const watch = win(t, 0, 0.4, 1.1, 1.4), knees = seg(t, 1.2, 2.0), fold = seg(t, 2.4, 3.3), tick = Math.sin(t * 6.3) > 0.98 ? 1 : 0;
+    const watch = win(t, 0, 0.4, 1.1, 1.4), knees = seg(t, 1.2, 2.0), fold = seg(t, 2.4, 3.4), tick = Math.sin(t * 6.3) > 0.98 ? 1 : 0;
     c.armL.rotation.x += 1.35 * watch * k; c.foreL.rotation.x += 1.7 * watch * k; c.armL.rotation.z += 0.35 * watch * k; c.head.rotation.x -= 0.4 * watch * k;
-    c.body.position.y -= (0.42 * knees + 0.3 * fold) * k; c.body.rotation.x -= 1.25 * fold * k; c.body.position.z -= 0.35 * fold * k;
-    c.legL.rotation.x += (0.1 * knees + 1.0 * fold) * k; c.legR.rotation.x += (0.1 * knees + 1.0 * fold) * k;
-    c.kneeL.rotation.x -= 2.2 * knees * k; c.kneeR.rotation.x -= 2.2 * knees * k;
-    c.spine.rotation.x -= (0.3 * knees + 0.2 * fold) * k; c.head.rotation.x -= (0.35 * knees - 0.4 * fold + tick * 0.05) * k;
-    c.arm.rotation.x += (0.15 * knees + 1.4 * fold) * k; c.armL.rotation.x += (0.15 * knees + 1.4 * fold) * k;
-    c.arm.rotation.z += 0.3 * fold * k; c.armL.rotation.z -= 0.3 * fold * k;
+    c.body.position.y -= (0.42 * knees + 0.04 * fold) * k; c.body.position.z += 0.05 * fold * k;
+    c.legL.rotation.x += 0.1 * knees * k; c.legR.rotation.x += 0.1 * knees * k;
+    c.kneeL.rotation.x -= 1.9 * knees * k; c.kneeR.rotation.x -= 1.9 * knees * k;
+    c.body.rotation.x -= 0.2 * fold * k;
+    c.spine.rotation.x -= (0.25 * knees + 0.95 * fold) * k; c.head.rotation.x -= (0.3 * knees + 0.35 * fold + tick * 0.05) * k;
+    c.arm.rotation.x += (0.15 * knees + 0.75 * fold) * k; c.armL.rotation.x += (0.15 * knees + 0.75 * fold) * k;
+    c.arm.rotation.z += 0.25 * fold * k; c.armL.rotation.z -= 0.25 * fold * k; c.foreR.rotation.x += 0.15 * fold * k; c.foreL.rotation.x += 0.15 * fold * k;
   } },
 };
 OT_CLIPS.staple_shot = OT_CLIPS.ot_staple; // (the script's name for it, c4)
@@ -262,7 +264,23 @@ function makeRig(a) {
     r.vis();
   };
   r.restorePlate = () => { for (const d of r.debris) G.scene.remove(d.m); r.debris.length = 0; r.plateOff = false; };
+  // the coffee break's props: a mug in the right stapler's jaw, the flask in the left (code meshes, only while sitting)
+  r.props = null;
+  const propsOn = (on) => {
+    if (on && !r.props) {
+      const mug = new THREE.Group(), flask = new THREE.Group();
+      const m1 = new THREE.MeshStandardMaterial({ color: 0xf4f4f0, roughness: 0.4 }), m2 = new THREE.MeshStandardMaterial({ color: 0x2a6a4a, roughness: 0.3, metalness: 0.4 }), m3 = new THREE.MeshStandardMaterial({ color: 0x3a1a0a, roughness: 0.2 });
+      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 0.13, 14), m1); mug.add(cup);
+      const tea = new THREE.Mesh(new THREE.CircleGeometry(0.062, 14), m3); tea.rotation.x = -Math.PI / 2; tea.position.y = 0.055; mug.add(tea);
+      const hd = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.012, 6, 12), m1); hd.position.x = 0.08; mug.add(hd);
+      const bt = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.32, 14), m2); flask.add(bt);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.07, 14), m1); cap.position.y = 0.19; flask.add(cap);
+      mug.position.set(0, -0.08, -0.06); flask.position.set(0, -0.12, -0.05);
+      c.handR.add(mug); c.handL.add(flask); r.props = [mug, flask];
+    } else if (!on && r.props) { for (const p of r.props) p.removeFromParent(); r.props = null; }
+  };
   r.update = (dt, cam) => {
+    propsOn(!!(a.clip && a.clip.name === 'ot_coffee'));
     // marks inside the current clip
     const cl = a.clip;
     if (!cl || cl !== r.last) { r.last = cl; r.lastT = -1e-6; }

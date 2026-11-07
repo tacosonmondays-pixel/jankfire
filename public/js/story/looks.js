@@ -380,7 +380,7 @@ function dressCast(L, scene) {
     const m = o.clone(); m.matrix.copy(o.matrixWorld); m.matrix.decompose(m.position, m.quaternion, m.scale);
     inv.copy(G.matrixWorld).invert(); m.applyMatrix4(inv);
     // part_<joint>__<tag>: a named piece combat aims at (overtime's plate, heart...). lod + dmg* pieces start hidden
-    const tag = /__([A-Za-z0-9]+)/.exec(p.name);
+    const tag = /__([A-Za-z]+)/.exec(p.name); // (the exporter numbers repeats: __lod001 is lod)
     if (tag) {
       const k = tag[1]; L.parts ||= {};
       let tg = tags.get(m0[1] + ':' + k); if (!tg) { tg = new THREE.Group(); tg.name = 'ot_' + k; tg.userData.blender = true; G.add(tg); tags.set(m0[1] + ':' + k, tg); L.parts[k] ||= tg; ((L.partsAll ||= {})[k] ||= []).push(tg); if (k === 'lod' || k.startsWith('dmg')) tg.visible = false; }
