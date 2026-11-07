@@ -34,7 +34,7 @@ export function installBotFlair(Room, knobs = {}) {
     // one chat line from a bot, if the dice, its cooldown and the room's cooldown all say yes. true = it'll say it
     botSay(b, ev, vars = {}, chance = 1, reply = false) {
       const n = Date.now(), pool = LINES[ev];
-      if (!pool || !b || !b.isBot || (b.ai && b.ai.dummy) || this.zm || this.players.get(b.id) !== b) return false;
+      if (!pool || !b || !b.isBot || (b.ai && b.ai.dummy) || (this.zm && !b.zmh) || this.players.get(b.id) !== b) return false; // zombies: only the squad's bots talk
       const per = PERSONAS[b.persona] || PERSONAS.polite;
       if (!BOTCHAT.all && Math.random() > chance * per.talk) return false;
       // the room's gap (6-8 s). an answer to a person only needs 4 s since the last bot line, so bots don't ignore you
