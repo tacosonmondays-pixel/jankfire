@@ -2,11 +2,10 @@
 # before plus a `lod1` (a few hundred tris, the same paints), and main() here exports them so the close-up players
 # already have stays the shipped one, byte for byte (lod_splice.py: Blender 4.0's booleans don't rebuild it exactly).
 #   main(build, 'p_forklift')   flags after '--': --no-sheet, --no-export, --qa, --fresh (export the rebuild whole)
-# Sheets: tools/blender/sheets/<id>.jpg (lod0, as before) and <id>_lod1.jpg (the far one).
+# Sheets: tools/blender/sheets/<id>_lod1.jpg (the far one; round 1's <id>.jpg still shows lod0, redone with --fresh).
 import os, sys, tempfile, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bmesh, bpy
-from mathutils import Vector
 import lib
 from lib import gv, _obj
 import lod_splice
