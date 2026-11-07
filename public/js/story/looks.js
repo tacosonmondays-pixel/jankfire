@@ -265,6 +265,43 @@ const LOOKS = {
       face: { eyeR: 0.03, eyeY: 0.17, iris: 0xd0405a, mouthW: 0.07, mouthY: 0.075, lip: 0x7a5a8a, brow: 0x2a2a3a, browW: 0.06, glasses: 0x444444 } });
     return { ...p, kind: 'puppet', height: 1.85, eyeY: 1.78 };
   },
+  // MR. OVERTIME (cyborg, 4.5 m, the nemesis): a grey suit over pistons, a punch-clock heart behind a chest plate, two
+  // stapler arms, a small sunk head with a stretched smile under a desk-lamp visor, a bungee tie, brogues like cars.
+  // L.parts names the bits combat aims at (plate, heart, slot, gunR/L + muzzleR/L, tie + tieEnd, cables, card, head);
+  // groups marked codeOnly are swapped for the Blender model's, the markers stay
+  overtime() {
+    const SK = 0xe8d0b8, suit = patMat('otsuit', 64, 64, speckle('#7a7e88', ['#6a6e78', '#8a8e98'], 260, 2), [2, 2], 0.7);
+    const steel = skinMat(0x9aa0aa, 0.3), dark = flat(0x2a2a30), brass = skinMat(0xd8a840, 0.3), white = flat(0xf4f4f0);
+    const parts = {}, all = {};
+    const grp = (name, parent, x = 0, y = 0, z = 0, codeOnly = true) => { const o = g(x, y, z); o.name = 'ot_' + name; o.userData.codeOnly = codeOnly; parent.add(o); parts[name] = o; all[name] = [o]; return o; };
+    const p = person({ skin: SK, legMat: suit, shoe: 0x1a1210, s: 2.5, hipW: 0.15, thigh: 1.5, shin: 1.4, foot: 2.0, torsoH: 0.74, shW: 0.42, armR: 1.6, upper: 0.32, fore: 0.36, foreS: 1.8, handS: 0.01, sleeveMat: suit, hunch: 0.12, wrongKnee: false,
+      torso: (sp, tH) => { sp.add(sph(0.36, suit, 0, tH * 0.5, 0, 1.12, 1.05, 0.82, 16)); for (const sx of [-1, 1]) sp.add(cyl(0.07, 0.07, 0.3, steel, sx * 0.38, tH * 0.92, 0, 10)); }, // shoulder pistons
+      headR: [0.075, 0.09, 0.08], neck: 0,
+      head: (h, r, m) => { h.add(sph(1, m, 0, r[1], 0, r[0], r[1], r[2], 14)); },
+      face: { s: 0.6, eyeR: 0.034, eyeSep: 0.05, eyeY: 0.11, iris: 0x1a1a1a, mouthW: 0.11, mouthY: 0.04, lip: 0x8a3a3a, teeth: 'tomb', brow: false, lidColor: SK } });
+    const c = p.ch, tH = 0.74;
+    p.face.set('grin'); FACE_LOCK.set(p.face, 'grin'); // (the smile is stretched on. it never changes)
+    // the chest: the punch-clock heart, the plate over it, the card slot, the time card in the pocket, the back cables
+    const heart = grp('heart', c.spine, 0, tH * 0.55, -0.27); heart.add(cyl(0.13, 0.13, 0.04, white, 0, 0, 0, 20)).children.at(-1).rotation.x = Math.PI / 2;
+    const hand1 = box(0.012, 0.1, 0.01, dark, 0, 0.04, -0.03); heart.add(hand1);
+    const plate = grp('plate', c.spine, 0, tH * 0.55, -0.31); plate.add(box(0.34, 0.36, 0.04, steel, 0, 0, 0));
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) plate.add(sph(0.018, brass, sx * 0.14, sy * 0.15, -0.025));
+    const slot = grp('slot', c.spine, 0, tH * 0.28, -0.29); slot.add(box(0.2, 0.03, 0.03, flat(0xffe14d), 0, 0, 0));
+    const card = grp('card', c.spine, 0.2, tH * 0.72, -0.27); card.add(box(0.06, 0.1, 0.01, white, 0, 0, 0));
+    const tie = grp('tie', c.spine, 0, tH * 0.85, -0.29); tie.add(cyl(0.015, 0.015, 0.45, flat(0x1a1a1a), 0, -0.22, 0, 6));
+    grp('tieEnd', c.spine, 0, tH * 0.85 - 0.46, -0.29, false);
+    const cables = grp('cables', c.spine, 0, tH * 0.55, 0.27); for (const sx of [-1, 0, 1]) cables.add(cyl(0.025, 0.025, 0.5, flat(0x2a2a30), sx * 0.08, 0, 0, 6));
+    // the stapler arms: the forearm IS a stapler (magazine on top, the head at the hand), the muzzle marker at the tip
+    for (const [f, h, nm] of [[c.foreR, c.handR, 'R'], [c.foreL, c.handL, 'L']]) {
+      const gun = grp('gun' + nm, f, 0, -0.2, 0); gun.add(box(0.13, 0.4, 0.16, flat(0x3a3a44), 0, 0, 0)); gun.add(box(0.1, 0.36, 0.06, flat(0xc03030), 0, 0, -0.1));
+      grp('muzzle' + nm, h, 0, -0.04, -0.05, false);
+    }
+    // the head under its desk-lamp visor, the lanyard of badges
+    const hd = grp('head', c.head, 0, 0, 0); const shade = cyl(0.04, 0.12, 0.08, flat(0x2a8a5a), 0, 0.2, -0.03, 12); hd.add(shade);
+    hd.add(sph(0.03, flat(0xfff6c0), 0, 0.17, -0.03));
+    parts.headJoint = c.head;
+    return { ...p, parts, partsAll: all, kind: 'cyborg', height: 4.5, eyeY: 4.3 };
+  },
 };
 // everyone else in the script gets a seeded look from their cast entry (body: mannequin / normal / puppet) until they
 // get a hand-made one: skin, clothes and pattern from the palette; puppets pick one huge + one tiny feature, and the
@@ -330,7 +367,8 @@ function dressCast(L, scene) {
   ch.root.scale.setScalar(1); ch.root.position.set(0, 0, 0); ch.root.rotation.set(0, 0, 0); ch.root.updateMatrixWorld(true);
   const keep = L.face ? L.face.root : null, inv = new THREE.Matrix4();
   scene.updateMatrixWorld(true);
-  let n = 0;
+  let n = 0; const tags = new Map();
+  if (L.parts) for (const k of Object.keys(L.parts)) if (L.parts[k].userData.codeOnly) { delete L.parts[k]; delete L.partsAll[k]; } // (the model brings its own)
   scene.traverse((o) => {
     if (!o.isMesh) return;
     let p = o; while (p && !/^part_[A-Za-z]+/.test(p.name)) p = p.parent; // (a part with several materials is a group of meshes)
@@ -341,6 +379,13 @@ function dressCast(L, scene) {
     if (!G.userData.dressed) { for (const c of [...G.children]) if ((c.isMesh && c !== keep) || c.userData.codeOnly) G.remove(c); G.userData.dressed = true; } // (codeOnly: a code group the model replaces, bev's extra arms)
     const m = o.clone(); m.matrix.copy(o.matrixWorld); m.matrix.decompose(m.position, m.quaternion, m.scale);
     inv.copy(G.matrixWorld).invert(); m.applyMatrix4(inv);
+    // part_<joint>__<tag>: a named piece combat aims at (overtime's plate, heart...). lod + dmg* pieces start hidden
+    const tag = /__([A-Za-z0-9]+)/.exec(p.name);
+    if (tag) {
+      const k = tag[1]; L.parts ||= {};
+      let tg = tags.get(m0[1] + ':' + k); if (!tg) { tg = new THREE.Group(); tg.name = 'ot_' + k; tg.userData.blender = true; G.add(tg); tags.set(m0[1] + ':' + k, tg); L.parts[k] ||= tg; ((L.partsAll ||= {})[k] ||= []).push(tg); if (k === 'lod' || k.startsWith('dmg')) tg.visible = false; }
+      tg.add(m); n++; return;
+    }
     G.add(m); n++;
   });
   ch.head.rotation.z = tilt; ch.root.scale.setScalar(s); ch.root.updateMatrixWorld(true);
