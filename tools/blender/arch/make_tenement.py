@@ -54,8 +54,8 @@ for b in K.take(lambda b: b['mat'] == 'concrete' and b['min'][1] >= -0.01):
 # ---- drainpipes and cables down the faces, a ghost ad, soot
 for (px, pz, nx, nz) in ((x0 + 3.1, z0 - 0.12, 0, -1), (x1 - 6.6, z0 - 0.12, 0, -1), (x1 + 0.12, z1 - 4.0, 1, 0), (x0 - 0.12, z0 + 9.0, -1, 0)):
     K.bar([(px, SHOW, pz), (px, -1.3, pz)], 0.16, 0.16, 'metaldark')
-    for k in range(int((-1.3 - SHOW) / 3.5)):  # brackets
-        y = -1.3 - k * 3.5
+    for k in range(int((-1.3 - SHOW) / 7)):  # brackets
+        y = -1.3 - k * 7
         K.bar([(px - nz * 0.0 - nx * 0.1, y, pz - nz * 0.1), (px, y, pz)], 0.22, 0.06, 'metal')
 for (pa, pb) in (((x0 + 8.0, -1.3, z0 - 0.06), (x0 + 8.3, -30, z0 - 0.06)), ((x0 + 8.4, -1.3, z0 - 0.06), (x0 + 13.0, -12, z0 - 0.06))):
     K.bar([pa, pb], 0.05, 0.05, 'rubber')

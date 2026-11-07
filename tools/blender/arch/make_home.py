@@ -48,11 +48,11 @@ for b in K.take(lambda b: eq(b['min'][1], 2 * F) and eq(b['max'][1], 2 * F + 0.3
 walls = K.take(lambda b: paint(b) or b['mat'] == 'plaster' or (b['mat'] == 'brick' and b['max'][1] <= 3.21))
 for (axis, c, t, _), bs in K.walls(walls).items():
     m = bs[0]['mat']
-    if m == 'plaster': K.wall_plane(axis, c, t, bs, 'wallint2', 'wallint', sub=1.0, sill=False, shards=False)
-    elif m == 'brick': K.wall_plane(axis, c, t, bs, 'brick', 'brick', sub=1.0, frames=False)
+    if m == 'plaster': K.wall_plane(axis, c, t, bs, 'wallint2', 'wallint', sub=1.6, sill=False, shards=False)
+    elif m == 'brick': K.wall_plane(axis, c, t, bs, 'brick', 'brick', sub=1.6, frames=False)
     else:
         parapet = all(b['min'][1] >= 2 * F + 0.29 for b in bs)
-        ops = K.wall_plane(axis, c, t, bs, 'siding@siding', 'wallint', sub=1.0, frames=not parapet)
+        ops = K.wall_plane(axis, c, t, bs, 'siding@siding', 'wallint', sub=1.6, frames=not parapet)
         if parapet:  # the parapet's cap, and an eave of shingles kicking out and down off it (no collision: it's
             # outside the walls, under where anyone stands), with a soffit under it
             for b in bs: cap(K, b, 'trim')

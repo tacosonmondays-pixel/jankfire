@@ -32,6 +32,10 @@ MATS = {
 }
 
 
+# small detail (frames, trims, signs, glass, louvres, rails): drawn, but no sun shadow (the shadow pass is the expensive one)
+NOCAST = {'trim', 'trimdark', 'decal', 'decalglow', 'glass', 'shutter', 'louvre', 'brass', 'rubber', 'metal', 'metaldark', 'door'}
+
+
 def hexc(h): h = h.lstrip('#'); return tuple(int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
 
 
@@ -73,8 +77,9 @@ class Kit:
             if ay > 0.5: return (q.x / t, -q.z / t)
             return (q.x / t, q.y / t) if n.z > 0 else (-q.x / t, q.y / t)
         nu = nv = 1
-        if sub:
-            nu = max(1, math.ceil((p[1] - p[0]).length / sub)); nv = max(1, math.ceil((p[3] - p[0]).length / sub))
+        if sub:  # (a thin face, a wall's top or a jamb, gets no cuts: its AO hardly changes across it)
+            lu, lv = (p[1] - p[0]).length, (p[3] - p[0]).length
+            if min(lu, lv) > 0.6: nu = max(1, math.ceil(lu / sub)); nv = max(1, math.ceil(lv / sub))
         g = self._bucket(mat, node)
         if abs(abs(n.x) + abs(n.y) + abs(n.z) - 1) < 1e-6:  # axis-aligned: remember it for the z-fight check
             ax = 0 if abs(n.x) > 0.5 else 1 if abs(n.y) > 0.5 else 2
@@ -487,6 +492,7 @@ def make_material(name):
     if ex.get('alpha'): m['alpha'] = 1
     if ex.get('glow'): m['glow'] = 1
     if '@' in name: m['paint'] = name.split('@')[1]
+    if name.split('@')[0] in NOCAST: m['nocast'] = 1
     return m
 
 
@@ -552,7 +558,7 @@ def export_glb(objs, out):
 
 # ------------------------------------------------------------ a whole shell() building (shared/map.js shell()), dressed
 def dress_shell(K, w, d, floors, F, ext, intm='wallint', floor='floorwood', roof='tar', cap='metal', band='concrete', course='trim',
-                corners=None, rail_side=1, wall_mat=None, sub=1.0):
+                corners=None, rail_side=1, wall_mat=None, sub=1.6):
     """everything shell() makes, in its local frame (footprint x +-w/2, z +-d/2, front door at -z): the stairs, the
     railings round the holes, the floors, the roof slab, the walls with their openings dressed, the parapet with a cap,
     a foundation band, a course at every floor, corner boards. wall_mat: the box material of the walls"""

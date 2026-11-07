@@ -113,6 +113,7 @@ export function buildArch(scene, list) {
     merged.computeBoundingSphere();
     const m = new THREE.Mesh(merged, material(name, x));
     m.matrixAutoUpdate = false;
+    if (x.nocast) m.userData.noCast = true; // small detail: no sun shadow (lighting.js)
     group.add(m);
   }
   scene.add(group);
