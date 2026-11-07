@@ -313,7 +313,7 @@ export function splash(s, x, z, k = 1, quiet = false) {
     // the crown: a column of white chunks thrown straight up
     if (k > 0.45) for (let i = 0; i < Math.round(8 + k * 14); i++) { const a = (i / 10) * 6.2832, r = 0.25 + k * 0.25;
       P.smoke.spawn(x + Math.cos(a) * r, y + 0.1, z + Math.sin(a) * r, Math.cos(a) * 1.2, 3 + k * 4 + Math.random() * 3, Math.sin(a) * 1.2, 0.5 + Math.random() * 0.4, 0.35 + k * 0.25, 0.12, c0, c1, 0.9, 14, 0.8); }
-    if (!quiet) sfx.splash([x, y, z], k);
+    if (!quiet) sfx.liqSplash([x, y, z], k);
   } else {
     const hot = s.kind === 'lava';
     for (let i = 0; i < n; i++) { const a = Math.random() * 6.2832, sp = (1 + Math.random() * 2.5) * (0.6 + k * 0.4);

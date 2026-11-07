@@ -721,7 +721,7 @@ Object.assign(sfx, {
 // liquids (liquids.js, flames.js): a sploosh that grows with how hard you went in, wading steps, a bullet plipping into
 // water, goo going gloop, lava burping, fire crackling
 Object.assign(sfx, {
-  splash(pos, k = 1) {
+  liqSplash(pos, k = 1) { // (the water pistol keeps its own sfx.splash)
     const big = Math.min(1, k / 1.5);
     noise(0.18 + big * 0.5, 0.35 + big * 0.55, 'bandpass', 1800 - big * 700, 260, pos, 0, 0.9); // the sploosh
     noise(0.08 + big * 0.12, 0.3 + big * 0.3, 'highpass', 2500, 5000, pos, 0.01); // the spray
