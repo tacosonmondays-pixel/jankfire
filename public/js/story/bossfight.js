@@ -11,6 +11,7 @@ import { G } from '../ctx.js';
 import { ME } from '../player.js';
 import { actors, spawnActor, play } from './actors.js';
 import { OT } from './overtime.js';
+import { marksNear } from '/shared/city/marks.js';
 
 // per boss: where he stands, his phases (hp fraction they start below: from content/bosses.js), and what each quest
 // step does to him. clip + hold = the pose he keeps afterwards
@@ -39,6 +40,7 @@ for (const h of Object.values(HOOKS)) h.start.variant ??= 1;
 export function makeBoss(ST, { where, playScene }) {
   const B = { on: null, hp: 1, phase: 0, plateOff: false, last: {} };
   ST.marks = { ...ARENA_MARKS, ...(ST.marks || {}) };
+  try { for (const id of Object.keys(ARENA_MARKS)) { const m = marksNear('slice', -44, -14, 60, id)[0]; if (m) ST.marks[id] = [...m.p]; } } catch (e) { console.warn('arena marks', e); } // (the live ones win over the copies)
   const S = () => ST.S;
   const bossOfKind = (k) => (HOOKS[k] ? k : Object.keys(HOOKS).find((b) => HOOKS[b].actor === k || (k && String(k).startsWith(HOOKS[b].actor))));
   const actorOf = (b) => actors.get(HOOKS[b].actor);
