@@ -63,7 +63,8 @@ import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, ch
 import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset, brOn, brInvOpen, brInvToggle } from './royale.js'; // jank royale
 import { brActive } from './royale.js';
 import { BR } from '/shared/royale.js'; // (the grapple charges, for the help text)
-import { initMinimap, minimapFrame } from './minimap.js'; // the HUD minimap (SAT-NAV)
+import { initMinimap, minimapFrame } from './minimap.js';
+import { initLeaderTabs, showLeaders } from './leadmodes.js'; // per-mode leaderboard tabs // the HUD minimap (SAT-NAV)
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { ecoKeyLabel } from './econ.js';
 import { bodyReset } from './bodyhp.js'; // the wrecking ball + rig last until they break
@@ -220,7 +221,7 @@ function show(id) {
   if (id === 'settings') syncDisplay();
   if (id === 'match') syncMatchUI();
   if (id === 'profile') { renderProfile(); restore().then((me) => { if (me && screen === 'profile') { renderProfile(); renderAcctBar(); } }); }
-  if (id === 'leaders') renderLeaders();
+  if (id === 'leaders') { initLeaderTabs(renderLeaders); showLeaders(); } // OVERALL + one tab per mode (leadmodes.js)
   if (id === 'lore') renderLore($('loreList'));
   controlsScreen(id === 'controls', saveSettings);
   if (id === 'main') { renderAcctBar(); homeShown(); }
