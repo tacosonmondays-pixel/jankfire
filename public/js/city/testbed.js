@@ -46,6 +46,7 @@ function paintSky(env) {
 
 const boxes = [];
 const stream = new CityStream({ scene, city, preset, boxes });
+if (Q.has('storm')) stream.clock = () => 20 + performance.now() / 1e6; // test knob: storm=1 holds a paper storm on
 const C = CITIES[city];
 // the player: feet position, like the game's
 const me = { pos: [...(C.spawn || [0, 2, 0])], vel: [0, 0, 0], yaw: Q.has('yaw') ? +Q.get('yaw') : 0, pitch: Q.has('pitch') ? +Q.get('pitch') : 0, ground: false, fly: Q.get('fly') === '1', hook: null, held: 0 };
@@ -198,6 +199,7 @@ function frame() {
   camera.position.set(...eyeP()); camera.rotation.set(me.pitch, me.yaw, 0);
   stream.update(camera, dt);
   const env = stream.env;
+  if (stream.weather.started) callout('PAPER STORM');
   if (env) {
     scene.fog.color.copy(env.fog); scene.fog.near = env.near; scene.fog.far = env.far;
     paintSky(env); renderer.setClearColor(env.fog);

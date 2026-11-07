@@ -257,6 +257,11 @@ class Rig:
             body = join(ps, name + '_m')
             bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
             s.full.append(s._attach(body, name)); s.lods.append(s._attach(lod, name))
+        for name in s.order:  # parts built before the joints held these names (head, jaw, neck): take them back
+            if s.J[name].name != name:
+                if name in bpy.data.objects: bpy.data.objects[name].name = name + '_part'
+                s.J[name].name = name
+            assert s.J[name].name == name, name
         return s
 
     def meta(s, **kw):
@@ -935,7 +940,8 @@ def raider_chair():
     cn = lathe([(0.138, cb - 0.012), (0.152, cb), (0.136, cb + 0.09), (0.104, cb + 0.19), (0.064, cb + 0.29), (0.034, cb + 0.37), (0.0, cb + 0.372)],
                (0, 0, 0.006), mg, seg=12, axis='y', cap=False)
     uv_front(cn, Gl.uv('cone'), Gl.uv('coneb'), -0.152, 0.152, cb - 0.012, cb + 0.372, zcut=0.25)
-    rig.add('head', heads, cn); rig.add('jaw', jw)
+    pad = ell((0, hy + 0.19, 0.006), (0.124, 0.02, 0.124), mg, 'pad', n=6, rings=4); fit(pad, Gl.uv('coneb'))  # wadded paper: the cone sits on it
+    rig.add('head', heads, cn, pad); rig.add('jaw', jw)
     nk = limb((0, P['neck'][1] - 0.02, 0.012), (0, hy + 0.01, 0.012), 0.054, 0.052, mb, 'neck', n=8); fit(nk, skin); rig.add('neck', nk)
     el, wr, arms = {}, {}, {}
     for s in 'LR':
@@ -965,7 +971,7 @@ def raider_chair():
                      -math.pi / 2 - 0.85, -math.pi / 2 + 0.85, mg, 'chairback', cols=6)
     fit(bp, Gl.uv('mesh'))
     fr = front_shell([(cy - 0.105, 0.202, 0.158, 0, -0.008), (cy - 0.08, 0.202, 0.158, 0, -0.008)], -math.pi / 2 - 0.88, -math.pi / 2 + 0.88, mg, 'frame', cols=5)
-    fr2 = front_shell([(cy + 0.19, 0.19, 0.138, 0, 0.0), (cy + 0.215, 0.17, 0.124, 0, 0.0)], -math.pi / 2 - 0.88, -math.pi / 2 + 0.88, mg, 'frame2', cols=5)
+    fr2 = front_shell([(cy + 0.19, 0.19, 0.138, 0, 0.0), (cy + 0.215, 0.17, 0.124, 0, 0.0)], -math.pi / 2 - 0.88, -math.pi / 2 + 0.88, mg, 'frame2', cols=4)
     fit(fr, plast); fit(fr2, plast)
     spikes = []
     for sx in (-1, 1):
@@ -976,13 +982,13 @@ def raider_chair():
         spikes += [stem, fork, wh]
     tie_ = strip([(0, P['neck'][1] + 0.005, -0.06), (0.005, cy + 0.16, -0.105), (0.012, cy + 0.04, -0.165), (0.018, cy - 0.06, -0.168)], 0.05, 0.006, mb, 'tie')
     fit(tie_, B.uv('tie'))
-    knot = ell((0, P['neck'][1] + 0.0, -0.062), (0.024, 0.022, 0.016), mb, 'knot', n=5, rings=3); fit(knot, B.uv('tie'))
+    knot = bx((0.042, 0.04, 0.028), (0, P['neck'][1] + 0.0, -0.062), mb, bev=0.0, name='knot', taper=(0.7, 0.8)); fit(knot, B.uv('tie'))
     lny = strip([(-0.06, P['neck'][1] + 0.03, 0.0), (-0.07, cy + 0.12, -0.15), (-0.03, cy + 0.02, -0.185), (0.0, cy - 0.01, -0.19)], 0.018, 0.003, mb, 'lanyard')
     lny2 = strip([(0.06, P['neck'][1] + 0.03, 0.0), (0.07, cy + 0.12, -0.15), (0.03, cy + 0.02, -0.185), (0.0, cy - 0.01, -0.19)], 0.018, 0.003, mb, 'lanyard2')
     fit(lny, B.uv('lan')); fit(lny2, B.uv('lan'))
     bdg = bx((0.07, 0.095, 0.006), (0.0, cy - 0.06, -0.196), mb, bev=0.0, name='badge', rot=(0.1, 0, 0.05))
     faces_uv(bdg, lambda c, n: B.uv('badge') if n[2] < -0.5 else skin)
-    rig.add('chest', ch, collar, bp, fr, fr2, spikes, tie_, knot, lny, lny2, bdg); rig.add('spine', bl)
+    rig.add('chest', ch, bp, fr, fr2, spikes, tie_, knot, lny, lny2, bdg); rig.add('spine', bl)
     # cargo trousers, belt + the stapler holstered on the right hip, boots
     seat = blob([(P['legL'][1] - 0.08, 0.16, 0.105, 0, 0.0), (P['hips'][1] - 0.02, 0.18, 0.118, 0, -0.004), (P['hips'][1] + 0.05, 0.176, 0.116, 0, -0.006)],
                 mb, 'seat', n=12, p=2.6, cap=(0.03, 0.0))
@@ -1074,7 +1080,7 @@ def raider_cabinet():
     cy = P['chest'][1]; sy = P['spine'][1]
     ch = blob([(cy - 0.07, 0.22, 0.14, 0, -0.004), (cy + 0.06, 0.235, 0.142, 0, -0.004), (cy + 0.16, 0.245, 0.135, 0, 0.0), (P['armL'][1] - 0.015, 0.225, 0.12, 0, 0.004),
                (P['armL'][1] + 0.035, 0.14, 0.095, 0, 0.008), (P['neck'][1] + 0.02, 0.075, 0.07, 0, 0.012)], mp, 'suit_chest', n=12, p=2.6, cap=(None, None))
-    bl = blob([(P['hips'][1] - 0.02, 0.2, 0.13, 0, -0.004), (sy, 0.205, 0.132, 0, -0.01), (cy - 0.0, 0.21, 0.13, 0, -0.006)], mp, 'suit_belly', n=12, p=2.6, cap=(None, None))
+    bl = blob([(P['hips'][1] + 0.0, 0.19, 0.122, 0, -0.004), (sy, 0.205, 0.132, 0, -0.01), (cy - 0.0, 0.21, 0.13, 0, -0.006)], mp, 'suit_belly', n=12, p=2.6, cap=(None, None))
     uv_all([ch, bl], T.uv('suit'))
     # the drawer chest plate (front, handle, raider paint), shoulder straps, the keyboard down the back
     dz = -0.17
@@ -1099,7 +1105,7 @@ def raider_cabinet():
         bg = bx((0.065, 0.085, 0.006), ((i - 1) * 0.05, cy + 0.055 - i * 0.03, dz - 0.058 - dzz), mb, bev=0.0, name='badge', rot=(0, 0, (i - 1) * 0.25))
         faces_uv(bg, lambda c, n: B.uv('badges') if n[2] < -0.5 else skin); lys.append(bg)
     rig.add('chest', ch, dw, hdl, straps, kbd, lys); rig.add('spine', bl)
-    seat = blob([(P['legL'][1] - 0.08, 0.18, 0.12, 0, 0.0), (P['hips'][1] - 0.02, 0.205, 0.132, 0, -0.004), (P['hips'][1] + 0.05, 0.204, 0.13, 0, -0.006)],
+    seat = blob([(P['legL'][1] - 0.08, 0.18, 0.12, 0, 0.0), (P['hips'][1] - 0.02, 0.205, 0.132, 0, -0.004), (P['hips'][1] + 0.05, 0.186, 0.116, 0, -0.006)],
                 mp, 'seat', n=12, p=2.6, cap=(0.03, 0.0))
     fit(seat, T.uv('suit'))
     bt = ring_band((0, P['hips'][1] + 0.02, -0.004), 0.21, 0.136, 0.04, 0.006, mb, 'belt', n=12); fit(bt, strapc)
@@ -1128,6 +1134,97 @@ def _visor(o, y0, y1, half):
     bmesh.ops.delete(bm, geom=kill, context='FACES'); bm.to_mesh(me); bm.free()
 
 
+# ============================================================================================ 4. stomachdog
+def stomachdog():
+    """a Gut stomach-dog: a J-shaped stomach on four stumps, gastric folds combed back like fur, a ribbed oesophagus
+    neck, a lipped mouth of tiny teeth, big wet eyes, an intestine tail. wet flesh (names with flesh / pulse breathe)."""
+    rig = Rig('stomachdog')
+    mf = mat('dog_flesh_pulse', 0xffffff, rough=0.2, clearcoat=1.0,
+             tex=G.tex_flesh('dog_flesh_t', 0xff7f9c, 0xd04a70, 0xffb0c4, seed=31, speck=0xffd27a, speck_p=0.03))
+    ml = mat('dog_liver_flesh', 0xffffff, rough=0.18, clearcoat=1.0,
+             tex=G.tex_flesh('dog_liver_t', 0xa8325a, 0x5b1a34, 0xd0587e, size=32, seed=32, speck=0x5b3a8f, speck_p=0.04))
+    me_ = mat('dog_enamel', 0xffffff, rough=0.12, clearcoat=1.0,
+              tex=G.tex_flesh('dog_enamel_t', 0xfaf0d6, 0xe0c88a, 0xffffff, size=16, seed=33, amt=0.5, fine=0.04))
+    mey = mat('dog_eye', 0xffffff, rough=0.06, clearcoat=1.0, tex=tex_canvas('dog_eye_t', 64, 64, G._paint_eye))
+    J = {'hips': (0, 0.5, 0.3), 'body': (0, 0.56, 0.18), 'neck': (0, 0.74, -0.3), 'head': (0, 0.93, -0.43), 'jaw': (0, 0.925, -0.45),
+         'legFL': (-0.16, 0.4, -0.22), 'legFR': (0.16, 0.4, -0.22), 'shinFL': (-0.165, 0.2, -0.235), 'shinFR': (0.165, 0.2, -0.235),
+         'legBL': (-0.17, 0.42, 0.33), 'legBR': (0.17, 0.42, 0.33), 'shinBL': (-0.175, 0.2, 0.35), 'shinBR': (0.175, 0.2, 0.35),
+         'tail': (0, 0.62, 0.5), 'tail2': (0, 0.72, 0.7)}
+    for nm, par in (('hips', None), ('body', 'hips'), ('neck', 'body'), ('head', 'neck'), ('jaw', 'head'),
+                    ('legFL', 'body'), ('shinFL', 'legFL'), ('legFR', 'body'), ('shinFR', 'legFR'),
+                    ('legBL', 'hips'), ('shinBL', 'legBL'), ('legBR', 'hips'), ('shinBR', 'legBR'), ('tail', 'hips'), ('tail2', 'tail')):
+        rig.joint(nm, par, J[nm])
+    # the stomach: fundus bulging up at the back, the greater curve sagging underneath, narrowing to the front
+    st = G.meta([((0, 0.62, 0.3), 0.42), ((0, 0.56, 0.1), 0.44), ((0, 0.53, -0.08), 0.4), ((0, 0.6, -0.22), 0.32), ((0, 0.47, 0.05), 0.3),
+                 ((0.06, 0.66, 0.36), 0.26), ((-0.05, 0.64, 0.38), 0.24)], res=0.04, m=mf, name='stomach')
+    lo, hi = BK._game_bbox(st); yc = (lo[1] + hi[1]) / 2
+    for v in st.data.vertices:  # gastric folds: wavy ridges running nose to tail, all round the body (its fur)
+        g = G.gg(v.co); ph = math.atan2(g[1] - yc, g[0])
+        f = max(0.0, math.sin(15 * ph + 1.6 * math.sin(7 * g[2]) + 0.8)) ** 1.6
+        v.co += v.normal * 0.034 * f * (0.4 + 0.6 * min(1, (g[1] - lo[1]) / 0.15))
+    G.decimate(st, 400); G.wet(st); uv_tile(st, 0.35); _smooth(st)
+    print('JF_DOG body bbox', [round(x, 3) for x in lo], [round(x, 3) for x in hi])
+    rig.add('body', st)
+    # the oesophagus neck: a ribbed tube up and forward into the head
+    nk = limb(J['neck'], (0, 0.97, -0.47), 0.1, 0.085, mf, 'oesophagus', n=7, mid=((0.2, 0.08), (0.4, 0.096), (0.6, 0.078), (0.8, 0.092)))
+    uv_tile(nk, 0.3); rig.add('neck', nk)
+    # the head: a round bulb, big wet eyes on top, floppy ear-flaps, the upper lip and its row of tiny teeth
+    hc = (0, 1.0, -0.53)
+    cr = ell(hc, (0.165, 0.115, 0.17), mf, 'skull', n=10, rings=6); uv_tile(cr, 0.3)
+    eyes = []
+    for sx in (-1, 1):
+        e = G.eyeball(mey, r=0.068, pos=(sx * 0.072, 1.07, -0.615), rot=(-1.15, sx * 0.3, 0), n=8, polar=(30, 65, 100))
+        _smooth(e); eyes.append(e)
+        lid = ell((sx * 0.072, 1.1, -0.595), (0.078, 0.034, 0.066), mf, 'lid', n=6, rings=4); uv_tile(lid, 0.3); eyes.append(lid)
+    ears = [ell((sx * 0.16, 1.03, -0.47), (0.03, 0.08, 0.06), mf, 'earflap', n=6, rings=4, rot=(0.2, 0, sx * 0.7)) for sx in (-1, 1)]
+    for o in ears: uv_tile(o, 0.3)
+    arc = lambda r, y, n: [(r * math.sin(a), y, -0.53 - 0.16 * math.cos(a) * 0.98) for a in [(-1.25 + 2.5 * i / n) for i in range(n + 1)]]
+    def lipline(y, rx): return [(rx * math.sin(a), y, -0.535 - 0.15 * math.cos(a)) for a in [(-1.35 + 2.7 * i / 10) for i in range(11)]]
+    ul = sweep(lipline(0.938, 0.15)[::2], [0.016, 0.024, 0.027, 0.024, 0.016, 0.012], ml, seg=5, name='upperlip')
+    uv_tile(ul, 0.2)
+    def teeth(y0, dy, rx, rz, n, name):
+        V, F = [], []
+        for i in range(n):
+            a0 = -1.15 + 2.3 * i / n; a1 = -1.15 + 2.3 * (i + 1) / n; am = (a0 + a1) / 2
+            P = lambda a, yy, k=1.0: (rx * k * math.sin(a), yy, -0.535 - rz * k * math.cos(a))
+            b = len(V); V += [P(a0, y0), P(a1, y0), P(am, y0 + dy, 0.97), P(am, y0, 0.9)]
+            F += [(b, b + 1, b + 2), (b + 1, b + 3, b + 2), (b + 3, b, b + 2)]
+        o = G.mesh(name, V, F, me_)
+        uv_tile(o, 0.1); return o
+    ut = teeth(0.93, -0.042, 0.138, 0.142, 16, 'uppers')
+    roof = blob([(0.925, 0.135, 0.14, 0, -0.535), (0.945, 0.15, 0.15, 0, -0.53)], ml, 'roof', n=10, p=2.0, cap=(0.0, None)); uv_tile(roof, 0.2)
+    rig.add('head', cr, eyes, ears, ul, ut, roof)
+    # the jaw: a soft chin, the lower lip, tiny teeth pointing up, a tongue
+    jw = ell((0, 0.85, -0.52), (0.13, 0.05, 0.145), mf, 'chin', n=10, rings=5); uv_tile(jw, 0.3)
+    gum = blob([(0.875, 0.122, 0.128, 0, -0.535), (0.86, 0.13, 0.135, 0, -0.53)], ml, 'gum', n=10, p=2.0, cap=(0.0, None)); uv_tile(gum, 0.2)
+    ll = sweep(lipline(0.868, 0.14)[::2], [0.014, 0.022, 0.025, 0.022, 0.014, 0.01], ml, seg=5, name='lowerlip'); uv_tile(ll, 0.2)
+    lt = teeth(0.874, 0.036, 0.128, 0.132, 14, 'lowers')
+    tg = ell((0, 0.885, -0.56), (0.07, 0.016, 0.09), ml, 'tongue', n=7, rings=3); uv_tile(tg, 0.2)
+    rig.add('jaw', jw, gum, ll, lt, tg)
+    # four stumpy legs, bone-white toe nubs
+    for leg, shin, s in (('legFL', 'shinFL', -1), ('legFR', 'shinFR', 1), ('legBL', 'shinBL', -1), ('legBR', 'shinBR', 1)):
+        a, b = J[leg], J[shin]
+        th = limb(a, b, 0.11, 0.095, mf, 'thigh', n=6); uv_tile(th, 0.3)
+        foot = (b[0] + s * 0.005, 0.08, b[2] - 0.02)
+        sh = limb(b, foot, 0.08, 0.078, mf, 'stump', n=6); uv_tile(sh, 0.3)
+        nubs = [ell((b[0] + dx, 0.026, foot[2] - 0.07), (0.022, 0.024, 0.024), me_, 'toe', n=4, rings=3) for dx in (-0.035, 0.0, 0.035)]
+        for o in nubs: uv_tile(o, 0.1)
+        rig.add(leg, th); rig.add(shin, sh, nubs)
+    # the intestine tail: sausage links that wag
+    t0, t1, t2 = J['tail'], J['tail2'], (0, 0.86, 0.8)
+    tl = limb(t0, t1, 0.06, 0.05, mf, 'gut1', n=6, mid=((0.33, 0.045), (0.66, 0.058))); uv_tile(tl, 0.3)
+    tl2 = limb(t1, t2, 0.05, 0.03, mf, 'gut2', n=6, mid=((0.5, 0.034),)); uv_tile(tl2, 0.3)
+    rig.add('tail', tl); rig.add('tail2', tl2)
+    poses = [('trot', {'legFL': (0.55, 0, 0), 'shinFL': (-0.5, 0, 0), 'legBR': (0.45, 0, 0), 'shinBR': (-0.2, 0, 0),
+                       'legFR': (-0.45, 0, 0), 'shinFR': (-0.2, 0, 0), 'legBL': (-0.5, 0, 0), 'shinBL': (-0.45, 0, 0),
+                       'tail': (-0.3, 0.5, 0), 'tail2': (0, 0.7, 0), 'head': (0.1, -0.25, 0), 'body': (0, 0, 0.06), 'jaw': (-0.15, 0, 0)}, 0.03, None),
+             ('bark', {'jaw': (-0.6, 0, 0), 'head': (-0.35, 0, 0.12), 'neck': (-0.15, 0, 0), 'tail': (-0.7, -0.4, 0), 'tail2': (-0.3, -0.8, 0),
+                       'legFL': (0.25, 0, 0.1), 'legFR': (0.25, 0, -0.1), 'shinFL': (-0.25, 0, 0), 'shinFR': (-0.25, 0, 0)}, 0.0, None),
+             ('sit', {'hips': (0.5, 0, 0), 'legBL': (0.4, 0, -0.15), 'legBR': (0.4, 0, 0.15), 'shinBL': (-1.3, 0, 0), 'shinBR': (-1.3, 0, 0),
+                      'legFL': (-0.5, 0, 0), 'legFR': (-0.5, 0, 0), 'neck': (-0.3, 0, 0), 'head': (-0.1, 0.3, 0.15), 'tail': (0.4, 0.3, 0), 'tail2': (0.2, 0.6, 0)}, -0.12, None)]
+    return rig, {'height': 1.12, 'eyeH': 1.08, 'shoulderH': 0.8, 'voice': 'gurgle', 'creature': True, '_lod': 420}, poses
+
+
 def _mouth_roof(o, y0, rect):
     """the flat bottom of a head (behind the jaw): faces looking down -> the dark mouth swatch"""
     me = o.data; uv = me.uv_layers.active.data; mw = o.matrix_world; R = mw.to_3x3()
@@ -1142,7 +1239,7 @@ def _mouth_roof(o, y0, rect):
 
 
 BUILDERS = [('local_tiedye', local_tiedye), ('local_scooter', local_scooter), ('local_cook', local_cook),
-            ('raider_chair', raider_chair), ('raider_cabinet', raider_cabinet)]
+            ('stomachdog', stomachdog), ('raider_chair', raider_chair), ('raider_cabinet', raider_cabinet)]
 
 if __name__ == '__main__':
     run_people(BUILDERS)
