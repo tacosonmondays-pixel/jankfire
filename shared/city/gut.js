@@ -120,14 +120,18 @@ function arena(B) {
   for (const [mx, mz] of [[x0 + 4, cz], [x1 - 4, cz - 8], [x0 + 26, z1 - 4], [x1 - 26, z0 + 22]]) if (B.inside(mx, mz)) B.prop(mx < cx ? 'fleshblob_a' : 'fleshblob_b', mx, GY, mz, mx < cx ? 0.5 : -0.5, 1.6, 0);
   for (let x = x0 + 14; x < x1 - 14; x += 6) if (B.inside(x, z0 + 6)) B.add(x, GY, z0 + 5.9, x + 4, GY + 1.0, z0 + 6.1, 'metal', { nc: true, tint: 0xd0c8b8 });
   // the time office along the north side, its front a wall of punch clocks (glow faces)
-  B.add(x0 + 10, GY, z0 - 14, x1 - 10, GY + 14, z0, 'concrete', { tint: 0xd8d4cc });
-  for (let x = x0 + 12; x < x1 - 12; x += 3) B.add(x, GY + 2, z0 + 0.01, x + 1.6, GY + 3.6, z0 + 0.05, 'window', { nc: true, tint: 0xfff0c0 });
+  // (an arcade through it where Rib Avenue runs, so the avenue goes on north: walk it or swing it)
+  const RA = SLICE.ribAve;
+  B.add(x0 + 10, GY, z0 - 14, RA.x0, GY + 14, z0, 'concrete', { tint: 0xd8d4cc }); B.add(RA.x1, GY, z0 - 14, x1 - 10, GY + 14, z0, 'concrete', { tint: 0xd8d4cc });
+  B.add(RA.x0, GY + 9, z0 - 14, RA.x1, GY + 14, z0, 'concrete', { tint: 0xc8c4bc });
+  hook(B, (RA.x0 + RA.x1) / 2, GY + 8.2, z0 - 7, { s: 1.2 }); // a ring in the arcade's ceiling
+  for (let x = x0 + 12; x < x1 - 12; x += 3) if (x + 1.6 < SLICE.ribAve.x0 || x > SLICE.ribAve.x1) B.add(x, GY + 2, z0 + 0.01, x + 1.6, GY + 3.6, z0 + 0.05, 'window', { nc: true, tint: 0xfff0c0 });
   B.add(x0 + 10, GY + 14, z0 - 14, x1 - 10, GY + 15, z0, 'flesh', { tint: 0xe86a88 });
   B.prop('gristlelogo', cx, GY + 9, z0 + 0.1, Math.PI, 1.4, 0);
   for (const [lx, lz] of [[x0 + 12, z0 + 12], [x1 - 12, z0 + 12], [x0 + 12, z1 - 12], [x1 - 12, z1 - 12]]) if (B.inside(lx, lz)) lungPad(B, lx, lz, 0.9);
   // low flesh walls round the edge (cover, and a ring he can't charge out of)
   for (const [a, b, c, d] of [[x0, z1 - 1, cx - 8, z1], [cx + 8, z1 - 1, x1, z1], [x0, z0, x0 + 1, z1], [x1 - 1, z0, x1, z1]]) B.add(a, GY, b, c, GY + 1.4, d, 'flesh', { tint: 0xd85a78 });
-  if (B.inside(cx, cz)) B.out.marks.push({ id: 'gut:border', p: [cx, GY, cz] }, { id: 'boss.overtime.spawn', p: [cx, GY, z0 + 8], face: 0 }, { id: 'boss.overtime.entry', p: [cx, GY, z1 - 3], face: Math.PI });
+  if (B.inside(cx, cz)) B.out.marks.push({ id: 'landmark.time_office', p: [cx, GY, cz] }); // (Overtime's fight 1 moved to the Gut Border Gate: arenas.js)
 }
 
 function choir(B, r) {

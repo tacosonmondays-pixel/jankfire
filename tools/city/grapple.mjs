@@ -14,12 +14,12 @@ import '../../shared/city/gens.js';
 const G = 26, EYE = 1.6, DT = 1 / 60;
 // the slice's swing lines (DESIGN: the districts are grapple playgrounds). from -> to (r = how close counts)
 export const ROUTES = {
-  longstairs: { from: [-44, 4.3, 226], to: [-44, 36.3, -20], r: 8, note: 'the Bottom: up the Long Stairs by the gantries' },
+  longstairs: { from: [-44, 4.3, 226], to: [-44, 36.3, -20], r: 8, corridor: 4, note: 'the Bottom: up the Long Stairs by the gantries' },
   market: { from: [-140, 0.3, 246], to: [-44, 12.3, 170], r: 12, note: 'the Bottom: market masts up onto the terraces' },
-  ribave: { from: [-44, 40.3, -64], to: [-44, 40.3, -240], r: 10, note: 'the Gut: down Rib Avenue arch to arch' },
-  ribrun: { from: [-44, 40.3, -112], to: [-160, 40.3, -128], r: 12, note: 'the Gut: THE RIB RUN over Peristalsis Avenue to the stomach rim' },
+  ribave: { from: [-44, 40.3, -64], to: [-44, 40.3, -240], r: 10, corridor: 5, note: 'the Gut: down Rib Avenue arch to arch' },
+  ribrun: { from: [-50, 40.3, -142], to: [-160, 40.3, -142], r: 12, corridor: 14, note: 'the Gut: THE RIB RUN over Peristalsis Avenue to the stomach rim' },
   gate_roofs: { from: [-44, 36.3, -4], to: [-73, 44.7, -13], r: 2.6, note: 'Overtime 1: from the stairs top up onto the highest roof' },
-  gantries: { from: [182, 9.2, 196], to: [182, 31.6, -70], r: 14, note: 'the Commute: THE GANTRIES, sign to sign up the Ring Road' },
+  gantries: { from: [182, 9.2, 196], to: [182, 31.6, -70], r: 14, corridor: 12, note: 'the Commute: THE GANTRIES, sign to sign up the Ring Road' },
   pileup: { from: [212, 27, -20], to: [222, 34.5, -20], r: 3, note: 'the Commute: onto the Pile-Up' },
   crows_nest: { from: [-160, 8.3, 200], to: [-154, 29.8, 182], r: 2.2, walk: true, note: 'secret: the Crow\'s Nest (Lost & Found crane)' },
   wishbone: { from: [-44, 40.3, -196], to: [-44, 59, -213], r: 2.2, walk: true, note: 'secret: the Wishbone (Rib Avenue)' },
@@ -31,13 +31,13 @@ function world(lo, hi) {
   for (let cx = Math.floor(lo[0] / CHUNK); cx <= Math.floor(hi[0] / CHUNK); cx++) for (let cz = Math.floor(lo[1] / CHUNK); cz <= Math.floor(hi[1] / CHUNK); cz++) {
     const p = packChunk(buildChunk('slice', cx, cz));
     W.set(cx + ':' + cz, chunkBoxes(p));
-    for (const m of p.marks || []) if (m.id === 'grapple') marks.push(m.p);
+    for (const m of p.marks || []) if (m.id === 'grapple') marks.push(m);
   }
   W.sync();
   // roof edges count too (you can hook any box): the top centre of every big flat-topped box well above the street
   const roofs = [];
   for (const b of W.boxes) { const w = b.max[0] - b.min[0], d = b.max[2] - b.min[2]; if (w > 3 && d > 3 && w * d < 900 && b.max[1] > 4) roofs.push([(b.min[0] + b.max[0]) / 2, b.max[1] - 0.2, (b.min[2] + b.max[2]) / 2]); }
-  return { W, anchors: [...marks.map((p) => ({ p, ring: true })), ...roofs.map((p) => ({ p, ring: false }))] };
+  return { W, anchors: [...marks.map((m) => ({ p: m.p, ring: true, tol: (m.s || 1.4) * 0.9 + 0.4 })), ...roofs.map((p) => ({ p, ring: false }))] };
 }
 
 // one flight: hook a, hold for `hold` s (Infinity = until you arrive), let go (jump = a grapple jump), fly until you land
@@ -65,7 +65,11 @@ function fly(W, p0, a, hold, jump, goal) {
 export function search(from, to, o = {}) {
   const R = o.r || 4, maxHooks = o.hooks || 10, K = o.k || 14;
   const lo = [Math.min(from[0], to[0]) - 110, Math.min(from[2], to[2]) - 110], hi = [Math.max(from[0], to[0]) + 110, Math.max(from[2], to[2]) + 110];
-  const { W, anchors } = world(lo, hi);
+  const { W, anchors: all } = world(lo, hi);
+  // a designed line (o.corridor m): only rings within that far of the straight line from -> to count (the showcase
+  // routes have to go through their own rings, not find a cheaper way round)
+  const segD = (p) => { const dx = to[0] - from[0], dz = to[2] - from[2], L2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((p[0] - from[0]) * dx + (p[2] - from[2]) * dz) / L2)); return Math.hypot(p[0] - from[0] - dx * t, p[2] - from[2] - dz * t); };
+  const anchors = o.corridor ? all.filter((a) => a.ring && segD(a.p) < o.corridor) : all;
   // settle the start on the ground
   const s = from.slice(), sv = [0, 0, 0];
   for (let k = 0; k < 120; k++) { sv[1] -= G * DT; if (W.movePlayer(s, sv, DT, true).ground && k > 4) break; }
@@ -82,7 +86,7 @@ export function search(from, to, o = {}) {
         const d = [an.p[0] - eye[0], an.p[1] - eye[1], an.p[2] - eye[2]], L = Math.hypot(...d);
         if (L > HOOK.range || L < 3) continue;
         const hit = W.raycast(eye, d.map((x) => x / L), L + 1);
-        if (!hit || hit.t < L - (an.ring ? 1.2 : 2)) continue; // something's in the way
+        if (!hit || hit.t < L - (an.ring ? an.tol : 2)) continue; // something's in the way
         const g = Math.hypot(an.p[0] - to[0], an.p[2] - to[2]) - Math.max(0, an.p[1] - n.p[1]) * 0.3 * Math.sign(to[1] - n.p[1] + 0.01);
         if (g > dNow + 25) continue;
         cand.push([g, hit.point, an]);
@@ -135,7 +139,7 @@ if (import.meta.url === 'file://' + process.argv[1]) {
   else { const names = a.filter((x, i) => !x.startsWith('-') && !(i > 0 && /^--(path|hooks|r)$/.test(a[i - 1]))); for (const n of names.length ? names : Object.keys(ROUTES)) jobs.push([n, ROUTES[n]]); }
   let bad = 0;
   for (const [name, r] of jobs) {
-    const t0 = Date.now(), res = search(r.from, r.to, { r: r.r, hooks: +(arg('--hooks') || 10) });
+    const t0 = Date.now(), res = search(r.from, r.to, { r: r.r, hooks: +(arg('--hooks') || 10), corridor: r.corridor });
     let foot = null;
     if (r.walk) foot = walkable(r.from, r.to, { r: r.r });
     const ok = res.ok && (!r.walk || !foot);

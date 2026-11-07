@@ -60,6 +60,7 @@ export function gateArena(B) {
   // the fight's pieces (entities): spawns, the truck, cover
   if (B.inside(G.x, -12)) {
     B.out.marks.push(
+      { id: 'gut:border', p: [G.x, y, -14] }, // (the writer's LOCATIONS id for this arena)
       { id: 'arena.overtime_1', p: [G.x, y, -14], rect: GATE_ARENA.rect, y, name: 'THE GUT BORDER GATE' },
       { id: 'arena.boss', p: [G.x + 2, y, -26], face: 0 },
       { id: 'arena.player', p: [G.x, y, -2], face: Math.PI },

@@ -143,5 +143,5 @@ export function hook(B, x, y, z, o = {}) {
   for (let i = 0; i <= 10; i++) { const a = (i / 10) * Math.PI * 2, u = Math.cos(a) * R; pts.push([x + u * c, y - 0.75 + Math.sin(a) * R, z - u * sn]); }
   B.shape({ kind: 'tube', pts, r: 0.1, seg: 5, mat: 'glow', tint: 0xffe14d, step: 0.5, at: [x, y, z] }); // (kept in the mid ring too: readable far off)
   B.add(x - 0.06, y - 0.15, z - 0.06, x + 0.06, y + 0.25, z + 0.06, 'metal', { nc: true, tint: 0x3a3a44 }); // the bracket
-  B.out.marks.push({ id: 'grapple', p: [x, y, z] });
+  B.out.marks.push({ id: 'grapple', p: [x, y, z], s });
 }
