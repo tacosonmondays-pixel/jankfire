@@ -1302,6 +1302,8 @@ net.on('pj', (m) => addRemoteInfo(m));
 net.on('pl', (m) => {
   const r = G.remotes.get(m.id);
   if (r) { r.dispose(); G.remotes.delete(m.id); }
+  const nm = G.names.get(m.id);
+  if (nm && nm.bot && nm.name === 'Zombie') { G.gone.set(m.id, nm); if (G.gone.size > 300) G.gone.delete(G.gone.keys().next().value); } // a dead zombie still shows up in your killcam
   G.names.delete(m.id);
   G.skins.delete(m.id);
   if (ME.hook && ME.hook.target === m.id) releaseHook();
@@ -1545,7 +1547,7 @@ net.on('kill', (m) => {
   if (m.pit && m.w === 'void') pitKill(m, victim ? victim.color : m.v === G.myId ? G.myColor : null); // into the shredder pit's teeth (sets m.vel: the bits fly back up)
   // shredder kills: the pieces go through the killer's machine instead of the usual gibs / kill effect
   if (m.w === 'shredder' && shredKill(m, G.remotes, m.v === G.myId ? { pos: ME.pos.slice(), yaw: ME.yaw, color: G.myColor, look: teamLook(validLook(G.settings.look, myAchs()), G.myTeam) } : null)) m.fx = 'none'; // (team colour beats clothes)
-  const kfx = m.fx && m.fx !== 'none' ? m.fx : null;
+  const kfx = m.fx && m.fx !== 'none' && !(G.round && G.round.zm) ? m.fx : null; // zombies: no finishers
   if (victim) {
     victim.reverseUntil = 0; // the server ends their reverse card on death too
     const vi = G.names.get(m.v) || {};
@@ -2229,7 +2231,7 @@ function setKfx(id) {
 net.on('cd', (m) => { const n = G.names.get(m.id); if (n) n.card = m.card || ''; });
 function infoOf(id) {
   if (id === G.myId) return { name: G.myName, color: G.myColor, skins: G.equipped, look: validLook(S.look, myAchs()), bot: false, grap: myGrapple(), team: G.myTeam || 0, kat: W.kat || 0 };
-  const n = G.names.get(id) || {};
+  const n = G.names.get(id) || G.gone.get(id) || {};
   return { name: n.name || '???', color: n.color || '#ffffff', skins: G.skins.get(id) || {}, look: n.look || null, bot: !!n.bot, level: n.level, grap: n.grap, team: n.team || 0, kat: G.kat.get(id) || 0 };
 }
 // the death screen shows whoever killed you, on their name card
