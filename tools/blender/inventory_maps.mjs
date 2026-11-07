@@ -70,7 +70,7 @@ const KIT = {
   skyHeli: [A, 'the helipad heli'], skyGreen: [A, 'the rooftop greenhouse / pond'], skyBuild: [A, 'the rooftop building site'], adSign: [A, 'trail and warning signs'], stake: [A, 'property stakes'], tent: [A, 'tents'], bt: [A, 'rowboat / canoe'],
   brokenCar: [A, 'the broken-down car'], log: [A, 'fallen logs'], cube: [A, 'office cubicles'], rack: [A, 'warehouse racking'], hanging: [A, 'hanging rugs and lanterns on lines'], lampTower: [A, 'lamp towers'], siteBoard: [A, 'bomb site boards (A / B)'],
   adBoard: [A, 'ad boards'], billboard: [A, 'billboards (rooftop frames)'], hvac: [A, 'HVAC units'], planter: [A, 'planters'], pipeStack: [A, 'pipe stacks'], fountain: [A, 'the fountain'], ball: [A, 'the giant toy ball'], word: [A, 'the giant toy-block letters'],
-  sign: [A, 'neon shop signs'], awning: [A, 'shop awnings'], stall: [A, 'market stall leftovers (rugs, goods)'], pronounPark: [A, 'the park: benches, playground, fountain'], cityDress: [A, 'neon crowns, facade ads, cables with hanging ads'],
+  sign: [Bg, 'neon shop signs (shopfront: the buildings lane)'], awning: [Bg, 'shop awnings (shopfront: the buildings lane)'], stall: [A, 'market stall leftovers (rugs, goods)'], pronounPark: [A, 'the park: benches, playground, fountain'], cityDress: [A, 'neon crowns, facade ads, cables with hanging ads'],
   suburbOutside: [A, 'outside the suburb: power poles, junk, tyre piles'], farRig: [C, 'far oil rigs (render-only)'], skullRock: [C, 'Skull Rock'], gravelPile: [C, 'gravel piles'],
   // ---- (c) terrain
   dune: [C, 'dunes'], rocks: [C, 'rock formations'], boulders: [C, 'boulders'], boulder: [C, 'boulders'], sandbar: [C, 'sandbars'], isle: [C, 'islets (surf rings)'], reef: [C, 'reefs'], volcano: [C, 'the volcano (Mount Kaboom)'],
