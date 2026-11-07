@@ -281,8 +281,8 @@ function drawSet(set, rt, dt, now, hide) {
     if (!c.wrecked && sp > 9 && near < 6 && now > c.passT) { c.passT = now + 1500; sfx.carPass(pos, sp); }
     // smoke and fire (real flames on the hood, the whole wreck going up once it's wrecked: flames.js)
     if (f & (F.FIRE | F.WRECK)) {
-      if (c.wrecked) { flameAt('car' + c.id, [x, y + c.T.H * 0.15, z], c.T.W * 1.1, c.T.H * 1.5, 1.1); flameAt('car' + c.id + 'b', [x + Math.sin(h) * c.T.L * 0.3, y + c.T.H * 0.3, z + Math.cos(h) * c.T.L * 0.3], c.T.W * 0.8, c.T.H * 1.1, 1.2); }
-      else flameAt('car' + c.id, [x + Math.sin(h) * c.T.L * 0.32, y + c.T.H * 0.62, z + Math.cos(h) * c.T.L * 0.32], c.T.W * 0.55, 1.2, 1);
+      if (c.wrecked) { flameAt('car' + c.id, [x, y + c.T.H * 0.15, z], c.T.W * 1.4, c.T.H * 2.1, 1.1); flameAt('car' + c.id + 'b', [x + Math.sin(h) * c.T.L * 0.3, y + c.T.H * 0.3, z + Math.cos(h) * c.T.L * 0.3], c.T.W * 1.0, c.T.H * 1.6, 1.2); }
+      else flameAt('car' + c.id, [x + Math.sin(h) * c.T.L * 0.32, y + c.T.H * 0.62, z + Math.cos(h) * c.T.L * 0.32], c.T.W * 0.75, 1.8, 1);
     }
     c.smokeT -= dt;
     if (c.smokeT <= 0 && f & (F.SMOKE | F.FIRE | F.WRECK)) {

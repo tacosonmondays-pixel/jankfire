@@ -195,7 +195,7 @@ function surfGeo(key, list) {
     if (s.big && s.wr && !o.s) { // the sea: a fine grid over its wave area, four flat pieces round it
       const [wx0, wz0, wx1, wz1] = s.wr, toL = (x, z) => [x - o.cx, z - o.cz];
       const [ax, az] = toL(wx0, wz0), [bx, bz] = toL(wx1, wz1);
-      grid(s, ax, az, bx, bz, Math.max(1.6, Math.max(bx - ax, bz - az) / 220), 260);
+      grid(s, ax, az, bx, bz, Math.max(3.2, Math.max(bx - ax, bz - az) / 130), 150); // (~3 m cells: the swell is 20-30 m long)
       if (az > -hz) grid(s, -hx, -hz, hx, az, 1e9, 8); if (bz < hz) grid(s, -hx, bz, hx, hz, 1e9, 8);
       if (ax > -hx) grid(s, -hx, az, ax, bz, 1e9, 8); if (bx < hx) grid(s, bx, az, hx, bz, 1e9, 8);
     } else {

@@ -13,7 +13,7 @@ import { jankUniforms } from './jank.js';
 // crust, flow speed, bub = how often it burps, glow
 const W = (deep, shal, o = {}) => ({ kind: 'water', deep, shal, a: [0.5, 0.9], amp: 0.03, len: 3, swell: 0, foam: 1, spark: 1, refl: 0.5, sheen: 0, caus: 1, ...o });
 export const LIQ = {
-  water: W(0x0e5fd8, 0x4fe6ff, { a: [0.42, 0.88] }),
+  water: W(0x0e5fd8, 0x3fd8ff, { a: [0.55, 0.9] }),
   poolwater: W(0x1296c8, 0x9cf6ff, { a: [0.32, 0.8], amp: 0.02, len: 2.4, foam: 0.7 }),
   sea: W(0x0a6cc8, 0x34f2d6, { a: [0.36, 0.95], amp: 0.34, len: 24, swell: 1, refl: 0.55 }),
   seanorth: W(0x0a2c44, 0x2a7a84, { a: [0.72, 0.97], amp: 0.62, len: 32, swell: 1, foam: 1.2, spark: 0.8, refl: 0.6, caus: 0.4 }),
@@ -27,7 +27,7 @@ export const LIQ = {
   dyemint: W(0x14a070, 0x7dffc8, { a: [0.88, 0.97], amp: 0.012, len: 1.4, foam: 0.5, spark: 0.7, refl: 0.3, caus: 0.5 }),
   dyetoyred: W(0xa80818, 0xff3a3a, { a: [0.88, 0.97], amp: 0.012, len: 1.4, foam: 0.5, spark: 0.7, refl: 0.3, caus: 0.5 }),
   dyetoyteal: W(0x007a86, 0x3ff0f0, { a: [0.88, 0.97], amp: 0.012, len: 1.4, foam: 0.5, spark: 0.7, refl: 0.3, caus: 0.5 }),
-  lava: { kind: 'lava', hot: 0xfff07a, mid: 0xff5a10, crust: 0x24080e, edge: 0x6a1a10, crustK: 0.62, flow: 1, bub: 0.22, glow: 1.15, amp: 0.03 },
+  lava: { kind: 'lava', hot: 0xfff07a, mid: 0xff5a10, crust: 0x24080e, edge: 0x6a1a10, crustK: 0.48, flow: 1, bub: 0.22, glow: 1.15, amp: 0.03 },
   acid: { kind: 'goo', hot: 0xeaff6a, mid: 0x66e010, crust: 0x1f5a12, edge: 0xb8ff3a, crustK: 0.28, flow: 0.6, bub: 0.5, glow: 0.9, amp: 0.05 },
   bile: { kind: 'goo', hot: 0xf4ff8a, mid: 0x9ad82a, crust: 0x4a6a14, edge: 0xd8ff6a, crustK: 0.35, flow: 0.4, bub: 0.35, glow: 0.75, amp: 0.01 },
   slime: { kind: 'goo', hot: 0xb0ff6a, mid: 0x39ff14, crust: 0x127a24, edge: 0x7dff4f, crustK: 0.3, flow: 0.5, bub: 0.45, glow: 0.85, amp: 0.03 },
@@ -123,12 +123,12 @@ uniform vec3 uSun; uniform vec3 uSunC; uniform vec3 uSkyT; uniform vec3 uSkyM; u
 #include <fog_pars_fragment>
 float lqCaus(vec2 p, float t) { // the old "water turbulence" trick: three warped passes make a web of bright lines
   vec2 i = p; float c = 1.0;
-  for (int n = 0; n < 3; n++) {
+  for (int n = 0; n < 2; n++) { // (two passes: half the cost of three, still a web)
     float tt = t * (1.0 - 3.5 / float(n + 1));
     i = p + vec2(cos(tt - i.x) + sin(tt + i.y), sin(tt - i.y) + cos(tt + i.x));
     c += 1.0 / length(vec2(p.x / (sin(i.x + tt) / 0.006), p.y / (cos(i.y + tt) / 0.006)));
   }
-  c /= 3.0; c = 1.17 - pow(c, 1.4);
+  c /= 2.0; c = 1.17 - pow(c, 1.4);
   return pow(abs(c), 8.0);
 }
 void main() {
@@ -137,7 +137,7 @@ void main() {
   float depth = vMk.g * ${DEPTH}.0, shore = vMk.r * ${SHORE}.0, t = uTime;
   // ripples: two noise layers drifting different ways (one on Potato)
   vec2 g = lqN(vW.xz * 0.9 + vec2(t * 0.23, t * 0.11)).yz * 0.9;
-  if (uQ > 0.5) g += lqN(vW.xz * 2.3 - vec2(t * 0.19, -t * 0.27)).yz * 0.55;
+  if (uQ > 1.5) g += lqN(vW.xz * 2.3 - vec2(t * 0.19, -t * 0.27)).yz * 0.55;
   vec3 N = normalize(vNw + vec3(-g.x, 0.0, -g.y) * 0.06 * top);
   float ndv = max(dot(N, V), 0.0), fr = 0.03 + 0.97 * pow(1.0 - ndv, 5.0);
   float dk = smoothstep(0.0, 2.6, depth);
@@ -150,7 +150,8 @@ void main() {
   vec3 sky = mix(uSkyM, uSkyT, smoothstep(0.0, 0.55, R.y));
   col = mix(col, sky, fr * uRefl * top);
   // oil: a rainbow sliding over it with the ripples
-  if (uSheen > 0.0) { float hn = lqF(vW.xz * 0.35 + t * 0.05) + fr * 1.5 + g.x * 0.6; col += uSheen * (0.5 + 0.5 * cos(6.2832 * (vec3(0.0, 0.33, 0.67) + hn * 1.3))) * 0.22 * (0.4 + fr); }
+  if (uSheen > 0.0) { float hn = lqF(vW.xz * 0.35 + t * 0.05) + fr * 1.5 + g.x * 0.6; float band = step(0.55, fract(hn * 2.2)) * step(0.45, lqF(vW.xz * 0.12 - t * 0.02)); // streaks, not a whole rainbow
+    col += uSheen * (0.5 + 0.5 * cos(6.2832 * (vec3(0.0, 0.33, 0.67) + hn * 1.3))) * 0.16 * band * (0.3 + fr); }
   // caustics: only where it's shallow and you're looking into it
   if (uQ > 1.5 && uCaus > 0.0) {
     float sk = (1.0 - smoothstep(0.08, 2.4, depth)) * (1.0 - fr) * top * uCaus;
@@ -158,14 +159,14 @@ void main() {
   }
   // foam: a bright line on every edge, lines of it rolling in, whitecaps on the swell. noise breaks it up
   float fn = lqN(vW.xz * 1.4 + vec2(t * 0.35, -t * 0.22)).x;
-  float foam = step(0.62, 1.0 - shore / (0.45 + 0.4 * uFoam) + fn * 0.45);
-  foam = max(foam, step(0.72, sin(shore * 2.6 - t * 2.3 + fn * 2.5)) * step(0.4, fn) * (1.0 - smoothstep(0.6, 2.8 * uFoam, shore)));
-  float chunk = lqN(vW.xz * 3.1 - t * 0.4).x;
-  foam = max(foam, uSwell * step(1.0, vH * 0.95 + fn * 0.3 + chunk * 0.25)) * step(0.01, uFoam) * top; // whitecaps, only on the tallest crests
+  float foam = step(0.62, 1.0 - shore / (0.22 + 0.3 * uFoam) + fn * 0.35);
+  foam = max(foam, step(0.88, sin(shore * 3.4 - t * 2.3 + fn * 2.5)) * step(0.45, fn) * (1.0 - smoothstep(0.5, 1.8 * uFoam, shore)));
+  float chunk = uQ > 1.5 ? lqN(vW.xz * 4.3 - t * 0.5).x : fn;
+  foam = max(foam, uSwell * step(1.12, vH * 0.9 + fn * 0.12 + chunk * 0.45)) * step(0.01, uFoam) * top; // whitecaps, only on the tallest crests
   // the sun glinting off it: hard cartoon sparkles that twinkle
-  float sp = pow(max(dot(R, uSun), 0.0), 90.0) * 2.2 + pow(max(dot(R, uSun), 0.0), 12.0) * 0.18;
+  float sp = pow(max(dot(R, uSun), 0.0), 140.0) * 2.0;
   float tw = lqH(floor(vW.xz * 3.0) + floor(t * 5.0));
-  float spark = step(0.75, sp * (0.4 + tw)) * uSpark * top;
+  float spark = step(0.9, sp * tw * tw) * uSpark * top;
   if (uQ > 0.5) spark = max(spark, step(0.985, tw) * step(0.6, l) * step(0.3, fr) * uSpark * 0.8 * top * (1.0 - uNight * 0.5));
   col = mix(col, vec3(1.0), clamp(foam * 0.85, 0.0, 1.0));
   col = mix(col, uSunC * 1.2 + 0.25, clamp(spark, 0.0, 1.0));
@@ -205,7 +206,7 @@ void main() {
   // the crust: plates drifting with the flow (fewer on the falls), cracks between them glowing hot
   vec3 v = lqVor(p * 0.85 + w * 0.5 + vec2(t * 0.05, 0.0));
   float crack = v.y - v.x;
-  float cov = step(v.z, uCrustK * (flat_ ? 1.0 : 0.45) * (0.6 + 0.8 * lqN(p * 0.12 + t * 0.02).x) + (1.0 - vMk.r) * 0.35);
+  float cov = step(v.z, uCrustK * (flat_ ? 1.0 : 0.45) * (0.6 + 0.8 * lqN(p * 0.12 + t * 0.02).x) + (1.0 - vMk.r) * 0.12);
   float plate = step(0.07 + 0.04 * (1.0 - uCrustK), crack);
   vec3 cr = mix(uEdge, uCrust, step(0.16, crack));
   cr *= 0.85 + 0.3 * lqN(p * 3.0).x; // crusty speckle

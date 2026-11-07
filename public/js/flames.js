@@ -56,6 +56,7 @@ void main() {
   col = mix(col, vec3(1.0, 0.98, 0.78), step(0.9, heat));
   float body = step(0.06, heat);
   float glow = exp(-length(vec2(x * 1.15, (y - 0.32) * 0.85)) * 3.2) * 0.6 * vS.w;
+  glow *= smoothstep(0.85, 0.45, abs(x)) * smoothstep(1.15, 0.8, y) * smoothstep(-0.15, 0.05, y); // to nothing at the card's edges
   float fogK = 0.0;
 #ifdef USE_FOG
   fogK = smoothstep(fogNear, fogFar, vFogDepth);
@@ -138,7 +139,7 @@ export function updateFlames(dt) {
   };
   for (const f of stat) put(f, 1);
   for (const [key, f] of live) {
-    const on = now - f.seen < 250;
+    const on = now - f.seen < 450; // (generous: a slow frame mustn't put it out)
     f.k += ((on ? 1 : 0) - f.k) * Math.min(1, dt * (on ? 4 : 2.5)); // grows in, dies down
     if (!on && f.k < 0.03) { if (f.slot >= 0) { dynLight(f.slot, null); slots[f.slot] = null; } live.delete(key); continue; }
     put(f, f.k);
@@ -154,7 +155,7 @@ export function updateFlames(dt) {
   smokeT -= dt;
   if (P && smokeT <= 0) {
     smokeT = 0.07;
-    for (const f of stat) if (f.smoke && cam && Math.hypot(f.x - cam.x, f.z - cam.z) < 260) P.smoke.spawn(f.x + R(f.w * 0.2), f.y + f.h * 0.9, f.z + R(f.w * 0.2), R(0.6), 2 + Math.random() * 1.5, R(0.6), 3 + Math.random() * 2, f.w * 0.5, f.w * 2.2, 0x2a2626, 0x0e0c0c, 0.55, -0.35, 0.3);
+    for (const f of stat) if (f.smoke && cam && Math.hypot(f.x - cam.x, f.z - cam.z) < 260) P.smoke.spawn(f.x + R(f.w * 0.2), f.y + f.h * 0.9, f.z + R(f.w * 0.2), R(0.6), 2 + Math.random() * 1.5, R(0.6), 3 + Math.random() * 2, f.w * 0.35, f.w * 1.1, 0x3a3434, 0x1a1616, 0.4, -0.35, 0.3);
     for (const f of live.values()) if (f.k > 0.3 && Math.random() < 0.5) P.smoke.spawn(f.x + R(0.3), f.y + f.h, f.z + R(0.3), R(0.4), 1.6 + Math.random(), R(0.4), 2.2 + Math.random(), 0.4, f.w * 2.2, 0x2a2626, 0x0e0c0c, 0.55, -0.4, 0.4);
     const all = stat.length + live.size;
     if (all) for (let i = 0; i < 2; i++) {
