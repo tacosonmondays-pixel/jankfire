@@ -15,6 +15,7 @@ import { M } from './models.js';
 import { streakIcon } from './icons.js';
 import { authored, whenLate } from './glbkit.js';
 import { K } from './keys.js';
+import { RP, RP_HOOKS, recordEv } from './replay.js';
 
 const $ = (id) => document.getElementById(id);
 const FONT = '"Comic Neue", "Comic Sans MS", cursive';
@@ -105,6 +106,10 @@ function buildBoard(w, i) {
 }
 function syncBoards(pk, now) {
   if (!pk) return;
+  if (X.snap) { // a replay just ended: straight back to how the windows really are, no animations
+    X.snap = false;
+    for (const b of X.boards) { b.shown = pk[b.i] ?? ZM.planks; b.planks.forEach((p, k) => { const h = p.userData.home; p.userData.anim = null; p.position.copy(h.p); p.rotation.copy(h.r); p.visible = k < b.shown; }); }
+  }
   for (const b of X.boards) {
     const n = pk[b.i] ?? ZM.planks;
     while (b.shown > n) { b.shown--; rip(b, b.planks[b.shown], now); }
@@ -337,7 +342,7 @@ export function zxSetup(zm, group) { // the mall was built: boards on every wind
 }
 export function zxTick(info, dt, now) {
   if (!X.zm || !info) return;
-  syncBoards(info.pk, now);
+  syncBoards(RP.active && RPK.size && info.pk ? info.pk.map((n, i) => (RPK.has(i) ? RPK.get(i) : n)) : info.pk, now); // a replay: its own plank rips and nails
   syncDrops(info.dr, now);
   stepMach(info, dt, now);
   stepMods(info, now);
@@ -377,7 +382,13 @@ export function zxOff() { X.zm = null; X.group = null; X.boards = []; X.drops.cl
 
 // ------------------------------------------------------------ messages
 const nameOf = (id) => (id === G.myId ? 'you' : (G.names.get(id) || { name: 'someone' }).name);
-net.on('zplank', (m) => { if (m.k === 'nail' && m.by === G.myId && !m.paid && Math.random() < 0.25) hud.msg('no more pay for boards this round. still worth it', 1.2); });
+// replays (the killcam, the play of the game): planks ripped off and nailed back as they were
+const RPK = new Map(); // window -> planks during a replay
+RP_HOOKS.push({ ev(m) { if (m.t !== 'zplank') return false; if (Number.isInteger(m.i)) RPK.set(m.i, m.n); return true; }, stop() { RPK.clear(); X.snap = true; } });
+net.on('zplank', (m) => {
+  recordEv(m); // (your own killcam)
+  if (m.k === 'nail' && m.by === G.myId && !m.paid && Math.random() < 0.25) hud.msg('no more pay for boards this round. still worth it', 1.2);
+});
 net.on('zdrop', (m) => {
   if (m.k === 'new') { sfx.dropSpawn(m.a); return; }
   if (m.k !== 'take') return;
