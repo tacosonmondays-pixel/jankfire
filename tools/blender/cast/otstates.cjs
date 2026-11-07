@@ -25,8 +25,9 @@ const [PORT = 3000, OUT = 'otstates.png'] = process.argv.slice(2);
       ['staple: FIRE', [], ['ot_staple', 0.86], 'three'], ['slam: in the air', [], ['ot_slam', 1.2], 'three'], ['slam: LAND', [], ['ot_slam', 1.5], 'three'],
       ['punch in: slot open', [], ['ot_punchin', 0.6], 'front'], ['coffee break', [], ['ot_coffee', 2.6], 'three'], ['roar (phase change)', [], ['ot_roar', 0.9], 'front'],
       ['plate ripped', ['plate_off'], ['ot_plate_rip', 1.3], 'three'], ['kneel ("rescheduled")', ['plate_off', 'ripped'], ['ot_kneel', 2], 'three'], ['clock out', ['plate_off', 'ripped'], ['ot_clockout', 4], 'side'],
+      ['fight 2: patched', ['v:2'], ['ot_stalk', 1], 'three'], ['fight 3: scorched, card torn', ['v:3'], null, 'chest'], ['fight 4: fully billable', ['v:4'], null, 'three'], ['museum: REHIRED', ['v:rehire'], null, 'chest'], ['fight 4: back cables', ['v:4'], null, 'back'],
     ];
-    const cols = 5, rows = 3, W = 1600 / cols, H = 900 / rows;
+    const cols = 5, rows = 4, W = 1600 / cols, H = 900 / rows;
     CELLS.forEach(([label, dmg, clip, view], i) => {
       const sc = new THREE.Scene(); sc.background = new THREE.Color(0x2a1830); G.scene = sc;
       sc.add(new THREE.HemisphereLight(0xffe8f0, 0x402040, 1.4)); const d = new THREE.DirectionalLight(0xffd0b0, 2.4); d.position.set(-3, 6, -5); sc.add(d);
@@ -36,7 +37,7 @@ const [PORT = 3000, OUT = 'otstates.png'] = process.argv.slice(2);
       const a = { id: 'sheet' + i, L, ch: c, pos: [0, 0, 0], yaw: 0, clip: null };
       sc.add(c.root);
       const rig = OT.rig(a);
-      for (const s of dmg) if (s === 'lod') { rig.far = true; rig.vis(); } else rig.dmg(s);
+      for (const s of dmg) if (s === 'lod') { rig.far = true; rig.vis(); } else if (s.startsWith('v:')) rig.variant(/^\d$/.test(s.slice(2)) ? +s.slice(2) : s.slice(2)); else rig.dmg(s);
       if (!dmg.includes('lod')) { rig.far = false; rig.vis(); }
       if (clip) { CLIPS[clip[0]].f(c, clip[1], 1); a.clip = { name: clip[0], t: clip[1], len: 9e9 }; rig.update(0, null); }
       c.root.rotation.y = view === 'back' ? 0 : view === 'side' ? Math.PI / 2 : view === 'three' ? Math.PI + 0.6 : Math.PI;
@@ -53,7 +54,7 @@ const [PORT = 3000, OUT = 'otstates.png'] = process.argv.slice(2);
     return CELLS.map((c) => c[0]);
   });
   // labels
-  await pg.evaluate((labels) => { labels.forEach((t, i) => { const d = document.createElement('div'); d.textContent = t; d.style.cssText = `position:fixed;z-index:100000;left:${(i % 5) * 320 + 8}px;top:${Math.floor(i / 5) * 300 + 6}px;font:700 15px sans-serif;color:#ffe14d;background:rgba(18,8,24,.85);padding:2px 6px;border:2px solid #ff4fd8`; document.body.append(d); }); }, info);
+  await pg.evaluate((labels) => { labels.forEach((t, i) => { const d = document.createElement('div'); d.textContent = t; d.style.cssText = `position:fixed;z-index:100000;left:${(i % 5) * 320 + 8}px;top:${Math.floor(i / 5) * 225 + 6}px;font:700 15px sans-serif;color:#ffe14d;background:rgba(18,8,24,.85);padding:2px 6px;border:2px solid #ff4fd8`; document.body.append(d); }); }, info);
   await pg.waitForTimeout(300); await pg.screenshot({ path: OUT });
   console.log(errs.join('\n') || 'no errors'); await b.close();
 })();

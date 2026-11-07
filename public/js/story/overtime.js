@@ -2,6 +2,7 @@
 // referee's windows and the sounds line up with the tells), his damage states, the far LOD swap, steam, sparks, ticking,
 // and preview fx (staples, the slam's frozen-time ring) for rehearsal and cutscenes. no damage happens here.
 //   OT.play(a, clip, {hold})  OT.dmg(a, 'plate_off' | 'cracked' | 'sparking' | 'ripped' | 'card_torn' | 'fresh')
+//   OT.variant(a, 1 | 2 | 3 | 4 | 'rehire')   his look per fight (content/bosses.js overtime_* look)
 //   OT.on((ev) => ...)  ev = { type: 'ot', mark, id, clip, at: [x, y, z] }   (marks: MARKS below)
 import * as THREE from 'three';
 import { G } from '../ctx.js';
@@ -164,6 +165,7 @@ export const OT = {
   on(f) { listeners.add(f); return () => listeners.delete(f); },
   play(a, clip, opts = {}) { playClip(a, clip, opts); },
   dmg(a, state) { rigOf(a).dmg(state); },
+  variant(a, v) { rigOf(a).variant(v); }, // 1 (pristine), 2 (patched, fight 2), 3 (scorched, glitching), 4 (fully billable), 'rehire'
   rig: (a) => rigOf(a),
 };
 window.JF_OT = OT; // (tests and the referee's devtools)
@@ -279,7 +281,47 @@ function makeRig(a) {
       c.handR.add(mug); c.handL.add(flask); r.props = [mug, flask];
     } else if (!on && r.props) { for (const p of r.props) p.removeFromParent(); r.props = null; }
   };
+  // his look per fight: the same model with the damage pieces, a tinted suit and a few code extras
+  r.extras = [];
+  r.variant = (v) => {
+    for (const e of r.extras) e.removeFromParent(); r.extras = [];
+    r.dmg('fresh'); r.stutter = false; r.glitch = false;
+    tint(1); const heart = (L.partsAll || {}).heart || []; for (const h of heart) h.scale.setScalar(1), h.position.set(0, 0, 0);
+    if (v === 2) { // a steel patch welded over the fight-1 wound, the porthole plated over
+      const m = new THREE.MeshStandardMaterial({ color: 0x6a7078, metalness: 0.8, roughness: 0.45 }), wb = new THREE.MeshStandardMaterial({ color: 0x8a6a4a, metalness: 0.5, roughness: 0.6 });
+      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.135, 0.14, 0.025, 10), m); p.rotation.x = Math.PI / 2; p.position.set(0.01, 0.45, -0.405); p.rotation.y = 0.2;
+      const w = new THREE.Mesh(new THREE.TorusGeometry(0.135, 0.012, 5, 18), wb); w.position.set(0.01, 0.45, -0.418);
+      c.spine.add(p, w); r.extras.push(p, w);
+    }
+    if (v === 3) { tint(0.55, 0x3a2a20); r.dmg('card_torn'); r.stutter = true; r.glitch = true; }
+    if (v === 4) { // in tatters, plugged into the Master Clock: plate gone, the clock huge and cracked, cables out of his back
+      tint(0.45, 0x2a1a14); r.dmg('plate_off'); r.dmg('cracked'); r.sparking = true; r.glitch = true;
+      for (const h of heart) { h.scale.set(1.45, 1.45, 1.2); h.position.set(0, -0.19, 0.08); }
+      const cm = new THREE.MeshStandardMaterial({ color: 0x2a2a30, roughness: 0.5 });
+      for (let i = 0; i < 4; i++) {
+        const curve = new THREE.CatmullRomCurve3([new THREE.Vector3((i - 1.5) * 0.06, 0.6, 0.28), new THREE.Vector3((i - 1.5) * 0.3, 1.4, 1.2), new THREE.Vector3((i - 1.5) * 0.8, 3.4, 2.6)]);
+        const t = new THREE.Mesh(new THREE.TubeGeometry(curve, 16, 0.03, 6), cm); c.spine.add(t); r.extras.push(t);
+      }
+    }
+    if (v === 'rehire') { // fresh from the spares: a REHIRED sticker on the lapel
+      const cv = document.createElement('canvas'); cv.width = 64; cv.height = 32; const g = cv.getContext('2d');
+      g.fillStyle = '#ffe14d'; g.fillRect(0, 0, 64, 32); g.fillStyle = '#ff3030'; g.font = 'bold 13px sans-serif'; g.fillText('REHIRED', 3, 21); g.strokeStyle = '#ff3030'; g.lineWidth = 3; g.strokeRect(1, 1, 62, 30);
+      const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace;
+      const st = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.08), new THREE.MeshStandardMaterial({ map: tx, roughness: 0.5 }));
+      st.position.set(-0.2, 0.62, -0.31); st.rotation.set(0, Math.PI + 0.35, -0.15); c.spine.add(st); r.extras.push(st);
+    }
+    r.vis();
+  };
+  // the suit's colour per fight (his materials are cloned the first time, so other overtimes keep theirs)
+  let own = false;
+  const tint = (k, toward = 0x000000) => {
+    if (!own) { if (k === 1) return; c.root.traverse((o) => { if (o.isMesh && o.material && /suit|pinstripe/i.test([].concat(o.material)[0].name || '')) { o.material = o.material.clone(); o.material.userData.c0 = o.material.color.clone(); } }); own = true; }
+    c.root.traverse((o) => { if (o.isMesh && o.material && o.material.userData.c0) o.material.color.copy(o.material.userData.c0).lerp(new THREE.Color(toward), 1 - k); });
+  };
   r.update = (dt, cam) => {
+    // fight 3: he stutters like a skipping tape (the pose freezes for a beat), the visor crackles with static
+    if (r.stutter && Math.random() < dt * 1.6) a.stepAcc = -(0.08 + Math.random() * 0.22);
+    if (r.glitch && L.parts && L.parts.head) L.parts.head.traverse((o) => { if (o.isMesh && o.material && o.material.emissive && o.material.emissiveIntensity > 0.5) o.material.emissiveIntensity = Math.random() < 0.25 ? 0.2 : 4; });
     propsOn(!!(a.clip && a.clip.name === 'ot_coffee'));
     // marks inside the current clip
     const cl = a.clip;

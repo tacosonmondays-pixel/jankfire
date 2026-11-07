@@ -22,15 +22,22 @@ export const HOOKS = {
     steps: { rip: { dmg: 'ripped', clip: 'ot_kneel', hold: true }, after: { clip: 'ot_kneel', hold: true } },
     stepDone: { after: 'ot1_retreat' },
   },
+  // the later fights: his look per fight (bosses.js look), found by the step that fights him (its boss / killBoss goal)
+  overtime_2: { actor: 'overtime', at: 'commute:spiral_freeway', start: { variant: 2, clip: 'ot_stalk', hold: true }, phases: [] },
+  overtime_3: { actor: 'overtime', at: 'lates:waiting_room', start: { variant: 3, clip: 'ot_idle', hold: true }, phases: [] },
+  overtime_4: { actor: 'overtime', at: 'corphill:master_clock', start: { variant: 4, clip: 'ot_idle', hold: true }, phases: [] },
+  overtime_rehire: { actor: 'overtime', at: 'corphill:museum', start: { variant: 'rehire', clip: 'ot_idle', hold: true }, phases: [] },
 };
+for (const h of Object.values(HOOKS)) h.start.variant ??= 1;
 
 export function makeBoss(ST, { where, playScene }) {
-  const B = { on: null, hp: 1, phase: 0, plateOff: false, lastStep: '' };
+  const B = { on: null, hp: 1, phase: 0, plateOff: false, last: {} };
   const S = () => ST.S;
   const bossOfKind = (k) => (HOOKS[k] ? k : Object.keys(HOOKS).find((b) => HOOKS[b].actor === k || (k && String(k).startsWith(HOOKS[b].actor))));
   const actorOf = (b) => actors.get(HOOKS[b].actor);
   function pose(b, o) {
     if (!o) return; const a = actorOf(b); if (!a) return;
+    if (o.variant != null) OT.variant(a, o.variant);
     if (o.dmg) OT.dmg(a, o.dmg);
     if (o.clip) { a.clip = null; play(a, o.clip, { hold: !!o.hold }); }
   }
@@ -57,7 +64,8 @@ export function makeBoss(ST, { where, playScene }) {
   }
   B.combat = (ev) => {
     if (!ev || typeof ev !== 'object') return;
-    const b = bossOfKind(ev.boss || ev.kind || ev.target) || B.on; if (!b || !HOOKS[b]) return;
+    const id = ev.boss || ev.kind || ev.target;
+    const b = HOOKS[id] ? id : (B.on && HOOKS[B.on].actor === id ? B.on : bossOfKind(id) || B.on); if (!b || !HOOKS[b]) return; // ('overtime' = whichever fight is on)
     if (B.on !== b) enter(b);
     const a = actorOf(b);
     if (ev.type === 'hit' && Number.isFinite(ev.hp) && Number.isFinite(ev.max) && ev.max > 0) hp(b, ev.hp / ev.max, !!(ev.crit || ev.head));
@@ -76,15 +84,22 @@ export function makeBoss(ST, { where, playScene }) {
     return { hp: B.hp, phase: B.phase };
   };
   // the quest side: entering the fight step sets him up; later steps pose him; some steps play a scene when done
+  const fightStep = (b, o) => {
+    const h = HOOKS[b]; if (h.fight) return o.step === h.fight;
+    const q = S().defs.quests[o.quest], st = q && q.steps.find((x) => x.id === o.step); if (!st) return false;
+    return [].concat(st.goals || [], st.goal || []).some((g) => g.type === 'killBoss' && g.boss === b);
+  };
   B.frame = () => {
     const objs = S().quests.objectives ? S().quests.objectives() : [];
+    const D = S().defs.bosses || {};
     for (const [b, h] of Object.entries(HOOKS)) {
-      const o = objs.find((x) => x.quest === h.quest); const key = o ? o.quest + '/' + o.step : '';
-      if (key === B.lastStep) continue;
-      const prev = B.lastStep; B.lastStep = key;
-      if (prev.startsWith(h.quest + '/')) { const ps = prev.split('/')[1]; if (h.stepDone && h.stepDone[ps] && S().defs.scenes[h.stepDone[ps]]) playScene(h.stepDone[ps]); }
+      const quest = h.quest || (D[b] && D[b].quest); if (!quest) continue;
+      const o = objs.find((x) => x.quest === quest); const key = o ? o.quest + '/' + o.step : '';
+      if (key === (B.last[b] || '')) continue;
+      const prev = B.last[b] || ''; B.last[b] = key;
+      if (prev) { const ps = prev.split('/')[1]; if (h.stepDone && h.stepDone[ps] && S().defs.scenes[h.stepDone[ps]]) playScene(h.stepDone[ps]); }
       if (!o) continue;
-      if (o.step === h.fight) enter(b);
+      if (fightStep(b, o)) enter(b);
       else if (h.steps && h.steps[o.step]) { if (!actorOf(b)) enter(b); pose(b, h.steps[o.step]); }
     }
   };
