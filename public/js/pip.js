@@ -37,7 +37,7 @@ export function pipFrame(dt, id) {
   if (!P.rt) init();
   const R = G.renderer;
   R.getSize(sz);
-  const w = Math.round(sz.x * SHARE), h = Math.round((w * RT_H) / RT_W), x = sz.x - w - Math.round(sz.x * 0.012), y = Math.round(sz.y * 0.36);
+  const w = Math.round(sz.x * SHARE), h = Math.round((w * RT_H) / RT_W), x = sz.x - w - Math.round(sz.x * 0.012), y = Math.round(sz.y * 0.47); // (under the royale stat box and the minimap)
   if (id !== P.id || !P.on) { P.id = id; P.yaw = r.yaw; P.pitch = r.pitch; P.n = 0; P.el.querySelector('span').textContent = `${r.name}'s eyes`; }
   P.on = true;
   // their eyes (smoothed a little, like the first-person spectate)
