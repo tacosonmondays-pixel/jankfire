@@ -18,6 +18,7 @@ import { RP } from './replay.js';
 import * as E3 from './econ3d.js';
 import { tacRound, tacSync } from './tactical.js';
 import { K } from './keys.js';
+import { specFP, specFPOff } from './specfp.js'; // first-person spectating
 
 // this mode's keys are actions in keys.js (rebindable in Settings > Key bindings): 'buy' (B: the buy menu here, the
 // pause menu everywhere else), 'drop' (H; Shift + it drops your item), 'pause' (P, every mode: Esc pauses too).
@@ -242,8 +243,9 @@ function banner(m) {
   if (m.half === 2 && m.pistol) tags.push(`HALF TIME · sides swapped · everyone back to ${money(m.start)}`);
   if (m.pistol) tags.push('PISTOL ROUND');
   if (m.n === BOMB.swapAfter) tags.push('LAST ROUND OF THE HALF');
-  if (Math.max(...wins) >= BOMB.wins - 1) tags.push('MATCH POINT');
-  el.innerHTML = `<div class="rs"><span class="r">ROUND ${m.n}</span><span class="s" style="color:${col}">${mine ? 'ATTACK' : 'DEFEND'}</span></div><div class="t">${[`BUY PHASE · ${ecoKeyLabel('buy')} to shop`, ...tags].map((x) => `<span>${x}</span>`).join('')}</div>`;
+  if (wins[0] >= BOMB.wins - 1 && wins[1] >= BOMB.wins - 1) tags.push(`ROUND ${BOMB.wins * 2 - 1}: WINNER TAKES ALL`);
+  else if (Math.max(...wins) >= BOMB.wins - 1) tags.push('MATCH POINT');
+  el.innerHTML = `<div class="rs"><span class="r">ROUND ${m.n} / ${BOMB.wins * 2 - 1}</span><span class="s" style="color:${col}">${mine ? 'ATTACK' : 'DEFEND'}</span></div><div class="t">${[`BUY PHASE · ${ecoKeyLabel('buy')} to shop`, `first to ${BOMB.wins}`, ...tags].map((x) => `<span>${x}</span>`).join('')}</div>`;
   el.classList.remove('hidden', 'go'); void el.offsetWidth; el.classList.add('go');
   clearTimeout(el._t); el._t = setTimeout(() => el.classList.add('hidden'), 3600);
 }
@@ -419,24 +421,11 @@ function specTick(t) {
   if (el._k !== text) { el._k = text; el.innerHTML = text; }
 }
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-// main.js frame, after the replay had its go: follow the teammate from behind their shoulder
+// main.js frame, after the replay had its go: through the teammate's own eyes (first person only: specfp.js)
 export function econCam(cam, dt) {
   const e = G.eco;
-  if (!e || !e.spec || ME.alive || RP.active) return false;
-  const r = G.remotes.get(e.spec);
-  if (!r) return false;
-  const k = 1.2 * (r.distScale || 1), head = [r.pos[0], r.pos[1] + 1.95 * k, r.pos[2]];
-  const cp = Math.cos(r.pitch), ld = [-Math.sin(r.yaw) * cp, Math.sin(r.pitch), -Math.cos(r.yaw) * cp], rt = [Math.cos(r.yaw), 0, -Math.sin(r.yaw)];
-  const want = [head[0] - ld[0] * 3.1 + rt[0] * 0.6, head[1] - ld[1] * 3.1 + 0.55, head[2] - ld[2] * 3.1 + rt[2] * 0.6];
-  const dv = [want[0] - head[0], want[1] - head[1], want[2] - head[2]], dl = Math.hypot(...dv) || 1;
-  const hit = raycast(head, dv.map((v) => v / dl), dl, BOXES);
-  const s = hit ? Math.max(0.3, hit.t - 0.25) / dl : 1;
-  const tgt = [head[0] + dv[0] * s, head[1] + dv[1] * s, head[2] + dv[2] * s];
-  if (!e.camP) e.camP = tgt.slice();
-  for (let i = 0; i < 3; i++) e.camP[i] += (tgt[i] - e.camP[i]) * Math.min(1, dt * 9);
-  cam.position.set(e.camP[0], e.camP[1], e.camP[2]);
-  cam.lookAt(head[0] + ld[0] * 10, head[1] + ld[1] * 10, head[2] + ld[2] * 10);
-  return true;
+  if (!e || !e.spec || ME.alive || RP.active) { specFPOff(); return false; }
+  return specFP(cam, dt, e.spec);
 }
 export const econHideVM = () => !!(G.eco && !ME.alive); // out this round: no weapon in your face (spectating or not)
 
@@ -824,4 +813,12 @@ export function initEcon(callbacks) {
   makeHud();
   initNet();
   wrapHud();
+}
+// the bots setup screen: Plant & Defuse is always 5v5 (the server tops both teams up with bots), so the slider rests
+{
+  const g = document.getElementById('setupGame'), b = document.getElementById('setupBots'), n = document.getElementById('setupBotsN');
+  if (g && b && n) {
+    const sync = () => { const sd = g.value === 'bomb'; b.disabled = sd; n.textContent = sd ? '5v5' : b.value; };
+    g.addEventListener('change', sync); b.addEventListener('input', sync); sync();
+  }
 }
