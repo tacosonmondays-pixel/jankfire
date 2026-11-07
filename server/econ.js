@@ -6,6 +6,7 @@ import { TAC } from '../shared/tactical.js';
 import { BOMB } from '../shared/modes.js';
 import { ECON, ARMOR, BLAST, GEAR, econWeapon, weaponPrice, refillPrice, killReward, armorPen, ammoSpec, itemSpec, gearPrice } from '../shared/econ.js';
 import { raycast, PH } from '../shared/physics.js';
+import { installSdTune } from './sdtune.js'; // S&D: damage per zone + range, 5v5
 import AI, { aiDeps } from './econai.js'; // the team tactics (buying, executes, holds, rotations, retakes)
 
 // test knobs: JF_ECON=0 turns the economy off (Plant & Defuse as before), short buy phases, start / max credits
@@ -26,8 +27,9 @@ const DROP_SLOTS = { primary: 1, secondary: 1, melee: 1, item: 1, kit: 1 };
 const WSLOTS = ['primary', 'secondary', 'melee'];
 const ZONES = new WeakMap(); // map -> side zones
 // what bots buy: full buys pick from the first list, force buys from the second
-const BOT_FULL = ['ar', 'ar', 'redline', 'redline', 'chicken', 'minigun', 'sniper', 'burst', 'lmg', 'dmr', 'nailgun', 'cart'];
-const BOT_FORCE = ['smg', 'smg', 'shotgun', 'banana', 'bowling', 'lever', 'autoshot', 'tennis'];
+// (only the Search & Destroy arsenal: shared/econ.js SD. anything else is filtered out by econWeapon anyway)
+const BOT_FULL = ['ar', 'ar', 'ar', 'burst', 'burst', 'dmr', 'lmg', 'sniper'];
+const BOT_FORCE = ['smg', 'smg', 'redline', 'shotgun', 'shotgun', 'lever', 'autoshot'];
 // bots fire hitscan guns and projectiles (botFire); anything else they could only carry
 const botGun = (id) => has(WEAPONS, id) && WEAPONS[id].slot !== 'melee' && (WEAPONS[id].kind === 'hitscan' || WEAPONS[id].kind === 'proj');
 
@@ -144,8 +146,9 @@ const M = {
   econSync(p) {
     const e = p.ec;
     if (!e) return;
-    if (e.it && has(ITEMS, e.it.id) && e.it.n > 0) { p.item = e.it.id; p.ic = { i: e.it.id, n: e.it.n, next: 0 }; }
-    else { e.it = null; if (!has(ITEMS, p.item)) p.item = 'frag'; p.ic = { i: p.item, n: 0, next: 0 }; }
+    if (e.it && has(ITEMS, e.it.id) && (e.it.n > 0 || ITEMS[e.it.id].keep)) { p.item = e.it.id; p.ic = { i: e.it.id, n: e.it.n, next: 0 }; } // (goggles stay on with no flashes left)
+    else { e.it = null; if (!has(ITEMS, p.item) || p.item === 'nvg') p.item = 'frag'; p.ic = { i: p.item, n: 0, next: 0 }; } // (no free goggles from your own loadout)
+    if (p.item !== 'nvg') p.nvOn = false;
     const mel = e.sl.melee, kat = mel && mel.id === 'katana' ? mel.kat || 0 : 0;
     if ((p.kat || 0) !== kat) { p.kat = kat; this.broadcast({ t: 'kat', id: p.id, n: kat }); }
     // a weapon shows the skin of whoever bought it (no skin = the default look, not yours)
@@ -394,6 +397,7 @@ const M = {
       case 's': { // the weapon you say you hold must be one you have; there's no grapple to report
         if (has(WEAPONS, m.w) && !this.econOwns(p, m.w)) m.w = undefined;
         m.g = null;
+        if (this.tacAir(p)) p.tacAirT = now(); // (S&D: the spread a fresh landing still has)
         // slow walk (silent footsteps) only at slow walk speed: running with the flag on just clears it
         if (typeof m.f === 'number' && (m.f & FLAGS.WALK) && Array.isArray(m.v) && Math.hypot(Number(m.v[0]) || 0, Number(m.v[2]) || 0) > TAC.run * TAC.walkMul + 1) m.f &= ~FLAGS.WALK;
         if (p.ec && p.alive && m.q === p.seq && Array.isArray(m.p) && m.p.length === 3 && m.p.every((v) => typeof v === 'number' && Number.isFinite(v))) p.ec.said = m.p.slice(0, 3);
@@ -694,14 +698,14 @@ const M = {
       const ok = list.filter((id) => econWeapon(id) && weaponPrice(id) != null && weaponPrice(id) + keep <= e.$);
       return ok.length > 0 && buy('w', pick(ok));
     };
-    if (mode === 'pistol') { if (Math.random() < 0.6) buy('g', 'vest'); if (Math.random() < 0.4) gun(['pistol', 'akimbo', 'sawnoff'], 0); } // whatever's left: a better sidearm
+    if (mode === 'pistol') { if (Math.random() < 0.6) buy('g', 'vest'); if (Math.random() < 0.4) gun(['revolver', 'akimbo', 'sawnoff'], 0); } // whatever's left: a better sidearm
     else if (mode === 'full') {
       if (!hasGun) gun(BOT_FULL, 1000) || gun(BOT_FULL, 650) || gun(BOT_FORCE, 650);
       if (!buy('g', 'helm')) buy('g', 'vest');
       if (!att) buy('g', 'kit');
       if (e.$ >= 500) buy('i', 'frag');
     } else if (mode === 'force') {
-      if (!hasGun && !gun(BOT_FORCE, 650) && !gun(BOT_FORCE, 0)) gun(['marbles', 'akimbo', 'sawnoff'], 0); // no rifle money: a shotgunny sidearm
+      if (!hasGun && !gun(BOT_FORCE, 650) && !gun(BOT_FORCE, 0)) gun(['revolver', 'akimbo', 'sawnoff'], 0); // no rifle money: a better sidearm
       buy('g', 'vest');
     }
     if (e.sl.primary && e.sl.primary.lim && e.sl.primary.m + e.sl.primary.r < 10 && refillPrice(e.sl.primary.id) <= e.$) buy('w', e.sl.primary.id);
@@ -819,5 +823,6 @@ export function installEcon(Room, deps) {
     if (k in Room.prototype) throw new Error('econ: Room already has ' + k);
     Room.prototype[k] = fn;
   }
+  installSdTune(Room);
 }
 export { dropView, instView };

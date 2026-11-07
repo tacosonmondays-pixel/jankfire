@@ -3,6 +3,7 @@
 // numbers. A shot's direction is worked out from the aim, the spray index, the spread and a per-shot random number that
 // both sides can compute (seed + shot number), so the server can tell if a hit really followed the pattern.
 import { WEAPONS } from './weapons.js';
+import { SDG, SDMOVE, sdRow, sdBloom } from './sdgun.js'; // Search & Destroy: Valorant-ish spread, bloom, recoil (owner, 2026-11-07)
 
 export const TAC = {
   walkMul: 0.5, // shift = slow walk at this share of the run speed (silent: no footsteps for anyone else)
@@ -53,6 +54,8 @@ Object.assign(PATTERNS, {
   akimbo: { reset: 300, move: 0.5, wob: 0.014, kp: [[0, 0, 0], [4, 0.004, 0.012], [12, -0.01, 0.024], [24, 0.012, 0.03], [40, 0, 0.032]] },
   sawnoff: { reset: 800, move: 0.3, wob: 0, kp: [[0, 0, 0]] },
 });
+// S&D recoil: every gun in the table climbs `rc` times its pattern (scaled once, here, so both sides agree)
+for (const [id, r] of Object.entries(SDG)) { const P = PATTERNS[id]; if (P && r.rc !== 1) { P.kp = P.kp.map(([i, x, y]) => [i, x * r.rc, y * r.rc]); P.wob *= r.rc; } }
 const FALLBACK_MOVE = 1;
 // a gun nobody wrote a pattern for (a new automatic): one made up from its id, so it's still the same every time
 const made = new Map();
@@ -84,15 +87,27 @@ export function patternAt(id, i) {
 // the extra spread for how you're moving: speed (horizontal m/s), air (not on the floor), crouch (crouched)
 export function moveSpread(id, speed, air, crouch) {
   const P = patternOf(id), mv = P ? P.move : FALLBACK_MOVE;
+  if (sdRow(id)) { // S&D: a walk costs a little, a run a lot, the air everything
+    const S = SDMOVE;
+    if (air) return S.airSpread * mv;
+    if (speed <= TAC.still) return 0;
+    const c = crouch ? 0.8 : 1;
+    if (speed <= S.walk) return S.walkSpread * mv * c * ((speed - TAC.still) / (S.walk - TAC.still));
+    return (S.walkSpread + (S.runSpread - S.walkSpread) * Math.min(1, (speed - S.walk) / (TAC.run - S.walk))) * mv * c;
+  }
   if (air) return TAC.airSpread * mv;
   const k = Math.max(0, Math.min(1, (speed - TAC.still) / (TAC.run - TAC.still)));
   return TAC.runSpread * mv * k * (crouch ? 0.8 : 1);
 }
 // the whole spread of a shot: the gun's own (after aiming down sights and the room's hipfire setting) plus moving
-export function tacSpread(id, base, speed, air, crouch) {
+// i: which shot of the spray (S&D guns bloom with it; 0 or omitted = none). land: 0..1, how fresh a landing is (S&D)
+export function tacSpread(id, base, speed, air, crouch, i = 0, land = 0) {
   const still = !air && speed <= TAC.still;
-  return base * (still && crouch ? TAC.crouch : 1) + moveSpread(id, speed, air, crouch);
+  const P = patternOf(id), landing = sdRow(id) && !air && land > 0 ? SDMOVE.land * (P ? P.move : 1) * Math.min(1, land) : 0;
+  return (base + sdBloom(id, i)) * (still && crouch ? (sdRow(id) ? SDMOVE.crouch : TAC.crouch) : 1) + moveSpread(id, speed, air, crouch) + landing;
 }
+// how fresh a landing is (1 = just touched down, 0 = settled), from when you were last in the air
+export const landK = (airT, now) => Math.max(0, 1 - (now - airT) / SDMOVE.landMs);
 
 // ------------------------------------------------------------ the per-shot random number both sides know
 export function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }

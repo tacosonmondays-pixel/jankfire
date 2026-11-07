@@ -100,6 +100,30 @@ _A very good nose. A very bad dog._
 - **Look:** a wet pink stomach-dog snout over your face
 - **Cost:** 1000 coupons
 
+### TENDON LINE `tendon_line` (arms)
+_Grown, not made. Mostly grown._
+
+- **Perk:** grapple range +30% (90 m → 117 m) and the reel winds 20% faster
+- **Downside:** your arm twangs like a guitar string on every grapple (audible within 15 m)
+- **Look:** a pink tendon rope coiled round your forearm, spooling out of your wrist
+- **Cost:** 1800 coupons
+
+### HOOK HAND `hook_hand` (arms)
+_Get over here. Then high-five._
+
+- **Perk:** grappling a person yanks them to you twice as hard, and a yank off a ledge counts as a void kill
+- **Downside:** you go for a high-five whenever an NPC raises a hand
+- **Look:** a chrome hook where your left hand was, with a little rubber grip
+- **Cost:** 2200 coupons
+
+### PERISTALTIC REEL `peristaltic_reel` (guts)
+_The Gut taught it to pull. It hasn't stopped._
+
+- **Perk:** a grapple jump flings you 25% harder, and long grapples fill HYPE twice as fast
+- **Downside:** your stomach gurgles audibly while you're on the rope
+- **Look:** a ribbed pink reel in your belly, winding
+- **Cost:** 2000 coupons
+
 ## Organ cores
 
 ### CRACKED PUNCH-CLOCK `core_cracked_punch_clock` (heart)
@@ -288,6 +312,32 @@ _// TODO: you_
 - **From:** THE MISSING TEXTURE (`missing_texture`)
 
 ## Secret bio upgrades
+
+### SOCK TENDONS `sec_sock_tendons` (legs)
+_Every washing line in the Bottom, in one go. The socks noticed._
+
+- **Perk:** ride washing lines, cables and zip-ropes at 1.5× speed, and you can jump off a line and grapple again in the air without touching the floor
+- **Downside:** you shed socks: one falls off every few seconds while you ride
+- **Look:** socks knotted round your shins like climbing tape
+- **Where:** The Wok Roofs (THE BOTTOM) (after `sq_bottom_line_run`)
+- **How:** Ride every washing line in the Bottom (forty-one of them) in one run without touching the ground, in any order, under the Washing Line Run's gold time. At the last pole a sock is waiting with your name on it.
+- **The clue trail:**
+  1. Dumpling: 'my brother did all the lines once without touching the floor. he's never told anyone how. he's fourteen.'
+  2. The Washing Line Run's start board has a forty-first line marked in crayon: 'the secret one. over the gym.'
+  3. Sharon: 'somebody's been leaving socks on my line. good socks. nice socks.'
+
+### PENDULUM INNER EAR `sec_pendulum_ear` (head)
+_Twelve full swings on the Master Clock. Time's not on anyone's side. Gravity is._
+
+- **Perk:** grapple jumps keep 100% of your swing speed plus a bonus at the bottom of the arc, and nothing can make you dizzy (spins, flings, tumbling)
+- **Downside:** you sway gently when you stand still, like a pendulum
+- **Look:** a tiny brass pendulum swinging behind one ear
+- **Where:** The Master Clock (CORP HILL) · needs done:m32_fully_vested
+- **How:** Post-game, ride the Master Clock's pendulum through twelve full arcs without letting go (the twelfth arc is 17:30 on the Clock's face). It drops a little brass bob into your hand.
+- **The clue trail:**
+  1. Overtime, in fight 4: 'the pendulum's been swinging for sixty-one years. nobody's ever ridden it.'
+  2. The Punctuality Museum's pendulum exhibit: 'TWELVE SWINGS MAKE A DAY. RIDING IT IS FORBIDDEN.'
+  3. Todd: 'i wrote the pendulum physics on my first day too. if you ride it twelve times it does something. i forget what. i was nervous.'
 
 ### SATELLITE EAR `sec_satellite_ear` (head)
 _Tune in. The Missing Hour is on every channel._

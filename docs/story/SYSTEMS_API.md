@@ -12,6 +12,15 @@ Story mode only exists with `?story=1` in the URL or `localStorage.jfStory = '1'
   the normal client (movement, weapons, HUD) plays story mode with no server room.
 - **Co-op (WP10):** `server/story.js` `StoryRoom` will run the same `createSim` per room (stub + room cap of 8 for now).
 
+## Worlds (`shared/story/worlds.js`)
+- `worldOf(mapId)` gives `{ id, spawn, yaw, killY, terminal, locker, clinic }`.
+- The default (a New Game) is the Bottom in the streamed city slice: `story_slice`, from the world lane's
+  `shared/city/storyworld.js`.
+- The slice's Locker and clinic stand by the Machine (with simple stand-in meshes) until the world lane builds them.
+  Add `locker` / `clinic` to `STORY_SLICE` and they move.
+- `?storytest=1` starts New Games on the test lot (`story_test`), which the e2e tests use.
+- `sim.world` / `sim.zone` say where a run is; the save's `at.map` picks it on load.
+
 ## The sim (`shared/story/sim.js`, pure)
 - `sim.state` is the story engine state (`shared/story/state.js` `fromSave(save.data)`); `snapshot()` writes `toSave(sim.state)` back to the top of `save.data`. Pass it to `makeStory({ state: sim.state })`.
 - `createSim({ send, save })` -> `sim` with `msg(m)`, `tick(dt)` (20 Hz), `snapshot()` (the save as it stands),
@@ -118,3 +127,88 @@ The engine is `shared/story/loot.js` (pure):
 stand in them), `lootSound(r, pos, pick)` (blip / chime / double chime / fanfare / choir, made with `audio.js`
 `synth`), and `lootCard(item, vs)` (the zine card with ▲▼ against what you hold). The card shows next to the nearest
 drop and on hover in the Tote Bag.
+
+## Implants, HYPE and Coupons (WP5)
+**Data** comes from the writer: `shared/story/content/implants.js` (50 implants: 12 shop, 23 organ cores, 15 secret;
+10 body slots). The engine is `shared/story/implants.js` (pure):
+- The body is `{ slots: { slot: { b, ql? } }, perm }`, and an implant is a Tote Bag item `{ b: implant id, ql? }`
+  (`ql` is an organ core's quality: bruised ×0.7 / fresh ×1 / prime ×1.2 / premium ×1.5).
+- `budget({ act, cats })` is 3, +1 per act after the first, +1 per 3 board cats.
+- `driftOf(body, ctx)` is (installed over budget) + permanent drift. `driftBand(d)` is `cale` (0-1), `fading` (2-3) or
+  `employee` (4+).
+- Over budget, every downside's chance is ×1.5 (`OVERLOAD`).
+- `installOp(body, inv, { op: 'install', u } | { op: 'uninstall', slot }, { takeItem, giveItem })`: installing swaps
+  the old implant back into the bag. An implant's `drift` is added to `perm` for good.
+- `perk(body, id, ctx)` gives the slice's four as numbers (quality and overload applied):
+  - `pigeon_eyes { seeLoot 40, wobble, flipEvery 30, flipFor 0.3 }`
+  - `spring_knees { jump 1.8, fall 0.5, fold 1/20, stumble 0.6 }`
+  - `core_second_stomach { eat by rarity, burpEvery 30, vomitAfter 3, eatHold 0.8 }`
+  - `core_cracked_punch_clock { freeMagEvery 60/q, slowAt 20, slowFor 3q, tickR 12, clockEvery 120, clockStill 5, fine 10 }`
+- `eatHp(p, rarity)`, `rollQuality(rand)` (loot tables' `core_*` entries roll one).
+
+**In the sim** (`shared/story/bodysys.js`):
+- State: `sim.body` (save part `body`), `sim.hype` 0-100 (save part `hype`), `save.coupons`.
+- `sim.addHype(n, why)`: HYPE drains 1.5/s after 8 s quiet. Combat should call `sim.addHype(HYPE.kill)` /
+  `(HYPE.style)` on kills.
+- `sim.addCoupons(n)` returns false if you can't afford a negative n. `sim.bodyChanged()`.
+- Client -> sim (`sty`):
+  - `clinic { op: buy | install | uninstall }`: only at a clinic. Buying needs a shop implant and the coupons;
+    uninstalling costs 150.
+  - `streak { u }`: pays `hypeCost(id)` (Moon Boots 25 .. Giant Duck 100), uses one of the stack, then sends the
+    normal `{ t: 'streak', reward }` so the existing streak code switches it on.
+  - `hypeEv { ev: 'grapple', n }`: capped, rate limited.
+  - `eatDrop { id }`: Second Stomach, within 4 m, weapons only.
+  - `fine {}`: Punch-Clock, rate limited.
+- Sim -> client: `body { body, drift, budget, band }`, `hype { v, need?, why? }`, `coupons { v, d }`, `installed`,
+  `ate`, `fined`, `clinicErr`.
+
+**Client** (`public/js/story/body.js`):
+- The HUD shows the HYPE bar, a ☺ COUPONS sticker, and DRIFT once it's 2+.
+- The perks:
+  - Spring Knees: `player.js ME.jumpMul` (the one additive hook, 1 everywhere else) and the fold-on-landing stumble.
+  - Pigeon Eyes: x-ray beams within 40 m, view wobble, the 0.3 s back-eye flip.
+  - Second Stomach: hold F on a weapon to eat it (a tap still picks it up), burps, vomiting your held gun on the
+    third in a row.
+  - Punch-Clock: a free magazine every 60 s, a once-a-life slow under 20 HP, ticking, the clock-in or a 10 HP fine.
+- The Meat Mechanic clinic (F at the chair) shows your mannequin with its implants, the body slots with TAKE OUT,
+  implants in your bag with INSTALL, the shop with prices, and budget / drift text.
+- `implantLook(character, ids, over)` puts code-built stand-ins on the mannequin. The art lane's models (ART_BIBLE §6,
+  items 20-22) replace them later.
+
+## Cars (WP7)
+**Physics** (`shared/story/drive.js`, pure): an arcade car over any box world (`{ query, raycast }`: BOXES on the
+client, a `ChunkWorld` on a server).
+- `newCar(ty, p, h)`, and `stepCar(car, { f, b, l, r, hand, boost }, dt, world, { slip })` -> events
+  `[{ crash, v } | { eject, v } | { land, v } | { overheat }]`.
+- Heading `h`: forward is `(sin h, cos h)`, and steering right lowers `h`.
+- Handling:
+  - top speed by mass (`topOf`): hatch ~35 m/s, bus ~18;
+  - a brake, then a slow reverse;
+  - steering that tightens at speed;
+  - a handbrake drift (grip 2 instead of 11);
+  - a boost (×1.55 top, ×1.8 acceleration) that overheats after 4 s and locks out for 3 s;
+  - kerbs up to 0.65 m are climbed, anything taller is a wall;
+  - no ground means you keep flying (ramps);
+  - wall hits bounce (restitution 0.35): over 13 m/s is a crash (car hp), over 27 m/s throws the driver out.
+- `opts.slip(x, z)` gives a grip multiplier for peels, marbles and soup.
+- `MAXV(ty)` is the most a car can ever do; servers use it to cap claims. `carType`, `seatOf`, `carBoxes`, `fwdOf`,
+  `speedOf`. `STORY_CARS.sofa` is the Bottom's sofa-car.
+
+**In the sim** (`shared/story/carsys.js`):
+- `sim.cars`, `sim.addCar(ty, p, h, col)`, `sim.carOf()`. Parked cars per world (the Bottom has the sofa-car and a
+  hatch by the Machine), saved per zone (`save.data.cars`).
+- Client -> sim: `carIn { id }` (within 4.5 m, nobody in it), `car { id, p, h, v, hp }` (~10/s; the driver only),
+  `carOut { id, p, h }`.
+- Each update is checked: no more than `MAXV × dt + 3` m, no 80 m teleports, no flying up, no claimed speed over the
+  cap, at most 40 updates/s, and hp only goes down.
+- A refused update comes back as `carFix { id, p, h, why }` and the client snaps back. A car left in the void is towed
+  back to the Machine.
+
+**Client** (`public/js/story/drive.js`):
+- F next to a car gets in; F again gets out (the left door, else the right / back / front / sunroof, never inside a wall).
+- `main.js` runs `G.story.drive(STEP, inp)` instead of `stepPlayer` while you drive (W/S/A/D, Space handbrake, Shift
+  boost), and hides the first-person view.
+- A chase camera follows the mouse and is kept out of walls. Only a sidearm fires (drive-bys); getting in switches to
+  your bar's sidearm.
+- The HUD shows boost heat and km/h. Crashes go CRUNCH and shake the screen; a big one throws you out the front.
+- The sofa-car is a code stand-in until the art lane's model 9.

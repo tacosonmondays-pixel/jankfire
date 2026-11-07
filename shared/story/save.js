@@ -10,8 +10,8 @@ export const FALLBACK = { slots: 1, maxBytes: 24 * 1024 }; // inv.story until jf
 export const CHAPTERS = ['return_to_sender']; // act I's first chapter; the quest lane adds the rest
 const DEPTH = 8, KEYS = 4000, STR = 2000;
 
-export function newSave(slot = 0) {
-  return { v: SAVE.v, slot, act: 1, chapter: CHAPTERS[0], playtime: 0, coupons: 0, at: { map: 'story_test', p: [0, 0.1, 6], yaw: 0 }, data: { flags: [], quests: {}, seen: [] } };
+export function newSave(slot = 0, world = 'story_slice') { // at.fresh: no position yet, the sim puts you at the world's spawn
+  return { v: SAVE.v, slot, act: 1, chapter: CHAPTERS[0], playtime: 0, coupons: 0, at: { map: world, p: [0, 0.1, 6], yaw: 0, fresh: true }, data: { flags: [], quests: {}, seen: [] } };
 }
 
 // systems register a cleaner for their part of save.data: fn(value) -> cleaned value (or undefined to drop it).
@@ -62,7 +62,7 @@ export function cleanSave(raw, { slot = 0, prev = null, maxBytes = SAVE.maxBytes
   const at = plain(raw.at) ? raw.at : {};
   const p = Array.isArray(at.p) && at.p.length === 3 && at.p.every((x) => Number.isFinite(x) && Math.abs(x) < 1e5) ? at.p.map((x) => Math.round(x * 100) / 100) : [0, 0.1, 6];
   const yaw = Number.isFinite(at.yaw) ? Math.round(at.yaw * 1000) / 1000 : 0;
-  const map = typeof at.map === 'string' && /^[a-z0-9_:]{1,40}$/.test(at.map) ? at.map : 'story_test';
+  const map = typeof at.map === 'string' && /^[a-z0-9_:]{1,40}$/.test(at.map) ? at.map : 'story_slice';
   const data = {};
   const rd = plain(raw.data) ? raw.data : {};
   for (const k of Object.keys(rd)) {
@@ -72,7 +72,7 @@ export function cleanSave(raw, { slot = 0, prev = null, maxBytes = SAVE.maxBytes
   }
   for (const k of ['flags', 'seen']) if (!data[k]) data[k] = [];
   if (!data.quests) data.quests = {};
-  return { save: { v: SAVE.v, slot, act, chapter, playtime, coupons, at: { map, p, yaw }, data } };
+  return { save: { v: SAVE.v, slot, act, chapter, playtime, coupons, at: { map, p, yaw, ...(at.fresh === true ? { fresh: true } : {}) }, data } };
 }
 
 // the little card the slot picker shows (no data blob): what /api/story/list returns per slot

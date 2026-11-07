@@ -5,7 +5,8 @@
 // The jam is the traversal gimmick: car roofs make a road (cars are props with real collision boxes).
 import { SLICE, hwY } from './slice.js';
 import { rng, hash2 } from './plan.js';
-import { rubble, PASTEL, pick } from './kit.js';
+import { rubble, line, PASTEL, pick } from './kit.js';
+import { playCommute } from './playground.js';
 
 const H = SLICE.highway;
 const GAP = [86, 100]; // the collapsed span (z)
@@ -77,7 +78,7 @@ export function commute(B, d) {
     if (B.inside(182, 236)) B.out.marks.push({ id: 'commute:ring_road', p: [182, hwY(236), 236] });
   }
   // ruined shells on the wasteland: broken walls of pre-war shops, sun-bleached, no roofs
-  const keepOut = [[hx0 - 6, -256, hx1 + 6, 256], [SLICE.camp.x - 26, SLICE.camp.z - 22, SLICE.camp.x + 26, SLICE.camp.z + 22], [SLICE.digit.x - 14, SLICE.digit.z - 14, SLICE.digit.x + 14, SLICE.digit.z + 14]];
+  const keepOut = [[hx0 - 6, -256, hx1 + 6, 256], [SLICE.camp.x - 36, SLICE.camp.z - 30, SLICE.camp.x + 36, SLICE.camp.z + 44], [SLICE.digit.x - 14, SLICE.digit.z - 14, SLICE.digit.x + 14, SLICE.digit.z + 14]];
   for (let i = 0; i < 6; i++) {
     const x = X0 + 6 + r() * (X1 - X0 - 12), z = Z0 + 6 + r() * (Z1 - Z0 - 12);
     if (keepOut.some((q) => x > q[0] && x < q[2] && z > q[1] && z < q[3])) continue;
@@ -125,9 +126,56 @@ export function commute(B, d) {
       B.out.triggers.push({ kind: 'hot', box: [D.x - 12, y - 1, D.z - 12, D.x + 12, y + 20, D.z + 12], name: 'HOT ZONE' });
     }
   }
+  // the wasteland: old car parks with their line paint, dead trees, ash mounds, a lot more junk lying about
+  const free = (x, z, m = 4) => !keepOut.some((q) => x > q[0] - m && x < q[2] + m && z > q[1] - m && z < q[3] + m);
+  if (r() < 0.5) { // a car park
+    const px = X0 + 6 + r() * (X1 - X0 - 36), pz = Z0 + 6 + r() * (Z1 - Z0 - 30);
+    if (free(px + 15, pz + 12, 14)) {
+      const y = hwY(pz + 12, true) + 0.02;
+      B.add(px, y - 0.02, pz, px + 30, y + 0.03, pz + 24, 'asphalt', { nc: true, tint: 0x6a6460 });
+      for (let i = 0; i <= 10; i++) { B.add(px + 1 + i * 2.8, y + 0.03, pz + 2, px + 1.12 + i * 2.8, y + 0.04, pz + 8, 'paint', { nc: true, tint: 0xe8e0d0 }); B.add(px + 1 + i * 2.8, y + 0.03, pz + 16, px + 1.12 + i * 2.8, y + 0.04, pz + 22, 'paint', { nc: true, tint: 0xe8e0d0 }); }
+      for (let i = 0; i < 4; i++) wreck(B, px + 2.4 + ((r() * 10) | 0) * 2.8, y, pz + (r() < 0.5 ? 5 : 19), 0, r);
+    }
+  }
+  for (let i = 0; i < 4; i++) { // dead trees: a trunk and a few bare branches (render only, a box to bump)
+    const x = X0 + r() * (X1 - X0), z = Z0 + r() * (Z1 - Z0);
+    if (!free(x, z)) continue;
+    const y = hwY(z, true), h = 4 + r() * 4, tips = [];
+    B.shape({ kind: 'tube', pts: [[x, y - 0.2, z], [x + (r() - 0.5), y + h * 0.5, z + (r() - 0.5)], [x + (r() - 0.5) * 2, y + h, z + (r() - 0.5) * 2]], r: [0.32, 0.12], seg: 6, mat: 'wood', tint: 0x4a3428, step: 1.5 });
+    for (let k = 0; k < 4; k++) { const a = r() * 6.28, by = y + h * (0.5 + r() * 0.4); tips.push(1); B.shape({ kind: 'tube', pts: [[x, by, z], [x + Math.cos(a) * 1.6, by + 1 + r(), z + Math.sin(a) * 1.6], [x + Math.cos(a) * 2.6, by + 1.4 + r() * 1.5, z + Math.sin(a) * 2.6]], r: [0.1, 0.03], seg: 4, mat: 'wood', tint: 0x4a3428, step: 1.5, at: [x, by, z] }); }
+    B.add(x - 0.3, y, z - 0.3, x + 0.3, y + h * 0.7, z + 0.3, 'wood', { hide: true });
+  }
+  for (let i = 0; i < 3; i++) { const x = X0 + r() * (X1 - X0), z = Z0 + r() * (Z1 - Z0); if (free(x, z)) B.shape({ kind: 'blob', c: [x, hwY(z, true), z], r: [3 + r() * 4, 0.8 + r(), 3 + r() * 3], seg: 8, mat: 'ash', tint: 0x9a8a80 }); }
+  for (let i = 0; i < 8; i++) {
+    const x = X0 + r() * (X1 - X0), z = Z0 + r() * (Z1 - Z0);
+    if (!free(x, z, 2) || (x > hx0 - 3 && x < hx1 + 3)) continue;
+    const id = pick(r, ['rubble_a', 'rubble_b', 'tirestack', 'cone', 'filecab', 'paperdrift', 'officechair', 'cone']);
+    B.prop(id, x, hwY(z, true), z, r() * 6.28, id.startsWith('rubble') ? 0.7 + r() * 0.8 : 1, 0);
+  }
+  // power poles along the east side of the highway, cables sagging between them, a ☺ billboard now and then
+  for (let z = Math.ceil(Math.max(Z0, H.zTop) / 30) * 30; z < Math.min(Z1, H.zLow); z += 30) {
+    const x = hx1 + 7, y = hwY(z, true);
+    if (!B.inside(x, z)) continue;
+    B.add(x - 0.15, y, z - 0.15, x + 0.15, y + 9, z + 0.15, 'wood', { tint: 0x6a4a32 });
+    B.add(x - 1.4, y + 8.2, z - 0.08, x + 1.4, y + 8.4, z + 0.08, 'wood', { nc: true, tint: 0x6a4a32 });
+    const y2 = hwY(z + 30, true);
+    for (const dx of [-1.2, 1.2]) line(B, [x + dx, y + 8.4, z], [x + dx, y2 + 8.4, z + 30], { r: 0.025, mat: 'metal', tint: 0x202024, sag: 1.4 });
+    if ((Math.round(z / 30) & 3) === 1) { // a billboard: the old ☺ on stilts, half the bulbs out
+      B.add(x + 4, y, z - 3, x + 4.3, y + 7, z - 2.6, 'metal'); B.add(x + 4, y, z + 2.6, x + 4.3, y + 7, z + 3, 'metal');
+      const bx = x + 4.15, cy = y + 9.5;
+      B.add(bx - 0.1, cy - 2.5, z - 4, bx + 0.1, cy + 2.5, z + 4, 'paint', { tint: 0xffe14d }); // the board, facing the road (-x)
+      B.add(bx - 0.14, cy - 2.6, z - 4.1, bx - 0.1, cy + 2.6, z - 3.9, 'cyanglow', { nc: true }); B.add(bx - 0.14, cy - 2.6, z + 3.9, bx - 0.1, cy + 2.6, z + 4.1, 'cyanglow', { nc: true });
+      B.add(bx - 0.14, cy + 2.5, z - 4.1, bx - 0.1, cy + 2.6, z + 4.1, 'cyanglow', { nc: true });
+      for (const ez of [-1.4, 1.4]) B.add(bx - 0.13, cy + 0.5, z + ez - 0.45, bx - 0.1, cy + 1.4, z + ez + 0.45, 'paint', { nc: true, tint: 0x111111 }); // ☺
+      B.add(bx - 0.13, cy - 1.3, z - 2, bx - 0.1, cy - 0.8, z + 2, 'paint', { nc: true, tint: 0x111111 });
+      B.add(bx - 0.13, cy - 0.8, z - 2.4, bx - 0.1, cy - 0.3, z - 1.9, 'paint', { nc: true, tint: 0x111111 }); B.add(bx - 0.13, cy - 0.8, z + 1.9, bx - 0.1, cy - 0.3, z + 2.4, 'paint', { nc: true, tint: 0x111111 });
+      B.light(bx - 3, cy, z, 0x4fd8ff, 10, 0.6);
+    }
+  }
   // paper drifts: the paper storm's floor (the storm itself is weather in the client)
   for (let i = 0; i < 5; i++) { const x = X0 + r() * (X1 - X0), z = Z0 + r() * (Z1 - Z0); B.prop('paperdrift', x, hwY(z, true), z, r() * 6.28, 0.8 + r() * 0.8, 0); }
   // the war, still lying where it stopped: a ☺ CORP walker tank, one leg gone, half sunk in the wasteland
   if (B.inside(262, -150)) { const y = hwY(-150, true); B.prop('warmech', 262, y, -150, 0.6, 1, 0); B.add(256, y, -156, 268, y + 6, -144, 'metal', { hide: true }); B.out.marks.push({ id: 'commute.warmech', p: [262, y, -138] }); }
   B.out.triggers.push({ kind: 'paper', box: [X0, -10, Z0, X1, 80, Z1] });
+  playCommute(B); // sign gantries, rings, the Pile-Up, the Smile's Hat (playground.js)
 }

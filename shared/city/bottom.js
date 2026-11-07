@@ -5,7 +5,8 @@
 // Landmarks: the Lost & Found (the Machine), the market, Lumps' Gym, the Down Escalator.
 import { SLICE, terraceOf } from './slice.js';
 import { rng, hash2 } from './plan.js';
-import { cube, stairsZ, sideStair, line, bulbs, retaining, rubble, stall, flightLen, PASTEL, pick } from './kit.js';
+import { cube, stairsZ, sideStair, line, bulbs, retaining, rubble, stall, flightLen, PASTEL, pick, hook } from './kit.js';
+import { playBottom, BANISTER } from './playground.js';
 
 const T = SLICE.bottom, LANE = 7;
 const zSouth = (k) => 256 - T.terr * k; // the downhill edge of terrace k
@@ -87,7 +88,7 @@ function house(B, k, x0, w, seed) {
 function lane(B, k, x0, x1) {
   const y = yOf(k), zs = zSouth(k), r = rng(hash2(k, 777));
   B.add(x0, y - 0.02, zs - LANE, x1, y + 0.02, zs, 'concrete', { nc: true, tint: 0xcab8b0 });
-  if (k > 0) B.add(x0, y, zs - 0.4, x1, y + 0.9, zs, 'concrete', { tint: 0xe0d0c8 }); // the lip wall (you can jump it)
+  if (k > 0) for (const [a, b] of [[x0, Math.min(x1, SLICE.longStairs.x0)], [Math.max(x0, SLICE.longStairs.x1), Math.min(x1, BANISTER[0])], [Math.max(x0, BANISTER[1]), x1]]) if (b > a) B.add(a, y, zs - 0.4, b, y + 0.9, zs, 'concrete', { tint: 0xe0d0c8 }); // the lip wall (you can jump it; open where the Long Stairs come up)
   // poles every 14-22 m along the lip, a line between neighbours: laundry on most, bulbs on some
   let px = -316 + r() * 6;
   const poles = [];
@@ -97,7 +98,7 @@ function lane(B, k, x0, x1) {
     if (p < x0 - 30 || p > x1 + 30) continue;
     if (KEEP_OUT().some((q) => inRect(p - 1, zs - 1, p + 1, zs + 1, q))) continue;
     const h = 5.2 + (hash2(k, i) % 7) * 0.2;
-    if (p >= x0 && p < x1) { B.add(p - 0.1, y, zs - 0.3, p + 0.1, y + h, zs - 0.1, 'rust'); }
+    if (p >= x0 && p < x1) { B.add(p - 0.1, y, zs - 0.3, p + 0.1, y + h, zs - 0.1, 'rust'); if (i % 2 === 0) hook(B, p, y + h + 0.5, zs - 0.2, { s: 1.2 }); } // (a grapple ring on every other pole)
     const q = poles[i + 1];
     if (q === undefined || KEEP_OUT().some((rr) => inRect(Math.min(p, q), zs - 1, Math.max(p, q), zs + 1, rr))) continue;
     const hq = 5.2 + (hash2(k, i + 1) % 7) * 0.2, a = [p, y + h, zs - 0.2], b = [q, y + hq, zs - 0.2];
@@ -126,8 +127,14 @@ function lostFound(B) {
   B.prop('machine', -189, y + 0.15, z0 + 3.2, Math.PI, 1.35, 0); // (models face -z: turned to face the depot's open front) B.light(-189, y + 4, z0 + 7, 0xff4fd8, 18, 1.4); B.light(-189, y + 2, z0 + 6, 0x4fd8ff, 10, 0.8); B.light(-189, y + 10, z0 + 13, 0xb0a0ff, 14, 0.6); // the Machine glows; moonlight through the hole
   B.add(x0 + 4, y + 0.15, z0 + 14, x0 + 16, y + 1.1, z0 + 15.2, 'wood'); B.prop('returns_counter', x0 + 10, y + 0.15, z0 + 14.6, Math.PI, 1, 0);
   for (let i = 0; i < 4; i++) { const sx = x1 - 6 - i * 0.01; B.add(sx - 1.2, y + 0.15, z0 + 4 + i * 4.5, sx, y + 3.2, z0 + 7 + i * 4.5, 'metal', { tint: 0x9aa8b8 }); B.prop('lostpile', sx - 3, y + 0.15, z0 + 5.5 + i * 4.5, r() * 6.28, 1, i); }
+  // the Locker (the stash) beside the Machine, and Bev's clinic corner under the mezzanine: a chair, jars, a bucket, a lamp
+  for (let i = 0; i < 3; i++) { B.prop('locker', -182.2 + i * 0.55, y + 0.15, z0 + 4.2, Math.PI, 1, i); }
+  B.add(-182.5, y + 0.15, z0 + 3.9, -180.4, y + 1.95, z0 + 4.5, 'metal', { hide: true });
+  B.prop('officechair', -207, y + 0.15, 184.2, 0.3, 1.15, 0); B.prop('organjar', -209.5, y + 0.15, 183.2, 0.5, 1, 0); B.prop('organjar', -210.6, y + 0.15, 184.6, 2, 0.8, 0);
+  B.prop('firebarrel', -204.4, y + 0.15, 183.2, 0, 0.6, 0); B.light(-207, y + 3.2, 185.5, 0x9ae8ff, 8, 1.1);
+  B.out.marks.push({ id: 'bottom.locker', p: [-181, y + 0.15, 184.4] }, { id: 'bottom.clinic', p: [-207, y + 0.15, 186.5] });
   // a hall full of other people's stuff: lost-property heaps, soup crates, chairs round a barrel (a light)
-  for (let i = 0; i < 9; i++) { const lx = x0 + 18 + (i % 3) * 7 + r() * 2, lz = z0 + 9 + Math.floor(i / 3) * 5 + r() * 2; if (Math.abs(lx + 189) < 5 && lz < z0 + 12) continue; B.prop('lostpile', lx, y + 0.15, lz, r() * 6.28, 0.8 + r() * 0.5, i); }
+  for (let i = 0; i < 9; i++) { const lx = x0 + 18 + (i % 3) * 7 + r() * 2, lz = z0 + 9 + Math.floor(i / 3) * 5 + r() * 2; if ((Math.abs(lx + 189) < 5 && lz < z0 + 12) || (Math.abs(lx + 181) < 3 && lz < z0 + 10)) continue; /* (keep the Machine and the Locker clear) */ B.prop('lostpile', lx, y + 0.15, lz, r() * 6.28, 0.8 + r() * 0.5, i); }
   for (let i = 0; i < 4; i++) B.prop('crate_soup', x0 + 3 + i * 1.2, y + 0.15, z1 - 4, r(), 1, 0);
   B.prop('firebarrel', x1 - 14, y + 0.15, z1 - 6, 0, 1, 0); B.light(x1 - 14, y + 1.7, z1 - 6, 0xff8a2a, 10, 1.1);
   for (let i = 0; i < 5; i++) { const a = i * 1.26; B.prop('pchair', x1 - 14 + Math.cos(a) * 2.2, y + 0.15, z1 - 6 + Math.sin(a) * 2.2, -a - Math.PI / 2, 1, i); }
@@ -207,15 +214,38 @@ export function bottom(B, d) {
       stairsZ(B, sx - 1, sx + 1, zn + flightLen(T.rise), -1, yOf(k), yOf(k + 1), 'concrete');
     }
   }
-  // the Long Stairs: 9 flights straight up the middle, banners and bulbs over them
+  // the Long Stairs: 9 flights straight up the middle to the Gut border. every riser painted a different pastel (the
+  // Bottom repaints one a week), plaques for the settlers buried under the steps, lost property left on the landings,
+  // graffiti on the rails, flickering neon on the poles, bulbs and tie-dye banners across
   const LS = SLICE.longStairs;
   if (B.touches([LS.x0 - 4, 0, LS.x1 + 4, 256])) {
+    const RISERS = [0xff7ab0, 0xffe14d, 0x5fd3c6, 0xb6f2c8, 0xd2b6ff, 0xffb070, 0x7ad0ff, 0xff9ec0];
     for (let k = 0; k < T.n; k++) {
       const zs = zSouth(k), top = k === T.n - 1 ? SLICE.border.y : yOf(k + 1), zt = k === T.n - 1 ? 0 : zSouth(k + 1);
-      stairsZ(B, LS.x0, LS.x1, zt + flightLen(top - yOf(k)), -1, yOf(k), top, 'concrete', { tint: 0xf0e0d0 });
-      B.add(LS.x0 - 0.3, yOf(k), zt, LS.x0, yOf(k) + 1, zs, 'metal', { nc: true }); B.add(LS.x1, yOf(k), zt, LS.x1 + 0.3, yOf(k) + 1, zs, 'metal', { nc: true });
-      if (k % 2 === 0) bulbs(B, [LS.x0 - 0.5, yOf(k) + 6, zs - 4], [LS.x1 + 0.5, yOf(k) + 6, zs - 12], rng(600 + k));
-      B.obb((LS.x0 + LS.x1) / 2, yOf(k) + 7.2, zs - 9, 7, 1.4, 0.05, 0, 'tiedye'); // a banner across
+      // one continuous climb across the whole terrace (lip to the next wall): ~20 steps of 0.2 m, 1.3 m deep
+      // (it starts after the lane, so the lane crosses it on the flat)
+      const zl = zs - LANE, sr = rng(hash2(k, 0x57a1)), ya = yOf(k), n = Math.round((zl - zt) / 1.3), h = (top - ya) / n, run = (zl - zt) / n;
+      for (let i = 0; i < n; i++) {
+        const za = zl - i * run, zb = zl - (i + 1) * run;
+        B.add(LS.x0, ya - 0.2, zb, LS.x1, ya + (i + 1) * h, za, 'concrete', { tint: 0xe8ded4 });
+        B.add(LS.x0, ya + i * h, za - 0.004, LS.x1, ya + (i + 1) * h - 0.02, za + 0.012, 'paint', { nc: true, tint: RISERS[(k * 3 + i) % RISERS.length] }); // the riser's paint
+        if (sr() < 0.3) B.add(LS.x0 + 0.3 + sr() * 5, ya + (i + 1) * h, zb + 0.15, LS.x0 + 0.7 + sr() * 5.5, ya + (i + 1) * h + 0.03, zb + 0.5, 'bone', { nc: true, tint: 0xf4ecd8 }); // a name plaque
+      }
+      // rails (graffiti panels on them) and poles with neon that flickers
+      for (const [x, sx] of [[LS.x0 - 0.3, -1], [LS.x1, 1]]) {
+        for (let i = 0; i < n; i += 2) B.add(x, ya + i * h, zl - (i + 2) * run, x + 0.3, ya + (i + 2) * h + 1.05, zl - i * run, 'metal', { tint: 0x8890a0 }); // the rail climbs with the steps
+        for (let gz = zt + 2; gz < zl - 2; gz += 4 + sr() * 4) if (sr() < 0.55) B.add(sx < 0 ? x - 0.02 : x + 0.3, ya + Math.max(0, zl - gz) / run * h + 0.4, gz, sx < 0 ? x : x + 0.32, ya + Math.max(0, zl - gz) / run * h + 1.0, gz + 1.5 + sr() * 2, 'paint', { nc: true, tint: pick(sr, [0xff4fd8, 0x4fd8ff, 0xffe14d, 0x7dff4f, 0xff7a1a]) });
+        const pz = zl - 4 - sr() * 8;
+        const py = ya + (zl - pz) / run * h;
+        B.add(x + 0.05, py, pz, x + 0.25, py + 6.5, pz + 0.2, 'rust');
+        B.add(x + (sx < 0 ? -1.6 : 0.3), py + 5.2, pz - 0.05, x + (sx < 0 ? 0 : 1.9), ya + 5.9, pz + 0.25, pick(sr, ['neon', 'cyanglow', 'greenglow']), { nc: true });
+        B.light(x + sx * 0.8, py + 5, pz, pick(sr, [0xff4fd8, 0x4fd8ff, 0x7dff4f]), 9, 0.8);
+      }
+      // the landing at the top of each flight: lost property people put down and never picked up
+      const lz = zt - 2.5, ly = top;
+      for (let i = 0; i < 2 + (sr() * 3 | 0); i++) B.prop(pick(sr, ['lostpile', 'crate_soup', 'pchair', 'firebarrel', 'scooter']), LS.x0 + 1 + sr() * (LS.x1 - LS.x0 - 2), ly, lz + (sr() - 0.5) * 2, sr() * 6.28, 0.55 + sr() * 0.3, (sr() * 8) | 0);
+      if (k % 2 === 0) bulbs(B, [LS.x0 - 0.5, yOf(k) + 7, zs - 4], [LS.x1 + 0.5, yOf(k) + 8.5, zs - 12], rng(600 + k));
+      B.obb((LS.x0 + LS.x1) / 2, yOf(k) + 9, zs - 9, 7, 1.4, 0.05, 0, 'tiedye'); // a banner across
     }
     B.out.marks.push({ id: 'bottom:long_stairs', p: [(LS.x0 + LS.x1) / 2, 0, 236] });
   }
@@ -223,6 +253,7 @@ export function bottom(B, d) {
   if (B.touches(SLICE.plaza.rect, 2)) plaza(B);
   if (B.touches(SLICE.gym.rect, 2)) gym(B);
   if (B.touches([SLICE.escalator.x - 3, 0, SLICE.escalator.x + 3, 100])) escalator(B);
+  playBottom(B); // grapple rings, the Banister, pads, peels (playground.js)
   // crowd spots along the lanes (WP8 / the crowd sim fills them)
   const cr = rng(hash2(B.out.cx, B.out.cz, 55));
   for (let i = 0; i < 6; i++) { const x = X0 + cr() * (X1 - X0), z = Z0 + cr() * (Z1 - Z0), k = terraceOf(z); if (z < zSouth(k) - 0.5 && z > zSouth(k) - LANE + 0.5) B.out.marks.push({ id: 'crowd', p: [x, yOf(k), z], kind: pick(cr, ['local', 'scooter', 'cook']) }); }

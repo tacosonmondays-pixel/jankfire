@@ -10,6 +10,8 @@ _With Overtime's lanyard you can pull ☺ CORP's master Schedule off the network
 **Who:** WEE GORDO, NELL THIRTEEN, MR. SEVENS, FOREMAN REMAINDER  
 **Giver:** WEE GORDO · **Needs:** m17_minutes
 
+**Mechanic hook:** the Timekeeping relay is a stealth climb with grapple shortcuts, and the backup shredder clears the paper storm on the way out _(uses: the shredder, late fees, the grapple)_
+
 **Beats**
 - Gordo: if ☺ CORP keeps the dead for a reason, the reason's in the Schedule. Overtime's lanyard opens the Timekeeping relay on the Bleach Line.
 - A stealth-or-loud job at the relay: plug the lanyard in, download the Schedule to a tape. Late Fees ★3.
@@ -90,6 +92,8 @@ _Gristle & Sons' page of Option C was stolen and sold. Doctor Upsell bought it, 
 **Who:** BEV, DOCTOR UPSELL  
 **Giver:** BEV · **Needs:** m17_minutes
 
+**Mechanic hook:** Bev pins a kidney to show you the Nail Gun; Upsell's twelve arms are torn off one by one with the grapple _(uses: nail to the wall, the grapple, tv remote (pause / rewind))_
+
 **Beats**
 - Bev: Upsell has the Gristle page in a jar in his clinic. He bought it off the Choir black market years ago.
 - Chrome Gristle at night: neon, rain, jars that blink. Book a consultation at Upsell's clinic (pawn something at Organ Pawn to afford it, or have Bev forge a referral).
@@ -167,6 +171,8 @@ _Pages first, then mum. It's then. Go into the Gut for the nine, and for Mina._
 **Where:** Sharon's Soup Kitchen (THE BOTTOM), The Choir Lung (THE GUT), The Digester Wall (THE GUT), The Big Stomach (THE GUT), The Feed Dock (THE GUT)  
 **Who:** LUMPS, BIG SAUCE SHARON, SISTER AGENDA, THE STOMACH BISHOP, DOT, MINA, DUMPLING  
 **Giver:** LUMPS · **Needs:** m17_minutes
+
+**Mechanic hook:** the rescue is an escort down Peristalsis Avenue on the beat; the Bishop's ulcers, the marble-slip weakness, and the lasso to drag digesters free _(uses: slide, the grapple, marble slip, blood cross, the lasso)_
 
 **Beats**
 - Lumps doesn't ask. He's standing at the Long Stairs with a crowbar and a pot of the yellow soup.
@@ -321,6 +327,8 @@ _Evergreen Acres is the only district on the Schedule with something booked at 0
 **Who:** LINDA FAIRWAY, THE HOA, WEE GORDO, THE MAILMAN  
 **Giver:** WEE GORDO · **Needs:** m18_nine_kilometres
 
+**Mechanic hook:** mow lawns to stop the HOA regrowing, steal a militia golf cart, and swing the porch gutters round the cul-de-sac _(uses: fire (the cigarette, flame arrows), cars and traffic, the grapple)_
+
 **Beats**
 - Evergreen: perfect lawns, a laugh track you can hear in the street, a mannequin family in every window waving at the same time.
 - Linda Fairway and the HOA: 'your lawn is 2 mm too long.' You're fined on sight. Every fine is a debuff.
@@ -394,6 +402,8 @@ _In the Lates it has been the same Tuesday for sixty-one years. Pauline from Acc
 **Where:** The Waiting Room (THE LATES), The Canteen (THE LATES), Remainder Downtown Office (THE LATES), Tuesday Tower (THE LATES)  
 **Who:** PAULINE FROM ACCOUNTS, THE PERPETUAL TUESDAY, GUS  
 **Giver:** PAULINE FROM ACCOUNTS · **Needs:** m18_nine_kilometres
+
+**Mechanic hook:** the Lates teaches Loops (fall forever, keep the speed); freeze or rewind Neville to break his loop _(uses: loops, frost and shatter, tv remote (pause / rewind))_
 
 **Beats**
 - The Waiting Room: infinite, with chairs. Pauline finds you, because you're new, and nobody is ever new.
@@ -475,6 +485,8 @@ _At 03:00, in the hour nobody's booked into, a door opens in the sky over the La
 **Who:** PAULINE FROM ACCOUNTS, WEE GORDO  
 **Giver:** PAULINE FROM ACCOUNTS · **Needs:** m22_the_waiting_room, m21_property_values, m19_organ_donor
 
+**Mechanic hook:** the Missing Hour is grey: night vision goggles and a grapple swing down the cable trunks above the rows _(uses: night vision goggles, the grapple)_
+
 **Beats**
 - With Neville delivered, the loop lets you stay past 17:30. You wait with Pauline and Gordo on Tuesday Tower.
 - C13: 03:00, the grey, the door, the warehouse: mannequin bodies to the horizon, cables to the Machine's archive, the Master Clock's schedule. PROTOTYPE 0 (SCHEDULE NOT LOADED).
@@ -548,6 +560,8 @@ _Marion Hask calls you on the Machine's own terminal with an offer, and the Bott
 **Where:** The Lost & Found (THE BOTTOM), Dale's Shed (THE BOTTOM)  
 **Who:** MARION HASK, DALE, AUNTIE SPREADSHEET, LUMPS, WEE GORDO, MINA, PRITCHARD  
 **Giver:** AUNTIE SPREADSHEET · **Needs:** m23_workforce_restoration, m20_the_missing
+
+**Mechanic hook:** a talking mission: the split is about what you are, and your installed implants change which lines you're offered _(uses: bio-implants)_
 
 **Beats**
 - C14: Hask on Dale's terminal. The Long Dark footage. 'the dead do not mind working.' The offer: a name, a job, a life that doesn't end.
@@ -672,6 +686,8 @@ _Overtime comes for you in the Lates, where every minute happens again, and ever
 **Where:** The Waiting Room (THE LATES), Tuesday Tower (THE LATES)  
 **Who:** MR. OVERTIME, PAULINE FROM ACCOUNTS  
 **Giver:** — · **Needs:** m24_the_split
+
+**Mechanic hook:** the loop fight: take a photo of where his weak point was and walk back into it next loop _(uses: loops, frost and shatter, instant camera, the grapple)_
 
 **Beats**
 - The Lates. Pauline warns you: 'he came through the door at 03:00. he's never come through the door before.'

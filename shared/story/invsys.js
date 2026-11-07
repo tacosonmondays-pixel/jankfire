@@ -14,7 +14,7 @@
 import { addSystem } from './sim.js';
 import { savePart } from './save.js';
 import { TEST } from './testmap.js';
-import { invAdd, invOp, invTake, cleanInv, starterInv, itemAt, kindOf, hasItem, find, makeItem, STORY_ITEMS } from './items.js';
+import { invAdd, invOp, invTake, cleanInv, starterInv, itemAt, kindOf, hasItem, find, makeItem, stackOf, STORY_ITEMS } from './items.js';
 import { ITEMS } from '../weapons.js';
 import { rollTable, rollWeapon, legendaryItem, RARITY_ORDER } from './loot.js'; // WP4
 
@@ -22,7 +22,7 @@ export const PICK = 3.2; // metres
 savePart('inv', (v) => cleanInv(v));
 // loot left on the floor survives a reload: FLOOR per zone (the map / district), oldest goes first past the cap
 export const FLOOR = 40;
-const zoneOf = (sim) => sim.zone || TEST.id;
+const zoneOf = (sim) => sim.zone || sim.world.id;
 function cleanFloor(v) {
   const out = {};
   if (!v || typeof v !== 'object' || Array.isArray(v)) return out;
@@ -97,7 +97,7 @@ addSystem({
         return true;
       }
       case 'inv': {
-        const r = invOp(sim.inv, m, { atLocker: !!(sim.me && near(sim.me.pos, TEST.locker.p, TEST.locker.r)) });
+        const r = invOp(sim.inv, m, { atLocker: !!(sim.me && near(sim.me.pos, sim.world.locker.p, sim.world.locker.r)) });
         delete sim.inv.fresh;
         if (r.error) return err(r.error);
         if (r.dropped && sim.me) { const y = sim.me.yaw || 0; sim.dropAt(r.dropped, [sim.me.pos[0] - Math.sin(y) * 1.5, sim.me.pos[1] + 0.6, sim.me.pos[2] - Math.cos(y) * 1.5]); }
@@ -125,6 +125,10 @@ addSystem({
         sim.invChanged();
         return true;
       }
+      // the story engine's host verbs (it runs on the page: shared/story/story.js host.act). solo is your own game
+      // (TECH_PLAN §4); a co-op StoryRoom runs the engine on the server and calls sim.give / takeItem directly
+      case 'qgive': { const n = Math.max(1, Math.min(99, m.n | 0 || 1)); if (typeof m.b === 'string') for (let i = 0; i < (stackOf(m.b) > 1 ? 1 : n); i++) sim.give({ b: m.b, q: stackOf(m.b) > 1 ? n : 0, ...(m.ql ? { ql: m.ql } : {}) }); return true; }
+      case 'qtake': { if (typeof m.b === 'string') { const ok = sim.takeItem(m.b, Math.max(1, Math.min(99, m.n | 0 || 1))); if (!ok) sim.sty('qtakeFail', { b: m.b }); } return true; }
       case 'gear': {
         const it = itemAt(sim.inv, m.u);
         if (!it || kindOf(it.b) !== 'gear') return err("that's not gear");

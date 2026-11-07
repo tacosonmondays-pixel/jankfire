@@ -98,8 +98,31 @@ sauce: {
   `frag.*` are the Option C fragments.
 
 ## Scenes (`scenes`)
-See TECH_PLAN §6 and DESIGN §8. `{ id, kind: 'cinematic' | 'panels' | 'talk' | 'boss' | 'moment' | 'recap', skip, len,
-cast, tracks: [{ t, ...one track }] }`; the scene player (`public/js/story/scene.js`) documents its track list.
+Played by `public/js/story/scene.js`; examples of every kind in `shared/story/content/test/lab.js`.
+```js
+c4_clocking_in: {
+  id: 'c4_clocking_in', kind: 'cinematic', skip: true, len: 58,
+  cast: { lumps: {}, ot: { look: 'overtime', name: 'MR. OVERTIME', at: 'gut:stairs_top', face: 3.1, scale: 1, voice: {...} } },
+  tracks: [ { t: 0, cam: { shot: 'wide', target: 'lumps', dur: 6 } }, { t: 1, say: ['lumps', '*sniff*'] }, ... ],
+  onEnd: ['flag:sawClockingIn', 'log:lumps|a caption for the recap'],
+}
+```
+- `kind`: `cinematic` · `panels` (`panels: [...]`) · `talk` (`talk: { npc, node }`) · `boss` (`boss: { name, job, sub, color, target, rehired }`)
+  · `moment` (1-3 s, `target`) · `recap` (built from the last 3 `log` entries, `'npc|caption'`).
+- `cast`: `{}` = the actor already in the world with that id; otherwise a temporary actor (`look`, `npc` (copy a def),
+  `at`, `face`, `scale`, `name`, `voice`, `hidden`). Marks: `[x, y, z]`, a zone id, an actor id, `{ near: actor, d, side }`.
+- tracks (`{ t, ... }`, any mix on one entry):
+  `cam: { shot, target, from, dur, fov, roll, offset, cut }` (shots: `closeup`, `extreme`, `over` (from → target), `two`,
+  `lowAngle`, `wide`, `dolly`, `orbit`, `whip`, `top`) or `cam: { path: [marks], look, dur, fov }` ·
+  `say: [who, text, face]` (subtitle + babble + jaw; `*text*` = an action) · `face: [who, face]` · `anim: [who, clip, hold]`
+  (clips: wave, nod, shake, shrug, point, cry, flex, bow, stomp, think, write, hold, shock) · `move: [who, [marks], speed]`
+  · `look: [who, target]` · `hide` / `show: who` · `sfx: name` (tick, tick_loud, stinger, clunk, beep, whoosh, splut, ding,
+  or any `audio.js` sfx) · `fx: name, at` · `shake: 0..1` · `hitstop: s` · `impact: 'red' | 'white'` · `fade: [0..1, s]` ·
+  `letterbox: bool` · `title: [big, small, s]` · `boss: {...}` · `slowmo: [k, s]` · `do: [actions]` · `wait: cond`.
+- a panel: `{ at, shot: { target, shot, ... }, cap, say: [who, text], sfx: 'SPLUT', sound, face: [who, face],
+  anim: [who, clip, t], rect: [x, y, w, h], tilt, bubL }` (3-6 per scene, slammed in about every 1.7 s).
+- Every scene is skippable (hold jump) unless `skip: false`, marks `seen.ID`, runs `onEnd`, and fires the quest event
+  `{ type: 'sceneEnd', scene }`. A quest's `scenes: { start, end }` play on start / completion.
 
 ## Save data
 `toSave(state)` → `{ flags: [], vars: {}, quests: {id: state}, standing, met: [], seen: [], codex: [], log: [], track }`
@@ -146,3 +169,54 @@ doesn't have yet:
   which is still complete. The pack works around it by running a step's after-actions at the start of the next step.
 - Dialogue stores a `said.*` flag per node visited. A first-option playthrough already reaches 602 flags (394 of them
   `said.*`), over `LIMITS.flags` (600). `said.*` probably wants its own capped store, or a bigger limit.
+
+### Engine support for the additions (WP8, `public/js/story/boot.js` + `scene.js`)
+- `init` runs once per new game (flag `init_done`); `autostart` is offered on load and after every quest ends.
+- Host actions: `talk:NPC/NODE` opens the conversation once whatever is talking now ends (a scene holds its timeline
+  while a choice is open; `choice` has no body, so the box shows without a camera). `boss:ID` plays the boss title
+  card from `bosses[ID].card` / `subtitle`. `implant:ID` puts `implant.ID` in the bag, so `has.implant.ID` works.
+  `turf`, `loot`, `fees`, `call`, `unlock`, `collect` show a toast until their systems land (fees keeps `var.fees`).
+- Vars: `clock.DISTRICT` starts at 17:29 for every district (the sim's clock); `drift` and `cats` wait for their systems.
+- `home: { zone }` and `zones` with `p: null`: until the districts have coordinates the client lays every zone out
+  on the test lot (labelled signs, districts grouped, act I nearest the Lost & Found) and people stand at their zone.
+  A zone's `p` (world coordinates), once the world lane fills it, wins.
+- `things` with `do`: a spot at its zone you can use (once, flag `used.ID`). Steps' `pickup` / `interact` goals get
+  a spot at their `zone` / `marker` / the thing's zone.
+- Scenes in the script's shape (string `cast` values, `dir`, `panel` tracks, string `title` and `boss`, track `if`,
+  `flashback`) are adapted on play: panel tracks become the panel list, lines without a camera get coverage
+  (closeups on the speaker, two-shots), named camera paths fall back to an orbit until the world has them.
+- Characters without a hand-made look get one seeded from their cast entry (`body`, and the `look` text picks the
+  puppet's huge feature).
+- Dialogue memory is `st.said` (not flags): `said.NPC.NODE` in conditions; packed per character in the save.
+- Rehearsal: shift+R fakes the tracked step's next goal (for systems other lanes haven't built yet).
+
+## Boss fights and mechanics (proposed, `claude/overdue-mechanics`)
+The script's boss and mechanics data, for the systems and boss lanes. WP9, the first Overtime fight, is the first one
+to build against it. Everything below is exported by the `overdue` pack as `bosses`, `mechanics` and `grapple`, and
+checked by `validate.js`.
+
+**Boss fight layer**: `shared/story/content/boss_fights.js`, merged into `bosses.js`. Every boss entry has:
+- `zone`: the arena's zone id. (This field was called `arena` before; that name now holds the arena design below.)
+- `arena: { name, layout, vertical, grapple: [..], hazards: [{ kind, where, effect }], cover: [{ what, breaks }] }`.
+  - Hazard kinds: water, lava, acid, oil, electric, fire, void, gas, rad, paper, crush.
+  - Liquids are written as hazards, so they can light up as the liquid system lands.
+- `layers: [{ bar: 'armour' | 'shield' | 'health', of, how }]`: the health bars, top bar first. `how` says what
+  strips each one best. A boss can have two `health` bars (the Twins: one per half).
+- `weakPoints: [{ name, glow, exposedBy, crit }]`: the glowing crit spots. `exposedBy` is the action that opens one:
+  grapple an armour plate off, parry, slip, shoot inside a slot, and so on.
+- `weakness: { element, weapons: [weapon ids], why }`.
+  - Elements: fire, water, shock, frost, slip, verdict, explosive, knockback, blood, sleep, grapple.
+  - The listed weapons do well against that boss. Every fight is still beatable with anything.
+- `adds: [{ name, count, personality, does }]`: minions, each with a personality.
+- `setPiece: [{ kind: 'chase' | 'transform' | 'grapple' | 'vehicle' | 'climb', when, what }]`.
+- `phases[i].twist`: the mechanical twist each phase adds, on top of its `mechanics` (each with a `tell`).
+- `pinata`: the death burst. An organ core (`core`) is always guaranteed.
+- `lootTable`: the boss's own loot table. It always has at least one dedicated legendary, so refights farm it.
+- `scaling`: how refights scale.
+- `uses`: the mechanics ids the fight asks of you. Every fight uses `grapple`.
+
+**Mechanics**: `shared/story/content/mechanics.js`.
+- `MECHANICS[id] = { name, kind, game, src, weapons, story: { traversal, puzzles, combat, bosses, side }, taught: { quest, how } }`.
+- `GRAPPLE` holds the grapple's own section: routes, shortcuts, secrets, chases, fights, puzzles, races and upgrades.
+- Every main mission (and most side quests) has a hook: `mechanic: { uses: [mechanics ids], hook }`.
+- `docs/story/MECHANICS.md` is generated from all of this, with the coverage table.

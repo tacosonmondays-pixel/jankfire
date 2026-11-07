@@ -2,6 +2,7 @@
 // WP3 sweep: every held weapon from a rotating bar slot (equip + fire + reload), every gear item from the bar (G throws one)
 require(process.env.SP + '/pwlock.cjs');
 const { chromium } = require('playwright');
+const skipIntro = require('./skipintro.cjs'); // the intro cinematic holds the keys: skip it
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--mute-audio'] });
@@ -10,8 +11,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   pg.on('pageerror', (e) => errs.push('PAGEERR ' + e.message + ' ' + (e.stack || '').split('\n')[1]));
   pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
   await pg.addInitScript(() => { localStorage.setItem('jankfire', JSON.stringify({ name: 'sweep', loadout: { primary: 'ar', secondary: 'pistol', melee: 'knife', item: 'frag' } })); if (!sessionStorage.getItem('sw')) { sessionStorage.setItem('sw', 1); localStorage.removeItem('jfStorySaves'); } });
-  await pg.goto(`http://localhost:${process.env.PORT}/?story=1&storydev=1`); await sleep(1500);
-  await pg.click('#storyBtn', { force: true }); await sleep(700); await pg.click('#storyPick .st-btn.yellow', { force: true }); await sleep(3500);
+  await pg.goto(`http://localhost:${process.env.PORT}/?story=1&storydev=1&storytest=1`); await sleep(1500);
+  await pg.click('#storyBtn', { force: true }); await sleep(700); await pg.click('#storyPick .st-btn.yellow', { force: true }); await sleep(3500); await skipIntro(pg);
   const ids = await pg.evaluate(async () => { const { WEAPONS, ITEMS } = await import('/shared/weapons.js'); const { kindOf } = await import('/shared/story/items.js'); return { w: Object.keys(WEAPONS).filter((k) => kindOf(k) === 'gun' || kindOf(k) === 'melee'), g: Object.keys(ITEMS) }; });
   await pg.evaluate(async () => { const { net } = await import('/js/net.js'); window.__sent = []; const s0 = net.ws.send.bind(net.ws); net.ws.send = (d) => { try { const m = JSON.parse(d); if (m.t === 'fire' || m.t === 'item' || m.t === 'hit') window.__sent.push(m.t + ':' + (m.w || m.i || '')); } catch {} return s0(d); }; });
   const empty = () => pg.evaluate(async () => { const { clearDrops } = await import('/js/story/bar.js'); clearDrops(); const { G } = await import('/js/ctx.js'); const { IV } = await import('/js/story/bar.js'); for (const x of IV.inv.bag) if (x) G.story.send('inv', { op: 'drop', u: x.u }); });

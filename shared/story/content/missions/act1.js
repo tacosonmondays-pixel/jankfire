@@ -35,13 +35,14 @@ export const MISSIONS_ACT1 = {
     cast: ["change", "dale", "auntie", "lumps", "gordo", "dumpling"],
     requires: { missions: [], if: null },
     logline: "You win a training sim, the camera pulls out through the Machine's glass, and for the first time in sixty-one years the Machine gives something back: you.",
+    mechanic: { uses: ["grapple", "washing_lines", "bhop"], hook: "the tutorial is a grapple lesson in disguise: Dumpling's tour is swing onto the Wok Roofs, ride a washing line back, and land somewhere Dumpling can score out of ten" },
     beats: [
       "A normal-looking PvP match on the Suburb map. The player wins. TRAINING COMPLETE. The bots stand and stare.",
       "C1: the pull-back through the glass, up the hill to the Spire and back down. Dale presses the button. You drop into the tray.",
       "First words with Dale and Auntie. Auntie sees the barcode on your neck and drops her crayon; she covers it.",
       "Lumps and Wee Gordo arrive. Gordo scans the barcode with a stolen ☺ CORP scanner: NO RECORD. He doesn't trust you. Lumps does.",
       "The Bottom names you CHANGE.",
-      "Tutorial with Dumpling: grab a weapon from the Lost Property bins, shoot a dead vending machine for loot, ride a washing line across the Wok Roofs.",
+      "Tutorial with Dumpling: grab a weapon from the Lost Property bins, shoot a dead vending machine for loot, grapple onto the Wok Roofs (scored out of ten) and ride a washing line back.",
       "Dinner. Auntie tells you how the world ended (P1b). You go to sleep in a box marked RETURNS.",
     ],
     reveals: {
@@ -57,7 +58,8 @@ export const MISSIONS_ACT1 = {
       { id: "name", text: "", goal: { type: "talk", who: "gordo", talk: "barcode" } },
       { id: "bins", text: "grab something from the lost property bins", goal: { type: "pickup", item: "lost_property_weapon" }, marker: "bottom:lostfound", talk: "dumpling_tour" },
       { id: "vend", text: "shoot the dead vending machine", goal: { type: "interact", target: "bottom:lostfound" }, notes: "the tutorial loot drop: guaranteed rare" },
-      { id: "line", text: "ride the washing line to the wok roofs", goal: { type: "reach", zone: "bottom:rooftops" }, notes: "teaches the washing-line ziplines" },
+      { id: "swing", text: "grapple onto the wok roofs (dumpling is scoring you)", goal: { type: "reach", zone: "bottom:rooftops" }, talk: "dumpling_score", notes: "teaches the grapple: swing, let go on the upswing, land; Dumpling scores the landing out of ten" },
+      { id: "line", text: "ride a washing line back to the lost & found", goal: { type: "reach", zone: "bottom:lostfound" }, notes: "teaches the washing-line ziplines" },
       { id: "dinner", text: "dinner at the lost & found", goal: { type: "talk", who: "auntie", talk: "dinner" }, marker: "bottom:lostfound" },
       { id: "sleep", text: "sleep", goal: { type: "interact", target: "bottom:lostfound" }, do: ["flag:act1_started"] },
     ],
@@ -94,6 +96,14 @@ export const MISSIONS_ACT1 = {
           yours: { say: ["my dad's hat's in there. he's not lost. he's at work. he'll come and get it.", "*Dumpling's ears go flat for a second, then pop up.* come ON."] },
         },
       },
+      dumpling_score: {
+        with: "dumpling", cam: "wide",
+        nodes: {
+          start: { say: ["grapple the wok on that roof. no, the wok. the WOK. the round thing.", "let go when you're going up, not when you're going down. going down is how mr. abara broke his everything.", "*you land, roughly, on a roof covered in woks*", "...four out of ten. you swung like a fridge. lumps swings like a fridge and he IS a fridge."], opts: [["let me go again.", "again"], ["four?", "four"]] },
+          again: { say: ["you can't go again. it's a tour. tours go forwards. ride the washing line back. don't drop a sock."] },
+          four: { say: ["four's good. i gave dale a one. he grappled a pigeon."] },
+        },
+      },
       dinner: {
         with: "auntie", cam: "closeup",
         nodes: {
@@ -122,6 +132,7 @@ export const MISSIONS_ACT1 = {
     cast: ["sharon", "lumps", "gordo", "eotm"],
     requires: { missions: ["m01_return_to_sender"], if: null },
     logline: "The Bottom trades soup to Gristle & Sons for medicine. Steal a car, cross the edge of The Commute without spilling it, and survive the Unpaid.",
+    mechanic: { uses: ["cars", "frag_smoke", "rocket_jump"], hook: "a slosh meter on the soup pot turns every jump, drift and car-roof landing into a decision; the interns' 'business cards' are frags" },
     beats: [
       "P2 briefing: Sharon, the pot; Lumps, the key; Gordo, 'he means steal a car'.",
       "Steal a car (any car; Lumps suggests the sofa-car, which belongs to Sharon's cousin, who is asleep on it).",
@@ -203,6 +214,7 @@ export const MISSIONS_ACT1 = {
     cast: ["lumps", "dot", "sister_agenda", "bishop", "mina"],
     requires: { missions: ["m02_sauce_run"], if: null },
     logline: "It's Sunday. Lumps visits his mum in the Gut, and the Choir tells you where Gristle & Sons gets its feedstock: ☺ CORP sells it the people who fall behind on their back pay.",
+    mechanic: { uses: ["slide", "grapple", "hype"], hook: "the Gut teaches flow: slide on Peristalsis Avenue's squeeze, swing the rib arches, bounce the lungs, and a long swing fills HYPE for the first time" },
     beats: [
       "C3: driving into the Gut. Skin streets, rib arches, the Choir turning. A woman in the wall says 'ambrose?'",
       "On foot: peristalsis streets carry you, lungs bounce you. Lumps knows the way and hates it.",
@@ -268,6 +280,7 @@ export const MISSIONS_ACT1 = {
     cast: ["overtime", "lumps", "auntie", "mina", "dumpling", "gordo"],
     requires: { missions: ["m03_somethings_digesting"], if: null },
     logline: "Mr. Overtime comes down the Long Stairs to collect two hundred and forty-four quarters of back pay, in people. First nemesis fight.",
+    mechanic: { uses: ["grapple", "water_taser", "redline"], hook: "Overtime's missed staples stay in the walls as grapple points; the collectors' water tank soaks him (wet clockwork runs slow); Lumps throws you the Redline when you're low" },
     beats: [
       "C4: sunset, the clocks stop, the brogues on the stairs. The collectors load people into a Gristle & Sons truck: Dumpling's dad, others, and an old woman with a braid who looks at you and says 'rory?'.",
       "Lumps stands in front of the truck. Overtime staples his arm to it.",
@@ -326,6 +339,7 @@ export const MISSIONS_ACT1 = {
     cast: ["auntie", "bev", "dale", "overtime"],
     requires: { missions: ["m04_clocking_in"], if: null },
     logline: "A Meat Mechanic installs the piece of Overtime's heart in your chest. Implants unlocked. For a second you remember a lobby, a pair of running shoes, and the time: 17:29.",
+    mechanic: { uses: ["implants"], hook: "the first install: the clinic chair is the implant UI, and the Punch-Clock's tick is your first downside" },
     beats: [
       "Auntie takes you to Bev's clinic on the Gut border.",
       "C5: the install. 'this is a terrible idea.' 'they're all terrible ideas. this one works.' Bev explains Drift in one line: the more of you that isn't you, the less of you there is.",

@@ -4,7 +4,8 @@
 // frame, holds you in place until the ground under you has streamed in, and runs the district gimmicks on you.
 import * as THREE from 'three';
 import { G } from '../ctx.js';
-import { ME } from '../player.js';
+import { ME, slip } from '../player.js';
+import { sfx } from '../audio.js';
 import { BOXES } from '/shared/map.js';
 import { CityStream } from './stream.js';
 import { cityUniforms } from './mats.js';
@@ -12,6 +13,8 @@ import { propEnv } from './props.js';
 import { stepGimmicks } from '/shared/city/gimmicks.js';
 import { K } from '../keys.js';
 import { hud } from '../hud.js';
+import { updateBeds, stopBeds } from './beds.js';
+import { districtWeights } from '/shared/city/plan.js';
 
 let S = null, hooks = null;
 const tmp = new THREE.Color();
@@ -29,7 +32,7 @@ export function startCity(def, h) {
   S.holding = true;
   return S;
 }
-export function stopCity() { if (S) { S.dispose(); S = null; } }
+export function stopCity() { if (S) { S.dispose(); S = null; } stopBeds(); }
 export const cityStream = () => S;
 
 let lastCall = 0;
@@ -37,7 +40,9 @@ export function updateCity(dt) {
   if (!S) return;
   if (G.settings && S.preset !== G.settings.jank) S.setPreset(G.settings.jank);
   S.update(G.camera, dt);
+  updateBeds(G.joined ? districtWeights(S.city, G.camera.position.x, G.camera.position.z, 40) : [], dt); // the district music (fades out on the menu: the menu song is on)
   const e = S.env;
+  if (S.weather.started) hud.msg('PAPER STORM', 1.6, 'brag');
   if (e && G.scene.fog) {
     G.scene.fog.color.copy(e.fog); G.scene.fog.near = e.near; G.scene.fog.far = e.far;
     if (hooks && hooks.sky) hooks.sky({ top: e.top.getHex(), mid: e.mid.getHex(), bot: e.bot.getHex() });
@@ -54,12 +59,16 @@ export function updateCity(dt) {
   // the gimmicks: ziplines (use key), moving streets, lungs, acid
   if (!ME.alive) return;
   const use = K.isDown('use'), press = use && !S.useWas; S.useWas = use;
-  const me = { pos: ME.pos, vel: ME.vel, ground: !!ME.onGround || !!ME.ground, zip: S.zip, bounceT: S.bounceT };
+  const me = { pos: ME.pos, vel: ME.vel, ground: !!ME.onGround || !!ME.ground, zip: S.zip, bounceT: S.bounceT, padT: S.padT, slipT: S.slipT };
   const fwd = [-Math.sin(ME.yaw || 0), 0, -Math.cos(ME.yaw || 0)];
-  const ev = stepGimmicks(me, S.triggers(), dt, { use: press, jump: K.isDown('jump') && !S.jumpWas, face: fwd, beat: cityUniforms.uBeat.value });
-  S.jumpWas = K.isDown('jump'); S.zip = me.zip; S.bounceT = me.bounceT;
+  const ev = stepGimmicks(me, S.triggers(), dt, { use: press, jump: K.isDown('jump') && !S.jumpWas, face: fwd, beat: cityUniforms.uBeat.value, sliding: !!ME.sliding });
+  S.jumpWas = K.isDown('jump'); S.zip = me.zip; S.bounceT = me.bounceT; S.padT = me.padT; S.slipT = me.slipT;
   const now = performance.now();
   for (const x of ev) {
+    // the playground's toys (playground.js): pads throw you, peels and marbles trip you (the PvP slip), the Banister
+    if (x.kind === 'pad') { sfx.pad(); hud.msg(x.name || 'BOING', 1.2, 'brag'); lastCall = now; continue; }
+    if (x.kind === 'slip') { slip(now, x.what); hud.msg(x.what === 'marbles' ? 'MARBLES!' : 'PEELED', 1.2, 'brag'); lastCall = now; continue; }
+    if (x.kind === 'slide' && x.v > 18 && now - lastCall > 4000) { hud.msg(x.v > 26 ? 'BANISTER BURN' : 'THE BANISTER', 1.4, 'brag'); lastCall = now; continue; }
     const say = x.kind === 'zipOn' ? 'ZIPLINE!' : x.kind === 'bounce' ? (x.v > 30 ? 'BIG BREATH' : 'LUNG!') : x.kind === 'surf' ? 'RIDING THE BEAT' : x.kind === 'carry' ? (x.name === 'PERISTALSIS' ? 'THE STREET IS DIGESTING YOU' : 'IT ONLY GOES DOWN') : x.kind === 'hot' ? 'HOT ZONE: DO NOT LICK' : null;
     if (say && now - lastCall > (x.kind === 'carry' || x.kind === 'hot' ? 5000 : 600)) { hud.msg(say, 1.4, 'brag'); lastCall = now; }
   }

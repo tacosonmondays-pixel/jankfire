@@ -5,7 +5,9 @@
 // THE GUT BORDER: the top of the Bottom, pastel houses half swallowed by flesh, the gate at the top of the Long Stairs.
 import { SLICE, PLACES } from './slice.js';
 import { rng, hash2 } from './plan.js';
-import { cube, stairsZ, line, rubble, stall, flightLen, retaining, PASTEL, pick } from './kit.js';
+import { cube, stairsZ, line, rubble, stall, flightLen, retaining, PASTEL, pick, hook } from './kit.js';
+import { playGut } from './playground.js';
+import { gateArena, inGateArena } from './arenas.js';
 
 const GY = SLICE.gut.y;
 const inRect = (x0, z0, x1, z1, r) => x0 < r[2] && x1 > r[0] && z0 < r[3] && z1 > r[1];
@@ -112,20 +114,24 @@ function lungPad(B, x, z, s = 1) {
 // Clocking In: the old time office (punch clocks on the wall), a plaza with lungs to bounce over his slams
 function arena(B) {
   const [x0, z0, x1, z1] = SLICE.arena.rect, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-  B.add(x0, GY - 0.02, z0, x1, GY + 0.05, z1, 'teeth', { nc: true, tint: 0xf0e4d0 });
+  B.add(x0, GY - 0.02, z0, x1, GY + 0.05, z1, 'gums', { nc: true });
   // ribs over the plaza (it's a ribcage now), mounds round the edge, the old time-office's queue rails
   for (const az of [z0 + 18, z1 - 16]) if (B.inside(cx, az)) { B.prop('ribarch', cx, GY, az, 0, 1.5, 0); B.add(cx - 13, GY, az - 1.2, cx - 10.5, GY + 9, az + 1.2, 'bone', { hide: true }); B.add(cx + 10.5, GY, az - 1.2, cx + 13, GY + 9, az + 1.2, 'bone', { hide: true }); }
   for (const [mx, mz] of [[x0 + 4, cz], [x1 - 4, cz - 8], [x0 + 26, z1 - 4], [x1 - 26, z0 + 22]]) if (B.inside(mx, mz)) B.prop(mx < cx ? 'fleshblob_a' : 'fleshblob_b', mx, GY, mz, mx < cx ? 0.5 : -0.5, 1.6, 0);
   for (let x = x0 + 14; x < x1 - 14; x += 6) if (B.inside(x, z0 + 6)) B.add(x, GY, z0 + 5.9, x + 4, GY + 1.0, z0 + 6.1, 'metal', { nc: true, tint: 0xd0c8b8 });
   // the time office along the north side, its front a wall of punch clocks (glow faces)
-  B.add(x0 + 10, GY, z0 - 14, x1 - 10, GY + 14, z0, 'concrete', { tint: 0xd8d4cc });
-  for (let x = x0 + 12; x < x1 - 12; x += 3) B.add(x, GY + 2, z0 + 0.01, x + 1.6, GY + 3.6, z0 + 0.05, 'window', { nc: true, tint: 0xfff0c0 });
+  // (an arcade through it where Rib Avenue runs, so the avenue goes on north: walk it or swing it)
+  const RA = SLICE.ribAve;
+  B.add(x0 + 10, GY, z0 - 14, RA.x0, GY + 14, z0, 'concrete', { tint: 0xd8d4cc }); B.add(RA.x1, GY, z0 - 14, x1 - 10, GY + 14, z0, 'concrete', { tint: 0xd8d4cc });
+  B.add(RA.x0, GY + 9, z0 - 14, RA.x1, GY + 14, z0, 'concrete', { tint: 0xc8c4bc });
+  hook(B, (RA.x0 + RA.x1) / 2, GY + 8.2, z0 - 7, { s: 1.2 }); // a ring in the arcade's ceiling
+  for (let x = x0 + 12; x < x1 - 12; x += 3) if (x + 1.6 < SLICE.ribAve.x0 || x > SLICE.ribAve.x1) B.add(x, GY + 2, z0 + 0.01, x + 1.6, GY + 3.6, z0 + 0.05, 'window', { nc: true, tint: 0xfff0c0 });
   B.add(x0 + 10, GY + 14, z0 - 14, x1 - 10, GY + 15, z0, 'flesh', { tint: 0xe86a88 });
   B.prop('gristlelogo', cx, GY + 9, z0 + 0.1, Math.PI, 1.4, 0);
   for (const [lx, lz] of [[x0 + 12, z0 + 12], [x1 - 12, z0 + 12], [x0 + 12, z1 - 12], [x1 - 12, z1 - 12]]) if (B.inside(lx, lz)) lungPad(B, lx, lz, 0.9);
   // low flesh walls round the edge (cover, and a ring he can't charge out of)
   for (const [a, b, c, d] of [[x0, z1 - 1, cx - 8, z1], [cx + 8, z1 - 1, x1, z1], [x0, z0, x0 + 1, z1], [x1 - 1, z0, x1, z1]]) B.add(a, GY, b, c, GY + 1.4, d, 'flesh', { tint: 0xd85a78 });
-  if (B.inside(cx, cz)) B.out.marks.push({ id: 'gut:border', p: [cx, GY, cz] }, { id: 'boss.overtime.spawn', p: [cx, GY, z0 + 8], face: 0 }, { id: 'boss.overtime.entry', p: [cx, GY, z1 - 3], face: Math.PI });
+  if (B.inside(cx, cz)) B.out.marks.push({ id: 'landmark.time_office', p: [cx, GY, cz] }); // (Overtime's fight 1 moved to the Gut Border Gate: arenas.js)
 }
 
 function choir(B, r) {
@@ -147,7 +153,7 @@ function choir(B, r) {
 
 function toothMarket(B, r) {
   const [x0, z0, x1, z1] = SLICE.teeth.rect;
-  B.add(x0, GY - 0.02, z0, x1, GY + 0.05, z1, 'teeth', { nc: true });
+  B.add(x0, GY - 0.02, z0, x1, GY + 0.05, z1, 'gums', { nc: true });
   for (let i = 0; i < 10; i++) stall(B, x0 + 6 + (i % 5) * 12, GY, z0 + 8 + Math.floor(i / 5) * 30, i < 5 ? 0 : 2, r);
   for (let i = 0; i < 6; i++) B.prop('organjar', x0 + 8 + i * 9, GY, z0 + 20, r() * 6.28, 1, 0);
   const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
@@ -172,18 +178,19 @@ export function gut(B, d) {
     B.add(x, -4, z, xe, GY, ze, gr() < 0.7 ? 'flesh' : gr() < 0.5 ? 'liver' : 'bruise', { tint: pick(gr, [0xd86a80, 0xc85a78, 0xe07a8a, 0xb84a6a, 0xd0607a]) });
   }
   // bile puddles (glowing), fat mounds, a tissue membrane overhead here and there ("it's a ceiling in places")
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 9; i++) {
     const x = X0 + r() * (X1 - X0 - 6), z = Z0 + r() * (Z1 - Z0 - 6), w = 2 + r() * 5, d0 = 2 + r() * 4;
-    if (stomachD(x, z) < S.r + 4 || KEEP().slice(0, 1).some((q) => inRect(x, z, x + w, z + d0, q))) continue;
-    B.add(x, GY, z, x + w, GY + 0.05, z + d0, 'bile', { nc: true, tint: 0xb8ff4a });
-    if (i < 2) B.light(x + w / 2, GY + 0.6, z + d0 / 2, 0xa6e22e, 6, 0.6);
+    if (stomachD(x, z) < S.r + 4 || KEEP().slice(1, 2).some((q) => inRect(x, z, x + w, z + d0, q))) continue;
+    const blood = i % 2 === 1;
+    B.add(x, GY, z, x + w, GY + 0.07, z + d0, blood ? 'blood' : 'bile', { nc: true, tint: blood ? 0x8a0a20 : 0xb8ff4a });
+    if (!blood && i < 2) B.light(x + w / 2, GY + 0.6, z + d0 / 2, 0xa6e22e, 6, 0.6);
   }
 
   // streets: tooth cobbles (texture) with real teeth scattered at the edges, eyes in the gutters, heart lamps
   for (let x = Math.floor(X0 / 2) * 2; x < X1; x += 2) for (let z = Math.floor(Z0 / 2) * 2; z < Z1; z += 2) {
     const s = streetAt(x + 1, z + 1);
     if (!s || s === 'peri' || stomachD(x, z) < S.r + 3) continue;
-    B.add(x, GY, z, x + 2, GY + 0.03, z + 2, 'teeth', { nc: true });
+    B.add(x, GY, z, x + 2, GY + 0.03, z + 2, 'gums', { nc: true });
     if (r() < 0.06) B.prop(r() < 0.7 ? 'tooth' : 'tooth_b', x + r() * 2, GY, z + r() * 2, r() * 6.28, 0.8 + r() * 0.6, 0);
   }
   for (const a of AVES) if (a > X0 - 6 && a < X1 + 6) for (let z = Math.ceil(Z0 / 16) * 16; z < Z1; z += 16) {
@@ -213,7 +220,7 @@ export function gut(B, d) {
       if (k < n - 1 && br() < 0.35) { const lx = ox1 + 1.5, lz = (oz0 + oz1) / 2; if (B.inside(lx, lz)) lungPad(B, lx, lz, 0.5); }
     }
     // vein cables across the street to the next block (they glow)
-    if (br() < 0.7) { const vz = bz0 + 4 + br() * (bz1 - bz0 - 8), vx = bx1 + 2; if (B.inside(vx, vz)) B.prop('veincable', vx + SW / 2, GY + 9 + br() * 4, vz, 0, (SW + 6) / 4, 0); }
+    if (br() < 0.7) { const vz = bz0 + 4 + br() * (bz1 - bz0 - 8), vx = bx1 + 2; if (B.inside(vx, vz)) { const vy = GY + 9 + br() * 4; B.prop('veincable', vx + SW / 2, vy, vz, 0, (SW + 6) / 4, 0); hook(B, vx + SW / 2, vy + 0.3, vz, { s: 1.4 }); } }
   }
   // the guts themselves: intestines arcing out of the ground over the streets and back in, veins across the cobbles,
   // wet mounds with eyes. seeded per chunk, anchored in it (keep clear of the arena and the stomach's bowl)
@@ -225,6 +232,7 @@ export function gut(B, d) {
     const mx = (ax + bx) / 2 + (r() - 0.5) * 8, mz = (az + bz) / 2 + (r() - 0.5) * 8;
     B.shape({ kind: 'tube', pts: [[ax, GY - 1.5, az], [ax + (mx - ax) * 0.4, GY + h * 0.8, az + (mz - az) * 0.4], [mx, GY + h, mz], [bx + (mx - bx) * 0.4, GY + h * 0.8, bz + (mz - bz) * 0.4], [bx, GY - 1.5, bz]], r: rad, seg: 10, ribs: 0.12, mat: r() < 0.7 ? 'flesh' : 'fat', tint: pick(r, FLESH), step: 1.0, pulse: 5 });
     B.shape({ kind: 'blob', c: [ax, GY, az], r: [rad * 2, rad * 0.9, rad * 2], seg: 8, mat: 'liver', pulse: 3 });
+    hook(B, mx, GY + h + rad + 0.65, mz, { s: 1.6 }); // a grapple ring on the crown (swing the guts)
     B.shape({ kind: 'blob', c: [bx, GY, bz], r: [rad * 2, rad * 0.9, rad * 2], seg: 8, mat: 'liver', pulse: 3, at: [bx, GY, bz] });
   }
   for (let i = 0; i < 10; i++) { // veins: thin purple-red tubes snaking along the ground
@@ -245,6 +253,7 @@ export function gut(B, d) {
   if (B.touches(SLICE.arena.rect, 16)) arena(B);
   choir(B, r);
   if (B.touches(SLICE.teeth.rect, 2)) toothMarket(B, r);
+  playGut(B); // grapple rings, the Wishbone (playground.js)
 }
 
 // the border: the Bottom's top houses, half eaten. ground creeps from pastel to flesh going north; the gate at the
@@ -275,6 +284,7 @@ export function border(B, d) {
       const lx0 = x + gap; x += gap + w;
       if (lx0 + w < X0 - 6 || lx0 > X1 + 6) continue;
       if (Math.abs(lx0 + w / 2 - G.x) < 14 || Math.abs(lx0 + w / 2 + 112) < 8) continue; // the gate's avenue, the escalator top
+      if (inGateArena(lx0, zz0, lx0 + w, zz1)) continue; // Overtime's arena (arenas.js builds its own houses)
       const hr = rng(seed), floors = 1 + (hr() * 3 | 0);
       let fy = y;
       for (let f = 0; f < floors; f++) {
@@ -294,6 +304,7 @@ export function border(B, d) {
     B.out.marks.push({ id: 'gut:stairs_top', p: [G.x, y, G.z + 6], face: 0 });
   }
   for (let i = 0; i < 4; i++) { const cx = X0 + r0() * (X1 - X0), cz = Z0 + r0() * (Z1 - Z0); if (cz > -21 && cz < -19) B.out.marks.push({ id: 'crowd', p: [cx, y, cz], kind: 'lost' }); }
+  gateArena(B); // THE GUT BORDER GATE (arenas.js)
 }
 
 // the slice's edges: nobody walks off the world. west: a wall of stacked containers; south: a rubble berm; north:

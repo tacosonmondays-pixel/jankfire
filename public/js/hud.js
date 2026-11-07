@@ -218,11 +218,11 @@ export const hud = {
     c.style.opacity = 1;
     centerT = dur;
   },
-  hit(hs) {
+  hit(hs, zone) { // zone (plant & defuse only): 'b' body, 'l' legs
     const h = $('hitmarker');
     h.style.opacity = 1;
-    h.style.color = hs ? '#ff3030' : '#fff';
-    h.textContent = hs ? '✖' : 'x';
+    h.style.color = hs ? '#ff3030' : zone === 'l' ? '#4fd8ff' : '#fff';
+    h.textContent = hs ? '✖' : zone === 'l' ? '⌄x⌄' : 'x';
     hitT = 0.18;
   },
   hurt(a) { hurtV = Math.min(1, hurtV + a / 40); },

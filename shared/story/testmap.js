@@ -6,6 +6,7 @@ export const TEST = {
   spawn: [0, 0.1, 6], yaw: 0,
   terminal: { p: [0, 0, -14], r: 2.6 }, // the Machine: F within r metres opens the sims (the normal PLAY menu)
   locker: { p: [6, 0, -14], r: 2.6 }, // the safehouse Locker (WP3): stash / unstash only within r metres
+  clinic: { p: [-7, 0, -14], r: 2.8 }, // a Meat Mechanic's clinic chair (WP5): buy, install, uninstall implants
 };
 
 export function buildTestMap(kit) {
@@ -37,6 +38,12 @@ export function buildTestMap(kit) {
   B.add(lx - 0.8, 0, lz - 0.5, lx + 0.8, 2.2, lz + 0.4, 'mint');
   D.add(lx - 0.02, 0.2, lz + 0.4, lx + 0.02, 2.0, lz + 0.45, 'metal');
   D.add(lx + 0.15, 1.0, lz + 0.4, lx + 0.35, 1.25, lz + 0.5, 'yellow');
+  const [cx, , cz] = TEST.clinic.p; // the clinic: a pink dentist chair under a striped awning, a jar of something on a stool
+  B.add(cx - 0.6, 0, cz - 0.6, cx + 0.6, 0.7, cz + 0.6, 'metal');
+  D.add(cx - 0.55, 0.7, cz - 0.55, cx + 0.55, 0.95, cz + 0.55, 'pink'); D.add(cx - 0.55, 0.95, cz - 0.6, cx + 0.55, 1.9, cz - 0.4, 'pink');
+  for (let i = 0; i < 5; i++) D.add(cx - 1.6 + i * 0.64, 2.6, cz - 1.4, cx - 0.96 + i * 0.64, 2.75, cz + 1.2, i % 2 ? 'white' : 'pink');
+  for (const sx of [-1.6, 1.6]) D.add(cx + sx - 0.05, 0, cz + 1.1, cx + sx + 0.05, 2.6, cz + 1.2, 'metal');
+  D.add(cx + 1.0, 0, cz + 0.4, cx + 1.3, 0.6, cz + 0.7, 'wood'); D.add(cx + 1.02, 0.6, cz + 0.42, cx + 1.28, 0.95, cz + 0.68, 'mint');
   horizon(D, -H - 1, -H - 1, H + 1, H + 1, 900, 'dirt');
   for (let i = 0; i < 26; i++) { const rr = rng(900 + i), a = rr() * Math.PI * 2, d = 70 + rr() * 120; (rr() < 0.5 ? conifer : lollipop)(D.local(0, 0, 0), Math.cos(a) * d, Math.sin(a) * d, 5 + rr() * 4, rr); }
   return {
