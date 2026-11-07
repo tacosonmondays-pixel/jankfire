@@ -2816,6 +2816,8 @@ function rollEquip(item) {
   if (item.type === 'kill') return ['EQUIP', () => setKfx(item.id)];
   if (item.type === 'grapple') return ['EQUIP', () => setGrap(item.id)];
   const target = item.type === 'model' ? COSMETICS.model[item.id] && COSMETICS.model[item.id].weapon : G.cosSel;
+  if (item.type === 'model' && target && STREAKS[target] && !WEAPONS[target]) // a killstreak's look: it's a skin slot keyed by the streak (streaklooks.js)
+    return [`PUT ON ${STREAKS[target].name.toUpperCase()}`, () => { const sk = validSkin(S.skins[target]).slice(); sk[3] = item.id; setSkin(target, sk); }];
   const idx = TYPES.indexOf(item.type);
   if (!target || !WEAPONS[target] || idx < 0) return null;
   return [`PUT ON ${WEAPONS[target].name.toUpperCase()}`, () => { const sk = validSkin(S.skins[target]).slice(); sk[idx] = item.id; G.cosSel = target; setSkin(target, sk); }];
