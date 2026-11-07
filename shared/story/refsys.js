@@ -18,7 +18,7 @@ export const REF = { maxAlive: 24, near: 220, maxHp: 5000, bodyMs: 4000, step: 1
 // enemy kinds the referee knows by itself; the story engine's own defs (hp, weapon, name, look, tags) override these
 export const ENEMY_KINDS = {
   dummy: { hp: 100, w: 'pistol', name: 'Intern', tags: ['test'] },
-  corp_temp: { hp: 80, w: 'pistol', name: 'Corp Temp', tags: ['corp'] },
+  corp_temp: { hp: 80, w: 'pistol', name: '☺ CORP TEMP', tags: ['corp', 'ranged'] }, // (the same as content/enemies.js, which wins when it loads)
   raider: { hp: 120, w: 'shotgun', name: 'Raider', tags: ['raider'] },
 };
 // the story engine's own enemy table (shared/story/content/enemies.js, WP8): name, hp, weapon, tags, faction (= side:

@@ -1,7 +1,7 @@
 // story boss fights, the presentation half: who's in the arena, the phase cutscenes, the boss's clips and damage states,
 // driven by the combat referee's events (it owns HP, hits and the real attacks). until those land, rehearsal fakes them:
 // JF_STORY.boss.test('overtime_1', 0.49) = he's at 49% HP.
-// events in (G.story.combat, from the systems lane's referee, or G.story.on): the referee owns HP, phases and timing:
+// events in (G.story.combat: the systems lane's story client hands each referee event over once): it owns HP, phases, timing:
 // { type: 'hit', target, kind, hp, max, head, crit, part }   a flinch on crits
 // { type: 'phase', target, kind, phase, invuln }           the phase cutscene + his pose for it
 // { type: 'part', target, kind, part, state }              damage states: plate_off, cracked, sparking (OT.dmg)
@@ -115,7 +115,6 @@ export function makeBoss(ST, { where, playScene }) {
     }
   };
   // listen to the referee
-  if (G.story && typeof G.story.on === 'function') for (const k of ['hit', 'kill', 'phase', 'plate']) G.story.on(k, (m) => B.combat({ ...m, type: k }));
   if (G.story) G.story.combat = B.combat;
   return B;
 }
