@@ -1,6 +1,10 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '6.5', date: '2026-11-07', title: 'THE MANAGEMENT FEELS GENEROUS', items: [
+    'every account gets +30 CRATES, +25 DUFFEL BAGS and +70 BOXES. log in and they\'re waiting (once per account, until dec 7).',
+    'CONTAINERS: open them in bulk with x5, x10 or ALL. they all rattle and pop at once, the loot lands rarest first, and you can equip straight from the results. skip if you\'re impatient.',
+  ] },
   { v: '6.4', date: '2026-11-07', title: 'WATER IS WET NOW', items: [
     'real water everywhere: waves sized to the pool or sea, a swell on the open sea, foam where it meets the shore, sky reflections, sun sparkles, and light wobbling on pool floors.',
     'splashes when anything hits water (you, bots, gibs, grenades, bullets, explosions). shallow water slows you down and goes shlp shlp. falling in the sea still means sleeping with the fishes.',
