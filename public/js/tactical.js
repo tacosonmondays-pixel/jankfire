@@ -2,7 +2,7 @@
 // crosshair that shows it, quiet slow walk, footsteps you can hear, and no outlines / name tags on enemies.
 // Everything here is off outside the mode (G.eco unset).
 import { WEAPONS, FLAGS } from '/shared/weapons.js';
-import { TAC, patternOf, patternAt, shotOffset, shotDir, shotSeed, tacSpread } from '/shared/tactical.js';
+import { TAC, patternOf, patternAt, shotOffset, shotDir, shotSeed, tacSpread, landK } from '/shared/tactical.js';
 import { G } from './ctx.js';
 import { ME } from './player.js';
 import { synth } from './audio.js';
@@ -18,17 +18,24 @@ export function tacRound(n) { T.q = 0; T.i = 0; T.lastT = -1e9; T.seed = shotSee
 export function tacSync(q) { if (Number.isInteger(q) && q >= 0) T.q = q; }
 const hs = () => Math.hypot(ME.vel[0], ME.vel[2]);
 // the spread a shot would have right now, from the gun's own spread (`base`: sights, hipfire setting, no bloom)
-export function tacSpreadNow(id, base) {
+export function tacSpreadNow(id, base, i = 0) {
   const v = ME.vel.map((x) => Math.round(x * 100) / 100); // what the server will see in the snapshot
-  return tacSpread(id, base, Math.hypot(v[0], v[2]), !ME.onGround, ME.crouching);
+  if (!ME.onGround || ME.hook) T.airT = performance.now(); // (on a rope counts as the air)
+  return tacSpread(id, base, Math.hypot(v[0], v[2]), !ME.onGround || !!ME.hook, ME.crouching, i, landK(T.airT || -1e9, performance.now()));
 }
+// the spray index the next shot would get right now (for the crosshair's bloom)
+function nextI(id, now) { const P = patternOf(id); return id === T.lastId && now - T.lastT <= (P ? P.reset : 400) ? T.i + 1 : 0; }
+// S&D hit markers by zone: what your last shot at someone hit (the server's 'hurt' only says head or not)
+const zones = new Map();
+export function tacZone(id, h) { zones.set(id, { z: h.h ? 'h' : h.lg && h.lg >= h.n - h.h ? 'l' : 'b', t: performance.now() }); }
+export function tacZoneOf(id) { const z = tacOn() && zones.get(id); return z && performance.now() - z.t < 900 ? z.z : null; }
 // one shot: which spray shot it is, its spread, and a function giving pellet k's direction. call right before firing
 export function tacShot(id, base, now) {
   const P = patternOf(id);
   if (id !== T.lastId || now - T.lastT > (P ? P.reset : 400)) T.i = 0;
   else T.i++;
   T.lastId = id; T.lastT = now;
-  const q = T.q++, i = T.i, sp = tacSpreadNow(id, base), yaw = ME.yaw, pitch = ME.pitch, off = shotOffset(id, i);
+  const q = T.q++, i = T.i, sp = tacSpreadNow(id, base, i), yaw = ME.yaw, pitch = ME.pitch, off = shotOffset(id, i);
   return {
     q, i, sp, dir: (k) => shotDir(yaw, pitch, off, sp, T.seed, q, k),
     msg: { q, i, a: [r4(yaw), r4(pitch)], sp: r4(sp) },
@@ -49,7 +56,7 @@ export function tacFrame(dt, now, id, base) {
     ME.pitch -= dy; ME.yaw += dx; T.kick[0] -= dx; T.kick[1] -= dy;
     if (Math.abs(T.kick[1]) < 1e-4 && Math.abs(T.kick[0]) < 1e-4) T.kick = [0, 0];
   }
-  cross(id && WEAPONS[id] && WEAPONS[id].kind === 'hitscan' ? tacSpreadNow(id, base) : null);
+  cross(id && WEAPONS[id] && WEAPONS[id].kind === 'hitscan' ? tacSpreadNow(id, base, nextI(id, now)) : null);
 }
 function cross(sp) {
   if (!T.cross) {
@@ -58,13 +65,13 @@ function cross(sp) {
     c.innerHTML = '<i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i><b></b>';
     $('hud').append(c);
   }
-  const on = sp != null && ME.alive;
+  const on = sp != null && ME.alive && !(G.settings && G.settings.sdNoCross); // (settings: keep the plain crosshair)
   document.body.classList.toggle('tac', on);
   T.cross.classList.toggle('hidden', !on);
   if (!on) return;
   // spread (rad) -> pixels at this field of view
   const cam = G.camera, h = G.renderer ? G.renderer.domElement.clientHeight : 720;
-  const px = Math.round(Math.max(3, Math.min(90, (Math.tan(sp) * h) / (2 * Math.tan(((cam ? cam.fov : 90) * Math.PI) / 360)))));
+  const px = Math.round(Math.max(3, Math.min(260, (Math.tan(sp) * h) / (2 * Math.tan(((cam ? cam.fov : 90) * Math.PI) / 360)))));
   if (px !== T.px) { T.px = px; T.cross.style.setProperty('--g', px + 'px'); }
   const bad = sp > 0.05;
   if (bad !== T.bad) { T.bad = bad; T.cross.classList.toggle('wide', bad); }

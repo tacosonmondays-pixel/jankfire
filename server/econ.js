@@ -6,6 +6,7 @@ import { TAC } from '../shared/tactical.js';
 import { BOMB } from '../shared/modes.js';
 import { ECON, ARMOR, BLAST, GEAR, econWeapon, weaponPrice, refillPrice, killReward, armorPen, ammoSpec, itemSpec, gearPrice } from '../shared/econ.js';
 import { raycast, PH } from '../shared/physics.js';
+import { installSdTune } from './sdtune.js'; // S&D: damage per zone + range, 5v5
 import AI, { aiDeps } from './econai.js'; // the team tactics (buying, executes, holds, rotations, retakes)
 
 // test knobs: JF_ECON=0 turns the economy off (Plant & Defuse as before), short buy phases, start / max credits
@@ -396,6 +397,7 @@ const M = {
       case 's': { // the weapon you say you hold must be one you have; there's no grapple to report
         if (has(WEAPONS, m.w) && !this.econOwns(p, m.w)) m.w = undefined;
         m.g = null;
+        if (this.tacAir(p)) p.tacAirT = now(); // (S&D: the spread a fresh landing still has)
         // slow walk (silent footsteps) only at slow walk speed: running with the flag on just clears it
         if (typeof m.f === 'number' && (m.f & FLAGS.WALK) && Array.isArray(m.v) && Math.hypot(Number(m.v[0]) || 0, Number(m.v[2]) || 0) > TAC.run * TAC.walkMul + 1) m.f &= ~FLAGS.WALK;
         if (p.ec && p.alive && m.q === p.seq && Array.isArray(m.p) && m.p.length === 3 && m.p.every((v) => typeof v === 'number' && Number.isFinite(v))) p.ec.said = m.p.slice(0, 3);
@@ -821,5 +823,6 @@ export function installEcon(Room, deps) {
     if (k in Room.prototype) throw new Error('econ: Room already has ' + k);
     Room.prototype[k] = fn;
   }
+  installSdTune(Room);
 }
 export { dropView, instView };

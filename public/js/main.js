@@ -63,8 +63,13 @@ import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, ch
 import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset, brOn, brInvOpen, brInvToggle } from './royale.js'; // jank royale
 import { brActive } from './royale.js';
 import { BR } from '/shared/royale.js'; // (the grapple charges, for the help text)
-import { initMinimap, minimapFrame } from './minimap.js';
-import { initLeaderTabs, showLeaders } from './leadmodes.js'; // per-mode leaderboard tabs // the HUD minimap (SAT-NAV)
+import { tacZoneOf } from './tactical.js'; // plant & defuse hit markers by zone
+import { specFPOn } from './specfp.js'; // plant & defuse: first-person spectating
+import { pipFrame } from './pip.js'; // the first-person corner box while spectating
+import { chaosSpecId } from './chaos.js';
+import { brSpecId } from './royale.js';
+import { initMinimap, minimapFrame } from './minimap.js'; // the HUD minimap (SAT-NAV)
+import { initLeaderTabs, showLeaders } from './leadmodes.js'; // per-mode leaderboard tabs
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { ecoKeyLabel } from './econ.js';
 import { bodyReset } from './bodyhp.js'; // the wrecking ball + rig last until they break
@@ -448,6 +453,8 @@ bindCheck('shake', 'shake');
 bindCheck('showFps', 'showFps');
 bindCheck('toggleAim', 'toggleAim');
 bindCheck('blood', 'blood');
+bindCheck('sdNoCross', 'sdNoCross'); // plant & defuse: no spread crosshair (tactical.js)
+bindCheck('noPip', 'noPip'); // no first-person corner box while spectating (pip.js)
 bindCheck('killcam', 'killcam', () => { if (G.joined) net.send({ t: 'kc', on: S.killcam }); });
 bindCheck('showCards', 'showCards');
 bindCheck('speedLines', 'speedLines');
@@ -1518,7 +1525,7 @@ net.on('dmg', (m) => {
   }
   if (m.w === 'shredder') shredHit(m);
   if (m.from === G.myId && m.to !== G.myId) {
-    hud.hit(m.hs);
+    hud.hit(m.hs, tacZoneOf(m.to)); // (plant & defuse: body / legs markers too)
     if (m.hs) sfx.headshot(m.ko); else sfx.hit();
     if (target) {
       const v = new THREE.Vector3(target.pos[0], target.pos[1] + 2, target.pos[2]).project(G.camera);
@@ -2061,11 +2068,13 @@ function frame(t) {
   if (G.story) G.story.tick(dt, now); // OVERDUE (flagged)
   updateWorld(dt);
   updateCrosses(dt, RP.active ? (RP.sp || 1) * (RP.dt != null && dt > 0 ? RP.dt / dt : 1) : 1); // after the projectile loop + replay: it turns blood bolts nose-first
-  G.vmScene.visible = G.joined && !RP.active && !specCam && !asleep && !econHideVM();
+  const fpSpec = specCam && specFPOn(); // plant & defuse: their gun in your hands (specfp.js)
+  G.vmScene.visible = G.joined && !RP.active && (!specCam || fpSpec) && !asleep && (!econHideVM() || fpSpec);
   if (ballOn(now)) G.vmScene.visible = false; // weapons are holstered inside the ball
   if (G.story && G.story.hideVM()) G.vmScene.visible = false; // (OVERDUE: driving, third person)
   if (story) story.frame(dt, now, cam); // story mode: actors, quests, the talk cam, cutscenes
   renderFrame();
+  pipFrame(dt, G.joined && !RP.active && !G.killcamPending ? chaosSpecId() || brSpecId() : 0); // spectating from behind: their eyes in a corner box (pip.js)
   if ((screen === 'character' || (screen === 'main' && heroTick(dt))) && !$('menu').classList.contains('hidden')) renderPreview(heroDt || dt); // (grapple & spray has no weapon preview any more)
   if (screen === 'cosmetics' && !$('menu').classList.contains('hidden')) renderGrapplePreview(dt);
   if (screen === 'customize' && !$('menu').classList.contains('hidden')) { const d = czFrame(dt); if (d) renderPreview(d); } // on demand: only while it turns, you drag, or particles fly
