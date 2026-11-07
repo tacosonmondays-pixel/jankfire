@@ -1537,8 +1537,10 @@ function suburbOutside(B, D, r, bx, roads = [], clear = []) {
   ring(W, x0 - 3, z0 - 3, x1 + 3, z1 + 3, 6.5, 2);
   ring(Dw, x0 - 10, z0 - 10, x1 + 10, z1 + 10, 5.5, 3); ring(Dw, x0 - 17, z0 - 17, x1 + 17, z1 + 17, 6, 4);
   const fr = rng(4343), pylonZ = z0 - 100;
-  const ftree = (x, z, h, y = 0) => { const L2 = D.local(x, z, 0, y), m = fr() < 0.5 ? 'leaves' : fr() < 0.6 ? 'hedge' : 'leaves2';
-    if (fr() < 0.5) { L2.B(0, h / 2, 0, 0.6, h, 0.6, 'wood'); L2.B(0, h + 0.8, 0, 3.4 + fr(), 2.2, 3.4 + fr(), m); L2.B(0, h + 2.4, 0, 2.2, 1.2, 2.2, m); }
+  const ftree = (x, z, h, y = 0) => { const L2 = D.local(x, z, 0, y), m = fr() < 0.5 ? 'leaves' : fr() < 0.6 ? 'hedge' : 'leaves2', lolli = fr() < 0.5;
+    propOf(lolli ? 'lollipop' : 'conifer', L2.pt(0, 0, 0), quarter(L2, 0, 0), () => ftreeBoxes(L2, h, m, lolli), lolli ? { t: m } : {}); }; // (Blender: round 4's lollipop or conifer)
+  const ftreeBoxes = (L2, h, m, lolli) => {
+    if (lolli) { L2.B(0, h / 2, 0, 0.6, h, 0.6, 'wood'); L2.B(0, h + 0.8, 0, 3.4 + fr(), 2.2, 3.4 + fr(), m); L2.B(0, h + 2.4, 0, 2.2, 1.2, 2.2, m); }
     else { const y0 = 1.7 + ((h * 7.31) % 0.6); L2.B(0, y0 / 2, 0, 0.5, y0, 0.5, 'wood'); L2.B(0, y0 + h * 0.3, 0, 4.4, h * 0.6, 4.4, m); L2.B(0, y0 + h * 0.75, 0, 2.6, h * 0.5, 2.6, m); } }; // (canopy bottoms at their own heights)
   for (let x = x0 - 220; x <= x1 + 220; x += 8) for (let z = z0 - 220; z <= z1 + 220; z += 8) {
     const e = Math.max(x0 - 20 - x, x - x1 - 20, z0 - 20 - z, z - z1 - 20); // how far past the ring
