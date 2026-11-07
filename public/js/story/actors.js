@@ -128,6 +128,7 @@ function pose(a, dt, moving, look) {
   const sw = Math.sin(lo.ph) * 0.55 * sp;
   c.arm.rotation.set(sw + 0.05, 0, 0.1); c.armL.rotation.set(-sw + 0.05, 0, -0.1);
   c.foreR.rotation.set(0.22 + Math.max(0, sw) * 0.5, 0, 0); c.foreL.rotation.set(0.22 + Math.max(0, -sw) * 0.5, 0, 0);
+  if (c.armRest) { const [ax, fx] = c.armRest; c.arm.rotation.x += ax; c.armL.rotation.x += ax; c.foreR.rotation.x += fx; c.foreL.rotation.x += fx; } // (a look whose arms can't hang: dot's rest on her wall)
   c.spine.rotation.set(c.spine.userData.hunch ??= c.spine.rotation.x, 0, 0);
   c.spine.position.y = c.spine.userData.y0 ??= c.spine.position.y;
   c.head.rotation.x = 0; c.head.rotation.y = 0;

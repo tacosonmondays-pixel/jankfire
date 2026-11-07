@@ -14,6 +14,7 @@ STAT_KEYS.push('airborne', 'wings_old'); // Never Landed + the grandfathered Win
 STAT_KEYS.push('sniper_feats'); // Sniper Royalty (bit flags, see BIT_KEYS)
 STAT_KEYS.push('quiz_right'); // Smarty Pants: pop quiz questions answered right
 const MAX_KEYS = new Set(['best_wave', 'top_speed']); // these keep the max instead of adding up
+import { MODE_STATS, MODE_MAX, cleanModeDelta } from '../shared/modestats.js'; // per-mode leaderboards (inv.ms, no new columns)
 const BIT_KEYS = new Set(['sniper_feats']); // bit flags (Sniper Royalty feats): OR'd in, so a feat never counts twice or turns off
 
 function applyDelta(u, d) {
@@ -24,6 +25,16 @@ function applyDelta(u, d) {
     if (BIT_KEYS.has(k)) out[k] = (u[k] | 0) | (d[k] | 0);
   }
   return out;
+}
+
+// per-mode stats live in inv.ms = { qp: {...}, bomb: {...}, zm: {...}, br: {...} }: d is a delta, MODE_MAX keys keep the best
+function mergeModes(inv, d) {
+  const ms = inv.ms && typeof inv.ms === 'object' ? inv.ms : (inv.ms = {});
+  for (const [m, keys] of Object.entries(cleanModeDelta(d))) {
+    const b = ms[m] && typeof ms[m] === 'object' ? ms[m] : (ms[m] = {});
+    for (const [k, v] of Object.entries(keys)) b[k] = MODE_MAX.has(k) ? Math.max(b[k] || 0, v) : Math.round(((b[k] || 0) + v) * 100) / 100;
+  }
+  return inv;
 }
 
 class FileStore {
@@ -114,6 +125,20 @@ class FileStore {
     else { u.inv ||= {}; u.inv.story = { [slot]: save }; }
     this.save();
     return true;
+  }
+  async addModeStats(nameLower, d) {
+    const u = this.db.users[nameLower];
+    if (!u) return;
+    u.inv = mergeModes(u.inv || {}, d);
+    this.save();
+  }
+  // rows for a mode's boards: the top n by one of its stats, each with that mode's whole bucket
+  async modeRows(mode, key, n = 15) {
+    if (!Object.hasOwn(MODE_STATS, mode)) return [];
+    const b = (u) => (u.inv && u.inv.ms && u.inv.ms[mode]) || null;
+    return Object.values(this.db.users).filter((u) => b(u) && (b(u)[key] || 0) > 0)
+      .sort((x, y) => (b(y)[key] || 0) - (b(x)[key] || 0)).slice(0, n)
+      .map((u) => ({ name: u.name, xp: u.xp || 0, ms: b(u) }));
   }
   async top(col, n = 15) {
     return Object.values(this.db.users).filter((u) => (u[col] || 0) > 0)
@@ -217,6 +242,17 @@ class SupabaseStore {
     inv.story = { [slot]: save };
     await this.req('PATCH', `?name_lower=eq.${encodeURIComponent(nameLower)}`, { inv }, { Prefer: 'return=minimal' });
     return true;
+  }
+  async addModeStats(nameLower, d) {
+    const u = await this.get(nameLower);
+    if (!u) return;
+    await this.req('PATCH', `?name_lower=eq.${encodeURIComponent(nameLower)}`, { inv: mergeModes(u.inv || {}, d) }, { Prefer: 'return=minimal' });
+  }
+  // mode and key are checked against MODE_STATS before they go in the query (PostgREST json paths)
+  async modeRows(mode, key, n = 15) {
+    if (!Object.hasOwn(MODE_STATS, mode) || !MODE_STATS[mode].keys.includes(key)) return [];
+    const rows = await this.req('GET', `?select=name,xp,ms:inv->ms->${mode}&inv->ms->${mode}->>${key}=gt.0&order=inv->ms->${mode}->${key}.desc.nullslast&limit=${n}`);
+    return (rows || []).filter((u) => u.ms && typeof u.ms === 'object').map((u) => ({ name: u.name, xp: u.xp || 0, ms: u.ms }));
   }
   async top(col, n = 15) {
     const rows = await this.req('GET', `?select=name,xp,${col}&${col}=gt.0&order=${col}.desc&limit=${n}`);

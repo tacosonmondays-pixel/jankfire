@@ -182,3 +182,35 @@ def in_joint(char_id, joint, objs):
         o.data.transform(Mb)
         out.append(o)
     return out
+
+
+def flip_uv(o, center, size):
+    """straight-on UVs for a decal seen from the FRONT (game -z), the image's right on the viewer's right"""
+    bpy.context.view_layer.update()
+    uv_planar(o, center, size, axis='z')
+    for d in o.data.uv_layers.active.data: d.uv = (1 - d.uv[0], d.uv[1])
+    return o
+
+
+def panel(name, w, h, c, m, curve=0.3, nx=10, ny=6, sag=None):
+    """a cloth sheet facing the FRONT (game -z) centred on c, w x h, wrapped back round a belly (curve = metres the edges
+    sit behind the middle) with UVs 0..1 the right way round from the front. sag(u, v) -> extra z push (folds)"""
+    bm = bmesh.new(); uvl = bm.loops.layers.uv.new('UVMap')
+    vs = []
+    for j in range(ny + 1):
+        row = []
+        for i in range(nx + 1):
+            u, v = i / nx, j / ny
+            x = (u - 0.5) * w; y = (v - 0.5) * h
+            z = c[2] + curve * (2 * u - 1) ** 2 + (sag(u, v) if sag else 0.0)
+            row.append(bm.verts.new(gv(c[0] + x, c[1] + y, z)))
+        vs.append(row)
+    for j in range(ny):
+        for i in range(nx):
+            f = bm.faces.new((vs[j][i], vs[j][i + 1], vs[j + 1][i + 1], vs[j + 1][i]))
+            for lp, (ii, jj) in zip(f.loops, ((i, j), (i + 1, j), (i + 1, j + 1), (i, j + 1))): lp[uvl].uv = (1 - ii / nx, jj / ny)
+            f.smooth = True
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    o = lib_obj(name, bm, m); o['keep_uv'] = 1
+    so = o.modifiers.new('thick', 'SOLIDIFY'); so.thickness = 0.008; so.offset = 0
+    return o
