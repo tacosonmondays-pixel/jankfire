@@ -1,0 +1,16 @@
+== base jank0
+islands jank0 {"calls":650,"tris":323320,"fps":10.7}
+platform jank0 {"calls":300,"tris":318794,"fps":7.4}
+forest jank0 {"calls":152,"tris":333704,"fps":9.9}
+== new jank0
+islands jank0 {"calls":614,"tris":350192,"fps":10.4}
+platform jank0 {"calls":491,"tris":375392,"fps":10}
+forest jank0 {"calls":152,"tris":339612,"fps":11.2}
+== base jank3
+islands jank3 {"calls":979,"tris":634592,"fps":2.4}
+platform jank3 {"calls":431,"tris":322720,"fps":1.7}
+forest jank3 {"calls":624,"tris":1011968,"fps":2}
+== new jank3
+islands jank3 {"calls":731,"tris":616608,"fps":1.1}
+platform jank3 {"calls":514,"tris":636172,"fps":1.4}
+forest jank3 {"calls":194,"tris":632144,"fps":2.2}
