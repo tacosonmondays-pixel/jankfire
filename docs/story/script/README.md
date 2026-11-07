@@ -18,9 +18,10 @@ Start with [CANON.md](CANON.md): the timeline, why Change is free, the six pages
 | [IMPLANTS.md](IMPLANTS.md) | 55 implants (17 secret) and the Drift rules | 5227 words |
 | [LOOT.md](LOOT.md) | 8 brands, 43 named legendaries | 3199 words |
 | [../MECHANICS.md](../MECHANICS.md) | the mechanics bible: 47 mechanics, the grapple, coverage | 9127 words |
+| [../GRUDGES.md](../GRUDGES.md) · [../GRUDGE_LEDGER.md](../GRUDGE_LEDGER.md) | the Grudge Ledger: enemies who remember you, 33 adaptations | 5606 words |
 | [COLLECTIBLES.md](COLLECTIBLES.md) | 69 collectibles in 6 sets | 3189 words |
 
-**Total: about 121k words, 32 main missions, 33 scenes.**
+**Total: about 127k words, 32 main missions, 33 scenes.**
 
 ## Main story at a glance
 

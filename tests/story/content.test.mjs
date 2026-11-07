@@ -68,3 +68,16 @@ test('every mechanic is used somewhere, and every main mission and boss uses the
   assert.deepEqual(unused, [], 'mechanics used fewer than twice');
   for (const [id, b] of Object.entries(C.BOSSES)) assert.ok(b.arena.grapple.length >= 2, `${id} needs 2+ grapple points`);
 });
+
+test('the grudge ledger has what the brief asked for', () => {
+  const G = C.GRUDGES;
+  assert.ok(Object.keys(G.FACTIONS).length >= 4, 'factions');
+  assert.ok(Object.keys(G.ADAPTATIONS).length >= 30, 'adaptations');
+  let n = 0; for (const f of Object.values(G.BARKS)) for (const ls of Object.values(f)) n += ls.length;
+  assert.ok(n >= 200, `${n} barks`);
+  for (const k of ['killed_you', 'you_fled', 'run_over', 'slipped', 'burned']) assert.ok(Object.hasOwn(G.TRIGGERS, k), k);
+  for (const k of ['closed', 'quit', 'ally']) assert.ok(Object.hasOwn(G.RESOLUTIONS, k), k);
+  assert.ok(G.RULES.maxActive <= 12 && G.RULES.maxHistory <= 4 && G.RULES.maxAdaptations <= 3, 'caps stay small');
+  // the ledger stays its own design: no rank / tier / promotion fields anywhere in the data
+  assert.doesNotMatch(JSON.stringify(G), /"(rank|tier|level|promot\w*|captain|warchief|follower|betray\w*)"\s*:/i);
+});
