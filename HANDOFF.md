@@ -67,3 +67,53 @@ Live: https://jankfire.onrender.com (Render auto-deploys `main`). Latest shipped
 - A merged PR can't take new commits. If a lane pushes after a merge, open a new PR from that branch.
 - Stacked PRs auto-close when their base branch is merged. Reopen them as new PRs against main.
 - Headless runs are slow (SwiftShader). Perf numbers are noisy; use the bench method from #103.
+
+## STOPPED 2026-11-08 (owner out of credit)
+All lane sessions were interrupted. Nothing is merging. The open PRs above are drafts and safe to leave. Restart by reading this file.
+
+## How to recreate the setup (so the models look as good)
+**Cloud environment "jankfire"** (claude.ai > Claude Code > Environments, id env_01PZ5kcs8UzPeASfhX2RCLix):
+- **Network:** limited.
+  - Package managers and MCP servers are allowed.
+  - Hosts: jankfire.onrender.com, plus the huggingface hosts (huggingface.co, cdn-lfs.huggingface.co, cdn-lfs.hf.co, cdn-lfs-us-1.hf.co, cas-bridge/cas-server/transfer.xethub.hf.co).
+  - Network secret: a Freesound API key for freesound.org (CC0 sound effects). Re-add it in the environment's settings; the value never goes in the repo.
+- **Setup script** (runs as root at session start):
+  ```bash
+  retry() { for i in 1 2 3; do "$@" && return 0; sleep $((i * 5)); done; return 1; }
+  retry apt-get update -qq || true
+  DEBIAN_FRONTEND=noninteractive retry apt-get install -y -qq blender python3-numpy python3-venv libegl1 libgl1-mesa-dri libegl-mesa0
+  [ -x /opt/bpy52/bin/python ] || python3 -m venv /opt/bpy52
+  retry /opt/bpy52/bin/pip install -q bpy==5.2.3        # Blender 5.2 LTS as a python module
+  # + a /usr/local/bin/blender52 wrapper that runs scripts like `blender -b -P x.py -- args` through /opt/bpy52/bin/python
+  if [ -d jankfire ]; then (cd jankfire && retry npm ci --silent); fi
+  ```
+  The full script, including the blender52 wrapper, is stored on the environment. Ask the new Claude to read it with the get_environment tool, or recreate the wrapper from the comment above.
+- **Already in the image:** Node 22, Playwright + Chromium (use `--use-gl=swiftshader --enable-unsafe-swiftshader` for headless WebGL), ffmpeg.
+
+**GitHub:** repo tacosonmondays-pixel/jankfire. The Claude GitHub app must be installed on it. Branches:
+- `main`: live.
+- `claude/handoff`: this file + the regression scripts in handoff/tests.
+
+**Skills (vendored in the repo, load automatically):** `.claude/skills/`:
+- `jankfire-toolbox`: start here. It says which skill fits which job and the game's art rules.
+- The `blender-*` set targets Blender 5.2: core, hardsurface-modeling, pbr-materials, texturing, stylized-npr, asset-qa (the mandatory QA gate), retopology-uv, game-optimization, export-pipelines, rendering, lighting-lookdev, animation, environment-kits, geometry-nodes, scene-setup, pipeline-automation, workflow-recipes, time-of-day, weather-fx.
+- Style/design skills: lowpoly-style (PS1), comic-book-style, liminal-space-style, neon-retrofuturism, frutiger-aero-style, game-feel-design, game-sfx, level-design, procgen-design, ai-behavior-patterns.
+- Licenses are in `.claude/skills/_licenses`.
+
+**The model pipeline itself (all in the repo, read `tools/blender/README.md`):**
+- Models are built FROM CODE in headless Blender:
+  - `blender -b --python tools/blender/make_<thing>.py` writes `public/models/<id>.glb` plus a turnaround sheet in `tools/blender/sheets/`.
+  - `tools/blender/lib.py` is the shared kit: game-space primitives, sweeps, lofts, bevels, materials.
+  - There are about 100 `make_*.py` scripts for weapons, skins, props, vehicles and gear. `make_all.sh` runs them all.
+- Story models live in `tools/blender/cast/` (characters), `bottom_kit.py`, `gutkit.py` and `corp.py`. They export into `public/models/story|cast`.
+- The look rules that make them good:
+  - real-reference proportions;
+  - glossy candy/clear-coat paint with chrome and brass (the current look);
+  - the code model's muzzle/grip/sight spots, and wrap zones tagged in part names (`_wzA/_wzB/_wzN`);
+  - a far `lod1`, baked AO, and a code fallback if the file is missing;
+  - every model passes the blender-asset-qa gate and gets compared in game with `tools/blender/shots*.cjs`.
+- **NEW PS1 + Cruelty Squad look** (owner direction; awaiting look-test approval):
+  - `tools/blender/ps1.py` (PR #83, branch claude/map-pass) bakes one tiny dithered 15-bit texture per model.
+  - `texkit.py` + the tiling kit in `public/models/arch/kit` (PR #115, branch claude/blender-buildings) is shared by the props and buildings lanes. The kit fixes a 16-colour palette, dither, and glb material extras (tex/tile/col/paint/alpha/glow/nocast).
+- In-game check: start `PORT=3100 node server.js`, then run the shots scripts (Too HD = `jank: 3`, Potato = `jank: 0`).
+- **Quality bar from the owner: "Models and animation max!!"** Run model/animation work at max effort, with sheets, screenshots and iteration.
