@@ -1302,6 +1302,8 @@ def write_json(N, tris):
 
 
 def main():
+    if bpy.app.version < (4, 2):      # (make_all.sh runs every script with the apt blender 4.0: this one is 5.2 only)
+        print(f'JF_SKIP {FID}: needs Blender 5.2 (blender52 -b -P tools/blender/make_gut_heart.py), this is {bpy.app.version_string}'); return
     reset()
     N, B = build_all()
     tris = {k: tri_count(o) for k, o in N.items()}
