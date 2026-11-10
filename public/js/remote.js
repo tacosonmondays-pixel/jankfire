@@ -224,9 +224,10 @@ export class Remote {
   // what you can hit matches what you see: far-away players are drawn (and hit-tested) bigger on your screen
   hitboxes() {
     if ((this.f & FLAGS.BALL) && this.alive) return ballBoxes(this.pos, this.distScale || 1); // a wrecking ball is one big ball
-    const k = (this.distScale || 1);
+    const k = (this.distScale || 1) * (this.zmK || 1); // (zombies: Chonks are bigger, Ankle Biters smaller)
     if (this.rigOn) return rigBoxes(this.pos, k); // the overdrive rig is a much bigger target
     let boxes = this.nap && this.napK > 0.5 ? this.napBoxes() : playerBoxes(this.pos);
+    if (this.zmHit) boxes = this.zmHit(boxes); // zombies: a legless one is flat on the floor (zmlimbs.js)
     if (this.zmBig) boxes = [boxes[0], { min: [this.pos[0] - 0.75, this.pos[1] + 1.45, this.pos[2] - 0.75], max: [this.pos[0] + 0.75, this.pos[1] + 2.9, this.pos[2] + 0.75], head: true }]; // zombies BIG HEAD MODE (zmextra.js)
     if (k === 1) return boxes;
     const [x, y, z] = this.pos;
@@ -500,7 +501,7 @@ export class Remote {
     const dist = camPos.distanceTo(ch.root.position);
     const sat = now < (G.satUntil || 0);
     this.distScale = 1 + Math.max(0, Math.min(1, (dist - 25) / 60)) * 0.8;
-    ch.root.scale.setScalar(1.2 * this.distScale);
+    ch.root.scale.setScalar(1.2 * this.distScale * (this.zmK || 1));
     this.marker.visible = dist > 18 || sat;
     this.marker.material.depthTest = !sat; // spy satellite: see them through walls
     this.marker.renderOrder = sat ? 10 : 0;

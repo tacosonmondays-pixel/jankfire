@@ -15,6 +15,7 @@ import { addRig } from './rigmats.js';
 import { updateForest, forestMap } from './forest.js';
 import { shredMap, updateShredPit } from './shredpit.js'; // the Warehouse's shredder pit: the drums, the glow, the grind
 import { buildProps, hasProp } from './props.js';
+import { buildArch, hasArch, wantArch, setArchHaze } from './archfield.js'; // Blender architecture over the boxes
 import { liquidBox, buildLiquids, updateLiquids, liquidsMap, setLiquidQ } from './liquids.js'; // water that moves, lava that flows, splashes
 import { updateFlames } from './flames.js'; // real fire
 import { gfxGuard, initGfxGuard } from './gfxguard.js';
@@ -255,7 +256,7 @@ function buildMap(scene) {
   aoBegin(all, ncf); setSunBoxes(all);
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
-    if (i < nReal && b.pv && hasProp(b.pv)) continue;
+    if ((i < nReal && b.pv && hasProp(b.pv)) || (b.av && hasArch(b.av))) continue;
     if (liquidBox(b)) { liq.push(b); continue; } // water, lava, fire: liquids.js / flames.js draw those
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
@@ -301,7 +302,7 @@ function buildChunked(scene, def) {
   aoBegin(all, ncf); setSunBoxes(all);
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
-    if (i < nReal && b.pv && hasProp(b.pv)) continue; // (as in buildMap: only real boxes give way to a prop)
+    if ((i < nReal && b.pv && hasProp(b.pv)) || (b.av && hasArch(b.av))) continue; // (as in buildMap: only real boxes give way to a prop / a building)
     if (liquidBox(b)) { liq.push(b); continue; } // (liquids.js)
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
@@ -449,6 +450,7 @@ export function loadMap(id) {
   resetGrid(BOXES);
   buildMap(G.scene);
   buildProps(G.scene, MAPS[MAP.id] && MAPS[MAP.id].boxes.props);
+  archFor(MAP.id);
   paintSky(MAP.sky);
   G.scene.fog.color.setHex(MAP.sky.fog);
   G.scene.fog.near = MAP.fogNear;
@@ -477,7 +479,15 @@ export function refreshMapVisuals() {
   if (!MAP.id || !G.scene || !MAT) return;
   buildMap(G.scene);
   buildProps(G.scene, MAPS[MAP.id] && MAPS[MAP.id].boxes.props);
+  buildArch(G.scene, MAPS[MAP.id] && MAPS[MAP.id].boxes.arch);
   lightingRefresh();
+}
+// the map's Blender buildings (archfield.js): drawn now if they're in, else fetched and swapped in when they land
+function archFor(id) {
+  const list = MAPS[id] && MAPS[id].boxes.arch;
+  setArchHaze((m) => hazify(m, 1));
+  buildArch(G.scene, list);
+  wantArch(list, () => { if (MAP.id === id) refreshMapVisuals(); });
 }
 
 // ---- gfxguard.js hooks (the "everything renders black" safety net)
