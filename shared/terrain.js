@@ -131,7 +131,7 @@ export function shapeGround(B, D, o) {
   for (const rf of o.relief || []) {
     let k = mats.indexOf(rf.mat || mat); if (k < 0) { mats.push(rf.mat); k = mats.length - 1; }
     for (let i = 0; i < vx; i++) for (let j = 0; j < vz; j++) { const v = rf.f(X0 + i, Z0 + j); if (v != null) { H[V(i, j)] = v; fixed[V(i, j)] = 1; } }
-    for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) if (rf.f(X0 + i + 0.5, Z0 + j + 0.5) != null) paint[C(i, j)] = k;
+    for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) if (rf.paint ? rf.paint(X0 + i + 0.5, Z0 + j + 0.5) : rf.f(X0 + i + 0.5, Z0 + j + 0.5) != null) paint[C(i, j)] = k; // (rf.paint: where it takes rf.mat; the rest keeps the ground's own)
   }
   // ---- small things get a level pad at the height the ground has under their middle, and go up or down with it
   const at0 = (x, z) => { const fx = Math.max(0, Math.min(nx - 1e-6, x - X0)), fz = Math.max(0, Math.min(nz - 1e-6, z - Z0)), i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j; return (H[V(i, j)] * (1 - u) + H[V(i + 1, j)] * u) * (1 - v) + (H[V(i, j + 1)] * (1 - u) + H[V(i + 1, j + 1)] * u) * v; };
