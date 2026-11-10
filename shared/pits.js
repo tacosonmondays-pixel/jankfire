@@ -17,6 +17,27 @@ export function bottomOut(map, pos, vel) {
   if (!map || (!map.fall && map.seaY == null) || pos[1] >= map.killY - 0.1) return;
   pos[1] = map.killY - 0.1; vel[0] = vel[1] = vel[2] = 0;
 }
+// ponds you can swim in (map.pools = [{ box: [x0, z0, x1, z1], top }], on shaped ground): wade in, and once the bed
+// drops away under you the water carries you. you bob with your head out and paddle (slowly: it's air control), a
+// plunge from a height takes you under for a moment and brings you back up. client for you, server for its bots
+export const SWIM = { ride: 1.45, up: 38, rise: 2.6, plunge: 5.5, drag: 1.6, dive: 2.6 }; // m your feet hang below the surface, how hard it lifts, m/s up and down at most, how fast it eats your speed
+export function swim(map, boxes, pos, vel, dt, dive) { // dive: holding crouch = you let yourself go under (down to the bed, where you can walk about, slowly)
+  const P = map && map.pools, T = boxes && boxes.terrain;
+  if (!P || !T) return false;
+  for (const w of P) {
+    if (pos[0] < w.box[0] || pos[0] > w.box[2] || pos[2] < w.box[1] || pos[2] > w.box[3]) continue;
+    const line = w.top - SWIM.ride, g = T.at(pos[0], pos[2]);
+    if (g == null || g >= line - 0.02 || pos[1] > line + 0.02) continue; // standing depth, or up in the air over it
+    if (dive) vel[1] = Math.max(-SWIM.dive, vel[1]); // going down, no faster than a sink
+    else {
+      vel[1] = Math.max(-SWIM.plunge, Math.min(SWIM.rise, vel[1] + SWIM.up * dt));
+      if (pos[1] > line - 0.08 && vel[1] > -1.4) { pos[1] = line; vel[1] = 0; } // at the surface: it holds you there
+    }
+    const k = Math.max(0, 1 - SWIM.drag * dt); vel[0] *= k; vel[2] *= k;
+    return true;
+  }
+  return false;
+}
 // lava is deep and thick: you don't stand in it, you go down into it, slowly (PIT.lava.sink m/s), burning all the way,
 // and it has you by the legs (drag). a grapple still pulls you out. feet PIT.lava.under below its surface = your head's
 // gone under, and so are you (the server's call: server/pits.js). the client does the sinking to you, the server to its bots

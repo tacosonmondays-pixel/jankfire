@@ -3,6 +3,7 @@
 // Rule of thumb for builders: never let two different surfaces sit in the same plane (that flickers).
 import { buildNav, navPath, navLocate, navClear } from './nav.js';
 import { outOfBounds } from './bounds.js';
+import { shapeGround } from './terrain.js';
 import { prop } from './props.js';
 export { prop, PROPS } from './props.js';
 
@@ -2722,9 +2723,10 @@ function desert() {
   // the freight yard behind the station (team 2): a row of containers walls it off from the town, open at both ends
   container(B, 94, -38, true, 2, ['containerb', 'containerr']); container(B, 94, -24.7, true, 1, ['containerg'], 11); // (a 1.8 m gap between them: the spawn's back door)
   const east = [[97.3, 0.2, -40], [97.3, 0.2, -36], [97.3, 0.2, -32], [97.3, 0.2, -28], [97.3, 0.2, -24], [96, 0.2, -43], [98.4, 0.2, -30]];
-  // ---- the oasis: the pond (ankle deep), palms, a dock, the camp, rocks
-  add(24, -0.4, 50, 48, 0.02, 72, 'sand'); add(24.4, 0.02, 50.4, 47.6, 0.06, 71.6, 'water');
+  // ---- the oasis: the pond (a real one now: the ground dips under it, over your head in the middle. shapeGround below digs it), palms, a dock, the camp, rocks
+  D.add(21, -0.3, 47, 51, -0.25, 75, 'water'); // (a rectangle of water under the sand: only where the ground dips below it does it show)
   add(30, 0.06, 66, 33, 0.5, 74, 'wood'); add(30.5, 0.06, 74, 32.5, 0.6, 74.6, 'wood'); // the dock (and the board across its end)
+  add(30.2, -4.6, 66.2, 32.8, 0.06, 72, 'wood'); // ...and what it stands on, down to the pond's bed (solid: nobody wades in under the deck and pops up through it)
   for (const [x, z] of [[22, 48], [50, 50], [21, 64], [51, 68], [36, 76], [44, 46]]) palm(W, x, z, 6 + rv() * 3, rv);
   for (const [x, z, c] of [[62, 70, 'leopard'], [70, 78, 'toyyellow'], [58, 84, 'cloth']]) tent(W, x, z, c);
   for (const [x, z, sx, sy, sz] of [[16, 40, 4, 2.4, 3], [56, 56, 5, 3, 4], [40, 86, 8, 3.6, 5], [78, 60, 7, 5, 6], [88, 86, 9, 4.4, 7], [16, 84, 6, 3.4, 5]]) { W.B(x, sy / 2, z, sx, sy, sz, 'rock'); W.B(x + sx * 0.12, sy + 0.35, z, sx * 0.55, 0.7, sz * 0.6, 'rock'); }
@@ -2761,10 +2763,16 @@ function desert() {
   for (let i = 0; i < 30; i++) { const a = ro() * Math.PI * 2, d = 110 + ro() * 120, x = Math.cos(a) * d, z = Math.sin(a) * d; if (Math.abs(x) < 20 || Math.abs(z) < 10 || (x > -150 && x < -118)) continue; palm(Dw, x, z, 6 + ro() * 4, ro); }
   D.add(-260, 0, -210, -230, 26, -180, 'toyface', { fit: 1 }); // something enormous, half buried, smiling
   horizon(D, -300, -300, 300, 300, 1500, 'sand');
+  // ---- the ground gets its shape last (shared/terrain.js): dunes, hollows and washes between the buildings. the streets, the
+  // canyon's lip and everything big stay level; cacti, crates and graves ride it
+  shapeGround(B, D, { region: [-S, -S, S, S], mat: 'sand', seed: 1887, up: 2.3, down: 1.3,
+    washes: [{ pts: [[-94, -84], [-70, -86], [-50, -74], [-30, -78], [-12, -68]], w: 3.2, d: 1.2 }, { pts: [[92, 86], [70, 80], [52, 62], [34, 58], [14, 46]], w: 3.2, d: 1.2 }], // two dry washes down to the canyon
+    ponds: [{ c: [36, 61], r: [11, 9.5], d: 3.6, wl: 0.25, box: [21, 47, 51, 75], seed: 3 }], // the oasis: wade in, then it's well over your head and you float (map.pools)
+    points: [...new Set([...spawns, ...west, ...east])] });
 
   const bounds = [-S - 1, -S - 1, S + 1, S + 1];
   let graph = null;
-  const map = { name: 'Desert', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -65.6, fall: 'river', bounds, floorY: -69,
+  const map = { name: 'Desert', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -65.6, fall: 'river', bounds, floorY: -69, pools: [{ box: [21, 47, 51, 75], top: -0.25 }],
     sky: { top: 0x3f7fd0, mid: 0xf2d9a0, bot: 0x6a4a28, fog: 0xead6a6 }, fogNear: 130, fogFar: 520, spawns, teamSpawns: { att: west, def: east },
     gates: [[-106, 0, -94, 0], [106, 0, 94, 0]], // the town's two gates (a bot out past the wall heads for one)
     edgeGuard: true, // bots don't dodge-jump next to the canyon (server.js: brBotEdge in every mode here)
@@ -4965,6 +4973,7 @@ export const MAP = { id: '', name: '', killY: -45, sky: SKY_SUNSET, fogNear: 90,
 export function setMap(id) {
   const m = MAPS[id] || MAPS.islands;
   BOXES.length = 0; BOXES.push(...m.boxes);
+  BOXES.terrain = m.boxes.terrain || null; // shaped ground (shared/terrain.js): the copy needs the heightfield too
   SPAWNS.length = 0; SPAWNS.push(...m.spawns);
   Object.assign(MAP, { id: MAPS[id] ? id : 'islands', name: m.name, killY: m.killY, sky: m.sky, fogNear: m.fogNear, fogFar: m.fogFar, size: m.size });
 }
