@@ -67,6 +67,10 @@ cutscenes, and the preview fx. Story mode only.
   - The scenes are in `shared/story/content/scenes_overtime.js`.
 - Fights 2–4 and the museum: the step whose `killBoss` names him puts him in that fight's look.
 - Rehearsal stand-in for the referee: `JF_STORY.boss.test('overtime_1', 0.49)` = he's at 49% HP.
+- The real fight (fight 1): the referee now sends those events (`docs/story/SYSTEMS_API.md`, "Bosses"). The quest's
+  fight step asks it for him; `JF_STORY.boss.spawn('overtime_1')` does the same by hand on the test lot.
+  `public/js/story/bossref.js` keeps the actor where the referee has him, gives your shots his real size, and draws
+  the boss bar and his stuck staples. Screenshots: `docs/story/scenes/ot1_fight_*.jpg`.
 
 ## Previews
 - `?story=1&otpreview=1`: he runs his whole set on the Gut border landing, no damage, with captions.
