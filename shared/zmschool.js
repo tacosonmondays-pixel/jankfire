@@ -42,8 +42,10 @@ function school() {
   B.add(X0, H, Z0, X1, H + 0.4, Z1, 'roofg'); // the roof
   // ---- the main stairs: ten 1 m steps up the middle of the locker hall, railings round the hole upstairs
   stairs(W, STAIR[0], STAIR[2], STAIR[3], -1, 0, F, 'wood', 1);
-  B.add(STAIR[0] - 0.15, F, STAIR[1] + 1, STAIR[0], F + 1.1, STAIR[3] + 0.15, 'metal'); B.add(STAIR[2], F, STAIR[1] + 1, STAIR[2] + 0.15, F + 1.1, STAIR[3] + 0.15, 'metal');
-  B.add(STAIR[0], F, STAIR[3], STAIR[2], F + 1.1, STAIR[3] + 0.15, 'metal');
+  // (glass to the ceiling, not a rail: no hopping down into a locker hall nobody has opened, where zombies can't follow)
+  B.add(STAIR[0] - 0.15, F, STAIR[1] + 1, STAIR[0], H, STAIR[3] + 0.15, 'hospglass'); B.add(STAIR[2], F, STAIR[1] + 1, STAIR[2] + 0.15, H, STAIR[3] + 0.15, 'hospglass');
+  B.add(STAIR[0], F, STAIR[3], STAIR[2], H, STAIR[3] + 0.15, 'hospglass');
+  for (const [x0, z0, x1, z1] of [[STAIR[0] - 0.17, STAIR[1] + 1, STAIR[0] + 0.02, STAIR[3] + 0.17], [STAIR[2] - 0.02, STAIR[1] + 1, STAIR[2] + 0.17, STAIR[3] + 0.17], [STAIR[0], STAIR[3] - 0.02, STAIR[2], STAIR[3] + 0.17]]) D.add(x0, F + 1.0, z0, x1, F + 1.08, z1, 'metal'); // a handrail on it
   // ---- the gym balcony (a 4 m walkway down the west side) and the bleacher steps up to it
   B.add(8, F - T, -4, 12, F, 24, 'wood');
   B.add(12, F - T, 6, 15, F, 10, 'wood'); // the landing at the top of the bleachers
