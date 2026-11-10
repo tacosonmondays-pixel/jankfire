@@ -2,8 +2,9 @@
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
   { v: '6.10', date: '2026-11-10', title: 'LIMBS OPTIONAL', items: [
-    'ZOMBIES come apart now. shoot an arm or a leg enough and it flies off, still twitching. +10 a limb.',
+    'ZOMBIES come apart now. shoot an arm or a leg enough and it pops off, still twitching. +10 a limb.',
     'no legs: it drags itself along the floor, slow, and can\'t get you on a crate. one leg: it hops. no arms: it headbutts you for half and is useless at planks.',
+    'the zombies are proper mannequins now: smooth plastic, ball joints, blank egg heads. limbs pop off at the joint, peg and all.',
     'four new zombies. CHONK (round 5+): huge, slow, pops when it dies and takes the crowd with it. stand back or slip in it. ANKLE BITERS (round 3+): tiny, fast, three at a time. HARD HATS (round 4+): headshots dink off the hat until it flies off. THE SCREAMER (round 6+): shrieks and every zombie near it speeds up. shoot it first.',
   ] },
   { v: '6.8', date: '2026-11-07', title: 'SPRAY RANGE', items: [

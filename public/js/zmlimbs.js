@@ -10,6 +10,7 @@ import { sfx } from './audio.js';
 import { fx } from './fx.js';
 import { ME } from './player.js';
 import { M, freeTree } from './models.js';
+import { authored, nodeIn, AUTHORED, prefetch } from './glbkit.js';
 import { BOXES } from '/shared/map.js';
 import { raycast } from '/shared/physics.js';
 import { ZL, ZL_ARMS, ZT, ZT_IDS, zlCrawl, zlHop } from '/shared/zmlimbs.js';
@@ -28,7 +29,9 @@ const isZ = (r) => !!(r && r.bot && r.name === 'Zombie');
 
 export const zlType = (r) => { const s = ST.get(r.id); return s ? ZT_IDS[s[0]] || '' : ''; };
 export const zlMask = (r) => { const s = ST.get(r.id); return s ? s[1] : 0; };
+let asked = false;
 export function zlSync(info) { // zombies.js, every frame: what the server says about each one
+  if (!asked) { asked = true; prefetch(['z_plain', 'z_stump', ...Object.keys(ZT).map((k) => 'z_' + k)], 3); } // the Blender zombies jump the download queue
   ST.clear();
   for (const e of (info && info.lb) || []) ST.set(e[0], [e[1], e[2], e[3]]);
 }
@@ -42,8 +45,8 @@ function cut(r, bit, dir, quiet) {
   ch.zlGone = (ch.zlGone || 0) | bit;
   const part = ch[key];
   ch.root.updateMatrixWorld(true);
-  const j = JOINT[bit], at = tmpP.set(j[0], j[1], j[2]).applyMatrix4(ch.body.matrixWorld).toArray();
-  const stand = new THREE.Group(); stand.position.copy(part.position);
+  const part0 = ch[key], j = bit === ZL.head ? JOINT[bit] : [part0.position.x, JOINT[bit][1], 0], at = tmpP.set(j[0], j[1], j[2]).applyMatrix4(ch.body.matrixWorld).toArray();
+  const stand = new THREE.Group(); stand.position.copy(part.position); stand.userData.zlKeep = true;
   if (key === 'arm') stand.add(ch.slot); // (the hand slot stays with the mannequin)
   ch[key] = stand; ch.body.add(stand);
   if (quiet || !part.parent) { part.removeFromParent(); freeTree(part); }
@@ -55,6 +58,15 @@ function cut(r, bit, dir, quiet) {
     if (G.settings.blood !== false) fx.blood(at, [d[0], 0.4, d[2]], 34, floorAt(at));
     sfx.zmLimb(at, bit === ZL.head);
   }
+  const so = authored('z_stump'); // the empty socket (Blender), turned to face where the limb was
+  if (so) {
+    const n = so.obj; n.position.set(j[0], j[1], j[2]);
+    if (bit & ZL_ARMS) n.rotation.z = bit === ZL.armL ? Math.PI / 2 : -Math.PI / 2; else if (bit !== ZL.head) n.rotation.x = Math.PI;
+    n.scale.setScalar(bit === ZL.head ? 0.8 : bit & ZL_ARMS ? 1 : 1.25);
+    n.traverse((o) => { if (o.isMesh) o.material = plain(o.material); });
+    n.userData.zlKeep = true; ch.body.add(n);
+    return;
+  }
   // the stump: a ragged red end where it was (and a bit of bone)
   const st = new THREE.Group(); st.position.set(j[0], j[1], j[2]);
   const meat = mesh(new THREE.IcosahedronGeometry(bit === ZL.head ? 0.06 : 0.075, 0), 0x8a0a0a); meat.scale.set(1, 0.7, 1); st.add(meat);
@@ -65,10 +77,72 @@ function cut(r, bit, dir, quiet) {
 }
 function drop(i) { const f = fly[i]; G.scene.remove(f.m); freeTree(f.m); fly.splice(i, 1); }
 
+// ------------------------------------------------------------ the Blender zombies (tools/blender/make_zombies.py)
+// public/models/z_<kind>.glb: the mannequin as part_<joint> nodes, each with its origin on the joint. every part goes
+// into the same joint group of the code mannequin (whose own boxes and balls come out), so the walk, the crawl and
+// limbs popping off all still work on it. skin / top / bottom are tinted to this zombie's colours. no file = the code one
+const JOINTS = ['body', 'head', 'arm', 'armL', 'legL', 'legR', 'kneeL', 'kneeR'];
+const tints = new Map(), plains = new WeakMap(), hulls = new Map();
+function tinted(m, base, want) { // the material, repainted from the colour it was made in to this zombie's
+  const key = m.uuid + want;
+  if (!tints.has(key)) {
+    const c = m.clone(), b = new THREE.Color(base), w = new THREE.Color(want);
+    c.color.setRGB(Math.min(4, w.r / Math.max(0.01, b.r)), Math.min(4, w.g / Math.max(0.01, b.g)), Math.min(4, w.b / Math.max(0.01, b.b)));
+    c.fog = false; c.onBeforeCompile = () => {}; c.customProgramCacheKey = () => 'zskin';
+    tints.set(key, c);
+  }
+  return tints.get(key);
+}
+function plain(m) { // like every other player: no fog, no potato wobble (it mushes them far away)
+  if (!plains.has(m)) { const c = m.clone(); c.fog = false; c.onBeforeCompile = () => {}; c.customProgramCacheKey = () => 'zskin'; plains.set(m, c); }
+  return plains.get(m);
+}
+function hull(color) { // the outline: the same mesh drawn inside out, pushed out along its normals
+  if (!hulls.has(color)) {
+    const m = new THREE.MeshBasicMaterial({ color, side: THREE.BackSide, fog: false });
+    m.onBeforeCompile = (sh) => { sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n transformed += normalize(normal) * 0.024;'); };
+    m.customProgramCacheKey = () => 'zhull';
+    hulls.set(color, m);
+  }
+  return hulls.get(color);
+}
+function skin(r, ty) {
+  const ch = r.ch, a = authored('z_' + (ty || 'plain'));
+  if (!a) return false;
+  const obj = a.obj, meta = a.meta || {}, lk = r.outfit || {}, tint = meta.tint || {};
+  const want = { z_skin: lk.skin, z_top: lk.topColor, z_bot: lk.bottomColor }, out = hull(new THREE.Color(r.color).getHex());
+  const keep = new Set([ch.legL, ch.legR, ch.kneeL, ch.kneeR, ch.head, ch.arm, ch.armL, ch.slot]);
+  const parts = JOINTS.map((k) => [k, nodeIn(obj, 'part_' + k)]);
+  if (parts.some(([, n]) => !n)) return false;
+  const off = { arm: ZL.armR, armL: ZL.armL, legL: ZL.legL, kneeL: ZL.legL, legR: ZL.legR, kneeR: ZL.legR, head: ZL.head }, gone = ch.zlGone || 0;
+  for (const [k, node] of parts) {
+    const g = ch[k];
+    if (off[k] & gone) continue; // already lost that one
+    for (const c of [...g.children]) if (!keep.has(c) && !c.userData.zlKeep) { g.remove(c); freeTree(c); } // the code mannequin's own pieces
+    node.position.set(0, 0, 0); g.add(node);
+  }
+  for (const [k, at] of Object.entries(meta.joints || {})) if (ch[k] && k !== 'kneeL' && k !== 'kneeR') ch[k].position.x = at[0]; // (a Chonk's hips and shoulders are wider)
+  const extra = (name, at) => { const n = nodeIn(obj, name); if (n && at) { n.position.set(at[0], at[1], at[2]); ch.head.add(n); } return n && at ? n : null; };
+  ch.zlHat = extra('part_hat', meta.hat);
+  ch.zlJawN = extra('part_jaw', meta.jaw);
+  const meshes = [];
+  ch.body.traverse((o) => { if (o.isMesh && !o.userData.outline) meshes.push(o); });
+  for (const o of meshes) {
+    const base = Object.keys(tint).find((n) => o.material.name && o.material.name.startsWith(n));
+    o.material = base && want[base] ? tinted(o.material, tint[base], want[base]) : plain(o.material);
+    const sh = new THREE.Mesh(o.geometry, out); sh.userData.outline = true; o.add(sh);
+  }
+  r.shells = (r.shells || []).filter((sh) => { let p = sh; while (p && p !== ch.root) p = p.parent; return !!p; }); // (the old outlines went with the old pieces)
+  ch.body.scale.set(1, 1, 1);
+  ch.zlGlb = true;
+  return true;
+}
+
 // ------------------------------------------------------------ the specials' looks (added on top of the mannequin)
 function dress(r, ty) {
   const ch = r.ch, def = ZT[ty];
   r.zmK = (def && def.scale) || 1; // remote.js: drawn (and hit-tested) this much bigger
+  if (skin(r, ty)) return; // the Blender one. below: the code stand-ins, if its file didn't load
   if (!def) return;
   if (ty === 'chonk') {
     ch.body.scale.set(1.55, 0.86, 1.6); // wide and squat
@@ -108,7 +182,10 @@ function dress(r, ty) {
 // returns true when it posed the body itself (crawling): the shamble doesn't apply
 export function zlPose(r, now, dt) {
   const ch = r.ch, s = ST.get(r.id), ty = s ? ZT_IDS[s[0]] || '' : '', mask = s ? s[1] : 0, fl = s ? s[2] : 0;
-  if (!ch.zlTy && ty) { ch.zlTy = ty; dress(r, ty); } else if (!ty && !ch.zlTy) r.zmK = 1;
+  if (ch.zlT0 == null) ch.zlT0 = now;
+  if (ch.zlTy == null && (ty || now - ch.zlT0 > 350)) { ch.zlTy = ty; dress(r, ty); } // (a special's type rides in the snapshot: give it a moment before calling it plain)
+  else if (ch.zlTy === '' && ty) { r.setLook(r.outfit); return false; } // it was special after all: start over on a fresh mannequin
+  else if (ch.zlTy != null && !ch.zlGlb && AUTHORED['z_' + (ch.zlTy || 'plain')]) { r.setLook(r.outfit); return false; } // its Blender model only just arrived
   if (s) for (const bit of [1, 2, 4, 8, 16]) if ((mask & bit) && !((ch.zlGone || 0) & bit)) cut(r, bit, null, !ch.zlSeen); // (the 'zlb' message usually got there first, with the fling)
   if (s) ch.zlSeen = true;
   if (ch.zlHat && s && !(fl & 1)) hatOff(r, null);
@@ -121,9 +198,11 @@ export function zlPose(r, now, dt) {
     ch.arm.rotation.x = 1.9; ch.armL.rotation.x = 1.9;
     ch.body.rotation.z = Math.sin(now * 0.08) * 0.07;
     if (ch.zlMouth) ch.zlMouth.scale.set(1.5, 2.1, 0.5);
+    if (ch.zlJawN) ch.zlJawN.rotation.x = -0.42 + Math.sin(now * 0.07) * 0.06; // jaw right down
     return true;
   }
   if (ch.zlMouth) ch.zlMouth.scale.set(0.9, 1.25, 0.5);
+  if (ch.zlJawN) ch.zlJawN.rotation.x = Math.sin(now * 0.004 + r.id) * 0.05;
   if (crawl) { // face down, dragging itself along by whatever arms are left
     const mv = Math.min(1, Math.hypot(r.vel[0], r.vel[2]) / 0.8), a = Math.sin(ph * 1.6) * mv;
     ch.body.rotation.set(-1.32 + Math.abs(a) * 0.06, a * 0.14, a * 0.1);
