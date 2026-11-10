@@ -13,7 +13,7 @@
 //   the BLOOD DRIVE (WEAPONS.blooddrive) is judged here too, in story rooms only: spin-up, rate, range, HP cost
 import { WEAPONS, FLAGS } from '../shared/weapons.js';
 import { raycast, PH } from '../shared/physics.js';
-import { RP, ARENA, PLATES, LOW, geoFrom, rayFight, armLive, sweepZ, wallA, deckAt, offTrain } from '../shared/story/train.js';
+import { RP, ARENA, PLATES, LOW, geoFrom, rayFight, armLive, sweepZ, sweepY, wallA, deckAt, offTrain, onRoof, gripSpots, backSpot } from '../shared/story/train.js';
 
 const fin = Number.isFinite;
 const isName = (s) => typeof s === 'string' && /^[a-zA-Z0-9_]{1,24}$/.test(s);
@@ -25,12 +25,7 @@ const tell = (p, o) => { if (p.ws && p.ws.readyState === 1) p.ws.send(JSON.strin
 const MAXHIT = 1000; // one hit's cap, as for every boss
 const BOT_SOFT = 0.6; // the room softens every bot's hit on a person to this outside the bots mode (room.js damage): RP's numbers are what lands
 
-// where a grabber takes hold: the rail point, which way is outboard, the rim sockets that can reach it
-const SPOTS = [
-  ...[1.6, 4.2, 6.3].map((z) => ({ p: [1.35, z], o: [1, 0], s: [0, 1] })), ...[1.6, 4.2, 6.3].map((z) => ({ p: [-1.35, z], o: [-1, 0], s: [5, 4] })),
-  { p: [0.7, 0.25], o: [0.3, -0.95], s: [1, 0] }, { p: [-0.7, 0.25], o: [-0.3, -0.95], s: [4, 5] },
-];
-const RAIL_Y = ARENA.wagon.deck + ARENA.wagon.rail;
+const SOCKS = { 1: [0, 1], [-1]: [5, 4] }; // the rim sockets that can reach a grip spot on the +x / -x side (the spots themselves: train.js gripSpots)
 
 // a boss def as the room keeps it. null = not a fight anyone can have
 export function cleanTrain(d) {
@@ -52,11 +47,11 @@ export function installStoryTrain(Room) {
   const P = Room.prototype;
   const ev = (room, b, type, rp) => { if (room.onStory) room.onStory({ type, t: b, rp: rp || {} }); };
   const humans = (room) => [...room.players.values()].filter((p) => !p.sk && !p.isBot);
-  const view = (B) => ({ gap: B.gap, arms: B.arms, plates: B.plates.map((p) => p.st), open: B.t < B.openUntil, eyeL: B.eyeL, smile: B.smile });
-  const armMsg = (a) => ({ id: a.id, k: a.k, sock: a.sock, mouth: a.mouth ? 1 : 0, st: a.st, dur: r2(a.dur), tgt: a.tgt.map(r2), hi: a.hi ? 1 : 0, side: a.side || 0, ...(fin(a.wa) ? { wa: r2(a.wa) } : {}), ...(a.gp ? { gp: a.gp.map(r2) } : {}), hp: Math.max(0, Math.round(a.hp)), max: RP.arm.hp });
+  const view = (B) => ({ gap: B.gap - B.rear, arms: B.arms, plates: B.plates.map((p) => p.st), open: B.t < B.openUntil, eyeL: B.eyeL, smile: B.smile });
+  const armMsg = (a) => ({ id: a.id, k: a.k, sock: a.sock, mouth: a.mouth ? 1 : 0, st: a.st, dur: r2(a.dur), tgt: a.tgt.map(r2), hi: a.hi ? 1 : 0, side: a.side || 0, ...(a.rear ? { rear: a.rear } : {}), ...(fin(a.wa) ? { wa: r2(a.wa) } : {}), ...(a.gp ? { gp: a.gp.map(r2) } : {}), hp: Math.max(0, Math.round(a.hp)), max: RP.arm.hp });
   const snap = (B) => ({ phase: B.phase, hp: B.hp, stage: B.stage, eyeL: B.eyeL, smile: B.smile, marrow: B.marrow, plates: B.plates.map((p) => ({ ...p })) });
-  const stateMsg = (B) => ({ gap: r2(B.gap), hp: Math.round(B.hp), max: B.def.hp, phase: B.phase, name: B.def.phases[B.phase].name, stage: B.stage, plates: B.plates.map((p) => p.st), open: Math.max(0, r2(B.openUntil - B.t)), marrow: B.marrow, arms: B.arms.map(armMsg), jack: B.phase === 0 ? r2(1 - B.jack / RP.jack) : 0 });
-  const place = (b, B) => { b.pos = [0, ARENA.cy, -B.gap]; b.vel = [0, 0, 0]; b.yaw = Math.PI; b.onGround = true; b.f = 0; };
+  const stateMsg = (B) => ({ gap: r2(B.gap), rear: B.rear, hp: Math.round(B.hp), max: B.def.hp, phase: B.phase, name: B.def.phases[B.phase].name, stage: B.stage, plates: B.plates.map((p) => p.st), open: Math.max(0, r2(B.openUntil - B.t)), marrow: B.marrow, arms: B.arms.map(armMsg), jack: B.phase === 0 ? r2(1 - B.jack / RP.jack) : 0 });
+  const place = (b, B) => { b.pos = [0, ARENA.cy, B.rear - B.gap]; b.vel = [0, 0, 0]; b.yaw = Math.PI; b.onGround = true; b.f = 0; };
   const sendGap = (room, b, B, rate) => { B.sentT = B.t; B.sentGap = B.gap; B.sentRate = rate; ev(room, b, 'gap', { gap: r2(B.gap), rate, jack: B.phase === 0 ? r2(1 - B.jack / RP.jack) : 0 }); };
   const setHp = (b, B) => { b.hp = Math.max(1, 100 * B.hp / B.def.hp); }; // (it never dies in the room: the story ends the fight)
   const hurt = (room, p, dmg, b, w) => room.damage(p, dmg / BOT_SOFT, b, w);
@@ -68,7 +63,8 @@ export function installStoryTrain(Room) {
     if (!d || !d.train) return init0.call(this, b, d);
     const def = cleanTrain(d); if (!def) return false;
     b.sk.max = def.hp; b.sk.boss = true;
-    b.sk.b = { train: true, def, id: def.id, hp: def.hp, phase: 0, state: 'fight', t: 0, cutT: 0, failT: 0, first: true, calm: false,
+    if (Object.hasOwn(this, 'boxes')) delete this.boxes; // (a fight before this one bit the wagon off: it is back)
+    b.sk.b = { train: true, def, id: def.id, rear: 0, hp: def.hp, phase: 0, state: 'fight', t: 0, cutT: 0, failT: 0, first: true, calm: false,
       gap: RP.gap.start, sentT: -9, sentGap: -1, sentRate: 0, arms: [], nextId: 1, nextArm: RP.arm.first, severs: [], openUntil: 0,
       plates: Array.from({ length: PLATES }, () => ({ hp: RP.mask.plateHp, st: 0 })), stage: 0, eyeL: false, smile: false, marrow: false,
       jack: 0, bagT: RP.bag.every, lungeT: 0, lunge: null, shrugT: -9, cp: null, ray: null };
@@ -173,11 +169,10 @@ export function installStoryTrain(Room) {
   function spawnArm(room, b, B, k, o = {}) {
     const me = humans(room).find((p) => p.alive);
     if (k === 'grab') {
-      const rim = used(B, false), mo = used(B, true), taken = new Set(B.arms.filter((a) => a.k === 'grab').map((a) => a.spot));
-      const spots = SPOTS.map((s, i) => i).filter((i) => !taken.has(i)).sort(() => Math.random() - 0.5);
-      for (const i of spots) {
-        const s = SPOTS[i], gp = [s.p[0], RAIL_Y, s.p[1]], tgt = [gp[0] + s.o[0] * 0.95, RAIL_Y + 0.75, gp[2] + s.o[1] * 0.95];
-        const free = s.s.filter((n) => !rim.has(n)), mfree = B.smile ? [0, 1, 2, 3].filter((n) => !mo.has(n) && (n < 2) === (s.o[0] <= 0)) : [];
+      const rim = used(B, false), mo = used(B, true), taken = new Set(B.arms.filter((a) => a.k === 'grab').map((a) => a.spot)), all = gripSpots(B.rear);
+      for (const i of all.map((_, n) => n).filter((n) => !taken.has(n)).sort(() => Math.random() - 0.5)) {
+        const sp = all[i], gp = sp.p, tgt = [gp[0] + sp.o[0] * 0.95, gp[1] + 0.75, gp[2] + sp.o[1] * 0.95];
+        const free = SOCKS[sp.side].filter((n) => !rim.has(n)), mfree = B.smile ? [0, 1, 2, 3].filter((n) => !mo.has(n) && (n < 2) === (sp.side < 0)) : [];
         if (mfree.length && (!free.length || Math.random() < 0.5)) { addArm(room, b, B, { k, sock: mfree[0], mouth: true, spot: i, tgt, gp, dur: RP.grab.reach * 0.7 }); return true; } // out of the mouth: faster
         if (free.length) { addArm(room, b, B, { k, sock: free[0], spot: i, tgt, gp, dur: RP.grab.reach }); return true; }
       }
@@ -185,8 +180,8 @@ export function installStoryTrain(Room) {
     }
     if (k === 'sweep') {
       if (B.arms.some((a) => a.k === 'sweep')) return false; // one at a time: it has to be readable
-      const side = o.side === 1 || o.side === -1 ? o.side : Math.random() < 0.5 ? 1 : -1, hi = typeof o.hi === 'boolean' ? o.hi : Math.random() < 0.5, y = RP.sweep.y[hi ? 1 : 0];
-      addArm(room, b, B, { k, sock: side > 0 ? 11 : 6, side, hi, wa: wallA(side, y), tgt: [-side * 3.3, y, RP.sweep.z0], st: 'tell', dur: RP.sweep.tell, z: RP.sweep.z0, hit: new Set() });
+      const side = o.side === 1 || o.side === -1 ? o.side : Math.random() < 0.5 ? 1 : -1, hi = typeof o.hi === 'boolean' ? o.hi : Math.random() < 0.5, a = { hi, rear: B.rear, st: 'tell' }, y = sweepY(a), z = sweepZ(a);
+      addArm(room, b, B, { k, sock: side > 0 ? 11 : 6, side, hi, rear: B.rear, wa: wallA(side, y), tgt: [-side * RP.sweep.x, y, z], st: 'tell', dur: RP.sweep.tell, z, hit: new Set() });
       return true;
     }
     if (k === 'snatch') {
@@ -204,13 +199,13 @@ export function installStoryTrain(Room) {
       if (a.st === 'cut' || a.st === 'back') { if (done) { B.arms.splice(i, 1); ev(room, b, 'arm', { id: a.id, k: a.k, st: 'gone' }); } continue; }
       if (a.k === 'grab') { if (a.st === 'reach' && done) go('grip', 0); } // it has the rail: THE GAP closes while it holds
       else if (a.k === 'sweep') {
-        if (a.st === 'tell' && done) go('sweep', (RP.sweep.z1 - RP.sweep.z0) / RP.sweep.speed);
+        if (a.st === 'tell' && done) go('sweep', (RP.sweep.z1 - a.z) / RP.sweep.speed);
         else if (a.st === 'sweep') {
-          const z0 = a.z, z = sweepZ(a); a.z = z; a.tgt[2] = z;
+          const z0 = a.z, z = sweepZ(a); a.z = z; a.tgt[2] = z; a.tgt[1] = sweepY(a, z);
           for (const p of humans(room)) { // the bar passes you once: over it (knee height) or under it (head height), or it takes you along
             if (!p.alive || a.hit.has(p.id) || p.pos[2] < z0 - RP.sweep.half || p.pos[2] > z + RP.sweep.half || Math.abs(p.pos[0]) > 3.8) continue;
             a.hit.add(p.id);
-            const dodged = a.hi ? !!(p.f & (FLAGS.SLIDE | FLAGS.CROUCH)) : p.pos[1] - deckAt(p.pos[2]) >= RP.sweep.low;
+            const up = p.pos[1] - deckAt(p.pos[2]), dodged = a.hi ? !!(p.f & (FLAGS.SLIDE | FLAGS.CROUCH)) || up >= RP.sweep.over : up >= RP.sweep.low; // (on the van's roof both pass under you)
             if (dodged) continue;
             hurt(room, p, RP.sweep.dmg, b, 'sweeper'); room.knock(p, [-a.side * RP.sweep.kb[0], RP.sweep.kb[1], RP.sweep.kb[2]], 'sweeper');
             ev(room, b, 'swept', { arm: a.id, hi: a.hi ? 1 : 0 });
@@ -234,7 +229,7 @@ export function installStoryTrain(Room) {
     B.nextArm = B.t + rnd(RP.arm.every[B.phase]);
     if (B.arms.filter(armLive).length >= RP.arm.max[B.phase]) return;
     const mix = RP.arm.mix[B.phase], ks = Object.keys(mix).sort(() => Math.random() - 0.5); let r = Math.random() * ks.reduce((n, k) => n + mix[k], 0);
-    const first = ks.find((k) => (r -= mix[k]) < 0) || 'grab';
+    const first = humans(room).some((p) => p.alive && onRoof(p.pos)) && Math.random() < RP.snatch.roof ? 'snatch' : ks.find((k) => (r -= mix[k]) < 0) || 'grab'; // (they favour whoever is up on the van)
     for (const k of [first, ...ks]) if (spawnArm(room, b, B, k)) return;
   }
   // phase 3: it stops hauling politely. it rears, then takes ground; close enough, it bites the wagon (be on the flatbed)
@@ -244,9 +239,14 @@ export function installStoryTrain(Room) {
     if ((B.lunge.t += dt) < RP.lunge.tell) return;
     B.lunge = null; B.lungeT = B.t + rnd(RP.lunge.every);
     B.gap = Math.max(Math.min(B.gap, RP.lunge.min), B.gap - RP.lunge.gap);
-    let bit = 0;
-    if (B.gap <= RP.lunge.bite) for (const p of humans(room)) if (p.alive && p.pos[2] < RP.lunge.z) { bit++; hurt(room, p, RP.lunge.dmg, b, 'lunge'); room.knock(p, [0, 6, 9], 'lunge'); }
-    ev(room, b, 'lunge', { st: 'hit', gap: r2(B.gap), bit });
+    let bit = 0; const cut = !B.rear;
+    const bite = (p) => { bit++; hurt(room, p, RP.lunge.dmg, b, 'lunge'); room.knock(p, [0, 6, 9], 'lunge'); };
+    if (cut) { // the first lunge bites the rear wagon off: the fight is the flatbed and the van now, and THE GAP is measured from the flatbed's back
+      clearArms(room, b, B); B.rear = ARENA.cut;
+      Object.defineProperty(room, 'boxes', { value: room.map.boxes.filter((x) => x.car !== 'wagon'), configurable: true, writable: true }); // (this room's own list: the map's is everyone's)
+      for (const p of humans(room)) if (p.alive && p.pos[2] < ARENA.cut - 0.2) { bite(p); if (p.alive) { const to = backSpot(B.rear); p.pos = to.slice(); p.vel = [0, 0, 0]; p.rpOffT = B.t + RP.off.grace; tell(p, { t: 'tp', p: to }); } } // whoever was still on it is thrown onto the flatbed, less some of themselves
+    } else if (B.gap <= RP.lunge.bite) for (const p of humans(room)) if (p.alive && p.pos[2] < B.rear + RP.lunge.reach) bite(p);
+    ev(room, b, 'lunge', { st: 'hit', gap: r2(B.gap), bit, ...(cut ? { cut: 1, rear: B.rear } : {}) });
   }
   // caught: the fight stops, and starts again from the last phase's beginning once you are back
   function fail(room, b, B, why) {
@@ -257,7 +257,8 @@ export function installStoryTrain(Room) {
   }
   function reset(room, b, B) {
     const c = B.cp;
-    Object.assign(B, { phase: c.phase, hp: c.hp, stage: c.stage, eyeL: c.eyeL, smile: c.smile, marrow: c.marrow, plates: c.plates.map((p) => ({ ...p })), state: 'fight', gap: c.phase === 0 ? RP.gap.start : RP.gap.retry,
+    if (Object.hasOwn(room, 'boxes')) delete room.boxes; // the wagon is back on
+    Object.assign(B, { rear: 0, phase: c.phase, hp: c.hp, stage: c.stage, eyeL: c.eyeL, smile: c.smile, marrow: c.marrow, plates: c.plates.map((p) => ({ ...p })), state: 'fight', gap: c.phase === 0 ? RP.gap.start : RP.gap.retry,
       severs: [], openUntil: 0, nextArm: B.t + RP.arm.first, lungeT: B.t + rnd(RP.lunge.every), jack: 0, bagT: B.t + RP.bag.every });
     setHp(b, B); place(b, B);
     ev(room, b, 'reset', {}); ev(room, b, 'state', stateMsg(B));
@@ -282,10 +283,10 @@ export function installStoryTrain(Room) {
     if (hs.length && !up.length) return fail(this, b, B, 'dead');
     // off the train: the track takes some of you, and you are put back
     for (const p of up) {
-      if (!offTrain(p.pos) || B.t < (p.rpOffT || 0)) continue;
+      if (!offTrain(p.pos, B.rear) || B.t < (p.rpOffT || 0)) continue;
       p.rpOffT = B.t + RP.off.grace;
       hurt(this, p, RP.off.dmg, b, 'track');
-      if (p.alive) { p.pos = ARENA.back.slice(); p.vel = [0, 0, 0]; tell(p, { t: 'tp', p: ARENA.back }); }
+      if (p.alive) { const to = backSpot(B.rear); p.pos = to.slice(); p.vel = [0, 0, 0]; tell(p, { t: 'tp', p: to }); }
       ev(this, b, 'off', {});
     }
     stepArms(this, b, B, dt); stepLunge(this, b, B, dt); nextArm(this, b, B);

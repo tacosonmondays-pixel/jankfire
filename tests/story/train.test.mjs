@@ -11,12 +11,12 @@ import { newSave } from '../../shared/story/save.js';
 import { BOSSES } from '../../shared/story/content/bosses.js';
 import { WEAPONS, FLAGS, ORDER, SLOTS, validLoadout } from '../../shared/weapons.js';
 import { LADDER } from '../../shared/modes.js';
-import { RP, ARENA, TRAIN, armPose, plateAt, offTrain, geoFrom, GEO0 } from '../../shared/story/train.js';
+import { RP, ARENA, TRAIN, CARS, CAR, HW, COVER, CREW, armPose, plateAt, offTrain, onRoof, gripSpots, backSpot, geoFrom, GEO0 } from '../../shared/story/train.js';
 import { cleanTrain } from '../../server/storytrain.js';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let n = 0; const t = async (name, fn) => { await fn(); n++; console.log('ok', name); };
 
-const ID = 'revenue_protection_1', D = BOSSES[ID], HEALTH = D.layers.find((l) => l.bar === 'health').of, W = WEAPONS.blooddrive;
+const G0 = RP.gap.start, ID = 'revenue_protection_1', D = BOSSES[ID], HEALTH = D.layers.find((l) => l.bar === 'health').of, W = WEAPONS.blooddrive;
 async function boot() {
   const out = [], sim = createSim({ send: (o) => out.push(o), save: newSave(0, TRAIN.id) });
   sim.dev = true; sim.msg({ t: 'join', name: 'tester' });
@@ -34,15 +34,32 @@ const eye = () => [me.pos[0], me.pos[1] + 1.6, me.pos[2]];
 const aim = (p) => { const o = eye(), d = p.map((v, i) => v - o[i]), l = Math.hypot(...d); return d.map((v) => v / l); };
 // one Blood Drive bolt at a world point, the ring already up to speed (the spin-up and the rate have their own test)
 const bolt = (p) => { const a = ev('hit').length; me.bd = { ...(me.bd || { key: '', n: 0, dryT: 0 }), on: Date.now() - 5000, last: Date.now(), tok: 3, tokT: Date.now() }; R.room.handle(me, { t: 'fire', w: 'blooddrive', o: eye(), d: aim(p) }); return ev('hit').slice(a).filter((h) => h.target === ID); };
-const face = (x, y) => [x, ARENA.cy + y, B.def.geo.faceZ - B.gap]; // a spot on the mask's face (its own x, y)
-const knot = (a) => armPose(B.def.geo, a, B.gap).wrist;
+const face = (x, y) => [x, ARENA.cy + y, B.def.geo.faceZ - (B.gap - B.rear)]; // a spot on the mask's face (its own x, y)
+const knot = (a) => armPose(B.def.geo, a, B.gap - B.rear).wrist;
 const quiet = () => { B.calm = true; B.arms.length = 0; B.severs.length = 0; };
 const dmgTo = (pct) => { for (let i = 0; i < 40 && B.hp > D.hp * pct / 100 + 0.5 && B.state === 'fight'; i++) dev({ dmg: Math.min(1000, B.hp - D.hp * pct / 100), i: i % 8 }); };
 
-await t('the arena: the last two cars in the bore, a story map the referee loads; you start on the wagon', async () => {
+await t('the arena: three fightable cars and the loco in the bore, all from one table; you start on the wagon', async () => {
   assert.equal(sim.zone, TRAIN.id); assert.equal(R.room.cfg.map, TRAIN.id); assert.deepEqual(me.pos, TRAIN.spawn);
-  assert.ok(R.room.boxes.length > 15); assert.equal(offTrain([0, 1.0, 4.5]), false); assert.equal(offTrain([0, 1.3, 12]), false);
-  assert.equal(offTrain([3, 0.9, 4]), true, 'over the side'); assert.equal(offTrain([0, 0.1, -3]), true, 'on the track behind'); assert.equal(offTrain([2.4, 2.2, 4]), false, 'mid jump is not off yet');
+  assert.deepEqual(CARS.map((c) => c.id), ['wagon', 'flat', 'van', 'loco']); assert.equal(HW * 2, 4.2, 'a 4.2 m deck');
+  assert.ok(CAR.wagon.z1 - CAR.wagon.z0 >= 9 && CAR.flat.z1 - CAR.flat.z0 >= 10 && CAR.van.z1 - CAR.van.z0 >= 7, 'the cars\' lengths');
+  assert.ok(HW + 1.5 < Math.sqrt(ARENA.boreR ** 2 - (ARENA.cy - CAR.flat.deck) ** 2), 'wall left for the arms to walk along');
+  // the room's boxes are the table's: every car has its deck, the roof is there to stand on, the stairs are steps you can walk up
+  const boxes = R.room.boxes, top = (x, z) => Math.max(...boxes.filter((b) => b.car && b.min[0] <= x && b.max[0] >= x && b.min[2] <= z && b.max[2] >= z).map((b) => b.max[1]));
+  for (const c of CARS.slice(0, 3)) { assert.equal(top(0, (c.z0 + c.z1) / 2 + 0.31) >= c.deck, true); assert.ok(boxes.some((b) => b.car === c.id && b.pv === 'rp_train')); }
+  assert.equal(top(0, CAR.wagon.z0 + 4), CAR.wagon.deck); assert.equal(top(0, 26), CAR.van.roof, 'the van\'s roof'); assert.equal(top(HW - 0.02, 4), CAR.wagon.deck + CAR.wagon.rail, 'the rail');
+  let last = CAR.van.deck; for (let k = 0; k < CAR.van.stairs; k++) { const y = top(-HW + 0.5, CAR.van.z0 + (k + 0.5) * (CAR.van.roofZ0 - CAR.van.z0) / CAR.van.stairs); assert.ok(y - last > 0.3 && y - last <= 0.6, 'a step you can walk up: ' + (y - last)); last = y; }
+  assert.equal(last, CAR.van.roof); assert.ok(CAR.van.under >= 1.9, 'you can stand under the roof');
+  // cover: always some within about 4 m of anywhere you can stand, and the middle lane is clear
+  for (const c of CARS.slice(0, 3)) for (let z = c.z0; z <= c.z1; z += 0.5) for (const x of [-HW, 0, HW]) assert.ok(COVER.some(([, cx, cz]) => Math.hypot(cx - x, cz - z) <= 4.6) || (c.id === 'van' && z < CAR.van.roofZ0 + 2), `cover near ${x}, ${z}`);
+  assert.ok(COVER.every(([car, x, z, w]) => Math.abs(x) - w / 2 > 0.6 && z > CAR[car].z0 && z < CAR[car].z1));
+  // the crew's spots are on the decks, clear of the cover
+  assert.deepEqual(CREW.map((c) => c.id), ['pallet_jack', 'lumps', 'gordo']);
+  for (const c of CREW) { assert.equal(offTrain(c.p), false); assert.ok(COVER.every(([, x, z, w, , d]) => Math.abs(c.p[0] - x) > w / 2 + 0.3 || Math.abs(c.p[2] - z) > d / 2 + 0.3), c.id + ' is not inside a crate'); }
+  assert.equal(offTrain([0, 1.0, 4.5]), false); assert.equal(offTrain([0, 1.3, 12]), false); assert.equal(offTrain([0, CAR.van.roof, 25]), false); assert.ok(onRoof([0, CAR.van.roof, 25])); assert.ok(!onRoof([0, 1.3, 25]));
+  assert.equal(offTrain([HW + 1, 0.9, 4]), true, 'over the side'); assert.equal(offTrain([0, 0.1, -3]), true, 'on the track behind'); assert.equal(offTrain([HW + 0.9, 2.2, 4]), false, 'mid jump is not off yet');
+  assert.equal(offTrain([0, 1.0, 4.5], ARENA.cut), true, 'the wagon, once it is bitten off'); assert.deepEqual(backSpot().slice(0, 2), [0, CAR.wagon.deck + 0.1]); assert.ok(backSpot(ARENA.cut)[2] > ARENA.cut);
+  assert.equal(gripSpots().length, 8); assert.ok(gripSpots().every((g) => g.p[1] === CAR.wagon.deck + CAR.wagon.rail)); assert.ok(gripSpots(ARENA.cut).every((g) => g.p[2] >= CAR.flat.z0 && g.p[1] === CAR.flat.deck));
 });
 
 await t('spawn: the boss from content/bosses.js, its real pool, one at a time, the client is told everything', async () => {
@@ -59,15 +76,15 @@ await t('spawn: the boss from content/bosses.js, its real pool, one at a time, t
   B.calm = true; await run(0.2);
   const st = ev('state')[0];
   assert.ok(st, 'state sent'); assert.equal(st.boss, ID); assert.equal(st.gap, RP.gap.start); assert.equal(st.phase, 0); assert.deepEqual(st.plates, Array(12).fill(0)); assert.equal(st.marrow, false);
-  assert.deepEqual(e.pos, [0, ARENA.cy, -30], 'it sits in the middle of the mask, THE GAP behind you');
+  assert.deepEqual(e.pos, [0, ARENA.cy, -G0], 'it sits in the middle of the mask, THE GAP behind you');
 });
 
 await t('THE GAP: it closes 1 m/s for every arm that has the rail, not before; a sever opens it and pays blood back', async () => {
-  stand(); quiet(); B.gap = 30;
+  stand(); quiet(); B.gap = G0;
   dev({ want: 'grab' });
   const a = B.arms[0]; assert.ok(a && a.k === 'grab' && a.st === 'reach'); assert.equal(ev('arm').at(-1).st, 'reach'); assert.equal(ev('arm').at(-1).dur, RP.grab.reach);
   await run(RP.grab.reach - 0.3);
-  assert.equal(B.gap, 30, 'still reaching: nothing closes'); assert.equal(a.st, 'reach');
+  assert.equal(B.gap, G0, 'still reaching: nothing closes'); assert.equal(a.st, 'reach');
   await run(0.5); assert.equal(a.st, 'grip'); assert.equal(ev('arm').at(-1).st, 'grip');
   const g0 = B.gap; await run(2);
   assert.ok(Math.abs(g0 - B.gap - 2) < 0.11, '1 m/s: ' + (g0 - B.gap));
@@ -90,7 +107,7 @@ await t('THE GAP: it closes 1 m/s for every arm that has the rail, not before; a
 });
 
 await t('a sweeper: a tell, then a real window as the bar passes you; jump the knee-high one, slide under the head-high one', async () => {
-  const pass = (RP.sweep.tell + (4.5 - RP.sweep.z0) / RP.sweep.speed), go = async (hi, mid) => { stand(); quiet(); dev({ want: 'sweep', hi, side: 1 }); await run(RP.sweep.tell - 0.15); assert.equal(me.hp, 100, 'the tell: no damage yet'); assert.equal(B.arms[0].st, 'tell'); mid(); await run(pass - RP.sweep.tell + 0.4); };
+  const pass = (RP.sweep.tell + (4.5 + RP.sweep.back) / RP.sweep.speed), go = async (hi, mid) => { stand(); quiet(); dev({ want: 'sweep', hi, side: 1 }); await run(RP.sweep.tell - 0.15); assert.equal(me.hp, 100, 'the tell: no damage yet'); assert.equal(B.arms[0].st, 'tell'); mid(); await run(pass - RP.sweep.tell + 0.4); };
   const s0 = ev('swept').length;
   await go(false, () => {});
   assert.equal(me.hp, 100 - RP.sweep.dmg, 'stood on the deck: swept'); assert.equal(ev('swept').length, s0 + 1); assert.ok(out.some((o) => o.t === 'kb' && o.w === 'sweeper'), 'and thrown');
@@ -101,17 +118,20 @@ await t('a sweeper: a tell, then a real window as the bar passes you; jump the k
   await go(true, () => { me.f = FLAGS.CROUCH; }); assert.equal(me.hp, 100, 'ducked it');
   await go(false, () => { me.pos = [0, 1.3, 14]; }); assert.equal(me.hp, 100, 'the bar is not at the flatbed yet'); await run(0.8); assert.equal(me.hp, 100 - RP.sweep.dmg, 'it runs the whole deck');
   assert.equal(ev('swept').length, s0 + 3);
+  // up on the van's roof both kinds pass under you, and under the roof a head-high one still finds you
+  for (const hi of [false, true]) { await go(hi, () => { me.pos = [0, CAR.van.roof, 25]; }); await run(1.6); assert.equal(me.hp, 100, 'on the roof'); }
+  await go(true, () => { me.pos = [0, CAR.van.deck, 25]; }); await run(1.6); assert.equal(me.hp, 100 - RP.sweep.dmg, 'under the roof'); assert.equal(B.arms[0] ? B.arms[0].tgt[1] : CAR.van.deck + RP.sweep.y[1], CAR.van.deck + RP.sweep.y[1], 'the bar rides the deck under it');
   await run(RP.arm.back + 0.6); assert.equal(B.arms.length, 0, 'it leaves by itself');
 });
 
 await t('a snatcher: it has you for six seconds; shoot it off, or it hurts and THE GAP is gone', async () => {
-  stand(); quiet(); B.gap = 30; dev({ want: 'snatch' });
+  stand(); quiet(); B.gap = G0; dev({ want: 'snatch' });
   assert.equal(B.arms.length, 1, 'one at a time in phase 1'); const a = B.arms[0];
   await run(RP.snatch.reach + 0.2); assert.equal(a.st, 'hold'); assert.equal(me.hp, 100);
   assert.ok(Math.abs(a.tgt[1] - (me.pos[1] + RP.snatch.up)) < 0.01, 'its wrist is over you');
   await run(RP.snatch.hold - 0.5); assert.equal(me.hp, 100, 'not yet');
   await run(0.6);
-  assert.equal(me.hp, 100 - RP.snatch.dmg); assert.equal(B.gap, 30 - RP.snatch.gap); assert.equal(ev('snatched').length, 1); assert.equal(a.st, 'back');
+  assert.equal(me.hp, 100 - RP.snatch.dmg); assert.equal(B.gap, G0 - RP.snatch.gap); assert.equal(ev('snatched').length, 1); assert.equal(a.st, 'back');
   await run(1.3); stand(); dev({ want: 'snatch' }); const a2 = B.arms[0];
   await run(RP.snatch.reach + 0.5);
   for (let i = 0; i < 12 && a2.st !== 'cut'; i++) bolt(knot(a2));
@@ -119,7 +139,7 @@ await t('a snatcher: it has you for six seconds; shoot it off, or it hurts and T
 });
 
 await t('phase 1: the mask shrugs bolts off; four severs inside ten seconds and it flinches: the eyes open, and then it can be hurt', async () => {
-  stand(); quiet(); B.gap = 10;
+  stand(); quiet(); B.gap = 6;
   const s0 = ev('shrug').length;
   assert.equal(bolt(face(1.26, 3.05)).length, 0, 'a plate'); assert.equal(bolt(face(1.25, 0.7)).length, 0, 'a shut eye housing'); assert.equal(B.hp, 5000);
   assert.ok(ev('shrug').length > s0, 'the client hears the tink');
@@ -128,7 +148,7 @@ await t('phase 1: the mask shrugs bolts off; four severs inside ten seconds and 
   dev({ sever: true }); assert.equal(B.severs.length, 3); assert.equal(ev('flinch').length, 0, 'three is not four');
   await run(1.5); dev({ want: 'grab' }); dev({ sever: true });
   const f = ev('flinch'); assert.equal(f.length, 1); assert.equal(f[0].open, RP.flinch.open);
-  assert.ok(Math.abs(B.gap - (10 + 4 * RP.gap.sever + RP.gap.flinch)) < 0.01, 'severs and the flinch open the gap');
+  assert.ok(Math.abs(B.gap - (6 + 4 * RP.gap.sever + RP.gap.flinch)) < 0.01, 'severs and the flinch open the gap');
   const hit = bolt(face(1.25, 0.7));
   assert.equal(hit.length, 1); assert.equal(hit[0].part, 'eye'); assert.equal(hit[0].crit, true); assert.equal(hit[0].dmg, W.dmg * 2); assert.equal(hit[0].hp, 5000 - W.dmg * 2); assert.equal(hit[0].by, 'me'); assert.equal(hit[0].weapon, 'blooddrive');
   assert.equal(bolt(face(-1.25, 0.7))[0].part, 'eye', 'the right one too'); assert.equal(bolt(face(1.26, 3.05)).length, 0, 'the plates still shrug');
@@ -188,17 +208,26 @@ await t('phase 3: END OF THE LINE at 25%; the Inspector is the crit spot, everyt
   assert.equal(crit[0].part, 'insp'); assert.equal(crit[0].crit, true); assert.equal(crit[0].dmg, W.dmg * 2.5);
   assert.equal(bolt([I.head.c[0], ARENA.cy + I.head.c[1] + 0.1, I.head.c[2] - B.gap])[0].part, 'inspbody');
   const far = bolt(face(-1.3, 3)); assert.equal(far[0].part, 'plate'); assert.equal(far[0].dmg, Math.round(W.dmg * RP.mask.far));
-  // the lunge: a tell, then it takes ground; inside 6 m it bites whoever is still on the wagon
-  B.gap = 9; dev({ want: 'lunge' }); B.calm = false; B.nextArm = Infinity; await run(0.15); B.calm = true;
-  assert.equal(ev('lunge').at(-1).st, 'tell'); await run(RP.lunge.tell - 0.4); assert.equal(B.gap, 9); assert.equal(me.hp, 100);
+  // they favour whoever is up on the van
+  me.pos = [0, CAR.van.roof, 25]; let sn = 0; for (let i = 0; i < 40; i++) { quiet(); B.calm = false; B.nextArm = 0; B.lungeT = Infinity; await run(0.06); if (B.arms.some((a) => a.k === 'snatch')) sn++; } quiet(); stand();
+  assert.ok(sn >= 18, 'mostly Snatchers while you are on the roof: ' + sn + '/40');
+  // the lunge: a tell, then it takes ground. the first one bites the rear wagon off: the fight is the flatbed and the van from here
+  const lunge = async () => { dev({ want: 'lunge' }); B.calm = false; B.nextArm = Infinity; await run(0.15); B.calm = true; assert.equal(ev('lunge').at(-1).st, 'tell'); await run(RP.lunge.tell - 0.4); };
+  B.gap = 12; dev({ want: 'grab' }); await lunge(); assert.equal(B.gap, 12); assert.equal(me.hp, 100); assert.equal(B.rear, 0); assert.ok(R.room.boxes.some((x) => x.car === 'wagon'));
   await run(0.5);
-  assert.equal(B.gap, 9 - RP.lunge.gap); assert.equal(ev('lunge').at(-1).st, 'hit'); assert.equal(me.hp, 100 - RP.lunge.dmg, 'on the wagon: bitten');
-  stand([0, 1.3, 12]); B.gap = 9; dev({ want: 'lunge' }); B.calm = false; B.nextArm = Infinity; await run(RP.lunge.tell + 0.3); B.calm = true;
-  assert.equal(me.hp, 100, 'on the flatbed: it misses'); assert.equal(ev('lunge').at(-1).bit, 0);
+  const L1 = ev('lunge').at(-1); assert.deepEqual({ st: L1.st, cut: L1.cut, rear: L1.rear, bit: L1.bit, gap: L1.gap }, { st: 'hit', cut: 1, rear: ARENA.cut, bit: 1, gap: 12 - RP.lunge.gap });
+  assert.equal(B.rear, ARENA.cut); assert.ok(!R.room.boxes.some((x) => x.car === 'wagon'), 'the wagon\'s boxes are gone'); assert.ok(R.room.boxes.some((x) => x.car === 'flat')); assert.equal(B.arms.length, 0, 'what held it went with it');
+  assert.equal(me.hp, 100 - RP.lunge.dmg, 'you were still on it'); assert.deepEqual(me.pos, backSpot(ARENA.cut), 'thrown onto the flatbed'); assert.deepEqual(e.pos, [0, ARENA.cy, ARENA.cut - B.gap], 'THE GAP is measured from the flatbed now');
+  dev({ want: 'grab' }); assert.ok(B.arms[0].gp[2] >= CAR.flat.z0 && B.arms[0].gp[1] === CAR.flat.deck, 'arms grip the flatbed\'s edge'); quiet();
+  assert.equal(bolt([I.crit[0], ARENA.cy + I.crit[1], I.crit[2] - (B.gap - B.rear)])[0].part, 'insp', 'shots follow the mask to where it is now');
+  // after that: inside 6 m it bites the back of the train; further up the flatbed it misses
+  stand([0, 1.3, 17]); B.gap = 9; await lunge(); await run(0.5); assert.equal(B.gap, 9 - RP.lunge.gap); assert.equal(me.hp, 100, 'up the flatbed: it misses'); assert.equal(ev('lunge').at(-1).bit, 0); assert.equal(ev('lunge').at(-1).cut, undefined);
+  stand([0, 1.3, 11]); B.gap = 9; await lunge(); await run(0.5); assert.equal(me.hp, 100 - RP.lunge.dmg, 'at the back of it: bitten');
+  stand([0, 1.0, 4.5]); await run(0.2); assert.deepEqual(me.pos, backSpot(ARENA.cut), 'where the wagon was is the track now');
 });
 
 await t('the finish: at 0 it is beaten, not killed. one kill event for the quest, it leaves the room, nothing more lands', async () => {
-  stand(); quiet(); const k0 = ev('kill').length;
+  stand([0, 1.3, 14]); quiet(); const k0 = ev('kill').length;
   for (let i = 0; i < 6 && B.state !== 'done'; i++) dev({ dmg: 900 });
   if (B.state !== 'done') for (let i = 0; i < 6 && B.state !== 'done'; i++) R.room.damage(e, 900, me, 'ar');
   assert.equal(B.hp, 0); assert.equal(B.state, 'done'); assert.ok(e.alive, 'alive in the room');
@@ -215,8 +244,8 @@ await t('the fail: THE GAP at 0 m and it has you; the fight starts again from th
   const e2 = S.sim.refEnemies()[0], B2 = e2.sk.b, m2 = S.me; B2.calm = true; m2.spawnT = 0; m2.pos = [0, 1, 4.5];
   await S.run(0.2);
   // off the train: 25 and back on the deck, once
-  m2.pos = [3, 0.3, 4]; await S.run(0.3);
-  assert.equal(m2.hp, 100 - RP.off.dmg); assert.deepEqual(m2.pos, ARENA.back); assert.equal(S.ev('off').length, 1);
+  m2.pos = [3.4, 0.3, 4]; await S.run(0.3);
+  assert.equal(m2.hp, 100 - RP.off.dmg); assert.deepEqual(m2.pos, backSpot()); assert.equal(S.ev('off').length, 1);
   assert.ok(S.out.some((o) => o.t === 'tp'), 'the client is moved');
   B2.hp = 4000; B2.plates[3].st = 1; // (no checkpoint saves this: phase 1 starts whole)
   S.sim.msg({ t: 'sty', k: 'bossdev', want: 'grab' }); S.sim.msg({ t: 'sty', k: 'bossdev', grip: true }); S.sim.msg({ t: 'sty', k: 'bossdev', gap: 0.6 });
@@ -225,7 +254,7 @@ await t('the fail: THE GAP at 0 m and it has you; the fight starts again from th
   assert.equal(m2.alive, false, 'caught'); assert.ok(S.ev('down').some((d) => d.who === 'me' && d.by === ID));
   assert.equal(B2.arms.length, 0);
   await S.run(RP.fail + 0.5); assert.equal(B2.state, 'failed', 'it waits for you');
-  m2.alive = true; m2.hp = 100; m2.pos = ARENA.back.slice(); await S.run(0.2);
+  m2.alive = true; m2.hp = 100; m2.pos = backSpot(); await S.run(0.2);
   assert.equal(B2.state, 'fight'); assert.equal(B2.gap, RP.gap.start); assert.equal(B2.hp, 5000); assert.equal(B2.plates[3].st, 0); assert.equal(S.ev('reset').length, 1); assert.equal(S.ev('state').length, 2);
   // Jack's bar: phase 1 also ends when he can't hold the rail any more, with the mask's bar dropping to its line
   B2.jack = RP.jack - 0.3; B2.calm = false; B2.nextArm = Infinity; await S.run(0.5);
@@ -297,8 +326,9 @@ await t('safety: junk defs, junk dev messages and junk hits do nothing; any othe
   assert.equal(j.sk.b, undefined); assert.equal(j.sk.boss, false); R.room.storyDespawn(j);
   sim.msg({ t: 'sty', k: 'spawn', kind: ID, id: ID, at: [0, 3, -30] });
   e = sim.refEnemies()[0]; B = e.sk.b; stand(); quiet(); await run(0.2);
+  assert.equal(B.rear, 0); assert.ok(R.room.boxes.some((x) => x.car === 'wagon'), 'a new fight has its wagon back');
   for (const m of [{ want: {} }, { want: 'slam' }, { gap: 'x' }, { gap: NaN }, { dmg: -5 }, { dmg: 'x' }, { calm: 1 }, { sever: 1 }, { grip: 'y' }, { part: '../x', dmg: 5 }]) dev(m);
-  assert.equal(B.hp, 5000); assert.equal(B.arms.length, 0); assert.equal(B.gap, 30); assert.equal(B.calm, true);
+  assert.equal(B.hp, 5000); assert.equal(B.arms.length, 0); assert.equal(B.gap, G0); assert.equal(B.calm, true);
   dev({ gap: 1e9 }); assert.equal(B.gap, RP.gap.max);
   dev({ pin: true }); dev({ want: 'grab' }); dev({ grip: true }); await run(1); assert.equal(B.gap, RP.gap.max, 'a pinned gap holds (screenshots)'); dev({ pin: false }); quiet();
   for (const d of [null, 'x', [1, 2], [NaN, 0, 1], [0, 0, 0], [1e9, 0, 0]]) R.room.handle(me, { t: 'hit', to: e.id, w: 'ar', n: 1, d });
@@ -308,7 +338,7 @@ await t('safety: junk defs, junk dev messages and junk hits do nothing; any othe
   R.room.handle(me, { t: 'hit', to: e.id, w: 'ar', n: 1, h: 1, d: aim(knot(a)) }); await sleep(130);
   const h = ev('hit').slice(h0); assert.equal(h.length, 1); assert.equal(h[0].part, 'knot'); assert.equal(h[0].dmg, WEAPONS.ar.dmg * 2); assert.equal(h[0].head, false);
   R.room.handle(me, { t: 'hit', to: e.id, w: 'ar', n: 1, d: [1, 0, 0] }); await sleep(130); assert.equal(ev('hit').length, h0 + 1, 'a shot that crosses nothing');
-  sim.dev = false; dev({ gap: 3 }); assert.equal(B.gap, 30, 'dev messages need ?storydev=1'); sim.dev = true;
+  sim.dev = false; dev({ gap: 3 }); assert.equal(B.gap, G0, 'dev messages need ?storydev=1'); sim.dev = true;
   sim.msg({ t: 'sty', k: 'despawn', id: ID }); assert.equal(sim.refEnemies().length, 0);
   // the first boss still spawns and fights by its own rules in the same room
   sim.msg({ t: 'sty', k: 'spawn', kind: 'overtime_1', at: [0, 1.3, 12] });

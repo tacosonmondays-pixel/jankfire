@@ -82,6 +82,21 @@ From the content (`content/bosses.js`, `boss_fights.js`): HP 5000, the armour la
 
 Damage the fight does to you is what lands: the room softens every bot's hit to 0.6, so the fight asks for more.
 
+## Screenshots
+Headless, Too HD, staged with the dev messages below (a headless frame takes seconds, so nothing here is timing).
+
+| file | what |
+|---|---|
+| `fight_01_mask_arms.jpg` | the mask behind the wagon at 17 m, arms along both walls, a blue knot at each wrist |
+| `fight_02_grabber_rail.jpg` | a Grabber's hand closed over the wagon's rail, its knot above it |
+| `fight_03_severed_flinch.jpg` | four hands dropping onto the track, the eye housings open (this one is from before THE GAP panel moved to the left edge) |
+| `fight_04_plates_left_eye.jpg` | phase 2: plates gone, the left eye blown |
+| `fight_05_smile.jpg` | the lower third off: the mouth |
+| `fight_06_end_of_the_line.jpg` | phase 3: half a face, hanging |
+| `fight_07_inspector.jpg` | the Inspector in the mouth, his chest marked, from the back of the wagon at 7 m |
+| `fight_08_blood_crossed.jpg` | the finish: the cross out to the rim |
+| `fight_09_comes_apart.jpg` | the face flat on the track, the plug splitting along the cross |
+
 ## Dev messages (`?storydev=1`)
 `G.story.send('bossdev', o)`: `calm` (no arms, lunges or Jack's clock by themselves), `want: 'grab' | 'sweep' | 'snatch'
 | 'lunge'` (+ `hi`, `side`), `grip: true` (skip the tells), `sever: true` (every arm), `gap: n`, `pin` (THE GAP holds still), `dmg: n` (+ `part`,

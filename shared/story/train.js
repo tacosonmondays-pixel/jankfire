@@ -6,44 +6,69 @@
 //   the boss model's own space (revenue_protection.parts.json): x right, y up, +z toward the train; world = [x, cy + y, z - gap]
 
 // ---------------------------------------------------------------- the world (shared/story/worlds.js lists it)
+// THE TABLE: every size of the arena is here. the room's collision boxes (buildTrainMap), the client's stand-in train
+// (trainfight.js draws these boxes itself, so a Blender train can replace them, built to this), where arms grip, where
+// you are put back, and the tests all read it. metres; z runs from the back of the train (0) to the front
+export const HW = 2.1; // half the deck's width: 4.2 m across (the bore is 9.2 m, so the arms still have wall to walk along)
+export const CARS = [ // back to front. deck = the top of its floor. the first one's back rail is THE GAP's zero
+  { id: 'wagon', z0: 0.2, z1: 9.2, deck: 1.0, rail: 0.75 }, // the low open wagon: a rail round three sides (too tall to step over, low enough to jump)
+  { id: 'flat', z0: 9.8, z1: 19.8, deck: 1.3 }, // the flatbed: crates, the chained-down fridge
+  { id: 'van', z0: 20.4, z1: 27.4, deck: 1.3, roof: 3.45, roofZ0: 22.8, under: 2.0, stairs: 4, stairW: 1.1 }, // the tool van: a flat roof on posts (open sides: a sweeper passes under it), stairs up its left side
+  { id: 'loco', z0: 28.0, z1: 33.0, deck: 0.5, top: 3.6 }, // not part of the fight: the front wall
+];
+export const CAR = Object.fromEntries(CARS.map((c) => [c.id, c]));
+export const COVER = [ // [car, x, z, width, height, depth, material]: stands on its car's deck. the middle lane stays clear, and there is always some within about 4 m
+  ['wagon', -1.25, 2.6, 1, 1, 1, 'crate'], ['wagon', 1.25, 6.2, 1, 1, 1, 'crate'],
+  ['flat', -1.25, 11.4, 1, 1, 1, 'crate'], ['flat', 1.25, 13.6, 1, 1.8, 1, 'crate'], ['flat', -1.25, 16.4, 0.9, 1.9, 0.8, 'white'], ['flat', 1.25, 18.4, 1, 1, 1, 'crate'], // (white: the fridge)
+  ['van', 1.4, 24.2, 0.8, 1.1, 1.6, 'metal'], ['van', -1.4, 26.3, 0.8, 1.1, 1.4, 'metal'], // tool lockers under the roof
+];
+export const CREW = [ // where the three would fight (static stand-ins for now: no AI). until: the phase they are there up to
+  { id: 'pallet_jack', p: [0.9, 1.0, 1.2], yaw: 0, until: 0 }, // at the back rail
+  { id: 'lumps', p: [-0.4, 1.3, 12.6], yaw: 0, until: 2 }, // hauling crates on the flatbed
+  { id: 'gordo', p: [1.3, 1.3, 21.4], yaw: 0, until: 2 }, // by the van's stairs, with the blood bags
+];
 const FAR = { p: [0, -900, 0], r: 0.1 }; // no Machine, Locker or clinic on a train
-export const TRAIN = { id: 'story_train', name: 'The Under-Hill Loop', killY: -30, spawn: [0, 1.1, 4.5], yaw: 0, terminal: FAR, locker: FAR, clinic: FAR };
-export const ARENA = {
-  boreR: 4.6, cy: 3.13, z0: -70, z1: 44, // the bore, its axis above the track bed (y = 0), how far the tunnel's boxes run
-  wagon: { z0: 0.2, z1: 7.2, deck: 1.0, hw: 1.4, rail: 0.75 }, // the low open wagon (the back rail is its z0)
-  flat: { z0: 7.8, z1: 15.8, deck: 1.3, hw: 1.4 }, // the flatbed: crates, the chained-down fridge
-  loco: { z0: 16.4, z1: 21.4, hw: 1.45, top: 3.6 },
-  back: [0, 1.1, 4.5], // where you are put back after the track
-};
-export const deckAt = (z) => (z >= 7.5 ? ARENA.flat.deck : ARENA.wagon.deck);
-// off the train: down on the track bed, or past the side / the back rail and already below the deck's edge
-export const offTrain = (p) => p[1] < 0.75 || ((Math.abs(p[0]) > 1.95 || p[2] < -0.25) && p[1] < 1.15);
+export const TRAIN = { id: 'story_train', name: 'The Under-Hill Loop', killY: -30, spawn: [0, 1.1, 4.7], yaw: 0, terminal: FAR, locker: FAR, clinic: FAR };
+export const ARENA = { boreR: 4.6, cy: 3.13, z0: -70, z1: 56, cut: CAR.flat.z0 }; // the bore, its axis above the track bed (y = 0), how far the tunnel's boxes run · the train's back once the wagon is bitten off
+export const deckAt = (z) => (z < (CAR.wagon.z1 + CAR.flat.z0) / 2 ? CAR.wagon.deck : CAR.flat.deck);
+// what you stand on at z: the deck, or the van's roof / stairs if you are up there (feet at y)
+export const onRoof = (p) => p[2] >= CAR.van.z0 && p[2] <= CAR.van.z1 && p[1] - CAR.van.deck >= CAR.van.roof - CAR.van.deck - 0.4;
+// off the train: down on the track bed, or past the side / the back and already below the deck's edge. rear: the train's back (0, or ARENA.cut once the wagon is gone)
+export const offTrain = (p, rear = 0) => p[1] < 0.75 || ((Math.abs(p[0]) > HW + 0.55 || p[2] < rear - 0.25) && p[1] < deckAt(p[2]) + 0.15);
+// where you are put back: the middle of the rear-most car still on the train
+export const backSpot = (rear = 0) => { const c = rear > 0 ? CAR.flat : CAR.wagon; return [0, c.deck + 0.1, c.z0 + (c.z1 - c.z0) * (rear > 0 ? 0.35 : 0.5)]; };
+// where a Grabber takes hold of the rear-most car: three spots a side and two on the back. p: the grip point, o: which way is outboard
+export function gripSpots(rear = 0) {
+  const c = rear > 0 ? CAR.flat : CAR.wagon, y = c.deck + (c.rail || 0), L = c.z1 - c.z0, out = [];
+  for (const sx of [1, -1]) for (const k of [0.15, 0.5, 0.85]) out.push({ p: [sx * (HW - 0.05), y, c.z0 + L * k], o: [sx, 0], side: sx });
+  for (const sx of [1, -1]) out.push({ p: [sx * 0.9, y, c.z0 + 0.05], o: [sx * 0.3, -0.95], side: sx });
+  return out;
+}
 
+// the train's boxes carry { car, pv: 'rp_train' }: car = which car (the room drops the wagon's when it is bitten off), pv = the
+// client's stand-in draws them (world.js leaves a box alone when a prop of that name is registered; without one they are plain boxes)
 export function buildTrainMap(kit) {
-  const B = kit.builder(), D = kit.builder(), A = ARENA, W = A.wagon, F = A.flat, L = A.loco;
+  const B = kit.builder(), D = kit.builder(), A = ARENA;
   B.add(-6.2, -2, A.z0, 6.2, 0, A.z1, 'dirt'); // the track bed
   // the tunnel's walls and roof stand just behind the round lining the client draws (collisions stay boxes)
   B.add(-6.2, 0, A.z0, -A.boreR - 0.1, 9, A.z1, 'brick'); B.add(A.boreR + 0.1, 0, A.z0, 6.2, 9, A.z1, 'brick'); B.add(-6.2, A.cy + A.boreR + 0.1, A.z0, 6.2, 9.4, A.z1, 'brick');
   B.add(-6.2, 0, A.z0 - 1, 6.2, 9.4, A.z0, 'brick'); B.add(-6.2, 0, A.z1, 6.2, 9.4, A.z1 + 1, 'brick');
   for (const x of [-0.75, 0.75]) D.add(x - 0.05, 0, A.z0, x + 0.05, 0.14, A.z1, 'metal'); // the rails
-  // the low open wagon: a plank deck, a rail round three sides (too tall to step over, low enough to jump)
-  D.add(-1.25, 0.45, W.z0 + 0.2, 1.25, 0.8, W.z1 - 0.2, 'metal');
-  B.add(-W.hw, 0.8, W.z0, W.hw, W.deck, W.z1, 'wood');
-  for (const sx of [-1, 1]) B.add(sx * W.hw, W.deck, W.z0, sx * (W.hw - 0.1), W.deck + W.rail, W.z1, 'metal');
-  B.add(-W.hw, W.deck, W.z0, W.hw, W.deck + W.rail, W.z0 + 0.1, 'metal');
-  B.add(-1.0, 0.7, W.z1, 1.0, W.deck, F.z0, 'metal'); // the coupling, decked over
-  // the flatbed: a step up, crates for cover, the chained-down fridge
-  D.add(-1.25, 0.45, F.z0 + 0.2, 1.25, 1.0, F.z1 - 0.2, 'metal');
-  B.add(-F.hw, 1.0, F.z0, F.hw, F.deck, F.z1, 'metal');
-  B.box(-0.8, F.deck + 0.5, 9.6, 1, 1, 1, 'crate'); B.box(0.75, F.deck + 0.5, 11.6, 1, 1, 1, 'crate'); B.box(0.75, F.deck + 1.4, 11.6, 0.8, 0.8, 0.8, 'crate');
-  B.box(-0.8, F.deck + 0.95, 13.4, 0.9, 1.9, 0.8, 'white'); // the fridge
-  for (const y of [0.5, 1.4]) D.box(-0.8, F.deck + y, 13.4, 0.96, 0.06, 0.86, 'metal'); // (its chains)
-  D.box(0.9, F.deck + 0.6, 14.6, 0.5, 1.2, 0.12, 'hazard'); D.box(0.9, F.deck + 0.08, 14.75, 0.5, 0.16, 0.3, 'metal'); // jack's hand truck
-  B.add(-0.5, 0.7, F.z1, 0.5, 1.0, L.z0, 'metal');
-  // the loco: more of a tractor, but it's on rails
-  B.add(-L.hw, 0.5, L.z0, L.hw, 2.2, L.z1, 'yellow'); B.add(-L.hw, 2.2, L.z0 + 0.3, L.hw, L.top, L.z0 + 2.6, 'yellow');
-  D.add(-L.hw - 0.02, 0.5, L.z0 - 0.03, L.hw + 0.02, 0.9, L.z0, 'hazard'); D.add(-1.1, 2.5, L.z0 + 0.27, 1.1, 3.3, L.z0 + 0.3, 'blue');
-  for (const [z0, z1] of [[1, 2], [5.4, 6.4], [8.6, 9.6], [14, 15], [17, 18], [19.8, 20.8]]) for (const sx of [-1, 1]) D.add(sx * 0.62, 0.14, z0, sx * 0.88, 0.8, z1, 'metal'); // wheels
+  const add = (car, x0, y0, z0, x1, y1, z1, mat) => B.add(x0, y0, z0, x1, y1, z1, mat, { car, pv: 'rp_train' });
+  for (let i = 0; i < CARS.length; i++) {
+    const c = CARS[i], n = CARS[i + 1];
+    if (c.id === 'loco') { add(c.id, -HW + 0.4, c.deck, c.z0, HW - 0.4, 2.2, c.z1, 'yellow'); add(c.id, -HW + 0.4, 2.2, c.z0 + 0.3, HW - 0.4, c.top, c.z0 + 2.6, 'yellow'); continue; } // more of a tractor, but it's on rails
+    add(c.id, -HW, c.deck - 0.2, c.z0, HW, c.deck, c.z1, c.id === 'wagon' ? 'wood' : 'metal');
+    if (c.rail) { for (const sx of [-1, 1]) add(c.id, sx * HW, c.deck, c.z0, sx * (HW - 0.1), c.deck + c.rail, c.z1, 'metal'); add(c.id, -HW, c.deck, c.z0, HW, c.deck + c.rail, c.z0 + 0.1, 'metal'); }
+    if (c.roof) { // the tool van: stairs up the left side, then a flat roof on posts
+      const rise = (c.roof - c.deck) / c.stairs, run = (c.roofZ0 - c.z0) / c.stairs;
+      for (let k = 0; k < c.stairs; k++) add(c.id, -HW, c.deck, c.z0 + k * run, -HW + c.stairW, c.deck + (k + 1) * rise, c.roofZ0, 'wood');
+      add(c.id, -HW, c.deck + c.under, c.roofZ0, HW, c.roof, c.z1, 'metal');
+      for (const sx of [-1, 1]) for (const z of [c.roofZ0, c.z1 - 0.14]) add(c.id, sx * HW, c.deck, z, sx * (HW - 0.14), c.deck + c.under, z + 0.14, 'metal');
+    }
+    if (n) add(i === 0 ? 'wagon' : c.id, -1.1, Math.min(c.deck, n.deck) - 0.3, c.z1, 1.1, Math.min(c.deck, n.deck), n.z0, 'metal'); // the coupling, decked over (the wagon's goes with the wagon)
+  }
+  for (const [car, x, z, w, h, d, mat] of COVER) add(car, x - w / 2, CAR[car].deck, z - d / 2, x + w / 2, CAR[car].deck + h, z + d / 2, mat);
   return {
     name: TRAIN.name, size: 'story', boxes: B.boxes, deco: D.boxes, killY: TRAIN.killY, floorY: -2, bounds: [-6.2, A.z0, 6.2, A.z1],
     sky: { top: 0x050307, mid: 0x050307, bot: 0x050307, fog: 0x050307 }, fogNear: 18, fogFar: 78, // a lot of dark
@@ -56,20 +81,20 @@ export function buildTrainMap(kit) {
 // from docs/story/TRAIN.md where it gives one (marked "design"); the rest chosen for the first playable (marked "chosen").
 // the boss's HP, layers, phase thresholds and crits are not here: they come from content/bosses.js + boss_fights.js
 export const RP = {
-  gap: { start: 30, max: 30, grab: 1, moment: 6, // design: starts 30 m · each gripping arm closes it 1 m/s · 6 m and holds for the middle scene
-    sever: 2, flinch: 6, retry: 20, send: 0.25 }, // chosen: a severed arm opens it 2 m, a flinch 6 m · a retry starts at 20 m · seconds between gap messages
+  gap: { start: 22, max: 22, grab: 1, moment: 6, // chosen: starts 22 m (the design says 30: at 30 the mask reads small from the wagon) · design: each gripping arm closes it 1 m/s · 6 m and holds for the middle scene
+    sever: 2, flinch: 5, retry: 16, send: 0.25 }, // chosen: a severed arm opens it 2 m, a flinch 5 m · a retry starts at 16 m · seconds between gap messages
   arm: { hp: 320, rope: 0.15, // chosen: an arm's HP (the wrist knot takes the content's x2: 9 bolts) · hits on the rope / the hand count this much
     max: [4, 4, 5], first: 2.5, every: [[3, 4.5], [2.6, 3.8], [1.9, 2.8]], // chosen: arms at once per phase (design: 4) · seconds to the first · between arms
     mix: [{ grab: 5, sweep: 3, snatch: 2 }, { grab: 5, sweep: 3, snatch: 3 }, { grab: 6, sweep: 3, snatch: 2 }], // chosen: how often each kind comes
     blood: 20, cut: 1.1, back: 1 }, // chosen: HP back for a sever (design: "gives blood back") · seconds a stump whips back · an arm takes to leave
   grab: { reach: 3.5 }, // chosen: seconds from the rim to the rail (the tell)
-  sweep: { tell: 1.4, speed: 10, z0: -1.6, z1: 16.2, dmg: 22, kb: [6, 5, 6], low: 0.55, half: 0.45, y: [1.45, 2.65] }, // chosen: it lies across behind the wagon, then runs the deck. knee: be 0.55 m off the deck. head: slide or crouch
-  snatch: { reach: 2.2, hold: 6, dmg: 40, gap: 5, up: 2.5 }, // design: 6 s to shoot it off · chosen: the rest (v1 goes for you: the crew isn't simulated)
+  sweep: { tell: 1.4, speed: 12, back: 1.6, z1: 27.6, x: 3.6, dmg: 22, kb: [6, 5, 6], low: 0.55, over: 1.75, half: 0.45, y: [0.45, 1.65] }, // chosen: it lies across 1.6 m behind the train, then runs every deck to the van's front at 12 m/s. y: the bar above the deck under it. knee: be 0.55 m off the deck. head: slide or crouch. on the van's roof (1.75 m up) both pass under you
+  snatch: { reach: 2.2, hold: 6, dmg: 40, gap: 5, up: 2.5, roof: 0.6 }, // design: 6 s to shoot it off · chosen: the rest (v1 goes for you: the crew isn't simulated). roof: the chance the next arm is a Snatcher while you are on the van's roof
   flinch: { n: 4, within: 10, open: 5 }, // design: four severs inside ten seconds · chosen: the eye housings stay open 5 s
   mask: { plateHp: 240, craze: 0.5, soft: 0.5, far: 0.25 }, // chosen: a plate's HP, crazed at half · holes / the lamps · phase 3, anything that isn't the Inspector
   stages: [['hairline', 60], ['left_eye', 45], ['smile', 30]], // chosen: the HP % each break stage starts at (design: the order, in phase 2)
   jack: 90, // chosen: seconds Jack holds the rail (his bar): phase 1 ends at 60% (design) or when it runs out
-  lunge: { every: [8, 11], tell: 1.5, gap: 4, min: 1.5, bite: 6, dmg: 35, z: 7.5 }, // chosen: phase 3. it rears, then takes 4 m; inside 6 m it bites whoever is on the wagon
+  lunge: { every: [8, 11], tell: 1.5, gap: 4, min: 1.5, bite: 6, dmg: 35, reach: 3.5 }, // chosen: phase 3. it rears, then takes 4 m. the first one bites the rear wagon off (design): be on the flatbed. after that, inside 6 m it bites the back 3.5 m of the train
   bag: { every: 10, hp: 20 }, // chosen: Gordo's blood bags, caught for you (design: "on a timer")
   off: { dmg: 25, grace: 1.5 }, // chosen: the track takes 25 and you are put back (fairer than a death)
   cut: 1, fail: 2, // seconds a phase change holds at least · a caught fight waits before it restarts
@@ -136,7 +161,8 @@ export function armExt(a) {
   return 1;
 }
 // a sweeper's bar: behind the wagon through the tell, then along the deck
-export const sweepZ = (a) => (a.st === 'sweep' ? Math.min(RP.sweep.z1, RP.sweep.z0 + RP.sweep.speed * a.t) : a.st === 'back' ? RP.sweep.z1 : RP.sweep.z0);
+export const sweepZ = (a) => { const z0 = (a.rear || 0) - RP.sweep.back; return a.st === 'sweep' ? Math.min(RP.sweep.z1, z0 + RP.sweep.speed * a.t) : a.st === 'back' ? RP.sweep.z1 : z0; }; // (a.rear: the train's back when it came)
+export const sweepY = (a, z = sweepZ(a)) => deckAt(Math.max(z, (a.rear || 0) + 0.3)) + RP.sweep.y[a.hi ? 1 : 0]; // the bar keeps its height over the deck under it
 // the whole path, socket to wrist (world points)
 export function armPts(G, a, gap) {
   const cy = ARENA.cy, S = (a.mouth ? G.mouth : G.sockets)[a.sock] || G.sockets[0], T = a.tgt, zs = S[2] - gap, P0 = [S[0], cy + S[1], zs], out = [];
