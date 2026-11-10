@@ -8,7 +8,7 @@ import { WEAPONS, FLAGS, SPEED, ITEMS } from '/shared/weapons.js';
 import { BOXES } from '/shared/map.js';
 import { raycast } from '/shared/physics.js';
 import { G } from './ctx.js';
-import { ME, eye, look, releaseHook } from './player.js';
+import { ME, eye, aim as look, releaseHook } from './player.js'; // (look = aim: shots follow the spinbot's lock)
 import { W, VMX, isFriend } from './weapons.js';
 import { net } from './net.js';
 import { hud } from './hud.js';

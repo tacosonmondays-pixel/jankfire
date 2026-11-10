@@ -8,15 +8,20 @@ import { WEAPONS } from '/shared/weapons.js';
 import { LADDER } from '/shared/modes.js';
 
 const $ = (id) => document.getElementById(id);
-const N = LADDER.length;
+let L = LADDER, N = L.length; // this match's ladder: the server rolls a new one every match and sends it with the standings
+const okL = (l) => Array.isArray(l) && l.length > 0 && l.length <= 40 && l.every((id) => typeof id === 'string' && Object.hasOwn(WEAPONS, id));
 G.gg = new Map(); // player id -> rung (0 = the first weapon, N = won)
 const on = () => !!(G.joined && G.round && G.round.game === 'gun');
-const wOf = (n) => WEAPONS[LADDER[Math.max(0, Math.min(N - 1, n))]];
+const wOf = (n) => WEAPONS[L[Math.max(0, Math.min(N - 1, n))]];
 const nameOf = (id) => (id === G.myId ? G.myName : (G.names.get(id) || {}).name || '???');
 const rungOf = (id) => G.gg.get(id) || 0;
 
 net.on('gg', (m) => {
-  if (m.all) { G.gg.clear(); for (const [id, n] of m.all) G.gg.set(id, n); return; }
+  if (m.all) {
+    if (okL(m.l) && m.l.join() !== L.join()) { L = m.l; N = L.length; $('ggBar').dataset.key = ''; if (on()) ggIntro(); }
+    G.gg.clear(); for (const [id, n] of m.all) G.gg.set(id, n);
+    return;
+  }
   G.gg.set(m.id, m.n);
   const me = m.id === G.myId, name = nameOf(m.id);
   if (m.k === 'up' && me) { hud.msg(`${wOf(m.n).name.toUpperCase()} · ${m.n + 1}/${N}`, 1.6, 'brag'); sfx.rankUp(); }
@@ -30,6 +35,11 @@ net.on('gg', (m) => {
   } else if (m.k === 'win') hud.chat(null, null, `${name} won gun game with the spoon`);
 });
 
+// a fresh ladder: say so, and name the first few rungs so nobody is surprised by a shopping cart
+function ggIntro() {
+  hud.msg('NEW LADDER', 2, 'brag');
+  hud.chat(null, null, `this match's ladder: ${L.slice(0, 4).map((id) => WEAPONS[id].name).join(', ')}... then ${N - 5} more and the spoon`);
+}
 // top of the screen: 7/16 · Marble Shotgun · next: Sniper, then a pip per rung (the leader gets a marker)
 export function updateGunGame() {
   const bar = $('ggBar');
@@ -52,7 +62,7 @@ export function updateGunGame() {
   $('ggNext').style.color = nx ? nx.color : '#ffe14d';
   const pips = $('ggPips');
   pips.innerHTML = '';
-  LADDER.forEach((id, i) => {
+  L.forEach((id, i) => {
     const p = document.createElement('i');
     p.style.setProperty('--c', WEAPONS[id].color);
     p.className = (i < mine ? 'done' : i === mine ? 'on' : '') + (lead !== G.myId && i === Math.min(ln, N - 1) ? ' lead' : '');
@@ -66,7 +76,7 @@ export function updateGunGame() {
 export function ggRoundText(r) {
   if (r.game !== 'gun' || r.over) return null;
   const s = Math.ceil(r.left / 1000);
-  return `gun game · ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; // (the line above already says Gun Game)
 }
 // TAB scores: ordered by rung, with the rung next to the name
 export function ggScoreRows(rows) {
