@@ -54,6 +54,8 @@ export function look() {
   const cp = Math.cos(ME.pitch);
   return [-Math.sin(ME.yaw) * cp, Math.sin(ME.pitch), -Math.cos(ME.yaw) * cp];
 }
+// where your shots go: the spinbot's lock when it has one, else where you look (the camera stays yours)
+export function aim() { return G.aimDir || look(); }
 export function hspeed() { return Math.hypot(ME.vel[0], ME.vel[2]); }
 
 // rubber duck black holes eat momentum: inside one you bleed speed (all but falling in, harder near the middle)

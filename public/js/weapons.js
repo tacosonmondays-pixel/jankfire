@@ -7,7 +7,7 @@ import { BOXES } from '/shared/map.js';
 import { raycast, rayBox } from '/shared/physics.js';
 import { G } from './ctx.js';
 import { palOf, crossFired } from './bloodcross.js';
-import { ME, eye, look, applyKb, hspeed } from './player.js';
+import { ME, eye, aim as look, applyKb, hspeed } from './player.js'; // (look = aim: every shot follows the spinbot's lock)
 import { vmBob } from './vmbob.js';
 import { buildWeapon, M, cardFace, tipColor, setKatana, freeTree } from './models.js';
 import { heatTeeth, spinTeeth } from './models.js';
