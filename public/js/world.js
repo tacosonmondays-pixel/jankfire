@@ -256,9 +256,18 @@ function terrainGeo(T, tile, mi = -1) { // mi: only the cells painted with T.mat
   return g;
 }
 // so the shape reads: hollows a little darker, crests a little brighter, steep bits shaded (on top of the baked AO)
-function terrainTint(T, g) {
+// rock (T.rocky materials): every triangle its own flat face, so crags, ledges and gullies catch the light as edges
+function terrainFacet(T, tm, g) { if (T.rocky && T.rocky.has(tm)) g.computeVertexNormals(); return g; }
+function terrainTint(T, g, tm) {
   const col = g.attributes.color, nrm = g.attributes.normal, pos = g.attributes.position;
+  const rock = !!(T.rocky && T.rocky.has(tm)), vz = T.nz + 1, Hh = (i, j) => T.H[Math.max(0, Math.min(T.nx, i)) * vz + Math.max(0, Math.min(T.nz, j))];
   for (let i = 0; i < col.count; i++) {
+    if (rock) { // ridges and knobs lighter, cracks and hollows darker (how much higher a point is than the ground round it)
+      const vi = Math.round(pos.getX(i) - T.x0), vj = Math.round(pos.getZ(i) - T.z0), c = Hh(vi, vj) - (Hh(vi - 1, vj) + Hh(vi + 1, vj) + Hh(vi, vj - 1) + Hh(vi, vj + 1)) / 4;
+      const a = col.getX(i) * (1.15 + Math.max(-0.5, Math.min(0.9, c * 1.6)));
+      col.setXYZ(i, a, a * 0.97, a * 0.95);
+      continue;
+    }
     const h = pos.getY(i), k = (h > 0 ? 0.11 * h / Math.max(0.5, T.hi) : 0.24 * h / Math.max(0.5, -T.lo)) - 0.5 * (1 - nrm.getY(i)) * 2.2;
     const a = col.getX(i) * (1 + k);
     col.setXYZ(i, a, a, a * (1 - Math.max(0, -k) * 0.25)); // (the dark bits a touch warmer)
@@ -281,7 +290,7 @@ function buildMap(scene) {
   const ncf = noCastFn(def), liq = [];
   aoBegin(all, ncf); setSunBoxes(all);
   const shoreBoxes = TR ? [...BOXES, ...(def && def.deco ? def.deco : [])] : all; // (the water's shore map needs the ground's steps: that's how it knows a pond is deep)
-  if (TR) (TR.mats || [TR.mat]).forEach((tm, mi) => { const tk = MAT[tm] ? tm : 'stone', g = terrainGeo(TR, MAT[tk].tile, TR.mats ? mi : -1); if (g.index.count) push(tk, terrainTint(TR, aoBake(g, false)).toNonIndexed()); });
+  if (TR) (TR.mats || [TR.mat]).forEach((tm, mi) => { const tk = MAT[tm] ? tm : 'stone', g = terrainGeo(TR, MAT[tk].tile, TR.mats ? mi : -1); if (g.index.count) push(tk, terrainFacet(TR, tm, terrainTint(TR, aoBake(g, false), tm).toNonIndexed())); });
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
     if ((i < nReal && b.pv && hasProp(b.pv)) || (b.av && hasArch(b.av))) continue;
@@ -329,7 +338,7 @@ function buildChunked(scene, def) {
   const all = def.deco ? [...real, ...(TR ? def.deco.filter((b) => !b.ter) : def.deco)] : real, nReal = real.length;
   const ncf = noCastFn(def), liq = [];
   aoBegin(all, ncf); setSunBoxes(all);
-  if (TR) (TR.mats || [TR.mat]).forEach((tm, mi) => { const tk = MAT[tm] ? tm : 'stone', g = terrainGeo(TR, MAT[tk].tile, TR.mats ? mi : -1); if (g.index.count) groups.set(tk, { k: tk, nc: '', list: [terrainTint(TR, aoBake(g, false)).toNonIndexed()] }); }); // one mesh per ground material, always drawn
+  if (TR) (TR.mats || [TR.mat]).forEach((tm, mi) => { const tk = MAT[tm] ? tm : 'stone', g = terrainGeo(TR, MAT[tk].tile, TR.mats ? mi : -1); if (g.index.count) groups.set(tk, { k: tk, nc: '', list: [terrainFacet(TR, tm, terrainTint(TR, aoBake(g, false), tm).toNonIndexed())] }); }); // one mesh per ground material, always drawn
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
     if ((i < nReal && b.pv && hasProp(b.pv)) || (b.av && hasArch(b.av))) continue; // (as in buildMap: only real boxes give way to a prop / a building)

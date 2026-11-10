@@ -3107,8 +3107,24 @@ function kaboom(B0, D0, dx, dz) {
     return Math.max(K.rc + 6, R);
   };
   // the rim: broken, a notch north (where the lava leaves), a low gap south (the way in from the village)
-  const rim = (a) => K.crest + 0.55 * Math.sin(2 * a * RAD + 0.4) + 0.35 * Math.sin(5 * a * RAD) - 2.5 * bump(a, -90, 11) - 1.5 * bump(a, 90, 14);
+  const rim = (a) => K.crest + 0.55 * Math.sin(2 * a * RAD + 0.4) + 0.35 * Math.sin(5 * a * RAD) + 1.1 * (vnoise(a / 17, 3.3, 31) - 0.5) + 0.9 * Math.max(0, Math.sin(4 * a * RAD + 1)) ** 4 // (teeth)
+    - 2.5 * bump(a, -90, 11) - 1.5 * bump(a, 90, 14);
   const lump = (x, z) => Math.sin(x * 0.9 + 1.7) * Math.sin(z * 1.1 - 0.6) * 0.5 + Math.sin(x * 0.37 - z * 0.53) * 0.5; // -1..1, for the apron
+  // roughness (the owner: "too smooth still"): the same on every machine (integer hashes), nothing finer than the ground's 1 m grid can hold
+  const hsh = (i, j, k) => { let n = Math.imul(i, 374761393) ^ Math.imul(j, 668265263) ^ Math.imul(k + 77, 1442695041); n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967295; };
+  const vnoise = (x, z, k) => { const i = Math.floor(x), j = Math.floor(z), u = x - i, v = z - j, a = u * u * (3 - 2 * u), b = v * v * (3 - 2 * v); return (hsh(i, j, k) * (1 - a) + hsh(i + 1, j, k) * a) * (1 - b) + (hsh(i, j + 1, k) * (1 - a) + hsh(i + 1, j + 1, k) * a) * b; };
+  const crags = (x, z) => { // outcrops: steep-sided knobs of rock scattered over the flanks, 0.6 to 2.6 m tall, some of them hollows instead
+    const G = 5.5, ci = Math.floor(x / G), cj = Math.floor(z / G);
+    let h = 0;
+    for (let i = ci - 1; i <= ci + 1; i++) for (let j = cj - 1; j <= cj + 1; j++) {
+      if (hsh(i, j, 1) > 0.78) continue;
+      const rr = 2 + 2.8 * hsh(i, j, 2), ox = (i + 0.15 + 0.7 * hsh(i, j, 3)) * G, oz = (j + 0.15 + 0.7 * hsh(i, j, 4)) * G, d = Math.hypot((x - ox) * (0.7 + 0.6 * hsh(i, j, 7)), z - oz);
+      if (d >= rr) continue;
+      const q = 1 - d / rr, v = (hsh(i, j, 6) < 0.2 ? -0.5 : 1) * (1.1 + 2.6 * hsh(i, j, 5)) * Math.min(1, rr / 3) * Math.pow(q * q * (3 - 2 * q), 0.45);
+      if (Math.abs(v) > Math.abs(h)) h = v;
+    }
+    return h;
+  };
   const f = (x0, z0) => {
     const x = x0 - cx, z = z0 - cz, r = Math.hypot(x, z), a = Math.atan2(z, x) / RAD, R = foot(a), cr = rim(a);
     if (r >= R + K.apron) return null;
@@ -3119,9 +3135,15 @@ function kaboom(B0, D0, dx, dz) {
     const t = (r - K.rc) / (R - K.rc);
     let h = cr * (0.8 * Math.pow(1 - t, 1.7) + 0.2 * (1 - t)); // steep up top, long shallow lower slopes
     const mid = t < 0.9 ? Math.sin(Math.PI * t / 0.9) : 0;
-    h -= 1.5 * Math.pow(Math.sin(3 * a * RAD + 0.6) * 0.5 + 0.5, 2) * mid; // six big gullies, deepest half way down
+    h -= 2.1 * Math.pow(Math.sin(3 * a * RAD + 0.6) * 0.5 + 0.5, 3) * mid; // six big gullies, cut deep and narrow, deepest half way down
     h += 0.3 * Math.sin(13 * a * RAD + 2) * mid; // and a finer set of ribs
     h -= 1.5 * bump(a, 50, 20) * sm(0.2, 0.35, t) * (1 - sm(0.65, 0.8, t)); // the scar where the south-east flank fell away
+    // broken ledges: the slope steps in benches about 1.7 m apart, but only in patches (never a ring right round)
+    const L = 2.3, sN = h / L, fl = Math.floor(sN), bench = (fl + sm(0.6, 0.97, sN - fl)) * L, lk = sm(0.36, 0.6, vnoise(x0 * 0.13, z0 * 0.13, 11));
+    h = h * (1 - lk) + bench * lk;
+    const rough = Math.max(mid, sm(0.02, 0.12, t) * (1 - sm(0.8, 0.95, t))) * (0.6 + 0.4 * Math.sin(Math.PI * Math.min(1, t * 1.6))); // (none right at the rim or the foot)
+    h += crags(x0, z0) * rough; // outcrops and hollows
+    h += (Math.abs(vnoise(x0 * 0.31, z0 * 0.31, 21) - 0.5) * 2 - 0.5) * 1.4 * rough; // sharp little ridges between them
     return Math.max(0.28 * (1 - t) + 0.05, h) * (t > 0.6 ? 1 - (1 - ek) * sm(0.6, 1, t) : 1);
   };
   f.rock = (x0, z0) => { const x = x0 - cx, z = z0 - cz; return Math.hypot(x, z) < foot(Math.atan2(z, x) / RAD) - 0.3; }; // (where it's bare rock: the apron keeps the island's own grass and sand)
@@ -3395,7 +3417,7 @@ function islands() {
   const spawns = [...att.slice(0, 3), ...def.slice(0, 3), [-10, 0.1, 22.5], [6, 0.1, 13], [-22, 0.1, -11], [20, 0.1, -10], [0, 9.1, 0.7], [-6, 3.1, -14],
     [-6, 0.1, -67], [12, 0.1, -61], [-12, MD + 0.1, -69], [6, 0.1, -70], [-11, 0.1, 61], [11, 0.1, 76.5], [0, SK + 0.1, 70], [-40, 0.1, -38], [40, 0.1, 37]];
   // dunes on the islands (shared/terrain.js): up only, the beaches' edges, the volcano, the fort and the huts stay level
-  shapeGround(B, D, { region: [-100, -90, 100, 90], mat: 'sand', seed: 3113, up: 1.6, down: 0.12, near: 0.8, far: 4, drape: ['grass'], relief: [{ f: KB.f, mat: 'basalt', paint: KB.f.rock }], points: [...new Set([...spawns, ...att, ...def])] });
+  shapeGround(B, D, { region: [-100, -90, 100, 90], mat: 'sand', seed: 3113, up: 1.6, down: 0.12, near: 0.8, far: 4, drape: ['grass'], relief: [{ f: KB.f, mat: 'basalt', paint: KB.f.rock, rock: true }], points: [...new Set([...spawns, ...att, ...def])] });
   for (const p of spawns) if (KB.f(p[0], p[2]) != null) p[1] = B.boxes.terrain.at(p[0], p[2]) + 0.1; // (the two up the mountain: onto its new slopes)
   let graph = null;
   const map = { name: 'Islands', size: 'large', boxes: B.boxes, deco: D.boxes, killY: ISL.DROWN, floorY: -1.5, sky: SKY_SUNSET, fogNear: 110, fogFar: 380,
