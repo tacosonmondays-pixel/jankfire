@@ -116,4 +116,41 @@ All lane sessions were interrupted. Nothing is merging. The open PRs above are d
   - `tools/blender/ps1.py` (PR #83, branch claude/map-pass) bakes one tiny dithered 15-bit texture per model.
   - `texkit.py` + the tiling kit in `public/models/arch/kit` (PR #115, branch claude/blender-buildings) is shared by the props and buildings lanes. The kit fixes a 16-colour palette, dither, and glb material extras (tex/tile/col/paint/alpha/glow/nocast).
 - In-game check: start `PORT=3100 node server.js`, then run the shots scripts (Too HD = `jank: 3`, Potato = `jank: 0`).
-- **Quality bar from the owner: "Models and animation max!!"** Run model/animation work at max effort, with sheets, screenshots and iteration.
+- **Quality bar from the owner: "Models and animation max!!"** Run model/animation work at HIGH effort (xhigh only sometimes; NEVER max: owner rule for Fable 5.2), with sheets, screenshots and iteration.
+
+## 2026-11-10 update (session 011tKQCs)
+- **Effort rule (owner): sessions run on Fable 5.2. Never use max effort.** Models/animation: high, xhigh only sometimes. Everything else: high/medium/low.
+- **PR #124 (v6.9), draft, waiting for the owner to merge:** spinbot is a visor now (free camera, shots go to whoever is nearest the crosshair, LOCKED marker), it spares teammates and the zombies squad, and the party popper works on zombies.
+- **OPEN BUG, not reproduced: "everything renders as black"** (Online, Islands; screenshot showed the map geometry and palms pitch black while the sky, far scenery, water and viewmodel were fine). Tried: Islands fresh, Islands after Zombies via quit, and Zombies -> Islands in the same room (cfg change), at Crusty and Too HD: lights, fog and render all normal. Not the zombies light/fog, not baked AO (floor 0.42). Untested ideas: a lost WebGL context / lost canvas textures (no webglcontextlost handler exists), a map vote path in the Online room, a specific graphics/shadow setting. Ask the owner what happened just before, their graphics preset, and whether a refresh fixes it.
+
+## Queued owner requests (2026-11-08 to 11-10; none started)
+**Top priority (unchanged):** replace ALL buildings and remaining code models with clean Blender ones; replace blocky "natural" code terrain with real rock/formation meshes (like the volcano) so it's less Minecraft; give the normal outdoor maps real terrain shape (hills, dips). S&D versions and Zombies maps stay flat except real stairs, ramps, catwalks, elevated levels, bridges. One test map first, owner approves, then the rest.
+
+**Characters**
+- Joke body sliders: bigger butt and bigger head (separately), plus male / female body type options.
+
+**Zombies**
+- New maps with multiple floors and dynamic structure: a HIGH SCHOOL and a HOSPITAL, each with its own uniquely skinned zombies.
+- Mini bosses. More zombie types.
+- A weapon upgrade machine (our own take on pack-a-punch; original name and look).
+- More cola options.
+- Dismemberment: limbs come off; a zombie with no legs crawls slowly.
+
+**Base game**
+- Laptop utility item: puts pop-up ads on an enemy's screen.
+- Shader options in settings: bloom, subsurface scattering, fidelity levels, etc.
+- Pits: outside Warehouse you just fall through the map. Give pits real bottoms/hazards (the volcano's lava pit should burn you).
+- Remove redundant subtext/captions that are all over the game.
+- S&D: reference CS and Valorant; reduce the fire rate on some weapons.
+- Gun Game: rotate the weapon pool between matches (it's always the same ladder now).
+- Spinbot/aimbot: done in #124.
+
+**Tools**
+- Owner linked https://github.com/gokayfem/image-to-sculpt as a possible model tool. Evaluate it (license, output quality vs the code-built Blender pipeline, whether it fits the PS1 kit) before adopting; keep our own designs.
+
+**OVERDUE, Act I climax (owner's idea + sketch): the train**
+- You're on a train with your crew. One crewmate has body mods that amount to a built-in Overdrive Rig. You take a basic one that turns an upgraded Blood Cross into a minigun.
+- He's already badly hurt. You kill him on the train at his own request: he tells you to take his bio material to strengthen yourself and beat what's chasing you.
+- The chaser: a giant MASK the size of the whole tunnel, with black arm-like tentacles. It reaches the arms out from behind/under the mask and drags itself forward by grabbing the tunnel walls.
+- The fight: shoot the tentacles reaching for you, and shoot the mask to crack it open and expose the ugly thing behind it.
+- Tone (owner): like Cyberpunk. Go serious, gory and dark; characters can and will die. Original designs and names only.
