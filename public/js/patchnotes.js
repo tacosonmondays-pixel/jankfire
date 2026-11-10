@@ -1,6 +1,12 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '6.10', date: '2026-11-10', title: 'PITS HAVE BOTTOMS', items: [
+    'MOUNT KABOOM is not a hot tub. fall down the volcano on Islands and you land in lava: it burns you the whole time you stand in it, keeps burning for a moment after you climb out, and if it finishes you the crater coughs your bits back up. grapple out fast or get EXTRA CRISPY.',
+    'the sea drowns you properly now. deep water holds you up for a second while you sink (grapple out!), and you are gone when your head goes under, instead of dropping through the sea bed. same on the oil rig.',
+    'long falls end where the ground is: the Desert canyon ends in the river (SPLOOSH), the rooftops end on the street (SPLAT). no more dying in mid air.',
+    'bots know the volcano is hot and walk round it.',
+  ] },
   { v: '6.8', date: '2026-11-07', title: 'SPRAY RANGE', items: [
     'TRAINING has a SPRAY RANGE now: a wall left of the firing line with a head ring 10 m out. step onto the sand and the plant & defuse guns kick like they do in P&D. hold fire, pull down, and the last spray\'s holes stay on the wall in hot pink. the rest of training is as dumb as ever.',
     'the little first-person spectate box in royale sits under the stats now instead of on top of them.',
