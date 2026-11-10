@@ -6,6 +6,7 @@
 // Installed by server/zombies.js. It wraps a few Room methods (friendly, botThink, fillBots, remove, modeJoin) so
 // server.js needs no changes.
 import { WEAPONS, ITEMS, BOT_DIFF } from '../shared/weapons.js';
+import { ZM_COLAS, zmUpPrice } from '../shared/zmshop.js';
 import { ZM, zmAmmo, zmAreaAt, zmMachPrice } from '../shared/zombies.js';
 import { flow, downhill, cellOf } from './zombies.js';
 import { BOT_DROPS } from './zmextra.js';
@@ -264,6 +265,14 @@ const methods = {
     }
     // Jank Cola once the power's on
     if (Z.cola && zs.power && !z.cola && inside(Z.cola.at) && c >= price(ZM.cola) + 300 && free('cola')) return { ...this.zhUseAt('cola', [Z.cola.at[0], 1.3, Z.cola.at[2]], Z.cola.n, 1.4), price: price(ZM.cola) };
+    // the other colas a bot gets something out of (more ammo, getting back up), then the Warranty Voider for the gun in its hands
+    for (const cl of Z.colas || []) {
+      const def = ZM_COLAS[cl.id];
+      if (!def || (cl.id !== 'pockets' && cl.id !== 'getup') || !zs.power || this.zsHas(b, cl.id) || this.zsColaN(b) >= ZM.colaMax || !inside(cl.at) || c < price(def.price) + 500 || !free('cola:' + cl.id)) continue;
+      return { ...this.zhUseAt('cola:' + cl.id, [cl.at[0], 1.3, cl.at[2]], cl.n, 1.4), price: price(def.price) };
+    }
+    const up = Z.up && zs.power && z.guns.includes(b.w) && inside(Z.up.at) ? zmUpPrice(((z.up || {})[b.w] || { t: 0 }).t) : null;
+    if (up != null && c >= price(up) + (per === 'tryhard' ? 0 : 800) && free('up')) return { ...this.zhUseAt('up', [Z.up.at[0] + Z.up.n[0] * 0.4, 1.3, Z.up.at[2] + Z.up.n[2] * 0.4], Z.up.n, 1.3), price: price(up) };
     // a better wall gun (tryhards want the priciest one they can get, the rest something decent and some change left)
     const mine = Math.max(...z.guns.filter((g) => z.ammo[g] == null || z.ammo[g] > 0).map((g) => this.zhWorth(g)), 0), keep = per === 'tryhard' ? 0 : 250; // (an empty gun with no wall to refill it is worth nothing)
     const guns = Z.buys.filter((x) => USABLE(x.w) && x.price >= 900 && !z.guns.includes(x.w) && inside(x.at) && x.price > mine && c >= price(x.price) + keep && free('b' + x.w));
