@@ -9,7 +9,8 @@
 // { type: 'kill', target, kind, boss }                      the quest's killBoss
 import { G } from '../ctx.js';
 import { ME } from '../player.js';
-import { actors, spawnActor, play } from './actors.js';
+import { actors, spawnActor, play, CLIPS } from './actors.js';
+import { makeBossRef } from './bossref.js'; // the referee's boss: where he stands, his real hitboxes, the boss bar
 import { OT } from './overtime.js';
 import { marksNear } from '/shared/city/marks.js';
 
@@ -44,6 +45,8 @@ export function makeBoss(ST, { where, playScene }) {
   const S = () => ST.S;
   const bossOfKind = (k) => (HOOKS[k] ? k : Object.keys(HOOKS).find((b) => HOOKS[b].actor === k || (k && String(k).startsWith(HOOKS[b].actor))));
   const actorOf = (b) => actors.get(HOOKS[b].actor);
+  const REF = makeBossRef({ actorOf: (b) => (HOOKS[b] ? actorOf(b) : null), busy: () => !!(ST.scene && ST.scene.playing()) });
+  B.tick = REF.tick; // (every frame: boot.js)
   function pose(b, o) {
     if (!o) return; const a = actorOf(b); if (!a) return;
     if (o.variant != null) OT.variant(a, o.variant);
@@ -69,10 +72,12 @@ export function makeBoss(ST, { where, playScene }) {
   function hp(b, f, crit) {
     const a = actorOf(b); if (!HOOKS[b]) return;
     const was = B.hp; B.hp = Math.max(0, Math.min(1, f));
-    if (a && (crit || was - B.hp > 0.03) && !(a.clip && a.clip.hold && a.clip.name === 'ot_coffee')) play(a, 'ot_flinch');
+    if (a && (crit || was - B.hp > 0.03) && !(a.clip && a.clip.hold && a.clip.name === 'ot_coffee') && performance.now() > (B.actT || 0)) play(a, 'ot_flinch'); // (never over an attack: its tell has to read)
   }
   B.combat = (ev) => {
     if (!ev || typeof ev !== 'object') return;
+    REF.combat(ev);
+    if (ev.target === 'me' || ev.type === 'down' || ev.type === 'up') return; // (what happens to you is not his HP)
     const id = ev.boss || ev.kind || ev.target;
     // everyone else: a kill counts for the quests (goals match the enemy id or the named npc)
     if (ev.type === 'kill' && !ev.boss && !HOOKS[id] && !(B.on && HOOKS[B.on].actor === id)) { if (typeof ev.kind === 'string') S().emit({ type: 'kill', kind: ev.kind, npc: typeof ev.npc === 'string' ? ev.npc : ev.kind, n: 1 }); return; }
@@ -82,8 +87,8 @@ export function makeBoss(ST, { where, playScene }) {
     if (ev.type === 'hit' && Number.isFinite(ev.hp) && Number.isFinite(ev.max) && ev.max > 0) hp(b, ev.hp / ev.max, !!(ev.crit || ev.head));
     if (ev.type === 'phase' && Number.isFinite(ev.phase)) setPhase(b, ev.phase);
     if (ev.type === 'part' && a && typeof ev.state === 'string') { OT.dmg(a, ev.state); if (ev.state === 'plate_off' && !B.plateOff) { B.plateOff = true; a.clip = null; play(a, 'ot_plate_rip'); } }
-    if (ev.type === 'act' && a && typeof ev.clip === 'string' && /^ot_[a-z_]+$/.test(ev.clip)) { a.clip = null; play(a, ev.clip); }
-    if (ev.type === 'kill' && (ev.boss || HOOKS[b])) S().emit({ type: 'killBoss', boss: b });
+    if (ev.type === 'act' && a && typeof ev.clip === 'string' && /^ot_[a-z_]+$/.test(ev.clip)) { a.clip = null; play(a, ev.clip); B.actT = performance.now() + (CLIPS[ev.clip] ? Math.min(6, CLIPS[ev.clip].len) * 1000 : 0); }
+    if (ev.type === 'kill' && (ev.boss || HOOKS[b])) { if (a && ev.defeat) { a.clip = null; play(a, 'ot_kneel', { hold: true }); } S().emit({ type: 'killBoss', boss: b }); } // (beaten, not dead: on one knee until the story's next step)
   };
   // rehearsal stand-in for the referee: hp fraction -> the hit, the plate at 75%, the phases from content/bosses.js
   B.test = (b, f) => {
@@ -93,6 +98,15 @@ export function makeBoss(ST, { where, playScene }) {
     if (f <= 0.75 && !B.plateOff) B.combat({ type: 'part', boss: b, part: 'plate', state: 'plate_off' });
     for (let i = ph.length - 1; i > 0; i--) if (f < ph[i]) { B.combat({ type: 'phase', boss: b, phase: i }); break; }
     return { hp: B.hp, phase: B.phase };
+  };
+  // the real fight: ask the referee for him (it has the HP, the phases and the attacks). at the arena's mark on the
+  // slice; anywhere else (the test lot) a few steps in front of you. nothing happens where no referee runs
+  B.spawn = (b) => {
+    const h = HOOKS[b]; if (!h || !G.story || !G.story.send) return;
+    if (B.on !== b) enter(b);
+    const p = G.cfg && G.cfg.map === 'story_slice' ? where(h.at) : null;
+    const at = p || [ME.pos[0] - Math.sin(ME.yaw) * 14, ME.pos[1], ME.pos[2] - Math.cos(ME.yaw) * 14];
+    G.story.send('spawn', { kind: b, id: b, at: at.map((x) => Math.round(x * 100) / 100) });
   };
   // the quest side: entering the fight step sets him up; later steps pose him; some steps play a scene when done
   const fightStep = (b, o) => {
@@ -110,7 +124,7 @@ export function makeBoss(ST, { where, playScene }) {
       const prev = B.last[b] || ''; B.last[b] = key;
       if (prev) { const ps = prev.split('/')[1]; if (h.stepDone && h.stepDone[ps] && S().defs.scenes[h.stepDone[ps]]) playScene(h.stepDone[ps]); }
       if (!o) continue;
-      if (fightStep(b, o)) enter(b);
+      if (fightStep(b, o)) { enter(b); B.spawn(b); }
       else if (h.steps && h.steps[o.step]) { if (!actorOf(b)) enter(b); pose(b, h.steps[o.step]); }
     }
   };
