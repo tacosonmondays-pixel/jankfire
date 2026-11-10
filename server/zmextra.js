@@ -48,7 +48,7 @@ const methods = {
     const a = ZM_PISTOLS[w].ammo;
     if (a != null) { z.ammo[w] = a; z.max[w] = a; }
   },
-  zxMaxAmmo(p, w) { return (p.z.max && p.z.max[w] != null ? p.z.max[w] : zmAmmo(w)); },
+  zxMaxAmmo(p, w) { const m = p.z.max && p.z.max[w] != null ? p.z.max[w] : zmAmmo(w); return m == null ? m : Math.round(m * this.zsAmmoMul(p, w)); }, // (Deep Pockets and the voider make it hold more)
   zxPrice(p, price) { return this.zxPerk(p, 'coupons') ? Math.round((price * 0.9) / 10) * 10 : price; },
 
   // ---------------------------------------------------------- what everyone sees (rides in zmInfo)

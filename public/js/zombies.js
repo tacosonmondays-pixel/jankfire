@@ -21,6 +21,7 @@ import { K } from './keys.js';
 import { zxSetup, zxTick, zxTarget, zxPrompt, zxMeter, zxPrice, zxOff } from './zmextra.js'; // boards, drops, the cheat machine
 import { zlSync, zlPose, zlTick, zlClear, zlType, ZL_WHY } from './zmlimbs.js'; // limbs coming off, crawlers, the special zombies
 import { ZT } from '/shared/zmlimbs.js';
+import { zsSetup, zsTick, zsTarget, zsPrompt, zsHold, zsOff } from './zmshop.js'; // the Warranty Voider, the other colas
 const UK = () => K.label('use').toUpperCase(); // the buy / revive key (keys.js 'use', F by default)
 
 const $ = (id) => document.getElementById(id);
@@ -259,9 +260,10 @@ export function zmSetup(mapId) {
   }
   for (const b of zm.buys) group.add(buyBoard(b));
   zxSetup(zm, group); // planks on every window, the cheat machine
+  zsSetup(zm, group); // every cola machine (Jank Cola's too), the voider
+  Z.cola = null;
   Z.crate = buildCrate(zm.crate, group);
   Z.power = buildPower(zm.power, group);
-  Z.cola = buildCola(zm.cola, group);
   buildLamps(zm, group);
   G.scene.add(group);
 }
@@ -273,6 +275,7 @@ function offMode() {
   for (const id of Object.keys(Z.res)) if (W.cd[id] > performance.now() + 1e8) W.cd[id] = 0;
   Z.res = {}; Z.prev = {}; Z.target = null; Z.tally = -1;
   zlClear(); // loose limbs
+  zsOff();
   prompt.textContent = '';
 }
 export function zmReset() { // quit to the menu
@@ -296,6 +299,7 @@ export function updateZombies(dt, now) {
   crateTick(info, dt, now);
   downTick(info, now);
   zxTick(info, dt, now);
+  zsTick(info, dt, now);
   zlSync(info);
   zombiesTick(dt, now);
   zlTick(dt);
@@ -367,7 +371,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 function useTick(info, now) {
   const st = { open: Z.doors.map((d) => d.open), power: !!info.pw, down: (info.dn || []).map((d) => [d[0], d[1], d[2], d[3]]), me: G.myId };
   const here = zmOpenAreas(Z.map, st.open).has(zmAreaAt(Z.map, ME.pos)); // same rule as the server: you have to be somewhere open
-  const t = Z.target = ME.alive && here && info.st !== 'over' ? zmTarget(Z.map, st, eye(), look()) || zxTarget(info, eye(), look()) : null;
+  const t = Z.target = ME.alive && here && info.st !== 'over' ? zmTarget(Z.map, st, eye(), look()) || zsTarget(eye(), look()) || zxTarget(info, eye(), look()) : null;
   let text = '', ok = false;
   if (t) [text, ok] = promptFor(t, info);
   if (now < Z.flashT) { text = Z.flash; ok = Z.flashOk; }
@@ -375,14 +379,14 @@ function useTick(info, now) {
   prompt.className = ok ? 'ok' : 'no';
   if (G.using && t) {
     if (!Z.wasUsing || Z.useK !== t.k) { Z.useT = now; Z.useK = t.k; }
-    const need = (t.kind === 'revive' ? ZM.revive * (G.settings.zload && G.settings.zload.perk === 'quickhands' ? 0.5 : 1) : t.kind === 'power' ? ZM.power : ZM.hold) * 1000;
+    const need = (t.kind === 'revive' ? ZM.revive * (G.settings.zload && G.settings.zload.perk === 'quickhands' ? 0.5 : 1) : t.kind === 'power' ? ZM.power : zsHold(t) || ZM.hold) * 1000;
     const zm = zxMeter(t, now - Z.useT);
-    if (zm) hud.meter(...zm); else hud.meter(Math.min(1, (now - Z.useT) / need), t.kind === 'revive' ? `REVIVING... keep holding ${UK()}` : t.kind === 'power' ? 'THROWING THE SWITCH...' : `HOLD ${UK()}`, t.kind === 'revive' ? '#7dff4f' : '#ffe14d');
+    if (zm) hud.meter(...zm); else hud.meter(Math.min(1, (now - Z.useT) / need), t.kind === 'revive' ? `REVIVING... keep holding ${UK()}` : t.kind === 'power' ? 'THROWING THE SWITCH...' : t.kind === 'up' ? 'VOIDING THE WARRANTY...' : `HOLD ${UK()}`, t.kind === 'revive' ? '#7dff4f' : '#ffe14d');
   }
   Z.wasUsing = G.using;
 }
 function promptFor(t, info) {
-  const zx = zxPrompt(t, info, Z.credits);
+  const zx = zxPrompt(t, info, Z.credits) || zsPrompt(t, info, Z.credits, zxPrice, UK());
   if (zx) return zx;
   const can = (p) => Z.credits >= zxPrice(p);
   if (t.kind === 'door') { const d = Z.map.doors[t.i]; return [`[${UK()}] OPEN ${d.name.toUpperCase()} · ${zxPrice(d.price)}`, can(d.price)]; }
