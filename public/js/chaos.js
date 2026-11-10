@@ -15,6 +15,7 @@ import { MAPS, BOXES } from '/shared/map.js';
 import { GAMES } from '/shared/modes.js';
 import { raycast } from '/shared/physics.js';
 import { surfaces, lavaOk, onLava, LAVA } from '/shared/lava.js';
+import { liquidAt } from './liquids.js'; // (is the camera under water?)
 import { inPit } from '/shared/pits.js';
 
 const $ = (id) => document.getElementById(id);
@@ -42,9 +43,17 @@ function buildLava(s) {
   const pos = [], idx = [];
   let n = 0;
   for (const t of s.tops) {
-    if (!s.lava.has(t.b)) continue;
+    if (!s.lava.has(t.b) || t.b.ter) continue; // (shaped ground: its hidden steps aren't the surface, the heightfield below is)
     const b = t.b, y = b.max[1] + 0.03;
     pos.push(b.min[0], y, b.min[2], b.max[0], y, b.min[2], b.max[0], y, b.max[2], b.min[0], y, b.max[2]);
+    idx.push(n, n + 2, n + 1, n, n + 3, n + 2);
+    n += 4;
+  }
+  const T = C.boxes && C.boxes.terrain;
+  if (T) for (let i = 0; i < T.nx; i++) for (let j = 0; j < T.nz; j++) { // lava laid over the hills and hollows
+    if (!T.ok[i * T.nz + j]) continue;
+    const h = (a, b) => T.H[a * (T.nz + 1) + b] + 0.04, x = T.x0 + i, z = T.z0 + j;
+    pos.push(x, h(i, j), z, x + 1, h(i + 1, j), z, x + 1, h(i + 1, j + 1), z + 1, x, h(i, j + 1), z + 1);
     idx.push(n, n + 2, n + 1, n, n + 3, n + 2);
     n += 4;
   }
@@ -120,7 +129,8 @@ let underOn = false, lavaUnder = false;
 export function underSea(map) {
   const cp = G.camera.position, lq = G.joined && map && map.pits ? inPit(map, [cp.x, cp.y + 0.12, cp.z]) : null; // eyes under the lava: everything goes orange
   if (!!lq !== lavaUnder) { lavaUnder = !!lq; el('lavaUnder').style.cssText = 'position:absolute;inset:0;pointer-events:none;background:rgba(255,96,10,0.82);box-shadow:inset 0 0 200px 70px rgba(120,10,0,0.95);z-index:-1;display:' + (lq ? 'block' : 'none'); }
-  const on = !!map && map.seaY != null && G.joined && G.camera.position.y < map.seaY - 0.02;
+  const c = G.camera.position, s = G.joined && map ? liquidAt(c.x, c.y, c.z, 4, 0) : null; // any water you can get your head under: the sea, a pond
+  const on = !!map && G.joined && ((map.seaY != null && c.y < map.seaY - 0.02) || (!!s && s.kind === 'water' && c.y < s.top - 0.02));
   if (on === underOn) return;
   underOn = on;
   const e = el('seaUnder');

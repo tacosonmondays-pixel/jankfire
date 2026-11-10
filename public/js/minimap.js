@@ -51,7 +51,7 @@ export function paintBoxes(x, map, toMap, S, opt = {}) {
     x.fillStyle = (royale ? ROYALE : NEON)(b, k);
     const w = Math.max(1, px1 - px0), h = Math.max(1, pz1 - pz0);
     x.fillRect(px0, pz0, w, h);
-    if (!royale && b.max[1] - b.min[1] > 1.6 && b.max[1] > band.floor + 1.2) { x.strokeStyle = 'rgba(79,216,255,0.55)'; x.lineWidth = 1; x.strokeRect(px0 + 0.5, pz0 + 0.5, w - 1, h - 1); } // walls + buildings: a cyan edge
+    if (!royale && !b.ter && b.max[1] - b.min[1] > 1.6 && b.max[1] > band.floor + 1.2) { x.strokeStyle = 'rgba(79,216,255,0.55)'; x.lineWidth = 1; x.strokeRect(px0 + 0.5, pz0 + 0.5, w - 1, h - 1); } // walls + buildings: a cyan edge
   }
 }
 

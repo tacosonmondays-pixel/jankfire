@@ -1,0 +1,89 @@
+/* Touch controls (phones + tablets). Everything here hangs off html.touch, which only touchboot.js sets: desktop never matches.
+   --tu = page px per finger px (the page is zoomed out on small screens), --ts = the player's button size, --ta = opacity. */
+#touchSet, #touchRot, #touchUI { display: none; }
+html.touch #touchSet { display: block; }
+html.touch, html.touch body { touch-action: manipulation; overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
+html.touch body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+html.touch input, html.touch textarea { -webkit-user-select: text; user-select: text; }
+html.touch #ctlBtn { display: none; } /* key bindings are for keyboards */
+html.touch.tsmall .tfs, html.touch:not(.tsmall) .tfsNote { display: none; }
+
+/* ---- the layer + buttons */
+html.touch #touchUI { display: block; position: fixed; inset: 0; touch-action: none; --u: calc(var(--tu, 1) * var(--ts, 1) * 1px);
+  --sr: env(safe-area-inset-right, 0px); --sl: env(safe-area-inset-left, 0px); --sb: env(safe-area-inset-bottom, 0px); --st: env(safe-area-inset-top, 0px); }
+html.touch #touchUI.hidden { display: none; }
+#touchUI .tb { position: absolute; box-sizing: border-box; width: calc(var(--d) * var(--u)); height: calc(var(--d) * var(--u));
+  right: calc(var(--sr) + var(--x) * var(--u) - var(--d) * var(--u) / 2); bottom: calc(var(--sb) + var(--y) * var(--u) - var(--d) * var(--u) / 2);
+  display: grid; place-items: center; border-radius: 50%; border: calc(3 * var(--u)) solid #000; background: #fff; color: #000;
+  font: 700 calc(11 * var(--u)) var(--font); letter-spacing: 0.5px; box-shadow: calc(4 * var(--u)) calc(4 * var(--u)) 0 var(--cyan, #4fd8ff);
+  opacity: var(--ta, 0.75); transform: rotate(-3deg); }
+#touchUI .tb.hidden { display: none; }
+#touchUI .tb.top { bottom: auto; top: calc(var(--st) + var(--y) * var(--u) - var(--d) * var(--u) / 2); border-radius: calc(8 * var(--u)); font-size: calc(9 * var(--u));
+  box-shadow: calc(3 * var(--u)) calc(3 * var(--u)) 0 #ff4fd8; transform: rotate(2deg); }
+#touchUI .tb.on { transform: translate(calc(3 * var(--u)), calc(3 * var(--u))) rotate(-3deg); box-shadow: 0 0 0 #000; opacity: 1; filter: brightness(0.85); }
+#touchUI .tb-fire { background: #ffe14d; font-size: calc(17 * var(--u)); box-shadow: calc(5 * var(--u)) calc(5 * var(--u)) 0 #ff4fd8; transform: rotate(-6deg); }
+#touchUI .tb-jump { background: #4fd8ff; box-shadow: calc(4 * var(--u)) calc(4 * var(--u)) 0 #ff4fd8; font-size: calc(13 * var(--u)); }
+#touchUI .tb-grapple { background: #7dff4f; box-shadow: calc(4 * var(--u)) calc(4 * var(--u)) 0 #000; font-size: calc(13 * var(--u)); transform: rotate(4deg); }
+#touchUI .tb-aim { background: #ff4fd8; color: #fff; text-shadow: 1px 1px 0 #000; }
+#touchUI .tb-reload, #touchUI .tb-melee, #touchUI .tb-swap { font-size: calc(9 * var(--u)); }
+#touchUI .tb-use, #touchUI .tb-buy { background: #ffe14d; }
+#touchUI .tb-kh { font-size: calc(9 * var(--u)); }
+#touchUI .tb-pause { font-size: calc(13 * var(--u)); letter-spacing: 1px; }
+html.touch.lefty #touchUI .tb { right: auto; left: calc(var(--sl) + var(--x) * var(--u) - var(--d) * var(--u) / 2); }
+/* a tap anywhere does the thing (drop in / skip / next player): the buttons step back */
+#touchUI.gate .tb:not(.top), #touchUI.gate .tstick { opacity: 0.18; }
+
+/* ---- the stick: a ghost where your thumb should go, the real one wherever it lands */
+#touchUI .tstick { position: absolute; left: calc(var(--sl) + 92 * var(--u)); top: calc(100% - var(--sb) - 96 * var(--u)); width: 0; height: 0; opacity: calc(var(--ta, 0.75) * 0.55); pointer-events: none; }
+html.touch.lefty #touchUI .tstick:not(.live) { left: calc(100% - var(--sr) - 92 * var(--u)); }
+#touchUI .tstick::before { content: ''; position: absolute; left: calc(-52 * var(--u)); top: calc(-52 * var(--u)); width: calc(104 * var(--u)); height: calc(104 * var(--u)); box-sizing: border-box;
+  border-radius: 50%; border: calc(3 * var(--u)) dashed #fff; background: rgba(18, 8, 24, 0.35); }
+#touchUI .tstick i { position: absolute; left: calc(-23 * var(--u)); top: calc(-23 * var(--u)); width: calc(46 * var(--u)); height: calc(46 * var(--u)); box-sizing: border-box;
+  border-radius: 50%; background: #ff4fd8; border: calc(3 * var(--u)) solid #000; box-shadow: calc(3 * var(--u)) calc(3 * var(--u)) 0 #4fd8ff; }
+#touchUI .tstick.live { opacity: var(--ta, 0.75); }
+#touchUI .tstick.live::before { border-style: solid; }
+
+/* ---- the HUD makes room: its boxes that are buttons take taps, the corners belong to thumbs */
+html.touch #weapons .hslot, html.touch #streakTray .kstreak, html.touch #ammo, html.touch #lbReady, html.touch #voteOpts > * { pointer-events: auto; }
+html.touch #hud .hslot .key, html.touch #streakTray .kstreak b, html.touch #lbReady i { display: none; } /* no keyboard, no key hints */
+html.touch #streakTray { right: auto; bottom: auto; left: calc(var(--mmw, 190px) + 34px); top: 12px; }
+html.touch.lefty #streakTray { left: auto; right: calc(var(--mmw, 190px) + 34px); }
+html.touch #feed { top: calc(env(safe-area-inset-top, 0px) + 52 * var(--tu, 1) * var(--ts, 1) * 1px); }
+html.touch #ammo { right: auto; left: 50%; bottom: 84px; transform: translateX(-50%); font-size: 24px; padding: 0 12px; white-space: nowrap; }
+html.touch #weaponName { bottom: 124px; }
+html.touch #speed { bottom: 176px; }
+html.touch #hotbar { bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); }
+html.touch #hpbox { left: calc(env(safe-area-inset-left, 0px) + 20px); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); }
+html.touch #chatlog { bottom: auto; top: 46%; max-width: 30vw; opacity: 0.85; }
+html.touch #chatin { bottom: auto; top: 12px; left: 50%; transform: translateX(-50%); font-size: 20px; padding: 8px 12px; z-index: 40; }
+
+/* ---- portrait: one card, nothing else */
+html.touch.portrait #touchRot { display: grid; place-items: center; position: fixed; inset: 0; z-index: 1000; background: #120818; }
+#touchRot > div { background: rgba(18, 8, 24, 0.92); border: 4px solid #ff4fd8; box-shadow: 8px 8px 0 #4fd8ff; padding: 22px 26px; text-align: center; transform: rotate(-2deg); max-width: 78vw; font-family: var(--font); }
+#touchRot b { display: block; font-size: 30px; color: #ffe14d; text-shadow: 3px 3px 0 #000; }
+#touchRot span { display: block; margin-top: 8px; font-size: 17px; color: #fff; }
+#touchRot > div::before { content: '↻'; display: block; font-size: 64px; line-height: 1; color: #4fd8ff; animation: trot 1.6s steps(8) infinite; }
+@keyframes trot { to { transform: rotate(360deg); } }
+
+/* ---- menus: fat fingers. sliders, ticks and dropdowns get bigger targets */
+html.touch #menu input[type=range] { height: 30px; min-width: 160px; }
+html.touch #menu input[type=checkbox] { width: 22px; height: 22px; vertical-align: middle; }
+html.touch #menu select { min-height: 34px; font-size: 16px; }
+html.touch #menu .setcol label { padding: 3px 0; }
+html.touch label:has(#sens), html.touch label:has(#displayMode), html.touch label:has(#hotbarPos) { display: none; } /* mouse, window and side-hotbar options: not on a phone */
+html.touch #czStage, html.touch #ncCanvas { touch-action: none; } /* drag to spin / draw, not to scroll */
+#touchUI.watch .tb:not(.tb-pause), #touchUI.watch .tstick { display: none; }
+/* left-handed: the whole HUD swaps sides with the thumbs */
+html.touch.lefty #mmWrap { left: auto; right: 22px; }
+html.touch.lefty #feed { right: auto; left: 16px; text-align: left; align-items: flex-start; }
+html.touch.lefty #chatlog { left: auto; right: 16px; }
+#touchUI .tb-auto { background: #2a1a30; color: #888; box-shadow: calc(3 * var(--u)) calc(3 * var(--u)) 0 #000; }
+#touchUI .tb-auto.lit { background: #39ff14; color: #000; box-shadow: calc(3 * var(--u)) calc(3 * var(--u)) 0 #ff4fd8; }
+/* ?story=1 on a phone: a note, not a story */
+#touchNoStory { position: fixed; left: 50%; top: 18px; z-index: 60; transform: translateX(-50%) rotate(-1deg); max-width: min(560px, 86vw); padding: 12px 18px; text-align: center;
+  background: rgba(18, 8, 24, 0.92); border: 4px solid #ff4fd8; box-shadow: 8px 8px 0 #4fd8ff; font-family: var(--font); color: #fff; }
+#touchNoStory b { display: block; font-size: 22px; color: #ffe14d; text-shadow: 2px 2px 0 #000; }
+#touchNoStory span { display: block; font-size: 15px; margin-top: 4px; }
+#touchNoStory i { display: block; font-size: 12px; margin-top: 6px; color: #4fd8ff; font-style: normal; }
+html.touch #adsLayer .ad { pointer-events: auto; } /* tap an ad to close it */
+#touchUI .tb-scythe, #touchUI .tb-dash { background: #1fd6c1; font-size: calc(10 * var(--u)); }

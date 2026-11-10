@@ -10,6 +10,9 @@ import { raycast, movePlayer, query } from '../shared/physics.js';
 import { randomContainer } from '../shared/cosmetics.js';
 import { installZmExtra } from './zmextra.js';
 import { installZmBots } from './zmbots.js';
+import { installZmLimbs } from './zmlimbs.js';
+import { installZmShop } from './zmshop.js';
+import { installZmBoss } from './zmboss.js';
 import { ZM, zmCount, zmHp, zmMaxAlive, zmGap, zmGait, zmAmmo, zmAmmoPrice, zmPick, zmTarget, zmAreaAt, zmOpenAreas } from '../shared/zombies.js';
 
 let send = () => {}, stat = () => {}, store = null;
@@ -45,35 +48,67 @@ function navFor(id) {
   return NAV.get(id);
 }
 export function buildNav(map) {
-  const [x0, z0, x1, z1] = map.zm.bounds, W = Math.ceil(x1 - x0), D = Math.ceil(z1 - z0), top = map.zm.H - 0.3;
-  const floor = new Float32Array(W * D).fill(NaN), door = new Int16Array(W * D).fill(-1), q = [];
+  const [x0, z0, x1, z1] = map.zm.bounds, W = Math.ceil(x1 - x0), D = Math.ceil(z1 - z0), top = map.zm.H - 0.3, WD = W * D;
   const fits = (b, x, y, z, r = 0.35) => x - r < b.max[0] && x + r > b.min[0] && y + 0.3 < b.max[1] && y + 1.75 > b.min[1] && z - r < b.max[2] && z + r > b.min[2];
+  // every floor under each cell, top to bottom: a map with an upstairs has cells with two (or three) of them
+  const cols = [], q = [];
+  let L = 1;
   for (let j = 0; j < D; j++) for (let i = 0; i < W; i++) {
-    const x = x0 + i + 0.5, z = z0 + j + 0.5;
-    const h = raycast([x, top, z], [0, -1, 0], top + 2, map.boxes);
-    if (!h || h.normal[1] !== 1) continue; // no floor, or we started inside a wall
-    const y = h.point[1];
-    if (query(map.boxes, x - 0.4, z - 0.4, x + 0.4, z + 0.4, q).some((b) => fits(b, x, y, z))) continue;
-    floor[j * W + i] = y;
-    door[j * W + i] = map.zm.doors.findIndex((d) => fits(d.box, x, y, z, 0.5)); // the whole cell: shutters are thinner than one
+    const x = x0 + i + 0.5, z = z0 + j + 0.5, ys = [];
+    for (let from = top, k = 0; k < 6 && from > -1; k++) {
+      const h = raycast([x, from, z], [0, -1, 0], from + 2, map.boxes);
+      if (!h) break;
+      const y = h.point[1];
+      if (h.normal[1] === 1 && !query(map.boxes, x - 0.4, z - 0.4, x + 0.4, z + 0.4, q).some((b) => fits(b, x, y, z))) ys.push(y); // a zombie fits standing on it
+      // on down through whatever that was, to the next gap under it
+      let low = y - 0.05;
+      for (let g = 0; g < 8; g++) { const inb = query(map.boxes, x - 0.01, z - 0.01, x + 0.01, z + 0.01, q).filter((b) => b.min[1] < low && b.max[1] > low - 0.02 && x > b.min[0] && x < b.max[0] && z > b.min[2] && z < b.max[2]); if (!inb.length) break; low = Math.min(...inb.map((b) => b.min[1])) - 0.02; }
+      from = low;
+    }
+    ys.sort((a, b) => a - b); // layer 0 = the lowest floor
+    cols.push(ys); if (ys.length > L) L = ys.length;
   }
-  return { x0, z0, W, D, floor, door };
+  const N = WD * L, floor = new Float32Array(N).fill(NaN), door = new Int16Array(N).fill(-1);
+  cols.forEach((ys, col) => ys.forEach((y, l) => {
+    const c = l * WD + col, x = x0 + (col % W) + 0.5, z = z0 + ((col / W) | 0) + 0.5;
+    floor[c] = y;
+    door[c] = map.zm.doors.findIndex((d) => fits(d.box, x, y, z, 0.5)); // the whole cell: shutters are thinner than one
+  }));
+  return { x0, z0, W, D, L, WD, N, floor, door };
 }
 const D8 = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.414], [1, -1, 1.414], [-1, 1, 1.414], [-1, -1, 1.414]];
 const walkable = (nav, open, c) => nav.floor[c] === nav.floor[c] && (nav.door[c] < 0 || !!open[nav.door[c]]);
-function link(nav, open, c, di, dj) { // the neighbour cell a zombie can step to from c, or -1
-  const i = (c % nav.W) + di, j = ((c / nav.W) | 0) + dj;
+// the cell (on whichever floor) a zombie on c steps onto going (di, dj): at most a step up or down. -1 = none
+function step(nav, open, c, di, dj, any = false) {
+  const col = c % nav.WD, i = (col % nav.W) + di, j = ((col / nav.W) | 0) + dj;
   if (i < 0 || j < 0 || i >= nav.W || j >= nav.D) return -1;
-  const n = j * nav.W + i;
-  if (!walkable(nav, open, n) || Math.abs(nav.floor[n] - nav.floor[c]) > 0.55) return -1;
-  if (di && dj && (!walkable(nav, open, c + di) || !walkable(nav, open, c + dj * nav.W))) return -1;
+  let best = -1, bd = any ? Infinity : 0.55;
+  for (let l = 0; l < nav.L; l++) { const n = l * nav.WD + j * nav.W + i; if (!walkable(nav, open, n)) continue; const d = Math.abs(nav.floor[n] - nav.floor[c]); if (d <= bd) { bd = d; best = n; } }
+  return best;
+}
+function link(nav, open, c, di, dj) { // the neighbour cell a zombie can step to from c, or -1 (no cutting corners)
+  const n = step(nav, open, c, di, dj);
+  if (n < 0) return -1;
+  if (di && dj && (step(nav, open, c, di, 0) < 0 || step(nav, open, c, 0, dj) < 0)) return -1;
   return n;
 }
+// the cell under a position: the floor it's standing on (the highest one not above its knees), else the nearest
 function cellOf(nav, p) {
   const i = Math.floor(p[0] - nav.x0), j = Math.floor(p[2] - nav.z0);
-  return i >= 0 && j >= 0 && i < nav.W && j < nav.D ? j * nav.W + i : -1;
+  if (i < 0 || j < 0 || i >= nav.W || j >= nav.D) return -1;
+  const col = j * nav.W + i;
+  if (nav.L === 1) return col;
+  let best = -1, bd = Infinity, any = col;
+  for (let l = 0; l < nav.L; l++) {
+    const y = nav.floor[l * nav.WD + col];
+    if (y !== y) continue;
+    const d = p[1] + 0.7 - y; // how far under us it is
+    if (d >= 0 && d < bd) { bd = d; best = l * nav.WD + col; }
+    any = l * nav.WD + col;
+  }
+  return best >= 0 ? best : any;
 }
-const center = (nav, c) => [nav.x0 + (c % nav.W) + 0.5, nav.z0 + ((c / nav.W) | 0) + 0.5];
+const center = (nav, c) => { const col = c % nav.WD; return [nav.x0 + (col % nav.W) + 0.5, nav.z0 + ((col / nav.W) | 0) + 0.5]; };
 // Dijkstra out from the player (seeded on the cells round them they can see: they might be up on a table)
 function flow(nav, open, at, boxes, out) {
   out.fill(Infinity);
@@ -88,16 +123,19 @@ function flow(nav, open, at, boxes, out) {
   for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) {
     const i = ci + di, j = cj + dj;
     if (i < 0 || j < 0 || i >= nav.W || j >= nav.D) continue;
-    const c = j * nav.W + i;
-    if (!walkable(nav, open, c)) continue;
-    const [x, z] = center(nav, c), dx = x - at[0], dz = z - at[2], d = Math.hypot(dx, dz);
-    if (d > 2.2) continue;
-    if (d > 0.3 && raycast([at[0], at[1] + 0.5, at[2]], [dx / d, 0, dz / d], d, boxes)) continue; // not through a wall (from their height: over a table they're on)
-    if (d < out[c]) { out[c] = d; push(c, d); }
+    for (let l = 0; l < nav.L; l++) {
+      const c = l * nav.WD + j * nav.W + i;
+      if (!walkable(nav, open, c)) continue;
+      if (nav.L > 1 && (nav.floor[c] > at[1] + 0.8 || nav.floor[c] < at[1] - 2.2)) continue; // their floor (or the one they're stood over), not the one upstairs
+      const [x, z] = center(nav, c), dx = x - at[0], dz = z - at[2], d = Math.hypot(dx, dz);
+      if (d > 2.2) continue;
+      if (d > 0.3 && raycast([at[0], at[1] + 0.5, at[2]], [dx / d, 0, dz / d], d, boxes)) continue; // not through a wall (from their height: over a table they're on)
+      if (d < out[c]) { out[c] = d; push(c, d); }
+    }
   }
   while (hc.length) {
     const [c, d] = pop();
-    if (d > out[c]) continue;
+    if (d > out[c] + 1e-3) continue; // (out is float32: the stored copy of d can be a hair under it)
     for (const [di, dj, w] of D8) { const n = link(nav, open, c, di, dj); if (n >= 0 && d + w < out[n]) { out[n] = d + w; push(n, d + w); } }
   }
 }
@@ -109,8 +147,7 @@ function downhill(nav, open, f, pos, boxes) {
     let nb = -1, nd = f[c];
     const on = walkable(nav, open, c);
     for (const [di, dj] of D8) {
-      let n = on ? link(nav, open, c, di, dj) : -1;
-      if (!on) { const i = (c % nav.W) + di, j = ((c / nav.W) | 0) + dj; if (i >= 0 && j >= 0 && i < nav.W && j < nav.D && walkable(nav, open, j * nav.W + i)) n = j * nav.W + i; } // knocked off the grid: any way back on
+      const n = on ? link(nav, open, c, di, dj) : step(nav, open, c, di, dj, true); // knocked off the grid: any way back on
       if (n >= 0 && f[n] < nd) { nd = f[n]; nb = n; }
     }
     if (nb < 0) break;
@@ -134,7 +171,7 @@ const methods = {
     if (!on) { if (had && this.mode === 'bots') this.fillBots(); return; }
     const n = now(), Z = this.map.zm;
     this.zs = {
-      map: this.cfg.map, nav: navFor(this.cfg.map), open: Z.doors.map(() => false), power: false,
+      map: this.cfg.map, nav: navFor(this.cfg.map), open: Z.doors.map(() => !!ZM.allOpen), power: !!ZM.powerOn, // (test knobs)
       n: Math.max(0, (ZM.startRound || 1) - 1), st: 'pre', until: n + ZM.first, toSpawn: 0, spawnAt: 0,
       box: { st: 0, by: 0, w: '', until: 0 }, fields: new Map(), fieldT: n, win: Z.windows.map(() => 0), dead: [], list: [], tick: 0, lastT: n,
     };
@@ -148,6 +185,7 @@ const methods = {
   // a fresh kit: 500 credits, the revolver and the knife
   zmJoin(p) {
     p.z = { c: ZM.start, guns: [], melee: '', ammo: {}, shotT: {}, kills: 0, heads: 0, downs: 0, revives: 0, earned: 0, hurtT: 0, cola: false, down: null, dead: false };
+    this.zsJoin(p); // no colas, nothing voided
     this.zxJoin(p); // your zombies loadout: the passive's money, your item
     this.zmKit(p);
     send(p, { t: 'streak', reset: 1 }); // the streak count starts over (the tray is hidden and deploy is off)
@@ -155,6 +193,7 @@ const methods = {
   zmKit(p) {
     const z = p.z;
     z.melee = ZM.startMelee;
+    this.zsKit(p);
     this.zxKit(p); // your start pistol
   },
   // what p is carrying (sendLoadout calls this on every spawn): their guns + melee and the ammo each one has left
@@ -167,6 +206,7 @@ const methods = {
     if (p.team !== 1) { p.team = 1; this.broadcast({ t: 'teams', game: this.game, list: [[p.id, 1, p.color]] }); }
     p.forced = true; // so the next mode hands their own loadout back
     send(p, { t: 'zl', slots: [...p.z.guns, p.z.melee], ammo: p.z.ammo, want: want || undefined, c: p.z.c, it: p.item });
+    this.zsMine(p); // your colas, what you've had voided
   },
   // the squad: the people playing (not a test watcher) and the bots filling their empty slots (server/zmbots.js)
   zmSquad() { return [...this.players.values()].filter((p) => (!p.isBot && !p.watch) || p.zmh); },
@@ -191,6 +231,8 @@ const methods = {
       n: zs.n, st: zs.st, left: zs.toSpawn + alive, br: zs.st === 'pre' || zs.st === 'break' ? Math.max(0, zs.until - n) : 0,
       o: zs.open.reduce((a, o, i) => (o ? a.concat(i) : a), []), pw: zs.power ? 1 : 0, bx: bx.st ? [bx.st, bx.by, bx.w, Math.max(0, bx.until - n)] : 0, dn, pts,
       ...this.zxInfo(n), // planks, drops, modifiers, the machine
+      ...this.zlInfo(n), // limbs gone, the special zombies
+      ...this.zbInfo(), // a mini boss's HP bar
     };
   },
 
@@ -208,12 +250,15 @@ const methods = {
     this.zmPlayers(n, dt, hs);
     this.zmCrate(n);
     this.zxTick(n, hs); // drops to grab, modifiers running out, the machine landing
-    for (const b of zs.list) if (b.zmz.ph === 'hunt' && (n - b.zmz.seen > 25000 || b.zmz.stuck > 8)) { this.remove(b); zs.toSpawn++; } // lost or wedged: try again from a window
-    if (hs.length && hs.every((h) => !h.alive)) { this.zmGameOver(); return; }
+    this.zlTick(n); // the Screamer shrieking, Chonks popping
+    this.zsTick(); // ZAPPY guns arcing
+    this.zbTick(n, hs); // a mini boss's tricks
+    for (const b of zs.list) if (b.zmz.ph === 'hunt' && (n - b.zmz.seen > 25000 || b.zmz.stuck > 8)) { if (b.zmz.boss) this.zbLost(b); this.remove(b); zs.toSpawn++; } // lost or wedged: try again from a window
+    if (hs.length && hs.every((h) => !h.alive && !(h.z && h.z.down && h.z.down.self))) { this.zmGameOver(); return; } // (someone on Get Up Juice isn't out yet)
     if (zs.st !== 'live') { if (n >= zs.until) this.zmNextRound(n, hs); return; }
     let alive = 0;
     for (const b of this.players.values()) if (b.zmz && b.alive) alive++;
-    if (zs.toSpawn > 0 && alive < zmMaxAlive(hs.length) && n >= zs.spawnAt) zs.spawnAt = n + (this.zmSpawn(n, hs) ? zmGap(zs.n, hs.length) : 500);
+    if (zs.toSpawn > 0 && alive < zmMaxAlive(hs.length) && n >= zs.spawnAt) zs.spawnAt = n + (this.zmSpawn(n, hs) ? (this.zlPackWin() >= 0 ? 260 : zmGap(zs.n, hs.length)) : 500); // (ankle biters come three at a time)
     if (zs.toSpawn <= 0 && !alive) this.zmCleared(n, hs);
   },
   zmNextRound(n, hs) {
@@ -221,6 +266,7 @@ const methods = {
     zs.n++; zs.st = 'live';
     zs.toSpawn = zmCount(zs.n, hs.length); zs.spawnAt = n + 1500;
     this.zxRound();
+    this.zbRound(n, hs); // every fifth round: a mini boss
     for (const h of hs) if (!h.alive) this.zmRespawn(h); // the dead come back for the new round
     this.broadcast({ t: 'zround', k: 'start', n: zs.n, count: zs.toSpawn });
   },
@@ -241,8 +287,8 @@ const methods = {
     for (const h of hs) {
       if (!h.alive) continue;
       let f = zs.fields.get(h.id);
-      if (!f) zs.fields.set(h.id, (f = { d: new Float32Array(nav.W * nav.D), t: 0, at: [1e9, 0, 0] }));
-      const moved = Math.hypot(h.pos[0] - f.at[0], h.pos[2] - f.at[2]);
+      if (!f) zs.fields.set(h.id, (f = { d: new Float32Array(nav.N), t: 0, at: [1e9, 0, 0] }));
+      const moved = Math.hypot(h.pos[0] - f.at[0], h.pos[2] - f.at[2]) + Math.abs(h.pos[1] - f.at[1]) * (nav.L > 1 ? 1 : 0);
       if (f.t > zs.fieldT && n - f.t < 1500 && (n - f.t < 300 || moved < 0.75)) continue;
       flow(nav, zs.open, h.pos, this.boxes, f.d);
       f.t = n; f.at = h.pos.slice();
@@ -255,6 +301,7 @@ const methods = {
       if (!z) continue;
       if (h.alive) { if (h.hp < 100 && n - z.hurtT > ZM.regenAfter * (this.zxPerk(h, 'secondwind') ? 500 : 1000)) h.hp = Math.min(100, h.hp + ZM.regen * (z.cola ? 1.6 : 1) * dt); continue; }
       if (!z.down) continue;
+      if (z.down.self && n >= z.down.self && this.zs.st !== 'over') { this.zmRevive(h, null); continue; } // Get Up Juice
       if (this.zmReviver(h, n)) z.down.until += dt * 1000;
       else if (n >= z.down.until) { z.down = null; z.dead = true; this.broadcast({ t: 'zdown', id: h.id, k: 'out' }); }
     }
@@ -297,6 +344,7 @@ const methods = {
     if (t.zmz) {
       zs.dead.push(t);
       this.zxDrop(t, killer); // maybe a power-up
+      this.zlKilled(t, killer); // the specials pay extra, a Chonk pops
       if (killer && killer !== t && killer.z && !killer.zmz) {
         const melee = !!WEAPONS[w] && (WEAPONS[w].kind === 'melee' || w === 'slipper'), head = !!t.lastHs && !melee;
         this.zmGive(killer, melee || head ? ZM.bonus : ZM.kill, melee ? 'melee' : head ? 'head' : 'kill');
@@ -307,8 +355,10 @@ const methods = {
     }
     if (!t.z) return; // (people and the squad's bots go down)
     const z = t.z;
-    z.downs++; z.cola = false;
-    z.down = zs.st !== 'over' && this.zmSquad().some((h) => h !== t && h.alive) ? { at: t.pos.slice(), until: now() + ZM.bleed * (this.zxPerk(t, 'stubborn') ? 2000 : 1000) } : null;
+    z.downs++;
+    const self = this.zsDowned(t); // Get Up Juice: back up on your own in a few seconds (and it's the only cola you lose)
+    if (!self) { z.cola = false; this.zsMine(t); }
+    z.down = zs.st !== 'over' && (self || this.zmSquad().some((h) => h !== t && h.alive)) ? { at: t.pos.slice(), until: now() + ZM.bleed * (this.zxPerk(t, 'stubborn') ? 2000 : 1000), self: self ? now() + self : 0 } : null;
     z.dead = !z.down;
     this.broadcast({ t: 'zdown', id: t.id, k: z.down ? 'down' : 'dead' });
   },
@@ -334,12 +384,12 @@ const methods = {
   zmGive(p, d, why) { if (d > 0 && this.zxMod('taxfraud', p)) d *= 2; p.z.c += d; if (d > 0) p.z.earned += d; send(p, { t: 'zc', c: p.z.c, d, why }); },
   // damage hook: hits on zombies pay +10 (a zombie's first 10, one per player per 180 ms), zombie claws hit equally hard
   // in every room and half as hard with a Jank Cola, and getting hurt holds off your regen
-  zmDamage(t, amt, a) {
+  zmDamage(t, amt, a, w, hs) {
     const n = now();
     if (t.zmz) {
       const z = t.zmz;
       if (a && a.z && !a.zmz && amt > 0 && z.hits < ZM.hitCap && n - (z.hitAt[a.id] || 0) >= ZM.hitGap) { z.hitAt[a.id] = n; z.hits++; this.zmGive(a, ZM.hit, 'hit'); }
-      return a && a.z && !a.zmz ? this.zxHit(t, amt, a) : amt; // the cheat machine's modifiers
+      return a && a.z && !a.zmz ? this.zlHit(t, this.zxHit(t, this.zsHit(t, amt, a, w), a), a, w, hs) : amt; // the cheat machine's modifiers, then which limb it took
     }
     if (!t.z) return amt;
     t.z.hurtT = n;
@@ -374,14 +424,14 @@ const methods = {
     const zs = this.zs, n = now();
     if (!p.alive || !p.z || zs.st === 'over') return;
     const inside = zs.areas.has(zmAreaAt(this.map.zm, p.pos));
-    const t = inside ? zmTarget(this.map.zm, this.zmView(p), eyeOf(p), lookOf(p), 0.6) || this.zxTarget(p, eyeOf(p), lookOf(p)) : null; // then the boards and the machine
+    const t = inside ? zmTarget(this.map.zm, this.zmView(p), eyeOf(p), lookOf(p), 0.6) || this.zsTarget(p, eyeOf(p), lookOf(p)) || this.zxTarget(p, eyeOf(p), lookOf(p)) : null; // then the other colas and the voider, the boards and the cheat machine
     if (!t) { p.zu = null; return; }
     let u = p.zu;
     if (!u || u.k !== t.k || n - u.last > USE_GAP) u = p.zu = { k: t.k, t0: n, last: n, done: false };
     u.last = n;
     if (t.kind === 'board') { this.zxBoard(p, t, u, n); return; } // held: a plank every so often
     if (u.done) return;
-    const need = (t.kind === 'revive' ? ZM.revive * (this.zxPerk(p, 'quickhands') ? 0.5 : 1) : t.kind === 'power' ? ZM.power : ZM.hold) * 1000;
+    const need = (t.kind === 'revive' ? ZM.revive * (this.zxPerk(p, 'quickhands') ? 0.5 : 1) : t.kind === 'power' ? ZM.power : this.zsNeed(t) || ZM.hold) * 1000;
     if (n - u.t0 + 30 >= need) { u.done = true; this.zmDo(p, t); }
   },
   zmDo(p, t) {
@@ -391,7 +441,7 @@ const methods = {
     if (t.kind === 'buy') {
       const b = Z.buys[t.i];
       if (b.w === z.melee || z.guns.includes(b.w)) { // already yours: a refill
-        const max = zmAmmo(b.w);
+        const max = this.zxMaxAmmo(p, b.w);
         if (max == null || z.ammo[b.w] >= max) { this.zmSay(p, t.k, false, max == null ? 'you already have it' : 'ammo full'); return; }
         if (!this.zmPay(p, zmAmmoPrice(b.price), t.k)) return;
         z.ammo[b.w] = max; this.zmLoadout(p); this.zmSay(p, t.k, true, `${WEAPONS[b.w].name} ammo`);
@@ -410,11 +460,14 @@ const methods = {
       return;
     }
     if (t.kind === 'mach') { this.zxMach(p, t); return; }
+    if (t.kind === 'cola2') { this.zsCola(p, t); return; }
+    if (t.kind === 'up') { this.zsUp(p, t); return; }
     if (t.kind === 'power') { if (!zs.power) { zs.power = true; this.broadcast({ t: 'zpower', by: p.id }); } return; }
     if (t.kind === 'cola') {
       if (!zs.power) { this.zmSay(p, t.k, false, 'no power. find the switch'); return; }
       if (z.cola) { this.zmSay(p, t.k, false, 'one is enough'); return; }
-      if (this.zmPay(p, ZM.cola, t.k)) { z.cola = true; this.zmSay(p, t.k, true, 'JANK COLA'); this.broadcast({ t: 'fx', k: 'medkit', id: p.id }); }
+      if (this.zsColaN(p) >= ZM.colaMax) { this.zmSay(p, t.k, false, `${ZM.colaMax} colas is the limit. doctor's orders`); return; }
+      if (this.zmPay(p, ZM.cola, t.k)) { z.cola = true; this.zmSay(p, t.k, true, 'JANK COLA'); this.broadcast({ t: 'fx', k: 'medkit', id: p.id }); this.zsMine(p); }
     }
   },
   zmPay(p, price, k) {
@@ -434,10 +487,10 @@ const methods = {
     const z = p.z;
     if (WEAPONS[w].slot === 'melee') z.melee = w;
     else if (!z.guns.includes(w)) {
-      if (z.guns.length < ZM.guns) z.guns.push(w);
-      else { let i = z.guns.indexOf(p.w); if (i < 0) i = z.guns.length - 1; delete z.ammo[z.guns[i]]; z.guns[i] = w; }
+      if (z.guns.length < this.zsGuns(p)) z.guns.push(w);
+      else { let i = z.guns.indexOf(p.w); if (i < 0) i = z.guns.length - 1; delete z.ammo[z.guns[i]]; delete z.up[z.guns[i]]; z.guns[i] = w; }
     }
-    if (zmAmmo(w) != null) z.ammo[w] = zmAmmo(w);
+    if (zmAmmo(w) != null) z.ammo[w] = this.zxMaxAmmo(p, w) ?? zmAmmo(w);
     this.zmLoadout(p, w);
   },
 
@@ -449,14 +502,15 @@ const methods = {
     if (!wins.length || !live.length) return false;
     const near = (i) => Math.min(...live.map((h) => dist3(Z.windows[i].in, h.pos)));
     wins.sort((a, b) => near(a) - near(b));
-    const wi = pick(wins.slice(0, 3)), w = Z.windows[wi]; // one of the windows nearest the players
+    const pw = this.zlPackWin(), wi = pw >= 0 ? pw : pick(wins.slice(0, 3)), w = Z.windows[wi]; // one of the windows nearest the players (or the one the rest of the ankle biters are using)
     const g = zmGait(zs.n, Math.random(), Math.random()), D = DIFF[this.cfg.diff] || DIFF.normal;
     const along = (Math.random() - 0.5) * 2.2, back = Math.random() * 0.8; // somewhere in the alley
-    const pos = [w.out[0] - w.n[2] * along - w.n[0] * back, 0, w.out[2] + w.n[0] * along - w.n[2] * back];
+    const pos = [w.out[0] - w.n[2] * along - w.n[0] * back, w.out[1], w.out[2] + w.n[0] * along - w.n[2] * back]; // (its ledge's height: upstairs windows too)
     const b = this.newPlayer('Zombie', { isBot: true, pos, color: GLOW[g.kind], skins: {}, ai: { diff: this.cfg.diff, dummy: null } });
     b.w = ''; b.hp = Math.round(zmHp(zs.n) * D.hp); b.look = zombieLook(); b.kfx = 'none'; b.team = 0; b.yaw = w.yaw; b.pitch = 0.3;
     b.zmz = { ph: 'wait', win: wi, t: n + 300 + Math.random() * 1500, speed: g.speed * D.speed, run: g.kind, wish: [0, 0], target: 0, close: false,
       swingAt: 0, nextSwing: 0, hits: 0, hitAt: {}, seen: n, chk: n, chkPos: pos.slice(), stuck: 0 };
+    this.zlSpawn(b, D, n); // a special one? and its limbs
     this.players.set(b.id, b);
     this.broadcast({ t: 'pj', ...this.info(b) });
     (zs.zinfo ||= new Map()).set(b.id, { name: b.name, color: b.color, skins: {}, bot: true, look: b.look, level: 0, grap: 'rope', t: n }); // for replays after it's gone
@@ -474,7 +528,7 @@ const methods = {
     if (!stun && (zs.tick + b.id) % 3 === 0) this.zmThink(b, z, n);
     let tx = 0, tz = 0;
     if (!stun) {
-      const s = z.close ? 0 : z.speed * (z.swingAt ? 0.35 : 1) * (this.zxMod('brainfreeze') ? 0.35 : 1); // BRAIN FREEZE
+      const s = z.close ? 0 : z.speed * (z.swingAt ? 0.35 : 1) * (this.zxMod('brainfreeze') ? 0.35 : 1) * this.zlSpeed(z, n); // BRAIN FREEZE; crawling, hopping, hyped by a Screamer
       tx = z.wish[0] * s; tz = z.wish[1] * s;
       for (const o of zs.list) { // don't stack up on each other
         if (o === b) continue;
@@ -496,13 +550,13 @@ const methods = {
         const k = Math.min(1, (slipping ? 0.5 : Math.hypot(v[0], v[2]) > z.speed + 2.5 ? 3 : 10) * dt); // knocked flying: slide it out
         v[0] += (tx - v[0]) * k; v[2] += (tz - v[2]) * k;
       }
-      if (z.jump && !stun) { v[1] = 8.4; b.onGround = false; }
+      if (z.jump && !stun && this.zlCanJump(z)) { v[1] = 8.4; b.onGround = false; }
     } else if (!stun) { const k = Math.min(1, 1.2 * dt); v[0] += (tx - v[0]) * k; v[2] += (tz - v[2]) * k; }
     z.jump = false;
     v[1] -= 26 * dt;
     const res = movePlayer(b.pos, v, dt, this.boxes, b.onGround);
     b.onGround = !!res.ground && v[1] <= 0.01;
-    b.f = slipping ? FLAGS.SLIP : 0;
+    b.f = slipping ? FLAGS.SLIP : this.zlFlags(z);
     if (b.pos[1] < this.map.killY) { this.kill(b, null, 'void'); return; }
     if (stun) return;
     const t = this.players.get(z.target);
@@ -524,7 +578,7 @@ const methods = {
       if (h.zmz || !h.z || !h.alive) continue; // people and the squad's bots
       const f = zs.fields.get(h.id);
       let d = f && c >= 0 ? f.d[c] : Infinity;
-      if (d === Infinity && f && c >= 0) for (const [di, dj, w] of D8) { const i = (c % nav.W) + di, j = ((c / nav.W) | 0) + dj; if (i >= 0 && j >= 0 && i < nav.W && j < nav.D) d = Math.min(d, f.d[j * nav.W + i] + w); }
+      if (d === Infinity && f && c >= 0) for (const [di, dj, w] of D8) { const nn = step(nav, zs.open, c, di, dj, true); if (nn >= 0) d = Math.min(d, f.d[nn] + w); }
       if (d === Infinity) d = 1000 + dist3(h.pos, b.pos); // can't walk there: worse than anyone we can reach
       if (d < bd) { bd = d; best = h; bf = d < 1000 ? f : null; }
     }
@@ -540,6 +594,7 @@ const methods = {
     }
     if (n < (z.side || 0)) { const a = z.sideDir * 1.3, ca = Math.cos(a), sa = Math.sin(a); [wx, wz] = [wx * ca - wz * sa, wx * sa + wz * ca]; }
     z.wish = [wx, wz];
+    this.zbSteer(b, z, n); // a boss mid-charge keeps going straight
   },
   zmClear(a, b, hd) { // a straight walk from a to b with nothing in the way (knees and chest)
     const d = [(b[0] - a[0]) / hd, 0, (b[2] - a[2]) / hd];
@@ -552,18 +607,18 @@ const methods = {
       z.swingAt = 0;
       if (!t || !t.alive) return;
       const dx = t.pos[0] - b.pos[0], dz = t.pos[2] - b.pos[2], dy = t.pos[1] - b.pos[1], hd = Math.hypot(dx, dz) || 1e-6;
-      if (hd > ZM.reachHit || dy < -1.3 || dy > ZM.reachUp + 0.3) return; // dodged
-      const ry = t.pos[1] + 0.9 - b.pos[1] - 1.9, rl = Math.hypot(hd, ry); // from its head to your middle: over the top of anything you climbed on
-      if (hd > 0.9 && raycast([b.pos[0], b.pos[1] + 1.9, b.pos[2]], [dx / rl, ry / rl, dz / rl], rl, this.boxes)) return; // not through a wall
-      const claw = this.zxClaw(t);
+      if (hd > ZM.reachHit || dy < -1.3 || dy > this.zlReachUp(z) + 0.3) return; // dodged
+      const hy = this.zlHeadY(z), ry = t.pos[1] + 0.9 - b.pos[1] - hy, rl = Math.hypot(hd, ry); // from its head to your middle: over the top of anything you climbed on
+      if (hd > 0.9 && raycast([b.pos[0], b.pos[1] + hy, b.pos[2]], [dx / rl, ry / rl, dz / rl], rl, this.boxes)) return; // not through a wall
+      const claw = this.zxClaw(t) * this.zlClaw(z);
       if (claw > 0 && t.z && n >= (t.z.iframe || 0)) { t.z.iframe = n + ZM.iframe; this.hurt(t, b, 'bite', claw, [(dx / hd) * 4, 2, (dz / hd) * 4]); } // then a moment nobody else's claws land
       return;
     }
     if (!t || !t.alive || n < z.nextSwing) return;
     const dx = t.pos[0] - b.pos[0], dz = t.pos[2] - b.pos[2], dy = t.pos[1] - b.pos[1];
-    if (Math.hypot(dx, dz) > ZM.reach + (z.run ? 0.25 : 0) || dy < -1.2 || dy > ZM.reachUp) return;
+    if (Math.hypot(dx, dz) > ZM.reach + (z.run ? 0.25 : 0) || dy < -1.2 || dy > this.zlReachUp(z)) return;
     const fr = this.zxMod('brainfreeze') ? 1.6 : 1;
-    z.swingAt = n + ZM.windup * fr; z.nextSwing = n + ZM.swipeCd * fr;
+    z.swingAt = n + ZM.windup * fr; z.nextSwing = n + ZM.swipeCd * fr * this.zlCd(z);
     if (dy > 1 && b.onGround) z.jump = true;
     this.broadcast({ t: 'fx', k: 'swing', w: 'bite', id: b.id, a: [r2(b.pos[0]), r2(b.pos[1] + 1.4), r2(b.pos[2])] });
   },
@@ -575,12 +630,12 @@ const methods = {
       b.f = 0;
       if (this.zxTear(b, z, n)) return; // planks first
       if (zs.st !== 'over' && n >= z.t && zs.win[z.win] <= n) { z.ph = 'climb'; z.t0 = n; z.dur = z.run ? 850 : 1350; zs.win[z.win] = n + z.dur * 0.6; z.from = b.pos.slice(); }
-      else if (n >= (z.bang || 0)) { z.bang = n + 600 + Math.random() * 900; this.broadcast({ t: 'fx', k: 'swing', w: 'bite', id: b.id, a: [r2(b.pos[0]), 1.4, r2(b.pos[2])] }); }
+      else if (n >= (z.bang || 0)) { z.bang = n + 600 + Math.random() * 900; this.broadcast({ t: 'fx', k: 'swing', w: 'bite', id: b.id, a: [r2(b.pos[0]), r2(b.pos[1] + 1.4), r2(b.pos[2])] }); }
       return;
     }
     const k = Math.min(1, (n - z.t0) / z.dur), a = z.from, c = w.in, s = z.dur / 1000;
     const up = Math.min(1, Math.max(0, (k - 0.15) / 0.22)) * Math.min(1, Math.max(0, (0.92 - k) / 0.2)); // over the sill
-    b.pos = [a[0] + (c[0] - a[0]) * k, up, a[2] + (c[2] - a[2]) * k];
+    b.pos = [a[0] + (c[0] - a[0]) * k, c[1] + up, a[2] + (c[2] - a[2]) * k];
     b.vel[0] = (c[0] - a[0]) / s; b.vel[2] = (c[2] - a[2]) / s; // so the legs walk
     b.f = k > 0.2 && k < 0.85 ? FLAGS.CROUCH : 0;
     if (k >= 1) { z.ph = 'hunt'; b.vel = [0, 0, 0]; b.onGround = false; z.chk = n; z.chkPos = b.pos.slice(); z.seen = n; }
@@ -595,6 +650,9 @@ export function installZombies(Room, h) {
   Object.assign(Room.prototype, methods);
   installZmExtra(Room, h);
   installZmBots(Room, h);
+  installZmLimbs(Room);
+  installZmShop(Room, h);
+  installZmBoss(Room);
   const P = Room.prototype, wrap = (name, fn) => { const orig = P[name]; P[name] = function (...a) { return fn.call(this, orig, ...a); }; };
   // zombies: no cosmetic kill effects (finishers), on zombies or on people. everyone just dies the normal way
   wrap('kill', function (orig, t, attacker, w) {

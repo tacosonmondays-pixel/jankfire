@@ -63,46 +63,99 @@ def swatch(o, k, n):
 
 
 # ------------------------------------------------------------ the gut's shared materials (wet: rough ~0.2, clearcoat)
+# two looks. 'candy' is the shipped claymation pink. 'eerie' (JF_GUT_LOOK=eerie, a look test for the owner: "haunting
+# and eerie, dark red, wet") is arterial red going black in the folds, wetter, old bone, yellowed teeth, veins near
+# black, the lights turned down to a dull red and the eyes jaundiced. same parts, same names: only the paint changes
+LOOK = os.environ.get('JF_GUT_LOOK', 'eerie')  # the owner's pick (2026-11-10): darker. JF_GUT_LOOK=candy builds the old pink
+if os.environ.get('JF_SHEETS'):  # a look test writes its sheets somewhere else (and runs with --no-export)
+    import lib as _lib; _lib.SHEETS = os.environ['JF_SHEETS']; os.makedirs(os.path.join(_lib.SHEETS, 'story'), exist_ok=True); os.makedirs(os.path.join(_lib.SHEETS, '_tmp', 'story'), exist_ok=True)
+PAL = {
+    'candy': dict(flesh=(0xff6f91, 0xc23a62, 0xffa3b8, 0xffd27a), liver=(0x8a2a4a, 0x5b1a34, 0xb4466a, 0x5b3a8f), fat=(0xffd27a, 0xe8a85a, 0xfff0b8, 0xff9fb0),
+                  vein=(0x6a48b0, 0x3e2470, 0x9a7ae0), bone=(0xf6eedb, 0xd9c9a3, 0xffffff, 0xc79a8a), enamel=(0xf8ecd2, 0xe0c88a, 0xfffbf0),
+                  glow=(0xff8aa8, 0xff4f7a, 3.0), bile=(0xc8ff5a, 0xa6e22e, 2.5), pus=(0xe8f07a, 0xa6e22e, 0xfffbd0), wet=(0.2, 0.18),
+                  eye=dict(white=0xfff2ea, back=0xffd6d6, vein=0xd8203a, iris=(0x2a7a2a, 0x7dff4f, 0xa6e22e, 0x39c41a), veins=9)),
+}
+
+PAL['eerie'] = dict(PAL['candy'], wet=(0.1, 0.08), eye=dict(PAL['candy']['eye'], veins=18))
+
+
+def _grade(c):
+    """the eerie look's paint, for any colour the Gut scripts use (r, g, b 0..1): pinks and magentas go to arterial red
+    and down into the dark, purples (veins) go near black, creams (bone, teeth, eye whites) age to yellow-brown,
+    greens (bile, irises) turn sickly. one rule for every prop, so the district stays one palette"""
+    import colorsys
+    h, sat, v = colorsys.rgb_to_hsv(float(c[0]), float(c[1]), float(c[2])); hd = h * 360
+    if sat < 0.22:  # creams and whites: old bone
+        r, g, b = v * 0.84, v * 0.74, v * 0.54
+        return (r, g, b) if v > 0.3 else (c[0] * 0.6, c[1] * 0.5, c[2] * 0.5)
+    if hd >= 295 or hd < 20:  # pink / magenta / red: blood. the paler it was, the less dark it goes (highlights stay wet)
+        return colorsys.hsv_to_rgb(0.985, min(1.0, 0.72 + sat * 0.3), v * (0.42 + 0.2 * (1 - sat)))
+    if 230 <= hd < 295: return colorsys.hsv_to_rgb(h, sat * 0.6, v * 0.3)  # purple: a bruise
+    if 70 <= hd < 170: return colorsys.hsv_to_rgb(0.2, sat * 0.6, v * 0.55)  # green: bile
+    if 20 <= hd < 70: return colorsys.hsv_to_rgb(h * 0.95, sat * 0.75, v * 0.62)  # yellow / orange fat: rancid
+    return colorsys.hsv_to_rgb(h, sat * 0.6, v * 0.5)
+
+
+# the grade is ON only while a Gut prop is being built: gutkit is also imported by scripts that build other districts'
+# props (make_story_landmarks.py), and those must keep their own colours. make_story_gut*.py switch it on at import;
+# anything else calls eerie(True) round its Gut builds (make_story_gutgate.py)
+import lib as _lib
+_hex0, _srgb0, _mat0 = _lib.hexrgb, _lib.srgb, _lib.mat
+_ON = [False]
+def eerie(on=True): _ON[0] = bool(on) and LOOK == 'eerie'
+def hexrgb(h): return np.array(_grade(_hex0(h)), dtype=np.float32) if _ON[0] else _hex0(h)
+def _back(c): return (int(round(c[0] * 255)) << 16) | (int(round(c[1] * 255)) << 8) | int(round(c[2] * 255))
+def srgb(h): return _srgb0(_back(_grade(_hex0(h)))) if (_ON[0] and h != 0xffffff) else _srgb0(h)
+def mat(name, color=0x808080, rough=0.5, metal=0.0, emit=None, strength=1.0, **kw):
+    if not _ON[0]: return _mat0(name, color, rough=rough, metal=metal, emit=emit, strength=strength, **kw)
+    return _mat0(name, color, rough=rough * 0.6 if 'glass' not in name else rough, metal=metal, emit=emit, strength=strength * 0.55, **kw)
+_lib.hexrgb, _lib.srgb, _lib.mat = hexrgb, srgb, mat
+if any(os.path.basename(a).startswith('make_story_gut') for a in sys.argv): eerie(True)
+
+
 def gut_mats():
+    P = PAL.get(LOOK, PAL['candy']); wr, wl = P['wet']
     M = {}
-    M['flesh'] = mat('gut_flesh_pulse', 0xffffff, rough=0.2, clearcoat=1.0,
-                     tex=tex_flesh('gut_flesh_t', 0xff6f91, 0xc23a62, 0xffa3b8, seed=11, speck=0xffd27a, speck_p=0.025))
-    M['liver'] = mat('gut_liver_pulse', 0xffffff, rough=0.18, clearcoat=1.0,
-                     tex=tex_flesh('gut_liver_t', 0x8a2a4a, 0x5b1a34, 0xb4466a, seed=12, speck=0x5b3a8f, speck_p=0.03))
+    M['flesh'] = mat('gut_flesh_pulse', 0xffffff, rough=wr, clearcoat=1.0,
+                     tex=tex_flesh('gut_flesh_t', *P['flesh'][:3], seed=11, speck=P['flesh'][3], speck_p=0.025))
+    M['liver'] = mat('gut_liver_pulse', 0xffffff, rough=wl, clearcoat=1.0,
+                     tex=tex_flesh('gut_liver_t', *P['liver'][:3], seed=12, speck=P['liver'][3], speck_p=0.03))
     M['fat'] = mat('gut_fat_flesh', 0xffffff, rough=0.25, clearcoat=0.8,
-                   tex=tex_flesh('gut_fat_t', 0xffd27a, 0xe8a85a, 0xfff0b8, seed=13, speck=0xff9fb0, speck_p=0.03))
-    M['vein'] = mat('gut_vein_pulse', 0xffffff, rough=0.18, clearcoat=1.0,
-                    tex=tex_flesh('gut_vein_t', 0x6a48b0, 0x3e2470, 0x9a7ae0, seed=14, amt=0.5))
+                   tex=tex_flesh('gut_fat_t', *P['fat'][:3], seed=13, speck=P['fat'][3], speck_p=0.03))
+    M['vein'] = mat('gut_vein_pulse', 0xffffff, rough=wl, clearcoat=1.0,
+                    tex=tex_flesh('gut_vein_t', *P['vein'], seed=14, amt=0.5))
     M['bone'] = mat('gut_bone', 0xffffff, rough=0.32, clearcoat=0.5,
-                    tex=tex_flesh('gut_bone_t', 0xf6eedb, 0xd9c9a3, 0xffffff, seed=15, amt=0.45, speck=0xc79a8a, speck_p=0.03, fine=0.05))
+                    tex=tex_flesh('gut_bone_t', *P['bone'][:3], seed=15, amt=0.45, speck=P['bone'][3], speck_p=0.03, fine=0.05))
     M['enamel'] = mat('gut_enamel', 0xffffff, rough=0.12, clearcoat=1.0,
-                      tex=tex_flesh('gut_enamel_t', 0xf8ecd2, 0xe0c88a, 0xfffbf0, size=16, seed=16, amt=0.5, fine=0.04))
-    M['glow'] = mat('gut_glow_pulse', 0xff8aa8, rough=0.25, emit=0xff4f7a, strength=3.0)
-    M['bileglow'] = mat('gut_bile_glow_pulse', 0xc8ff5a, rough=0.2, emit=0xa6e22e, strength=2.5)
+                      tex=tex_flesh('gut_enamel_t', *P['enamel'], size=16, seed=16, amt=0.5, fine=0.04))
+    M['glow'] = mat('gut_glow_pulse', P['glow'][0], rough=0.25, emit=P['glow'][1], strength=P['glow'][2])
+    M['bileglow'] = mat('gut_bile_glow_pulse', P['bile'][0], rough=0.2, emit=P['bile'][1], strength=P['bile'][2])
     M['pus'] = mat('gut_pus_pulse', 0xffffff, rough=0.12, clearcoat=1.0,
-                   tex=tex_flesh('gut_pus_t', 0xe8f07a, 0xa6e22e, 0xfffbd0, size=16, seed=17, amt=0.5))
+                   tex=tex_flesh('gut_pus_t', *P['pus'], size=16, seed=17, amt=0.5))
     M['eye'] = mat('gut_eye', 0xffffff, rough=0.08, clearcoat=1.0, tex=tex_canvas('gut_eye_t', 64, 64, _paint_eye))
     return M
 
 
 def _paint_eye(px):
     # planar from the top: the pupil in the middle, the equator on the circle of radius 32 px
+    E = PAL.get(LOOK, PAL['candy'])['eye']
     rng = np.random.default_rng(21)
-    px[:] = hexrgb(0xfff2ea)
+    px[:] = hexrgb(E['white'])
     yy, xx = np.mgrid[0:64, 0:64]; d = np.hypot(xx + 0.5 - 32, yy + 0.5 - 32)
-    px[d > 26] = hexrgb(0xffd6d6)  # pinker toward the back
-    for k in range(9):  # bloodshot veins crawling in from the edge
+    px[d > 26] = hexrgb(E['back'])  # pinker toward the back
+    for k in range(E['veins']):  # bloodshot veins crawling in from the edge
         a = rng.uniform(0, 2 * math.pi); r0 = 31.0; x, y = 32 + math.cos(a) * r0, 32 + math.sin(a) * r0
         for s in range(7):
             a2 = a + math.pi + rng.uniform(-0.7, 0.7); ln = rng.uniform(2.5, 4.0)
             nx, ny = x + math.cos(a2) * ln, y + math.sin(a2) * ln
             if math.hypot(nx - 32, ny - 32) < 14: break
-            px_line(px, x, y, nx, ny, 0xd8203a, 1.0 if s > 2 else 1.6); x, y = nx, ny
-    px_disc(px, 32, 32, 13.5, 0x2a7a2a)  # iris: toxic green with a darker ring and lighter flecks
-    px_disc(px, 32, 32, 12, 0x7dff4f)
-    px_disc(px, 32, 32, 9, 0xa6e22e)
+            px_line(px, x, y, nx, ny, E['vein'], 1.0 if s > 2 else 1.6); x, y = nx, ny
+    I = E['iris']
+    px_disc(px, 32, 32, 13.5, I[0])  # iris: a darker ring and lighter flecks
+    px_disc(px, 32, 32, 12, I[1])
+    px_disc(px, 32, 32, 9, I[2])
     for k in range(14):
-        a = 2 * math.pi * k / 14; px_line(px, 32 + math.cos(a) * 6, 32 + math.sin(a) * 6, 32 + math.cos(a) * 11, 32 + math.sin(a) * 11, 0x39c41a, 1.0)
+        a = 2 * math.pi * k / 14; px_line(px, 32 + math.cos(a) * 6, 32 + math.sin(a) * 6, 32 + math.cos(a) * 11, 32 + math.sin(a) * 11, I[3], 1.0)
     px_disc(px, 32, 32, 5.5, 0x08040a)  # pupil
     px_disc(px, 28, 28, 2.2, 0xffffff)  # wet highlight
 
