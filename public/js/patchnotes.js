@@ -1,6 +1,13 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '7.2', date: '2026-11-10', title: 'THUMBS', items: [
+    'JANKFIRE runs on phones and tablets now. open it in your phone\'s browser, turn it sideways, go.',
+    'touch controls: a stick on the left, drag the right side to look, and big loud buttons for FIRE, JUMP, SLIDE, HOOK, AIM and friends. tap the hotbar to swap guns, tap your item and killstreaks to use them, tap the ammo to reload.',
+    'aim assist for touch players: your look slows down near an enemy and the crosshair gets a small tug toward their body. enemies only, no walls, no snapping. SETTINGS > touch sets how much, or turns it off.',
+    'SETTINGS > touch: look sens, button size, button see-through-ness, and a left-handed swap.',
+    'hold your phone upright and the game asks you to stop.',
+  ] },
   { v: '7.1', date: '2026-11-10', title: 'PITS HAVE BOTTOMS', items: [
     'MOUNT KABOOM got deeper. you don\'t stand in the lava any more, you sink into it. slowly. grapple out before it reaches your chin.',
     'MOUNT KABOOM is not a hot tub. fall down the volcano on Islands and you land in lava: it burns you the whole time you stand in it, keeps burning for a moment after you climb out, and if it finishes you the crater coughs your bits back up. grapple out fast or get EXTRA CRISPY.',
