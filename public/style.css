@@ -902,3 +902,6 @@ body.replaying #zmHud { visibility: hidden; }
 .wrapfilter .n { font-size: 12px; color: #ffe14d; }
 /* the overdrive rig lasts until it breaks: its top bar is the armour (bodyhp.js), so no separate shield row */
 #rigHud .rh-sh { display: none; }
+
+/* spinbot: the lock marker on whoever your shots will hit */
+#lockMark { display: none; position: absolute; width: 46px; height: 46px; margin: -23px 0 0 -23px; border: 3px solid #39ff14; box-shadow: 3px 3px 0 #000; pointer-events: none; font: 700 11px 'Courier New', monospace; color: #39ff14; text-shadow: 1px 1px 0 #000; text-align: center; line-height: 110px; transform: rotate(45deg); }
