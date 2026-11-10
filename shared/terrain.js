@@ -128,8 +128,10 @@ export function shapeGround(B, D, o) {
   }
   // ---- relief: big set shapes the map asks for by name (a volcano's cone). o.relief = [{ f: (x, z) => height or null, mat }]: where f
   // answers, that IS the ground (whatever stands near), drawn in mat. things built on it are put at y 0 and ride up with it
+  const rocky = new Set();
   for (const rf of o.relief || []) {
     let k = mats.indexOf(rf.mat || mat); if (k < 0) { mats.push(rf.mat); k = mats.length - 1; }
+    if (rf.rock) rocky.add(rf.mat || mat); // (drawn as hard facets, ridges lit and cracks dark: world.js)
     for (let i = 0; i < vx; i++) for (let j = 0; j < vz; j++) { const v = rf.f(X0 + i, Z0 + j); if (v != null) { H[V(i, j)] = v; fixed[V(i, j)] = 1; } }
     for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) if (rf.paint ? rf.paint(X0 + i + 0.5, Z0 + j + 0.5) : rf.f(X0 + i + 0.5, Z0 + j + 0.5) != null) paint[C(i, j)] = k; // (rf.paint: where it takes rf.mat; the rest keeps the ground's own)
   }
@@ -205,7 +207,7 @@ export function shapeGround(B, D, o) {
   }
   // ---- spawns and the like: onto the new ground
   for (const p of o.points || []) if (p[1] > -0.5 && p[1] < 0.6) { const g = at(p[0], p[2]); if (g != null) p[1] += g; }
-  const terrain = { x0: X0, z0: Z0, nx, nz, H, ok, mat, mats, paint, lo, hi, base: BASE, at, box: { min: [X0, BASE, Z0], max: [X1, hi, Z1], mat, terr: 1 }, stats: { anchors: anchors.length, props: propsC.length, steps: nTer } };
+  const terrain = { x0: X0, z0: Z0, nx, nz, H, ok, mat, mats, paint, rocky, lo, hi, base: BASE, at, box: { min: [X0, BASE, Z0], max: [X1, hi, Z1], mat, terr: 1 }, stats: { anchors: anchors.length, props: propsC.length, steps: nTer } };
   Object.defineProperty(B.boxes, 'terrain', { value: terrain, writable: true, configurable: true, enumerable: false });
   return terrain;
 }
