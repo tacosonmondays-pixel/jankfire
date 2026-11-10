@@ -449,7 +449,100 @@ def build_marbles():
     return O, {'use': 'slip'}
 
 
+
+# ------------------------------------------------------------------------------------------------ quest stand-ins
+def build_soup_pot():
+    """the quest pot (story/boot.js thingMesh: 0.64 across, 0.42 tall): a dented steel stock pot of red soup with two
+    riveted handles, a ladle left in it, a drip down the side and a lid leaning on its foot"""
+    steel = plain('sp_steel', 0x8a8f99, rough=0.28, metal=0.7, var=0.07, speck=0x4a4a52, p=0.04, seed=141, size=32)
+    soup = mat('sp_soup', 0xd02a2a, rough=0.12, clearcoat=1.0, tex=tex_noise('sp_soup_t', 0xd02a2a, var=0.12, size=16, speck=0xffa040, speck_p=0.08, seed=142))
+    dark = plain('sp_dark', 0x26262e, rough=0.5, seed=143)
+    O = []
+    pot = cyl(0.3, 0.42, (0, 0.21, 0), steel, axis='y', seg=14, r2=0.32, cap=False)  # open: the soup is its top
+    subdiv(pot, 1); dent(pot, (0.2, 0.2, -0.24), 0.14, 0.03, axis=(0.6, 0, -0.8))
+    O.append(pot)
+    O.append(torus(0.32, 0.014, (0, 0.42, 0), steel, axis='y', seg=14, sides=4))  # rolled rim
+    O.append(cyl(0.312, 0.012, (0, 0.4, 0), soup, axis='y', seg=14))
+    O.append(cyl(0.298, 0.01, (0, 0.006, 0), steel, axis='y', seg=14))  # its bottom
+    for k, (x, z, r) in enumerate(((0.1, 0.08, 0.035), (-0.12, -0.05, 0.03), (0.02, -0.15, 0.025))):  # things in it
+        O.append(ball(r, (x, 0.402, z), plain('sp_bit%d' % k, (0xffa040, 0xf4f0e0, 0x4f9a3a)[k], rough=0.3, cc=0.6, seed=144 + k), scale=(1, 0.5, 1), seg=8, rings=5))
+    for sx in (-1, 1):
+        O.append(sweep([(sx * 0.31, 0.36, -0.07), (sx * 0.39, 0.36, -0.06), (sx * 0.39, 0.36, 0.06), (sx * 0.31, 0.36, 0.07)], 0.016, steel, seg=6, name='handle'))
+        for z in (-0.07, 0.07): O.append(cyl(0.022, 0.012, (sx * 0.315, 0.36, z), dark, axis='x', seg=6))
+    O.append(rod((-0.08, 0.38, 0.05), (-0.3, 0.66, 0.2), 0.012, steel, seg=6)); O.append(ball(0.05, (-0.07, 0.385, 0.045), steel, scale=(1, 0.5, 1), seg=8, rings=5))  # the ladle
+    O.append(box((0.03, 0.2, 0.006), (0.12, 0.31, -0.296), soup, rot=(0.06, -0.4, 0))); O.append(box((0.02, 0.1, 0.006), (0.15, 0.36, -0.287), soup, rot=(0.06, -0.48, 0)))  # the drip
+    lid = cyl(0.33, 0.02, (0.52, 0.3, 0.12), steel, axis='x', seg=14, rot=(0, 0, 0.32)); O.append(lid)
+    O.append(ball(0.035, (0.555, 0.31, 0.12), dark, seg=8, rings=5))
+    tiled(O, steel, 0.3)
+    return O, {'use': 'quest', 'note': 'replaces story/boot.js thingMesh (the glow ring stays code)'}
+
+
+def build_pickup_crate():
+    """the quest pickup (story/boot.js spotMesh 'pickup': 0.5 x 0.4 x 0.4): a small slatted crate, its lid half off,
+    straw and something wrapped in tie-dye inside, a tag that says yours now"""
+    wood_m = mat('pk_wood', 0xffffff, rough=0.7, tex=tex_wood('pk_wood_t', 0x9a7446, 0x5a3e22, size=32, seed=151))
+    straw = plain('pk_straw', 0xd8c070, rough=0.9, var=0.18, seed=152)
+    C = Atlas('pk_cloth_t', 32); tiedye(C.sub(0, 0, 32, 32), [0xff6fae, YEL, 0x3fd6c6], seed=5, arms=3, twist=6)
+    cloth = mat('pk_cloth', 0xffffff, rough=0.85, tex=C.image())
+    D = Atlas('pk_tag_t', 48, 16); t = D.sub(0, 0, 48, 16); t[:] = hexrgb(YEL); write(t, 'yours', 3, 1, 1, INK); write(t, 'now', 3, 8, 1, RED)
+    tag = mat('pk_tag', 0xffffff, rough=0.6, tex=D.image())
+    O = []
+    O.append(box((0.46, 0.02, 0.36), (0, 0.03, 0), wood_m))
+    for z in (-0.19, 0.19):
+        for k in range(3): O.append(box((0.5, 0.09, 0.018), (0, 0.075 + k * 0.115, z), wood_m, bev=0.003, seg=1))
+    for x in (-0.24, 0.24):
+        for k in range(3): O.append(box((0.018, 0.09, 0.36), (x, 0.075 + k * 0.115, 0), wood_m, bev=0.003, seg=1))
+        for z in (-0.17, 0.17): O.append(box((0.03, 0.36, 0.03), (x * 0.93, 0.19, z), wood_m))
+    O.append(box((0.44, 0.1, 0.34), (0, 0.24, 0), straw))
+    O.append(uv_fit(pillow((0.26, 0.16, 0.2), (0.02, 0.33, 0.0), cloth, puff=0.5, pinch=0.2, cuts=1, rot=(0, 0.3, 0.1)), C.rect(0, 0, 32, 32)))
+    O.append(box((0.52, 0.02, 0.4), (0.1, 0.4, 0.06), wood_m, bev=0.004, seg=1, rot=(0.0, 0.35, 0.28)))  # the lid, half off
+    O.append(uv_fit(box((0.12, 0.05, 0.003), (-0.1, 0.19, -0.202), tag, rot=(0, 0, -0.12)), D.rect(0, 0, 48, 16)))
+    tiled(O, wood_m, 0.3)
+    return O, {'use': 'quest', 'note': 'replaces story/boot.js spotMesh pickup box'}
+
+
+def build_locker_bank():
+    """THE LOCKER stand-in (story/main.js standIns: 1.6 x 2.2 x 0.9, toxic green): a bank of six dented lockers on a
+    plinth, vents, number plates, one door hanging open with a glow inside, a padlock, stickers, a bench bolted on"""
+    paint = plain('lb_shell', 0x7dff4f, rough=0.3, cc=0.6, var=0.06, speck=0x3a8a2a, p=0.05, seed=161, size=32)
+    dark = plain('lb_dark', 0x16181c, rough=0.6, seed=162)
+    chrome = plain('lb_chrome', 0xd0d4dc, rough=0.18, metal=1.0, seed=163)
+    glow = mat('lb_glow', YEL, rough=0.3, emit=YEL, strength=2.0)
+    wood_m = mat('lb_wood', 0xffffff, rough=0.6, tex=tex_wood('lb_wood_t', 0xa8703a, 0x6a4420, size=32, seed=164))
+    D = Atlas('lb_decal_t', 96, 48)
+    for k in range(6): n = D.sub(k * 16, 0, 16, 12); n[:] = hexrgb(0xe8e4dc); write(n, str(k + 1), 5, 2, 1, INK)
+    st = D.sub(0, 12, 64, 16); st[:] = hexrgb(PINK); write(st, 'the locker', 2, 4, 1, 0xffffff)
+    sm = D.sub(64, 12, 24, 24); sm[:] = hexrgb(YEL); smiley(sm, 12, 12, 9, face=YEL, ink=INK)
+    decal = mat('lb_decal', 0xffffff, rough=0.5, clearcoat=0.3, tex=D.image())
+    O = []
+    O.append(box((1.6, 0.1, 0.86), (0, 0.05, 0.02), dark))
+    O.append(box((1.6, 2.08, 0.84), (0, 1.15, 0.03), paint, bev=0.012, seg=1))
+    F = -0.39  # the carcass front
+    for k in range(6):
+        c, r = k % 3, k // 3
+        x, y = -0.52 + c * 0.52, 0.64 + r * 1.02
+        O.append(box((0.5, 0.98, 0.01), (x, y, F - 0.001), dark))  # the gap round each door
+        if k == 4:  # this one is open: a dark hole with a glow at the back, the door swung out
+            O.append(box((0.3, 0.3, 0.01), (x, y - 0.2, F - 0.016), glow))
+            O.append(box((0.46, 0.94, 0.02), (x + 0.4, y, F - 0.19), paint, rot=(0, 1.0, 0)))
+            continue
+        d = box((0.46, 0.94, 0.02), (x, y, F - 0.012), paint)
+        if k in (0, 5): subdiv(d, 2); dent(d, (x + 0.08, y - 0.1, F - 0.022), 0.16, 0.02, axis=(0, 0, 1))
+        O.append(d)
+        for j in range(4): O.append(box((0.26, 0.012, 0.008), (x, y + 0.33 + j * 0.028, F - 0.026), dark))  # vents
+        O.append(box((0.03, 0.12, 0.014), (x + 0.17, y, F - 0.03), chrome, bev=0.003, seg=1))  # handle
+        O.append(uv_fit(box((0.07, 0.05, 0.003), (x - 0.14, y + 0.25, F - 0.0245), decal), D.rect(k * 16, 0, 16, 12)))
+    O.append(box((0.05, 0.06, 0.02), (-0.52 + 0.17, 0.57, F - 0.045), plain('lb_brass', 0xd8a840, rough=0.2, metal=1.0, seed=165), bev=0.004, seg=1))  # a padlock on no. 1
+    O.append(uv_fit(box((0.5, 0.125, 0.003), (0.0, 2.11, F - 0.01), decal, rot=(0, 0, 0.03)), D.rect(0, 12, 64, 16)))
+    O.append(uv_fit(box((0.16, 0.16, 0.003), (0.52, 0.5, F - 0.0245), decal, rot=(0, 0, -0.15)), D.rect(64, 12, 24, 24)))
+    for sx in (-1, 1): O.append(box((0.04, 0.4, 0.3), (sx * 0.6, 0.2, -0.6), chrome))
+    O.append(box((1.4, 0.04, 0.32), (0, 0.42, -0.6), wood_m, bev=0.006, seg=1))  # the bench
+    tiled(O, paint, 0.4); tiled(O, wood_m, 0.4)
+    return O, {'use': 'locker', 'glow': True, 'note': 'replaces story/main.js standIns locker; the clinic chair can use s_dentist_chair'}
+
+
 BUILDERS = [('vendo', build_vendo), ('punchpost', build_punchpost), ('punchclock_big', build_punchclock_big), ('floodlight', build_floodlight),
             ('till', build_till), ('gun_rack', build_gun_rack), ('clothes_rail', build_clothes_rail), ('mannequin', build_mannequin),
-            ('dentist_chair', build_dentist_chair), ('jar_shelf', build_jar_shelf), ('shelf_wall', build_shelf_wall), ('peel', build_peel), ('marbles', build_marbles)]
+            ('dentist_chair', build_dentist_chair), ('jar_shelf', build_jar_shelf), ('shelf_wall', build_shelf_wall), ('peel', build_peel), ('marbles', build_marbles),
+            ('soup_pot', build_soup_pot), ('pickup_crate', build_pickup_crate), ('locker_bank', build_locker_bank)]
 run(BUILDERS)
