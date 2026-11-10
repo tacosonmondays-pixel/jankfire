@@ -4870,7 +4870,7 @@ function deadmall() {
   const crate = { at: [0, 0, -28.55], price: 950 };
   B.add(-0.9, 0, -29, 0.9, 0.9, -28.1, 'crate');
   const cola = { at: [-10.4, 0, -24], n: [1, 0, 0] };
-  B.add(-10.8, 0, -24.6, -10.0, 2.1, -23.4, 'containerr');
+  B.add(-10.75, 0, -24.55, -10.05, 2.03, -23.45, 'metal'); // (Jank Cola's machine is drawn over it too)
   // ---- ARCADE: three rows of back-to-back cabinets (gaps halfway down), screens glowing on both sides
   for (const x of [-31, -24, -17]) for (const [z0, z1] of [[-24, -15], [-13, -4]]) {
     B.add(x - 0.9, 0, z0, x + 0.9, 1.9, z1, x === -24 ? 'containerr' : 'containerb');
@@ -4885,9 +4885,9 @@ function deadmall() {
     { id: 'getup', at: [10.4, 0, 24], n: [-1, 0, 0] }, { id: 'legday', at: [-36.4, 0, 7], n: [1, 0, 0] },
     { id: 'pockets', at: [36.4, 0, 16], n: [-1, 0, 0] }, { id: 'thirdhand', at: [-28, 0, 3.4], n: [0, 0, -1] },
   ];
-  for (const c of colas) B.add(c.at[0] - (c.n[0] ? 0.4 : 0.6), 0, c.at[2] - (c.n[2] ? 0.4 : 0.6), c.at[0] + (c.n[0] ? 0.4 : 0.6), 2.1, c.at[2] + (c.n[2] ? 0.4 : 0.6), 'containerb');
+  for (const c of colas) B.add(c.at[0] - (c.n[0] ? 0.35 : 0.55), 0, c.at[2] - (c.n[2] ? 0.35 : 0.55), c.at[0] + (c.n[0] ? 0.35 : 0.55), 2.03, c.at[2] + (c.n[2] ? 0.35 : 0.55), 'metal'); // a bit inside the model (the client draws the machine over it)
   const up = { at: [20, 0, -29.5], n: [0, 0, 1] };
-  B.add(19.1, 0, -29.97, 20.9, 1.0, -28.9, 'metal'); B.add(19.1, 1.0, -29.97, 20.9, 2.4, -29.3, 'metal'); // (the client draws the machine over it)
+  B.add(19.15, 0, -29.97, 20.85, 0.93, -28.96, 'metal'); B.add(19.15, 0.93, -29.97, 20.85, 2.28, -29.4, 'metal'); // a bit inside the model (the client draws the machine over it), behind its sunken screen
   // ---- the Cheat Machine (server/zmextra.js): against the arcade's north wall, a random modifier once the power's on
   const mach = { at: [-14, 0, -29.6], n: [0, 0, 1] };
   B.add(-14.5, 0, -29.97, -13.5, 1.28, -29.25, 'metal'); B.add(-14.5, 1.28, -29.97, -13.5, 2.12, -29.38, 'metal'); // a bit inside the model (the client draws the machine over it), behind its sunken screen

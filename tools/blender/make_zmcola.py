@@ -1,24 +1,26 @@
 # The cola machine (zombies): one chunky rounded 90s drinks vending machine for every cola flavour. The game recolours
 # it per flavour and writes the flavour's name on it itself. Our own design, real size: x -0.6 .. 0.6, y 0 .. 2.1,
 # z -0.4 .. 0.4 (exactly its collision box), front +z, origin on the floor at its centre.
-#   body      fat side panels and a rounded door in the flavour paint: a darker wave, bubbles, a big tone-on-tone COLA
-#             (the paint is painted in greys, so whatever colour the game gives it keeps its shading); black lid and
-#             plinth, four fat feet, a kicked-in dent in the right side, the cable and a grille on the back
-#   front     the blank LABEL panel up top in a lit tube frame (meta label = its centre + size: the game puts its own
+#   body      fat pillowed side panels, a rounded lid and a rounded door in the flavour paint: a darker wave, bubbles,
+#             a big tone-on-tone COLA (the paint is painted in greys, so whatever colour the game gives it keeps its
+#             shading); black plinth, four fat chrome feet, the right side kicked in under a KICK HERE sticker,
+#             CONTENTS: COLA. PROBABLY. on the left, the grille, the plate (KEEP COLD / IT ISN'T) and the cable on the back
+#   front     the blank LABEL panel up top in a chrome frame (meta label = its centre + size: the game puts its own
 #             name canvas 4 mm in front, so the panel stays plain); ICE COLD-ISH lit under it; the lit window with
-#             three shelves of cans behind glass (one fell over, one's gone); the control panel: an LED display that
-#             says HELP, a lit coin slot, a keypad, the coin return; the dispenser flap shoved half open on a stuck can
+#             three shelves of cans behind glass (one fell over, two are gone); the control panel: an LED display
+#             that says HELP, a lit coin slot, a keypad, the coin return, NO CHANGE. EVER; the door lock; the
+#             dispenser flap shoved half open on a stuck can
 # Materials: `cola_paint` = everything that takes the flavour colour (the game swaps its colour; the sheet shows it in
-# Jank Cola red), `zm_neon` = what the power lights (the window's back wall and shelf edges, the label's frame, ICE
-# COLD-ISH, the display, the coin slot): its glow is its own texture, so turned down it's dead glass.
+# Jank Cola red: the door, the sides, the lid, the cans' labels), `zm_neon` = what the power lights (the window's back
+# wall and shelf edges, ICE COLD-ISH, the display, the coin slot, the green lamp): its glow is its own texture, so
+# turned down it's dead glass. `cola_glass` is see-through.
 # meta: label {c, w, h} (facing +z).
 # run: blender52 -b --python tools/blender/make_zmcola.py   (-- --no-sheet  -- --no-export  -- --qa)   (blender 4.0 works too)
 # sheets: sheets/x_zmcola.jpg (turnaround, in Jank Cola red) + x_zmcola_flavours.jpg (the other four flavours' colours)
 import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib import *
-import lib
 from bottom_kit import Atlas, grime, crust, uv_fit, xform, dent, uv_remap, uv_can, multi_mat
-from sidekit import text_c, text_w, quad, smiley, seg7
+from sidekit import text_c, quad, smiley, seg7
 from zmkit import slab_xy, unzero, poly_fill, qa, glow_mat, dcut, plane_tube, rrect_pts, grid_plate
 from make_zmvoider import seal, clear_glass, rect, big_text, sticker_px, sw, disc, closeups  # (also makes the kit's smoothing work on blender 5.x)
 
@@ -185,10 +187,13 @@ def build():
     A(stick((XO + 0.0015, 0.8, 0.06), 0.27, 0.06, 'kick', M, axis='x', sx=1, ang=-0.05))
     # ---------------- the door: a rounded slab in the flavour paint, the window and the dispenser cut out of it
     door = slab_xy(rrect_pts(DOOR[0], DOOR[1], DOOR[2], DOOR[3], 0.09, 4), Z_DOOR[0], Z_DOOR[1], M['paint'], 'door', bev=0.012, seg=2)
+    for (cx, cy, w, h), r in ((WIN, 0.035), (FLAP, 0.03)):  # (cut first: the bevel then rounds the openings too and its normals stay true)
+        dcut(door, slab_xy(rrect_pts(cx, cy, w, h, r, 3), 0.2, 0.5, M['paint'], 'cut'))
     uv_fit(door, PR('door'))
-    for (cx, cy, w, h), r in ((WIN, 0.035), (FLAP, 0.03)):
-        cut_ = slab_xy(rrect_pts(cx, cy, w, h, r, 3), 0.2, 0.5, M['paint'], 'cut'); uv_fit(cut_, PR('dark'))
-        dcut(door, cut_)
+    me = door.data; uv = me.uv_layers.active.data; dk = PR('dark')
+    for pg in me.polygons:  # the openings' walls in the darker tone (blender y = game -z, z = game y)
+        if abs(pg.normal.y) < 0.5 and abs(pg.center.x) < 0.5 and 0.16 < pg.center.z < 1.95:
+            for li in pg.loop_indices: uv[li].uv = ((dk[0] + dk[2]) / 2, (dk[1] + dk[3]) / 2)
     A(unzero(door))
     # ---------------- the label: a plain panel (the game's name canvas goes 4 mm in front of it) in a lit tube frame
     A(box((LABEL[2], LABEL[3], 0.03), (LABEL[0], LABEL[1], Z_LABEL - 0.015), M['label'], name='label'))

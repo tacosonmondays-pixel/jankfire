@@ -2,18 +2,20 @@
 # on the tray, a huge rubber stamp slams down on it and it comes out stronger, warranty void. Our own design, real size,
 # stands against a wall: x -0.9 .. 0.9, y 0 .. 2.4, z -0.45 (the wall) .. 0.6, front +z, origin on the floor at the wall.
 # The game's collision is two boxes (a bench to y 1.0 out to z 0.6, the upper back to z 0.2): the cabinet, the upper
-# back and the sign stay inside them, only the press arm and the console reach out over the bench.
-#   cabinet   brushed steel doors (☺ CORP "REPAIRS", STAFF ONLY / NONE LEFT) under a steel bench top with the feed
-#             TRAY sunk into it: a rubber mat with the gun's outline chalked on like a tool board, old VOID prints all
-#             over it, hazard stripes round it. INSERT CREDITS plate with a lit slot, a receipt printer with a long
-#             receipt (VOID, NO REFUND) hanging to the floor, a junction box + cable on the left side
-#   press     a chrome column in a channel up the back, drill-press style. the `stamp` node rides it: collar, chrome
-#             arm, hydraulic pot, bellows, and the big chunky red rubber head (VOID index plate on its front, the die
-#             underneath reads VOID mirrored, like a real stamp)
+# back and the sign stay inside them, only the press (the stamp node) and the console reach out over the bench.
+#   cabinet   brushed steel doors (☺ CORP "REPAIRS" / WE VOID. YOU PAY., STAFF ONLY / NONE LEFT, NO REFUNDS) under a
+#             steel bench top with the feed TRAY sunk into it: a rubber mat with the gun's outline chalked on like a
+#             tool board (GUN HERE), old VOID prints that missed, hazard stripes round it. INSERT CREDITS plate with a
+#             lit slot, a receipt printer with a long receipt (1 GUN / VOID / TOTAL LOTS / NO REFUND) down to the
+#             floor, a junction box (DANGER: MAY VOID YOU TOO), its cable and a conduit on the left side
+#   press     a chrome column in a channel up the back, drill-press style, with a depth stop nobody set. the `stamp`
+#             node rides it: collar, chrome arm, hydraulic pot, bellows, and the big chunky red rubber head (a VOID
+#             index plate on its front; the inky die underneath reads VOID mirrored, like a real stamp)
 #   upper     a CRT-style bezel with the screen recess (black glass at the back: the game draws its own canvas there,
-#             meta screen = the glass's centre + the canvas size) ringed by a cyan tube, a pegged pressure gauge on
-#             brass pipes with a red handwheel, the console with one big red VOID button, stickers (KEEP HANDS OUT. OR
-#             DON'T, NO REFUNDS, DANGER MAY VOID YOU TOO, an OUT OF ORDER note someone wrote "works fine" on)
+#             meta screen = the glass's centre + the canvas size) ringed by a cyan tube, three wires out of its side;
+#             a pegged pressure gauge on brass pipes with a red handwheel; the console with one big red VOID button, a
+#             lit READY and a key switch; KEEP HANDS OUT. OR DON'T, INSERT GUN, a VOIDED TODAY counter, the serial
+#             plate (NOT A REPAIR), an OUT OF ORDER note someone wrote "works fine" on, hazard tape along the bench
 #   sign      a lit box across the top: WARRANTY backlit, VOIDER in pink neon tube inside a tube frame, tilted like the
 #             print of a stamp; the beacon and two vent caps on top
 # Nodes: `stamp` (the moving head + arm, origin = the middle of the stamp face at rest; the game slides it straight
@@ -25,14 +27,13 @@
 import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib import *
 import lib, zmkit, sidekit, bottom_kit
-from bottom_kit import Atlas, grime, crust, uv_fit, xform, dent, uv_remap, torus, write
+from bottom_kit import Atlas, grime, crust, uv_fit, xform, uv_remap, torus, write
 from sidekit import text_c, text_w, quad, smiley
 from corp import smiley_px
-from zmkit import slab_xy, unzero, seg_dist, poly_fill, qa, glow_mat, dcut, plane_tube, rrect_pts, grid_plate
+from zmkit import slab_xy, unzero, seg_dist, poly_fill, qa, glow_mat, dcut, plane_tube, rrect_pts
 
 ARGV = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 FONT.setdefault('"', ['01010', '01010', '01010', '00000', '00000', '00000', '00000'])
-FONT.setdefault('$', ['00100', '01111', '10100', '01110', '00101', '11110', '00100'])
 PINK, YEL, CYAN, INK = 0xff4fd8, 0xffe14d, 0x4fd8ff, 0xe0182a
 
 # ------------------------------------------------------------ blender 4.0 and 5.x
@@ -56,7 +57,7 @@ def seal(objs):
 
 
 def clear_glass(name, color, alpha, rough=0.04):
-    """see-through glass (lib.mat's alpha is 4.0 only)"""
+    """see-through glass (lib.mat's alpha is 4.0 only). make_zmcola.py's window uses it"""
     m = bpy.data.materials.new(name); m.use_nodes = True
     b = m.node_tree.nodes['Principled BSDF']
     b.inputs['Base Color'].default_value = srgb(color); b.inputs['Alpha'].default_value = alpha; b.inputs['Roughness'].default_value = rough
@@ -77,7 +78,7 @@ ZU = 0.14                                  # the upper back's front face
 COL = (X0, 0.135, 0.05)                    # the column: x, z, radius
 SCR, SCR_W, SCR_H = (0.50, 1.56), 0.50, 0.32
 OPN_W, OPN_H, OPN_R = 0.52, 0.34, 0.03
-Z_BEZ, Z_GLASS = 0.20, 0.16
+Z_BEZ, Z_GLASS = 0.192, 0.16
 SIGN = (-0.86, 1.995, 0.86, 2.255)         # the sign's face (x0, y0, x1, y1)
 Z_SIGN, Z_TUBE = 0.165, 0.181
 VOIDER = (0.39, 2.125, math.radians(4.0))  # the neon word: centre, tilt
@@ -229,7 +230,7 @@ PA = {'front': (0, 0, 256, 124), 'side': (0, 124, 128, 112), 'uside': (128, 124,
 DA = {'tray': (0, 0, 162, 60), 'mat': (6, 6, 150, 48), 'face': (162, 0, 94, 40), 'index': (162, 40, 94, 26), 'hands': (0, 60, 120, 26),
       'norefunds': (120, 68, 64, 16), 'insert': (184, 68, 72, 16), 'corp': (0, 86, 40, 40), 'gauge': (40, 86, 56, 56), 'serial': (96, 86, 96, 40),
       'pay': (192, 86, 64, 24), 'voidit': (192, 110, 64, 16), 'legit': (0, 126, 40, 16), 'note': (96, 126, 96, 30), 'pinch': (192, 126, 64, 16),
-      'haz': (0, 142, 96, 12), 'count': (0, 156, 96, 24), 'danger': (96, 156, 96, 40), 'receipt': (0, 216, 208, 36), 'paper': (212, 220, 16, 16)}
+      'haz': (0, 142, 96, 12), 'count': (0, 156, 96, 24), 'danger': (96, 156, 96, 40), 'receipt': (0, 216, 208, 36)}
 NEON_W, NEON_H = 256, 64
 NA = {'sign': (0, 0, 256, 40)}
 NA.update({k: (i * 32, 40, 32, 24) for i, k in enumerate(('pink', 'cyan', 'yellow', 'red', 'green', 'white', 'amber', 'slot'))})
@@ -392,7 +393,6 @@ def materials():
         y += 9
     blit_rot(rc, V1, 18, 58, 0.5, INK, 0.9, wear=0.12, seed=31); blit_rot(rc, V1, 17, 150, -0.4, INK, 0.9, wear=0.12, seed=32)
     D.sub(*DA['receipt'])[:] = rc.transpose(1, 0, 2)  # the strip lies along u, the slot end at u 0
-    D.sub(*DA['paper'])[:] = hexrgb(0xf4f2ea)
     grime(D.sub(*DA['hands']), 0x8a7a2a, p=0.06, seed=321, blob=3); grime(D.sub(*DA['danger']), 0x6a4a1a, p=0.06, seed=322, blob=3)
     M['decal'] = mat('zm_decal', 0xffffff, rough=0.32, clearcoat=0.5, tex=D.image())
     # ---------------- the big button's print + plain plastics
@@ -526,6 +526,7 @@ def build():
     A(box((0.2, 0.085, 0.036), (0.56, 0.76, 0.572), M['black'], bev=0.006, seg=1, name='printer'))
     A(box((0.132, 0.008, 0.004), (0.56, 0.752, 0.5905), M['dark'], name='printer_slot'))
     pl = box((0.014, 0.014, 0.004), (0.64, 0.785, 0.5905), M['neon'], name='printer_led'); sw(pl, NR('green')); A(pl)
+    A(stick((0.52, 0.782, 0.5915), 0.075, 0.03, 'legit', M))
     rpath = [(0.56, 0.752, 0.582), (0.56, 0.752, 0.5935), (0.561, 0.741, 0.5975), (0.563, 0.7, 0.5975), (0.566, 0.62, 0.587), (0.57, 0.52, 0.576), (0.573, 0.42, 0.572),
              (0.572, 0.32, 0.579), (0.567, 0.22, 0.589), (0.561, 0.13, 0.593), (0.557, 0.07, 0.588), (0.555, 0.032, 0.574), (0.554, 0.014, 0.556), (0.553, 0.02, 0.538),
              (0.552, 0.04, 0.532), (0.551, 0.058, 0.542), (0.551, 0.056, 0.556), (0.551, 0.044, 0.558)]
@@ -556,11 +557,11 @@ def build():
         r_ = DR('haz'); uv_remap(hz, (r_[0], r_[1], r_[0] + (r_[2] - r_[0]) * min(1.0, (x1 - x0) / 0.52), r_[3])); A(hz)
     # ---------------- the press: a chrome column up the channel; the collar, arm and head ride it (the stamp node)
     A(cyl(COL[2], 0.98, (COL[0], 1.485, COL[1]), M['chrome'], axis='y', seg=12, name='column'))
-    A(lathe([(0.085, 0.998), (0.085, 1.02), (0.06, 1.05), (0.044, 1.052)], (COL[0], 0, COL[1]), M['steel'], seg=12, axis='y', name='column_base', cap=False))
+    A(lathe([(0.085, 0.994), (0.085, 1.0), (0.064, 1.02), (0.06, 1.05), (0.044, 1.052)], (COL[0], 0, COL[1]), M['steel'], seg=12, axis='y', name='column_base', cap=False))
     A(box((0.16, 0.06, 0.12), (COL[0], 1.955, 0.105), M['black'], bev=0.006, seg=1, name='column_cap'))
-    A(lathe([(0.044, 1.11), (0.066, 1.11), (0.07, 1.118), (0.07, 1.146), (0.066, 1.154), (0.044, 1.154), (0.044, 1.11)], (COL[0], 0, COL[1]), M['black'], seg=12, axis='y', name='depth_stop',
+    A(lathe([(0.044, 1.11), (0.06, 1.11), (0.064, 1.118), (0.064, 1.146), (0.06, 1.154), (0.044, 1.154), (0.044, 1.11)], (COL[0], 0, COL[1]), M['black'], seg=12, axis='y', name='depth_stop',
             cap=False))  # the depth stop nobody ever set
-    ts = cyl(0.011, 0.04, (COL[0] + 0.082, 1.132, COL[1]), M['button'], axis='x', seg=6, name='stop_screw'); sw(ts, BR('red')); A(ts)
+    ts = cyl(0.011, 0.04, (COL[0] + 0.076, 1.132, COL[1]), M['button'], axis='x', seg=6, name='stop_screw'); sw(ts, BR('red')); A(ts)
     S.append(lathe([(0.044, 1.72), (0.086, 1.72), (0.092, 1.735), (0.092, 1.905), (0.086, 1.92), (0.044, 1.92), (0.044, 1.72)], (COL[0], 0, COL[1]), M['steel'], seg=12, axis='y',
                    name='collar', cap=False))
     S.append(side([(0.135, 1.735), (0.31, 1.735), (0.47, 1.775), (0.505, 1.80), (0.505, 1.875), (0.47, 1.905), (0.135, 1.905)], 0.15, (X0, 0, 0), M['chrome'], bev=0.01, seg=2, name='arm'))
@@ -600,22 +601,22 @@ def build():
     for p in ((-0.78, 1.36, zp), (gx, 1.36, zp), (-0.37, 1.36, zp)): A(ball(0.027, p, M['brass'], seg=8, rings=5, name='pipe_joint'))
     for y in (1.08, 1.9): A(cyl(0.028, 0.03, (-0.78, y, zp), M['brass'], axis='y', seg=8, name='pipe_union'))
     A(box((0.06, 0.07, 0.05), (-0.78, 1.74, zp), M['brass'], bev=0.006, seg=1, name='valve'))
-    A(cyl(0.01, 0.05, (-0.78, 1.74, zp + 0.035), M['chrome'], axis='z', seg=6, name='valve_stem'))
-    wh = torus(0.052, 0.009, (-0.78, 1.74, zp + 0.055), M['button'], axis='z', seg=12, sides=4, name='handwheel'); sw(wh, BR('red')); A(wh)
+    A(cyl(0.01, 0.024, (-0.78, 1.74, zp + 0.02), M['chrome'], axis='z', seg=6, name='valve_stem'))
+    wh = torus(0.052, 0.009, (-0.78, 1.74, zp + 0.024), M['button'], axis='z', seg=12, sides=4, name='handwheel'); sw(wh, BR('red')); A(wh)
     for a in (0.0, math.pi / 2):
-        sp = box((0.1, 0.012, 0.008), (-0.78, 1.74, zp + 0.055), M['button'], name='spoke'); sw(sp, BR('red'))
-        xform([sp], rot=(0, 0, a + 0.4), pivot=(-0.78, 1.74, zp + 0.055)); A(sp)
+        sp = box((0.1, 0.012, 0.008), (-0.78, 1.74, zp + 0.024), M['button'], name='spoke'); sw(sp, BR('red'))
+        xform([sp], rot=(0, 0, a + 0.4), pivot=(-0.78, 1.74, zp + 0.024)); A(sp)
     # ---------------- the screen: a chunky bezel, the recess, black glass at the back, a cyan tube round it
-    bz = box((0.62, 0.44, 0.1), (SCR[0], SCR[1], 0.15), M['black'], bev=0.012, seg=2, name='bezel'); uv_box(bz, 0.3)
+    bz = box((0.62, 0.44, Z_BEZ - 0.1), (SCR[0], SCR[1], (Z_BEZ + 0.1) / 2), M['black'], bev=0.012, seg=2, name='bezel'); uv_box(bz, 0.3)
     cut_ = slab_xy(rrect_pts(SCR[0], SCR[1], OPN_W, OPN_H, OPN_R, 3), Z_GLASS - 0.002, 0.3, M['dark'], 'cut'); uv_fit(cut_, (0, 0, 0.02, 0.02))
     dcut(bz, cut_); A(bz)
     A(quad((SCR[0], SCR[1], Z_GLASS), OPN_W + 0.01, OPN_H + 0.01, M['glass'], axis='z', name='glass'))
-    tb = plane_tube(rrect_pts(SCR[0], SCR[1], OPN_W + 0.034, OPN_H + 0.034, OPN_R + 0.014, 2), Z_BEZ + 0.003, 0.007, M['neon'], seg=5, closed=True, name='screen_tube'); sw(tb, NR('cyan')); A(tb)
+    tb = plane_tube(rrect_pts(SCR[0], SCR[1], OPN_W + 0.034, OPN_H + 0.034, OPN_R + 0.014, 2), Z_BEZ + 0.001, 0.007, M['neon'], seg=5, closed=True, name='screen_tube'); sw(tb, NR('cyan')); A(tb)
     for sx in (-1, 1):
         for sy in (-1, 1): A(cyl(0.011, 0.008, (SCR[0] + sx * 0.29, SCR[1] + sy * 0.2, Z_BEZ + 0.002), M['chrome'], axis='z', seg=6, name='bezel_bolt'))
     for i, k in enumerate(('pink', 'yellow', 'cyan')):  # three wires out of its side, down into the console
-        dx, dz = 0.008 * i, 0.006 * i
-        wr = sweep([(0.80, 1.5 - 0.03 * i, 0.165), (0.826 + dx, 1.47 - 0.03 * i, 0.178 + dz), (0.832 + dx, 1.37, 0.186 + dz), (0.826 + dx, 1.28, 0.186 + dz), (0.815, 1.2, 0.17 + 0.012 * i)], 0.0055, M['button'], seg=4,
+        dx, dz = 0.0095 * i, 0.004 * i
+        wr = sweep([(0.80, 1.5 - 0.03 * i, 0.165), (0.826 + dx, 1.47 - 0.03 * i, 0.178 + dz), (0.832 + dx, 1.37, 0.186 + dz), (0.826 + dx, 1.28, 0.186 + dz), (0.815, 1.2, 0.17 + 0.008 * i)], 0.0045, M['button'], seg=5,
                    name='wire'); sw(wr, BR(k)); A(wr)
     # ---------------- the console under it: one big red button, a key switch, a lit READY
     con = side([(0.13, 0.998), (CON[0][0], 0.998), CON[0], CON[1], (0.13, CON[1][1])], CON_X[1] - CON_X[0], ((CON_X[0] + CON_X[1]) / 2, 0, 0), M['black'], bev=0.008, seg=2, name='console')
@@ -627,7 +628,7 @@ def build():
         out = []
         if collar: out.append(lathe([(r + 0.034, -0.002), (r + 0.034, 0.008), (r + 0.026, 0.012), (r + 0.01, 0.012)], (0, 0, 0), M['button'], seg=seg, axis='y', name=name + '_collar', cap=False))
         out.append(lathe([(r + 0.016, -0.002), (r + 0.016, 0.014), (r + 0.008, 0.022), (r + 0.002, 0.02)], (0, 0, 0), M['chrome'], seg=seg, axis='y', name=name + '_rim', cap=False))
-        cap_ = lathe([(r * 0.7, 0.0), (r * 0.7, 0.03), (r * 1.05, 0.034), (r * 1.05, 0.05), (r * 0.9, 0.064), (r * 0.55, 0.073), (0.0, 0.076)], (0, 0, 0), m or M['button'], seg=seg, axis='y', name=name)
+        cap_ = lathe([(r * 0.7, -0.004), (r * 0.7, 0.03), (r * 1.05, 0.034), (r * 1.05, 0.05), (r * 0.9, 0.064), (r * 0.55, 0.073), (0.0, 0.076)], (0, 0, 0), m or M['button'], seg=seg, axis='y', name=name)
         me = cap_.data; me.uv_layers.new(name='UVMap'); uv = me.uv_layers.active.data; br = R or BR(k)
         for pg in me.polygons:
             for li in pg.loop_indices:
@@ -698,13 +699,13 @@ def closeups(file_id, shots, res=(640, 480), before=None):
     for i, (cp, tp, lens) in enumerate(shots):
         if before: before(i)
         cam.data.lens = lens; cam.location = gv(*cp); lib._look_at(cam, gv(*tp)); cam.data.clip_start = 0.05; cam.data.clip_end = 60
-        sc.render.filepath = os.path.join(SHEETS, f'_{file_id}_{i}.png'); bpy.ops.render.render(write_still=True)
+        sc.render.filepath = os.path.join(lib.SHEETS, f'_{file_id}_{i}.png'); bpy.ops.render.render(write_still=True)
         im = bpy.data.images.load(sc.render.filepath); imgs.append(np.array(im.pixels[:], dtype=np.float32).reshape(res[1], res[0], 4))
         bpy.data.images.remove(im); os.remove(sc.render.filepath)
     full = np.concatenate(imgs, axis=1)
     img = bpy.data.images.new('strip', full.shape[1], full.shape[0]); img.pixels.foreach_set(full.ravel())
-    png = os.path.join(SHEETS, f'_{file_id}.png'); img.filepath_raw = png; img.file_format = 'PNG'; img.save()
-    dst = os.path.join(SHEETS, file_id + '.jpg')  # jpg like the turnarounds; png without ffmpeg
+    png = os.path.join(lib.SHEETS, f'_{file_id}.png'); img.filepath_raw = png; img.file_format = 'PNG'; img.save()
+    dst = os.path.join(lib.SHEETS, file_id + '.jpg')  # jpg like the turnarounds; png without ffmpeg
     if os.system(f'ffmpeg -loglevel error -y -i "{png}" -q:v 3 "{dst}"') != 0: dst = dst[:-4] + '.png'; os.replace(png, dst)
     if os.path.exists(png): os.remove(png)
     print('JF_SHEET', dst)
