@@ -3092,7 +3092,7 @@ const lavaPit = (T) => ({ kind: 'lava', box: T, top: 4.6, bot: LAVA_FLOOR - 0.5 
 // out into the island, six gullies, a broken rim, a crater with a level floor round the throat, an apron of lumpy ground. the shape is ground (shared/terrain.js relief: you walk it,
 // grapple it, bots path over it); this only adds what stands on it, at y 0 (the ground lifts it), and the lava down the
 // throat, which stays exactly where the pit rules expect it (shared/pits.js). returns { throat, f: the height function }
-const KABOOM = { c: [0, -3], rc: 5.5, crest: 15, crater: 11.5, floorR: 3.9, apron: 5, edge: [-28, -24, 28, 24], south: 11.5, side: 26 };
+const KABOOM = { c: [0, -3], rc: 6.4, crest: 15, crater: 11.5, floorR: 4.6, apron: 5, edge: [-28, -24, 28, 24], south: 11.5, side: 26 };
 function kaboom(B0, D0, dx, dz) {
   const B = shifted(B0, dx, dz), D = shifted(D0, dx, dz), K = KABOOM, T = [-2, -5, 2, -1];
   const cx = K.c[0] + dx, cz = K.c[1] + dz, sm = (a, b, v) => { const k = Math.max(0, Math.min(1, (v - a) / (b - a))); return k * k * (3 - 2 * k); };
@@ -3107,7 +3107,8 @@ function kaboom(B0, D0, dx, dz) {
     return Math.max(K.rc + 6, R);
   };
   // the rim: broken, a notch north (where the lava leaves), a low gap south (the way in from the village)
-  const rim = (a) => K.crest + 0.55 * Math.sin(2 * a * RAD + 0.4) + 0.35 * Math.sin(5 * a * RAD) + 1.1 * (vnoise(a / 17, 3.3, 31) - 0.5) + 0.9 * Math.max(0, Math.sin(4 * a * RAD + 1)) ** 4 // (teeth)
+  const rim = (a) => K.crest + 0.55 * Math.sin(2 * a * RAD + 0.4) + 0.35 * Math.sin(5 * a * RAD) + 1.1 * (vnoise(3.4 * Math.cos(a * RAD) + 9, 3.4 * Math.sin(a * RAD) + 9, 31) - 0.5) + 0.9 * Math.max(0, Math.sin(4 * a * RAD + 1)) ** 4
+    + 2.4 * (hsh(Math.floor((a + 180) / 18), 0, 61) - 0.5) * (1 - bump(a, -90, 16)) * (1 - bump(a, 90, 18)) // (teeth: a jagged step every couple of metres, not across the two ways in)
     - 2.5 * bump(a, -90, 11) - 1.5 * bump(a, 90, 14);
   const lump = (x, z) => Math.sin(x * 0.9 + 1.7) * Math.sin(z * 1.1 - 0.6) * 0.5 + Math.sin(x * 0.37 - z * 0.53) * 0.5; // -1..1, for the apron
   // roughness (the owner: "too smooth still"): the same on every machine (integer hashes), nothing finer than the ground's 1 m grid can hold
@@ -3125,24 +3126,46 @@ function kaboom(B0, D0, dx, dz) {
     }
     return h;
   };
+  // the bare flank at (angle, how far down 0..1): steep up top, long shallow lower slopes, cut by gullies
+  const tri = (a, m, w) => Math.max(0, 1 - Math.abs(((a - m + 540) % 360) - 180) / w);
+  const BANDS = [[0.25, 1.5], [0.5, 2], [0.72, 2.4]]; // (where each cliff band sits, how many metres wide its bench is)
+  const flank = (a, t, cr) => {
+    let h = cr * (0.8 * Math.pow(1 - t, 1.7) + 0.2 * (1 - t));
+    const mid = t < 0.9 ? Math.sin(Math.PI * t / 0.9) : 0;
+    let g = 0; for (const [m, w, d] of [[18.5, 21, 2.5], [138.5, 21, 2.5], [-101.5, 21, 2.5], [78.5, 13, 1.3], [-41.5, 13, 1.3]]) g = Math.max(g, d * tri(a, m, w));
+    h -= g * mid; // gullies: V-shaped, a hard break of slope at the bed and at each lip, deepest half way down
+    h += 0.75 * (tri(a, -11.5, 9) + tri(a, 108.5, 9) + tri(a, -131.5, 9) + tri(a, 168, 9)) * mid; // knife ridges between them
+    h += 0.3 * Math.sin(13 * a * RAD + 2) * mid; // and a finer set of ribs
+    h -= 1.5 * bump(a, 50, 20) * sm(0.2, 0.35, t) * (1 - sm(0.65, 0.8, t)); // the scar where the south-east flank fell away
+    return h;
+  };
+  // a spatter cone on the west spur, two thirds of the way out: a stubby little vent with a dimple in the top
+  const SPAT = [cx - 17.4, cz - 6.3], spatter = (x0, z0) => { const d = Math.hypot(x0 - SPAT[0], z0 - SPAT[1]); return d >= 3.6 ? 0 : 2.9 * Math.pow(1 - d / 3.6, 0.8) - 1.3 * Math.max(0, 1 - d / 1.2); };
   const f = (x0, z0) => {
     const x = x0 - cx, z = z0 - cz, r = Math.hypot(x, z), a = Math.atan2(z, x) / RAD, R = foot(a), cr = rim(a);
     if (r >= R + K.apron) return null;
     // the island's own edge: everything eases down to the beach there (no cliff into the shallows)
     const e = Math.min(x0 - dx - K.edge[0], K.edge[2] - (x0 - dx), z0 - dz - K.edge[1], K.edge[3] - (z0 - dz)), ek = sm(0, 3.5, e);
     if (r >= R) { const u = (r - R) / K.apron; return Math.max(0, (0.28 + 0.3 * lump(x0, z0)) * (1 - u) * (1 - u)) * ek; } // the apron: low lumpy ground running out to nothing
-    if (r <= K.rc) return K.crater + (cr - K.crater) * sm(K.floorR, K.rc, r); // the crater: a level floor, then up to the rim
+    if (r <= K.rc) { // the crater: a level floor, then up to the rim. at the two ways in (south gap, north notch) a longer, gentler ramp you can walk out by
+      const way = Math.max(bump(a, 90, 22), bump(a, -90, 18)), fr = K.floorR - 0.5 * way, k = Math.max(0, Math.min(1, (r - fr) / (K.rc - fr)));
+      return K.crater + (cr - K.crater) * (k * way + sm(K.floorR, K.rc, r) * (1 - way));
+    }
     const t = (r - K.rc) / (R - K.rc);
-    let h = cr * (0.8 * Math.pow(1 - t, 1.7) + 0.2 * (1 - t)); // steep up top, long shallow lower slopes
+    let h = flank(a, t, cr);
     const mid = t < 0.9 ? Math.sin(Math.PI * t / 0.9) : 0;
-    h -= 2.1 * Math.pow(Math.sin(3 * a * RAD + 0.6) * 0.5 + 0.5, 3) * mid; // six big gullies, cut deep and narrow, deepest half way down
-    h += 0.3 * Math.sin(13 * a * RAD + 2) * mid; // and a finer set of ribs
-    h -= 1.5 * bump(a, 50, 20) * sm(0.2, 0.35, t) * (1 - sm(0.65, 0.8, t)); // the scar where the south-east flank fell away
+    // cliff bands: three broken rings of bench-then-drop, each only in arcs (gaps to walk through), their edges ragged
+    for (let k = 0; k < 3; k++) {
+      const tk = BANDS[k][0] + 0.035 * (vnoise(x0 * 0.45, z0 * 0.45, 50 + k) - 0.5), bw = BANDS[k][1] / (R - K.rc);
+      if (t < tk || t >= tk + bw) continue;
+      const m = sm(0.44, 0.5, vnoise(2.3 * Math.cos(a * RAD) + 7 * k + 5, 2.3 * Math.sin(a * RAD) + 5, 40 + k)) * (1 - bump(a, 90, 16)) * (1 - bump(a, -90, 12));
+      h += (flank(a, tk, cr) - h) * m;
+    }
     // broken ledges: the slope steps in benches about 1.7 m apart, but only in patches (never a ring right round)
     const L = 2.3, sN = h / L, fl = Math.floor(sN), bench = (fl + sm(0.6, 0.97, sN - fl)) * L, lk = sm(0.36, 0.6, vnoise(x0 * 0.13, z0 * 0.13, 11));
     h = h * (1 - lk) + bench * lk;
     const rough = Math.max(mid, sm(0.02, 0.12, t) * (1 - sm(0.8, 0.95, t))) * (0.6 + 0.4 * Math.sin(Math.PI * Math.min(1, t * 1.6))); // (none right at the rim or the foot)
-    h += crags(x0, z0) * rough; // outcrops and hollows
+    h += crags(x0, z0) * rough + spatter(x0, z0); // outcrops and hollows, the spatter cone
     h += (Math.abs(vnoise(x0 * 0.31, z0 * 0.31, 21) - 0.5) * 2 - 0.5) * 1.4 * rough; // sharp little ridges between them
     return Math.max(0.28 * (1 - t) + 0.05, h) * (t > 0.6 ? 1 - (1 - ek) * sm(0.6, 1, t) : 1);
   };
@@ -3150,7 +3173,7 @@ function kaboom(B0, D0, dx, dz) {
   B.add(T[0], 0, T[1], T[2], LAVA_FLOOR, T[3], 'basalt', { still: 1 }); D.add(T[0], 4.3, T[1], T[2], 4.5, T[3], 'lava', { still: 1 }); // the plug and the lava over it (map.pits)
   for (const [x0, z0, x1, z1] of [[-2.3, -5.3, 2.3, -5], [-2.3, -1, 2.3, -0.7], [-2.3, -5, -2, -1], [2, -5, 2.3, -1]]) B.add(x0, 0, z0, x1, 0.3, z1, 'basalt'); // the throat's lip
   D.add(-1.6, 0.3, -0.66, 1.6, 0.9, -0.6, 'advolcano', { fit: 1 });
-  for (const [x, z, s] of [[-13, -10, 1.2], [11, -7.5, 1.3], [-10.5, 5, 1.0], [6.5, -12, 0.9], [-5, 5.5, 0.8], [13.5, 3, 1.1], [-19, -9, 1.0], [2, -17, 1.1]]) B.add(x - s, 0, z - s * 0.8, x + s, s * 1.2, z + s * 0.8, 'basalt'); // boulders on the flanks (cover on the way up)
+  for (const [x, z, s] of [[-13, -10, 1.2], [11, -7.5, 1.3], [-10.5, 5, 1.0], [6.5, -12, 0.9], [-5, 5.5, 0.8], [13.5, 3, 1.1], [-20.5, -12.5, 1.0], [2, -17, 1.1]]) B.add(x - s, 0, z - s * 0.8, x + s, s * 1.2, z + s * 0.8, 'basalt'); // boulders on the flanks (cover on the way up)
   return { throat: [T[0] + dx, T[1] + dz, T[2] + dx, T[3] + dz], f };
 }
 function volcano(B0, D0, dx, dz, st, RK) { // (RK: the map's rock model tag. its terraces, lip, rim and boulders are drawn as real rock, look only)
@@ -3417,7 +3440,7 @@ function islands() {
   const spawns = [...att.slice(0, 3), ...def.slice(0, 3), [-10, 0.1, 22.5], [6, 0.1, 13], [-22, 0.1, -11], [20, 0.1, -10], [0, 9.1, 0.7], [-6, 3.1, -14],
     [-6, 0.1, -67], [12, 0.1, -61], [-12, MD + 0.1, -69], [6, 0.1, -70], [-11, 0.1, 61], [11, 0.1, 76.5], [0, SK + 0.1, 70], [-40, 0.1, -38], [40, 0.1, 37]];
   // dunes on the islands (shared/terrain.js): up only, the beaches' edges, the volcano, the fort and the huts stay level
-  shapeGround(B, D, { region: [-100, -90, 100, 90], mat: 'sand', seed: 3113, up: 1.6, down: 0.12, near: 0.8, far: 4, drape: ['grass'], relief: [{ f: KB.f, mat: 'basalt', paint: KB.f.rock, rock: true }], points: [...new Set([...spawns, ...att, ...def])] });
+  shapeGround(B, D, { region: [-100, -90, 100, 90], mat: 'sand', seed: 3113, up: 1.6, down: 0.12, near: 0.8, far: 4, drape: ['grass'], soft: 1.15, relief: [{ f: KB.f, mat: 'basalt', paint: KB.f.rock, rock: true }], points: [...new Set([...spawns, ...att, ...def])] });
   for (const p of spawns) if (KB.f(p[0], p[2]) != null) p[1] = B.boxes.terrain.at(p[0], p[2]) + 0.1; // (the two up the mountain: onto its new slopes)
   let graph = null;
   const map = { name: 'Islands', size: 'large', boxes: B.boxes, deco: D.boxes, killY: ISL.DROWN, floorY: -1.5, sky: SKY_SUNSET, fogNear: 110, fogFar: 380,

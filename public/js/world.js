@@ -258,14 +258,21 @@ function terrainGeo(T, tile, mi = -1) { // mi: only the cells painted with T.mat
 // so the shape reads: hollows a little darker, crests a little brighter, steep bits shaded (on top of the baked AO)
 // rock (T.rocky materials): every triangle its own flat face, so crags, ledges and gullies catch the light as edges
 function terrainFacet(T, tm, g) { if (T.rocky && T.rocky.has(tm)) g.computeVertexNormals(); return g; }
+const sm01 = (k) => { k = Math.max(0, Math.min(1, k)); return k * k * (3 - 2 * k); };
 function terrainTint(T, g, tm) {
   const col = g.attributes.color, nrm = g.attributes.normal, pos = g.attributes.position;
   const rock = !!(T.rocky && T.rocky.has(tm)), vz = T.nz + 1, Hh = (i, j) => T.H[Math.max(0, Math.min(T.nx, i)) * vz + Math.max(0, Math.min(T.nz, j))];
   for (let i = 0; i < col.count; i++) {
-    if (rock) { // ridges and knobs lighter, cracks and hollows darker (how much higher a point is than the ground round it)
-      const vi = Math.round(pos.getX(i) - T.x0), vj = Math.round(pos.getZ(i) - T.z0), c = Hh(vi, vj) - (Hh(vi - 1, vj) + Hh(vi + 1, vj) + Hh(vi, vj - 1) + Hh(vi, vj + 1)) / 4;
-      const a = col.getX(i) * (1.15 + Math.max(-0.5, Math.min(0.9, c * 1.6)));
-      col.setXYZ(i, a, a * 0.97, a * 0.95);
+    if (rock) { // rock gets real colours by shape: mid purple-grey, steep faces dark, ash on the heights and the bench tops, rust patches, dark gully beds
+      const x = pos.getX(i), z = pos.getZ(i), y = pos.getY(i), vi = Math.round(x - T.x0), vj = Math.round(z - T.z0), c = Hh(vi, vj) - (Hh(vi - 1, vj) + Hh(vi + 1, vj) + Hh(vi, vj - 1) + Hh(vi, vj + 1)) / 4;
+      const ny = nrm.getY(i), st = sm01((0.82 - ny) / 0.2), fl = sm01((ny - 0.9) / 0.08), n1 = Math.sin(x * 0.71 + z * 0.37) * Math.sin(z * 0.83 - x * 0.29 + 1.3), n2 = Math.sin(x * 0.23 - 2.1) * Math.sin(z * 0.19 + x * 0.11 + 0.7);
+      let r = 0x6f, gg = 0x63, b = 0x79; const mix = (R, G, B, k) => { r += (R - r) * k; gg += (G - gg) * k; b += (B - b) * k; };
+      mix(0x9b, 0x91, 0x9f, Math.max(sm01((y - 0.72 * T.hi) / (0.12 * T.hi)), fl * sm01((y - 1.5) / 1.5) * 0.75)); // ash: the top fifth, and wherever it lies flat higher up
+      mix(0x7a, 0x4a, 0x3a, fl * sm01((n2 - 0.25) / 0.2) * sm01((y - 1) / 1) * 0.8); // rust, in patches on the flats
+      mix(0x4a, 0x3f, 0x55, st); // steep faces
+      mix(0x3a, 0x31, 0x42, sm01((-c - 0.18) / 0.3)); // gully beds and cracks
+      const a = (0.72 + 0.28 * col.getX(i)) * (1.12 + Math.max(-0.2, Math.min(0.45, c * 0.9)) + 0.07 * n1); // (the baked shade only lightly: on a steep slope it finds the slope itself. edges catch a bit of light; a little mottling)
+      col.setXYZ(i, a * r / 64, a * gg / 56, a * b / 70); // (over the basalt texture's own colour, about 64 56 70)
       continue;
     }
     const h = pos.getY(i), k = (h > 0 ? 0.11 * h / Math.max(0.5, T.hi) : 0.24 * h / Math.max(0.5, -T.lo)) - 0.5 * (1 - nrm.getY(i)) * 2.2;

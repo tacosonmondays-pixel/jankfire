@@ -192,7 +192,7 @@ export function shapeGround(B, D, o) {
     }
     for (const [key, r] of runs) if (!seen.has(key)) { flush(r); runs.delete(key); }
   }
-  function flush(r) { B.boxes.push({ min: [X0 + r.x0, BASE, Z0 + r.j], max: [X0 + r.x1, r.q * 0.05, Z0 + r.e], mat, ter: 1 }); nTer++; }
+  function flush(r) { B.boxes.push({ min: [X0 + r.x0, BASE, Z0 + r.j], max: [X0 + r.x1, r.q * 0.05, Z0 + r.e], mat, ter: 1, ...(o.soft ? { sw: o.soft } : null) }); nTer++; }
   // ---- where the ground stops at a drop (the canyon's lip, the shaft): a strip of it down the face, so the lowered slab doesn't show as a gap
   let eTop = 0, eMat = mat;
   const edge = (x0, z0, x1, z1) => D.add(x0, UNDER, z0, x1, eTop, z1, eMat);
@@ -207,7 +207,7 @@ export function shapeGround(B, D, o) {
   }
   // ---- spawns and the like: onto the new ground
   for (const p of o.points || []) if (p[1] > -0.5 && p[1] < 0.6) { const g = at(p[0], p[2]); if (g != null) p[1] += g; }
-  const terrain = { x0: X0, z0: Z0, nx, nz, H, ok, mat, mats, paint, rocky, lo, hi, base: BASE, at, box: { min: [X0, BASE, Z0], max: [X1, hi, Z1], mat, terr: 1 }, stats: { anchors: anchors.length, props: propsC.length, steps: nTer } };
+  const terrain = { x0: X0, z0: Z0, nx, nz, H, ok, mat, mats, paint, rocky, lo, hi, climb: 0.85 + ((o.soft || 0.7) - 0.7), base: BASE, at, box: { min: [X0, BASE, Z0], max: [X1, hi, Z1], mat, terr: 1 }, stats: { anchors: anchors.length, props: propsC.length, steps: nTer } };
   Object.defineProperty(B.boxes, 'terrain', { value: terrain, writable: true, configurable: true, enumerable: false });
   return terrain;
 }
@@ -215,4 +215,4 @@ export function shapeGround(B, D, o) {
 export const groundY = (boxes, x, z) => { const t = boxes && boxes.terrain, g = t ? t.at(x, z) : null; return g == null ? 0 : g; };
 // a terrace's top 0.7 m is soft to a body whose feet are near the surface: the heightfield is the real ground there
 // (below that it's a wall: the canyon's face, the side of the mine shaft)
-export const softTer = (b, y) => b.ter === 1 && y > b.max[1] - 0.7;
+export const softTer = (b, y) => b.ter === 1 && y > b.max[1] - (b.sw || 0.7); // (sw: a map with steep rock to walk up, o.soft, makes it deeper)
