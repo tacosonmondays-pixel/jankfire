@@ -254,7 +254,7 @@ function buildMap(scene) {
   aoBegin(all, ncf); setSunBoxes(all);
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
-    if (i < nReal && ((b.pv && hasProp(b.pv)) || (b.av && hasArch(b.av)))) continue;
+    if ((i < nReal && b.pv && hasProp(b.pv)) || (b.av && hasArch(b.av))) continue;
     if (liquidBox(b)) { liq.push(b); continue; } // water, lava, fire: liquids.js / flames.js draw those
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
@@ -300,7 +300,7 @@ function buildChunked(scene, def) {
   aoBegin(all, ncf); setSunBoxes(all);
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
-    if (i < nReal && ((b.pv && hasProp(b.pv)) || (b.av && hasArch(b.av)))) continue; // (as in buildMap: only real boxes give way to a prop / a building)
+    if ((i < nReal && b.pv && hasProp(b.pv)) || (b.av && hasArch(b.av))) continue; // (as in buildMap: only real boxes give way to a prop / a building)
     if (liquidBox(b)) { liq.push(b); continue; } // (liquids.js)
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
