@@ -12,6 +12,7 @@ import { rigClash } from '../shared/rig.js'; // overdrive rig killstreak
 import { soapAt, trapBoxes, trapPreroll } from '../shared/wand.js';
 import { MAPS, MAP_ORDER } from '../shared/map.js';
 import { warmMap, startGraphSweeper } from './graphs.js'; // the bots' walk graphs: built at room start, dropped when no room has used the map for a while
+import { sdRate } from '../shared/sdgun.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, mapForGame, canDefuse, LADDER, GUNGAME, INFECT, rollLadder } from '../shared/modes.js';
 import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, eventGame, inQuickPlay } from '../shared/vote.js';
 import { matchReset, matchKill, matchSummary } from './match.js';
@@ -37,6 +38,7 @@ import { installRoyale } from './royale.js'; // Jank Royale (battle royale)
 import { BR } from '../shared/royale.js';
 import { tickHR, hrBot } from './hrguy.js'; // the Tall Guy From HR (Scary Forest)
 import { HR } from '../shared/hr.js';
+import { installAds } from './ads.js';
 import { installGear } from './gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
 import { installRandSkin, rollSkins, rollKfx, cleanFavs, hasRandom } from './randskin.js'; // Random cosmetics: rolled again on every spawn
 import { installSec } from './secondaries.js'; // water pistol, taser, tv remote, speed trap
@@ -901,6 +903,10 @@ class Room {
     return null;
   }
 
+  // how hard a bot's bullets hit next to a player's (server/sdtune.js raises it for hard bots in Plant & Defuse)
+  botDmg() { return 0.7; }
+  // shots per second for a gun right now: Plant & Defuse slows a few down (shared/sdgun.js rof)
+  rateOf(id, w, hp) { const r = fireRate(w, hp); return this.isEcon() ? sdRate(id, r) : r; }
   botFire(b, t, D) {
     if (this.chaosKit && this.botChaosFire(b, t, D)) return;
     if (this.brOn && !this.brBotShot(b)) return; // jank royale: real bullets
@@ -908,7 +914,7 @@ class Room {
     const w = WEAPONS[b.w], n = now();
     if (b.w === 'shredder') { this.botShred(b); return; } // no shots: it sucks for as long as they're in front of it
     if (w.kind === 'beam') { this.botLaser(b); return; } // laser pointer: charge, then let go
-    const iv = w.rate ? 1000 / (fireRate(w, b.hp) * (w.hands || 1)) : w.cd * 1000; // Lefty & Righty: both hands going
+    const iv = w.rate ? 1000 / (this.rateOf(b.w, w, b.hp) * (w.hands || 1)) : w.cd * 1000; // Lefty & Righty: both hands going
     if (w.mag) {
       b.ai.ammo--;
       if (b.ai.ammo <= 0) { b.ai.ammo = w.mag; b.ai.reloadUntil = n + w.reload * 1000; }
@@ -938,7 +944,7 @@ class Room {
         segs.push([...o, o[0] + d[0] * maxT, o[1] + d[1] * maxT, o[2] + d[2] * maxT].map(r2));
         if (victim) { const h = hits.get(victim) || { n: 0, h: 0, d }; h.n++; if (head) h.h++; hits.set(victim, h); }
       }
-      for (const [victim, h] of hits) this.applyHitscan(b, victim, b.w, h.n, h.h, h.d, 0.7);
+      for (const [victim, h] of hits) this.applyHitscan(b, victim, b.w, h.n, h.h, h.d, this.botDmg(b));
       this.broadcast({ t: 'fx', k: 'shot', w: b.w, id: b.id, s: segs.slice(0, 12), hd: w.hands && (b.ai.hd = !b.ai.hd) ? 1 : undefined }); // a bot's Lefty & Righty takes turns
       if (w.marbles) this.marblePatch(b, segs.slice(0, 12)); // bots' marbles trip people too
     } else if (w.kind === 'proj') {
@@ -1083,6 +1089,7 @@ class Room {
       this.broadcast({ t: 'bub+', id: b.id, p: b.p, r: b.r, left: it.dur * 1000 });
     } else if (m.i === 'popper') this.popperUse(p, o, d);
     else if (m.i === 'reverse') this.reverseUse(p);
+    else if (m.i === 'laptop') this.laptopUse(p, o, d, c); // pop-up ads (server/ads.js): no target, charge back
   }
   // party popper (item): the client finds who's in its cone and sends 'hit's. they only count for a moment after
   // a charge was really spent here, once per target, and only on people in front of where you aimed
@@ -1670,7 +1677,7 @@ class Room {
       const fan = m.fan === 1, ns = m.ns === 1, qs = m.qs === 1;
       if (w.fanHammer) { const mul = this.revolverHit(p, t, fan, w); if (mul) this.applyHitscan(p, t, m.w, n, h, d, mul); return; } // tap or fan the hammer
       const hd = w.hands && m.hd === 1 ? 'L' : ''; // Lefty & Righty: each gun has its own schedule (claiming the other hand buys at most the pair's real rate)
-      if (!this.pairOk(p, t, 'hs' + m.w + hd, (1000 / fireRate(w, p.hp)) * 0.6) || !this.rangeOk(p, t, w.range)) return; // the Redline fires faster as you lose HP
+      if (!this.pairOk(p, t, 'hs' + m.w + hd, (1000 / this.rateOf(m.w, w, p.hp)) * 0.6) || !this.rangeOk(p, t, w.range)) return; // the Redline fires faster as you lose HP
       p.nsHit = m.w === 'sniper' && p.w === 'sniper' && ns; // a no-scope (ns: 1) can make the kill EPIC
       const hp0 = t.hp; // no-scope hype only goes out if the shot really landed
       p.qsHit = !!w.quick && qs; // Second Opinion quick-scope (server/rifles.js caps what it buys)
@@ -1954,7 +1961,7 @@ class Room {
     // one limiter per player, not per weapon: you hold one gun at a time, and cycling ids must not add the rates up.
     // the rate is the real one: the Redline speeds up as you lose HP, a fanned revolver goes at the fan rate
     if (w.kind === 'hitscan' || w.kind === 'melee') {
-      const rate = w.rate ? (fan ? Math.max(w.rate, w.fanHammer.rate) : fireRate(w, p.hp) * (w.hands || 1)) : 0; // Lefty & Righty: both hands
+      const rate = w.rate ? (fan ? Math.max(w.rate, w.fanHammer.rate) : this.rateOf(m.w, w, p.hp) * (w.hands || 1)) : 0; // Lefty & Righty: both hands
       const n = now(), iv = rate ? 250 / rate : (w.cd || 0.3) * 250;
       if (n - (p.lastFire.fx || 0) < iv) return;
       p.lastFire.fx = n;
@@ -3945,6 +3952,7 @@ installLasso(Room);
 installZombies(Room, { send, stat, store });
 installLobby(Room, { send, rooms });
 installPits(Room, { now, r2 });
+installAds(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm }); // the laptop's pop-up ads (after installSec: it wraps botGear / botFire)
 installStoryRef(Room); // story rooms (before installModeStats, which stays last)
 installModeStats(Room, { store }); // per-mode leaderboard stats (last: it wraps zombies' zmGive)
 
