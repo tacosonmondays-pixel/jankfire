@@ -900,6 +900,8 @@ class Room {
     return null;
   }
 
+  // how hard a bot's bullets hit next to a player's (server/sdtune.js raises it for hard bots in Plant & Defuse)
+  botDmg() { return 0.7; }
   // shots per second for a gun right now: Plant & Defuse slows a few down (shared/sdgun.js rof)
   rateOf(id, w, hp) { const r = fireRate(w, hp); return this.isEcon() ? sdRate(id, r) : r; }
   botFire(b, t, D) {
@@ -939,7 +941,7 @@ class Room {
         segs.push([...o, o[0] + d[0] * maxT, o[1] + d[1] * maxT, o[2] + d[2] * maxT].map(r2));
         if (victim) { const h = hits.get(victim) || { n: 0, h: 0, d }; h.n++; if (head) h.h++; hits.set(victim, h); }
       }
-      for (const [victim, h] of hits) this.applyHitscan(b, victim, b.w, h.n, h.h, h.d, 0.7);
+      for (const [victim, h] of hits) this.applyHitscan(b, victim, b.w, h.n, h.h, h.d, this.botDmg(b));
       this.broadcast({ t: 'fx', k: 'shot', w: b.w, id: b.id, s: segs.slice(0, 12), hd: w.hands && (b.ai.hd = !b.ai.hd) ? 1 : undefined }); // a bot's Lefty & Righty takes turns
       if (w.marbles) this.marblePatch(b, segs.slice(0, 12)); // bots' marbles trip people too
     } else if (w.kind === 'proj') {
