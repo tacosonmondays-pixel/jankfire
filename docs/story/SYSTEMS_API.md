@@ -223,7 +223,7 @@ The browser loads the room code from `/server/`, which serves only `room.js` and
   `sim.me` from it for the save. Every normal game message (`fire`, `hit`, `item`, `use`, `parry`, `grap`, `s`,
   `pi`…) goes to `room.handle`. The room's messages go back to the client unchanged, so enemies are remote players
   and the HUD, kill feed and killcam all work.
-- **Worlds.** It runs on the test lot (`?storytest=1`). The slice is next: worker-side city chunks. Until then the
+- **Worlds.** It runs on the test lot (`?storytest=1`) and on the train (`story_train`, the REVENUE PROTECTION fight). The slice is next: worker-side city chunks. Until then the
   slice runs without a referee, as before.
 - **Enemies.** These are the game's bots with a story kind: `sk = { kind, max, side, tags, npc, boss, hold }`.
   - The room's HP stays 0..100. The kind's own pool is scaled onto it, and events carry the real numbers.
@@ -262,7 +262,7 @@ id, `'world'` or `'self'`. Bosses add more: see below.
 A boss is a story enemy with a fight on top (`server/storyboss.js`, installed by `storyref.js`). The room owns his HP,
 layers, parts, phases, attacks and where he stands. The client only shows them (`public/js/story/bossfight.js` for
 the cutscenes, clips and damage states; `bossref.js` for the boss bar, his real size when you shoot, and the actor
-standing where the room has him). Built so far: Mr. Overtime's first fight, `overtime_1`.
+standing where the room has him). Built so far: Mr. Overtime's first fight, `overtime_1`, and REVENUE PROTECTION, `revenue_protection_1` (its own part, below).
 
 - **Spawn.** `{ t:'sty', k:'spawn', kind:'overtime_1', at, id? }`. A kind that is a boss in `content/bosses.js`
   spawns as one. One boss at a time. His numbers are the content's: a spawn message cannot change them.
@@ -312,6 +312,51 @@ Tests only (`?storydev=1`): `{ t:'sty', k:'bossdev', want:'slam' }` makes that h
 Not built yet: the pin and the mash-free on a staple hit, Fines, the slam's 2 s time freeze, the 3 s "scheduled"
 hold inside the slot, the grapple yank on a loose plate, the collectors, the truck set piece, the water / taser
 bonus beyond the slower gaps, and the arena on the slice (the referee has no slice world yet).
+
+#### REVENUE PROTECTION (the train fight)
+
+`revenue_protection_1` is a boss the same way (`spawn`, `hold`, the `boss` message, `hit` / `phase` events, one
+`kill` with `defeat: true`), but not a walking bot: `server/storytrain.js` (installed after `storyboss.js`) runs it.
+Its room player sits in the middle of the mask at `z = -gap` and does nothing by itself. What is built, every number
+and what is missing: `docs/story/train/FIGHT.md`.
+
+- **The world.** `story_train` (`shared/story/train.js`, in `worlds.js`): the last two cars in the bore. A new game
+  with `?storytest=1&train=1` starts there; `G.story.travel('story_train')` / `G.story.travelBack()` move a run
+  between worlds (it saves, then starts the same run in the other world's sim).
+- **Where the numbers come from.** `content/bosses.js` + `boss_fights.js`: `hp` (5000), `layers` (armour 3750 on the
+  Inspector's 1250), `phases[].hp` (60%, 25%), `weakPoints` by name (wrists x2, eye housings x2, the Inspector x2.5).
+  `public/models/story/revenue_protection.parts.json`: the rim and mouth sockets, the eye housings, the Inspector's
+  crit spot, the smile crack. `RP` in `shared/story/train.js`: everything else, in one table.
+- **THE GAP.** Starts 30 m. Each arm that grips closes it 1 m/s; a sever opens it 2 m, a flinch 6 m; 0 m is the fail.
+- **Arms** are the room's (`grab`, `sweep`, `snatch`). Each has one HP pool: the wrist knot takes the hit x2, the
+  rope and the hand x0.15. `armPose` (shared) is the path both the room's ray and the client's chain use.
+- **Hits.** A Blood Drive bolt, or a `hit` from any other gun, is a ray tested in the room (`rayFight`): `knot`,
+  `rope`, `plate`, `hole`, `eye`, `lamp`, `insp`, `inspbody`, `mass`. Phase 1: only an open eye housing counts.
+  Phase 2: plates in full (and they break), the rest at half. Phase 3: the Inspector, the rest at a quarter.
+- **Phases.** At 60% (or when Jack's 90 s run out) the room clears the arms, sets the gap to 6 m, emits `phase`
+  `{ phase: 1, invuln: true }` and waits for the client's scene (`hold`), plus a second. The same at 25%.
+- **The Blood Drive.** `{ t: 'fire', w: 'blooddrive', k: 'spin' | 'stop' }` and `{ t: 'fire', w: 'blooddrive', o, d }`
+  per bolt. Story rooms only. The room checks the 0.8 s spin-up, 14 bolts a second, the 90 m range, walls, and takes
+  2 HP a bolt (never your last one; `{ t: 'bdrive', k: 'dry' }` when it can't). Free once `jack_marrow_taken` or
+  `seen_mo_carry` is set, or once this fight is past its middle.
+
+Its events (`ev.type`, all with `target`, `kind`, `boss: 'revenue_protection_1'`):
+
+| `ev.type` | fields |
+|---|---|
+| `state` | `gap, hp, max, phase, name, stage, plates[12] (0 on, 1 crazed, 2 gone), open, marrow, arms[], jack` (on spawn and after a reset) |
+| `gap` | `gap, rate` (m/s, so the client can run it between messages), `jack` (his bar, 1..0) |
+| `arm` | `id, k, sock, mouth, st (reach / tell / grip / sweep / hold / cut / back / gone), dur, tgt, hi, side, wa?, gp?, hp, max, blood?` |
+| `arms` | `clear: true` (a phase change, the end) |
+| `hit` | as for every boss, plus `arm` when it was one |
+| `plate` | `i, st` |
+| `stage` | `stage` (1..3), `name` (`hairline`, `left_eye`, `smile`) |
+| `flinch` | `open` (seconds), `gap` |
+| `shrug`, `bloom` | `at` (a bolt off the enamel; a cross where the sixth bolt went in) |
+| `swept`, `snatched`, `lunge`, `bag`, `off` | what happened to you: `hi` · `gap` · `st: tell / hit, bit` · `hp` · (the track) |
+| `fail`, `reset` | `why: gap / dead`, `line`; then the fight is back at the phase's start |
+
+Tests only (`?storydev=1`): `{ t:'sty', k:'bossdev', calm?, want?, hi?, side?, grip?, sever?, gap?, dmg?, part?, i? }`.
 
 For other systems:
 - `sim.ref` (`{ room, me }` once up);

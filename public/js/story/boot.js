@@ -145,7 +145,7 @@ function stage() {
   ST.staged = key;
   clearActors(); for (const t of ST.things.values()) G.scene.remove(t.mesh); ST.things.clear(); ST.inZone.clear();
   for (const sp of SPOTS.values()) G.scene.remove(sp.mesh); SPOTS.clear(); for (const s0 of REH.signs) G.scene.remove(s0); REH.signs = [];
-  const where0 = G.joined && ((MAP.id === 'story_test' || MAP.id === 'story_slice') && inStory() && !LAB ? MAP.id : MAP.id === 'story_test' && inStory() ? 'story_test' : MAP.id === 'range' && LAB && /[?&]storylab=1\b/.test(location.search) ? 'range' : '');
+  const where0 = G.joined && ((MAP.id === 'story_test' || MAP.id === 'story_slice' || MAP.id === 'story_train') && inStory() && !LAB ? MAP.id : MAP.id === 'story_test' && inStory() ? 'story_test' : MAP.id === 'range' && LAB && /[?&]storylab=1\b/.test(location.search) ? 'range' : '');
   if (!where0) { ST.on = false; return; }
   ST.on = true;
   labAt = LABS[where0] || LABS.story_test;
@@ -206,6 +206,7 @@ const REH = { zones: {}, signs: [] }, ROSTER = new Map(), SPOTS = new Map();
 function rehearse() {
   const D = ST.S.defs;
   REH.zones = {}; for (const s0 of REH.signs) G.scene.remove(s0); REH.signs = [];
+  if (MAP.id === 'story_train') { ROSTER.clear(); return; } // the train (m06's fight): no streets to lay the script out on, nobody standing about
   // in the slice city the world lane's PLACES are the real spots; on the test lot (or for zones it doesn't have yet)
   // the rehearsal grid round the Lost & Found
   const city = ST.city, c0 = city ? PLACES['bottom:lostfound'].p : [0, 0, -4];
@@ -294,6 +295,7 @@ export function frame(dt, now, cam) {
   if (ST.capture) { dt = ST.capStep || 0; ST.capStep = 0; now = ST.capNow = (ST.capNow || now) + dt * 1000; }
   stage();
   const S = ST.S, e = eye();
+  if (!ST.on && ST.boss && ST.boss.train) ST.boss.train.tick(dt); // (left the train for a sim or the menu: it takes its tunnel down)
   if (ST.on) {
     if (inStory() && (ST.syncT = (ST.syncT || 0) + dt) > 2) { ST.syncT = 0; sync(); } // (the shell's own auto / pause saves get it too)
     if (!LAB && (ST.rT = (ST.rT || 0) + dt) > 0.25) { ST.rT = 0; roster(e); spots(); }
