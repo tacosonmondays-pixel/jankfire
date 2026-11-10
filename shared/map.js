@@ -3245,6 +3245,7 @@ function fort(B0, D0, dx, dz, st, o = {}) {
 // the back of its head
 function skullRock(B0, D0, dx, dz, st) {
   const { B, D, add, W, up } = isPiece(B0, D0, dx, dz, st);
+  const n0 = B0.boxes.length, d0 = D0.boxes.length; // (design pass: everything from here is drawn as one Blender skull, public/models/arch/skullrock.glb: look only)
   const Z0 = 63, Z1 = 75, EY0 = 4, EY1 = 6, ED = 1.6;
   for (const s of [-1, 1]) { // the two sides of the head, an eye in each
     const x0 = s < 0 ? -8 : 2, x1 = s < 0 ? -2 : 8, e0 = s < 0 ? -6 : 3, e1 = s < 0 ? -3 : 6;
@@ -3259,6 +3260,7 @@ function skullRock(B0, D0, dx, dz, st) {
   for (const [x, z] of [[-0.4, 68.6], [0.3, 70.8], [-1.2, 71.2], [0.9, 69.4]]) D.box(x, 0.04, z, 0.3, 0.08, 0.3, 'gold'); // a few coins they dropped
   D.add(-1.98, 1.0, 66, -1.94, 2.0, 68.6, 'adtreasure', { fit: 1 });
   up({ ...flight(B, true, -7.8, 7.8, Z1, Z1 + 1.5, 0, SK, 'skullrock', 1), top: [7, SK, 74] }); // up the back of its head
+  B0.archSince(n0, 'skullrock', dx, dz); for (let i = d0; i < D0.boxes.length; i++) Object.assign(D0.boxes[i], { av: 'skullrock', ai: B0.boxes.arch.length - 1 });
 }
 
 // ------------------------------------------------------------ ISLANDS: Jank Atoll at sunset, under the sun with a face.
