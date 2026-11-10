@@ -135,7 +135,7 @@ function flow(nav, open, at, boxes, out) {
   }
   while (hc.length) {
     const [c, d] = pop();
-    if (d > out[c]) continue;
+    if (d > out[c] + 1e-3) continue; // (out is float32: the stored copy of d can be a hair under it)
     for (const [di, dj, w] of D8) { const n = link(nav, open, c, di, dj); if (n >= 0 && d + w < out[n]) { out[n] = d + w; push(n, d + w); } }
   }
 }
@@ -505,7 +505,7 @@ const methods = {
     const pw = this.zlPackWin(), wi = pw >= 0 ? pw : pick(wins.slice(0, 3)), w = Z.windows[wi]; // one of the windows nearest the players (or the one the rest of the ankle biters are using)
     const g = zmGait(zs.n, Math.random(), Math.random()), D = DIFF[this.cfg.diff] || DIFF.normal;
     const along = (Math.random() - 0.5) * 2.2, back = Math.random() * 0.8; // somewhere in the alley
-    const pos = [w.out[0] - w.n[2] * along - w.n[0] * back, 0, w.out[2] + w.n[0] * along - w.n[2] * back];
+    const pos = [w.out[0] - w.n[2] * along - w.n[0] * back, w.out[1], w.out[2] + w.n[0] * along - w.n[2] * back]; // (its ledge's height: upstairs windows too)
     const b = this.newPlayer('Zombie', { isBot: true, pos, color: GLOW[g.kind], skins: {}, ai: { diff: this.cfg.diff, dummy: null } });
     b.w = ''; b.hp = Math.round(zmHp(zs.n) * D.hp); b.look = zombieLook(); b.kfx = 'none'; b.team = 0; b.yaw = w.yaw; b.pitch = 0.3;
     b.zmz = { ph: 'wait', win: wi, t: n + 300 + Math.random() * 1500, speed: g.speed * D.speed, run: g.kind, wish: [0, 0], target: 0, close: false,
@@ -630,12 +630,12 @@ const methods = {
       b.f = 0;
       if (this.zxTear(b, z, n)) return; // planks first
       if (zs.st !== 'over' && n >= z.t && zs.win[z.win] <= n) { z.ph = 'climb'; z.t0 = n; z.dur = z.run ? 850 : 1350; zs.win[z.win] = n + z.dur * 0.6; z.from = b.pos.slice(); }
-      else if (n >= (z.bang || 0)) { z.bang = n + 600 + Math.random() * 900; this.broadcast({ t: 'fx', k: 'swing', w: 'bite', id: b.id, a: [r2(b.pos[0]), 1.4, r2(b.pos[2])] }); }
+      else if (n >= (z.bang || 0)) { z.bang = n + 600 + Math.random() * 900; this.broadcast({ t: 'fx', k: 'swing', w: 'bite', id: b.id, a: [r2(b.pos[0]), r2(b.pos[1] + 1.4), r2(b.pos[2])] }); }
       return;
     }
     const k = Math.min(1, (n - z.t0) / z.dur), a = z.from, c = w.in, s = z.dur / 1000;
     const up = Math.min(1, Math.max(0, (k - 0.15) / 0.22)) * Math.min(1, Math.max(0, (0.92 - k) / 0.2)); // over the sill
-    b.pos = [a[0] + (c[0] - a[0]) * k, up, a[2] + (c[2] - a[2]) * k];
+    b.pos = [a[0] + (c[0] - a[0]) * k, c[1] + up, a[2] + (c[2] - a[2]) * k];
     b.vel[0] = (c[0] - a[0]) / s; b.vel[2] = (c[2] - a[2]) / s; // so the legs walk
     b.f = k > 0.2 && k < 0.85 ? FLAGS.CROUCH : 0;
     if (k >= 1) { z.ph = 'hunt'; b.vel = [0, 0, 0]; b.onGround = false; z.chk = n; z.chkPos = b.pos.slice(); z.seen = n; }
