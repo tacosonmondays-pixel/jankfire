@@ -283,6 +283,35 @@ export function validate(C) {
     for (const p of e.panels || []) if (p.if) cond(`ending ${id}`, p.if);
   }
 
+  // ---- grudges (the Grudge Ledger, docs/story/GRUDGES.md)
+  if (C.GRUDGES) {
+    const G = C.GRUDGES, W = C.WEAPON_IDS;
+    for (const [k, v] of Object.entries(G.RULES)) if (!Number.isFinite(v) && typeof v !== 'boolean') err(`grudge rule ${k}`, 'must be a number or boolean');
+    for (const [id, f] of Object.entries(G.FACTIONS)) {
+      if (!f.name || !f.tag || !f.who || !f.voice) err(`grudge faction ${id}`, 'needs name, tag, who, voice');
+      for (const d of f.districts || []) if (!has(C.DISTRICTS, d)) err(`grudge faction ${id}`, `unknown district '${d}'`);
+      if (!(f.names || []).length) err(`grudge faction ${id}`, 'needs a name pool');
+    }
+    for (const [id, t] of Object.entries(G.TRIGGERS)) {
+      if (!t.name || !t.when) err(`grudge trigger ${id}`, 'needs name and when');
+      if (!has(G.ADAPTATIONS, t.adaptation)) err(`grudge trigger ${id}`, `unknown adaptation '${t.adaptation}'`);
+      if (W) for (const w of t.weapons || []) if (!W.includes(w)) err(`grudge trigger ${id}`, `unknown weapon '${w}'`);
+    }
+    for (const [id, a] of Object.entries(G.ADAPTATIONS)) {
+      if (!has(G.TRIGGERS, a.from)) err(`adaptation ${id}`, `unknown trigger '${a.from}'`);
+      for (const k of ['name', 'title', 'look', 'effect', 'counter']) if (typeof a[k] !== 'string' || !a[k].trim()) err(`adaptation ${id}`, `missing ${k}`);
+    }
+    for (const [id, r] of Object.entries(G.RESOLUTIONS)) if (!r.name || !r.how || !r.result || !r.file) err(`grudge resolution ${id}`, 'needs name, how, result, file');
+    const field = /\{(\w+)\}/g;
+    for (const [id, r] of Object.entries(G.RECAPS)) for (const l of r.lines || []) for (const m of l.matchAll(field)) if (!G.RECAP_FIELDS.includes(m[1])) err(`recap ${id}`, `unknown field {${m[1]}}`);
+    for (const f of Object.keys(G.FACTIONS)) for (const k of G.BARK_KEYS) {
+      const ls = (G.BARKS[f] || {})[k] || [];
+      if (ls.length < 4) err(`barks ${f}.${k}`, `${ls.length} lines (need 4)`);
+      for (const l of ls) { if (typeof l !== 'string' || !l.trim()) err(`barks ${f}.${k}`, 'empty line'); for (const m of l.matchAll(field)) if (!['you', 'name', 'district'].includes(m[1])) err(`barks ${f}.${k}`, `unknown field {${m[1]}}`); }
+    }
+    for (const f of Object.keys(G.BARKS)) if (!has(G.FACTIONS, f)) err(`barks ${f}`, 'unknown grudge faction');
+  }
+
   // ---- flags declared but never used (a typo catcher)
   for (const f of Object.keys(C.FLAGS)) if (!flagsUsed.has(f) && !(C.FLAGS[f] && C.FLAGS[f].engine)) err(`flag ${f}`, 'declared but never used');
   return errs;
