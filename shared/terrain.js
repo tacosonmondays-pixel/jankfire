@@ -58,7 +58,7 @@ export function shapeGround(B, D, o) {
   }
   // ---- the things standing on it: boxes that touch each other are one thing
   const items = [];
-  for (const L of [B.boxes, D.boxes]) for (const b of L) if (!slabSet.has(b) && !draped.has(b) && inR(b) && b.max[1] > 0.001 && b.min[1] < 40) items.push(b);
+  for (const L of [B.boxes, D.boxes]) for (const b of L) if (!slabSet.has(b) && !draped.has(b) && !b.still && inR(b) && b.max[1] > 0.001 && b.min[1] < 40) items.push(b); // (still: stays where the map put it: a plug down a shaft)
   const par = items.map((_, k) => k), find = (k) => { while (par[k] !== k) k = par[k] = par[par[k]]; return k; };
   const T = 0.03, order = items.map((_, k) => k).sort((p, q) => items[p].min[0] - items[q].min[0]);
   for (let a = 0; a < order.length; a++) {
@@ -125,6 +125,13 @@ export function shapeGround(B, D, o) {
       else if (inBox && H[n] < -wl + 0.15) H[n] = -wl + 0.15; // (no second puddle with a ruler-straight edge)
     }
   }
+  // ---- relief: big set shapes the map asks for by name (a volcano's cone). o.relief = [{ f: (x, z) => height or null, mat }]: where f
+  // answers, that IS the ground (whatever stands near), drawn in mat. things built on it are put at y 0 and ride up with it
+  for (const rf of o.relief || []) {
+    let k = mats.indexOf(rf.mat || mat); if (k < 0) { mats.push(rf.mat); k = mats.length - 1; }
+    for (let i = 0; i < vx; i++) for (let j = 0; j < vz; j++) { const v = rf.f(X0 + i, Z0 + j); if (v != null) { H[V(i, j)] = v; fixed[V(i, j)] = 1; } }
+    for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) if (rf.f(X0 + i + 0.5, Z0 + j + 0.5) != null) paint[C(i, j)] = k;
+  }
   // ---- small things get a level pad at the height the ground has under their middle, and go up or down with it
   const at0 = (x, z) => { const fx = Math.max(0, Math.min(nx - 1e-6, x - X0)), fz = Math.max(0, Math.min(nz - 1e-6, z - Z0)), i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j; return (H[V(i, j)] * (1 - u) + H[V(i + 1, j)] * u) * (1 - v) + (H[V(i, j + 1)] * (1 - u) + H[V(i + 1, j + 1)] * u) * v; };
   const PAD = o.pad ?? 2.2, sw = new Float32Array(vx * vz), swp = new Float32Array(vx * vz), mw = new Float32Array(vx * vz);
@@ -184,10 +191,12 @@ export function shapeGround(B, D, o) {
   }
   function flush(r) { B.boxes.push({ min: [X0 + r.x0, BASE, Z0 + r.j], max: [X0 + r.x1, r.q * 0.05, Z0 + r.e], mat, ter: 1 }); nTer++; }
   // ---- where the ground stops at a drop (the canyon's lip, the shaft): a strip of it down the face, so the lowered slab doesn't show as a gap
-  const edge = (x0, z0, x1, z1) => D.add(x0, UNDER, z0, x1, 0, z1, mat);
+  let eTop = 0, eMat = mat;
+  const edge = (x0, z0, x1, z1) => D.add(x0, UNDER, z0, x1, eTop, z1, eMat);
   for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
     if (!ok[C(i, j)]) continue;
     const x = X0 + i, z = Z0 + j, t = 0.04;
+    eTop = Math.max(0, Math.min(H[V(i, j)], H[V(i + 1, j)], H[V(i, j + 1)], H[V(i + 1, j + 1)])); eMat = mats[paint[C(i, j)]]; // (a shaft down through a hill: its wall goes all the way up)
     if (i > 0 && !ok[C(i - 1, j)]) edge(x, z, x + t, z + 1);
     if (i < nx - 1 && !ok[C(i + 1, j)]) edge(x + 1 - t, z, x + 1, z + 1);
     if (j > 0 && !ok[C(i, j - 1)]) edge(x, z, x + 1, z + t);

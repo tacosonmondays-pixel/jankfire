@@ -3088,6 +3088,28 @@ function isPiece(B0, D0, dx, dz, st) {
 // right down. returns the throat in the world (the island under it needs the same hole)
 const LAVA_FLOOR = 1.3; // the plug under the throat's lava (its surface is 4.5: over three metres of it. you sink, shared/pits.js mire. off the walk graph's levels on purpose)
 const lavaPit = (T) => ({ kind: 'lava', box: T, top: 4.6, bot: LAVA_FLOOR - 0.5 });
+// Mount Kaboom as an actual mountain (Islands, quick play): a cone of rock, steeper toward the top, gullies down its
+// flanks, a crater with a level floor round the throat. the shape is ground (shared/terrain.js relief: you walk it,
+// grapple it, bots path over it); this only adds what stands on it, at y 0 (the ground lifts it), and the lava down the
+// throat, which stays exactly where the pit rules expect it (shared/pits.js). returns { throat, f: the height function }
+const KABOOM = { c: [0, -3], rx: 15.2, rz: 12.8, rim: 0.37, floor: 0.2, top: 10.4, crater: 8.9 };
+function kaboom(B0, D0, dx, dz) {
+  const B = shifted(B0, dx, dz), D = shifted(D0, dx, dz), K = KABOOM, T = [-2, -5, 2, -1];
+  const cx = K.c[0] + dx, cz = K.c[1] + dz, sm = (a, b, v) => { const k = Math.max(0, Math.min(1, (v - a) / (b - a))); return k * k * (3 - 2 * k); };
+  const f = (x, z) => {
+    const ex = (x - cx) / K.rx, ez = (z - cz) / K.rz, q = Math.hypot(ex, ez);
+    if (q >= 1) return null;
+    if (q <= K.rim) return K.crater + (K.top - K.crater) * sm(K.floor, K.rim, q); // the crater: a level floor, then up to the rim
+    const t = (q - K.rim) / (1 - K.rim), a = Math.atan2(ez, ex);
+    const gully = (Math.sin(a * 7 + 1.3) * 0.5 + Math.sin(a * 3 - 0.7) * 0.5) * 0.85 * Math.sin(Math.PI * Math.min(1, t * 1.15)); // ribs and gullies, none at the rim or the foot
+    return Math.max(0, K.top * Math.pow(1 - t, 1.55) + gully * (1 - t * 0.5));
+  };
+  B.add(T[0], 0, T[1], T[2], LAVA_FLOOR, T[3], 'basalt', { still: 1 }); D.add(T[0], 4.3, T[1], T[2], 4.5, T[3], 'lava', { still: 1 }); // the plug and the lava over it (map.pits)
+  for (const [x0, z0, x1, z1] of [[-2.3, -5.3, 2.3, -5], [-2.3, -1, 2.3, -0.7], [-2.3, -5, -2, -1], [2, -5, 2.3, -1]]) B.add(x0, 0, z0, x1, 0.3, z1, 'basalt'); // the throat's lip
+  D.add(-1.6, 0.3, -0.66, 1.6, 0.9, -0.6, 'advolcano', { fit: 1 });
+  for (const [x, z, s] of [[-9.5, -9, 1.1], [9, -6.5, 1.2], [-8.5, 3.5, 1.0], [5.5, -9, 0.9], [-4.5, 1.6, 0.7], [10.5, 2, 1.0]]) B.add(x - s, 0, z - s * 0.8, x + s, s * 1.2, z + s * 0.8, 'basalt'); // boulders on the flanks (cover on the way up)
+  return { throat: [T[0] + dx, T[1] + dz, T[2] + dx, T[3] + dz], f };
+}
 function volcano(B0, D0, dx, dz, st) {
   const { B, D, add, W, up } = isPiece(B0, D0, dx, dz, st); const T = [-2, -5, 2, -1];
   slab(W, -15, -16, 15, 10, 0, 3, 'basalt', T); slab(W, -10, -12, 10, 6, 3, 6, 'basalt', T); slab(W, -6, -9, 6, 3, 6, 9, 'basalt', T);
@@ -3279,7 +3301,7 @@ function islands() {
   // ---- C, Volcano Island (x -28..28, z -24..24): Mount Kaboom, the tiki village on the south beach, jungle round the back
   isle(B, D, -28, -24, 28, 24, { hole: [-2, -5, 2, -1] });
   slab(Dw, -25.5, -21.5, 25.5, 14, 0, 0.03, 'grass', [-15, -16, 15, 10]);
-  const T = volcano(B, D, 0, 0, st);
+  const KB = kaboom(B, D, 0, 0), T = KB.throat; // (quick play: a real cone you walk and grapple anywhere. the S&D Islands keeps the terraces and stairs: volcano())
   tikiBar(B, D, 0, 0, r); bigTiki(B, D, 0, 0);
   hut(B, D, 7.5, 18, -1); hut(B, D, 18.5, 17.2, -1);
   [[-4.5, 21.6], [-2, 21.6], [10.5, 22.2], [13, 22.2], [21.5, 22]].forEach(([x, z], i) => lounger(B, D, x, z, ['toyteal', 'toypink', 'toyyellow'][i % 3]));
@@ -3350,7 +3372,8 @@ function islands() {
   const spawns = [...att.slice(0, 3), ...def.slice(0, 3), [-10, 0.1, 22.5], [6, 0.1, 13], [-22, 0.1, -11], [20, 0.1, -10], [0, 9.1, 0.7], [-6, 3.1, -14],
     [-6, 0.1, -67], [12, 0.1, -61], [-12, MD + 0.1, -69], [6, 0.1, -70], [-11, 0.1, 61], [11, 0.1, 76.5], [0, SK + 0.1, 70], [-40, 0.1, -38], [40, 0.1, 37]];
   // dunes on the islands (shared/terrain.js): up only, the beaches' edges, the volcano, the fort and the huts stay level
-  shapeGround(B, D, { region: [-100, -90, 100, 90], mat: 'sand', seed: 3113, up: 1.6, down: 0.12, near: 0.8, far: 4, drape: ['grass'], points: [...new Set([...spawns, ...att, ...def])] });
+  shapeGround(B, D, { region: [-100, -90, 100, 90], mat: 'sand', seed: 3113, up: 1.6, down: 0.12, near: 0.8, far: 4, drape: ['grass'], relief: [{ f: KB.f, mat: 'basalt' }], points: [...new Set([...spawns, ...att, ...def])] });
+  for (const p of spawns) if (KB.f(p[0], p[2]) != null) p[1] = B.boxes.terrain.at(p[0], p[2]) + 0.1; // (the two up the mountain: onto its new slopes)
   let graph = null;
   const map = { name: 'Islands', size: 'large', boxes: B.boxes, deco: D.boxes, killY: ISL.DROWN, floorY: -1.5, sky: SKY_SUNSET, fogNear: 110, fogFar: 380,
     spawns, teamSpawns: { att, def }, edgeGuard: true, sea: true, seaY: ISL.WY, pits: [lavaPit(T)], // (sea: falls are 'into the sea' in the kill feed)
