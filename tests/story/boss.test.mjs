@@ -43,7 +43,7 @@ await t('spawn: the boss from content/bosses.js, his real pool, one at a time, t
   assert.equal(B.def.phases[1].rest, 15); assert.equal(B.def.health, HEALTH); assert.equal(B.def.crit, CRIT);
   assert.ok(B.def.parts && B.def.parts.parts.heart && B.def.parts.parts.plate, 'the hitboxes from c_overtime.parts.json');
   const on = out.find((o) => o.t === 'sty' && o.k === 'boss' && o.on);
-  assert.deepEqual({ id: on.id, pid: on.pid, hp: on.hp, max: on.max, who: on.who }, { id: 'overtime_1', pid: e.id, hp: 4200, max: 4200, who: 'overtime' });
+  assert.deepEqual({ id: on.id, pid: on.pid, hp: on.hp, max: on.max, health: on.health, name: on.name, phase: on.phase, who: on.who }, { id: 'overtime_1', pid: e.id, hp: 4200, max: 4200, health: HEALTH, name: 'MR. OVERTIME', phase: 'COLLECTION', who: 'overtime' });
   await run(0.5); quiet();
 });
 

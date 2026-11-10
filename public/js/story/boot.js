@@ -240,7 +240,7 @@ function roster(e) {
   for (const r of ROSTER.values()) {
     const d = Math.hypot(e[0] - r.p[0], e[2] - r.p[2]), a = actors.get(r.id);
     if (!a && d < 34) spawnActor(r.id, r.n, r.p, r.face);
-    else if (a && d > 44 && !a.inScene && !talking()) despawnActor(r.id);
+    else if (a && d > 44 && !a.inScene && !a.boss && !talking()) despawnActor(r.id); // (a boss in a fight stays: the referee has him)
   }
 }
 // what the current steps want picked up / used, as spots at their zones (+ collectibles you can find)
@@ -297,6 +297,7 @@ export function frame(dt, now, cam) {
   if (ST.on) {
     if (inStory() && (ST.syncT = (ST.syncT || 0) + dt) > 2) { ST.syncT = 0; sync(); } // (the shell's own auto / pause saves get it too)
     if (!LAB && (ST.rT = (ST.rT || 0) + dt) > 0.25) { ST.rT = 0; roster(e); spots(); }
+    if (ST.boss && ST.boss.tick) ST.boss.tick(dt); // (the referee's boss: the actor stands where the room has him)
     updateActors(dt * (ST.slowmo ?? 1), now, e);
     otFrame(dt * (ST.slowmo ?? 1), cam);
     if (ST.boss && (ST.bT = (ST.bT || 0) + dt) > 0.25) { ST.bT = 0; ST.boss.frame(); }

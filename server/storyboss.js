@@ -25,8 +25,8 @@ export const BOSS = {
   moves: {
     staple: { clip: 'ot_staple', len: 1.6, lock: 'clack2', fire: 'fire', speed: 38, dmg: 30, life: 2.2, kb: 5, w: 'nailgun' },
     fan: { clip: 'ot_fan', len: 2.2, lock: 'clack10', fire: 'fan', n: 5, step: 0.25, h: 1.3, speed: 38, dmg: 22, life: 2.2, kb: 4, w: 'nailgun' },
-    slam: { clip: 'ot_slam', len: 2.4, fire: 'land', ring: 12, ringT: 0.9, air: 0.7, dmg: 40, kb: 7, up: 9, w: 'story' },
-    punchin: { clip: 'ot_punchin', len: 2.6, open: 'slotOpen', fire: 'grab', close: 'slotClose', commit: 0.35, reach: 5.5, cone: 0.9, dmg: 55, kb: 14, up: 5, w: 'story' },
+    slam: { clip: 'ot_slam', len: 2.4, fire: 'land', ring: 12, ringT: 0.9, air: 0.7, dmg: 40, kb: 7, up: 9, w: 'slam' },
+    punchin: { clip: 'ot_punchin', len: 2.6, open: 'slotOpen', fire: 'grab', close: 'slotClose', commit: 0.35, reach: 5.5, cone: 0.9, dmg: 55, kb: 14, up: 5, w: 'punchin' }, // (w: what the kill feed calls it)
   },
 };
 // his clips' marks if the parts file didn't come (the same numbers as c_overtime.parts.json)
@@ -135,7 +135,7 @@ export function installStoryBoss(Room) {
   P.bossInit = function (b, d) {
     const def = cleanBoss(d); if (!def) return false;
     b.sk.max = def.hp; b.sk.boss = true;
-    b.sk.b = { def, id: def.id, hp: def.hp, plate: def.health < def.hp, phase: 0, state: 'fight', t: 0, cutT: 0, restT: 0, next: BOSS.first, act: null, shots: [], ring: null, last: '', want: '', home: b.pos.slice(), ray: null };
+    b.sk.b = { def, id: def.id, hp: def.hp, plate: def.health < def.hp, phase: 0, state: 'fight', t: 0, cutT: 0, restT: 0, next: BOSS.first, calm: false, act: null, shots: [], ring: null, last: '', want: '', home: b.pos.slice(), ray: null };
     b.ai.nextShot = Infinity; b.vel = [0, 0, 0];
     return true;
   };
@@ -209,7 +209,7 @@ export function installStoryBoss(Room) {
 
   // ---------------------------------------------------------------- his turn, every room tick
   const targetOf = (room, b) => { let best = null, bd = 1e9; for (const p of room.players.values()) { if (p === b || !p.alive || room.friendly(b, p)) continue; const d = Math.hypot(p.pos[0] - b.pos[0], p.pos[2] - b.pos[2]); if (d < bd) { bd = d; best = p; } } return best; };
-  const face = (b, t, rate, dt) => { const want = Math.atan2(-(t.pos[0] - b.pos[0]), -(t.pos[2] - b.pos[2])); b.yaw += clamp(wrapA(want - b.yaw), -rate * dt, rate * dt); };
+  const face = (b, t, rate, dt) => { const want = Math.atan2(-(t.pos[0] - b.pos[0]), -(t.pos[2] - b.pos[2])); b.yaw = wrapA(b.yaw + clamp(wrapA(want - b.yaw), -rate * dt, rate * dt)); };
   const low = (p) => !!(p.f & (FLAGS.SLIDE | FLAGS.CROUCH));
   // where the right stapler's muzzle is (the clip's offset on top of its rest spot)
   function muzzle(b, B) {
@@ -318,7 +318,7 @@ export function installStoryBoss(Room) {
           const dx = tgt.pos[0] - b.pos[0], dz = tgt.pos[2] - b.pos[2], d = Math.hypot(dx, dz);
           B.go = d > BOSS.far ? true : d < BOSS.near ? false : !!B.go;
           if (B.go && b.onGround) { v[0] = dx / d * BOSS.walk; v[2] = dz / d * BOSS.walk; }
-          if (B.t >= B.next) { const k = pick(B, d); if (k) startAct(this, b, B, k, tgt); else B.next = B.t + 1; }
+          if (B.t >= B.next && (!B.calm || B.want)) { const k = pick(B, d); if (k) startAct(this, b, B, k, tgt); else B.next = B.t + 1; } // (calm: tests stage his attacks one at a time)
         }
       }
     } else if (B.act || B.shots.length || B.ring) { B.act = null; B.shots.length = 0; B.ring = null; } // held mid-attack: it's off

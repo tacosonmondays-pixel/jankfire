@@ -12,10 +12,11 @@
 //                  hit { target, kind, dmg, by, weapon, head, hp, max } · kill { target, kind, by, weapon, head, at,
 //                  boss, tags, npc } · down { who, by } · up { who }   (target / who: 'me', an npc id or 'e<n>')
 //   bosses (server/storyboss.js): spawn a kind that is a boss in content/bosses.js (one at a time). on top of the above:
-//                  { t: 'sty', k: 'boss', on, id, pid, hp, max, who }  he's in the room (pid: his room id) / gone
+//                  { t: 'sty', k: 'boss', on, id, pid, hp, max, health, name, phase, who }  he's in the room (pid: his room id) / gone
 //                  hit also has { part, crit, boss } · phase { target, kind, boss, phase, name, line, invuln } ·
 //                  part { target, kind, boss, part, state } · act { target, kind, boss, move, clip, t0, at, yaw } ·
 //                  fx { target, kind, boss, k: 'staple', at, n } · kill { ..., boss: <boss id>, defeat } ends the fight
+//                  tests only (sim.dev): { t: 'sty', k: 'bossdev', want?: <move>, calm?: bool }
 // for other systems: sim.ref (null until the room is up), sim.refSpawn(def, at) -> enemy id, sim.refEnemies()
 import { addSystem } from './sim.js';
 
@@ -158,7 +159,7 @@ function spawnBoss(sim, m, at, boss) {
   b.storyId = isId(m.id) ? m.id : m.kind;
   b.yaw = Math.atan2(-(R.me.pos[0] - at[0]), -(R.me.pos[2] - at[2]));
   R.boss = b;
-  sim.sty('boss', { on: true, id: b.sk.b.id, pid: b.id, hp: b.sk.b.hp, max: b.sk.max, who: typeof boss.who === 'string' ? boss.who : '' });
+  sim.sty('boss', { on: true, id: b.sk.b.id, pid: b.id, hp: b.sk.b.hp, max: b.sk.max, health: b.sk.b.def.health, name: b.name, phase: b.sk.b.def.phases[0].name, who: typeof boss.who === 'string' ? boss.who : '' });
   return b.id;
 }
 
@@ -211,6 +212,12 @@ addSystem({
       case 'hold': {
         if (!R) return true;
         for (const p of sim.refEnemies()) if (m.all === true || (isId(m.id) && idOf(sim, p) === m.id) || (isId(m.kind) && !m.id && p.sk.kind === m.kind)) p.sk.hold = m.on !== false;
+        return true;
+      }
+      case 'bossdev': { // tests (?storydev=1): his next attack, and whether he only attacks when asked
+        const B = R && sim.dev === true && R.boss && R.boss.sk.b; if (!B) return true;
+        if (typeof m.want === 'string' && isId(m.want)) { B.want = m.want; B.next = B.t; }
+        if (typeof m.calm === 'boolean') B.calm = m.calm;
         return true;
       }
       case 'damage': {

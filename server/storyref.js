@@ -33,6 +33,7 @@ export function installStoryRef(Room) {
   };
   P.kill = function (t, attacker, w) {
     if (this.mode === 'story' && t.sk && t.sk.b) return; // a boss never dies in the room (the void, a one-shot): its fight ends by its own rules
+    if (this.mode === 'story' && attacker && attacker.sk && attacker.sk.b) attacker.streak = 0; // and earns no killstreaks (bots get the overdrive rig on a streak)
     const was = t.alive, r = kill0.call(this, t, attacker, w);
     if (this.mode === 'story' && was && !t.alive) {
       if (t.sk) t.respawnAt = t.minRespawnAt = Infinity; // story enemies stay down
