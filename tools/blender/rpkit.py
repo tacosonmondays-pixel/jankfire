@@ -193,6 +193,59 @@ def p_ellipsoid(rx, ry, rz, k=8, rings_n=5, y0=-1.0, y1=1.0):
     return p_loft(R, tip0=tips[0], tip1=tips[1])
 
 
+def outward(prims):
+    """wind a closed shape built from several primitives so every face looks out (welds by position, lets bmesh work
+    out the outside, then turns each primitive's faces to match). Faces with no area are dropped. -> the primitives"""
+    key = {}; P = []
+    def ci(v):
+        k = (round(v.x, 5), round(v.y, 5), round(v.z, 5))
+        if k not in key: key[k] = len(P); P.append(v)
+        return key[k]
+    faces = []
+    for pi_, pr in enumerate(prims):
+        for fi, f in enumerate(pr[1]):
+            c = []
+            for i in f:
+                q = ci(pr[0][i])
+                if not c or (q != c[-1] and q != c[0]): c.append(q)
+            if len(c) >= 3: faces.append((pi_, fi, c))
+    bm = bmesh.new(); bv = [bm.verts.new(p) for p in P]; made = []
+    for pi_, fi, c in faces:
+        try: made.append((pi_, fi, c, bm.faces.new([bv[i] for i in c])))
+        except ValueError: pass
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    out = [(pr[0], [], []) for pr in prims]
+    for pi_, fi, c, bf in made:
+        now = [v.index for v in bf.verts]
+        bm.verts.index_update()
+        now = [bv.index(v) for v in bf.verts]
+        k0 = now.index(c[0]); same = now[(k0 + 1) % len(now)] == c[1]
+        f = prims[pi_][1][fi]; uv = prims[pi_][2][fi]
+        if len(c) != len(f):   # a quad that lost a corner at the axis: keep the corners that are left
+            keep = []; seen = []
+            for i, u in zip(f, uv):
+                q = ci(prims[pi_][0][i])
+                if q not in seen: seen.append(q); keep.append((i, u))
+            f = tuple(i for i, _ in keep); uv = [u for _, u in keep]
+        if not same: f = tuple(f[::-1]); uv = list(uv[::-1])
+        out[pi_][1].append(tuple(f)); out[pi_][2].append(list(uv))
+    bm.free()
+    return out
+
+
+def orient_from(prim, c):
+    """wind every face of a primitive away from an inside point c (closed shapes built face by face); faces with no
+    area are dropped"""
+    V, F, UV = prim[:3]; c = V3(c); F2 = []; U2 = []
+    for f, uv in zip(F, UV):
+        P = [V[i] for i in f]; n = V3()
+        for k in range(len(P)): n += P[k].cross(P[(k + 1) % len(P)])
+        if n.length < 1e-10 or len({tuple(round(x, 6) for x in p) for p in P}) < 3: continue
+        if n.dot(sum(P, V3()) / len(P) - c) < 0: f = f[::-1]; uv = uv[::-1]
+        F2.append(tuple(f)); U2.append(list(uv))
+    return V, F2, U2
+
+
 def xf(prim, M):
     return [M @ v for v in prim[0]], prim[1], prim[2]
 
@@ -219,6 +272,7 @@ class Buf:
         """jit = push every vertex about by this much (metres) with a smooth noise of its place: nothing stays a clean prism"""
         V, F, UV = prim[:3]
         if isinstance(tint, (int, float)): tint = (tint, tint, tint)
+        tfn = tint if callable(tint) else None
         b = len(s.V); mi = s.mi(m)
         det = M.to_3x3().determinant() if M is not None else 1.0
         flip = flip != (det < 0)
@@ -256,7 +310,11 @@ class Buf:
             if flip: idx = idx[::-1]
             s.F.append(tuple(b + f[c] for c in idx))
             s.UV.append([uvf(fi, c, f[c]) for c in idx])
-            s.MI.append(mi); s.TI.append(tint)
+            if tfn:
+                t_ = tfn(sum((Vw[i] for i in f), V3()) / len(f)); t_ = (t_, t_, t_) if isinstance(t_, (int, float)) else t_
+                s.TI.append(t_)
+            else: s.TI.append(tint)
+            s.MI.append(mi)
         return s
 
     def tris(s): return sum(len(f) - 2 for f in s.F)
@@ -326,7 +384,9 @@ class Atlas:
     def quad(s, key, m=0.5): return ('quad', s.R[key], s.tex, m)
     def face(s, key, ax='z', m=0.5): return ('face', s.R[key], s.tex, ax, m)
 
-    def material(s, mname, rough=0.6, metal=0.0, use_orm=False, emit=None, strength=1.0, emit_px=None):
+    def material(s, mname, rough=0.6, metal=0.0, use_orm=False, emit=None, strength=1.0, emit_px=None, metal_map=True):
+        """metal_map = False: only the roughness comes from the map and the material stays a non-metal (the game gives
+        materials whose metal factor is over 0.5 three times the studio reflection: glossy white enamel went blank)"""
         img = _image(s.name + '_t', np.clip(s.px, 0, 1))
         m = mat(mname, 0xffffff, rough=rough, metal=metal, tex=img)
         nt = m.node_tree; b = nt.nodes['Principled BSDF']
@@ -337,7 +397,8 @@ class Atlas:
             t = nt.nodes.new('ShaderNodeTexImage'); t.image = im2; t.interpolation = 'Closest'
             sp = nt.nodes.new('ShaderNodeSeparateColor')
             nt.links.new(t.outputs['Color'], sp.inputs['Color'])
-            nt.links.new(sp.outputs['Green'], b.inputs['Roughness']); nt.links.new(sp.outputs['Blue'], b.inputs['Metallic'])
+            nt.links.new(sp.outputs['Green'], b.inputs['Roughness'])
+            if metal_map: nt.links.new(sp.outputs['Blue'], b.inputs['Metallic'])
         if emit_px is not None:
             im3 = _image(s.name + '_e', np.clip(emit_px, 0, 1))
             t = nt.nodes.new('ShaderNodeTexImage'); t.image = im3; t.interpolation = 'Closest'
@@ -406,14 +467,90 @@ def final_colour(o):
     return o
 
 
-def colour_preview(mats):
-    """the pictures show COLOR_0 the way the game multiplies it in (added only after the export)"""
+def colour_preview(mats, on=True):
+    """the pictures show COLOR_0 the way the game multiplies it in. on = False takes the nodes out again (the export
+    wants the plain material)"""
     for m in mats:
         nt = m.node_tree; b = nt.nodes['Principled BSDF']; sock = b.inputs['Base Color']
-        if not sock.links or any(n.name == 'jf_col' for n in nt.nodes): continue
-        at = nt.nodes.new('ShaderNodeVertexColor'); at.layer_name = 'Col'
+        has = [n for n in nt.nodes if n.name in ('jf_col', 'jf_colat')]
+        if not on:
+            if has:
+                mix = nt.nodes['jf_col']; src = mix.inputs[6].links[0].from_socket
+                nt.links.new(src, sock)
+                for n in has: nt.nodes.remove(n)
+            continue
+        if not sock.links or has: continue
+        at = nt.nodes.new('ShaderNodeVertexColor'); at.layer_name = 'Col'; at.name = 'jf_colat'
         mix = nt.nodes.new('ShaderNodeMix'); mix.name = 'jf_col'; mix.data_type = 'RGBA'; mix.blend_type = 'MULTIPLY'; mix.inputs[0].default_value = 1.0
         nt.links.new(sock.links[0].from_socket, mix.inputs[6]); nt.links.new(at.outputs['Color'], mix.inputs[7]); nt.links.new(mix.outputs[2], sock)
+
+
+def compact_glb(path):
+    """shrink an exported .glb without touching what the game reads: normals as signed bytes, vertex colours as
+    bytes, UVs as 16 bit where they stay inside 0..1 (KHR_mesh_quantization, which three.js reads natively; positions
+    stay floats so no node gets a scale). About a third off the file."""
+    import struct
+    raw = open(path, 'rb').read()
+    jl = struct.unpack('<I', raw[12:16])[0]; js = json.loads(raw[20:20 + jl]); bo = 20 + jl
+    bl = struct.unpack('<I', raw[bo:bo + 4])[0]; blob = raw[bo + 8:bo + 8 + bl]
+    CT = {5120: np.int8, 5121: np.uint8, 5122: np.int16, 5123: np.uint16, 5125: np.uint32, 5126: np.float32}; NC = {'SCALAR': 1, 'VEC2': 2, 'VEC3': 3, 'VEC4': 4, 'MAT4': 16}
+    def read(ai):
+        a = js['accessors'][ai]; bv = js['bufferViews'][a['bufferView']]; n = NC[a['type']]; dt = np.dtype(CT[a['componentType']])
+        off = bv.get('byteOffset', 0) + a.get('byteOffset', 0); st = bv.get('byteStride', 0)
+        if st and st != dt.itemsize * n:
+            arr = np.frombuffer(blob, np.uint8, a['count'] * st, off).reshape(a['count'], st)[:, :dt.itemsize * n].copy().view(dt).reshape(a['count'], n)
+        else: arr = np.frombuffer(blob, dt, a['count'] * n, off).reshape(a['count'], n)
+        if a.get('normalized'): arr = arr.astype(np.float32) / np.iinfo(dt).max
+        return arr.astype(np.float32)
+    new = {}   # accessor -> (bytes, componentType, stride)
+    for m in js['meshes']:
+        for p in m['primitives']:
+            at = p['attributes']
+            for key in ('NORMAL', 'COLOR_0', 'TEXCOORD_0'):
+                ai = at.get(key)
+                if ai is None or ai in new: continue
+                d = read(ai)
+                if key == 'NORMAL':
+                    q = np.zeros((len(d), 4), np.int8); q[:, :3] = np.clip(np.round(d * 127), -127, 127); new[ai] = (q.tobytes(), 5120, 4)
+                elif key == 'COLOR_0':
+                    if d.shape[1] == 3: d = np.concatenate([d, np.ones((len(d), 1), np.float32)], axis=1); js['accessors'][ai]['type'] = 'VEC4'
+                    new[ai] = (np.clip(np.round(d * 255), 0, 255).astype(np.uint8).tobytes(), 5121, 0)
+                elif d.min() >= 0.0 and d.max() <= 1.0:
+                    new[ai] = (np.clip(np.round(d * 65535), 0, 65535).astype(np.uint16).tobytes(), 5123, 0)
+    out = bytearray(); views = []
+    used = {}
+    for ai, a in enumerate(js['accessors']):
+        if ai in new: continue
+        used.setdefault(a['bufferView'], None)
+    for img in js.get('images', []): used.setdefault(img['bufferView'], None)
+    remap = {}
+    for bi_, bv in enumerate(js['bufferViews']):
+        if bi_ not in used: continue
+        while len(out) % 4: out.append(0)
+        nb = dict(bv); o0 = bv.get('byteOffset', 0); nb['byteOffset'] = len(out); out += blob[o0:o0 + bv['byteLength']]
+        remap[bi_] = len(views); views.append(nb)
+    for ai, (data, ct, st) in new.items():
+        while len(out) % 4: out.append(0)
+        nb = dict(buffer=0, byteOffset=len(out), byteLength=len(data), target=34962)
+        if st: nb['byteStride'] = st
+        out += data
+        a = js['accessors'][ai]; a['bufferView'] = len(views); a['componentType'] = ct; a['normalized'] = True; a.pop('byteOffset', None); a.pop('min', None); a.pop('max', None)
+        views.append(nb)
+    for ai, a in enumerate(js['accessors']):
+        if ai not in new: a['bufferView'] = remap[a['bufferView']]
+    for img in js.get('images', []): img['bufferView'] = remap[img['bufferView']]
+    js['bufferViews'] = views
+    while len(out) % 4: out.append(0)
+    js['buffers'] = [dict(byteLength=len(out))]
+    for k in ('extensionsUsed', 'extensionsRequired'):
+        if 'KHR_mesh_quantization' not in js.setdefault(k, []): js[k].append('KHR_mesh_quantization')
+    jb = json.dumps(js, separators=(',', ':')).encode()
+    while len(jb) % 4: jb += b' '
+    total = 12 + 8 + len(jb) + 8 + len(out)
+    with open(path, 'wb') as f:
+        f.write(struct.pack('<III', 0x46546C67, 2, total)); f.write(struct.pack('<II', len(jb), 0x4E4F534A)); f.write(jb)
+        f.write(struct.pack('<II', len(out), 0x004E4942)); f.write(bytes(out))
+    print(f'JF_COMPACT {os.path.basename(path)}: {len(raw) // 1024} KB -> {total // 1024} KB')
 
 
 # ------------------------------------------------------------ QA, counting, export
@@ -437,24 +574,28 @@ def qa(tag, objs, eps=0.0008, tol=0.004, quiet=False):
 
 
 def zf_where(objs, eps=0.0008, limit=30):
-    """where it z-fights (the middles of coplanar, same-facing, overlapping triangle pairs, game coordinates)"""
+    """where it z-fights, found the way the QA gate finds it (the middles of coplanar, same-facing, overlapping
+    triangle pairs, game coordinates, with the sizes of the two triangles: enough to tell what they are)"""
     from mathutils.bvhtree import BVHTree
+    import qa_check
     Vv, Tr, Nn = [], [], []
     for o in objs:
-        me = o.data; me.calc_loop_triangles(); b = len(Vv); mw = o.matrix_world; rm = mw.to_3x3()
-        Vv += [mw @ v.co for v in me.vertices]
-        for t in me.loop_triangles: Tr.append(tuple(b + i for i in t.vertices)); Nn.append((rm @ t.normal).normalized())
-    bvh = BVHTree.FromPolygons(Vv, Tr, epsilon=0.0); seen = set()
+        bm = bmesh.new(); bm.from_mesh(o.data); bm.transform(o.matrix_world); bmesh.ops.triangulate(bm, faces=bm.faces[:]); bm.normal_update()
+        b = len(Vv); Vv += [v.co.copy() for v in bm.verts]
+        for f in bm.faces: Tr.append(tuple(b + v.index for v in f.verts)); Nn.append(f.normal.copy())
+        bm.free()
+    bvh = BVHTree.FromPolygons(Vv, Tr, epsilon=0.0); seen = set(); sets = [set(t) for t in Tr]
     for ti, t in enumerate(Tr):
         a, b, c = (Vv[i] for i in t); cen = (a + b + c) / 3
+        if Nn[ti].length < 0.5: continue
         for p in (cen, cen.lerp(a, .6), cen.lerp(b, .6), cen.lerp(c, .6)):
             for _, _, tj, _ in bvh.find_nearest_range(p, eps):
-                if tj is None or tj == ti or set(t) & set(Tr[tj]) or Nn[ti].dot(Nn[tj]) < 0.999: continue
+                if tj is None or tj == ti or sets[ti] & sets[tj] or Nn[ti].dot(Nn[tj]) < 0.999: continue
                 a2, b2, c2 = (Vv[i] for i in Tr[tj]); n2 = Nn[tj]; q = p - n2 * n2.dot(p - a2)
                 k = (min(ti, tj), max(ti, tj))
-                if k not in seen and all((v - u).cross(q - u).dot(n2) >= -1e-9 for u, v in ((a2, b2), (b2, c2), (c2, a2))):
+                if k not in seen and qa_check._point_in_tri(q, a2, b2, c2, n2):
                     seen.add(k)
-                    if len(seen) <= limit: print('QA_ZF_AT', [round(x, 3) for x in g_of(cen)], 'normal', [round(x, 2) for x in g_of(Nn[ti])])
+                    if len(seen) <= limit: print('QA_ZF_AT', [round(x, 3) for x in g_of(cen)], 'normal', [round(x, 2) for x in g_of(Nn[ti])], 'tri sizes', round((b - a).length, 3), round((c - a).length, 3), round((c - b).length, 3), '|', round((b2 - a2).length, 3), round((c2 - a2).length, 3), round((c2 - b2).length, 3))
 
 
 def export_glb(root, path):
@@ -613,8 +754,8 @@ def torso_prim(k=8, wide=1.0, deep=1.0, length=0.5, neck=True):
     """shoulders at y = 0, open at the hips (it is sunk into something) and at the neck (the head sits there)"""
     rows = [(-length, 0.15, 0.1, 0.0), (-0.12, 0.19, 0.125, 0.01), (-0.005, 0.215, 0.105, 0.0)]
     if length > 0.52: rows.insert(1, (-length * 0.62, 0.145, 0.095, 0.0)); rows[0] = (-length, 0.165, 0.105, 0.0)
-    if neck: rows += [(0.04, 0.078, 0.072, 0.0), (0.095, 0.056, 0.058, 0.004)]
-    return p_loft([superring(y, hx * wide, hz * deep, k, 2.7, zo) for y, hx, hz, zo in rows])
+    if neck: rows += [(0.04, 0.08, 0.074, 0.0), (0.095, 0.066, 0.066, 0.004)]
+    return p_loft([superring(y, hx * wide, hz * deep, k, 2.7, zo) for y, hx, hz, zo in rows], tip1=None if neck else V3((0, 0.03, 0)))
 
 
 def chest_patch(wide=1.0, deep=1.0, y0=-0.3, y1=-0.02, half=0.13, off=0.007):
@@ -701,6 +842,6 @@ def mound(rx, ry, rz, k=6):
 def shoe_prim(heel=False):
     """a shoe: the ankle at the origin, the toe along +z, the sole on -y"""
     pr = [xf(p_box(0.1, 0.075, 0.27, taper=(0.75, 0.6), shear=(0, -0.012)), T(0, -0.05, 0.075))]
-    if heel: pr.append(xf(p_box(0.03, 0.09, 0.03, taper=0.6), T(0, -0.12, -0.045) @ RX(math.pi / 2) @ T(0, 0, 0.0)))
+    if heel: pr.append(xf(p_box(0.03, 0.03, 0.1, taper=0.55), T(0, -0.115, -0.045) @ RX(math.pi / 2)))
     else: pr.append(xf(p_box(0.1, 0.022, 0.085), T(0, -0.097, -0.02)))
     return merge(*pr)

@@ -135,7 +135,7 @@ def paint_enamel(name, crazed=False):
     col = np.stack([hexrgb(c) for c in tones])[pid]
     n1 = blocky(r, S, 32); n2 = blocky(r, S, 8); n3 = blocky(r, S, 2)
     col = col * (0.93 + 0.07 * n1[:, :, None]) * (0.965 + 0.035 * n2[:, :, None]) * (0.985 + 0.015 * n3[:, :, None])
-    rough = np.full((S, S), 0.16) + 0.1 * n2; metal = np.zeros((S, S))
+    rough = np.full((S, S), 0.3) + 0.14 * n2; metal = np.zeros((S, S))
     def lay(mask, c, a=1.0, ro=None, me=None):
         nonlocal col, rough, metal
         m = (mask * a)[:, :, None] if mask.dtype != bool else (mask[:, :, None] * a)
@@ -289,9 +289,11 @@ def trim_atlas():
 
 M = {}; AT = {}
 def materials():
-    AT['en'] = paint_enamel('rp_enamel'); M['en'] = AT['en'].material('rp_enamel', use_orm=True)
-    AT['cz'] = paint_enamel('rp_enamel_crazed', crazed=True); M['cz'] = AT['cz'].material('rp_enamel_crazed', use_orm=True)
+    AT['en'] = paint_enamel('rp_enamel'); M['en'] = AT['en'].material('rp_enamel', use_orm=True, metal_map=False)
+    AT['cz'] = paint_enamel('rp_enamel_crazed', crazed=True); M['cz'] = AT['cz'].material('rp_enamel_crazed', use_orm=True, metal_map=False)
     AT['tr'] = trim_atlas(); M['tr'] = AT['tr'].material('rp_steel', use_orm=True)
+    M['void'] = mat('rp_void', 0x060506, rough=1.0)   # the inside of the lamp cans: no shine at all, so the eyes stay holes
+    M['void'].node_tree.nodes['Principled BSDF'].inputs['Specular IOR Level'].default_value = 0.0
     mass_materials(); glow_materials()
     return M
 
@@ -402,7 +404,11 @@ def plate_uv(o, atlas, cut_mat=None):
     me = o.data
     bm = bmesh.new(); bm.from_mesh(me)
     bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 4])
-    bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=1e-6)
+    bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=2e-4)
+    bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.calc_area() < 1e-9], context='FACES')
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=2e-5)
+    bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.calc_area() < 1e-9], context='FACES')
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces); bm.normal_update()
     uvl = bm.loops.layers.uv.get('UVMap') or bm.loops.layers.uv.new('UVMap')
     cut_i = next((k for k, m in enumerate(me.materials) if m is cut_mat), -1) if cut_mat else -1
     tex = atlas.tex
@@ -425,24 +431,34 @@ def plate_uv(o, atlas, cut_mat=None):
     bm.to_mesh(me); bm.free()
     while len(me.materials) > 1: me.materials.pop(index=len(me.materials) - 1)
     fix_uv(o)
-    me.set_sharp_from_angle(angle=math.radians(30))
+    me.set_sharp_from_angle(angle=math.radians(50))   # (the 45 degree chamfer shades as a rolled edge, and shares its vertices)
     if 'tint' not in me.color_attributes:  # (joined to its bolts later: their tint layer must find one here)
         ca = me.color_attributes.new('tint', 'BYTE_COLOR', 'CORNER'); ca.data.foreach_set('color', [1.0] * (4 * len(me.loops)))
     return o
 
 
-def bolt_buf(name, bolts, atlas, mat_, seed=1, T_fn=None, shank=True):
+def plate_lift(i, x, y):
+    """how far plate i's face is bent forward at (x, y) (its curled corner)"""
+    bent = BENT.get(i)
+    if not bent: return 0.0
+    r0, r1, a0, a1 = plate_spec(i); r = math.hypot(x, y); a = math.atan2(y, x) % (2 * math.pi)
+    if a < a0 - 0.5: a += 2 * math.pi
+    u = (a - a0) / (a1 - a0); v = (r - r0) / (r1 - r0)
+    d = math.hypot((u - bent[0]) * (a1 - a0) * (r0 + r1) / 2, (v - bent[1]) * (r1 - r0))
+    return bent[2] * (1 - d / 0.9) ** 2 if d < 0.9 else 0.0
+
+
+def bolt_buf(name, bolts, atlas, mat_, seed=1, T_fn=None, shank=True, plate=None):
     """hex bolts on square washers through a plate (and into the lattice behind, so nothing floats)"""
     b = Buf(name); rn = Rnd(seed)
     for k, (x, y, gone) in enumerate(bolts):
         if gone: continue
         z = PT + warp(x, y) * 0.0
-        Mx = T(x, y, 0) @ RZ(math.atan2(y, x) + rn.u(-0.12, 0.12))
+        Mx = T(x, y, plate_lift(plate, x, y) if plate is not None else 0.0) @ RZ(math.atan2(y, x) + rn.u(-0.12, 0.12))
         if T_fn: Mx = T_fn(x, y) @ Mx
         tint = rn.u(0.55, 1.0)
         b.add(xf(p_box(0.135, 0.135, 0.016, bottom=False), T(0, 0, PT + 0.004)), mat_, atlas.fit('washer', 1), Mx, tint)
         b.add(xf(p_prism(6, 0.05, 0.04, r1=0.044, dome=0.01), T(0, 0, PT + 0.008)), mat_, atlas.fit('bolt', 1), Mx @ RZ(rn.u(0, 1.0)), tint)
-        if shank: b.add(xf(p_prism(5, 0.02, 0.2, top=False), T(0, 0, -0.085)), mat_, atlas.fit('bolt', 1), Mx, 0.5)
     return b
 
 
@@ -505,8 +521,8 @@ def build_plates():
             boolean(o, prism_cutter(el, m=cutm))
         bolts = bolts_of(i)
         # crazed: broken along a web of cracks into shards, each a hair out of place, a chip or two already gone
-        rn = Rnd(300 + i)
-        cells, hit = shard_cells(i, 7 if i >= 4 else 6, rn)
+        rn = Rnd(300 + i if i else 331)   # (plate 00's first break left a sliver the QA gate did not like)
+        cells, hit = shard_cells(i, 5, rn)
         shards = []; bb = Buf('bolts_cz_%02d' % i)
         drop = rn.i(0, len(cells) - 1) if i in (5, 9, 0, 6) else -1
         for k, cell in enumerate(cells):
@@ -516,12 +532,12 @@ def build_plates():
             cxy = (sum(p[0] for p in cell) / len(cell), sum(p[1] for p in cell) / len(cell))
             small = abs(sum(cell[j][0] * cell[(j + 1) % len(cell)][1] - cell[(j + 1) % len(cell)][0] * cell[j][1] for j in range(len(cell)))) / 2
             if k == drop and small < 3.0: bpy.data.objects.remove(sh, do_unlink=True); continue
-            Mx = T(cxy[0], cxy[1], rn.u(-0.004, 0.018)) @ RX(rn.u(-0.03, 0.03)) @ RY(rn.u(-0.03, 0.03)) @ RZ(rn.u(-0.006, 0.006)) @ T(-cxy[0], -cxy[1], 0)
+            Mx = T(cxy[0], cxy[1], rn.u(-0.004, 0.018)) @ RX(rn.u(-0.03, 0.03)) @ RY(rn.u(-0.03, 0.03)) @ RZ(rn.u(-0.0015, 0.0015)) @ T(-cxy[0], -cxy[1], 0)
             sh.data.transform(C_G2B @ Mx @ C_B2G)
             plate_uv(sh, AT['cz'], cutm); sh.data.materials.clear(); sh.data.materials.append(M['cz'])
             shards.append(sh)
             mine = [b for b in bolts if poly_contains(cell, b[0], b[1])]
-            sub = bolt_buf('b', mine, AT['cz'], M['cz'], seed=500 + i * 20 + k)
+            sub = bolt_buf('b', mine, AT['cz'], M['cz'], seed=500 + i * 20 + k, plate=i)
             for q in range(len(sub.F)):
                 bb.F.append(tuple(len(bb.V) + v for v in sub.F[q])); bb.UV.append(sub.UV[q]); bb.MI.append(bb.mi(M['cz'])); bb.TI.append(sub.TI[q])
             bb.V.extend(Mx @ v for v in sub.V)
@@ -534,11 +550,11 @@ def build_plates():
                 boolean(h, prism_cutter(smile_poly(sh_), m=cutm), op)
                 plate_uv(h, AT['cz'], cutm); h.data.materials.clear(); h.data.materials.append(M['cz'])
                 side = [b for b in bolts if below_crack(b[0], b[1]) == (tag == 'low') and abs(b[1] - crack_y(b[0])) > 0.1]
-                hb = bolt_buf('b', side, AT['cz'], M['cz'], seed=700 + i)
+                hb = bolt_buf('b', side, AT['cz'], M['cz'], seed=700 + i, plate=i)
                 h = join([h] + ([hb.obj(sharp=40)] if hb.F else []), 'plate_%02d_%s' % (i, tag))
                 P[h.name] = h
         plate_uv(o, AT['en'], cutm); o.data.materials.clear(); o.data.materials.append(M['en'])
-        pb = bolt_buf('b', bolts, AT['en'], M['en'], seed=100 + i)
+        pb = bolt_buf('b', bolts, AT['en'], M['en'], seed=100 + i, plate=i)
         extra = [pb.obj(sharp=40)]
         if i == 11:  # ☺ CORP's asset tag, riveted on
             tb = Buf('tag'); tx, ty = plate_pt(11, 0.45, 0.42)
@@ -578,7 +594,7 @@ def frame_bufs():
             if ins[k]: k += 1; continue
             j = k
             while j < n_ and not ins[j + 1]: j += 1
-            if j > k: cracked(pts[k], pts[j], w, d, key, upv, tint)
+            if j > k and (pts[j] - pts[k]).length > 0.45 and (k == 0 or j == n_): cracked(pts[k], pts[j], w, d, key, upv, tint)   # (a piece cut off at both ends would hang in the air)
             k = j + 1
     def cracked(p0, p1, w, d, key, upv, tint):
         s0, s1 = below_crack(p0.x, p0.y), below_crack(p1.x, p1.y)
@@ -592,7 +608,7 @@ def frame_bufs():
         beam(low if s0 else up, p0, p0.lerp(p1, max(0.0, lo_ - g)), w, d, key, upv, tint)
         beam(low if s1 else up, p0.lerp(p1, min(1.0, hi_ + g)), p1, w, d, key, upv, tint)
     def pol(r, a, z): return (r * math.cos(a), r * math.sin(a), z)
-    ZF, ZW, ZB = -0.019, -0.115, -0.74   # the flange's middle, the web's middle, the back chord
+    ZF, ZW, ZB = -0.014, -0.11, -0.74   # the flange's middle (its face 3 mm behind the plates' backs), the web's middle, the back chord
     # T-section spokes behind every seam, a ring behind the inner seam
     for k in range(8):
         a = k * math.pi / 4
@@ -601,7 +617,7 @@ def frame_bufs():
             member(pol(0.2, a, ZF), pol(R_IN, a, ZF), 0.2, 0.022, 'steel'); member(pol(0.2, a, ZW), pol(R_IN, a, ZW), 0.024, 0.17, 'rustdark')
     for k in range(16):
         a0, a1 = k * math.pi / 8, (k + 1) * math.pi / 8
-        member(pol(R_IN, a0, ZF + 0.002), pol(R_IN, a1, ZF + 0.002), 0.2, 0.022, 'steel'); member(pol(R_IN, a0, ZW), pol(R_IN, a1, ZW), 0.024, 0.17, 'rustdark')
+        member(pol(R_IN, a0, ZF - 0.004), pol(R_IN, a1, ZF - 0.004), 0.2, 0.022, 'steel'); member(pol(R_IN, a0, ZW), pol(R_IN, a1, ZW), 0.024, 0.17, 'rustdark')
     # the back chords: two rings of angle iron, laced to the front with round bar (a space frame 0.75 m deep)
     RB1, RB2 = 3.4, 1.3
     for k in range(16):
@@ -618,7 +634,7 @@ def frame_bufs():
         if not skip(a0):
             member(pol(RB2, a0, ZB), pol(RB1, a0 - math.pi / 16, ZB), 0.05, 0.05, 'rustdark')
             member(pol(R_IN, a0 + math.pi / 8, ZW - 0.06), pol(RB2, a0, ZB), 0.036, 0.036, 'rustdark', (0, 1, 0.3))
-            member(pol(0.3, a0, -0.2), pol(RB2, a0, ZB), 0.036, 0.036, 'rustdark', (0, 1, 0.3))
+            member(pol(0.2, a0, -0.16), pol(RB2, a0, ZB), 0.036, 0.036, 'rustdark', (0, 1, 0.3))
     # gussets where spokes meet the ring and the hoop, two bolt heads each
     for k in range(8):
         a = k * math.pi / 4
@@ -640,13 +656,12 @@ def frame_bufs():
             V_, F_, UV_ = p_grid(rows)
             if keys[e] == 'bright': UV_ = [[(v, u) for u, v in f] for f in UV_]  # the scrapes run along the tunnel
             bb.add((V_, F_, UV_), M['tr'], TRF(keys[e], 1), None, tint * (0.8 if keys[e] == 'bright' else 1.0))
-        if sgi in (0, NSEG // 2):  # the cut ends of each half
+        if sgi in (0, NSEG // 2):  # the cut ends of each half (they face each other, a hair apart)
             for bb2, sgn in ((up, 1), (low, -1)):
-                a_c = a_lo
-                pts = [pol(r_, a_c, z_) for r_, z_ in prof]
-                V_ = [V3(p) for p in pts]; cen_ = sum(V_, V3()) / len(V_); V_.append(cen_)
-                F_ = [((k + 1) % 6, k, 6) if (sgn > 0) == (sgi == 0) else (k, (k + 1) % 6, 6) for k in range(6)]
-                bb2.add((V_, F_, [[(0, 0), (1, 0), (0.5, 1)]] * 6), M['tr'], TR('rustdark', 2), None, 0.8)
+                a_c = a_lo + sgn * 0.0006 * (1 if sgi == 0 else -1)
+                V_ = [V3(pol(r_, a_c, z_)) for r_, z_ in prof]; cen_ = sum(V_, V3()) / len(V_)
+                away = cen_ + V3((-math.sin(a_c), math.cos(a_c), 0)) * (sgn * (1 if sgi == 0 else -1))
+                bb2.add(orient_from((V_, [(0, 1, 4, 5), (1, 2, 3, 4)], [[(0, 0), (1, 0), (1, 1), (0, 1)]] * 2), away), M['tr'], TR('rustdark', 2), None, 0.8)
         # the butt strap over each joint, four rivets
         Ms = T(*pol(HOOP_R + 0.006, a_lo, -0.2)) @ RZ(a_lo)
         bs = low if below_crack(*pol(HOOP_R, a_lo + 1e-3, 0)[:2]) else up
@@ -702,21 +717,22 @@ def eye_buf(name, sx, blown=False):
     for j in range(12):  # studs round the flange
         if blown and j in (2, 3, 4, 9): continue
         t = (j + 0.5) * 2 * math.pi / 12; p = oval(a, bb, t) + oval_n(a, bb, t) * 0.12
-        b.add(xf(p_prism(6, 0.032, 0.035, r1=0.028, dome=0.008), T(p.x, p.y, PT + 0.026)), tr, TR('rust', 2), RZ(0) if False else None, rn.u(0.6, 1.0))
-        b.add(xf(p_prism(5, 0.014, 0.16, top=False), T(p.x, p.y, -0.07)), tr, TR('rustdark', 2), None, 0.6)
+        lift = (0.07 * max(0.0, math.sin(t * 1.5 + 0.6)) + 0.03 * math.sin(t * 4) - 0.012) if blown else 0.0
+        b.add(xf(p_prism(6, 0.032, 0.035, r1=0.028, dome=0.008), T(p.x, p.y, PT + 0.022 + lift)), tr, TR('rust', 2), None, rn.u(0.6, 1.0))
+        if not blown: b.add(xf(p_prism(5, 0.014, 0.16, top=False), T(p.x, p.y, -0.07)), tr, TR('rustdark', 2), None, 0.6)
     # hinge knuckles on the outer side, a latch on the inner side
     for dy in (-0.55, 0.55):
-        b.add(p_box(0.1, 0.2, 0.07), tr, TR('cast', 1), T(sx * (a + 0.2), dy, PT + 0.05), 0.85)
+        b.add(p_box(0.1, 0.2, 0.084), tr, TR('cast', 1), T(sx * (a + 0.2), dy, PT + 0.05), 0.85)
         b.add(xf(p_prism(6, 0.03, 0.26, bottom=True), RX(-math.pi / 2) @ T(0, 0, -0.13)), tr, TR('bright', 1), T(sx * (a + 0.255), dy, PT + 0.07), 0.7)
-    b.add(p_box(0.16, 0.09, 0.05), tr, TR('rust', 1), T(-sx * (a + 0.15), 0.0, PT + 0.05), 0.85)
+    b.add(p_box(0.16, 0.09, 0.062), tr, TR('rust', 1), T(-sx * (a + 0.15), 0.0, PT + 0.05), 0.85)
     b.add(p_box(0.05, 0.2, 0.035), tr, TR('bright', 1), T(-sx * (a + 0.2), 0.02, PT + 0.065) @ RZ(0.25), 0.7)
     DEPTH = 0.62; a2, b2 = 0.38, 0.86
     if not blown:
         # the can: looked into from the front (soot black), seen from outside when plates are gone (rusty steel)
         ins = [[oval(lerp(a - 0.05, a2, s), lerp(bb - 0.05, b2, s), 2 * math.pi * j / K) + V3((0, 0, lerp(-0.04, -DEPTH, s))) for j in range(K)] for s in (0.0, 0.5, 1.0)]
-        b.add(p_loft(ins, tip1=V3((0, 0, -DEPTH + 0.02))), tr, TR('soot', 1), None, 0.8, flip=True)
+        b.add(p_loft(ins, tip1=V3((0, 0, -DEPTH + 0.02))), M['void'], ('tile', 0.5), None, 1.0)   # (wound to face the axis: you look into it)
         outs = [[oval(lerp(a - 0.02, a2 + 0.03, s), lerp(bb - 0.02, b2 + 0.03, s), 2 * math.pi * j / K) + V3((0, 0, lerp(-0.035, -DEPTH - 0.03, s))) for j in range(K)] for s in (0.0, 0.5, 1.0)]
-        b.add(p_loft(outs[::-1], tip0=V3((0, 0, -DEPTH - 0.05))), tr, TR('rust', 1), None, 0.8, flip=True)
+        b.add(p_loft(outs, tip1=V3((0, 0, -DEPTH - 0.05))), tr, TR('rust', 1), None, 0.8, flip=True)
         for k in range(3):  # strengthening bands round the can
             z = -0.14 - k * 0.2; s = (-z - 0.04) / (DEPTH - 0.04)
             rr_ = [[oval(lerp(a - 0.02, a2 + 0.03, s) + e, lerp(bb - 0.02, b2 + 0.03, s) + e, 2 * math.pi * j / 16) + V3((0, 0, z + dz)) for j in range(16)] for e, dz in ((0.0, 0.03), (0.022, 0.03), (0.022, -0.03), (0.0, -0.03))]
@@ -728,12 +744,12 @@ def eye_buf(name, sx, blown=False):
         b.add(xf(p_prism(5, 0.05, 0.1, r1=0.02, dome=0.03), T(0, 0.38, -DEPTH + 0.22)), tr, TR('glass', 1), None, 0.7)
         # the lens: only teeth of glass left round the lip
         for j in range(11):
-            t = rn.pick([rn.u(3.6, 5.8), rn.u(3.6, 5.8), rn.u(0, 2 * math.pi)]); p = oval(a - 0.05, bb - 0.05, t); n = oval_n(a, bb, t)
-            ln = rn.u(0.05, 0.17); w = rn.u(0.03, 0.08)
+            t = (3.5 + j * 0.24 + rn.u(-0.05, 0.05)) if j < 9 else (0.9, 2.3)[j - 9]; p = oval(a - 0.05, bb - 0.05, t); n = oval_n(a, bb, t)
+            ln = rn.u(0.05, 0.17); w = rn.u(0.03, 0.07); dz = j * 0.0017
             tg = V3((-n.y, n.x, 0))
-            base = [p + tg * w + V3((0, 0, PT + 0.03)), p - tg * w + V3((0, 0, PT + 0.03)), p + V3((0, 0, PT + 0.012))]
-            tip = p - n * ln + tg * rn.u(-0.05, 0.05) + V3((0, 0, PT + 0.025))
-            b.add((base + [tip], [(0, 1, 3), (1, 2, 3), (2, 0, 3), (1, 0, 2)], [[(0, 0), (1, 0), (0.5, 1)]] * 4), tr, TR('glass', 2), None, rn.u(0.45, 0.9))
+            base = [p + tg * w + V3((0, 0, PT + 0.03 + dz)), p - tg * w + V3((0, 0, PT + 0.03 + dz)), p + V3((0, 0, PT + 0.008 + dz))]
+            tip = p - n * ln + tg * rn.u(-0.05, 0.05) + V3((0, 0, PT + 0.022 + dz))
+            b.add(orient_from((base + [tip], [(0, 1, 3), (1, 2, 3), (2, 0, 3), (1, 0, 2)], [[(0, 0), (1, 0), (0.5, 1)]] * 4), sum(base + [tip], V3()) / 4), tr, TRF('glass', 2), None, rn.u(0.45, 0.9))
     else:
         # burst from behind: the can's wall split into petals, peeled out through the bezel toward you
         NP = 7
@@ -745,7 +761,7 @@ def eye_buf(name, sx, blown=False):
                 for q in range(4):
                     t = lerp(t0, t1, q / 3); n = oval_n(a, bb, t)
                     ang = curl * s * 1.9; rad_out = (1 - math.cos(ang)) / max(0.3, curl * 1.9) * ln; zf = math.sin(ang) / max(0.3, curl * 1.9) * ln
-                    edge = 1 - 0.5 * s * abs(q - 1.5) / 1.5
+                    edge = 1 - 0.92 * s ** 1.4
                     p = oval(a - 0.055, bb - 0.055, lerp((t0 + t1) / 2, t, edge)) + n * rad_out + V3((0, 0, -0.03 + zf * 1.0 + PT * 0.5 * s))
                     row.append(p)
                 rows.append(row)
@@ -807,6 +823,34 @@ def paint_char(name):
     px[crack & red[i1]] = hexrgb(0x5a1216)
     px[crack & red[i1] & (r.random((S, S)) < 0.3)] = hexrgb(0x8a1c1c)
     return _image(name, np.clip(px, 0, 1).astype(np.float32))
+
+
+def paint_pack(name):
+    """the plug's wall and back, where the bore has pressed everyone flat: a tiling picture of packed commuters seen
+    from outside (heads, shoulders, a lanyard here and there) on char. Cheaper than modelling 300 more."""
+    S = 128; r = np.random.default_rng(41); px = np.zeros((S, S, 3), np.float32)
+    px[:] = hexrgb(0x17130f) * (0.8 + 0.4 * blocky(r, S, 4)[:, :, None])
+    def put(x, y, c):
+        px[int(y) % S, int(x) % S] = hexrgb(c) if isinstance(c, int) else c
+    for k in range(34):
+        cx, cy = r.uniform(0, S), r.uniform(0, S); a = r.uniform(0, 6.28); ca, sa = math.cos(a), math.sin(a); sh = r.uniform(0.75, 1.15)
+        body = hexrgb([0x2e2928, 0x262224, 0x34302c, 0x1e1c22][k % 4]) * sh; skin = hexrgb([0x6e625a, 0x5c5450, 0x786a5e][k % 3]) * sh
+        def at(u, v): return cx + u * ca - v * sa, cy + u * sa + v * ca      # u across the shoulders, v up to the head
+        for u in np.arange(-7, 7.5, 0.5):
+            for v in np.arange(-9, 1.5, 0.5):
+                if abs(u) <= 7 - max(0.0, v) * 2.5 - max(0.0, -v - 4) * 0.5: put(*at(u, v), body * (0.8 + 0.2 * (v > -1)))
+        for u in np.arange(-3, 3.5, 0.5):
+            for v in np.arange(1.5, 8.5, 0.5):
+                if (u / 3.2) ** 2 + ((v - 5) / 3.6) ** 2 <= 1: put(*at(u, v), skin)
+        if k % 3 != 2:  # the face is toward you: sockets, a mouth
+            for u, v in ((-1.3, 5.6), (1.3, 5.6), (0, 3.2)): put(*at(u, v), 0x080506); put(*at(u + 0.5, v), 0x080506)
+        if k % 2 == 0:  # a lanyard and its card
+            lc = [0x2aa8d8, 0xe8b820, 0xc8c8c0][k % 3]
+            for t in np.arange(0, 1.01, 0.1): put(*at(-2.5 + 2.5 * t, 0.5 - 5 * t), lc); put(*at(2.5 - 2.5 * t, 0.5 - 5 * t), lc)
+            for u in (-1, 0, 1):
+                for v in (-5.5, -6.5, -7.5): put(*at(u, v), 0xd8d4c8)
+    cr = blocky(r, S, 1) > 0.965; px[cr] = hexrgb(0x4a1012)
+    return _image(name, np.clip(px, 0, 1))
 
 
 FACES = 6
@@ -891,7 +935,8 @@ def eye_tex():
 
 def mass_materials():
     AT['bits'] = bits_atlas(); M['bits'] = AT['bits'].material('rp_bits', rough=0.6)
-    M['char'] = mat('rp_char', 0xffffff, rough=0.5, tex=paint_char('rp_char_t'))
+    M['char'] = mat('rp_char', 0xffffff, rough=0.6, tex=paint_char('rp_char_t'))
+    M['pack'] = mat('rp_pack', 0xffffff, rough=0.65, tex=paint_pack('rp_pack_t'))
     M['eye'] = eye_tex()
 
 
@@ -929,14 +974,14 @@ class Fig:
     def torso(s, wide=1.0, deep=1.0, length=0.5, k=8, shirt=None, neck=True):
         s.wide, s.deep = wide, deep
         s.b.add(torso_prim(k, wide, deep, length, neck), M['char'], CHAR, s.M, s.body, jit=0.016)
-        if shirt is not None: s.b.add(chest_patch(wide, deep), M['bits'], AT['bits'].face('shirt%d' % shirt, 'z', 1), s.M, s.rn.u(0.55, 0.9))
+        if shirt is not None: s.b.add(chest_patch(wide, deep, off=0.007 + 0.006 * s.rn.u(0, 1)), M['bits'], AT['bits'].face('shirt%d' % shirt, 'z', 1), s.M, s.rn.u(0.55, 0.9))
         return s
 
-    def head(s, yaw=0.0, pitch=0.0, roll=0.0, jaw=None, face=None, at=(0, 0.2, 0.012), size=1.12, bare=False):
+    def head(s, yaw=0.0, pitch=0.0, roll=0.0, jaw=None, face=None, at=(0, 0.178, 0.012), size=1.12, bare=False):
         rn = s.rn
         face = rn.i(0, FACES - 1) if face is None else face
         jaw = (rn.u(0.5, 1.0) if face in (0, 2, 5) else rn.u(0.0, 0.25)) if jaw is None else jaw
-        Mh = s.M @ T(*at) @ RY(yaw) @ RX(pitch) @ RZ(roll) @ SC(size * rn.u(0.94, 1.06), size * rn.u(0.94, 1.12), size)
+        Mh = s.M @ T(at[0], at[1] - 0.115, at[2]) @ RY(yaw) @ RX(pitch) @ RZ(roll) @ T(0, 0.115, 0) @ SC(size * rn.u(0.94, 1.06), size * rn.u(0.94, 1.12), size)   # (it turns on the top of the neck, so it stays on it)
         fp, sk = head_prims(8 if s.hero else 6, jaw)
         s.b.add(fp, M['bits'], AT['bits'].face('face%d' % face, 'z', 0.5), Mh, rn.u(0.72, 1.0), jit=0.006)
         s.b.add(sk, M['char'], ('tile', 0.3), Mh, min(1.0, s.body * rn.u(1.0, 1.5)), jit=0.006)
@@ -973,11 +1018,11 @@ class Fig:
         cx = sway + rn.u(-0.03, 0.03); cy = -0.2 + rn.u(-0.04, 0.03); zc = 0.128 * dp
         soot = rn.u(0.4, 0.9); c2 = tuple(c * soot for c in col)
         for sd in (-1, 1):
-            a = V3((sd * 0.07 * wd, 0.03, 0.05 * dp)); b_ = V3((sd * 0.085 * wd, -0.03, 0.118 * dp)); c = V3((cx + sd * 0.012, cy, zc + 0.006))
+            a = V3((sd * 0.07 * wd, 0.03, 0.05 * dp)); b_ = V3((sd * 0.085 * wd, -0.03, 0.118 * dp)); c = V3((cx + sd * 0.012, cy, zc + 0.006 + (0.005 if sd > 0 else 0.0)))
             w = V3((0.016, 0, 0))
             s.b.add(merge(p_quad(a - w, a + w, b_ + w, b_ - w), p_quad(b_ - w, b_ + w, c + w, c - w)), M['bits'], BF('strap', 1), s.M, c2)
         tilt = rn.u(-0.5, 0.5); cw, ch = 0.105, 0.14
-        Mc = s.M @ T(cx, cy, zc - 0.004) @ RZ(tilt) @ RX(-0.16)
+        Mc = s.M @ T(cx, cy + 0.01, zc - 0.03) @ RZ(tilt) @ RX(-0.3 + rn.u(-0.06, 0.06)) @ RY(rn.u(-0.22, 0.22))
         s.b.add(p_quad((-cw / 2, -ch, 0), (cw / 2, -ch, 0), (cw / 2, 0, 0), (-cw / 2, 0, 0)), M['bits'], AT['bits'].face('card%d' % card, 'z', 0.5), Mc, rn.u(0.5, 0.9))
         return s
 
@@ -993,7 +1038,7 @@ class Fig:
 
 def briefcase(b, Mw, rn):
     b.add(p_box(0.44, 0.31, 0.105), M['bits'], BT('leather' if rn.chance(0.6) else 'leatherb', 1), Mw, rn.u(0.3, 0.6))
-    for x in (-0.08, 0.08): b.add(p_box(0.02, 0.05, 0.02, bottom=False), M['bits'], BT('leatherb', 1), Mw @ T(x, 0.175, 0) @ RX(-math.pi / 2), 0.8)
+    for x in (-0.08, 0.08): b.add(p_box(0.02, 0.02, 0.07, bottom=False), M['bits'], BT('leatherb', 1), Mw @ T(x, 0.17, 0) @ RX(-math.pi / 2), 0.8)
     b.add(p_box(0.2, 0.022, 0.026), M['bits'], BT('leatherb', 1), Mw @ T(0, 0.205, 0), 0.8)
     for x in (-0.13, 0.13): b.add(p_box(0.045, 0.05, 0.012, bottom=False), M['bits'], BT('brass', 1), Mw @ T(x, 0.115, 0.056), rn.u(0.6, 1.0))
 
@@ -1052,7 +1097,7 @@ def presser(ms, x, y, rot, rn, z=-0.5, hero=True, both=True, look=0.0):
     Mw = T(x, y, z) @ RZ(rot) @ RX(rn.u(0.12, 0.3)) @ RY(rn.u(-0.2, 0.2))
     f = Fig(b, Mw, rn, rn.u(0.98, 1.1), hero=hero)
     f.torso(rn.u(0.95, 1.1), 1.0, shirt=rn.pick([0, 0, 1, 2, None]))
-    f.head(yaw=look + rn.u(-0.25, 0.25), pitch=rn.u(-0.5, -0.2), roll=rn.u(-0.25, 0.25), at=(0, 0.2, 0.03))
+    f.head(yaw=look + rn.u(-0.25, 0.25), pitch=rn.u(-0.5, -0.2), roll=rn.u(-0.25, 0.25), at=(0, 0.178, 0.03))
     up = V3((-math.sin(rot), math.cos(rot), 0)); rt = V3((math.cos(rot), math.sin(rot), 0))
     for side in ((-1, 1) if both else (rn.sign(),)):
         tx = V3((x, y, 0)) + rt * side * rn.u(0.24, 0.36) + up * rn.u(0.14, 0.38)
@@ -1072,7 +1117,7 @@ def bust(ms, x, y, z, rot, rn, yaw=0.0, pitch=0.2, shirt='r', arm=None, lan=0.6,
     f = Fig(b, Mw, rn, scale or rn.u(0.96, 1.12), body=body)
     neck = rn.chance(0.55) if neck is None else neck
     f.torso(rn.u(0.88, 1.18), rn.u(0.9, 1.08), length=rn.u(0.3, 0.46), k=6, shirt=(rn.pick([0, 1, 2, None, None]) if shirt == 'r' else shirt), neck=neck)
-    f.head(yaw=rn.u(-0.6, 0.6), pitch=rn.u(-0.45, 0.25) - pitch * 0.6, roll=rn.u(-0.45, 0.45), face=face, jaw=jaw, at=(rn.u(-0.03, 0.03), 0.2 if neck else 0.13, 0.012))
+    f.head(yaw=rn.u(-0.6, 0.6), pitch=rn.u(-0.45, 0.25) - pitch * 0.6, roll=rn.u(-0.45, 0.45), face=face, jaw=jaw, at=(rn.u(-0.02, 0.02), 0.175 if neck else 0.13, 0.012))
     if rn.chance(lan): f.lanyard()
     if arm == 'reach':
         sd = rn.sign(); tgt = f.w((sd * rn.u(0.1, 0.45), rn.u(-0.05, 0.4), rn.u(0.42, 0.56)))
@@ -1177,45 +1222,69 @@ def cluster(ms, kind, cx, cy, rot, rn):
         if not blocked(x, y) and rn.chance(0.6): briefcase(ms.at(x, y), T(x, y, cz(-0.1, 0.1) + 0.2) @ RZ(rn.u(0, 6.28)) @ RX(rn.u(0.2, 1.0)), rn)
 
 
+def wall_r(a, z):
+    """the plug's radius: squeezed to the bore in most places, sagging away from it in others (more toward the back)"""
+    n = fbm(math.cos(a) * 1.6 + z * 0.35, math.sin(a) * 1.6, z * 0.3, 3); back = min(1.0, max(0.0, (-z - 1.2) / 4.5))
+    return min(4.56, MASS_R + 0.04 * n) - max(0.0, n - 0.05) * (0.5 + 1.4 * back) - 0.22 * back * back
+
+
+def PACK_UV(p):
+    a = math.atan2(p.y, p.x)
+    return (a * 4.5 / 4.2, p.z / 4.2) if p.z > -7.0 else (p.x / 4.2, p.y / 4.2)   # (4.2 m a repeat: the heads come out life size)
+
+
+MASS_ZW = [MASS_Z0 - 0.12, -1.5, -2.5, -3.6, -4.7, -5.7, MASS_Z1]; MASS_NA = 12
+def wall_mesh_r(a, z):
+    """the radius of the plug's wall AS MESHED (between the rings and columns mass_core builds): what stands on it uses this"""
+    a %= 2 * math.pi; q = int(a / (math.pi / 2)) % 4; t = (a - q * math.pi / 2) / (math.pi / 2) * MASS_NA; k = min(MASS_NA - 1, int(t)); ft = t - k
+    a0, a1 = q * math.pi / 2 + k * (math.pi / 2) / MASS_NA, q * math.pi / 2 + (k + 1) * (math.pi / 2) / MASS_NA
+    z = max(MASS_ZW[-1], min(MASS_ZW[0], z)); i = max(j for j in range(len(MASS_ZW) - 1) if MASS_ZW[j] >= z); fz = (MASS_ZW[i] - z) / (MASS_ZW[i] - MASS_ZW[i + 1])
+    r00, r01, r10, r11 = wall_r(a0, MASS_ZW[i]), wall_r(a1, MASS_ZW[i]), wall_r(a0, MASS_ZW[i + 1]), wall_r(a1, MASS_ZW[i + 1])
+    return min(lerp(lerp(r00, r01, ft), lerp(r10, r11, ft), fz), lerp(r00, r10, fz), lerp(r01, r11, fz)) * math.cos(math.pi / 4 / MASS_NA)
+
+
 def mass_core(ms):
     """the plug itself: a lumpy charred cork, in four wedges with a hair between them. Each wedge is closed (the cut
     faces are meat: you see them when it comes apart)."""
-    NA = 12  # per quadrant
+    NA = MASS_NA  # per quadrant
     RS = [0.0, 0.45, 0.9, 1.35, 1.8, 2.25, 2.7, 3.15, 3.6, 4.05, 4.45]
     rn = Rnd(5)
-    def wall_r(a, z): return min(4.56, MASS_R + 0.05 * fbm(math.cos(a) * 2 + z * 0.5, math.sin(a) * 2, z * 0.4, 2))
-    ZW = [MASS_Z0 - 0.12, -1.5, -2.5, -3.6, -4.7, -5.7, MASS_Z1]
-    BACK = [(4.1, -7.05), (3.1, -7.4), (1.7, -7.6)]
+    ZW = MASS_ZW
+    BACK = [(3.75, -7.0), (2.9, -7.35), (1.6, -7.6)]
     for q in range(4):
-        b = ms.B[q]; a0 = q * math.pi / 2; eps = 0.0025 / 2.0
+        b = ms.B[q]; a0 = q * math.pi / 2; eps = 0.0012 / 2.0
         angs = [a0 + eps + (math.pi / 2 - 2 * eps) * k / NA for k in range(NA + 1)]
         prof = []  # per angle: the outline from the middle of the front face, over the lip, down the wall, to the middle of the back
         for a in angs:
             c, s_ = math.cos(a), math.sin(a); row = []
             for r_ in RS: row.append(V3((r_ * c, r_ * s_, core_z(r_ * c, r_ * s_) if r_ > 0 else core_z(0, 0))))
             for z in ZW: rr_ = wall_r(a, z); row.append(V3((rr_ * c, rr_ * s_, z)))
-            for r_, z in BACK: row.append(V3((r_ * c, r_ * s_, z + 0.12 * fbm(c * 3, s_ * 3, r_))))
+            for r_, z in BACK: rr2 = r_ * (1 + 0.22 * fbm(c * 2.2, s_ * 2.2, r_ * 0.7, 2)); row.append(V3((rr2 * c, rr2 * s_, z + 0.35 * fbm(c * 3, s_ * 3, r_))))
             row.append(V3((0, 0, -7.65)))
             prof.append(row)
         nrow = len(prof[0])
         # the axis points are shared by every angle: move each wedge's a hair off the axis so they don't touch
-        mid = a0 + math.pi / 4; off = V3((math.cos(mid), math.sin(mid), 0)) * 0.004
+        mid = a0 + math.pi / 4; off = V3((math.cos(mid), math.sin(mid), 0)) * 0.003
         for row in prof: row[0] = row[0] + off; row[-1] = row[-1] + off
         V_ = [p for row in prof for p in row]; F_ = []; UV_ = []
         for k in range(NA):
             for i in range(nrow - 1):
                 a_, b_, c_, d_ = k * nrow + i, (k + 1) * nrow + i, (k + 1) * nrow + i + 1, k * nrow + i + 1
-                if i == 0: F_.append((a_, b_, c_)) if False else None
                 F_.append((a_, b_, c_, d_)); UV_.append([(V_[j].x + V_[j].z * 0.5, V_[j].y + V_[j].z * 0.3) for j in (a_, b_, c_, d_)])
-        # (the first and last column are degenerate quads at the axis: they are fixed up below)
-        b.add((V_, F_, UV_), M['char'], ('tile', 0.55), None, 0.11)
-        for k_, flip in ((0, True), (NA, False)):   # the two cut faces
+        cuts = []
+        for k_ in (0, NA):   # the two cut faces
             row = prof[k_]; cen = sum(row, V3()) / len(row)
             Vc = list(row) + [cen]; n_ = len(row)
-            Fc = [((i + 1) % n_, i, n_) if flip else (i, (i + 1) % n_, n_) for i in range(n_)]
+            Fc = [(i, (i + 1) % n_, n_) for i in range(n_)]
+            cuts.append((Vc, Fc, [[(0, 0), (1, 0), (0.5, 1)]] * n_))
+        skin, c0, c1 = outward([(V_, F_, UV_)] + cuts)   # (the rows meet at the axis: those slivers go)
+        wall = [fi for fi, f in enumerate(skin[1]) if sum((skin[0][i].z for i in f)) / len(f) < MASS_Z0 - 0.3 and (sum((math.hypot(skin[0][i].x, skin[0][i].y) for i in f)) / len(f) > 4.2 or sum((skin[0][i].z for i in f)) / len(f) < -6.0)]
+        ws = set(wall)
+        b.add((skin[0], [f for i, f in enumerate(skin[1]) if i not in ws], [u for i, u in enumerate(skin[2]) if i not in ws]), M['char'], ('tile', 0.5), None, 0.085)
+        b.add((skin[0], [skin[1][i] for i in wall], [skin[2][i] for i in wall]), M['pack'], ('fn', PACK_UV), None, 0.8)
+        for cf, k_ in ((c0, 0), (c1, NA)):
             ax = V3((math.cos(angs[k_]), math.sin(angs[k_]), 0))
-            UVc = [[(Vc[j].dot(ax), Vc[j].z) for j in f] for f in Fc]
-            b.add((Vc, Fc, UVc), M['bits'], ('fn', lambda p, ax=ax: px_uv(AT['bits'].R['flesh'], AT['bits'].tex, (p.dot(ax) * 0.37) % 1.0 * 0.999, (p.z * 0.37) % 1.0 * 0.999, 0.5)), None, 0.8)
+            b.add(cf, M['bits'], ('fn', lambda p, ax=ax: px_uv(AT['bits'].R['flesh'], AT['bits'].tex, (p.dot(ax) * 0.37) % 1.0 * 0.999, (p.z * 0.37) % 1.0 * 0.999, 0.5)), None, 0.8)
 
 
 def build_mass(N):
@@ -1267,19 +1336,31 @@ def build_mass(N):
             if math.hypot(x, y) > 4.25 or blocked(x, y, 0.08): continue
             if min(math.hypot(x - sx_, y - sy_) for sx_, sy_ in ms.big) < float(arg('fillr', 0.4)): continue
             fill += 1; q = r2.u(0, 1); zz = core_z(x, y)
-            if q < 0.34: bust(ms, x, y, zz + r2.u(0.14, 0.3), r2.u(-1.2, 1.2) if r2.chance(0.6) else r2.u(0, 6.28), r2, pitch=r2.u(0.15, 0.8), lan=0.65, arm=r2.pick([None, None, None, 'hang', 'reach']))
-            elif q < 0.56: slumper(ms, x, y, zz + 0.26, r2.u(0, 6.28), r2, lite=True)
+            if q < 0.26: bust(ms, x, y, zz + r2.u(0.14, 0.3), r2.u(-1.2, 1.2) if r2.chance(0.6) else r2.u(0, 6.28), r2, pitch=r2.u(0.15, 0.8), lan=0.65, arm=r2.pick([None, None, None, 'hang', 'reach']))
+            elif q < 0.44: slumper(ms, x, y, zz + 0.26, r2.u(0, 6.28), r2, lite=True)
             else:   # a back and the back of a head: someone face down in it
                 b = ms.at(x, y); ms.big.append((x, y)); ms.figs += 1; rot = r2.u(0, 6.28); tn = r2.u(0.2, 0.42)
                 Mx = T(x, y, zz - 0.03) @ RZ(rot) @ RX(r2.u(-0.3, 0.3)) @ RY(r2.u(-0.3, 0.3))
                 b.add(torso_prim(6, r2.u(0.95, 1.2), 1.0, r2.u(0.36, 0.5), False), M['char'], CHAR, Mx @ T(0, 0.1, 0.02) @ RX(math.pi / 2 + r2.u(-0.25, 0.25)) @ RY(math.pi), tn, jit=0.016)
-                if r2.chance(0.75): b.add(mound(0.1, 0.125, r2.u(0.1, 0.13), 6), M['char'], ('tile', 0.3), Mx @ T(r2.u(-0.05, 0.05), 0.34, 0.0) @ RX(r2.u(-0.3, 0.2)), min(1.0, tn * 1.3), jit=0.006)
+                if r2.chance(0.75): b.add(mound(0.1, 0.125, r2.u(0.1, 0.13), 6), M['char'], ('tile', 0.3), Mx @ T(r2.u(-0.05, 0.05), 0.2, -0.03) @ RX(r2.u(-0.3, 0.2)), min(1.0, tn * 1.3), jit=0.006)
                 if r2.chance(0.4): loose_arm(ms, x + 0.25 * math.cos(rot), y + 0.25 * math.sin(rot), zz + 0.03, (r2.u(-0.6, 0.6), r2.u(-0.6, 0.6), 0.9), r2, r2.pick(['claw', 'flat', 'mitt']))
         yv += HX * 0.866; row += 1
     print('JF_MASS fill', fill, 'spots', len(ms.spots)); ms.mark('fill')
     # --- round the inspector: backs turned on him, a ring of arms that do not touch him
     for k, (x, y, rot) in enumerate(((-1.0, -2.2, 1.9), (1.05, -2.3, -1.9), (-1.0, -1.25, 2.6), (1.0, -1.2, -2.6))):
         slumper(ms, x, y, core_z(x, y) + 0.25, rot, Rnd(700 + k))
+    # --- they have grown together: ropes of skin from one to the next
+    rn3 = Rnd(77); big = list(ms.big); nb = 0
+    for i, (x0, y0) in enumerate(big):
+        for j in range(i + 1, len(big)):
+            x1, y1 = big[j]; d = math.hypot(x1 - x0, y1 - y0)
+            if not (0.38 < d < 0.8) or not rn3.chance(0.17) or blocked((x0 + x1) / 2, (y0 + y1) / 2): continue
+            z0, z1 = core_z(x0, y0) + rn3.u(0.1, 0.3), core_z(x1, y1) + rn3.u(0.1, 0.3); mx, my = (x0 + x1) / 2 + rn3.u(-0.08, 0.08), (y0 + y1) / 2 + rn3.u(-0.08, 0.08)
+            ms.at(mx, my).add(p_tube([(x0, y0, z0), (mx, my, (z0 + z1) / 2 - rn3.u(0.0, 0.1)), (x1, y1, z1)], [rn3.u(0.05, 0.09), rn3.u(0.025, 0.045), rn3.u(0.05, 0.09)], 4), M['char'], CHAR, None, rn3.u(0.2, 0.36), jit=0.01); nb += 1
+    for k in range(9):   # behind it, what it drags: arms trailing on the track
+        r2 = Rnd(9500 + k); a = r2.u(3.6, 5.8); r_ = r2.u(1.5, 3.4); x, y = r_ * math.cos(a), r_ * math.sin(a)
+        f = Fig(ms.at(x, y), T(x, y, -7.2), r2, 1.1); f.wide = 0.0
+        f.arm(1, (x + r2.u(-0.3, 0.3), y - r2.u(0.1, 0.4), -7.2 - 0.62), 'mitt', palm=(0, -1, 0), pole=(0, 1, 0), hs=1.3, l1=0.36, l2=0.32)
     ms.mark('bay')
     # --- hands over the rim: arms come round the outside of the hoop and lay their fingers on the enamel
     for k in range(24):
@@ -1296,29 +1377,29 @@ def build_mass(N):
     for k, sdeg in enumerate(SOCKETS):
         a = math.radians(sdeg); c, s_ = math.cos(a), math.sin(a); r2 = Rnd(6000 + k); b = ms.at(c, s_)
         tang = V3((-s_, c, 0)); out = V3((c, s_, 0))
-        for j in range(5):
-            t = (j - 2.0) * 0.12
+        for j in range(4):
+            t = (j - 1.5) * 0.14
             p0 = out * 4.3 + tang * t * 1.6 + V3((0, 0, -0.95)); p1 = out * 4.5 + tang * t * 1.1 + V3((0, 0, -0.72)); p2 = out * 4.5 + tang * t * 0.5 + V3((0, 0, -0.5))
             b.add(p_tube([p0, p1, p2], [0.075, 0.062, 0.055], 5, squash=1.0, cap1=True), M['char'], CHAR, None, r2.u(0.4, 0.62))
     ms.mark('sockets')
     # --- the wall and the back of the plug: people pressed flat by the bore (seen when you get behind it, never in the fight)
     for k in range(44):   # backs and heads in low relief all over the wall (the bore presses them flat)
         r2 = Rnd(8500 + k); a = r2.u(0, 2 * math.pi); z = -0.95 - r2.u(0, 1) * 5.6; c, s_ = math.cos(a), math.sin(a); out = V3((c, s_, 0))
-        Mx = frame(out, (r2.u(-1, 1), r2.u(-1, 1), r2.u(-1, 1)), out * 4.47 + V3((0, 0, z)))
+        Mx = frame(out, (r2.u(-1, 1), r2.u(-1, 1), r2.u(-1, 1)), out * (wall_mesh_r(a, z) - 0.045) + V3((0, 0, z))) @ RX(r2.u(-0.12, 0.12)) @ RY(r2.u(-0.12, 0.12))
         b = ms.at(c, s_); tn = r2.u(0.2, 0.42)
-        b.add(mound(r2.u(0.22, 0.3), r2.u(0.26, 0.36), r2.u(0.05, 0.075), 6), M['char'], CHAR, Mx, tn, jit=0.008)
-        if r2.chance(0.6): b.add(mound(0.1, 0.125, 0.06, 6), M['char'], ('tile', 0.3), Mx @ T(r2.u(-0.05, 0.05), 0.36, 0.0), min(1.0, tn * 1.3))
-    for k in range(int(arg('wallfigs', 8))):
+        b.add(mound(r2.u(0.22, 0.3), r2.u(0.3, 0.55), r2.u(0.12, 0.14), 5), M['char'], CHAR, Mx, tn, jit=0.008)
+        # (no heads on these: a flat little cap that close to the wall lay in its plane. the wall's picture has the heads)
+    for k in range(int(arg('wallfigs', 0))):   # (whole figures on the wall: squashed flat their faces lay in the wall's own plane. the wall's picture does the job)
         r2 = Rnd(8000 + k); a = r2.u(0, 2 * math.pi); z = -1.1 - (r2.u(0, 1) ** 1.6) * 5.2
         c, s_ = math.cos(a), math.sin(a); out = V3((c, s_, 0))
-        Mw = frame(out, (r2.u(-1, 1), r2.u(-1, 1), r2.u(-1, 1)), out * 4.44 + V3((0, 0, z))) @ SC(1.08, 1.08, 0.42)
+        Mw = frame(out, (r2.u(-1, 1), r2.u(-1, 1), r2.u(-1, 1)), out * (wall_mesh_r(a, z) - 0.05) + V3((0, 0, z))) @ SC(1.08, 1.08, 0.42)
         f = Fig(ms.at(c, s_), Mw, r2, 1.0); ms.figs += 1
-        f.torso(1.05, 1.0, length=0.45, k=6, shirt=r2.pick([0, 1, 2, None, None, None]))
+        f.torso(1.05, 1.0, length=0.45, k=6, shirt=None)
         f.head(yaw=r2.u(-1.3, 1.3), pitch=r2.u(-0.2, 0.2), roll=r2.u(-0.5, 0.5))
         if r2.chance(0.6): f.lanyard()
         for sd in (-1, 1):
             if r2.chance(0.6):
-                tgt = f.w((sd * r2.u(0.3, 0.5), r2.u(-0.3, 0.45), 0.02)); tgt = tgt.normalized() * 0 + V3((tgt.x, tgt.y, 0)).normalized() * 4.5 + V3((0, 0, tgt.z))
+                tgt = f.w((sd * r2.u(0.3, 0.5), r2.u(-0.3, 0.45), 0.02)); tgt = V3((tgt.x, tgt.y, 0)).normalized() * (wall_mesh_r(math.atan2(tgt.y, tgt.x), tgt.z) + 0.02) + V3((0, 0, tgt.z))
                 f.arm(sd, tgt, 'mitt', fingers=f.d((sd * 0.3, 1, 0)), palm=out, hs=1.3)
     for k in range(4):
         r2 = Rnd(9000 + k); a = r2.u(0, 2 * math.pi); r_ = r2.u(0.5, 3.6); x, y = r_ * math.cos(a), r_ * math.sin(a)
@@ -1327,7 +1408,7 @@ def build_mass(N):
         f = Fig(ms.at(x, y), Mw, r2, 1.05); ms.figs += 1
         f.torso(1.0, 1.0, length=0.4, k=6); f.head(pitch=r2.u(-0.4, 0.4), roll=r2.u(-0.5, 0.5))
         if k % 2 == 0: f.arm(1, f.w((0.4, 0.3, 0.45)), 'mitt', hs=1.3)
-    ms.mark('wall and back'); print('JF_MASS tally', ms.tally)
+    ms.mark('wall and back'); print('JF_MASS tally', ms.tally, 'bridges', nb)
     mass = empty('mass'); N['mass'] = mass
     for b in ms.B:
         o = b.obj(sharp=72, weld=2e-5)
@@ -1353,9 +1434,9 @@ def glow_materials():
             d = np.hypot(xx + 0.5 - cx, yy + 0.5 - cy); sw = d < d1
             d2 = np.where(sw, d1, np.minimum(d2, d)); d1 = np.where(sw, d, d1)
         e = d2 - d1
-        px[e < 2.2] = hexrgb(0x7a2408); px[e < 1.1] = hexrgb(0xff7a1a); px[(e < 0.6) & (r.random((S, S)) < 0.5)] = hexrgb(0xffd27a)
+        px[:] = hexrgb(0x2a0a05); px[e < 1.7] = hexrgb(0x6a1c06); px[e < 0.85] = hexrgb(0xe85a12); px[(e < 0.4) & (r.random((S, S)) < 0.6)] = hexrgb(0xffc060)
     img = tex_canvas('rp_ember_t', 32, 32, ember)
-    M['ember'] = mat('rp_inspector_glow', 0xffffff, rough=0.6, emit=0xffffff, strength=1.5, tex=img, emit_tex=True)
+    M['ember'] = mat('rp_inspector_glow', 0xffffff, rough=0.6, emit=0xffffff, strength=2.4, tex=img, emit_tex=True)
     def knot(px):
         px[:] = hexrgb(0x1a5a78); r = np.random.default_rng(29)
         px[r.random(px.shape[:2]) < 0.35] = hexrgb(0x4fd8ff); px[r.random(px.shape[:2]) < 0.08] = hexrgb(0xd8f6ff)
@@ -1370,16 +1451,16 @@ def ticket_punch():
     # the lower handle, bowed, with a finger loop at its end
     body.add(p_tube([(0, -0.012, 0.01), (0, -0.03, -0.05), (0, -0.045, -0.11), (0, -0.036, -0.16)], [0.011, 0.01, 0.009, 0.009], 5, squash=1.6, cap1=True), tr, ch)
     # the jaw: a C of steel in front of the rivet, the die at its lower lip
-    body.add(p_box(0.03, 0.03, 0.05), tr, ch, T(0, -0.014, 0.03))
+    body.add(p_box(0.034, 0.03, 0.05), tr, ch, T(0, -0.014, 0.03))
     body.add(p_box(0.03, 0.02, 0.085), tr, ch, T(0, -0.03, 0.085))
-    body.add(p_box(0.03, 0.07, 0.022), tr, ch, T(0, 0.0, 0.118))
-    body.add(p_box(0.03, 0.02, 0.05), tr, ch, T(0, 0.036, 0.1))
+    body.add(p_box(0.032, 0.07, 0.022), tr, ch, T(0, 0.0, 0.118))
+    body.add(p_box(0.028, 0.02, 0.05), tr, ch, T(0, 0.036, 0.1))
     body.add(xf(p_prism(8, 0.012, 0.014, top=True), RX(math.pi / 2) @ T(0, 0, -0.007)), tr, br, T(0, -0.02, 0.085))     # the die
     body.add(xf(p_prism(8, 0.014, 0.04, top=True, bottom=True), RY(math.pi / 2) @ T(0, 0, -0.02)), tr, br, T(0, 0, 0))    # the rivet
     body.add(p_box(0.02, 0.012, 0.03), tr, TR('black', 1), T(0, -0.052, 0.07))                                             # the chad box
     # the lever: the upper handle and the pin
     lever.add(p_tube([(0, 0.012, 0.0), (0, 0.04, -0.05), (0, 0.062, -0.11), (0, 0.058, -0.16)], [0.011, 0.01, 0.009, 0.009], 5, squash=1.6, cap1=True), tr, ch)
-    lever.add(p_box(0.026, 0.02, 0.07), tr, ch, T(0, 0.016, 0.035) @ RX(0.25))
+    lever.add(p_box(0.024, 0.02, 0.07), tr, ch, T(0, 0.016, 0.035) @ RX(0.25))
     lever.add(xf(p_prism(6, 0.007, 0.03, top=True), RX(math.pi / 2)), tr, br, T(0, 0.03, 0.085))                           # the pin
     return body, lever
 
@@ -1399,11 +1480,12 @@ def build_inspector(N):
         return px_uv(AT['bits'].R['serge'], AT['bits'].tex, min(1, max(0, 0.5 + p.x / 0.5)), min(1, max(0, (p.y + 0.22) / 0.78)), 0.5)
     front = [fi for fi, f in enumerate(F_) if sum((V_[i].z for i in f)) / len(f) > 0.03]
     fs = set(front)
-    b.add((V_, [F_[i] for i in front], [UV_[i] for i in front]), bi, ('fn', jk), None, 0.8, jit=0.004)
-    b.add((V_, [f for i, f in enumerate(F_) if i not in fs], [u for i, u in enumerate(UV_) if i not in fs]), bi, BT('capnavy', 1), None, 0.55, jit=0.004)
+    burnt = lambda c: 0.22 + 0.6 * min(1.0, max(0.0, (c.y + 0.15) / 0.5)) * (0.75 + 0.25 * math.sin(c.x * 23 + c.y * 17))   # burnt black from the waist up
+    b.add((V_, [F_[i] for i in front], [UV_[i] for i in front]), bi, ('fn', jk), None, burnt, jit=0.004)
+    b.add((V_, [f for i, f in enumerate(F_) if i not in fs], [u for i, u in enumerate(UV_) if i not in fs]), bi, BT('capnavy', 1), None, lambda c: burnt(c) * 0.7, jit=0.004)
     # the split in his chest: the light is in there. ribs across it
     gl = [[V3((x * (1 - 0.5 * abs(y - 0.3) / 0.16), y, 0.128 + 0.012 * (1 - abs(x) / 0.07))) for x in (-0.07, 0.0, 0.07)] for y in (0.14, 0.24, 0.36, 0.46)]
-    b.add(p_grid(gl), M['ember'], ('fn', lambda p: (0.5 + p.x * 4, p.y * 2.5)), None, 1.0)
+    b.add(p_grid(gl), M['ember'], ('fn', lambda p: (0.5 + p.x * 6, (p.y - 0.12) * 2.7)), None, 1.0)
     for y in (0.19, 0.26, 0.33, 0.4): b.add(p_tube([(-0.085, y - 0.01, 0.125), (0, y + 0.012, 0.152), (0.085, y - 0.01, 0.125)], 0.011, 4), ch, CHAR, None, 0.3)
     for sx in (-1, 1):  # the torn edges of the jacket curling back from it, lapels, epaulettes with a button
         b.add(p_grid([[(sx * 0.07, 0.12, 0.137), (sx * 0.1, 0.13, 0.16), (sx * 0.14, 0.12, 0.138)], [(sx * 0.075, 0.3, 0.145), (sx * 0.115, 0.3, 0.172), (sx * 0.16, 0.3, 0.145)], [(sx * 0.05, 0.47, 0.13), (sx * 0.09, 0.47, 0.15), (sx * 0.13, 0.47, 0.125)]], flip=sx < 0), bi, BT('capnavy', 1), None, 0.4)
@@ -1416,7 +1498,7 @@ def build_inspector(N):
     b.add(p_quad((0.086, 0.45, 0.14), (0.114, 0.45, 0.14), (0.14, 0.36, 0.16), (0.112, 0.36, 0.16)), bi, BF('strap', 1), None, LAN[1])
     b.add(p_tube([(0.2, 0.5, 0.03), (0.08, 0.36, 0.142), (-0.08, 0.14, 0.14), (-0.19, -0.02, 0.06)], 0.02, 4, squash=0.3), bi, BT('leatherb', 1), None, 0.8)
     b.add(p_box(0.2, 0.17, 0.085), bi, BT('leather', 1), T(-0.2, -0.1, 0.07) @ RY(-0.35), 0.5)
-    b.add(p_box(0.21, 0.07, 0.092), bi, BT('leatherb', 1), T(-0.2, -0.03, 0.073) @ RY(-0.35), 0.7)
+    b.add(p_box(0.214, 0.07, 0.1), bi, BT('leatherb', 1), T(-0.2, -0.03, 0.075) @ RY(-0.35), 0.7)
     # --- the head, on its own node (he looks at you)
     h = B['insp_head']; HY = 0.76
     fp, sk = head_prims(8, 0.35)
@@ -1425,16 +1507,16 @@ def build_inspector(N):
     h.add(p_box(0.03, 0.05, 0.035, taper=0.6), ch, ('tile', 0.3), Mh @ T(0, -0.005, 0.105) @ RX(-0.35), 0.5)        # what is left of his nose
     h.add(p_box(0.16, 0.018, 0.03), ch, ('tile', 0.3), Mh @ T(0, 0.052, 0.085), 0.3)                                # the brow
     for sx in (-1, 1):
-        h.add(p_quad((sx * 0.048 - 0.02, 0.014, 0.0935), (sx * 0.048 + 0.02, 0.014, 0.0935), (sx * 0.048 + 0.02, 0.042, 0.092), (sx * 0.048 - 0.02, 0.042, 0.092)), M['ember'], ('fn', lambda p: (0.48 + p.x * 0.5, 0.48 + p.y * 0.5)), Mh, 1.0)   # the light, in his eyes
+        h.add(p_quad((sx * 0.048 - 0.02, 0.014, 0.0935), (sx * 0.048 + 0.02, 0.014, 0.0935), (sx * 0.048 + 0.02, 0.042, 0.092), (sx * 0.048 - 0.02, 0.042, 0.092)), M['ember'], ('fn', lambda p: (0.42 + p.x * 1.5, 0.3 + (p.y - 0.78) * 1.5)), Mh, 1.0)   # the light, in his eyes
         h.add(p_box(0.02, 0.06, 0.04), ch, ('tile', 0.3), Mh @ T(sx * 0.092, 0.01, 0.0) @ RY(sx * 0.3), 0.4)        # ears
-    h.add(p_quad((-0.03, -0.085, 0.079), (0.03, -0.085, 0.079), (0.03, -0.055, 0.087), (-0.03, -0.055, 0.087)), M['ember'], ('fn', lambda p: (0.2 + p.x, 0.2 + p.y * 0.5)), Mh, 1.0)
+    h.add(p_quad((-0.03, -0.085, 0.079), (0.03, -0.085, 0.079), (0.03, -0.055, 0.087), (-0.03, -0.055, 0.087)), M['ember'], ('fn', lambda p: (0.5 + p.x * 3, 0.2 + (p.y - 0.66) * 3)), Mh, 1.0)
     # the cap, fused on: band with REVENUE round the front, the badge, a wide crown tipped up at the front, a gloss peak
     CY = 0.085
     band = [[V3((math.sin(2 * math.pi * j / 12) * rx, y, math.cos(2 * math.pi * j / 12) * rz - 0.006)) for j in range(12)] for y, rx, rz in ((CY - 0.012, 0.094, 0.104), (CY + 0.045, 0.097, 0.107))]
     V_, F_, UV_ = p_loft(band)
     def bandu(p):
         q = Mh.inverted() @ p; a = math.atan2(q.x, q.z + 0.006) / (2 * math.pi)
-        return px_uv(AT['bits'].R['band'], AT['bits'].tex, (0.5 + a * 1.9) % 1.0 * 0.998, min(1, max(0, (q.y - CY + 0.012) / 0.057)), 0.5)
+        return px_uv(AT['bits'].R['band'], AT['bits'].tex, min(0.998, max(0.002, 0.5 + a * 2.85)), min(1, max(0, (q.y - CY + 0.012) / 0.057)), 0.5)
     h.add((V_, F_, UV_), bi, BT('capnavy', 1), Mh, 0.5)
     fb = [[V3((math.sin(a_) * 0.099, y, math.cos(a_) * 0.109 - 0.006)) for a_ in [(-0.85 + 1.7 * j / 6) for j in range(7)]] for y in (CY - 0.01, CY + 0.043)]
     h.add(p_grid(fb, flip=True), bi, ('fn', bandu), Mh, 0.95)
@@ -1477,9 +1559,9 @@ def build_inspector(N):
         a = -0.4 + k * 0.63 + rn.u(-0.15, 0.15); c, s_ = math.cos(a), math.sin(a)
         f = Fig(bs, T(c * 0.42, -0.55, s_ * 0.34 + 0.02), rn, 1.0, body=rn.u(0.22, 0.38)); f.wide = 0.0
         tgt = V3((c * rn.u(0.24, 0.3), rn.u(-0.2, 0.05), s_ * rn.u(0.2, 0.26) + 0.02))
-        f.arm(1, tgt, rn.pick(['claw', 'flat', 'claw']), fingers=(-c * 0.5, 1, -s_ * 0.5), palm=(-c, 0.2, -s_), pole=(c, 0.3, s_), hs=1.25)
+        f.arm(1, tgt, ('claw', 'flat', 'claw', 'mitt', 'claw', 'flat', 'claw')[k], fingers=(-c * 0.5, 1, -s_ * 0.5), palm=(-c, 0.2 + 0.05 * k, -s_), pole=(c, 0.3, s_), hs=1.2 + 0.02 * k)
     for k in range(5):
-        a = rn.u(0, 6.28); bs.add(mound(0.1, 0.125, 0.11, 6), ch, ('tile', 0.3), T(math.cos(a) * 0.45, -0.52 + rn.u(-0.1, 0.05), math.sin(a) * 0.36) @ frame((math.cos(a), 0.8, math.sin(a))), rn.u(0.3, 0.5))
+        a = 0.9 + k * 1.26 + rn.u(-0.2, 0.2); bs.add(mound(0.1, 0.125, 0.11, 6), ch, ('tile', 0.3), T(math.cos(a) * 0.45, -0.52 + rn.u(-0.1, 0.05), math.sin(a) * 0.36) @ frame((math.cos(a), 0.8 + 0.1 * k, math.sin(a))), rn.u(0.3, 0.5))
     # --- nodes
     root = empty('inspector', None, INSP_AT); root.scale = (INSP_S,) * 3; N['inspector'] = root
     piv = {'insp_body': None, 'insp_base': None, 'insp_head': (0, 0.62, 0.0), 'insp_armR': tuple(SH[-1]), 'insp_armL': tuple(SH[1]), 'insp_foreR': tuple(EL[-1]), 'insp_foreL': tuple(EL[1]), 'insp_punch_lever': tuple(PR)}
@@ -1553,7 +1635,7 @@ def build_arm():
         d_ = V3((rn.u(-1, 1), rn.u(-1, 1), rn.u(-0.6, 0.6))).normalized(); p = d_ * 0.36
         Mc = frame(d_ + V3((rn.u(-0.5, 0.5), rn.u(-0.5, 0.5), rn.u(-0.5, 0.5))), (0, -1, 0), p + d_ * 0.07 + V3((0, -0.05, 0)))
         b.add(p_box(0.115, 0.155, 0.01), bi, AT['bits'].face('card%d' % (k % 4), 'z', 0.5), Mc, rn.u(0.75, 1.0))
-        b.add(p_tube([p * 0.85, p + d_ * 0.05, p + d_ * 0.07 + V3((0, 0.02, 0))], 0.012, 4, squash=0.3), bi, BF('strap', 1), None, LAN[k % 3])
+        b.add(p_tube([p * 0.6, p + d_ * 0.05, p + d_ * 0.085 + V3((0, -0.03, 0))], 0.014, 4, squash=0.3), bi, BF('strap', 1), None, LAN[k % 3])
     N['arm_knot'] = b
     # --- the stump: what is left on the arm when the wrist is shot through. the cut faces +z
     b = Buf('arm_stump'); rn = Rnd(90)
@@ -1566,17 +1648,16 @@ def build_arm():
         b.add(xf(p_prism(5, 0.022, rn.u(0.04, 0.1), r1=0.016, dome=0.004), T(math.cos(a) * r_, math.sin(a) * r_, 0.0) @ RX(rn.u(-0.3, 0.3)) @ RY(rn.u(-0.3, 0.3))), bi, BT('white', 1), None, rn.u(0.7, 1.0))
     for k in range(8):
         a = k * 0.785 + rn.u(-0.2, 0.2); c, s_ = math.cos(a), math.sin(a); tg = V3((-s_, c, 0))
-        p = V3((c * 0.26, s_ * 0.26, -0.01)); tip = p + V3((c * rn.u(0.0, 0.08), s_ * rn.u(0.0, 0.08), rn.u(0.08, 0.2)))
+        p = V3((c * 0.225, s_ * 0.225, -0.05)); tip = p + V3((c * rn.u(0.03, 0.12), s_ * rn.u(0.03, 0.12), rn.u(0.14, 0.26)))
         b.add(([p + tg * 0.07, p - tg * 0.07, tip], [(0, 1, 2), (2, 1, 0)], [[(0, 0), (1, 0), (0.5, 1)]] * 2), ch, ('tile', 0.3), None, 0.4)
     N['arm_stump'] = b
     # --- the hand made of hands. wrist at the origin, fingers along +z, the palm faces -y, the thumb on +x
     palm = Buf('palm'); rn = Rnd(91)
     pr = [[V3((x * w, y_ + 0.05 * math.cos(x * 1.4), z)) for x in (-1, -0.5, 0, 0.5, 1)] for z, w, y_ in ((-0.05, 0.2, 0.0), (0.2, 0.33, 0.02), (0.5, 0.4, 0.03), (0.74, 0.4, 0.02))]
     top = [[p + V3((0, 0.1, 0)) for p in row] for row in pr]; bot = [[p + V3((0, -0.1, 0)) for p in row] for row in pr]
-    palm.add(p_grid(top, flip=True), ch, CHAR, None, 0.22, jit=0.015); palm.add(p_grid(bot), ch, CHAR, None, 0.2, jit=0.015)
     edge = [bot[0][k] for k in range(5)] + [bot[k][4] for k in range(1, 4)] + [bot[3][k] for k in range(3, -1, -1)] + [bot[k][0] for k in range(2, 0, -1)]
     edge_t = [p + V3((0, 0.2, 0)) for p in edge]
-    palm.add(p_loft([edge, edge_t]), ch, CHAR, None, 0.2, jit=0.015)
+    for pr_ in outward([p_grid(top), p_grid(bot), p_loft([edge, edge_t])]): palm.add(pr_, ch, CHAR, None, 0.2)
     for k in range(9):   # the people it is made of: arms laid across the back of it, hands gripping its edges, a face in the palm
         x = rn.u(-0.3, 0.3); z = rn.u(0.0, 0.6); f = Fig(palm, T(x, 0.1, z), rn, 1.0, body=rn.u(0.28, 0.45)); f.wide = 0.0
         tgt = V3((x + rn.u(-0.3, 0.3), 0.14, z + rn.u(0.2, 0.42)))
@@ -1595,10 +1676,10 @@ def build_arm():
             for sd in (-1, 1):
                 p0 = V3((sd * th * 0.8, r2.u(-0.01, 0.01), -0.03)); p1 = V3((sd * th * (1.0 + r2.u(0, 0.5)), r2.u(0.02, 0.07), L * 0.52)); p2 = V3((sd * th * 0.7, 0.0, L + 0.02))
                 b.add(limb_prim(p0, p1, p2, 0.07 - pi_ * 0.008, 0.058 - pi_ * 0.006, 0.045 - pi_ * 0.004, 5), ch, CHAR, None, r2.u(0.26, 0.45), jit=0.006)
-                if ph != 'c' and r2.chance(0.7): b.add(hand_mitt(sd, 0.5), ch, ('tile', 0.3), frame((0, -0.15, 1), (0, 1, 0.3), p2 - V3((0, -0.03, 0.06))) @ SC(1.2), r2.u(0.5, 0.8))
+                if ph != 'c' and r2.chance(0.7): b.add(hand_mitt(sd, 0.5), ch, ('tile', 0.3), frame((sd * 0.25, -0.15 - 0.1 * sd, 1), (sd * 0.4, 1, 0.3), p2 - V3((0, -0.03 - 0.012 * sd, 0.06 + 0.02 * sd))) @ SC(1.2), r2.u(0.5, 0.8))
             b.add(mound(th * 1.5, 0.07, 0.06, 6), ch, CHAR, T(0, 0.03, 0.0) @ RX(-math.pi / 2), 0.3, jit=0.006)
             if ph == 'c':
-                b.add(hand_flat(1.3, 1 if fi % 2 else -1), ch, ('tile', 0.3), T(0, 0.0, L - 0.02) @ SC(1.9), r2.u(0.55, 0.8))    # the fingertip is a hand
+                b.add(hand_flat(1.3, 1 if fi % 2 else -1), ch, ('tile', 0.3), T(0, 0.004, L - 0.02) @ RX(0.12) @ RZ(0.2 * (1 if fi % 2 else -1)) @ SC(1.9), r2.u(0.55, 0.8))    # the fingertip is a hand
             HN.append((nm, ph, b, base, splay, L))
     N['_fingers'] = HN
     # --- nodes
@@ -1840,7 +1921,8 @@ def parts_json(N, A, arm_meta, tris):
             sockets=[dict(deg=d, pos=r3((4.5 * math.cos(math.radians(d)), 4.5 * math.sin(math.radians(d)), -0.5)), dir=[0, 0, 1], out=r3((math.cos(math.radians(d)), math.sin(math.radians(d)), 0))) for d in SOCKETS],
             mouth_sockets=[dict(pos=[x, round(crack_y(x) - 0.75, 3), -0.7], dir=[0, 0, 1]) for x in (-2.6, -1.5, 1.5, 2.6)]),
         materials=dict(rp_inspector_glow='his light (emissive: flare it on a crit)', rp_eye_glow='the eyes behind the blown housing (emissive)', rp_knot_glow='the wrist knot (rp_arm.glb, emissive)',
-                       rp_enamel='the face', rp_enamel_crazed='the cracked face', rp_steel='lattice, hoop, housings, clamps', rp_char='burnt skin (tiles)', rp_bits='faces, lanyards, cards, clothes'),
+                       rp_enamel='the face', rp_enamel_crazed='the cracked face', rp_void='inside the lamp cans (no specular: the eyes stay black)', rp_steel='lattice, hoop, housings, clamps', rp_char='burnt skin (tiles)', rp_pack='the wall of the plug: packed commuters (tiles)', rp_bits='faces, lanyards, cards, clothes', rp_mass_lod='the far plug: the near one photographed onto it'),
+        lod=dict(node='mass_lod', instead_of=list(Mass.NAMES), note='hidden. swap it in past about 40 m, or while every plate is still on; it has the near model photographed onto its face (the inspector too: hide him with it)'),
         arm=arm_meta, parts=parts)
     return meta
 
@@ -1852,7 +1934,7 @@ def finish_all(N, A, arm):
     if not arg('no-ao'): bake_all(N, A)
     for o in list(N.values()) + list(A.values()):
         if o.type == 'MESH': final_colour(o)
-    vis = sum(tri_count(o) for k, o in N.items() if o.type == 'MESH' and not o.get('jf_hidden'))
+    vis = sum(tri_count(o) for k, o in N.items() if o.type == 'MESH' and not o.get('jf_hidden'))   # (the lod is built after this)
     hid = sum(tri_count(o) for k, o in N.items() if o.type == 'MESH' and o.get('jf_hidden'))
     grp = lambda pre: sum(tri_count(o) for k, o in N.items() if o.type == 'MESH' and not o.get('jf_hidden') and k.startswith(pre))
     tris = dict(whole=vis, hidden_variants=hid, mask=grp('plate_') + grp('frame') + grp('eye_') + grp('anchor'), mass=grp('mass_'), inspector=grp('insp_'),
@@ -1860,6 +1942,38 @@ def finish_all(N, A, arm):
     tris['arm']['arm_hand'] = sum(tri_count(o) for k, o in A.items() if o.type == 'MESH' and (k[0] == 'f' or k == 'palm'))
     print('JF_TRIS', json.dumps(tris))
     return tris
+
+
+def build_mass_lod(N, A):
+    """the plug as one cheap mesh for far away (and for while the mask still hides it): the near model's face is
+    photographed straight on into a 256 px map, the wall is plain char"""
+    tmp = os.path.join(SHEETS, '_tmp'); os.makedirs(tmp, exist_ok=True)
+    colour_preview(list(M.values()))
+    keep = ('mass_ne', 'mass_nw', 'mass_sw', 'mass_se')
+    for k, o in list(N.items()) + list(A.items()): o.hide_render = not (k in keep or k.startswith('insp_'))
+    world(0xffffff, 1.0)
+    p = shot(os.path.join(tmp, 'lod_face.png'), (0, 0, 30), (0, 0, -1), res=(256, 256), ortho=2 * R_BORE, exposure=0.0, samples=8)
+    img = bpy.data.images.load(p); img.pack(); img.name = 'rp_mass_lod_t'
+    colour_preview(list(M.values()), on=False)
+    for k, o in list(N.items()) + list(A.items()): o.hide_render = False
+    M['lod'] = mat('rp_mass_lod', 0xffffff, rough=0.6, tex=img)
+    b = Buf('mass_lod'); NA = 24; RS = [0.0, 0.8, 1.6, 2.4, 3.2, 3.9, 4.45]; ZW = [MASS_Z0 - 0.12, -2.2, -3.8, -5.4, MASS_Z1]; BK = [(3.75, -7.0), (2.6, -7.4)]
+    rows = []
+    for k in range(NA + 1):
+        a = 2 * math.pi * k / NA; c, s_ = math.cos(a), math.sin(a)
+        row = [V3((r_ * c, r_ * s_, (core_z(r_ * c, r_ * s_) if r_ else core_z(0, 0)) + 0.14)) for r_ in RS]
+        row += [V3((wall_r(a, z) * c, wall_r(a, z) * s_, z)) for z in ZW] + [V3((r_ * c, r_ * s_, z)) for r_, z in BK] + [V3((0, 0, -7.6))]
+        rows.append(row)
+    nf = len(RS)
+    front = outward([p_grid([row[:nf] for row in rows]), p_grid([row[nf - 1:] for row in rows])])
+    b.add(front[0], M['lod'], ('fn', lambda q: (0.5 + q.x / (2 * R_BORE), 0.5 + q.y / (2 * R_BORE))))
+    b.add(front[1], M['pack'], ('fn', lambda q: ((math.atan2(q.y, q.x) % (2 * math.pi)) * 4.5 / 4.2, q.z / 4.2)), None, 0.8)
+    o = b.obj(sharp=72, weld=1e-4); flat_ao(o); final_colour(o)
+    N['mass_lod'] = node(o, 'mass_lod', None, N['mass'], hide=True)
+    try: os.remove(p)
+    except OSError: pass
+    print('JF_LOD mass_lod', tri_count(o), 'tris')
+    return o
 
 
 TUNNEL = []
@@ -1921,9 +2035,12 @@ def sheets(N, A, tris):
     cu('crazed', (3.3, 2.2, 3.4), (2.6, 2.5, 0.1), 50, -1.1, st=1, cz=(5, 4), label='a crazed plate (04) by a whole one')
     cu('eye_blown', (2.5, 1.0, 3.6), (1.3, 0.75, 0), 50, -0.6, st=2, label='the left eye, blown')
     for k, o in N.items():
-        if k.startswith(('plate_', 'frame', 'eye_', 'anchor')) and o.type == 'MESH': o.hide_render = True
+        if k.startswith(('plate_', 'frame', 'eye', 'anchor')) and o.type == 'MESH': o.hide_render = True
     cu('mass6', (0.9, -1.2, 5.6), (0.3, -0.9, -0.8), 38, 0.5, label='the 17:32 from 6 m (mask off)')
     cu('inspector', (0.85, -1.85, 1.3), (0.0, -2.2, -0.8), 50, 0.4, label='the inspector')
+    if 'mass_lod' in N:
+        for k, o in N.items(): o.hide_render = k != 'mass_lod'
+        cu('lod', (9, 2.5, 13), (0, -0.2, -2.5), 50, 0.5, label='mass lod (%d tris), mask off' % tri_count(N['mass_lod']))
     set_stage(N, 0); boss(False); arms(True); clear_studio()
     # the arm kit: the hand open and gripping, eight lengths along a curve with the knot and the hand
     for k in ('arm_seg', 'arm_knot', 'arm_stump'): A[k].hide_render = True
@@ -1952,8 +2069,8 @@ def sheets(N, A, tris):
     mid = pts[4]
     world(0x1a1220, 0.6); area(6000, (9, 9, 9), tuple(mid), 9.0); area(2200, (-9, 3, 2), tuple(mid), 9.0, (0.8, 0.88, 1.0)); area(1500, (0, -6, 12), tuple(mid), 6.0, (1.0, 0.8, 0.9))
     p = os.path.join(tmp, 'cu_arm.png'); out.append(p); lab.append('8 lengths, the knot, the hand (12 m)')
-    shot(p, (13.5, 3.5, 6.0), tuple(mid + V3((0, -0.2, 0.6))), 50, res=(760, 560), exposure=0.3, samples=S)
-    contact(out, os.path.join(SHEETS, 'rp_closeups'), 'REVENUE PROTECTION  CLOSE-UPS', cols=4, labels=lab)
+    shot(p, (17.5, 4.5, 6.5), tuple(pts[5] + V3((0, -0.2, 0.9))), 36, res=(760, 560), exposure=0.3, samples=S)
+    contact(out, os.path.join(SHEETS, 'rp_closeups'), 'REVENUE PROTECTION  CLOSE-UPS', cols=3, labels=lab)
     clear_studio()   # (takes the copies with it: they are named jf_set*)
     try: os.rmdir(tmp)
     except OSError: pass
@@ -1970,6 +2087,7 @@ def main():
     if want('arm'): aroot, A, arm_meta = build_arm()
     bpy.context.view_layer.update()
     tris = finish_all(N, A, arm_meta)
+    if 'mass_ne' in N and not arg('no-lod'): build_mass_lod(N, A); tris['mass_lod'] = tri_count(N['mass_lod'])
     if arg('stats'):
         for k, o in sorted(N.items()) + sorted(A.items()):
             if o.type == 'MESH': print('JF_PART', k, tri_count(o), [m.name for m in o.data.materials])
@@ -1985,8 +2103,8 @@ def main():
             print('JF_JSON', os.path.join(OUT, FID + '.parts.json'), len(meta['parts']), 'parts')
     if arg('qa'): run_qa(N, A)
     if not arg('no-export') and full:
-        export_glb(root, os.path.join(OUT, FID + '.glb'))
-        if A: export_glb(aroot, os.path.join(OUT, 'rp_arm.glb'))
+        compact_glb(export_glb(root, os.path.join(OUT, FID + '.glb')))
+        if A: compact_glb(export_glb(aroot, os.path.join(OUT, 'rp_arm.glb')))
     pdir = arg('preview')
     if isinstance(pdir, str):
         for o in A.values(): o.hide_render = True
@@ -2000,7 +2118,7 @@ def run_qa(N, A):
     res = {}
     if 'frame' in N: res['mask'] = qa('mask', G('plate_') + G('frame') + G('eye_') + G('anchor'), quiet=True)
     if 'mass_ne' in N: res['mass'] = qa('mass', G('mass_') + G('insp_'), tol=0.01, quiet=True)
-    for o in G('plate_', True) + G('eye_', True): res[o.name] = qa(o.name, [o] + ([q for k, q in N.items() if k.startswith('eyeball')] if o.name == 'eye_cluster' else []), quiet=True)
+    for o in G('plate_', True) + G('eye_', True): res[o.name] = qa(o.name, [o] + ([q for k, q in N.items() if k.startswith('eyeball')] if o.name == 'eye_cluster' else []), tol=0.03 if 'crazed' in o.name else 0.004, quiet=True)
     for k in ('arm_seg', 'arm_knot', 'arm_stump'):
         if k in A: res[k] = qa(k, [A[k]], tol=0.01, quiet=True)
     if 'palm' in A: res['arm_hand'] = qa('arm_hand', [o for k, o in A.items() if o.type == 'MESH' and (k == 'palm' or k[0] == 'f')], tol=0.02, quiet=True)
