@@ -17,10 +17,21 @@ Switches (Settings > video): "drawn smoke + splashes", "smoke style", "painted w
 
 All five images are drawn by `tools/sprites/make.cjs` (noise + a little maths). Nothing was downloaded.
 
-## Blender smoke sim: not done
-Blender is not installed on the machine this was built on (and it could not be downloaded there), so the soft smoke is a
-noise volume marched by the script instead of a real simulation. On the jankfire environment with `blender52` a Mantaflow
-sim baked to the same 6x6 sheet would drop straight into `flipbook.js`.
+## Blender smoke sim: script written, bake fails here
+`tools/sprites/smoke_sim.py` sets up a real Mantaflow smoke burst (gas domain, a puffing ball, turbulence, dissolve),
+renders 36 frames side-on with Cycles on a see-through background and packs them into `public/sprites/puffsoft.png`
+(same 6x6 layout the game already plays). Run: `blender52 -b -P tools/sprites/smoke_sim.py`.
+
+It does not bake in the headless `bpy` 5.2.3 pip module (2026-11-10): Mantaflow's own start-up script dies with
+`AttributeError: 'LevelsetGrid' object has no attribute 'setConst'`, then `NameError: name 'bake_fluid_data_1' is not
+defined`, then Blender aborts with `Manta::Error ... can't clean grid cache`. Same with default domain borders. It
+needs a full Blender build. Until someone bakes it there, `puffsoft.png` is the script-made cloud from `make.cjs`.
+
+## Kenney and Unity packs: blocked by this environment's network
+Not downloaded and their licence pages not opened: the session's network policy refuses these hosts (proxy 403):
+`kenney.nl`, `opengameart.org`, `unity.com`, `blogs.unity3d.com`. So no licence line is quoted here and no files were
+added. Once the hosts are allowed (or the files are put in the repo by someone who has read the licence), each pack
+becomes one more "smoke style" in `flipbook.js`: a sheet, its grid size and a spawn recipe.
 
 ## What I found on the internet, and why none of it is in the repo
 Looked up on 2026-11-10; licences as the pages state them, not downloaded or checked file by file.
