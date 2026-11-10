@@ -14,7 +14,7 @@ import { bigHeart } from './bigheart.js';
 
 const GY = SLICE.gut.y;
 const inRect = (x0, z0, x1, z1, r) => x0 < r[2] && x1 > r[0] && z0 < r[3] && z1 > r[1];
-const FLESH = [0xff6f91, 0xff8aa6, 0xe85a7a, 0xffa0b4, 0x9a3a6a, 0xffd27a, 0x7a3a9a]; // raw pink, liver-purple, fat, bruise
+const FLESH = [0x8e1622, 0xa82430, 0x7a121c, 0xc23a40, 0x4c0a14, 0xa8804a, 0x34101e]; // the darker Gut (the owner's pick): raw red, wet highlight, fold, old fat, bruise
 
 // the campus street grid: avenues every 52 m in x (the rib avenue is one of them), streets every 44 m in z
 const AVES = [-286, -234, -182, -130, -44, 8, 60], STREETS = [-232, -188, -100, -60];
@@ -48,7 +48,7 @@ function office(B, x0, z0, x1, z1, r) {
       else B.add(a - 0.05, GY + h - drop, b + s0, c + 0.05, GY + h + 0.3, Math.min(d, b + s0 + w), pick(r, ['flesh', 'flesh', 'liver', 'fat']), { nc: true, tint: pick(r, FLESH) });
     }
   }
-  B.add(x0 - 0.3, GY + h, z0 - 0.3, x1 + 0.3, GY + h + 0.6, z1 + 0.3, 'flesh', { tint: 0xe86a88 }); // the roof has grown a skin
+  B.add(x0 - 0.3, GY + h, z0 - 0.3, x1 + 0.3, GY + h + 0.6, z1 + 0.3, 'flesh', { tint: 0x9a1a26 }); // the roof has grown a skin
   for (const [px, pz] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) if (r() < 0.55) B.prop(r() < 0.5 ? 'fleshblob_a' : 'fleshblob_b', px, GY + (r() < 0.5 ? 0 : h * r()), pz, r() * 6.28, 1 + r() * 0.8, 0);
   // a sphincter door on the street side, a sign above it on one block in three
   const doorZ = r() < 0.5 ? z0 : z1, yaw = doorZ === z0 ? 0 : Math.PI;
@@ -65,13 +65,13 @@ function office(B, x0, z0, x1, z1, r) {
 function peri(B) {
   const P = SLICE.peri, x0 = Math.max(B.X0, P.x0), x1 = Math.min(B.X1, P.x1), zc = (P.z0 + P.z1) / 2;
   if (x1 <= x0) return;
-  B.add(x0, GY - 0.02, P.z0, x1, GY + 0.04, P.z1, 'rib', { nc: true, tint: 0xff7a96 });
+  B.add(x0, GY - 0.02, P.z0, x1, GY + 0.04, P.z1, 'rib', { nc: true, tint: 0xa82430 });
   // the tube: a half-buried ribbed tube along the avenue, gaps where the avenues cross it
   const cuts = [SLICE.stomach.x, -44, ...AVES].filter((a) => a > x0 - 6 && a < x1 + 6).sort((a, b) => a - b);
   let s = x0;
   for (const c of [...cuts, x1 + 6]) {
     const e = Math.min(x1, c - 6);
-    if (e - s > 6) B.shape({ kind: 'tube', pts: [[s, GY + 3, zc], [(s + e) / 2, GY + 3.4, zc], [e, GY + 3, zc]], r: 8.5, seg: 14, inside: true, ribs: 0.06, mat: 'rib', tint: 0xff8aa6, step: 1.4, pulse: 5 });
+    if (e - s > 6) B.shape({ kind: 'tube', pts: [[s, GY + 3, zc], [(s + e) / 2, GY + 3.4, zc], [e, GY + 3, zc]], r: 8.5, seg: 14, inside: true, ribs: 0.06, mat: 'rib', tint: 0xa82430, step: 1.4, pulse: 5 });
     s = c + 6;
   }
   // the walls of the tube are solid where the tube is (you ride it, you don't wander off through the side)
@@ -89,7 +89,7 @@ function stomach(B, r) {
     if (d > S.r + 2) continue;
     // stepped bowl: 1.5 m rings down to the floor (walkable with a jump, climbable with the grapple)
     const t = Math.max(0, Math.min(1, (S.r - d) / (S.r * 0.75))), y = GY - Math.round(t * (GY - S.floor) / 1.5) * 1.5;
-    B.add(x, S.floor - 6, z, x + cell, y, z + cell, d > S.r - 4 ? 'flesh' : t > 0.85 ? 'liver' : 'rib', { tint: t > 0.85 ? 0x9a3050 : pick(r, FLESH) });
+    B.add(x, S.floor - 6, z, x + cell, y, z + cell, d > S.r - 4 ? 'flesh' : t > 0.85 ? 'liver' : 'rib', { tint: t > 0.85 ? 0x4c0a14 : pick(r, FLESH) });
   }
   if (!B.touches([S.x - S.r, S.z - S.r, S.x + S.r, S.z + S.r])) return;
   // acid: a glowing lake you take damage in
@@ -129,24 +129,24 @@ function arena(B) {
   B.add(RA.x0, GY + 9, z0 - 14, RA.x1, GY + 14, z0, 'concrete', { tint: 0xc8c4bc });
   hook(B, (RA.x0 + RA.x1) / 2, GY + 8.2, z0 - 7, { s: 1.2 }); // a ring in the arcade's ceiling
   for (let x = x0 + 12; x < x1 - 12; x += 3) if (x + 1.6 < SLICE.ribAve.x0 || x > SLICE.ribAve.x1) B.add(x, GY + 2, z0 + 0.01, x + 1.6, GY + 3.6, z0 + 0.05, 'window', { nc: true, tint: 0xfff0c0 });
-  B.add(x0 + 10, GY + 14, z0 - 14, x1 - 10, GY + 15, z0, 'flesh', { tint: 0xe86a88 });
+  B.add(x0 + 10, GY + 14, z0 - 14, x1 - 10, GY + 15, z0, 'flesh', { tint: 0x9a1a26 });
   B.prop('gristlelogo', cx, GY + 9, z0 + 0.1, Math.PI, 1.4, 0);
   for (const [lx, lz] of [[x0 + 12, z0 + 12], [x1 - 12, z0 + 12], [x0 + 12, z1 - 12], [x1 - 12, z1 - 12]]) if (B.inside(lx, lz)) lungPad(B, lx, lz, 0.9);
   // low flesh walls round the edge (cover, and a ring he can't charge out of)
-  for (const [a, b, c, d] of [[x0, z1 - 1, cx - 8, z1], [cx + 8, z1 - 1, x1, z1], [x0, z0, x0 + 1, z1], [x1 - 1, z0, x1, z1]]) B.add(a, GY, b, c, GY + 1.4, d, 'flesh', { tint: 0xd85a78 });
+  for (const [a, b, c, d] of [[x0, z1 - 1, cx - 8, z1], [cx + 8, z1 - 1, x1, z1], [x0, z0, x0 + 1, z1], [x1 - 1, z0, x1, z1]]) B.add(a, GY, b, c, GY + 1.4, d, 'flesh', { tint: 0x7a121c });
   if (B.inside(cx, cz)) B.out.marks.push({ id: 'landmark.time_office', p: [cx, GY, cz] }); // (Overtime's fight 1 moved to the Gut Border Gate: arenas.js)
 }
 
 function choir(B, r) {
   const C = SLICE.choir;
   if (!B.touches([C.x - 30, C.z - 34, C.x + 30, C.z + 26])) return;
-  B.add(C.x - 24, GY - 0.02, C.z - 28, C.x + 24, GY + 0.05, C.z + 20, 'bone', { nc: true, tint: 0xf0e0d0 });
+  B.add(C.x - 24, GY - 0.02, C.z - 28, C.x + 24, GY + 0.05, C.z + 20, 'bone', { nc: true, tint: 0xc4b288 });
   // the cathedral is a lung: a huge breathing blob over a bone colonnade, windpipe organ pipes in a ring
-  B.shape({ kind: 'blob', c: [C.x, GY + 16, C.z - 4], r: [20, 15, 18], seg: 18, mat: 'flesh', tint: 0xff8aa6, pulse: 7 });
+  B.shape({ kind: 'blob', c: [C.x, GY + 16, C.z - 4], r: [20, 15, 18], seg: 18, mat: 'flesh', tint: 0xa82430, pulse: 7 });
   for (let i = 0; i < 12; i++) {
     const a = (i / 12) * Math.PI * 2, x = C.x + Math.cos(a) * 21, z = C.z - 4 + Math.sin(a) * 19;
     if (Math.sin(a) > 0.75) continue; // the doorway (south)
-    B.add(x - 1, GY, z - 1, x + 1, GY + 10, z + 1, 'bone', { tint: 0xf4ead8 });
+    B.add(x - 1, GY, z - 1, x + 1, GY + 10, z + 1, 'bone', { tint: 0xccba92 });
     B.prop('choirpipe', x, GY + 10, z, -a, 1, 0);
   }
   B.add(C.x - 20, GY + 9, C.z - 24, C.x + 20, GY + 10, C.z + 16, 'flesh', { hide: true }); // the inside ceiling (collision for grapples)
@@ -174,11 +174,11 @@ export function gut(B, d) {
     const xe = Math.min(X1, x + 16), ze = Math.min(Z1, z + 16);
     if (inRect(x, z, xe, ze, [S.x - S.r - 2, S.z - S.r - 2, S.x + S.r + 2, S.z + S.r + 2])) {
       // tiles that overlap the crater: fill only the 4 m cells outside the bowl
-      for (let a = x; a < xe; a += 4) for (let b = z; b < ze; b += 4) if (stomachD(a + 2, b + 2) > S.r + 2) B.add(a, -4, b, Math.min(xe, a + 4), GY, Math.min(ze, b + 4), 'flesh', { tint: 0xd86a80 });
+      for (let a = x; a < xe; a += 4) for (let b = z; b < ze; b += 4) if (stomachD(a + 2, b + 2) > S.r + 2) B.add(a, -4, b, Math.min(xe, a + 4), GY, Math.min(ze, b + 4), 'flesh', { tint: 0x86141f });
       continue;
     }
     const gr = rng(hash2(Math.floor(x / 16), Math.floor(z / 16), 0x9f));
-    B.add(x, -4, z, xe, GY, ze, gr() < 0.7 ? 'flesh' : gr() < 0.5 ? 'liver' : 'bruise', { tint: pick(gr, [0xd86a80, 0xc85a78, 0xe07a8a, 0xb84a6a, 0xd0607a]) });
+    B.add(x, -4, z, xe, GY, ze, gr() < 0.7 ? 'flesh' : gr() < 0.5 ? 'liver' : 'bruise', { tint: pick(gr, [0x8e1622, 0x7c121c, 0x9a1c28, 0x6a0e18, 0x84141f]) });
   }
   // bile puddles (glowing), fat mounds, a tissue membrane overhead here and there ("it's a ceiling in places")
   for (let i = 0; i < 9; i++) {
@@ -198,7 +198,7 @@ export function gut(B, d) {
   }
   for (const a of AVES) if (a > X0 - 6 && a < X1 + 6) for (let z = Math.ceil(Z0 / 16) * 16; z < Z1; z += 16) {
     if (streetAt(a, z) === 'peri' || stomachD(a, z) < S.r + 6 || KEEP().some((q) => inRect(a - 6, z - 2, a + 6, z + 2, q))) continue;
-    B.prop('heartlamp', a + SW / 2 + 0.3, GY, z, Math.PI, 1, 0); B.light(a + SW / 2, GY + 4.5, z, 0xff3060, 11, 1.1); B.prop('eyeball', a - SW / 2 + 0.2, GY, z + 6, -Math.PI / 2, 1, 0);
+    B.prop('heartlamp', a + SW / 2 + 0.3, GY, z, Math.PI, 1, 0); B.light(a + SW / 2, GY + 4.5, z, 0xd01c2c, 11, 1.1); B.prop('eyeball', a - SW / 2 + 0.2, GY, z + 6, -Math.PI / 2, 1, 0);
   }
   // the rib avenue: arches every 18 m from the gate north
   const RA = SLICE.ribAve, rx = (RA.x0 + RA.x1) / 2;
@@ -267,12 +267,12 @@ export function border(B, d) {
   const [rx0, rz0, rx1, rz1] = d.rect, y = SLICE.border.y;
   const X0 = Math.max(B.X0, rx0), X1 = Math.min(B.X1, rx1), Z0 = Math.max(B.Z0, rz0), Z1 = Math.min(B.Z1, rz1);
   if (X1 <= X0 || Z1 <= Z0) return;
-  for (let z = Z0; z < Z1; z += 8) { const t = (0 - z) / 48; B.add(X0, -4, z, X1, y, Math.min(Z1, z + 8), t > 0.5 ? 'flesh' : 'ground', { tint: t > 0.5 ? 0xd87088 : 0xc0a0a0 }); }
+  for (let z = Z0; z < Z1; z += 8) { const t = (0 - z) / 48; B.add(X0, -4, z, X1, y, Math.min(Z1, z + 8), t > 0.5 ? 'flesh' : 'ground', { tint: t > 0.5 ? 0x8a1822 : 0xc0a0a0 }); }
   // the cliff up into the Gut: flesh, with steps at the gate and the avenues
   if (Z0 <= -48 + 0.1 && Z1 > -48) { // (the chunk holds the cliff line)
-    B.add(X0, y, -48, X1, SLICE.gut.y, -46, 'flesh', { tint: 0xe06a86 });
+    B.add(X0, y, -48, X1, SLICE.gut.y, -46, 'flesh', { tint: 0x7a121c });
   }
-  if (B.touches([X0, -50, X1, -40])) for (const a of [-44, ...AVES]) if (a > X0 - 4 && a < X1 + 4) stairsZ(B, a - 3, a + 3, -48 + flightLen(SLICE.gut.y - y), -1, y, SLICE.gut.y, 'bone', { tint: 0xf0e0d0 });
+  if (B.touches([X0, -50, X1, -40])) for (const a of [-44, ...AVES]) if (a > X0 - 4 && a < X1 + 4) stairsZ(B, a - 3, a + 3, -48 + flightLen(SLICE.gut.y - y), -1, y, SLICE.gut.y, 'bone', { tint: 0xc4b288 });
   // the south lip (down to the Bottom's top terrace): a retaining wall with stairs every ~60 m (the Long Stairs has its own)
   if (Z1 >= 0 && Z0 < 0) {
     const top8 = (SLICE.bottom.n - 1) * SLICE.bottom.rise;

@@ -23,8 +23,11 @@ const SWAP = [48, 84, 120, 120], HYST = 8; // near model inside this, per render
 // the swell at a crown (m), how much a heart flushes, how much the pits brighten; then its own light, because the Gut
 // is dim and lit from above and you mostly see this thing from underneath: self = how much of its colour the flesh
 // gives off at rest, lit = how much more as the beat passes through it, rim = the wet red edge, bone = the tower's
-export const HEART_FX = { amp: 0.09, flush: 0.6, glow: 1.1, self: 0.3, lit: 0.9, rim: 0.3, bone: 0.2 };
-const U = { uGhT: { value: 0 }, uGhSpan: { value: gutBeat.span }, uGhAmp: { value: HEART_FX.amp }, uGhFlush: { value: HEART_FX.flush }, uGhGlow: { value: HEART_FX.glow },
+// big = the one big beat: the whole heart swells this much of its size on the lub (0.6 of it on the dub), all at once,
+// with the ripple riding on top
+export const HEART_FX = { big: 0.07, amp: 0.09, flush: 0.6, glow: 1.1, self: 0.3, lit: 0.9, rim: 0.3, bone: 0.2 };
+const HC = BIG_HEART.markers.heart_centre; // model space
+const U = { uGhT: { value: 0 }, uGhSpan: { value: gutBeat.span }, uGhAmp: { value: HEART_FX.amp }, uGhBig: { value: new THREE.Vector4(HC[0], HC[1], HC[2], HEART_FX.big) }, uGhLub: { value: 0.12 - gutBeat.lub }, uGhFlush: { value: HEART_FX.flush }, uGhGlow: { value: HEART_FX.glow },
   uGhSelf: { value: new THREE.Vector4(HEART_FX.self, HEART_FX.lit, HEART_FX.rim, HEART_FX.bone) } };
 
 // every material gets the Potato vertex snap and the city's lamp light (like a prop); flesh and glow get the ripple
@@ -32,21 +35,25 @@ function patch(mat, ripple) {
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, { uSnap: jankUniforms.uSnap }, cityUniforms, U);
     sh.vertexShader = `uniform vec2 uSnap;
-      ${ripple ? `attribute vec2 aPulse; uniform float uGhT, uGhSpan, uGhAmp; varying vec2 vGh;
+      ${ripple ? `attribute vec2 aPulse; uniform float uGhT, uGhSpan, uGhAmp, uGhLub; uniform vec4 uGhBig; varying vec3 vGh;
       float ghBeat(float t) { return exp(-pow((t - 0.12) / 0.045, 2.0)) + 0.6 * exp(-pow((t - 0.33) / 0.06, 2.0)); } // lub-dub, then rest` : ''}
       ` + sh.vertexShader
       .replace('#include <begin_vertex>', `#include <begin_vertex>
-        ${ripple ? `float gh = ghBeat(fract(uGhT - aPulse.x * uGhSpan)); vGh = vec2(gh, gh * aPulse.y);
-        transformed += objectNormal * (aPulse.y * uGhAmp * gh);` : ''}`)
+        ${ripple ? `float gh = ghBeat(fract(uGhT - aPulse.x * uGhSpan));
+        // the one big beat: the whole heart swells from its middle, all at once, on the lub and again on the dub. the
+        // base stays put (nothing below the apex moves: the sleeve and the tower's vessels are fused to bone)
+        float ghB = ghBeat(fract(uGhT + uGhLub)) * smoothstep(26.5, 32.5, position.y);
+        vGh = vec3(gh, gh * aPulse.y, ghB);
+        transformed += (position - uGhBig.xyz) * (uGhBig.w * ghB) + objectNormal * (aPulse.y * uGhAmp * gh); // the ripple rides on it` : ''}`)
       .replace('#include <project_vertex>', `#include <project_vertex>
         vec4 jsnap = gl_Position; jsnap.xyz /= jsnap.w; jsnap.xy = floor(jsnap.xy * uSnap + 0.5) / uSnap; jsnap.xyz *= jsnap.w; gl_Position = jsnap;`);
     let fs = 'uniform vec4 uGhSelf;\n' + sh.fragmentShader;
-    if (ripple) fs = 'varying vec2 vGh; uniform float uGhFlush, uGhGlow;\n' + fs
-      .replace('#include <color_fragment>', '#include <color_fragment>\n vec3 ghBase = diffuseColor.rgb; diffuseColor.rgb *= 1.0 + uGhFlush * vGh.y;') // each heart flushes as it beats
+    if (ripple) fs = 'varying vec3 vGh; uniform float uGhFlush, uGhGlow;\n' + fs
+      .replace('#include <color_fragment>', '#include <color_fragment>\n vec3 ghBase = diffuseColor.rgb; diffuseColor.rgb *= 1.0 + uGhFlush * (vGh.y + 0.4 * vGh.z);') // each heart flushes as it beats, and the whole thing a little on the big one
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         totalEmissiveRadiance *= 0.55 + uGhGlow * vGh.x; // the light in the pits swells with the beat
         { float rim = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 2.5); // and the flesh glows a little by itself, more as the wave goes through
-          totalEmissiveRadiance += ghBase * (uGhSelf.x + uGhSelf.y * vGh.y) + vec3(0.9, 0.1, 0.16) * rim * uGhSelf.z * (0.6 + vGh.x); }`);
+          totalEmissiveRadiance += ghBase * (uGhSelf.x + uGhSelf.y * (vGh.y + 0.35 * vGh.z)) + vec3(0.9, 0.1, 0.16) * rim * uGhSelf.z * (0.6 + vGh.x); }`);
     else fs = fs.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance += diffuseColor.rgb * uGhSelf.w;'); // bone: never pitch black from below
     if (fs.includes('#include <lights_fragment_end>')) fs = '#define CITY_LIGHTS\n' + LIGHTS_HEAD + fs.replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\n' + LIGHTS_GLSL);
     sh.fragmentShader = fs;
@@ -106,12 +113,12 @@ export function updateHeart(dt, S, camera) {
     if (see) {
       const R = SWAP[S.preset] ?? SWAP[1], lod = H.lod === 0 ? (d > R + HYST ? 1 : 0) : (d < R - HYST ? 0 : 1);
       if (lod !== H.lod) { H.lod = lod; for (const o of H.near) o.visible = lod === 0; for (const o of H.far) o.visible = lod === 1; }
-      U.uGhT.value = b.t % 64; U.uGhAmp.value = HEART_FX.amp; U.uGhFlush.value = HEART_FX.flush; U.uGhGlow.value = HEART_FX.glow; U.uGhSelf.value.set(HEART_FX.self, HEART_FX.lit, HEART_FX.rim, HEART_FX.bone);
+      U.uGhT.value = b.t % 64; U.uGhAmp.value = HEART_FX.amp; U.uGhBig.value.w = HEART_FX.big; U.uGhFlush.value = HEART_FX.flush; U.uGhGlow.value = HEART_FX.glow; U.uGhSelf.value.set(HEART_FX.self, HEART_FX.lit, HEART_FX.rim, HEART_FX.bone);
     }
   }
   // the thud: once a beat as the top of the heart goes, louder the closer you are, nothing past HEAR_R
-  const n = Math.floor(b.t - gutBeat.lub - 0.04); // (counted in beats, so a slow frame is late, never silent or double)
-  if (n !== H.beatN && d < HEAR_R && b.fix == null && H.beatN != null) { const v = 1 - d / HEAR_R; sfx.bigHeart(v * v, [BIG_HEART.x, BIG_HEART.y + 30, BIG_HEART.z], 0.21 / b.rate); }
+  const n = Math.floor(b.t - gutBeat.lub + 0.02); // just ahead of the big beat's peak (counted in beats, so a slow frame is late, never silent or double)
+  if (n !== H.beatN && d < HEAR_R && b.fix == null && H.beatN != null) { const v = 1 - d / HEAR_R; sfx.bigHeart(v * v, [BIG_HEART.x, BIG_HEART.y + 30, BIG_HEART.z], gutBeat.dub / b.rate); }
   H.beatN = n;
   updateGutFog(dt, S, camera, b);
 }

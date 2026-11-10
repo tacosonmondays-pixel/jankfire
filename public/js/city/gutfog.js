@@ -17,8 +17,8 @@ import { BIG_HEART } from '/shared/city/bigheart.js';
 // top: height of the highest sheet (m); cap: the most the whole stack can ever cover; gain: how much of a wisp sits on
 // the cap; holes: how much clear ground between wisps (0 none .. 0.6 mostly holes); glow: how much it brightens on the
 // beat; near: drawn only within this of the Gut (m)
-export const GUT_FOG = { on: true, top: 1.05, cap: 0.55, gain: 1.5, holes: 0.38, glow: 0.7, color: 0xc81a30, drift: 1, near: 110 };
-const LAYERS = [2, 3, 4, 5]; // per preset
+export const GUT_FOG = { on: true, top: 0.9, cap: 0.72, gain: 1.6, holes: 0.26, glow: 0.7, color: 0xc81a30, drift: 1, near: 110 };
+const LAYERS = [3, 4, 5, 6]; // per preset
 const G0 = SLICE.gut.rect, GY = SLICE.gut.y, BY = SLICE.border.y, ST = SLICE.stomach;
 
 // tileable value noise, two octaves, one channel: the wisps
@@ -43,9 +43,10 @@ void main() {
   vec2 p = vW.xz;
   // two noise fields sliding over each other: slow wisps. every sheet reads nearly the same spot (a small shift each),
   // so a wisp is one lump through the whole stack with clear ground beside it, not five patterns filling each other in
-  float n = 0.62 * texture2D(uN, p * 0.019 + uT * vec2(0.010, 0.006) + uLayer * 0.021).r + 0.38 * texture2D(uN, p * 0.047 - uT * vec2(0.007, 0.012) + uLayer * 0.034).r;
-  float lo = uHoles + 0.1 * uLayer, dens = smoothstep(lo, lo + 0.2, n); // wisps with clear ground between; the higher the sheet, the smaller the wisp: it thins upward
-  dens *= 0.25 + 0.75 * smoothstep(0.3, 0.6, texture2D(uN, p * 0.0043 + uT * vec2(0.0021, 0.0013)).r); // and banks of it, 50 m across, wandering the district
+  float n = 0.5 * texture2D(uN, p * 0.019 + uT * vec2(0.010, 0.006) + uLayer * 0.021).r + 0.3 * texture2D(uN, p * 0.047 - uT * vec2(0.007, 0.012) + uLayer * 0.034).r
+    + 0.2 * texture2D(uN, p * 0.17 + uT * vec2(-0.021, 0.027) + uLayer * 0.05).r; // (the fine one is what you see curling round your shins)
+  float lo = uHoles + 0.14 * uLayer, dens = smoothstep(lo, lo + 0.22, n); // lumps with thin patches between; the higher the sheet, the smaller the lump: it thins upward
+  dens *= 0.55 + 0.45 * smoothstep(0.3, 0.6, texture2D(uN, p * 0.0043 + uT * vec2(0.0021, 0.0013)).r); // and thicker banks of it, 50 m across, wandering the district
   float dh = length(p - uHeart.xy), root = exp(-dh * dh / 420.0); // round the heart's roots it pools: thicker, no holes
   dens = mix(dens, 0.6 + 0.4 * n, root * 0.85) * (1.0 + 0.45 * root);
   float ring = ghBeat(fract(uBeat - 0.9 - dh / 80.0)) * exp(-dh / 55.0); // the ripple leaves the roots and runs out through the fog
@@ -59,7 +60,7 @@ void main() {
   }
   vec3 v = vW - cameraPosition; float dist = length(v);
   float a = uA * dens * mask * (0.85 + 0.3 * uK + 0.6 * ring);
-  a *= smoothstep(0.8, 3.2, dist) * smoothstep(0.02, 0.4, abs(v.y)); // clear round your feet; no sheet flashing past your eyes
+  a *= smoothstep(0.3, 0.75, dist) * smoothstep(0.02, 0.3, abs(v.y)); // it's round your own feet too (the owner: visible around you); a sheet fades as it passes your eyes
   a = min(a, uCap);
   if (a < 0.004) discard;
   vec3 col = uCol * (0.75 + 0.35 * dens + uGlow * uK + 1.5 * uGlow * ring); // the thick of a wisp is the brightest; the beat lights it
@@ -76,7 +77,7 @@ export function stopGutFog() {
   if (F.tex) F.tex.dispose();
   F = null;
 }
-const SHARED = { uT: { value: 0 }, uBeat: { value: 0 }, uK: { value: 0 }, uHoles: { value: 0.38 }, uGlow: { value: 0.7 }, uCol: { value: new THREE.Color() }, uFogCol: { value: new THREE.Color() }, uFog: { value: new THREE.Vector2(30, 250) },
+const SHARED = { uT: { value: 0 }, uBeat: { value: 0 }, uK: { value: 0 }, uHoles: { value: 0.26 }, uGlow: { value: 0.7 }, uCol: { value: new THREE.Color() }, uFogCol: { value: new THREE.Color() }, uFog: { value: new THREE.Vector2(30, 250) },
   uHeart: { value: new THREE.Vector3(BIG_HEART.x, BIG_HEART.z, 0) }, uSt: { value: new THREE.Vector3(ST.x, ST.z, ST.r) }, uRect: { value: new THREE.Vector4(G0[0], G0[1], G0[2], G0[3]) } };
 // (re)build the stack for this preset's layer count
 function build(n) {
@@ -92,8 +93,8 @@ function build(n) {
     F.root.add(m); F.sheets.push(m);
   };
   const w = G0[2] - G0[0], d = -46 - G0[1], gq = new THREE.PlaneGeometry(w, d), bq = new THREE.PlaneGeometry(w, 48), pool = new THREE.CircleGeometry(32, 20);
-  for (let i = 0; i < n; i++) sheet(0, i, n, gq, (G0[0] + G0[2]) / 2, GY, G0[1] + d / 2, 0.22 + (GUT_FOG.top - 0.22) * (n > 1 ? i / (n - 1) : 0.5));
-  const nb = Math.max(2, n - 1); for (let i = 0; i < nb; i++) sheet(1, i, nb, bq, (G0[0] + G0[2]) / 2, BY, -24, 0.22 + (GUT_FOG.top - 0.3) * i / (nb - 1));
+  for (let i = 0; i < n; i++) sheet(0, i, n, gq, (G0[0] + G0[2]) / 2, GY, G0[1] + d / 2, 0.14 + (GUT_FOG.top - 0.14) * (n > 1 ? i / (n - 1) : 0.5));
+  const nb = Math.max(2, n - 1); for (let i = 0; i < nb; i++) sheet(1, i, nb, bq, (G0[0] + G0[2]) / 2, BY, -24, 0.14 + (GUT_FOG.top - 0.24) * i / (nb - 1));
   const np = Math.min(3, n); for (let i = 0; i < np; i++) sheet(2, i, np, pool, ST.x, ST.acid, ST.z, 0.5 + 0.75 * i);
   F.parent.add(F.root);
 }

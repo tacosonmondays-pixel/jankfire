@@ -21,8 +21,8 @@ export function bigHeart(B) {
   // collision only (hide): the model is the picture. the builder clips each box to the chunk
   for (const [k, mat] of KIND) for (const b of H.boxes[k]) B.add(H.x + b[0], H.y + b[1], H.z + b[2], H.x + b[3], H.y + b[4], H.z + b[5], mat, { hide: true });
   // what it lights: a deep red pool round the roots, a dimmer one under the heart for the top of the stair
-  B.light(H.x, H.y + 3, H.z + 5, 0xff2038, 20, 1.1);
-  B.light(H.x + 3, H.y + 24, H.z + 1, 0xff3050, 12, 0.8);
+  B.light(H.x, H.y + 3, H.z + 5, 0xd01c2c, 20, 1.1);
+  B.light(H.x + 3, H.y + 24, H.z + 1, 0xc01828, 12, 0.8);
   if (B.inside(H.x, H.z)) {
     const l = heartAt(H.markers.listening_spot), t = heartAt(H.markers.stair_top);
     B.out.marks.push({ id: H.id, p: l, face: 0 }, { id: 'gut.big_heart_top', p: t }); // where you stand to look at it; the top of the rib stair
