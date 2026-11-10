@@ -177,7 +177,8 @@ export const K = {
     return c;
   },
   // the key to show in a hint: the primary, or the alternate when the primary is empty
-  label(id, fallback) { if (!eff[id]) return fallback != null ? fallback : id; const b = eff[id]; return K.codeLabel(b[0] || b[1]); },
+  touchNames: null, // phones (touch.js): what the on-screen button is called, so hints say FIRE and not LMB
+  label(id, fallback) { if (K.touchNames && K.touchNames[id]) return K.touchNames[id]; if (!eff[id]) return fallback != null ? fallback : id; const b = eff[id]; return K.codeLabel(b[0] || b[1]); },
   labels(id) { const b = (eff[id] || []).filter(Boolean); return b.length ? b.map(K.codeLabel).join(' / ') : 'unbound'; },
   // shared text (weapon / streak / mode descriptions) is written for the default keys: swap in the player's
   hint(text) {
