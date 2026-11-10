@@ -29,7 +29,8 @@ export function openPicker(w) {
   which = w === 'bots' ? 'bots' : 'online';
   opts.show('modes');
   $('mpTitle').textContent = which === 'bots' ? 'WITH BOTS' : 'ONLINE';
-  $('mpNote').textContent = which === 'bots' ? 'real people and bots. quick play drops you straight in. the rest start with a lobby and a countdown' : 'real players only. no bots, ever. pick a mode';
+  $('mpNote').textContent = ''; // the home buttons and the cards already say all of it
+  $('mpNote').classList.add('hidden');
   $('mpCustom').classList.toggle('hidden', which !== 'bots');
   const box = $('mpCards');
   box.innerHTML = '';
