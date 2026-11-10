@@ -91,8 +91,9 @@ export function makeTrainFight(ST, { playScene }) {
     // the lamp on the back of the flatbed: what you see the face by
     const lamp = new THREE.SpotLight(0xfff0dd, 110, 95, 0.5, 0.7, 1); lamp.position.set(0.4, 2.7, 8); lamp.target.position.set(0, CY, -RP.gap.start); g.add(lamp, lamp.target);
     const work = new THREE.PointLight(0xffd9a0, 9, 16, 1.2); work.position.set(0, 4.6, 9); g.add(work); // a work light over the cars
+    const knots = [0, 1, 2].map(() => { const l = new THREE.PointLight(0x4fd8ff, 0, 7, 1.5); g.add(l); return l; }); // the wrist knots' glow on what is near them: a fixed three, moved to the nearest knots (a light that comes and goes with each arm would rebuild every shader)
     G.scene.add(g);
-    T.set = { g, ribs, sl, bulbs, lights, lamp, off: 0 };
+    T.set = { g, ribs, sl, bulbs, lights, lamp, knots, off: 0 };
   }
   function stepSet(dt) {
     const s = T.set, v = T.fin && T.fin.t > 2.2 ? SPEED : busy() ? SPEED * 0.6 : SPEED;
@@ -180,8 +181,7 @@ export function makeTrainFight(ST, { playScene }) {
       v.knot = b.A.arm_knot.clone(true);
       v.knot.traverse((o) => { if (o.isMesh && [].concat(o.material).some((m) => m.name === 'rp_knot_glow')) { o.material = Array.isArray(o.material) ? o.material.map((m) => (m.name === 'rp_knot_glow' ? (v.glow = m.clone()) : m)) : (v.glow = o.material.clone()); } });
       v.halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex(), color: 0x4fd8ff, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); v.halo.scale.setScalar(3.2);
-      v.light = new THREE.PointLight(0x4fd8ff, 10, 7, 1.5);
-      g.add(v.knot, v.halo, v.light);
+      g.add(v.knot, v.halo);
     }
     G.scene.add(g);
     return v;
@@ -227,8 +227,8 @@ export function makeTrainFight(ST, { playScene }) {
     }
     if (v.knot) {
       const live = armLive(a); v.flash = Math.max(0, v.flash - dt * 5);
-      v.knot.visible = v.halo.visible = v.light.visible = live;
-      v.knot.position.set(w[0], w[1], w[2]); v.halo.position.set(w[0], w[1], w[2]); v.light.position.set(w[0], w[1], w[2]);
+      v.knot.visible = v.halo.visible = live;
+      v.knot.position.set(w[0], w[1], w[2]); v.halo.position.set(w[0], w[1], w[2]);
       const pulse = 0.5 + 0.5 * Math.sin(time * 6 + a.id), hurt = 1 - clamp(a.hp / a.max, 0, 1);
       if (v.glow) v.glow.emissiveIntensity = 2.4 + pulse * 1.2 + v.flash * 6;
       v.halo.scale.setScalar(3 + pulse * 0.7 + v.flash * 1.8); v.knot.scale.setScalar(1.2); v.halo.material.color.setHex(v.flash > 0.3 ? 0xffffff : hurt > 0.6 ? 0xff6a9a : 0x4fd8ff);
@@ -236,7 +236,7 @@ export function makeTrainFight(ST, { playScene }) {
     }
     v.wrist = w; v.dir = P.dir;
   }
-  function freeArm(v) { G.scene.remove(v.g); }
+  function freeArm(v) { G.scene.remove(v.g); if (v.glow) v.glow.dispose(); if (v.halo) v.halo.material.dispose(); }
   function clearArms() { for (const v of F.arms.values()) freeArm(v); F.arms.clear(); }
   function onArm(m) {
     if (!fin(m.id)) return;
@@ -414,6 +414,7 @@ export function makeTrainFight(ST, { playScene }) {
       stepDebris(dt);
     }
     for (const v of F.arms.values()) { v.a.t += sdt; if (b && !v.hand) { freeArm(v); const nv = newArm(v.a); Object.assign(v, nv); } poseArm(v, dt, F.shown); } // (an arm that came before the model did gets its body now)
+    { const ks = [...F.arms.values()].filter((v) => v.wrist && armLive(v.a)).sort((p, q) => Math.hypot(p.wrist[0] - ME.pos[0], p.wrist[2] - ME.pos[2]) - Math.hypot(q.wrist[0] - ME.pos[0], q.wrist[2] - ME.pos[2])); T.set.knots.forEach((l, i) => { const v = ks[i]; l.intensity = v ? 9 + v.flash * 12 : 0; if (v) l.position.set(v.wrist[0], v.wrist[1], v.wrist[2]); }); }
     showHud();
     BD.tick(dt, ME.alive && !held && !(T.failT && !F.live));
   };
