@@ -207,6 +207,10 @@ if (process.env.JF_ZM_REST) ZM.rest = ZM.first = Number(process.env.JF_ZM_REST) 
 if (process.env.JF_ZM_SWIPE) ZM.swipe = Number(process.env.JF_ZM_SWIPE); // 0 = zombies can't hurt you (UI tests)
 if (process.env.JF_ZM_BLEED) ZM.bleed = Number(process.env.JF_ZM_BLEED) || ZM.bleed;
 if (process.env.JF_ZM_DROP) ZM.dropMul = Number(process.env.JF_ZM_DROP) || 1; // x drop chance (tests: 99 = every kill drops, still capped a round)
+if (process.env.JF_ZM_MAP) ZM.testMap = process.env.JF_ZM_MAP; // zombies starts on this map (school, hospital...)
+if (process.env.JF_ZM_POWER) ZM.powerOn = true; // the power starts on
+if (process.env.JF_ZM_OPEN) ZM.allOpen = true; // every shutter starts up
+if (process.env.JF_ZM_MAXALIVE) ZM.maxAlive = Number(process.env.JF_ZM_MAXALIVE) || 0; // at most this many zombies at once (screenshots)
 if (process.env.JF_ZM_DROPCAP) ZM.dropCap = Number(process.env.JF_ZM_DROPCAP) || ZM.dropCap;
 if (process.env.JF_ZM_MACHCD) ZM.machCd = Number(process.env.JF_ZM_MACHCD);
 if (process.env.JF_ZM_MACHSPIN) ZM.machSpin = Number(process.env.JF_ZM_MACHSPIN) || ZM.machSpin; // ms the cheat machine rolls for (screenshots)
@@ -1311,7 +1315,7 @@ class Room {
     if (amt <= 0 || !t.alive) return false;
     if (t.trap) return false; // sealed in a soap bubble: burning, gas and the like can't get in (a real hit pops it, see hurt)
     if (this.hitBlocked(t, attacker, w, from)) return false;
-    if (this.zm) amt = this.zmDamage(t, amt, attacker); // credits for hits, claws, the cola
+    if (this.zm) amt = this.zmDamage(t, amt, attacker, w, hs); // credits for hits, claws, the cola
     if (attacker && attacker.isBot && !t.isBot && this.mode !== 'bots') amt *= 0.6; // coop bots hit softer
     if (t.body && t.body.kind === 'wreckingball') { amt = this.bodySoak(t, amt, attacker, w); if (amt <= 0) return true; } // wrecking ball: its own HP takes it (server/bodyhp.js)
     if (t.rig) { amt = this.rigSoak(t, amt, attacker, w, from); if (amt <= 0) return true; } // overdrive rig: block, then its armour
@@ -3146,7 +3150,7 @@ class Room {
   // switch game type (bots setup / match settings / the vote)
   setGame(g) {
     if (!has(GAMES, g)) return false;
-    if (!GAMES[g].zombies !== !(MAPS[this.cfg.map] && MAPS[this.cfg.map].zm)) { const ok = mapsFor(g, MAPS, MAP_ORDER); this.cfg.map = ok.includes('islands') ? 'islands' : ok[0]; this.smokes.clear(); } // zombies comes with its own map
+    if (!GAMES[g].zombies !== !(MAPS[this.cfg.map] && MAPS[this.cfg.map].zm)) { const ok = mapsFor(g, MAPS, MAP_ORDER); this.cfg.map = ok.includes('islands') ? 'islands' : ok.includes(ZM.testMap) ? ZM.testMap : ok[0]; this.smokes.clear(); } // zombies comes with its own map (JF_ZM_MAP: which)
     const id = mapForGame(g, MAPS, this.cfg.map), m = MAPS[id]; // a map with an S&D version: Plant & Defuse plays that, the rest the standard one
     if (GAMES[g].sites && !(m.sites && m.sites.length)) return false;
     if (GAMES[g].mapOk && !GAMES[g].mapOk(m)) return false; // e.g. floor is lava: no real floor here (or nothing to stand on)

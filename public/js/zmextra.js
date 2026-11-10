@@ -85,7 +85,7 @@ function codePlank(i) { // no Blender file: plain mismatched planks
 }
 function buildBoard(w, i) {
   const g = new THREE.Group();
-  g.position.set(w.at[0] + w.n[0] * 0.3, 0, w.at[2] + w.n[2] * 0.3); // the inner face of the wall
+  g.position.set(w.at[0] + w.n[0] * 0.3, w.at[1] - 1.9, w.at[2] + w.n[2] * 0.3); // the inner face of the wall (w.at is 1.9 up its floor)
   g.rotation.y = Math.atan2(w.n[0], w.n[2]); // local +z = into the room
   const b = { g, i, w, planks: [], shown: ZM.planks, glb: false };
   const bl = authored('x_zmboard');
@@ -221,7 +221,7 @@ function codeMachine() { // no Blender file: a plain cabinet
 }
 function buildMach(mc) {
   const root = new THREE.Group();
-  root.position.set(mc.at[0], 0, mc.at[2]); root.rotation.y = Math.atan2(mc.n[0], mc.n[2]);
+  root.position.set(mc.at[0], mc.at[1] || 0, mc.at[2]); root.rotation.y = Math.atan2(mc.n[0], mc.n[2]);
   const bl = authored('x_zmmachine');
   const { g, meta } = bl ? { g: bl.obj, meta: bl.meta || {} } : codeMachine();
   root.add(g);
@@ -353,7 +353,7 @@ export function zxTarget(info, e, d) {
   const zm = X.zm;
   if (!zm || !info) return null;
   if (zm.mach) {
-    const at = [zm.mach.at[0] + zm.mach.n[0] * 0.4, 1.4, zm.mach.at[2] + zm.mach.n[2] * 0.4], v = [at[0] - e[0], at[1] - e[1], at[2] - e[2]], l = Math.hypot(...v) || 1e-6;
+    const at = [zm.mach.at[0] + zm.mach.n[0] * 0.4, (zm.mach.at[1] || 0) + 1.4, zm.mach.at[2] + zm.mach.n[2] * 0.4], v = [at[0] - e[0], at[1] - e[1], at[2] - e[2]], l = Math.hypot(...v) || 1e-6;
     if (l <= 2.8 && (v[0] * d[0] + v[1] * d[1] + v[2] * d[2]) / l >= 0.35 && (e[0] - at[0]) * zm.mach.n[0] + (e[2] - at[2]) * zm.mach.n[2] > 0) return { k: 'mach', kind: 'mach' };
   }
   return zmBoardTarget(zm, info.pk, e, d);
