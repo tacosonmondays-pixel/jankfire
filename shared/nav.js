@@ -179,7 +179,7 @@ export function navLocate(g, p) {
 }
 
 // A* from node a to node b: list of node indices, or null if there's no way
-export function navPath(g, a, b, max = g.maxExpand || Infinity) { // max: give up after expanding this many nodes (huge maps)
+export function navPath(g, a, b, max = g.maxExpand || Infinity, w = null) { // max: give up after expanding this many nodes (huge maps). w: extra cost per node (0 = none), x the step into it: routes that go round places (Plant & Defuse bots keeping out of sight)
   const N = g.nodes.length;
   if (!g._gs || g._gs.length !== N) Object.assign(g, { _gs: new Float64Array(N), _fs: new Float64Array(N), _from: new Int32Array(N), _seen: new Uint32Array(N), _done: new Uint32Array(N), _stamp: 0 });
   const gs = g._gs, fs = g._fs, from = g._from, seen = g._seen, done = g._done, st = ++g._stamp, goal = g.nodes[b];
@@ -204,7 +204,7 @@ export function navPath(g, a, b, max = g.maxExpand || Infinity) { // max: give u
     if (done[k] === st) continue;
     done[k] = st;
     for (let e = g.off[k], e1 = g.off[k + 1]; e < e1; e++) {
-      const m = g.to[e], ng = gs[k] + g.cw[e];
+      const m = g.to[e], ng = gs[k] + (w ? g.cw[e] * (1 + w[m]) : g.cw[e]);
       if (seen[m] === st && ng >= gs[m]) continue;
       seen[m] = st; gs[m] = ng; fs[m] = ng + h(m); from[m] = k;
       push(m);
@@ -235,9 +235,10 @@ export function navSteer(g, st, pos, goal, now) {
   // plan again when the goal really moved (not every time a moving target steps into the next cell), when the plan is
   // old, and not every tick for a goal there's no way to (that searched the whole graph each time)
   const moved = st.end !== b && !(st.gx != null && Math.hypot(goal[0] - st.gx, goal[2] - st.gz) < 3);
-  if (!st.path || moved || now > st.t + 3500) {
+  const w = st.w && st.w.length === g.nodes.length ? st.w : null; // st.w: this walker's own extra node costs (see navPath)
+  if (!st.path || moved || now > st.t + 3500 || st.wOf !== w) {
     if (st.failB === b && now < st.failT) return null;
-    st.path = navPath(g, a, b); st.k = 0; st.t = now; st.end = b; st.cut = true; st.gx = goal[0]; st.gz = goal[2];
+    st.path = navPath(g, a, b, undefined, w); st.wOf = w; st.k = 0; st.t = now; st.end = b; st.cut = true; st.gx = goal[0]; st.gz = goal[2];
     if (!st.path) { st.failB = b; st.failT = now + 2500; return null; }
   }
   const P = st.path, N = g.nodes;

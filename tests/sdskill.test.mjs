@@ -19,3 +19,24 @@ test('lobbies are mixed, and difficulty shifts the mix', () => {
   assert.ok(h.bad > 0, 'even hard lobbies have someone having a bad day');
   assert.equal(rollTier('nonsense', 0.5), rollTier('normal', 0.5));
 });
+
+// cover routes: the walk-graph search takes extra per-node costs, and a route goes round costly ground when it can
+import { navPath, navLocate } from '../shared/nav.js';
+import { MAPS } from '../shared/map.js';
+test('cover and corner sense improve tier by tier (bad bots have none)', () => {
+  const order = ['cracked', 'good', 'average', 'bad'];
+  for (let i = 0; i < 3; i++) assert.ok(SKILL[order[i]].cover > SKILL[order[i + 1]].cover && SKILL[order[i]].pre > SKILL[order[i + 1]].pre);
+  assert.equal(SKILL.bad.cover, 0); assert.equal(SKILL.bad.pre, 0);
+});
+test('a weighted route avoids the costly nodes and no weights means the old route', () => {
+  const m = MAPS.warehouse_sd, g = m.graph, ts = m.teamSpawns;
+  const a = navLocate(g, ts.att[0]), b = navLocate(g, ts.def[0]);
+  const plain = navPath(g, a, b);
+  assert.ok(plain && plain.length > 10);
+  assert.deepEqual(navPath(g, a, b, undefined, null), plain);
+  const w = new Float32Array(g.nodes.length), mid = plain.slice(Math.floor(plain.length / 3), Math.floor(plain.length * 2 / 3));
+  for (const k of mid) w[k] = 4;
+  const round = navPath(g, a, b, undefined, w), bad = new Set(mid);
+  assert.ok(round && round[0] === a && round[round.length - 1] === b);
+  assert.ok(round.filter((k) => bad.has(k)).length < mid.length / 2, 'went round most of it');
+});
