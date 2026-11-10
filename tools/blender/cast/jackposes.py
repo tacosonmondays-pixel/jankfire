@@ -194,7 +194,8 @@ def run(J, root, fo, sheets, SHEET_DIR, TMP, G):
                 if 'armour_break' in name: st = 'armour_broken' if t >= 0.06 else 'run_through'
                 PD.pose(name, t, st, vest=(name in ('pj_idle', 'pj_walk_load') or (name == 'pj_kneel_vest' and t < 1.75)))
                 high = any(k in name for k in ('impaled', 'break_it', 'land_kneel'))   # (he is a metre off the deck in these)
-                ps.append(wb_shot(os.path.join(TMP, 'pj_c%d.png' % i), (0, 1.45 if high else 1.0, 0.1), 55 if any(k in name for k in ('eating', 'kneel', 'dying', 'last', 'carried', 'fall')) else 40, 8.2 if high else 6.6, res=(300, 330)))
+                back = 1.2 if 'carried' in name else 0.55 if ('dying' in name or 'last' in name) else 0.35 if 'fall' in name else 0.1   # (he ends up behind his root in these)
+                ps.append(wb_shot(os.path.join(TMP, 'pj_c%d.png' % i), (0, 1.45 if high else 1.0, back), 55 if any(k in name for k in ('eating', 'kneel', 'dying', 'last', 'carried', 'fall')) else 40, 8.2 if high else 6.6, res=(300, 330)))
                 mk = ' '.join(m for mt, m in C['marks'] if abs(mt - t) < ln / (N - 1) / 2)
                 labs.append('%.2f %s' % (t, mk))
             rpkit.contact(ps, os.path.join(SHEET_DIR, 'c_pallet_jack_clip_' + name[3:]), 'PALLET JACK  %s   %s' % (name, C['note'][:90]), cols=6, labels=labs)

@@ -151,11 +151,12 @@ const W = 1600, H = 900;
         const deg = /eating|kneel|dying|last|carried|fall/.test(clip) ? 55 : 40;
         ts.forEach((t, i) => { const sc = X.scene(0x2a1830, 5);
           const st = /impaled/.test(clip) ? (t >= 0.05 ? 'run_through' : 'fresh') : /armour_break/.test(clip) ? (t >= 0.06 ? 'armour_broken' : 'run_through') : state;
-          const J = X.jack({ clip, t, state: st, vest: /idle$|kneel_vest|walk_load/.test(clip) && !(clip === 'pj_kneel_vest' && t >= 1.75) }); sc.add(J.c.root);
+          const J = X.jack({ clip, t, state: st, vest: /^pj_idle$|kneel_vest|walk_load/.test(clip) && !(clip === 'pj_kneel_vest' && t >= 1.75) }); sc.add(J.c.root); // (no vest in the fight: he gave it away)
           if (clip === 'pj_idle' && X.truck) { const tr = X.truck.clone(true); const J0 = X.jack({ clip, t: 0 }); const p = J0.rig.at('palmL'); tr.position.set(p.x, 0, p.z - 0.05); sc.add(tr); }
           const mk = C.marks.filter(([mt]) => Math.abs(mt + 0.02 - t) < 0.011).map((m) => m[1]).join(' ');
           const sit = /eating|dying|last|carried/.test(clip), high = /impaled|break_it|land_kneel/.test(clip); // (sat on the deck / a metre off it)
-          X.cell(i, 6, 2, sc, X.orbit([0, high ? 1.5 : sit ? 0.85 : 1.0, 0.1], deg, high ? 8.8 : sit ? 6.4 : 7.6, 0.1), (i === 0 ? clip + '   ' : '') + t.toFixed(2) + ' s', mk ? 'mark: ' + mk : ''); }); }, [clip, STATE[clip] || 'fresh']);
+          const back = /carried/.test(clip) ? 1.2 : /dying|last/.test(clip) ? 0.55 : /fall/.test(clip) ? 0.35 : 0.1; // (he ends up behind his root in these: follow him)
+          X.cell(i, 6, 2, sc, X.orbit([0, high ? 1.5 : sit ? 0.85 : 1.0, back], deg, high ? 8.8 : /carried/.test(clip) ? 7.6 : sit ? 6.4 : 7.6, 0.1), (i === 0 ? clip + '   ' : '') + t.toFixed(2) + ' s', mk ? 'mark: ' + mk : ''); }); }, [clip, STATE[clip] || 'fresh']);
       await shot('pj_clip_' + clip.slice(3));
     }
   }
