@@ -574,3 +574,12 @@ for (const [id, charges, recharge] of [['radar', 2, 32], ['nvg', 2, 28], ['lapto
 // them and they can walk out of it. cd: the long recharge. kills count as the scales' in gun game, but humiliate nobody
 export const GAVEL = { range: 42, cone: 0.16, delay: 1.0, r: 2.3, h: 3.2, dmg: 20, kbUp: 7, cd: 10 };
 WEAPONS.gavel = { slot: null, kind: 'gavel', name: 'Summons', color: '#ffc83a' }; // the kill-feed tag
+// OVERDUE only (story rooms: server/storytrain.js): the Blood Cross as a minigun, on a motor (docs/story/TRAIN.md §3).
+// slot null, so it is never in a loadout, a crate, a ladder or a bot's hands, and only a story room takes its 'fire'.
+// hold fire: the ring spins up (spin), then rate bolts a second, each paid in your own HP (cost); every bloomEvery-th
+// bolt in the same target blooms a cross (bloomDmg on a boss; the Blood Cross's own burst and pop on anyone with a body)
+WEAPONS.blooddrive = {
+  slot: null, kind: 'blooddrive', name: 'Blood Drive', color: '#ff1f3d',
+  desc: 'The finger trick, six at a time, on a motor. It will empty you in three seconds. Do not hold it down unless you mean it.',
+  spin: 0.8, rate: 14, dmg: 18, cost: 2, range: 90, bloomEvery: 6, bloomDmg: 60, heal: 10, // heal: blood back for a kill (a severed arm pays its own: RP.arm.blood)
+};

@@ -17,6 +17,11 @@
 //                  part { target, kind, boss, part, state } · act { target, kind, boss, move, clip, t0, at, yaw } ·
 //                  fx { target, kind, boss, k: 'staple', at, n } · kill { ..., boss: <boss id>, defeat } ends the fight
 //                  tests only (sim.dev): { t: 'sty', k: 'bossdev', want?: <move>, calm?: bool }
+//   the train fight (server/storytrain.js, boss revenue_protection_1): its events ride the same 'combat' message:
+//                  state { gap, hp, max, phase, stage, plates, open, marrow, arms, jack } · gap { gap, rate, jack } ·
+//                  arm { id, k, sock, st, dur, tgt, hp, max ... } · arms { clear } · plate { i, st } · stage { stage, name } ·
+//                  flinch { open, gap } · shrug { at } · bloom { at } · swept · snatched · lunge { st } · bag { hp } · off ·
+//                  fail { why, line } · reset. hit also has { arm }. the Blood Drive: { t: 'fire', w: 'blooddrive', k?, o, d }
 // for other systems: sim.ref (null until the room is up), sim.refSpawn(def, at) -> enemy id, sim.refEnemies()
 import { addSystem } from './sim.js';
 
@@ -34,7 +39,8 @@ function loadKinds() { return import('./content/enemies.js').then((m) => { CONTE
 // bosses: the fight's numbers come from content/bosses.js (hp, phases, layers, the weak point's crit) and the model's
 // parts file (hitboxes, clip marks). what the room can run of each phase's mechanics is named here (the rest: not yet)
 let BOSSES = null;
-const PARTS = {}, PART_FILES = { overtime: 'c_overtime.parts.json' };
+const PARTS = {}, PART_FILES = { overtime: 'c_overtime.parts.json', revenue_protection: '../story/revenue_protection.parts.json' }; // (the train boss's file is with the story models)
+const TRAIN_BOSS = { revenue_protection: true }; // not a walking bot: server/storytrain.js runs it (arms, THE GAP)
 const MOVES = { 'Staple Gun': 'staple', 'Overtime Slam': 'slam', 'Punch In': 'punchin', 'Staple Fan': 'fan' }, REST = { 'Coffee Break': 15 };
 const BOSS_SIDE = { overtime: 'corp' }; // (his own collectors don't get stapled)
 async function loadJson(file) {
@@ -53,6 +59,11 @@ function bossOf(id) {
   const moves = (p) => (Array.isArray(p.mechanics) ? p.mechanics : []).map((x) => MOVES[x && x.name]).filter(Boolean);
   const rest = (p) => (Array.isArray(p.mechanics) ? p.mechanics : []).reduce((a, x) => a || REST[x && x.name] || 0, 0);
   const health = (Array.isArray(b.layers) ? b.layers : []).find((l) => l && l.bar === 'health'), wp = Array.isArray(b.weakPoints) ? b.weakPoints[0] : null;
+  if (TRAIN_BOSS[b.who]) { // its crits by name (boss_fights.js weakPoints: the wrists, the eye housings, the Inspector), its model's parts file as it is
+    const cr = (re) => { const p = (Array.isArray(b.weakPoints) ? b.weakPoints : []).find((x) => x && re.test(String(x.name))); return p && Number.isFinite(p.crit) ? p.crit : undefined; };
+    return { id, name: b.name, who: b.who, side: 'enemy', hp: b.hp, health: health && Number.isFinite(health.of) ? health.of : b.hp, phases: b.phases.map((p) => ({ name: p.name, line: p.line, to: Array.isArray(p.hp) ? p.hp[1] : 0 })),
+      train: { parts: PARTS[b.who] || null, crit: { knot: cr(/wrist/i), eye: cr(/eye/i), insp: cr(/inspector/i) } } };
+  }
   return { id, name: b.name, who: b.who, side: BOSS_SIDE[b.who] || 'enemy', hp: b.hp, health: health && Number.isFinite(health.of) ? health.of : b.hp, crit: wp && Number.isFinite(wp.crit) ? wp.crit : 2,
     phases: b.phases.map((p) => ({ name: p.name, line: p.line, to: Array.isArray(p.hp) ? p.hp[1] : 0, moves: moves(p), rest: rest(p) })), parts: PARTS[b.who] || null };
 }
@@ -80,6 +91,11 @@ async function mapFor(zone) {
     const m = buildTestMap({ builder: M.builder, horizon: M.horizon, rng: M.rng, lollipop: M.lollipop, conifer: M.conifer });
     M.unstick(m.boxes, m.spawns); M.MAPS.story_test = m;
   }
+  if (zone === 'story_train' && !M.MAPS.story_train) { // the last two cars in the Under-Hill Loop (shared/story/train.js)
+    const { buildTrainMap } = await import('./train.js');
+    const m = buildTrainMap({ builder: M.builder });
+    M.unstick(m.boxes, m.spawns); M.MAPS.story_train = m;
+  }
   return M.MAPS[zone] ? zone : null;
 }
 
@@ -96,6 +112,7 @@ function boot(sim) {
     const me = room.addHuman(ws, { t: 'join', name: sim.me.name, item: sim.me.item || 'frag', mode: 'story' });
     me.pos = sim.me.pos.slice(); me.seq = sim.me.seq; me.yaw = sim.me.yaw || 0;
     room.onStory = (ev) => report(sim, ev);
+    room.storyFree = () => { const f = sim.state && sim.state.flags; return !!(f && (f.jack_marrow_taken || f.seen_mo_carry)); }; // Jack's marrow: blood weapons are free while they fire (storytrain.js driveFree)
     sim.ref = { room, me, acc: 0, ids: new Map(), was: true, boss: null, bye: [] };
     sim.sty('refOn', { id: me.id });
     for (const q of sim.refQ.splice(0)) sim.msg(q); // spawns the story asked for while the room was loading
@@ -125,7 +142,8 @@ function report(sim, ev) {
 function reportBoss(sim, ev, by) {
   const t = ev.t, sk = t.sk, base = { target: idOf(sim, t), kind: sk.kind, boss: sk.b.id };
   const out = (o) => sim.sty('combat', { ev: { type: ev.type, ...base, ...o } });
-  if (ev.type === 'hit') out({ dmg: Math.round(ev.dmg), by, weapon: ev.w || '', head: false, hp: ev.hp, max: ev.max, part: ev.part, crit: !!ev.crit });
+  if (ev.rp) out(ev.rp); // the train fight's own events (gap, arm, plate, stage, flinch...): as the room made them
+  else if (ev.type === 'hit') out({ dmg: Math.round(ev.dmg), by, weapon: ev.w || '', head: false, hp: ev.hp, max: ev.max, part: ev.part, crit: !!ev.crit, ...(ev.arm ? { arm: ev.arm } : {}) });
   else if (ev.type === 'phase') out({ phase: ev.phase, name: ev.name, line: ev.line, invuln: !!ev.invuln });
   else if (ev.type === 'part') out({ part: ev.part, state: ev.state });
   else if (ev.type === 'act') out({ move: ev.move, clip: ev.clip, t0: r2(sim.t), at: t.pos.map(r2), yaw: r2(t.yaw) });
@@ -216,6 +234,7 @@ addSystem({
       }
       case 'bossdev': { // tests (?storydev=1): his next attack, and whether he only attacks when asked
         const B = R && sim.dev === true && R.boss && R.boss.sk.b; if (!B) return true;
+        if (B.train) { R.room.rpDev(R.boss, m); return true; } // (the train fight stages its own moments)
         if (typeof m.want === 'string' && isId(m.want)) { B.want = m.want; B.next = B.t; }
         if (typeof m.calm === 'boolean') B.calm = m.calm;
         return true;
