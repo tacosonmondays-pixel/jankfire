@@ -21,10 +21,10 @@ export function zlMount(root, redraw) {
   if (!bar) {
     bar = document.createElement('div');
     bar.className = 'zl-tabs';
-    for (const [id, name, sub] of [['qp', 'QUICK PLAY', 'guns, item, killstreaks'], ['zm', 'ZOMBIES', 'start pistol, item, passive']]) {
+    for (const [id, name, sub] of [['qp', 'QUICK PLAY', ''], ['zm', 'ZOMBIES', '']]) {
       const b = document.createElement('button');
       b.dataset.zl = id;
-      b.innerHTML = `<b>${name}</b><small>${sub}</small>`;
+      b.innerHTML = `<b>${name}</b>${sub ? `<small>${sub}</small>` : ''}`; // (the rows under the tabs already say what's in them)
       b.addEventListener('click', () => { tab = id; mark(); redraw(); });
       bar.append(b);
     }

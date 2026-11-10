@@ -1,11 +1,21 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
-  { v: '7.0', date: '2026-11-10', title: 'POCKET JANK', items: [
+  { v: '7.1', date: '2026-11-10', title: 'POCKET JANK', items: [
     'JANKFIRE runs on phones and tablets now. open it in your phone\'s browser, turn it sideways, go.',
     'touch controls: a stick on the left, drag the right side to look, and big loud buttons for FIRE, JUMP, SLIDE, HOOK, AIM and friends. tap the hotbar to swap guns, tap your item and killstreaks to use them, tap the ammo to reload.',
     'SETTINGS > touch: look sens, button size, button see-through-ness, and a left-handed swap.',
     'hold your phone upright and the game asks you to stop.',
+  ] },
+  { v: '7.0', date: '2026-11-10', title: 'AD SUPPORTED', items: [
+    'new item: the LAPTOP. press G to open it at someone and their screen fills with pop-up ads for 7 seconds. they close them with the number on each ad. some ads ask ARE YOU SURE?. nobody in front of it: NO SIGNAL, and you keep the charge. a reverse card sends the ads back.',
+    'bots carry laptops too. a bot reading ads aims worse. so do you.',
+    'GUN GAME rolls a new ladder every match: 10 guns, 5 silly ones, 3 melee, then the spoon. weapons that sat out the last match go first. 16 more weapons can show up (shopping cart cannon, taser, slipper, big laser pointer...).',
+    'CHARACTER has a joke body row: head size, butt size, and Mannequin / Male / Female builds. everyone sees it. looks only: your hitbox did not get bigger. nice try. some bots turn up with one too.',
+    'plant & defuse: the SMG, Belt Sander, Lefty & Righty and the Sniper fire slower there. aim more, hose less.',
+    'plant & defuse: hard bots hit a little harder there. you picked hard.',
+    'menus talk less. a pile of captions that explained the obvious got deleted.',
+    'bots finally learned to throw cards. they used to reach the card deck in gun game and just stand there holding it. forever.',
   ] },
   { v: '6.9', date: '2026-11-10', title: 'HONEST CHEATING', items: [
     'SPINBOT no longer grabs your camera. look around freely: every shot goes to whoever is closest to your crosshair (a green LOCKED diamond shows who). nobody near your crosshair, nobody gets shot.',
