@@ -15,7 +15,7 @@ Start with [CANON.md](CANON.md): the timeline, why Change is free, the six pages
 | [ENDINGS.md](ENDINGS.md) | ON TIME, LATE, OFF THE BOOKS, NAP TIME | 4059 words |
 | [BOSSES.md](BOSSES.md) | 25 fights, 21 named bosses | 21051 words |
 | [SIDE_QUESTS.md](SIDE_QUESTS.md) | 48 side questlines, 15 activities | 15562 words |
-| [IMPLANTS.md](IMPLANTS.md) | 56 implants (17 secret) and the Drift rules | 5227 words |
+| [IMPLANTS.md](IMPLANTS.md) | 56 implants (17 secret) and the Drift rules | 5383 words |
 | [LOOT.md](LOOT.md) | 8 brands, 44 named legendaries | 3384 words |
 | [../MECHANICS.md](../MECHANICS.md) | the mechanics bible: 48 mechanics, the grapple, coverage | 9477 words |
 | [COLLECTIBLES.md](COLLECTIBLES.md) | 69 collectibles in 6 sets | 3189 words |
