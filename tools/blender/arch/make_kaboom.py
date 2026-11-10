@@ -52,9 +52,12 @@ def up(p, m):
     K.tri(p, m)
 
 
+RB = []  # every ribbon's points (cracks keep off them)
+
+
 def ribbon(pts, wid, lift, m, edge=None, ew=0.22):
     """a strip laid on the ground along pts [(x, z)], half width wid(k) at point k; edge: a darker bank each side"""
-    n = len(pts); rows = []
+    n = len(pts); rows = []; RB.extend(pts)
     for k, (x, z) in enumerate(pts):
         a, b = pts[max(0, k - 1)], pts[min(n - 1, k + 1)]; dx, dz = b[0] - a[0], b[1] - a[1]; L = math.hypot(dx, dz) or 1; nx, nz = -dz / L, dx / L
         w = wid(k / (n - 1)); offs = [-w - ew, -w, 0, w, w + ew] if edge else [-w, 0, w]
@@ -73,25 +76,26 @@ def gully_floor(a0, span=0.5, q=0.7):  # the lowest line near angle a0: where la
 
 # ---- the lava: out from under the north rim, down the deepest gully, across the sand to the sea
 aL = gully_floor(-math.pi / 2, 0.55)
-run = [spoke(aL + 0.05 * math.sin(q * 16), q) for q in [RIM + 0.03 + (1.02 - RIM - 0.03) * k / 46 for k in range(47)]]
+run = [spoke(aL + 0.04 * math.sin(q * 16) * max(0.0, min(1.0, (0.95 - q) * 6)), q) for q in [RIM + 0.03 + (1.02 - RIM - 0.03) * k / 46 for k in range(47)]]
 ex, ez = run[-1]; dxn, dzn = math.cos(aL), math.sin(aL)
-run += [(ex + dxn * d + 0.25 * math.sin(d * 1.3), ez + dzn * d) for d in (0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0)]
-ribbon(run, lambda t: 0.16 + 0.42 * t, 0.06, 'bcrack', edge='bcrust')
-ribbon(run[6:], lambda t: 0.05 + 0.16 * t, 0.085, 'blava')  # its bright middle
+run += [(ex + dxn * d, ez + dzn * d) for d in (0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0)]
+ribbon(run, lambda t: 0.16 + 0.42 * t, 0.095, 'bcrack', edge='bcrust')
+ribbon(run[6:], lambda t: 0.05 + 0.16 * t, 0.125, 'blava')  # its bright middle
 # ---- cooled lava: tongues down three other gullies, widening into a toe
 for n, (a0, q0) in enumerate(((0.35, 0.5), (2.6, 0.42), (-2.5, 0.55))):
     a = gully_floor(a0, 0.4)
-    pts = [spoke(a + 0.04 * math.sin(q * 13 + n), q) for q in [q0 + (0.99 - q0) * k / 30 for k in range(31)]]
-    ribbon(pts, lambda t, n=n: 0.2 + 0.9 * t ** 1.6 * (1 + 0.2 * math.sin(t * 9 + n)), 0.05 + 0.006 * n, 'bflow', edge='bcrust', ew=0.16)
+    pts = [spoke(a + 0.02 * math.sin(q * 9 + n), q) for q in [q0 + (0.96 - q0) * k / 30 for k in range(31)]]
+    ribbon(pts, lambda t, n=n: 0.2 + 0.9 * t ** 1.6 * (1 + 0.2 * math.sin(t * 9 + n)), 0.045 + 0.011 * n, 'bflow', edge='bcrust', ew=0.16)
 # ---- cracks still warm: slivers lying on the flank, pointing mostly downhill
-done = 0
-for k in range(900):
+done = 0; CR = []
+for k in range(2500):
     if done >= 100: break
     a = hsh(k, 1) * 2 * math.pi; q = RIM + 0.02 + (0.93 - RIM) * hsh(k, 2) ** 1.8
     x, z = spoke(a, q); L = 0.18 + 0.32 * hsh(k, 3); tw = (hsh(k, 4) - 0.5) * 1.6
     ux, uz = math.cos(a + tw), math.sin(a + tw); vx, vz = -uz * 0.035, ux * 0.035
     p = [on(x - ux * L - vx, z - uz * L - vz, 0.045), on(x + ux * L - vx, z + uz * L - vz, 0.045), on(x + ux * L + vx, z + uz * L + vz, 0.045), on(x - ux * L + vx, z - uz * L + vz, 0.045)]
-    if any(v is None for v in p) or abs(((a - aL + math.pi) % (2 * math.pi)) - math.pi) < 0.12: continue
+    if any(v is None for v in p) or any((x - px) ** 2 + (z - pz) ** 2 < 2.2 ** 2 for px, pz in RB) or any((x - px) ** 2 + (z - pz) ** 2 < 0.9 ** 2 for px, pz in CR): continue
+    CR.append((x, z))
     up([p[0], p[1], p[2]], 'bcrack'); up([p[0], p[2], p[3]], 'bcrack'); done += 1
 # ---- the rim: low broken teeth of rock round the crest
 for k in range(64):
