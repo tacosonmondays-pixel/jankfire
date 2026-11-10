@@ -247,6 +247,11 @@ for (const b of document.querySelectorAll('.back')) b.addEventListener('click', 
 for (const b of document.querySelectorAll('[data-mode]')) b.addEventListener('click', () => startMode(b.dataset.mode));
 $('resume').addEventListener('click', resume);
 $('quit').addEventListener('click', quitToMenu);
+// RESET: respawn yourself (server/reset.js decides if it's allowed here and who gets the kill)
+const resetOk = () => ['training', 'coop', 'bots', 'ffa'].includes(G.mode) && !G.lk && !['bomb', 'br', 'zm', 'oitc'].includes((G.round && G.round.game) || G.game);
+function resetMe() { if (G.joined && ME.alive) net.send({ t: 'reset' }); }
+$('resetMe').addEventListener('click', () => { resetMe(); resume(); });
+net.on('reset', (m) => { if (m && typeof m.no === 'string') { hud.msg(m.no.slice(0, 48), 1.2, 'slip'); sfx.empty(); } });
 
 function resume() {
   hideMenu();
@@ -344,6 +349,7 @@ function lock() {
 function pause() {
   show('pause');
   $('pauseMatch').classList.toggle('hidden', !!G.lk); // a mode lobby is everyone's: nobody changes its match
+  $('resetMe').classList.toggle('hidden', !resetOk()); // only where a reset is allowed
   $('pauseTitle').textContent = `${MODES[G.mode] ? MODES[G.mode].name.toUpperCase() : 'PAUSED'} · ${MAPS[G.cfg.map] ? MAPS[G.cfg.map].name : ''}`;
   W.held = false; W.aimHeld = false;
   K.clear();
@@ -1155,6 +1161,7 @@ function pressed(e) {
   if (K.matches('scythe', e) && !e.repeat) toggleScythe();
   if (K.matches('item', e) && !e.repeat) useItem();
   if (K.matches('spray', e) && !e.repeat) spray();
+  if (K.matches('reset', e) && !e.repeat) resetMe();
   const streak = ['streak1', 'streak2', 'streak3'].findIndex((a) => K.matches(a, e));
   if (streak >= 0 && !e.repeat) deployStreak(streak);
   if (K.matches('slot4', e)) switchSlot(3);
@@ -1605,7 +1612,7 @@ net.on('kill', (m) => {
   courtKill(m); // scales of justice: streaks + revenge
   let [kn, kc] = nameOf(m.k), [vn, vc] = nameOf(m.v);
   [kn, vn] = brNames(m, kn, vn); // jank royale: no names in Pronoun Park
-  const via = m.w === 'void' || m.w === 'cough' || ((m.w === 'car' || m.w === 'carboom') && m.via) ? m.via : m.w;
+  const via = m.w === 'void' || m.w === 'cough' || m.w === 'reset' || ((m.w === 'car' || m.w === 'carboom') && m.via) ? m.via : m.w;
   const victim = G.remotes.get(m.v);
   if (m.pit && m.w === 'void') pitKill(m, victim ? victim.color : m.v === G.myId ? G.myColor : null); // into the shredder pit's teeth (sets m.vel: the bits fly back up)
   // shredder kills: the pieces go through the killer's machine instead of the usual gibs / kill effect
@@ -1631,6 +1638,8 @@ net.on('kill', (m) => {
     if (fl) fallSplat(m, fl);
   } else if (m.w === 'tbag' && m.k === 0) {
     parts = [[vn, vc], ['  t-bagged too hard and exploded', '#ff9a3a']];
+  } else if (m.w === 'reset') { // pressed RESET: with someone on them it's that someone's kill
+    parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], ['  (rage reset)', '#aaa']] : [[vn, vc], ['  turned it off and on again', '#aaa']];
   } else if (m.w === 'cough') {
     parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], ['  (coughed)', '#aaa']] : [[vn, vc], ['  smoked too much', '#aaa']];
   } else if (!m.k) {
@@ -2336,7 +2345,7 @@ function replayFeed(k, info) {
   const nm = (id) => (info && info[id] ? [info[id].name, info[id].color] : nameOf(id));
   const d = document.createElement('div');
   const [a, ac] = nm(k.k), [b, bc] = nm(k.v);
-  const via = k.w === 'void' || k.w === 'cough' ? k.via : k.w;
+  const via = k.w === 'void' || k.w === 'cough' || k.w === 'reset' ? k.via : k.w;
   for (const [t, c] of k.k ? [[a, ac], [`  [${wname(via)}]  `, wcolor(via)], [b, bc]] : [[b, bc], ['  died', '#aaa']]) {
     const sp = document.createElement('span'); sp.textContent = t; sp.style.color = c; d.append(sp);
   }
