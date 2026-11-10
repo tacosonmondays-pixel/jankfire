@@ -121,7 +121,7 @@ export function updateObjectives(dt, now, r, myPos) {
     bar.children[2].textContent = `${sc[1]} ${TEAMS[2].name}`;
     bar.children[0].classList.toggle('mine', G.myTeam === 1);
     bar.children[2].classList.toggle('mine', G.myTeam === 2);
-    bar.children[1].textContent = isBomb ? `ROUND ${r.bomb.n} · ${G.myTeam === r.bomb.att ? 'ATTACK' : 'DEFEND'}` : `${GAMES[game].name.toUpperCase()} · to ${r.target}${r.over ? '' : ' · ' + fmt(r.left)}`;
+    bar.children[1].textContent = isBomb ? `ROUND ${r.bomb.n} / ${BOMB.wins * 2 - 1} · ${G.myTeam === r.bomb.att ? 'ATTACK' : 'DEFEND'} · first to ${BOMB.wins}` : `${GAMES[game].name.toUpperCase()} · to ${r.target}${r.over ? '' : ' · ' + fmt(r.left)}`;
   }
   let line = '';
   if (isBomb) {

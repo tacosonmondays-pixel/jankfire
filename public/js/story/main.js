@@ -58,6 +58,9 @@ export function initStory(a) {
   storyKeys(); initBar(G.story); initBag(G.story); initBody(G.story); initDrive(G.story);
   on('hello', (m) => { ME.yaw = m.yaw || 0; hud.msg('OVERDUE', 2.2, 'brag'); });
   on('saved', (m) => stored(m.save));
+  // the combat referee (shared/story/refsys.js): hits, kills, downs, phases... in the format agreed with the story
+  // engine, handed to its hook once each (G.story.combat, set by public/js/story/boot.js)
+  on('combat', (m) => { if (m.ev && typeof G.story.combat === 'function') { try { G.story.combat(m.ev); } catch (e) { console.warn('story combat', e); } } });
   on('redispensed', () => { if (driving()) endDrive(true); hud.msg('BEEP. CLUNK. RESTOCKING FEE APPLIED.', 2.2, 'brag'); });
 }
 function on(k, fn) { (listeners[k] ||= []).push(fn); }

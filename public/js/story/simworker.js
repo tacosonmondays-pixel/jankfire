@@ -7,6 +7,7 @@ import '/shared/story/invsys.js'; // the Tote Bag + quick bar (WP3)
 import '/shared/story/bodysys.js'; // implants, HYPE, coupons (WP5)
 import '/shared/story/carsys.js'; // story cars (WP7)
 import '/shared/story/solohost.js'; // the card deck's hand and other server-side bits solo needs
+import '/shared/story/refsys.js'; // the combat referee: the game's room code, in here (shared/story/refsys.js)
 
 let sim = null, last = 0;
 const send = (o) => postMessage(JSON.stringify(o));
@@ -14,6 +15,7 @@ onmessage = (e) => {
   if (!sim) {
     const d = e.data || {}, r = d.init ? cleanSave(d.init, { slot: d.init.slot | 0 }) : {};
     sim = createSim({ send, save: r.save || null });
+    sim.raw = (s) => postMessage(s); // the referee's room messages are json already
     sim.dev = d.dev === true; // ?storydev=1 (tests): the dev 'give'
     if (r.save && Number.isFinite(d.init.playtime)) sim.save.playtime = d.init.playtime;
     last = performance.now();

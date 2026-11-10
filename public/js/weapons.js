@@ -39,7 +39,9 @@ import { GAMES, spoonLookOn } from '/shared/modes.js';
 const kitSpeed = () => ((G.mode === 'ffa' || G.mode === 'bots') && GAMES[G.game] && GAMES[G.game].kit && GAMES[G.game].kit.speedMul) || 1;
 import { secFireDown, secShot } from './secondaries.js'; // taser, tv remote, water pistol streams
 import { RIFLES, RF, RIFLE_VM, RIFLE_RECOIL, RIFLE_SHELLS, rifleShot, bursting, rifleReset, quickScoped, rifleStep, rifleEvent } from './rifles.js'; // the rifle pack
-import { tacOn, tacShot, tacKick, tacFrame } from './tactical.js'; // Plant & Defuse: spray patterns + moving spread
+import { tacOn, tacShot, tacKick, tacFrame, tacZone } from './tactical.js'; // Plant & Defuse: spray patterns + moving spread
+import { sdRow } from '/shared/sdgun.js'; // S&D: each gun's first-shot spread (hip / sights)
+import { inSprayRange, sprayHole } from './sprayrange.js'; // Training's spray range: S&D gunplay for S&D guns there
 import { carRay, carHit, carSwing } from './traffic.js'; // cars stop bullets (and take the damage)
 
 export const W = {
@@ -731,7 +733,7 @@ function rayPlayers(o, d, maxT) {
     if (!r.alive || (isFriend(r) && !(r.trapUntil > performance.now()))) continue; // a teammate in a soap bubble can be shot free
     for (const hb of r.hitboxes()) {
       const h = rayBox(o, d, hb, best ? best.t : maxT);
-      if (h && (!best || h.t < best.t)) best = { t: h.t, r, head: hb.head };
+      if (h && (!best || h.t < best.t)) best = { t: h.t, r, head: hb.head, leg: !hb.head && o[1] + d[1] * h.t - r.pos[1] < 0.78 * (r.distScale || 1) }; // (legs: S&D damage)
     }
   }
   return best;
@@ -779,13 +781,16 @@ function currentSpread(w) {
 // the gun's own spread right now, without bloom (Plant & Defuse: the spray pattern replaces bloom; moving adds on top)
 function tacBase(w) {
   if (fanShot) return fanSpread(w);
+  const sd = sdRow(W.cur);
+  if (sd) { const hip = (HIPFIRE[G.cfg.hip] || HIPFIRE.normal).mul, hipS = sd.fs * hip, ads = (sd.ads ?? sd.fs) * Math.min(1, hip); return hipS + (ads - hipS) * W.aim; } // S&D: the table's first shot
   const hip = (HIPFIRE[G.cfg.hip] || HIPFIRE.normal).mul, base = (w.spread || 0) * sm(W.cur, 'spread');
   const ads = w.ads ? base * (w.ads.spread ?? 1) * Math.min(1, hip) : base * hip, hipS = base * hip;
   return hipS + (ads - hipS) * W.aim;
 }
 function fireHitscan(id, now, hand) { // hand: 'L' / 'R' = which of Lefty & Righty (they keep their own cooldowns)
   const w = WEAPONS[id];
-  const tac = W.eco && tacOn() ? tacShot(id, tacBase(w), now) : null; // which spray shot, its spread, its directions
+  const range = !W.eco && !!sdRow(id) && inSprayRange(); // Training's spray range (sprayrange.js)
+  const tac = (W.eco && tacOn()) || range ? tacShot(id, tacBase(w), now) : null; // which spray shot, its spread, its directions
   if (tac && W.sendSnap) W.sendSnap(); // the server checks the shot against the aim in this snapshot
   if (w.mag && G.mode !== 'training') W.ammo[id]--;
   if (!hand) setCd(id, now);
@@ -817,13 +822,14 @@ function fireHitscan(id, now, hand) { // hand: 'L' / 'R' = which of Lefty & Righ
       segs.push([...drawFrom, ...end]);
       if (shots) shots.push({ a: drawFrom, b: end, n: !ph && mh ? mh.normal : null, player: !!ph });
       if (ph) {
-        const h = hits.get(ph.r.id) || { n: 0, h: 0, d };
-        h.n++; if (ph.head) h.h++; h.d = d;
+        const h = hits.get(ph.r.id) || { n: 0, h: 0, lg: 0, d };
+        h.n++; if (ph.head) h.h++; else if (ph.leg) h.lg++; h.d = d;
         hits.set(ph.r.id, h);
         break;
       }
       if (!mh) break;
       if (!shots || i % 10 === 0) fx.impact(end, mh.normal);
+      if (range && bounces === (w.ricochet || 0)) sprayHole(end, mh.normal, i === 0 ? tac.i : 1); // the spray range keeps the holes (a new spray wipes them)
       if (bounces-- <= 0) break;
       const dn = d[0] * mh.normal[0] + d[1] * mh.normal[1] + d[2] * mh.normal[2];
       d = [d[0] - 2 * dn * mh.normal[0], d[1] - 2 * dn * mh.normal[1], d[2] - 2 * dn * mh.normal[2]];
@@ -837,7 +843,7 @@ function fireHitscan(id, now, hand) { // hand: 'L' / 'R' = which of Lefty & Righ
   const qs = (id === 'sniper' && W.scoped && now - W.scopedAt <= ROYAL.quick) || quickScoped(w, W, now) ? 1 : undefined; // quick-scope: fired right as the scope came up (Sniper Royalty only, never damage)
   for (const [cid, n] of carHits) { carHit(cid, id, n, base); hud.hit(false); }
   const r4 = (x) => Math.round(x * 10000) / 10000;
-  for (const [rid, h] of hits) net.send({ t: 'hit', to: rid, w: id, d: h.d.map(tac ? r4 : r2), n: h.n, h: h.h, ns, qs, fan: fanShot ? 1 : undefined, ...(tac ? tac.msg : null), hd: hand === 'L' ? 1 : undefined });
+  for (const [rid, h] of hits) { if (tac) tacZone(rid, h); net.send({ t: 'hit', to: rid, w: id, d: h.d.map(tac ? r4 : r2), n: h.n, h: h.h, lg: tac && h.lg ? h.lg : undefined, ns, qs, fan: fanShot ? 1 : undefined, ...(tac ? tac.msg : null), hd: hand === 'L' ? 1 : undefined }); }
   const fast = w.rate > 8;
   const skin = (W.skinOver || G.equipped || {})[id];
   if (shots) marbles.shoot(shots, marblePalette(skin));
@@ -1556,11 +1562,12 @@ export function updateWeapons(dt, now) {
   if (W.shred.on) W.flags |= FLAGS.SUCK;
   if (W.lz.on) W.flags |= FLAGS.CHARGE; // everyone sees your pointer charging
   if (W.nvOnFlag) W.flags |= FLAGS.NV; // night vision goggles down (goggles.js)
+  if (W.aim > 0.5) W.flags |= FLAGS.AIM; // (spectators see you aim: specfp.js)
 
   // ---- HUD
   if (ITEMS[W.item]) { const c = charges(W.item), it = ITEMS[W.item]; hud.item(c.n, it.charges, c.next ? 1 - Math.max(0, c.next - now) / (it.recharge * 1000) : 1); }
   updatePop(dt);
-  tacFrame(dt, now, W.eco && W.cur && WEAPONS[W.cur] ? W.cur : null, W.cur && WEAPONS[W.cur] ? tacBase(WEAPONS[W.cur]) : 0); // the crosshair shows your spread
+  tacFrame(dt, now, (W.eco || inSprayRange()) && W.cur && WEAPONS[W.cur] ? W.cur : null, W.cur && WEAPONS[W.cur] ? tacBase(WEAPONS[W.cur]) : 0); // the crosshair shows your spread
   if (W.br) W.br.hud(id, !!W.reloadId); // jank royale: mag / spare bullets
   else if (W.eco) W.eco.hud(id, !!W.reloadId);
   else if (w.hands) hud.ammo2(W.ak.L.n, W.ak.R.n, AK_HM, !!W.ak.L.rl, !!W.ak.R.rl);
@@ -1722,3 +1729,6 @@ export function updateWeapons(dt, now) {
   updateTrail(now, m, trailOn && m.wrap.visible, TRAIL_COLOR[id] || 0xffffff, TRAIL_LIFE[id]);
   if (m.wrap.visible && G.skinFxVM) { m.wrap.updateMatrixWorld(true); emitSkinFx(G.skinFxVM, m.g, dt, 0.3 * cfg.s); }
 }
+// first-person spectating (specfp.js): where a viewmodel sits, its sights, and hiding your own hands meanwhile
+export const specVMKit = { pose: (id) => VM[id] || null, ads: (id, g) => adsPose(id, { g, cfg: VM[id] }), own: (v) => { if (vmRoot) vmRoot.visible = v; } };
+
