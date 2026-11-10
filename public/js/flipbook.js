@@ -61,7 +61,7 @@ export class Flipbook {
   spawn(o) {
     if (this.L.length >= this.max) this.L.shift();
     const c = _c.setHex(o.col ?? 0xffffff), v = o.v || ZERO;
-    this.L.push({ x: o.p[0], y: o.p[1], z: o.p[2], vx: v[0], vy: v[1], vz: v[2], s0: o.s0, s1: o.s1 ?? o.s0, rot: o.rot ?? 0, spin: o.spin ?? 0, t: 0, life: o.life, a: o.a ?? 1, r: c.r, g: c.g, b: c.b, drag: o.drag ?? 0, ride: o.ride || null });
+    this.L.push({ x: o.p[0], y: o.p[1], z: o.p[2], vx: v[0], vy: v[1], vz: v[2], s0: o.s0, s1: o.s1 ?? o.s0, rot: o.rot ?? 0, spin: o.spin ?? 0, t: 0, life: o.life, a: o.a ?? 1, r: c.r, g: c.g, b: c.b, drag: o.drag ?? 0, ride: o.ride || null, frame: o.frame ?? -1 });
   }
   update(dt, cam) {
     const L = this.L;
@@ -81,7 +81,7 @@ export class Flipbook {
     for (let i = 0; i < L.length; i++) {
       const p = L[i], k = p.t / p.life;
       PS[i * 4] = p.x; PS[i * 4 + 1] = p.y; PS[i * 4 + 2] = p.z; PS[i * 4 + 3] = p.s0 + (p.s1 - p.s0) * Math.sqrt(k);
-      AR[i * 4] = k; AR[i * 4 + 1] = p.rot; AR[i * 4 + 2] = p.a * Math.min(1, (1 - k) * 4); // (the last quarter fades)
+      AR[i * 4] = p.frame >= 0 ? p.frame : k; AR[i * 4 + 1] = p.rot; AR[i * 4 + 2] = p.a * Math.min(1, (1 - k) * 4) * (p.frame >= 0 ? Math.min(1, k * 8) : 1); // (the last quarter fades; a still picture fades in too)
       C[i * 3] = p.r; C[i * 3 + 1] = p.g; C[i * 3 + 2] = p.b;
     }
     this.mesh.count = L.length;
@@ -97,24 +97,27 @@ let FB = null;
 function get() {
   if (!FB) FB = {
     puff: new Flipbook('puff.png', 6, 260, { sort: true }),
-    soft: new Flipbook('puffsoft.png', 6, 420, { sort: true, soft: true, inkK: 0 }), // option B: soft smoke
     splash: new Flipbook('splash.png', 4, 48, { flat: -1, ink: 0x1a4a8a, inkK: 0.7 }),
     ripple: new Flipbook('ripple.png', 4, 64, { flat: 1, ink: 0x9adcff, inkK: 0.5, order: 3 }),
   };
   return FB;
 }
+// the other smoke styles load only when picked (they're bigger files)
+const STYLE = { soft: 'puffsoft.png', kenney: 'puffkenney.png', unity: 'puffunity.png' }; // ours (script-made) / Kenney's white puffs (CC0) / Unity Labs' simulated wispy smoke (CC0)
+function styleBook(st) { const f = get(); if (!f[st]) f[st] = new Flipbook(STYLE[st], 6, 420, { sort: true, soft: true, inkK: 0 }); return f[st]; }
 // drawn effects on? (Settings > video; never on Potato; off again if a sheet failed to load)
 export function spritesOn() {
   const S = G.settings || {};
   if (S.jank === 0 || S.fxSprites === false) return false;
-  return !(FB && (FB.puff.failed || FB.soft.failed || FB.splash.failed || FB.ripple.failed));
+  return !(FB && Object.values(FB).some((f) => f.failed));
 }
 // (tests / the old-vs-new clips: is everything loaded)
-export const spritesReady = () => { const f = get(); return f.puff.ready && f.soft.ready && f.splash.ready && f.ripple.ready; };
+export const spritesReady = () => Object.values(get()).every((f) => f.ready);
 
 // a smoke grenade's cloud: called every frame while it's out. s = { p, r }, dt-paced so it's the same cloud at any fps
 export function smokeCloud(s, dt) {
-  if ((G.settings || {}).fxSmoke === 'soft') { softCloud(s, dt); return; }
+  const st = (G.settings || {}).fxSmoke;
+  if (st === 'soft' || st === 'kenney' || st === 'unity') { softCloud(s, dt, st); return; }
   const F = get().puff;
   s.fbAcc = (s.fbAcc || 0) + dt * 26;
   const first = !s.fbOn; s.fbOn = true;
@@ -127,15 +130,15 @@ export function smokeCloud(s, dt) {
   }
 }
 // option B: the same cloud out of soft see-through puffs (more of them, each one half there)
-function softCloud(s, dt) {
-  const F = get().soft;
+function softCloud(s, dt, st = 'soft') {
+  const F = styleBook(st), still = st === 'kenney'; // (Kenney's are separate shapes, not an animation: each puff keeps one)
   s.fbAcc = (s.fbAcc || 0) + dt * 44;
   const first = !s.fbOn; s.fbOn = true;
   let n = Math.floor(s.fbAcc) + (first ? 40 : 0); s.fbAcc -= Math.floor(s.fbAcc);
   while (n-- > 0) {
     const a = Math.random() * 6.2832, rr = Math.sqrt(Math.random()) * s.r, h = Math.random(), g = 0.7 + Math.random() * 0.25;
     F.spawn({ p: [s.p[0] + Math.cos(a) * rr, s.p[1] + 0.4 + h * h * 3.4, s.p[2] + Math.sin(a) * rr], v: [Math.cos(a) * 0.3, 0.2 + Math.random() * 0.45, Math.sin(a) * 0.3],
-      s0: 3, s1: 5.4 + Math.random() * 1.6, life: 3 + Math.random() * 1.5, a: 0.85, col: _c.setRGB(g, g, g * 1.03).getHex(), rot: Math.random() * 6.28, spin: (Math.random() - 0.5) * 0.3 });
+      s0: 3, s1: 5.4 + Math.random() * 1.6, life: 3 + Math.random() * 1.5, a: 0.85, col: _c.setRGB(g, g, g * 1.03).getHex(), rot: Math.random() * 6.28, spin: (Math.random() - 0.5) * 0.3, frame: still ? Math.floor(Math.random() * 36) / 36 + 0.001 : -1 });
   }
 }
 // something landed in water: rings on the surface + a crown standing up out of it. k as in liquids.js splash()

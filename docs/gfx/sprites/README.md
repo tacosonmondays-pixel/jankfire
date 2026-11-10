@@ -50,7 +50,9 @@ Looked up on 2026-11-10; licences as the pages state them, not downloaded or che
 ## Downloaded packs (added by the coordinator, 2026-11-10)
 
 Two more smoke sheets, packed by `tools/sprites/pack_packs.py` into the same 6x6, 576x576 layout as `puffsoft.png`
-(run it as `python3 tools/sprites/pack_packs.py <folder with the unpacked packs> public/sprites`). Not wired into the game yet.
+(run it as `python3 tools/sprites/pack_packs.py <folder with the unpacked packs> public/sprites`). Wired in as two more "smoke style" choices (kenney puffs, unity wispy); each sheet only downloads when picked.
+`four_smoke_styles.jpg` shows all four styles from the same camera. The Unity smoke is wispy by nature and you can see
+through the cloud, which matters for an item that says nobody can see through it.
 
 - `public/sprites/puffkenney.png`: the 25 "White puff" sprites from **Smoke Particles by Kenney** (www.kenney.nl),
   https://kenney.nl/assets/smoke-particles . They are separate puff shapes, not an animation, so the sheet repeats them to
