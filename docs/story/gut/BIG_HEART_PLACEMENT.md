@@ -67,8 +67,9 @@ under the heart's lowest box; the hanging hearts at the apex are within reach.
 |---|---|
 | `rate` | 0.72 beats a second |
 | `t`, `ph` | beats since the page loaded; where in this beat (0..1) |
-| `span` | 0.55: the wave takes this much of a beat from the top of the heart to the apex |
-| `lub` | 0.06: when in the beat the fog snaps shut |
+| `lub` | 0.06: when in the beat the big beat peaks, the fog snaps shut and the thud lands |
+| `dub` | 0.21: how much later the dub comes, on all three |
+| `span` | 0.55: the ripple takes this much of a beat from the top of the heart to the apex |
 | `k` | how hard the fog is squeezed now (1 on the lub, 0.6 on the dub) |
 | `fix` | set to a number to hold the clock at that beat (screenshots, tests); `null` runs |
 
@@ -76,12 +77,12 @@ What reads it:
 
 | ph | what happens |
 |---|---|
-| 0.06 | the district's distance fog closes in and flushes (`ingame.js`, PR #159's curve, now on this clock); the ground fog swells |
-| 0.10 | the thud's lub |
-| 0.12 | the pacemaker (top right of the heart) is at full swell: the wave has started |
-| 0.34 / 0.33 | the dub: fog, thud (0.29 s after the lub) and the top of the heart |
-| 0.12 to 0.67 | the wave crosses the heart to the apex |
-| to 1.0 | on down the sleeve, the aorta and the roots |
+| 0.04 | the thud's lub starts (14 ms attack) |
+| **0.06** | **the lub.** The whole heart is at full swell, all at once. The district's distance fog closes in and flushes (`ingame.js`, PR #159's curve, now on this clock). The ground fog swells and lights. |
+| 0.06 to 0.12 | the ripple sets off: the pacemaker (top right of the heart) reaches full swell at 0.12 |
+| 0.12 to 0.67 | the ripple crosses the small hearts to the apex |
+| 0.27 | the dub: the whole heart again (60% of the lub), the fog, the thud (0.29 s after the lub) |
+| to 1.0 | the ripple goes on down the sleeve, the aorta and the roots |
 | from 0.9 | a ring runs out through the ground fog from the roots, 80 m a beat |
 
 The city's own flesh (the breathing walls, the moving street's surf timing) still runs on the streamer's older
@@ -91,8 +92,13 @@ The city's own flesh (the breathing walls, the moving street's surf timing) stil
 `public/js/city/bigheart.js`, hooked into `ingame.js` (`startHeart`, `updateHeart`, `stopHeart`).
 
 - Its own `GLTFLoader` (the prop path strips `uv1`). Textures nearest-filtered, the props' studio reflection.
-- The ripple is the model doc's snippet: swell along the normal by `aPulse.y`, timed by `aPulse.x`, plus the
-  travelling flush and the pits' glow.
+- **The one big beat** (the owner asked for it): every flesh vertex of the heart moves out from the heart's middle by
+  `big` of its distance from it, on the lub and (60%) on the dub, all at the same moment. A vertex below the apex does
+  not move (the weight runs from 0 at y 26.5 to 1 at y 32.5), so the sleeve and the tower's vessels stay fused to the
+  bone and the collision boxes still fit. The whole heart also flushes and glows a little with it.
+- **The ripple** rides on top, and is the model doc's snippet: swell along the normal by `aPulse.y`, timed by
+  `aPulse.x`, plus the travelling flush and the pits' glow. From far off you see the heart beat; close up you see
+  the small hearts go one after another across a heart that is itself beating.
 - **Its own light.** The Gut is dim and lit from above, and this is mostly seen from below, where the hemisphere
   light is nearly black. The flesh gives off 30% of its own colour at rest and up to 90% more as the wave passes, with
   a wet red rim; the bone gives off 20%. Without it the heart is a black shape.
@@ -101,7 +107,9 @@ The city's own flesh (the breathing walls, the moving street's surf timing) stil
 - **Cost when you are not there:** nothing is fetched until you are within 340 m; it is not drawn past the fog's far
   distance or 320 m; no thud past 150 m. Two baked lights (red at the roots, dimmer under the heart) are chunk data.
 
-Knobs (`HEART_FX`): `amp` 0.09 m, `flush` 0.6, `glow` 1.1, `self` 0.3, `lit` 0.9, `rim` 0.3, `bone` 0.2.
+Knobs (`HEART_FX`): **`big` 0.07** (the big-beat swell: 7% of its size, about 0.4 m at the heart's flank and 1 m at
+the top of the arch), **`amp` 0.09 m** (the ripple swell at a small heart's crown), `flush` 0.6, `glow` 1.1,
+`self` 0.3, `lit` 0.9, `rim` 0.3, `bone` 0.2.
 
 ## The thud
 `sfx.bigHeart(v, pos, gap)` in `public/js/audio.js`: a sine falling 58 to 35 Hz with an octave on top (so small
@@ -110,30 +118,54 @@ Volume is `(1 - d / 150)²`: full at the foot, a fifth at 80 m, nothing at 150 m
 music was changed (the Gut's music bed has its own heartbeat at its own tempo).
 
 ## The low red fog
-`public/js/city/gutfog.js`: flat sheets stacked just over the ground, 0.22 m to 1.05 m up, each one quad with two
-scrolling noise fields for wisps and holes.
+`public/js/city/gutfog.js`: flat sheets stacked just over the ground, 0.14 m to 0.9 m up (wrist high: you look over
+it), each one quad with scrolling noise for lumps and thin patches: two slow fields, a fine one that you see curling
+round your shins, and 50 m banks that wander the district.
 
 - the plateau (y 40), with a hole over the Big Stomach's crater and a soft east edge
 - the border band (y 36): the spill at the foot of the cliff, gone 40 m south of it
 - a pool in the Big Stomach's bowl over the acid: the thickest
 - round the heart's roots it thickens and the holes close
 
+Every sheet reads nearly the same spot of the noise, so a lump is one lump through the whole stack (wide at the
+floor, narrower at the top) with thinner ground beside it.
+
 Why sheets and not height fog in the city shaders: they fog ground, props and people's shins alike without touching
 another material, and a stack of sheets cannot get thicker than its layers however flat you look along it.
 
-Readability: the whole stack is capped at **55%** (`cap`: a stack of sheets never covers more than that, however far or
-flat the view), it clears within 0.8 to 3.2 m of the camera, sheets fade as your eye crosses them, and it is drawn
-before every other see-through thing so sparks, glass, tracers and outlines stay on top of it. Heads and chests are
-above it. Glowing bile puddles shine through it (they are drawn after it).
+The owner asked for it thicker, on the ground and visible round you, so: there is no clear ring round the camera
+(it starts 0.3 m from your eye, which is to say at your own knees), the stack's cap is **72%** (`cap`: a stack of
+sheets never covers more than that, however far or flat the view), and the Gut's distance fog came in from 34 / 250 m
+to 26 / 205 m (`fogNear` / `fogFar` in `shared/city/slice.js`). What keeps a fight readable: it stops at 0.9 m, so
+heads, chests and guns are over it; sheets fade as your eye crosses them (a slide or a crouch does not white out);
+and it is drawn before every other see-through thing, so sparks, glass, tracers and outlines stay on top of it.
+Glowing bile puddles shine through it (they are drawn after it). Something lying flat on the floor in a thick lump
+is 72% covered: if pickups get lost, `cap` is the knob.
 
 It only exists in the Gut and the border band, and is not drawn when the camera is more than 110 m from the Gut.
-Layers by preset: Potato 2, Crusty 3, Mid 4, Too HD 5 (plus the border's and the pool's: 6 to 12 quads in all; the
+Layers by preset: Potato 3, Crusty 4, Mid 5, Too HD 6 (plus the border's and the pool's: 8 to 14 quads in all; the
 border's are skipped deep in the Gut and the pool's away from the Big Stomach). Each sheet is two triangles and
-three texture reads a pixel.
+four texture reads a pixel.
 
-Knobs (`GUT_FOG`): `on`, `top` 1.05 m (the highest sheet), `cap` 0.55, `gain` 1.5 (how much of a wisp sits on the
-cap), `holes` 0.38 (clear ground between wisps), `glow` 0.7 (how much it lights on the beat), `color` 0xc81a30,
-`drift` 1, `near` 110 m.
+Knobs (`GUT_FOG`): `on`, `top` 0.9 m (the highest sheet), `cap` 0.72, `gain` 1.6 (how much of a lump sits on the
+cap), `holes` 0.26 (how much thin ground between lumps), `glow` 0.7 (how much it lights on the beat), `color`
+0xc81a30, `drift` 1, `near` 110 m.
+
+## The darker Gut
+The owner picked the darker look for the Gut (flesh #8e1622 going to #34060c in folds with #c23a40 highlights, bone
+#c4b288, veins #221634, glow about #c01828). The Art lane re-exports the Blender props; the code side is here:
+
+| where | what changed |
+|---|---|
+| `shared/city/gut.js` | the `FLESH` scatter palette, the plateau's ground tints, roof skins, the stomach's lining, the avenue's tube and floor, the border's flesh ground and cliff, the low walls; bone tints (stairs, the Choir Lung's floor and columns); the heart lamps' light |
+| `shared/city/playground.js` (the Gut part) | the Wishbone's bone, the stomach's hanging strands |
+| `shared/city/plan.js` | the base colours of `flesh`, `liver`, `fat`, `rib`, `bruise` (bruise is the vein colour now) |
+| `public/js/city/mats.js` | the flesh tile's mottling and veins, the rib tile's grooves, the gum cobbles (dark gum, old-bone teeth), the flesh shader's vein and wet-rim colours |
+
+Flesh-family materials are only used by the Gut, its border and its edges (and one box in the `blocks` test city),
+so nothing in the Bottom or the Commute moved, and none of it is loaded outside story mode. Not changed: bile and the
+Big Stomach's acid (their colour is in the shared liquid shader, `public/js/liquidmats.js`, which multiplayer maps
+use too), the office blocks' greys, the Gut Border Gate's pastel houses.
 
 ## A fix that came with it
 `refreshMapVisuals()` in `public/js/world.js` redraws a map's boxes when the game's models finish downloading. In story
