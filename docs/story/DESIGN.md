@@ -768,6 +768,9 @@ The companies caused the end of the world and still hold the turf; the smaller g
 
 ## 7. Tone guide (where the gross lives)
 
+The working tone guide for writers and builders is [TONE.md](TONE.md) (the four pillars, the ladder, solo, how comedy
+and horror share a scene, hard limits). This section is the background it builds on.
+
 ### 7.1 Story tone: serious centre, goofy edges
 The owner wants a **legible, serious story** in a cyberpunk vein, with room for the game's goofiness around it.
 - **The main plot plays it straight.** Hask, Overtime, Auntie, Lumps, Wee Gordo, Dale and Cale talk like people with

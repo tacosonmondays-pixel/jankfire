@@ -220,3 +220,7 @@ checked by `validate.js`.
 - `GRAPPLE` holds the grapple's own section: routes, shortcuts, secrets, chases, fights, puzzles, races and upgrades.
 - Every main mission (and most side quests) has a hook: `mechanic: { uses: [mechanics ids], hook }`.
 - `docs/story/MECHANICS.md` is generated from all of this, with the coverage table.
+
+**Grudges** (the Grudge Ledger): `shared/story/content/grudges.js`, exported as `CONTENT.GRUDGES = { RULES, FACTIONS, TRIGGERS, ADAPTATIONS, RESOLUTIONS, RECAPS, BARKS, BARK_KEYS, RECAP_FIELDS }`.
+- `ADAPTATIONS[id] = { from (a TRIGGERS id), name, title, look, effect, counter }`; `TRIGGERS[id] = { name, when, weapons?, adaptation, opens }`; `BARKS[faction][key] = [lines]`.
+- The rules, the save shape and why it's its own design: `docs/story/GRUDGES.md`. `docs/story/GRUDGE_LEDGER.md` is generated.
