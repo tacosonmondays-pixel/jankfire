@@ -34,11 +34,12 @@ export function installLobby(Room, H) {
     lobbyOpen(mode, kind) {
       if (!this.lobby || this.mode !== mode || this.lobby.kind !== kind || !this.warm || this.locked || this.closed) return false;
       const h = this.lobbyHumans().length;
-      return this.lobby.online ? h < LOBBY.cap.online : h < this.lobbySize();
+      return this.lobby.online ? h < (LOBBY.kinds[kind].cap || LOBBY.cap.online) : h < this.lobbySize(); // (zombies: a squad of 4)
     },
     // a bots lobby: how many fighters it holds (humans take bots' places)
     lobbySize() {
       const royale = GAMES[this.lobby.next] && GAMES[this.lobby.next].royale;
+      if (LOBBY.kinds[this.lobby.kind].squad) return LOBBY.kinds[this.lobby.kind].squad; // zombies: 4, people take the bots' places
       const n = Math.max(0, Math.min(12, this.cfg.bots | 0));
       return 1 + (royale ? Math.max(n, Math.min(31, Number(process.env.JF_BR_BOTS) || BR.bots)) : n);
     },
@@ -121,7 +122,7 @@ export function installLobby(Room, H) {
       for (const p of this.players.values()) { p.streak = 0; p.pocket = []; if (!p.isBot) send(p, { t: 'streak', reset: 1 }); } // warm-up kills don't count toward streaks
       this.broadcast({ t: 'lobby', end: 1 });
       this.startRound();
-      if (this.mode === 'bots') this.fillBots();
+      if (this.mode === 'bots' || this.isEcon()) this.fillBots(); // Online Plant & Defuse too: bots fill the empty seats
       console.log(`[lobby] ${this.id}: ${GAMES[this.game].name} on ${this.map.name}, ${this.humans().length} human(s), ${this.players.size - this.humans().length} bot(s)`);
     },
   });

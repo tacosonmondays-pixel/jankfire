@@ -212,3 +212,52 @@ client, a `ChunkWorld` on a server).
   your bar's sidearm.
 - The HUD shows boost heat and km/h. Crashes go CRUNCH and shake the screen; a big one throws you out the front.
 - The sofa-car is a code stand-in until the art lane's model 9.
+
+## Combat referee (solo)
+
+Story fights run on the game's real room code. `shared/story/refsys.js` (sim system `ref`) starts a `Room` from
+`server/room.js` in mode `'story'` inside the story's web worker. `server/storyref.js` is that mode's installer.
+The browser loads the room code from `/server/`, which serves only `room.js` and the server modules it imports.
+
+- **Who owns what.** The room owns you while it runs: HP, hits, deaths, respawns and your `seq`. The sim mirrors
+  `sim.me` from it for the save. Every normal game message (`fire`, `hit`, `item`, `use`, `parry`, `grap`, `s`,
+  `pi`…) goes to `room.handle`. The room's messages go back to the client unchanged, so enemies are remote players
+  and the HUD, kill feed and killcam all work.
+- **Worlds.** It runs on the test lot (`?storytest=1`). The slice is next: worker-side city chunks. Until then the
+  slice runs without a referee, as before.
+- **Enemies.** These are the game's bots with a story kind: `sk = { kind, max, side, tags, npc, boss, hold }`.
+  - The room's HP stays 0..100. The kind's own pool is scaled onto it, and events carry the real numbers.
+  - Sides replace teams, so the same side never hurts or hunts itself.
+  - Enemies don't respawn. Bodies clear after 4 s of sim time.
+  - Default kinds are in `ENEMY_KINDS`. A spawn message can override `name`, `hp` and `w`.
+
+Story → sim:
+
+| message | what |
+|---|---|
+| `{ t:'sty', k:'spawn', kind, at, n?, id?, name?, hp?, w?, npc?, side? }` | up to 8 at once, within 220 m of you, 24 alive at most; queued while the room loads |
+| `{ t:'sty', k:'despawn', id? \| kind? }` | gone, with no kill and no loot |
+| `{ t:'sty', k:'damage', id, dmg, why? }` | a scripted hurt (`id:'me'` = you) |
+| `{ t:'sty', k:'hold', id? \| kind? \| all:true, on }` | freeze / let go (cutscenes, talks) |
+
+Sim → client:
+- `{ t:'sty', k:'refOn', id }` when the room is up.
+- `{ t:'sty', k:'refOff', why }` if it couldn't start.
+- `{ t:'sty', k:'combat', ev }`, which the client hands to `G.story.combat(ev)` once each.
+
+`ev` follows the format agreed with the story engine (WP8):
+
+| `ev.type` | fields |
+|---|---|
+| `hit` | `target, kind, dmg, by, weapon, head, hp, max` |
+| `kill` | `target, kind, by, weapon, head, at, boss, tags, npc?` |
+| `down` | `who, by` |
+| `up` | `who` |
+
+`target` / `who` is `'me'`, the story id or NPC id given at spawn, or `'e<n>'`. `by` is `'me'`, `'ally'`, an enemy's
+id, `'world'` or `'self'`. Bosses (`phase`, `part`, `act`, part hitboxes, layers) come in the next PR.
+
+For other systems:
+- `sim.ref` (`{ room, me }` once up);
+- `sim.refSpawn(def, at)` → room id;
+- `sim.refEnemies()`.

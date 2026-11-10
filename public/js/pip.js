@@ -37,7 +37,17 @@ export function pipFrame(dt, id) {
   if (!P.rt) init();
   const R = G.renderer;
   R.getSize(sz);
-  const w = Math.round(sz.x * SHARE), h = Math.round((w * RT_H) / RT_W), x = sz.x - w - Math.round(sz.x * 0.012), y = Math.round(sz.y * 0.36);
+  // under whatever the HUD has top right (jank royale's minimap + stats), with room for the label: measured, so it stacks at
+  // any screen size (CSS px -> the renderer's px)
+  const now = performance.now();
+  if (now > (P.layoutT || 0)) {
+    P.layoutT = now + 500;
+    let bottom = innerHeight * 0.3;
+    for (const id of ['brHud']) { const e = document.getElementById(id); if (e && e.offsetParent !== null) { const rc = e.getBoundingClientRect(); if (rc.height) bottom = Math.max(bottom, rc.bottom); } }
+    P.topCss = bottom + 40; // (the label sits 26 px above the box, the frame's shadow 6 px below the panel's)
+  }
+  const ky = sz.y / innerHeight;
+  const w = Math.round(sz.x * SHARE), h = Math.round((w * RT_H) / RT_W), x = sz.x - w - Math.round(sz.x * 0.012), y = Math.min(Math.round(P.topCss * ky), sz.y - h - Math.round(130 * ky));
   if (id !== P.id || !P.on) { P.id = id; P.yaw = r.yaw; P.pitch = r.pitch; P.n = 0; P.el.querySelector('span').textContent = `${r.name}'s eyes`; }
   P.on = true;
   // their eyes (smoothed a little, like the first-person spectate)

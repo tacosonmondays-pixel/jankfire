@@ -7,6 +7,8 @@ import { SLICE, hwY } from './slice.js';
 import { rng, hash2 } from './plan.js';
 import { rubble, line, PASTEL, pick } from './kit.js';
 import { playCommute } from './playground.js';
+import { shops, shopRects } from './shops.js';
+import { slipRoad, SLIP } from './roads.js';
 
 const H = SLICE.highway;
 const GAP = [86, 100]; // the collapsed span (z)
@@ -78,7 +80,7 @@ export function commute(B, d) {
     if (B.inside(182, 236)) B.out.marks.push({ id: 'commute:ring_road', p: [182, hwY(236), 236] });
   }
   // ruined shells on the wasteland: broken walls of pre-war shops, sun-bleached, no roofs
-  const keepOut = [[hx0 - 6, -256, hx1 + 6, 256], [SLICE.camp.x - 36, SLICE.camp.z - 30, SLICE.camp.x + 36, SLICE.camp.z + 44], [SLICE.digit.x - 14, SLICE.digit.z - 14, SLICE.digit.x + 14, SLICE.digit.z + 14]];
+  const keepOut = [...SLIP.rects, [96, H.westZ[0] - 3, hx0, H.westZ[1] + 3], [hx0 - 6, -256, hx1 + 6, 256], [SLICE.camp.x - 36, SLICE.camp.z - 30, SLICE.camp.x + 36, SLICE.camp.z + 44], [SLICE.digit.x - 14, SLICE.digit.z - 14, SLICE.digit.x + 14, SLICE.digit.z + 14], ...shopRects('commute')];
   for (let i = 0; i < 6; i++) {
     const x = X0 + 6 + r() * (X1 - X0 - 12), z = Z0 + 6 + r() * (Z1 - Z0 - 12);
     if (keepOut.some((q) => x > q[0] && x < q[2] && z > q[1] && z < q[3])) continue;
@@ -134,7 +136,9 @@ export function commute(B, d) {
       const y = hwY(pz + 12, true) + 0.02;
       B.add(px, y - 0.02, pz, px + 30, y + 0.03, pz + 24, 'asphalt', { nc: true, tint: 0x6a6460 });
       for (let i = 0; i <= 10; i++) { B.add(px + 1 + i * 2.8, y + 0.03, pz + 2, px + 1.12 + i * 2.8, y + 0.04, pz + 8, 'paint', { nc: true, tint: 0xe8e0d0 }); B.add(px + 1 + i * 2.8, y + 0.03, pz + 16, px + 1.12 + i * 2.8, y + 0.04, pz + 22, 'paint', { nc: true, tint: 0xe8e0d0 }); }
-      for (let i = 0; i < 4; i++) wreck(B, px + 2.4 + ((r() * 10) | 0) * 2.8, y, pz + (r() < 0.5 ? 5 : 19), 0, r);
+      const taken = new Set();
+      for (let i = 0; i < 4; i++) { const bay = (r() * 10) | 0, row = r() < 0.5 ? 0 : 1; taken.add(bay + ':' + row); wreck(B, px + 2.4 + bay * 2.8, y, pz + (row ? 19 : 5), 0, r); }
+      for (let bay = 0; bay < 10; bay++) for (const row of [0, 1]) if (!taken.has(bay + ':' + row) && B.inside(px + 2.4 + bay * 2.8, pz + (row ? 19 : 5))) B.out.marks.push({ id: 'park', p: [px + 2.4 + bay * 2.8, y, pz + (row ? 19 : 5)], yaw: row ? 0 : Math.PI, lot: true }); // the empty bays: parked cars (WP7)
     }
   }
   for (let i = 0; i < 4; i++) { // dead trees: a trunk and a few bare branches (render only, a box to bump)
@@ -178,4 +182,6 @@ export function commute(B, d) {
   if (B.inside(262, -150)) { const y = hwY(-150, true); B.prop('warmech', 262, y, -150, 0.6, 1, 0); B.add(256, y, -156, 268, y + 6, -144, 'metal', { hide: true }); B.out.marks.push({ id: 'commute.warmech', p: [262, y, -138] }); }
   B.out.triggers.push({ kind: 'paper', box: [X0, -10, Z0, X1, 80, Z1] });
   playCommute(B); // sign gantries, rings, the Pile-Up, the Smile's Hat (playground.js)
+  shops(B, 'commute'); // the car dealer, the petrol station (shops.js)
+  slipRoad(B); // the Bottom's slip road down onto the Commute (roads.js)
 }

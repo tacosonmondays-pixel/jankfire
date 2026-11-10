@@ -196,16 +196,28 @@ function findSources(def) {
     if (e) { e.n++; e.x += x; e.y += y; e.z += z; e.s = Math.max(e.s, sz); } else cell.set(k, { n: 1, x, y, z, s: sz, hex, minY: b.min[1] });
   }
   const list = [...cell.values()];
-  const src = (L.src = new Float32Array(list.length * 8));
+  const src = (L.src = new Float32Array((list.length + DYN_N) * 8));
+  L.flick = new Uint8Array(list.length + DYN_N); // fire and lava lights flicker (and the dynamic slots are fires too)
   let n = 0;
   for (const e of list) {
+    L.flick[n] = e.hex === GLOW.flame || e.hex === GLOW.lava ? 1 : 0;
     const x = e.x / e.n, y = e.y / e.n, z = e.z / e.n;
     _c.setHex(e.hex);
     const f = floorUnder(boxes, x, e.minY, z);
     src.set([x, y, z, _c.r, _c.g, _c.b, Math.min(12, e.s), f], n * 8); n++;
   }
   L.nSrc = n;
+  for (let k = 0; k < DYN_N; k++) { src[(n + k) * 8] = 1e6; src[(n + k) * 8 + 1] = 1e6; L.flick[n + k] = 1; } // spare: off until a fire takes one
   buildCards();
+}
+// a light that moves (a burning car, flames.js): slot 0..DYN_N-1, p = [x, y, z] (null = off), hex colour, k = how bright
+const DYN_N = 4;
+export function dynLight(slot, p, hex = 0xff7a1a, k = 1) {
+  if (!L.src || slot < 0 || slot >= DYN_N) return;
+  const i = (L.nSrc + slot) * 8;
+  if (!p) { L.src[i] = 1e6; L.src[i + 1] = 1e6; return; }
+  _c.setHex(hex);
+  L.src.set([p[0], p[1], p[2], _c.r * k, _c.g * k, _c.b * k, 4, NaN], i);
 }
 // the top of the highest box under a point (within 14 m), or NaN
 function floorUnder(boxes, x, y, z) {
@@ -267,7 +279,7 @@ function pickPool() {
   const want = L.q ? L.q.pool : 0;
   best.fill(-1); bestD.fill(1e9);
   const cam = G.camera.position, src = L.src;
-  for (let i = 0; i < L.nSrc && want; i++) {
+  for (let i = 0; i < L.nSrc + (L.src ? DYN_N : 0) && want; i++) {
     const dx = src[i * 8] - cam.x, dy = src[i * 8 + 1] - cam.y, dz = src[i * 8 + 2] - cam.z, d = dx * dx + dy * dy + dz * dz;
     if (d > 900) continue; // 30 m
     for (let k = 0; k < want; k++) if (d < bestD[k]) { for (let j = want - 1; j > k; j--) { bestD[j] = bestD[j - 1]; best[j] = best[j - 1]; } bestD[k] = d; best[k] = i; break; }
@@ -320,7 +332,12 @@ export function updateLighting(dt) {
   // pooled lights fade in and out (never pop)
   if (f % 12 === 0) pickPool();
   const k = Math.min(1, dt * 4);
-  for (let i = 0; i < POOL_N; i++) { L.poolK[i] += (L.poolT[i] - L.poolK[i]) * k; L.pool[i].intensity = L.poolK[i] * 14; }
+  for (let i = 0; i < POOL_N; i++) {
+    L.poolK[i] += (L.poolT[i] - L.poolK[i]) * k;
+    const si = poolSrc[i], fl = si >= 0 && L.flick && L.flick[si] ? 0.78 + 0.14 * Math.sin(f * 0.37 + i * 2.1) + 0.08 * Math.sin(f * 1.13 + i) : 1; // fire flickers
+    if (si >= L.nSrc && L.src) { const j = si * 8; L.pool[i].position.set(L.src[j], L.src[j + 1], L.src[j + 2]); L.pool[i].color.setRGB(L.src[j + 3], L.src[j + 4], L.src[j + 5]); } // a moving fire: follow it
+    L.pool[i].intensity = L.poolK[i] * 14 * fl;
+  }
   // the gun in your hands darkens in the shade
   if (f % 5 === 0) L.vmT = inSun() ? 1 : 0.5;
   L.vmK += (L.vmT - L.vmK) * Math.min(1, dt * 6);

@@ -96,7 +96,8 @@ export function specFP(cam, dt, id) {
     S.kick = Math.max(0, S.kick - dt * 6); S.swing = Math.max(0, S.swing - dt * 3.5);
     let px = c.p[0] + Math.sin(now * 0.0013) * 0.0025, py = c.p[1] + Math.sin(now * 0.0021) * 0.0018, pz = c.p[2];
     let rx = c.r[0], ry = c.r[1], rz = c.r[2];
-    if (S.aim > 0) { const a = S.aim * S.aim * (3 - 2 * S.aim), t = specVMKit.ads(r.w, m.g); px += (t[0] - px) * a; py += (t[1] - py) * a; pz += (t[2] - pz) * a; rx += (0 - rx) * a; ry += (0 - ry) * a; rz += ((t[3] || 0) - rz) * a; }
+    if (S.wid !== r.w) { S.wid = r.w; S.aim = 0; } // a different gun: not aiming it yet
+    if (S.aim > 0 && w.ads) { const a = S.aim * S.aim * (3 - 2 * S.aim), t = specVMKit.ads(r.w, m.g); px += (t[0] - px) * a; py += (t[1] - py) * a; pz += (t[2] - pz) * a; rx += (0 - rx) * a; ry += (0 - ry) * a; rz += ((t[3] || 0) - rz) * a; }
     const ra = 1 - S.aim * 0.6;
     pz += S.kick * 0.04 * ra; rx += S.kick * 0.12 * ra;
     if (S.swing > 0) { const s = Math.sin(S.swing * Math.PI); px -= s * 0.12; py += s * 0.05; ry += s * 0.9; rz += s * 0.5; } // a melee swing across

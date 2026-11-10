@@ -237,6 +237,7 @@ export const fx = {
     }
   },
   explosion(p, radius) {
+    if (this.onBoom) this.onBoom(p); // (liquids.js: a bang on the water throws up a column of it)
     const m = new THREE.Mesh(SPHERE_GEO, new THREE.MeshBasicMaterial({ color: 0xffcc33, transparent: true, opacity: 1 }));
     m.position.set(p[0], p[1], p[2]);
     scene.add(m);
@@ -253,6 +254,7 @@ export const fx = {
     for (let i = 0; i < n; i++) misc.spawn(p[0], p[1], p[2], R(9), 3 + Math.random() * 8, R(9), 1.2 + Math.random() * 1.2, 0.18, 0.15, 0xffffff, 0xffeeaa, 1, 4, 2.5);
   },
   tracer(a, b, color = 0xffffff, th = 0.06, life = 0.35) {
+    if (this.onTracer) this.onTracer(a, b); // (liquids.js: a shot through water plips into it)
     const m = makeBeam(color, 0.99);
     setBeam(m, a, b, th);
     scene.add(m);

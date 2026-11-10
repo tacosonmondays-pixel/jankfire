@@ -1,6 +1,30 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '6.8', date: '2026-11-07', title: 'SPRAY RANGE', items: [
+    'TRAINING has a SPRAY RANGE now: a wall left of the firing line with a head ring 10 m out. step onto the sand and the plant & defuse guns kick like they do in P&D. hold fire, pull down, and the last spray\'s holes stay on the wall in hot pink. the rest of training is as dumb as ever.',
+    'the little first-person spectate box in royale sits under the stats now instead of on top of them.',
+  ] },
+  { v: '6.7', date: '2026-11-07', title: 'LEARN YOUR SPRAY', items: [
+    'plant & defuse sprays are learnable now: every auto gun climbs straight up, then sways left-right-left at the top, the SAME way every time. pull down against it and it stays on a head. running or jumping still sprays everywhere.',
+    'online plant & defuse lobbies fill the empty slots with bots, so it\'s always 5v5.',
+    'spectating no longer crashes when the player you watch pulls out a knife while aiming. the little first-person box sits lower so it doesn\'t cover the royale stats.',
+  ] },
+  { v: '6.6', date: '2026-11-07', title: 'THE SQUAD', items: [
+    'ZOMBIES is always a squad of 4 now: bots fill the empty slots. when someone joins, a bot clocks out (with a few words in chat), and when someone leaves, a bot comes back. you can start zombies alone with 3 bots.',
+    'squad bots actually play: they shoot, buy doors and guns, nail planks back on, grab drops, flip the power and revive you (people first).',
+    'zombies show up in the end-of-match highlight now (it used to look like everyone died to nothing). and no kill effects in zombies: they just die like zombies.',
+  ] },
+  { v: '6.5', date: '2026-11-07', title: 'THE MANAGEMENT FEELS GENEROUS', items: [
+    'every account gets +30 CRATES, +25 DUFFEL BAGS and +70 BOXES. log in and they\'re waiting (once per account, until dec 7).',
+    'CONTAINERS: open them in bulk with x5, x10 or ALL. they all rattle and pop at once, the loot lands rarest first, and you can equip straight from the results. skip if you\'re impatient.',
+  ] },
+  { v: '6.4', date: '2026-11-07', title: 'WATER IS WET NOW', items: [
+    'real water everywhere: waves sized to the pool or sea, a swell on the open sea, foam where it meets the shore, sky reflections, sun sparkles, and light wobbling on pool floors.',
+    'splashes when anything hits water (you, bots, gibs, grenades, bullets, explosions). shallow water slows you down and goes shlp shlp. falling in the sea still means sleeping with the fishes.',
+    'lava actually flows now: a cracking crust drifting over the glow, bubbles that pop into embers (islands volcano + floor is lava).',
+    'fire actually burns: animated flames, smoke and embers with a flickering light on burning cars and the oil rig flare. platform has an oil slick, the bazaar dye vats are real dye.',
+  ] },
   { v: '6.3', date: '2026-11-07', title: 'TACTICAL MODE (ALLEGEDLY)', items: [
     'PLANT & DEFUSE is 5v5 now. bots fill the empty spots, and a real player takes a bot\'s place. matches are 15 rounds at most: first to 8, sides swap after round 7, 7-7 goes to a decider.',
     'P&D gunplay works like a proper tactical shooter: the first shot standing still is near-perfect, every shot after it blooms, and each gun has its own spray pattern. tap and burst, don\'t hold.',

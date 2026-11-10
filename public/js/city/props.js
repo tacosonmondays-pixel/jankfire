@@ -76,7 +76,9 @@ function codeModel(id) {
 function glbParts(scene, lod1 = false) {
   scene.updateMatrixWorld(true);
   const byMat = new Map();
-  const isLod = (o) => { for (let q = o; q; q = q.parent) if (/_lod1/.test(q.name)) return true; return false; };
+  // the far copy: '*_lod1' (the story props) or a bare 'lod1' node (the props lane's p_*.glb; three.js may rename 'lod1.001'
+  // to 'lod1001', the original name is in userData.name)
+  const LOD = /_lod1|^lod1(\.\d+|\d*)$/i, isLod = (o) => { for (let q = o; q; q = q.parent) if (LOD.test(q.userData && q.userData.name || '') || LOD.test(q.name)) return true; return false; };
   scene.traverse((o) => {
     if (!o.isMesh || /_col$/.test(o.name) || isLod(o) !== lod1) return;
     const mats = Array.isArray(o.material) ? o.material : [o.material];

@@ -76,5 +76,40 @@ export function gateArena(B) {
       ...[[-52, -4], [-50, -18], [-36, -28], [-22, -6], [-40, -10], [-56, -26]].map(([x, z], i) => ({ id: 'arena.cover', p: [x, y, z], what: 'fridge', yaw: i * 0.7 })),
       ...[[-46, -14], [-26, -26], [-58, -32], [-20, -30]].map(([x, z], i) => ({ id: 'arena.cover', p: [x, y, z], what: 'laundry_cart', yaw: i * 1.3 })),
     );
+  }  gateDress(B, y, G);
+}
+
+// the Gate dressed for the fight (static: nothing here breaks or blocks, so the fight's cover and set pieces stay
+// free): the Timekeeping queue (rails of punch-clock posts, the Bottom's people waiting to be collected), the loading
+// bay the truck backs into (hazard stripes; the ramp's crush zone), Overtime's 17:29 clock on the gate, floodlights
+// for a readable fight, Leg Day's banner, and the intro's camera spots for the story lane ('arena.cam')
+function gateDress(B, y, G) {
+  const paint = (x0, z0, x1, z1, tint) => B.add(x0, y + 0.031, z0, x1, y + 0.045, z1, 'paint', { nc: true, tint });
+  // the queue: three lanes of posts and tape snaking from the stairs to the truck's ramp
+  const rows = [-3.2, -5.6, -8];
+  rows.forEach((z, i) => {
+    for (let x = -40; x <= -32; x += 2) { if (B.inside(x, z)) B.prop('punchpost', x, y, z, 0, 1, (x * 3) | 0); }
+    if (i < rows.length - 1) for (let x = -40 + (i % 2 ? 2 : 0); x < -32 + (i % 2 ? 0 : -2) + 2; x += 2) if (B.inside(x + 1, z)) B.add(x, y + 0.9, z - 0.02, x + 2, y + 0.98, z + 0.02, 'paint', { nc: true, tint: i % 2 ? 0xffe14d : 0xff3030 }); // the tape
+  });
+  paint(-41, -9, -31, -2, 0x8a7a70); // the queue's worn patch
+  if (B.inside(-36, -6)) for (let i = 0; i < 9; i++) B.out.marks.push({ id: 'crowd', kind: 'queue', p: [-39.2 + (i % 4) * 2, y, rows[i % 3] + 1.2], face: -Math.PI / 2 }); // they face the truck
+  // the loading bay: yellow / black stripes round where the truck backs in, hazard hatching on the ramp (it crushes)
+  const T0 = [-30.8, -21.2, -27.2, -11];
+  for (const [x0, z0, x1, z1] of [[T0[0] - 0.3, T0[1], T0[0], T0[3]], [T0[2], T0[1], T0[2] + 0.3, T0[3]], [T0[0] - 0.3, T0[1] - 0.3, T0[2] + 0.3, T0[1]]]) paint(x0, z0, x1, z1, 0xffe14d);
+  for (let z = -11; z < -7; z += 0.8) paint(-30.8, z, -27.2, z + 0.4, 0x111111), paint(-30.8, z + 0.4, -27.2, z + 0.8, 0xffe14d);
+  // Overtime's clock on the gate arch: stopped at 17:29 like every clock in the district, but this one ticks
+  if (B.inside(G.x, G.z)) { B.prop('punchclock_big', G.x, y + 7.2, G.z + 1.7, Math.PI, 1, 0); B.light(G.x, y + 8.5, G.z + 4, 0xfff4d0, 12, 1); }
+  // floodlights (masts with a ring on top): the landing lit from both ends for the fight
+  for (const [fx, fz, yaw] of [[-16, -2, Math.PI * 0.75], [-56, -40, -Math.PI * 0.25]]) {
+    if (B.inside(fx, fz)) { B.add(fx - 0.2, y, fz - 0.2, fx + 0.2, y + 11, fz + 0.2, 'metal', { tint: 0x9aa0a8 }); B.prop('floodlight', fx, y + 11, fz, yaw, 1, 0); B.light(fx - Math.sin(yaw) * 10, y + 6, fz - Math.cos(yaw) * 10, 0xfff0d0, 26, 1.4); }
+    hook(B, fx, y + 12.6, fz, {});
   }
+  // Leg Day's banner across the first roof's front (Lumps carried the fridges up for it)
+  if (B.inside(-60, -6)) B.add(-62.6, y + 3.3, -5.9, -57.4, y + 4.5, -5.8, 'tiedye', { nc: true });
+  // the intro's camera spots (story lane): a wide from over the stairs, the gate close-up, the roofs looking down
+  if (B.inside(G.x, -12)) B.out.marks.push(
+    { id: 'arena.cam', name: 'wide', p: [-22, y + 9, 6], look: [G.x, y + 5, G.z] },
+    { id: 'arena.cam', name: 'gate', p: [G.x + 3, y + 2.2, -15], look: [G.x, y + 6, G.z] },
+    { id: 'arena.cam', name: 'roofs', p: [-73, y + 11.5, -4], look: [-36, y + 1, -14] },
+  );
 }

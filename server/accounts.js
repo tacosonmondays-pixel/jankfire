@@ -8,6 +8,7 @@ import { achievementsFrom } from '../shared/looks.js';
 import { catsOf } from '../shared/secrets.js';
 import { storyApi } from './story.js'; // OVERDUE save slots (/api/story/*)
 import { MODE_STATS, modeBoard, boardValue } from '../shared/modestats.js'; // per-mode leaderboards
+import { giftsDue, ROLL_BATCH_MAX } from '../shared/gifts.js'; // free containers from the management, once per account
 
 const scrypt = promisify(crypto.scrypt);
 const NAME_RE = /^[A-Za-z0-9_]{3,16}$/;
@@ -23,6 +24,7 @@ export class Accounts {
     this.store = store;
     this.secretP = store.secret();
     this.hits = new Map(); // ip -> [timestamps] for login rate limiting
+    this.batchT = new Map(); // name -> last batch open (one every 700 ms)
   }
 
   async sign(nameLower) {
@@ -65,8 +67,8 @@ export class Accounts {
     const hash = (await scrypt(pass, salt, 32)).toString('hex');
     const ok = await this.store.create({ name_lower: name.toLowerCase(), name, salt, hash });
     if (!ok) return { error: 'that name is taken' };
-    const u = await this.store.get(name.toLowerCase());
-    return { token: await this.sign(u.name_lower), me: this.public(u) };
+    const [u, gifts] = await this.giveGifts(await this.store.get(name.toLowerCase())); // signing up while a gift runs: it's yours too
+    return { token: await this.sign(u.name_lower), me: this.public(u), gifts };
   }
 
   async login(name, pass) {
@@ -74,7 +76,17 @@ export class Accounts {
     if (!u || typeof pass !== 'string') return { error: 'wrong username or password' };
     const hash = await scrypt(pass, u.salt, 32);
     if (!crypto.timingSafeEqual(hash, Buffer.from(u.hash, 'hex'))) return { error: 'wrong username or password' };
-    return { token: await this.sign(u.name_lower), me: this.public(u) };
+    const [fresh, gifts] = await this.giveGifts(u);
+    return { token: await this.sign(u.name_lower), me: this.public(fresh), gifts };
+  }
+
+  // hand out any gift this account hasn't had (shared/gifts.js). the store makes each one once-only, even for two
+  // logins at the same moment. returns [the account as it is now, the gifts just given]
+  async giveGifts(u) {
+    if (!u) return [u, []];
+    const out = [];
+    for (const g of giftsDue(u.inv)) if (await this.store.claimGift(u.name_lower, g)) out.push({ id: g.id, title: g.title, rolls: g.rolls });
+    return [out.length ? await this.store.get(u.name_lower) : u, out];
   }
 
   async leaderboard() {
@@ -119,6 +131,32 @@ export class Accounts {
     return { item: itemInfo(pick.type, pick.id), me: this.public(fresh) };
   }
 
+  // open n containers of one kind in one go (OPEN x5 / x10 / ALL): the same picks as one at a time (rollPick, never
+  // something you already have, and never the same thing twice in one batch); when a kind runs out of new stuff each
+  // extra one is +100 xp, like a single open. one store write for all of them
+  async rollMany(u, kind, n) {
+    if (typeof kind !== 'string' || !Object.hasOwn(CONTAINERS, kind)) return { error: 'open crates, duffel bags or boxes' };
+    if (!Number.isInteger(n) || n < 1 || n > ROLL_BATCH_MAX) return { error: `open 1 to ${ROLL_BATCH_MAX} at a time` };
+    const c = CONTAINERS[kind], have = u[c.field] || 0;
+    if (n > have) return { error: `you only have ${have} ${have === 1 ? c.name.toLowerCase() : c.plural.toLowerCase()}` };
+    const now = Date.now();
+    if (now - (this.batchT.get(u.name_lower) || 0) < 700) return { error: 'slow down', code: 429 };
+    this.batchT.set(u.name_lower, now);
+    if (this.batchT.size > 5000) this.batchT.clear();
+    const inv = {}; // what you'd own after each pick (so one batch never repeats itself)
+    for (const t of c.types) inv[t] = [...((u.inv && Array.isArray(u.inv[t])) ? u.inv[t] : [])];
+    const picks = [];
+    let xp = 0;
+    for (let i = 0; i < n; i++) {
+      const p = rollPick(inv, Math.random, c.types);
+      if (p) { inv[p.type].push(p.id); picks.push(p); } else { picks.push(null); xp += 100; }
+    }
+    if (!(await this.store.spendRolls(u.name_lower, kind, n, picks))) return { error: 'none left' };
+    if (xp) await this.store.addStats(u.name_lower, { xp });
+    const fresh = await this.store.get(u.name_lower);
+    return { items: picks.map((p) => (p ? itemInfo(p.type, p.id) : null)), xp, me: this.public(fresh) };
+  }
+
   // ------------------------------------------------------------ HTTP
   async handle(req, res, url) {
     // stringify first: if it throws, the catch below can still answer (headers not sent yet)
@@ -136,8 +174,10 @@ export class Accounts {
           return send(r.error ? 400 : 200, r);
         }
         case '/api/me': {
-          const u = await this.verify(auth);
-          return u ? send(200, { me: this.public(u) }) : send(401, { error: 'not logged in' });
+          const u0 = await this.verify(auth);
+          if (!u0) return send(401, { error: 'not logged in' });
+          const [u, gifts] = await this.giveGifts(u0); // coming back with a saved login: gifts land here
+          return send(200, { me: this.public(u), gifts });
         }
         case '/api/profile': {
           const u = await this.verify(auth);
@@ -156,6 +196,12 @@ export class Accounts {
           if (!u) return send(401, { error: 'log in to roll' });
           const r = await this.roll(u, body.kind);
           return send(r.error ? 400 : 200, r);
+        }
+        case '/api/rollmany': {
+          const u = await this.verify(auth);
+          if (!u) return send(401, { error: 'log in to open containers' });
+          const r = await this.rollMany(u, body.kind, body.n);
+          return send(r.error ? r.code || 400 : 200, r);
         }
         case '/api/leaderboard': return send(200, await this.leaderboard());
         case '/api/leaderboard/modes': return send(200, Object.fromEntries(Object.entries(MODE_STATS).map(([m, M]) => [m, { name: M.name, boards: M.boards.map((b) => [b.id, b.title]) }])));
