@@ -3,6 +3,7 @@
 // Rule of thumb for builders: never let two different surfaces sit in the same plane (that flickers).
 import { buildNav, navPath, navLocate, navClear } from './nav.js';
 import { outOfBounds } from './bounds.js';
+import { shapeGround } from './terrain.js';
 import { prop } from './props.js';
 export { prop, PROPS } from './props.js';
 
@@ -2745,6 +2746,11 @@ function desert() {
   for (let i = 0; i < 30; i++) { const a = ro() * Math.PI * 2, d = 110 + ro() * 120, x = Math.cos(a) * d, z = Math.sin(a) * d; if (Math.abs(x) < 20 || Math.abs(z) < 10 || (x > -150 && x < -118)) continue; palm(Dw, x, z, 6 + ro() * 4, ro); }
   D.add(-260, 0, -210, -230, 26, -180, 'toyface', { fit: 1 }); // something enormous, half buried, smiling
   horizon(D, -300, -300, 300, 300, 1500, 'sand');
+  // ---- the ground gets its shape last (shared/terrain.js): dunes, hollows and washes between the buildings. the streets, the
+  // canyon's lip and everything big stay level; cacti, crates and graves ride it
+  shapeGround(B, D, { region: [-S, -S, S, S], mat: 'sand', seed: 1887, up: 2.3, down: 1.3,
+    washes: [{ pts: [[-94, -84], [-70, -86], [-50, -74], [-30, -78], [-12, -68]], w: 3.2, d: 1.2 }, { pts: [[92, 86], [70, 80], [52, 62], [34, 58], [14, 46]], w: 3.2, d: 1.2 }], // two dry washes down to the canyon
+    points: [...new Set([...spawns, ...west, ...east])] });
 
   const bounds = [-S - 1, -S - 1, S + 1, S + 1];
   let graph = null;
@@ -4935,6 +4941,7 @@ export const MAP = { id: '', name: '', killY: -45, sky: SKY_SUNSET, fogNear: 90,
 export function setMap(id) {
   const m = MAPS[id] || MAPS.islands;
   BOXES.length = 0; BOXES.push(...m.boxes);
+  BOXES.terrain = m.boxes.terrain || null; // shaped ground (shared/terrain.js): the copy needs the heightfield too
   SPAWNS.length = 0; SPAWNS.push(...m.spawns);
   Object.assign(MAP, { id: MAPS[id] ? id : 'islands', name: m.name, killY: m.killY, sky: m.sky, fogNear: m.fogNear, fogFar: m.fogFar, size: m.size });
 }

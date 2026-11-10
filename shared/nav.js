@@ -72,9 +72,20 @@ export function buildNav(boxes, o) {
     }
   };
   const band = o.band || 0; // outdoor maps: every floor top from y up to y + band (curbs, sidewalks, porches) is one level
-  o.levels.forEach((y, lv) => {
+  const TR = boxes.terrain || null, gy = (x, z) => { const v = TR ? TR.at(x, z) : null; return v == null ? 0 : v; }; // shaped ground (shared/terrain.js): a level follows it up and down
+  o.levels.forEach((y0, lv) => {
     const ob = new Map(), floor = new Uint8Array(n * n);
     for (const b of boxes) {
+      const y = TR && lv === 0 ? y0 + gy((b.min[0] + b.max[0]) / 2, (b.min[2] + b.max[2]) / 2) : y0; // (things stand on the ground where they are)
+      if (b.ter) { // the ground's own steps: floor, whatever their height, and never in the way
+        if (lv !== 0 || !TR) continue;
+        const i0 = Math.floor((b.min[0] - x0) / C), i1 = Math.floor((b.max[0] - x0) / C), j0 = Math.floor((b.min[2] - z0) / C), j1 = Math.floor((b.max[2] - z0) / C);
+        for (let i = Math.max(0, i0); i <= Math.min(n - 1, i1); i++) for (let j = Math.max(0, j0); j <= Math.min(n - 1, j1); j++) {
+          const cx = x0 + (i + 0.5) * C, cz = z0 + (j + 0.5) * C;
+          if (cx > b.min[0] && cx < b.max[0] && cz > b.min[2] && cz < b.max[2] && TR.at(cx, cz) != null) floor[i * n + j] = 1;
+        }
+        continue;
+      }
       if (b.pad) { bucket(ob, [b.min[0] - R, b.min[2] - R, b.max[0] + R, b.max[2] + R]); continue; } // jump pads: a bot walking over one gets launched
       if (b.max[1] > y - 0.06 && b.max[1] < y + band + 0.06) { // a floor on this level: mark the cells whose middle it holds up
         const i0 = Math.floor((b.min[0] - x0) / C), i1 = Math.floor((b.max[0] - x0) / C), j0 = Math.floor((b.min[2] - z0) / C), j1 = Math.floor((b.max[2] - z0) / C);
@@ -97,7 +108,7 @@ export function buildNav(boxes, o) {
       const cx = x0 + (i + 0.5) * C, cz = z0 + (j + 0.5) * C;
       if (o.keep && !o.keep(cx, cz)) continue; // e.g. outside the play area
       if ((ob.get(K(i, j)) || []).some((r) => cx > r[0] && cx < r[2] && cz > r[1] && cz < r[3])) continue;
-      idx[i * n + j] = addNode([cx, y, cz], lv);
+      idx[i * n + j] = addNode([cx, TR && lv === 0 ? y0 + gy(cx, cz) : y0, cz], lv);
     }
     for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
       const a = idx[i * n + j];

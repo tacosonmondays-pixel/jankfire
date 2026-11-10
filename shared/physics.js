@@ -2,6 +2,9 @@
 // Position = feet (bottom center) for players.
 
 export const PH = { halfW: 0.4, height: 1.8, eye: 1.6, step: 0.6 };
+// shaped ground (shared/terrain.js): boxes.terrain is a heightfield bodies walk on. the stepped boxes under it ({ ter: 1 })
+// are for everything else, and their top 0.7 m is soft to a body (below that they're a wall: the canyon's face)
+const soft = (b, y) => b.ter === 1 && y > b.max[1] - 0.7;
 
 // ------------------------------------------------------------ broadphase: a 2D grid over x/z so big maps stay fast
 const CELL = 8;
@@ -45,7 +48,7 @@ function overlap(minx, miny, minz, maxx, maxy, maxz, b) {
 
 export function playerOverlap(p, boxes) {
   const hw = PH.halfW;
-  for (const b of query(boxes, p[0] - hw, p[2] - hw, p[0] + hw, p[2] + hw, [])) if (overlap(p[0] - hw, p[1], p[2] - hw, p[0] + hw, p[1] + PH.height, p[2] + hw, b)) return b;
+  for (const b of query(boxes, p[0] - hw, p[2] - hw, p[0] + hw, p[2] + hw, [])) if (!soft(b, p[1] + 0.3) && overlap(p[0] - hw, p[1], p[2] - hw, p[0] + hw, p[1] + PH.height, p[2] + hw, b)) return b;
   return null;
 }
 
@@ -59,23 +62,25 @@ export function movePlayer(pos, vel, dt, allBoxes, canStep) {
   const steps = Math.min(200, Math.max(1, Math.ceil(dist / 0.25)));
   const sdt = dt / steps;
   const res = { ground: null, wall: false, ceil: false };
-  const order = [1, 0, 2];
+  const order = [1, 0, 2], T = allBoxes.terrain;
   for (let i = 0; i < steps; i++) {
+    let onBox = false; // (this substep: standing on a real box, a plank, a crate: the ground under it doesn't pull you down through it)
     for (const ax of order) {
       const d = vel[ax] * sdt;
       if (d === 0) continue;
       pos[ax] += d;
       for (const b of boxes) {
         if (!overlap(pos[0] - hw, pos[1], pos[2] - hw, pos[0] + hw, pos[1] + h, pos[2] + hw, b)) continue;
+        if (T && soft(b, pos[1] + 0.3)) continue; // the heightfield is the ground here, not its steps
         if (ax === 1) {
-          if (d < 0) { pos[1] = b.max[1]; res.ground = b; } else { pos[1] = b.min[1] - h - 1e-4; res.ceil = true; }
+          if (d < 0) { pos[1] = b.max[1]; res.ground = b; onBox = true; } else { pos[1] = b.min[1] - h - 1e-4; res.ceil = true; }
           vel[1] = 0;
         } else {
           const rise = b.max[1] - pos[1];
           if ((canStep || res.ground) && rise > 0 && rise <= PH.step) {
             const old = pos[1];
             pos[1] = b.max[1] + 1e-3;
-            if (!overlapAny(pos, boxes)) { res.ground = b; continue; }
+            if (!overlapAny(pos, boxes)) { res.ground = b; onBox = true; continue; }
             pos[1] = old;
           }
           pos[ax] = d > 0 ? b.min[ax] - hw - 1e-4 : b.max[ax] + hw + 1e-4;
@@ -84,13 +89,17 @@ export function movePlayer(pos, vel, dt, allBoxes, canStep) {
         }
       }
     }
+    if (T) { // shaped ground: sunk into it (a landing, walking uphill) = stand on it. walking downhill: stay stuck to it
+      const g = T.at(pos[0], pos[2]);
+      if (g != null && vel[1] <= 0.01 && ((pos[1] < g && pos[1] > g - 0.9) || (!onBox && (canStep || res.ground === T.box) && pos[1] - g < 0.16 && pos[1] >= g))) { pos[1] = g; vel[1] = 0; res.ground = T.box; }
+    }
   }
   return res;
 }
 
 function overlapAny(p, boxes) {
   const hw = PH.halfW;
-  for (const b of boxes) if (overlap(p[0] - hw, p[1], p[2] - hw, p[0] + hw, p[1] + PH.height, p[2] + hw, b)) return b;
+  for (const b of boxes) if (!soft(b, p[1] + 0.3) && overlap(p[0] - hw, p[1], p[2] - hw, p[0] + hw, p[1] + PH.height, p[2] + hw, b)) return b;
   return null;
 }
 
@@ -145,6 +154,10 @@ export function raycast(o, d, maxT, boxes) {
   if (best.axis >= 0) normal[best.axis] = best.sign;
   best.normal = normal;
   best.point = [o[0] + d[0] * best.t, o[1] + d[1] * best.t, o[2] + d[2] * best.t];
+  if (best.box.ter === 1 && best.axis === 1 && boxes.terrain && d[1] < -0.999) { // straight down onto shaped ground: the real surface, not the step under it (shadows, things put on the floor)
+    const g = boxes.terrain.at(best.point[0], best.point[2]);
+    if (g != null && g <= o[1]) { best.point[1] = g; best.t = o[1] - g; }
+  }
   return best;
 }
 

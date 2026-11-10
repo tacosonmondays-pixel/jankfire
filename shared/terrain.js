@@ -1,0 +1,168 @@
+// Ground with a shape: hills, dips, mounds and ditches instead of one flat slab. A map builder calls shapeGround at
+// the end, on its own finished boxes, and gets:
+//   - a heightfield (boxes.terrain: a 1 m grid, at(x, z) = the ground's height there). players and bots walk on it
+//     (physics.js movePlayer), the client draws it as one mesh (world.js)
+//   - hidden stepped boxes under it ({ ter: 1 }, one per cell or run of cells), so everything that only knows boxes
+//     (bullets, grenades, grapples, marbles, the bots' eyes, the walk graph) still finds ground within a few cm
+//   - everything that stood on the old flat ground moved with it: big things (buildings, walls, bridges, roads, the
+//     canyon's lip) keep the ground flat round them and it rolls away from there; small things (cacti, crates, graves)
+//     ride up and down with it on a little level pad of their own
+// all of it worked out from the boxes and a seed, so the server and every client build the same ground.
+
+const sm = (a, b, v) => { const k = Math.max(0, Math.min(1, (v - a) / (b - a))); return k * k * (3 - 2 * k); };
+// value noise on a lattice (integer hash, so it's the same on every machine), smooth between the points
+function lattice(seed) {
+  const h = (i, j) => { let n = Math.imul(i, 374761393) ^ Math.imul(j, 668265263) ^ seed; n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967295 * 2 - 1; };
+  return (x, z) => {
+    const i = Math.floor(x), j = Math.floor(z), u = x - i, v = z - j, a = u * u * (3 - 2 * u), b = v * v * (3 - 2 * v);
+    return (h(i, j) * (1 - a) + h(i + 1, j) * a) * (1 - b) + (h(i, j + 1) * (1 - a) + h(i + 1, j + 1) * a) * b;
+  };
+}
+
+// o: { region: [x0, z0, x1, z1] (whole metres), mat (the ground slabs' material: slabs = boxes of it with their top at 0),
+//      seed, up, down (how high the hills, how deep the dips), flat: [[x0, z0, x1, z1]] (kept level whatever stands there),
+//      points: [[x, y, z], ...] (spawns and the like: lifted onto the new ground), near, far (m from something big where
+//      the ground starts to move, and where it's free), big (m: a thing wider than this keeps its ground flat) }
+export function shapeGround(B, D, o) {
+  const [X0, Z0, X1, Z1] = o.region, nx = X1 - X0, nz = Z1 - Z0, vx = nx + 1, vz = nz + 1;
+  const up = o.up ?? 1.5, down = o.down ?? 1.0, BIG = o.big ?? 7, mat = o.mat;
+  const inR = (b) => b.max[0] > X0 && b.min[0] < X1 && b.max[2] > Z0 && b.min[2] < Z1;
+  const slabs = B.boxes.filter((b) => b.mat === mat && b.max[1] === 0 && b.min[1] <= -1 && b.min[0] >= X0 && b.max[0] <= X1 && b.min[2] >= Z0 && b.max[2] <= Z1);
+  const slabSet = new Set(slabs);
+  const C = (i, j) => i * nz + j, V = (i, j) => i * vz + j;
+  // ---- which cells have ground at all (a slab under their middle): the canyon and the mine shaft don't
+  const ok = new Uint8Array(nx * nz);
+  for (const s of slabs) for (let i = Math.max(0, Math.floor(s.min[0] - X0)); i < Math.min(nx, Math.ceil(s.max[0] - X0)); i++) for (let j = Math.max(0, Math.floor(s.min[2] - Z0)); j < Math.min(nz, Math.ceil(s.max[2] - Z0)); j++) {
+    const cx = X0 + i + 0.5, cz = Z0 + j + 0.5;
+    if (cx > s.min[0] && cx < s.max[0] && cz > s.min[2] && cz < s.max[2]) ok[C(i, j)] = 1;
+  }
+  // ---- the things standing on it: boxes that touch each other are one thing
+  const items = [];
+  for (const L of [B.boxes, D.boxes]) for (const b of L) if (!slabSet.has(b) && inR(b) && b.max[1] > 0.001 && b.min[1] < 40) items.push(b);
+  const par = items.map((_, k) => k), find = (k) => { while (par[k] !== k) k = par[k] = par[par[k]]; return k; };
+  const T = 0.03, order = items.map((_, k) => k).sort((p, q) => items[p].min[0] - items[q].min[0]);
+  for (let a = 0; a < order.length; a++) {
+    const p = items[order[a]];
+    for (let c = a + 1; c < order.length; c++) {
+      const q = items[order[c]];
+      if (q.min[0] > p.max[0] + T) break;
+      if (q.min[2] <= p.max[2] + T && q.max[2] >= p.min[2] - T && q.min[1] <= p.max[1] + T && q.max[1] >= p.min[1] - T) par[find(order[a])] = find(order[c]);
+    }
+  }
+  const comps = new Map();
+  items.forEach((b, k) => {
+    const r = find(k);
+    let c = comps.get(r);
+    if (!c) comps.set(r, (c = { list: [], x0: 1e9, z0: 1e9, x1: -1e9, z1: -1e9, y0: 1e9 }));
+    c.list.push(b); c.x0 = Math.min(c.x0, b.min[0]); c.x1 = Math.max(c.x1, b.max[0]); c.z0 = Math.min(c.z0, b.min[2]); c.z1 = Math.max(c.z1, b.max[2]); c.y0 = Math.min(c.y0, b.min[1]);
+  });
+  const anchors = [], propsC = [];
+  for (const c of comps.values()) {
+    const w = c.x1 - c.x0, d = c.z1 - c.z0;
+    if (c.y0 > 0.35) continue; // hangs in the air on its own (the sun, a bird): leave it be
+    if (w > BIG || d > BIG || w * d > BIG * BIG * 0.75 || c.y0 < -0.5 || c.x0 < X0 + 0.5 || c.x1 > X1 - 0.5 || c.z0 < Z0 + 0.5 || c.z1 > Z1 - 0.5) anchors.push(c); else propsC.push(c);
+  }
+  // ---- how far every cell is from something that keeps the ground flat (chamfer distance, in m)
+  const dist = new Float32Array(nx * nz).fill(1e4);
+  const pin = (x0, z0, x1, z1) => { for (let i = Math.max(0, Math.floor(x0 - X0)); i < Math.min(nx, Math.ceil(x1 - X0)); i++) for (let j = Math.max(0, Math.floor(z0 - Z0)); j < Math.min(nz, Math.ceil(z1 - Z0)); j++) dist[C(i, j)] = 0; };
+  for (const c of anchors) for (const b of c.list) if (b.min[1] < 12) pin(b.min[0], b.min[2], b.max[0], b.max[2]);
+  for (const f of o.flat || []) pin(f[0], f[1], f[2], f[3]);
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) if (!ok[C(i, j)] || i === 0 || j === 0 || i === nx - 1 || j === nz - 1) dist[C(i, j)] = 0;
+  const relax = (i, j, ii, jj, w) => { if (ii >= 0 && jj >= 0 && ii < nx && jj < nz && dist[C(ii, jj)] + w < dist[C(i, j)]) dist[C(i, j)] = dist[C(ii, jj)] + w; };
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) { relax(i, j, i - 1, j, 1); relax(i, j, i, j - 1, 1); relax(i, j, i - 1, j - 1, 1.414); relax(i, j, i - 1, j + 1, 1.414); }
+  for (let i = nx - 1; i >= 0; i--) for (let j = nz - 1; j >= 0; j--) { relax(i, j, i + 1, j, 1); relax(i, j, i, j + 1, 1); relax(i, j, i + 1, j + 1, 1.414); relax(i, j, i + 1, j - 1, 1.414); }
+  // ---- the shape: three sizes of noise, pushed so there are real hills and real hollows, held flat near the anchors
+  const n1 = lattice(o.seed | 0), n2 = lattice((o.seed | 0) + 101), n3 = lattice((o.seed | 0) + 202);
+  const near = o.near ?? 1.2, far = o.far ?? 5.5;
+  const H = new Float32Array(vx * vz), fixed = new Uint8Array(vx * vz);
+  const dv = (i, j) => { let m = 1e4; for (const [a, b] of [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]]) m = Math.min(m, a < 0 || b < 0 || a >= nx || b >= nz ? 0 : dist[C(a, b)]); return m; };
+  for (let i = 0; i < vx; i++) for (let j = 0; j < vz; j++) {
+    const x = X0 + i, z = Z0 + j, d = dv(i, j);
+    if (d <= 0) { fixed[V(i, j)] = 1; continue; }
+    let n = (0.5 * n1(x / 27, z / 27) + 0.38 * n2(x / 12.5, z / 12.5) + 0.12 * n3(x / 6, z / 6)) * 2.4;
+    n = Math.max(-1, Math.min(1, n));
+    let h = n > 0 ? n * up : n * down;
+    for (const w of o.washes || []) { // a wash: a dry ditch along a line of points, w.w m to each side, w.d deep in the middle
+      let dd = 1e9;
+      for (let q = 0; q + 1 < w.pts.length; q++) { const [ax, az] = w.pts[q], [bx, bz] = w.pts[q + 1], ex = bx - ax, ez = bz - az, t = Math.max(0, Math.min(1, ((x - ax) * ex + (z - az) * ez) / (ex * ex + ez * ez))); dd = Math.min(dd, Math.hypot(x - ax - ex * t, z - az - ez * t)); }
+      const k = 1 - sm(w.w * 0.25, w.w, dd);
+      if (k > 0) h = h * (1 - k) + Math.min(h, -w.d) * k + 0.25 * sm(w.w, w.w * 1.5, dd) * 0; // (the bed sits at -d whatever the hill it cuts through)
+    }
+    H[V(i, j)] = h * sm(near, far, d);
+  }
+  // ---- small things get a level pad at the height the ground has under their middle, and go up or down with it
+  const at0 = (x, z) => { const fx = Math.max(0, Math.min(nx - 1e-6, x - X0)), fz = Math.max(0, Math.min(nz - 1e-6, z - Z0)), i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j; return (H[V(i, j)] * (1 - u) + H[V(i + 1, j)] * u) * (1 - v) + (H[V(i, j + 1)] * (1 - u) + H[V(i + 1, j + 1)] * u) * v; };
+  const PAD = o.pad ?? 2.2, sw = new Float32Array(vx * vz), swp = new Float32Array(vx * vz), mw = new Float32Array(vx * vz);
+  for (const c of propsC) {
+    c.p = at0((c.x0 + c.x1) / 2, (c.z0 + c.z1) / 2);
+    for (let i = Math.max(0, Math.floor(c.x0 - PAD - X0)); i <= Math.min(nx, Math.ceil(c.x1 + PAD - X0)); i++) for (let j = Math.max(0, Math.floor(c.z0 - PAD - Z0)); j <= Math.min(nz, Math.ceil(c.z1 + PAD - Z0)); j++) {
+      const x = X0 + i, z = Z0 + j, ox = Math.max(c.x0 - 0.5 - x, 0, x - c.x1 - 0.5), oz = Math.max(c.z0 - 0.5 - z, 0, z - c.z1 - 0.5), w = 1 - sm(0, PAD, Math.hypot(ox, oz));
+      if (w <= 0) continue;
+      const k = V(i, j); sw[k] += w; swp[k] += w * c.p; if (w > mw[k]) mw[k] = w;
+    }
+  }
+  for (let k = 0; k < vx * vz; k++) if (mw[k] > 0 && !fixed[k]) { H[k] = H[k] * (1 - mw[k]) + (swp[k] / sw[k]) * mw[k]; }
+  // ---- nothing steeper than you can run up without noticing: ease the steep bits (the flat parts stay put; two pads at different heights side by side give a little)
+  const MAXS = o.slope ?? 0.36;
+  for (let pass = 0; pass < 60; pass++) {
+    let any = false;
+    for (let i = 1; i < vx - 1; i++) for (let j = 1; j < vz - 1; j++) {
+      const k = V(i, j);
+      if (fixed[k]) continue;
+      const a = H[V(i - 1, j)], b = H[V(i + 1, j)], c = H[V(i, j - 1)], d = H[V(i, j + 1)], h = H[k];
+      if (Math.max(Math.abs(h - a), Math.abs(h - b), Math.abs(h - c), Math.abs(h - d)) > MAXS) { H[k] = (a + b + c + d + h * 2) / 6; any = true; }
+    }
+    if (!any) break;
+  }
+  const at = (x, z) => { const i = Math.floor(x - X0), j = Math.floor(z - Z0); return i < 0 || j < 0 || i >= nx || j >= nz || !ok[C(i, j)] ? null : at0(x, z); };
+  for (const c of propsC) {
+    let dy = 1e9;
+    for (const [x, z] of [[(c.x0 + c.x1) / 2, (c.z0 + c.z1) / 2], [c.x0, c.z0], [c.x1, c.z0], [c.x0, c.z1], [c.x1, c.z1]]) dy = Math.min(dy, at0(x, z)); // on the lowest bit under it: nothing floats
+    c.dy = dy;
+    for (const b of c.list) { b.min[1] += dy; b.max[1] += dy; }
+    for (const L of [B.boxes, D.boxes]) for (const p of L.props || []) if (!p._t && p.p[0] > c.x0 - 0.3 && p.p[0] < c.x1 + 0.3 && p.p[2] > c.z0 - 0.3 && p.p[2] < c.z1 + 0.3) { p.p[1] += dy; p._t = 1; }
+  }
+  for (const L of [B.boxes, D.boxes]) for (const p of L.props || []) delete p._t;
+  // ---- the hidden steps under it: every cell a box up to the middle of its four corners, runs of the same height merged
+  let lo = 0, hi = 0;
+  for (let k = 0; k < vx * vz; k++) { if (H[k] < lo) lo = H[k]; if (H[k] > hi) hi = H[k]; }
+  const BASE = Math.min(-0.6, Math.floor((lo - 0.35) * 10) / 10);
+  for (const s of slabs) { s.max[1] = BASE; s.ter = 1; }
+  const top = new Int16Array(nx * nz); // in 5 cm steps
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) top[C(i, j)] = Math.round((H[V(i, j)] + H[V(i + 1, j)] + H[V(i, j + 1)] + H[V(i + 1, j + 1)]) / 4 / 0.05);
+  const runs = new Map(); // "z0,z1,q" -> the run in the column before, still growing along x
+  let nTer = 0;
+  for (let i = 0; i <= nx; i++) {
+    const seen = new Set();
+    if (i < nx) for (let j = 0; j < nz;) {
+      if (!ok[C(i, j)]) { j++; continue; }
+      let e = j + 1;
+      while (e < nz && ok[C(i, e)] && top[C(i, e)] === top[C(i, j)]) e++;
+      const key = j + ',' + e + ',' + top[C(i, j)], r = runs.get(key);
+      if (r && r.x1 === i) r.x1 = i + 1; else { if (r) flush(r); runs.set(key, { j, e, q: top[C(i, j)], x0: i, x1: i + 1 }); }
+      seen.add(key); j = e;
+    }
+    for (const [key, r] of runs) if (!seen.has(key)) { flush(r); runs.delete(key); }
+  }
+  function flush(r) { B.boxes.push({ min: [X0 + r.x0, BASE, Z0 + r.j], max: [X0 + r.x1, r.q * 0.05, Z0 + r.e], mat, ter: 1 }); nTer++; }
+  // ---- where the ground stops at a drop (the canyon's lip, the shaft): a strip of it down the face, so the lowered slab doesn't show as a gap
+  const edge = (x0, z0, x1, z1) => D.add(x0, BASE, z0, x1, 0, z1, mat);
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+    if (!ok[C(i, j)]) continue;
+    const x = X0 + i, z = Z0 + j, t = 0.04;
+    if (i > 0 && !ok[C(i - 1, j)]) edge(x, z, x + t, z + 1);
+    if (i < nx - 1 && !ok[C(i + 1, j)]) edge(x + 1 - t, z, x + 1, z + 1);
+    if (j > 0 && !ok[C(i, j - 1)]) edge(x, z, x + 1, z + t);
+    if (j < nz - 1 && !ok[C(i, j + 1)]) edge(x, z + 1 - t, x + 1, z + 1);
+  }
+  // ---- spawns and the like: onto the new ground
+  for (const p of o.points || []) if (p[1] > -0.5 && p[1] < 0.6) { const g = at(p[0], p[2]); if (g != null) p[1] += g; }
+  const terrain = { x0: X0, z0: Z0, nx, nz, H, ok, mat, lo, hi, base: BASE, at, box: { min: [X0, BASE, Z0], max: [X1, hi, Z1], mat, terr: 1 }, stats: { anchors: anchors.length, props: propsC.length, steps: nTer } };
+  Object.defineProperty(B.boxes, 'terrain', { value: terrain, writable: true, configurable: true, enumerable: false });
+  return terrain;
+}
+// the ground's height under a point on a map with shaped ground (0 where it's flat or there's none)
+export const groundY = (boxes, x, z) => { const t = boxes && boxes.terrain, g = t ? t.at(x, z) : null; return g == null ? 0 : g; };
+// a terrace's top 0.7 m is soft to a body whose feet are near the surface: the heightfield is the real ground there
+// (below that it's a wall: the canyon's face, the side of the mine shaft)
+export const softTer = (b, y) => b.ter === 1 && y > b.max[1] - 0.7;

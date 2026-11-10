@@ -237,6 +237,31 @@ let MAT = null;
 const mapMeshes = [];
 const chunkMeshes = [];
 // one merged mesh per material: thousands of boxes, a couple dozen draw calls
+// the shaped ground as one mesh: a vertex every metre, the texture laid on from above like every other floor
+function terrainGeo(T, tile) {
+  const vz = T.nz + 1, V = (i, j) => i * vz + j, n = (T.nx + 1) * vz;
+  const pos = new Float32Array(n * 3), nrm = new Float32Array(n * 3), uv = new Float32Array(n * 2), idx = [];
+  for (let i = 0; i <= T.nx; i++) for (let j = 0; j <= T.nz; j++) {
+    const k = V(i, j), x = T.x0 + i, z = T.z0 + j, h = T.H[k];
+    const dx = (T.H[V(Math.min(T.nx, i + 1), j)] - T.H[V(Math.max(0, i - 1), j)]) / 2, dz = (T.H[V(i, Math.min(T.nz, j + 1))] - T.H[V(i, Math.max(0, j - 1))]) / 2, l = Math.hypot(dx, 1, dz);
+    pos.set([x, h, z], k * 3); nrm.set([-dx / l, 1 / l, -dz / l], k * 3); uv.set([x / tile, z / tile], k * 2);
+  }
+  for (let i = 0; i < T.nx; i++) for (let j = 0; j < T.nz; j++) if (T.ok[i * T.nz + j]) idx.push(V(i, j), V(i, j + 1), V(i + 1, j), V(i + 1, j), V(i, j + 1), V(i + 1, j + 1));
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  return g;
+}
+// so the shape reads: hollows a little darker, crests a little brighter, steep bits shaded (on top of the baked AO)
+function terrainTint(T, g) {
+  const col = g.attributes.color, nrm = g.attributes.normal, pos = g.attributes.position;
+  for (let i = 0; i < col.count; i++) {
+    const h = pos.getY(i), k = (h > 0 ? 0.11 * h / Math.max(0.5, T.hi) : 0.24 * h / Math.max(0.5, -T.lo)) - 0.5 * (1 - nrm.getY(i)) * 2.2;
+    const a = col.getX(i) * (1 + k);
+    col.setXYZ(i, a, a, a * (1 - Math.max(0, -k) * 0.25)); // (the dark bits a touch warmer)
+  }
+  return g;
+}
 function buildMap(scene) {
   if (!MAT) MAT = makeMaterials();
   for (const m of mapMeshes) { scene.remove(m); m.geometry.dispose(); }
@@ -248,9 +273,11 @@ function buildMap(scene) {
   const push = (k, g) => { if (!groups.has(k)) groups.set(k, []); groups.get(k).push(g); };
   // deco: drawn, never bumped into. a Blender prop stands in only for real boxes (props.js draws map.boxes.props): look-only
   // scenery keeps its boxes (the city alone has hundreds of streetlights and cars, too many models to draw one by one)
-  const all = def && def.deco ? [...BOXES, ...def.deco] : BOXES, nReal = BOXES.length;
+  const TR = BOXES.terrain, real = TR ? BOXES.filter((b) => !b.ter) : BOXES; // shaped ground (shared/terrain.js): its hidden steps aren't drawn, the heightfield is (below)
+  const all = def && def.deco ? [...real, ...def.deco] : real, nReal = real.length;
   const ncf = noCastFn(def), liq = [];
   aoBegin(all, ncf); setSunBoxes(all);
+  if (TR) push(MAT[TR.mat] ? TR.mat : 'stone', terrainTint(TR, aoBake(terrainGeo(TR, MAT[MAT[TR.mat] ? TR.mat : 'stone'].tile), false)).toNonIndexed());
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
     if (i < nReal && b.pv && hasProp(b.pv)) continue;
