@@ -78,7 +78,7 @@ const W = 1600, H = 900;
 
   if (what.includes('turn')) {
     await pg.evaluate(() => { const X = window.PJX, { THREE } = X; X.clear();
-      const views = [['front', 0], ['three quarter', 35], ['his left side', 90], ['back', 180], ['three quarter back', 215], ['from above', 20]];
+      const views = [['front', 0], ['three quarter', 35], ['his right side', 90], ['back', 180], ['three quarter back', 215], ['from above', 20]];
       views.forEach(([nm, deg], i) => {
         const sc = X.scene(0x2a1830, 5);
         const J = X.jack({ clip: 'pj_idle', t: 1.0 }); sc.add(J.c.root);
@@ -92,7 +92,7 @@ const W = 1600, H = 900;
   }
   if (what.includes('face')) {
     await pg.evaluate(() => { const X = window.PJX; X.clear();
-      const cells = [['his resting face (jack)', 'jack', 0, 0.05], ['three quarter', 'jack', 32, 0.08], ['his left', 'jack', 90, 0.03], ['his right: the broken nose', 'jack', -58, 0.06], ['from above', 'jack', 15, 0.5], ['from below (you are 40 kilos)', 'jack', -10, -0.35],
+      const cells = [['his resting face (jack)', 'jack', 0, 0.05], ['three quarter', 'jack', 32, 0.08], ['his right', 'jack', 90, 0.03], ['from his left: the broken nose', 'jack', -58, 0.06], ['from above', 'jack', 15, 0.5], ['from below (you are 40 kilos)', 'jack', -10, -0.35],
         ['grin', 'grin', 20, 0.05], ['squint (the rig is up)', 'squint', 20, 0.05], ['run through (jack_hurt)', 'jack_hurt', 20, 0.05], ['angry (he breaks it)', 'angry', 20, 0.05], ['shock', 'shock', 20, 0.05], ['after (jack_gone)', 'jack_gone', 20, 0.05]];
       cells.forEach(([nm, face, deg, up], i) => { const sc = X.scene(0x2a1830, 3); const J = X.jack({ face, vest: i < 6 }); sc.add(J.c.root);
         const hp = new X.THREE.Vector3(); J.c.head.getWorldPosition(hp); hp.y += 0.17; X.cell(i, 6, 2, sc, X.orbit([hp.x, hp.y, hp.z], deg, 1.55, up, 26), nm); }); });
@@ -110,7 +110,7 @@ const W = 1600, H = 900;
   if (what.includes('dmg')) {
     const nv = { vest: false }, rt = { vest: false, state: 'run_through', face: 'jack_hurt' }, ab = { vest: false, state: 'armour_broken', face: 'jack_hurt' }, mt = { vest: false, state: 'marrow_taken', face: 'jack_gone' };
     await closeups([['fresh, vest off', nv, full, Z, 25, 7.8, 0.08], ['fresh, vest off: back', nv, full, Z, 205, 7.8, 0.08],
-      ['run_through', rt, full, Z, 28, 7.8, 0.08], ['run_through: back', rt, full, Z, 208, 7.8, 0.08], ['run_through: his right side', rt, [0, 1.25, 0], Z, 270, 5.6, 0.05],
+      ['run_through', rt, full, Z, 28, 7.8, 0.08], ['run_through: back', rt, full, Z, 208, 7.8, 0.08], ['run_through: his right side', rt, [0, 1.25, 0], Z, 90, 5.6, 0.05],
       ['the hole under his ribs', rt, 'woundAt', [0, 0, -0.1], 30, 2.2, 0.12], ['what is left of it in front', rt, 'armFrontEnd', [0, 0.05, 0.1], -50, 1.9, 0.2], ['the boiler split, its hand out of his back', rt, 'ventAt', [0, 0.02, 0.1], 205, 2.3, 0.18],
       ['armour_broken', ab, full, Z, 28, 7.8, 0.08], ['armour_broken: back', ab, full, Z, 212, 7.8, 0.08], ['collarbone weld sprung', ab, 'weldAt', [0.04, 0, -0.05], 18, 1.6, 0.22],
       ['shin locks blown', ab, [0, 0.2, -0.1], Z, 25, 1.9, 0.15], ['stacks bent', ab, 'boilerAt', [0, 0.55, 0.05], 200, 2.9, 0.4],
@@ -121,10 +121,10 @@ const W = 1600, H = 900;
     const up = { rig: 1, flap: 1, cock: 1 }, nv = { vest: false };
     await closeups([['the boiler: a beer keg. fire door, relief valve', {}, 'boilerAt', [0, 0, 0], 180, 2.0, 0.1], ['gauge, manifold, his left stack', {}, 'gaugeAt', [0, 0, 0.05], 222, 1.5, 0.35], ['bleed valve, level glass', {}, 'bleedAt', [0, 0.08, 0.02], 140, 1.5, 0.1],
       ['stacks at rest: down, caps shut', nv, 'boilerAt', [0, 0.62, 0.05], 185, 2.5, 0.4], ['rig up: stacks risen, caps open', { vest: false, set: up }, 'boilerAt', [0, 0.62, 0.05], 185, 2.5, 0.4], ['the welded collarbone', nv, 'weldAt', [0, 0, -0.05], 10, 1.7, 0.22],
-      ['the rocket forearm: collar forward', {}, 'fistAt', [0, 0.25, 0], -62, 1.9, 0.12], ['cocked: the collar back up the arm', { set: up }, 'fistAt', [0, 0.25, 0], -62, 1.9, 0.12], ['knuckles: bare steel', {}, 'fistAt', [0, 0.02, 0], 12, 1.25, -0.25],
-      ['the exhaust bell behind his elbow', {}, 'elbowAt', [0, -0.05, 0], 215, 1.6, 0.25], ['piston shins: locks open', {}, [0, 0.24, -0.1], Z, 22, 1.9, 0.12], ['rig up: locks snapped shut', { set: up }, [0, 0.24, -0.1], Z, 22, 1.9, 0.12],
-      ['a shin from the side: daylight through it', {}, [0.21, 0.24, -0.02], Z, -90, 1.9, 0.05], ['plates under scar, hydraulic lines', nv, 'chest', [-0.4, 0.05, 0.25], 62, 1.9, 0.25], ['MARSH DELIVERIES', {}, 'boilerAt', [0, 0.36, -0.1], 180, 1.5, 0.12],
-      ['tea towel, belt, keys', {}, 'boilerAt', [0.1, -0.42, -0.1], 200, 1.9, 0.05], ['THIS WAY UP, rubber bands', {}, 'palmL', [0, 0.22, 0], 90, 1.3, 0.05], ['the open hand', {}, 'palmL', [0, 0, 0], 150, 1.1, 0.1]], 6, 3, 'pj_game_parts');
+      ['the rocket forearm: collar forward', {}, 'fistAt', [0, 0.25, 0], 72, 1.7, 0.12], ['cocked: the collar back up the arm', { set: up }, 'fistAt', [0, 0.25, 0], 72, 1.7, 0.12], ['knuckles: bare steel', {}, 'fistAt', [0, 0.02, 0], 25, 1.2, -0.25],
+      ['the exhaust bell behind his elbow', {}, 'elbowAt', [0, -0.05, 0], 140, 1.5, 0.25], ['piston shin: lock open', {}, [0.21, 0.2, -0.08], Z, 35, 1.25, 0.12], ['rig up: lock snapped shut', { set: up }, [0.21, 0.2, -0.08], Z, 35, 1.25, 0.12],
+      ['a shin from the side: daylight through it', {}, [0.21, 0.24, -0.02], Z, 90, 1.7, 0.05], ['plate under scar, hydraulic lines', nv, 'armL', [0, -0.12, 0], -72, 1.6, 0.2], ['MARSH DELIVERIES', {}, 'boilerAt', [0, 0.36, -0.1], 180, 1.5, 0.12],
+      ['tea towel, belt, keys', {}, 'boilerAt', [0.1, -0.42, -0.1], 200, 1.9, 0.05], ['THIS WAY UP, rubber bands', {}, 'foreL', [0, -0.18, 0], -90, 1.25, 0.05], ['the open hand', {}, 'palmL', [0, 0, 0], -150, 1.1, 0.1]], 6, 3, 'pj_game_parts');
   }
   const POSES = [['pj_idle', 1.0, 35, 'fresh', true], ['pj_idle_eating', 1.85, 40, 'fresh', false], ['pj_walk_load', 1.0, 35, 'fresh', false], ['pj_kneel_vest', 3.7, 50, 'fresh', true], ['pj_rig_up', 2.12, 35, 'fresh', false], ['pj_fight_idle', 0.5, 35, 'fresh', false],
     ['pj_rocket_punch', 0.44, 60, 'fresh', false], ['pj_rocket_punch', 0.56, 60, 'fresh', false], ['pj_block', 0.4, 35, 'fresh', false], ['pj_stagger', 0.3, 60, 'fresh', false], ['pj_impaled', 1.2, 60, 'run_through', false], ['pj_impaled', 3.6, 40, 'run_through', false],

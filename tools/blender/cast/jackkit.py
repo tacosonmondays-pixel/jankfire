@@ -175,6 +175,22 @@ class Surf:
         o = lib_obj(name, bm, m)
         return shade(o, 70)
 
+    def stitches(s, name, m, yc, ac, h, w, n=4.0, count=12, off=0.0075, r=0.0032, skip=()):
+        """short ridges across the rim of a plate (where the skin was closed over it and healed thick)"""
+        rx, rf, rb, cx, cz, _ = s.at(yc)
+        rad = max(0.02, (rx + (rf + rb) / 2) / 2)
+        out = []
+        for k in range(count):
+            if k in skip: continue
+            ph = TAU * (k + 0.5) / count
+            cu, su = math.cos(ph), math.sin(ph)
+            q = 1.0 / (abs(cu) ** n + abs(su) ** n) ** (1.0 / n)
+            pts = []
+            for rho in (0.8, 1.0, 1.2):
+                pts.append(tuple(s.p(yc + su * q * rho * h / 2, ac + cu * q * rho * w / 2 / rad, off * (1.15 if rho == 1.0 else 0.35))))
+            out.append(sweep(pts, [r * 0.6, r, r * 0.6], m, seg=3, name=name))
+        return out
+
     def path(s, pts, off=0.0, n=None):
         """(y, a) waypoints -> points on the surface (n = resample to that many, eased)"""
         if n:
@@ -278,12 +294,14 @@ def outward(o):
                 for g in e.link_faces:
                     if g not in seen: seen.add(g); isl.append(g); st.append(g)
         if any(len(e.link_faces) != 2 for f in isl for e in f.edges): continue
+        # a decimate can also leave neighbours wound against each other: then there is no sign to read, so make them agree first
+        if any(e.link_loops[0].vert == e.link_loops[1].vert for f in isl for e in f.edges): bmesh.ops.recalc_face_normals(bm, faces=isl); flipped += 1
         vol = 0.0
         for f in isl:
             vs = [v.co for v in f.verts]
             for k in range(1, len(vs) - 1): vol += vs[0].dot(vs[k].cross(vs[k + 1]))
         if vol < 0: bmesh.ops.reverse_faces(bm, faces=isl); flipped += 1
-    if flipped: bm.to_mesh(me)
+    if flipped: bm.to_mesh(me); me.update()
     bm.free()
     return flipped
 
@@ -324,7 +342,7 @@ class Parts:
         return finish('cast_' + s.id, joined, {'cast': s.id, **meta})
 
 
-FAR_SKIP = ('needle', 'valve', 'valveBody', 'fire', 'plates', 'lines', 'lockL', 'lockR', 'flapL', 'flapR', 'ram', 'towel', 'gauge')
+FAR_SKIP = ('needle', 'valve', 'valveBody', 'fire', 'plates', 'lines', 'lockL', 'lockR', 'flapL', 'flapR', 'ram', 'towel', 'gauge', 'kegSeat')
 
 
 def add_far(root, ratio=0.14, skip_tags=('vest',) + FAR_SKIP, min_tris=24, own=()):
@@ -355,9 +373,9 @@ def add_far(root, ratio=0.14, skip_tags=('vest',) + FAR_SKIP, min_tris=24, own=(
                 for e in x.link_edges:
                     y = e.other_vert(x)
                     if y not in seen: seen.add(y); isl.append(y); st.append(y)
-            if len(isl) < 30:
+            if len(isl) < 40:
                 lo = Vector(map(min, *[w.co for w in isl])) if len(isl) > 1 else isl[0].co; hi = Vector(map(max, *[w.co for w in isl])) if len(isl) > 1 else isl[0].co
-                if (hi - lo).length < 0.09: kill += isl
+                if (hi - lo).length < (0.09 if len(isl) < 30 else 0.2): kill += isl
         if kill: bmesh.ops.delete(bm, geom=kill, context='VERTS')
         bm.to_mesh(me); bm.free()
         me.calc_loop_triangles(); n = len(me.loop_triangles)
@@ -368,9 +386,36 @@ def add_far(root, ratio=0.14, skip_tags=('vest',) + FAR_SKIP, min_tris=24, own=(
             if loose: bmesh.ops.delete(bm, geom=loose, context='VERTS')
             bmesh.ops.dissolve_degenerate(bm, dist=1e-5, edges=bm.edges)
             bm.to_mesh(o.data); bm.free()
+            drop_flakes(o, 6e-6)   # two faces back to back where a bolt was, the crumbs of a rubber band
             outward(o)
         o.parent = root; o.hide_render = True; out.append(o)
     return out
+
+
+def drop_flakes(o, vol_min=5e-8):
+    """a decimate leaves closed islands with nothing in them (two faces back to back where a bolt was): take them out,
+    they shade as black flecks and have no right way round"""
+    bm = bmesh.new(); bm.from_mesh(o.data); bm.verts.ensure_lookup_table()
+    seen = {}; n = 0
+    for v in bm.verts:
+        if v.index in seen: continue
+        st = [v]; seen[v.index] = n
+        while st:
+            x = st.pop()
+            for e in x.link_edges:
+                y = e.other_vert(x)
+                if y.index not in seen: seen[y.index] = n; st.append(y)
+        n += 1
+    closed = [True] * n; vol = [0.0] * n; nf = [0] * n
+    for e in bm.edges:
+        if len(e.link_faces) != 2: closed[seen[e.verts[0].index]] = False
+    for f in bm.faces:
+        vs = [v.co for v in f.verts]; g = seen[f.verts[0].index]; nf[g] += 1
+        for k in range(1, len(vs) - 1): vol[g] += vs[0].dot(vs[k].cross(vs[k + 1])) / 6
+    kill = [v for v in bm.verts if closed[seen[v.index]] and (abs(vol[seen[v.index]]) < vol_min or nf[seen[v.index]] < 4)]
+    if kill: bmesh.ops.delete(bm, geom=kill, context='VERTS'); bm.to_mesh(o.data); o.data.update()
+    bm.free()
+    return len(kill)
 
 
 def tri_report(root):

@@ -44,12 +44,12 @@ def build_truck():
     tp = box((0.42, 0.007, 0.26), (0, 0.0075, Z - 0.125), steel, bev=0.002, name='toe')
     tint(tp, lambda p, n: mix3((1, 1, 1), (1.25, 1.25, 1.28), 0.6 * smooth01(-p.z, 0.2, 0.33)) if n.y > 0.5 else (0.7, 0.7, 0.72))
     fr.append(tp)
-    fr.append(box((0.42, 0.06, 0.006), (0, 0.035, Z + 0.004), steel, bev=0.002, name='toelip'))
+    fr.append(box((0.412, 0.06, 0.008), (0, 0.035, Z + 0.007), steel, bev=0.002, name='toelip'))   # (narrower and deeper than the plate's edge: their chamfers must not share a plane)
     for sx in (-1, 1):
         fr.append(box((0.006, 0.05, 0.1), (sx * 0.207, 0.03, Z - 0.05), steel, taper=(1.0, 0.25), name='gusset'))
         # the axle brackets: a plate each side from the rail back and down to the axle
         fr.append(box((0.006, 0.22, 0.05), (sx * (X + 0.012), 0.16, (Z + AXLE[2]) / 2 + 0.01), red, bev=0.002, rot=(-0.62, 0, 0), name='bracket'))
-        fr.append(box((0.006, 0.06, 0.15), (sx * (X + 0.012), 0.07, (Z + AXLE[2]) / 2 - 0.0), red, bev=0.002, rot=(0.12, 0, 0), name='bracket2'))
+        fr.append(box((0.0095, 0.06, 0.15), (sx * (X + 0.012), 0.07, (Z + AXLE[2]) / 2 - 0.0), red, bev=0.002, rot=(0.12, 0, 0), name='bracket2'))   # (a doubler: proud of the long plate both sides)
         fr.append(cyl(0.022, 0.012, (sx * (X + 0.012), AXLE[1], AXLE[2]), steel, axis='x', seg=8, name='axlenut'))
     fr.append(rod((-(X + 0.075), AXLE[1], AXLE[2]), (X + 0.075, AXLE[1], AXLE[2]), 0.011, steel, seg=6, name='axle'))
     # a bungee across it: hooked low on one rail, high on the other, a turn round the middle

@@ -74,7 +74,7 @@ def boiler(J):
             a = PI + sx * 0.5
             base.append(ts.plate('lug', M['steel'], yy, a, 0.04, 0.045, off=0.012, n=3.0, spokes=6, sink=0.002))
             base.append(hexbolt(tuple(ts.p(yy, a, 0.012)), 0.0085, 0.008, M['blued'], tuple(ts.n(yy, a))))
-    J.P.add('spine', base)
+    J.P.add('spine', base, 'kegSeat', note='where the boiler goes into him: the singlet cut away, raw skin, a welt of scar, six lugs bolted through')
     J.P.add('spine', kg, 'boiler', note='the boiler: a beer keg sunk in his lower back (RETURN EMPTY), fire door, level glass, manifold')
     J.P.add('spine', fire, 'fire', note='what glows: the fire door slots (pj_glow) and the level glass (pj_marrow)')
     J.marks['boilerAt'] = ('spine', (0, (y0 + y1) / 2, cz + r))
@@ -272,7 +272,7 @@ def forearm_right(J):
         for i in range(3): fp.append(box((0.006, 0.013, 0.012), tuple(F.p(-0.1 - i * 0.02, s2 * 1.75, 0.002)), M['soot'], rot=(0, -s2 * 1.75, 0), name='vent'))
     J.P.add(fk, fp)
     J.marks['elbowAt'] = (fk, tuple(o0 + d * 0.085), tuple(d))
-    pl = [F.plate('plate_fore', M['scar'], -0.08, 0.0, 0.12, 0.13, off=0.007, n=3.4, spokes=14)]
+    pl = [F.plate('plate_fore', M['scar'], -0.08, 0.0, 0.12, 0.13, off=0.007, n=3.4, spokes=14)] + F.stitches('stitch', M['lip'], -0.08, 0.0, 0.12, 0.13, n=3.4, count=10)
     for (dy, da) in ((0.04, -0.36), (0.04, 0.36), (-0.04, -0.36), (-0.04, 0.36)):
         y, a = -0.08 + dy, da; pl.append(rivet(tuple(F.p(y, a, 0.007)), 0.008, M['steel'], tuple(F.n(y, a))))
     pl.append(F.plate('hatch', M['steel'], -0.095, 1.45, 0.07, 0.075, off=0.008, n=4.0, spokes=10, sink=0.002))

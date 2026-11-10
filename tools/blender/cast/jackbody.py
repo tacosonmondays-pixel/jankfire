@@ -378,6 +378,7 @@ def torso(J):
     # scar tissue over plate: the breastbone (in the scoop of the singlet), both shoulder blades
     pl = []
     pl.append(ts.plate('plate_sternum', M['scar'], 0.412, 0.0, 0.07, 0.11, off=0.006, n=3.0))
+    pl += ts.stitches('stitch', M['lip'], 0.412, 0.0, 0.07, 0.11, n=3.0, count=10, off=0.0065)
     for sx in (-1, 1): pl.append(ts.plate('plate_blade%d' % sx, M['scar'], 0.498, PI + sx * 0.42, 0.075, 0.12, off=0.006, n=3.5))
     for (y, a) in ((0.428, -0.11), (0.428, 0.11), (0.396, 0.0)): pl.append(rivet(tuple(ts.p(y, a, 0.006)), 0.0075, M['steel'], tuple(ts.n(y, a))))
     for sx in (-1, 1):
@@ -599,6 +600,7 @@ def arms(J):
         for (dy, da) in ((0.045, -0.5), (0.045, 0.5), (-0.05, -0.42), (-0.05, 0.42)):
             y, a = 0.01 + dy, sx * 1.35 + da
             pl.append(rivet(tuple(A.p(y, a, 0.007)), 0.008, M['steel'], tuple(A.n(y, a))))
+        pl += A.stitches('stitch', M['lip'], 0.01, sx * 1.35, 0.15, 0.2, n=3.2, count=12, skip=(2,) if sx > 0 else ())
         if sx > 0: pl.append(A.plate('plate_sh_bare', M['steel'], 0.066, sx * 1.02, 0.036, 0.06, off=0.0095, n=2.5, spokes=8))
         # the anchor of the collarbone, bolted to the front of the shoulder
         pl.append(A.plate('anchor' + k, M['steel'], 0.0, sx * 0.12, 0.062, 0.062, off=0.008, n=2.6, spokes=10, sink=0.002))

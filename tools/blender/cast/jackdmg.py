@@ -111,16 +111,21 @@ def wound(J, E):
         t0 = t1 + rr.uniform(0.02, 0.18)
     fl = lib_obj('woundflaps', bm, M['singlet']); shade(fl, 20)
     tint(fl, lambda p, n: mix3((0.62, 0.14, 0.15), (0.92, 0.5, 0.46), smooth01((p - E).length, 0.11, 0.2))); out.append(fl)
-    # the soak: an uneven stain down to the belt, runnels in it
+    # the soak: an uneven stain down to the belt, runnels in it (two rings, so it lies on the curve of his belly)
     bm = bmesh.new()
-    cen = bm.verts.new(gv(*ts.p(yc - 0.1, ac, 0.0115)))
-    rim = []
+    cen = bm.verts.new(gv(*ts.p(yc - 0.1, ac, 0.0125)))
+    rings = []
+    for rho, o_ in ((0.5, 0.0125), (1.0, 0.0105)):
+        ring = []
+        for k in range(16):
+            t = TAU * k / 16
+            r_ = 0.13 * (1 + 0.25 * math.sin(3 * t + 1) + 0.15 * math.sin(5 * t)) * rho
+            dy = r_ * math.sin(t) * (1.9 if math.sin(t) < 0 else 0.9)
+            ring.append(bm.verts.new(gv(*ts.p(max(-0.085, yc - 0.1 + dy), ac + r_ * math.cos(t) / rad * 1.15, o_))))
+        rings.append(ring)
     for k in range(16):
-        t = TAU * k / 16
-        r_ = 0.13 * (1 + 0.25 * math.sin(3 * t + 1) + 0.15 * math.sin(5 * t))
-        dy = r_ * math.sin(t) * (1.9 if math.sin(t) < 0 else 0.9)
-        rim.append(bm.verts.new(gv(*ts.p(max(-0.085, yc - 0.1 + dy), ac + r_ * math.cos(t) / rad * 1.15, 0.0098))))
-    for k in range(16): bm.faces.new((cen, rim[k], rim[(k + 1) % 16]))
+        k2 = (k + 1) % 16
+        bm.faces.new((cen, rings[0][k], rings[0][k2])); bm.faces.new((rings[0][k], rings[1][k], rings[1][k2], rings[0][k2]))
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     soak = lib_obj('woundsoak', bm, M['blood']); shade(soak, 60)
     if soak.data.polygons[0].normal.dot(gv(*ts.n(yc - 0.1, ac))) < 0:
@@ -153,7 +158,7 @@ def boiler_split(J, X, d):
     # the split: up to the top chime and down to the bottom, a jag sideways. dark, with the light of it down the middle
     def crack(pts, w):
         out.append(ks.line('crackdark', pts, w, M['hole'], sink=0.42, seg=4, taper=True))
-        out.append(ks.line('cracklit', pts, w * 0.42, M['core'], sink=0.1, seg=4, taper=True))
+        out.append(ks.line('cracklit', pts, w * 0.42, M['core'], sink=-0.65, seg=3, taper=True))
     crack([(yc + 0.07, a0 + 0.02), (yc + 0.11, a0 - 0.07), (y1 - 0.04, a0 + 0.03), (y1 - 0.004, a0 - 0.02)], 0.011)
     crack([(yc - 0.07, a0 - 0.02), (yc - 0.12, a0 + 0.09), (y0 + 0.05, a0 + 0.02), (y0 + 0.006, a0 + 0.08)], 0.012)
     crack([(yc + 0.01, a0 + 0.5), (yc + 0.03, a0 + 0.8), (yc - 0.02, a0 + 1.1)], 0.008)
@@ -191,7 +196,7 @@ def marrow(J, X):
     # inside: the wet dark of him. (the keg's front half is sunk in his back, so the dark is a panel on the skin there
     # and the bones stand a hand in front of it, in what was the boiler)
     ts = J.S['torso']
-    lin = ts.mesh('cavity', M['wound'], [ya - 0.03, ya + 0.05, (ya + yb) / 2, yb - 0.05, yb + 0.03], seg=8, a0=PI - 0.6, a1=PI + 0.6, off=0.0125)
+    lin = ts.mesh('cavity', M['wound'], [ya - 0.03, ya + 0.05, (ya + yb) / 2, yb - 0.05, yb + 0.03], seg=8, a0=PI - 0.42, a1=PI + 0.42, off=0.0135)
     tint(lin, lambda p, n: mix3((0.34, 0.26, 0.26), (1.9, 1.0, 0.9), gauss(p.x, 0.06) * gauss(p.y - (ya + yb) / 2, 0.07)))
     out.append(lin)
     # his spine: big square bones, the knuckle of each standing out at the back
@@ -290,6 +295,7 @@ def run_qa(J, root, tag_of, STATES, only=None):
     """the asset-QA gate, group by group: what you see when he's whole, without the vest, then each damage state
     (its pieces together with what is left showing of him)"""
     q = not arg('qa-warn')
+    bpy.context.view_layer.update()   # the gate reads the evaluated meshes: make sure they are the ones just built
     allp = [o for o in root.children if o.type == 'MESH' and '__lod' not in o.name and not o.name.endswith('Far')]
     base = [o for o in allp if not tag_of(o).startswith('dmg')]
     res = {}

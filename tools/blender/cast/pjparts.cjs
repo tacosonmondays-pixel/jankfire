@@ -1,5 +1,5 @@
 // PALLET JACK's parts file, the game half: measures the dressed Blender model in the game at its real size (root scale
-// 1.18, metres, root space: feet at 0, front = -z) and adds to public/models/cast/c_pallet_jack.parts.json (which the
+// 1.24, metres, root space: feet at 0, front = -z) and adds to public/models/cast/c_pallet_jack.parts.json (which the
 // Blender script wrote: parts, moving, markers, states):
 //   marks  { clip: { mark: seconds } }                 (repeats get numbered)
 //   clips  { clip: { len, loop, next, t: [...], hips: [[x, y, z]...], fist: [...], palmL: [...], head: [...] } }  every 0.2 s + at each mark

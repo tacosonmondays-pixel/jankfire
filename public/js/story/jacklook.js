@@ -20,7 +20,7 @@ const MK = {
   chest: ['spine', -0.105, 0.402, -0.241], weldAt: ['spine', 0.029, 0.462, -0.225], // (your hand goes on `chest`: his left of the weld)
   boilerAt: ['spine', 0, 0.213, 0.378], fireAt: ['spine', 0, 0.126, 0.392], gaugeAt: ['spine', -0.138, 0.356, 0.335], bleedAt: ['spine', 0.137, 0.13, 0.369],
   stackTipL: ['spine', -0.29, 0.835, 0.378], stackTipR: ['spine', 0.29, 0.835, 0.378], stackTipBentL: ['spine', -0.41, 0.667, 0.457], stackTipBentR: ['spine', 0.326, 0.749, 0.519],
-  woundAt: ['spine', 0.054, 0.186, -0.272], ventAt: ['spine', 0.062, 0.273, 0.378], armFrontEnd: ['spine', 0.071, 0.078, -0.519], armBackEnd: ['spine', 0.066, 0.354, 0.725], marrowAt: ['spine', 0, 0.227, 0.166],
+  woundAt: ['spine', 0.054, 0.186, -0.272], ventAt: ['spine', 0.062, 0.273, 0.378], armFrontEnd: ['spine', 0.071, 0.078, -0.519], armBackEnd: ['spine', 0.066, 0.354, 0.725], marrowAt: ['spine', 0, 0.227, 0.255],
   elbowAt: ['foreR', 0, 0.023, 0.17], fistAt: ['handR', 0, -0.184, -0.034], gripR: ['handR', 0, -0.125, 0.03], palmL: ['handL', 0, -0.1, 0.042],
   seatAt: ['body', 0, 0.79, 0.06], eyeAt: ['head', 0, 0.168, -0.12],
 };
