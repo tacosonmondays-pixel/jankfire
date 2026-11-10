@@ -91,11 +91,18 @@ if (SHEET === 'turn') {
     panel(i * w, y2, w, h2, scene('tunnel', { ring: false, man: false, bore: true }), pc(40, [1.2 - i * 0.8, -1.2, 13], [0, -0.5, 0]), lab + ' · from 13 m, tunnel light'); });
 } else {
   title('REVENUE PROTECTION · close-ups in the game\'s renderer');
-  const w = W / 4, h = (H - T0) / 2;
-  stage(0); panel(0, T0, w, h, scene('studio'), pc(40, [-1.9, 2.3, 3.0], [-2.5, 2.8, 0.1]), 'enamel, bolts, the hoop');
-  stage(2, ['plate_04']); panel(w, T0, w, h, scene('studio'), pc(40, [2.5, 1.0, 3.6], [1.3, 0.75, 0]), 'the left eye, blown (04 crazed)');
-  stage(3); N.mask.visible = false; panel(2 * w, T0, w, h, scene('tunnel', { ring: false, man: false, bore: true }), pc(46, [0.9, -1.2, 5.6], [0.3, -0.9, -0.8]), 'the 17:32 at 6 m (mask off, tunnel light)');
-  panel(3 * w, T0, w, h, scene('studio'), pc(40, [0.85, -1.85, 1.3], [0.0, -2.2, -0.8]), 'the inspector'); N.mask.visible = true; stage(0);
+  const w = W / 4, h = (H - T0) / 2, w5 = W / 5;
+  stage(0); panel(0, T0, w5, h, scene('studio'), pc(40, [-1.9, 2.3, 3.0], [-2.5, 2.8, 0.1]), 'enamel, bolts, the hoop');
+  stage(2, ['plate_04']); panel(w5, T0, w5, h, scene('studio'), pc(40, [2.5, 1.0, 3.6], [1.3, 0.75, 0]), 'the left eye, blown');
+  stage(3); N.mask.visible = false; panel(2 * w5, T0, w5, h, scene('tunnel', { ring: false, man: false, bore: true }), pc(46, [0.9, -1.2, 5.6], [0.3, -0.9, -0.8]), 'the 17:32 at 6 m (tunnel light)');
+  panel(3 * w5, T0, w5, h, scene('studio'), pc(40, [0.85, -1.85, 1.3], [0.0, -2.2, -0.8]), 'the inspector');
+  // the far plug next to nothing: the same 30 m view, the near model on the left half of the picture, the lod on the right
+  { const sc = scene('tunnel', { ring: false, man: false, bore: true }), cam = pc(30, [0.5, -1.0, 30], [0, -0.3, 0]);
+    panel(4 * w5, T0, w5 / 2, h, sc, cam, 'near, 30 m');
+    for (const k of ['mass_ne', 'mass_nw', 'mass_sw', 'mass_se', 'inspector']) N[k].visible = false; N.mass_lod.visible = true;
+    panel(4.5 * w5, T0, w5 / 2, h, sc, cam, 'mass_lod');
+    for (const k of ['mass_ne', 'mass_nw', 'mass_sw', 'mass_se', 'inspector']) N[k].visible = true; N.mass_lod.visible = false; }
+  N.mask.visible = true; stage(0);
   // the arm kit
   const sa = new THREE.Scene(); lights(sa, 'studio'); const hand = A.arm_hand; hand.position.set(0, 0, 0); sa.add(hand);
   const curl = (v) => { for (const k in A) if (/^f\d_[abc]$/.test(k)) A[k].rotation.x = v * (k[1] === '0' ? 0.75 : 1); };

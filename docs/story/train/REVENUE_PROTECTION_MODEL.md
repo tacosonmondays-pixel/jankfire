@@ -21,7 +21,7 @@ the blown eye, the mass at 6 m, the inspector, the far LOD, the hand open and gr
 
 In the game's renderer (`docs/story/train/`): `rp_game_turn.jpg` (the same turnaround, plus the view from the wagon at
 22 m and 8.5 m in tunnel light), `rp_game_stages.jpg` (the stages, studio and tunnel light, driven by the parts file),
-`rp_game_close.jpg` (the close-ups and the arm kit as a chain).
+`rp_game_close.jpg` (the close-ups, the near plug beside `mass_lod` at 30 m, and the arm kit as a chain).
 
 ## Space
 Metres. x right, y up, **the mask faces +z** (toward the train). The origin is the middle of the 9.2 m bore, on the

@@ -1951,8 +1951,11 @@ def build_mass_lod(N, A):
     keep = ('mass_ne', 'mass_nw', 'mass_sw', 'mass_se')
     for k, o in list(N.items()) + list(A.items()): o.hide_render = not (k in keep or k.startswith('insp_'))
     world(0xffffff, 1.0)
+    spec = {}   # (a white room mirrored in every surface would grey the picture out: photograph the colour only)
+    for k, m in M.items(): sk = m.node_tree.nodes['Principled BSDF'].inputs['Specular IOR Level']; spec[k] = sk.default_value; sk.default_value = 0.0
     p = shot(os.path.join(tmp, 'lod_face.png'), (0, 0, 30), (0, 0, -1), res=(256, 256), ortho=2 * R_BORE, exposure=0.0, samples=8)
     img = bpy.data.images.load(p); img.pack(); img.name = 'rp_mass_lod_t'
+    for k, m in M.items(): m.node_tree.nodes['Principled BSDF'].inputs['Specular IOR Level'].default_value = spec[k]
     colour_preview(list(M.values()), on=False)
     for k, o in list(N.items()) + list(A.items()): o.hide_render = False
     M['lod'] = mat('rp_mass_lod', 0xffffff, rough=0.6, tex=img)
