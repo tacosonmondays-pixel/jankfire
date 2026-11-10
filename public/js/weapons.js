@@ -1591,6 +1591,7 @@ export function updateWeapons(dt, now) {
   } else if (id === 'blower') hud.meter(W.fuel.blower / w.fuel, 'FUEL', '#ff9a3a');
   else if (w.spinup && W.spin > 0 && W.spin < 1) hud.meter(W.spin, 'SPINNING UP', '#c8c8c8');
   else if (id === 'slipper' && W.slipperOut) hud.meter(null);
+  else if (id === 'scales' && W.gavelCharge && W.gavelCharge() > 0) hud.meter(1 - W.gavelCharge(), 'SUMMONS RECHARGING', w.color); // right click (gavel.js)
   else if (id === 'bloodcross') { const n = Math.max(0, Math.floor((ME.hp - 1) / w.cost)); hud.meter((ME.hp - 1) / 99, n ? `${n} SHOT${n > 1 ? 'S' : ''} OF BLOOD LEFT` : 'NOT ENOUGH BLOOD', w.color); }
   else if (w.cd && w.cd >= 1 && !ready(id, now)) hud.meter(1 - ((W.cd[id] - now) / 1000) / w.cd, 'COOLDOWN', w.color);
   else hud.meter(null);
