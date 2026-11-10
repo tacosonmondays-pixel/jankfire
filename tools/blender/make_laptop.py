@@ -63,7 +63,7 @@ def build():
         win(120, 14, 96, 50, 0xffe14d, ['FREE AIMBOT', 'IT IS A DUCK'], 'DUCK')
         win(62, 62, 110, 52, 0x39ff14, ['HOT SINGLE BOTS', 'BEHIND YOU'], 'TURN AROUND')
         win(178, 74, 60, 40, 0xff4fd8, ['BREAD', 'BUY'], 'OK')
-    screen = mat('lp_screen', 0xffffff, rough=0.25, emit=0xffffff, strength=1.6, tex=tex_canvas('lp_screen_t', 232, 140, desktop), emit_tex=True)
+    screen = mat('lp_screen', 0xffffff, rough=0.25, emit=0xffffff, strength=1.0, tex=tex_canvas('lp_screen_t', 232, 140, desktop), emit_tex=True)
 
     def sticker(px):
         px[:] = hexrgb(0xffe14d); px[:2] = px[-2:] = hexrgb(0x000000); px[:, :2] = px[:, -2:] = hexrgb(0x000000)
@@ -87,6 +87,7 @@ def build():
 
     parts, lid = [], []
     A, L = parts.append, lid.append
+    # (anything laid on a surface is a part 0.7 mm proud or a decal 0.45 mm off: the asset QA calls under 0.2 mm z-fighting and a decal over 0.6 mm floating)
     # ---------------- deck: a slab with a chamfered front lip, the keyboard well sunk into it
     A(box((M_(W), M_(T), M_(D)), (0, M_(T / 2), M_(-D / 2)), shell, bev=M_(3), seg=3))
     A(box((M_(280), M_(1.2), M_(104)), (0, M_(T + 0.2), M_(-72)), dark))
@@ -100,11 +101,11 @@ def build():
     for x, wdt, m in ((-108, 52, key), (0, 150, key), (108, 52, key)):  # bottom row: ctrl-ish, the space bar, arrows-ish
         A(box((M_(wdt), M_(2.2), M_(kd)), (M_(x), M_(T + 1.6), M_(-30 - 4 * (kd + gap))), m, bev=M_(0.5), seg=1))
     A(box((M_(104), M_(0.9), M_(62)), (0, M_(T + 0.25), M_(-172)), pad, bev=M_(0.4), seg=1))                 # trackpad
-    A(box((M_(1), M_(1.1), M_(62)), (0, M_(T + 0.3), M_(-172)), dark))                                        # its click line
-    nt = quad([(-134, T + 0.5, -146), (-86, T + 0.5, -150), (-84, T + 0.5, -196), (-132, T + 0.5, -192)][::-1], note_m, 'note'); A(nt)  # sticky note on the palm rest (reads from the screen side)
+    A(box((M_(1), M_(2), M_(62)), (0, M_(T + 0.35), M_(-172)), dark))                                        # its click line
+    nt = quad([(-134, T + 0.45, -146), (-86, T + 0.45, -150), (-84, T + 0.45, -196), (-132, T + 0.45, -192)][::-1], note_m, 'note'); A(nt)  # sticky note on the palm rest (reads from the screen side)
     for sx in (-1, 1):  # ports: two slots and a jack per side
-        for z in (-40, -62): A(box((M_(1.2), M_(4.4), M_(13)), (sx * M_(W / 2 - 0.2), M_(T / 2), M_(z)), dark))
-        A(cyl(M_(2.6), M_(1.4), (sx * M_(W / 2 - 0.3), M_(T / 2), M_(-84)), chrome, axis='x', seg=10))
+        for z in (-40, -62): A(box((M_(1.8), M_(4.4), M_(13)), (sx * M_(W / 2), M_(T / 2), M_(z)), dark))
+        A(cyl(M_(2.6), M_(2), (sx * M_(W / 2), M_(T / 2), M_(-84)), chrome, axis='x', seg=10))
         for z in (-22, -198): A(cyl(M_(7), M_(1.6), (sx * M_(128), M_(-0.6), M_(z)), rubber, axis='y', seg=10))  # feet
     A(cyl(M_(1.6), M_(1.6), (M_(-146), M_(T + 0.4), M_(-204)), led, axis='y', seg=8))                           # power light
     # ---------------- hinge: a brass barrel between two shell knuckles
@@ -115,10 +116,10 @@ def build():
     L(box((M_(W), M_(LID_H), M_(LID_T)), (0, M_(y0 + LID_H / 2), 0), shell, bev=M_(3), seg=3))
     L(box((M_(306), M_(192), M_(1)), (0, M_(y0 + LID_H / 2 + 2), M_(-LID_T / 2 - 0.2)), dark))                # bezel, on the side facing them
     sy0, sy1 = y0 + 20, y0 + 196
-    scr = quad([(146, sy0, -LID_T / 2 - 0.9), (-146, sy0, -LID_T / 2 - 0.9), (-146, sy1, -LID_T / 2 - 0.9), (146, sy1, -LID_T / 2 - 0.9)], screen, 'screen'); L(scr)
-    L(cyl(M_(2.4), M_(1), (0, M_(y0 + 201.5), M_(-LID_T / 2 - 0.6)), chrome, axis='z', seg=10))               # webcam
-    L(cyl(M_(1.1), M_(1.2), (M_(8), M_(y0 + 201.5), M_(-LID_T / 2 - 0.6)), led, axis='z', seg=8))             # its light: on. always on
-    zb = LID_T / 2 + 0.3  # the back of the lid (what you look at)
+    scr = quad([(146, sy0, -LID_T / 2 - 1.15), (-146, sy0, -LID_T / 2 - 1.15), (-146, sy1, -LID_T / 2 - 1.15), (146, sy1, -LID_T / 2 - 1.15)], screen, 'screen'); L(scr)
+    L(cyl(M_(2.4), M_(1.6), (0, M_(y0 + 201.5), M_(-LID_T / 2 - 0.9)), chrome, axis='z', seg=10))               # webcam
+    L(cyl(M_(1.1), M_(1.8), (M_(8), M_(y0 + 201.5), M_(-LID_T / 2 - 0.9)), led, axis='z', seg=8))             # its light: on. always on
+    zb = LID_T / 2 + 0.45  # the back of the lid (what you look at)
     def tilt(cx, cy, w, h, a):  # a sticker stuck on at an angle
         c, s = math.cos(a), math.sin(a)
         return [(cx + dx * w / 2 * c - dy * h / 2 * s, cy + dx * w / 2 * s + dy * h / 2 * c, zb) for dx, dy in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
