@@ -11,6 +11,11 @@
 //                  { t: 'sty', k: 'combat', ev }  ev in the format agreed with the story engine (WP8):
 //                  hit { target, kind, dmg, by, weapon, head, hp, max } · kill { target, kind, by, weapon, head, at,
 //                  boss, tags, npc } · down { who, by } · up { who }   (target / who: 'me', an npc id or 'e<n>')
+//   bosses (server/storyboss.js): spawn a kind that is a boss in content/bosses.js (one at a time). on top of the above:
+//                  { t: 'sty', k: 'boss', on, id, pid, hp, max, who }  he's in the room (pid: his room id) / gone
+//                  hit also has { part, crit, boss } · phase { target, kind, boss, phase, name, line, invuln } ·
+//                  part { target, kind, boss, part, state } · act { target, kind, boss, move, clip, t0, at, yaw } ·
+//                  fx { target, kind, boss, k: 'staple', at, n } · kill { ..., boss: <boss id>, defeat } ends the fight
 // for other systems: sim.ref (null until the room is up), sim.refSpawn(def, at) -> enemy id, sim.refEnemies()
 import { addSystem } from './sim.js';
 
@@ -25,6 +30,31 @@ export const ENEMY_KINDS = {
 // factions don't cover for each other, interns and temps will happily shoot through one another to get to you)
 let CONTENT = null;
 function loadKinds() { return import('./content/enemies.js').then((m) => { CONTENT = m.ENEMIES || null; }).catch(() => { CONTENT = null; }); } // (not there yet: the defaults)
+// bosses: the fight's numbers come from content/bosses.js (hp, phases, layers, the weak point's crit) and the model's
+// parts file (hitboxes, clip marks). what the room can run of each phase's mechanics is named here (the rest: not yet)
+let BOSSES = null;
+const PARTS = {}, PART_FILES = { overtime: 'c_overtime.parts.json' };
+const MOVES = { 'Staple Gun': 'staple', 'Overtime Slam': 'slam', 'Punch In': 'punchin', 'Staple Fan': 'fan' }, REST = { 'Coffee Break': 15 };
+const BOSS_SIDE = { overtime: 'corp' }; // (his own collectors don't get stapled)
+async function loadJson(file) {
+  if (typeof location !== 'undefined' && typeof fetch === 'function') { const r = await fetch('/models/cast/' + file); return r.ok ? r.json() : null; } // the worker
+  const fs = await import('node:fs/promises'); // node (tests, co-op later)
+  return JSON.parse(await fs.readFile(new URL('../../public/models/cast/' + file, import.meta.url), 'utf8'));
+}
+function loadBosses() {
+  return import('./content/bosses.js').then((m) => { BOSSES = m.BOSSES || null; }).catch(() => { BOSSES = null; })
+    .then(() => Promise.all(Object.entries(PART_FILES).map(([who, f]) => loadJson(f).then((j) => { PARTS[who] = j; }).catch(() => { PARTS[who] = null; }))));
+}
+// the room's def for a boss kind (server/storyboss.js cleans it again), or null
+function bossOf(id) {
+  const b = BOSSES && Object.hasOwn(BOSSES, id) ? BOSSES[id] : null;
+  if (!b || !Number.isFinite(b.hp) || !Array.isArray(b.phases)) return null;
+  const moves = (p) => (Array.isArray(p.mechanics) ? p.mechanics : []).map((x) => MOVES[x && x.name]).filter(Boolean);
+  const rest = (p) => (Array.isArray(p.mechanics) ? p.mechanics : []).reduce((a, x) => a || REST[x && x.name] || 0, 0);
+  const health = (Array.isArray(b.layers) ? b.layers : []).find((l) => l && l.bar === 'health'), wp = Array.isArray(b.weakPoints) ? b.weakPoints[0] : null;
+  return { id, name: b.name, who: b.who, side: BOSS_SIDE[b.who] || 'enemy', hp: b.hp, health: health && Number.isFinite(health.of) ? health.of : b.hp, crit: wp && Number.isFinite(wp.crit) ? wp.crit : 2,
+    phases: b.phases.map((p) => ({ name: p.name, line: p.line, to: Array.isArray(p.hp) ? p.hp[1] : 0, moves: moves(p), rest: rest(p) })), parts: PARTS[b.who] || null };
+}
 function kindOf(id) {
   const c = CONTENT && Object.hasOwn(CONTENT, id) ? CONTENT[id] : null;
   const tags = c && Array.isArray(c.tags) ? c.tags : [];
@@ -56,7 +86,7 @@ function boot(sim) {
   if (sim.refBooting) return;
   sim.refBooting = true;
   shimProcess();
-  Promise.all([import('../../server/room.js'), mapFor(sim.zone), loadKinds()]).then(([R, mapId]) => {
+  Promise.all([import('../../server/room.js'), mapFor(sim.zone), loadKinds(), loadBosses()]).then(([R, mapId]) => {
     if (!mapId || !sim.me) { sim.refOff = mapId ? '' : 'no map'; return; }
     const room = new R.Room(`story:${sim.zone}`, 'story');
     room.cfg.map = mapId; room.cfg.bots = 0; room.cfg.hr = 'off';
@@ -65,7 +95,7 @@ function boot(sim) {
     const me = room.addHuman(ws, { t: 'join', name: sim.me.name, item: sim.me.item || 'frag', mode: 'story' });
     me.pos = sim.me.pos.slice(); me.seq = sim.me.seq; me.yaw = sim.me.yaw || 0;
     room.onStory = (ev) => report(sim, ev);
-    sim.ref = { room, me, acc: 0, ids: new Map(), was: true };
+    sim.ref = { room, me, acc: 0, ids: new Map(), was: true, boss: null, bye: [] };
     sim.sty('refOn', { id: me.id });
     for (const q of sim.refQ.splice(0)) sim.msg(q); // spawns the story asked for while the room was loading
   }).catch((e) => { sim.refOff = String(e && e.message || e); sim.sty('refOff', { why: sim.refOff.slice(0, 120) }); });
@@ -80,6 +110,7 @@ function idOf(sim, p) {
 }
 function report(sim, ev) {
   const t = ev.t, sk = t.sk, by = ev.by && ev.by !== t ? idOf(sim, ev.by) : ev.by === t ? 'self' : 'world';
+  if (sk && sk.b && ev.type !== 'kill') return reportBoss(sim, ev, by);
   if (ev.type === 'hit') {
     const max = sk ? sk.max : 100, hp = Math.max(0, Math.round(t.hp * max / 100));
     sim.sty('combat', { ev: { type: 'hit', target: idOf(sim, t), kind: sk ? sk.kind : 'you', dmg: Math.round(ev.dmg), by, weapon: ev.w || '', head: !!ev.head, hp, max } });
@@ -89,15 +120,45 @@ function report(sim, ev) {
   }
 }
 
+// a boss's events: the same ids as everyone's, plus boss (its content id: the client's fight hooks key on it)
+function reportBoss(sim, ev, by) {
+  const t = ev.t, sk = t.sk, base = { target: idOf(sim, t), kind: sk.kind, boss: sk.b.id };
+  const out = (o) => sim.sty('combat', { ev: { type: ev.type, ...base, ...o } });
+  if (ev.type === 'hit') out({ dmg: Math.round(ev.dmg), by, weapon: ev.w || '', head: false, hp: ev.hp, max: ev.max, part: ev.part, crit: !!ev.crit });
+  else if (ev.type === 'phase') out({ phase: ev.phase, name: ev.name, line: ev.line, invuln: !!ev.invuln });
+  else if (ev.type === 'part') out({ part: ev.part, state: ev.state });
+  else if (ev.type === 'act') out({ move: ev.move, clip: ev.clip, t0: r2(sim.t), at: t.pos.map(r2), yaw: r2(t.yaw) });
+  else if (ev.type === 'bfx') sim.sty('combat', { ev: { type: 'fx', ...base, k: ev.k, at: ev.at.map(r2), n: ev.n.map(r2) } });
+  else if (ev.type === 'defeat') { // the fight's end is the story's 'kill' (its killBoss goal); he leaves the room, alive
+    sim.sty('combat', { ev: { type: 'kill', ...base, by, weapon: ev.w || '', head: false, at: t.pos.map(r2), tags: sk.tags, defeat: true } });
+    if (sim.ref) sim.ref.bye.push(t);
+  }
+}
+
 // a story enemy from a def (+ the kind's defaults), near `at`
 function spawnOne(sim, m, at) {
   const R = sim.ref; if (!R) return 0;
   if ([...R.room.players.values()].filter((p) => p.sk && p.alive).length >= REF.maxAlive) return 0;
+  const boss = bossOf(m.kind);
+  if (boss) return spawnBoss(sim, m, at, boss);
   const base = kindOf(m.kind);
   const def = { kind: m.kind, name: typeof m.name === 'string' ? m.name.slice(0, 24) : base.name, hp: Number.isFinite(m.hp) ? Math.max(1, Math.min(REF.maxHp, m.hp)) : base.hp,
     w: typeof m.w === 'string' ? m.w : base.w, tags: base.tags, npc: isId(m.npc) ? m.npc : '', boss: false, side: m.side === 'you' ? 'you' : isId(base.side) ? base.side : 'enemy' };
   const b = R.room.storySpawn(def, at);
   if (isId(m.id)) b.storyId = m.id;
+  return b.id;
+}
+
+// a boss: one at a time, its numbers are the content's (a spawn message can't change them), facing you
+function spawnBoss(sim, m, at, boss) {
+  const R = sim.ref;
+  if (R.boss && R.room.players.get(R.boss.id) === R.boss) return 0;
+  const b = R.room.storySpawn({ kind: m.kind, name: typeof boss.name === 'string' ? boss.name.slice(0, 24) : 'BOSS', hp: boss.hp, w: 'nailgun', tags: ['boss'], npc: '', boss, side: boss.side }, at);
+  if (!b.sk.b) { R.room.storyDespawn(b); return 0; } // (the def didn't hold up)
+  b.storyId = isId(m.id) ? m.id : m.kind;
+  b.yaw = Math.atan2(-(R.me.pos[0] - at[0]), -(R.me.pos[2] - at[2]));
+  R.boss = b;
+  sim.sty('boss', { on: true, id: b.sk.b.id, pid: b.id, hp: b.sk.b.hp, max: b.sk.max, who: typeof boss.who === 'string' ? boss.who : '' });
   return b.id;
 }
 
@@ -118,6 +179,9 @@ addSystem({
     const me = R.me; sim.me.pos = me.pos.slice(); sim.me.seq = me.seq; sim.me.yaw = me.yaw; sim.me.hp = me.hp; sim.me.alive = me.alive;
     if (me.alive && !R.was) sim.sty('combat', { ev: { type: 'up', who: 'me' } });
     R.was = me.alive;
+    // a beaten boss walks off in the story, not in the room; and the client hears when he's gone, however he went
+    for (const p of R.bye.splice(0)) R.room.storyDespawn(p);
+    if (R.boss && R.room.players.get(R.boss.id) !== R.boss) { sim.sty('boss', { on: false, id: R.boss.sk.b.id, pid: R.boss.id }); R.boss = null; }
     // the fallen leave after a moment
     for (const p of [...R.room.players.values()]) if (p.sk && !p.alive && sim.t >= (p.goneAt ??= sim.t + REF.bodyMs / 1000)) R.room.storyDespawn(p); // (sim time: slow-mo and cutscenes hold them too)
   },
@@ -135,7 +199,7 @@ addSystem({
       case 'spawn': {
         if (!R || typeof m.kind !== 'string' || !isId(m.kind) || !v3(m.at)) return true;
         if (Math.hypot(m.at[0] - R.me.pos[0], m.at[2] - R.me.pos[2]) > REF.near) return true;
-        const n = Math.max(1, Math.min(8, m.n | 0 || 1));
+        const n = bossOf(m.kind) ? 1 : Math.max(1, Math.min(8, m.n | 0 || 1));
         for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2, r = n > 1 ? 1.5 : 0; spawnOne(sim, m, [m.at[0] + Math.cos(a) * r, m.at[1], m.at[2] + Math.sin(a) * r]); }
         return true;
       }
