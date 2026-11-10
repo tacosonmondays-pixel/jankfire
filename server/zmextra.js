@@ -164,7 +164,7 @@ const methods = {
       return;
     }
     if (d.k === 'aisle5') {
-      for (const b of [...this.players.values()]) if (b.zmz && b.alive) this.kill(b, null, 'aisle5');
+      for (const b of [...this.players.values()]) if (b.zmz && b.alive) { if (b.zmz.boss) this.damage(b, b.zmz.hp0 * 0.2, null, 'aisle5'); else this.kill(b, null, 'aisle5'); } // (a mini boss only loses a fifth)
       for (const h of hs) this.zmGive(h, 100, 'drop');
       return;
     }
