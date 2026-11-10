@@ -16,6 +16,7 @@ import { addZmMaps } from './zmmats.js';
 import { updateForest, forestMap } from './forest.js';
 import { shredMap, updateShredPit } from './shredpit.js'; // the Warehouse's shredder pit: the drums, the glow, the grind
 import { buildProps, hasProp } from './props.js';
+import { want, whenLate } from './glbkit.js';
 import { buildArch, hasArch, wantArch, setArchHaze } from './archfield.js'; // Blender architecture over the boxes
 import { liquidBox, buildLiquids, updateLiquids, liquidsMap, setLiquidQ } from './liquids.js'; // water that moves, lava that flows, splashes
 import { updateFlames } from './flames.js'; // real fire
@@ -479,6 +480,7 @@ export function loadMap(id) {
   resetGrid(BOXES);
   buildMap(G.scene);
   buildProps(G.scene, MAPS[MAP.id] && MAPS[MAP.id].boxes.props);
+  wantKits(MAPS[MAP.id] && MAPS[MAP.id].boxes.props);
   archFor(MAP.id);
   paintSky(MAP.sky);
   G.scene.fog.color.setHex(MAP.sky.fog);
@@ -503,11 +505,21 @@ export function loadMap(id) {
   lightingMap(MAPS[MAP.id], MAP.id, night, sun); // shadows, mood, the neon's lights (after everything above is in, the pit too)
 }
 
+// a map's furniture kit (p_<x>kit.glb) doesn't come with the startup download: ask for it when its map is drawn, redraw when it lands
+const kitAsked = new Set();
+function wantKits(list) {
+  for (const p of list || []) {
+    if (hasProp(p.id) || !/kit$/.test(p.id)) continue;
+    if (!kitAsked.has(p.id)) { kitAsked.add(p.id); whenLate('p_' + p.id, () => refreshMapVisuals()); }
+    want('p_' + p.id, 3); // (you're standing in it)
+  }
+}
 // models finished loading after the map was built: redraw the boxes + props (no gameplay state touched)
 export function refreshMapVisuals() {
   if (!MAP.id || !G.scene || !MAT) return;
   buildMap(G.scene);
   buildProps(G.scene, MAPS[MAP.id] && MAPS[MAP.id].boxes.props);
+  wantKits(MAPS[MAP.id] && MAPS[MAP.id].boxes.props); // (the model list may have landed after the map was drawn)
   buildArch(G.scene, MAPS[MAP.id] && MAPS[MAP.id].boxes.arch);
   lightingRefresh();
 }

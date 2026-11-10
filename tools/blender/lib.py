@@ -45,8 +45,8 @@ def mat(name, color=0x808080, rough=0.5, metal=0.0, emit=None, strength=1.0, alp
         b.inputs['Emission Strength'].default_value = strength
     if alpha is not None:
         b.inputs['Alpha'].default_value = alpha
-        m.blend_method = 'BLEND'
-        m.shadow_method = 'HASHED'
+        if hasattr(m, 'surface_render_method'): m.surface_render_method = 'BLENDED'  # (blender 4.2+)
+        else: m.blend_method = 'BLEND'; m.shadow_method = 'HASHED'
     if tex is not None:
         n = m.node_tree.nodes.new('ShaderNodeTexImage')
         n.image = tex

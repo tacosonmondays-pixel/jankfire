@@ -114,62 +114,80 @@ function school() {
   wall(W, 'x', 0, X0, -8, ...g1, 0.4, 'plaster', [dLA]);
   wall(W, 'x', -4, 8, X1, ...g1, 0.4, 'brick', []); // office | the gym's upper half
 
-  // ---- LOBBY: the reception desk, a trophy case, two pillars
-  B.add(-2.5, 0, 17.5, 2.5, 1.1, 19, 'wood'); B.add(-0.4, 1.1, 17.9, 0.4, F - T, 18.7, 'plaster');
+  // ---- furniture: Blender pieces from p_schoolkit.glb (tools/blender/make_schoolkit.py). each keeps its box here: that's
+  // what you bump into, and what you see if the model isn't in. K(piece, x, z, quarter turns, floor height) -> the boxes' tag
+  const K = (v, x, z, r = 0, y = 0) => W.P('schoolkit', x, z, r, { v, y });
+  const small = (v, x, z, r, y, w, h, mat = 'metal') => B.box(x, y + h / 2, z, w, h, w, mat, K(v, x, z, r, y)); // bins, stools, globes
+  // ---- LOBBY: the reception desk, a trophy case, two pillars, somewhere to wait
+  B.add(-2.5, 0, 17.5, 2.5, 1.1, 19, 'wood', K('reception', 0, 18.25)); B.add(-0.4, 1.1, 17.9, 0.4, F - T, 18.7, 'plaster');
   for (const x of [-5.5, 5.5]) B.add(x - 0.4, 0, 11.6, x + 0.4, F - T, 12.4, 'plaster');
-  B.add(-7.6, 0, 20.5, -7, 2, 23.5, 'glassblock');
+  B.add(-7.6, 0, 20.5, -7, 2, 23.5, 'glassblock', K('trophy', -7.3, 22));
+  B.add(7.1, 0, 9.5, 7.7, 0.45, 12.5, 'wood', K('bench', 7.4, 11, 1)); small('bin', 6.9, 23.2, 0, 0, 0.5, 0.8); small('bin', -2.2, 8.8, 0, 0, 0.5, 0.8);
+  B.add(-7.8, 0, 19.2, -7.4, 1.0, 19.7, 'metal', K('fountain', -7.6, 19.45, 3));
   // ---- CAFETERIA: long tables in rows, the serving counter along the west wall
-  for (const x of [-25, -19, -13]) for (const z of [6, 13, 20]) B.box(x, 0.4, z, 3.2, 0.8, 1.2, 'wood');
-  B.add(-29.6, 0, 1, -28.4, 1.05, 4.4, 'tile'); B.add(-29.6, 1.05, 0.8, -28.2, 1.15, 4.6, 'metal');
-  // ---- LOCKER HALL: lockers down both walls (the stairs fill the middle)
-  for (const x of [-7.6, 7.1]) for (const [z0, z1] of [[-12, -4], [2, 6]]) B.add(x, 0, z0, x + 0.5, 2, z1, x < 0 ? 'lockerb' : 'lockerp');
-  // ---- SCIENCE LAB: benches with sinks, a fume cupboard
-  for (const x of [-25, -18, -11.5]) for (const z of [-18, -9]) B.box(x, 0.45, z, 3, 0.9, 1.4, 'metal');
-  B.add(-29.6, 0, -23.6, -27, 2.2, -22.6, 'glassblock');
+  for (const x of [-25, -19, -13]) for (const z of [6, 13, 20]) B.box(x, 0.4, z, 3.2, 0.8, 1.2, 'wood', K('lunchtable', x, z));
+  { const t = K('servery', -29.0, 2.7); B.add(-29.6, 0, 1, -28.4, 1.05, 4.4, 'tile', t); B.add(-29.6, 1.05, 0.8, -28.2, 1.15, 4.6, 'metal', t); }
+  small('bin', -9, 22.6, 0, 0, 0.5, 0.8); small('bin', -9, 1.3, 0, 0, 0.5, 0.8); small('bin', -28.8, 22.8, 0, 0, 0.5, 0.8);
+  B.add(-29.8, 0, 8.6, -29.4, 1.0, 9.1, 'metal', K('fountain', -29.6, 8.85, 3));
+  // ---- LOCKER HALL: lockers down both walls (the stairs fill the middle), a bench to tie your laces on
+  for (const x of [-7.6, 7.1]) for (const [z0, z1] of [[-12, -4], [2, 6]]) for (let z = z0; z < z1; z += 2) B.add(x, 0, z, x + 0.5, 2, z + 2, x < 0 ? 'lockerb' : 'lockerp', K(x < 0 ? 'lockers' : 'lockersp', x + 0.25, z + 1, x < 0 ? 3 : 1));
+  for (const x of [-5.6, 5.6]) B.add(x - 0.3, 0, -9.5, x + 0.3, 0.45, -6.5, 'wood', K('bench', x, -8, 1));
+  small('bin', -7.3, -2.8, 0, 0, 0.5, 0.8); small('bin', 7.3, 0.8, 0, 0, 0.5, 0.8);
+  // ---- SCIENCE LAB: benches with sinks, a fume cupboard, a globe nobody asked for
+  for (const x of [-25, -18, -11.5]) for (const z of [-18, -9]) B.box(x, 0.45, z, 3, 0.9, 1.4, 'metal', K('labbench', x, z, z < -10 ? 0 : 2));
+  B.add(-29.6, 0, -23.6, -27, 2.2, -22.6, 'glassblock', K('fume', -28.3, -23.1));
+  for (const [x, z] of [[-25, -16.6], [-18, -16.6], [-11.5, -10.4], [-25, -10.4]]) small('stool', x, z, 0, 0, 0.5, 0.6, 'pink');
+  small('globe', -9.2, -22.8, 0, 0, 0.6, 1.3, 'blue'); small('bin', -9.2, -1.2, 0, 0, 0.5, 0.8); small('bin', -28.8, -1.4, 0, 0, 0.5, 0.8);
   // ---- BOILER ROOM: the boiler, pipes, crates. the power switch on the east wall
-  B.add(18, 0, -22, 22, 2.6, -18, 'metal'); B.add(19.4, 2.6, -20.6, 20.6, F - T, -19.4, 'metal');
+  { const t = K('boiler', 20, -20); B.add(18, 0, -22, 22, 2.6, -18, 'metal', t); B.add(19.4, 2.6, -20.6, 20.6, F - T, -19.4, 'metal', t); }
   for (const [x, z, n] of [[11, -7, 2], [12.3, -7, 1], [27, -22, 2], [26, -8, 1]]) for (let k = 0; k < n; k++) B.box(x, 0.6 + k * 1.2, z, 1.2, 1.2, 1.2, 'crate');
   const power = { at: [29.7, 1.6, -15], n: [-1, 0, 0] };
   B.add(29.6, 1.0, -15.5, 30, 2.2, -14.5, 'metal');
-  // ---- GYM: the court, a vaulting box, mats. the mystery crate under the far hoop
-  B.box(22, 0.5, 2, 1.6, 1, 0.8, 'wood'); B.box(26, 0.15, 18, 3, 0.3, 2, 'blue'); B.box(18, 0.15, -1, 3, 0.3, 2, 'pink');
-  B.add(29.3, 2.6, 9, 29.9, 3.8, 11, 'backboard', { fit: 1 }); // the backboard
+  small('bin', 9, -5, 0, 0, 0.5, 0.8); B.add(13.5, 0, -23.7, 16.5, 0.45, -23.1, 'wood', K('bench', 15, -23.4));
+  // ---- GYM: the court, a vaulting box, mats, a rack of balls. the mystery crate under the hoop
+  B.box(22, 0.5, 2, 1.6, 1, 0.8, 'wood', K('vault', 22, 2)); B.box(26, 0.15, 18, 3, 0.3, 2, 'blue', K('gymmat', 26, 18)); B.box(18, 0.15, -1, 3, 0.3, 2, 'pink', K('gymmatp', 18, -1));
+  B.add(29.3, 2.6, 9, 29.9, 3.8, 11, 'backboard', { fit: 1, ...K('hoop', 29.72, 10, 1) }); // the backboard
+  B.box(27.5, 0.5, -2.8, 1.6, 1.0, 0.6, 'metal', K('ballrack', 27.5, -2.8)); B.box(16, 0.15, 21.5, 3, 0.3, 2, 'blue', K('gymmat', 16, 21.5));
+  B.add(29.1, 0, 14, 29.7, 0.45, 17, 'wood', K('bench', 29.4, 15.5, 1)); B.add(29.1, 0, 3, 29.7, 0.45, 6, 'wood', K('bench', 29.4, 4.5, 1));
   const crate = { at: [27.5, 0, 10], price: 950 };
   B.add(26.6, 0, 9.55, 28.4, 0.9, 10.45, 'crate');
-  // ---- UPSTAIRS HALL: benches, a vending corner
-  for (const z of [4, 20]) B.add(-1.5, F, z - 0.3, 1.5, F + 0.45, z + 0.3, 'wood');
-  // ---- LIBRARY: shelves you weave between, a reading table
-  for (const x of [-26, -21, -16]) B.add(x - 0.35, F, 8, x + 0.35, F + 2.2, 20, 'books');
-  B.box(-12, F + 0.4, 4, 2.4, 0.8, 1.4, 'wood'); B.box(-12, F + 0.4, 21, 2.4, 0.8, 1.4, 'wood');
-  // ---- ART ROOM: easels, a kiln, a table of bad sculptures
-  for (const [x, z] of [[-25, -8], [-20, -14], [-14, -9]]) B.box(x, F + 0.8, z, 0.9, 1.6, 0.2, 'wood');
-  B.add(-29.6, F, -23.6, -28, F + 1.8, -22, 'brick'); B.box(-18, F + 0.4, -20, 3, 0.8, 1.4, 'yellow');
-  for (const [x, z] of [[-24, -17], [-13, -15]]) B.box(x, F + 0.4, z, 2.6, 0.8, 1.2, 'wood'); // paint tables
-  // ---- PRINCIPAL'S OFFICE: a desk that's too big, filing cabinets, a rug
-  B.box(22, F + 0.45, -12, 3.4, 0.9, 1.6, 'wood'); B.add(28.9, F, -9, 29.6, F + 1.5, -6, 'metal');
-  B.add(11, F, -23.6, 15, F + 2.2, -23, 'books'); B.box(22, F + 0.3, -9.6, 0.7, 0.6, 0.7, 'pink'); B.box(22, F + 0.5, -14.6, 0.9, 1.0, 0.9, 'carblack'); // a bookcase nobody read, the naughty stool, the big chair
+  // ---- UPSTAIRS HALL: benches, bins, a fountain that never turned off
+  for (const z of [4, 20]) B.add(-1.5, F, z - 0.3, 1.5, F + 0.45, z + 0.3, 'wood', K('bench', 0, z, 0, F));
+  small('bin', -7.3, 9, 0, F, 0.5, 0.8); small('bin', 7.3, -15, 0, F, 0.5, 0.8); B.add(7.4, F, 7.75, 7.8, F + 1.0, 8.25, 'metal', K('fountain', 7.6, 8, 1, F));
+  for (const z of [-17.5, -20]) B.add(-7.6, F, z - 1, -7.1, F + 2, z + 1, 'lockerb', K('lockers', -7.35, z, 3, F));
+  // ---- LIBRARY: shelves you weave between, reading tables, a globe
+  for (const x of [-26, -21, -16]) for (let z = 8; z < 20; z += 2) B.add(x - 0.35, F, z, x + 0.35, F + 2.2, z + 2, 'books', K('bookshelf', x, z + 1, 1, F));
+  for (const [x, z] of [[-12, 4], [-12, 21], [-24, 3.6]]) B.box(x, F + 0.4, z, 2.4, 0.8, 1.4, 'wood', K('readtable', x, z, 0, F));
+  small('globe', -28.8, 22.8, 0, F, 0.6, 1.3, 'blue'); small('bin', -9, 9, 0, F, 0.5, 0.8);
+  for (const x of [-12, -10]) B.add(x - 1, F, 23.3, x + 1, F + 2.2, 23.9, 'books', K('bookshelf', x, 23.6, 0, F));
+  // ---- ART ROOM: easels, a kiln, a table of bad sculptures, paint tables
+  for (const [x, z] of [[-25, -8], [-20, -14], [-14, -9], [-27, -13], [-11, -20]]) B.box(x, F + 0.8, z, 0.9, 1.6, 0.5, 'wood', K('easel', x, z, 0, F));
+  B.add(-29.6, F, -23.6, -28, F + 1.8, -22, 'brick', K('kiln', -28.8, -22.8, 0, F)); B.box(-18, F + 0.4, -20, 3, 0.8, 1.4, 'yellow', K('arttable', -18, -20, 0, F));
+  for (const [x, z] of [[-24, -17], [-13, -15]]) B.box(x, F + 0.4, z, 2.6, 0.8, 1.2, 'wood', K('arttable', x, z, 2, F)); // paint tables
+  for (const [x, z] of [[-24.6, -15.7], [-23.2, -18.3], [-13, -13.7], [-18.6, -18.6]]) small('stool', x, z, 0, F, 0.5, 0.6, 'pink');
+  small('bin', -9, -1.2, 0, F, 0.5, 0.8);
+  // ---- PRINCIPAL'S OFFICE: a desk that's too big, filing cabinets, a rug, two desks for detention
+  B.box(22, F + 0.45, -12, 3.4, 0.9, 1.6, 'wood', K('desk', 22, -12, 0, F));
+  for (const z of [-8.5, -7.5, -6.5]) B.add(28.9, F, z - 0.5, 29.6, F + 1.5, z + 0.5, 'metal', K('filing', 29.25, z, 0, F));
+  for (const x of [12, 14]) B.add(x - 1, F, -23.65, x + 1, F + 2.2, -22.95, 'books', K('bookshelf', x, -23.3, 0, F)); // a bookcase nobody read
+  B.box(22, F + 0.3, -9.6, 0.7, 0.6, 0.7, 'pink', K('stool', 22, -9.6, 0, F)); B.box(22, F + 0.5, -14.6, 0.9, 1.0, 0.9, 'carblack', K('bigchair', 22, -14.6, 0, F)); // the naughty stool, the big chair
+  for (const x of [12.5, 14.5]) B.box(x, F + 0.38, -8, 0.7, 0.75, 0.9, 'wood', K('studentdesk', x, -8, 2, F));
+  small('globe', 27.5, -22.6, 0, F, 0.6, 1.3, 'blue'); small('bin', 9, -5, 0, F, 0.5, 0.8);
 
   // ---- dressing (look-only): what makes each room read as its room
   sg('x', 8.23, 0, 3.62, 7, 0.9, 'sgnschool'); sg('z', -7.77, 22, 2.5, 2.8, 0.7, 'sgntrophy'); sg('z', 7.77, 19, 1.9, 1.6, 1.0, 'sgnprom');
   sg('x', 7.77, -5, 2.6, 3.4, 0.7, 'sgnhall'); // locker hall, by the lobby door
   sg('z', -29.97, 2.7, 2.5, 3.2, 1.2, 'sgnmenu'); sg('x', 0.23, -13, 2.7, 4, 0.8, 'sgnnorun');
-  for (const x of [-25, -19, -13]) for (const z of [6, 13, 20]) for (const s of [-1, 1]) D.add(x - 1.5, 0.42, z + s * 0.95 - 0.18, x + 1.5, 0.5, z + s * 0.95 + 0.18, s < 0 ? 'blue' : 'pink'); // benches
-  for (let k = 0; k < 4; k++) D.add(-29.3 + (k % 2) * 0.5, 1.15, 1.4 + k * 0.75, -29.0 + (k % 2) * 0.5, 1.19, 1.9 + k * 0.75, k % 2 ? 'pink' : 'yellow'); // trays nobody took back
   sg('x', -0.23, -13, 2.2, 4.2, 2.1, 'sgnperiodic'); sg('x', -23.97, -13, 2.1, 5, 2.2, 'chalk2'); sg('z', -29.97, -3, 2.1, 3.4, 1.7, 'chalk1'); sg('z', -8.23, -18, 3.55, 3, 0.56, 'sgnlab');
-  for (const x of [-25, -18, -11.5]) for (const z of [-18, -9]) { D.add(x - 1.1, 0.9, z - 0.3, x - 0.5, 0.94, z + 0.3, 'tile'); D.add(x + 0.5, 0.9, z - 0.1, x + 0.7, 1.25, z + 0.1, 'greenglass'); D.add(x + 0.9, 0.9, z + 0.2, x + 1.05, 1.15, z + 0.35, 'pink'); } // a sink, a flask, a beaker
   sg('z', 8.23, -12, 2.5, 4.4, 1.1, 'sgnboiler');
   for (const z of [-23.4, -22.6]) D.add(9, 3.5, z - 0.12, 29, 3.74, z + 0.12, 'pipe'); D.add(20, 3.5, -22.6, 20.24, 3.74, -5, 'pipe'); // pipes off the boiler
   D.add(13, 0, -2, 29, 0.02, 22, 'court', { fit: 1 });
-  for (const [a, b, c, d] of [[28.75, 9.7, 28.8, 10.3], [29.25, 9.7, 29.3, 10.3], [28.75, 9.7, 29.3, 9.75], [28.75, 10.25, 29.3, 10.3]]) D.add(a, 2.85, b, c, 2.9, d, 'hoop'); // the rim
-  for (const [a, b, c, d] of [[28.78, 9.72, 28.8, 10.28], [29.25, 9.72, 29.27, 10.28], [28.78, 9.72, 29.27, 9.74], [28.78, 10.26, 29.27, 10.28]]) D.add(a, 2.4, b, c, 2.85, d, 'net');
   sg('x', -3.77, 21, 6.6, 7, 1.75, 'sgnchamps'); sg('z', 29.97, 10, 6.3, 5, 2, 'sgnscore');
   for (const z of [2, 10, 18]) { D.add(13.2, 8.1, z - 0.01, 28.8, 8.13, z + 0.01, 'white'); for (let x = 13.6, k = 0; x < 28.6; x += 0.9, k++) D.add(x - 0.25, 7.6 + (k % 2) * 0.12, z - 0.012, x + 0.25, 8.1, z + 0.012, ['pink', 'yellow', 'blue'][k % 3]); } // bunting from a pep rally that never ended
   sg('z', -7.77, 14, F + 3.56, 3, 0.56, 'sgnlib'); sg('z', -7.77, -6, F + 3.56, 3, 0.56, 'sgnart'); sg('z', 7.77, -20, F + 3.56, 3, 0.56, 'sgnprin');
   for (const z of [10, 16]) sg('z', 7.77, z === 10 ? 4 : -8, F + 1.9, 1.5, 1.1, z === 10 ? 'kidart2' : 'kidart3'); // the hall's wall of fame
-  [[-25, -8], [-20, -14], [-14, -9]].forEach(([x, z], i) => D.add(x - 0.36, F + 0.95, z + 0.1, x + 0.36, F + 1.5, z + 0.13, 'kidart' + (i + 1), { fit: 1 }));
   sg('z', -29.97, -18.5, F + 2.1, 4, 2, 'chalk3'); for (const x of [-18.9, -18, -17.1]) D.add(x - 0.2, F + 0.8, -20.2, x + 0.2, F + 1.1 + (x + 19) * 0.25, -19.8, x < -18.5 ? 'pink' : x < -17.5 ? 'dyemint' : 'crate'); // sculptures (bad)
-  for (const [x, z, m] of [[-24.6, -17, 'pink'], [-23.6, -16.8, 'dyemint'], [-13.4, -15.2, 'yellow'], [-12.6, -14.8, 'blue']]) D.add(x - 0.2, F + 0.8, z - 0.2, x + 0.2, F + 0.83, z + 0.2, m); // paint that will never dry
-  sg('x', -4.23, 22, F + 2.3, 3, 1.5, 'sgndet'); D.add(19, F, -14.6, 25, F + 0.02, -9.4, 'carpetb'); D.add(21.6, F + 0.9, -12.3, 22.4, F + 0.94, -11.7, 'white'); // the list, a rug, paperwork
+  sg('x', -4.23, 22, F + 2.3, 3, 1.5, 'sgndet'); D.add(19, F, -14.6, 25, F + 0.02, -9.4, 'carpetb'); // the list, a rug
 
   // ---- the machines. colas: one per wing; Jank Cola by the gym door
   const cola = { at: [8.75, 0, 22], n: [1, 0, 0] };

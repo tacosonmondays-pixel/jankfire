@@ -17,7 +17,7 @@ export const AUTHORED = {}; // id -> { scene, meta }
 export const LAZY = new Map(); // id -> url
 // the gear and killstreak models (x_<thing>.glb: the rig, the wrecking ball, the camera...) and the rig's missile load
 // the same way: the first time something asks (prefetch() asks early for what your loadout will need)
-export const isLazy = (id) => { if (/^x_/.test(id) || id === 'pj_rigmissile') return true; const m = /^(?:w|pj)_(.+)$/.exec(id); return !!(m && m[1] !== 'default' && Object.hasOwn(COSMETICS.model, m[1])); };
+export const isLazy = (id) => { if (/^x_/.test(id) || /^p_[a-z]+kit$/.test(id) || id === 'pj_rigmissile') return true; const m = /^(?:w|pj)_(.+)$/.exec(id); return !!(m && m[1] !== 'default' && Object.hasOwn(COSMETICS.model, m[1])); };
 const late = { fn: null, t: 0, busy: 0, by: new Map(), seen: new Set() };
 export function onLateModel(fn) { late.fn = fn; }
 export function whenLate(id, fn) { if (!late.by.has(id)) late.by.set(id, []); late.by.get(id).push(fn); } // that model just landed: drop a cached copy built without it
