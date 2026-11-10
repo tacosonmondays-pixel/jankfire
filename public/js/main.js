@@ -1267,8 +1267,8 @@ if (window.JF_TOUCH) import('./touch.js').then((m) => {
     autoChanged: () => { $('tAuto').checked = S.tAuto !== false; },
     pause: () => { if (inGame()) pause(); },
     // a tap anywhere does what a click does: drop in after the end screen, skip the killcam, watch the next player
-    gate: () => esClickShown() || RP.mode === 'killcam' || G.killcamPending || (!ME.alive && (brOn() || !!G.eco)),
-    ctx: () => ({ eco: !!G.eco, royale: brOn(), watch: RP.active || !!G.killcamPending, use: !!G.eco || brOn() || G.cfg.game === 'zombies' || canUse(G.round, ME.pos) }),
+    gate: () => esClickShown() || RP.mode === 'killcam' || G.killcamPending || !ME.alive, // (dead: a tap is a click, which is how every mode's spectating moves on)
+    ctx: () => ({ eco: !!G.eco, royale: brOn(), scythe: !!W.hasScythe && ME.alive, watch: RP.active || !!G.killcamPending, use: !!G.eco || brOn() || G.cfg.game === 'zombies' || canUse(G.round, ME.pos) }),
   });
   bindTouchSettings();
 }).catch((e) => console.error('touch controls failed to load', e));

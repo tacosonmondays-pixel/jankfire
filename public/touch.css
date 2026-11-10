@@ -85,3 +85,5 @@ html.touch.lefty #chatlog { left: auto; right: 16px; }
 #touchNoStory b { display: block; font-size: 22px; color: #ffe14d; text-shadow: 2px 2px 0 #000; }
 #touchNoStory span { display: block; font-size: 15px; margin-top: 4px; }
 #touchNoStory i { display: block; font-size: 12px; margin-top: 6px; color: #4fd8ff; font-style: normal; }
+html.touch #adsLayer .ad { pointer-events: auto; } /* tap an ad to close it */
+#touchUI .tb-scythe, #touchUI .tb-dash { background: #1fd6c1; font-size: calc(10 * var(--u)); }
