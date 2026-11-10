@@ -299,7 +299,7 @@ function makeRig(a) {
       c.spine.getWorldQuaternion(tq).invert(); c.root.getWorldQuaternion(tq2); g.quaternion.copy(tq).multiply(tq2);
     }
     // LOD
-    if (cam && L.blender) { const far = cam.position.distanceTo(c.root.position) > 28 * (S / 1.18); if (far !== r.far) { r.far = far; r.vis(); } }
+    if (cam && L.blender) { const far = cam.position.distanceTo(c.root.position) > 28; if (far !== r.far) { r.far = far; r.vis(); } }
     else if (r.far == null) { r.far = false; r.vis(); }
     if (!PJ.fx || r.far || !G.scene || dt <= 0) return;
     // steam: the boiler ticks over (a wisp, a cap lifts); it works harder with the rig up; run through, it vents red

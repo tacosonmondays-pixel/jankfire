@@ -14,7 +14,7 @@ Sheets (all looked at while building; the list of what is still weak is at the b
 | the three damage states, the far LOD | `pj_game_damage.jpg` | `c_pallet_jack_damage.jpg` |
 | the rig parts close up, at rest and with the rig up | `pj_game_parts.jpg` | `c_pallet_jack_parts.jpg` |
 | one key pose a clip | `pj_game_poses.jpg` | `c_pallet_jack_poses.jpg` |
-| a contact sheet per clip (12 frames, marks called out) | `pj_clip_<name>.jpg` | `tools/blender/sheets/c_pallet_jack_clip_<name>.jpg` (8 frames) |
+| a contact sheet per clip (12 frames, marks called out) | `pj_clip_<name>.jpg` | `tools/blender/sheets/c_pallet_jack_clip_<name>.jpg` (12 frames, Workbench) |
 | the hand truck | in the turnaround and `pj_clip_idle.jpg` | `tools/blender/sheets/s_handtruck.jpg` |
 
 In every sheet "his right" is the launcher arm (+x) and "his left" is the open hand and `THIS WAY UP`.
@@ -26,7 +26,7 @@ In every sheet "his right" is the launcher arm (+x) and "his left" is the open h
 | `public/models/cast/c_pallet_jack.glb` | the model: `part_<joint>[__<tag>]` meshes at the rest pose, like every cast model |
 | `public/models/cast/c_pallet_jack.parts.json` | every named part (joint, box), the moving pieces (pivot, axis), markers, states, clip marks and samples, prop spots |
 | `public/models/story/s_handtruck.glb` | his hand truck (a story prop, in `story/index.json`): nodes `frame`, `wheelL`, `wheelR` |
-| `public/js/story/jacklook.js` | his skeleton, the code puppet (the fallback), the markers, his faces (`jack`, `jack_hurt`, `jack_gone`) |
+| `public/js/story/jacklook.js` | his skeleton, the code puppet (the fallback), the markers, his faces (`jack`, `jack_set`, `jack_mad`, `jack_hurt`, `jack_gone`) |
 | `public/js/story/palletjack.js` | `PJ`: clips, marks, damage states, the machine, vest, LOD, steam |
 | `public/js/story/pj_clipdata.js` | the clips as key poses. **Generated** by `tools/blender/cast/pj_clips.py` |
 | `tools/blender/cast/make_cast_pallet_jack.py` | the build. `jackkit.py` (kit), `jackbody.py` (the man), `jackrig.py` (the machine), `jackdmg.py` (damage), `jacktruck.py`, `jackposes.py` (pose sheets) |
@@ -34,9 +34,9 @@ In every sheet "his right" is the launcher arm (+x) and "his left" is the open h
 | `tools/blender/cast/pjshots.cjs`, `pjparts.cjs`, `pjcheck.cjs` | the in-game sheets; the game half of the parts file; the actor-path check |
 
 Touched in shared files: **two lines in `looks.js`** (an import and `pallet_jack: () => palletJackLook({...})` in
-`LOOKS`), one entry in `public/models/story/index.json` (`s_handtruck`), and his entry in
-`tools/blender/cast/joints.json` (written by `joints.cjs`). Nothing in `actors.js`, `boot.js`, the content files or
-the server.
+`LOOKS`), one entry in `public/models/story/index.json` (`"s_handtruck"`, nothing else on that line moved), his entry
+in `tools/blender/cast/joints.json` (written by `joints.cjs`), and one row in `tools/blender/README.md`. Nothing in
+`actors.js`, `boot.js`, the content files, the train or boss files, or the server.
 
 ## Who you are looking at
 
@@ -240,10 +240,14 @@ copy it from the parts file's `markers` into `MK` in `jacklook.js` (the code fal
   marrow cavity, the truck's toe lip and axle brackets (each moved, resized or re-shaped, none hidden); floating keys
   (hung on the belt); zero-area UVs; crumbs a decimate leaves in the LOD (dropped), a scar ring that decimated into a
   sliver (kept out of the LOD).
-- **In the game** (`pjcheck.cjs`): `spawnActor('pallet_jack')` dresses the glb on the code skeleton with every tag and
-  marker from the parts file present; each of the 18 clips is played through `PJ.play` with `updateActors` and
-  `pjFrame` stepping it: joints move, nothing goes NaN, every mark fires; each damage state shows and hides the
-  pieces the parts file says; past 28 m the far LOD swaps in and comes back.
+- **In the game** (`pjcheck.cjs`, last run: `PJ_CHECK ok`): `spawnActor('pallet_jack')` dresses the glb on the code
+  skeleton with every tag and marker from the parts file present; each of the 18 clips is played through `PJ.play`
+  with `updateActors` and `pjFrame` stepping it: joints move, nothing goes NaN, every mark fires (all 40); each
+  damage state shows and hides the pieces the parts file says (run_through 3 on; armour_broken 8 on, 7 off;
+  marrow_taken 7 on, 9 off); past 28 m the far LOD swaps in (27,626 triangles drawn near, 1,635 far) and comes back.
+  The near figure is the model's 23,802 plus about 3,800 the game adds on every cast member: its code face rig.
+- **Markers** (`pjparts.cjs`): the fifteen spots on his spine land within 1 mm of the model's in the game; his palm
+  sits at 1.195 m on the truck's grip (the grip is at 1.17 m plus his palm).
 - **Looked at**: every sheet in the table at the top, from both renderers, over three passes on the model and two on
   the animation.
 

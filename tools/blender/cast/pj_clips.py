@@ -7,7 +7,7 @@
 #   <joint>.x/.y/.z   rotation in radians.  arm / fore .x + = raise forward / bend the elbow; spine.x - = bend forward;
 #                     head.x + = look up; arm.z + (right) / armL.z - (left) = out to the side; leg.x + = thigh forward;
 #                     knee.x - = shin back; body.x + = the whole of him tips back about his feet
-#   body.px/.py/.pz   the hips' offset in his own units (the root is x1.18, so 0.1 is 11.8 cm). +pz = back
+#   body.px/.py/.pz   the hips' offset in his own units (the root is x1.24, so 0.1 is 12.4 cm). +pz = back
 #   handR.py          the fist riding out on its ram (- = out)
 #   x.rig x.cock x.vent x.flap x.needle   the machine: 0..1 (shins locked + stacks up, collar cocked, venting, caps, gauge)
 # Arms, forearms, hands, neck and head.z are ABSOLUTE (the clip owns them: a hand that has to be somewhere stays there
