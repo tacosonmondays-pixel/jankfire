@@ -81,7 +81,7 @@ export function shapeGround(B, D, o) {
     if (d <= 0) { fixed[V(i, j)] = 1; continue; }
     let n = (0.5 * n1(x / 27, z / 27) + 0.38 * n2(x / 12.5, z / 12.5) + 0.12 * n3(x / 6, z / 6)) * 2.4;
     n = Math.max(-1, Math.min(1, n));
-    let h = n > 0 ? n * up : n * down;
+    let h = o.field ? o.field(x, z) : n > 0 ? n * up : n * down; // (o.field: your own shape, e.g. fleshField below)
     for (const w of o.washes || []) { // a wash: a dry ditch along a line of points, w.w m to each side, w.d deep in the middle
       let dd = 1e9;
       for (let q = 0; q + 1 < w.pts.length; q++) { const [ax, az] = w.pts[q], [bx, bz] = w.pts[q + 1], ex = bx - ax, ez = bz - az, t = Math.max(0, Math.min(1, ((x - ax) * ex + (z - az) * ez) / (ex * ex + ez * ez))); dd = Math.min(dd, Math.hypot(x - ax - ex * t, z - az - ez * t)); }
@@ -184,3 +184,79 @@ export const groundY = (boxes, x, z) => { const t = boxes && boxes.terrain, g = 
 // a terrace's top 0.7 m is soft to a body whose feet are near the surface: the heightfield is the real ground there
 // (below that it's a wall: the canyon's face, the side of the mine shaft)
 export const softTer = (b, y) => b.ter === 1 && y > b.max[1] - 0.7;
+
+// ------------------------------------------------------------ flesh: ground that grew
+// fleshField(o) -> h(x, z): a height in metres for any point, worked out from the point alone (hashes, no grid), so
+// two chunks built apart meet exactly at their seam and the server and every client agree. three things stacked:
+//   mounds   slow swells and sags (o.up / o.down m, o.size m across)
+//   growths  round lumps scattered about, steep-sided (o.growths: { every: m between them, r: [min, max] radius,
+//            h: [min, max] height, chance 0..1 }). some are sunken (a pore) instead: sink 0..1
+//   veins    raised cords: a branching web grown from noise (o.veins: { size: m between cords, w: m wide, h: m high })
+//            plus any you draw yourself (o.cords: [{ pts: [[x, z], ...], w, h }])
+// o.flat = [[x0, z0, x1, z1], ...]: rectangles kept dead level (an arena, a road, a doorstep); the shape eases in over
+// o.ease m from their edges. h.parts(x, z) -> { mound, growth, vein, k } says how much of each is there (for colour)
+export function fleshField(o = {}) {
+  const seed = o.seed | 0, up = o.up ?? 2.0, down = o.down ?? 1.1, size = o.size ?? 26, ease = o.ease ?? 5;
+  const G = o.growths === false ? null : { every: 16, r: [2.6, 6], h: [1.0, 2.8], chance: 0.7, sink: 0.18, ...(o.growths || {}) };
+  const VN = o.veins === false ? null : { size: 34, w: 2.4, h: 0.6, ...(o.veins || {}) };
+  const n1 = lattice(seed + 11), n2 = lattice(seed + 23), v1 = lattice(seed + 37), v2 = lattice(seed + 41), w1 = lattice(seed + 53);
+  const hash = (i, j, k) => { let n = Math.imul(i, 374761393) ^ Math.imul(j, 668265263) ^ Math.imul(k + seed, 1442695041); n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967295; };
+  const flatK = (x, z) => { // 0 on a level rectangle, 1 well away from all of them
+    let k = 1;
+    for (const f of o.flat || []) { const d = Math.hypot(Math.max(f[0] - x, 0, x - f[2]), Math.max(f[1] - z, 0, z - f[3])); k = Math.min(k, sm(0, ease, d)); if (k <= 0) return 0; }
+    return k;
+  };
+  const mound = (x, z) => { const n = Math.max(-1, Math.min(1, (0.62 * n1(x / size, z / size) + 0.38 * n2(x / (size * 0.45), z / (size * 0.45))) * 2.2)); return n > 0 ? n * up : n * down; };
+  const growth = (x, z) => { // the lumps in the nine cells round the point
+    if (!G) return 0;
+    const ci = Math.floor(x / G.every), cj = Math.floor(z / G.every);
+    let h = 0;
+    for (let i = ci - 1; i <= ci + 1; i++) for (let j = cj - 1; j <= cj + 1; j++) {
+      if (hash(i, j, 1) > G.chance) continue;
+      const r = G.r[0] + (G.r[1] - G.r[0]) * hash(i, j, 2), cx = (i + 0.15 + 0.7 * hash(i, j, 3)) * G.every, cz = (j + 0.15 + 0.7 * hash(i, j, 4)) * G.every;
+      const d = Math.hypot(x - cx, z - cz);
+      if (d >= r) continue;
+      const t = 1 - d / r, dome = t * t * (3 - 2 * t), hh = (G.h[0] + (G.h[1] - G.h[0]) * hash(i, j, 5)) * Math.min(1, r / 4);
+      const v = hash(i, j, 6) < G.sink ? -0.55 * hh * dome : hh * Math.pow(dome, 0.75); // (a pore, or a lump with a flattish top and steep sides)
+      if (Math.abs(v) > Math.abs(h)) h = v;
+    }
+    return h;
+  };
+  const cordD = (x, z, c) => { let dd = 1e9; for (let q = 0; q + 1 < c.pts.length; q++) { const [ax, az] = c.pts[q], [bx, bz] = c.pts[q + 1], ex = bx - ax, ez = bz - az, t = Math.max(0, Math.min(1, ((x - ax) * ex + (z - az) * ez) / (ex * ex + ez * ez || 1))); dd = Math.min(dd, Math.hypot(x - ax - ex * t, z - az - ez * t)); } return dd; };
+  const vein = (x, z) => {
+    let h = 0;
+    if (VN) { // where a warped noise crosses zero: thin lines that wander, fork and rejoin
+      const wx = x + 5 * w1(x / 23, z / 23), wz = z + 5 * w1(z / 23 + 9.1, x / 23 - 4.3);
+      for (const [f, sc, k] of [[v1, VN.size, 1], [v2, VN.size * 0.47, 0.55]]) {
+        const d = Math.abs(f(wx / sc, wz / sc)) * sc * 0.62; // ~ metres from the line
+        const t = 1 - d / (VN.w * (0.6 + 0.4 * k) * 0.5); // (the small ones a bit thinner, never thinner than the ground's 1 m grid can show)
+        if (t > 0) h = Math.max(h, VN.h * k * Math.sqrt(t * (2 - t))); // a round cord, not a ridge
+      }
+    }
+    for (const c of o.cords || []) { const t = 1 - cordD(x, z, c) / ((c.w ?? 1.4) * 0.5); if (t > 0) h = Math.max(h, (c.h ?? 0.5) * Math.sqrt(t * (2 - t))); }
+    return h;
+  };
+  const h = (x, z) => { const k = flatK(x, z); return k <= 0 ? 0 : (mound(x, z) + growth(x, z) + vein(x, z)) * k; };
+  h.parts = (x, z) => { const k = flatK(x, z); return { mound: mound(x, z) * k, growth: growth(x, z) * k, vein: vein(x, z) * k, k }; };
+  return h;
+}
+// a heightfield made straight from a field (no boxes to read): the same object shapeGround hangs on boxes.terrain, at
+// any base height y (the story's Gut is up a hill). o: { region: [x0, z0, x1, z1], y, mat, cell (1) }. hang it on a
+// box list (attachTerrain) and bodies walk on it, rays hit it and world.js draws it. cells you pass in o.hole(x, z) =
+// true have no ground (a pit, a stairwell)
+export function fieldTerrain(field, o) {
+  const [X0, Z0, X1, Z1] = o.region, y = o.y || 0, nx = X1 - X0, nz = Z1 - Z0, vz = nz + 1;
+  const H = new Float32Array((nx + 1) * vz), ok = new Uint8Array(nx * nz);
+  let lo = 0, hi = 0;
+  for (let i = 0; i <= nx; i++) for (let j = 0; j <= nz; j++) { const v = field(X0 + i, Z0 + j); H[i * vz + j] = v; if (v < lo) lo = v; if (v > hi) hi = v; }
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) ok[i * nz + j] = o.hole && o.hole(X0 + i + 0.5, Z0 + j + 0.5) ? 0 : 1;
+  const at = (x, z) => {
+    const fx = x - X0, fz = z - Z0, i = Math.floor(fx), j = Math.floor(fz);
+    if (i < 0 || j < 0 || i >= nx || j >= nz || !ok[i * nz + j]) return null;
+    const u = fx - i, v = fz - j;
+    return y + (H[i * vz + j] * (1 - u) + H[(i + 1) * vz + j] * u) * (1 - v) + (H[i * vz + j + 1] * (1 - u) + H[(i + 1) * vz + j + 1] * u) * v;
+  };
+  const base = y + Math.min(-0.6, Math.floor((lo - 0.35) * 10) / 10);
+  return { x0: X0, z0: Z0, nx, nz, H, ok, y, mat: o.mat, lo: y + lo, hi: y + hi, base, at, field, box: { min: [X0, base, Z0], max: [X1, y + hi, Z1], mat: o.mat, terr: 1 } };
+}
+export function attachTerrain(boxes, terrain) { Object.defineProperty(boxes, 'terrain', { value: terrain, writable: true, configurable: true, enumerable: false }); return terrain; }
