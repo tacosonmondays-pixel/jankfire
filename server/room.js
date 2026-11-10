@@ -198,6 +198,7 @@ if (process.env.JF_ZM_REST) ZM.rest = ZM.first = Number(process.env.JF_ZM_REST) 
 if (process.env.JF_ZM_SWIPE) ZM.swipe = Number(process.env.JF_ZM_SWIPE); // 0 = zombies can't hurt you (UI tests)
 if (process.env.JF_ZM_BLEED) ZM.bleed = Number(process.env.JF_ZM_BLEED) || ZM.bleed;
 if (process.env.JF_ZM_DROP) ZM.dropMul = Number(process.env.JF_ZM_DROP) || 1; // x drop chance (tests: 99 = every kill drops, still capped a round)
+if (process.env.JF_ZM_MAXALIVE) ZM.maxAlive = Number(process.env.JF_ZM_MAXALIVE) || 0; // at most this many zombies at once (screenshots)
 if (process.env.JF_ZM_DROPCAP) ZM.dropCap = Number(process.env.JF_ZM_DROPCAP) || ZM.dropCap;
 if (process.env.JF_ZM_MACHCD) ZM.machCd = Number(process.env.JF_ZM_MACHCD);
 if (process.env.JF_ZM_MACHSPIN) ZM.machSpin = Number(process.env.JF_ZM_MACHSPIN) || ZM.machSpin; // ms the cheat machine rolls for (screenshots)

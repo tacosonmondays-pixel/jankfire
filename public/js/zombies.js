@@ -18,6 +18,8 @@ import { weaponIcon, drawIcon } from './icons.js';
 import { whenGlb } from './glbkit.js';
 import { K } from './keys.js';
 import { zxSetup, zxTick, zxTarget, zxPrompt, zxMeter, zxPrice, zxOff } from './zmextra.js'; // boards, drops, the cheat machine
+import { zlSync, zlPose, zlTick, zlClear, zlType, ZL_WHY } from './zmlimbs.js'; // limbs coming off, crawlers, the special zombies
+import { ZT } from '/shared/zmlimbs.js';
 const UK = () => K.label('use').toUpperCase(); // the buy / revive key (keys.js 'use', F by default)
 
 const $ = (id) => document.getElementById(id);
@@ -74,7 +76,7 @@ function popup(d, why) {
   if (why === 'hit' && hitPop && now - hitPop.t < 350) { hitPop.n += d; hitPop.el.textContent = `+${hitPop.n}`; return; } // a burst of hits = one popup
   const e = mk('div', null, pops, 'zpop' + (d < 0 ? ' neg' : why === 'head' || why === 'melee' ? ' big' : ''));
   hitPop = why === 'hit' ? { el: e, n: d, t: now } : null;
-  e.textContent = d > 0 ? `+${d}${why === 'head' ? ' HEADSHOT' : why === 'melee' ? ' MELEE' : ''}` : String(d);
+  e.textContent = d > 0 ? `+${d}${why === 'head' ? ' HEADSHOT' : why === 'melee' ? ' MELEE' : ZL_WHY[why] || ''}` : String(d);
   e.style.right = `${Math.random() * 40}px`;
   setTimeout(() => e.remove(), 1100);
 }
@@ -269,6 +271,7 @@ function offMode() {
   Z.solid.clear();
   for (const id of Object.keys(Z.res)) if (W.cd[id] > performance.now() + 1e8) W.cd[id] = 0;
   Z.res = {}; Z.prev = {}; Z.target = null; Z.tally = -1;
+  zlClear(); // loose limbs
   prompt.textContent = '';
 }
 export function zmReset() { // quit to the menu
@@ -292,7 +295,9 @@ export function updateZombies(dt, now) {
   crateTick(info, dt, now);
   downTick(info, now);
   zxTick(info, dt, now);
+  zlSync(info);
   zombiesTick(dt, now);
+  zlTick(dt);
   setLights(info.pw ? 'on' : 'off');
   if (Z.power) { Z.power.lever.rotation.x += ((info.pw ? 0.7 : -0.7) - Z.power.lever.rotation.x) * Math.min(1, dt * 8); Z.power.lamp.material.color.setHex(info.pw ? 0x40ff40 : 0xff2020); }
   if (Z.cola) Z.cola.mat.color.setHex(info.pw ? 0xffffff : 0x555555);
@@ -475,13 +480,14 @@ function zombiesTick(dt, now) {
   for (const r of G.remotes.values()) {
     if (!isZombie(r) || !r.ch) continue;
     const ch = r.ch;
-    if (r.zmCh !== ch) { r.zmCh = ch; ch.armL.visible = r.id % 3 !== 0; if (r.tag) r.tag.visible = false; }
+    if (r.zmCh !== ch) { r.zmCh = ch; if (r.tag) r.tag.visible = false; } // (the odd missing arm is the server's call now: zmlimbs.js)
     r.marker.visible = false;
     if (!r.alive || (r.f & FLAGS.SLIP)) continue;
-    const run = r.color !== SHAMBLER, ph = now * (run ? 0.011 : 0.0045) + r.id;
+    const sp = ZT[zlType(r)], run = sp && sp.color ? !!sp.run : r.color !== SHAMBLER, ph = now * (run ? 0.011 : 0.0045) + r.id; // (the specials have their own outline colours)
     ch.body.rotation.z = ch.jank.lean * 0.3 + Math.sin(ph) * (run ? 0.08 : 0.16);
     ch.head.rotation.z += Math.sin(ph * 0.7) * 0.35;
     if (run) ch.body.rotation.x = -0.3;
+    zlPose(r, now, dt); // crawling, hopping, shrieking, the specials' bits
     if (Math.hypot(r.pos[0] - ME.pos[0], r.pos[2] - ME.pos[2]) < 26) near.push(r);
   }
   if (now > Z.groanT && near.length) { Z.groanT = now + 900 + Math.random() * 2200 / Math.min(4, near.length); sfx.zmGroan(near[(Math.random() * near.length) | 0].pos); }

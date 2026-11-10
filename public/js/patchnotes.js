@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '6.10', date: '2026-11-10', title: 'LIMBS OPTIONAL', items: [
+    'ZOMBIES come apart now. shoot an arm or a leg enough and it flies off, still twitching. +10 a limb.',
+    'no legs: it drags itself along the floor, slow, and can\'t get you on a crate. one leg: it hops. no arms: it headbutts you for half and is useless at planks.',
+    'four new zombies. CHONK (round 5+): huge, slow, pops when it dies and takes the crowd with it. stand back or slip in it. ANKLE BITERS (round 3+): tiny, fast, three at a time. HARD HATS (round 4+): headshots dink off the hat until it flies off. THE SCREAMER (round 6+): shrieks and every zombie near it speeds up. shoot it first.',
+  ] },
   { v: '6.8', date: '2026-11-07', title: 'SPRAY RANGE', items: [
     'TRAINING has a SPRAY RANGE now: a wall left of the firing line with a head ring 10 m out. step onto the sand and the plant & defuse guns kick like they do in P&D. hold fire, pull down, and the last spray\'s holes stay on the wall in hot pink. the rest of training is as dumb as ever.',
     'the little first-person spectate box in royale sits under the stats now instead of on top of them.',

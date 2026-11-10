@@ -387,6 +387,14 @@ Object.assign(sfx, {
   powerOn(pos) { tone('sawtooth', 38, 240, 1.6, 0.28, pos); tone('square', 30, 120, 1.6, 0.08, pos); noise(0.35, 0.55, 'highpass', 2000, 6000, pos, 1.3); },
 });
 
+// zombies: a limb coming off (wet rip + a pop), a hard hat dinking (and ringing as it flies off), the Screamer, a Chonk popping
+Object.assign(sfx, {
+  zmLimb(pos, head) { noise(0.16, 0.5, 'bandpass', 900, 220, pos, 0, 1.5); tone('sine', head ? 520 : 300, 70, 0.18, 0.3, pos, 0.02); noise(0.3, 0.22, 'lowpass', 500, 120, pos, 0.08); tone('square', head ? 880 : 150, head ? 440 : 60, 0.09, 0.08, pos, 0.01); },
+  zmDink(pos, off) { tone('triangle', 2350, 2300, off ? 0.7 : 0.22, 0.3, pos); tone('sine', 3520, 3480, off ? 0.5 : 0.14, 0.14, pos); tone('square', 1175, 1170, 0.05, 0.1, pos); if (off) tone('triangle', 1570, 1540, 0.9, 0.14, pos, 0.06); },
+  zmScream(pos) { for (const [f, v] of [[1250, 0.2], [1870, 0.12], [2630, 0.07]]) { tone('sawtooth', f * 0.6, f, 0.25, v, pos); tone('sawtooth', f, f * 0.82, 1.0, v, pos, 0.24); } noise(1.1, 0.16, 'bandpass', 2600, 1800, pos, 0.1, 3); tone('square', 96, 60, 1.1, 0.07, pos, 0.1); },
+  zmPop(pos) { tone('sine', 190, 34, 0.55, 0.6, pos); noise(0.5, 0.6, 'lowpass', 900, 90, pos); noise(0.7, 0.3, 'bandpass', 420, 160, pos, 0.1, 2); for (let i = 0; i < 5; i++) tone('sine', 260 + i * 70, 120, 0.12, 0.12, pos, 0.18 + i * 0.07); },
+});
+
 const LOOPDEF = {
   fire: { type: 'lowpass', f: 900, q: 0.7, vol: 0.55 },
   inhale: { type: 'highpass', f: 2600, q: 0.7, vol: 0.14 },

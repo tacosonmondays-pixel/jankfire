@@ -10,6 +10,7 @@ const now = () => Date.now();
 const r2 = (x) => Math.round(x * 100) / 100;
 const FORCE = Object.hasOwn(ZT, process.env.JF_ZM_TYPE || '') ? process.env.JF_ZM_TYPE : ''; // tests: every zombie is this one
 const LIMB_MUL = Number(process.env.JF_ZM_LIMB) > 0 ? Number(process.env.JF_ZM_LIMB) : 1; // tests: x limb HP (0.01 = first hit takes it off)
+const HP_MUL = Number(process.env.JF_ZM_HP) > 0 ? Number(process.env.JF_ZM_HP) : 1; // tests: x zombie HP (so one survives long enough to lose things)
 const fin3 = (a) => Array.isArray(a) && a.length === 3 && a.every(Number.isFinite);
 
 const methods = {
@@ -20,6 +21,7 @@ const methods = {
     let ty = zs.pack && zs.pack.n > 0 ? 'biter' : FORCE || zlPickType(zs.n, alive);
     if (FORCE && (alive[FORCE] || 0) >= ZT[FORCE].cap + 3) ty = ''; // (tests still get a few plain ones)
     const def = ZT[ty] || null;
+    if (HP_MUL !== 1) b.hp = Math.round(b.hp * HP_MUL);
     Object.assign(z, { ty, lim: 0, ld: {}, hat: 0, k: 1, hype: 0, yell: 0, yellAt: n + 4000 + Math.random() * 4000 });
     if (def) {
       b.hp = Math.max(1, Math.round(b.hp * def.hp));
