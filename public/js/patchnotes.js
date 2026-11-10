@@ -6,6 +6,9 @@ export const PATCH_NOTES = [
     'touch controls: a stick on the left, drag the right side to look, and big loud buttons for FIRE, JUMP, SLIDE, HOOK, AIM and friends. tap the hotbar to swap guns, tap your item and killstreaks to use them, tap the ammo to reload.',
     'aim assist for touch players: your look slows down near an enemy and the crosshair gets a small tug toward their body. enemies only, no walls, no snapping. SETTINGS > touch sets how much, or turns it off.',
     'SETTINGS > touch: look sens, button size, button see-through-ness, and a left-handed swap.',
+    'auto fire for touch players: point at an enemy and the gun goes off by itself after a blink. snipers only when scoped, knives only in reach, never at friends or through walls. the green AUTO button turns it off. FIRE still works.',
+    'phones and tablets cap how many pixels they draw and use cheaper shadows, so your pocket stays a pocket and not a hand warmer.',
+    'touch: tap a pop-up ad to close it, the scythe gets RIFLE and DASH buttons, tap to spectate when you are dead, and hints finally say FIRE instead of LMB.',
     'hold your phone upright and the game asks you to stop.',
   ] },
   { v: '7.1', date: '2026-11-10', title: 'PITS HAVE BOTTOMS', items: [

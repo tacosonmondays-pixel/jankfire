@@ -23,6 +23,8 @@ const BTNS = [
   ['use', 'use', 'USE', 242, 126, 46, { ctx: 1 }],
   ['buy', 'buy', 'BUY', 242, 72, 44, { ctx: 1 }],
   ['kh', '', 'DROP', 242, 180, 40, { ctx: 1, code: 'KeyH' }],
+  ['scythe', 'scythe', 'RIFLE', 300, 44, 44, { ctx: 1 }],   // scythe killstreak: flip to the rifle
+  ['dash', 'dash', 'DASH', 300, 98, 46, { ctx: 1, look: 1 }], // ...and its glitch dash (hold)
   // the corner on the fire side, top: small ones
   ['pause', '', 'II', 26, 26, 36, { top: 1 }],
   ['chat', '', 'CHAT', 70, 26, 36, { top: 1 }],
@@ -41,6 +43,13 @@ export function initTouch(api) {
   if (S.tFull == null) S.tFull = true;
   if (S.tInit !== 1) { S.tInit = 1; S.toggleAim = true; api.save(); } // first run on a phone: tap AIM to scope, tap again to stop (holding a button while steering is a hand cramp)
 
+  // hints all over the HUD ask keys.js what a key is called: here it's the name on the button (or what to tap)
+  K.touchNames = {
+    fire: 'FIRE', aim: 'AIM', parry: 'AIM', jump: 'JUMP', crouch: 'SLIDE', grapple: 'HOOK', reload: 'RELOAD', use: 'USE', item: 'YOUR ITEM',
+    streak1: 'ITS BOX', streak2: 'ITS BOX', streak3: 'ITS BOX', slot1: 'SLOT 1', slot2: 'SLOT 2', slot3: 'STAB', slot4: 'SLOT 4', lastSlot: 'SWAP',
+    scores: 'TAB', brScores: 'TAB', chat: 'CHAT', menu: 'II', pause: 'II', buy: 'BUY', drop: 'DROP', ready: 'READY UP', spray: 'SPRAY', scythe: 'RIFLE', dash: 'DASH',
+    skip: 'TAP', forward: 'STICK UP',
+  };
   // ---------------------------------------------------------- the layer
   const ui = document.createElement('div');
   ui.id = 'touchUI'; ui.className = 'hidden';
@@ -211,6 +220,15 @@ export function initTouch(api) {
     else tap(codeFor('vote' + (idx(t) + 1)));
   }, { passive: false });
 
+  // pop-up ads (the Laptop): tap an ad to close it. it presses the number on the ad, same as a keyboard would
+  document.addEventListener('touchstart', (e) => {
+    const ad = e.target && e.target.closest ? e.target.closest('#adsLayer .ad') : null;
+    if (!ad || !api.inGame()) return;
+    e.preventDefault();
+    const n = ad.querySelector('.x b');
+    if (n && /^[1-5]$/.test(n.textContent)) { buzz(8); tap('Digit' + n.textContent); }
+  }, { passive: false });
+
   // ---------------------------------------------------------- page manners: no pinch zoom, no long-press menu, fullscreen when the browser lets us
   for (const t of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(t, (e) => e.preventDefault(), { passive: false }); // iOS pinch
   let lastEnd = 0;
@@ -250,6 +268,8 @@ export function initTouch(api) {
     els.buy.el.classList.toggle('hidden', !c.eco);
     els.kh.el.classList.toggle('hidden', !(c.eco || c.royale));
     els.kh.el.textContent = c.royale ? 'HEAL' : 'DROP';
+    els.scythe.el.classList.toggle('hidden', !c.scythe); els.dash.el.classList.toggle('hidden', !c.scythe);
+    const tipEl = document.querySelector('#adsLayer .tip'); if (tipEl && tipEl.textContent.startsWith('press the number on')) tipEl.textContent = tipEl.textContent.replace('press the number on an ad', 'tap an ad');
     els.melee.el.classList.toggle('hidden', !!c.royale); // royale: slots are whatever you looted, the hotbar does it
     ui.classList.toggle('gate', !!api.gate());
     ui.classList.toggle('watch', !!c.watch); // a replay is playing: nothing to press but pause
