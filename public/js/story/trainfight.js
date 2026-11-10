@@ -450,7 +450,8 @@ export function makeTrainFight(ST, { playScene }) {
     // played, the step is given its flags here so the fight can go on. stands in for the two buttons
     if (step === 'jack' && !busy() && now - T.stepT > 1500) S().run(['flag:jack_fired', 'flag:jack_marrow_taken', 'flag:seen_mo_carry']);
     // done with the mission (or it was never on) after a trip here: back to where you came from
-    if (!o && !TRAINQ && !busy() && G.story.travelBack && (!F.live || (T.fin && T.fin.t > 6)) && now - T.stepT > 4000 && !T.back) T.back = G.story.travelBack() || 'nowhere';
+    const q = S().st.quests[RP_QUEST];
+    if (!o && q && q.done && !busy() && G.story.travelBack && (!F.live || (T.fin && T.fin.t > 6)) && now - T.stepT > 4000 && !T.back) T.back = G.story.travelBack() || 'nowhere';
   };
   if (typeof window !== 'undefined') window.JF_TRAIN = T; // (tests and screenshots stage it from here)
   return T;
