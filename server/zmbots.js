@@ -257,7 +257,7 @@ const methods = {
     const machOk = Z.mach && zs.power && !m.st && n >= m.cd && inside(Z.mach.at) && c >= mp && free('mach');
     if (machOk && (per === 'unhinged' ? Math.random() < 0.8 : Math.random() < (c > 4000 ? 0.4 : c > mp * 2.5 ? 0.15 : 0.03))) { const at = [Z.mach.at[0] + Z.mach.n[0] * 0.4, Z.mach.at[1] + 1.4, Z.mach.at[2] + Z.mach.n[2] * 0.4]; return { ...this.zhUseAt('mach', at, Z.mach.n, 1.2), price: mp }; }
     // no power yet: the door that leads to it comes before new guns
-    if (!zs.power && zs.n >= 2) { const d = this.zhDoor(b, free, price); if (d && (d.key === 'd1' || d.key === 'd4' || d.key === 'd2' || d.key === 'd6')) return d; }
+    if (!zs.power && zs.n >= 2) { const d = this.zhDoor(b, free, price); if (d && (d.key === 'd1' || d.key === 'd4' || d.key === 'd2' || d.key === 'd6' || this.zhPowerDoors().has(Number(d.key.slice(1))))) return d; }
     // ammo for the gun we like, when it's running low
     for (const g of z.guns) {
       const bu = Z.buys.find((x) => x.w === g), max = zmAmmo(g);
@@ -283,23 +283,35 @@ const methods = {
     return this.zhDoor(b, free, price);
   },
 
+  // the shut doors on a shortest way (fewest doors) from what's open to the room with the power switch: any map
+  zhPowerDoors() {
+    const zs = this.zs, Z = this.map.zm, out = new Set();
+    if (!Z.power || zs.power) return out;
+    const goal = zmAreaAt(Z, [Z.power.at[0] + Z.power.n[0], Z.power.at[1], Z.power.at[2] + Z.power.n[2]]);
+    if (!goal || zs.areas.has(goal)) return out;
+    const from = new Map([...zs.areas].map((a) => [a, -1])), q = [...zs.areas]; // area -> the door we came through
+    for (let h = 0; h < q.length && !from.has(goal); h++) Z.doors.forEach((d, i) => { const o = d.a === q[h] ? d.b : d.b === q[h] ? d.a : null; if (o && !from.has(o)) { from.set(o, [i, q[h]]); q.push(o); } });
+    for (let a = goal, n = 0; from.get(a) && from.get(a) !== -1 && n < 32; n++) { const [i, prev] = from.get(a); if (!zs.open[i]) out.add(i); a = prev; }
+    return out;
+  },
   zhDoor(b, free, price) { // a door: toward the power while it's off, otherwise the one nearest the squad
-    const zs = this.zs, Z = this.map.zm, c = b.z.c, per = b.persona;
+    const zs = this.zs, Z = this.map.zm, c = b.z.c, per = b.persona, pw = this.zhPowerDoors();
     let best = null, bs = Infinity;
     Z.doors.forEach((d, i) => {
       if (zs.open[i] || !free('d' + i)) return;
       const ina = zs.areas.has(d.a), inb = zs.areas.has(d.b);
       if (ina === inb || c < price(d.price) + (per === 'corpo' ? 0 : 150)) return;
-      const toPower = d.b === 'toys' || d.b === 'dock';
+      const toPower = d.b === 'toys' || d.b === 'dock' || pw.has(i);
       if (!toPower && c < 3000 && zs.open.filter(Boolean).length >= 2) return; // more doors = more windows to hold: only when rich
-      const s = (!zs.power && (d.b === 'dock' || d.a === 'dock' || d.b === 'toys') ? -80 : 0) + flat(b.pos, d.at) * 0.5 + d.price / 100; // the power first: it turns the cola on
+      const s = (!zs.power && (d.b === 'dock' || d.a === 'dock' || d.b === 'toys' || pw.has(i)) ? -80 : 0) + flat(b.pos, d.at) * 0.5 + Math.abs(b.pos[1] - d.box.min[1]) * 2 + d.price / 100; // the power first: it turns the cola on (a door on another floor is a walk)
       if (s < bs) { bs = s; best = { d, i, side: ina ? d.a : d.b }; }
     });
     if (best && (zs.n >= 2 || per === 'corpo' || per === 'tryhard')) {
       const { d, i, side } = best, thinX = d.box.max[0] - d.box.min[0] < 1;
-      const opts = thinX ? [[d.at[0] - 1.3, 0, d.at[2]], [d.at[0] + 1.3, 0, d.at[2]]] : [[d.at[0], 0, d.at[2] - 1.3], [d.at[0], 0, d.at[2] + 1.3]];
-      const stand = opts.find((p) => zmAreaAt(Z, p) === side) || opts[0];
-      return { k: 'buy', key: 'd' + i, stand, near: 0.5, look: [d.at[0], 1.5, d.at[2]], price: price(d.price) };
+      const fy = d.box.min[1]; // the floor the shutter stands on (maps with an upstairs)
+      const opts = thinX ? [[d.at[0] - 1.3, fy, d.at[2]], [d.at[0] + 1.3, fy, d.at[2]]] : [[d.at[0], fy, d.at[2] - 1.3], [d.at[0], fy, d.at[2] + 1.3]];
+      const stand = opts.find((p) => zmAreaAt(Z, [p[0], p[1] + 0.1, p[2]]) === side) || opts[0];
+      return { k: 'buy', key: 'd' + i, stand, near: 0.5, look: [d.at[0], fy + 1.5, d.at[2]], price: price(d.price) };
     }
     return null;
   },
