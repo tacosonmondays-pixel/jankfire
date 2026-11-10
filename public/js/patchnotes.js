@@ -1,6 +1,14 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '7.4', date: '2026-11-10', title: 'GROUND FLOOR, AND ANOTHER FLOOR', items: [
+    'two new zombies maps, both with an upstairs: JANKFIELD HIGH and SECOND OPINION GENERAL. take the stairs. or the ramp. it is a ramp, legally.',
+    'each map has its own zombies. students, teachers, lunch ladies. patients, nurses, surgeons. the surgeon brought paddles.',
+    'DESERT has actual ground now: hills, hollows and two dry washes between the buildings. streets and buildings stay level, cacti ride the bumps.',
+    'the oasis is a real pond: wade in, the sand drops away, you float. hold crouch to dive and hide on the bottom.',
+    'more maps got real ground: grassy dunes on ISLANDS, sand drifts in the BAZAAR, a lumpy FOREST floor, and lawns that roll a bit in SUBURB.',
+    'water everywhere got finer ripples and stops flickering.',
+  ] },
   { v: '7.3', date: '2026-11-10', title: 'LIMBS OPTIONAL', items: [
     'ZOMBIES come apart now. shoot an arm or a leg enough and it pops off, still twitching. +10 a limb.',
     'no legs: it drags itself along the floor, slow, and can\'t get you on a crate. one leg: it hops. no arms: it headbutts you for half and is useless at planks.',
