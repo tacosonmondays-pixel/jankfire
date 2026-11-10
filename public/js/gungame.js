@@ -66,7 +66,7 @@ export function updateGunGame() {
 export function ggRoundText(r) {
   if (r.game !== 'gun' || r.over) return null;
   const s = Math.ceil(r.left / 1000);
-  return `gun game · ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; // (the line above already says Gun Game)
 }
 // TAB scores: ordered by rung, with the rung next to the name
 export function ggScoreRows(rows) {
