@@ -21,7 +21,7 @@ const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'lineup-'));
   const errs = [];
   pg.on('pageerror', (e) => errs.push('PAGEERR ' + (e.stack || e.message).split('\n').slice(0, 3).join(' | ')));
   pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text().slice(0, 200)); });
-  await pg.addInitScript((pr) => localStorage.setItem('jankfire', JSON.stringify({ name: 'SHOTS', killcam: false, jank: pr })), PR);
+  await pg.addInitScript((pr) => localStorage.setItem('jf_giftseen_all', '1') || localStorage.setItem('jankfire', JSON.stringify({ name: 'SHOTS', killcam: false, jank: pr })), PR);
   await pg.goto(`http://localhost:${port}/`); await sleep(2500);
   const home = path.join(tmp, 'home.png'); // (an item with home: true is the home screen as it opens: the hero platform, the menu props)
   if (ITEMS.some((t) => t.home)) { await sleep(6000); await pg.screenshot({ path: home, timeout: 120000 }); }

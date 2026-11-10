@@ -15,7 +15,7 @@ async function measure(b, map) {
   const errs = [];
   pg.on('pageerror', (e) => errs.push('PAGEERR ' + (e.stack || e.message).split('\n').slice(0, 3).join(' | ')));
   pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
-  await pg.addInitScript((jank) => localStorage.setItem('jankfire', JSON.stringify({ name: 'PERF', killcam: false, jank })), Number(preset));
+  await pg.addInitScript((jank) => localStorage.setItem('jf_giftseen_all', '1') || localStorage.setItem('jankfire', JSON.stringify({ name: 'PERF', killcam: false, jank })), Number(preset));
   await pg.goto(`http://localhost:${port}/`); await sleep(2500);
   await pg.evaluate(async () => { const k = await import('/js/glbkit.js'); for (let i = 0; i < 200 && !Object.keys(k.AUTHORED).length; i++) await new Promise((r) => setTimeout(r, 100)); });
   const T = { timeout: 180000 }; // (a busy machine: the menu can take a while to answer)

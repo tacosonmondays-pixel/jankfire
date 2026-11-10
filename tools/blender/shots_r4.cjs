@@ -42,7 +42,7 @@ async function session(b, map, ids) {
   const errs = [];
   pg.on('pageerror', (e) => errs.push('PAGEERR ' + (e.stack || e.message).split('\n').slice(0, 3).join(' | ')));
   pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text().slice(0, 200)); });
-  await pg.addInitScript(() => localStorage.setItem('jankfire', JSON.stringify({ name: 'SHOTS', killcam: false, jank: 3 })));
+  await pg.addInitScript(() => localStorage.setItem('jf_giftseen_all', '1') || localStorage.setItem('jankfire', JSON.stringify({ name: 'SHOTS', killcam: false, jank: 3 })));
   await pg.goto(`http://localhost:${port}/`); await sleep(2500);
   const T = { timeout: 180000 }; // (a busy machine: the menu can take a while to answer)
   if (map === 'range') await pg.click('#scr-main [data-mode="training"]', T); // (the Training range: only Training plays it)
