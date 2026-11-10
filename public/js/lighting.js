@@ -78,7 +78,9 @@ export function initLighting(sun, vmSun, noShadow) {
 }
 
 // ------------------------------------------------------------ settings
-export function shadowLevel() { return L.pref === 'auto' ? BY_PRESET[L.preset] || 'low' : L.pref; }
+// phones + tablets (touchboot.js): 'auto' is one step cheaper there (Crusty = blobs, Mid = low, Too HD = medium). picking a level yourself still wins
+const TOUCH_STEP = typeof window !== 'undefined' && window.JF_TOUCH ? 1 : 0;
+export function shadowLevel() { return L.pref === 'auto' ? BY_PRESET[Math.max(0, L.preset - TOUCH_STEP)] || 'low' : L.pref; }
 export function setShadowPref(p) { L.pref = p === 'off' || SHQ[p] ? p : 'auto'; apply(); }
 export function setLightPreset(i) { L.preset = i; apply(); }
 function apply() {

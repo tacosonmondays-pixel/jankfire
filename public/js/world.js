@@ -477,9 +477,12 @@ export function refreshMapVisuals() {
   lightingRefresh();
 }
 
+const TOUCH_MAX_PX = 1280 * 720;
 export function resize() {
   const w = innerWidth, h = innerHeight;
-  const rw = Math.max(80, Math.floor(w * jank.scale)), rh = Math.max(60, Math.floor(h * jank.scale));
+  let rw = Math.max(80, Math.floor(w * jank.scale)), rh = Math.max(60, Math.floor(h * jank.scale));
+  // phones + tablets: never draw more than about 1280x720 worth of pixels, whatever the screen and preset say (a big tablet on Too HD would cook)
+  if (window.JF_TOUCH && rw * rh > TOUCH_MAX_PX) { const k = Math.sqrt(TOUCH_MAX_PX / (rw * rh)); rw = Math.floor(rw * k); rh = Math.floor(rh * k); }
   G.renderer.setSize(rw, rh, false);
   G.camera.aspect = w / h; G.camera.updateProjectionMatrix();
   G.vmCamera.aspect = w / h; G.vmCamera.updateProjectionMatrix();
