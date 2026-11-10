@@ -35,6 +35,7 @@ export function startCity(def, h) {
 export function stopCity() { if (S) { S.dispose(); S = null; } stopBeds(); }
 export const cityStream = () => S;
 
+const GUT_BEAT = 0.72, GUT_FLUSH = new THREE.Color(0xa01428); // beats a second (the big heart's rate), and the colour the fog flushes
 let lastCall = 0;
 export function updateCity(dt) {
   if (!S) return;
@@ -45,6 +46,10 @@ export function updateCity(dt) {
   if (S.weather.started) hud.msg('PAPER STORM', 1.6, 'brag');
   if (e && G.scene.fog) {
     G.scene.fog.color.copy(e.fog); G.scene.fog.near = e.near; G.scene.fog.far = e.far;
+    if (e.pulse > 0.01) { // the gut's fog has a heartbeat: lub, dub, rest. on each beat it closes in and flushes red
+      const ph = (performance.now() / 1000 * GUT_BEAT) % 1, k = (Math.exp(-ph * 9) + 0.6 * Math.exp(-Math.max(0, ph - 0.28) * 11) * (ph > 0.28)) * e.pulse;
+      G.scene.fog.near = e.near * (1 - 0.4 * k); G.scene.fog.far = e.far * (1 - 0.14 * k); G.scene.fog.color.lerp(GUT_FLUSH, 0.3 * k);
+    }
     if (hooks && hooks.sky) hooks.sky({ top: e.top.getHex(), mid: e.mid.getHex(), bot: e.bot.getHex() });
     const hemi = G.scene.children.find((o) => o.isHemisphereLight), sun = G.scene.children.find((o) => o.isDirectionalLight);
     if (hemi) { hemi.color.copy(e.hemi[0]); hemi.groundColor.copy(e.hemi[1]); hemi.intensity = e.hemi[2]; }
