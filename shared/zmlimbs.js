@@ -18,11 +18,20 @@ export const ZT = {
   hardhat: { i: 3, name: 'HARD HAT', from: 4, w: 3, cap: 4, scale: 1, hp: 1.2, hat: 3 }, // headshots only dink off the hat until it flies off
   screamer: { i: 4, name: 'SCREAMER', from: 6, w: 1.5, cap: 1, scale: 1.08, hp: 0.7, color: '#ff4fd8', pay: 40, every: 9000, yell: 1300, reach: 14, hype: 6000, boost: 1.45, see: 20 }, // shrieks: every zombie near it speeds up
 };
+// the mini bosses (server/zmboss.js): one every ZB.every rounds, never from the random roll. bossHp = x a plain zombie's
+// HP that round (+perPlayer each for the squad). no hit takes more than hitCap of its HP. reward = credits each when it drops
+export const ZB = { every: 5, delay: 5000, perPlayer: 0.5, hitCap: 0.06 };
+Object.assign(ZT, {
+  manager: { i: 5, name: 'THE FLOOR MANAGER', boss: true, from: 999, w: 0, cap: 1, scale: 1.75, hp: 1, bossHp: 16, speed: 3.6, run: 0, claw: 2, color: '#ff3030', reward: 1000,
+    meeting: { every: 14000, yell: 1500, n: 3, reach: 22, hype: 7000 }, charge: { every: 9000, min: 4, max: 20, windup: 900, ms: 1300, speed: 13, reach: 1.9, dmg: 34, kb: 14 } },
+  mascot: { i: 6, name: 'THE MASCOT', boss: true, from: 999, w: 0, cap: 1, scale: 1.9, hp: 1, bossHp: 20, speed: 3.1, run: 0, claw: 2.2, color: '#4fd8ff', reward: 1250,
+    jump: { every: 6500, min: 3, max: 22, up: 13, r: 6.5, dmg: 28 } },
+});
 export const ZT_IDS = ['', ...Object.keys(ZT)]; // index over the wire -> id
 export const zlTypeChance = (r) => Math.min(0.4, Math.max(0, 0.07 * (r - 2))); // how many spawns are special, by round
 export function zlPickType(r, alive = {}, rnd = Math.random) {
   if (rnd() >= zlTypeChance(r)) return '';
-  const pool = Object.entries(ZT).filter(([id, d]) => r >= d.from && (alive[id] || 0) < d.cap);
+  const pool = Object.entries(ZT).filter(([id, d]) => !d.boss && r >= d.from && (alive[id] || 0) < d.cap);
   let t = rnd() * pool.reduce((a, [, d]) => a + d.w, 0);
   for (const [id, d] of pool) if ((t -= d.w) <= 0) return id;
   return '';

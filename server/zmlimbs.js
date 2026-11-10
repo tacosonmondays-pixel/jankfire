@@ -18,7 +18,8 @@ const methods = {
   zlSpawn(b, D, n) {
     const zs = this.zs, z = b.zmz, alive = {};
     for (const o of zs.list) if (o.zmz.ty) alive[o.zmz.ty] = (alive[o.zmz.ty] || 0) + 1;
-    let ty = zs.pack && zs.pack.n > 0 ? 'biter' : FORCE || zlPickType(zs.n, alive);
+    const boss = this.zbNext(n); // a mini boss is due (server/zmboss.js)
+    let ty = boss || (zs.pack && zs.pack.n > 0 ? 'biter' : FORCE || zlPickType(zs.n, alive));
     if (FORCE && (alive[FORCE] || 0) >= ZT[FORCE].cap + 3) ty = ''; // (tests still get a few plain ones)
     const def = ZT[ty] || null;
     if (HP_MUL !== 1) b.hp = Math.round(b.hp * HP_MUL);
@@ -32,6 +33,7 @@ const methods = {
       if (def.pack) { if (zs.pack && zs.pack.n > 0) zs.pack.n--; else zs.pack = { n: Math.min(def.pack - 1, zs.toSpawn - 1), win: z.win }; } // the rest of the litter comes through the same window
     } else if (Math.random() < ZLN.bornArmless) z.lim = ZL.armL; // the odd one turns up an arm short
     z.hp0 = b.hp; z.lhp = Math.max(ZLN.limbMin, b.hp * ZLN.limbHp) * LIMB_MUL;
+    if (def && def.boss) this.zbSpawn(b, n);
   },
   zlPackWin() { const pk = this.zs.pack; return pk && pk.n > 0 && this.zs.areas.has(this.map.zm.windows[pk.win].area) ? pk.win : -1; },
   // what everyone needs to draw them (rides in zmInfo): [id, type, limbs gone, 1 = hat on | 2 = hyped up | 4 = shrieking]
@@ -48,6 +50,7 @@ const methods = {
   zlHit(t, amt, a, w, hs) {
     const z = t.zmz;
     if (!z || amt <= 0) return amt;
+    if (z.boss) return this.zbHit(t, amt); // bosses keep their limbs and shrug off one-shots
     const aim = a.zlz && a.zlz.id === t.id ? a.zlz : null, wd = WEAPONS[w], dir = aim ? aim.d : this.zlAway(a, t);
     let zone = hs ? 'head' : aim ? aim.zone : null;
     if (zone === 'head' && z.hat > 0) { // HARD HAT: it dinks off the hat, body damage at best
@@ -82,6 +85,7 @@ const methods = {
   // ---------------------------------------------------------- what missing bits (and being special) do: zmStep / zmSwipe / zxTear
   zlSpeed(z, n) { // x its normal speed
     if (n < z.yell) return 0; // busy shrieking
+    if (z.boss) { const k = this.zbSpeed(z, n); if (k != null) return k; }
     const base = zlCrawl(z.lim) ? Math.min(1, ZLN.crawl / Math.max(0.1, z.speed)) : zlHop(z.lim) ? ZLN.hop : 1;
     return base * (n < z.hype ? ZT.screamer.boost : 1);
   },
@@ -98,7 +102,7 @@ const methods = {
     const zs = this.zs, S = ZT.screamer;
     for (const b of zs.list) {
       const z = b.zmz;
-      if (z.ty !== 'screamer' || z.ph !== 'hunt' || n < z.yellAt || zs.st === 'over') continue;
+      if (z.boss || z.ty !== 'screamer' || z.ph !== 'hunt' || n < z.yellAt || zs.st === 'over') continue;
       const t = this.players.get(z.target);
       if (!t || !t.alive || Math.hypot(t.pos[0] - b.pos[0], t.pos[2] - b.pos[2]) > S.see) { z.yellAt = n + 800; continue; }
       z.yellAt = n + S.every * (0.85 + Math.random() * 0.3); z.yell = n + S.yell;
@@ -126,6 +130,7 @@ const methods = {
   zlKilled(t, killer) {
     const z = t.zmz, def = ZT[z.ty];
     if (!def) return;
+    if (def.boss) { this.zbKilled(t, killer); return; }
     if (def.pay && killer && killer.z && !killer.zmz) this.zmGive(killer, def.pay, z.ty);
     if (def.blast) (this.zs.pops ||= []).push({ at: t.pos.slice(), by: killer && !killer.zmz ? killer.id : 0 });
   },
