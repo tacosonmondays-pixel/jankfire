@@ -49,7 +49,7 @@ function loadBosses() {
 // the room's def for a boss kind (server/storyboss.js cleans it again), or null
 function bossOf(id) {
   const b = BOSSES && Object.hasOwn(BOSSES, id) ? BOSSES[id] : null;
-  if (!b || !Number.isFinite(b.hp) || !Array.isArray(b.phases)) return null;
+  if (!b || !Number.isFinite(b.hp) || !Array.isArray(b.phases) || !Object.hasOwn(PART_FILES, b.who)) return null; // (only bosses the room has hitboxes for)
   const moves = (p) => (Array.isArray(p.mechanics) ? p.mechanics : []).map((x) => MOVES[x && x.name]).filter(Boolean);
   const rest = (p) => (Array.isArray(p.mechanics) ? p.mechanics : []).reduce((a, x) => a || REST[x && x.name] || 0, 0);
   const health = (Array.isArray(b.layers) ? b.layers : []).find((l) => l && l.bar === 'health'), wp = Array.isArray(b.weakPoints) ? b.weakPoints[0] : null;

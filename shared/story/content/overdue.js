@@ -197,7 +197,7 @@ function build() {
   const scenes = {};
   for (const [id, s] of Object.entries(C.SCENES)) scenes[id] = { id, ...s, skip: true, tracks: s.tracks.map((t) => ({ ...t, ...(t.if ? { if: cond(t.if) } : {}), ...(t.choice && s.mission ? { do: [`talk:choice/${s.mission}.${t.choice}`] } : {}) })) };
   // a step that plays a scene and waits on a flag only that scene can earn (seen_c4, heart_ripped): the scene's end sets it
-  for (const [qid, m] of Object.entries(QS)) for (const st of m.steps || []) { const g = st.goal; if (!st.scene || !scenes[st.scene] || !g || g.type !== 'flag') continue;
+  for (const [qid, m] of Object.entries(QS)) for (const st of m.steps || []) { const g = st.goal; if (!st.scene || !scenes[st.scene] || !g || g.type !== 'flag' || scenes[st.scene].tracks.some((t) => t.choice)) continue; // (a scene with a choice in it: skipping it mustn't skip the choice)
     if ((m.choices || []).some((ch) => ch.options.some((op) => (op.do || []).includes(`flag:${g.flag}`)))) continue;
     scenes[st.scene].onEnd = [...(scenes[st.scene].onEnd || []), `flag:${g.flag}`]; }
   // ---- zones and things: locations (positions come from the district generators), collectibles as interactables

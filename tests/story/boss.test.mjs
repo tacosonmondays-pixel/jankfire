@@ -8,7 +8,7 @@ import '../../shared/story/solohost.js';
 import '../../shared/story/refsys.js';
 import { newSave } from '../../shared/story/save.js';
 import { BOSSES } from '../../shared/story/content/bosses.js';
-import { WEAPONS } from '../../shared/weapons.js';
+import { WEAPONS, FLAGS } from '../../shared/weapons.js';
 import { BOSS } from '../../server/storyboss.js';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let n = 0; const t = async (name, fn) => { await fn(); n++; console.log('ok', name); };
@@ -103,6 +103,10 @@ await t('the plate: armour first; at the health bar it comes off (one hit never 
   assert.equal(parts.length, 1); assert.deepEqual({ part: parts[0].part, state: parts[0].state, boss: parts[0].boss }, { part: 'plate', state: 'plate_off', boss: 'overtime_1' });
   const heart = await shoot(aimAt(0, 3.39, 0.98));
   assert.equal(heart[0].part, 'heart'); assert.equal(heart[0].crit, true); assert.equal(heart[0].dmg, Math.round(WEAPONS.ar.dmg * CRIT));
+  // crouched or sliding you shoot from lower down: the same aim at the heart still crits
+  for (const [fl, eye] of [[FLAGS.CROUCH, 1.05], [FLAGS.SLIDE, 0.95]]) { place(); me.f = fl; const o = [me.pos[0], me.pos[1] + eye, me.pos[2]], q = [e.pos[0], e.pos[1] + 3.39, e.pos[2] + 0.98], d = q.map((v, i) => v - o[i]), l = Math.hypot(...d);
+    const lowHit = await shoot(d.map((v) => v / l)); assert.equal(lowHit[0] && lowHit[0].part, 'heart', 'low shot, eye ' + eye); assert.equal(lowHit[0].crit, true); }
+  me.f = 0;
   me.pos = [BX, 0.1, BZ - 9]; // behind him: the clock face is on the other side
   const back = await shoot(aimAt(0, 3.39, 0.2));
   assert.equal(back[0].crit, false); assert.equal(back[0].part, 'body');

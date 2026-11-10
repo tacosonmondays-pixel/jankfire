@@ -151,9 +151,9 @@ export function installStoryBoss(Room) {
       return rayAabb(lo, ld, c, p.h, g);
     };
     let t;
+    if (front && slotOpen(B) && ((t = at('slot')) >= 0 || (!B.plate && (t = at('heart')) >= 0))) return { part: 'slot', t }; // shoot inside it (before the plate: its box covers the slot)
     if (front && B.plate && (t = at('plate')) >= 0) return { part: 'plate', t };
     if (front && !B.plate && (t = at('heart')) >= 0) return { part: 'heart', t };
-    if (front && slotOpen(B) && ((t = at('slot')) >= 0 || (t = at('heart')) >= 0)) return { part: 'slot', t }; // shoot inside it
     for (const k of ['head', 'gunR', 'gunL']) if ((t = at(k)) >= 0) return { part: k, t };
     t = rayBody(lo, ld, Pt.body, pose.dy, BOSS.bodySlack);
     return t >= 0 ? { part: 'body', t } : null;
@@ -165,7 +165,9 @@ export function installStoryBoss(Room) {
     if (!B) return onHit0.call(this, p, m);
     const d = v3(m.d, 2), l = d ? Math.hypot(d[0], d[1], d[2]) : 0;
     if (!d || l < 0.5 || !p.alive || !t.alive) return;
-    const h = this.bossRay(t, [p.pos[0], p.pos[1] + PH.eye, p.pos[2]], d.map((x) => x / l));
+    // the client fires from its own eye height, which drops (and eases) for a crouch or slide: try the heights it can be at, weak points first
+    const dn = d.map((x) => x / l), lowP = !!(p.f & (FLAGS.SLIDE | FLAGS.CROUCH)); let h = null;
+    for (const e of (lowP ? [1.0, 0.95, 1.3, PH.eye] : [PH.eye, 1.3, 1.0])) { const r = this.bossRay(t, [p.pos[0], p.pos[1] + e, p.pos[2]], dn); if (r && (!h || ((r.part === 'heart' || r.part === 'slot') && h.part !== 'heart' && h.part !== 'slot'))) h = r; }
     if (!h) return; // the shot doesn't cross him
     B.ray = h;
     try { onHit0.call(this, p, { ...m, h: 0 }); } finally { B.ray = null; }
