@@ -2,6 +2,7 @@
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
   { v: '7.1', date: '2026-11-10', title: 'PITS HAVE BOTTOMS', items: [
+    'MOUNT KABOOM got deeper. you don\'t stand in the lava any more, you sink into it. slowly. grapple out before it reaches your chin.',
     'MOUNT KABOOM is not a hot tub. fall down the volcano on Islands and you land in lava: it burns you the whole time you stand in it, keeps burning for a moment after you climb out, and if it finishes you the crater coughs your bits back up. grapple out fast or get EXTRA CRISPY.',
     'the sea drowns you properly now. deep water holds you up for a second while you sink (grapple out!), and you are gone when your head goes under, instead of dropping through the sea bed. same on the oil rig.',
     'long falls end where the ground is: the Desert canyon ends in the river (SPLOOSH), the rooftops end on the street (SPLAT). no more dying in mid air.',
