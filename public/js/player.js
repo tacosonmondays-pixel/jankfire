@@ -248,7 +248,8 @@ export function stepPlayer(dt, inp, now) {
   ME.crouching = !!inp.crouch && !ME.sliding;
   ME.walking = !!G.eco && !!inp.sprint && !ME.crouching; // Plant & Defuse: shift is a quiet slow walk, not a sprint
   ME.sprinting = !G.eco && !!inp.sprint && !inp.crouch && fw > 0 && ME.onGround;
-  const moveMul = ME.speedMul * (ME.wadeMul || 1) * (ME.sprinting ? C.sprintMul : ME.crouching ? C.crouchMul : ME.walking ? TAC.walkMul : 1);
+  const moveMul = ME.speedMul * (ME.swim ? Math.min(ME.wadeMul || 1, 0.6) : ME.wadeMul || 1) * // (in a pond, on its bed: wading speed at best)
+    (ME.sprinting ? C.sprintMul : ME.crouching ? C.crouchMul : ME.walking ? TAC.walkMul : 1);
   const eyeT = ME.sliding ? C.slideEye : ME.crouching ? C.crouchEye : C.standEye;
   ME.eyeH += (eyeT - ME.eyeH) * Math.min(1, dt * 14);
 

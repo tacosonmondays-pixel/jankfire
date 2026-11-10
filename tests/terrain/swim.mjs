@@ -16,3 +16,8 @@ console.log(log.join('\n')); console.log({ floatTicks: fl, lowestFeet: +minY.toF
 const p = [36, 6, 61], v = [0, 0, 0]; let low = 9, settle = -1;
 for (let t = 0; t < 60 * 6; t++) { v[1] -= 26 * dt; movePlayer(p, v, dt, m.boxes, false); swim(m, m.boxes, p, v, dt); low = Math.min(low, p[1]); if (settle < 0 && t > 30 && Math.abs(p[1] - (top - SWIM.ride)) < 0.001 && v[1] === 0) settle = t / 60; }
 console.log('plunge: lowest feet', low.toFixed(2), 'bed', T.at(36, 61).toFixed(2), 'settled after s', settle);
+// diving: hold crouch in the middle and you go down to the bed, let go and you come back up
+{ const p = [36, top - SWIM.ride, 61], v = [0, 0, 0]; let on = false, down = -1, up = -1;
+  for (let t = 0; t < 60 * 8; t++) { const dive = t < 60 * 4; v[1] -= 26 * dt; const r = movePlayer(p, v, dt, m.boxes, on); on = !!r.ground && v[1] <= 0.01; swim(m, m.boxes, p, v, dt, dive);
+    if (down < 0 && on) down = t / 60; if (!dive && up < 0 && Math.abs(p[1] - (top - SWIM.ride)) < 0.001) up = t / 60 - 4; }
+  console.log('dive: on the bed after s', down, '| back at the surface s after letting go', +up.toFixed(2)); }

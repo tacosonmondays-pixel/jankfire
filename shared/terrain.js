@@ -142,7 +142,10 @@ export function shapeGround(B, D, o) {
   let lo = 0, hi = 0;
   for (let k = 0; k < vx * vz; k++) { if (H[k] < lo) lo = H[k]; if (H[k] > hi) hi = H[k]; }
   const BASE = Math.min(-0.6, Math.floor((lo - 0.35) * 10) / 10);
-  for (const s of slabs) { s.max[1] = BASE; if (s.min[1] > BASE - 0.5) s.min[1] = BASE - 0.5; s.ter = 1; } // (a deep pond can go below the old slab's underside)
+  const UNDER = BASE - 0.5;
+  for (const s of slabs) { s.max[1] = BASE; if (s.min[1] > UNDER) s.min[1] = UNDER; s.ter = 1; } // (a deep pond can go below the old slab's underside)
+  // ...and below the top of whatever big layer lay under the slabs (the dirt): that comes down too, or it's an unseen floor across the pond
+  for (const b of B.boxes) if (!b.ter && inR(b) && b.max[1] <= -1 && b.max[1] > UNDER && b.min[1] < UNDER - 0.5 && (b.max[0] - b.min[0]) * (b.max[2] - b.min[2]) > 1000) b.max[1] = UNDER;
   const top = new Int16Array(nx * nz); // in 5 cm steps
   for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) top[C(i, j)] = Math.round((H[V(i, j)] + H[V(i + 1, j)] + H[V(i, j + 1)] + H[V(i + 1, j + 1)]) / 4 / 0.05);
   const runs = new Map(); // "z0,z1,q" -> the run in the column before, still growing along x
@@ -161,7 +164,7 @@ export function shapeGround(B, D, o) {
   }
   function flush(r) { B.boxes.push({ min: [X0 + r.x0, BASE, Z0 + r.j], max: [X0 + r.x1, r.q * 0.05, Z0 + r.e], mat, ter: 1 }); nTer++; }
   // ---- where the ground stops at a drop (the canyon's lip, the shaft): a strip of it down the face, so the lowered slab doesn't show as a gap
-  const edge = (x0, z0, x1, z1) => D.add(x0, BASE, z0, x1, 0, z1, mat);
+  const edge = (x0, z0, x1, z1) => D.add(x0, UNDER, z0, x1, 0, z1, mat);
   for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
     if (!ok[C(i, j)]) continue;
     const x = X0 + i, z = Z0 + j, t = 0.04;
