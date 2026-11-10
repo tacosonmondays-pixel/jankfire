@@ -50,6 +50,7 @@ import { GAMES, GAME_ORDER, TEAMS, mapsFor, mapForGame } from '/shared/modes.js'
 import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
 import { EPIC_CAM, epicMul, epicCamMs } from '/shared/epic.js';
+import { BUILDS, JOKE_MAX } from '/shared/looks.js'; // the joke body (character screen)
 import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, HAIRS, TOPS, BOTTOMS } from '/shared/looks.js';
 import { startBall, endBall, ballOn, BS } from './player.js';
 import { updateWreck, ballCam, wreckFx, wreckDied } from './wreck.js';
@@ -729,6 +730,28 @@ function buildCharacterUI() {
   styles('lk-hair', 'hair', HAIRS); swatches('lk-hairColor', 'hairColor', HAIR_COLORS);
   styles('lk-top', 'top', TOPS); swatches('lk-topColor', 'topColor', CLOTH_COLORS, look.top === 'runner' ? 'hi-vis yellow' : look.top === 'maid' ? 'classic black' : 'same as your colour');
   styles('lk-bottom', 'bottom', BOTTOMS); swatches('lk-bottomColor', 'bottomColor', CLOTH_COLORS, 'same as your colour');
+  // the joke body: build chips + two sliders. dragging only moves the preview, letting go saves (and tells the server once)
+  const bel = $('lk-build');
+  bel.innerHTML = '';
+  for (const [k, v] of Object.entries(BUILDS)) {
+    const c = document.createElement('button');
+    c.className = 'chip' + ((look.build || '') === k ? ' on' : '');
+    c.textContent = v.name;
+    c.addEventListener('click', () => { setLook({ ...look, build: k }); buildCharacterUI(); });
+    bel.append(c);
+  }
+  const jel = $('lk-joke');
+  jel.innerHTML = '';
+  for (const [key, label] of [['bigHead', 'head size'], ['bigButt', 'butt size']]) {
+    const lab = document.createElement('label'), inp = document.createElement('input'), val = document.createElement('b');
+    inp.type = 'range'; inp.min = '0'; inp.max = String(JOKE_MAX); inp.step = '1'; inp.value = String(look[key] | 0);
+    const say = () => { val.textContent = ['normal', 'big', 'bigger', 'huge', 'why'][Number(inp.value)] || ''; };
+    say();
+    inp.addEventListener('input', () => { say(); const t = validLook({ ...look, [key]: Number(inp.value) }, achs); showCharacter(buildCharacter, t.color || G.myColor || '#ff4fd8', t); });
+    inp.addEventListener('change', () => { setLook({ ...look, [key]: Number(inp.value) }); buildCharacterUI(); });
+    lab.append(label + ' ', inp, ' ', val);
+    jel.append(lab);
+  }
   for (const slot of LOOK_SLOTS) {
     const el = $('lk-' + slot);
     el.innerHTML = '';

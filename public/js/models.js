@@ -13,6 +13,7 @@ import { buildRigMissile } from './rigmodel.js'; // overdrive rig killstreak
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { laserBuild, calculator } from './gearmodels.js'; // the new gear's models (laser pointer, pop quiz calculator)
 import { prepAuthored, authored, AUTHORED, bindAuthored, nodeIn, glossBlade, LAZY, isLazy, queueGlb, setGlbList, landed } from './glbkit.js';
+import { BUILDS, JOKE, JOKE_MAX } from '/shared/looks.js'; // the joke body
 import { SEC_WB, SEC_HATS, secAuthored } from './secmodels.js'; // water pistol, taser, tv remote, radar gun
 import { laserAuthored } from './laserglb.js'; // a Blender laser pointer's charge hooks (leds, lens, button, charm, orb)
 import { nailgunBuild, tennisBuild, cartCannonBuild, tennisBall, cartModel, nailgunStaple, tennisMachine, cartBasket } from './primmodels.js'; // the new primaries + what they shoot
@@ -1721,6 +1722,25 @@ function runnerJacket(body, arm, armL, lk, col, jank) {
   for (const [p, s] of [[arm, J.armR], [armL, J.armL]]) { at(p, s.sleeve, C); at(p, s.tape, M(RUN_TAPE)); at(p, s.cuff, K); }
 }
 
+// the joke body (shared/looks.js): a build reshapes the torso in three bands, the sliders grow the head and the butt.
+// done after the outfit is on, by where each piece sits, so every top / bottom / dress gets it without knowing about it.
+// hats, hair and faces hang off the head group, so they grow with it. looks only: the server's hitboxes never hear of this
+function jokeBody(body, head, lk, seat) {
+  const b = Object.hasOwn(BUILDS, lk.build || '') ? BUILDS[lk.build || ''] : BUILDS[''];
+  if (b.chest !== 1 || b.waist !== 1 || b.hips !== 1) for (const o of body.children) {
+    if (!o.isMesh) continue; // legs, arms, the head: groups, left alone
+    const y = o.position.y, k = y >= 1.22 && y < 1.56 ? b.chest : y >= 1.06 && y < 1.22 ? b.waist : y >= 0.8 && y < 1.06 ? b.hips : 1;
+    if (k === 1) continue;
+    o.scale.x *= k; o.position.x *= k;
+    if (y >= 1.06 && y < 1.22) o.scale.z *= k; // the waist pinches (or thickens) all the way round
+  }
+  const hd = Math.max(0, Math.min(JOKE_MAX, lk.bigHead | 0)), bt = Math.max(0, Math.min(JOKE_MAX, lk.bigButt | 0));
+  if (hd) head.scale.setScalar(1 + JOKE.head * hd);
+  if (bt) for (const sx of [-1, 1]) { // two cheeks in whatever you sit on, out the back (+z)
+    const r = 0.085 + JOKE.butt * bt, ch = ball(r, seat, sx * (0.075 + r * 0.32) * b.hips, 0.97 - r * 0.12, 0.06 + r * 0.62);
+    ch.scale.set(1, 1.05, 1.08); body.add(ch);
+  }
+}
 export function buildCharacter(color, look) {
   const root = new THREE.Group();
   const body = new THREE.Group();
@@ -1806,6 +1826,7 @@ export function buildCharacter(color, look) {
     if (sleeves === 'long') { const fs = cylZ(0.052, 0.18, TOP, 0.2, -0.035, -0.34); fs.rotation.y = -0.9; armL.add(fs); }
     addHair(head, lk);
     body.add(armL);
+    jokeBody(body, head, lk, top === 'maid' ? MAID : bottom === 'skirt' ? BOT : LEG);
   }
   arm.position.set(0.25, 1.45 + jank.shoulder, 0);
   slot.position.set(-0.03, -0.03, -0.56);
