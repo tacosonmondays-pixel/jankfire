@@ -39,6 +39,7 @@ import { BR } from '../shared/royale.js';
 import { tickHR, hrBot } from './hrguy.js'; // the Tall Guy From HR (Scary Forest)
 import { HR } from '../shared/hr.js';
 import { installAds } from './ads.js';
+import { installSdSkill } from './sdskill.js';
 import { installGear } from './gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
 import { installRandSkin, rollSkins, rollKfx, cleanFavs, hasRandom } from './randskin.js'; // Random cosmetics: rolled again on every spawn
 import { installSec } from './secondaries.js'; // water pistol, taser, tv remote, speed trap
@@ -639,7 +640,7 @@ class Room {
   }
 
   botThink(b, dt) {
-    const ai = b.ai, n = now(), D = BOT_DIFF[ai.diff] || BOT_DIFF.normal;
+    const ai = b.ai, n = now(), D = this.botD(b);
     if (b.sleepUntil > n) return { wx: 0, wz: 0, jump: false };
     if (n < (b.blindUntil || 0)) { if (this.lassoHolding(b)) this.lassoEnd(b, 'drop'); return this.botBlind(b, dt); } // flashed by goggles: stumbling about, can't see a thing (and lets go of the rope)
     const lt = this.lassoThink(b, dt); // a lasso bot holding someone does the fling routine (server/lasso.js)
@@ -900,8 +901,10 @@ class Room {
     return null;
   }
 
-  // how hard a bot's bullets hit next to a player's (server/sdtune.js raises it for hard bots in Plant & Defuse)
+  // how hard a bot's bullets hit next to a player's: the same for every bot in every mode (owner, 2026-11-10: bots don't hit harder)
   botDmg() { return 0.7; }
+  // a bot's reaction, wobble, trigger and turn numbers (server/sdskill.js gives each Plant & Defuse bot its own)
+  botD(b) { return BOT_DIFF[b.ai.diff] || BOT_DIFF.normal; }
   // shots per second for a gun right now: Plant & Defuse slows a few down (shared/sdgun.js rof)
   rateOf(id, w, hp) { const r = fireRate(w, hp); return this.isEcon() ? sdRate(id, r) : r; }
   botFire(b, t, D) {
@@ -3946,6 +3949,7 @@ installLasso(Room);
 installZombies(Room, { send, stat, store });
 installLobby(Room, { send, rooms });
 installAds(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm }); // the laptop's pop-up ads (after installSec: it wraps botGear / botFire)
+installSdSkill(Room); // Plant & Defuse bots with skill tiers + team stances (wraps the econ / tactical bot methods)
 installStoryRef(Room); // story rooms (before installModeStats, which stays last)
 installModeStats(Room, { store }); // per-mode leaderboard stats (last: it wraps zombies' zmGive)
 
