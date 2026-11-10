@@ -472,6 +472,7 @@ export function loadMap(id) {
 // models finished loading after the map was built: redraw the boxes + props (no gameplay state touched)
 export function refreshMapVisuals() {
   if (!MAP.id || !G.scene || !MAT) return;
+  if (MAPS[MAP.id] && MAPS[MAP.id].stream) return; // a streamed city draws itself (city/ingame.js), and its BOXES are live collision: redrawing them here stood a stone copy of every wall, and every hidden box, in the story's world when the models landed late
   buildMap(G.scene);
   buildProps(G.scene, MAPS[MAP.id] && MAPS[MAP.id].boxes.props);
   lightingRefresh();

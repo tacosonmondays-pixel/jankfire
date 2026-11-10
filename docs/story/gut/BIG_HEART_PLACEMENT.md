@@ -1,0 +1,154 @@
+# The Big Heart: where it stands, and what beats with it
+
+The model is `docs/story/gut/GUT_HEART_MODEL.md`. This page is the world side: the spot, the collision, the one clock
+that the heart, the fog and the thud share, the low red ground fog, and every knob.
+
+Story mode only (`?story=1`). Nothing here is loaded by a multiplayer map.
+
+## Where
+`gut:big_heart`, "the Big Heart". The tower's foot is at **x -96, y 40, z -78** (`SLICE.heart` in
+`shared/city/slice.js`), not turned: the heart's front faces south (the border and the gate), its apex points east.
+The place's own point (`PLACES['gut:big_heart']`, the `gut:big_heart` mark) is its listening spot, 9 m out in front
+at (-94.5, 40, -69.1). A second mark, `gut.big_heart_top`, is the top of the rib stair (-94.2, 65.6, -77.7).
+
+It stands on the open ground behind Meat Mechanics, between that shop's east wall and the low flesh wall of the old
+time-office plaza, a few metres north of the campus street at z -60.
+
+### Why there
+The generator leaves very little flat, empty ground in the Gut: every block is offices unless something reserves it.
+A scan of the district (every 4 m, a 12 m clear circle, then rays from where players stand to nine points
+up the tower and the heart) left three kinds of spot:
+
+| spot | from the Gut Border Gate landing | from Peristalsis Avenue | from the Big Stomach |
+|---|---|---|---|
+| the strip between the Big Stomach's east rim and the offices (-111, -160) | the top 6 m over a 24 m office, 160 m off in 55% fog | all of it, 31 m | all of it, 67 m |
+| the Tooth Market side (x 0 to 96) | hidden | 150 m+, in fog | hidden |
+| **behind Meat Mechanics (-96, -78)** | **most or all of the heart from 101 of 147 standing spots on the landing, 82 m** | **all of it, 57 m** | **all but the foot, 89 m** |
+
+So it is the skyline as you come up the Long Stairs: through the gate it is at your ten o'clock, 49 m tall, 80 m
+away. From the exact `gut:border` point the gate's west pillar is in the way; two steps either side and it is there.
+From the old plaza and the campus street it fills the view. It is also seen from the Bottom's top terrace (the
+Sunset Wall, the top of the Down Escalator) as a shape up the hill.
+
+Nothing was moved for it. The spot had no props, no shapes and no marks inside the footprint; the only thing taken
+out is any baked bile-puddle light within 7 m of the foot (none there today: the filter is for the day the scatter
+changes). The nearest things: Meat Mechanics' back wall (8.9 m), the plaza's wall (10 m), a kerb parking spot (14 m).
+
+## Collision
+`shared/city/bigheart.js` adds the boxes to the Gut's chunk as hidden collision (`B.add(..., { hide: true })`), the
+same way rib arches and lungs get theirs, so the server's story rooms, the nav grid and the client build the
+identical boxes from the same module.
+
+The boxes are `shared/city/bigheart_boxes.js`, **generated** from the model's json by
+`node tools/city/heart_boxes.mjs` (run it again when the model is rebuilt; `tests/story/bigheart.test.mjs` fails if
+it is stale). Two things in the json's boxes had to be redone there, because with them as shipped the stair could
+not be climbed:
+
+- **The spine.** The json has ten square 3 m lifts. Their corners stick 0.4 m out of the round, leaning spine and
+  catch heads and treads. It is boxed again from the stair's own axis (centre and radius every 1.5 m): a square and
+  a cross per lift, all inside the circle. 60 boxes.
+- **The thigh-bone buttresses.** The json has five fat slabs a bone (2 x 3 x 2 m round a 0.8 m shaft); they fill the
+  first two turns of the stair. Each bone is boxed again as 12 thin boxes along its axis, and the 23 of those that
+  would take a climber's headroom over a tread are left out. You brush through the bone where it crosses the stair
+  (five crossings, all below 10 m) instead of being walled off. Elsewhere the bones are solid.
+
+Mound, heart and the 98 tread pads are the json's.
+
+**The stair is climbable.** The test walks a player-sized box up it with the game's physics (0.6 m step, no jump)
+from the listening spot to the top at 3, 5, 10 and 14.5 m/s. Treads 44, 51 and 63 are gone: each leaves a 0.5 m
+rise over a 0.2 to 0.3 m gap, which the step-up takes without a jump. Treads 11, 25, 27, 52, 55 and 85 are stubs
+(half a tread, about 0.9 m of ledge against the spine): walkable, keep to the outside. At the top there is 1.98 m
+under the heart's lowest box; the hanging hearts at the apex are within reach.
+
+## The one beat
+`public/js/city/gutbeat.js`: `gutBeat`, ticked once a frame.
+
+| | |
+|---|---|
+| `rate` | 0.72 beats a second |
+| `t`, `ph` | beats since the page loaded; where in this beat (0..1) |
+| `span` | 0.55: the wave takes this much of a beat from the top of the heart to the apex |
+| `lub` | 0.06: when in the beat the fog snaps shut |
+| `k` | how hard the fog is squeezed now (1 on the lub, 0.6 on the dub) |
+| `fix` | set to a number to hold the clock at that beat (screenshots, tests); `null` runs |
+
+What reads it:
+
+| ph | what happens |
+|---|---|
+| 0.06 | the district's distance fog closes in and flushes (`ingame.js`, PR #159's curve, now on this clock); the ground fog swells |
+| 0.10 | the thud's lub |
+| 0.12 | the pacemaker (top right of the heart) is at full swell: the wave has started |
+| 0.34 / 0.33 | the dub: fog, thud (0.29 s after the lub) and the top of the heart |
+| 0.12 to 0.67 | the wave crosses the heart to the apex |
+| to 1.0 | on down the sleeve, the aorta and the roots |
+| from 0.9 | a ring runs out through the ground fog from the roots, 80 m a beat |
+
+The city's own flesh (the breathing walls, the moving street's surf timing) still runs on the streamer's older
+72-a-minute `uBeat`. It was left alone: Peristalsis Avenue's surf window is timed to it.
+
+## Drawing it
+`public/js/city/bigheart.js`, hooked into `ingame.js` (`startHeart`, `updateHeart`, `stopHeart`).
+
+- Its own `GLTFLoader` (the prop path strips `uv1`). Textures nearest-filtered, the props' studio reflection.
+- The ripple is the model doc's snippet: swell along the normal by `aPulse.y`, timed by `aPulse.x`, plus the
+  travelling flush and the pits' glow.
+- **Its own light.** The Gut is dim and lit from above, and this is mostly seen from below, where the hemisphere
+  light is nearly black. The flesh gives off 30% of its own colour at rest and up to 90% more as the wave passes, with
+  a wet red rim; the bone gives off 20%. Without it the heart is a black shape.
+- Potato's vertex snap and the city's lamp lights, as on props. The scene's distance fog applies as to anything.
+- Near model inside 120 m on Mid and Too HD, 84 m on Crusty, 48 m on Potato (8 m of slack either way).
+- **Cost when you are not there:** nothing is fetched until you are within 340 m; it is not drawn past the fog's far
+  distance or 320 m; no thud past 150 m. Two baked lights (red at the roots, dimmer under the heart) are chunk data.
+
+Knobs (`HEART_FX`): `amp` 0.09 m, `flush` 0.6, `glow` 1.1, `self` 0.3, `lit` 0.9, `rim` 0.3, `bone` 0.2.
+
+## The thud
+`sfx.bigHeart(v, pos, gap)` in `public/js/audio.js`: a sine falling 58 to 35 Hz with an octave on top (so small
+speakers play something) and a little low-passed noise, 14 ms attack; the dub is 70 to 42 Hz, quieter, 0.29 s later.
+Volume is `(1 - d / 150)²`: full at the foot, a fifth at 80 m, nothing at 150 m. Panned gently toward the tower. No
+music was changed (the Gut's music bed has its own heartbeat at its own tempo).
+
+## The low red fog
+`public/js/city/gutfog.js`: flat sheets stacked just over the ground, 0.22 m to 1.05 m up, each one quad with two
+scrolling noise fields for wisps and holes.
+
+- the plateau (y 40), with a hole over the Big Stomach's crater and a soft east edge
+- the border band (y 36): the spill at the foot of the cliff, gone 40 m south of it
+- a pool in the Big Stomach's bowl over the acid: the thickest
+- round the heart's roots it thickens and the holes close
+
+Why sheets and not height fog in the city shaders: they fog ground, props and people's shins alike without touching
+another material, and a stack of sheets cannot get thicker than its layers however flat you look along it.
+
+Readability: the whole stack is capped at **50%** (`cap`), it clears within 1.2 to 5 m of the camera, sheets fade as
+your eye crosses them, and it is drawn before every other see-through thing so sparks, glass, tracers and outlines
+stay on top of it. Heads and chests are above it.
+
+It only exists in the Gut and the border band, and is not drawn when the camera is more than 110 m from the Gut.
+Layers by preset: Potato 2, Crusty 3, Mid 4, Too HD 5 (plus the border's and the pool's: 7 to 12 quads in all).
+
+Knobs (`GUT_FOG`): `on`, `top` 1.05 m, `cap` 0.5, `color` 0xd8182e, `drift` 1, `near` 110 m.
+
+## Looking at it
+```js
+const gb = (await import('/js/city/gutbeat.js')).gutBeat; gb.fix = 0.3;      // hold the beat; null to let go
+(await import('/js/city/gutfog.js')).GUT_FOG.on = false;                     // fog off
+(await import('/js/city/bigheart.js')).heartState();                         // { state, lod, visible, d }
+(await import('/js/player.js')).ME.pos = [-94.5, 40, -66];                   // the foot
+```
+
+## Files
+| | |
+|---|---|
+| `shared/city/slice.js` | `SLICE.heart`, `PLACES['gut:big_heart']` |
+| `shared/city/bigheart.js`, `bigheart_boxes.js` | the spot, collision, lights, marks |
+| `shared/city/gut.js` | one call: `bigHeart(B)` |
+| `tools/city/heart_boxes.mjs` | json to boxes |
+| `public/js/city/gutbeat.js` | the clock |
+| `public/js/city/bigheart.js` | loader, shader, near / far, the thud's trigger |
+| `public/js/city/gutfog.js` | the ground fog |
+| `public/js/city/ingame.js` | the hooks; the distance fog reads the clock |
+| `public/js/audio.js` | `sfx.bigHeart` |
+| `shared/story/content/world.js` | the `gut:big_heart` location |
+| `tests/story/bigheart.test.mjs` | boxes fresh, place and marks, the climb |

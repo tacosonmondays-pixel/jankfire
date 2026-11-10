@@ -752,3 +752,29 @@ Object.assign(sfx, {
   blorp(pos) { tone('sine', 70 + Math.random() * 30, 160, 0.16, 0.22, pos); tone('sine', 140, 60, 0.12, 0.14, pos, 0.14); noise(0.1, 0.12, 'lowpass', 600, 150, pos, 0.12); },
   crackle(pos, k = 1) { for (let i = 0; i < 1 + (Math.random() * 3 | 0); i++) noise(0.012 + Math.random() * 0.02, (0.06 + Math.random() * 0.1) * k, 'highpass', 1800 + Math.random() * 3000, 1200, pos, i * 0.03 + Math.random() * 0.02, 1); },
 });
+
+// the Big Heart in the Gut (city/bigheart.js): a deep, slow double thud once a beat. v 0..1 is how close you are (the
+// caller fades it to nothing by 150 m); it skips dest()'s gunshot falloff, which would leave nothing at 30 m, and is
+// only panned toward the tower. a sine dropping in pitch, an octave on top so small speakers have something to play,
+// and a little muffled noise for the meat of it; a soft 14 ms attack so it never clicks
+function thud(f0, f1, dur, v, pan, delay) {
+  const t = ac.currentTime + delay, g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.014); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  for (const [k, a] of [[1, 1], [2.02, 0.3]]) {
+    const o = ac.createOscillator(), og = ac.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(f0 * k, t); o.frequency.exponentialRampToValueAtTime(f1 * k, t + dur);
+    og.gain.value = a; o.connect(og); og.connect(g); o.start(t); o.stop(t + dur + 0.05);
+  }
+  const s = ac.createBufferSource(), lp = ac.createBiquadFilter(), ng = ac.createGain();
+  s.buffer = nbuf; lp.type = 'lowpass'; lp.frequency.value = 120; ng.gain.value = 0.6;
+  s.connect(lp); lp.connect(ng); ng.connect(g); s.start(t, Math.random() * 1.5); s.stop(t + dur + 0.05);
+  if (ac.createStereoPanner) { const p = ac.createStereoPanner(); p.pan.value = pan; g.connect(p); p.connect(master); } else g.connect(master);
+}
+Object.assign(sfx, {
+  bigHeart(v, pos, gap = 0.29) { // lub, then the dub `gap` seconds later
+    if (!ac || !(v > 0.004)) return;
+    const dx = pos ? pos[0] - L.pos[0] : 0, dz = pos ? pos[2] - L.pos[2] : 0, d = Math.hypot(dx, dz);
+    const pan = d > 2 ? Math.max(-1, Math.min(1, (dx * Math.cos(L.yaw) - dz * Math.sin(L.yaw)) / d)) * 0.45 : 0;
+    thud(58, 35, 0.26, 0.4 * v, pan, 0); thud(70, 42, 0.18, 0.25 * v, pan, gap);
+  },
+});
