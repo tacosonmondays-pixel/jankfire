@@ -11,6 +11,7 @@
 #   z_screamer long and thin, jaw down to its chest (part_jaw swings), stringy hair
 #   z_manager  THE FLOOR MANAGER (mini boss): suit, tie, MANAGER badge, comb-over, megaphone, clipboard
 #   z_mascot   THE MASCOT (mini boss): Bargain Buddy's plush suit with a mannequin inside
+#   z_student / z_teacher / z_lunchlady   Jankfield High's own (shared/zmschool.js zm.skins): the plain zombies there wear these
 #   z_stump    the empty socket left on the body where a limb popped off
 # blender52 -b --python tools/blender/make_zombies.py [-- --no-sheet] [--only=chonk] [--qa: the blender-asset-qa gate on every kind]
 import os, sys, math
@@ -517,12 +518,152 @@ def build_mascot(M):
     return finish_z('mascot', P, {'joints': {k: list(v) for k, v in J2.items() if v != JT[k]}})
 
 
+def clean_arm(M, sx, sm, fat=1.0, long_sleeve=True, tag=False):
+    """arm() with a whole sleeve (no rags): to the elbow, or to the wrist with a cuff"""
+    a = keep(arm(M, sx, fat, 1.0, sleeve=0.27, sleeve_m=sm, tag=tag), 'box')  # (the boxes are the rags)
+    return a + (forearm_sleeve(M, sm, fat) if long_sleeve else [])
+
+
+def shod(M, sx, fat, bm, shoe_m, sole_m=None, cuff=True):
+    """a shin in full trousers (or bare, cuff=False) with a shoe on: shoe_m the upper, sole_m the sole"""
+    sh = keep(shin(M, sx, fat, cuff=cuff, shoe=False, bm=bm), 'ankle', 'foot', 'toe')
+    if cuff: sh.append(limb('leg2', [(0, -0.278, 0.002), (0, -0.4, 0)], [0.075 * fat, 0.072 * fat], bm, seg=10))  # (clear of the cuff above it: no two skins in one place)
+    else: sh.append(blob('ankle2', (0, -0.38, 0), (0.042 * fat,) * 3, M.joint, seg=8, rings=6))
+    sh.append(blob('shoe', (0, -0.415, -0.05), (0.062 * fat, 0.044, 0.135), shoe_m, seg=12, rings=8, fn=lambda p, n: 0.01 * max(0, -p.z / 0.135)))
+    sh.append(box((0.124 * fat, 0.02, 0.28), (0, -0.458, -0.05), sole_m or M.sole, bev=0.005))
+    return sh
+
+
+def build_student(M):
+    """Jankfield High: a student. hoodie (the zombie's own top colour) with the hood down, a backpack that's mostly
+    stickers, jeans, white trainers, earbuds still in"""
+    pack = cloth('zs_pack', 0xff4fd8, tex_noise('zs_packT', 0xff4fd8, 0.08, 32, seed=61))
+    strap = mat('zs_strap', 0x2a2433, rough=0.7)
+    sneaker = mat('zs_sneaker', 0xf4f2ea, rough=0.35, clearcoat=0.5)
+    stick = mat('zs_sticker', 0xffffff, rough=0.5, tex=tex_canvas('zs_stickerT', 32, 32, lambda px: (px.__setitem__(slice(None), hexrgb(0xffe14d)), px_disc(px, 16, 14, 9, 0x120818, r_in=7), px_disc(px, 12, 12, 1.5, 0x120818), px_disc(px, 20, 12, 1.5, 0x120818), px_line(px, 11, 18, 21, 18, 0x120818, 1.5), text_px(px, 'JHS', 8, 25, 1, 0xff3030))))
+    body = [blob('hips', (0, 0.95, 0), (0.176, 0.105, 0.128), M.bot, seg=16, rings=10),
+            limb('waist', [(0, 1.0, 0), (0, 1.1, 0.004), (0, 1.2, 0)], [0.15, 0.142, 0.15], M.top, seg=12),
+            blob('hoodie', (0, 1.33, 0), (0.256, 0.235, 0.168), M.top, seg=16, rings=12),
+            limb('hem', [(0, 1.02, 0), (0, 1.07, 0)], [0.182, 0.176], M.top, seg=14, squash=(1.0, 0.76)),
+            limb('neck', [(0, 1.5, 0), (0, 1.62, 0)], [0.058, 0.046], M.skin, seg=10),
+            blob('hood', (0, 1.56, 0.11), (0.15, 0.085, 0.1), M.top, seg=12, rings=8),  # down, bunched behind the neck
+            blob('pocket', (0, 1.18, -0.142), (0.13, 0.06, 0.03), M.top, seg=10, rings=6)]
+    for sx in (-1, 1):
+        body.append(blob('socket', (sx * 0.25, 1.45, 0), (0.078,) * 3, M.top, seg=12, rings=8))
+        body.append(tube([(sx * 0.035, 1.52, -0.13), (sx * 0.04, 1.42, -0.165), (sx * 0.045, 1.34, -0.166)], 0.005, M.white, seg=4))  # drawstrings
+        body.append(tube([(sx * 0.13, 1.54, -0.03), (sx * 0.15, 1.45, -0.15), (sx * 0.15, 1.25, -0.155), (sx * 0.15, 1.16, -0.03), (sx * 0.14, 1.2, 0.14)], 0.014, strap, seg=5))  # the backpack's straps
+    body.append(blob('backpack', (0, 1.32, 0.24), (0.19, 0.22, 0.11), pack, seg=14, rings=10))
+    body.append(blob('packpocket', (0, 1.24, 0.335), (0.13, 0.1, 0.035), pack, seg=10, rings=6))
+    body.append(rod((-0.11, 1.345, 0.345), (0.11, 1.345, 0.345), 0.005, M.chrome, seg=5))  # the zip
+    st = quad((0, 0, 0), 0.1, 0.1, stick, axis='z', sx=1); st['keep_uv'] = 1
+    st.data.transform(Matrix.Translation(gv(0.02, 1.235, 0.373))); body.append(st)
+    body.append(box((0.104, 0.104, 0.02), (0.02, 1.235, 0.3615), strap, bev=0.003))  # its patch (so the sticker sits on something flat)
+    hd = head(M, 'plain')
+    for sx in (-1, 1):  # earbuds, one wire down into the hoodie
+        hd.append(blob('bud', (sx * 0.127, 0.15, 0.0), (0.012, 0.014, 0.014), M.white, seg=6, rings=5))
+        hd.append(tube([(sx * 0.13, 0.14, 0.0), (sx * 0.12, 0.05, -0.02), (sx * 0.06, -0.02, -0.05)], 0.003, M.white, seg=4))
+    P = {'body': place('body', body), 'head': place('head', hd)}
+    P['arm'] = place('arm', clean_arm(M, 1, M.top, tag=True)); P['armL'] = place('armL', clean_arm(M, -1, M.top))
+    for k, kn, sx in (('legL', 'kneeL', -1), ('legR', 'kneeR', 1)):
+        P[k] = place(k, thigh(M, sx, 1.0, trouser=0.44, ragged=False))
+        P[kn] = place(kn, shod(M, sx, 1.0, M.bot, sneaker, mat('zs_snsole', 0xff4fd8, rough=0.5)))
+    return finish_z('student', P)
+
+
+def build_teacher(M):
+    """Jankfield High: a teacher. mustard cardigan over a shirt and tie, grey slacks, sensible shoes, glasses on a
+    chain, a red pen behind one ear, hair in a bun that gave up, a mug welded to one hand"""
+    cardi = cloth('zs_cardi', 0xc89a2a, tex_stripes('zs_cardiT', 0xc89a2a, 0xb88a22, 16, 2, diag=False))
+    slack = cloth('zs_slack', 0x6a6a74, tex_noise('zs_slackT', 0x6a6a74, 0.07, 32, seed=62))
+    tie = mat('zs_tie', 0x4fd8ff, rough=0.4, clearcoat=0.3)
+    shoe = mat('zs_shoe', 0x5a3a22, rough=0.3, clearcoat=0.6)
+    mug = mat('zs_mug', 0xf4f2ea, rough=0.25, clearcoat=0.8)
+    body = [blob('hips', (0, 0.95, 0), (0.176, 0.105, 0.128), slack, seg=16, rings=10),
+            limb('waist', [(0, 1.0, 0), (0, 1.1, 0.004), (0, 1.2, 0)], [0.132, 0.122, 0.136], M.white, seg=12),
+            blob('chest', (0, 1.34, 0), (0.236, 0.213, 0.146), M.white, seg=16, rings=12),
+            limb('neck', [(0, 1.5, 0), (0, 1.62, 0)], [0.058, 0.046], M.skin, seg=10),
+            limb('collar', [(0, 1.535, 0), (0, 1.572, 0)], [0.066, 0.058], M.white, seg=10),
+            limb('band', [(0, 0.994, 0), (0, 1.036, 0)], [0.174, 0.168], slack, seg=14, squash=(1.0, 0.74))]
+    for sx in (-1, 1): body.append(blob('socket', (sx * 0.25, 1.45, 0), (0.078,) * 3, cardi, seg=12, rings=8))
+    cd = blob('cardigan', (0, 1.3, 0), (0.262, 0.27, 0.172), cardi, seg=18, rings=14)  # open down the front
+    cut(cd, box((0.13, 0.8, 0.3), (0, 1.3, -0.16), None)); cut(cd, box((0.16, 0.1, 0.5), (0, 1.58, 0), None))
+    body.append(cd)
+    for i in range(3):
+        by = 1.36 - i * 0.1
+        body.append(blob('btn%d' % i, (0.078, by, -0.172 * math.sqrt(1 - (0.078 / 0.262) ** 2 - ((by - 1.3) / 0.27) ** 2)), (0.012, 0.012, 0.006), M.dark, seg=6, rings=4))
+    body.append(sweep([(0, 1.535, -0.13), (0, 1.44, -0.144), (0, 1.26, -0.148), (0, 1.2, -0.144)], [0.014, 0.022, 0.028, 0.004], tie, seg=4, squash=(0.3, 1.0), name='tie'))
+    hd = head(M, 'plain')
+    cy = 0.155; ez = -0.142 * 0.9; ey = cy + 0.05
+    hd.append(blob('hairback', (0, cy + 0.03, 0.05), (0.132, 0.17, 0.12), M.hair, seg=14, rings=10))  # hair over the back of the head
+    hd.append(blob('bun', (0.02, cy + 0.2, 0.07), (0.06, 0.055, 0.06), M.hair, seg=10, rings=8))
+    for i in range(3): hd.append(tube([(0.02, cy + 0.24, 0.07), (0.05 - i * 0.04, cy + 0.3, 0.09 - i * 0.03), (0.08 - i * 0.07, cy + 0.31, 0.12)], 0.004, M.hair, seg=4))  # ... coming undone
+    for sx in (-1, 1):
+        hd.append(lathe([(0.028, -0.004), (0.034, -0.004), (0.034, 0.004), (0.028, 0.004)], (sx * 0.048, ey, ez - 0.012), M.gold, seg=12, axis='z'))
+        hd.append(tube([(sx * 0.08, ey, ez - 0.004), (sx * 0.125, ey - 0.02, 0.0), (sx * 0.1, ey - 0.16, 0.03), (sx * 0.05, ey - 0.2, 0.06)], 0.003, M.gold, seg=4))  # the chain
+    hd.append(rod((-0.014, ey, ez - 0.014), (0.014, ey, ez - 0.014), 0.004, M.gold, seg=5))
+    hd.append(rod((0.128, cy + 0.02, 0.06), (0.132, cy + 0.09, -0.06), 0.006, mat('zs_pen', 0xff3030, rough=0.3, clearcoat=0.6), seg=6))  # the red pen
+    P = {'body': place('body', body), 'head': place('head', hd)}
+    aR = clean_arm(M, 1, cardi, tag=True)
+    w = (0, -0.05, -0.55)
+    aR.append(outward(lathe([(0.001, -0.05), (0.04, -0.05), (0.042, 0.05), (0.036, 0.05), (0.034, -0.04), (0.001, -0.04)], (0.0, w[1] - 0.075, w[2] - 0.07), mug, seg=12, axis='y')))  # the mug, in its fist
+    aR.append(tube([(0.04, w[1] - 0.05, w[2] - 0.07), (0.07, w[1] - 0.06, w[2] - 0.07), (0.07, w[1] - 0.1, w[2] - 0.07), (0.04, w[1] - 0.11, w[2] - 0.07)], 0.007, mug, seg=5))
+    aR.append(blob('coffee', (0.0, w[1] - 0.04, w[2] - 0.07), (0.033, 0.006, 0.033), M.dark, seg=10, rings=4))
+    P['arm'] = place('arm', aR); P['armL'] = place('armL', clean_arm(M, -1, cardi))
+    for k, kn, sx in (('legL', 'kneeL', -1), ('legR', 'kneeR', 1)):
+        P[k] = place(k, thigh(M, sx, 1.0, trouser=0.44, ragged=False, bm=slack))
+        P[kn] = place(kn, shod(M, sx, 1.0, slack, shoe))
+    return finish_z('teacher', P)
+
+
+def build_lunchlady(M):
+    """Jankfield High: the lunch lady. pink tabard, a white apron with one unidentified stain, a hairnet over a perm,
+    rubber gloves, a ladle she is not putting down"""
+    dress = cloth('zs_dress', 0xff9ad8, tex_noise('zs_dressT', 0xff9ad8, 0.06, 32, seed=63))
+    apron = mat('zs_apron', 0xffffff, rough=0.6, tex=tex_canvas('zs_apronT', 32, 48, lambda px: (px.__setitem__(slice(None), hexrgb(0xf6f4ee)), px_disc(px, 20, 30, 5, 0xb8a060), px_disc(px, 24, 34, 3, 0xb8a060), text_px(px, 'EAT', 7, 6, 1, 0xff4fd8))))
+    net = mat('zs_net', 0xdfe6ea, rough=0.5)
+    glove = mat('zs_glove', 0xffe14d, rough=0.3, clearcoat=0.7)
+    clog = mat('zs_clog', 0xf4f2ea, rough=0.3, clearcoat=0.6)
+    body = [blob('hips', (0, 0.95, 0), (0.2, 0.115, 0.15), dress, seg=16, rings=10),
+            blob('skirt', (0, 0.84, 0), (0.22, 0.16, 0.17), dress, seg=16, rings=10),
+            limb('waist', [(0, 1.0, 0), (0, 1.1, 0.004), (0, 1.2, 0)], [0.165, 0.16, 0.168], dress, seg=12),
+            blob('chest', (0, 1.34, 0), (0.256, 0.226, 0.176), dress, seg=16, rings=12),
+            limb('neck', [(0, 1.5, 0), (0, 1.62, 0)], [0.06, 0.048], M.skin, seg=10)]
+    for sx in (-1, 1):
+        body.append(blob('socket', (sx * 0.25, 1.45, 0), (0.08,) * 3, dress, seg=12, rings=8))
+        body.append(tube([(sx * 0.07, 1.54, -0.1), (sx * 0.08, 1.56, 0.0), (0, 1.56, 0.09)], 0.008, M.white, seg=4))  # the apron's neck strap
+    ap = panel('apron', 0.3, 0.62, (0, 1.12, -0.2), apron, curve=0.09, nx=8, ny=8); ap.modifiers.clear(); apron.use_backface_culling = False
+    body.append(ap)
+    body.append(tube([(-0.15, 1.1, -0.13), (-0.2, 1.1, 0.0), (0, 1.1, 0.165), (0.2, 1.1, 0.0), (0.15, 1.1, -0.13)], 0.007, M.white, seg=4))  # ... and its ties
+    hd = head(M, 'plain')
+    cy = 0.155
+    for i, (x, y, z, r) in enumerate(((0, 0.3, 0.02, 0.085), (-0.08, 0.27, 0.03, 0.07), (0.08, 0.27, 0.03, 0.07), (0, 0.24, 0.1, 0.08), (-0.1, 0.2, 0.06, 0.06), (0.1, 0.2, 0.06, 0.06))):
+        hd.append(blob('perm%d' % i, (x, cy + y - 0.155, z), (r, r * 0.9, r), M.hair, seg=8, rings=6))  # the perm
+    for a in range(0, 360, 45):  # the hairnet: hoops over it
+        ar = math.radians(a)
+        hd.append(tube([(math.cos(ar) * 0.14, cy + 0.02, 0.04 + math.sin(ar) * 0.13), (math.cos(ar) * 0.1, cy + 0.14, 0.04 + math.sin(ar) * 0.1), (math.cos(ar) * 0.02, cy + 0.19, 0.04 + math.sin(ar) * 0.02)], 0.003, net, seg=4))
+    hd.append(tube([(math.cos(math.radians(a)) * 0.142, cy + 0.02, 0.04 + math.sin(math.radians(a)) * 0.132) for a in range(0, 361, 30)], 0.005, net, seg=4))
+    P = {'body': place('body', body), 'head': place('head', hd)}
+    for k, sx in (('arm', 1), ('armL', -1)):
+        a = clean_arm(M, sx, dress, fat=1.15, long_sleeve=False, tag=False)
+        a.append(limb('glove', [(0, -0.03, -0.42), (0, -0.045, -0.5), (0, -0.052, -0.56)], [0.05, 0.048, 0.05], glove, seg=10))  # rubber gloves to the elbow-ish
+        if sx > 0:  # the ladle
+            w = (0, -0.05, -0.55)
+            a.append(rod((0.0, w[1] - 0.03, w[2] - 0.02), (0.0, w[1] + 0.02, w[2] - 0.42), 0.009, M.chrome, seg=6))
+            a.append(outward(lathe([(0.001, -0.045), (0.035, -0.04), (0.055, -0.01), (0.058, 0.02), (0.05, 0.02), (0.046, -0.006), (0.03, -0.03), (0.001, -0.034)], (0.0, w[1] + 0.03, w[2] - 0.45), M.chrome, seg=12, axis='y')))
+            a.append(blob('slop', (0.0, w[1] + 0.04, w[2] - 0.45), (0.045, 0.012, 0.045), mat('zs_slop', 0xb8a060, rough=0.3, clearcoat=0.6), seg=10, rings=4))
+        P[k] = place(k, a)
+    for k, kn, sx in (('legL', 'kneeL', -1), ('legR', 'kneeR', 1)):
+        P[k] = place(k, thigh(M, sx, 1.15, trouser=0, ragged=False))
+        P[kn] = place(kn, shod(M, sx, 1.15, M.bot, clog, cuff=False))
+    return finish_z('lunchlady', P)
+
+
 def build_stump(M):
     o = place('body', stump(M), name='part_stump', weld=False)
     return finish('zombie_stump', [o], {'kind': 'zombie', 'id': 'stump'})
 
 
-BUILD = {'plain': build_plain, 'chonk': build_chonk, 'biter': build_biter, 'hardhat': build_hardhat, 'screamer': build_screamer, 'manager': build_manager, 'mascot': build_mascot, 'stump': build_stump}
+BUILD = {'plain': build_plain, 'chonk': build_chonk, 'biter': build_biter, 'hardhat': build_hardhat, 'screamer': build_screamer, 'manager': build_manager, 'mascot': build_mascot, 'student': build_student, 'teacher': build_teacher, 'lunchlady': build_lunchlady, 'stump': build_stump}
 
 
 def run():

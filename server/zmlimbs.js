@@ -32,6 +32,8 @@ const methods = {
       z.hat = def.hat || 0; z.k = def.scale || 1;
       if (def.pack) { if (zs.pack && zs.pack.n > 0) zs.pack.n--; else zs.pack = { n: Math.min(def.pack - 1, zs.toSpawn - 1), win: z.win }; } // the rest of the litter comes through the same window
     } else if (Math.random() < ZLN.bornArmless) z.lim = ZL.armL; // the odd one turns up an arm short
+    const sk = this.map.zm.skins; // this map's own crowd (students, nurses...): a plain zombie wears one (it rides in its look)
+    if (!def && sk && sk.length) b.look.zs = sk[(Math.random() * sk.length) | 0];
     z.hp0 = b.hp; z.lhp = Math.max(ZLN.limbMin, b.hp * ZLN.limbHp) * LIMB_MUL;
     if (def && def.boss) this.zbSpawn(b, n);
   },
