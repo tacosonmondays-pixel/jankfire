@@ -74,13 +74,14 @@ export function shapeGround(B, D, o) {
     const r = find(k);
     let c = comps.get(r);
     if (!c) comps.set(r, (c = { list: [], x0: 1e9, z0: 1e9, x1: -1e9, z1: -1e9, y0: 1e9 }));
+    if (b.av) c.av = 1; // (drawn by a baked model, public/js/archfield.js: the model can't move, so neither does this)
     c.list.push(b); c.x0 = Math.min(c.x0, b.min[0]); c.x1 = Math.max(c.x1, b.max[0]); c.z0 = Math.min(c.z0, b.min[2]); c.z1 = Math.max(c.z1, b.max[2]); c.y0 = Math.min(c.y0, b.min[1]);
   });
   const anchors = [], propsC = [];
   for (const c of comps.values()) {
     const w = c.x1 - c.x0, d = c.z1 - c.z0;
     if (c.y0 > 0.35) continue; // hangs in the air on its own (the sun, a bird): leave it be
-    if (w > BIG || d > BIG || w * d > BIG * BIG * 0.75 || c.y0 < -0.5 || c.x0 < X0 + 0.5 || c.x1 > X1 - 0.5 || c.z0 < Z0 + 0.5 || c.z1 > Z1 - 0.5) anchors.push(c); else propsC.push(c);
+    if (c.av || w > BIG || d > BIG || w * d > BIG * BIG * 0.75 || c.y0 < -0.5 || c.x0 < X0 + 0.5 || c.x1 > X1 - 0.5 || c.z0 < Z0 + 0.5 || c.z1 > Z1 - 0.5) anchors.push(c); else propsC.push(c);
   }
   // ---- how far every cell is from something that keeps the ground flat (chamfer distance, in m)
   const dist = new Float32Array(nx * nz).fill(1e4);
