@@ -312,7 +312,11 @@ def on_it(pose, dl=(0, 0, 0), dr=(0, 0, 0), seed=None):
 
 
 hands = on_it(P(hang, {'spine.x': -0.36, 'head.x': -0.7}))
-clip('pj_impaled', [(0, fight_r), (0.07, hit, 'snap'), (0.2, hit), (0.6, up, 'out'), (1.3, up), (2.0, hang), (2.9, hang), (3.6, hands)],
+# (he doesn't hang still: the lift throws his legs forward, they swing back, he sags; then his hands find it)
+swing = P(up, {'body.py': UPH - 0.035, 'legL.x': 0.55, 'legR.x': 0.34, 'kneeL.x': -0.35, 'kneeR.x': -0.2, 'spine.x': -0.42, 'head.x': 0.38}, arms(R=(-0.35, 0, 0.9, 0.35, 0, 0), L=(-0.45, 0, -0.95, 0.3, 0, 0)))
+sag = P(up, {'legL.x': 0.16, 'legR.x': -0.04, 'kneeL.x': -0.3, 'kneeR.x': -0.16, 'spine.x': -0.33, 'head.x': 0.12}, arms(R=(-0.05, 0, 0.62, 0.45, 0, 0), L=(-0.12, 0, -0.66, 0.42, 0, 0)))
+feel = P(hang, {'spine.x': -0.34, 'head.x': -0.68}, arms(R=(0.45, 0.25, 0.3, 0.8, 0, 0), L=(0.4, -0.25, -0.28, 0.85, 0, 0)))
+clip('pj_impaled', [(0, fight_r), (0.07, hit, 'snap'), (0.2, hit), (0.6, up, 'out'), (0.95, swing), (1.4, sag), (2.0, hang), (2.55, hang), (3.05, feel), (3.6, hands)],
      marks=[(0.05, 'in'), (0.22, 'lift'), (2.0, 'looks'), (3.5, 'grip')], face=[(0, 'shock'), (1.9, 'jack_hurt')], osc=[('legL.x', 0.03, 1.1, 0.0), ('legR.x', 0.03, 1.1, 1.5), ('spine.x', -0.02, 3.0, 0.0)],
      note='run through and lifted a metre: `in` 0.05 (show run_through), he looks down at 2.0, both hands on it by 3.5. held')
 

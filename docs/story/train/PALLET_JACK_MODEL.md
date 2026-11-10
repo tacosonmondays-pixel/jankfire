@@ -141,7 +141,7 @@ What the clip player adds to plain keys:
 | `pj_idle` | loop 9.0 | weight on his left leg, his left hand on the truck's grip, looks about | |
 | `pj_idle_eating` | loop 4.8 | sat on the wagon's back rail, legs hanging, eating out of a pan | scoop 0.6, eat 1.85 |
 | `pj_walk_load` | held | a load on his forearms, leaning back off it; on top of the walk | |
-| `pj_kneel_vest` | 6.0, held | down on a knee to the child, the vest off and onto them, a hand on their head | knee 0.95, vestOff 1.75, vestOn 3.7, pat 5.2 |
+| `pj_kneel_vest` | 6.2, held | down on a knee to the child, the vest off and onto them, a hand on their head | knee 0.95, vestOff 1.75, vestOn 3.7, pat 5.2 |
 | `pj_rig_up` | 2.8, held | braces; shins lock; stacks come up and open; he racks the forearm | lockL 0.4, lockR 0.7, stacks 1.05, cock 2.1, ready 2.75 |
 | `pj_fight_idle` | loop 2.4 | the stance, rig up | |
 | `pj_rocket_punch` | 1.7 | winds back, fires, the fist rides out on the ram, recoil, racks it again | wind 0.3, fire 0.46, hit 0.56, home 1.0, cock 1.34 |
@@ -154,7 +154,7 @@ What the clip player adds to plain keys:
 | `pj_fight_idle_hurt` | loop 3.2 | lower, slower, venting | vent 0, 1.6 |
 | `pj_armour_break_fall` | 2.2, held | the armour goes, two steps back, down against the fridge | hit 0.04, armour 0.06, foot 0.7, down 1.04, fridge 1.05 |
 | `pj_dying_talk` | 5.0, held | sat against it: takes your hand, puts it on his chest, holds it | take 2.45, place 4.1 |
-| `pj_last_breath` | 3.6, held | the breath out; his hand comes off yours and stays open on the deck | breath 0.2, lets_go 2.3, hand_down 3.1 |
+| `pj_last_breath` | 3.5, held | the breath out; his hand comes off yours and stays open on the deck | breath 0.2, lets_go 2.3, hand_down 3.1 |
 | `pj_carried` | a pose | limp across someone's arms | |
 
 Marks that change him by themselves: `in` shows `run_through`, `armour` shows `armour_broken`, `vestOff` hides his
