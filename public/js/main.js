@@ -107,6 +107,7 @@ import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, 
 import { zxHurt } from './zmextra.js'; // zombies: which way the claws came from
 import { zlWant } from './zmloadout.js'; // your zombies loadout
 import { spritesOn, smokeCloud, updateFlipbooks } from './flipbook.js'; // drawn smoke + splashes
+import { setRippleMap } from './liquidmats.js';
 let story = null; // OVERDUE's story engine (WP8: quests, talk, cutscenes), loaded with the story flag below. null = every hook is a no-op
 
 const $ = (id) => document.getElementById(id);
@@ -474,6 +475,8 @@ bindCheck('fovKick', 'fovKick');
 bindCheck('shake', 'shake');
 bindCheck('showFps', 'showFps');
 $('fxSprites').checked = S.fxSprites !== false; $('fxSprites').addEventListener('change', () => { S.fxSprites = $('fxSprites').checked; saveSettings(); }); // drawn smoke + splashes (flipbook.js)
+$('fxSmoke').value = S.fxSmoke === 'soft' ? 'soft' : 'comic'; $('fxSmoke').addEventListener('change', () => { S.fxSmoke = $('fxSmoke').value; saveSettings(); });
+$('fxRipples').checked = !!S.fxRipples; setRippleMap(!!S.fxRipples); $('fxRipples').addEventListener('change', () => { S.fxRipples = $('fxRipples').checked; setRippleMap(S.fxRipples); saveSettings(); });
 bindCheck('toggleAim', 'toggleAim');
 bindCheck('blood', 'blood');
 bindCheck('sdNoCross', 'sdNoCross'); // plant & defuse: no spread crosshair (tactical.js)

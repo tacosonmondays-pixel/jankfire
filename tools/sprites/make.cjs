@@ -101,3 +101,56 @@ sheet('splash', 4, 128, (u, v, t) => {
   }
   return y < 0 ? -1 : d;
 }, 0.035);
+
+// ---- option B, soft smoke: a billowing volume with soft edges and smooth shading, no ink (the realistic one). 6x6 frames
+// (meant to be a Blender smoke sim baked to a sheet; Blender isn't on the build machine, so this marches a noise volume instead)
+{
+  const n = 6, size = 96, W = n * size, px = new Uint8Array(W * W * 4);
+  const dens = (x, y, z, t) => {
+    const wz = t * 0.9, wx = (fbm(x * 1.4 + 3, y * 1.4, z * 1.4 + wz, 3) - 0.5) * 0.7, wy = (fbm(x * 1.4, y * 1.4 + 5, z * 1.4 + wz, 3) - 0.5) * 0.7;
+    const R = 0.42 + 0.4 * Math.sqrt(Math.min(1, t * 2));
+    const d = 1 - Math.hypot(x + wx, y + wy - 0.1 * t, z) / R + (fbm(x * 3 + wx * 2, y * 3 + wy * 2, z * 3 + wz * 1.5, 4) - 0.5) * 1.1;
+    return clamp(d * 1.6 - sstep(0.55, 1, t) * 1.5 * (0.3 + noise(x * 2.4 + 9, y * 2.4, z * 2.4 + wz)));
+  };
+  for (let f = 0; f < n * n; f++) {
+    const t = f / (n * n - 1), ox = (f % n) * size, oy = Math.floor(f / n) * size;
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      const u = ((x + 0.5) / size) * 2 - 1, v = 1 - ((y + 0.5) / size) * 2;
+      let T = 1, L = 0; // march front to back: what's left of the view, the light collected
+      for (let k = 0; k < 12 && T > 0.03; k++) {
+        const z = 0.85 - (k + 0.5) * (1.7 / 12), d = dens(u, v, z, t);
+        if (d <= 0.01) continue;
+        const sh = Math.exp(-2.2 * (dens(u - 0.12, v + 0.2, z + 0.1, t) + dens(u - 0.24, v + 0.4, z + 0.2, t)) * 0.5); // how much smoke is between here and the light (top left)
+        const a = 1 - Math.exp(-d * 0.75);
+        L += T * a * (0.3 + 0.7 * sh); T *= 1 - a;
+      }
+      const A = (1 - T) * Math.min(1, (1 - Math.max(Math.abs(u), Math.abs(v))) * 8), i = ((oy + y) * W + ox + x) * 4;
+      if (A < 0.004) continue;
+      px[i] = Math.round(clamp(L / Math.max(0.001, 1 - T)) * 255); px[i + 1] = 0; px[i + 2] = 0; px[i + 3] = Math.round(clamp(A) * 255);
+    }
+  }
+  png(path.join(OUT, 'puffsoft.png'), W, W, px);
+}
+
+// ---- option B, water: a tiling ripple normal map (256 px = one tile). rings from many drops + short wind wavelets, wrapped
+{
+  const N = 256, H = new Float32Array(N * N), px = new Uint8Array(N * N * 4);
+  const drops = []; for (let k = 0; k < 26; k++) drops.push([hash(k, 1, 31) * N, hash(k, 2, 31) * N, 10 + hash(k, 3, 31) * 34, 0.5 + hash(k, 4, 31) * 0.7]);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    let h = 0;
+    for (const [cx, cy, r, a] of drops) { // nearest wrapped copy of each drop
+      let dx = Math.abs(x - cx), dy = Math.abs(y - cy); dx = Math.min(dx, N - dx); dy = Math.min(dy, N - dy);
+      const d = Math.hypot(dx, dy);
+      if (d < r * 1.6) h += a * Math.cos((d / r) * Math.PI * 3) * Math.exp(-((d / r) ** 2) * 1.6) * Math.min(1, d / 3);
+    }
+    const tw = (Math.PI * 2) / N; // wavelets that tile exactly
+    h += 0.35 * Math.sin(x * tw * 5 + Math.sin(y * tw * 3) * 1.5) + 0.25 * Math.sin(y * tw * 7 + Math.sin(x * tw * 4) * 1.2) + 0.15 * Math.sin((x + y) * tw * 11);
+    H[y * N + x] = h;
+  }
+  const at = (x, y) => H[((y + N) % N) * N + ((x + N) % N)];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const nx = (at(x - 1, y) - at(x + 1, y)) * 1.4, ny = (at(x, y - 1) - at(x, y + 1)) * 1.4, l = Math.hypot(nx, ny, 1), i = (y * N + x) * 4;
+    px[i] = Math.round((nx / l * 0.5 + 0.5) * 255); px[i + 1] = Math.round((ny / l * 0.5 + 0.5) * 255); px[i + 2] = Math.round((1 / l * 0.5 + 0.5) * 255); px[i + 3] = 255;
+  }
+  png(path.join(OUT, 'ripplenormal.png'), N, N, px);
+}

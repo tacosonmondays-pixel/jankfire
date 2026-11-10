@@ -19,17 +19,19 @@ void main() {
   gl_Position = projectionMatrix * mvPosition;
   #include <fog_vertex>
 }`;
-const FS = `uniform sampler2D uMap; uniform float uN; uniform vec3 uLit; uniform vec3 uInk; uniform float uInkK;
+const FS = `uniform sampler2D uMap; uniform float uN; uniform vec3 uLit; uniform vec3 uInk; uniform float uInkK; uniform float uSoft;
 varying vec2 vUv; varying vec3 vCol; varying float vAge; varying float vA;
 #include <fog_pars_fragment>
 vec4 frame( float f ) { return texture2D( uMap, ( vec2( mod( f, uN ), uN - 1.0 - floor( f / uN ) ) + vUv ) / uN ); }
 void main() {
   float f = clamp( vAge, 0.0, 0.999 ) * uN * uN;
   vec4 t = frame( floor( f ) ); // (no blending between frames: it should tick like a drawn animation)
-  if ( t.a < 0.5 || vA < 0.02 ) discard;
+  float a = vA;
+  if ( uSoft > 0.5 ) { t = mix( t, frame( min( floor( f ) + 1.0, uN * uN - 1.0 ) ), fract( f ) ); a *= t.a; if ( a < 0.01 ) discard; } // the soft kind: frames melt into each other, edges fade
+  else if ( t.a < 0.5 || vA < 0.02 ) discard;
   vec3 c = vCol * ( 0.42 + 0.66 * t.r ) * uLit;
   c = mix( c, uInk * uLit, t.g * uInkK );
-  gl_FragColor = vec4( c, vA );
+  gl_FragColor = vec4( c, a );
   #include <colorspace_fragment>
   #include <fog_fragment>
 }`;
@@ -38,17 +40,17 @@ const loader = new THREE.TextureLoader();
 const books = [];
 // flat: 1 = lying down, 0 = facing you, -1 = facing you and standing on its bottom edge
 export class Flipbook {
-  constructor(file, n, max, { flat = 0, ink = 0x1a1022, inkK = 0.85, sort = false, order = 4 } = {}) {
+  constructor(file, n, max, { flat = 0, ink = 0x1a1022, inkK = 0.85, sort = false, order = 4, soft = false } = {}) {
     this.max = max; this.n = 0; this.sort = sort; this.ready = false; this.failed = false;
     this.L = []; // live: { x, y, z, vx, vy, vz, s0, s1, rot, spin, t, life, a, r, g, b, drag }
     const tex = loader.load('/sprites/' + file, () => { this.ready = true; }, undefined, () => { this.failed = true; });
-    tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false; tex.colorSpace = THREE.NoColorSpace;
+    tex.magFilter = soft ? THREE.LinearFilter : THREE.NearestFilter; tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false; tex.colorSpace = THREE.NoColorSpace;
     const geo = new THREE.PlaneGeometry(1, 1);
     this.aPS = new THREE.InstancedBufferAttribute(new Float32Array(max * 4), 4).setUsage(THREE.DynamicDrawUsage);
     this.aAR = new THREE.InstancedBufferAttribute(new Float32Array(max * 4), 4).setUsage(THREE.DynamicDrawUsage);
     this.aCol = new THREE.InstancedBufferAttribute(new Float32Array(max * 3), 3).setUsage(THREE.DynamicDrawUsage);
     geo.setAttribute('aPS', this.aPS); geo.setAttribute('aAR', this.aAR); geo.setAttribute('aCol', this.aCol);
-    this.U = { ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog), uMap: { value: tex }, uN: { value: n }, uFlat: { value: flat }, uLit: LIT, uInk: { value: new THREE.Color(ink) }, uInkK: { value: inkK } };
+    this.U = { ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog), uMap: { value: tex }, uN: { value: n }, uFlat: { value: flat }, uLit: LIT, uInk: { value: new THREE.Color(ink) }, uInkK: { value: inkK }, uSoft: { value: soft ? 1 : 0 } };
     const mat = new THREE.ShaderMaterial({ uniforms: this.U, vertexShader: VS, fragmentShader: FS, fog: true, transparent: true, depthWrite: false, side: THREE.DoubleSide,
       polygonOffset: flat > 0, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
     this.mesh = new THREE.InstancedMesh(geo, mat, max);
@@ -95,6 +97,7 @@ let FB = null;
 function get() {
   if (!FB) FB = {
     puff: new Flipbook('puff.png', 6, 260, { sort: true }),
+    soft: new Flipbook('puffsoft.png', 6, 420, { sort: true, soft: true, inkK: 0 }), // option B: soft smoke
     splash: new Flipbook('splash.png', 4, 48, { flat: -1, ink: 0x1a4a8a, inkK: 0.7 }),
     ripple: new Flipbook('ripple.png', 4, 64, { flat: 1, ink: 0x9adcff, inkK: 0.5, order: 3 }),
   };
@@ -104,13 +107,14 @@ function get() {
 export function spritesOn() {
   const S = G.settings || {};
   if (S.jank === 0 || S.fxSprites === false) return false;
-  return !(FB && (FB.puff.failed || FB.splash.failed || FB.ripple.failed));
+  return !(FB && (FB.puff.failed || FB.soft.failed || FB.splash.failed || FB.ripple.failed));
 }
 // (tests / the old-vs-new clips: is everything loaded)
-export const spritesReady = () => { const f = get(); return f.puff.ready && f.splash.ready && f.ripple.ready; };
+export const spritesReady = () => { const f = get(); return f.puff.ready && f.soft.ready && f.splash.ready && f.ripple.ready; };
 
 // a smoke grenade's cloud: called every frame while it's out. s = { p, r }, dt-paced so it's the same cloud at any fps
 export function smokeCloud(s, dt) {
+  if ((G.settings || {}).fxSmoke === 'soft') { softCloud(s, dt); return; }
   const F = get().puff;
   s.fbAcc = (s.fbAcc || 0) + dt * 26;
   const first = !s.fbOn; s.fbOn = true;
@@ -120,6 +124,18 @@ export function smokeCloud(s, dt) {
     const g = 0.78 + Math.random() * 0.22;
     F.spawn({ p: [s.p[0] + Math.cos(a) * rr, s.p[1] + 0.3 + h * h * 3.4, s.p[2] + Math.sin(a) * rr], v: [Math.cos(a) * 0.35, 0.25 + Math.random() * 0.4, Math.sin(a) * 0.35],
       s0: 2.4, s1: 4.4 + Math.random() * 1.4, life: 2.8 + Math.random() * 1.4, a: 1, col: _c.setRGB(g, g, g * 1.02).getHex(), rot: (Math.random() - 0.5) * 0.7, spin: (Math.random() - 0.5) * 0.25 });
+  }
+}
+// option B: the same cloud out of soft see-through puffs (more of them, each one half there)
+function softCloud(s, dt) {
+  const F = get().soft;
+  s.fbAcc = (s.fbAcc || 0) + dt * 44;
+  const first = !s.fbOn; s.fbOn = true;
+  let n = Math.floor(s.fbAcc) + (first ? 40 : 0); s.fbAcc -= Math.floor(s.fbAcc);
+  while (n-- > 0) {
+    const a = Math.random() * 6.2832, rr = Math.sqrt(Math.random()) * s.r, h = Math.random(), g = 0.7 + Math.random() * 0.25;
+    F.spawn({ p: [s.p[0] + Math.cos(a) * rr, s.p[1] + 0.4 + h * h * 3.4, s.p[2] + Math.sin(a) * rr], v: [Math.cos(a) * 0.3, 0.2 + Math.random() * 0.45, Math.sin(a) * 0.3],
+      s0: 3, s1: 5.4 + Math.random() * 1.6, life: 3 + Math.random() * 1.5, a: 0.85, col: _c.setRGB(g, g, g * 1.03).getHex(), rot: Math.random() * 6.28, spin: (Math.random() - 0.5) * 0.3 });
   }
 }
 // something landed in water: rings on the surface + a crown standing up out of it. k as in liquids.js splash()
