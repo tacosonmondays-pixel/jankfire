@@ -46,3 +46,20 @@ Looked up on 2026-11-10; licences as the pages state them, not downloaded or che
 - **three.quarks** (MIT particle library for three.js): rejected for now. Our own particle code plus the ~170-line
   flipbook player covers this, and a library would be a new dependency to keep in step with three 0.170.
 - Reddit and X: not searched (no tool for them here beyond a web search, which turned up nothing useful from either).
+
+## Downloaded packs (added by the coordinator, 2026-11-10)
+
+Two more smoke sheets, packed by `tools/sprites/pack_packs.py` into the same 6x6, 576x576 layout as `puffsoft.png`
+(run it as `python3 tools/sprites/pack_packs.py <folder with the unpacked packs> public/sprites`). Not wired into the game yet.
+
+- `public/sprites/puffkenney.png`: the 25 "White puff" sprites from **Smoke Particles by Kenney** (www.kenney.nl),
+  https://kenney.nl/assets/smoke-particles . They are separate puff shapes, not an animation, so the sheet repeats them to
+  fill 36 cells. Licence, quoted from the pack's own `license.txt`: "License (CC0)
+  http://creativecommons.org/publicdomain/zero/1.0/ You may use these graphics in personal and commercial projects. Credit
+  (Kenney or www.kenney.nl) would be nice but is not mandatory."
+- `public/sprites/puffunity.png`: 36 evenly spaced frames of **WispySmoke01** (an 8x8, 64-frame simulated smoke animation)
+  from Unity Labs' "Free VFX image sequences & flipbooks",
+  https://blog.unity.com/engine-platform/free-vfx-image-sequences-flipbooks . Licence, quoted from that page as read on
+  2026-11-10: "CC0 license. Feel free to use them in your projects." The page gives no separate licence file in the download.
+
+Credit: Kenney (www.kenney.nl) and Unity Technologies (Unity Labs VFX). Both are public domain (CC0), so credit is a courtesy.
