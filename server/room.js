@@ -37,6 +37,7 @@ import { installRoyale } from './royale.js'; // Jank Royale (battle royale)
 import { BR } from '../shared/royale.js';
 import { tickHR, hrBot } from './hrguy.js'; // the Tall Guy From HR (Scary Forest)
 import { HR } from '../shared/hr.js';
+import { installAds } from './ads.js';
 import { installGear } from './gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
 import { installRandSkin, rollSkins, rollKfx, cleanFavs, hasRandom } from './randskin.js'; // Random cosmetics: rolled again on every spawn
 import { installSec } from './secondaries.js'; // water pistol, taser, tv remote, speed trap
@@ -1078,6 +1079,7 @@ class Room {
       this.broadcast({ t: 'bub+', id: b.id, p: b.p, r: b.r, left: it.dur * 1000 });
     } else if (m.i === 'popper') this.popperUse(p, o, d);
     else if (m.i === 'reverse') this.reverseUse(p);
+    else if (m.i === 'laptop') this.laptopUse(p, o, d, c); // pop-up ads (server/ads.js): no target, charge back
   }
   // party popper (item): the client finds who's in its cone and sends 'hit's. they only count for a moment after
   // a charge was really spent here, once per target, and only on people in front of where you aimed
@@ -3938,6 +3940,7 @@ installEcon(Room, {
 installLasso(Room);
 installZombies(Room, { send, stat, store });
 installLobby(Room, { send, rooms });
+installAds(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm }); // the laptop's pop-up ads (after installSec: it wraps botGear / botFire)
 installStoryRef(Room); // story rooms (before installModeStats, which stays last)
 installModeStats(Room, { store }); // per-mode leaderboard stats (last: it wraps zombies' zmGive)
 

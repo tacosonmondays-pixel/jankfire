@@ -318,6 +318,7 @@ export function useItem() {
 const POP = {
   popper: { p: [-0.16, -0.15, -0.36], r: [0.1, -0.25, -0.2], anim: 'pop_popper' },
   reverse: { p: [-0.09, -0.09, -0.3], r: [0.05, 0.3, 0.1], anim: 'pop_reverse' },
+  laptop: { p: [-0.13, -0.2, -0.36], r: [0.12, 0.28, 0.04], anim: 'pop_laptop' },
 };
 const CONFETTI = [0xff4fd8, 0x4fd8ff, 0xffe14d, 0x7dff4f, 0xff7a1a, 0xffffff];
 function popItem(id) {
@@ -349,6 +350,10 @@ function popEvent(ev, m) {
     applyKb([-d[0] * w.recoil, -d[1] * w.recoil + w.lift, -d[2] * w.recoil]);
     punchCam(-0.05, 0.02 * rnd(), 0.05 * rnd());
     G.shake = Math.max(G.shake, 0.45);
+  } else if (ev === 'ads') { // laptop: a puff of little windows off the screen (what happens next is the server's call)
+    for (let i = 0; i < 18; i++) sys.add.spawn(x + R(0.12), y + R(0.08), z, R(0.5), 0.2 + Math.random() * 0.5, -0.6 - Math.random() * 1.2, 0.45, 0.03, 0.004, [0xff4fd8, 0x4fd8ff, 0xffe14d][i % 3], 0xffffff, 1, -0.4);
+    sfx.laptopOpen();
+    punchCam(-0.015, 0, 0.02 * rnd());
   } else if (ev === 'flash') { // reverse card: a ring of red + yellow off the card
     for (let i = 0; i < 36; i++) { const a = Math.random() * Math.PI * 2, s = 0.5 + Math.random() * 0.8; sys.add.spawn(x + R(0.02), y + R(0.02), z, Math.cos(a) * s, Math.sin(a) * s, R(0.3), 0.4, 0.03, 0.004, i % 2 ? 0xff3b3b : 0xffd23b, 0xffffff, 1, 0, 2); }
     sfx.reverse();
@@ -485,6 +490,7 @@ const VM = {
   cart: { p: [0.25, -0.235, -0.5], r: [0, 0.2, 0], s: 0.5 }, // side-on enough to see the basket sleeve
   popper: { p: [0.17, -0.18, -0.34], r: [0.1, 0.1, 0], s: 0.75 },
   reverse: { p: [0.15, -0.15, -0.34], r: [0.3, -0.3, 0.15], s: 0.65 },
+  laptop: { p: [0.15, -0.2, -0.36], r: [0.12, -0.28, 0], s: 0.55 },
   duck: { p: [0.17, -0.18, -0.4], r: [0.1, 0.5, 0], s: 0.55 },
   bread: { p: [0.3, -0.3, -0.42], r: [0.35, 0.2, -0.25], s: 0.55 },
   slipper: { p: [0.17, -0.18, -0.36], r: [0.2, 0.3, 0.3], s: 0.7 },

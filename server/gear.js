@@ -9,7 +9,7 @@ const L = WEAPONS.laser;
 const lerp = (ab, k) => ab[0] + (ab[1] - ab[0]) * k;
 const ri = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 const yawOf = (d) => Math.atan2(-d[0], -d[2]);
-const GEAR = ['nvg', 'quiz', 'camera', 'quiz', 'nvg', 'radar', 'radar', null, null]; // what a bot carries (lots carry nothing; radar = the speed trap, server/secondaries.js)
+const GEAR = ['nvg', 'quiz', 'camera', 'quiz', 'nvg', 'radar', 'radar', 'laptop', 'laptop', null, null, null]; // what a bot carries (lots carry nothing; radar = the speed trap, server/secondaries.js)
 
 // ---------------------------------------------------------------- pop quiz questions (the answer never leaves the server)
 // one in a few is a two-step one; numbers stay small enough to do in your head in 6 s while panicking
