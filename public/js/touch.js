@@ -28,6 +28,7 @@ const BTNS = [
   ['chat', '', 'CHAT', 70, 26, 36, { top: 1 }],
   ['scores', 'scores', 'TAB', 114, 26, 36, { top: 1 }],
   ['spray', 'spray', 'SPRAY', 158, 26, 36, { top: 1 }],
+  ['auto', '', 'AUTO', 202, 26, 36, { top: 1 }],
 ];
 
 export function initTouch(api) {
@@ -79,11 +80,21 @@ export function initTouch(api) {
   const buzz = (ms) => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch { /* no motor */ } };
 
   // ---------------------------------------------------------- buttons
+  const autoOn = () => S.tAuto !== false;
+  function syncAuto() { els.auto.el.classList.toggle('lit', autoOn()); }
+  syncAuto();
+  // auto fire (autofire.js) squeezes the same fire key the FIRE button does; your thumb on FIRE always wins
+  let autoCode = '';
+  function autoPress(down) {
+    if (down && !autoCode && !els.fire.code) { autoCode = codeFor('fire'); send(autoCode, true); }
+    else if (!down && autoCode) { const c = autoCode; autoCode = ''; if (!els.fire.code) send(c, false); }
+  }
   function btnDown(id) {
     const b = els[id];
     if (!b || b.code) return;
     b.el.classList.add('on'); buzz(8);
     if (id === 'pause') { releaseAll(); api.pause(); return; }
+    if (id === 'auto') { S.tAuto = !autoOn(); api.save(); api.autoChanged(); syncAuto(); return; } // auto fire on / off without opening a menu
     if (id === 'chat') { releaseAll(); api.chat(); const c = $('chatin'); if (c) c.focus(); return; } // focus inside the tap, or iOS keeps the keyboard shut
     b.code = b.o.code || codeFor(b.act);
     send(b.code, true);
@@ -176,6 +187,7 @@ export function initTouch(api) {
   function releaseAll() {
     touches.clear();
     for (const id in els) btnUp(id);
+    autoPress(false);
     if (mv.id != null || MOVE.some((a) => mv.keys[a])) stickEnd();
   }
   ui.addEventListener('touchstart', start, { passive: false });
@@ -246,5 +258,5 @@ export function initTouch(api) {
   addEventListener('blur', releaseAll);
   document.addEventListener('visibilitychange', () => { if (document.hidden) releaseAll(); });
 
-  return { applyLook, releaseAll, goFull };
+  return { applyLook, releaseAll, goFull, autoPress, syncAuto, fireHeld: () => !!els.fire.code, tapAct: (id) => tap(codeFor(id)) };
 }
