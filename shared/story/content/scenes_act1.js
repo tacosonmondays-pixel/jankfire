@@ -6,6 +6,7 @@
 //   len      seconds (cinematics stay under 120)
 //   music    a music cue name (or null)
 //   cast     { key: castId } the actors on set ('you' is always the player's real model)
+//   notes    builder notes (optional; never shown)
 //   tracks   a time-ordered list. Every track has `t` (seconds) and any of:
 //            cam: { shot | path, target?, dur?, fov? }   shots: wide, closeup, overShoulder, lowAngle, highAngle, dolly, whip, pov, insert
 //            say: [castKey or speaker, text]      a speech bubble with the babble voice and jaw flap
@@ -152,8 +153,105 @@ export const SCENES_ACT1 = {
     ],
   },
 
+  // ---- m06 TICKETS, PLEASE (docs/story/TRAIN.md). `notes` on a scene is for the builder (never shown).
+  c6_mind_the_gap: {
+    kind: "cinematic", act: 1, mission: "m06_tickets_please", len: 88, music: null,
+    notes: "music: none until 61 s, then revenue_protection_theme: four hundred people humming one note",
+    cast: { you: "change", jack: "pallet_jack", lumps: "lumps", gordo: "gordo", dale: "dale", auntie: "auntie", dumpling: "dumpling", rp: "revenue_protection" },
+    tracks: [
+      { t: 0, dir: "The service tunnel under the mall. A yellow maintenance loco the size of a van, a flatbed, a low open wagon. Dale in the cab with a flask. One headlamp. It lights about nine sleepers." },
+      { t: 4, dir: "Jack kneels to Dumpling on the platform. Puts the hi-vis vest on him. It reaches the floor." },
+      { t: 7, say: ["jack", "hold that for me. it's about three hundred grams. i'll want it back."] },
+      { t: 10, dir: "Auntie, behind Dumpling, both hands on his shoulders. She looks at you. She doesn't say be careful. She has stopped saying it to people." },
+      { t: 14, dir: "The train pulls out. The platform light gets small. Then it's a dot. Then the tunnel bends and it's gone." },
+      { t: 19, say: ["lumps", "it's a lot of dark."] },
+      { t: 21, say: ["gordo", "it's the same amount of dark as anywhere. there's just nothing in front of it."] },
+      { t: 25, dir: "Jack sits on the back rail of the wagon with his legs hanging over the track, eating out of a pan. His boiler ticks as it cools. Your chest ticks. They're not in time and it bothers neither of you." },
+      { t: 29, say: ["jack", "you kept the clock in, then. how's it sit?"] },
+      { t: 32, say: ["jack", "first part's the worst one. you keep waiting to feel like someone else. *he eats.* then you've got nine and you can't remember which ones you came with."] },
+      { t: 38, dir: "A second track swings in alongside. On it, standing in the dark, a commuter train: eight carriages, white, a ☺ on every door. Your headlamp slides down its windows. Every seat is empty. Every door is open. Coats on the hooks. A coffee on a table, grown over." },
+      { t: 46, say: ["gordo", "*quiet* that's the last one out. new year's eve. it never got in."] },
+      { t: 49, say: ["lumps", "where'd they all go?"] },
+      { t: 51, dir: "Nobody answers. The dead train slides away behind you. Its last carriage has no back wall. The metal is bent outwards." },
+      { t: 55, dir: "Jack has stopped eating. He is looking back down the tunnel, past the wagon's rail, at the tunnel lights: a string of weak bulbs running back the way you came." },
+      { t: 58, dir: "The furthest one goes out." },
+      { t: 59, dir: "Then the next one." },
+      { t: 61, music: "revenue_protection_theme", dir: "Then they go out in order, towards you, quite fast. Under the sound of the train: breathing. A lot of it." },
+      { t: 65, say: ["jack", "dale. faster."] },
+      { t: 66, say: ["dale", "this is faster."] },
+      { t: 68, dir: "Jack stands and his rig comes up with him: shins lock, stacks open, the forearm cocks. He turns to tell you to get behind him." },
+      { t: 70, dir: "A black arm as thick as a lamp post comes out of the dark at the height of his belt, goes in under his ribs, and comes out through the boiler in his back. Red steam. It lifts him a metre off the deck. It is made of arms." },
+      { t: 73, dir: "Jack looks down at it. He gets both hands on it. He breaks it. It takes him two tries." },
+      { t: 76, dir: "He lands on his knees. The severed length of it is still through him. He stands up anyway." },
+      { t: 78, say: ["jack", "that's... about two hundred kilo. *he breathes.* it's fine. it's just all at once."] },
+      { t: 81, dir: "The last bulb before the wagon is still lit. Something white fills the tunnel behind it, wall to wall: a face. Two tall holes for eyes. Hands on the walls. On the roof. It hauls." },
+      { t: 85, dir: "From behind the face, four hundred voices, not together:", say: ["rp", "tickets, please."] },
+      { t: 87, boss: "revenue_protection_1" },
+    ],
+  },
+
+  // the playable middle of the fight. the two prompts are `choice` tracks (the mission's `fire` and `take` choices, one
+  // button each): the scene holds its timeline while one is open. times after 50 follow the player's press (TRAIN.md
+  // writes them as +2, +4...): the absolute times here assume a press at 52 and are the builder's to retime
+  mo_carry_the_bit_that_works: {
+    kind: "moment", act: 1, mission: "m06_tickets_please", len: 70, music: null,
+    notes: "playable, about 70 s, no music: the train, the breathing. Plays when phase 1 reaches its scripted end. The player keeps control of the camera and of one button.",
+    cast: { you: "change", jack: "pallet_jack", lumps: "lumps", gordo: "gordo", rp: "revenue_protection" },
+    tracks: [
+      { t: 0, dir: "Jack's block fails. A Sweeper takes him across the chest and his armour goes: the collarbone weld, the shin locks, the stacks, all at once, the sound a rig makes when it's finished. He goes down against the fridge. THE GAP closes to 6 m and holds. Lumps and Gordo are on the Grabbers with a crowbar and a fire axe. They are losing." },
+      { t: 5, dir: "You get to him. The arm is still through him. The boiler is split and what's coming out of it is not steam any more. Two Snatchers are walking down the walls towards him, in no hurry. They know which one of you has stopped." },
+      { t: 9, say: ["jack", "light one. listen. i've done the sums."] },
+      { t: 12, say: ["jack", "i'm two hundred and ten kilo and i'm not getting up. you can't carry me. he can't carry me, not with that arm."] },
+      { t: 17, say: ["jack", "and that thing doesn't kill you. look at it. *behind the mask's rim, between the arms, faces.* it keeps you."] },
+      { t: 22, say: ["jack", "i'm not going in there. i've got a boy at home holding my vest."] },
+      { t: 26, dir: "He takes your right hand, the one in the cradle, and puts the heel of it on his own chest, left of the weld. He holds it there." },
+      { t: 29, say: ["jack", "so you do it. then it's got nothing to keep."] },
+      { t: 32, say: ["lumps", "*from the rail, not turning round* jack. no. sorry. no."] },
+      { t: 35, say: ["jack", "ambrose. hold the rail. you're doing really well."] },
+      { t: 38, dir: "He looks back at you. He's sweating. He's trying to do this properly." },
+      { t: 40, say: ["jack", "and after. bev says the marrow's the only good thing in me. it's in the spine, low down, behind the boiler. it'll keep for a minute once i've stopped. take it. that gun'll run all day on it."] },
+      { t: 47, say: ["jack", "don't carry me, light one. carry the bit that works."] },
+      { t: 50, choice: "fire", dir: "The prompt appears: [FIRE]. Nothing else on the HUD. The game does not do it for you. The Snatchers are four metres away. If you wait, he says: PALLET JACK: go on. it's not heavy." },
+      { t: 52, dir: "You fire. One bolt. It sticks. He breathes out. The cross comes, and it's small, and it's quick." },
+      { t: 54, dir: "His hand comes off yours and stays open on the deck." },
+      { t: 56, choice: "take", dir: "The prompt appears: [TAKE]. Your hand goes in through the split boiler, the same motion as the Heart Rip, slower. What comes out is a length of spine the colour of a traffic light, wet, and warm, and still making blood: it runs down your arm and into the cradle and all six barrels fill at once." },
+      { t: 60, dir: "Your mannequin back opens along the seam. It goes in. No clinic, no chair, no Bev. The Blood Drive's ring starts to turn without you asking it to." },
+      { t: 62, dir: "The Snatchers reach Jack. They pick him up. They turn him over. They put him down. There's nothing there for them." },
+      { t: 64, dir: "Lumps has turned round. He is looking at you, and at your arm, and at Jack. It's the first time he's looked at you like you might be a thing." },
+      { t: 66, say: ["gordo", "*hoarse* lumps. LUMPS. rail."] },
+      { t: 67, dir: "The mask hauls. THE GAP reads 6 m. Your HP bar is full, and then past full, and it is not your colour." },
+      { t: 68, title: "PENALTY FARE" },
+    ],
+  },
+
+  c6b_terminus: {
+    kind: "cinematic", act: 1, mission: "m06_tickets_please", len: 52, music: "auntie_theme_crayon",
+    notes: "music: auntie_theme_crayon, one instrument",
+    cast: { you: "change", lumps: "lumps", gordo: "gordo", dale: "dale", jack: "pallet_jack" },
+    tracks: [
+      { t: 0, dir: "The train coasts out onto a viaduct over The Commute. Sunset: the same one Lumps cries at. Dead traffic to the horizon, every windscreen red." },
+      { t: 4, dir: "Behind you, the tunnel mouth. The broken face lying on the track in the last of the light. Behind it, in the dark, what's left: heaps, steaming, a few hands still opening and closing on nothing. Nothing follows. A click. One." },
+      { t: 9, dir: "Dale stops the train. He doesn't get out of the cab. He has both hands on the brake and his forehead on his hands." },
+      { t: 13, dir: "Gordo sits down where he's standing. He has the fire axe across his knees and can't open his fingers." },
+      { t: 17, dir: "Lumps kneels by Jack. He closes the split in the boiler with his hands, the way you'd close a coat on someone. He gets his good arm under Jack's back and his bad arm under his knees." },
+      { t: 23, say: ["gordo", "lumps. he's two hundred kilo. your arm."] },
+      { t: 26, say: ["lumps", "two hundred and ten."] },
+      { t: 28, dir: "He lifts him. The stitches in his forearm go, one at a time. He stands up." },
+      { t: 32, dir: "He walks past you to the front of the flatbed and stops. He doesn't look at you." },
+      { t: 35, say: ["lumps", "he asked you."] },
+      { t: 37, say: ["lumps", "i know he asked you. i heard him."] },
+      { t: 40, dir: "A long time." },
+      { t: 43, say: ["lumps", "...is it warm? the bit of him."] },
+      { t: 45, dir: "It is. Your arm is ticking over on its own, barrels filling and emptying, slow, like breathing." },
+      { t: 48, say: ["lumps", "okay. *he nods.* okay. sorry."] },
+      { t: 50, dir: "He carries Jack to the front of the train so he can see where it's going." },
+      { t: 52, dir: "→ p5b_employee_4417, then END OF ACT I" },
+    ],
+  },
+
+  // (moved from the end of m05 to the end of m06 when the train went in: END OF ACT I is still its last card)
   p5b_employee_4417: {
-    kind: "panels", act: 1, mission: "m05_second_stomach", len: 18, music: "overtime_theme_low",
+    kind: "panels", act: 1, mission: "m06_tickets_please", len: 18, music: "overtime_theme_low",
     cast: { ot: "overtime" },
     tracks: [
       { t: 0, panel: { n: 1, cap: "meanwhile, at ☺ CORP...", sfx: "TICK" }, dir: "A spotless office on Corp Hill. Mr. Overtime, sitting at a desk far too small for him, with a fresh bandage of steel plate over his chest." },

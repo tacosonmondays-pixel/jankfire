@@ -48,7 +48,8 @@ export const CAST = { ...CAST_MAIN, ...CAST_DISTRICTS };
 export const MISSIONS = { ...MISSIONS_ACT1, ...MISSIONS_ACT2, ...MISSIONS_ACT3, ...MISSIONS_ACT4, ...MISSIONS_ACT5 };
 export const SCENES = { ...SCENES_ACT1, ...SCENES_ACT2, ...SCENES_ACT3, ...SCENES_ACT4, ...SCENES_ACT5 };
 export const SIDE = { ...SIDE_BOTTOM, ...SIDE_GUT, ...SIDE_PINSTRIPE, ...SIDE_CHECKOUT, ...SIDE_NUMBERWORKS, ...SIDE_CHROMEGRISTLE, ...SIDE_EVERGREEN, ...SIDE_LATES, ...SIDE_MARGINS, ...SIDE_CORPHILL, ...SIDE_COMMUTE };
-export const MISSION_ORDER = Object.keys(MISSIONS).sort((a, b) => MISSIONS[a].n - MISSIONS[b].n);
+// (two missions share n 6: m06_tickets_please closes Act I, m06_option_c opens Act II. the act breaks the tie)
+export const MISSION_ORDER = Object.keys(MISSIONS).sort((a, b) => MISSIONS[a].n - MISSIONS[b].n || MISSIONS[a].act - MISSIONS[b].act);
 
 export const CONTENT = {
   DISTRICTS, FACTIONS, LOCATIONS, STANDING, ENDINGS, SPEAKERS,

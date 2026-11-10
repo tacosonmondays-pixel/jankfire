@@ -147,7 +147,7 @@ function build() {
     const { reward, extra } = rewardOf(m.reward);
     const q = { id: qid, title: m.title, giver: m.giver, act: m.act || m.from, kind: m.kind === 'side' ? 'side' : 'main', blurb: m.logline,
       ...(req ? { if: req } : {}), steps: convertSteps(qid, m.steps, T, m.choices), reward, onDone: extra,
-      scenes: { start: (m.scenes || [])[0] || null, end: null }, district: m.district };
+      scenes: { start: m.startScene !== undefined ? m.startScene : (m.scenes || [])[0] || null, end: null }, district: m.district }; // (startScene: null = nothing plays on the mission card)
     q.onDone = [...q.steps.tail, ...q.onDone];
     if (q.kind === 'main') q.onStart = [`var:act=${m.act}`];
     if (m.grade && m.grade.meets) q.ends = { default: { grade: m.grade.meets } };

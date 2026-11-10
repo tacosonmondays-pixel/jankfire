@@ -8,9 +8,9 @@ Everything here is a mechanic the game already has (the `src` column says where)
 
 | mechanic | kind | taught in | main missions | side quests | boss fights |
 |---|---|---|---|---|---|
-| THE GRAPPLE | movement | PLEASE TAKE YOUR ITEM | 22 | 21 | 24 |
+| THE GRAPPLE | movement | PLEASE TAKE YOUR ITEM | 22 | 21 | 25 |
 | WASHING-LINE ZIPLINES | movement | PLEASE TAKE YOUR ITEM | 1 | 3 | 2 |
-| SLIDE | movement | SOMETHING'S DIGESTING | 3 | 1 | 2 |
+| SLIDE | movement | SOMETHING'S DIGESTING | 4 | 1 | 3 |
 | BHOP AND INFINITE MOMENTUM | movement | RUSH HOUR | 3 | 1 | 1 |
 | ROCKET AND SHOTGUN JUMPS | movement | THE PRICE OF EVERYTHING | 3 | 2 | 7 |
 | VOID EDGES | movement | EXIT INTERVIEW | 2 | 2 | 2 |
@@ -33,7 +33,8 @@ Everything here is a mechanic the game already has (the `src` column says where)
 | BANK SHOTS | weapon | CARRY THE ONE | 2 | 1 | 4 |
 | BIG LASER POINTER | weapon | 03:00 | 1 | 0 | 1 |
 | CARD DECK | weapon | CLAIMS DEPARTMENT | 0 | 2 | 1 |
-| BLOOD CROSS | weapon | THE MISSING | 1 | 0 | 1 |
+| BLOOD CROSS | weapon | THE MISSING | 2 | 0 | 2 |
+| BLOOD DRIVE | weapon | TICKETS, PLEASE | 1 | 0 | 1 |
 | INSTANT CAMERA | item | PRICE CHECK ON AISLE EVERYTHING | 3 | 4 | 1 |
 | POP QUIZ | item | ROUNDING DOWN | 1 | 1 | 1 |
 | NIGHT VISION GOGGLES | item | WORKFORCE RESTORATION | 1 | 3 | 2 |
@@ -43,7 +44,7 @@ Everything here is a mechanic the game already has (the `src` column says where)
 | PARTY POPPER | item | MANDATORY FUN | 0 | 2 | 2 |
 | REVERSE CARD | item | CLAIMS DEPARTMENT | 0 | 1 | 2 |
 | FRAGS AND SMOKE | item | SAUCE RUN | 1 | 3 | 4 |
-| OVERDRIVE RIG | streak | LEG DAY | 0 | 1 | 2 |
+| OVERDRIVE RIG | streak | LEG DAY | 1 | 1 | 2 |
 | WRECKING BALL | streak | HAIRBALL | 0 | 1 | 1 |
 | MOON BOOTS | streak | UNLUCKY 13 | 0 | 1 | 1 |
 | CHICKEN STRIKE | streak | MANDATORY FUN | 0 | 2 | 2 |
@@ -53,7 +54,7 @@ Everything here is a mechanic the game already has (the `src` column says where)
 | SCYTHE RIFLE | streak | BELLY BUTTON | 0 | 1 | 1 |
 | CARS AND TRAFFIC | vehicle | SAUCE RUN | 5 | 12 | 5 |
 | LATE FEES | system | AN OFFER | 2 | 0 | 1 |
-| BIO-IMPLANTS | implant | SECOND STOMACH | 2 | 1 | 2 |
+| BIO-IMPLANTS | implant | SECOND STOMACH | 3 | 1 | 3 |
 | HYPE | system | SOMETHING'S DIGESTING | 1 | 0 | 1 |
 
 ## The grapple
@@ -141,6 +142,7 @@ GRAPPLE TIME TRIALS (activities.js grapple_trials): one signature route per dist
 - **THE MORALE OFFICER** (THE FUN FAIR): the Ferris wheel's spokes; the big top's trapeze; bunting lines between the stalls
 - **UNLUCKY 13** (THE FALLEN 13): the 13's display panels; the orbiting digits (ride them); the relay dishes' masts
 - **THE MISSING TEXTURE** (THE UNFINISHED BIT): half-loaded cars in the air; the staircase to nowhere; the T-posed man's arms
+- **REVENUE PROTECTION** (THE LAST TWO CARS): the wagon's rail and the flatbed's chains (to get back on when a Sweeper puts you over the side); the signal gantries a Brakeman drops; a Snatcher's wrist (zip to the crewmate it's holding)
 
 ## Every mechanic
 
@@ -157,7 +159,7 @@ A 90 m rope that winds you toward the point as a pendulum: you keep momentum, sw
 - **taught:** PLEASE TAKE YOUR ITEM (`m01_return_to_sender`): Dumpling's tour: 'grapple the wok on that roof. no, the wok. the WOK.' You swing onto the Wok Roofs and the kid scores your landing out of ten.
 - **main missions:** PLEASE TAKE YOUR ITEM, SOMETHING'S DIGESTING, CLOCKING IN, OPTION C, AN OFFER, FAMILY BUSINESS, LOST CHILD, NO REFUNDS, RUSH HOUR, ROUNDING DOWN, NINE KILOMETRES, ORGAN DONOR, THE MISSING, PROPERTY VALUES, WORKFORCE RESTORATION, TUESDAY AGAIN, EXIT INTERVIEW, NEGATIVE SPACE, THE PLAN, 03:00, THE LOBBY, OVERDUE
 - **side quests:** WOK THE DISH, LOST PROPERTY, THE WASHING LINE RUN, CHOIR PRACTICE, BELLY BUTTON, THE MEATBALL RUN, PRICE CHECK ON AISLE EVERYTHING, THE NAMES, DIVIDE BY ZERO, SPARE PARTS, BUY BACK, RETURN ADDRESS, STAKING CLAIMS, THE PUNCTUALITY MUSEUM, REPLY ALL, TEAM BUILDING, SMILES, THE FIRST INTERN, PERFORMANCE REVIEW, MANDATORY FUN, UNLUCKY 13
-- **boss fights:** MR. OVERTIME, MR. OVERTIME, MR. OVERTIME, MR. OVERTIME, MR. OVERTIME, MR. DEPOSIT, THE STOMACH BISHOP, THE FOUNDING PARTNER, DON GRINALDI FAZZOLETTO, THE CART MOTHER, FOREMAN REMAINDER, DOCTOR UPSELL, THE HOA, THE PERPETUAL TUESDAY, EMPLOYEE 4417, THE TALL GUY FROM HR, PENNY PLOT, THE MEETING ROOM, THE TWINS, MARION HASK, EMPLOYEE OF THE MONTH, THE MORALE OFFICER, UNLUCKY 13, THE MISSING TEXTURE
+- **boss fights:** MR. OVERTIME, MR. OVERTIME, MR. OVERTIME, MR. OVERTIME, MR. OVERTIME, MR. DEPOSIT, THE STOMACH BISHOP, THE FOUNDING PARTNER, DON GRINALDI FAZZOLETTO, THE CART MOTHER, FOREMAN REMAINDER, DOCTOR UPSELL, THE HOA, THE PERPETUAL TUESDAY, EMPLOYEE 4417, THE TALL GUY FROM HR, PENNY PLOT, THE MEETING ROOM, THE TWINS, MARION HASK, EMPLOYEE OF THE MONTH, THE MORALE OFFICER, UNLUCKY 13, THE MISSING TEXTURE, REVENUE PROTECTION
 
 ### WASHING-LINE ZIPLINES `washing_lines`
 _movement · public/js/story (the Bottom's traversal gimmick)_
@@ -181,9 +183,9 @@ Crouch while fast to slide; slides keep momentum and the Slinky Spine doubles th
 - **combat:** slide under staple fans, through Upsell's legs
 - **bosses:** Bishop phase 2, Overtime's Staple Fan, Upsell's back
 - **taught:** SOMETHING'S DIGESTING (`m03_somethings_digesting`): Peristalsis Avenue: Lumps, deadly serious: 'slide on the squeeze. it likes it.'
-- **main missions:** SOMETHING'S DIGESTING, THE LAST WORKDAY: 17:20, THE MISSING
+- **main missions:** SOMETHING'S DIGESTING, TICKETS, PLEASE, THE LAST WORKDAY: 17:20, THE MISSING
 - **side quests:** ONE SHOE GUY
-- **boss fights:** MR. OVERTIME, THE STOMACH BISHOP
+- **boss fights:** MR. OVERTIME, THE STOMACH BISHOP, REVENUE PROTECTION
 
 ### BHOP AND INFINITE MOMENTUM `bhop`
 _movement · public/js/player.js_
@@ -458,8 +460,19 @@ Shoot blood out of your fingertip (12 HP a shot); a kill pays it back.
 - **combat:** a desperate low-HP weapon that pairs with the Redline
 - **bosses:** the Stomach Bishop (blood is sacrament: x1.5)
 - **taught:** THE MISSING (`m20_the_missing`): Sister Agenda, quietly: 'the choir doesn't like it when you give blood back. it's rude in a church.'
-- **main missions:** THE MISSING
-- **boss fights:** THE STOMACH BISHOP
+- **main missions:** TICKETS, PLEASE, THE MISSING
+- **boss fights:** THE STOMACH BISHOP, REVENUE PROTECTION
+
+### BLOOD DRIVE `blooddrive`
+_weapon · not built yet (docs/story/TRAIN.md §3): reuses public/js/bloodcross.js bolts and bursts_
+
+The Blood Cross, six times over, on a motor. Hold fire: the ring spins up over 0.8 s, then 14 bolts a second. Small bolts (18 damage), each one sticks. Every sixth bolt in the same target blooms a blood cross. 2 HP a bolt: that is 28 HP a second, so on your own blood you get about three seconds before you're dying. A severed arm or a kill pays blood back.
+
+- **combat:** before Jack, a thing you can't afford. After Jack (Pallet Jack's Marrow) it's free while the ring is spinning, and crosses chain to anything within 3 m. After the mission it stays as OVERDUE's heavy weapon: found on the train's rear car, carried like a streak
+- **bosses:** REVENUE PROTECTION: sever the arms at the wrist, then break the mask plate by plate; the finish is one blood cross that touches the tunnel on all four sides
+- **taught:** TICKETS, PLEASE (`m06_tickets_please`): Bev, plumbing six lines into your hand: 'this is that, six at a time, on a motor. it'll empty you in three seconds. don't hold it down unless you mean it.'
+- **main missions:** TICKETS, PLEASE
+- **boss fights:** REVENUE PROTECTION
 
 ### INSTANT CAMERA `camera`
 _item · public/js/photo.js_
@@ -573,6 +586,7 @@ A scrap-built juggernaut: rocket punch, block, sky jumps, thrusters, homing miss
 - **bosses:** the Rig's punch knocks the Twins' shield aside and the Meeting Room's skids off
 - **side:** Leg Day as a speedrun (carry two fridges)
 - **taught:** LEG DAY (`sq_bottom_leg_day`): Lumps lends you his gym's 'big one': a scrap exo-frame he built to carry fridges. 'don't punch the stairs. they're old.'
+- **main missions:** TICKETS, PLEASE
 - **side quests:** LEG DAY
 - **boss fights:** THE MEETING ROOM, THE TWINS
 
@@ -687,9 +701,9 @@ Body slots, the Body Budget, Drift, organ cores, downsides (WP5): Spring Knees, 
 - **side:** the secret bio upgrades
 - **bosses:** every boss drops a core
 - **taught:** SECOND STOMACH (`m05_second_stomach`): Bev's back room: 'they're all terrible ideas. this one works.'
-- **main missions:** SECOND STOMACH, THE SPLIT
+- **main missions:** SECOND STOMACH, TICKETS, PLEASE, THE SPLIT
 - **side quests:** SECOND OPINION
-- **boss fights:** DOCTOR UPSELL, EMPLOYEE 4417
+- **boss fights:** DOCTOR UPSELL, EMPLOYEE 4417, REVENUE PROTECTION
 
 ### HYPE `hype`
 _system · shared/story/bodysys.js_
@@ -711,6 +725,7 @@ Kills, stylish kills, crashes and long grapples fill HYPE; streak items cost it.
 | SOMETHING'S DIGESTING | slide, grapple, hype | the Gut teaches flow: slide on Peristalsis Avenue's squeeze, swing the rib arches, bounce the lungs, and a long swing fills HYPE for the first time |
 | CLOCKING IN | grapple, water_taser, redline | Overtime's missed staples stay in the walls as grapple points; the collectors' water tank soaks him (wet clockwork runs slow); Lumps throws you the Redline when you're low |
 | SECOND STOMACH | implants | the first install: the clinic chair is the implant UI, and the Punch-Clock's tick is your first downside |
+| TICKETS, PLEASE | bloodcross, rig, implants, slide, blooddrive | a boss you fight from the back of a moving train with a gun that fires your own blood; the fight is unwinnable until you take a dead friend's marrow |
 | OPTION C | grapple | Gordo's den is up a grapple-only stack of containers; his string map doubles as the first look at every district's swing route |
 | AN OFFER | late_fees, grapple | the tax-office run on the Bleach Line is your first ★2 chase, and Pinstripe's marionette strings are the escape route |
 | FAMILY BUSINESS | parry, grapple, peels | cut the Don's strings with the katana, parry his slaps, and climb his own strings into the rafters |
@@ -815,3 +830,4 @@ Kills, stylish kills, crashes and long grapples fill HYPE; streak items cost it.
 | THE MORALE OFFICER · THE FUN DEPARTMENT | sleep | bow, snowball, remote | the lit head |
 | UNLUCKY 13 · REMAINDER ORBITAL ASSET | water | water, taser, tennis | the targeting crown |
 | THE MISSING TEXTURE · TODO | slip | banana, marbles, lasso | the patched squares |
+| REVENUE PROTECTION · TICKETS, PLEASE | blood | bloodcross | the wrist joints, the eye housings, the Inspector |
