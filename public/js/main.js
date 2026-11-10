@@ -179,7 +179,14 @@ initHome({
   skin: (id) => G.equipped[id], // what you actually wear
 });
 // OVERDUE story mode: hidden until the owner approves the slice (?story=1 or localStorage jfStory=1)
-const storyFlag = () => { try { return new URLSearchParams(location.search).get('story') === '1' || localStorage.getItem('jfStory') === '1'; } catch { return false; } };
+const storyAsked = () => { try { return new URLSearchParams(location.search).get('story') === '1' || localStorage.getItem('jfStory') === '1'; } catch { return false; } };
+const storyFlag = () => !window.JF_TOUCH && storyAsked(); // no story on phones and tablets (owner's call): nothing of it loads there
+if (window.JF_TOUCH && storyAsked()) { // ...they get a note instead. tap it away
+  const n = document.createElement('div'); n.id = 'touchNoStory';
+  n.innerHTML = '<b>OVERDUE IS CLOSED ON PHONES</b><span>the story needs a keyboard and a desk to cry at. everything else is open.</span><i>tap to go away</i>';
+  n.addEventListener('click', () => n.remove());
+  document.body.append(n);
+}
 if (storyFlag()) import('./story/main.js').then((m) => m.initStory({ startMode, quitToMenu: () => quitToMenu(), toast: (t, ms) => toast(t, ms) })).catch((e) => console.error('story mode failed to load', e));
 if (storyFlag()) import('./story/boot.js').then((m) => { story = m; return m.init(); }).catch((e) => console.error('story engine failed to load', e));
 initLobby({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), send: (m) => net.send(m), map: () => G.cfg && G.cfg.map });
