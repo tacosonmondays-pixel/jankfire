@@ -2532,7 +2532,7 @@ function grave(L, x, z, k) { // a headstone or a wooden cross, and the mound
 }
 // a one-room adobe hut: flat roof with a low lip, a ladder up the side (bars you can climb: steps), a door and windows
 function adobeHut(B, D, x, z, rot, w = 6, d = 5, paint = 'adobe') {
-  const L = B.local(x, z, rot), hw = w / 2, hd = d / 2;
+  const L = B.arch('adobe', x, z, rot, 0, { paint: { siding: 'hut' + paint } }), hw = w / 2, hd = d / 2; // (drawn as a Blender building, look only: its walls take the hut's paint, archfield.js PAINT)
   shell(L, w, d, 1, 3.2, paint, { floor: 'wood', roof: 'adobe', roofAccess: false, backDoor: false, parapet: true, winSpacing: 3 });
   for (let i = 0; i < 6; i++) L(hw + 0.16, i * 0.58, -0.5, hw + 0.66, i * 0.58 + 0.12, 0.5, 'wood'); // ladder rungs up the side (each one a step), clear of the wall
   for (const s of [-0.55, 0.47]) L(hw + 0.16, 0, s, hw + 0.66, 3.9, s + 0.08, 'wood');

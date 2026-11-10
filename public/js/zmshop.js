@@ -26,7 +26,7 @@ function canvasTex(w, h, draw) {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter;
   return { t, c };
 }
-const place = (root, at, n) => { root.position.set(at[0], 0, at[2]); root.rotation.y = Math.atan2(n[0], n[2]); return root; }; // local +z = out of the wall
+const place = (root, at, n) => { root.position.set(at[0], at[1] || 0, at[2]); root.rotation.y = Math.atan2(n[0], n[2]); return root; }; // local +z = out of the wall
 
 // ------------------------------------------------------------ the machines
 // a cola machine: the Blender one (x_zmcola: cola_paint takes the flavour's colour, the name goes on its label panel)
