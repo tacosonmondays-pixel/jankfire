@@ -66,7 +66,7 @@ def swatch(o, k, n):
 # two looks. 'candy' is the shipped claymation pink. 'eerie' (JF_GUT_LOOK=eerie, a look test for the owner: "haunting
 # and eerie, dark red, wet") is arterial red going black in the folds, wetter, old bone, yellowed teeth, veins near
 # black, the lights turned down to a dull red and the eyes jaundiced. same parts, same names: only the paint changes
-LOOK = os.environ.get('JF_GUT_LOOK', 'candy')
+LOOK = os.environ.get('JF_GUT_LOOK', 'eerie')  # the owner's pick (2026-11-10): darker. JF_GUT_LOOK=candy builds the old pink
 if os.environ.get('JF_SHEETS'):  # a look test writes its sheets somewhere else (and runs with --no-export)
     import lib as _lib; _lib.SHEETS = os.environ['JF_SHEETS']; os.makedirs(os.path.join(_lib.SHEETS, 'story'), exist_ok=True); os.makedirs(os.path.join(_lib.SHEETS, '_tmp', 'story'), exist_ok=True)
 PAL = {
@@ -96,15 +96,21 @@ def _grade(c):
     return colorsys.hsv_to_rgb(h, sat * 0.6, v * 0.5)
 
 
-if LOOK == 'eerie':  # every colour through the grade, every glow turned down, everything a bit wetter
-    import lib as _lib
-    _hex0, _srgb0, _mat0 = _lib.hexrgb, _lib.srgb, _lib.mat
-    def hexrgb(h): return np.array(_grade(_hex0(h)), dtype=np.float32)
-    def _back(c): return (int(round(c[0] * 255)) << 16) | (int(round(c[1] * 255)) << 8) | int(round(c[2] * 255))
-    def srgb(h): return _srgb0(_back(_grade(_hex0(h)))) if h != 0xffffff else _srgb0(h)
-    def mat(name, color=0x808080, rough=0.5, metal=0.0, emit=None, strength=1.0, **kw):
-        return _mat0(name, color, rough=rough * 0.6 if 'glass' not in name else rough, metal=metal, emit=emit, strength=strength * 0.55, **kw)
-    _lib.hexrgb, _lib.srgb, _lib.mat = hexrgb, srgb, mat
+# the grade is ON only while a Gut prop is being built: gutkit is also imported by scripts that build other districts'
+# props (make_story_landmarks.py), and those must keep their own colours. make_story_gut*.py switch it on at import;
+# anything else calls eerie(True) round its Gut builds (make_story_gutgate.py)
+import lib as _lib
+_hex0, _srgb0, _mat0 = _lib.hexrgb, _lib.srgb, _lib.mat
+_ON = [False]
+def eerie(on=True): _ON[0] = bool(on) and LOOK == 'eerie'
+def hexrgb(h): return np.array(_grade(_hex0(h)), dtype=np.float32) if _ON[0] else _hex0(h)
+def _back(c): return (int(round(c[0] * 255)) << 16) | (int(round(c[1] * 255)) << 8) | int(round(c[2] * 255))
+def srgb(h): return _srgb0(_back(_grade(_hex0(h)))) if (_ON[0] and h != 0xffffff) else _srgb0(h)
+def mat(name, color=0x808080, rough=0.5, metal=0.0, emit=None, strength=1.0, **kw):
+    if not _ON[0]: return _mat0(name, color, rough=rough, metal=metal, emit=emit, strength=strength, **kw)
+    return _mat0(name, color, rough=rough * 0.6 if 'glass' not in name else rough, metal=metal, emit=emit, strength=strength * 0.55, **kw)
+_lib.hexrgb, _lib.srgb, _lib.mat = hexrgb, srgb, mat
+if any(os.path.basename(a).startswith('make_story_gut') for a in sys.argv): eerie(True)
 
 
 def gut_mats():
