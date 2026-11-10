@@ -102,6 +102,7 @@ import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, 
 import { zxHurt } from './zmextra.js'; // zombies: which way the claws came from
 import { zlWant } from './zmloadout.js'; // your zombies loadout
 import { gfxCmd } from './gfxguard.js'; // /gfx: the graphics readout
+import { fxUI } from './fxsettings.js';
 let story = null; // OVERDUE's story engine (WP8: quests, talk, cutscenes), loaded with the story flag below. null = every hook is a no-op
 
 const $ = (id) => document.getElementById(id);
@@ -436,6 +437,7 @@ $('jank').value = String(S.jank);
 $('jank').addEventListener('change', () => { S.jank = Number($('jank').value); setJank(S.jank); saveSettings(); });
 $('shadows').value = S.shadows || 'auto'; setShadowPref(S.shadows);
 $('shadows').addEventListener('change', () => { S.shadows = $('shadows').value; setShadowPref(S.shadows); saveSettings(); });
+const fxSync = fxUI($, S, saveSettings); // shaders: bloom, soft skin, punchy colours (fxsettings.js)
 bindRange('fov', 'fov');
 bindRange('vol', 'vol', null, () => setVolume(S.vol));
 // music has its own volume (the main one still scales it). in matches it's on (quieter, its own slider) for bots, co-op
@@ -2486,6 +2488,7 @@ $('scr-cosmetics').prepend(hubTabs('grapple', show, () => { classicLocker = true
 function applySettingsToUI() {
   $('jank').value = String(S.jank); setJank(S.jank);
   $('shadows').value = S.shadows || 'auto'; setShadowPref(S.shadows);
+  fxSync();
   for (const id of ['fov', 'vol', 'sens', 'adsSens']) { $(id).value = String(S[id]); $(id).dispatchEvent(new Event('input')); }
   for (const id of ['fovKick', 'shake', 'showFps', 'toggleAim', 'blood', 'killcam', 'showCards', 'speedLines']) $(id).checked = !!S[id];
   K.attach(S); // the profile may have brought its own key bindings

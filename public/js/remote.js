@@ -21,6 +21,7 @@ import { makeRope, setRope, setRopeSkin } from './grapple.js';
 import { sfx } from './audio.js';
 import { remoteShredder } from './shredder.js';
 import { locoPose } from './loco.js'; // legs, body and the free arm: walk / run / sprint / zoom, jumps, slide, slip
+import { softSkin } from './softskin.js';
 
 // players ignore fog, glow a bit, and get an outline in their colour so you can spot them across the map
 const noFog = new Map();
@@ -33,6 +34,7 @@ function visibleMat(m) {
     if (c.emissive && c.color) c.emissive.copy(c.color).multiplyScalar(0.28);
     c.onBeforeCompile = () => {}; // no vertex wobble on players: it mushes them at a distance
     c.customProgramCacheKey = () => 'player';
+    if (m.userData.skin) softSkin(c, m.userData.skin); // bare skin keeps the soft skin look (softskin.js)
     noFog.set(m, c);
   }
   return noFog.get(m);

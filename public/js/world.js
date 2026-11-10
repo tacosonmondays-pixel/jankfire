@@ -18,6 +18,7 @@ import { buildProps, hasProp } from './props.js';
 import { liquidBox, buildLiquids, updateLiquids, liquidsMap, setLiquidQ } from './liquids.js'; // water that moves, lava that flows, splashes
 import { updateFlames } from './flames.js'; // real fire
 import { gfxGuard, initGfxGuard } from './gfxguard.js';
+import { postBegin, postEnd } from './post.js';
 import { initLighting, lightingMap, lightingRefresh, updateLighting, setLightPreset, aoBegin, aoBake, aoMaterials, setSunBoxes } from './lighting.js';
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
@@ -540,8 +541,10 @@ export function renderFrame() {
   const r = G.renderer, now = performance.now();
   gfxGuard(now); // gfxguard.js: broken lights / fog / textures get put back before they're drawn
   updateLighting(Math.min(0.1, (now - (lastT || now)) / 1000)); lastT = now;
+  const post = postBegin(r); // post.js: bloom / colour punch (false when they're off: straight to the canvas as always)
   r.clear();
   r.render(G.scene, G.camera);
   r.clearDepth();
   r.render(G.vmScene, G.vmCamera);
+  if (post) postEnd(r);
 }

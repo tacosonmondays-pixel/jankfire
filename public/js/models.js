@@ -19,6 +19,7 @@ import { nailgunBuild, tennisBuild, cartCannonBuild, tennisBall, cartModel, nail
 import { catEars, catTail, maidDress } from './catwear.js'; // Board Approved: cat ears, cat tail, maid dress
 import { RIFLE_WB, bindRifle } from './riflemodels.js'; // the rifle pack (burst rifle, lmg, marksman, lever-action, auto shotgun)
 import { pistolBuild, akimboBuild, sawnoffBuild } from './sidemodels.js'; // Plan B, Lefty & Righty, Half a Shotgun
+import { skinCopy } from './softskin.js';
 
 // ------------------------------------------------------------ playing card faces (canvas, cached)
 const cardFaces = new Map();
@@ -1804,6 +1805,7 @@ export function buildCharacter(color, look) {
     armL.add(ball(0.05, sleeves === 'long' ? TOP : JT, 0.14, -0.04, -0.28));
     const fore = cylZ(0.042, 0.3, SK, 0.27, -0.04, -0.4); fore.rotation.y = -0.9; armL.add(fore);
     if (sleeves === 'long') { const fs = cylZ(0.052, 0.18, TOP, 0.2, -0.035, -0.34); fs.rotation.y = -0.9; armL.add(fs); }
+    { const sm = M(SK), jm = M(JT); for (const part of [body, arm, armL]) part.traverse((o) => { if (o.isMesh && (o.material === sm || o.material === jm)) o.material = skinCopy(o.material); }); } // bare skin: the soft skin look (softskin.js). before the hair + clothes extras go on
     addHair(head, lk);
     body.add(armL);
   }

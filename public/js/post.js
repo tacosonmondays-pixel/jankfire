@@ -1,0 +1,124 @@
+// Optional shaders on top of the frame (owner: "give shaders to the game with options like subsurface scattering, bloom
+// fidelity etc!"). Bloom and a colour punch here; the soft skin look is softskin.js. Rules it keeps:
+//   - everything off = the old path exactly (world.js draws straight to the canvas, nothing here runs)
+//   - it all happens at the game's own render size, before the canvas is blown up, so Potato and Crusty stay chunky
+//   - the frame is kept the way the screen would show it (not linear light), so smoke, glass and glows blend as before
+//   - the HUD is HTML on top: untouched
+// bloom cost doesn't grow with resolution: the glow is blurred in small fixed-height buffers (BLOOM[..].h)
+import * as THREE from 'three';
+
+const BLOOM = [null,
+  { h: 180, n: 1, k: 0.4, th: 0.82 },  // low: one small soft glow
+  { h: 270, n: 2, k: 0.42, th: 0.8 },  // medium: a wider second layer
+  { h: 360, n: 3, k: 0.46, th: 0.78 }, // high: three layers, the neon bleeds
+];
+const P = { bloom: 0, punch: false, rt: null, lv: [], w: 0, h: 0, bh: 0, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), mesh: null, mats: null, size: new THREE.Vector2() };
+export const postStats = { passes: 0 };
+
+const VERT = 'varying vec2 vUv;\nvoid main() { vUv = uv; gl_Position = vec4( position.xy, 0.0, 1.0 ); }';
+const mat = (frag, uniforms) => new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: frag, uniforms, depthTest: false, depthWrite: false, toneMapped: false });
+function build() {
+  const tri = new THREE.BufferGeometry(); // one big triangle over the screen
+  tri.setAttribute('position', new THREE.Float32BufferAttribute([-1, -1, 0, 3, -1, 0, -1, 3, 0], 3));
+  tri.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 2, 0, 0, 2], 2));
+  P.mesh = new THREE.Mesh(tri, null); P.mesh.frustumCulled = false;
+  P.mats = {
+    // what glows: the bright and the loud (neon, lava, muzzle flashes, the sun), shrunk into the first small buffer
+    bright: mat(`uniform sampler2D tSrc; uniform vec2 uPx; uniform float uTh; varying vec2 vUv;
+void main() {
+  vec3 c = vec3( 0.0 );
+  for ( int i = 0; i < 4; i ++ ) {
+    vec2 o = vec2( i == 0 || i == 3 ? -1.0 : 1.0, i < 2 ? -1.0 : 1.0 ) * uPx;
+    vec3 s = texture2D( tSrc, vUv + o ).rgb;
+    float hi = max( s.r, max( s.g, s.b ) ), lo = min( s.r, min( s.g, s.b ) );
+    float sat = hi > 0.001 ? ( hi - lo ) / hi : 0.0;
+    c += s * smoothstep( uTh, 1.0, hi + sat * 0.1 ) * ( 0.7 + 0.5 * sat ); // pale bright sand glows less than a pink sign
+  }
+  gl_FragColor = vec4( c * 0.25, 1.0 );
+}`, { tSrc: { value: null }, uPx: { value: new THREE.Vector2() }, uTh: { value: 0.8 } }),
+    blur: mat(`uniform sampler2D tSrc; uniform vec2 uDir; varying vec2 vUv;
+void main() {
+  vec3 c = texture2D( tSrc, vUv ).rgb * 0.227027;
+  c += ( texture2D( tSrc, vUv + uDir * 1.384615 ).rgb + texture2D( tSrc, vUv - uDir * 1.384615 ).rgb ) * 0.316216;
+  c += ( texture2D( tSrc, vUv + uDir * 3.230769 ).rgb + texture2D( tSrc, vUv - uDir * 3.230769 ).rgb ) * 0.070270;
+  gl_FragColor = vec4( c, 1.0 );
+}`, { tSrc: { value: null }, uDir: { value: new THREE.Vector2() } }),
+    final: mat(`uniform sampler2D tScene; uniform sampler2D tB0; uniform sampler2D tB1; uniform sampler2D tB2; uniform vec3 uW; uniform float uPunch; varying vec2 vUv;
+void main() {
+  vec3 c = texture2D( tScene, vUv ).rgb;
+  vec3 b = texture2D( tB0, vUv ).rgb * uW.x;
+  if ( uW.y > 0.0 ) b += texture2D( tB1, vUv ).rgb * uW.y;
+  if ( uW.z > 0.0 ) b += texture2D( tB2, vUv ).rgb * uW.z;
+  c = 1.0 - ( 1.0 - c ) * ( 1.0 - min( b, vec3( 1.0 ) ) ); // screen, not add: bright things glow without going flat white
+  if ( uPunch > 0.0 ) {
+    float l = dot( c, vec3( 0.299, 0.587, 0.114 ) );
+    vec3 p = mix( vec3( l ), c, 1.16 ); // louder colours
+    p = mix( p, p * p * ( 3.0 - 2.0 * p ), 0.22 ); // a bit more contrast
+    vec2 v = vUv - 0.5;
+    p *= 1.0 - 0.5 * pow( dot( v, v ) * 1.9, 1.6 ); // dark comic-panel corners
+    c = mix( c, clamp( p, 0.0, 1.0 ), uPunch );
+  }
+  gl_FragColor = vec4( c, 1.0 );
+}`, { tScene: { value: null }, tB0: { value: null }, tB1: { value: null }, tB2: { value: null }, uW: { value: new THREE.Vector3() }, uPunch: { value: 0 } }),
+  };
+}
+const target = (w, h, depth, filter) => {
+  const t = new THREE.WebGLRenderTarget(w, h, { depthBuffer: depth, minFilter: filter, magFilter: filter, generateMipmaps: false });
+  // three only writes screen-ready (sRGB) colour into a target that says it's an XR one (0.170). that is what we want:
+  // the frame in here is exactly what the canvas would have got, so transparent things blend the same as with shaders off
+  t.isXRRenderTarget = true; t.texture.colorSpace = THREE.SRGBColorSpace;
+  return t;
+};
+function fit(r) {
+  r.getDrawingBufferSize(P.size);
+  const w = P.size.x, h = P.size.y, B = BLOOM[P.bloom], bh = B ? Math.min(B.h, Math.max(8, h >> 1)) : 0;
+  if (P.rt && P.w === w && P.h === h && P.bh === bh && P.lv.length === (B ? B.n : 0)) return;
+  if (P.rt) P.rt.dispose();
+  for (const l of P.lv) { l.a.dispose(); l.b.dispose(); }
+  P.lv = []; P.w = w; P.h = h; P.bh = bh;
+  P.rt = target(w, h, true, THREE.NearestFilter);
+  for (let i = 0; B && i < B.n; i++) {
+    const lh = Math.max(4, bh >> i), lw = Math.max(4, Math.round((lh * w) / h));
+    P.lv.push({ w: lw, h: lh, a: target(lw, lh, false, THREE.LinearFilter), b: target(lw, lh, false, THREE.LinearFilter) });
+  }
+}
+function pass(r, m, to) { P.mesh.material = m; r.setRenderTarget(to); r.render(P.mesh, P.cam); postStats.passes++; }
+
+// bloom: 0 off, 1 low, 2 medium, 3 high. punch: louder colours + dark corners
+export function setPost(bloom, punch) {
+  P.bloom = BLOOM[bloom] ? bloom : 0; P.punch = !!punch;
+  if (!postOn() && P.rt) { P.rt.dispose(); P.rt = null; for (const l of P.lv) { l.a.dispose(); l.b.dispose(); } P.lv = []; } // off: give the memory back
+}
+export const postOn = () => P.bloom > 0 || P.punch;
+export const postInfo = () => ({ bloom: P.bloom, punch: P.punch, size: [P.w, P.h], glow: P.lv.map((l) => [l.w, l.h]) });
+
+// world.js renderFrame: draw the frame into our buffer instead of the canvas (false = shaders off, draw as always)
+export function postBegin(r) {
+  if (!postOn()) return false;
+  if (!P.mesh) build();
+  fit(r);
+  r.setRenderTarget(P.rt);
+  return true;
+}
+// ...then glow + grade it onto the canvas
+export function postEnd(r) {
+  const M = P.mats, B = BLOOM[P.bloom], L = P.lv;
+  postStats.passes = 0;
+  if (B) {
+    M.bright.uniforms.tSrc.value = P.rt.texture; M.bright.uniforms.uTh.value = B.th;
+    M.bright.uniforms.uPx.value.set(0.5 / L[0].w, 0.5 / L[0].h); // four taps spread over the source pixels one small pixel covers
+    pass(r, M.bright, L[0].a);
+    for (let i = 0; i < L.length; i++) {
+      const l = L[i], src = i ? L[i - 1].a : l.a;
+      M.blur.uniforms.tSrc.value = src.texture; M.blur.uniforms.uDir.value.set(1 / l.w, 0); pass(r, M.blur, l.b); // (a smaller layer blurs the one above it down into itself)
+      M.blur.uniforms.tSrc.value = l.b.texture; M.blur.uniforms.uDir.value.set(0, 1 / l.h); pass(r, M.blur, l.a);
+    }
+  }
+  const F = M.final.uniforms;
+  F.tScene.value = P.rt.texture;
+  F.tB0.value = L[0] ? L[0].a.texture : null; F.tB1.value = L[1] ? L[1].a.texture : null; F.tB2.value = L[2] ? L[2].a.texture : null;
+  const k = B ? B.k : 0;
+  F.uW.value.set(L[0] ? k * (L[1] ? 0.6 : 1) : 0, L[1] ? k * 0.8 : 0, L[2] ? k : 0); // more layers: a wide soft halo, not a brighter middle (signs stay readable)
+  F.uPunch.value = P.punch ? 1 : 0;
+  pass(r, M.final, null);
+}
