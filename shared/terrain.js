@@ -74,13 +74,14 @@ export function shapeGround(B, D, o) {
     const r = find(k);
     let c = comps.get(r);
     if (!c) comps.set(r, (c = { list: [], x0: 1e9, z0: 1e9, x1: -1e9, z1: -1e9, y0: 1e9 }));
+    if (b.av) c.av = 1; // (drawn by a baked model, public/js/archfield.js: the model can't move, so neither does this)
     c.list.push(b); c.x0 = Math.min(c.x0, b.min[0]); c.x1 = Math.max(c.x1, b.max[0]); c.z0 = Math.min(c.z0, b.min[2]); c.z1 = Math.max(c.z1, b.max[2]); c.y0 = Math.min(c.y0, b.min[1]);
   });
   const anchors = [], propsC = [];
   for (const c of comps.values()) {
     const w = c.x1 - c.x0, d = c.z1 - c.z0;
     if (c.y0 > 0.35) continue; // hangs in the air on its own (the sun, a bird): leave it be
-    if (w > BIG || d > BIG || w * d > BIG * BIG * 0.75 || c.y0 < -0.5 || c.x0 < X0 + 0.5 || c.x1 > X1 - 0.5 || c.z0 < Z0 + 0.5 || c.z1 > Z1 - 0.5) anchors.push(c); else propsC.push(c);
+    if (c.av || w > BIG || d > BIG || w * d > BIG * BIG * 0.75 || c.y0 < -0.5 || c.x0 < X0 + 0.5 || c.x1 > X1 - 0.5 || c.z0 < Z0 + 0.5 || c.z1 > Z1 - 0.5) anchors.push(c); else propsC.push(c);
   }
   // ---- how far every cell is from something that keeps the ground flat (chamfer distance, in m)
   const dist = new Float32Array(nx * nz).fill(1e4);
@@ -130,7 +131,7 @@ export function shapeGround(B, D, o) {
   for (const rf of o.relief || []) {
     let k = mats.indexOf(rf.mat || mat); if (k < 0) { mats.push(rf.mat); k = mats.length - 1; }
     for (let i = 0; i < vx; i++) for (let j = 0; j < vz; j++) { const v = rf.f(X0 + i, Z0 + j); if (v != null) { H[V(i, j)] = v; fixed[V(i, j)] = 1; } }
-    for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) if (rf.f(X0 + i + 0.5, Z0 + j + 0.5) != null) paint[C(i, j)] = k;
+    for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) if (rf.paint ? rf.paint(X0 + i + 0.5, Z0 + j + 0.5) : rf.f(X0 + i + 0.5, Z0 + j + 0.5) != null) paint[C(i, j)] = k; // (rf.paint: where it takes rf.mat; the rest keeps the ground's own)
   }
   // ---- small things get a level pad at the height the ground has under their middle, and go up or down with it
   const at0 = (x, z) => { const fx = Math.max(0, Math.min(nx - 1e-6, x - X0)), fz = Math.max(0, Math.min(nz - 1e-6, z - Z0)), i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j; return (H[V(i, j)] * (1 - u) + H[V(i + 1, j)] * u) * (1 - v) + (H[V(i, j + 1)] * (1 - u) + H[V(i + 1, j + 1)] * u) * v; };
