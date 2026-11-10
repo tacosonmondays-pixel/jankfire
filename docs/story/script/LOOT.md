@@ -300,6 +300,14 @@ _Generated from `loot.js`. No durability, ever._
 **Lore:** Sharon's longest washing line, socks still on, braided into a lasso by the Bottom's kids for a dare.  
 **Drops:** quest `sq_bottom_line_run` · the Washing Line Run's gold time
 
+### THE BLOOD DRIVE `blood_drive`
+> "don't hold it down unless you mean it."
+
+**bloodcross** · MEAT MECHANICS  
+**Quirk:** the Blood Cross as a minigun. Hold fire: the ring spins up over 0.8 s, then 14 bolts a second. Small bolts (18 damage), each one sticks, and every sixth bolt in the same target blooms a blood cross. 2 HP a bolt (28 HP a second); a severed arm or a kill pays blood back. With Pallet Jack's Marrow it's free while the ring is spinning, and crosses chain to anything within 3 m  
+**Lore:** Jack's old training frame, the one he wore before the parts went inside: a spine brace, a shoulder yoke and a right-arm cradle. Bev's addition: six glass syringe barrels in a ring around your forearm, on a belt-drive off a washing machine. The barrels fill and empty in turn so you can read your own HP off your arm.  
+**Drops:** quest `m06_tickets_please` · the loaner: Bev fits it before the train. After the mission it's OVERDUE's heavy weapon: found on the train's rear car, carried like a streak. Tracer #ff1f3d
+
 ### SOLE SURVIVOR `sole_survivor`
 > "one shoe. very good shoe."
 
