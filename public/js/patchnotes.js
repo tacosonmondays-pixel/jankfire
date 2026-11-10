@@ -1,12 +1,28 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '7.2', date: '2026-11-10', title: 'THUMBS', items: [
+    'JANKFIRE runs on phones and tablets now. open it in your phone\'s browser, turn it sideways, go.',
+    'touch controls: a stick on the left, drag the right side to look, and big loud buttons for FIRE, JUMP, SLIDE, HOOK, AIM and friends. tap the hotbar to swap guns, tap your item and killstreaks to use them, tap the ammo to reload.',
+    'aim assist for touch players: your look slows down near an enemy and the crosshair gets a small tug toward their body. enemies only, no walls, no snapping. SETTINGS > touch sets how much, or turns it off.',
+    'SETTINGS > touch: look sens, button size, button see-through-ness, and a left-handed swap.',
+    'auto fire for touch players: point at an enemy and the gun goes off by itself after a blink. snipers only when scoped, knives only in reach, never at friends or through walls. the green AUTO button turns it off. FIRE still works.',
+    'phones and tablets cap how many pixels they draw and use cheaper shadows, so your pocket stays a pocket and not a hand warmer.',
+    'touch: tap a pop-up ad to close it, the scythe gets RIFLE and DASH buttons, tap to spectate when you are dead, and hints finally say FIRE instead of LMB.',
+    'hold your phone upright and the game asks you to stop.',
+  ] },
   { v: '7.1', date: '2026-11-10', title: 'PITS HAVE BOTTOMS', items: [
     'MOUNT KABOOM got deeper. you don\'t stand in the lava any more, you sink into it. slowly. grapple out before it reaches your chin.',
     'MOUNT KABOOM is not a hot tub. fall down the volcano on Islands and you land in lava: it burns you the whole time you stand in it, keeps burning for a moment after you climb out, and if it finishes you the crater coughs your bits back up. grapple out fast or get EXTRA CRISPY.',
     'the sea drowns you properly now. deep water holds you up for a second while you sink (grapple out!), and you are gone when your head goes under, instead of dropping through the sea bed. same on the oil rig.',
     'long falls end where the ground is: the Desert canyon ends in the river (SPLOOSH), the rooftops end on the street (SPLAT). no more dying in mid air.',
     'bots know the volcano is hot and walk round it.',
+    'plant & defuse bots are a real lobby now: some are cracked, some are having a day. good ones tap heads, stop to shoot and hold angles. bad ones run at you jumping. nobody hits harder.',
+    'CHARACTER got four more shape sliders: chest, arms, belly, legs. and tabs, so you can see the mannequin while you ruin it. hitboxes still the same.',
+    'blood cross never runs dry: out of blood it fires THIN BLOOD, weak but free. the bow draws faster and hits harder. every card you play throws cards now, and a spade is always a fan of six.',
+    'the gadgets (speed trap, goggles, laptop, pop quiz, camera, bubble wand) take about twice as long to come back, and dying doesn\'t refill them. pop quiz stores two now.',
+    'the scales of justice can hold court at range: right click opens a ring of light under someone, and a second later the pillar comes down. weaker than a swing, 10 s recharge, and you can just walk out of it. most people don\'t.',
+    'RESET button in the pause menu (and a bindable key). respawn without hunting for a cliff. if someone hurt you first, they get the kill. training, co-op and quick play only.',
   ] },
   { v: '7.0', date: '2026-11-10', title: 'AD SUPPORTED', items: [
     'new item: the LAPTOP. press G to open it at someone and their screen fills with pop-up ads for 7 seconds. they close them with the number on each ad. some ads ask ARE YOU SURE?. nobody in front of it: NO SIGNAL, and you keep the charge. a reverse card sends the ads back.',
@@ -14,7 +30,6 @@ export const PATCH_NOTES = [
     'GUN GAME rolls a new ladder every match: 10 guns, 5 silly ones, 3 melee, then the spoon. weapons that sat out the last match go first. 16 more weapons can show up (shopping cart cannon, taser, slipper, big laser pointer...).',
     'CHARACTER has a joke body row: head size, butt size, and Mannequin / Male / Female builds. everyone sees it. looks only: your hitbox did not get bigger. nice try. some bots turn up with one too.',
     'plant & defuse: the SMG, Belt Sander, Lefty & Righty and the Sniper fire slower there. aim more, hose less.',
-    'plant & defuse: hard bots hit a little harder there. you picked hard.',
     'menus talk less. a pile of captions that explained the obvious got deleted.',
     'bots finally learned to throw cards. they used to reach the card deck in gun game and just stand there holding it. forever.',
   ] },

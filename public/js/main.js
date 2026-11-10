@@ -51,7 +51,7 @@ import { GAMES, GAME_ORDER, TEAMS, mapsFor, mapForGame } from '/shared/modes.js'
 import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
 import { EPIC_CAM, epicMul, epicCamMs } from '/shared/epic.js';
-import { BUILDS, JOKE_MAX } from '/shared/looks.js'; // the joke body (character screen)
+import { BUILDS, JOKE_MAX, BODY_KEYS } from '/shared/looks.js'; // the joke body (character screen)
 import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, HAIRS, TOPS, BOTTOMS } from '/shared/looks.js';
 import { startBall, endBall, ballOn, BS, look } from './player.js';
 import { updateWreck, ballCam, wreckFx, wreckDied } from './wreck.js';
@@ -93,6 +93,7 @@ import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll
 import { initHome, homeShown, homeLeft, refreshHero } from './home.js';
 import { skipVote, skipReset } from './skipvote.js';
 import { lassoFrame, loopFrame, lassoWheel, lassoKey, lassoLate } from './lasso.js'; // lasso (secondary)
+import { initGavel, updateGavel, gavelFx, gavelAim, gavelReset } from './gavel.js'; // scales of justice, ranged
 import { initAds, updateAds, adsFx, adsKey, adsReset } from './ads.js'; // the laptop's pop-up ads
 import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + quick-scope callouts register themselves)
 import { K } from './keys.js';
@@ -178,7 +179,14 @@ initHome({
   skin: (id) => G.equipped[id], // what you actually wear
 });
 // OVERDUE story mode: hidden until the owner approves the slice (?story=1 or localStorage jfStory=1)
-const storyFlag = () => { try { return new URLSearchParams(location.search).get('story') === '1' || localStorage.getItem('jfStory') === '1'; } catch { return false; } };
+const storyAsked = () => { try { return new URLSearchParams(location.search).get('story') === '1' || localStorage.getItem('jfStory') === '1'; } catch { return false; } };
+const storyFlag = () => !window.JF_TOUCH && storyAsked(); // no story on phones and tablets (owner's call): nothing of it loads there
+if (window.JF_TOUCH && storyAsked()) { // ...they get a note instead. tap it away
+  const n = document.createElement('div'); n.id = 'touchNoStory';
+  n.innerHTML = '<b>OVERDUE IS CLOSED ON PHONES</b><span>the story needs a keyboard and a desk to cry at. everything else is open.</span><i>tap to go away</i>';
+  n.addEventListener('click', () => n.remove());
+  document.body.append(n);
+}
 if (storyFlag()) import('./story/main.js').then((m) => m.initStory({ startMode, quitToMenu: () => quitToMenu(), toast: (t, ms) => toast(t, ms) })).catch((e) => console.error('story mode failed to load', e));
 if (storyFlag()) import('./story/boot.js').then((m) => { story = m; return m.init(); }).catch((e) => console.error('story engine failed to load', e));
 initLobby({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), send: (m) => net.send(m), map: () => G.cfg && G.cfg.map });
@@ -246,6 +254,11 @@ for (const b of document.querySelectorAll('.back')) b.addEventListener('click', 
 for (const b of document.querySelectorAll('[data-mode]')) b.addEventListener('click', () => startMode(b.dataset.mode));
 $('resume').addEventListener('click', resume);
 $('quit').addEventListener('click', quitToMenu);
+// RESET: respawn yourself (server/reset.js decides if it's allowed here and who gets the kill)
+const resetOk = () => ['training', 'coop', 'bots', 'ffa'].includes(G.mode) && !G.lk && !['bomb', 'br', 'zm', 'oitc'].includes((G.round && G.round.game) || G.game);
+function resetMe() { if (G.joined && ME.alive) net.send({ t: 'reset' }); }
+$('resetMe').addEventListener('click', () => { resetMe(); resume(); });
+net.on('reset', (m) => { if (m && typeof m.no === 'string') { hud.msg(m.no.slice(0, 48), 1.2, 'slip'); sfx.empty(); } });
 
 function resume() {
   hideMenu();
@@ -300,7 +313,7 @@ function resetWorldState() {
   for (const b of G.bubbles.values()) G.scene.remove(b.mesh);
   G.bubbles.clear(); G.smokes.length = 0; ME.frozenUntil = 0; G.frost = 0;
   gearLeave();
-  adsReset();
+  adsReset(); gavelReset();
   secLeave();
   brReset(); // the zone, eviction notice and loot rules stay with the royale room
   resetItems(); stopUse(); G.activeStreaks = null; G.itemSent = null;
@@ -343,6 +356,7 @@ function lock() {
 function pause() {
   show('pause');
   $('pauseMatch').classList.toggle('hidden', !!G.lk); // a mode lobby is everyone's: nobody changes its match
+  $('resetMe').classList.toggle('hidden', !resetOk()); // only where a reset is allowed
   $('pauseTitle').textContent = `${MODES[G.mode] ? MODES[G.mode].name.toUpperCase() : 'PAUSED'} · ${MAPS[G.cfg.map] ? MAPS[G.cfg.map].name : ''}`;
   W.held = false; W.aimHeld = false;
   K.clear();
@@ -588,7 +602,7 @@ function buildLoadoutUI() {
     b.className = 'wpick' + ((S.loadout.item || 'frag') === id ? ' on' : '');
     b.textContent = `${it.name} x${it.charges}`;
     b.style.setProperty('--c', it.color);
-    b.addEventListener('mouseenter', () => { $('loDesc').textContent = `${it.name}: ${it.desc} (${it.charges} charge${it.charges > 1 ? 's' : ''}, ${it.recharge}s to refill)`; });
+    b.addEventListener('mouseenter', () => { $('loDesc').textContent = `${it.name}: ${it.desc} (${it.charges} charge${it.charges > 1 ? 's' : ''}, ${it.recharge}s to refill${it.carry ? ', dying does not refill it' : ''})`; });
     b.addEventListener('click', () => { S.loadout.item = id; saveSettings(); buildLoadoutUI(); applyLoadout(false); });
     ic.append(b);
   }
@@ -680,6 +694,11 @@ function setLook(look) {
 }
 // every achievement (and old one), for trying on locked accessories in the preview only: what you wear stays validLook(look, myAchs())
 const ALL_ACHS = new Set([...Object.keys(ACHIEVEMENTS), ...LOOK_SLOTS.flatMap((sl) => Object.values(ACCESSORIES[sl]).map((v) => v.legacy).filter(Boolean))]);
+let lkTab = 'body';
+function showLkTab() {
+  for (const s of document.querySelectorAll('#scr-character .lk-sec')) s.classList.toggle('hidden', s.dataset.sec !== lkTab);
+  for (const t of $('lkTabs').children) t.classList.toggle('on', t.dataset.sec === lkTab);
+}
 function buildCharacterUI() {
   const achs = myAchs();
   const look = { ...DEFAULT_LOOK, ...G.settings.look };
@@ -746,16 +765,30 @@ function buildCharacterUI() {
   }
   const jel = $('lk-joke');
   jel.innerHTML = '';
-  for (const [key, label] of [['bigHead', 'head size'], ['bigButt', 'butt size']]) {
-    const lab = document.createElement('label'), inp = document.createElement('input'), val = document.createElement('b');
+  const chestName = look.build === 'f' ? 'bust' : look.build === 'm' ? 'pecs' : 'chest';
+  for (const [key, label] of [['bigHead', 'head'], ['bigChest', chestName], ['bigArms', 'arms'], ['fat', 'belly'], ['bigButt', 'butt'], ['bigLegs', 'legs']]) {
+    const lab = document.createElement('label'), nm = document.createElement('span'), inp = document.createElement('input'), val = document.createElement('b');
+    nm.textContent = label;
     inp.type = 'range'; inp.min = '0'; inp.max = String(JOKE_MAX); inp.step = '1'; inp.value = String(look[key] | 0);
     const say = () => { val.textContent = ['normal', 'big', 'bigger', 'huge', 'why'][Number(inp.value)] || ''; };
     say();
     inp.addEventListener('input', () => { say(); const t = validLook({ ...look, [key]: Number(inp.value) }, achs); showCharacter(buildCharacter, t.color || G.myColor || '#ff4fd8', t); });
     inp.addEventListener('change', () => { setLook({ ...look, [key]: Number(inp.value) }); buildCharacterUI(); });
-    lab.append(label + ' ', inp, ' ', val);
+    lab.append(nm, inp, val);
     jel.append(lab);
   }
+  // the screen in four tabs, so the mannequin stays in view while you poke at it (the open one is remembered while the page is)
+  const tabs = $('lkTabs');
+  if (!tabs.dataset.on) {
+    tabs.dataset.on = '1';
+    for (const [id, name] of [['body', 'BODY'], ['hair', 'HAIR + FACE'], ['clothes', 'CLOTHES'], ['card', 'NAME CARD']]) {
+      const t = document.createElement('button');
+      t.className = 'chip'; t.dataset.sec = id; t.textContent = name;
+      t.addEventListener('click', () => { lkTab = id; showLkTab(); });
+      tabs.append(t);
+    }
+  }
+  showLkTab();
   for (const slot of LOOK_SLOTS) {
     const el = $('lk-' + slot);
     el.innerHTML = '';
@@ -829,6 +862,8 @@ $('lkRandom').addEventListener('click', () => {
   const look = { color: pick(LOOK_COLORS), skin: pick(SKIN_TONES), hair: pick(Object.keys(HAIRS)), hairColor: pick(HAIR_COLORS),
     top: pick(Object.entries(TOPS).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k)), topColor: pick(CLOTH_COLORS), bottom: pick(Object.entries(BOTTOMS).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k)), bottomColor: pick(CLOTH_COLORS) };
   for (const s2 of LOOK_SLOTS) look[s2] = pick(Object.entries(ACCESSORIES[s2]).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k));
+  look.build = pick(Object.keys(BUILDS)); // the body too: usually a little off, now and then a lot
+  for (const k of BODY_KEYS) look[k] = Math.random() < 0.3 ? 1 + ((Math.random() * Math.random() * JOKE_MAX) | 0) : 0;
   setLook(look); buildCharacterUI();
 });
 $('lkReset').addEventListener('click', () => { setLook({ ...DEFAULT_LOOK }); buildCharacterUI(); });
@@ -1088,6 +1123,7 @@ function aimDown() {
   if (secAimDown()) return; // tv remote: aim (right click) rewinds
   if (W.cur === 'cards') { cycleCard(); return; }
   if (heavyAttack()) return; // knife: right click is the heavy stab
+  if (gavelAim()) return; // scales of justice: right click is the SUMMONS
   if (W.cur === 'katana' && !rigOn()) { if (!K.get('parry').some(Boolean)) parry(); return; } // katana: the parry key parries (pressed()); aim only stands in when parry is unbound
   if (W.cur === 'akimbo') { W.aimHeld = true; return; } // Lefty & Righty: the aim key is the right gun's trigger (never a toggle)
   if (S.toggleAim) W.aimHeld = !W.aimHeld; else W.aimHeld = true;
@@ -1132,6 +1168,7 @@ function pressed(e) {
   if (K.matches('scythe', e) && !e.repeat) toggleScythe();
   if (K.matches('item', e) && !e.repeat) useItem();
   if (K.matches('spray', e) && !e.repeat) spray();
+  if (K.matches('reset', e) && !e.repeat) resetMe();
   const streak = ['streak1', 'streak2', 'streak3'].findIndex((a) => K.matches(a, e));
   if (streak >= 0 && !e.repeat) deployStreak(streak);
   if (K.matches('slot4', e)) switchSlot(3);
@@ -1194,6 +1231,60 @@ addEventListener('mousemove', (e) => {
 });
 addEventListener('blur', releaseHeld);
 addEventListener('resize', resizePreview);
+// phones + tablets (touchboot.js tagged the page): on-screen buttons that press the same bound keys as above (touch.js).
+// looking is the one thing with its own path: a finger drag isn't a locked mouse
+function touchLook(dx, dy) {
+  if (!inGame()) return;
+  if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor
+  if (story && story.locked()) return;
+  const s = 0.0088 * (S.tSens || 1) * (W.aim > 0.5 ? S.adsSens / W.zoom : 1) * (assist ? assist.assistSlow(assistApi, performance.now()) : 1); // (aim assist: slower near an enemy)
+  ME.yaw -= dx * s;
+  ME.pitch = Math.max(-1.55, Math.min(1.55, ME.pitch - dy * s));
+}
+let touchUI = null;
+// aim assist (aimassist.js), touch players only: enemies in plain sight near the crosshair. same who-counts rule as the spinbot
+let assist = null;
+const assistApi = {
+  remotes: () => G.remotes.values(), boxes: () => BOXES,
+  enemy: (r) => r.alive && !(r.bot && r.name === 'Dummy' && G.mode !== 'training') && !isFriend(r) && !(G.mode === 'coop' && !r.bot),
+  strength: () => (S.tAssist == null ? 1 : Number(S.tAssist) || 0),
+  ok: () => inGame() && ME.alive && !RP.active && !(performance.now() < (G.spinUntil || 0)) && !(performance.now() < (ME.sleepUntil || 0)) && !(story && story.locked()),
+};
+if (window.JF_TOUCH) import('./aimassist.js').then((m) => { assist = m; }).catch((e) => console.error('aim assist failed to load', e));
+// auto fire (autofire.js), touch players only: same enemies, same line of sight; it presses the bound fire key through touch.js
+let autoF = null;
+const autoApi = {
+  remotes: assistApi.remotes, boxes: assistApi.boxes, enemy: assistApi.enemy, ok: assistApi.ok,
+  enabled: () => S.tAuto !== false && !!touchUI,
+  manual: () => touchUI.fireHeld(),
+  press: (down) => touchUI.autoPress(down),
+  reload: () => touchUI.tapAct('reload'),
+};
+if (window.JF_TOUCH) import('./autofire.js').then((m) => { autoF = m; }).catch((e) => console.error('auto fire failed to load', e));
+if (window.JF_TOUCH) import('./touch.js').then((m) => {
+  touchUI = m.initTouch({
+    S, inGame, look: touchLook, save: saveSettings, chat: openChat,
+    autoChanged: () => { $('tAuto').checked = S.tAuto !== false; },
+    pause: () => { if (inGame()) pause(); },
+    // a tap anywhere does what a click does: drop in after the end screen, skip the killcam, watch the next player
+    gate: () => esClickShown() || RP.mode === 'killcam' || G.killcamPending || !ME.alive, // (dead: a tap is a click, which is how every mode's spectating moves on)
+    ctx: () => ({ eco: !!G.eco, royale: brOn(), scythe: !!W.hasScythe && ME.alive, watch: RP.active || !!G.killcamPending, use: !!G.eco || brOn() || G.cfg.game === 'zombies' || canUse(G.round, ME.pos) }),
+  });
+  bindTouchSettings();
+}).catch((e) => console.error('touch controls failed to load', e));
+function bindTouchSettings() {
+  const look = () => touchUI.applyLook();
+  bindRange('tSens', 'tSens', (v) => v.toFixed(1));
+  bindRange('tSize', 'tSize', (v) => Math.round(v * 100) + '%', look);
+  bindRange('tAlpha', 'tAlpha', (v) => Math.round(v * 100) + '%', look);
+  if (S.tAssist == null) S.tAssist = 1;
+  bindRange('tAssist', 'tAssist', (v) => (v > 0 ? Math.round(v * 100) + '%' : 'off'));
+  if (S.tAuto == null) S.tAuto = true;
+  bindCheck('tAuto', 'tAuto', () => touchUI.syncAuto());
+  bindCheck('tLefty', 'tLefty', look);
+  bindCheck('tFull', 'tFull');
+  $('toggleAim').checked = !!S.toggleAim; // (touch.js turns it on the first time)
+}
 
 function renderScores() {
   const rows = [{ name: G.myName, color: G.myColor, k: G.kills, d: G.deaths, me: true, card: cardUrlFor(G.myId) }];
@@ -1582,7 +1673,7 @@ net.on('kill', (m) => {
   courtKill(m); // scales of justice: streaks + revenge
   let [kn, kc] = nameOf(m.k), [vn, vc] = nameOf(m.v);
   [kn, vn] = brNames(m, kn, vn); // jank royale: no names in Pronoun Park
-  const via = m.w === 'void' || m.w === 'cough' || ((m.w === 'car' || m.w === 'carboom') && m.via) ? m.via : m.w;
+  const via = m.w === 'void' || m.w === 'cough' || m.w === 'reset' || ((m.w === 'car' || m.w === 'carboom') && m.via) ? m.via : m.w;
   const victim = G.remotes.get(m.v);
   if (m.pit && m.w === 'void') pitKill(m, victim ? victim.color : m.v === G.myId ? G.myColor : null); // into the shredder pit's teeth (sets m.vel: the bits fly back up)
   // shredder kills: the pieces go through the killer's machine instead of the usual gibs / kill effect
@@ -1608,6 +1699,8 @@ net.on('kill', (m) => {
     if (fl) fallSplat(m, fl);
   } else if (m.w === 'tbag' && m.k === 0) {
     parts = [[vn, vc], ['  t-bagged too hard and exploded', '#ff9a3a']];
+  } else if (m.w === 'reset') { // pressed RESET: with someone on them it's that someone's kill
+    parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], ['  (rage reset)', '#aaa']] : [[vn, vc], ['  turned it off and on again', '#aaa']];
   } else if (m.w === 'cough') {
     parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], ['  (coughed)', '#aaa']] : [[vn, vc], ['  smoked too much', '#aaa']];
   } else if (!m.k) {
@@ -1767,6 +1860,7 @@ net.on('he', (m) => {
   G.shake = Math.max(G.shake, Math.max(0, 1 - d / 25));
 });
 net.on('fx', (m) => {
+  if (gavelFx(m)) return; // a summons ring opening / the pillar landing
   if (adsFx(m)) return; // someone opened a laptop at someone
   if (gearFx(m)) return; // laser beams, photo teleports, goggle flashes (gear.js)
   if (secFx(m)) return; // taser zaps, remote pauses + rewinds, radar readings (secondaries.js)
@@ -1871,6 +1965,7 @@ net.on('ns', (m) => {
 });
 
 initAds();
+initGavel();
 initGear(); // the new gear's server messages + the G hook
 initSec(); // the new secondaries + the speed trap (after initGear: it wraps the G hook)
 
@@ -1933,6 +2028,8 @@ function frame(t) {
       }
     }
     G.aimDir = lock ? lock.d : null;
+    if (assist) { if (K.isDown('forward') || K.isDown('back') || K.isDown('left') || K.isDown('right')) assist.assistPoke(now); assist.assistFrame(assistApi, dt, now); } // touch aim assist: the gentle tug
+    if (autoF && touchUI) autoF.autoFrame(autoApi, now); // touch auto fire
     const lm = $('lockMark');
     if (lock) {
       const v = tmpLock.set(lock.r.pos[0], lock.r.pos[1] + 2.0, lock.r.pos[2]).project(G.camera);
@@ -1968,6 +2065,7 @@ function frame(t) {
   for (const [id, b] of G.bubbles) { if (now > b.until + 500) { G.scene.remove(b.mesh); G.bubbles.delete(id); continue; } b.mesh.rotation.y += dt * 0.3; b.mesh.material.opacity = 0.18 + Math.sin(now * 0.006) * 0.05; }
   updateWand(dt, now); // bubble wand: giant soap bubbles round people, the view from inside one, the wand in your hand
   updateAds(dt, now);
+  updateGavel(dt);
   updateGear(dt, now); // laser beams, photo frames, pop quizzes, night vision
   updateSec(dt, now); // soaks, zaps, pauses, rewinds, the radar gun, cages
   updatePrims(dt, now); // nails in walls, pins, shopping carts
@@ -2310,7 +2408,7 @@ function replayFeed(k, info) {
   const nm = (id) => (info && info[id] ? [info[id].name, info[id].color] : nameOf(id));
   const d = document.createElement('div');
   const [a, ac] = nm(k.k), [b, bc] = nm(k.v);
-  const via = k.w === 'void' || k.w === 'cough' ? k.via : k.w;
+  const via = k.w === 'void' || k.w === 'cough' || k.w === 'reset' ? k.via : k.w;
   for (const [t, c] of k.k ? [[a, ac], [`  [${wname(via)}]  `, wcolor(via)], [b, bc]] : [[b, bc], ['  died', '#aaa']]) {
     const sp = document.createElement('span'); sp.textContent = t; sp.style.color = c; d.append(sp);
   }

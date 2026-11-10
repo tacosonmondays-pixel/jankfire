@@ -245,6 +245,9 @@ export const sfx = {
   adPop(n = 0) { const f = 660 * Math.pow(1.122, n % 6); tone('square', f, f, 0.07, 0.13); tone('square', f * 1.5, f * 1.5, 0.12, 0.13, null, 0.08); noise(0.02, 0.2, 'highpass', 4000, 7000); },
   adClose() { noise(0.015, 0.35, 'highpass', 3000, 6000); tone('sine', 900, 320, 0.09, 0.2); },
   adSure() { tone('square', 990, 990, 0.1, 0.13); tone('square', 660, 660, 0.14, 0.13, null, 0.1); },
+  // the summons: a rising glassy chord while the ring is open, then the gavel: two wooden knocks and a bright crack
+  gavelCall(pos) { for (const [i, f] of [392, 523, 659, 784].entries()) tone('sine', f, f * 1.5, 0.95, 0.12, pos, i * 0.05); tone('triangle', 196, 392, 0.95, 0.1, pos); },
+  gavelBang(pos) { tone('square', 180, 70, 0.12, 0.5, pos); tone('square', 150, 60, 0.14, 0.45, pos, 0.11); noise(0.25, 0.8, 'highpass', 1800, 6000, pos); tone('sine', 1568, 784, 0.5, 0.25, pos, 0.02); },
   reverse(pos) { tone('sine', 300, 1600, 0.25, 0.3, pos); tone('triangle', 1600, 300, 0.25, 0.2, pos, 0.25); },
   hole(pos) { tone('sine', 80, 40, 2.9, 0.5, pos); noise(2.9, 0.3, 'lowpass', 300, 80, pos); },
   holePop(pos) { sfx.boom(pos); sfx.squeak(pos); },

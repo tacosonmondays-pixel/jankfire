@@ -4,8 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>JANKFIRE</title>
+<script src="/js/touchboot.js"></script>
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/ui.css">
+<link rel="stylesheet" href="/touch.css">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#ff4fd8">
 <link rel="icon" href="/icons/icon-192.png">
@@ -159,6 +161,7 @@
       <button class="mid" data-go="loadout">CUSTOMIZE</button>
       <button class="mid" data-go="match" id="pauseMatch">MATCH SETTINGS</button>
       <button class="mid" data-go="settings">SETTINGS</button>
+      <button class="mid" id="resetMe" title="respawn. if someone hurt you in the last 10 seconds they get the kill">RESET (RESPAWN)</button>
       <button class="mid danger" id="quit">QUIT TO MENU</button>
     </div>
   </div>
@@ -287,18 +290,30 @@
       <div class="coslist" id="achList"></div>
       <div class="cosmain">
         <div id="charSlot"></div>
-        <div class="lt">colour (your name + outline)</div><div class="chips" id="lk-color"></div>
-        <div class="lt">skin</div><div class="chips" id="lk-skin"></div>
-        <div class="lt">hair</div><div class="chips" id="lk-hair"></div><div class="chips" id="lk-hairColor"></div>
-        <div class="lt">top</div><div class="chips" id="lk-top"></div><div class="chips" id="lk-topColor"></div>
-        <div class="lt">bottom</div><div class="chips" id="lk-bottom"></div><div class="chips" id="lk-bottomColor"></div>
-        <div class="lt">body (a joke. everyone sees it, hitboxes stay the same)</div><div class="chips" id="lk-build"></div><div class="chips lk-joke" id="lk-joke"></div>
-        <div class="lt">head</div><div class="chips" id="lk-head"></div>
-        <div class="lt">face</div><div class="chips" id="lk-face"></div>
-        <div class="lt">back</div><div class="chips" id="lk-back"></div>
-        <div class="hidden"><div class="lt">kill effect (what happens to people you kill)</div><div class="chips" id="lk-kill"></div></div>
-        <div class="lt">name card (people see it when you kill them)</div>
-        <div class="cardrow"><div id="lkCard"></div><button class="mid" data-go="namecard">EDIT NAME CARD</button></div>
+        <div class="lk-tabs" id="lkTabs"></div>
+        <div class="lk-sec" data-sec="body">
+          <div class="lk-grid">
+            <div><div class="lt">colour (your name + outline)</div><div class="chips" id="lk-color"></div></div>
+            <div><div class="lt">skin</div><div class="chips" id="lk-skin"></div></div>
+          </div>
+          <div class="lt">build</div><div class="chips" id="lk-build"></div>
+          <div class="lt">shape (a joke. everyone sees it, hitboxes stay the same)</div><div class="lk-joke" id="lk-joke"></div>
+        </div>
+        <div class="lk-sec" data-sec="hair">
+          <div class="lt">hair</div><div class="chips" id="lk-hair"></div><div class="chips" id="lk-hairColor"></div>
+          <div class="lt">head</div><div class="chips" id="lk-head"></div>
+          <div class="lt">face</div><div class="chips" id="lk-face"></div>
+        </div>
+        <div class="lk-sec" data-sec="clothes">
+          <div class="lt">top</div><div class="chips" id="lk-top"></div><div class="chips" id="lk-topColor"></div>
+          <div class="lt">bottom</div><div class="chips" id="lk-bottom"></div><div class="chips" id="lk-bottomColor"></div>
+          <div class="lt">back</div><div class="chips" id="lk-back"></div>
+        </div>
+        <div class="lk-sec" data-sec="card">
+          <div class="hidden"><div class="lt">kill effect (what happens to people you kill)</div><div class="chips" id="lk-kill"></div></div>
+          <div class="lt">name card (people see it when you kill them)</div>
+          <div class="cardrow"><div id="lkCard"></div><button class="mid" data-go="namecard">EDIT NAME CARD</button></div>
+        </div>
         <div class="row"><button class="mid" id="lkRandom">RANDOMIZE</button><button class="mid" id="lkReset">RESET</button></div>
         <div class="sub" id="lkNote"></div>
       </div>
@@ -363,6 +378,17 @@
         <label>mouse sens <input id="sens" type="range" min="0.2" max="4" step="0.1"><span id="sensN"></span></label>
         <label>aim sens <input id="adsSens" type="range" min="0.2" max="2" step="0.05"><span id="adsSensN"></span></label>
         <button class="mid" data-go="controls" id="ctlBtn">KEY BINDINGS</button>
+        <div id="touchSet">
+          <h3>touch</h3>
+          <label>look sens <input id="tSens" type="range" min="0.3" max="3" step="0.1"><span id="tSensN"></span></label>
+          <label>aim assist <input id="tAssist" type="range" min="0" max="1.5" step="0.1"><span id="tAssistN"></span></label>
+          <label><input type="checkbox" id="tAuto"> auto fire (shoots when your crosshair is on an enemy)</label>
+          <label>button size <input id="tSize" type="range" min="0.7" max="1.4" step="0.05"><span id="tSizeN"></span></label>
+          <label>button opacity <input id="tAlpha" type="range" min="0.2" max="1" step="0.05"><span id="tAlphaN"></span></label>
+          <label><input type="checkbox" id="tLefty"> left-handed (stick on the right)</label>
+          <label class="tfs"><input type="checkbox" id="tFull"> go fullscreen when a match starts</label>
+          <div class="note tfsNote">want fullscreen? browser menu > add to home screen, then open it from there.</div>
+        </div>
         <label><input type="checkbox" id="toggleAim"> toggle aim instead of hold</label>
         <h3>gameplay</h3>
         <label><input type="checkbox" id="blood"> pixel blood</label>
