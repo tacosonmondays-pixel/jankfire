@@ -263,7 +263,7 @@ const methods = {
       if (!z) continue;
       if (h.alive) { if (h.hp < 100 && n - z.hurtT > ZM.regenAfter * (this.zxPerk(h, 'secondwind') ? 500 : 1000)) h.hp = Math.min(100, h.hp + ZM.regen * (z.cola ? 1.6 : 1) * dt); continue; }
       if (!z.down) continue;
-      if (z.down.self && n >= z.down.self && zs.st !== 'over') { this.zmRevive(h, null); continue; } // Get Up Juice
+      if (z.down.self && n >= z.down.self && this.zs.st !== 'over') { this.zmRevive(h, null); continue; } // Get Up Juice
       if (this.zmReviver(h, n)) z.down.until += dt * 1000;
       else if (n >= z.down.until) { z.down = null; z.dead = true; this.broadcast({ t: 'zdown', id: h.id, k: 'out' }); }
     }

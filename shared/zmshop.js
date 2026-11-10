@@ -16,7 +16,7 @@ Object.assign(ZM, { colaMax: 3 });
 export const ZM_UP = { name: 'WARRANTY VOIDER', hold: 1.2, price: [2500, 5000, 9000], mul: [1, 1.6, 2.4, 3.4], ammo: [1, 1.2, 1.4, 1.6], tier: ['', 'VOID', 'VOID II', 'VOID III'], fxGap: 350 };
 export const ZM_UPFX = {
   zap: { name: 'ZAPPY', desc: 'hits jump to the zombies next to it', color: '#4fd8ff', reach: 6, n: [0, 0, 2, 4], part: 0.4 },
-  toast: { name: 'TOASTY', desc: 'sets them on fire', color: '#ff8a3a', secs: 3 },
+  toast: { name: 'TOASTY', desc: 'sets them on fire', color: '#ff8a3a', secs: 3, tick: 0.12 }, // each half-second tick = 12% of the hit that lit it
   frost: { name: 'FROSTY', desc: 'freezes them for a moment', color: '#bfefff', ms: 1100, again: 5000 },
   boing: { name: 'BOINGY', desc: 'pops them into the air', color: '#ff4fd8', up: 9 },
   tips: { name: 'TIPPY', desc: '+5 credits a hit', color: '#7dff4f', pay: 5 },

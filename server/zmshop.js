@@ -66,13 +66,14 @@ const methods = {
 
   // ---------------------------------------------------------- damage (zmDamage, a squad member hitting a zombie)
   zsHit(t, amt, a, w) {
+    if (w === 'bow' && t.zmz && t.zmz.toastBy === a.id && now() < (t.burnUntil || 0)) amt = Math.max(amt, t.zmz.toastDmg || 0); // TOASTY: the fire's ticks scale with the gun that lit it
     const u = a.z && a.z.up && a.z.up[w];
     if (!u || amt <= 0) return amt;
     amt *= ZM_UP.mul[u.t] || 1;
     const fx = ZM_UPFX[u.fx], n = now();
     if (!fx || n - (a.z.fxT || 0) < ZM_UP.fxGap) return amt;
     a.z.fxT = n;
-    if (u.fx === 'toast') this.burn(t, a, fx.secs);
+    if (u.fx === 'toast') { this.burn(t, a, fx.secs); t.zmz.toastBy = a.id; t.zmz.toastDmg = amt * fx.tick; }
     else if (u.fx === 'frost') { if (n >= (t.zmz.frostOk || 0)) { t.frozenUntil = n + fx.ms; t.zmz.frostOk = n + fx.again; this.broadcast({ t: 'zup', k: 'frost', id: t.id, ms: fx.ms }); } }
     else if (u.fx === 'boing') { t.vel[1] = Math.max(t.vel[1], fx.up); t.onGround = false; }
     else if (u.fx === 'tips') this.zmGive(a, fx.pay, 'tip');
