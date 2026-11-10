@@ -1,0 +1,123 @@
+<!doctype html>
+<!-- REVENUE PROTECTION in the game's renderer (three.js, the same texture / reflection treatment as public/js/glbkit.js
+     prepAuthored): the sheets for docs/story/train. Rendered by tools/blender/rp_shots.cjs (?sheet=turn|stages|close) -->
+<meta charset="utf-8">
+<style>
+html, body { margin: 0; background: #0b0510; color: #fff; font-family: sans-serif; }
+#wrap { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+canvas { position: absolute; left: 0; top: 0; }
+.cap { position: absolute; background: rgba(18,8,24,0.92); border: 2px solid #ff4fd8; padding: 3px 9px; font-size: 17px; font-weight: 700; color: #ffe14d; }
+h1 { position: absolute; left: 14px; top: 4px; margin: 0; font-size: 26px; color: #ffe14d; text-shadow: 2px 2px 0 #ff00dc; }
+</style>
+<div id="wrap"><canvas id="c"></canvas><div id="ui"></div></div>
+<script type="importmap">{ "imports": { "three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/" } }</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+const W = 1920, H = 1080, q = new URLSearchParams(location.search), SHEET = q.get('sheet') || 'turn';
+const ren = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true, preserveDrawingBuffer: true });
+ren.setPixelRatio(1); ren.setSize(W, H); ren.setScissorTest(true); ren.outputColorSpace = THREE.SRGBColorSpace;
+ren.toneMapping = THREE.ACESFilmicToneMapping; ren.toneMappingExposure = 1.15;
+const env = new THREE.PMREMGenerator(ren).fromScene(new RoomEnvironment(), 0.04).texture;
+const errs = []; window.addEventListener('error', (e) => errs.push(e.message));
+const load = (u) => new Promise((ok, bad) => new GLTFLoader().load(u, ok, undefined, bad));
+const prep = (root) => root.traverse((o) => { if (!o.isMesh) return; for (const m of [].concat(o.material)) {   // as glbkit.prepAuthored does
+  for (const k of ['map', 'emissiveMap']) if (m[k]) { m[k].magFilter = THREE.NearestFilter; m[k].minFilter = THREE.NearestMipmapNearestFilter; m[k].anisotropy = 1; m[k].needsUpdate = true; }
+  m.envMap = env; m.envMapIntensity = m.metalness > 0.5 ? 0.9 : 0.3; if (m.emissive && m.emissive.getHex() && m.emissiveIntensity > 0) m.toneMapped = false; } });
+const [g, ga, parts] = await Promise.all([load('/models/story/revenue_protection.glb'), load('/models/story/rp_arm.glb'), fetch('/models/story/revenue_protection.parts.json').then((r) => r.json())]);
+prep(g.scene); prep(ga.scene);
+const boss = g.scene, N = {}; boss.traverse((o) => { if (o.name) N[o.name] = o; });
+const A = {}; ga.scene.traverse((o) => { if (o.name) A[o.name] = o; });
+const meta = JSON.parse((boss.children[0].userData || {}).jf || (boss.userData || {}).jf || '{}');
+const hidden = new Set(parts.parts.filter((p) => p.hidden).map((p) => p.name));
+const R = parts.tunnel.bore_r, FLOOR = parts.tunnel.floor_y;
+// stage st: what the parts file says to drop / swap, the mask hung off its last clamp at 3
+function stage(st, crazed = []) {
+  for (const p of parts.parts) { const o = N[p.name]; if (!o) continue;
+    let on = !p.hidden; if (p.shown_from) on = st >= p.shown_from; if (p.stage && st >= p.stage) on = false; o.visible = on; }
+  for (const nm of crazed) { if (N[nm] && N[nm].visible) { N[nm].visible = false; N[nm + '_crazed'].visible = true; } }
+  if (st >= 2) for (const p of parts.parts) if (p.instead_of === 'eye_L') N['eye_L'].visible = false;
+  const m = N.mask, hg = parts.stages[3].hang, P = new THREE.Vector3(...hg.pivot); m.position.set(0, 0, 0); m.rotation.set(0, 0, 0); m.updateMatrix();
+  if (st >= 3) { const M = new THREE.Matrix4().makeTranslation(P.x, P.y, P.z).multiply(new THREE.Matrix4().makeRotationZ(hg.sheet_pose.rz)).multiply(new THREE.Matrix4().makeRotationX(hg.sheet_pose.rx)).multiply(new THREE.Matrix4().makeTranslation(-P.x, -P.y, -P.z)); m.matrix.copy(M); m.matrix.decompose(m.position, m.quaternion, m.scale); }
+}
+const std = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, ...o });
+function tunnelSet(sc, { ring = true, man = true, floor = true, bore = false } = {}) {
+  if (ring) { const t = new THREE.Mesh(new THREE.TorusGeometry(R + 0.06, 0.06, 6, 64), new THREE.MeshBasicMaterial({ color: 0xff4fd8 })); t.position.z = 0.9; sc.add(t); }
+  if (bore) { const t = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 44, 28, 8, true), std(0x3a2a2e, { side: THREE.BackSide, roughness: 0.95, flatShading: true })); t.rotation.x = Math.PI / 2; t.position.z = 12; sc.add(t);
+    for (let z = -8; z < 34; z += 4) { const rib = new THREE.Mesh(new THREE.TorusGeometry(R - 0.08, 0.14, 4, 28), std(0x2a1e22)); rib.position.z = z; sc.add(rib); } }
+  if (floor) { const hw = Math.sqrt(R * R - FLOOR * FLOOR), f = new THREE.Mesh(new THREE.BoxGeometry(hw * 2, 0.08, bore ? 44 : 9), std(0x2a2228)); f.position.set(0, FLOOR - 0.04, bore ? 12 : 5.2); sc.add(f);
+    if (bore) for (const x of [-0.75, 0.75]) { const r = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.14, 44), std(0x8a8f96, { metalness: 0.8, roughness: 0.3 })); r.position.set(x, FLOOR + 0.07, 12); sc.add(r); } }
+  if (man) { const m = new THREE.Group(), mm = new THREE.MeshBasicMaterial({ color: 0x4fd8ff });
+    for (const [w, h, d, x, y] of [[0.2, 0.84, 0.2, -0.12, 0.42], [0.2, 0.84, 0.2, 0.12, 0.42], [0.5, 0.62, 0.26, 0, 1.15], [0.14, 0.62, 0.16, -0.33, 1.15], [0.14, 0.62, 0.16, 0.33, 1.15], [0.24, 0.28, 0.24, 0, 1.66]]) { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mm); b.position.set(x, y, 0); m.add(b); }
+    m.position.set(2.3, FLOOR, 3.4); sc.add(m); }
+}
+function lights(sc, mood = 'studio') {
+  if (mood === 'studio') { sc.background = new THREE.Color(0x120a18); sc.add(new THREE.HemisphereLight(0xfff0f4, 0x30202c, 1.0));
+    const d = new THREE.DirectionalLight(0xfff0dd, 2.0); d.position.set(6, 9, 14); sc.add(d); const r = new THREE.DirectionalLight(0xa0c8ff, 1.0); r.position.set(-10, 3, 6); sc.add(r);
+    const b = new THREE.DirectionalLight(0xff90c0, 1.2); b.position.set(-4, 8, -10); sc.add(b); }
+  else { sc.background = new THREE.Color(0x050307); sc.fog = new THREE.Fog(0x050307, 16, 60); sc.add(new THREE.HemisphereLight(0x6a5a7a, 0x100808, 0.9));   // the tunnel, as the concept lit it
+    for (let z = 4; z < 34; z += 7) { const b = new THREE.PointLight(0xffb060, 26, 12); b.position.set(0, R - 0.7, z); sc.add(b); }
+    const key = new THREE.SpotLight(0xfff0dd, 650, 70, 0.6, 0.6); key.position.set(0.5, 1.2, 14); key.target.position.set(0, 0, 0); sc.add(key, key.target);
+    const red = new THREE.PointLight(0xff2030, 20, 12); red.position.set(0, -1, 2.5); sc.add(red); }
+}
+const ui = document.getElementById('ui');
+function panel(x, y, w, h, sc, cam, label) {
+  ren.setViewport(x, H - y - h, w, h); ren.setScissor(x, H - y - h, w, h);
+  if (cam.isPerspectiveCamera) cam.aspect = w / h; else { const s = cam.userData.s; cam.left = -s * w / h; cam.right = s * w / h; cam.top = s; cam.bottom = -s; }
+  cam.updateProjectionMatrix(); ren.render(sc, cam);
+  ui.insertAdjacentHTML('beforeend', `<div class="cap" style="left:${x + 8}px;top:${y + h - 34}px">${label}</div>`);
+}
+const pc = (fov, p, t) => { const k = new THREE.PerspectiveCamera(fov, 1, 0.05, 300); k.position.set(...p); k.lookAt(...t); return k; };
+const oc = (s, p, t) => { const k = new THREE.OrthographicCamera(-s, s, s, -s, 0.1, 300); k.userData.s = s; k.position.set(...p); k.lookAt(...t); return k; };
+const scene = (mood, set) => { const sc = new THREE.Scene(); lights(sc, mood); if (set) tunnelSet(sc, set); sc.add(boss); return sc; };
+const title = (t) => ui.insertAdjacentHTML('beforeend', `<h1>${t}</h1>`);
+const T0 = 40;
+if (SHEET === 'turn') {
+  title('REVENUE PROTECTION · in the game\'s renderer · ring = the 9.2 m bore, figure = 1.8 m');
+  stage(0); const sc = scene('studio', {}); const w = W / 4, h = (H - T0) * 0.56;
+  panel(0, T0, w, h, sc, oc(5.3, [0, 0, 40], [0, 0, 0]), 'front');
+  panel(w, T0, w, h, sc, pc(34, [15, 4.2, 15.5], [0, -0.2, -2.2]), 'three-quarter');
+  panel(2 * w, T0, w, h, sc, oc(6.6, [40, 0, -1.6], [0, 0, -1.6]), 'side');
+  panel(3 * w, T0, w, h, sc, pc(34, [-10, 3.5, -24.5], [0, 0, -3.5]), 'back');
+  const s2 = scene('tunnel', { ring: false, man: true, bore: true }); const y2 = T0 + h, h2 = H - y2;
+  panel(0, y2, W / 2, h2, s2, pc(38, [1.6, -1.2, 22], [0, -0.4, 0]), 'what you see from the wagon, 22 m (tunnel light)');
+  panel(W / 2, y2, W / 2, h2, s2, pc(50, [-2.2, -1.3, 8.5], [0.3, -0.3, 0]), '8.5 m');
+} else if (SHEET === 'stages') {
+  title('REVENUE PROTECTION · the mask breaks (the parts file drives this)');
+  const w = W / 3, h = (H - T0) * 0.6, y2 = T0 + h, h2 = H - y2;
+  [[1, ['plate_05', 'plate_10'], '1 HAIRLINE'], [2, ['plate_05'], '2 THE LEFT EYE'], [3, [], '3 THE SMILE']].forEach(([st, cz, lab], i) => {
+    stage(st, cz); panel(i * w, T0, w, h, scene('studio', { man: true }), oc(5.3, [0, 0, 40], [0, 0, 0]), lab);
+    panel(i * w, y2, w, h2, scene('tunnel', { ring: false, man: false, bore: true }), pc(40, [1.2 - i * 0.8, -1.2, 13], [0, -0.5, 0]), lab + ' · from 13 m, tunnel light'); });
+} else {
+  title('REVENUE PROTECTION · close-ups in the game\'s renderer');
+  const w = W / 4, h = (H - T0) / 2, w5 = W / 5;
+  stage(0); panel(0, T0, w5, h, scene('studio'), pc(40, [-1.9, 2.3, 3.0], [-2.5, 2.8, 0.1]), 'enamel, bolts, the hoop');
+  stage(2, ['plate_04']); panel(w5, T0, w5, h, scene('studio'), pc(40, [2.5, 1.0, 3.6], [1.3, 0.75, 0]), 'the left eye, blown');
+  stage(3); N.mask.visible = false; panel(2 * w5, T0, w5, h, scene('tunnel', { ring: false, man: false, bore: true }), pc(46, [0.9, -1.2, 5.6], [0.3, -0.9, -0.8]), 'the 17:32 at 6 m (tunnel light)');
+  panel(3 * w5, T0, w5, h, scene('studio'), pc(40, [0.85, -1.85, 1.3], [0.0, -2.2, -0.8]), 'the inspector');
+  // the far plug next to nothing: the same 30 m view, the near model on the left half of the picture, the lod on the right
+  { const sc = scene('tunnel', { ring: false, man: false, bore: true }), cam = pc(30, [0.5, -1.0, 30], [0, -0.3, 0]);
+    panel(4 * w5, T0, w5 / 2, h, sc, cam, 'near, 30 m');
+    for (const k of ['mass_ne', 'mass_nw', 'mass_sw', 'mass_se', 'inspector']) N[k].visible = false; N.mass_lod.visible = true;
+    panel(4.5 * w5, T0, w5 / 2, h, sc, cam, 'mass_lod');
+    for (const k of ['mass_ne', 'mass_nw', 'mass_sw', 'mass_se', 'inspector']) N[k].visible = true; N.mass_lod.visible = false; }
+  N.mask.visible = true; stage(0);
+  // the arm kit
+  const sa = new THREE.Scene(); lights(sa, 'studio'); const hand = A.arm_hand; hand.position.set(0, 0, 0); sa.add(hand);
+  const curl = (v) => { for (const k in A) if (/^f\d_[abc]$/.test(k)) A[k].rotation.x = v * (k[1] === '0' ? 0.75 : 1); };
+  curl(0.08); panel(0, T0 + h, w, h, sa, pc(34, [1.9, -2.5, 2.6], [0, -0.15, 0.85]), 'hand open (palm side)');
+  curl(0.95); panel(w, T0 + h, w, h, sa, pc(34, [1.9, -2.5, 2.6], [0, -0.15, 0.85]), 'hand gripping'); curl(0.55);
+  const sb = new THREE.Scene(); lights(sb, 'studio'); const seg = A.arm_seg, L = ga.scene.children[0] ? JSON.parse(ga.scene.children[0].userData.jf || '{}').seg.len : 1.5;
+  const pts = [new THREE.Vector3()]; let d = new THREE.Vector3(0, 0.05, 1).normalize();
+  for (let k = 0; k < 8; k++) { d.applyEuler(new THREE.Euler(k < 4 ? -0.12 : 0.16, 0.1, 0)).normalize(); pts.push(pts[k].clone().addScaledVector(d, L)); }
+  for (let k = 0; k < 8; k++) { const o = seg.clone(); o.position.copy(pts[k]); o.lookAt(pts[k + 1]); sb.add(o); }   // a chain: each length looks at the next joint
+  const kn = A.arm_knot; kn.position.copy(pts[8]); sb.add(kn); const tip = pts[8].clone().addScaledVector(d, 0.3);
+  hand.position.copy(tip); hand.lookAt(tip.clone().add(d)); sb.add(hand);
+  const st = A.arm_stump.clone(); st.position.set(2.5, 2.6, 4.5); st.rotation.y = 1.0; st.scale.setScalar(2); sb.add(st);
+  panel(2 * w, T0 + h, 2 * w, h, sb, pc(30, [17.5, 4.5, 6.5], [pts[5].x, pts[5].y - 0.2, pts[5].z + 0.9]), '8 lengths on a curve, the knot, the hand (12 m); a stump (left)');
+}
+const want = parts.parts.map((p) => p.name), missing = want.filter((n) => !N[n]);
+window.INFO = { nodes: Object.keys(N).length, meshes: want.length, missing, arm: Object.keys(A).sort(), errs, hidden: hidden.size, tris: parts.tris };
+window.DONE = true;
+</script>

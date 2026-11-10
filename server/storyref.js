@@ -7,7 +7,9 @@
 //   - enemies stay down when they die (refsys clears the body); you respawn as usual (the Machine dispenses you)
 //   - every hit and kill is reported through room.onStory(ev) with the real numbers
 //   - sk.hold: the enemy stands still and holds its fire (cutscenes, talks)
+//   - bosses (sk.b: server/storyboss.js): their own HP pool with layers, part hitboxes, phases and attacks
 import { WEAPONS } from '../shared/weapons.js';
+import { installStoryBoss } from './storyboss.js';
 
 export const STORY_SIDE = 'you';
 const sideOf = (p) => (p.sk ? p.sk.side || 'enemy' : STORY_SIDE);
@@ -16,15 +18,22 @@ export function installStoryRef(Room) {
   const P = Room.prototype;
   const damage0 = P.damage, kill0 = P.kill, friendly0 = P.friendly, stepBot0 = P.stepBot;
   // held enemies (a cutscene, a talk, a scripted beat) stand still and don't shoot until they're let go
-  P.stepBot = function (b, dt) { if (this.mode === 'story' && b.sk && b.sk.hold) { b.vel = [0, 0, 0]; return; } return stepBot0.call(this, b, dt); };
+  P.stepBot = function (b, dt) {
+    if (this.mode === 'story' && b.sk && b.sk.b) return this.bossStep(b, dt); // a boss runs its own fight (held ones too)
+    if (this.mode === 'story' && b.sk && b.sk.hold) { b.vel = [0, 0, 0]; return; }
+    return stepBot0.call(this, b, dt);
+  };
   P.damage = function (t, amt, attacker, w, hs, from) {
     if (this.mode !== 'story') return damage0.call(this, t, amt, attacker, w, hs, from);
+    if (t.sk && t.sk.b) return this.bossDamage(t, amt, attacker, w, hs, from); // layers, parts, phases: its own rules
     const sk = t.sk, k = sk ? 100 / sk.max : 1; // a 400 HP brute takes a quarter of each hit off its 100
     const hp0 = t.hp, ok = damage0.call(this, t, amt > 0 ? amt * k : amt, attacker, w, hs, from);
     if (ok && t.hp < hp0 && this.onStory) this.onStory({ type: 'hit', t, by: attacker, w, dmg: (hp0 - Math.max(0, t.hp)) / k, head: !!hs });
     return ok;
   };
   P.kill = function (t, attacker, w) {
+    if (this.mode === 'story' && t.sk && t.sk.b) return; // a boss never dies in the room (the void, a one-shot): its fight ends by its own rules
+    if (this.mode === 'story' && attacker && attacker.sk && attacker.sk.b) attacker.streak = 0; // and earns no killstreaks (bots get the overdrive rig on a streak)
     const was = t.alive, r = kill0.call(this, t, attacker, w);
     if (this.mode === 'story' && was && !t.alive) {
       if (t.sk) t.respawnAt = t.minRespawnAt = Infinity; // story enemies stay down
@@ -44,6 +53,7 @@ export function installStoryRef(Room) {
     if (def.w && Object.hasOwn(WEAPONS, def.w)) { b.w = def.w; b.ai.ammo = WEAPONS[def.w].mag || 1; }
     if (def.color) b.color = def.color;
     if (def.skins) b.skins = def.skins;
+    if (def.boss && !this.bossInit(b, def.boss)) b.sk.boss = false; // (not a boss after all if its def doesn't hold up)
     this.sendLoadout(b);
     this.broadcast({ t: 'pj', ...this.info(b) }); // (again: the story name / gun / look replace the bot's own)
     return b;
@@ -51,4 +61,5 @@ export function installStoryRef(Room) {
   P.storyDespawn = function (b) {
     if (b && this.players.get(b.id) === b) this.remove(b); // (its projectiles, ropes etc. go with it)
   };
+  installStoryBoss(Room);
 }

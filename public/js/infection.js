@@ -106,7 +106,7 @@ export function updateInfection(dt) {
 
 export function infRoundText(r) {
   if (r.game !== 'inf' || r.over) return null;
-  return 'infection'; // the clock is in the bar right under it
+  return ''; // the line above says Infection, the clock is in the bar right under it
 }
 // end screen title: which side took it (and whether that's you)
 export function infRoundTitle(m) {

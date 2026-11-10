@@ -40,7 +40,7 @@ const kitSpeed = () => ((G.mode === 'ffa' || G.mode === 'bots') && GAMES[G.game]
 import { secFireDown, secShot } from './secondaries.js'; // taser, tv remote, water pistol streams
 import { RIFLES, RF, RIFLE_VM, RIFLE_RECOIL, RIFLE_SHELLS, rifleShot, bursting, rifleReset, quickScoped, rifleStep, rifleEvent } from './rifles.js'; // the rifle pack
 import { tacOn, tacShot, tacKick, tacFrame, tacZone } from './tactical.js'; // Plant & Defuse: spray patterns + moving spread
-import { sdRow } from '/shared/sdgun.js'; // S&D: each gun's first-shot spread (hip / sights)
+import { sdRow, sdRate } from '/shared/sdgun.js'; // S&D: each gun's first-shot spread (hip / sights)
 import { inSprayRange, sprayHole } from './sprayrange.js'; // Training's spray range: S&D gunplay for S&D guns there
 import { carRay, carHit, carSwing } from './traffic.js'; // cars stop bullets (and take the damage)
 
@@ -318,6 +318,7 @@ export function useItem() {
 const POP = {
   popper: { p: [-0.16, -0.15, -0.36], r: [0.1, -0.25, -0.2], anim: 'pop_popper' },
   reverse: { p: [-0.09, -0.09, -0.3], r: [0.05, 0.3, 0.1], anim: 'pop_reverse' },
+  laptop: { p: [-0.13, -0.2, -0.36], r: [0.12, 0.28, 0.04], anim: 'pop_laptop' },
 };
 const CONFETTI = [0xff4fd8, 0x4fd8ff, 0xffe14d, 0x7dff4f, 0xff7a1a, 0xffffff];
 function popItem(id) {
@@ -349,6 +350,10 @@ function popEvent(ev, m) {
     applyKb([-d[0] * w.recoil, -d[1] * w.recoil + w.lift, -d[2] * w.recoil]);
     punchCam(-0.05, 0.02 * rnd(), 0.05 * rnd());
     G.shake = Math.max(G.shake, 0.45);
+  } else if (ev === 'ads') { // laptop: a puff of little windows off the screen (what happens next is the server's call)
+    for (let i = 0; i < 18; i++) sys.add.spawn(x + R(0.12), y + R(0.08), z, R(0.5), 0.2 + Math.random() * 0.5, -0.6 - Math.random() * 1.2, 0.45, 0.03, 0.004, [0xff4fd8, 0x4fd8ff, 0xffe14d][i % 3], 0xffffff, 1, -0.4);
+    sfx.laptopOpen();
+    punchCam(-0.015, 0, 0.02 * rnd());
   } else if (ev === 'flash') { // reverse card: a ring of red + yellow off the card
     for (let i = 0; i < 36; i++) { const a = Math.random() * Math.PI * 2, s = 0.5 + Math.random() * 0.8; sys.add.spawn(x + R(0.02), y + R(0.02), z, Math.cos(a) * s, Math.sin(a) * s, R(0.3), 0.4, 0.03, 0.004, i % 2 ? 0xff3b3b : 0xffd23b, 0xffffff, 1, 0, 2); }
     sfx.reverse();
@@ -485,6 +490,7 @@ const VM = {
   cart: { p: [0.25, -0.235, -0.5], r: [0, 0.2, 0], s: 0.5 }, // side-on enough to see the basket sleeve
   popper: { p: [0.17, -0.18, -0.34], r: [0.1, 0.1, 0], s: 0.75 },
   reverse: { p: [0.15, -0.15, -0.34], r: [0.3, -0.3, 0.15], s: 0.65 },
+  laptop: { p: [0.15, -0.2, -0.36], r: [0.12, -0.28, 0], s: 0.55 },
   duck: { p: [0.17, -0.18, -0.4], r: [0.1, 0.5, 0], s: 0.55 },
   bread: { p: [0.3, -0.3, -0.42], r: [0.35, 0.2, -0.25], s: 0.55 },
   slipper: { p: [0.17, -0.18, -0.36], r: [0.2, 0.3, 0.3], s: 0.7 },
@@ -714,7 +720,7 @@ export function muzzleWorld() {
 }
 
 const ready = (id, now) => (W.cd[id] || 0) <= now;
-function interval(id) { const w = WEAPONS[id]; return (w.rate ? 1 / fireRate(w, ME.hp) : w.cd) / sm(id, 'rate'); }
+function interval(id) { const w = WEAPONS[id]; return (w.rate ? 1 / (tacOn() ? sdRate(id, fireRate(w, ME.hp)) : fireRate(w, ME.hp)) : w.cd) / sm(id, 'rate'); } // (Plant & Defuse slows a few guns down: sdgun.js rof)
 // Redline: 0 at full HP .. 1 at death's door (drives the needle, the vents and the pitch)
 const redlineK = () => { const w = WEAPONS.redline; return (fireRate(w, ME.hp) - w.rate) / (w.rateMax - w.rate); };
 const marblePalette = (skin) => (skin && skin[3] === 'marbles_gumball' ? 'gumball' : 'glass');
@@ -1089,8 +1095,8 @@ function fireProj(id, now, fromAnim) {
 // Blood Cross: point and pay. the server takes the 12 HP (and says no below 1 HP), you get the thump, the flick and a spurt of blood
 function fireBlood(now) {
   const w = WEAPONS.bloodcross, m = models.bloodcross;
-  if (ME.hp - w.cost < 1) { sfx.empty(); hud.msg('NOT ENOUGH BLOOD', 0.8, 'reverse'); W.cd.bloodcross = now + 300; return; }
-  setCd('bloodcross', now);
+  const thin = ME.hp - w.cost < 1; // out of blood to spend: the server lets a weak free one through (slower)
+  if (thin) { hud.msg('THIN BLOOD', 0.6, 'reverse'); W.cd.bloodcross = now + w.thin.cd * 1000; } else setCd('bloodcross', now);
   const o = eye(), d = look();
   net.send({ t: 'fire', w: 'bloodcross', o: o.map(r2), d: d.map(r2) });
   sfx.bcBeat();
@@ -1585,7 +1591,8 @@ export function updateWeapons(dt, now) {
   } else if (id === 'blower') hud.meter(W.fuel.blower / w.fuel, 'FUEL', '#ff9a3a');
   else if (w.spinup && W.spin > 0 && W.spin < 1) hud.meter(W.spin, 'SPINNING UP', '#c8c8c8');
   else if (id === 'slipper' && W.slipperOut) hud.meter(null);
-  else if (id === 'bloodcross') { const n = Math.max(0, Math.floor((ME.hp - 1) / w.cost)); hud.meter((ME.hp - 1) / 99, n ? `${n} SHOT${n > 1 ? 'S' : ''} OF BLOOD LEFT` : 'NOT ENOUGH BLOOD', w.color); }
+  else if (id === 'scales' && W.gavelCharge && W.gavelCharge() > 0) hud.meter(1 - W.gavelCharge(), 'SUMMONS RECHARGING', w.color); // right click (gavel.js)
+  else if (id === 'bloodcross') { const n = Math.max(0, Math.floor((ME.hp - 1) / w.cost)); hud.meter((ME.hp - 1) / 99, n ? `${n} SHOT${n > 1 ? 'S' : ''} OF BLOOD LEFT` : 'THIN BLOOD · WEAK SHOTS', w.color); }
   else if (w.cd && w.cd >= 1 && !ready(id, now)) hud.meter(1 - ((W.cd[id] - now) / 1000) / w.cd, 'COOLDOWN', w.color);
   else hud.meter(null);
   if (id === 'shredder') { const S = W.shred, f = S.heat / w.fuel; hud.meter(f, S.hot ? 'OVERHEATED · COOLING' : 'HEAT', S.hot ? '#ff3030' : f > 0.7 ? '#ff7a1a' : '#ffb31a'); }
