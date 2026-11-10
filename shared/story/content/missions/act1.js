@@ -93,7 +93,7 @@ export const MISSIONS_ACT1 = {
       dumpling_tour: {
         with: "dumpling", cam: "overShoulder",
         nodes: {
-          start: { say: ["ghost! ghost! auntie says i'm doing the tour because i'm the most annoying. that's a job.", "this is the lost property. everything anybody ever lost. there's a whole bus out the back. take something. something that shoots."], opts: [["what do you shoot out here?", "shoot"], ["is any of this yours?", "yours"]] },
+          start: { say: ["ghost! ghost! auntie says i'm doing the tour because i'm the most annoying. that's a job.", "this is the lost property. everything anybody ever lost. there's a whole bus out the back. take something. something that shoots.", "not the top shelf! the top shelf's people who went on the truck. auntie says that's not lost, that's owed."], opts: [["what do you shoot out here?", "shoot"], ["is any of this yours?", "yours"]] },
           shoot: { say: ["raiders. corp. dogs from the gut. not the nice dogs. the stomach ones.", "and the machines. the old vending machines. if you shoot them they give you stuff. dale says don't. dale does it every day."] },
           yours: { say: ["my dad's hat's in there. he's not lost. he's at work. he'll come and get it.", "*Dumpling's ears go flat for a second, then pop up.* come ON."] },
         },
@@ -101,7 +101,7 @@ export const MISSIONS_ACT1 = {
       dumpling_score: {
         with: "dumpling", cam: "wide",
         nodes: {
-          start: { say: ["grapple the wok on that roof. no, the wok. the WOK. the round thing.", "let go when you're going up, not when you're going down. going down is how mr. abara broke his everything.", "*you land, roughly, on a roof covered in woks*", "...four out of ten. you swung like a fridge. lumps swings like a fridge and he IS a fridge."], opts: [["let me go again.", "again"], ["four?", "four"]] },
+          start: { say: ["grapple the wok on that roof. no, the wok. the WOK. the round thing.", "let go when you're going up, not when you're going down. going down is how mr. abara broke his everything.", "bev put him back together. the hip's off a different man. he says goodnight to it.", "*you land, roughly, on a roof covered in woks*", "...four out of ten. you swung like a fridge. lumps swings like a fridge and he IS a fridge."], opts: [["let me go again.", "again"], ["four?", "four"]] },
           again: { say: ["you can't go again. it's a tour. tours go forwards. ride the washing line back. don't drop a sock."] },
           four: { say: ["four's good. i gave dale a one. he grappled a pigeon."] },
         },
@@ -109,14 +109,14 @@ export const MISSIONS_ACT1 = {
       dinner: {
         with: "auntie", cam: "closeup",
         nodes: {
-          start: { say: ["*A long table in the depot. Soup in mismatched bowls. Lumps eats four. Gordo reads a binder while he eats. Dale doesn't come; he never leaves the Machine at night.*", "eat. you're plastic. eat anyway. it's how we know you're one of us.", "*You eat. It goes somewhere. Nobody asks where.*"], opts: [["what happened to the world?", "world"], ["why do you keep the books in crayon?", "crayon"], ["what's the spire?", "spire"]] },
+          start: { say: ["*A long table in the depot. Soup in mismatched bowls. Twelve places laid, seven people. Nobody sits at the other five and nobody clears them. Lumps eats four. Gordo reads a binder while he eats. Dale doesn't come; he never leaves the Machine at night.*", "eat. you're plastic. eat anyway. it's how we know you're one of us.", "*You eat. It goes somewhere. Nobody asks where.*"], opts: [["what happened to the world?", "world"], ["why do you keep the books in crayon?", "crayon"], ["what's the spire?", "spire"]] },
           world: { say: ["*She takes a crayon from behind her ear, opens her notebook to a page she's clearly drawn on many times, and turns it round.*"], do: ["scene:p1b_final_quarter"], next: "after" },
           crayon: { say: ["because ☺ corp owned every pen in the city. crayons were the kids'. nobody ever thought to sell those back to us.", "and because when you write in crayon, it's very hard to pretend you didn't write it."], opts: [["what happened to the world?", "world"], ["what's the spire?", "spire"]] },
-          spire: { say: ["the top of the hill. ☺ corp. the only lit building for thirty years. they're still there. still on time.", ["gordo", "*without looking up* still sending us the bill."]], opts: [["what bill?", "bill"], ["what happened to the world?", "world"]] },
-          bill: { say: ["back pay. for the time the world spent ending. two hundred and forty-four quarters of it.", "for a job none of us had. a job most of us weren't born for.", "it doesn't reconcile. nothing they send us reconciles."], opts: [["what happened to the world?", "world"]] },
+          spire: { say: ["the top of the hill. ☺ corp. the only lit building for thirty years. i costed those lights once. they'd have kept this whole hill warm. they're still there. still on time.", ["gordo", "*without looking up* still sending us the bill."]], opts: [["what bill?", "bill"], ["what happened to the world?", "world"]] },
+          bill: { say: ["back pay. for the time the world spent ending. two hundred and forty-four quarters of it.", "for a job none of us had. a job most of us weren't born for.", "it doesn't reconcile. nothing they send us reconciles.", ["gordo", "*still not looking up* they don't want it in coupons."], "*Auntie looks down the table at the empty places. Then she passes you the bread.*"], opts: [["what happened to the world?", "world"]] },
           after: { say: ["*The panels fade. The soup's gone cold.*", ["lumps", "she tells it every time someone new comes. she cries at the dark bit."], "i do not.", ["lumps", "you do, nan."], "...go to bed, all of you. change, there's a box by the machine. it says returns. it's the nicest box we've got."], opts: [["auntie. did you know me?", "knew", { if: "flag:asked_auntie_neck" }], ["goodnight.", "night"]] },
-          knew: { say: ["*She looks at the soup.*", "i've known a lot of people, change. i'm eighty-five. go to sleep."], do: ["flag:auntie_dodged"] },
-          night: { say: ["goodnight. *quietly, when she thinks you've gone* ...goodnight."] },
+          knew: { say: ["*She looks at the soup.*", "i've known a lot of people, change. i'm eighty-five. go to sleep.", "*She doesn't go to bed. From the box you can see her at the table, saying something to the cold soup, too quiet to hear. She says it twice.*"], do: ["flag:auntie_dodged"] },
+          night: { say: ["goodnight. *quietly, when she thinks you've gone* ...goodnight.", "*The depot goes dark. The Machine doesn't. Through its glass, very small, a match is starting. Somebody in there is laughing.*"] },
         },
       },
     },
@@ -161,7 +161,7 @@ export const MISSIONS_ACT1 = {
       pot: {
         with: "sharon",
         nodes: {
-          start: { say: ["you'll take the red pot and you'll not spill it.", "it's the tomato. gristle like the tomato. they pay double for the tomato.", ["lumps", "they pay in medicine."], "they pay in medicine. i didn't say it was a good double."], opts: [["why do they want soup?", "why"], ["i'll be careful.", "careful"]] },
+          start: { say: ["you'll take the red pot and you'll not spill it.", "it's the tomato. gristle like the tomato. they pay double for the tomato.", ["lumps", "they pay in medicine."], "they pay in medicine. i didn't say it was a good double.", "there's forty people's medicine in that pot. spill a cup and one of them goes without. i know which one. i'm not telling you."], opts: [["why do they want soup?", "why"], ["i'll be careful.", "careful"]] },
           why: { say: ["*Sharon stirs the pot for a long second.*", "they've got a lot of mouths over there, love. don't ask me how many. go on."], do: ["flag:asked_sharon_soup"] },
           careful: { say: ["you'll be careful or you'll be ladled."] },
         },
@@ -169,19 +169,19 @@ export const MISSIONS_ACT1 = {
       car_ride: {
         with: "lumps", cam: "overShoulder",
         nodes: {
-          start: { say: ["*Pallet Jack lifts Sharon's pot into the car with one hand and tells Lumps his squat form is \"a bit sad\".*", ["pallet_jack", "that pot's ninety. the soup's another sixty. the worry's free."], "*Lumps sits with the pot in his lap, both enormous forearms around it like a baby.*", "slower on the bumps. she's full to the top.", "*the car goes over a bump. A little soup jumps out. He catches it in his hand and puts it back.*", "...nobody saw that."], opts: [["what's the gut?", "gut"], ["why do you go there?", "why"], ["how did you get those arms?", "arms"]] },
-          gut: { say: ["it's where they put the dead. after. millions of them. gristle and sons had this stuff, regrowth. made to bring soldiers back.", "it brought them back. just not as soldiers. as... a place.", "it's warm. it digests. you'll see. try not to touch the walls."], opts: [["why do you go there?", "why"]] },
-          why: { say: ["sundays. i visit my mum.", "*he looks out of the window.*", "she's at work in the gut. two years. it's a long shift."], opts: [["what kind of work?", "work"], ["*leave it*", "leave"]] },
+          start: { say: ["*Pallet Jack lifts Sharon's pot into the car with one hand. The boiler in his back hisses when he bends and nobody on the street looks round. He tells Lumps his squat form is \"a bit sad\".*", ["pallet_jack", "that pot's ninety. the soup's another sixty. the worry's free."], "*Lumps sits with the pot in his lap, both enormous forearms around it like a baby.*", "slower on the bumps. she's full to the top.", "*the car goes over a bump. A little soup jumps out. He catches it in his hand and puts it back.*", "...nobody saw that."], opts: [["what's the gut?", "gut"], ["why do you go there?", "why"], ["how did you get those arms?", "arms"]] },
+          gut: { say: ["it's where they put the dead. after. millions of them. gristle and sons had this stuff, regrowth. made to bring soldiers back.", "it brought them back. just not as soldiers. as... a place.", "it's warm. it digests. you'll see. try not to touch the walls.", "it's still in the rain, nan says. leave a chair out for a year and it gets a pulse. so we don't leave things out. or people."], opts: [["why do you go there?", "why"]] },
+          why: { say: ["sundays. i visit my mum.", "*He looks out of the window. The Ring Road is still the evening rush of the last day: three lanes, nose to tail, for sixty-one years. There is somebody at every wheel. Every one of them has a lanyard on.*", "she's at work in the gut. two years. it's a long shift."], opts: [["what kind of work?", "work"], ["*leave it*", "leave"]] },
           work: { say: ["...the kind where you don't come home.", "*he holds the pot tighter.* watch the road. there's interns."], do: ["flag:lumps_mentioned_mum"] },
           leave: { say: ["*He nods, grateful.*", "watch the road. there's interns."], do: ["flag:lumps_mentioned_mum", "standing.bottom:+1"] },
-          arms: { say: ["born with them. my mum's got them too. smaller.", "the doctors in chrome gristle said they'd buy them off me. i said they're my arms. they said not for long.", "i hit one. by accident. i said sorry."], opts: [["why do you go to the gut?", "why"]] },
+          arms: { say: ["born with them. my mum's got them too. smaller.", "the doctors in chrome gristle said they'd buy them off me. a year of medicine for the left one. i said they're my arms. they said not for long.", "i hit one. by accident. i said sorry."], opts: [["why do you go to the gut?", "why"]] },
         },
       },
       eotm_robbery: {
         with: "eotm", cam: "lowAngle",
         nodes: {
-          start: { say: ["*War-rigs made of buses and forty office desks block the Ring Road. Interns in office-chair armour pile out. A huge man in filing-cabinet armour covered in plaques of his own face climbs on a car roof.*", "HALT. YOU ARE ENTERING A WORKSPACE.", "i am EMPLOYEE OF THE MONTH. every month. since the end of the world.", "you're robbed. also: would you like an internship? it's unpaid."], opts: [["what does the internship involve?", "intern"], ["you can have the coupons. not the soup.", "pay"], ["*draw a weapon*", "fight"]] },
-          intern: { say: ["exposure. networking. a lanyard. a fun office culture. we're a family.", "you'd start in robbery and work your way up to also robbery.", ["lumps", "we're delivering soup."], "SOUP IS A CORE PRODUCT. fine. take the lanyard anyway. think about it. the grind never stops."], do: ["give:unpaid_lanyard", "flag:eotm_offered_internship"], next: "leave" },
+          start: { say: ["*The Ring Road, under a flyover. The wall has a bus queue burnt onto it: eleven shadows, waiting. The Unpaid have drawn a lanyard on each one in marker pen.*", "*War-rigs made of buses and forty office desks block the Ring Road. Interns in office-chair armour pile out. A huge man in filing-cabinet armour covered in plaques of his own face climbs on a car roof.*", "HALT. YOU ARE ENTERING A WORKSPACE.", "i am EMPLOYEE OF THE MONTH. every month. since the end of the world.", "you're robbed. also: would you like an internship? it's unpaid."], opts: [["what does the internship involve?", "intern"], ["you can have the coupons. not the soup.", "pay"], ["*draw a weapon*", "fight"]] },
+          intern: { say: ["exposure. networking. a lanyard. a fun office culture. we're a family.", "you'd start in robbery and work your way up to also robbery.", ["lumps", "we're delivering soup."], "SOUP IS A CORE PRODUCT. fine. take the lanyard anyway. think about it. the grind never stops.", "*He takes it off a hook on the rig. There are a few hundred on the hook. The INTERN sticker on yours is stuck over somebody's name.*"], do: ["give:unpaid_lanyard", "flag:eotm_offered_internship"], next: "leave" },
           pay: { say: ["*he weighs the coupons in a gauntlet made of a stapler.*", "a strong negotiator. that's a soft skill. i respect soft skills.", "go. tell the first intern i sent you."], do: ["coupons:-40", "flag:paid_the_unpaid"], next: "leave" },
           fight: { say: ["oh, a disruptor. we LOVE disruptors. INTERNS. ONBOARD THEM."], do: ["flag:fought_the_unpaid"]  },
           leave: { say: ["*The rigs pull back, honking. Then a second wave of interns who didn't get the memo come screaming over the cars anyway.*", ["lumps", "i think there's two departments."]] },
@@ -190,10 +190,10 @@ export const MISSIONS_ACT1 = {
       trade_post: {
         with: "sister_agenda", cam: "overShoulder",
         nodes: {
-          start: { say: ["*A trade post on the Gut border: a turnstile grown over with skin, a counter, a robed Choir clerk with a stretched smile who sings her words on one note.*", "*sung* the soup, the soup, the tomato soup... *not sung* thank you. one pot. we'll count it.", "*She tips a little out and tastes it with a ladle that has a tongue.*"], opts: [["what's it for?", "for", { if: "flag:asked_sharon_soup" }], ["is this all the medicine?", "short"], ["*take the medicine*", "take"]] },
+          start: { say: ["*A trade post on the Gut border, where the last lamp post has grown a fingernail. A turnstile grown over with skin, a counter, a robed Choir clerk with a stretched smile who sings her words on one note. Her staff lanyard is still on, under the robe.*", "*sung* the soup, the soup, the tomato soup... *not sung* thank you. one pot. we'll count it.", "*She tips a little out and tastes it with a ladle that has a tongue.*"], opts: [["what's it for?", "for", { if: "flag:asked_sharon_soup" }], ["is this all the medicine?", "short"], ["*take the medicine*", "take"]] },
           for: { say: ["*sung* for the mouths, for the mouths... *not sung* sorry. i'm not allowed to say. it's a supply chain thing."], next: "take" },
           short: { say: ["it's... one box is for a 'growth adjustment'. it's empty. i'm sorry. it's policy. i don't write the policy. i write it down."], do: ["flag:medicine_short"], next: "take" },
-          take: { say: ["*A crate of medicine slides across the counter.*", "same time next week. the tomato. the bishop likes the tomato.", "*Lumps is looking past her, deeper into the Gut, at the pink streets.*", ["lumps", "...it's sunday tomorrow."]], do: ["give:medicine_crate"] },
+          take: { say: ["*A crate of medicine slides across the counter.*", "same time next week. the tomato. the bishop likes the tomato.", "*Somewhere behind the counter, a long way in, a truck is reversing. It beeps. She sings a little louder until it stops.*", "*Lumps is looking past her, deeper into the Gut, at the pink streets.*", ["lumps", "...it's sunday tomorrow."]], do: ["give:medicine_crate"] },
         },
       },
     },
@@ -244,7 +244,7 @@ export const MISSIONS_ACT1 = {
       sunday: {
         with: "dot", cam: "closeup",
         nodes: {
-          start: { say: ["ambrose! you came. it's sunday, isn't it? i can tell by your face. you've got your sunday face.", ["lumps", "brought you soup, mum. the yellow."], "oh, the yellow. lovely. put it there, i'll have it later.", "*There's a row of untouched bowls by the wall. Every week's soup. Lumps puts this one at the end of the row.*", "and who's this? oh, look at your knee. it goes the wrong way. that's character."], opts: [["i'm change. i came out of a machine.", "machine"], ["are you all right in there?", "allright"], ["how long have you been in the wall?", "long"]] },
+          start: { say: ["ambrose! you came. it's sunday, isn't it? i can tell by your face. you've got your sunday face.", ["lumps", "brought you soup, mum. the yellow."], "oh, the yellow. lovely. put it there, i'll have it later.", "*There's a row of untouched bowls along the foot of the wall. Every week's soup: a hundred and three of them, the oldest grown over. Lumps puts this one at the end of the row. He counts them. He always counts them.*", "and who's this? oh, look at your knee. it goes the wrong way. that's character."], opts: [["i'm change. i came out of a machine.", "machine"], ["are you all right in there?", "allright"], ["how long have you been in the wall?", "long"]] },
           machine: { say: ["a machine! well, we all came out of something. ambrose came out of me and he was the size of a fridge.", ["lumps", "mum."], "he was."], next: "names" },
           allright: { say: ["oh, it's warm. don't make that face, it is. the worst bit is you stop minding.", "that's why i do my names. every morning."], next: "names" },
           long: { say: ["two years in may. or is it june. the wall doesn't have months. it has... digestion."], next: "names" },
@@ -253,7 +253,7 @@ export const MISSIONS_ACT1 = {
           promise: { say: ["*She looks at you, then at her son.*", "don't promise him things, plastic. he holds on to promises. look at his arms. he holds on to everything.", "...but thank you."], do: ["flag:promised_dot", "standing.bottom:+3"], next: "bye" },
           anything: { say: ["find out who keeps sending the trucks. the singing lady upstairs writes it all down. she's got a book."], next: "bye" },
           shoulder: { say: ["*Lumps doesn't look round. He puts his huge hand over yours.*", "that's nice. that's a nice friend you've got there, ambrose."], do: ["standing.bottom:+1"], next: "bye" },
-          bye: { say: ["go on. both of you. and eat something. i mean it. i can see your ribs from here, ambrose. and yours, plastic. you've got the plastic kind."] },
+          bye: { say: ["go on. both of you. and eat something. i mean it. i can see your ribs from here, ambrose. and yours, plastic. you've got the plastic kind.", "*As you go she turns to the wall beside her, to a face that's in up to the eyes, and starts telling it what you were wearing.*"] },
         },
       },
       minutes: {
@@ -261,9 +261,9 @@ export const MISSIONS_ACT1 = {
         nodes: {
           start: { say: ["*The Choir Lung: a cathedral that breathes in and out, robes swaying with it. Sister Agenda sits at an office desk grown into a pew, with a Filofax grown into her hand.*", "*sung* the meeting is moved, the meeting is moved... *not sung* oh. you. from the trade post. sorry about the box.", "you want to know about the trucks. everyone who comes to this desk wants to know about the trucks."], opts: [["where do they come from?", "where"], ["who's in them?", "who"], ["why do you write it down?", "why"]] },
           where: { say: ["your hill. the bottom. the lates sometimes, and the commute. wherever people owe.", "☺ corp counts who's behind on their back pay. when you're far enough behind, they don't send a letter. they send mr. overtime. and then a truck."], next: "sold" },
-          who: { say: ["the ones who owe the most. or the biggest. or the slowest. it's a list. i don't make the list. i get a copy.", "*She opens the Filofax. Hundreds of pages of names in tiny neat handwriting. Dates. Truck numbers.*"], next: "sold" },
+          who: { say: ["the ones who owe the most. or the biggest. or the slowest. it's a list. i don't make the list. i get a copy.", "*She opens the Filofax. Hundreds of pages of names in tiny neat handwriting. Dates. Truck numbers. A weight beside each name, to the nearest half kilo.*"], next: "sold" },
           why: { say: ["somebody should. the bishop sings it. i write it. singing is how you forget a thing. writing is how you keep it."], next: "sold" },
-          sold: { say: ["they're sold. ☺ corp sells them to us. gristle and sons. as feedstock.", "the gut grows on them. and we... harvest.", "*She looks at her own hand, the Filofax grown into it.*", "i'm not proud. i'm just still at my desk."], opts: [["harvest what?", "harvest"], ["who buys what you harvest?", "buys"]] },
+          sold: { say: ["they're sold. ☺ corp sells them to us. gristle and sons. as feedstock.", "each one is credited against your hill's back pay. then the interest goes back on. i've checked. the balance has never gone down.", "the gut grows on them. and we... harvest.", "*She looks at her own hand, the Filofax grown into it.*", "i'm not proud. i'm just still at my desk."], opts: [["harvest what?", "harvest"], ["who buys what you harvest?", "buys"]] },
           harvest: { say: ["*sung, very quietly* organs, organs, fresh and new... *not sung* the good ones go up the hill. i don't know who to. i only get the outgoing copy."], do: ["flag:learned_feedstock"], next: "end" },
           buys: { say: ["up the hill. that's all it ever says. UP THE HILL. priority. someone up there needs a lot of parts."], do: ["flag:learned_feedstock"], next: "end" },
           end: { say: ["*Far below, past the gallery rail, the Stomach Bishop conducts the whole district with a femur. He stops. He looks straight up at you. His smile keeps going after it should have stopped.*", "*sung* oh dear. he's seen you. *not sung* he likes new faces. go home. go home before four."] },
@@ -310,17 +310,17 @@ export const MISSIONS_ACT1 = {
       rescheduled: {
         with: "overtime", cam: "lowAngle",
         nodes: {
-          start: { say: ["*Overtime on one knee, steam pouring out of the hole in his chest. The ticking has a limp in it. He looks at his watch. Then at you. Then at the watch.*", "you've damaged company property.", "that's... that's me. i'm company property.", "*He stands. It takes a while.* this isn't finished. it's rescheduled.", "*He walks back up the Long Stairs, exactly on time, a little lopsided. At the top he stops and looks back at you for a long moment, like he's trying to remember where he put something.*"] },
+          start: { say: ["*Overtime on one knee, steam pouring out of the hole in his chest. The ticking has a limp in it. He looks at his watch. Then at you. Then at the watch.*", "you've damaged company property.", "that's... that's me. i'm company property.", "*He stands. It takes a while.* this isn't finished. it's rescheduled.", "*He walks back up the Long Stairs, exactly on time, a little lopsided. At the top he stops and looks back at you for a long moment, like he's trying to remember where he put something.*", "*When his ticking has gone up the hill the clocks don't start again straight away. Nobody comes out. A washing line is still swinging where somebody let go of it.*"] },
         },
       },
       aftermath: {
         with: "auntie", cam: "closeup",
         nodes: {
-          start: { say: ["*The Lost & Found. Gordo stitching Lumps' arm with fishing line. Dumpling asleep under the table with a hat. Auntie, writing names in crayon on the wall, one under another.*", "nine. they took nine.", "*She writes the ninth name. Under it, after a pause, she writes: 'mina'. Just the first name. She knew it.*", "*Pallet Jack comes back from a delivery up the Long Stairs to find nine gone. He picks Dumpling up off the floor from under the table and says nothing at all.*"], opts: [["the old woman on the truck called me rory.", "rory"], ["we'll get them back.", "back"], ["who's mina?", "mina", { if: "flag:heard_dot_names" }]] },
+          start: { say: ["*The walk down. Nine doors standing open. On each one a ☺ CORP slip, stapled at head height: COLLECTED, a name, a time to the second, BALANCE CARRIED FORWARD. The dinners are still on the tables. The egg timer on Sharon's pot has started again.*", "*The Lost & Found. Gordo stitching Lumps' arm with fishing line. Dumpling asleep under the table with his dad's hat out of the lost property bins. Auntie, writing names in crayon on the wall, one under another.*", "nine. they took nine.", "*She writes the eighth name. Under it, after a pause, she writes the ninth: 'mina'. Just the first name. She knew it.*", "*Pallet Jack comes back from a delivery up the Long Stairs to find nine gone. He picks Dumpling up off the floor from under the table and says nothing at all.*"], opts: [["the old woman on the truck called me rory.", "rory"], ["we'll get them back.", "back"], ["who's mina?", "mina", { if: "flag:heard_dot_names" }]] },
           rory: { say: ["*The crayon stops.*", "did she.", "...people say a lot of names when they're being put on a truck, change. they say the names of whoever they wish was there.", ["gordo", "*not looking up* that's not an answer, auntie."], "it's the one i've got, gordon."], do: ["flag:asked_about_rory"], next: "end" },
           mina: { say: ["*She doesn't turn round.*", "mina's lived on the top terrace for forty years. she climbs better than the kids. she taught half of them.", "she's seventy. they took a seventy-year-old woman for back pay."], next: "end" },
           back: { say: ["from the gut? nobody's ever come back from the gut, change.", ["lumps", "nobody's ever ripped his heart out before."], "*Auntie looks at Lumps' arm. At the hole in it.*", "...no. nobody had."], do: ["standing.bottom:+2"], next: "end" },
-          end: { say: ["*Dale comes in from the Machine for the first time anyone can remember. He's holding the core in a tea towel. It ticks.*", ["dale", "it's still going. his heart. well, a bit of it."], ["gordo", "we could sell it."], ["dale", "or we could put it in someone who doesn't mind ticking."], "*Everyone looks at you.*"] },
+          end: { say: ["*Dale comes in from the Machine for the first time anyone can remember. He's holding the core in a tea towel. It ticks.*", ["dale", "it's still going. his heart. well, a bit of it."], ["gordo", "we could sell it. chrome gristle'd give a year of medicine for that. same as they offered for his arm."], ["dale", "or we could put it in someone who doesn't mind ticking."], "*Everyone looks at you. Auntie looks at the wall first.*"] },
         },
       },
     },
@@ -332,8 +332,8 @@ export const MISSIONS_ACT1 = {
     ],
     scenes: ["c4_clocking_in", "mo_heart_rip"],
     reward: { coupons: 500, items: ["core_cracked_punch_clock"], flags: ["beat_overtime_1"], standing: { bottom: 10, corp: -10 } },
-    grade: { exceeds: "EXCEEDS EXPECTATIONS. you made employee #1 take a coffee break.", meets: "MEETS EXPECTATIONS. he's been rescheduled.", see_me: "SEE ME. you were stapled to a truck for eleven seconds." },
-    notes: "people taken in C4 stay taken unless m20 frees them (DESIGN §7.1). Nine names on the wall: they are the m20 rescue list.",
+    grade: { exceeds: "EXCEEDS EXPECTATIONS. you made employee #1 take a coffee break. the truck left on time.", meets: "MEETS EXPECTATIONS. he's been rescheduled.", see_me: "SEE ME. you were stapled to a truck for eleven seconds." },
+    notes: "people taken in C4 stay taken unless m20 frees them (DESIGN §7.1). Nine names on the wall: they are the m20 rescue list. The nine doors stay open with their COLLECTED slips on them until m20 (older slips on other doors are already there in C1).",
   },
 
   // ------------------------------------------------------------------ 5
@@ -368,16 +368,16 @@ export const MISSIONS_ACT1 = {
       bev_intro: {
         with: "bev",
         nodes: {
-          start: { say: ["*Bev's waiting room. Pallet Jack, getting his boiler bled.*", "you're next, jack. you're always next.", "*Bev doesn't look up from a jar.* close the curtain. the flies are union.", "so you're the thing from the machine. huh. thought you'd be taller.", ["auntie", "can you put this in it? them. in them."], "*Bev takes the tea towel, unwraps the ticking core with two hands, and lights a cigarette with a third.*", "a bit of overtime's heart. you know how many people have walked in here with a bit of overtime? none. you know why? he doesn't come apart."], opts: [["will it hurt?", "hurt"], ["what will it do to me?", "do"], ["how much?", "much"]] },
+          start: { say: ["*Bev's waiting room. A bench of car seats, full: a woman holding her own jaw in a tea towel, a man with the price still chalked on his new arm, Pallet Jack with a tube in his back and a bucket under it, getting his boiler bled. Nobody is nervous. It's like a barber's.*", "you're next, jack. you're always next.", "*Bev doesn't look up from a jar.* close the curtain. the flies are union.", "*She is writing on the jar's tape: a date, a truck number. The shelf behind her goes up to the ceiling. A few of the jars have a first name on as well.*", "the named ones go half price. same part. people just don't like being introduced.", "so you're the thing from the machine. huh. thought you'd be taller.", ["auntie", "can you put this in it? them. in them."], "*Bev takes the tea towel, unwraps the ticking core with two hands, and lights a cigarette with a third.*", "a bit of overtime's heart. you know how many people have walked in here with a bit of overtime? none. you know why? he doesn't come apart."], opts: [["will it hurt?", "hurt"], ["what will it do to me?", "do"], ["how much?", "much"]] },
           hurt: { say: ["you're plastic. no. that's a lie. i say it to everyone. lie back."] },
           do: { say: ["make you tick. make you fast when you're dying. make you late if you don't clock in. it's a heart. it's got opinions."] },
-          much: { say: ["first one's free. that's not kindness, that's marketing. lie back."] },
+          much: { say: ["depends what you want. everything on that shelf, somebody's already paid for once. you'd only be paying me.", "first one's free. that's not kindness, that's marketing. lie back."] },
         },
       },
       parts: {
         with: "bev",
         nodes: {
-          start: { say: ["right. listen, chassis, because i only say this once and then i charge.", "you've got slots. head, eyes, mouth, heart, lungs, guts, spine, arms, legs, skin. that's ten places to put a bad decision.", "your body's got a budget. three parts now. more as you... go up in the world. promotions. ask the cats.", "go over the budget and it'll still work. you'll lump. you'll twitch. and you'll drift."], opts: [["drift?", "drift"], ["the cats?", "cats"], ["why does it tick?", "tick"]] },
+          start: { say: ["right. listen, chassis, because i only say this once and then i charge.", "you've got slots. head, eyes, mouth, heart, lungs, guts, spine, arms, legs, skin. that's ten places to put a bad decision.", "and don't go precious on me. half your hill's got something of mine in. jack's whole back. ken abara's hip, and that went up on the truck with him, so that's twice somebody's lost it. lumps is the only one who ever said no, and he said sorry first.", "your body's got a budget. three parts now. more as you... go up in the world. promotions. ask the cats.", "go over the budget and it'll still work. you'll lump. you'll twitch. and you'll drift."], opts: [["drift?", "drift"], ["the cats?", "cats"], ["why does it tick?", "tick"]] },
           drift: { say: ["*She takes the cigarette out.*", "you came out of that machine as somebody. a recording of somebody. every part that isn't yours pushes that somebody a bit further off.", "you won't notice. that's the thing. the people who love you notice.", ["auntie", "*very quietly* ...yes."]], do: ["flag:bev_explained_drift"] },
           cats: { say: ["the board of directors. cats. they're all over the city. pet one, your body takes it as a promotion. don't ask me why. i'm a mechanic, not a vet."] },
           tick: { say: ["it's a punch-clock. it wants you to clock in. once an hour, stand still and let it. or it'll fine you.", "*Your chest goes TICK. Then TICK. Loudly.*", "yeah. everybody's going to hear you coming. welcome to having a heart."] },
@@ -386,7 +386,7 @@ export const MISSIONS_ACT1 = {
       night: {
         with: "auntie", cam: "closeup",
         nodes: {
-          start: { say: ["*The Lost & Found at night. The Machine hums. Your chest ticks in time with it. Auntie at the table with the notebook open and no crayon in her hand.*", "you saw something. in the chair. bev said you went somewhere."], opts: [["a lobby. someone running. 17:29.", "lobby"], ["nothing.", "nothing"]] },
+          start: { say: ["*The walk back from Bev's. Auntie went ahead; she said she had a column to finish. The Long Stairs at night, nobody on them. Every tick comes back off the houses a little late. The nine doors are still open.*", "*The Lost & Found at night. The Machine hums. Your chest ticks, and after a minute the hum has moved to be in time with it. Auntie at the table with the notebook open and no crayon in her hand.*", "you saw something. in the chair. bev said you went somewhere."], opts: [["a lobby. someone running. 17:29.", "lobby"], ["nothing.", "nothing"]] },
           lobby: { say: ["*She closes the notebook.*", "17:29.", "*For a moment she looks like she's going to say a lot of things. She picks up a crayon. Puts it down.*", "...it's late. sixty-one years late, everything in this city. go to sleep, change."], do: ["flag:told_auntie_1729"] },
           nothing: { say: ["*She looks at you over her glasses, the look she gives a bad invoice.*", "you're a terrible liar. good. keep it that way. go to sleep."], do: ["flag:lied_to_auntie_1"] },
         },

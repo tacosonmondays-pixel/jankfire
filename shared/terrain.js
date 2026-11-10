@@ -27,7 +27,27 @@ export function shapeGround(B, D, o) {
   const [X0, Z0, X1, Z1] = o.region, nx = X1 - X0, nz = Z1 - Z0, vx = nx + 1, vz = nz + 1;
   const up = o.up ?? 1.5, down = o.down ?? 1.0, BIG = o.big ?? 7, mat = o.mat;
   const inR = (b) => b.max[0] > X0 && b.min[0] < X1 && b.max[2] > Z0 && b.min[2] < Z1;
-  const slabs = B.boxes.filter((b) => b.mat === mat && b.max[1] === 0 && b.min[1] <= -1 && b.min[0] >= X0 && b.max[0] <= X1 && b.min[2] >= Z0 && b.max[2] <= Z1);
+  // a ground slab that runs on past the region (one lawn under a whole suburb) is cut: the piece inside is ours to shape, the rest stays as it was
+  // (and to whole metres: the grid is 1 m, so a slab edge at x.4 keeps a flat strip of itself there instead of growing or shrinking)
+  for (const b of B.boxes.filter((q) => q.mat === mat && q.max[1] === 0 && q.min[1] <= -1 && inR(q))) {
+    const cx0 = Math.ceil(Math.max(b.min[0], X0) - 1e-6), cx1 = Math.floor(Math.min(b.max[0], X1) + 1e-6), cz0 = Math.ceil(Math.max(b.min[2], Z0) - 1e-6), cz1 = Math.floor(Math.min(b.max[2], Z1) + 1e-6);
+    if (cx1 - cx0 < 1 || cz1 - cz0 < 1) continue; // (too thin to hold a cell: it stays a flat box)
+    if (cx0 === b.min[0] && cx1 === b.max[0] && cz0 === b.min[2] && cz1 === b.max[2]) continue;
+    const piece = (x0, z0, x1, z1) => { if (x1 - x0 > 0.01 && z1 - z0 > 0.01) B.boxes.push({ ...b, min: [x0, b.min[1], z0], max: [x1, b.max[1], z1] }); };
+    piece(b.min[0], b.min[2], cx0, b.max[2]); piece(cx1, b.min[2], b.max[0], b.max[2]); piece(cx0, b.min[2], cx1, cz0); piece(cx0, cz1, cx1, b.max[2]);
+    b.min[0] = cx0; b.max[0] = cx1; b.min[2] = cz0; b.max[2] = cz1;
+  }
+  const whole = (v) => Math.abs(v - Math.round(v)) < 1e-6;
+  const slabs = B.boxes.filter((b) => b.mat === mat && b.max[1] === 0 && b.min[1] <= -1 && b.min[0] >= X0 && b.max[0] <= X1 && b.min[2] >= Z0 && b.max[2] <= Z1 && whole(b.min[0]) && whole(b.max[0]) && whole(b.min[2]) && whole(b.max[2]));
+  // ---- paint: thin flat boxes of o.drape materials (a lawn, a patch of grass on sand) don't hold the ground level, they
+  // become the ground's colour there: the cells under them are drawn in that material and the boxes themselves go
+  const drape = new Set(o.drape || []), mats = [mat], paint = new Uint8Array(nx * nz), draped = new Set();
+  for (const L of [B.boxes, D.boxes]) for (const b of L) {
+    if (!drape.has(b.mat) || b.rot || b.max[1] > 0.13 || b.min[1] < -0.02 || !inR(b)) continue;
+    let k = mats.indexOf(b.mat); if (k < 0) { mats.push(b.mat); k = mats.length - 1; }
+    for (let i = Math.max(0, Math.floor(b.min[0] - X0 + 0.5)); i < Math.min(nx, Math.floor(b.max[0] - X0 + 0.5)); i++) for (let j = Math.max(0, Math.floor(b.min[2] - Z0 + 0.5)); j < Math.min(nz, Math.floor(b.max[2] - Z0 + 0.5)); j++) paint[i * nz + j] = k;
+    b.ter = 1; draped.add(b);
+  }
   const slabSet = new Set(slabs);
   const C = (i, j) => i * nz + j, V = (i, j) => i * vz + j;
   // ---- which cells have ground at all (a slab under their middle): the canyon and the mine shaft don't
@@ -38,7 +58,7 @@ export function shapeGround(B, D, o) {
   }
   // ---- the things standing on it: boxes that touch each other are one thing
   const items = [];
-  for (const L of [B.boxes, D.boxes]) for (const b of L) if (!slabSet.has(b) && inR(b) && b.max[1] > 0.001 && b.min[1] < 40) items.push(b);
+  for (const L of [B.boxes, D.boxes]) for (const b of L) if (!slabSet.has(b) && !draped.has(b) && inR(b) && b.max[1] > 0.001 && b.min[1] < 40) items.push(b);
   const par = items.map((_, k) => k), find = (k) => { while (par[k] !== k) k = par[k] = par[par[k]]; return k; };
   const T = 0.03, order = items.map((_, k) => k).sort((p, q) => items[p].min[0] - items[q].min[0]);
   for (let a = 0; a < order.length; a++) {
@@ -175,7 +195,7 @@ export function shapeGround(B, D, o) {
   }
   // ---- spawns and the like: onto the new ground
   for (const p of o.points || []) if (p[1] > -0.5 && p[1] < 0.6) { const g = at(p[0], p[2]); if (g != null) p[1] += g; }
-  const terrain = { x0: X0, z0: Z0, nx, nz, H, ok, mat, lo, hi, base: BASE, at, box: { min: [X0, BASE, Z0], max: [X1, hi, Z1], mat, terr: 1 }, stats: { anchors: anchors.length, props: propsC.length, steps: nTer } };
+  const terrain = { x0: X0, z0: Z0, nx, nz, H, ok, mat, mats, paint, lo, hi, base: BASE, at, box: { min: [X0, BASE, Z0], max: [X1, hi, Z1], mat, terr: 1 }, stats: { anchors: anchors.length, props: propsC.length, steps: nTer } };
   Object.defineProperty(B.boxes, 'terrain', { value: terrain, writable: true, configurable: true, enumerable: false });
   return terrain;
 }
