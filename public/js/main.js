@@ -1244,9 +1244,20 @@ const assistApi = {
   ok: () => inGame() && ME.alive && !RP.active && !(performance.now() < (G.spinUntil || 0)) && !(performance.now() < (ME.sleepUntil || 0)) && !(story && story.locked()),
 };
 if (window.JF_TOUCH) import('./aimassist.js').then((m) => { assist = m; }).catch((e) => console.error('aim assist failed to load', e));
+// auto fire (autofire.js), touch players only: same enemies, same line of sight; it presses the bound fire key through touch.js
+let autoF = null;
+const autoApi = {
+  remotes: assistApi.remotes, boxes: assistApi.boxes, enemy: assistApi.enemy, ok: assistApi.ok,
+  enabled: () => S.tAuto !== false && !!touchUI,
+  manual: () => touchUI.fireHeld(),
+  press: (down) => touchUI.autoPress(down),
+  reload: () => touchUI.tapAct('reload'),
+};
+if (window.JF_TOUCH) import('./autofire.js').then((m) => { autoF = m; }).catch((e) => console.error('auto fire failed to load', e));
 if (window.JF_TOUCH) import('./touch.js').then((m) => {
   touchUI = m.initTouch({
     S, inGame, look: touchLook, save: saveSettings, chat: openChat,
+    autoChanged: () => { $('tAuto').checked = S.tAuto !== false; },
     pause: () => { if (inGame()) pause(); },
     // a tap anywhere does what a click does: drop in after the end screen, skip the killcam, watch the next player
     gate: () => esClickShown() || RP.mode === 'killcam' || G.killcamPending || (!ME.alive && (brOn() || !!G.eco)),
@@ -1261,6 +1272,8 @@ function bindTouchSettings() {
   bindRange('tAlpha', 'tAlpha', (v) => Math.round(v * 100) + '%', look);
   if (S.tAssist == null) S.tAssist = 1;
   bindRange('tAssist', 'tAssist', (v) => (v > 0 ? Math.round(v * 100) + '%' : 'off'));
+  if (S.tAuto == null) S.tAuto = true;
+  bindCheck('tAuto', 'tAuto', () => touchUI.syncAuto());
   bindCheck('tLefty', 'tLefty', look);
   bindCheck('tFull', 'tFull');
   $('toggleAim').checked = !!S.toggleAim; // (touch.js turns it on the first time)
@@ -2009,6 +2022,7 @@ function frame(t) {
     }
     G.aimDir = lock ? lock.d : null;
     if (assist) { if (K.isDown('forward') || K.isDown('back') || K.isDown('left') || K.isDown('right')) assist.assistPoke(now); assist.assistFrame(assistApi, dt, now); } // touch aim assist: the gentle tug
+    if (autoF && touchUI) autoF.autoFrame(autoApi, now); // touch auto fire
     const lm = $('lockMark');
     if (lock) {
       const v = tmpLock.set(lock.r.pos[0], lock.r.pos[1] + 2.0, lock.r.pos[2]).project(G.camera);

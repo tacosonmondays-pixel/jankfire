@@ -77,3 +77,5 @@ html.touch #czStage, html.touch #ncCanvas { touch-action: none; } /* drag to spi
 html.touch.lefty #mmWrap { left: auto; right: 22px; }
 html.touch.lefty #feed { right: auto; left: 16px; text-align: left; align-items: flex-start; }
 html.touch.lefty #chatlog { left: auto; right: 16px; }
+#touchUI .tb-auto { background: #2a1a30; color: #888; box-shadow: calc(3 * var(--u)) calc(3 * var(--u)) 0 #000; }
+#touchUI .tb-auto.lit { background: #39ff14; color: #000; box-shadow: calc(3 * var(--u)) calc(3 * var(--u)) 0 #ff4fd8; }
