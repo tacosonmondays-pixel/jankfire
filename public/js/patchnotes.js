@@ -7,6 +7,7 @@ export const PATCH_NOTES = [
     'GUN GAME rolls a new ladder every match: 10 guns, 5 silly ones, 3 melee, then the spoon. weapons that sat out the last match go first. 16 more weapons can show up (shopping cart cannon, taser, slipper, big laser pointer...).',
     'CHARACTER has a joke body row: head size, butt size, and Mannequin / Male / Female builds. everyone sees it. looks only: your hitbox did not get bigger. nice try. some bots turn up with one too.',
     'plant & defuse: the SMG, Belt Sander, Lefty & Righty and the Sniper fire slower there. aim more, hose less.',
+    'plant & defuse: hard bots hit a little harder there. you picked hard.',
     'menus talk less. a pile of captions that explained the obvious got deleted.',
     'bots finally learned to throw cards. they used to reach the card deck in gun game and just stand there holding it. forever.',
   ] },
