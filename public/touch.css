@@ -70,3 +70,10 @@ html.touch #menu input[type=range] { height: 30px; min-width: 160px; }
 html.touch #menu input[type=checkbox] { width: 22px; height: 22px; vertical-align: middle; }
 html.touch #menu select { min-height: 34px; font-size: 16px; }
 html.touch #menu .setcol label { padding: 3px 0; }
+html.touch label:has(#sens), html.touch label:has(#displayMode), html.touch label:has(#hotbarPos) { display: none; } /* mouse, window and side-hotbar options: not on a phone */
+html.touch #czStage, html.touch #ncCanvas { touch-action: none; } /* drag to spin / draw, not to scroll */
+#touchUI.watch .tb:not(.tb-pause), #touchUI.watch .tstick { display: none; }
+/* left-handed: the whole HUD swaps sides with the thumbs */
+html.touch.lefty #mmWrap { left: auto; right: 22px; }
+html.touch.lefty #feed { right: auto; left: 16px; text-align: left; align-items: flex-start; }
+html.touch.lefty #chatlog { left: auto; right: 16px; }

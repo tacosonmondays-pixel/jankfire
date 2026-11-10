@@ -35,7 +35,7 @@ export function initTouch(api) {
   const canvas = $('game'), root = document.documentElement;
   const scale = () => (window.JF_TOUCH && window.JF_TOUCH.scale) || 1; // page px -> finger px
   if (S.tSens == null) S.tSens = 1;
-  if (S.tSize == null) S.tSize = 1;
+  if (S.tSize == null) S.tSize = scale() >= 1 && Math.min(screen.width, screen.height) >= 700 ? 1.2 : 1; // tablets: bigger hands-off distance, bigger buttons
   if (S.tAlpha == null) S.tAlpha = 0.75;
   if (S.tFull == null) S.tFull = true;
   if (S.tInit !== 1) { S.tInit = 1; S.toggleAim = true; api.save(); } // first run on a phone: tap AIM to scope, tap again to stop (holding a button while steering is a hand cramp)
@@ -232,6 +232,7 @@ export function initTouch(api) {
       if (!on) releaseAll();
     }
     if (!on) return;
+    document.body.classList.remove('hotbar-right'); // (a synced desktop setting: the right side is thumbs here)
     const c = api.ctx();
     els.use.el.classList.toggle('hidden', !c.use);
     els.buy.el.classList.toggle('hidden', !c.eco);
@@ -239,6 +240,7 @@ export function initTouch(api) {
     els.kh.el.textContent = c.royale ? 'HEAL' : 'DROP';
     els.melee.el.classList.toggle('hidden', !!c.royale); // royale: slots are whatever you looted, the hotbar does it
     ui.classList.toggle('gate', !!api.gate());
+    ui.classList.toggle('watch', !!c.watch); // a replay is playing: nothing to press but pause
   }
   setInterval(tick, 120);
   addEventListener('blur', releaseAll);

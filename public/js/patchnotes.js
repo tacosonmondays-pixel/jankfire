@@ -1,6 +1,12 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '7.0', date: '2026-11-10', title: 'POCKET JANK', items: [
+    'JANKFIRE runs on phones and tablets now. open it in your phone\'s browser, turn it sideways, go.',
+    'touch controls: a stick on the left, drag the right side to look, and big loud buttons for FIRE, JUMP, SLIDE, HOOK, AIM and friends. tap the hotbar to swap guns, tap your item and killstreaks to use them, tap the ammo to reload.',
+    'SETTINGS > touch: look sens, button size, button see-through-ness, and a left-handed swap.',
+    'hold your phone upright and the game asks you to stop.',
+  ] },
   { v: '6.9', date: '2026-11-10', title: 'HONEST CHEATING', items: [
     'SPINBOT no longer grabs your camera. look around freely: every shot goes to whoever is closest to your crosshair (a green LOCKED diamond shows who). nobody near your crosshair, nobody gets shot.',
     'the spinbot leaves your own side alone now: teammates, and in zombies your squad (people and bots).',
