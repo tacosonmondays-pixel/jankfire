@@ -96,15 +96,20 @@ const LIT = { value: new THREE.Color(1, 1, 1) }; // how bright the map is (a dar
 let FB = null;
 function get() {
   if (!FB) FB = {
-    puff: new Flipbook('puff.png', 6, 260, { sort: true }),
+    soft: new Flipbook('puffsoft.png', 6, SOFT_MAX, { sort: true, soft: true, inkK: 0 }), // the default smoke (owner's pick, 2026-11-10)
     splash: new Flipbook('splash.png', 4, 48, { flat: -1, ink: 0x1a4a8a, inkK: 0.7 }),
     ripple: new Flipbook('ripple.png', 4, 64, { flat: 1, ink: 0x9adcff, inkK: 0.5, order: 3 }),
   };
   return FB;
 }
 // the other smoke styles load only when picked (they're bigger files)
-const STYLE = { soft: 'puffsoft.png', kenney: 'puffkenney.png', unity: 'puffunity.png' }; // ours (script-made) / Kenney's white puffs (CC0) / Unity Labs' simulated wispy smoke (CC0)
-function styleBook(st) { const f = get(); if (!f[st]) f[st] = new Flipbook(STYLE[st], 6, 420, { sort: true, soft: true, inkK: 0 }); return f[st]; }
+const SOFT_MAX = 240; // soft puffs alive at once, all smokes together (each is a see-through quad: this is the cost)
+const STYLE = { kenney: 'puffkenney.png', unity: 'puffunity.png' }; // Kenney's white puffs (CC0) / Unity Labs' simulated wispy smoke (CC0)
+function styleBook(st) {
+  const f = get();
+  if (!f[st]) f[st] = st === 'puff' ? new Flipbook('puff.png', 6, 260, { sort: true }) : new Flipbook(STYLE[st], 6, SOFT_MAX, { sort: true, soft: true, inkK: 0 });
+  return f[st];
+}
 // drawn effects on? (Settings > video; never on Potato; off again if a sheet failed to load)
 export function spritesOn() {
   const S = G.settings || {};
@@ -116,9 +121,10 @@ export const spritesReady = () => Object.values(get()).every((f) => f.ready);
 
 // a smoke grenade's cloud: called every frame while it's out. s = { p, r }, dt-paced so it's the same cloud at any fps
 export function smokeCloud(s, dt) {
+  { const now = performance.now(); dt = Math.min(1, (now - (s.fbT || now)) / 1000); s.fbT = now; } // by the clock, not the (capped) frame step: a slow machine gets the same thick cloud, not a thin one
   const st = (G.settings || {}).fxSmoke;
-  if (st === 'soft' || st === 'kenney' || st === 'unity') { softCloud(s, dt, st); return; }
-  const F = get().puff;
+  if (st !== 'comic') { softCloud(s, dt, st === 'kenney' || st === 'unity' ? st : 'soft'); return; }
+  const F = styleBook('puff');
   s.fbAcc = (s.fbAcc || 0) + dt * 26;
   const first = !s.fbOn; s.fbOn = true;
   let n = Math.floor(s.fbAcc) + (first ? 26 : 0); s.fbAcc -= Math.floor(s.fbAcc); // (it arrives as a burst, then keeps boiling)
@@ -132,13 +138,13 @@ export function smokeCloud(s, dt) {
 // option B: the same cloud out of soft see-through puffs (more of them, each one half there)
 function softCloud(s, dt, st = 'soft') {
   const F = styleBook(st), still = st === 'kenney'; // (Kenney's are separate shapes, not an animation: each puff keeps one)
-  s.fbAcc = (s.fbAcc || 0) + dt * 44;
+  s.fbAcc = (s.fbAcc || 0) + dt * 24;
   const first = !s.fbOn; s.fbOn = true;
-  let n = Math.floor(s.fbAcc) + (first ? 40 : 0); s.fbAcc -= Math.floor(s.fbAcc);
+  let n = Math.floor(s.fbAcc) + (first ? 26 : 0); s.fbAcc -= Math.floor(s.fbAcc);
   while (n-- > 0) {
     const a = Math.random() * 6.2832, rr = Math.sqrt(Math.random()) * s.r, h = Math.random(), g = 0.7 + Math.random() * 0.25;
     F.spawn({ p: [s.p[0] + Math.cos(a) * rr, s.p[1] + 0.4 + h * h * 3.4, s.p[2] + Math.sin(a) * rr], v: [Math.cos(a) * 0.3, 0.2 + Math.random() * 0.45, Math.sin(a) * 0.3],
-      s0: 3, s1: 5.4 + Math.random() * 1.6, life: 3 + Math.random() * 1.5, a: 0.85, col: _c.setRGB(g, g, g * 1.03).getHex(), rot: Math.random() * 6.28, spin: (Math.random() - 0.5) * 0.3, frame: still ? Math.floor(Math.random() * 36) / 36 + 0.001 : -1 });
+      s0: 3.3, s1: 6 + Math.random() * 1.6, life: 3 + Math.random() * 1.5, a: 0.9, col: _c.setRGB(g, g, g * 1.03).getHex(), rot: Math.random() * 6.28, spin: (Math.random() - 0.5) * 0.3, frame: still ? Math.floor(Math.random() * 36) / 36 + 0.001 : -1 });
   }
 }
 // something landed in water: rings on the surface + a crown standing up out of it. k as in liquids.js splash()

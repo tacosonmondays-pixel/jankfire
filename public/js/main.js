@@ -475,7 +475,7 @@ bindCheck('fovKick', 'fovKick');
 bindCheck('shake', 'shake');
 bindCheck('showFps', 'showFps');
 $('fxSprites').checked = S.fxSprites !== false; $('fxSprites').addEventListener('change', () => { S.fxSprites = $('fxSprites').checked; saveSettings(); }); // drawn smoke + splashes (flipbook.js)
-$('fxSmoke').value = ['soft', 'kenney', 'unity'].includes(S.fxSmoke) ? S.fxSmoke : 'comic'; $('fxSmoke').addEventListener('change', () => { S.fxSmoke = $('fxSmoke').value; saveSettings(); });
+$('fxSmoke').value = ['comic', 'kenney', 'unity'].includes(S.fxSmoke) ? S.fxSmoke : 'soft'; $('fxSmoke').addEventListener('change', () => { S.fxSmoke = $('fxSmoke').value; saveSettings(); });
 $('fxRipples').checked = !!S.fxRipples; setRippleMap(!!S.fxRipples); $('fxRipples').addEventListener('change', () => { S.fxRipples = $('fxRipples').checked; setRippleMap(S.fxRipples); saveSettings(); });
 bindCheck('toggleAim', 'toggleAim');
 bindCheck('blood', 'blood');
