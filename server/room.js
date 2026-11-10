@@ -12,6 +12,7 @@ import { rigClash } from '../shared/rig.js'; // overdrive rig killstreak
 import { soapAt, trapBoxes, trapPreroll } from '../shared/wand.js';
 import { MAPS, MAP_ORDER } from '../shared/map.js';
 import { warmMap, startGraphSweeper } from './graphs.js'; // the bots' walk graphs: built at room start, dropped when no room has used the map for a while
+import { sdRate } from '../shared/sdgun.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, mapForGame, canDefuse, LADDER, GUNGAME, INFECT, rollLadder } from '../shared/modes.js';
 import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, eventGame, inQuickPlay } from '../shared/vote.js';
 import { matchReset, matchKill, matchSummary } from './match.js';
@@ -899,6 +900,8 @@ class Room {
     return null;
   }
 
+  // shots per second for a gun right now: Plant & Defuse slows a few down (shared/sdgun.js rof)
+  rateOf(id, w, hp) { const r = fireRate(w, hp); return this.isEcon() ? sdRate(id, r) : r; }
   botFire(b, t, D) {
     if (this.chaosKit && this.botChaosFire(b, t, D)) return;
     if (this.brOn && !this.brBotShot(b)) return; // jank royale: real bullets
@@ -906,7 +909,7 @@ class Room {
     const w = WEAPONS[b.w], n = now();
     if (b.w === 'shredder') { this.botShred(b); return; } // no shots: it sucks for as long as they're in front of it
     if (w.kind === 'beam') { this.botLaser(b); return; } // laser pointer: charge, then let go
-    const iv = w.rate ? 1000 / (fireRate(w, b.hp) * (w.hands || 1)) : w.cd * 1000; // Lefty & Righty: both hands going
+    const iv = w.rate ? 1000 / (this.rateOf(b.w, w, b.hp) * (w.hands || 1)) : w.cd * 1000; // Lefty & Righty: both hands going
     if (w.mag) {
       b.ai.ammo--;
       if (b.ai.ammo <= 0) { b.ai.ammo = w.mag; b.ai.reloadUntil = n + w.reload * 1000; }
@@ -1667,7 +1670,7 @@ class Room {
       const fan = m.fan === 1, ns = m.ns === 1, qs = m.qs === 1;
       if (w.fanHammer) { const mul = this.revolverHit(p, t, fan, w); if (mul) this.applyHitscan(p, t, m.w, n, h, d, mul); return; } // tap or fan the hammer
       const hd = w.hands && m.hd === 1 ? 'L' : ''; // Lefty & Righty: each gun has its own schedule (claiming the other hand buys at most the pair's real rate)
-      if (!this.pairOk(p, t, 'hs' + m.w + hd, (1000 / fireRate(w, p.hp)) * 0.6) || !this.rangeOk(p, t, w.range)) return; // the Redline fires faster as you lose HP
+      if (!this.pairOk(p, t, 'hs' + m.w + hd, (1000 / this.rateOf(m.w, w, p.hp)) * 0.6) || !this.rangeOk(p, t, w.range)) return; // the Redline fires faster as you lose HP
       p.nsHit = m.w === 'sniper' && p.w === 'sniper' && ns; // a no-scope (ns: 1) can make the kill EPIC
       const hp0 = t.hp; // no-scope hype only goes out if the shot really landed
       p.qsHit = !!w.quick && qs; // Second Opinion quick-scope (server/rifles.js caps what it buys)
@@ -1951,7 +1954,7 @@ class Room {
     // one limiter per player, not per weapon: you hold one gun at a time, and cycling ids must not add the rates up.
     // the rate is the real one: the Redline speeds up as you lose HP, a fanned revolver goes at the fan rate
     if (w.kind === 'hitscan' || w.kind === 'melee') {
-      const rate = w.rate ? (fan ? Math.max(w.rate, w.fanHammer.rate) : fireRate(w, p.hp) * (w.hands || 1)) : 0; // Lefty & Righty: both hands
+      const rate = w.rate ? (fan ? Math.max(w.rate, w.fanHammer.rate) : this.rateOf(m.w, w, p.hp) * (w.hands || 1)) : 0; // Lefty & Righty: both hands
       const n = now(), iv = rate ? 250 / rate : (w.cd || 0.3) * 250;
       if (n - (p.lastFire.fx || 0) < iv) return;
       p.lastFire.fx = n;
