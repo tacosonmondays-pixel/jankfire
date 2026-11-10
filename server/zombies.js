@@ -10,6 +10,7 @@ import { raycast, movePlayer, query } from '../shared/physics.js';
 import { randomContainer } from '../shared/cosmetics.js';
 import { installZmExtra } from './zmextra.js';
 import { installZmBots } from './zmbots.js';
+import { installZmLimbs } from './zmlimbs.js';
 import { ZM, zmCount, zmHp, zmMaxAlive, zmGap, zmGait, zmAmmo, zmAmmoPrice, zmPick, zmTarget, zmAreaAt, zmOpenAreas } from '../shared/zombies.js';
 
 let send = () => {}, stat = () => {}, store = null;
@@ -191,6 +192,7 @@ const methods = {
       n: zs.n, st: zs.st, left: zs.toSpawn + alive, br: zs.st === 'pre' || zs.st === 'break' ? Math.max(0, zs.until - n) : 0,
       o: zs.open.reduce((a, o, i) => (o ? a.concat(i) : a), []), pw: zs.power ? 1 : 0, bx: bx.st ? [bx.st, bx.by, bx.w, Math.max(0, bx.until - n)] : 0, dn, pts,
       ...this.zxInfo(n), // planks, drops, modifiers, the machine
+      ...this.zlInfo(n), // limbs gone, the special zombies
     };
   },
 
@@ -208,12 +210,13 @@ const methods = {
     this.zmPlayers(n, dt, hs);
     this.zmCrate(n);
     this.zxTick(n, hs); // drops to grab, modifiers running out, the machine landing
+    this.zlTick(n); // the Screamer shrieking, Chonks popping
     for (const b of zs.list) if (b.zmz.ph === 'hunt' && (n - b.zmz.seen > 25000 || b.zmz.stuck > 8)) { this.remove(b); zs.toSpawn++; } // lost or wedged: try again from a window
     if (hs.length && hs.every((h) => !h.alive)) { this.zmGameOver(); return; }
     if (zs.st !== 'live') { if (n >= zs.until) this.zmNextRound(n, hs); return; }
     let alive = 0;
     for (const b of this.players.values()) if (b.zmz && b.alive) alive++;
-    if (zs.toSpawn > 0 && alive < zmMaxAlive(hs.length) && n >= zs.spawnAt) zs.spawnAt = n + (this.zmSpawn(n, hs) ? zmGap(zs.n, hs.length) : 500);
+    if (zs.toSpawn > 0 && alive < zmMaxAlive(hs.length) && n >= zs.spawnAt) zs.spawnAt = n + (this.zmSpawn(n, hs) ? (this.zlPackWin() >= 0 ? 260 : zmGap(zs.n, hs.length)) : 500); // (ankle biters come three at a time)
     if (zs.toSpawn <= 0 && !alive) this.zmCleared(n, hs);
   },
   zmNextRound(n, hs) {
@@ -297,6 +300,7 @@ const methods = {
     if (t.zmz) {
       zs.dead.push(t);
       this.zxDrop(t, killer); // maybe a power-up
+      this.zlKilled(t, killer); // the specials pay extra, a Chonk pops
       if (killer && killer !== t && killer.z && !killer.zmz) {
         const melee = !!WEAPONS[w] && (WEAPONS[w].kind === 'melee' || w === 'slipper'), head = !!t.lastHs && !melee;
         this.zmGive(killer, melee || head ? ZM.bonus : ZM.kill, melee ? 'melee' : head ? 'head' : 'kill');
@@ -334,12 +338,12 @@ const methods = {
   zmGive(p, d, why) { if (d > 0 && this.zxMod('taxfraud', p)) d *= 2; p.z.c += d; if (d > 0) p.z.earned += d; send(p, { t: 'zc', c: p.z.c, d, why }); },
   // damage hook: hits on zombies pay +10 (a zombie's first 10, one per player per 180 ms), zombie claws hit equally hard
   // in every room and half as hard with a Jank Cola, and getting hurt holds off your regen
-  zmDamage(t, amt, a) {
+  zmDamage(t, amt, a, w, hs) {
     const n = now();
     if (t.zmz) {
       const z = t.zmz;
       if (a && a.z && !a.zmz && amt > 0 && z.hits < ZM.hitCap && n - (z.hitAt[a.id] || 0) >= ZM.hitGap) { z.hitAt[a.id] = n; z.hits++; this.zmGive(a, ZM.hit, 'hit'); }
-      return a && a.z && !a.zmz ? this.zxHit(t, amt, a) : amt; // the cheat machine's modifiers
+      return a && a.z && !a.zmz ? this.zlHit(t, this.zxHit(t, amt, a), a, w, hs) : amt; // the cheat machine's modifiers, then which limb it took
     }
     if (!t.z) return amt;
     t.z.hurtT = n;
@@ -449,7 +453,7 @@ const methods = {
     if (!wins.length || !live.length) return false;
     const near = (i) => Math.min(...live.map((h) => dist3(Z.windows[i].in, h.pos)));
     wins.sort((a, b) => near(a) - near(b));
-    const wi = pick(wins.slice(0, 3)), w = Z.windows[wi]; // one of the windows nearest the players
+    const pw = this.zlPackWin(), wi = pw >= 0 ? pw : pick(wins.slice(0, 3)), w = Z.windows[wi]; // one of the windows nearest the players (or the one the rest of the ankle biters are using)
     const g = zmGait(zs.n, Math.random(), Math.random()), D = DIFF[this.cfg.diff] || DIFF.normal;
     const along = (Math.random() - 0.5) * 2.2, back = Math.random() * 0.8; // somewhere in the alley
     const pos = [w.out[0] - w.n[2] * along - w.n[0] * back, 0, w.out[2] + w.n[0] * along - w.n[2] * back];
@@ -457,6 +461,7 @@ const methods = {
     b.w = ''; b.hp = Math.round(zmHp(zs.n) * D.hp); b.look = zombieLook(); b.kfx = 'none'; b.team = 0; b.yaw = w.yaw; b.pitch = 0.3;
     b.zmz = { ph: 'wait', win: wi, t: n + 300 + Math.random() * 1500, speed: g.speed * D.speed, run: g.kind, wish: [0, 0], target: 0, close: false,
       swingAt: 0, nextSwing: 0, hits: 0, hitAt: {}, seen: n, chk: n, chkPos: pos.slice(), stuck: 0 };
+    this.zlSpawn(b, D, n); // a special one? and its limbs
     this.players.set(b.id, b);
     this.broadcast({ t: 'pj', ...this.info(b) });
     (zs.zinfo ||= new Map()).set(b.id, { name: b.name, color: b.color, skins: {}, bot: true, look: b.look, level: 0, grap: 'rope', t: n }); // for replays after it's gone
@@ -474,7 +479,7 @@ const methods = {
     if (!stun && (zs.tick + b.id) % 3 === 0) this.zmThink(b, z, n);
     let tx = 0, tz = 0;
     if (!stun) {
-      const s = z.close ? 0 : z.speed * (z.swingAt ? 0.35 : 1) * (this.zxMod('brainfreeze') ? 0.35 : 1); // BRAIN FREEZE
+      const s = z.close ? 0 : z.speed * (z.swingAt ? 0.35 : 1) * (this.zxMod('brainfreeze') ? 0.35 : 1) * this.zlSpeed(z, n); // BRAIN FREEZE; crawling, hopping, hyped by a Screamer
       tx = z.wish[0] * s; tz = z.wish[1] * s;
       for (const o of zs.list) { // don't stack up on each other
         if (o === b) continue;
@@ -496,13 +501,13 @@ const methods = {
         const k = Math.min(1, (slipping ? 0.5 : Math.hypot(v[0], v[2]) > z.speed + 2.5 ? 3 : 10) * dt); // knocked flying: slide it out
         v[0] += (tx - v[0]) * k; v[2] += (tz - v[2]) * k;
       }
-      if (z.jump && !stun) { v[1] = 8.4; b.onGround = false; }
+      if (z.jump && !stun && this.zlCanJump(z)) { v[1] = 8.4; b.onGround = false; }
     } else if (!stun) { const k = Math.min(1, 1.2 * dt); v[0] += (tx - v[0]) * k; v[2] += (tz - v[2]) * k; }
     z.jump = false;
     v[1] -= 26 * dt;
     const res = movePlayer(b.pos, v, dt, this.boxes, b.onGround);
     b.onGround = !!res.ground && v[1] <= 0.01;
-    b.f = slipping ? FLAGS.SLIP : 0;
+    b.f = slipping ? FLAGS.SLIP : this.zlFlags(z);
     if (b.pos[1] < this.map.killY) { this.kill(b, null, 'void'); return; }
     if (stun) return;
     const t = this.players.get(z.target);
@@ -552,18 +557,18 @@ const methods = {
       z.swingAt = 0;
       if (!t || !t.alive) return;
       const dx = t.pos[0] - b.pos[0], dz = t.pos[2] - b.pos[2], dy = t.pos[1] - b.pos[1], hd = Math.hypot(dx, dz) || 1e-6;
-      if (hd > ZM.reachHit || dy < -1.3 || dy > ZM.reachUp + 0.3) return; // dodged
-      const ry = t.pos[1] + 0.9 - b.pos[1] - 1.9, rl = Math.hypot(hd, ry); // from its head to your middle: over the top of anything you climbed on
-      if (hd > 0.9 && raycast([b.pos[0], b.pos[1] + 1.9, b.pos[2]], [dx / rl, ry / rl, dz / rl], rl, this.boxes)) return; // not through a wall
-      const claw = this.zxClaw(t);
+      if (hd > ZM.reachHit || dy < -1.3 || dy > this.zlReachUp(z) + 0.3) return; // dodged
+      const hy = this.zlHeadY(z), ry = t.pos[1] + 0.9 - b.pos[1] - hy, rl = Math.hypot(hd, ry); // from its head to your middle: over the top of anything you climbed on
+      if (hd > 0.9 && raycast([b.pos[0], b.pos[1] + hy, b.pos[2]], [dx / rl, ry / rl, dz / rl], rl, this.boxes)) return; // not through a wall
+      const claw = this.zxClaw(t) * this.zlClaw(z);
       if (claw > 0 && t.z && n >= (t.z.iframe || 0)) { t.z.iframe = n + ZM.iframe; this.hurt(t, b, 'bite', claw, [(dx / hd) * 4, 2, (dz / hd) * 4]); } // then a moment nobody else's claws land
       return;
     }
     if (!t || !t.alive || n < z.nextSwing) return;
     const dx = t.pos[0] - b.pos[0], dz = t.pos[2] - b.pos[2], dy = t.pos[1] - b.pos[1];
-    if (Math.hypot(dx, dz) > ZM.reach + (z.run ? 0.25 : 0) || dy < -1.2 || dy > ZM.reachUp) return;
+    if (Math.hypot(dx, dz) > ZM.reach + (z.run ? 0.25 : 0) || dy < -1.2 || dy > this.zlReachUp(z)) return;
     const fr = this.zxMod('brainfreeze') ? 1.6 : 1;
-    z.swingAt = n + ZM.windup * fr; z.nextSwing = n + ZM.swipeCd * fr;
+    z.swingAt = n + ZM.windup * fr; z.nextSwing = n + ZM.swipeCd * fr * this.zlCd(z);
     if (dy > 1 && b.onGround) z.jump = true;
     this.broadcast({ t: 'fx', k: 'swing', w: 'bite', id: b.id, a: [r2(b.pos[0]), r2(b.pos[1] + 1.4), r2(b.pos[2])] });
   },
@@ -595,6 +600,7 @@ export function installZombies(Room, h) {
   Object.assign(Room.prototype, methods);
   installZmExtra(Room, h);
   installZmBots(Room, h);
+  installZmLimbs(Room);
   const P = Room.prototype, wrap = (name, fn) => { const orig = P[name]; P[name] = function (...a) { return fn.call(this, orig, ...a); }; };
   // zombies: no cosmetic kill effects (finishers), on zombies or on people. everyone just dies the normal way
   wrap('kill', function (orig, t, attacker, w) {

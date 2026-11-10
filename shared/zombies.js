@@ -20,7 +20,7 @@ export function zmCount(r, players = 1) {
 }
 // their HP: one revolver shot in round 1, +22 a round to round 9, then +9% a round
 export function zmHp(r) { return r <= 9 ? 40 + 22 * (r - 1) : Math.round(216 * Math.pow(1.09, r - 9)); }
-export function zmMaxAlive(players = 1) { return Math.min(24, 14 + 6 * (Math.max(1, players) - 1)); }
+export function zmMaxAlive(players = 1) { return ZM.maxAlive || Math.min(24, 14 + 6 * (Math.max(1, players) - 1)); } // (ZM.maxAlive: a test knob)
 export function zmGap(r, players = 1) { return Math.max(450, 2000 - 150 * (r - 1)) * (players > 1 ? 0.75 : 1); } // ms between spawns
 // how one moves (roll = 0..1): shamblers early, runners from round 4, sprinters from round 9
 export function zmGait(r, roll, jitter = 0.5) {
