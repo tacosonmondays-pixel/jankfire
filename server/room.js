@@ -56,7 +56,7 @@ import { ZM } from '../shared/zombies.js';
 import { installZombies } from './zombies.js';
 import { installStoryRef } from './storyref.js'; // story rooms: the OVERDUE referee's rules (enemies, sides, events)
 import { installModeStats } from './modestats.js'; // per-mode leaderboard stats
-import { inPit, pitUnder, sink } from '../shared/pits.js'; // pits with something in them (the volcano's lava)
+import { inPit, pitUnder, sink, mire } from '../shared/pits.js'; // pits with something in them (the volcano's lava)
 import { installPits } from './pits.js';
 import { inShredder } from '../shared/shredpit.js'; // the Warehouse's shredder pit: its teeth kill like the void
 import { installLobby } from './lobby.js'; // mode lobbies: the countdown before a match
@@ -1019,6 +1019,7 @@ class Room {
     if (b.held && n < b.held.until) { for (let i = 0; i < 3; i++) v[i] = Math.max(-30, Math.min(30, (b.held.at[i] - b.pos[i]) * 9)); b.onGround = false; } // hanging in a shredder
     const was = b.onGround;
     sink(this.map, b.pos, v); // in the deep sea: sinking, not falling
+    mire(this.map, b.pos, v, dt, !!(b.ai && b.ai.hook)); // in lava: going down slowly
     const res = movePlayer(b.pos, v, dt, this.boxes, was);
     b.onGround = !!res.ground && v[1] <= 0.01;
     if (b.onGround && res.ground.pad && !b.ai.dummy) { const pd = res.ground.pad; v[0] += pd[0]; v[1] = pd[1]; v[2] += pd[2]; b.onGround = false; }
