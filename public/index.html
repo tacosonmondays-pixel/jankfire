@@ -4,8 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>JANKFIRE</title>
+<script src="/js/touchboot.js"></script>
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/ui.css">
+<link rel="stylesheet" href="/touch.css">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#ff4fd8">
 <link rel="icon" href="/icons/icon-192.png">
@@ -376,6 +378,16 @@
         <label>mouse sens <input id="sens" type="range" min="0.2" max="4" step="0.1"><span id="sensN"></span></label>
         <label>aim sens <input id="adsSens" type="range" min="0.2" max="2" step="0.05"><span id="adsSensN"></span></label>
         <button class="mid" data-go="controls" id="ctlBtn">KEY BINDINGS</button>
+        <div id="touchSet">
+          <h3>touch</h3>
+          <label>look sens <input id="tSens" type="range" min="0.3" max="3" step="0.1"><span id="tSensN"></span></label>
+          <label>aim assist <input id="tAssist" type="range" min="0" max="1.5" step="0.1"><span id="tAssistN"></span></label>
+          <label>button size <input id="tSize" type="range" min="0.7" max="1.4" step="0.05"><span id="tSizeN"></span></label>
+          <label>button opacity <input id="tAlpha" type="range" min="0.2" max="1" step="0.05"><span id="tAlphaN"></span></label>
+          <label><input type="checkbox" id="tLefty"> left-handed (stick on the right)</label>
+          <label class="tfs"><input type="checkbox" id="tFull"> go fullscreen when a match starts</label>
+          <div class="note tfsNote">want fullscreen? browser menu > add to home screen, then open it from there.</div>
+        </div>
         <label><input type="checkbox" id="toggleAim"> toggle aim instead of hold</label>
         <h3>gameplay</h3>
         <label><input type="checkbox" id="blood"> pixel blood</label>
