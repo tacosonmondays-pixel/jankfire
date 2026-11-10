@@ -12,3 +12,12 @@ south-west shoulder, a collapsed flank south-east), a 5 m apron of lumpy ground 
 
 The shape lives in `shared/map.js` (`KABOOM`, `kaboom()`); the lava throat and `map.pits` are unchanged. Islands S&D
 keeps the terraces and stairs.
+
+Rough pass (owner: "too smooth still"; Art lane's list): `rough_sheet.jpg` (air, side, crater, beach). Three broken
+cliff bands, V-cut gullies with knife ridges between, a jagged rim (the north notch and south gap kept), crags, a spatter
+cone on the west spur, a wider crater floor (rim radius 6.4, floor 4.6) with walk-out ramps at the two gaps. Rock is
+flat-faceted and coloured by shape (mid purple-grey, dark steep faces, ash up top and on benches, rust patches, dark
+gully beds). The older `old_vs_new_*` pictures show the smooth v2 shape.
+
+Walking: Islands' rock is walkable up to about 1.3 m per metre (`soft: 1.15`); steeper (cliff bands, crag sides) is a
+wall, and the walk graph knows it. `node tests/terrain/kaboom.mjs` checks the routes up and back.
