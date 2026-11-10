@@ -2707,9 +2707,10 @@ function desert() {
   // the freight yard behind the station (team 2): a row of containers walls it off from the town, open at both ends
   container(B, 94, -38, true, 2, ['containerb', 'containerr']); container(B, 94, -24.7, true, 1, ['containerg'], 11); // (a 1.8 m gap between them: the spawn's back door)
   const east = [[97.3, 0.2, -40], [97.3, 0.2, -36], [97.3, 0.2, -32], [97.3, 0.2, -28], [97.3, 0.2, -24], [96, 0.2, -43], [98.4, 0.2, -30]];
-  // ---- the oasis: the pond (ankle deep), palms, a dock, the camp, rocks
-  add(24, -0.4, 50, 48, 0.02, 72, 'sand'); add(24.4, 0.02, 50.4, 47.6, 0.06, 71.6, 'water');
+  // ---- the oasis: the pond (a real one now: the ground dips under it, over your head in the middle. shapeGround below digs it), palms, a dock, the camp, rocks
+  D.add(24.4, 0.02, 50.4, 47.6, 0.06, 71.6, 'water');
   add(30, 0.06, 66, 33, 0.5, 74, 'wood'); add(30.5, 0.06, 74, 32.5, 0.6, 74.6, 'wood'); // the dock (and the board across its end)
+  add(30.2, -2.6, 66.2, 32.8, 0.06, 72, 'wood'); // ...and what it stands on, down to the pond's bed (solid: nobody wades in under the deck and pops up through it)
   for (const [x, z] of [[22, 48], [50, 50], [21, 64], [51, 68], [36, 76], [44, 46]]) palm(W, x, z, 6 + rv() * 3, rv);
   for (const [x, z, c] of [[62, 70, 'leopard'], [70, 78, 'toyyellow'], [58, 84, 'cloth']]) tent(W, x, z, c);
   for (const [x, z, sx, sy, sz] of [[16, 40, 4, 2.4, 3], [56, 56, 5, 3, 4], [40, 86, 8, 3.6, 5], [78, 60, 7, 5, 6], [88, 86, 9, 4.4, 7], [16, 84, 6, 3.4, 5]]) { W.B(x, sy / 2, z, sx, sy, sz, 'rock'); W.B(x + sx * 0.12, sy + 0.35, z, sx * 0.55, 0.7, sz * 0.6, 'rock'); }
@@ -2750,6 +2751,7 @@ function desert() {
   // canyon's lip and everything big stay level; cacti, crates and graves ride it
   shapeGround(B, D, { region: [-S, -S, S, S], mat: 'sand', seed: 1887, up: 2.3, down: 1.3,
     washes: [{ pts: [[-94, -84], [-70, -86], [-50, -74], [-30, -78], [-12, -68]], w: 3.2, d: 1.2 }, { pts: [[92, 86], [70, 80], [52, 62], [34, 58], [14, 46]], w: 3.2, d: 1.2 }], // two dry washes down to the canyon
+    ponds: [{ box: [24, 50, 48, 72], d: 1.9, bank: 6 }], // the oasis
     points: [...new Set([...spawns, ...west, ...east])] });
 
   const bounds = [-S - 1, -S - 1, S + 1, S + 1];

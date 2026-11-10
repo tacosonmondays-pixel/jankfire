@@ -90,6 +90,14 @@ export function shapeGround(B, D, o) {
     }
     H[V(i, j)] = h * sm(near, far, d);
   }
+  // ---- ponds: a bowl dug under a water surface the map draws. o.ponds = [{ box: [x0, z0, x1, z1], d: how deep in the middle, bank: m of slope in from the edge }]
+  for (const p of o.ponds || []) {
+    const [a, b, c, d] = p.box;
+    for (let i = Math.max(0, Math.ceil(a - X0)); i <= Math.min(nx, Math.floor(c - X0)); i++) for (let j = Math.max(0, Math.ceil(b - Z0)); j <= Math.min(nz, Math.floor(d - Z0)); j++) {
+      const x = X0 + i, z = Z0 + j;
+      H[V(i, j)] = -p.d * sm(0, p.bank ?? 5, Math.min(x - a, c - x, z - b, d - z)); fixed[V(i, j)] = 1;
+    }
+  }
   // ---- small things get a level pad at the height the ground has under their middle, and go up or down with it
   const at0 = (x, z) => { const fx = Math.max(0, Math.min(nx - 1e-6, x - X0)), fz = Math.max(0, Math.min(nz - 1e-6, z - Z0)), i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j; return (H[V(i, j)] * (1 - u) + H[V(i + 1, j)] * u) * (1 - v) + (H[V(i, j + 1)] * (1 - u) + H[V(i + 1, j + 1)] * u) * v; };
   const PAD = o.pad ?? 2.2, sw = new Float32Array(vx * vz), swp = new Float32Array(vx * vz), mw = new Float32Array(vx * vz);
@@ -127,7 +135,7 @@ export function shapeGround(B, D, o) {
   let lo = 0, hi = 0;
   for (let k = 0; k < vx * vz; k++) { if (H[k] < lo) lo = H[k]; if (H[k] > hi) hi = H[k]; }
   const BASE = Math.min(-0.6, Math.floor((lo - 0.35) * 10) / 10);
-  for (const s of slabs) { s.max[1] = BASE; s.ter = 1; }
+  for (const s of slabs) { s.max[1] = BASE; if (s.min[1] > BASE - 0.5) s.min[1] = BASE - 0.5; s.ter = 1; } // (a deep pond can go below the old slab's underside)
   const top = new Int16Array(nx * nz); // in 5 cm steps
   for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) top[C(i, j)] = Math.round((H[V(i, j)] + H[V(i + 1, j)] + H[V(i, j + 1)] + H[V(i + 1, j + 1)]) / 4 / 0.05);
   const runs = new Map(); // "z0,z1,q" -> the run in the column before, still growing along x

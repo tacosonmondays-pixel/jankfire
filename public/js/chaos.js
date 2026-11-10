@@ -15,6 +15,7 @@ import { MAPS, BOXES } from '/shared/map.js';
 import { GAMES } from '/shared/modes.js';
 import { raycast } from '/shared/physics.js';
 import { surfaces, lavaOk, onLava, LAVA } from '/shared/lava.js';
+import { liquidAt } from './liquids.js'; // (is the camera under water?)
 
 const $ = (id) => document.getElementById(id);
 const R = (s = 1) => (Math.random() * 2 - 1) * s;
@@ -125,7 +126,8 @@ net.on('sizzle', (m) => {
 // camera under the sea (map.seaY): everything goes blue and murky instead of showing the underside of the map
 let underOn = false;
 export function underSea(map) {
-  const on = !!map && map.seaY != null && G.joined && G.camera.position.y < map.seaY - 0.02;
+  const c = G.camera.position, s = G.joined && map ? liquidAt(c.x, c.y, c.z, 4, 0) : null; // any water you can get your head under: the sea, a pond
+  const on = !!map && G.joined && ((map.seaY != null && c.y < map.seaY - 0.02) || (!!s && s.kind === 'water' && c.y < s.top - 0.02));
   if (on === underOn) return;
   underOn = on;
   const e = el('seaUnder');

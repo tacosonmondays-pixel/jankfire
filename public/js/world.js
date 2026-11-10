@@ -277,6 +277,7 @@ function buildMap(scene) {
   const all = def && def.deco ? [...real, ...def.deco] : real, nReal = real.length;
   const ncf = noCastFn(def), liq = [];
   aoBegin(all, ncf); setSunBoxes(all);
+  const shoreBoxes = TR ? [...BOXES, ...(def && def.deco ? def.deco : [])] : all; // (the water's shore map needs the ground's steps: that's how it knows a pond is deep)
   if (TR) push(MAT[TR.mat] ? TR.mat : 'stone', terrainTint(TR, aoBake(terrainGeo(TR, MAT[MAT[TR.mat] ? TR.mat : 'stone'].tile), false)).toNonIndexed());
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
@@ -313,7 +314,7 @@ function buildMap(scene) {
     scene.add(m);
     mapMeshes.push(m);
   }
-  buildLiquids(scene, liq, all, def, hazify);
+  buildLiquids(scene, liq, shoreBoxes, def, hazify);
 }
 
 // huge maps (map.chunk metres): one merged mesh per material per chunk, so what's behind you or deep in the fog isn't
