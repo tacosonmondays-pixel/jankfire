@@ -10,6 +10,7 @@ export const PATCH_NOTES = [
     'four more colas, one in every wing: LEG DAY (run faster), DEEP POCKETS (more ammo), THIRD HAND (three guns), GET UP JUICE (get back up by yourself, once). three at a time. go down and they\'re gone.',
     'ZOMBIES: every fifth round is a BOSS ROUND. THE FLOOR MANAGER calls meetings (ankle biters, everyone speeds up) and charges at you. THE MASCOT jumps on you and the floor ripples. long HP bar, no one-shots. drop it and everyone gets paid.',
     'SUBURB got real houses: gables, awnings, porches, three kinds of house, and the store has a sign and a giant slush cup. the south tower on Skyline got fire escapes. same walls to hide behind, they just look like somebody lives there.',
+    'DESERT\'s adobe huts got the same treatment as the suburb: plastered walls, roof beams poking out, a doorway you would actually duck through. same cover as before.',
     'rocks are rocks now. the boulders and far formations on Desert, Bazaar and Scary Forest are proper lumpy stone instead of red bricks. they block bullets exactly like before.',
     'the SMOKE BOMB is real smoke now: a thick soft cloud instead of grey squares. things that fall in water make a crown and foam rings. settings > video has other smoke styles (comic puffs, kenney, wispy) and the old squares if you miss them.',
   ] },
