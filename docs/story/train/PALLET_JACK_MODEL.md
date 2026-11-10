@@ -207,7 +207,7 @@ names its faces by time (`face` in `pj_clipdata.js`); `palletjack.js` sets them 
 | everything in the file | 30,987 | |
 | hand truck | 1,770 | |
 
-`c_pallet_jack.glb` 1,428 KB (under the 2 MB cap; Overtime is 968 KB), `s_handtruck.glb` 84 KB, parts file 84 KB
+`c_pallet_jack.glb` 1,428 KB (under the 2 MB cap; Overtime is 968 KB), `s_handtruck.glb` 84 KB, parts file 82 KB
 (14 KB of it the model's own half, the rest the clip samples), `pj_clipdata.js` 45 KB, `palletjack.js` 26 KB. Colour is vertex tint x a baked
 AO in `COLOR_0`, as on Revenue Protection. 50 materials and 26 small textures (the biggest is the keg's 256 x 128
 stencil, 45 KB); 70 part meshes; about 151 draw calls with everything he shows at once (Overtime: 85).
@@ -247,6 +247,9 @@ copy it from the parts file's `markers` into `MK` in `jacklook.js` (the code fal
   damage state shows and hides the pieces the parts file says (run_through 3 on; armour_broken 8 on, 7 off;
   marrow_taken 7 on, 9 off); past 28 m the far LOD swaps in (27,626 triangles drawn near, 1,635 far) and comes back.
   The near figure is the model's 23,802 plus about 3,800 the game adds on every cast member: its code face rig.
+- **The fallback** (same script, before the glb is asked for): the code puppet in `jacklook.js` stands up (77 simple
+  meshes, the same markers), takes all 18 clips and the four states without an error. It is a stand-in, not a look:
+  boxes and cylinders where the model has parts.
 - **Markers** (`pjparts.cjs`): the fifteen spots on his spine land within 1 mm of the model's in the game; his palm
   sits at 1.195 m on the truck's grip (the grip is at 1.17 m plus his palm).
 - **Looked at**: every sheet in the table at the top, from both renderers, over three passes on the model and two on
