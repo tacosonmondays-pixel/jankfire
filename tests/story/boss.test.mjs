@@ -189,5 +189,16 @@ await t('safety: junk boss defs and junk hits do nothing; a plain enemy is still
   sim.msg({ t: 'sty', k: 'despawn', id: 'overtime_1' });
   assert.equal(sim.refEnemies().length, 0);
 });
+await t('the live game is untouched: in a normal room a hit is a hit (headshots count) and a kill is a kill', async () => {
+  const { Room } = await import('../../server/room.js');
+  const room = new Room('plain', 'bots'), sent = [];
+  const p = room.addHuman({ readyState: 1, send: (x) => sent.push(JSON.parse(x)) }, { t: 'join', name: 'p', mode: 'bots' }), b = room.addBot({});
+  assert.equal(b.sk, undefined);
+  p.pos = [0, 0.1, 0]; p.spawnT = 0; p.w = 'ar'; b.pos = [0, 0.1, -6];
+  room.handle(p, { t: 'hit', to: b.id, w: 'ar', n: 1, h: 1, d: [0, 0, -1] });
+  assert.equal(b.hp, 100 - WEAPONS.ar.dmg * WEAPONS.ar.head);
+  assert.ok(sent.some((m) => m.t === 'dmg' && m.to === b.id && m.hs === true));
+  room.kill(b, p, 'ar'); assert.equal(b.alive, false);
+});
 console.log(n, 'passed');
 process.exit(0);
