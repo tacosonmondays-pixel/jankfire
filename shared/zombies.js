@@ -1,6 +1,7 @@
 // Zombies (co-op wave survival): the rules and numbers, the shop, and what you're looking at when you hold F.
 // Shared so the server (which runs the mode) and the client (prompts, prices, your ammo) always agree.
 import './zmschool.js'; // (registers the school map: it only needs shared/map.js)
+import './zmhospital.js'; // (and the hospital)
 
 export const ZM = {
   start: 500, hit: 10, kill: 60, bonus: 100, // credits: start with 500, +10 a hit, +60 a kill, +100 for a headshot or melee kill

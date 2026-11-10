@@ -105,6 +105,7 @@ export function addZmMaps(out, canvasTex, speckle) {
   // ================================================================ SECOND OPINION GENERAL
   out.lino = lam(canvasTex(16, (g, s) => { speckle(g, s, [206, 222, 208], 8, 2); g.fillStyle = 'rgba(120,170,150,0.55)'; g.fillRect(0, 0, 8, 8); g.fillRect(8, 8, 8, 8); g.fillStyle = 'rgba(60,80,70,0.25)'; g.fillRect(rnd(s), rnd(s), 3, 1); }), 2);
   out.linob = lam(canvasTex(16, (g, s) => { speckle(g, s, [196, 208, 226], 8, 2); g.fillStyle = 'rgba(110,140,190,0.5)'; g.fillRect(0, 0, 8, 8); g.fillRect(8, 8, 8, 8); }), 2);
+  out.hospglass = { mat: new THREE.MeshLambertMaterial({ color: 0xbfe8e0, transparent: true, opacity: 0.28, depthWrite: false }), tile: 2 }; // the ramp's box: you see who's coming
   out.mint = lam(canvasTex(16, (g, s) => { speckle(g, s, [150, 206, 180], 8, 2); }), 2);
   out.sheet = lam(canvasTex(16, (g, s) => { speckle(g, s, [238, 240, 244], 6, 2); g.fillStyle = 'rgba(120,170,220,0.5)'; for (let y = 3; y < s; y += 8) g.fillRect(0, y, s, 1); }), 0.8);
   out.blanket = lam(canvasTex(16, (g, s) => { speckle(g, s, [110, 190, 200], 12, 2); g.fillStyle = 'rgba(255,255,255,0.3)'; for (let x = 0; x < s; x += 4) g.fillRect(x, 0, 1, s); }), 0.8);
@@ -152,7 +153,7 @@ export function addZmMaps(out, canvasTex, speckle) {
   out.sgnkids = sign('#ffe14d', '#ff4fd8', ['CHILDREN\'S WARD', 'be brave. braver than that.'], 256, 48, { small: '#120818' });
   out.sgnstaff = sign('#3a2a1a', '#fff', ['STAFF ONLY', 'the coffee is also dead'], 256, 48, { small: '#ffe14d' });
   out.sgnwash = sign('#4fd8ff', '#120818', ['WASH YOUR HANDS', 'all of them'], 256, 64, { small: '#120818' });
-  out.sgnramp = sign('#ffe14d', '#120818', ['RAMP', 'no racing the wheelchairs (again)'], 256, 64, { small: '#c81a2a' });
+  out.sgnramp = sign('#ffe14d', '#120818', ['RAMP', 'it is a ramp. legally.'], 256, 64, { small: '#c81a2a' });
   out.sgngen = sign('#c81a2a', '#fff', ['BACKUP GENERATOR', 'pull lever. hope.'], 256, 64, { small: '#ffe14d' });
   out.sgnquiet = sign('#f4f0e8', '#1a6a5a', ['QUIET PLEASE', 'healing in progress'], 256, 64, { small: '#120818' });
   out.sgnbridge = sign('#2050b0', '#fff', ['SKYBRIDGE', 'do not look down at the waiting room'], 320, 48, { small: '#ffe14d' });
