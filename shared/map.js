@@ -2710,7 +2710,7 @@ function desert() {
   // ---- the oasis: the pond (a real one now: the ground dips under it, over your head in the middle. shapeGround below digs it), palms, a dock, the camp, rocks
   D.add(21, -0.3, 47, 51, -0.25, 75, 'water'); // (a rectangle of water under the sand: only where the ground dips below it does it show)
   add(30, 0.06, 66, 33, 0.5, 74, 'wood'); add(30.5, 0.06, 74, 32.5, 0.6, 74.6, 'wood'); // the dock (and the board across its end)
-  add(30.2, -2.6, 66.2, 32.8, 0.06, 72, 'wood'); // ...and what it stands on, down to the pond's bed (solid: nobody wades in under the deck and pops up through it)
+  add(30.2, -4.6, 66.2, 32.8, 0.06, 72, 'wood'); // ...and what it stands on, down to the pond's bed (solid: nobody wades in under the deck and pops up through it)
   for (const [x, z] of [[22, 48], [50, 50], [21, 64], [51, 68], [36, 76], [44, 46]]) palm(W, x, z, 6 + rv() * 3, rv);
   for (const [x, z, c] of [[62, 70, 'leopard'], [70, 78, 'toyyellow'], [58, 84, 'cloth']]) tent(W, x, z, c);
   for (const [x, z, sx, sy, sz] of [[16, 40, 4, 2.4, 3], [56, 56, 5, 3, 4], [40, 86, 8, 3.6, 5], [78, 60, 7, 5, 6], [88, 86, 9, 4.4, 7], [16, 84, 6, 3.4, 5]]) { W.B(x, sy / 2, z, sx, sy, sz, 'rock'); W.B(x + sx * 0.12, sy + 0.35, z, sx * 0.55, 0.7, sz * 0.6, 'rock'); }
@@ -2751,12 +2751,12 @@ function desert() {
   // canyon's lip and everything big stay level; cacti, crates and graves ride it
   shapeGround(B, D, { region: [-S, -S, S, S], mat: 'sand', seed: 1887, up: 2.3, down: 1.3,
     washes: [{ pts: [[-94, -84], [-70, -86], [-50, -74], [-30, -78], [-12, -68]], w: 3.2, d: 1.2 }, { pts: [[92, 86], [70, 80], [52, 62], [34, 58], [14, 46]], w: 3.2, d: 1.2 }], // two dry washes down to the canyon
-    ponds: [{ c: [36, 61], r: [11, 9.5], d: 1.9, wl: 0.25, box: [21, 47, 51, 75], seed: 3 }], // the oasis
+    ponds: [{ c: [36, 61], r: [11, 9.5], d: 3.6, wl: 0.25, box: [21, 47, 51, 75], seed: 3 }], // the oasis: wade in, then it's well over your head and you float (map.pools)
     points: [...new Set([...spawns, ...west, ...east])] });
 
   const bounds = [-S - 1, -S - 1, S + 1, S + 1];
   let graph = null;
-  const map = { name: 'Desert', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -65.6, fall: 'river', bounds, floorY: -69,
+  const map = { name: 'Desert', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -65.6, fall: 'river', bounds, floorY: -69, pools: [{ box: [21, 47, 51, 75], top: -0.25 }],
     sky: { top: 0x3f7fd0, mid: 0xf2d9a0, bot: 0x6a4a28, fog: 0xead6a6 }, fogNear: 130, fogFar: 520, spawns, teamSpawns: { att: west, def: east },
     gates: [[-106, 0, -94, 0], [106, 0, 94, 0]], // the town's two gates (a bot out past the wall heads for one)
     edgeGuard: true, // bots don't dodge-jump next to the canyon (server.js: brBotEdge in every mode here)

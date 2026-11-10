@@ -270,7 +270,7 @@ export function stepPlayer(dt, inp, now) {
       if (ME.groundTicks > 3 && !ME.sliding) ME.combo = 0;
     }
   } else if (wl && !slipping) {
-    accelerate(v, wx, wz, C.airCap, C.airAccel, dt);
+    accelerate(v, wx, wz, ME.swim ? 3.6 : C.airCap, C.airAccel, dt); // (floating in a pond, shared/pits.js swim: a paddle, faster than air control)
     // W-only air steering: rotates your momentum toward where you look, keeps ALL the speed
     if (fw > 0 && !st && hs > 2) {
       const cur = Math.atan2(v[0], v[2]), tgt = Math.atan2(wx, wz);
