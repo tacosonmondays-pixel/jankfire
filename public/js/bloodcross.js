@@ -510,7 +510,7 @@ export function crossEvent(m, ghosts, info) {
   } else if (m.k === 'wall' && Array.isArray(m.p)) wallX(m, palOf(m.o, info));
   else if (m.k === 'refund') refund(m, ghosts, info);
   else if (!ghosts && m.o === G.myId && m.k === 'refill') { floatText(`+${m.a} HP`, '#ff8a9a'); sfx.heal(); }
-  else if (!ghosts && m.o === G.myId && m.k === 'dry') hud.msg('NOT ENOUGH BLOOD', 0.8, 'reverse');
+  else if (!ghosts && m.o === G.myId && m.k === 'dry') { /* thin blood: the shot still went (weapons.js says so on the HUD) */ }
 }
 
 // rpSp: how fast a replay is playing (0.3 in slow-mo). crosses from a replay ('r' keys) live on its clock, so a mark can't

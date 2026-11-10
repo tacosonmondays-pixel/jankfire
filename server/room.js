@@ -2012,12 +2012,7 @@ class Room {
     } else if (suit === 'h') {
       if (ult) this.heal(p, 150, 150); else this.heal(p, rank * 3);
     } else if (suit === 's') {
-      const count = ult ? 24 : rank, spread = ult ? 0.9 : 0.12 + rank * 0.02;
-      for (let k = 0; k < count; k++) {
-        const a = (k / Math.max(1, count - 1) - 0.5) * spread;
-        const dir = norm([d[0] * Math.cos(a) - d[2] * Math.sin(a), d[1] + (Math.random() - 0.5) * 0.05, d[0] * Math.sin(a) + d[2] * Math.cos(a)]);
-        this.makeProj(p, 'card', [o[0] + dir[0] * 0.8, o[1] + dir[1] * 0.8, o[2] + dir[2] * 0.8], dir.map((x) => x * 55));
-      }
+      this.throwCards(p, o, d, ult ? 24 : WEAPONS.card.fan, ult ? 0.9 : WEAPONS.card.fanSpread, rank); // always a full fan: the rank is how hard each card hits
     } else if (suit === 'c') { // clubs: shockwave (cone, or all around for face cards)
       const R = ult ? 12 : 9;
       for (const t of this.players.values()) {
@@ -2028,16 +2023,26 @@ class Room {
         const dir = to.map((x) => x / dist);
         if (!ult && dir[0] * d[0] + dir[1] * d[1] + dir[2] * d[2] < 0.6) continue;
         const k = ult ? 55 : 10 + rank * 4;
-        this.hurt(t, p, 'cards', ult ? 25 : rank * 2, [dir[0] * k, dir[1] * k + (ult ? 14 : 6), dir[2] * k]);
+        this.hurt(t, p, 'cards', ult ? 30 : 12 + rank * 2, [dir[0] * k, dir[1] * k + (ult ? 14 : 6), dir[2] * k]); // (was rank * 2: a 2 of clubs did 4)
       }
     } else if (suit === 'd') { // diamonds: dash
       const k = ult ? 55 : rank * 3.5;
       this.knock(p, [d[0] * k, d[1] * k + (ult ? 6 : 2), d[2] * k], 'cards');
     }
+    if (suit !== 's' && rank !== 1) this.throwCards(p, o, d, WEAPONS.card.flick, 0.05, rank); // every card flicks a couple at them too: no dead hands
     send(p, { t: 'hand', hand: p.hand, left: (p.deck || []).length });
     if (!p.hand.length) setTimeout(safe('deal', () => { if (this.players.get(p.id) === p) deal(p); }), 1500);
   }
 
+  // n cards in a flat fan `spread` rad wide around d, each worth the card damage for that rank
+  throwCards(p, o, d, n, spread, rank) {
+    const C = WEAPONS.card, dmg = C.dmg + C.perRank * Math.max(2, Math.min(13, rank || 2));
+    for (let k = 0; k < n; k++) {
+      const a = n > 1 ? (k / (n - 1) - 0.5) * spread : 0;
+      const dir = norm([d[0] * Math.cos(a) - d[2] * Math.sin(a), d[1], d[0] * Math.sin(a) + d[2] * Math.cos(a)]);
+      this.makeProj(p, 'card', [o[0] + dir[0] * 0.8, o[1] + dir[1] * 0.8, o[2] + dir[2] * 0.8], dir.map((x) => x * C.speed), { dmg });
+    }
+  }
   spawnProj(p, wid, o, d) {
     if (wid === 'cart') { this.fireCart(p, o, d); return; } // shopping carts aren't projectiles: they park and stay (server/primaries.js)
     const w = WEAPONS[wid], n = now();
@@ -2072,7 +2077,7 @@ class Room {
     const d = norm(pr.v) || [0, 0, 1];
     if (pr.k === 'card') {
       this.broadcast({ t: 'pd', id: pr.id, p: pr.p.map(r2) });
-      if (t && t.id !== pr.o) this.hurt(t, owner, 'cards', WEAPONS.card.dmg, [d[0] * 4, 1, d[2] * 4]);
+      if (t && t.id !== pr.o) this.hurt(t, owner, 'cards', pr.dmg ?? WEAPONS.card.dmg, [d[0] * 4, 1, d[2] * 4]);
       return;
     }
     const w = WEAPONS.bow, tip = pr.tip || 'regular', c = pr.charge || 0.5;
@@ -2132,16 +2137,17 @@ class Room {
   fireBlood(p, o, d) {
     const w = WEAPONS.bloodcross, n = now();
     if (this.round && this.round.over) return; // nothing can be hurt between rounds, so don't charge blood for it
-    if (n - (p.lastFire.bloodcross || 0) < w.cd * 750) return;
+    const thin = p.hp - w.cost < 1; // no blood to spend: it never takes your last HP, so the shot is free, weak and slow instead (never a dead weapon: gun game's Blood Cross rung could trap you at low HP)
+    if (n - (p.lastFire.bloodcross || 0) < (thin ? w.thin.cd : w.cd) * 750) return;
     p.lastFire.bloodcross = n; // a refused shot uses the cooldown up too, so spamming it costs the server nothing
-    if (p.hp - w.cost < 1) { send(p, { t: 'bcross', k: 'dry', o: p.id }); return; } // it never takes your last HP, so it can't kill you
-    p.hp -= w.cost;
+    if (thin) send(p, { t: 'bcross', k: 'dry', o: p.id });
+    else p.hp -= w.cost;
     p.selfHurtT = n; // EPIC: bleeding yourself down to low HP doesn't make you a clutch hero (like coughing)
     if (this.mode === 'training') p.bcPaid = (p.bcPaid || 0) + w.cost; // training hands it back once you stop
     const wallHit = raycast(o, d, 0.8, this.boxes);
     const off = wallHit ? Math.max(0, wallHit.t - w.r - 0.05) : 0.8;
     const pr = {
-      id: this.nextProj++, k: 'bloodcross', o: p.id, r: w.r, bounce: 0, born: n, phase: 0, hit: new Map(), sync: 0, cost: w.cost,
+      id: this.nextProj++, k: 'bloodcross', o: p.id, r: w.r, bounce: 0, born: n, phase: 0, hit: new Map(), sync: 0, cost: thin ? 0 : w.cost, thin: thin ? 1 : 0,
       p: [o[0] + d[0] * off, o[1] + d[1] * off, o[2] + d[2] * off], v: d.map((x) => x * w.speed), // no gravity, no inherited speed: it goes where you point
     };
     this.projectiles.set(pr.id, pr);
@@ -2176,7 +2182,7 @@ class Room {
     const c = Math.cos(t.yaw || 0), s = Math.sin(t.yaw || 0);
     // which side it hit (unit, body-local) + how high: shins count as hips so the cross never ends up in the floor
     const off = [r2(dx * c - dz * s), r2(Math.max(0.9, Math.min(2.15, pr.p[1] - t.pos[1]))), r2(dx * s + dz * c)];
-    const mk = { id: pr.id, o: pr.o, t: t.id, seq: t.seq, off, d: norm(pr.v) || [0, 0, -1], at: now() + w.fuse * 1000, ph: 0, cost: pr.cost ?? w.cost };
+    const mk = { id: pr.id, o: pr.o, t: t.id, seq: t.seq, off, d: norm(pr.v) || [0, 0, -1], at: now() + w.fuse * 1000, ph: 0, cost: pr.cost ?? w.cost, thin: pr.thin ? 1 : 0 };
     mk.p = this.crossAt(t, off);
     (this.crosses ||= new Map()).set(mk.id, mk);
     this.crossCast({ t: 'bcross', k: 'stick', id: mk.id, o: mk.o, to: t.id, off, p: mk.p.map(r2), f: w.fuse });
@@ -2208,8 +2214,8 @@ class Room {
     let kills = 0;
     // never a headshot: it's a fixed delayed pop wherever it stuck, so it stays out of the headshot stats + highlights
     const pop = (v, dmg, kb) => { const was = v.alive; this.hurt(v, owner, 'bloodcross', dmg, kb); if (was && !v.alive) kills++; };
-    if (t) pop(t, w.dmg, [mk.d[0] * w.kb, 4, mk.d[2] * w.kb]);
-    for (const v of [...this.players.values()]) { // the small blast: everyone else close by, not you (teammates are skipped by hurt)
+    if (t) pop(t, mk.thin ? w.thin.dmg : w.dmg, [mk.d[0] * w.kb, 4, mk.d[2] * w.kb]);
+    for (const v of mk.thin ? [] : [...this.players.values()]) { // the small blast: everyone else close by, not you (teammates are skipped by hurt)
       if (v === t || v === owner || !v.alive) continue;
       const c = center(v), to = [c[0] - p[0], c[1] - p[1], c[2] - p[2]], dist = Math.hypot(...to);
       if (dist > w.blastR) continue;
@@ -2217,7 +2223,7 @@ class Room {
       pop(v, w.blastDmg * f, [dir[0] * w.kb * 1.5 * f, 3 + 3 * f, dir[2] * w.kb * 1.5 * f]);
     }
     if (kills && owner.alive) { // blood magic: a kill pays back what the shot cost (never past full)
-      const a = Math.max(0, Math.min(mk.cost, Math.max(100, owner.hp) - owner.hp));
+      const a = Math.max(0, Math.min(mk.thin ? w.thin.heal : mk.cost, Math.max(100, owner.hp) - owner.hp)); // (a thin-blood kill gets you one real shot back)
       owner.hp += a;
       this.crossCast({ t: 'bcross', k: 'refund', id: mk.id, o: owner.id, a: Math.round(a), p: p.map(r2) });
     }
