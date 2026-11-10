@@ -69,7 +69,8 @@ import { tacZoneOf } from './tactical.js'; // plant & defuse hit markers by zone
 import { specFPOn } from './specfp.js'; // plant & defuse: first-person spectating
 import { pipFrame } from './pip.js'; // the first-person corner box while spectating
 import { sprayRangeFrame } from './sprayrange.js'; // Training's spray range
-import { chaosSpecId } from './chaos.js';
+import { chaosSpecId, pitErupt, underSea } from './chaos.js';
+import { sink, bottomOut } from '/shared/pits.js';
 import { brSpecId } from './royale.js';
 import { initMinimap, minimapFrame } from './minimap.js'; // the HUD minimap (SAT-NAV)
 import { initLeaderTabs, showLeaders } from './leadmodes.js'; // per-mode leaderboard tabs
@@ -1563,6 +1564,18 @@ net.on('dmg', (m) => {
     }
   }
 });
+// long drops that end somewhere (map.fall): [feed with a killer, feed alone, death line with a killer, death line alone, callout]
+const FALLS = {
+  river: ['  into the canyon', '  found the bottom of the canyon', ' showed you the canyon', 'you found the bottom of the canyon. it was far.', 'SPLOOSH'],
+  street: ['  off the roof', '  became pavement pizza', ' threw you off the roof', 'you are pavement pizza now', 'SPLAT'],
+};
+function fallSplat(m, fl) { // where they landed: a thump, a puff, and the word for it if it was you
+  const p = m.pos || (m.v === G.myId ? ME.pos : null);
+  if (!p) return;
+  sfx.splat(p);
+  for (let i = 0; i < 10; i++) fx.smoke([p[0] + (Math.random() - 0.5) * 2, p[1] + 0.3, p[2] + (Math.random() - 0.5) * 2], 1.4, 0.4);
+  if (m.v === G.myId) hud.msg(fl[4], 1.6, 'slip');
+}
 net.on('kill', (m) => {
   recordEv(m);
   if (m.k === G.myId && m.v !== G.myId && !RP.active) czKill(m.w); // kills with it (the customize screen's mastery bar)
@@ -1590,8 +1603,9 @@ net.on('kill', (m) => {
   if (m.w === 'void' && m.pit) { // the shredder pit
     parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], ['  fed to the shredder', '#ff5a3a']] : [[vn, vc], ['  fed themselves to the shredder', '#ff5a3a']];
   } else if (m.w === 'void') {
-    const sea = MAPS[MAP.id] && MAPS[MAP.id].sea; // (sea maps: you went in the water)
-    parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], [sea ? '  into the sea' : '  into the void', '#aaa']] : [[vn, vc], [sea ? '  sleeps with the fishes' : '  fell into the void', '#aaa']];
+    const sea = MAPS[MAP.id] && MAPS[MAP.id].sea, fl = FALLS[MAPS[MAP.id] && MAPS[MAP.id].fall]; // (sea maps: you went in the water. map.fall: the canyon's river, the street under the rooftops)
+    parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], [fl ? fl[0] : sea ? '  into the sea' : '  into the void', '#aaa']] : [[vn, vc], [fl ? fl[1] : sea ? '  sleeps with the fishes' : '  fell into the void', '#aaa']];
+    if (fl) fallSplat(m, fl);
   } else if (m.w === 'tbag' && m.k === 0) {
     parts = [[vn, vc], ['  t-bagged too hard and exploded', '#ff9a3a']];
   } else if (m.w === 'cough') {
@@ -1605,7 +1619,8 @@ net.on('kill', (m) => {
   const gp = gearKillParts(m, kn, kc, vn, vc, wname, wcolor); // failed a pop quiz, telefragged
   if (gp) parts = gp;
   const hazard = m.w === 'lava' || (m.w === 'duck' && m.sky); // floor is lava / duck rain: nobody owns those
-  if (hazard) parts = m.k ? [[kn, kc], [`  [${wname(m.via)}]  `, wcolor(m.via)], [vn, vc], [m.w === 'lava' ? '  into the lava' : '  under a sky duck', '#aaa']] : [[vn, vc], [m.w === 'lava' ? '  touched the floor' : '  got flattened by a sky duck', '#ff8a3a']];
+  if (hazard) parts = m.k ? [[kn, kc], [`  [${wname(m.via)}]  `, wcolor(m.via)], [vn, vc], [m.w === 'lava' ? (m.hz ? '  into the volcano' : '  into the lava') : '  under a sky duck', '#aaa']] : [[vn, vc], [m.w === 'lava' ? (m.hz ? '  took a lava bath' : '  touched the floor') : '  got flattened by a sky duck', '#ff8a3a']];
+  if (m.w === 'lava' && m.hz) pitErupt(m.pos || (victim ? victim.pos : ME.pos)); // cooked in the volcano: it coughs fire
   const brp = brFeed(m, vn, vc); if (brp) parts = brp; // jank royale: the zone
   if (m.ep && m.k) parts.push([`  EPIC ${Math.round(m.ep.d)}m`, '#ffe14d']);
   const carK = (m.w === 'car' || m.w === 'carboom') && carKill(m, kn, kc, vn, vc, wname, wcolor); // traffic: its own lines and icon
@@ -1628,14 +1643,15 @@ net.on('kill', (m) => {
     if (m.k && m.k !== G.myId && S.killcam !== false && G.mode !== 'training') queueKillcam(m.k, via);
     if (m.k) {
       hud.dead(true, m.w === 'void'
-        ? [[kn, kc], [m.pit ? ' fed you to the shredder' : MAPS[MAP.id] && MAPS[MAP.id].sea ? ' knocked you into the sea' : ' knocked you into the void', '#fff'], [`  (${wname(via)})`, wcolor(via)]]
+        ? [[kn, kc], [m.pit ? ' fed you to the shredder' : FALLS[MAPS[MAP.id] && MAPS[MAP.id].fall] ? FALLS[MAPS[MAP.id].fall][2] : MAPS[MAP.id] && MAPS[MAP.id].sea ? ' knocked you into the sea' : ' knocked you into the void', '#fff'], [`  (${wname(via)})`, wcolor(via)]]
         : [['killed by ', '#fff'], [kn, kc], [`  (${wname(via)})`, wcolor(via)]]);
-    } else hud.dead(true, [[m.w === 'void' ? (m.pit ? 'the shredder ate you. it was not hungry.' : MAPS[MAP.id] && MAPS[MAP.id].sea ? 'you sleep with the fishes now' : 'you fell into the void') : m.w === 'tbag' ? 'you t-bagged too hard. your knees exploded.' : 'you smoked too much', '#fff']]);
+    } else hud.dead(true, [[m.w === 'void' ? (m.pit ? 'the shredder ate you. it was not hungry.' : FALLS[MAPS[MAP.id] && MAPS[MAP.id].fall] ? FALLS[MAPS[MAP.id].fall][3] : MAPS[MAP.id] && MAPS[MAP.id].sea ? 'you sleep with the fishes now' : 'you fell into the void') : m.w === 'tbag' ? 'you t-bagged too hard. your knees exploded.' : 'you smoked too much', '#fff']]);
     if (carK) hud.dead(true, carK.dead);
     else if (m.w === 'hr') hud.dead(true, hrDead());
     const gd = gearDeathLine(m);
     if (gd) hud.dead(true, m.k ? [[kn, kc], [' gave you a pop quiz. ', '#fff'], [gd, '#7fffd4']] : [[gd, '#fff']]);
-    if (hazard) hud.dead(true, m.k ? [[kn, kc], [m.w === 'lava' ? ' knocked you into the lava' : ' softened you up for a sky duck', '#fff'], [`  (${wname(m.via)})`, wcolor(m.via)]] : [[m.w === 'lava' ? 'the floor was lava' : 'a duck fell out of the sky on you', '#fff']]);
+    if (hazard) hud.dead(true, m.k ? [[kn, kc], [m.w === 'lava' ? (m.hz ? ' cooked you in the volcano' : ' knocked you into the lava') : ' softened you up for a sky duck', '#fff'], [`  (${wname(m.via)})`, wcolor(m.via)]] : [[m.w === 'lava' ? (m.hz ? 'the volcano is not a hot tub. you are well done.' : 'the floor was lava') : 'a duck fell out of the sky on you', '#fff']]);
+    if (m.w === 'lava' && m.hz) hud.msg('EXTRA CRISPY', 2, 'lava');
   }
   econKill(m);
   if (m.k === G.myId && m.v !== G.myId) {
@@ -1895,7 +1911,8 @@ function frame(t) {
     } : {};
     jumpPressed = false;
     acc += dt;
-    while (acc >= STEP) { if (!(G.story && G.story.drive(STEP, inp, now))) stepPlayer(STEP, inp, now); carCollide(STEP); airTick(now); lavaStep(now); inp.jumpPressed = false; acc -= STEP; } // (OVERDUE: in a story car, the car steps instead)
+    while (acc >= STEP) { if (!(G.story && G.story.drive(STEP, inp, now))) stepPlayer(STEP, inp, now); carCollide(STEP); airTick(now); lavaStep(now); if (ME.alive) { sink(MAPS[MAP.id], ME.pos, ME.vel); bottomOut(MAPS[MAP.id], ME.pos, ME.vel); } // (deep sea: you sink, you don't fall through it. the river, the street: you stop on them)
+      inp.jumpPressed = false; acc -= STEP; } // (OVERDUE: in a story car, the car steps instead)
     grabStep(now); // held in a shredder's intake
     pinStep(now); // nailed to a wall
     oobTick(now); // out of the play area: RETURN TO THE MAP 3 2 1
@@ -2081,6 +2098,7 @@ function frame(t) {
 
   const hp = hookPoint();
   if (hp && ME.alive && !RP.active) { myRope.visible = true; setRopeSkin(myRope, myGrapple()); setRope(myRope, muzzleWorld(), hp); } else myRope.visible = false;
+  underSea(MAPS[MAP.id]); // head under the sea: it's blue down there
   const shHit = G.joined ? raycast([ME.pos[0], ME.pos[1] + 0.1, ME.pos[2]], [0, -1, 0], 120, BOXES) : null;
   myShadow.visible = !!shHit && ME.alive && !ME.onGround && !RP.active;
   if (shHit) myShadow.position.set(ME.pos[0], shHit.point[1] + 0.03, ME.pos[2]);

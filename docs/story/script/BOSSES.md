@@ -1790,3 +1790,85 @@ A patch of the Commute that's purple and black squares, unshaded, with bits of t
 **Drops:** THE MISSING TEXTURE, lt_boss_missing_texture
 
 ---
+
+## REVENUE PROTECTION · TICKETS, PLEASE `revenue_protection_1`
+> "the tunnel eats."
+
+**story** · The Under-Hill Loop (THE COMMUTE) · quest `m06_tickets_please` · HP 5000 (+60% per extra co-op player)
+
+**Look:** thing: a round mask that fills the tunnel wall to wall, nine metres across: white enamel, chipped, twelve plates, two tall oval eye holes with nothing in them, no mouth. Long black arms come out from behind its rim, flat against the tunnel walls and roof. Built from real references (enamel station roundels, a tunnelling machine's segmented shield, charred timber, lanyards).
+
+**Why they're here:** The only other way into the Gut is the commuter line under the hill, and this lives in it. ☺ CORP found it, bolted the sign to its front, and left it in the Loop. It keeps people off the line for free.
+
+### Arena: THE LAST TWO CARS
+The last two cars of a short train: a flatbed (crates, a chained-down fridge, the hand truck) and a low open wagon behind it. The train moves; the tunnel scrolls. The boss holds a distance behind you shown on the HUD as THE GAP (starts at 30 m). Arms that get a grip on the train close it. At 0 m it has you.
+
+- **Levels:** one deck. The flatbed is a step up from the open wagon; from phase 3 the wagon is gone and the arena is one car
+- **Grapple:** the wagon's rail and the flatbed's chains (to get back on when a Sweeper puts you over the side); the signal gantries a Brakeman drops; a Snatcher's wrist (zip to the crewmate it's holding)
+- **Hazards:** crush (THE GAP at 0 m): the hands close over the camera, one at a time. "fare evaded. briefly."; crush (the track ahead, when a Brakeman gets a grip): ripped-up track or a dropped signal gantry: brace, or it throws everyone on the deck
+- **Cover:** the crates Lumps hauls into cover (a Sweeper clears them); the chained-down fridge (it doesn't)
+
+**Bars:** armour 3750 (the mask shrugs bolts off. Phase 1: only bolts put into the open eye housings count. Phase 2: sustained fire breaks it plate by plate) → health 1250 (the Inspector's bar: he is in the open in phase 3, and he is the crit spot)
+
+**Weak points**
+- **the wrist joints** ×2: a glowing knot of lanyards and ID cards on every arm. Opened by: always: sever it and the hand drops onto the track and the stump whips back
+- **the eye housings** ×2: the two tall oval lamp housings swing open. Opened by: sever four arms inside ten seconds: it flinches
+- **the Inspector** ×2.5: a man in a cap in the middle of it, punching a ticket that isn't there. Opened by: phase 3: the mask is hanging off one bolt
+
+**Weakness (blood):** bloodcross. the Blood Drive is the Blood Cross six times over, and the cross is what stops it: it comes apart along the cross's four arms. (Beatable with anything.)
+
+**Adds**
+- **the arms** ×4: _in no hurry. reach, grip, drag_. Grabber, Snatcher, Sweeper, Brakeman (see phase 1). Each arm has a glowing wrist joint (a knot of lanyards and ID cards). That's the weak point: sever it and the hand drops onto the track and the stump whips back
+
+**Set pieces**
+- **chase** (the whole fight): the boss is the one chasing: it hauls itself up the tunnel behind a moving train, and THE GAP is the fight's clock
+- **transform** (between phases 1 and 2): mo_carry_the_bit_that_works: Jack asks you to do it, the player presses the button, and takes his marrow
+- **vehicle** (phase 3): the first lunge bites the open wagon in half; Lumps pulls the coupling pin
+
+### Phase: TICKETS, PLEASE (100% → 60%)
+> "tickets, please."
+
+**Twist:** it can't be won: the mask only takes damage through the flinch, and at 60% Jack's armour breaks
+
+- **Grabber** · tell: an arm walks along the wall towards the wagon's rail · grips the wagon's rail. While it holds, THE GAP closes 1 m/s · _counter:_ shoot the wrist. A severed Grabber gives blood back
+- **Snatcher** · tell: an arm goes for a crewmate and lifts them · 6 s before it pulls them in · _counter:_ shoot the wrist. They drop back on the deck, hurt
+- **Sweeper** · tell: an arm lies flat along the deck, wall to wall, knee height or head height · it sweeps the deck · _counter:_ jump or slide. Jack blocks one for you in phase 1
+- **Brakeman** · tell: Dale shouts the side · reaches past the train and rips up track ahead, or drops a signal gantry · _counter:_ shoot it before it gets a grip, or brace
+- **Flinch** · tell: the mask shrugs bolts off · sever four arms inside ten seconds and it flinches: the eye housings swing open for a moment and you can put bolts into it. That is the only damage it takes in this phase · _counter:_ —
+- **Jack at the back rail** · tell: his boiler vents red steam, his punches slow down, his block gets shorter · Jack fights in full rig: rocket punches on Grabbers, blocks Sweepers, thrusters to get back on when one throws him. He is already hurt and it shows. He's a health bar you can't heal · _counter:_ none. Phase 1 is not winnable: at 60% his armour breaks. On a rig that means the rig is done. On Jack it means Jack is
+
+### Phase: PENALTY FARE (60% → 25%)
+> "is this seat taken"
+
+**Twist:** you have Jack's marrow, the Blood Drive is free while it spins, and now the mask breaks in three stages: hairline, the left eye, the smile
+
+- **Hairline** · tell: sustained fire on a plate crazes it · then it falls away and smashes on the track (each plate is a real piece of geometry: twelve of them, the hole stays). Under the first lost plates: packed black bodies, a hand flat against the inside like a face at a window · _counter:_ you have Jack's marrow: the Blood Drive is free while it spins. Hold it on one plate
+- **The left eye** · tell: the left lamp housing blows out. Behind it, a cluster of real eyes, all looking at you · it starts throwing lost property out of the hole: briefcases, umbrellas, a pushchair. The voices get clearer: "is this seat taken", "i'm going to be late", "seventeen thirty-two", a child asking how many stops · _counter:_ —
+- **The smile** · tell: the bottom plates crack along one curved line, left to right. For a second the ☺ has its smile back · then the lower third of the mask drops off and the crack is a mouth: a wall of mouths, and arms come out of that too, two at a time, faster · _counter:_ sever them at the wrist
+- **Snatchers in pairs** · tell: — · Snatchers now come in pairs. If one takes Gordo or Lumps all the way in, they are not killed (they're needed in Acts II to IV) but they come back out of it changed: a scar the rest of the game remembers, and a line in Act II · _counter:_ shoot the wrist inside 6 s
+
+### Phase: END OF THE LINE (25% → 0%)
+> "seventeen thirty-two"
+
+**Twist:** the wagon is bitten in half, the arena is one car, and the Inspector is in the open: ninety seconds to daylight
+
+- **Lunge** · tell: it stops hauling politely · it lunges. First lunge bites the open wagon in half: Lumps pulls the coupling pin, the arena is now one car. Daylight is a dot ahead of you. Dale: "ninety seconds. it doesn't come outside. i think. i think it doesn't come outside." · _counter:_ —
+- **Every side** · tell: — · arms come from every side. Every cross that blooms inside it lights the tunnel red from within and you see the outline of everyone in there · _counter:_ sever, cross, sever
+- **The Inspector** · tell: the mask is hanging off one bolt, swinging, half a face. Everything behind it is in the open: four hundred people in one piece, the lanyards, the faces moving · in the middle the Inspector in his cap, punching a ticket that isn't there, over and over. He is the crit spot · _counter:_ empty his bar, then hold fire: the ring overspins, all six barrels at once, and one blood cross grows out of the middle of it until it touches the tunnel on all four sides. BLOOD CROSSED
+
+**Lines**
+- intro: "tickets, please."
+- hurt: "is this seat taken", "i'm going to be late"
+- kills you: "fare evaded. briefly."
+- low: "seventeen thirty-two"
+- defeat: "*click.*"
+
+**Defeat:** BLOOD CROSSED. The mask's last bolt goes. The face falls forward flat onto the track and the train leaves the tunnel into a red evening on The Commute. The cross is what stops it. The thing behind the face comes apart along the cross's four arms: the braids unravel, the ropes of arms let go of the walls one hand at a time, and the plug that filled the tunnel slumps into four heaps across the track, steaming. The chase is over. Nothing is hauling any more. The last thing you see in the tunnel mouth: in the middle of the wreck the Inspector, on his own now, the size of a man. He lifts his punch, and clicks it once.
+
+**Piñata:** The ring overspins, all six barrels at once, and one blood cross grows out of the middle of it until it touches the tunnel on all four sides. BLOOD CROSSED. The braids unravel, the ropes of arms let go of the walls one hand at a time, and the plug that filled the tunnel slumps into four heaps across the track, steaming. No core: what you carry out of this one is Jack's.
+
+**Loot table:** `lt_boss_revenue_protection_1` (THE BLOOD DRIVE) · **Refights:** story only. It is broken apart, not gone: the pieces are still in the Loop and they were grown to grow back. It can come back later (Act III, when you take the Loop into the Gut for the nine, is the obvious place)
+
+**Drops:** lt_boss_revenue_protection_1
+
+---
