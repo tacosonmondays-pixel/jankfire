@@ -40,7 +40,7 @@ const kitSpeed = () => ((G.mode === 'ffa' || G.mode === 'bots') && GAMES[G.game]
 import { secFireDown, secShot } from './secondaries.js'; // taser, tv remote, water pistol streams
 import { RIFLES, RF, RIFLE_VM, RIFLE_RECOIL, RIFLE_SHELLS, rifleShot, bursting, rifleReset, quickScoped, rifleStep, rifleEvent } from './rifles.js'; // the rifle pack
 import { tacOn, tacShot, tacKick, tacFrame, tacZone } from './tactical.js'; // Plant & Defuse: spray patterns + moving spread
-import { sdRow } from '/shared/sdgun.js'; // S&D: each gun's first-shot spread (hip / sights)
+import { sdRow, sdRate } from '/shared/sdgun.js'; // S&D: each gun's first-shot spread (hip / sights)
 import { inSprayRange, sprayHole } from './sprayrange.js'; // Training's spray range: S&D gunplay for S&D guns there
 import { carRay, carHit, carSwing } from './traffic.js'; // cars stop bullets (and take the damage)
 
@@ -720,7 +720,7 @@ export function muzzleWorld() {
 }
 
 const ready = (id, now) => (W.cd[id] || 0) <= now;
-function interval(id) { const w = WEAPONS[id]; return (w.rate ? 1 / fireRate(w, ME.hp) : w.cd) / sm(id, 'rate'); }
+function interval(id) { const w = WEAPONS[id]; return (w.rate ? 1 / (tacOn() ? sdRate(id, fireRate(w, ME.hp)) : fireRate(w, ME.hp)) : w.cd) / sm(id, 'rate'); } // (Plant & Defuse slows a few guns down: sdgun.js rof)
 // Redline: 0 at full HP .. 1 at death's door (drives the needle, the vents and the pitch)
 const redlineK = () => { const w = WEAPONS.redline; return (fireRate(w, ME.hp) - w.rate) / (w.rateMax - w.rate); };
 const marblePalette = (skin) => (skin && skin[3] === 'marbles_gumball' ? 'gumball' : 'glass');
