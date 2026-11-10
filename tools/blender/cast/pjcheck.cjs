@@ -1,5 +1,6 @@
 // PALLET JACK through the game's own actor path (no pictures, numbers):
 //   node tools/blender/cast/pjcheck.cjs <port>
+// the code puppet first (the fallback when the glb is missing), then
 // spawnActor('pallet_jack') -> the glb dressed onto the code skeleton, every part name there -> PJ.play each clip
 // with updateActors + pjFrame stepping it: the joints have to move, the marks have to fire at their times, the damage
 // states have to show and hide the right pieces, the far LOD has to swap in. exits 1 if anything is off.
@@ -18,8 +19,21 @@ const parts = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../public/m
     const looks = await import('/js/story/looks.js');
     const A = await import('/js/story/actors.js');
     const { PJ, pjFrame } = await import('/js/story/palletjack.js');
+    // first, before his glb is asked for: the code puppet (what you get if the file is missing) has to stand up and take every clip
+    const fb = { bad: [] };
+    try {
+      const { CLIPS } = A; const F = (looks.buildLookCode || looks.buildLook)('pallet_jack'); fb.blender = !!F.blender;
+      let n = 0; F.ch.root.traverse((o) => { if (o.isMesh) n++; }); fb.meshes = n; fb.parts = Object.keys(F.parts || {}).length;
+      const fa = { id: 'pj_fallback', L: F, ch: F.ch, pos: [0, 0, 0], yaw: 0, clip: null, face: F.face };
+      const rig = PJ.rig(fa); rig.manual = true;
+      for (const clip of PJ.clips) { CLIPS[clip].f(F.ch, 0.5, 1); fa.clip = { name: clip, t: 0.5, len: 9e9 }; rig.update(1 / 30, null); }
+      for (const st of ['run_through', 'armour_broken', 'marrow_taken', 'fresh']) rig.dmg(st);
+      for (const k of ['body', 'spine', 'arm', 'armL', 'foreR', 'foreL']) for (const ax of ['x', 'y', 'z']) if (!Number.isFinite(F.ch[k].rotation[ax])) fb.bad.push('fallback: ' + k + ' went NaN');
+      if (fb.blender) fb.bad.push('fallback: expected the code puppet before the glb is loaded');
+      if (n < 20) fb.bad.push('fallback: the code puppet has almost nothing in it');
+    } catch (e) { fb.bad.push('fallback threw: ' + e.message); }
     const got = await looks.loadCast(['pallet_jack'], 30000);
-    const out = { got, bad: [], clips: {} };
+    const out = { got, bad: [...fb.bad], fallback: fb, clips: {} };
     const sc = new THREE.Scene(); G.scene = sc; PJ.fx = false;
     const cam = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 200); cam.position.set(0, 1.6, -6); cam.lookAt(0, 1, 0); cam.updateMatrixWorld(true);
     const a = A.spawnActor('pj_check', { look: 'pallet_jack', voice: {} }, [0, 0, 0], 0);
