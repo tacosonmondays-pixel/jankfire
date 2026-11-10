@@ -776,7 +776,13 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 .gift-c img { width: clamp(90px, 13vh, 150px); height: clamp(90px, 13vh, 150px); object-fit: contain; animation: rattle 0.5s linear infinite; }
 .gift-c b { font-size: clamp(34px, 5.5vh, 58px); line-height: 1; color: var(--ac); text-shadow: 3px 3px 0 #000; }
 .gift-c span { font-size: 15px; font-weight: 700; letter-spacing: 3px; }
-/* character screen: the joke body sliders */
-.lk-joke label { display: inline-flex; align-items: center; gap: 8px; margin-right: 18px; color: #fff; }
-.lk-joke input[type=range] { width: 150px; accent-color: #ff4fd8; }
-.lk-joke b { color: #ffe14d; min-width: 4.2em; }
+/* character screen: tabs, a two-column top row, the body sliders in a grid */
+.lk-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+.lk-tabs .chip { font-size: 15px; font-weight: 700; letter-spacing: 1px; padding: 5px 14px; background: #fff; color: #000; border: 3px solid #000; box-shadow: 3px 3px 0 #ff4fd8; }
+.lk-tabs .chip.on { background: #ffe14d; box-shadow: 3px 3px 0 #4fd8ff; transform: rotate(-1.5deg); }
+.lk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+.lk-joke { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 22px; margin-bottom: 8px; }
+.lk-joke label { display: grid; grid-template-columns: 3.6em 1fr 4.2em; align-items: center; gap: 8px; color: #fff; }
+.lk-joke input[type=range] { width: 100%; accent-color: #ff4fd8; }
+.lk-joke b { color: #ffe14d; }
+@media (max-width: 760px) { .lk-grid, .lk-joke { grid-template-columns: 1fr; } }

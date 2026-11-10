@@ -287,18 +287,30 @@
       <div class="coslist" id="achList"></div>
       <div class="cosmain">
         <div id="charSlot"></div>
-        <div class="lt">colour (your name + outline)</div><div class="chips" id="lk-color"></div>
-        <div class="lt">skin</div><div class="chips" id="lk-skin"></div>
-        <div class="lt">hair</div><div class="chips" id="lk-hair"></div><div class="chips" id="lk-hairColor"></div>
-        <div class="lt">top</div><div class="chips" id="lk-top"></div><div class="chips" id="lk-topColor"></div>
-        <div class="lt">bottom</div><div class="chips" id="lk-bottom"></div><div class="chips" id="lk-bottomColor"></div>
-        <div class="lt">body (a joke. everyone sees it, hitboxes stay the same)</div><div class="chips" id="lk-build"></div><div class="chips lk-joke" id="lk-joke"></div>
-        <div class="lt">head</div><div class="chips" id="lk-head"></div>
-        <div class="lt">face</div><div class="chips" id="lk-face"></div>
-        <div class="lt">back</div><div class="chips" id="lk-back"></div>
-        <div class="hidden"><div class="lt">kill effect (what happens to people you kill)</div><div class="chips" id="lk-kill"></div></div>
-        <div class="lt">name card (people see it when you kill them)</div>
-        <div class="cardrow"><div id="lkCard"></div><button class="mid" data-go="namecard">EDIT NAME CARD</button></div>
+        <div class="lk-tabs" id="lkTabs"></div>
+        <div class="lk-sec" data-sec="body">
+          <div class="lk-grid">
+            <div><div class="lt">colour (your name + outline)</div><div class="chips" id="lk-color"></div></div>
+            <div><div class="lt">skin</div><div class="chips" id="lk-skin"></div></div>
+          </div>
+          <div class="lt">build</div><div class="chips" id="lk-build"></div>
+          <div class="lt">shape (a joke. everyone sees it, hitboxes stay the same)</div><div class="lk-joke" id="lk-joke"></div>
+        </div>
+        <div class="lk-sec" data-sec="hair">
+          <div class="lt">hair</div><div class="chips" id="lk-hair"></div><div class="chips" id="lk-hairColor"></div>
+          <div class="lt">head</div><div class="chips" id="lk-head"></div>
+          <div class="lt">face</div><div class="chips" id="lk-face"></div>
+        </div>
+        <div class="lk-sec" data-sec="clothes">
+          <div class="lt">top</div><div class="chips" id="lk-top"></div><div class="chips" id="lk-topColor"></div>
+          <div class="lt">bottom</div><div class="chips" id="lk-bottom"></div><div class="chips" id="lk-bottomColor"></div>
+          <div class="lt">back</div><div class="chips" id="lk-back"></div>
+        </div>
+        <div class="lk-sec" data-sec="card">
+          <div class="hidden"><div class="lt">kill effect (what happens to people you kill)</div><div class="chips" id="lk-kill"></div></div>
+          <div class="lt">name card (people see it when you kill them)</div>
+          <div class="cardrow"><div id="lkCard"></div><button class="mid" data-go="namecard">EDIT NAME CARD</button></div>
+        </div>
         <div class="row"><button class="mid" id="lkRandom">RANDOMIZE</button><button class="mid" id="lkReset">RESET</button></div>
         <div class="sub" id="lkNote"></div>
       </div>

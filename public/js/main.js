@@ -51,7 +51,7 @@ import { GAMES, GAME_ORDER, TEAMS, mapsFor, mapForGame } from '/shared/modes.js'
 import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
 import { EPIC_CAM, epicMul, epicCamMs } from '/shared/epic.js';
-import { BUILDS, JOKE_MAX } from '/shared/looks.js'; // the joke body (character screen)
+import { BUILDS, JOKE_MAX, BODY_KEYS } from '/shared/looks.js'; // the joke body (character screen)
 import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, HAIRS, TOPS, BOTTOMS } from '/shared/looks.js';
 import { startBall, endBall, ballOn, BS, look } from './player.js';
 import { updateWreck, ballCam, wreckFx, wreckDied } from './wreck.js';
@@ -680,6 +680,11 @@ function setLook(look) {
 }
 // every achievement (and old one), for trying on locked accessories in the preview only: what you wear stays validLook(look, myAchs())
 const ALL_ACHS = new Set([...Object.keys(ACHIEVEMENTS), ...LOOK_SLOTS.flatMap((sl) => Object.values(ACCESSORIES[sl]).map((v) => v.legacy).filter(Boolean))]);
+let lkTab = 'body';
+function showLkTab() {
+  for (const s of document.querySelectorAll('#scr-character .lk-sec')) s.classList.toggle('hidden', s.dataset.sec !== lkTab);
+  for (const t of $('lkTabs').children) t.classList.toggle('on', t.dataset.sec === lkTab);
+}
 function buildCharacterUI() {
   const achs = myAchs();
   const look = { ...DEFAULT_LOOK, ...G.settings.look };
@@ -746,16 +751,30 @@ function buildCharacterUI() {
   }
   const jel = $('lk-joke');
   jel.innerHTML = '';
-  for (const [key, label] of [['bigHead', 'head size'], ['bigButt', 'butt size']]) {
-    const lab = document.createElement('label'), inp = document.createElement('input'), val = document.createElement('b');
+  const chestName = look.build === 'f' ? 'bust' : look.build === 'm' ? 'pecs' : 'chest';
+  for (const [key, label] of [['bigHead', 'head'], ['bigChest', chestName], ['bigArms', 'arms'], ['fat', 'belly'], ['bigButt', 'butt'], ['bigLegs', 'legs']]) {
+    const lab = document.createElement('label'), nm = document.createElement('span'), inp = document.createElement('input'), val = document.createElement('b');
+    nm.textContent = label;
     inp.type = 'range'; inp.min = '0'; inp.max = String(JOKE_MAX); inp.step = '1'; inp.value = String(look[key] | 0);
     const say = () => { val.textContent = ['normal', 'big', 'bigger', 'huge', 'why'][Number(inp.value)] || ''; };
     say();
     inp.addEventListener('input', () => { say(); const t = validLook({ ...look, [key]: Number(inp.value) }, achs); showCharacter(buildCharacter, t.color || G.myColor || '#ff4fd8', t); });
     inp.addEventListener('change', () => { setLook({ ...look, [key]: Number(inp.value) }); buildCharacterUI(); });
-    lab.append(label + ' ', inp, ' ', val);
+    lab.append(nm, inp, val);
     jel.append(lab);
   }
+  // the screen in four tabs, so the mannequin stays in view while you poke at it (the open one is remembered while the page is)
+  const tabs = $('lkTabs');
+  if (!tabs.dataset.on) {
+    tabs.dataset.on = '1';
+    for (const [id, name] of [['body', 'BODY'], ['hair', 'HAIR + FACE'], ['clothes', 'CLOTHES'], ['card', 'NAME CARD']]) {
+      const t = document.createElement('button');
+      t.className = 'chip'; t.dataset.sec = id; t.textContent = name;
+      t.addEventListener('click', () => { lkTab = id; showLkTab(); });
+      tabs.append(t);
+    }
+  }
+  showLkTab();
   for (const slot of LOOK_SLOTS) {
     const el = $('lk-' + slot);
     el.innerHTML = '';
@@ -829,6 +848,8 @@ $('lkRandom').addEventListener('click', () => {
   const look = { color: pick(LOOK_COLORS), skin: pick(SKIN_TONES), hair: pick(Object.keys(HAIRS)), hairColor: pick(HAIR_COLORS),
     top: pick(Object.entries(TOPS).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k)), topColor: pick(CLOTH_COLORS), bottom: pick(Object.entries(BOTTOMS).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k)), bottomColor: pick(CLOTH_COLORS) };
   for (const s2 of LOOK_SLOTS) look[s2] = pick(Object.entries(ACCESSORIES[s2]).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k));
+  look.build = pick(Object.keys(BUILDS)); // the body too: usually a little off, now and then a lot
+  for (const k of BODY_KEYS) look[k] = Math.random() < 0.3 ? 1 + ((Math.random() * Math.random() * JOKE_MAX) | 0) : 0;
   setLook(look); buildCharacterUI();
 });
 $('lkReset').addEventListener('click', () => { setLook({ ...DEFAULT_LOOK }); buildCharacterUI(); });
