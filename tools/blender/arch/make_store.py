@@ -4,6 +4,7 @@
 # run: blender52 -b --python tools/blender/arch/make_store.py -- [out.glb]
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import flair as FL
 from archkit import Kit, OUTDIR, dress_shell
 
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
@@ -36,6 +37,25 @@ K.decal_on('x', 6.55, 1, 0.003, 2.9, 3.2, 'vent', w=0.8, h=0.5)
 for x in (-8.7, 8.7):
     K.bar([(x, 0.15, 6.2), (x, F + 0.65, 6.2)], 0.1, 0.1, 'metaldark')
     K.bar([(x, F + 0.6, 6.2), (x, F + 0.6, 5.85)], 0.08, 0.08, 'metaldark')
+# ---- shape: a stepped false front over the door with the name on it, a long striped awning over the shopfront, and
+# the mascot: a giant slush cup on a bracket out over the pavement (too high and too far out to stand on)
+PT = F + 0.65 + 0.06  # the parapet's cap
+for (xa, xb, ya, yb) in ((-4.2, 4.2, 0, 0.9), (-2.6, 2.6, 0.9, 1.7)):
+    FL.obox(K, (xa, PT + ya, -6.15), (xb, PT + yb, -5.9), {'side': 'brick', 'top': 'metal', 'bottom': None})
+K.decal_on('x', -6.15, -1, 0.004, 0, PT + 0.42, 'sign_kwik', w=4.6, h=1.15, anchor='bottom', glow=True)
+FL.awning(K, 'x', -6.15, -1, -8.6, 8.6, 3.35, depth=1.5, drop=0.6, mat='awning@roof', valance=0.22, stripe=0.6)
+CX, CZ, CY = 7.4, -7.9, F + 1.1
+FL.bar(K, (CX, CY - 0.1, -6.15), (CX, CY - 0.1, CZ), 0.14, 'metaldark'); FL.bar(K, (CX, CY - 0.1, CZ + 0.7), (CX, CY + 1.3, -6.15), 0.07, 'metaldark')
+FL.tube(K, (CX, CY, CZ), (CX, CY + 1.9, CZ), 0.5, 0.78, 'cyan', n=10, caps=(True, False))
+FL.tube(K, (CX, CY + 1.9, CZ), (CX, CY + 2.0, CZ), 0.82, 0.82, 'trim', n=10)
+FL.tube(K, (CX, CY + 2.0, CZ), (CX, CY + 2.45, CZ), 0.74, 0.3, 'pink', n=10)  # the slush, heaped
+FL.tube(K, (CX + 0.2, CY + 1.9, CZ), (CX + 0.75, CY + 3.3, CZ - 0.1), 0.07, 0.07, 'yellow', n=6)  # the straw
+FL.tube(K, (CX, CY + 0.75, CZ), (CX, CY + 1.25, CZ), 0.6, 0.71, 'yellow', n=10, caps=(False, False))  # its band
+# on the roof against the back parapet: a vent stack with a cowl, leaning
+FL.tube(K, (-6.5, F + 0.3, 5.3), (-6.4, F + 1.9, 5.35), 0.16, 0.16, 'metal', n=8)
+FL.tube(K, (-6.4, F + 1.9, 5.35), (-6.38, F + 2.15, 5.36), 0.3, 0.1, 'metaldark', n=8)
+FL.aerial(K, (6.9, F + 0.72, 5.75), h=2.2, lean=(-0.1, 0.04), rungs=5)
+
 left = [b for b in K.boxes if not b.get('_done')]
 for b in left:
     print('plain:', b['mat'], b['min'], b['max'])

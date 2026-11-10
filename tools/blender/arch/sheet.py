@@ -1,6 +1,6 @@
 # A turnaround sheet for an architecture glb: four views round it and one from above, EEVEE, the kit's textures with
 # nearest filtering and the baked vertex AO multiplied in (as the game draws it), paint slots in a sample colour.
-# run: blender52 -b --python tools/blender/arch/sheet.py -- public/models/arch/home.glb out.png [--res 480]
+# run: blender52 -b --python tools/blender/arch/sheet.py -- public/models/arch/home.glb out.png [--res 480] [--hide v1,v2]
 import bpy, sys, os, math
 from mathutils import Vector
 argv = sys.argv[sys.argv.index('--') + 1:]
@@ -40,6 +40,8 @@ sun.data.energy = 3.2; sun.rotation_euler = (math.radians(50), 0, math.radians(3
 try: sc.eevee.taa_render_samples = 8
 except Exception: pass
 sc.view_settings.view_transform = 'Standard'
+HIDE = set(argv[argv.index('--hide') + 1].split(',')) if '--hide' in argv else set()  # variant nodes to leave out (--hide v1,v2)
+for o in [o for o in sc.objects if o.type == 'MESH' and (o.get('node') or o.name.split('|')[0]) in HIDE]: bpy.data.objects.remove(o)
 meshes = [o for o in sc.objects if o.type == 'MESH']
 mn = Vector((1e9,) * 3); mx = Vector((-1e9,) * 3)
 for o in meshes:

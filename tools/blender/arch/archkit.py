@@ -112,7 +112,7 @@ class Kit:
             r = (min(q[o[0]] for q in p), min(q[o[1]] for q in p), max(q[o[0]] for q in p), max(q[o[1]] for q in p))
             self.__dict__.setdefault('_planes', {}).setdefault((ax, round(p[0][ax], 4), nn[ax] > 0), []).append((r, mat + '(tri)', tuple(round(v, 3) for v in p[0])))
         for q in p:
-            g['v'].append(tuple(q)); g['uv'].append((q[0] / t + q[2] / t * 0.5, q[1] / t))
+            g['v'].append(tuple(q)); g['uv'].append((q[0] / t, q[2] / t) if abs(nn.y) > 0.7 else (q[0] / t + q[2] / t * 0.5, q[1] / t))  # (a flat cap: mapped from above, or its uvs have no area)
         g['f'].append((b, b + 1, b + 2))
 
     # a box. faces: dict face -> material ('px','nx','py','ny','pz','nz', or 'side' / 'top' / 'bottom' / 'all'), None = skip.
@@ -419,6 +419,7 @@ class Kit:
                     ox = min(a[2], b[2]) - max(a[0], b[0]); oy = min(a[3], b[3]) - max(a[1], b[1])
                     if ox > 0.002 and oy > 0.002:
                         if 'decal' in lst[i][1] and 'decal' in lst[j][1]: continue
+                        if lst[i][1] == lst[j][1] and 'fac_' not in lst[i][1]: continue  # same material, same world-scale UVs: the same pixels, nothing to flicker (bars meeting at a corner)
                         if '(tri)' in lst[i][1] and '(tri)' in lst[j][1]: continue  # (fan triangles of one cap: bboxes overlap, the tris don't)
                         ax, c, pos = k; o = [q for q in range(3) if q != ax]
                         pt = [0, 0, 0]; pt[ax] = c + (0.004 if pos else -0.004)

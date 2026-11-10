@@ -6,6 +6,7 @@
 # run: blender52 -b --python tools/blender/arch/make_tenement.py -- [out.glb]
 import os, sys, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import flair as FL
 from archkit import Kit, OUTDIR, cap
 
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
@@ -64,6 +65,32 @@ K.decal_on('z', x0, -1, 0.012, 0, -6.0, 'ad_jankcorp', w=14, h=7, anchor='top')
 K.decal_on('z', x1, 1, 0.012, -2, -3.5, 'tag_1', w=6, h=3, anchor='top')
 for (axis, c, s, a) in (('x', z0, -1, -8), ('x', z1, 1, 5), ('z', x1, 1, 7), ('z', x0, -1, -6)):
     K.decal_on(axis, c, s, 0.011, a, -1.3, 'grime_run', w=4, h=9, anchor='top')
+# ---- shape: iron fire escapes zigzagging down two faces, a vertical blade sign on the corner, AC boxes and washing
+# hung out of windows. all of it on the faces, below the roof: nothing new to stand on up top
+FL.fire_escape(K, 'x', z1, 1, x0 + 5.0, x0 + 10.5, -3.6, 7, 3.5, depth=1.3)
+FL.fire_escape(K, 'z', x1, 1, z0 + 6.0, z0 + 11.5, -3.6, 7, 3.5, depth=1.3)
+bx, bz = x1 + 0.9, z0 - 0.9  # the blade sign, off the corner on two arms
+for y in (-4.0, -15.5): FL.bar(K, (x1, y, z0), (bx, y, bz), 0.12, 'metaldark')
+FL.obox(K, (bx - 0.2, -16.0, bz - 0.75), (bx + 0.2, -3.5, bz + 0.75), {'side': 'metaldark', 'top': 'metaldark', 'bottom': 'metaldark'})
+for i, c in enumerate(('pink', 'yellow', 'cyan', 'pink', 'yellow')):
+    for sgn in (-1, 1):
+        FL.obox(K, (bx + sgn * 0.2 - (0.03 if sgn < 0 else 0), -5.6 - i * 2.2, bz - 0.5), (bx + sgn * 0.2 + (0.03 if sgn > 0 else 0), -4.2 - i * 2.2, bz + 0.5), c)
+import random as _r
+_r.seed(31)
+for (axis, face, s, lo, hi) in (('x', z0, -1, x0, x1), ('x', z1, 1, x0, x1), ('z', x0, -1, z0, z1), ('z', x1, 1, z0, z1)):
+    P = FL.WP(axis, face, s)
+    for k in range(9):
+        a = lo + 2.0 + _r.random() * (hi - lo - 4.0); y = -5.0 - int(_r.random() * 8) * 3.5
+        p, q = P(a - 0.4, y, 0.02), P(a + 0.4, y + 0.5, 0.5)
+        FL.obox(K, [min(p[i], q[i]) for i in range(3)], [max(p[i], q[i]) for i in range(3)], 'metal')
+    for k in range(4):  # a washing line between two windows, things on it
+        a = lo + 3.0 + _r.random() * (hi - lo - 9.0); y = -6.2 - int(_r.random() * 7) * 3.5; L = 2.6 + _r.random() * 1.5
+        oo = 0.31 + 0.03 * k  # (each line in its own plane, its cloths hung on its centre)
+        FL.bar(K, P(a, y, oo), P(a + L, y - 0.1, oo), 0.02, 'rubber')
+        for j in range(int(L / 0.6)):
+            aa = a + 0.2 + j * 0.6; hh = 0.35 + 0.3 * _r.random(); yl = y - 0.1 * (aa + 0.21 - a) / L
+            FL.both(K, [P(aa, yl - hh, oo), P(aa + 0.42, yl - hh, oo), P(aa + 0.42, yl, oo), P(aa, yl, oo)], ('pink', 'yellow', 'cyan', 'trim')[(j + k) % 4])
+
 left = [b for b in K.boxes if not b.get('_done')]
 for b in left:
     print('plain:', b['mat'], b['min'], b['max'])

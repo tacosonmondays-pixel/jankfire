@@ -6,6 +6,7 @@
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from archkit import Kit, OUTDIR, KIT, corner_boards, cap, bands
+import flair as FL
 
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 OUT = argv[0] if argv else os.path.join(OUTDIR, 'home.glb')
@@ -71,6 +72,19 @@ for (axis, c, t, _), bs in K.walls(walls).items():
                 for s in (-1, 1):
                     aa = a0 - 0.09 - 0.44 if s < 0 else a1 + 0.09
                     K.wbox(axis, c, aa, aa + 0.44, y0 - 0.02, y1 + 0.05, o0, o1 + (0.02 if out > 0 else -0.02), {'all': 'shutter@roof', 'pz' if out > 0 else 'nz': 'louvre@roof'})
+            # personality, a different set per house (v0 / v1 / v2): flower boxes downstairs (kept, or long dead), striped
+            # awnings upstairs, or a window somebody boarded up and never fixed
+            face = c + out * t / 2
+            for k, (a0, a1, y0, y1, door) in enumerate(o for o in ops if not o[4]):
+                if y0 < F:
+                    FL.flowerbox(K, axis, face, out, a0 - 0.05, a1 + 0.05, y0 - 0.08, node='v0', seed=k)
+                    FL.flowerbox(K, axis, face, out, a0 - 0.02, a1 + 0.09, y0 - 0.11, node='v2', dead=True, seed=k + 1, out=0.21)  # (hangs a bit off: its own planes)
+                else:
+                    FL.awning(K, axis, face, out, a0 - 0.6, a1 + 0.6, y1 + 0.42, depth=0.75, drop=0.5, node='v0')
+                    if out < 0 and k % 2 == 1:
+                        P = FL.WP(axis, face, out)
+                        for (ya, yb) in ((y0 + 0.15, y0 + 0.45), (y0 + 0.75, y0 + 0.55), (y1 - 0.4, y1 - 0.15)):
+                            FL.bar(K, P(a0 - 0.2, ya, 0.06), P(a1 + 0.2, yb, 0.06), 0.2, 'floorwood', node='v1', h=0.03)
 
 # corner boards up all four corners of the house, drainpipes at the back corners
 corner_boards(K, 7.15, 6.15, 0.3, 2 * F + 0.3, 'trim')
@@ -152,6 +166,41 @@ for b in K.take(lambda b: b['mat'] == 'roofg' and eq(b['min'][1], 2.6)):
 # ---- the picket fence (its own node, so a house that has no fence hides it): pickets with points, two rails
 for b in K.take(lambda b: b['mat'] == 'picket'):
     K.box(b['min'], b['max'], {'side': 'picket@trim', 'top': None, 'bottom': None}, node='fence', cull=False)
+
+# ---- shape: a false-front gable propped up on the front parapet (it is a show home), a pediment on the porch with
+# brackets and a lantern, a chimney pot and a wind-bent aerial. then what each household added (one set per house)
+YP = 2 * F + 0.3 + 0.8
+FL.gable(K, 'x', -6.0, -1, -3.7, 3.7, YP, 2.0, 0.3, 'siding@siding', vent='vent')
+FL.gable(K, 'x', -7.8, -1, -2.5, 2.5, 3.25, 0.95, 0.12, 'siding@siding', props=False)
+for sx in (-1, 1): FL.gable(K, 'z', sx * 7.0, sx, -2.6, 2.6, YP, 1.4, 0.3, 'siding@siding', vent='vent', props=False)  # smaller ones on the sides
+# the back one never got its siding: just the frame, still propped
+FL.bar(K, (-3.2, YP + 0.07, 5.85), (0, YP + 1.7, 5.85), 0.12, 'floorwood'); FL.bar(K, (0, YP + 1.7, 5.85), (3.2, YP + 0.07, 5.85), 0.12, 'floorwood')
+for x in (-1.6, 0, 1.6): FL.bar(K, (x, YP + 0.012, 5.85), (x, YP + 1.7 - abs(x) * 1.7 / 3.2, 5.85), 0.09, 'floorwood')
+FL.bar(K, (0.42, YP + 0.9, 5.8), (0.42, YP + 0.02, 4.9), 0.09, 'trimdark')
+for sx in (-1, 1):
+    FL.bar(K, (sx * 2.75, 2.4, -7.35), (sx * 2.15, 3.0, -7.35), 0.09, 'trim')
+FL.bar(K, (0, 2.995, -6.9), (0, 2.82, -6.9), 0.025, 'metaldark')
+FL.obox(K, (-0.11, 2.52, -7.01), (0.11, 2.8, -6.79), 'yellow')
+FL.obox(K, (-0.14, 2.8, -7.04), (0.14, 2.84, -6.76), 'metaldark')
+FL.tube(K, (4.05, 9.535, 2.15), (4.05, 9.98, 2.15), 0.17, 0.12, 'terracotta', n=8)
+FL.aerial(K, (3.55, 9.53, 1.65), h=1.7, lean=(0.14, -0.06))
+# v0, the proud one: a satellite dish up the side
+FL.dish(K, (7.2, 6.1, 3.2), (0.7, 0.65, 0.3), node='v0')
+# v1, the party house: lights along the eave that never came down, a hoop over the garage
+FL.string_lights(K, [(-7.6, YP - 0.62, -6.72), (-3.8, YP - 0.62, -6.72), (0, YP - 0.62, -6.72), (3.8, YP - 0.62, -6.72), (7.6, YP - 0.62, -6.72)], node='v1')
+FL.bar(K, (10.1, 3.2, -6.22), (10.1, 4.0, -6.22), 0.07, 'metaldark', node='v1')
+FL.obox(K, (9.5, 3.62, -6.36), (10.7, 4.45, -6.3), 'trim', node='v1')
+FL.obox(K, (9.86, 3.72, -6.375), (10.34, 4.08, -6.36), 'pink', node='v1')
+FL.tube(K, (10.1, 3.74, -6.62), (10.1, 3.78, -6.62), 0.23, 0.23, 'pink', n=10, caps=(False, False), node='v1', inside=True)
+FL.tube(K, (10.1, 3.74, -6.62), (10.1, 3.4, -6.62), 0.22, 0.15, 'picket@trim', n=8, caps=(False, False), node='v1', inside=True)
+# v2, the one that gave up: an AC box hanging out of the side, dripping; a duck for a weathervane on the gable
+FL.obox(K, (-7.62, 4.5, 1.6), (-7.15, 5.05, 2.4), 'metal', node='v2')
+FL.bar(K, (-7.5, 4.5, 2.0), (-7.16, 4.15, 2.0), 0.04, 'metaldark', node='v2')
+FL.bar(K, (0, YP + 2.0, -6.15), (0, YP + 2.8, -6.15), 0.035, 'metaldark', node='v2')
+FL.bar(K, (-0.45, YP + 2.5, -6.15), (0.45, YP + 2.5, -6.15), 0.03, 'metaldark', node='v2')
+FL.obox(K, (-0.2, YP + 2.75, -6.21), (0.14, YP + 2.95, -6.09), 'yellow', node='v2')
+FL.obox(K, (0.06, YP + 2.92, -6.2), (0.24, YP + 3.1, -6.1), 'yellow', node='v2')
+FL.obox(K, (0.24, YP + 2.97, -6.18), (0.34, YP + 3.02, -6.12), 'pink', node='v2')
 
 # ---- grime: water runs, mould by the ground, posters on the side, an electric meter, a dryer vent, a FOR SALE
 K.decal_on('z', 7, 1, 0.16, -3.5, 1.3, 'meter', w=0.45, h=0.45)

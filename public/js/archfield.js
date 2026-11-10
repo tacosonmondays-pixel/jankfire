@@ -88,13 +88,15 @@ const _m = new THREE.Matrix4(), _c = new THREE.Color();
 export function buildArch(scene, list) {
   if (group) { scene.remove(group); for (const m of group.children) m.geometry.dispose(); group = null; }
   if (off || !list || !list.length) return;
-  const byMat = new Map();
+  const byMat = new Map(), nth = new Map();
   for (const a of list) {
     const parts = models[a.id];
     if (!parts) continue;
     _m.makeRotationY(-(a.r || 0) * Math.PI / 2).setPosition(a.p[0], a.p[1], a.p[2]); // quarter turns like the builder's local()
+    const vk = nth.get(a.id) || 0; nth.set(a.id, vk + 1); // which set of extras this copy wears (nodes v0 / v1 / v2: one per placement)
     for (const p of parts) {
       if (p.node === 'fence' && a.fence === false) continue;
+      if (p.node.length === 2 && p.node[0] === 'v' && p.node !== 'v' + (vk % 3)) continue;
       const g = p.geo.clone().applyMatrix4(_m);
       if (p.x.paint) { // this house's paint, into its vertex colours
         const key = a.paint && a.paint[p.x.paint];
