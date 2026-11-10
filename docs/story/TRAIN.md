@@ -1,6 +1,6 @@
 # OVERDUE, Act I climax: TICKETS, PLEASE (the train and the mask)
 
-**Status: PROPOSAL, waiting for the owner's OK. Nothing here is built or in the game data yet.**
+**Status: APPROVED by the owner (2026-11-10). Decisions are in section 8. Being built: data first, then models, then the fight.**
 The owner's idea and sketch (2026-11-10): a train, your crew, a crewmate with a built-in Overdrive Rig who you kill at
 his own request and whose bio material you take, a Blood Cross minigun, and a mask the size of the tunnel that drags
 itself after you on black arms. Tone: serious, gory, dark. Characters die.
@@ -170,10 +170,13 @@ You have Jack's marrow. The Blood Drive is free while it spins. Now the mask bre
   blood cross grows out of the middle of it until it touches the tunnel on all four sides. **BLOOD CROSSED.** The
   mask's last bolt goes. The face falls forward flat onto the track and the train leaves the tunnel into a red
   evening on The Commute.
-- It doesn't follow. It stops at the tunnel mouth, at the line where the light starts. Arms wave slowly in the dark.
-  The Inspector lifts his punch, and clicks it once.
-- It is not dead. It is rescheduled. (Act III, when you take the Loop into the Gut for the nine, it's still in there,
-  with no face.)
+- The cross is what stops it. The thing behind the face comes apart along the cross's four arms: the braids
+  unravel, the ropes of arms let go of the walls one hand at a time, and the plug that filled the tunnel slumps into
+  four heaps across the track, steaming. The chase is over. Nothing is hauling any more.
+- The last thing you see in the tunnel mouth: in the middle of the wreck the Inspector, on his own now, the size of a
+  man. He lifts his punch, and clicks it once.
+- It is broken apart, not gone. The pieces are still in the Loop and they were grown to grow back. (Owner: it can
+  come back later. Act III, when you take the Loop into the Gut for the nine, is the obvious place.)
 
 ### Failure
 THE GAP at 0 m: the hands close over the camera, one at a time. Death line: "fare evaded. briefly."
@@ -206,7 +209,7 @@ _The only other way into the Gut is the commuter line under the hill. Nobody tak
 **The mystery**
 - _learn:_ There is a line under the hill and now it's yours. Something made of people lives in it, and it wears a ☺ CORP sign. A part taken from a friend works the same as a part taken from an enemy.
 - _suspect:_ They were passengers. Someone put that face on them. Whatever grew the Gut grew this.
-- _withheld:_ Regrowth, and what the dead were for (Act III). That the Inspector can be talked to (Act III).
+- _withheld:_ Regrowth, and what the dead were for (Act III). That it grows back, and that the Inspector can be talked to (Act III).
 
 **Objectives**
 1. meet gordo at the lost & found · talk `the_loop`
@@ -316,7 +319,7 @@ _Plays when phase 1 reaches its scripted end. The player keeps control of the ca
 
 #### Scene: `c6b_terminus` (cinematic, 52 s, music: auntie_theme_crayon, one instrument)
 - `  0` _The train coasts out onto a viaduct over The Commute. Sunset: the same one Lumps cries at. Dead traffic to the horizon, every windscreen red._
-- `  4` _Behind you, the tunnel mouth. In the dark just inside it, arms, moving slowly. The broken face lying on the track in the last of the light. A click. One._
+- `  4` _Behind you, the tunnel mouth. The broken face lying on the track in the last of the light. Behind it, in the dark, what's left: heaps, steaming, a few hands still opening and closing on nothing. Nothing follows. A click. One._
 - `  9` _Dale stops the train. He doesn't get out of the cab. He has both hands on the brake and his forehead on his hands._
 - ` 13` _Gordo sits down where he's standing. He has the fire axe across his knees and can't open his fingers._
 - ` 17` _Lumps kneels by Jack. He closes the split in the boiler with his hands, the way you'd close a coat on someone. He gets his good arm under Jack's back and his bad arm under his knees._
@@ -371,11 +374,8 @@ _Builder notes: the only mission whose grade card has no joke. Jack's vest stays
 | the train arena, scrolling tunnel, THE GAP | story | high | a treadmill: the train stays still, the tunnel and the boss move |
 | referee: the fight's rules | story | high | after the Overtime bosses PR, reusing its part-hitbox format |
 
-## 8. Questions for the owner
-1. **Who dies.** This uses a new crewmate, Pallet Jack, threaded into missions 1 to 5 so you know him first. The
-   alternative is one of the two friends you already have (Lumps or Wee Gordo). That would hit harder, but both of
-   them carry Acts II to IV (the three-way split, their own endings), so it means rewriting most of the script. Jack,
-   or one of them?
-2. **The player pulls the trigger**, with a button, no cutscene doing it for them. OK, or too much?
-3. **It survives**, faceless, and is still in the tunnel in Act III. OK, or should it die here?
-4. **Names:** PALLET JACK, BLOOD DRIVE, REVENUE PROTECTION, mission TICKETS, PLEASE. Keep or change any?
+## 8. The owner's decisions (2026-11-10)
+1. **Who dies:** Pallet Jack. Lumps and Wee Gordo live.
+2. **The player pulls the trigger**, with a button. No cutscene does it for them.
+3. **The boss:** you stop it and it breaks apart. The chase ends for good here; it can come back later.
+4. **Names:** PALLET JACK, BLOOD DRIVE, REVENUE PROTECTION and TICKETS, PLEASE are kept.
