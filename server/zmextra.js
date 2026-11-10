@@ -91,7 +91,7 @@ const methods = {
     if (n - z.tear0 > 45000) return false; // 45 s of planks going back up as fast as it rips them: it climbs through anyway
     if (n < z.tearAt) return true;
     const slow = this.zxMod('brainfreeze') ? 2.2 : 1;
-    z.tearAt = n + (z.run ? ZM.tearRun : ZM.tear) * (0.8 + Math.random() * 0.4) * slow;
+    z.tearAt = n + (z.run ? ZM.tearRun : ZM.tear) * (0.8 + Math.random() * 0.4) * slow * this.zlTear(z); // (armless: it headbutts the planks, slowly)
     zs.planks[z.win]--;
     this.broadcast({ t: 'zplank', k: 'tear', i: z.win, n: zs.planks[z.win], by: b.id });
     this.broadcast({ t: 'fx', k: 'swing', w: 'bite', id: b.id, a: [r2(b.pos[0]), 1.4, r2(b.pos[2])] });
