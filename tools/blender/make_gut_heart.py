@@ -728,7 +728,7 @@ def hanging(b, C, rn, n=5):
             t = 1.0 - 0.42 * j; q = pts[0].lerp(pts[-1], t) if j else pts[-1]; L = rn.u(0.50, 0.66)
             a = rn.u(0, 6.28); side = V3((math.cos(a), 0, math.sin(a)))
             M = frame(-dn + side * rn.u(-0.25, 0.25), side, q + dn * (0.52 * L) + (side * 0.12 * L if j else V3()))
-            add_hero(b, rn, M, L, True, rn.pick(['raw', 'deep', 'liver', 'raw']), ph + 0.02, (1, 1, 1), wmode='hang', cull=False)
+            add_hero(b, rn, M, L, True, rn.pick(['raw', 'deep', 'liver', 'raw']), min(1.0, ph + 0.02), (1, 1, 1), wmode='hang', cull=False)
         out.append(pts[-1])
     INFO['hang'] = [r3(HM @ p) for p in out]
 
@@ -748,7 +748,7 @@ def build_heart(C, far=False, seed=21):
             if rn.chance(pr): hero[i] = d < 6.5
     build_shell(b, C, kind, tint, glow, hero, rn, far)
     for i, hi in hero.items():
-        up, right, nrm = cell_frame(C, i, rn); p = V3(C.P[i]); L = C.size[i] / S0 * rn.u(0.62, 0.78); mode = rn.u()
+        up, right, nrm = cell_frame(C, i, rn); p = V3(C.P[i]); L = C.size[i] / S0 * rn.u(0.54, 0.68); mode = rn.u()
         if mode < 0.58:   M = frame(up, nrm, p + nrm * 0.03 * L) @ RX(rn.u(0.0, 0.45))        # lying in the mass, its top lifting out
         elif mode < 0.84: M = frame(nrm + up * rn.u(-0.5, 0.5), -up, p - nrm * 0.12 * L)      # top out: its vessel stumps stick out at you
         else:             M = frame(-nrm + up * rn.u(-0.4, 0.4), up, p + nrm * 0.02 * L)      # apex out
@@ -1154,8 +1154,8 @@ def build_creep(C, TR, far=False, seed=61):
 # ------------------------------------------------------------ assembling, pictures, export
 VIEWS = {  # name: (camera, target, lens or ('o', ortho scale))
     'front': ((0, 23.5, 120), (0, 23.5, 0), ('o', 52)), 'side': ((120, 23.5, 0), (0, 23.5, 0), ('o', 52)), 'back': ((0, 23.5, -120), (0, 23.5, 0), ('o', 52)),
-    'q': ((46, 30, 58), (0, 23, 0), 50), 'q2': ((-52, 14, 44), (0, 24, 0), 50), 'heart': ((6, 37, 34), (0.5, 36.5, 0), 50), 'hback': ((-10, 40, -34), (0, 36, 0), 50),
-    'top': ((4, 44, 13), (0, 42, -0.5), 35), 'hearts': ((5.2, 28.6, 6.2), (2.6, 29.6, 2.4), 35), 'under': ((6.5, 24.8, 4.5), (2.6, 28.0, 0.6), 28),
+    'q': ((50, 34, 56), (0, 22.5, 0), 50), 'q2': ((-52, 14, 44), (0, 24, 0), 50), 'heart': ((6, 37, 34), (0.5, 36.5, 0), 50), 'hback': ((-10, 40, -34), (0, 36, 0), 50),
+    'top': ((7, 50, 24), (0, 43.5, 0), 40), 'hearts': ((3.6, 26.9, 3.4), (2.4, 29.3, 0.9), 24), 'under': ((6.5, 24.8, 4.5), (2.6, 28.0, 0.6), 28),
     'stair': ((7.5, 3.4, 9.5), (0.5, 4.6, 0), 30), 'base': ((13, 2.2, 15), (0, 3.2, 0), 35), 'mid': ((11, 15, 12), (0, 14.5, 0), 35), 'cup': ((10, 22, 11), (0, 27.5, 0), 35),
 }
 
@@ -1187,6 +1187,30 @@ def preview(pdir, views, res=(900, 900), exposure=0.0, tag='p', samples=None):
     return out
 
 
+def sheets(N, tris):
+    """the Blender pictures: the turnaround with a 1.8 m figure, the close-ups, the far model"""
+    sd = os.path.join(SHEETS, 'story'); tmp = os.path.join(sd, '_tmp_gh'); os.makedirs(tmp, exist_ok=True)
+    far = [o for k, o in N.items() if 'lod1' in k]; near = [o for k, o in N.items() if 'lod1' not in k]
+    for o in far: o.hide_render = True
+    colour_preview(list(MAT.values())); studio(0.62); man((8.5, 0, 5.0)); man((2.6, STAIR_Y1, 0.6), 'jf_set_man2')
+    t0 = sum(v for k, v in tris.items() if 'lod1' not in k); t1 = sum(v for k, v in tris.items() if 'lod1' in k)
+    ps = [shot(os.path.join(tmp, f't_{v}.png'), VIEWS[v][0], VIEWS[v][1], res=(560, 1040), ortho=VIEWS[v][2][1] if isinstance(VIEWS[v][2], tuple) else None, lens=VIEWS[v][2] if not isinstance(VIEWS[v][2], tuple) else 50, samples=16) for v in ('front', 'q', 'side', 'back')]
+    contact(ps, os.path.join(sd, FID), f'{FID}  {t0} tris (+ {t1} far)  a 14 m heart (18 m to the top of its arch) on a 28 m spine  the figures are 1.8 m', cols=4, labels=['front', 'three-quarter', 'side (its left)', 'back'])
+    cl = [('hearts', 'the small hearts, from the top of the stair'), ('heart', 'the heart, 35 m'), ('top', 'the vessels at the top'), ('hback', 'the back'), ('stair', 'the stair: ribs for treads'), ('mid', 'half way up'), ('base', 'the foot and the roots'), ('cup', 'where the bone holds it')]
+    ps = [shot(os.path.join(tmp, f'c_{v}.png'), VIEWS[v][0], VIEWS[v][1], VIEWS[v][2], res=(640, 520), samples=16) for v, _ in cl]
+    contact(ps, os.path.join(sd, FID + '_closeups'), f'{FID}  close-ups (blender, studio light)', cols=4, labels=[c[1] for c in cl])
+    if far:
+        for o in near: o.hide_render = True
+        for o in far: o.hide_render = False
+        ps = [shot(os.path.join(tmp, f'l_{v}.png'), VIEWS[v][0], VIEWS[v][1], res=(480, 900), ortho=VIEWS[v][2][1] if isinstance(VIEWS[v][2], tuple) else None, lens=VIEWS[v][2] if not isinstance(VIEWS[v][2], tuple) else 50, samples=12) for v in ('front', 'q', 'back')]
+        contact(ps, os.path.join(sd, FID + '_lod1'), f'{FID} far model  {t1} tris  (past about 120 m)', cols=3, labels=['front', 'three-quarter', 'back'])
+        for o in near: o.hide_render = False
+        for o in far: o.hide_render = True
+    clear_studio(); colour_preview(list(MAT.values()), on=False)
+    try: os.rmdir(tmp)
+    except OSError: pass
+
+
 def build_all():
     materials(); N = {}; B = {}
     C = build_cells(); B['heart'] = build_heart(C)
@@ -1208,15 +1232,16 @@ def build_all():
 RIPPLE_GLSL = """// vertex shader, once:   attribute vec2 aPulse;   (= TEXCOORD_1: x phase, y weight)   uniform float uTime;
 float ghBeat(float t) { return exp(-pow((t - 0.12) / 0.045, 2.0)) + 0.6 * exp(-pow((t - 0.33) / 0.06, 2.0)); }   // lub-dub, then rest
 // after #include <begin_vertex>:
-transformed += objectNormal * (aPulse.y * 0.075 * ghBeat(fract(uTime * 0.72 - aPulse.x * 0.55)));"""
+transformed += objectNormal * (aPulse.y * 0.09 * ghBeat(fract(uTime * 0.72 - aPulse.x * 0.55)));"""
 
 
 def write_json(N, tris):
     C = INFO['cells']; W = [HM @ V3(p) for p in C.P]; TR = INFO['treads']
-    lo = V3((1e9,) * 3); hi = V3((-1e9,) * 3)
+    lo = V3((1e9,) * 3); hi = V3((-1e9,) * 3); reach = [0.0, 0.0, 0.0]; nv = 0
     for k, o in N.items():
         if 'lod1' in k: continue
-        for v in o.data.vertices: w = g_of(v.co); lo = V3(map(min, lo, w)); hi = V3(map(max, hi, w))
+        for v in o.data.vertices:
+            w = g_of(v.co); lo = V3(map(min, lo, w)); hi = V3(map(max, hi, w)); r_ = math.hypot(w.x, w.z); q_ = 0 if w.y < 3 else 1 if w.y < 24 else 2; reach[q_] = max(reach[q_], r_); nv += 1
     bx = lambda a, b_: [round(x, 2) for x in (*a, *b_)]
     tower = []; y = 0.0
     while y < TOP - 0.01:
@@ -1247,7 +1272,9 @@ def write_json(N, tris):
         id=FID, name='the heart of the Gut (working name)', units='metres',
         space="x right, y up, the heart's front faces +z, its apex points to +x; the origin is the middle of the tower's foot, on the ground",
         files=dict(glb='s_gut_heart.glb', demo='tools/blender/gut_heart_demo.html', doc='docs/story/gut/GUT_HEART_MODEL.md'),
-        size=dict(min=r3(lo, 2), max=r3(hi, 2), heart_m=round(hi.y - apex.y, 1), tower_m=round(apex.y, 1)),
+        size=dict(min=r3(lo, 2), max=r3(hi, 2), tall_m=round(hi.y, 1), heart_body_m=round(max(w.y for w in W) - apex.y, 1), heart_to_top_of_arch_m=round((HM @ V3((2.0, 10.85, -1.3))).y - apex.y, 1),
+                  feelers_top_y=round(hi.y, 1), apex_y=round(apex.y, 1), spine_top_y=TOP, stair_top_y=STAIR_Y1, widest_m=round(max(hi.x - lo.x, hi.z - lo.z), 1),
+                  reach_from_axis_m=dict(below_3m=round(reach[0], 1), tower_3_to_24m=round(reach[1], 1), above_24m=round(reach[2], 1))),
         tris=dict(lod0=sum(v for k, v in tris.items() if 'lod1' not in k), lod1=sum(v for k, v in tris.items() if 'lod1' in k), **tris),
         nodes=dict(lod0=['gh_heart', 'gh_creep', 'gh_tower'], lod1=['gh_heart_lod1', 'gh_creep_lod1', 'gh_tower_lod1'], switch_m=120),
         materials=dict(gh_flesh='every small heart, vessel, vein and root (256 px atlas). ripples', gh_glow='the lit pits between hearts: emissive only, its own material so the game can pulse it. ripple channel present (weight 0, phase = the cell it is in)',
@@ -1267,7 +1294,10 @@ def write_json(N, tris):
     )
     path = os.path.join(OUT, FID + '.json')
     with open(path, 'w') as f: json.dump(data, f, indent=1)
+    st = [t['state'] for t in TR]
     print('JF_JSON', path, os.path.getsize(path) // 1024, 'KB', 'boxes', len(tower), len(heart), len(but), len(steps))
+    print('JF_FACTS', dict(reach=reach, gone=st.count('gone'), stub=st.count('stub'), warp=sum(1 for t in TR if t.get('warp')), snap=sum(1 for t in TR if t.get('snap') and t['state'] == 'ok' and t['k'] % 2 == 0), hoops=INFO.get('hoops'), webs=INFO.get('webs'),
+                            skulls=len(INFO.get('skulls', [])), nubs=INFO.get('nubs'), cup=[c['kind'] for c in INFO['chalice']], whole=data['hearts'], mesh_verts=nv, bad_fans=INFO.get('bad_fans', 0), flips=INFO.get('shell_flips')))
     return data
 
 
@@ -1286,6 +1316,7 @@ def main():
         path = os.path.join(OUT, FID + '.glb'); root['jf'] = json.dumps(dict(id=FID, kind='landmark', tris=tris))
         export_glb(root, path); compact_glb(path); write_json(N, tris)
     pd = arg('preview')
+    if not pd and not arg('no-sheet'): sheets(N, tris)
     if pd:
         far = [o for k, o in N.items() if 'lod1' in k]; near = [o for k, o in N.items() if 'lod1' not in k]
         for o in (near if arg('lod') else far): o.hide_render = True

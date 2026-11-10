@@ -19,13 +19,24 @@
    49.43,
    7.22
   ],
-  "heart_m": 21.8,
-  "tower_m": 27.6
+  "tall_m": 49.4,
+  "heart_body_m": 14.3,
+  "heart_to_top_of_arch_m": 18.4,
+  "feelers_top_y": 49.4,
+  "apex_y": 27.6,
+  "spine_top_y": 29.4,
+  "stair_top_y": 25.6,
+  "widest_m": 19.7,
+  "reach_from_axis_m": {
+   "below_3m": 11.6,
+   "tower_3_to_24m": 6.6,
+   "above_24m": 8.9
+  }
  },
  "tris": {
-  "lod0": 42725,
+  "lod0": 42721,
   "lod1": 7975,
-  "heart": 29973,
+  "heart": 29969,
   "tower": 8659,
   "creep": 4093,
   "heart_lod1": 3306,
@@ -71,7 +82,7 @@
   ],
   "also": "COLOR_0 = tint x baked occlusion (multiply into the texture), TEXCOORD_0 = the atlas",
   "note": "the exporter flips v of every uv set; the build stores 1 - weight so the file holds the weight itself. displace along the NORMAL: flesh has no split normals where it moves",
-  "glsl": "// vertex shader, once:   attribute vec2 aPulse;   (= TEXCOORD_1: x phase, y weight)   uniform float uTime;\nfloat ghBeat(float t) { return exp(-pow((t - 0.12) / 0.045, 2.0)) + 0.6 * exp(-pow((t - 0.33) / 0.06, 2.0)); }   // lub-dub, then rest\n// after #include <begin_vertex>:\ntransformed += objectNormal * (aPulse.y * 0.075 * ghBeat(fract(uTime * 0.72 - aPulse.x * 0.55)));"
+  "glsl": "// vertex shader, once:   attribute vec2 aPulse;   (= TEXCOORD_1: x phase, y weight)   uniform float uTime;\nfloat ghBeat(float t) { return exp(-pow((t - 0.12) / 0.045, 2.0)) + 0.6 * exp(-pow((t - 0.33) / 0.06, 2.0)); }   // lub-dub, then rest\n// after #include <begin_vertex>:\ntransformed += objectNormal * (aPulse.y * 0.09 * ghBeat(fract(uTime * 0.72 - aPulse.x * 0.55)));"
  },
  "boxes": {
   "format": "[x0, y0, z0, x1, y1, z1], root space, axis aligned",

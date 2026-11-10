@@ -40,7 +40,7 @@ if (flag('serve')) {
     const errs = []; pg.on('pageerror', (e) => errs.push(e.message));
     await pg.goto(`${base}?still=1`); await pg.waitForFunction(() => window.DONE && window.frame, null, { timeout: 300000 }).catch(() => errs.push('timeout'));
     const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ghclip')); const fps = 20, rate = 0.72, beats = 2, n = Math.round(beats / rate * fps);
-    const views = [{ t: [0, 27, 0], d: 62, az: 0.5, el: 0.0, fov: 60 }, { t: [0.5, 35.5, 0], d: 24, az: 0.35, el: 0.02, fov: 60 }, { t: [2.6, 28.6, 0.8], d: 6.5, az: 0.9, el: -0.3, fov: 75 }];
+    const views = [{ t: [0, 27, 0], d: 62, az: 0.5, el: 0.0, fov: 60 }, { t: [0, 36.5, 0], d: 26, az: 0.3, el: 0.02, fov: 60 }, { t: [2.6, 28.6, 0.8], d: 6.5, az: 0.9, el: -0.3, fov: 75 }];
     let k = 0;
     for (const v of views) for (let i = 0; i < n; i++) {
       await pg.evaluate(([t, vv]) => window.frame(t, vv), [i / fps, v]);
