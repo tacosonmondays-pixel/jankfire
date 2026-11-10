@@ -1028,9 +1028,9 @@ class Room {
     if (b.held && n < b.held.until) { for (let i = 0; i < 3; i++) v[i] = Math.max(-30, Math.min(30, (b.held.at[i] - b.pos[i]) * 9)); b.onGround = false; } // hanging in a shredder
     const was = b.onGround;
     sink(this.map, b.pos, v); // in the deep sea: sinking, not falling
-    swim(this.map, this.boxes, b.pos, v, dt); // in a pond: floating
+    const fl = swim(this.map, this.boxes, b.pos, v, dt) && !!this.map.seaSwim; // in a pond: floating (fl: in the sea, where a floater can step up onto the shelf)
     mire(this.map, b.pos, v, dt, !!(b.ai && b.ai.hook)); // in lava: going down slowly
-    const res = movePlayer(b.pos, v, dt, this.boxes, was);
+    const res = movePlayer(b.pos, v, dt, this.boxes, was || fl);
     b.onGround = !!res.ground && v[1] <= 0.01;
     if (b.onGround && res.ground.pad && !b.ai.dummy) { const pd = res.ground.pad; v[0] += pd[0]; v[1] = pd[1]; v[2] += pd[2]; b.onGround = false; }
     b.f = (slipping ? 16 : 0) | (n < (b.sleepUntil || 0) ? FLAGS.SLEEP : 0); // asleep: everyone sees them lying on the floor
