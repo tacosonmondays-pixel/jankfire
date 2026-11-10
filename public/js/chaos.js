@@ -41,9 +41,17 @@ function buildLava(s) {
   const pos = [], idx = [];
   let n = 0;
   for (const t of s.tops) {
-    if (!s.lava.has(t.b)) continue;
+    if (!s.lava.has(t.b) || t.b.ter) continue; // (shaped ground: its hidden steps aren't the surface, the heightfield below is)
     const b = t.b, y = b.max[1] + 0.03;
     pos.push(b.min[0], y, b.min[2], b.max[0], y, b.min[2], b.max[0], y, b.max[2], b.min[0], y, b.max[2]);
+    idx.push(n, n + 2, n + 1, n, n + 3, n + 2);
+    n += 4;
+  }
+  const T = C.boxes && C.boxes.terrain;
+  if (T) for (let i = 0; i < T.nx; i++) for (let j = 0; j < T.nz; j++) { // lava laid over the hills and hollows
+    if (!T.ok[i * T.nz + j]) continue;
+    const h = (a, b) => T.H[a * (T.nz + 1) + b] + 0.04, x = T.x0 + i, z = T.z0 + j;
+    pos.push(x, h(i, j), z, x + 1, h(i + 1, j), z, x + 1, h(i + 1, j + 1), z + 1, x, h(i, j + 1), z + 1);
     idx.push(n, n + 2, n + 1, n, n + 3, n + 2);
     n += 4;
   }

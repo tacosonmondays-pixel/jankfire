@@ -25,7 +25,49 @@ function gridOf(boxes) {
   Object.defineProperty(boxes, '_gridN', { value: boxes.length, writable: true, configurable: true, enumerable: false });
   return cells;
 }
-export function resetGrid(boxes) { boxes._grid = null; boxes._gridN = -1; }
+export function resetGrid(boxes) { boxes._grid = null; boxes._gridN = -1; boxes._rgrid = null; }
+// shaped ground: rays go against the heightfield itself (terrainRay), so their grid leaves its thousands of steps out
+function rayGrid(boxes) {
+  if (boxes._rgrid && boxes._rgridN === boxes.length) return boxes._rgrid;
+  const cells = new Map();
+  for (const b of boxes) {
+    if (b.ter) continue;
+    const x0 = Math.floor(b.min[0] / CELL), x1 = Math.floor(b.max[0] / CELL), z0 = Math.floor(b.min[2] / CELL), z1 = Math.floor(b.max[2] / CELL);
+    for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) { const k = x * 100003 + z; let c = cells.get(k); if (!c) cells.set(k, (c = [])); c.push(b); }
+  }
+  Object.defineProperty(boxes, '_rgrid', { value: cells, writable: true, configurable: true, enumerable: false });
+  Object.defineProperty(boxes, '_rgridN', { value: boxes.length, writable: true, configurable: true, enumerable: false });
+  return cells;
+}
+// a ray against the heightfield: the first place it's under the surface (and not under the whole slab). stepped, then
+// narrowed down. coming in from the side (out of the canyon, into its face) counts: that's a wall hit
+function terrainRay(T, o, d, maxT) {
+  let t0 = 0, t1 = maxT;
+  for (const a of [0, 2]) {
+    const lo = a ? T.z0 : T.x0, hi = lo + (a ? T.nz : T.nx);
+    if (Math.abs(d[a]) < 1e-9) { if (o[a] < lo || o[a] > hi) return null; continue; }
+    let p = (lo - o[a]) / d[a], q = (hi - o[a]) / d[a];
+    if (p > q) { const w = p; p = q; q = w; }
+    if (p > t0) t0 = p; if (q < t1) t1 = q;
+    if (t0 > t1) return null;
+  }
+  if (d[1] > 1e-9) { const e = (T.hi - o[1]) / d[1]; if (e < t0) return null; if (e < t1) t1 = e; }
+  else if (d[1] < -1e-9) { const e = (T.hi - o[1]) / d[1]; if (e > t0) t0 = e; if (t0 > t1) return null; }
+  else if (o[1] > T.hi) return null;
+  const under = (t) => { const g = T.at(o[0] + d[0] * t, o[2] + d[2] * t), y = o[1] + d[1] * t; return g != null && y < g && y > T.base - 0.02; };
+  let pt = t0, side = true; // (side: the sample before was off the ground's edge)
+  for (let t = t0; ; ) {
+    if (under(t)) {
+      if (t === t0) return { t, side: t > 0 };
+      let a = pt, b = t;
+      for (let i = 0; i < 9; i++) { const m = (a + b) / 2; if (under(m)) b = m; else a = m; }
+      return { t: b, side };
+    }
+    if (t >= t1) return null;
+    side = T.at(o[0] + d[0] * t, o[2] + d[2] * t) == null;
+    pt = t; t = Math.min(t + 0.4, t1);
+  }
+}
 // every box whose cell overlaps the x/z rectangle (deduped)
 export function query(boxes, minx, minz, maxx, maxz, out = []) {
   const cells = gridOf(boxes);
@@ -135,7 +177,7 @@ export function raycast(o, d, maxT, boxes) {
     }
   };
   // walk the grid cells the ray passes through (2D DDA on x/z), stop once we're past the best hit
-  const cells = gridOf(boxes);
+  const T = boxes.terrain, cells = T ? rayGrid(boxes) : gridOf(boxes);
   let cx = Math.floor(o[0] / CELL), cz = Math.floor(o[2] / CELL);
   const sx = d[0] > 0 ? 1 : -1, sz = d[2] > 0 ? 1 : -1;
   const dtx = Math.abs(d[0]) > 1e-9 ? CELL / Math.abs(d[0]) : Infinity, dtz = Math.abs(d[2]) > 1e-9 ? CELL / Math.abs(d[2]) : Infinity;
@@ -149,15 +191,15 @@ export function raycast(o, d, maxT, boxes) {
     if (tx < tz) { t = tx; tx += dtx; cx += sx; } else { t = tz; tz += dtz; cz += sz; }
     if (t > maxT && !best) break;
   }
+  if (T) { // shaped ground: nearer than whatever box it hit?
+    const h = terrainRay(T, o, d, best ? best.t : maxT);
+    if (h) { const ax = h.side ? (Math.abs(d[0]) > Math.abs(d[2]) ? 0 : 2) : 1; best = { t: h.t, axis: ax, sign: ax === 1 ? 1 : d[ax] > 0 ? -1 : 1, box: T.box }; }
+  }
   if (!best) return null;
   const normal = [0, 0, 0];
   if (best.axis >= 0) normal[best.axis] = best.sign;
   best.normal = normal;
   best.point = [o[0] + d[0] * best.t, o[1] + d[1] * best.t, o[2] + d[2] * best.t];
-  if (best.box.ter === 1 && best.axis === 1 && boxes.terrain && d[1] < -0.999) { // straight down onto shaped ground: the real surface, not the step under it (shadows, things put on the floor)
-    const g = boxes.terrain.at(best.point[0], best.point[2]);
-    if (g != null && g <= o[1]) { best.point[1] = g; best.t = o[1] - g; }
-  }
   return best;
 }
 
