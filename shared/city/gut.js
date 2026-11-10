@@ -10,6 +10,7 @@ import { playGut } from './playground.js';
 import { gateArena, inGateArena } from './arenas.js';
 import { shops, shopRects } from './shops.js';
 import { GUT_LINK } from './roads.js';
+import { bigHeart } from './bigheart.js';
 
 const GY = SLICE.gut.y;
 const inRect = (x0, z0, x1, z1, r) => x0 < r[2] && x1 > r[0] && z0 < r[3] && z1 > r[1];
@@ -257,6 +258,7 @@ export function gut(B, d) {
   if (B.touches(SLICE.teeth.rect, 2)) toothMarket(B, r);
   playGut(B); // grapple rings, the Wishbone (playground.js)
   shops(B, 'gut'); // Meat Mechanics, Bone Arms, the Tooth Market's stalls, vending (shops.js)
+  bigHeart(B); // the Big Heart: its collision, light and mark (bigheart.js)
 }
 
 // the border: the Bottom's top houses, half eaten. ground creeps from pastel to flesh going north; the gate at the

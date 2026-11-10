@@ -113,6 +113,7 @@ export const LOCATIONS = {
   'gut:choir_lung': { district: 'gut', name: 'The Choir Lung', desc: 'A cathedral that breathes.' },
   'gut:tooth_market': { district: 'gut', name: 'Tooth Market', desc: 'Everything costs teeth.' },
   'gut:campus': { district: 'gut', name: 'Gristle & Sons Campus', desc: 'The old Biologics HQ. Staff still at their desks, under the skin.' },
+  'gut:big_heart': { district: 'gut', name: 'The Big Heart', desc: 'A heart the size of a building, made of smaller ones, up a tower of bone. Nobody built it. It beats.' },
   'gut:digester_wall': { district: 'gut', name: 'The Digester Wall', desc: 'Where the Bottom\'s missing are, half grown in, still talking.' },
   'gut:feed_dock': { district: 'gut', name: 'The Feed Dock', desc: 'Where the Gristle & Sons trucks unload. Quiet. Always quiet.' },
   'gut:belly_button': { district: 'gut', name: 'The Belly Button', desc: "A door at the bottom of the Big Stomach. Don't press it." },

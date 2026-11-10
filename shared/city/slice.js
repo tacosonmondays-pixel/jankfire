@@ -26,6 +26,7 @@ export const SLICE = {
   ribAve: { x0: -50, x1: -38, z0: -256, z1: -48 }, // the rib-arched avenue north from the gate
   choir: { x: -268, z: -214 }, // the Choir Lung
   teeth: { rect: [10, -220, 70, -170] }, // Tooth Market
+  heart: { x: -96, z: -78 }, // the Big Heart: the open ground behind Meat Mechanics, west of the old time-office plaza (bigheart.js)
   camp: { x: 236, z: 40 }, // the Unpaid raider camp under the highway
   digit: { x: 280, z: -60 }, // the fallen 13: a giant glowing orbital digit (a hot zone)
 };
@@ -69,6 +70,7 @@ export const PLACES = {
   'bottom:dale_shed': { p: [-170, 8, 180], name: "Dale's Shed (behind the Machine)" },
   'bottom:rooftops': { p: [-260, 20, 120], name: 'the Wok Roofs' },
   'gut:campus': { p: [-200, 40, -80], name: 'Gristle & Sons Campus' },
+  'gut:big_heart': { p: [-94.47, 40, -69.13], name: 'the Big Heart' }, // (its listening spot, 9 m out in front: bigheart.js)
 };
 
 const fogLight = (hemi, hemiG, hk, sun, sk) => ({ hemi: [hemi, hemiG, hk], sun: [sun, sk] });
