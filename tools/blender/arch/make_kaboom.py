@@ -24,7 +24,7 @@ G = json.load(open(os.path.join(HERE, 'boxes', 'kaboom_ground.json')))
 json.dump({'map': 'islands', 'id': 'kaboom', 'boxes': [], 'places': [{'id': 'kaboom', 'p': [0, 0, 0], 'r': 0}]}, open(os.path.join(HERE, 'boxes', 'kaboom.json'), 'w'))
 K = Kit(os.path.join(HERE, 'boxes', 'kaboom.json'), seed=3)
 K.ground = -1e9
-CX, CZ, RC = 0.0, -3.0, 5.5  # shared/map.js KABOOM: the centre, the crest's radius (only to aim things: the heights come from the ground)
+CX, CZ, RC = 0.0, -3.0, 6.4  # shared/map.js KABOOM: the centre, the crest's radius (only to aim things: the heights come from the ground)
 RIM = 0.0  # (along a spoke: 0 at the crest, 1 at the foot)
 
 
