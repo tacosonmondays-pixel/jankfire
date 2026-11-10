@@ -40,6 +40,7 @@ export const ACTIONS = [
   ['scores', 'Scoreboard (hold) · Jank Royale: backpack', 'Interface', ['Tab']],
   ['brScores', 'Jank Royale: scoreboard (hold)', 'Interface', ['KeyL'], 'royale'], // its own context: Tab is the backpack there
   ['menu', 'Pause menu', 'Interface', ['KeyB']],
+  ['reset', 'Reset (respawn) · training, co-op, quick play', 'Interface', []], // unbound until you pick a key: one slip of a finger shouldn't cost a life
   ['ready', 'Lobby: ready up (everyone ready = 5 s)', 'Interface', ['KeyY']],
   ['skip', 'Skip killcam / replay', 'Interface', ['Space', 'Enter'], 'replay'],
   ['vote1', 'Vote: option 1', 'Interface', ['Digit1'], 'vote'],

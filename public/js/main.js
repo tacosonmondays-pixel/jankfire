@@ -51,7 +51,7 @@ import { GAMES, GAME_ORDER, TEAMS, mapsFor, mapForGame } from '/shared/modes.js'
 import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
 import { EPIC_CAM, epicMul, epicCamMs } from '/shared/epic.js';
-import { BUILDS, JOKE_MAX } from '/shared/looks.js'; // the joke body (character screen)
+import { BUILDS, JOKE_MAX, BODY_KEYS } from '/shared/looks.js'; // the joke body (character screen)
 import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, HAIRS, TOPS, BOTTOMS } from '/shared/looks.js';
 import { startBall, endBall, ballOn, BS, look } from './player.js';
 import { updateWreck, ballCam, wreckFx, wreckDied } from './wreck.js';
@@ -70,7 +70,7 @@ import { specFPOn } from './specfp.js'; // plant & defuse: first-person spectati
 import { pipFrame } from './pip.js'; // the first-person corner box while spectating
 import { sprayRangeFrame } from './sprayrange.js'; // Training's spray range
 import { chaosSpecId, pitErupt, underSea } from './chaos.js';
-import { sink, bottomOut } from '/shared/pits.js';
+import { sink, bottomOut, mire } from '/shared/pits.js';
 import { brSpecId } from './royale.js';
 import { initMinimap, minimapFrame } from './minimap.js'; // the HUD minimap (SAT-NAV)
 import { initLeaderTabs, showLeaders } from './leadmodes.js'; // per-mode leaderboard tabs
@@ -93,6 +93,7 @@ import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll
 import { initHome, homeShown, homeLeft, refreshHero } from './home.js';
 import { skipVote, skipReset } from './skipvote.js';
 import { lassoFrame, loopFrame, lassoWheel, lassoKey, lassoLate } from './lasso.js'; // lasso (secondary)
+import { initGavel, updateGavel, gavelFx, gavelAim, gavelReset } from './gavel.js'; // scales of justice, ranged
 import { initAds, updateAds, adsFx, adsKey, adsReset } from './ads.js'; // the laptop's pop-up ads
 import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + quick-scope callouts register themselves)
 import { K } from './keys.js';
@@ -246,6 +247,11 @@ for (const b of document.querySelectorAll('.back')) b.addEventListener('click', 
 for (const b of document.querySelectorAll('[data-mode]')) b.addEventListener('click', () => startMode(b.dataset.mode));
 $('resume').addEventListener('click', resume);
 $('quit').addEventListener('click', quitToMenu);
+// RESET: respawn yourself (server/reset.js decides if it's allowed here and who gets the kill)
+const resetOk = () => ['training', 'coop', 'bots', 'ffa'].includes(G.mode) && !G.lk && !['bomb', 'br', 'zm', 'oitc'].includes((G.round && G.round.game) || G.game);
+function resetMe() { if (G.joined && ME.alive) net.send({ t: 'reset' }); }
+$('resetMe').addEventListener('click', () => { resetMe(); resume(); });
+net.on('reset', (m) => { if (m && typeof m.no === 'string') { hud.msg(m.no.slice(0, 48), 1.2, 'slip'); sfx.empty(); } });
 
 function resume() {
   hideMenu();
@@ -300,7 +306,7 @@ function resetWorldState() {
   for (const b of G.bubbles.values()) G.scene.remove(b.mesh);
   G.bubbles.clear(); G.smokes.length = 0; ME.frozenUntil = 0; G.frost = 0;
   gearLeave();
-  adsReset();
+  adsReset(); gavelReset();
   secLeave();
   brReset(); // the zone, eviction notice and loot rules stay with the royale room
   resetItems(); stopUse(); G.activeStreaks = null; G.itemSent = null;
@@ -343,6 +349,7 @@ function lock() {
 function pause() {
   show('pause');
   $('pauseMatch').classList.toggle('hidden', !!G.lk); // a mode lobby is everyone's: nobody changes its match
+  $('resetMe').classList.toggle('hidden', !resetOk()); // only where a reset is allowed
   $('pauseTitle').textContent = `${MODES[G.mode] ? MODES[G.mode].name.toUpperCase() : 'PAUSED'} · ${MAPS[G.cfg.map] ? MAPS[G.cfg.map].name : ''}`;
   W.held = false; W.aimHeld = false;
   K.clear();
@@ -588,7 +595,7 @@ function buildLoadoutUI() {
     b.className = 'wpick' + ((S.loadout.item || 'frag') === id ? ' on' : '');
     b.textContent = `${it.name} x${it.charges}`;
     b.style.setProperty('--c', it.color);
-    b.addEventListener('mouseenter', () => { $('loDesc').textContent = `${it.name}: ${it.desc} (${it.charges} charge${it.charges > 1 ? 's' : ''}, ${it.recharge}s to refill)`; });
+    b.addEventListener('mouseenter', () => { $('loDesc').textContent = `${it.name}: ${it.desc} (${it.charges} charge${it.charges > 1 ? 's' : ''}, ${it.recharge}s to refill${it.carry ? ', dying does not refill it' : ''})`; });
     b.addEventListener('click', () => { S.loadout.item = id; saveSettings(); buildLoadoutUI(); applyLoadout(false); });
     ic.append(b);
   }
@@ -680,6 +687,11 @@ function setLook(look) {
 }
 // every achievement (and old one), for trying on locked accessories in the preview only: what you wear stays validLook(look, myAchs())
 const ALL_ACHS = new Set([...Object.keys(ACHIEVEMENTS), ...LOOK_SLOTS.flatMap((sl) => Object.values(ACCESSORIES[sl]).map((v) => v.legacy).filter(Boolean))]);
+let lkTab = 'body';
+function showLkTab() {
+  for (const s of document.querySelectorAll('#scr-character .lk-sec')) s.classList.toggle('hidden', s.dataset.sec !== lkTab);
+  for (const t of $('lkTabs').children) t.classList.toggle('on', t.dataset.sec === lkTab);
+}
 function buildCharacterUI() {
   const achs = myAchs();
   const look = { ...DEFAULT_LOOK, ...G.settings.look };
@@ -746,16 +758,30 @@ function buildCharacterUI() {
   }
   const jel = $('lk-joke');
   jel.innerHTML = '';
-  for (const [key, label] of [['bigHead', 'head size'], ['bigButt', 'butt size']]) {
-    const lab = document.createElement('label'), inp = document.createElement('input'), val = document.createElement('b');
+  const chestName = look.build === 'f' ? 'bust' : look.build === 'm' ? 'pecs' : 'chest';
+  for (const [key, label] of [['bigHead', 'head'], ['bigChest', chestName], ['bigArms', 'arms'], ['fat', 'belly'], ['bigButt', 'butt'], ['bigLegs', 'legs']]) {
+    const lab = document.createElement('label'), nm = document.createElement('span'), inp = document.createElement('input'), val = document.createElement('b');
+    nm.textContent = label;
     inp.type = 'range'; inp.min = '0'; inp.max = String(JOKE_MAX); inp.step = '1'; inp.value = String(look[key] | 0);
     const say = () => { val.textContent = ['normal', 'big', 'bigger', 'huge', 'why'][Number(inp.value)] || ''; };
     say();
     inp.addEventListener('input', () => { say(); const t = validLook({ ...look, [key]: Number(inp.value) }, achs); showCharacter(buildCharacter, t.color || G.myColor || '#ff4fd8', t); });
     inp.addEventListener('change', () => { setLook({ ...look, [key]: Number(inp.value) }); buildCharacterUI(); });
-    lab.append(label + ' ', inp, ' ', val);
+    lab.append(nm, inp, val);
     jel.append(lab);
   }
+  // the screen in four tabs, so the mannequin stays in view while you poke at it (the open one is remembered while the page is)
+  const tabs = $('lkTabs');
+  if (!tabs.dataset.on) {
+    tabs.dataset.on = '1';
+    for (const [id, name] of [['body', 'BODY'], ['hair', 'HAIR + FACE'], ['clothes', 'CLOTHES'], ['card', 'NAME CARD']]) {
+      const t = document.createElement('button');
+      t.className = 'chip'; t.dataset.sec = id; t.textContent = name;
+      t.addEventListener('click', () => { lkTab = id; showLkTab(); });
+      tabs.append(t);
+    }
+  }
+  showLkTab();
   for (const slot of LOOK_SLOTS) {
     const el = $('lk-' + slot);
     el.innerHTML = '';
@@ -829,6 +855,8 @@ $('lkRandom').addEventListener('click', () => {
   const look = { color: pick(LOOK_COLORS), skin: pick(SKIN_TONES), hair: pick(Object.keys(HAIRS)), hairColor: pick(HAIR_COLORS),
     top: pick(Object.entries(TOPS).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k)), topColor: pick(CLOTH_COLORS), bottom: pick(Object.entries(BOTTOMS).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k)), bottomColor: pick(CLOTH_COLORS) };
   for (const s2 of LOOK_SLOTS) look[s2] = pick(Object.entries(ACCESSORIES[s2]).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k));
+  look.build = pick(Object.keys(BUILDS)); // the body too: usually a little off, now and then a lot
+  for (const k of BODY_KEYS) look[k] = Math.random() < 0.3 ? 1 + ((Math.random() * Math.random() * JOKE_MAX) | 0) : 0;
   setLook(look); buildCharacterUI();
 });
 $('lkReset').addEventListener('click', () => { setLook({ ...DEFAULT_LOOK }); buildCharacterUI(); });
@@ -1088,6 +1116,7 @@ function aimDown() {
   if (secAimDown()) return; // tv remote: aim (right click) rewinds
   if (W.cur === 'cards') { cycleCard(); return; }
   if (heavyAttack()) return; // knife: right click is the heavy stab
+  if (gavelAim()) return; // scales of justice: right click is the SUMMONS
   if (W.cur === 'katana' && !rigOn()) { if (!K.get('parry').some(Boolean)) parry(); return; } // katana: the parry key parries (pressed()); aim only stands in when parry is unbound
   if (W.cur === 'akimbo') { W.aimHeld = true; return; } // Lefty & Righty: the aim key is the right gun's trigger (never a toggle)
   if (S.toggleAim) W.aimHeld = !W.aimHeld; else W.aimHeld = true;
@@ -1132,6 +1161,7 @@ function pressed(e) {
   if (K.matches('scythe', e) && !e.repeat) toggleScythe();
   if (K.matches('item', e) && !e.repeat) useItem();
   if (K.matches('spray', e) && !e.repeat) spray();
+  if (K.matches('reset', e) && !e.repeat) resetMe();
   const streak = ['streak1', 'streak2', 'streak3'].findIndex((a) => K.matches(a, e));
   if (streak >= 0 && !e.repeat) deployStreak(streak);
   if (K.matches('slot4', e)) switchSlot(3);
@@ -1612,7 +1642,7 @@ net.on('kill', (m) => {
   courtKill(m); // scales of justice: streaks + revenge
   let [kn, kc] = nameOf(m.k), [vn, vc] = nameOf(m.v);
   [kn, vn] = brNames(m, kn, vn); // jank royale: no names in Pronoun Park
-  const via = m.w === 'void' || m.w === 'cough' || ((m.w === 'car' || m.w === 'carboom') && m.via) ? m.via : m.w;
+  const via = m.w === 'void' || m.w === 'cough' || m.w === 'reset' || ((m.w === 'car' || m.w === 'carboom') && m.via) ? m.via : m.w;
   const victim = G.remotes.get(m.v);
   if (m.pit && m.w === 'void') pitKill(m, victim ? victim.color : m.v === G.myId ? G.myColor : null); // into the shredder pit's teeth (sets m.vel: the bits fly back up)
   // shredder kills: the pieces go through the killer's machine instead of the usual gibs / kill effect
@@ -1638,6 +1668,8 @@ net.on('kill', (m) => {
     if (fl) fallSplat(m, fl);
   } else if (m.w === 'tbag' && m.k === 0) {
     parts = [[vn, vc], ['  t-bagged too hard and exploded', '#ff9a3a']];
+  } else if (m.w === 'reset') { // pressed RESET: with someone on them it's that someone's kill
+    parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], ['  (rage reset)', '#aaa']] : [[vn, vc], ['  turned it off and on again', '#aaa']];
   } else if (m.w === 'cough') {
     parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], ['  (coughed)', '#aaa']] : [[vn, vc], ['  smoked too much', '#aaa']];
   } else if (!m.k) {
@@ -1797,6 +1829,7 @@ net.on('he', (m) => {
   G.shake = Math.max(G.shake, Math.max(0, 1 - d / 25));
 });
 net.on('fx', (m) => {
+  if (gavelFx(m)) return; // a summons ring opening / the pillar landing
   if (adsFx(m)) return; // someone opened a laptop at someone
   if (gearFx(m)) return; // laser beams, photo teleports, goggle flashes (gear.js)
   if (secFx(m)) return; // taser zaps, remote pauses + rewinds, radar readings (secondaries.js)
@@ -1901,6 +1934,7 @@ net.on('ns', (m) => {
 });
 
 initAds();
+initGavel();
 initGear(); // the new gear's server messages + the G hook
 initSec(); // the new secondaries + the speed trap (after initGear: it wraps the G hook)
 
@@ -1941,7 +1975,7 @@ function frame(t) {
     } : {};
     jumpPressed = false;
     acc += dt;
-    while (acc >= STEP) { if (!(G.story && G.story.drive(STEP, inp, now))) stepPlayer(STEP, inp, now); carCollide(STEP); airTick(now); lavaStep(now); if (ME.alive) { sink(MAPS[MAP.id], ME.pos, ME.vel); bottomOut(MAPS[MAP.id], ME.pos, ME.vel); } // (deep sea: you sink, you don't fall through it. the river, the street: you stop on them)
+    while (acc >= STEP) { if (!(G.story && G.story.drive(STEP, inp, now))) stepPlayer(STEP, inp, now); carCollide(STEP); airTick(now); lavaStep(now); if (ME.alive) { sink(MAPS[MAP.id], ME.pos, ME.vel); mire(MAPS[MAP.id], ME.pos, ME.vel, STEP, !!ME.hook); bottomOut(MAPS[MAP.id], ME.pos, ME.vel); } // (deep sea: you sink, you don't fall through it. the river, the street: you stop on them)
       inp.jumpPressed = false; acc -= STEP; } // (OVERDUE: in a story car, the car steps instead)
     grabStep(now); // held in a shredder's intake
     pinStep(now); // nailed to a wall
@@ -1998,6 +2032,7 @@ function frame(t) {
   for (const [id, b] of G.bubbles) { if (now > b.until + 500) { G.scene.remove(b.mesh); G.bubbles.delete(id); continue; } b.mesh.rotation.y += dt * 0.3; b.mesh.material.opacity = 0.18 + Math.sin(now * 0.006) * 0.05; }
   updateWand(dt, now); // bubble wand: giant soap bubbles round people, the view from inside one, the wand in your hand
   updateAds(dt, now);
+  updateGavel(dt);
   updateGear(dt, now); // laser beams, photo frames, pop quizzes, night vision
   updateSec(dt, now); // soaks, zaps, pauses, rewinds, the radar gun, cages
   updatePrims(dt, now); // nails in walls, pins, shopping carts
@@ -2340,7 +2375,7 @@ function replayFeed(k, info) {
   const nm = (id) => (info && info[id] ? [info[id].name, info[id].color] : nameOf(id));
   const d = document.createElement('div');
   const [a, ac] = nm(k.k), [b, bc] = nm(k.v);
-  const via = k.w === 'void' || k.w === 'cough' ? k.via : k.w;
+  const via = k.w === 'void' || k.w === 'cough' || k.w === 'reset' ? k.via : k.w;
   for (const [t, c] of k.k ? [[a, ac], [`  [${wname(via)}]  `, wcolor(via)], [b, bc]] : [[b, bc], ['  died', '#aaa']]) {
     const sp = document.createElement('span'); sp.textContent = t; sp.style.color = c; d.append(sp);
   }

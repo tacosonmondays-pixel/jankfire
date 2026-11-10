@@ -1,0 +1,208 @@
+<!doctype html>
+<!-- THE HEART OF THE GUT in the game's renderer (three.js, the same texture treatment as public/js/city/props.js), with
+     the ripple running: every flesh vertex carries TEXCOORD_1 = (phase, weight) and one vertex-shader line does the rest.
+     Open it:   node tools/blender/gut_heart_shots.cjs --serve     then http://localhost:8787/gut_heart_demo.html
+     The sheets in docs/story/gut are this page too (?sheet=turn|reads|close|ripple, rendered by gut_heart_shots.cjs). -->
+<meta charset="utf-8">
+<title>the heart of the gut</title>
+<style>
+@font-face { font-family: 'Comic Neue'; src: url('/fonts/comic-neue-latin-700-normal.woff2') format('woff2'); font-weight: 700; }
+html, body { margin: 0; background: #0b0510; color: #fff; font-family: 'Comic Neue', 'Comic Sans MS', sans-serif; overflow: hidden; }
+#wrap { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+#wrap.sheet { width: 1920px; height: 1080px; }
+canvas { position: absolute; left: 0; top: 0; display: block; }
+.cap { position: absolute; background: rgba(18,8,24,0.92); border: 2px solid #ff4fd8; padding: 3px 9px; font-size: 17px; font-weight: 700; color: #ffe14d; }
+h1 { position: absolute; left: 14px; top: 4px; margin: 0; font-size: 26px; color: #ffe14d; text-shadow: 2px 2px 0 #ff00dc; }
+#panel { position: absolute; left: 16px; top: 16px; width: 290px; background: rgba(18,8,24,0.92); border: 4px solid #ff4fd8; box-shadow: 8px 8px 0 #4fd8ff; padding: 12px 14px; font-weight: 700; }
+#panel h2 { margin: 0 0 4px; font-size: 22px; color: #ffe14d; }
+#panel p { margin: 4px 0 8px; font-size: 13px; color: #f4d8ee; font-weight: 400; }
+#panel label { display: block; font-size: 13px; margin-top: 7px; }
+#panel input[type=range] { width: 100%; }
+.row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+button { font: inherit; font-size: 13px; background: #fff; color: #000; border: 2px solid #000; padding: 4px 8px; cursor: pointer; box-shadow: 3px 3px 0 #ff4fd8; }
+button.on { background: #ffe14d; transform: rotate(-1.5deg); }
+#stat { position: absolute; right: 12px; bottom: 10px; font-size: 13px; color: #ffe14d; background: rgba(18,8,24,0.8); padding: 3px 8px; }
+</style>
+<div id="wrap"><canvas id="c"></canvas><div id="ui"></div>
+<div id="panel" style="display:none">
+  <h2>the heart of the gut</h2>
+  <p>drag to look round, wheel to walk in. the beat starts at the top right of the heart and runs down to the point.</p>
+  <label>how hard it beats <input id="amp" type="range" min="0" max="0.2" step="0.005" value="0.09"></label>
+  <label>beats a second <input id="rate" type="range" min="0.2" max="2" step="0.02" value="0.72"></label>
+  <label>how long the wave takes to cross <input id="span" type="range" min="0" max="1.2" step="0.02" value="0.55"></label>
+  <label>how much each heart flushes <input id="flush" type="range" min="0" max="1.2" step="0.05" value="0.6"></label>
+  <div class="row"><button id="b_beat" class="on">beating</button><button id="b_phase">show the wave map</button><button id="b_lod">far model</button></div>
+  <div class="row"><button data-d="150">150 m</button><button data-d="60">60 m</button><button data-d="15">15 m</button><button data-d="5">top of the stair</button></div>
+  <div class="row"><button id="b_gut" class="on">gut fog</button><button id="b_studio">studio</button></div>
+</div><div id="stat"></div></div>
+<script type="importmap">{ "imports": { "three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/" } }</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+const q = new URLSearchParams(location.search), SHEET = q.get('sheet'), wrap = document.getElementById('wrap'), ui = document.getElementById('ui');
+if (SHEET) wrap.classList.add('sheet');
+let W = SHEET ? 1920 : innerWidth, H = SHEET ? 1080 : innerHeight;
+const ren = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true, preserveDrawingBuffer: true });
+ren.setPixelRatio(1); ren.setSize(W, H); ren.setScissorTest(true); ren.outputColorSpace = THREE.SRGBColorSpace;   // (the game: no tone mapping)
+const env = new THREE.PMREMGenerator(ren).fromScene(new RoomEnvironment(), 0.04).texture;
+const errs = []; window.addEventListener('error', (e) => errs.push(e.message));
+
+// ---------------------------------------------------------------- the ripple (this is all the game needs)
+// TEXCOORD_1 (three: geometry.attributes.uv1) = (phase, weight). phase 0 = the pacemaker, 1 = the apex, on past 1 down
+// the tower's vessels; weight 0 = fused / fixed, 1 = the belly of a small heart.
+const U = { uBeat: { value: 0 }, uAmp: { value: 0.09 }, uRate: { value: 0.72 }, uSpan: { value: 0.55 }, uFlush: { value: 0.6 }, uMap: { value: 0 } };
+const GH_BEAT = `float ghBeat(float t) {   // lub-dub, then rest. t = 0..1 through one beat
+  return exp(-pow((t - 0.12) / 0.045, 2.0)) + 0.6 * exp(-pow((t - 0.33) / 0.06, 2.0)); }`;
+function ripple(mat) {
+  mat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, U);
+    sh.vertexShader = 'attribute vec2 aPulse; uniform float uBeat, uAmp, uRate, uSpan; varying float vBeat; varying vec2 vPulse;\n' + GH_BEAT + '\n' + sh.vertexShader
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        vBeat = ghBeat(fract(uBeat * uRate - aPulse.x * uSpan)); vPulse = aPulse;
+        transformed += objectNormal * (aPulse.y * uAmp * vBeat);`);
+    sh.fragmentShader = 'varying float vBeat; varying vec2 vPulse; uniform float uMap, uFlush;\n' + sh.fragmentShader
+      .replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb *= 1.0 + uFlush * vBeat * vPulse.y;')   // each heart flushes as it beats: this is what carries the ripple at 150 m
+      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance *= 0.55 + 1.1 * vBeat;')   // the light inside swells with the beat
+      .replace('#include <dithering_fragment>', `#include <dithering_fragment>
+        if (uMap > 0.5) gl_FragColor.rgb = mix(vec3(0.02, 0.0, 0.05), mix(vec3(1.0, 0.9, 0.2), vec3(0.1, 0.5, 1.0), clamp(vPulse.x, 0.0, 1.0)), 0.25 + 0.75 * vPulse.y) * (vPulse.x > 1.0 ? vec3(0.6, 1.0, 0.6) : vec3(1.0));`);
+  };
+  mat.customProgramCacheKey = () => 'ghripple';
+}
+
+// ---------------------------------------------------------------- load
+const load = (u) => new Promise((ok, bad) => new GLTFLoader().load(u, ok, undefined, bad));
+const g = await load('/models/story/s_gut_heart.glb');
+const meta = await fetch('/models/story/s_gut_heart.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+const model = g.scene, near = [], far = [], INFO = { meshes: {}, mats: {}, attrs: {}, tris: { lod0: 0, lod1: 0 }, uv1: {} };
+model.traverse((o) => {
+  if (!o.isMesh) return;
+  let lod = false; for (let p = o; p; p = p.parent) if (/_lod1/.test(p.name)) lod = true;
+  (lod ? far : near).push(o);
+  const geo = o.geometry, n = geo.index ? geo.index.count / 3 : geo.attributes.position.count / 3;
+  INFO.tris[lod ? 'lod1' : 'lod0'] += n; INFO.meshes[o.name] = n; INFO.attrs[o.name] = Object.keys(geo.attributes).sort().join(',');
+  for (const m of [].concat(o.material)) {
+    INFO.mats[m.name] = (INFO.mats[m.name] || 0) + n;
+    for (const k of ['map', 'emissiveMap']) if (m[k]) { m[k].magFilter = THREE.NearestFilter; m[k].minFilter = THREE.NearestMipmapNearestFilter; m[k].anisotropy = 1; m[k].needsUpdate = true; }
+    m.envMap = env; m.envMapIntensity = 0.3;
+    if (/gh_flesh|gh_glow/.test(m.name)) {
+      const a = geo.getAttribute('uv1');
+      if (a) { geo.setAttribute('aPulse', a); ripple(m);
+        let x0 = 9, x1 = -9, y0 = 9, y1 = -9; for (let i = 0; i < a.count; i++) { const x = a.getX(i), y = a.getY(i); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+        INFO.uv1[o.name] = [x0, x1, y0, y1].map((v) => +v.toFixed(3)); }
+      else errs.push('no uv1 on ' + o.name);
+    }
+  }
+});
+INFO.errs = errs; window.INFO = INFO;
+const setLod = (f) => { for (const o of near) o.visible = !f; for (const o of far) o.visible = !!f; };
+setLod(0);
+
+// ---------------------------------------------------------------- sets
+const GUT = { top: 0x1a0408, mid: 0x6a1a28, bot: 0x2a0a12, fog: 0x4a1424, near: 70, far: 340, hemi: [0xffe0d0, 0x3a1020, 1.25], sun: [0xfff0e0, 1.6] };   // shared/city/slice.js, the Gut
+function man(sc, x, y, z, yaw = 0) {
+  const m = new THREE.Group(), mm = new THREE.MeshBasicMaterial({ color: 0x4fd8ff, fog: false });
+  for (const [w, h, d, px, py] of [[0.2, 0.84, 0.2, -0.12, 0.42], [0.2, 0.84, 0.2, 0.12, 0.42], [0.5, 0.62, 0.26, 0, 1.15], [0.14, 0.62, 0.16, -0.33, 1.15], [0.14, 0.62, 0.16, 0.33, 1.15], [0.24, 0.28, 0.24, 0, 1.66]]) { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mm); b.position.set(px, py, 0); m.add(b); }
+  m.position.set(x, y, z); m.rotation.y = yaw; sc.add(m); return m;
+}
+function scene(mood, opt = {}) {
+  const sc = new THREE.Scene();
+  if (mood === 'studio') {
+    sc.background = new THREE.Color(0x120a18); sc.add(new THREE.HemisphereLight(0xfff0f4, 0x30202c, 1.1));
+    const d = new THREE.DirectionalLight(0xfff0dd, 2.0); d.position.set(30, 60, 50); sc.add(d); const r = new THREE.DirectionalLight(0xa0c8ff, 0.9); r.position.set(-50, 20, 30); sc.add(r);
+    const b = new THREE.DirectionalLight(0xff90c0, 1.1); b.position.set(-20, 40, -50); sc.add(b);
+  } else {
+    sc.fog = new THREE.Fog(GUT.fog, GUT.near, GUT.far); sc.background = new THREE.Color(GUT.fog);
+    const sg = new THREE.SphereGeometry(900, 24, 12), col = new Float32Array(sg.attributes.position.count * 3), c = new THREE.Color(), a = new THREE.Color(), b2 = new THREE.Color();
+    for (let i = 0; i < sg.attributes.position.count; i++) { const h = sg.attributes.position.getY(i) / 900;   // the game's sky: bot at the horizon, mid a little up, top overhead
+      if (h < 0.18) c.copy(a.setHex(GUT.bot)).lerp(b2.setHex(GUT.mid), Math.max(0, h) / 0.18); else c.copy(a.setHex(GUT.mid)).lerp(b2.setHex(GUT.top), Math.min(1, (h - 0.18) / 0.5));
+      col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
+    sg.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    sc.add(new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false })));
+    sc.add(new THREE.HemisphereLight(GUT.hemi[0], GUT.hemi[1], GUT.hemi[2]));
+    const d = new THREE.DirectionalLight(GUT.sun[0], GUT.sun[1]); d.position.set(-40, 70, 55); sc.add(d);
+    const gr = new THREE.Mesh(new THREE.CircleGeometry(900, 48), new THREE.MeshLambertMaterial({ color: 0x7a2c40 })); gr.rotation.x = -Math.PI / 2; gr.position.y = -0.02; sc.add(gr);
+    if (opt.town !== false) { const rnd = (s) => { const x = Math.sin(s * 127.1) * 43758.5453; return x - Math.floor(x); };   // a few grown-over blocks, so the size reads
+      for (let i = 0; i < 46; i++) { const a = 3.3 + rnd(i) * 2.9, r = 40 + rnd(i + 50) * 170, w = 8 + rnd(i + 9) * 10, h = 4 + rnd(i + 3) * 11;   // (behind it and to the sides: never between you and it)
+        const bx = new THREE.Mesh(new THREE.BoxGeometry(w, h, 8 + rnd(i + 5) * 9), new THREE.MeshLambertMaterial({ color: rnd(i + 7) < 0.5 ? 0xb85a72 : 0x9a8a84 })); bx.position.set(Math.cos(a) * r, h / 2, Math.sin(a) * r); bx.rotation.y = rnd(i + 2) * 3; sc.add(bx); } }
+  }
+  sc.add(model);
+  return sc;
+}
+const pc = (fov, p, t) => { const k = new THREE.PerspectiveCamera(fov, 1, 0.1, 2000); k.position.set(...p); k.lookAt(...t); return k; };
+const oc = (s, p, t) => { const k = new THREE.OrthographicCamera(-s, s, s, -s, 0.1, 600); k.userData.s = s; k.position.set(...p); k.lookAt(...t); return k; };
+function panel(x, y, w, h, sc, cam, label) {
+  ren.setViewport(x, H - y - h, w, h); ren.setScissor(x, H - y - h, w, h);
+  if (cam.isPerspectiveCamera) cam.aspect = w / h; else { const s = cam.userData.s; cam.left = -s * w / h; cam.right = s * w / h; cam.top = s; cam.bottom = -s; }
+  cam.updateProjectionMatrix(); ren.render(sc, cam);
+  if (label) ui.insertAdjacentHTML('beforeend', `<div class="cap" style="left:${x + 8}px;top:${y + h - 34}px">${label}</div>`);
+}
+const title = (t) => ui.insertAdjacentHTML('beforeend', `<h1>${t}</h1>`);
+const MK = (meta && meta.markers) || {}, STOP = MK.stair_top || [3.0, 25.6, 0.6], APEX = MK.apex || [3.2, 27.6, 0.8], LISTEN = MK.listening_spot || [3, 0, 12], HCEN = MK.heart_centre || [0, 35, 0];
+const T0 = 40;
+
+if (SHEET === 'turn') {
+  title('THE HEART OF THE GUT · in the game\'s renderer · the figure is 1.8 m');
+  const sc = scene('studio'); man(sc, 8.5, 0, 5); const w = W / 4, h = H - T0;
+  panel(0, T0, w, h, sc, oc(25, [0, 23.5, 200], [0, 23.5, 0]), 'front');
+  panel(w, T0, w, h, sc, pc(24, [78, 40, 86], [0, 22.5, 0]), 'three-quarter');
+  panel(2 * w, T0, w, h, sc, oc(25, [200, 23.5, 0], [0, 23.5, 0]), 'side (its left)');
+  panel(3 * w, T0, w, h, sc, oc(25, [0, 23.5, -200], [0, 23.5, 0]), 'back');
+} else if (SHEET === 'reads') {
+  title('THE HEART OF THE GUT · what you see, in Gut fog (the game\'s camera, 95°)');
+  const sc = scene('gut'); man(sc, LISTEN[0], 0, LISTEN[2]); const w = W / 4, h = H - T0;
+  U.uBeat.value = 0.62;
+  setLod(1); panel(0, T0, w, h * 0.5, sc, pc(95, [-60, 1.7, 137], [0, 24, 0]), '150 m (the far model)');
+  panel(0, T0 + h * 0.5, w, h * 0.5, sc, pc(30, [-60, 1.7, 137], [0, 24, 0]), '150 m, zoomed x3.5');
+  setLod(0); panel(w, T0, w, h, sc, pc(95, [22, 1.7, 55], [0, 24, 0]), '60 m');
+  panel(2 * w, T0, w, h, sc, pc(95, [9, 1.7, 13], [0, 22, 0]), '15 m: at its foot');
+  panel(3 * w, T0, w, h, sc, pc(95, [STOP[0] + 1.6, STOP[1] + 1.7, STOP[2] + 3.6], [APEX[0] - 0.6, APEX[1] + 2.2, APEX[2] - 0.6]), '5 m: the top of the stair, under the apex');
+} else if (SHEET === 'close') {
+  title('THE HEART OF THE GUT · close-ups in the game\'s renderer');
+  const sc = scene('studio'); man(sc, STOP[0], STOP[1], STOP[2], 0.6); man(sc, 5.5, 0, 7.5); const w = W / 4, h = (H - T0) / 2;
+  panel(0, T0, w, h, sc, pc(40, [9, 37, 17], [2.2, 35.5, 3.4]), 'the small hearts (15 m)');
+  panel(w, T0, w, h, sc, pc(46, [STOP[0] + 1.3, STOP[1] + 1.75, STOP[2] + 2.9], [APEX[0] - 0.5, APEX[1] + 1.5, APEX[2] - 0.4]), 'the small hearts (4 m, from the top of the stair)');
+  panel(2 * w, T0, w, h, sc, pc(40, [7, 50, 22], [0, 44, 0]), 'the vessels at the top');
+  panel(3 * w, T0, w, h, sc, pc(40, [-13, 40, -24], [0, 37, 0]), 'the back');
+  panel(0, T0 + h, w, h, sc, pc(50, [8.5, 4.6, 10.5], [0.5, 5.0, 0]), 'the stair');
+  panel(w, T0 + h, w, h, sc, pc(50, [15, 4.5, 17], [0, 4.5, 0]), 'the foot and the roots');
+  panel(2 * w, T0 + h, w, h, sc, pc(50, [12, 21.5, 12], [0.5, 27.5, 0]), 'where the bone holds it');
+  { const cam = pc(20, [-50, 6, 112], [0, 24, 0]); panel(3 * w, T0 + h, w / 2, h, sc, cam, 'near model, 125 m'); setLod(1); panel(3.5 * w, T0 + h, w / 2, h, sc, cam, 'far model'); setLod(0); }
+} else if (SHEET === 'ripple') {
+  title('THE HEART OF THE GUT · the ripple: one beat, six moments (swell and flush pushed x2 so a still shows it) · the wave map');
+  const sc = scene('studio'); const w = W / 4, h = (H - T0) / 2, cam = pc(26, [10, 36, 46], [0.4, 36.2, 0]);
+  U.uAmp.value = 0.18; U.uFlush.value = 1.2;
+  for (let i = 0; i < 6; i++) { U.uBeat.value = (i / 6 + 0.02) / U.uRate.value; const x = (i % 3) * w, y = T0 + Math.floor(i / 3) * h; panel(x, y, w, h, sc, cam, `beat ${(i / 6).toFixed(2)}`); }
+  U.uMap.value = 1; panel(3 * w, T0, w, h, sc, cam, 'the wave map: yellow first, blue last; dark = held still');
+  panel(3 * w, T0 + h, w, h, sc, pc(26, [34, 22, 58], [0, 21, 0]), 'it goes on down the tower (green)'); U.uMap.value = 0;
+} else {
+  // ---------------------------------------------------------------- the demo: orbit + the beat running
+  document.getElementById('panel').style.display = 'block';
+  let sc = scene('gut'); man(sc, LISTEN[0], 0, LISTEN[2]); man(sc, STOP[0], STOP[1], STOP[2], 0.6);
+  const cam = pc(60, [30, 12, 60], [0, 26, 0]); let tgt = new THREE.Vector3(0, 26, 0), az = 0.45, el = 0.12, dist = 70, beating = true, t0 = performance.now(), tb = 0;
+  const place = () => { cam.position.set(tgt.x + Math.sin(az) * Math.cos(el) * dist, tgt.y + Math.sin(el) * dist, tgt.z + Math.cos(az) * Math.cos(el) * dist); cam.lookAt(tgt); };
+  const cv = ren.domElement; let drag = null;
+  cv.addEventListener('pointerdown', (e) => { drag = [e.clientX, e.clientY]; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', (e) => { if (!drag) return; az -= (e.clientX - drag[0]) * 0.006; el = Math.max(-0.3, Math.min(1.4, el + (e.clientY - drag[1]) * 0.005)); drag = [e.clientX, e.clientY]; });
+  cv.addEventListener('pointerup', () => { drag = null; });
+  cv.addEventListener('wheel', (e) => { dist = Math.max(3, Math.min(260, dist * (e.deltaY > 0 ? 1.1 : 0.9))); e.preventDefault(); }, { passive: false });
+  const $ = (id) => document.getElementById(id);
+  for (const k of ['amp', 'rate', 'span', 'flush']) $(k).addEventListener('input', (e) => { U['u' + k[0].toUpperCase() + k.slice(1)].value = +e.target.value; });
+  $('b_beat').onclick = (e) => { beating = !beating; e.target.classList.toggle('on', beating); };
+  $('b_phase').onclick = (e) => { U.uMap.value = U.uMap.value ? 0 : 1; e.target.classList.toggle('on', !!U.uMap.value); };
+  let lod = 0; $('b_lod').onclick = (e) => { lod = 1 - lod; setLod(lod); e.target.classList.toggle('on', !!lod); };
+  for (const b of document.querySelectorAll('button[data-d]')) b.onclick = () => { const d = +b.dataset.d;
+    if (d === 5) { tgt.set(APEX[0], APEX[1] + 1.5, APEX[2]); dist = 6; el = -0.25; az = 0.9; } else { tgt.set(0, d > 30 ? 24 : 30, 0); dist = d; el = d > 30 ? 0.02 : -0.1; } };
+  const mood = (m) => { sc = scene(m); man(sc, LISTEN[0], 0, LISTEN[2]); man(sc, STOP[0], STOP[1], STOP[2], 0.6); $('b_gut').classList.toggle('on', m === 'gut'); $('b_studio').classList.toggle('on', m === 'studio'); };
+  $('b_gut').onclick = () => mood('gut'); $('b_studio').onclick = () => mood('studio');
+  addEventListener('resize', () => { W = innerWidth; H = innerHeight; ren.setSize(W, H); });
+  window.frame = (t, view) => {   // one frame for the clip (gut_heart_shots.cjs): t seconds into the beat
+    U.uBeat.value = t; if (view) { tgt.set(...view.t); dist = view.d; az = view.az; el = view.el; cam.fov = view.fov || 60; }
+    place(); ren.setViewport(0, 0, W, H); ren.setScissor(0, 0, W, H); cam.aspect = W / H; cam.updateProjectionMatrix(); ren.render(sc, cam); };
+  if (!q.get('still')) { const loop = () => { const now = performance.now(); if (beating) tb += (now - t0) / 1000; t0 = now; U.uBeat.value = tb;
+    place(); ren.setViewport(0, 0, W, H); ren.setScissor(0, 0, W, H); cam.aspect = W / H; cam.updateProjectionMatrix(); ren.render(sc, cam);
+    document.getElementById('stat').textContent = `${Math.round(INFO.tris[lod ? 'lod1' : 'lod0'])} triangles · ${dist.toFixed(0)} m`; requestAnimationFrame(loop); }; loop(); }
+  else document.getElementById('panel').style.display = 'none';
+}
+window.DONE = true;
+</script>

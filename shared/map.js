@@ -3059,12 +3059,12 @@ function isPiece(B0, D0, dx, dz, st) {
 }
 // Mount Kaboom (round 0, -3): three terraces, two ways up each, the crater (its rim open at the two stairs), the throat
 // right down. returns the throat in the world (the island under it needs the same hole)
-const LAVA_FLOOR = 3.85; // the plug under the throat's lava (its surface is 4.5: about knee deep. off the walk graph's levels on purpose)
+const LAVA_FLOOR = 1.3; // the plug under the throat's lava (its surface is 4.5: over three metres of it. you sink, shared/pits.js mire. off the walk graph's levels on purpose)
 const lavaPit = (T) => ({ kind: 'lava', box: T, top: 4.6, bot: LAVA_FLOOR - 0.5 });
 function volcano(B0, D0, dx, dz, st) {
   const { B, D, add, W, up } = isPiece(B0, D0, dx, dz, st); const T = [-2, -5, 2, -1];
   slab(W, -15, -16, 15, 10, 0, 3, 'basalt', T); slab(W, -10, -12, 10, 6, 3, 6, 'basalt', T); slab(W, -6, -9, 6, 3, 6, 9, 'basalt', T);
-  add(-2, 0, -5, 2, LAVA_FLOOR, -1, 'basalt'); D.add(-2, 4.3, -5, 2, 4.5, -1, 'lava'); // down the throat: lava over a rock plug. fall in and you wade in it, burning (map.pits)
+  add(-2, 0, -5, 2, LAVA_FLOOR, -1, 'basalt'); D.add(-2, 4.3, -5, 2, 4.5, -1, 'lava'); // down the throat: deep lava over a rock plug. fall in and you sink into it, burning (map.pits)
   for (const [x0, z0, x1, z1] of [[-2.3, -5.3, 2.3, -5], [-2.3, -1, 2.3, -0.7], [-2.3, -5, -2, -1], [2, -5, 2.3, -1]]) add(x0, 9, z0, x1, 9.3, z1, 'basalt'); // its lip
   D.add(-1.6, 9.3, -0.66, 1.6, 9.9, -0.6, 'advolcano', { fit: 1 });
   for (const [x0, z0, x1, z1] of [[-6, -9, -2.2, -8.4], [2.2, -9, 6, -8.4], [-6, 2.4, -2.2, 3], [2.2, 2.4, 6, 3], [-6, -8.4, -5.4, 2.4], [5.4, -8.4, 6, 2.4]]) add(x0, 9, z0, x1, 9.9, z1, 'basalt'); // the rim, open at the two stairs

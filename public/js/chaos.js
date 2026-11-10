@@ -15,6 +15,7 @@ import { MAPS, BOXES } from '/shared/map.js';
 import { GAMES } from '/shared/modes.js';
 import { raycast } from '/shared/physics.js';
 import { surfaces, lavaOk, onLava, LAVA } from '/shared/lava.js';
+import { inPit } from '/shared/pits.js';
 
 const $ = (id) => document.getElementById(id);
 const R = (s = 1) => (Math.random() * 2 - 1) * s;
@@ -115,8 +116,10 @@ net.on('sizzle', (m) => {
   }
 });
 // camera under the sea (map.seaY): everything goes blue and murky instead of showing the underside of the map
-let underOn = false;
+let underOn = false, lavaUnder = false;
 export function underSea(map) {
+  const cp = G.camera.position, lq = G.joined && map && map.pits ? inPit(map, [cp.x, cp.y + 0.12, cp.z]) : null; // eyes under the lava: everything goes orange
+  if (!!lq !== lavaUnder) { lavaUnder = !!lq; el('lavaUnder').style.cssText = 'position:absolute;inset:0;pointer-events:none;background:rgba(255,96,10,0.82);box-shadow:inset 0 0 200px 70px rgba(120,10,0,0.95);z-index:-1;display:' + (lq ? 'block' : 'none'); }
   const on = !!map && map.seaY != null && G.joined && G.camera.position.y < map.seaY - 0.02;
   if (on === underOn) return;
   underOn = on;
