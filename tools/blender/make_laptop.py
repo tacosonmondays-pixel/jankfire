@@ -63,7 +63,7 @@ def build():
         win(120, 14, 96, 50, 0xffe14d, ['FREE AIMBOT', 'IT IS A DUCK'], 'DUCK')
         win(62, 62, 110, 52, 0x39ff14, ['HOT SINGLE BOTS', 'BEHIND YOU'], 'TURN AROUND')
         win(178, 74, 60, 40, 0xff4fd8, ['BREAD', 'BUY'], 'OK')
-    screen = mat('lp_screen', 0xffffff, rough=0.25, emit=0xffffff, strength=1.0, tex=tex_canvas('lp_screen_t', 232, 140, desktop), emit_tex=True)
+    screen = mat('lp_screen', 0xffffff, rough=0.75, emit=0xffffff, strength=1.0, tex=tex_canvas('lp_screen_t', 232, 140, desktop), emit_tex=True)
 
     def sticker(px):
         px[:] = hexrgb(0xffe14d); px[:2] = px[-2:] = hexrgb(0x000000); px[:, :2] = px[:, -2:] = hexrgb(0x000000)
