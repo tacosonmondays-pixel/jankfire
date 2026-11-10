@@ -121,14 +121,25 @@ scrolling noise fields for wisps and holes.
 Why sheets and not height fog in the city shaders: they fog ground, props and people's shins alike without touching
 another material, and a stack of sheets cannot get thicker than its layers however flat you look along it.
 
-Readability: the whole stack is capped at **50%** (`cap`), it clears within 1.2 to 5 m of the camera, sheets fade as
-your eye crosses them, and it is drawn before every other see-through thing so sparks, glass, tracers and outlines
-stay on top of it. Heads and chests are above it.
+Readability: the whole stack is capped at **55%** (`cap`: a stack of sheets never covers more than that, however far or
+flat the view), it clears within 0.8 to 3.2 m of the camera, sheets fade as your eye crosses them, and it is drawn
+before every other see-through thing so sparks, glass, tracers and outlines stay on top of it. Heads and chests are
+above it. Glowing bile puddles shine through it (they are drawn after it).
 
 It only exists in the Gut and the border band, and is not drawn when the camera is more than 110 m from the Gut.
-Layers by preset: Potato 2, Crusty 3, Mid 4, Too HD 5 (plus the border's and the pool's: 7 to 12 quads in all).
+Layers by preset: Potato 2, Crusty 3, Mid 4, Too HD 5 (plus the border's and the pool's: 6 to 12 quads in all; the
+border's are skipped deep in the Gut and the pool's away from the Big Stomach). Each sheet is two triangles and
+three texture reads a pixel.
 
-Knobs (`GUT_FOG`): `on`, `top` 1.05 m, `cap` 0.5, `color` 0xd8182e, `drift` 1, `near` 110 m.
+Knobs (`GUT_FOG`): `on`, `top` 1.05 m (the highest sheet), `cap` 0.55, `gain` 1.5 (how much of a wisp sits on the
+cap), `holes` 0.36 (clear ground between wisps), `glow` 0.7 (how much it lights on the beat), `color` 0xc81a30,
+`drift` 1, `near` 110 m.
+
+## A fix that came with it
+`refreshMapVisuals()` in `public/js/world.js` redraws a map's boxes when the game's models finish downloading. In story
+mode the map's box list is the city's live collision, so if the models landed after you had entered, every wall got a
+dark stone copy and every hidden collision box (rib arch legs, lungs, grapple brackets, and now this whole tower)
+stood there as a black block. A streamed map now skips that redraw. Multiplayer maps are untouched.
 
 ## Looking at it
 ```js
@@ -150,5 +161,6 @@ const gb = (await import('/js/city/gutbeat.js')).gutBeat; gb.fix = 0.3;      // 
 | `public/js/city/gutfog.js` | the ground fog |
 | `public/js/city/ingame.js` | the hooks; the distance fog reads the clock |
 | `public/js/audio.js` | `sfx.bigHeart` |
+| `public/js/world.js` | one line: a streamed map doesn't redraw its boxes |
 | `shared/story/content/world.js` | the `gut:big_heart` location |
 | `tests/story/bigheart.test.mjs` | boxes fresh, place and marks, the climb |
