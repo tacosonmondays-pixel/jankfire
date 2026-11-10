@@ -319,7 +319,7 @@ const methods = {
     const z = t.z;
     z.downs++;
     const self = this.zsDowned(t); // Get Up Juice: back up on your own in a few seconds (and it's the only cola you lose)
-    if (!self) z.cola = false;
+    if (!self) { z.cola = false; this.zsMine(t); }
     z.down = zs.st !== 'over' && (self || this.zmSquad().some((h) => h !== t && h.alive)) ? { at: t.pos.slice(), until: now() + ZM.bleed * (this.zxPerk(t, 'stubborn') ? 2000 : 1000), self: self ? now() + self : 0 } : null;
     z.dead = !z.down;
     this.broadcast({ t: 'zdown', id: t.id, k: z.down ? 'down' : 'dead' });
@@ -429,7 +429,7 @@ const methods = {
       if (!zs.power) { this.zmSay(p, t.k, false, 'no power. find the switch'); return; }
       if (z.cola) { this.zmSay(p, t.k, false, 'one is enough'); return; }
       if (this.zsColaN(p) >= ZM.colaMax) { this.zmSay(p, t.k, false, `${ZM.colaMax} colas is the limit. doctor's orders`); return; }
-      if (this.zmPay(p, ZM.cola, t.k)) { z.cola = true; this.zmSay(p, t.k, true, 'JANK COLA'); this.broadcast({ t: 'fx', k: 'medkit', id: p.id }); }
+      if (this.zmPay(p, ZM.cola, t.k)) { z.cola = true; this.zmSay(p, t.k, true, 'JANK COLA'); this.broadcast({ t: 'fx', k: 'medkit', id: p.id }); this.zsMine(p); }
     }
   },
   zmPay(p, price, k) {

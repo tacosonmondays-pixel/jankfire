@@ -401,6 +401,8 @@ Object.assign(sfx, {
   zmLimb(pos, head) { noise(0.16, 0.5, 'bandpass', 900, 220, pos, 0, 1.5); tone('sine', head ? 520 : 300, 70, 0.18, 0.3, pos, 0.02); noise(0.3, 0.22, 'lowpass', 500, 120, pos, 0.08); tone('square', head ? 880 : 150, head ? 440 : 60, 0.09, 0.08, pos, 0.01); },
   zmDink(pos, off) { tone('triangle', 2350, 2300, off ? 0.7 : 0.22, 0.3, pos); tone('sine', 3520, 3480, off ? 0.5 : 0.14, 0.14, pos); tone('square', 1175, 1170, 0.05, 0.1, pos); if (off) tone('triangle', 1570, 1540, 0.9, 0.14, pos, 0.06); },
   zmScream(pos) { for (const [f, v] of [[1250, 0.2], [1870, 0.12], [2630, 0.07]]) { tone('sawtooth', f * 0.6, f, 0.25, v, pos); tone('sawtooth', f, f * 0.82, 1.0, v, pos, 0.24); } noise(1.1, 0.16, 'bandpass', 2600, 1800, pos, 0.1, 3); tone('square', 96, 60, 1.1, 0.07, pos, 0.1); },
+  zmVoid(pos) { tone('sawtooth', 70, 300, 0.12, 0.2, pos); noise(0.12, 0.7, 'lowpass', 500, 80, pos, 0.11); tone('sine', 120, 38, 0.4, 0.6, pos, 0.11); tone('triangle', 1760, 1740, 0.5, 0.16, pos, 0.14); [523, 659, 784, 1046].forEach((f, i) => tone('square', f, f, 0.12, 0.09, pos, 0.5 + i * 0.09)); }, // the stamp winds up, lands, a little fanfare
+  zmZap(pos) { for (let i = 0; i < 4; i++) noise(0.03, 0.4, 'highpass', 3000, 7000, pos, i * 0.035, 2); tone('sawtooth', 1800, 240, 0.14, 0.12, pos); },
   zmPop(pos) { tone('sine', 190, 34, 0.55, 0.6, pos); noise(0.5, 0.6, 'lowpass', 900, 90, pos); noise(0.7, 0.3, 'bandpass', 420, 160, pos, 0.1, 2); for (let i = 0; i < 5; i++) tone('sine', 260 + i * 70, 120, 0.12, 0.12, pos, 0.18 + i * 0.07); },
 });
 

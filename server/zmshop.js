@@ -19,7 +19,7 @@ const methods = {
   zsGuns(p) { return this.zsHas(p, 'thirdhand') ? ZM_COLAS.thirdhand.guns : ZM.guns; },
   // what a gun holds for p: Deep Pockets, and what the voider added
   zsAmmoMul(p, w) { const u = p.z.up && p.z.up[w]; return (this.zsHas(p, 'pockets') ? ZM_COLAS.pockets.ammo : 1) * (u ? ZM_UP.ammo[u.t] || 1 : 1); },
-  zsMine(p) { send(p, { t: 'zshop', colas: [...(p.z.colas || [])], up: p.z.up || {} }); }, // what you've got (rides after every loadout)
+  zsMine(p) { send(p, { t: 'zshop', colas: [...(p.z.colas || [])], up: p.z.up || {}, jank: p.z.cola ? 1 : 0 }); }, // what you've got (rides after every loadout)
   zsTarget(p, e, d) { return zmShopTarget(this.map.zm, e, d, 0.6); },
   zsNeed(t) { return t.kind === 'up' ? ZM_UP.hold : null; }, // seconds of F (zmUse)
 
