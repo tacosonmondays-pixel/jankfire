@@ -131,8 +131,8 @@ export function render(C) {
   // ---- implants + secrets
   {
     const out = ['# Bio-implants, organ cores and secret bio upgrades', '', '_Generated from `implants.js`. The Drift rules are at the top of that file._', ''];
-    for (const kind of ['shop', 'core', 'secret']) {
-      out.push(`## ${{ shop: 'Shop implants', core: 'Organ cores', secret: 'Secret bio upgrades' }[kind]}`, '');
+    for (const kind of ['shop', 'core', 'inheritance', 'secret']) {
+      out.push(`## ${{ shop: 'Shop implants', core: 'Organ cores', inheritance: 'Inheritances (parts from friends)', secret: 'Secret bio upgrades' }[kind]}`, '');
       for (const [id, i] of Object.entries(C.IMPLANTS).filter(([, x]) => x.kind === kind)) {
         out.push(`### ${i.name} \`${id}\` (${i.slot})`, `_${i.text}_`, '', `- **Perk:** ${i.perk}`, `- **Downside:** ${i.downside}`, `- **Look:** ${i.look}`);
         if (i.cost) out.push(`- **Cost:** ${i.cost} coupons`);
@@ -195,6 +195,29 @@ export function render(C) {
     for (const [id, b] of Object.entries(C.BOSSES)) out.push(`| ${b.card} | ${b.weakness.element} | ${b.weakness.weapons.join(', ')} | ${b.weakPoints.map((w) => w.name).join(', ')} |`);
     files['../MECHANICS.md'] = out.join('\n') + '\n';
   }
+  // ---- grudges (docs/story/GRUDGE_LEDGER.md; the rules are hand-written in docs/story/GRUDGES.md)
+  if (C.GRUDGES) {
+    const G = C.GRUDGES;
+    const out = ['# OVERDUE: the Grudge Ledger catalogue', '', '_Generated from `shared/story/content/grudges.js`. Edit the data, then run `node tools/story/render_script.mjs`. The rules, the save schema, why it is its own design and the example stories are in [GRUDGES.md](GRUDGES.md)._', '',
+      '## Rules (numbers)', '', '| rule | value |', '|---|---|', ...Object.entries(G.RULES).map(([k, v]) => `| ${k} | ${v} |`), '',
+      '## Who can open a file', '', '| faction | file tag | who | where | voice |', '|---|---|---|---|---|',
+      ...Object.values(G.FACTIONS).map((f) => `| ${f.name} | ${f.tag} | ${f.who} | ${f.districts.map((d) => C.DISTRICTS[d].name).join(', ')} | ${f.voice} |`), '',
+      '## Triggers', '', '| trigger | when | opens a file? | gives |', '|---|---|---|---|',
+      ...Object.entries(G.TRIGGERS).map(([id, t]) => `| **${t.name}** \`${id}\` | ${t.when}${t.weapons ? ` (${t.weapons.join(', ')})` : ''} | ${t.opens ? 'yes' : 'only adds to an open file'} | ${G.ADAPTATIONS[t.adaptation].name} |`), '',
+      `## Adaptations (${Object.keys(G.ADAPTATIONS).length})`, '', 'Each one is a thing you can see on the model, changes one behaviour, and has one counter-trick.', '', '| adaptation | after | looks like | what it changes | the counter |', '|---|---|---|---|---|',
+      ...Object.values(G.ADAPTATIONS).map((a) => `| **${a.name}** ("${a.title}") | ${G.TRIGGERS[a.from].name} | ${a.look} | ${a.effect} | ${a.counter} |`), '',
+      '## Resolutions', '', '| ending | how | what happens | file stamp |', '|---|---|---|---|', ...Object.values(G.RESOLUTIONS).map((r) => `| **${r.name}** | ${r.how} | ${r.result} | ${r.file} |`), '',
+      '## Recap cards', '', `Fields: ${G.RECAP_FIELDS.map((f) => `\`{${f}}\``).join(', ')}.`, ''];
+    for (const [id, r] of Object.entries(G.RECAPS)) out.push(`### ${r.title} \`${id}\``, `_${r.when}_`, '', ...r.lines.map((l) => `> ${l}  `), '');
+    let n = 0; for (const f of Object.values(G.BARKS)) for (const ls of Object.values(f)) n += ls.length;
+    out.push(`## Barks (${n} lines)`, '', '`{you}` is your name on the file, `{name}` theirs, `{district}` where it happened.', '');
+    for (const [fid, f] of Object.entries(G.BARKS)) {
+      out.push(`### ${G.FACTIONS[fid].name}`, '');
+      for (const k of G.BARK_KEYS) out.push(`- **${k}:** ${f[k].map((l) => `"${l}"`).join(' · ')}`);
+      out.push('');
+    }
+    files['../GRUDGE_LEDGER.md'] = out.join('\n');
+  }
   // ---- index
   {
     const total = Object.values(files).reduce((n, t) => n + words(t), 0);
@@ -211,6 +234,7 @@ export function render(C) {
       `| [IMPLANTS.md](IMPLANTS.md) | ${Object.keys(C.IMPLANTS).length} implants (${Object.values(C.IMPLANTS).filter((i) => i.kind === 'secret').length} secret) and the Drift rules | ${words(files['IMPLANTS.md'])} words |`,
       `| [LOOT.md](LOOT.md) | ${Object.keys(C.BRANDS).length} brands, ${Object.keys(C.LEGENDARIES).length} named legendaries | ${words(files['LOOT.md'])} words |`,
       `| [../MECHANICS.md](../MECHANICS.md) | the mechanics bible: ${Object.keys(C.MECHANICS).length} mechanics, the grapple, coverage | ${words(files['../MECHANICS.md'])} words |`,
+      ...(C.GRUDGES ? [`| [../GRUDGES.md](../GRUDGES.md) · [../GRUDGE_LEDGER.md](../GRUDGE_LEDGER.md) | the Grudge Ledger: enemies who remember you, ${Object.keys(C.GRUDGES.ADAPTATIONS).length} adaptations | ${words(files['../GRUDGE_LEDGER.md'])} words |`] : []),
       `| [COLLECTIBLES.md](COLLECTIBLES.md) | ${Object.keys(C.COLLECTIBLES).length} collectibles in ${Object.keys(C.COLLECTIBLE_SETS).length} sets | ${words(files['COLLECTIBLES.md'])} words |`,
       '', `**Total: about ${Math.round(total / 1000)}k words, ${ms.length} main missions, ${Object.keys(C.SCENES).length} scenes.**`, '',
       '## Main story at a glance', '', '| # | act | mission | logline |', '|---|---|---|---|',

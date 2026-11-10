@@ -12,6 +12,7 @@ import { sfx } from './audio.js';
 import { ME } from './player.js';
 import { flamesFromBoxes, clearMapFlames } from './flames.js';
 import { LIQ, SH, SHORE, DEPTH, DROP, liquidMaterial, liquidBox, setLiquidHaze, tickLiquids, setLiquidQ as setQ } from './liquidmats.js';
+import { spritesOn, waterSplash } from './flipbook.js';
 export { LIQ, liquidMaterial, liquidBox };
 
 // ------------------------------------------------------------ the map's liquids
@@ -314,8 +315,10 @@ export function splash(s, x, z, k = 1, quiet = false) {
   if (!s || !wet(s, x, z)) return;
   S.splashN++;
   const y = surfaceY(s, x, z), P = fx.parts && fx.parts(), L = LIQ[s.key];
-  addRing(s, x, z, 0.6 + k * 2.2, 0.6 + k * 0.5);
-  if (k > 0.5) addRing(s, x, z, 1.2 + k * 3.4, 1.1 + k * 0.5);
+  const spr = s.kind === 'water' && spritesOn(); // drawn ripples + crown (flipbook.js) instead of the shader rings + white squares
+  if (spr) waterSplash(x, y, z, k, (px, pz) => surfaceY(s, px, pz) + 0.04, s.key === 'oil' ? 0x2a2030 : s.key.startsWith('dye') ? L.shal : 0xffffff);
+  else { addRing(s, x, z, 0.6 + k * 2.2, 0.6 + k * 0.5);
+  if (k > 0.5) addRing(s, x, z, 1.2 + k * 3.4, 1.1 + k * 0.5); }
   if (!P) return;
   const n = Math.min(80, Math.round(6 + k * 34));
   if (s.kind === 'water') {
@@ -323,7 +326,7 @@ export function splash(s, x, z, k = 1, quiet = false) {
     for (let i = 0; i < n; i++) { const a = Math.random() * 6.2832, sp = (1 + Math.random() * 3) * (0.6 + k * 0.5), up = (2.5 + Math.random() * 5) * (0.5 + k * 0.6);
       P.misc.spawn(x + R(0.2), y + 0.05, z + R(0.2), Math.cos(a) * sp, up, Math.sin(a) * sp, 0.5 + Math.random() * 0.5, 0.07 + Math.random() * 0.08 * (0.5 + k), 0.03, c0, c1, 1, 16, 0.4); }
     // the crown: a column of white chunks thrown straight up
-    if (k > 0.45) for (let i = 0; i < Math.round(8 + k * 14); i++) { const a = (i / 10) * 6.2832, r = 0.25 + k * 0.25;
+    if (k > 0.45 && !spr) for (let i = 0; i < Math.round(8 + k * 14); i++) { const a = (i / 10) * 6.2832, r = 0.25 + k * 0.25;
       P.smoke.spawn(x + Math.cos(a) * r, y + 0.1, z + Math.sin(a) * r, Math.cos(a) * 1.2, 3 + k * 4 + Math.random() * 3, Math.sin(a) * 1.2, 0.5 + Math.random() * 0.4, 0.35 + k * 0.25, 0.12, c0, c1, 0.9, 14, 0.8); }
     if (!quiet) sfx.liqSplash([x, y, z], k);
   } else {

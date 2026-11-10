@@ -70,7 +70,14 @@ export const HAIRS = { none: { name: 'Bald' }, short: { name: 'Short' }, bowl: {
 export const TOPS = { tank: { name: 'Sash' }, tee: { name: 'T-Shirt' }, hoodie: { name: 'Hoodie' }, jacket: { name: 'Jacket' }, suit: { name: 'Suit' }, runner: { name: 'Runner Jacket' }, none: { name: 'Nothing' }, maid: { name: 'Maid Dress', ach: 'board' } }; // tops can be achievement-locked too
 export const BOTTOMS = { shorts: { name: 'Shorts' }, pants: { name: 'Pants' }, skirt: { name: 'Skirt' }, overalls: { name: 'Overalls', ach: 'smarty' } }; // bottoms can be achievement-locked too (hasAcc)
 export const OUTFIT = { skin: SKIN_TONES, hairColor: HAIR_COLORS, topColor: CLOTH_COLORS, bottomColor: CLOTH_COLORS };
-export const DEFAULT_LOOK = { color: '', head: 'none', face: 'none', back: 'none', skin: '', hair: 'none', hairColor: '#1a1a1a', top: 'tank', topColor: '', bottom: 'shorts', bottomColor: '' };
+// joke body (free, looks only: hitboxes never change). build: the mannequin's shape. bigHead / bigButt: 0 (normal) .. JOKE_MAX
+// chest / waist / hips: how wide that band of the torso is for a build. head / butt: growth per slider step
+export const BUILDS = { '': { name: 'Mannequin', chest: 1, waist: 1, hips: 1 }, m: { name: 'Male', chest: 1.1, waist: 1.1, hips: 0.94 }, f: { name: 'Female', chest: 0.93, waist: 0.84, hips: 1.13 } };
+export const JOKE_MAX = 4;
+export const JOKE = { head: 0.24, butt: 0.036, arms: 0.22, legs: 0.2, chest: 0.09, bust: 0.02, belly: 0.034, fat: 0.1 }; // growth per step
+// the body sliders, in the order the character screen shows them (all 0..JOKE_MAX)
+export const BODY_KEYS = ['bigHead', 'bigChest', 'bigArms', 'fat', 'bigButt', 'bigLegs'];
+export const DEFAULT_LOOK = { color: '', head: 'none', face: 'none', back: 'none', skin: '', hair: 'none', hairColor: '#1a1a1a', top: 'tank', topColor: '', bottom: 'shorts', bottomColor: '', build: '', bigHead: 0, bigButt: 0, bigChest: 0, bigArms: 0, bigLegs: 0, fat: 0 };
 
 export function achievementsFrom(stats) {
   const out = new Set();
@@ -94,5 +101,7 @@ export function validLook(look, achs) {
   if (has(TOPS, look.top) && hasAcc(TOPS[look.top], achs)) out.top = look.top;
   if (has(BOTTOMS, look.bottom) && hasAcc(BOTTOMS[look.bottom], achs)) out.bottom = look.bottom;
   for (const [k, list] of Object.entries(OUTFIT)) if (list.includes(look[k])) out[k] = look[k];
+  if (has(BUILDS, look.build)) out.build = look.build;
+  for (const k of BODY_KEYS) if (Number.isInteger(look[k]) && look[k] >= 0 && look[k] <= JOKE_MAX) out[k] = look[k];
   return out;
 }

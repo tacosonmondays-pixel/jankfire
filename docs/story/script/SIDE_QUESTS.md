@@ -130,6 +130,7 @@ _Help Lumps train by carrying fridges up the Long Stairs. Drop one and it rolls 
 
 **Reward:** 250 coupons, lumps_ring
 **Review card:** EXCEEDS EXPECTATIONS. no fridges were dropped. / MEETS EXPECTATIONS. most fridges. / SEE ME. mrs. abara wants a word.
+_Builder notes: Lumps' 'big one' is his copy of Pallet Jack, built on the outside because Lumps wouldn't let Bev cut him. After the train (m06) the intro changes: Lumps is carrying fridges up the Long Stairs because someone has to do Jack's round._
 
 ---
 

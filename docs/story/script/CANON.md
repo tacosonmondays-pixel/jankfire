@@ -49,6 +49,7 @@ were always meant to be a workforce.
 - **Mina Cale** (`mina`): Rory's little sister. 9 at 17:30, waiting at the school gate. Survived the Stampede in the mall vents with a five-year-old boy (Wristband). 70 now. Taken to the Gut by Overtime's collectors in Act I (C4). She says "rory?" as the truck doors shut.
 - **Marion Hask** (`hask`): ☺ CORP Chief Punctuality Officer, 101, kept alive by Gristle & Sons organs taken from the Gut's feedstock. She keeps a ledger of every donor's name and reads it every night.
 - **Mr. Overtime** (`overtime`): Edwin Sallow, Employee #1. He died of old age at sixty, two years before the war, and ☺ CORP loaded his recording into the 4.5 m cyborg body: the first recording ever put in a body. June stayed married to him. So at 17:29 on the Final Quarter he was already the cyborg, with an overcoat over his arm. Every time he dies he's reloaded from his last backup (17:30, coat on, at the door), so he never learns the world ended. It was their 40th anniversary.
+- **Pallet Jack** (`pallet_jack`): Jack Marsh, 41, the Bottom's delivery man, an Overdrive Rig built into him by Bev. Lumps' gym partner, Dumpling's uncle. Dies on the train at the end of Act I (m06), at his own request, by Change's hand; Change carries his marrow from then on. Dead in every ending.
 - **Pritchard** (`pritchard`): Hask's executive assistant. Keeps her calendar. Can be turned in Act IV.
 - Faction and district leads, bosses and minor characters: see the cast bible.
 
@@ -66,6 +67,17 @@ were always meant to be a workforce.
 3. **Act III, What are they planning?** The Gristle page: the dead were always meant to work, and the Gut was attempt one. Evergreen's waving mannequins are the Restoration pilot. The Lates: the late memo (they'd hit target). The Missing Hour; the warehouse; PROTOTYPE 0. Hask's offer. The split.
 4. **Act IV, Who do you stand with?** Vacancy already bought the Bottom (page 5). The raid. Auntie stays. Hask explains why you're free (fired at 17:29:41).
 5. **Act V, What do you become?** Page 6 and Hask's 17:10 phone call: they launched knowing they'd hit target. Overtime's last fragment. The choice.
+
+## How collecting works (fixed by the Act I tone pass, 2026-11-10)
+- **The door slip.** Collectors staple a ☺ CORP slip to the door of whoever they take: COLLECTED, a name, a time to the
+  second, BALANCE CARRIED FORWARD. Every act uses these words.
+- **The credit.** A collected person is credited against their district's back pay, then the interest is put back on,
+  so the balance never goes down. Feedstock is logged by weight.
+- **Bev's jars.** Parts in the clinics carry a date and a truck number; a few carry a first name, and those sell for less.
+- **Ken Abara** is one man: Dumpling's "mr. abara", "old ken" among the nine taken in m04, and "Kenneth Abara. Liver."
+  in Hask's ledger in Act V. His hip was Bev's work and went up on the truck with him.
+- **Cruelty is never a reward gag** ([TONE.md](../TONE.md)). Two later boss endings (Doctor Upsell's shower of organs as
+  loot; shooting Hask's tagged donor organs) are to be softened when Acts III and V get their tone pass.
 
 ## Words and numbers to keep consistent
 - back pay: **244 quarters** (61 years).

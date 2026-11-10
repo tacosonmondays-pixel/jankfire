@@ -428,4 +428,34 @@ export const FIGHTS = {
     pinata: "It turns into a plain grey concrete square, and every unloaded thing in the Unfinished Bit loads at once and falls out of the sky as loot.",
     lootTable: "lt_boss_missing_texture", scaling: "+20% HP; no Todd after three",
   },
+  // ================================================================ THE UNDER-HILL LOOP (docs/story/TRAIN.md §4)
+  // extra fields on this one, for the builder: `gap` (THE GAP, the HUD distance), `mask` (the three break stages), `fail`.
+  // numbers TRAIN.md doesn't give (bar sizes, crits, the 25% line) are placeholders in line with overtime_1
+  revenue_protection_1: {
+    uses: ["grapple", "blooddrive", "bloodcross", "slide", "implants"],
+    arena: { name: "THE LAST TWO CARS", layout: "The last two cars of a short train: a flatbed (crates, a chained-down fridge, the hand truck) and a low open wagon behind it. The train moves; the tunnel scrolls. The boss holds a distance behind you shown on the HUD as THE GAP (starts at 30 m). Arms that get a grip on the train close it. At 0 m it has you.",
+      vertical: "one deck. The flatbed is a step up from the open wagon; from phase 3 the wagon is gone and the arena is one car",
+      grapple: ["the wagon's rail and the flatbed's chains (to get back on when a Sweeper puts you over the side)", "the signal gantries a Brakeman drops", "a Snatcher's wrist (zip to the crewmate it's holding)"],
+      hazards: [{ kind: "crush", where: "THE GAP at 0 m", effect: "the hands close over the camera, one at a time. \"fare evaded. briefly.\"" }, { kind: "crush", where: "the track ahead, when a Brakeman gets a grip", effect: "ripped-up track or a dropped signal gantry: brace, or it throws everyone on the deck" }],
+      cover: [{ what: "the crates Lumps hauls into cover", breaks: "a Sweeper clears them" }, { what: "the chained-down fridge", breaks: "it doesn't" }] },
+    layers: [{ bar: "armour", of: 3750, how: "the mask shrugs bolts off. Phase 1: only bolts put into the open eye housings count. Phase 2: sustained fire breaks it plate by plate" }, { bar: "health", of: 1250, how: "the Inspector's bar: he is in the open in phase 3, and he is the crit spot" }],
+    weakPoints: [
+      { name: "the wrist joints", glow: "a glowing knot of lanyards and ID cards on every arm", exposedBy: "always: sever it and the hand drops onto the track and the stump whips back", crit: 2 },
+      { name: "the eye housings", glow: "the two tall oval lamp housings swing open", exposedBy: "sever four arms inside ten seconds: it flinches", crit: 2 },
+      { name: "the Inspector", glow: "a man in a cap in the middle of it, punching a ticket that isn't there", exposedBy: "phase 3: the mask is hanging off one bolt", crit: 2.5 },
+    ],
+    weakness: { element: "blood", weapons: ["bloodcross"], why: "the Blood Drive is the Blood Cross six times over, and the cross is what stops it: it comes apart along the cross's four arms." },
+    adds: [{ name: "the arms", count: 4, personality: "in no hurry. reach, grip, drag", does: "Grabber, Snatcher, Sweeper, Brakeman (see phase 1). Each arm has a glowing wrist joint (a knot of lanyards and ID cards). That's the weak point: sever it and the hand drops onto the track and the stump whips back" }],
+    twists: ["it can't be won: the mask only takes damage through the flinch, and at 60% Jack's armour breaks", "you have Jack's marrow, the Blood Drive is free while it spins, and now the mask breaks in three stages: hairline, the left eye, the smile", "the wagon is bitten in half, the arena is one car, and the Inspector is in the open: ninety seconds to daylight"],
+    setPiece: [
+      { kind: "chase", when: "the whole fight", what: "the boss is the one chasing: it hauls itself up the tunnel behind a moving train, and THE GAP is the fight's clock" },
+      { kind: "transform", when: "between phases 1 and 2", what: "mo_carry_the_bit_that_works: Jack asks you to do it, the player presses the button, and takes his marrow" },
+      { kind: "vehicle", when: "phase 3", what: "the first lunge bites the open wagon in half; Lumps pulls the coupling pin" },
+    ],
+    gap: { hud: "THE GAP", start: 30, grabber: "closes 1 m/s while a Grabber holds the wagon's rail", moment: "closes to 6 m and holds for mo_carry_the_bit_that_works", fail: 0 },
+    mask: { plates: 12, stages: ["Hairline", "The left eye", "The smile"], end: "phase 3: hanging off one bolt, swinging, half a face. The last bolt goes at the finish" },
+    fail: { when: "THE GAP at 0 m", what: "the hands close over the camera, one at a time", line: "fare evaded. briefly." },
+    pinata: "The ring overspins, all six barrels at once, and one blood cross grows out of the middle of it until it touches the tunnel on all four sides. BLOOD CROSSED. The braids unravel, the ropes of arms let go of the walls one hand at a time, and the plug that filled the tunnel slumps into four heaps across the track, steaming. No core: what you carry out of this one is Jack's.",
+    lootTable: "lt_boss_revenue_protection_1", scaling: "story only. It is broken apart, not gone: the pieces are still in the Loop and they were grown to grow back. It can come back later (Act III, when you take the Loop into the Gut for the nine, is the obvious place)",
+  },
 };

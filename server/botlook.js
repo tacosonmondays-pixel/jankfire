@@ -51,6 +51,12 @@ export function botLook(seed, presetChance = 0.3) {
     preset = pk(r, PRESET_IDS);
     for (const [k, v] of Object.entries(PRESETS[preset])) look[k] = Array.isArray(v) ? pk(r, v) : v;
   }
+  // the joke body, now and then (its own dice, so nobody's outfit changed when this was added): a build for half of them, a big head or a big butt for a few
+  const j = rng(seed ^ 0x2c1b3c6d);
+  look.build = pk(j, ['', '', 'm', 'f']);
+  if (j() < 0.12) look.bigHead = 1 + Math.floor(j() * 4);
+  if (j() < 0.1) look.bigButt = 1 + Math.floor(j() * 4);
+  for (const k of ['bigChest', 'bigArms', 'bigLegs', 'fat']) if (j() < 0.08) look[k] = 1 + Math.floor(j() * 4); // (after the two above, so the bots that already had a big head keep it)
   return { look: validLook(look, ALL_ACHS), preset }; // never invalid, whatever the tables above say
 }
 

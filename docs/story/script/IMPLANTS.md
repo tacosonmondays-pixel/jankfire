@@ -311,6 +311,16 @@ _// TODO: you_
 - **Look:** purple-and-black checkerboard patches on your plastic
 - **From:** THE MISSING TEXTURE (`missing_texture`)
 
+## Inheritances (parts from friends)
+
+### PALLET JACK'S MARROW `marrow_pallet_jack` (spine)
+_The only good thing in him, according to the woman who put it there. She was wrong about that._
+
+- **Perk:** blood weapons cost nothing while you are firing them (Blood Cross, Blood Drive). Outside a fight you make blood back: 3 HP a second up to full. You can carry the Blood Drive, and in story mode the Overdrive Rig streak lasts twice as long on you, because you've got the plumbing for it now
+- **Downside:** you weigh more: jump height down 10%, fall damage up. You are hungry: every ten minutes of play the HUD tells you what something nearby weighs. If you stand still for a while your right hand closes around a hand-truck handle that isn't there
+- **Look:** a line of traffic-light red down the mannequin's spine that shows through the plastic when you fire
+- **Drift:** +1 permanent
+
 ## Secret bio upgrades
 
 ### SOCK TENDONS `sec_sock_tendons` (legs)

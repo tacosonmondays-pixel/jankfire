@@ -104,6 +104,7 @@ export const LOCATIONS = {
   'bottom:gordo_den': { district: 'bottom', name: "Gordo's Den", desc: 'A shipping container full of maps, string and stolen ☺ CORP binders.' },
   'bottom:dale_shed': { district: 'bottom', name: "Dale's Shed", desc: 'Behind the Machine. Forty years of batteries, stacked like bricks.' },
   'bottom:school': { district: 'bottom', name: 'The Crayon School', desc: 'Where Auntie taught the Bottom to read. The walls are the textbook.' },
+  'bottom:service_tunnel': { district: 'bottom', name: 'The Service Tunnel', desc: "Under the mall. Dale's maintenance loco, eleven years in the fixing. It's more of a tractor. But it's on rails." },
   // the gut
   'gut:border': { district: 'gut', name: 'The Gut Border', desc: 'Where the pastel houses start to grow skin. The first nemesis arena.' },
   'gut:stairs_top': { district: 'gut', name: 'Top of the Long Stairs', desc: 'Where the stairs go soft.' },
@@ -115,7 +116,7 @@ export const LOCATIONS = {
   'gut:digester_wall': { district: 'gut', name: 'The Digester Wall', desc: 'Where the Bottom\'s missing are, half grown in, still talking.' },
   'gut:feed_dock': { district: 'gut', name: 'The Feed Dock', desc: 'Where the Gristle & Sons trucks unload. Quiet. Always quiet.' },
   'gut:belly_button': { district: 'gut', name: 'The Belly Button', desc: "A door at the bottom of the Big Stomach. Don't press it." },
-  'gut:clinic_bev': { district: 'gut', name: "Bev's Clinic", desc: "A back room on the Gut border. A dentist's chair. A bucket." },
+  'gut:clinic_bev': { district: 'gut', name: "Bev's Clinic", desc: "A back room on the Gut border. A dentist's chair. A bucket. A shelf of jars with dates on." },
   // pinstripe
   'pinstripe:villa': { district: 'pinstripe', name: 'Villa Fazzoletto', desc: 'A cathedral of marble and meatballs. The strings go up into the dark.' },
   'pinstripe:rafters': { district: 'pinstripe', name: 'The Rafters', desc: 'Above the Villa ceiling. Someone works the strings from here.' },
@@ -184,7 +185,7 @@ export const LOCATIONS = {
   'corphill:clock_room': { district: 'corphill', name: 'The Clock Room', desc: 'Behind the Master Clock. A second, smaller Machine. Something is asleep on it.' },
   // the commute
   'commute:spiral_freeway': { district: 'commute', name: 'The Spiral Freeway', desc: 'A ramp that circles the hill four times.' },
-  'commute:ring_road': { district: 'commute', name: 'The Ring Road', desc: 'Jammed with the evening rush of the Final Quarter.' },
+  'commute:ring_road': { district: 'commute', name: 'The Ring Road', desc: 'Jammed with the evening rush of the Final Quarter. Everybody is still in their car.' },
   'commute:unpaid_camp': { district: 'commute', name: 'Camp Onboarding', desc: "The Unpaid's biggest camp. A bus depot made of desks." },
   'commute:carnival': { district: 'commute', name: 'The Fun Fair', desc: "The Fun Department's carnival. Only at night." },
   'commute:gary_crater': { district: 'commute', name: "Gary's Site Office", desc: 'A portacabin on the lip of a crater. The region.' },
@@ -192,12 +193,14 @@ export const LOCATIONS = {
   'commute:todd_shrine': { district: 'commute', name: 'The Shrine of the First Intern', desc: 'A lawn chair on a bus roof. Todd is in it.' },
   'commute:smiles_hideout': { district: 'commute', name: 'The Overpass Hideout', desc: 'Under a collapsed overpass. A big round shadow.' },
   'commute:missing_texture': { district: 'commute', name: 'The Unfinished Bit', desc: 'A hot zone where the ground is purple and black squares.' },
+  'commute:underhill_loop': { district: 'commute', name: 'The Under-Hill Loop', desc: "The commuter line under the whole hill, through the Gut's basement and round to every district. Nobody takes it. The tunnel eats." },
+  'commute:tunnel_mouth': { district: 'commute', name: 'The Tunnel Mouth', desc: 'Where the Loop comes out onto a viaduct over The Commute. Dead traffic to the horizon.' },
   // the sims (flashbacks inside the Machine)
   'sims:spire_60': { district: 'sims', name: 'Spire, 60th Floor (16:00)', desc: 'The last workday. Internal Audit. Everybody wants to go home.' },
   'sims:print_room': { district: 'sims', name: 'The Print Room', desc: 'The 60th-floor print room. The tape drive is slow.' },
   'sims:stairwell': { district: 'sims', name: 'Stairwell B', desc: 'Sixty floors of stairs. The sirens start at 17:20.' },
   'sims:lobby': { district: 'sims', name: 'The Lobby (17:29)', desc: 'The doors are right there.' },
-  'sims:suburb': { district: 'sims', name: 'Suburb (sim)', desc: 'The training sim the story starts in.' },
+  'sims:suburb': { district: 'sims', name: 'Suburb (sim)', desc: 'The training sim the story starts in. A nice street on a nice day. It has been that day for sixty-one years.' },
   'sims:warehouse': { district: 'sims', name: 'Warehouse (sim)', desc: 'The Warehouse training map. Gary\'s site office is here, and a vending machine that is in no other match.' },
   'sims:school_gate': { district: 'sims', name: 'Hillside Primary (sim)', desc: 'A school gate at 17:30. A sim nobody plays.' },
 };

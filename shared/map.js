@@ -3,6 +3,7 @@
 // Rule of thumb for builders: never let two different surfaces sit in the same plane (that flickers).
 import { buildNav, navPath, navLocate, navClear } from './nav.js';
 import { outOfBounds } from './bounds.js';
+import { shapeGround } from './terrain.js';
 import { prop } from './props.js';
 import { seen, propOf, spinAt } from './propcap.js'; // round 4: which boxes a Blender prop draws instead (look-only)
 export { prop, PROPS } from './props.js';
@@ -49,7 +50,21 @@ function builder() {
     };
     return L;
   };
-  return { boxes, add, box, local, obb };
+  // a Blender building (public/models/arch/<id>.glb, public/js/archfield.js) placed like local(): the returned frame tags
+  // every box drawn through it { av: id }, and the client skips those boxes while the model is loaded. visual only:
+  // the boxes stay exactly as they were for physics, bots and hits. o: paint (map material keys for its painted parts)
+  boxes.arch = [];
+  const arch = (id, ox, oz, rot = 0, oy = 0, o = {}) => {
+    boxes.arch.push({ id, p: [ox, oy, oz], r: rot & 3, ...o });
+    const L = local(ox, oz, rot, oy), tag = { av: id, ai: boxes.arch.length - 1 }; // (ai: which placement)
+    const A = (x0, y0, z0, x1, y1, z1, mat, extra) => L(x0, y0, z0, x1, y1, z1, mat, extra ? { ...extra, ...tag } : tag);
+    A.B = (cx, cy, cz, sx, sy, sz, mat, extra) => A(cx - sx / 2, cy - sy / 2, cz - sz / 2, cx + sx / 2, cy + sy / 2, cz + sz / 2, mat, extra);
+    A.pt = L.pt; A.P = L.P; A.plain = L; // (plain: the same frame without the tag, for the furniture inside)
+    return A;
+  };
+  // the same for boxes a helper already added (roofTop() and friends): everything from boxes[n0] on gets the tag
+  const archSince = (n0, id, ox, oz, rot = 0, oy = 0, o = {}) => { boxes.arch.push({ id, p: [ox, oy, oz], r: rot & 3, ...o }); for (let i = n0; i < boxes.length; i++) Object.assign(boxes[i], { av: id, ai: boxes.arch.length - 1 }); };
+  return { boxes, add, box, local, obb, arch, archSince };
 }
 
 // a wall with holes cut in it. axis 'x' = runs along x at z=fixed, 'z' = runs along z at x=fixed.
@@ -75,13 +90,13 @@ function wall(L, axis, fixed, a0, a1, y0, y1, t, mat, openings = []) {
 }
 
 // slab with a rectangular hole (for stairwells)
-function slab(L, x0, z0, x1, z1, y0, y1, mat, hole) {
-  if (!hole) { L(x0, y0, z0, x1, y1, z1, mat); return; }
+function slab(L, x0, z0, x1, z1, y0, y1, mat, hole, e) {
+  if (!hole) { L(x0, y0, z0, x1, y1, z1, mat, e); return; }
   const [hx0, hz0, hx1, hz1] = hole;
-  L(x0, y0, z0, x1, y1, hz0, mat);
-  L(x0, y0, hz1, x1, y1, z1, mat);
-  L(x0, y0, hz0, hx0, y1, hz1, mat);
-  L(hx1, y0, hz0, x1, y1, hz1, mat);
+  L(x0, y0, z0, x1, y1, hz0, mat, e);
+  L(x0, y0, hz1, x1, y1, z1, mat, e);
+  L(x0, y0, hz0, hx0, y1, hz1, mat, e);
+  L(hx1, y0, hz0, x1, y1, hz1, mat, e);
 }
 
 // a flight of solid steps from (x0..x1) starting at z0 going toward dir (+1/-1) along z, from height ya to yb
@@ -883,7 +898,7 @@ function platform() {
     [-8, 0.1, -20], [8, 0.1, 5], [-10, 0.1, 12], [26, 0.1, -23], [-4, 0.1, 19], [-29, RIG.M2 + 0.1, -7], [-18, RIG.M2 + 0.1, 2], [24, RIG.M1 + 0.1, 4],
     [23, RIG.M2 + 0.1, -6], [40, RIG.M3 + 0.1, -6], [-15, RIG.BOAT + 0.1, 32.5], [10, RIG.BOAT + 0.1, 41]];
   let graph = null;
-  return { name: 'Platform', size: 'medium', boxes: B.boxes, deco: D.boxes, killY: -30, floorY: -15.5,
+  return { name: 'Platform', size: 'medium', boxes: B.boxes, deco: D.boxes, killY: -16.2, seaY: -14, floorY: -15.5, // (killY: head under the sea)
     sky: { top: 0x4a5a78, mid: 0xb4c2d0, bot: 0x2c3846, fog: 0xb4c2d0 }, fogNear: 90, fogFar: 360,
     spawns, teamSpawns: { att, def }, edgeGuard: true, sea: true,
     peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: -67, z0: -45, n: 122, cell: 1, levels: [RIG.BOAT, RIG.CD, 0, RIG.M1, RIG.M2, RIG.M3], band: 0.6, stairs: st })); },
@@ -1001,7 +1016,7 @@ function platformSD() {
   const def = [[21, 0.25, -50], [21, 0.25, -38], [25, 0.25, -55.5], [25, 0.25, -32.5], [29.5, 0.25, -50.5], [29.5, 0.25, -37.5], [25, 0.25, -44]];
   const spawns = [...att.slice(0, 3), ...def.slice(0, 3), [-10, 0.1, 10], [10, CD + 0.1, 9], [-26, 0.1, -28], [8, CD + 0.1, -32], [-24, RIG.M2 + 0.1, -36]];
   let graph = null;
-  return { name: 'Platform', size: 'medium', boxes: B.boxes, deco: D.boxes, killY: -30, floorY: -15.5,
+  return { name: 'Platform', size: 'medium', boxes: B.boxes, deco: D.boxes, killY: -16.2, seaY: -14, floorY: -15.5, // (killY: head under the sea)
     sky: { top: 0x4a5a78, mid: 0xb4c2d0, bot: 0x2c3846, fog: 0xb4c2d0 }, fogNear: 100, fogFar: 380,
     spawns, teamSpawns: { att, def }, edgeGuard: true, sea: true,
     nav: {
@@ -1208,7 +1223,7 @@ function rooftop() {
   cityBeyond(D, -162, 180, 520, rng(5151), { kill: -150, cap: -14, shore: 340, avenues: [[0, -260, 0.62], [260, 0, -0.95], [-240, 60, 1.4], [-200, -300, 2.6]], streets: gridOut(roads.xs, roads.zs, 180, 200) });
 
   let graph = null;
-  const map = { name: 'Rooftop', size: 'medium', boxes: B.boxes, deco: D.boxes, killY: -150, floorY: -170, cityR: 520, cityCap: -14,
+  const map = { name: 'Rooftop', size: 'medium', boxes: B.boxes, deco: D.boxes, killY: -161.6, fall: 'street', floorY: -170, cityR: 520, cityCap: -14,
     haze: { k: 0.92, top: -25, bottom: -162, dist: 95, color: 0x6a5c9c }, // look down: the city lights through a night smog
     sky: { top: 0x05051a, mid: 0x4a2a7a, bot: 0x000005, fog: 0x2a2050 }, fogNear: 110, fogFar: 480, spawns, teamSpawns: { att, def }, edgeGuard: true,
     traffic: { grid: { ...roads, S: 180, y: -162 + 0.08, off: 5 } },
@@ -1339,7 +1354,7 @@ function rooftopSD() {
   cityBeyond(D, -162, 180, 520, rng(5152), { kill: -150, cap: -14, shore: 340, avenues: [[0, -260, 0.62], [260, 0, -0.95], [-240, 60, 1.4], [-200, -300, 2.6]], streets: gridOut(roads.xs, roads.zs, 180, 200) });
 
   let graph = null;
-  const map = { name: 'Rooftop', size: 'medium', boxes: B.boxes, deco: D.boxes, killY: -150, floorY: -170, cityR: 520, cityCap: -14,
+  const map = { name: 'Rooftop', size: 'medium', boxes: B.boxes, deco: D.boxes, killY: -161.6, fall: 'street', floorY: -170, cityR: 520, cityCap: -14,
     haze: { k: 0.92, top: -25, bottom: -162, dist: 95, color: 0x6a5c9c },
     sky: { top: 0x05051a, mid: 0x4a2a7a, bot: 0x000005, fog: 0x2a2050 }, fogNear: 110, fogFar: 480, spawns, teamSpawns: { att, def }, edgeGuard: true,
     traffic: { grid: { ...roads, S: 180, y: -162 + 0.08, off: 5 } },
@@ -1372,15 +1387,16 @@ function rooftopSD() {
 // the east end, a corner store and a building site at the west end. the ground runs out flat in every direction and a
 // ring of trees marks the edge: walk out through them and you get the RETURN TO THE MAP countdown
 function home(B, ox, oz, rot, o, r) {
-  const L = B.local(ox, oz, rot), F = 3.4;
-  shell(L, 14, 12, 2, F, o.siding, { roof: o.roof, backDoor: true, sideDoor: [1, 2.6] });
+  // the house's architecture goes through A (tagged for its Blender model), the furniture and the yard through L
+  const A = B.arch('home', ox, oz, rot, 0, { paint: { siding: o.siding, roof: o.roof }, fence: !o.noFence }), L = A.plain, F = 3.4;
+  shell(A, 14, 12, 2, F, o.siding, { roof: o.roof, backDoor: true, sideDoor: [1, 2.6] });
   // ground floor: a wall splits the kitchen (left) from the living room, and the living room from the laundry at the back
-  wall(L, 'z', -1, -6, 6, 0.12, F, 0.2, 'plaster', [{ a: -4, b: -2.4, y0: 0, y1: 2.4 }]);
-  wall(L, 'x', 1.5, -1, 7, 0.12, F, 0.2, 'plaster', [{ a: 2, b: 3.4, y0: 0, y1: 2.4 }]);
+  wall(A, 'z', -1, -6, 6, 0.12, F, 0.2, 'plaster', [{ a: -4, b: -2.4, y0: 0, y1: 2.4 }]);
+  wall(A, 'x', 1.5, -1, 7, 0.12, F, 0.2, 'plaster', [{ a: 2, b: 3.4, y0: 0, y1: 2.4 }]);
   // upstairs: two bedrooms + a bathroom
-  wall(L, 'x', 1, -1.6, 7, F + 0.25, 2 * F, 0.2, 'plaster', [{ a: 0, b: 1.4, y0: F + 0.25, y1: F + 2.6 }]);
-  wall(L, 'z', 2.5, 1, 6, F + 0.25, 2 * F, 0.2, 'plaster', [{ a: 2, b: 3.3, y0: F + 0.25, y1: F + 2.6 }]);
-  wall(L, 'z', -1.6, -6, 1, F + 0.25, 2 * F, 0.2, 'plaster', [{ a: -3.5, b: -2, y0: F + 0.25, y1: F + 2.6 }]);
+  wall(A, 'x', 1, -1.6, 7, F + 0.25, 2 * F, 0.2, 'plaster', [{ a: 0, b: 1.4, y0: F + 0.25, y1: F + 2.6 }]);
+  wall(A, 'z', 2.5, 1, 6, F + 0.25, 2 * F, 0.2, 'plaster', [{ a: 2, b: 3.3, y0: F + 0.25, y1: F + 2.6 }]);
+  wall(A, 'z', -1.6, -6, 1, F + 0.25, 2 * F, 0.2, 'plaster', [{ a: -3.5, b: -2, y0: F + 0.25, y1: F + 2.6 }]);
   // furniture (the fridge is chrome, the couch is the colour of a hospital waiting room, the tv shows static)
   L(-6.8, 0.12, -5.8, -5.8, 1.0, -2.4, 'white');
   L(-6.8, 0.12, -2.3, -6.0, 2.1, -1.5, 'chrome');
@@ -1391,19 +1407,19 @@ function home(B, ox, oz, rot, o, r) {
   L(-1.3, F + 0.25, -5.8, 2.2, F + 0.8, -3.6, 'carpet');
   L(-1.4, F + 0.25, 4.2, 1.2, F + 0.85, 5.8, 'tile');
   // a stepped toy roof with a chimney
-  L(-6.3, 2 * F + 0.3, -5.3, 6.3, 2 * F + 0.75, 5.3, o.roof); L(-4.6, 2 * F + 0.75, -3.8, 4.6, 2 * F + 1.2, 3.8, o.roof);
-  L(-2.8, 2 * F + 1.2, -2.2, 2.8, 2 * F + 1.65, 2.2, o.roof); L(3.4, 2 * F + 0.75, 1.5, 4.4, 2 * F + 2.6, 2.5, 'brick');
+  A(-6.3, 2 * F + 0.3, -5.3, 6.3, 2 * F + 0.75, 5.3, o.roof); A(-4.6, 2 * F + 0.75, -3.8, 4.6, 2 * F + 1.2, 3.8, o.roof);
+  A(-2.8, 2 * F + 1.2, -2.2, 2.8, 2 * F + 1.65, 2.2, o.roof); A(3.4, 2 * F + 0.75, 1.5, 4.4, 2 * F + 2.6, 2.5, 'brick');
   // porch with a neon OPEN HOUSE sign over the door
-  L(-3, 0, -7.6, 3, 0.25, -6, 'wood');
-  L(-2.9, 0.25, -7.5, -2.6, 3.0, -7.2, 'wood'); L(2.6, 0.25, -7.5, 2.9, 3.0, -7.2, 'wood');
-  L(-3.2, 3.0, -7.8, 3.2, 3.25, -6.15, o.roof);
+  A(-3, 0, -7.6, 3, 0.25, -6, 'wood');
+  A(-2.9, 0.25, -7.5, -2.6, 3.0, -7.2, 'wood'); A(2.6, 0.25, -7.5, 2.9, 3.0, -7.2, 'wood');
+  A(-3.2, 3.0, -7.8, 3.2, 3.25, -6.15, o.roof);
   L(-1.4, 2.62, -6.45, 1.4, 3.0, -6.17, 'signopen', { fit: 1 });
   // garage: open front, flat roof you can climb onto (bin -> crate -> roof), window from the roof into the bedroom
-  wall(L, 'z', 13, -6, 1.2, 0, 3.2, 0.3, 'brick');
-  wall(L, 'x', 1.2, 7.15, 13, 0, 3.2, 0.3, 'brick');
-  wall(L, 'x', -6, 7.15, 13, 0, 3.2, 0.3, 'brick', [{ a: 7.6, b: 12.6, y0: 0, y1: 2.7 }]);
-  L(7.15, 0, -6, 13, 0.1, 1.05, 'concrete'); // (wall face to wall face: no grass slot, no face shared with a wall end)
-  L(7, 3.2, -6.2, 13.2, 3.5, 1.4, 'roofg');
+  wall(A, 'z', 13, -6, 1.2, 0, 3.2, 0.3, 'brick');
+  wall(A, 'x', 1.2, 7.15, 13, 0, 3.2, 0.3, 'brick');
+  wall(A, 'x', -6, 7.15, 13, 0, 3.2, 0.3, 'brick', [{ a: 7.6, b: 12.6, y0: 0, y1: 2.7 }]);
+  A(7.15, 0, -6, 13, 0.1, 1.05, 'concrete'); // (wall face to wall face: no grass slot, no face shared with a wall end)
+  A(7, 3.2, -6.2, 13.2, 3.5, 1.4, 'roofg');
   L(13.2, 0, -2.2, 14.3, 1.2, -1.1, 'metal');
   L(13.2, 0, -1.05, 14.6, 2.4, 0.4, 'crate');
   car(L, 10.1, -2.4, 1, o.car);
@@ -1414,13 +1430,13 @@ function home(B, ox, oz, rot, o, r) {
   // backyard: picket fence with a gate onto the back lane, a tree, a trampoline onto the roof, a shed
   const fy = 1.3;
   if (!o.noFence) {
-    L(-8, 0, 13.9, -1.2, fy, 14.1, 'picket'); L(1.2, 0, 13.9, 14, fy, 14.1, 'picket');
-    L(-8.1, 0, 6.2, -7.9, fy, 13.9, 'picket');
-    L(13.9, 0, 1.4, 14.1, fy, 11, 'picket');
+    A(-8, 0, 13.9, -1.2, fy, 14.1, 'picket'); A(1.2, 0, 13.9, 14, fy, 14.1, 'picket');
+    A(-8.1, 0, 6.2, -7.9, fy, 13.9, 'picket');
+    A(13.9, 0, 1.4, 14.1, fy, 11, 'picket');
   }
   lollipop(L, -4, 12.8, 4 + r() * 2, r);
   if (!o.noPad) L(2.5, 0, 8.5, 5, 0.25, 11, 'pad', { pad: [0, 21, -4] });
-  L(8, 0, 9, 12, 2.6, 13, 'wood'); L(7.8, 2.6, 8.8, 12.2, 2.8, 13.2, 'roofg');
+  A(8, 0, 9, 12, 2.6, 13, 'wood'); A(7.8, 2.6, 8.8, 12.2, 2.8, 13.2, 'roofg');
   if (o.yard === 'pool') { // above-ground pool
     L(-6.5, 0, 7, -1.5, 1.1, 7.2, 'tile'); L(-6.5, 0, 11.6, -1.5, 1.1, 11.8, 'tile');
     L(-6.5, 0, 7.2, -6.3, 1.1, 11.6, 'tile'); L(-1.7, 0, 7.2, -1.5, 1.1, 11.6, 'tile');
@@ -1812,8 +1828,8 @@ function suburb() {
   for (const [x, z] of [[-8, -11], [8, 11]]) { W(x - 1.2, 0, z - 0.35, x + 1.2, 0.5, z + 0.35, 'wood'); W(x - 1.2, 0.5, z + 0.2, x + 1.2, 1.0, z + 0.35, 'wood'); } // benches
 
   // ---- west end (team 1): the corner store, its car park, the bus stop
-  const C = B.local(-71, 0, 1); // front (local -z) faces east, onto the street
-  shell(C, 18, 12, 1, 4.2, 'brick', { roof: 'roofg', roofAccess: true, backDoor: true });
+  const CA = B.arch('store', -71, 0, 1), C = CA.plain; // front (local -z) faces east, onto the street
+  shell(CA, 18, 12, 1, 4.2, 'brick', { roof: 'roofg', roofAccess: true, backDoor: true });
   C(-8.5, 0.12, -5.5, -1, 1.1, -4.6, 'wood'); C(1, 0.12, -5.5, 8.5, 1.1, -4.6, 'wood');
   for (const x of [-6, -2, 2, 6]) C(x - 0.4, 0.12, -1.5, x + 0.4, 1.9, 3.5, 'shelfstock');
   C(-8, 3.0, -6.55, 8, 4.4, -6.16, 'adstore', { fit: 1 });
@@ -1894,6 +1910,8 @@ function suburb() {
 
   spawns.push(...west.slice(0, 2), ...east.slice(0, 2), [-30, 0.2, -5], [-18, 0.2, 6], [10, 0.2, -10], [30, 0.2, 9], [35, 0.5, 0], [0, 0.6, -7],
     [-70, 0.2, -50], [70, 0.2, -50], [-70, 0.2, 50], [70, 0.2, 50], [-71, 0.3, 0], [0, 0.2, -59.5], [0, 0.2, 59.5]);
+  // the lawns and back yards roll a little (shared/terrain.js). roads, pavements, houses and fences stay level
+  shapeGround(B, D, { region: [bounds[0], bounds[1], bounds[2], bounds[3]], mat: 'grass', seed: 4242, up: 1.2, down: 0.7, near: 0.8, far: 4, points: [...new Set([...spawns, ...west, ...east])] });
   let graph = null;
   const map = {
     name: 'Suburb', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -60, bounds, floorY: -4,
@@ -2413,12 +2431,12 @@ function camelBoxes(L, x, z, alongX) { // a very boxy camel. it judges you
 function dune(D, x, z, w, d, h) { // a dune: flattened layers of sand, smaller as they go up
   for (let i = 0; i < 4; i++) { const k = 1 - i * 0.24; D.box(x + i * w * 0.04, (h / 4) * (i + 0.5) - 0.05, z, w * k, h / 4, d * k, 'sand'); }
 }
-function rocks(D, x, z, s, r) { // a rock formation: a banded mesa with a few blocks stacked off it
+function rocks(D, x, z, s, r, tag) { // a rock formation: a banded mesa with a few blocks stacked off it. tag: { av, ai } when a Blender rock model draws it
   const h = s * (1.1 + r() * 0.8);
-  D.box(x, h / 2, z, s * 1.6, h, s, 'rock');
-  D.box(x + s * 0.2, h + s * 0.12, z - s * 0.1, s * 1.1, s * 0.24, s * 0.7, 'rock');
-  if (r() < 0.6) D.box(x - s * 0.9, h * 0.3, z + s * 0.3, s * 0.7, h * 0.6, s * 0.7, 'rock');
-  if (r() < 0.5) D.box(x + s * 1.1, h * 0.2, z - s * 0.4, s * 0.5, h * 0.4, s * 0.6, 'rock');
+  D.box(x, h / 2, z, s * 1.6, h, s, 'rock', tag);
+  D.box(x + s * 0.2, h + s * 0.12, z - s * 0.1, s * 1.1, s * 0.24, s * 0.7, 'rock', tag);
+  if (r() < 0.6) D.box(x - s * 0.9, h * 0.3, z + s * 0.3, s * 0.7, h * 0.6, s * 0.7, 'rock', tag);
+  if (r() < 0.5) D.box(x + s * 1.1, h * 0.2, z - s * 0.4, s * 0.5, h * 0.4, s * 0.6, 'rock', tag);
 }
 
 // ---- the frontier kit (both Desert layouts): false-front buildings on a boardwalk, a wind pump, water towers, the
@@ -2564,7 +2582,7 @@ function grave(L, x, z, k) { // a headstone or a wooden cross, and the mound
 }
 // a one-room adobe hut: flat roof with a low lip, a ladder up the side (bars you can climb: steps), a door and windows
 function adobeHut(B, D, x, z, rot, w = 6, d = 5, paint = 'adobe') {
-  const L = B.local(x, z, rot), hw = w / 2, hd = d / 2;
+  const L = B.arch('adobe', x, z, rot, 0, { paint: { siding: 'hut' + paint } }), hw = w / 2, hd = d / 2; // (drawn as a Blender building, look only: its walls take the hut's paint, archfield.js PAINT)
   shell(L, w, d, 1, 3.2, paint, { floor: 'wood', roof: 'adobe', roofAccess: false, backDoor: false, parapet: true, winSpacing: 3 });
   for (let i = 0; i < 6; i++) L(hw + 0.16, i * 0.58, -0.5, hw + 0.66, i * 0.58 + 0.12, 0.5, 'wood'); // ladder rungs up the side (each one a step), clear of the wall
   for (const s of [-0.55, 0.47]) L(hw + 0.16, 0, s, hw + 0.66, 3.9, s + 0.08, 'wood');
@@ -2587,9 +2605,9 @@ function lipFence(B, x, z0, z1) { // a rail fence along the canyon's lip at x (n
   const n = Math.max(1, Math.round((z1 - z0) / 3)); for (let i = 0; i <= n; i++) B.box(x, 0.6, z0 + ((z1 - z0) * i) / n, 0.2, 1.2, 0.2, 'wood');
   B.add(x - 0.05, 0.85, z0, x + 0.05, 0.95, z1, 'wood');
 }
-function boulders(B, x0, z0, x1, z1, n, rv, edge = 0, skip = null) { // edge: +-1 = on that rim of the canyon (x +-7), flush with the lip
+function boulders(B, x0, z0, x1, z1, n, rv, edge = 0, skip = null, tag) { // edge: +-1 = on that rim of the canyon (x +-7), flush with the lip
   for (let i = 0; i < n; i++) { const t = (i + 0.2 + rv() * 0.6) / n, x = x0 + (x1 - x0) * t + (rv() - 0.5) * 1.2, z = z0 + (z1 - z0) * t, s = 0.9 + rv() * 1.3;
-    if (rv() < 0.8) { const w = s * (1 + rv() * 0.6); if (!(skip && skip(z, s))) B.box(edge ? edge * (6.7 + w / 2) : x, s * 0.4, z, w, s * 0.8, s, 'rock'); } }
+    if (rv() < 0.8) { const w = s * (1 + rv() * 0.6); if (!(skip && skip(z, s))) B.box(edge ? edge * (6.7 + w / 2) : x, s * 0.4, z, w, s * 0.8, s, 'rock', tag); } }
 }
 
 // ------------------------------------------------------------ DESERT: Dry Gulch, a frontier town split by a canyon.
@@ -2704,7 +2722,8 @@ function desert() {
   for (const [x, z] of [[38, -44], [39.2, -42.6]]) B.box(x, 0.45, z, 0.9, 0.9, 0.9, 'toyred');
   // the canyon's rims: boulders between the crossings, a rail fence here and there (it's a long way down)
   const fenced = (z, s) => (z + s / 2 > -31 && z - s / 2 < -17) || (z + s / 2 > 23 && z - s / 2 < 37); // (where the rail fences are)
-  for (const sx of [-1, 1]) { const ex = sx * 8.4; boulders(B, ex, -96, ex, -64, 6, rv, sx); boulders(B, ex, -54, ex, -8, 8, rv, sx, fenced); boulders(B, ex, 8, ex, 54, 8, rv, sx, fenced); boulders(B, ex, 66, ex, 96, 6, rv, sx); // (on the lip: no strip between a rock and the drop to get stuck in)
+  B.boxes.arch.push({ id: 'rocks_desert', p: [0, 0, 0], r: 0 }); const RK = { av: 'rocks_desert', ai: B.boxes.arch.length - 1 }; // the rim boulders and the far formations: one Blender rock model for the map (look only)
+  for (const sx of [-1, 1]) { const ex = sx * 8.4; boulders(B, ex, -96, ex, -64, 6, rv, sx, null, RK); boulders(B, ex, -54, ex, -8, 8, rv, sx, fenced, RK); boulders(B, ex, 8, ex, 54, 8, rv, sx, fenced, RK); boulders(B, ex, 66, ex, 96, 6, rv, sx, null, RK); // (on the lip: no strip between a rock and the drop to get stuck in)
     for (const [z0, z1] of [[-30, -18], [24, 36]]) { for (let z = z0; z <= z1; z += 3) B.box(ex - sx * 0.6, 0.6, z, 0.2, 1.2, 0.2, 'wood'); add(ex - sx * 0.6 - 0.05, 0.85, z0, ex - sx * 0.6 + 0.05, 0.95, z1, 'wood'); } }
   // ---- over the canyon
   trestle(B, D, -7, 7, -60);
@@ -2754,9 +2773,10 @@ function desert() {
   // the freight yard behind the station (team 2): a row of containers walls it off from the town, open at both ends
   container(B, 94, -38, true, 2, ['containerb', 'containerr']); container(B, 94, -24.7, true, 1, ['containerg'], 11); // (a 1.8 m gap between them: the spawn's back door)
   const east = [[97.3, 0.2, -40], [97.3, 0.2, -36], [97.3, 0.2, -32], [97.3, 0.2, -28], [97.3, 0.2, -24], [96, 0.2, -43], [98.4, 0.2, -30]];
-  // ---- the oasis: the pond (ankle deep), palms, a dock, the camp, rocks
-  add(24, -0.4, 50, 48, 0.02, 72, 'sand'); add(24.4, 0.02, 50.4, 47.6, 0.06, 71.6, 'water');
+  // ---- the oasis: the pond (a real one now: the ground dips under it, over your head in the middle. shapeGround below digs it), palms, a dock, the camp, rocks
+  D.add(21, -0.3, 47, 51, -0.25, 75, 'water'); // (a rectangle of water under the sand: only where the ground dips below it does it show)
   add(30, 0.06, 66, 33, 0.5, 74, 'wood'); add(30.5, 0.06, 74, 32.5, 0.6, 74.6, 'wood'); // the dock (and the board across its end)
+  add(30.2, -4.6, 66.2, 32.8, 0.06, 72, 'wood'); // ...and what it stands on, down to the pond's bed (solid: nobody wades in under the deck and pops up through it)
   for (const [x, z] of [[22, 48], [50, 50], [21, 64], [51, 68], [36, 76], [44, 46]]) palm(W, x, z, 6 + rv() * 3, rv);
   for (const [x, z, c] of [[62, 70, 'leopard'], [70, 78, 'toyyellow'], [58, 84, 'cloth']]) tent(W, x, z, c);
   for (const [x, z, sx, sy, sz] of [[16, 40, 4, 2.4, 3], [56, 56, 5, 3, 4], [40, 86, 8, 3.6, 5], [78, 60, 7, 5, 6], [88, 86, 9, 4.4, 7], [16, 84, 6, 3.4, 5]]) { W.B(x, sy / 2, z, sx, sy, sz, 'rock'); W.B(x + sx * 0.12, sy + 0.35, z, sx * 0.55, 0.7, sz * 0.6, 'rock'); }
@@ -2786,17 +2806,23 @@ function desert() {
   // ---- the desert round the town (render-only): dunes, rock formations, a caravan camped outside the east gate, more palms
   for (let i = 0; i < 46; i++) { const a = ro() * Math.PI * 2, d = 130 + ro() * 230, x = Math.cos(a) * d, z = Math.sin(a) * d, w = 30 + ro() * 60, dd = 18 + ro() * 36, h = 5 + ro() * 12;
     if (Math.abs(x) < 26 || Math.abs(z) < 14 || (x + w / 2 > -160 && x - w / 2 < -95) || (Math.abs(x) - w / 2 < 106 && Math.abs(z) - dd / 2 < 106)) continue; dune(D, x, z, w, dd, h); } // (not on the track west of the town, traffic.js; not into the town)
-  for (let i = 0; i < 16; i++) { const a = ro() * Math.PI * 2, d = 190 + ro() * 220, x = Math.cos(a) * d, z = Math.sin(a) * d; if (Math.abs(x) < 30 || Math.abs(z) < 20 || (x > -185 && x < -80)) continue; rocks(D, x, z, 12 + ro() * 20, ro); }
+  for (let i = 0; i < 16; i++) { const a = ro() * Math.PI * 2, d = 190 + ro() * 220, x = Math.cos(a) * d, z = Math.sin(a) * d; if (Math.abs(x) < 30 || Math.abs(z) < 20 || (x > -185 && x < -80)) continue; rocks(D, x, z, 12 + ro() * 20, ro, RK); }
   for (const [x, z, c] of [[124, -14, 'cloth'], [134, 10, 'toyyellow'], [146, -6, 'leopard']]) tent(Dw, x, z, c);
   for (const [x, z, ax] of [[118, 18, true], [128, 22, false], [142, 16, true], [152, 0, false]]) camel(Dw, x, z, ax);
   Dw(132, 0, -2, 134, 0.4, 0, 'stone'); Dw(132.5, 0.4, -1.5, 133.5, 1.0, -0.5, 'neonred'); // the campfire
   for (let i = 0; i < 30; i++) { const a = ro() * Math.PI * 2, d = 110 + ro() * 120, x = Math.cos(a) * d, z = Math.sin(a) * d; if (Math.abs(x) < 20 || Math.abs(z) < 10 || (x > -150 && x < -118)) continue; palm(Dw, x, z, 6 + ro() * 4, ro); }
   D.add(-260, 0, -210, -230, 26, -180, 'toyface', { fit: 1 }); // something enormous, half buried, smiling
   horizon(D, -300, -300, 300, 300, 1500, 'sand');
+  // ---- the ground gets its shape last (shared/terrain.js): dunes, hollows and washes between the buildings. the streets, the
+  // canyon's lip and everything big stay level; cacti, crates and graves ride it
+  shapeGround(B, D, { region: [-S, -S, S, S], mat: 'sand', seed: 1887, up: 2.3, down: 1.3,
+    washes: [{ pts: [[-94, -84], [-70, -86], [-50, -74], [-30, -78], [-12, -68]], w: 3.2, d: 1.2 }, { pts: [[92, 86], [70, 80], [52, 62], [34, 58], [14, 46]], w: 3.2, d: 1.2 }], // two dry washes down to the canyon
+    ponds: [{ c: [36, 61], r: [11, 9.5], d: 3.6, wl: 0.25, box: [21, 47, 51, 75], seed: 3 }], // the oasis: wade in, then it's well over your head and you float (map.pools)
+    points: [...new Set([...spawns, ...west, ...east])] });
 
   const bounds = [-S - 1, -S - 1, S + 1, S + 1];
   let graph = null;
-  const map = { name: 'Desert', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -50, bounds, floorY: -69,
+  const map = { name: 'Desert', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -65.6, fall: 'river', bounds, floorY: -69, pools: [{ box: [21, 47, 51, 75], top: -0.25 }],
     sky: { top: 0x3f7fd0, mid: 0xf2d9a0, bot: 0x6a4a28, fog: 0xead6a6 }, fogNear: 130, fogFar: 520, spawns, teamSpawns: { att: west, def: east },
     gates: [[-106, 0, -94, 0], [106, 0, 94, 0]], // the town's two gates (a bot out past the wall heads for one)
     edgeGuard: true, // bots don't dodge-jump next to the canyon (server.js: brBotEdge in every mode here)
@@ -2894,7 +2920,8 @@ function desertSD() {
   for (const [x, z, h] of [[-36, 54, 4.4], [-16, 30, 3.6], [-92, 46, 4]]) saguaro(W, x, z, h);
   // the canyon's west lip: boulders flush with it between the crossings, a rail fence here and there
   const fenced = (z, s) => Math.abs(z) + s / 2 > 17 && Math.abs(z) - s / 2 < 31;
-  boulders(B, -8.4, -60, -8.4, -44, 3, r, -1); boulders(B, -8.4, -35, -8.4, -10, 5, r, -1, fenced); boulders(B, -8.4, 10, -8.4, 35, 5, r, -1, fenced); boulders(B, -8.4, 44, -8.4, 60, 3, r, -1);
+  B.boxes.arch.push({ id: 'rocks_desert_sd', p: [0, 0, 0], r: 0 }); const RK = { av: 'rocks_desert_sd', ai: B.boxes.arch.length - 1 }; // (its rock: one Blender model, look only)
+  boulders(B, -8.4, -60, -8.4, -44, 3, r, -1, null, RK); boulders(B, -8.4, -35, -8.4, -10, 5, r, -1, fenced, RK); boulders(B, -8.4, 10, -8.4, 35, 5, r, -1, fenced, RK); boulders(B, -8.4, 44, -8.4, 60, 3, r, -1, null, RK);
   for (const sz of [-1, 1]) { const z0 = sz > 0 ? 18 : -30, z1 = sz > 0 ? 30 : -18; for (let z = z0; z <= z1; z += 3) B.box(-7.8, 0.6, z, 0.2, 1.2, 0.2, 'wood'); add(-7.85, 0.85, z0, -7.75, 0.95, z1, 'wood'); }
 
   // ---- over the canyon: the trestle (north, the cart that jumped its rails), the stone bridge (its gateposts), the rope bridge
@@ -2980,7 +3007,7 @@ function desertSD() {
   const ro = rng(9091);
   for (let i = 0; i < 46; i++) { const a = ro() * Math.PI * 2, d = 130 + ro() * 230, x = Math.cos(a) * d, z = Math.sin(a) * d, w = 30 + ro() * 60, dd = 18 + ro() * 36, h = 5 + ro() * 12;
     if (Math.abs(x) < 26 || Math.abs(z) < 14 || (Math.abs(x) - w / 2 < 106 && Math.abs(z) - dd / 2 < 106)) continue; dune(D, x, z, w, dd, h); }
-  for (let i = 0; i < 16; i++) { const a = ro() * Math.PI * 2, d = 190 + ro() * 220, x = Math.cos(a) * d, z = Math.sin(a) * d; if (Math.abs(x) < 30 || Math.abs(z) < 20) continue; rocks(D, x, z, 12 + ro() * 20, ro); }
+  for (let i = 0; i < 16; i++) { const a = ro() * Math.PI * 2, d = 190 + ro() * 220, x = Math.cos(a) * d, z = Math.sin(a) * d; if (Math.abs(x) < 30 || Math.abs(z) < 20) continue; rocks(D, x, z, 12 + ro() * 20, ro, RK); }
   for (const [x, z, c] of [[104, -14, 'cloth'], [114, 10, 'toyyellow'], [126, -6, 'leopard']]) tent(Dw, x, z, c);
   for (const [x, z, ax] of [[98, 18, true], [108, 22, false], [122, 16, true]]) camel(Dw, x, z, ax);
   for (let i = 0; i < 26; i++) { const a = ro() * Math.PI * 2, d = 110 + ro() * 120, x = Math.cos(a) * d, z = Math.sin(a) * d; if (Math.abs(x) < 20 || Math.abs(z) < 10) continue; palm(Dw, x, z, 6 + ro() * 4, ro); }
@@ -2990,7 +3017,7 @@ function desertSD() {
   spawns.push(...att.slice(0, 2), ...def.slice(0, 2), [-60, 0.2, 0], [-30, 0.2, 0], [-56, 0.2, -38], [-44, 0.2, 26], [-80, 0.2, -40], [-20, 0.2, 44],
     [20, 0.2, 4], [36, 0.2, -18], [33, 0.2, 18], [28, 0.2, -36], [40, 0.2, -46], [24, 0.2, 49], [40, 0.6, 39.5], [56, 0.2, -36], [56, 0.2, 40]);
   let graph = null;
-  const map = { name: 'Desert', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -50, bounds, ceiling: 8.5, floorY: -69,
+  const map = { name: 'Desert', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -65.6, fall: 'river', bounds, ceiling: 8.5, floorY: -69,
     sky: { top: 0x3f7fd0, mid: 0xf2d9a0, bot: 0x6a4a28, fog: 0xead6a6 }, fogNear: 120, fogFar: 480, spawns, teamSpawns: { att, def },
     edgeGuard: true, // bots don't dodge-jump next to the canyon (server.js: brBotEdge in every mode here)
     // the bandits' lanes (the bomb carriers walk these; the walk graph gets them round whatever's in the way)
@@ -3014,7 +3041,8 @@ function desertSD() {
 
 // ------------------------------------------------------------ the island kit (Islands, Islands S&D)
 // the sea is a foot deep over the sand round each island (the shelf), then it isn't: past it you sink (killY)
-const ISL = { SH: -0.55, SB: -0.6, RF: -0.65, WY: -0.25 }; // the shelves' sand, the sandbars' (a hair lower: where one runs into a shelf, the shelf wins), the reef's (lower again), the sea's surface
+const ISL = { SH: -0.55, SB: -0.6, RF: -0.65, WY: -0.25, DROWN: -2.3 }; // (DROWN: feet this low = your head's under, and that's that. it used to be 16 m down, through the sea bed)
+void 0; // the shelves' sand, the sandbars' (a hair lower: where one runs into a shelf, the shelf wins), the reef's (lower again), the sea's surface
 // a flight of solid steps along x (alongX) or z, from a0 (its foot, at ya) to a1 (its head, yb), c0..c1 across.
 // rail: +1 / -1 a rail up the c1 / c0 side. returns { bot, top }: points just off each end, for the walk graph (the
 // foot's well clear of the first step: the graph keeps 0.45 m off anything you'd bump into)
@@ -3106,13 +3134,15 @@ function isPiece(B0, D0, dx, dz, st) {
 }
 // Mount Kaboom (round 0, -3): three terraces, two ways up each, the crater (its rim open at the two stairs), the throat
 // right down. returns the throat in the world (the island under it needs the same hole)
-function volcano(B0, D0, dx, dz, st) {
+const LAVA_FLOOR = 1.3; // the plug under the throat's lava (its surface is 4.5: over three metres of it. you sink, shared/pits.js mire. off the walk graph's levels on purpose)
+const lavaPit = (T) => ({ kind: 'lava', box: T, top: 4.6, bot: LAVA_FLOOR - 0.5 });
+function volcano(B0, D0, dx, dz, st, RK) { // (RK: the map's rock model tag. its terraces, lip, rim and boulders are drawn as real rock, look only)
   const { B, D, add, W, up } = isPiece(B0, D0, dx, dz, st); const T = [-2, -5, 2, -1];
-  slab(W, -15, -16, 15, 10, 0, 3, 'basalt', T); slab(W, -10, -12, 10, 6, 3, 6, 'basalt', T); slab(W, -6, -9, 6, 3, 6, 9, 'basalt', T);
-  D.add(-2, 4.3, -5, 2, 4.5, -1, 'lava'); // down the throat (only to look at: fall in and you keep going)
-  for (const [x0, z0, x1, z1] of [[-2.3, -5.3, 2.3, -5], [-2.3, -1, 2.3, -0.7], [-2.3, -5, -2, -1], [2, -5, 2.3, -1]]) add(x0, 9, z0, x1, 9.3, z1, 'basalt'); // its lip
+  slab(W, -15, -16, 15, 10, 0, 3, 'basalt', T, RK); slab(W, -10, -12, 10, 6, 3, 6, 'basalt', T, RK); slab(W, -6, -9, 6, 3, 6, 9, 'basalt', T, RK);
+  add(-2, 0, -5, 2, LAVA_FLOOR, -1, 'basalt'); D.add(-2, 4.3, -5, 2, 4.5, -1, 'lava'); // down the throat: deep lava over a rock plug. fall in and you sink into it, burning (map.pits)
+  for (const [x0, z0, x1, z1] of [[-2.3, -5.3, 2.3, -5], [-2.3, -1, 2.3, -0.7], [-2.3, -5, -2, -1], [2, -5, 2.3, -1]]) add(x0, 9, z0, x1, 9.3, z1, 'basalt', RK); // its lip
   D.add(-1.6, 9.3, -0.66, 1.6, 9.9, -0.6, 'advolcano', { fit: 1 });
-  for (const [x0, z0, x1, z1] of [[-6, -9, -2.2, -8.4], [2.2, -9, 6, -8.4], [-6, 2.4, -2.2, 3], [2.2, 2.4, 6, 3], [-6, -8.4, -5.4, 2.4], [5.4, -8.4, 6, 2.4]]) add(x0, 9, z0, x1, 9.9, z1, 'basalt'); // the rim, open at the two stairs
+  for (const [x0, z0, x1, z1] of [[-6, -9, -2.2, -8.4], [2.2, -9, 6, -8.4], [-6, 2.4, -2.2, 3], [2.2, 2.4, 6, 3], [-6, -8.4, -5.4, 2.4], [5.4, -8.4, 6, 2.4]]) add(x0, 9, z0, x1, 9.9, z1, 'basalt', RK); // the rim, open at the two stairs
   // lava down the north and west faces
   for (const [x, w] of [[3.2, 0.7]]) { D.add(x, 6, -9.06, x + w, 9, -9, 'lava'); D.add(x, 6, -12, x + w, 6.03, -9, 'lava'); D.add(x, 3, -12.06, x + w, 6, -12, 'lava'); D.add(x, 3, -16, x + w, 3.03, -12, 'lava'); D.add(x, 0, -16.06, x + w, 3, -16, 'lava'); D.add(x, 0.03, -18.5, x + w, 0.06, -16, 'lava'); }
   D.add(-6.06, 6, -6, -6, 9, -5.4, 'lava'); D.add(-10, 6, -6, -6, 6.03, -5.4, 'lava'); D.add(-10.06, 3, -6, -10, 6, -5.4, 'lava'); D.add(-15, 3, -6, -10, 3.03, -5.4, 'lava');
@@ -3125,7 +3155,7 @@ function volcano(B0, D0, dx, dz, st) {
   up({ ...flight(B, false, 5.9, 3, -2, 2, 6, 9, 'basalt'), bot: [3, 6, 5] });
   D.add(3, 1.2, 10.02, 9, 2.4, 10.08, 'advolcano', { fit: 1 });
   // boulders on the terraces (cover on the way up)
-  for (const [x, z, y, s] of [[-12.5, -13, 3, 1.1], [12, -8, 3, 1.3], [-11.5, 7, 3, 1.0], [7.5, -10.5, 6, 0.9], [-8, 4, 6, 0.8]]) { add(x - s, y, z - s * 0.8, x + s, y + s * 1.2, z + s * 0.8, 'basalt'); }
+  for (const [x, z, y, s] of [[-12.5, -13, 3, 1.1], [12, -8, 3, 1.3], [-11.5, 7, 3, 1.0], [7.5, -10.5, 6, 0.9], [-8, 4, 6, 0.8]]) { add(x - s, y, z - s * 0.8, x + s, y + s * 1.2, z + s * 0.8, 'basalt', RK); }
   return [T[0] + dx, T[1] + dz, T[2] + dx, T[3] + dz];
 }
 // the tiki bar (round -13, 18): a bamboo counter under a thatched roof on four posts, stools, the back bar and its bottles
@@ -3289,6 +3319,7 @@ function skullRock(B0, D0, dx, dz, st) {
 // cannon), a sandbar south; round the outside sandbars wade from island to island. TDM: the fort vs the lighthouse
 function islands() {
   const B = builder(), D = builder(), r = rng(4242), add = B.add, W = B.local(0, 0, 0), Dw = D.local(0, 0, 0);
+  B.boxes.arch.push({ id: 'rocks_islands', p: [0, 0, 0], r: 0 }); const RK = { av: 'rocks_islands', ai: B.boxes.arch.length - 1 }; // (its rock: one Blender model, look only)
   const st = []; // the stair flights, for the walk graph
   // ---- the sea and the sun
   D.add(-420, ISL.WY - 0.1, -420, 420, ISL.WY, 420, 'sea');
@@ -3297,7 +3328,7 @@ function islands() {
   // ---- C, Volcano Island (x -28..28, z -24..24): Mount Kaboom, the tiki village on the south beach, jungle round the back
   isle(B, D, -28, -24, 28, 24, { hole: [-2, -5, 2, -1] });
   slab(Dw, -25.5, -21.5, 25.5, 14, 0, 0.03, 'grass', [-15, -16, 15, 10]);
-  volcano(B, D, 0, 0, st);
+  const T = volcano(B, D, 0, 0, st);
   tikiBar(B, D, 0, 0, r); bigTiki(B, D, 0, 0);
   hut(B, D, 7.5, 18, -1); hut(B, D, 18.5, 17.2, -1);
   [[-4.5, 21.6], [-2, 21.6], [10.5, 22.2], [13, 22.2], [21.5, 22]].forEach(([x, z], i) => lounger(B, D, x, z, ['toyteal', 'toypink', 'toyyellow'][i % 3]));
@@ -3329,7 +3360,7 @@ function islands() {
   isle(B, D, -22, -80, 22, -58);
   slab(Dw, -19.5, -77.5, 19.5, -60.5, 0, 0.03, 'wetsand', [-18, -73.5, 19.5, -64.5]);
   wreck(B, D, 0, 0, st);
-  for (const [x, z, s] of [[-18, -61, 1.2], [17, -61.5, 1.0], [-19, -78, 1.4], [19, -78, 1.1]]) { add(x - s, 0, z - s * 0.8, x + s, s * 1.2, z + s * 0.8, 'rockf'); }
+  for (const [x, z, s] of [[-18, -61, 1.2], [17, -61.5, 1.0], [-19, -78, 1.4], [19, -78, 1.1]]) { add(x - s, 0, z - s * 0.8, x + s, s * 1.2, z + s * 0.8, 'rockf', RK); }
   palm(W, -20, -63.5, 6.5, r); palm(W, 20.5, -66, 5.5, r);
   D.add(-20.5, 0, -76, -17.5, 0.6, -74.6, 'boatwood');
 
@@ -3337,7 +3368,7 @@ function islands() {
   isle(B, D, 62, -18, 92, 18);
   slab(Dw, 64.5, -15.5, 89.5, 15.5, 0, 0.03, 'grass', [76, -12, 88, 0]);
   lighthouse(B, D, 0, 0, st); cottage(B, D, 0, 0);
-  for (const [x, z, s] of [[89, -15, 1.6], [90, 6, 1.3], [88.5, 14.5, 1.5], [65, -15.5, 1.2], [73, -14, 1.0], [86, 9, 0.9]]) { add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf'); add(x - s * 0.6, s * 1.1, z - s * 0.5, x + s * 0.5, s * 1.5, z + s * 0.6, 'rockf'); }
+  for (const [x, z, s] of [[89, -15, 1.6], [90, 6, 1.3], [88.5, 14.5, 1.5], [65, -15.5, 1.2], [73, -14, 1.0], [86, 9, 0.9]]) { add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf', RK); add(x - s * 0.6, s * 1.1, z - s * 0.5, x + s * 0.5, s * 1.5, z + s * 0.6, 'rockf', RK); }
   palm(W, 65, 14.5, 6, r); palm(W, 72, -4.5, 7, r); palm(W, 90, 2.5, 5.5, r);
   for (const [x, z] of [[64.5, 1.5], [65.6, 1.2], [64.8, 10.5]]) B.box(x, 0.4, z, 0.8, 0.8, 0.8, 'crate');
 
@@ -3346,7 +3377,7 @@ function islands() {
   slab(Dw, -89.5, -15.5, -64.5, 15.5, 0, 0.03, 'grass', [-88, -14, -66, 14]);
   fort(B, D, 0, 0, st, { pad: true });
   for (const [x, z] of [[-89, -16], [-80, -16.2], [-70, -15.6], [-64, -14], [-89, 16.2], [-78, 16.4], [-66, 15.5], [-90, -6], [-90, 7]]) palm(W, x, z, 5.5 + r() * 3, r);
-  for (const [x, z, s] of [[-65, -8, 1.2], [-64.5, 9, 1.4], [-90.5, 1.5, 1.0]]) { add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf'); }
+  for (const [x, z, s] of [[-65, -8, 1.2], [-64.5, 9, 1.4], [-90.5, 1.5, 1.0]]) { add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf', RK); }
   D.add(-93.6, -0.2, -2.6, -92.2, 0.4, 0.6, 'boatwood');
 
   // ---- S, Skull Rock (x -18..18, z 58..80): the skull, palms, rocks, a rowboat
@@ -3354,22 +3385,24 @@ function islands() {
   slab(Dw, -15.5, 60.5, 15.5, 77.5, 0, 0.03, 'grass', [-9, 62, 9, 77]);
   skullRock(B, D, 0, 0, st);
   for (const [x, z] of [[-16, 61], [-12, 78], [-5, 79], [11, 78.4], [16, 78], [16.5, 62.5], [-16.5, 70]]) palm(W, x, z, 5.5 + r() * 3, r);
-  for (const [x, z, s] of [[-12, 63.5, 1.1], [12.5, 62.5, 1.3], [-13, 74, 1.0], [12, 73.5, 1.2]]) add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf');
+  for (const [x, z, s] of [[-12, 63.5, 1.1], [12.5, 62.5, 1.3], [-13, 74, 1.0], [12, 73.5, 1.2]]) add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf', RK);
   D.add(9, -0.2, 81.2, 12.6, 0.4, 82.6, 'boatwood');
 
   // ---- the sandbars round the outside, each with a palm islet halfway
   sandbar(B, -59.5, -16, -18, -55.5); sandbar(B, 18, -55.5, 59.5, -16); sandbar(B, 59.5, 16, 15, 55.5); sandbar(B, -15, 55.5, -59.5, 16);
-  for (const [x, z] of [[-40, -36], [40, -36], [37.5, 36], [-37.5, 36]]) { isle(B, D, x - 3, z - 3, x + 3, z + 3, { shelf: 1 }); palm(W, x + 1.6, z - 1.4, 5 + r() * 2, r); add(x - 2.6, 0, z + 1.2, x - 1.4, 0.9, z + 2.4, 'rockf'); }
-  for (const [x, z] of [[-50, -26.5], [-28, -46], [50, -26.5], [28, -46], [49, 26], [26.5, 46], [-49, 26], [-26.5, 46]]) add(x - 0.8, ISL.SB, z - 0.7, x + 0.8, 0.9, z + 0.7, 'rockf');
+  for (const [x, z] of [[-40, -36], [40, -36], [37.5, 36], [-37.5, 36]]) { isle(B, D, x - 3, z - 3, x + 3, z + 3, { shelf: 1 }); palm(W, x + 1.6, z - 1.4, 5 + r() * 2, r); add(x - 2.6, 0, z + 1.2, x - 1.4, 0.9, z + 2.4, 'rockf', RK); }
+  for (const [x, z] of [[-50, -26.5], [-28, -46], [50, -26.5], [28, -46], [49, 26], [26.5, 46], [-49, 26], [-26.5, 46]]) add(x - 0.8, ISL.SB, z - 0.7, x + 0.8, 0.9, z + 0.7, 'rockf', RK);
 
   // ---- spawns: the fort's courtyard and beaches vs the lighthouse's point (TDM); everywhere for the rest
   const att = [[-78, 0.1, -5], [-76, 0.1, 0], [-78, 0.1, 6.5], [-82, 0.1, 2.5], [-72, 0.1, -1.5], [-89.5, 0.1, -8], [-89.5, 0.1, 8]];
   const def = [[76, 0.1, -12], [70, 0.1, -9], [66, 0.1, 2.5], [76.5, 0.1, 13], [83, 0.1, 6], [88, 0.1, -9.5], [70.5, 0.1, 14]];
   const spawns = [...att.slice(0, 3), ...def.slice(0, 3), [-10, 0.1, 22.5], [6, 0.1, 13], [-22, 0.1, -11], [20, 0.1, -10], [0, 9.1, 0.7], [-6, 3.1, -14],
     [-6, 0.1, -67], [12, 0.1, -61], [-12, MD + 0.1, -69], [6, 0.1, -70], [-11, 0.1, 61], [11, 0.1, 76.5], [0, SK + 0.1, 70], [-40, 0.1, -38], [40, 0.1, 37]];
+  // dunes on the islands (shared/terrain.js): up only, the beaches' edges, the volcano, the fort and the huts stay level
+  shapeGround(B, D, { region: [-100, -90, 100, 90], mat: 'sand', seed: 3113, up: 1.6, down: 0.12, near: 0.8, far: 4, drape: ['grass'], points: [...new Set([...spawns, ...att, ...def])] });
   let graph = null;
-  const map = { name: 'Islands', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -16, floorY: -1.5, sky: SKY_SUNSET, fogNear: 110, fogFar: 380,
-    spawns, teamSpawns: { att, def }, edgeGuard: true, sea: true, // (sea: falls are 'into the sea' in the kill feed)
+  const map = { name: 'Islands', size: 'large', boxes: B.boxes, deco: D.boxes, killY: ISL.DROWN, floorY: -1.5, sky: SKY_SUNSET, fogNear: 110, fogFar: 380,
+    spawns, teamSpawns: { att, def }, edgeGuard: true, sea: true, seaY: ISL.WY, pits: [lavaPit(T)], // (sea: falls are 'into the sea' in the kill feed)
     peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: -100, z0: -90, n: 196, cell: 1, levels: [ISL.SB, 3, MD, 6, QD, 9, 13.5, 18], band: 0.6, stairs: st })); },
   };
   return map;
@@ -3384,6 +3417,7 @@ function islands() {
 // then over the reef (or its boardwalk) onto the site. the fort's walls stand between its courtyard and the middle
 function islandsSD() {
   const B = builder(), D = builder(), r = rng(4343), add = B.add, W = B.local(0, 0, 0), Dw = D.local(0, 0, 0);
+  B.boxes.arch.push({ id: 'rocks_islands_sd', p: [0, 0, 0], r: 0 }); const RK = { av: 'rocks_islands_sd', ai: B.boxes.arch.length - 1 }; // (its rock: one Blender model, look only)
   const st = [];
   D.add(-420, ISL.WY - 0.1, -420, 420, ISL.WY, 420, 'sea');
   D.add(140, 60, -260, 200, 120, -200, 'toyface', { fit: 1 });
@@ -3393,7 +3427,7 @@ function islandsSD() {
   slab(Dw, -15.5, -79.5, 15.5, -48.5, 0, 0.03, 'grass', [-11, -78, 11, -50]);
   fort(B, D, 77, -64, st, { westGate: true, walk: false });
   for (const [x, z] of [[-16, -80], [16, -48.5], [-16, -48.5], [16.2, -80]]) palm(W, x, z, 5.5 + r() * 2, r);
-  for (const [x, z, s] of [[-15.5, -58, 1.1], [15.5, -70, 1.2]]) add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf'); // cover outside the gates
+  for (const [x, z, s] of [[-15.5, -58, 1.1], [15.5, -70, 1.2]]) add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf', RK); // cover outside the gates
 
   // ---- C, Volcano Island (x -21..21, z -28..6): Mount Kaboom between the spawns
   const T = volcano(B, D, 0, -10, st);
@@ -3408,7 +3442,7 @@ function islandsSD() {
   slab(Dw, -13.5, 22.5, 13.5, 47.5, 0, 0.03, 'grass', [-9, 29, 9, 44]);
   skullRock(B, D, 0, -33, st);
   for (const [x, z] of [[-14, 22], [14, 23], [-14, 36], [14, 37], [-12.5, 49], [12.5, 49]]) palm(W, x, z, 5.5 + r() * 3, r);
-  for (const [x, z, s] of [[-12.5, 28, 1.1], [12.5, 30, 1.2]]) add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf');
+  for (const [x, z, s] of [[-12.5, 28, 1.1], [12.5, 30, 1.2]]) add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf', RK);
   D.add(-4.5, -0.2, 51.4, -1.5, 0.4, 52.8, 'boatwood'); D.add(2, -0.2, 51.8, 5, 0.4, 53.2, 'boatwood');
 
   // ---- W, the tiki bar's islet (x -60..-36, z -36..-12); E, the beach huts' (x 36..60, z -36..-12)
@@ -3429,7 +3463,7 @@ function islandsSD() {
   lighthouse(B, D, -125, -64, st, { climb: false }); cottage(B, D, -125, -64);
   for (const [x, z] of [[-50.4, -75], [-49.4, -75.6], [-50, -74], [-38.5, -60], [-37.6, -59], [-55, -63]]) B.box(x, 0.4, z, 0.8, 0.8, 0.8, 'crate');
   add(-47.5, 0, -58.6, -43.5, 0.8, -57, 'boatwood'); // an upturned rowboat
-  for (const [x, z, s] of [[-59.5, -79.5, 1.3], [-36.5, -79.5, 1.2], [-59.5, -62, 1.0]]) add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf');
+  for (const [x, z, s] of [[-59.5, -79.5, 1.3], [-36.5, -79.5, 1.2], [-59.5, -62, 1.0]]) add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf', RK);
   palm(W, -60, -50.5, 6, r); palm(W, -36.5, -50.5, 5.5, r);
   siteBoard(D, -43, 1.8, -66.92, 'x', 'siteb', 2.6); siteBoard(D, -54, 0.9, -52.3, 'x', 'siteb', 1.6);
 
@@ -3438,7 +3472,7 @@ function islandsSD() {
   slab(Dw, 29.5, -79.5, 68, -52.5, 0, 0.03, 'wetsand', [30, -70.5, 67.6, -61.5]);
   wreck(B, D, 48, 3, st);
   for (const [x, z] of [[34, -56], [35, -55.2], [62, -77], [61, -77.8], [36.5, -77]]) B.box(x, 0.45, z, 0.9, 0.9, 0.9, 'crate');
-  for (const [x, z, s] of [[31, -81, 1.2], [68, -52.5, 1.1], [67.5, -80, 1.2]]) add(x - s, 0, z - s * 0.8, x + s, s * 1.2, z + s * 0.8, 'rockf');
+  for (const [x, z, s] of [[31, -81, 1.2], [68, -52.5, 1.1], [67.5, -80, 1.2]]) add(x - s, 0, z - s * 0.8, x + s, s * 1.2, z + s * 0.8, 'rockf', RK);
   palm(W, 30, -52.5, 6, r);
   siteBoard(D, 38, 2.0, -61.42, 'x', 'sitea', 2); siteBoard(D, 54, 2.0, -61.42, 'x', 'sitea', 2);
 
@@ -3453,15 +3487,15 @@ function islandsSD() {
   ropeWalk(B, D, false, -48, -36, -54, 2.6, [0, 0]); reef(B, -65, -44, -31, -40); // W to B
   ropeWalk(B, D, false, -50, -36, 54, 2.6, [0, 0]); reef(B, 31, -46, 65, -40); // E to A
   ropeWalk(B, D, true, -34, -18, -64, 2.6, [-29, -21]); ropeWalk(B, D, true, 18, 28, -78, 2.6, [0, 0]); reef(B, 20.5, -85, 23.5, -45); // the fort to A
-  for (const [x, z] of [[-29, 12], [29, 12], [-39, -1.5], [39, -1.5]]) add(x - 0.8, ISL.SB, z - 0.7, x + 0.8, 0.9, z + 0.7, 'rockf');
+  for (const [x, z] of [[-29, 12], [29, 12], [-39, -1.5], [39, -1.5]]) add(x - 0.8, ISL.SB, z - 0.7, x + 0.8, 0.9, z + 0.7, 'rockf', RK);
 
   // ---- spawns, the ways in (for the bots), the sites
   const att = [[-6, 0.1, 46], [0, 0.1, 47], [6, 0.1, 46], [-11, 0.1, 44.5], [11, 0.1, 44.5], [-3, 0.1, 48.5], [3, 0.1, 48.5]];
   const def = [[-4, 0.1, -60], [3, 0.1, -64], [0, 0.1, -71], [5, 0.1, -60.5], [-1.5, 0.1, -56], [6, 0.1, -66.5], [-5.5, 0.1, -58]];
   const spawns = [...att.slice(0, 3), ...def.slice(0, 3), [6, 0.1, 2.5], [-48, 0.1, -16], [48, 0.1, -16], [-48, 0.1, -62], [48, 0.1, -56]];
   let graph = null;
-  const map = { name: 'Islands', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -16, floorY: -1.5, sky: SKY_SUNSET, fogNear: 110, fogFar: 380,
-    spawns, teamSpawns: { att, def }, edgeGuard: true, ceiling: 9.5, sea: true,
+  const map = { name: 'Islands', size: 'large', boxes: B.boxes, deco: D.boxes, killY: ISL.DROWN, floorY: -1.5, sky: SKY_SUNSET, fogNear: 110, fogFar: 380,
+    spawns, teamSpawns: { att, def }, edgeGuard: true, ceiling: 9.5, sea: true, seaY: ISL.WY, pits: [lavaPit(T)],
     nav: {
       B: [
         [[0, 46], [-4, 22], [-4, 5], [-17, 3], [-19, -5], [-19, -13], [-22, -13], [-36, -13], [-40, -20], [-40, -30], [-40, -38], [-40, -44], [-42, -54]], // mid, the tiki bar's islet, the sandbar
@@ -3623,7 +3657,9 @@ function skyline() {
     NW: { e: [[-S - 2, -S + 2]], s: [[-S - 2, -S + 2]] }, NE: { w: [[-S - 2, -S + 2]], s: [[S - 2, S + 2]] }, SW: { e: [[S - 2, S + 2]], n: [[-S - 2, -S + 2]] }, SE: { w: [[S - 2, S + 2]], n: [[S - 2, S + 2]] } };
   const facade = { C: 'glassblock', N: 'office', S: 'tenement', W: 'office', E: 'tenement', NW: 'concrete', SE: 'office', NE: 'tenement', SW: 'office' };
   for (const [k, [x, z, hx, hz, y]] of Object.entries(tops)) {
+    const n0 = B.boxes.length;
     roofTop(B, x - hx, z - hz, x + hx, z + hz, y, facade[k], gaps[k], base);
+    if (k === 'S') B.archSince(n0, 'tenement', x, z, 0, y); // the south tower: a Blender tenement (archfield.js)
     D.add(x - hx + 0.3, y, z - hz + 0.3, x + hx - 0.3, y + 0.02, z + hz - 0.3, k === 'S' ? 'lawn' : k === 'E' ? 'lawn' : 'asphalt'); // the roof's skin
   }
   // ---- the links: the hub to the ring (glass tubes north and south, girder bridges east and west), the ring to the corners
@@ -3680,7 +3716,7 @@ function skyline() {
   cityBeyond(D, -120, 200, 680, rng(4040), { kill: -108, cap: 30, shore: 470, avenues: [[-60, -230, 0.42], [230, 40, -1.05], [-300, 120, 1.25], [80, -420, 0.06], [-250, -250, 2.35]], streets: gridOut(roads.xs, roads.zs, 200, 200) });
 
   let graph = null;
-  const map = { name: 'Skyline', size: 'huge', boxes: B.boxes, deco: D.boxes, killY: -108, floorY: -128, cityR: 680, cityCap: 30,
+  const map = { name: 'Skyline', size: 'huge', boxes: B.boxes, deco: D.boxes, killY: -119.7, fall: 'street', floorY: -128, cityR: 680, cityCap: 30,
     haze: { k: 0.88, top: 15, bottom: -120, dist: 120, color: 0xc89aa4 }, // look down: the city through a dusk haze
     sky: { top: 0x1a2a5a, mid: 0xff9a5a, bot: 0x0a0a1a, fog: 0xd98a6a }, fogNear: 160, fogFar: 700, spawns, teamSpawns: { att, def }, edgeGuard: true,
     traffic: { grid: { ...roads, S: 200, y: -120 + 0.08, off: 5 } },
@@ -3780,7 +3816,7 @@ function skylineSD() {
   const def = [[-4, 40.2, -70], [0, 40.2, -71], [4, 40.2, -70], [-10, 40.2, -70], [10, 40.2, -70], [-3, 40.2, -75], [3, 40.2, -75]];
   const spawns = [...att.slice(0, 3), ...def.slice(0, 3), [-48, 46.2, -52], [48, 46.2, -52], [-56, 42.2, -24], [56, 42.2, -24], [-40, 38.2, 22], [40, 38.2, 25], [0, Cy + 0.2, -34], [-10, Cy + 0.2, -19], [10, Cy + 0.2, -19]];
   let graph = null;
-  const map = { name: 'Skyline', size: 'huge', boxes: B.boxes, deco: D.boxes, killY: -108, floorY: -128, cityR: 680, cityCap: 30,
+  const map = { name: 'Skyline', size: 'huge', boxes: B.boxes, deco: D.boxes, killY: -119.7, fall: 'street', floorY: -128, cityR: 680, cityCap: 30,
     haze: { k: 0.88, top: 15, bottom: -120, dist: 120, color: 0xc89aa4 },
     sky: { top: 0x1a2a5a, mid: 0xff9a5a, bot: 0x0a0a1a, fog: 0xd98a6a }, fogNear: 160, fogFar: 700, spawns, teamSpawns: { att, def }, edgeGuard: true,
     traffic: { grid: { ...roads, S: 200, y: -120 + 0.08, off: 5 } },
@@ -4076,7 +4112,8 @@ function bazaar() {
   // ---- outside the wall (render-only): dunes, rocks, a camp outside the west gate, an oasis, the next town over
   horizon(D, -300, -300, 300, 300, 1500, 'sand');
   for (let i = 0; i < 40; i++) { const a = rv() * Math.PI * 2, d = 120 + rv() * 220, x = Math.cos(a) * d, z = Math.sin(a) * d, w = 30 + rv() * 60, dd = 18 + rv() * 36; if (Math.abs(x) - w / 2 < 80 && Math.abs(z) - dd / 2 < 80) continue; dune(D, x, z, w, dd, 5 + rv() * 12); }
-  for (let i = 0; i < 12; i++) { const a = rv() * Math.PI * 2, d = 200 + rv() * 220; rocks(D, Math.cos(a) * d, Math.sin(a) * d, 12 + rv() * 20, rv); }
+  B.boxes.arch.push({ id: 'rocks_bazaar', p: [0, 0, 0], r: 0 }); const RK = { av: 'rocks_bazaar', ai: B.boxes.arch.length - 1 }; // (its rock: one Blender model, look only)
+  for (let i = 0; i < 12; i++) { const a = rv() * Math.PI * 2, d = 200 + rv() * 220; rocks(D, Math.cos(a) * d, Math.sin(a) * d, 12 + rv() * 20, rv, RK); }
   for (const [x, z, c] of [[-86, -14, 'cloth'], [-92, 6, 'toypink'], [-84, 20, 'toyteal']]) tent(Dw, x, z, c);
   for (const [x, z, ax] of [[-98, -4, true], [-90, 30, false], [92, -20, true]]) camel(Dw, x, z, ax);
   D.add(130, 0, -40, 170, 0.2, -10, 'lawn'); D.add(136, 0.2, -34, 164, 0.3, -16, 'water');
@@ -4084,6 +4121,8 @@ function bazaar() {
   for (let i = 0; i < 26; i++) { const x = -330 + (rv() - 0.5) * 120, z = -180 + (rv() - 0.5) * 140, w = 8 + rv() * 10, h = 4 + rv() * 9;
     D.add(x - w / 2, 0, z - w / 2, x + w / 2, h, z + w / 2, rv() < 0.7 ? 'adobe' : ['sidepink', 'sidelemon', 'sidemint'][(rv() * 3) | 0]); if (rv() < 0.3) dome(D, x, h, z, w * 0.3, rv() < 0.5 ? 'roofteal' : 'roofblue'); }
 
+  // the sand between the stalls and courtyards drifts up and dips (shared/terrain.js). tiled floors, buildings, the canal's banks stay level
+  shapeGround(B, D, { region: [-58, -58, 58, 58], mat: 'sand', seed: 777, up: 1.1, down: 0.6, near: 0.8, far: 4.5, points: [...new Set([...spawns, ...att, ...def])] });
   let graph = null;
   const map = { name: 'Bazaar', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -50, floorY: -6, bounds, ceiling: 9,
     sky: { top: 0x4a8fd8, mid: 0xf2dcae, bot: 0x8a6a40, fog: 0xf0d8a8 }, fogNear: 100, fogFar: 380, spawns, teamSpawns: { att, def },
@@ -4212,7 +4251,8 @@ function bazaarSD() {
   // ---- outside the wall (render-only): dunes, rocks, the caravan's tail outside the south gate, the next town over
   horizon(D, -300, -300, 300, 300, 1500, 'sand');
   for (let i = 0; i < 40; i++) { const a = rv() * Math.PI * 2, d = 120 + rv() * 220, x = Math.cos(a) * d, z = Math.sin(a) * d, w = 30 + rv() * 60, dd = 18 + rv() * 36; if (Math.abs(x) - w / 2 < 75 && Math.abs(z) - dd / 2 < 85) continue; dune(D, x, z, w, dd, 5 + rv() * 12); }
-  for (let i = 0; i < 12; i++) { const a = rv() * Math.PI * 2, d = 200 + rv() * 220; rocks(D, Math.cos(a) * d, Math.sin(a) * d, 12 + rv() * 20, rv); }
+  B.boxes.arch.push({ id: 'rocks_bazaar_sd', p: [0, 0, 0], r: 0 }); const RK = { av: 'rocks_bazaar_sd', ai: B.boxes.arch.length - 1 }; // (its rock: one Blender model, look only)
+  for (let i = 0; i < 12; i++) { const a = rv() * Math.PI * 2, d = 200 + rv() * 220; rocks(D, Math.cos(a) * d, Math.sin(a) * d, 12 + rv() * 20, rv, RK); }
   for (const [x, z, c] of [[-14, 86, 'cloth'], [10, 92, 'toypink'], [30, 84, 'toyteal']]) tent(Dw, x, z, c);
   for (const [x, z, ax] of [[-2, 98, true], [22, 100, false], [-26, 94, true]]) camel(Dw, x, z, ax);
   D.add(-3, 0, 74, 3, 0.03, 400, 'dirtroad');
@@ -4562,10 +4602,10 @@ function log(B, x0, z0, x1, z1, rr = 0.42) { // a fallen log along x or z (with 
   if (ax) { B.add(x0, 0, z0 - rr, x1, rr * 2, z0 + rr, 'logside'); B.add(x1, 0.02, z0 - rr + 0.04, x1 + 0.06, rr * 2 - 0.04, z0 + rr - 0.04, 'logend'); }
   else { B.add(x0 - rr, 0, z0, x0 + rr, rr * 2, z1, 'logside'); B.add(x0 - rr + 0.04, 0.02, z1, x0 + rr - 0.04, rr * 2 - 0.04, z1 + 0.06, 'logend'); }
 }
-function boulder(B, x, z, s, r) { // a rock: a big block and a couple of smaller ones shoved into it
-  B.add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf');
-  B.add(x - s * 0.7, s * 1.1, z - s * 0.5, x + s * 0.5, s * 1.5, z + s * 0.6, 'rockf');
-  if (r() < 0.6) B.add(x + s * 0.7, 0, z + s * 0.4, x + s * 1.5, s * 0.7, z + s * 1.2, 'rockmoss');
+function boulder(B, x, z, s, r, tag) { // a rock: a big block and a couple of smaller ones shoved into it. tag: { av, ai } when a Blender rock model draws it
+  B.add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf', tag);
+  B.add(x - s * 0.7, s * 1.1, z - s * 0.5, x + s * 0.5, s * 1.5, z + s * 0.6, 'rockf', tag);
+  if (r() < 0.6) B.add(x + s * 0.7, 0, z + s * 0.4, x + s * 1.5, s * 0.7, z + s * 1.2, 'rockmoss', tag);
 }
 // a wrecked sedan facing +x: hood up, driver door hanging open, a flat at the front, hazards still blinking
 function brokenCar(B, D, x, z) {
@@ -4583,6 +4623,7 @@ function brokenCar(B, D, x, z) {
 }
 function forest() {
   const B = builder(), D = builder();
+  B.boxes.arch.push({ id: 'rocks_forest', p: [0, 0, 0], r: 0 }); const RK = { av: 'rocks_forest', ai: B.boxes.arch.length - 1 }; // (its rock: one Blender model, look only)
   const r = rng(6660);
   const W = B.local(0, 0, 0);
   const [bx0, bz0, bx1, bz1] = FOREST.bounds, SH = FOREST.shore;
@@ -4637,7 +4678,7 @@ function forest() {
   for (let z = -300; z < 300; z += 5) for (let k = 0; k < 3; k++) pine(D, D, 230 + k * 6 + r() * 5, z + r() * 4, 10 + r() * 8, r);
   // undergrowth: ferns and bushes (only drawn: bullets go through, eyes don't)
   for (let i = 0; i < 520; i++) { const x = bx0 - 20 + r() * (bx1 - bx0 + 40), z = bz0 - 20 + r() * (bz1 - bz0 + 40); if (x > SH - 2 || !free(x, z, -0.5)) continue; const s = 0.6 + r() * 0.8, a = r() * 3; if (r() < 0.55) { propOf('fern', [x, 0, z], 0, () => { for (let k = 0; k < 3; k++) D.obb(x, s * 0.28, z, s * 1.5, s * 0.56, 0.07, a + k * 1.05, 'fern'); }, { spin: a || 1e-6 }); } else { propOf('bush', [x, 0, z], 0, () => { D.obb(x, s * 0.3, z, s * 1.1, s * 0.6, s * 0.9, a, 'bush'); D.obb(x + 0.2, s * 0.75, z - 0.1, s * 0.7, s * 0.4, s * 0.6, a + 0.8, 'bush'); }, { spin: a || 1e-6 }); } } // ferns: three crossed fronds. bushes: a clump
-  for (let i = 0; i < 70; i++) { const x = bx0 + r() * (bx1 - bx0), z = bz0 + r() * (bz1 - bz0); if (x > SH - 4 || !free(x, z, 1)) continue; if (r() < 0.55) { const l = 3 + r() * 4; r() < 0.5 ? log(B, x, z, x + l, z) : log(B, x, z, x, z + l); } else if (r() < 0.6) boulder(B, x, z, 0.6 + r() * 0.9, r); else B.add(x - 0.35, 0, z - 0.35, x + 0.35, 0.5 + r() * 0.4, z + 0.35, 'logend'); }
+  for (let i = 0; i < 70; i++) { const x = bx0 + r() * (bx1 - bx0), z = bz0 + r() * (bz1 - bz0); if (x > SH - 4 || !free(x, z, 1)) continue; if (r() < 0.55) { const l = 3 + r() * 4; r() < 0.5 ? log(B, x, z, x + l, z) : log(B, x, z, x, z + l); } else if (r() < 0.6) boulder(B, x, z, 0.6 + r() * 0.9, r, RK); else B.add(x - 0.35, 0, z - 0.35, x + 0.35, 0.5 + r() * 0.4, z + 0.35, 'logend'); }
 
   // ---- the clearing: a ring of standing stones, one dead tree, and an office chair facing away from you
   for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2 + 0.3, x = CLR[0] + Math.cos(a) * 9.5, z = CLR[1] + Math.sin(a) * 9.5, tall = 1.8 + (i % 3) * 0.6; B.add(x - 0.6, 0, z - 0.45, x + 0.6, tall, z + 0.45, i % 2 ? 'rockf' : 'rockmoss'); }
@@ -4645,7 +4686,7 @@ function forest() {
   W(CLR[0] - 2.4, 0, CLR[1] + 1.7, CLR[0] - 1.8, 0.08, CLR[1] + 2.3, 'metal'); W(CLR[0] - 2.15, 0.08, CLR[1] + 1.95, CLR[0] - 2.05, 0.55, CLR[1] + 2.05, 'chrome'); // the office chair: base, stem
   W(CLR[0] - 2.45, 0.55, CLR[1] + 1.7, CLR[0] - 1.75, 0.68, CLR[1] + 2.4, 'officechair'); W(CLR[0] - 2.45, 0.68, CLR[1] + 2.32, CLR[0] - 1.75, 1.45, CLR[1] + 2.42, 'officechair');
   W(CLR[0] + 6, 0, CLR[1] + 4, CLR[0] + 6.6, 1.25, CLR[1] + 4.6, 'white'); W(CLR[0] + 6.05, 1.25, CLR[1] + 4.05, CLR[0] + 6.55, 1.75, CLR[1] + 4.55, 'coolerwater'); // a water cooler. in the woods. for whom
-  log(B, CLR[0] - 12, CLR[1] + 8, CLR[0] - 6, CLR[1] + 8); boulder(B, CLR[0] + 11, CLR[1] - 8, 1.0, r);
+  log(B, CLR[0] - 12, CLR[1] + 8, CLR[0] - 6, CLR[1] + 8); boulder(B, CLR[0] + 11, CLR[1] - 8, 1.0, r, RK);
 
   // ---- the cabin (site A): log walls, a porch, a door front and back, a stepped roof, a stone chimney
   { const L = B.local(CAB[0], CAB[1], 0);
@@ -4792,6 +4833,9 @@ function forest() {
   const att = [[TH[0] - 4, 0.2, TH[1] - 2], [TH[0], 0.2, TH[1] - 2], [TH[0] + 4, 0.2, TH[1] - 2], [TH[0] - 4, 0.2, TH[1] + 2], [TH[0], 0.2, TH[1] + 2], [TH[0] + 4, 0.2, TH[1] + 2], [TH[0] + 8, 0.2, TH[1]]];
   const def = [[DEF[0] - 6, 0.2, DEF[1] - 2], [DEF[0] - 2, 0.2, DEF[1] - 2], [DEF[0] + 2, 0.2, DEF[1] + 2], [DEF[0] - 6, 0.2, DEF[1] + 2], [DEF[0] - 2, 0.2, DEF[1] + 2], [DEF[0] - 10, 0.2, DEF[1]], [DEF[0] + 1, 0.2, DEF[1] - 5]];
   const sites = [{ id: 'A', min: [CAB[0] - 6.2, 0, CAB[1] - 4.2], max: [CAB[0] + 6.2, 0, CAB[1] + 7.4] }, { id: 'B', min: [42.4, 0, -4.6], max: [61.6, 0, 12.6] }];
+  // the forest floor heaves: rises, hollows, root mounds (shared/terrain.js). the two sites, the cabin, the trails' ends and the lake shore stay level
+  shapeGround(B, D, { region: [FOREST.bounds[0], FOREST.bounds[1], FOREST.shore, FOREST.bounds[3]], mat: 'needles', seed: 6161, up: 1.6, down: 1.0, big: 9,
+    flat: sites.map((q) => [q.min[0] - 2, q.min[2] - 2, q.max[0] + 2, q.max[2] + 2]), points: [...new Set([...spawns, ...att, ...def])] });
   let graph = null, nav = null;
   const N = 210, gx0 = -105, gz0 = -105;
   const navGraph = () => graph || (graph = buildNav(B.boxes, { x0: gx0, z0: gz0, n: N, cell: 1, levels: [0], band: 0.5, keep: (x, z) => x > bx0 && x < bx1 && z > bz0 && z < bz1 }));
@@ -4920,7 +4964,7 @@ function deadmall() {
   const crate = { at: [0, 0, -28.55], price: 950 };
   B.add(-0.9, 0, -29, 0.9, 0.9, -28.1, 'crate');
   const cola = { at: [-10.4, 0, -24], n: [1, 0, 0] };
-  B.add(-10.8, 0, -24.6, -10.0, 2.1, -23.4, 'containerr');
+  B.add(-10.75, 0, -24.55, -10.05, 2.03, -23.45, 'metal'); // (Jank Cola's machine is drawn over it too)
   // ---- ARCADE: three rows of back-to-back cabinets (gaps halfway down), screens glowing on both sides
   for (const x of [-31, -24, -17]) for (const [z0, z1] of [[-24, -15], [-13, -4]]) {
     B.add(x - 0.9, 0, z0, x + 0.9, 1.9, z1, x === -24 ? 'containerr' : 'containerb');
@@ -4930,6 +4974,14 @@ function deadmall() {
   for (const [x, z, n] of [[16, -24, 2], [17.3, -24, 1], [29, -18, 2], [21, -8, 1], [32, -27, 1], [15.2, -1.5, 1]]) for (let k = 0; k < n; k++) B.box(x, 0.6 + k * 1.2, z, 1.2, 1.2, 1.2, 'crate');
   B.add(23, 0, -15, 26, 0.25, -12, 'wood'); B.add(30, 0, -6, 31.4, 1.4, -4, 'caryellow'); B.add(30.2, 1.4, -5.8, 31.2, 2.2, -4.6, 'glass');
   const power = { at: [36.7, 1.6, -14], n: [-1, 0, 0] };
+  // ---- the other cola machines (shared/zmshop.js), one per wing, and the Warranty Voider on the dock's north wall
+  const colas = [
+    { id: 'getup', at: [10.4, 0, 24], n: [-1, 0, 0] }, { id: 'legday', at: [-36.4, 0, 7], n: [1, 0, 0] },
+    { id: 'pockets', at: [36.4, 0, 16], n: [-1, 0, 0] }, { id: 'thirdhand', at: [-28, 0, 3.4], n: [0, 0, -1] },
+  ];
+  for (const c of colas) B.add(c.at[0] - (c.n[0] ? 0.35 : 0.55), 0, c.at[2] - (c.n[2] ? 0.35 : 0.55), c.at[0] + (c.n[0] ? 0.35 : 0.55), 2.03, c.at[2] + (c.n[2] ? 0.35 : 0.55), 'metal'); // a bit inside the model (the client draws the machine over it)
+  const up = { at: [20, 0, -29.5], n: [0, 0, 1] };
+  B.add(19.15, 0, -29.97, 20.85, 0.93, -28.96, 'metal'); B.add(19.15, 0.93, -29.97, 20.85, 2.28, -29.4, 'metal'); // a bit inside the model (the client draws the machine over it), behind its sunken screen
   // ---- the Cheat Machine (server/zmextra.js): against the arcade's north wall, a random modifier once the power's on
   const mach = { at: [-14, 0, -29.6], n: [0, 0, 1] };
   B.add(-14.5, 0, -29.97, -13.5, 1.28, -29.25, 'metal'); B.add(-14.5, 1.28, -29.97, -13.5, 2.12, -29.38, 'metal'); // a bit inside the model (the client draws the machine over it), behind its sunken screen
@@ -4954,7 +5006,7 @@ function deadmall() {
   return {
     name: 'Dead Mall', size: 'medium', boxes: B.boxes, killY: -20,
     sky: { top: 0x06050c, mid: 0x1a1220, bot: 0x05040a, fog: 0x140e18 }, fogNear: 16, fogFar: 80, spawns,
-    zm: { bounds: [X0 - 4, Z0 - 4, X1 + 4, Z1 + 4], H, start: 'hall', areas, doors, windows, buys, crate, power, cola, mach },
+    zm: { bounds: [X0 - 4, Z0 - 4, X1 + 4, Z1 + 4], H, start: 'hall', areas, doors, windows, buys, crate, power, cola, mach, colas, up },
   };
 }
 
@@ -4985,6 +5037,7 @@ export const MAP = { id: '', name: '', killY: -45, sky: SKY_SUNSET, fogNear: 90,
 export function setMap(id) {
   const m = MAPS[id] || MAPS.islands;
   BOXES.length = 0; BOXES.push(...m.boxes);
+  BOXES.terrain = m.boxes.terrain || null; // shaped ground (shared/terrain.js): the copy needs the heightfield too
   SPAWNS.length = 0; SPAWNS.push(...m.spawns);
   Object.assign(MAP, { id: MAPS[id] ? id : 'islands', name: m.name, killY: m.killY, sky: m.sky, fogNear: m.fogNear, fogFar: m.fogFar, size: m.size });
 }

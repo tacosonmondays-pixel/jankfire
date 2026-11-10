@@ -6,6 +6,7 @@ import '../../shared/story/invsys.js';
 import '../../shared/story/solohost.js';
 import '../../shared/story/refsys.js';
 import { newSave } from '../../shared/story/save.js';
+import { ENEMIES } from '../../shared/story/content/enemies.js'; // (the referee reads its kinds from here: name, hp, weapon, tags)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let n = 0; const t = async (name, fn) => { await fn(); n++; console.log('ok', name); };
 
@@ -25,7 +26,7 @@ await t('the room comes up inside the sim (mode story, the test lot, you as play
 
 await t('a queued spawn lands: the story name, its HP pool, no bots of its own', async () => {
   const es = sim.refEnemies();
-  assert.equal(es.length, 1); assert.equal(es[0].name, 'Corp Temp'); assert.equal(es[0].sk.max, 200); assert.equal(es[0].storyId, 'temp_a');
+  assert.equal(es.length, 1); assert.equal(es[0].name, ENEMIES.corp_temp.name); assert.equal(es[0].sk.max, 200); assert.equal(es[0].storyId, 'temp_a');
   assert.ok(out.some((o) => o.t === 'pj' && o.id === es[0].id), 'the client was told about it (pj)');
 });
 
@@ -41,7 +42,7 @@ await t('hits go through the room\'s checks; a 200 HP enemy takes real numbers; 
   assert.equal(hits[0].max, 200); assert.equal(hits[0].kind, 'corp_temp'); assert.equal(hits[0].by, 'me'); assert.equal(hits[0].weapon, 'ar');
   assert.ok(hits[0].dmg > 0 && hits[0].dmg <= 40 && hits[0].hp === 200 - hits[0].dmg, JSON.stringify(hits[0]));
   const k = ev('kill').find((x) => x.target === 'temp_a');
-  assert.ok(k, 'kill reported'); assert.equal(k.by, 'me'); assert.deepEqual(k.tags, ['corp']); assert.equal(k.boss, false);
+  assert.ok(k, 'kill reported'); assert.equal(k.by, 'me'); assert.deepEqual(k.tags, ENEMIES.corp_temp.tags); assert.equal(k.boss, false);
   assert.ok(Array.isArray(k.at) && k.at.length === 3);
 });
 

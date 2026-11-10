@@ -133,7 +133,7 @@ merges into the save slot's `data` (TECH_PLAN §7; `met`, `codex`, `log`, `track
 The full script is the pack `shared/story/content/overdue.js`. It's authored in the richer files beside it (see
 `shared/story/content/index.js` and `docs/story/script/`) and converted into the engine shape above at import, so the
 engine files are untouched. `tests/story/overdue.test.mjs` loads it through `makeStory` and an auto-player finishes
-all 32 main missions and all 47 side questlines using only host-style events. What the pack needs that the schema
+all 33 main missions and all 47 side questlines using only host-style events. What the pack needs that the schema
 doesn't have yet:
 
 **Pack keys**
@@ -220,3 +220,7 @@ checked by `validate.js`.
 - `GRAPPLE` holds the grapple's own section: routes, shortcuts, secrets, chases, fights, puzzles, races and upgrades.
 - Every main mission (and most side quests) has a hook: `mechanic: { uses: [mechanics ids], hook }`.
 - `docs/story/MECHANICS.md` is generated from all of this, with the coverage table.
+
+**Grudges** (the Grudge Ledger): `shared/story/content/grudges.js`, exported as `CONTENT.GRUDGES = { RULES, FACTIONS, TRIGGERS, ADAPTATIONS, RESOLUTIONS, RECAPS, BARKS, BARK_KEYS, RECAP_FIELDS }`.
+- `ADAPTATIONS[id] = { from (a TRIGGERS id), name, title, look, effect, counter }`; `TRIGGERS[id] = { name, when, weapons?, adaptation, opens }`; `BARKS[faction][key] = [lines]`.
+- The rules, the save shape and why it's its own design: `docs/story/GRUDGES.md`. `docs/story/GRUDGE_LEDGER.md` is generated.

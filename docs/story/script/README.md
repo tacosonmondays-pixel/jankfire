@@ -6,21 +6,22 @@ Start with [CANON.md](CANON.md): the timeline, why Change is free, the six pages
 
 | file | what | size |
 |---|---|---|
-| [CAST.md](CAST.md) | the cast bible: 54 characters | 18636 words |
-| [ACT_1.md](ACT_1.md) | Act 1: "Please Take Your Item": 5 missions | 8578 words |
+| [CAST.md](CAST.md) | the cast bible: 56 characters | 20024 words |
+| [ACT_1.md](ACT_1.md) | Act 1: "Please Take Your Item": 6 missions | 12402 words |
 | [ACT_2.md](ACT_2.md) | Act 2: "Hostile Takeovers": 12 missions | 14161 words |
 | [ACT_3.md](ACT_3.md) | Act 3: "Off the Clock": 8 missions | 9607 words |
 | [ACT_4.md](ACT_4.md) | Act 4: "Quarterly Review": 5 missions | 5887 words |
 | [ACT_5.md](ACT_5.md) | Act 5: "Overdue": 2 missions | 4678 words |
 | [ENDINGS.md](ENDINGS.md) | ON TIME, LATE, OFF THE BOOKS, NAP TIME | 4059 words |
-| [BOSSES.md](BOSSES.md) | 24 fights, 20 named bosses | 19322 words |
-| [SIDE_QUESTS.md](SIDE_QUESTS.md) | 48 side questlines, 15 activities | 15518 words |
-| [IMPLANTS.md](IMPLANTS.md) | 55 implants (17 secret) and the Drift rules | 5227 words |
-| [LOOT.md](LOOT.md) | 8 brands, 43 named legendaries | 3199 words |
-| [../MECHANICS.md](../MECHANICS.md) | the mechanics bible: 47 mechanics, the grapple, coverage | 9127 words |
+| [BOSSES.md](BOSSES.md) | 25 fights, 21 named bosses | 21051 words |
+| [SIDE_QUESTS.md](SIDE_QUESTS.md) | 48 side questlines, 15 activities | 15562 words |
+| [IMPLANTS.md](IMPLANTS.md) | 56 implants (17 secret) and the Drift rules | 5383 words |
+| [LOOT.md](LOOT.md) | 8 brands, 44 named legendaries | 3384 words |
+| [../MECHANICS.md](../MECHANICS.md) | the mechanics bible: 48 mechanics, the grapple, coverage | 9477 words |
+| [../GRUDGES.md](../GRUDGES.md) · [../GRUDGE_LEDGER.md](../GRUDGE_LEDGER.md) | the Grudge Ledger: enemies who remember you, 33 adaptations | 5606 words |
 | [COLLECTIBLES.md](COLLECTIBLES.md) | 69 collectibles in 6 sets | 3189 words |
 
-**Total: about 121k words, 32 main missions, 33 scenes.**
+**Total: about 134k words, 33 main missions, 39 scenes.**
 
 ## Main story at a glance
 
@@ -31,6 +32,7 @@ Start with [CANON.md](CANON.md): the timeline, why Change is free, the six pages
 | 3 | 1 | SOMETHING'S DIGESTING | It's Sunday. Lumps visits his mum in the Gut, and the Choir tells you where Gristle & Sons gets its feedstock: ☺ CORP sells it the people who fall behind on their back pay. |
 | 4 | 1 | CLOCKING IN | Mr. Overtime comes down the Long Stairs to collect two hundred and forty-four quarters of back pay, in people. First nemesis fight. |
 | 5 | 1 | SECOND STOMACH | A Meat Mechanic installs the piece of Overtime's heart in your chest. Implants unlocked. For a second you remember a lobby, a pair of running shoes, and the time: 17:29. |
+| 6 | 1 | TICKETS, PLEASE | The only other way into the Gut is the commuter line under the hill. Nobody takes it, because the tunnel eats. Four of you go in. The thing that follows you out is wearing the company's face. |
 | 6 | 2 | OPTION C | Auntie lays out her wall of evidence: six companies signed the end of the world, each one kept its page, and with all six she can prove every debt they collect is a lie. |
 | 7 | 2 | AN OFFER | In Pinstripe the Don makes you an offer you could refuse, and his jesters make you a different one. |
 | 8 | 2 | FAMILY BUSINESS | The Family's page is up in Villa Fazzoletto. So is whoever works the Don's strings. |

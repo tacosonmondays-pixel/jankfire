@@ -15,6 +15,8 @@ import { MAPS, BOXES } from '/shared/map.js';
 import { GAMES } from '/shared/modes.js';
 import { raycast } from '/shared/physics.js';
 import { surfaces, lavaOk, onLava, LAVA } from '/shared/lava.js';
+import { liquidAt } from './liquids.js'; // (is the camera under water?)
+import { inPit } from '/shared/pits.js';
 
 const $ = (id) => document.getElementById(id);
 const R = (s = 1) => (Math.random() * 2 - 1) * s;
@@ -41,9 +43,17 @@ function buildLava(s) {
   const pos = [], idx = [];
   let n = 0;
   for (const t of s.tops) {
-    if (!s.lava.has(t.b)) continue;
+    if (!s.lava.has(t.b) || t.b.ter) continue; // (shaped ground: its hidden steps aren't the surface, the heightfield below is)
     const b = t.b, y = b.max[1] + 0.03;
     pos.push(b.min[0], y, b.min[2], b.max[0], y, b.min[2], b.max[0], y, b.max[2], b.min[0], y, b.max[2]);
+    idx.push(n, n + 2, n + 1, n, n + 3, n + 2);
+    n += 4;
+  }
+  const T = C.boxes && C.boxes.terrain;
+  if (T) for (let i = 0; i < T.nx; i++) for (let j = 0; j < T.nz; j++) { // lava laid over the hills and hollows
+    if (!T.ok[i * T.nz + j]) continue;
+    const h = (a, b) => T.H[a * (T.nz + 1) + b] + 0.04, x = T.x0 + i, z = T.z0 + j;
+    pos.push(x, h(i, j), z, x + 1, h(i + 1, j), z, x + 1, h(i + 1, j + 1), z + 1, x, h(i, j + 1), z + 1);
     idx.push(n, n + 2, n + 1, n, n + 3, n + 2);
     n += 4;
   }
@@ -108,7 +118,33 @@ net.on('sizzle', (m) => {
   steam(m.p);
   sfx.sizzle(m.p);
   if (m.id === G.myId) { G.burnUntil = performance.now() + 900; G.shake = Math.max(G.shake, 0.35); }
+  if (m.hz && m.id === G.myId) { // standing in a lava pit (the volcano): the same ouch as the floor, different words
+    hud.msg(['GET OUT GET OUT', 'THIS IS NOT A HOT TUB', 'HOT HOT HOT', 'MEDIUM RARE'][(Math.random() * 4) | 0], 0.7, 'lava');
+    const f = el('lavaHit');
+    f.classList.remove('on'); void f.offsetWidth; f.classList.add('on');
+  }
 });
+// camera under the sea (map.seaY): everything goes blue and murky instead of showing the underside of the map
+let underOn = false, lavaUnder = false;
+export function underSea(map) {
+  const cp = G.camera.position, lq = G.joined && map && map.pits ? inPit(map, [cp.x, cp.y + 0.12, cp.z]) : null; // eyes under the lava: everything goes orange
+  if (!!lq !== lavaUnder) { lavaUnder = !!lq; el('lavaUnder').style.cssText = 'position:absolute;inset:0;pointer-events:none;background:rgba(255,96,10,0.82);box-shadow:inset 0 0 200px 70px rgba(120,10,0,0.95);z-index:-1;display:' + (lq ? 'block' : 'none'); }
+  const c = G.camera.position, s = G.joined && map ? liquidAt(c.x, c.y, c.z, 4, 0) : null; // any water you can get your head under: the sea, a pond
+  const on = !!map && G.joined && ((map.seaY != null && c.y < map.seaY - 0.02) || (!!s && s.kind === 'water' && c.y < s.top - 0.02));
+  if (on === underOn) return;
+  underOn = on;
+  const e = el('seaUnder');
+  e.style.cssText = 'position:absolute;inset:0;pointer-events:none;background:rgba(14,84,150,0.72);box-shadow:inset 0 0 180px 60px rgba(4,20,60,0.9);z-index:-1;display:' + (on ? 'block' : 'none');
+  if (on) sfx.splash(null, 0.5);
+}
+// cooked in a lava pit: the crater coughs up fire where they went under
+export function pitErupt(p) {
+  particles();
+  for (let i = 0; i < 46; i++) embers.spawn(p[0] + R(1.2), p[1] + 0.3, p[2] + R(1.2), R(5), 9 + Math.random() * 12, R(5), 0.9 + Math.random() * 0.9, 0.2, 0.04, 0xffe070, 0xff2200, 1, 14, 0.3);
+  for (let i = 0; i < 14; i++) fx.smoke([p[0] + R(1.4), p[1] + 0.5 + Math.random() * 3, p[2] + R(1.4)], 1.6, 0.45);
+  for (let i = 0; i < 20; i++) fx.burn([p[0] + R(1), p[1] + Math.random() * 2.5, p[2] + R(1)]);
+  sfx.boom(p); sfx.sizzle(p);
+}
 
 // ------------------------------------------------------------ duck rain: a shadow + whistle where each one lands
 const DISC = new THREE.CircleGeometry(1, 16).rotateX(-Math.PI / 2);

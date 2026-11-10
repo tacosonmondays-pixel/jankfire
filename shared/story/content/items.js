@@ -13,10 +13,11 @@ export const ITEMS = {
   page_vacancy: { name: "OPTION C: PAGE (VACANCY)", kind: "page", keep: true, desc: "\"non-productive land clearance.\" void bombs for districts that can't pay. the Bottom is listed as 'phase two'." },
   page_corp: { name: "OPTION C: PAGE (☺ CORP)", kind: "page", keep: true, desc: "\"approval and continuity. execution at close of business (17:30). final backup of all staff to be retained as workforce.\" signed: M. Hask." },
   // ---------------------------------------------------------------- act I
-  lost_property_weapon: { name: "LOST PROPERTY", kind: "weapon", base: "pistol", desc: "Someone lost this. Now you've found it. That's how lost property works. (a guaranteed rare Plan B from the bins)" },
+  lost_property_weapon: { name: "LOST PROPERTY", kind: "weapon", base: "pistol", desc: "Someone lost this. Now you've found it. That's how lost property works. There's a name on the tag. You don't have to read it. (a guaranteed rare Plan B from the bins)" },
   soup_pot: { name: "THE RED POT", kind: "quest", desc: "Sharon's tomato soup, full to the top. Don't spill it. She'll ladle you." },
   medicine_crate: { name: "MEDICINE (MOSTLY)", kind: "quest", desc: "A crate of Gristle & Sons medicine. One box is labelled GROWTH ADJUSTMENT and is empty." },
-  unpaid_lanyard: { name: "UNPAID LANYARD", kind: "key", desc: "\"INTERN.\" Low-rank raiders on the Commute sometimes wave you through. The lanyard is also an intern." },
+  unpaid_lanyard: { name: "UNPAID LANYARD", kind: "key", desc: "\"INTERN.\" on a sticker, over somebody else's name. Low-rank raiders on the Commute sometimes wave you through. The lanyard is also an intern." },
+  loop_train: { name: "THE TRAIN", kind: "key", keep: true, desc: "Dale's loco, a flatbed and half a wagon. \"it's more of a tractor. but it's on rails.\" Fast travel round the Under-Hill Loop to anywhere you've already been, and the way into the Gut." },
   // ---------------------------------------------------------------- act II
   family_premium: { name: "THE FAMILY'S PREMIUM", kind: "quest", desc: "A briefcase of ☺ CORP's protection money for the Family. It's very heavy and very insured." },
   mallrat_cart_cannon: { name: "RAT CART CANNON", kind: "weapon", base: "cart", desc: "A Shopping Cart Cannon painted with little green rat faces. Shoot carts into the Cart Mother. She can't help picking them up." },

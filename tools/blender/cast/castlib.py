@@ -214,3 +214,17 @@ def panel(name, w, h, c, m, curve=0.3, nx=10, ny=6, sag=None):
     o = lib_obj(name, bm, m); o['keep_uv'] = 1
     so = o.modifiers.new('thick', 'SOLIDIFY'); so.thickness = 0.008; so.offset = 0
     return o
+
+
+def add_lods(root, ratio=0.15, skip=('head',)):
+    """a far LOD: a decimated copy of every part (not the damage ones), named part_<joint>__lod (the game shows these past ~40 m and
+    hides the rest). hidden in the turnaround renders"""
+    for o in list(root.children):
+        if o.type != 'MESH' or '__lod' in o.name or '__dmg' in o.name: continue
+        jn = o.name[len('part_'):].split('__')[0]
+        c = o.copy(); c.data = o.data.copy(); bpy.context.scene.collection.objects.link(c)
+        c.name = 'part_%s__lod' % jn
+        d = c.modifiers.new('dec', 'DECIMATE'); d.ratio = ratio if jn not in skip else min(1.0, ratio * 2)
+        apply_mods(c); c.parent = root; c.matrix_parent_inverse = o.matrix_parent_inverse.copy()
+        c.hide_render = True
+    return root

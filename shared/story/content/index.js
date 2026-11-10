@@ -5,6 +5,7 @@
 //   missions/act*.js (main story) · side/*.js (side questlines) · scenes_act*.js (cutscenes) · endings.js
 //   bosses.js · implants.js (incl. organ cores and secret bio upgrades) · loot.js (brands, modifiers, legendaries,
 //   loot tables) · collectibles.js · activities.js · items.js (key/quest items) · flags.js (every story flag)
+//   grudges.js (the Grudge Ledger: enemies who remember you, docs/story/GRUDGES.md)
 //   mechanics.js (the mechanics bible: every game mechanic and how the story uses it) · boss_fights.js (merged into bosses.js)
 // validate.js checks that every id and reference resolves; tests/story/content.test.mjs runs it.
 // Side quests use the mission schema with kind: 'side' (and optional `parts`: [{ id, title, if, steps, do }] for
@@ -23,6 +24,8 @@ import { SCENES_ACT2 } from './scenes_act2.js';
 import { SCENES_ACT3 } from './scenes_act3.js';
 import { SCENES_ACT4 } from './scenes_act4.js';
 import { SCENES_ACT5 } from './scenes_act5.js';
+export { ENEMIES, ADDS } from './enemies.js'; // (non-boss enemies, for the combat referee and kill goals)
+import { SCENES_OVERTIME } from './scenes_overtime.js'; // (WP9: overtime's fight-1 phase and retreat scenes)
 import { SIDE_BOTTOM } from './side/bottom.js';
 import { SIDE_GUT } from './side/gut.js';
 import { SIDE_PINSTRIPE } from './side/pinstripe.js';
@@ -43,15 +46,18 @@ import { ACTIVITIES } from './activities.js';
 import { ITEMS } from './items.js';
 import { FLAGS } from './flags.js';
 import { MECHANICS, GRAPPLE } from './mechanics.js';
+import { GRUDGE_RULES, GRUDGE_FACTIONS, GRUDGE_TRIGGERS, ADAPTATIONS, RESOLUTIONS, RECAPS, BARKS, BARK_KEYS, RECAP_FIELDS } from './grudges.js';
 
 export const CAST = { ...CAST_MAIN, ...CAST_DISTRICTS };
 export const MISSIONS = { ...MISSIONS_ACT1, ...MISSIONS_ACT2, ...MISSIONS_ACT3, ...MISSIONS_ACT4, ...MISSIONS_ACT5 };
-export const SCENES = { ...SCENES_ACT1, ...SCENES_ACT2, ...SCENES_ACT3, ...SCENES_ACT4, ...SCENES_ACT5 };
+export const SCENES = { ...SCENES_ACT1, ...SCENES_ACT2, ...SCENES_ACT3, ...SCENES_ACT4, ...SCENES_ACT5, ...SCENES_OVERTIME };
 export const SIDE = { ...SIDE_BOTTOM, ...SIDE_GUT, ...SIDE_PINSTRIPE, ...SIDE_CHECKOUT, ...SIDE_NUMBERWORKS, ...SIDE_CHROMEGRISTLE, ...SIDE_EVERGREEN, ...SIDE_LATES, ...SIDE_MARGINS, ...SIDE_CORPHILL, ...SIDE_COMMUTE };
-export const MISSION_ORDER = Object.keys(MISSIONS).sort((a, b) => MISSIONS[a].n - MISSIONS[b].n);
+// (two missions share n 6: m06_tickets_please closes Act I, m06_option_c opens Act II. the act breaks the tie)
+export const MISSION_ORDER = Object.keys(MISSIONS).sort((a, b) => MISSIONS[a].n - MISSIONS[b].n || MISSIONS[a].act - MISSIONS[b].act);
 
 export const CONTENT = {
   DISTRICTS, FACTIONS, LOCATIONS, STANDING, ENDINGS, SPEAKERS,
   CAST, MISSIONS, MISSION_ORDER, SCENES, SIDE, ENDING_SCRIPTS, BOSSES, IMPLANTS,
   BRANDS, MODIFIERS, LEGENDARIES, LOOT_TABLES, COLLECTIBLE_SETS, COLLECTIBLES, ACTIVITIES, ITEMS, FLAGS, MECHANICS, GRAPPLE,
+  GRUDGES: { RULES: GRUDGE_RULES, FACTIONS: GRUDGE_FACTIONS, TRIGGERS: GRUDGE_TRIGGERS, ADAPTATIONS, RESOLUTIONS, RECAPS, BARKS, BARK_KEYS, RECAP_FIELDS },
 };
