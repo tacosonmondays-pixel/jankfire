@@ -67,8 +67,8 @@ import { tacZoneOf } from './tactical.js'; // plant & defuse hit markers by zone
 import { specFPOn } from './specfp.js'; // plant & defuse: first-person spectating
 import { pipFrame } from './pip.js'; // the first-person corner box while spectating
 import { sprayRangeFrame } from './sprayrange.js'; // Training's spray range
-import { chaosSpecId, pitErupt } from './chaos.js';
-import { sink } from '/shared/pits.js';
+import { chaosSpecId, pitErupt, underSea } from './chaos.js';
+import { sink, bottomOut } from '/shared/pits.js';
 import { brSpecId } from './royale.js';
 import { initMinimap, minimapFrame } from './minimap.js'; // the HUD minimap (SAT-NAV)
 import { initLeaderTabs, showLeaders } from './leadmodes.js'; // per-mode leaderboard tabs
@@ -1882,7 +1882,7 @@ function frame(t) {
     } : {};
     jumpPressed = false;
     acc += dt;
-    while (acc >= STEP) { if (!(G.story && G.story.drive(STEP, inp, now))) stepPlayer(STEP, inp, now); carCollide(STEP); airTick(now); lavaStep(now); if (ME.alive) sink(MAPS[MAP.id], ME.pos, ME.vel); // (deep sea: you sink, you don't fall through it)
+    while (acc >= STEP) { if (!(G.story && G.story.drive(STEP, inp, now))) stepPlayer(STEP, inp, now); carCollide(STEP); airTick(now); lavaStep(now); if (ME.alive) { sink(MAPS[MAP.id], ME.pos, ME.vel); bottomOut(MAPS[MAP.id], ME.pos, ME.vel); } // (deep sea: you sink, you don't fall through it. the river, the street: you stop on them)
       inp.jumpPressed = false; acc -= STEP; } // (OVERDUE: in a story car, the car steps instead)
     grabStep(now); // held in a shredder's intake
     pinStep(now); // nailed to a wall
@@ -2064,6 +2064,7 @@ function frame(t) {
 
   const hp = hookPoint();
   if (hp && ME.alive && !RP.active) { myRope.visible = true; setRopeSkin(myRope, myGrapple()); setRope(myRope, muzzleWorld(), hp); } else myRope.visible = false;
+  underSea(MAPS[MAP.id]); // head under the sea: it's blue down there
   const shHit = G.joined ? raycast([ME.pos[0], ME.pos[1] + 0.1, ME.pos[2]], [0, -1, 0], 120, BOXES) : null;
   myShadow.visible = !!shHit && ME.alive && !ME.onGround && !RP.active;
   if (shHit) myShadow.position.set(ME.pos[0], shHit.point[1] + 0.03, ME.pos[2]);

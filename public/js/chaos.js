@@ -114,6 +114,16 @@ net.on('sizzle', (m) => {
     f.classList.remove('on'); void f.offsetWidth; f.classList.add('on');
   }
 });
+// camera under the sea (map.seaY): everything goes blue and murky instead of showing the underside of the map
+let underOn = false;
+export function underSea(map) {
+  const on = !!map && map.seaY != null && G.joined && G.camera.position.y < map.seaY - 0.02;
+  if (on === underOn) return;
+  underOn = on;
+  const e = el('seaUnder');
+  e.style.cssText = 'position:absolute;inset:0;pointer-events:none;background:rgba(14,84,150,0.72);box-shadow:inset 0 0 180px 60px rgba(4,20,60,0.9);z-index:-1;display:' + (on ? 'block' : 'none');
+  if (on) sfx.splash(null, 0.5);
+}
 // cooked in a lava pit: the crater coughs up fire where they went under
 export function pitErupt(p) {
   particles();

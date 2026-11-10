@@ -11,6 +11,12 @@ export const SINK = { v: 1.7, from: 0.6 }; // m/s you go down at, how far under 
 export function sink(map, pos, vel) {
   if (map && map.seaY != null && pos[1] < map.seaY - SINK.from && vel[1] < -SINK.v) vel[1] = -SINK.v;
 }
+// the end of a long drop (the river, the street, the sea bed): you stop there. the server's kill takes a moment to
+// arrive and at 60 m/s that moment used to be several metres of falling on through the scenery (client only)
+export function bottomOut(map, pos, vel) {
+  if (!map || (!map.fall && map.seaY == null) || pos[1] >= map.killY - 0.1) return;
+  pos[1] = map.killY - 0.1; vel[0] = vel[1] = vel[2] = 0;
+}
 export function inPit(map, p) {
   const s = map && map.pits;
   if (!s) return null;
