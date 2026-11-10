@@ -38,14 +38,15 @@ DOCS = os.path.join(ROOT, 'docs', 'story', 'gut')
 HC = V3((0.0, 35.0, 0.0))                 # the heart's centre
 HM = T(HC) @ RZ(math.radians(7))          # heart space -> root space (its long axis leans, the apex swings out to +x)
 HMi = HM.inverted()
-C0 = np.array([0.5, -0.8, 0.1])           # every cell is found on a ray from here (heart space)
+C0 = np.array([0.0, 1.9, 0.0])            # every cell is found on a ray from here (heart space): the middle of the plane between
+                                          # atria and ventricles, so the grooves and the notch between the atria are seen square on
 S0 = 0.43                                 # how far apart the small hearts sit (metres), before the noise
 BLAST = V3((-0.80, 0.30, 0.52)).normalized()   # where the flash came from (heart space): that flank is burned
-SA = V3((-4.3, 5.3, 0.9))                 # the pacemaker: where the vena cava meets the right atrium
+SA = V3((-4.6, 5.9, 0.9))                 # the pacemaker: where the vena cava meets the right atrium
 # the chambers as soft unions of eggs: (centre, radii), heart space
-LV = [((1.1, 0.2, -0.5), (4.0, 4.4, 3.9)), ((1.7, -3.0, 0.1), (3.3, 3.9, 3.3)), ((2.3, -5.3, 0.7), (1.9, 2.0, 1.9))]
-RV = [((-2.1, 0.2, 1.3), (3.3, 3.9, 3.0)), ((-0.9, -2.9, 1.7), (2.7, 3.2, 2.4)), ((0.5, -4.9, 1.9), (1.6, 1.9, 1.5)), ((0.3, 2.9, 2.3), (1.7, 1.6, 1.4))]
-AT = [((-3.3, 3.6, 0.2), (2.5, 2.6, 2.7)), ((-2.0, 4.1, 2.6), (1.7, 1.2, 1.1)), ((1.4, 3.7, -2.2), (3.0, 2.3, 2.2)), ((3.9, 3.2, 0.9), (1.5, 1.2, 1.1)), ((-0.6, 3.6, 0.6), (1.5, 1.6, 1.5))]
+LV = [((1.2, 0.0, -0.5), (3.9, 4.2, 3.8)), ((2.0, -3.1, 0.1), (3.1, 3.8, 3.1)), ((2.9, -5.7, 0.8), (1.6, 2.0, 1.6))]
+RV = [((-2.2, 0.0, 1.3), (3.2, 3.7, 2.9)), ((-0.9, -2.9, 1.8), (2.6, 3.1, 2.3)), ((0.6, -4.8, 2.0), (1.5, 1.8, 1.4)), ((0.3, 2.7, 2.4), (1.7, 1.6, 1.4))]
+AT = [((-3.8, 4.1, 0.3), (2.6, 2.8, 2.8)), ((-2.3, 4.7, 2.8), (2.0, 1.35, 1.25)), ((1.6, 4.2, -2.3), (3.1, 2.4, 2.3)), ((4.3, 3.7, 1.0), (1.8, 1.35, 1.25)), ((-0.6, 3.7, 0.6), (1.5, 1.6, 1.5))]
 INFO = {}
 
 
@@ -74,7 +75,7 @@ def parts_sdf(P):
 
 def heart_sdf(P):
     lv, rv, at = parts_sdf(P)
-    return _smin(_smin(lv, rv, 0.45), at, 0.55)
+    return _smin(_smin(lv, rv, 0.30), at, 0.45)
 
 
 def surf(D, n=64, rmax=10.5):
@@ -253,9 +254,9 @@ def flesh_atlas():
     for k, key in enumerate(('raw', 'liver', 'black')):
         paint_wrap(A.cell('w_' + key, k * 64, 128, 64, 64), key, 50 + k)
     paint_cobble(A.cell('cobble', 192, 128, 64, 64), 60)
-    sw = [('aorta', 0xe9a79c, 0xb04a5c, 0.45), ('pulm', 0x6f5cc0, 0x40307e, 0.45), ('vein', 0x6a48b0, 0x3e2470, 0.4), ('artery', 0xb01e36, 0x6a0c20, 0.4),
-          ('pus', 0xcfe07a, 0x8fb040, 0.35), ('drape', 0xa02642, 0x5a1028, 0.5), ('fat', 0xffd27a, 0xe0a050, 0.4), ('membrane', 0x7c2238, 0x3e0c1c, 0.6),
-          ('root', 0x4e2a5c, 0x241030, 0.5), ('dark', 0x1c060a, 0x0c0204, 0.3), ('string', 0x8a1c34, 0x4a0c1c, 0.5), ('nub', 0xf0b4a6, 0xb85a66, 0.3)]
+    sw = [('aorta', 0xd8847e, 0x8e2c42, 0.5), ('pulm', 0x6f5cc0, 0x40307e, 0.45), ('vein', 0x6a48b0, 0x3e2470, 0.4), ('artery', 0xb01e36, 0x6a0c20, 0.4),
+          ('pus', 0xc6cf8e, 0x8e9c58, 0.35), ('drape', 0xa02642, 0x5a1028, 0.5), ('fat', 0xffd27a, 0xe0a050, 0.4), ('membrane', 0x7c2238, 0x3e0c1c, 0.6),
+          ('root', 0x4e2a5c, 0x241030, 0.5), ('dark', 0x1c060a, 0x0c0204, 0.3), ('string', 0x8a1c34, 0x4a0c1c, 0.5), ('nub', 0xd08a86, 0x9a4458, 0.4)]
     for k, (key, c0, c1, dn) in enumerate(sw):
         streaks(A.cell(key, (k % 8) * 32, 192 + (k // 8) * 32, 32, 32), c0, c1, 70 + k, dens=dn)
     return A
@@ -287,7 +288,7 @@ def paint_ossuary(px, seed):
     """what the mass is made of: the ends of long bones and a few faces, packed like a catacomb wall"""
     n = px.shape[0]; r = np.random.default_rng(seed); px[:] = hexrgb(0x4a3c30)
     yy, xx = np.mgrid[0:n, 0:n]; pts = []
-    for k in range(400):
+    for k in range(400 * (n // 64) ** 2):
         x, y, rad = r.uniform(0, n), r.uniform(0, n), r.uniform(3.2, 6.5)
         if all(min(abs(x - a), n - abs(x - a)) ** 2 + min(abs(y - b), n - abs(y - b)) ** 2 > (rad + c + 0.6) ** 2 for a, b, c in pts): pts.append((x, y, rad))
     for x, y, rad in pts:
@@ -299,6 +300,18 @@ def paint_ossuary(px, seed):
                 px[np.hypot(xx + 0.5 - x - ox * rad, yy + 0.5 - y - oy * rad) < rr_ * rad] = hexrgb(0x2a2018)
         elif rad > 4.0: px[d < rad * 0.36] = hexrgb(0x8a6a58)   # marrow in a sawn end... nobody sawed it: a broken end
     px *= (0.93 + 0.14 * r.random((n, n)))[:, :, None]
+
+
+def paint_rib(px, base, line, seed, scorch=False):
+    """a rib's skin: faint lengthways fibres, pits, a hairline or two (and brown-black blooms where it cooked)"""
+    h, w = px.shape[:2]; r = np.random.default_rng(seed); streaks(px, base, line, seed, along='h', dens=0.35, var=0.04)
+    pits = r.random((h, w)) < 0.012; px[pits] = hexrgb(0xb09c80)
+    for k in range(3):
+        x, y = r.uniform(0, w), r.uniform(0, h); a = r.uniform(-0.4, 0.4)
+        for s_ in range(int(r.uniform(10, 24))): a += r.uniform(-0.3, 0.3); x += math.cos(a); y += math.sin(a); px[int(y) % h, int(x) % w] = hexrgb(0x9a8a70)
+    if scorch:
+        fine = r.random((h, w)); m = (np.clip((fine - 0.72) / 0.2, 0, 1) * 0.55)[:, :, None]
+        px[:] = px * (1 - m) + hexrgb(0x3a2a1e)[None, None] * m
 
 
 def paint_skullface(px):
@@ -318,12 +331,12 @@ def bone_atlas():
     paint_bone(A.cell('bone', 0, 0, 64, 64), 80)
     paint_ossuary(A.cell('ossuary', 64, 0, 64, 64), 81)
     paint_bone(A.cell('char', 128, 0, 64, 64), 82, char=True)
-    streaks(A.cell('rib', 192, 0, 64, 32), 0xf0e8d4, 0xcdbf9e, 83, along='h', dens=0.45, var=0.05)
+    paint_rib(A.cell('rib', 192, 0, 64, 32), 0xf2ebd8, 0xe0d5bb, 83)
     paint_skullface(A.cell('skull', 192, 32, 32, 32))
     streaks(A.cell('disc', 224, 32, 32, 32), 0xb88a84, 0x7a4a52, 84, dens=0.5)
     paint_bone(A.cell('bone2', 0, 64, 64, 64), 85)
     streaks(A.cell('marrow', 64, 64, 32, 32), 0x7a3a34, 0x3e1818, 86, dens=0.6, var=0.15)
-    streaks(A.cell('ribd', 96, 64, 64, 32), 0xe2d8c0, 0xa89878, 87, along='h', dens=0.5, var=0.06)   # heat-stained rib
+    paint_rib(A.cell('ribd', 96, 64, 64, 32), 0xd9cdb0, 0x8e7c60, 87, scorch=True)   # heat-stained rib
     A.cell('socket', 96, 96, 16, 16, 0x1c1410, 0.1, 88)
     streaks(A.cell('tooth', 112, 96, 16, 16), 0xf8f0dc, 0xd8c8a0, 89, dens=0.3)
     return A
@@ -332,15 +345,18 @@ def bone_atlas():
 MAT = {}; ATL = {}
 def materials():
     ATL['f'] = flesh_atlas(); ATL['b'] = bone_atlas()
-    MAT['flesh'] = mat('gh_flesh', 0xffffff, rough=0.24, clearcoat=0.8, tex=ATL['f'].image())
-    MAT['bone'] = mat('gh_bone', 0xffffff, rough=0.5, clearcoat=0.25, tex=ATL['b'].image())
+    MAT['flesh'] = mat('gh_flesh', 0xffffff, rough=0.36, clearcoat=0.18, tex=ATL['f'].image())
+    MAT['bone'] = mat('gh_bone', 0xffffff, rough=0.62, clearcoat=0.08, tex=ATL['b'].image())
+    oss = np.zeros((128, 128, 3), np.float32); paint_ossuary(oss, 81)     # the fused mass: its own tiling map (uvs in metres)
+    MAT['oss'] = mat('gh_ossuary', 0xffffff, rough=0.7, tex=_image('gh_ossuary_t', np.clip(oss, 0, 1)))
     g = np.zeros((32, 8, 3), np.float32)   # the light inside: black at the rim of a pit, deep red at the bottom
-    for y in range(32): t = y / 31; g[y] = hexrgb(0xff2a38) * (t ** 1.6) + hexrgb(0xffb070) * max(0.0, t - 0.8) * 1.6
+    for y in range(32): t = y / 31; g[y] = hexrgb(0xe01828) * (t ** 1.8) + hexrgb(0xff9060) * max(0.0, t - 0.85) * 1.2
     gi = _image('gh_glow_t', np.clip(g, 0, 1))
-    m = mat('gh_glow', 0x30060c, rough=0.5, emit=0xffffff, strength=2.2, tex=None)
+    m = mat('gh_glow', 0x30060c, rough=0.5, emit=0xffffff, strength=1.5, tex=None)
     nt = m.node_tree; b = nt.nodes['Principled BSDF']; n = nt.nodes.new('ShaderNodeTexImage'); n.image = gi; n.interpolation = 'Closest'
     nt.links.new(n.outputs['Color'], b.inputs['Emission Color'])
     MAT['glow'] = m
+    for q in MAT.values(): q.use_backface_culling = True     # single sided in the file (glTF doubleSided off)
     return MAT
 
 
@@ -350,7 +366,7 @@ def BA(key, m=0.5): return ('alt', ATL['b'].R[key], ATL['b'].tex, m)
 def BF(key, m=0.5): return ('fit', ATL['b'].R[key], ATL['b'].tex, m)
 def BQ(key, m=0.5): return ('quad', ATL['b'].R[key], ATL['b'].tex, m)
 GLOW_TEX = (8, 32)
-def glow_uv(t): return (0.5, 1 - (0.5 + t * 31) / 32)   # t = 0 the rim (black), 1 the bottom of the pit
+def glow_uv(t, u=0.5): return ((0.5 + u * 7) / 8, 1 - (0.5 + t * 31) / 32)   # t = 0 the rim (black), 1 the bottom of the pit
 
 
 # ------------------------------------------------------------ the cells: one small heart each
@@ -474,11 +490,12 @@ def cell_kinds(C, seed=5):
         u = rn.u(); bn = C.burn[i]; g = max(C.g_av[i], C.g_iv[i])
         if rn.u() < bn * 0.85: k = 'black'
         elif rn.u() < sstep(0.12, 0.6, bn) * 0.55: k = 'blister'
-        elif rn.u() < g * 0.85: k = 'fat'
+        elif rn.u() < sstep(0.25, 0.8, g): k = 'fat'
         elif C.atr[i]: k = 'liver' if u < 0.62 else 'deep' if u < 0.92 else 'pale'
+        elif C.N[i][1] < -0.25 and u > 0.78: k = 'weep'
         else: k = 'raw' if u < 0.50 else 'deep' if u < 0.80 else 'liver' if u < 0.86 else 'pale' if u < 0.91 else 'weep'
         t = rn.u(0.84, 1.06)
-        tt = (t * 0.90, t * 0.82, t * 1.0) if C.atr[i] else (t * 0.97, t * 0.92, t * 1.0) if C.rvside[i] else (t, t, t)
+        tt = (t * 0.74, t * 0.62, t * 0.92) if C.atr[i] else (t * 0.96, t * 0.90, t * 1.0) if C.rvside[i] else (t, t, t)
         kind.append(k); tint.append(tt)
     return kind, tint
 
@@ -504,25 +521,29 @@ def build_shell(b, C, kind, tint, glow, hero, rn, far=False):
     fl, gl = MAT['flesh'], MAT['glow']; tex = ATL['f'].tex
     seam_d = 0.085 if not far else 0.16
     s0 = b.verts([V3(C.TP[t] - C.TN[t] * seam_d) for t in range(len(C.tris))], ph=0.0, w=0.0, tint=0.50)
-    FF_, UF, FG, UG = [], [], [], []
+    FF_, UF, FG, UG, NF = [], [], [], [], []; nubs = []
     for i in range(C.n):
-        up, right, nrm = cell_frame(C, i, rn); pc = V3(C.P[i]); a0 = V3(C.TP[C.fan[i][0]]) - pc
-        ang = lambda t: math.atan2((V3(C.TP[t]) - pc).dot(nrm.cross(a0)), (V3(C.TP[t]) - pc).dot(a0))
-        fan = sorted(C.fan[i], key=ang)                      # the rim, counter-clockwise seen from outside
+        up, right, nrm = cell_frame(C, i, rn); pc = V3(C.P[i]); nxt = {}
+        for t in C.fan[i]:                                   # the rim, counter-clockwise seen from outside: each triangle hands on to the next
+            a_, b_, c_ = C.tris[t]; p_, q_ = (b_, c_) if a_ == i else (c_, a_) if b_ == i else (a_, b_); nxt[p_] = (t, q_)
+        fan = []; p_ = next(iter(nxt)) if nxt else None
+        while p_ in nxt and len(fan) < len(nxt): t, p_ = nxt[p_]; fan.append(t)
+        if len(fan) != len(C.fan[i]): INFO['bad_fans'] = INFO.get('bad_fans', 0) + 1
         B = [s0 + t for t in fan]; nb = len(B)
         if nb < 3: continue
-        rm = max(math.hypot((b.V[q] - pc).dot(right), (b.V[q] - pc).dot(up)) for q in B) * 1.04
+        rds = [math.hypot((b.V[q] - pc).dot(right), (b.V[q] - pc).dot(up)) for q in B]; rm = max(rds) * 1.04; rn_ = min(min(rds) * 1.3, rm)
         sz = C.size[i] / S0; isg = i in glow; ph = float(C.phase[i]); dead = kind[i] == 'black'
-        h = (-0.42 if isg else 0.0 if i in hero else (0.075 if dead else 0.115) * sz) * (2.2 if far and not isg else 1.0)
-        if far or isg:
-            tops = [pc + nrm * h]
+        h = (-0.42 if isg else 0.0 if i in hero else (0.075 if dead else 0.115) * sz) * (1.5 if far and not isg else 1.0)
+        cone = far or isg or (pc.y > 0.4 and i not in hero)
+        if cone:
+            tops = [pc + nrm * (h * (0.72 if not (far or isg) else 1.0))]
         else:
-            rr = 0.40 * rm
-            tops = [pc + nrm * h + (right * 0.92 + up * 0.55) * rr, pc + nrm * h + (-right * 0.92 + up * 0.55) * rr, pc + nrm * (h * 0.72) + (-up * 1.05 + right * 0.12) * rr]
+            rr = 0.46 * rm; hc = h * 0.62
+            tops = [pc + nrm * hc + (right * 0.92 + up * 0.55) * rr, pc + nrm * hc + (-right * 0.92 + up * 0.55) * rr, pc + nrm * (hc * 0.8) + (-up * 1.05 + right * 0.12) * rr, pc + nrm * (h * 1.2) + up * 0.08 * rr]
         w = 0.0 if isg else (0.12 if dead else 1.0)
-        t0 = b.verts(tops, ph=ph, w=[w] * len(tops) if len(tops) == 1 else [w, w, w * 0.8], tint=tint[i])
-        Tn = [t0 + k for k in range(len(tops))]
-        if isg: uvf = lambda q: glow_uv(1.0 if q >= t0 else 0.0)
+        t0 = b.verts(tops, ph=ph, w=[w] if cone else [w * 0.7, w * 0.7, w * 0.55, w], tint=tint[i])
+        Tn = [t0 + k for k in range(3 if not cone else 1)]; crown = None if cone else t0 + 3
+        if isg: uvf = lambda q: glow_uv(1.0 if q >= t0 else 0.0, 0.5 if q >= t0 else B.index(q) / (nb - 1))
         else:
             rect = ATL['f'].R['cobble' if far else 'h_' + kind[i]]
             uvf = lambda q: px_uv(rect, tex, 0.5 + (b.V[q] - pc).dot(right) / (2 * rm), 0.5 + (b.V[q] - pc).dot(up) / (2 * rm), 0.5)
@@ -534,12 +555,24 @@ def build_shell(b, C, kind, tint, glow, hero, rn, far=False):
                 a, a2 = near[k], near[(k + 1) % nb]; q0, q1 = B[k], B[(k + 1) % nb]
                 F.append((q0, q1, Tn[a]))
                 while a != a2: an = (a + 1) % 3; F.append((q1, Tn[an], Tn[a])); a = an
-            F.append((Tn[0], Tn[1], Tn[2]))
-            if len(F) != nb + 4:      # a top point no rim point was nearest to (a sliver of a cell): a plain fan instead
-                F = [(B[k], B[(k + 1) % nb], Tn[2]) for k in range(nb)]
+            if len(F) != nb + 3:      # a top point no rim point was nearest to (a sliver of a cell): a plain fan instead
+                F = [(B[k], B[(k + 1) % nb], crown) for k in range(nb)]
+            else: F += [(Tn[0], Tn[1], crown), (Tn[1], Tn[2], crown), (Tn[2], Tn[0], crown)]
         (FG if isg else FF_).extend(F); (UG if isg else UF).extend([[uvf(q) for q in f] for f in F])
+        if not cone and i not in hero and not dead and len(F) == nb + 6:
+            for (key, pr_, ox, oy, ln) in (('nub', 0.45, -0.10, 0.42, 0.07), ('pulm', 0.26, 0.30, 0.34, 0.05)):
+                if not rn.chance(pr_): continue
+                c0 = pc - nrm * 0.015 + (right * ox + up * oy) * rn_; ax = (nrm * 0.75 + up * 0.55 + right * (ox * 1.5)).normalized(); rr_ = 0.085 * sz * (1.0 if key == 'nub' else 0.8)
+                u1 = ax.cross(right).normalized(); u2 = ax.cross(u1)
+                ring = [c0 + (u1 * math.cos(a_) + u2 * math.sin(a_)) * rr_ for a_ in (0.3, 2.4, 4.5)]
+                nubs.append((loft([ring], tip1=c0 + ax * ((ln + 0.08) * sz)), key, ph, w * 0.7, tuple(x * 0.85 for x in tint[i])))
+        if not isg:           # lit as a ball, whatever the few faces say: a point under the middle is every corner's centre
+            core = pc - nrm * (rm * 0.75)
+            NF.extend([[(b.V[q] - core).normalized() for q in f] for f in F])
         # the rim remembers the last heart that touched it; the weight there is 0, so only the phase of the tops matters
-    b.faces(FF_, UF, fl); b.faces(FG, UG, gl)
+    f0 = len(b.F); b.faces(FF_, UF, fl, normals=NF); b.faces(FG, UG, gl); INFO['shell_flips' + ('_far' if far else '')] = b.consistent(f0)
+    for pr, key, ph, w, tn in nubs: b.add(pr, fl, FA(key), ph=ph, w=w, tint=tn)
+    INFO['nubs' + ('_far' if far else '')] = len(nubs)
     return b
 
 
@@ -572,7 +605,7 @@ def great_vessels(b, C, rn, far=False):
     front, the vena cava into the right atrium: each a rope of smaller vessels"""
     k = 3 if far else 4; sg = 2 if far else 3
     AO = [(-0.5, 2.4, 0.9), (-0.75, 5.0, 0.75), (-0.6, 7.3, 0.5), (0.4, 9.1, -0.2), (2.0, 9.6, -1.3), (3.4, 8.5, -2.5), (3.9, 6.3, -3.4)]
-    pa = lambda t: 0.50 + 0.30 * t
+    pa = lambda t: min(0.98, 0.50 + 0.30 * t)
     n_ao = 3 if far else 6
     braid(b, AO, n_ao, lambda t: 0.80 - 0.16 * t, lambda t: (0.74 if far else 0.44) - 0.08 * t, 1.25, 'aorta', pa, k=k if far else 5, seg=sg,
           tails=[[(4.0, 4.6 - 0.3 * s, -3.8), (3.7 - 0.2 * s, 2.6 - 0.5 * s, -3.6 - 0.1 * s)] for s in range(n_ao)])
@@ -581,21 +614,21 @@ def great_vessels(b, C, rn, far=False):
     for bi, (base, lean) in enumerate((((0.25, 9.0, -0.1), (-0.35, 1, 0.1)), ((1.25, 9.55, -0.8), (0.05, 1, 0.0)), ((2.3, 9.45, -1.6), (0.4, 1, -0.2)))):
         base = V3(base); lean = V3(lean).normalized(); ns = 2 if far else 3; tails = []
         for s in range(ns):
-            a = 2.1 * s + bi * 1.3; out = V3((math.cos(a), 0.0, math.sin(a))); ht = rn.u(2.0, 3.6)
+            a = 2.1 * s + bi * 1.3; out = V3((math.cos(a), 0.0, math.sin(a))); ht = rn.u(1.6, 3.0); sw = V3((rn.u(-0.4, 0.4), 0, rn.u(-0.4, 0.4)))
             top = base + lean * 1.9
-            tails.append([top + lean * ht * 0.45 + out * 0.5, top + lean * ht * 0.8 + out * (1.0 + 0.5 * rn.u()) + V3((rn.u(-0.3, 0.3), 0, rn.u(-0.3, 0.3))), top + lean * ht + out * 1.5 + V3((0, -0.25, 0))])
-        braid(b, [base - lean * 0.5, base + lean * 0.9, base + lean * 1.9], ns, 0.30, lambda t: 0.24 - 0.04 * t, 0.6, 'aorta', lambda t: 0.62 + 0.12 * t, k=3, seg=2, tails=tails, a0=bi)
+            tails.append([top + lean * ht * 0.55 + out * 0.45, top + lean * ht + out * 1.2 + sw, top + lean * (ht * 0.95) + out * 2.3 + sw * 1.5, top + lean * (ht * 0.45) + out * 3.0 + sw * 2.0, top + lean * (ht * 0.45 - rn.u(0.8, 1.8)) + out * 3.15 + sw * 2.1])
+        braid(b, [base - lean * 0.5, base + lean * 0.9, base + lean * 1.9], ns, 0.30, lambda t: 0.24 - 0.04 * t, 0.6, 'aorta', lambda t: min(0.98, 0.62 + 0.12 * t), k=3, seg=2, tails=tails, a0=bi, tip=0.02)
     # the pulmonary trunk: off the front, up and across under the arch, then it forks left and right
     PU = [(0.45, 2.3, 3.0), (0.85, 4.3, 2.75), (1.6, 5.9, 1.9), (2.2, 6.8, 0.8)]
     tl = [[(3.6, 7.0, 0.0), (4.9, 6.4, -0.9), (5.7, 5.2, -1.6)], [(3.4, 7.4, -0.4), (4.6, 7.2, -1.4), (5.2, 6.4, -2.4)], [(3.2, 6.6, 0.3), (4.4, 5.8, -0.2), (4.9, 4.6, -0.6)],
           [(1.2, 7.4, -0.6), (-0.6, 7.2, -1.6), (-2.2, 6.6, -2.2)], [(1.0, 7.0, -0.9), (-0.8, 6.6, -1.9), (-2.6, 5.8, -2.4)]]
     n_pu = 3 if far else 5
-    braid(b, PU, n_pu, lambda t: 0.66 - 0.1 * t, lambda t: (0.6 if far else 0.40) - 0.05 * t, 0.9, 'pulm', lambda t: 0.52 + 0.2 * t, k=k, seg=sg, tails=tl[:n_pu] if not far else [tl[0], tl[2], tl[3]], a0=0.4)
+    braid(b, PU, n_pu, lambda t: 0.66 - 0.1 * t, lambda t: (0.6 if far else 0.40) - 0.05 * t, 0.9, 'pulm', lambda t: min(0.98, 0.52 + 0.2 * t), k=k, seg=sg, tails=tl[:n_pu] if not far else [tl[0], tl[2], tl[3]], a0=0.4)
     # the vena cava: straight up out of the right atrium, forking at the top
     VC = [(-3.5, 4.4, -0.1), (-3.65, 6.4, -0.3), (-3.55, 8.2, -0.5)]
-    tv = [[(-4.6, 9.4, -0.2), (-5.6, 10.4, 0.2), (-6.0, 11.6, 0.1)], [(-4.4, 9.6, -0.9), (-5.0, 10.9, -1.5)], [(-2.8, 9.5, -0.8), (-2.2, 10.8, -1.2), (-2.3, 12.0, -1.0)], [(-3.0, 9.3, -0.1), (-2.5, 10.2, 0.5)]]
+    tv = [[(-4.6, 9.4, -0.2), (-5.9, 10.3, 0.2), (-7.2, 10.2, 0.4), (-7.8, 8.9, 0.5)], [(-4.4, 9.6, -0.9), (-5.0, 10.7, -1.7), (-5.6, 10.4, -2.7), (-5.8, 9.2, -3.1)], [(-2.8, 9.5, -0.8), (-2.2, 10.9, -1.2), (-1.4, 11.6, -1.8), (-0.9, 10.8, -2.4)], [(-3.0, 9.3, -0.1), (-2.5, 10.3, 0.6), (-2.2, 10.2, 1.5), (-2.3, 9.2, 1.9)]]
     n_vc = 2 if far else 4
-    braid(b, VC, n_vc, 0.50, (0.52 if far else 0.36), 0.7, 'vein', lambda t: 0.02 * t, k=k, seg=sg, tails=[tv[0], tv[2]] if far else tv, a0=0.2)
+    braid(b, VC, n_vc, 0.50, (0.52 if far else 0.36), 0.7, 'vein', lambda t: 0.02 * t, k=k, seg=sg, tails=[tv[0], tv[2]] if far else tv, a0=0.2, tip=0.025)
     if not far:   # two pulmonary veins off the back of the left atrium, and the lower vena cava going down the back
         for s, (a, c, d) in enumerate((((2.6, 4.4, -3.6), (4.6, 5.0, -4.6), (5.6, 4.2, -5.2)), ((0.8, 4.6, -4.0), (0.2, 5.6, -5.2), (-0.8, 5.4, -6.0)))):
             b.add(tube(smooth_path([V3(a), V3(c), V3(d)], 2), [0.42, 0.36, 0.3, 0.2, 0.06], 4, tip1=True), MAT['flesh'], FA('artery'), ph=0.2, w=0.3)
@@ -651,9 +684,9 @@ def coronaries(b, C, rn, far=False):
     INFO['grooves'] = (len(ring), len(front), len(back))
     k = 3 if far else 4; st = 1.3 if far else 0.85
     if len(front) >= 4:
-        surf_tube(b, C, front, 0.21, 0.07, 'artery', k, st)                                   # the artery down the front
+        surf_tube(b, C, front, 0.30, 0.10, 'artery', k, st)                                   # the artery down the front
         if not far:
-            surf_tube(b, C, [p + V3((0.34, 0.05, 0.0)) for p in front[1:]], 0.16, 0.05, 'vein', 3, st)   # the vein beside it
+            surf_tube(b, C, [p + V3((0.50, 0.05, 0.0)) for p in front[1:]], 0.22, 0.07, 'vein', 3, st)   # the vein beside it
             for i in (2, 5, 8, 11):
                 if i < len(front): surf_tube(b, C, crawl(front[i], (0.8, -0.5, 0.1), 5, 0.8, rn, pull=(3.2, -6.5, 0.0)), 0.10, 0.03, 'artery', 3, 0.8)
             for i in (3, 7):
@@ -664,10 +697,10 @@ def coronaries(b, C, rn, far=False):
         ordr = ring[f0:] + ring[:f0]; half = n // 2
         left = [ordr[i % n] for i in range(0, half + 3)]; right = [ordr[(-i) % n] for i in range(0, half)]
         if V3(left[3]).x < V3(right[3]).x: left, right = right, left
-        surf_tube(b, C, right, 0.22, 0.10, 'artery', k, st)          # round the right side (the viewer's left)
-        surf_tube(b, C, left, 0.19, 0.08, 'artery', k, st)
+        surf_tube(b, C, right, 0.30, 0.13, 'artery', k, st)          # round the right side (the viewer's left)
+        surf_tube(b, C, left, 0.27, 0.11, 'artery', k, st)
         if not far:
-            surf_tube(b, C, [p + V3((0, 0.36, 0)) for p in ordr] + [ordr[0] + V3((0, 0.36, 0))], 0.15, 0.13, 'vein', 3, st, tip=False)   # the vein in the same groove, all the way round
+            surf_tube(b, C, [p + V3((0, 0.50, 0)) for p in ordr] + [ordr[0] + V3((0, 0.50, 0))], 0.21, 0.18, 'vein', 3, st, tip=False)   # the vein in the same groove, all the way round
             for i in (3, 6, 9): surf_tube(b, C, crawl(right[min(i, len(right) - 1)], (0.1, -1, 0.1), 5, 0.8, rn, pull=(1.0, -6.5, 1.5)), 0.10, 0.03, 'artery', 3, 0.8)
             for i in (4, 8): surf_tube(b, C, crawl(left[min(i, len(left) - 1)], (0, -1, 0), 5, 0.8, rn, pull=(2.6, -6.8, 0.6)), 0.10, 0.03, 'artery', 3, 0.8)
             for i in (5, 14, 24, 33): surf_tube(b, C, crawl(ordr[i % n], (rn.u(-0.3, 0.3), 1, rn.u(-0.3, 0.3)), 3, 0.7, rn), 0.07, 0.025, 'vein', 3, 0.7)
@@ -679,9 +712,9 @@ def drips(b, C, rn, n=46):
     rn.r.shuffle(under)
     for t in under[:n]:
         p = V3(C.TP[t]) - V3(C.TN[t]) * 0.1; low = sstep(-2.0, -6.5, p.y); ln = rn.u(0.35, 1.0) + low * rn.u(0.3, 1.6)
-        sway = V3((rn.u(-0.06, 0.06), 0, rn.u(-0.06, 0.06))); r0 = rn.u(0.045, 0.075)
-        pr = tube([p, p + dn * ln * 0.5 + sway, p + dn * ln + sway * 1.6], [r0, r0 * 0.5, r0 * 0.22], 3, tip1=True, tiplen=2.5)
-        b.add(pr, MAT['flesh'], FA('pus' if rn.chance(0.45) else 'string'), ph=nearest_phase(C, p), w=0.0, tint=1.0)
+        sway = V3((rn.u(-0.09, 0.09), 0, rn.u(-0.09, 0.09))); r0 = rn.u(0.035, 0.06)
+        pr = tube([p, p + dn * ln * 0.45 + sway, p + dn * (ln - 0.14) + sway * 1.5, p + dn * ln + sway * 1.55], [r0, r0 * 0.4, r0 * 0.34, r0 * 0.95], 3, tip1=True, tiplen=1.1)
+        b.add(pr, MAT['flesh'], FA('pus' if rn.chance(0.33) else 'string'), ph=nearest_phase(C, p), w=0.0, tint=0.9)
 
 
 def hanging(b, C, rn, n=5):
@@ -710,7 +743,7 @@ def build_heart(C, far=False, seed=21):
         for i in range(C.n):
             if i in glow: continue
             p = V3(C.P[i]); d = (p - apex).length
-            pr = 0.30 if d < 4.2 else 0.15 if p.y < -2.6 else 0.045
+            pr = 0.36 if d < 4.6 else 0.19 if p.y < -2.4 else 0.045
             if kind[i] == 'black': pr *= 0.5
             if rn.chance(pr): hero[i] = d < 6.5
     build_shell(b, C, kind, tint, glow, hero, rn, far)
@@ -724,7 +757,7 @@ def build_heart(C, far=False, seed=21):
     coronaries(b, C, rn, far)
     if not far:
         drips(b, C, rn); hanging(b, C, rn)
-    b.V = [HM @ v for v in b.V]
+    b.V = [HM @ v for v in b.V]; R3 = HM.to_3x3(); b.CN = {k: [R3 @ n for n in v] for k, v in b.CN.items()}
     INFO['hearts' + ('_far' if far else '')] = dict(cells=C.n, whole=len(hero), glow=len(glow))
     return b
 
@@ -777,6 +810,19 @@ def quv(key, n=4):
     return [px_uv(ATL['b'].R[key], ATL['b'].tex, a, c, 0.5) for a, c in q]
 
 
+OSS_M = 2.4      # metres to one repeat of the ossuary map
+def wrap_uv(P):
+    """round the spine: u = the way round (metres), v = height; a face never straddles the join"""
+    c = col_c(sum(p.y for p in P) / len(P)); a = [math.atan2(p.z - c.z, p.x - c.x) for p in P]
+    for i in range(1, len(a)):
+        while a[i] - a[0] > math.pi: a[i] -= 2 * math.pi
+        while a[i] - a[0] < -math.pi: a[i] += 2 * math.pi
+    return [(x * 1.7 / OSS_M * 1.0, p.y / OSS_M) for x, p in zip(a, P)]
+
+
+def flat_uv(v, i=0): return (v.x / OSS_M, v.z / OSS_M)
+
+
 def vertebrae(rn):
     out = []; y = -0.4
     while y < TOP + 0.4:
@@ -796,24 +842,23 @@ def spine(b, rn, far=False):
             c = col_c(y0 + h * f); rings.append(ring_of(c, V3((1, 0, 0)), V3((0, 0, 1)), R * s, R * s, k, 0.2, shape)); kinds.append(kd)
     rings = [r[::-1] for r in rings]     # (x toward z about +y is clockwise seen from above: turn it so faces look out)
     pr = loft(rings, cap0=True, cap1=True)
-    uvs = []
+    keep_o, keep_b, uv_o, uv_b = [], [], [], []
     for fi, f in enumerate(pr.F):
-        if len(f) == 3: uvs.append(quv('bone', 3)); continue
+        if len(f) == 3: keep_b.append(True); keep_o.append(False); uv_b.append(quv('bone', 3)); continue
         cen = sum((pr.V[i] for i in f), V3()) / 4; kd = kinds[fi // k]
-        uvs.append(quv('disc' if kd == 'disc' else 'char' if charred(cen) > 0.55 else 'ossuary' if (fi // k + fi) % 3 else 'bone2'))
-    b.add(pr, MAT['bone'], ('uv', uvs), tint=lambda p, i: bone_tint(p))
+        if kd == 'disc' or charred(cen) > 0.55: keep_b.append(True); keep_o.append(False); uv_b.append(quv('disc' if kd == 'disc' else 'char'))
+        else: keep_b.append(False); keep_o.append(True); uv_o.append(wrap_uv([pr.V[i] for i in f]))
+    b0 = b.verts(pr.V, tint=[bone_tint(v) for v in pr.V])
+    b.faces([tuple(b0 + i for i in f) for f, kp in zip(pr.F, keep_o) if kp], uv_o, MAT['oss'])
+    b.faces([tuple(b0 + i for i in f) for f, kp in zip(pr.F, keep_b) if kp], uv_b, MAT['bone'])
     INFO['vertebrae'] = len(V)
     for vi, (y0, h, R) in enumerate(V):            # the spurs
         ym = y0 + h * 0.5
         if ym > STAIR_Y1 - 0.5 or ym < 0.6: continue
-        th = stair_phi_at(ym + 0.55); c = col_c(ym); d = rdir(th); ln = stair_w(ym) * rn.u(0.62, 0.86)
-        p0 = c + d * (R * 0.6); p1 = c + d * (R + ln * 0.5) + V3((0, 0.12, 0)); p2 = c + d * (R + ln) + V3((0, 0.36, 0))
+        th = stair_phi_at(ym + 1.05); c = col_c(ym); d = rdir(th); ln = stair_w(ym) * rn.u(0.62, 0.86)
+        p0 = c + d * (R * 0.6); p1 = c + d * (R + ln * 0.5) + V3((0, 0.16, 0)); p2 = c + d * (R + ln) + V3((0, 0.52, 0))
         b.add(tube([p0, p1, p2], [R * 0.36, R * 0.24, R * 0.13], 3 if far else 4, squash=0.62, up=(0, 1, 0), tip1=True, tiplen=0.7, phase=math.pi / 4),
               MAT['bone'], BA('bone'), tint=lambda p, i: bone_tint(p))
-        if far: continue
-        for sg in (-1, 1):                          # the two wings either side
-            d2 = rdir(th + sg * 1.95); q0 = c + d2 * (R * 0.6); q1 = c + d2 * (R + 0.55) + V3((0, 0.2 * rn.u(-1, 1), 0))
-            b.add(tube([q0, q1], [R * 0.24, R * 0.12], 3, tip1=True, tiplen=1.0), MAT['bone'], BA('bone2'), tint=lambda p, i: bone_tint(p))
 
 
 def stair_phi_at(y): return PHI0 + DPHI * ((y - STAIR_Y0) / RISE - 1)
@@ -825,42 +870,58 @@ def tread_list(rn):
     for k in range(NT):
         y = stair_y(k); R = col_r(y); u = rn.u()
         st = 'gone' if (u < 0.045 and 6 < k < NT - 6) else 'stub' if (u < 0.10 and 6 < k < NT - 6) else 'ok'
-        out.append(dict(k=k, y=y, phi=stair_phi(k) + rn.u(-0.035, 0.035), r0=R * 0.72, r1=R + stair_w(y) * rn.u(0.93, 1.06), state=st, droop=rn.u(-0.05, 0.07)))
+        out.append(dict(k=k, y=y, phi=stair_phi(k) + rn.u(-0.035, 0.035), r0=R * 0.72, r1=R + stair_w(y) * rn.u(0.90, 1.10), state=st, droop=rn.u(-0.05, 0.07)))
+        c = col_c(y) + rdir(out[-1]['phi']) * out[-1]['r1']
+        out[-1].update(hs=rn.u(0.78, 1.25), hl=rn.u(0.4, 1.6), hb=rn.u(-0.14, 0.22), snap=rn.chance(0.07))
+        out[-1]['warp'] = st == 'ok' and k % 2 == 0 and y > 3.5 and k < NT - 5 and rn.chance(0.10 + 0.5 * (charred(c) > 0.6))
     return out
 
 
 def stair(b, TR, rn, far=False):
-    """ribs for treads: each a flat paddle grown out of the spine, wider toward its end, the tip turned up a little"""
+    """ribs for treads. Each grows out of the spine flat and wide (you walk on that), then turns over at its end and
+    comes down and back in like a rib does, so the stair is a rib cage wound round the spine, and the flight above is
+    the cage over your head. Every other one is a floating rib that just stops. Some sagged in the heat and stayed"""
+    n_hoop = 0
     for t in TR:
         if t['state'] == 'gone': continue
-        y, phi = t['y'], t['phi']; c = col_c(y); d = rdir(phi); r0, r1 = t['r0'], t['r1']
+        y, phi = t['y'], t['phi']; d = rdir(phi); tn = V3((-d.z, 0, d.x)); r0, r1 = t['r0'], t['r1']; k = t['k']
         if t['state'] == 'stub': r1 = r0 + (r1 - r0) * 0.45
-        rm = (r0 + r1) / 2; th = [0.20, 0.16, 0.11]
-        P = [c + d * r0 + V3((0, -th[0] / 2, 0)), c + d * rm + V3((0, -th[1] / 2 - 0.01, 0)), c + d * r1 + V3((0, -th[2] / 2 + t['droop'], 0))]
-        wd = [DPHI * r * 1.16 for r in (r0, rm, r1)]
+        rm = (r0 + r1) / 2; c = col_c(y)
+        at = lambda r, dy, lag=0.0: col_c(y + dy) + d * r - tn * lag
+        P = [at(r0 if not far else r0 * 0.8, -0.10), at(rm, -0.09), at(r1, -0.065 + t['droop'])]; th = [0.20, 0.16, 0.13]; wd = [DPHI * r * 1.16 for r in (r0, rm, r1)]
+        kind = 'none' if t['state'] == 'stub' else 'warp' if t.get('warp') else 'full' if k % 2 == 0 else 'float'
+        if far and kind == 'float': kind = 'none'
+        if kind == 'full' and y > 3.2:
+            hs, hl, hb = t['hs'], t['hl'], t['hb']
+            for (dr, dy, lag, tk, w) in ((0.30, -0.50, 0.12, 0.13, 0.42), (0.24 + hb, -1.25, 0.38, 0.11, 0.30), (-0.38 + hb, -2.05, 0.66, 0.10, 0.25), (None, -2.62, 0.9, 0.10, 0.24))[:2 if t['snap'] else 4]:
+                P.append(at(r1 + dr if dr is not None else col_r(y + dy * hs) * (0.82 if not far else 0.62), dy * hs, lag * hl)); th.append(tk); wd.append(w)
+        elif kind == 'full' or kind == 'float':
+            ln = min(1.0, max(0.25, (y - 0.3) / 1.6)) * t['hs'] * (1.35 if t['hl'] > 1.2 else 1.0)
+            for (dr, dy, lag, tk, w) in ((0.28, -0.45 * ln, 0.10, 0.12, 0.38), (0.26, -1.15 * ln, 0.30, 0.08, 0.20)):
+                P.append(at(r1 + dr, dy, lag)); th.append(tk); wd.append(w)
+        elif kind == 'warp':     # it softened and hung: out, down, twisted round
+            for (dr, dy, lag, tk, w) in ((0.45, -0.35, -0.15, 0.13, 0.40), (1.05, -1.0, -0.55, 0.11, 0.30), (1.25, -1.9, -1.0, 0.09, 0.24), (0.95, -2.5, -1.25, 0.07, 0.16)):
+                P.append(at(r1 + dr, dy, lag)); th.append(tk); wd.append(w)
+        if far: sel = [0, 2] + ([3, 5, 6] if len(P) == 7 else list(range(3, len(P)))); P = [P[i] for i in sel]; th = [th[i] for i in sel]; wd = [wd[i] for i in sel]
         ra = [x / 2 * math.sqrt(2) for x in th]; sq = [(w / 2 * math.sqrt(2)) / a for w, a in zip(wd, ra)]
-        pr = tube(P, ra, 4, squash=sq, up=(0, 1, 0), tip1=True, tiplen=0.35, phase=math.pi / 4) if not far else tube([P[0], P[2]], [ra[0], ra[2]], 4, squash=[sq[0], sq[2]], up=(0, 1, 0), cap1=True, phase=math.pi / 4)
-        key = 'ribd' if (charred(P[2]) > 0.5 or t['state'] == 'stub') else 'rib'
+        pr = tube(P, ra, 4, squash=sq, up=(0, 1, 0), tip1=True, tiplen=0.5, phase=math.pi / 4)
+        key = 'ribd' if (charred(P[2 if not far else 1]) > 0.5 or kind == 'warp' or t['state'] == 'stub') else 'rib'
         b.add(pr, MAT['bone'], BA(key), tint=lambda p, i: bone_tint(p))
+        t['hoop'] = [r3(q) for q in P[(3 if not far else 2):]] if kind == 'full' and y > 3.2 and not t['snap'] else None; n_hoop += kind == 'full'
+    INFO['hoops' + ('_far' if far else '')] = n_hoop
 
 
 def rib_cage(b, TR, rn, far=False):
-    """every third tread grows a rib up off its end, over the walker and back in: a cage round the stair. A few sagged
-    in the heat and never came back"""
-    arches = []
-    for t in TR[2:NT - 4:3 if not far else 6]:
+    """here and there a rib grew the other way: up off the end of a tread and over, a hook above the walker"""
+    n = 0
+    for t in TR[5:NT - 6:7]:
         if t['state'] != 'ok': continue
-        y, phi = t['y'], t['phi']; c = col_c(y); d = rdir(phi); tn = V3((-d.z, 0, d.x)); R1 = t['r1']
-        warp = rn.chance(0.13) or charred(c + d * R1) > 0.75 and rn.chance(0.5); lean = rn.u(-0.45, 0.45); H = rn.u(2.5, 3.1); pts = []; n = 4 if far else 7
-        for i in range(n):
-            s = i / (n - 1)
-            if warp: r = R1 - 0.1 + 0.9 * s + 0.5 * s * s; yy = 1.5 * math.sin(math.pi * 0.62 * s) - 0.9 * s * s
-            else: r = R1 - 0.10 + 0.42 * math.sin(math.pi * s) * (1 - 0.3 * s) - 1.25 * s ** 2.2; yy = H * math.sin(math.pi / 2 * s ** 0.85)
-            pts.append(c + d * r + V3((0, yy - 0.06, 0)) + tn * (lean * s + (0.5 * s * s if warp else 0)))
-        rad = [lerp(0.10, 0.04, i / (n - 1)) for i in range(n)]
-        b.add(tube(pts, rad, 3 if far else 4, squash=2.1, up=tuple(d), tip1=True, tiplen=2.0), MAT['bone'], BA('ribd' if warp else 'rib'), tint=lambda p, i: bone_tint(p))
-        arches.append(dict(k=t['k'], warped=bool(warp)))
-    INFO['arches' + ('_far' if far else '')] = len(arches)
+        y, phi = t['y'], t['phi']; c = col_c(y); d = rdir(phi); tn = V3((-d.z, 0, d.x)); R1 = t['r1']; lean = rn.u(-0.5, 0.5); H = rn.u(2.3, 3.0); pts = []; m = 4 if far else 6
+        for i in range(m):
+            s = i / (m - 1); r = R1 - 0.05 + 0.5 * math.sin(math.pi * s) * (1 - 0.3 * s) - 1.2 * s ** 2.2; yy = H * math.sin(math.pi / 2 * s ** 0.85)
+            pts.append(c + d * r + V3((0, yy - 0.04, 0)) + tn * (lean * s))
+        b.add(tube(pts, [lerp(0.12, 0.045, i / (m - 1)) for i in range(m)], 3 if far else 4, squash=2.0, up=tuple(d), tip1=True, tiplen=2.0), MAT['bone'], BA('rib'), tint=lambda p, i: bone_tint(p)); n += 1
+    INFO['arches' + ('_far' if far else '')] = n
 
 
 def chalice(b, rn, far=False):
@@ -868,7 +929,7 @@ def chalice(b, rn, far=False):
     snapped short, two curled away from the heat"""
     n = 9; out = []
     for i in range(n):
-        a = 2 * math.pi * i / n + rn.u(-0.2, 0.2) + 0.35; d = rdir(a); ys = rn.u(24.0, 27.2); c = col_c(ys); R = col_r(ys)
+        a = PHI_END + 0.75 + (2 * math.pi - 1.5) * i / (n - 1) + rn.u(-0.12, 0.12); d = rdir(a); ys = rn.u(24.0, 27.2); c = col_c(ys); R = col_r(ys)   # (a gap where the stair comes up under the apex)
         kind = 'short' if i in (2, 6) else 'warp' if i in (4, 8) else 'ok'
         H = rn.u(6.0, 9.2) * (0.38 if kind == 'short' else 1.0); Rm = rn.u(4.6, 5.8); m = 5 if far else 9; pts = []
         for j in range(m):
@@ -891,7 +952,8 @@ def chalice(b, rn, far=False):
 
 def femur_prim(L, k=6):
     """a thigh bone L long in its own space: the knee at the origin, +y up the shaft, the ball of the hip off to +x"""
-    rows = [(0.0, 0.082, 0.052), (0.06, 0.092, 0.060), (0.15, 0.052, 0.046), (0.30, 0.036, 0.036), (0.62, 0.033, 0.034), (0.82, 0.040, 0.038), (0.90, 0.060, 0.044)]
+    rows = [(0.0, 0.082, 0.052), (0.06, 0.092, 0.060), (0.15, 0.052, 0.046), (0.26, 0.038, 0.037), (0.38, 0.034, 0.035), (0.50, 0.032, 0.034), (0.62, 0.033, 0.034), (0.73, 0.036, 0.036), (0.82, 0.040, 0.038), (0.90, 0.060, 0.044)]
+    if k < 6: rows = rows[0:3] + rows[5:6] + rows[8:]
     rings = [[V3((math.sin(math.pi + 2 * math.pi * j / k) * rx * L * (1.0 + (0.18 * abs(math.sin(math.pi + 2 * math.pi * j / k)) if y < 0.1 else 0.0)), y * L, math.cos(math.pi + 2 * math.pi * j / k) * rz * L)) for j in range(k)] for y, rx, rz in rows]
     shaft = loft(rings, tip0=V3((0, -0.035 * L, 0)), tip1=V3((-0.035 * L, 0.965 * L, 0)))
     neck = tube([V3((0.0, 0.84 * L, 0)), V3((0.055 * L, 0.905 * L, 0)), V3((0.10 * L, 0.945 * L, 0)), V3((0.128 * L, 0.972 * L, 0))], [0.034 * L, 0.030 * L, 0.052 * L, 0.036 * L], 5, tip1=True, tiplen=0.7)
@@ -911,26 +973,34 @@ def buttresses(b, rn, far=False):
         out.append(dict(foot=r3(F), head=r3(Hd), r=round(0.04 * L, 2)))
     INFO['femurs'] = out
     blades = []
-    for i, (a, s, tip) in enumerate(((1.2, 4.6, 0.30), (3.6, 5.2, 0.22), (4.85, 4.2, 0.36), (0.0, 3.6, 0.42))):
-        d = rdir(a); tn = V3((-d.z, 0, d.x)); base = d * 2.9 + V3((0, -0.3, 0)); nu = 3 if far else 5; nv = 3 if far else 4; rings = []
+    for i, (a, s, tip) in enumerate(((1.2, 4.1, 0.62), (3.6, 4.8, 0.50), (4.85, 3.7, 0.70))):
+        d = rdir(a); tn = V3((-d.z, 0, d.x)); base = d * 3.2 + V3((0, -0.5, 0)); nu = 4 if far else 7; nv = 3 if far else 5; rings = []
         for vv in range(nv):
             v = vv / (nv - 1); fr_, bk = [], []
             for uu in range(nu):
-                u = uu / (nu - 1); th = (u - 0.5) * 2.3; rho = s * (0.18 + 0.82 * v) * (1 - 0.22 * abs(2 * u - 1) ** 2)
-                bow = s * 0.30 * (1 - (2 * u - 1) ** 2) * v + s * tip * v * v     # the blade leans out and cups
-                p = base + tn * (math.sin(th) * rho) + V3((0, math.cos(th) * rho, 0)) + d * bow
-                thk = s * 0.035 * (1.3 - v)
+                u = uu / (nu - 1); th = (u - 0.5) * 2.7
+                crest = (0.58 + 0.42 * math.sin(math.pi * u) ** 0.55) * (1 - 0.30 * math.exp(-((u - 0.74) / 0.09) ** 2)) * (1 + 0.05 * math.sin(u * 11 + i))   # the wing, the notch behind it
+                rho = s * (0.14 + 0.86 * v ** 0.9) * crest
+                bow = -s * 0.34 * math.sin(math.pi * u) * v * (1 - 0.5 * v) + s * tip * v ** 1.8      # a bowl toward the spine, then the crest rolls out and over
+                p = base + tn * (math.sin(th) * rho) + V3((0, math.cos(th) * rho * 0.9, 0)) + d * bow
+                thk = s * (0.055 - 0.04 * v) * (0.6 + 0.4 * math.sin(math.pi * u))
                 fr_.append(p + d * thk); bk.append(p - d * thk)
             rings.append(fr_ + bk[::-1])
         pr = loft(rings, cap0=True, cap1=True)
-        b.add(pr, MAT['bone'], BQ('bone2') if i % 2 else BQ('ossuary'), tint=lambda p, i: bone_tint(p))
+        b.add(pr, MAT['bone'], BQ('bone2' if i % 2 else 'bone'), tint=lambda p, i: tuple(x * (0.55 + 0.33 * sstep(0.0, 3.0, p.y)) * q for x, q in zip(bone_tint(p), (0.95, 0.84, 0.80))))
         blades.append(dict(at=r3(base), out=r3(d), size=s))
     INFO['blades'] = blades
-    # the mound it all comes out of
-    k = 8 if far else 12; rr = ((3.3, 1.25), (4.5, 0.55), (5.9, 0.12), (7.0, -0.3)) if not far else ((3.3, 1.25), (5.9, 0.12), (7.0, -0.3))
-    rings = [[V3((math.cos(2 * math.pi * j / k) * r * (1 + 0.12 * math.sin(3 * j + r)), y + 0.12 * math.sin(5 * j + r * 2) * (y > 0), -math.sin(2 * math.pi * j / k) * r * (1 + 0.12 * math.sin(3 * j + r)))) for j in range(k)] for r, y in rr]
-    pr = loft(rings)
-    b.add(pr, MAT['bone'], BQ('ossuary'), tint=lambda p, i: tuple(x * sstep(7.2, 4.2, math.hypot(p.x, p.z)) * 0.9 + 0.0 for x in bone_tint(p)))
+    # the mound it all comes out of: the same packed bone as the spine, and loose lumps of it round the edge
+    k = 8 if far else 14; rr = ((3.2, 1.5), (4.3, 0.75), (5.6, 0.22), (6.9, -0.3)) if not far else ((3.2, 1.5), (5.6, 0.22), (6.9, -0.3))
+    lump = lambda j, r: 1 + 0.16 * math.sin(3 * j * 6.283 / k + r) + 0.09 * math.sin(7 * j * 6.283 / k + 2 * r)
+    rings = [[V3((math.cos(2 * math.pi * j / k) * r * lump(j, r), y + 0.22 * math.sin(5 * j * 6.283 / k + r * 2) * (y > 0), math.sin(2 * math.pi * j / k) * r * lump(j, r))) for j in range(k)] for r, y in rr]
+    edge = lambda p: sstep(7.4, 4.4, math.hypot(p.x, p.z))
+    b.add(loft(rings), MAT['oss'], ('fn', flat_uv), tint=lambda p, i: tuple(x * (0.25 + 0.75 * edge(p)) * q for x, q in zip(bone_tint(p), (0.9, 0.74, 0.72))))
+    if not far:
+        for (a, r, sz) in ((0.3, 5.6, 1.5), (1.5, 6.3, 1.1), (2.6, 5.2, 1.7), (3.3, 6.6, 0.9), (4.5, 5.9, 1.3), (5.6, 6.2, 1.0)):
+            c = rdir(a) * r; kk = 6
+            rg = [[c + V3((math.cos(-2 * math.pi * j / kk) * sz * f * (1 + 0.2 * math.sin(j * 2.2 + a)), yy * sz, math.sin(-2 * math.pi * j / kk) * sz * f * (1 + 0.2 * math.sin(j * 2.2 + a)))) for j in range(kk)] for f, yy in ((1.0, -0.25), (0.86, 0.28), (0.45, 0.58))]
+            b.add(loft(rg, tip1=c + V3((0.1 * sz, 0.68 * sz, 0))), MAT['oss'], ('fn', flat_uv), tint=lambda p, i: tuple(x * (0.45 + 0.5 * edge(p)) for x in bone_tint(p)))
 
 
 def skull_prim(k=6):
@@ -943,9 +1013,15 @@ def skull_prim(k=6):
 def skulls(b, TR, rn):
     """a few, where you walk past them: in the spine beside the first turns of the stair, and one or two in the mound"""
     out = []; rect, rb, tex = ATL['b'].R['skull'], ATL['b'].R['bone'], ATL['b'].tex
+    P_, T_ = b.tri_arrays(); bvh = BVHTree.FromPolygons([V3(q) for q in P_], [tuple(int(i) for i in t) for t in T_], all_triangles=True)
+    def hit(o, d):
+        h = bvh.ray_cast(V3(o), V3(d).normalized(), 30.0)
+        return h[0], h[1]
     spots = [(TR[k]['y'] + rn.u(1.2, 1.75), TR[k]['phi'] + rn.u(-0.2, 0.2)) for k in (5, 11, 12, 19, 27, 36, 37, 52, 70, 88)]
     for (y, a) in spots:
-        c = col_c(y); d = rdir(a); s = rn.u(0.21, 0.25); pos = c + d * (col_r(y) * 0.80 - 0.02) + V3((0, -s / 2, 0))
+        c = col_c(y); d = rdir(a); s = rn.u(0.21, 0.25); hp, hn = hit(c + d * 9.0, -d)
+        if hp is None or (hp - c).length > col_r(y) * 1.15: continue      # (a rib is in the way there)
+        pos = hp - d * (0.36 * s) + V3((0, -s / 2, 0))
         M = frame(V3((rn.u(-0.25, 0.25), 1, rn.u(-0.15, 0.15))), d, pos) @ SC(s) @ RZ(rn.u(-0.3, 0.3))
         pr = skull_prim()
         def uvf(v, i, pr=pr):
@@ -954,7 +1030,9 @@ def skulls(b, TR, rn):
         b.add(pr, MAT['bone'], ('fn', uvf), tint=lambda p, i: tuple(x * 0.95 for x in bone_tint(p)), M=M)
         out.append(r3(pos))
     for (a, r, y, tilt) in ((0.9, 4.1, 0.55, 0.9), (2.4, 3.7, 0.85, 0.6), (5.0, 4.6, 0.3, 1.1)):
-        d = rdir(a); s = 0.24; pos = d * r + V3((0, y, 0)); pr = skull_prim()
+        d = rdir(a); s = 0.24; hp, hn = hit(d * r + V3((0, 12, 0)), (0, -1, 0))
+        if hp is None or hp.y > 2.0: continue
+        pos = hp - V3((0, 0.42 * s, 0)); pr = skull_prim()
         def uvf(v, i, pr=pr):
             q = pr.V[i]
             return px_uv(rect, tex, 0.5 + q.x / 0.84, q.y / 0.92, 0.5) if q.z > 0.12 else px_uv(rb, tex, 0.5 + q.x * 0.9, 0.2 + q.y * 0.6, 0.5)
@@ -965,7 +1043,8 @@ def skulls(b, TR, rn):
 
 def build_tower(far=False, seed=41):
     rn = Rnd(seed); b = Buf('gh_tower' + ('_lod1' if far else ''))
-    TR = tread_list(Rnd(seed + 1)); INFO['treads'] = TR
+    TR = tread_list(Rnd(seed + 1))
+    if not far: INFO['treads'] = TR
     spine(b, rn, far); stair(b, TR, rn, far); rib_cage(b, TR, Rnd(seed + 2), far); chalice(b, Rnd(seed + 3), far); buttresses(b, Rnd(seed + 4), far)
     if not far: skulls(b, TR, Rnd(seed + 5))
     return b, TR
@@ -993,7 +1072,7 @@ def build_creep(C, TR, far=False, seed=61):
             a = -2 * math.pi * j / k + rn.u(-0.15, 0.15); ln = rn.u(2.0, 6.5); y0 = hem[j] + 0.3; n = 5
             pts = [on_col(y0 - ln * i / (n - 1), a + 0.12 * math.sin(i * 1.3 + j), 0.06) for i in range(n)]
             pr = tube(pts, [lerp(0.14, 0.05, i / (n - 1)) for i in range(n)], 4, squash=[lerp(3.2, 1.2, i / (n - 1)) for i in range(n)], up=tuple(rdir(a)), tip1=True, tiplen=2.5)
-            b.add(pr, fl, FA('drape'), ph=[creep_phase(v.y) for v in pr.V], w=0.1, tint=0.85)
+            b.add(pr, fl, FA('pus' if (j // 2) % 2 else 'drape'), ph=[creep_phase(v.y) for v in pr.V], w=0.1, tint=0.85)
         for j in range(13):     # hearts that came down with it
             y = rn.u(24.2, 28.6); a = rn.u(0, 6.28); d = rdir(a); L = rn.u(0.52, 0.70); pos = on_col(y, a, 0.42)
             M = frame(V3((rn.u(-0.4, 0.4), 1, rn.u(-0.4, 0.4))), d, pos) @ RX(rn.u(-0.2, 0.5))
@@ -1017,15 +1096,21 @@ def build_creep(C, TR, far=False, seed=61):
                 if (p1 - p0).length > 3.2: continue
                 b.add(tube([p0, p1, p2], [0.075, 0.06, 0.03], 3, tip1=True, tiplen=2.0), fl, FA('artery'), ph=creep_phase(yy) + 0.02, w=0.2)
     rl = []
-    for key, p0, a0, r1 in roots:      # into the ground
-        for s, (da, reach) in enumerate(((-0.75, 9.6), (0.0, 11.0), (0.7, 8.8)) if not far else ((-0.5, 9.6), (0.5, 9.0))):
-            a = a0 + da; d = rdir(a); tn = V3((-d.z, 0, d.x)); wig = rn.u(0.5, 1.1) * rn.sign(); pts = [p0]
-            for i, (f, y) in enumerate(((0.36, 0.62), (0.52, 0.34), (0.70, 0.26), (0.86, 0.02), (1.0, -0.75)) if not far else ((0.45, 0.45), (0.8, 0.1), (1.0, -0.75))):
-                pts.append(d * (reach * f) + tn * (wig * math.sin(f * 5.0 + s)) + V3((0, y, 0)))
-            n = len(pts); rad = [lerp(r1 * 0.8, 0.10, (i / (n - 1)) ** 0.8) for i in range(n)]
-            pr = tube(smooth_path(pts, 2) if not far else pts, [lerp(r1 * 0.8, 0.10, (i / (2 * (n - 1))) ** 0.8) for i in range(2 * (n - 1) + 1)] if not far else rad, 3 if far else 4, tip1=True)
-            b.add(pr, fl, FA('root' if key == 'vein' else 'artery'), ph=1.56 + 0.04 * (s / 2), w=[0.25 * sstep(8.0, 3.0, math.hypot(v.x, v.z)) for v in pr.V], tint=[0.55 + 0.4 * sstep(9.5, 4.0, math.hypot(v.x, v.z)) for v in pr.V])
+    for key, p0, a0, r1 in roots:      # into the ground: over the mound, under, up again, gone
+        for s, (da, reach) in enumerate(((-0.8, 9.4), (0.05, 11.4), (0.75, 8.6)) if not far else ((-0.5, 9.6), (0.5, 9.0))):
+            a = a0 + da; d = rdir(a); tn = V3((-d.z, 0, d.x)); wig = rn.u(0.6, 1.3) * rn.sign(); pts = [p0 + V3((0, 0.9, 0)) - d * 0.3, p0]
+            for i, (f, y) in enumerate(((0.36, 0.95), (0.47, 0.52), (0.58, 0.20), (0.68, -0.12), (0.78, 0.16), (0.89, 0.04), (1.0, -0.8)) if not far else ((0.45, 0.6), (0.8, 0.1), (1.0, -0.8))):
+                pts.append(d * (reach * f) + tn * (wig * math.sin(f * 6.5 + s * 1.7) * (0.4 + f)) + V3((0, y, 0)))
+            P = smooth_path(pts, 2) if not far else pts; n = len(P)
+            rad = [lerp(r1 * 1.25, 0.09, (i / (n - 1)) ** 0.8) * (1.0 + 0.18 * math.sin(i * 1.9 + s)) for i in range(n)]
+            pr = tube(P, rad, 3 if far else 4, tip1=True, tiplen=2.0)
+            dim = lambda v: 0.5 + 0.45 * sstep(9.5, 4.0, math.hypot(v.x, v.z))
+            b.add(pr, fl, FA('root' if key == 'vein' else 'artery'), ph=1.56 + 0.04 * (s / 2), w=[0.25 * sstep(8.0, 3.0, math.hypot(v.x, v.z)) for v in pr.V], tint=[dim(v) for v in pr.V])
             rl.append(r3(pts[-1]))
+            if not far:     # a side root off each one
+                i0 = n // 2; q = P[i0]; sd = tn * (1.0 if wig > 0 else -1.0)
+                b.add(tube([q, q + d * 0.9 + sd * 0.9 + V3((0, 0.05, 0)), q + d * 1.9 + sd * 1.5 + V3((0, -0.1, 0)), q + d * 2.6 + sd * 2.5 + V3((0, -0.6, 0))], [rad[i0] * 0.6, rad[i0] * 0.45, 0.09, 0.05], 3, tip1=True, tiplen=2.0),
+                      fl, FA('root' if key == 'vein' else 'artery'), ph=1.58, w=0.0, tint=0.6)
     INFO['roots'] = rl
     if not far:
         for j in range(6):     # small veins finding their own way down
@@ -1048,6 +1133,21 @@ def build_creep(C, TR, far=False, seed=61):
                 F.append((a_, b_, c_, d_)); U.append(quad)
         b0 = b.verts(V, ph=[creep_phase(v.y) for v in V], w=0.0, tint=[tuple(x * 0.9 for x in bone_tint(v)) for v in V])
         b.faces([tuple(b0 + i for i in f) for f in F], U, fl)
+        # and between the ribs themselves, more of it the nearer the heart: skin stretched from one rib to the next
+        hp = [t for t in TR if t.get('hoop') and not t.get('warp')]; nw = 0
+        for t0_, t1_ in zip(hp, hp[1:]):
+            if t1_['k'] - t0_['k'] != 2 or not rn.chance(0.05 + 0.75 * sstep(9.0, 25.0, t0_['y'])): continue
+            A = [V3(q) for q in t0_['hoop'][:4]]; Bq = [V3(q) for q in t1_['hoop'][:4]]; s0 = rn.i(0, 1); s1 = rn.i(2, 3)
+            Vw = [q + V3((0, -0.03, 0)) for q in A[s0:s1 + 1]] + [q + V3((0, -0.03, 0)) for q in Bq[s0:s1 + 1]]; m = s1 - s0 + 1; Fw = []
+            cq = col_c(Vw[0].y); inw = V3((cq.x - Vw[0].x, 0, cq.z - Vw[0].z)).normalized() * 0.04; Vw = Vw + [q + inw for q in Vw]      # both sides (you see it from the stair too), 4 cm apart
+            for j in range(m - 1): Fw += [(j, j + 1, m + j + 1, m + j), (2 * m + m + j, 2 * m + m + j + 1, 2 * m + j + 1, 2 * m + j)]
+            b1 = b.verts(Vw, ph=[creep_phase(v.y) for v in Vw], w=0.0, tint=0.85); f0 = len(b.F)
+            b.faces([tuple(b1 + i for i in f) for f in Fw], [quad] * len(Fw), fl); nw += 1
+            cw = sum(Vw, V3()) / len(Vw)
+            for fi in range(f0, len(b.F)):     # outer faces look out, inner look in
+                f = b.F[fi]; nrm_ = (b.V[f[1]] - b.V[f[0]]).cross(b.V[f[2]] - b.V[f[0]]); outw = V3((cw.x - cq.x, 0, cw.z - cq.z)); want = 1 if (fi - f0) % 2 == 0 else -1
+                if nrm_.dot(outw) * want < 0: b.F[fi] = f[::-1]; b.UV[fi] = b.UV[fi][::-1]
+        INFO['webs'] = nw
     return b
 
 
@@ -1097,12 +1197,78 @@ def build_all():
         B['heart_lod1'] = build_heart(Cf, far=True); B['tower_lod1'], _ = build_tower(far=True); B['creep_lod1'] = build_creep(Cf, TR, far=True)
     for b in B.values(): b.prune()
     if not arg('no-ao'):
-        bake_ao([B['heart'], B['tower'], B['creep']], dist=3.5, k=14, lo=0.30)
-        if 'heart_lod1' in B: bake_ao([B['heart_lod1'], B['tower_lod1'], B['creep_lod1']], dist=3.5, k=10, lo=0.36)
+        bake_ao([B['heart'], B['tower'], B['creep']], k=14, lo=0.30)
+        if 'heart_lod1' in B: bake_ao([B['heart_lod1'], B['tower_lod1'], B['creep_lod1']], k=10, lo=0.40)
     for k, b in B.items():
         o = b.obj(sharp=40 if k.startswith('tower') else None); N[k] = o
     INFO['cells'] = C
     return N, B
+
+
+RIPPLE_GLSL = """// vertex shader, once:   attribute vec2 aPulse;   (= TEXCOORD_1: x phase, y weight)   uniform float uTime;
+float ghBeat(float t) { return exp(-pow((t - 0.12) / 0.045, 2.0)) + 0.6 * exp(-pow((t - 0.33) / 0.06, 2.0)); }   // lub-dub, then rest
+// after #include <begin_vertex>:
+transformed += objectNormal * (aPulse.y * 0.075 * ghBeat(fract(uTime * 0.72 - aPulse.x * 0.55)));"""
+
+
+def write_json(N, tris):
+    C = INFO['cells']; W = [HM @ V3(p) for p in C.P]; TR = INFO['treads']
+    lo = V3((1e9,) * 3); hi = V3((-1e9,) * 3)
+    for k, o in N.items():
+        if 'lod1' in k: continue
+        for v in o.data.vertices: w = g_of(v.co); lo = V3(map(min, lo, w)); hi = V3(map(max, hi, w))
+    bx = lambda a, b_: [round(x, 2) for x in (*a, *b_)]
+    tower = []; y = 0.0
+    while y < TOP - 0.01:
+        y1 = min(TOP, y + 3.0); c = col_c((y + y1) / 2); r = col_r((y + y1) / 2) * 0.92
+        tower.append(bx((c.x - r, y, c.z - r), (c.x + r, y1, c.z + r))); y = y1
+    heart = []; ys = sorted(w.y for w in W); y = ys[0]
+    while y < ys[-1]:
+        y1 = min(ys[-1], y + 2.6); sl = [w for w in W if y - 0.2 <= w.y <= y1 + 0.2]
+        if len(sl) > 6:
+            cx = sum(w.x for w in sl) / len(sl); cz = sum(w.z for w in sl) / len(sl)
+            x0, x1 = min(w.x for w in sl), max(w.x for w in sl); z0, z1 = min(w.z for w in sl), max(w.z for w in sl); k_ = 0.86   # a box inside a round slice
+            heart.append(bx((cx + (x0 - cx) * k_, y, cz + (z0 - cz) * k_), (cx + (x1 - cx) * k_, y1, cz + (z1 - cz) * k_)))
+        y = y1
+    but = []
+    for f in INFO['femurs']:
+        a, h = V3(f['foot']), V3(f['head']); r = f['r'] * 1.3
+        for i in range(5):
+            p = a.lerp(h, (i + 0.5) / 5); q = (h - a) / 10
+            but.append(bx((p.x - abs(q.x) - r, max(0.0, p.y - abs(q.y) - r), p.z - abs(q.z) - r), (p.x + abs(q.x) + r, p.y + abs(q.y) + r, p.z + abs(q.z) + r)))
+    steps = []; treads = []
+    for t in TR:
+        c = col_c(t['y']); d = rdir(t['phi']); r1 = t['r1'] if t['state'] != 'stub' else t['r0'] + (t['r1'] - t['r0']) * 0.45
+        m = c + d * ((col_r(t['y']) + r1) / 2); hw = max(0.5, (r1 - col_r(t['y'])) / 2 * 0.8)
+        treads.append(dict(k=t['k'], y=round(t['y'], 3), phi=round(t['phi'], 4), r0=round(col_r(t['y']), 2), r1=round(r1, 2), state=t['state'], mid=r3(V3((m.x, t['y'], m.z)))))
+        if t['state'] != 'gone': steps.append(bx((m.x - hw, t['y'] - 0.22, m.z - hw), (m.x + hw, t['y'], m.z + hw)))
+    t0, tl = treads[0], treads[-1]; apex = W[C.apex]; src = W[C.src]; f0 = rdir(TR[0]['phi'] - 0.5) * (col_r(0) + 2.2)
+    data = dict(
+        id=FID, name='the heart of the Gut (working name)', units='metres',
+        space="x right, y up, the heart's front faces +z, its apex points to +x; the origin is the middle of the tower's foot, on the ground",
+        files=dict(glb='s_gut_heart.glb', demo='tools/blender/gut_heart_demo.html', doc='docs/story/gut/GUT_HEART_MODEL.md'),
+        size=dict(min=r3(lo, 2), max=r3(hi, 2), heart_m=round(hi.y - apex.y, 1), tower_m=round(apex.y, 1)),
+        tris=dict(lod0=sum(v for k, v in tris.items() if 'lod1' not in k), lod1=sum(v for k, v in tris.items() if 'lod1' in k), **tris),
+        nodes=dict(lod0=['gh_heart', 'gh_creep', 'gh_tower'], lod1=['gh_heart_lod1', 'gh_creep_lod1', 'gh_tower_lod1'], switch_m=120),
+        materials=dict(gh_flesh='every small heart, vessel, vein and root (256 px atlas). ripples', gh_glow='the lit pits between hearts: emissive only, its own material so the game can pulse it. ripple channel present (weight 0, phase = the cell it is in)',
+                       gh_bone='ribs, thigh bones, skulls, hip blades (256 x 128 atlas)', gh_ossuary='the fused mass: spine drums and the mound (128 px, tiles, uvs in metres)'),
+        hearts=dict(fused=C.n, whole=INFO['hearts']['whole'] + 13 + len(INFO.get('hang', [])), lit_pits=INFO['hearts']['glow'], spacing_m=S0, far_cells=INFO.get('hearts_far', {}).get('cells')),
+        ripple=dict(channel='TEXCOORD_1', three='geometry.attributes.uv1 (vec2)', u='phase: 0 at the pacemaker (top of the right atrium), 0.30 by the end of the atria, 0.38 where the ventricles start, 1.0 at the apex; 1.0 to 1.6 down the tower (sleeve, aorta, vena cava, roots)',
+                    v='weight: 0 = held still (seams, where a heart is fused in, roots), 1 = the belly of a small heart; vessels 0.2 to 0.5',
+                    on=['gh_heart', 'gh_creep', 'gh_heart_lod1', 'gh_creep_lod1'], also='COLOR_0 = tint x baked occlusion (multiply into the texture), TEXCOORD_0 = the atlas',
+                    note='the exporter flips v of every uv set; the build stores 1 - weight so the file holds the weight itself. displace along the NORMAL: flesh has no split normals where it moves', glsl=RIPPLE_GLSL),
+        boxes=dict(format='[x0, y0, z0, x1, y1, z1], root space, axis aligned', tower=tower, heart=heart, buttresses=but, mound=[bx((-5.2, 0, -5.2), (5.2, 0.55, 5.2)), bx((-3.6, 0.55, -3.6), (3.6, 1.2, 3.6))], steps=steps),
+        stair=dict(treads=len(treads), rise=RISE, pitch=PITCH, turns=round(DPHI * (NT - 1) / (2 * math.pi), 2), dphi=round(DPHI, 5), climbs='counter-clockwise seen from above (the angle grows from +x toward +z)',
+                   note='tread k: its top is at y, it points along (cos phi, 0, sin phi) from the spine axis at that height, from r0 to r1. state gone = no tread (a gap to jump), stub = half a tread. steps[] above are ready square pads, one per tread that exists',
+                   axis=[[round(yy, 1), round(col_c(yy).x, 2), round(col_c(yy).z, 2), round(col_r(yy), 2)] for yy in [i * 1.5 for i in range(20)]], list=treads),
+        markers=dict(base_centre=[0, 0, 0], listening_spot=r3(rdir(1.4) * 9.0), stair_foot=r3(V3((f0.x, 0, f0.z))), first_tread=t0['mid'], stair_top=tl['mid'], apex=r3(apex), heart_centre=r3(HC), pacemaker=r3(src),
+                     top=r3(V3((0, hi.y, 0))), hanging_hearts=INFO.get('hang', []), root_ends=INFO.get('roots', []), femur_feet=[f['foot'] for f in INFO['femurs']], rib_cup_tips=[c['tip'] for c in INFO['chalice']],
+                     blast_from=r3(BLASTW), glow_light=r3(HC + V3((0, -1.5, 0)))),
+    )
+    path = os.path.join(OUT, FID + '.json')
+    with open(path, 'w') as f: json.dump(data, f, indent=1)
+    print('JF_JSON', path, os.path.getsize(path) // 1024, 'KB', 'boxes', len(tower), len(heart), len(but), len(steps))
+    return data
 
 
 def main():
@@ -1118,7 +1284,7 @@ def main():
             if all(k in N for k in ks): qa(tag, [N[k] for k in ks], tol=0.05, quiet=not arg('qa-warn'))
     if not arg('no-export'):
         path = os.path.join(OUT, FID + '.glb'); root['jf'] = json.dumps(dict(id=FID, kind='landmark', tris=tris))
-        export_glb(root, path); compact_glb(path)
+        export_glb(root, path); compact_glb(path); write_json(N, tris)
     pd = arg('preview')
     if pd:
         far = [o for k, o in N.items() if 'lod1' in k]; near = [o for k, o in N.items() if 'lod1' not in k]

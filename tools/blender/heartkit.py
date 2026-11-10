@@ -184,7 +184,7 @@ class Atlas:
 # ------------------------------------------------------------ the buffer
 class Buf:
     """collects primitives for one mesh. per vertex: phase, weight (the ripple) and a tint; per face corner: uv."""
-    def __init__(s, name): s.name = name; s.V = []; s.PH = []; s.W = []; s.TI = []; s.F = []; s.UV = []; s.MI = []; s.mats = []; s.AO = None
+    def __init__(s, name): s.name = name; s.V = []; s.PH = []; s.W = []; s.TI = []; s.F = []; s.UV = []; s.MI = []; s.mats = []; s.AO = None; s.CN = {}
 
     def mi(s, m):
         if m not in s.mats: s.mats.append(m)
@@ -225,7 +225,7 @@ class Buf:
                     q = (Q4 if len(prim.F[fi]) == 4 else Q3)[ci % len(prim.F[fi]) if len(prim.F[fi]) in (3, 4) else 0]
                     return px_uv(rect, tex, q[0], q[1], mg)
                 a, t = prim.ST[fi][ci]
-                if kind == 'alt': a = 1 - abs(2 * a - 1); t = float(t % 2)   # round: there and back (no seam); along: mirrored ring to ring
+                if kind == 'alt': t = float(t % 2)   # along: mirrored ring to ring, so one swatch serves any length
                 else: t = (t - n0) / ((nr - n0) or 1)
                 return px_uv(rect, tex, a, t, mg)
         elif kind == 'uv':
@@ -248,9 +248,45 @@ class Buf:
         s.TI.extend([(tint, tint, tint)] * n if isinstance(tint, (int, float)) else [tint] * n if isinstance(tint, tuple) else [(t, t, t) if isinstance(t, (int, float)) else tuple(t) for t in tint])
         return b
 
-    def faces(s, F, UV, m):
+    def faces(s, F, UV, m, normals=None):
+        """normals = per face, a normal per corner (game space): shading the mesh does not have (a low cone lit like a
+        ball). Only where the corners' vertices do not move, or belong to one face group: the ripple pushes along them"""
         mi = s.mi(m)
-        for f, uv in zip(F, UV): s.F.append(tuple(f)); s.UV.append(list(uv)); s.MI.append(mi)
+        for k, (f, uv) in enumerate(zip(F, UV)):
+            if normals is not None: s.CN[len(s.F)] = normals[k]
+            s.F.append(tuple(f)); s.UV.append(list(uv)); s.MI.append(mi)
+
+    def consistent(s, f0=0, f1=None):
+        """one welded surface (faces f0..f1) wound one way: walk it edge to edge turning over any face that disagrees
+        with its neighbour, then turn the lot if it ended up inside out"""
+        f1 = len(s.F) if f1 is None else f1; edge = {}
+        for fi in range(f0, f1):
+            f = s.F[fi]
+            for a, b in zip(f, f[1:] + f[:1]): edge.setdefault((min(a, b), max(a, b)), []).append(fi)
+        def flip(fi):
+            s.F[fi] = s.F[fi][::-1]; s.UV[fi] = s.UV[fi][::-1]
+            if fi in s.CN: s.CN[fi] = s.CN[fi][::-1]
+        seen = set(); n_flip = 0
+        for start in range(f0, f1):
+            if start in seen: continue
+            seen.add(start); stack = [start]
+            while stack:
+                fi = stack.pop(); f = s.F[fi]
+                for a, b in zip(f, f[1:] + f[:1]):
+                    fs = edge[(min(a, b), max(a, b))]
+                    if len(fs) != 2: continue
+                    fj = fs[0] if fs[1] == fi else fs[1]
+                    if fj in seen: continue
+                    g = s.F[fj]; same = any(g[i] == a and g[(i + 1) % len(g)] == b for i in range(len(g)))   # the neighbour runs the edge the same way: it is turned over
+                    if same: flip(fj); n_flip += 1
+                    seen.add(fj); stack.append(fj)
+        c = sum((s.V[i] for f in s.F[f0:f1] for i in f), V3()) / max(1, sum(len(f) for f in s.F[f0:f1])); vol = 0.0
+        for f in s.F[f0:f1]:
+            a0 = s.V[f[0]] - c
+            for q in range(1, len(f) - 1): vol += a0.dot((s.V[f[q]] - c).cross(s.V[f[q + 1]] - c))
+        if vol < 0:
+            for fi in range(f0, f1): flip(fi)
+        return n_flip
 
     def prune(s):
         """drop vertices no face uses (culled faces leave them behind)"""
@@ -284,7 +320,8 @@ class Buf:
         me.from_pydata([tuple(gv(*v)) for v in s.V], [], s.F)
         uv = me.uv_layers.new(name='UVMap'); uv.data.foreach_set('uv', [c for f in s.UV for p in f for c in p])
         # the ripple: u = phase, v = weight. the glTF exporter writes v as 1 - v, so it is stored flipped here
-        pu = me.uv_layers.new(name='pulse'); pu.data.foreach_set('uv', [c for f in s.F for i in f for c in (s.PH[i], 1.0 - s.W[i])])
+        if any(s.W) or any(s.PH):
+            pu = me.uv_layers.new(name='pulse'); pu.data.foreach_set('uv', [c for f in s.F for i in f for c in (s.PH[i], 1.0 - s.W[i])])
         me.uv_layers.active = uv; uv.active_render = True
         me.polygons.foreach_set('material_index', s.MI)
         for m in s.mats: me.materials.append(m)
@@ -298,10 +335,17 @@ class Buf:
         me.update()
         o = _link(bpy.data.objects.new(s.name, me))
         if sharp is not None: me.set_sharp_from_angle(angle=math.radians(sharp))
+        if s.CN:
+            cn = np.empty(len(me.loops) * 3, np.float32); me.corner_normals.foreach_get('vector', cn); cn = cn.reshape(-1, 3); li = 0
+            for fi, f in enumerate(s.F):
+                if fi in s.CN:
+                    for c, n in enumerate(s.CN[fi]): cn[li + c] = tuple(gv(*n))
+                li += len(f)
+            me.normals_split_custom_set([tuple(float(x) for x in n) for n in cn])
         return o
 
 
-def bake_ao(bufs, dist=3.0, k=14, lo=0.28, gain=1.0, extra=None, seed=3):
+def bake_ao(bufs, dist=2.6, k=14, lo=0.30, gain=1.25, extra=None, seed=3):
     """ambient occlusion per vertex by ray casting against everything in bufs (+ extra (P, T) arrays): cheap, the same
     every run, no cycles. far hits count less. sets b.AO (multiplied into COLOR_0 by obj())."""
     Pa = []; Ta = []; b0 = 0
@@ -324,7 +368,7 @@ def bake_ao(bufs, dist=3.0, k=14, lo=0.28, gain=1.0, extra=None, seed=3):
             for dx, dy, dz in dirs:
                 d = t1 * (dx * cr - dy * sr) + t2 * (dx * sr + dy * cr) + n * dz
                 hit = bvh.ray_cast(o, d, dist)
-                if hit[0] is not None: occ += 1.0 - 0.6 * (hit[3] / dist)
+                if hit[0] is not None: occ += (1.0 - hit[3] / dist) ** 0.7
             ao[i] = occ / k
         b.AO = np.clip(lo + (1 - lo) * (1 - np.clip(ao * gain, 0, 1)), 0, 1)
     return bufs
@@ -417,6 +461,38 @@ def compact_glb(path):
     print(f'JF_COMPACT {os.path.basename(path)}: {len(raw) // 1024} KB -> {total // 1024} KB')
 
 
+def uv_report(o):
+    """where the zero-area uv faces are (by material and corner count), for the QA fixes"""
+    me = o.data; uv = me.uv_layers[0].data; out = {}
+    for pg in me.polygons:
+        P = [uv[i].uv for i in pg.loop_indices]; ar = sum(P[k][0] * P[(k + 1) % len(P)][1] - P[(k + 1) % len(P)][0] * P[k][1] for k in range(len(P))) / 2
+        if abs(ar) < 1e-10:
+            c = pg.center; k = (me.materials[pg.material_index].name, len(P)); out.setdefault(k, []).append((round(c.x, 2), round(c.z, 2), round(-c.y, 2), [tuple(round(x, 4) for x in q) for q in P]))
+    for k, v in out.items(): print('UV0', o.name, k, len(v), v[:2])
+
+
+def zf_where(objs, eps=0.0008, limit=12):
+    """where it z-fights, found the way the QA gate finds it (game coordinates)"""
+    import qa_check
+    Vv, Tr, Nn = [], [], []
+    for o in objs:
+        bm = bmesh.new(); bm.from_mesh(o.data); bm.transform(o.matrix_world); bmesh.ops.triangulate(bm, faces=bm.faces[:]); bm.normal_update()
+        b = len(Vv); Vv += [v.co.copy() for v in bm.verts]
+        for f in bm.faces: Tr.append(tuple(b + v.index for v in f.verts)); Nn.append(f.normal.copy())
+        bm.free()
+    bvh = BVHTree.FromPolygons(Vv, Tr, epsilon=0.0); seen = set(); sets = [set(t) for t in Tr]
+    for ti, t in enumerate(Tr):
+        a, b, c = (Vv[i] for i in t); cen = (a + b + c) / 3
+        if Nn[ti].length < 0.5: continue
+        for p in (cen, cen.lerp(a, .6), cen.lerp(b, .6), cen.lerp(c, .6)):
+            for _, _, tj, _ in bvh.find_nearest_range(p, eps):
+                if tj is None or tj == ti or sets[ti] & sets[tj] or Nn[ti].dot(Nn[tj]) < 0.999: continue
+                a2, b2, c2 = (Vv[i] for i in Tr[tj]); n2 = Nn[tj]; q = p - n2 * n2.dot(p - a2); k = (min(ti, tj), max(ti, tj))
+                if k not in seen and qa_check._point_in_tri(q, a2, b2, c2, n2):
+                    seen.add(k)
+                    if len(seen) <= limit: print('QA_ZF_AT', [round(x, 3) for x in g_of(cen)], 'normal', [round(x, 2) for x in g_of(Nn[ti])], 'sizes', round((b - a).length, 3), round((c - a).length, 3), '|', round((b2 - a2).length, 3), round((c2 - a2).length, 3))
+
+
 def qa(tag, objs, eps=0.0008, tol=0.01, quiet=False):
     sys.path.insert(0, os.path.join(ROOT, '.claude', 'skills', 'blender-asset-qa', 'scripts'))
     import qa_check
@@ -427,6 +503,9 @@ def qa(tag, objs, eps=0.0008, tol=0.01, quiet=False):
             if not (quiet and k == 'warnings'): print('QA_' + k.upper()[:-1], tag, e)
     for k in ('floating', 'enclosed'):
         for e in res.get(k, [])[:40]: c = e['center']; print('QA_' + k.upper(), tag, e['object'], e['island_verts'], 'verts at game', [round(c[0], 3), round(c[2], 3), round(-c[1], 3)])
+    if res.get('zfighting'): zf_where(objs, eps)
+    if any('zero-area UV' in e for e in res.get('errors', [])):
+        for o in objs: uv_report(o)
     return res
 
 
