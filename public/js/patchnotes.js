@@ -1,6 +1,10 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '7.1', date: '2026-11-10', title: 'LESS SMALL PRINT', items: [
+    'captions that said what the button already said are gone: under CUSTOMIZE and CONTAINERS, on the mode pickers, in customize and in settings.',
+    'a weapon\'s description shows the first time you hold it, not every time you press 1. gun game and infection stopped repeating their own name under their own name.',
+  ] },
   { v: '7.0', date: '2026-11-10', title: 'AD SUPPORTED', items: [
     'new item: the LAPTOP. press G to open it at someone and their screen fills with pop-up ads for 7 seconds. they close them with the number on each ad. some ads ask ARE YOU SURE?. nobody in front of it: NO SIGNAL, and you keep the charge. a reverse card sends the ads back.',
     'bots carry laptops too. a bot reading ads aims worse. so do you.',
