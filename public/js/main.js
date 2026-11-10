@@ -31,7 +31,8 @@ import { Remote, updateGibs } from './remote.js';
 import { stepSoap, trapStart, trapEnd, updateWand, stuckInBubble } from './wand.js';
 import { initGear, updateGear, gearFx, gearKeyDown, gearSpawn, gearLeave, gearKillParts, gearDeathLine } from './gear.js'; // laser pointer, camera, pop quiz, goggles
 import { initSec, updateSec, secFx, secAimDown, secFrozen, secBlocked, secShot, secSpawn, secLeave } from './secondaries.js'; // water pistol, taser, tv remote, speed trap
-import { parry } from './weapons.js';
+import { parry, isFriend } from './weapons.js';
+const tmpLock = new THREE.Vector3(); // spinbot lock marker
 import './parry.js'; // katana parry: sparks, sounds, PARRY!, the guard pose
 import { addPatch, clearPatches } from './mslip.js'; // marble shotgun: marbles on the floor you slip on
 import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN, WRAP_MODES, WRAP_MODE_NAMES } from './skins.js';
@@ -51,7 +52,7 @@ import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
 import { EPIC_CAM, epicMul, epicCamMs } from '/shared/epic.js';
 import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, HAIRS, TOPS, BOTTOMS } from '/shared/looks.js';
-import { startBall, endBall, ballOn, BS } from './player.js';
+import { startBall, endBall, ballOn, BS, look } from './player.js';
 import { updateWreck, ballCam, wreckFx, wreckDied } from './wreck.js';
 import { hasAcc } from '/shared/looks.js';
 import { airTick, airReset, airFlourish } from './airborne.js';
@@ -1151,7 +1152,6 @@ addEventListener('wheel', (e) => { if (inGame() && !esActive() && !lassoWheel(e.
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== canvas) return;
   if (G.story && G.story.look(e)) return; // the weapon wheel steers with the mouse
-  if (performance.now() < (G.spinUntil || 0)) return; // the aimbot has the wheel
   if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor: no looking around either
   if (story && story.locked()) return; // story mode: talking / a cutscene has the camera
   const s = 0.0022 * S.sens * (W.aim > 0.5 ? S.adsSens / W.zoom : 1);
@@ -1888,26 +1888,30 @@ function frame(t) {
     pinStep(now); // nailed to a wall
     oobTick(now); // out of the play area: RETURN TO THE MAP 3 2 1
     econFrame(dt); // Plant & Defuse: barriers, drops, armor on models, spectating
-    // spinbot killstreak: lock onto the nearest enemy you can see
+    // spinbot killstreak: your camera stays yours; every shot goes to whoever is nearest your crosshair (and in sight)
     const spinning = ME.alive && now < (G.spinUntil || 0);
+    let lock = null;
     if (spinning) {
-      const e = eye();
-      let best = null, bd = 1e9;
+      const e = eye(), l = look();
+      let bc = Math.cos(0.5); // inside a ~29 degree cone round the crosshair
       for (const r of G.remotes.values()) {
-        if (!r.alive || (r.bot && r.name === 'Dummy' && G.mode !== 'training') || (G.myTeam && r.team === G.myTeam)) continue;
+        if (!r.alive || (r.bot && r.name === 'Dummy' && G.mode !== 'training') || isFriend(r) || (G.mode === 'coop' && !r.bot)) continue;
         const tx = r.pos[0] - e[0], ty = r.pos[1] + 2.0 - e[1], tz = r.pos[2] - e[2], d = Math.hypot(tx, ty, tz);
-        if (d > 150 || d < 0.5 || d >= bd) continue;
-        if (raycast(e, [tx / d, ty / d, tz / d], d, BOXES)) continue;
-        best = [tx, ty, tz]; bd = d;
-      }
-      if (best) {
-        const yaw = Math.atan2(-best[0], -best[2]), pitch = Math.atan2(best[1], Math.hypot(best[0], best[2]));
-        let dy = yaw - ME.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2;
-        ME.yaw += dy * Math.min(1, dt * 25); ME.pitch += (pitch - ME.pitch) * Math.min(1, dt * 25);
+        if (d > 150 || d < 0.5) continue;
+        const c = (tx * l[0] + ty * l[1] + tz * l[2]) / d;
+        if (c <= bc || raycast(e, [tx / d, ty / d, tz / d], d, BOXES)) continue;
+        bc = c; lock = { r, d: [tx / d, ty / d, tz / d] };
       }
     }
+    G.aimDir = lock ? lock.d : null;
+    const lm = $('lockMark');
+    if (lock) {
+      const v = tmpLock.set(lock.r.pos[0], lock.r.pos[1] + 2.0, lock.r.pos[2]).project(G.camera);
+      lm.style.display = v.z < 1 ? 'block' : 'none';
+      lm.style.left = `${(v.x * 0.5 + 0.5) * innerWidth}px`; lm.style.top = `${(-v.y * 0.5 + 0.5) * innerHeight}px`;
+    } else lm.style.display = 'none';
     $('cheat').style.display = spinning ? 'block' : 'none';
-    if (spinning) $('cheat').textContent = `JANKHAX v6.9\n[x] AIMBOT\n[x] SPINBOT\n[x] NO SPREAD\n${((G.spinUntil - now) / 1000).toFixed(1)}s left`;
+    if (spinning) $('cheat').textContent = `JANKHAX v6.9\n[x] AIMBOT ${lock ? '<LOCKED>' : '(look at someone)'}\n[x] SPINBOT\n[x] NO SPREAD\n${((G.spinUntil - now) / 1000).toFixed(1)}s left`;
     G.spinning = spinning;
     updateWeapons(dt, now);
     lassoFrame(dt, now); // lasso: spin + throw, the rope you hold, your hands (before the snapshot: it sets a flag)

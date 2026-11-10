@@ -12,7 +12,7 @@ queued requests live in `HANDOFF.md` on the `claude/handoff` branch (`git show o
 - **Look:** chunky low-poly Three.js models, bright saturated colours, a pink/magenta + yellow comic-style UI, and render
   presets from "Potato" (pixelated, vertex-snapped) to "Too HD". Weapons and props are modelled from real references
   (real proportions, real parts), then made fun.
-- **Quality bar from the owner: "Models and animation max!! We need quality."** Model and animation work gets max effort,
+- **Quality bar from the owner: "Models and animation max!! We need quality."** Model and animation work gets the top effort allowed (see the effort rule under "How we work"),
   pose and model sheets, screenshots, and iteration until it looks good.
 - **Inspired by, never copied:** systems may nod to CS, CoD, Rivals, Roblox physics games, anime, etc., but every name, logo,
   character, map layout and asset is original. Homages are fine; replicas are not.
@@ -58,7 +58,7 @@ queued requests live in `HANDOFF.md` on the `claude/handoff` branch (`git show o
 - **Patch notes:** every update players notice gets a line in `public/js/patchnotes.js` (PATCH NOTES in the menu, newest first, in the game's voice). Feature sessions describe their change in the PR; the coordinating session adds the patch-notes line when it ships, so parallel PRs don't fight over that file.
 - **Show the work:** send screenshots and short clips (Playwright `recordVideo` + ffmpeg, graphics setting `jank: 3` = Too HD)
   of new features.
-- **Usage is limited:** use effort levels (max for models and animation, high for gameplay and fixes, medium for reviews),
+- **Usage is limited:** use effort levels. **Effort rule (owner, Fable 5.2): never use max effort.** Hero models and their animation (vehicles, bosses, characters, weapons, anything players look at up close) run at extra high (xhigh): the owner compared two helicopters and chose it. Small props and background pieces run at high; gameplay and fixes at high or medium; reviews and routine work at medium or low. Also
   avoid needless parallel agents, and keep branches pushed so nothing is lost when a session ends.
 
 ## Code conventions
@@ -80,7 +80,7 @@ queued requests live in `HANDOFF.md` on the `claude/handoff` branch (`git show o
 ## Working style (how the earlier sessions ran, keep doing it)
 - **One branch + git worktree per feature** (`claude/f-<name>`, worktree in the scratchpad, `node_modules` symlinked), so
   features build in parallel without touching each other. Push branches often; a session can end at any time.
-- **Build, then verify, then fix.** A builder (max effort for models/animation, high for gameplay), then a reviewer that
+- **Build, then verify, then fix.** A builder (high effort for models/animation, xhigh only sometimes, never max; high or medium for gameplay), then a reviewer that
   plays it and attacks it (exploits, edge cases, visuals) and returns must-fix / nice-to-have lists, then a fixer. Reviewers
   have caught real bugs every time, so skip them only to save usage.
 - **Integration branch:** finished features are merged one at a time into an integration branch (`claude/int-features`), each
