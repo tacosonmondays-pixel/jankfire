@@ -186,3 +186,90 @@ PJ.fx = false;                                // no steam, sparks or props from 
   `s_handtruck.glb` stands for `pj_idle`), `seat` (how far under the rail his root goes for `pj_idle_eating`), `load`,
   `fridge` (the door's z behind where he stood), `carry` (where the carrier's arms go), `hand` (where he takes your
   hand and where he holds it).
+
+## Faces
+
+`jack` (resting: tired, kind), `jack_set` (the rig is up: narrowed, jaw set), `jack_mad` (he fires, he breaks it),
+`jack_hurt` (run through, still being polite about it), `jack_gone` (after), plus the stock `grin` and `shock`. His
+eyes sit back under the brow, so the stock `squint` and `angry` shut them altogether; his clips use his own. Each clip
+names its faces by time (`face` in `pj_clipdata.js`); `palletjack.js` sets them unless the actor's face is locked.
+
+## Triangles and sizes
+
+| | triangles | |
+|---|---|---|
+| Jack as you meet him (vest on) | 23,802 | budget 18-25k. head 2,092, each shin and boot 1,510, boiler 1,380, vest 1,304, launcher forearm 1,104 |
+| vest off | 22,498 | |
+| run_through / armour_broken / marrow_taken showing | 24,474 / 24,300 / 23,332 | |
+| all damage pieces (hidden) | 5,550 | the marrow cupboard 2,052, the arm through him 1,290 |
+| far LOD (past 28 m) | 1,635 | includes the vest's own far piece |
+| everything in the file | 30,987 | |
+| hand truck | 1,770 | |
+
+`c_pallet_jack.glb` 1,428 KB (under the 2 MB cap; Overtime is 968 KB), `s_handtruck.glb` 84 KB, parts file 84 KB
+(14 KB of it the model's own half, the rest the clip samples), `pj_clipdata.js` 45 KB, `palletjack.js` 26 KB. Colour is vertex tint x a baked
+AO in `COLOR_0`, as on Revenue Protection. 50 materials and 26 small textures (the biggest is the keg's 256 x 128
+stencil, 45 KB); 70 part meshes; about 151 draw calls with everything he shows at once (Overtime: 85).
+
+## Rebuild
+
+```sh
+python3 tools/blender/cast/pj_clips.py                         # the clips -> public/js/story/pj_clipdata.js (prints the hand-contact misses)
+blender52 -b --python tools/blender/cast/make_cast_pallet_jack.py -- --stats --qa
+#   builds Jack and the truck, bakes AO, makes the far LOD, runs the asset gate on six groups, writes both glbs and
+#   the parts file, renders the Blender turnaround / face / damage / parts sheets (EEVEE: about 20 minutes on 4 cores)
+#   --no-sheet  --sheet=turn,face,dmg,parts,scale,truck,poses,clips  --quick (Workbench for poses / clips)
+#   --only=jack|truck  --no-ao  --no-export  --qa=whole,no_vest,run_through,armour_broken,marrow_taken,far
+blender52 -b --python tools/blender/cast/make_cast_pallet_jack.py -- --only=jack --no-export --no-ao --sheet=poses,clips --quick
+# then, with the game served on a port (headless browsers through pwlock.cjs):
+node tools/blender/cast/pjparts.cjs <port>                     # marks, clip samples, prop spots -> the parts file
+node tools/blender/cast/pjshots.cjs <port> docs/story/train    # the in-game sheets
+node tools/blender/cast/pjcheck.cjs <port>                     # the actor-path check (below)
+```
+
+If his skeleton (`JACK` in `jacklook.js`) changes, run `node tools/blender/cast/joints.cjs` first. If a marker moves,
+copy it from the parts file's `markers` into `MK` in `jacklook.js` (the code fallback and the model share them).
+`make_cast_pallet_jack.py` keeps the `marks`, `clips`, `props` and `game` keys `pjparts.cjs` wrote.
+
+## Checks
+
+- **Asset gate** (`blender-asset-qa`, profile `game`, z-fight eps 0.8 mm): PASS on all six groups: whole, vest off,
+  each damage state with what is left showing of him, the far LOD; and on the hand truck. What it found on the way
+  and how it was fixed in the geometry: limbs built top-down came out inside-out (winding flipped at the source);
+  coplanar pairs at the buckle, forearm vents, finger caps, gauge layers, cuffs, toe caps, the keg's lugs against the
+  marrow cavity, the truck's toe lip and axle brackets (each moved, resized or re-shaped, none hidden); floating keys
+  (hung on the belt); zero-area UVs; crumbs a decimate leaves in the LOD (dropped), a scar ring that decimated into a
+  sliver (kept out of the LOD).
+- **In the game** (`pjcheck.cjs`): `spawnActor('pallet_jack')` dresses the glb on the code skeleton with every tag and
+  marker from the parts file present; each of the 18 clips is played through `PJ.play` with `updateActors` and
+  `pjFrame` stepping it: joints move, nothing goes NaN, every mark fires; each damage state shows and hides the
+  pieces the parts file says; past 28 m the far LOD swaps in and comes back.
+- **Looked at**: every sheet in the table at the top, from both renderers, over three passes on the model and two on
+  the animation.
+
+## Weak spots (honest list)
+
+- **The face is the game's code face.** Lids are half-spheres, brows are blocks, the mouth is two tubes. His brow
+  blocks stand a little proud of the forehead side-on. The Blender sheets show a stand-in for it, not the real thing.
+- **Hands do not change shape.** The right is always a fist, the left always open. He rests a palm on the truck's grip
+  rather than gripping it; the pan, the spoon and the bundle of vest in his hands are simple code props drawn by
+  `palletjack.js` (`PJ.fx = false` turns them off). There is no model of the vest on the child: the scene shows that.
+- **No ankles, no foot planting.** Boots are rigid on the shin, so kneeling and sitting put toes through the deck or
+  off it by a few centimetres. Walking is the game's own walk (`pj_walk_load` only sets the top half).
+- **A wide rigid torso.** Arms crossing the belly (racking the collar, hands on the arm through him, a hand over the
+  hole) sink a little into the singlet or the vest. Not checked pose by pose: whether the stacks clear the back of
+  his head when it tips right back, and the keg against whatever he is sat against.
+- **Racking the launcher** misses its contact by up to 3.8 cm (the solver's worst case); it reads at fight distance,
+  not in a close-up.
+- **The damage is stylised.** Holes are dark plates, not holes; the arm through him is one rigid piece on his spine
+  (the scene's own arm should replace it while the thing is still attached: `PJ.arm(a, false)`).
+- **Draw calls.** Every named piece is its own mesh and he has 50 materials, so up close he is about 151 draw calls
+  (Overtime is 85). Fine for one of him in a fight; if the train scene gets heavy, the cheap win is merging his metals
+  (steel, blued, chrome, brass, copper) onto one material with a small atlas.
+- **The far LOD** is for 28 m and beyond. Up close it is lumps; the damage pieces have no far versions (he only
+  takes damage at fight distance).
+- **Timing was judged from contact sheets**, not from watching it at speed with sound; the marks are where the poses
+  land, but the fight worker should expect to nudge lengths once it plays against the boss.
+- **Blender sheets are slow here** (EEVEE on software GL, about 30 s a tile), so the pose and clip sheets use
+  Workbench: flat light, no vertex-colour grime.
+- Not done: no texture gore, no cloth motion on the vest or towel, no lip-sync beyond the game's jaw flap.

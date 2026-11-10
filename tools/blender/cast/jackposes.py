@@ -154,7 +154,7 @@ def run(J, root, fo, sheets, SHEET_DIR, TMP, G):
     S = G['SCALE']
     if 'scale' in sheets:
         PD.pose('pj_idle', 1.0, 'fresh', vest=True)
-        import_cast('mannequin', -1.75); import_cast('lumps', 2.0)
+        import_cast('mannequin', 1.6); import_cast('lumps', -1.95)   # (+x is his right: the mannequin is on the left of a front view, as in the game's sheet)
         tr = None
         tp = os.path.join(MODELS, 'story', 's_handtruck.glb')
         if os.path.exists(tp):
@@ -164,7 +164,7 @@ def run(J, root, fo, sheets, SHEET_DIR, TMP, G):
             for o in tr: o.location = Vector((mw.translation.x, mw.translation.y + 0.05, 0))
         studio(2.3, gv(0.1, 1.1, 0), key=1.0); floor_disc(4.0)
         ps = [cam_shot(os.path.join(TMP, 'pj_s%d.png' % i), (0.1, 1.1, 0), deg, 9.6, lens=60, res=(640, 400), samples=10) for i, deg in enumerate((0, 35, 180, 215))]
-        rpkit.contact(ps, os.path.join(SHEET_DIR, 'c_pallet_jack_scale'), 'the mannequin (the player\'s size)   PALLET JACK, a hand on his truck   LUMPS      at their sizes in the game', cols=2,
+        rpkit.contact(ps, os.path.join(SHEET_DIR, 'c_pallet_jack_scale'), 'mannequin (player size)   PALLET JACK   LUMPS   at their sizes in the game', cols=2,
                       labels=['front', 'three quarter', 'back', 'three quarter back'])
         for o in bpy.data.objects:
             if o.name.startswith('cast_') and o is not root and o.name not in ('cast_' + ID,): pass

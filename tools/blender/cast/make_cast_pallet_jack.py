@@ -180,7 +180,7 @@ def sheet_parts(J, root):
         return (c.x + dx, c.z + dy, -c.y + dz)
     V = [('the boiler: a beer keg', (0.0, 1.03, 0.36), 180, 0.1, 1.15, 70), ('gauge, level glass, stacks', (-0.05, 1.2, 0.36), 222, 0.3, 1.25, 70), ('bleed valve, fire door', (0.08, 0.98, 0.38), 152, 0.02, 0.95, 70),
          ('stacks and rain caps', (0, 1.56, 0.4), 180, 0.55, 1.0, 70), ('the welded collarbone', (0.0, 1.27, -0.2), 12, 0.22, 0.85, 70), ('the rocket forearm: the launcher', mid('foreR', dy=-0.04), 68, 0.08, 0.95, 70),
-         ('knuckles, cocking collar', mid('handR', dy=0.05), 25, -0.12, 0.75, 70), ('exhaust bell, hatch', mid('foreR', dy=0.06, dz=0.05), 150, 0.25, 0.85, 70), ('piston shins', (0.0, 0.22, -0.03), 28, 0.12, 1.25, 70),
+         ('knuckles, cuff, cocking collar', mid('handR', dy=-0.04), 28, -0.2, 0.82, 70), ('exhaust bell, hatch', mid('foreR', dy=0.06, dz=0.05), 150, 0.25, 0.85, 70), ('piston shins', (0.0, 0.22, -0.03), 28, 0.12, 1.25, 70),
          ('shin lock, guard, boot', (0.19, 0.16, -0.06), 60, 0.1, 0.95, 70), ('plates under scar, lines', mid('armL', dy=0.05), 290, 0.25, 0.95, 70), ('towel, belt, keys', (0.05, 0.72, 0.2), 205, 0.05, 1.0, 70)]
     ps = [cam_shot(os.path.join(TMP, 'pj_p%d.png' % i), t, deg, d, lens=ln, res=(440, 400), up=up) for i, (_, t, deg, up, d, ln) in enumerate(V)]
     return tile(ps, os.path.join(SHEET_DIR, 'c_pallet_jack_parts'), 'PALLET JACK  the rig parts, close up (each one is its own named piece)', 4, [v[0] for v in V])
