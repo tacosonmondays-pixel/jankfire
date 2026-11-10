@@ -10,10 +10,11 @@
 #   z_hardhat  hi-vis vest, tool belt, work boots; the hat is its own node (part_hat) so it can fly off
 #   z_screamer long and thin, jaw down to its chest (part_jaw swings), stringy hair
 #   z_stump    the empty socket left on the body where a limb popped off
-# blender52 -b --python tools/blender/make_zombies.py [-- --no-sheet] [--only=chonk]
+# blender52 -b --python tools/blender/make_zombies.py [-- --no-sheet] [--only=chonk] [--qa: the blender-asset-qa gate on every kind]
 import os, sys, math
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cast'))
 from castlib import *  # noqa (blob, limb, cloth, rubber, skin_tex, path, panel + everything in lib.py)
+from sidekit import quad
 
 SKIN, TOP, BOT = 0x7f9f4a, 0x5a4a3a, 0x3a3a44  # what the tintable materials are painted (the game multiplies from these)
 JT = {'body': (0, 0, 0), 'head': (0, 1.62, 0), 'arm': (0.25, 1.45, 0), 'armL': (-0.25, 1.45, 0), 'legL': (-0.1, 0.92, 0),
@@ -43,7 +44,7 @@ class Mats:
         self.sole = mat('z_sole', 0x15120f, rough=0.85)
 
 
-def place(jn, objs, at=None, name=None):
+def place(jn, objs, at=None, name=None, weld=True):
     """objs were modelled in the joint's own frame: carry them onto the joint and make one node with its origin there"""
     p = at or JT[jn]
     T = Matrix.Translation(gv(*p))
@@ -55,7 +56,14 @@ def place(jn, objs, at=None, name=None):
         o.data.transform(T)
         if not o.get('keep_uv'): uv_box(o, 0.14)
         out.append(o)
-    return part(out, name or 'part_' + jn, pivot=p)
+    o = part(out, name or 'part_' + jn, pivot=p)
+    bm = bmesh.new(); bm.from_mesh(o.data)  # weld the seams the joins left, drop collapsed faces
+    if weld: bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-4)
+    bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=1e-5)
+    bm.to_mesh(o.data); bm.free()
+    bpy.context.view_layer.objects.active = o
+    bpy.ops.object.material_slot_remove_unused()  # (a boolean cutter leaves an empty slot behind)
+    return o
 
 
 def cap(M, r, at=(0, 0, 0), axis='y', sgn=1, k=1.0):
@@ -73,7 +81,7 @@ def hand(M, z, sx, k=1.0, long=1.0, claw=True):
         L = (0.075 + (0.012 if i == 1 else 0)) * k * long
         a, b, c = (fx * k, -0.004, z - 0.085 * k), (fx * 1.5 * k, -0.012 * k, z - 0.085 * k - L * 0.6), (fx * 1.7 * k, -0.045 * k, z - 0.085 * k - L)
         out.append(limb('finger%d' % i, [a, b, c], [0.013 * k, 0.012 * k, 0.009 * k], M.skin, seg=6))
-        if claw: out.append(rod(c, (c[0], c[1] - 0.022 * k, c[2] - 0.012 * k), 0.008 * k, M.nail, seg=5, r1=0.001))
+        if claw: out.append(rod(lerp3(b, c, 0.7), (c[0], c[1] - 0.022 * k, c[2] - 0.012 * k), 0.0075 * k, M.nail, seg=5, r1=0.001))  # (starts inside the fingertip)
     t0 = (-sx * 0.04 * k, -0.005, z - 0.03 * k); t1 = (-sx * 0.07 * k, -0.02 * k, z - 0.075 * k)
     out.append(limb('thumb', [t0, t1], [0.014 * k, 0.01 * k], M.skin, seg=6))
     return out
@@ -104,6 +112,7 @@ def arm(M, sx, fat=1.0, long=1.0, sleeve=0.13, bone_gap=False, tag=False, sleeve
         out.append(limb('fore', [e, lerp3(e, w, 0.5), w], [0.044 * fat, 0.042 * fat, 0.034 * fat], M.skin, seg=10))
     hd = hand(M, 0, sx, k=fat ** 0.5, long=long ** 0.5)
     for o in hd:  # the hand hangs off the wrist, tipped down a bit
+        o.data.transform(o.matrix_basis.copy()); o.matrix_basis = Matrix.Identity(4)  # (rods carry their place in their location: bake it first)
         o.data.transform(Matrix.Rotation(0.18, 4, 'X')); o.data.transform(Matrix.Translation(gv(w[0], w[1] - 0.004, w[2] - 0.012)))
     out += hd
     if tag:  # the price tag is still on (it's the mannequin's)
@@ -118,7 +127,8 @@ def thigh(M, sx, fat=1.0, trouser=0.3, ragged=True, bm=None):
     out = cap(M, 0.07 * fat, (0, 0.0, 0), 'y', 1)
     out.append(limb('thigh', [(0, 0, 0), (0, -0.22, -0.004), (0, -0.44, 0)], [0.086 * fat, 0.08 * fat, 0.064 * fat], M.skin, seg=10))
     if trouser:
-        out.append(limb('trouser', [(0, 0.0, 0), (0, -trouser * 0.5, -0.003), (0, -trouser, -0.002)], [0.097 * fat, 0.093 * fat, 0.09 * fat], bm, seg=10))
+        trouser = min(trouser, 0.425)  # (its ends stay clear of the thigh's own: no two faces in one place)
+        out.append(limb('trouser', [(0, 0.005, 0), (0, -trouser * 0.5, -0.003), (0, -trouser, -0.002)], [0.097 * fat, 0.093 * fat, 0.09 * fat], bm, seg=10))
         if ragged:
             for i in range(6):
                 a = i * 1.047 + sx * 0.4
@@ -199,7 +209,7 @@ def torso(M, kind='plain'):
         cut(shirt, box((0.14, 0.1, 0.4), (0.0, 1.57, 0), None))  # the neck hole
         out.append(shirt)
     # the waistband, and a bit of belt
-    out.append(limb('band', [(0, 1.0, 0), (0, 1.035, 0)], [0.168 * w, 0.158 * w], M.bot, seg=14, squash=(0.74, 1.0)))
+    out.append(limb('band', [(0, 0.994, 0), (0, 1.036, 0)], [0.168 * w, 0.158 * w], M.bot, seg=14, squash=(1.0, 0.74)))
     return out
 
 
@@ -243,13 +253,13 @@ def build_hardhat(M):
     for sx in (-1, 1): cut(v, blob('armhole', (sx * 0.27, 1.44, 0), (0.09, 0.1, 0.1), None))
     body.append(v)
     for sx in (-1, 1):
-        st = blob('stripe', (sx * 0.125, 1.33, 0), (0.036, 0.222, 0.178), refl, seg=10, rings=14); cut(st, box((0.5, 0.2, 0.5), (0, 1.02, 0), None)); body.append(st)
-    band = blob('vband', (0, 1.19, 0), (0.266, 0.03, 0.176), refl, seg=20, rings=6); cut(band, box((0.075, 0.2, 0.3), (0, 1.19, -0.14), None)); body.append(band)
+        st = blob('stripe', (sx * 0.125, 1.33, 0), (0.034, 0.2, 0.183), refl, seg=10, rings=14); cut(st, box((0.5, 0.2, 0.5), (0, 1.014, 0), None)); body.append(st)  # (cut a hair lower than the vest: no two hems in one plane)
+    body.append(limb('vband', [(0, 1.172, 0), (0, 1.19, 0), (0, 1.208, 0)], [0.262, 0.27, 0.262], refl, seg=20, squash=(1.0, 0.675)))  # the stripe round the middle
     # tool belt: a pouch, a hammer in its loop, a tape measure
-    body.append(limb('belt', [(0, 1.005, 0), (0, 1.05, 0)], [0.178, 0.176], leather, seg=16, squash=(0.74, 1.0)))
+    body.append(limb('belt', [(0, 1.012, 0), (0, 1.034, 0), (0, 1.056, 0)], [0.176, 0.181, 0.176], leather, seg=16, squash=(1.0, 0.74)))
     body.append(box((0.05, 0.04, 0.012), (0, 1.028, -0.134), M.chrome, bev=0.004))
     body.append(box((0.1, 0.12, 0.05), (0.15, 0.95, -0.085), leather, bev=0.01, rot=(0, -0.5, 0)))
-    body.append(rod((-0.19, 1.06, -0.03), (-0.2, 0.8, -0.02), 0.013, mat('z_wood', 0xb07a3a, rough=0.6), seg=7))  # hammer handle
+    body.append(rod((-0.19, 1.085, -0.03), (-0.2, 0.8, -0.02), 0.013, mat('z_wood', 0xb07a3a, rough=0.6), seg=7))  # hammer handle
     body.append(box((0.035, 0.035, 0.11), (-0.19, 1.085, -0.03), M.chrome, bev=0.006))
     body.append(lathe([(0.032, -0.014), (0.036, -0.012), (0.036, 0.012), (0.032, 0.014)], (-0.1, 0.96, -0.118), mat('z_tape', 0xffe14d, rough=0.3, clearcoat=0.6), seg=12, axis='z'))
     P = {'body': place('body', body), 'head': place('head', head(M, 'hardhat'))}
@@ -264,7 +274,8 @@ def build_hardhat(M):
     for x in (-0.05, 0, 0.05):  # the ribs over the crown
         pts = [(x, 0.006 + 0.142 * math.cos(a) * (1 - (x / 0.2) ** 2), math.sin(a) * 0.165) for a in [math.radians(d) for d in range(-78, 79, 13)]]
         hat.append(tube(pts, 0.011 if x == 0 else 0.008, hatM, seg=6))
-    s = box((0.085, 0.045, 0.004), (0, 0.058, -0.155), stk, rot=(-0.5, 0, 0)); s['keep_uv'] = 1; uv_planar(s, centre(s), (0.085, 0.045), axis='z'); hat.append(s)
+    s = quad((0, 0, 0), 0.085, 0.045, stk, axis='z', sx=-1); s['keep_uv'] = 1  # the sticker: one quad, tipped back onto the dome
+    s.data.transform(Matrix.Rotation(-0.42, 4, 'X')); s.data.transform(Matrix.Translation(gv(0, 0.056, -0.1655))); hat.append(s)
     hat.append(lathe([(0.02, 0.0), (0.026, -0.012), (0.026, -0.03), (0.02, -0.034)], (0.0, 0.03, -0.172), M.chrome, seg=10, axis='z'))  # a head torch
     hat.append(blob('lens', (0, 0.03, -0.208), (0.02, 0.02, 0.006), mat('z_torch', 0xfff2a0, emit=0xfff2a0, strength=2.5), seg=8, rings=4))
     P['hat'] = place('head', hat, at=(0, 1.62 + 0.262, 0), name='part_hat')
@@ -293,7 +304,7 @@ def build_chonk(M):
     body.append(blob('shirtbtn', (0, 1.375, -0.232), (0.014, 0.014, 0.006), M.white, seg=8, rings=4))
     for (x, y, z, r) in ((0.21, 1.3, -0.33, 0.06), (-0.22, 1.0, -0.33, 0.05), (-0.33, 1.22, -0.12, 0.055), (0.05, 1.2, 0.3, 0.06)):
         body.append(blob('boil', (x, y, z), (r, r, r * 0.8), boil, seg=10, rings=7))  # it's full of something purple
-    body.append(limb('band', [(0, 0.99, 0), (0, 1.03, 0)], [0.3, 0.29], M.bot, seg=16, squash=(0.8, 1.0)))
+    body.append(limb('band', [(0, 0.99, 0), (0, 1.03, 0)], [0.3, 0.29], M.bot, seg=16, squash=(1.0, 0.8)))
     J2 = dict(JT, arm=(0.31, 1.45, 0), armL=(-0.31, 1.45, 0), legL=(-0.17, 0.92, 0), legR=(0.17, 0.92, 0), kneeL=(-0.17, 0.48, 0), kneeR=(0.17, 0.48, 0))
     P = {'body': place('body', body), 'head': place('head', head(M, 'chonk'))}
     P['arm'] = place('arm', arm(M, 1, 1.75, 0.9, tag=True, sleeve=0.1), at=J2['arm'])
@@ -316,7 +327,7 @@ def build_biter(M):
     for sx in (-1, 1): body.append(blob('socket', (sx * 0.25, 1.45, 0), (0.07,) * 3, M.joint, seg=12, rings=8))
     body.append(limb('pinbar', [(-0.19, 1.0, -0.06), (-0.2, 0.93, -0.085)], [0.006, 0.006], M.chrome, seg=5))  # the safety pin
     body.append(blob('pinhead', (-0.19, 1.005, -0.058), (0.016, 0.014, 0.012), mat('z_pin', 0x4fd8ff, rough=0.3, clearcoat=0.7), seg=8, rings=5))
-    bib = panel('bib', 0.26, 0.24, (0, 1.39, -0.19), bibM, curve=0.07, nx=8, ny=6); body.append(bib)
+    bib = panel('bib', 0.26, 0.24, (0, 1.39, -0.19), bibM, curve=0.07, nx=8, ny=6); bib.modifiers.clear(); bibM.use_backface_culling = False; body.append(bib)  # (one sheet, seen from both sides)
     body.append(tube([(-0.11, 1.5, -0.13), (-0.09, 1.56, -0.03), (0, 1.58, 0.06), (0.09, 1.56, -0.03), (0.11, 1.5, -0.13)], 0.008, mat('z_bibtie', 0xff4fd8, rough=0.6), seg=5))
     P = {'body': place('body', body), 'head': place('head', head(M, 'biter'))}
     P['arm'] = place('arm', arm(M, 1, 1.15, 0.86, sleeve=0)); P['armL'] = place('armL', arm(M, -1, 1.15, 0.86, sleeve=0))
@@ -358,7 +369,7 @@ def build_screamer(M):
 
 
 def build_stump(M):
-    o = place('body', stump(M), name='part_stump')
+    o = place('body', stump(M), name='part_stump', weld=False)
     return finish('zombie_stump', [o], {'kind': 'zombie', 'id': 'stump'})
 
 
@@ -374,8 +385,20 @@ def run():
         root = BUILD[kind](Mats())
         for o in root.children:
             me = o.data; me.calc_loop_triangles(); print('JF_PART', kind, o.name, len(me.loop_triangles))
+        if '--qa' in argv: qa(kind, root)
         if '--no-export' not in argv: export(root, 'z_' + kind)
         if '--no-sheet' not in argv: cast_sheet(root, 'z_' + kind, note=kind.upper())
+
+
+def qa(kind, root):
+    """the blender-asset-qa gate on this kind's parts, checked together (so a part off on its own shows as floating)"""
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '.claude', 'skills', 'blender-asset-qa', 'scripts'))
+    import qa_check
+    bpy.context.view_layer.update()
+    res = qa_check.run(objects=[o.name for o in root.children], profile='game')
+    print('JF_QA', kind, 'PASS' if res['pass'] else 'FAIL', len(res['errors']), 'errors', len(res['warnings']), 'warnings')
+    for e in res['errors']: print('JF_QA_E', kind, str(e)[:300])
+    for w in res['warnings']: print('JF_QA_W', kind, str(w)[:300])
 
 
 def _clear_mats():
