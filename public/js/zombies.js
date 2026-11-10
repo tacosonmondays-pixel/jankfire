@@ -161,7 +161,7 @@ function mountGun(rack, w) {
 export function zmModelsLoaded() { for (const r of Z.racks) mountGun(r.rack, r.w); Z.weapons.clear(); } // the Blender guns arrived after the map was built
 const onWall = (g, at, n, out = 0) => { g.position.set(at[0] + n[0] * out, at[1], at[2] + n[2] * out); g.rotation.y = Math.atan2(n[0], n[2]); return g; }; // local +z = out of the wall
 function buildCrate(cr, group) {
-  const g = new THREE.Group(); g.position.set(cr.at[0], 0, cr.at[2]);
+  const g = new THREE.Group(); g.position.set(cr.at[0], cr.at[1] || 0, cr.at[2]);
   const q = canvasTex(160, 64, (x, w, h) => {
     x.clearRect(0, 0, w, h);
     x.font = `bold 52px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle';
@@ -210,14 +210,15 @@ function buildLamps(zm, group) {
   const pts = [];
   for (const a of zm.areas) {
     const [x0, z0, x1, z1] = a.r, nx = Math.max(1, Math.round((x1 - x0) / 7)), nz = Math.max(1, Math.round((z1 - z0) / 7));
-    for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) pts.push([x0 + ((i + 0.5) * (x1 - x0)) / nx, z0 + ((j + 0.5) * (z1 - z0)) / nz]);
+    if (a.part) continue;
+    for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) pts.push([x0 + ((i + 0.5) * (x1 - x0)) / nx, z0 + ((j + 0.5) * (z1 - z0)) / nz, (a.y ? a.y[1] : zm.H) - 0.03]); // (its own ceiling: maps with an upstairs)
   }
   const geo = new THREE.BoxGeometry(1.4, 0.05, 0.45), steady = [], flick = [];
   pts.forEach((p, i) => ((i * 7) % 5 === 0 ? flick : steady).push(p));
   Z.lampMat = new THREE.MeshBasicMaterial({ color: 0x3a3630 }); Z.flickMat = new THREE.MeshBasicMaterial({ color: 0x3a3630 });
   for (const [list, mat] of [[steady, Z.lampMat], [flick, Z.flickMat]]) {
     const im = new THREE.InstancedMesh(geo, mat, list.length), o = new THREE.Object3D();
-    list.forEach(([x, z], i) => { o.position.set(x, zm.H - 0.03, z); o.updateMatrix(); im.setMatrixAt(i, o.matrix); });
+    list.forEach(([x, z, y], i) => { o.position.set(x, y, z); o.updateMatrix(); im.setMatrixAt(i, o.matrix); });
     group.add(im);
   }
 }

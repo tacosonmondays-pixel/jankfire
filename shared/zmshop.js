@@ -34,7 +34,7 @@ export function zmShopTarget(Z, e, d, slack = 0) {
     if ((e[0] - at[0]) * n[0] + (e[2] - at[2]) * n[2] <= 0.05) return; // not through the wall
     if (l < bs) { bs = l; best = t; }
   };
-  (Z.colas || []).forEach((c) => { if (Object.hasOwn(ZM_COLAS, c.id)) look([c.at[0], 1.3, c.at[2]], c.n, 2.4, 0.55, { k: 'cola:' + c.id, kind: 'cola2', id: c.id, price: ZM_COLAS[c.id].price }); });
-  if (Z.up) look([Z.up.at[0] + Z.up.n[0] * 0.4, 1.3, Z.up.at[2] + Z.up.n[2] * 0.4], Z.up.n, 2.8, 0.4, { k: 'up', kind: 'up' });
+  (Z.colas || []).forEach((c) => { if (Object.hasOwn(ZM_COLAS, c.id)) look([c.at[0], c.at[1] + 1.3, c.at[2]], c.n, 2.4, 0.55, { k: 'cola:' + c.id, kind: 'cola2', id: c.id, price: ZM_COLAS[c.id].price }); });
+  if (Z.up) look([Z.up.at[0] + Z.up.n[0] * 0.4, Z.up.at[1] + 1.3, Z.up.at[2] + Z.up.n[2] * 0.4], Z.up.n, 2.8, 0.4, { k: 'up', kind: 'up' });
   return best;
 }
