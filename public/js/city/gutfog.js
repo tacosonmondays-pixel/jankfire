@@ -1,4 +1,5 @@
-// THE GUT'S GROUND FOG: a low red mist that hugs the floor, knee to waist high, drifting, breathing with the beat.
+// THE GUT'S GROUND FOG: a thick low red mist that hugs the floor, wrist high (you look over it), drifting, breathing
+// with the beat. The owner: "thicker and be on the ground and a bit more visible around you".
 // Done the cheap way that suits this renderer: a few big flat sheets stacked 20 cm apart just over the ground, each a
 // single quad with scrolling noise for wisps and holes. Sheets rather than height fog in the city shaders because
 // they fog everything the same (ground, props, people's shins) without touching any other material, and because a
@@ -6,10 +7,11 @@
 //   - the plateau (y 40), with a hole over the Big Stomach's crater; thicker round the Big Heart's roots
 //   - the border band (y 36): the spill down the cliff, thinning out to nothing before the Bottom's houses
 //   - a pool in the Big Stomach's bowl, over the acid (the hollow is the thickest of all)
-// It fades out round your own feet (so pickups and whoever you're fighting stay readable), where you cross a sheet,
-// and into the district's distance fog. The beat: the whole layer swells and flushes on the lub, and a ring runs out
+// It is round your own feet too. What keeps a fight readable: it stops at GUT_FOG.top (heads, chests and guns are
+// over it), the stack can never cover more than GUT_FOG.cap, and a sheet fades as your eye crosses it. Far off it
+// melts into the district's distance fog. The beat: the whole layer swells and flushes on the lub, and a ring runs out
 // along the ground from the heart's roots as the ripple reaches them.
-// Nothing is drawn unless the camera is in or near the Gut. Layers per render preset: Potato 2 ... Too HD 5.
+// Nothing is drawn unless the camera is in or near the Gut. Layers per render preset: Potato 3 ... Too HD 6.
 import * as THREE from 'three';
 import { SLICE } from '/shared/city/slice.js';
 import { BIG_HEART } from '/shared/city/bigheart.js';
@@ -17,7 +19,7 @@ import { BIG_HEART } from '/shared/city/bigheart.js';
 // top: height of the highest sheet (m); cap: the most the whole stack can ever cover; gain: how much of a wisp sits on
 // the cap; holes: how much clear ground between wisps (0 none .. 0.6 mostly holes); glow: how much it brightens on the
 // beat; near: drawn only within this of the Gut (m)
-export const GUT_FOG = { on: true, top: 0.9, cap: 0.72, gain: 1.6, holes: 0.26, glow: 0.7, color: 0xc81a30, drift: 1, near: 110 };
+export const GUT_FOG = { on: true, top: 0.9, cap: 0.72, gain: 1.15, holes: 0.28, glow: 0.7, color: 0xc81a30, drift: 1, near: 110 };
 const LAYERS = [3, 4, 5, 6]; // per preset
 const G0 = SLICE.gut.rect, GY = SLICE.gut.y, BY = SLICE.border.y, ST = SLICE.stomach;
 
@@ -41,11 +43,11 @@ varying vec3 vW;
 float ghBeat(float t) { return exp(-pow((t - 0.12) / 0.045, 2.0)) + 0.6 * exp(-pow((t - 0.33) / 0.06, 2.0)); }
 void main() {
   vec2 p = vW.xz;
-  // two noise fields sliding over each other: slow wisps. every sheet reads nearly the same spot (a small shift each),
-  // so a wisp is one lump through the whole stack with clear ground beside it, not five patterns filling each other in
-  float n = 0.5 * texture2D(uN, p * 0.019 + uT * vec2(0.010, 0.006) + uLayer * 0.021).r + 0.3 * texture2D(uN, p * 0.047 - uT * vec2(0.007, 0.012) + uLayer * 0.034).r
-    + 0.2 * texture2D(uN, p * 0.17 + uT * vec2(-0.021, 0.027) + uLayer * 0.05).r; // (the fine one is what you see curling round your shins)
-  float lo = uHoles + 0.14 * uLayer, dens = smoothstep(lo, lo + 0.22, n); // lumps with thin patches between; the higher the sheet, the smaller the lump: it thins upward
+  // three noise fields sliding over each other: slow lumps and a fine curl. every sheet reads nearly the same spot (a
+  // small shift each), so a lump is one lump through the whole stack, not five patterns filling each other in
+  float n = 0.4 * texture2D(uN, p * 0.019 + uT * vec2(0.010, 0.006) + uLayer * 0.021).r + 0.3 * texture2D(uN, p * 0.047 - uT * vec2(0.007, 0.012) + uLayer * 0.034).r
+    + 0.3 * texture2D(uN, p * 0.17 + uT * vec2(-0.021, 0.027) + uLayer * 0.05).r; // (the fine one is what you see curling round your shins)
+  float lo = uHoles + 0.16 * uLayer, dens = smoothstep(lo, lo + 0.24, n); // lumps with thin patches between; the higher the sheet, the smaller the lump: it thins upward
   dens *= 0.55 + 0.45 * smoothstep(0.3, 0.6, texture2D(uN, p * 0.0043 + uT * vec2(0.0021, 0.0013)).r); // and thicker banks of it, 50 m across, wandering the district
   float dh = length(p - uHeart.xy), root = exp(-dh * dh / 420.0); // round the heart's roots it pools: thicker, no holes
   dens = mix(dens, 0.6 + 0.4 * n, root * 0.85) * (1.0 + 0.45 * root);
@@ -63,7 +65,7 @@ void main() {
   a *= smoothstep(0.3, 0.75, dist) * smoothstep(0.02, 0.3, abs(v.y)); // it's round your own feet too (the owner: visible around you); a sheet fades as it passes your eyes
   a = min(a, uCap);
   if (a < 0.004) discard;
-  vec3 col = uCol * (0.75 + 0.35 * dens + uGlow * uK + 1.5 * uGlow * ring); // the thick of a wisp is the brightest; the beat lights it
+  vec3 col = uCol * (0.6 + 0.55 * dens + uGlow * uK + 1.5 * uGlow * ring); // the thick of a wisp is the brightest; the beat lights it
   col = mix(col, uFogCol, smoothstep(uFog.x, uFog.y, dist)); // far off it melts into the district's fog
   gl_FragColor = vec4(col, a);
   #include <colorspace_fragment>
@@ -77,7 +79,7 @@ export function stopGutFog() {
   if (F.tex) F.tex.dispose();
   F = null;
 }
-const SHARED = { uT: { value: 0 }, uBeat: { value: 0 }, uK: { value: 0 }, uHoles: { value: 0.26 }, uGlow: { value: 0.7 }, uCol: { value: new THREE.Color() }, uFogCol: { value: new THREE.Color() }, uFog: { value: new THREE.Vector2(30, 250) },
+const SHARED = { uT: { value: 0 }, uBeat: { value: 0 }, uK: { value: 0 }, uHoles: { value: 0.28 }, uGlow: { value: 0.7 }, uCol: { value: new THREE.Color() }, uFogCol: { value: new THREE.Color() }, uFog: { value: new THREE.Vector2(30, 250) },
   uHeart: { value: new THREE.Vector3(BIG_HEART.x, BIG_HEART.z, 0) }, uSt: { value: new THREE.Vector3(ST.x, ST.z, ST.r) }, uRect: { value: new THREE.Vector4(G0[0], G0[1], G0[2], G0[3]) } };
 // (re)build the stack for this preset's layer count
 function build(n) {

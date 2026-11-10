@@ -147,8 +147,8 @@ Layers by preset: Potato 3, Crusty 4, Mid 5, Too HD 6 (plus the border's and the
 border's are skipped deep in the Gut and the pool's away from the Big Stomach). Each sheet is two triangles and
 four texture reads a pixel.
 
-Knobs (`GUT_FOG`): `on`, `top` 0.9 m (the highest sheet), `cap` 0.72, `gain` 1.6 (how much of a lump sits on the
-cap), `holes` 0.26 (how much thin ground between lumps), `glow` 0.7 (how much it lights on the beat), `color`
+Knobs (`GUT_FOG`): `on`, `top` 0.9 m (the highest sheet), `cap` 0.72, `gain` 1.15 (how much of a lump sits on the
+cap), `holes` 0.28 (how much thin ground between lumps), `glow` 0.7 (how much it lights on the beat), `color`
 0xc81a30, `drift` 1, `near` 110 m.
 
 ## The darker Gut
