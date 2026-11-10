@@ -2708,7 +2708,7 @@ function desert() {
   container(B, 94, -38, true, 2, ['containerb', 'containerr']); container(B, 94, -24.7, true, 1, ['containerg'], 11); // (a 1.8 m gap between them: the spawn's back door)
   const east = [[97.3, 0.2, -40], [97.3, 0.2, -36], [97.3, 0.2, -32], [97.3, 0.2, -28], [97.3, 0.2, -24], [96, 0.2, -43], [98.4, 0.2, -30]];
   // ---- the oasis: the pond (a real one now: the ground dips under it, over your head in the middle. shapeGround below digs it), palms, a dock, the camp, rocks
-  D.add(24.4, 0.02, 50.4, 47.6, 0.06, 71.6, 'water');
+  D.add(21, -0.3, 47, 51, -0.25, 75, 'water'); // (a rectangle of water under the sand: only where the ground dips below it does it show)
   add(30, 0.06, 66, 33, 0.5, 74, 'wood'); add(30.5, 0.06, 74, 32.5, 0.6, 74.6, 'wood'); // the dock (and the board across its end)
   add(30.2, -2.6, 66.2, 32.8, 0.06, 72, 'wood'); // ...and what it stands on, down to the pond's bed (solid: nobody wades in under the deck and pops up through it)
   for (const [x, z] of [[22, 48], [50, 50], [21, 64], [51, 68], [36, 76], [44, 46]]) palm(W, x, z, 6 + rv() * 3, rv);
@@ -2751,7 +2751,7 @@ function desert() {
   // canyon's lip and everything big stay level; cacti, crates and graves ride it
   shapeGround(B, D, { region: [-S, -S, S, S], mat: 'sand', seed: 1887, up: 2.3, down: 1.3,
     washes: [{ pts: [[-94, -84], [-70, -86], [-50, -74], [-30, -78], [-12, -68]], w: 3.2, d: 1.2 }, { pts: [[92, 86], [70, 80], [52, 62], [34, 58], [14, 46]], w: 3.2, d: 1.2 }], // two dry washes down to the canyon
-    ponds: [{ box: [24, 50, 48, 72], d: 1.9, bank: 6 }], // the oasis
+    ponds: [{ c: [36, 61], r: [11, 9.5], d: 1.9, wl: 0.25, box: [21, 47, 51, 75], seed: 3 }], // the oasis
     points: [...new Set([...spawns, ...west, ...east])] });
 
   const bounds = [-S - 1, -S - 1, S + 1, S + 1];

@@ -90,12 +90,19 @@ export function shapeGround(B, D, o) {
     }
     H[V(i, j)] = h * sm(near, far, d);
   }
-  // ---- ponds: a bowl dug under a water surface the map draws. o.ponds = [{ box: [x0, z0, x1, z1], d: how deep in the middle, bank: m of slope in from the edge }]
+  // ---- ponds: a hollow with a natural outline dug under a water surface the map draws a little below the ground.
+  // o.ponds = [{ c: [x, z], r: [rx, rz] (its rough size), d (how deep in the middle), wl (how far below the ground the
+  // water lies), box (the water surface's rectangle), seed }]. the outline is a wobbly blob, the sand tapers down to the
+  // waterline and on down under it, and the rest of the water's rectangle stays above the water (so only the blob shows)
   for (const p of o.ponds || []) {
-    const [a, b, c, d] = p.box;
-    for (let i = Math.max(0, Math.ceil(a - X0)); i <= Math.min(nx, Math.floor(c - X0)); i++) for (let j = Math.max(0, Math.ceil(b - Z0)); j <= Math.min(nz, Math.floor(d - Z0)); j++) {
-      const x = X0 + i, z = Z0 + j;
-      H[V(i, j)] = -p.d * sm(0, p.bank ?? 5, Math.min(x - a, c - x, z - b, d - z)); fixed[V(i, j)] = 1;
+    const [cx, cz] = p.c, [rx, rz] = p.r, wl = p.wl ?? 0.25, k = (p.seed || 1) * 1.7, R1 = 1.4; // (R1: where the bank has climbed back to the ground round it)
+    const q = (x, z) => { const a = Math.atan2((z - cz) / rz, (x - cx) / rx); return Math.hypot((x - cx) / rx, (z - cz) / rz) / (1 + 0.17 * Math.sin(2 * a + k) + 0.11 * Math.sin(3 * a + k * 2.3) + 0.06 * Math.sin(5 * a + k * 0.7)); };
+    const m = Math.max(rx, rz) * 2;
+    for (let i = Math.max(0, Math.floor(cx - m - X0)); i <= Math.min(nx, Math.ceil(cx + m - X0)); i++) for (let j = Math.max(0, Math.floor(cz - m - Z0)); j <= Math.min(nz, Math.ceil(cz + m - Z0)); j++) {
+      const x = X0 + i, z = Z0 + j, v = q(x, z), n = V(i, j), inBox = p.box && x >= p.box[0] && x <= p.box[2] && z >= p.box[1] && z <= p.box[3];
+      if (v < 1) { H[n] = -wl - (p.d - wl) * sm(0, 0.62, 1 - v); fixed[n] = 1; } // under the water: shelving, then the deep middle
+      else if (v < R1) { const t = sm(1, R1, v); H[n] = -wl * (1 - t) + Math.max(H[n], 0) * t; fixed[n] = 1; } // the bank: tapering down to the waterline
+      else if (inBox && H[n] < -wl + 0.15) H[n] = -wl + 0.15; // (no second puddle with a ruler-straight edge)
     }
   }
   // ---- small things get a level pad at the height the ground has under their middle, and go up or down with it
