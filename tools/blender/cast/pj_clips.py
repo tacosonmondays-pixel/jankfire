@@ -262,10 +262,10 @@ cock0 = on_collar(P(fight, {'x.rig': 1.0, 'x.flap': 1.0, 'head.x': -0.14, 'spine
 cock1 = on_collar(P(cock0, {'x.cock': 1.0, 'spine.y': -0.24}), pull=0.04, seed=cock0)
 fight_r = P(fight, RIG)
 clip('pj_rig_up', [(0, P()), (0.3, brace), (0.42, r1, 'back'), (0.62, r1), (0.72, r2, 'back'), (0.95, r2), (1.2, r3, 'back'), (1.5, r3), (1.9, cock0), (2.02, cock0), (2.12, cock1, 'back'), (2.4, cock1), (2.8, fight_r)],
-     marks=[(0.4, 'lockL'), (0.7, 'lockR'), (1.05, 'stacks'), (2.1, 'cock'), (2.75, 'ready')], face=[(0, 'jack'), (0.3, 'squint')],
+     marks=[(0.4, 'lockL'), (0.7, 'lockR'), (1.05, 'stacks'), (2.1, 'cock'), (2.75, 'ready')], face=[(0, 'jack'), (0.3, 'jack_set')],
      osc=BREATH, note='shins lock (left, right), stacks come up and open, he racks the forearm. ends in the fight stance, held')
 
-clip('pj_fight_idle', [(0, fight_r), (1.2, P(fight_r, {'body.px': 0.02, 'spine.y': 0.08})), (2.4, fight_r)], loop=2.4, osc=BREATH, face=[(0, 'squint')],
+clip('pj_fight_idle', [(0, fight_r), (1.2, P(fight_r, {'body.px': 0.02, 'spine.y': 0.08})), (2.4, fight_r)], loop=2.4, osc=BREATH, face=[(0, 'jack_set')],
      note='the fight stance, rig up (before he is hurt)')
 
 # rocket punch: back and round; it goes; the fist rides out a forearm's length on the ram and the recoil walks him back;
@@ -277,13 +277,13 @@ recoil = P(fire, {'body.pz': 0.03, 'spine.x': -0.18, 'x.vent': 0.4}, arms(R=(1.4
 home = P(fight_r, {'x.cock': 0.0, 'spine.y': 0.25, 'body.pz': 0.05}, arms(R=(0.8, 0, 0.2, 1.2, 0, 0), L=(0.5, 0, -0.25, 1.2, 0, 0)))
 rack0 = P(cock0, {'x.cock': 0.0, 'body.pz': 0.05}); rack1 = P(cock1, {'body.pz': 0.05})
 clip('pj_rocket_punch', [(0, fight_r), (0.34, wind, 'out'), (0.44, wind), (0.5, fire, 'snap'), (0.74, recoil), (1.05, home), (1.26, rack0), (1.36, rack1, 'back'), (1.7, P(fight_r, {'body.pz': 0.05}))], length=1.7,
-     marks=[(0.3, 'wind'), (0.46, 'fire'), (0.56, 'hit'), (1.0, 'home'), (1.34, 'cock')], face=[(0, 'squint'), (0.5, 'angry'), (0.9, 'squint')],
+     marks=[(0.3, 'wind'), (0.46, 'fire'), (0.56, 'hit'), (1.0, 'home'), (1.34, 'cock')], face=[(0, 'jack_set'), (0.5, 'jack_mad'), (0.9, 'jack_set')],
      note='the rocket punch: fire at 0.46, lands at 0.56 a forearm further out than his arm; he racks it again at 1.34')
 
 # block: the forearm across, the fist up, his weight behind it. held
 blk = P(legs(0.12, 0.14, -0.16), {'spine.x': -0.26, 'head.x': 0.2, 'spine.y': 0.3, 'legL.z': -0.16, 'legR.z': 0.16}, RIG,
         arms(R=(1.25, 0.6, -0.1, 1.75, 0, 0), L=(1.0, -0.5, 0.0, 1.9, 0, 0)))
-clip('pj_block', [(0, fight_r), (0.16, blk, 'back'), (0.3, P(blk, {'body.pz': 0.01}))], marks=[(0.14, 'up')], face=[(0, 'squint')], osc=[('spine.x', -0.01, 3.0, 0.0)],
+clip('pj_block', [(0, fight_r), (0.16, blk, 'back'), (0.3, P(blk, {'body.pz': 0.01}))], marks=[(0.14, 'up')], face=[(0, 'jack_set')], osc=[('spine.x', -0.01, 3.0, 0.0)],
      note='the block: forearm across, braced. held')
 
 # stagger: took one. knocked back a step and a half, the arms come apart, he finds his feet
@@ -292,7 +292,7 @@ st1 = P(fight_r, {'spine.x': 0.3, 'head.x': 0.25, 'body.pz': 0.12, 'body.py': -0
 st2 = P(fight_r, {'spine.x': -0.3, 'head.x': -0.1, 'body.pz': 0.2, 'body.py': -0.1, 'legL.x': -0.1, 'kneeL.x': -0.5, 'legR.x': 0.35, 'kneeR.x': -0.6},
         arms(R=(0.6, 0, 0.5, 1.0, 0, 0), L=(0.5, 0, -0.5, 1.0, 0, 0)))
 clip('pj_stagger', [(0, fight_r), (0.12, st1, 'snap'), (0.4, st1), (0.75, st2), (1.3, P(fight_r, {'body.pz': 0.2}))], length=1.3,
-     marks=[(0.02, 'hit'), (0.7, 'foot')], face=[(0, 'shock'), (0.6, 'squint')], note='knocked back, finds his feet (he ends 0.2 units further back: the scene moves him)')
+     marks=[(0.02, 'hit'), (0.7, 'foot')], face=[(0, 'shock'), (0.6, 'jack_set')], note='knocked back, finds his feet (he ends 0.2 units further back: the scene moves him)')
 
 # ------------------------------------------------------------------------------------------------ the tunnel takes him
 # it comes in under the ribs and lifts him a metre off the deck. his legs go, his arms go out, he looks down at it. he gets
@@ -324,7 +324,7 @@ tr1b = on_it(tr1b, seed=hands)
 tr2 = P(hang, {'spine.x': -0.62, 'head.x': -0.3, 'spine.y': -0.24, 'legL.x': 0.6, 'legR.x': 0.4, 'kneeL.x': -0.9, 'kneeR.x': -0.7})
 tr2 = on_it(tr2, dl=(-0.03, 0.09, 0.03), dr=(0.07, -0.2, 0.06), seed=hands)
 clip('pj_break_it', [(0, tr0), (0.45, tr0), (0.6, tr1, 'snap'), (1.1, tr1), (1.5, tr1b), (2.3, tr0), (2.75, tr0), (2.9, tr2, 'snap'), (3.2, tr2)],
-     marks=[(0.58, 'try1'), (2.88, 'snap')], face=[(0, 'jack_hurt'), (0.55, 'angry'), (1.3, 'jack_hurt'), (2.8, 'angry')],
+     marks=[(0.58, 'try1'), (2.88, 'snap')], face=[(0, 'jack_hurt'), (0.55, 'jack_mad'), (1.3, 'jack_hurt'), (2.8, 'jack_mad')],
      osc=[('spine.z', 0.012, 31.0, 0.0), ('spine.x', -0.015, 27.0, 0.0)], note='breaks the arm: try1 at 0.58 (it holds), snap at 2.88. then pj_land_kneel')
 
 # it lets go of him. he lands on his knees, a fist on the deck, the other hand on the length of it still through him

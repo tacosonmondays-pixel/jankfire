@@ -136,11 +136,8 @@ def stacks(J, bent=False):
         # the sleeve it slides in (fixed): wrapped so it doesn't burn the vest, two clamps
         st = [rod(tuple(B), tuple(B + u * 0.2), 0.043, M['wrap'], seg=12, name='sleeve' + nm), rod(tuple(B - u * 0.012), tuple(B + u * 0.012), 0.05, M['steel'], seg=12, name='sleevebase')]
         for t in (0.05, 0.185): st.append(rod(tuple(B + u * t), tuple(B + u * (t + 0.016)), 0.047, M['steel'], seg=8, name='clamp'))
-        if sx > 0:  # a bar across the two, so they stand on their own
-            Bo = Vector(STACK_B(-1)); uo = (Vector(STACK_T(-1)) - Bo).normalized()
-            st.append(rod(tuple(Bo + uo * 0.03), tuple(B + u * 0.03), 0.011, M['steel'], seg=6, name='crossbar'))
-            st.append(box((0.05, 0.026, 0.026), tuple((Bo + uo * 0.03 + B + u * 0.03) / 2), M['blued'], bev=0.004, name='turnbuckle'))
-        J.P.add('spine', st, 'stackBase', note='the stacks\' sleeves, clamps and the bar across')
+        # (no bar across the two: it ran straight through DELIVERIES. the manifold holds them)
+        J.P.add('spine', st, 'stackBase', note='the stacks\' sleeves and clamps, the copper manifold')
         if bent: continue
         # the stack itself: chrome going straw and blue, then black. a perforated shield, a rolled lip, the dark inside
         pipe = rod(tuple(B + u * 0.1), tuple(T), 0.034, M['chrome'], seg=12, r1=0.036, name='stack' + nm)
@@ -178,9 +175,20 @@ COLLAR = [(0.476, -0.64), (0.47, -0.42), (0.461, -0.2), (0.457, 0.0), (0.461, 0.
 WELD_A = 0.13   # the weld sits a hand's width to his right of the middle: your hand goes on his chest LEFT of it
 
 
+def collar_path(ts, pts=None, off=0.01, n=13):
+    """the bar's line: proud of his chest across the front, then it sinks: by where a vest strap sits it is under the
+    skin (so the vest lies over it, not it over the vest)"""
+    pts = pts or COLLAR; out = []
+    for i in range(n):
+        t = i / (n - 1) * (len(pts) - 1); k = min(int(t), len(pts) - 2); f = t - k
+        y = pts[k][0] + (pts[k + 1][0] - pts[k][0]) * f; a = pts[k][1] + (pts[k + 1][1] - pts[k][1]) * f
+        out.append(tuple(ts.p(y, a, off - 0.026 * smooth01(abs(a), 0.38, 0.6))))
+    return out
+
+
 def collar(J):
     M = J.M; ts = J.S['torso']
-    P_ = ts.path(COLLAR, off=0.01, n=11)
+    P_ = collar_path(ts)
     bar = sweep(P_, 0.023, M['chrome'], seg=8, name='collarbar')
     tint(bar, lambda p, n: mix3((1, 1, 1), (0.62, 0.66, 0.95), 0.7 * gauss(p.x - 0.05, 0.05)))   # the heat of the weld, still in it
     cl = [bar]
@@ -194,9 +202,9 @@ def collar(J):
     # where the bar goes under: a lip of scar each side, then it runs on under the skin to the shoulder's anchor
     base = []
     for sx in (-1, 1):
-        q = ts.p(0.476, sx * 0.66, 0.006)
-        base.append(blob('collarlip', tuple(q), (0.03, 0.032, 0.022), M['scar'], seg=7, rings=5))
-        base.append(ts.line('collarridge', [(0.476, sx * 0.62), (0.482, sx * 0.85), (0.486, sx * 1.1), (0.482, sx * 1.3)], 0.019, M['skin'], sink=0.36, seg=6, n=6, taper=False))
+        q = ts.p(0.473, sx * 0.5, 0.002)
+        base.append(blob('collarlip', tuple(q), (0.03, 0.03, 0.016), M['scar'], seg=7, rings=5))
+        base.append(ts.line('collarridge', [(0.476, sx * 0.56), (0.482, sx * 0.85), (0.486, sx * 1.1), (0.482, sx * 1.3)], 0.014, M['skin'], sink=0.42, seg=6, n=6, taper=False))
     J.P.add('spine', base)
     J.marks['weldAt'] = ('spine', tuple(wp))
     hp = ts.p(0.4, -0.42, 0.007)
@@ -240,7 +248,9 @@ def shins(J, blown=False):
 COCK_Y = -0.236
 COCK_PULL = 0.04     # how far back (up the arm) the collar comes when it cocks
 PUNCH_REACH = 0.24   # how far the fist rides out on the ram
-SLEEVE_END = -0.176  # where his skin stops and the steel starts
+SLEEVE_END = -0.118  # where his skin stops and the steel starts: under a third of the way down. the rest is the launcher
+BARREL_R = 0.083     # the launcher's barrel (the cocking collar slides over it, the ram runs inside it)
+BARREL_END = -0.237
 
 
 def forearm_right(J):
@@ -248,7 +258,7 @@ def forearm_right(J):
     E_ = SLEEVE_END
     F = Surf([(0.055, 0.092, 0.092, 0.102, 0, 0.004, 2.2), (-0.02, 0.119, 0.115, 0.121, 0, 0.0, 2.3), (-0.09, 0.122, 0.118, 0.122, 0, 0.0, 2.4), (E_ + 0.02, 0.118, 0.114, 0.118, 0, 0.0, 2.4), (E_, 0.114, 0.11, 0.114, 0, 0.0, 2.4)])
     J.S[fk] = F
-    fo = F.mesh('fore' + fk, M['skin'], [0.055, 0.01, -0.03, -0.07, -0.11, -0.15, E_], seg=16, cap=(True, True))
+    fo = F.mesh('fore' + fk, M['skin'], [0.055, 0.01, -0.03, -0.07, E_ + 0.02, E_], seg=16, cap=(True, True))
     def scorch(p, n):
         c = mix3((1, 1, 1), (0.94, 0.8, 0.78), 0.5 * smooth01(p.y, -0.02, 0.05))
         c = mix3(c, (0.42, 0.34, 0.33), 0.8 * gauss(p.y + 0.02, 0.05) * smooth01(n.z, 0.2, 0.9))    # scorched behind the elbow
@@ -260,7 +270,7 @@ def forearm_right(J):
     fp.append(F.band('flange', M['steel'], E_ - 0.012, E_ + 0.016, off=0.007, seg=16, rows=2))
     for i in range(8):
         a = TAU * i / 8 + 0.2; fp.append(rivet(tuple(F.p(E_ + 0.002, a, 0.0075)), 0.0075, M['blued'], tuple(F.n(E_ + 0.002, a))))
-    fp.append(F.line('flangelip', [(E_ + 0.027 + 0.004 * math.sin(i * 1.7), TAU * i / 12) for i in range(13)], 0.011, M['scar'], sink=0.3, seg=4, taper=False))
+    lipring = F.line('flangelip', [(E_ + 0.027 + 0.004 * math.sin(i * 1.7), TAU * i / 12) for i in range(13)], 0.011, M['scar'], sink=0.3, seg=4, taper=False)   # (goes with the scar pieces: a thin ring makes a mess of the far LOD)
     fp.append(cyl(0.1, 0.008, (0, E_ - 0.006, 0), M['dark'], axis='y', seg=16, name='flangeface'))
     # the exhaust: a blued bell behind the elbow, pointing up and back clear of the arm; vents down each side
     d = Vector((0, 0.62, 0.78)).normalized(); o0 = Vector((0, -0.03, 0.103))
@@ -268,18 +278,26 @@ def forearm_right(J):
     thr = cyl(0.03, 0.003, (0, 0.05, 0), M['soot'], axis='y', seg=10, name='bellthroat')
     orient([bell, thr], tuple(o0), tuple(d), src=(0, 1, 0)); fp += [bell, thr]
     fp.append(box((0.06, 0.04, 0.05), tuple(o0 + Vector((0, -0.005, -0.01))), M['steel'], bev=0.008, rot=(0.6, 0, 0), name='bellmount'))
+    # the launcher: a blued shoulder under the flange, then the barrel the ram runs in. two cooling fins where the collar
+    # doesn't travel, soot-black vent slots down each side under where it does
+    br = BARREL_R
+    barrel = lathe([(0.098, E_ - 0.007), (0.098, E_ - 0.018), (br + 0.006, E_ - 0.026), (br, E_ - 0.032), (br, BARREL_END)], (0, 0, 0), M['blued'], seg=16, axis='y', name='barrel', cap=False)
+    tint(barrel, lambda p, n: mix3((1, 1, 1), (1.5, 1.2, 0.8), 0.55 * smooth01(-p.y, 0.19, 0.235)) if p.y < E_ - 0.03 else (0.8, 0.8, 0.84))   # straw where it runs hot, by the muzzle
+    fp.append(barrel)
+    for yy in (E_ - 0.036, E_ - 0.047): fp.append(cyl(br + 0.009, 0.0045, (0, yy, 0), M['steel'], axis='y', seg=16, name='fin'))
     for s2 in (-1, 1):
-        for i in range(3): fp.append(box((0.006, 0.013, 0.012), tuple(F.p(-0.1 - i * 0.02, s2 * 1.75, 0.002)), M['soot'], rot=(0, -s2 * 1.75, 0), name='vent'))
+        for i in range(3): fp.append(box((0.008, 0.03, 0.016), (s2 * (br - 0.0015), -0.185 - i * 0.0, (i - 1) * 0.026), M['soot'], name='vent'))
     J.P.add(fk, fp)
     J.marks['elbowAt'] = (fk, tuple(o0 + d * 0.085), tuple(d))
-    pl = [F.plate('plate_fore', M['scar'], -0.08, 0.0, 0.12, 0.13, off=0.007, n=3.4, spokes=14)] + F.stitches('stitch', M['lip'], -0.08, 0.0, 0.12, 0.13, n=3.4, count=10)
-    for (dy, da) in ((0.04, -0.36), (0.04, 0.36), (-0.04, -0.36), (-0.04, 0.36)):
-        y, a = -0.08 + dy, da; pl.append(rivet(tuple(F.p(y, a, 0.007)), 0.008, M['steel'], tuple(F.n(y, a))))
-    pl.append(F.plate('hatch', M['steel'], -0.095, 1.45, 0.07, 0.075, off=0.008, n=4.0, spokes=10, sink=0.002))
-    for dy in (-0.022, 0.022): pl.append(rivet(tuple(F.p(-0.095 + dy, 1.45, 0.009)), 0.006, M['blued'], tuple(F.n(-0.095, 1.45))))
+    pl = [F.plate('plate_fore', M['scar'], -0.035, 0.0, 0.1, 0.13, off=0.007, n=3.4, spokes=14)] + F.stitches('stitch', M['lip'], -0.035, 0.0, 0.1, 0.13, n=3.4, count=10)
+    pl.append(lipring)
+    for (dy, da) in ((0.03, -0.36), (0.03, 0.36), (-0.03, -0.36), (-0.03, 0.36)):
+        y, a = -0.035 + dy, da; pl.append(rivet(tuple(F.p(y, a, 0.007)), 0.008, M['steel'], tuple(F.n(y, a))))
+    pl.append(F.plate('hatch', M['steel'], -0.05, 1.45, 0.062, 0.075, off=0.008, n=4.0, spokes=10, sink=0.002))
+    for dy in (-0.02, 0.02): pl.append(rivet(tuple(F.p(-0.05 + dy, 1.45, 0.009)), 0.006, M['blued'], tuple(F.n(-0.05, 1.45))))
     J.P.add(fk, pl, 'plates')
-    J.P.add(fk, [F.line('l_r1', [(0.03, 0.5), (-0.03, 0.72), (-0.09, 0.6), (-0.145, 0.72)], 0.012, M['lines'], n=6), F.line('l_r2', [(0.02, -0.7), (-0.05, -0.9), (-0.11, -0.75), (-0.15, -0.9)], 0.012, M['lines'], n=6),
-                 F.line('l_r3', [(0.0, 2.5), (-0.07, 2.3), (-0.145, 2.45)], 0.011, M['lines'], n=5)], 'lines')
+    J.P.add(fk, [F.line('l_r1', [(0.03, 0.5), (-0.01, 0.72), (-0.05, 0.6), (-0.092, 0.72)], 0.012, M['lines'], n=6), F.line('l_r2', [(0.02, -0.7), (-0.02, -0.9), (-0.06, -0.75), (-0.094, -0.9)], 0.012, M['lines'], n=6),
+                 F.line('l_r3', [(0.0, 2.5), (-0.05, 2.3), (-0.092, 2.45)], 0.011, M['lines'], n=5)], 'lines')
     # the cocking collar: red, a hazard band, two lugs and a charging handle. it slides back up the arm
     ck = [lathe([(0.086, -0.024), (0.106, -0.024), (0.109, -0.017), (0.109, 0.017), (0.106, 0.024), (0.086, 0.024)], (0, COCK_Y, 0), M['red'], seg=16, axis='y', name='cock', cap=False)]
     hz = Surf([(COCK_Y - 0.03, 0.109, 0.109, 0.109), (COCK_Y + 0.03, 0.109, 0.109, 0.109)]).band('cockhaz', M['haz'], COCK_Y - 0.011, COCK_Y + 0.011, off=0.0018, seg=16, rows=1, uv=(0, 6, 0, 1))

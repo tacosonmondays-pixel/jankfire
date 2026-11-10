@@ -58,7 +58,16 @@ def build_truck():
     tint(cord, lambda p, n: (0.14, 0.14, 0.16) if int((p.y + p.x) * 55) % 2 == 0 else (1, 1, 1)); fr.append(cord)
     for (x, y) in ((-X - 0.004, 0.3), (X + 0.004, 0.8)):
         fr.append(tube([(x, y, Z - 0.014), (x, y + 0.004, Z - 0.03), (x, y - 0.02, Z - 0.03), (x, y - 0.026, Z + 0.012)], 0.004, steel, seg=4, name='hook'))
-    frame = part(fr, 'frame')
+    def dress(objs):
+        # each piece gets its colour layer and its box UVs BEFORE the join (a join fills what a piece lacks with black, and
+        # a box-map after it would wipe the name plate's own UVs)
+        for o in objs:
+            ensure_tint(o)
+            if not o.get('keep_uv'):
+                try: uv_box(o, 0.12)
+                except Exception: pass
+        return objs
+    frame = rpkit.fix_uv(part(dress(fr), 'frame'))
     parts = [frame]
     for sx, nm in ((-1, 'L'), (1, 'R')):
         c = (sx * (X + 0.05), AXLE[1], AXLE[2]); w = 0.062
@@ -68,14 +77,9 @@ def build_truck():
         for k in range(5):
             a = TAU * k / 5
             wh.append(cyl(0.017, w * 0.74, (c[0], c[1] + math.cos(a) * WHEEL_R * 0.45, c[2] + math.sin(a) * WHEEL_R * 0.45), tyre, axis='x', seg=6, name='rimhole'))
-        parts.append(part(wh, 'wheel' + nm, pivot=c))
-    for o in parts: ensure_tint(o)
+        parts.append(rpkit.fix_uv(part(dress(wh), 'wheel' + nm, pivot=c)))
     root = finish('s_handtruck', parts, {'prop': 'handtruck', 'handle': list(GRIP), 'axle': list(AXLE), 'wheelR': WHEEL_R, 'toe': [0, 0.012, Z - 0.125], 'tilt': [0, WHEEL_R, AXLE[2]],
                                          'nodes': ['frame', 'wheelL', 'wheelR']})
-    for o in parts:
-        if not o.get('keep_uv'):
-            try: uv_box(o, 0.12)
-            except Exception: pass
     return root
 
 

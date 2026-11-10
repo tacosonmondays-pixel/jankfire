@@ -11,7 +11,10 @@ import { pjRegister } from './palletjack.js'; // (his clips register themselves 
 
 // tired, kind: lids a third down, the inner brow ends up, the corners of the mouth up. his resting face
 FACES.jack = { lid: 0.78, jaw: 0, st: 1.0, smile: 0.36, by: -0.003, bt: -0.3 };
-FACES.jack_hurt = { lid: 0.5, jaw: 0.16, st: 0.95, smile: -0.25, by: 0.004, bt: -0.55 }; // run through, still being polite about it
+FACES.jack_hurt = { lid: 0.7, jaw: 0.16, st: 0.95, smile: -0.25, by: 0.004, bt: -0.55 }; // run through, still being polite about it
+// (his eyes sit back under the brow, so the stock squint / angry lids shut them altogether: his own, with the eyes still in them)
+FACES.jack_set = { lid: 0.71, jaw: 0, st: 0.9, smile: -0.08, by: -0.012, bt: 0.26 }; // the rig is up: narrowed, jaw set
+FACES.jack_mad = { lid: 0.76, jaw: 0.12, st: 1.1, smile: -0.6, by: -0.015, bt: 0.55 }; // he breaks it, he fires
 FACES.jack_gone = { lid: 0.06, jaw: 0.12, st: 0.95, smile: 0.1, by: 0, bt: -0.2 }; // after
 
 export const JACK = { s: 1.24, legS: 0.8, hipW: 0.17, torsoH: 0.58, shW: 0.415, upper: 0.27, fore: 0.27, headR: [0.13, 0.14, 0.128], neck: 0.03, hunch: 0.05 };
@@ -43,7 +46,7 @@ export function palletJackLook(K) {
     face: { z: -0.108, eyeR: 0.025, eyeSep: 0.054, eyeY: 0.168, iris: 0x7a5a36, mouthW: 0.088, mouthY: 0.064, mouthZ: -0.12, lip: 0xc27866, lipR: 0.0115, teeth: 'tomb', brow: 0x3a2a22, browW: 0.072, lidColor: 0xe2957c } });
   const c = p.ch;
   p.face.set('jack');
-  for (const b of p.face.brows) { b.m.position.z = -0.143; b.m.scale.set(1, 1.3, 1); } // (heavy brows, out on the ridge of the model's brow)
+  for (const b of p.face.brows) { b.m.position.z = -0.136; b.m.scale.set(1, 1.3, 1); } // (heavy brows, out on the ridge of the model's brow)
   // ---- the code stand-ins (the Blender model replaces these) and the markers (kept)
   const vest = grp('vest', c.spine); vest.add(box(0.74, 0.5, 0.02, hivis, 0, tH * 0.5, -0.27)); vest.add(box(0.74, 0.44, 0.02, hivis, 0, tH * 0.55, 0.27));
   const collar = grp('collar', c.spine); const bar = cyl(0.022, 0.022, 0.7, steel, 0, tH * 0.9, -0.17, 8); bar.rotation.z = Math.PI / 2; collar.add(bar); collar.add(sph(0.035, steel, 0.03, tH * 0.9, -0.18));

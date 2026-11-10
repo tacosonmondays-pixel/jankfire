@@ -232,11 +232,11 @@ def collar_sprung(J):
     M = J.M; ts = J.S['torso']
     out = []
     left = [(y, a) for y, a in COLLAR if a <= 0.0] + [(0.458, WELD_A - 0.05)]
-    out.append(sweep(ts.path(left, off=0.008, n=8), 0.0195, M['steel'], seg=8, name='collar_l'))
+    out.append(sweep(collar_path(ts, left, 0.008, 9), 0.0195, M['steel'], seg=8, name='collar_l'))
     wp = ts.p(0.458, WELD_A - 0.04, 0.008)
     for i in range(4): out.append(blob('weldstump', (wp.x + 0.004, wp.y + math.cos(i * 1.6) * 0.016, wp.z + math.sin(i * 1.6) * 0.016), (0.011, 0.012, 0.012), M['blued'], seg=5, rings=3))
     # the right half: hinged on where it goes under the skin, sprung forward and up
-    end = ts.p(0.476, 0.64, 0.008); q0 = ts.p(0.458, WELD_A + 0.06, 0.008)
+    end = ts.p(0.474, 0.56, -0.008); q0 = ts.p(0.458, WELD_A + 0.06, 0.008)
     tipp = q0 + Vector((0.035, 0.05, -0.085))
     pts = [tuple(end), tuple(end.lerp(tipp, 0.35) + Vector((0, 0.004, -0.012))), tuple(end.lerp(tipp, 0.7) + Vector((0, 0.004, -0.008))), tuple(tipp)]
     bar = sweep(pts, 0.0195, M['steel'], seg=8, name='collar_r'); tint(bar, lambda p, n: mix3((1, 1, 1), (0.62, 0.66, 0.95), 0.7 * gauss((p - tipp).length, 0.05)))

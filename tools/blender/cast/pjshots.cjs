@@ -78,22 +78,23 @@ const W = 1600, H = 900;
 
   if (what.includes('turn')) {
     await pg.evaluate(() => { const X = window.PJX, { THREE } = X; X.clear();
-      const views = [['front', 0], ['three quarter', 35], ['his right side', 90], ['back', 180], ['three quarter back', 215], ['from above', 20]];
+      const views = [['front', 0], ['three quarter', 35], ['his right side', 90], ['back', 180], ['his left side', -90], ['from above', 20]];
       views.forEach(([nm, deg], i) => {
         const sc = X.scene(0x2a1830, 5);
         const J = X.jack({ clip: 'pj_idle', t: 1.0 }); sc.add(J.c.root);
-        const M = X.other('mannequin'); M.ch.root.position.set(1.75, 0, 0); sc.add(M.ch.root);
-        const Lu = X.other('lumps'); Lu.ch.root.position.set(-2.0, 0, 0); sc.add(Lu.ch.root);
+        const side = /side/.test(nm); // (side on, the other two would stand in front of him)
+        if (!side) { const M = X.other('mannequin'); M.ch.root.position.set(1.6, 0, 0); sc.add(M.ch.root);
+          const Lu = X.other('lumps'); Lu.ch.root.position.set(-1.95, 0, 0); sc.add(Lu.ch.root); }
         if (X.truck) { const t = X.truck.clone(true); const p = J.rig.at('palmL'); t.position.set(p.x, 0, p.z - 0.05); sc.add(t); }
-        const cam = nm === 'from above' ? X.orbit([0.1, 1.0, 0], deg, 8.6, 0.5) : X.orbit([0.1, 1.05, 0], deg, 8.6, 0.06);
-        X.cell(i, 3, 2, sc, cam, i === 0 ? 'LUMPS (2.2 m)  ·  PALLET JACK (2.1 m, vest on, a hand on his truck)  ·  the mannequin (2.1 m)   ' + nm : nm);
+        const cam = nm === 'from above' ? X.orbit([-0.1, 1.0, 0], deg, 8.0, 0.5) : side ? X.orbit([0, 1.08, 0], deg, 5.6, 0.06) : X.orbit([-0.1, 1.08, 0], deg, 7.5, 0.06);
+        X.cell(i, 3, 2, sc, cam, i === 0 ? 'the mannequin (2.1 m)  ·  PALLET JACK (2.1 m, vest on, a hand on his truck)  ·  LUMPS (2.2 m)' : nm);
       }); });
     await shot('pj_game_turn');
   }
   if (what.includes('face')) {
     await pg.evaluate(() => { const X = window.PJX; X.clear();
       const cells = [['his resting face (jack)', 'jack', 0, 0.05], ['three quarter', 'jack', 32, 0.08], ['his right', 'jack', 90, 0.03], ['from his left: the broken nose', 'jack', -58, 0.06], ['from above', 'jack', 15, 0.5], ['from below (you are 40 kilos)', 'jack', -10, -0.35],
-        ['grin', 'grin', 20, 0.05], ['squint (the rig is up)', 'squint', 20, 0.05], ['run through (jack_hurt)', 'jack_hurt', 20, 0.05], ['angry (he breaks it)', 'angry', 20, 0.05], ['shock', 'shock', 20, 0.05], ['after (jack_gone)', 'jack_gone', 20, 0.05]];
+        ['grin', 'grin', 20, 0.05], ['the rig is up (jack_set)', 'jack_set', 20, 0.05], ['run through (jack_hurt)', 'jack_hurt', 20, 0.05], ['he breaks it (jack_mad)', 'jack_mad', 20, 0.05], ['shock', 'shock', 20, 0.05], ['after (jack_gone)', 'jack_gone', 20, 0.05]];
       cells.forEach(([nm, face, deg, up], i) => { const sc = X.scene(0x2a1830, 3); const J = X.jack({ face, vest: i < 6 }); sc.add(J.c.root);
         const hp = new X.THREE.Vector3(); J.c.head.getWorldPosition(hp); hp.y += 0.17; X.cell(i, 6, 2, sc, X.orbit([hp.x, hp.y, hp.z], deg, 1.55, up, 26), nm); }); });
     await shot('pj_game_face');
