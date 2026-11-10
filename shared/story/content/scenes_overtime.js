@@ -29,14 +29,14 @@ export const SCENES_OVERTIME = {
   // after the 'rescheduled' talk: he gets up off his knee, checks his watch, and walks away up the stairs, exactly on
   // time, a little lopsided, steam pouring out of the hole in his chest. the clock ticks with a limp
   ot1_retreat: {
-    kind: "cinematic", act: 1, mission: "m04_clocking_in", len: 10,
+    kind: "cinematic", act: 1, mission: "m04_clocking_in", len: 10, bars: false,
     cast: { ot: "overtime" },
     tracks: [
       { t: 0, cam: { shot: "wide", target: "ot", dur: 4 }, anim: ["ot", "ot_kneel", true] },
       { t: 1.4, anim: ["ot", "ot_limp", true] },
       { t: 2.0, sfx: "tick" },
       { t: 2.6, move: ["ot", ["ot_retreat"], 1.6] },
-      { t: 4.0, cam: { path: ["cam.roofs"], look: "ot", dur: 6 } },
+      { t: 4.0, cam: { path: ["cam.gate"], look: "ot", dur: 6 } },
       { t: 6.5, title: ["RESCHEDULED", "he'll be back. on time.", 2.6] },
     ],
   },
