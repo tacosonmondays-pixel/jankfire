@@ -11,7 +11,7 @@ import { fx } from './fx.js';
 import { ME } from './player.js';
 import { M, freeTree } from './models.js';
 import { authored, nodeIn, AUTHORED, prefetch } from './glbkit.js';
-import { BOXES } from '/shared/map.js';
+import { BOXES, MAPS } from '/shared/map.js';
 import { raycast } from '/shared/physics.js';
 import { ZL, ZL_ARMS, ZT, ZT_IDS, zlCrawl, zlHop } from '/shared/zmlimbs.js';
 
@@ -29,10 +29,12 @@ const isZ = (r) => !!(r && r.bot && r.name === 'Zombie');
 
 export const zlType = (r) => { const s = ST.get(r.id); return s ? ZT_IDS[s[0]] || '' : ''; };
 export const zlMask = (r) => { const s = ST.get(r.id); return s ? s[1] : 0; };
-let asked = false;
+let asked = false, askedMap = '';
 export function zlSync(info) { // zombies.js, every frame: what the server says about each one
   bossBar(info);
   if (!asked) { asked = true; prefetch(['z_plain', 'z_stump', ...Object.keys(ZT).map((k) => 'z_' + k)], 3); } // the Blender zombies jump the download queue
+  const mz = MAPS[G.cfg && G.cfg.map] && MAPS[G.cfg.map].zm; // ... and this map's own crowd
+  if (mz && mz.skins && askedMap !== G.cfg.map) { askedMap = G.cfg.map; prefetch(mz.skins.map((k) => 'z_' + k), 3); }
   ST.clear();
   for (const e of (info && info.lb) || []) ST.set(e[0], [e[1], e[2], e[3]]);
 }
@@ -107,8 +109,10 @@ function hull(color) { // the outline: the same mesh drawn inside out, pushed ou
   }
   return hulls.get(color);
 }
+// which model a zombie wears: its special type's, else its map's own crowd (look.zs, from the server), else the plain one
+const skinId = (r, ty) => { const zs = !ty && r.outfit && typeof r.outfit.zs === 'string' && /^[a-z]{1,16}$/.test(r.outfit.zs) ? r.outfit.zs : ''; return 'z_' + (ty || (zs && AUTHORED['z_' + zs] ? zs : '') || 'plain'); };
 function skin(r, ty) {
-  const ch = r.ch, a = authored('z_' + (ty || 'plain'));
+  const ch = r.ch, a = authored(skinId(r, ty));
   if (!a) return false;
   const obj = a.obj, meta = a.meta || {}, lk = r.outfit || {}, tint = meta.tint || {};
   const want = { z_skin: lk.skin, z_top: lk.topColor, z_bot: lk.bottomColor }, out = hull(new THREE.Color(r.color).getHex());
@@ -135,7 +139,7 @@ function skin(r, ty) {
   }
   r.shells = (r.shells || []).filter((sh) => { let p = sh; while (p && p !== ch.root) p = p.parent; return !!p; }); // (the old outlines went with the old pieces)
   ch.body.scale.set(1, 1, 1);
-  ch.zlGlb = true;
+  ch.zlGlb = true; ch.zlSkinId = skinId(r, ty);
   return true;
 }
 
@@ -186,7 +190,7 @@ export function zlPose(r, now, dt) {
   if (ch.zlT0 == null) ch.zlT0 = now;
   if (ch.zlTy == null && (ty || now - ch.zlT0 > 350)) { ch.zlTy = ty; dress(r, ty); } // (a special's type rides in the snapshot: give it a moment before calling it plain)
   else if (ch.zlTy === '' && ty) { r.setLook(r.outfit); return false; } // it was special after all: start over on a fresh mannequin
-  else if (ch.zlTy != null && !ch.zlGlb && AUTHORED['z_' + (ch.zlTy || 'plain')]) { r.setLook(r.outfit); return false; } // its Blender model only just arrived
+  else if (ch.zlTy != null && (!ch.zlGlb ? AUTHORED[skinId(r, ch.zlTy)] : ch.zlSkinId !== skinId(r, ch.zlTy))) { r.setLook(r.outfit); return false; } // its Blender model (or its map's own one) only just arrived
   if (s) for (const bit of [1, 2, 4, 8, 16]) if ((mask & bit) && !((ch.zlGone || 0) & bit)) cut(r, bit, null, !ch.zlSeen); // (the 'zlb' message usually got there first, with the fling)
   if (s) ch.zlSeen = true;
   if (ch.zlHat && s && !(fl & 1)) hatOff(r, null);

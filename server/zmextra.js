@@ -94,7 +94,7 @@ const methods = {
     z.tearAt = n + (z.run ? ZM.tearRun : ZM.tear) * (0.8 + Math.random() * 0.4) * slow * this.zlTear(z); // (armless: it headbutts the planks, slowly)
     zs.planks[z.win]--;
     this.broadcast({ t: 'zplank', k: 'tear', i: z.win, n: zs.planks[z.win], by: b.id });
-    this.broadcast({ t: 'fx', k: 'swing', w: 'bite', id: b.id, a: [r2(b.pos[0]), 1.4, r2(b.pos[2])] });
+    this.broadcast({ t: 'fx', k: 'swing', w: 'bite', id: b.id, a: [r2(b.pos[0]), r2(b.pos[1] + 1.4), r2(b.pos[2])] });
     return zs.planks[z.win] > 0;
   },
   // F held at a window (zmUse): a plank every ZM.board ms (Handyman: twice as fast), paid up to the round's cap
@@ -114,7 +114,7 @@ const methods = {
   zxTarget(p, e, d) { // the board or the machine p is looking at (checked after the mode's own targets)
     const Z = this.map.zm, zs = this.zs;
     if (Z.mach) {
-      const at = [Z.mach.at[0] + Z.mach.n[0] * 0.4, 1.4, Z.mach.at[2] + Z.mach.n[2] * 0.4], v = [at[0] - e[0], at[1] - e[1], at[2] - e[2]], l = Math.hypot(...v) || 1e-6;
+      const at = [Z.mach.at[0] + Z.mach.n[0] * 0.4, Z.mach.at[1] + 1.4, Z.mach.at[2] + Z.mach.n[2] * 0.4], v = [at[0] - e[0], at[1] - e[1], at[2] - e[2]], l = Math.hypot(...v) || 1e-6;
       if (l <= 3 && (v[0] * d[0] + v[1] * d[1] + v[2] * d[2]) / l >= 0.3 && (e[0] - at[0]) * Z.mach.n[0] + (e[2] - at[2]) * Z.mach.n[2] > 0) return { k: 'mach', kind: 'mach' };
     }
     return zmBoardTarget(Z, zs.planks, e, d, 0.6);
@@ -149,7 +149,8 @@ const methods = {
     if (Math.random() >= ZM.dropChance * (this.zxPerk(killer, 'rabbitfoot') ? 2 : 1) * (ZM.dropMul || 1)) return;
     zs.dropN++;
     const w = t.zmz.ph !== 'hunt' && this.map.zm.windows[t.zmz.win], p = w ? w.in : t.pos; // shot through the window: it lands inside, not in the alley. chest height, even if it was flung into the ceiling
-    const d = { id: zs.dropId++, k: zmDropPick(), at: [p[0], 1.0, p[2]], until: now() + ZM.dropLife };
+    const base = w ? w.in[1] : (this.map.zm.floors || [0]).reduce((f, y) => (y <= t.pos[1] + 0.6 && y > f ? y : f), (this.map.zm.floors || [0])[0]); // the floor it died over
+    const d = { id: zs.dropId++, k: zmDropPick(), at: [p[0], base + 1.0, p[2]], until: now() + ZM.dropLife };
     zs.drops.push(d);
     this.broadcast({ t: 'zdrop', k: 'new', id: d.id, kind: d.k, a: d.at.map(r2) });
   },

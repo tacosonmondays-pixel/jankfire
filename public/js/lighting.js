@@ -36,6 +36,8 @@ const MOOD = {
   backrooms: { el: 78, sh: 0.42, fill: [0xfff3cc, 0.18], indoor: 1 },
   forest: { el: 52, sh: 0.85, fill: [0x4a5aa0, 0.22] }, // moonlight
   deadmall: { el: 74, sh: 0.5, fill: [0xffb070, 0.2], indoor: 1 },
+  school: { el: 72, sh: 0.5, fill: [0x9ab8ff, 0.22], indoor: 1 },
+  hospital: { el: 72, sh: 0.5, fill: [0xa8e0d8, 0.24], indoor: 1 },
   jankburg: { el: 32, sh: 0.7, fill: [0x4fd8ff, 0.3] },
 };
 
