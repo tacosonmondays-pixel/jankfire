@@ -179,7 +179,14 @@ initHome({
   skin: (id) => G.equipped[id], // what you actually wear
 });
 // OVERDUE story mode: hidden until the owner approves the slice (?story=1 or localStorage jfStory=1)
-const storyFlag = () => { try { return new URLSearchParams(location.search).get('story') === '1' || localStorage.getItem('jfStory') === '1'; } catch { return false; } };
+const storyAsked = () => { try { return new URLSearchParams(location.search).get('story') === '1' || localStorage.getItem('jfStory') === '1'; } catch { return false; } };
+const storyFlag = () => !window.JF_TOUCH && storyAsked(); // no story on phones and tablets (owner's call): nothing of it loads there
+if (window.JF_TOUCH && storyAsked()) { // ...they get a note instead. tap it away
+  const n = document.createElement('div'); n.id = 'touchNoStory';
+  n.innerHTML = '<b>OVERDUE IS CLOSED ON PHONES</b><span>the story needs a keyboard and a desk to cry at. everything else is open.</span><i>tap to go away</i>';
+  n.addEventListener('click', () => n.remove());
+  document.body.append(n);
+}
 if (storyFlag()) import('./story/main.js').then((m) => m.initStory({ startMode, quitToMenu: () => quitToMenu(), toast: (t, ms) => toast(t, ms) })).catch((e) => console.error('story mode failed to load', e));
 if (storyFlag()) import('./story/boot.js').then((m) => { story = m; return m.init(); }).catch((e) => console.error('story engine failed to load', e));
 initLobby({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), send: (m) => net.send(m), map: () => G.cfg && G.cfg.map });
@@ -1224,6 +1231,60 @@ addEventListener('mousemove', (e) => {
 });
 addEventListener('blur', releaseHeld);
 addEventListener('resize', resizePreview);
+// phones + tablets (touchboot.js tagged the page): on-screen buttons that press the same bound keys as above (touch.js).
+// looking is the one thing with its own path: a finger drag isn't a locked mouse
+function touchLook(dx, dy) {
+  if (!inGame()) return;
+  if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor
+  if (story && story.locked()) return;
+  const s = 0.0088 * (S.tSens || 1) * (W.aim > 0.5 ? S.adsSens / W.zoom : 1) * (assist ? assist.assistSlow(assistApi, performance.now()) : 1); // (aim assist: slower near an enemy)
+  ME.yaw -= dx * s;
+  ME.pitch = Math.max(-1.55, Math.min(1.55, ME.pitch - dy * s));
+}
+let touchUI = null;
+// aim assist (aimassist.js), touch players only: enemies in plain sight near the crosshair. same who-counts rule as the spinbot
+let assist = null;
+const assistApi = {
+  remotes: () => G.remotes.values(), boxes: () => BOXES,
+  enemy: (r) => r.alive && !(r.bot && r.name === 'Dummy' && G.mode !== 'training') && !isFriend(r) && !(G.mode === 'coop' && !r.bot),
+  strength: () => (S.tAssist == null ? 1 : Number(S.tAssist) || 0),
+  ok: () => inGame() && ME.alive && !RP.active && !(performance.now() < (G.spinUntil || 0)) && !(performance.now() < (ME.sleepUntil || 0)) && !(story && story.locked()),
+};
+if (window.JF_TOUCH) import('./aimassist.js').then((m) => { assist = m; }).catch((e) => console.error('aim assist failed to load', e));
+// auto fire (autofire.js), touch players only: same enemies, same line of sight; it presses the bound fire key through touch.js
+let autoF = null;
+const autoApi = {
+  remotes: assistApi.remotes, boxes: assistApi.boxes, enemy: assistApi.enemy, ok: assistApi.ok,
+  enabled: () => S.tAuto !== false && !!touchUI,
+  manual: () => touchUI.fireHeld(),
+  press: (down) => touchUI.autoPress(down),
+  reload: () => touchUI.tapAct('reload'),
+};
+if (window.JF_TOUCH) import('./autofire.js').then((m) => { autoF = m; }).catch((e) => console.error('auto fire failed to load', e));
+if (window.JF_TOUCH) import('./touch.js').then((m) => {
+  touchUI = m.initTouch({
+    S, inGame, look: touchLook, save: saveSettings, chat: openChat,
+    autoChanged: () => { $('tAuto').checked = S.tAuto !== false; },
+    pause: () => { if (inGame()) pause(); },
+    // a tap anywhere does what a click does: drop in after the end screen, skip the killcam, watch the next player
+    gate: () => esClickShown() || RP.mode === 'killcam' || G.killcamPending || (!ME.alive && (brOn() || !!G.eco)),
+    ctx: () => ({ eco: !!G.eco, royale: brOn(), watch: RP.active || !!G.killcamPending, use: !!G.eco || brOn() || G.cfg.game === 'zombies' || canUse(G.round, ME.pos) }),
+  });
+  bindTouchSettings();
+}).catch((e) => console.error('touch controls failed to load', e));
+function bindTouchSettings() {
+  const look = () => touchUI.applyLook();
+  bindRange('tSens', 'tSens', (v) => v.toFixed(1));
+  bindRange('tSize', 'tSize', (v) => Math.round(v * 100) + '%', look);
+  bindRange('tAlpha', 'tAlpha', (v) => Math.round(v * 100) + '%', look);
+  if (S.tAssist == null) S.tAssist = 1;
+  bindRange('tAssist', 'tAssist', (v) => (v > 0 ? Math.round(v * 100) + '%' : 'off'));
+  if (S.tAuto == null) S.tAuto = true;
+  bindCheck('tAuto', 'tAuto', () => touchUI.syncAuto());
+  bindCheck('tLefty', 'tLefty', look);
+  bindCheck('tFull', 'tFull');
+  $('toggleAim').checked = !!S.toggleAim; // (touch.js turns it on the first time)
+}
 
 function renderScores() {
   const rows = [{ name: G.myName, color: G.myColor, k: G.kills, d: G.deaths, me: true, card: cardUrlFor(G.myId) }];
@@ -1967,6 +2028,8 @@ function frame(t) {
       }
     }
     G.aimDir = lock ? lock.d : null;
+    if (assist) { if (K.isDown('forward') || K.isDown('back') || K.isDown('left') || K.isDown('right')) assist.assistPoke(now); assist.assistFrame(assistApi, dt, now); } // touch aim assist: the gentle tug
+    if (autoF && touchUI) autoF.autoFrame(autoApi, now); // touch auto fire
     const lm = $('lockMark');
     if (lock) {
       const v = tmpLock.set(lock.r.pos[0], lock.r.pos[1] + 2.0, lock.r.pos[2]).project(G.camera);
