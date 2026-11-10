@@ -540,3 +540,14 @@ FLAGS.LASSO = 1 << 21; // (was 1 << 20, the same bit as FLAGS.WALK) set in your 
 export const WEAPON_ALIAS = { spoon: 'knife' };
 export const wAlias = (id) => (typeof id === 'string' && Object.hasOwn(WEAPON_ALIAS, id) ? WEAPON_ALIAS[id] : id);
 FLAGS.AIM = 1 << 10; // aiming down sights (cosmetic: Plant & Defuse first-person spectating shows it)
+
+// ------------------------------------------------------------ the Laptop (item): pop-up ads on an enemy's screen
+// G opens it at whoever is nearest your crosshair (range m, cone rad of slack, needs line of sight). n ads land on their
+// screen for dur s; they close them one by one with the number on each (sure = how many "ARE YOU SURE?" ads come back).
+// safe: s after it ends before the same person can be advertised to again. botErr: extra aim error for a bot reading ads.
+// no target = no charge spent. a reverse card sends the ads back to you.
+export const ADS = { range: 45, cone: 0.3, n: 5, dur: 7, sure: 2, safe: 6, botErr: 0.12 };
+WEAPONS.laptop = { slot: 'item', kind: 'laptop', name: 'Laptop', color: '#4fd8ff' }; // slot item: it pops into your hand (and can wear skins later)
+ORDER.push('laptop');
+ITEMS.laptop = { w: 'laptop', name: 'Laptop', desc: 'Open it at someone. Their screen fills with pop-up ads for 7s. They can close them. There are a lot of them.', charges: 1, recharge: 24, color: '#4fd8ff' };
+ITEM_ORDER.push('laptop');
