@@ -181,7 +181,7 @@ export function cubeKit(B, c, r, hid, o = {}) {
     for (const [oa, ob, oy0] of ops) if (oy0 > 0.5) {
       const id = 'cube_window_' + 'bbbbbbaaac'[(r() * 10) | 0], v = (r() * 8) | 0, // (mostly the cheap one; c is 620 triangles)
         hg = c.hung.find((q) => q[0] === side && q[1] === oa);
-      if (hg && hg[3] && hg[2] === 'shutter') continue;
+      if ((hg && hg[3] && hg[2] === 'shutter') || (stair && oa < stair[1] - 1 && ob > stair[2])) continue; // (or the stair climbs across it)
       if (seen(side, (oa + ob) / 2, y + oy0 + 0.5)) put(hg && hg[3] ? 'cube_window_a' : id, side, (oa + ob) / 2, y + oy0, 1, v); // (an ac unit in it: the flat barred one)
     }
     // the corner whose front is this side: boards, a downpipe, a meter box (scaled so its top buries in the slab)

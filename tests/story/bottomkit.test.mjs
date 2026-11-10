@@ -57,4 +57,16 @@ const plq = [...ON.values()].flatMap((o) => o.props.filter((p) => /^longplaque/.
 assert.equal(plq.length, 2); assert.notEqual(plq[0][0], plq[1][0]);
 const foot = [...ON.values()].flatMap((o) => o.marks).find((m) => m.id === 'bottom:long_stairs').p;
 for (const p of plq) assert.ok(p[1] > -48 && p[1] < -40 && Math.hypot(p[1] - foot[0], p[3] - foot[2]) > 20, 'a plaque is off the stairs or on the quest spot');
+// 6. every piece sits on something solid, the right way round: probe points in the model's frame (front = -z), turned
+// into the world, must be inside a collision box (the wall behind a window, the step under a tread, the rail under a coping)
+const IN = { cube_window_a: [[0, -0.3, 0.1]], cube_window_b: [[0, -0.3, 0.1]], cube_window_c: [[0, -0.3, 0.1]], cube_eave: [[0, -0.15, 0.1], [0, 0.1, 0.05]], cube_corner: [[0.5, 1, 0.1], [0.1, 1, 0.5]],
+  container_rib: [[0, 1.4, 0.1]], container_doors: [[0, 1.3, 0.1], [-1, 0.5, 0.1], [1, 2.2, 0.1]], cube_roofjunk_a: [[0, -0.1, 0]], cube_roofjunk_b: [[0, -0.1, 0]], stair_step: [[0, -0.1, 0.27]],
+  longstep_a: [[0, -0.05, -0.4]], longstep_b: [[0, -0.05, -0.4]], longrail: [[0, -0.1, -1.2]], longpole: [[0, 3, 0]], longplaque_a: [[0, -0.05, 0]], longplaque_b: [[0, -0.05, 0]] };
+const grid = new Map(), CELL = 8;
+for (const o of ON.values()) for (const b of chunkBoxes(packChunk(o))) for (let i = Math.floor(b.min[0] / CELL); i <= Math.floor(b.max[0] / CELL); i++) for (let j = Math.floor(b.min[2] / CELL); j <= Math.floor(b.max[2] / CELL); j++) { const g = i + ',' + j; if (!grid.has(g)) grid.set(g, []); grid.get(g).push(b); }
+const solid = (x, y, z) => (grid.get(Math.floor(x / CELL) + ',' + Math.floor(z / CELL)) || []).some((b) => x > b.min[0] && x < b.max[0] && y > b.min[1] && y < b.max[1] && z > b.min[2] && z < b.max[2]);
+for (const o of ON.values()) for (const p of o.props) for (const m of IN[p[0]] || []) {
+  const c = Math.cos(p[4]), s = Math.sin(p[4]);
+  assert.ok(solid(p[1] + (m[0] * c + m[2] * s) * p[5], p[2] + m[1] * p[5], p[3] + (-m[0] * s + m[2] * c) * p[5]), p[0] + ' is not on a wall / step at ' + p.slice(1, 4).map((v) => v.toFixed(1)));
+}
 console.log(`bottom kit ok: ${kit} props over ${perChunk.length} chunks (avg ${avg.toFixed(0)}, max ${max}), ${junk} roofs with junk, ${nCol} collision boxes unchanged`);

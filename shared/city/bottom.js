@@ -101,7 +101,8 @@ const stackOf = (k, lot) => stackCache.get(k + ':' + lot[2]) || house(DRY, k, lo
 function dress(B, k, lot, near) {
   const recs = stackOf(k, lot), r = rng(lot[2] ^ 0x6b17), top = k === T.n - 1, zN = top ? 0 : zSouth(k + 1), wallTop = yOf(k + 1);
   const rows = recs[recs.length - 1].row + 1, solids = recs.concat(...near.map((q) => stackOf(k, q)));
-  const hid = (x, y, z, me) => (z < zN && y < wallTop) || solids.some((s) => s !== me && x > s.x0 && x < s.x1 && z > s.z0 && z < s.z1 && y > s.y && y < s.top);
+  const hid = (x, y, z, me) => (z < zN && y < wallTop + (top ? 0 : 0.9)) || solids.some( // (+ 0.9: the lip wall of the lane above)
+    (s) => s !== me && x > s.x0 && x < s.x1 && z > s.z0 && z < s.z1 && y > s.y && y < s.top);
   for (const c of recs) {
     const st = c.stair;
     const front = c.row === rows - 1 && c.f < 2, back = !top && c.row === 0 && c.y + c.h > wallTop && c.y < wallTop + 4, low = c.f < 2, lip = c.roof ? 1 : 0;
