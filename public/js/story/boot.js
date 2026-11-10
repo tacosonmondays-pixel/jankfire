@@ -240,7 +240,7 @@ function roster(e) {
   for (const r of ROSTER.values()) {
     const d = Math.hypot(e[0] - r.p[0], e[2] - r.p[2]), a = actors.get(r.id);
     if (!a && d < 34) spawnActor(r.id, r.n, r.p, r.face);
-    else if (a && d > 44 && !a.inScene && !talking()) despawnActor(r.id);
+    else if (a && d > 44 && !a.inScene && !a.boss && !talking()) despawnActor(r.id);
   }
 }
 // what the current steps want picked up / used, as spots at their zones (+ collectibles you can find)

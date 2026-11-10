@@ -71,5 +71,8 @@ cutscenes, and the preview fx. Story mode only.
 ## Previews
 - `?story=1&otpreview=1`: he runs his whole set on the Gut border landing, no damage, with captions.
   Record it with `node tools/otpreview.cjs --port <p>`, which writes `docs/story/scenes/ot_preview.mp4` and a sheet.
+- `node tools/otscenes.cjs --port <p> [ids]`: films the fight-1 cutscenes (`ot1_coffee`, `ot1_punching_in`, `ot1_retreat`) on the gate
+  arena's boss spot, one exact story step per frame however slow the renderer is. Writes `docs/story/scenes/<id>.mp4`
+  and `<id>_sheet.jpg`. Slow: about 15 minutes a scene headless.
 - `node tools/blender/cast/otstates.cjs <port> out.png`: every damage state, key pose and fight look.
 - Turnaround: `tools/blender/sheets/c_overtime.jpg`.
