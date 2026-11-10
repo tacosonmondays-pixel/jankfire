@@ -15,8 +15,9 @@ MAP = argv[0] if argv else 'desert'
 OUT = argv[1] if len(argv) > 1 else os.path.join(OUTDIR, 'rocks_%s.glb' % MAP)
 HERE = os.path.dirname(os.path.abspath(__file__))
 # the stone, per map: sides, the darker strata, the sun-bleached tops, the scree
-STONE = {'desert': ('#c8743e', '#9c4f2c', '#dda066', '#b8683a')}
-c = STONE.get(MAP, STONE['desert'])
+STONE = {'desert': ('#c8743e', '#9c4f2c', '#dda066', '#b8683a'), 'bazaar': ('#d0a070', '#a87848', '#e6c890', '#c09060'),
+         'forest': ('#7c8088', '#5c6068', '#6a8a4a', '#70747a')}  # (the forest's tops are mossy)
+c = STONE.get(MAP.replace('_sd', ''), STONE['desert'])
 MATS.update({'rock': ('stucco', c[0], {}), 'rockband': ('stucco', c[1], {}), 'rocktop': ('stucco', c[2], {}), 'scree': ('stucco', c[3], {})})
 NOCAST.add('scree')
 
@@ -54,6 +55,9 @@ def ring(cx, cz, hw, hd, rc, n):
 
 def face(pts, mat):
     K.quad(pts, mat, sub=None) if len(pts) == 4 else K.tri(pts, mat)
+
+
+STONES = []
 
 
 def rock(bi, b):
@@ -105,8 +109,10 @@ def rock(bi, b):
         sx, sz = cx + math.cos(a) * w * rr * 0.62, cz + math.sin(a) * d * rr * 0.62
         if x0 - 0.02 < sx < x1 + 0.02 and z0 - 0.02 < sz < z1 + 0.02: continue
         s = (0.6 + 1.6 * hsh(bi, k, 32)) if big else (0.1 + 0.16 * hsh(bi, k, 32))
+        if any((sx - px) ** 2 + (sz - pz) ** 2 < (s + ps) ** 2 for px, pz, ps in STONES): continue  # (no two stones through each other)
+        STONES.append((sx, sz, s))
         yaw = hsh(bi, k, 33) * 6.28
-        base = [Vector((sx + math.cos(yaw + q * 2.1 + 0.3 * hsh(bi, k, q)) * s, y0, sz + math.sin(yaw + q * 2.1 + 0.3 * hsh(bi, k, q)) * s * 0.8)) for q in range(3)]
+        base = [Vector((sx + math.cos(yaw + q * 2.1 + 0.3 * hsh(bi, k, q)) * s, y0 - 0.03 + 0.004 * k + 0.002 * (bi % 7), sz + math.sin(yaw + q * 2.1 + 0.3 * hsh(bi, k, q)) * s * 0.8)) for q in range(3)]  # (each stone's foot at its own height: two that overlap never share a plane)
         apex = Vector((sx + (hsh(bi, k, 34) - 0.5) * s * 0.5, y0 + s * (0.5 + 0.4 * hsh(bi, k, 35)), sz + (hsh(bi, k, 36) - 0.5) * s * 0.5))
         for q in range(3):
             t3 = [base[q], base[(q + 1) % 3], apex]

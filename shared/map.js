@@ -2862,7 +2862,8 @@ function desertSD() {
   for (const [x, z, h] of [[-36, 54, 4.4], [-16, 30, 3.6], [-92, 46, 4]]) saguaro(W, x, z, h);
   // the canyon's west lip: boulders flush with it between the crossings, a rail fence here and there
   const fenced = (z, s) => Math.abs(z) + s / 2 > 17 && Math.abs(z) - s / 2 < 31;
-  boulders(B, -8.4, -60, -8.4, -44, 3, r, -1); boulders(B, -8.4, -35, -8.4, -10, 5, r, -1, fenced); boulders(B, -8.4, 10, -8.4, 35, 5, r, -1, fenced); boulders(B, -8.4, 44, -8.4, 60, 3, r, -1);
+  B.boxes.arch.push({ id: 'rocks_desert_sd', p: [0, 0, 0], r: 0 }); const RK = { av: 'rocks_desert_sd', ai: B.boxes.arch.length - 1 }; // (its rock: one Blender model, look only)
+  boulders(B, -8.4, -60, -8.4, -44, 3, r, -1, null, RK); boulders(B, -8.4, -35, -8.4, -10, 5, r, -1, fenced, RK); boulders(B, -8.4, 10, -8.4, 35, 5, r, -1, fenced, RK); boulders(B, -8.4, 44, -8.4, 60, 3, r, -1, null, RK);
   for (const sz of [-1, 1]) { const z0 = sz > 0 ? 18 : -30, z1 = sz > 0 ? 30 : -18; for (let z = z0; z <= z1; z += 3) B.box(-7.8, 0.6, z, 0.2, 1.2, 0.2, 'wood'); add(-7.85, 0.85, z0, -7.75, 0.95, z1, 'wood'); }
 
   // ---- over the canyon: the trestle (north, the cart that jumped its rails), the stone bridge (its gateposts), the rope bridge
@@ -2948,7 +2949,7 @@ function desertSD() {
   const ro = rng(9091);
   for (let i = 0; i < 46; i++) { const a = ro() * Math.PI * 2, d = 130 + ro() * 230, x = Math.cos(a) * d, z = Math.sin(a) * d, w = 30 + ro() * 60, dd = 18 + ro() * 36, h = 5 + ro() * 12;
     if (Math.abs(x) < 26 || Math.abs(z) < 14 || (Math.abs(x) - w / 2 < 106 && Math.abs(z) - dd / 2 < 106)) continue; dune(D, x, z, w, dd, h); }
-  for (let i = 0; i < 16; i++) { const a = ro() * Math.PI * 2, d = 190 + ro() * 220, x = Math.cos(a) * d, z = Math.sin(a) * d; if (Math.abs(x) < 30 || Math.abs(z) < 20) continue; rocks(D, x, z, 12 + ro() * 20, ro); }
+  for (let i = 0; i < 16; i++) { const a = ro() * Math.PI * 2, d = 190 + ro() * 220, x = Math.cos(a) * d, z = Math.sin(a) * d; if (Math.abs(x) < 30 || Math.abs(z) < 20) continue; rocks(D, x, z, 12 + ro() * 20, ro, RK); }
   for (const [x, z, c] of [[104, -14, 'cloth'], [114, 10, 'toyyellow'], [126, -6, 'leopard']]) tent(Dw, x, z, c);
   for (const [x, z, ax] of [[98, 18, true], [108, 22, false], [122, 16, true]]) camel(Dw, x, z, ax);
   for (let i = 0; i < 26; i++) { const a = ro() * Math.PI * 2, d = 110 + ro() * 120, x = Math.cos(a) * d, z = Math.sin(a) * d; if (Math.abs(x) < 20 || Math.abs(z) < 10) continue; palm(Dw, x, z, 6 + ro() * 4, ro); }
@@ -4048,7 +4049,8 @@ function bazaar() {
   // ---- outside the wall (render-only): dunes, rocks, a camp outside the west gate, an oasis, the next town over
   horizon(D, -300, -300, 300, 300, 1500, 'sand');
   for (let i = 0; i < 40; i++) { const a = rv() * Math.PI * 2, d = 120 + rv() * 220, x = Math.cos(a) * d, z = Math.sin(a) * d, w = 30 + rv() * 60, dd = 18 + rv() * 36; if (Math.abs(x) - w / 2 < 80 && Math.abs(z) - dd / 2 < 80) continue; dune(D, x, z, w, dd, 5 + rv() * 12); }
-  for (let i = 0; i < 12; i++) { const a = rv() * Math.PI * 2, d = 200 + rv() * 220; rocks(D, Math.cos(a) * d, Math.sin(a) * d, 12 + rv() * 20, rv); }
+  B.boxes.arch.push({ id: 'rocks_bazaar', p: [0, 0, 0], r: 0 }); const RK = { av: 'rocks_bazaar', ai: B.boxes.arch.length - 1 }; // (its rock: one Blender model, look only)
+  for (let i = 0; i < 12; i++) { const a = rv() * Math.PI * 2, d = 200 + rv() * 220; rocks(D, Math.cos(a) * d, Math.sin(a) * d, 12 + rv() * 20, rv, RK); }
   for (const [x, z, c] of [[-86, -14, 'cloth'], [-92, 6, 'toypink'], [-84, 20, 'toyteal']]) tent(Dw, x, z, c);
   for (const [x, z, ax] of [[-98, -4, true], [-90, 30, false], [92, -20, true]]) camel(Dw, x, z, ax);
   D.add(130, 0, -40, 170, 0.2, -10, 'lawn'); D.add(136, 0.2, -34, 164, 0.3, -16, 'water');
@@ -4184,7 +4186,8 @@ function bazaarSD() {
   // ---- outside the wall (render-only): dunes, rocks, the caravan's tail outside the south gate, the next town over
   horizon(D, -300, -300, 300, 300, 1500, 'sand');
   for (let i = 0; i < 40; i++) { const a = rv() * Math.PI * 2, d = 120 + rv() * 220, x = Math.cos(a) * d, z = Math.sin(a) * d, w = 30 + rv() * 60, dd = 18 + rv() * 36; if (Math.abs(x) - w / 2 < 75 && Math.abs(z) - dd / 2 < 85) continue; dune(D, x, z, w, dd, 5 + rv() * 12); }
-  for (let i = 0; i < 12; i++) { const a = rv() * Math.PI * 2, d = 200 + rv() * 220; rocks(D, Math.cos(a) * d, Math.sin(a) * d, 12 + rv() * 20, rv); }
+  B.boxes.arch.push({ id: 'rocks_bazaar_sd', p: [0, 0, 0], r: 0 }); const RK = { av: 'rocks_bazaar_sd', ai: B.boxes.arch.length - 1 }; // (its rock: one Blender model, look only)
+  for (let i = 0; i < 12; i++) { const a = rv() * Math.PI * 2, d = 200 + rv() * 220; rocks(D, Math.cos(a) * d, Math.sin(a) * d, 12 + rv() * 20, rv, RK); }
   for (const [x, z, c] of [[-14, 86, 'cloth'], [10, 92, 'toypink'], [30, 84, 'toyteal']]) tent(Dw, x, z, c);
   for (const [x, z, ax] of [[-2, 98, true], [22, 100, false], [-26, 94, true]]) camel(Dw, x, z, ax);
   D.add(-3, 0, 74, 3, 0.03, 400, 'dirtroad');
@@ -4530,10 +4533,10 @@ function log(B, x0, z0, x1, z1, rr = 0.42) { // a fallen log along x or z (with 
   if (ax) { B.add(x0, 0, z0 - rr, x1, rr * 2, z0 + rr, 'logside'); B.add(x1, 0.02, z0 - rr + 0.04, x1 + 0.06, rr * 2 - 0.04, z0 + rr - 0.04, 'logend'); }
   else { B.add(x0 - rr, 0, z0, x0 + rr, rr * 2, z1, 'logside'); B.add(x0 - rr + 0.04, 0.02, z1, x0 + rr - 0.04, rr * 2 - 0.04, z1 + 0.06, 'logend'); }
 }
-function boulder(B, x, z, s, r) { // a rock: a big block and a couple of smaller ones shoved into it
-  B.add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf');
-  B.add(x - s * 0.7, s * 1.1, z - s * 0.5, x + s * 0.5, s * 1.5, z + s * 0.6, 'rockf');
-  if (r() < 0.6) B.add(x + s * 0.7, 0, z + s * 0.4, x + s * 1.5, s * 0.7, z + s * 1.2, 'rockmoss');
+function boulder(B, x, z, s, r, tag) { // a rock: a big block and a couple of smaller ones shoved into it. tag: { av, ai } when a Blender rock model draws it
+  B.add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf', tag);
+  B.add(x - s * 0.7, s * 1.1, z - s * 0.5, x + s * 0.5, s * 1.5, z + s * 0.6, 'rockf', tag);
+  if (r() < 0.6) B.add(x + s * 0.7, 0, z + s * 0.4, x + s * 1.5, s * 0.7, z + s * 1.2, 'rockmoss', tag);
 }
 // a wrecked sedan facing +x: hood up, driver door hanging open, a flat at the front, hazards still blinking
 function brokenCar(B, D, x, z) {
@@ -4551,6 +4554,7 @@ function brokenCar(B, D, x, z) {
 }
 function forest() {
   const B = builder(), D = builder();
+  B.boxes.arch.push({ id: 'rocks_forest', p: [0, 0, 0], r: 0 }); const RK = { av: 'rocks_forest', ai: B.boxes.arch.length - 1 }; // (its rock: one Blender model, look only)
   const r = rng(6660);
   const W = B.local(0, 0, 0);
   const [bx0, bz0, bx1, bz1] = FOREST.bounds, SH = FOREST.shore;
@@ -4605,7 +4609,7 @@ function forest() {
   for (let z = -300; z < 300; z += 5) for (let k = 0; k < 3; k++) pine(D, D, 230 + k * 6 + r() * 5, z + r() * 4, 10 + r() * 8, r);
   // undergrowth: ferns and bushes (only drawn: bullets go through, eyes don't)
   for (let i = 0; i < 520; i++) { const x = bx0 - 20 + r() * (bx1 - bx0 + 40), z = bz0 - 20 + r() * (bz1 - bz0 + 40); if (x > SH - 2 || !free(x, z, -0.5)) continue; const s = 0.6 + r() * 0.8, a = r() * 3; if (r() < 0.55) { for (let k = 0; k < 3; k++) D.obb(x, s * 0.28, z, s * 1.5, s * 0.56, 0.07, a + k * 1.05, 'fern'); } else { D.obb(x, s * 0.3, z, s * 1.1, s * 0.6, s * 0.9, a, 'bush'); D.obb(x + 0.2, s * 0.75, z - 0.1, s * 0.7, s * 0.4, s * 0.6, a + 0.8, 'bush'); } } // ferns: three crossed fronds. bushes: a clump
-  for (let i = 0; i < 70; i++) { const x = bx0 + r() * (bx1 - bx0), z = bz0 + r() * (bz1 - bz0); if (x > SH - 4 || !free(x, z, 1)) continue; if (r() < 0.55) { const l = 3 + r() * 4; r() < 0.5 ? log(B, x, z, x + l, z) : log(B, x, z, x, z + l); } else if (r() < 0.6) boulder(B, x, z, 0.6 + r() * 0.9, r); else B.add(x - 0.35, 0, z - 0.35, x + 0.35, 0.5 + r() * 0.4, z + 0.35, 'logend'); }
+  for (let i = 0; i < 70; i++) { const x = bx0 + r() * (bx1 - bx0), z = bz0 + r() * (bz1 - bz0); if (x > SH - 4 || !free(x, z, 1)) continue; if (r() < 0.55) { const l = 3 + r() * 4; r() < 0.5 ? log(B, x, z, x + l, z) : log(B, x, z, x, z + l); } else if (r() < 0.6) boulder(B, x, z, 0.6 + r() * 0.9, r, RK); else B.add(x - 0.35, 0, z - 0.35, x + 0.35, 0.5 + r() * 0.4, z + 0.35, 'logend'); }
 
   // ---- the clearing: a ring of standing stones, one dead tree, and an office chair facing away from you
   for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2 + 0.3, x = CLR[0] + Math.cos(a) * 9.5, z = CLR[1] + Math.sin(a) * 9.5, tall = 1.8 + (i % 3) * 0.6; B.add(x - 0.6, 0, z - 0.45, x + 0.6, tall, z + 0.45, i % 2 ? 'rockf' : 'rockmoss'); }
@@ -4613,7 +4617,7 @@ function forest() {
   W(CLR[0] - 2.4, 0, CLR[1] + 1.7, CLR[0] - 1.8, 0.08, CLR[1] + 2.3, 'metal'); W(CLR[0] - 2.15, 0.08, CLR[1] + 1.95, CLR[0] - 2.05, 0.55, CLR[1] + 2.05, 'chrome'); // the office chair: base, stem
   W(CLR[0] - 2.45, 0.55, CLR[1] + 1.7, CLR[0] - 1.75, 0.68, CLR[1] + 2.4, 'officechair'); W(CLR[0] - 2.45, 0.68, CLR[1] + 2.32, CLR[0] - 1.75, 1.45, CLR[1] + 2.42, 'officechair');
   W(CLR[0] + 6, 0, CLR[1] + 4, CLR[0] + 6.6, 1.25, CLR[1] + 4.6, 'white'); W(CLR[0] + 6.05, 1.25, CLR[1] + 4.05, CLR[0] + 6.55, 1.75, CLR[1] + 4.55, 'coolerwater'); // a water cooler. in the woods. for whom
-  log(B, CLR[0] - 12, CLR[1] + 8, CLR[0] - 6, CLR[1] + 8); boulder(B, CLR[0] + 11, CLR[1] - 8, 1.0, r);
+  log(B, CLR[0] - 12, CLR[1] + 8, CLR[0] - 6, CLR[1] + 8); boulder(B, CLR[0] + 11, CLR[1] - 8, 1.0, r, RK);
 
   // ---- the cabin (site A): log walls, a porch, a door front and back, a stepped roof, a stone chimney
   { const L = B.local(CAB[0], CAB[1], 0);
