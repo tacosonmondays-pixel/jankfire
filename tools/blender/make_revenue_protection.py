@@ -227,15 +227,15 @@ def paint_enamel(name, crazed=False):
         m = (np.abs(Rr - rr_) < 0.012) & (np.abs(((Aa - a0_ + math.pi) % (2 * math.pi)) - math.pi) < ln / 2)
         lay(m, 0x8a8a8c, 0.9, ro=0.4, me=0.7)
     if crazed:  # a net of cracks: cells of 15 to 40 cm, the lines dark, flakes missing along them
-        pts = r.uniform(-RM, RM, (900, 2))
+        pts = r.uniform(-RM, RM, (460, 2))
         d1 = np.full((S, S), 9.0); d2 = np.full((S, S), 9.0)
         for (cx, cy) in pts:
             d = np.hypot(X - cx, Y - cy); sw = d < d1
             d2 = np.where(sw, d1, np.minimum(d2, d)); d1 = np.where(sw, d, d1)
         edge = (d2 - d1)
-        lay(edge < 0.016, 0x1a1414, 0.95, ro=0.8)
-        lay((edge < 0.05) & (n3 > 0.72), 0x24201e, 0.9, ro=0.7)
-        lay((edge < 0.035) & (n2 > 0.8), 0x7a3c1a, 0.7, ro=0.9)
+        lay(edge < 0.0095, 0x2a2422, 0.8, ro=0.8)
+        lay((edge < 0.04) & (n3 > 0.8) & (n1 > 0.4), 0x24201e, 0.9, ro=0.7)
+        lay((edge < 0.03) & (n2 > 0.86), 0x6a3c1e, 0.6, ro=0.9)
     # stencilled plate numbers (the fitters') and the fabricator's mark
     px[:] = np.clip(col, 0, 1)
     for i in range(12):
@@ -1330,16 +1330,17 @@ def build_mass(N):
     ms.mark('wall and back'); print('JF_MASS tally', ms.tally)
     mass = empty('mass'); N['mass'] = mass
     for b in ms.B:
-        o = b.obj(sharp=44, weld=2e-5)
+        o = b.obj(sharp=72, weld=2e-5)
         # the core's rows meet at the axis in zero-area quads: drop them
         bm = bmesh.new(); bm.from_mesh(o.data); bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=1e-5); bm.to_mesh(o.data); bm.free()
-        fix_uv(o); o.data.set_sharp_from_angle(angle=math.radians(44))
+        fix_uv(o); o.data.set_sharp_from_angle(angle=math.radians(72))
         N[b.name] = node(o, b.name, None, mass)
     print('JF_MASS figures', ms.figs, 'knots', len(placed), 'tris', sum(tri_count(N[n]) for n in Mass.NAMES))
     return mass
 
 
 # ------------------------------------------------------------ the inspector
+INFO = {}
 INSP_AT = (0.0, -2.74, -0.9)   # his waist, in the root's space
 INSP_S = 1.12
 def glow_materials():
@@ -1484,14 +1485,14 @@ def build_inspector(N):
     piv = {'insp_body': None, 'insp_base': None, 'insp_head': (0, 0.62, 0.0), 'insp_armR': tuple(SH[-1]), 'insp_armL': tuple(SH[1]), 'insp_foreR': tuple(EL[-1]), 'insp_foreL': tuple(EL[1]), 'insp_punch_lever': tuple(PR)}
     par = {'insp_foreR': 'insp_armR', 'insp_foreL': 'insp_armL', 'insp_punch_lever': 'insp_foreR'}
     for k in ('insp_body', 'insp_base', 'insp_head', 'insp_armR', 'insp_armL', 'insp_foreR', 'insp_foreL', 'insp_punch_lever'):
-        o = B[k].obj(sharp=42, weld=2e-5); pv = piv[k]
+        o = B[k].obj(sharp=62, weld=2e-5); pv = piv[k]
         pp = N[par[k]] if k in par else root
         if pv is not None:
             p = gv(*pv); o.data.transform(Matrix.Translation(-p))
             base = V3(piv[par[k]]) if k in par else V3((0, 0, 0))
             o.location = gv(*(V3(pv) - base))
         o.name = k; o.data.name = k; o.parent = pp; N[k] = o
-    N['_insp'] = dict(crit=(0, 0.3, 0.16), rivet=tuple(PR), head=(0, HY, 0.0))
+    INFO['insp'] = dict(crit=(0, 0.3, 0.16), rivet=tuple(PR), head=(0, HY, 0.0))
     return root
 
 
@@ -1603,15 +1604,15 @@ def build_arm():
     # --- nodes
     out = {}
     for k in ('arm_seg', 'arm_knot', 'arm_stump'):
-        o = N[k].obj(sharp=44, weld=2e-5); o.name = k; o.data.name = k; o.parent = root; out[k] = o
+        o = N[k].obj(sharp=72, weld=2e-5); o.name = k; o.data.name = k; o.parent = root; out[k] = o
     hand = empty('arm_hand', root); out['arm_hand'] = hand
-    o = N['palm'].obj(sharp=44, weld=2e-5); o.name = 'palm'; o.data.name = 'palm'; o.parent = hand; out['palm'] = o
+    o = N['palm'].obj(sharp=72, weld=2e-5); o.name = 'palm'; o.data.name = 'palm'; o.parent = hand; out['palm'] = o
     prev = {}
     for nm, ph, b, base, splay, L in HN:
         if ph == 'a':
             e = empty(nm, hand); set_game_matrix(e, T(*base) @ RY(splay)); out[nm] = e; par_ = e; loc = (0, 0, 0)
         else: par_ = prev[nm]; loc = (0, 0, prevL[nm])
-        o = b.obj(sharp=44, weld=2e-5); o.name = '%s_%s' % (nm, ph); o.data.name = o.name; o.parent = par_; o.location = gv(*loc)
+        o = b.obj(sharp=72, weld=2e-5); o.name = '%s_%s' % (nm, ph); o.data.name = o.name; o.parent = par_; o.location = gv(*loc)
         prev[nm] = o; prevL[nm] = L; out[o.name] = o
     # where things sit when they are laid out in one file (the game puts each where it wants): along x
     out['arm_knot'].location = gv(1.2, 0, 0.4); out['arm_stump'].location = gv(2.2, 0, 0.3); hand.location = gv(3.6, 0, 0)
@@ -1643,16 +1644,50 @@ def empty(name, parent=None, pos=None):
     return e
 
 
+def anchor_bufs():
+    """☺ CORP's work: six clean white clamps on the hoop's back edge, each with a cyan ratchet strap run back over the
+    plug and sunk into it. Five let go in stage 3; the one near the top (anchor_hang) is what the face hangs off."""
+    rest, hang = Buf('anchors'), Buf('anchor_hang'); tr = M['tr']; pos = {}
+    for k, deg in enumerate((30, math.degrees(HANG_A), 150, 210, 270, 330)):
+        a = math.radians(deg); c, s_ = math.cos(a), math.sin(a); b = hang if k == 1 else rest
+        Mx = T(c * (HOOP_R + 0.052), s_ * (HOOP_R + 0.052), -0.42) @ RZ(a)     # local x = out of the hoop, y = round it, z = along the tunnel
+        b.add(p_box(0.1, 0.3, 0.3), tr, TR('white', 1), Mx)
+        b.add(p_box(0.104, 0.304, 0.07), tr, TR('cyan', 1), Mx @ T(0, 0, 0.09))
+        b.add(p_box(0.012, 0.2, 0.09), tr, AT['tr'].face('hazard', 'x', 1), Mx @ T(0.052, 0, -0.07))
+        b.add(xf(p_prism(6, 0.05, 0.05, r1=0.044, dome=0.012), RY(math.pi / 2)), tr, TR('chrome', 1), Mx @ T(0.05, 0, 0.09))          # the bolt
+        b.add(xf(p_prism(6, 0.03, 0.2, top=False), RY(-math.pi / 2)), tr, TR('chain', 1), Mx @ T(0.02, 0, 0.09))                          # through the hoop
+        # the strap: off the clamp, flat along the plug, then down into it; the ratchet half way
+        rr_ = 4.578
+        pts = [(HOOP_R + 0.06, -0.57), (rr_, -0.8), (rr_, -1.9), (rr_ - 0.02, -2.3), (4.3, -2.75)]
+        for (r0, z0), (r1, z1) in zip(pts, pts[1:]):
+            p0 = V3((c * r0, s_ * r0, z0)); p1 = V3((c * r1, s_ * r1, z1))
+            b.add(p_box(0.1, 0.012, (p1 - p0).length), tr, AT['tr'].fit('strap', 1), frame(p1 - p0, (c, s_, 0), (p0 + p1) / 2), 0.9)
+        b.add(p_box(0.13, 0.05, 0.2), tr, TR('steel', 1), frame((0, 0, 1), (c, s_, 0), (c * (rr_ + 0.0), s_ * (rr_ + 0.0), -1.3)), 0.9)
+        b.add(p_box(0.03, 0.03, 0.16), tr, TR('yellow', 1), frame((0, 0.5, 1), (c, s_, 0), (c * (rr_ + 0.01), s_ * (rr_ + 0.01), -1.2)), 0.9)
+        pos[k] = (c * HOOP_R, s_ * HOOP_R, -0.33)
+    INFO['hang'] = pos[1]; INFO['anchors'] = [pos[k] for k in (0, 2, 3, 4, 5)]
+    return rest, hang
+
+
 def build_mask(N):
     mask = empty('mask'); N['mask'] = mask
     for k, o in sorted(build_plates().items()):
         N[k] = node(o, k, None, mask, hide=('_' in k[6:]))
     up, low = frame_bufs()
     N['frame'] = node(up.obj(sharp=35), 'frame', None, mask); N['frame_low'] = node(low.obj(sharp=35), 'frame_low', None, mask)
+    INFO['hinge'] = {}
     for nm, sx, bl in (('eye_R', -1, False), ('eye_L', 1, False), ('eye_L_blown', 1, True)):
         b = eye_buf(nm, sx, bl)
         b.V = [v + V3((sx * EYE_C[0], EYE_C[1], 0)) for v in b.V]
-        N[nm] = node(b.obj(sharp=38), nm, (sx * (EYE_C[0] + EYE_A + 0.255), EYE_C[1], PT + 0.07), mask, hide=bl)
+        hg = (sx * (EYE_C[0] + EYE_A + 0.255), EYE_C[1], PT + 0.07); INFO['hinge'][nm] = hg
+        N[nm] = node(b.obj(sharp=38), nm, hg, mask, hide=bl)
+    sock, balls = eye_cluster_bufs()
+    N['eye_cluster'] = node(sock.obj(sharp=44), 'eye_cluster', None, mask, hide=True)
+    for eb, c in balls:
+        eb.V = [v + V3(c) for v in eb.V]
+        N[eb.name] = node(eb.obj(sharp=60), eb.name, c, N['eye_cluster'], hide=True)
+    rest, hang = anchor_bufs()
+    N['anchors'] = node(rest.obj(sharp=35), 'anchors', None, mask); N['anchor_hang'] = node(hang.obj(sharp=35), 'anchor_hang', None, mask)
     return mask
 
 
@@ -1664,63 +1699,313 @@ VIEWS = {  # name: (camera, target, lens or ('o', ortho scale))
 }
 
 
-def studio(dark=False):
-    world(0x1a1220 if not dark else 0x06040a, 0.6 if not dark else 0.35)
-    area(9000, (9, 9, 16), (0, 0, 0), 9.0, (1.0, 0.97, 0.92))
-    area(3000, (-12, 2, 10), (0, 0, -1), 10.0, (0.8, 0.88, 1.0))
-    area(2600, (-4, 10, -6), (0, 0, -3), 8.0, (1.0, 0.75, 0.9))
-    area(1500, (0, -8, 8), (0, -1, -1), 8.0, (1.0, 0.9, 0.8))
+def studio(key=9000, amb=0.6):
+    world(0x1a1220, amb)
+    area(key, (9, 9, 16), (0, 0, 0), 9.0, (1.0, 0.97, 0.92))
+    area(key / 3, (-12, 2, 10), (0, 0, -1), 10.0, (0.8, 0.88, 1.0))
+    area(key / 3.4, (-4, 10, -6), (0, 0, -3), 8.0, (1.0, 0.75, 0.9))
+    area(key / 6, (0, -8, 8), (0, -1, -1), 8.0, (1.0, 0.9, 0.8))
 
 
-def set_stage(N, st):
-    """show the model as it is after break stage st (0 = whole)"""
+STAGE1 = (9, 6, 11)          # the plates the fight drops first (any plate can go: this is the order the pictures use)
+SPLIT = (2, 3, 8)            # stage 3 swaps these for their _up / _low halves (11 is split too, for a fight that kept it)
+HANG_POSE = (-0.06, -0.2)    # how the pictures hang what is left: turned in its own plane, flapped forward (radians)
+
+
+def set_stage(N, st, crazed=(), hang=True):
+    """show the model as it is after break stage st (0 = whole). crazed = plates shown as their cracked twin"""
     def vis(k, on):
         if k in N: N[k].hide_render = not on
-    gone1 = {'plate_09', 'plate_06', 'plate_11'}
     for i in range(12):
         nm = 'plate_%02d' % i
-        vis(nm, not (st >= 1 and nm in gone1) and not (st >= 3 and i in (2, 3, 8, 9, 10, 11)))
-        vis(nm + '_crazed', False); vis(nm + '_low', False)
-        vis(nm + '_up', st >= 3 and i in (2, 3, 8))
-    vis('frame_low', st < 3)
+        gone = (st >= 1 and i in STAGE1) or (st >= 3 and i in (9, 10, 11))
+        halves = st >= 2 and i in SPLIT
+        cz = i in crazed and not gone and not halves
+        vis(nm, not gone and not halves and not cz); vis(nm + '_crazed', cz)
+        vis(nm + '_up', halves); vis(nm + '_low', halves and st < 3)
+    vis('frame_low', st < 3); vis('anchors', st < 3)
     vis('eye_L', st < 2); vis('eye_L_blown', st >= 2); vis('eye_cluster', st >= 2)
     for k in N:
         if k.startswith('eyeball_'): vis(k, st >= 2)
     vis('mass_lod', False)
+    if 'mask' in N:
+        P = V3(INFO['hang'])
+        Mx = T(*P) @ RZ(HANG_POSE[0]) @ RX(HANG_POSE[1]) @ T(*(-P)) if (st >= 3 and hang) else Matrix.Identity(4)
+        set_game_matrix(N['mask'], Mx)
+    bpy.context.view_layer.update()
 
 
 def preview(N, pdir, views, st=0, res=(960, 600), exposure=0.0):
     os.makedirs(pdir, exist_ok=True)
-    colour_preview([m for m in bpy.data.materials if m.use_nodes])
-    set_stage(N, st); studio(); out = []
+    colour_preview(list(M.values()))
+    set_stage(N, st, crazed=(5, 10) if st in (1, 2) else ()); studio(); out = []
     for v in views:
         loc, tgt, lens = VIEWS[v]
         p = os.path.join(pdir, f'rp_{v}_s{st}.png')
         if isinstance(lens, tuple): shot(p, loc, tgt, res=res, ortho=lens[1], exposure=exposure, samples=int(arg('samples', 12)))
         else: shot(p, loc, tgt, lens, res=res, exposure=exposure, samples=int(arg('samples', 12)))
         out.append(p)
-    clear_studio()
+    clear_studio(); set_stage(N, 0)
     print('JF_PREVIEW', ' '.join(out))
+
+
+# ------------------------------------------------------------ finishing: AO, the parts file, export
+def flat_ao(o, v=1.0):
+    me = o.data
+    if 'AO' in me.color_attributes: me.color_attributes.remove(me.color_attributes['AO'])
+    ca = me.color_attributes.new('AO', 'BYTE_COLOR', 'CORNER'); ca.data.foreach_set('color', [v, v, v, 1.0] * len(me.loops))
+
+
+def bake_all(N, A):
+    """ambient occlusion per group, each seeing only what is really next to it"""
+    meshes = {k: o for k, o in N.items() if o.type == 'MESH'}
+    for o in meshes.values(): o.hide_render = False
+    for o in A.values():
+        if o.type == 'MESH': o.hide_render = True
+    hid = [k for k, o in meshes.items() if o.get('jf_hidden')]
+    for k in hid: meshes[k].hide_render = True
+    G = lambda pre: [o for k, o in meshes.items() if k.startswith(pre) and k not in hid]
+    mask_all = G('plate_') + G('frame') + G('eye_') + G('anchor')
+    if 'mass_ne' in N:
+        for o in mask_all: o.hide_render = True
+        bake_ao(G('mass_') + G('insp_'), dist=0.45, lo=0.3, gain=1.15)
+        for o in mask_all: o.hide_render = False
+    if 'frame' in N:
+        others = G('mass_') + G('insp_')
+        for o in others: o.hide_render = True
+        bake_ao(G('frame') + G('eye_') + G('anchor'), dist=0.35, lo=0.42, also=G('plate_'))
+        bake_ao(G('plate_'), dist=0.25, lo=0.5, also=G('frame') + G('eye_'))
+        for o in others: o.hide_render = False
+    for k in hid:  # the damage pieces: each alone (it is shown when its neighbours may be gone)
+        o = meshes[k]
+        if k.startswith('eyeball'): flat_ao(o); continue
+        for q in meshes.values(): q.hide_render = True
+        o.hide_render = False; bake_ao([o], dist=0.2, lo=0.55)
+    for o in meshes.values(): o.hide_render = False
+    for k, o in A.items():
+        if o.type != 'MESH': continue
+        for q in list(meshes.values()) + [x for x in A.values() if x.type == 'MESH']: q.hide_render = True
+        o.hide_render = False; bake_ao([o], dist=0.3, lo=0.3, gain=1.15)
+    for q in list(meshes.values()) + [x for x in A.values() if x.type == 'MESH']: q.hide_render = False
+
+
+def stage_of(k):
+    """(the break stage that takes this part away, the stage it first shows at, what it stands in for)"""
+    if k.startswith('plate_'):
+        i = int(k[6:8]); suf = k[9:]
+        if suf == 'crazed': return 0, None, k[:8]
+        if suf == 'low': return 3, 2, k[:8]
+        if suf == 'up': return 0, 2, k[:8]
+        if i in STAGE1: return 1, None, None
+        if i in SPLIT: return 2, None, None       # swapped for its halves when the smile crack runs
+        return (3 if i == 10 else 0), None, None
+    if k in ('frame_low', 'anchors'): return 3, None, None
+    if k == 'eye_L': return 2, None, None
+    if k in ('eye_L_blown', 'eye_cluster') or k.startswith('eyeball_'): return 0, 2, ('eye_L' if k == 'eye_L_blown' else None)
+    return 0, None, None
+
+
+def parts_json(N, A, arm_meta, tris):
+    parts = []
+    bpy.context.view_layer.update()
+    for k in sorted(N):
+        o = N[k]
+        if o.type != 'MESH': continue
+        lo, hi = bounds([o]); st, frm, of = stage_of(k)
+        d = dict(name=k, centre=r3((lo + hi) / 2), half=r3((hi - lo) / 2), stage=st, group=o.parent.name if o.parent else None, tris=tri_count(o))
+        if o.get('jf_hidden'): d['hidden'] = True
+        if frm is not None: d['shown_from'] = frm
+        if of: d['instead_of'] = of
+        if o.location.length > 1e-6 and k != 'inspector': d['pivot'] = r3(g_of(o.matrix_world.translation))
+        parts.append(d)
+    ia = V3(INSP_AT); ii = INFO.get('insp', {})
+    wp = lambda q: r3(ia + V3(q) * INSP_S)
+    crack = [[round(x, 3), round(crack_y(x), 3)] for x in [(-4.33 + 8.66 * k / 24) for k in range(25)]]
+    meta = dict(
+        id=FID, name='REVENUE PROTECTION', units='metres, root space: x right, y up, +z toward the train (the mask faces +z)',
+        note='L is the mask\'s own left = +x. boxes are axis-aligned, of the part as built (whole, nothing swung or dropped)',
+        tunnel=dict(bore_r=R_BORE, floor_y=FLOOR_Y, mask_r=RM, hoop_r=HOOP_R, mass_r=MASS_R, mass_z=[MASS_Z0, -7.65]),
+        tris=tris,
+        stages={'1': dict(name='HAIRLINE', drops=['plate_%02d' % i for i in STAGE1], note='any plate may be crazed (swap to plate_NN_crazed) and then dropped; these three are the order the sheets use'),
+                '2': dict(name='THE LEFT EYE', hide=['eye_L'], show=['eye_L_blown', 'eye_cluster'], crack=dict(hide=['plate_%02d' % i for i in SPLIT], show=['plate_%02d_%s' % (i, h) for i in SPLIT for h in ('up', 'low')]),
+                          note='plate_11 is split too (plate_11_up / _low) for a fight that still has it'),
+                '3': dict(name='THE SMILE', drops=['plate_%02d_low' % i for i in SPLIT] + ['plate_10', 'frame_low', 'anchors'], hang=dict(node='mask', pivot=r3(INFO['hang']), sheet_pose=dict(rz=HANG_POSE[0], rx=HANG_POSE[1])))},
+        markers=dict(
+            eye_L=dict(centre=[EYE_C[0], EYE_C[1], PT], half=[EYE_A, EYE_B], hinge=r3(INFO['hinge']['eye_L']), hinge_axis=[0, 1, 0], node='eye_L', depth=0.62),
+            eye_R=dict(centre=[-EYE_C[0], EYE_C[1], PT], half=[EYE_A, EYE_B], hinge=r3(INFO['hinge']['eye_R']), hinge_axis=[0, 1, 0], node='eye_R', depth=0.62),
+            inspector=dict(node='inspector', at=r3(ia), scale=INSP_S, crit=wp(ii.get('crit', (0, 0, 0))), crit_r=0.2, head=wp(ii.get('head', (0, 0, 0))), punch=wp(ii.get('rivet', (0, 0, 0))),
+                           joints=dict(insp_head='turn about y / x', insp_armR='shoulder', insp_foreR='elbow', insp_punch_lever='about its local x: + closes the punch (0.3 rad shut)')),
+            hang_bolt=r3(INFO['hang']), anchors=[r3(q) for q in INFO['anchors']],
+            hub=[0, 0, PT + 0.09], smile_crack=crack, plate_face_z=PT, glass_z=GLASS_Z,
+            sockets=[dict(deg=d, pos=r3((4.5 * math.cos(math.radians(d)), 4.5 * math.sin(math.radians(d)), -0.5)), dir=[0, 0, 1], out=r3((math.cos(math.radians(d)), math.sin(math.radians(d)), 0))) for d in SOCKETS],
+            mouth_sockets=[dict(pos=[x, round(crack_y(x) - 0.75, 3), -0.7], dir=[0, 0, 1]) for x in (-2.6, -1.5, 1.5, 2.6)]),
+        materials=dict(rp_inspector_glow='his light (emissive: flare it on a crit)', rp_eye_glow='the eyes behind the blown housing (emissive)', rp_knot_glow='the wrist knot (rp_arm.glb, emissive)',
+                       rp_enamel='the face', rp_enamel_crazed='the cracked face', rp_steel='lattice, hoop, housings, clamps', rp_char='burnt skin (tiles)', rp_bits='faces, lanyards, cards, clothes'),
+        arm=arm_meta, parts=parts)
+    return meta
+
+
+def finish_all(N, A, arm):
+    for k, o in list(N.items()) + list(A.items()):
+        if o.type == 'MESH': o.data.validate(); o.data.update()
+    bpy.context.view_layer.update()
+    if not arg('no-ao'): bake_all(N, A)
+    for o in list(N.values()) + list(A.values()):
+        if o.type == 'MESH': final_colour(o)
+    vis = sum(tri_count(o) for k, o in N.items() if o.type == 'MESH' and not o.get('jf_hidden'))
+    hid = sum(tri_count(o) for k, o in N.items() if o.type == 'MESH' and o.get('jf_hidden'))
+    grp = lambda pre: sum(tri_count(o) for k, o in N.items() if o.type == 'MESH' and not o.get('jf_hidden') and k.startswith(pre))
+    tris = dict(whole=vis, hidden_variants=hid, mask=grp('plate_') + grp('frame') + grp('eye_') + grp('anchor'), mass=grp('mass_'), inspector=grp('insp_'),
+                arm={k: tri_count(o) for k, o in A.items() if o.type == 'MESH' and k[0] != 'f' and k != 'palm'})
+    tris['arm']['arm_hand'] = sum(tri_count(o) for k, o in A.items() if o.type == 'MESH' and (k[0] == 'f' or k == 'palm'))
+    print('JF_TRIS', json.dumps(tris))
+    return tris
+
+
+TUNNEL = []
+def tunnel_set(on=True, ring_z=0.9, man=True, floor=True):
+    """the pictures' scale: a ring the size of the bore, the track bed, a 1.8 m figure"""
+    for o in TUNNEL:
+        try: bpy.data.objects.remove(o, do_unlink=True)
+        except ReferenceError: pass
+    TUNNEL.clear()
+    if not on: return
+    m = mat('jf_set_ring', 0xff4fd8, rough=0.6, emit=0xff4fd8, strength=0.6); m2 = mat('jf_set_floor', 0x2a2228, rough=0.9); m3 = mat('jf_set_man', 0x4fd8ff, rough=0.6, emit=0x4fd8ff, strength=0.25)
+    b = Buf('jf_set_ring'); k = 64
+    R = [[V3((math.cos(2 * math.pi * j / k) * r_, math.sin(2 * math.pi * j / k) * r_, ring_z + z)) for j in range(k)] for r_, z in ((R_BORE, -0.06), (R_BORE + 0.12, -0.06), (R_BORE + 0.12, 0.06), (R_BORE, 0.06), (R_BORE, -0.06))]
+    b.add(p_loft(R), m, ('tile', 1.0)); TUNNEL.append(b.obj())
+    if floor:
+        b = Buf('jf_set_floor'); hw = math.sqrt(R_BORE ** 2 - FLOOR_Y ** 2)
+        b.add(p_box(hw * 2, 0.08, 9.0), m2, ('tile', 1.0), T(0, FLOOR_Y - 0.04, 5.2)); TUNNEL.append(b.obj())
+    if man:
+        b = Buf('jf_set_man'); Mx = T(2.3, FLOOR_Y, 3.4)
+        for sz, at_ in (((0.2, 0.84, 0.2), (-0.12, 0.42, 0)), ((0.2, 0.84, 0.2), (0.12, 0.42, 0)), ((0.5, 0.62, 0.26), (0, 1.15, 0)), ((0.14, 0.62, 0.16), (-0.33, 1.15, 0)), ((0.14, 0.62, 0.16), (0.33, 1.15, 0)), ((0.24, 0.28, 0.24), (0, 1.66, 0))):
+            b.add(xf(p_box(sz[0], sz[2], sz[1]), RX(-math.pi / 2)), m3, ('tile', 1.0), Mx @ T(*at_))
+        TUNNEL.append(b.obj())
+    for o in TUNNEL: flat_ao(o); final_colour(o)
+
+
+def sheets(N, A, tris):
+    colour_preview(list(M.values()))
+    tmp = os.path.join(SHEETS, '_tmp'); os.makedirs(tmp, exist_ok=True)
+    arm_objs = [o for o in A.values()]
+    def arms(on):
+        for o in arm_objs: o.hide_render = not on
+    def boss(on):
+        for o in N.values(): o.hide_render = not on
+    S = int(arg('samples', 16))
+    # (a) the whole thing in a ring the size of the bore, a 1.8 m figure on the track bed
+    arms(False); set_stage(N, 0); tunnel_set(True); studio(9000, 0.6); out = []
+    for nm, loc, tgt, lens in (('front', (0, 0, 40), (0, 0, 0), ('o', 10.6)), ('three-quarter', (15, 4.2, 15.5), (0, -0.2, -2.2), 50), ('side', (40, 0, -1.6), (0, 0, -1.6), ('o', 13.4)), ('back', (-10, 3.5, -24.5), (0, 0, -3.5), 50)):
+        p = os.path.join(tmp, f'ta_{nm}.png'); out.append(p)
+        if isinstance(lens, tuple): shot(p, loc, tgt, res=(760, 760), ortho=lens[1], exposure=-1.0, samples=S)
+        else: shot(p, loc, tgt, lens, res=(760, 760), exposure=-1.0, samples=S)
+    contact(out, os.path.join(SHEETS, 'rp_turnaround'), f'REVENUE PROTECTION  {tris["whole"]} TRIS  MASK {tris["mask"]}  MASS {tris["mass"]}  INSPECTOR {tris["inspector"]}  RING = THE 9.2 M BORE  FIGURE = 1.8 M', cols=4, labels=['front', 'three-quarter', 'side (the plug is 7 m deep)', 'back'])
+    # (b) the three break stages, front on
+    out = []
+    for st in (1, 2, 3):
+        set_stage(N, st, crazed=(5, 10) if st == 1 else (5,) if st == 2 else ())
+        p = os.path.join(tmp, f'st_{st}.png'); out.append(p)
+        shot(p, (0, 0, 40), (0, 0, 0), res=(760, 760), ortho=10.6, exposure=-0.7, samples=S)
+    set_stage(N, 0)
+    contact(out, os.path.join(SHEETS, 'rp_stages'), 'REVENUE PROTECTION  THE MASK BREAKS', cols=3, labels=['1 HAIRLINE: plates craze and fall (05 10 crazed here)', '2 THE LEFT EYE: blown, real eyes; the smile is a crack', '3 THE SMILE: the lower third gone, it hangs off one clamp'])
+    tunnel_set(False); clear_studio()
+    # (c) close-ups
+    out = []; lab = []
+    studio(7000, 0.6)
+    def cu(nm, loc, tgt, lens=50, ex=-0.8, st=None, cz=(), label=None):
+        if st is not None: set_stage(N, st, crazed=cz)
+        p = os.path.join(tmp, f'cu_{nm}.png'); out.append(p); lab.append(label or nm)
+        shot(p, loc, tgt, lens, res=(760, 560), exposure=ex, samples=S)
+    cu('enamel', (-1.9, 2.3, 3.0), (-2.5, 2.8, 0.1), 50, -1.1, st=0, label='enamel, bolts, the hoop')
+    cu('crazed', (3.3, 2.2, 3.4), (2.6, 2.5, 0.1), 50, -1.1, st=1, cz=(5, 4), label='a crazed plate (04) by a whole one')
+    cu('eye_blown', (2.5, 1.0, 3.6), (1.3, 0.75, 0), 50, -0.6, st=2, label='the left eye, blown')
+    for k, o in N.items():
+        if k.startswith(('plate_', 'frame', 'eye_', 'anchor')) and o.type == 'MESH': o.hide_render = True
+    cu('mass6', (0.9, -1.2, 5.6), (0.3, -0.9, -0.8), 38, 0.5, label='the 17:32 from 6 m (mask off)')
+    cu('inspector', (0.85, -1.85, 1.3), (0.0, -2.2, -0.8), 50, 0.4, label='the inspector')
+    set_stage(N, 0); boss(False); arms(True); clear_studio()
+    # the arm kit: the hand open and gripping, eight lengths along a curve with the knot and the hand
+    for k in ('arm_seg', 'arm_knot', 'arm_stump'): A[k].hide_render = True
+    hand = A['arm_hand']; hand.location = (0, 0, 0)
+    world(0x1a1220, 0.6); area(700, (2.5, 3.0, 2.5), (0, 0, 0.7), 4.0); area(260, (-3, -1, 1.5), (0, 0, 0.7), 4.0, (0.8, 0.88, 1.0)); area(200, (0, -3, -1.5), (0, 0, 0.7), 3.0, (1.0, 0.8, 0.9))
+    def curl(v):
+        for k, o in A.items():
+            if len(k) == 4 and k[0] == 'f' and k[2] == '_': o.rotation_euler = Euler((v * (0.75 if k[1] == '0' else 1.0), 0, 0), 'XYZ')
+    for nm, v in (('hand_open', 0.08), ('hand_grip', 0.95)):
+        curl(v); bpy.context.view_layer.update()
+        p = os.path.join(tmp, f'cu_{nm}.png'); out.append(p); lab.append(nm.replace('_', ' ') + ' (palm side)')
+        shot(p, (1.9, -2.5, 2.6), (0.0, -0.15, 0.85), 50, res=(760, 560), exposure=0.5, samples=S)
+    curl(0.55)
+    clear_studio()
+    seg = A['arm_seg']; seg.hide_render = False; A['arm_knot'].hide_render = False
+    pts = [V3((0, 0, 0))]; d = V3((0, 0.05, 1)).normalized(); copies = []
+    for k in range(8):
+        d = (RX(-0.12 if k < 4 else 0.16) @ RY(0.1)) @ d.to_4d(); d = V3(d[:3]).normalized()
+        pts.append(pts[-1] + d * SEG)
+    for k in range(8):
+        o = seg if k == 0 else seg.copy()
+        if k: _link(o); o.name = 'jf_set_seg%d' % k; copies.append(o)
+        o.parent = None; set_game_matrix(o, frame(pts[k + 1] - pts[k], (0, 1, 0), pts[k]) @ RZ(k * 0.0))
+    A['arm_knot'].parent = None; set_game_matrix(A['arm_knot'], frame(pts[8] - pts[7], (0, 1, 0), pts[8]))
+    hand.parent = None; set_game_matrix(hand, frame(pts[8] - pts[7], (0, 1, 0), pts[8] + (pts[8] - pts[7]).normalized() * 0.3))
+    mid = pts[4]
+    world(0x1a1220, 0.6); area(6000, (9, 9, 9), tuple(mid), 9.0); area(2200, (-9, 3, 2), tuple(mid), 9.0, (0.8, 0.88, 1.0)); area(1500, (0, -6, 12), tuple(mid), 6.0, (1.0, 0.8, 0.9))
+    p = os.path.join(tmp, 'cu_arm.png'); out.append(p); lab.append('8 lengths, the knot, the hand (12 m)')
+    shot(p, (13.5, 3.5, 6.0), tuple(mid + V3((0, -0.2, 0.6))), 50, res=(760, 560), exposure=0.3, samples=S)
+    contact(out, os.path.join(SHEETS, 'rp_closeups'), 'REVENUE PROTECTION  CLOSE-UPS', cols=4, labels=lab)
+    clear_studio()   # (takes the copies with it: they are named jf_set*)
+    try: os.rmdir(tmp)
+    except OSError: pass
 
 
 def main():
     lib.reset(); lib._mats.clear()
     materials()
-    N = {}
+    N = {}; A = {}; arm_meta = {}
     root = empty(FID)
     if want('mask'): build_mask(N).parent = root
     if want('mass'): build_mass(N).parent = root
     if want('inspector'): build_inspector(N).parent = root
-    AR = build_arm() if want('arm') else None
-    for o in N.values():
-        if o.type == 'MESH': final_colour(o)
+    if want('arm'): aroot, A, arm_meta = build_arm()
     bpy.context.view_layer.update()
+    tris = finish_all(N, A, arm_meta)
     if arg('stats'):
-        for k, o in sorted(N.items()):
-            if o.type == 'MESH': print('JF_PART', k, tri_count(o))
+        for k, o in sorted(N.items()) + sorted(A.items()):
+            if o.type == 'MESH': print('JF_PART', k, tri_count(o), [m.name for m in o.data.materials])
+    full = ONLY is None
+    if full or arg('json'):
+        meta = parts_json(N, A, arm_meta, tris)
+        small = {k: v for k, v in meta.items() if k not in ('parts',)}; small['parts_file'] = FID + '.parts.json'; small['kind'] = 'story'
+        small['hidden'] = sorted(k for k, o in N.items() if o.type == 'MESH' and o.get('jf_hidden'))
+        root['jf'] = json.dumps(small)
+        if not arg('no-export'):
+            os.makedirs(OUT, exist_ok=True)
+            with open(os.path.join(OUT, FID + '.parts.json'), 'w') as f: json.dump(meta, f, separators=(',', ':'))
+            print('JF_JSON', os.path.join(OUT, FID + '.parts.json'), len(meta['parts']), 'parts')
+    if arg('qa'): run_qa(N, A)
+    if not arg('no-export') and full:
+        export_glb(root, os.path.join(OUT, FID + '.glb'))
+        if A: export_glb(aroot, os.path.join(OUT, 'rp_arm.glb'))
     pdir = arg('preview')
     if isinstance(pdir, str):
+        for o in A.values(): o.hide_render = True
         preview(N, pdir, arg('views', 'front,q').split(','), int(arg('stage', 0)), res=tuple(int(x) for x in arg('res', '960x600').split('x')), exposure=float(arg('exposure', 0)))
+        return
+    if not arg('no-sheet') and full: sheets(N, A, tris)
+
+
+def run_qa(N, A):
+    G = lambda pre, hidden=False: [o for k, o in N.items() if o.type == 'MESH' and k.startswith(pre) and bool(o.get('jf_hidden')) == hidden]
+    res = {}
+    if 'frame' in N: res['mask'] = qa('mask', G('plate_') + G('frame') + G('eye_') + G('anchor'), quiet=True)
+    if 'mass_ne' in N: res['mass'] = qa('mass', G('mass_') + G('insp_'), tol=0.01, quiet=True)
+    for o in G('plate_', True) + G('eye_', True): res[o.name] = qa(o.name, [o] + ([q for k, q in N.items() if k.startswith('eyeball')] if o.name == 'eye_cluster' else []), quiet=True)
+    for k in ('arm_seg', 'arm_knot', 'arm_stump'):
+        if k in A: res[k] = qa(k, [A[k]], tol=0.01, quiet=True)
+    if 'palm' in A: res['arm_hand'] = qa('arm_hand', [o for k, o in A.items() if o.type == 'MESH' and (k == 'palm' or k[0] == 'f')], tol=0.02, quiet=True)
+    print('QA_SUMMARY', {k: v.get('pass') for k, v in res.items()})
+    return res
 
 
 main()

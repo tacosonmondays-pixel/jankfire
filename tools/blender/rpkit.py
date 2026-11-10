@@ -381,6 +381,9 @@ def bake_ao(objs, dist=0.6, samples=24, lo=0.4, also=(), gain=1.0):
         bpy.ops.object.bake(type='AO', target='VERTEX_COLORS')
         n = len(ca.data); buf = np.empty(n * 4, np.float32); ca.data.foreach_get('color', buf)
         buf = buf.reshape(n, 4); v = np.clip(lo + (1 - lo) * np.clip(buf[:, 0] * gain, 0, 1), 0, 1)
+        vi = np.empty(n, np.int32); me.loops.foreach_get('vertex_index', vi)   # one value per vertex: corners that share a vertex stay one vertex in the file
+        acc = np.zeros(len(me.vertices)); cnt = np.zeros(len(me.vertices)); np.add.at(acc, vi, v); np.add.at(cnt, vi, 1)
+        v = (acc / np.maximum(cnt, 1))[vi]
         buf[:, 0] = buf[:, 1] = buf[:, 2] = v; buf[:, 3] = 1
         ca.data.foreach_set('color', buf.ravel())
     for o in hidden: o.hide_render = False
