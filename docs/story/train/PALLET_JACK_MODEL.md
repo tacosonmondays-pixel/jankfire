@@ -95,8 +95,8 @@ holds), `fistAt` (the knuckles), `elbowAt` (the rocket's exhaust), `boilerAt`, `
 `stackTipL` / `R` (+ `stackTipBentL` / `R`), `woundAt` and `ventAt` (the hole, front and back), `armFrontEnd`,
 `armBackEnd`, `marrowAt`, `seatAt`, `eyeAt`.
 
-His right hand stays a fist (it is the rocket's); his left is open. Anything he holds is held in the left, and it is
-the left that takes your hand.
+His right hand stays a fist (it is the rocket's); his left is open. The fist can carry a handle (`gripR`: the pan);
+anything that needs fingers is the left's, and it is the left that takes your hand.
 
 ## Damage states
 
@@ -122,8 +122,9 @@ turns into `CLIPS.pj_*` entries. The Blender pose and contact sheets pose the mo
 **Hand contacts are solved, not guessed.** `pj_clips.py` carries a copy of the game's joint tree and a small search
 (`put(pose, side, joint, spot, normal)`) that finds the arm for "this point of the hand goes there": the palm on the
 truck's grip, the spoon at his mouth, both hands on the arm through him, the palm over the hole, your hand held on
-his chest left of the weld, his hand on the cocking collar. 45 placements; it prints the worst miss when it runs
-(3.8 cm: the fist reaching the collar while racking).
+his chest left of the weld, his hand on the cocking collar. 45 placements; 44 land within 1.5 cm in the world. It
+prints the worst miss when it runs: his right hand at the moment the thing snaps in `pj_break_it`, 4.7 cm off where
+it was asked to be (a hand flung clear, not a hand on something).
 
 What the clip player adds to plain keys:
 - **Arms, forearms, hands and neck are absolute**: a hand that has to be on the truck, on the arm through him or on
@@ -263,8 +264,8 @@ copy it from the parts file's `markers` into `MK` in `jacklook.js` (the code fal
 - **A wide rigid torso.** Arms crossing the belly (racking the collar, hands on the arm through him, a hand over the
   hole) sink a little into the singlet or the vest. Not checked pose by pose: whether the stacks clear the back of
   his head when it tips right back, and the keg against whatever he is sat against.
-- **Racking the launcher** misses its contact by up to 3.8 cm (the solver's worst case); it reads at fight distance,
-  not in a close-up.
+- **Contacts are solved at the key poses only.** Between two keys a hand travels on joint angles, so it can drift a
+  centimetre or two off what it is holding mid-move (most visible racking the collar and gripping the arm through him).
 - **The damage is stylised.** Holes are dark plates, not holes; the arm through him is one rigid piece on his spine
   (the scene's own arm should replace it while the thing is still attached: `PJ.arm(a, false)`).
 - **Draw calls.** Every named piece is its own mesh and he has 50 materials, so up close he is about 151 draw calls
