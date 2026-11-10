@@ -12,6 +12,7 @@ import { rigClash } from '../shared/rig.js'; // overdrive rig killstreak
 import { soapAt, trapBoxes, trapPreroll } from '../shared/wand.js';
 import { MAPS, MAP_ORDER } from '../shared/map.js';
 import { warmMap, startGraphSweeper } from './graphs.js'; // the bots' walk graphs: built at room start, dropped when no room has used the map for a while
+import { sdRate } from '../shared/sdgun.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, mapForGame, canDefuse, LADDER, GUNGAME, INFECT, rollLadder } from '../shared/modes.js';
 import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, eventGame, inQuickPlay } from '../shared/vote.js';
 import { matchReset, matchKill, matchSummary } from './match.js';
@@ -38,6 +39,7 @@ import { BR } from '../shared/royale.js';
 import { tickHR, hrBot } from './hrguy.js'; // the Tall Guy From HR (Scary Forest)
 import { HR } from '../shared/hr.js';
 import { installAds } from './ads.js';
+import { installSdSkill } from './sdskill.js';
 import { installGear } from './gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
 import { installRandSkin, rollSkins, rollKfx, cleanFavs, hasRandom } from './randskin.js'; // Random cosmetics: rolled again on every spawn
 import { installSec } from './secondaries.js'; // water pistol, taser, tv remote, speed trap
@@ -55,6 +57,8 @@ import { ZM } from '../shared/zombies.js';
 import { installZombies } from './zombies.js';
 import { installStoryRef } from './storyref.js'; // story rooms: the OVERDUE referee's rules (enemies, sides, events)
 import { installModeStats } from './modestats.js'; // per-mode leaderboard stats
+import { inPit, pitUnder, sink, mire } from '../shared/pits.js'; // pits with something in them (the volcano's lava)
+import { installPits } from './pits.js';
 import { inShredder } from '../shared/shredpit.js'; // the Warehouse's shredder pit: its teeth kill like the void
 import { installLobby } from './lobby.js'; // mode lobbies: the countdown before a match
 import { LOBBY } from '../shared/lobby.js';
@@ -638,7 +642,7 @@ class Room {
   }
 
   botThink(b, dt) {
-    const ai = b.ai, n = now(), D = BOT_DIFF[ai.diff] || BOT_DIFF.normal;
+    const ai = b.ai, n = now(), D = this.botD(b);
     if (b.sleepUntil > n) return { wx: 0, wz: 0, jump: false };
     if (n < (b.blindUntil || 0)) { if (this.lassoHolding(b)) this.lassoEnd(b, 'drop'); return this.botBlind(b, dt); } // flashed by goggles: stumbling about, can't see a thing (and lets go of the rope)
     const lt = this.lassoThink(b, dt); // a lasso bot holding someone does the fling routine (server/lasso.js)
@@ -715,8 +719,9 @@ class Room {
     if (!ai.hook && n >= (ai.nextHook || 0) && this.mode !== 'training' && !this.hookOff() && (!this.brOn || this.brHookReady(b))) { // (jank royale: grapple charges)
       const skill = ai.diff === 'easy' ? 0.35 : ai.diff === 'hard' ? 1 : 0.7;
       const below = !b.onGround && !raycast([b.pos[0], b.pos[1] + 0.5, b.pos[2]], [0, -1, 0], 40, boxes);
+      const cooked = !!inPit(this.map, b.pos); // standing in the lava: same way out
       let want = null;
-      if (below && (b.vel[1] < -4 || b.pos[1] < this.map.killY + 25)) { // falling into the void: hook back toward the middle, up high
+      if (cooked || (below && (b.vel[1] < -4 || b.pos[1] < this.map.killY + 25))) { // falling into the void: hook back toward the middle, up high
         const sp = this.map.spawns, c = !sp ? [0, 0, 0] : !this.map.sea ? sp[0] : sp.reduce((p, q) => (Math.hypot(q[0] - b.pos[0], q[2] - b.pos[2]) < Math.hypot(p[0] - b.pos[0], p[2] - b.pos[2]) ? q : p)); // (sea maps: back to the nearest land, not across the map)
         want = [c[0] - b.pos[0], 18 + Math.max(0, c[1] - b.pos[1]), c[2] - b.pos[2]];
       } else if (t && t.alive && (b.inf || Math.random() < skill)) {
@@ -759,7 +764,7 @@ class Room {
     }
     if (wl > 0 && b.onGround) {
       const probe = [b.pos[0] + wx * 2.5, b.pos[1] + 0.5, b.pos[2] + wz * 2.5];
-      if (!raycast(probe, [0, -1, 0], Math.max(6, Math.min(15, probe[1] - this.map.killY)), boxes)) { wx = -wx; wz = -wz; ai.strafeDir *= -1; if (this.map.edgeGuard) ai.edgeT = n + 3000; }
+      if (!raycast(probe, [0, -1, 0], Math.max(6, Math.min(15, probe[1] - this.map.killY)), boxes) || pitUnder(this.map, probe[0], probe[1], probe[2])) { wx = -wx; wz = -wz; ai.strafeDir *= -1; if (this.map.edgeGuard) ai.edgeT = n + 3000; }
     }
     if (this.map.edgeGuard && !b.onGround && this.botFlightLands(b)) { wx = 0; wz = 0; jump = false; } // thrown over the canyon (a jump pad, a hit) onto the far side: let it fly (steering back brakes it into the drop)
     else if (this.brOn || this.map.edgeGuard) { const e = this.brBotEdge(b, wx, wz, jump); if (this.map.edgeGuard && (e[0] !== wx || e[1] !== wz)) ai.edgeT = n + 3000; [wx, wz, jump] = e; } // jank royale (and maps with a canyon, map.edgeGuard): no hopping into canyons. turned back from one: find a bridge (above)
@@ -899,6 +904,12 @@ class Room {
     return null;
   }
 
+  // how hard a bot's bullets hit next to a player's: the same for every bot in every mode (owner, 2026-11-10: bots don't hit harder)
+  botDmg() { return 0.7; }
+  // a bot's reaction, wobble, trigger and turn numbers (server/sdskill.js gives each Plant & Defuse bot its own)
+  botD(b) { return BOT_DIFF[b.ai.diff] || BOT_DIFF.normal; }
+  // shots per second for a gun right now: Plant & Defuse slows a few down (shared/sdgun.js rof)
+  rateOf(id, w, hp) { const r = fireRate(w, hp); return this.isEcon() ? sdRate(id, r) : r; }
   botFire(b, t, D) {
     if (this.chaosKit && this.botChaosFire(b, t, D)) return;
     if (this.brOn && !this.brBotShot(b)) return; // jank royale: real bullets
@@ -906,7 +917,7 @@ class Room {
     const w = WEAPONS[b.w], n = now();
     if (b.w === 'shredder') { this.botShred(b); return; } // no shots: it sucks for as long as they're in front of it
     if (w.kind === 'beam') { this.botLaser(b); return; } // laser pointer: charge, then let go
-    const iv = w.rate ? 1000 / (fireRate(w, b.hp) * (w.hands || 1)) : w.cd * 1000; // Lefty & Righty: both hands going
+    const iv = w.rate ? 1000 / (this.rateOf(b.w, w, b.hp) * (w.hands || 1)) : w.cd * 1000; // Lefty & Righty: both hands going
     if (w.mag) {
       b.ai.ammo--;
       if (b.ai.ammo <= 0) { b.ai.ammo = w.mag; b.ai.reloadUntil = n + w.reload * 1000; }
@@ -936,7 +947,7 @@ class Room {
         segs.push([...o, o[0] + d[0] * maxT, o[1] + d[1] * maxT, o[2] + d[2] * maxT].map(r2));
         if (victim) { const h = hits.get(victim) || { n: 0, h: 0, d }; h.n++; if (head) h.h++; hits.set(victim, h); }
       }
-      for (const [victim, h] of hits) this.applyHitscan(b, victim, b.w, h.n, h.h, h.d, 0.7);
+      for (const [victim, h] of hits) this.applyHitscan(b, victim, b.w, h.n, h.h, h.d, this.botDmg(b));
       this.broadcast({ t: 'fx', k: 'shot', w: b.w, id: b.id, s: segs.slice(0, 12), hd: w.hands && (b.ai.hd = !b.ai.hd) ? 1 : undefined }); // a bot's Lefty & Righty takes turns
       if (w.marbles) this.marblePatch(b, segs.slice(0, 12)); // bots' marbles trip people too
     } else if (w.kind === 'proj') {
@@ -1010,6 +1021,8 @@ class Room {
     this.eatMomentum(b, dt);
     if (b.held && n < b.held.until) { for (let i = 0; i < 3; i++) v[i] = Math.max(-30, Math.min(30, (b.held.at[i] - b.pos[i]) * 9)); b.onGround = false; } // hanging in a shredder
     const was = b.onGround;
+    sink(this.map, b.pos, v); // in the deep sea: sinking, not falling
+    mire(this.map, b.pos, v, dt, !!(b.ai && b.ai.hook)); // in lava: going down slowly
     const res = movePlayer(b.pos, v, dt, this.boxes, was);
     b.onGround = !!res.ground && v[1] <= 0.01;
     if (b.onGround && res.ground.pad && !b.ai.dummy) { const pd = res.ground.pad; v[0] += pd[0]; v[1] = pd[1]; v[2] += pd[2]; b.onGround = false; }
@@ -1467,7 +1480,7 @@ class Room {
       if (killer.isBot && killer.kfx == null) killer.kfx = Math.random() < 0.45 ? pick(KILL_IDS) : 'none'; // bots show off stuff you can roll
       kfx = killer.kfx || 'none';
     }
-    this.broadcast({ t: 'kill', k: killer && killer !== t ? killer.id : 0, v: t.id, w, via, vel: t.vel.map(r2), pos: t.pos.map(r2), yaw: r2(t.yaw || 0), fx: kfx, ep: ep || undefined, rs: Math.max(0, t.minRespawnAt - now()), sky: w === 'duck' && now() - (t.skyT || 0) < 800 ? 1 : undefined, pit: w === 'void' && now() - (t.pitT || 0) < 500 ? 1 : undefined }); // (pit: the shredder pit's teeth)
+    this.broadcast({ t: 'kill', k: killer && killer !== t ? killer.id : 0, v: t.id, w, via, vel: t.vel.map(r2), pos: t.pos.map(r2), yaw: r2(t.yaw || 0), fx: kfx, ep: ep || undefined, rs: Math.max(0, t.minRespawnAt - now()), sky: w === 'duck' && now() - (t.skyT || 0) < 800 ? 1 : undefined, pit: w === 'void' && now() - (t.pitT || 0) < 500 ? 1 : undefined, hz: w === 'lava' && now() - (t.hzT || 0) < 500 ? 1 : undefined }); // (pit: the shredder pit's teeth)
     t.lastAttacker = 0;
     this.chaosKill(t, killer);
     if (killer && killer.isBot || t.isBot) this.botBrag(killer, t, w, via, { rev: bcRev, clutch: this.botClutch(killer, t) }); // bots brag / cope in chat
@@ -1667,7 +1680,7 @@ class Room {
       const fan = m.fan === 1, ns = m.ns === 1, qs = m.qs === 1;
       if (w.fanHammer) { const mul = this.revolverHit(p, t, fan, w); if (mul) this.applyHitscan(p, t, m.w, n, h, d, mul); return; } // tap or fan the hammer
       const hd = w.hands && m.hd === 1 ? 'L' : ''; // Lefty & Righty: each gun has its own schedule (claiming the other hand buys at most the pair's real rate)
-      if (!this.pairOk(p, t, 'hs' + m.w + hd, (1000 / fireRate(w, p.hp)) * 0.6) || !this.rangeOk(p, t, w.range)) return; // the Redline fires faster as you lose HP
+      if (!this.pairOk(p, t, 'hs' + m.w + hd, (1000 / this.rateOf(m.w, w, p.hp)) * 0.6) || !this.rangeOk(p, t, w.range)) return; // the Redline fires faster as you lose HP
       p.nsHit = m.w === 'sniper' && p.w === 'sniper' && ns; // a no-scope (ns: 1) can make the kill EPIC
       const hp0 = t.hp; // no-scope hype only goes out if the shot really landed
       p.qsHit = !!w.quick && qs; // Second Opinion quick-scope (server/rifles.js caps what it buys)
@@ -1951,7 +1964,7 @@ class Room {
     // one limiter per player, not per weapon: you hold one gun at a time, and cycling ids must not add the rates up.
     // the rate is the real one: the Redline speeds up as you lose HP, a fanned revolver goes at the fan rate
     if (w.kind === 'hitscan' || w.kind === 'melee') {
-      const rate = w.rate ? (fan ? Math.max(w.rate, w.fanHammer.rate) : fireRate(w, p.hp) * (w.hands || 1)) : 0; // Lefty & Righty: both hands
+      const rate = w.rate ? (fan ? Math.max(w.rate, w.fanHammer.rate) : this.rateOf(m.w, w, p.hp) * (w.hands || 1)) : 0; // Lefty & Righty: both hands
       const n = now(), iv = rate ? 250 / rate : (w.cd || 0.3) * 250;
       if (n - (p.lastFire.fx || 0) < iv) return;
       p.lastFire.fx = n;
@@ -2500,7 +2513,7 @@ class Room {
   botDropNear(b, wx, wz) {
     const v = b.vel, sp = Math.hypot(v[0], v[2]), wl = Math.hypot(wx, wz), dx = sp > 1 ? v[0] / sp : wl ? wx / wl : 0, dz = sp > 1 ? v[2] / sp : wl ? wz / wl : 0;
     const probes = [[2, 0], [-2, 0], [0, 2], [0, -2]]; if (dx || dz) for (const d of [3, 4.5, 6]) probes.push([dx * d, dz * d]);
-    return probes.some(([px, pz]) => !raycast([b.pos[0] + px, b.pos[1] + 0.5, b.pos[2] + pz], [0, -1, 0], 15, this.boxes));
+    return probes.some(([px, pz]) => !raycast([b.pos[0] + px, b.pos[1] + 0.5, b.pos[2] + pz], [0, -1, 0], 15, this.boxes) || pitUnder(this.map, b.pos[0] + px, b.pos[1] + 0.5, b.pos[2] + pz));
   }
   // a bot in the air: does the flight come down on a floor if nobody steers? (a floor near the height it left from)
   botFlightLands(b) {
@@ -3798,6 +3811,7 @@ class Room {
     this.tickWaves();
     if (this.sprays.size && this.sprayMap !== this.cfg.map) this.sprays.clear(); // the map changed: its graffiti goes with it
     this.tickChaos(dt, n);
+    this.tickPits(n); // lava pits burn whoever's standing in them
     this.tickGear(n); // laser beams, photo frames, pop quizzes, bots' gadgets
     for (const p of this.players.values()) {
       if (!p.alive && n >= p.respawnAt) {
@@ -3940,7 +3954,9 @@ installEcon(Room, {
 installLasso(Room);
 installZombies(Room, { send, stat, store });
 installLobby(Room, { send, rooms });
+installPits(Room, { now, r2 });
 installAds(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm }); // the laptop's pop-up ads (after installSec: it wraps botGear / botFire)
+installSdSkill(Room); // Plant & Defuse bots with skill tiers + team stances (wraps the econ / tactical bot methods)
 installStoryRef(Room); // story rooms (before installModeStats, which stays last)
 installModeStats(Room, { store }); // per-mode leaderboard stats (last: it wraps zombies' zmGive)
 

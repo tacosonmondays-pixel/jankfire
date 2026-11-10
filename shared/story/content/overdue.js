@@ -147,7 +147,7 @@ function build() {
     const { reward, extra } = rewardOf(m.reward);
     const q = { id: qid, title: m.title, giver: m.giver, act: m.act || m.from, kind: m.kind === 'side' ? 'side' : 'main', blurb: m.logline,
       ...(req ? { if: req } : {}), steps: convertSteps(qid, m.steps, T, m.choices), reward, onDone: extra,
-      scenes: { start: (m.scenes || [])[0] || null, end: null }, district: m.district };
+      scenes: { start: m.startScene !== undefined ? m.startScene : (m.scenes || [])[0] || null, end: null }, district: m.district }; // (startScene: null = nothing plays on the mission card)
     q.onDone = [...q.steps.tail, ...q.onDone];
     if (q.kind === 'main') q.onStart = [`var:act=${m.act}`];
     if (m.grade && m.grade.meets) q.ends = { default: { grade: m.grade.meets } };
@@ -196,6 +196,10 @@ function build() {
   // ---- scenes: convert track conditions; choices inside scenes open the choice pseudo-npc
   const scenes = {};
   for (const [id, s] of Object.entries(C.SCENES)) scenes[id] = { id, ...s, skip: true, tracks: s.tracks.map((t) => ({ ...t, ...(t.if ? { if: cond(t.if) } : {}), ...(t.choice && s.mission ? { do: [`talk:choice/${s.mission}.${t.choice}`] } : {}) })) };
+  // a step that plays a scene and waits on a flag only that scene can earn (seen_c4, heart_ripped): the scene's end sets it
+  for (const [qid, m] of Object.entries(QS)) for (const st of m.steps || []) { const g = st.goal; if (!st.scene || !scenes[st.scene] || !g || g.type !== 'flag' || scenes[st.scene].tracks.some((t) => t.choice)) continue; // (a scene with a choice in it: skipping it mustn't skip the choice)
+    if ((m.choices || []).some((ch) => ch.options.some((op) => (op.do || []).includes(`flag:${g.flag}`)))) continue;
+    scenes[st.scene].onEnd = [...(scenes[st.scene].onEnd || []), `flag:${g.flag}`]; }
   // ---- zones and things: locations (positions come from the district generators), collectibles as interactables
   for (const [id, l] of Object.entries(C.LOCATIONS)) zones[id] = { name: l.name, district: l.district, p: null, r: 6 };
   for (const [id, c] of Object.entries(C.COLLECTIBLES)) {

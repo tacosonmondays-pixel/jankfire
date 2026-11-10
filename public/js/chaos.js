@@ -15,6 +15,7 @@ import { MAPS, BOXES } from '/shared/map.js';
 import { GAMES } from '/shared/modes.js';
 import { raycast } from '/shared/physics.js';
 import { surfaces, lavaOk, onLava, LAVA } from '/shared/lava.js';
+import { inPit } from '/shared/pits.js';
 
 const $ = (id) => document.getElementById(id);
 const R = (s = 1) => (Math.random() * 2 - 1) * s;
@@ -108,7 +109,32 @@ net.on('sizzle', (m) => {
   steam(m.p);
   sfx.sizzle(m.p);
   if (m.id === G.myId) { G.burnUntil = performance.now() + 900; G.shake = Math.max(G.shake, 0.35); }
+  if (m.hz && m.id === G.myId) { // standing in a lava pit (the volcano): the same ouch as the floor, different words
+    hud.msg(['GET OUT GET OUT', 'THIS IS NOT A HOT TUB', 'HOT HOT HOT', 'MEDIUM RARE'][(Math.random() * 4) | 0], 0.7, 'lava');
+    const f = el('lavaHit');
+    f.classList.remove('on'); void f.offsetWidth; f.classList.add('on');
+  }
 });
+// camera under the sea (map.seaY): everything goes blue and murky instead of showing the underside of the map
+let underOn = false, lavaUnder = false;
+export function underSea(map) {
+  const cp = G.camera.position, lq = G.joined && map && map.pits ? inPit(map, [cp.x, cp.y + 0.12, cp.z]) : null; // eyes under the lava: everything goes orange
+  if (!!lq !== lavaUnder) { lavaUnder = !!lq; el('lavaUnder').style.cssText = 'position:absolute;inset:0;pointer-events:none;background:rgba(255,96,10,0.82);box-shadow:inset 0 0 200px 70px rgba(120,10,0,0.95);z-index:-1;display:' + (lq ? 'block' : 'none'); }
+  const on = !!map && map.seaY != null && G.joined && G.camera.position.y < map.seaY - 0.02;
+  if (on === underOn) return;
+  underOn = on;
+  const e = el('seaUnder');
+  e.style.cssText = 'position:absolute;inset:0;pointer-events:none;background:rgba(14,84,150,0.72);box-shadow:inset 0 0 180px 60px rgba(4,20,60,0.9);z-index:-1;display:' + (on ? 'block' : 'none');
+  if (on) sfx.splash(null, 0.5);
+}
+// cooked in a lava pit: the crater coughs up fire where they went under
+export function pitErupt(p) {
+  particles();
+  for (let i = 0; i < 46; i++) embers.spawn(p[0] + R(1.2), p[1] + 0.3, p[2] + R(1.2), R(5), 9 + Math.random() * 12, R(5), 0.9 + Math.random() * 0.9, 0.2, 0.04, 0xffe070, 0xff2200, 1, 14, 0.3);
+  for (let i = 0; i < 14; i++) fx.smoke([p[0] + R(1.4), p[1] + 0.5 + Math.random() * 3, p[2] + R(1.4)], 1.6, 0.45);
+  for (let i = 0; i < 20; i++) fx.burn([p[0] + R(1), p[1] + Math.random() * 2.5, p[2] + R(1)]);
+  sfx.boom(p); sfx.sizzle(p);
+}
 
 // ------------------------------------------------------------ duck rain: a shadow + whistle where each one lands
 const DISC = new THREE.CircleGeometry(1, 16).rotateX(-Math.PI / 2);

@@ -3,7 +3,7 @@
 //
 // SCHEMA: IMPLANTS[id] = {
 //   name, slot ('head' | 'eyes' | 'mouth' | 'heart' | 'lungs' | 'guts' | 'spine' | 'arms' | 'legs' | 'skin')
-//   kind     'shop' | 'core' | 'secret'
+//   kind     'shop' | 'core' | 'secret' | 'inheritance' (a part from a friend: `from` is the cast id, `driftNote` and `echoes` are for the writers)
 //   perk     what it does, with numbers (core numbers are for Fresh quality; Bruised ×0.7, Prime ×1.2, Premium ×1.5)
 //   downside the jank, with numbers
 //   look     the visible change on the mannequin
@@ -156,6 +156,13 @@ export const IMPLANTS = {
   core_todo_skin: { name: "MISSING TEXTURE SKIN", slot: "skin", kind: "core", boss: "missing_texture",
     perk: "past 30 m, enemies can't see you (you're unloaded)", downside: "1 in 200 steps you fall through the floor and respawn at the last ground you stood on",
     look: "purple-and-black checkerboard patches on your plastic", text: "// TODO: you" },
+
+  // ================================================================ INHERITANCE (a part from a friend. this is the only one in Act I)
+  marrow_pallet_jack: { name: "PALLET JACK'S MARROW", slot: "spine", kind: "inheritance", from: "pallet_jack", cost: null, drift: 1,
+    perk: "blood weapons cost nothing while you are firing them (Blood Cross, Blood Drive). Outside a fight you make blood back: 3 HP a second up to full. You can carry the Blood Drive, and in story mode the Overdrive Rig streak lasts twice as long on you, because you've got the plumbing for it now", downside: "you weigh more: jump height down 10%, fall damage up. You are hungry: every ten minutes of play the HUD tells you what something nearby weighs. If you stand still for a while your right hand closes around a hand-truck handle that isn't there",
+    look: "a line of traffic-light red down the mannequin's spine that shows through the plastic when you fire", text: "The only good thing in him, according to the woman who put it there. She was wrong about that.",
+    driftNote: "+1 permanent, whatever your Body Budget is. It isn't over-budget Drift; it's the kind you get from a choice. Bev's rule from m05 applies: you won't notice. The people who love you notice.",
+    echoes: ["Bev in Act II won't charge you for the next install and won't say why.", "Dumpling asks why you sound like his uncle when you're tired.", "In Act III, Lumps' split choice is harder to steer if you never spoke to him after the train (talk: after_jack, optional, at the sunset wall)."] },
 
   // ================================================================ SECRET BIO UPGRADES (hidden; see secret.clues)
   sec_satellite_ear: { name: "SATELLITE EAR", slot: "head", kind: "secret",
