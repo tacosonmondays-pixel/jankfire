@@ -154,3 +154,12 @@ All lane sessions were interrupted. Nothing is merging. The open PRs above are d
 - The chaser: a giant MASK the size of the whole tunnel, with black arm-like tentacles. It reaches the arms out from behind/under the mask and drags itself forward by grabbing the tunnel walls.
 - The fight: shoot the tentacles reaching for you, and shoot the mask to crack it open and expose the ugly thing behind it.
 - Tone (owner): like Cyberpunk. Go serious, gory and dark; characters can and will die. Original designs and names only.
+
+## Lane chats started 2026-11-10 (each has its brief; all on Fable 5.2, never max effort; Default environment, so art lanes install Blender first)
+- Zombies (dismemberment, types, upgrade machine, colas, mini bosses, high school + hospital maps): session_011tKQCtn6dSyhp9bHTehhTL, branch claude/zombies-lane
+- Art (Blender models/buildings/rock formations, INVENTORY, PRs #71 #115, image-to-sculpt evaluation): session_011tKQCrFseJjmPmC88Sb2bs, branch claude/art-lane
+- Terrain (pits that hurt first, then ONE hills/dips test map, wait for OK): session_011tKQCtbApCrod7pHij2Vod, branch claude/terrain-lane
+- Gameplay (Gun Game rotation, subtext cleanup, laptop ads item, S&D tuning, butt/head sliders + body types): session_011tKQCqevCmXkNwmvH5JBXp, branch claude/gameplay-lane
+- Graphics (black-screen bug first, then shader options): session_011tKQCu5LU3i2Y1YbQQYjoj, branch claude/graphics-lane
+- Story (OVERDUE: #122 fix, referee/bosses, then the Act I train + mask boss scene for approval): session_011tKQCrJdaf4PGM8wkY8xV7, branch claude/overdue-train
+All open DRAFT PRs; the owner merges. PR #124 (v6.9) is still waiting for the owner.
