@@ -11,6 +11,7 @@ import { randomContainer } from '../shared/cosmetics.js';
 import { installZmExtra } from './zmextra.js';
 import { installZmBots } from './zmbots.js';
 import { installZmLimbs } from './zmlimbs.js';
+import { installZmShop } from './zmshop.js';
 import { ZM, zmCount, zmHp, zmMaxAlive, zmGap, zmGait, zmAmmo, zmAmmoPrice, zmPick, zmTarget, zmAreaAt, zmOpenAreas } from '../shared/zombies.js';
 
 let send = () => {}, stat = () => {}, store = null;
@@ -135,7 +136,7 @@ const methods = {
     if (!on) { if (had && this.mode === 'bots') this.fillBots(); return; }
     const n = now(), Z = this.map.zm;
     this.zs = {
-      map: this.cfg.map, nav: navFor(this.cfg.map), open: Z.doors.map(() => false), power: false,
+      map: this.cfg.map, nav: navFor(this.cfg.map), open: Z.doors.map(() => !!ZM.allOpen), power: !!ZM.powerOn, // (test knobs)
       n: Math.max(0, (ZM.startRound || 1) - 1), st: 'pre', until: n + ZM.first, toSpawn: 0, spawnAt: 0,
       box: { st: 0, by: 0, w: '', until: 0 }, fields: new Map(), fieldT: n, win: Z.windows.map(() => 0), dead: [], list: [], tick: 0, lastT: n,
     };
@@ -149,6 +150,7 @@ const methods = {
   // a fresh kit: 500 credits, the revolver and the knife
   zmJoin(p) {
     p.z = { c: ZM.start, guns: [], melee: '', ammo: {}, shotT: {}, kills: 0, heads: 0, downs: 0, revives: 0, earned: 0, hurtT: 0, cola: false, down: null, dead: false };
+    this.zsJoin(p); // no colas, nothing voided
     this.zxJoin(p); // your zombies loadout: the passive's money, your item
     this.zmKit(p);
     send(p, { t: 'streak', reset: 1 }); // the streak count starts over (the tray is hidden and deploy is off)
@@ -156,6 +158,7 @@ const methods = {
   zmKit(p) {
     const z = p.z;
     z.melee = ZM.startMelee;
+    this.zsKit(p);
     this.zxKit(p); // your start pistol
   },
   // what p is carrying (sendLoadout calls this on every spawn): their guns + melee and the ammo each one has left
@@ -168,6 +171,7 @@ const methods = {
     if (p.team !== 1) { p.team = 1; this.broadcast({ t: 'teams', game: this.game, list: [[p.id, 1, p.color]] }); }
     p.forced = true; // so the next mode hands their own loadout back
     send(p, { t: 'zl', slots: [...p.z.guns, p.z.melee], ammo: p.z.ammo, want: want || undefined, c: p.z.c, it: p.item });
+    this.zsMine(p); // your colas, what you've had voided
   },
   // the squad: the people playing (not a test watcher) and the bots filling their empty slots (server/zmbots.js)
   zmSquad() { return [...this.players.values()].filter((p) => (!p.isBot && !p.watch) || p.zmh); },
@@ -211,8 +215,9 @@ const methods = {
     this.zmCrate(n);
     this.zxTick(n, hs); // drops to grab, modifiers running out, the machine landing
     this.zlTick(n); // the Screamer shrieking, Chonks popping
+    this.zsTick(); // ZAPPY guns arcing
     for (const b of zs.list) if (b.zmz.ph === 'hunt' && (n - b.zmz.seen > 25000 || b.zmz.stuck > 8)) { this.remove(b); zs.toSpawn++; } // lost or wedged: try again from a window
-    if (hs.length && hs.every((h) => !h.alive)) { this.zmGameOver(); return; }
+    if (hs.length && hs.every((h) => !h.alive && !(h.z && h.z.down && h.z.down.self))) { this.zmGameOver(); return; } // (someone on Get Up Juice isn't out yet)
     if (zs.st !== 'live') { if (n >= zs.until) this.zmNextRound(n, hs); return; }
     let alive = 0;
     for (const b of this.players.values()) if (b.zmz && b.alive) alive++;
@@ -258,6 +263,7 @@ const methods = {
       if (!z) continue;
       if (h.alive) { if (h.hp < 100 && n - z.hurtT > ZM.regenAfter * (this.zxPerk(h, 'secondwind') ? 500 : 1000)) h.hp = Math.min(100, h.hp + ZM.regen * (z.cola ? 1.6 : 1) * dt); continue; }
       if (!z.down) continue;
+      if (z.down.self && n >= z.down.self && zs.st !== 'over') { this.zmRevive(h, null); continue; } // Get Up Juice
       if (this.zmReviver(h, n)) z.down.until += dt * 1000;
       else if (n >= z.down.until) { z.down = null; z.dead = true; this.broadcast({ t: 'zdown', id: h.id, k: 'out' }); }
     }
@@ -311,8 +317,10 @@ const methods = {
     }
     if (!t.z) return; // (people and the squad's bots go down)
     const z = t.z;
-    z.downs++; z.cola = false;
-    z.down = zs.st !== 'over' && this.zmSquad().some((h) => h !== t && h.alive) ? { at: t.pos.slice(), until: now() + ZM.bleed * (this.zxPerk(t, 'stubborn') ? 2000 : 1000) } : null;
+    z.downs++;
+    const self = this.zsDowned(t); // Get Up Juice: back up on your own in a few seconds (and it's the only cola you lose)
+    if (!self) z.cola = false;
+    z.down = zs.st !== 'over' && (self || this.zmSquad().some((h) => h !== t && h.alive)) ? { at: t.pos.slice(), until: now() + ZM.bleed * (this.zxPerk(t, 'stubborn') ? 2000 : 1000), self: self ? now() + self : 0 } : null;
     z.dead = !z.down;
     this.broadcast({ t: 'zdown', id: t.id, k: z.down ? 'down' : 'dead' });
   },
@@ -343,7 +351,7 @@ const methods = {
     if (t.zmz) {
       const z = t.zmz;
       if (a && a.z && !a.zmz && amt > 0 && z.hits < ZM.hitCap && n - (z.hitAt[a.id] || 0) >= ZM.hitGap) { z.hitAt[a.id] = n; z.hits++; this.zmGive(a, ZM.hit, 'hit'); }
-      return a && a.z && !a.zmz ? this.zlHit(t, this.zxHit(t, amt, a), a, w, hs) : amt; // the cheat machine's modifiers, then which limb it took
+      return a && a.z && !a.zmz ? this.zlHit(t, this.zxHit(t, this.zsHit(t, amt, a, w), a), a, w, hs) : amt; // the cheat machine's modifiers, then which limb it took
     }
     if (!t.z) return amt;
     t.z.hurtT = n;
@@ -378,14 +386,14 @@ const methods = {
     const zs = this.zs, n = now();
     if (!p.alive || !p.z || zs.st === 'over') return;
     const inside = zs.areas.has(zmAreaAt(this.map.zm, p.pos));
-    const t = inside ? zmTarget(this.map.zm, this.zmView(p), eyeOf(p), lookOf(p), 0.6) || this.zxTarget(p, eyeOf(p), lookOf(p)) : null; // then the boards and the machine
+    const t = inside ? zmTarget(this.map.zm, this.zmView(p), eyeOf(p), lookOf(p), 0.6) || this.zsTarget(p, eyeOf(p), lookOf(p)) || this.zxTarget(p, eyeOf(p), lookOf(p)) : null; // then the other colas and the voider, the boards and the cheat machine
     if (!t) { p.zu = null; return; }
     let u = p.zu;
     if (!u || u.k !== t.k || n - u.last > USE_GAP) u = p.zu = { k: t.k, t0: n, last: n, done: false };
     u.last = n;
     if (t.kind === 'board') { this.zxBoard(p, t, u, n); return; } // held: a plank every so often
     if (u.done) return;
-    const need = (t.kind === 'revive' ? ZM.revive * (this.zxPerk(p, 'quickhands') ? 0.5 : 1) : t.kind === 'power' ? ZM.power : ZM.hold) * 1000;
+    const need = (t.kind === 'revive' ? ZM.revive * (this.zxPerk(p, 'quickhands') ? 0.5 : 1) : t.kind === 'power' ? ZM.power : this.zsNeed(t) || ZM.hold) * 1000;
     if (n - u.t0 + 30 >= need) { u.done = true; this.zmDo(p, t); }
   },
   zmDo(p, t) {
@@ -395,7 +403,7 @@ const methods = {
     if (t.kind === 'buy') {
       const b = Z.buys[t.i];
       if (b.w === z.melee || z.guns.includes(b.w)) { // already yours: a refill
-        const max = zmAmmo(b.w);
+        const max = this.zxMaxAmmo(p, b.w);
         if (max == null || z.ammo[b.w] >= max) { this.zmSay(p, t.k, false, max == null ? 'you already have it' : 'ammo full'); return; }
         if (!this.zmPay(p, zmAmmoPrice(b.price), t.k)) return;
         z.ammo[b.w] = max; this.zmLoadout(p); this.zmSay(p, t.k, true, `${WEAPONS[b.w].name} ammo`);
@@ -414,10 +422,13 @@ const methods = {
       return;
     }
     if (t.kind === 'mach') { this.zxMach(p, t); return; }
+    if (t.kind === 'cola2') { this.zsCola(p, t); return; }
+    if (t.kind === 'up') { this.zsUp(p, t); return; }
     if (t.kind === 'power') { if (!zs.power) { zs.power = true; this.broadcast({ t: 'zpower', by: p.id }); } return; }
     if (t.kind === 'cola') {
       if (!zs.power) { this.zmSay(p, t.k, false, 'no power. find the switch'); return; }
       if (z.cola) { this.zmSay(p, t.k, false, 'one is enough'); return; }
+      if (this.zsColaN(p) >= ZM.colaMax) { this.zmSay(p, t.k, false, `${ZM.colaMax} colas is the limit. doctor's orders`); return; }
       if (this.zmPay(p, ZM.cola, t.k)) { z.cola = true; this.zmSay(p, t.k, true, 'JANK COLA'); this.broadcast({ t: 'fx', k: 'medkit', id: p.id }); }
     }
   },
@@ -438,10 +449,10 @@ const methods = {
     const z = p.z;
     if (WEAPONS[w].slot === 'melee') z.melee = w;
     else if (!z.guns.includes(w)) {
-      if (z.guns.length < ZM.guns) z.guns.push(w);
-      else { let i = z.guns.indexOf(p.w); if (i < 0) i = z.guns.length - 1; delete z.ammo[z.guns[i]]; z.guns[i] = w; }
+      if (z.guns.length < this.zsGuns(p)) z.guns.push(w);
+      else { let i = z.guns.indexOf(p.w); if (i < 0) i = z.guns.length - 1; delete z.ammo[z.guns[i]]; delete z.up[z.guns[i]]; z.guns[i] = w; }
     }
-    if (zmAmmo(w) != null) z.ammo[w] = zmAmmo(w);
+    if (zmAmmo(w) != null) z.ammo[w] = this.zxMaxAmmo(p, w) ?? zmAmmo(w);
     this.zmLoadout(p, w);
   },
 
@@ -601,6 +612,7 @@ export function installZombies(Room, h) {
   installZmExtra(Room, h);
   installZmBots(Room, h);
   installZmLimbs(Room);
+  installZmShop(Room, h);
   const P = Room.prototype, wrap = (name, fn) => { const orig = P[name]; P[name] = function (...a) { return fn.call(this, orig, ...a); }; };
   // zombies: no cosmetic kill effects (finishers), on zombies or on people. everyone just dies the normal way
   wrap('kill', function (orig, t, attacker, w) {
