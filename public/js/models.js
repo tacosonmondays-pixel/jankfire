@@ -13,6 +13,8 @@ import { buildRigMissile } from './rigmodel.js'; // overdrive rig killstreak
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { laserBuild, calculator } from './gearmodels.js'; // the new gear's models (laser pointer, pop quiz calculator)
 import { prepAuthored, authored, AUTHORED, bindAuthored, nodeIn, glossBlade, LAZY, isLazy, queueGlb, setGlbList, landed } from './glbkit.js';
+import { BUILDS, JOKE, JOKE_MAX } from '/shared/looks.js'; // the joke body
+import { LAPTOP_WB } from './laptopmodel.js';
 import { SEC_WB, SEC_HATS, secAuthored } from './secmodels.js'; // water pistol, taser, tv remote, radar gun
 import { laserAuthored } from './laserglb.js'; // a Blender laser pointer's charge hooks (leds, lens, button, charm, orb)
 import { nailgunBuild, tennisBuild, cartCannonBuild, tennisBall, cartModel, nailgunStaple, tennisMachine, cartBasket } from './primmodels.js'; // the new primaries + what they shoot
@@ -776,10 +778,12 @@ const WB = {
 Object.assign(WB, SEC_WB); // the new secondaries + the radar gun (secmodels.js)
 
 Object.assign(WB, RIFLE_WB);
+Object.assign(WB, LAPTOP_WB); // the laptop item (laptopmodel.js)
 const HAT_AT = {
   ar: [[0, 0.1, 0.02], 0.12], smg: [[0, 0.055, 0.0], 0.1], shotgun: [[0, 0.05, 0.0], 0.11], minigun: [[0, 0.17, 0.05], 0.14],
   sniper: [[0, 0.16, -0.05], 0.13], chicken: [[0, 0.075, -0.5], 0.09], bowling: [[0, 0.17, -0.1], 0.15], banana: [[0, 0.185, 0.02], 0.1],
   revolver: [[0, 0.065, -0.02], 0.08], cig: [[0, 0.0125, 0.055], 0.04], blower: [[0, 0.22, 0.05], 0.14], popper: [[0, 0.07, 0.02], 0.07],
+  laptop: [[0, 0.225, 0.05], 0.08],
   reverse: [[0, 0.09, 0.02], 0.07], duck: [[0, 0.152, -0.072], 0.06], bread: [[0, 0.11, -0.3], 0.16], slipper: [[0, 0.068, -0.08], 0.07],
   slapper: [[0, 0.0125, -0.55], 0.09], scythe: [[0, 0.47, -0.8], 0.14],
   scythe_rifle: [[0, 0.13, -0.05], 0.12], bow: [[0, 0.08, 0.0], 0.08], cards: [[0, 0.07, -0.004], 0.07],
@@ -1721,6 +1725,25 @@ function runnerJacket(body, arm, armL, lk, col, jank) {
   for (const [p, s] of [[arm, J.armR], [armL, J.armL]]) { at(p, s.sleeve, C); at(p, s.tape, M(RUN_TAPE)); at(p, s.cuff, K); }
 }
 
+// the joke body (shared/looks.js): a build reshapes the torso in three bands, the sliders grow the head and the butt.
+// done after the outfit is on, by where each piece sits, so every top / bottom / dress gets it without knowing about it.
+// hats, hair and faces hang off the head group, so they grow with it. looks only: the server's hitboxes never hear of this
+function jokeBody(body, head, lk, seat) {
+  const b = Object.hasOwn(BUILDS, lk.build || '') ? BUILDS[lk.build || ''] : BUILDS[''];
+  if (b.chest !== 1 || b.waist !== 1 || b.hips !== 1) for (const o of body.children) {
+    if (!o.isMesh) continue; // legs, arms, the head: groups, left alone
+    const y = o.position.y, k = y >= 1.22 && y < 1.56 ? b.chest : y >= 1.06 && y < 1.22 ? b.waist : y >= 0.8 && y < 1.06 ? b.hips : 1;
+    if (k === 1) continue;
+    o.scale.x *= k; o.position.x *= k;
+    if (y >= 1.06 && y < 1.22) o.scale.z *= k; // the waist pinches (or thickens) all the way round
+  }
+  const hd = Math.max(0, Math.min(JOKE_MAX, lk.bigHead | 0)), bt = Math.max(0, Math.min(JOKE_MAX, lk.bigButt | 0));
+  if (hd) head.scale.setScalar(1 + JOKE.head * hd);
+  if (bt) for (const sx of [-1, 1]) { // two cheeks in whatever you sit on, out the back (+z)
+    const r = 0.085 + JOKE.butt * bt, ch = ball(r, seat, sx * (0.075 + r * 0.32) * b.hips, 0.97 - r * 0.12, 0.06 + r * 0.62);
+    ch.scale.set(1, 1.05, 1.08); body.add(ch);
+  }
+}
 export function buildCharacter(color, look) {
   const root = new THREE.Group();
   const body = new THREE.Group();
@@ -1806,6 +1829,7 @@ export function buildCharacter(color, look) {
     if (sleeves === 'long') { const fs = cylZ(0.052, 0.18, TOP, 0.2, -0.035, -0.34); fs.rotation.y = -0.9; armL.add(fs); }
     addHair(head, lk);
     body.add(armL);
+    jokeBody(body, head, lk, top === 'maid' ? MAID : bottom === 'skirt' ? BOT : LEG);
   }
   arm.position.set(0.25, 1.45 + jank.shoulder, 0);
   slot.position.set(-0.03, -0.03, -0.56);

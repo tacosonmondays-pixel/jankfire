@@ -1,11 +1,21 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
-  { v: '6.10', date: '2026-11-10', title: 'PITS HAVE BOTTOMS', items: [
+  { v: '7.1', date: '2026-11-10', title: 'PITS HAVE BOTTOMS', items: [
     'MOUNT KABOOM is not a hot tub. fall down the volcano on Islands and you land in lava: it burns you the whole time you stand in it, keeps burning for a moment after you climb out, and if it finishes you the crater coughs your bits back up. grapple out fast or get EXTRA CRISPY.',
     'the sea drowns you properly now. deep water holds you up for a second while you sink (grapple out!), and you are gone when your head goes under, instead of dropping through the sea bed. same on the oil rig.',
     'long falls end where the ground is: the Desert canyon ends in the river (SPLOOSH), the rooftops end on the street (SPLAT). no more dying in mid air.',
     'bots know the volcano is hot and walk round it.',
+  ] },
+  { v: '7.0', date: '2026-11-10', title: 'AD SUPPORTED', items: [
+    'new item: the LAPTOP. press G to open it at someone and their screen fills with pop-up ads for 7 seconds. they close them with the number on each ad. some ads ask ARE YOU SURE?. nobody in front of it: NO SIGNAL, and you keep the charge. a reverse card sends the ads back.',
+    'bots carry laptops too. a bot reading ads aims worse. so do you.',
+    'GUN GAME rolls a new ladder every match: 10 guns, 5 silly ones, 3 melee, then the spoon. weapons that sat out the last match go first. 16 more weapons can show up (shopping cart cannon, taser, slipper, big laser pointer...).',
+    'CHARACTER has a joke body row: head size, butt size, and Mannequin / Male / Female builds. everyone sees it. looks only: your hitbox did not get bigger. nice try. some bots turn up with one too.',
+    'plant & defuse: the SMG, Belt Sander, Lefty & Righty and the Sniper fire slower there. aim more, hose less.',
+    'plant & defuse: hard bots hit a little harder there. you picked hard.',
+    'menus talk less. a pile of captions that explained the obvious got deleted.',
+    'bots finally learned to throw cards. they used to reach the card deck in gun game and just stand there holding it. forever.',
   ] },
   { v: '6.9', date: '2026-11-10', title: 'HONEST CHEATING', items: [
     'SPINBOT no longer grabs your camera. look around freely: every shot goes to whoever is closest to your crosshair (a green LOCKED diamond shows who). nobody near your crosshair, nobody gets shot.',

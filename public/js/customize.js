@@ -352,8 +352,8 @@ function renderRight() {
     if (openRow[key]) { const c = el('div', 'bd'); fill(c); r.append(c); }
     acts.append(r);
   };
-  row('overview', 'OVERVIEW', 'its numbers', (c) => { const rs = statRows(w); if (!rs.length) c.append(el('div', 'cz-none', 'no numbers. it is a vibe.')); for (const s of rs) c.append(bar(...s)); });
-  row('stats', 'STATISTICS', 'your numbers', (c) => {
+  row('overview', 'OVERVIEW', '', (c) => { const rs = statRows(w); if (!rs.length) c.append(el('div', 'cz-none', 'no numbers. it is a vibe.')); for (const s of rs) c.append(bar(...s)); });
+  row('stats', 'STATISTICS', '', (c) => {
     const st = (account.me && account.me.stats) || null;
     c.append(bar('kills with it', k, Math.max(25, lvl * 25), String(k)));
     if (!st) { c.append(el('div', 'cz-none', 'guest: log in to keep lifetime stats.')); return; }

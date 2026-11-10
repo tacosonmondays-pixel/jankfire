@@ -776,3 +776,7 @@ h1.logo span + span { transform: skewX(-8deg) rotate(3deg) translateY(0.04em); }
 .gift-c img { width: clamp(90px, 13vh, 150px); height: clamp(90px, 13vh, 150px); object-fit: contain; animation: rattle 0.5s linear infinite; }
 .gift-c b { font-size: clamp(34px, 5.5vh, 58px); line-height: 1; color: var(--ac); text-shadow: 3px 3px 0 #000; }
 .gift-c span { font-size: 15px; font-weight: 700; letter-spacing: 3px; }
+/* character screen: the joke body sliders */
+.lk-joke label { display: inline-flex; align-items: center; gap: 8px; margin-right: 18px; color: #fff; }
+.lk-joke input[type=range] { width: 150px; accent-color: #ff4fd8; }
+.lk-joke b { color: #ffe14d; min-width: 4.2em; }
