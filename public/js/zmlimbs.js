@@ -31,6 +31,7 @@ export const zlType = (r) => { const s = ST.get(r.id); return s ? ZT_IDS[s[0]] |
 export const zlMask = (r) => { const s = ST.get(r.id); return s ? s[1] : 0; };
 let asked = false;
 export function zlSync(info) { // zombies.js, every frame: what the server says about each one
+  bossBar(info);
   if (!asked) { asked = true; prefetch(['z_plain', 'z_stump', ...Object.keys(ZT).map((k) => 'z_' + k)], 3); } // the Blender zombies jump the download queue
   ST.clear();
   for (const e of (info && info.lb) || []) ST.set(e[0], [e[1], e[2], e[3]]);
@@ -257,6 +258,7 @@ net.on('zlb', (m) => {
   } else if (m.k === 'dink' && r) { sfx.zmDink(r.pos); sparks(r, 5); }
   else if (m.k === 'hat' && isZ(r)) { sfx.zmDink(r.pos, true); sparks(r, 12); hatOff(r, d); }
   else if (m.k === 'scream' && Array.isArray(m.a) && m.a.every(Number.isFinite)) scream(m.a);
+  else if (bossNews(m, r)) { /* a mini boss */ }
   else if (m.k === 'pop' && Array.isArray(m.a) && m.a.every(Number.isFinite)) pop(m.a);
 });
 function sparks(r, n) {
@@ -282,6 +284,51 @@ function pop(a) {
   const d = Math.hypot(a[0] - ME.pos[0], a[2] - ME.pos[2]);
   if (d < 16 && G.settings.shake !== false) G.shake = Math.max(G.shake, 0.9 * (1 - d / 16));
   if (d < ZT.chonk.blast) hud.msg('CHONK POPPED', 1.2, 'brag');
+}
+
+// ------------------------------------------------------------ mini bosses: the callouts, the bar, the floor rippling
+const BOSS_LINES = {
+  manager: { in: 'THE FLOOR MANAGER HAS CLOCKED IN', out: 'MANAGER FIRED', meet: 'MEETING. NOW.' },
+  mascot: { in: 'THE MASCOT WANTS A HUG', out: 'MASCOT RETIRED' },
+};
+const v3 = (a) => Array.isArray(a) && a.length === 3 && a.every(Number.isFinite);
+function ring(a, r, color, secs = 0.7, y = 0.15) { // a ring on the floor growing out to r
+  const m = new THREE.Mesh(new THREE.TorusGeometry(1, 0.06, 5, 36), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false, fog: false }));
+  m.rotation.x = Math.PI / 2; m.position.set(a[0], a[1] + y, a[2]);
+  G.scene.add(m); rings.push({ m, t: 0, r, secs });
+}
+function bossNews(m, r) {
+  const L = BOSS_LINES[m.ty] || (r && BOSS_LINES[zlType(r)]) || {};
+  if (m.k === 'bosswarn') { hud.msg('BOSS ROUND', 2.2, 'brag'); sfx.zmBossIn(); return true; }
+  if (m.k === 'boss') { if (L.in) hud.msg(L.in, 2.6, 'brag'); sfx.zmBossIn(r ? r.pos : null); return true; }
+  if (m.k === 'meeting' && v3(m.a)) { scream(m.a); if (L.meet && Math.hypot(m.a[0] - ME.pos[0], m.a[2] - ME.pos[2]) < 30) hud.msg(L.meet, 1.4, 'brag'); return true; }
+  if (m.k === 'charge' && r) { sfx.zmCharge(r.pos); ring(r.pos, 2.4, 0xff3030, 0.8); return true; }
+  if (m.k === 'jump' && r) { sfx.zmCharge(r.pos); if (v3(m.to)) ring(m.to, 6.5, 0x4fd8ff, Math.max(0.3, (m.ms || 900) / 1000), 0.08); return true; } // where it's coming down
+  if (m.k === 'slam' && v3(m.a)) {
+    const rr = Number.isFinite(m.r) ? Math.min(12, m.r) : 6;
+    sfx.zmPop(m.a); ring(m.a, rr, 0xffe14d, 0.5); ring(m.a, rr * 0.6, 0xff4fd8, 0.5);
+    const P = fx.parts().smoke;
+    for (let i = 0; i < 18; i++) { const an = (i / 18) * 6.283; P.spawn(m.a[0] + Math.cos(an) * 1.2, m.a[1] + 0.3, m.a[2] + Math.sin(an) * 1.2, Math.cos(an) * 7, 1.5, Math.sin(an) * 7, 0.8, 0.5, 1.8, 0xd8d0c0, 0x8a8478, 0.5, -0.5, 1.2); }
+    const d = Math.hypot(m.a[0] - ME.pos[0], m.a[2] - ME.pos[2]);
+    if (d < 20 && G.settings.shake !== false) G.shake = Math.max(G.shake, 1.1 * (1 - d / 20));
+    return true;
+  }
+  if (m.k === 'bossdead' && v3(m.a)) {
+    hud.msg(L.out || 'BOSS DOWN', 2.6, 'brag'); sfx.zmBossOut(m.a);
+    const P = fx.parts().fire, cols = [0xff4fd8, 0xffe14d, 0x4fd8ff, 0x7dff4f];
+    for (let i = 0; i < 90; i++) { const an = Math.random() * 6.283, up = Math.random() * 12, sp = 3 + Math.random() * 9; P.spawn(m.a[0], m.a[1] + 1, m.a[2], Math.cos(an) * sp, 3 + up, Math.sin(an) * sp, 0.9 + Math.random() * 0.8, 0.22, 0.04, cols[i % 4], cols[(i + 1) % 4], 1, 16, 0.6); }
+    return true;
+  }
+  return false;
+}
+let bar = null, barK = '';
+function bossBar(info) { // a long HP bar under the round line while one's alive
+  const bs = info && info.bs, def = bs && ZT[bs[1]];
+  const key = def ? `${bs[1]}|${Math.round((bs[2] / Math.max(1, bs[3])) * 200)}` : '';
+  if (key === barK) return;
+  barK = key;
+  if (!bar) { bar = document.createElement('div'); bar.id = 'zbBar'; bar.style.cssText = 'position:fixed;left:50%;top:64px;transform:translateX(-50%) rotate(-0.6deg);width:min(520px,60vw);pointer-events:none;z-index:6;font-family:"Comic Sans MS","Comic Neue",cursive;text-align:center;'; document.body.appendChild(bar); }
+  bar.innerHTML = def ? `<div style="color:#ffe14d;font-weight:bold;font-size:17px;text-shadow:2px 2px 0 #120818;letter-spacing:1px">${def.name}</div><div style="height:16px;background:rgba(18,8,24,0.92);border:4px solid #ff4fd8;box-shadow:6px 6px 0 #4fd8ff"><div style="height:100%;width:${Math.max(0, Math.min(100, (bs[2] / Math.max(1, bs[3])) * 100)).toFixed(1)}%;background:#ff3030"></div></div>` : '';
 }
 
 // ------------------------------------------------------------ every frame: loose limbs, hats, shriek rings
@@ -314,7 +361,7 @@ export function zlTick(dt) {
   for (let i = rings.length - 1; i >= 0; i--) {
     const g = rings[i];
     g.t += dt;
-    const k = Math.max(0, g.t / 0.7);
+    const k = Math.max(0, g.t / (g.secs || 0.7));
     g.m.visible = g.t > 0;
     g.m.scale.setScalar(0.4 + k * g.r);
     g.m.material.opacity = Math.max(0, 0.9 * (1 - k));
@@ -324,7 +371,7 @@ export function zlTick(dt) {
 export function zlClear() { // the mode ended / a new map
   while (fly.length) drop(0);
   for (const g of rings) { G.scene.remove(g.m); g.m.geometry.dispose(); g.m.material.dispose(); }
-  rings.length = 0; ST.clear();
+  rings.length = 0; ST.clear(); bossBar(null);
 }
 // credits popups (zombies.js): what a 'why' reads as
-export const ZL_WHY = { limb: ' LIMB', chonk: ' CHONK', screamer: ' SCREAMER' };
+export const ZL_WHY = { limb: ' LIMB', chonk: ' CHONK', screamer: ' SCREAMER', boss: ' BOSS DOWN', tip: ' TIP' };

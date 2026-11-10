@@ -12,6 +12,7 @@ import { installZmExtra } from './zmextra.js';
 import { installZmBots } from './zmbots.js';
 import { installZmLimbs } from './zmlimbs.js';
 import { installZmShop } from './zmshop.js';
+import { installZmBoss } from './zmboss.js';
 import { ZM, zmCount, zmHp, zmMaxAlive, zmGap, zmGait, zmAmmo, zmAmmoPrice, zmPick, zmTarget, zmAreaAt, zmOpenAreas } from '../shared/zombies.js';
 
 let send = () => {}, stat = () => {}, store = null;
@@ -197,6 +198,7 @@ const methods = {
       o: zs.open.reduce((a, o, i) => (o ? a.concat(i) : a), []), pw: zs.power ? 1 : 0, bx: bx.st ? [bx.st, bx.by, bx.w, Math.max(0, bx.until - n)] : 0, dn, pts,
       ...this.zxInfo(n), // planks, drops, modifiers, the machine
       ...this.zlInfo(n), // limbs gone, the special zombies
+      ...this.zbInfo(), // a mini boss's HP bar
     };
   },
 
@@ -216,7 +218,8 @@ const methods = {
     this.zxTick(n, hs); // drops to grab, modifiers running out, the machine landing
     this.zlTick(n); // the Screamer shrieking, Chonks popping
     this.zsTick(); // ZAPPY guns arcing
-    for (const b of zs.list) if (b.zmz.ph === 'hunt' && (n - b.zmz.seen > 25000 || b.zmz.stuck > 8)) { this.remove(b); zs.toSpawn++; } // lost or wedged: try again from a window
+    this.zbTick(n, hs); // a mini boss's tricks
+    for (const b of zs.list) if (b.zmz.ph === 'hunt' && (n - b.zmz.seen > 25000 || b.zmz.stuck > 8)) { if (b.zmz.boss) this.zbLost(b); this.remove(b); zs.toSpawn++; } // lost or wedged: try again from a window
     if (hs.length && hs.every((h) => !h.alive && !(h.z && h.z.down && h.z.down.self))) { this.zmGameOver(); return; } // (someone on Get Up Juice isn't out yet)
     if (zs.st !== 'live') { if (n >= zs.until) this.zmNextRound(n, hs); return; }
     let alive = 0;
@@ -229,6 +232,7 @@ const methods = {
     zs.n++; zs.st = 'live';
     zs.toSpawn = zmCount(zs.n, hs.length); zs.spawnAt = n + 1500;
     this.zxRound();
+    this.zbRound(n, hs); // every fifth round: a mini boss
     for (const h of hs) if (!h.alive) this.zmRespawn(h); // the dead come back for the new round
     this.broadcast({ t: 'zround', k: 'start', n: zs.n, count: zs.toSpawn });
   },
@@ -556,6 +560,7 @@ const methods = {
     }
     if (n < (z.side || 0)) { const a = z.sideDir * 1.3, ca = Math.cos(a), sa = Math.sin(a); [wx, wz] = [wx * ca - wz * sa, wx * sa + wz * ca]; }
     z.wish = [wx, wz];
+    this.zbSteer(b, z, n); // a boss mid-charge keeps going straight
   },
   zmClear(a, b, hd) { // a straight walk from a to b with nothing in the way (knees and chest)
     const d = [(b[0] - a[0]) / hd, 0, (b[2] - a[2]) / hd];
@@ -613,6 +618,7 @@ export function installZombies(Room, h) {
   installZmBots(Room, h);
   installZmLimbs(Room);
   installZmShop(Room, h);
+  installZmBoss(Room);
   const P = Room.prototype, wrap = (name, fn) => { const orig = P[name]; P[name] = function (...a) { return fn.call(this, orig, ...a); }; };
   // zombies: no cosmetic kill effects (finishers), on zombies or on people. everyone just dies the normal way
   wrap('kill', function (orig, t, attacker, w) {

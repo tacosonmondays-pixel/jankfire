@@ -9,6 +9,8 @@
 #   z_biter    ANKLE BITER: toddler-sized, all mouth, a bib that says BITE, a nappy with a safety pin
 #   z_hardhat  hi-vis vest, tool belt, work boots; the hat is its own node (part_hat) so it can fly off
 #   z_screamer long and thin, jaw down to its chest (part_jaw swings), stringy hair
+#   z_manager  THE FLOOR MANAGER (mini boss): suit, tie, MANAGER badge, comb-over, megaphone, clipboard
+#   z_mascot   THE MASCOT (mini boss): Bargain Buddy's plush suit with a mannequin inside
 #   z_stump    the empty socket left on the body where a limb popped off
 # blender52 -b --python tools/blender/make_zombies.py [-- --no-sheet] [--only=chonk] [--qa: the blender-asset-qa gate on every kind]
 import os, sys, math
@@ -368,12 +370,159 @@ def build_screamer(M):
     return finish_z('screamer', P, {'jaw': [0, jy, jz]})
 
 
+def keep(objs, *prefixes):
+    """objs without the ones whose name starts with a prefix (those are deleted, not left lying in the scene)"""
+    out = []
+    for o in objs:
+        if o is not None and o.name.startswith(prefixes): bpy.data.objects.remove(o, do_unlink=True)
+        else: out.append(o)
+    return out
+
+
+def outward(o):
+    bm = bmesh.new(); bm.from_mesh(o.data); bmesh.ops.recalc_face_normals(bm, faces=bm.faces); bm.to_mesh(o.data); bm.free()
+    return o
+
+
+def forearm_sleeve(M, sm, fat=1.0, long=1.0):
+    """a long sleeve's lower half over arm()'s forearm, cuff at the wrist (arm-local)"""
+    L1, L2 = 0.29 * long, 0.26 * long
+    e = (0, -0.012, -L1); w = (0, -0.05, -L1 - L2)
+    return [limb('sleeve2', [lerp3(e, w, 0.04), lerp3(e, w, 0.5), lerp3(e, w, 0.9)], [0.056 * fat, 0.052 * fat, 0.046 * fat], sm, seg=10),
+            limb('cuff', [lerp3(e, w, 0.86), lerp3(e, w, 0.94)], [0.05 * fat, 0.05 * fat], M.white, seg=10)]
+
+
+def build_manager(M):
+    """THE FLOOR MANAGER (mini boss): the mannequin from the suit department. navy suit, red tie, MANAGER badge, a
+    comb-over that fools nobody, a moustache, glasses, a megaphone in one hand and a clipboard in the other"""
+    suit = cloth('zb_suit', 0x232a44, tex_noise('zb_suitT', 0x232a44, 0.08, 32, seed=41))
+    tie = mat('zb_tie', 0xff3030, rough=0.4, clearcoat=0.4)
+    badge = mat('zb_badge', 0xffffff, rough=0.4, tex=tex_canvas('zb_badgeT', 48, 24, lambda px: (px.__setitem__(slice(None), hexrgb(0xffe14d)), px.__setitem__((slice(0, 3),), hexrgb(0x120818)), text_px(px, 'MANAGER', 3, 6, 1, 0x120818), text_px(px, 'ASK ME', 6, 15, 1, 0xff3030))))
+    mega = mat('zb_mega', 0xf4f2ea, rough=0.3, clearcoat=0.6); megaP = mat('zb_megap', 0xff4fd8, rough=0.3, clearcoat=0.7)
+    board = mat('zb_board', 0x8a5a2b, rough=0.6, tex=tex_wood('zb_boardT'))
+    paper = mat('zb_paper', 0xffffff, rough=0.6, tex=tex_canvas('zb_paperT', 32, 40, lambda px: (px.__setitem__(slice(None), hexrgb(0xf8f6ee)), [px.__setitem__((slice(6 + i * 5, 7 + i * 5), slice(4, 28 - (i % 3) * 5)), hexrgb(0x55506a)) for i in range(6)], text_px(px, 'FIRED', 2, 33, 1, 0xff3030))))
+    body = [blob('hips', (0, 0.95, 0), (0.18, 0.105, 0.13), suit, seg=16, rings=10),
+            limb('waist', [(0, 1.0, 0), (0, 1.1, 0.004), (0, 1.2, 0)], [0.135, 0.125, 0.14], M.white, seg=12),
+            blob('chest', (0, 1.34, 0), (0.238, 0.215, 0.148), M.white, seg=16, rings=12),
+            limb('neck', [(0, 1.5, 0), (0, 1.62, 0)], [0.058, 0.046], M.skin, seg=10),
+            limb('collar', [(0, 1.535, 0), (0, 1.575, 0)], [0.068, 0.06], M.white, seg=10)]
+    for sx in (-1, 1): body.append(blob('socket', (sx * 0.25, 1.45, 0), (0.078,) * 3, suit, seg=12, rings=8))  # shoulder pads
+    jk = blob('jacket', (0, 1.31, 0), (0.262, 0.262, 0.172), suit, seg=18, rings=14)  # open down the front in a V
+    cut(jk, box((0.5, 0.7, 0.3), (0.21, 1.42, -0.2), None, rot=(0, 0, 0.42))); cut(jk, box((0.5, 0.7, 0.3), (-0.21, 1.42, -0.2), None, rot=(0, 0, -0.42)))
+    cut(jk, box((0.15, 0.1, 0.5), (0, 1.585, 0), None))
+    body.append(jk)
+    body.append(sweep([(0, 1.535, -0.132), (0, 1.44, -0.146), (0, 1.22, -0.152), (0, 1.14, -0.146)], [0.016, 0.026, 0.034, 0.004], tie, seg=4, squash=(0.3, 1.0), name='tie'))
+    body.append(blob('knot', (0, 1.535, -0.13), (0.02, 0.02, 0.012), tie, seg=8, rings=5))
+    bd = quad((0, 0, 0), 0.085, 0.042, badge, axis='z', sx=-1); bd['keep_uv'] = 1
+    bd.data.transform(Matrix.Rotation(0.42, 4, 'Z')); bd.data.transform(Matrix.Translation(gv(0.15, 1.4, -0.143))); body.append(bd)  # on the left lapel, turned to sit on the jacket
+    body.append(limb('band', [(0, 0.994, 0), (0, 1.036, 0)], [0.176, 0.17], mat('zb_belt', 0x15120f, rough=0.3), seg=14, squash=(1.0, 0.74)))
+    body.append(box((0.05, 0.04, 0.012), (0, 1.015, -0.132), M.gold, bev=0.004))
+    hd = head(M, 'plain')
+    cy = 0.155; R = (0.126, 0.18, 0.142)
+    for i in range(6):  # the comb-over: six strands dragged across the top
+        z = -0.07 + i * 0.03
+        hd.append(tube([(-0.118, cy + 0.06, z), (-0.07, cy + 0.158 - abs(z) * 0.5, z), (0.02, cy + 0.183 - abs(z) * 0.7, z + 0.004), (0.1, cy + 0.12 - abs(z) * 0.4, z + 0.01)], 0.006, M.hair, seg=4))
+    hd.append(blob('sideL', (-0.118, cy + 0.02, 0.02), (0.02, 0.06, 0.09), M.hair, seg=8, rings=6)); hd.append(blob('sideR', (0.118, cy + 0.02, 0.02), (0.02, 0.06, 0.09), M.hair, seg=8, rings=6))
+    ez = -R[2] * 0.9; ey = cy + 0.05
+    for sx in (-1, 1):  # glasses, and brows that have had enough
+        hd.append(lathe([(0.03, -0.004), (0.036, -0.004), (0.036, 0.004), (0.03, 0.004)], (sx * 0.05, ey, ez - 0.012), M.chrome, seg=12, axis='z'))
+        hd.append(blob('lens', (sx * 0.05, ey, ez - 0.008), (0.03, 0.03, 0.004), M.dark, seg=10, rings=4))
+        hd.append(rod((sx * 0.086, ey, ez - 0.006), (sx * 0.122, ey + 0.004, 0.0), 0.004, M.chrome, seg=5))
+        hd.append(box((0.06, 0.014, 0.03), (sx * 0.05, ey + 0.052, -0.106), M.hair, rot=(0, 0, -sx * 0.45)))
+    hd.append(rod((-0.016, ey, ez - 0.014), (0.016, ey, ez - 0.014), 0.004, M.chrome, seg=5))
+    hd.append(blob('tache', (0, cy - 0.055, -R[2] * 0.93), (0.055, 0.016, 0.016), M.hair, seg=10, rings=5))
+    P = {'body': place('body', body), 'head': place('head', hd)}
+    aR = arm(M, 1, 1.05, 1.0, sleeve=0.27, sleeve_m=suit) + forearm_sleeve(M, suit, 1.05)
+    w = (0, -0.05, -0.55)  # the megaphone, held out front in the right hand (arm-local: forward = -z)
+    mp = (0.0, w[1] + 0.07, w[2] - 0.07)
+    aR.append(outward(lathe([(0.001, 0.07), (0.03, 0.065), (0.036, 0.02), (0.04, -0.05), (0.085, -0.24), (0.09, -0.25), (0.078, -0.245), (0.03, -0.06), (0.001, -0.05)], mp, mega, seg=14, axis='z')))  # a hollow horn
+    aR.append(outward(lathe([(0.086, -0.238), (0.098, -0.244), (0.098, -0.262), (0.086, -0.262), (0.08, -0.25)], mp, megaP, seg=14, axis='z')))
+    aR.append(blob('megadark', (mp[0], mp[1], mp[2] - 0.08), (0.03, 0.03, 0.03), M.dark, seg=8, rings=5))
+    aR.append(rod((0.0, w[1] + 0.05, w[2] - 0.07), (0.0, w[1] - 0.03, w[2] - 0.085), 0.016, M.dark, seg=7))  # its grip, in the fist
+    aL = arm(M, -1, 1.05, 1.0, sleeve=0.27, sleeve_m=suit) + forearm_sleeve(M, suit, 1.05)
+    aL.append(box((0.19, 0.012, 0.26), (0.03, w[1] - 0.045, w[2] - 0.1), board, bev=0.004, rot=(0.25, 0, 0)))  # the clipboard
+    pp = quad((0, 0, 0), 0.16, 0.21, paper, axis='y'); pp['keep_uv'] = 1
+    pp.data.transform(Matrix.Rotation(0.25, 4, 'X')); pp.data.transform(Matrix.Translation(gv(0.03, w[1] - 0.036, w[2] - 0.0)))
+    aL.append(pp)
+    aL.append(box((0.07, 0.022, 0.03), (0.03, w[1] - 0.012, w[2] + 0.012), M.chrome, bev=0.004, rot=(0.25, 0, 0)))
+    P['arm'] = place('arm', aR); P['armL'] = place('armL', aL)
+    shoe = mat('zb_shoe', 0x111114, rough=0.12, clearcoat=1.0)
+    for k, kn, sx in (('legL', 'kneeL', -1), ('legR', 'kneeR', 1)):
+        P[k] = place(k, thigh(M, sx, 1.05, trouser=0.44, ragged=False, bm=suit))
+        sh = shin(M, sx, 1.05, cuff=True, shoe=False, bm=suit)
+        sh = keep(sh, 'ankle', 'foot', 'toe')
+        sh.append(limb('leg2', [(0, -0.2, 0.002), (0, -0.4, 0)], [0.068, 0.066], suit, seg=10))
+        sh.append(blob('shoe', (0, -0.415, -0.05), (0.062, 0.044, 0.135), shoe, seg=12, rings=8, fn=lambda p, n: 0.01 * max(0, -p.z / 0.135)))
+        sh.append(box((0.124, 0.02, 0.28), (0, -0.458, -0.05), M.sole, bev=0.005))
+        P[kn] = place(kn, sh)
+    return finish_z('manager', P)
+
+
+def build_mascot(M):
+    """THE MASCOT (mini boss): the mall's own Bargain Buddy, with a mannequin still inside. a huge plush head with a
+    stitched-on grin and eyes looking two ways, round ears with a 50% OFF tag, a zip-up fur suit, mitts, floppy feet"""
+    fur = cloth('zb_fur', 0x4fd8ff, tex_noise('zb_furT', 0x4fd8ff, 0.1, 32, speck=0x2fb0e0, speck_p=0.12, seed=51))
+    tum = cloth('zb_tum', 0xffe14d, tex_noise('zb_tumT', 0xffe14d, 0.07, 32, seed=52))
+    pink = mat('zb_cheek', 0xff4fd8, rough=0.6)
+    white = mat('zb_eyew', 0xffffff, rough=0.25, clearcoat=0.8)
+    tagM = mat('zb_tag', 0xffffff, rough=0.5, tex=tex_canvas('zb_tagT', 32, 24, lambda px: (px.__setitem__(slice(None), hexrgb(0xffe14d)), text_px(px, '50%', 7, 3, 1, 0xff3030), text_px(px, 'OFF', 7, 13, 1, 0x120818))))
+    name = mat('zb_name', 0xffffff, rough=0.6, tex=tex_canvas('zb_nameT', 64, 32, lambda px: (px.__setitem__(slice(None), hexrgb(0xffe14d)), text_px(px, 'BARGAIN', 11, 5, 1, 0xff4fd8), text_px(px, 'BUDDY', 17, 17, 1, 0x120818))))
+    fuzz = lambda p, n: 0.006 * math.sin(p.x * 70 + p.y * 50) * math.sin(p.z * 60)
+    body = [blob('hips', (0, 0.95, 0), (0.21, 0.13, 0.17), fur, seg=16, rings=10, fn=fuzz),
+            blob('belly', (0, 1.2, -0.02), (0.27, 0.27, 0.23), fur, seg=18, rings=14, fn=fuzz),
+            blob('chest', (0, 1.4, 0), (0.25, 0.17, 0.18), fur, seg=16, rings=10, fn=fuzz),
+            blob('tum', (0, 1.2, -0.085), (0.2, 0.21, 0.18), tum, seg=16, rings=12),
+            limb('neck', [(0, 1.5, 0), (0, 1.62, 0)], [0.058, 0.046], M.skin, seg=10),  # the mannequin's own neck, where the head doesn't quite meet the suit
+            limb('ruff', [(0, 1.488, 0), (0, 1.56, 0)], [0.13, 0.1], fur, seg=14)]
+    for sx in (-1, 1): body.append(blob('socket', (sx * 0.25, 1.45, 0), (0.085,) * 3, fur, seg=12, rings=8))
+    body.append(rod((0, 1.48, -0.21), (0, 1.02, -0.262), 0.006, M.chrome, seg=5))  # the zip
+    body.append(box((0.016, 0.04, 0.008), (0, 1.47, -0.214), M.chrome, bev=0.002))
+    nm = quad((0, 0, 0), 0.2, 0.1, name, axis='z', sx=-1); nm['keep_uv'] = 1
+    nm.data.transform(Matrix.Translation(gv(0.0, 1.27, -0.2562))); body.append(nm)
+    tail = blob('tail', (0, 1.02, 0.2), (0.07, 0.07, 0.07), tum, seg=10, rings=8); body.append(tail)
+    # the head: twice the size of what's inside it
+    cy = 0.27
+    hd = [blob('plush', (0, cy, 0), (0.3, 0.27, 0.27), fur, seg=22, rings=16, fn=fuzz),
+          blob('muzzle', (0, cy - 0.07, -0.21), (0.15, 0.1, 0.1), tum, seg=14, rings=10),
+          blob('nose', (0, cy - 0.02, -0.305), (0.035, 0.026, 0.02), M.dark, seg=10, rings=6),
+          blob('neckball', (0, -0.012, 0), (0.052,) * 3, M.joint, seg=10, rings=8)]
+    for sx in (-1, 1):
+        hd.append(blob('ear', (sx * 0.24, cy + 0.24, 0.0), (0.1, 0.1, 0.05), fur, seg=12, rings=8))
+        hd.append(blob('earin', (sx * 0.24, cy + 0.24, -0.03), (0.06, 0.06, 0.03), pink, seg=10, rings=6))
+        hd.append(blob('cheek', (sx * 0.2, cy - 0.06, -0.19), (0.05, 0.04, 0.02), pink, seg=10, rings=6))
+        hd.append(blob('eye', (sx * 0.11, cy + 0.07, -0.235), (0.062, 0.075, 0.03), white, seg=12, rings=8))
+    hd.append(blob('pupilL', (-0.125, cy + 0.09, -0.262), (0.022, 0.026, 0.01), M.dark, seg=8, rings=5))  # one looks up and out,
+    hd.append(blob('pupilR', (0.095, cy + 0.045, -0.262), (0.022, 0.026, 0.01), M.dark, seg=8, rings=5))   # one looks down and in
+    grin = [(math.sin(a) * 0.11, cy - 0.085 - math.cos(a) * 0.045, -0.292 + abs(math.sin(a)) * 0.03) for a in [math.radians(d) for d in range(-70, 71, 14)]]
+    hd.append(tube(grin, 0.009, M.dark, seg=5))  # the stitched-on smile
+    for i in (2, 5, 8): hd.append(rod((grin[i][0], grin[i][1] + 0.016, grin[i][2] - 0.004), (grin[i][0], grin[i][1] - 0.016, grin[i][2] - 0.004), 0.004, M.dark, seg=4))  # ... and its stitches
+    tg = box((0.004, 0.09, 0.12), (0.33, cy + 0.19, 0.0), tagM, rot=(0, 0, -0.3)); hd.append(tg)  # the price tag stapled through an ear
+    hd.append(rod((0.3, cy + 0.26, 0.0), (0.325, cy + 0.235, 0.0), 0.004, M.chrome, seg=5))
+    J2 = dict(JT, legL=(-0.15, 0.92, 0), legR=(0.15, 0.92, 0), kneeL=(-0.15, 0.48, 0), kneeR=(0.15, 0.48, 0))  # (fat legs: hips a bit wider)
+    P = {'body': place('body', body), 'head': place('head', hd)}
+    for k, sx in (('arm', 1), ('armL', -1)):
+        a = keep(arm(M, sx, 1.5, 0.95, sleeve=0.26, sleeve_m=fur), 'finger', 'rod', 'thumb', 'mitt', 'wrist')
+        a += [limb('sleeve2', [(0, -0.014, -0.29), (0, -0.03, -0.4), (0, -0.05, -0.52)], [0.086, 0.084, 0.082], fur, seg=10),
+              blob('paw', (0, -0.06, -0.6), (0.085, 0.07, 0.1), fur, seg=12, rings=8, fn=fuzz),
+              blob('pad', (0, -0.1, -0.61), (0.05, 0.02, 0.06), pink, seg=10, rings=5),
+              blob('pawthumb', (-sx * 0.075, -0.06, -0.56), (0.035, 0.035, 0.045), fur, seg=8, rings=6)]
+        P[k] = place(k, a)
+    for k, kn, sx in (('legL', 'kneeL', -1), ('legR', 'kneeR', 1)):
+        P[k] = place(k, thigh(M, sx, 1.4, trouser=0.42, ragged=False, bm=fur), at=J2[k])
+        sh = keep(shin(M, sx, 1.4, cuff=True, shoe=False, bm=fur), 'ankle', 'foot', 'toe')
+        sh.append(limb('leg2', [(0, -0.28, 0.002), (0, -0.4, 0)], [0.108, 0.112], fur, seg=10))
+        sh.append(blob('bigfoot', (0, -0.41, -0.09), (0.11, 0.06, 0.2), tum, seg=14, rings=8))
+        for i, tx in enumerate((-0.06, 0, 0.06)): sh.append(blob('toepad%d' % i, (tx, -0.4, -0.27), (0.03, 0.03, 0.03), pink, seg=8, rings=5))
+        P[kn] = place(kn, sh, at=J2[kn])
+    return finish_z('mascot', P, {'joints': {k: list(v) for k, v in J2.items() if v != JT[k]}})
+
+
 def build_stump(M):
     o = place('body', stump(M), name='part_stump', weld=False)
     return finish('zombie_stump', [o], {'kind': 'zombie', 'id': 'stump'})
 
 
-BUILD = {'plain': build_plain, 'chonk': build_chonk, 'biter': build_biter, 'hardhat': build_hardhat, 'screamer': build_screamer, 'stump': build_stump}
+BUILD = {'plain': build_plain, 'chonk': build_chonk, 'biter': build_biter, 'hardhat': build_hardhat, 'screamer': build_screamer, 'manager': build_manager, 'mascot': build_mascot, 'stump': build_stump}
 
 
 def run():
