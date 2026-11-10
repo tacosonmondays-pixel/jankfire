@@ -32,7 +32,7 @@ const std = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness:
 function css() {
   if (document.getElementById('rpCss')) return;
   const s = document.createElement('style'); s.id = 'rpCss';
-  s.textContent = `#rpGap{position:fixed;left:18px;top:58px;transform:rotate(-1.5deg);z-index:39;pointer-events:none;font-family:var(--font);color:#fff;text-align:center;
+  s.textContent = `#rpGap{position:fixed;left:18px;top:40%;transform:rotate(-1.5deg);z-index:39;pointer-events:none;font-family:var(--font);color:#fff;text-align:center;
     background:rgba(18,8,24,0.92);border:4px solid #ff4fd8;box-shadow:8px 8px 0 #4fd8ff;padding:2px 18px 8px;min-width:200px}
   #rpGap.hidden,#rpFail.hidden{display:none}
   #rpGap .l{font-weight:700;letter-spacing:3px;font-size:14px;color:#4fd8ff} #rpGap .n{line-height:.95}
@@ -131,11 +131,13 @@ export function makeTrainFight(ST, { playScene }) {
       // what an open eye housing shows: somewhere to put bolts
       const eyes = ['L', 'R'].map((k) => { const e = T.geo.eyes[k], m = new THREE.Mesh(new THREE.CircleGeometry(1, 20), new THREE.MeshBasicMaterial({ color: 0xff2a48, transparent: true, opacity: 0.9, toneMapped: false })); m.scale.set(e.h[0] * 0.92, e.h[1] * 0.92, 1); m.position.set(e.c[0], e.c[1], -0.12); m.visible = false; root.add(m); return m; });
       const red = new THREE.PointLight(0xff2030, 0, 16, 1.2); red.position.set(0, -1.6, 2.2); root.add(red);
+      // the Inspector's chest, once the lower third is off: the crit spot has to read from the wagon
+      const insp = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex(), color: 0xffe14d, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); insp.position.set(T.geo.insp.crit[0], T.geo.insp.crit[1], T.geo.insp.crit[2] + 0.35); insp.visible = false; root.add(insp);
       const cross = new THREE.Group(), cm = new THREE.MeshBasicMaterial({ color: 0xff1f3d, transparent: true, opacity: 0.95, toneMapped: false, depthWrite: false });
       for (const rot of [0, Math.PI / 2]) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.7, R * 2, 0.3), cm); b.rotation.z = rot; cross.add(b); }
       cross.position.z = 0.9; cross.visible = false; root.add(cross);
       T.parts = parts; T.geo = geoFrom(parts);
-      T.boss = { root, N, A, eyes, red, cross, cm, inspGlow: glow('rp_inspector_glow'), eyeGlow: glow('rp_eye_glow'), hidden: new Set(parts ? parts.parts.filter((p) => p.hidden).map((p) => p.name) : []), debris: [], haul: [] };
+      T.boss = { root, N, A, eyes, red, insp, cross, cm, inspGlow: glow('rp_inspector_glow'), eyeGlow: glow('rp_eye_glow'), hidden: new Set(parts ? parts.parts.filter((p) => p.hidden).map((p) => p.name) : []), debris: [], haul: [] };
       for (const nm of T.boss.hidden) if (N[nm]) N[nm].visible = false;
       for (const [sock, wa] of [[7, 3.5], [10, -0.36]]) T.boss.haul.push(newArm({ id: 'h' + sock, k: 'haul', sock, mouth: 0, st: 'grip', t: 0, dur: 0, tgt: [0, 0, 0], wa, hp: 1, max: 1 }, true)); // two arms on the walls that do the hauling (not targets: no knot)
       applyMask(); T.loading = false;
@@ -319,11 +321,11 @@ export function makeTrainFight(ST, { playScene }) {
         else if (T.boss && F.plates[i] === 1) { T.boss.root.getWorldPosition(_p); sfx.rpPlate([_p.x, _p.y, _p.z], false); }
         applyMask(); } break;
       case 'stage': if (fin(ev.stage)) { const was = F.stage; F.stage = clamp(ev.stage | 0, 0, 3); stageFx(was, F.stage); applyMask(); } break;
-      case 'flinch': F.open = fin(ev.open) ? ev.open : RP.flinch.open; hud.msg('IT FLINCHED. THE EYES. NOW.', 2.2, 'brag'); sfx.rpFlinch(); G.shake = Math.max(G.shake, 0.6); if (T.boss) T.boss.flinch = 1; break;
-      case 'swept': hud.msg(ev.hi ? 'SWEPT. (SLIDE UNDER THAT ONE.)' : 'SWEPT. (JUMP THAT ONE.)', 1.6, 'reverse'); G.shake = 1; break;
+      case 'flinch': F.open = fin(ev.open) ? ev.open : RP.flinch.open; hud.msg('IT FLINCHED. THE EYES.', 2.2, 'brag'); sfx.rpFlinch(); G.shake = Math.max(G.shake, 0.6); if (T.boss) T.boss.flinch = 1; break;
+      case 'swept': hud.msg(ev.hi ? 'SWEPT. SLIDE NEXT TIME.' : 'SWEPT. JUMP NEXT TIME.', 1.6, 'reverse'); G.shake = 1; break;
       case 'snatched': hud.msg('TAKEN. THE GAP WENT WITH YOU.', 2, 'reverse'); G.shake = 1; break;
       case 'lunge': if (ev.st === 'tell') { F.lunge = fin(ev.dur) ? ev.dur : RP.lunge.tell; hud.msg('IT REARS. OFF THE WAGON.', 1.5, 'reverse'); sfx.rpLunge(); } else { F.lunge = 0; G.shake = 1; if (T.boss) T.boss.bite = 1; if (ev.bit) hud.msg('BITTEN', 1.2, 'reverse'); } break;
-      case 'bag': hud.msg(`SOUP BAG, RELABELLED. +${fin(ev.hp) ? ev.hp : RP.bag.hp} BLOOD`, 1.4, 'brag'); break;
+      case 'bag': hud.msg(`SOUP BAG. +${fin(ev.hp) ? ev.hp : RP.bag.hp} BLOOD`, 1.2, 'brag'); break;
       case 'off': hud.msg('MIND THE GAP', 1.6, 'reverse'); break;
       case 'fail': T.failT = time; clearArms(); if (failEl) { failEl.classList.remove('hidden'); requestAnimationFrame(() => failEl.classList.add('on')); } sfx.rpCaught(); break;
       case 'phase': {
@@ -405,6 +407,7 @@ export function makeTrainFight(ST, { playScene }) {
       if (b.eyeGlow) b.eyeGlow.emissiveIntensity = 1.5 + Math.sin(time * 3) * 0.5;
       // phase 3: hanging off one bolt, swinging; the Inspector lit from inside, punching a ticket that isn't there
       if (!T.fin && b.N.mask) { const hang = F.phase >= 2 && T.parts && T.parts.stages && T.parts.stages[3] && T.parts.stages[3].hang; if (hang && v3(hang.pivot)) pivot(b.N.mask, hang.pivot, -0.07, -0.06 + Math.sin(time * 1.3) * 0.035); }
+      b.insp.visible = F.stage >= 3 && !T.fin; b.insp.scale.setScalar((F.phase >= 2 ? 1.5 : 0.9) + Math.sin(time * 5) * 0.2);
       if (b.inspGlow) b.inspGlow.emissiveIntensity = (F.phase >= 2 ? 3.2 : 1.2) + Math.sin(time * 5) * 0.8;
       if (b.N.insp_foreR) b.N.insp_foreR.rotation.x = Math.max(0, Math.sin(time * 4.2)) * 0.5; if (b.N.insp_punch_lever) b.N.insp_punch_lever.rotation.x = Math.max(0, Math.sin(time * 4.2)) > 0.8 ? 0.3 : 0;
       if (!T.fin) b.red.intensity = (F.stage >= 3 ? 14 : 5) + b.redK * 40 + (F.phase >= 2 ? 6 * Math.sin(time * 5) : 0);
