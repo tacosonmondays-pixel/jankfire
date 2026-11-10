@@ -322,7 +322,7 @@ const methods = {
   // which way to walk to p: straight if nothing's in the way, else downhill on a flow field from p
   zhWay(b, p) {
     const zs = this.zs, dx = p[0] - b.pos[0], dz = p[2] - b.pos[2], d = Math.hypot(dx, dz) || 1e-6;
-    if (d < 10 && this.zmClear(b.pos, [p[0], b.pos[1], p[2]], d)) return [dx / d, dz / d];
+    if (d < 10 && Math.abs((p[1] ?? b.pos[1]) - b.pos[1]) < 1.4 && this.zmClear(b.pos, [p[0], b.pos[1], p[2]], d)) return [dx / d, dz / d]; // (same floor)
     const nav = zs.nav, c = cellOf(nav, p);
     if (c < 0) return [dx / d, dz / d];
     const f = this.zhField(c, p);
@@ -335,8 +335,8 @@ const methods = {
     const zs = this.zs, F = (zs.zhF ||= new Map()), n = now();
     let f = F.get(c);
     if (!f || n - f.t > 4000 || f.t < zs.fieldT) {
-      if (!f) { if (F.size > 24) F.delete(F.keys().next().value); f = { d: new Float32Array(zs.nav.W * zs.nav.D), t: 0 }; F.set(c, f); }
-      flow(zs.nav, zs.open, [p[0], 0.5, p[2]], this.boxes, f.d); f.t = n;
+      if (!f) { if (F.size > 24) F.delete(F.keys().next().value); f = { d: new Float32Array(zs.nav.N), t: 0 }; F.set(c, f); }
+      flow(zs.nav, zs.open, [p[0], (p[1] || 0) + 0.5, p[2]], this.boxes, f.d); f.t = n;
     }
     return f.d;
   },

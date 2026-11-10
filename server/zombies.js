@@ -48,35 +48,67 @@ function navFor(id) {
   return NAV.get(id);
 }
 export function buildNav(map) {
-  const [x0, z0, x1, z1] = map.zm.bounds, W = Math.ceil(x1 - x0), D = Math.ceil(z1 - z0), top = map.zm.H - 0.3;
-  const floor = new Float32Array(W * D).fill(NaN), door = new Int16Array(W * D).fill(-1), q = [];
+  const [x0, z0, x1, z1] = map.zm.bounds, W = Math.ceil(x1 - x0), D = Math.ceil(z1 - z0), top = map.zm.H - 0.3, WD = W * D;
   const fits = (b, x, y, z, r = 0.35) => x - r < b.max[0] && x + r > b.min[0] && y + 0.3 < b.max[1] && y + 1.75 > b.min[1] && z - r < b.max[2] && z + r > b.min[2];
+  // every floor under each cell, top to bottom: a map with an upstairs has cells with two (or three) of them
+  const cols = [], q = [];
+  let L = 1;
   for (let j = 0; j < D; j++) for (let i = 0; i < W; i++) {
-    const x = x0 + i + 0.5, z = z0 + j + 0.5;
-    const h = raycast([x, top, z], [0, -1, 0], top + 2, map.boxes);
-    if (!h || h.normal[1] !== 1) continue; // no floor, or we started inside a wall
-    const y = h.point[1];
-    if (query(map.boxes, x - 0.4, z - 0.4, x + 0.4, z + 0.4, q).some((b) => fits(b, x, y, z))) continue;
-    floor[j * W + i] = y;
-    door[j * W + i] = map.zm.doors.findIndex((d) => fits(d.box, x, y, z, 0.5)); // the whole cell: shutters are thinner than one
+    const x = x0 + i + 0.5, z = z0 + j + 0.5, ys = [];
+    for (let from = top, k = 0; k < 6 && from > -1; k++) {
+      const h = raycast([x, from, z], [0, -1, 0], from + 2, map.boxes);
+      if (!h) break;
+      const y = h.point[1];
+      if (h.normal[1] === 1 && !query(map.boxes, x - 0.4, z - 0.4, x + 0.4, z + 0.4, q).some((b) => fits(b, x, y, z))) ys.push(y); // a zombie fits standing on it
+      // on down through whatever that was, to the next gap under it
+      let low = y - 0.05;
+      for (let g = 0; g < 8; g++) { const inb = query(map.boxes, x - 0.01, z - 0.01, x + 0.01, z + 0.01, q).filter((b) => b.min[1] < low && b.max[1] > low - 0.02 && x > b.min[0] && x < b.max[0] && z > b.min[2] && z < b.max[2]); if (!inb.length) break; low = Math.min(...inb.map((b) => b.min[1])) - 0.02; }
+      from = low;
+    }
+    ys.sort((a, b) => a - b); // layer 0 = the lowest floor
+    cols.push(ys); if (ys.length > L) L = ys.length;
   }
-  return { x0, z0, W, D, floor, door };
+  const N = WD * L, floor = new Float32Array(N).fill(NaN), door = new Int16Array(N).fill(-1);
+  cols.forEach((ys, col) => ys.forEach((y, l) => {
+    const c = l * WD + col, x = x0 + (col % W) + 0.5, z = z0 + ((col / W) | 0) + 0.5;
+    floor[c] = y;
+    door[c] = map.zm.doors.findIndex((d) => fits(d.box, x, y, z, 0.5)); // the whole cell: shutters are thinner than one
+  }));
+  return { x0, z0, W, D, L, WD, N, floor, door };
 }
 const D8 = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.414], [1, -1, 1.414], [-1, 1, 1.414], [-1, -1, 1.414]];
 const walkable = (nav, open, c) => nav.floor[c] === nav.floor[c] && (nav.door[c] < 0 || !!open[nav.door[c]]);
-function link(nav, open, c, di, dj) { // the neighbour cell a zombie can step to from c, or -1
-  const i = (c % nav.W) + di, j = ((c / nav.W) | 0) + dj;
+// the cell (on whichever floor) a zombie on c steps onto going (di, dj): at most a step up or down. -1 = none
+function step(nav, open, c, di, dj, any = false) {
+  const col = c % nav.WD, i = (col % nav.W) + di, j = ((col / nav.W) | 0) + dj;
   if (i < 0 || j < 0 || i >= nav.W || j >= nav.D) return -1;
-  const n = j * nav.W + i;
-  if (!walkable(nav, open, n) || Math.abs(nav.floor[n] - nav.floor[c]) > 0.55) return -1;
-  if (di && dj && (!walkable(nav, open, c + di) || !walkable(nav, open, c + dj * nav.W))) return -1;
+  let best = -1, bd = any ? Infinity : 0.55;
+  for (let l = 0; l < nav.L; l++) { const n = l * nav.WD + j * nav.W + i; if (!walkable(nav, open, n)) continue; const d = Math.abs(nav.floor[n] - nav.floor[c]); if (d <= bd) { bd = d; best = n; } }
+  return best;
+}
+function link(nav, open, c, di, dj) { // the neighbour cell a zombie can step to from c, or -1 (no cutting corners)
+  const n = step(nav, open, c, di, dj);
+  if (n < 0) return -1;
+  if (di && dj && (step(nav, open, c, di, 0) < 0 || step(nav, open, c, 0, dj) < 0)) return -1;
   return n;
 }
+// the cell under a position: the floor it's standing on (the highest one not above its knees), else the nearest
 function cellOf(nav, p) {
   const i = Math.floor(p[0] - nav.x0), j = Math.floor(p[2] - nav.z0);
-  return i >= 0 && j >= 0 && i < nav.W && j < nav.D ? j * nav.W + i : -1;
+  if (i < 0 || j < 0 || i >= nav.W || j >= nav.D) return -1;
+  const col = j * nav.W + i;
+  if (nav.L === 1) return col;
+  let best = -1, bd = Infinity, any = col;
+  for (let l = 0; l < nav.L; l++) {
+    const y = nav.floor[l * nav.WD + col];
+    if (y !== y) continue;
+    const d = p[1] + 0.7 - y; // how far under us it is
+    if (d >= 0 && d < bd) { bd = d; best = l * nav.WD + col; }
+    any = l * nav.WD + col;
+  }
+  return best >= 0 ? best : any;
 }
-const center = (nav, c) => [nav.x0 + (c % nav.W) + 0.5, nav.z0 + ((c / nav.W) | 0) + 0.5];
+const center = (nav, c) => { const col = c % nav.WD; return [nav.x0 + (col % nav.W) + 0.5, nav.z0 + ((col / nav.W) | 0) + 0.5]; };
 // Dijkstra out from the player (seeded on the cells round them they can see: they might be up on a table)
 function flow(nav, open, at, boxes, out) {
   out.fill(Infinity);
@@ -91,12 +123,15 @@ function flow(nav, open, at, boxes, out) {
   for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) {
     const i = ci + di, j = cj + dj;
     if (i < 0 || j < 0 || i >= nav.W || j >= nav.D) continue;
-    const c = j * nav.W + i;
-    if (!walkable(nav, open, c)) continue;
-    const [x, z] = center(nav, c), dx = x - at[0], dz = z - at[2], d = Math.hypot(dx, dz);
-    if (d > 2.2) continue;
-    if (d > 0.3 && raycast([at[0], at[1] + 0.5, at[2]], [dx / d, 0, dz / d], d, boxes)) continue; // not through a wall (from their height: over a table they're on)
-    if (d < out[c]) { out[c] = d; push(c, d); }
+    for (let l = 0; l < nav.L; l++) {
+      const c = l * nav.WD + j * nav.W + i;
+      if (!walkable(nav, open, c)) continue;
+      if (nav.L > 1 && (nav.floor[c] > at[1] + 0.8 || nav.floor[c] < at[1] - 2.2)) continue; // their floor (or the one they're stood over), not the one upstairs
+      const [x, z] = center(nav, c), dx = x - at[0], dz = z - at[2], d = Math.hypot(dx, dz);
+      if (d > 2.2) continue;
+      if (d > 0.3 && raycast([at[0], at[1] + 0.5, at[2]], [dx / d, 0, dz / d], d, boxes)) continue; // not through a wall (from their height: over a table they're on)
+      if (d < out[c]) { out[c] = d; push(c, d); }
+    }
   }
   while (hc.length) {
     const [c, d] = pop();
@@ -112,8 +147,7 @@ function downhill(nav, open, f, pos, boxes) {
     let nb = -1, nd = f[c];
     const on = walkable(nav, open, c);
     for (const [di, dj] of D8) {
-      let n = on ? link(nav, open, c, di, dj) : -1;
-      if (!on) { const i = (c % nav.W) + di, j = ((c / nav.W) | 0) + dj; if (i >= 0 && j >= 0 && i < nav.W && j < nav.D && walkable(nav, open, j * nav.W + i)) n = j * nav.W + i; } // knocked off the grid: any way back on
+      const n = on ? link(nav, open, c, di, dj) : step(nav, open, c, di, dj, true); // knocked off the grid: any way back on
       if (n >= 0 && f[n] < nd) { nd = f[n]; nb = n; }
     }
     if (nb < 0) break;
@@ -253,8 +287,8 @@ const methods = {
     for (const h of hs) {
       if (!h.alive) continue;
       let f = zs.fields.get(h.id);
-      if (!f) zs.fields.set(h.id, (f = { d: new Float32Array(nav.W * nav.D), t: 0, at: [1e9, 0, 0] }));
-      const moved = Math.hypot(h.pos[0] - f.at[0], h.pos[2] - f.at[2]);
+      if (!f) zs.fields.set(h.id, (f = { d: new Float32Array(nav.N), t: 0, at: [1e9, 0, 0] }));
+      const moved = Math.hypot(h.pos[0] - f.at[0], h.pos[2] - f.at[2]) + Math.abs(h.pos[1] - f.at[1]) * (nav.L > 1 ? 1 : 0);
       if (f.t > zs.fieldT && n - f.t < 1500 && (n - f.t < 300 || moved < 0.75)) continue;
       flow(nav, zs.open, h.pos, this.boxes, f.d);
       f.t = n; f.at = h.pos.slice();
@@ -544,7 +578,7 @@ const methods = {
       if (h.zmz || !h.z || !h.alive) continue; // people and the squad's bots
       const f = zs.fields.get(h.id);
       let d = f && c >= 0 ? f.d[c] : Infinity;
-      if (d === Infinity && f && c >= 0) for (const [di, dj, w] of D8) { const i = (c % nav.W) + di, j = ((c / nav.W) | 0) + dj; if (i >= 0 && j >= 0 && i < nav.W && j < nav.D) d = Math.min(d, f.d[j * nav.W + i] + w); }
+      if (d === Infinity && f && c >= 0) for (const [di, dj, w] of D8) { const nn = step(nav, zs.open, c, di, dj, true); if (nn >= 0) d = Math.min(d, f.d[nn] + w); }
       if (d === Infinity) d = 1000 + dist3(h.pos, b.pos); // can't walk there: worse than anyone we can reach
       if (d < bd) { bd = d; best = h; bf = d < 1000 ? f : null; }
     }
