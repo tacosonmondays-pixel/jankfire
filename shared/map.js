@@ -46,7 +46,21 @@ function builder() {
     };
     return L;
   };
-  return { boxes, add, box, local, obb };
+  // a Blender building (public/models/arch/<id>.glb, public/js/archfield.js) placed like local(): the returned frame tags
+  // every box drawn through it { av: id }, and the client skips those boxes while the model is loaded. visual only:
+  // the boxes stay exactly as they were for physics, bots and hits. o: paint (map material keys for its painted parts)
+  boxes.arch = [];
+  const arch = (id, ox, oz, rot = 0, oy = 0, o = {}) => {
+    boxes.arch.push({ id, p: [ox, oy, oz], r: rot & 3, ...o });
+    const L = local(ox, oz, rot, oy), tag = { av: id, ai: boxes.arch.length - 1 }; // (ai: which placement)
+    const A = (x0, y0, z0, x1, y1, z1, mat, extra) => L(x0, y0, z0, x1, y1, z1, mat, extra ? { ...extra, ...tag } : tag);
+    A.B = (cx, cy, cz, sx, sy, sz, mat, extra) => A(cx - sx / 2, cy - sy / 2, cz - sz / 2, cx + sx / 2, cy + sy / 2, cz + sz / 2, mat, extra);
+    A.pt = L.pt; A.P = L.P; A.plain = L; // (plain: the same frame without the tag, for the furniture inside)
+    return A;
+  };
+  // the same for boxes a helper already added (roofTop() and friends): everything from boxes[n0] on gets the tag
+  const archSince = (n0, id, ox, oz, rot = 0, oy = 0, o = {}) => { boxes.arch.push({ id, p: [ox, oy, oz], r: rot & 3, ...o }); for (let i = n0; i < boxes.length; i++) Object.assign(boxes[i], { av: id, ai: boxes.arch.length - 1 }); };
+  return { boxes, add, box, local, obb, arch, archSince };
 }
 
 // a wall with holes cut in it. axis 'x' = runs along x at z=fixed, 'z' = runs along z at x=fixed.
@@ -1359,15 +1373,16 @@ function rooftopSD() {
 // the east end, a corner store and a building site at the west end. the ground runs out flat in every direction and a
 // ring of trees marks the edge: walk out through them and you get the RETURN TO THE MAP countdown
 function home(B, ox, oz, rot, o, r) {
-  const L = B.local(ox, oz, rot), F = 3.4;
-  shell(L, 14, 12, 2, F, o.siding, { roof: o.roof, backDoor: true, sideDoor: [1, 2.6] });
+  // the house's architecture goes through A (tagged for its Blender model), the furniture and the yard through L
+  const A = B.arch('home', ox, oz, rot, 0, { paint: { siding: o.siding, roof: o.roof }, fence: !o.noFence }), L = A.plain, F = 3.4;
+  shell(A, 14, 12, 2, F, o.siding, { roof: o.roof, backDoor: true, sideDoor: [1, 2.6] });
   // ground floor: a wall splits the kitchen (left) from the living room, and the living room from the laundry at the back
-  wall(L, 'z', -1, -6, 6, 0.12, F, 0.2, 'plaster', [{ a: -4, b: -2.4, y0: 0, y1: 2.4 }]);
-  wall(L, 'x', 1.5, -1, 7, 0.12, F, 0.2, 'plaster', [{ a: 2, b: 3.4, y0: 0, y1: 2.4 }]);
+  wall(A, 'z', -1, -6, 6, 0.12, F, 0.2, 'plaster', [{ a: -4, b: -2.4, y0: 0, y1: 2.4 }]);
+  wall(A, 'x', 1.5, -1, 7, 0.12, F, 0.2, 'plaster', [{ a: 2, b: 3.4, y0: 0, y1: 2.4 }]);
   // upstairs: two bedrooms + a bathroom
-  wall(L, 'x', 1, -1.6, 7, F + 0.25, 2 * F, 0.2, 'plaster', [{ a: 0, b: 1.4, y0: F + 0.25, y1: F + 2.6 }]);
-  wall(L, 'z', 2.5, 1, 6, F + 0.25, 2 * F, 0.2, 'plaster', [{ a: 2, b: 3.3, y0: F + 0.25, y1: F + 2.6 }]);
-  wall(L, 'z', -1.6, -6, 1, F + 0.25, 2 * F, 0.2, 'plaster', [{ a: -3.5, b: -2, y0: F + 0.25, y1: F + 2.6 }]);
+  wall(A, 'x', 1, -1.6, 7, F + 0.25, 2 * F, 0.2, 'plaster', [{ a: 0, b: 1.4, y0: F + 0.25, y1: F + 2.6 }]);
+  wall(A, 'z', 2.5, 1, 6, F + 0.25, 2 * F, 0.2, 'plaster', [{ a: 2, b: 3.3, y0: F + 0.25, y1: F + 2.6 }]);
+  wall(A, 'z', -1.6, -6, 1, F + 0.25, 2 * F, 0.2, 'plaster', [{ a: -3.5, b: -2, y0: F + 0.25, y1: F + 2.6 }]);
   // furniture (the fridge is chrome, the couch is the colour of a hospital waiting room, the tv shows static)
   L(-6.8, 0.12, -5.8, -5.8, 1.0, -2.4, 'white');
   L(-6.8, 0.12, -2.3, -6.0, 2.1, -1.5, 'chrome');
@@ -1378,19 +1393,19 @@ function home(B, ox, oz, rot, o, r) {
   L(-1.3, F + 0.25, -5.8, 2.2, F + 0.8, -3.6, 'carpet');
   L(-1.4, F + 0.25, 4.2, 1.2, F + 0.85, 5.8, 'tile');
   // a stepped toy roof with a chimney
-  L(-6.3, 2 * F + 0.3, -5.3, 6.3, 2 * F + 0.75, 5.3, o.roof); L(-4.6, 2 * F + 0.75, -3.8, 4.6, 2 * F + 1.2, 3.8, o.roof);
-  L(-2.8, 2 * F + 1.2, -2.2, 2.8, 2 * F + 1.65, 2.2, o.roof); L(3.4, 2 * F + 0.75, 1.5, 4.4, 2 * F + 2.6, 2.5, 'brick');
+  A(-6.3, 2 * F + 0.3, -5.3, 6.3, 2 * F + 0.75, 5.3, o.roof); A(-4.6, 2 * F + 0.75, -3.8, 4.6, 2 * F + 1.2, 3.8, o.roof);
+  A(-2.8, 2 * F + 1.2, -2.2, 2.8, 2 * F + 1.65, 2.2, o.roof); A(3.4, 2 * F + 0.75, 1.5, 4.4, 2 * F + 2.6, 2.5, 'brick');
   // porch with a neon OPEN HOUSE sign over the door
-  L(-3, 0, -7.6, 3, 0.25, -6, 'wood');
-  L(-2.9, 0.25, -7.5, -2.6, 3.0, -7.2, 'wood'); L(2.6, 0.25, -7.5, 2.9, 3.0, -7.2, 'wood');
-  L(-3.2, 3.0, -7.8, 3.2, 3.25, -6.15, o.roof);
+  A(-3, 0, -7.6, 3, 0.25, -6, 'wood');
+  A(-2.9, 0.25, -7.5, -2.6, 3.0, -7.2, 'wood'); A(2.6, 0.25, -7.5, 2.9, 3.0, -7.2, 'wood');
+  A(-3.2, 3.0, -7.8, 3.2, 3.25, -6.15, o.roof);
   L(-1.4, 2.62, -6.45, 1.4, 3.0, -6.17, 'signopen', { fit: 1 });
   // garage: open front, flat roof you can climb onto (bin -> crate -> roof), window from the roof into the bedroom
-  wall(L, 'z', 13, -6, 1.2, 0, 3.2, 0.3, 'brick');
-  wall(L, 'x', 1.2, 7.15, 13, 0, 3.2, 0.3, 'brick');
-  wall(L, 'x', -6, 7.15, 13, 0, 3.2, 0.3, 'brick', [{ a: 7.6, b: 12.6, y0: 0, y1: 2.7 }]);
-  L(7.15, 0, -6, 13, 0.1, 1.05, 'concrete'); // (wall face to wall face: no grass slot, no face shared with a wall end)
-  L(7, 3.2, -6.2, 13.2, 3.5, 1.4, 'roofg');
+  wall(A, 'z', 13, -6, 1.2, 0, 3.2, 0.3, 'brick');
+  wall(A, 'x', 1.2, 7.15, 13, 0, 3.2, 0.3, 'brick');
+  wall(A, 'x', -6, 7.15, 13, 0, 3.2, 0.3, 'brick', [{ a: 7.6, b: 12.6, y0: 0, y1: 2.7 }]);
+  A(7.15, 0, -6, 13, 0.1, 1.05, 'concrete'); // (wall face to wall face: no grass slot, no face shared with a wall end)
+  A(7, 3.2, -6.2, 13.2, 3.5, 1.4, 'roofg');
   L(13.2, 0, -2.2, 14.3, 1.2, -1.1, 'metal');
   L(13.2, 0, -1.05, 14.6, 2.4, 0.4, 'crate');
   car(L, 10.1, -2.4, 1, o.car);
@@ -1401,13 +1416,13 @@ function home(B, ox, oz, rot, o, r) {
   // backyard: picket fence with a gate onto the back lane, a tree, a trampoline onto the roof, a shed
   const fy = 1.3;
   if (!o.noFence) {
-    L(-8, 0, 13.9, -1.2, fy, 14.1, 'picket'); L(1.2, 0, 13.9, 14, fy, 14.1, 'picket');
-    L(-8.1, 0, 6.2, -7.9, fy, 13.9, 'picket');
-    L(13.9, 0, 1.4, 14.1, fy, 11, 'picket');
+    A(-8, 0, 13.9, -1.2, fy, 14.1, 'picket'); A(1.2, 0, 13.9, 14, fy, 14.1, 'picket');
+    A(-8.1, 0, 6.2, -7.9, fy, 13.9, 'picket');
+    A(13.9, 0, 1.4, 14.1, fy, 11, 'picket');
   }
   lollipop(L, -4, 12.8, 4 + r() * 2, r);
   if (!o.noPad) L(2.5, 0, 8.5, 5, 0.25, 11, 'pad', { pad: [0, 21, -4] });
-  L(8, 0, 9, 12, 2.6, 13, 'wood'); L(7.8, 2.6, 8.8, 12.2, 2.8, 13.2, 'roofg');
+  A(8, 0, 9, 12, 2.6, 13, 'wood'); A(7.8, 2.6, 8.8, 12.2, 2.8, 13.2, 'roofg');
   if (o.yard === 'pool') { // above-ground pool
     L(-6.5, 0, 7, -1.5, 1.1, 7.2, 'tile'); L(-6.5, 0, 11.6, -1.5, 1.1, 11.8, 'tile');
     L(-6.5, 0, 7.2, -6.3, 1.1, 11.6, 'tile'); L(-1.7, 0, 7.2, -1.5, 1.1, 11.6, 'tile');
@@ -1787,8 +1802,8 @@ function suburb() {
   for (const [x, z] of [[-8, -11], [8, 11]]) { W(x - 1.2, 0, z - 0.35, x + 1.2, 0.5, z + 0.35, 'wood'); W(x - 1.2, 0.5, z + 0.2, x + 1.2, 1.0, z + 0.35, 'wood'); } // benches
 
   // ---- west end (team 1): the corner store, its car park, the bus stop
-  const C = B.local(-71, 0, 1); // front (local -z) faces east, onto the street
-  shell(C, 18, 12, 1, 4.2, 'brick', { roof: 'roofg', roofAccess: true, backDoor: true });
+  const CA = B.arch('store', -71, 0, 1), C = CA.plain; // front (local -z) faces east, onto the street
+  shell(CA, 18, 12, 1, 4.2, 'brick', { roof: 'roofg', roofAccess: true, backDoor: true });
   C(-8.5, 0.12, -5.5, -1, 1.1, -4.6, 'wood'); C(1, 0.12, -5.5, 8.5, 1.1, -4.6, 'wood');
   for (const x of [-6, -2, 2, 6]) C(x - 0.4, 0.12, -1.5, x + 0.4, 1.9, 3.5, 'shelfstock');
   C(-8, 3.0, -6.55, 8, 4.4, -6.16, 'adstore', { fit: 1 });
@@ -3578,7 +3593,9 @@ function skyline() {
     NW: { e: [[-S - 2, -S + 2]], s: [[-S - 2, -S + 2]] }, NE: { w: [[-S - 2, -S + 2]], s: [[S - 2, S + 2]] }, SW: { e: [[S - 2, S + 2]], n: [[-S - 2, -S + 2]] }, SE: { w: [[S - 2, S + 2]], n: [[S - 2, S + 2]] } };
   const facade = { C: 'glassblock', N: 'office', S: 'tenement', W: 'office', E: 'tenement', NW: 'concrete', SE: 'office', NE: 'tenement', SW: 'office' };
   for (const [k, [x, z, hx, hz, y]] of Object.entries(tops)) {
+    const n0 = B.boxes.length;
     roofTop(B, x - hx, z - hz, x + hx, z + hz, y, facade[k], gaps[k], base);
+    if (k === 'S') B.archSince(n0, 'tenement', x, z, 0, y); // the south tower: a Blender tenement (archfield.js)
     D.add(x - hx + 0.3, y, z - hz + 0.3, x + hx - 0.3, y + 0.02, z + hz - 0.3, k === 'S' ? 'lawn' : k === 'E' ? 'lawn' : 'asphalt'); // the roof's skin
   }
   // ---- the links: the hub to the ring (glass tubes north and south, girder bridges east and west), the ring to the corners
