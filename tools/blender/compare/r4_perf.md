@@ -12,3 +12,15 @@ Measured with `node tools/blender/perf_props.cjs <port> <out.json> jankburg,subu
 | skyline | 360 (490) | 316 (455) -12% | 591k (606k) | 526k (567k) -11% |
 
 Scene totals (everything built, view independent): jankburg 51 instanced draws for 2917 prop copies, suburb 65 instanced draws for 1791 prop copies, skyline 51 instanced draws for 2363 prop copies.
+
+## Re-measured after merging main (2026-11-10)
+
+Same script, Suburb only, against main at a9897c3 (shaped ground, Blender buildings and rocks in both):
+
+| preset | draw calls avg (worst) main -> branch | triangles avg (worst) main -> branch |
+|---|---|---|
+| Too HD | 648 (1,076) -> 463 (787), -29% | 785k (1,026k) -> 713k (800k), -9% |
+| Potato | 386 (784) -> 253 (421), -34% | 430k (553k) -> 338k (366k), -22% |
+
+Branch only, Too HD, bots matches with no page errors: Jankburg 1,143 (2,758) calls, 410k (663k) triangles; Skyline 328 (515)
+calls, 531k (565k) triangles. Frame time is not in these numbers (software GL in the sandbox makes it meaningless).
