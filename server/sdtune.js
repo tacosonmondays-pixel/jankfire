@@ -5,7 +5,7 @@
 //   - 5v5: a Plant & Defuse Bots room (or bots lobby) holds 10 fighters, bots topping up and making room for people;
 //     an Online Plant & Defuse lobby takes at most 10 humans
 import { WEAPONS } from '../shared/weapons.js';
-import { sdRow, sdDamage, BOT_LEGS, BOT_DMG_HARD } from '../shared/sdgun.js';
+import { sdRow, sdDamage, BOT_LEGS } from '../shared/sdgun.js';
 
 export const SD5 = { size: 10 }; // fighters in a Plant & Defuse room: 5 a side
 if (process.env.JF_SD_SIZE) SD5.size = Math.max(2, Math.min(16, Number(process.env.JF_SD_SIZE) | 0 || SD5.size)); // test knob: a smaller (or bigger) room
@@ -38,10 +38,6 @@ export function installSdTune(Room) {
     if (LOG) console.log(`[sdhit] ${p.name} ${wid} -> ${t.name} ${Math.round(dist)}m h${h} b${body} l${lg} x${mul} = ${Math.round(dmg)}`);
     this.hurt(t, p, wid, dmg, [d[0] * k, d[1] * k + (w.kbUp || 0) * (n / pellets), d[2] * k], { hs: h > 0 });
   };
-
-  // hard bots hit harder here (and only here): 0.85x instead of the 0.7x every bot does everywhere else
-  const botDmg = P.botDmg;
-  P.botDmg = function (b) { return this.isEcon() && b && b.ai && b.ai.diff === 'hard' ? BOT_DMG_HARD : botDmg.call(this, b); };
 
   // ---------------------------------------------------------- 5v5
   const sdGame = (room) => (room.lobby ? room.lobby.next : room.game) === 'bomb';

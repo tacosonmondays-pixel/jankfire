@@ -37,9 +37,6 @@ export const SDG = {
 export const SDMOVE = { walk: 5.4, walkSpread: 0.05, runSpread: 0.21, airSpread: 0.45, crouch: 0.55, land: 0.16, landMs: 450 };
 // bots: a body hit lands in the legs this often (a player's client says which zone it hit)
 export const BOT_LEGS = 0.18;
-// bots: their bullets do 0.7x everywhere (server/room.js botDmg). here hard bots do this instead: with one-tap headshots 1x deletes
-// people, but 0.7x let a hard bot lose duels it had won (owner + coordinator, 2026-11-10). easy and normal stay at 0.7x
-export const BOT_DMG_HARD = 0.85;
 
 // shots per second for gun `id` in S&D (per hand for Lefty & Righty): its rof here, else whatever it does everywhere (`normal`)
 export const sdRate = (id, normal) => { const r = sdRow(id); return r && r.rof > 0 ? r.rof : normal; };
