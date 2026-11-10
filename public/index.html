@@ -43,6 +43,7 @@
   <div id="combo"></div>
   <div id="streak"></div>
   <div id="cheat"></div>
+  <div id="lockMark">LOCKED</div>
   <div id="hand"></div>
   <div id="sleepFx">z z z</div>
   <div id="hpbox"><div id="hpbar"></div><div id="hpLost"></div><span id="hptext">100 HP</span><div id="hpGlitch"></div></div>
@@ -84,8 +85,8 @@
     </div>
     <nav class="home-left" aria-label="menu">
       <div class="nav-tag">STAFF ENTRANCE</div>
-      <button class="hnav prim" data-go="loadout" id="navCustomize" title="loadout, weapon skins, outfit, grapple + spray"><span class="ni" data-ico="customize"><img alt=""></span><span class="nt"><b>CUSTOMIZE</b><small>loadout · skins · outfit</small></span></button>
-      <button class="hnav prim" data-go="crates" id="cratesBtn" title="open crates, duffel bags and boxes"><span class="ni" data-ico="crates"><img alt=""></span><span class="nt"><b id="cratesLbl">CONTAINERS</b><small>crates · bags · boxes</small></span><em id="cratesN" class="hidden"></em></button>
+      <button class="hnav prim" data-go="loadout" id="navCustomize" title="loadout, weapon skins, outfit, grapple + spray"><span class="ni" data-ico="customize"><img alt=""></span><span class="nt"><b>CUSTOMIZE</b></span></button>
+      <button class="hnav prim" data-go="crates" id="cratesBtn" title="open crates, duffel bags and boxes"><span class="ni" data-ico="crates"><img alt=""></span><span class="nt"><b id="cratesLbl">CONTAINERS</b></span><em id="cratesN" class="hidden"></em></button>
       <div class="nav-sec">
         <button class="hnav sec" data-go="leaders" title="leaderboard"><span class="ni" data-ico="leaders"><img alt=""></span><b>LEADERBOARD</b></button>
         <button class="hnav sec hicon" data-go="settings" title="settings + key bindings"><span class="ni" data-ico="settings"><img alt=""></span><b>SETTINGS</b></button>
@@ -158,6 +159,7 @@
       <button class="mid" data-go="loadout">CUSTOMIZE</button>
       <button class="mid" data-go="match" id="pauseMatch">MATCH SETTINGS</button>
       <button class="mid" data-go="settings">SETTINGS</button>
+      <button class="mid" id="resetMe" title="respawn. if someone hurt you in the last 10 seconds they get the kill">RESET (RESPAWN)</button>
       <button class="mid danger" id="quit">QUIT TO MENU</button>
     </div>
   </div>
@@ -286,17 +288,30 @@
       <div class="coslist" id="achList"></div>
       <div class="cosmain">
         <div id="charSlot"></div>
-        <div class="lt">colour (your name + outline)</div><div class="chips" id="lk-color"></div>
-        <div class="lt">skin</div><div class="chips" id="lk-skin"></div>
-        <div class="lt">hair</div><div class="chips" id="lk-hair"></div><div class="chips" id="lk-hairColor"></div>
-        <div class="lt">top</div><div class="chips" id="lk-top"></div><div class="chips" id="lk-topColor"></div>
-        <div class="lt">bottom</div><div class="chips" id="lk-bottom"></div><div class="chips" id="lk-bottomColor"></div>
-        <div class="lt">head</div><div class="chips" id="lk-head"></div>
-        <div class="lt">face</div><div class="chips" id="lk-face"></div>
-        <div class="lt">back</div><div class="chips" id="lk-back"></div>
-        <div class="hidden"><div class="lt">kill effect (what happens to people you kill)</div><div class="chips" id="lk-kill"></div></div>
-        <div class="lt">name card (people see it when you kill them)</div>
-        <div class="cardrow"><div id="lkCard"></div><button class="mid" data-go="namecard">EDIT NAME CARD</button></div>
+        <div class="lk-tabs" id="lkTabs"></div>
+        <div class="lk-sec" data-sec="body">
+          <div class="lk-grid">
+            <div><div class="lt">colour (your name + outline)</div><div class="chips" id="lk-color"></div></div>
+            <div><div class="lt">skin</div><div class="chips" id="lk-skin"></div></div>
+          </div>
+          <div class="lt">build</div><div class="chips" id="lk-build"></div>
+          <div class="lt">shape (a joke. everyone sees it, hitboxes stay the same)</div><div class="lk-joke" id="lk-joke"></div>
+        </div>
+        <div class="lk-sec" data-sec="hair">
+          <div class="lt">hair</div><div class="chips" id="lk-hair"></div><div class="chips" id="lk-hairColor"></div>
+          <div class="lt">head</div><div class="chips" id="lk-head"></div>
+          <div class="lt">face</div><div class="chips" id="lk-face"></div>
+        </div>
+        <div class="lk-sec" data-sec="clothes">
+          <div class="lt">top</div><div class="chips" id="lk-top"></div><div class="chips" id="lk-topColor"></div>
+          <div class="lt">bottom</div><div class="chips" id="lk-bottom"></div><div class="chips" id="lk-bottomColor"></div>
+          <div class="lt">back</div><div class="chips" id="lk-back"></div>
+        </div>
+        <div class="lk-sec" data-sec="card">
+          <div class="hidden"><div class="lt">kill effect (what happens to people you kill)</div><div class="chips" id="lk-kill"></div></div>
+          <div class="lt">name card (people see it when you kill them)</div>
+          <div class="cardrow"><div id="lkCard"></div><button class="mid" data-go="namecard">EDIT NAME CARD</button></div>
+        </div>
         <div class="row"><button class="mid" id="lkRandom">RANDOMIZE</button><button class="mid" id="lkReset">RESET</button></div>
         <div class="sub" id="lkNote"></div>
       </div>
@@ -352,7 +367,7 @@
         <h3>audio</h3>
         <label>volume <input id="vol" type="range" min="0" max="1" step="0.05"></label>
         <label>music volume <input id="musicVol" type="range" min="0" max="1" step="0.05"></label>
-        <label><input type="checkbox" id="musicMatch"> music in matches (new song every match)</label>
+        <label><input type="checkbox" id="musicMatch"> music in matches</label>
         <label><input type="checkbox" id="musicComp"> ...in competitive too (online, plant &amp; defuse)</label>
         <label>match music volume <input id="musicMatchVol" type="range" min="0" max="1" step="0.05"></label>
       </div>
@@ -364,9 +379,9 @@
         <label><input type="checkbox" id="toggleAim"> toggle aim instead of hold</label>
         <h3>gameplay</h3>
         <label><input type="checkbox" id="blood"> pixel blood</label>
-        <label><input type="checkbox" id="killcam"> killcam (replay of your death)</label>
+        <label><input type="checkbox" id="killcam"> killcam</label>
         <label><input type="checkbox" id="showCards"> show other players' uploaded name cards</label>
-        <label><input type="checkbox" id="botChat"> bot chatter (bots brag + trash talk in chat)</label>
+        <label><input type="checkbox" id="botChat"> bot chatter</label>
         <label><input type="checkbox" id="noPip"> spectating: hide the first-person corner box</label>
         <label><input type="checkbox" id="sdNoCross"> plant &amp; defuse: hide the spread crosshair (keep the plain one)</label>
         <h3>minimap</h3>

@@ -99,7 +99,7 @@ const M = {
     const ai = b.ai, n = now(), P = patternOf(b.w);
     const t = ai.tac || (ai.tac = { i: 0, lastT: -1e9, id: '' });
     t.i = t.id === b.w && n - t.lastT <= (P ? P.reset : 400) ? t.i + 1 : 0; t.lastT = n; t.id = b.w;
-    const comp = BOT_COMP[ai.diff] ?? BOT_COMP.normal, o = shotOffset(b.w, t.i);
+    const comp = ai.comp ?? BOT_COMP[ai.diff] ?? BOT_COMP.normal, o = shotOffset(b.w, t.i); // (ai.comp: this bot's own spray control, server/sdskill.js)
     const cp = Math.cos(b.pitch + o[1] * (1 - comp)), yaw = b.yaw - o[0] * (1 - comp);
     const a = [-Math.sin(yaw) * cp, Math.sin(b.pitch + o[1] * (1 - comp)), -Math.cos(yaw) * cp];
     const speed = Math.hypot(b.vel[0], b.vel[2]);

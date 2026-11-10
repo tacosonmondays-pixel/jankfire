@@ -45,6 +45,16 @@ export const FLAGS = {
   lied_to_auntie_1: F(1, "told Auntie you saw nothing"),
   seen_p5b: F(1, "watched P5b Employee 4417", true),
   act1_done: F(1, "Act I finished"),
+  // m06 TICKETS, PLEASE (the train). act1_done is set at the end of it now
+  bev_explained_marrow: F(1, "Bev explained Jack's marrow: gristle stock, he makes blood like a tap"),
+  seen_c6_mind_the_gap: F(1, "watched C6 Mind the Gap (the ride in)", true),
+  rp_phase1_done: F(1, "REVENUE PROTECTION phase 1 hit its scripted end at 60%: Jack's armour broke", true),
+  seen_mo_carry: F(1, "played the moment Carry the Bit That Works", true),
+  jack_fired: F(1, "you pulled the trigger on Pallet Jack yourself, because he asked"),
+  jack_marrow_taken: F(1, "you took Pallet Jack's marrow out with your own hand"),
+  beat_revenue_protection_1: F(1, "stopped REVENUE PROTECTION: it broke apart in the Loop (it was grown to grow back)", true),
+  seen_c6b: F(1, "watched C6b Terminus", true),
+  train_unlocked: F(1, "the train is the Bottom's: fast travel between districts you've been to, and the route into the Gut (m20)"),
   // ---------------------------------------------------------------- act II
   act2_started: F(2, "Act II started (C6)"),
   seen_c6: F(2, "watched C6 Option C", true),

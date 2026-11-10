@@ -62,7 +62,8 @@ export const WEAPONS = {
   bow: {
     slot: 'primary', kind: 'bow', name: 'Bow', color: '#c88a4a',
     desc: 'Hold to draw, let go to fire. Every arrow gets a random tip: regular, power, knockback, flame, explosion, gas or sleep (knocks them flat for 4 s).',
-    cd: 0.35, draw: 0.9, speed: 34, speedMax: 85, grav: 9, r: 0.12, dmg: 20, dmgMax: 60,
+    // buffed 2026-11-10 (owner: people zip around too fast to kill with it): quicker draw, faster + fatter arrows, more damage
+    cd: 0.35, draw: 0.7, speed: 45, speedMax: 115, grav: 8, r: 0.24, dmg: 30, dmgMax: 85,
     ads: { zoom: 1.6, p: [0, -0.1, -0.3] },
   },
   banana: {
@@ -212,8 +213,9 @@ export const WEAPONS = {
   // the shot is paid in your own HP (cost). the bolt sticks, a cross bursts out of them (fuse), then pops (burst) for dmg + a small blast
   bloodcross: {
     slot: 'secondary', kind: 'blood', name: 'Blood Cross', color: '#ff1f3d',
-    desc: 'No gun: you shoot blood out of your fingertip and every shot costs you 12 HP. The bolt sticks to whoever it hits, a cross bursts out of their body and they pop. A kill pays the blood back.',
-    cd: 0.7, speed: 75, grav: 0, r: 0.15, life: 2, cost: 12, fuse: 0.6, burst: 0.25, dmg: 75, blastR: 3, blastDmg: 35, kb: 6,
+    desc: 'No gun: you shoot blood out of your fingertip and every shot costs you 12 HP. Out of blood? It still fires, thin and weak. The bolt sticks to whoever it hits, a cross bursts out of their body and they pop. A kill pays the blood back.',
+    cd: 0.7, speed: 75, grav: 0, r: 0.15, life: 2, cost: 12, thin: { cd: 1.1, dmg: 34, heal: 12 }, // thin: out of blood to spend, the shot is free but weak and slow (no blast); a kill with it gives heal back
+    fuse: 0.6, burst: 0.25, dmg: 75, blastR: 3, blastDmg: 35, kb: 6,
   },
   blower: {
     slot: 'secondary', kind: 'cone', name: 'Leaf Blower', color: '#ff9a3a',
@@ -222,10 +224,13 @@ export const WEAPONS = {
   },
   cards: {
     slot: 'secondary', kind: 'cards', name: 'Card Deck', color: '#ffffff',
-    desc: 'Hold 5 cards. Right click picks one, left click plays it, R redraws. Hearts heal, spades throw cards, clubs blast, diamonds dash, aces teleport, face cards go ultimate, jokers are random.',
+    desc: 'Hold 5 cards. Right click picks one, left click plays it, R redraws. Every card you play flicks cards at where you aim. Spades throw a whole fan, hearts heal, clubs blast, diamonds dash, aces teleport, face cards go ultimate, jokers are random.',
     cd: 0.35,
   },
-  card: { slot: null, kind: 'proj', name: 'Card', color: '#ffffff', cd: 0, speed: 55, grav: 4, r: 0.12, dmg: 9, kb: 4 },
+  // a thrown card. fan: a spade always throws this many (it used to be the card's rank: a 2 of spades was two cards), each for
+  // dmg + rank * perRank. flick: every other card you play still throws this many straight ahead, so no hand is a dead hand.
+  // faster, flatter and fatter than before so they land on people who are moving (owner, 2026-11-10)
+  card: { slot: null, kind: 'proj', name: 'Card', color: '#ffffff', cd: 0, speed: 85, grav: 2, r: 0.26, dmg: 11, perRank: 0.6, fan: 6, fanSpread: 0.16, flick: 2, kb: 4 },
   // item now (G), like the duck: this is how it works, ITEMS.popper is how often you get it
   popper: {
     slot: 'item', kind: 'melee', name: 'Party Popper', color: '#ff6bd0',
@@ -293,7 +298,7 @@ export const WEAPONS = {
   },
   scales: {
     slot: 'melee', kind: 'melee', name: 'Scales of Justice', color: '#ffc83a',
-    desc: 'Hits as hard as they deserve: leaders, streakers and your killer take up to x3.',
+    desc: 'Hits as hard as they deserve: leaders, streakers and your killer take up to x3. Right click summons a pillar of light on someone far away: weaker, slow to recharge, and they can step out of it.',
     // dmg is multiplied by the server's verdict at hit time (shared/verdict.js): x0.4 .. x3
     cd: 0.6, range: 3.2, cone: 0.75, dmg: 35, kb: 14, kbUp: 5, delay: 0.22, verdict: true, speedMul: 0.95,
   },
@@ -540,3 +545,32 @@ FLAGS.LASSO = 1 << 21; // (was 1 << 20, the same bit as FLAGS.WALK) set in your 
 export const WEAPON_ALIAS = { spoon: 'knife' };
 export const wAlias = (id) => (typeof id === 'string' && Object.hasOwn(WEAPON_ALIAS, id) ? WEAPON_ALIAS[id] : id);
 FLAGS.AIM = 1 << 10; // aiming down sights (cosmetic: Plant & Defuse first-person spectating shows it)
+
+// ------------------------------------------------------------ the Laptop (item): pop-up ads on an enemy's screen
+// G opens it at whoever is nearest your crosshair (range m, cone rad of slack, needs line of sight). n ads land on their
+// screen for dur s; they close them one by one with the number on each (sure = how many "ARE YOU SURE?" ads come back).
+// safe: s after it ends before the same person can be advertised to again. botErr: extra aim error for a bot reading ads.
+// no target = no charge spent. a reverse card sends the ads back to you.
+export const ADS = { range: 45, cone: 0.3, n: 5, dur: 7, sure: 2, safe: 6, botErr: 0.12 };
+WEAPONS.laptop = { slot: 'item', kind: 'laptop', name: 'Laptop', color: '#4fd8ff' }; // slot item: it pops into your hand (and can wear skins later)
+ORDER.push('laptop');
+ITEMS.laptop = { w: 'laptop', name: 'Laptop', desc: 'Open it at someone. Their screen fills with pop-up ads for 7s. They can close them. There are a lot of them.', charges: 1, recharge: 24, color: '#4fd8ff' };
+ITEM_ORDER.push('laptop');
+
+// ------------------------------------------------------------ the gadget items: slower, and death is no reset
+// owner, 2026-11-10: "speed trap, night vision goggles, laptop, pop quiz, instant cam, bubble wand should have longer
+// cooldowns, and the cooldown shouldn't reset on death... maybe extra charges stored like the vision goggles".
+// carry: the charges you have and the timer on the next one survive dying and swapping items (the server keeps them per
+// item); everything else still comes back full on respawn. [charges, seconds per charge] (was: radar 2/16, nvg 2/14,
+// laptop 1/24, quiz 1/22, camera 1/25, wand 2/15)
+for (const [id, charges, recharge] of [['radar', 2, 32], ['nvg', 2, 28], ['laptop', 1, 42], ['quiz', 2, 40], ['camera', 1, 42], ['wand', 2, 32]]) {
+  if (ITEMS[id]) Object.assign(ITEMS[id], { charges, recharge, carry: true });
+}
+
+// ------------------------------------------------------------ Scales of Justice, from a distance: the SUMMONS
+// right click with the scales out: a ring of light opens under whoever is nearest your aim (range m, cone rad, needs line
+// of sight; nobody there = it opens where you point). delay s later a pillar of light comes down on the ring (r m): everyone
+// still standing in it gets dmg x the court's verdict (the same x0.4 .. x3 as a swing), so it is much weaker than hitting
+// them and they can walk out of it. cd: the long recharge. kills count as the scales' in gun game, but humiliate nobody
+export const GAVEL = { range: 42, cone: 0.16, delay: 1.0, r: 2.3, h: 3.2, dmg: 20, kbUp: 7, cd: 10 };
+WEAPONS.gavel = { slot: null, kind: 'gavel', name: 'Summons', color: '#ffc83a' }; // the kill-feed tag

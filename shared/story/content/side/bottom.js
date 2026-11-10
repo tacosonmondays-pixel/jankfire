@@ -79,6 +79,7 @@ export const SIDE_BOTTOM = {
     choices: [],
     reward: { coupons: 250, loot: ["lumps_ring"], standing: { bottom: 3 } },
     grade: { exceeds: "EXCEEDS EXPECTATIONS. no fridges were dropped.", meets: "MEETS EXPECTATIONS. most fridges.", see_me: "SEE ME. mrs. abara wants a word." },
+    notes: "Lumps' 'big one' is his copy of Pallet Jack, built on the outside because Lumps wouldn't let Bev cut him. After the train (m06) the intro changes: Lumps is carrying fridges up the Long Stairs because someone has to do Jack's round.",
   },
 
   sq_bottom_wok_the_dish: {

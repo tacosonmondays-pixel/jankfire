@@ -26,6 +26,26 @@ export const VOTE_MS = 14000;
 // update 2 adds the Shredder (with the close-range guns), the Blood Cross (with the silly ones) and the Scales of Justice
 // (with the melee): 19 rungs
 export const LADDER = ['ar', 'smg', 'redline', 'shotgun', 'minigun', 'shredder', 'revolver', 'marbles', 'sniper', 'bow', 'chicken', 'bloodcross', 'banana', 'cards', 'slapper', 'bread', 'scales', 'katana', 'knife'];
+// the ladder rotates: every match rolls a fresh one from these pools (same order of courses: guns, then silly, then melee,
+// and the spoon is always last). weapons that sat out the last match go first, so two matches in a row never feel the same.
+// LADDER above is only the fallback (and what an old client assumes)
+export const LADDER_POOL = {
+  guns: ['ar', 'smg', 'redline', 'shotgun', 'minigun', 'shredder', 'revolver', 'marbles', 'sniper', 'burst', 'lmg', 'dmr', 'lever', 'autoshot', 'nailgun', 'pistol', 'akimbo', 'sawnoff', 'laser'],
+  silly: ['bow', 'chicken', 'bloodcross', 'banana', 'cards', 'bowling', 'tennis', 'cart', 'snowball', 'taser', 'slipper'],
+  melee: ['slapper', 'bread', 'scales', 'katana'],
+};
+export const LADDER_TAKE = { guns: 10, silly: 5, melee: 3 }; // + the knife = 19 rungs, same length as before
+export function rollLadder(prev, rnd = Math.random) {
+  const old = new Set(prev || []), out = [];
+  for (const k of ['guns', 'silly', 'melee']) {
+    const a = LADDER_POOL[k].map((id) => [id, rnd() + (old.has(id) ? 1 : 0)]).sort((x, y) => x[1] - y[1]); // rested weapons first, shuffled
+    const take = a.slice(0, LADDER_TAKE[k]).map((x) => x[0]);
+    for (let i = take.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [take[i], take[j]] = [take[j], take[i]]; } // so a repeat isn't always the course's last rung
+    out.push(...take);
+  }
+  out.push('knife');
+  return out;
+}
 export const GUNGAME = { time: 600 }; // match clock in seconds: 19 rungs take longer than a kill limit
 // infection: patient zero turns a few seconds in (two of them from `two` fighters up). zombies get the claw,
 // more HP and more speed; anyone who dies as a survivor comes back as a zombie. survivors win if anyone lasts the timer.
