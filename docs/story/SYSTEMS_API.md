@@ -320,14 +320,17 @@ bonus beyond the slower gaps, and the arena on the slice (the referee has no sli
 Its room player sits in the middle of the mask at `z = -gap` and does nothing by itself. What is built, every number
 and what is missing: `docs/story/train/FIGHT.md`.
 
-- **The world.** `story_train` (`shared/story/train.js`, in `worlds.js`): the last two cars in the bore. A new game
+- **The world.** `story_train` (`shared/story/train.js`, in `worlds.js`): the wagon, the flatbed, the tool van and the
+  loco in the bore, all sized by one table (`HW`, `CARS`, `COVER`, `CREW`). The train's boxes carry `car` and `pv: 'rp_train'`:
+  the client draws them itself, and the room drops the wagon's when the first phase 3 lunge bites it off. A new game
   with `?storytest=1&train=1` starts there; `G.story.travel('story_train')` / `G.story.travelBack()` move a run
   between worlds (it saves, then starts the same run in the other world's sim).
 - **Where the numbers come from.** `content/bosses.js` + `boss_fights.js`: `hp` (5000), `layers` (armour 3750 on the
   Inspector's 1250), `phases[].hp` (60%, 25%), `weakPoints` by name (wrists x2, eye housings x2, the Inspector x2.5).
   `public/models/story/revenue_protection.parts.json`: the rim and mouth sockets, the eye housings, the Inspector's
   crit spot, the smile crack. `RP` in `shared/story/train.js`: everything else, in one table.
-- **THE GAP.** Starts 30 m. Each arm that grips closes it 1 m/s; a sever opens it 2 m, a flinch 6 m; 0 m is the fail.
+- **THE GAP.** Starts 22 m, measured from the train's back (`rear`: 0, then the flatbed's back). Each arm that grips
+  closes it 1 m/s; a sever opens it 2 m, a flinch 5 m; 0 m is the fail. The mask is at `z = rear - gap`.
 - **Arms** are the room's (`grab`, `sweep`, `snatch`). Each has one HP pool: the wrist knot takes the hit x2, the
   rope and the hand x0.15. `armPose` (shared) is the path both the room's ray and the client's chain use.
 - **Hits.** A Blood Drive bolt, or a `hit` from any other gun, is a ray tested in the room (`rayFight`): `knot`,
@@ -344,7 +347,7 @@ Its events (`ev.type`, all with `target`, `kind`, `boss: 'revenue_protection_1'`
 
 | `ev.type` | fields |
 |---|---|
-| `state` | `gap, hp, max, phase, name, stage, plates[12] (0 on, 1 crazed, 2 gone), open, marrow, arms[], jack` (on spawn and after a reset) |
+| `state` | `gap, rear, hp, max, phase, name, stage, plates[12] (0 on, 1 crazed, 2 gone), open, marrow, arms[], jack` (on spawn and after a reset) |
 | `gap` | `gap, rate` (m/s, so the client can run it between messages), `jack` (his bar, 1..0) |
 | `arm` | `id, k, sock, mouth, st (reach / tell / grip / sweep / hold / cut / back / gone), dur, tgt, hi, side, wa?, gp?, hp, max, blood?` |
 | `arms` | `clear: true` (a phase change, the end) |
@@ -353,7 +356,7 @@ Its events (`ev.type`, all with `target`, `kind`, `boss: 'revenue_protection_1'`
 | `stage` | `stage` (1..3), `name` (`hairline`, `left_eye`, `smile`) |
 | `flinch` | `open` (seconds), `gap` |
 | `shrug`, `bloom` | `at` (a bolt off the enamel; a cross where the sixth bolt went in) |
-| `swept`, `snatched`, `lunge`, `bag`, `off` | what happened to you: `hi` · `gap` · `st: tell / hit, bit` · `hp` · (the track) |
+| `swept`, `snatched`, `lunge`, `bag`, `off` | what happened to you: `hi` · `gap` · `st: tell / hit, bit, cut?, rear?` · `hp` · (the track) |
 | `fail`, `reset` | `why: gap / dead`, `line`; then the fight is back at the phase's start |
 
 Tests only (`?storydev=1`): `{ t:'sty', k:'bossdev', calm?, pin?, want?, hi?, side?, grip?, sever?, gap?, dmg?, part?, i? }`.

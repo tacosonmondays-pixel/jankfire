@@ -16,10 +16,11 @@ import { hud } from '../hud.js';
 import { fx } from '../fx.js';
 import { sfx } from '../audio.js';
 import { ME } from '../player.js';
-import { MAP, MAPS } from '/shared/map.js';
-import { glbLoader } from '../glbkit.js';
+import { MAP, MAPS, BOXES } from '/shared/map.js';
+import { glbLoader, AUTHORED } from '../glbkit.js';
+import { spawnActor, despawnActor, actors } from './actors.js';
 import { raycast } from '/shared/physics.js';
-import { TRAIN, ARENA, RP, GEO0, geoFrom, armPose, armExt, armLive, sweepZ, rayFight, SPLIT, PLATES, ss } from '/shared/story/train.js';
+import { TRAIN, ARENA, RP, CARS, CAR, HW, COVER, CREW, GEO0, geoFrom, armPose, armExt, armLive, sweepZ, sweepY, rayFight, SPLIT, PLATES, ss } from '/shared/story/train.js';
 import { makeBloodDrive } from './blooddrive.js';
 
 export const RP_ID = 'revenue_protection_1', RP_QUEST = 'm06_tickets_please';
@@ -61,16 +62,46 @@ function pivot(node, P, rx, rz) {
 
 export function makeTrainFight(ST, { playScene }) {
   const T = { on: false, set: null, boss: null, loading: false, geo: GEO0, parts: null, step: '', stepT: 0, spawnT: 0, auto: false, fin: null, failT: 0, hitstop: 0, said: -1 };
-  const F = { live: false, gap: RP.gap.start, shown: RP.gap.start, rate: 0, hp: 1, max: 1, phase: 0, stage: 0, plates: Array(PLATES).fill(0), open: 0, marrow: false, jack: 1, arms: new Map(), lunge: 0 };
+  const F = { live: false, gap: RP.gap.start, shown: RP.gap.start, rear: 0, rearS: 0, rate: 0, hp: 1, max: 1, phase: 0, stage: 0, plates: Array(PLATES).fill(0), open: 0, marrow: false, jack: 1, arms: new Map(), lunge: 0 };
   T.F = F;
   let hudEl = null, failEl = null, env = null, time = 0;
   const S = () => ST.S;
   const busy = () => !!(ST.scene && ST.scene.playing());
-  const view = () => ({ gap: F.gap, arms: [...F.arms.values()].map((v) => v.a), plates: F.plates, open: F.open > 0, eyeL: F.stage >= 2, smile: F.stage >= 3 });
+  const Z = () => F.shown - F.rearS; // the mask is drawn at z = -Z(): THE GAP, from the train's back (which moves up when the wagon is bitten off)
+  const view = () => ({ gap: F.gap - F.rear, arms: [...F.arms.values()].map((v) => v.a), plates: F.plates, open: F.open > 0, eyeL: F.stage >= 2, smile: F.stage >= 3 });
   // where a shot from o along d ends (for the Blood Drive's tracer): the fight, or the map
-  const rayEnd = (o, d, max) => { const w = raycast(o, d, max, MAPS[MAP.id].boxes), wt = w ? w.t : max, h = F.live ? rayFight(T.geo, view(), o, d, wt) : null; return h ? { t: h.t, part: h.part, at: h.at } : { t: wt, part: w ? 'wall' : '', at: o.map((x, i) => x + d[i] * wt) }; };
+  const rayEnd = (o, d, max) => { const w = raycast(o, d, max, BOXES), wt = w ? w.t : max, h = F.live ? rayFight(T.geo, view(), o, d, wt) : null; return h ? { t: h.t, part: h.part, at: h.at } : { t: wt, part: w ? 'wall' : '', at: o.map((x, i) => x + d[i] * wt) }; };
   const BD = makeBloodDrive({ rayEnd, free: () => F.marrow || !!(S().st.flags.jack_marrow_taken || S().st.flags.seen_mo_carry) });
   T.drive = BD;
+  // the train's boxes are ours to draw (world.js leaves a box alone when a prop named by its `pv` is registered): a stand-in
+  // built from the same table the room collides with, one group a car, so the wagon can go when it is bitten off
+  if (!AUTHORED.p_rp_train) AUTHORED.p_rp_train = { scene: new THREE.Group(), meta: { kind: 'prop', id: 'rp_train' } };
+  const MATC = { wood: [0x8f6238, 0.9, 0], metal: [0x6f767e, 0.55, 0.55], crate: [0xa5773f, 0.9, 0], white: [0xdcdcd4, 0.5, 0.1], yellow: [0xe2b21f, 0.6, 0.2], dark: [0x1c1a1c, 0.8, 0.3], hazard: [0xffb000, 0.7, 0] }, mats = {};
+  const matOf = (k) => (mats[k] ||= std(MATC[k] ? MATC[k][0] : 0x888888, { roughness: MATC[k] ? MATC[k][1] : 0.8, metalness: MATC[k] ? MATC[k][2] : 0 }));
+  function buildTrain(g) {
+    const cars = {}, geo = new THREE.BoxGeometry(1, 1, 1), box = (car, x0, y0, z0, x1, y1, z1, mat) => { const m = new THREE.Mesh(geo, matOf(mat)); m.scale.set(x1 - x0, y1 - y0, z1 - z0); m.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2); (cars[car] ||= new THREE.Group()).add(m); };
+    for (const b of MAPS[TRAIN.id].boxes) if (b.car) box(b.car, b.min[0], b.min[1], b.min[2], b.max[0], b.max[1], b.max[2], b.mat);
+    for (const c of CARS) { // what the boxes don't have: underframes, wheels, the loco's face
+      box(c.id, -HW + 0.5, 0.45, c.z0 + 0.3, HW - 0.5, c.deck - 0.2, c.z1 - 0.3, 'dark');
+      for (const z of [c.z0 + 1, c.z1 - 2]) for (const sx of [-1, 1]) box(c.id, sx * 0.62, 0.14, z, sx * 0.9, 0.85, z + 1, 'dark');
+      if (c.id === 'loco') { box(c.id, -HW + 0.38, c.deck, c.z0 - 0.03, HW - 0.38, 0.95, c.z0, 'hazard'); box(c.id, -1.2, 2.5, c.z0 + 0.27, 1.2, 3.3, c.z0 + 0.3, 'dark'); }
+    }
+    for (const [car, x, z, w, h, d, mat] of COVER) if (mat === 'white') for (const y of [0.5, 1.4]) box(car, x - w / 2 - 0.03, CAR[car].deck + y, z - d / 2 - 0.03, x + w / 2 + 0.03, CAR[car].deck + y + 0.06, z + d / 2 + 0.03, 'dark'); // the fridge's chains
+    for (const c of Object.values(cars)) g.add(c);
+    return cars;
+  }
+  // the crew, standing where they would fight (no AI yet: Jack at the back rail, Lumps on the flatbed, Gordo by the van's stairs)
+  function crew(on) {
+    for (const c of CREW) { const id = 'rp_' + c.id, n = S().defs.npcs[c.id];
+      if (!on) { despawnActor(id); continue; }
+      if (!actors.has(id) && n) { try { const a = spawnActor(id, { ...n, look: n.look || c.id, lines: null }, c.p.slice(), c.yaw); if (a) a.rpCrew = c; } catch (e) { console.warn('train crew', e); } } }
+  }
+  // the rear wagon, bitten off: its boxes leave your feet's world too (the room dropped its own), and come back on a retry
+  function setWagon(on, anim) {
+    const w = T.set && T.set.cars.wagon;
+    if (!on && !T.cutBoxes) { T.cutBoxes = []; for (let i = BOXES.length - 1; i >= 0; i--) if (BOXES[i].car === 'wagon') T.cutBoxes.push(...BOXES.splice(i, 1)); T.cutT = anim ? 0 : 9; }
+    if (on && T.cutBoxes) { BOXES.push(...T.cutBoxes); T.cutBoxes = null; if (w) { w.visible = true; w.position.set(0, 0, 0); w.rotation.set(0, 0, 0); } }
+  }
 
   // ---------------------------------------------------------------- the tunnel (the train stands still: this goes past)
   function buildSet() {
@@ -89,17 +120,19 @@ export function makeTrainFight(ST, { playScene }) {
     const cable = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, len), std(0x15100f)); cable.position.set((R - 0.2) * Math.cos(a), CY + (R - 0.2) * Math.sin(a), mid); g.add(cable);
     const lights = [0, 1, 2].map(() => { const l = new THREE.PointLight(0xffb060, 0, 15, 1.4); g.add(l); return l; });
     // the lamp on the back of the flatbed: what you see the face by
-    const lamp = new THREE.SpotLight(0xfff0dd, 110, 95, 0.5, 0.7, 1); lamp.position.set(0.4, 2.7, 8); lamp.target.position.set(0, CY, -RP.gap.start); g.add(lamp, lamp.target);
-    const work = new THREE.PointLight(0xffd9a0, 9, 16, 1.2); work.position.set(0, 4.6, 9); g.add(work); // a work light over the cars
-    const knots = [0, 1, 2].map(() => { const l = new THREE.PointLight(0x4fd8ff, 0, 7, 1.5); g.add(l); return l; }); // the wrist knots' glow on what is near them: a fixed three, moved to the nearest knots (a light that comes and goes with each arm would rebuild every shader)
+    const lamp = new THREE.SpotLight(0xfff0dd, 110, 95, 0.5, 0.7, 1); lamp.position.set(0.4, CAR.van.roof + 0.4, CAR.van.roofZ0); lamp.target.position.set(0, CY, -RP.gap.start); g.add(lamp, lamp.target);
+    const work = new THREE.PointLight(0xffd9a0, 10, 20, 1.1); work.position.set(0, 5.2, 13); g.add(work); // a work light over the cars
+    const knots = [0, 1, 2].map(() => { const l = new THREE.PointLight(0x4fd8ff, 0, 4.5, 1.6); g.add(l); return l; }); // the wrist knots' glow on what is near them: a fixed three, moved to the nearest knots (a light that comes and goes with each arm would rebuild every shader)
+    const cars = buildTrain(g);
     G.scene.add(g);
-    T.set = { g, ribs, sl, bulbs, lights, lamp, knots, off: 0 };
+    T.set = { g, ribs, sl, bulbs, lights, lamp, knots, cars, off: 0 };
+    crew(true);
   }
   function stepSet(dt) {
     const s = T.set, v = T.fin && T.fin.t > 2.2 ? SPEED : busy() ? SPEED * 0.6 : SPEED;
     s.off = (s.off + v * dt) % 12;
     s.ribs.position.z = -(s.off % 6); s.sl.position.z = -(s.off % 1.5);
-    const maskZ = F.live || T.fin ? -F.shown : -200, lit = [];
+    const maskZ = F.live || T.fin ? -Z() : -200, lit = [];
     for (let i = 0; i < s.bulbs.length; i++) {
       const b = s.bulbs[i], z = ARENA.z0 + i * 12 - s.off + (ARENA.z0 + i * 12 - s.off < ARENA.z0 ? ARENA.z1 - ARENA.z0 : 0);
       b.position.z = z;
@@ -109,7 +142,10 @@ export function makeTrainFight(ST, { playScene }) {
     }
     lit.sort((p, q) => Math.abs(p.z - 4) - Math.abs(q.z - 4));
     s.lights.forEach((l, i) => { const p = lit[i]; l.intensity = p ? 22 : 0; if (p) l.position.set(p.x * 0.8, p.y - 0.5, p.z); });
-    s.lamp.target.position.set(0, CY - 0.3, -Math.max(4, F.shown));
+    s.lamp.target.position.set(0, CY - 0.3, -Math.max(4, Z()));
+    if (T.cutBoxes && s.cars.wagon && T.cutT < 9) { T.cutT += dt; const w = s.cars.wagon; w.position.z = -T.cutT * 16; w.position.y = -T.cutT * T.cutT * 2; w.rotation.x = -T.cutT * 0.5; w.visible = T.cutT < 0.9; if (!w.visible) T.cutT = 9; } // it goes back into the dark, and into the face
+    else if (T.cutBoxes && s.cars.wagon) s.cars.wagon.visible = false;
+    for (const a of actors.values()) if (a.rpCrew) a.hidden = F.phase > a.rpCrew.until || busy() || (F.rear > 0 && a.rpCrew.p[2] < F.rear);
   }
 
   // ---------------------------------------------------------------- the mask (and the arm kit)
@@ -124,7 +160,8 @@ export function makeTrainFight(ST, { playScene }) {
     if (T.boss || T.loading) return; T.loading = true;
     const get = (u) => new Promise((ok, bad) => glbLoader().load(u, ok, undefined, bad));
     Promise.all([get('/models/story/revenue_protection.glb'), get('/models/story/rp_arm.glb'), fetch('/models/story/revenue_protection.parts.json').then((r) => (r.ok ? r.json() : null)).catch(() => null)]).then(([g, ga, parts]) => {
-      prep(g.scene, 1); prep(ga.scene, 1);
+      prep(g.scene, 1); prep(ga.scene, 0.15);
+      ga.scene.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) if (m.name !== 'rp_knot_glow') { m.roughness = Math.max(m.roughness ?? 1, 0.94); m.metalness = Math.min(m.metalness ?? 0, 0.05); } }); // charred, not glassy: no shine on the rope and the hands
       const N = {}, A = {}; g.scene.traverse((o) => { if (o.name) N[o.name] = o; }); ga.scene.traverse((o) => { if (o.name) A[o.name] = o; });
       const root = new THREE.Group(); root.add(g.scene); root.visible = false; G.scene.add(root);
       const glow = (name) => { let m = null; g.scene.traverse((o) => { if (o.isMesh) for (const x of [].concat(o.material)) if (x.name === name) m = x; }); return m; };
@@ -182,7 +219,7 @@ export function makeTrainFight(ST, { playScene }) {
     if (!decor) { // the wrist: lanyards and ID cards wound into a ball, lit from inside. it has to stand out in the dark
       v.knot = b.A.arm_knot.clone(true);
       v.knot.traverse((o) => { if (o.isMesh && [].concat(o.material).some((m) => m.name === 'rp_knot_glow')) { o.material = Array.isArray(o.material) ? o.material.map((m) => (m.name === 'rp_knot_glow' ? (v.glow = m.clone()) : m)) : (v.glow = o.material.clone()); } });
-      v.halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex(), color: 0x4fd8ff, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); v.halo.scale.setScalar(3.2);
+      v.halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex(), color: 0x4fd8ff, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); v.halo.scale.setScalar(3.2);
       g.add(v.knot, v.halo);
     }
     G.scene.add(g);
@@ -198,7 +235,7 @@ export function makeTrainFight(ST, { playScene }) {
   const _p = new THREE.Vector3(), _q = new THREE.Vector3();
   function poseArm(v, dt, gap) {
     const a = v.a, b = T.boss; if (!b || !v.hand) return;
-    if (a.k === 'sweep') a.tgt[2] = sweepZ(a);
+    if (a.k === 'sweep') { a.tgt[2] = sweepZ(a); a.tgt[1] = sweepY(a); }
     if (a.k === 'snatch' && (a.st === 'reach' || a.st === 'hold') && ME.alive) a.tgt = [ME.pos[0], ME.pos[1] + RP.snatch.up, ME.pos[2] - 0.2];
     const P = armPose(T.geo, a, gap, v.decor ? v.ext : armExt(a)), pts = P.pts, J = [pts[0]];
     // joints every 1.5 m along the path: each length looks at the next joint
@@ -233,7 +270,7 @@ export function makeTrainFight(ST, { playScene }) {
       v.knot.position.set(w[0], w[1], w[2]); v.halo.position.set(w[0], w[1], w[2]);
       const pulse = 0.5 + 0.5 * Math.sin(time * 6 + a.id), hurt = 1 - clamp(a.hp / a.max, 0, 1);
       if (v.glow) v.glow.emissiveIntensity = 2.4 + pulse * 1.2 + v.flash * 6;
-      v.halo.scale.setScalar(3 + pulse * 0.7 + v.flash * 1.8); v.knot.scale.setScalar(1.2); v.halo.material.color.setHex(v.flash > 0.3 ? 0xffffff : hurt > 0.6 ? 0xff6a9a : 0x4fd8ff);
+      v.halo.scale.setScalar(1.9 + pulse * 0.4 + v.flash * 1.4); v.knot.scale.setScalar(1.2); v.halo.material.color.setHex(v.flash > 0.3 ? 0xffffff : hurt > 0.6 ? 0xff6a9a : 0x4fd8ff);
       v.knot.rotation.y += dt * (1 + hurt * 6);
     }
     v.wrist = w; v.dir = P.dir;
@@ -245,7 +282,7 @@ export function makeTrainFight(ST, { playScene }) {
     let v = F.arms.get(m.id);
     if (m.st === 'gone') { if (v) { freeArm(v); F.arms.delete(m.id); } return; }
     if (!v3(m.tgt) || typeof m.k !== 'string' || !fin(m.sock)) return;
-    const a = { id: m.id, k: m.k, sock: clamp(m.sock | 0, 0, m.mouth ? 3 : 11), mouth: m.mouth ? 1 : 0, st: String(m.st), t: 0, dur: fin(m.dur) ? m.dur : 0, tgt: m.tgt.slice(), hi: !!m.hi, side: m.side || 0, hp: fin(m.hp) ? m.hp : 1, max: fin(m.max) && m.max > 0 ? m.max : 1, ...(fin(m.wa) ? { wa: m.wa } : {}), ...(v3(m.gp) ? { gp: m.gp.slice() } : {}) };
+    const a = { id: m.id, k: m.k, sock: clamp(m.sock | 0, 0, m.mouth ? 3 : 11), mouth: m.mouth ? 1 : 0, st: String(m.st), t: 0, dur: fin(m.dur) ? m.dur : 0, tgt: m.tgt.slice(), hi: !!m.hi, side: m.side || 0, rear: fin(m.rear) ? m.rear : 0, hp: fin(m.hp) ? m.hp : 1, max: fin(m.max) && m.max > 0 ? m.max : 1, ...(fin(m.wa) ? { wa: m.wa } : {}), ...(v3(m.gp) ? { gp: m.gp.slice() } : {}) };
     if (!v) { v = newArm(a); F.arms.set(m.id, v); if (a.k === 'sweep') hud.msg(a.hi ? 'HEAD HEIGHT. GET DOWN.' : 'KNEE HEIGHT. JUMP.', 1.3, 'reverse'); }
     else { const was = v.a.st; v.a = a; if (a.st === 'cut' && was !== 'cut') severed(v, m); if (a.st === 'grip' && was !== 'grip') { sfx.rpHaul(v.wrist, 1.4); G.shake = Math.max(G.shake, 0.2); } if (a.st === 'hold' && was !== 'hold') hud.msg('IT HAS YOU. SHOOT THE WRIST.', 2, 'reverse'); }
   }
@@ -282,6 +319,7 @@ export function makeTrainFight(ST, { playScene }) {
   // ---------------------------------------------------------------- the referee's events
   function setState(m) {
     if (fin(m.gap)) { F.gap = m.gap; F.shown = F.live ? F.shown : m.gap; }
+    F.rear = fin(m.rear) && m.rear > 0 ? ARENA.cut : 0; F.rearS = F.rear; setWagon(!F.rear, false);
     if (fin(m.hp)) F.hp = m.hp; if (fin(m.max) && m.max > 0) F.max = m.max;
     if (fin(m.phase)) F.phase = m.phase; if (fin(m.stage)) F.stage = m.stage;
     if (Array.isArray(m.plates) && m.plates.length === PLATES) F.plates = m.plates.map((x) => (x === 1 || x === 2 ? x : 0));
@@ -324,7 +362,9 @@ export function makeTrainFight(ST, { playScene }) {
       case 'flinch': F.open = fin(ev.open) ? ev.open : RP.flinch.open; hud.msg('IT FLINCHED. THE EYES.', 2.2, 'brag'); sfx.rpFlinch(); G.shake = Math.max(G.shake, 0.6); if (T.boss) T.boss.flinch = 1; break;
       case 'swept': hud.msg(ev.hi ? 'SWEPT. SLIDE NEXT TIME.' : 'SWEPT. JUMP NEXT TIME.', 1.6, 'reverse'); G.shake = 1; break;
       case 'snatched': hud.msg('TAKEN. THE GAP WENT WITH YOU.', 2, 'reverse'); G.shake = 1; break;
-      case 'lunge': if (ev.st === 'tell') { F.lunge = fin(ev.dur) ? ev.dur : RP.lunge.tell; hud.msg('IT REARS. OFF THE WAGON.', 1.5, 'reverse'); sfx.rpLunge(); } else { F.lunge = 0; G.shake = 1; if (T.boss) T.boss.bite = 1; if (ev.bit) hud.msg('BITTEN', 1.2, 'reverse'); } break;
+      case 'lunge': if (ev.st === 'tell') { F.lunge = fin(ev.dur) ? ev.dur : RP.lunge.tell; hud.msg('IT REARS. OFF THE WAGON.', 1.5, 'reverse'); sfx.rpLunge(); } else { F.lunge = 0; G.shake = 1; if (T.boss) T.boss.bite = 1; if (fin(ev.gap)) F.gap = ev.gap;
+        if (ev.cut) { F.rear = ARENA.cut; setWagon(false, true); T.hitstop = 0.12; hud.msg(ev.bit ? 'IT TOOK THE WAGON. AND SOME OF YOU.' : 'IT TOOK THE WAGON', 2.2, 'reverse'); sfx.rpPlate([0, 1, 4], true); sfx.rpSever([0, 1, 4]); fx.sparks([0, 1.2, CAR.wagon.z1], [0, 0, -1], 40, true); }
+        else if (ev.bit) hud.msg('BITTEN', 1.2, 'reverse'); } break;
       case 'bag': hud.msg(`SOUP BAG. +${fin(ev.hp) ? ev.hp : RP.bag.hp} BLOOD`, 1.2, 'brag'); break;
       case 'off': hud.msg('MIND THE GAP', 1.6, 'reverse'); break;
       case 'fail': T.failT = time; clearArms(); if (failEl) { failEl.classList.remove('hidden'); requestAnimationFrame(() => failEl.classList.add('on')); } sfx.rpCaught(); break;
@@ -388,17 +428,18 @@ export function makeTrainFight(ST, { playScene }) {
     stepSet(dt);
     F.gap = clamp(F.gap + F.rate * sdt, 0, RP.gap.max); F.open = Math.max(0, F.open - sdt); F.lunge = Math.max(0, F.lunge - sdt);
     if (!T.fin) F.shown += (F.gap - F.shown) * Math.min(1, dt * 6);
+    F.rearS += (F.rear - F.rearS) * Math.min(1, dt * 5);
     const b = T.boss;
     if (b) {
       b.root.visible = (F.live || !!T.fin) && !(T.fin && T.fin.gone);
       // the haul: its two wall arms reach, grip and drag, and the face lurches forward a little on each drag
       const cyc = (time * 0.42) % 1, drag = cyc > 0.55 ? ss((cyc - 0.55) / 0.45) : 0, lurch = T.fin ? 0 : (cyc > 0.55 ? drag : 1 - ss(cyc / 0.55)) * 0.45 - 0.2;
       const rear = F.lunge > 0 ? -1.6 * ss(1 - F.lunge / RP.lunge.tell) : 0; b.bite = Math.max(0, (b.bite || 0) - dt * 2.5);
-      const z = -F.shown + lurch + rear + (b.bite || 0) * 1.2;
+      const z = -Z() + lurch + rear + (b.bite || 0) * 1.2;
       b.root.position.set(0, CY, z); b.root.rotation.z = T.fin ? 0 : Math.sin(time * 0.9) * 0.012 + (b.flinch || 0) * 0.05 * Math.sin(time * 40);
       b.flinch = Math.max(0, (b.flinch || 0) - dt * 1.4); b.redK = Math.max(0, (b.redK || 0) - dt * 3);
       if (cyc > 0.55 && !b.hauled && F.live && !T.fin) { b.hauled = true; sfx.rpHaul([0, CY, z], clamp(1.4 - F.shown / 30, 0.3, 1.2)); } if (cyc < 0.5) b.hauled = false;
-      for (const [i, v] of b.haul.entries()) { const c2 = (cyc + i * 0.5) % 1, wa = v.a.wa; v.ext = T.fin ? Math.max(0.03, 1 - T.fin.t / 1.5) : c2 < 0.55 ? 0.5 + 0.5 * ss(c2 / 0.55) : 1 - 0.5 * ss((c2 - 0.55) / 0.45); v.a.st = c2 > 0.5 && !T.fin ? 'grip' : 'reach'; v.a.tgt = [4.05 * Math.cos(wa), CY + 4.05 * Math.sin(wa), -F.shown + 7]; v.g.visible = b.root.visible; poseArm(v, dt, F.shown - lurch); }
+      for (const [i, v] of b.haul.entries()) { const c2 = (cyc + i * 0.5) % 1, wa = v.a.wa; v.ext = T.fin ? Math.max(0.03, 1 - T.fin.t / 1.5) : c2 < 0.55 ? 0.5 + 0.5 * ss(c2 / 0.55) : 1 - 0.5 * ss((c2 - 0.55) / 0.45); v.a.st = c2 > 0.5 && !T.fin ? 'grip' : 'reach'; v.a.tgt = [4.05 * Math.cos(wa), CY + 4.05 * Math.sin(wa), -Z() + 7]; v.g.visible = b.root.visible; poseArm(v, dt, Z() - lurch); }
       // the eye housings swing open on a flinch; behind the blown left one, eyes
       const open = F.open > 0 && !T.fin ? 1 : 0; b.openK = (b.openK || 0) + (open - (b.openK || 0)) * Math.min(1, dt * 7);
       if (b.N.eye_L) b.N.eye_L.rotation.y = 1.25 * b.openK; if (b.N.eye_R) b.N.eye_R.rotation.y = -1.25 * b.openK;
@@ -416,13 +457,13 @@ export function makeTrainFight(ST, { playScene }) {
       if (T.fin) stepFinish(dt);
       stepDebris(dt);
     }
-    for (const v of F.arms.values()) { v.a.t += sdt; if (b && !v.hand) { freeArm(v); const nv = newArm(v.a); Object.assign(v, nv); } poseArm(v, dt, F.shown); } // (an arm that came before the model did gets its body now)
-    { const ks = [...F.arms.values()].filter((v) => v.wrist && armLive(v.a)).sort((p, q) => Math.hypot(p.wrist[0] - ME.pos[0], p.wrist[2] - ME.pos[2]) - Math.hypot(q.wrist[0] - ME.pos[0], q.wrist[2] - ME.pos[2])); T.set.knots.forEach((l, i) => { const v = ks[i]; l.intensity = v ? 9 + v.flash * 12 : 0; if (v) l.position.set(v.wrist[0], v.wrist[1], v.wrist[2]); }); }
+    for (const v of F.arms.values()) { v.a.t += sdt; if (b && !v.hand) { freeArm(v); const nv = newArm(v.a); Object.assign(v, nv); } poseArm(v, dt, Z()); } // (an arm that came before the model did gets its body now)
+    { const ks = [...F.arms.values()].filter((v) => v.wrist && armLive(v.a)).sort((p, q) => Math.hypot(p.wrist[0] - ME.pos[0], p.wrist[2] - ME.pos[2]) - Math.hypot(q.wrist[0] - ME.pos[0], q.wrist[2] - ME.pos[2])); T.set.knots.forEach((l, i) => { const v = ks[i]; l.intensity = v ? 3.5 + v.flash * 8 : 0; if (v) l.position.set(v.wrist[0], v.wrist[1], v.wrist[2]); }); }
     showHud();
     BD.tick(dt, ME.alive && !held && !(T.failT && !F.live));
   };
   function leave() {
-    clearArms(); F.live = false; T.fin = null; T.said = -1; T.auto = false; T.back = null;
+    clearArms(); F.live = false; T.fin = null; T.said = -1; T.auto = false; T.back = null; F.rear = F.rearS = 0; T.cutBoxes = null; crew(false);
     if (T.set) { G.scene.remove(T.set.g); T.set = null; }
     if (T.boss) { G.scene.remove(T.boss.root); for (const d of T.boss.debris) G.scene.remove(d.m); for (const v of T.boss.haul) freeArm(v); T.boss = null; }
     if (hudEl) hudEl.classList.add('hidden'); if (failEl) { failEl.classList.remove('on'); failEl.classList.add('hidden'); }
@@ -432,8 +473,8 @@ export function makeTrainFight(ST, { playScene }) {
   // what your other guns can hit (bossref.js gives the room's bot these boxes): the face and every arm. the room judges the shot
   T.boxes = () => {
     if (!F.live) return null;
-    const out = [{ min: [-T.geo.maskR, CY - T.geo.maskR, -F.gap - 0.4], max: [T.geo.maskR, CY + T.geo.maskR, -F.gap + 0.4] }], bx = (p, r) => out.push({ min: [p[0] - r, p[1] - r, p[2] - r], max: [p[0] + r, p[1] + r, p[2] + r] });
-    for (const v of F.arms.values()) { if (!armLive(v.a)) continue; const P = armPose(T.geo, v.a, F.gap); bx(P.wrist, 0.56); for (const p of P.pts) bx(p, 0.4); }
+    const zg = F.gap - F.rear, out = [{ min: [-T.geo.maskR, CY - T.geo.maskR, -zg - 0.4], max: [T.geo.maskR, CY + T.geo.maskR, -zg + 0.4] }], bx = (p, r) => out.push({ min: [p[0] - r, p[1] - r, p[2] - r], max: [p[0] + r, p[1] + r, p[2] + r] });
+    for (const v of F.arms.values()) { if (!armLive(v.a)) continue; const P = armPose(T.geo, v.a, zg); bx(P.wrist, 0.56); for (const p of P.pts) bx(p, 0.4); }
     return out;
   };
 
