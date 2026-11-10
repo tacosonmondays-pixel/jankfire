@@ -82,11 +82,11 @@ const W = 1600, H = 900;
       views.forEach(([nm, deg], i) => {
         const sc = X.scene(0x2a1830, 5);
         const J = X.jack({ clip: 'pj_idle', t: 1.0 }); sc.add(J.c.root);
-        const M = X.other('mannequin'); M.ch.root.position.set(-1.75, 0, 0); sc.add(M.ch.root);
-        const Lu = X.other('lumps'); Lu.ch.root.position.set(2.0, 0, 0); sc.add(Lu.ch.root);
+        const M = X.other('mannequin'); M.ch.root.position.set(1.75, 0, 0); sc.add(M.ch.root);
+        const Lu = X.other('lumps'); Lu.ch.root.position.set(-2.0, 0, 0); sc.add(Lu.ch.root);
         if (X.truck) { const t = X.truck.clone(true); const p = J.rig.at('palmL'); t.position.set(p.x, 0, p.z - 0.05); sc.add(t); }
         const cam = nm === 'from above' ? X.orbit([0.1, 1.0, 0], deg, 8.6, 0.5) : X.orbit([0.1, 1.05, 0], deg, 8.6, 0.06);
-        X.cell(i, 3, 2, sc, cam, i === 0 ? 'the mannequin (2.1 m)  ·  PALLET JACK (2.0 m, vest on, a hand on his truck)  ·  LUMPS (2.2 m)   ' + nm : nm);
+        X.cell(i, 3, 2, sc, cam, i === 0 ? 'LUMPS (2.2 m)  ·  PALLET JACK (2.1 m, vest on, a hand on his truck)  ·  the mannequin (2.1 m)   ' + nm : nm);
       }); });
     await shot('pj_game_turn');
   }
@@ -98,30 +98,33 @@ const W = 1600, H = 900;
         const hp = new X.THREE.Vector3(); J.c.head.getWorldPosition(hp); hp.y += 0.17; X.cell(i, 6, 2, sc, X.orbit([hp.x, hp.y, hp.z], deg, 1.55, up, 26), nm); }); });
     await shot('pj_game_face');
   }
+  // a close-up aims at a marker (+ an offset in metres): [label, jack options, marker or [x, y, z], offset, deg, distance, up]
+  const closeups = async (cells, cols, rows, file) => {
+    await pg.evaluate(([cells, cols, rows]) => { const X = window.PJX; X.clear();
+      cells.forEach(([nm, o, mk, off, deg, d, up], i) => { const sc = X.scene(0x2a1830, 4); const J = X.jack(o); sc.add(J.c.root);
+        const p = Array.isArray(mk) ? new X.THREE.Vector3(...mk) : J.rig.at(mk); p.x += off[0]; p.y += off[1]; p.z += off[2];
+        X.cell(i, cols, rows, sc, X.orbit([p.x, p.y, p.z], deg, d, up), nm); }); }, [cells, cols, rows]);
+    await shot(file);
+  };
+  const full = [0, 1.1, 0], Z = [0, 0, 0];
   if (what.includes('dmg')) {
-    await pg.evaluate(() => { const X = window.PJX; X.clear();
-      const full = [0, 1.05, 0];
-      const cells = [['fresh, vest off', { vest: false }, full, 25, 7.4, 0.08], ['fresh, vest off: back', { vest: false }, full, 205, 7.4, 0.08],
-        ['run_through', { vest: false, state: 'run_through', face: 'jack_hurt' }, full, 28, 7.4, 0.08], ['run_through: back', { vest: false, state: 'run_through' }, full, 208, 7.4, 0.08], ['run_through: side', { vest: false, state: 'run_through' }, [0, 1.2, 0], 90, 5.0, 0.05],
-        ['the hole under his ribs', { vest: false, state: 'run_through' }, [0.05, 1.18, -0.4], 30, 2.3, 0.1], ['the boiler split', { vest: false, state: 'run_through' }, [0.03, 1.22, 0.45], 205, 2.4, 0.15],
-        ['armour_broken', { vest: false, state: 'armour_broken', face: 'jack_hurt' }, full, 28, 7.4, 0.08], ['armour_broken: back', { vest: false, state: 'armour_broken' }, full, 212, 7.4, 0.08], ['collarbone weld sprung', { vest: false, state: 'armour_broken' }, [0.03, 1.5, -0.25], 15, 1.9, 0.2],
-        ['shin locks blown', { vest: false, state: 'armour_broken' }, [0, 0.25, -0.05], 32, 2.4, 0.12], ['stacks bent', { vest: false, state: 'armour_broken' }, [0, 1.75, 0.45], 200, 2.6, 0.35],
-        ['marrow_taken: back', { vest: false, state: 'marrow_taken', face: 'jack_gone' }, full, 190, 7.4, 0.08], ['the boiler opened, the gap in his spine', { vest: false, state: 'marrow_taken' }, [0, 1.22, 0.42], 186, 2.2, 0.12], ['marrow_taken: from his left', { vest: false, state: 'marrow_taken' }, [0, 1.22, 0.36], 230, 2.4, 0.2],
-        ['far LOD (past 28 m), vest on', { far: true }, full, 25, 7.4, 0.08], ['far LOD, vest off: back', { far: true, vest: false }, full, 205, 7.4, 0.08], ['far LOD at 30 m', { far: true }, [0, 1.05, 0], 25, 30, 0.05]];
-      cells.forEach(([nm, o, at, deg, d, up], i) => { const sc = X.scene(0x2a1830, 4); const J = X.jack(o); sc.add(J.c.root); X.cell(i, 6, 3, sc, X.orbit(at, deg, d, up), nm); }); });
-    await shot('pj_game_damage');
+    const nv = { vest: false }, rt = { vest: false, state: 'run_through', face: 'jack_hurt' }, ab = { vest: false, state: 'armour_broken', face: 'jack_hurt' }, mt = { vest: false, state: 'marrow_taken', face: 'jack_gone' };
+    await closeups([['fresh, vest off', nv, full, Z, 25, 7.8, 0.08], ['fresh, vest off: back', nv, full, Z, 205, 7.8, 0.08],
+      ['run_through', rt, full, Z, 28, 7.8, 0.08], ['run_through: back', rt, full, Z, 208, 7.8, 0.08], ['run_through: his right side', rt, [0, 1.25, 0], Z, 270, 5.6, 0.05],
+      ['the hole under his ribs', rt, 'woundAt', [0, 0, -0.1], 30, 2.2, 0.12], ['what is left of it in front', rt, 'armFrontEnd', [0, 0.05, 0.1], -50, 1.9, 0.2], ['the boiler split, its hand out of his back', rt, 'ventAt', [0, 0.02, 0.1], 205, 2.3, 0.18],
+      ['armour_broken', ab, full, Z, 28, 7.8, 0.08], ['armour_broken: back', ab, full, Z, 212, 7.8, 0.08], ['collarbone weld sprung', ab, 'weldAt', [0.04, 0, -0.05], 18, 1.6, 0.22],
+      ['shin locks blown', ab, [0, 0.2, -0.1], Z, 25, 1.9, 0.15], ['stacks bent', ab, 'boilerAt', [0, 0.55, 0.05], 200, 2.9, 0.4],
+      ['marrow_taken: back', mt, full, Z, 185, 7.8, 0.08], ['the boiler opened, the gap in his spine', mt, 'boilerAt', [0, 0, 0], 181, 1.75, 0.1], ['marrow_taken: from his left', mt, 'boilerAt', [0, 0, -0.05], 225, 2.2, 0.2],
+      ['far LOD (past 28 m), vest on', { far: true }, full, Z, 25, 7.8, 0.08], ['far LOD at 30 m', { far: true }, full, Z, 25, 30, 0.05]], 6, 3, 'pj_game_damage');
   }
   if (what.includes('parts')) {
-    await pg.evaluate(() => { const X = window.PJX; X.clear();
-      const up = { rig: 1, flap: 1, cock: 1 };
-      const cells = [['boiler: the keg, fire door, relief valve', {}, [0, 1.2, 0.45], 180, 2.3, 0.1], ['gauge, manifold, his left stack', {}, [-0.1, 1.42, 0.42], 222, 2.3, 0.3], ['bleed valve, level glass', {}, [0.12, 1.16, 0.45], 150, 1.9, 0.05],
-        ['stacks at rest: down, caps shut', { vest: false }, [0, 1.8, 0.45], 185, 2.4, 0.4], ['rig up: stacks risen, caps open', { vest: false, set: up }, [0, 1.8, 0.45], 185, 2.4, 0.4], ['the welded collarbone', { vest: false }, [0.02, 1.5, -0.25], 12, 1.8, 0.2],
-        ['the rocket forearm: collar forward', {}, [0.56, 1.02, 0.0], 300, 1.9, 0.1], ['cocked: the collar back up the arm', { set: up }, [0.56, 1.02, 0.0], 300, 1.9, 0.1], ['knuckles: bare steel', {}, [0.56, 0.82, -0.02], 15, 1.4, -0.15],
-        ['the exhaust bell behind his elbow', {}, [0.56, 1.2, 0.1], 215, 1.8, 0.2], ['piston shins: locks open', {}, [0, 0.28, -0.05], 30, 2.5, 0.1], ['rig up: locks snapped shut', { set: up }, [0, 0.28, -0.05], 30, 2.5, 0.1],
-        ['shin from the side: daylight through it', {}, [0.2, 0.25, -0.02], 90, 2.2, 0.05], ['plates under scar, hydraulic lines', { vest: false }, [-0.45, 1.5, 0.0], 60, 1.9, 0.25], ['MARSH DELIVERIES', {}, [0, 1.52, 0.3], 180, 1.7, 0.15],
-        ['tea towel, belt, keys', {}, [0.08, 0.9, 0.25], 200, 1.9, 0.05], ['THIS WAY UP, rubber bands', {}, [-0.55, 1.05, 0], 90, 1.6, 0.05], ['the open hand', {}, [-0.55, 0.78, 0], 150, 1.3, 0.1]];
-      cells.forEach(([nm, o, at, deg, d, upp], i) => { const sc = X.scene(0x2a1830, 4); const J = X.jack(o); sc.add(J.c.root); X.cell(i, 6, 3, sc, X.orbit(at, deg, d, upp), nm); }); });
-    await shot('pj_game_parts');
+    const up = { rig: 1, flap: 1, cock: 1 }, nv = { vest: false };
+    await closeups([['the boiler: a beer keg. fire door, relief valve', {}, 'boilerAt', [0, 0, 0], 180, 2.0, 0.1], ['gauge, manifold, his left stack', {}, 'gaugeAt', [0, 0, 0.05], 222, 1.5, 0.35], ['bleed valve, level glass', {}, 'bleedAt', [0, 0.08, 0.02], 140, 1.5, 0.1],
+      ['stacks at rest: down, caps shut', nv, 'boilerAt', [0, 0.62, 0.05], 185, 2.5, 0.4], ['rig up: stacks risen, caps open', { vest: false, set: up }, 'boilerAt', [0, 0.62, 0.05], 185, 2.5, 0.4], ['the welded collarbone', nv, 'weldAt', [0, 0, -0.05], 10, 1.7, 0.22],
+      ['the rocket forearm: collar forward', {}, 'fistAt', [0, 0.25, 0], -62, 1.9, 0.12], ['cocked: the collar back up the arm', { set: up }, 'fistAt', [0, 0.25, 0], -62, 1.9, 0.12], ['knuckles: bare steel', {}, 'fistAt', [0, 0.02, 0], 12, 1.25, -0.25],
+      ['the exhaust bell behind his elbow', {}, 'elbowAt', [0, -0.05, 0], 215, 1.6, 0.25], ['piston shins: locks open', {}, [0, 0.24, -0.1], Z, 22, 1.9, 0.12], ['rig up: locks snapped shut', { set: up }, [0, 0.24, -0.1], Z, 22, 1.9, 0.12],
+      ['a shin from the side: daylight through it', {}, [0.21, 0.24, -0.02], Z, -90, 1.9, 0.05], ['plates under scar, hydraulic lines', nv, 'chest', [-0.4, 0.05, 0.25], 62, 1.9, 0.25], ['MARSH DELIVERIES', {}, 'boilerAt', [0, 0.36, -0.1], 180, 1.5, 0.12],
+      ['tea towel, belt, keys', {}, 'boilerAt', [0.1, -0.42, -0.1], 200, 1.9, 0.05], ['THIS WAY UP, rubber bands', {}, 'palmL', [0, 0.22, 0], 90, 1.3, 0.05], ['the open hand', {}, 'palmL', [0, 0, 0], 150, 1.1, 0.1]], 6, 3, 'pj_game_parts');
   }
   const POSES = [['pj_idle', 1.0, 35, 'fresh', true], ['pj_idle_eating', 1.85, 40, 'fresh', false], ['pj_walk_load', 1.0, 35, 'fresh', false], ['pj_kneel_vest', 3.7, 50, 'fresh', true], ['pj_rig_up', 2.12, 35, 'fresh', false], ['pj_fight_idle', 0.5, 35, 'fresh', false],
     ['pj_rocket_punch', 0.44, 60, 'fresh', false], ['pj_rocket_punch', 0.56, 60, 'fresh', false], ['pj_block', 0.4, 35, 'fresh', false], ['pj_stagger', 0.3, 60, 'fresh', false], ['pj_impaled', 1.2, 60, 'run_through', false], ['pj_impaled', 3.6, 40, 'run_through', false],

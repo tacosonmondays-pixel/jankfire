@@ -26,16 +26,16 @@ OUT_PARTS = os.path.join(MODELS, 'cast', 'c_pallet_jack.parts.json')
 OUT_TRUCK = os.path.join(MODELS, 'story', 's_handtruck.glb')
 SHEET_DIR = arg('out') or SHEETS
 TMP = os.path.join(SHEETS, '_tmp')
-FACE_OPTS = dict(eyeR=0.027, iris=0x7a5a36, lip=0xc27866, lipR=0.013, teeth='tomb', brow=0x3a2a22, browW=0.07, lidColor=SK)
-FACE_JACK = dict(lid=0.7, jaw=0, st=1.05, smile=0.5, by=-0.003, bt=-0.3)
+FACE_OPTS = dict(eyeR=0.025, iris=0x7a5a36, lip=0xc27866, lipR=0.0115, teeth='tomb', brow=0x3a2a22, browW=0.072, lidColor=0xe2957c)
+FACE_JACK = dict(lid=0.78, jaw=0, st=1.0, smile=0.36, by=-0.003, bt=-0.3)
 SCALE = JOINTS[ID]['scale']
 STATES = {  # what each state shows and hides (the game's PJ.dmg does the same)
     'fresh': dict(on=[], off=[]),
-    'run_through': dict(on=['dmgWound', 'dmgArm', 'dmgBoilerSplit'], off=['boiler', 'fire', 'vest']),
+    'run_through': dict(on=['dmgWound', 'dmgArm', 'dmgBoilerSplit'], off=[]),
     'armour_broken': dict(on=['dmgWound', 'dmgArm', 'dmgBoilerSplit', 'dmgCollar', 'dmgLockL', 'dmgLockR', 'dmgStackL', 'dmgStackR'],
-                          off=['boiler', 'fire', 'vest', 'collar', 'lockL', 'lockR', 'stackL', 'stackR', 'flapL', 'flapR']),
-    'marrow_taken': dict(on=['dmgWound', 'dmgArm', 'dmgMarrow', 'dmgCollar', 'dmgLockL', 'dmgLockR', 'dmgStackL', 'dmgStackR'],
-                         off=['boiler', 'fire', 'vest', 'collar', 'lockL', 'lockR', 'stackL', 'stackR', 'flapL', 'flapR']),
+                          off=['collar', 'lockL', 'lockR', 'stackL', 'stackR', 'flapL', 'flapR']),
+    'marrow_taken': dict(on=['dmgWound', 'dmgMarrow', 'dmgCollar', 'dmgLockL', 'dmgLockR', 'dmgStackL', 'dmgStackR'],
+                         off=['boiler', 'fire', 'collar', 'lockL', 'lockR', 'stackL', 'stackR', 'flapL', 'flapR']),
 }
 
 
@@ -45,6 +45,8 @@ def build():
     for fn in (head, torso, collar, boiler, stacks, vest, hips, legs, shins, arms, forearm_right, jackdmg.damage):
         fn(J); lap(fn.__name__)
     meta = {'face': True, 'parts': sorted(k for k in J.P.info if not k.startswith('dmg')), 'dmg': sorted(k for k in J.P.info if k.startswith('dmg')), 'states': STATES}
+    if arg('pieces'):
+        for (k, nm), n in sorted(J.P.tris.items(), key=lambda e: -e[1])[:int(arg('pieces')) if str(arg('pieces')).isdigit() else 70]: print('   JF_PIECE %-22s %-18s %5d' % (k, nm, n))
     root = J.P.root(meta); lap('join')
     return J, root
 
@@ -59,10 +61,10 @@ def bake(J, root):
     vestp = [o for o in allp if tag_of(o) == 'vest']; dmg = [o for o in allp if tag_of(o).startswith('dmg')]
     base = [o for o in allp if o not in vestp and o not in dmg]
     for o in allp: o.hide_render = False
-    rpkit.bake_ao(base, dist=0.22, samples=12, lo=0.42)
-    rpkit.bake_ao(vestp, dist=0.22, samples=12, lo=0.5, also=base)
+    rpkit.bake_ao(base, dist=0.2, samples=12, lo=0.6)
+    rpkit.bake_ao(vestp, dist=0.2, samples=12, lo=0.74, also=base)
     swapped = set(STATES['marrow_taken']['off'])
-    rpkit.bake_ao(dmg, dist=0.22, samples=12, lo=0.42, also=[o for o in base if tag_of(o) not in swapped])
+    rpkit.bake_ao(dmg, dist=0.2, samples=12, lo=0.55, also=[o for o in base if tag_of(o) not in swapped])
 
 
 def parts_json(J, root):
@@ -179,7 +181,7 @@ def sheet_dmg(J, root):
     studio(1.82, gv(0, 0.9, 0)); floor_disc(1.6)
     ps = []; labs = []
     def shots(key, st, views):
-        show_only(root, tags_on=st['on'], tags_off=st['off'])
+        show_only(root, tags_on=st['on'], tags_off=list(st['off']) + ['vest'])
         for (lab, t, deg, up, d, res) in views:
             ps.append(cam_shot(os.path.join(TMP, 'pj_d%d.png' % len(ps)), t, deg, d, lens=70, res=(440, 480), up=up)); labs.append(key + ': ' + lab)
     full = lambda deg: ('', (0, 0.9, 0), deg, 0.12, 1.82 * 2.5, None)
@@ -216,7 +218,7 @@ def main():
         if o.type == 'MESH': ensure_tint(o); rpkit.final_colour(o)
     lap('ao'); far = add_far(root, ratio=0.13, own=('vest',)); lap('far')
     tb, td, tl = stats(root)
-    if arg('qa'): jackdmg.run_qa(J, root, tag_of)
+    if arg('qa'): jackdmg.run_qa(J, root, tag_of, STATES, None if arg('qa') is True else str(arg('qa')).split(','))
     out = write_parts(J, root) if not arg('no-export') else parts_json(J, root)
     if not arg('no-export'):
         for o in root.children: o.hide_render = False

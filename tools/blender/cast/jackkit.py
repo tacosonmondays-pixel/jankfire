@@ -91,13 +91,15 @@ class Surf:
         ylo = min(min(r) for r in Y); yhi = max(max(r) for r in Y)
         if vr: ylo, yhi = vr
         nc = seg
+        down = (sum(Y[-1]) / cols < sum(Y[0]) / cols) != (not closed and a1 < a0)   # rows going down (or the angle going back): flip, so faces still point out
         for j in range(len(ys) - 1):
             for i in range(nc):
                 i2 = (i + 1) % cols
-                f = bm.faces.new((V[j][i], V[j + 1][i], V[j + 1][i2], V[j][i2]))
+                order = ((j, i), (j, i + 1), (j + 1, i + 1), (j + 1, i)) if down else ((j, i), (j + 1, i), (j + 1, i + 1), (j, i + 1))
+                f = bm.faces.new([V[jj][ii % cols] for jj, ii in order])
                 if uv:
                     u0, u1, v0, v1 = uv
-                    for lp, (jj, ii) in zip(f.loops, ((j, i), (j + 1, i), (j + 1, i + 1), (j, i + 1))):
+                    for lp, (jj, ii) in zip(f.loops, order):
                         yy = Y[jj][ii % cols]
                         lp[uvl].uv = (u0 + (u1 - u0) * ii / seg, v0 + (v1 - v0) * (yy - ylo) / max(1e-9, yhi - ylo))
                 f.smooth = True
@@ -167,7 +169,9 @@ class Surf:
             k2 = (k + 1) % spokes
             bm.faces.new((c, rings[0][k], rings[0][k2]))
             for a_, b_ in zip(rings, rings[1:]): bm.faces.new((a_[k], b_[k], b_[k2], a_[k2]))
-        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces); bm.normal_update()
+        want = gv(*s.n(yc, ac))
+        if sum((f.normal.dot(want) for f in bm.faces if c in f.verts), 0.0) < 0: bmesh.ops.reverse_faces(bm, faces=bm.faces)
         o = lib_obj(name, bm, m)
         return shade(o, 70)
 
@@ -197,12 +201,13 @@ class Surf:
         A = [a0 + (TAU if closed else (a1 - a0)) * i / seg for i in range(cols)]
         prof = [(y0, -0.002)] + [(y0 + (y1 - y0) * j / rows, off + (lip if j in (0, rows) else 0.0)) for j in range(rows + 1)] + [(y1, -0.002)]
         V = [[bm.verts.new(gv(*s.p(y, a, o_))) for a in A] for y, o_ in prof]
+        down = y1 < y0
         for j in range(len(prof) - 1):
             for i in range(seg):
-                i2 = (i + 1) % cols
-                f = bm.faces.new((V[j][i], V[j + 1][i], V[j + 1][i2], V[j][i2])); f.smooth = True
+                order = ((j, i), (j, i + 1), (j + 1, i + 1), (j + 1, i)) if down else ((j, i), (j + 1, i), (j + 1, i + 1), (j, i + 1))
+                f = bm.faces.new([V[jj][ii % cols] for jj, ii in order]); f.smooth = True
                 if uv:
-                    for lp, (jj, ii) in zip(f.loops, ((j, i), (j + 1, i), (j + 1, i + 1), (j, i + 1))):
+                    for lp, (jj, ii) in zip(f.loops, order):
                         lp[uvl].uv = (uv[0] + (uv[1] - uv[0]) * ii / seg, uv[2] + (uv[3] - uv[2]) * min(1.0, max(0.0, (jj - 1) / rows)))
         o = lib_obj(name, bm, m)
         if uv: o['keep_uv'] = 1
@@ -258,19 +263,48 @@ def smooth01(x, a, b):
 
 
 # ------------------------------------------------------------ parts
+def outward(o):
+    """every closed piece of a mesh gets its faces pointing out (a sweep or a decimate can leave one inside out): the
+    sign of its volume says which way it is. open shells are left as they were built"""
+    me = o.data
+    bm = bmesh.new(); bm.from_mesh(me)
+    seen = set(); flipped = 0
+    for f0 in bm.faces:
+        if f0 in seen: continue
+        isl = [f0]; seen.add(f0); st = [f0]
+        while st:
+            f = st.pop()
+            for e in f.edges:
+                for g in e.link_faces:
+                    if g not in seen: seen.add(g); isl.append(g); st.append(g)
+        if any(len(e.link_faces) != 2 for f in isl for e in f.edges): continue
+        vol = 0.0
+        for f in isl:
+            vs = [v.co for v in f.verts]
+            for k in range(1, len(vs) - 1): vol += vs[0].dot(vs[k].cross(vs[k + 1]))
+        if vol < 0: bmesh.ops.reverse_faces(bm, faces=isl); flipped += 1
+    if flipped: bm.to_mesh(me)
+    bm.free()
+    return flipped
+
+
 class Parts:
     """collect pieces per joint (+ tag). built in the joint's frame; pivot = where a moving piece hinges (joint frame)"""
     def __init__(s, char_id):
-        s.id = char_id; s.P = {}; s.piv = {}; s.info = {}
+        s.id = char_id; s.P = {}; s.piv = {}; s.info = {}; s.tris = {}
 
     def add(s, joint, objs, tag=None, pivot=None, note=None):
         key = joint + ('__' + tag if tag else '')
         objs = [o for o in objs if o is not None]
         for o in objs:
-            apply_mods(o); ensure_tint(o)
+            apply_mods(o); ensure_tint(o); outward(o)
+            o.data.calc_loop_triangles(); nm = o.name.rstrip('0123456789.'); s.tris[(key, nm)] = s.tris.get((key, nm), 0) + len(o.data.loop_triangles)
             if not o.data.uv_layers or not o.get('keep_uv'):
                 try: uv_box(o, 0.12)
                 except Exception: pass
+        if arg('qa-tag') and arg('qa-tag') == (tag or joint):   # (debug: the QA gate on each piece of one part, before the join)
+            for o in objs:
+                r_ = rpkit.qa(key + ':' + o.name, [o], quiet=True)
         s.P.setdefault(key, []).extend(in_joint(s.id, joint, objs))
         if pivot is not None: s.piv[key] = (joint, tuple(pivot))
         if tag: s.info[tag] = dict(joint=joint, note=note or s.info.get(tag, {}).get('note', ''), pivot=list(pivot) if pivot is not None else s.info.get(tag, {}).get('pivot'))
@@ -281,6 +315,7 @@ class Parts:
         for key, objs in s.P.items():
             if not objs: continue
             o = join(objs, 'part_' + key)
+            if o.data.uv_layers: rpkit.fix_uv(o)
             if key in s.piv:
                 jn, pv = s.piv[key]
                 p = castlib.joint_matrix(s.id, jn) @ gv(*pv)
@@ -289,8 +324,11 @@ class Parts:
         return finish('cast_' + s.id, joined, {'cast': s.id, **meta})
 
 
-def add_far(root, ratio=0.14, skip_tags=('vest',), min_tris=24, own=()):
-    """the far LOD: per joint, one decimated mesh of everything that shows when he's whole (part_<joint>__lod), plus
+FAR_SKIP = ('needle', 'valve', 'valveBody', 'fire', 'plates', 'lines', 'lockL', 'lockR', 'flapL', 'flapR', 'ram', 'towel', 'gauge')
+
+
+def add_far(root, ratio=0.14, skip_tags=('vest',) + FAR_SKIP, min_tris=24, own=()):
+    """the far LOD: per joint, one decimated mesh of the big shapes that show when he's whole (part_<joint>__lod), plus
     one for each tag in `own` (a piece that can be taken off: part_<joint>__dmg<Tag>Far, hidden until asked for)"""
     groups = {}
     for o in list(root.children):
@@ -305,10 +343,32 @@ def add_far(root, ratio=0.14, skip_tags=('vest',), min_tris=24, own=()):
     out = []
     for (jn, tag), objs in groups.items():
         o = join(objs, 'part_%s__%s' % (jn, tag))
-        me = o.data; me.calc_loop_triangles(); n = len(me.loop_triangles)
+        me = o.data
+        # small islands (rivets, bolts, nuts) don't survive a decimate with their normals the right way out: drop them
+        bm = bmesh.new(); bm.from_mesh(me)
+        seen = set(); kill = []
+        for v in bm.verts:
+            if v in seen: continue
+            isl = [v]; seen.add(v); st = [v]
+            while st:
+                x = st.pop()
+                for e in x.link_edges:
+                    y = e.other_vert(x)
+                    if y not in seen: seen.add(y); isl.append(y); st.append(y)
+            if len(isl) < 30:
+                lo = Vector(map(min, *[w.co for w in isl])) if len(isl) > 1 else isl[0].co; hi = Vector(map(max, *[w.co for w in isl])) if len(isl) > 1 else isl[0].co
+                if (hi - lo).length < 0.09: kill += isl
+        if kill: bmesh.ops.delete(bm, geom=kill, context='VERTS')
+        bm.to_mesh(me); bm.free()
+        me.calc_loop_triangles(); n = len(me.loop_triangles)
         if n > min_tris:
-            bm = bmesh.new(); bm.from_mesh(me); bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0015); bm.to_mesh(me); bm.free()
             d = o.modifiers.new('dec', 'DECIMATE'); d.ratio = max(ratio, min(1.0, min_tris / n)); apply_mods(o)
+            bm = bmesh.new(); bm.from_mesh(o.data)
+            loose = [v for v in bm.verts if not v.link_faces]
+            if loose: bmesh.ops.delete(bm, geom=loose, context='VERTS')
+            bmesh.ops.dissolve_degenerate(bm, dist=1e-5, edges=bm.edges)
+            bm.to_mesh(o.data); bm.free()
+            outward(o)
         o.parent = root; o.hide_render = True; out.append(o)
     return out
 
@@ -482,7 +542,7 @@ def apply_pose(E, pose):
 # ------------------------------------------------------------ small hardware
 def rivet(p, r, m, nrm=(0, 0, -1), flat=0.55):
     """a domed head sat on a surface at p, facing nrm (game axes)"""
-    o = ball(r, (0, 0, 0), m, scale=(1, flat, 1), seg=6, rings=4, name='rivet')
+    o = ball(r, (0, 0, 0), m, scale=(1, flat, 1), seg=5, rings=3, name='rivet')
     q = Vector((0, 0, 1)).rotation_difference(gv(*nrm).normalized())
     o.rotation_euler = q.to_euler(); o.location = gv(*p)
     return o

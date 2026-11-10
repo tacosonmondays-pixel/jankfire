@@ -40,7 +40,7 @@ def boiler(J):
         d = cyl(r * rr, 0.004, (0, yy, cz), M['kegplain'], axis='y', seg=18, name='kegend'); tint(d, lambda p, n: 0.55); kg.append(d)
     # the fire door on the back: blued plate, a hinge, a latch, rivets. its three slots are the glow (tag fire)
     dz = cz + r + 0.002; dy = y0 + 0.068
-    kg.append(cyl(0.054, 0.016, (0, dy, dz), M['blued'], axis='z', seg=14, bev=0.003, name='firedoor'))
+    kg.append(cyl(0.054, 0.016, (0, dy, dz), M['blued'], axis='z', seg=12, bev=0.003, name='firedoor'))
     kg.append(cyl(0.008, 0.07, (-0.058, dy, dz), M['steel'], axis='y', seg=6, name='doorhinge'))
     kg.append(box((0.03, 0.014, 0.012), (0.056, dy, dz + 0.004), M['steel'], bev=0.003, name='doorlatch'))
     for i in range(8):
@@ -54,7 +54,7 @@ def boiler(J):
         kg.append(rod(tuple(q), tuple(ks.p(q.y, PI - 1.15, -0.004)), 0.007, M['brass'], seg=6, name='glassstub'))
         kg.append(ball(0.012, tuple(q), M['brass'], seg=6, rings=4, name='glassnut'))
     # a relief valve on the top of it, and the manifold: a copper elbow off each side of the keg, out and up to a stack
-    kg.append(rod((0, y1 - 0.014, cz + 0.07), (0, y1 + 0.026, cz + 0.07), 0.016, M['brass'], seg=8, name='relief'))
+    kg.append(rod((0, y1 - 0.006, cz + 0.07), (0, y1 + 0.026, cz + 0.07), 0.016, M['brass'], seg=8, name='relief'))
     kg.append(cyl(0.022, 0.012, (0, y1 + 0.03, cz + 0.07), M['red'], axis='y', seg=8, name='reliefcap'))
     mf = []
     for sx in (-1, 1):
@@ -72,7 +72,7 @@ def boiler(J):
     for sx in (-1, 1):
         for yy in (y0 + 0.05, y0 + 0.155, y0 + 0.26):
             a = PI + sx * 0.5
-            base.append(ts.plate('lug', M['steel'], yy, a, 0.04, 0.045, off=0.012, n=3.0, spokes=8, sink=0.002))
+            base.append(ts.plate('lug', M['steel'], yy, a, 0.04, 0.045, off=0.012, n=3.0, spokes=6, sink=0.002))
             base.append(hexbolt(tuple(ts.p(yy, a, 0.012)), 0.0085, 0.008, M['blued'], tuple(ts.n(yy, a))))
     J.P.add('spine', base)
     J.P.add('spine', kg, 'boiler', note='the boiler: a beer keg sunk in his lower back (RETURN EMPTY), fire door, level glass, manifold')
@@ -90,11 +90,11 @@ def gauge(J, ks):
     c = q + nk * 0.03 + Vector((0, 0.03, 0))
     stem = [rod(tuple(q - nk * 0.005), tuple(q + nk * 0.024), 0.01, M['brass'], seg=6, name='gstem'), rod(tuple(q + nk * 0.02), tuple(c + d * 0.02), 0.009, M['brass'], seg=6, name='gstem2'),
             ball(0.014, tuple(q + nk * 0.022), M['brass'], seg=6, rings=4, name='gnut')]
-    case = [cyl(0.05, 0.03, (0, 0, 0.013), M['brass'], axis='z', seg=16, bev=0.003, name='gcase')]
-    case.append(lathe([(0.041, -0.0035), (0.051, -0.0035), (0.051, 0.002), (0.041, 0.002)], (0, 0, 0), M['chrome'], seg=16, axis='z', name='gbezel', cap=False))
-    face = cyl(0.042, 0.002, (0, 0, -0.001), M['dial'], axis='z', seg=16, name='gface'); face['keep_uv'] = 1
-    bpy.context.view_layer.update(); flip_uv(face, (0, 0, 0), (0.084, 0.084))
-    ndl = [box((0.0045, 0.036, 0.002), (0, 0.013, -0.0045), M['needle'], name='needle'), cyl(0.007, 0.004, (0, 0, -0.005), M['dark'], axis='z', seg=8, name='needlehub')]
+    case = [cyl(0.05, 0.03, (0, 0, 0.016), M['brass'], axis='z', seg=12, bev=0.003, name='gcase')]
+    case.append(lathe([(0.0432, -0.007), (0.0515, -0.007), (0.0515, 0.004), (0.0432, 0.004)], (0, 0, 0), M['chrome'], seg=16, axis='z', name='gbezel', cap=False))
+    face = cyl(0.0426, 0.003, (0, 0, -0.0005), M['dial'], axis='z', seg=16, name='gface'); face['keep_uv'] = 1
+    bpy.context.view_layer.update(); flip_uv(face, (0, 0, 0), (0.0852, 0.0852))
+    ndl = [box((0.0045, 0.036, 0.0016), (0, 0.013, -0.0045), M['needle'], name='needle'), cyl(0.007, 0.0055, (0, 0, -0.0056), M['dark'], axis='z', seg=8, name='needlehub')]
     orient(case + [face] + ndl, tuple(c), tuple(d))
     J.P.add('spine', stem + case + [face], 'gauge', note='the pressure gauge (its face is pj_dial)')
     J.P.add('spine', ndl, 'needle', pivot=tuple(c), note='the gauge needle: turns about `axis` (0 = straight up the dial, + = clockwise as you read it)')
@@ -135,7 +135,7 @@ def stacks(J, bent=False):
         f = gdir(tuple(u), src=(0, 1, 0))
         # the sleeve it slides in (fixed): wrapped so it doesn't burn the vest, two clamps
         st = [rod(tuple(B), tuple(B + u * 0.2), 0.043, M['wrap'], seg=12, name='sleeve' + nm), rod(tuple(B - u * 0.012), tuple(B + u * 0.012), 0.05, M['steel'], seg=12, name='sleevebase')]
-        for t in (0.05, 0.185): st.append(rod(tuple(B + u * t), tuple(B + u * (t + 0.016)), 0.047, M['steel'], seg=12, name='clamp'))
+        for t in (0.05, 0.185): st.append(rod(tuple(B + u * t), tuple(B + u * (t + 0.016)), 0.047, M['steel'], seg=8, name='clamp'))
         if sx > 0:  # a bar across the two, so they stand on their own
             Bo = Vector(STACK_B(-1)); uo = (Vector(STACK_T(-1)) - Bo).normalized()
             st.append(rod(tuple(Bo + uo * 0.03), tuple(B + u * 0.03), 0.011, M['steel'], seg=6, name='crossbar'))
@@ -147,9 +147,9 @@ def stacks(J, bent=False):
         def heat(p, n, B=B, u=u, Ln=Ln):
             t = (p - B).dot(u) / Ln
             c = (1, 1, 1)
-            c = mix3(c, (0.95, 0.78, 0.5), 0.6 * gauss(t - 0.5, 0.14))
-            c = mix3(c, (0.5, 0.52, 0.8), 0.6 * gauss(t - 0.7, 0.12))
-            c = mix3(c, (0.2, 0.19, 0.19), smooth01(t, 0.86, 1.0))
+            c = mix3(c, (1.0, 0.82, 0.5), 0.55 * gauss(t - 0.62, 0.1))
+            c = mix3(c, (0.55, 0.58, 0.9), 0.55 * gauss(t - 0.8, 0.07))
+            c = mix3(c, (0.24, 0.22, 0.22), smooth01(t, 0.9, 1.0))
             return c
         tint(pipe, heat)
         sp = [pipe, rod(tuple(B + u * (Ln * 0.5)), tuple(B + u * (Ln * 0.76)), 0.041, M['blued'], seg=12, name='shield' + nm)]
@@ -185,9 +185,9 @@ def collar(J):
     tint(bar, lambda p, n: mix3((1, 1, 1), (0.62, 0.66, 0.95), 0.7 * gauss(p.x - 0.05, 0.05)))   # the heat of the weld, still in it
     cl = [bar]
     wp = ts.p(0.458, WELD_A, 0.01)
-    for i in range(7):
-        t = TAU * i / 7
-        cl.append(blob('weld', (wp.x + 0.004 * math.sin(i * 2.1), wp.y + math.cos(t) * 0.024, wp.z + math.sin(t) * 0.024), (0.012, 0.0135, 0.0135), M['blued'], seg=6, rings=4))
+    for i in range(5):
+        t = TAU * i / 5
+        cl.append(blob('weld', (wp.x + 0.004 * math.sin(i * 2.1), wp.y + math.cos(t) * 0.024, wp.z + math.sin(t) * 0.024), (0.013, 0.015, 0.015), M['blued'], seg=5, rings=3))
     for a in (-0.36, -0.14, 0.4):
         q = ts.p(0.463, a, 0.032); cl.append(hexbolt(tuple(q), 0.0075, 0.006, M['blued'], tuple(ts.n(0.463, a))))
     J.P.add('spine', cl, 'collar', note='the welded steel collarbone (the weld is to his right of centre)')
@@ -195,7 +195,7 @@ def collar(J):
     base = []
     for sx in (-1, 1):
         q = ts.p(0.476, sx * 0.66, 0.006)
-        base.append(blob('collarlip', tuple(q), (0.03, 0.032, 0.022), M['scar'], seg=10, rings=7))
+        base.append(blob('collarlip', tuple(q), (0.03, 0.032, 0.022), M['scar'], seg=7, rings=5))
         base.append(ts.line('collarridge', [(0.476, sx * 0.62), (0.482, sx * 0.85), (0.486, sx * 1.1), (0.482, sx * 1.3)], 0.019, M['skin'], sink=0.36, seg=6, n=6, taper=False))
     J.P.add('spine', base)
     J.marks['weldAt'] = ('spine', tuple(wp))
@@ -217,8 +217,8 @@ def shins(J, blown=False):
         tint(sleeve, lambda p, n: mix3((1, 1, 1), (0.6, 0.56, 0.54), 0.5 * smooth01(-0.2 - p.y, 0, 0.03)))
         sh.append(sleeve)
         sh.append(cyl(0.038, 0.02, (0, -0.232, z), M['steel'], axis='y', seg=8, name='gland' + nm))
-        rd = rod((0, -0.226, z), (0, -0.33, z), 0.019, M['chrome'], seg=10, name='rod' + nm); sh.append(rd)
-        sh.append(box((0.05, 0.03, 0.03), (0, -0.326, z + 0.004), M['steel'], bev=0.005, name='clevis' + nm))
+        rd = rod((0, -0.226, z), (0, -0.316, z), 0.019, M['chrome'], seg=10, name='rod' + nm); sh.append(rd)
+        sh.append(box((0.05, 0.032, 0.046), (0, -0.312, z + 0.002), M['steel'], bev=0.005, name='clevis' + nm))
         sh.append(tube([(sx * 0.0, -0.15, z + 0.03), (sx * 0.02, -0.152, z + 0.05), (sx * 0.03, -0.175, 0.012), (sx * 0.028, -0.2, 0.03)], 0.0095, M['hose'], seg=6, name='hose' + nm))
         sh.append(ball(0.013, (0, -0.15, z + 0.032), M['brass'], seg=6, rings=4, name='port' + nm))
         # the clamp round the rod under the gland (fixed), and its toggle lever (the lock: it snaps flat when the rig comes up)
@@ -269,7 +269,7 @@ def forearm_right(J):
     orient([bell, thr], tuple(o0), tuple(d), src=(0, 1, 0)); fp += [bell, thr]
     fp.append(box((0.06, 0.04, 0.05), tuple(o0 + Vector((0, -0.005, -0.01))), M['steel'], bev=0.008, rot=(0.6, 0, 0), name='bellmount'))
     for s2 in (-1, 1):
-        for i in range(3): fp.append(box((0.006, 0.026, 0.012), tuple(F.p(-0.1 - i * 0.02, s2 * 1.75, 0.002)), M['soot'], rot=(0, -s2 * 1.75, 0), name='vent'))
+        for i in range(3): fp.append(box((0.006, 0.013, 0.012), tuple(F.p(-0.1 - i * 0.02, s2 * 1.75, 0.002)), M['soot'], rot=(0, -s2 * 1.75, 0), name='vent'))
     J.P.add(fk, fp)
     J.marks['elbowAt'] = (fk, tuple(o0 + d * 0.085), tuple(d))
     pl = [F.plate('plate_fore', M['scar'], -0.08, 0.0, 0.12, 0.13, off=0.007, n=3.4, spokes=14)]
@@ -301,7 +301,8 @@ def fist(J, hk, sx):
     tint(hand, raw); out.append(hand)
     for fi in range(4):
         x = (fi - 1.5) * 0.038 * -sx
-        f = limb('ffing%d' % fi, [(x, -0.13, -0.04), (x, -0.16, -0.034), (x, -0.172, 0.02), (x, -0.162, 0.062), (x, -0.112, 0.07), (x, -0.086, 0.046)], [0.021, 0.0225, 0.022, 0.021, 0.019, 0.016], M['skin'], seg=8)
+        q = (fi - 1.5) ** 2 * 0.004
+        f = limb('ffing%d' % fi, [(x, -0.126 - fi * 0.004, -0.04 + fi * 0.002), (x, -0.16 + q, -0.034), (x, -0.172 + q, 0.02 - fi * 0.002), (x, -0.162 + q * 0.5, 0.062 - fi * 0.003), (x, -0.112, 0.07 - fi * 0.003), (x, -0.086 - q, 0.046)], [0.021, 0.0225, 0.022, 0.021, 0.019, 0.016], M['skin'], seg=6)
         tint(f, lambda p, n: mix3((1, 1, 1), (0.92, 0.6, 0.56), 0.7 * smooth01(-0.15 - p.y, 0, 0.02) * smooth01(0.03 - p.z, 0, 0.04)))
         out.append(f)
     tb = Vector((-sx * 0.07, -0.062, 0.006))
@@ -312,7 +313,7 @@ def fist(J, hk, sx):
     kn = [box((0.158, 0.03, 0.05), (0, -0.158, -0.03), M['steel'], bev=0.009, name='knucklebar')]
     for fi in range(4):
         x = (fi - 1.5) * 0.038
-        d = ball(0.0215, (x, -0.165, -0.036), M['steel'], scale=(1, 0.8, 1), seg=8, rings=5, name='knuckle')
+        d = ball(0.0215, (x, -0.165, -0.036), M['steel'], scale=(1, 0.8, 1), seg=6, rings=4, name='knuckle')
         tint(d, lambda p, n: mix3((0.75, 0.75, 0.78), (1.25, 1.25, 1.25), smooth01(-p.y, 0.172, 0.182)))  # polished where they land
         kn.append(d)
     edge = [(-0.082, -0.14, -0.056), (0.082, -0.14, -0.056), (0.084, -0.146, -0.004), (-0.084, -0.146, -0.004), (-0.082, -0.14, -0.056)]
@@ -320,7 +321,7 @@ def fist(J, hk, sx):
     J.P.add(hk, kn, 'fist', note='his knuckles: bare steel, the skin worn off them')
     # the ram the fist rides out on (hidden up the forearm until it fires), the wrist cuff
     rm = [rod((0, 0.012, 0), (0, 0.012 + PUNCH_REACH + 0.04, 0), 0.071, M['chrome'], seg=14, name='ram')]
-    for i in range(3): rm.append(cyl(0.0725, 0.004, (0, 0.085 + i * 0.07, 0), M['dark'], axis='y', seg=14, name='ramring'))
+    for i in range(2): rm.append(cyl(0.0725, 0.004, (0, 0.1 + i * 0.09, 0), M['dark'], axis='y', seg=14, name='ramring'))
     cuff = lathe([(0.07, 0.03), (0.09, 0.03), (0.092, 0.02), (0.092, -0.012), (0.084, -0.02), (0.07, -0.02)], (0, 0, 0), M['steel'], seg=14, axis='y', name='wristcuff', cap=False)
     rm.append(cuff)
     for i in range(6):

@@ -1,198 +1,198 @@
 {
  "v": 1,
  "model": "c_pallet_jack.glb",
- "scale": 1.18,
+ "scale": 1.24,
  "units": "metres, root space at rest, feet at y 0, front -z (boxes: c = centre, h = half size). `local` = the joint's own frame at unit scale",
- "height": 2.039,
+ "height": 2.143,
  "body": {
-  "r": 0.487,
-  "h": 2.02,
+  "r": 0.512,
+  "h": 2.123,
   "c": [
-   0.0164,
-   1.0289,
-   0.0517
+   0.0172,
+   1.0812,
+   0.0531
   ]
  },
  "parts": {
   "lines": {
    "joint": "arm",
    "c": [
-    -0.0009,
-    1.2994,
-    -0.0279
+    -0.001,
+    1.3655,
+    -0.0293
    ],
    "h": [
-    0.6495,
-    0.4416,
-    0.2691
+    0.6825,
+    0.4641,
+    0.2828
    ],
    "note": "the hydraulic lines under his skin (material pj_lines: the game can pulse it)"
   },
   "plates": {
    "joint": "arm",
    "c": [
-    0.0163,
-    1.3284,
-    -0.0384
+    0.0171,
+    1.3959,
+    -0.0403
    ],
    "h": [
-    0.6662,
-    0.2971,
-    0.2759
+    0.7,
+    0.3122,
+    0.2899
    ],
    "note": "scar tissue grown over armour plate (pj_scar), rivets and one bare corner"
   },
   "towel": {
    "joint": "body",
    "c": [
-    0.1506,
-    0.7105,
-    0.2728
+    0.1582,
+    0.7467,
+    0.2867
    ],
    "h": [
-    0.0766,
-    0.1636,
-    0.0295
+    0.0805,
+    0.1719,
+    0.0311
    ],
    "note": "the soup-stained tea towel in his back pocket"
   },
   "cock": {
    "joint": "foreR",
    "c": [
-    0.5374,
-    0.9259,
-    -0.0169
+    0.5647,
+    0.9729,
+    -0.0178
    ],
    "h": [
-    0.155,
-    0.0398,
-    0.1488
+    0.1629,
+    0.0418,
+    0.1564
    ],
    "note": "the cocking collar: slides +y (up the arm) 0.040 to cock"
   },
   "fist": {
    "joint": "handR",
    "c": [
-    0.556,
-    0.6596,
-    -0.0223
+    0.5843,
+    0.6932,
+    -0.0235
    ],
    "h": [
-    0.1023,
-    0.0352,
-    0.0393
+    0.1075,
+    0.0369,
+    0.0413
    ],
    "note": "his knuckles: bare steel, the skin worn off them"
   },
   "ram": {
    "joint": "handR",
    "c": [
-    0.5435,
-    1.005,
-    0.0044
+    0.5711,
+    1.0561,
+    0.0046
    ],
    "h": [
-    0.1097,
-    0.1918,
-    0.1159
+    0.1153,
+    0.2016,
+    0.1218
    ],
    "note": "the chrome ram and wrist cuff: move handR -y by up to 0.24 and the fist rides out on it"
   },
   "dmgLockL": {
    "joint": "kneeL",
    "c": [
-    -0.2124,
-    0.1928,
-    -0.0618
+    -0.2232,
+    0.2026,
+    -0.0649
    ],
    "h": [
-    0.0619,
-    0.0738,
-    0.0373
+    0.065,
+    0.0776,
+    0.0391
    ],
    "note": "armour broken: the shin lock blown, the gland weeping"
   },
   "lockL": {
    "joint": "kneeL",
    "c": [
-    -0.2726,
-    0.1938,
-    -0.0604
+    -0.2865,
+    0.2036,
+    -0.0635
    ],
    "h": [
-    0.0396,
-    0.0309,
-    0.0123
+    0.0416,
+    0.0325,
+    0.0129
    ],
    "note": "the shin lock: a toggle lever, modelled open; turn it `shut` rad about z and it slaps up flat against the sleeve"
   },
   "shinL": {
    "joint": "kneeL",
    "c": [
-    -0.2034,
-    0.2398,
-    -0.0304
+    -0.2138,
+    0.252,
+    -0.0319
    ],
    "h": [
-    0.0387,
-    0.1086,
-    0.0659
+    0.0407,
+    0.1141,
+    0.0693
    ],
    "note": "a shin piston: red sleeve, chrome rod, down the front of the leg to the boot's guard"
   },
   "dmgLockR": {
    "joint": "kneeR",
    "c": [
-    0.2124,
-    0.1928,
-    -0.0618
+    0.2232,
+    0.2026,
+    -0.0649
    ],
    "h": [
-    0.0619,
-    0.0738,
-    0.0373
+    0.065,
+    0.0776,
+    0.0391
    ],
    "note": "armour broken: the shin lock blown, the gland weeping"
   },
   "lockR": {
    "joint": "kneeR",
    "c": [
-    0.2726,
-    0.1938,
-    -0.0604
+    0.2865,
+    0.2036,
+    -0.0635
    ],
    "h": [
-    0.0396,
-    0.0309,
-    0.0123
+    0.0416,
+    0.0325,
+    0.0129
    ],
    "note": "the shin lock: a toggle lever, modelled open; turn it `shut` rad about z and it slaps up flat against the sleeve"
   },
   "shinR": {
    "joint": "kneeR",
    "c": [
-    0.2034,
-    0.2398,
-    -0.0304
+    0.2138,
+    0.252,
+    -0.0319
    ],
    "h": [
-    0.0387,
-    0.1086,
-    0.0659
+    0.0407,
+    0.1141,
+    0.0693
    ],
    "note": "a shin piston: red sleeve, chrome rod, down the front of the leg to the boot's guard"
   },
   "boiler": {
    "joint": "spine",
    "c": [
-    0.008,
-    1.2259,
-    0.2845
+    0.0084,
+    1.2883,
+    0.2989
    ],
    "h": [
-    0.183,
-    0.2088,
-    0.1714
+    0.1923,
+    0.2194,
+    0.1801
    ],
    "note": "the boiler: a beer keg sunk in his lower back (RETURN EMPTY), fire door, level glass, manifold"
   },
@@ -200,55 +200,55 @@
    "joint": "spine",
    "c": [
     -0.0,
-    1.4755,
-    -0.2908
+    1.5505,
+    -0.3056
    ],
    "h": [
-    0.1855,
-    0.0468,
-    0.0449
+    0.1949,
+    0.0492,
+    0.0472
    ],
    "note": "the welded steel collarbone (the weld is to his right of centre)"
   },
   "dmgArm": {
    "joint": "spine",
    "c": [
-    0.0997,
-    1.1247,
-    0.1194
+    0.1048,
+    1.1842,
+    0.1254
    ],
    "h": [
-    0.1319,
-    0.3787,
-    0.7649
+    0.1386,
+    0.3956,
+    0.8038
    ],
    "note": "the severed length of the arm, still through him (front stub, the hand out of his back)"
   },
   "dmgBoilerSplit": {
    "joint": "spine",
    "c": [
-    0.0243,
-    1.2236,
-    0.4432
+    0.0255,
+    1.2858,
+    0.4658
    ],
    "h": [
-    0.2301,
-    0.191,
-    0.1227
+    0.2418,
+    0.2007,
+    0.129
    ],
    "note": "the boiler split where the arm came out of it: petals, cracks lit from inside (pj_core)"
   },
   "dmgCollar": {
    "joint": "spine",
    "c": [
-    0.0102,
-    1.4605,
-    -0.3358
+    0.0107,
+    1.5348,
+    -0.3529
    ],
    "h": [
-    0.1946,
-    0.0939,
-    0.0878
+    0.2045,
+    0.0987,
+    0.0922
    ],
    "note": "armour broken: the collarbone weld sprung, his right half of the bar standing out of him"
   },
@@ -256,41 +256,41 @@
    "joint": "spine",
    "c": [
     0.0,
-    1.2058,
-    0.2748
+    1.267,
+    0.2878
    ],
    "h": [
-    0.1754,
-    0.1887,
-    0.172
+    0.1839,
+    0.1982,
+    0.1798
    ],
    "note": "marrow taken: the keg opened from behind, his lower spine in it with a gap (pj_marrow glows)"
   },
   "dmgStackL": {
    "joint": "spine",
    "c": [
-    -0.3841,
-    1.6582,
-    0.4327
+    -0.4036,
+    1.7425,
+    0.4547
    ],
    "h": [
-    0.1353,
-    0.1416,
-    0.1111
+    0.1422,
+    0.1488,
+    0.1168
    ],
    "note": "armour broken: the stack bent over"
   },
   "dmgStackR": {
    "joint": "spine",
    "c": [
-    0.3409,
-    1.7073,
-    0.4984
+    0.3582,
+    1.7941,
+    0.5238
    ],
    "h": [
-    0.0921,
-    0.1907,
-    0.1748
+    0.0968,
+    0.2004,
+    0.1836
    ],
    "note": "armour broken: the stack bent over"
   },
@@ -298,96 +298,96 @@
    "joint": "spine",
    "c": [
     -0.0,
-    1.2881,
-    -0.0562
+    1.3536,
+    -0.0604
    ],
    "h": [
-    0.4539,
-    0.3954,
-    0.3337
+    0.4769,
+    0.4155,
+    0.352
    ]
   },
   "dmgWound": {
    "joint": "spine",
    "c": [
-    0.0985,
-    1.0708,
-    -0.3126
+    0.0795,
+    1.1354,
+    -0.3412
    ],
    "h": [
-    0.2132,
-    0.2472,
-    0.0625
+    0.2267,
+    0.2768,
+    0.071
    ],
    "note": "the hole under his ribs: lip, torn singlet, the soak down to his belt"
   },
   "fire": {
    "joint": "spine",
    "c": [
-    0.0753,
-    1.1495,
-    0.3957
+    0.0791,
+    1.2079,
+    0.4158
    ],
    "h": [
-    0.1059,
-    0.0651,
-    0.0596
+    0.1113,
+    0.0684,
+    0.0626
    ],
    "note": "what glows: the fire door slots (pj_glow) and the level glass (pj_marrow)"
   },
   "flapL": {
    "joint": "spine",
    "c": [
-    -0.3431,
-    1.9507,
-    0.421
+    -0.3605,
+    2.0499,
+    0.4424
    ],
    "h": [
-    0.0484,
-    0.0136,
-    0.0727
+    0.0508,
+    0.0143,
+    0.0763
    ],
    "note": "its rain cap: hinged about `axis`, + opens it (about 1.2 rad is wide open)"
   },
   "flapR": {
    "joint": "spine",
    "c": [
-    0.3431,
-    1.9507,
-    0.421
+    0.3605,
+    2.0499,
+    0.4424
    ],
    "h": [
-    0.0484,
-    0.0136,
-    0.0727
+    0.0508,
+    0.0143,
+    0.0763
    ],
    "note": "its rain cap: hinged about `axis`, + opens it (about 1.2 rad is wide open)"
   },
   "gauge": {
    "joint": "spine",
    "c": [
-    -0.1554,
-    1.37,
-    0.369
+    -0.1637,
+    1.4401,
+    0.3881
    ],
    "h": [
-    0.0577,
-    0.0557,
-    0.0613
+    0.0633,
+    0.0615,
+    0.0663
    ],
    "note": "the pressure gauge (its face is pj_dial)"
   },
   "needle": {
    "joint": "spine",
    "c": [
-    -0.1564,
-    1.385,
-    0.3845
+    -0.1649,
+    1.4557,
+    0.4042
    ],
    "h": [
-    0.0179,
+    0.0193,
     0.0096,
-    0.017
+    0.0176
    ],
    "note": "the gauge needle: turns about `axis` (0 = straight up the dial, + = clockwise as you read it)"
   },
@@ -395,69 +395,69 @@
    "joint": "spine",
    "c": [
     0.0,
-    1.4571,
-    0.3583
+    1.5312,
+    0.3765
    ],
    "h": [
-    0.3585,
-    0.1916,
-    0.0684
+    0.3767,
+    0.2013,
+    0.0719
    ],
    "note": "the stacks' sleeves, clamps and the bar across"
   },
   "stackL": {
    "joint": "spine",
    "c": [
-    -0.3203,
-    1.7381,
-    0.384
+    -0.3366,
+    1.8265,
+    0.4035
    ],
    "h": [
-    0.0716,
-    0.2215,
-    0.0621
+    0.0752,
+    0.2328,
+    0.0653
    ],
    "note": "a thruster stack: slides 0.07 along `axis` when the rig comes up"
   },
   "stackR": {
    "joint": "spine",
    "c": [
-    0.3202,
-    1.738,
-    0.3838
+    0.3365,
+    1.8264,
+    0.4033
    ],
    "h": [
-    0.0714,
-    0.2214,
-    0.062
+    0.0751,
+    0.2327,
+    0.0651
    ],
    "note": "a thruster stack: slides 0.07 along `axis` when the rig comes up"
   },
   "valve": {
    "joint": "spine",
    "c": [
-    0.162,
-    1.2696,
-    0.4198
+    0.1702,
+    1.3342,
+    0.4412
    ],
    "h": [
-    0.0472,
-    0.0089,
-    0.0463
+    0.0496,
+    0.0094,
+    0.0486
    ],
    "note": "the bleed wheel: turns about +y of the spine"
   },
   "valveBody": {
    "joint": "spine",
    "c": [
-    0.1426,
-    1.1862,
-    0.4051
+    0.1498,
+    1.2465,
+    0.4257
    ],
    "h": [
-    0.0395,
-    0.0815,
-    0.0393
+    0.0415,
+    0.0857,
+    0.0413
    ],
    "note": "the bleed valve body and spout"
   },
@@ -465,13 +465,13 @@
    "joint": "spine",
    "c": [
     0.0,
-    1.2849,
-    -0.057
+    1.3503,
+    -0.0612
    ],
    "h": [
-    0.4553,
-    0.3923,
-    0.3332
+    0.4784,
+    0.4122,
+    0.3514
    ],
    "note": "the hi-vis vest, MARSH DELIVERIES in marker. removable: he gives it to Dumpling"
   }
@@ -601,9 +601,9 @@
   "weldAt": {
    "joint": "spine",
    "at": [
-    0.0339,
-    1.4707,
-    -0.2925
+    0.0356,
+    1.5455,
+    -0.3073
    ],
    "local": [
     0.0287,
@@ -614,9 +614,9 @@
   "chest": {
    "joint": "spine",
    "at": [
-    -0.1239,
-    1.3984,
-    -0.3081
+    -0.1302,
+    1.4695,
+    -0.3238
    ],
    "local": [
     -0.105,
@@ -638,8 +638,8 @@
    "joint": "spine",
    "at": [
     0.0,
-    1.2126,
-    0.4329
+    1.2743,
+    0.4549
    ],
    "local": [
     0.0,
@@ -651,8 +651,8 @@
    "joint": "spine",
    "at": [
     0.0,
-    1.1109,
-    0.4546
+    1.1674,
+    0.4777
    ],
    "local": [
     0.0,
@@ -663,9 +663,9 @@
   "gaugeAt": {
    "joint": "spine",
    "at": [
-    -0.1631,
-    1.3786,
-    0.3736
+    -0.1714,
+    1.4487,
+    0.3926
    ],
    "local": [
     -0.1382,
@@ -676,9 +676,9 @@
   "bleedAt": {
    "joint": "spine",
    "at": [
-    0.162,
-    1.1141,
-    0.4276
+    0.1702,
+    1.1707,
+    0.4493
    ],
    "local": [
     0.1373,
@@ -689,9 +689,9 @@
   "stackTipL": {
    "joint": "spine",
    "at": [
-    -0.3422,
-    1.9456,
-    0.3962
+    -0.3596,
+    2.0446,
+    0.4164
    ],
    "local": [
     -0.29,
@@ -702,9 +702,9 @@
   "stackTipR": {
    "joint": "spine",
    "at": [
-    0.3422,
-    1.9456,
-    0.3962
+    0.3596,
+    2.0446,
+    0.4164
    ],
    "local": [
     0.29,
@@ -715,9 +715,9 @@
   "elbowAt": {
    "joint": "foreR",
    "at": [
-    0.513,
-    1.24,
-    0.1853
+    0.5391,
+    1.303,
+    0.1947
    ],
    "local": [
     0.0,
@@ -738,9 +738,9 @@
   "fistAt": {
    "joint": "handR",
    "at": [
-    0.5612,
-    0.6278,
-    -0.0246
+    0.5897,
+    0.6597,
+    -0.0258
    ],
    "local": [
     0.0,
@@ -761,9 +761,9 @@
   "gripR": {
    "joint": "handR",
    "at": [
-    0.5556,
-    0.7009,
-    0.0474
+    0.5839,
+    0.7365,
+    0.0498
    ],
    "local": [
     0.0,
@@ -784,9 +784,9 @@
   "palmL": {
    "joint": "handL",
    "at": [
-    -0.5533,
-    0.731,
-    0.06
+    -0.5814,
+    0.7682,
+    0.0631
    ],
    "local": [
     0.0,
@@ -807,9 +807,9 @@
   "woundAt": {
    "joint": "spine",
    "at": [
-    0.0639,
-    1.1425,
-    -0.331
+    0.0671,
+    1.2006,
+    -0.3478
    ],
    "local": [
     0.0541,
@@ -830,9 +830,9 @@
   "ventAt": {
    "joint": "spine",
    "at": [
-    0.0732,
-    1.2833,
-    0.4294
+    0.0769,
+    1.3486,
+    0.4512
    ],
    "local": [
     0.062,
@@ -853,9 +853,9 @@
   "armFrontEnd": {
    "joint": "spine",
    "at": [
-    0.0839,
-    1.0004,
-    -0.6166
+    0.0882,
+    1.0512,
+    -0.6479
    ],
    "local": [
     0.0711,
@@ -866,9 +866,9 @@
   "armBackEnd": {
    "joint": "spine",
    "at": [
-    0.0781,
-    1.3998,
-    0.8334
+    0.0821,
+    1.4709,
+    0.8758
    ],
    "local": [
     0.0662,
@@ -879,13 +879,13 @@
   "marrowAt": {
    "joint": "spine",
    "at": [
-    -0.059,
-    1.2166,
-    0.1822
+    0.0,
+    1.2778,
+    0.1915
    ],
    "local": [
-    -0.05,
-    0.227,
+    0.0,
+    0.2265,
     0.166
    ],
    "dir": [
@@ -902,9 +902,9 @@
   "stackTipBentL": {
    "joint": "spine",
    "at": [
-    -0.4839,
-    1.7525,
-    0.4996
+    -0.5085,
+    1.8416,
+    0.5251
    ],
    "local": [
     -0.4101,
@@ -925,9 +925,9 @@
   "stackTipBentR": {
    "joint": "spine",
    "at": [
-    0.3845,
-    1.8525,
-    0.5676
+    0.404,
+    1.9467,
+    0.5965
    ],
    "local": [
     0.3258,
@@ -957,11 +957,7 @@
     "dmgArm",
     "dmgBoilerSplit"
    ],
-   "off": [
-    "boiler",
-    "fire",
-    "vest"
-   ]
+   "off": []
   },
   "armour_broken": {
    "on": [
@@ -975,9 +971,6 @@
     "dmgStackR"
    ],
    "off": [
-    "boiler",
-    "fire",
-    "vest",
     "collar",
     "lockL",
     "lockR",
@@ -990,7 +983,6 @@
   "marrow_taken": {
    "on": [
     "dmgWound",
-    "dmgArm",
     "dmgMarrow",
     "dmgCollar",
     "dmgLockL",
@@ -1001,7 +993,6 @@
    "off": [
     "boiler",
     "fire",
-    "vest",
     "collar",
     "lockL",
     "lockR",

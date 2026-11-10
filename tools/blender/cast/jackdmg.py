@@ -65,8 +65,8 @@ def arm_through(J):
     out.append(sweep([tuple(lp + Vector((0.07 * math.cos(t), 0.075 * math.sin(t) + 0.004, 0.012 * math.sin(2 * t)))) for t in [TAU * i / 10 for i in range(11)]], 0.0065, M['lanyard'], seg=4, name='lanyardloop'))
     cb = lp + Vector((0.01, -0.074, 0.0))
     out.append(sheet_mesh('lanyardtail', M['lanyard'], lambda u, v: tuple(cb + Vector(((u - 0.5) * 0.014, -v * 0.11, 0.01 * math.sin(v * 3)))), nu=1, nv=4, thick=0.0, uv=False))
-    out.append(box((0.05, 0.068, 0.003), tuple(cb + Vector((0.004, -0.142, 0.004))), M['card'], bev=0.001, rot=(0.15, 0.3, 0.12), name='idcard'))
-    out.append(box((0.022, 0.026, 0.004), tuple(cb + Vector((-0.004, -0.132, 0.003))), M['dark'], rot=(0.15, 0.3, 0.12), name='idphoto'))
+    out.append(box((0.05, 0.068, 0.004), tuple(cb + Vector((0.002, -0.138, 0.005))), M['card'], rot=(0.15, 0.3, 0.12), name='idcard'))
+    out.append(box((0.022, 0.026, 0.006), tuple(cb + Vector((-0.004, -0.13, 0.005))), M['dark'], rot=(0.15, 0.3, 0.12), name='idphoto'))
     # out of his back: through the keg, and the hand on the end of it (a hand made of hands), half shut
     T = X + d * 0.21 + Vector((0.0, 0.035, 0))
     bpts = [X - d * 0.2, X - d * 0.08, X + d * 0.04, X.lerp(T, 0.6), T]
@@ -95,26 +95,31 @@ def wound(J, E):
     out = []
     ring = [tuple(ts.p(yc + 0.092 * math.sin(t) * (1 + 0.12 * math.sin(3 * t)), ac + 0.092 * math.cos(t) / rad * (1 + 0.1 * math.cos(2 * t)), 0.013)) for t in [TAU * i / 14 for i in range(15)]]
     out.append(sweep(ring, [0.015 + 0.004 * math.sin(i * 1.9) for i in range(15)], M['wound'], seg=5, name='woundlip'))
-    hole = ts.plate('woundhole', M['hole'], yc, ac, 0.19, 0.19, off=0.0095, n=2.2, spokes=12, sink=-0.002, inner=0.9); out.append(hole)
-    # the torn cloth: seven tongues of it, peeled out from the middle
+    hole = ts.plate('woundhole', M['hole'], yc, ac, 0.19, 0.19, off=0.0135, n=2.2, spokes=12, sink=-0.006, inner=0.9); out.append(hole)
+    # the torn cloth: ragged tongues of it pushed out from the middle, the ones underneath hanging
     rr = random.Random(11)
     bm = bmesh.new()
-    for k in range(7):
-        t0 = TAU * k / 7 + rr.uniform(-0.1, 0.1); w = 0.36
-        def pt(t, r_, off): return bm.verts.new(gv(*ts.p(yc + r_ * math.sin(t), ac + r_ * math.cos(t) / rad, off)))
-        a_, b_, c_ = pt(t0 - w, 0.1, 0.012), pt(t0 + w, 0.1, 0.012), pt(t0 + rr.uniform(-0.15, 0.15), rr.uniform(0.15, 0.19), rr.uniform(0.03, 0.055))
-        bm.faces.new((a_, b_, c_))
+    t0 = 0.3
+    while t0 < TAU + 0.2:
+        w = rr.uniform(0.2, 0.5); t1 = t0 + w
+        down = max(0.0, -math.sin((t0 + t1) / 2))
+        def pt(t, r_, off, dy=0.0): return bm.verts.new(gv(*(ts.p(yc + r_ * math.sin(t) + dy, ac + r_ * math.cos(t) / rad, off))))
+        ln = rr.uniform(0.035, 0.085) + 0.05 * down; lift = rr.uniform(0.02, 0.05) * (1 - 0.6 * down)
+        a_, b_ = pt(t0, 0.098, 0.011), pt(t1, 0.098, 0.011)
+        m1 = pt(t0 + w * rr.uniform(0.15, 0.4), 0.098 + ln * 0.55, 0.012 + lift * 0.8, -0.02 * down); m2 = pt(t0 + w * rr.uniform(0.55, 0.9), 0.098 + ln, 0.012 + lift, -0.05 * down)
+        bm.faces.new((a_, b_, m1)); bm.faces.new((b_, m2, m1))
+        t0 = t1 + rr.uniform(0.02, 0.18)
     fl = lib_obj('woundflaps', bm, M['singlet']); shade(fl, 20)
-    tint(fl, lambda p, n: (0.62, 0.16, 0.16)); out.append(fl)
+    tint(fl, lambda p, n: mix3((0.62, 0.14, 0.15), (0.92, 0.5, 0.46), smooth01((p - E).length, 0.11, 0.2))); out.append(fl)
     # the soak: an uneven stain down to the belt, runnels in it
     bm = bmesh.new()
-    cen = bm.verts.new(gv(*ts.p(yc - 0.1, ac, 0.0082)))
+    cen = bm.verts.new(gv(*ts.p(yc - 0.1, ac, 0.0115)))
     rim = []
     for k in range(16):
         t = TAU * k / 16
         r_ = 0.13 * (1 + 0.25 * math.sin(3 * t + 1) + 0.15 * math.sin(5 * t))
         dy = r_ * math.sin(t) * (1.9 if math.sin(t) < 0 else 0.9)
-        rim.append(bm.verts.new(gv(*ts.p(max(-0.085, yc - 0.1 + dy), ac + r_ * math.cos(t) / rad * 1.15, 0.0074))))
+        rim.append(bm.verts.new(gv(*ts.p(max(-0.085, yc - 0.1 + dy), ac + r_ * math.cos(t) / rad * 1.15, 0.0098))))
     for k in range(16): bm.faces.new((cen, rim[k], rim[(k + 1) % 16]))
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     soak = lib_obj('woundsoak', bm, M['blood']); shade(soak, 60)
@@ -122,7 +127,7 @@ def wound(J, E):
         b2 = bmesh.new(); b2.from_mesh(soak.data); bmesh.ops.reverse_faces(b2, faces=b2.faces); b2.to_mesh(soak.data); b2.free()
     out.append(soak)
     for (da, y1, r_) in ((-0.1, -0.08, 0.0075), (0.04, -0.085, 0.009), (0.16, -0.03, 0.0065)):
-        out.append(ts.line('runnel', [(yc - 0.08, ac + da), (yc - 0.16, ac + da * 1.15), (y1, ac + da * 1.2)], r_, M['blood'], sink=0.25, seg=4, n=5))
+        out.append(ts.line('runnel', [(yc - 0.08, ac + da), (yc - 0.16, ac + da * 1.15), (y1, ac + da * 1.2)], r_, M['blood'], sink=-0.9, seg=4, n=5))
     J.P.add('spine', out, 'dmgWound', note='the hole under his ribs: lip, torn singlet, the soak down to his belt')
 
 
@@ -133,7 +138,7 @@ def boiler_split(J, X, d):
     a0 = math.atan2(X.x, -(X.z - KEG['cz']))   # the keg's own angle at the exit
     yc = X.y; rad = KEG['r']
     out.append(ks.plate('splithole', M['hole'], yc, a0, 0.17, 0.17, off=0.003, n=2.2, spokes=12, sink=-0.001, inner=0.9))
-    out.append(ks.plate('splitglow', M['core'], yc, a0, 0.1, 0.1, off=0.0045, n=2.0, spokes=10, sink=-0.001, inner=0.8))
+    out.append(ks.plate('splitglow', M['core'], yc, a0, 0.1, 0.1, off=0.0075, n=2.0, spokes=10, sink=-0.004, inner=0.8))
     rr = random.Random(21)
     bm = bmesh.new()
     for k in range(9):
@@ -158,59 +163,63 @@ def boiler_split(J, X, d):
 
 
 def marrow(J, X):
-    """after: the keg opened from behind like a cupboard, the lower spine in it, and a gap in the spine"""
+    """after: the keg opened from behind like a cupboard, the dark of him in it, his lower spine: three bones, then
+    nothing for the length of a hand, then two. what's left at the ends of the gap is still lit"""
     M = J.M; y0, y1, r, cz = KEG['y0'], KEG['y1'], KEG['r'], KEG['cz']
     ks, rows = keg_surf()
     out = []
-    W = 0.78; ya, yb = y0 + 0.044, y1 - 0.044
+    W = 0.98; ya, yb = y0 + 0.044, y1 - 0.044
     # the shell that's left: the two sides, and the chimes top and bottom
     for (a0, a1, nm) in ((PI - 2.2, PI - W, 'r'), (PI + W, PI + 2.2, 'l')):
-        o = ks.mesh('kegside' + nm, M['kegplain'], rows, seg=6, a0=a0, a1=a1, deg=40); tint(o, lambda p, n: 0.82); out.append(o)
+        o = ks.mesh('kegside' + nm, M['kegplain'], rows, seg=5, a0=a0, a1=a1, deg=40); tint(o, lambda p, n: 0.82); out.append(o)
     for (ra, nm) in (([y for y in rows if y <= ya + 1e-6], 'bot'), ([y for y in rows if y >= yb - 1e-6], 'top')):
-        o = ks.mesh('kegband' + nm, M['kegplain'], ra, seg=6, a0=PI - W, a1=PI + W, deg=40); tint(o, lambda p, n: 0.7); out.append(o)
+        o = ks.mesh('kegband' + nm, M['kegplain'], ra, seg=7, a0=PI - W, a1=PI + W, deg=40); tint(o, lambda p, n: 0.7); out.append(o)
     for yy in (y1 - 0.012, y0 + 0.012):
         dsc = cyl(r * 0.86, 0.004, (0, yy, cz), M['kegplain'], axis='y', seg=18, name='kegend'); tint(dsc, lambda p, n: 0.45); out.append(dsc)
-    # the doors: the back of it in two leaves, wrenched out and round
+    # the doors: the back of it in two leaves, wrenched right round on what steel still holds them
     mid = [y for y in rows if ya - 1e-6 <= y <= yb + 1e-6]
     for sx in (-1, 1):
         a0, a1 = (PI, PI + W) if sx < 0 else (PI - W, PI)
         leaf = ks.mesh('kegdoor%d' % sx, M['kegplain'], mid, seg=5, a0=a0, a1=a1, deg=40)
         hinge = ks.p((ya + yb) / 2, PI - sx * W)   # its outer edge
         apply_mods(leaf)
-        Rm = Matrix.Translation(gv(*hinge)) @ Matrix.Rotation(-sx * 1.25, 4, gv(0, 1, 0)) @ Matrix.Rotation(sx * 0.12, 4, gv(0, 0, 1)) @ Matrix.Translation(-gv(*hinge))
+        Rm = Matrix.Translation(gv(*hinge)) @ Matrix.Rotation(-sx * (1.75 if sx > 0 else 1.45), 4, gv(0, 1, 0)) @ Matrix.Rotation(sx * 0.1, 4, gv(0, 0, 1)) @ Matrix.Translation(-gv(*hinge))
         leaf.data.transform(Rm)
-        jitter(leaf, 0.006, seed=31 + sx)
-        tint(leaf, lambda p, n: mix3((0.5, 0.46, 0.46), (0.95, 0.4, 0.3), 0.4 * smooth01(abs(p.x), 0.3, 0.12)))
+        jitter(leaf, 0.005, seed=31 + sx)
+        tint(leaf, lambda p, n: mix3((0.62, 0.6, 0.6), (1.0, 0.5, 0.4), 0.35 * smooth01(abs(p.x), 0.34, 0.14)))
         out.append(leaf)
-    # inside: the wet dark of him, and his spine, low down. five bones of it, then nothing for the length of a hand, then one
-    lin = Surf([(ya - 0.01, r * 0.93, r * 0.93, r * 0.93, 0, cz, 2.0), (yb + 0.01, r * 0.93, r * 0.93, r * 0.93, 0, cz, 2.0)]).mesh('cavity', M['wound'], [ya - 0.01, (ya + yb) / 2, yb + 0.01], seg=10, a0=-1.75, a1=1.75)
-    tint(lin, lambda p, n: mix3((0.35, 0.3, 0.3), (1.0, 0.9, 0.9), smooth01(p.z, cz - 0.14, cz - 0.02)))
+    # inside: the wet dark of him. (the keg's front half is sunk in his back, so the dark is a panel on the skin there
+    # and the bones stand a hand in front of it, in what was the boiler)
+    ts = J.S['torso']
+    lin = ts.mesh('cavity', M['wound'], [ya - 0.03, ya + 0.05, (ya + yb) / 2, yb - 0.05, yb + 0.03], seg=8, a0=PI - 0.6, a1=PI + 0.6, off=0.0125)
+    tint(lin, lambda p, n: mix3((0.34, 0.26, 0.26), (1.9, 1.0, 0.9), gauss(p.x, 0.06) * gauss(p.y - (ya + yb) / 2, 0.07)))
     out.append(lin)
-    for yy in (ya - 0.008, yb + 0.008):
-        o = cyl(r * 0.92, 0.003, (0, yy, cz), M['wound'], axis='y', seg=12, name='cavend'); tint(o, lambda p, n: 0.4); out.append(o)
-    sxp, szp = -0.05, cz - 0.07
-    gap = (ya + 0.085, ya + 0.165)
-    yv = ya + 0.012; i = 0
-    while yv < yb - 0.03:
-        if not (gap[0] - 0.012 < yv < gap[1] - 0.012):
-            v = box((0.056, 0.03, 0.05), (sxp, yv, szp), M['bone'], bev=0.007, name='vertebra')
-            out.append(v); out.append(box((0.016, 0.024, 0.04), (sxp, yv - 0.004, szp + 0.04), M['bone'], bev=0.004, rot=(0.5, 0, 0), name='spinous'))
-            for s2 in (-1, 1): out.append(box((0.03, 0.012, 0.016), (sxp + s2 * 0.038, yv, szp + 0.012), M['bone'], bev=0.003, name='transverse'))
-            out.append(cyl(0.022, 0.008, (sxp, yv + 0.019, szp), M['scar'], axis='y', seg=8, name='disc'))
-        yv += 0.038; i += 1
-    # the ends of the gap: still lit, still making blood. threads of it hanging in the gap
-    for yy, s2 in ((gap[0] - 0.006, 1), (gap[1] + 0.012, -1)):
-        out.append(cyl(0.02, 0.012, (sxp, yy, szp), M['marrow'], axis='y', seg=8, name='marrowend'))
+    # his spine: big square bones, the knuckle of each standing out at the back
+    sxp, szp = 0.0, ts.p((ya + yb) / 2, PI, 0.0).z + 0.036
+    ys_ = [ya + 0.022 + i * 0.041 for i in range(6)]
+    gone = (2, 3)
+    for i, yv in enumerate(ys_):
+        if i in gone: continue
+        out.append(box((0.07, 0.032, 0.056), (sxp, yv, szp), M['bone'], bev=0.008, name='vertebra'))
+        out.append(box((0.018, 0.026, 0.05), (sxp, yv - 0.005, szp + 0.045), M['bone'], bev=0.004, rot=(0.5, 0, 0), name='spinous'))
+        for s2 in (-1, 1): out.append(box((0.04, 0.013, 0.018), (sxp + s2 * 0.05, yv, szp + 0.014), M['bone'], bev=0.003, rot=(0, 0, s2 * 0.2), name='transverse'))
+        if i + 1 < len(ys_) and i + 1 not in gone: out.append(cyl(0.027, 0.009, (sxp, yv + 0.0205, szp), M['scar'], axis='y', seg=8, name='disc'))
+    # the ends of the gap: still lit, still making blood. threads of it hanging in the gap, a pool of it in the bottom
+    g0, g1 = ys_[1] + 0.017, ys_[4] - 0.017
+    out.append(cyl(0.026, 0.014, (sxp, g0 + 0.006, szp), M['marrow'], axis='y', seg=8, name='marrowend'))
+    out.append(cyl(0.026, 0.014, (sxp, g1 - 0.006, szp), M['marrow'], axis='y', seg=8, name='marrowend'))
     rr = random.Random(33)
-    for k in range(5):
-        x = sxp + rr.uniform(-0.02, 0.02); z = szp + rr.uniform(-0.015, 0.02); L = rr.uniform(0.02, 0.07)
-        out.append(sweep([(x, gap[1] + 0.008, z), (x + rr.uniform(-0.008, 0.008), gap[1] - L * 0.5, z + 0.004), (x + rr.uniform(-0.01, 0.01), gap[1] - L, z + 0.008)], [0.005, 0.0035, 0.002], M['marrow'], seg=4, name='thread'))
-    out.append(blob('pool', (sxp + 0.01, ya + 0.004, szp + 0.03), (0.06, 0.008, 0.045), M['marrow'], seg=10, rings=6))
-    out.append(sweep([(sxp + 0.02, gap[0] - 0.01, szp + 0.02), (sxp + 0.025, ya + 0.05, szp + 0.03), (sxp + 0.02, ya + 0.01, szp + 0.032)], [0.005, 0.004, 0.006], M['marrow'], seg=4, name='run'))
-    # a copper feed pipe of the boiler's, snapped
-    out.append(sweep([(0.07, yb - 0.01, cz - 0.02), (0.075, yb - 0.07, cz - 0.03), (0.06, yb - 0.11, cz + 0.0)], 0.011, M['copper'], seg=6, name='feedpipe'))
+    for k in range(6):
+        x = sxp + rr.uniform(-0.022, 0.022); z = szp + rr.uniform(-0.015, 0.02); L = rr.uniform(0.02, 0.07)
+        out.append(sweep([(x, g1 - 0.004, z), (x + rr.uniform(-0.008, 0.008), g1 - L * 0.5, z + 0.004), (x + rr.uniform(-0.01, 0.01), g1 - L, z + 0.008)], [0.0055, 0.004, 0.0022], M['marrow'], seg=4, name='thread'))
+    out.append(blob('pool', (sxp + 0.01, ya + 0.0, szp + 0.04), (0.08, 0.009, 0.055), M['marrow'], seg=10, rings=6))
+    out.append(sweep([(sxp + 0.03, g0 + 0.004, szp + 0.022), (sxp + 0.034, ya + 0.05, szp + 0.03), (sxp + 0.03, ya + 0.008, szp + 0.036)], [0.005, 0.004, 0.006], M['marrow'], seg=4, name='run'))
+    # two short ribs off the top bones into the dark, a copper feed pipe of the boiler's, snapped
+    for s2 in (-1, 1):
+        out.append(sweep([(sxp + s2 * 0.06, ys_[4], szp + 0.01), (sxp + s2 * 0.1, ys_[4] - 0.012, szp + 0.0), (sxp + s2 * 0.135, ys_[4] - 0.03, szp - 0.02)], [0.01, 0.009, 0.007], M['bone'], seg=5, name='rib'))
+    out.append(sweep([(0.085, yb + 0.0, szp + 0.03), (0.09, yb - 0.06, szp + 0.02), (0.07, yb - 0.1, szp + 0.05)], 0.011, M['copper'], seg=6, name='feedpipe'))
     J.P.add('spine', out, 'dmgMarrow', note='marrow taken: the keg opened from behind, his lower spine in it with a gap (pj_marrow glows)')
-    J.marks['marrowAt'] = ('spine', (sxp, (gap[0] + gap[1]) / 2, szp), (0, 0, 1))
+    J.marks['marrowAt'] = ('spine', (sxp, (g0 + g1) / 2, szp), (0, 0, 1))
 
 
 def collar_sprung(J):
@@ -220,14 +229,14 @@ def collar_sprung(J):
     left = [(y, a) for y, a in COLLAR if a <= 0.0] + [(0.458, WELD_A - 0.05)]
     out.append(sweep(ts.path(left, off=0.008, n=8), 0.0195, M['steel'], seg=8, name='collar_l'))
     wp = ts.p(0.458, WELD_A - 0.04, 0.008)
-    for i in range(4): out.append(blob('weldstump', (wp.x + 0.004, wp.y + math.cos(i * 1.6) * 0.016, wp.z + math.sin(i * 1.6) * 0.016), (0.011, 0.012, 0.012), M['blued'], seg=8, rings=6))
+    for i in range(4): out.append(blob('weldstump', (wp.x + 0.004, wp.y + math.cos(i * 1.6) * 0.016, wp.z + math.sin(i * 1.6) * 0.016), (0.011, 0.012, 0.012), M['blued'], seg=5, rings=3))
     # the right half: hinged on where it goes under the skin, sprung forward and up
     end = ts.p(0.476, 0.64, 0.008); q0 = ts.p(0.458, WELD_A + 0.06, 0.008)
     tipp = q0 + Vector((0.035, 0.05, -0.085))
     pts = [tuple(end), tuple(end.lerp(tipp, 0.35) + Vector((0, 0.004, -0.012))), tuple(end.lerp(tipp, 0.7) + Vector((0, 0.004, -0.008))), tuple(tipp)]
     bar = sweep(pts, 0.0195, M['steel'], seg=8, name='collar_r'); tint(bar, lambda p, n: mix3((1, 1, 1), (0.62, 0.66, 0.95), 0.7 * gauss((p - tipp).length, 0.05)))
     out.append(bar)
-    for i in range(3): out.append(blob('weldtorn', tuple(tipp + Vector((0.002, math.cos(i * 2.1) * 0.015, math.sin(i * 2.1) * 0.015))), (0.012, 0.011, 0.013), M['blued'], seg=8, rings=6))
+    for i in range(3): out.append(blob('weldtorn', tuple(tipp + Vector((0.002, math.cos(i * 2.1) * 0.015, math.sin(i * 2.1) * 0.015))), (0.012, 0.011, 0.013), M['blued'], seg=5, rings=3))
     # where it tore out of him
     out.append(ts.plate('collartear', M['wound'], 0.47, 0.5, 0.05, 0.12, off=0.006, n=2.2, spokes=10, sink=0.001))
     out.append(ts.line('collarrun', [(0.45, 0.42), (0.41, 0.4), (0.375, 0.44)], 0.006, M['blood'], sink=0.25, seg=4))
@@ -277,14 +286,22 @@ def damage(J):
     wound(J, E); boiler_split(J, X, d); marrow(J, X); collar_sprung(J); locks_blown(J); stacks_bent(J)
 
 
-def run_qa(J, root, tag_of):
-    """the asset-QA gate, group by group: what you see when he's whole, then each damage state's pieces with him"""
+def run_qa(J, root, tag_of, STATES, only=None):
+    """the asset-QA gate, group by group: what you see when he's whole, without the vest, then each damage state
+    (its pieces together with what is left showing of him)"""
     q = not arg('qa-warn')
     allp = [o for o in root.children if o.type == 'MESH' and '__lod' not in o.name and not o.name.endswith('Far')]
     base = [o for o in allp if not tag_of(o).startswith('dmg')]
     res = {}
-    res['whole'] = rpkit.qa('pallet_jack whole', base, eps=0.0008, tol=0.006, quiet=q)
-    res['no_vest'] = rpkit.qa('pallet_jack vest off', [o for o in base if tag_of(o) != 'vest'], eps=0.0008, tol=0.006, quiet=q)
+    want = lambda k: only is None or k in only
+    if want('whole'): res['whole'] = rpkit.qa('pallet_jack whole', base, eps=0.0008, tol=0.006, quiet=q)
+    if want('no_vest'): res['no_vest'] = rpkit.qa('pallet_jack vest off', [o for o in base if tag_of(o) != 'vest'], eps=0.0008, tol=0.006, quiet=q)
     for st in ('run_through', 'armour_broken', 'marrow_taken'):
-        from make_cast_pallet_jack import STATES  # noqa (set by the main script)
+        if not want(st): continue
+        S = STATES[st]
+        objs = [o for o in base if tag_of(o) not in S['off'] and tag_of(o) != 'vest'] + [o for o in allp if tag_of(o) in S['on']]
+        res[st] = rpkit.qa('pallet_jack ' + st, objs, eps=0.0008, tol=0.006, quiet=q)
+    far = [o for o in root.children if o.type == 'MESH' and ('__lod' in o.name or o.name.endswith('Far'))]
+    if want('far'): res['far'] = rpkit.qa('pallet_jack far LOD', far, eps=0.0008, tol=0.03, quiet=q)
+    print('QA_SUMMARY', {k: v.get('pass') for k, v in res.items()})
     return res

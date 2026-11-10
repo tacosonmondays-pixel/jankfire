@@ -9,7 +9,7 @@ import pj_clips
 
 FACES = {'neutral': dict(lid=1, jaw=0, st=1, smile=0.2, by=0, bt=0), 'grin': dict(lid=0.75, jaw=0.3, st=1.85, smile=1, by=0.02, bt=-0.12), 'squint': dict(lid=0.32, jaw=0, st=0.9, smile=0, by=-0.012, bt=0.28),
          'sad': dict(lid=0.65, jaw=0.05, st=0.85, smile=-0.8, by=0.01, bt=-0.5), 'shock': dict(lid=1.25, jaw=0.9, st=0.75, smile=0, by=0.035, bt=-0.1), 'angry': dict(lid=0.62, jaw=0.1, st=1.1, smile=-0.6, by=-0.015, bt=0.55),
-         'jack': dict(lid=0.7, jaw=0, st=1.05, smile=0.5, by=-0.003, bt=-0.3), 'jack_hurt': dict(lid=0.5, jaw=0.16, st=0.95, smile=-0.25, by=0.004, bt=-0.55), 'jack_gone': dict(lid=0.06, jaw=0.12, st=0.95, smile=0.1, by=0, bt=-0.2)}
+         'jack': dict(lid=0.78, jaw=0, st=1.0, smile=0.36, by=-0.003, bt=-0.3), 'jack_hurt': dict(lid=0.5, jaw=0.16, st=0.95, smile=-0.25, by=0.004, bt=-0.55), 'jack_gone': dict(lid=0.06, jaw=0.12, st=0.95, smile=0.1, by=0, bt=-0.2)}
 POSES = [('pj_idle', 1.0, 35, 'fresh', True), ('pj_idle_eating', 1.85, 40, 'fresh', False), ('pj_walk_load', 1.0, 35, 'fresh', False), ('pj_kneel_vest', 3.7, 50, 'fresh', True), ('pj_rig_up', 2.12, 35, 'fresh', False),
          ('pj_rocket_punch', 0.44, 60, 'fresh', False), ('pj_rocket_punch', 0.56, 60, 'fresh', False), ('pj_block', 0.4, 35, 'fresh', False), ('pj_stagger', 0.3, 60, 'fresh', False), ('pj_impaled', 1.2, 60, 'run_through', False),
          ('pj_impaled', 3.6, 40, 'run_through', False), ('pj_break_it', 2.95, 40, 'run_through', False), ('pj_land_kneel', 0.6, 50, 'run_through', False), ('pj_stand_anyway', 3.3, 35, 'run_through', False),
@@ -165,12 +165,14 @@ def run(J, root, fo, sheets, SHEET_DIR, TMP, G):
         for o in bpy.data.objects:
             if o.name.startswith('cast_') and o is not root and o.name not in ('cast_' + ID,): pass
     if 'poses' in sheets:
-        studio(2.0, gv(0, 1.0, 0), key=1.0); floor_disc(4.0)
+        floor_disc(4.0)
+        quick = bool(arg('quick'))
+        if not quick: studio(2.0, gv(0, 1.0, 0), key=1.0)
         ps = []; labs = []
         for i, (name, t, deg, state, vest) in enumerate(POSES):
             PD.pose(name, t, state, vest)
-            h = PD.hips()
-            ps.append(cam_shot(os.path.join(TMP, 'pj_q%d.png' % i), (h[0], max(0.8, h[1] * 0.75 + 0.3), h[2]), deg, 8.6, lens=60, res=(300, 340), samples=8, up=0.1))
+            h = PD.hips(); tgt = (h[0], max(0.8, h[1] * 0.75 + 0.3), h[2]); pth = os.path.join(TMP, 'pj_q%d.png' % i)
+            ps.append(wb_shot(pth, tgt, deg, 9.2, res=(320, 360)) if quick else cam_shot(pth, tgt, deg, 9.2, lens=60, res=(320, 360), samples=8, up=0.1))
             labs.append('%s %.2f' % (name[3:], t))
         rpkit.contact(ps, os.path.join(SHEET_DIR, 'c_pallet_jack_poses'), 'PALLET JACK  pose sheet: one key pose a clip (the game plays these same numbers)', cols=5, labels=labs)
     if 'clips' in sheets:

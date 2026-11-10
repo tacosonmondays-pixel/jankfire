@@ -20,7 +20,7 @@ const clamp = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const ss = (t) => { t = clamp(t); return t * t * (3 - 2 * t); };
 const seg = (t, a, b) => ss((t - a) / (b - a));
 const lerp = (a, b, k) => a + (b - a) * k;
-const EASE = { ss, lin: (u) => u, in: (u) => u * u, out: (u) => 1 - (1 - u) * (1 - u), snap: (u) => 1 - (1 - u) ** 3 };
+const EASE = { ss, lin: (u) => u, in: (u) => u * u, out: (u) => 1 - (1 - u) * (1 - u), snap: (u) => 1 - (1 - u) ** 3, back: (u) => 1 + 2.70158 * (u - 1) ** 3 + 1.70158 * (u - 1) ** 2 };
 const XF = 0.22; // one pj clip into the next: this long, from wherever the last one had him
 
 // ---------------------------------------------------------------- the clips
@@ -30,14 +30,25 @@ const isAbs = (ch) => PJ_DATA.abs.some((p) => ch.startsWith(p));
 const ABS_CH = ['arm', 'armL', 'foreR', 'foreL', 'handR', 'handL', 'neck'].flatMap((j) => ['x', 'y', 'z'].map((a) => j + '.' + a)).concat(['head.z', 'handR.py']);
 const STICKY = (ch) => /^(handR|handL|neck)\.|^head\.z$/.test(ch); // nothing else resets these each frame: set them from their rest
 const AXI = { x: 0, y: 1, z: 2 };
-export function evalClip(name, t, out = {}) {
-  const C = D[name], K = C.keys;
+function poseAt(C, t, out) {
+  const K = C.keys;
   if (C.loop) t %= C.loop;
+  if (t < 0) t = 0;
   let i = 0; while (i < K.length - 2 && t >= K[i + 1].t) i++;
   const a = K[i], b = K[Math.min(i + 1, K.length - 1)];
   const u = EASE[b.e || 'ss'](b.t > a.t ? clamp((t - a.t) / (b.t - a.t)) : 1);
   for (const ch in a.p) out[ch] = a.p[ch] + ((b.p[ch] ?? 0) - a.p[ch]) * u;
   for (const ch in b.p) if (!(ch in a.p)) out[ch] = b.p[ch] * u;
+  return out;
+}
+// the pose at t. the far end of a limb gets there a little late (PJ_DATA.lag): overlap, for free
+const LAG = PJ_DATA.lag || [];
+export function evalClip(name, t, out = {}) {
+  const C = D[name]; poseAt(C, t, out);
+  for (const [pre, lag] of LAG) {
+    let late = null;
+    for (const ch in out) if (ch.startsWith(pre)) { late ||= poseAt(C, t - lag, {}); out[ch] = late[ch] ?? 0; }
+  }
   for (const [ch, amp, f, ph] of C.osc) out[ch] = (out[ch] ?? 0) + amp * Math.sin(t * f + ph);
   return out;
 }
@@ -84,13 +95,13 @@ const STATES = {
   fresh: { on: [], off: [] },
   run_through: { on: ['dmgWound', 'dmgArm', 'dmgBoilerSplit'], off: [] },
   armour_broken: { on: ['dmgWound', 'dmgArm', 'dmgBoilerSplit', 'dmgCollar', 'dmgLockL', 'dmgLockR', 'dmgStackL', 'dmgStackR'], off: ['collar', 'lockL', 'lockR', 'stackL', 'stackR', 'flapL', 'flapR'] },
-  marrow_taken: { on: ['dmgWound', 'dmgArm', 'dmgMarrow', 'dmgCollar', 'dmgLockL', 'dmgLockR', 'dmgStackL', 'dmgStackR'], off: ['boiler', 'fire', 'collar', 'lockL', 'lockR', 'stackL', 'stackR', 'flapL', 'flapR'] },
+  marrow_taken: { on: ['dmgWound', 'dmgMarrow', 'dmgCollar', 'dmgLockL', 'dmgLockR', 'dmgStackL', 'dmgStackR'], off: ['boiler', 'fire', 'collar', 'lockL', 'lockR', 'stackL', 'stackR', 'flapL', 'flapR'] },
 };
 // the moving pieces: pivot and axis in their joint's frame. these are the model's own numbers (c_pallet_jack.parts.json
 // `moving`), copied here so nothing waits on a fetch; the file is read too and wins if the model has changed
 const MOVING = {
-  stackL: { axis: [-0.128, 0.979, 0.159] }, stackR: { axis: [0.128, 0.979, 0.159] }, flapL: { axis: [0.99, 0.13, 0] }, flapR: { axis: [0.99, -0.13, 0] },
-  lockL: { axis: [0, 0, 1], shut: -2.1916 }, lockR: { axis: [0, 0, 1], shut: 2.1916 }, cock: { axis: [0, 1, 0] }, needle: { axis: [0, -0.5, -0.86] }, valve: { axis: [0, 1, 0] },
+  stackL: { axis: [-0.1254, 0.9836, 0.1297] }, stackR: { axis: [0.1254, 0.9836, 0.1297] }, flapL: { axis: [0.9921, 0.1254, 0.0082] }, flapR: { axis: [0.9921, -0.1254, -0.0082] },
+  lockL: { axis: [0, 0, 1], shut: -2.1916 }, lockR: { axis: [0, 0, 1], shut: 2.1916 }, cock: { axis: [0, 1, 0] }, needle: { axis: [0.6138, -0.6561, -0.439] }, valve: { axis: [0, 1, 0] },
 };
 const RIG = { stackRise: 0.07, flapOpen: 1.2, cockPull: 0.04, punchReach: 0.24 };
 let META = null;
@@ -107,7 +118,7 @@ export const PJ = {
   play(a, clip, opts = {}) { pjRegister(); playClip(a, clip, opts); },
   dmg(a, state) { rigOf(a).dmg(state); },
   vest(a, on) { const r = rigOf(a); r.vestOn = !!on; r.vis(); },
-  arm(a, on) { const r = rigOf(a); r.armOn = !!on; r.vis(); },
+  arm(a, on) { const r = rigOf(a); r.armOn = on == null ? null : !!on; r.vis(); }, // (null = whatever his state says)
   set(a, v) { const r = rigOf(a); Object.assign(r.x, v); r.pin = { ...(r.pin || {}), ...v }; r.machine(0); },
   at(a, name) { const r = rigOf(a); return r.at(name); },
   rig: (a) => rigOf(a),
@@ -147,7 +158,7 @@ function rigOf(a) {
 }
 function makeRig(a) {
   const L = a.L, c = a.ch, S = c.root.scale.x;
-  const r = { a, last: null, lastT: -1, far: null, state: 'fresh', show: {}, hide: {}, vestOn: true, armOn: true, x: { rig: 0, cock: 0, flap: 0, vent: 0, needle: 0.3 }, pin: null,
+  const r = { a, last: null, lastT: -1, far: null, state: 'fresh', show: {}, hide: {}, vestOn: true, armOn: null, x: { rig: 0, cock: 0, flap: 0, vent: 0, needle: 0.3 }, pin: null,
     steamT: 0, ventT: 0, t: 0, mov: {}, props: {}, faceI: -1 };
   // the moving pieces: each tagged group's meshes sit at their pivot (the model's node origin). hang them off a pivot
   // group so they turn and slide about it, in their joint's frame
@@ -179,7 +190,8 @@ function makeRig(a) {
       if (k === 'lod' || k === 'headJoint' || !gs[0] || (!gs[0].userData.blender && !gs[0].userData.codeOnly)) continue; // (markers have nothing to show)
       let on;
       if (k === 'dmgVestFar') on = far && r.vestOn;
-      else if (k.startsWith('dmg')) on = !far && st.on.includes(k) && (k !== 'dmgArm' || r.armOn);
+      else if (k === 'dmgArm') on = !far && (r.armOn ?? st.on.includes(k)); // (the length of arm through him: the state says, unless the scene has said)
+      else if (k.startsWith('dmg')) on = !far && st.on.includes(k);
       else if (k === 'vest') on = !far && r.vestOn;
       else on = !far && !st.off.includes(k);
       for (const gp of gs) gp.visible = on;
