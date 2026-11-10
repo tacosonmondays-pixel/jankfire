@@ -116,7 +116,7 @@ export const LOCATIONS = {
   'gut:digester_wall': { district: 'gut', name: 'The Digester Wall', desc: 'Where the Bottom\'s missing are, half grown in, still talking.' },
   'gut:feed_dock': { district: 'gut', name: 'The Feed Dock', desc: 'Where the Gristle & Sons trucks unload. Quiet. Always quiet.' },
   'gut:belly_button': { district: 'gut', name: 'The Belly Button', desc: "A door at the bottom of the Big Stomach. Don't press it." },
-  'gut:clinic_bev': { district: 'gut', name: "Bev's Clinic", desc: "A back room on the Gut border. A dentist's chair. A bucket." },
+  'gut:clinic_bev': { district: 'gut', name: "Bev's Clinic", desc: "A back room on the Gut border. A dentist's chair. A bucket. A shelf of jars with dates on." },
   // pinstripe
   'pinstripe:villa': { district: 'pinstripe', name: 'Villa Fazzoletto', desc: 'A cathedral of marble and meatballs. The strings go up into the dark.' },
   'pinstripe:rafters': { district: 'pinstripe', name: 'The Rafters', desc: 'Above the Villa ceiling. Someone works the strings from here.' },
@@ -185,7 +185,7 @@ export const LOCATIONS = {
   'corphill:clock_room': { district: 'corphill', name: 'The Clock Room', desc: 'Behind the Master Clock. A second, smaller Machine. Something is asleep on it.' },
   // the commute
   'commute:spiral_freeway': { district: 'commute', name: 'The Spiral Freeway', desc: 'A ramp that circles the hill four times.' },
-  'commute:ring_road': { district: 'commute', name: 'The Ring Road', desc: 'Jammed with the evening rush of the Final Quarter.' },
+  'commute:ring_road': { district: 'commute', name: 'The Ring Road', desc: 'Jammed with the evening rush of the Final Quarter. Everybody is still in their car.' },
   'commute:unpaid_camp': { district: 'commute', name: 'Camp Onboarding', desc: "The Unpaid's biggest camp. A bus depot made of desks." },
   'commute:carnival': { district: 'commute', name: 'The Fun Fair', desc: "The Fun Department's carnival. Only at night." },
   'commute:gary_crater': { district: 'commute', name: "Gary's Site Office", desc: 'A portacabin on the lip of a crater. The region.' },
@@ -200,7 +200,7 @@ export const LOCATIONS = {
   'sims:print_room': { district: 'sims', name: 'The Print Room', desc: 'The 60th-floor print room. The tape drive is slow.' },
   'sims:stairwell': { district: 'sims', name: 'Stairwell B', desc: 'Sixty floors of stairs. The sirens start at 17:20.' },
   'sims:lobby': { district: 'sims', name: 'The Lobby (17:29)', desc: 'The doors are right there.' },
-  'sims:suburb': { district: 'sims', name: 'Suburb (sim)', desc: 'The training sim the story starts in.' },
+  'sims:suburb': { district: 'sims', name: 'Suburb (sim)', desc: 'The training sim the story starts in. A nice street on a nice day. It has been that day for sixty-one years.' },
   'sims:warehouse': { district: 'sims', name: 'Warehouse (sim)', desc: 'The Warehouse training map. Gary\'s site office is here, and a vending machine that is in no other match.' },
   'sims:school_gate': { district: 'sims', name: 'Hillside Primary (sim)', desc: 'A school gate at 17:30. A sim nobody plays.' },
 };

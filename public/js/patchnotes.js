@@ -1,6 +1,14 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '7.4', date: '2026-11-10', title: 'GROUND FLOOR, AND ANOTHER FLOOR', items: [
+    'two new zombies maps, both with an upstairs: JANKFIELD HIGH and SECOND OPINION GENERAL. take the stairs. or the ramp. it is a ramp, legally.',
+    'each map has its own zombies. students, teachers, lunch ladies. patients, nurses, surgeons. the surgeon brought paddles.',
+    'DESERT has actual ground now: hills, hollows and two dry washes between the buildings. streets and buildings stay level, cacti ride the bumps.',
+    'the oasis is a real pond: wade in, the sand drops away, you float. hold crouch to dive and hide on the bottom.',
+    'more maps got real ground: grassy dunes on ISLANDS, sand drifts in the BAZAAR, a lumpy FOREST floor, and lawns that roll a bit in SUBURB.',
+    'water everywhere got finer ripples and stops flickering.',
+  ] },
   { v: '7.3', date: '2026-11-10', title: 'LIMBS OPTIONAL', items: [
     'ZOMBIES come apart now. shoot an arm or a leg enough and it pops off, still twitching. +10 a limb.',
     'no legs: it drags itself along the floor, slow, and can\'t get you on a crate. one leg: it hops. no arms: it headbutts you for half and is useless at planks.',
@@ -10,7 +18,9 @@ export const PATCH_NOTES = [
     'four more colas, one in every wing: LEG DAY (run faster), DEEP POCKETS (more ammo), THIRD HAND (three guns), GET UP JUICE (get back up by yourself, once). three at a time. go down and they\'re gone.',
     'ZOMBIES: every fifth round is a BOSS ROUND. THE FLOOR MANAGER calls meetings (ankle biters, everyone speeds up) and charges at you. THE MASCOT jumps on you and the floor ripples. long HP bar, no one-shots. drop it and everyone gets paid.',
     'SUBURB got real houses: gables, awnings, porches, three kinds of house, and the store has a sign and a giant slush cup. the south tower on Skyline got fire escapes. same walls to hide behind, they just look like somebody lives there.',
+    'DESERT\'s adobe huts got the same treatment as the suburb: plastered walls, roof beams poking out, a doorway you would actually duck through. same cover as before.',
     'rocks are rocks now. the boulders and far formations on Desert, Bazaar and Scary Forest are proper lumpy stone instead of red bricks. they block bullets exactly like before.',
+    'the SMOKE BOMB is real smoke now: a thick soft cloud instead of grey squares. things that fall in water make a crown and foam rings. settings > video has other smoke styles (comic puffs, kenney, wispy) and the old squares if you miss them.',
   ] },
   { v: '7.2', date: '2026-11-10', title: 'THUMBS', items: [
     'JANKFIRE runs on phones and tablets now. open it in your phone\'s browser, turn it sideways, go.',

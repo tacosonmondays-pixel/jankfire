@@ -144,20 +144,24 @@ void main() {
 #endif
 #ifdef LQ_RIP2
   if (dc < 45.0) g += lqT(vW.xz * 2.3 - vec2(t * 0.19, -t * 0.27)).yz * 0.55;
+  if (dc < 22.0) { // close up: two finer layers crossing each other, fading in as you get near (small wind ripples)
+    float nr = 1.0 - dc / 22.0;
+    g += (lqT(vW.xz * 5.3 + vec2(-t * 0.31, t * 0.17)).yz * 0.34 + lqT(vW.zx * 9.7 + vec2(t * 0.41, t * 0.29)).zy * 0.2) * nr;
+  }
 #endif
-  float nk = 0.06;
+  float nk = 0.085; // (0.06 before the finer close-up ripples went in)
 #ifdef LQ_NMAP
   // option B (Settings: painted water ripples): a drawn ripple normal map, two layers sliding across each other
   if (dc < 140.0) { vec2 r1 = texture2D(uRip, vW.xz * 0.085 + vec2(t * 0.021, t * 0.013)).xy * 2.0 - 1.0, r2 = texture2D(uRip, vW.zx * 0.19 - vec2(t * 0.034, -t * 0.026)).xy * 2.0 - 1.0;
-    float nf = 1.0 - smoothstep(70.0, 140.0, dc); g = mix(g, r1 * 1.5 + r2 * 0.9, nf); nk = mix(0.06, 0.2, nf); }
+    float nf = 1.0 - smoothstep(70.0, 140.0, dc); g = mix(g, r1 * 1.5 + r2 * 0.9, nf); nk = mix(0.085, 0.2, nf); }
 #endif
   vec3 N = normalize(vNw + vec3(-g.x, 0.0, -g.y) * nk * top);
   float ndv = max(dot(N, V), 0.0), fr = 0.03 + 0.97 * pow(1.0 - ndv, 5.0);
-  float dk = smoothstep(0.0, 2.6, depth);
+  float dk = smoothstep(0.0, 2.2, depth);
   vec3 col = mix(uShal, uDeep, clamp(max(dk, fr * 0.8), 0.0, 1.0));
   // light on the wave faces: a lit band toward the sun (2 steps)
   float l = dot(N, uSun);
-  col *= 0.9 + 0.18 * step(0.5, l + g.x * 0.12) * (1.0 - uNight * 0.7);
+  col *= 0.9 + 0.18 * smoothstep(0.38, 0.62, l + g.x * 0.12) * (1.0 - uNight * 0.7); // (a soft edge: the hard band flickered with the finer ripples)
   // the sky in it
   vec3 R = reflect(-V, N);
   vec3 sky = mix(uSkyM, uSkyT, smoothstep(0.0, 0.55, R.y));

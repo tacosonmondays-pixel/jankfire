@@ -70,7 +70,7 @@ import { specFPOn } from './specfp.js'; // plant & defuse: first-person spectati
 import { pipFrame } from './pip.js'; // the first-person corner box while spectating
 import { sprayRangeFrame } from './sprayrange.js'; // Training's spray range
 import { chaosSpecId, pitErupt, underSea } from './chaos.js';
-import { sink, bottomOut, mire } from '/shared/pits.js';
+import { sink, bottomOut, swim, mire } from '/shared/pits.js';
 import { brSpecId } from './royale.js';
 import { initMinimap, minimapFrame } from './minimap.js'; // the HUD minimap (SAT-NAV)
 import { initLeaderTabs, showLeaders } from './leadmodes.js'; // per-mode leaderboard tabs
@@ -2014,7 +2014,7 @@ function frame(t) {
     } : {};
     jumpPressed = false;
     acc += dt;
-    while (acc >= STEP) { if (!(G.story && G.story.drive(STEP, inp, now))) stepPlayer(STEP, inp, now); carCollide(STEP); airTick(now); lavaStep(now); if (ME.alive) { sink(MAPS[MAP.id], ME.pos, ME.vel); mire(MAPS[MAP.id], ME.pos, ME.vel, STEP, !!ME.hook); bottomOut(MAPS[MAP.id], ME.pos, ME.vel); } // (deep sea: you sink, you don't fall through it. the river, the street: you stop on them)
+    while (acc >= STEP) { if (!(G.story && G.story.drive(STEP, inp, now))) stepPlayer(STEP, inp, now); carCollide(STEP); airTick(now); lavaStep(now); if (ME.alive) { sink(MAPS[MAP.id], ME.pos, ME.vel); mire(MAPS[MAP.id], ME.pos, ME.vel, STEP, !!ME.hook); ME.swim = swim(MAPS[MAP.id], BOXES, ME.pos, ME.vel, STEP, inp.crouch); bottomOut(MAPS[MAP.id], ME.pos, ME.vel); } // (deep sea: you sink, you don't fall through it. the river, the street: you stop on them)
       inp.jumpPressed = false; acc -= STEP; } // (OVERDUE: in a story car, the car steps instead)
     grabStep(now); // held in a shredder's intake
     pinStep(now); // nailed to a wall
