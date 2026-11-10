@@ -15,7 +15,7 @@ argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 OUT = argv[0] if argv else os.path.join(OUTDIR, 'volcano.glb')
 HERE = os.path.dirname(os.path.abspath(__file__))
 MATS.update({'brock': ('stucco', '#75687f', {}), 'brockband': ('stucco', '#54485e', {}), 'bash': ('stucco', '#958a98', {}), 'bpath': ('stucco', '#b0a2a6', {}),
-             'bflow': ('stucco', '#352c3c', {}), 'bcrack': ('stucco', '#ff7a30', {}), 'blava': ('stucco', '#ffb030', {}), 'bscree': ('stucco', '#62566c', {})})
+             'bflow': ('stucco', '#352c3c', {}), 'bcrack': ('stucco', '#ff7a30', {}), 'blava': ('stucco', '#ffb030', {}), 'bscree': ('stucco', '#62566c', {}), 'bapron': ('stucco', '#6f7458', {})})
 NOCAST.update({'bcrack', 'blava', 'bscree'})
 K = Kit(os.path.join(HERE, 'boxes', 'volcano.json'), seed=3)
 K.ground = -1e9
@@ -42,9 +42,17 @@ def hsh(*a):
 def dang(a, b): return (a - b + math.pi) % (2 * math.pi) - math.pi
 
 
-def foot(th):  # the foot's radius along a spoke: an oval, lobed
-    lobes = 1 + 0.07 * math.sin(3 * th + 0.6) + 0.04 * math.sin(5 * th + 2.1)
-    return lobes / math.sqrt((math.cos(th) / A) ** 2 + (math.sin(th) / BZ) ** 2)
+def gb(th, m, w): return math.exp(-(dang(th, math.radians(m)) / math.radians(w)) ** 2)
+
+
+def foot(th):
+    """the foot's radius along a spoke: NOT round. a lava delta north, a long ridge spur west-north-west, an east
+    buttress, a south-west shoulder, a collapsed flank south-east; kept off the tiki village (south) and the shores"""
+    r = 17 + 5 * gb(th, -90, 14) + 8 * gb(th, 200, 13) + 4.5 * gb(th, -20, 16) + 3 * gb(th, 140, 18) - 4 * gb(th, 50, 20) + 0.8 * math.sin(5 * th) + 0.5 * math.sin(9 * th)
+    sn, cs = math.sin(th), math.cos(th)
+    if sn > 0.05: r = min(r, 14.5 / sn)
+    if abs(cs) > 0.05: r = min(r, 26 / abs(cs))
+    return r
 
 
 def rim(th):  # the crest's height: broken, a notch north (the lava's way out), a gap south (the trail's way in)
@@ -81,7 +89,7 @@ def flow_at(th, t):
     return False
 
 
-def lava_at(th, t): return abs(dang(th, TH_N + 0.09 * math.sin(t * 7))) < (0.035 + 0.03 * t)
+def lava_at(th, t): return abs(dang(th, TH_N + 0.07 * math.sin(t * 7))) < (0.03 + 0.05 * t ** 2)  # (it fans out on the delta)
 
 
 def height(th, s):
@@ -95,10 +103,11 @@ def height(th, s):
     bell = math.sin(math.pi * min(1, t)) ** 0.8
     y -= (1.5 * (1 - abs(math.sin(5.5 * th + 0.7 + 0.5 * t))) ** 1.6 + 0.6 * (1 - abs(math.sin(9.5 * th + 2.0 - 0.8 * t))) ** 2) * bell * (0.5 + 0.5 * t)  # gullies between sharp ribs, deeper lower down
     y += (hsh(round(th * 40), round(t * 30)) - 0.5) * 0.28 * bell
+    y -= 1.5 * gb(th, 50, 16) * math.sin(math.pi * min(1, max(0, (t - 0.15) / 0.7)))  # the collapsed flank: a bite out of it
     kind = 'flank'
     if flow_at(th, t): y += 0.28; kind = 'flow'
     if lava_at(th, t): y -= 0.4; kind = 'lava'
-    d, tp = trail_d(th, t)  # the trail: a ledge cut level across its width
+    d, tp = 9, 0
     if d < PW * 2.2:
         yp = flank(th, tp) - 0.45 * math.sin(math.pi * min(1, tp)) ** 0.8
         if d < PW: return yp, 'path'
@@ -108,15 +117,17 @@ def height(th, s):
 
 
 # the rings: denser where the shape turns (the crater, the crest), even down the flank
-S = [0.0, 0.045, SF, 0.12, 0.155, 0.185, SR] + [SR + (1 - SR) * (i / 40) ** 0.85 for i in range(1, 41)]
+S = [0.0, 0.045, SF, 0.12, 0.155, 0.185, SR] + [SR + (1 - SR) * (i / 40) ** 0.85 for i in range(1, 41)] + [1.06, 1.13, 1.2, 1.28]
 P = []; KIND = []
 for i, s in enumerate(S):
     row = []; krow = []
     for j in range(NT):
         th = 2 * math.pi * j / NT
-        r = RT + (foot(th) - RT) * s
+        rc = 5.6 + 0.4 * math.sin(3 * th + 1)  # the crest's radius: the crater is the same arena whatever the foot does
+        r = RT + (rc - RT) * (s / SR) if s <= SR else rc + (foot(th) - rc) * ((s - SR) / (1 - SR))
         y, kd = height(th, s)
-        if i == len(S) - 1: y = -0.25; r += 0.5  # the foot, a bit into the sand
+        if s > 1:  # the apron: lumps fading out, its edge ragged and under the sand
+            ap = (s - 1) / 0.28; y = 0.55 * (1 - ap) ** 1.5 * (0.4 + hsh(round(th * 30), i)) - 0.3 * ap ** 3; r += (hsh(j, 77) - 0.5) * 2.2 * ap
         row.append(Vector((CX + math.cos(th) * r, y, CZ + math.sin(th) * r))); krow.append(kd)
     P.append(row); KIND.append(krow)
 
@@ -129,6 +140,7 @@ def up(t3, m):
 def mat_for(i, j, ny):
     kd = KIND[i][j]; s = (S[i] + S[i + 1]) / 2
     if kd == 'floor': return 'bash'
+    if S[i] >= 1: return 'bapron' if hsh(i, j // 2, 9) < 0.55 + 0.4 * (S[i] - 1) / 0.28 else 'brock'
     if kd == 'path': return 'bpath'
     if kd == 'flow': return 'bflow'
     if kd == 'lava': return 'bcrack'
@@ -177,10 +189,10 @@ for j in range(0, NT, 4):
 
 # fallen rock round the foot: wedges, none through another
 ST = []
-for k in range(46):
-    th = hsh(k, 60) * 2 * math.pi; r = foot(th) + 0.3 + 2.2 * hsh(k, 61) ** 2; s = 0.25 + 0.75 * hsh(k, 62) ** 2
+for k in range(110):
+    th = hsh(k, 60) * 2 * math.pi; r = foot(th) * (1.02 + 0.3 * hsh(k, 61) ** 1.5); s = 0.25 + 0.75 * hsh(k, 62) ** 2
     sx, sz = CX + math.cos(th) * r, CZ + math.sin(th) * r
-    if abs(dang(th, TH_S)) < ZW + 0.1 or abs(dang(th, TH_N)) < 0.15: continue  # (the path's foot and the lava's run stay clear)
+    if abs(dang(th, TH_N)) < 0.15: continue  # (the path's foot and the lava's run stay clear)
     if any((sx - px) ** 2 + (sz - pz) ** 2 < (s + ps) ** 2 for px, pz, ps in ST): continue
     ST.append((sx, sz, s)); yaw = hsh(k, 63) * 6.28
     base = [Vector((sx + math.cos(yaw + q * 1.6 + 0.3 * hsh(k, q)) * s, -0.05 + 0.003 * k, sz + math.sin(yaw + q * 1.6 + 0.3 * hsh(k, q)) * s * 0.8)) for q in range(4)]
