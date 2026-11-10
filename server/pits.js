@@ -1,7 +1,7 @@
 // Pits that hurt (shared/pits.js): the lava down Mount Kaboom's throat. stand in it and you burn, climb out and you
 // keep burning for a moment; die in there and what's left of you gets coughed back out of the crater. nobody owns the
 // lava: whoever knocked you in gets the kill (room.kill does that for 'lava' already).
-import { PIT, inPit } from '../shared/pits.js';
+import { PIT, inPit, pitUnderLine } from '../shared/pits.js';
 
 export function installPits(Room, U) {
   const { now, r2 } = U;
@@ -12,6 +12,12 @@ export function installPits(Room, U) {
       for (const p of this.players.values()) {
         if (!p.alive) { p.pitBurn = 0; continue; }
         const q = inPit(this.map, p.pos);
+        if (q && q.kind === 'lava' && p.pos[1] < pitUnderLine(q)) { // sunk till their head went under: gone, whatever HP was left
+          p.hzT = n; p.vel = [(Math.random() - 0.5) * 7, L.erupt, (Math.random() - 0.5) * 7];
+          this.broadcast({ t: 'sizzle', id: p.id, p: p.pos.map(r2), hz: 1 });
+          this.damage(p, 9999, null, 'lava');
+          continue;
+        }
         if (q && q.kind === 'lava' && n >= (p.pitNext || 0)) {
           p.pitNext = n + L.every * 1000; p.pitBurn = n + L.burn * 1000; p.pitBurnT = n + L.burnEvery * 1000; p.hzT = n;
           this.broadcast({ t: 'sizzle', id: p.id, p: p.pos.map(r2), hz: 1 });

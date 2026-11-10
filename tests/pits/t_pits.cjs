@@ -29,9 +29,16 @@ if (require.main === module) (async () => {
     await hold(c, [0, 9.4, 2], 600); ok('rim is safe', c.alive && c.sizz === 0, `sizz ${c.sizz}`);
     const ms = await hold(c, [0, 3.9, -3], 6000); const k = c.kills.find((m) => m.v === c.id);
     ok('lava kills', !c.alive && k && k.w === 'lava' && k.hz === 1, JSON.stringify(k));
-    ok('over time, not at once', ms > 1200 && ms < 2600 && c.sizz >= 5, `${ms} ms, ${c.sizz} sizzles`);
+    ok('over time, not at once', ms > 1800 && ms < 3400 && c.sizz >= 7, `${ms} ms, ${c.sizz} sizzles`);
     ok('erupts', k && k.vel[1] > 10, k && k.vel);
   });
+  // 1b. sunk till your head's under: gone at once, whatever HP you had
+  await run('islands', async (c) => {
+    const ms = await hold(c, [0, 2.5, -3], 3000); const k = c.kills.find((m) => m.v === c.id);
+    ok('head under the lava = dead at once', !c.alive && ms < 500 && k && k.w === 'lava' && k.hz === 1 && k.vel[1] > 10, `${ms} ms ${JSON.stringify(k && k.vel)}`);
+    await hold(c, [0, 2.9, -3], 300);
+  });
+  await run('islands', async (c) => { await hold(c, [0, 2.9, -3], 700); ok('neck deep is still alive (burning)', c.alive && c.sizz >= 2, `sizz ${c.sizz}`); });
   // 2. hop in and out: afterburn, survive
   await run('islands', async (c) => {
     await hold(c, [0, 3.9, -3], 420); const s = c.sizz; await hold(c, [0, 9.4, 2], 2600);
