@@ -2385,12 +2385,12 @@ function camel(L, x, z, alongX) { // a very boxy camel. it judges you
 function dune(D, x, z, w, d, h) { // a dune: flattened layers of sand, smaller as they go up
   for (let i = 0; i < 4; i++) { const k = 1 - i * 0.24; D.box(x + i * w * 0.04, (h / 4) * (i + 0.5) - 0.05, z, w * k, h / 4, d * k, 'sand'); }
 }
-function rocks(D, x, z, s, r) { // a rock formation: a banded mesa with a few blocks stacked off it
+function rocks(D, x, z, s, r, tag) { // a rock formation: a banded mesa with a few blocks stacked off it. tag: { av, ai } when a Blender rock model draws it
   const h = s * (1.1 + r() * 0.8);
-  D.box(x, h / 2, z, s * 1.6, h, s, 'rock');
-  D.box(x + s * 0.2, h + s * 0.12, z - s * 0.1, s * 1.1, s * 0.24, s * 0.7, 'rock');
-  if (r() < 0.6) D.box(x - s * 0.9, h * 0.3, z + s * 0.3, s * 0.7, h * 0.6, s * 0.7, 'rock');
-  if (r() < 0.5) D.box(x + s * 1.1, h * 0.2, z - s * 0.4, s * 0.5, h * 0.4, s * 0.6, 'rock');
+  D.box(x, h / 2, z, s * 1.6, h, s, 'rock', tag);
+  D.box(x + s * 0.2, h + s * 0.12, z - s * 0.1, s * 1.1, s * 0.24, s * 0.7, 'rock', tag);
+  if (r() < 0.6) D.box(x - s * 0.9, h * 0.3, z + s * 0.3, s * 0.7, h * 0.6, s * 0.7, 'rock', tag);
+  if (r() < 0.5) D.box(x + s * 1.1, h * 0.2, z - s * 0.4, s * 0.5, h * 0.4, s * 0.6, 'rock', tag);
 }
 
 // ---- the frontier kit (both Desert layouts): false-front buildings on a boardwalk, a wind pump, water towers, the
@@ -2554,9 +2554,9 @@ function lipFence(B, x, z0, z1) { // a rail fence along the canyon's lip at x (n
   const n = Math.max(1, Math.round((z1 - z0) / 3)); for (let i = 0; i <= n; i++) B.box(x, 0.6, z0 + ((z1 - z0) * i) / n, 0.2, 1.2, 0.2, 'wood');
   B.add(x - 0.05, 0.85, z0, x + 0.05, 0.95, z1, 'wood');
 }
-function boulders(B, x0, z0, x1, z1, n, rv, edge = 0, skip = null) { // edge: +-1 = on that rim of the canyon (x +-7), flush with the lip
+function boulders(B, x0, z0, x1, z1, n, rv, edge = 0, skip = null, tag) { // edge: +-1 = on that rim of the canyon (x +-7), flush with the lip
   for (let i = 0; i < n; i++) { const t = (i + 0.2 + rv() * 0.6) / n, x = x0 + (x1 - x0) * t + (rv() - 0.5) * 1.2, z = z0 + (z1 - z0) * t, s = 0.9 + rv() * 1.3;
-    if (rv() < 0.8) { const w = s * (1 + rv() * 0.6); if (!(skip && skip(z, s))) B.box(edge ? edge * (6.7 + w / 2) : x, s * 0.4, z, w, s * 0.8, s, 'rock'); } }
+    if (rv() < 0.8) { const w = s * (1 + rv() * 0.6); if (!(skip && skip(z, s))) B.box(edge ? edge * (6.7 + w / 2) : x, s * 0.4, z, w, s * 0.8, s, 'rock', tag); } }
 }
 
 // ------------------------------------------------------------ DESERT: Dry Gulch, a frontier town split by a canyon.
@@ -2671,7 +2671,8 @@ function desert() {
   for (const [x, z] of [[38, -44], [39.2, -42.6]]) B.box(x, 0.45, z, 0.9, 0.9, 0.9, 'toyred');
   // the canyon's rims: boulders between the crossings, a rail fence here and there (it's a long way down)
   const fenced = (z, s) => (z + s / 2 > -31 && z - s / 2 < -17) || (z + s / 2 > 23 && z - s / 2 < 37); // (where the rail fences are)
-  for (const sx of [-1, 1]) { const ex = sx * 8.4; boulders(B, ex, -96, ex, -64, 6, rv, sx); boulders(B, ex, -54, ex, -8, 8, rv, sx, fenced); boulders(B, ex, 8, ex, 54, 8, rv, sx, fenced); boulders(B, ex, 66, ex, 96, 6, rv, sx); // (on the lip: no strip between a rock and the drop to get stuck in)
+  B.boxes.arch.push({ id: 'rocks_desert', p: [0, 0, 0], r: 0 }); const RK = { av: 'rocks_desert', ai: B.boxes.arch.length - 1 }; // the rim boulders and the far formations: one Blender rock model for the map (look only)
+  for (const sx of [-1, 1]) { const ex = sx * 8.4; boulders(B, ex, -96, ex, -64, 6, rv, sx, null, RK); boulders(B, ex, -54, ex, -8, 8, rv, sx, fenced, RK); boulders(B, ex, 8, ex, 54, 8, rv, sx, fenced, RK); boulders(B, ex, 66, ex, 96, 6, rv, sx, null, RK); // (on the lip: no strip between a rock and the drop to get stuck in)
     for (const [z0, z1] of [[-30, -18], [24, 36]]) { for (let z = z0; z <= z1; z += 3) B.box(ex - sx * 0.6, 0.6, z, 0.2, 1.2, 0.2, 'wood'); add(ex - sx * 0.6 - 0.05, 0.85, z0, ex - sx * 0.6 + 0.05, 0.95, z1, 'wood'); } }
   // ---- over the canyon
   trestle(B, D, -7, 7, -60);
@@ -2753,7 +2754,7 @@ function desert() {
   // ---- the desert round the town (render-only): dunes, rock formations, a caravan camped outside the east gate, more palms
   for (let i = 0; i < 46; i++) { const a = ro() * Math.PI * 2, d = 130 + ro() * 230, x = Math.cos(a) * d, z = Math.sin(a) * d, w = 30 + ro() * 60, dd = 18 + ro() * 36, h = 5 + ro() * 12;
     if (Math.abs(x) < 26 || Math.abs(z) < 14 || (x + w / 2 > -160 && x - w / 2 < -95) || (Math.abs(x) - w / 2 < 106 && Math.abs(z) - dd / 2 < 106)) continue; dune(D, x, z, w, dd, h); } // (not on the track west of the town, traffic.js; not into the town)
-  for (let i = 0; i < 16; i++) { const a = ro() * Math.PI * 2, d = 190 + ro() * 220, x = Math.cos(a) * d, z = Math.sin(a) * d; if (Math.abs(x) < 30 || Math.abs(z) < 20 || (x > -185 && x < -80)) continue; rocks(D, x, z, 12 + ro() * 20, ro); }
+  for (let i = 0; i < 16; i++) { const a = ro() * Math.PI * 2, d = 190 + ro() * 220, x = Math.cos(a) * d, z = Math.sin(a) * d; if (Math.abs(x) < 30 || Math.abs(z) < 20 || (x > -185 && x < -80)) continue; rocks(D, x, z, 12 + ro() * 20, ro, RK); }
   for (const [x, z, c] of [[124, -14, 'cloth'], [134, 10, 'toyyellow'], [146, -6, 'leopard']]) tent(Dw, x, z, c);
   for (const [x, z, ax] of [[118, 18, true], [128, 22, false], [142, 16, true], [152, 0, false]]) camel(Dw, x, z, ax);
   Dw(132, 0, -2, 134, 0.4, 0, 'stone'); Dw(132.5, 0.4, -1.5, 133.5, 1.0, -0.5, 'neonred'); // the campfire
