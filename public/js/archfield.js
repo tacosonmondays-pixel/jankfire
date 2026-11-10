@@ -9,7 +9,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // the models that exist (so nothing 404s asking for one that doesn't)
-export const ARCH_IDS = new Set(['home', 'store', 'tenement', 'rocks_desert', 'rocks_desert_sd', 'rocks_bazaar', 'rocks_bazaar_sd', 'rocks_forest']);
+export const ARCH_IDS = new Set(['home', 'store', 'tenement', 'rocks_desert', 'rocks_desert_sd', 'rocks_bazaar', 'rocks_bazaar_sd', 'rocks_forest', 'rocks_islands', 'rocks_islands_sd']);
 // map material keys -> the paint a Blender building takes on (its '@siding' / '@roof' / '@trim' parts)
 const PAINT = {
   sidepink: '#ff7ec0', sidelemon: '#f2e25a', sidelilac: '#b08cff', sidemint: '#74e8b8', sideorange: '#ff9a3c', blue: '#7aa8e0', white: '#ece8dc', yellow: '#ecd27a', mint: '#98d8b4',
