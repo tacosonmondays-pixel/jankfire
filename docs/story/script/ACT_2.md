@@ -8,7 +8,7 @@ _Auntie lays out her wall of evidence: six companies signed the end of the world
 
 **Where:** The Lost & Found (THE BOTTOM), Gordo's Den (THE BOTTOM), The Machine (THE BOTTOM)  
 **Who:** AUNTIE SPREADSHEET, WEE GORDO, LUMPS, DALE  
-**Giver:** AUNTIE SPREADSHEET · **Needs:** m05_second_stomach
+**Giver:** AUNTIE SPREADSHEET · **Needs:** m06_tickets_please
 
 **Mechanic hook:** Gordo's den is up a grapple-only stack of containers; his string map doubles as the first look at every district's swing route _(uses: the grapple)_
 

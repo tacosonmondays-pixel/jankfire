@@ -56,6 +56,7 @@ export function botLook(seed, presetChance = 0.3) {
   look.build = pk(j, ['', '', 'm', 'f']);
   if (j() < 0.12) look.bigHead = 1 + Math.floor(j() * 4);
   if (j() < 0.1) look.bigButt = 1 + Math.floor(j() * 4);
+  for (const k of ['bigChest', 'bigArms', 'bigLegs', 'fat']) if (j() < 0.08) look[k] = 1 + Math.floor(j() * 4); // (after the two above, so the bots that already had a big head keep it)
   return { look: validLook(look, ALL_ACHS), preset }; // never invalid, whatever the tables above say
 }
 

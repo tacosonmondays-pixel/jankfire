@@ -255,7 +255,63 @@ Sim → client:
 | `up` | `who` |
 
 `target` / `who` is `'me'`, the story id or NPC id given at spawn, or `'e<n>'`. `by` is `'me'`, `'ally'`, an enemy's
-id, `'world'` or `'self'`. Bosses (`phase`, `part`, `act`, part hitboxes, layers) come in the next PR.
+id, `'world'` or `'self'`. Bosses add more: see below.
+
+### Bosses
+
+A boss is a story enemy with a fight on top (`server/storyboss.js`, installed by `storyref.js`). The room owns his HP,
+layers, parts, phases, attacks and where he stands. The client only shows them (`public/js/story/bossfight.js` for
+the cutscenes, clips and damage states; `bossref.js` for the boss bar, his real size when you shoot, and the actor
+standing where the room has him). Built so far: Mr. Overtime's first fight, `overtime_1`.
+
+- **Spawn.** `{ t:'sty', k:'spawn', kind:'overtime_1', at, id? }`. A kind that is a boss in `content/bosses.js`
+  spawns as one. One boss at a time. His numbers are the content's: a spawn message cannot change them.
+  The client asks for him when the quest reaches his fight step (`JF_STORY.boss.spawn('overtime_1')` by hand).
+- **Where the numbers come from.**
+  - `content/bosses.js` + `boss_fights.js`: `hp` (4200), `phases[].hp` (the thresholds), `layers` (armour 1500 on
+    top of health 2700), `weakPoints[0].crit` (2.5), and each phase's mechanics by name.
+  - `public/models/cast/c_<who>.parts.json`: part boxes, the body capsule, clip marks, and the offsets of his hips
+    and right stapler through each clip.
+  - `BOSS` in `server/storyboss.js`: what the design does not give a number for (attack damage, staple speed, the
+    gaps between attacks, the 0.5 for hits off the weak point).
+- **Hits.** A `hit` message's ray is tested against his parts in the room. The client's claimed headshots are dropped.
+  - plate on: the plate takes hits in full, everything else at half. Damage with no ray (explosions, fire, scripted
+    hurts) counts as a hit on the plate.
+  - plate off (armour gone): the heart crits (x2.5) from the front. Everything else is at half.
+  - the slot crits while it is open (Punch In).
+  - one hit never carries past the plate or past a phase's end.
+- **Phases.** At a phase's end (50%, then 45%) he stops, and nothing hurts him until the client's cutscene lets him
+  go (`hold`), plus one second. Phase 1 is the coffee break: he sits for 15 s or until 45%, and does nothing.
+- **Attacks.** Each is an `act` event at the start of its clip. The damage lands on the clip's mark:
+  - `staple` (`ot_staple`): aimed at where you stood on the second clack, fired on `fire`.
+  - `fan` (`ot_fan`): five staples at chest height on `fan`. A slide goes under them.
+  - `slam` (`ot_slam`): on `land` a ring runs out 12 m in 0.9 s and hits whoever is on the floor as it passes.
+  - `punchin` (`ot_punchin`): on `grab`, if you are within 5.5 m and in front of him.
+  - A staple that misses stays where it hit (`fx` event). Soaked (`soakUntil`), his gaps are 1.5x longer.
+- **The end.** At 0 he is beaten, not killed: one `kill` event with `defeat: true`, then he leaves the room. The
+  story does the rest (the Heart Rip step, the talk, his retreat).
+
+Sim → client, on top of the events above:
+
+| message / `ev.type` | fields |
+|---|---|
+| `{ t:'sty', k:'boss', on:true, ... }` | `id, pid` (his room id), `hp, max, health, name, phase, who` |
+| `{ t:'sty', k:'boss', on:false, id, pid }` | he left the room (beaten or despawned) |
+| `hit` | as above, plus `part` (`plate` `heart` `slot` `head` `gunR` `gunL` `body` `blast`), `crit`, `boss` |
+| `phase` | `target, kind, boss, phase, name, line, invuln` (sent twice: `invuln:true` at the change, `false` when he is back) |
+| `part` | `target, kind, boss, part, state` (`plate` / `plate_off`) |
+| `act` | `target, kind, boss, move, clip, t0, at, yaw` |
+| `fx` | `target, kind, boss, k:'staple', at, n` (a missed staple and the wall's normal) |
+| `kill` | `target, kind, boss, by, weapon, head:false, at, tags, defeat:true` |
+
+On boss events `boss` is his content id (`'overtime_1'`), not `true`. On a plain enemy's `kill` it stays `false`.
+
+Tests only (`?storydev=1`): `{ t:'sty', k:'bossdev', want:'slam' }` makes that his next attack, and
+`{ ..., calm:true }` makes him attack only when asked.
+
+Not built yet: the pin and the mash-free on a staple hit, Fines, the slam's 2 s time freeze, the 3 s "scheduled"
+hold inside the slot, the grapple yank on a loose plate, the collectors, the truck set piece, the water / taser
+bonus beyond the slower gaps, and the arena on the slice (the referee has no slice world yet).
 
 For other systems:
 - `sim.ref` (`{ room, me }` once up);

@@ -55,6 +55,40 @@ export const CAST_DISTRICTS = {
     fate: { on_time: "Issued a pair of regulation shoes. Wears one.", late: "Wears both. Limps anyway. Out of habit.", off_books: "Wears both.", nap_time: "Asleep with both shoes on his chest." },
   },
 
+  pallet_jack: {
+    name: "PALLET JACK", full: "Jack Marsh", title: "the Bottom's delivery man", role: "district", body: "cyborg", age: 41,
+    look: "A wide, cheerful man built like the thing he's named after. Bev has been putting an Overdrive Rig into him for fifteen years, one part a year, paid for in soup: piston shins, a boiler the size of a beer keg sunk into his lower back with two thruster stacks, a rocket-punch right forearm with the skin worn off the knuckles, a welded steel collarbone. No cockpit and no suit: where a rig has armour plates, he has scar tissue over plate. A hi-vis vest with MARSH DELIVERIES in marker pen. A hand truck he doesn't need.",
+    voice: { kind: "cello", pitch: 0.75, rate: 0.8 }, home: "bottom:soup_kitchen", met: "m01_return_to_sender",
+    wants: "To get the load where it's going, and his dinner first. Since the night of the nine, to get Dumpling's dad back off the Gut: he has had Dumpling for exactly one night.",
+    fears: "Being the load. He is two hundred and ten kilo and nobody in the Bottom can carry him. And being kept: \"i'm not going in there. i've got a boy at home holding my vest.\"",
+    secret: "What powers it. Not fuel. Bev replaced his bone marrow with a Gristle & Sons strain that makes blood four times too fast, and the rig runs on the pressure. He eats eleven meals a day. Sharon keeps a tab. Bev says the marrow's the only good thing in him.",
+    arc: "Around from the first hour so the death lands: he carries the Machine's tray, with you in it, up the down escalator (m01), lifts Sharon's pot into the car with one hand (m02), comes back from a delivery to find nine gone and picks Dumpling up off the floor (m04), gets his boiler bled in Bev's waiting room (m05). In m06 the thing in the Loop takes him through the back before anyone sees what it is. He holds the rail until his armour breaks, then asks you to kill him before it gets him, and to take his marrow. You do it yourself. Lumps carries him off the train. His vest stays on Dumpling for the rest of the game (it never fits), and Lumps does his round.",
+    speech: "Rates everything by weight. Unhurried. Calls Change \"light one\". Never complains about a load.",
+    samples: [
+      "you're about forty kilos, light one. lightest friend i've got.",
+      "that pot's ninety. the soup's another sixty. the worry's free.",
+      "bev says i've got ten years left in the knees. she said that ten years ago.",
+      "it's not heavy. it's just all at once.",
+      "roof's about four tonne a metre. i can hold a metre.",
+      "hold that for me. it's about three hundred grams. i'll want it back.",
+      "don't carry me, light one. carry the bit that works.",
+      "go on. it's not heavy.",
+    ],
+    rel: {
+      lumps: "Gym partner, and the reason LEG DAY exists: Lumps' \"big one\" (the fridge-carrying rig) is his copy of Jack, built on the outside because Lumps wouldn't let Bev cut him. Jack calls him ambrose and thinks his squat form is \"a bit sad\".",
+      dumpling: "Dumpling's uncle. Dumpling's dad was one of the nine taken in C4, so Jack has had Dumpling for exactly one night.",
+      bev: "She built him, one part a year for fifteen years, and is fond of him in a way she'd bill you for mentioning.",
+      sharon: "Eleven meals a day. She keeps a tab.",
+      change: "\"light one\": about forty kilos, the lightest friend he's got. The one he asks.",
+    },
+    fate: {
+      on_time: "Dead on the train at the end of Act I, in every ending. His vest is still on Dumpling at the Restoration's youth onboarding. It still doesn't fit.",
+      late: "Dead on the train at the end of Act I, in every ending. Dumpling rides the scooter down Dividend Road in the vest. Lumps does his round.",
+      off_books: "Dead on the train at the end of Act I, in every ending. The vest is on Dumpling when their dad comes out of the Gut, if he does. MARSH DELIVERIES, in marker pen.",
+      nap_time: "Dead on the train at the end of Act I. Dumpling is asleep in the vest. It reaches the floor.",
+    },
+  },
+
   // ================================================================ THE GUT
   bishop: {
     name: "THE STOMACH BISHOP", full: "Cornelius Gristle", title: "CEO of Gristle & Sons Biologics, leader of the Gut Choir", role: "boss", body: "puppet", age: 94,
@@ -494,6 +528,19 @@ export const CAST_DISTRICTS = {
     samples: ["oh! you must be the original. you're late.", "i remember mina. she's on my list. under 17:30. it's fine. it's handled.", "we'd make a great team. well. i would.", "what time is it? nobody's ever not told me."],
     rel: { change: "Its original. It pities you." },
     fate: { on_time: "There are ten thousand of it.", late: "Deactivated with the Clock.", off_books: "Released into the free sims, where it learns to be late.", nap_time: "Asleep. It's the first unscheduled thing it's ever done." },
+  },
+  revenue_protection: {
+    name: "REVENUE PROTECTION", full: null, title: "what lives in the Under-Hill Loop. tickets, please", role: "boss", body: "thing", age: null,
+    look: "A round mask that fills the tunnel wall to wall, nine metres across, coming up the track behind the train. White enamel, chipped. Two tall oval eye holes with nothing in them. No mouth. Long black arms come out from behind its rim, flat against the tunnel walls and roof, and it moves by grabbing the walls and hauling: reach, grip, drag. The rim scrapes sparks off the brickwork all the way round. It is not a spirit in a mask and it has no body under the face, only more of itself.",
+    voice: { kind: "choir", pitch: 0.5, rate: 0.7 }, home: "commute:underhill_loop", met: "m06_tickets_please",
+    wants: "To see your ticket. At the middle of it is the one who was checking tickets when it happened: the Inspector, cap fused to his head, still holding the punch. He is the only part of it that knows what it's for. The rest of it doesn't kill you. It keeps you.",
+    fears: "Outside, maybe. Dale: \"it doesn't come outside. i think. i think it doesn't come outside.\"",
+    secret: "The mask is the ☺: the fallen company sign off the front of Hill Central station, a nine-metre enamel disc bolted together from twelve plates. The smile was painted on and has worn off. The two eye holes are the sign's old lamp housings. Behind it is the 17:32. The last commuter train of the Final Quarter was in this tunnel at 17:30 with four hundred people on it. They burned. Gristle & Sons' first Regrowth trial raised them, and it raised them as one thing: a plug of fused commuters that fills the tunnel like a cork, charred black, still in lanyards. The arms are their arms, braided together a dozen at a time into ropes twelve metres long, ending in hands made of hands. ☺ CORP found it, bolted the sign to its front, and left it in the Loop. It keeps people off the line for free. Act I reveal rules: you see the lanyards and the faces. You suspect they were passengers. Withheld: that this is what Regrowth was for (Act III, the Gristle page), and that the Gut is the same failure at a larger size.",
+    arc: "The Act I climax boss (m06). It takes Pallet Jack through the back of the train, and it is why you take his marrow. You stop it with one blood cross: it comes apart along the cross's four arms and the chase is over. It is broken apart, not gone. The pieces are still in the Loop and they were grown to grow back; the Inspector, on his own now, the size of a man, lifts his punch and clicks it once. It can come back later: Act III, when you take the Loop into the Gut for the nine, is the obvious place, and the Inspector can be talked to.",
+    speech: "It doesn't roar. It breathes, and under the breathing, from somewhere behind the face, a lot of people are saying \"tickets, please\" slightly out of time. Lowercase, never together. As the mask breaks the voices get clearer.",
+    samples: ["tickets, please.", "is this seat taken", "i'm going to be late", "seventeen thirty-two", "fare evaded. briefly."],
+    rel: { pallet_jack: "It took him through the back before anyone saw what it was. It didn't get to keep him." },
+    fate: { on_time: "In four heaps across the track in the Loop, steaming. It was grown to grow back.", late: "In four heaps across the track in the Loop, steaming. It was grown to grow back.", off_books: "In four heaps across the track in the Loop, steaming. It was grown to grow back.", nap_time: "Asleep in the tunnel. All four hundred, slightly out of time." },
   },
 
   // ================================================================ THE REAL LORE NPCS (the sims' recordings, 61 years older)

@@ -1,7 +1,7 @@
 // the joke body (head / butt sliders, build): only clean values get through validLook, bots roll valid ones
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validLook, BUILDS, JOKE_MAX } from '../shared/looks.js';
+import { validLook, BUILDS, JOKE_MAX, BODY_KEYS } from '../shared/looks.js';
 import { botLook } from '../server/botlook.js';
 
 test('validLook keeps good joke-body values and drops the rest', () => {
@@ -10,6 +10,13 @@ test('validLook keeps good joke-body values and drops the rest', () => {
   for (const bad of [{ build: 'x', bigHead: 9, bigButt: -1 }, { build: '__proto__', bigHead: 1.5, bigButt: '3' }, { build: ['f'], bigHead: NaN, bigButt: Infinity }, { build: null, bigHead: {}, bigButt: [] }]) {
     const o = validLook(bad, a);
     assert.deepEqual([o.build, o.bigHead, o.bigButt], ['', 0, 0]);
+  }
+});
+test('every body slider takes 0..max and nothing else', () => {
+  const a = new Set();
+  for (const k of BODY_KEYS) {
+    assert.equal(validLook({ [k]: JOKE_MAX }, a)[k], JOKE_MAX);
+    for (const bad of [JOKE_MAX + 1, -1, 1.5, '2', null, NaN]) assert.equal(validLook({ [k]: bad }, a)[k], 0, `${k}=${bad}`);
   }
 });
 test('bots: always valid, and most of them stay normal', () => {
