@@ -1095,8 +1095,8 @@ function fireProj(id, now, fromAnim) {
 // Blood Cross: point and pay. the server takes the 12 HP (and says no below 1 HP), you get the thump, the flick and a spurt of blood
 function fireBlood(now) {
   const w = WEAPONS.bloodcross, m = models.bloodcross;
-  if (ME.hp - w.cost < 1) { sfx.empty(); hud.msg('NOT ENOUGH BLOOD', 0.8, 'reverse'); W.cd.bloodcross = now + 300; return; }
-  setCd('bloodcross', now);
+  const thin = ME.hp - w.cost < 1; // out of blood to spend: the server lets a weak free one through (slower)
+  if (thin) { hud.msg('THIN BLOOD', 0.6, 'reverse'); W.cd.bloodcross = now + w.thin.cd * 1000; } else setCd('bloodcross', now);
   const o = eye(), d = look();
   net.send({ t: 'fire', w: 'bloodcross', o: o.map(r2), d: d.map(r2) });
   sfx.bcBeat();
@@ -1591,7 +1591,7 @@ export function updateWeapons(dt, now) {
   } else if (id === 'blower') hud.meter(W.fuel.blower / w.fuel, 'FUEL', '#ff9a3a');
   else if (w.spinup && W.spin > 0 && W.spin < 1) hud.meter(W.spin, 'SPINNING UP', '#c8c8c8');
   else if (id === 'slipper' && W.slipperOut) hud.meter(null);
-  else if (id === 'bloodcross') { const n = Math.max(0, Math.floor((ME.hp - 1) / w.cost)); hud.meter((ME.hp - 1) / 99, n ? `${n} SHOT${n > 1 ? 'S' : ''} OF BLOOD LEFT` : 'NOT ENOUGH BLOOD', w.color); }
+  else if (id === 'bloodcross') { const n = Math.max(0, Math.floor((ME.hp - 1) / w.cost)); hud.meter((ME.hp - 1) / 99, n ? `${n} SHOT${n > 1 ? 'S' : ''} OF BLOOD LEFT` : 'THIN BLOOD · WEAK SHOTS', w.color); }
   else if (w.cd && w.cd >= 1 && !ready(id, now)) hud.meter(1 - ((W.cd[id] - now) / 1000) / w.cd, 'COOLDOWN', w.color);
   else hud.meter(null);
   if (id === 'shredder') { const S = W.shred, f = S.heat / w.fuel; hud.meter(f, S.hot ? 'OVERHEATED · COOLING' : 'HEAT', S.hot ? '#ff3030' : f > 0.7 ? '#ff7a1a' : '#ffb31a'); }

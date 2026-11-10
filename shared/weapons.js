@@ -62,7 +62,8 @@ export const WEAPONS = {
   bow: {
     slot: 'primary', kind: 'bow', name: 'Bow', color: '#c88a4a',
     desc: 'Hold to draw, let go to fire. Every arrow gets a random tip: regular, power, knockback, flame, explosion, gas or sleep (knocks them flat for 4 s).',
-    cd: 0.35, draw: 0.9, speed: 34, speedMax: 85, grav: 9, r: 0.12, dmg: 20, dmgMax: 60,
+    // buffed 2026-11-10 (owner: people zip around too fast to kill with it): quicker draw, faster + fatter arrows, more damage
+    cd: 0.35, draw: 0.7, speed: 45, speedMax: 115, grav: 8, r: 0.24, dmg: 30, dmgMax: 85,
     ads: { zoom: 1.6, p: [0, -0.1, -0.3] },
   },
   banana: {
@@ -212,8 +213,9 @@ export const WEAPONS = {
   // the shot is paid in your own HP (cost). the bolt sticks, a cross bursts out of them (fuse), then pops (burst) for dmg + a small blast
   bloodcross: {
     slot: 'secondary', kind: 'blood', name: 'Blood Cross', color: '#ff1f3d',
-    desc: 'No gun: you shoot blood out of your fingertip and every shot costs you 12 HP. The bolt sticks to whoever it hits, a cross bursts out of their body and they pop. A kill pays the blood back.',
-    cd: 0.7, speed: 75, grav: 0, r: 0.15, life: 2, cost: 12, fuse: 0.6, burst: 0.25, dmg: 75, blastR: 3, blastDmg: 35, kb: 6,
+    desc: 'No gun: you shoot blood out of your fingertip and every shot costs you 12 HP. Out of blood? It still fires, thin and weak. The bolt sticks to whoever it hits, a cross bursts out of their body and they pop. A kill pays the blood back.',
+    cd: 0.7, speed: 75, grav: 0, r: 0.15, life: 2, cost: 12, thin: { cd: 1.1, dmg: 34, heal: 12 }, // thin: out of blood to spend, the shot is free but weak and slow (no blast); a kill with it gives heal back
+    fuse: 0.6, burst: 0.25, dmg: 75, blastR: 3, blastDmg: 35, kb: 6,
   },
   blower: {
     slot: 'secondary', kind: 'cone', name: 'Leaf Blower', color: '#ff9a3a',
@@ -222,10 +224,13 @@ export const WEAPONS = {
   },
   cards: {
     slot: 'secondary', kind: 'cards', name: 'Card Deck', color: '#ffffff',
-    desc: 'Hold 5 cards. Right click picks one, left click plays it, R redraws. Hearts heal, spades throw cards, clubs blast, diamonds dash, aces teleport, face cards go ultimate, jokers are random.',
+    desc: 'Hold 5 cards. Right click picks one, left click plays it, R redraws. Every card you play flicks cards at where you aim. Spades throw a whole fan, hearts heal, clubs blast, diamonds dash, aces teleport, face cards go ultimate, jokers are random.',
     cd: 0.35,
   },
-  card: { slot: null, kind: 'proj', name: 'Card', color: '#ffffff', cd: 0, speed: 55, grav: 4, r: 0.12, dmg: 9, kb: 4 },
+  // a thrown card. fan: a spade always throws this many (it used to be the card's rank: a 2 of spades was two cards), each for
+  // dmg + rank * perRank. flick: every other card you play still throws this many straight ahead, so no hand is a dead hand.
+  // faster, flatter and fatter than before so they land on people who are moving (owner, 2026-11-10)
+  card: { slot: null, kind: 'proj', name: 'Card', color: '#ffffff', cd: 0, speed: 85, grav: 2, r: 0.26, dmg: 11, perRank: 0.6, fan: 6, fanSpread: 0.16, flick: 2, kb: 4 },
   // item now (G), like the duck: this is how it works, ITEMS.popper is how often you get it
   popper: {
     slot: 'item', kind: 'melee', name: 'Party Popper', color: '#ff6bd0',
