@@ -589,7 +589,7 @@ function buildLoadoutUI() {
     b.className = 'wpick' + ((S.loadout.item || 'frag') === id ? ' on' : '');
     b.textContent = `${it.name} x${it.charges}`;
     b.style.setProperty('--c', it.color);
-    b.addEventListener('mouseenter', () => { $('loDesc').textContent = `${it.name}: ${it.desc} (${it.charges} charge${it.charges > 1 ? 's' : ''}, ${it.recharge}s to refill)`; });
+    b.addEventListener('mouseenter', () => { $('loDesc').textContent = `${it.name}: ${it.desc} (${it.charges} charge${it.charges > 1 ? 's' : ''}, ${it.recharge}s to refill${it.carry ? ', dying does not refill it' : ''})`; });
     b.addEventListener('click', () => { S.loadout.item = id; saveSettings(); buildLoadoutUI(); applyLoadout(false); });
     ic.append(b);
   }
