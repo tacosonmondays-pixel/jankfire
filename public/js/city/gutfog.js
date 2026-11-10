@@ -17,7 +17,7 @@ import { BIG_HEART } from '/shared/city/bigheart.js';
 // top: height of the highest sheet (m); cap: the most the whole stack can ever cover; gain: how much of a wisp sits on
 // the cap; holes: how much clear ground between wisps (0 none .. 0.6 mostly holes); glow: how much it brightens on the
 // beat; near: drawn only within this of the Gut (m)
-export const GUT_FOG = { on: true, top: 1.05, cap: 0.55, gain: 1.5, holes: 0.36, glow: 0.7, color: 0xc81a30, drift: 1, near: 110 };
+export const GUT_FOG = { on: true, top: 1.05, cap: 0.55, gain: 1.5, holes: 0.38, glow: 0.7, color: 0xc81a30, drift: 1, near: 110 };
 const LAYERS = [2, 3, 4, 5]; // per preset
 const G0 = SLICE.gut.rect, GY = SLICE.gut.y, BY = SLICE.border.y, ST = SLICE.stomach;
 
@@ -41,9 +41,10 @@ varying vec3 vW;
 float ghBeat(float t) { return exp(-pow((t - 0.12) / 0.045, 2.0)) + 0.6 * exp(-pow((t - 0.33) / 0.06, 2.0)); }
 void main() {
   vec2 p = vW.xz;
-  // two noise fields sliding over each other: slow wisps, each sheet its own
-  float n = 0.62 * texture2D(uN, p * 0.019 + uT * vec2(0.010, 0.006) + uLayer * 0.37).r + 0.38 * texture2D(uN, p * 0.047 - uT * vec2(0.007, 0.012) + uLayer * 0.61).r;
-  float dens = smoothstep(uHoles + 0.12 * uLayer, uHoles + 0.3, n); // wisps with clear ground between; the higher the sheet, the more holes: it thins upward
+  // two noise fields sliding over each other: slow wisps. every sheet reads nearly the same spot (a small shift each),
+  // so a wisp is one lump through the whole stack with clear ground beside it, not five patterns filling each other in
+  float n = 0.62 * texture2D(uN, p * 0.019 + uT * vec2(0.010, 0.006) + uLayer * 0.021).r + 0.38 * texture2D(uN, p * 0.047 - uT * vec2(0.007, 0.012) + uLayer * 0.034).r;
+  float lo = uHoles + 0.1 * uLayer, dens = smoothstep(lo, lo + 0.2, n); // wisps with clear ground between; the higher the sheet, the smaller the wisp: it thins upward
   dens *= 0.25 + 0.75 * smoothstep(0.3, 0.6, texture2D(uN, p * 0.0043 + uT * vec2(0.0021, 0.0013)).r); // and banks of it, 50 m across, wandering the district
   float dh = length(p - uHeart.xy), root = exp(-dh * dh / 420.0); // round the heart's roots it pools: thicker, no holes
   dens = mix(dens, 0.6 + 0.4 * n, root * 0.85) * (1.0 + 0.45 * root);
@@ -75,7 +76,7 @@ export function stopGutFog() {
   if (F.tex) F.tex.dispose();
   F = null;
 }
-const SHARED = { uT: { value: 0 }, uBeat: { value: 0 }, uK: { value: 0 }, uHoles: { value: 0.36 }, uGlow: { value: 0.7 }, uCol: { value: new THREE.Color() }, uFogCol: { value: new THREE.Color() }, uFog: { value: new THREE.Vector2(30, 250) },
+const SHARED = { uT: { value: 0 }, uBeat: { value: 0 }, uK: { value: 0 }, uHoles: { value: 0.38 }, uGlow: { value: 0.7 }, uCol: { value: new THREE.Color() }, uFogCol: { value: new THREE.Color() }, uFog: { value: new THREE.Vector2(30, 250) },
   uHeart: { value: new THREE.Vector3(BIG_HEART.x, BIG_HEART.z, 0) }, uSt: { value: new THREE.Vector3(ST.x, ST.z, ST.r) }, uRect: { value: new THREE.Vector4(G0[0], G0[1], G0[2], G0[3]) } };
 // (re)build the stack for this preset's layer count
 function build(n) {

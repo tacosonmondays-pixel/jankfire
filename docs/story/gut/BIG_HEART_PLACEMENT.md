@@ -132,7 +132,7 @@ border's are skipped deep in the Gut and the pool's away from the Big Stomach). 
 three texture reads a pixel.
 
 Knobs (`GUT_FOG`): `on`, `top` 1.05 m (the highest sheet), `cap` 0.55, `gain` 1.5 (how much of a wisp sits on the
-cap), `holes` 0.36 (clear ground between wisps), `glow` 0.7 (how much it lights on the beat), `color` 0xc81a30,
+cap), `holes` 0.38 (clear ground between wisps), `glow` 0.7 (how much it lights on the beat), `color` 0xc81a30,
 `drift` 1, `near` 110 m.
 
 ## A fix that came with it
