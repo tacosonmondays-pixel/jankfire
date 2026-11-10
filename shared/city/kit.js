@@ -164,8 +164,8 @@ export function paintOf(tint) {
 }
 // dress one cube (what cube() returned). hid(x, y, z, c) = is this point inside something solid other than c: pieces
 // on a face with a wall right in front of it are skipped (nobody can stand there to see them).
-// o: corner (posts on its corners), eave [chance of a lip on an x wall, on a z wall], ribs (false: none), stair [x, z0, z1] (an
-// outside stair hugs that side)
+// o, per side 0..3: on (dress this side at all), corner (a post on the corner it fronts), eave (chance of a lip);
+// stair [x, z0, z1] (an outside stair hugs that side)
 export function cubeKit(B, c, r, hid, o = {}) {
   const { x0, x1, z0, z1, y, h } = c;
   const at = (side, a, out = 0) => (side === 0 ? [a, z0 - out] : side === 2 ? [a, z1 + out] : side === 3 ? [x0 - out, a] : [x1 + out, a]);
@@ -175,25 +175,26 @@ export function cubeKit(B, c, r, hid, o = {}) {
   const long = x1 - x0 >= z1 - z0 ? 0 : 1; // which pair of sides is the long one (0: the x walls, 1: the z walls)
   for (let side = 0; side < 4; side++) {
     const [a0, a1] = side % 2 ? [z0, z1] : [x0, x1], mid = (a0 + a1) / 2, ops = c.ops[side];
+    if (o.on && !o.on[side]) continue;
     const stair = o.stair && ((side === 1 && o.stair[0] > x1) || (side === 3 && o.stair[0] < x0)) ? o.stair : null;
     // windows: a frame with a life in it on every 1.4 x 1.1 opening (not where a shutter already fills it)
     for (const [oa, ob, oy0] of ops) if (oy0 > 0.5) {
-      const id = 'cube_window_' + 'bbbbbaaaac'[(r() * 10) | 0], v = (r() * 8) | 0, // (c is the dear one: 620 triangles)
+      const id = 'cube_window_' + 'bbbbbbaaac'[(r() * 10) | 0], v = (r() * 8) | 0, // (mostly the cheap one; c is 620 triangles)
         hg = c.hung.find((q) => q[0] === side && q[1] === oa);
-      if (o.windows === false || (hg && hg[3] && hg[2] === 'shutter')) continue;
+      if (hg && hg[3] && hg[2] === 'shutter') continue;
       if (seen(side, (oa + ob) / 2, y + oy0 + 0.5)) put(hg && hg[3] ? 'cube_window_a' : id, side, (oa + ob) / 2, y + oy0, 1, v); // (an ac unit in it: the flat barred one)
     }
     // the corner whose front is this side: boards, a downpipe, a meter box (scaled so its top buries in the slab)
     const ca = side < 2 ? a0 : a1, cd = side < 2 ? 1 : -1;
-    if (o.corner && ops.every(([oa, ob]) => (cd > 0 ? oa - a0 : a1 - ob) > 1.15) && !(stair && ca > stair[2] - 1.2 && ca < stair[1] + 1.6) && seen(side, ca + cd * 0.5, y + 1.5)) put('cube_corner', side, ca, y, (h + 0.05) / 3.1, 0);
+    if ((!o.corner || o.corner[side]) && ops.every(([oa, ob]) => (cd > 0 ? oa - a0 : a1 - ob) > 1.15) && !(stair && ca > stair[2] - 1.2 && ca < stair[1] + 1.6) && seen(side, ca + cd * 0.5, y + 1.5)) put('cube_corner', side, ca, y, (h + 0.05) / 3.1, 0);
     // a tin lip under the roof slab in 2 m runs (the last one overlaps back from the far end)
-    if (r() < (o.eave ? o.eave[side % 2] : 1)) for (let a = a0 + 1; a < a1 + 0.99; a += 2) {
+    if (r() < (o.eave ? o.eave[side] : 1)) for (let a = a0 + 1; a < a1 + 0.99; a += 2) {
       const e = Math.min(a, a1 - 1);
       if (stair && e > stair[2] - 1.4 && e < stair[1] + 1.4) continue; // (it would poke through the steps)
       if (seen(side, e, y + h - 0.3)) put('cube_eave', side, e, y + h, 1, rv);
     }
     if (!c.container) continue;
-    if ((side % 2) === long) { if (o.ribs === false) continue; // ribs at 1 m steps along a container's long walls, cut round the openings
+    if ((side % 2) === long) { // ribs at 1 m steps along a container's long walls, cut round the openings
       const s = h / 2.8; let from = a0;
       for (const [oa, ob, oy0] of [...ops, [a1, a1, 0]]) {
         const to = oa - (oy0 > 0.5 ? 0.16 : 0.02), n = Math.floor((to - from) / s);
@@ -206,13 +207,14 @@ export function cubeKit(B, c, r, hid, o = {}) {
     }
   }
 }
-// treads and railing posts on a sideStair (same numbers as stairsZ): one of each per step, posts down the open side
+// treads and railing posts on a sideStair (same numbers as stairsZ): one of each per step, posts down the open side.
+// steps squeezed into the wall next door get neither
 export function stairKit(B, cx, y0, y1, z0, dir, out, v, hid) {
   const n = Math.max(1, Math.ceil(Math.abs(y1 - y0) / 0.4)), dy = (y1 - y0) / n, yaw = dir < 0 ? Math.PI : 0;
   for (let i = 1; i <= n; i++) {
     const z = z0 + dir * (i - 1) * 0.55, yy = y0 + i * dy;
-    if (hid && hid(cx, yy + 0.6, z + dir * 0.27)) continue; // (a neighbour's cube swallowed this step)
+    if (hid && (hid(cx, yy + 0.6, z + dir * 0.27) || hid(cx + out * 0.75, yy + 0.6, z + dir * 0.27))) continue; // (a neighbour's wall has this step, or half of it)
     B.prop('stair_step', cx, yy, z, yaw, 1, 0);
-    if (!(hid && hid(cx + out * 0.75, yy + 0.6, z + dir * 0.27))) B.prop('stair_post', cx + out * 0.58, yy, z, yaw, 1, v); // (no rail against a wall)
+    B.prop('stair_post', cx + out * 0.58, yy, z, yaw, 1, v);
   }
 }

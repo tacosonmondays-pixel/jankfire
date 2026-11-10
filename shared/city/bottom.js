@@ -31,7 +31,7 @@ function lots(k) {
 }
 
 // one lot: 1-2 rows of cubes stacked 1-4 high, shifted about, outside stairs, a roof garden of junk
-function house(B, k, x0, w, seed, near) {
+function house(B, k, x0, w, seed) {
   const r = rng(seed), y = yOf(k), zs = zSouth(k), zBack = zs - T.terr + 0.2, zFront = zs - LANE, recs = [];
   const depth = zFront - zBack, rows = depth > 13 && r() < 0.6 ? 2 : 1, cx = x0 + w / 2;
   const wallTop = yOf(k + 1); // the next terrace's floor: houses at the back reach it, their roofs join it
@@ -68,8 +68,8 @@ function house(B, k, x0, w, seed, near) {
     if (row === 0 && Math.abs(lastTop - wallTop) < 1.5) recs[recs.length - 1].bare = false; // (people cross that roof)
     rowZ += d + 0.6;
   }
+  stackCache.set(k + ':' + seed, recs); // (the kit pass and the neighbours' kit passes read these)
   if (!B.out) return recs; // a dry run (stackOf): only the cubes were wanted
-  if (KIT.on) dress(B, k, recs, seed, near);
   // across the lane: bulbs from the house front to the lip, a banner now and then, an awning over the door
   const lr = rng(seed ^ 0x5eed);
   if (lr() < 0.45) bulbs(B, [cx + (lr() - 0.5) * w, y + 4.2 + lr(), zFront + 0.3], [cx + (lr() - 0.5) * 10, y + 4.5 + lr(), zs - 0.3], lr);
@@ -91,22 +91,23 @@ function house(B, k, x0, w, seed, near) {
 
 // what stands on a lot, without building it: its cubes (cached), so a neighbour can tell which of its walls are hidden
 const stackCache = new Map(), DRY = { add() {}, prop() {}, light() {} };
-function stackOf(k, lot) {
-  const key = k + ':' + lot[2];
-  if (!stackCache.has(key)) stackCache.set(key, house(DRY, k, lot[0], lot[1], lot[2]));
-  return stackCache.get(key);
-}
+const stackOf = (k, lot) => stackCache.get(k + ':' + lot[2]) || house(DRY, k, lot[0], lot[1], lot[2]);
 // the Blender kit on a lot's cubes (kit.js cubeKit: corner posts, tin eaves, windows, container doors and ribs, roof
 // junk, stair treads and posts). props only, drawn from their own random stream, so every box above stays as it was.
-// pieces on a wall with another cube or the terrace behind right in front of it are left out
-function dress(B, k, recs, seed, near) {
-  const r = rng(seed ^ 0x6b17), top = k === T.n - 1, zN = top ? 0 : zSouth(k + 1), wallTop = yOf(k + 1);
-  const solids = recs.concat(...(near || []).map((q) => stackOf(k, q)));
+// pieces on a wall with another cube or the terrace behind right in front of it are left out, and so is every wall
+// that isn't within reach of somewhere you walk (the kit is thousands of instances otherwise): what gets dressed is
+// the lane front of the row on the lane (two floors up), the backs that look over the lip onto the lane above (from
+// its floor to 4 m up), and the low side walls (alleys, the gap beside the Long Stairs)
+function dress(B, k, lot, near) {
+  const recs = stackOf(k, lot), r = rng(lot[2] ^ 0x6b17), top = k === T.n - 1, zN = top ? 0 : zSouth(k + 1), wallTop = yOf(k + 1);
+  const rows = recs[recs.length - 1].row + 1, solids = recs.concat(...near.map((q) => stackOf(k, q)));
   const hid = (x, y, z, me) => (z < zN && y < wallTop) || solids.some((s) => s !== me && x > s.x0 && x < s.x1 && z > s.z0 && z < s.z1 && y > s.y && y < s.top);
   for (const c of recs) {
     const st = c.stair;
-    cubeKit(B, c, r, hid, { corner: c.f === 0, windows: c.f < 3, eave: c.f > 2 ? [0, 0] : c.roof ? [1, 0] : [c.f ? 0 : 0.5, 0], ribs: c.f < 2, stair: st && [st[0], st[3], st[4] - 1.2] });
-    if (st) stairKit(B, st[0], st[1], st[2], st[3], -1, st[0] > c.x1 ? 1 : -1, (r() * 8) | 0, hid);
+    const front = c.row === rows - 1 && c.f < 2, back = !top && c.row === 0 && c.y + c.h > wallTop && c.y < wallTop + 4, low = c.f < 2, lip = c.roof ? 1 : 0;
+    // (a tin lip: on real roofs, and over half the ground floors on the lane)
+    cubeKit(B, c, r, hid, { on: [back, low, front, low], corner: [false, !c.f, front && !c.f, !c.f], eave: [lip, 0, lip || (c.f ? 0 : 0.5), 0], stair: st && [st[0], st[3], st[4] - 1.2] });
+    if (st && low) stairKit(B, st[0], st[1], st[2], st[3], -1, st[0] > c.x1 ? 1 : -1, (r() * 8) | 0, hid);
     // a water tank or a pigeon loft in a corner of a top roof nothing else stands on and nobody crosses
     const jr = r(), ja = r(), jb = r(), jy = r();
     if (c.roof && c.bare && jr < 0.4) {
@@ -234,13 +235,14 @@ export function bottom(B, d) {
     const zs = zSouth(k), zn = zs - T.terr;
     if (!B.touches([-320, zn, 96, zs], 2)) continue;
     lane(B, k, X0, X1);
-    const L = lots(k), built = (q) => q && !keep.some((kr) => inRect(q[0], zn, q[0] + q[1], zs - LANE, kr));
+    const L = lots(k), did = [], built = (q) => q && !keep.some((kr) => inRect(q[0], zn, q[0] + q[1], zs - LANE, kr));
     for (let i = 0; i < L.length; i++) {
       const [x0, w, seed] = L[i];
       if (x0 + w < X0 - 12 || x0 > X1 + 12) continue; // only lots touching this chunk (+ a stair's width)
       if (!built(L[i])) continue;
-      house(B, k, x0, w, seed, [L[i - 1], L[i + 1]].filter(built)); // (its neighbours: the kit skips walls they hide)
+      house(B, k, x0, w, seed); did.push(i);
     }
+    if (KIT.on) for (const i of did) dress(B, k, L[i], [L[i - 1], L[i + 1]].filter(built)); // (its neighbours: the kit skips walls they hide)
     // a narrow stair up to the next terrace every ~70 m (plus the Long Stairs), so every lane connects
     if (k < T.n - 1) for (let sx = -300 + (k * 23) % 40; sx < 90; sx += 66 + (k * 7) % 12) {
       if (keep.some((q) => inRect(sx - 1, zn - 6, sx + 1, zn + 6, q))) continue;
