@@ -1170,6 +1170,36 @@ addEventListener('mousemove', (e) => {
 });
 addEventListener('blur', releaseHeld);
 addEventListener('resize', resizePreview);
+// phones + tablets (touchboot.js tagged the page): on-screen buttons that press the same bound keys as above (touch.js).
+// looking is the one thing with its own path: a finger drag isn't a locked mouse
+function touchLook(dx, dy) {
+  if (!inGame()) return;
+  if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor
+  if (story && story.locked()) return;
+  const s = 0.0088 * (S.tSens || 1) * (W.aim > 0.5 ? S.adsSens / W.zoom : 1);
+  ME.yaw -= dx * s;
+  ME.pitch = Math.max(-1.55, Math.min(1.55, ME.pitch - dy * s));
+}
+let touchUI = null;
+if (window.JF_TOUCH) import('./touch.js').then((m) => {
+  touchUI = m.initTouch({
+    S, inGame, look: touchLook, save: saveSettings, chat: openChat,
+    pause: () => { if (inGame()) pause(); },
+    // a tap anywhere does what a click does: drop in after the end screen, skip the killcam, watch the next player
+    gate: () => esClickShown() || RP.mode === 'killcam' || G.killcamPending || (!ME.alive && (brOn() || !!G.eco)),
+    ctx: () => ({ eco: !!G.eco, royale: brOn(), use: !!G.eco || brOn() || G.cfg.game === 'zombies' || canUse(G.round, ME.pos) }),
+  });
+  bindTouchSettings();
+}).catch((e) => console.error('touch controls failed to load', e));
+function bindTouchSettings() {
+  const look = () => touchUI.applyLook();
+  bindRange('tSens', 'tSens', (v) => v.toFixed(1));
+  bindRange('tSize', 'tSize', (v) => Math.round(v * 100) + '%', look);
+  bindRange('tAlpha', 'tAlpha', (v) => Math.round(v * 100) + '%', look);
+  bindCheck('tLefty', 'tLefty', look);
+  bindCheck('tFull', 'tFull');
+  $('toggleAim').checked = !!S.toggleAim; // (touch.js turns it on the first time)
+}
 
 function renderScores() {
   const rows = [{ name: G.myName, color: G.myColor, k: G.kills, d: G.deaths, me: true, card: cardUrlFor(G.myId) }];
