@@ -2,6 +2,7 @@
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
   { v: '7.1', date: '2026-11-10', title: 'LESS SMALL PRINT', items: [
+    'PLANT & DEFUSE: the spammiest guns fire slower there (and only there). SMG 16 -> 13 shots a second, Belt Sander 12 -> 10, Lefty & Righty 9 -> 7.5 per hand, and the Sniper takes 1.33 s between shots instead of 1.1. aim more, hose less.',
     'captions that said what the button already said are gone: under CUSTOMIZE and CONTAINERS, on the mode pickers, in customize and in settings.',
     'a weapon\'s description shows the first time you hold it, not every time you press 1. gun game and infection stopped repeating their own name under their own name.',
   ] },
