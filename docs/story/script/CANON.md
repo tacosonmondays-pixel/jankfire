@@ -68,6 +68,17 @@ were always meant to be a workforce.
 4. **Act IV, Who do you stand with?** Vacancy already bought the Bottom (page 5). The raid. Auntie stays. Hask explains why you're free (fired at 17:29:41).
 5. **Act V, What do you become?** Page 6 and Hask's 17:10 phone call: they launched knowing they'd hit target. Overtime's last fragment. The choice.
 
+## How collecting works (fixed by the Act I tone pass, 2026-11-10)
+- **The door slip.** Collectors staple a ☺ CORP slip to the door of whoever they take: COLLECTED, a name, a time to the
+  second, BALANCE CARRIED FORWARD. Every act uses these words.
+- **The credit.** A collected person is credited against their district's back pay, then the interest is put back on,
+  so the balance never goes down. Feedstock is logged by weight.
+- **Bev's jars.** Parts in the clinics carry a date and a truck number; a few carry a first name, and those sell for less.
+- **Ken Abara** is one man: Dumpling's "mr. abara", "old ken" among the nine taken in m04, and "Kenneth Abara. Liver."
+  in Hask's ledger in Act V. His hip was Bev's work and went up on the truck with him.
+- **Cruelty is never a reward gag** ([TONE.md](../TONE.md)). Two later boss endings (Doctor Upsell's shower of organs as
+  loot; shooting Hask's tagged donor organs) are to be softened when Acts III and V get their tone pass.
+
 ## Words and numbers to keep consistent
 - back pay: **244 quarters** (61 years).
 - the Machine's final backup: **17:30**. Cale's termination: **17:29:41**.
