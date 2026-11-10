@@ -298,7 +298,7 @@ export const WEAPONS = {
   },
   scales: {
     slot: 'melee', kind: 'melee', name: 'Scales of Justice', color: '#ffc83a',
-    desc: 'Hits as hard as they deserve: leaders, streakers and your killer take up to x3.',
+    desc: 'Hits as hard as they deserve: leaders, streakers and your killer take up to x3. Right click summons a pillar of light on someone far away: weaker, slow to recharge, and they can step out of it.',
     // dmg is multiplied by the server's verdict at hit time (shared/verdict.js): x0.4 .. x3
     cd: 0.6, range: 3.2, cone: 0.75, dmg: 35, kb: 14, kbUp: 5, delay: 0.22, verdict: true, speedMul: 0.95,
   },
@@ -566,3 +566,11 @@ ITEM_ORDER.push('laptop');
 for (const [id, charges, recharge] of [['radar', 2, 32], ['nvg', 2, 28], ['laptop', 1, 42], ['quiz', 2, 40], ['camera', 1, 42], ['wand', 2, 32]]) {
   if (ITEMS[id]) Object.assign(ITEMS[id], { charges, recharge, carry: true });
 }
+
+// ------------------------------------------------------------ Scales of Justice, from a distance: the SUMMONS
+// right click with the scales out: a ring of light opens under whoever is nearest your aim (range m, cone rad, needs line
+// of sight; nobody there = it opens where you point). delay s later a pillar of light comes down on the ring (r m): everyone
+// still standing in it gets dmg x the court's verdict (the same x0.4 .. x3 as a swing), so it is much weaker than hitting
+// them and they can walk out of it. cd: the long recharge. kills count as the scales' in gun game, but humiliate nobody
+export const GAVEL = { range: 42, cone: 0.16, delay: 1.0, r: 2.3, h: 3.2, dmg: 20, kbUp: 7, cd: 10 };
+WEAPONS.gavel = { slot: null, kind: 'gavel', name: 'Summons', color: '#ffc83a' }; // the kill-feed tag

@@ -39,6 +39,7 @@ import { BR } from '../shared/royale.js';
 import { tickHR, hrBot } from './hrguy.js'; // the Tall Guy From HR (Scary Forest)
 import { HR } from '../shared/hr.js';
 import { installAds } from './ads.js';
+import { installGavel } from './gavel.js';
 import { installSdSkill } from './sdskill.js';
 import { installGear } from './gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
 import { installRandSkin, rollSkins, rollKfx, cleanFavs, hasRandom } from './randskin.js'; // Random cosmetics: rolled again on every spawn
@@ -3964,6 +3965,7 @@ installLobby(Room, { send, rooms });
 installPits(Room, { now, r2 });
 installAds(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm }); // the laptop's pop-up ads (after installSec: it wraps botGear / botFire)
 installSdSkill(Room); // Plant & Defuse bots with skill tiers + team stances (wraps the econ / tactical bot methods)
+installGavel(Room, { now, send, raycast, r2, eyeOf, lookOf, norm, vec3, center }); // the Scales of Justice's ranged SUMMONS (after installSec: it wraps handle / tickGear)
 installStoryRef(Room); // story rooms (before installModeStats, which stays last)
 installModeStats(Room, { store }); // per-mode leaderboard stats (last: it wraps zombies' zmGive)
 

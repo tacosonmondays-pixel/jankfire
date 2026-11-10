@@ -93,6 +93,7 @@ import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll
 import { initHome, homeShown, homeLeft, refreshHero } from './home.js';
 import { skipVote, skipReset } from './skipvote.js';
 import { lassoFrame, loopFrame, lassoWheel, lassoKey, lassoLate } from './lasso.js'; // lasso (secondary)
+import { initGavel, updateGavel, gavelFx, gavelAim, gavelReset } from './gavel.js'; // scales of justice, ranged
 import { initAds, updateAds, adsFx, adsKey, adsReset } from './ads.js'; // the laptop's pop-up ads
 import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + quick-scope callouts register themselves)
 import { K } from './keys.js';
@@ -300,7 +301,7 @@ function resetWorldState() {
   for (const b of G.bubbles.values()) G.scene.remove(b.mesh);
   G.bubbles.clear(); G.smokes.length = 0; ME.frozenUntil = 0; G.frost = 0;
   gearLeave();
-  adsReset();
+  adsReset(); gavelReset();
   secLeave();
   brReset(); // the zone, eviction notice and loot rules stay with the royale room
   resetItems(); stopUse(); G.activeStreaks = null; G.itemSent = null;
@@ -1109,6 +1110,7 @@ function aimDown() {
   if (secAimDown()) return; // tv remote: aim (right click) rewinds
   if (W.cur === 'cards') { cycleCard(); return; }
   if (heavyAttack()) return; // knife: right click is the heavy stab
+  if (gavelAim()) return; // scales of justice: right click is the SUMMONS
   if (W.cur === 'katana' && !rigOn()) { if (!K.get('parry').some(Boolean)) parry(); return; } // katana: the parry key parries (pressed()); aim only stands in when parry is unbound
   if (W.cur === 'akimbo') { W.aimHeld = true; return; } // Lefty & Righty: the aim key is the right gun's trigger (never a toggle)
   if (S.toggleAim) W.aimHeld = !W.aimHeld; else W.aimHeld = true;
@@ -1788,6 +1790,7 @@ net.on('he', (m) => {
   G.shake = Math.max(G.shake, Math.max(0, 1 - d / 25));
 });
 net.on('fx', (m) => {
+  if (gavelFx(m)) return; // a summons ring opening / the pillar landing
   if (adsFx(m)) return; // someone opened a laptop at someone
   if (gearFx(m)) return; // laser beams, photo teleports, goggle flashes (gear.js)
   if (secFx(m)) return; // taser zaps, remote pauses + rewinds, radar readings (secondaries.js)
@@ -1892,6 +1895,7 @@ net.on('ns', (m) => {
 });
 
 initAds();
+initGavel();
 initGear(); // the new gear's server messages + the G hook
 initSec(); // the new secondaries + the speed trap (after initGear: it wraps the G hook)
 
@@ -1989,6 +1993,7 @@ function frame(t) {
   for (const [id, b] of G.bubbles) { if (now > b.until + 500) { G.scene.remove(b.mesh); G.bubbles.delete(id); continue; } b.mesh.rotation.y += dt * 0.3; b.mesh.material.opacity = 0.18 + Math.sin(now * 0.006) * 0.05; }
   updateWand(dt, now); // bubble wand: giant soap bubbles round people, the view from inside one, the wand in your hand
   updateAds(dt, now);
+  updateGavel(dt);
   updateGear(dt, now); // laser beams, photo frames, pop quizzes, night vision
   updateSec(dt, now); // soaks, zaps, pauses, rewinds, the radar gun, cages
   updatePrims(dt, now); // nails in walls, pins, shopping carts
