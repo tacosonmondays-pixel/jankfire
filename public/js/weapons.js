@@ -41,6 +41,7 @@ import { secFireDown, secShot } from './secondaries.js'; // taser, tv remote, wa
 import { RIFLES, RF, RIFLE_VM, RIFLE_RECOIL, RIFLE_SHELLS, rifleShot, bursting, rifleReset, quickScoped, rifleStep, rifleEvent } from './rifles.js'; // the rifle pack
 import { tacOn, tacShot, tacKick, tacFrame, tacZone } from './tactical.js'; // Plant & Defuse: spray patterns + moving spread
 import { sdRow } from '/shared/sdgun.js'; // S&D: each gun's first-shot spread (hip / sights)
+import { inSprayRange, sprayHole } from './sprayrange.js'; // Training's spray range: S&D gunplay for S&D guns there
 import { carRay, carHit, carSwing } from './traffic.js'; // cars stop bullets (and take the damage)
 
 export const W = {
@@ -788,7 +789,8 @@ function tacBase(w) {
 }
 function fireHitscan(id, now, hand) { // hand: 'L' / 'R' = which of Lefty & Righty (they keep their own cooldowns)
   const w = WEAPONS[id];
-  const tac = W.eco && tacOn() ? tacShot(id, tacBase(w), now) : null; // which spray shot, its spread, its directions
+  const range = !W.eco && !!sdRow(id) && inSprayRange(); // Training's spray range (sprayrange.js)
+  const tac = (W.eco && tacOn()) || range ? tacShot(id, tacBase(w), now) : null; // which spray shot, its spread, its directions
   if (tac && W.sendSnap) W.sendSnap(); // the server checks the shot against the aim in this snapshot
   if (w.mag && G.mode !== 'training') W.ammo[id]--;
   if (!hand) setCd(id, now);
@@ -827,6 +829,7 @@ function fireHitscan(id, now, hand) { // hand: 'L' / 'R' = which of Lefty & Righ
       }
       if (!mh) break;
       if (!shots || i % 10 === 0) fx.impact(end, mh.normal);
+      if (range && bounces === (w.ricochet || 0)) sprayHole(end, mh.normal, i === 0 ? tac.i : 1); // the spray range keeps the holes (a new spray wipes them)
       if (bounces-- <= 0) break;
       const dn = d[0] * mh.normal[0] + d[1] * mh.normal[1] + d[2] * mh.normal[2];
       d = [d[0] - 2 * dn * mh.normal[0], d[1] - 2 * dn * mh.normal[1], d[2] - 2 * dn * mh.normal[2]];
@@ -1564,7 +1567,7 @@ export function updateWeapons(dt, now) {
   // ---- HUD
   if (ITEMS[W.item]) { const c = charges(W.item), it = ITEMS[W.item]; hud.item(c.n, it.charges, c.next ? 1 - Math.max(0, c.next - now) / (it.recharge * 1000) : 1); }
   updatePop(dt);
-  tacFrame(dt, now, W.eco && W.cur && WEAPONS[W.cur] ? W.cur : null, W.cur && WEAPONS[W.cur] ? tacBase(WEAPONS[W.cur]) : 0); // the crosshair shows your spread
+  tacFrame(dt, now, (W.eco || inSprayRange()) && W.cur && WEAPONS[W.cur] ? W.cur : null, W.cur && WEAPONS[W.cur] ? tacBase(WEAPONS[W.cur]) : 0); // the crosshair shows your spread
   if (W.br) W.br.hud(id, !!W.reloadId); // jank royale: mag / spare bullets
   else if (W.eco) W.eco.hud(id, !!W.reloadId);
   else if (w.hands) hud.ammo2(W.ak.L.n, W.ak.R.n, AK_HM, !!W.ak.L.rl, !!W.ak.R.rl);

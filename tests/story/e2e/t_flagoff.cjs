@@ -34,6 +34,6 @@ async function run(port, tag) {
   return { h, errs };
 }
 (async () => {
-  const a = await run(3313, 'main'), c = await run(3311, 'branch');
+  const a = await run(+process.env.MAIN || 3313, 'main'), c = await run(+process.env.PORT || 3311, 'branch');
   console.log('IDENTICAL HOME DOM:', a.h === c.h, '| errors main', a.errs.length, 'branch', c.errs.length, c.errs.slice(0, 5));
 })();

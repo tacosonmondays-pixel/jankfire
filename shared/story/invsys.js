@@ -157,7 +157,7 @@ addSystem({
     if (find(sim.inv, sim.gearU) < 0) sim.gearU = 0;
     sim.send({ t: 'ic', i: it.b, n: sim.gearU ? (itemAt(sim.inv, sim.gearU).q || 1) : 0, next: 0 });
     sim.invChanged();
-    return true;
+    return !sim.ref; // with the referee up, the room throws it too (shared/story/refsys.js)
   },
 });
 

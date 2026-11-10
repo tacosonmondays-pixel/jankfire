@@ -54,6 +54,18 @@ Object.assign(PATTERNS, {
   akimbo: { reset: 300, move: 0.5, wob: 0.014, kp: [[0, 0, 0], [4, 0.004, 0.012], [12, -0.01, 0.024], [24, 0.012, 0.03], [40, 0, 0.032]] },
   sawnoff: { reset: 800, move: 0.3, wob: 0, kp: [[0, 0, 0]] },
 });
+// ------------------------------------------------------------ S&D: the genre-standard sprays (owner, 2026-11-07: "every one of these games
+// basically use the same kind"). learnable on purpose: a tight first 1-3, a mostly straight climb, then a sway at the top
+// (left, right, left) you counter by pulling down then across. same shape every time; bloom on top is tiny (shared/sdgun.js)
+Object.assign(PATTERNS, {
+  ar: { reset: 380, move: 1, wob: 0.002, kp: [[0, 0, 0], [2, 0.0005, 0.004], [4, 0.001, 0.025], [7, 0.002, 0.065], [10, 0, 0.1], [13, -0.03, 0.11], [16, -0.045, 0.115], [19, -0.005, 0.118], [22, 0.04, 0.122], [25, 0.045, 0.124], [28, 0.005, 0.126], [29, -0.015, 0.127]] },
+  smg: { reset: 300, move: 0.55, wob: 0.002, kp: [[0, 0, 0], [2, 0, 0.004], [5, 0.001, 0.02], [9, 0.002, 0.045], [13, -0.018, 0.05], [17, -0.022, 0.053], [21, 0.004, 0.055], [25, 0.022, 0.056], [30, 0.018, 0.057], [36, -0.012, 0.058], [44, 0.008, 0.06]] },
+  redline: { reset: 420, move: 1, wob: 0.002, kp: [[0, 0, 0], [2, 0.001, 0.005], [5, 0.004, 0.035], [9, 0.01, 0.075], [13, 0.04, 0.085], [17, 0.05, 0.09], [21, 0.01, 0.093], [25, -0.025, 0.095], [30, 0.02, 0.097], [39, 0.035, 0.1]] },
+  akimbo: { reset: 300, move: 0.5, wob: 0.003, kp: [[0, 0, 0], [3, 0.001, 0.008], [8, 0.002, 0.03], [13, -0.015, 0.036], [19, 0.015, 0.04], [27, -0.012, 0.042], [39, 0.01, 0.044]] },
+  lmg: { reset: 520, move: 1.5, wob: 0.003, kp: [[0, 0, 0], [3, 0.001, 0.006], [10, 0.004, 0.035], [18, -0.04, 0.05], [28, 0.045, 0.058], [38, -0.05, 0.064], [50, 0.05, 0.068], [62, -0.05, 0.07], [75, 0.05, 0.072], [99, -0.03, 0.075]] },
+  burst: { reset: 260, move: 0.9, wob: 0.002, kp: [[0, 0, 0], [1, 0.001, 0.006], [2, -0.001, 0.013], [5, 0.004, 0.03], [8, -0.004, 0.04]] },
+  pistol: { reset: 300, move: 0.9, wob: 0.001, kp: [[0, 0, 0], [1, 0.001, 0.014], [3, -0.002, 0.03], [6, 0.003, 0.042]] }, // a kick per tap, gone fast
+});
 // S&D recoil: every gun in the table climbs `rc` times its pattern (scaled once, here, so both sides agree)
 for (const [id, r] of Object.entries(SDG)) { const P = PATTERNS[id]; if (P && r.rc !== 1) { P.kp = P.kp.map(([i, x, y]) => [i, x * r.rc, y * r.rc]); P.wob *= r.rc; } }
 const FALLBACK_MOVE = 1;
