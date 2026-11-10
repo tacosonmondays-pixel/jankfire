@@ -1541,7 +1541,7 @@ def build_inspector(N):
         B[fn_].add(p_tube([WR[sd] - fd * 0.05, WR[sd]], [0.034, 0.032], 5), ch, CHAR, None, 0.5)
     # the right hand round the punch's handles; the punch points at you
     PR = WR[-1] + V3((0.02, 0.01, 0.075))          # the rivet
-    Mp = frame((0.25, 0.1, 1), (0, 1, 0.05), PR) @ SC(1.0)
+    Mp = frame((0.25, 0.1, 1), (0, 1, 0.05), PR) @ SC(1.3)
     pb, pl = ticket_punch()
     for src, dst in ((pb, B['insp_foreR']), (pl, B['insp_punch_lever'])):
         o_ = len(dst.V); dst.V.extend(Mp @ v for v in src.V)
@@ -1597,9 +1597,9 @@ def build_arm():
     b.add(p_tube([(0, 0, -0.02), (0, 0, SEG / 2), (0, 0, SEG + 0.02)], [0.13, 0.135, 0.13], 6), ch, CHAR, None, 0.14)     # the middle: packed tight, in the dark
     for i in range(8):
         for j in range(2):
-            z0 = j * 0.75 + (i % 2) * 0.375 + rn.u(-0.03, 0.03) * 0
+            z0 = j * 0.75 + (i % 2) * 0.375 + rn.u(-0.09, 0.09)
             hand = ['mitt', 'grip', 'mitt', 'claw', 'mitt', 'flat', 'grip', 'mitt'][(i + j * 3) % 8]
-            rope_arm(b, rn, z0, i * math.pi / 4, 0.2, TW, hand, rn.u(0.28, 0.5))
+            rope_arm(b, rn, z0, i * math.pi / 4 + rn.u(-0.12, 0.12), 0.2 * rn.u(0.9, 1.12), TW, hand, rn.u(0.28, 0.5))
     for i in range(4):
         for j in range(2):
             z0 = j * 0.75 + 0.19
@@ -1695,8 +1695,7 @@ def build_arm():
         else: par_ = prev[nm]; loc = (0, 0, prevL[nm])
         o = b.obj(sharp=72, weld=2e-5); o.name = '%s_%s' % (nm, ph); o.data.name = o.name; o.parent = par_; o.location = gv(*loc)
         prev[nm] = o; prevL[nm] = L; out[o.name] = o
-    # where things sit when they are laid out in one file (the game puts each where it wants): along x
-    out['arm_knot'].location = gv(1.2, 0, 0.4); out['arm_stump'].location = gv(2.2, 0, 0.3); hand.location = gv(3.6, 0, 0)
+    # (every piece sits on the file's origin: the game clones each and puts it where it wants)
     meta = dict(kind='story', id='rp_arm', seg=dict(node='arm_seg', len=SEG, axis=[0, 0, 1], r=0.3, twist_deg=90, note='tiles along +z; arms overhang the far end by up to 0.3 m'),
                 knot=dict(node='arm_knot', r=0.42, glow='rp_knot_glow'), stump=dict(node='arm_stump', cut='+z', r=0.29),
                 hand=dict(node='arm_hand', palm='-y', along='+z', thumb='f0', fingers=[dict(name=nm, base=r3(base), splay=splay, len=[L, L, L]) for nm, base, splay, L in FING], curl='rotation.x of f?_a / f?_b / f?_c, + closes; open = 0, grip about 0.9 each'))
