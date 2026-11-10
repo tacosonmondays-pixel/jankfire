@@ -58,7 +58,7 @@ queued requests live in `HANDOFF.md` on the `claude/handoff` branch (`git show o
 - **Patch notes:** every update players notice gets a line in `public/js/patchnotes.js` (PATCH NOTES in the menu, newest first, in the game's voice). Feature sessions describe their change in the PR; the coordinating session adds the patch-notes line when it ships, so parallel PRs don't fight over that file.
 - **Show the work:** send screenshots and short clips (Playwright `recordVideo` + ffmpeg, graphics setting `jank: 3` = Too HD)
   of new features.
-- **Usage is limited:** use effort levels. **Effort rule (owner, Fable 5.2): never use max effort.** Models and animation run at high, with extra high (xhigh) only sometimes, for the hardest model/animation jobs; gameplay and fixes at high or medium; reviews and routine work at medium or low. Also
+- **Usage is limited:** use effort levels. **Effort rule (owner, Fable 5.2): never use max effort.** Hero models and their animation (vehicles, bosses, characters, weapons, anything players look at up close) run at extra high (xhigh): the owner compared two helicopters and chose it. Small props and background pieces run at high; gameplay and fixes at high or medium; reviews and routine work at medium or low. Also
   avoid needless parallel agents, and keep branches pushed so nothing is lost when a session ends.
 
 ## Code conventions
