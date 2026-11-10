@@ -300,6 +300,7 @@ await t('safety: junk defs, junk dev messages and junk hits do nothing; any othe
   for (const m of [{ want: {} }, { want: 'slam' }, { gap: 'x' }, { gap: NaN }, { dmg: -5 }, { dmg: 'x' }, { calm: 1 }, { sever: 1 }, { grip: 'y' }, { part: '../x', dmg: 5 }]) dev(m);
   assert.equal(B.hp, 5000); assert.equal(B.arms.length, 0); assert.equal(B.gap, 30); assert.equal(B.calm, true);
   dev({ gap: 1e9 }); assert.equal(B.gap, RP.gap.max);
+  dev({ pin: true }); dev({ want: 'grab' }); dev({ grip: true }); await run(1); assert.equal(B.gap, RP.gap.max, 'a pinned gap holds (screenshots)'); dev({ pin: false }); quiet();
   for (const d of [null, 'x', [1, 2], [NaN, 0, 1], [0, 0, 0], [1e9, 0, 0]]) R.room.handle(me, { t: 'hit', to: e.id, w: 'ar', n: 1, d });
   assert.equal(R.room.damage(e, NaN, me, 'ar'), false); assert.equal(R.room.damage(e, -5, me, 'ar'), false); assert.equal(R.room.damage(e, 500, me, 'ar'), false, 'phase 1: a blast is shrugged off');
   R.room.kill(e, me, 'void'); assert.ok(e.alive, 'the room can\'t kill it');

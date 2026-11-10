@@ -32,7 +32,7 @@ const std = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness:
 function css() {
   if (document.getElementById('rpCss')) return;
   const s = document.createElement('style'); s.id = 'rpCss';
-  s.textContent = `#rpGap{position:fixed;left:50%;top:84px;transform:translateX(-50%) rotate(1deg);z-index:39;pointer-events:none;font-family:var(--font);color:#fff;text-align:center;
+  s.textContent = `#rpGap{position:fixed;left:18px;top:58px;transform:rotate(-1.5deg);z-index:39;pointer-events:none;font-family:var(--font);color:#fff;text-align:center;
     background:rgba(18,8,24,0.92);border:4px solid #ff4fd8;box-shadow:8px 8px 0 #4fd8ff;padding:2px 18px 8px;min-width:200px}
   #rpGap.hidden,#rpFail.hidden{display:none}
   #rpGap .l{font-weight:700;letter-spacing:3px;font-size:14px;color:#4fd8ff} #rpGap .n{line-height:.95}
@@ -43,7 +43,7 @@ function css() {
   #rpGap .vx{font-size:14px;font-style:italic;opacity:.85;min-height:16px;margin-top:3px;text-transform:lowercase}
   #rpGap.near{border-color:#ff3030;animation:rpShake .12s infinite} #rpGap.near .n b{color:#ff3030;text-shadow:4px 4px 0 #000} #rpGap.near .tr u{background:#ff3030}
   #rpGap.open .n b{color:#7dff4f}
-  @keyframes rpShake{0%{transform:translateX(-50%) rotate(1deg)}50%{transform:translate(calc(-50% + 3px),2px) rotate(-1deg)}100%{transform:translateX(-50%) rotate(1deg)}}
+  @keyframes rpShake{0%{transform:rotate(-1.5deg)}50%{transform:translate(3px,2px) rotate(1deg)}100%{transform:rotate(-1.5deg)}}
   #rpFail{position:fixed;inset:0;z-index:58;pointer-events:none;font-family:var(--font)}
   #rpFail i{position:absolute;background:#050307;width:34vw;height:120vh;top:-10vh;border-radius:17vw;transition:transform .32s cubic-bezier(.3,1.5,.5,1)}
   #rpFail i:nth-child(1){left:-6vw;transform:translateY(-130vh) rotate(8deg)} #rpFail i:nth-child(2){left:16vw;transform:translateY(130vh) rotate(-5deg)} #rpFail i:nth-child(3){left:38vw;transform:translateY(-130vh) rotate(3deg)}
@@ -179,8 +179,8 @@ export function makeTrainFight(ST, { playScene }) {
     if (!decor) { // the wrist: lanyards and ID cards wound into a ball, lit from inside. it has to stand out in the dark
       v.knot = b.A.arm_knot.clone(true);
       v.knot.traverse((o) => { if (o.isMesh && [].concat(o.material).some((m) => m.name === 'rp_knot_glow')) { o.material = Array.isArray(o.material) ? o.material.map((m) => (m.name === 'rp_knot_glow' ? (v.glow = m.clone()) : m)) : (v.glow = o.material.clone()); } });
-      v.halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex(), color: 0x4fd8ff, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); v.halo.scale.setScalar(2.6);
-      v.light = new THREE.PointLight(0x4fd8ff, 6, 6, 1.5);
+      v.halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex(), color: 0x4fd8ff, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); v.halo.scale.setScalar(3.2);
+      v.light = new THREE.PointLight(0x4fd8ff, 10, 7, 1.5);
       g.add(v.knot, v.halo, v.light);
     }
     G.scene.add(g);
@@ -220,7 +220,7 @@ export function makeTrainFight(ST, { playScene }) {
     const tip = _q.set(w[0] + d[0] / dl, w[1] + d[1] / dl, w[2] + d[2] / dl);
     if (cut) { v.stump.position.set(w[0], w[1], w[2]); v.stump.up.set(0, 1, 0); v.stump.lookAt(_p.set(w[0] + P.dir[0], w[1] + P.dir[1], w[2] + P.dir[2])); v.stump.scale.setScalar(1.15); }
     else {
-      v.hand.position.set(w[0], w[1], w[2]); v.hand.up.set(0, Math.abs(d[1] / dl) > 0.9 ? 0 : 1, Math.abs(d[1] / dl) > 0.9 ? 1 : 0); v.hand.lookAt(tip);
+      v.hand.position.set(w[0] + d[0] / dl * 0.4, w[1] + d[1] / dl * 0.4, w[2] + d[2] / dl * 0.4); v.hand.up.set(0, Math.abs(d[1] / dl) > 0.9 ? 0 : 1, Math.abs(d[1] / dl) > 0.9 ? 1 : 0); v.hand.lookAt(tip);
       const want = a.st === 'grip' ? 0.95 : a.st === 'hold' ? 0.85 : a.st === 'sweep' ? 0.3 : 0.1 + 0.08 * Math.sin(time * 5 + (v.a.sock || 0));
       v.curl = (v.curl ?? 0.1) + (want - (v.curl ?? 0.1)) * Math.min(1, dt * 9);
       for (const j of v.joints) j.rotation.x = v.curl * (j.name[1] === '0' ? 0.75 : 1);
@@ -231,7 +231,7 @@ export function makeTrainFight(ST, { playScene }) {
       v.knot.position.set(w[0], w[1], w[2]); v.halo.position.set(w[0], w[1], w[2]); v.light.position.set(w[0], w[1], w[2]);
       const pulse = 0.5 + 0.5 * Math.sin(time * 6 + a.id), hurt = 1 - clamp(a.hp / a.max, 0, 1);
       if (v.glow) v.glow.emissiveIntensity = 2.4 + pulse * 1.2 + v.flash * 6;
-      v.halo.scale.setScalar(2.3 + pulse * 0.5 + v.flash * 1.6); v.halo.material.color.setHex(v.flash > 0.3 ? 0xffffff : hurt > 0.6 ? 0xff6a9a : 0x4fd8ff);
+      v.halo.scale.setScalar(3 + pulse * 0.7 + v.flash * 1.8); v.knot.scale.setScalar(1.2); v.halo.material.color.setHex(v.flash > 0.3 ? 0xffffff : hurt > 0.6 ? 0xff6a9a : 0x4fd8ff);
       v.knot.rotation.y += dt * (1 + hurt * 6);
     }
     v.wrist = w; v.dir = P.dir;
@@ -396,7 +396,7 @@ export function makeTrainFight(ST, { playScene }) {
       b.root.position.set(0, CY, z); b.root.rotation.z = T.fin ? 0 : Math.sin(time * 0.9) * 0.012 + (b.flinch || 0) * 0.05 * Math.sin(time * 40);
       b.flinch = Math.max(0, (b.flinch || 0) - dt * 1.4); b.redK = Math.max(0, (b.redK || 0) - dt * 3);
       if (cyc > 0.55 && !b.hauled && F.live && !T.fin) { b.hauled = true; sfx.rpHaul([0, CY, z], clamp(1.4 - F.shown / 30, 0.3, 1.2)); } if (cyc < 0.5) b.hauled = false;
-      for (const [i, v] of b.haul.entries()) { const c2 = (cyc + i * 0.5) % 1, wa = v.a.wa; v.ext = T.fin ? Math.max(0.03, 1 - T.fin.t / 1.5) : c2 < 0.55 ? 0.5 + 0.5 * ss(c2 / 0.55) : 1 - 0.5 * ss((c2 - 0.55) / 0.45); v.a.st = c2 > 0.5 && !T.fin ? 'grip' : 'reach'; v.a.tgt = [4.05 * Math.cos(wa), CY + 4.05 * Math.sin(wa), -F.shown + 10]; v.g.visible = b.root.visible; poseArm(v, dt, F.shown - lurch); }
+      for (const [i, v] of b.haul.entries()) { const c2 = (cyc + i * 0.5) % 1, wa = v.a.wa; v.ext = T.fin ? Math.max(0.03, 1 - T.fin.t / 1.5) : c2 < 0.55 ? 0.5 + 0.5 * ss(c2 / 0.55) : 1 - 0.5 * ss((c2 - 0.55) / 0.45); v.a.st = c2 > 0.5 && !T.fin ? 'grip' : 'reach'; v.a.tgt = [4.05 * Math.cos(wa), CY + 4.05 * Math.sin(wa), -F.shown + 7]; v.g.visible = b.root.visible; poseArm(v, dt, F.shown - lurch); }
       // the eye housings swing open on a flinch; behind the blown left one, eyes
       const open = F.open > 0 && !T.fin ? 1 : 0; b.openK = (b.openK || 0) + (open - (b.openK || 0)) * Math.min(1, dt * 7);
       if (b.N.eye_L) b.N.eye_L.rotation.y = 1.25 * b.openK; if (b.N.eye_R) b.N.eye_R.rotation.y = -1.25 * b.openK;

@@ -175,6 +175,7 @@ function travel(to) {
     start({ ...cur, at: p ? { map: at.map, p, yaw: Number.isFinite(at.yaw) ? at.yaw : 0 } : { map: at.map, p: W.spawn.slice(), yaw: W.yaw || 0, fresh: true } });
   };
   on('saved', go);
+  try { if (window.JF_STORY && window.JF_STORY.sync) window.JF_STORY.sync(); } catch { /* the save goes anyway */ } // (the quest state as it is this frame, not two seconds ago)
   send('save', { why: 'travel' });
   return true;
 }

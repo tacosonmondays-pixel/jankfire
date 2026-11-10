@@ -356,7 +356,7 @@ Its events (`ev.type`, all with `target`, `kind`, `boss: 'revenue_protection_1'`
 | `swept`, `snatched`, `lunge`, `bag`, `off` | what happened to you: `hi` · `gap` · `st: tell / hit, bit` · `hp` · (the track) |
 | `fail`, `reset` | `why: gap / dead`, `line`; then the fight is back at the phase's start |
 
-Tests only (`?storydev=1`): `{ t:'sty', k:'bossdev', calm?, want?, hi?, side?, grip?, sever?, gap?, dmg?, part?, i? }`.
+Tests only (`?storydev=1`): `{ t:'sty', k:'bossdev', calm?, pin?, want?, hi?, side?, grip?, sever?, gap?, dmg?, part?, i? }`.
 
 For other systems:
 - `sim.ref` (`{ room, me }` once up);

@@ -23,8 +23,8 @@ export function buildTrainMap(kit) {
   const B = kit.builder(), D = kit.builder(), A = ARENA, W = A.wagon, F = A.flat, L = A.loco;
   B.add(-6.2, -2, A.z0, 6.2, 0, A.z1, 'dirt'); // the track bed
   // the tunnel's walls and roof stand just behind the round lining the client draws (collisions stay boxes)
-  B.add(-6.2, 0, A.z0, -A.boreR, 9, A.z1, 'brick'); B.add(A.boreR, 0, A.z0, 6.2, 9, A.z1, 'brick'); B.add(-6.2, A.cy + A.boreR, A.z0, 6.2, 9, A.z1, 'brick');
-  B.add(-6.2, 0, A.z0 - 1, 6.2, 9, A.z0, 'brick'); B.add(-6.2, 0, A.z1, 6.2, 9, A.z1 + 1, 'brick');
+  B.add(-6.2, 0, A.z0, -A.boreR - 0.1, 9, A.z1, 'brick'); B.add(A.boreR + 0.1, 0, A.z0, 6.2, 9, A.z1, 'brick'); B.add(-6.2, A.cy + A.boreR + 0.1, A.z0, 6.2, 9.4, A.z1, 'brick');
+  B.add(-6.2, 0, A.z0 - 1, 6.2, 9.4, A.z0, 'brick'); B.add(-6.2, 0, A.z1, 6.2, 9.4, A.z1 + 1, 'brick');
   for (const x of [-0.75, 0.75]) D.add(x - 0.05, 0, A.z0, x + 0.05, 0.14, A.z1, 'metal'); // the rails
   // the low open wagon: a plank deck, a rail round three sides (too tall to step over, low enough to jump)
   D.add(-1.25, 0.45, W.z0 + 0.2, 1.25, 0.8, W.z1 - 0.2, 'metal');
@@ -47,7 +47,7 @@ export function buildTrainMap(kit) {
   return {
     name: TRAIN.name, size: 'story', boxes: B.boxes, deco: D.boxes, killY: TRAIN.killY, floorY: -2, bounds: [-6.2, A.z0, 6.2, A.z1],
     sky: { top: 0x050307, mid: 0x050307, bot: 0x050307, fog: 0x050307 }, fogNear: 18, fogFar: 78, // a lot of dark
-    sealed: true, light: { hemi: [0x7a6a8a, 0x1a1012, 0.62], sun: [0xffe0c0, 0.18] },
+    sealed: true, light: { hemi: [0x7a6a8a, 0x1a1012, 0.5], sun: [0xffe0c0, 0.15] },
     spawns: [TRAIN.spawn.slice()], story: true,
   };
 }

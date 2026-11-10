@@ -53,7 +53,7 @@ export async function init() {
   if (data && Array.isArray(data.bagStub)) for (const i of data.bagStub.slice(0, 64)) if (typeof i === 'string') ST.bag.add(i);
   ST.S = makeStory({ content: merge(PACKS), state: st, host: HOST });
   ST.ready = true;
-  ST.where = where; ST.offYaw = (y) => offYaw(y);
+  ST.where = where; ST.offYaw = (y) => offYaw(y); ST.sync = () => sync(true); // (sync: the engine's state to the sim right now, before a travel's save)
   window.JF_STORY = ST; // (tests drive it from here)
   try { const sc = await import('./scene.js'); ST.scene = sc; sc.initScenes(ST); } catch (e) { console.warn('story scenes not loaded', e); }
   try { const bf = await import('./bossfight.js'); ST.boss = bf.makeBoss(ST, { where, playScene: (id, o) => ST.scene && ST.scene.playScene(id, o) }); } catch (e) { console.warn('boss hooks not loaded', e); } // (phases, cutscenes, the boss's poses)

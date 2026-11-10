@@ -84,7 +84,7 @@ Damage the fight does to you is what lands: the room softens every bot's hit to 
 
 ## Dev messages (`?storydev=1`)
 `G.story.send('bossdev', o)`: `calm` (no arms, lunges or Jack's clock by themselves), `want: 'grab' | 'sweep' | 'snatch'
-| 'lunge'` (+ `hi`, `side`), `grip: true` (skip the tells), `sever: true` (every arm), `gap: n`, `dmg: n` (+ `part`,
+| 'lunge'` (+ `hi`, `side`), `grip: true` (skip the tells), `sever: true` (every arm), `gap: n`, `pin` (THE GAP holds still), `dmg: n` (+ `part`,
 `i`: where it lands; by default the part that counts in this phase). `window.JF_TRAIN` is the client's state.
 
 ## Not built

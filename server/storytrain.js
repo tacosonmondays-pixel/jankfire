@@ -176,7 +176,7 @@ export function installStoryTrain(Room) {
       const rim = used(B, false), mo = used(B, true), taken = new Set(B.arms.filter((a) => a.k === 'grab').map((a) => a.spot));
       const spots = SPOTS.map((s, i) => i).filter((i) => !taken.has(i)).sort(() => Math.random() - 0.5);
       for (const i of spots) {
-        const s = SPOTS[i], gp = [s.p[0], RAIL_Y, s.p[1]], tgt = [gp[0] + s.o[0] * 1.2, RAIL_Y + 0.8, gp[2] + s.o[1] * 1.2];
+        const s = SPOTS[i], gp = [s.p[0], RAIL_Y, s.p[1]], tgt = [gp[0] + s.o[0] * 0.95, RAIL_Y + 0.75, gp[2] + s.o[1] * 0.95];
         const free = s.s.filter((n) => !rim.has(n)), mfree = B.smile ? [0, 1, 2, 3].filter((n) => !mo.has(n) && (n < 2) === (s.o[0] <= 0)) : [];
         if (mfree.length && (!free.length || Math.random() < 0.5)) { addArm(room, b, B, { k, sock: mfree[0], mouth: true, spot: i, tgt, gp, dur: RP.grab.reach * 0.7 }); return true; } // out of the mouth: faster
         if (free.length) { addArm(room, b, B, { k, sock: free[0], spot: i, tgt, gp, dur: RP.grab.reach }); return true; }
@@ -289,7 +289,7 @@ export function installStoryTrain(Room) {
       ev(this, b, 'off', {});
     }
     stepArms(this, b, B, dt); stepLunge(this, b, B, dt); nextArm(this, b, B);
-    const rate = -RP.gap.grab * B.arms.filter((a) => a.st === 'grip').length;
+    const rate = B.pin ? 0 : -RP.gap.grab * B.arms.filter((a) => a.st === 'grip').length; // (pin: a dev hold on THE GAP, for screenshots)
     B.gap = clamp(B.gap + rate * dt, 0, RP.gap.max);
     if (B.phase === 0 && !B.calm && (B.jack += dt) >= RP.jack) phase(this, b, B, 1); // Jack's bar ran out before the mask's did
     if (B.t >= B.bagT) { B.bagT = B.t + RP.bag.every; for (const p of up) { const a = heal(this, p, RP.bag.hp); if (a) ev(this, b, 'bag', { hp: a }); } }
@@ -300,6 +300,7 @@ export function installStoryTrain(Room) {
   P.rpDev = function (b, m) {
     const B = b.sk.b, me = humans(this).find((p) => p.alive) || null; if (!B.train || !m || typeof m !== 'object') return;
     if (typeof m.calm === 'boolean') B.calm = m.calm;
+    if (typeof m.pin === 'boolean') B.pin = m.pin;
     if (fin(m.gap)) { B.gap = clamp(m.gap, 0.2, RP.gap.max); sendGap(this, b, B, 0); }
     if (B.state !== 'fight') return;
     if (m.want === 'grab' || m.want === 'sweep' || m.want === 'snatch') spawnArm(this, b, B, m.want, { hi: m.hi, side: m.side });
