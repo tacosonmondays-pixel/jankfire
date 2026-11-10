@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '6.9', date: '2026-11-10', title: 'HONEST CHEATING', items: [
+    'SPINBOT no longer grabs your camera. look around freely: every shot goes to whoever is closest to your crosshair (a green LOCKED diamond shows who). nobody near your crosshair, nobody gets shot.',
+    'the spinbot leaves your own side alone now: teammates, and in zombies your squad (people and bots).',
+    'the party popper works in zombies: it shoves zombies back like it shoves everyone else.',
+  ] },
   { v: '6.8', date: '2026-11-07', title: 'SPRAY RANGE', items: [
     'TRAINING has a SPRAY RANGE now: a wall left of the firing line with a head ring 10 m out. step onto the sand and the plant & defuse guns kick like they do in P&D. hold fire, pull down, and the last spray\'s holes stay on the wall in hot pink. the rest of training is as dumb as ever.',
     'the little first-person spectate box in royale sits under the stats now instead of on top of them.',

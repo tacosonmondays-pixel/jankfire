@@ -1645,7 +1645,7 @@ class Room {
     if (this.isBall(p)) return; // no hands in the wrecking ball
     if (now() < (p.staggerUntil || 0)) return; // got parried: still reeling
     if (!this.allowed(p, m.w)) return; // gun game rung / zombie claw only
-    if (this.zm && !this.zmArm(p, m.w)) return; // zombies: only what you bought, while it has ammo
+    if (this.zm && m.w !== 'popper' && !this.zmArm(p, m.w)) return; // zombies: only what you bought, while it has ammo (the popper is an item: popperHit checks you really popped one)
     if ((w.slot === 'streak' || w.kind === 'dash') && !p.scythe) return; // you have to earn it
     if (w.kind === 'dash') {
       if (!(p.f & FLAGS.DASH) || !this.pairOk(p, t, 'dash', 280) || !this.rangeOk(p, t, w.range)) return;
