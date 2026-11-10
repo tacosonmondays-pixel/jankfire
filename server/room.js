@@ -12,7 +12,7 @@ import { rigClash } from '../shared/rig.js'; // overdrive rig killstreak
 import { soapAt, trapBoxes, trapPreroll } from '../shared/wand.js';
 import { MAPS, MAP_ORDER } from '../shared/map.js';
 import { warmMap, startGraphSweeper } from './graphs.js'; // the bots' walk graphs: built at room start, dropped when no room has used the map for a while
-import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, mapForGame, canDefuse, LADDER, GUNGAME, INFECT } from '../shared/modes.js';
+import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, mapForGame, canDefuse, LADDER, GUNGAME, INFECT, rollLadder } from '../shared/modes.js';
 import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, eventGame, inQuickPlay } from '../shared/vote.js';
 import { matchReset, matchKill, matchSummary } from './match.js';
 import { SKIP, isSkipCmd, skipCommand, skipTick, skipPeople, skipInfo } from './skip.js';
@@ -37,6 +37,7 @@ import { installRoyale } from './royale.js'; // Jank Royale (battle royale)
 import { BR } from '../shared/royale.js';
 import { tickHR, hrBot } from './hrguy.js'; // the Tall Guy From HR (Scary Forest)
 import { HR } from '../shared/hr.js';
+import { installAds } from './ads.js';
 import { installGear } from './gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
 import { installRandSkin, rollSkins, rollKfx, cleanFavs, hasRandom } from './randskin.js'; // Random cosmetics: rolled again on every spawn
 import { installSec } from './secondaries.js'; // water pistol, taser, tv remote, speed trap
@@ -178,6 +179,8 @@ if (process.env.JF_RIG_DUR) STREAKS.overdrive.dur = Number(process.env.JF_RIG_DU
 if (process.env.JF_BODY_DECAY) for (const k of bodyKinds) BODY[k].decay *= Number(process.env.JF_BODY_DECAY) || 1; // test knob: the ball / rig wear out faster
 // test knobs for gun game (everyone starts on a later rung) and infection (round length, patient zero delay, in seconds)
 const GG_START = Math.max(0, Math.min(LADDER.length - 1, Math.floor(Number(process.env.JF_GG_START) || 0)));
+// test knob: JF_GG_LADDER=cart,knife pins the gun game ladder (no rotation)
+const GG_FIXED = process.env.JF_GG_LADDER ? process.env.JF_GG_LADDER.split(',').filter((w) => Object.hasOwn(WEAPONS, w)) : null;
 if (process.env.JF_GG_TIME) GUNGAME.time = Number(process.env.JF_GG_TIME) || GUNGAME.time;
 if (process.env.JF_INF_TIME) INFECT.time = Number(process.env.JF_INF_TIME) || INFECT.time;
 if (process.env.JF_INF_DELAY) INFECT.delay = Number(process.env.JF_INF_DELAY) || INFECT.delay;
@@ -953,7 +956,8 @@ class Room {
       const pr = this.makeProj(b, 'bow', [o[0] + d[0] * 0.7, o[1] + d[1] * 0.7, o[2] + d[2] * 0.7], d.map((x) => x * w.speedMax), { tip: pick(TIP_IDS), charge: 1 });
       pr.born = now();
     } else if (w.kind === 'cards') { // no hand of cards for bots: they just flick single ones
-      this.spawnProj(b, 'card', o, spreadDir(aim, D.err));
+      const d = spreadDir(aim, D.err); // (not spawnProj: a card has no cooldown of its own, so that refused every one and bots sat on this rung forever)
+      this.makeProj(b, 'card', [o[0] + d[0] * 0.8, o[1] + d[1] * 0.8, o[2] + d[2] * 0.8], d.map((x) => x * WEAPONS.card.speed));
     }
   }
 
@@ -1075,6 +1079,7 @@ class Room {
       this.broadcast({ t: 'bub+', id: b.id, p: b.p, r: b.r, left: it.dur * 1000 });
     } else if (m.i === 'popper') this.popperUse(p, o, d);
     else if (m.i === 'reverse') this.reverseUse(p);
+    else if (m.i === 'laptop') this.laptopUse(p, o, d, c); // pop-up ads (server/ads.js): no target, charge back
   }
   // party popper (item): the client finds who's in its cone and sends 'hit's. they only count for a moment after
   // a charge was really spent here, once per target, and only on people in front of where you aimed
@@ -1645,7 +1650,7 @@ class Room {
     if (this.isBall(p)) return; // no hands in the wrecking ball
     if (now() < (p.staggerUntil || 0)) return; // got parried: still reeling
     if (!this.allowed(p, m.w)) return; // gun game rung / zombie claw only
-    if (this.zm && !this.zmArm(p, m.w)) return; // zombies: only what you bought, while it has ammo
+    if (this.zm && m.w !== 'popper' && !this.zmArm(p, m.w)) return; // zombies: only what you bought, while it has ammo (the popper is an item: popperHit checks you really popped one)
     if ((w.slot === 'streak' || w.kind === 'dash') && !p.scythe) return; // you have to earn it
     if (w.kind === 'dash') {
       if (!(p.f & FLAGS.DASH) || !this.pairOk(p, t, 'dash', 280) || !this.rangeOk(p, t, w.range)) return;
@@ -3418,10 +3423,12 @@ class Room {
   modeWeapon(p) {
     if (this.mode !== 'ffa' && this.mode !== 'bots') return null;
     const g = GAMES[this.game];
-    if (g.ladder) return LADDER[Math.min(p.gg || 0, LADDER.length - 1)];
+    if (g.ladder) { const L = this.ggL(); return L[Math.min(p.gg || 0, L.length - 1)]; }
     if (g.infect && p.inf) return 'claw';
     return null;
   }
+  // this match's gun game ladder (rolled in startModes; the classic one until then)
+  ggL() { return this.ladder || LADDER; }
   // can p hit / fire with wid? only their mode weapon while a mode hands one out, and the claw only as a zombie
   allowed(p, wid) {
     const only = this.modeWeapon(p);
@@ -3449,23 +3456,24 @@ class Room {
   modeJoin(p) {
     if (this.mode !== 'ffa' && this.mode !== 'bots') return;
     const g = GAMES[this.game], live = this.round && !this.round.over;
-    p.gg = GG_START;
+    p.gg = Math.min(GG_START, this.ggL().length - 1);
     p.inf = !!(g.infect && live && !this.infAt && this.fighters().some((o) => o.inf));
     if (p.inf) p.infT = now();
     if (p.inf) this.broadcast({ t: 'infect', id: p.id, by: 0, late: 1 }, p.id);
     if (p.isBot) { this.modeLoadout(p); return; }
-    send(p, { t: 'gg', all: g.ladder ? this.fighters().map((o) => [o.id, o.gg || 0]) : [] });
+    send(p, { t: 'gg', all: g.ladder ? this.fighters().map((o) => [o.id, o.gg || 0]) : [], l: g.ladder ? this.ggL() : undefined });
     send(p, { t: 'infect', all: g.infect ? this.fighters().filter((o) => o.inf).map((o) => o.id) : [] });
   }
   // a fresh match: everyone back to the bottom of the ladder and human again
   startModes() {
     const g = GAMES[this.game], n = now();
-    for (const p of this.players.values()) { p.gg = g.ladder ? GG_START : 0; p.inf = false; }
+    if (g.ladder) this.ladder = GG_FIXED && GG_FIXED.length ? GG_FIXED : rollLadder(this.ladder); // a new ladder every match, one for the whole room (bots too)
+    for (const p of this.players.values()) { p.gg = g.ladder ? Math.min(GG_START, this.ggL().length - 1) : 0; p.inf = false; }
     this.infAt = g.infect ? n + INFECT.delay * 1000 : 0;
     this.infLast = 0;
-    if (g.ladder) { this.round.target = LADDER.length; this.round.ends = n + GUNGAME.time * 1000; }
+    if (g.ladder) { this.round.target = this.ggL().length; this.round.ends = n + GUNGAME.time * 1000; }
     if (g.infect) { this.round.target = 0; this.round.ends = n + INFECT.time * 1000; }
-    this.broadcast({ t: 'gg', all: g.ladder ? this.fighters().map((p) => [p.id, p.gg]) : [] });
+    this.broadcast({ t: 'gg', all: g.ladder ? this.fighters().map((p) => [p.id, p.gg]) : [], l: g.ladder ? this.ggL() : undefined });
     this.broadcast({ t: 'infect', all: [] });
   }
   // a death under the mode's rules (kw: what really killed them; void kills count for whoever knocked them off)
@@ -3493,8 +3501,8 @@ class Room {
   // gun game: a kill with your rung's weapon moves you up (the one with the spoon wins), dying to melee knocks you back one
   ggKill(t, killer, kw) {
     if (!killer || killer === t) return;
-    const N = LADDER.length;
-    if (kw === LADDER[killer.gg || 0]) {
+    const L = this.ggL(), N = L.length;
+    if (kw === L[killer.gg || 0]) {
       killer.gg = (killer.gg || 0) + 1;
       this.broadcast({ t: 'gg', id: killer.id, n: killer.gg, k: killer.gg >= N ? 'win' : killer.gg === N - 1 ? 'last' : 'up' });
       if (killer.gg >= N) { this.endRound(); return; } // modeSort puts them on top
@@ -3932,6 +3940,7 @@ installEcon(Room, {
 installLasso(Room);
 installZombies(Room, { send, stat, store });
 installLobby(Room, { send, rooms });
+installAds(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm }); // the laptop's pop-up ads (after installSec: it wraps botGear / botFire)
 installStoryRef(Room); // story rooms (before installModeStats, which stays last)
 installModeStats(Room, { store }); // per-mode leaderboard stats (last: it wraps zombies' zmGive)
 
