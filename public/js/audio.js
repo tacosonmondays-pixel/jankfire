@@ -239,6 +239,15 @@ export const sfx = {
   thwack(pos) { noise(0.07, 0.8, 'bandpass', 1800, 900, pos, 0, 1.5); },
   popper(pos) { noise(0.08, 0.9, 'highpass', 1500, 3000, pos); tone('sawtooth', 500, 700, 0.35, 0.15, pos, 0.05); },
   ting(pos) { tone('sine', 2800, 2700, 0.5, 0.35, pos); tone('sine', 4200, 4100, 0.3, 0.15, pos); },
+  // the laptop: a lid clack + a boot chime that's slightly wrong; an ad landing (a cheap two-note jingle, n = which one, so five
+  // in a row climb); closing one (a dry click + a falling blip); ARE YOU SURE (the same jingle, backwards)
+  laptopOpen(pos) { noise(0.03, 0.5, 'highpass', 2500, 5000, pos); for (const [i, f] of [392, 523, 659, 740].entries()) tone('triangle', f, f, 0.22, 0.16, pos, 0.05 + i * 0.07); },
+  adPop(n = 0) { const f = 660 * Math.pow(1.122, n % 6); tone('square', f, f, 0.07, 0.13); tone('square', f * 1.5, f * 1.5, 0.12, 0.13, null, 0.08); noise(0.02, 0.2, 'highpass', 4000, 7000); },
+  adClose() { noise(0.015, 0.35, 'highpass', 3000, 6000); tone('sine', 900, 320, 0.09, 0.2); },
+  adSure() { tone('square', 990, 990, 0.1, 0.13); tone('square', 660, 660, 0.14, 0.13, null, 0.1); },
+  // the summons: a rising glassy chord while the ring is open, then the gavel: two wooden knocks and a bright crack
+  gavelCall(pos) { for (const [i, f] of [392, 523, 659, 784].entries()) tone('sine', f, f * 1.5, 0.95, 0.12, pos, i * 0.05); tone('triangle', 196, 392, 0.95, 0.1, pos); },
+  gavelBang(pos) { tone('square', 180, 70, 0.12, 0.5, pos); tone('square', 150, 60, 0.14, 0.45, pos, 0.11); noise(0.25, 0.8, 'highpass', 1800, 6000, pos); tone('sine', 1568, 784, 0.5, 0.25, pos, 0.02); },
   reverse(pos) { tone('sine', 300, 1600, 0.25, 0.3, pos); tone('triangle', 1600, 300, 0.25, 0.2, pos, 0.25); },
   hole(pos) { tone('sine', 80, 40, 2.9, 0.5, pos); noise(2.9, 0.3, 'lowpass', 300, 80, pos); },
   holePop(pos) { sfx.boom(pos); sfx.squeak(pos); },
@@ -385,6 +394,19 @@ Object.assign(sfx, {
   roundStart() { for (const [f, d] of [[98, 0], [92.5, 0.04], [146.8, 0.08]]) tone('sawtooth', f, f * 0.94, 2.2, 0.16, null, d); noise(1.8, 0.22, 'lowpass', 260, 50); tone('square', 49, 45, 1.4, 0.1, null, 0.6); },
   roundEnd() { [392, 523, 659, 784].forEach((f, i) => tone('triangle', f, f, 0.6, 0.14, null, i * 0.16)); },
   powerOn(pos) { tone('sawtooth', 38, 240, 1.6, 0.28, pos); tone('square', 30, 120, 1.6, 0.08, pos); noise(0.35, 0.55, 'highpass', 2000, 6000, pos, 1.3); },
+});
+
+// zombies: a limb coming off (wet rip + a pop), a hard hat dinking (and ringing as it flies off), the Screamer, a Chonk popping
+Object.assign(sfx, {
+  zmLimb(pos, head) { noise(0.16, 0.5, 'bandpass', 900, 220, pos, 0, 1.5); tone('sine', head ? 520 : 300, 70, 0.18, 0.3, pos, 0.02); noise(0.3, 0.22, 'lowpass', 500, 120, pos, 0.08); tone('square', head ? 880 : 150, head ? 440 : 60, 0.09, 0.08, pos, 0.01); },
+  zmDink(pos, off) { tone('triangle', 2350, 2300, off ? 0.7 : 0.22, 0.3, pos); tone('sine', 3520, 3480, off ? 0.5 : 0.14, 0.14, pos); tone('square', 1175, 1170, 0.05, 0.1, pos); if (off) tone('triangle', 1570, 1540, 0.9, 0.14, pos, 0.06); },
+  zmScream(pos) { for (const [f, v] of [[1250, 0.2], [1870, 0.12], [2630, 0.07]]) { tone('sawtooth', f * 0.6, f, 0.25, v, pos); tone('sawtooth', f, f * 0.82, 1.0, v, pos, 0.24); } noise(1.1, 0.16, 'bandpass', 2600, 1800, pos, 0.1, 3); tone('square', 96, 60, 1.1, 0.07, pos, 0.1); },
+  zmVoid(pos) { tone('sawtooth', 70, 300, 0.12, 0.2, pos); noise(0.12, 0.7, 'lowpass', 500, 80, pos, 0.11); tone('sine', 120, 38, 0.4, 0.6, pos, 0.11); tone('triangle', 1760, 1740, 0.5, 0.16, pos, 0.14); [523, 659, 784, 1046].forEach((f, i) => tone('square', f, f, 0.12, 0.09, pos, 0.5 + i * 0.09)); }, // the stamp winds up, lands, a little fanfare
+  zmZap(pos) { for (let i = 0; i < 4; i++) noise(0.03, 0.4, 'highpass', 3000, 7000, pos, i * 0.035, 2); tone('sawtooth', 1800, 240, 0.14, 0.12, pos); },
+  zmBossIn(pos) { for (const [f, d] of [[55, 0], [52, 0.5], [49, 1.0]]) { tone('sawtooth', f, f * 0.97, 0.9, 0.3, pos, d); tone('square', f * 2, f * 1.94, 0.9, 0.08, pos, d); } noise(1.6, 0.25, 'lowpass', 300, 60, pos, 0.2); }, // three low horns
+  zmCharge(pos) { tone('sawtooth', 90, 420, 0.7, 0.3, pos); noise(0.7, 0.3, 'bandpass', 400, 1800, pos, 0, 2); },
+  zmBossOut(pos) { [392, 494, 587, 784, 988].forEach((f, i) => tone('square', f, f, 0.22, 0.14, pos, i * 0.11)); tone('sine', 150, 40, 0.8, 0.5, pos); noise(0.8, 0.4, 'lowpass', 1200, 100, pos, 0.05); },
+  zmPop(pos) { tone('sine', 190, 34, 0.55, 0.6, pos); noise(0.5, 0.6, 'lowpass', 900, 90, pos); noise(0.7, 0.3, 'bandpass', 420, 160, pos, 0.1, 2); for (let i = 0; i < 5; i++) tone('sine', 260 + i * 70, 120, 0.12, 0.12, pos, 0.18 + i * 0.07); },
 });
 
 const LOOPDEF = {

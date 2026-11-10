@@ -9,7 +9,7 @@ export const MISSIONS_ACT2 = {
     act: 2, n: 6, title: "OPTION C", kind: "main", giver: "auntie", district: "bottom",
     locations: ["bottom:lostfound", "bottom:gordo_den", "bottom:machine"],
     cast: ["auntie", "gordo", "lumps", "dale"],
-    requires: { missions: ["m05_second_stomach"], if: null },
+    requires: { missions: ["m06_tickets_please"], if: null },
     logline: "Auntie lays out her wall of evidence: six companies signed the end of the world, each one kept its page, and with all six she can prove every debt they collect is a lie.",
     mechanic: { uses: ["grapple"], hook: "Gordo's den is up a grapple-only stack of containers; his string map doubles as the first look at every district's swing route" },
     beats: [

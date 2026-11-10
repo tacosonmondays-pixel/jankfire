@@ -133,7 +133,7 @@ merges into the save slot's `data` (TECH_PLAN §7; `met`, `codex`, `log`, `track
 The full script is the pack `shared/story/content/overdue.js`. It's authored in the richer files beside it (see
 `shared/story/content/index.js` and `docs/story/script/`) and converted into the engine shape above at import, so the
 engine files are untouched. `tests/story/overdue.test.mjs` loads it through `makeStory` and an auto-player finishes
-all 32 main missions and all 47 side questlines using only host-style events. What the pack needs that the schema
+all 33 main missions and all 47 side questlines using only host-style events. What the pack needs that the schema
 doesn't have yet:
 
 **Pack keys**

@@ -1,0 +1,166 @@
+<!doctype html>
+<!-- REVENUE PROTECTION concept sheet (a blockout, not the model). render it with tools/story/train_concept.cjs -->
+<meta charset="utf-8">
+<style>
+@font-face { font-family: 'Comic Neue'; font-weight: 700; src: url('/fonts/comic-neue-latin-700-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Comic Neue'; font-weight: 400; src: url('/fonts/comic-neue-latin-400-normal.woff2') format('woff2'); }
+html, body { margin: 0; background: #0b0510; color: #fff; font-family: 'Comic Neue', sans-serif; }
+#wrap { position: relative; width: 1920px; height: 1260px; overflow: hidden; }
+canvas { position: absolute; left: 0; top: 60px; }
+h1 { position: absolute; left: 24px; top: 6px; margin: 0; font-size: 34px; color: #ffe14d; text-shadow: 3px 3px 0 #ff00dc; letter-spacing: 1px; }
+h1 small { font-size: 18px; color: #4fd8ff; text-shadow: none; margin-left: 14px; font-weight: 400; }
+.fr { position: absolute; box-sizing: border-box; border: 4px solid #ff4fd8; box-shadow: 8px 8px 0 #4fd8ff; pointer-events: none; }
+.tag { position: absolute; background: #ffe14d; color: #000; border: 3px solid #000; box-shadow: 4px 4px 0 #ff4fd8; padding: 3px 12px; font-weight: 700; font-size: 22px; transform: rotate(-1.5deg); }
+.note { position: absolute; background: rgba(18,8,24,0.92); border: 2px solid #ff4fd8; padding: 4px 9px; font-size: 16px; line-height: 1.25; max-width: 330px; }
+.note b { color: #ffe14d; } .note i { color: #4fd8ff; font-style: normal; }
+</style>
+<div id="wrap">
+  <h1>REVENUE PROTECTION <small>OVERDUE, Act I climax · boss concept (blockout, not the final model)</small></h1>
+  <canvas id="c"></canvas>
+  <div id="ui"></div>
+</div>
+<script type="importmap">{ "imports": { "three": "/vendor/three/build/three.module.js" } }</script>
+<script type="module">
+import * as THREE from 'three';
+const W = 1920, H = 1200, R = 4.6; // tunnel radius, m
+const rnd = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, flatShading: true, ...o });
+const enamel = M(0xeeeadf, { roughness: 0.35 }), enamel2 = M(0xd9d2c0, { roughness: 0.5 }), char = M(0x0c0a0d, { roughness: 0.45 }), brick = M(0x3a2a2e, { roughness: 0.95 });
+const box = (w, h, d, m) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+
+// one enamel plate: a ring sector r0..r1, a0..a1, a gap all round for the seams
+function plate(r0, r1, a0, a1, m) {
+  const s = new THREE.Shape(), g = 0.035, n = 10;
+  for (let i = 0; i <= n; i++) { const a = a0 + g / r1 + (a1 - a0 - 2 * g / r1) * i / n; s[i ? 'lineTo' : 'moveTo'](Math.cos(a) * (r1 - g), Math.sin(a) * (r1 - g)); }
+  const ri = Math.max(r0 + g, 0.05);
+  for (let i = n; i >= 0; i--) { const a = a0 + g / ri + (a1 - a0 - 2 * g / ri) * i / n; s.lineTo(Math.cos(a) * ri, Math.sin(a) * ri); }
+  return new THREE.Mesh(new THREE.ExtrudeGeometry(s, { depth: 0.22, bevelEnabled: true, bevelSize: 0.03, bevelThickness: 0.03, bevelSegments: 1, curveSegments: 4 }), m);
+}
+// the mask: 12 plates (4 inner, 8 outer), two tall oval eyes. stage 0 whole .. 3 the lower third gone and hanging
+function mask(stage) {
+  const g = new THREE.Group(), RM = R - 0.25, gone = new Set(stage >= 3 ? [8, 9, 10, 11, 2, 3, 6] : stage >= 2 ? [9, 6, 11] : stage >= 1 ? [9] : []);
+  const add = (i, r0, r1, a0, a1) => { if (gone.has(i)) return; const p = plate(r0, r1, a0, a1, i % 3 ? enamel : enamel2); g.add(p);
+    for (const [r, a] of [[r1 - 0.25, a0 + 0.12], [r1 - 0.25, a1 - 0.12]]) { const b = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.08, 6), M(0x6b6258, { metalness: 0.6 })); b.rotation.x = Math.PI / 2; b.position.set(Math.cos(a) * r, Math.sin(a) * r, 0.27); g.add(b); } };
+  for (let i = 0; i < 4; i++) add(i, 0, RM * 0.5, i * Math.PI / 2, (i + 1) * Math.PI / 2);          // 0..3 inner (2,3 = lower)
+  for (let i = 0; i < 8; i++) add(4 + i, RM * 0.5, RM, i * Math.PI / 4, (i + 1) * Math.PI / 4);      // 4..11 outer (8..11 = lower)
+  // eyes: tall oval lamp housings. the left one (their left = +x here, we look at its face from +z) blows at stage 2
+  for (const sx of [-1, 1]) {
+    const blown = stage >= 2 && sx > 0, e = new THREE.Group(); e.position.set(sx * 1.25, 0.75, 0.2);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.09, 6, 20), M(blown ? 0x241c1c : 0x55504a, { metalness: 0.5 })); rim.scale.set(1, 1.75, 1); e.add(rim);
+    const hole = new THREE.Mesh(new THREE.CircleGeometry(0.6, 20), new THREE.MeshBasicMaterial({ color: 0x000000 })); hole.scale.set(1, 1.75, 1); hole.position.z = 0.06; e.add(hole);
+    if (blown) for (let i = 0; i < 11; i++) { const r = 0.1 + rnd() * 0.1, b = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), M(0xe9dfc8, { roughness: 0.2 })); b.position.set((rnd() - 0.5) * 0.7, (rnd() - 0.5) * 1.5, 0.1); e.add(b);
+      const p = new THREE.Mesh(new THREE.SphereGeometry(r * 0.45, 6, 5), new THREE.MeshBasicMaterial({ color: 0x100000 })); p.position.copy(b.position).add(new THREE.Vector3(0, 0, r * 0.75)); e.add(p); }
+    g.add(e);
+  }
+  // cracks: thin black strips. stage 1 hairlines, stage 2+ the smile line (the worn-off smile comes back as a crack)
+  const crack = (pts, w) => { for (let i = 0; i < pts.length - 1; i++) { const a = new THREE.Vector3(...pts[i], 0.275), b = new THREE.Vector3(...pts[i + 1], 0.275), c = box(a.distanceTo(b), w, 0.01, new THREE.MeshBasicMaterial({ color: 0x050305 })); c.position.copy(a).lerp(b, 0.5); c.rotation.z = Math.atan2(b.y - a.y, b.x - a.x); g.add(c); } };
+  if (stage >= 1) { crack([[-0.4, 2.6], [-0.9, 3.2], [-0.7, 3.9]], 0.05); crack([[-2.6, -0.2], [-3.3, 0.3], [-3.9, 0.1]], 0.05); crack([[0.3, 0.1], [0.1, -0.6], [0.5, -1.0]], 0.04); }
+  if (stage === 2) { const p = []; for (let i = 0; i <= 12; i++) { const t = -1 + 2 * i / 12; p.push([t * 2.5 + (i % 2 ? 0.06 : -0.05), -1.5 - (1 - t * t) * 0.9 + (i % 3 ? 0.05 : -0.08)]); } crack(p, 0.09); }
+  if (stage >= 3) { g.rotation.z = -0.3; g.position.set(0.5, -0.5, 0); g.rotation.x = 0.12; }
+  return g;
+}
+// the 17:32: four hundred commuters in one piece, charred, still in lanyards. packed into the bore behind the mask
+function mass(depth = 7) {
+  const g = new THREE.Group(), N = 620, body = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.21, 0.55, 2, 6), char, N), head = new THREE.InstancedMesh(new THREE.SphereGeometry(0.15, 7, 5), M(0x2a2024, { roughness: 0.5 }), N),
+    lan = new THREE.InstancedMesh(new THREE.BoxGeometry(0.1, 0.15, 0.02), new THREE.MeshBasicMaterial({ color: 0xffffff }), N), o = new THREE.Object3D(), col = new THREE.Color();
+  for (let i = 0; i < N; i++) { const a = rnd() * 6.283, r = Math.sqrt(rnd()) * (R - 0.5), z = -0.3 - Math.pow(rnd(), 1.8) * depth; o.position.set(Math.cos(a) * r, Math.sin(a) * r, z); o.rotation.set((rnd() - 0.5) * 1.2, (rnd() - 0.5) * 1.2, rnd() * 6.283); o.scale.setScalar(0.9 + rnd() * 0.5); o.updateMatrix(); body.setMatrixAt(i, o.matrix);
+    const up = new THREE.Vector3(0, 0.5, 0).applyEuler(o.rotation).multiplyScalar(o.scale.x); o.position.add(up); o.position.z += 0.12; o.updateMatrix(); head.setMatrixAt(i, o.matrix);
+    o.position.sub(up.multiplyScalar(0.6)); o.position.z += 0.22; o.rotation.set(0, 0, rnd() * 6.283); o.updateMatrix(); lan.setMatrixAt(i, o.matrix); lan.setColorAt(i, col.set([0x4fd8ff, 0xffe14d, 0xf2f2f2, 0x7dff4f][i % 4]).multiplyScalar(0.55)); }
+  g.add(body, head, lan);
+  // the inspector: the middle of it, cap on, still holding the punch. the crit spot
+  const ins = new THREE.Group(), warm = M(0x1a1210, { emissive: 0xff5a1a, emissiveIntensity: 0.28 });
+  const t = box(0.75, 0.95, 0.45, warm); const h = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 6), M(0x3a2c26, { emissive: 0xff5a1a, emissiveIntensity: 0.2 })); h.position.y = 0.8;
+  const cap = box(0.62, 0.2, 0.62, M(0x121a3a)); cap.position.y = 1.08; const peak = box(0.62, 0.05, 0.3, M(0x05070f)); peak.position.set(0, 1.0, 0.42); const badge = box(0.14, 0.1, 0.02, new THREE.MeshBasicMaterial({ color: 0xffe14d })); badge.position.set(0, 1.1, 0.32);
+  const arm = box(0.2, 0.2, 0.8, warm); arm.position.set(0.48, 0.25, 0.4); const punch = box(0.14, 0.26, 0.3, M(0x9aa0a8, { metalness: 0.8, roughness: 0.3 })); punch.position.set(0.48, 0.3, 0.9);
+  ins.add(t, h, cap, peak, badge, arm, punch); ins.position.set(0, -1.9, -0.75); ins.scale.setScalar(1.25); g.add(ins);
+  const pl = new THREE.PointLight(0xff5a1a, 14, 6); pl.position.set(0, -1.2, -0.2); g.add(pl);
+  g.userData.ins = ins; return g;
+}
+// one arm: three charred strands braided along a path, a lit wrist knot of lanyards (the weak point), a hand made of hands
+function arm(pts, grip = 1) {
+  const g = new THREE.Group(), c = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p))), L = c.getLength(), fr = c.computeFrenetFrames(80);
+  for (let s = 0; s < 3; s++) { const q = []; for (let i = 0; i <= 80; i++) { const t = i / 80, p = c.getPointAt(t), a = t * L * 1.6 + s * 2.094, r = 0.2 * (1 - t * 0.35); q.push(p.addScaledVector(fr.normals[i], Math.cos(a) * r).addScaledVector(fr.binormals[i], Math.sin(a) * r)); }
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(q), 90, 0.2, 5), char)); }
+  for (let i = 6; i < 80; i += 9) { const e = box(0.5, 0.22, 0.22, char); e.position.copy(c.getPointAt(i / 80)).addScaledVector(fr.normals[i], 0.3); e.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3); g.add(e); } // elbows sticking out
+  const end = c.getPointAt(1), tan = c.getTangentAt(1), w = c.getPointAt(0.93);
+  const knot = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 0), M(0x14222a, { emissive: 0x4fd8ff, emissiveIntensity: 1.3 })); knot.position.copy(w); g.add(knot);
+  for (let i = 0; i < 6; i++) { const card = box(0.2, 0.3, 0.03, new THREE.MeshBasicMaterial({ color: [0xffe14d, 0xffffff, 0x4fd8ff][i % 3] })); card.position.copy(w).add(new THREE.Vector3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).multiplyScalar(0.9)); card.rotation.set(rnd() * 3, rnd() * 3, 0); g.add(card); }
+  const hand = new THREE.Group(); hand.position.copy(end); hand.lookAt(end.clone().add(tan)); hand.add(box(0.9, 0.3, 0.9, char));
+  for (let f = 0; f < 5; f++) { let px = (f - 2) * 0.22, pz = 0.5, py = 0, an = 0.1; if (f === 0) { px = -0.6; pz = 0; }
+    for (let k = 0; k < 3; k++) { const seg = box(0.17, 0.17, 0.5, char); an += 0.5 * grip; seg.position.set(px, py - Math.sin(an) * 0.25, pz + Math.cos(an) * 0.25); seg.rotation.x = an; hand.add(seg); py -= Math.sin(an) * 0.5; pz += Math.cos(an) * 0.5; } }
+  g.add(hand); return g;
+}
+function tunnel(z0, z1, cut) {
+  const g = new THREE.Group(), len = z1 - z0;
+  const t = new THREE.Mesh(new THREE.CylinderGeometry(R, R, len, 20, 1, true, cut ? Math.PI * 0.5 : 0, cut ? Math.PI : Math.PI * 2), M(0x3a2a2e, { side: THREE.BackSide, roughness: 0.95 })); t.rotation.x = Math.PI / 2; t.position.z = (z0 + z1) / 2; g.add(t);
+  for (let z = z0; z <= z1; z += 4) { const rib = new THREE.Mesh(new THREE.TorusGeometry(R - 0.08, 0.14, 4, 20, cut ? Math.PI : Math.PI * 2), M(0x2a1e22)); rib.position.z = z; if (cut) rib.rotation.z = Math.PI / 2; g.add(rib); }
+  const bed = box(cut ? 3.5 : 7, 0.5, len, M(0x1c1719)); bed.position.set(cut ? -1.75 : 0, -R + 1.05, (z0 + z1) / 2); g.add(bed);
+  for (const x of [-0.75, 0.75]) { if (cut && x > 0) continue; const r = box(0.1, 0.14, len, M(0x8a8f96, { metalness: 0.8, roughness: 0.3 })); r.position.set(x, -R + 1.4, (z0 + z1) / 2); g.add(r); }
+  for (let z = z0; z < z1; z += 1.1) { const s = box(cut ? 1.3 : 2.4, 0.12, 0.3, M(0x2c211a)); s.position.set(cut ? -0.65 : 0, -R + 1.32, z); g.add(s); }
+  return g;
+}
+const FLOOR = -R + 1.47;
+function man(c, s = 1, wide = 1) { const g = new THREE.Group(), m = M(c); const b = box(0.5 * wide, 0.7, 0.3, m); b.position.y = 1.15; const h = box(0.28, 0.3, 0.28, m); h.position.y = 1.7; g.add(b, h);
+  for (const x of [-0.14, 0.14]) { const l = box(0.18, 0.8, 0.2, m); l.position.set(x * wide, 0.4, 0); g.add(l); const a = box(0.15, 0.65, 0.18, m); a.position.set(x * wide * 2.4, 1.15, 0); g.add(a); } g.scale.setScalar(s); return g; }
+function train(z) {
+  const g = new THREE.Group(), yel = M(0xffc21a, { roughness: 0.5 }), dk = M(0x2a2a30);
+  const wag = box(2.6, 0.3, 5, dk); wag.position.set(0, 0.55, 2.6); const rail = box(2.6, 0.08, 0.08, yel); rail.position.set(0, 1.5, 0.15); g.add(wag, rail);
+  for (const x of [-1.26, 1.26]) { const s = box(0.08, 0.9, 5, dk); s.position.set(x, 1.0, 2.6); g.add(s); for (const pz of [0.15]) { const p = box(0.08, 1.0, 0.08, yel); p.position.set(x, 1.0, pz); g.add(p); } }
+  const flat = box(2.6, 0.3, 6, dk); flat.position.set(0, 0.55, 8.4); g.add(flat);
+  const fridge = box(0.9, 1.7, 0.8, M(0xdfe6ea, { roughness: 0.3 })); fridge.position.set(-0.6, 1.55, 7); const cr = box(1.1, 0.9, 1.1, M(0x8a5a2a)); cr.position.set(0.6, 1.15, 9.2); g.add(fridge, cr);
+  const loco = box(2.7, 2.3, 4.5, yel); loco.position.set(0, 1.7, 14); const cab = box(2.5, 0.9, 1.6, M(0x16242c, { roughness: 0.2 })); cab.position.set(0, 2.2, 12.2); g.add(loco, cab);
+  const tail = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 5), new THREE.MeshBasicMaterial({ color: 0xff2020 })); tail.position.set(1.1, 0.8, 0.05); g.add(tail);
+  // the crew: change (mannequin, the blood drive on the right arm), jack (wide, stacks), lumps (big), gordo (small)
+  const ch = man(0xd8c9b4); ch.position.set(0.5, 0.7, 2.2); ch.rotation.y = Math.PI; const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.6, 6), M(0x400810, { emissive: 0xff1f3d, emissiveIntensity: 1.6 })); ring.rotation.x = Math.PI / 2; ring.position.set(-0.36, 1.25, 0.35); ch.add(ring);
+  const jk = man(0xe07a1a, 1.25, 1.5); jk.position.set(-0.5, 0.7, 0.9); jk.rotation.y = Math.PI; for (const x of [-0.2, 0.2]) { const st = box(0.14, 0.6, 0.14, M(0x55585e, { metalness: 0.7 })); st.position.set(x, 1.7, -0.25); jk.add(st); }
+  const lu = man(0xb46ad8, 1.35, 1.6); lu.position.set(0.7, 0.7, 4.2); lu.rotation.y = Math.PI * 0.9; const go = man(0x7dff4f, 0.8); go.position.set(-0.7, 0.7, 4.6); go.rotation.y = Math.PI * 1.1;
+  g.add(ch, jk, lu, go); g.position.set(0, FLOOR - 0.4, z); return g;
+}
+// arm paths: out from behind the rim at z=0, flat along the wall, forward towards the train
+const wallArm = (a, zEnd, inX = 0, inY = 0) => { const r = R - 0.45, c = Math.cos(a), s = Math.sin(a); return [[c * (r - 1.2), s * (r - 1.2), -1.5], [c * r, s * r, 0.6], [c * r, s * r, zEnd * 0.45], [c * (r - 0.1) + inX * 0.3, s * (r - 0.1) + inY * 0.3, zEnd * 0.8], [c * r + inX, s * r + inY, zEnd]]; };
+function chase(stage, gap, o = {}) {
+  const s = new THREE.Scene(); s.background = new THREE.Color(0x050307); s.fog = new THREE.Fog(0x050307, 14, o.cut ? 90 : 48);
+  s.add(tunnel(-12, gap + 22, o.cut)); s.add(mass(o.cut ? 9 : 6)); s.add(mask(stage)); s.add(train(gap));
+  const L = [[2.5, gap + 1, 0, 0], [0.62, gap * 0.75], [-2.4, gap + 1.5, 0, 0], [3.76, gap * 0.6], [1.2, gap + 2, 0.3, -0.3], [-0.75, gap * 0.9], [-1.3, gap + 0.4, 0.5, 1.2], [4.4, gap * 0.5]];
+  for (const [a, z, ix, iy] of (o.cut ? L.filter((_, i) => [0, 2, 3, 4, 7].includes(i)) : L)) s.add(arm(wallArm(a, z, ix || 0, iy || 0)));
+  s.add(new THREE.HemisphereLight(0x6a5a7a, 0x100808, o.amb || 0.5));
+  for (let z = 4; z < gap + 20; z += 7) { const b = new THREE.PointLight(0xffb060, 22, 11); b.position.set(0, R - 0.7, z); s.add(b); const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 5), new THREE.MeshBasicMaterial({ color: 0xffd9a0 })); bulb.position.copy(b.position); s.add(bulb); }
+  const key = new THREE.SpotLight(0xfff0dd, o.key || 420, 60, 0.6, 0.6); key.position.set(0.5, 1.2, gap + 3); key.target.position.set(0, 0, 0); s.add(key, key.target);
+  const red = new THREE.PointLight(0xff2030, 18, 12); red.position.set(0, -1, 2.5); s.add(red);
+  return s;
+}
+const c = document.getElementById('c'), ren = new THREE.WebGLRenderer({ canvas: c, antialias: true, preserveDrawingBuffer: true }); ren.setPixelRatio(2); ren.setSize(W, H); ren.setScissorTest(true); ren.toneMapping = THREE.ACESFilmicToneMapping; ren.toneMappingExposure = 1.25;
+const PW = W / 2, PH = H / 2, pad = 16, ui = document.getElementById('ui');
+const panel = (ix, iy, scene, cam, title, notes) => { const x = ix * PW + pad, y = iy * PH + pad, w = PW - 2 * pad, h = PH - 2 * pad; ren.setViewport(x, H - y - h, w, h); ren.setScissor(x, H - y - h, w, h); cam.aspect = w / h; cam.updateProjectionMatrix(); ren.render(scene, cam);
+  ui.insertAdjacentHTML('beforeend', `<div class="fr" style="left:${x}px;top:${y + 60}px;width:${w}px;height:${h}px"></div><div class="tag" style="left:${x + 14}px;top:${y + 70}px">${title}</div>` + notes.map(([nx, ny, t]) => `<div class="note" style="left:${x + nx}px;top:${y + 60 + ny}px">${t}</div>`).join('')); };
+const pc = (fov, p, t) => { const k = new THREE.PerspectiveCamera(fov, 1, 0.1, 200); k.position.set(...p); k.lookAt(...t); return k; };
+
+// 1. what you see: from the flatbed, looking back over the crew at the face (the owner's sketch)
+panel(0, 0, chase(0, 10, { amb: 1.1, key: 700 }), pc(36, [2.1, 1.9, 24.5], [-0.2, -0.5, 3]), '1. WHAT YOU SEE', [
+  [600, 22, '<b>the mask is the ☺.</b> a 9 m enamel station sign, twelve plates, the smile worn off. two oval lamp holes for eyes'],
+  [20, 430, '<b>arms flat on the walls and roof.</b> reach, grip, drag. each is a rope of real arms. <i>blue knot at the wrist = shoot here</i>'],
+  [570, 480, 'the crew on the last wagon. <b>THE GAP</b> starts at 30 m']]);
+// 2. side cutaway: how it moves, and what's behind the face
+{ const s = chase(0, 15, { cut: true, amb: 1.5, key: 200 }); const d = new THREE.DirectionalLight(0xfff0e0, 2.2); d.position.set(10, 6, 8); s.add(d); s.fog = null;
+  const k = new THREE.OrthographicCamera(-17, 17, 5.9, -5.9, 0.1, 200); k.position.set(40, 3, 10); k.lookAt(0, -0.2, 10); const x = PW + pad, y = pad, w = PW - 2 * pad, h = PH - 2 * pad; k.top = 17 * h / w; k.bottom = -k.top; k.updateProjectionMatrix();
+  ren.setViewport(x, H - y - h, w, h); ren.setScissor(x, H - y - h, w, h); ren.render(s, k);
+  ui.insertAdjacentHTML('beforeend', `<div class="fr" style="left:${x}px;top:${y + 60}px;width:${w}px;height:${h}px"></div><div class="tag" style="left:${x + 14}px;top:${y + 70}px">2. SIDE CUTAWAY</div>
+   <div class="note" style="left:${x + 20}px;top:${y + 470}px"><b>behind the face: the 17:32.</b> four hundred commuters in one piece, charred, still in lanyards. it fills the bore like a cork</div>
+   <div class="note" style="left:${x + 380}px;top:${y + 80}px">it has no legs. it <b>hauls itself</b> along by the walls. arms that grip the wagon close the gap</div>
+   <div class="note" style="left:${x + 640}px;top:${y + 490}px">wagon · flatbed · dale's loco →</div>`); }
+// 3. the mask breaks: three stages, front on
+{ const s = new THREE.Scene(); s.background = new THREE.Color(0x0b0510); s.add(new THREE.HemisphereLight(0xffffff, 0x302030, 1.1)); const d = new THREE.DirectionalLight(0xfff4e0, 2.4); d.position.set(4, 8, 12); s.add(d);
+  [1, 2, 3].forEach((st, i) => { const g = new THREE.Group(); const back = new THREE.Mesh(new THREE.CircleGeometry(R - 0.3, 28), new THREE.MeshBasicMaterial({ color: 0x030203 })); back.position.z = -7.5; const ms = mass(6); g.add(back, ms, mask(st)); g.position.x = (i - 1) * 10.2; s.add(g); });
+  const k = new THREE.OrthographicCamera(-16, 16, 6, -6, 0.1, 100); k.position.set(0, 0, 30); k.lookAt(0, 0, 0); const x = pad, y = PH + pad, w = PW - 2 * pad, h = PH - 2 * pad; k.top = 16 * h / w; k.bottom = -k.top; k.updateProjectionMatrix();
+  ren.setViewport(x, H - y - h, w, h); ren.setScissor(x, H - y - h, w, h); ren.render(s, k);
+  ui.insertAdjacentHTML('beforeend', `<div class="fr" style="left:${x}px;top:${y + 60}px;width:${w}px;height:${h}px"></div><div class="tag" style="left:${x + 14}px;top:${y + 70}px">3. THE MASK BREAKS</div>
+   <div class="note" style="left:${x + 40}px;top:${y + 500}px;max-width:250px"><b>HAIRLINE.</b> plates craze and fall off. bodies packed behind</div>
+   <div class="note" style="left:${x + 335}px;top:${y + 500}px;max-width:250px"><b>THE LEFT EYE.</b> blows out: real eyes behind it. the smile comes back as a crack</div>
+   <div class="note" style="left:${x + 630}px;top:${y + 500}px;max-width:260px"><b>THE SMILE.</b> the lower third drops. the face hangs off one bolt</div>`); }
+// 4. end of the line: the thing behind it, and the inspector
+panel(1, 1, (() => { const s = chase(3, 9, { amb: 0.9, key: 520 }); s.fog.far = 60; return s; })(), pc(50, [-1.6, 0.6, 10.5], [0.2, -0.1, 0]), '4. END OF THE LINE', [
+  [560, 24, '<b>the thing behind it.</b> everyone who was on the last train, in one piece'],
+  [30, 440, '<b>the inspector</b>, in the middle, cap on, still punching tickets. the only part that knows what it is for. <i>the crit spot</i>'],
+  [600, 470, 'gap 9 m. it stops hauling and lunges']]);
+window.DONE = true;
+</script>

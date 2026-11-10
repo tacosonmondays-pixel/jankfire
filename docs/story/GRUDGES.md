@@ -199,8 +199,10 @@ tooth market. **SETTLED.**
 
 _(Employee 4417, much later: "i've read your files. brother bile says hello. no, he doesn't. i brought officer tick.")_
 
-## Questions for the owner
-
-1. Is a 35% chance to open a file on a nameless enemy right, or should it be rarer (special) or more common (chaos)?
-2. Should killing you take a cosmetic copy every time, or only the first time per file?
-3. Should grudges be in the normal multiplayer modes too (bots remembering you), or only in OVERDUE? This doc assumes OVERDUE only.
+## Decisions (2026-11-10: the owner said to use the defaults; these are them, change any by saying so)
+1. **35% stays.** A nameless enemy has a 35% chance to get a file on a trigger; killing you always opens one. The pace
+   target above (1-3 files by the end of Act 1) is what gets tuned if it feels wrong, not the idea.
+2. **A cosmetic is taken the first time only.** The first kill on a file takes a copy of one cosmetic; later kills by
+   the same grudge add to what they say and how they fight, not to what they wear. One trophy per file keeps each
+   grudge readable at a glance and keeps your wardrobe from being worn by twelve people.
+3. **OVERDUE only.** Grudges are not in the multiplayer modes. Bots there stay as they are.
