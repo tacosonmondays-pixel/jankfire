@@ -7,7 +7,8 @@ import { net } from './net.js';
 import { hud } from './hud.js';
 import { sfx } from './audio.js';
 import { ME, eye, look } from './player.js';
-import { W, switchSlot, showSlots } from './weapons.js';
+import { W, switchSlot, showSlots, modeFriends } from './weapons.js';
+modeFriends.push((r) => !!(G.round && G.round.zm) && !(r.bot && !r.team)); // zombies: people and the squad's bots (team 1) are on your side; zombies have no team
 import { MAPS, BOXES } from '/shared/map.js';
 import { resetGrid } from '/shared/physics.js';
 import { WEAPONS, FLAGS } from '/shared/weapons.js';

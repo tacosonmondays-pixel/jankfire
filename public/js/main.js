@@ -31,7 +31,8 @@ import { Remote, updateGibs } from './remote.js';
 import { stepSoap, trapStart, trapEnd, updateWand, stuckInBubble } from './wand.js';
 import { initGear, updateGear, gearFx, gearKeyDown, gearSpawn, gearLeave, gearKillParts, gearDeathLine } from './gear.js'; // laser pointer, camera, pop quiz, goggles
 import { initSec, updateSec, secFx, secAimDown, secFrozen, secBlocked, secShot, secSpawn, secLeave } from './secondaries.js'; // water pistol, taser, tv remote, speed trap
-import { parry } from './weapons.js';
+import { parry, isFriend } from './weapons.js';
+const tmpLock = new THREE.Vector3(); // spinbot lock marker
 import './parry.js'; // katana parry: sparks, sounds, PARRY!, the guard pose
 import { addPatch, clearPatches } from './mslip.js'; // marble shotgun: marbles on the floor you slip on
 import { FINISHES, HATS, EFFECTS, validSkin, randomSkin, makeSkinSystems, emitSkinFx, skinTick, tracerColor, DEFAULT_SKIN, WRAP_MODES, WRAP_MODE_NAMES } from './skins.js';
@@ -50,8 +51,9 @@ import { GAMES, GAME_ORDER, TEAMS, mapsFor, mapForGame } from '/shared/modes.js'
 import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
 import { EPIC_CAM, epicMul, epicCamMs } from '/shared/epic.js';
+import { BUILDS, JOKE_MAX, BODY_KEYS } from '/shared/looks.js'; // the joke body (character screen)
 import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, HAIRS, TOPS, BOTTOMS } from '/shared/looks.js';
-import { startBall, endBall, ballOn, BS } from './player.js';
+import { startBall, endBall, ballOn, BS, look } from './player.js';
 import { updateWreck, ballCam, wreckFx, wreckDied } from './wreck.js';
 import { hasAcc } from '/shared/looks.js';
 import { airTick, airReset, airFlourish } from './airborne.js';
@@ -67,7 +69,8 @@ import { tacZoneOf } from './tactical.js'; // plant & defuse hit markers by zone
 import { specFPOn } from './specfp.js'; // plant & defuse: first-person spectating
 import { pipFrame } from './pip.js'; // the first-person corner box while spectating
 import { sprayRangeFrame } from './sprayrange.js'; // Training's spray range
-import { chaosSpecId } from './chaos.js';
+import { chaosSpecId, pitErupt, underSea } from './chaos.js';
+import { sink, bottomOut, mire } from '/shared/pits.js';
 import { brSpecId } from './royale.js';
 import { initMinimap, minimapFrame } from './minimap.js'; // the HUD minimap (SAT-NAV)
 import { initLeaderTabs, showLeaders } from './leadmodes.js'; // per-mode leaderboard tabs
@@ -90,6 +93,8 @@ import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll
 import { initHome, homeShown, homeLeft, refreshHero } from './home.js';
 import { skipVote, skipReset } from './skipvote.js';
 import { lassoFrame, loopFrame, lassoWheel, lassoKey, lassoLate } from './lasso.js'; // lasso (secondary)
+import { initGavel, updateGavel, gavelFx, gavelAim, gavelReset } from './gavel.js'; // scales of justice, ranged
+import { initAds, updateAds, adsFx, adsKey, adsReset } from './ads.js'; // the laptop's pop-up ads
 import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + quick-scope callouts register themselves)
 import { K } from './keys.js';
 import { initLobby, lobbyInfo, lobbyKey, lobbyMe, lobbyLeave } from './lobby.js'; // ONLINE / WITH BOTS mode picker + the lobby countdown
@@ -244,6 +249,11 @@ for (const b of document.querySelectorAll('.back')) b.addEventListener('click', 
 for (const b of document.querySelectorAll('[data-mode]')) b.addEventListener('click', () => startMode(b.dataset.mode));
 $('resume').addEventListener('click', resume);
 $('quit').addEventListener('click', quitToMenu);
+// RESET: respawn yourself (server/reset.js decides if it's allowed here and who gets the kill)
+const resetOk = () => ['training', 'coop', 'bots', 'ffa'].includes(G.mode) && !G.lk && !['bomb', 'br', 'zm', 'oitc'].includes((G.round && G.round.game) || G.game);
+function resetMe() { if (G.joined && ME.alive) net.send({ t: 'reset' }); }
+$('resetMe').addEventListener('click', () => { resetMe(); resume(); });
+net.on('reset', (m) => { if (m && typeof m.no === 'string') { hud.msg(m.no.slice(0, 48), 1.2, 'slip'); sfx.empty(); } });
 
 function resume() {
   hideMenu();
@@ -298,6 +308,7 @@ function resetWorldState() {
   for (const b of G.bubbles.values()) G.scene.remove(b.mesh);
   G.bubbles.clear(); G.smokes.length = 0; ME.frozenUntil = 0; G.frost = 0;
   gearLeave();
+  adsReset(); gavelReset();
   secLeave();
   brReset(); // the zone, eviction notice and loot rules stay with the royale room
   resetItems(); stopUse(); G.activeStreaks = null; G.itemSent = null;
@@ -340,6 +351,7 @@ function lock() {
 function pause() {
   show('pause');
   $('pauseMatch').classList.toggle('hidden', !!G.lk); // a mode lobby is everyone's: nobody changes its match
+  $('resetMe').classList.toggle('hidden', !resetOk()); // only where a reset is allowed
   $('pauseTitle').textContent = `${MODES[G.mode] ? MODES[G.mode].name.toUpperCase() : 'PAUSED'} · ${MAPS[G.cfg.map] ? MAPS[G.cfg.map].name : ''}`;
   W.held = false; W.aimHeld = false;
   K.clear();
@@ -586,7 +598,7 @@ function buildLoadoutUI() {
     b.className = 'wpick' + ((S.loadout.item || 'frag') === id ? ' on' : '');
     b.textContent = `${it.name} x${it.charges}`;
     b.style.setProperty('--c', it.color);
-    b.addEventListener('mouseenter', () => { $('loDesc').textContent = `${it.name}: ${it.desc} (${it.charges} charge${it.charges > 1 ? 's' : ''}, ${it.recharge}s to refill)`; });
+    b.addEventListener('mouseenter', () => { $('loDesc').textContent = `${it.name}: ${it.desc} (${it.charges} charge${it.charges > 1 ? 's' : ''}, ${it.recharge}s to refill${it.carry ? ', dying does not refill it' : ''})`; });
     b.addEventListener('click', () => { S.loadout.item = id; saveSettings(); buildLoadoutUI(); applyLoadout(false); });
     ic.append(b);
   }
@@ -678,6 +690,11 @@ function setLook(look) {
 }
 // every achievement (and old one), for trying on locked accessories in the preview only: what you wear stays validLook(look, myAchs())
 const ALL_ACHS = new Set([...Object.keys(ACHIEVEMENTS), ...LOOK_SLOTS.flatMap((sl) => Object.values(ACCESSORIES[sl]).map((v) => v.legacy).filter(Boolean))]);
+let lkTab = 'body';
+function showLkTab() {
+  for (const s of document.querySelectorAll('#scr-character .lk-sec')) s.classList.toggle('hidden', s.dataset.sec !== lkTab);
+  for (const t of $('lkTabs').children) t.classList.toggle('on', t.dataset.sec === lkTab);
+}
 function buildCharacterUI() {
   const achs = myAchs();
   const look = { ...DEFAULT_LOOK, ...G.settings.look };
@@ -732,6 +749,42 @@ function buildCharacterUI() {
   styles('lk-hair', 'hair', HAIRS); swatches('lk-hairColor', 'hairColor', HAIR_COLORS);
   styles('lk-top', 'top', TOPS); swatches('lk-topColor', 'topColor', CLOTH_COLORS, look.top === 'runner' ? 'hi-vis yellow' : look.top === 'maid' ? 'classic black' : 'same as your colour');
   styles('lk-bottom', 'bottom', BOTTOMS); swatches('lk-bottomColor', 'bottomColor', CLOTH_COLORS, 'same as your colour');
+  // the joke body: build chips + two sliders. dragging only moves the preview, letting go saves (and tells the server once)
+  const bel = $('lk-build');
+  bel.innerHTML = '';
+  for (const [k, v] of Object.entries(BUILDS)) {
+    const c = document.createElement('button');
+    c.className = 'chip' + ((look.build || '') === k ? ' on' : '');
+    c.textContent = v.name;
+    c.addEventListener('click', () => { setLook({ ...look, build: k }); buildCharacterUI(); });
+    bel.append(c);
+  }
+  const jel = $('lk-joke');
+  jel.innerHTML = '';
+  const chestName = look.build === 'f' ? 'bust' : look.build === 'm' ? 'pecs' : 'chest';
+  for (const [key, label] of [['bigHead', 'head'], ['bigChest', chestName], ['bigArms', 'arms'], ['fat', 'belly'], ['bigButt', 'butt'], ['bigLegs', 'legs']]) {
+    const lab = document.createElement('label'), nm = document.createElement('span'), inp = document.createElement('input'), val = document.createElement('b');
+    nm.textContent = label;
+    inp.type = 'range'; inp.min = '0'; inp.max = String(JOKE_MAX); inp.step = '1'; inp.value = String(look[key] | 0);
+    const say = () => { val.textContent = ['normal', 'big', 'bigger', 'huge', 'why'][Number(inp.value)] || ''; };
+    say();
+    inp.addEventListener('input', () => { say(); const t = validLook({ ...look, [key]: Number(inp.value) }, achs); showCharacter(buildCharacter, t.color || G.myColor || '#ff4fd8', t); });
+    inp.addEventListener('change', () => { setLook({ ...look, [key]: Number(inp.value) }); buildCharacterUI(); });
+    lab.append(nm, inp, val);
+    jel.append(lab);
+  }
+  // the screen in four tabs, so the mannequin stays in view while you poke at it (the open one is remembered while the page is)
+  const tabs = $('lkTabs');
+  if (!tabs.dataset.on) {
+    tabs.dataset.on = '1';
+    for (const [id, name] of [['body', 'BODY'], ['hair', 'HAIR + FACE'], ['clothes', 'CLOTHES'], ['card', 'NAME CARD']]) {
+      const t = document.createElement('button');
+      t.className = 'chip'; t.dataset.sec = id; t.textContent = name;
+      t.addEventListener('click', () => { lkTab = id; showLkTab(); });
+      tabs.append(t);
+    }
+  }
+  showLkTab();
   for (const slot of LOOK_SLOTS) {
     const el = $('lk-' + slot);
     el.innerHTML = '';
@@ -805,6 +858,8 @@ $('lkRandom').addEventListener('click', () => {
   const look = { color: pick(LOOK_COLORS), skin: pick(SKIN_TONES), hair: pick(Object.keys(HAIRS)), hairColor: pick(HAIR_COLORS),
     top: pick(Object.entries(TOPS).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k)), topColor: pick(CLOTH_COLORS), bottom: pick(Object.entries(BOTTOMS).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k)), bottomColor: pick(CLOTH_COLORS) };
   for (const s2 of LOOK_SLOTS) look[s2] = pick(Object.entries(ACCESSORIES[s2]).filter(([, v]) => hasAcc(v, achs)).map(([k]) => k));
+  look.build = pick(Object.keys(BUILDS)); // the body too: usually a little off, now and then a lot
+  for (const k of BODY_KEYS) look[k] = Math.random() < 0.3 ? 1 + ((Math.random() * Math.random() * JOKE_MAX) | 0) : 0;
   setLook(look); buildCharacterUI();
 });
 $('lkReset').addEventListener('click', () => { setLook({ ...DEFAULT_LOOK }); buildCharacterUI(); });
@@ -1064,6 +1119,7 @@ function aimDown() {
   if (secAimDown()) return; // tv remote: aim (right click) rewinds
   if (W.cur === 'cards') { cycleCard(); return; }
   if (heavyAttack()) return; // knife: right click is the heavy stab
+  if (gavelAim()) return; // scales of justice: right click is the SUMMONS
   if (W.cur === 'katana' && !rigOn()) { if (!K.get('parry').some(Boolean)) parry(); return; } // katana: the parry key parries (pressed()); aim only stands in when parry is unbound
   if (W.cur === 'akimbo') { W.aimHeld = true; return; } // Lefty & Righty: the aim key is the right gun's trigger (never a toggle)
   if (S.toggleAim) W.aimHeld = !W.aimHeld; else W.aimHeld = true;
@@ -1090,6 +1146,7 @@ function pressed(e) {
   if (G.story && G.story.key(e, true)) return; // OVERDUE (flagged): quick bar 1-8, the wheel, the tote bag, pick up
   if (lobbyKey(e)) return; // a mode lobby: ready up
   if (gearKeyDown(e)) return; // pop quiz answers (1-4), goggles flash (nvgFlash)
+  if (adsKey(e)) return; // pop-up ads: the number on an ad closes it
   if (lassoKey(e, true)) return; // holding someone on the lasso: reel keys, fire / aim lets go, no weapon switching. held: jump / move wriggles
   if (K.matches(BUBBLED, e) && stuckInBubble(true)) return; // sealed in a soap bubble: no shooting, aiming, grapple, items, dash, t-bag, sprays or streaks
   if (K.matches(SEC_STOPPED, e) && secBlocked()) return; // tased, paused or jailed: hands off everything
@@ -1107,6 +1164,7 @@ function pressed(e) {
   if (K.matches('scythe', e) && !e.repeat) toggleScythe();
   if (K.matches('item', e) && !e.repeat) useItem();
   if (K.matches('spray', e) && !e.repeat) spray();
+  if (K.matches('reset', e) && !e.repeat) resetMe();
   const streak = ['streak1', 'streak2', 'streak3'].findIndex((a) => K.matches(a, e));
   if (streak >= 0 && !e.repeat) deployStreak(streak);
   if (K.matches('slot4', e)) switchSlot(3);
@@ -1153,7 +1211,6 @@ addEventListener('wheel', (e) => { if (inGame() && !esActive() && !lassoWheel(e.
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== canvas) return;
   if (G.story && G.story.look(e)) return; // the weapon wheel steers with the mouse
-  if (performance.now() < (G.spinUntil || 0)) return; // the aimbot has the wheel
   if (performance.now() < (ME.sleepUntil || 0)) return; // asleep on the floor: no looking around either
   if (story && story.locked()) return; // story mode: talking / a cutscene has the camera
   const s = 0.0022 * S.sens * (W.aim > 0.5 ? S.adsSens / W.zoom : 1);
@@ -1540,13 +1597,25 @@ net.on('dmg', (m) => {
     }
   }
 });
+// long drops that end somewhere (map.fall): [feed with a killer, feed alone, death line with a killer, death line alone, callout]
+const FALLS = {
+  river: ['  into the canyon', '  found the bottom of the canyon', ' showed you the canyon', 'you found the bottom of the canyon. it was far.', 'SPLOOSH'],
+  street: ['  off the roof', '  became pavement pizza', ' threw you off the roof', 'you are pavement pizza now', 'SPLAT'],
+};
+function fallSplat(m, fl) { // where they landed: a thump, a puff, and the word for it if it was you
+  const p = m.pos || (m.v === G.myId ? ME.pos : null);
+  if (!p) return;
+  sfx.splat(p);
+  for (let i = 0; i < 10; i++) fx.smoke([p[0] + (Math.random() - 0.5) * 2, p[1] + 0.3, p[2] + (Math.random() - 0.5) * 2], 1.4, 0.4);
+  if (m.v === G.myId) hud.msg(fl[4], 1.6, 'slip');
+}
 net.on('kill', (m) => {
   recordEv(m);
   if (m.k === G.myId && m.v !== G.myId && !RP.active) czKill(m.w); // kills with it (the customize screen's mastery bar)
   courtKill(m); // scales of justice: streaks + revenge
   let [kn, kc] = nameOf(m.k), [vn, vc] = nameOf(m.v);
   [kn, vn] = brNames(m, kn, vn); // jank royale: no names in Pronoun Park
-  const via = m.w === 'void' || m.w === 'cough' || ((m.w === 'car' || m.w === 'carboom') && m.via) ? m.via : m.w;
+  const via = m.w === 'void' || m.w === 'cough' || m.w === 'reset' || ((m.w === 'car' || m.w === 'carboom') && m.via) ? m.via : m.w;
   const victim = G.remotes.get(m.v);
   if (m.pit && m.w === 'void') pitKill(m, victim ? victim.color : m.v === G.myId ? G.myColor : null); // into the shredder pit's teeth (sets m.vel: the bits fly back up)
   // shredder kills: the pieces go through the killer's machine instead of the usual gibs / kill effect
@@ -1567,10 +1636,13 @@ net.on('kill', (m) => {
   if (m.w === 'void' && m.pit) { // the shredder pit
     parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], ['  fed to the shredder', '#ff5a3a']] : [[vn, vc], ['  fed themselves to the shredder', '#ff5a3a']];
   } else if (m.w === 'void') {
-    const sea = MAPS[MAP.id] && MAPS[MAP.id].sea; // (sea maps: you went in the water)
-    parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], [sea ? '  into the sea' : '  into the void', '#aaa']] : [[vn, vc], [sea ? '  sleeps with the fishes' : '  fell into the void', '#aaa']];
+    const sea = MAPS[MAP.id] && MAPS[MAP.id].sea, fl = FALLS[MAPS[MAP.id] && MAPS[MAP.id].fall]; // (sea maps: you went in the water. map.fall: the canyon's river, the street under the rooftops)
+    parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], [fl ? fl[0] : sea ? '  into the sea' : '  into the void', '#aaa']] : [[vn, vc], [fl ? fl[1] : sea ? '  sleeps with the fishes' : '  fell into the void', '#aaa']];
+    if (fl) fallSplat(m, fl);
   } else if (m.w === 'tbag' && m.k === 0) {
     parts = [[vn, vc], ['  t-bagged too hard and exploded', '#ff9a3a']];
+  } else if (m.w === 'reset') { // pressed RESET: with someone on them it's that someone's kill
+    parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], ['  (rage reset)', '#aaa']] : [[vn, vc], ['  turned it off and on again', '#aaa']];
   } else if (m.w === 'cough') {
     parts = m.k ? [[kn, kc], [`  [${wname(via)}]  `, wcolor(via)], [vn, vc], ['  (coughed)', '#aaa']] : [[vn, vc], ['  smoked too much', '#aaa']];
   } else if (!m.k) {
@@ -1582,7 +1654,8 @@ net.on('kill', (m) => {
   const gp = gearKillParts(m, kn, kc, vn, vc, wname, wcolor); // failed a pop quiz, telefragged
   if (gp) parts = gp;
   const hazard = m.w === 'lava' || (m.w === 'duck' && m.sky); // floor is lava / duck rain: nobody owns those
-  if (hazard) parts = m.k ? [[kn, kc], [`  [${wname(m.via)}]  `, wcolor(m.via)], [vn, vc], [m.w === 'lava' ? '  into the lava' : '  under a sky duck', '#aaa']] : [[vn, vc], [m.w === 'lava' ? '  touched the floor' : '  got flattened by a sky duck', '#ff8a3a']];
+  if (hazard) parts = m.k ? [[kn, kc], [`  [${wname(m.via)}]  `, wcolor(m.via)], [vn, vc], [m.w === 'lava' ? (m.hz ? '  into the volcano' : '  into the lava') : '  under a sky duck', '#aaa']] : [[vn, vc], [m.w === 'lava' ? (m.hz ? '  took a lava bath' : '  touched the floor') : '  got flattened by a sky duck', '#ff8a3a']];
+  if (m.w === 'lava' && m.hz) pitErupt(m.pos || (victim ? victim.pos : ME.pos)); // cooked in the volcano: it coughs fire
   const brp = brFeed(m, vn, vc); if (brp) parts = brp; // jank royale: the zone
   if (m.ep && m.k) parts.push([`  EPIC ${Math.round(m.ep.d)}m`, '#ffe14d']);
   const carK = (m.w === 'car' || m.w === 'carboom') && carKill(m, kn, kc, vn, vc, wname, wcolor); // traffic: its own lines and icon
@@ -1605,14 +1678,15 @@ net.on('kill', (m) => {
     if (m.k && m.k !== G.myId && S.killcam !== false && G.mode !== 'training') queueKillcam(m.k, via);
     if (m.k) {
       hud.dead(true, m.w === 'void'
-        ? [[kn, kc], [m.pit ? ' fed you to the shredder' : MAPS[MAP.id] && MAPS[MAP.id].sea ? ' knocked you into the sea' : ' knocked you into the void', '#fff'], [`  (${wname(via)})`, wcolor(via)]]
+        ? [[kn, kc], [m.pit ? ' fed you to the shredder' : FALLS[MAPS[MAP.id] && MAPS[MAP.id].fall] ? FALLS[MAPS[MAP.id].fall][2] : MAPS[MAP.id] && MAPS[MAP.id].sea ? ' knocked you into the sea' : ' knocked you into the void', '#fff'], [`  (${wname(via)})`, wcolor(via)]]
         : [['killed by ', '#fff'], [kn, kc], [`  (${wname(via)})`, wcolor(via)]]);
-    } else hud.dead(true, [[m.w === 'void' ? (m.pit ? 'the shredder ate you. it was not hungry.' : MAPS[MAP.id] && MAPS[MAP.id].sea ? 'you sleep with the fishes now' : 'you fell into the void') : m.w === 'tbag' ? 'you t-bagged too hard. your knees exploded.' : 'you smoked too much', '#fff']]);
+    } else hud.dead(true, [[m.w === 'void' ? (m.pit ? 'the shredder ate you. it was not hungry.' : FALLS[MAPS[MAP.id] && MAPS[MAP.id].fall] ? FALLS[MAPS[MAP.id].fall][3] : MAPS[MAP.id] && MAPS[MAP.id].sea ? 'you sleep with the fishes now' : 'you fell into the void') : m.w === 'tbag' ? 'you t-bagged too hard. your knees exploded.' : 'you smoked too much', '#fff']]);
     if (carK) hud.dead(true, carK.dead);
     else if (m.w === 'hr') hud.dead(true, hrDead());
     const gd = gearDeathLine(m);
     if (gd) hud.dead(true, m.k ? [[kn, kc], [' gave you a pop quiz. ', '#fff'], [gd, '#7fffd4']] : [[gd, '#fff']]);
-    if (hazard) hud.dead(true, m.k ? [[kn, kc], [m.w === 'lava' ? ' knocked you into the lava' : ' softened you up for a sky duck', '#fff'], [`  (${wname(m.via)})`, wcolor(m.via)]] : [[m.w === 'lava' ? 'the floor was lava' : 'a duck fell out of the sky on you', '#fff']]);
+    if (hazard) hud.dead(true, m.k ? [[kn, kc], [m.w === 'lava' ? (m.hz ? ' cooked you in the volcano' : ' knocked you into the lava') : ' softened you up for a sky duck', '#fff'], [`  (${wname(m.via)})`, wcolor(m.via)]] : [[m.w === 'lava' ? (m.hz ? 'the volcano is not a hot tub. you are well done.' : 'the floor was lava') : 'a duck fell out of the sky on you', '#fff']]);
+    if (m.w === 'lava' && m.hz) hud.msg('EXTRA CRISPY', 2, 'lava');
   }
   econKill(m);
   if (m.k === G.myId && m.v !== G.myId) {
@@ -1626,6 +1700,7 @@ net.on('kill', (m) => {
 net.on('spawn', (m) => {
   endKillcam();
   gearSpawn();
+  adsReset();
   secSpawn();
   ME.frozenUntil = 0; G.frost = 0; // item charges come from the server's 'ic' (a new round doesn't refill them)
   ME.pos = m.p.slice(); ME.vel = [0, 0, 0]; ME.alive = true; ME.hp = 100; ME.seq = m.q;
@@ -1727,6 +1802,8 @@ net.on('he', (m) => {
   G.shake = Math.max(G.shake, Math.max(0, 1 - d / 25));
 });
 net.on('fx', (m) => {
+  if (gavelFx(m)) return; // a summons ring opening / the pillar landing
+  if (adsFx(m)) return; // someone opened a laptop at someone
   if (gearFx(m)) return; // laser beams, photo teleports, goggle flashes (gear.js)
   if (secFx(m)) return; // taser zaps, remote pauses + rewinds, radar readings (secondaries.js)
   if (primFx(m)) return; // carts running people over; nail gun shots leave nails in walls (primaries.js)
@@ -1829,6 +1906,8 @@ net.on('ns', (m) => {
   if (hold && G.killcamPending && !RP.active) queueKillcam(m.k, 'sniper', hold); // got no-scoped from far: the overlay plays out first
 });
 
+initAds();
+initGavel();
 initGear(); // the new gear's server messages + the G hook
 initSec(); // the new secondaries + the speed trap (after initGear: it wraps the G hook)
 
@@ -1869,31 +1948,36 @@ function frame(t) {
     } : {};
     jumpPressed = false;
     acc += dt;
-    while (acc >= STEP) { if (!(G.story && G.story.drive(STEP, inp, now))) stepPlayer(STEP, inp, now); carCollide(STEP); airTick(now); lavaStep(now); inp.jumpPressed = false; acc -= STEP; } // (OVERDUE: in a story car, the car steps instead)
+    while (acc >= STEP) { if (!(G.story && G.story.drive(STEP, inp, now))) stepPlayer(STEP, inp, now); carCollide(STEP); airTick(now); lavaStep(now); if (ME.alive) { sink(MAPS[MAP.id], ME.pos, ME.vel); mire(MAPS[MAP.id], ME.pos, ME.vel, STEP, !!ME.hook); bottomOut(MAPS[MAP.id], ME.pos, ME.vel); } // (deep sea: you sink, you don't fall through it. the river, the street: you stop on them)
+      inp.jumpPressed = false; acc -= STEP; } // (OVERDUE: in a story car, the car steps instead)
     grabStep(now); // held in a shredder's intake
     pinStep(now); // nailed to a wall
     oobTick(now); // out of the play area: RETURN TO THE MAP 3 2 1
     econFrame(dt); // Plant & Defuse: barriers, drops, armor on models, spectating
-    // spinbot killstreak: lock onto the nearest enemy you can see
+    // spinbot killstreak: your camera stays yours; every shot goes to whoever is nearest your crosshair (and in sight)
     const spinning = ME.alive && now < (G.spinUntil || 0);
+    let lock = null;
     if (spinning) {
-      const e = eye();
-      let best = null, bd = 1e9;
+      const e = eye(), l = look();
+      let bc = Math.cos(0.5); // inside a ~29 degree cone round the crosshair
       for (const r of G.remotes.values()) {
-        if (!r.alive || (r.bot && r.name === 'Dummy' && G.mode !== 'training') || (G.myTeam && r.team === G.myTeam)) continue;
+        if (!r.alive || (r.bot && r.name === 'Dummy' && G.mode !== 'training') || isFriend(r) || (G.mode === 'coop' && !r.bot)) continue;
         const tx = r.pos[0] - e[0], ty = r.pos[1] + 2.0 - e[1], tz = r.pos[2] - e[2], d = Math.hypot(tx, ty, tz);
-        if (d > 150 || d < 0.5 || d >= bd) continue;
-        if (raycast(e, [tx / d, ty / d, tz / d], d, BOXES)) continue;
-        best = [tx, ty, tz]; bd = d;
-      }
-      if (best) {
-        const yaw = Math.atan2(-best[0], -best[2]), pitch = Math.atan2(best[1], Math.hypot(best[0], best[2]));
-        let dy = yaw - ME.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2;
-        ME.yaw += dy * Math.min(1, dt * 25); ME.pitch += (pitch - ME.pitch) * Math.min(1, dt * 25);
+        if (d > 150 || d < 0.5) continue;
+        const c = (tx * l[0] + ty * l[1] + tz * l[2]) / d;
+        if (c <= bc || raycast(e, [tx / d, ty / d, tz / d], d, BOXES)) continue;
+        bc = c; lock = { r, d: [tx / d, ty / d, tz / d] };
       }
     }
+    G.aimDir = lock ? lock.d : null;
+    const lm = $('lockMark');
+    if (lock) {
+      const v = tmpLock.set(lock.r.pos[0], lock.r.pos[1] + 2.0, lock.r.pos[2]).project(G.camera);
+      lm.style.display = v.z < 1 ? 'block' : 'none';
+      lm.style.left = `${(v.x * 0.5 + 0.5) * innerWidth}px`; lm.style.top = `${(-v.y * 0.5 + 0.5) * innerHeight}px`;
+    } else lm.style.display = 'none';
     $('cheat').style.display = spinning ? 'block' : 'none';
-    if (spinning) $('cheat').textContent = `JANKHAX v6.9\n[x] AIMBOT\n[x] SPINBOT\n[x] NO SPREAD\n${((G.spinUntil - now) / 1000).toFixed(1)}s left`;
+    if (spinning) $('cheat').textContent = `JANKHAX v6.9\n[x] AIMBOT ${lock ? '<LOCKED>' : '(look at someone)'}\n[x] SPINBOT\n[x] NO SPREAD\n${((G.spinUntil - now) / 1000).toFixed(1)}s left`;
     G.spinning = spinning;
     updateWeapons(dt, now);
     lassoFrame(dt, now); // lasso: spin + throw, the rope you hold, your hands (before the snapshot: it sets a flag)
@@ -1920,6 +2004,8 @@ function frame(t) {
   updateShreds(dt);
   for (const [id, b] of G.bubbles) { if (now > b.until + 500) { G.scene.remove(b.mesh); G.bubbles.delete(id); continue; } b.mesh.rotation.y += dt * 0.3; b.mesh.material.opacity = 0.18 + Math.sin(now * 0.006) * 0.05; }
   updateWand(dt, now); // bubble wand: giant soap bubbles round people, the view from inside one, the wand in your hand
+  updateAds(dt, now);
+  updateGavel(dt);
   updateGear(dt, now); // laser beams, photo frames, pop quizzes, night vision
   updateSec(dt, now); // soaks, zaps, pauses, rewinds, the radar gun, cages
   updatePrims(dt, now); // nails in walls, pins, shopping carts
@@ -2050,6 +2136,7 @@ function frame(t) {
 
   const hp = hookPoint();
   if (hp && ME.alive && !RP.active) { myRope.visible = true; setRopeSkin(myRope, myGrapple()); setRope(myRope, muzzleWorld(), hp); } else myRope.visible = false;
+  underSea(MAPS[MAP.id]); // head under the sea: it's blue down there
   const shHit = G.joined ? raycast([ME.pos[0], ME.pos[1] + 0.1, ME.pos[2]], [0, -1, 0], 120, BOXES) : null;
   myShadow.visible = !!shHit && ME.alive && !ME.onGround && !RP.active;
   if (shHit) myShadow.position.set(ME.pos[0], shHit.point[1] + 0.03, ME.pos[2]);
@@ -2261,7 +2348,7 @@ function replayFeed(k, info) {
   const nm = (id) => (info && info[id] ? [info[id].name, info[id].color] : nameOf(id));
   const d = document.createElement('div');
   const [a, ac] = nm(k.k), [b, bc] = nm(k.v);
-  const via = k.w === 'void' || k.w === 'cough' ? k.via : k.w;
+  const via = k.w === 'void' || k.w === 'cough' || k.w === 'reset' ? k.via : k.w;
   for (const [t, c] of k.k ? [[a, ac], [`  [${wname(via)}]  `, wcolor(via)], [b, bc]] : [[b, bc], ['  died', '#aaa']]) {
     const sp = document.createElement('span'); sp.textContent = t; sp.style.color = c; d.append(sp);
   }

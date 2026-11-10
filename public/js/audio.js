@@ -239,6 +239,15 @@ export const sfx = {
   thwack(pos) { noise(0.07, 0.8, 'bandpass', 1800, 900, pos, 0, 1.5); },
   popper(pos) { noise(0.08, 0.9, 'highpass', 1500, 3000, pos); tone('sawtooth', 500, 700, 0.35, 0.15, pos, 0.05); },
   ting(pos) { tone('sine', 2800, 2700, 0.5, 0.35, pos); tone('sine', 4200, 4100, 0.3, 0.15, pos); },
+  // the laptop: a lid clack + a boot chime that's slightly wrong; an ad landing (a cheap two-note jingle, n = which one, so five
+  // in a row climb); closing one (a dry click + a falling blip); ARE YOU SURE (the same jingle, backwards)
+  laptopOpen(pos) { noise(0.03, 0.5, 'highpass', 2500, 5000, pos); for (const [i, f] of [392, 523, 659, 740].entries()) tone('triangle', f, f, 0.22, 0.16, pos, 0.05 + i * 0.07); },
+  adPop(n = 0) { const f = 660 * Math.pow(1.122, n % 6); tone('square', f, f, 0.07, 0.13); tone('square', f * 1.5, f * 1.5, 0.12, 0.13, null, 0.08); noise(0.02, 0.2, 'highpass', 4000, 7000); },
+  adClose() { noise(0.015, 0.35, 'highpass', 3000, 6000); tone('sine', 900, 320, 0.09, 0.2); },
+  adSure() { tone('square', 990, 990, 0.1, 0.13); tone('square', 660, 660, 0.14, 0.13, null, 0.1); },
+  // the summons: a rising glassy chord while the ring is open, then the gavel: two wooden knocks and a bright crack
+  gavelCall(pos) { for (const [i, f] of [392, 523, 659, 784].entries()) tone('sine', f, f * 1.5, 0.95, 0.12, pos, i * 0.05); tone('triangle', 196, 392, 0.95, 0.1, pos); },
+  gavelBang(pos) { tone('square', 180, 70, 0.12, 0.5, pos); tone('square', 150, 60, 0.14, 0.45, pos, 0.11); noise(0.25, 0.8, 'highpass', 1800, 6000, pos); tone('sine', 1568, 784, 0.5, 0.25, pos, 0.02); },
   reverse(pos) { tone('sine', 300, 1600, 0.25, 0.3, pos); tone('triangle', 1600, 300, 0.25, 0.2, pos, 0.25); },
   hole(pos) { tone('sine', 80, 40, 2.9, 0.5, pos); noise(2.9, 0.3, 'lowpass', 300, 80, pos); },
   holePop(pos) { sfx.boom(pos); sfx.squeak(pos); },

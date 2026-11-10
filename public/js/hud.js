@@ -190,7 +190,10 @@ export const hud = {
     const w = WEAPONS[id];
     if (!w) return;
     $('weaponName').innerHTML = '';
-    $('weaponName').append(span(w.name, w.color), document.createElement('br'), span(K.hint((this.descFor && this.descFor[id]) || w.desc), '#fff'));
+    const md = this.descFor && this.descFor[id], told = this.told || (this.told = new Set()); // what it does: only the first time you hold it (or when a mode changes what it does), not on every switch
+    $('weaponName').append(span(w.name, w.color));
+    if (md || !told.has(id)) $('weaponName').append(document.createElement('br'), span(K.hint(md || w.desc), '#fff'));
+    told.add(id);
     $('weaponName').style.opacity = 1;
     weaponT = 3;
   },
