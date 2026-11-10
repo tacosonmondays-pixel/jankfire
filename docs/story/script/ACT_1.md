@@ -564,8 +564,10 @@ _Mr. Overtime comes down the Long Stairs to collect two hundred and forty-four q
 - `  7` _Every clock in the settlement stops at once: the kitchen clocks, the wristwatches, the broken district clock over the Lost & Found, the egg timer on Sharon's pot. Silence. Then a single loud tick, from up the hill._
 - ` 11` **AUNTIE SPREADSHEET:** *not looking up* oh no.
 - ` 13` _Huge polished brogues step down the Long Stairs. Each step cracks a step. Ticking. A grey suit stretched over pistons. A punch-clock where a heart should be._
+- `13.2` 
 - ` 19` _Behind him, a Gristle & Sons truck backs down the stairs on caterpillar tracks, and Timekeeping collectors with clipboards fan out._
 - ` 22` _Mr. Overtime stops at the bottom of the stairs. He takes out a clipboard. He checks his watch. He is exactly on time._
+- `22.5` 
 - ` 25` **MR. OVERTIME:** good evening. the bottom. two hundred and forty-four quarters of back pay. i'm here to collect.
 - ` 31` **AUNTIE SPREADSHEET:** for a job none of us had.
 - ` 34` **MR. OVERTIME:** you're all absent. you've been absent for a very long time. this will only take a minute. it will take exactly a minute.

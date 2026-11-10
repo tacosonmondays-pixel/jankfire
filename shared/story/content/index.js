@@ -23,6 +23,8 @@ import { SCENES_ACT2 } from './scenes_act2.js';
 import { SCENES_ACT3 } from './scenes_act3.js';
 import { SCENES_ACT4 } from './scenes_act4.js';
 import { SCENES_ACT5 } from './scenes_act5.js';
+export { ENEMIES, ADDS } from './enemies.js'; // (non-boss enemies, for the combat referee and kill goals)
+import { SCENES_OVERTIME } from './scenes_overtime.js'; // (WP9: overtime's fight-1 phase and retreat scenes)
 import { SIDE_BOTTOM } from './side/bottom.js';
 import { SIDE_GUT } from './side/gut.js';
 import { SIDE_PINSTRIPE } from './side/pinstripe.js';
@@ -46,7 +48,7 @@ import { MECHANICS, GRAPPLE } from './mechanics.js';
 
 export const CAST = { ...CAST_MAIN, ...CAST_DISTRICTS };
 export const MISSIONS = { ...MISSIONS_ACT1, ...MISSIONS_ACT2, ...MISSIONS_ACT3, ...MISSIONS_ACT4, ...MISSIONS_ACT5 };
-export const SCENES = { ...SCENES_ACT1, ...SCENES_ACT2, ...SCENES_ACT3, ...SCENES_ACT4, ...SCENES_ACT5 };
+export const SCENES = { ...SCENES_ACT1, ...SCENES_ACT2, ...SCENES_ACT3, ...SCENES_ACT4, ...SCENES_ACT5, ...SCENES_OVERTIME };
 export const SIDE = { ...SIDE_BOTTOM, ...SIDE_GUT, ...SIDE_PINSTRIPE, ...SIDE_CHECKOUT, ...SIDE_NUMBERWORKS, ...SIDE_CHROMEGRISTLE, ...SIDE_EVERGREEN, ...SIDE_LATES, ...SIDE_MARGINS, ...SIDE_CORPHILL, ...SIDE_COMMUTE };
 // (two missions share n 6: m06_tickets_please closes Act I, m06_option_c opens Act II. the act breaks the tie)
 export const MISSION_ORDER = Object.keys(MISSIONS).sort((a, b) => MISSIONS[a].n - MISSIONS[b].n || MISSIONS[a].act - MISSIONS[b].act);
