@@ -17,6 +17,7 @@ import { shredMap, updateShredPit } from './shredpit.js'; // the Warehouse's shr
 import { buildProps, hasProp } from './props.js';
 import { liquidBox, buildLiquids, updateLiquids, liquidsMap, setLiquidQ } from './liquids.js'; // water that moves, lava that flows, splashes
 import { updateFlames } from './flames.js'; // real fire
+import { gfxGuard, initGfxGuard } from './gfxguard.js';
 import { initLighting, lightingMap, lightingRefresh, updateLighting, setLightPreset, aoBegin, aoBake, aoMaterials, setSunBoxes } from './lighting.js';
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
@@ -425,6 +426,7 @@ export function initWorld(canvas) {
   buildMap(scene);
   addEventListener('resize', resize);
   resize();
+  initGfxGuard(canvas, { repaint: repaintMapTextures, relight: relightMap, mats: mapMats, preset: () => jank.name });
 }
 
 export function setJank(i) { jank = JANK[i] || JANK[1]; resize(); setLightPreset(JANK[i] ? i : 1); setLiquidQ(JANK[i] ? i : 1); }
@@ -477,6 +479,36 @@ export function refreshMapVisuals() {
   lightingRefresh();
 }
 
+// ---- gfxguard.js hooks (the "everything renders black" safety net)
+// fresh canvas textures on the map materials that are already in use (same material objects, so nothing has to be rebuilt)
+export function repaintMapTextures() {
+  if (!MAT) return 0;
+  const fresh = makeMaterials();
+  let n = 0;
+  for (const [k, v] of Object.entries(fresh)) {
+    const old = MAT[k];
+    for (const slot of ['map', 'emissiveMap']) {
+      const t = v.mat[slot];
+      if (!t) continue;
+      if (old && old.mat[slot] && old.mat[slot] !== t) { old.mat[slot].dispose(); old.mat[slot] = t; old.mat.needsUpdate = true; n++; } else t.dispose();
+    }
+    v.mat.dispose();
+  }
+  return n;
+}
+// the current map's own fog, sky light and sun again (a streamed city sets its own every frame)
+export function relightMap() {
+  const def = MAPS[MAP.id];
+  if (!def || !G.scene || def.stream) return false;
+  G.scene.fog.color.setHex(MAP.sky.fog); G.scene.fog.near = MAP.fogNear; G.scene.fog.far = MAP.fogFar;
+  const hz = def.haze;
+  hazeUniforms.uHaze.value.set(hz ? hz.k : 0, hz ? hz.top : 0, hz ? hz.bottom : -1, hz ? hz.dist : 100);
+  mapLight(def);
+  lightingMap(def, MAP.id, !!def.night, sun);
+  return true;
+}
+export const mapMats = () => MAT;
+
 export function resize() {
   const w = innerWidth, h = innerHeight;
   const rw = Math.max(80, Math.floor(w * jank.scale)), rh = Math.max(60, Math.floor(h * jank.scale));
@@ -506,6 +538,7 @@ export function updateWorld(dt) {
 let lastT = 0;
 export function renderFrame() {
   const r = G.renderer, now = performance.now();
+  gfxGuard(now); // gfxguard.js: broken lights / fog / textures get put back before they're drawn
   updateLighting(Math.min(0.1, (now - (lastT || now)) / 1000)); lastT = now;
   r.clear();
   r.render(G.scene, G.camera);

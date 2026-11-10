@@ -101,6 +101,7 @@ import { initCustomize, czMode, czOpen, czClose, czFrame, czKill, czLate, czRefr
 import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, zmModelsLoaded } from './zombies.js';
 import { zxHurt } from './zmextra.js'; // zombies: which way the claws came from
 import { zlWant } from './zmloadout.js'; // your zombies loadout
+import { gfxCmd } from './gfxguard.js'; // /gfx: the graphics readout
 let story = null; // OVERDUE's story engine (WP8: quests, talk, cutscenes), loaded with the story flag below. null = every hook is a no-op
 
 const $ = (id) => document.getElementById(id);
@@ -1046,7 +1047,7 @@ function openChat() {
 }
 function closeChat(sendIt) {
   const v = $('chatin').value.trim();
-  if (sendIt && v) net.send({ t: 'chat', m: v });
+  if (sendIt && v && !gfxCmd(v)) net.send({ t: 'chat', m: v }); // (/gfx: the graphics readout, gfxguard.js)
   chatOpen = false;
   $('chatin').classList.add('hidden');
   $('chatin').blur();
