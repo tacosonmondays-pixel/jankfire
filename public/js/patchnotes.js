@@ -11,6 +11,7 @@ export const PATCH_NOTES = [
     'ZOMBIES: every fifth round is a BOSS ROUND. THE FLOOR MANAGER calls meetings (ankle biters, everyone speeds up) and charges at you. THE MASCOT jumps on you and the floor ripples. long HP bar, no one-shots. drop it and everyone gets paid.',
     'SUBURB got real houses: gables, awnings, porches, three kinds of house, and the store has a sign and a giant slush cup. the south tower on Skyline got fire escapes. same walls to hide behind, they just look like somebody lives there.',
     'rocks are rocks now. the boulders and far formations on Desert, Bazaar and Scary Forest are proper lumpy stone instead of red bricks. they block bullets exactly like before.',
+    'the SMOKE BOMB is real smoke now: a thick soft cloud instead of grey squares. things that fall in water make a crown and foam rings. settings > video has other smoke styles (comic puffs, kenney, wispy) and the old squares if you miss them.',
   ] },
   { v: '7.2', date: '2026-11-10', title: 'THUMBS', items: [
     'JANKFIRE runs on phones and tablets now. open it in your phone\'s browser, turn it sideways, go.',
