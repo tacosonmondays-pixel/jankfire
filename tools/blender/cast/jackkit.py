@@ -560,7 +560,9 @@ def pose_rig(char_id, root, extra=()):
 def _three_euler(rx, ry, rz):
     """three.js rotation (XYZ order, game axes) as a blender-space matrix"""
     C = castlib._C
-    Rg = Euler((rx, ry, rz), 'XYZ').to_matrix().to_4x4()   # same convention: R = Rx * Ry * Rz applied to column vectors
+    # three's 'XYZ' is R = Rx * Ry * Rz on column vectors. (mathutils' Euler 'XYZ' is the other way round, Rz * Ry * Rx:
+    # that put a reaching arm above his head in the pose sheets while the game had it on his chest)
+    Rg = Matrix.Rotation(rx, 4, 'X') @ Matrix.Rotation(ry, 4, 'Y') @ Matrix.Rotation(rz, 4, 'Z')
     return C @ Rg @ C.inverted()
 
 
@@ -574,10 +576,7 @@ def apply_pose(E, pose):
         loc, rot, sc = rest.decompose()
         r = pp.get('r'); p = pp.get('p', (0, 0, 0))
         # the rest local matrix = T * R0 * S (R0 = the hunch / the arm's tilt). the game SETS rotation, so R replaces R0
-        Rm = (Euler((r[0], r[1], r[2]), 'XYZ').to_matrix().to_4x4()) if r is not None else None
-        if Rm is None: Rb = rot.to_matrix().to_4x4()
-        else:
-            Rb = (C @ Rm @ C.inverted())
+        Rb = rot.to_matrix().to_4x4() if r is None else _three_euler(r[0], r[1], r[2])
         # parent space is blender axes of the parent's game frame: the offset is in the parent's game axes
         d = C.to_3x3() @ Vector(p)
         e.matrix_local = Matrix.Translation(loc + d) @ Rb @ Matrix.Diagonal((sc.x, sc.y, sc.z, 1.0))

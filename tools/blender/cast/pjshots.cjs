@@ -122,12 +122,12 @@ const W = 1600, H = 900;
     const up = { rig: 1, flap: 1, cock: 1 }, nv = { vest: false };
     await closeups([['the boiler: a beer keg. fire door, relief valve', {}, 'boilerAt', [0, 0, 0], 180, 2.0, 0.1], ['gauge, manifold, his left stack', {}, 'gaugeAt', [0, 0, 0.05], 222, 1.5, 0.35], ['bleed valve, level glass', {}, 'bleedAt', [0, 0.08, 0.02], 140, 1.5, 0.1],
       ['stacks at rest: down, caps shut', nv, 'boilerAt', [0, 0.62, 0.05], 185, 2.5, 0.4], ['rig up: stacks risen, caps open', { vest: false, set: up }, 'boilerAt', [0, 0.62, 0.05], 185, 2.5, 0.4], ['the welded collarbone', nv, 'weldAt', [0, 0, -0.05], 10, 1.7, 0.22],
-      ['the rocket forearm: collar forward', {}, 'fistAt', [0, 0.25, 0], 72, 1.7, 0.12], ['cocked: the collar back up the arm', { set: up }, 'fistAt', [0, 0.25, 0], 72, 1.7, 0.12], ['knuckles: bare steel', {}, 'fistAt', [0, 0.02, 0], 25, 1.2, -0.25],
+      ['the launcher forearm: collar forward', nv, 'fistAt', [0, 0.2, 0], 62, 1.45, 0.1], ['cocked: the collar back up the barrel', { vest: false, set: up }, 'fistAt', [0, 0.2, 0], 62, 1.45, 0.1], ['knuckles: bare steel', {}, 'fistAt', [0, 0.02, 0], 25, 1.2, -0.25],
       ['the exhaust bell behind his elbow', {}, 'elbowAt', [0, -0.05, 0], 140, 1.5, 0.25], ['piston shin: lock open', {}, [0.21, 0.2, -0.08], Z, 35, 1.25, 0.12], ['rig up: lock snapped shut', { set: up }, [0.21, 0.2, -0.08], Z, 35, 1.25, 0.12],
       ['a shin from the side: daylight through it', {}, [0.21, 0.24, -0.02], Z, 90, 1.7, 0.05], ['plate under scar, hydraulic lines', nv, 'armL', [0, -0.12, 0], -72, 1.6, 0.2], ['MARSH DELIVERIES', {}, 'boilerAt', [0, 0.36, -0.1], 180, 1.5, 0.12],
       ['tea towel, belt, keys', {}, 'boilerAt', [0.1, -0.42, -0.1], 200, 1.9, 0.05], ['THIS WAY UP, rubber bands', {}, 'foreL', [0, -0.18, 0], -90, 1.25, 0.05], ['the open hand', {}, 'palmL', [0, 0, 0], -150, 1.1, 0.1]], 6, 3, 'pj_game_parts');
   }
-  const POSES = [['pj_idle', 1.0, 35, 'fresh', true], ['pj_idle_eating', 1.85, 40, 'fresh', false], ['pj_walk_load', 1.0, 35, 'fresh', false], ['pj_kneel_vest', 3.7, 50, 'fresh', true], ['pj_rig_up', 2.12, 35, 'fresh', false], ['pj_fight_idle', 0.5, 35, 'fresh', false],
+  const POSES = [['pj_idle', 1.0, 35, 'fresh', true], ['pj_idle_eating', 1.85, 40, 'fresh', false], ['pj_walk_load', 1.0, 35, 'fresh', false], ['pj_kneel_vest', 3.7, 50, 'fresh', false], ['pj_rig_up', 2.12, 35, 'fresh', false], ['pj_fight_idle', 0.5, 35, 'fresh', false],
     ['pj_rocket_punch', 0.44, 60, 'fresh', false], ['pj_rocket_punch', 0.56, 60, 'fresh', false], ['pj_block', 0.4, 35, 'fresh', false], ['pj_stagger', 0.3, 60, 'fresh', false], ['pj_impaled', 1.2, 60, 'run_through', false], ['pj_impaled', 3.6, 40, 'run_through', false],
     ['pj_break_it', 2.95, 40, 'run_through', false], ['pj_land_kneel', 0.6, 50, 'run_through', false], ['pj_stand_anyway', 3.3, 35, 'run_through', false], ['pj_fight_idle_hurt', 1.0, 35, 'run_through', false], ['pj_armour_break_fall', 0.2, 60, 'armour_broken', false], ['pj_armour_break_fall', 2.2, 50, 'armour_broken', false],
     ['pj_dying_talk', 2.6, 45, 'armour_broken', false], ['pj_dying_talk', 4.6, 45, 'armour_broken', false], ['pj_last_breath', 3.6, 45, 'armour_broken', false], ['pj_carried', 0, 60, 'marrow_taken', false]];
@@ -137,7 +137,7 @@ const W = 1600, H = 900;
       POSES.forEach(([clip, t, deg, state, vest], i) => { const sc = X.scene(0x2a1830, 4); const J = X.jack({ clip, t, state, vest }); sc.add(J.c.root);
         if (clip === 'pj_idle' && X.truck) { const tr = X.truck.clone(true); const p = J.rig.at('palmL'); tr.position.set(p.x, 0, p.z - 0.05); sc.add(tr); }
         const hips = new X.THREE.Vector3(); J.c.spine.getWorldPosition(hips);
-        X.cell(i, 8, 3, sc, X.orbit([hips.x, Math.max(0.8, hips.y * 0.75 + 0.3), hips.z], deg, 8.2, 0.1), clip.slice(3) + ' @' + t); }); }, POSES);
+        X.cell(i, 8, 3, sc, X.orbit([hips.x, Math.max(0.8, hips.y * 0.75 + 0.3), hips.z], deg, 6.9, 0.1), clip.slice(3) + ' @' + t); }); }, POSES);
     await shot('pj_game_poses');
   }
   if (what.includes('clips')) {
@@ -154,7 +154,8 @@ const W = 1600, H = 900;
           const J = X.jack({ clip, t, state: st, vest: /idle$|kneel_vest|walk_load/.test(clip) && !(clip === 'pj_kneel_vest' && t >= 1.75) }); sc.add(J.c.root);
           if (clip === 'pj_idle' && X.truck) { const tr = X.truck.clone(true); const J0 = X.jack({ clip, t: 0 }); const p = J0.rig.at('palmL'); tr.position.set(p.x, 0, p.z - 0.05); sc.add(tr); }
           const mk = C.marks.filter(([mt]) => Math.abs(mt + 0.02 - t) < 0.011).map((m) => m[1]).join(' ');
-          X.cell(i, 6, 2, sc, X.orbit([0, 1.0, 0.1], deg, 9.4, 0.1), (i === 0 ? clip + '   ' : '') + t.toFixed(2) + ' s', mk ? 'mark: ' + mk : ''); }); }, [clip, STATE[clip] || 'fresh']);
+          const sit = /eating|dying|last|carried/.test(clip), high = /impaled|break_it|land_kneel/.test(clip); // (sat on the deck / a metre off it)
+          X.cell(i, 6, 2, sc, X.orbit([0, high ? 1.5 : sit ? 0.85 : 1.0, 0.1], deg, high ? 8.8 : sit ? 6.4 : 7.6, 0.1), (i === 0 ? clip + '   ' : '') + t.toFixed(2) + ' s', mk ? 'mark: ' + mk : ''); }); }, [clip, STATE[clip] || 'fresh']);
       await shot('pj_clip_' + clip.slice(3));
     }
   }

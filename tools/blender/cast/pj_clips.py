@@ -190,7 +190,7 @@ STUB = lerp3(WOUND, ARM_END, 0.5)                       # the middle of what's l
 # ------------------------------------------------------------------------------------------------ standing about
 # weight on his left leg, the right knee soft, hip out; his left hand flat on the hand truck's grip (the truck stands
 # at props.handtruck beside him), the fist hanging. he looks about, shifts once in a while
-TRUCK_GRIP = (-0.67, 1.195 / S, -0.36)                 # root space: where the middle of the grip is (1.17 m + his palm)
+TRUCK_GRIP = (-0.6, 1.195 / S, -0.3)                   # root space: where the middle of the grip is (1.17 m + his palm)
 stand = P(legs(0.012, 0.0, 0.07), {'body.px': -0.03, 'body.z': -0.05, 'spine.z': 0.07, 'spine.x': -0.02, 'head.z': -0.04, 'legR.z': 0.05, 'legL.z': -0.03}, arms(R=(0.02, 0, 0.14, 0.2, 0, 0)))
 stand = put(stand, 'L', None, TRUCK_GRIP, normal=(0, -1, 0), seed=arms(L=(0.55, 0.0, -0.4, 0.75, 0, 0)))
 stand2 = P(stand, {'head.y': 0.3, 'head.x': 0.04, 'arm.x': 0.05})
@@ -404,6 +404,7 @@ clip('pj_last_breath', [(0, place), (1.4, out1), (2.2, out2), (3.1, gone, 'in'),
 # carried: across lumps' arms, one under his back, one under his knees. limp. (a pose: the scene parents his root)
 carried = P({'body.x': 1.36, 'body.py': 0.72, 'spine.x': 0.22, 'head.x': 0.55, 'head.z': 0.2, 'legL.x': 0.75, 'legR.x': 0.62, 'kneeL.x': -1.2, 'kneeR.x': -1.02, 'legL.z': -0.06, 'legR.z': 0.1},
             arms(R=(-1.2, 0, 0.35, 0.3, 0, 0), L=(0.3, -0.3, -0.2, 1.3, 0, 0)))
+carried = put(carried, 'L', 'spine', (-0.12, 0.2, -0.29), normal=(0.2, 0.0, 1.0), seed=arms(L=(0.3, -0.9, -0.4, 1.8, 1.2, 0)), w_n=0.5)   # his left hand lies on his belly (it stood up off him before)
 clip('pj_carried', [(0, carried)], face=[(0, 'jack_gone')], osc=[('legL.x', 0.012, 1.4, 0.0), ('legR.x', 0.012, 1.4, 0.4), ('arm.x', 0.03, 1.4, 0.9)],
      note='in someone\'s arms (props.carry says where theirs go). a pose, held; the sway is the carrier walking')
 

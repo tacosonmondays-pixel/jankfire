@@ -144,11 +144,11 @@ def sheet_turn(J, root, tb, td):
     studio(H, c)
     floor_disc(1.6)
     ps = []
-    for i, (nm, deg) in enumerate((('front', 0), ('three quarter', 40), ('his left side', 90), ('back', 180), ('three quarter back', 222), ('his right side', 270))):
+    for i, (nm, deg) in enumerate((('front', 0), ('three quarter', 40), ('his right side', 90), ('back', 180), ('three quarter back', 222), ('his left side', 270))):   # (+x is HIS right: 90 looks at his right side)
         ps.append(cam_shot(os.path.join(TMP, 'pj_t%d.png' % i), (0, 0.9, 0), deg, H * 2.55, lens=70, res=(440, 580)))
     hh = max((o.matrix_world @ v.co).z for o in base_parts(root) if tag_of(o) not in ('stackL', 'stackR', 'flapL', 'flapR') for v in o.data.vertices)
     return tile(ps, os.path.join(SHEET_DIR, 'c_pallet_jack'), 'c_pallet_jack  PALLET JACK  %d tris (+%d damage pieces)  %.2f m tall in the game' % (tb, td, hh * SCALE), 3,
-                ['front', 'three quarter', 'his left', 'back', 'three quarter back', 'his right'])
+                ['front', 'three quarter', 'his right: the launcher', 'back', 'three quarter back', 'his left: THIS WAY UP'])
 
 
 def sheet_face(J, root):
@@ -160,7 +160,7 @@ def sheet_face(J, root):
     for i, (deg, up, dist, lens, tgt) in enumerate(((0, 0.04, 0.95, 85, hc), (32, 0.08, 0.95, 85, hc), (90, 0.05, 0.95, 85, (0, 1.565, -0.03)), (-35, 0.25, 0.95, 85, hc), (150, 0.1, 1.0, 85, (0, 1.56, 0.0)), (18, 0.02, 1.9, 85, (0, 1.36, -0.1)))):
         ps.append(cam_shot(os.path.join(TMP, 'pj_f%d.png' % i), tgt, deg, dist, lens=lens, res=(480, 480), up=up))
     return tile(ps, os.path.join(SHEET_DIR, 'c_pallet_jack_face'), 'PALLET JACK  the face at talk distance (eyes, lids, brows and mouth are the game\'s code face, stood in here)', 3,
-                ['front', 'three quarter', 'his left', 'from above his right', 'behind his left ear', 'head and shoulders'])
+                ['front', 'three quarter', 'his right', 'from above his left', 'behind his right ear', 'head and shoulders'])
 
 
 def sheet_parts(J, root):
@@ -168,10 +168,20 @@ def sheet_parts(J, root):
     show_only(root)
     studio(0.9, gv(0, 1.0, 0.2), key=1.1)
     floor_disc(1.6)
+    def mid(joint, dx=0.0, dy=0.0, dz=0.0):
+        # the middle of everything on a joint (game axes), so a close-up still finds it when he is rebuilt
+        lo = Vector((1e9, 1e9, 1e9)); hi = -lo
+        for o in base_parts(root):
+            if o.name[len('part_'):].split('__')[0] != joint: continue
+            for v in o.data.vertices:
+                w = o.matrix_world @ v.co
+                lo = Vector(map(min, lo, w)); hi = Vector(map(max, hi, w))
+        c = (lo + hi) / 2
+        return (c.x + dx, c.z + dy, -c.y + dz)
     V = [('the boiler: a beer keg', (0.0, 1.03, 0.36), 180, 0.1, 1.15, 70), ('gauge, level glass, stacks', (-0.05, 1.2, 0.36), 222, 0.3, 1.25, 70), ('bleed valve, fire door', (0.08, 0.98, 0.38), 152, 0.02, 0.95, 70),
-         ('stacks and rain caps', (0, 1.56, 0.4), 180, 0.55, 1.0, 70), ('the welded collarbone', (0.0, 1.27, -0.2), 12, 0.22, 0.85, 70), ('the rocket forearm', (0.5, 0.84, 0.0), 300, 0.1, 0.95, 70),
-         ('knuckles, cocking collar', (0.5, 0.66, -0.02), 20, -0.1, 0.75, 70), ('exhaust bell, hatch', (0.5, 0.95, 0.08), 232, 0.2, 0.85, 70), ('piston shins', (0.0, 0.22, -0.03), 28, 0.12, 1.25, 70),
-         ('shin lock, guard, boot', (0.19, 0.16, -0.06), 300, 0.1, 0.95, 70), ('plates under scar, lines', (-0.4, 1.25, 0.0), 60, 0.25, 0.95, 70), ('towel, belt, keys', (0.05, 0.72, 0.2), 205, 0.05, 1.0, 70)]
+         ('stacks and rain caps', (0, 1.56, 0.4), 180, 0.55, 1.0, 70), ('the welded collarbone', (0.0, 1.27, -0.2), 12, 0.22, 0.85, 70), ('the rocket forearm: the launcher', mid('foreR', dy=-0.04), 68, 0.08, 0.95, 70),
+         ('knuckles, cocking collar', mid('handR', dy=0.05), 25, -0.12, 0.75, 70), ('exhaust bell, hatch', mid('foreR', dy=0.06, dz=0.05), 150, 0.25, 0.85, 70), ('piston shins', (0.0, 0.22, -0.03), 28, 0.12, 1.25, 70),
+         ('shin lock, guard, boot', (0.19, 0.16, -0.06), 60, 0.1, 0.95, 70), ('plates under scar, lines', mid('armL', dy=0.05), 290, 0.25, 0.95, 70), ('towel, belt, keys', (0.05, 0.72, 0.2), 205, 0.05, 1.0, 70)]
     ps = [cam_shot(os.path.join(TMP, 'pj_p%d.png' % i), t, deg, d, lens=ln, res=(440, 400), up=up) for i, (_, t, deg, up, d, ln) in enumerate(V)]
     return tile(ps, os.path.join(SHEET_DIR, 'c_pallet_jack_parts'), 'PALLET JACK  the rig parts, close up (each one is its own named piece)', 4, [v[0] for v in V])
 

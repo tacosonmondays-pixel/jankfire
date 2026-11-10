@@ -11,7 +11,7 @@ FACES = {'neutral': dict(lid=1, jaw=0, st=1, smile=0.2, by=0, bt=0), 'grin': dic
          'sad': dict(lid=0.65, jaw=0.05, st=0.85, smile=-0.8, by=0.01, bt=-0.5), 'shock': dict(lid=1.25, jaw=0.9, st=0.75, smile=0, by=0.035, bt=-0.1), 'angry': dict(lid=0.62, jaw=0.1, st=1.1, smile=-0.6, by=-0.015, bt=0.55),
          'jack': dict(lid=0.78, jaw=0, st=1.0, smile=0.36, by=-0.003, bt=-0.3), 'jack_hurt': dict(lid=0.7, jaw=0.16, st=0.95, smile=-0.25, by=0.004, bt=-0.55), 'jack_set': dict(lid=0.71, jaw=0, st=0.9, smile=-0.08, by=-0.012, bt=0.26),
          'jack_mad': dict(lid=0.76, jaw=0.12, st=1.1, smile=-0.6, by=-0.015, bt=0.55), 'jack_gone': dict(lid=0.06, jaw=0.12, st=0.95, smile=0.1, by=0, bt=-0.2)}
-POSES = [('pj_idle', 1.0, 35, 'fresh', True), ('pj_idle_eating', 1.85, 40, 'fresh', False), ('pj_walk_load', 1.0, 35, 'fresh', False), ('pj_kneel_vest', 3.7, 50, 'fresh', True), ('pj_rig_up', 2.12, 35, 'fresh', False),
+POSES = [('pj_idle', 1.0, 35, 'fresh', True), ('pj_idle_eating', 1.85, 40, 'fresh', False), ('pj_walk_load', 1.0, 35, 'fresh', False), ('pj_kneel_vest', 3.7, 50, 'fresh', False), ('pj_rig_up', 2.12, 35, 'fresh', False),
          ('pj_rocket_punch', 0.44, 60, 'fresh', False), ('pj_rocket_punch', 0.56, 60, 'fresh', False), ('pj_block', 0.4, 35, 'fresh', False), ('pj_stagger', 0.3, 60, 'fresh', False), ('pj_impaled', 1.2, 60, 'run_through', False),
          ('pj_impaled', 3.6, 40, 'run_through', False), ('pj_break_it', 2.95, 40, 'run_through', False), ('pj_land_kneel', 0.6, 50, 'run_through', False), ('pj_stand_anyway', 3.3, 35, 'run_through', False),
          ('pj_fight_idle_hurt', 1.0, 35, 'run_through', False), ('pj_armour_break_fall', 0.2, 60, 'armour_broken', False), ('pj_armour_break_fall', 2.2, 50, 'armour_broken', False), ('pj_dying_talk', 4.6, 45, 'armour_broken', False),
@@ -181,6 +181,7 @@ def run(J, root, fo, sheets, SHEET_DIR, TMP, G):
         rpkit.contact(ps, os.path.join(SHEET_DIR, 'c_pallet_jack_poses'), 'PALLET JACK  pose sheet: one key pose a clip (the game plays these same numbers)', cols=5, labels=labs)
     if 'clips' in sheets:
         only = arg('clip')
+        if 'poses' not in sheets: floor_disc(4.0)
         for name in pj_clips.CLIPS:
             if only and name not in only.split(','): continue
             C = pj_clips.CLIPS[name]; ln = pj_clips.duration(name) or 1.0; N = 12
@@ -192,7 +193,8 @@ def run(J, root, fo, sheets, SHEET_DIR, TMP, G):
                 if 'impaled' in name: st = 'run_through' if t >= 0.05 else 'fresh'
                 if 'armour_break' in name: st = 'armour_broken' if t >= 0.06 else 'run_through'
                 PD.pose(name, t, st, vest=(name in ('pj_idle', 'pj_walk_load') or (name == 'pj_kneel_vest' and t < 1.75)))
-                ps.append(wb_shot(os.path.join(TMP, 'pj_c%d.png' % i), (0, 1.0, 0.1), 55 if any(k in name for k in ('eating', 'kneel', 'dying', 'last', 'carried', 'fall')) else 40, 6.6, res=(300, 330)))
+                high = any(k in name for k in ('impaled', 'break_it', 'land_kneel'))   # (he is a metre off the deck in these)
+                ps.append(wb_shot(os.path.join(TMP, 'pj_c%d.png' % i), (0, 1.45 if high else 1.0, 0.1), 55 if any(k in name for k in ('eating', 'kneel', 'dying', 'last', 'carried', 'fall')) else 40, 8.2 if high else 6.6, res=(300, 330)))
                 mk = ' '.join(m for mt, m in C['marks'] if abs(mt - t) < ln / (N - 1) / 2)
                 labs.append('%.2f %s' % (t, mk))
             rpkit.contact(ps, os.path.join(SHEET_DIR, 'c_pallet_jack_clip_' + name[3:]), 'PALLET JACK  %s   %s' % (name, C['note'][:90]), cols=6, labels=labs)

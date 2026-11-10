@@ -17,6 +17,8 @@ Sheets (all looked at while building; the list of what is still weak is at the b
 | a contact sheet per clip (12 frames, marks called out) | `pj_clip_<name>.jpg` | `tools/blender/sheets/c_pallet_jack_clip_<name>.jpg` (8 frames) |
 | the hand truck | in the turnaround and `pj_clip_idle.jpg` | `tools/blender/sheets/s_handtruck.jpg` |
 
+In every sheet "his right" is the launcher arm (+x) and "his left" is the open hand and `THIS WAY UP`.
+
 ## Files
 
 | file | what |
@@ -28,7 +30,8 @@ Sheets (all looked at while building; the list of what is still weak is at the b
 | `public/js/story/palletjack.js` | `PJ`: clips, marks, damage states, the machine, vest, LOD, steam |
 | `public/js/story/pj_clipdata.js` | the clips as key poses. **Generated** by `tools/blender/cast/pj_clips.py` |
 | `tools/blender/cast/make_cast_pallet_jack.py` | the build. `jackkit.py` (kit), `jackbody.py` (the man), `jackrig.py` (the machine), `jackdmg.py` (damage), `jacktruck.py`, `jackposes.py` (pose sheets) |
-| `tools/blender/cast/pjshots.cjs`, `pjparts.cjs` | the in-game sheets; the game half of the parts file |
+| `tools/blender/cast/pj_clips.py` | the clips: key poses, the hand-contact solver, marks. Writes `pj_clipdata.js` |
+| `tools/blender/cast/pjshots.cjs`, `pjparts.cjs`, `pjcheck.cjs` | the in-game sheets; the game half of the parts file; the actor-path check |
 
 Touched in shared files: **two lines in `looks.js`** (an import and `pallet_jack: () => palletJackLook({...})` in
 `LOOKS`), one entry in `public/models/story/index.json` (`s_handtruck`), and his entry in
@@ -69,13 +72,15 @@ so the game can hide it, move it, light it or break it. Boxes, pivots and axes a
 | `fire` | spine | what glows: the fire door's slots (`pj_glow`), the level in the glass (`pj_marrow`) | emissive, by `PJ` |
 | `gauge`, `needle` | spine | the pressure gauge on his left of the keg (`pj_dial`), its needle | the needle turns about its axis |
 | `valveBody`, `valve` | spine | the bleed valve on his right of it, its red wheel | the wheel turns about +y |
-| `stackBase` | spine | the copper manifold, the stacks' wrapped sleeves, the bar across | |
+| `stackBase` | spine | the copper manifold, the stacks' wrapped sleeves and clamps | |
+| `kegSeat` | spine | where the keg goes into him: the singlet cut away, raw skin, a welt of scar, six lugs bolted through | |
 | `stackL`, `stackR` | spine | the thruster stacks (chrome going blue then black, an ember in the throat) | slide 0.07 up their own axis |
 | `flapL`, `flapR` | spine | their rain caps | hinge open, about 1.2 rad |
-| `collar` | spine | the welded steel collarbone; the weld is to his right of centre | |
+| `collar` | spine | the welded steel collarbone: proud of his chest across the front, sinking under the skin before the shoulders (so a vest strap lies over it); the weld is to his right of centre | |
 | `shinL`, `shinR` | kneeL / kneeR | the shin pistons: red sleeve, chrome rod, down the front of the leg onto the boot's guard | |
 | `lockL`, `lockR` | kneeL / kneeR | the shin locks: toggle levers, modelled open | turn `shut` rad about z and they slap up flat |
-| `cock` | foreR | the cocking collar on the rocket forearm (red, a hazard band) | slides 0.04 up the arm |
+| (no tag) | foreR | the launcher: his skin stops a third of the way down the right forearm at a riveted flange; below it a blued barrel, two fins, vent slots; the exhaust bell behind the elbow | |
+| `cock` | foreR | the cocking collar on the barrel (red, a hazard band, a chrome handle) | slides 0.04 up the arm |
 | `ram` | handR | the chrome ram and wrist cuff, hidden up the forearm | move `handR` 0.24 down its -y and the fist rides out on it |
 | `fist` | handR | his knuckles: bare steel, the skin worn off them | |
 | `plates` | spine, arms, foreR | scar tissue over plate (`pj_scar`), rivets, bare corners | |
@@ -113,6 +118,12 @@ only emissive materials in the damage set; `PJ` flickers them and puts the fire 
 The cast is animated in code (joints of the code skeleton, `actors.js` `CLIPS`), like Mr. Overtime; so are his.
 `pj_clips.py` holds each clip as a few key poses with an ease each; it writes `pj_clipdata.js`, which `palletjack.js`
 turns into `CLIPS.pj_*` entries. The Blender pose and contact sheets pose the model from the same numbers.
+
+**Hand contacts are solved, not guessed.** `pj_clips.py` carries a copy of the game's joint tree and a small search
+(`put(pose, side, joint, spot, normal)`) that finds the arm for "this point of the hand goes there": the palm on the
+truck's grip, the spoon at his mouth, both hands on the arm through him, the palm over the hole, your hand held on
+his chest left of the weld, his hand on the cocking collar. 45 placements; it prints the worst miss when it runs
+(3.8 cm: the fist reaching the collar while racking).
 
 What the clip player adds to plain keys:
 - **Arms, forearms, hands and neck are absolute**: a hand that has to be on the truck, on the arm through him or on
