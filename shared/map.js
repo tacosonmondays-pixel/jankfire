@@ -3080,6 +3080,7 @@ const LAVA_FLOOR = 1.3; // the plug under the throat's lava (its surface is 4.5:
 const lavaPit = (T) => ({ kind: 'lava', box: T, top: 4.6, bot: LAVA_FLOOR - 0.5 });
 function volcano(B0, D0, dx, dz, st) {
   const { B, D, add, W, up } = isPiece(B0, D0, dx, dz, st); const T = [-2, -5, 2, -1];
+  const n0 = B0.boxes.length, d0 = D0.boxes.length; // (everything from here is drawn as one Blender volcano, public/models/arch/volcano.glb: look only)
   slab(W, -15, -16, 15, 10, 0, 3, 'basalt', T); slab(W, -10, -12, 10, 6, 3, 6, 'basalt', T); slab(W, -6, -9, 6, 3, 6, 9, 'basalt', T);
   add(-2, 0, -5, 2, LAVA_FLOOR, -1, 'basalt'); D.add(-2, 4.3, -5, 2, 4.5, -1, 'lava'); // down the throat: deep lava over a rock plug. fall in and you sink into it, burning (map.pits)
   for (const [x0, z0, x1, z1] of [[-2.3, -5.3, 2.3, -5], [-2.3, -1, 2.3, -0.7], [-2.3, -5, -2, -1], [2, -5, 2.3, -1]]) add(x0, 9, z0, x1, 9.3, z1, 'basalt'); // its lip
@@ -3098,6 +3099,7 @@ function volcano(B0, D0, dx, dz, st) {
   D.add(3, 1.2, 10.02, 9, 2.4, 10.08, 'advolcano', { fit: 1 });
   // boulders on the terraces (cover on the way up)
   for (const [x, z, y, s] of [[-12.5, -13, 3, 1.1], [12, -8, 3, 1.3], [-11.5, 7, 3, 1.0], [7.5, -10.5, 6, 0.9], [-8, 4, 6, 0.8]]) { add(x - s, y, z - s * 0.8, x + s, y + s * 1.2, z + s * 0.8, 'basalt'); }
+  B0.archSince(n0, 'volcano', dx, dz); for (let i = d0; i < D0.boxes.length; i++) Object.assign(D0.boxes[i], { av: 'volcano', ai: B0.boxes.arch.length - 1 });
   return [T[0] + dx, T[1] + dz, T[2] + dx, T[3] + dz];
 }
 // the tiki bar (round -13, 18): a bamboo counter under a thatched roof on four posts, stools, the back bar and its bottles
