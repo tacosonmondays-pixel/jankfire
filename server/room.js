@@ -56,6 +56,8 @@ import { ZM } from '../shared/zombies.js';
 import { installZombies } from './zombies.js';
 import { installStoryRef } from './storyref.js'; // story rooms: the OVERDUE referee's rules (enemies, sides, events)
 import { installModeStats } from './modestats.js'; // per-mode leaderboard stats
+import { inPit, pitUnder, sink } from '../shared/pits.js'; // pits with something in them (the volcano's lava)
+import { installPits } from './pits.js';
 import { inShredder } from '../shared/shredpit.js'; // the Warehouse's shredder pit: its teeth kill like the void
 import { installLobby } from './lobby.js'; // mode lobbies: the countdown before a match
 import { LOBBY } from '../shared/lobby.js';
@@ -716,8 +718,9 @@ class Room {
     if (!ai.hook && n >= (ai.nextHook || 0) && this.mode !== 'training' && !this.hookOff() && (!this.brOn || this.brHookReady(b))) { // (jank royale: grapple charges)
       const skill = ai.diff === 'easy' ? 0.35 : ai.diff === 'hard' ? 1 : 0.7;
       const below = !b.onGround && !raycast([b.pos[0], b.pos[1] + 0.5, b.pos[2]], [0, -1, 0], 40, boxes);
+      const cooked = !!inPit(this.map, b.pos); // standing in the lava: same way out
       let want = null;
-      if (below && (b.vel[1] < -4 || b.pos[1] < this.map.killY + 25)) { // falling into the void: hook back toward the middle, up high
+      if (cooked || (below && (b.vel[1] < -4 || b.pos[1] < this.map.killY + 25))) { // falling into the void: hook back toward the middle, up high
         const sp = this.map.spawns, c = !sp ? [0, 0, 0] : !this.map.sea ? sp[0] : sp.reduce((p, q) => (Math.hypot(q[0] - b.pos[0], q[2] - b.pos[2]) < Math.hypot(p[0] - b.pos[0], p[2] - b.pos[2]) ? q : p)); // (sea maps: back to the nearest land, not across the map)
         want = [c[0] - b.pos[0], 18 + Math.max(0, c[1] - b.pos[1]), c[2] - b.pos[2]];
       } else if (t && t.alive && (b.inf || Math.random() < skill)) {
@@ -760,7 +763,7 @@ class Room {
     }
     if (wl > 0 && b.onGround) {
       const probe = [b.pos[0] + wx * 2.5, b.pos[1] + 0.5, b.pos[2] + wz * 2.5];
-      if (!raycast(probe, [0, -1, 0], Math.max(6, Math.min(15, probe[1] - this.map.killY)), boxes)) { wx = -wx; wz = -wz; ai.strafeDir *= -1; if (this.map.edgeGuard) ai.edgeT = n + 3000; }
+      if (!raycast(probe, [0, -1, 0], Math.max(6, Math.min(15, probe[1] - this.map.killY)), boxes) || pitUnder(this.map, probe[0], probe[1], probe[2])) { wx = -wx; wz = -wz; ai.strafeDir *= -1; if (this.map.edgeGuard) ai.edgeT = n + 3000; }
     }
     if (this.map.edgeGuard && !b.onGround && this.botFlightLands(b)) { wx = 0; wz = 0; jump = false; } // thrown over the canyon (a jump pad, a hit) onto the far side: let it fly (steering back brakes it into the drop)
     else if (this.brOn || this.map.edgeGuard) { const e = this.brBotEdge(b, wx, wz, jump); if (this.map.edgeGuard && (e[0] !== wx || e[1] !== wz)) ai.edgeT = n + 3000; [wx, wz, jump] = e; } // jank royale (and maps with a canyon, map.edgeGuard): no hopping into canyons. turned back from one: find a bridge (above)
@@ -1015,6 +1018,7 @@ class Room {
     this.eatMomentum(b, dt);
     if (b.held && n < b.held.until) { for (let i = 0; i < 3; i++) v[i] = Math.max(-30, Math.min(30, (b.held.at[i] - b.pos[i]) * 9)); b.onGround = false; } // hanging in a shredder
     const was = b.onGround;
+    sink(this.map, b.pos, v); // in the deep sea: sinking, not falling
     const res = movePlayer(b.pos, v, dt, this.boxes, was);
     b.onGround = !!res.ground && v[1] <= 0.01;
     if (b.onGround && res.ground.pad && !b.ai.dummy) { const pd = res.ground.pad; v[0] += pd[0]; v[1] = pd[1]; v[2] += pd[2]; b.onGround = false; }
@@ -1472,7 +1476,7 @@ class Room {
       if (killer.isBot && killer.kfx == null) killer.kfx = Math.random() < 0.45 ? pick(KILL_IDS) : 'none'; // bots show off stuff you can roll
       kfx = killer.kfx || 'none';
     }
-    this.broadcast({ t: 'kill', k: killer && killer !== t ? killer.id : 0, v: t.id, w, via, vel: t.vel.map(r2), pos: t.pos.map(r2), yaw: r2(t.yaw || 0), fx: kfx, ep: ep || undefined, rs: Math.max(0, t.minRespawnAt - now()), sky: w === 'duck' && now() - (t.skyT || 0) < 800 ? 1 : undefined, pit: w === 'void' && now() - (t.pitT || 0) < 500 ? 1 : undefined }); // (pit: the shredder pit's teeth)
+    this.broadcast({ t: 'kill', k: killer && killer !== t ? killer.id : 0, v: t.id, w, via, vel: t.vel.map(r2), pos: t.pos.map(r2), yaw: r2(t.yaw || 0), fx: kfx, ep: ep || undefined, rs: Math.max(0, t.minRespawnAt - now()), sky: w === 'duck' && now() - (t.skyT || 0) < 800 ? 1 : undefined, pit: w === 'void' && now() - (t.pitT || 0) < 500 ? 1 : undefined, hz: w === 'lava' && now() - (t.hzT || 0) < 500 ? 1 : undefined }); // (pit: the shredder pit's teeth)
     t.lastAttacker = 0;
     this.chaosKill(t, killer);
     if (killer && killer.isBot || t.isBot) this.botBrag(killer, t, w, via, { rev: bcRev, clutch: this.botClutch(killer, t) }); // bots brag / cope in chat
@@ -2505,7 +2509,7 @@ class Room {
   botDropNear(b, wx, wz) {
     const v = b.vel, sp = Math.hypot(v[0], v[2]), wl = Math.hypot(wx, wz), dx = sp > 1 ? v[0] / sp : wl ? wx / wl : 0, dz = sp > 1 ? v[2] / sp : wl ? wz / wl : 0;
     const probes = [[2, 0], [-2, 0], [0, 2], [0, -2]]; if (dx || dz) for (const d of [3, 4.5, 6]) probes.push([dx * d, dz * d]);
-    return probes.some(([px, pz]) => !raycast([b.pos[0] + px, b.pos[1] + 0.5, b.pos[2] + pz], [0, -1, 0], 15, this.boxes));
+    return probes.some(([px, pz]) => !raycast([b.pos[0] + px, b.pos[1] + 0.5, b.pos[2] + pz], [0, -1, 0], 15, this.boxes) || pitUnder(this.map, b.pos[0] + px, b.pos[1] + 0.5, b.pos[2] + pz));
   }
   // a bot in the air: does the flight come down on a floor if nobody steers? (a floor near the height it left from)
   botFlightLands(b) {
@@ -3803,6 +3807,7 @@ class Room {
     this.tickWaves();
     if (this.sprays.size && this.sprayMap !== this.cfg.map) this.sprays.clear(); // the map changed: its graffiti goes with it
     this.tickChaos(dt, n);
+    this.tickPits(n); // lava pits burn whoever's standing in them
     this.tickGear(n); // laser beams, photo frames, pop quizzes, bots' gadgets
     for (const p of this.players.values()) {
       if (!p.alive && n >= p.respawnAt) {
@@ -3945,6 +3950,7 @@ installEcon(Room, {
 installLasso(Room);
 installZombies(Room, { send, stat, store });
 installLobby(Room, { send, rooms });
+installPits(Room, { now, r2 });
 installAds(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm }); // the laptop's pop-up ads (after installSec: it wraps botGear / botFire)
 installStoryRef(Room); // story rooms (before installModeStats, which stays last)
 installModeStats(Room, { store }); // per-mode leaderboard stats (last: it wraps zombies' zmGive)

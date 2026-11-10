@@ -1,4 +1,4 @@
-// OVERDUE bosses. 20 named bosses (Mr. Overtime has four story fights and a refight, so 24 entries).
+// OVERDUE bosses. 21 named bosses (Mr. Overtime has four story fights and a refight, so 25 entries).
 // Who they ARE is in the cast bible; this file is the fight.
 // SCHEMA: BOSSES[id] = {
 //   name, card, subtitle      the Boss Intro title card (DESIGN §8.2): NAME · JOB TITLE, and one deadpan subtitle
@@ -698,6 +698,40 @@ const BASE = {
     core: "core_todo_skin",
     refight: { card: REHIRE, line: "// TODO: TODO", mods: ["Regression: the patches come undone at 50%", "Hotfix: no Todd", "Merge Conflict: two of it"] },
     drops: ["the_missing_texture", "lt_boss_missing_texture"],
+  },
+  // ================================================================ THE UNDER-HILL LOOP (the Act I climax: docs/story/TRAIN.md)
+  revenue_protection_1: {
+    name: "REVENUE PROTECTION", card: "REVENUE PROTECTION · TICKETS, PLEASE", subtitle: "the tunnel eats.",
+    who: "revenue_protection", kind: "story", district: "commute", zone: "commute:underhill_loop", quest: "m06_tickets_please", hp: 5000,
+    look: "thing: a round mask that fills the tunnel wall to wall, nine metres across: white enamel, chipped, twelve plates, two tall oval eye holes with nothing in them, no mouth. Long black arms come out from behind its rim, flat against the tunnel walls and roof. Built from real references (enamel station roundels, a tunnelling machine's segmented shield, charred timber, lanyards).",
+    why: "The only other way into the Gut is the commuter line under the hill, and this lives in it. ☺ CORP found it, bolted the sign to its front, and left it in the Loop. It keeps people off the line for free.",
+    phases: [
+      { name: "TICKETS, PLEASE", hp: [100, 60], line: "tickets, please.",
+        mechanics: [
+          { name: "Grabber", tell: "an arm walks along the wall towards the wagon's rail", effect: "grips the wagon's rail. While it holds, THE GAP closes 1 m/s", counter: "shoot the wrist. A severed Grabber gives blood back" },
+          { name: "Snatcher", tell: "an arm goes for a crewmate and lifts them", effect: "6 s before it pulls them in", counter: "shoot the wrist. They drop back on the deck, hurt" },
+          { name: "Sweeper", tell: "an arm lies flat along the deck, wall to wall, knee height or head height", effect: "it sweeps the deck", counter: "jump or slide. Jack blocks one for you in phase 1" },
+          { name: "Brakeman", tell: "Dale shouts the side", effect: "reaches past the train and rips up track ahead, or drops a signal gantry", counter: "shoot it before it gets a grip, or brace" },
+          { name: "Flinch", tell: "the mask shrugs bolts off", effect: "sever four arms inside ten seconds and it flinches: the eye housings swing open for a moment and you can put bolts into it. That is the only damage it takes in this phase", counter: "—" },
+          { name: "Jack at the back rail", tell: "his boiler vents red steam, his punches slow down, his block gets shorter", effect: "Jack fights in full rig: rocket punches on Grabbers, blocks Sweepers, thrusters to get back on when one throws him. He is already hurt and it shows. He's a health bar you can't heal", counter: "none. Phase 1 is not winnable: at 60% his armour breaks. On a rig that means the rig is done. On Jack it means Jack is" },
+        ] },
+      { name: "PENALTY FARE", hp: [60, 25], line: "is this seat taken",
+        mechanics: [
+          { name: "Hairline", tell: "sustained fire on a plate crazes it", effect: "then it falls away and smashes on the track (each plate is a real piece of geometry: twelve of them, the hole stays). Under the first lost plates: packed black bodies, a hand flat against the inside like a face at a window", counter: "you have Jack's marrow: the Blood Drive is free while it spins. Hold it on one plate" },
+          { name: "The left eye", tell: "the left lamp housing blows out. Behind it, a cluster of real eyes, all looking at you", effect: "it starts throwing lost property out of the hole: briefcases, umbrellas, a pushchair. The voices get clearer: \"is this seat taken\", \"i'm going to be late\", \"seventeen thirty-two\", a child asking how many stops", counter: "—" },
+          { name: "The smile", tell: "the bottom plates crack along one curved line, left to right. For a second the ☺ has its smile back", effect: "then the lower third of the mask drops off and the crack is a mouth: a wall of mouths, and arms come out of that too, two at a time, faster", counter: "sever them at the wrist" },
+          { name: "Snatchers in pairs", tell: "—", effect: "Snatchers now come in pairs. If one takes Gordo or Lumps all the way in, they are not killed (they're needed in Acts II to IV) but they come back out of it changed: a scar the rest of the game remembers, and a line in Act II", counter: "shoot the wrist inside 6 s" },
+        ] },
+      { name: "END OF THE LINE", hp: [25, 0], line: "seventeen thirty-two",
+        mechanics: [
+          { name: "Lunge", tell: "it stops hauling politely", effect: "it lunges. First lunge bites the open wagon in half: Lumps pulls the coupling pin, the arena is now one car. Daylight is a dot ahead of you. Dale: \"ninety seconds. it doesn't come outside. i think. i think it doesn't come outside.\"", counter: "—" },
+          { name: "Every side", tell: "—", effect: "arms come from every side. Every cross that blooms inside it lights the tunnel red from within and you see the outline of everyone in there", counter: "sever, cross, sever" },
+          { name: "The Inspector", tell: "the mask is hanging off one bolt, swinging, half a face. Everything behind it is in the open: four hundred people in one piece, the lanyards, the faces moving", effect: "in the middle the Inspector in his cap, punching a ticket that isn't there, over and over. He is the crit spot", counter: "empty his bar, then hold fire: the ring overspins, all six barrels at once, and one blood cross grows out of the middle of it until it touches the tunnel on all four sides. BLOOD CROSSED" },
+        ] },
+    ],
+    lines: { intro: "tickets, please.", hurt: ["is this seat taken", "i'm going to be late"], kill: ["fare evaded. briefly."], low: "seventeen thirty-two", defeat: "*click.*" },
+    defeat: "BLOOD CROSSED. The mask's last bolt goes. The face falls forward flat onto the track and the train leaves the tunnel into a red evening on The Commute. The cross is what stops it. The thing behind the face comes apart along the cross's four arms: the braids unravel, the ropes of arms let go of the walls one hand at a time, and the plug that filled the tunnel slumps into four heaps across the track, steaming. The chase is over. Nothing is hauling any more. The last thing you see in the tunnel mouth: in the middle of the wreck the Inspector, on his own now, the size of a man. He lifts his punch, and clicks it once.",
+    refight: null, drops: ["lt_boss_revenue_protection_1"],
   },
 };
 

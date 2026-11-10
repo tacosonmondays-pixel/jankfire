@@ -131,8 +131,8 @@ export function render(C) {
   // ---- implants + secrets
   {
     const out = ['# Bio-implants, organ cores and secret bio upgrades', '', '_Generated from `implants.js`. The Drift rules are at the top of that file._', ''];
-    for (const kind of ['shop', 'core', 'secret']) {
-      out.push(`## ${{ shop: 'Shop implants', core: 'Organ cores', secret: 'Secret bio upgrades' }[kind]}`, '');
+    for (const kind of ['shop', 'core', 'inheritance', 'secret']) {
+      out.push(`## ${{ shop: 'Shop implants', core: 'Organ cores', inheritance: 'Inheritances (parts from friends)', secret: 'Secret bio upgrades' }[kind]}`, '');
       for (const [id, i] of Object.entries(C.IMPLANTS).filter(([, x]) => x.kind === kind)) {
         out.push(`### ${i.name} \`${id}\` (${i.slot})`, `_${i.text}_`, '', `- **Perk:** ${i.perk}`, `- **Downside:** ${i.downside}`, `- **Look:** ${i.look}`);
         if (i.cost) out.push(`- **Cost:** ${i.cost} coupons`);

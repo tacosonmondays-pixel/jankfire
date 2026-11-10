@@ -2,6 +2,7 @@
 // the bots that play it. Installed onto Room (server.js) like the other add-on modes: everything here is a Room method,
 // and server.js only calls a handful of small hooks (see `brOn` in server.js).
 // The server owns all of it: what's on the floor, who holds what, how many bullets are left, armour, the zone's damage.
+import { pitUnder } from '../shared/pits.js';
 import { GAMES } from '../shared/modes.js';
 import { MAPS } from '../shared/map.js';
 import { WEAPONS, ITEMS, BOT_DIFF, FLAGS } from '../shared/weapons.js';
@@ -756,7 +757,7 @@ export function installRoyale(Room, H) {
     // a drop ahead (no floor within 15 m, 2.5 or 5 m out): don't jump, turn round; in the air, steer back to the last floor
     brBotEdge(b, wx, wz, jump) {
       if (!wx && !wz) return [wx, wz, jump];
-      const deep = (d) => !raycast([b.pos[0] + wx * d, b.pos[1] + 0.5, b.pos[2] + wz * d], [0, -1, 0], 15, this.boxes);
+      const deep = (d) => !raycast([b.pos[0] + wx * d, b.pos[1] + 0.5, b.pos[2] + wz * d], [0, -1, 0], 15, this.boxes) || !!pitUnder(this.map, b.pos[0] + wx * d, b.pos[1] + 0.5, b.pos[2] + wz * d); // (a lava pit counts: it has a floor, it's still a drop)
       if (!deep(2.5) && !deep(5)) return [wx, wz, jump];
       if (!b.onGround && b.ground) { const dx = b.ground[0] - b.pos[0], dz = b.ground[2] - b.pos[2], l = Math.hypot(dx, dz) || 1; return [dx / l, dz / l, false]; }
       if (deep(2.5)) return [-wx, -wz, false];
