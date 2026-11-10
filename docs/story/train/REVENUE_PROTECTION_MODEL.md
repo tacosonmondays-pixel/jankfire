@@ -126,6 +126,13 @@ The asset-QA gate (`.claude/skills/blender-asset-qa`) passes on all 28 groups wi
 with the inspector, each crazed plate and each half on its own, the blown eye, the cluster, and the four arm pieces.
 Crazed plates are checked with a 3 cm contact tolerance, because their shards are a crack apart on purpose.
 
+Warnings it gives, all accepted (`-- --qa --qa-warn` prints them):
+- UV overlap on most parts: many faces share one swatch of an atlas on purpose, and nothing is baked to a texture.
+- Back-to-back faces: the four wedges of the plug and the two halves of the hoop meet face to face, a millimetre
+  apart. Those faces show when it comes apart.
+- Loose vertices in the four wedges: left over where the wall takes its own material. They are not exported.
+- "Not resting on the ground": the origin is the middle of the bore, not the floor.
+
 ## Known weak spots
 - 3.8 MB is big for this repo (the next largest model is 1.6 MB). It is mostly vertices: 65,000 triangles with the
   hidden pieces. The crazed plates are a fifth of it.

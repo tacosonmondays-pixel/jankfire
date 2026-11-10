@@ -2118,12 +2118,12 @@ def main():
 def run_qa(N, A):
     G = lambda pre, hidden=False: [o for k, o in N.items() if o.type == 'MESH' and k.startswith(pre) and bool(o.get('jf_hidden')) == hidden]
     res = {}
-    if 'frame' in N: res['mask'] = qa('mask', G('plate_') + G('frame') + G('eye_') + G('anchor'), quiet=True)
-    if 'mass_ne' in N: res['mass'] = qa('mass', G('mass_') + G('insp_'), tol=0.01, quiet=True)
-    for o in G('plate_', True) + G('eye_', True): res[o.name] = qa(o.name, [o] + ([q for k, q in N.items() if k.startswith('eyeball')] if o.name == 'eye_cluster' else []), tol=0.03 if 'crazed' in o.name else 0.004, quiet=True)
+    if 'frame' in N: res['mask'] = qa('mask', G('plate_') + G('frame') + G('eye_') + G('anchor'), quiet=not arg('qa-warn'))
+    if 'mass_ne' in N: res['mass'] = qa('mass', G('mass_') + G('insp_'), tol=0.01, quiet=not arg('qa-warn'))
+    for o in G('plate_', True) + G('eye_', True): res[o.name] = qa(o.name, [o] + ([q for k, q in N.items() if k.startswith('eyeball')] if o.name == 'eye_cluster' else []), tol=0.03 if 'crazed' in o.name else 0.004, quiet=not arg('qa-warn'))
     for k in ('arm_seg', 'arm_knot', 'arm_stump'):
-        if k in A: res[k] = qa(k, [A[k]], tol=0.01, quiet=True)
-    if 'palm' in A: res['arm_hand'] = qa('arm_hand', [o for k, o in A.items() if o.type == 'MESH' and (k == 'palm' or k[0] == 'f')], tol=0.02, quiet=True)
+        if k in A: res[k] = qa(k, [A[k]], tol=0.01, quiet=not arg('qa-warn'))
+    if 'palm' in A: res['arm_hand'] = qa('arm_hand', [o for k, o in A.items() if o.type == 'MESH' and (k == 'palm' or k[0] == 'f')], tol=0.02, quiet=not arg('qa-warn'))
     print('QA_SUMMARY', {k: v.get('pass') for k, v in res.items()})
     return res
 
