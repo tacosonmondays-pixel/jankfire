@@ -39,6 +39,7 @@ import { BR } from '../shared/royale.js';
 import { tickHR, hrBot } from './hrguy.js'; // the Tall Guy From HR (Scary Forest)
 import { HR } from '../shared/hr.js';
 import { installAds } from './ads.js';
+import { installReset } from './reset.js';
 import { installGavel } from './gavel.js';
 import { installSdSkill } from './sdskill.js';
 import { installGear } from './gear.js'; // laser pointer, instant camera, pop quiz, night vision goggles
@@ -1412,7 +1413,7 @@ class Room {
     t.respawnAt = t.minRespawnAt = now() + (t.isBot && t.ai.dummy ? 700 : this.game === 'bomb' && this.teamsOn() ? BOMB.respawn : 2500);
     t.deadT = now();
     let killer = attacker, via = null;
-    if (w === 'void' || w === 'cough' || ((w === 'car' || w === 'carboom') && !attacker)) { // knocked into traffic counts like the void
+    if (w === 'void' || w === 'cough' || w === 'reset' || ((w === 'car' || w === 'carboom') && !attacker)) { // knocked into traffic counts like the void; so does pressing RESET with someone on you (server/reset.js)
       killer = null;
       if (t.lastAttacker && now() - t.lastAttackT < 10000 && this.players.has(t.lastAttacker)) {
         killer = this.players.get(t.lastAttacker); via = t.lastAttackW;
@@ -3966,6 +3967,7 @@ installPits(Room, { now, r2 });
 installAds(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm }); // the laptop's pop-up ads (after installSec: it wraps botGear / botFire)
 installSdSkill(Room); // Plant & Defuse bots with skill tiers + team stances (wraps the econ / tactical bot methods)
 installGavel(Room, { now, send, raycast, r2, eyeOf, lookOf, norm, vec3, center }); // the Scales of Justice's ranged SUMMONS (after installSec: it wraps handle / tickGear)
+installReset(Room, { now, send }); // RESET (respawn yourself) in training / co-op / quick play
 installStoryRef(Room); // story rooms (before installModeStats, which stays last)
 installModeStats(Room, { store }); // per-mode leaderboard stats (last: it wraps zombies' zmGive)
 
