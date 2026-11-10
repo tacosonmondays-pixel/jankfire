@@ -9,8 +9,12 @@
 #   monitor 0.5x0.5x1.3   ivstand 0.5x0.5x1.9   scrubsink 2.0x0.6x0.9 (tiles x, splashback to 1.4)   sofa 4.0x1.2x0.7
 #   table 2.2x2.2x0.8     coffee 0.6x1.6x1.3 (long axis z, front +x)   planter 0.9x0.9x0.8 (plant to 1.9)
 #   wheelchair 0.65x1.0x1.0   bench 3.0x0.6x0.45   curtain 2.8x0.1 (to 2.3)
-# Materials are shared across the variants (hk_*). The game may want: `hk_lit` (the surgical lamp's bulbs, emissive warm
-# white), `hk_ecg` (the monitor's screen, emissive pixel texture), `hk_decal` (one atlas with every label).
+# Materials are shared across the variants (hk_*): `hk_lit` = the surgical lamp's bulbs (emissive warm white), `hk_ecg` =
+# the monitor's screen (emissive pixel texture: one green heartbeat, BPM 0 (fine)), `hk_decal` = one atlas with every
+# label, `hk_candy` / `hk_matte` = the plain colours as two swatch strips (pink, yellow, cyan, blue, orange, coffee /
+# rubber, dark plastic, cream), so a prop is a handful of draw calls; the rest are small crusty tiling textures.
+# The file is kept small by sharing vertices (round tube shading, one slanted UV projection on plain colours) and by
+# dropping faces nobody can see (unhide). `JF_ZF_WHERE=1 ... -- --qa` prints where a z-fight is.
 # run: blender52 -b --python tools/blender/make_hospkit.py -- [--qa] [--no-sheet] [--no-export] [--only=bed,sofa]
 # sheets: tools/blender/sheets/p_hospkit_<n>.jpg (five variants each: front 3/4, back 3/4, eye level)
 import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -30,6 +34,7 @@ FONT.setdefault(')', ['01000', '00100', '00010', '00010', '00010', '00100', '010
 _SM = {}
 _smooth0 = lib.smooth
 def _smooth(o, angle=35):
+    if angle == 50: angle = 68  # (the kit's round things: six-sided ones shade round too, a rib's 71 degree crease stays crisp)
     _smooth0(o, angle); _SM[o.name] = angle
     return o
 for _m in (lib, sidekit, bottom_kit): _m.smooth = _smooth
@@ -58,6 +63,7 @@ def pipe(pts, r, m, seg=6, bend=0.0, n=2, closed=False, cap=True, name='pipe', s
     """a round tube along game points with real bends (bed frames, rails, taps, cables): corners filleted by `bend`,
     sections mitred so a bend keeps its thickness. closed = a loop"""
     if bend: pts = fillet(pts, bend, n, closed)
+    seg = min(seg, 4) if r <= 0.0145 else min(seg, 5) if r <= 0.025 else seg  # (thin tube shades round with few sides)
     P = [gv(*p) for p in pts]; N = len(P)
     T = []; K = []
     for i in range(N):
@@ -88,10 +94,12 @@ def pipe(pts, r, m, seg=6, bend=0.0, n=2, closed=False, cap=True, name='pipe', s
         for k in range(seg):
             j = (k + 1) % seg
             bm.faces.new((a[k], a[j], b[j], b[k]))
+    for f in bm.faces: f.smooth = True  # round however few sides it has (and its vertices are shared: a small file)
     if cap and not closed:
-        bm.faces.new(rings[0]); bm.faces.new(rings[-1])
+        for f in (bm.faces.new(rings[0]), bm.faces.new(rings[-1])):
+            for e in f.edges: e.smooth = False
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    o = lib._obj(name, bm, m); smooth(o, 62)
+    o = lib._obj(name, bm, m); o['keep_sharp'] = 1
     return o
 
 
@@ -128,14 +136,23 @@ def castor(P, x, z, r, M, yaw=0.0, hub=True, seg=10):
 
 
 def uvw(o, size=0.25):
-    """box-projected UVs in world metres / size (the crusty tiling textures land at a steady pixel size)"""
+    """box-projected UVs in world metres / size (the crusty tiling textures land at a steady pixel size). Kept from
+    splitting vertices where it can (the file is mostly vertices): a plain-colour material gets one slanted projection
+    (no seams at all), a bevelled part is projected by its corner normals (the chamfers borrow their neighbours' UVs)"""
     me = o.data
     if not me.uv_layers: me.uv_layers.new(name='UVMap')
     uv = me.uv_layers.active.data; mw = o.matrix_world; R = mw.to_3x3()
     V = [mw @ v.co for v in me.vertices]
+    m = me.materials[0] if len(me.materials) else None
+    if m is None or not any(nd.type == 'TEX_IMAGE' for nd in m.node_tree.nodes):
+        for l in me.loops:
+            p = V[l.vertex_index]; uv[l.index].uv = ((p.x + 0.37 * p.y + 0.11 * p.z) / size, (0.29 * p.x - 0.13 * p.y + 0.9 * p.z) / size)
+        return o
+    small = max(o.dimensions) < 0.35                              # (a teddy's ear, a jar: nobody sees a smeared texel there)
+    CN = me.corner_normals if (me.has_custom_normals or small) else None
     for pg in me.polygons:
-        n = R @ pg.normal; ax = max(range(3), key=lambda k: abs(n[k])); a, b = ((1, 2), (0, 2), (0, 1))[ax]
         for li in pg.loop_indices:
+            n = R @ (CN[li].vector if CN is not None else pg.normal); ax = max(range(3), key=lambda k: abs(n[k])); a, b = ((1, 2), (0, 2), (0, 1))[ax]
             p = V[me.loops[li].vertex_index]
             uv[li].uv = (p[a] / size, p[b] / size)
     return o
@@ -146,15 +163,79 @@ def keep(o):
     return o
 
 
+def soft(o):  # shade it round whatever its angles are (thin rings, leaves): every vertex is shared, so it's cheap
+    _SM[o.name] = 180
+    return o
+
+
+_torus0 = torus
+def torus(*a, **k): return soft(_torus0(*a, **k))
+
+
 def fin(P):
     """every part of a variant: modifiers applied, edges sharper than its smooth angle split, UVs"""
     bpy.context.view_layer.update()
     for o in P:
         apply_mods(o)
         me = o.data
-        if not me.has_custom_normals: me.set_sharp_from_angle(angle=math.radians(_SM.get(o.name, 180)))
-        if not o.get('keep_uv'): uvw(o, o.get('uv_size', 0.25))
+        if not me.has_custom_normals and not o.get('keep_sharp'): me.set_sharp_from_angle(angle=math.radians(_SM.get(o.name, 180)))
+        pal = PAL.get(me.materials[0].name) if len(me.materials) else None
+        if pal: me.materials.clear(); me.materials.append(pal[0]); uv_swatch(o, pal[1], pal[2])
+        elif not o.get('keep_uv'): uvw(o, o.get('uv_size', 0.25))
     return P
+
+
+def unhide(o):
+    """drop the faces nobody can ever see (the file is mostly vertices): the ones lying on the floor looking down, and
+    the ones buried in or flat against another closed part (a box's bottom on a shelf, a post's end in a beam). A face
+    only goes if every corner (pulled in a hair), every edge's middle and its centre sit inside the other part"""
+    from mathutils.bvhtree import BVHTree
+    bm = bmesh.new(); bm.from_mesh(o.data); bm.verts.ensure_lookup_table(); bm.faces.ensure_lookup_table()
+    seen = set(); isl = []                                       # connected parts
+    for f in bm.faces:
+        if f.index in seen: continue
+        st = [f]; seen.add(f.index); fs = []
+        while st:
+            g = st.pop(); fs.append(g)
+            for e in g.edges:
+                for h in e.link_faces:
+                    if h.index not in seen: seen.add(h.index); st.append(h)
+        isl.append(fs)
+    solids = []                                                  # the closed ones can hide things: a bvh + bounds each
+    for k, fs in enumerate(isl):
+        if any(len(e.link_faces) != 2 for f in fs for e in f.edges): continue
+        vs = {v for f in fs for v in f.verts}; idx = {v: i for i, v in enumerate(vs)}
+        tris = []
+        for f in fs:
+            c = [idx[v] for v in f.verts]; tris += [(c[0], c[i], c[i + 1]) for i in range(1, len(c) - 1)]
+        co = [v.co.copy() for v in vs]
+        lo = Vector((min(p.x for p in co), min(p.y for p in co), min(p.z for p in co))); hi = Vector((max(p.x for p in co), max(p.y for p in co), max(p.z for p in co)))
+        solids.append((k, BVHTree.FromPolygons(co, tris, epsilon=0.0), lo, hi))
+    D = (Vector((0.137, 0.271, 0.953)).normalized(), Vector((-0.611, 0.713, -0.344)).normalized())
+    def inside(bvh, p):
+        for d in D:
+            q = p.copy(); n = 0
+            for _ in range(64):
+                hit = bvh.ray_cast(q, d)
+                if hit[0] is None: break
+                n += 1; q = hit[0] + d * 1e-5
+            if n % 2 == 0: return False
+        return True
+    dead = []
+    for k, fs in enumerate(isl):
+        for f in fs:
+            if f.normal.z < -0.99 and all(v.co.z < 0.0015 for v in f.verts): dead.append(f); continue
+            c = f.calc_center_median(); vs = [v.co for v in f.verts]
+            pts = [c] + [v.lerp(c, 0.03) for v in vs] + [(a + b) / 2 for a, b in zip(vs, vs[1:] + vs[:1])]
+            pts = [p + f.normal * 0.0012 for p in pts]
+            for k2, bvh, lo, hi in solids:
+                if k2 == k or any(p[i] < lo[i] - 1e-4 or p[i] > hi[i] + 1e-4 for p in pts for i in range(3)): continue
+                if all(inside(bvh, p) for p in pts): dead.append(f); break
+    n = len(dead)
+    bmesh.ops.delete(bm, geom=dead, context='FACES')
+    loose = [v for v in bm.verts if not v.link_faces]
+    bmesh.ops.delete(bm, geom=loose, context='VERTS'); bm.to_mesh(o.data); bm.free()
+    return n
 
 
 # ------------------------------------------------------------ the label atlas
@@ -190,7 +271,7 @@ def decals():
     m = D.new('mag', 32, 42); m[:] = hexrgb(PINK); m[:11] = hexrgb(INK); write(m, 'WAIT', 4, 2, 1, YEL)
     px_disc(m, 16, 25, 9, YEL); px_disc(m, 13, 23, 1.3, INK); px_disc(m, 19, 23, 1.3, INK); px_line(m, 12, 29, 20, 29, INK, 1.2)
     write(m, 'issue', 1, 35, 1, 0xffffff)
-    label(D.new('gen', 100, 22), 0xf4f0e4, [('BACKUP GENERATOR', INK), ('pull lever. hope.', 0xc0102a)], border=INK)
+    label(D.new('gen', 108, 22), 0xf4f0e4, [('BACKUP GENERATOR', INK), ('pull lever. hope.', 0xc0102a)], border=INK)
     for k, (needle, col) in enumerate(((0.9, 0xe0182a), (-0.7, GREEN))):
         g = D.new('gauge%d' % k, 24, 24); g[:] = hexrgb(0x2a2c36); px_disc(g, 12, 12, 11, 0xf4f0e4); px_disc(g, 12, 12, 11, col, r_in=8.5, a0=0.5, a1=2.2)
         px_line(g, 12, 13, 12 + 8 * math.sin(needle), 13 - 8 * math.cos(needle), INK, 1.4); px_disc(g, 12, 13, 1.6, INK)
@@ -242,6 +323,11 @@ def stick(M, key, c, w, h, axis='z', sx=1, rot=None, pivot=None):
     return keep(q)
 
 
+def paper(M, size, pos):  # a white card / page out of the label atlas (no extra material for a scrap of paper)
+    o = box(size, pos, M.decal); bpy.context.view_layer.update()
+    return skin(o, M, 'white')
+
+
 def skin(o, M, key):  # a whole object wearing one atlas region on every face
     o.data.materials.clear(); o.data.materials.append(M.decal)
     uv_fit(o, M.D.R[key])
@@ -249,20 +335,39 @@ def skin(o, M, key):  # a whole object wearing one atlas region on every face
 
 
 # ------------------------------------------------------------ materials
+PAL = {}  # a stand-in material's name -> (the palette material it becomes, its swatch's centre, the swatch's width in u)
+def palette(name, entries, **kw):
+    """plain colours that share a finish share ONE material (a strip of swatches): fewer draw calls per prop. Returns a
+    stand-in material per colour to build with; fin() swaps it for the palette and parks the part's UVs on its swatch"""
+    def draw(px):
+        for i, (_, c) in enumerate(entries): px[:, i * 4:i * 4 + 4] = hexrgb(c)
+    pm = mat(name, 0xffffff, tex=tex_canvas(name + '_t', 4 * len(entries), 4, draw), **kw)
+    out = []
+    for i, (k, c) in enumerate(entries):
+        m = mat('_hk_' + k, c, **kw); PAL[m.name] = (pm, ((i + 0.5) / len(entries), 0.5), 1 / len(entries)); out.append(m)
+    return out
+
+
+def uv_swatch(o, c, w):
+    """every UV on one swatch (spread a hair, on a slant, so no face is a zero-area point in UV space)"""
+    me = o.data
+    if not me.uv_layers: me.uv_layers.new(name='UVMap')
+    uv = me.uv_layers.active.data; mw = o.matrix_world; s = 0.3 * w / 5.0
+    for l in me.loops:
+        p = mw @ me.vertices[l.vertex_index].co
+        uv[l.index].uv = (c[0] + (p.x + 0.37 * p.y + 0.11 * p.z) * s, c[1] + (0.29 * p.x - 0.13 * p.y + 0.9 * p.z) * s * 0.5)
+
+
 def materials():
     M = SimpleNamespace()
     def n(nm, col, var=0.06, speck=None, p=0.04, seed=1, size=16): return tex_noise(nm + '_t', col, var=var, size=size, speck=speck, speck_p=p if speck is not None else 0.0, seed=seed)
-    M.chrome = mat('hk_chrome', 0xd8dde6, rough=0.16, metal=1.0, tex=n('hk_chrome', 0xd8dde6, 0.05, 0x8a8478, 0.04, 11))
-    M.steel = mat('hk_steel', 0xc2cad2, rough=0.36, metal=0.7, tex=n('hk_steel', 0xc2cad2, 0.045, 0x98a2ac, 0.04, 12))
+    M.chrome = mat('hk_chrome', 0xd8dde6, rough=0.16, metal=1.0)  # (plain: it's nearly all thin tube, and plain shares its vertices)
+    M.steel = mat('hk_steel', 0xc2cad2, rough=0.36, metal=0.7, tex=n('hk_steel', 0xc2cad2, 0.04, 0x98a2ac, 0.02, 12))
     M.white = mat('hk_white', WHITE, rough=0.3, clearcoat=0.6, tex=n('hk_white', WHITE, 0.035, 0xc4cac4, 0.03, 13))
     M.mint = mat('hk_mint', MINT, rough=0.28, clearcoat=0.8, tex=n('hk_mint', MINT, 0.06, 0x6aa88c, 0.04, 14))
-    M.royal = mat('hk_royal', 0x2f6fe0, rough=0.22, clearcoat=1.0)
     M.blue = mat('hk_blue', PBLUE, rough=0.28, clearcoat=0.8, tex=n('hk_blue', PBLUE, 0.05, 0x7aa8c8, 0.04, 15))
-    M.cyan = mat('hk_cyan', CYAN, rough=0.2, clearcoat=1.0)
-    M.pink = mat('hk_pink', PINK, rough=0.2, clearcoat=1.0)
-    M.yellow = mat('hk_yellow', YEL, rough=0.2, clearcoat=1.0)
-    M.rubber = mat('hk_rubber', 0x1c1c20, rough=0.85)
-    M.dark = mat('hk_dark', 0x2a2c36, rough=0.45, clearcoat=0.3)
+    M.pink, M.yellow, M.cyan, M.royal, M.orange, M.coffee = palette('hk_candy', [('pink', PINK), ('yellow', YEL), ('cyan', CYAN), ('royal', 0x2f6fe0), ('orange', 0xff8a3a), ('coffee', 0x2a1408)], rough=0.2, clearcoat=1.0)
+    M.rubber, M.dark, M.cream = palette('hk_matte', [('rubber', 0x1c1c20), ('dark', 0x2a2c36), ('cream', 0xf0d8a8)], rough=0.6, clearcoat=0.2)
     M.sheet = mat('hk_sheet', 0xeef0ee, rough=0.9, tex=n('hk_sheet', 0xeef0ee, 0.03, 0xd0d6dc, 0.05, 16))
     def knit(px):
         px[:] = hexrgb(0x7fc4a4); px[::4] = hexrgb(0x6ab292); px[2::4, ::2] = hexrgb(0x90d2b4)
@@ -281,8 +386,6 @@ def materials():
     M.gen = mat('hk_gen', 0xf2b705, rough=0.3, clearcoat=0.6, tex=n('hk_gen', 0xf2b705, 0.08, 0x6a5a20, 0.03, 22, size=32))
     M.black = mat('hk_black', 0x17171c, rough=0.55, metal=0.3, tex=n('hk_black', 0x1c1c22, 0.12, 0x3a3440, 0.05, 23))
     M.teddy = mat('hk_teddy', 0xb07a44, rough=1.0, tex=n('hk_teddy', 0xb07a44, 0.12, 0x8a5a2c, 0.1, 24, size=8))
-    M.cream = mat('hk_cream', 0xf0d8a8, rough=0.9)
-    M.coffee = mat('hk_coffee', 0x2a1408, rough=0.08, clearcoat=1.0)
     M.lit = mat('hk_lit', 0xfff4d0, rough=0.2, emit=0xfff0c0, strength=3.0)
     def curt(px):
         px[:] = hexrgb(PBLUE); px[:, ::4] = hexrgb(0x92c2e0); px[::8] = px[::8] * 0.94
@@ -292,7 +395,7 @@ def materials():
         for x in range(0, 64, 8): px[::8, x] = hexrgb(0x0a2a16)
         pts = [(2, 20), (20, 20), (23, 17), (26, 20), (29, 20), (31, 6), (34, 28), (36, 20), (62, 20)]
         for a, b in zip(pts, pts[1:]): px_line(px, a[0], a[1], b[0], b[1], 0x39ff14, 1.2)
-        write(px, 'BPM 0', 3, 32, 1, 0x39ff14); write(px, '(fine)', 3, 40, 1, 0xffe14d); bottom_kit.heart(px, 54, 37, 3.2, PINK)
+        write(px, 'BPM 0', 3, 32, 1, 0x39ff14); write(px, '(fine)', 3, 40, 1, 0xffe14d); write(px, '<', 52, 34, 1, PINK)
     M.ecg = mat('hk_ecg', 0xffffff, rough=0.15, emit=0xffffff, strength=1.6, tex=tex_canvas('hk_ecg_t', 64, 48, ecg), emit_tex=True)
     M.D = decals()
     M.decal = mat('hk_decal', 0xffffff, rough=0.4, clearcoat=0.3, tex=M.D.A.image())
@@ -300,12 +403,12 @@ def materials():
 
 
 # ------------------------------------------------------------ 1. bed
-def rail(P, M, x0, x1, y0, y1, z, r=0.014, bars=3, seg=5):
+def rail(P, M, x0, x1, y0, y1, z, r=0.014, bars=3, seg=4):
     """a fold-up side rail: a chrome loop with uprights"""
     P.append(pipe([(x0, y0, z), (x1, y0, z), (x1, y1, z), (x0, y1, z)], r, M.chrome, seg=seg, bend=0.07, n=1, closed=True))
     for k in range(bars):
         x = x0 + (x1 - x0) * (k + 1) / (bars + 1)
-        P.append(bar((x, y0, z), (x, y1, z), r * 0.7, M.chrome))
+        P.append(bar((x, y0, z), (x, y1, z), r * 0.7, M.chrome, seg=3))
 
 
 def v_bed(M):
@@ -313,21 +416,21 @@ def v_bed(M):
     HX, HZ = 0.975, 0.43
     for sx, top in ((-1, 1.08), (1, 0.98)):  # the head and foot hoops are the legs
         x = sx * HX
-        A(pipe([(x, 0.13, -HZ), (x, top, -HZ), (x, top, HZ), (x, 0.13, HZ)], 0.024, M.chrome, seg=6, bend=0.13, n=2, cap=False))
+        A(pipe([(x, 0.13, -HZ), (x, top, -HZ), (x, top, HZ), (x, 0.13, HZ)], 0.024, M.chrome, seg=5, bend=0.13, n=2, cap=False))
         A(side(rr(0, (0.56 + top - 0.012) / 2, 2 * HZ - 0.02, top - 0.012 - 0.56, 0.12, 2), 0.022, (x, 0, 0), M.mint))
         for z in (-HZ, HZ): castor(P, x - sx * 0.012, z, 0.06, M, yaw=0.3 * sx * (1 if z > 0 else -0.6), hub=False, seg=8)
     for z in (-HZ, HZ): A(bar((-HX, 0.42, z), (HX, 0.42, z), 0.022, M.chrome, seg=6))
-    A(box((1.93, 0.045, 0.82), (0, 0.44, 0), M.white))                               # the deck
+    A(box((1.93, 0.045, 0.82), (0, 0.44, 0), M.sheet))                               # the deck
     A(B((1.9, 0.142, 0.84), (0, 0.531, 0), M.sheet, bev=0.04))                       # mattress
-    A(pillow((0.36, 0.11, 0.56), (-0.7, 0.648, 0.0), M.white, puff=0.3, rot=(0, 0.06, 0)))
+    A(pillow((0.36, 0.11, 0.56), (-0.7, 0.648, 0.0), M.sheet, puff=0.3, rot=(0, 0.06, 0)))
     A(B((0.5, 0.05, 0.62), (0.6, 0.623, 0.02), M.blanket, bev=0.02, rot=(0, 0.05, 0)))   # the folded blanket
     A(B((0.46, 0.05, 0.58), (0.61, 0.668, 0.03), M.blanket, bev=0.02, rot=(0, -0.06, 0)))
     for z in (-0.47, 0.47):
         rail(P, M, -0.5, 0.38, 0.66, 0.95, z)
-        for x in (-0.36, 0.24): A(bar((x, 0.42, z * 0.93), (x, 0.665, z), 0.012, M.chrome))
+        for x in (-0.36, 0.24): A(bar((x, 0.42, z * 0.93), (x, 0.665, z), 0.012, M.chrome, seg=3))
     # the chart on the footboard
     xb = HX + 0.036
-    g = [box((0.012, 0.3, 0.22), (xb, 0.76, 0.08), M.wood), box((0.016, 0.035, 0.1), (xb + 0.004, 0.895, 0.08), M.chrome),
+    g = [box((0.012, 0.3, 0.22), (xb, 0.76, 0.08), M.dark), box((0.016, 0.035, 0.1), (xb + 0.004, 0.895, 0.08), M.chrome),
          stick(M, 'chart', (xb + 0.0076, 0.745, 0.08), 0.18, 0.25, axis='x')]
     for z in (0.03, 0.13): g.append(pipe([(xb, 0.9, z), (xb, 1.012, z), (HX - 0.03, 1.012, z), (HX - 0.03, 0.97, z)], 0.006, M.chrome, seg=4))
     xf(g, rot=(0.07, 0, 0), pivot=(xb, 1.0, 0.08)); P += g
@@ -368,7 +471,7 @@ def v_kidbed(M):
     A(side(cloud(-0.48, 0.48, 0.1, 0.92, 1, n=8), 0.05, (0.765, 0, 0), M.pink, bev=0.012, seg=1))
     A(stick(M, 'heart', (0.7915, 0.5, 0), 0.2, 0.2, axis='x'))
     for sx in (-1, 1):
-        for sz in (-1, 1): A(cyl(0.05, 0.11, (sx * 0.765, 0.055, sz * 0.42), M.cyan, axis='y', seg=8, r2=0.038))
+        for sz in (-1, 1): A(cyl(0.05, 0.11, (sx * 0.745, 0.055, sz * 0.42), M.cyan, axis='y', seg=8, r2=0.038))
     for z in (-0.462, 0.462): A(B((1.5, 0.17, 0.034), (0, 0.385, z), M.pink, bev=0.012))
     A(B((1.46, 0.04, 0.9), (0, 0.42, 0), M.white))
     A(B((1.46, 0.165, 0.87), (0, 0.5185, 0), M.sheet, bev=0.04))
@@ -400,19 +503,19 @@ def v_chairs(M):
         A(box((0.3, 0.06, 0.16), (x, 0.415, -0.05), M.steel))
     for x in (-1.47, 1.47):
         A(box((0.07, 0.34, 0.06), (x, 0.2, -0.05), M.steel))
-        A(B((0.08, 0.04, 0.64), (x, 0.03, 0.0), M.steel, bev=0.012))
+        A(box((0.08, 0.04, 0.64), (x, 0.03, 0.0), M.steel))
         for z in (-0.28, 0.28): A(box((0.09, 0.014, 0.07), (x, 0.007, z), M.rubber))
     for sx in (-1, 1):
         x = sx * 2.415
         A(pipe([(x, 0.365, -0.05), (x, 0.365, 0.17), (x, 0.66, 0.17), (x, 0.66, -0.22)], 0.017, M.chrome, seg=5, bend=0.06, n=1))
-        A(B((0.055, 0.03, 0.3), (x, 0.682, -0.04), M.dark, bev=0.01))
+        A(box((0.055, 0.03, 0.3), (x, 0.682, -0.04), M.dark))
     # RESERVED (forever): a tent card on seat four; a magazine somebody left on seat two
     c = (0.98, 0.525, 0.05)
-    g = [box((0.3, 0.13, 0.004), c, M.white), stick(M, 'reserved', (c[0], c[1], c[2] + 0.0036), 0.29, 0.12)]
+    g = [paper(M, (0.3, 0.13, 0.004), c), stick(M, 'reserved', (c[0], c[1], c[2] + 0.0036), 0.29, 0.12)]
     xf(g, rot=(-0.38, 0, 0), pivot=(c[0], c[1] - 0.065, c[2])); P += g
-    g = [box((0.3, 0.13, 0.004), (c[0], c[1], c[2] - 0.05), M.white)]
+    g = [paper(M, (0.3, 0.13, 0.004), (c[0], c[1], c[2] - 0.05))]
     xf(g, rot=(0.38, 0, 0), pivot=(c[0], c[1] - 0.065, c[2] - 0.05)); P += g
-    g = [box((0.2, 0.012, 0.27), (-0.98, 0.462, 0.02), M.white), stick(M, 'mag', (-0.98, 0.4696, 0.02), 0.2, 0.27, axis='y')]
+    g = [paper(M, (0.2, 0.012, 0.27), (-0.98, 0.462, 0.02)), stick(M, 'mag', (-0.98, 0.4696, 0.02), 0.2, 0.27, axis='y')]
     xf(g, rot=(0, 0.4, 0), pivot=(-0.98, 0.46, 0.02)); P += g
     return P
 
@@ -430,8 +533,8 @@ def v_gurney(M):
     A(B((1.9, 0.055, 0.66), (0, 0.745, 0), M.white, bev=0.018))
     A(B((1.84, 0.09, 0.62), (0, 0.815, 0), M.mint, bev=0.03))
     A(pillow((0.3, 0.09, 0.44), (-0.68, 0.895, 0), M.white, puff=0.3))
-    A(pipe([(-0.93, 0.745, -0.27), (-0.98, 0.99, -0.27), (-0.98, 0.99, 0.27), (-0.93, 0.745, 0.27)], 0.018, M.chrome, seg=6, bend=0.07, n=2))
-    A(cyl(0.024, 0.3, (-0.98, 0.99, 0), M.rubber, axis='z', seg=6))
+    A(pipe([(-0.93, 0.745, -0.27), (-0.972, 0.99, -0.27), (-0.972, 0.99, 0.27), (-0.93, 0.745, 0.27)], 0.018, M.chrome, seg=6, bend=0.07, n=2))
+    A(cyl(0.024, 0.3, (-0.972, 0.99, 0), M.rubber, axis='z', seg=6))
     for z in (-0.22, 0.22):
         A(rod((0.9, 0.745, z), (0.985, 0.745, z), 0.014, M.chrome, seg=5))
         A(cyl(0.021, 0.07, (0.962, 0.745, z), M.rubber, axis='x', seg=6))
@@ -478,23 +581,22 @@ def v_pillshelf(M):
     cols = (M.pink, M.yellow, M.cyan, M.mint, M.royal, M.white)
     for s in (-1, 1):
         for k, y in enumerate((0.3, 0.76, 1.22, 1.68)):
-            A(box((L - 0.076, 0.025, 0.312), (0, y, s * 0.169), M.white))
-            A(box((L - 0.076, 0.05, 0.012), (0, y + 0.004, s * 0.329), (M.pink, M.yellow, M.cyan, M.mint)[(k + (s > 0)) % 4]))
+            A(box((L - 0.076, 0.035, 0.322), (0, y - 0.005, s * 0.174), (M.pink, M.yellow, M.cyan, M.mint)[(k + (s > 0)) % 4]))
             ys = y + 0.0105; x = -0.67 + rnd.uniform(0.0, 0.05)
-            kinds = ['row', 'bottle', 'stack', 'jar', 'row']; rnd.shuffle(kinds)
+            kinds = ['row', 'bottle', 'stack', 'jar']; rnd.shuffle(kinds)
             for kind in kinds:
                 z = s * (0.2 + rnd.uniform(-0.02, 0.03))
                 if kind in ('row', 'stack'):
-                    w = 0.4 if kind == 'row' else 0.3; h = 0.13 if kind == 'row' else 0.24
+                    w = 0.52 if kind == 'row' else 0.34; h = 0.13 if kind == 'row' else 0.24
                     if x + w > 0.68: continue
                     b = box((w, h, 0.14), (x + w / 2, ys + h / 2 - 0.002, z), M.decal, rot=(0, rnd.uniform(-0.05, 0.05), 0))
                     b['skin'] = ('row%d' % rnd.randrange(3)) if kind == 'row' else 'stack'; A(b); x += w + rnd.uniform(0.02, 0.06)
                 elif kind == 'bottle':
-                    n = rnd.choice((1, 2, 3)); c = rnd.choice(cols[:5])
+                    n = rnd.choice((1, 2, 2)); c = rnd.choice(cols[:5])
                     for i in range(n):
                         if x + 0.09 > 0.68: break
-                        A(lathe([(0.038, -0.002), (0.038, 0.13), (0.02, 0.16), (0.02, 0.2)], (x + 0.045, ys, z), c, seg=5, axis='y', cap=False))
-                        A(lathe([(0.0215, 0.19), (0.0215, 0.235), (0.0, 0.235)], (x + 0.045, ys, z), M.white, seg=5, axis='y', cap=False)); x += 0.095
+                        A(lathe([(0.038, -0.002), (0.038, 0.13), (0.02, 0.16), (0.02, 0.2)], (x + 0.045, ys, z), c, seg=6, axis='y', cap=False))
+                        A(lathe([(0.0215, 0.19), (0.0215, 0.235), (0.0, 0.235)], (x + 0.045, ys, z), M.white, seg=6, axis='y', cap=False)); x += 0.095
                     x += rnd.uniform(0.02, 0.05)
                 else:
                     if x + 0.13 > 0.68: continue
@@ -512,14 +614,14 @@ def v_morgue(M):
     A(box((1.3, 2.4, 0.5), (0, 1.2, -0.15), M.steel))
     A(box((1.296, 0.19, 0.012), (0, 2.3, ZF + 0.004), M.blue))                        # the fascia: what this is, how cold
     A(stick(M, 'cold', (-0.12, 2.3, ZF + 0.0115), 0.66, 0.151))
-    A(cyl(0.075, 0.03, (0.5, 2.3, ZF + 0.012), M.chrome, axis='z', seg=10)); A(stick(M, 'gauge1', (0.5, 2.3, ZF + 0.0285), 0.095, 0.095))
+    A(cyl(0.075, 0.03, (0.5, 2.3, ZF + 0.02), M.chrome, axis='z', seg=10)); A(stick(M, 'gauge1', (0.5, 2.3, ZF + 0.0365), 0.095, 0.095))
     for k, y in enumerate((0.42, 1.14, 1.86)):
         out = 0.19 if k == 1 else 0.0; zd = ZF + out + 0.042
         A(box((0.86, 0.7, 0.008), (0, y, ZF + 0.004), M.rubber))                      # the gasket (or the dark inside)
-        A(B((0.82, 0.66, 0.036), (0, y, zd - 0.018), M.chrome, bev=0.014))
-        A(box((0.1, 0.3, 0.014), (0.27, y, zd + 0.005), M.steel))                      # the latch
+        A(B((0.82, 0.66, 0.036), (0, y, zd - 0.018), M.steel, bev=0.014))
+        A(box((0.1, 0.3, 0.014), (0.27, y, zd + 0.005), M.chrome))                     # the latch
         A(pipe([(0.27, y + 0.1, zd), (0.27, y + 0.1, zd + 0.045), (0.27, y - 0.13, zd + 0.045)], 0.018, M.chrome, seg=6, bend=0.025, n=1))
-        A(box((0.16, 0.09, 0.008), (-0.2, y + 0.2, zd + 0.002), M.steel))              # the tag holder
+        A(box((0.16, 0.09, 0.008), (-0.2, y + 0.2, zd + 0.002), M.chrome))             # the tag holder
         A(stick(M, 'tag', (-0.2, y + 0.2, zd + 0.0075), 0.13, 0.065))
         if out:                                                                        # the middle one is open: an empty tray
             Lz = ZF + out + 0.004 + 0.2
@@ -545,7 +647,7 @@ def v_slab(M):
     A(pipe([(0.85, 0.82, 0.0), (0.85, 0.6, 0.0), (0.3, 0.45, 0.0), (0.12, 0.45, 0.0)], 0.03, M.rubber, seg=5, bend=0.1, n=2, cap=False))
     A(B((0.5, 0.045, 0.56), (-0.62, 0.8805, 0.02), M.sheet, bev=0.018, rot=(0, 0.04, 0)))  # a folded sheet
     A(B((0.47, 0.045, 0.53), (-0.63, 0.9215, 0.03), M.sheet, bev=0.018, rot=(0, -0.05, 0)))
-    g = [box((0.24, 0.012, 0.32), (0.15, 0.866, 0.05), M.wood), box((0.1, 0.02, 0.04), (0.15, 0.876, -0.09), M.chrome),
+    g = [box((0.24, 0.012, 0.32), (0.15, 0.866, 0.05), M.wood), box((0.1, 0.02, 0.04), (0.15, 0.876, -0.084), M.chrome),
          stick(M, 'chart', (0.15, 0.8736, 0.065), 0.2, 0.27, axis='y')]
     xf(g, rot=(0, 0.5, 0), pivot=(0.15, 0.866, 0.05)); P += g
     return P
@@ -591,7 +693,7 @@ def v_generator(M):
     A(cyl(0.06, 0.1, (1.0, 1.4, ZC), M.steel, axis='y', seg=6))
     A(cyl(0.21, 0.11, (1.0, 1.49, ZC), M.yellow, axis='y', seg=10))
     A(lathe([(0.225, 1.54), (0.225, 1.565), (0.12, 1.6), (0.0, 1.6)], (1.0, 0, ZC), M.chrome, seg=10, axis='y'))
-    A(lathe([(0.225, 1.425), (0.225, 1.45)], (1.0, 0, ZC), M.chrome, seg=10, axis='y'))
+    A(lathe([(0.225, 1.42), (0.225, 1.446)], (1.0, 0, ZC), M.chrome, seg=10, axis='y'))
     # the fan belt
     A(cyl(0.15, 0.05, (1.585, 0.5, ZC), M.steel, axis='x', seg=10)); A(cyl(0.1, 0.05, (1.585, 1.0, ZC), M.steel, axis='x', seg=8))
     A(bar((1.5, 1.0, ZC), (2.05, 1.0, ZC), 0.03, M.steel, seg=5))
@@ -666,13 +768,373 @@ def v_xray(M):
     return P
 
 
+# ------------------------------------------------------------ 11. optable (long axis z, head at -z)
+def v_optable(M):
+    P = []; A = P.append
+    A(B((0.72, 0.1, 1.05), (0, 0.05, 0), M.steel, bev=0.03))
+    A(B((0.4, 0.4, 0.46), (0, 0.29, 0), M.white, bev=0.03))
+    A(lathe([(0.2, 0.47), (0.25, 0.51), (0.2, 0.55), (0.25, 0.59), (0.2, 0.63), (0.25, 0.67), (0.2, 0.71), (0.25, 0.75), (0.2, 0.79), (0.2, 0.84)], (0, 0, 0), M.rubber, seg=8, axis='y', cap=False))
+    A(box((0.44, 0.06, 1.9), (0, 0.85, 0), M.steel))
+    for zc, ln, tilt in ((-0.56, 0.72, 0.0), (0.12, 0.5, 0.0), (0.79, 0.72, 0.07)):       # back, seat, legs (sagging a bit)
+        g = [B((0.56, 0.09, ln), (0, 0.923, zc), M.mint, bev=0.03)]
+        for sx in (-1, 1): g.append(box((0.014, 0.035, ln - 0.12), (sx * 0.286, 0.9, zc), M.chrome))
+        if tilt: xf(g, rot=(tilt, 0, 0), pivot=(0, 0.9, zc - ln / 2))
+        P += g
+    for z in (-0.18, 0.4): A(cyl(0.032, 0.5, (0, 0.885, z), M.chrome, axis='x', seg=6))
+    A(B((0.3, 0.07, 0.24), (0, 0.95, -1.07), M.mint, bev=0.03))                           # the head rest
+    for sx in (-1, 1): A(bar((sx * 0.08, 0.87, -0.88), (sx * 0.08, 0.935, -1.05), 0.014, M.chrome, seg=5))
+    for sx in (-1, 1):                                                                 # arm boards
+        g = [B((0.28, 0.045, 0.13), (sx * 0.4, 0.95, -0.62), M.mint, bev=0.02), box((0.08, 0.03, 0.05), (sx * 0.29, 0.92, -0.62), M.chrome)]
+        xf(g, rot=(0, sx * 0.35, 0), pivot=(sx * 0.29, 0.95, -0.62)); P += g
+    A(bar((0.3, 0.12, 0.27), (0.48, 0.085, 0.3), 0.014, M.chrome, seg=5))                 # the pedal
+    A(B((0.1, 0.03, 0.16), (0.49, 0.08, 0.3), M.rubber, bev=0.006, rot=(0, 0, -0.2)))
+    return P
+
+
+# ------------------------------------------------------------ 12. oplamp (hangs from the ceiling at y = 4.5)
+def v_oplamp(M):
+    P = []; A = P.append; HC = (0.32, 3.02, 0.2)
+    A(lathe([(0.2, 4.5), (0.2, 4.46), (0.08, 4.4), (0.045, 4.38)], (0, 0, 0), M.white, seg=10, axis='y'))
+    A(bar((0, 4.4, 0), (0, 3.9, 0), 0.035, M.chrome, seg=6))
+    A(ball(0.085, (0, 3.9, 0), M.white, seg=8, rings=5))
+    A(pipe([(0, 3.9, 0), (0.82, 3.9, 0), (HC[0], HC[1] + 0.48, HC[2])], 0.032, M.white, seg=6, bend=0.07, n=2, cap=False))
+    A(ball(0.07, (0.8, 3.885, 0.005), M.chrome, seg=8, rings=5))
+    A(ball(0.06, (HC[0], HC[1] + 0.48, HC[2]), M.chrome, seg=8, rings=5))
+    A(pipe([(HC[0] + 0.47 * math.cos(math.pi * k / 8), HC[1] + 0.47 * math.sin(math.pi * k / 8), HC[2]) for k in range(9)], 0.022, M.chrome, seg=5))   # the yoke
+    for sx in (-1, 1): A(cyl(0.04, 0.07, (HC[0] + sx * 0.45, HC[1], HC[2]), M.chrome, axis='x', seg=6))
+    g = [lathe([(0.0, 0.15), (0.18, 0.14), (0.34, 0.09), (0.43, 0.02)], (0, 0, 0), M.white, seg=12, axis='y', cap=False),
+         lathe([(0.43, 0.02), (0.43, -0.035), (0.4, -0.052)], (0, 0, 0), M.mint, seg=12, axis='y', cap=False),
+         cyl(0.405, 0.02, (0, -0.045, 0), M.dark, axis='y', seg=12),
+         lathe([(0.03, -0.05), (0.038, -0.17), (0.024, -0.2), (0.0, -0.2)], (0, 0, 0), M.pink, seg=6, axis='y', cap=False)]
+    for k in range(6):
+        a = 2 * math.pi * k / 6
+        g.append(cyl(0.095, 0.016, (0.255 * math.sin(a), -0.058, 0.255 * math.cos(a)), M.lit, axis='y', seg=8))
+    xf(g, rot=(-0.3, 0, 0), move=HC); P += g
+    return P
+
+
+# ------------------------------------------------------------ 13. trolley
+def tray(P, M, y, w, d, rim=0.035):
+    """a stainless shelf with a raised rim, its floor's top at y + 0.01"""
+    P.append(box((w, 0.02, d), (0, y, 0), M.steel))
+    for sz in (-1, 1): P.append(box((w + 0.004, rim, 0.012), (0, y + 0.008 + rim / 2, sz * (d / 2 - 0.004)), M.chrome))
+    for sx in (-1, 1): P.append(box((0.012, rim, d - 0.02), (sx * (w / 2 - 0.004), y + 0.008 + rim / 2, 0), M.chrome))
+
+
+def duck(M, x, y, z, yaw=0.0):
+    g = [ball(0.05, (0, 0.038, 0), M.yellow, scale=(1.25, 0.8, 0.95), seg=8, rings=5), ball(0.034, (0.04, 0.094, 0), M.yellow, seg=6, rings=4),
+         cyl(0.015, 0.035, (0.078, 0.09, 0), M.orange, axis='x', seg=4, r2=0.007), ball(0.022, (-0.06, 0.06, 0), M.yellow, scale=(1.2, 0.7, 0.8), seg=5, rings=3)]
+    for s in (-1, 1): g.append(ball(0.007, (0.062, 0.104, s * 0.02), M.rubber, seg=4, rings=2))
+    return xf(g, rot=(0, yaw, 0), move=(x, y, z))
+
+
+def v_trolley(M):
+    P = []; A = P.append; W, D = 0.72, 0.44
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            castor(P, sx * 0.33, sz * 0.19, 0.04, M, yaw=0.4 * sx * sz, hub=False, seg=8)
+            A(bar((sx * 0.33, 0.085, sz * 0.19), (sx * 0.33, 0.885, sz * 0.19), 0.013, M.chrome, seg=5, cap=True))
+    tray(P, M, 0.3, W, D); tray(P, M, 0.84, W, D)
+    A(pipe([(-0.33, 0.86, -0.19), (-0.385, 0.97, -0.19), (-0.385, 0.97, 0.19), (-0.33, 0.86, 0.19)], 0.012, M.chrome, seg=5, bend=0.04, n=1))
+    T = 0.85
+    # a kidney dish with a duck in it; a big spoon; a toy hammer; a roll of bandage
+    d = lathe([(0.0, 0.0), (0.07, 0.0), (0.095, 0.04), (0.086, 0.04), (0.064, 0.008), (0.0, 0.008)], (0, 0, 0), M.chrome, seg=8, axis='y', cap=False)
+    for v in d.data.vertices: v.co.x *= 1.5; v.co.y += 0.5 * v.co.x * v.co.x / 0.14
+    xf([d], rot=(0, 0.3, 0), move=(0.18, T - 0.002, 0.07)); A(d)
+    P += duck(M, 0.17, T + 0.004, 0.06, yaw=-0.5)
+    g = [pipe([(-0.2, 0.012, 0), (0.02, 0.016, 0)], 0.009, M.chrome, seg=4, squash=(0.6, 1.4)), ball(0.05, (0.06, 0.014, 0), M.chrome, scale=(1.3, 0.28, 0.95), seg=6, rings=4)]
+    xf(g, rot=(0, 0.5, 0), move=(-0.03, T, -0.11)); P += g
+    g = [cyl(0.04, 0.13, (0, 0.04, 0), M.pink, axis='z', seg=8), cyl(0.014, 0.25, (-0.14, 0.04, 0), M.yellow, axis='x', seg=5)]
+    for s in (-1, 1): g.append(cyl(0.043, 0.022, (0, 0.04, s * 0.045), M.cyan, axis='z', seg=8))
+    xf(g, rot=(0, -0.4, 0), move=(-0.05, T - 0.002, 0.09)); P += g
+    A(cyl(0.04, 0.075, (-0.26, T + 0.036, -0.1), M.sheet, axis='z', seg=8, rot=(0, 0.3, 0)))
+    A(box((0.1, 0.004, 0.07), (-0.2, T + 0.001, -0.115), M.sheet, rot=(0, 0.3, 0)))
+    # the lower shelf: towels and a box of something
+    A(B((0.3, 0.05, 0.3), (-0.14, 0.333, 0.0), M.blanket, bev=0.02)); A(B((0.28, 0.05, 0.28), (-0.14, 0.378, 0.01), M.blanket, bev=0.02, rot=(0, 0.08, 0)))
+    b = box((0.22, 0.16, 0.14), (0.2, 0.388, 0.02), M.decal, rot=(0, -0.2, 0)); b['skin'] = 'stack'; A(b)
+    bpy.context.view_layer.update(); skin(b, M, 'stack')
+    return P
+
+
+# ------------------------------------------------------------ 14. monitor, 15. ivstand
+def star_base(P, M, n, R, hub_y, r_w=0.03, a0=0.3):
+    """a wheeled star base: n legs out to radius R, a small castor under each tip"""
+    for k in range(n):
+        a = a0 + 2 * math.pi * k / n; dx, dz = math.sin(a), math.cos(a)
+        P.append(pipe([(0, hub_y, 0), (dx * R, 2 * r_w - 0.004, dz * R)], 0.014, M.chrome, seg=5))
+        P.append(cyl(r_w, 0.026, (dx * R, r_w, dz * R), M.rubber, axis='z', seg=8, rot=(0, a + 1.0, 0)))
+    P.append(cyl(0.045, 0.07, (0, hub_y, 0), M.chrome, axis='y', seg=8))
+
+
+def v_monitor(M):
+    P = []; A = P.append
+    star_base(P, M, 5, 0.2, 0.13)
+    A(bar((0, 0.1, 0), (0, 1.27, 0), 0.02, M.chrome, seg=6))
+    A(box((0.1, 0.06, 0.1), (0, 1.235, 0), M.dark))
+    A(B((0.4, 0.3, 0.17), (0, 1.4, 0), M.white, bev=0.025))
+    A(box((0.31, 0.24, 0.012), (-0.03, 1.405, 0.087), M.dark))
+    A(keep(quad((-0.03, 1.405, 0.0945), 0.285, 0.214, M.ecg, axis='z')))
+    for k, m in enumerate((M.pink, M.yellow, M.cyan)): A(cyl(0.014, 0.02, (0.16, 1.47 - k * 0.055, 0.087), m, axis='z', seg=6))
+    A(pipe([(-0.1, 1.54, 0), (-0.1, 1.6, 0), (0.1, 1.6, 0), (0.1, 1.54, 0)], 0.01, M.chrome, seg=4, bend=0.025, n=1))
+    A(box((0.22, 0.09, 0.13), (0, 1.02, 0.05), M.dark)); A(torus(0.04, 0.012, (0.02, 1.07, 0.05), M.rubber, axis='y', seg=8, sides=3))   # a basket of leads
+    A(pipe(bend_path((-0.19, 1.33, 0.02), (-0.13, 0.8, 0.06), 0.1, n=5), 0.007, M.rubber, seg=4))                                   # the lead and its clip
+    A(pipe([(0, 0.82, 0), (-0.13, 0.82, 0.06), (-0.13, 0.86, 0.06)], 0.006, M.chrome, seg=4))
+    A(B((0.03, 0.07, 0.03), (-0.13, 0.775, 0.06), M.pink, bev=0.008))
+    return P
+
+
+def v_ivstand(M):
+    P = []; A = P.append
+    star_base(P, M, 5, 0.215, 0.13)
+    A(bar((0, 0.1, 0), (0, 1.05, 0), 0.022, M.chrome, seg=6))
+    A(cyl(0.034, 0.07, (0, 1.05, 0), M.dark, axis='y', seg=8)); A(bar((0, 1.05, 0), (0.06, 1.05, 0), 0.008, M.chrome)); A(ball(0.024, (0.065, 1.05, 0), M.pink, seg=6, rings=4))
+    A(bar((0, 1.0, 0), (0, 1.81, 0), 0.014, M.chrome, seg=6, cap=True))
+    for sx in (-1, 1): A(pipe([(0, 1.8, 0), (sx * 0.12, 1.8, 0), (sx * 0.175, 1.835, 0), (sx * 0.175, 1.885, 0), (sx * 0.13, 1.885, 0)], 0.009, M.chrome, seg=4, bend=0.03, n=1))
+    bx = 0.14                                                                          # the bag, on this hook
+    A(box((0.04, 0.07, 0.006), (bx, 1.775, 0), M.white))
+    A(B((0.18, 0.28, 0.05), (bx, 1.61, 0), M.mint, bev=0.018)); A(stick(M, 'drip', (bx, 1.63, 0.0265), 0.115, 0.09))
+    A(cyl(0.013, 0.05, (bx, 1.455, 0), M.white, axis='y', seg=5)); A(cyl(0.02, 0.07, (bx, 1.41, 0), M.cyan, axis='y', seg=6))
+    path = [(bx, 1.39, 0), (bx, 1.3, 0.01), (0.115, 1.22, 0.03)]
+    for k in range(1, 13): a = 2 * math.pi * k / 8; path.append((0.06 + 0.055 * math.cos(a), 1.165 + 0.055 * math.sin(a), 0.03 + k * 0.002))
+    path += [(0.03, 1.08, 0.055), (0.035, 0.96, 0.05)]
+    A(pipe(path, 0.006, M.white, seg=4))
+    A(pipe([(0, 1.21, 0), (0.06, 1.215, 0.04), (0.06, 1.24, 0.04)], 0.007, M.chrome, seg=4))
+    A(B((0.024, 0.04, 0.03), (0.035, 0.95, 0.05), M.pink, bev=0.006))
+    return P
+
+
+# ------------------------------------------------------------ 16. scrubsink (tiles along x)
+def v_scrubsink(M):
+    P = []; A = P.append; L = 2.0
+    A(box((L, 0.1, 0.46), (0, 0.05, -0.07), M.dark))
+    A(box((L, 0.45, 0.5), (0, 0.325, -0.05), M.white))
+    U = [(-0.3, 0.55), (0.27, 0.55), (0.3, 0.58), (0.3, 0.9), (0.26, 0.9), (0.26, 0.66), (0.22, 0.62), (-0.2, 0.62), (-0.24, 0.66), (-0.24, 0.9), (-0.3, 0.9)]
+    A(side(U, L, (0, 0, 0), M.steel))                                                 # the trough
+    for sx in (-1, 1): A(box((0.016, 0.276, 0.5), (sx * 0.99, 0.76, 0.01), M.steel))
+    A(box((L, 0.5, 0.03), (0, 1.15, -0.285), M.steel))                                # splashback
+    A(box((L, 0.06, 0.004), (0, 0.98, -0.268), M.mint))
+    A(stick(M, 'wash', (0, 1.3, -0.2685), 0.72, 0.165))
+    for x in (-0.55, 0.55):                                                           # gooseneck taps with elbow levers
+        A(cyl(0.045, 0.024, (x, 1.08, -0.26), M.chrome, axis='z', seg=8))
+        A(pipe([(x, 1.08, -0.27), (x, 1.08, -0.19), (x, 1.32, -0.14), (x, 1.32, 0.0), (x, 1.17, 0.02)], 0.024, M.chrome, seg=6, bend=0.07, n=2))
+        A(pipe([(x + 0.02, 1.08, -0.25), (x + 0.2, 1.11, -0.1)], 0.011, M.chrome, seg=4, squash=(0.6, 1.3)))
+        A(ball(0.032, (x + 0.215, 1.112, -0.088), M.chrome, scale=(1.0, 0.35, 1.0), seg=6, rings=4, rot=(0, 0.85, 0)))
+    A(B((0.12, 0.2, 0.09), (0, 1.1, -0.226), M.white, bev=0.02)); A(stick(M, 'soap', (0, 1.13, -0.1795), 0.075, 0.032))
+    A(box((0.09, 0.03, 0.03), (0, 1.02, -0.19), M.pink)); A(cyl(0.012, 0.04, (0, 0.985, -0.215), M.dark, axis='y', seg=5))
+    return P
+
+
+# ------------------------------------------------------------ 17. sofa
+def v_sofa(M):
+    P = []; A = P.append
+    for sx in (-1, 1):
+        for sz in (-1, 1): A(cyl(0.035, 0.12, (sx * 1.8, 0.06, sz * 0.45), M.wood, axis='y', seg=6, r2=0.05))
+        A(B((0.36, 0.3, 1.1), (sx * 1.765, 0.52, 0), M.red, bev=0.04))
+        A(lathe([(0.0, -0.585), (0.16, -0.575), (0.215, -0.52), (0.215, 0.52), (0.16, 0.575), (0.0, 0.585)], (sx * 1.77, 0.7, 0), M.red, seg=10, axis='z'))   # rolled arms
+    A(B((3.9, 0.32, 1.12), (0, 0.26, 0), M.red, bev=0.05))
+    A(B((3.88, 0.8, 0.24), (0, 0.72, -0.435), M.red, bev=0.06))
+    for k, x in enumerate((-1.04, 0.0, 1.04)):
+        if k == 2: A(pillow((1.03, 0.12, 0.84), (x, 0.46, 0.1), M.red, puff=0.14, cuts=2, top=0.5, rot=(0.02, 0, -0.03)))   # somebody's spot: squashed flat
+        else: A(pillow((1.03, 0.2, 0.84), (x, 0.5, 0.1), M.red, puff=0.18, cuts=2, top=1.4))
+        A(pillow((1.03, 0.52, 0.24), (x, 0.86, -0.27), M.red, puff=0.2, rot=(-0.12, 0, 0)))
+    A(stick(M, 'patch', (-1.25, 0.25, 0.5615), 0.17, 0.17, rot=(0, 0, 0.2)))
+    A(pillow((0.42, 0.15, 0.42), (-1.32, 0.76, -0.02), M.yellow, puff=0.3, rot=(-0.9, 0.3, 0)))
+    g = [box((0.36, 0.012, 0.26), (0.1, 0.618, 0.16), M.white), stick(M, 'news', (0.1, 0.6256, 0.16), 0.36, 0.26, axis='y')]
+    xf(g, rot=(0, 0.35, 0.02), pivot=(0.1, 0.618, 0.16)); P += g
+    return P
+
+
+# ------------------------------------------------------------ 18. table (and four chairs that don't match)
+def chair_wood(M):
+    g = [B((0.42, 0.04, 0.42), (0, 0.45, 0), M.wood, bev=0.012)]
+    for sx in (-1, 1):
+        for sz in (-1, 1): g.append(box((0.04, 0.44, 0.04), (sx * 0.17, 0.22, sz * 0.17), M.wood))
+        g.append(box((0.04, 0.48, 0.04), (sx * 0.17, 0.69, -0.19), M.wood))
+    for y in (0.64, 0.82): g.append(box((0.36, 0.08, 0.02), (0, y, -0.19), M.wood))
+    return g
+
+
+def chair_plastic(M):
+    g = [seat(M, 0, M.royal)]
+    for sx in (-1, 1): g.append(pipe([(sx * 0.22, 0.005, 0.26), (sx * 0.2, 0.435, 0.2), (sx * 0.2, 0.435, -0.15), (sx * 0.22, 0.005, -0.26)], 0.013, M.chrome, seg=5, bend=0.05, n=1))
+    return g
+
+
+def stool(M):
+    g = [lathe([(0.0, 0.5), (0.14, 0.5), (0.175, 0.47), (0.175, 0.43), (0.14, 0.42)], (0, 0, 0), M.pink, seg=10, axis='y'), torus(0.194, 0.008, (0, 0.2, 0), M.chrome, axis='y', seg=8, sides=3)]
+    for sx in (-1, 1):
+        for sz in (-1, 1): g.append(pipe([(sx * 0.1, 0.43, sz * 0.1), (sx * 0.17, 0.012, sz * 0.17)], 0.014, M.chrome, seg=5))
+    return g
+
+
+def chair_fold(M):
+    g = [B((0.4, 0.025, 0.38), (0, 0.45, 0.02), M.yellow, bev=0.01), B((0.4, 0.17, 0.02), (0, 0.79, -0.2), M.yellow, bev=0.006), bar((-0.2, 0.875, -0.212), (0.2, 0.875, -0.212), 0.012, M.steel)]
+    for sx in (-1, 1):
+        g.append(pipe([(sx * 0.2, 0.008, 0.23), (sx * 0.2, 0.88, -0.212)], 0.012, M.steel, seg=5))
+        g.append(pipe([(sx * 0.2, 0.008, -0.25), (sx * 0.2, 0.455, 0.13)], 0.012, M.steel, seg=5))
+    return g
+
+
+def mug(M, m, x, z, yaw):
+    g = [lathe([(0.036, 0.0), (0.042, 0.09), (0.034, 0.09), (0.031, 0.014), (0.0, 0.014)], (0, 0, 0), m, seg=6, axis='y', cap=False),
+         pipe([(0.036, 0.07, 0), (0.07, 0.065, 0), (0.07, 0.03, 0), (0.035, 0.022, 0)], 0.007, m, seg=3)]
+    return xf(g, rot=(0, yaw, 0), move=(x, 0.798, z))
+
+
+def v_table(M):
+    P = []; A = P.append
+    A(lathe([(0.36, 0.0), (0.36, 0.03), (0.09, 0.08), (0.065, 0.7), (0.22, 0.765)], (0, 0, 0), M.steel, seg=10, axis='y'))
+    A(cyl(0.9, 0.04, (0, 0.78, 0), M.mint, axis='y', seg=16))
+    A(lathe([(0.897, 0.7585), (0.911, 0.754), (0.911, 0.806), (0.897, 0.8015)], (0, 0, 0), M.chrome, seg=16, axis='y', cap=False))
+    for k, (fn, R, dyaw) in enumerate(((chair_wood, 0.76, 0.1), (chair_plastic, 0.72, -0.06), (stool, 0.8, 0.4), (chair_fold, 0.76, -0.12))):
+        th = math.pi / 2 * k + 0.06
+        P += xf(fn(M), rot=(0, th + math.pi + dyaw, 0), move=(R * math.sin(th), 0, R * math.cos(th)))
+    P += mug(M, M.pink, 0.3, 0.42, 0.5); P += mug(M, M.cyan, -0.5, 0.1, 2.5); P += mug(M, M.white, 0.05, -0.55, 4.0)
+    # a box of doughnuts: one's gone already
+    g = [box((0.36, 0.012, 0.26), (0, 0.006, 0), M.pink), box((0.36, 0.008, 0.26), (0, 0.13, -0.165), M.pink, rot=(1.25, 0, 0)), stick(M, 'donut', (0, 0.027, 0.1375), 0.2, 0.05)]
+    for sz in (-1, 1): g.append(box((0.364, 0.05, 0.008), (0, 0.027, sz * 0.132), M.pink))
+    for sx in (-1, 1): g.append(box((0.008, 0.05, 0.256), (sx * 0.178, 0.027, 0), M.pink))
+    for (dx, dz), m in zip(((-0.09, -0.06), (0.09, -0.06), (-0.09, 0.06)), (M.cream, M.teddy, M.pink)): g.append(torus(0.04, 0.022, (dx, 0.032, dz), m, axis='y', seg=8, sides=4))
+    xf(g, rot=(0, -0.5, 0), move=(-0.1, 0.798, -0.08)); P += g
+    return P
+
+
+# ------------------------------------------------------------ 19. coffee (long axis z, front faces +x)
+def v_coffee(M):
+    P = []; A = P.append
+    A(box((0.5, 0.1, 1.56), (-0.03, 0.05, 0), M.dark))
+    A(box((0.56, 0.78, 1.6), (-0.02, 0.49, 0), M.white))
+    A(side_x(rr(0.0, 0.905, 0.6, 0.05, 0.02, 2), 1.6, (0, 0, 0), M.mint))
+    for sz in (-1, 1):
+        A(box((0.014, 0.66, 0.74), (0.265, 0.5, sz * 0.39), M.blue)); A(B((0.03, 0.2, 0.026), (0.283, 0.6, sz * 0.08), M.chrome, bev=0.008))
+    # the machine: a tower, a brew head, a hot plate, a jug of something
+    zm = -0.32
+    A(B((0.13, 0.34, 0.25), (-0.168, 1.11, zm), M.dark, bev=0.02)); A(B((0.34, 0.09, 0.26), (-0.07, 1.245, zm), M.dark, bev=0.02)); A(B((0.34, 0.036, 0.26), (-0.07, 0.946, zm), M.dark, bev=0.01))
+    A(cyl(0.085, 0.012, (0.0, 0.966, zm), M.steel, axis='y', seg=8)); A(cyl(0.03, 0.03, (0.0, 1.19, zm), M.steel, axis='y', seg=6))
+    A(lathe([(0.062, 0.97), (0.088, 0.995), (0.088, 1.075), (0.064, 1.105), (0.07, 1.12)], (0, 0, zm), M.coffee, seg=8, axis='y'))
+    A(pipe([(0, 1.095, zm + 0.06), (0, 1.095, zm + 0.135), (0, 1.0, zm + 0.135), (0, 1.0, zm + 0.08)], 0.011, M.dark, seg=4, bend=0.025, n=1))
+    A(box((0.008, 0.03, 0.05), (0.101, 1.245, zm + 0.06), M.pink)); A(box((0.008, 0.03, 0.05), (0.101, 1.245, zm - 0.02), M.yellow))
+    # paper cups, a mug, the sign
+    A(lathe([(0.03, 0.928), (0.04, 1.03), (0.034, 1.034), (0.04, 1.075), (0.034, 1.079), (0.04, 1.12), (0.034, 1.124), (0.041, 1.165), (0.0, 1.165)], (0.02, 0, 0.12), M.white, seg=6, axis='y', cap=False))
+    A(lathe([(0.0412, 1.14), (0.0425, 1.155)], (0.02, 0, 0.12), M.pink, seg=6, axis='y', cap=False))
+    g = mug(M, M.yellow, 0, 0, 1.2); xf(g, move=(0.08, 0.13, 0.3)); P += g
+    A(box((0.1, 0.012, 0.44), (0.1, 0.934, 0.56), M.dark)); A(box((0.016, 0.15, 0.42), (0.1, 1.012, 0.56), M.dark, rot=(0, 0, 0.0)))
+    A(stick(M, 'coffee', (0.1095, 1.012, 0.56), 0.4, 0.122, axis='x'))
+    return P
+
+
+# ------------------------------------------------------------ 20. planter
+def leaf(M, base, tip, W, lift=0.12, n=5):
+    b, t = Vector(base), Vector(tip); mid = (b + t) / 2 + Vector((0, lift, 0))
+    pts = [tuple((1 - u) ** 2 * b + 2 * u * (1 - u) * mid + u * u * t) for u in (i / (n - 1) for i in range(n))]
+    def ring(i, u):
+        w = max(0.012, W * math.sin(math.pi * (0.1 + 0.9 * u)) ** 0.7)
+        return [(0.004, 0.0), (0.2 * w, w), (-0.012, 0.0), (0.2 * w, -w)]
+    return soft(loft(pts, ring, M.leaf, up=(0, 1, 0), close=(True, True), smooth_angle=50))
+
+
+def v_planter(M):
+    P = []; A = P.append
+    pot = lathe([(0.5, 0.0), (0.6, 0.72), (0.625, 0.72), (0.625, 0.8), (0.565, 0.8), (0.565, 0.74), (0.0, 0.74)], (0, 0, 0), M.white, seg=4, axis='y', rot=(0, math.pi / 4, 0))
+    A(pot)
+    A(lathe([(0.535, 0.3), (0.555, 0.3), (0.572, 0.42), (0.552, 0.42)], (0, 0, 0), M.pink, seg=4, axis='y', rot=(0, math.pi / 4, 0), cap=False))
+    A(box((0.78, 0.03, 0.78), (0, 0.755, 0), M.soil))
+    A(cyl(0.06, 0.56, (0, 1.03, 0), M.wood, axis='y', seg=6, r2=0.04))
+    rnd = random.Random(5)
+    # (tip radius, tip height, half width, where it leaves the trunk): a low ring that droops, a middle ring, a tuft on top
+    spec = [(0.43, 0.98, 0.2, 1.0), (0.43, 1.06, 0.2, 1.04), (0.42, 0.94, 0.19, 0.98), (0.43, 1.1, 0.2, 1.07), (0.42, 1.0, 0.19, 1.02),
+            (0.4, 1.42, 0.19, 1.16), (0.38, 1.52, 0.18, 1.2), (0.41, 1.36, 0.19, 1.14), (0.37, 1.58, 0.18, 1.22),
+            (0.26, 1.8, 0.16, 1.26), (0.22, 1.86, 0.15, 1.27), (0.05, 1.9, 0.14, 1.28)]
+    for k, (r, ty, W, by) in enumerate(spec):
+        a = k * 2.4 + rnd.uniform(-0.2, 0.2); dx, dz = math.sin(a), math.cos(a)
+        up = 0.24 if k < 5 else 0.16 if k < 9 else 0.1
+        base = (dx * 0.09, by + up, dz * 0.09)
+        A(pipe([(0, by - 0.04, 0), base], 0.014, M.leaf, seg=3, cap=False))
+        A(leaf(M, (base[0] * 0.85, base[1] - 0.012, base[2] * 0.85), (dx * r, ty, dz * r), W, lift=0.3 if k < 5 else 0.12 if k < 9 else 0.02))
+    return P
+
+
+# ------------------------------------------------------------ 21. wheelchair
+def v_wheelchair(M):
+    P = []; A = P.append; WY, WZ, WR = 0.3, -0.12, 0.28
+    for sx in (-1, 1):
+        x = sx * 0.283; fx = sx * 0.235
+        A(torus(WR, 0.02, (x, WY, WZ), M.rubber, axis='x', seg=14, sides=4))            # the big wheel, its push rim, spokes
+        A(torus(0.245, 0.008, (sx * 0.312, WY, WZ), M.chrome, axis='x', seg=14, sides=3))
+        A(cyl(0.035, 0.07, (x, WY, WZ), M.chrome, axis='x', seg=6))
+        for k in range(4):
+            a = math.pi * k / 4 + 0.2; c, s = math.cos(a) * WR, math.sin(a) * WR
+            A(bar((x, WY + c, WZ + s), (x, WY - c, WZ - s), 0.006, M.chrome, seg=3))
+        for k in range(3):
+            a = 2 * math.pi * k / 3 + 0.5; c, s = math.cos(a), math.sin(a)
+            A(bar((sx * 0.314, WY + c * 0.245, WZ + s * 0.245), (x, WY + c * 0.268, WZ + s * 0.268), 0.005, M.chrome, seg=3))
+        # the side frame: push handle, back post, seat rail, down to the footrest
+        A(pipe([(fx, 0.93, -0.48), (fx, 0.93, -0.335), (fx, 0.5, -0.3), (fx, 0.5, 0.25), (fx, 0.16, 0.41)], 0.014, M.chrome, seg=5, bend=0.05, n=2))
+        A(cyl(0.02, 0.11, (fx, 0.93, -0.435), M.rubber, axis='z', seg=6))
+        A(bar((fx, 0.5, WZ), (fx, WY, WZ), 0.012, M.chrome)); A(bar((fx - sx * 0.01, WY, WZ), (x, WY, WZ), 0.012, M.chrome))
+        A(bar((fx, WY, WZ), (fx, 0.2, 0.31), 0.012, M.chrome)); A(bar((fx, 0.5, 0.2), (fx, 0.13, 0.32), 0.012, M.chrome))
+        castor(P, fx, 0.32, 0.065, M, yaw=0.25 * sx, hub=False, seg=8)
+        A(pipe([(fx, 0.5, -0.27), (fx, 0.7, -0.27), (fx, 0.7, 0.1), (fx, 0.5, 0.15)], 0.012, M.chrome, seg=5, bend=0.05, n=1, cap=False))
+        A(B((0.045, 0.028, 0.27), (fx, 0.716, -0.08), M.dark, bev=0.008))
+        A(box((0.006, 0.17, 0.3), (fx, 0.6, -0.08), M.vinyl))
+        A(B((0.17, 0.014, 0.13), (sx * 0.15, 0.15, 0.42), M.dark, bev=0.005))            # footplate
+    A(B((0.47, 0.02, 0.45), (0, 0.505, -0.03), M.vinyl, bev=0.008))                      # the sling seat and back
+    A(B((0.47, 0.34, 0.02), (0, 0.76, -0.318), M.vinyl, bev=0.008, rot=(0.07, 0, 0)))
+    A(bar((-0.235, 0.5, -0.02), (0.235, 0.24, -0.02), 0.01, M.chrome)); A(bar((0.235, 0.5, -0.06), (-0.235, 0.24, -0.06), 0.01, M.chrome))   # the folding cross brace
+    for sx in (-1, 1): A(bar((sx * 0.235, 0.24, -0.04), (sx * 0.235, 0.31, WZ + 0.01), 0.01, M.chrome))
+    return P
+
+
+# ------------------------------------------------------------ 22. bench
+def v_bench(M):
+    P = []; A = P.append
+    for k in range(5): A(B((2.96, 0.032, 0.095), (0, 0.434, -0.23 + k * 0.115), M.wood, bev=0.008))
+    for x in (-1.15, 1.15):
+        A(box((0.06, 0.04, 0.54), (x, 0.4, 0), M.steel))
+        for z in (-0.21, 0.21): A(box((0.06, 0.37, 0.05), (x, 0.2, z), M.steel))
+        A(B((0.075, 0.03, 0.58), (x, 0.015, 0), M.steel, bev=0.008))
+    A(bar((-1.15, 0.2, 0), (1.15, 0.2, 0), 0.016, M.chrome, seg=6))
+    for x in (-1.15, 1.15): A(bar((x, 0.2, -0.21), (x, 0.2, 0.21), 0.014, M.chrome, seg=5))
+    # somebody left a paper cup
+    A(lathe([(0.028, 0.448), (0.04, 0.55), (0.036, 0.55), (0.026, 0.46), (0.0, 0.46)], (0.9, 0, 0.1), M.white, seg=6, axis='y', cap=False))
+    A(lathe([(0.038, 0.52), (0.0401, 0.538)], (0.9, 0, 0.1), M.pink, seg=6, axis='y', cap=False))
+    return P
+
+
+# ------------------------------------------------------------ 23. curtain
+def v_curtain(M):
+    P = []; A = P.append; RY = 2.25
+    for sx in (-1, 1):
+        A(bar((sx * 1.35, 0.01, 0), (sx * 1.35, 2.3, 0), 0.02, M.chrome, seg=6, cap=True))
+        A(cyl(0.048, 0.02, (sx * 1.35, 0.01, 0), M.steel, axis='y', seg=8))
+    A(bar((-1.35, RY, 0), (1.35, RY, 0), 0.014, M.chrome, seg=6))
+    X0, X1, NP, K = -1.3, 0.4, 11, 6                                                  # drawn about 60 percent across: NP pleats, K columns each
+    cols = NP * K + 1; rows = ((2.214, 0.03, 0.0), (1.5, 0.034, 0.01), (0.8, 0.039, 0.025), (0.28, 0.044, 0.04))
+    bm = bmesh.new(); uvl = bm.loops.layers.uv.new('UVMap'); G = []
+    for y, amp, sway in rows:
+        G.append([bm.verts.new(gv(X0 + (X1 - X0) * i / (cols - 1) + sway * math.sin(i * 0.35), y, amp * math.sin(2 * math.pi * i / K))) for i in range(cols)])
+    for j in range(len(rows) - 1):
+        for i in range(cols - 1):
+            f = bm.faces.new((G[j][i], G[j + 1][i], G[j + 1][i + 1], G[j][i + 1])); f.smooth = True
+            for lp, (ii, jj) in zip(f.loops, ((i, j), (i, j + 1), (i + 1, j + 1), (i + 1, j))): lp[uvl].uv = (ii / K * 0.5, rows[jj][0] / 0.4)
+    o = lib._obj('sheet', bm, M.curtain); A(keep(o))
+    for p in range(NP):
+        x = X0 + (X1 - X0) * (p * K) / (cols - 1)
+        A(torus(0.028, 0.005, (x + 0.002, RY - 0.011, 0), M.chrome, axis='x', seg=6, sides=3))
+    return P
+
+
 VARIANTS = [('bed', v_bed), ('kidbed', v_kidbed), ('chairs', v_chairs), ('gurney', v_gurney), ('counter', v_counter), ('pillshelf', v_pillshelf), ('morgue', v_morgue),
-            ('slab', v_slab), ('generator', v_generator), ('xray', v_xray)]
+            ('slab', v_slab), ('generator', v_generator), ('xray', v_xray), ('optable', v_optable), ('oplamp', v_oplamp), ('trolley', v_trolley), ('monitor', v_monitor), ('ivstand', v_ivstand),
+            ('scrubsink', v_scrubsink), ('sofa', v_sofa), ('table', v_table), ('coffee', v_coffee), ('planter', v_planter), ('wheelchair', v_wheelchair), ('bench', v_bench), ('curtain', v_curtain)]
 GROUPS = [['bed', 'kidbed', 'chairs', 'gurney', 'counter'], ['pillshelf', 'morgue', 'slab', 'generator', 'xray'], ['optable', 'oplamp', 'trolley', 'monitor', 'ivstand'],
           ['scrubsink', 'sofa', 'table', 'coffee'], ['planter', 'wheelchair', 'bench', 'curtain']]
 
 
 # ------------------------------------------------------------ build, check, export, sheets
+STATS = {}
+
+
 def node_stats(o):
     me = o.data; me.calc_loop_triangles()
     G = [(v.co.x, v.co.z, -v.co.y) for v in me.vertices]
@@ -684,11 +1146,12 @@ def build(only=None):
     M = materials(); nodes = []
     for k, (name, fn) in enumerate(VARIANTS):
         if only and name not in only: continue
-        o = part(fin(fn(M)), name, pivot=(0, 0, 0))
+        o = part(fin(fn(M)), name, pivot=(0, 0, 0)); gone = unhide(o)
+        for key in list(o.keys()): del o[key]  # (the parts' build notes: not for the file)
         assert o.name == name, o.name
         t, lo, hi = node_stats(o)
-        print(f'JF_VARIANT {name}: {t} tris, x {lo[0]:.3f}..{hi[0]:.3f} y {lo[1]:.3f}..{hi[1]:.3f} z {lo[2]:.3f}..{hi[2]:.3f}, {len(o.data.materials)} mats')
-        o['jf_stats'] = f'{t} TRIS  X {lo[0]:.2f} {hi[0]:.2f}  Y {lo[1]:.2f} {hi[1]:.2f}  Z {lo[2]:.2f} {hi[2]:.2f}'
+        print(f'JF_VARIANT {name}: {t} tris ({gone} hidden faces dropped), x {lo[0]:.3f}..{hi[0]:.3f} y {lo[1]:.3f}..{hi[1]:.3f} z {lo[2]:.3f}..{hi[2]:.3f}, {len(o.data.materials)} mats')
+        STATS[name] = f'{t} TRIS  X {lo[0]:.2f} {hi[0]:.2f}  Y {lo[1]:.2f} {hi[1]:.2f}  Z {lo[2]:.2f} {hi[2]:.2f}'
         o.location.x += k * SPACING
         nodes.append(o)
     return finish('p_hospkit', nodes, {'kind': 'prop', 'id': 'hospkit', 'variants': [o.name for o in nodes]})
@@ -763,9 +1226,10 @@ def sheets(root, res=(480, 360)):
                 L = bpy.data.lights.new('l', 'AREA'); L.energy = energy * size * size; L.color = col; L.size = sz * size
                 lo_ = lib._link(bpy.data.objects.new('l', L)); lo_.location = c + Vector(loc) * size; lib._look_at(lo_, c); tmp_obs.append(lo_)
             light(170, (1.2, -1.4, 1.6), 1.2); light(50, (-1.6, -0.6, 0.6), 1.5, (0.85, 0.9, 1.0)); light(110, (-0.4, 1.8, 1.2), 0.6, (1.0, 0.8, 0.95))
-            fl = box((size * 6, 0.02, size * 6), (0, -0.0101, 0), fm); fl.location.x += ox; tmp_obs.append(fl)
+            if nm == 'oplamp': light(120, (0.3, -1.0, -1.3), 1.2)                # (it hangs: lit and looked at from below too, no floor)
+            else: fl = box((size * 6, 0.02, size * 6), (0, -0.0101, 0), fm); fl.location.x += ox; tmp_obs.append(fl)
             tiles = []
-            for vi, dirv in enumerate((Vector((1.0, -1.15, 0.6)), Vector((-1.0, 1.2, 0.75)), Vector((-0.75, -1.3, 0.16)))):
+            for vi, dirv in enumerate((Vector((1.0, -1.15, 0.6)), Vector((-1.0, 1.2, 0.75)), Vector((-0.75, -1.3, -0.9 if nm == 'oplamp' else 0.16)))):
                 cam.data.type = 'PERSP'; cam.data.lens = 50
                 cam.location = c + dirv.normalized() * size * 1.7; lib._look_at(cam, c)
                 cam.data.clip_start = size * 0.01; cam.data.clip_end = size * 30
@@ -775,7 +1239,7 @@ def sheets(root, res=(480, 360)):
                 tiles.append(a)
             for q in tmp_obs: bpy.data.objects.remove(q, do_unlink=True)
             lab = np.zeros((20, W * 3 + 8, 3), dtype=np.float32)
-            text_px(lab, f'{nm}  ' + o['jf_stats'], 6, 3, 2, 0xffe14d)
+            text_px(lab, f'{nm}  ' + STATS[nm], 6, 3, 2, 0xffe14d)
             row = np.full((H, W * 3 + 8, 3), 0.08, dtype=np.float32)
             for k, a in enumerate(tiles): row[:, k * (W + 4):k * (W + 4) + W] = a
             rows += [lab, row]
