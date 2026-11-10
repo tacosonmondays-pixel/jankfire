@@ -551,3 +551,13 @@ WEAPONS.laptop = { slot: 'item', kind: 'laptop', name: 'Laptop', color: '#4fd8ff
 ORDER.push('laptop');
 ITEMS.laptop = { w: 'laptop', name: 'Laptop', desc: 'Open it at someone. Their screen fills with pop-up ads for 7s. They can close them. There are a lot of them.', charges: 1, recharge: 24, color: '#4fd8ff' };
 ITEM_ORDER.push('laptop');
+
+// ------------------------------------------------------------ the gadget items: slower, and death is no reset
+// owner, 2026-11-10: "speed trap, night vision goggles, laptop, pop quiz, instant cam, bubble wand should have longer
+// cooldowns, and the cooldown shouldn't reset on death... maybe extra charges stored like the vision goggles".
+// carry: the charges you have and the timer on the next one survive dying and swapping items (the server keeps them per
+// item); everything else still comes back full on respawn. [charges, seconds per charge] (was: radar 2/16, nvg 2/14,
+// laptop 1/24, quiz 1/22, camera 1/25, wand 2/15)
+for (const [id, charges, recharge] of [['radar', 2, 32], ['nvg', 2, 28], ['laptop', 1, 42], ['quiz', 2, 40], ['camera', 1, 42], ['wand', 2, 32]]) {
+  if (ITEMS[id]) Object.assign(ITEMS[id], { charges, recharge, carry: true });
+}

@@ -1039,7 +1039,8 @@ class Room {
   itemCharges(p) {
     if (this.brOn && p.br) return this.brIc(p); // jank royale: picked up, never recharges
     const it = ITEMS[p.item] || ITEMS.frag;
-    if (!p.ic || p.ic.i !== p.item) p.ic = { i: p.item, n: it.charges, next: 0 };
+    if (!p.ic || p.ic.i !== p.item) p.ic = (it.carry && p.icSave && p.icSave[p.item]) || { i: p.item, n: it.charges, next: 0 }; // a gadget picks up where you left it (death and swapping don't refill it)
+    if (it.carry) (p.icSave ||= {})[p.item] = p.ic;
     const c = p.ic, n = now();
     while (c.n < it.charges && c.next && n >= c.next) { c.n++; c.next = c.n < it.charges ? c.next + it.recharge * 1000 : 0; }
     return c;
@@ -1056,7 +1057,7 @@ class Room {
       // what you already used this life stays used: swapping doesn't hand out fresh charges
       const used = ITEMS[p.item].charges - this.itemCharges(p).n, it = ITEMS[id];
       p.item = id; p.nextItem = null;
-      p.ic = { i: id, n: Math.max(0, it.charges - used), next: used > 0 ? now() + it.recharge * 1000 : 0 };
+      p.ic = (it.carry && p.icSave && p.icSave[id]) || { i: id, n: Math.max(0, it.charges - used), next: used > 0 ? now() + it.recharge * 1000 : 0 }; // (a gadget you've held before: its own charges, as you left them)
     } else p.nextItem = id;
     this.sendIc(p);
   }
