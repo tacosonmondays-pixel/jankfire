@@ -9,6 +9,8 @@ export const PATCH_NOTES = [
     'bots know the volcano is hot and walk round it.',
     'plant & defuse bots are a real lobby now: some are cracked, some are having a day. good ones tap heads, stop to shoot and hold angles. bad ones run at you jumping. nobody hits harder.',
     'CHARACTER got four more shape sliders: chest, arms, belly, legs. and tabs, so you can see the mannequin while you ruin it. hitboxes still the same.',
+    'blood cross never runs dry: out of blood it fires THIN BLOOD, weak but free. the bow draws faster and hits harder. every card you play throws cards now, and a spade is always a fan of six.',
+    'the gadgets (speed trap, goggles, laptop, pop quiz, camera, bubble wand) take about twice as long to come back, and dying doesn\'t refill them. pop quiz stores two now.',
   ] },
   { v: '7.0', date: '2026-11-10', title: 'AD SUPPORTED', items: [
     'new item: the LAPTOP. press G to open it at someone and their screen fills with pop-up ads for 7 seconds. they close them with the number on each ad. some ads ask ARE YOU SURE?. nobody in front of it: NO SIGNAL, and you keep the charge. a reverse card sends the ads back.',
