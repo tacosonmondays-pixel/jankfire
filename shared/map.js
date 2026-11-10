@@ -1885,6 +1885,8 @@ function suburb() {
 
   spawns.push(...west.slice(0, 2), ...east.slice(0, 2), [-30, 0.2, -5], [-18, 0.2, 6], [10, 0.2, -10], [30, 0.2, 9], [35, 0.5, 0], [0, 0.6, -7],
     [-70, 0.2, -50], [70, 0.2, -50], [-70, 0.2, 50], [70, 0.2, 50], [-71, 0.3, 0], [0, 0.2, -59.5], [0, 0.2, 59.5]);
+  // the lawns and back yards roll a little (shared/terrain.js). roads, pavements, houses and fences stay level
+  shapeGround(B, D, { region: [bounds[0], bounds[1], bounds[2], bounds[3]], mat: 'grass', seed: 4242, up: 1.2, down: 0.7, near: 0.8, far: 4, points: [...new Set([...spawns, ...west, ...east])] });
   let graph = null;
   const map = {
     name: 'Suburb', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -60, bounds, floorY: -4,
@@ -3347,6 +3349,8 @@ function islands() {
   const def = [[76, 0.1, -12], [70, 0.1, -9], [66, 0.1, 2.5], [76.5, 0.1, 13], [83, 0.1, 6], [88, 0.1, -9.5], [70.5, 0.1, 14]];
   const spawns = [...att.slice(0, 3), ...def.slice(0, 3), [-10, 0.1, 22.5], [6, 0.1, 13], [-22, 0.1, -11], [20, 0.1, -10], [0, 9.1, 0.7], [-6, 3.1, -14],
     [-6, 0.1, -67], [12, 0.1, -61], [-12, MD + 0.1, -69], [6, 0.1, -70], [-11, 0.1, 61], [11, 0.1, 76.5], [0, SK + 0.1, 70], [-40, 0.1, -38], [40, 0.1, 37]];
+  // dunes on the islands (shared/terrain.js): up only, the beaches' edges, the volcano, the fort and the huts stay level
+  shapeGround(B, D, { region: [-100, -90, 100, 90], mat: 'sand', seed: 3113, up: 1.6, down: 0.12, near: 0.8, far: 4, drape: ['grass'], points: [...new Set([...spawns, ...att, ...def])] });
   let graph = null;
   const map = { name: 'Islands', size: 'large', boxes: B.boxes, deco: D.boxes, killY: ISL.DROWN, floorY: -1.5, sky: SKY_SUNSET, fogNear: 110, fogFar: 380,
     spawns, teamSpawns: { att, def }, edgeGuard: true, sea: true, seaY: ISL.WY, pits: [lavaPit(T)], // (sea: falls are 'into the sea' in the kill feed)
@@ -4066,6 +4070,8 @@ function bazaar() {
   for (let i = 0; i < 26; i++) { const x = -330 + (rv() - 0.5) * 120, z = -180 + (rv() - 0.5) * 140, w = 8 + rv() * 10, h = 4 + rv() * 9;
     D.add(x - w / 2, 0, z - w / 2, x + w / 2, h, z + w / 2, rv() < 0.7 ? 'adobe' : ['sidepink', 'sidelemon', 'sidemint'][(rv() * 3) | 0]); if (rv() < 0.3) dome(D, x, h, z, w * 0.3, rv() < 0.5 ? 'roofteal' : 'roofblue'); }
 
+  // the sand between the stalls and courtyards drifts up and dips (shared/terrain.js). tiled floors, buildings, the canal's banks stay level
+  shapeGround(B, D, { region: [-58, -58, 58, 58], mat: 'sand', seed: 777, up: 1.1, down: 0.6, near: 0.8, far: 4.5, points: [...new Set([...spawns, ...att, ...def])] });
   let graph = null;
   const map = { name: 'Bazaar', size: 'large', boxes: B.boxes, deco: D.boxes, killY: -50, floorY: -6, bounds, ceiling: 9,
     sky: { top: 0x4a8fd8, mid: 0xf2dcae, bot: 0x8a6a40, fog: 0xf0d8a8 }, fogNear: 100, fogFar: 380, spawns, teamSpawns: { att, def },
@@ -4772,6 +4778,9 @@ function forest() {
   const att = [[TH[0] - 4, 0.2, TH[1] - 2], [TH[0], 0.2, TH[1] - 2], [TH[0] + 4, 0.2, TH[1] - 2], [TH[0] - 4, 0.2, TH[1] + 2], [TH[0], 0.2, TH[1] + 2], [TH[0] + 4, 0.2, TH[1] + 2], [TH[0] + 8, 0.2, TH[1]]];
   const def = [[DEF[0] - 6, 0.2, DEF[1] - 2], [DEF[0] - 2, 0.2, DEF[1] - 2], [DEF[0] + 2, 0.2, DEF[1] + 2], [DEF[0] - 6, 0.2, DEF[1] + 2], [DEF[0] - 2, 0.2, DEF[1] + 2], [DEF[0] - 10, 0.2, DEF[1]], [DEF[0] + 1, 0.2, DEF[1] - 5]];
   const sites = [{ id: 'A', min: [CAB[0] - 6.2, 0, CAB[1] - 4.2], max: [CAB[0] + 6.2, 0, CAB[1] + 7.4] }, { id: 'B', min: [42.4, 0, -4.6], max: [61.6, 0, 12.6] }];
+  // the forest floor heaves: rises, hollows, root mounds (shared/terrain.js). the two sites, the cabin, the trails' ends and the lake shore stay level
+  shapeGround(B, D, { region: [FOREST.bounds[0], FOREST.bounds[1], FOREST.shore, FOREST.bounds[3]], mat: 'needles', seed: 6161, up: 1.6, down: 1.0, big: 9,
+    flat: sites.map((q) => [q.min[0] - 2, q.min[2] - 2, q.max[0] + 2, q.max[2] + 2]), points: [...new Set([...spawns, ...att, ...def])] });
   let graph = null, nav = null;
   const N = 210, gx0 = -105, gz0 = -105;
   const navGraph = () => graph || (graph = buildNav(B.boxes, { x0: gx0, z0: gz0, n: N, cell: 1, levels: [0], band: 0.5, keep: (x, z) => x > bx0 && x < bx1 && z > bz0 && z < bz1 }));
