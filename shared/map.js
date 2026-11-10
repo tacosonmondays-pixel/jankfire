@@ -3301,6 +3301,7 @@ function islands() {
   // ---- C, Volcano Island (x -28..28, z -24..24): Mount Kaboom, the tiki village on the south beach, jungle round the back
   isle(B, D, -28, -24, 28, 24, { hole: [-2, -5, 2, -1] });
   slab(Dw, -25.5, -21.5, 25.5, 14, 0, 0.03, 'grass', [-15, -16, 15, 10]);
+  B.boxes.arch.push({ id: 'kaboom', p: [0, 0, 0], r: 0 }); // (its dressing: lava channel, cooled flows, cracks, rim rocks, scree. one Blender model laid on the cone, look only)
   const KB = kaboom(B, D, 0, 0), T = KB.throat; // (quick play: a real cone you walk and grapple anywhere. the S&D Islands keeps the terraces and stairs: volcano())
   tikiBar(B, D, 0, 0, r); bigTiki(B, D, 0, 0);
   hut(B, D, 7.5, 18, -1); hut(B, D, 18.5, 17.2, -1);
