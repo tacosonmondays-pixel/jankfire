@@ -4,7 +4,7 @@
 export const PH = { halfW: 0.4, height: 1.8, eye: 1.6, step: 0.6 };
 // shaped ground (shared/terrain.js): boxes.terrain is a heightfield bodies walk on. the stepped boxes under it ({ ter: 1 })
 // are for everything else, and their top 0.7 m is soft to a body (below that they're a wall: the canyon's face)
-const soft = (b, y) => b.ter === 1 && y > b.max[1] - 0.7;
+const soft = (b, y) => b.ter === 1 && y > b.max[1] - (b.sw || 0.7); // (sw: deeper on a map whose ground is steep rock you still walk up, shapeGround's soft)
 
 // ------------------------------------------------------------ broadphase: a 2D grid over x/z so big maps stay fast
 const CELL = 8;
