@@ -21,6 +21,7 @@
 // - parts -> their own quests '<quest>__<part>', in autostart, gated by `if`.
 import { CONTENT as C } from './index.js';
 
+export const ARRIVE = '__at'; // (the arrive steps' id suffix: overdue.js convertSteps0)
 const FATES = ['alive', 'dead', 'gut', 'freed', 'gone', 'clocked_out', 'terminated', 'signed'];
 const VOICE = { tuba: 'tuba', foghorn: 'tuba', kazoo: 'kazoo', dual_kazoo: 'kazoo', ukulele: 'kazoo', calliope: 'kazoo', trumpet_mute: 'kazoo', piccolo: 'kazoo',
   dialtone: 'dialtone', clarinet: 'crayon', choir: 'choir', organ: 'choir', theremin: 'wet', purr: 'wet' };
@@ -105,7 +106,7 @@ function build() {
     return out;
   }
   function convertSteps0(qid, steps, T, choices) {
-    return steps.map((s) => {
+    return steps.flatMap((s, i) => {
       const g0 = s.goal || {}, o = { id: s.id.startsWith('end') ? `x_${s.id}` : s.id, text: s.text || '' }; // 'end*' is the engine's word for finishing
       const pre = [], post = [];
       let g;
@@ -123,7 +124,11 @@ function build() {
       if (s.marker) g.marker = s.marker;
       if (s.if) { o.any = true; o.goals = [g, { type: 'flag', flag: `!(${cond(s.if)})`, text: '' }]; } // a step that only happens if: skipped when it doesn't apply
       else o.goal = g;
-      if (s.scene) pre.push(`scene:${s.scene}`);
+      // where a scene happens (the world lane): a step that goes somewhere plays its scene when you get there, not when
+      // the step starts; a step that waits for its scene at a place gets an arrive step first (see ARRIVE below)
+      const arrive = arriveAt(s, steps[i - 1]);
+      if (s.scene && g0.type === 'reach') post.unshift(`scene:${s.scene}`);
+      else if (s.scene) pre.push(`scene:${s.scene}`);
       if (s.talk && T[s.talk]) pre.push(`talk:${T[s.talk].with === 'change' ? 'you' : T[s.talk].with}/${talkStart(qid, s.talk)}`);
       // a step waiting for a choice's flag opens the choice
       if (g0.type === 'flag') for (const ch of choices || []) if (ch.options.some((op) => (op.do || []).includes(`flag:${g0.flag}`))) pre.push({ ...(ch.if ? { if: cond(ch.if) } : {}), do: [`talk:choice/${qid}.${ch.id}`] });
@@ -133,8 +138,17 @@ function build() {
       if (s.timer) { o.timer = s.timer; if (s.fail && s.fail.type === 'timer') o.failText = 'out of time'; }
       if (s.fail && s.fail.type === 'flag') o.fail = { type: 'flag', flag: `flag.${s.fail.flag}` };
       if (s.notes) o.notes = s.notes;
-      return o;
+      if (!arrive) return [o];
+      const L = C.LOCATIONS[arrive];
+      return [{ id: `${o.id}${ARRIVE}`, text: s.text || `go to ${L.name.replace(/^The /, 'the ')}`.toLowerCase(), goal: { type: 'reach', zone: arrive, marker: arrive }, arrive: true }, o];
     });
+  }
+  // ARRIVE: a step that waits for its scene's flag and has a place marker (m04's c4 at the Sunset Wall) plays the scene
+  // when you reach the place: an engine step "<id>__at" (reach the marker) goes first, then the step as written (its scene
+  // at its start). Not after a fight (the scene picks up where the fight ends: m06's terminus on the train)
+  function arriveAt(s, prev) {
+    const g = s.goal || {};
+    return s.scene && g.type === 'flag' && s.marker && Object.hasOwn(C.LOCATIONS, s.marker) && !(prev && prev.boss) ? s.marker : null;
   }
   function rewardOf(r) {
     if (!r) return { reward: null, extra: [] };

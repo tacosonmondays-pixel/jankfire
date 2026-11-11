@@ -25,7 +25,8 @@ export const NPC_SPOTS = {
 export const STAGE = [
   ['m03_somethings_digesting', 'walk', { lumps: { p: [-114, 40, -138.4], face: E } }], // waits on the avenue: follow him east to the wall
   ['m03_somethings_digesting', 'dot', { lumps: { p: [-90.5, 40, -137.6], face: N } }], // by his mum
-  ['m04_clocking_in', 'sunset', { lumps: { p: [-199, 32, 4.5], face: N } }], // at the Sunset Wall
+  ['m04_clocking_in', 'sunset__at', { lumps: { p: [-199, 32, 4.5], face: N } }], // waiting at the Sunset Wall (the arrive step: overdue.js ARRIVE)
+  ['m04_clocking_in', 'sunset', { lumps: { p: [-199, 32, 4.5], face: N } }],
 ];
 
 // the spot an npc should stand at now. objs: the engine's objectives (S.quests.objectives())
