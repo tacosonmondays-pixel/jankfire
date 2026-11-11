@@ -11,7 +11,7 @@ import { KIT, KIT_SIZE, paintOf } from '../../shared/city/kit.js';
 
 const KIT_IDS = ['cube_corner', 'cube_eave', 'cube_window_a', 'cube_window_b', 'cube_window_c', 'container_doors', 'container_rib', 'cube_roofjunk_a', 'cube_roofjunk_b',
   'stair_step', 'stair_post', 'longstep_a', 'longstep_b', 'longrail', 'longpole', 'longplaque_a', 'longplaque_b',
-  'cube_corner_b', 'cube_eave_b', 'cube_eave4', 'cube_eave6', 'container_rib_half', 'longrail_b', 'longpole_b']; // (the second line: the kit's second pass)
+  'cube_corner_b', 'cube_eave_b', 'cube_eave4', 'cube_eave6', 'container_rib_half', 'longrail_b', 'longpole_b', 'cube_eave6_b']; // (the second line: the kit's second pass)
 const UNUSED = ['longpole', 'cube_eave']; // (longpole stands on the ground beside a rail, and the Long Stairs' poles stand in the rail: they are all longpole_b. cube_eave is the 2 m lip with a rag: the 6 m one carries the rags now)
 const isKit = (p) => KIT_IDS.includes(p[0]);
 const C = CITIES.slice, all = [];
@@ -45,7 +45,7 @@ assert.equal(meta('cube_corner').h, KIT_SIZE.corner); assert.equal(meta('cube_co
 assert.deepEqual([meta('container_rib').size[1], meta('container_rib_half').size[1]], [KIT_SIZE.rib, KIT_SIZE.rib]);
 assert.deepEqual([meta('container_rib').size[0], meta('container_rib_half').size[0]], KIT_SIZE.ribW);
 assert.deepEqual(meta('container_doors').size, KIT_SIZE.doors);
-assert.deepEqual([meta('cube_eave6').run, meta('cube_eave4').run, meta('cube_eave_b').run], KIT_SIZE.eave); assert.equal(meta('cube_eave').run, 2);
+assert.deepEqual([meta('cube_eave6').run, meta('cube_eave4').run, meta('cube_eave_b').run], KIT_SIZE.eave); assert.equal(meta('cube_eave').run, 2); assert.deepEqual([meta('cube_eave6_b').run, meta('cube_eave6_b').rag], [6, false]);
 assert.deepEqual([meta('cube_eave6').rag, meta('cube_eave4').rag, meta('cube_eave_b').rag, meta('cube_eave').rag], [true, false, false, true]);
 assert.deepEqual([meta('longrail').climb, meta('longrail_b').climb], KIT_SIZE.rail);
 assert.deepEqual([meta('longpole_b').h, ...meta('longpole_b').frame], KIT_SIZE.poleB);
@@ -79,7 +79,7 @@ for (const p of plq) assert.ok(p[1] > -48 && p[1] < -40 && Math.hypot(p[1] - foo
 // 6. every piece sits on something solid, the right way round: probe points in the model's frame (front = -z), turned
 // into the world, must be inside a collision box (the wall behind a window, the step under a tread, the rail under a coping)
 const IN = { cube_corner_b: [[-0.5, 1, 0.1], [-0.1, 1, 0.5]], cube_eave_b: [[0, -0.15, 0.1], [0.8, -0.15, 0.1]], cube_eave4: [[0, -0.15, 0.1], [1.6, -0.15, 0.1], [-1.6, -0.15, 0.1]],
-  cube_eave6: [[0, -0.15, 0.1], [2.6, -0.15, 0.1], [-2.6, -0.15, 0.1]], container_rib_half: [[0, 1.4, 0.1]], longrail_b: [[0, -0.1, -1.2]], longpole_b: [[0, -0.3, 0], [0, 2, 0]],
+  cube_eave6: [[0, -0.15, 0.1], [2.6, -0.15, 0.1], [-2.6, -0.15, 0.1]], cube_eave6_b: [[0, -0.15, 0.1], [2.6, -0.15, 0.1], [-2.6, -0.15, 0.1]], container_rib_half: [[0, 1.4, 0.1]], longrail_b: [[0, -0.1, -1.2]], longpole_b: [[0, -0.3, 0], [0, 2, 0]],
   cube_window_a: [[0, -0.3, 0.1]], cube_window_b: [[0, -0.3, 0.1]], cube_window_c: [[0, -0.3, 0.1]], cube_eave: [[0, -0.15, 0.1], [0, 0.1, 0.05]], cube_corner: [[0.5, 1, 0.1], [0.1, 1, 0.5]],
   container_rib: [[0, 1.4, 0.1]], container_doors: [[0, 1.3, 0.1], [-1, 0.5, 0.1], [1, 2.2, 0.1]], cube_roofjunk_a: [[0, -0.1, 0]], cube_roofjunk_b: [[0, -0.1, 0]], stair_step: [[0, -0.1, 0.27]],
   longstep_a: [[0, -0.05, -0.4]], longstep_b: [[0, -0.05, -0.4]], longrail: [[0, -0.1, -1.2]], longpole: [[0, 3, 0]], longplaque_a: [[0, -0.05, 0]], longplaque_b: [[0, -0.05, 0]] };

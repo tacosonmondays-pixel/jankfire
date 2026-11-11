@@ -213,7 +213,7 @@ export function cubeKit(B, c, r, hid, o = {}) {
       break;
     }
     // a tin lip under the roof slab: 6 m and 4 m runs, a bare 2 m one for what's left. only the 6 m piece has a rag on
-    // it, so a front shows one at most (the 2 m piece with a rag, cube_eave, isn't used any more)
+    // it, so a front shows one at most (the 2 m piece with a rag, cube_eave, isn't used any more), and only a third of them
     if (r() < (o.eave ? o.eave[side] : 1)) {
       const runs = eaveRuns(a1 - a0), T = runs.reduce((p, q) => p + q, 0), lap = runs.length > 1 ? Math.max(0, T - (a1 - a0)) / (runs.length - 1) : 0;
       if (r() < 0.5) runs.reverse();
@@ -221,7 +221,10 @@ export function cubeKit(B, c, r, hid, o = {}) {
       for (const L of runs) {
         const m = e + L / 2; e += L - lap;
         if (stair && m + L / 2 > stair[2] - 0.4 && m - L / 2 < stair[1] + 0.4) continue; // (it would poke through the steps)
-        if (seen(side, m, y + h - 0.3)) put(L === 6 ? 'cube_eave6' : L === 4 ? 'cube_eave4' : 'cube_eave_b', side, m, y + h, 1, rv);
+        // two 6 m runs in three are the bare one (cube_eave6_b), so a rag is one front in three. hashed from the spot,
+        // not r(): the rest of the street keeps its dice
+        const bare = L === 6 && (Math.abs(Math.sin(m * 12.9898 + (y + h) * 78.233 + side * 37.719) * 43758.5453) % 1) < 2 / 3;
+        if (seen(side, m, y + h - 0.3)) put(L === 6 ? (bare ? 'cube_eave6_b' : 'cube_eave6') : L === 4 ? 'cube_eave4' : 'cube_eave_b', side, m, y + h, 1, rv);
       }
     }
     if (!c.container || pd > 60) continue; // (ribs and doors cover the wall: only where a paint variant matches it. all five container colours have one now)
