@@ -38,12 +38,12 @@ skipped bit) · **B** / **C** (that session's part; faked in the run) · **BLOCK
 | pot | load the soup pot | `bottom:soup_kitchen` | works | |
 | drive | drive to the Ring Road | `commute:ring_road` (the highway's foot, r 14) | works (in a car) | t_act1drive.cjs: lane east, slip road, round the deck's south end; the zone fires from the driver's seat (about 25 s of driving) |
 | ambush | survive the Unpaid (90 s) | | C | |
-| deliver | deliver the soup | `gut:border` (the gate) | works (on foot) | was finishing by itself the moment you held the soup; now you get to the gate, and the trade post talk opens there. No car route: the Ring Road's deck is walled in and barricaded at the collapse, so after the ambush it's on foot (see below) |
+| deliver | deliver the soup | `gut:border` (the gate) | works (car or foot) | was finishing by itself the moment you held the soup; now you get to the gate, and the trade post talk opens there. By car: the Unpaid's jump ramp over the collapse, up the hill, into the Gut, down the rib avenue and the cliff stairs (act1drive.test.mjs, 47 s) |
 
 ## m03 SOMETHING'S DIGESTING
 | step | goal | where | status | notes |
 |---|---|---|---|---|
-| drive | drive into the Gut | `gut:peristalsis` (r 12) | works | c3 now plays when you arrive (it played at the step start) |
+| drive | drive into the Gut | `gut:peristalsis` (r 12) | works (car or foot) | c3 plays when you arrive (it played at the step start). By car: the same road as m02, avenue 8 down to Peristalsis Avenue and west along it (act1drive.test.mjs) |
 | walk | follow Lumps down Peristalsis Avenue | to `gut:digester_wall` | works / C | the zone works; Lumps waits on the avenue (cast_slice.js STAGE); him leading the way is C's escort |
 | dot | talk to Dot | Dot IN the Digester Wall | works | c_dot.glb; Mina has no model (puppet stand-in) |
 | agenda | talk to Sister Agenda | inside the Choir Lung's door | works | |
@@ -94,11 +94,13 @@ skipped bit) · **B** / **C** (that session's part; faked in the run) · **BLOCK
 ## What's left (after run 4, 2026-11-11)
 - **Run 5 (all fixes but the tutorial's):** END OF ACT I, all six missions done, no step faked except B/C's. Since then
   the tutorial grapple and line ride are done by hand (t_act1.cjs) and the Sauce Run drive in a real car (t_act1drive.cjs).
-- **A:** screenshots of the new places; the m03 "drive into the Gut" in a car (no car route: see next).
-- **Lead / C:** there's no car route from the Ring Road to the Gut. The deck is walled in by crash barriers and closed by
-  jersey barriers at the collapse (z 81-105, the ambush spot), and the wasteland beside it is 0.5 m terraces. So the
-  soup goes on foot after the ambush, and m03's "drive into the gut" can't be driven. Options: a jump ramp over the gap
-  (very JANKFIRE), or say the car is wrecked in the ambush. A world change either way; A can build the ramp.
+- **The jump (lead's call, built by A):** the Unpaid keep the Ring Road's two middle lanes clear and built a ramp of
+  desks, doors and filing cabinets to a 3 m lip at the collapse's south edge (`shared/city/act1set.js` RAMP). JUMP IT!
+  slams up when you line up on it; ~20+ m/s and you land on the deck past the gap (NAILED IT), slower and you drop into
+  the half-metre-deep gap and drive up the planks at its far end (SHORT!). C's ambush ends at the ramp. Collision
+  changed only in the deck's chunk column (2:-3 .. 2:3) and the Lost & Found's yard (-4:3, -3:3).
+- **Not driven in a browser:** the tight turn onto the deck between the dead cars and on (the headless browser steers
+  too late); the same car physics drives it in act1drive.test.mjs. The soup sloshing on the landing is C's/content.
 - **A (small):** the narrow stairs between Bottom terraces end at the 0.9 m lip wall of the lane above (jump it). Not
   blocking, but janky; opening them touches many chunks' collision, so it's left for now.
 - **B:** the train world has no way back: after END OF ACT I you're still on the train, and the next mission
