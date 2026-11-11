@@ -57,3 +57,62 @@ Not tested: a real GPU, the exe, Mid specifically, the fall-back path (no float 
 the camera-follow carry while moving, the sea, pools on other maps, a real match (drops were made by calling the same
 splash function the game uses), how it looks in motion (about 3 frames a second here), the final strength of the look
 (the last tuning pass was photographed once and one frame missed).
+
+## Could the exe have a "real" simulated tier? (feasibility only, nothing built)
+Owner: "Well what if we use a potato option for browser but an actual simulated thingy for the exe version?"
+
+**The exe is not a stronger machine than the browser.** `desktop/` is Electron: the same Chromium, the same JavaScript,
+the same graphics card as a browser tab, and PLAY ONLINE loads the same site from Render. What decides what a player
+can run is their graphics card and their settings, not exe versus browser. So the split should be a quality tier, with
+the exe allowed to default it on.
+
+**1. Can a real particle fluid run next to our renderer?**
+- What it is: tens of thousands of particles that really flow, splash, pour and pile up (methods called PBF or
+  MLS-MPM), drawn as a smooth liquid surface.
+- It needs WebGPU compute to be worth doing. Published WebGPU demos report roughly 70,000 to 100,000 particles in real
+  time on laptop integrated graphics and more on a mid-range card (author-reported, not independently benchmarked). For
+  a pond splash, a puddle, blood or the shredder we would want 5,000 to 30,000, which is inside that.
+- A WebGL2 version (transform feedback, textures as particle storage) is possible but much weaker: neighbour search is
+  awkward and slow there. A few thousand particles at best. Not recommended.
+- Our renderer is WebGL (three.js `WebGLRenderer`). Two ways to add WebGPU:
+  - **A second, WebGPU canvas just for the fluid**, laid over or under the game canvas. The simulation is easy to
+    isolate this way. The hard part is making the liquid sit correctly in the 3D scene: it cannot see the game's depth
+    buffer, so walls and players would not hide it properly without copying depth across every frame (slow, or a frame
+    late). Fine for a liquid in an open spot (a pond, the shredder pit seen from above), wrong for anything that needs
+    to go behind things.
+  - **Move the whole game to three.js `WebGPURenderer`.** Then fluid and world share one renderer. But the three.js
+    manual says custom `ShaderMaterial`s and `onBeforeCompile` patches are not supported there and must be rewritten as
+    node materials. This game is built on those: the vertex snap on every material, the liquids, flames, wraps, haze,
+    soft skin, the post pass. That is a rewrite of the look of the whole game, plus retesting every preset. Weeks, not a
+    side task, and WebGPU is still not everywhere (it falls back to WebGL2, where compute does not exist).
+- Cost at Too HD, as an estimate only: a few ms a frame on a mid-range card for 20,000 particles plus the surface
+  drawing; unusable on integrated graphics next to the rest of the game; zero on machines without WebGPU because it
+  would not run.
+- Gameplay: like the heightfield, it would have to be look only. Synchronising a particle fluid between players is not
+  realistic, so it must never block, push or hurt anyone.
+
+**2. What can the Electron wrapper do that a tab cannot?**
+- Turn WebGPU on with a command-line switch where Chromium has it off by default, and pin a known Chromium version.
+  Real, but small: current Chromium already has WebGPU on Windows.
+- No background throttling, a fixed window, the discrete GPU asked for by default (`force_high_performance_gpu`).
+  Useful for frame rate in general, nothing to do with fluids.
+- A native addon (C++ fluid on the CPU or CUDA) is possible in the exe only. Not worth it: results still have to cross
+  into the web page to be drawn, it only helps exe players, and it is a second codebase to build per platform.
+- Since PLAY ONLINE loads the same site, anything exe-only still has to live in the site's code behind a "this is the
+  exe" check. So the exe gains a default and a flag, not a capability.
+
+**3. Recommended tiers**
+| tier | who gets it | water |
+|---|---|---|
+| Potato, Crusty | default for most players | the shader water we have |
+| Mid, Too HD | by quality preset, once the proof is tuned | + the heightfield ripples in this PR |
+| SIMULATED (optional, later) | a switch, default off in the browser, could default on in the exe when a WebGPU card is found | + a small particle fluid for hero moments only: the shredder pit, one fountain or pond, blood pools |
+
+Recommendation: ship the heightfield as the "real water" for Mid and Too HD. Treat SIMULATED as its own project: start
+with a stand-alone WebGPU test page (one pool, 20,000 particles, the second-canvas approach) to get real numbers on the
+owner's machine before deciding anything. Do not migrate the renderer for it.
+
+Sources: WebGPU particle fluid demo and its reported particle counts, https://github.com/matsuoka-601/webgpu-ocean and
+https://tympanus.net/codrops/2025/02/26/webgpu-fluid-simulations-high-performance-real-time-rendering/ ; three.js
+manual on what `WebGPURenderer` does not support, https://threejs.org/manual/en/webgpurenderer . The Electron points are
+from general knowledge of Electron and were not looked up for this note.
