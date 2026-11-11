@@ -16,7 +16,7 @@ How this was counted:
 |---|---|---|
 | Weapons | every held weapon and weapon skin (`w_*.glb`, 115 files) | none |
 | Projectiles | 16 (`pj_*.glb`) | tennis ball, nails, marbles |
-| Gear and streaks | 32 (`x_*.glb`) | grapple hooks, shield bubble, black hole, medkit pickups, supply crates |
+| Gear and streaks | 32 (`x_*.glb`) + 8 grapple hooks (`x_grap_*.glb`) | shield bubble, black hole, medkit pickups, supply crates |
 | Map props | 45 kinds in PR #71 (not merged yet), 10 on main | ~6,400 boxes of one-off set pieces |
 | Buildings | 3 look-test models in PR #115 (not merged, waiting on the look OK) | ~45,000 boxes |
 | Natural terrain | none | ~2,200 boxes: rocks, dunes, sandbars, the volcano, Skull Rock |
@@ -139,7 +139,6 @@ gameplay lanes are changing bodies right now (dismemberment, body sliders), so c
 ### 7. Weapons, gear and mode objects still in code
 | What | Where | Note |
 |---|---|---|
-| grapple hooks (8 looks) | `grapple.js`:204 | ropes stay code |
 | shield bubble, black hole, medkit pickups | `main.js`:1453, `models.js`:1924, `econ3d.js`:306 | their `x_*.glb` exist but only draw the icons |
 | royale supply crates, umbrella, loot (can, plate, vest, fridge, ammo bucket) | `royale.js`:177-225, 789 | |
 | P&D bomb, Tags-mode tags | `objective.js`:48 / 63 | |
