@@ -243,15 +243,20 @@ const mapMeshes = [];
 const chunkMeshes = [];
 // one merged mesh per material: thousands of boxes, a couple dozen draw calls
 // the shaped ground as one mesh: a vertex every metre, the texture laid on from above like every other floor
-function terrainGeo(T, tile, mi = -1) { // mi: only the cells painted with T.mats[mi] (shared/terrain.js drape); -1 = all of it
-  const vz = T.nz + 1, V = (i, j) => i * vz + j, n = (T.nx + 1) * vz;
+function terrainGeo(T, tile, mi = -1, cut = null) { // mi: only the cells painted with T.mats[mi] (shared/terrain.js drape); -1 = all of it. cut: [i0, j0, i1, j1] only those cells (a chunk of a huge map)
+  const [i0, j0, i1, j1] = cut ? [Math.max(0, cut[0]), Math.max(0, cut[1]), Math.min(T.nx, cut[2]), Math.min(T.nz, cut[3])] : [0, 0, T.nx, T.nz];
+  const vz = T.nz + 1, V = (i, j) => i * vz + j, wz = j1 - j0 + 1, W = (i, j) => (i - i0) * wz + (j - j0), n = Math.max(0, i1 - i0 + 1) * Math.max(0, wz);
   const pos = new Float32Array(n * 3), nrm = new Float32Array(n * 3), uv = new Float32Array(n * 2), idx = [];
-  for (let i = 0; i <= T.nx; i++) for (let j = 0; j <= T.nz; j++) {
-    const k = V(i, j), x = T.x0 + i, z = T.z0 + j, h = T.H[k];
+  for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
+    const k = W(i, j), x = T.x0 + i, z = T.z0 + j, h = T.H[V(i, j)];
     const dx = (T.H[V(Math.min(T.nx, i + 1), j)] - T.H[V(Math.max(0, i - 1), j)]) / 2, dz = (T.H[V(i, Math.min(T.nz, j + 1))] - T.H[V(i, Math.max(0, j - 1))]) / 2, l = Math.hypot(dx, 1, dz);
     pos.set([x, h, z], k * 3); nrm.set([-dx / l, 1 / l, -dz / l], k * 3); uv.set([x / tile, z / tile], k * 2);
   }
-  for (let i = 0; i < T.nx; i++) for (let j = 0; j < T.nz; j++) if (T.ok[i * T.nz + j] && (mi < 0 || (T.paint ? T.paint[i * T.nz + j] : 0) === mi)) idx.push(V(i, j), V(i, j + 1), V(i + 1, j), V(i + 1, j), V(i, j + 1), V(i + 1, j + 1));
+  const cb = T.coarse, S = cb ? cb.s : 1, blk = (i, j) => cb && i < cb.nbx * S && j < cb.nbz * S && cb.blocks[Math.floor(i / S) * cb.nbz + Math.floor(j / S)]; // (shared/terrain.js o.coarse: a whole block drawn as one quad)
+  for (let i = i0; i < i1; i++) for (let j = j0; j < j1; j++) if (T.ok[i * T.nz + j] && (mi < 0 || (T.paint ? T.paint[i * T.nz + j] : 0) === mi)) {
+    if (blk(i, j)) { const bi = i - (i % S), bj = j - (j % S); if (bi >= i0 && bj >= j0 && bi + S <= i1 && bj + S <= j1) { if (i === bi && j === bj) idx.push(W(bi, bj), W(bi, bj + S), W(bi + S, bj), W(bi + S, bj), W(bi, bj + S), W(bi + S, bj + S)); continue; } } // (a block cut by a chunk's edge is drawn cell by cell)
+    idx.push(W(i, j), W(i, j + 1), W(i + 1, j), W(i + 1, j), W(i, j + 1), W(i + 1, j + 1));
+  }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   g.setIndex(idx);
@@ -371,7 +376,14 @@ function buildChunked(scene, def) {
   const all = def.deco ? [...real, ...(TR ? def.deco.filter((b) => !b.ter) : def.deco)] : real, nReal = real.length;
   const ncf = noCastFn(def), liq = [];
   aoBegin(all, ncf); setSunBoxes(all);
-  if (TR) (TR.mats || [TR.mat]).forEach((tm, mi) => { const tk = MAT[tm] ? tm : 'stone', g = terrainGeo(TR, MAT[tk].tile, TR.mats ? mi : -1); if (g.index.count) groups.set(tk, { k: tk, nc: '', list: [terrainFacet(TR, tm, terrainTint(TR, aoBake(g, false), tm).toNonIndexed())] }); }); // one mesh per ground material, always drawn
+  // the shaped ground, a piece per chunk per ground material (so the far side of the map isn't drawn through the haze)
+  if (TR) (TR.mats || [TR.mat]).forEach((tm, mi) => { const tk = MAT[tm] ? tm : 'stone';
+    for (let ci = Math.floor(TR.x0 / C); ci * C < TR.x0 + TR.nx; ci++) for (let cj = Math.floor(TR.z0 / C); cj * C < TR.z0 + TR.nz; cj++) {
+      const g = terrainGeo(TR, MAT[tk].tile, TR.mats ? mi : -1, [ci * C - TR.x0, cj * C - TR.z0, (ci + 1) * C - TR.x0, (cj + 1) * C - TR.z0]);
+      if (!g.index.count) { g.dispose(); continue; }
+      const key = tk + '|' + ci + ',' + cj; if (!groups.has(key)) groups.set(key, { k: tk, nc: '', list: [] });
+      groups.get(key).list.push(terrainFacet(TR, tm, terrainTint(TR, aoBake(g, false), tm).toNonIndexed()));
+    } });
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
     if ((b.pv && drawnByModel(b.pv)) || (b.av && hasArch(b.av))) continue; // (as in buildMap)

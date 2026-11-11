@@ -405,7 +405,7 @@ function jankburg() {
   const bounds = [-G + 1, -G + 1, G - 1, G - 1];
   // the outer ring's dirt is real ground (shared/terrain.js): humps and hollows between the shacks, the orchard on a roll,
   // the avenues and the highway ramps dead level. the city inside the firewall stays paved flat (its ground isn't dirt)
-  shapeGround(B, D, { region: [-G, -G, G, G], mat: 'dirt', seed: 9090, up: 3.4, down: 1.8, near: 0.6, far: 3.5, big: 9,
+  shapeGround(B, D, { region: [-G, -G, G, G], mat: 'dirt', seed: 9090, up: 3.4, down: 1.8, near: 0.6, far: 3.5, big: 9, step: 0.25, coarse: 2,
     flat: [[-14, -G, 14, -H], [-14, H, 14, G], [-G, -14, -H, 14], [H, -14, G, 14]], points: [...spawns, ...lootHints] });
   const sp = spawns.filter((p) => Math.max(Math.abs(p[0]), Math.abs(p[2])) < H - 6);
   for (let i = sp.length - 1; i > 0; i--) { const j = (r() * (i + 1)) | 0; [sp[i], sp[j]] = [sp[j], sp[i]]; }
