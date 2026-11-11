@@ -21,6 +21,7 @@ import { makeRope, setRope, setRopeSkin } from './grapple.js';
 import { sfx } from './audio.js';
 import { remoteShredder } from './shredder.js';
 import { locoPose } from './loco.js'; // legs, body and the free arm: walk / run / sprint / zoom, jumps, slide, slip
+import { flameAt } from './flames.js';
 import { softSkin } from './softskin.js';
 
 // players ignore fog, glow a bit, and get an outline in their colour so you can spot them across the map
@@ -543,6 +544,7 @@ export class Remote {
     if (this.weaponMesh) this.weaponMesh.visible = !holding;
     if (this.weaponMeshL) this.weaponMeshL.visible = !holding;
     if (now < this.burnUntil && Math.random() < 0.7) fx.burn(this.pos);
+    if (now < this.burnUntil) flameAt('p' + this.id, [this.pos[0], this.pos[1] + 0.25, this.pos[2]], 0.6, 1.5, 1); // on fire: a real flame on them too (flames.js)
     if (this.w !== 'revolver') this.tw = null;
     else if (this.tw && this.weaponMesh) applyTwirl(this.weaponMesh, stepTwirl(this.tw, dt), this.weaponMesh.scale.x);
     if (this.weaponMesh) { ch.root.updateMatrixWorld(true); emitSkinFx(G.skinFxWorld, this.weaponMesh, dt, this.w === 'bread' ? 1 : 1.5); }

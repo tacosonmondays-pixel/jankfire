@@ -222,7 +222,8 @@ const M = {
       else if (!p.alive || p.ec.out) { this.econStrip(p); this.econDefaultKit(p); } // died (or sat out): the default kit
       const e = p.ec;
       e.out = false; e.rc = []; e.ib = {}; e.rk = 0; e.rkm = 0; e.rl = null; e.zone = null; e.fresh = false; e.said = null; // 'eround' below tells them
-      for (const x of Object.values(e.sl)) if (x) x.shot = null;
+      for (const x of Object.values(e.sl)) if (x) { x.shot = null; this.econRestock(x); }
+      if (p.isBot) { const h = this.econInst(p, p.w); if (h && h.cl) { p.ai.ammo = h.m; p.ai.reloadUntil = 0; } } // its bot-side magazine count too
       e.buyAt = p.isBot ? n + Math.min(ECON.buyTime * 600, 700 + Math.random() * 2500) : 0; // bots shop in the first seconds
     }
     if (half) this.broadcast({ t: 'chat', id: 0, m: `HALF TIME: sides swapped, everyone back to ${ECON.start} credits` });
@@ -232,6 +233,9 @@ const M = {
     ec.dirty.add(1); ec.dirty.add(2);
     this.broadcast({ t: 'eround', ...this.econRoundView() });
   },
+  // every gun carried into a round starts it full: magazine and reserve (kept guns too; the respawn's 'inv' tells the HUD).
+  // not mid-round, not guns on the floor, not items
+  econRestock(x) { const a = x.lim && ammoSpec(x.id); if (a) { x.m = a.mag; x.r = a.res; } },
   // bombRoundWin: pay everyone for the round (kill rewards were paid as they happened)
   econRoundEnd(win, why) {
     const b = this.bomb, ec = this.ecRoom(), lose = 3 - win;

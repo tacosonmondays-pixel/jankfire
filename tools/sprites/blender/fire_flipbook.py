@@ -5,9 +5,9 @@
 import bpy, sys, os, math, tempfile
 import numpy as np
 args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
-CELL = int(args[0]) if args else 96; SAMPLES = int(args[1]) if len(args) > 1 else 24
+CELL = int(args[0]) if args else 96; SAMPLES = int(args[1]) if len(args) > 1 else 40
 N, EXTRA = 6, 6  # 36 frames in the sheet + 6 rendered past the end for the loop cross-fade
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../../public/sprites/proof/fire_blender.png')
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../../public/sprites/fire.png')
 tmp = tempfile.mkdtemp(prefix='jffire')
 bpy.ops.wm.read_factory_settings(use_empty=True)
 sc = bpy.context.scene
@@ -48,7 +48,9 @@ L(math_('MULTIPLY', d, vb=5.0), vol.inputs['Density']); L(ramp.outputs['Color'],
 L(vol.outputs['Volume'], out.inputs['Volume']); box.data.materials.append(mat)
 cam = bpy.data.cameras.new('cam'); cam.type = 'ORTHO'; cam.ortho_scale = 2.05
 cob = bpy.data.objects.new('cam', cam); sc.collection.objects.link(cob); sc.camera = cob; cob.location = (0, -8, 1.0); cob.rotation_euler = (math.radians(90), 0, 0)
-sc.render.engine = 'CYCLES'; sc.cycles.device = 'CPU'; sc.cycles.samples = SAMPLES; sc.cycles.use_denoising = False; sc.cycles.volume_bounces = 0; sc.cycles.max_bounces = 1
+sc.render.engine = 'CYCLES'; sc.cycles.device = 'CPU'; sc.cycles.samples = SAMPLES; sc.cycles.use_denoising = True; sc.cycles.volume_bounces = 0; sc.cycles.max_bounces = 1
+try: sc.cycles.denoiser = 'OPENIMAGEDENOISE'
+except Exception as e: print('no OIDN:', e); sc.cycles.use_denoising = False
 sc.render.film_transparent = True; sc.render.resolution_x = sc.render.resolution_y = CELL; sc.render.resolution_percentage = 100
 sc.render.image_settings.file_format = 'PNG'; sc.render.image_settings.color_mode = 'RGBA'; sc.view_settings.view_transform = 'Standard'
 frames = []

@@ -11,8 +11,11 @@ import { fx } from './fx.js';
 import { sfx } from './audio.js';
 import { ME } from './player.js';
 import { flamesFromBoxes, clearMapFlames } from './flames.js';
-import { LIQ, SH, SHORE, DEPTH, DROP, liquidMaterial, liquidBox, setLiquidHaze, tickLiquids, setLiquidQ as setQ } from './liquidmats.js';
+import { LIQ, SH, SHORE, DEPTH, DROP, liquidMaterial, liquidBox, setLiquidHaze, tickLiquids, setLiquidQ as setQ, liquidDefines } from './liquidmats.js';
 import { spritesOn, waterSplash } from './flipbook.js';
+import { simDrop, simStep, setWaterSim, waterSimInfo } from './watersim.js';
+export function waterPhysics(on) { setWaterSim(on, liquidDefines); } // main.js, from Settings
+export { waterSimInfo };
 export { LIQ, liquidMaterial, liquidBox };
 
 // ------------------------------------------------------------ the map's liquids
@@ -314,6 +317,7 @@ const R = (k = 1) => (Math.random() * 2 - 1) * k;
 export function splash(s, x, z, k = 1, quiet = false) {
   if (!s || !wet(s, x, z)) return;
   S.splashN++;
+  if (s.kind === 'water') simDrop(x, z, 0.3 + k * 0.38, -(0.07 + k * 0.13)); // water physics: a dent where it went in (watersim.js)
   const y = surfaceY(s, x, z), P = fx.parts && fx.parts(), L = LIQ[s.key];
   const spr = s.kind === 'water' && spritesOn(); // drawn ripples + crown (flipbook.js) instead of the shader rings + white squares
   if (spr) waterSplash(x, y, z, k, (px, pz) => surfaceY(s, px, pz) + 0.04, s.key === 'oil' ? 0x2a2030 : s.key.startsWith('dye') ? L.shal : 0xffffff);
@@ -385,6 +389,7 @@ function watch(obj, x, y, z, vy, kind, me) {
         splash(s, x, z, 0.12 + deep * 0.2, true);
         if (s.kind === 'water') sfx.wade([x, top, z], deep, me); else if (s.kind === 'lava') sfx.sizzle([x, top, z]); else sfx.gloop([x, top, z], 0.2);
       } else if (d > 0.02 && Math.random() < 0.15) addRing(s, x, z, 0.8, 0.7); // a wake behind you
+      if (d > 0.01 && d < 2 && s.kind === 'water') simDrop(x, z, 0.38, -Math.min(0.03, d * 0.12)); // ...and a real one (water physics)
       if (me) ME.wadeMul = 1 - (0.12 + 0.33 * Math.min(1, (top - y) / 0.8));
     } else if (me) ME.wadeMul = 1;
   } else if (me) ME.wadeMul = 1;
@@ -399,6 +404,7 @@ export function updateLiquids(dt) {
   tickLiquids(now / 1000);
   void lastT;
   if (!S.surfs.length) { if (rings) rings.count = 0; return; }
+  if (G.renderer && G.camera) simStep(G.renderer, G.camera, dt); // water physics (watersim.js; does nothing unless switched on)
   // splashes
   if (G.joined) {
     if (ME.alive) watch(ME, ME.pos[0], ME.pos[1], ME.pos[2], ME.vel[1], 'body', true); else ME.wadeMul = 1;
