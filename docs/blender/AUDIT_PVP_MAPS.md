@@ -233,4 +233,4 @@ Counted on main at af3c61d (after props round 4, the varied rocks and the volcan
 - The labels are the map code's own section comments and function names, so a few are loose (Islands' biggest "ground" entry is the islands' sand, shelves and shallows, filed under the section they are built in).
 - Skyline, Rooftop and Jankburg are dominated by look-only city backdrop (`cityBeyond()`, `streetLevel()`): thousands of boxes, but far away. Rank by vis first.
 - Counts are boxes, not triangles: one Blender model usually replaces 10 to 100 boxes.
-- Mount Kaboom's ground is the heightfield now; its dressing model is `kaboom`. Skull Rock, the wreck, the lighthouse and the fort are still boxes.
+- Mount Kaboom's ground is the heightfield now; its dressing model is `kaboom`. Skull Rock is a Blender skull (`skullrock`, and `skullspine` on Islands), its boxes made from the same shape (`shared/skullshape.js`). The wreck, the lighthouse and the fort are still boxes.
