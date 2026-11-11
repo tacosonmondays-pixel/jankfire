@@ -52,7 +52,7 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) process
   await ev(() => clearInterval(window.__h));
   // ---- the other choice: stay with lumps and pull the staple out
   await ev(() => { const f = window.JF_STORY.S.st.flags; for (const k of ['chased_truck', 'truck_choice_made', 'saw_mina_twice', 'knows_truck_number']) delete f[k]; window.JF_STORY.S.quests.enterStep('m04_clocking_in', 'truck'); });
-  await settle(ev, [-35, 36.5, -14.5], 2500);
+  await settle(ev, [-35, 36.5, -17.5], 2500);
   await ev(() => { window.JF_STORY.S.run(['flag:stayed_with_lumps', 'flag:truck_choice_made']); });
   await endTalks(); await sleep(1500); await endTalks();
   ok(await step(ev, 'm04_clocking_in') === 'home', 'chose: stay with lumps');

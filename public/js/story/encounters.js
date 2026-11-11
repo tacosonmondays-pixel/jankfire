@@ -69,14 +69,14 @@ export const ENC = {
     carryAt: (p) => p[2] > -66 && p[2] < -28 && Math.abs(p[0] + 44) < 42 && p[1] > 38, // (the Clocking In plaza's south end, the last lungs before the gate)
     cps: [[-150, 40.4, -130, (p) => p[0] > -150 && p[2] < -110, 1], [-44, 40.4, -110, (p) => p[0] > -60 && p[2] > -118, 2]] },
   // m04: the Gristle & Sons truck at the Gut border gate (parked up the plaza's east side, out of Overtime's way, its
-  // tail-lift to the south), who gets loaded, and the road it takes into the Gut (through the gate, up Rib Avenue)
-  truck: { at: [-30, 36, -13], yaw: 0, load: [0, 0.12, 4.55], lumps: [-32.7, 36, -14.5], lumpsYaw: Math.PI / 2,
+  // tail-lift to the south), who gets loaded, and the road it takes into the Gut (through the gate, up Rib Avenue). the spot is B's arena mark 'arena.truck', out of Overtime's way
+  truck: { at: [-29, 36, -16], yaw: 0, load: [0, 0.12, 4.55], lumps: [-31.7, 36, -17.5], lumpsYaw: Math.PI / 2,
     queue: [['dad', "dumpling's dad", { body: 'normal', desc: 'a big man in a work jacket, ears like his son' }, "tell my lad i'll be late. tell him to keep the hat."],
       ['ken', 'old ken', { body: 'normal', desc: 'an old man in a cardigan, a hip that is not his' }, "mind the hip. it's not mine. bev'll want it back."],
       ['mina', null, null, '...rory?']],
-    spots: [[-35.5, 36, -6.5], [-37, 36, -5.2], [-38.6, 36, -4.4]], collectors: [[-33.5, 36, -8.2], [-35.2, 36, -9.2]],
+    spots: [[-34.5, 36, -9.5], [-36, 36, -8.2], [-37.6, 36, -7.4]], collectors: [[-32.5, 36, -11.2], [-34.2, 36, -12.2]],
     sunset: [-200, 32, 6], sunsetD: 14, // (by the Sunset Wall: parked along the top terrace, near enough to be in c4's shots)
-    near: 70, every: 5.5, road: [[-30, -13], [-34, -21], [-41, -27], [-44, -36], [-44, -72], [-44, -150]], arch: 4, speed: 6, stall: 6, catch: 5.5 },
+    near: 70, every: 5.5, road: [[-29, -16], [-34, -22], [-41, -27], [-44, -36], [-44, -72], [-44, -150]], arch: 4, speed: 6, stall: 6, catch: 5.5 },
   pulls: 5, // m04 'stay': presses of F to get the staple out of Lumps' arm
 };
 const SOUP_VAR = 'm02.soup';
@@ -535,8 +535,7 @@ export function makeEncounters(ST, { where } = {}) {
     act.play();
   }
   function staple() { // Lumps, pinned to the truck's side by his forearm
-    const T = ENC.truck, y = floorAt(T.lumps[0], T.lumps[1], T.lumps[2]) ?? T.lumps[1];
-    const a = stand('lumps', [T.lumps[0], y, T.lumps[2]], T.lumpsYaw); if (!a) return null;
+    const T = ENC.truck, a = stand('lumps', off(T.lumps), T.lumpsYaw); if (!a) return null;
     a.hold = false; a.ride = null; a.path = null; if (!a.clip || a.clip.name !== 'stapled') play(a, 'stapled', { hold: true });
     return a;
   }
