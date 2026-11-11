@@ -310,10 +310,11 @@ def uvb(o, size=0.03):
             c = me.vertices[v].co; uvl[l].uv = (c.dot(t1) / size, c.dot(t2) / size)
 
 
-def stud(r, x0, h, pos, m, sx=1, seg=12, name='stud'):
-    """a screw head / pin end standing h proud of a face at x = sx * x0 (the rest of it sunk in): domed, never flat on the face"""
+def stud(r, x0, h, pos, m, sx=1, seg=12, name='stud', sink=0.0006, tip=(0.62, 0.85)):
+    """a screw head / pin end standing h proud of a face at x = sx * x0 (the rest of it sunk in): domed, never flat on the
+    face. tip = (radius share, height share) of the dome's shoulder: smaller = more pointed"""
     a = lambda d: sx * (x0 + d)
-    pr = [(0.0, a(-0.0006)), (r, a(-0.0006)), (r, a(h * 0.35)), (r * 0.62, a(h * 0.85)), (0.0, a(h))]
+    pr = [(0.0, a(-sink)), (r, a(-sink)), (r, a(h * 0.35)), (r * tip[0], a(h * tip[1])), (0.0, a(h))]
     return lathe(pr if sx > 0 else pr[::-1], pos, m, seg=seg, axis='x', name=name)
 
 
