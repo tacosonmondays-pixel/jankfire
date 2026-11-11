@@ -98,7 +98,7 @@ export function act1Commute(B) {
 // the south edge of the gap, and a car doing ~20 m/s lands on the deck past it. Too slow: you drop into the gap (only
 // half a metre deep: the deck sits at ground level here) and drive up the scrap ramp at its north end. Cars step 0.65 m
 // (drive.js), the ramp's treads are 0.16 m. The rubble heap moved to the west lanes, out of the flight line.
-export const RAMP = { x0: 179.4, x1: 185.6, z0: 100.2, z1: 110, lift: 3, rubbleX: 172.5, exit: [86, 91.5], open: (x) => x > 177.5 && x < 187.5 };
+export const RAMP = { x0: 179.4, x1: 185.6, z0: 100.2, z1: 110, lift: 3, rubbleX: 172.5, exit: [86, 91.5], open: (x) => x > 177.5 && x < 187.5, lane: (f) => f > 0.3 && f < 0.7 }; // lane: the jam's two middle lanes (fractions of the deck) are clear, so the run-up is a road
 export function act1Ramp(B) {
   const R = RAMP, n = Math.ceil((R.z1 - R.z0) / 0.4), w = R.x1 - R.x0;
   if (!B.touches([R.x0 - 4, R.exit[0] - 2, R.x1 + 4, R.z1 + 4])) return;

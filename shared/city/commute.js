@@ -64,8 +64,9 @@ export function commute(B, d) {
         if (go < 0.2 || (z > GAP[0] - 6 && z < GAP[1] + 6)) continue;
         const x = hx0 + (hx1 - hx0) * lane + (jr() - 0.5) * 0.8, y = hwY(z);
         if (!B.inside(x, z)) continue;
-        if (go > 0.96) { B.prop('bus', x, y, z, Math.PI / 2 + (jr() - 0.5) * 0.2, 1, 0); B.add(x - 1.3, y, z - 5.5, x + 1.3, y + 3.1, z + 5.5, 'rust', { hide: true }); z += 7; continue; }
-        wreck(B, x, y, z, 1, jr);
+        const clear = RAMP.lane(lane); // (the Unpaid keep the two middle lanes clear up to their ramp: same random draws, no wreck)
+        if (go > 0.96) { const by = (jr() - 0.5) * 0.2; if (!clear) { B.prop('bus', x, y, z, Math.PI / 2 + by, 1, 0); B.add(x - 1.3, y, z - 5.5, x + 1.3, y + 3.1, z + 5.5, 'rust', { hide: true }); } z += 7; continue; }
+        if (clear) { jr(); jr(); } else wreck(B, x, y, z, 1, jr);
         if (jr() < 0.05) B.prop('skeleton_lanyard', x + 1.3, y, z + (jr() - 0.5), -Math.PI / 2, 1, 0); // still waiting to get home
         if (jr() < 0.04) B.prop('cone', x + 1.6, y, z + 2.6, jr() * 6.28, 1, 0);
         if (jr() < 0.07) { B.prop('firebarrel', x + 1.5, y, z, 0, 1, 0); B.light(x + 1.5, y + 1.6, z, 0xff8a2a, 9, 1); }
