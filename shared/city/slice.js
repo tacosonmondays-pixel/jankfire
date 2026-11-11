@@ -81,7 +81,7 @@ export const PLACES = {
   'commute:tunnel_mouth': { p: [292, 0, -96], name: 'the Tunnel Mouth', r: 8 }, // the viaduct stub out of it, where the train comes out
 };
 // act I zone sizes for places that were already here (a car arrives fast; the Lost & Found is a big hall)
-Object.assign(PLACES['commute:ring_road'], { r: 14 });
+Object.assign(PLACES['commute:ring_road'], { p: [182, 0.8, 236], r: 14 }); // (on the deck)
 Object.assign(PLACES['gut:peristalsis'], { r: 12 });
 Object.assign(PLACES['gut:border'], { r: 8 });
 Object.assign(PLACES['bottom:lostfound'], { r: 7 });

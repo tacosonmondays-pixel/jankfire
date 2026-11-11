@@ -55,7 +55,7 @@ export async function init() {
   ST.S = makeStory({ content: merge(PACKS), state: st, host: HOST });
   ST.ready = true;
   ST.where = where; ST.offYaw = (y) => offYaw(y); ST.sync = () => sync(true); // (sync: the engine's state to the sim right now, before a travel's save)
-  window.JF_STORY = ST; // (tests drive it from here)
+  window.JF_STORY = ST; ST.spots = SPOTS; // (tests drive it from here; spots: the glowing pick-up / use spots)
   try { const sc = await import('./scene.js'); ST.scene = sc; sc.initScenes(ST); } catch (e) { console.warn('story scenes not loaded', e); }
   try { const bf = await import('./bossfight.js'); ST.boss = bf.makeBoss(ST, { where, playScene: (id, o) => ST.scene && ST.scene.playScene(id, o) }); } catch (e) { console.warn('boss hooks not loaded', e); } // (phases, cutscenes, the boss's poses)
 }
@@ -219,7 +219,8 @@ function rehearse() {
   for (let z = -span; z <= span; z += 6.5) for (let x = -span; x <= span; x += 6.5) if (city || (Math.hypot(x, z - 6) > 6 && Math.hypot(x, z + 12) > 6 && Math.hypot(x, z + 4) > 4)) slots.push([c0[0] + x, c0[1], c0[2] + (city ? 34 + z : z + 4)]); // (city: the rehearsal yard is the street south of the depot)
   slots.sort((a, b) => Math.hypot(a[0] - c0[0], a[2] - c0[2]) - Math.hypot(b[0] - c0[0], b[2] - c0[2])); // act I's districts sort first, so they land nearest the Lost & Found
   let i = 0;
-  for (const id of ids) { const p = fixed[id] || slots[i++] || c0.slice(); p[1] = dropTo([p[0], p[1], p[2]], 30); REH.zones[id] = p; D.zones[id].r = city && PLACES[id] && PLACES[id].r ? PLACES[id].r : Math.min(D.zones[id].r || 2.5, city && fixed[id] ? 4 : 2.5); // (a place's own reach: a car, a roof, a doorway) if (!fixed[id] || id === 'bottom:lostfound' || city) REH.signs.push(sign(D.zones[id].name || id, p)); }
+  // (a real place in the city keeps its height: dropped from just above it, not from 30 m up onto a roof; and its own reach: a car, a roof, a doorway)
+  for (const id of ids) { const p = fixed[id] || slots[i++] || c0.slice(); p[1] = dropTo([p[0], p[1], p[2]], city && fixed[id] ? 1.5 : 30); REH.zones[id] = p; D.zones[id].r = city && PLACES[id] && PLACES[id].r ? PLACES[id].r : Math.min(D.zones[id].r || 2.5, city && fixed[id] ? 4 : 2.5); if (!fixed[id] || id === 'bottom:lostfound' || city) REH.signs.push(sign(D.zones[id].name || id, p)); }
   ROSTER.clear();
   const at = {};
   for (const [id, n] of Object.entries(D.npcs)) {
@@ -267,7 +268,8 @@ function spots() {
   for (const [id, th] of Object.entries(D.things)) if (th.zone && REH.zones[th.zone] && !S.st.flags['used.' + id] && (!th.if || S.test(th.if)) && th.do) want.set('t:' + id, { kind: 'thing', thing: id, zone: th.zone, name: th.name || id, th });
   for (const [k, sp] of SPOTS) if (!want.has(k)) { G.scene.remove(sp.mesh); SPOTS.delete(k); }
   let n = 0;
-  for (const [k, w] of want) if (!SPOTS.has(k)) { const p = where(w.zone).slice(); const j = n++ * 1.3; p[0] += Math.sin(j) * 1.4; p[2] += Math.cos(j) * 1.4; p[1] = dropTo(p); const mesh = w.kind === 'pickup' && w.item === 'soup_pot' ? thingMesh('pot') : spotMesh(w.kind); mesh.position.set(...p); G.scene.add(mesh); SPOTS.set(k, { ...w, p, mesh }); }
+  for (const [k, w] of want) if (!SPOTS.has(k)) { const p = where(w.zone).slice(); const j = n++ * 1.3, rr = w.kind === 'thing' && ST.city ? 3 : 1.4; p[0] += Math.sin(j) * rr; p[2] += Math.cos(j) * rr; // (city: collectibles a step further out than the quest's own spot)
+     p[1] = dropTo(p); const mesh = w.kind === 'pickup' && w.item === 'soup_pot' ? thingMesh('pot') : spotMesh(w.kind); mesh.position.set(...p); G.scene.add(mesh); SPOTS.set(k, { ...w, p, mesh }); }
 }
 function spotMesh(kind) {
   const g = new THREE.Group();
@@ -323,6 +325,8 @@ export function frame(dt, now, cam) {
       if (inside && !ST.inZone.has(id)) { ST.inZone.add(id); S.emit({ type: 'reach', zone: id }); }
       else if (!inside && ST.inZone.has(id)) { ST.inZone.delete(id); S.emit({ type: 'leave', zone: id }); }
     }
+    // cars: getting in a driver's seat (drive.js) is the enterCar goal (m02's "steal a car")
+    { const drv = !!(G.story && G.story.hideVM && G.story.hideVM()); if (drv && !ST.drv) S.emit({ type: 'enterCar' }); ST.drv = drv; }
     // kills: every kill on the range is a dummy (the "interns")
     if ((G.kills || 0) > ST.kills) { S.emit({ type: 'kill', kind: 'dummy', n: G.kills - ST.kills }); ST.kills = G.kills; }
     else ST.kills = G.kills || 0;
@@ -338,7 +342,8 @@ export function frame(dt, now, cam) {
         const score = d + (1 - (dx * fx + dz * fz) / Math.max(0.01, d)) * 1.5;
         if (score < bd) { bd = score; nearAct = a; }
       }
-      for (const sp of SPOTS.values()) { sp.mesh.visible = true; sp.mesh.userData.glow.material.opacity = 0.35 + Math.sin(now * 0.006) * 0.25; if (sp.mesh.userData.spin) sp.mesh.userData.spin.rotation.y += dt * 2; if (Math.hypot(ME.pos[0] - sp.p[0], ME.pos[2] - sp.p[2]) < 1.8) nearThing = { spot: sp, t: { name: sp.name.toUpperCase() } }; }
+      let sd = 1.8; // (the nearest spot gets F; a quest's spot beats a collectible lying next to it)
+      for (const sp of SPOTS.values()) { sp.mesh.visible = true; sp.mesh.userData.glow.material.opacity = 0.35 + Math.sin(now * 0.006) * 0.25; if (sp.mesh.userData.spin) sp.mesh.userData.spin.rotation.y += dt * 2; const d = Math.hypot(ME.pos[0] - sp.p[0], ME.pos[2] - sp.p[2]) + (sp.kind === 'thing' ? 0.5 : 0); if (d < sd) { sd = d; nearThing = { spot: sp, t: { name: sp.name.toUpperCase() } }; } }
       for (const t of ST.things.values()) {
         t.mesh.visible = S.test(t.t.if) && !bag.has(t.t.item);
         if (t.mesh.visible) { t.mesh.userData.glow.material.opacity = 0.35 + Math.sin(now * 0.006) * 0.25; if (Math.hypot(ME.pos[0] - t.p[0], ME.pos[2] - t.p[2]) < 1.8) nearThing = t; }
