@@ -9,7 +9,8 @@
 //           swinging wide; bad ones just run at where they last saw you
 //   cover   reloading or nearly dead with someone on them: good ones step behind the nearest thing that blocks the shot
 //   routes  the way there costs more where the other side's usual spots can see it, so good ones come round the back of
-//           things instead of down the open lane (and everyone has a favourite side of the map each round)
+//           things instead of down the open lane (and each side has a favourite way round each round). once the push
+//           is called, or the bomb is down, it's the short way again
 //   corners before anyone has seen anyone: about to step out where they're watched, good ones stop at the corner,
 //           put the crosshair on the spot at head height and jiggle out and back before they commit
 // And each side picks a stance per round (attack: rush / default / slow; defense: forward / default / deep / stack).
@@ -22,9 +23,9 @@ import { navLocate } from '../shared/nav.js';
 // head: share of fights they go for the head. err / react / turn: x the difficulty's. comp: share of the spray pattern
 // pulled down. sneak: how much longer a way round they'll take to stay out of sight. pre: how often they check a corner before stepping out. snap: how well the crosshair is actually on them when they click (1 = on, 0 = still swinging over). tap: stop-to-shoot discipline (0..1). peek: s they hold + jiggle a lost angle. duck: takes cover. hop: jumps in fights
 export const SKILL = {
-  cracked: { name: 'cracked', sneak: 1.2, pre: 0.9, snap: 1, head: 0.85, err: 0.45, react: 0.7, turn: 1.5, comp: 0.92, tap: 1, peek: [0.9, 2], duck: 0.9, hop: 0 },
-  good: { name: 'good', sneak: 0.9, pre: 0.7, snap: 0.85, head: 0.55, err: 0.75, react: 0.9, turn: 1.2, comp: 0.75, tap: 0.85, peek: [1.2, 2.6], duck: 0.6, hop: 0 },
-  average: { name: 'average', sneak: 0.4, pre: 0.25, snap: 0.5, head: 0.25, err: 1.1, react: 1.1, turn: 1, comp: 0.5, tap: 0.45, peek: [0, 1.2], duck: 0.25, hop: 0.25 },
+  cracked: { name: 'cracked', sneak: 0.8, pre: 0.9, snap: 1, head: 0.85, err: 0.45, react: 0.7, turn: 1.5, comp: 0.92, tap: 1, peek: [0.9, 2], duck: 0.9, hop: 0 },
+  good: { name: 'good', sneak: 0.6, pre: 0.7, snap: 0.85, head: 0.55, err: 0.75, react: 0.9, turn: 1.2, comp: 0.75, tap: 0.85, peek: [1.2, 2.6], duck: 0.6, hop: 0 },
+  average: { name: 'average', sneak: 0.3, pre: 0.25, snap: 0.5, head: 0.25, err: 1.1, react: 1.1, turn: 1, comp: 0.5, tap: 0.45, peek: [0, 1.2], duck: 0.25, hop: 0.25 },
   bad: { name: 'bad', sneak: 0, pre: 0, snap: 0.15, head: 0.06, err: 1.9, react: 1.6, turn: 0.7, comp: 0.15, tap: 0.05, peek: [0, 0], duck: 0, hop: 1 },
 };
 // who shows up at each difficulty: [cracked, good, average, bad]
@@ -130,13 +131,18 @@ export function installSdSkill(Room) {
       if (i >= 0) { c[1]++; if (E[side].n[i] > 0) c[0]++; }
       if (now() > X.t) { X.t = now() + 60000; console.log('[sdexpo] ' + Object.entries(X.c).map(([k, v]) => `${k} ${v[0]}/${v[1]}`).join(', ')); }
     }
-    if (NOCOVER || (goal && (goal.force || goal.use || goal.tac === 'defuse'))) { nav.w = null; return E; } // on the clock: the short way
+    // on the clock: the short way. the carrier, the defuser, attackers once the push is called (arrive together, not
+    // one by one round the back) and defenders once it's planted
+    const A = this.ec && this.ec.tac && this.ec.tac.A;
+    if (NOCOVER || (goal && (goal.force || goal.use || goal.tac === 'defuse')) || (side === 'att' ? B.ph !== 'planted' && A && A.phase === 'exec' : B.ph === 'planted')) { nav.w = null; return E; }
     const key = B.n + side;
     if (sk.wKey !== key || !sk.w || sk.w.length !== g.nodes.length) {
-      const N = g.nodes.length, w = sk.w && sk.w.length === N ? sk.w : new Float32Array(N), e = E[side].n, seed = Math.random() * 100;
+      const N = g.nodes.length, w = sk.w && sk.w.length === N ? sk.w : new Float32Array(N), e = E[side].n;
+      if (!B.sdSeed || B.sdSeed.n !== B.n) B.sdSeed = { n: B.n, att: Math.random() * 100, def: Math.random() * 100 }; // one fancy per side and round: the team goes the same way round
+      const seed = B.sdSeed[side];
       for (let i = 0; i < N; i++) {
         const q = g.nodes[i], h = Math.sin(Math.floor(q[0] / 14) * 12.9898 + Math.floor(q[2] / 14) * 78.233 + seed) * 43758.5453;
-        w[i] = e[i] * sk.sneak + (h - Math.floor(h)) * 0.4;
+        w[i] = e[i] * sk.sneak + (h - Math.floor(h)) * 0.25;
       }
       sk.w = w; sk.wKey = key;
     }
