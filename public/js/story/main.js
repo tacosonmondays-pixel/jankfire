@@ -201,7 +201,7 @@ function tick(dt = 1 / 60) {
   const bk = back();
   if (bk && bk.state === 'menu' && G.joined && G.mode !== 'story') setBack({ ...bk, state: 'sim' }); // you picked a sim
   const on = active() && ME.alive;
-  const near = on && atTerminal();
+  const near = on && atTerminal() && !storyPrompt(); // (the story's own F at the Machine, "take your item", wins over the sims)
   if (bagOpen() && !$('menu').classList.contains('hidden')) toggleBag(false); // the pause menu won over the bag
   if (!hint) { hint = el('div', 'st-hint hidden'); document.body.append(hint); }
   const car = on && !near && !driving() ? nearestCar() : null;
@@ -267,6 +267,7 @@ function key(e, down) {
   }
   return false;
 }
+const storyPrompt = () => { const p = $('stPrompt'), J = window.JF_STORY; return !!((p && !p.classList.contains('hidden') && p.textContent) || (J && J.scene && J.scene.playing()) || document.body.classList.contains('st-talk')); }; // (a cutscene or a talk has the keys too)
 const atTerminal = () => { const T = worldOf(G.cfg && G.cfg.map).terminal; return Math.hypot(ME.pos[0] - T.p[0], ME.pos[2] - T.p[2]) < T.r && Math.abs(ME.pos[1] - T.p[1]) < 4; };
 function look(e) { return wheelOpen() && wheelLook(e.movementX, e.movementY); }
 function uiOpen() { return bagOpen() || clinicOpen(); }

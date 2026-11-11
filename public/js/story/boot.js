@@ -160,7 +160,7 @@ function stage() {
     if (ST.scene && Object.keys(ST.S.st.quests).length && ST.S.st.log.length && !ST.recapped) { ST.recapped = true; setTimeout(() => ST.scene.playScene({ id: 'recap', kind: 'recap', skip: true }), 1500); } // PREVIOUSLY ON OVERDUE
   }
   const D = ST.S.defs;
-  if (inStory() && G.story.fromSim) { G.story.fromSim = false; if (!ST.S.st.flags.sim_won) setTimeout(() => { if (ST.S.st.flags.sim_won) return; ST.S.run(['flag:sim_won']); card('step', 'TRAINING COMPLETE', 'the machine hums. something is coming out.', '', 2.4); }, 1200); } // back from a sim match (main.js onMain): you won the opening sim
+  if (inStory() && G.story.fromSim) { G.story.fromSim = false; ST.simBack = performance.now() + 1500; } // back from a sim match (main.js onMain): you won the opening sim (frame() sets it, after the save has loaded)
   if (!LAB) { // the script: lay it out, start a new game once, offer the quests that can start
     rehearse();
     if (!ST.S.st.flags.init_done) { ST.S.run(D.init || []); ST.S.st.flags.init_done = true; for (const z of Object.values(D.zones)) if (z.district) ST.S.st.vars[`clock.${z.district}`] ??= 17 * 60 + 29; }
@@ -231,7 +231,7 @@ function rehearse() {
     const zp = n.home.p ? n.home.p : REH.zones[n.home.zone];
     if (!zp) continue;
     const k = (at[n.home.zone] = (at[n.home.zone] || 0) + 1) - 1, a = k * 2.1 + 0.6;
-    ROSTER.set(id, { id, n, p: [zp[0] + Math.sin(a) * (k ? 1.7 : 1.2), zp[1], zp[2] + Math.cos(a) * (k ? 1.7 : 1.2)], face: a + Math.PI });
+    ROSTER.set(id, { id, n, p: [zp[0] + Math.sin(a) * (k ? 1.7 : 1.2), zp[1], zp[2] + Math.cos(a) * (k ? 1.7 : 1.2)], face: a + Math.PI, yard: city && !PLACES[n.home.zone] });
   }
 }
 function sign(text, p) {
@@ -248,8 +248,11 @@ function roster(e) {
     const objs = ST.S.quests.objectives();
     for (const r of ROSTER.values()) { const sp = npcSpot(r.id, objs); if (!sp || sp === r.spot) continue; const a = actors.get(r.id); if (a && (a.inScene || a.boss || talking())) continue; r.spot = sp; r.p = sp.p.slice(); r.face = sp.face; if (a) despawnActor(r.id); }
   }
+  // (the city: someone whose home isn't a real place yet only stands in the rehearsal yard while a step wants them)
+  const want = ST.city ? new Set(ST.S.quests.objectives().flatMap((o) => [o.marker, ...o.goals.map((g) => g.marker)])) : null;
   for (const r of ROSTER.values()) {
     const d = Math.hypot(e[0] - r.p[0], e[2] - r.p[2]), a = actors.get(r.id);
+    if (r.yard && !want.has(r.id)) { if (a && !a.inScene && !a.boss && !talking()) despawnActor(r.id); continue; }
     if (!a && d < 34) spawnActor(r.id, r.n, r.p, r.face);
     else if (a && d > 44 && !a.inScene && !a.boss && !talking()) despawnActor(r.id); // (a boss in a fight stays: the referee has him)
   }
@@ -317,6 +320,7 @@ export function frame(dt, now, cam) {
     { const busy = !!(ST.scene && ST.scene.playing()) || talking(); if (busy !== !!ST.held) { ST.held = busy; if (G.story && G.story.send) G.story.send('hold', { all: true, on: busy }); } } // (the referee freezes enemies through cutscenes and talks)
     if (OTPREV && (ST.otW = (ST.otW || 0) + dt) > 3) { if (!ST.otPrev) { ST.otPrev = import('./otpreview.js').then((m) => { m.start(); ST.otPrevM = m; }); } else if (ST.otPrevM) ST.otPrevM.previewFrame(dt * (ST.slowmo ?? 1)); } // (?otpreview=1: overtime's rehearsal)
     if (ST.talkQ && ST.talkQ.length && !talking()) { const [n, node] = ST.talkQ.shift(); startTalk(ST.S, n, node, () => save('talk')); }
+    if (ST.simBack && now > ST.simBack) { ST.simBack = 0; if (!S.st.flags.sim_won) { S.run(['flag:sim_won']); card('step', 'TRAINING COMPLETE', 'the machine hums. something is coming out.', '', 2.4); } }
     S.tick(dt);
     // zones: walking in / out
     for (const [id, z] of Object.entries(S.defs.zones)) {
