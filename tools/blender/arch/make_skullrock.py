@@ -19,10 +19,12 @@ NOCAST.update({'skcrack'})
 K = Kit(os.path.join(HERE, 'boxes', 'skullrock.json'), seed=3)
 K.ground = -1e9
 
-C = Vector((0.0, 5.6, 69.0))      # the skull's middle (its upper jaw stands on the sand)
-RX, RY, RZ = 9.0, 6.6, 9.2        # half sizes of the cranium
+C = Vector((0.0, 5.85, 69.0))     # the skull's middle (it is sunk in the beach to its upper teeth)
+RX, RY, RZ = 9.0, 6.4, 9.2        # half sizes of the cranium
 NT, NP = 104, 52
-P0, P1 = -1.05, math.pi / 2       # elevation: from under the sand to the crown
+P0, P1 = -1.0, math.pi / 2        # elevation: from under the sand to the crown
+IC = 12                           # the row of the teeth: below it the skull is jaw and cheek, straight down to the sand
+JC = 4                            # the cave mouth: this many columns each side of the face's middle (about 4.2 m)
 
 
 def hsh(*a):
@@ -60,25 +62,31 @@ def radius(th, ph):
     r -= 0.3 * n; hole = max(hole, n)
     # below the cheekbones the face narrows to the upper jaw; the back of the head tucks under too
     low = max(0.0, min(1.0, (-ph - 0.2) / 0.3))
-    r -= low * (0.2 * max(0.0, front) ** 0.6 + 0.16 * abs(math.sin(th)) ** 2 + 0.05 * max(0.0, -front))
+    r -= low * (0.07 * max(0.0, front) ** 0.6 + 0.03 * abs(math.sin(th)) ** 2)  # (a little: an undercut below the cheekbones, no more)
     r += 0.06 * g(th, ph, 0, -0.44, 0.6, 0.08)                          # the upper jaw's ridge, where the teeth sit
     r += (hsh(round(th * 9), round(ph * 9)) - 0.5) * 0.02               # weathered, in facets
     return r, hole
 
 
-PC = -0.5  # below this the skull is its upper jaw and the rock it stands on: straight down to the sand
+PC = P0 + (P1 - P0) * IC / NP  # the teeth line
+
+
+def sm(t): t = max(0.0, min(1.0, t)); return t * t * (3 - 2 * t)
 
 
 def pt(th, ph):
     cp = math.cos(max(ph, PC)); r, hole = radius(th, max(ph, PC))
     y = C.y + math.sin(max(ph, PC)) * RY * r * (1.0 + 0.1 * max(0, math.sin(ph)))
+    hr = cp * r  # how far out, level
     if ph < PC:
+        # below the teeth the jaw and cheeks carry the skull's width down to the sand (no neck: it never looks like a
+        # mushroom from the side), lumpy, the cheeks as buttresses
         t = (PC - ph) / (PC - P0)
-        m = math.exp(-abs(th / 0.36) ** 4) * min(1.0, t * 5)  # the cave: between the teeth, down to the sand
-        r = r * (1 - 0.07 * t + 0.05 * math.sin(th * 7 + 1) * t) - 0.55 * m; hole = m
+        base = 1.02 + 0.045 * math.sin(th * 5 + 1) + 0.03 * math.sin(th * 11) + 0.07 * (g(th, 0, 1.15, 0, 0.3, 9) + g(th, 0, -1.15, 0, 0.3, 9)) - 0.04 * max(0.0, math.cos(th)) ** 3
+        hr = hr + (base - hr) * sm(t * 1.7)
         y = y + (-0.35 - y) * t
     # th 0 = the face = -z; +th turns toward +x
-    return Vector((C.x + math.sin(th) * cp * RX * r, y, C.z - math.cos(th) * cp * RZ * r)), hole
+    return Vector((C.x + math.sin(th) * RX * hr, y, C.z - math.cos(th) * RZ * hr)), hole
 
 
 G = [[pt(2 * math.pi * j / NT - math.pi, P0 + (P1 - P0) * i / NP) for j in range(NT)] for i in range(NP + 1)]
@@ -93,6 +101,7 @@ for i in range(NP):
     ph = P0 + (P1 - P0) * (i + 0.5) / NP
     for j in range(NT):
         j2 = (j + 1) % NT; th = 2 * math.pi * (j + 0.5) / NT - math.pi
+        if i < IC and NT // 2 - JC <= j < NT // 2 + JC: continue  # the cave mouth: open (the way in is built below)
         (a, ha), (b, hb), (c, hc), (d, hd) = G[i][j], G[i][j2], G[i + 1][j2], G[i + 1][j]
         hole = (ha + hb + hc + hd) / 4
         nrm = (b - a).cross(d - a); ny = abs(nrm.normalized().y) if nrm.length > 1e-9 else 1; out_up = ((a + c) / 2 - C).y > 0
@@ -100,15 +109,46 @@ for i in range(NP):
         elif hole > 0.3: m = 'skdeep'
         elif CRACK(th, ph): m = 'skcrack'
         elif out_up and ny > 0.82 and ph > 0.9 and hsh(i // 2, j // 2, 3) < 0.75: m = 'skmoss'
-        elif hole > 0.1 or (ph < PC and hsh(i, j // 4, 6) < 0.5): m = 'skshade'
+        elif hole > 0.1 or (ph < PC and hsh(i // 2, j // 5, 6) < 0.3): m = 'skshade'
         else: m = 'skbone'
         if i == NP - 1: tri(a, b, c, m)  # (the crown: the top row meets in a point)
         else: tri(a, b, c, m); tri(a, c, d, m)
 
+# the cave: a real way in. its mouth is the hole left in the skin; from that edge a passage runs back into the skull,
+# squaring off to the 4 m x 3 m of the old cave, darker the further in, to a back wall at z 72.6
+j0, j1 = NT // 2 - JC, NT // 2 + JC
+LOOP = [G[i][j0][0] for i in range(IC + 1)] + [G[IC][j][0] for j in range(j0 + 1, j1)] + [G[i][j1][0] for i in range(IC, -1, -1)]
+HW, HT = 2.05, 3.0
+
+
+def prof(v, k, n):  # where that point of the mouth's edge ends up on the passage's own outline
+    ys = (HT - 0.25 + 0.35) / (LOOP[IC].y + 0.35)  # (the walls' rows squeezed under the passage's roof, none on top of another)
+    if k <= IC: return (-HW, -0.35 + (v.y + 0.35) * ys)
+    if k >= n - IC - 1: return (HW, -0.35 + (v.y + 0.35) * ys)
+    x = max(-HW, min(HW, v.x * HW / abs(LOOP[IC].x))); return (x, HT - 0.25 + 0.3 * math.cos(math.pi / 2 * x / HW))
+
+
+zf = max(v.z for v in LOOP); nL = len(LOOP); RINGS = [LOOP]
+for d, w in ((1.0, 0.7), (3.0, 1.0), (7.0, 1.0), (72.6 - zf, 1.0)):
+    RINGS.append([Vector((v.x + (prof(v, k, nL)[0] - v.x) * w, v.y + (prof(v, k, nL)[1] - v.y) * w, zf + d + (hsh(k, d) - 0.5) * 0.12 * (d < 9))) for k, v in enumerate(LOOP)])
+axis = lambda z: Vector((0, 1.4, z))
+for ri in range(len(RINGS) - 1):
+    A, B2 = RINGS[ri], RINGS[ri + 1]; m = ('skshade', 'skdeep', 'skdeep', 'skhole')[ri]
+    for k in range(nL - 1):
+        for t3 in ([A[k], A[k + 1], B2[k + 1]], [A[k], B2[k + 1], B2[k]]):
+            cc = (t3[0] + t3[1] + t3[2]) / 3
+            if (t3[1] - t3[0]).cross(t3[2] - t3[0]).dot(axis(cc.z) - cc) < 0: t3 = t3[::-1]
+            K.tri(t3, m)
+E = RINGS[-1]; ec = Vector((0, 1.3, E[0].z))
+for k in range(nL - 1):  # its back wall
+    t3 = [ec, E[k], E[k + 1]]
+    if (t3[1] - t3[0]).cross(t3[2] - t3[0]).z > 0: t3 = t3[::-1]
+    K.tri(t3, 'skhole')
+
 # the teeth: a row of stone pegs along the upper jaw over the cave, a couple missing, one fallen on the sand
-for k in range(-5, 6):
+for k in range(-4, 5):
     if k in (-3, 2): continue
-    th = k * 0.058; top, _ = pt(th, PC); w = 0.34 + 0.06 * hsh(k, 1); L = 1.25 + 0.5 * hsh(k, 2) - 0.18 * abs(k)
+    th = k * 0.052; top, _ = pt(th, PC); w = 0.2 + 0.04 * hsh(k, 1); L = 0.75 + 0.3 * hsh(k, 2) - 0.08 * abs(k)
     ax = Vector((math.cos(th), 0, math.sin(th)))  # along the jaw
     o = Vector((top.x, top.y + 0.2, top.z - 0.1))
     q0 = [o - ax * w, o + ax * w, o + ax * w + Vector((0, 0, 0.55)), o - ax * w + Vector((0, 0, 0.55))]
