@@ -48,6 +48,13 @@ export const ENC = {
   soup: { brake: 34, land: 6, perV: 2.2, cap: 22, ram: [9, 0.45, 24], lowAt: 35, barkCd: 5 }, // brake: m/s² the car can change speed by itself; land: a fall (m/s) the pot shrugs off; a ram: base + per m/s, capped
   ambush: { secs: 90, rigsAt: 96, grace: 2.5 }, // rigsAt: the rigs come once you're this far east (the Commute starts at x 96)
   ringRoad: [182, 0.8, 236], // (shared/city/slice.js PLACES 'commute:ring_road')
+  // m03: Lumps' walk from where he waits on Peristalsis Avenue (cast_slice.js STAGE) east to his mum's wall
+  escort: { speed: 1.4, hurry: 4.5, wait: 7, path: [[-114, 40, -138.4], [-108, 40, -137.2], [-102, 40, -136.6], [-96.5, 40, -137.2], [-91.5, 40, -137.6]],
+    lines: [[0, "it's warm. you get used to it. that's the bad bit."], [1, 'that was a bus stop. people waited at it. some of them still are.'], [3, "she'll say i look thin. i don't. i'm enormous."]] },
+  // m03 'out': the stomach-dog chase from the Choir Lung to the Gut border gate
+  chase: { max: 6, every: 13, lumpsSpeed: 9, carryFor: 2.2, carryUp: 9, land: [-44, 36.6, -15],
+    carryAt: (p) => p[2] > -66 && p[2] < -28 && Math.abs(p[0] + 44) < 42 && p[1] > 38, // (the Clocking In plaza's south end, the last lungs before the gate)
+    cps: [[-150, 40.4, -130, (p) => p[0] > -150 && p[2] < -110, 1], [-44, 40.4, -110, (p) => p[0] > -60 && p[2] > -118, 2]] },
 };
 const SOUP_VAR = 'm02.soup';
 
@@ -309,7 +316,7 @@ export function makeEncounters(ST, { where } = {}) {
   }
 
   // ---------------------------------------------------------- m02 SAUCE RUN, step by step
-  const M02 = 'm02_sauce_run';
+  const M02 = 'm02_sauce_run', M03 = 'm03_somethings_digesting';
   const kitchen = () => (where && where('bottom:soup_kitchen')) || [-105, 0, 238];
   const STEPS = {
     [M02]: {
@@ -357,7 +364,7 @@ export function makeEncounters(ST, { where } = {}) {
           clockHud(!st.won, st.left, 'SURVIVE THE UNPAID', `${n} after you · or jump the collapse`);
           const el = ENC.ambush.secs - st.left;
           // waves along the deck: the second department, then the overtime department
-          if (st.wave === 1 && el > 28) { st.wave = 2; deckWave(st, [140, 118], st.fight ? 3 : 2, 'm02b'); wave(st, 3, 'm02b'); hud.msg(st.fight ? 'MORE INTERNS' : "THEY DIDN'T GET THE MEMO", 1.5, 'brag'); }
+          if (st.wave === 1 && el > 28) { st.wave = 2; deckWave(st, [140, 118], st.fight ? 2 : 1, 'm02b'); wave(st, 3, 'm02b'); hud.msg(st.fight ? 'MORE INTERNS' : "THEY DIDN'T GET THE MEMO", 1.5, 'brag'); }
           if (st.wave === 2 && el > 55) { st.wave = 3; if (st.fight) { spawn('m02rig', 'war_rig', openSpot(ME.pos, 50, [Math.atan2(0, 1), 0.5, -0.5])); hud.msg('ANOTHER RIG', 1.5, 'brag'); encSfx.honk(); } wave(st, 3, 'm02c'); }
           if (Math.ceil(st.left) !== st.tickS && st.left <= 10 && !st.won) { st.tickS = Math.ceil(st.left); encSfx.tick(st.left <= 3); }
           // the climax: the Unpaid's own ramp over the collapse. land it (or climb out of the gap) and they can't follow
@@ -399,7 +406,101 @@ export function makeEncounters(ST, { where } = {}) {
       count: { enter() { tradePost(); lumpsAtCounter(); }, exit() {} },
       count_empty: { enter() { tradePost(); lumpsAtCounter(); } },
     },
+    [M03]: {
+      walk: { // Lumps leads you down Peristalsis Avenue to his mum: walks, waits for you, talks, hates every metre of it
+        enter(st) {
+          st.path = ENC.escort.path.map((p) => p.slice()); st.i = 0; st.said = 0; st.waitT = 0;
+          const a = stand('lumps', st.path[0], -Math.PI / 2); if (a) { a.hold = false; a.ride = null; }
+          bark('lumps', "this way. stay close. and don't touch the walls.", 3.5);
+        },
+        tick(st, dt) {
+          const a = actors.get('lumps'); if (!a) { stand('lumps', st.path[Math.min(st.i, st.path.length - 1)], -Math.PI / 2); return; }
+          a.enc = true;
+          const ahead = ME.pos[0] - a.pos[0]; // (the avenue runs east to his mum: + = you're ahead of him)
+          if (st.i < st.path.length) {
+            if (ahead < -ENC.escort.wait) { // you're lagging: he stops, turns round, waits
+              if (a.path) { a.path = null; }
+              if ((st.waitT += dt) > 4) { st.waitT = -6; bark('lumps', pick(["come on. please. i don't like standing still in here.", 'change. CHANGE. things that get lost in here turn into wall.', "it's this way. it's always this way."]), 3); }
+            } else if (!a.path) {
+              st.waitT = 0;
+              const hurry = ahead > 6; // you rode the middle of the street: he jogs to catch up, mortified
+              if (hurry && !st.hurried) { st.hurried = true; bark('lumps', "not the middle! it takes you places! ...slow down. it's my mum. i want to arrive like a normal person.", 4.5); }
+              walkTo(a, [st.path[st.i]], hurry ? ENC.escort.hurry : ENC.escort.speed, () => { st.i++; a.path = null; });
+            }
+          } else if (!st.arrived) { // he's there: that's the escort done (quests.js: escort waits for the npc)
+            st.arrived = true; a.faceTarget = 0; S().emit({ type: 'reach', zone: 'gut:digester_wall', npc: 'lumps' });
+          }
+          // the things he says on the way (one per stretch of the avenue)
+          const lines = ENC.escort.lines;
+          if (st.said < lines.length && st.i >= lines[st.said][0] && !st.hurried) { bark('lumps', lines[st.said][1], 4); st.said++; }
+        },
+        exit() { const a = actors.get('lumps'); if (a) { a.enc = false; a.path = null; } },
+      },
+      out: { // the stomach-dogs chase you out of the Gut; Lumps runs with you and carries you over the last bit
+        enter(st) {
+          st.cp = [ME.pos[0], ME.pos[1] + 0.2, ME.pos[2]]; st.next = E.t + 1.5; st.wave = 0; st.carry = null; st.done = false;
+          encSfx.growl(); setTimeout(() => encSfx.growl(), 600);
+          hud.msg('STOMACH-DOGS', 2, 'brag');
+          bark('lumps', "that's the bishop's dogs. they're not the nice dogs. RUN.", 3.5);
+          const a = stand('lumps', [ME.pos[0] + 1.5, ME.pos[1], ME.pos[2] + 1.5], ME.yaw); if (a) { a.hold = false; a.ride = null; }
+        },
+        tick(st, dt) {
+          const a = actors.get('lumps');
+          if (st.carry) return carryTick(st, dt, a);
+          // lumps runs with you (not in your way: a step behind and to the side)
+          if (a) {
+            a.enc = true;
+            const d = Math.hypot(ME.pos[0] - a.pos[0], ME.pos[2] - a.pos[2]);
+            if (d > 30) { a.pos[0] = ME.pos[0] + 2; a.pos[1] = ME.pos[1]; a.pos[2] = ME.pos[2] + 2; a.path = null; }
+            else if (d > 3.5 && !a.path) walkTo(a, [[ME.pos[0] + Math.sin(ME.yaw + 2.2) * 2, ME.pos[1], ME.pos[2] + Math.cos(ME.yaw + 2.2) * 2]], ENC.chase.lumpsSpeed, () => { a.path = null; });
+          }
+          // checkpoints: the avenue, the rib avenue (a death puts you back at the last one)
+          for (const c of ENC.chase.cps) if (c[3](ME.pos) && !(st.cpN >= c[4])) { st.cp = c.slice(0, 3); st.cpN = c[4]; }
+          // the dogs: a pack bursts out behind you, then more come in from behind and the sides, herding you on
+          if (!st.done && E.t > st.next && alive('m03dog') < ENC.chase.max) {
+            st.next = E.t + (st.wave ? ENC.chase.every : 0.1); st.wave++;
+            const back = ME.yaw; // (behind you: openSpot's angles go x += sin, z += cos, and you face (-sin yaw, -cos yaw))
+            const n = st.wave === 1 ? 3 : 2;
+            for (let i = 0; i < n; i++) spawn('m03dog', 'stomach_dog', openSpot(ME.pos, st.wave === 1 ? 18 : 24, [back + (i - (n - 1) / 2) * 0.9, back + 0.5, back - 0.5]));
+            if (st.wave === 2) bark('lumps', "they're herding us. don't stop. they want you to stop.", 3);
+            if (st.wave > 1) encSfx.growl();
+          }
+          // the last stretch: Lumps picks you up and goes over the top
+          if (!st.done && ENC.chase.carryAt(ME.pos)) startCarry(st, a);
+        },
+        onUp(st) { // dispensed back in the Bottom: you're put back at the last checkpoint, the dogs start over
+          if (st.done) return;
+          ME.pos = st.cp.slice(); ME.vel = [0, 0, 0];
+          clear('m03dog'); st.next = E.t + 3; st.wave = 0;
+          hud.msg('THE DOGS GOT BORED. THEY CAME BACK.', 2, 'brag');
+        },
+        exit(st) { clear('m03dog'); const a = actors.get('lumps'); if (a) { a.enc = false; a.hold = false; a.path = null; } if (st && st.carry) st.carry = null; },
+      },
+    },
   };
+  // the carry: a short Moment. Lumps scoops you up and leaps the last lung to the gate; the dogs stop at the line
+  function startCarry(st, a) {
+    st.done = true;
+    const to = ENC.chase.land.slice();
+    st.carry = { t: 0, from: ME.pos.slice(), to, len: ENC.chase.carryFor };
+    hud.msg('LUMPS HAS YOU', 1.6, 'brag'); G.shake = Math.max(G.shake || 0, 0.6);
+    bark('lumps', 'sorry. sorry. hold on.', 2.5);
+    if (a) { a.hold = true; a.path = null; play(a, 'flex'); }
+    encSfx.leap(); send('enc', { op: 'flee', g: 'm03dog' });
+  }
+  function carryTick(st, dt, a) {
+    const c = st.carry; c.t += dt;
+    const k = Math.min(1, c.t / c.len), e = k * k * (3 - 2 * k), up = Math.sin(k * Math.PI) * ENC.chase.carryUp;
+    ME.pos = [c.from[0] + (c.to[0] - c.from[0]) * e, c.from[1] + (c.to[1] - c.from[1]) * e + up, c.from[2] + (c.to[2] - c.from[2]) * e]; ME.vel = [0, 0, 0];
+    if (a) { a.enc = true; a.pos[0] = ME.pos[0] - 0.7; a.pos[1] = ME.pos[1] - 0.9; a.pos[2] = ME.pos[2] - 0.4; a.yaw = Math.atan2(-(c.to[0] - c.from[0]), -(c.to[2] - c.from[2])); }
+    if (k >= 1) {
+      st.carry = null; clear('m03dog');
+      G.shake = Math.max(G.shake || 0, 0.9); encSfx.ram(0.6);
+      hud.msg('THE DOGS STOP AT THE GATE', 2.2, 'brag');
+      if (a) { a.hold = false; a.pos[1] = c.to[1]; }
+      setTimeout(() => bark('lumps', "they're not allowed past the gate. it's in their contract. ...sorry i picked you up.", 4), 900);
+    }
+  }
   // the trade post: a counter at the border gate, the clerk behind it
   function tradePost() {
     if (E.post) return;
@@ -416,13 +517,14 @@ export function makeEncounters(ST, { where } = {}) {
   function wave(st, n, g) {
     const back = DV.car ? DV.car.h + Math.PI : ME.yaw; // (openSpot's angles: x += sin, z += cos. a car faces (sin h, cos h); you face (-sin yaw, -cos yaw))
     const at = openSpot(ME.pos, 26, [back, back + 0.6, back - 0.6, Math.PI]) || [ME.pos[0], ME.pos[1], ME.pos[2] + 20];
-    const shoot = Math.ceil(n * 0.6);
+    const shoot = Math.max(1, Math.round(n / 3)); // (a third shoot: the rest run at you with whatever's to hand)
     spawn(g, 'intern', at, shoot, { w: 'pistol' });
     if (n - shoot > 0) spawn(g, 'intern', [at[0] + 3, at[1], at[2]], n - shoot);
   }
   // interns up on the jam either side of the clear lanes, waiting for you to drive past (z: along the deck)
   function deckWave(st, zs, per, g) {
-    for (const z of zs) for (const x of [RAMP.x0 - 6, RAMP.x1 + 6]) { const y = floorAt(x, hwY(z) + 4, z, 6); if (y != null) spawn(g, 'intern', [x, y + 0.2, z], per, per > 1 ? { w: 'pistol' } : {}); }
+    let k = 0;
+    for (const z of zs) for (const x of [RAMP.x0 - 6, RAMP.x1 + 6]) { const y = floorAt(x, hwY(z) + 4, z, 6); if (y != null) spawn(g, 'intern', [x, y + 0.2, z], per, k++ % 2 ? {} : { w: 'pistol' }); } // (every other post has a gun)
   }
   function startFight(st, again) {
     st.phase = 'fight'; st.fight = flag('fought_the_unpaid') || !(flag('paid_the_unpaid') || flag('eotm_offered_internship'));
@@ -432,7 +534,7 @@ export function makeEncounters(ST, { where } = {}) {
       else { send('enc', { op: 'flee', g: 'm02rig' }); encSfx.honk(); setTimeout(() => clear('m02rig'), 7000); hud.msg('THE RIGS PULL BACK', 1.6, 'brag'); setTimeout(() => bark('lumps', "i think there's two departments.", 3), 1800); }
     }
     st.wave = 1; wave(st, st.fight ? 4 : 3, 'm02a');
-    if (!again) deckWave(st, [205, 170], st.fight ? 2 : 1, 'm02a');
+    if (!again) deckWave(st, [200, 165], 1, 'm02a');
     // EOTM goes to stand by his ramp (the meeting continues there)
     const R = RAMP, ex = R.x1 + 2.4, ez = R.z0 + 3, ey = floorAt(ex, hwY(ez) + 3, ez, 5);
     if (ey != null) stand('eotm', [ex, ey, ez], 0);
@@ -452,6 +554,7 @@ export function makeEncounters(ST, { where } = {}) {
       E.cur = key; E.st = null;
       if (key) { const h = STEPS[qid][sid]; E.st = { onKill: null, onDown: () => h.onDown && h.onDown(E.st), onUp: () => h.onUp && h.onUp(E.st) }; try { if (h.enter) h.enter(E.st); } catch (e) { console.warn('enc enter', e); } }
       if (!key || qid !== M02) { const a = actors.get('lumps'); if (a && a.enc && !qid) release('lumps'); if (pot && qid !== M02) pot.visible = false; }
+      if (qid !== M02) { const a = actors.get('lumps'); if (a && a.ride) { a.ride = null; a.hold = false; } }
     }
     if (key) { const h = STEPS[qid][sid]; if (h.tick) { try { h.tick(E.st, dt); } catch (e) { console.warn('enc tick', e); } } }
     soupFrame(dt);

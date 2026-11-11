@@ -16,6 +16,7 @@ export const ENC = {
   dog: { spd: 1.35, min: 3.5, max: 9, cd: [2200, 3800], v: 15, up: 6.5 },
 };
 const now = () => Date.now();
+const NO_GEAR = { war_rig: 1, stomach_dog: 1, collector: 1 };
 const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const rnd = (a) => a[0] + Math.random() * (a[1] - a[0]);
 
@@ -26,6 +27,7 @@ export function installStoryEnc(Room) {
   const step0 = P.stepBot;
   P.stepBot = function (b, dt) {
     const k = this.mode === 'story' && b.sk && !b.sk.b ? b.sk.kind : '';
+    if (NO_GEAR[k] && b.ai && b.ai.gear !== null) b.ai.gear = null; // (a dog doesn't open a laptop at you. an intern does)
     if (k === 'war_rig') return this.encRig(b, dt);
     const r = step0.call(this, b, dt);
     if (k === 'intern' && !b.sk.hold) this.encCard(b);
