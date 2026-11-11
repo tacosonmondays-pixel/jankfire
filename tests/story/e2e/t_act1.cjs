@@ -147,7 +147,7 @@ const OWNED = { 'm02_sauce_run.ambush': 'C', 'm03_somethings_digesting.out': 'C'
       else { await standOff(p, r + 3); const ok = await walkTo(p, Math.max(0.8, r - 1), 9000); note = ok ? `walked in (r ${r})` : `couldn't walk in from ${r + 3} m`; }
       if (g.if && !(await ev((c) => window.JF_STORY.S.test(c), g.if))) note += `; needs ${g.if}`;
     } else if (g.type === 'enterCar') {
-      const c = await ev(async () => { const d = await import('/js/story/drive.js'); const c = d.nearestCar(400); return c ? [...c.p] : null; });
+      const c = await ev(async () => { const { G } = await import('/js/ctx.js'); return G.story.carNear(); }); // (the one the HUD points at)
       if (!c) { how = 'BLOCKED'; note = 'no car anywhere near'; }
       else { await standOff(c, 3.2); await sleep(300); await key('KeyF'); await sleep(1500); note = (await ev(async () => (await import('/js/story/drive.js')).driving())) ? 'got in' : "F didn't get in"; await key('KeyF'); await sleep(800); }
     } else if (g.type === 'survive' || g.type === 'kill' || g.type === 'killBoss') { how = 'dev:' + (g.type === 'killBoss' ? 'B' : 'C'); note = 'fight/encounter, faked'; await shiftR(); }

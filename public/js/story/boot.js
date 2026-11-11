@@ -361,12 +361,23 @@ export function frame(dt, now, cam) {
   pr.classList.toggle('hidden', !txt);
   talkFrame(dt, now, e);
   if (ST.scene) ST.scene.sceneFrame(dt, now, cam);
-  questHud(S.quests.objectives(), where, cam, !ST.on || (ST.scene && ST.scene.playing()) || talking());
+  questHud(hudObjs(S), where, cam, !ST.on || (ST.scene && ST.scene.playing()) || talking());
   if (takeCamera(cam, dt)) G.vmScene.visible = false; // (the gun goes away for the shot)
   if (cardQ.length && !locked() && now > (ST.cardT || 0)) { card0(...cardQ.shift()); ST.cardT = now + 1500; }
   ST.saveT += dt;
 }
 
+// the tracked steps for the HUD, with a waypoint where the script gave none but the world has an answer: "steal a car"
+// points at the nearest parked car
+function hudObjs(S) {
+  const objs = S.quests.objectives();
+  for (const o of objs) {
+    if (o.marker) continue;
+    const q = S.defs.quests[o.quest], st = q && q.steps.find((x) => x.id === o.step);
+    if (st && (st.goals || [st.goal]).some((g) => g && g.type === 'enterCar') && G.story && G.story.carNear) { const c = G.story.carNear(); if (c) o.marker = c; }
+  }
+  return objs;
+}
 export function key(e) {
   if (!ST.ready) return false;
   if (ST.scene && ST.scene.sceneKey(e)) return true;
