@@ -4,6 +4,7 @@
 import { buildNav, navPath, navLocate, navClear } from './nav.js';
 import { outOfBounds } from './bounds.js';
 import { shapeGround } from './terrain.js';
+import { SKULL, skullSolid } from './skullshape.js';
 import { prop } from './props.js';
 import { seen, propOf, spinAt } from './propcap.js'; // round 4: which boxes a Blender prop draws instead (look-only)
 export { prop, PROPS } from './props.js';
@@ -3123,7 +3124,8 @@ const pickUmb = (k) => ['toypink', 'toyteal', 'toyyellow', 'sidelemon'][Math.abs
 
 // ---- the set pieces. each is built where the standard Islands has it, moved (dx, dz) (Islands S&D moves them about);
 // st collects their stairs for the walk graph
-const MD = 4.5, QD = 7.5, SK = 7.5, FW = 4.5; // the wreck's main deck and quarterdeck, the top of Skull Rock, the fort's wall walk
+const MD = 4.5, QD = 7.5, SKT = SKULL.TOP, FW = 4.5; // the wreck's main deck and quarterdeck, Skull Rock's crown, the fort's wall walk
+const SPINE = { z0: 86.6, z1: 78.6, hw: 1.2, top: 9 }; // Skull Rock's spine (local z: its foot in the shallows, its head at the dome), half as wide, how high it takes you
 function shifted(B, dx, dz) { // a builder that puts everything dx, dz over
   return { boxes: B.boxes, add: (x0, y0, z0, x1, y1, z1, m, e) => B.add(x0 + dx, y0, z0 + dz, x1 + dx, y1, z1 + dz, m, e),
     box: (cx, cy, cz, sx, sy, sz, m, e) => B.box(cx + dx, cy, cz + dz, sx, sy, sz, m, e), local: (ox, oz, rot = 0, oy = 0) => B.local(ox + dx, oz + dz, rot, oy) };
@@ -3377,26 +3379,21 @@ function fort(B0, D0, dx, dz, st, o = {}) {
   for (const z of [-7.5, -4.3]) cannon(B, D, -68.2, z, FW, 1, 0);
   if (o.pad) add(-69, FW, 5.6, -67.2, FW + 0.3, 8, 'pad', { pad: [40, 11, -2.4] }); // (lands on the volcano's west beach)
 }
-// Skull Rock (round 0, 69): its mouth a cave right through, the treasure inside (gone), eyes you can sit in, a stair up
-// the back of its head
-function skullRock(B0, D0, dx, dz, st) {
-  const { B, D, add, W, up } = isPiece(B0, D0, dx, dz, st);
-  const n0 = B0.boxes.length, d0 = D0.boxes.length; // (design pass: everything from here is drawn as one Blender skull, public/models/arch/skullrock.glb: look only)
-  const Z0 = 63, Z1 = 75, EY0 = 4, EY1 = 6, ED = 1.6;
-  for (const s of [-1, 1]) { // the two sides of the head, an eye in each
-    const x0 = s < 0 ? -8 : 2, x1 = s < 0 ? -2 : 8, e0 = s < 0 ? -6 : 3, e1 = s < 0 ? -3 : 6;
-    add(s < 0 ? -7 : 2, 0, Z0, s < 0 ? -2 : 7, EY0, Z1, 'skullrock'); add(x0, EY1, Z0, x1, SK, Z1, 'skullrock'); // (the jaw a bit narrower: cheekbones)
-    add(x0, EY0, Z0 + ED, x1, EY1, Z1, 'skullrock'); add(x0, EY0, Z0, e0, EY1, Z0 + ED, 'skullrock'); add(e1, EY0, Z0, x1, EY1, Z0 + ED, 'skullrock');
-    D.add(e0, EY0, Z0 + ED - 0.06, e1, EY1, Z0 + ED - 0.02, 'skulldark');
-  }
-  add(-2, 3, Z0, 2, 3.4, Z1, 'skullrock'); add(-2, 3.4, Z0 + 0.8, 2, 4.6, Z1, 'skullrock'); add(-2, 3.4, Z0, -0.8, 4.6, Z0 + 0.8, 'skullrock'); add(0.8, 3.4, Z0, 2, 4.6, Z0 + 0.8, 'skullrock'); add(-2, 4.6, Z0, 2, SK, Z1, 'skullrock');
-  D.add(-0.8, 3.4, Z0 + 0.74, 0.8, 4.6, Z0 + 0.78, 'skulldark');
-  for (let x = -1.85; x < 1.8; x += 0.46) D.add(x, 2.55, Z0 - 0.06, x + 0.34, 3, Z0, 'white'); // teeth
+// Skull Rock (round 0, 69): a stone skull on the beach, facing the volcano (shared/skullshape.js: the rock is that shape
+// in boxes, drawn as one Blender skull, public/models/arch/skullrock.glb). its mouth a cave in to the treasure (gone), a
+// floor in each eye, its dome a walk, and its spine up the back of its head (o.climb false: no spine. Islands S&D, where
+// the crown's over the ceiling and the tour group's beach is behind it). returns the walk graph's drops
+function skullRock(B0, D0, dx, dz, st, o = {}) {
+  const { B, D, add, up } = isPiece(B0, D0, dx, dz, st);
+  const n0 = B0.boxes.length;
+  for (const b of skullSolid()) add(b[0], b[1], b[2], b[3], b[4], b[5], 'skullrock');
+  // the spine: steep steps out of the shallows behind it to where the dome starts leaning back. a bot walks straight on up to the crown
+  B0.archSince(n0, 'skullrock', dx, dz);
+  if (o.climb !== false) { const n1 = B0.boxes.length; up({ ...flight(B, false, SPINE.z0, SPINE.z1, -SPINE.hw, SPINE.hw, ISL.SH, SPINE.top, 'skullrock'), top: [0, SKT, 71] }); B0.archSince(n1, 'skullspine', dx, dz); } // (its own model: skullspine.glb)
   add(-1.95, 0, 69, -0.75, 0.8, 70.2, 'wood'); D.add(-1.9, 0.8, 69.05, -0.8, 0.95, 70.15, 'gold'); // the chest (empty)
   for (const [x, z] of [[-0.4, 68.6], [0.3, 70.8], [-1.2, 71.2], [0.9, 69.4]]) D.box(x, 0.04, z, 0.3, 0.08, 0.3, 'gold'); // a few coins they dropped
   D.add(-1.98, 1.0, 66, -1.94, 2.0, 68.6, 'adtreasure', { fit: 1 });
-  up({ ...flight(B, true, -7.8, 7.8, Z1, Z1 + 1.5, 0, SK, 'skullrock', 1), top: [7, SK, 74] }); // up the back of its head
-  B0.archSince(n0, 'skullrock', dx, dz); for (let i = d0; i < D0.boxes.length; i++) Object.assign(D0.boxes[i], { av: 'skullrock', ai: B0.boxes.arch.length - 1 });
+  return [-1, 1].map((s) => ({ from: [s * 3.5 + dx, SKULL.EYE, 62.5 + dz], to: [s * 3.5 + dx, 0, 59.5 + dz] })); // the walk graph's ways out of the eyes: step off, land on the beach
 }
 
 // ------------------------------------------------------------ ISLANDS: Jank Atoll at sunset, under the sun with a face.
@@ -3471,13 +3468,13 @@ function islands() {
   for (const [x, z, s] of [[-65, -8, 1.2], [-64.5, 9, 1.4], [-90.5, 1.5, 1.0]]) { add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf', RK); }
   D.add(-93.6, -0.2, -2.6, -92.2, 0.4, 0.6, 'boatwood');
 
-  // ---- S, Skull Rock (x -18..18, z 58..80): the skull, palms, rocks, a rowboat
-  isle(B, D, -18, 58, 18, 80);
-  slab(Dw, -15.5, 60.5, 15.5, 77.5, 0, 0.03, 'grass', [-9, 62, 9, 77]);
-  skullRock(B, D, 0, 0, st);
-  for (const [x, z] of [[-16, 61], [-12, 78], [-5, 79], [11, 78.4], [16, 78], [16.5, 62.5], [-16.5, 70]]) palm(W, x, z, 5.5 + r() * 3, r);
+  // ---- S, Skull Rock (x -18..18, z 58..84): the skull, palms, rocks, a rowboat
+  isle(B, D, -18, 58, 18, 84); // (4 m more beach south than it had: the skull's bigger, and its spine comes down behind it)
+  slab(Dw, -15.5, 60.5, 15.5, 81.5, 0, 0.03, 'grass', [-10.5, 60.5, 10.5, 80]);
+  const skDrops = skullRock(B, D, 0, 0, st);
+  for (const [x, z] of [[-16, 61], [-12, 78], [-6.5, 82.2], [11, 78.4], [16, 78], [16.5, 62.5], [-16.5, 70]]) palm(W, x, z, 5.5 + r() * 3, r);
   for (const [x, z, s] of [[-12, 63.5, 1.1], [12.5, 62.5, 1.3], [-13, 74, 1.0], [12, 73.5, 1.2]]) add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf', RK);
-  D.add(9, -0.2, 81.2, 12.6, 0.4, 82.6, 'boatwood');
+  D.add(9, -0.2, 85.2, 12.6, 0.4, 86.6, 'boatwood');
 
   // ---- the sandbars round the outside, each with a palm islet halfway
   sandbar(B, -59.5, -16, -18, -55.5); sandbar(B, 18, -55.5, 59.5, -16); sandbar(B, 59.5, 16, 15, 55.5); sandbar(B, -15, 55.5, -59.5, 16);
@@ -3488,14 +3485,14 @@ function islands() {
   const att = [[-78, 0.1, -5], [-76, 0.1, 0], [-78, 0.1, 6.5], [-82, 0.1, 2.5], [-72, 0.1, -1.5], [-89.5, 0.1, -8], [-89.5, 0.1, 8]];
   const def = [[76, 0.1, -12], [70, 0.1, -9], [66, 0.1, 2.5], [76.5, 0.1, 13], [83, 0.1, 6], [88, 0.1, -9.5], [70.5, 0.1, 14]];
   const spawns = [...att.slice(0, 3), ...def.slice(0, 3), [-10, 0.1, 22.5], [6, 0.1, 13], [-22, 0.1, -11], [20, 0.1, -10], [0, 9.1, 0.7], [-6, 3.1, -14],
-    [-6, 0.1, -67], [12, 0.1, -61], [-12, MD + 0.1, -69], [6, 0.1, -70], [-11, 0.1, 61], [11, 0.1, 76.5], [0, SK + 0.1, 70], [-40, 0.1, -38], [40, 0.1, 37]];
+    [-6, 0.1, -67], [12, 0.1, -61], [-12, MD + 0.1, -69], [6, 0.1, -70], [-11, 0.1, 61], [11, 0.1, 76.5], [0, SKT + 0.1, 70], [-40, 0.1, -38], [40, 0.1, 37]];
   // dunes on the islands (shared/terrain.js): up only, the beaches' edges, the volcano, the fort and the huts stay level
   shapeGround(B, D, { region: [-100, -90, 100, 90], mat: 'sand', seed: 3113, up: 1.6, down: 0.12, near: 0.8, far: 4, drape: ['grass'], soft: 1.15, relief: [{ f: KB.f, mat: 'basalt', paint: KB.f.rock, rock: true }], points: [...new Set([...spawns, ...att, ...def])] });
   for (const p of spawns) if (KB.f(p[0], p[2]) != null) p[1] = B.boxes.terrain.at(p[0], p[2]) + 0.1; // (the two up the mountain: onto its new slopes)
   let graph = null;
   const map = { name: 'Islands', size: 'large', boxes: B.boxes, deco: D.boxes, killY: ISL.DROWN, floorY: -1.5, sky: SKY_SUNSET, fogNear: 110, fogFar: 380,
     spawns, teamSpawns: { att, def }, edgeGuard: true, sea: true, seaY: ISL.WY, seaSwim: true, bounds: [-127, -115, 127, 115], pits: [lavaPit(T)], // (sea: falls are 'into the sea' in the kill feed)
-    peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: -100, z0: -90, n: 196, cell: 1, levels: [ISL.SB, 3, MD, 6, QD, 9, 13.5, 18], band: 0.6, stairs: st })); },
+    peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: -100, z0: -90, n: 196, cell: 1, levels: [ISL.SB, 3, MD, 6, QD, 9, SKT, 13.5, 18], band: 0.6, stairs: st, drops: skDrops })); },
   };
   return map;
 }
@@ -3531,8 +3528,8 @@ function islandsSD() {
 
   // ---- S, Skull Rock (x -16..16, z 20..50): the tour group's beach, their boats pulled up on it
   isle(B, D, -16, 20, 16, 50);
-  slab(Dw, -13.5, 22.5, 13.5, 47.5, 0, 0.03, 'grass', [-9, 29, 9, 44]);
-  skullRock(B, D, 0, -33, st);
+  slab(Dw, -13.5, 22.5, 13.5, 47.5, 0, 0.03, 'grass', [-10.5, 26.5, 10.5, 47]);
+  const skDrops = skullRock(B, D, 0, -33, st, { climb: false });
   for (const [x, z] of [[-14, 22], [14, 23], [-14, 36], [14, 37], [-12.5, 49], [12.5, 49]]) palm(W, x, z, 5.5 + r() * 3, r);
   for (const [x, z, s] of [[-12.5, 28, 1.1], [12.5, 30, 1.2]]) add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf', RK);
   D.add(-4.5, -0.2, 51.4, -1.5, 0.4, 52.8, 'boatwood'); D.add(2, -0.2, 51.8, 5, 0.4, 53.2, 'boatwood');
@@ -3603,7 +3600,7 @@ function islandsSD() {
       ],
     },
     sites: [{ id: 'A', min: [32, 0, -80], max: [66, 0, -54] }, { id: 'B', min: [-60, 0, -80], max: [-36, 0, -50] }],
-    peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: -67, z0: -88, n: 145, cell: 1, levels: [ISL.SB, 3, MD, 6, QD, 9], band: 0.6, stairs: st })); },
+    peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: -67, z0: -88, n: 145, cell: 1, levels: [ISL.SB, 3, MD, 6, QD, 9], band: 0.6, stairs: st, drops: skDrops })); },
   };
   return map;
 }
