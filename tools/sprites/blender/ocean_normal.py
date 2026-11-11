@@ -5,7 +5,7 @@ import bpy, sys, os
 import numpy as np
 args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 PX = int(args[0]) if args else 256; CHOP = float(args[1]) if len(args) > 1 else 0.0; WIND = float(args[2]) if len(args) > 2 else 6.0
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../../public/sprites/proof/ripplenormal_ocean.png')
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../../public/sprites/ocean_normal.png')
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.mesh.primitive_plane_add(size=2); o = bpy.context.object
 m = o.modifiers.new('ocean', 'OCEAN'); m.geometry_mode = 'GENERATE'

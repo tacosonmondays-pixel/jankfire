@@ -15,8 +15,8 @@ const W = (deep, shal, o = {}) => ({ kind: 'water', deep, shal, a: [0.5, 0.9], a
 export const LIQ = {
   water: W(0x0e5fd8, 0x3fd8ff, { a: [0.55, 0.9] }),
   poolwater: W(0x1296c8, 0x9cf6ff, { a: [0.32, 0.8], amp: 0.02, len: 2.4, foam: 0.7 }),
-  sea: W(0x0a6cc8, 0x34f2d6, { a: [0.36, 0.95], amp: 0.34, len: 24, swell: 1, refl: 0.55 }),
-  seanorth: W(0x0a2c44, 0x2a7a84, { a: [0.72, 0.97], amp: 0.62, len: 32, swell: 1, foam: 1.2, spark: 0.8, refl: 0.6, caus: 0.4 }),
+  sea: W(0x0a6cc8, 0x34f2d6, { a: [0.36, 0.95], amp: 0.34, len: 24, swell: 1, refl: 0.55, ocean: 1 }),
+  seanorth: W(0x0a2c44, 0x2a7a84, { a: [0.72, 0.97], amp: 0.62, len: 32, swell: 1, foam: 1.2, spark: 0.8, refl: 0.6, caus: 0.4, ocean: 1 }),
   seawater: W(0x06142a, 0x1a4e6e, { a: [0.82, 0.98], amp: 0.22, len: 18, swell: 0.6, foam: 0.7, spark: 0.8, refl: 0.7, caus: 0.3 }),
   lakewater: W(0x02060e, 0x0d2638, { a: [0.78, 0.97], amp: 0.06, len: 7, foam: 0.4, spark: 1, refl: 0.8, caus: 0.25 }),
   oil: W(0x040306, 0x120e18, { a: [0.94, 0.99], amp: 0.62, len: 32, swell: 1, foam: 0, spark: 0.7, refl: 0.85, sheen: 1, caus: 0 }), // (rides the north sea's waves)
@@ -298,6 +298,7 @@ export function liquidMaterial(key, opts = {}) {
   let fs;
   if (L.kind === 'water') {
     fs = WATER_FS;
+    if (L.ocean) { U.uRip = OCEAN; oceanMap(); }
     Object.assign(U, { uDeep: { value: col3(L.deep) }, uShal: { value: col3(L.shal) }, uA: { value: new THREE.Vector2(...L.a) }, uFoam: { value: L.foam },
       uSpark: { value: L.spark }, uRefl: { value: L.refl }, uSheen: { value: L.sheen }, uCaus: { value: L.caus } });
   } else {
@@ -331,10 +332,21 @@ function lqDefines(m) {
     if (q >= 1) d.LQ_SPARK2 = '';
     if (L.foam > 0) d.LQ_FOAM = '';
     if (q === 0) d.LQ_CHEAP = '';
-    if (q > 0 && SH.uRip.value) d.LQ_NMAP = ''; // painted ripples (setRippleMap)
+    if ((q > 0 && !L.ocean && SH.uRip.value) || (q >= 2 && L.ocean && OCEAN.value)) d.LQ_NMAP = ''; // painted ripples (setRippleMap) on ponds and pools; the open seas wear the ocean map at Mid and up
   }
   const k = JSON.stringify(d);
   if (m.userData.dk !== k) { m.defines = d; m.userData.dk = k; m.needsUpdate = true; }
+}
+// the open seas (liquids marked ocean): a wave normal map read off Blender's Ocean modifier
+// (tools/sprites/blender/ocean_normal.py), their own uniform so ponds and pools keep the drawn rings. loads the first
+// time a sea is built off Potato; until then (and if it fails) the sea is the plain shader
+const OCEAN = { value: null };
+let oceanAsked = false;
+function oceanMap() {
+  if (oceanAsked || SH.uQ.value < 2) return;
+  oceanAsked = true;
+  const t = new THREE.TextureLoader().load('/sprites/ocean_normal.png', () => { OCEAN.value = t; for (const m of MATS.values()) lqDefines(m); });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.NoColorSpace;
 }
 // option B: painted water ripples on / off (main.js, from Settings). the map loads the first time it's wanted
 let ripTex = null;
@@ -343,4 +355,4 @@ export function setRippleMap(on) {
   SH.uRip.value = on ? ripTex : null;
   for (const m of MATS.values()) lqDefines(m);
 }
-export function setLiquidQ(i) { SH.uQ.value = i; for (const m of MATS.values()) lqDefines(m); }
+export function setLiquidQ(i) { SH.uQ.value = i; if ([...MATS.values()].some((m) => m.userData.L.ocean)) oceanMap(); for (const m of MATS.values()) lqDefines(m); }
