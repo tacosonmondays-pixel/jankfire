@@ -25,8 +25,8 @@ skipped bit) · **B** / **C** (that session's part; faked in the run) · **BLOCK
 | name | talk to Gordo | Gordo at the returns counter | works | |
 | bins | pick up a lost property weapon | `bottom:lostfound` | works | |
 | vend | shoot the dead vending machine (interact) | `bottom:lostfound` | stand-in | a glowing USE spot, not a vending machine you shoot (the loot drop: systems) |
-| swing | grapple onto the Wok Roofs | `bottom:rooftops`: the roof stack east of the depot's yard, 10-12 m up, wok dishes on them | works (tp) | the zone fires on the roof; the e2e teleports up there (grappling up by hand isn't driven headless). Dumpling's score is a talk only |
-| line | ride a washing line back to the Lost & Found | `bottom:lostfound` | works | walked; any way back counts |
+| swing | grapple onto the Wok Roofs | `bottom:rooftops`: the roof stack east of the depot's yard, 10-12 m up, wok dishes on them | works, hand grapple re-testing | a yellow ring on the tall roof's yard edge, GRAPPLE UP! callout with the key; Dumpling scores you when you land (talkAt arrive) |
+| line | ride a washing line back to the Lost & Found | `bottom:lostfound` | works, line ride re-testing | Dumpling's washing line runs from the tall roof down to the depot's front steps (F to grab it), RIDE IT HOME callout |
 | dinner | talk to Auntie | Auntie at the fire barrel | works | |
 | sleep | sleep (interact) | `bottom:lostfound` | stand-in | a USE spot in the hall, not the RETURNS box bed |
 
@@ -34,11 +34,11 @@ skipped bit) · **B** / **C** (that session's part; faked in the run) · **BLOCK
 | step | goal | where | status | notes |
 |---|---|---|---|---|
 | brief | talk to Sharon | her soup stall in the market (`bottom:soup_kitchen`) | works | |
-| car | steal a car | a sedan parked at the market (+ the two in the depot) | fixed, re-testing | was BLOCKED: no car near the market, no waypoint, and getting in never told the quest engine. All three fixed |
+| car | steal a car | a sedan parked at the market (+ the two in the depot) | works | was BLOCKED: no car near the market, no waypoint, and getting in never told the quest engine. All three fixed (run 5: got in) |
 | pot | load the soup pot | `bottom:soup_kitchen` | works | |
 | drive | drive to the Ring Road | `commute:ring_road` (the highway's foot, r 14) | works (on foot) | the zone fires; driving there is untested headless |
 | ambush | survive the Unpaid (90 s) | | C | |
-| deliver | deliver the soup | `gut:border` (the gate) | fixed, re-testing | was finishing by itself the moment you held the soup; now you have to get to the gate, and the trade post talk opens there |
+| deliver | deliver the soup | `gut:border` (the gate) | works | was finishing by itself the moment you held the soup; now you have to get to the gate, and the trade post talk opens there (run 5) |
 
 ## m03 SOMETHING'S DIGESTING
 | step | goal | where | status | notes |
