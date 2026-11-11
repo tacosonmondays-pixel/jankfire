@@ -5,6 +5,7 @@ export const PATCH_NOTES = [
     'ISLANDS: the sea stopped being instant death. float, paddle to the next island, climb out. no diving, nobody hides under the waves.',
     'swim off the map and you get the RETURN TO THE MAP countdown, then you sleep with the fishes. same on Islands Plant & Defuse.',
     'bots float too. they used to drown constantly. now they have to be shot like everyone else.',
+    'ZOMBIES: squad bots learned what stairs are for. they buy the upstairs shutters now, and they can find the power switch on every map.',
   ] },
   { v: '7.4', date: '2026-11-10', title: 'GROUND FLOOR, AND ANOTHER FLOOR', items: [
     'two new zombies maps, both with an upstairs: JANKFIELD HIGH and SECOND OPINION GENERAL. take the stairs. or the ramp. it is a ramp, legally.',
