@@ -148,17 +148,21 @@ function hospital() {
   for (const x of [-7, 7]) B.add(x - 0.4, 0, 5.6, x + 0.4, F - T, 6.4, 'plaster');
   B.add(-10, F - T, 5.8, 10, F, 6.2, 'plaster');
   for (const z of [-7, 3.6]) for (const x of [-5.5, 5.5]) chairs(x, 0, z, 0);
+  chairs(5.5, 0, -3.5, 0); chairs(-5.5, 0, 0.9, 0);
   for (const [x, z] of [[-9, -9], [9, -9], [-9, 23.2], [9, 23.3]]) B.box(x, 0.4, z, 0.9, 0.8, 0.9, 'brick', K('planter', x, z)); // plants doing better than the patients
   B.box(-8.6, 0.45, 20, 0.8, 0.9, 2, 'sheet', K('gurney', -8.6, 20, 1)); small('wheelchair', -7, 11.6, 1, 0, 0.7, 1.0, 'carblack'); small('ivstand', 8.6, 12.4, 0, 0, 0.5, 1.9);
   // ---- PHARMACY: the counter, shelves of pills behind it, somewhere to wait for your number
   for (let x = -23; x < -14; x += 2) B.add(x - 1, 0, 12.6, x + 1, 1.1, 13.8, 'white', K('counter', x, 13.2, 2));
   for (const x of [-27, -22.5, -17]) for (const z of [17.25, 18.75, 20.25]) B.add(x - 0.35, 0, z - 0.75, x + 0.35, 2.2, z + 0.75, 'pills', K('pillshelf', x, z, 1));
   chairs(-14, 0, 6.9, 0); B.box(-11, 0.4, 23, 0.9, 0.8, 0.9, 'brick', K('planter', -11, 23)); small('wheelchair', -27.5, 10.5, 3, 0, 0.7, 1.0, 'carblack');
+  for (const z of [17.25, 18.75, 20.25]) B.add(-12.85, 0, z - 0.75, -12.15, 2.2, z + 0.75, 'pills', K('pillshelf', -12.5, z, 1)); chairs(-26, 0, 6.9, 0);
   // ---- the wards: beds down the walls, a curtain and a monitor each
   for (const y of [0, F]) { // Ward A, and Ward B straight above it
     for (const z of [-21.5, -10, 2]) { bed(-28.6, y, z, 1); curtain(-28.4, y, z + 1.1, 0); small('monitor', -29.3, z - 0.9, 3, y, 0.5, 1.3); }
     for (const z of [-21, -7.5]) { bed(-11.4, y, z, -1); curtain(-11.6, y, z + 1.1, 2); small('ivstand', -10.6, z - 0.9, 0, y, 0.5, 1.9); }
     for (const z of [-15, 0]) B.box(-20, y + 0.45, z, 0.5, 0.9, 0.8, 'metal', K('trolley', -20, z, 1, y)); // a trolley of things you don't want to know about
+    for (const z of [-18, -12, -6]) { bed(-21.1, y, z, -1); bed(-18.9, y, z, 1); small('ivstand', -20, z + 0.75, 0, y, 0.5, 1.9); curtain(-21.2, y, z + 1.3, 0); curtain(-18.8, y, z + 1.3, 2); } // an island of beds down the middle
+    for (const x of [-15, -13]) B.add(x - 1, y, 2.9, x + 1, y + 1.1, 4.1, 'white', K('counter', x, 3.5, 2, y)); small('monitor', -16.6, 3.5, 2, y, 0.5, 1.3); // the nurses' station
     small('wheelchair', -19, 4.4, 2, y, 0.7, 1.0, 'carblack'); B.box(-15.5, y + 0.45, -22.6, 2, 0.9, 0.8, 'sheet', K('gurney', -15.5, -22.6, 0, y));
     B.add(-24.5, y, 5.1, -21.5, y + 0.45, 5.7, 'blue', K('bench', -23, 5.4, 0, y));
   }
@@ -172,33 +176,48 @@ function hospital() {
   const power = { at: [29.7, 1.6, -9], n: [-1, 0, 0] };
   B.add(29.6, 1.0, -9.5, 30, 2.2, -8.5, 'metal');
   B.box(18.5, 0.45, -16.5, 0.8, 0.9, 0.5, 'metal', K('trolley', 18.5, -16.5)); B.add(11, 0, -7.1, 14, 0.45, -6.5, 'blue', K('bench', 12.5, -6.8));
+  for (const [x, z] of [[15.5, -9.5], [21.5, -17]]) B.box(x, 0.45, z, 2.2, 0.9, 0.9, 'metal', K('slab', x, z));
+  for (let k = 0; k < 4; k++) B.add(10.2, 0, -13.3 + k * 1.3, 11, 2.4, -12 + k * 1.3, 'morgue', K('morgue', 10.6, -12.65 + k * 1.3, 3)); // more drawers down the west wall
+  B.box(24, 0.45, -10.5, 2, 0.9, 0.8, 'sheet', K('gurney', 24, -10.5)); B.box(25, 0.45, -16.5, 2, 0.9, 0.8, 'sheet', K('gurney', 25, -16.5)); B.box(13, 0.45, -15.5, 0.8, 0.9, 0.5, 'metal', K('trolley', 13, -15.5));
+  B.add(14.5, 0, -6.8, 16.5, 0.9, -6.2, 'metal', K('scrubsink', 15.5, -6.5, 2));
   // ---- X-RAY: the table and its arm, a lead screen, seats. the mystery crate
   { const t = K('xray', 16, 3.65, 2); B.box(16, 0.45, 3, 2.4, 0.9, 1.0, 'metal', t); B.add(15.6, 0, 4.2, 16.4, 2.7, 4.7, 'metal', t); }
   B.add(20.5, 0, 0.5, 20.7, 2, 4, 'glassblock');
   chairs(13.5, 0, 23.3, 2); small('wheelchair', 23, 21, 0, 0, 0.7, 1.0, 'carblack'); B.box(24, 0.45, -4.6, 2, 0.9, 0.8, 'sheet', K('gurney', 24, -4.6)); small('monitor', 18.6, 5.4, 2, 0, 0.5, 1.3);
+  { const t = K('xray', 22, 10); B.box(22, 0.45, 10.65, 2.4, 0.9, 1.0, 'metal', t); B.add(21.6, 0, 8.95, 22.4, 2.7, 9.45, 'metal', t); } // a second bay
+  B.add(21.9, 0, 1.2, 23.1, 1.1, 3.2, 'white', K('counter', 22.5, 2.2, 1)); chairs(10.6, 0, 7, 3); B.add(25, 0, 23.1, 28, 0.45, 23.7, 'blue', K('bench', 26.5, 23.4));
+  for (const z of [-5, -3.5]) B.add(29.05, 0, z - 0.75, 29.75, 2.2, z + 0.75, 'pills', K('pillshelf', 29.4, z, 1)); curtain(12.6, 0, 19.5, 0); curtain(12.6, 0, 11.5, 0);
   const crate = { at: [16, 0, 15], price: 950 };
   B.add(15.1, 0, 14.55, 16.9, 0.9, 15.45, 'crate');
   // ---- UPSTAIRS CORRIDOR: benches, a plant, a wheelchair somebody walked away from
   for (const x of [-4, 3]) B.add(x - 1.5, F, -13.2, x + 1.5, F + 0.45, -12.6, 'blue', K('bench', x, -12.9, 0, F));
   B.box(-9.2, F + 0.4, -11.2, 0.9, 0.8, 0.9, 'brick', K('planter', -9.2, -11.2, 0, F)); small('wheelchair', 7, -17, 3, F, 0.7, 1.0, 'carblack');
+  B.box(7.5, F + 0.45, -13, 2, 0.9, 0.8, 'sheet', K('gurney', 7.5, -13, 0, F)); B.box(9.2, F + 0.4, -23, 0.9, 0.8, 0.9, 'brick', K('planter', 9.2, -23, 0, F));
   // ---- CHILDREN'S WARD: small beds, building blocks, a play mat, a little table
   for (const z of [18, 21.6]) bed(-28.9, F, z, 1, 'kidbed', 1.6);
   for (const z of [10.5, 21]) bed(-11.2, F, z, -1, 'kidbed', 1.6);
   for (const [x, z, s, m] of [[-18, 13, 0.9, 'dyemagenta'], [-17.2, 13.6, 0.6, 'dyeyellow'], [-21, 16, 0.7, 'dyeblue']]) B.box(x, F + s / 2, z, s, s, s, m);
   D.add(-24, F, 10, -16, F + 0.02, 18, 'pink'); D.add(-18.2, F + 0.9, 12.8, -17.8, F + 1.3, 13.2, 'dyemint');
-  B.box(-15, F + 0.4, 20.5, 2.2, 0.8, 2.2, 'wood', K('table', -15, 20.5, 0, F)); chairs(-24, F, 6.9, 0); B.box(-28.9, F + 0.4, 11.5, 0.9, 0.8, 0.9, 'brick', K('planter', -28.9, 11.5, 0, F));
+  B.box(-15, F + 0.4, 20.5, 2.2, 0.8, 2.2, 'wood', K('table', -15, 20.5, 0, F)); chairs(-25.2, F, 6.9, 0); B.box(-28.9, F + 0.4, 11.5, 0.9, 0.8, 0.9, 'brick', K('planter', -28.9, 11.5, 0, F));
+  bed(-11.2, F, 18.6, -1, 'kidbed', 1.6); B.box(-25.5, F + 0.4, 20, 2.2, 0.8, 2.2, 'wood', K('table', -25.5, 20, 0, F)); B.add(-14.5, F, 6.6, -11.5, F + 0.45, 7.2, 'blue', K('bench', -13, 6.9, 0, F));
   // ---- STAFF LOUNGE: a sofa that has seen things, a table, the coffee machine
   B.box(-6, F + 0.35, 22.4, 4, 0.7, 1.2, 'carred', K('sofa', -6, 22.4, 2, F));
   B.box(4.5, F + 0.4, 13, 2.2, 0.8, 2.2, 'wood', K('table', 4.5, 13, 0, F)); B.add(-9.7, F, 8, -9.1, F + 1.3, 9.6, 'metal', K('coffee', -9.4, 8.8, 0, F));
-  B.box(9, F + 0.4, 8, 0.9, 0.8, 0.9, 'brick', K('planter', 9, 8, 0, F)); B.add(4, F, 23.1, 7, F + 0.45, 23.7, 'blue', K('bench', 5.5, 23.4, 0, F));
+  B.box(9, F + 0.4, 7, 0.9, 0.8, 0.9, 'brick', K('planter', 9, 7, 0, F)); B.add(4, F, 23.1, 7, F + 0.45, 23.7, 'blue', K('bench', 5.5, 23.4, 0, F));
+  B.box(-4, F + 0.4, 12.5, 2.2, 0.8, 2.2, 'wood', K('table', -4, 12.5, 0, F)); B.box(3, F + 0.35, 7, 4, 0.7, 1.2, 'carred', K('sofa', 3, 7, 0, F)); B.add(-6, F, 6.4, -4, F + 1.1, 7.6, 'white', K('counter', -5, 7, 0, F)); chairs(9.4, F, 10.2, 1);
   // ---- OPERATING THEATRE: the table, the big lamp, a trolley, scrub sinks
   B.box(20, F + 0.5, -15, 1.1, 1.0, 2.4, 'sheet', K('optable', 20, -15, 0, F)); W.P('hospkit', 20, -15, 0, { v: 'oplamp', y: F });
   B.box(22.6, F + 0.45, -16, 0.8, 0.9, 0.5, 'metal', K('trolley', 22.6, -16, 0, F));
   for (const x of [25, 27]) B.add(x - 1, F, -6.8, x + 1, F + 0.9, -6.2, 'metal', K('scrubsink', x, -6.5, 2, F));
   small('monitor', 18.4, -16.6, 0, F, 0.5, 1.3); small('ivstand', 21.4, -13.4, 0, F, 0.5, 1.9); B.box(12.5, F + 0.45, -22, 2, 0.9, 0.8, 'sheet', K('gurney', 12.5, -22, 0, F));
+  for (const z of [-9.2, -7.7]) B.add(10.25, F, z - 0.75, 10.95, F + 2.2, z + 0.75, 'pills', K('pillshelf', 10.6, z, 1, F)); // supplies
+  for (const x of [13, 15]) B.add(x - 1, F, -6.8, x + 1, F + 0.9, -6.2, 'metal', K('scrubsink', x, -6.5, 2, F));
+  B.box(26, F + 0.45, -17.5, 2.2, 0.9, 0.9, 'metal', K('slab', 26, -17.5, 0, F)); B.box(25.5, F + 0.45, -11, 2, 0.9, 0.8, 'sheet', K('gurney', 25.5, -11, 0, F)); B.box(17.4, F + 0.45, -13.6, 0.8, 0.9, 0.5, 'metal', K('trolley', 17.4, -13.6, 0, F)); B.add(24.5, F, -22.9, 27.5, F + 0.45, -22.3, 'blue', K('bench', 26, -22.6, 0, F));
   // ---- INTENSIVE CARE: beds with a monitor and a drip each, seats for whoever is waiting
   for (const z of [8, 12.5, 17]) { bed(18, F, z, 1); small('monitor', 16.4, z + 0.9, 3, F, 0.5, 1.3); small('ivstand', 16.5, z - 0.85, 0, F, 0.5, 1.9); curtain(18.2, F, z + 1.7, 0); }
-  chairs(10.6, F, 7.5, 3); B.box(22, F + 0.45, -3, 0.8, 0.9, 0.5, 'metal', K('trolley', 22, -3, 0, F));
+  chairs(10.6, F, 7.5, 3); B.box(24.5, F + 0.45, -3, 0.8, 0.9, 0.5, 'metal', K('trolley', 24.5, -3, 0, F));
+  for (const z of [8, 12.5, 17]) { bed(23, F, z, -1); small('monitor', 24.9, z + 0.9, 1, F, 0.5, 1.3); curtain(22.8, F, z + 1.7, 2); } // a second row, heads to the stairwell wall
+  for (const x of [20, 22]) B.add(x - 1, F, -3.1, x + 1, F + 1.1, -1.9, 'white', K('counter', x, -2.5, 0, F)); // the nurses' station
 
   // ---- dressing (look-only): signs, the wall rail, lightboxes
   sg('x', 23.77, 0, 3.6, 7, 0.9, 'sgnhosp'); // over the front windows, inside
