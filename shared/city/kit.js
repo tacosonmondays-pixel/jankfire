@@ -155,16 +155,33 @@ export function hook(B, x, y, z, o = {}) {
 // moves. all randoms come from the caller's own stream r (never the one that laid the boxes).
 export const KIT = { on: true }; // (off: the generators place none of it. tests/story/bottomkit.test.mjs builds both ways)
 const YAW4 = [0, -Math.PI / 2, Math.PI, Math.PI / 2]; // a model's front (-z) turned to face out of side 0..3
-const PAINT = [0xc8202c, 0x2050b0, 0xe8e8e8, 0x26262a, 0x2a8a4a, 0xe8c020, 0xff7ab0, 0x5fd3c6]; // public/js/city/props.js PAINTS: the only colours a prop's paint slot takes
-// the paint variant nearest a tint (a prop can't carry a hex yet), and how far off it is
+const PAINT = [0xc8202c, 0x2050b0, 0xe8e8e8, 0x26262a, 0x2a8a4a, 0xe8c020, 0xff7ab0, 0x5fd3c6, 0xff9a4d, 0x9a7aff]; // public/js/city/props.js PAINTS: the only colours a prop's paint slot takes
+// the paint variant nearest a tint (a prop can't carry a hex yet), and how far off it is. the first eight are variants
+// 0-7; the two added for the containers (orange, purple) are asked for as -1 and -2, so every older number wraps as it did
 export function paintOf(tint) {
   let best = 0, bd = 1e9;
   for (let i = 0; i < PAINT.length; i++) { const d = Math.hypot((PAINT[i] >> 16) - (tint >> 16), ((PAINT[i] >> 8) & 255) - ((tint >> 8) & 255), (PAINT[i] & 255) - (tint & 255)); if (d < bd) bd = d, best = i; }
-  return [best, bd];
+  return [best < 8 ? best : 7 - best, bd];
+}
+// the pieces' sizes as built (metres). each .glb carries them in its 'jf' meta, but the generator runs where no model is
+// ever loaded (the server, the chunk worker), so they are kept here: tests/story/bottomkit.test.mjs checks this table
+// against the files. corner / rib: height; ribW: full and half strip; doors: w, h; eave: the runs; rail: what each
+// handrail climbs; poleB: height, then the sign frame's foot and top over its origin (the rail block's top)
+export const KIT_SIZE = { corner: 3.3, rib: 3.3, ribW: [1, 0.5], doors: [2.4, 3.1], eave: [6, 4, 2], rail: [0.54, 0.25], poleB: [5, 3.7, 4.4] };
+// a piece H tall on a wall h tall under a 0.3 slab: as built when its top lands in the slab, shrunk a little on the
+// lowest cubes (2.8) so it doesn't stand proud of the roof
+const fit = (h, H) => Math.min(1, (h + 0.28) / H);
+// which runs of tin lip cover a wall L long: 6 m pieces, then a 4 or a 2 for the rest (they may overlap; 0.3 short or
+// over at an end is fine, the pieces are open ended)
+function eaveRuns(L) {
+  const out = []; let rest = L;
+  while (rest > 6.6) { out.push(6); rest -= 6; }
+  if (rest > 4.6 && rest < 5.4 && !out.length) out.push(4, 2); else if (rest > 4.6) out.push(6); else if (rest > 2.6) out.push(4); else if (rest > 0.6) out.push(2);
+  return out;
 }
 // dress one cube (what cube() returned). hid(x, y, z, c) = is this point inside something solid other than c: pieces
 // on a face with a wall right in front of it are skipped (nobody can stand there to see them).
-// o, per side 0..3: on (dress this side at all), corner (a post on the corner it fronts), eave (chance of a lip);
+// o, per side 0..3: on (dress this side at all), corner (a post at one end of it), eave (chance of a lip);
 // stair [x, z0, z1] (an outside stair hugs that side)
 export function cubeKit(B, c, r, hid, o = {}) {
   const { x0, x1, z0, z1, y, h } = c;
@@ -173,37 +190,52 @@ export function cubeKit(B, c, r, hid, o = {}) {
   const put = (id, side, a, yy, s, v) => { const p = at(side, a); B.prop(id, p[0], yy, p[1], YAW4[side], s, v); };
   const [pv, pd] = paintOf(c.tint), rv = c.roofTint ? paintOf(c.roofTint)[0] : pv;
   const long = x1 - x0 >= z1 - z0 ? 0 : 1; // which pair of sides is the long one (0: the x walls, 1: the z walls)
+  const posted = new Set(); // (corners that have their post: two walls share each one)
   for (let side = 0; side < 4; side++) {
     const [a0, a1] = side % 2 ? [z0, z1] : [x0, x1], mid = (a0 + a1) / 2, ops = c.ops[side];
     if (o.on && !o.on[side]) continue;
     const stair = o.stair && ((side === 1 && o.stair[0] > x1) || (side === 3 && o.stair[0] < x0)) ? o.stair : null;
     // windows: a frame with a life in it on every 1.4 x 1.1 opening (not where a shutter already fills it)
     for (const [oa, ob, oy0] of ops) if (oy0 > 0.5) {
-      const id = 'cube_window_' + 'bbbbbbaaac'[(r() * 10) | 0], v = (r() * 8) | 0, // (mostly the cheap one; c is 620 triangles)
+      const id = 'cube_window_' + 'bbac'[(r() * 4) | 0], v = (r() * 8) | 0, // (half the plain one, a quarter each the barred and the caged)
         hg = c.hung.find((q) => q[0] === side && q[1] === oa);
       if ((hg && hg[3] && hg[2] === 'shutter') || (stair && oa < stair[1] - 1 && ob > stair[2])) continue; // (or the stair climbs across it)
       if (seen(side, (oa + ob) / 2, y + oy0 + 0.5)) put(hg && hg[3] ? 'cube_window_a' : id, side, (oa + ob) / 2, y + oy0, 1, v); // (an ac unit in it: the flat barred one)
     }
-    // the corner whose front is this side: boards, a downpipe, a meter box (scaled so its top buries in the slab)
-    const ca = side < 2 ? a0 : a1, cd = side < 2 ? 1 : -1;
-    if ((!o.corner || o.corner[side]) && ops.every(([oa, ob]) => (cd > 0 ? oa - a0 : a1 - ob) > 1.15) && !(stair && ca > stair[2] - 1.2 && ca < stair[1] + 1.6) && seen(side, ca + cd * 0.5, y + 1.5)) put('cube_corner', side, ca, y, (h + 0.05) / 3.1, 0);
-    // a tin lip under the roof slab in 2 m runs (the last one overlaps back from the far end)
-    if (r() < (o.eave ? o.eave[side] : 1)) for (let a = a0 + 1; a < a1 + 0.99; a += 2) {
-      const e = Math.min(a, a1 - 1);
-      if (stair && e > stair[2] - 1.4 && e < stair[1] + 1.4) continue; // (it would poke through the steps)
-      if (seen(side, e, y + h - 0.3)) put('cube_eave', side, e, y + h, 1, rv);
+    // a corner post at one end of this wall: boards, a downpipe, a meter box. cube_corner stands at the wall's left end
+    // (seen from outside), cube_corner_b is its mirror for the right end: which hand is tried first is a coin toss, so
+    // the downpipes aren't all on the same side
+    const hand = r() < 0.5 ? [0, 1] : [1, 0];
+    if (!o.corner || o.corner[side]) for (const m of hand) {
+      const lo = (side < 2) === !m, ca = lo ? a0 : a1, key = at(side, ca).map((q) => q.toFixed(2)).join();
+      if (posted.has(key) || !ops.every(([oa, ob]) => (lo ? oa - a0 : a1 - ob) > 1.15) || (stair && ca > stair[2] - 1.2 && ca < stair[1] + 1.6) || !seen(side, ca + (lo ? 0.5 : -0.5), y + 1.5)) continue;
+      put(m ? 'cube_corner_b' : 'cube_corner', side, ca, y, fit(h, KIT_SIZE.corner), 0); posted.add(key);
+      break;
     }
-    if (!c.container || pd > 60) continue; // (ribs and doors cover the wall: only where a paint variant matches it. pink, teal and yellow do; orange and purple don't)
-    if ((side % 2) === long) { // ribs at 1 m steps along a container's long walls, cut round the openings
-      const s = h / 2.8; let from = a0;
+    // a tin lip under the roof slab: 6 m and 4 m runs, a bare 2 m one for what's left. only the 6 m piece has a rag on
+    // it, so a front shows one at most (the 2 m piece with a rag, cube_eave, isn't used any more)
+    if (r() < (o.eave ? o.eave[side] : 1)) {
+      const runs = eaveRuns(a1 - a0), T = runs.reduce((p, q) => p + q, 0), lap = runs.length > 1 ? Math.max(0, T - (a1 - a0)) / (runs.length - 1) : 0;
+      if (r() < 0.5) runs.reverse();
+      let e = T > a1 - a0 && runs.length > 1 ? a0 : (a0 + a1 - T) / 2;
+      for (const L of runs) {
+        const m = e + L / 2; e += L - lap;
+        if (stair && m + L / 2 > stair[2] - 0.4 && m - L / 2 < stair[1] + 0.4) continue; // (it would poke through the steps)
+        if (seen(side, m, y + h - 0.3)) put(L === 6 ? 'cube_eave6' : L === 4 ? 'cube_eave4' : 'cube_eave_b', side, m, y + h, 1, rv);
+      }
+    }
+    if (!c.container || pd > 60) continue; // (ribs and doors cover the wall: only where a paint variant matches it. all five container colours have one now)
+    if ((side % 2) === long) { // ribs along a container's long walls, cut round the openings: 1 m strips, a half strip to finish
+      const k = fit(h, KIT_SIZE.rib), w = KIT_SIZE.ribW[0] * k, hw = KIT_SIZE.ribW[1] * k; let from = a0;
       for (const [oa, ob, oy0] of [...ops, [a1, a1, 0]]) {
-        const to = oa - (oy0 > 0.5 ? 0.16 : 0.02), n = Math.floor((to - from) / s);
-        for (let i = 0; i < n; i++) { const a = from + (to - from - n * s) / 2 + (i + 0.5) * s; if (seen(side, a, y + 1.4)) put('container_rib', side, a, y, s, pv); }
+        const to = oa - (oy0 > 0.5 ? 0.16 : 0.02), n = Math.max(0, Math.floor((to - from) / w)), half = to - from - n * w >= hw ? 1 : 0, a00 = from + (to - from - n * w - half * hw) / 2;
+        for (let i = 0; i < n; i++) { const a = a00 + (i + 0.5) * w; if (seen(side, a, y + 1.4)) put('container_rib', side, a, y, k, pv); }
+        if (half && seen(side, a00 + n * w + hw / 2, y + 1.4)) put('container_rib_half', side, a00 + n * w + hw / 2, y, k, pv);
         from = ob + (oy0 > 0.5 ? 0.16 : 0.02);
       }
-    } else { // the doors on a short end, when nothing is cut in its middle
-      const s = (h - 0.15) / 2.6, hw = 1.2 * s + 0.15;
-      if (a1 - a0 > 2 * hw && ops.every(([oa, ob]) => ob < mid - hw || oa > mid + hw) && seen(side, mid, y + 1.3)) put('container_doors', side, mid, y, s, pv);
+    } else { // the doors on a short end, when nothing is cut in its middle (3.1 tall: their top is in the slab or just under it)
+      const hw = KIT_SIZE.doors[0] / 2 + 0.15;
+      if (a1 - a0 > 2 * hw && ops.every(([oa, ob]) => ob < mid - hw || oa > mid + hw) && seen(side, mid, y + 1.3)) put('container_doors', side, mid, y, 1, pv);
     }
   }
 }

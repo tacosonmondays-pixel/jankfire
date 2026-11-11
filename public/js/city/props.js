@@ -126,7 +126,10 @@ export const propModel = (id) => MODELS.get(id) || load(id);
 export const propStates = () => Object.fromEntries([...MODELS].map(([k, v]) => [k, v.state]));
 
 // instances: [{ id, x, y, z, yaw, s, v }] -> a Group of InstancedMeshes (caller disposes the old group with freeProps)
-const PAINTS = [0xc8202c, 0x2050b0, 0xe8e8e8, 0x26262a, 0x2a8a4a, 0xe8c020, 0xff7ab0, 0x5fd3c6];
+const PAINTS = [0xc8202c, 0x2050b0, 0xe8e8e8, 0x26262a, 0x2a8a4a, 0xe8c020, 0xff7ab0, 0x5fd3c6, 0xff9a4d, 0x9a7aff];
+// a variant number wraps over the first eight, as it always did (washing lines count far past 8); the colours added
+// after those (container orange, container purple) are asked for from below zero: -1, -2 (shared/city/kit.js paintOf)
+const paintHex = (v) => PAINTS[v < 0 ? Math.min(PAINTS.length - 1, 7 - v) : v % 8];
 const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), col = new THREE.Color();
 // how far out each prop keeps its full Blender model, as a share of the preset's propsHi: small things that repeat
 // a thousand times go simple sooner, landmarks stay detailed further
@@ -139,7 +142,9 @@ DETAIL.smilesign = 1; DETAIL.tarp = 0.6; DETAIL.lostpile = 0.5; DETAIL.sofa = 0.
 const FAR = { door_bottom: 70, shutter: 60, acunit: 60, laundry_a: 90, laundry_b: 90, pchair: 70, stringlights: 80, wokdish: 70, crate_soup: 60, scooter: 70, tooth: 60, tooth_b: 60, eyeball: 70, cone: 70, skeleton_lanyard: 70, paperdrift: 90, lostpile: 90, tarp: 90, sofa: 90, fridge: 90, smilesign: 160, filecab: 100, rubble_a: 120, rubble_b: 120, tirestack: 100 };
 // the Bottom's house kit and the Long Stairs pieces: there are hundreds a chunk, so they drop to their far model early and stop being drawn past a street or two
 Object.assign(DETAIL, { cube_eave: 0.5, cube_window_a: 0.4, cube_window_b: 0.4, cube_window_c: 0.4, cube_corner: 0.4, stair_step: 0.4, stair_post: 0.4, container_doors: 0.6, longstep_a: 0.6, longstep_b: 0.6, longrail: 0.6, longplaque_a: 0.3, longplaque_b: 0.3 });
+Object.assign(DETAIL, { cube_corner_b: 0.4, cube_eave_b: 0.5, cube_eave4: 0.5, cube_eave6: 0.5, longrail_b: 0.6 }); // (the kit's second pass)
 Object.assign(FAR, { cube_eave: 90, container_rib: 90, cube_window_a: 70, cube_window_b: 70, cube_window_c: 70, cube_corner: 70, stair_step: 70, stair_post: 70, container_doors: 120, cube_roofjunk_a: 120, cube_roofjunk_b: 120, longplaque_a: 40, longplaque_b: 40 });
+Object.assign(FAR, { cube_corner_b: 70, cube_eave_b: 90, cube_eave4: 90, cube_eave6: 90, container_rib_half: 90 });
 export const propFar = (id) => FAR[id] || Infinity;
 // hiR: instances closer than this (x the prop's DETAIL) to `at` get the full Blender model, the rest its _lod1 meshes
 // (or the code model when the file has none)
@@ -159,7 +164,7 @@ export function buildPropGroup(list, hiR = 1e9, at = null, farK = 1) {
       ps0.forEach((p, i) => {
         q.setFromAxisAngle(up, p.yaw); sc.setScalar(p.s || 1); ps.set(p.x, p.y, p.z);
         im.setMatrixAt(i, m4.compose(ps, q, sc));
-        if (part.paint) im.setColorAt(i, col.setHex(PAINTS[(p.v | 0) % PAINTS.length]));
+        if (part.paint) im.setColorAt(i, col.setHex(paintHex(p.v | 0)));
       });
       im.instanceMatrix.needsUpdate = true;
       im.computeBoundingSphere();

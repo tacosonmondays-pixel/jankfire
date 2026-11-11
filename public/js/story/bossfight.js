@@ -13,6 +13,7 @@ import { actors, spawnActor, play, CLIPS } from './actors.js';
 import { makeBossRef } from './bossref.js'; // the referee's boss: where he stands, his real hitboxes, the boss bar
 import { OT } from './overtime.js';
 import { marksNear } from '/shared/city/marks.js';
+import { makeTrainFight, RP_ID } from './trainfight.js'; // REVENUE PROTECTION (m06): not an actor, its own show (the mask, the arms, THE GAP)
 
 // per boss: where he stands, his phases (hp fraction they start below: from content/bosses.js), and what each quest
 // step does to him. clip + hold = the pose he keeps afterwards
@@ -45,8 +46,10 @@ export function makeBoss(ST, { where, playScene }) {
   const S = () => ST.S;
   const bossOfKind = (k) => (HOOKS[k] ? k : Object.keys(HOOKS).find((b) => HOOKS[b].actor === k || (k && String(k).startsWith(HOOKS[b].actor))));
   const actorOf = (b) => actors.get(HOOKS[b].actor);
-  const REF = makeBossRef({ actorOf: (b) => (HOOKS[b] ? actorOf(b) : null), busy: () => !!(ST.scene && ST.scene.playing()) });
-  B.tick = REF.tick; // (every frame: boot.js)
+  const TRAIN = makeTrainFight(ST, { playScene }); B.train = TRAIN;
+  const REF = makeBossRef({ actorOf: (b) => (HOOKS[b] ? actorOf(b) : null), busy: () => !!(ST.scene && ST.scene.playing()), boxes: (c) => (c.id === RP_ID ? TRAIN.boxes() : null), own: (who) => who === 'revenue_protection' });
+  B.tick = (dt) => { REF.tick(dt); TRAIN.tick(dt); }; // (every frame: boot.js)
+  if (G.story) { G.story.fightKey = TRAIN.drive.key; G.story.fightScale = TRAIN.timeScale; } // the Blood Drive's trigger, the hit-stop on a sever (story/main.js asks)
   function pose(b, o) {
     if (!o) return; const a = actorOf(b); if (!a) return;
     if (o.variant != null) OT.variant(a, o.variant);
@@ -77,6 +80,7 @@ export function makeBoss(ST, { where, playScene }) {
   B.combat = (ev) => {
     if (!ev || typeof ev !== 'object') return;
     REF.combat(ev);
+    if (TRAIN.combat(ev)) return; // (the train fight's events are its own)
     if (ev.target === 'me' || ev.type === 'down' || ev.type === 'up') return; // (what happens to you is not his HP)
     const id = ev.boss || ev.kind || ev.target;
     // everyone else: a kill counts for the quests (goals match the enemy id or the named npc)
@@ -115,6 +119,7 @@ export function makeBoss(ST, { where, playScene }) {
     return [].concat(st.goals || [], st.goal || []).some((g) => g.type === 'killBoss' && g.boss === b);
   };
   B.frame = () => {
+    TRAIN.frame();
     const objs = S().quests.objectives ? S().quests.objectives() : [];
     const D = S().defs.bosses || {};
     for (const [b, h] of Object.entries(HOOKS)) {

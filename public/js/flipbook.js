@@ -19,7 +19,7 @@ void main() {
   gl_Position = projectionMatrix * mvPosition;
   #include <fog_vertex>
 }`;
-const FS = `uniform sampler2D uMap; uniform float uN; uniform vec3 uLit; uniform vec3 uInk; uniform float uInkK; uniform float uSoft;
+const FS = `uniform sampler2D uMap; uniform float uN; uniform vec3 uLit; uniform vec3 uInk; uniform float uInkK; uniform float uSoft; uniform float uRgb;
 varying vec2 vUv; varying vec3 vCol; varying float vAge; varying float vA;
 #include <fog_pars_fragment>
 vec4 frame( float f ) { return texture2D( uMap, ( vec2( mod( f, uN ), uN - 1.0 - floor( f / uN ) ) + vUv ) / uN ); }
@@ -29,6 +29,7 @@ void main() {
   float a = vA;
   if ( uSoft > 0.5 ) { t = mix( t, frame( min( floor( f ) + 1.0, uN * uN - 1.0 ) ), fract( f ) ); a *= t.a; if ( a < 0.01 ) discard; } // the soft kind: frames melt into each other, edges fade
   else if ( t.a < 0.5 || vA < 0.02 ) discard;
+  if ( uRgb > 0.5 ) { gl_FragColor = vec4( t.rgb * vCol * vA, t.a * vA ); return; } // a colour sheet that glows by itself (fire): premultiplied, unlit, no fog
   vec3 c = vCol * ( 0.42 + 0.66 * t.r ) * uLit;
   c = mix( c, uInk * uLit, t.g * uInkK );
   gl_FragColor = vec4( c, a );
@@ -40,7 +41,7 @@ const loader = new THREE.TextureLoader();
 const books = [];
 // flat: 1 = lying down, 0 = facing you, -1 = facing you and standing on its bottom edge
 export class Flipbook {
-  constructor(file, n, max, { flat = 0, ink = 0x1a1022, inkK = 0.85, sort = false, order = 4, soft = false } = {}) {
+  constructor(file, n, max, { flat = 0, ink = 0x1a1022, inkK = 0.85, sort = false, order = 4, soft = false, rgb = false } = {}) {
     this.max = max; this.n = 0; this.sort = sort; this.ready = false; this.failed = false;
     this.L = []; // live: { x, y, z, vx, vy, vz, s0, s1, rot, spin, t, life, a, r, g, b, drag }
     const tex = loader.load('/sprites/' + file, () => { this.ready = true; }, undefined, () => { this.failed = true; });
@@ -50,8 +51,9 @@ export class Flipbook {
     this.aAR = new THREE.InstancedBufferAttribute(new Float32Array(max * 4), 4).setUsage(THREE.DynamicDrawUsage);
     this.aCol = new THREE.InstancedBufferAttribute(new Float32Array(max * 3), 3).setUsage(THREE.DynamicDrawUsage);
     geo.setAttribute('aPS', this.aPS); geo.setAttribute('aAR', this.aAR); geo.setAttribute('aCol', this.aCol);
-    this.U = { ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog), uMap: { value: tex }, uN: { value: n }, uFlat: { value: flat }, uLit: LIT, uInk: { value: new THREE.Color(ink) }, uInkK: { value: inkK }, uSoft: { value: soft ? 1 : 0 } };
+    this.U = { ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog), uMap: { value: tex }, uN: { value: n }, uFlat: { value: flat }, uLit: LIT, uInk: { value: new THREE.Color(ink) }, uInkK: { value: inkK }, uSoft: { value: soft ? 1 : 0 }, uRgb: { value: rgb ? 1 : 0 } };
     const mat = new THREE.ShaderMaterial({ uniforms: this.U, vertexShader: VS, fragmentShader: FS, fog: true, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+      ...(rgb ? { blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor } : {}),
       polygonOffset: flat > 0, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
     this.mesh = new THREE.InstancedMesh(geo, mat, max);
     this.mesh.count = 0; this.mesh.frustumCulled = false; this.mesh.renderOrder = order; this.mesh.userData.noShadow = true;
@@ -61,7 +63,7 @@ export class Flipbook {
   spawn(o) {
     if (this.L.length >= this.max) this.L.shift();
     const c = _c.setHex(o.col ?? 0xffffff), v = o.v || ZERO;
-    this.L.push({ x: o.p[0], y: o.p[1], z: o.p[2], vx: v[0], vy: v[1], vz: v[2], s0: o.s0, s1: o.s1 ?? o.s0, rot: o.rot ?? 0, spin: o.spin ?? 0, t: 0, life: o.life, a: o.a ?? 1, r: c.r, g: c.g, b: c.b, drag: o.drag ?? 0, ride: o.ride || null, frame: o.frame ?? -1 });
+    this.L.push({ x: o.p[0], y: o.p[1], z: o.p[2], vx: v[0], vy: v[1], vz: v[2], s0: o.s0, s1: o.s1 ?? o.s0, rot: o.rot ?? 0, spin: o.spin ?? 0, t: 0, life: o.life, a: o.a ?? 1, r: c.r, g: c.g, b: c.b, drag: o.drag ?? 0, ride: o.ride || null, frame: o.frame ?? -1, loop: o.loop ?? 0 });
   }
   update(dt, cam) {
     const L = this.L;
@@ -81,7 +83,8 @@ export class Flipbook {
     for (let i = 0; i < L.length; i++) {
       const p = L[i], k = p.t / p.life;
       PS[i * 4] = p.x; PS[i * 4 + 1] = p.y; PS[i * 4 + 2] = p.z; PS[i * 4 + 3] = p.s0 + (p.s1 - p.s0) * Math.sqrt(k);
-      AR[i * 4] = p.frame >= 0 ? p.frame : k; AR[i * 4 + 1] = p.rot; AR[i * 4 + 2] = p.a * Math.min(1, (1 - k) * 4) * (p.frame >= 0 ? Math.min(1, k * 8) : 1); // (the last quarter fades; a still picture fades in too)
+      AR[i * 4] = p.frame >= 0 ? p.frame : p.loop ? (p.t * p.loop) % 1 : k; AR[i * 4 + 1] = p.rot; // (loop: plays round and round, that many times a second)
+      AR[i * 4 + 2] = p.a * Math.min(1, (1 - k) * 4) * (p.frame >= 0 ? Math.min(1, k * 8) : 1); // (the last quarter fades; a still picture fades in too)
       C[i * 3] = p.r; C[i * 3 + 1] = p.g; C[i * 3 + 2] = p.b;
     }
     this.mesh.count = L.length;

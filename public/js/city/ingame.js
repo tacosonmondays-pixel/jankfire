@@ -15,6 +15,7 @@ import { K } from '../keys.js';
 import { hud } from '../hud.js';
 import { updateBeds, stopBeds } from './beds.js';
 import { districtWeights } from '/shared/city/plan.js';
+import { startHeart, stopHeart, updateHeart, gutBeat } from './bigheart.js'; // the Big Heart, the Gut's one beat and its ground fog
 
 let S = null, hooks = null;
 const tmp = new THREE.Color();
@@ -25,6 +26,7 @@ export function startCity(def, h) {
   propEnv(G.renderer);
   S = new CityStream({ scene: G.scene, city: def.stream, preset: G.settings ? G.settings.jank : 1, boxes: BOXES });
   S.useWas = false;
+  startHeart(S.root);
   // the city code took a second to arrive and you may have started falling: put you back where the map dropped you
   // (its spawn if you're near it, else a bit above where you are) and hold you there until the ground is in
   const sp = def.spawns && def.spawns[0];
@@ -32,19 +34,25 @@ export function startCity(def, h) {
   S.holding = true;
   return S;
 }
-export function stopCity() { if (S) { S.dispose(); S = null; } stopBeds(); }
+export function stopCity() { stopHeart(); if (S) { S.dispose(); S = null; } stopBeds(); }
 export const cityStream = () => S;
 
+const GUT_FLUSH = new THREE.Color(0xa01428); // the colour the fog flushes (its beat is the Big Heart's: gutbeat.js)
 let lastCall = 0;
 export function updateCity(dt) {
   if (!S) return;
   if (G.settings && S.preset !== G.settings.jank) S.setPreset(G.settings.jank);
   S.update(G.camera, dt);
+  updateHeart(dt, S, G.camera); // (ticks the Gut's clock: the fog below reads it)
   updateBeds(G.joined ? districtWeights(S.city, G.camera.position.x, G.camera.position.z, 40) : [], dt); // the district music (fades out on the menu: the menu song is on)
   const e = S.env;
   if (S.weather.started) hud.msg('PAPER STORM', 1.6, 'brag');
   if (e && G.scene.fog) {
     G.scene.fog.color.copy(e.fog); G.scene.fog.near = e.near; G.scene.fog.far = e.far;
+    if (e.pulse > 0.01) { // the gut's fog has a heartbeat: lub, dub, rest. on each beat it closes in and flushes red
+      const k = gutBeat.k * e.pulse; // (the same lub-dub curve as before, on the heart's clock: it closes in as the wave starts at the top of the heart)
+      G.scene.fog.near = e.near * (1 - 0.4 * k); G.scene.fog.far = e.far * (1 - 0.14 * k); G.scene.fog.color.lerp(GUT_FLUSH, 0.3 * k);
+    }
     if (hooks && hooks.sky) hooks.sky({ top: e.top.getHex(), mid: e.mid.getHex(), bot: e.bot.getHex() });
     const hemi = G.scene.children.find((o) => o.isHemisphereLight), sun = G.scene.children.find((o) => o.isDirectionalLight);
     if (hemi) { hemi.color.copy(e.hemi[0]); hemi.groundColor.copy(e.hemi[1]); hemi.intensity = e.hemi[2]; }

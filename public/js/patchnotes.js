@@ -1,6 +1,23 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '7.8', date: '2026-11-11', title: 'SHINY', items: [
+    'SHADERS in settings: bloom (neon and lava actually glow), soft skin (light leaks through your mannequin like a real boy) and punchy colours. pick a level or mix your own. potato and crusty stay off unless you ask; mid and too hd get a bit by default.',
+    'if the shaders break on your machine they switch themselves off and say so. SHADERS BROKE. SHADERS OFF.',
+    'if the map ever goes pitch black the game repaints it by itself now. type /gfx in chat for a nerd readout to screenshot if your graphics look cursed.',
+  ] },
+  { v: '7.7', date: '2026-11-11', title: 'DRESS CODE', items: [
+    'COSTUMES. character > clothes has whole outfits now, one click each: corpo, rat king, mall cop, delivery guy and more. the bots have been wearing them for weeks. your turn.',
+    'click a costume again for another take on it. the maid and night shift ones want their achievements first.',
+  ] },
+  { v: '7.6', date: '2026-11-11', title: 'KABOOM, PROPERLY', items: [
+    'MOUNT KABOOM is an actual volcano now. bigger, craggy, cliffs and gullies, a lava channel down to the beach. walk up it, grapple it, fall in it. bots know the way up. (plant & defuse keeps the stairs.)',
+    'the world got furnished. real trees, street and yard stuff, market stalls, and traffic that looks like traffic: eight cars, a bus, a semi, a box truck.',
+    'rocks stopped being clones. every one is its own shape now, with little ones lying about.',
+    'bow: full draw to the body is 70 now, down from 85. headshots still delete people.',
+    'ZOMBIES: the school and the hospital got real furniture. lunch tables, lockers, hospital beds, an x-ray machine. the boxes have been let go.',
+    'ZOMBIES: and then more of it. the hospital and the school are less empty. more beds. more desks. somewhere to hide behind.',
+  ] },
   { v: '7.5', date: '2026-11-11', title: 'COME ON IN, THE WATER IS FINE', items: [
     'ISLANDS: the sea stopped being instant death. float, paddle to the next island, climb out. no diving, nobody hides under the waves.',
     'swim off the map and you get the RETURN TO THE MAP countdown, then you sleep with the fishes. same on Islands Plant & Defuse.',

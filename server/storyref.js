@@ -8,8 +8,10 @@
 //   - every hit and kill is reported through room.onStory(ev) with the real numbers
 //   - sk.hold: the enemy stands still and holds its fire (cutscenes, talks)
 //   - bosses (sk.b: server/storyboss.js): their own HP pool with layers, part hitboxes, phases and attacks
+//   - the train fight (sk.b.train: server/storytrain.js): REVENUE PROTECTION, its arms and THE GAP; the Blood Drive
 import { WEAPONS } from '../shared/weapons.js';
 import { installStoryBoss } from './storyboss.js';
+import { installStoryTrain } from './storytrain.js'; // REVENUE PROTECTION: the train fight, and the Blood Drive
 
 export const STORY_SIDE = 'you';
 const sideOf = (p) => (p.sk ? p.sk.side || 'enemy' : STORY_SIDE);
@@ -62,4 +64,5 @@ export function installStoryRef(Room) {
     if (b && this.players.get(b.id) === b) this.remove(b); // (its projectiles, ropes etc. go with it)
   };
   installStoryBoss(Room);
+  installStoryTrain(Room);
 }
