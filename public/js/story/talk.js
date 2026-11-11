@@ -104,6 +104,7 @@ export function talkKey(e) {
   if (!T) return false;
   const n = SLOTS.findIndex((s) => K.matches(s, e));
   if (n >= 0) { if (!e.repeat) pick(n); return true; }
+  if (T.opts && T.opts.length === 1 && T.i === T.lines.length - 1 && T.typed >= T.full.length && (K.matches('fire', e) || K.matches('use', e))) { if (!e.repeat) pick(0); return true; } // a one-button prompt ([FIRE], [TAKE]): your own trigger does it
   if (K.matches('use', e) || K.matches('jump', e) || K.matches('fire', e)) { if (!e.repeat) next(); return true; }
   if (K.matches('menu', e)) { endTalk(); return false; }
   return true; // nothing else happens mid-conversation (no shooting the person you're talking to)
