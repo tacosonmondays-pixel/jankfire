@@ -123,3 +123,20 @@ test('things built on the old flat ground still sit on it', () => {
   }
   assert.equal(groundY(250, 0), commuteY(250, 0), "slice.js groundY doesn't know about the hills");
 });
+
+test('the flesh ramps up the tissue cliff: walk up from the border onto the Gut and back down', async () => {
+  const { RAMPS } = await import('../../shared/city/bordersoft.js');
+  const W2 = new ChunkWorld([]);
+  for (let cx = -5; cx < 2; cx++) for (let cz = -2; cz < 0; cz++) W2.set(cx + ':' + cz, chunkBoxes(packChunk(buildChunk('slice', cx, cz))));
+  W2.sync();
+  for (const [xa, xb] of RAMPS) {
+    const pos = [xa - 2, SLICE.border.y + 0.01, -44.4];
+    const go = (tx, tz, secs) => { for (let t = 0; t < secs; t += 1 / 60) { const d = [tx - pos[0], tz - pos[2]], l = Math.hypot(...d); if (l < 0.3) break; const v = [d[0] / l * 5, -6, d[1] / l * 5]; movePlayer(pos, v, 1 / 60, W2.boxes, true); } };
+    go(xb - 0.5, -44.4, 8); // up the ramp
+    assert.ok(pos[1] > SLICE.gut.y - 0.3, `ramp ${xa}: only got to y ${pos[1].toFixed(2)} at x ${pos[0].toFixed(1)}`);
+    go(xb - 0.5, -52, 4); // off its top onto the Gut
+    assert.ok(pos[2] < -50 && Math.abs(pos[1] - SLICE.gut.y) < 0.2, `ramp ${xa}: couldn't step off onto the Gut (at ${pos.map((q) => q.toFixed(1))})`);
+    go(xb - 0.5, -44.4, 4); go(xa - 3, -44.4, 8); // and back down
+    assert.ok(Math.abs(pos[1] - SLICE.border.y) < 0.2 && pos[0] < xa - 1, `ramp ${xa}: couldn't walk back down (at ${pos.map((q) => q.toFixed(1))})`);
+  }
+});

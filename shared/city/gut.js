@@ -13,6 +13,7 @@ import { shops, shopRects } from './shops.js';
 import { GUT_LINK } from './roads.js';
 import { bigHeart } from './bigheart.js';
 import { act1Gut, act1Border } from './act1set.js';
+import { borderSoft } from './bordersoft.js';
 
 const GY = SLICE.gut.y;
 const inRect = (x0, z0, x1, z1, r) => x0 < r[2] && x1 > r[0] && z0 < r[3] && z1 > r[1];
@@ -356,6 +357,7 @@ export function border(B, d) {
   for (let i = 0; i < 4; i++) { const cx = X0 + r0() * (X1 - X0), cz = Z0 + r0() * (Z1 - Z0); if (cz > -21 && cz < -19) B.out.marks.push({ id: 'crowd', p: [cx, y, cz], kind: 'lost' }); }
   gateArena(B); // THE GUT BORDER GATE (arenas.js)
   act1Border(B); // act I: Bev's clinic (act1set.js)
+  borderSoft(B); // the flesh creeping over the dirt, ramps up the cliff (bordersoft.js)
 }
 
 // the slice's edges: nobody walks off the world. west: a wall of stacked containers; south: a rubble berm; north:
