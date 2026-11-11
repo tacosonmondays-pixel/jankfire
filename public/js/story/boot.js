@@ -15,9 +15,9 @@ import { toSave, fromSave } from '/shared/story/state.js';
 import * as lab from '/shared/story/content/test/lab.js';
 import * as overdue from '/shared/story/content/overdue.js'; // the full script, as an engine pack (PR #76)
 import { PLACES } from '/shared/city/slice.js'; // the world lane's real spots for the script's zones (the slice city)
-import { npcSpot, HINTS } from '/shared/city/cast_slice.js';
+import { npcSpot, HINTS, SITTERS } from '/shared/city/cast_slice.js';
 import { RAMP } from '/shared/city/act1set.js'; // (the Unpaid's jump ramp over the collapse: JUMP IT) // ...and where the cast stands in it (per mission step)
-import { actors, spawnActor, despawnActor, clearActors, updateActors, dropTo, play } from './actors.js';
+import { actors, spawnActor, despawnActor, clearActors, updateActors, dropTo, play, sitActor } from './actors.js';
 import { otFrame } from './overtime.js'; // (mr. overtime's clips, marks, damage and fx)
 import { startTalk, talkKey, talkFrame, talking } from './talk.js';
 import { questHud, card as card0, toast } from './questhud.js';
@@ -252,6 +252,11 @@ function roster(e) {
   if (ST.city) { // a mission step can move someone (cast_slice.js STAGE): they're there when you arrive (not mid-talk or mid-scene)
     const objs = ST.S.quests.objectives();
     for (const r of ROSTER.values()) { const sp = npcSpot(r.id, objs); if (!sp || sp === r.spot) continue; const a = actors.get(r.id); if (a && (a.inScene || a.boss || a.enc || talking())) continue; r.spot = sp; r.p = sp.p.slice(); r.face = sp.face; if (a) despawnActor(r.id); }
+  }
+  if (ST.city) for (const s0 of SITTERS) { // people sitting about (cast_slice.js): no lines, just there when you're near
+    const d = Math.hypot(e[0] - s0.seat[0], e[2] - s0.seat[2]), a = actors.get(s0.id), ok = !s0.if || ST.S.test(s0.if);
+    if (!a && ok && d < 30) sitActor(spawnActor(s0.id, { look: s0.look || s0.id, hint: s0.hint, idle: 'idle' }, s0.seat, s0.face), s0.seat);
+    else if (a && (!ok || d > 40)) despawnActor(s0.id);
   }
   // (the city: someone whose home isn't a real place yet only stands in the rehearsal yard while a step wants them)
   const want = ST.city ? new Set(ST.S.quests.objectives().flatMap((o) => [o.marker, ...o.goals.map((g) => g.marker)])) : null;
