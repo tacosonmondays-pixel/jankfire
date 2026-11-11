@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { G } from './ctx.js';
+import { authored, whenLate, onGlb } from './glbkit.js';
 import { COSMETICS, ownedGrapple } from '/shared/cosmetics.js';
 
 export const myGrapple = () => ownedGrapple(G.settings.grap, G.inv);
@@ -289,8 +290,33 @@ const DEFS = {
 };
 const styles = {};
 function style(id) {
-  if (!styles[id]) styles[id] = DEFS[id]();
+  if (!styles[id]) { styles[id] = DEFS[id](); authoredHook(id, styles[id]); }
   return styles[id];
+}
+// the Blender hook (x_grap_<id>.glb, tools/blender/make_grapples.py) in the code hook's place, same frame. the glows
+// round the laser and the rainbow star stay the game's (they pulse, they change colour); the star takes their colour.
+// not here yet: the code hook, and when the file lands the style is rebuilt (ropes pick it up next frame, setRope)
+const waiting = new Set();
+function authoredHook(id, st) {
+  const key = 'x_grap_' + id, a = authored(key);
+  if (!a) {
+    if (!waiting.has(key)) {
+      waiting.add(key); whenLate(key, () => { delete styles[id]; });
+      const off = onGlb((x) => { if (x === null) { off(); delete styles[id]; } }); // (built before the model list came: ask again once it has, so it gets fetched)
+    }
+    return;
+  }
+  const g = new THREE.Group(), flares = [];
+  g.add(a.obj);
+  st.hook.traverse((o) => { if (o.isMesh && o.material && o.material.blending === THREE.AdditiveBlending) flares.push(o); });
+  for (const f of flares) g.add(f); // (moved over: the code hook is dropped)
+  if (id === 'rainbow' && flares.length) {
+    const mats = new Set();
+    a.obj.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) mats.add(m); });
+    const t0 = st.tick, c = flares[0].material.color;
+    st.tick = (u, t) => { t0(u, t); for (const m of mats) { m.color.copy(c); if (m.emissive) m.emissive.copy(c).multiplyScalar(0.5); } }; // (half glow: the puffy star keeps its shading)
+  }
+  st.hook = g;
 }
 // a copy of a skin's hook on its own (the CUSTOMIZE hub's tab picture): shares its geometry, so mark it kept
 export function hookModel(id = 'rope') {
@@ -311,9 +337,9 @@ export function makeRope(id) {
 export function setRopeSkin(r, id) {
   if (!known(id)) id = 'rope';
   const u = r.userData;
-  if (u.id === id) return;
+  if (u.id === id && u.st === styles[id]) return;
   const st = style(id);
-  u.id = id;
+  u.id = id; u.st = st;
   for (const m of u.beams) r.remove(m);
   if (u.hook) r.remove(u.hook);
   u.beams = st.beams.map(([geo, th, mat]) => {
@@ -330,6 +356,7 @@ export function setRopeSkin(r, id) {
 const tmpV = new THREE.Vector3(), camV = new THREE.Vector3();
 // from a (the gun) to b (the anchor). far hooks get drawn bigger so you can still tell what it is
 export function setRope(r, a, b, cam = G.camera) {
+  if (r.userData.st !== styles[r.userData.id]) setRopeSkin(r, r.userData.id); // (its Blender hook just landed)
   const u = r.userData, st = style(u.id);
   const len = Math.max(0.001, Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]));
   r.position.set(a[0], a[1], a[2]);
