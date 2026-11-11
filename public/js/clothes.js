@@ -188,6 +188,7 @@ function fitOf(lk) {
     dressed(shells) {
       const B = F.bare(), ys = [0.96, 1.0, 1.04, 1.08, 1.11, 1.16, 1.22, 1.28, 1.34, 1.4, 1.46, 1.5, 1.53, 1.548];
       for (const r of B.rows) if (!ys.some((y) => Math.abs(y - r[0]) < 0.014)) ys.push(r[0]);
+      for (const S of shells) if (S.y0 > 0.96 && !ys.includes(S.y0)) ys.push(S.y0); // (exact at each hem)
       const rows = ys.sort((p, q) => p - q).map((y) => { const a = B.at(y).slice(); for (const S of shells) if (y >= S.y0 - 0.004 && y <= S.y1 + 0.004) S.at(y).forEach((v, k) => { a[k] = Math.max(a[k], v); }); return [y, ...a]; });
       rows.lumps = lumps; rows.gap = shells.length ? shells[0].rows.gap || 0.026 : 0.024;
       return shell(rows, shells.length ? shells[0].e : 2.2);
