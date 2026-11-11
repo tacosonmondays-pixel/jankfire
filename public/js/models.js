@@ -1595,7 +1595,7 @@ function addAccessories(ch, look, c) {
     case 'hardhat': { const d = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), M(0xffd21a)); d.position.y = y0 - 0.05; H.add(d); at(H, new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.015, 10), M(0xffd21a))).position.y = y0 - 0.05; break; }
     case 'icepack': at(H, bx(0.14, 0.04, 0.14, 0x6ad0ff, 0, y0 + 0.01, 0)); break;
     case 'catears': ch.ears = catEars(H, look); break;
-    case 'strawhat': case 'wizhat': case 'boxhelmet': case 'chefhat': wearAcc(H, look.head, c); break; // (clothes.js)
+    case 'strawhat': case 'wizhat': case 'boxhelmet': case 'chefhat': case 'sweatband': case 'nightcap': wearAcc(H, look.head, c); break; // (clothes.js)
   }
   H = ch.head;
   const fz = -0.15; // front of the face
@@ -1656,7 +1656,7 @@ function addAccessories(ch, look, c) {
       }
       straps(0x333333);
       break;
-    case 'float': case 'handbag': case 'bottlepack': case 'camera': wearAcc(Bd, look.back, c, look); break; // the Lifeguard's rescue float, Grandma's handbag (clothes.js: fitted to the body + top)
+    case 'float': case 'handbag': case 'bottlepack': case 'camera': case 'shaker': case 'teddy': wearAcc(Bd, look.back, c, look); break; // the Lifeguard's rescue float, Grandma's handbag (clothes.js: fitted to the body + top)
     case 'cattail': catTail(ch, look, look.top === 'maid' ? 0.2 : look.bottom === 'skirt' ? 0.19 : 0.125); break; // out from under the skirt
   }
 }
@@ -1722,7 +1722,7 @@ export function buildCharacter(color, look) {
     const BOT = lk.bottomColor ? new THREE.Color(lk.bottomColor).getHex() : c;
     const top = lk.top || 'tank', bottom = lk.bottom || 'shorts';
     const WP = { body, head, arm, armL, legL, legR, kneeL, kneeR }; // what the clothes hang on (clothes.js)
-    const legs = bottom === 'pants' || bottom === 'overalls' || bottom === 'checks'; // full-length legs (overalls are denim unless you pick a colour)
+    const legs = bottom === 'pants' || bottom === 'overalls' || bottom === 'checks' || bottom === 'pjpants'; // full-length legs (overalls are denim unless you pick a colour)
     const LEG = bottom === 'overalls' ? overallsColor(lk, c) : BOT;
     // legs: hip -> thigh -> knee -> shin -> foot
     for (const [leg, knee, sx] of [[legL, kneeL, -1], [legR, kneeR, 1]]) {

@@ -40,6 +40,10 @@ export const COSTUMES = {
     look: { top: 'hawaiian', topColor: ['#4fd8ff', '#ff7a1a', '#ff4fd8', '#7dff4f'], bottom: 'cargo', bottomColor: ['#c8b48a', '#3a6a2a'], hair: ['short', 'none', 'bowl'], head: 'bucket', face: 'shades', back: 'camera' } },
   chef: { name: 'Chef', desc: 'Yes chef. Serves it raw.',
     look: { top: 'chef', topColor: '#ffffff', bottom: 'checks', bottomColor: ['#1a1a1a', '#2a4a8a'], hair: ['short', 'none', 'bun'], head: 'chefhat', face: ['mustache', 'none'], back: 'none' } },
+  gymbro: { name: 'Gym Bro', desc: 'Never skips leg day. Has never been to leg day.',
+    look: { top: 'stringer', topColor: ['#1a1a1a', '#ff4fd8', '#ffe14d', '#4fd8ff'], bottom: 'shorts', bottomColor: ['#3a3a44', '#1a1a1a', '#2a4a8a'], hair: ['short', 'none', 'spiky'], head: 'sweatband', face: ['none', 'shades'], back: 'shaker' } },
+  pyjamas: { name: 'Pyjamas', desc: 'Rolled out of bed and into the lobby. Brought the bear.',
+    look: { top: 'pjtop', topColor: ['#2a4a8a', '#b07dff', '#ff9ad5', '#4fffb0'], bottom: 'pjpants', bottomColor: ['#2a4a8a', '#b07dff', '#ff9ad5'], hair: ['short', 'long', 'afro', 'bun'], head: 'nightcap', face: 'none', back: 'teddy' } },
 };
 export const COSTUME_IDS = Object.keys(COSTUMES);
 
