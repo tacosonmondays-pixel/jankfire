@@ -53,7 +53,8 @@ Without filter 2 the kit is about 1,200 instances a chunk; with both it is about
   mark and zipline end.
 
 ## Cost
-Kit props per Bottom chunk: **average 361, least 61, most 583** (the district had 217 a chunk before, so 579 now).
+Kit props per Bottom chunk: **average 354, least 60, most 567** (9,908 over the Bottom's 28 chunks). The district had
+217 props a chunk before, so 571 now.
 
 | piece | per chunk | triangles (full / far copy) |
 |---|---|---|
@@ -61,26 +62,31 @@ Kit props per Bottom chunk: **average 361, least 61, most 583** (the district ha
 | cube_eave | 74 | 92 / 22 |
 | stair_step, stair_post | 46 + 46 | 80 / 12, 120 / 22 |
 | cube_corner | 25 | 248 / 58 |
-| cube_window_b, _a, _c | 20, 15, 3 | 138 / 12, 282 / 64, 620 / 142 |
+| cube_window_b, _a, _c | 16, 13, 2.4 | 138 / 12, 282 / 64, 620 / 142 |
 | Long Stairs pieces (332 in all, 75 - 92 in each of its 4 chunks) | 12 | 24 - 74 far |
-| container_doors, roof junk | 2.4, 3.8 | 984 / 224, 736 / 176 and 548 / 130 |
+| container_doors, roof junk | 1.8, 3.8 | 984 / 224, 736 / 176 and 548 / 130 |
 
-A chunk's kit is about 40k triangles at full detail and 9.7k as far copies. Chunk build time in Node goes from about
-3.5 ms to about 5.5 ms for a Bottom chunk (the hidden-wall tests).
+A chunk's kit is about 38k triangles at full detail and 9.3k as far copies. A Bottom chunk builds in about 4 - 5 ms in
+Node, up from about 2.5 ms (the hidden-wall tests).
 
-**It needs two table entries in `public/js/city/props.js` before it is cheap** (not my file to edit). The new ids have
-no `FAR` or `DETAIL` entry, so today each one is drawn across the whole props ring and at full detail out to
-`propsHi`. Counted from the generator (`node` script, instances inside the ring, three spots):
+**Measured in the game, Too HD, standing on terrace 2's lane (-96, 8, 202.5): 858,799 triangles / 659 draw calls /
+3,734 prop instances on main, 1,131,495 / 741 / 10,040 with the kit.** That is +272k triangles, +82 draw calls,
++6,306 instances, on a view that was already over WP1's 600k budget.
+
+**So this should not be merged without two table entries in `public/js/city/props.js`** (not a file this lane may
+edit). The new ids have no `FAR` or `DETAIL` entry, so each one is drawn across the whole props ring, and at full
+detail out to `propsHi`; the doors and shutters stop at 60 - 70 m and go simple at 0.35 - 0.4 of `propsHi`. Counted
+from the generator (instances inside the ring at three spots: the depot, a lane, halfway up the Long Stairs):
 
 | preset | kit as props.js draws it today | with the entries below |
 |---|---|---|
-| Potato | +2,600 to 3,400 instances, +70k to 92k triangles | +130 to 420, +5k to 11k |
-| Crusty | +3,600 to 5,000, +124k to 171k | +280 to 600, +14k to 27k |
-| Mid | +5,100 to 6,300, +191k to 244k | +600 to 890, +29k to 44k |
-| Too HD | +7,400 to 8,200, +330k to 369k | +1,100 to 1,400, +62k to 88k |
+| Potato | +2,500 to 3,300 instances, +67k to 88k triangles | +130 to 420, +5k to 11k |
+| Crusty | +3,600 to 4,900, +119k to 161k | +280 to 600, +14k to 26k |
+| Mid | +5,000 to 6,100, +182k to 232k | +600 to 880, +29k to 43k |
+| Too HD | +7,300 to 8,000, +316k to 351k | +1,100 to 1,400, +60k to 84k |
 
-(WP1's budgets: Too HD 600k triangles, Potato 150k; the depot was already at 576k.) Draw calls: +26 to 40 on Potato,
-+85 to 102 on Too HD, because the pieces carry 68 materials between them (see the Art list).
+(The count for Too HD on the lane, +325k, is a little over what the game measured, +272k.) Draw calls: +26 to 40 on
+Potato, +85 to 102 on Too HD, because the 17 pieces carry 68 materials between them (see the Art list).
 
 Suggested entries (the same kind of numbers the doors and shutters have):
 ```js
@@ -89,6 +95,45 @@ Object.assign(FAR, { cube_eave: 90, container_rib: 90, cube_window_a: 70, cube_w
 ```
 Two more things in that folder, also outside this lane:
 - `propcode.js` has no stand-in for the 17 ids, so until each `.glb` arrives every instance is the default magenta
-  1 m box. `registerCodeProp(id, [])` for each would draw nothing instead.
+  1 m box, and stays one if a file fails to load. `registerCodeProp(id, [])` for each would draw nothing instead.
+  (The Long Stairs pole box is collision-only now, so with no model there is no pole to see.)
 - A prop's paint slot only takes one of 8 fixed colours (`PAINTS[v]`), so "the cube's tint" is the nearest of those
-  (`paintOf`). See the Art list.
+  (`paintOf`). If `v` could carry a hex colour (it is a float32: 24 bits fit), eaves, ribs and doors would match their
+  house exactly.
+
+## For the Art lane: what sits wrong
+Seen in the game (Too HD) unless marked (by the numbers). Nothing is floating off its wall or buried; these are the
+rough edges.
+
+| id | what is off | what I would want |
+|---|---|---|
+| `longstep_a/b` | the broken-off bit of lip ("lying on the step below") is at y +0.025, level with its own tread, 0.12 m out past the edge: it hangs in the air in front of the riser | put it at y = -rise + 0.025. The rise is 0.267 on eight flights and 0.125 on the top one, so either leave the bit out or make it a separate piece the map can drop |
+| `longpole` | the map's pole stands inside the 0.3 m rail block, so the bolted foot, the access box and both stickers (y 1.15 - 1.5) are buried in the rail: the rail top is 1.05 to 1.6 m above the pole's foot | origin on the rail's top instead: a foot plate that sits on a 0.3 m coping, about 5.0 m of pole above it, stickers above 0.3 m, and the frame 3.6 - 4.3 m over that origin. Or keep the origin and lift the stickers to 2 m |
+| `longpole` | the sign frame is drawn for a sign at 5.2 - 5.9 over the foot; the map's neon box used to end at `ya + 5.9` (a slip: every sign a different height, all under the frame). The map now uses 5.2 - 5.9 over the foot | nothing, if that fix is wanted. The frame is x -1.9 .. -0.25, the box is 1.6 long from the rail's outer face: it fits |
+| `longpole` | (by the numbers) the cable runs 2.6 m out and stops in the air over the steps | end it on the pole or the arm, or make it droop to the ground |
+| `longrail` | the handrail climbs 0.54 to the next block; the top flight's blocks only climb 0.25, so there it overshoots the next knob by 0.29 | a second piece for the top flight (climb 0.25), or the handrail as its own piece |
+| `cube_eave` | every 2 m run has the same tie-dye rag, so a 7 m front shows three or four identical rags in a row | the rag as a variant (`cube_eave_b` bare, `_a` with rag), 1 in 3 gets the rag |
+| `cube_eave` | 2 m runs make it the second biggest count (74 a chunk) | a 4 m and a 6 m run would cut that to a third (a prop can only be scaled evenly, so the map cannot stretch one) |
+| `cube_corner` | 3.1 m tall; the cubes are 2.8, 3.0 or 3.2 (plus a 0.3 slab). The map scales it 0.92 - 1.05 so the top buries in the slab | 3.3 m tall at scale 1 (the slab hides the spare) |
+| `cube_corner` | one hand only: the downpipe and meter box are always on the left end of the wall they front, so a house's lane front gets them at one corner and only the plain board at the other | a mirrored `cube_corner_b` |
+| `container_rib` | 2.8 m tall, scaled up to 1.14 for the taller cubes, so the ribs get up to 14 % wider too and a strip never fills its wall exactly (the leftover, under one rib wide, shows the flat wall) | 3.3 m tall at scale 1 (buried in the slab), and a 0.5 m half strip to fill the ends |
+| `container_doors` | 2.4 x 2.6; scaled 1.02 - 1.17 to reach the slab | 3.1 tall, or a top rail piece |
+| `container_doors`, `container_rib`, `cube_eave` | paint: only 8 colours (above). Pink, teal and yellow containers match; **orange (`ff9a4d`) gets yellow ribs and purple (`9a7aff`) gets pink ones** on a wall of the true colour | not a model fault: needs the props code to take a hex, or the palette to grow orange and purple |
+| `stair_post` | the rail is drawn for a 0.4 rise; the side stairs rise 0.37 - 0.40 a step, so a rail ends up to 3 cm over the next post's knob (not visible from the lane) | fine as it is |
+| `cube_window_c`, `cube_roofjunk_b`, `longplaque_a` (7 materials each), `cube_roofjunk_a` (6), `cube_corner` (5) | one draw call per material per piece, full and far: the kit adds up to 108 draw calls on Too HD | one atlas material per piece plus the paint slot (the rib and `cube_window_b`'s far copy already do this) |
+| `cube_window_c` | 620 triangles for a window that repeats: the map only uses it for 1 window in 10 | 300 or under and it could be 1 in 3 |
+| all 17 | no entry in `props.js` `FAR` / `DETAIL`, no stand-in in `propcode.js` | see Cost |
+
+Not a model fault, but it shows next to the new frames: the old `shutter` prop is hung either in its window or 0.2 m
+above it (`oy1 + 0.2`), where it straddles the roof slab. Above a kit window it reads as a second window stacked on
+the first. Left alone here (older props were not to move); the world lane could drop the high position.
+
+## Could not place, or left out on purpose
+- **Eaves on side walls and on floors above the second**, corner posts above the ground floor, window frames above
+  the second floor, ribs above the second floor: all work, all switched off for the count (`dress()` in bottom.js: the
+  `on` / `corner` / `eave` arrays). With `FAR` entries they could come back.
+- **Container doors are rare (51)**: a short end usually has the house door or a window in its middle, and the doors
+  only go on a clear one (they are look only: hung over a real doorway or window they would hide a way in).
+- **The Long Stairs pole's foot** cannot be shown (above).
+- **Nothing was placed in the Lost & Found, the market, the gym or the shops** (they have their own generators and
+  props), and nothing outside the Bottom.
