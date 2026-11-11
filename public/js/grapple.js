@@ -314,7 +314,7 @@ function authoredHook(id, st) {
     const mats = new Set();
     a.obj.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) mats.add(m); });
     const t0 = st.tick, c = flares[0].material.color;
-    st.tick = (u, t) => { t0(u, t); for (const m of mats) { m.color.copy(c); if (m.emissive) m.emissive.copy(c); } };
+    st.tick = (u, t) => { t0(u, t); for (const m of mats) { m.color.copy(c); if (m.emissive) m.emissive.copy(c).multiplyScalar(0.5); } }; // (half glow: the puffy star keeps its shading)
   }
   st.hook = g;
 }

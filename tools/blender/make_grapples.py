@@ -137,19 +137,29 @@ def sticky():
 
 # ------------------------------------------------------------------------------------------------ rainbow: the star
 def rainbow():
-    glow = mat('gw_star', 0xffffff, emit=0xffffff, strength=1.5); edge = mat('gw_edge', 0xb0b0b0, emit=0xb0b0b0, strength=1.0)
-    pts = []
-    for i in range(10): a = i / 10 * math.pi * 2; r = 0.085 if i % 2 else 0.2; pts.append((math.sin(a) * r, math.cos(a) * r))
+    """a puffy star: a pillow of rings, each the star's outline (points rounded off) shrinking toward its two faces,
+    so it's fat in the middle with a soft bevel all round (not a cardboard cut-out)"""
+    glow = mat('gw_star', 0xffffff, emit=0xffffff, strength=1.5)
+    N = 60  # points round the outline: the 5 tips and 5 notches with soft curves between
+    def outline(k):
+        a = k / N * math.pi * 2; t = 0.5 + 0.5 * math.cos(5 * a)  # 1 at a tip, 0 at a notch
+        r = 0.09 + 0.12 * t ** 1.6
+        return math.sin(a) * r, math.cos(a) * r
+    zc, depth = -0.065, 0.055  # (the middle plane and half its thickness, where the code star was)
+    rings = []
+    for j in range(9):  # front face to back face
+        u = -1 + 2 * j / 8; sc = math.sqrt(max(0.0, 1 - u * u)) * 0.88 + 0.12; dz = u * depth
+        rings.append([gv(x * sc, y * sc, zc + dz) for (x, y) in (outline(k) for k in range(N))])
     bm = bmesh.new()
-    def ring_at(z, k=1.0): return [bm.verts.new(gv(x * k, y * k, z)) for (x, y) in pts]
-    front, back = ring_at(-0.04), ring_at(-0.09)
-    cf, cb = bm.verts.new(gv(0, 0, -0.025)), bm.verts.new(gv(0, 0, -0.105))  # (puffy: a low point in the middle of each face)
-    for i in range(10):
-        j = (i + 1) % 10
-        bm.faces.new((front[i], front[j], back[j], back[i]))
-        bm.faces.new((cf, front[j], front[i])); bm.faces.new((cb, back[i], back[j]))
+    vs = [[bm.verts.new(p) for p in r] for r in rings]
+    for a, b in zip(vs, vs[1:]):
+        for k in range(N): bm.faces.new((a[k], a[(k + 1) % N], b[(k + 1) % N], b[k]))
+    for r in (vs[0], vs[-1]):  # each face closed with a fan to a slightly domed middle
+        c = bm.verts.new(sum((v.co for v in r), Vector()) / N)
+        for k in range(N): bm.faces.new((c, r[k], r[(k + 1) % N]))
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    star = _obj('gw_star', bm, glow); smooth(star, 20)
+    star = _obj('gw_star', bm, glow)
+    for p in star.data.polygons: p.use_smooth = True
     return done('x_grap_rainbow', [part([star], 'hook_star')], {'id': 'rainbow', 'tail': 0.06})
 
 
