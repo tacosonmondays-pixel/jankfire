@@ -3,6 +3,7 @@
 export const PATCH_NOTES = [
   { v: '8.1', date: '2026-11-11', title: 'INTAKE', items: [
     'the shredder got rebuilt in blender. a big yellow funnel, a cage of red teeth, a turbine down the throat. the wood chipper skin has wheels now. it still eats people.',
+    'the blood cross hand got rebuilt in blender too. jointed mannequin fingers, veins, a cuff button. shadow cross glows violet. every weapon in the game is a proper model now.',
     'TEST: settings > video > "water physics (test)". ripples that actually spread and bounce off the bank when you wade, shoot or blow up the water. mid and too hd, off unless you turn it on. try the desert pond.',
     'PLANT & DEFUSE: your guns come back full every round. mags topped up, reserve restocked, no reload. dying still costs you the gun.',
   ] },
