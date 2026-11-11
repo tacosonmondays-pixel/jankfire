@@ -23,8 +23,8 @@ import { BIG_HEART } from '/shared/city/bigheart.js';
 // reach: how far round you the wisps stand (m); holes: how patchy the sheets are (0 none .. 0.6 mostly holes);
 // color / hot: the mist at rest and what it flushes toward on the beat; glow: how hard it flushes; drift: wind;
 // near: drawn only within this of the Gut (m)
-export const GUT_FOG = { on: true, top: 1.1, puff: 0.38, cap: 0.45, reach: 42, holes: 0.34, glow: 0.8, color: 0xe88a98, hot: 0xff3448, drift: 1, near: 110 };
-const LAYERS = [2, 2, 3, 3], PUFFS = [70, 120, 170, 230]; // sheets, wisps: per preset (Potato .. Too HD)
+export const GUT_FOG = { on: true, top: 1.1, puff: 0.42, cap: 0.5, reach: 38, holes: 0.32, glow: 0.8, color: 0xe07e8e, hot: 0xff3448, drift: 1, near: 110 };
+const LAYERS = [2, 2, 3, 3], PUFFS = [80, 140, 200, 280]; // sheets, wisps: per preset (Potato .. Too HD)
 const G0 = SLICE.gut.rect, GY = SLICE.gut.y, BY = SLICE.border.y, ST = SLICE.stomach;
 
 // tileable value noise, two octaves, one channel: the wisps
@@ -59,7 +59,7 @@ void main() {
   float n = 0.45 * texture2D(uN, p * 0.019 + uT * vec2(0.010, 0.006) + uLayer * 0.37).r + 0.3 * texture2D(uN, p * 0.047 - uT * vec2(0.007, 0.012) + uLayer * 0.61).r
     + 0.25 * texture2D(uN, p * 0.15 + uT * vec2(-0.021, 0.027) + uLayer * 0.83).r;
   float lo = uHoles + 0.1 * uLayer, dens = smoothstep(lo, lo + 0.22, n); // patches with clear ground between; thinner higher up
-  dens *= 0.4 + 0.6 * smoothstep(0.3, 0.6, texture2D(uN, p * 0.0043 + uT * vec2(0.0021, 0.0013)).r); // banks, 50 m across, wandering the district
+  dens *= 0.45 + 0.55 * smoothstep(0.3, 0.6, texture2D(uN, p * 0.0043 + uT * vec2(0.0021, 0.0013)).r); // banks, 50 m across, wandering the district
   float dh = length(p - uHeart.xy), root = exp(-dh * dh / 420.0); // round the heart's roots it pools
   dens = mix(dens, 0.55 + 0.45 * n, root * 0.8) * (1.0 + 0.4 * root);
   float ring = ghBeat(fract(uBeat - 0.9 - dh / 80.0)) * exp(-dh / 55.0); // the ripple leaves the roots and runs out through the fog
@@ -110,7 +110,7 @@ void main() {
   float dh = length(vW.xz - uHeart.xy), root = exp(-dh * dh / 420.0);
   float ring = ghBeat(fract(uBeat - 0.9 - dh / 80.0)) * exp(-dh / 55.0);
   float a = uA * body * vA * (0.85 + 0.3 * uK + 0.5 * ring) * (1.0 + 0.5 * root) * smoothstep(0.5, 2.0, dist); // it thins as you walk into it
-  a *= 1.0 - smoothstep(0.3, 0.65, abs(v.y) / dist); // a card looked down on is a pane of glass: from above the sheets are the fog
+  a *= 1.0 - smoothstep(0.45, 0.8, abs(v.y) / dist); // a card looked down on is a pane of glass: from above the sheets are the fog
   if (a < 0.004) discard;
   gl_FragColor = vec4(mist(body, ring, dist), min(a, 0.6));
   #include <colorspace_fragment>
@@ -126,7 +126,7 @@ function clear() {
   F.root = null; F.sheets = []; F.puffs = null;
 }
 export function stopGutFog() { if (!F) return; clear(); if (F.tex) F.tex.dispose(); F = null; }
-const SHARED = { uT: { value: 0 }, uBeat: { value: 0 }, uK: { value: 0 }, uHoles: { value: 0.34 }, uGlow: { value: 0.8 }, uCol: { value: new THREE.Color() }, uHot: { value: new THREE.Color() }, uFogCol: { value: new THREE.Color() }, uFog: { value: new THREE.Vector2(26, 205) },
+const SHARED = { uT: { value: 0 }, uBeat: { value: 0 }, uK: { value: 0 }, uHoles: { value: 0.32 }, uGlow: { value: 0.8 }, uCol: { value: new THREE.Color() }, uHot: { value: new THREE.Color() }, uFogCol: { value: new THREE.Color() }, uFog: { value: new THREE.Vector2(26, 205) },
   uHeart: { value: new THREE.Vector3(BIG_HEART.x, BIG_HEART.z, 0) }, uSt: { value: new THREE.Vector3(ST.x, ST.z, ST.r) }, uRect: { value: new THREE.Vector4(G0[0], G0[1], G0[2], G0[3]) } };
 // (re)build for this preset: n sheets a stack, np wisps
 function build(n, np) {
@@ -176,7 +176,7 @@ export function updateGutFog(dt, S, camera, b) {
   const seeBorder = p.z > -150, seePool = Math.hypot(p.x - ST.x, p.z - ST.z) < 150; // (the far ones aren't worth their pixels)
   for (const m of F.sheets) { const u = m.material.uniforms, kind = m.userData.kind, k = kind === 2 ? 1.5 : 1; // (the pool in the Big Stomach is the thickest)
     m.visible = kind === 0 || (kind === 1 ? seeBorder : seePool);
-    m.position.y = m.userData.y0 + m.userData.h * swell; u.uCap.value = cap * k; u.uA.value = cap * k * 1.3; }
+    m.position.y = m.userData.y0 + m.userData.h * swell; u.uCap.value = cap * k; u.uA.value = cap * k * 1.5; }
   const pu = F.puffs.material.uniforms; pu.uA.value = GUT_FOG.puff; pu.uR.value = GUT_FOG.reach; pu.uTop.value = GUT_FOG.top;
 }
 export const gutFogState = () => (F ? { on: !!(F.root && F.root.visible), layers: F.n, sheets: F.sheets.length, puffs: F.np } : null);
