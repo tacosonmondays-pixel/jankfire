@@ -1578,9 +1578,10 @@ function bigGlasses(H, fz) {
 function overallsColor(lk, c) { return lk && lk.bottomColor ? new THREE.Color(lk.bottomColor).getHex() : lk && lk.teamed ? c : 0x3b64a8; }
 function addAccessories(ch, look, c) {
   if (!look) return;
-  const H = ch.head, Bd = ch.body;
+  let H = ch.head; const Bd = ch.body;
   const at = (parent, m) => { parent.add(m); return m; };
   const y0 = 0.3; // top of the egg head (head group local)
+  if (look.top === 'hotdog' && look.head && look.head !== 'none') { H = new THREE.Group(); H.position.y = 0.115; ch.head.add(H); } // in the Hot Dog Suit the hat sits on the end of the sausage
   switch (look.head) {
     case 'cap': { const d = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), M(c)); d.position.y = y0 - 0.06; H.add(d); at(H, bx(0.22, 0.02, 0.14, c, 0, y0 - 0.06, -0.15)); break; }
     case 'beanie': { const d = new THREE.Mesh(new THREE.SphereGeometry(0.155, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), M(0x2a4a8a)); d.position.y = y0 - 0.07; d.scale.y = 1.3; H.add(d); at(H, ball(0.045, 0xffffff, 0, y0 + 0.13, 0)); break; }
@@ -1595,6 +1596,7 @@ function addAccessories(ch, look, c) {
     case 'catears': ch.ears = catEars(H, look); break;
     case 'strawhat': case 'wizhat': wearAcc(H, look.head, c); break; // (clothes.js)
   }
+  H = ch.head;
   const fz = -0.15; // front of the face
   switch (look.face) {
     case 'shades': at(H, bx(0.22, 0.05, 0.02, 0x111111, 0, 0.17, fz, true)); at(H, bx(0.26, 0.015, 0.015, 0x111111, 0, 0.19, fz)); break;
@@ -1758,7 +1760,7 @@ export function buildCharacter(color, look) {
     // the clothes (clothes.js): cut for this body, so jokeBody below leaves the torso ones be and fattens the limb ones
     wearTop(WP, lk, TOPC, legs);
     if (!wearBottom(WP, lk, LEG) && top !== 'maid') body.add(bx(0.34, 0.18, 0.23, LEG, 0, 0.98, 0)); // (a bottom it doesn't know: the plain seat)
-    addHair(head, lk);
+    addHair(head, top === 'hotdog' ? { ...lk, hair: 'none' } : lk); // (tucked under the hot dog)
     body.add(armL);
     jokeBody({ body, head, arm, armL, legL, legR, kneeL, kneeR, slot }, lk, top === 'maid' ? MAID : bottom === 'skirt' ? BOT : LEG, top === 'none' || top === 'tank' ? SK : TOPC);
   }

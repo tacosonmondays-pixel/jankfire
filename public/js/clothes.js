@@ -20,7 +20,7 @@ const PW = 48;
 const C = { base: 0, panel: 1, seam: 2, deep: 3, light: 4, hi: 5, btn: 6, pop: 7, mark: 8, sauce: 9 };
 const FIXED = { white: 0xf2f1ec, cream: 0xe2dccb, ink: 0x1c1c21, coal: 0x34343c, silver: 0xc6ccd4, steel: 0x70767f, brass: 0xffc21a, red: 0xc02030, redd: 0x8a1422,
   pink: 0xff4fd8, rose: 0xff9ad5, tan: 0xd9a35b, tee: 0x2b2b31, frill: 0xffffff, pencil: 0xffd21a, eraser: 0xff7ab8, sole: 0x3a2412, shoe: 0x15121a,
-  bun: 0xe3ad62, crust: 0xb9783a, straw: 0xe8c66a, strawd: 0xc39a45, card: 0xc8a070, cardd: 0xa07c4c, buoy: 0xf03a2a };
+  bun: 0xe3ad62, crust: 0xb9783a, bunm: 0xcf9550, crumb: 0xf4dfa8, tape: 0xe9d49a, straw: 0xe8c66a, strawd: 0xc39a45, card: 0xc8a070, cardd: 0xa07c4c, buoy: 0xf03a2a };
 Object.keys(FIXED).forEach((k, i) => { C[k] = 10 + i; });
 const TONES = [1, 0.87, 0.72, 0.5, 1.13, 1.3, 0.42]; // base, panel, seam, deep shadow, light, highlight, buttons
 function tone(hex, k, flip) { // in screen (sRGB) values: k < 1 darker, > 1 paler
@@ -902,21 +902,23 @@ function robeSleeve(part) {
 }
 
 // ------------------------------------------------------------ Hot Dog Suit
-// a sausage from over your head down to your thighs with a hole for the face, a bun half on each side (your arms come
-// out of them), mustard down the front, grill marks on the back. the sausage is the suit's colour. it grows with a big
-// head, a belly and anything else: looks only, the hitboxes are the plain mannequin's
-function hotdogCut(F) {
+// a sausage from over your head down to your thighs with a hole for the face, lying in a bun that wraps round your back
+// (split down the front, where the sausage sits, so your arms and legs poke out), mustard down the front, grill marks
+// up the back of the hood. the sausage is the suit's colour. it grows with a big head, a belly and anything else: looks
+// only, the hitboxes are the plain mannequin's
+function hotdogCut(F, lk) {
   const hs = 1 + JOKE.head * F.hd, up = (y) => (y > 1.6 ? 1.6 + (y - 1.6) * hs : y);
   const fit = (src, gap) => {
-    const rows = F.rows(src.map(([y, ...r]) => [up(y), ...r]), 0.6, gap);
+    const rows = F.rows(legRoom(src, lk, F, lk.bottom === 'pants' || lk.bottom === 'overalls').map(([y, ...r]) => [up(y), ...r]), 0.6, gap); // (room for big legs at the bottom)
     for (const r of rows) { const h = F.head(r[0]); if (h[0]) { r[1] = Math.max(r[1], h[0] + 0.05); r[2] = Math.max(r[2], h[1] + 0.062); r[3] = Math.max(r[3], h[1] + 0.05); } } // room for the head in it
     return rows;
   };
+  // [0] the sausage; [1] the bun round its back (only its size is used: the vest and the back items go round it)
   return [shell(fit([[0.74, 0.2, 0.16, 0.165], [0.8, 0.232, 0.186, 0.19], [0.95, 0.25, 0.205, 0.208], [1.3, 0.258, 0.215, 0.215], [1.6, 0.252, 0.21, 0.21], [1.8, 0.24, 0.2, 0.2], [1.92, 0.205, 0.172, 0.172], [1.995, 0.14, 0.118, 0.118], [2.035, 0.055, 0.046, 0.046]], 0.02), 2.2),
-    shell(fit([[0.86, 0.25, 0.168, 0.168], [0.94, 0.326, 0.212, 0.212], [1.3, 0.356, 0.234, 0.234], [1.62, 0.34, 0.226, 0.226], [1.735, 0.268, 0.184, 0.184]], 0.045), 2.1)];
+    shell(fit([[0.86, 0.28, 0.15, 0.23], [0.94, 0.32, 0.17, 0.27], [1.3, 0.345, 0.18, 0.3], [1.62, 0.335, 0.18, 0.29], [1.735, 0.28, 0.16, 0.24]], 0.045), 2.1)];
 }
 function hotdogBody(F, lk, [S, B]) {
-  const K = new Kit(true), hs = 1 + JOKE.head * F.hd, hy = (d) => 1.6 + d * hs, f0 = hy(0.05), f1 = hy(0.27), A = 15.5 * DEG;
+  const K = new Kit(true), hs = 1 + JOKE.head * F.hd, hy = (d) => 1.6 + d * hs, f0 = hy(0.04), f1 = hy(0.27), A = 23 * DEG;
   // the sausage: rounded off over the head, a hole to look out of, open underneath for the legs, a shine down one side
   const us = [...cols(S).filter((a) => a < PI - A - 0.05), PI - A, PI + A, ...cols(S).filter((a) => a > PI + A + 0.05)], mid = us.indexOf(PI - A), lv = S.lv(S.y0, S.y1, [f0, f1]);
   loft(K, S, lv, us, (y, u, i, j) => (j === mid && y > f0 && y < f1 ? null : j === mid - 2 && y > 0.92 && y < f0 ? C.hi : C.base), { wrap: true });
@@ -926,15 +928,23 @@ function hotdogBody(F, lk, [S, B]) {
     const ys = lv.filter((y) => y > f0 - 1e-6 && y < f1 + 1e-6), edge = [...ys.map((y) => S.p(y, PI + A)), ...ys.slice().reverse().map((y) => S.p(y, PI - A))], c = S.p((f0 + f1) / 2, PI), back = (p) => [p[0] * 0.95, p[1], p[2] + 0.06];
     edge.forEach((a, i) => { const b = edge[(i + 1) % edge.length]; K.quad(a, b, back(b), back(a), C.deep, [c[0] - (a[0] + b[0]) / 2, c[1] - (a[1] + b[1]) / 2, 0]); });
   }
-  { const pts = []; let i = 0; for (let y = f0 - 0.07; y > S.y0 + 0.14; y -= 0.055, i++) pts.push(S.f(Math.sin(i * PI / 2) * 0.07, y, 0.017)); K.tube(pts, 0.016, 5, C.sauce); } // mustard, squeezed on in a hurry
-  for (const y of [1.05, 1.25, 1.45]) bar(K, S, [-0.11, y - 0.035], [0.11, y + 0.035], 0.024, C.seam, 0.004, { back: true, rim: false, step: 0.05 }); // grill marks
-  // the bun: a half each side, from the sausage out, closed top and bottom, pale where it's cut. seeds on it
-  for (const sx of [1, -1]) {
-    const c0 = sx > 0 ? 90 : 270, as = [-51, -34, -17, 0, 17, 34, 51].map((d) => (c0 + d) * DEG), bl = B.lv(B.y0, B.y1), n = as.length - 1, m = bl.length - 1;
-    K.grid(m, n, (i, j) => B.p(bl[i], as[j]), (i) => (i === m - 1 ? C.crust : C.bun), radial);
-    for (const j of [0, n]) for (let i = 0; i < m; i++) K.quad(B.p(bl[i], as[j]), B.p(bl[i + 1], as[j]), S.p(bl[i + 1], as[j]), S.p(bl[i], as[j]), C.cream, [0, 0, (sx > 0) === (j === n) ? -1 : 1]);
-    for (const i of [0, m]) for (let j = 0; j < n; j++) K.quad(B.p(bl[i], as[j]), B.p(bl[i], as[j + 1]), S.p(bl[i], as[j + 1]), S.p(bl[i], as[j]), i ? C.crust : C.bun, [0, i ? 1 : -1, 0]);
-    for (const [y, d, r] of [[1.5, -30, 0.4], [1.42, 12, 1.2], [1.3, -12, 0.2], [1.2, 28, 0.9], [1.1, -26, 1.4], [1.02, 6, 0.6], [1.36, 38, 0.1]]) K.box(0.024, 0.013, 0.008, C.cream, B.frame(y, (c0 + d) * DEG, 0.002).multiply(T(0, 0, 0, 0, 0, r)));
+  { // mustard, squeezed on in a hurry (more points over a belly or a bust, so it rides over them)
+    const pts = [], sub = S.lumpy ? 3 : 1, zig = (q) => { const a = Math.floor(q), t = q - a; return mix(Math.round(Math.sin(a * PI / 2)), Math.round(Math.sin((a + 1) * PI / 2)), t) * 0.07; };
+    for (let i = 0, y = f0 - 0.07; y > S.y0 + 0.14 - 1e-6; i++, y -= 0.055 / sub) pts.push(S.f(zig(i / sub), y, 0.017));
+    K.tube(pts, 0.016, 5, C.sauce);
+  }
+  for (const y of [0.02, 0.1, 0.18]) bar(K, S, [-0.085, hy(y) - 0.022], [0.085, hy(y) + 0.022], 0.022, C.seam, 0.004, { back: true, rim: false, step: 0.05 }); // grill marks, up the back of the hood
+  // the bun: one piece round the back from side to side, two fat lobes with a crease down the middle (where it's
+  // hinged), a thick lip at the split and rounded off top and bottom. pale crumb where it's cut, sesame seeds
+  const ds = [-84, -79, -70, -58, -44, -28, -12, 0, 12, 28, 44, 58, 70, 79, 84], n = ds.length - 1, m = 10, T0 = 0.12;
+  const ys = Array.from({ length: m + 1 }, (_, i) => mix(B.y0, B.y1, (1 - Math.cos((i / m) * PI)) / 2)); // (closer together at the ends, where it rounds off)
+  const k = (y, d) => { const a = Math.abs(d); return (a < 70 ? 0.74 + 0.26 * Math.sin((a / 70) * PI / 2) : 0.7 + 0.3 * Math.cos(((a - 70) / 14) * PI / 2) ** 0.5) * (0.45 + 0.55 * Math.sin(cl01((y - B.y0) / (B.y1 - B.y0)) * PI) ** 0.4); }; // (the lobes stick out past the sausage at the sides)
+  const at = (y, d, l = 0) => S.p(y, d * DEG, T0 * k(y, d) + l);
+  K.grid(m, n, (i, j) => at(ys[i], ds[j]), (i) => (i === 0 || i === m - 1 ? C.bunm : C.bun), radial); // (browner where it rounds off at the ends)
+  for (const j of [0, n]) for (let i = 0; i < m; i++) K.quad(at(ys[i], ds[j]), at(ys[i + 1], ds[j]), S.p(ys[i + 1], ds[j] * DEG), S.p(ys[i], ds[j] * DEG), C.crumb, [0, 0, -1]); // the split
+  for (const i of [0, m]) for (let j = 0; j < n; j++) K.quad(at(ys[i], ds[j]), at(ys[i], ds[j + 1]), S.p(ys[i], ds[j + 1] * DEG), S.p(ys[i], ds[j] * DEG), C.crumb, [0, i ? 1 : -1, 0]);
+  for (const [y, d, r] of [[1.5, -30, 0.4], [1.42, 52, 1.2], [1.3, -60, 0.2], [1.2, 30, 0.9], [1.1, -46, 1.4], [1.02, 64, 0.6], [1.36, 20, 0.1], [1.58, 44, 0.8], [0.98, -22, 1.1], [1.26, 70, 0.3], [1.62, -50, 1.5], [1.12, 12, 0.7], [1.44, -10, 1.3]]) {
+    const p = at(y, d, 0.002); K.box(0.024, 0.013, 0.008, C.cream, T(p[0], p[1], p[2], 0, d * DEG, r)); // seeds
   }
   return K.piece();
 }
@@ -1017,7 +1027,7 @@ const TOPS = {
   lifetank: { cut: tankCut, body: tankBody, thick: 0.008 },
   refshirt: { cut: teeCut, body: refBody, sleeve: refSleeve, long: false, cap: 1, own: FIXED.ink, thick: 0.008 },
   robe: { cut: robeCut, body: robeBody, sleeve: robeSleeve, cap: 1, key: legKey, dress: true, thick: 0.03 },
-  hotdog: { cut: hotdogCut, body: hotdogBody, key: (lk, F) => `${F.hd}`, dress: true, own: 0xd9482f, thick: 0.075 },
+  hotdog: { cut: hotdogCut, body: hotdogBody, key: (lk, F) => `${F.hd}${legKey(lk, F)}`, dress: true, own: 0xd9482f, thick: 0.12 },
 };
 const topOf = (top) => (typeof top === 'string' && Object.hasOwn(TOPS, top) ? TOPS[top] : null);
 // a top's own colour when you haven't picked one (null: your colour), and how far it stands off the back (models.js
