@@ -12,7 +12,8 @@ const mark = (B, id) => { const p = P(id); if (B.inside(p[0], p[2])) B.out.marks
 const FLESH = [0x8e1622, 0xa82430, 0x7a121c, 0xc23a40, 0xa8804a];
 
 // the Wok Roofs' grapple rings, the washing line (a: on the tall roof, b: over the depot's steps) and its two poles
-export const WOK = { ring: [-172.2, 17.8, 208.2], ring2: [-163.4, 15.6, 214.2], line: [[-170, 18.8, 206.5], [-188.5, 10.6, 206.4]], poles: [[-169.7, 16.4, 206.5, 2.6], [-188.2, 6.1, 206.4, 4.6]] };
+// (rings on masts standing on the roofs, 4.5 m up: the rope pulls you up over the roof edge, not into the eaves under it)
+export const WOK = { ring: [-169.2, 21, 208.4], ring2: [-163.4, 18.9, 211.6], line: [[-170, 18.8, 206.5], [-188.5, 10.6, 206.4]], poles: [[-169.7, 16.4, 206.5, 2.6], [-188.2, 6.1, 206.4, 4.6], [-169.2, 16.4, 208.4, 4.1], [-163.4, 14.3, 211.6, 4.1]] };
 
 // THE BOTTOM: the Wok Roofs (the house stack east of the yard: roofs at 16.4, 14.3 and 13.9 m) and the service tunnel
 export function act1Bottom(B) {
@@ -25,10 +26,10 @@ export function act1Bottom(B) {
     B.light(-163.5, 18, 208.8, 0xffe14d, 14, 1.1);
     mark(B, 'bottom:rooftops');
   }
-  // the tutorial's way up and back (m01: grapple onto the roofs, ride a washing line home): a yellow ring on the tall
-  // roof's yard side, one on the middle roof's lane side, and Dumpling's washing line from the tall roof down over the
+  // the tutorial's way up and back (m01: grapple onto the roofs, ride a washing line home): a yellow ring on a mast on
+  // the tall roof (seen from the yard), one on the middle roof (seen from the lane), and Dumpling's washing line from the tall roof down over the
   // yard to the depot's front steps (grab it with F, it drops you at the door)
-  hook(B, ...WOK.ring, { yaw: Math.PI / 2, s: 1.4 }); hook(B, ...WOK.ring2, { yaw: Math.PI, s: 1.4 });
+  hook(B, ...WOK.ring, { yaw: Math.PI / 2, s: 1.4 }); hook(B, ...WOK.ring2, { yaw: 0, s: 1.4 });
   for (const [x, y0, z, h] of WOK.poles) if (B.inside(x, z)) { B.add(x - 0.12, y0, z - 0.12, x + 0.12, y0 + h, z + 0.12, 'rust'); B.light(x, y0 + h, z, 0xffe14d, 5, 0.6); }
   if (B.touches([WOK.line[1][0] - 1, WOK.line[0][2] - 2, WOK.line[0][0] + 1, WOK.line[1][2] + 2])) line(B, WOK.line[0], WOK.line[1], { zip: true, hang: ['laundry_a', 'laundry_b'], mat: 'metal', sag: 0.9 });
   // the service tunnel: a staff door in the retaining wall under the depot, rails out of it, a hazard frame, a lamp

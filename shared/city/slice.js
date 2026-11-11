@@ -86,7 +86,7 @@ Object.assign(PLACES['gut:peristalsis'], { r: 12 });
 Object.assign(PLACES['gut:border'], { r: 8 });
 Object.assign(PLACES['bottom:lostfound'], { r: 7 });
 Object.assign(PLACES['gut:choir_lung'], { r: 9 });
-Object.assign(PLACES['bottom:rooftops'], { p: [-163.5, 15, 208.8], r: 7 }); // the real roofs: the stack east of the Lost & Found's yard, 10 m over the lane (bottom.js wokRoofs)
+Object.assign(PLACES['bottom:rooftops'], { p: [-163.5, 15, 208.8], r: 8.5 }); // the real roofs: the stack east of the Lost & Found's yard, 10 m over the lane (bottom.js wokRoofs)
 Object.assign(PLACES['bottom:soup_kitchen'], { p: [-106.5, 0, 235.2], r: 5 }); // in front of Sharon's stall (it was inside the stall)
 for (const k of ['commute:underhill_loop', 'commute:tunnel_mouth']) PLACES[k].p[1] = groundY(PLACES[k].p[0], PLACES[k].p[2]);
 

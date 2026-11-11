@@ -85,7 +85,7 @@ const OWNED = { 'm02_sauce_run.ambush': 'C', 'm04_clocking_in.fight': 'B', 'm06_
     let y = 0; const t0 = Date.now();
     while (Date.now() - t0 < 4000) { y = (await pos())[1]; if (y > top) break; await sleep(60); }
     await pg.keyboard.up('KeyE'); await sleep(700); await pg.keyboard.up('KeyW'); await sleep(1200);
-    const q = await pos(); return { ok: q[1] > top - 2.5, y: +q[1].toFixed(1) };
+    const q = await pos(); return { ok: q[1] > 13.5, y: +q[1].toFixed(1) }; // (on a roof: the lane is at 4)
   }
   // play a conversation through: F to the next line, 1 when there are answers
   async function talkThrough(max = 80) {
@@ -157,7 +157,7 @@ const OWNED = { 'm02_sauce_run.ambush': 'C', 'm04_clocking_in.fight': 'B', 'm06_
       if (!p) { how = 'BLOCKED'; note = 'zone ' + g.zone + ' has no spot'; }
       else if (g.zone === 'bottom:rooftops') { // by hand: stand in the yard, aim at the yellow ring, hold E and run at it, let go at the top
         const { WOK } = await ev(async () => import('/shared/city/act1set.js').then((m) => ({ WOK: m.WOK })));
-        const up = await grappleUp(WOK.ring, [-181, 4.05, 208.2], 15);
+        const up = await grappleUp(WOK.ring, [-186, 4.05, 208.4], 17.8);
         if (!up.ok) { await tp([p[0], p[1] + 0.5, p[2]]); note = `grapple didn't get up there (${up.y}): put on the roof`; how = 'tp'; } else note = `grappled up (top ${up.y} m)`;
       } else if (g.zone === 'bottom:lostfound' && o.step === 'line') { // by hand: from the tall roof, F on Dumpling's washing line
         const { WOK } = await ev(async () => import('/shared/city/act1set.js').then((m) => ({ WOK: m.WOK })));
