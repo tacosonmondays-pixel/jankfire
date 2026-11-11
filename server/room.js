@@ -1989,8 +1989,9 @@ class Room {
     if (d && w.kind === 'bow') {
       const n = now();
       if (n - (p.lastFire.bow || 0) < w.cd * 750) return;
+      const since = n - (p.lastFire.bow || 0); // the draw is the client's word: it can't be longer than the time since the last arrow (a full draw every 0.26 s was 85 damage a click)
       p.lastFire.bow = n;
-      const c = Math.max(0.15, Math.min(1, num(m.c) || 0));
+      const c = Math.max(0.15, Math.min(1, num(m.c) || 0, since / (w.draw * 850)));
       const tip = p.tip;
       const sp = (w.speed + (w.speedMax - w.speed) * c) * (tip === 'power' ? 1.3 : 1);
       const pr = this.makeProj(p, 'bow', [o[0] + d[0] * 0.7, o[1] + d[1] * 0.7, o[2] + d[2] * 0.7], d.map((x) => x * sp), { tip, charge: c });
