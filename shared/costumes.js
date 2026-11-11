@@ -38,6 +38,8 @@ export const COSTUMES = {
     look: { top: 'spacesuit', topColor: ['#ffffff', '#c8b48a'], bottom: 'pants', bottomColor: '#ffffff', head: 'boxhelmet', face: 'none', back: 'bottlepack' } },
   tourist: { name: 'Tourist', desc: 'Took 400 photos of the spawn room. Socks with sandals, on purpose.',
     look: { top: 'hawaiian', topColor: ['#4fd8ff', '#ff7a1a', '#ff4fd8', '#7dff4f'], bottom: 'cargo', bottomColor: ['#c8b48a', '#3a6a2a'], hair: ['short', 'none', 'bowl'], head: 'bucket', face: 'shades', back: 'camera' } },
+  chef: { name: 'Chef', desc: 'Yes chef. Serves it raw.',
+    look: { top: 'chef', topColor: '#ffffff', bottom: 'checks', bottomColor: ['#1a1a1a', '#2a4a8a'], hair: ['short', 'none', 'bun'], head: 'chefhat', face: ['mustache', 'none'], back: 'none' } },
 };
 export const COSTUME_IDS = Object.keys(COSTUMES);
 

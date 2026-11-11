@@ -623,7 +623,8 @@ function sashBody(F) {
 
 // a skirt's rows with room for the thighs under it (the legs slider and fat thicken them; trousers are thicker than
 // skin): everything from the hips down is at least that wide and deep
-const legKey = (lk, F) => `${Math.max(0, Math.min(JOKE_MAX, lk.bigLegs | 0))}${lk.bottom === 'pants' || lk.bottom === 'overalls' ? 1 : 0}`;
+const trousers = (lk) => lk.bottom === 'pants' || lk.bottom === 'overalls' || lk.bottom === 'checks'; // full-length legs under it (thicker than skin)
+const legKey = (lk, F) => `${Math.max(0, Math.min(JOKE_MAX, lk.bigLegs | 0))}${trousers(lk) ? 1 : 0}`;
 function legRoom(rows, lk, F, trousers) {
   const kl = 1 + JOKE.legs * Math.max(0, Math.min(JOKE_MAX, lk.bigLegs | 0)) + JOKE.fat * 0.45 * F.ft, r = (trousers ? 0.1 : 0.076) * kl + 0.014;
   return rows.map(([y, w, f, b]) => { const q = r * (y > 0.97 ? 0.82 : 1); return y > 1.005 ? [y, w, f, b] : [y, Math.max(w, 0.1 + q), Math.max(f, q * 1.05), Math.max(b, q * 1.05)]; }); // (their rounded tops come up to the waist)
@@ -634,7 +635,7 @@ function legRoom(rows, lk, F, trousers) {
 // hem, the apron (frilled bib, straps crossing down the back, a frilled skirt panel with a pocket), a white sash tied
 // in a big bow behind, a ruffled collar with a pink ribbon, puff sleeves with frilled cuffs. bare legs get knee socks
 // and strap shoes; with nothing on your head (or the Cat Ears) you also get the frilly headdress
-function maidCut(F, lk) { const e = 2.3; return [shell(F.rows(legRoom([[0.6, 0.36, 0.36, 0.36], [0.7, 0.33, 0.33, 0.33], [0.86, 0.27, 0.27, 0.27], [0.95, 0.222, 0.218, 0.22], [1.0, 0.196, 0.188, 0.192], [1.1, 0.14, 0.132, 0.134], [1.2, 0.2, 0.148, 0.146], [1.32, 0.252, 0.164, 0.16], [1.42, 0.262, 0.158, 0.158], [1.49, 0.25, 0.136, 0.142], [1.525, 0.165, 0.108, 0.118], [1.548, 0.1, 0.09, 0.094]], lk, F, lk.bottom === 'pants' || lk.bottom === 'overalls'), 1, 0.012), e)]; }
+function maidCut(F, lk) { const e = 2.3; return [shell(F.rows(legRoom([[0.6, 0.36, 0.36, 0.36], [0.7, 0.33, 0.33, 0.33], [0.86, 0.27, 0.27, 0.27], [0.95, 0.222, 0.218, 0.22], [1.0, 0.196, 0.188, 0.192], [1.1, 0.14, 0.132, 0.134], [1.2, 0.2, 0.148, 0.146], [1.32, 0.252, 0.164, 0.16], [1.42, 0.262, 0.158, 0.158], [1.49, 0.25, 0.136, 0.142], [1.525, 0.165, 0.108, 0.118], [1.548, 0.1, 0.09, 0.094]], lk, F, trousers(lk)), 1, 0.012), e)]; }
 function maidBody(F, lk, [S]) {
   const K = new Kit(true), n = 28, amp = (y) => 0.016 * cl01((1.04 - y) / 0.32), zig = (j) => (j % 2 ? 1 : -1);
   const sk = S.lv(0.6, 1.1);
@@ -782,6 +783,7 @@ function overallsBody(F, lk, E) {
 // (-1 = their left): the stripe and the tool pockets go on the outside. each has a ball at its top, so a bent joint
 // stays covered
 function legPiece(kind, part, sx) {
+  if (kind === 'checks') return checksLeg(part); // (the Chef's)
   const K = new Kit(part !== 'shoe'), boot = kind === 'overalls';
   if (part === 'shoe') { // what goes on the mannequin's plain shoe box: a sole, a toe cap, laces (overalls: work boots)
     const lace = boot ? C.pencil : C.white;
@@ -891,7 +893,7 @@ function refSleeve() {
 // ------------------------------------------------------------ Bathrobe (the Budget Wizard's robe)
 // knee length, wrapped left over right with a shawl collar and a V of bare chest, a belt with a knot and two ends,
 // patch pockets, wide sleeves with turned-back cuffs. paper stars stuck all over it, one of them with tape
-function robeCut(F, lk) { const e = 2.5; return [shell(F.rows(legRoom([[0.57, 0.31, 0.275, 0.285], [0.75, 0.285, 0.25, 0.26], [0.95, 0.248, 0.2, 0.208], [1.06, 0.232, 0.176, 0.178], [1.11, 0.226, 0.17, 0.17], [1.2, 0.236, 0.172, 0.17], [1.33, 0.266, 0.18, 0.176], [1.43, 0.28, 0.172, 0.172], [1.495, 0.268, 0.152, 0.158], [1.53, 0.178, 0.12, 0.132], [1.552, 0.116, 0.098, 0.104]], lk, F, lk.bottom === 'pants' || lk.bottom === 'overalls'), 0.8, 0.014), e)]; }
+function robeCut(F, lk) { const e = 2.5; return [shell(F.rows(legRoom([[0.57, 0.31, 0.275, 0.285], [0.75, 0.285, 0.25, 0.26], [0.95, 0.248, 0.2, 0.208], [1.06, 0.232, 0.176, 0.178], [1.11, 0.226, 0.17, 0.17], [1.2, 0.236, 0.172, 0.17], [1.33, 0.266, 0.18, 0.176], [1.43, 0.28, 0.172, 0.172], [1.495, 0.268, 0.152, 0.158], [1.53, 0.178, 0.12, 0.132], [1.552, 0.116, 0.098, 0.104]], lk, F, trousers(lk)), 0.8, 0.014), e)]; }
 function robeBody(F, lk, [S]) {
   const K = new Kit(true), X = 0.022, y1 = S.y1; // (X: the front edge runs a touch to their right of centre)
   const edge = (y) => 0.088 * cl01((y - 1.2) / 0.34) ** 1.15; // the V of the neck, closed from there down
@@ -929,7 +931,7 @@ function robeSleeve(part) {
 function hotdogCut(F, lk) {
   const hs = 1 + JOKE.head * F.hd, up = (y) => (y > 1.6 ? 1.6 + (y - 1.6) * hs : y);
   const fit = (src, gap) => {
-    const rows = F.rows(legRoom(src, lk, F, lk.bottom === 'pants' || lk.bottom === 'overalls').map(([y, ...r]) => [up(y), ...r]), 0.6, gap); // (room for big legs at the bottom)
+    const rows = F.rows(legRoom(src, lk, F, trousers(lk)).map(([y, ...r]) => [up(y), ...r]), 0.6, gap); // (room for big legs at the bottom)
     for (const r of rows) { const h = F.head(r[0]); if (h[0]) { r[1] = Math.max(r[1], h[0] + 0.05); r[2] = Math.max(r[2], h[1] + 0.062); r[3] = Math.max(r[3], h[1] + 0.05); } } // room for the head in it
     return rows;
   };
@@ -987,7 +989,7 @@ const scatter = (n, y0, y1, seed = 1) => Array.from({ length: n }, (_, i) => { c
 // stripes down the front and back, ribbed hem and button bands, patch pockets (a tissue up one of them). the dress
 // carries on below it to just under the knee: cornflower blue, flowers all over, whatever colour the cardigan is
 function cardiganCut(F, lk) {
-  const legs = lk.bottom === 'pants' || lk.bottom === 'overalls';
+  const legs = trousers(lk);
   const D = shell(F.rows(legRoom([[0.5, 0.29, 0.28, 0.285], [0.62, 0.278, 0.262, 0.27], [0.76, 0.258, 0.232, 0.24], [0.88, 0.23, 0.194, 0.204], [0.97, 0.212, 0.166, 0.174]], lk, F, legs), 1, 0.008), 2.3);
   const rows = F.rows(legRoom([[0.9, 0.258, 0.214, 0.224], [0.96, 0.25, 0.2, 0.208], [1.08, 0.236, 0.176, 0.18], [1.2, 0.242, 0.174, 0.174], [1.33, 0.266, 0.18, 0.176], [1.43, 0.278, 0.174, 0.172], [1.492, 0.268, 0.154, 0.16], [1.528, 0.176, 0.12, 0.132], [1.548, 0.11, 0.095, 0.1]], lk, F, legs), 0.85, 0.022);
   for (const r of rows) if (r[0] < 0.975) { const d = D.at(r[0]); r[1] = Math.max(r[1], d[0] + 0.018); r[2] = Math.max(r[2], d[1] + 0.018); r[3] = Math.max(r[3], d[2] + 0.018); } // (round the outside of the dress)
@@ -1113,6 +1115,71 @@ function sandal() { // a white sock foot, a brown sole, straps over it (says it'
     .box(0.112, 0.014, 0.034, C.tan, T(0, -0.396, -0.12)).box(0.112, 0.014, 0.03, C.tan, T(0, -0.398, -0.03)).box(0.112, 0.03, 0.016, C.tan, T(0, -0.43, 0.058)).box(0.02, 0.016, 0.014, C.silver, T(0.054, -0.396, -0.03)).piece('y');
   g.g.type = 'BoxGeometry';
   return g;
+}
+
+// ------------------------------------------------------------ Chef's Whites (Chef): a double-breasted jacket and an apron
+// the front flap buttoned across with two rows of black cloth knots, a stand-up collar with a red neckerchief knotted at
+// the throat, a thermometer and a pen in a pocket on the left sleeve, turned-back cuffs. a long apron from the waist to
+// the shins, its strings round the jacket tied in a bow at the back, a checked tea towel tucked in at the hip
+function chefCut(F, lk) {
+  const S = shell(F.rows([[0.95, 0.24, 0.178, 0.176], [1.06, 0.232, 0.17, 0.168], [1.15, 0.232, 0.17, 0.166], [1.3, 0.258, 0.18, 0.172], [1.42, 0.28, 0.176, 0.17], [1.488, 0.274, 0.156, 0.16], [1.526, 0.178, 0.12, 0.13], [1.548, 0.108, 0.096, 0.1]], 0.9, 0.014), 2.7);
+  const rows = F.rows(legRoom([[0.53, 0.27, 0.205, 0.2], [0.75, 0.25, 0.19, 0.19], [0.9, 0.236, 0.18, 0.18], [1.0, 0.236, 0.176, 0.176], [1.12, 0.234, 0.176, 0.176]], lk, F, true), 1, 0.02);
+  for (const r of rows) if (r[0] >= S.y0) { const a = S.at(r[0]); r[1] = Math.max(r[1], a[0] + 0.012); r[2] = Math.max(r[2], a[1] + 0.012); r[3] = Math.max(r[3], a[2] + 0.012); } // (over the jacket)
+  return [S, shell(rows, 2.4)];
+}
+function chefBody(F, lk, [S, A]) {
+  const K = new Kit(true);
+  loft(K, S, S.lv(0.95, 1.548, [0.975]), cols(S), (y) => (y < 0.975 ? C.panel : C.base), { wrap: true });
+  // the front flap across to their left, its edge stitched; two rows of black knots
+  panel(K, S, (s, t) => { const y = mix(0.952, 1.5, t), x1 = y > 1.4 ? mix(-0.115, -0.04, (y - 1.4) / 0.1) : -0.115; return [mix(x1, 0.07, s), y]; }, 3, 6, C.base, 0.005, { rim: C.seam });
+  for (const y of [1.4, 1.3, 1.2, 1.1]) for (const x of [-0.088, 0.046]) K.ball(0.012, C.ink, S.ff(x, y, 0.011), 6, 4);
+  collar(K, S, 1.548, 0.012, C.base, { a0: S.ux(1.548, 0.02), a1: S.ux(1.548, -0.02) - TAU, n: 14, lift: 0.006, rim: C.seam, stand: 0.03 }); // stand-up collar
+  // the neckerchief: round the top of the collar, knotted at the front, two ends
+  const nk = []; for (let i = 0; i <= 16; i++) { const a = (i / 16) * TAU, p = S.p(1.548, a, 0.014); nk.push([p[0] * 1.05, 1.576, p[2] * 1.05]); }
+  K.solid(() => K.tube(nk, 0.016, 5, C.red));
+  const kn = S.ff(0.0, 1.535, 0.03);
+  K.box(0.04, 0.036, 0.03, C.red, kn); for (const sx of [-1, 1]) K.box(0.03, 0.08, 0.012, C.redd, kn.clone().multiply(T(sx * 0.02, -0.05, -0.006, 0, 0, sx * 0.35)));
+  for (const sx of [-1, 1]) bar(K, S, [sx * 0.19, 1.43], [sx * 0.18, 0.97], 0.006, C.seam, 0.0025, { back: true, rim: false, step: 0.07 }); // back seams
+  // the apron: down the front from the waist, hemmed, strings round the jacket, a bow at the back, a tea towel
+  const av = A.lv(0.53, 1.11, [0.56]), ua = Array.from({ length: 9 }, (_, j) => mix(126, 234, j / 8) * DEG);
+  loft(K, A, av, ua, (y) => (y < 0.56 ? C.cream : C.white));
+  for (const j of [0, 8]) panel(K, A, (s, t) => [ua[j] + (s - 0.5) * 0.04, mix(0.53, 1.11, t)], 1, 6, C.cream, 0.003, { uy: true, rim: false }); // its hemmed sides
+  loft(K, S, S.lv(1.095, 1.125), cols(S), C.white, { wrap: true, lift: (i) => 0.014 }); // the strings
+  const bw = S.bf(0, 1.11, 0.016);
+  for (const sx of [-1, 1]) { K.ball(1, C.white, bw.clone().multiply(T(sx * 0.05, 0.012, 0.012, 0, sx * 0.2, sx * 0.4, 0.05, 0.03, 0.016)), 6, 4); K.box(0.022, 0.13, 0.008, C.white, bw.clone().multiply(T(sx * 0.03, -0.07, 0.004, 0, 0, sx * 0.25))); }
+  K.box(0.03, 0.03, 0.03, C.white, bw.clone().multiply(T(0, 0, 0.012)));
+  const tw = S.frame(1.06, 100 * DEG, 0.03); // a red and white checked tea towel, folded over the string on their right hip
+  K.grid(5, 3, (i, j) => { const p = V3(mix(-0.045, 0.045, j / 3), mix(0.06, -0.13, i / 5), 0.002).applyMatrix4(tw); return [p.x, p.y, p.z]; }, (i, j) => ((i + j) % 2 ? C.red : C.white), [tw.elements[8], tw.elements[9], tw.elements[10]]);
+  return K.piece();
+}
+function chefSleeve(part, left) {
+  const K = new Kit(true);
+  if (part === 'up') {
+    K.lathe([[0.001, -0.092], [0.064, -0.076], [0.088, -0.034], [0.09, 0.008], [0.085, 0.2], [0.083, 0.288], [0.072, 0.318], [0.05, 0.33]], 12, C.base);
+    if (left) { const m = T(-0.088, 0.004, -0.07, 0, PI / 2, 0); K.box(0.07, 0.05, 0.012, C.panel, m.clone().multiply(T(0, 0, 0.002))); K.cyl(0.005, 0.005, 0.11, 6, C.silver, m.clone().multiply(T(-0.014, 0.03, 0.006))); K.cyl(0.01, 0.01, 0.016, 8, C.silver, m.clone().multiply(T(-0.014, 0.086, 0.006, PI / 2))); K.cyl(0.006, 0.006, 0.06, 6, C.ink, m.clone().multiply(T(0.012, 0.03, 0.006))); } // a thermometer and a pen
+  } else K.lathe([[0.064, -0.03], [0.072, 0.02], [0.068, 0.15], [0.072, 0.152, C.panel], [0.074, 0.16, C.panel], [0.074, 0.198, C.panel], [0.064, 0.2, C.deep], [0.05, 0.186]], 12, C.base);
+  return K.piece('z');
+}
+// Checked Trousers (Chef): black and white checks, an elastic waist with a drawstring, black clogs
+const CHK = (i, j, k) => (k === C.base && (i + j) % 2 ? C.white : k);
+function checksBody(F) {
+  const K = new Kit(true), S = hipCut(F), lv = S.lv(0.872, 1.05, [0.9, 0.926, 0.952, 0.978, 1.004, 1.03]);
+  K.grid(lv.length - 1, 16, (i, j) => S.p(lv[i], (j / 16) * TAU), (i, j) => ((i + j) % 2 ? C.white : C.base), radial, true);
+  lid(K, S, 0.872, C.base, false); lid(K, S, 1.084, C.deep, true);
+  rib(K, S, 1.05, 1.084, C.coal, 32);
+  for (const sx of [-1, 1]) K.tube([S.f(sx * 0.012, 1.066, 0.006), S.f(sx * 0.03, 1.03, 0.012), S.f(sx * 0.034, 0.985, 0.012)], 0.006, 4, C.white);
+  return K.piece();
+}
+function checksLeg(part) {
+  const K = new Kit(part !== 'shoe');
+  if (part === 'shoe') { // black clogs: a deep round toe, a thick sole
+    K.box(0.114, 0.074, 0.236, C.ink, T(0, -0.43, -0.05)).box(0.11, 0.07, 0.07, C.ink, T(0, -0.436, -0.142)).box(0.116, 0.022, 0.25, C.coal, T(0, -0.47, -0.052));
+    const pc = K.piece('y'); pc.g.type = 'BoxGeometry';
+    return pc;
+  }
+  const P = part === 'thigh' ? [[0.001, -0.094], [0.074, -0.072], [0.094, -0.025], ...Array.from({ length: 12 }, (_, i) => [mix(0.097, 0.081, i / 11), 0.02 + i * 0.036])] : [[0.001, -0.086], [0.05, -0.072], [0.079, -0.04], ...Array.from({ length: 10 }, (_, i) => [mix(0.083, 0.07, i / 9), i * 0.036]), [0.071, 0.364, C.panel], [0.072, 0.397, C.panel], [0.064, 0.399, C.deep], [0.05, 0.386]];
+  K.lathe(P, 12, C.base, { y: true, sy: 1.05, cell: (i, j, k) => (i > 2 ? CHK(i, j, k) : k) });
+  return K.piece('y');
 }
 
 // ------------------------------------------------------------ costume accessories (head / face / back)
@@ -1258,7 +1325,13 @@ function touristKit(E) {
   return K.piece();
 }
 
-Object.assign(ACCS, { readers, handbag, boxhelmet: boxHelmet, bottlepack: bottlePack, camera: touristKit }); // (batch 2)
+// a tall chef's hat: a band round the head, a pleated puff on top that's flopped over a bit
+function chefHat() {
+  const H = new Kit().lathe([[0.001, 0], [0.11, 0.008, C.white, 0.08], [0.185, 0.032, C.white, 0.1], [0.218, 0.08, C.white, 0.1], [0.218, 0.15, C.white, 0.1], [0.19, 0.212, C.white, 0.08], [0.16, 0.236, C.cream], [0.156, 0.24], [0.156, 0.31], [0.152, 0.312, C.cream], [0.14, 0.3]], 18, C.white, { y: true });
+  return new Kit().add(H, T(0.012, 0.552, 0.01, -0.06, 0, -0.1)).piece();
+}
+
+Object.assign(ACCS, { readers, handbag, boxhelmet: boxHelmet, bottlepack: bottlePack, camera: touristKit, chefhat: chefHat }); // (batch 2)
 const FITTED = new Set(['float', 'handbag', 'bottlepack', 'camera']); // cut for the body and the top they're on, like the clothes
 // parent: the head (hats, faces) or the body (back). col: the player's colour. lk: the look (the float is fitted to the
 // body and the top it's on). false: not ours
@@ -1292,13 +1365,14 @@ const TOPS = {
   cardigan: { cut: cardiganCut, body: cardiganBody, sleeve: cardiganSleeve, cap: 1, key: legKey, dress: true, thick: 0.03 },
   spacesuit: { cut: spacesuitCut, body: spacesuitBody, sleeve: spacesuitSleeve, cap: 1, own: FIXED.white, thick: 0.05 },
   hawaiian: { cut: hawaiianCut, body: hawaiianBody, sleeve: hawaiianSleeve, long: false, cap: 1, thick: 0.012 },
+  chef: { cut: chefCut, body: chefBody, sleeve: chefSleeve, cap: 1, pocket: true, own: FIXED.white, key: legKey, thick: 0.02 },
 };
 const topOf = (top) => (typeof top === 'string' && Object.hasOwn(TOPS, top) ? TOPS[top] : null);
 // a top's own colour when you haven't picked one (null: your colour), and how far it stands off the back (models.js
 // hangs backpacks and capes that much further out)
 export const topOwn = (top) => { const G = topOf(top); return G && G.own != null ? G.own : null; };
 export const topThick = (top) => { const G = topOf(top); return (G && G.thick) || 0; };
-const BOTTOMS = { shorts: shortsBody, pants: pantsBody, skirt: skirtBody, overalls: overallsBody, cargo: cargoBody };
+const BOTTOMS = { shorts: shortsBody, pants: pantsBody, skirt: skirtBody, overalls: overallsBody, cargo: cargoBody, checks: checksBody };
 const wearOn = (P) => P.wear || (P.wear = P.body.add(new THREE.Group()).children.at(-1)); // one group for everything on the torso: jokeBody leaves groups alone (these are cut to fit already)
 const cutKey = (top, lk, F) => `${top}|${F.key}|${TOPS[top] && TOPS[top].key ? TOPS[top].key(lk, F) : ''}`;
 // the colour the mannequin's shoulder balls take under this top (null: bare)
