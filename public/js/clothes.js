@@ -963,7 +963,8 @@ function wizHat() { // a cardboard cone taped into shape, its tip gone soft, a b
   // on the cone at height h, d degrees round from the front, lying on its slope
   const on = (h, d, lift = 0.003) => { const r = 0.158 - 0.3 * h + lift, a = d * DEG; return M0.clone().multiply(T(Math.sin(a) * r, h, -Math.cos(a) * r, 0, PI - a, 0)).multiply(T(0, 0, 0, -0.29)); };
   for (const [h, d, r, a] of [[0.075, 18, 0.034, 0.2], [0.17, -32, 0.026, 0.9], [0.1, 105, 0.03, 0.5], [0.16, 205, 0.026, 1.3], [0.065, 262, 0.03, 0.1], [0.245, 70, 0.02, 0.7], [0.07, -60, 0.024, 1.6]]) star(K, on(h, d), r, C.pencil, a);
-  K.box(0.03, 0.19, 0.004, C.silver, on(0.115, 172, 0.002)).box(0.07, 0.022, 0.005, C.silver, on(0.06, 172, 0.004)).box(0.06, 0.022, 0.005, C.silver, on(0.17, 172, 0.004)); // the tape up the back
+  K.box(0.007, 0.27, 0.003, C.cardd, on(0.13, 172, 0.001)); // the seam up the back where it's rolled shut...
+  for (const [h, w, r] of [[0.03, 0.07, 0.12], [0.12, 0.06, -0.2], [0.21, 0.045, 0.3]]) K.box(w, 0.024, 0.004, C.tape, on(h, 172, 0.003).multiply(T(0, 0, 0, 0, 0, r))); // ...and the masking tape holding it
   return K.piece();
 }
 function fakeBeard() { // cotton wool on an elastic: a bib of fluff from the nose to the chest, the string up over the ears

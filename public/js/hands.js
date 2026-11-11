@@ -46,6 +46,7 @@ const SLEEVES = { hoodie: 1, jacket: 1, suit: 1, runner: 1, maid: 1, tee: 0.5, r
 // the wrists the clothes have (clothes.js): [the cuff, the sleeve behind it]. a top that isn't here is one colour to the end
 const dimmer = (c) => new THREE.Color(c).multiplyScalar(0.72).getHex();
 const CUFFS = { runner: (c) => [0x1c1c21, c], suit: (c) => [0xf2f1ec, c], hoodie: (c) => [dimmer(c), c], jacket: (c) => [dimmer(c), c] }; // black knit, a shirt cuff, darker ribbing, a darker band
+CUFFS.robe = (c) => [new THREE.Color(c).lerp(new THREE.Color(0xffffff), 0.16).getHex(), c]; // the bathrobe's turned-back cuff, a touch paler
 export function handLook() {
   const lk = (G.settings && G.settings.look) || {};
   const skin = lk.skin ? hex(lk.skin, 0xe6cba2) : 0xe6cba2; // the mannequin tone when you haven't picked one
