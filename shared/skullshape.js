@@ -51,6 +51,7 @@ function pt(th, ph) {
     y += (-0.35 - y) * t;
   }
   if (eye > 0.08 && y < EYE) y += (EYE - (EYE - y) * 0.2 - y) * sm((eye - 0.08) / 0.2); // the sockets' floors: level, to stand on
+  if (eye > 0.08 && y > 7 && y < EYE + 2.2) y += (EYE + 2.2 - (EYE + 2.2 - y) * 0.2 - y) * sm((eye - 0.08) / 0.2); // and their roofs, level too: headroom, right to the back
   y -= Math.max(0, y - 12.2) * 0.6; // the crown: flatter (it's a floor too)
   return [C[0] + Math.sin(th) * RX * hr, y, C[2] - Math.cos(th) * RZ * hr, hole]; // th 0 = the face = -z; +th turns toward +x
 }

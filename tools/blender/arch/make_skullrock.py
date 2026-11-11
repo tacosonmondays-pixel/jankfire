@@ -44,8 +44,12 @@ def on_row(i, th):  # a point of row i at azimuth th (0 = the face), between its
     return G[i][j % NT][0].lerp(G[i][(j + 1) % NT][0], t)
 
 
-def tri(a, b, c, m):
-    K.tri([a, b, c] if (b - a).cross(c - a).dot((a + b + c) / 3 - C) > 0 else [a, c, b], m)
+def tri(a, b, c, m):  # one of the skin's triangles. the skin's one sheet, so every cell winds the same way (a socket's level roof faces down: "away from the middle" would get it wrong)
+    K.tri([a, c, b] if FLIP else [a, b, c], m)
+
+
+_a, _b, _c = G[NP // 2][0][0], G[NP // 2][1][0], G[NP // 2 + 1][1][0]  # (which way: a cell on the back of the head, where out is plainly away from the middle)
+FLIP = (_b - _a).cross(_c - _a).dot((_a + _b + _c) / 3 - C) < 0
 
 
 CRACK = lambda th, ph: abs(ph - (0.95 + 0.16 * math.sin(th * 2.3 + 0.6) + 0.05 * math.sin(th * 9))) < 0.022 and abs(th) < 2.2  # the suture across the crown
@@ -94,8 +98,8 @@ for ri in range(len(RINGS) - 1):
             if (t3[1] - t3[0]).cross(t3[2] - t3[0]).dot(axis(cc.z) - cc) < 0: t3 = t3[::-1]
             K.tri(t3, m)
 E = RINGS[-1]; ec = Vector((0, 1.3, E[0].z))
-for k in range(nL - 1):  # its back wall
-    t3 = [ec, E[k], E[k + 1]]
+for k in range(nL):  # its back wall (right round: the last one closes it along the sand)
+    t3 = [ec, E[k], E[(k + 1) % nL]]
     if (t3[1] - t3[0]).cross(t3[2] - t3[0]).z > 0: t3 = t3[::-1]
     K.tri(t3, 'skhole')
 
