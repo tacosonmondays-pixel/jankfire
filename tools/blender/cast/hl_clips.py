@@ -135,6 +135,11 @@ def clip(name, keys, length=None, loop=None, marks=(), face=(), osc=(), note='',
     for k in keys:
         t, p = k[0], k[1]; e = k[2] if len(k) > 2 else 'ss'
         ks.append({'t': round(t, 4), 'p': {c: round(v, 4) for c, v in p.items() if abs(v) > 1e-5 or c in REST}, 'e': e})
+    # every key carries every channel the clip touches (0 where it rests): a channel missing from both keys of a stretch
+    # would drop out of the pose there, and its overlap (LAG) would snap it home in one frame
+    allc = set().union(*[k['p'] for k in ks])
+    for k in ks:
+        for c in allc: k['p'].setdefault(c, 0.0)
     CLIPS[name] = {'len': length, 'loop': loop, 'keys': ks, 'marks': [[round(t, 3), n] for t, n in marks], 'face': [[t, n] for t, n in face],
                    'osc': [list(o) for o in osc], 'blinks': [[t, list(l), d, depth] for t, l, d, depth in blinks], 'note': note, 'nolag': nolag}
 

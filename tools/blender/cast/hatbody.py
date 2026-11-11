@@ -234,7 +234,7 @@ def hand(H, sx, h, n):
 # she walks (capeR.y - / capeL.y + opens). Pink veined lining.
 BAR_W = 1.46; BAR_Y = SHY + 0.085
 CAPE_TOP = BAR_Y - 0.01; CAPE_WIDE = 1.58; HEM = 0.05; ZM = 0.05
-CW = [(HEM, 0.228), (0.14, 0.2), (0.36, 0.21), (0.66, 0.268), (0.95, 0.345), (1.22, 0.44), (1.42, 0.53), (CAPE_WIDE, 0.58), (1.72, 0.566), (1.84, 0.52), (1.94, 0.44), (2.03, 0.3), (CAPE_TOP, 0.13)]   # (height, half width): a hard taper to the hem
+CW = [(HEM, 0.222), (0.14, 0.205), (0.36, 0.235), (0.66, 0.305), (0.95, 0.385), (1.22, 0.462), (1.42, 0.535), (CAPE_WIDE, 0.58), (1.72, 0.566), (1.84, 0.52), (1.94, 0.44), (2.03, 0.3), (CAPE_TOP, 0.13)]   # (height, half width): a hard taper to the hem
 CG = [(HEM, 0.12), (0.45, 0.085), (0.8, 0.07), (1.05, 0.062), (1.5, 0.1), (CAPE_TOP, 0.1)]                         # half the gap down the front: her shins show in it
 CZF = [(HEM, -0.105), (0.9, -0.14), (1.45, -0.16), (1.9, -0.13), (CAPE_TOP, -0.1)]                                   # how far forward the front of it is
 CAPE_J = JP['capeR']; CAPE_TILT = 0.0605                                                                              # the hinge: a straight pin, leaning in to her collar
@@ -309,8 +309,8 @@ def coat(H, lod=False):
         # gills down the back of each half, either side of the spine: slits in the hide with swollen lips, dark inside
         for k, y in enumerate((1.46, 1.18)):
             v = 0.16; c = Vector(cape_pt(y, v, sx=sx)); n = cape_n(y, v, sx); t_ = Vector(cape_pt(y, v + 0.04, sx=sx)) - c; t_.normalize()
-            f = 1 - 0.14 * k; L = 0.075 * f; up_ = n.cross(t_).normalized()
-            slot = box((0.012 * f, L * 0.92, 0.012), (0, 0, 0), m['mouth'], name='gill_dark', seg=1)
+            f = 1.25 - 0.2 * k; L = 0.1 * f; up_ = n.cross(t_).normalized()
+            slot = box((0.014 * f, L * 0.92, 0.012), (0, 0, 0), m['mouth'], name='gill_dark', seg=1)
             extra += orient([slot], tuple(c + n * 0.001), tuple(n), src=(0, 0, -1))
             for e in (-1, 1):
                 lp = sweep([tuple(c + t_ * e * 0.007 * f + up_ * L * s_ * 0.5 + n * (0.004 * math.cos(s_ * 1.5))) for s_ in (-1, -0.33, 0.33, 1)], [0.002, 0.006 * f, 0.006 * f, 0.002], m['suit'], seg=4, name='gill_lip')
@@ -341,7 +341,7 @@ def coat(H, lod=False):
         # growth lines across each wing case, like the segments of something's back
         for y0 in (1.3, 0.86):
             pts = [cape_pt(y0 - 0.05 * v, v, -0.0018, sx=sx) for v in (0.03, 0.1, 0.18, 0.26, 0.34, 0.42)]
-            gl = sweep(pts, [0.002, 0.006, 0.0075, 0.007, 0.0055, 0.002], m['suit'], seg=4, name='growthline'); tint(gl, lambda p, n_: 0.48); extra.append(shade(gl, 70))
+            gl = sweep(pts, [0.003, 0.009, 0.011, 0.01, 0.008, 0.003], m['suit'], seg=4, name='growthline', squash=(0.7, 1.0)); tint(gl, lambda p, n_: 0.42); extra.append(shade(gl, 70))
         H.P.add(jn, [o] + extra, tag='cape', note='the cape: two stiff halves hinged down her back, closed in front of her knees. cape*.y parts them')
     if lod:
         bar = box((BAR_W + 0.1, 0.07, 0.15), (0, BAR_Y - 0.005, 0.135), m['suit'], name='yoke_lod', seg=1)

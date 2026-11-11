@@ -184,9 +184,12 @@ def brim(H, lod=False):
     G_ = 0.25   # degrees: a hair of a gap between neighbours: nothing overlaps, so nothing fights
     # her right wing (the low one) in two, hinged on x = 0.84; the left wing (the long one) hinged on x = -1.04
     sector(H, 'brimR', arc(-50, 50, lod), it, hole_r, lambda t: min(edge_s(t), cutR(t) - 0.0015), nr=6, name='brimR', **K)
-    sector(H, 'brimRb', arc(-27, 27, lod), lambda t: cutR(t) + 0.0015, lambda t: cutR(t) + 0.0015, lambda t: max(edge_s(t), cutR(t) + 0.012), nr=4, name='brimRb', **K)
+    def span(d0, d1, ok):   # (the outer wings only where the edge really reaches past the fold: no sliver of skin along the hinge)
+        ds = [d0 + 0.25 * i for i in range(int((d1 - d0) / 0.25) + 1)]; good = [d for d in ds if ok(math.radians(d))]
+        return good[0], good[-1]
+    sector(H, 'brimRb', arc(*span(-27, 27, lambda t: edge_s(t) * math.cos(t) > 0.84 + 0.02), lod=lod), lambda t: cutR(t) + 0.0015, lambda t: cutR(t) + 0.0015, lambda t: max(edge_s(t), cutR(t) + 0.012), nr=4, name='brimRb', **K)
     sector(H, 'brimL', arc(130, 230, lod), it, hole_r, lambda t: min(edge_s(t), cutL(t) - 0.0015), nr=6, name='brimL', **K)
-    sector(H, 'brimLb', arc(147, 213, lod), lambda t: cutL(t) + 0.0015, lambda t: cutL(t) + 0.0015, lambda t: max(edge_s(t), cutL(t) + 0.012), nr=5, name='brimLb', **K)
+    sector(H, 'brimLb', arc(*span(147, 213, lambda t: -edge_s(t) * math.cos(t) > 1.04 + 0.02), lod=lod), lambda t: cutL(t) + 0.0015, lambda t: cutL(t) + 0.0015, lambda t: max(edge_s(t), cutL(t) + 0.012), nr=5, name='brimLb', **K)
     # front and back meet the wings edge to edge
     sector(H, 'brimF', arc(50 + G_, 130 - G_, lod), it, hole_r, edge_s, nr=5, name='brimF', **K)
     sector(H, 'brimB', arc(230 + G_, 310 - G_, lod), it, hole_r, edge_s, nr=5, name='brimB', **K)
