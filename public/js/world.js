@@ -250,7 +250,7 @@ function terrainGeo(T, tile, mi = -1, cut = null) { // mi: only the cells painte
   const vz = T.nz + 1, V = (i, j) => i * vz + j, wz = j1 - j0 + 1, W = (i, j) => (i - i0) * wz + (j - j0), n = Math.max(0, i1 - i0 + 1) * Math.max(0, wz);
   const pos = new Float32Array(n * 3), nrm = new Float32Array(n * 3), uv = new Float32Array(n * 2), idx = [];
   for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
-    const k = W(i, j), x = T.x0 + i, z = T.z0 + j, h = T.H[V(i, j)];
+    const k = W(i, j), x = T.x0 + i, z = T.z0 + j, h = (T.y || 0) + T.H[V(i, j)]; // (T.y: ground that isn't at 0, shared/terrain.js fieldTerrain)
     const dx = (T.H[V(Math.min(T.nx, i + 1), j)] - T.H[V(Math.max(0, i - 1), j)]) / 2, dz = (T.H[V(i, Math.min(T.nz, j + 1))] - T.H[V(i, Math.max(0, j - 1))]) / 2, l = Math.hypot(dx, 1, dz);
     pos.set([x, h, z], k * 3); nrm.set([-dx / l, 1 / l, -dz / l], k * 3); uv.set([x / tile, z / tile], k * 2);
   }
@@ -284,9 +284,13 @@ function terrainTint(T, g, tm) {
       col.setXYZ(i, a * r / 64, a * gg / 56, a * b / 70); // (over the basalt texture's own colour, about 64 56 70)
       continue;
     }
-    const h = pos.getY(i), k = (h > 0 ? 0.11 * h / Math.max(0.5, T.hi) : 0.24 * h / Math.max(0.5, -T.lo)) - 0.5 * (1 - nrm.getY(i)) * 2.2;
+    const h = pos.getY(i) - (T.y || 0), k = (h > 0 ? 0.11 * h / Math.max(0.5, T.hi) : 0.24 * h / Math.max(0.5, -T.lo)) - 0.5 * (1 - nrm.getY(i)) * 2.2;
     const a = col.getX(i) * (1 + k);
     col.setXYZ(i, a, a, a * (1 - Math.max(0, -k) * 0.25)); // (the dark bits a touch warmer)
+    if (T.field && T.field.parts) { // flesh: veins dark and bruised, the tops of growths pale and fatty
+      const p = T.field.parts(pos.getX(i), pos.getZ(i)), v = Math.min(1, p.vein / 0.45), g = Math.max(0, Math.min(1, p.growth / 1.8)), s = Math.max(0, Math.min(1, -p.growth / 0.5));
+      col.setXYZ(i, a * (1 - 0.5 * v) * (1 + 0.22 * g) * (1 - 0.45 * s), a * (1 - 0.72 * v) * (1 + 0.3 * g) * (1 - 0.6 * s), a * (1 - 0.38 * v) * (1 + 0.2 * g) * (1 - 0.5 * s));
+    }
   }
   return g;
 }
