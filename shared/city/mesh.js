@@ -118,6 +118,25 @@ function shapeInto(S, s, lod) {
     let n = norm(cross(e2, e1)); if (n[1] < 0) n = [-n[0], -n[1], -n[2]];
     for (const p of q) S.v(p[0], p[1], p[2], n[0], n[1], n[2], p[0] / tile, p[2] / tile, r, g, b, a);
     if (n[1] >= 0 && cross(e2, e1)[1] >= 0) { S.t(base, base + 3, base + 2); S.t(base, base + 2, base + 1); } else { S.t(base, base + 1, base + 2); S.t(base, base + 2, base + 3); }
+  } else if (s.kind === 'field') { // shaped ground (shared/city/ground.js): a grid of heights, H[i * (nz + 1) + j], cell m apart, col = rgb per point
+    const st = lod ? 2 : 1, vz = s.nz + 1, H = s.H, cs = s.cell, base0 = S.n, ni = Math.floor(s.nx / st), nj = Math.floor(s.nz / st);
+    const h = (i, j) => H[Math.max(0, Math.min(s.nx, i)) * vz + Math.max(0, Math.min(s.nz, j))];
+    for (let a = 0; a <= ni; a++) for (let c = 0; c <= nj; c++) {
+      const i = Math.min(s.nx, a * st), j = Math.min(s.nz, c * st), x = s.x0 + i * cs, z = s.z0 + j * cs, k = i * vz + j;
+      const dx = (h(i + 1, j) - h(i - 1, j)) / (2 * cs), dz = (h(i, j + 1) - h(i, j - 1)) / (2 * cs), l = Math.hypot(dx, 1, dz);
+      const cr = s.col ? s.col[k * 3] : r, cg = s.col ? s.col[k * 3 + 1] : g, cb = s.col ? s.col[k * 3 + 2] : b;
+      S.v(x, H[k], z, -dx / l, 1 / l, -dz / l, x / tile, z / tile, cr, cg, cb, a);
+    }
+    for (let a2 = 0; a2 < ni; a2++) for (let c = 0; c < nj; c++) {
+      const p0 = base0 + a2 * (nj + 1) + c, p1 = p0 + nj + 1; // (p0 = (a, c), p1 = (a + 1, c): x then z, ccw from above)
+      S.t(p0, p0 + 1, p1); S.t(p1, p0 + 1, p1 + 1);
+    }
+    for (const e of s.skirt || []) { // a side going down where the next district's ground is lower (no seeing under the hill)
+      const n = e === 'w' || e === 'e' ? nj : ni, at = (q) => (e === 'w' ? [0, Math.min(s.nz, q * st)] : e === 'e' ? [s.nx, Math.min(s.nz, q * st)] : e === 'n' ? [Math.min(s.nx, q * st), 0] : [Math.min(s.nx, q * st), s.nz]);
+      const nx = e === 'w' ? -1 : e === 'e' ? 1 : 0, nz = e === 'n' ? -1 : e === 's' ? 1 : 0, b1 = S.n;
+      for (let q = 0; q <= n; q++) { const [i, j] = at(q), x = s.x0 + i * cs, z = s.z0 + j * cs; S.v(x, H[i * vz + j], z, nx, 0, nz, (x + z) / tile, H[i * vz + j] / tile, r * 0.8, g * 0.8, b * 0.8, a); S.v(x, s.lo - 3, z, nx, 0, nz, (x + z) / tile, (s.lo - 3) / tile, r * 0.6, g * 0.6, b * 0.6, a); }
+      for (let q = 0; q < n; q++) { const t0 = b1 + q * 2, t1 = t0 + 2; if (e === 'e' || e === 'n') { S.t(t0, t1, t0 + 1); S.t(t1, t1 + 1, t0 + 1); } else { S.t(t0, t0 + 1, t1); S.t(t1, t0 + 1, t1 + 1); } }
+    }
   } else if (s.kind === 'blob' || s.kind === 'lathe') {
     const prof = s.kind === 'lathe' ? s.prof : null, rows = prof ? prof.length - 1 : Math.max(3, Math.round(seg * 0.6));
     const R = s.kind === 'blob' ? (Array.isArray(s.r) ? s.r : [s.r, s.r, s.r]) : (s.sc || [1, 1, 1]), c = s.c, base0 = S.n;
@@ -215,6 +234,16 @@ export function impostorCells(p) {
       if (cover < S * S * 0.2 && by1 > top[c]) continue; // a thin tower doesn't make the whole 16 m cell tall
       if (by0 < base[c]) base[c] = by0;
       if (by1 > top[c]) { top[c] = by1; const t = p.tint[i]; col[c] = t || (MATS[p.mat[i]] ? MATS[p.mat[i]][2] : 0x888888); }
+    }
+  }
+  for (const s of p.shapes || []) if (s.kind === 'field') { // shaped ground: its highest point in each cell
+    const vz = s.nz + 1;
+    for (let i = 0; i <= s.nx; i++) for (let j = 0; j <= s.nz; j++) {
+      const x = s.x0 + i * s.cell, z = s.z0 + j * s.cell, a = Math.min(N - 1, Math.floor((x - x0c) / S)), b = Math.min(N - 1, Math.floor((z - z0c) / S));
+      if (a < 0 || b < 0) continue;
+      const c = a + b * N, y = s.H[i * vz + j];
+      if (s.lo - 3 < base[c]) base[c] = s.lo - 3;
+      if (y > top[c]) { top[c] = y; col[c] = s.col ? (s.col[(i * vz + j) * 3] << 16) | (s.col[(i * vz + j) * 3 + 1] << 8) | s.col[(i * vz + j) * 3 + 2] : 0x9a8070; }
     }
   }
   return { top, col, base };
