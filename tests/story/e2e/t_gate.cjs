@@ -49,10 +49,15 @@ const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
     if (locked) { await shot(`g6_scene_${i}`); await skip(); }
   }
   await log('after fight'); await shot('g7_beaten');
-  for (let i = 0; i < 12; i++) { const s = await st(); console.log('step', s.step); if (s.step === 'DONE' || s.step === 'home') break;
-    if (s.step === 'after') { await ev(async () => { const { G } = await import('/js/ctx.js'); const { ME } = await import('/js/player.js'); const { actors } = await import('/js/story/actors.js'); const a = actors.get('overtime'); if (a) { ME.pos = [a.pos[0], a.pos[1] + 0.2, a.pos[2] + 2]; ME.yaw = 0; } }); await sleep(800); await pg.keyboard.press('KeyF'); await sleep(1200); await shot('g8_rescheduled'); }
-    if (s.step === 'truck') { await shot('g9_truck'); await pg.keyboard.press('Digit2'); await sleep(800); }
-    await skip(); await sleep(1500); }
+  const scenesOnly = () => ev(async () => { const sc = await import('/js/story/scene.js'); if (sc.playing()) sc.skipScene(); }); // (talks and choices are answered, not skipped)
+  const talk = () => ev(async () => (await import('/js/story/talk.js')).talking());
+  let closed = false;
+  for (let i = 0; i < 40; i++) { const s = await st(); if (i % 4 === 0) console.log('step', s.step); if (s.step === 'DONE' || s.step === 'home') break;
+    await scenesOnly();
+    if (s.step === 'after' && !(await talk())) { await ev(async () => { const { ME } = await import('/js/player.js'); const { actors } = await import('/js/story/actors.js'); const a = actors.get('overtime'); if (a) { ME.pos = [a.pos[0] - Math.sin(a.yaw) * 2.2, a.pos[1] + 0.2, a.pos[2] - Math.cos(a.yaw) * 2.2]; ME.yaw = a.yaw + Math.PI; } }); await sleep(800); await pg.keyboard.press('KeyF'); await sleep(1500); await shot('g8_rescheduled'); }
+    else if (await talk()) { const opts = await ev(() => [...document.querySelectorAll('.st-opt')].map((x) => x.textContent)); if (s.step === 'truck' && opts.length && !closed) { closed = true; await ev(async () => (await import('/js/story/talk.js')).endTalk()); await sleep(7000); console.log('closed with Esc, offered again:', await talk()); } // (it has to come back)
+      else if (s.step === 'truck' && opts.length) { await shot('g9_truck'); console.log('truck options', JSON.stringify(opts)); await pg.keyboard.press('Digit2'); } else await pg.keyboard.press('KeyF'); }
+    await sleep(900); }
   await log('end'); await shot('g10_end');
   const evs = await ev(() => window.__ev.filter((e) => e.type !== 'hit').map((e) => e.type + ':' + (e.phase ?? e.state ?? e.boss ?? e.who ?? '')));
   console.log('events', evs.slice(0, 40).join(' '));
