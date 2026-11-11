@@ -16,25 +16,38 @@ import { raycast, query } from '/shared/physics.js';
 import { carBoxes, carType } from '/shared/story/drive.js';
 import { MISSIONS_ACT1 } from '/shared/story/content/missions/act1.js';
 import { DV } from './drive.js';
+import { toast } from './questhud.js';
 import { RAMP } from '/shared/city/act1set.js'; // (the Unpaid's jump ramp over the collapse: the ambush ends there)
 import { hwY } from '/shared/city/slice.js';
-import { actors, spawnActor, despawnActor, play, walkTo } from './actors.js';
+import { actors, spawnActor, despawnActor, play, walkTo, CLIPS } from './actors.js';
+import { K } from '../keys.js';
 import { talking } from './talk.js';
-import { rigMesh, dogMesh, potMesh, potLevel, tradePostMesh } from './enc_looks.js';
+import { rigMesh, dogMesh, potMesh, potLevel, tradePostMesh, truckMesh } from './enc_looks.js';
 import { glbLoader } from '../glbkit.js';
 import { buildWeapon } from '../models.js';
 
 // the art lane's models for encounter enemies (one line each to swap): a cast look drawn over the bot (the shared cast
 // skeleton, walked by loco.js), or a vehicle glb. missing / not loaded = the code stand-ins in enc_looks.js
 export const ENC_LOOKS = { intern: ['intern', 'intern_b'], collector: ['collector'] };
-const VEHICLES = { war_rig: '/models/cast/c_war_rig.glb' }; // (front -z, ground y 0: wheel_*, castor_*, turret > gun > barrels)
+const VEHICLES = { war_rig: '/models/cast/c_war_rig.glb', stomach_dog: '/models/story/s_stomachdog.glb' }; // (front -z, ground y 0. rig: wheel_*, castor_*, turret > gun > barrels. dog: hips > legB*, tail; body > legF*, neck > head > jaw)
 const GLB = {};
+// the Gristle & Sons truck (Art's s_gristle_truck.glb: front -z, 'load' on the lowered tail-lift, clips open / lift_up /
+// drive), else the code stand-in. preloaded when m04 starts
+const TRUCK_GLB = '/models/story/s_gristle_truck.glb';
+function truckModel() {
+  const G0 = GLB.truck;
+  if (G0 && G0.scene) { const m = G0.scene.clone(true); m.userData = { anims: G0.anims }; return m; }
+  if (!G0) { GLB.truck = { scene: null }; glbLoader().loadAsync(TRUCK_GLB).then((g) => { g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); GLB.truck.scene = g.scene; GLB.truck.anims = g.animations; }).catch(() => { GLB.truck.bad = true; }); }
+  return truckMesh();
+}
 function vehicle(kind) {
   const url = VEHICLES[kind]; if (!url) return null;
   if (!GLB[kind]) { GLB[kind] = { scene: null }; glbLoader().loadAsync(url).then((g) => { g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); GLB[kind].scene = g.scene; }).catch(() => { GLB[kind].bad = true; }); }
   if (!GLB[kind].scene) return null;
   const m = GLB[kind].scene.clone(true), by = (n) => m.getObjectByName(n);
   const lod = by('lod'); if (lod) lod.visible = false;
+  m.traverse((o) => { if (/_lod1$/.test(o.name)) o.visible = false; });
+  if (kind === 'stomach_dog') { m.scale.setScalar(1.5); m.userData = { dogGlb: true, legs: [['legFL', 0], ['legFR', Math.PI], ['legBL', Math.PI], ['legBR', 0]].map(([n, ph]) => ({ hip: by(n), knee: by(n.replace('leg', 'shin')), ph })).filter((l) => l.hip), jaw: by('jaw'), tail: by('tail'), head: by('head') }; return m; }
   m.userData = { glb: true, wheels: ['wheel_rl', 'wheel_rr', 'wheel_ml', 'wheel_mr', 'castor_l_spin', 'castor_r_spin'].map(by).filter(Boolean), castors: ['castor_l', 'castor_r'].map(by).filter(Boolean), turret: by('turret'), gun: by('gun'), barrels: by('barrels'), body: by('rig') || m };
   return m;
 }
@@ -55,6 +68,16 @@ export const ENC = {
   chase: { max: 6, every: 13, lumpsSpeed: 9, carryFor: 2.2, carryUp: 9, land: [-44, 36.6, -15],
     carryAt: (p) => p[2] > -66 && p[2] < -28 && Math.abs(p[0] + 44) < 42 && p[1] > 38, // (the Clocking In plaza's south end, the last lungs before the gate)
     cps: [[-150, 40.4, -130, (p) => p[0] > -150 && p[2] < -110, 1], [-44, 40.4, -110, (p) => p[0] > -60 && p[2] > -118, 2]] },
+  // m04: the Gristle & Sons truck at the Gut border gate (parked up the plaza's east side, out of Overtime's way, its
+  // tail-lift to the south), who gets loaded, and the road it takes into the Gut (through the gate, up Rib Avenue). the spot is B's arena mark 'arena.truck', out of Overtime's way
+  truck: { at: [-29, 36, -16], yaw: 0, load: [0, 0.12, 4.55], lumps: [-31.7, 36, -17.5], lumpsYaw: Math.PI / 2,
+    queue: [['dad', "dumpling's dad", { body: 'normal', desc: 'a big man in a work jacket, ears like his son' }, "tell my lad i'll be late. tell him to keep the hat."],
+      ['ken', 'old ken', { body: 'normal', desc: 'an old man in a cardigan, a hip that is not his' }, "mind the hip. it's not mine. bev'll want it back."],
+      ['mina', null, null, '...rory?']],
+    spots: [[-34.5, 36, -9.5], [-36, 36, -8.2], [-37.6, 36, -7.4]], collectors: [[-32.5, 36, -11.2], [-34.2, 36, -12.2]],
+    sunset: [-200, 32, 6], sunsetD: 14, // (by the Sunset Wall: parked along the top terrace, near enough to be in c4's shots)
+    near: 70, every: 5.5, road: [[-29, -16], [-34, -22], [-41, -27], [-44, -36], [-44, -72], [-44, -150]], arch: 4, speed: 6, stall: 6, catch: 5.5 },
+  pulls: 5, // m04 'stay': presses of F to get the staple out of Lumps' arm
 };
 const SOUP_VAR = 'm02.soup';
 
@@ -106,9 +129,9 @@ export function makeEncounters(ST, { where } = {}) {
   const send = (k, o) => G.story && G.story.send && G.story.send(k, o);
   const npcDef = (id) => S().defs.npcs[id];
   // someone from the cast, stood somewhere for an encounter (the roster leaves them alone while enc is set)
-  function stand(id, p, yaw = 0) {
+  function stand(id, p, yaw = 0, def = null) {
     let a = actors.get(id);
-    if (!a) { const d = npcDef(id); if (!d) return null; a = spawnActor(id, d, p, yaw); }
+    if (!a) { const d = def || npcDef(id); if (!d) return null; a = spawnActor(id, d, p, yaw); }
     else { a.pos[0] = p[0]; a.pos[1] = p[1]; a.pos[2] = p[2]; a.home.p = p.slice(); a.home.face = yaw; a.yaw = yaw; a.path = null; }
     a.enc = true; a.hidden = false;
     return a;
@@ -186,7 +209,7 @@ export function makeEncounters(ST, { where } = {}) {
       return;
     }
     if (u.kind !== 'war_rig' && u.kind !== 'stomach_dog') return;
-    u.mesh = (u.kind === 'war_rig' && vehicle('war_rig')) || (u.kind === 'war_rig' ? rigMesh() : dogMesh());
+    u.mesh = vehicle(u.kind) || (u.kind === 'war_rig' ? rigMesh() : dogMesh());
     G.scene.add(u.mesh);
     const upd = r.update.bind(r);
     r.update = (...a) => { upd(...a); r.ch.root.visible = false; if (r.shadow) r.shadow.visible = false; };
@@ -206,6 +229,7 @@ export function makeEncounters(ST, { where } = {}) {
         continue;
       }
       if (!u.mesh) continue;
+      if (VEHICLES[u.kind] && !u.mesh.userData.glb && !u.mesh.userData.dogGlb && GLB[u.kind] && GLB[u.kind].scene) { const nm = vehicle(u.kind); if (nm) { G.scene.remove(u.mesh); u.mesh = nm; G.scene.add(nm); } } // (the model finished loading: swap the stand-in out)
       const m = u.mesh, sp = Math.hypot(r.vel[0], r.vel[2]);
       if (sp > 1.2) { const h = Math.atan2(r.vel[0], r.vel[2]); u.h = u.h == null ? h : u.h + wrapA(h - u.h) * Math.min(1, dt * (u.kind === 'war_rig' ? 6 : 10)); }
       if (u.h == null) u.h = Math.atan2(ME.pos[0] - r.pos[0], ME.pos[2] - r.pos[2]);
@@ -228,11 +252,12 @@ export function makeEncounters(ST, { where } = {}) {
         if (u.honkT == null) u.honkT = E.t + 2 + Math.random() * 4;
         if (E.t > u.honkT && r.alive) { u.honkT = E.t + 5 + Math.random() * 6; encSfx.honk(r.pos); }
       } else { // the dog: legs at its speed, the jaw open when it's near you, a wag of intestine
+        if (U.dogGlb) m.rotation.y = u.h + Math.PI; // (the art lane's dog faces -z)
         const ph = E.t * (4 + sp * 1.4);
-        for (const l of U.legs) { l.hip.rotation.x = Math.sin(ph + l.ph) * 0.7 * Math.min(1, sp / 3); l.knee.rotation.x = Math.max(0, Math.sin(ph + l.ph + 1)) * 0.9 * Math.min(1, sp / 3); }
+        for (const l of U.legs) { l.hip.rotation.x = Math.sin(ph + l.ph) * 0.7 * Math.min(1, sp / 3); if (l.knee) l.knee.rotation.x = Math.max(0, Math.sin(ph + l.ph + 1)) * 0.9 * Math.min(1, sp / 3) * (U.dogGlb ? -1 : 1); }
         const near = Math.hypot(ME.pos[0] - r.pos[0], ME.pos[2] - r.pos[2]) < 6;
-        U.jaw.rotation.x = (near ? 0.55 : 0.12) + Math.sin(E.t * 14) * 0.08;
-        U.tail.rotation.z = Math.sin(E.t * 10) * 0.5;
+        if (U.jaw) U.jaw.rotation.x = ((near ? 0.55 : 0.12) + Math.sin(E.t * 14) * 0.08) * (U.dogGlb ? -1 : 1);
+        if (U.tail) U.tail.rotation[U.dogGlb ? 'y' : 'z'] = Math.sin(E.t * 10) * 0.5;
         if (U.leapT > 0) { U.leapT -= dt; m.rotation.x = -0.4; } else m.rotation.x = 0;
         if (!r.alive) { m.rotation.z = Math.min(Math.PI / 2, (m.rotation.z || 0) + dt * 5); }
         if (u.growlT == null) u.growlT = E.t + Math.random() * 3;
@@ -316,7 +341,7 @@ export function makeEncounters(ST, { where } = {}) {
   }
 
   // ---------------------------------------------------------- m02 SAUCE RUN, step by step
-  const M02 = 'm02_sauce_run', M03 = 'm03_somethings_digesting';
+  const M02 = 'm02_sauce_run', M03 = 'm03_somethings_digesting', M04 = 'm04_clocking_in';
   const kitchen = () => (where && where('bottom:soup_kitchen')) || [-105, 0, 238];
   const STEPS = {
     [M02]: {
@@ -410,6 +435,7 @@ export function makeEncounters(ST, { where } = {}) {
       walk: { // Lumps leads you down Peristalsis Avenue to his mum: walks, waits for you, talks, hates every metre of it
         enter(st) {
           st.path = ENC.escort.path.map((p) => p.slice()); st.i = 0; st.said = 0; st.waitT = 0;
+          vehicle('stomach_dog'); // (start loading the dog's model before the chase)
           const a = stand('lumps', st.path[0], -Math.PI / 2); if (a) { a.hold = false; a.ride = null; }
           bark('lumps', "this way. stay close. and don't touch the walls.", 3.5);
         },
@@ -438,7 +464,8 @@ export function makeEncounters(ST, { where } = {}) {
       },
       out: { // the stomach-dogs chase you out of the Gut; Lumps runs with you and carries you over the last bit
         enter(st) {
-          st.cp = [ME.pos[0], ME.pos[1] + 0.2, ME.pos[2]]; st.next = E.t + 1.5; st.wave = 0; st.carry = null; st.done = false;
+          vehicle('stomach_dog');
+          st.cp = [ME.pos[0], ME.pos[1] + 0.2, ME.pos[2]]; st.next = E.t + 2.5; st.wave = 0; st.carry = null; st.done = false;
           encSfx.growl(); setTimeout(() => encSfx.growl(), 600);
           hud.msg('STOMACH-DOGS', 2, 'brag');
           bark('lumps', "that's the bishop's dogs. they're not the nice dogs. RUN.", 3.5);
@@ -478,6 +505,133 @@ export function makeEncounters(ST, { where } = {}) {
       },
     },
   };
+  // ---------------------------------------------------------- m04 CLOCKING IN: the truck at the gate
+  CLIPS.stapled ??= { len: 9e9, f(c, t, k) { c.arm.rotation.z -= 1.35 * k; c.arm.rotation.x += 0.35 * k; c.foreR.rotation.x -= 0.15 * k; c.spine.rotation.z -= 0.08 * k; c.head.rotation.x -= (0.18 + Math.sin(t * 1.3) * 0.05) * k; } }; // his arm out to the truck, pinned; head down
+  const TR = { m: null, t: 0, i: 0, loaded: 0, road: null, gone: false, said: {} };
+  const truckState = () => TR;
+  function truckUp() {
+    truckAt('gate');
+  }
+  // the same truck, the same people: parked by the Sunset Wall for c4, then up at the gate for the fight (moved in the fade)
+  const base = () => TR.base || ENC.truck.at;
+  const off = (p) => { const b = base(), T = ENC.truck, x = b[0] + p[0] - T.at[0], z = b[2] + p[2] - T.at[2]; return [x, floorAt(x, b[1] + 2, z, 6) ?? b[1], z]; };
+  function truckAt(spot) {
+    if (TR.m && TR.where === spot) return;
+    const T = ENC.truck;
+    if (TR.m) { G.scene.remove(TR.m); E.props = E.props.filter((m) => m !== TR.m); TR.m = null; for (const k of ['enc_col0', 'enc_col1', 'enc_dad', 'enc_ken', 'mina']) { const a = actors.get(k); if (a && a.enc) despawnActor(k); } }
+    let at = T.at;
+    if (spot === 'sunset') { const w = sunsetSpot(); at = openSpot(w, T.sunsetD, [Math.PI / 2, -Math.PI / 2, Math.PI, Math.PI * 0.75]) || [w[0] + T.sunsetD, w[1], w[2]]; }
+    const y = floorAt(at[0], at[1] + 2, at[2], 6) ?? at[1];
+    TR.base = [at[0], y, at[2]]; TR.where = spot;
+    TR.m = prop(truckModel(), TR.base, T.yaw); TR.y = y; TR.road = null; TR.gone = false;
+    truckClip('open');
+  }
+  function truckClip(name, back) { // the art lane's baked clips (open / lift_up / drive) when its truck model is in
+    const m = TR.m, A = m && m.userData.anims; if (!A || !A.length) return;
+    m.userData.mixer ||= new THREE.AnimationMixer(m);
+    const c = A.find((a) => a.name === name); if (!c) return;
+    const act = m.userData.mixer.clipAction(c); act.reset(); act.clampWhenFinished = true; act.setLoop(name === 'drive' ? THREE.LoopRepeat : THREE.LoopOnce, Infinity);
+    if (back) { act.time = c.duration; act.timeScale = -1; } else act.timeScale = 1;
+    act.play();
+  }
+  function staple() { // Lumps, pinned to the truck's side by his forearm
+    const T = ENC.truck, a = stand('lumps', off(T.lumps), T.lumpsYaw); if (!a) return null;
+    a.hold = false; a.ride = null; a.path = null; if (!a.clip || a.clip.name !== 'stapled') play(a, 'stapled', { hold: true });
+    return a;
+  }
+  function queueUp() { // the people on the list, waiting by the tail-lift with two collectors
+    const T = ENC.truck;
+    T.queue.forEach(([id, name, hint], i) => { if (TR.loaded > i) return; const key = id === 'mina' ? 'mina' : `enc_${id}`; if (actors.has(key)) return; const def = id === 'mina' ? npcDef('mina') : { name, look: `enc_${id}`, hint, idle: 'sway' }; if (def) stand(key, off(T.spots[i]), -0.6, def); });
+    T.collectors.forEach((c, i) => { const k = `enc_col${i}`; if (!actors.has(k)) stand(k, off(c), -0.4 + i * 0.5, { name: 'TIMEKEEPING COLLECTOR', look: ENC_LOOKS.collector[0], idle: 'write' }); });
+  }
+  function loadTick(dt) { // one at a time: walked to the lift, stamped, gone into the truck
+    const T = ENC.truck; if (TR.loaded >= T.queue.length || !TR.m) return;
+    if (TR.where !== 'gate' || Math.hypot(ME.pos[0] - base()[0], ME.pos[2] - base()[2]) > T.near) return; // (at the gate, when you're there to see it)
+    TR.t += dt; if (TR.t < T.every) return;
+    const [id, , , line] = T.queue[TR.loaded], key = id === 'mina' ? 'mina' : `enc_${id}`, a = actors.get(key), col = actors.get(`enc_col${TR.loaded % 2}`);
+    const lift = [base()[0] + T.load[0], TR.y, base()[2] + T.load[2]];
+    if (!a) { TR.loaded++; TR.t = 0; return; }
+    if (!a.path && !TR.walking) {
+      TR.walking = true;
+      bark(id === 'mina' ? 'the old woman with the braid' : T.queue[TR.loaded][1], line, 3.5);
+      if (id === 'mina') { a.faceTarget = null; a.lookAt = null; }
+      walkTo(a, [lift], 1.1, () => {
+        encSfx.stamp(lift); hud.msg('COLLECTED', 1.1, 'brag');
+        if (col) bark('timekeeping collector', pick(['collected. balance carried forward.', "you're on the list. everyone's on the list.", 'thank you for your patience.']), 2.6);
+        despawnActor(key); TR.loaded++; TR.t = 0; TR.walking = false;
+        if (TR.loaded >= T.queue.length) { truckClip('open', true); setTimeout(() => hud.msg('THE DOORS CLOSE', 1.6, 'brag'), 900); }
+      });
+      if (col) walkTo(col, [[lift[0] - 1.2, lift[1], lift[2] + 1.2]], 1.1);
+    }
+  }
+  // the truck goes: through the gate, up Rib Avenue, a stall under the first rib arch, then into the Gut
+  function driveOff() { if (!TR.m || TR.road) return; TR.road = { i: 1, x: TR.m.position.x, z: TR.m.position.z, stall: 0 }; truckClip('drive'); encSfx.honk(TR.m.position.toArray()); }
+  function driveTick(dt) {
+    const R = TR.road, T = ENC.truck; if (!R || TR.gone) return;
+    if (R.i === T.arch && R.stall < T.stall && Math.hypot(R.x - T.road[T.arch][0], R.z - T.road[T.arch][1]) < 1) { R.stall += dt; return; } // (the arch is low. it waits for the street to breathe out)
+    const to = T.road[R.i]; if (!to) { TR.gone = true; G.scene.remove(TR.m); return; }
+    const dx = to[0] - R.x, dz = to[1] - R.z, d = Math.hypot(dx, dz), sp = T.speed * dt;
+    if (d <= sp) { R.x = to[0]; R.z = to[1]; R.i++; } else { R.x += dx / d * sp; R.z += dz / d * sp; }
+    const y = floorAt(R.x, TR.y + 6, R.z, 10) ?? TR.y;
+    TR.m.position.set(R.x, y, R.z); TR.m.rotation.y = Math.atan2(-dx, -dz); // (its front is -z)
+  }
+  const sunsetSpot = () => (where && where('bottom:sunset_spot')) || ENC.truck.sunset;
+  const truckNear = () => { const w = sunsetSpot(); return Math.hypot(ME.pos[0] - w[0], ME.pos[2] - w[2]) < 120; };
+  function truckFrame(dt) { if (TR.m && TR.m.userData.mixer) TR.m.userData.mixer.update(dt); driveTick(dt); }
+  STEPS[M04] = {
+    sunset__at: { enter() { TR.loaded = 0; TR.t = 0; truckModel(); }, tick() { if (truckNear()) { truckAt('sunset'); queueUp(); } } }, // (parked by the wall when you get near: c4's shots have it)
+    sunset: { tick() { truckAt('sunset'); queueUp(); } },
+    fight: { // B's Overtime fight: around it, the truck being loaded and Lumps pinned to its side
+      enter() { truckUp(); staple(); queueUp(); },
+      tick(st, dt) { truckUp(); staple(); queueUp(); loadTick(dt);
+        if (!st.said && Math.hypot(ME.pos[0] - ENC.truck.lumps[0], ME.pos[2] - ENC.truck.lumps[2]) < 6) { st.said = true; bark('lumps', "it's fine. it's just my arm. go. GO.", 3); } },
+    },
+    rip: { tick() { truckUp(); staple(); } },
+    after: { tick() { truckUp(); staple(); } },
+    truck: { tick() { truckUp(); staple(); } },
+    home: { // the truck choice, played out: chase it under the first rib arch, or stay and pull the staple out
+      enter(st) {
+        truckUp(); TR.loaded = ENC.truck.queue.length; for (const [id] of ENC.truck.queue) despawnActor(id === 'mina' ? 'mina' : `enc_${id}`); // (whoever wasn't loaded yet is on it now)
+        st.chase = flag('chased_truck'); st.stay = flag('stayed_with_lumps'); st.t0 = E.t;
+        if (st.chase && !flag('knows_truck_number')) { driveOff(); hud.msg('CATCH THE TRUCK', 2, 'brag'); bark('lumps', 'go! i\'m fine! i\'m stapled to nothing now!', 3); st.free = true; }
+        else if (st.stay && !flag('staple_pulled')) { st.pull = 0; staple(); setTimeout(driveOff, 1500); bark('lumps', "don't. it's fine. ...ok. pull. pull hard.", 3.5); }
+        else driveOff();
+      },
+      tick(st, dt) {
+        const a = actors.get('lumps');
+        if (st.chase && !st.done) {
+          if (st.free && a && a.clip && a.clip.name === 'stapled' && E.t - st.t0 > 2) { a.clip = null; play(a, 'flex'); st.free = false; } // (he tears the staple out of the bumper himself)
+          const d = TR.m ? Math.hypot(ME.pos[0] - TR.m.position.x, ME.pos[2] - TR.m.position.z) : 1e9;
+          clockHud(!TR.gone, Math.max(0, 40 - (E.t - st.t0)), 'CATCH THE TRUCK', `${Math.round(d)} m`);
+          if (d < ENC.truck.catch && TR.m) {
+            st.done = true; clockHud(false);
+            S().run(['flag:knows_truck_number'], 'truck');
+            hud.msg('TRUCK 0417', 2.6, 'brag'); encSfx.stamp(TR.m.position.toArray());
+            bark('the old woman with the braid', '*through the slot in the door, quieter, like a question she is sure of* ...rory.', 5);
+            setTimeout(() => toast('the doors have grown shut. you can\'t open it. you remember the number: <b>0417</b>'), 1200);
+          } else if (TR.gone) { st.done = true; clockHud(false); hud.msg("IT'S GONE. THE GUT TOOK IT.", 2.4, 'brag'); }
+        }
+        if (st.stay && st.pull != null && st.pull < ENC.pulls) {
+          const near = a && Math.hypot(ME.pos[0] - a.pos[0], ME.pos[2] - a.pos[2]) < 3.2;
+          clockHud(near, 0, `MASH ${K.label('use')}: PULL THE STAPLE`, `${st.pull}/${ENC.pulls}`);
+        }
+      },
+      exit() { clockHud(false); },
+    },
+  };
+  // F next to Lumps on the 'stay' path: one pull per press (it's a staple the size of a crowbar)
+  E.key = (e) => {
+    const Q = q(M04); if (!Q || Q.step !== 'home' || !E.st || E.st.pull == null || E.st.pull >= ENC.pulls) return false;
+    if (e.type !== 'keydown' || e.repeat || !K.matches('use', e)) return false;
+    const a = actors.get('lumps'); if (!a || Math.hypot(ME.pos[0] - a.pos[0], ME.pos[2] - a.pos[2]) > 3.2) return false;
+    E.st.pull++; G.shake = Math.max(G.shake || 0, 0.25 + E.st.pull * 0.1); encSfx.ram(0.25 + E.st.pull * 0.08, a.pos);
+    if (E.st.pull < ENC.pulls) { hud.msg(pick(['PULL', 'PULL!', 'NNNGH']), 0.5, 'brag'); return true; }
+    S().run(['flag:staple_pulled'], 'staple'); clockHud(false);
+    a.clip = null; play(a, 'cry'); hud.msg('THE STAPLE COMES OUT', 2, 'brag');
+    bark('lumps', "*he doesn't cry until it's out. then he does.* thanks. sorry. thanks.", 5);
+    return true;
+  };
+
   // the carry: a short Moment. Lumps scoops you up and leaps the last lung to the gate; the dogs stop at the line
   function startCarry(st, a) {
     st.done = true;
@@ -559,6 +713,8 @@ export function makeEncounters(ST, { where } = {}) {
     if (key) { const h = STEPS[qid][sid]; if (h.tick) { try { h.tick(E.st, dt); } catch (e) { console.warn('enc tick', e); } } }
     soupFrame(dt);
     drawUnits(dt);
+    truckFrame(dt);
+    if (qid !== M04 && TR.m && (!q(M04) || q(M04).done)) { G.scene.remove(TR.m); TR.m = null; for (const k of ['enc_col0', 'enc_col1', 'enc_dad', 'enc_ken']) despawnActor(k); }
     const H = hudEl(); H.classList.toggle('hidden', !!(ST.scene && ST.scene.playing()) || talking());
     if (barkT && performance.now() > barkT) { barkT = 0; $('encBark').classList.add('hidden'); }
   };
@@ -568,7 +724,7 @@ export function makeEncounters(ST, { where } = {}) {
     const g = MISSIONS_ACT1[M02] && MISSIONS_ACT1[M02].grade; if (!g) return null;
     return flag('soup_spilled') ? g.see_me : soup() >= 98 ? g.exceeds : g.meets;
   };
-  E.soupHit = soupHit; // (tests)
+  E.soupHit = soupHit; E.truck = TR; // (tests)
   E.units0 = E.units;
   return E;
 }

@@ -157,3 +157,21 @@ export function tradePostMesh() {
   const tongue = box(lad, 0.06, 0.02, 0.12, 0xe86a8a, 0, -0.5, 0.06, { r: 0.2 }); tongue.rotation.x = 0.4; // (it has a tongue)
   return g;
 }
+
+// THE GRISTLE & SONS TRUCK (stand-in until the art lane's s_gristle_truck.glb loads): a refrigerated box truck on
+// caterpillar tracks (it backs down the Long Stairs), the company's cleaver-and-smile on the side, a tail-lift at the back.
+// front is -z, like the model: the tail-lift ('load') is at +z
+export function truckMesh() {
+  const g = new THREE.Group(), white = 0xe8e4dc, meat = 0xb02a3a, dark = 0x26262c;
+  box(g, 2.5, 2.6, 6.2, white, 0, 2.2, 1.2, { r: 0.4 }); // the box (the fridge)
+  box(g, 2.52, 0.5, 6.22, meat, 0, 1.1, 1.2); box(g, 2.52, 0.12, 6.22, meat, 0, 3.45, 1.2); // the stripes
+  for (const sx of [-1, 1]) { const lab = new THREE.Mesh(new THREE.PlaneGeometry(5, 0.9), label('GRISTLE & SONS', 1024, 160, '#e8e4dc', '#8a1622')); lab.position.set(sx * 1.27, 2.45, 1.2); lab.rotation.y = sx * Math.PI / 2; g.add(lab); }
+  box(g, 2.4, 2.1, 2.2, meat, 0, 1.75, -3.0, { r: 0.4 }); box(g, 2.2, 0.9, 0.05, 0x4fd8ff, 0, 2.25, -4.12, { r: 0.1, m: 0.3 }); // the cab, the windscreen
+  for (const sx of [-0.8, 0.8]) box(g, 0.3, 0.2, 0.06, 0xffe14d, sx, 1.2, -4.12, { e: 0xffe14d, ei: 0.5 });
+  for (const sx of [-1, 1]) { box(g, 0.45, 0.9, 5.4, dark, sx * 1.05, 0.45, 1.4); for (let i = 0; i < 9; i++) box(g, 0.5, 0.08, 0.2, 0x5a5f68, sx * 1.05, 0.92, -1.1 + i * 0.62, { m: 0.5 }); } // the caterpillar tracks
+  for (const sx of [-1, 1]) cyl(g, 0.45, 0.45, 0.35, dark, sx * 1.1, 0.45, -3.1, { rz: Math.PI / 2, seg: 12 });
+  box(g, 2.3, 0.08, 1.0, 0x9aa2ac, 0, 0.12, 4.75, { m: 0.6, r: 0.3 }); // the tail-lift, lowered
+  box(g, 2.45, 2.5, 0.08, 0xd8d4cc, 0, 2.2, 4.31); box(g, 0.05, 2.5, 0.1, 0x8a8e96, 0, 2.2, 4.36, { m: 0.5 }); // the doors
+  box(g, 0.3, 0.1, 0.06, 0x1e1e22, 0.3, 2.9, 4.37); // the slot in the door
+  return g;
+}
