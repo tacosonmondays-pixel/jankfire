@@ -5,6 +5,7 @@ import { jankify } from './jank.js';
 import { PSys } from './fx.js';
 import { WRAP_MODES, zoneOf, paints } from './wrapzones.js';
 import { PACK, packMat, packTick } from './wrappack.js';
+import { authored } from './glbkit.js';
 export { WRAP_MODES, WRAP_MODE_NAMES } from './wrapzones.js';
 
 export const FINISHES = {
@@ -234,10 +235,27 @@ const HAT_BUILD = {
   },
 };
 
+// the Blender hat (x_hat_<id>.glb, tools/blender/make_gunhats.py) when it's here, same size and spot as the code one;
+// its moving bits are named nodes: the propeller spins, the halo bobs, the googly eyes' pupils rattle
+function hatAuthored(id, g) {
+  const a = HAT_BUILD[id] && authored('x_hat_' + id);
+  if (!a) return false;
+  g.add(a.obj);
+  const node = (n) => a.obj.getObjectByName(n);
+  const prop = node('hat_prop'), halo = node('hat_halo'), pupils = ['hat_pupil_l', 'hat_pupil_r'].map(node).filter(Boolean);
+  if (prop) g.userData.tick = (dt) => { prop.rotation.y += dt * 25; };
+  if (halo) { const y0 = halo.position.y; g.userData.tick = (dt, now) => { halo.position.y = y0 + Math.sin(now * 0.004) * 0.1; }; }
+  if (pupils.length) {
+    for (const p of pupils) p.userData.base = p.position.clone();
+    g.userData.tick = () => { for (const p of pupils) { p.position.x = p.userData.base.x + (Math.random() - 0.5) * 0.1; p.position.y = p.userData.base.y + (Math.random() - 0.5) * 0.1; } };
+  }
+  return true;
+}
+
 const liveHats = new Set();
 export function makeHat(id) {
   const g = new THREE.Group();
-  (HAT_BUILD[id] || (() => {}))(g);
+  if (!hatAuthored(id, g)) (HAT_BUILD[id] || (() => {}))(g);
   if (g.userData.tick) liveHats.add(g);
   return g;
 }
