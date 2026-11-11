@@ -85,7 +85,7 @@ export function plantZ(want, z0, dist, side) {
   return want;
 }
 // one arm's step. h: its state (newHaul). c: { dt, run (how far the tunnel has gone, all told), face (the face's z),
-// z0 / dist (where the kit's pieces are), side, a (its wall angle), v (the tunnel's speed), other (the other arm's state) }. returns 'plant', 'let' or ''
+// z0 / dist (where the kit's pieces are), side, a (its wall angle), v (the tunnel's speed), other (the other arm's state), lead (this one goes first) }. returns 'plant', 'let' or ''
 export const newHaul = (i, face) => ({ ph: i ? 'reach' : 'let', t: i ? 0.25 : 0, z: face + 5, lift: 0.5, a: 0, from: { z: face + 5, lift: 0.5, a: 0 }, zT: face + 9, runT: 0, zP: 0, run0: 0, prog: 0 });
 export function stepHaul(h, c) {
   h.t += c.dt; let ev = '';
@@ -96,9 +96,9 @@ export function stepHaul(h, c) {
     if (h.z < c.face + HAUL.let || h.t > HAUL.hold) { h.ph = 'let'; h.t = 0; ev = 'let'; }
   } else if (h.ph === 'let') { // it peels off: still dragged a little by the brick, lifting, the fingers letting go
     const k = ss(h.t / HAUL.off);
-    // it reaches again once the other hand has hold (hand over hand), or if that takes too long
+    // it reaches again once the other hand has hold (hand over hand; if both have let go, the lead one goes first), or if that takes too long
     if (h.t < HAUL.off) h.z -= (c.v || 0) * c.dt * (1 - k * 0.6); h.lift = HAUL.lift * 0.45 * k; h.prog = 0;
-    if (h.t >= HAUL.off && (!c.other || c.other.ph === 'grip' || h.t > HAUL.off + 0.6)) { h.ph = 'reach'; h.t = 0; h.from = { z: h.z, lift: h.lift, a: h.a }; h.aT = c.a + (Math.random() - 0.5) * 0.12; h.zT = plantZ(c.face + HAUL.ahead + c.v * HAUL.reach, c.z0, c.dist, c.side); h.runT = c.run; }
+    if (h.t >= HAUL.off && (!c.other || c.other.ph === 'grip' || (c.other.ph === 'let' && c.lead) || h.t > HAUL.off + 0.6)) { h.ph = 'reach'; h.t = 0; h.from = { z: h.z, lift: h.lift, a: h.a }; h.aT = c.a + (Math.random() - 0.5) * 0.12; h.zT = plantZ(c.face + HAUL.ahead + c.v * HAUL.reach, c.z0, c.dist, c.side); h.runT = c.run; }
   } else { // reach: up off the wall, forward, and slammed down on a spot that is coming at it with the tunnel
     const u = clamp(h.t / HAUL.reach, 0, 1), zT = h.zT - (c.run - h.runT), e = 1 - (1 - u) ** 3;
     h.z = h.from.z + (zT - h.from.z) * e; h.lift = h.from.lift * (1 - u) + HAUL.lift * Math.sin(Math.PI * u ** 0.8) ** 0.7; h.a = h.from.a + ((h.aT ?? c.a) - h.from.a) * ss(u); h.prog = 0;

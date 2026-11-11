@@ -73,7 +73,7 @@ t('the haul: hands plant flat on the lining, ride it back with the tunnel, and g
   for (let f = 0; f < 60 * 12; f++) {
     run += 12 * dt; dist = (dist + 12 * dt) % 96;
     hs.forEach((h, i) => {
-      const z0 = h.z, ph0 = h.ph, ev = stepHaul(h, { dt, run, face, z0: ARENA.z0, dist, side: Math.cos(wa[i]) < 0 ? -1 : 1, a: wa[i], v: 12, other: hs[1 - i] });
+      const z0 = h.z, ph0 = h.ph, ev = stepHaul(h, { dt, run, face, z0: ARENA.z0, dist, side: Math.cos(wa[i]) < 0 ? -1 : 1, a: wa[i], v: 12, other: hs[1 - i], lead: i === 0 });
       if (ev === 'plant') { plants[i].push(f * dt); const side = Math.cos(wa[i]) < 0 ? -1 : 1; assert.ok(plantOk(ARENA.z0, dist, side, h.z - HAUL.skid - HAUL.back, h.z + HAUL.front), 'planted on clean brick'); }
       if (ph0 === 'grip' && h.ph === 'grip' && h.t > HAUL.skidT + dt) assert.ok(Math.abs(z0 - h.z - 12 * dt) < 1e-6, 'a planted hand goes back with the tunnel, exactly');
       const H = haulHand(B, h);
@@ -88,6 +88,14 @@ t('the haul: hands plant flat on the lining, ride it back with the tunnel, and g
   for (const p of plants) { assert.ok(p.length >= 6, 'it keeps planting: ' + p.length); const gaps = p.slice(1).map((x, i) => x - p[i]); assert.ok(Math.max(...gaps) < 2.2, 'a plant every couple of seconds'); }
   assert.ok(both < 60 * 12 * 0.2 && none < 60 * 12 * 0.35, `mostly one hand at a time (both ${both}, none ${none} frames)`);
   console.log(`  ${plants[0].length + plants[1].length} plants in 12 s, both gripping ${(both / 720 * 100).toFixed(0)}% of the time, neither ${(none / 720 * 100).toFixed(0)}%`);
+});
+
+t('two hands that let go together do not stay in step', () => {
+  const face = -10, hs = [newHaul(0, face), newHaul(1, face)], wa = [3.3, -0.36], dt = 1 / 60;
+  for (const h of hs) { h.ph = 'let'; h.t = 0; h.z = face + 3; }
+  let run = 0, dist = 0, both = 0;
+  for (let f = 0; f < 60 * 6; f++) { run += 12 * dt; dist = (dist + 12 * dt) % 96; hs.forEach((h, i) => stepHaul(h, { dt, run, face, z0: ARENA.z0, dist, side: i ? 1 : -1, a: wa[i], v: 12, other: hs[1 - i], lead: i === 0 })); if (f > 120 && hs.every((h) => h.ph === hs[0].ph)) both++; }
+  assert.ok(both < 60, `in step ${both} frames of the last 4 s`);
 });
 
 console.log(`\n${n} armgrip tests passed`);

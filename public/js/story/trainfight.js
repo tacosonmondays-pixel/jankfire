@@ -307,7 +307,7 @@ export function makeTrainFight(ST, { playScene }) {
       if (T.fin) { h.zf ??= h.z; const k = ss(T.fin.t / 1.5); h.ph = 'let'; h.t = 0; h.z = h.zf + (S[2] + 1 - h.zf) * k; h.lift = 0.6 * k; if (k >= 1) v.g.visible = false; } // it lets go, and the arms go back in
       else {
         h.zf = null;
-        const ev = stepHaul(h, { dt, run: s.run || 0, face, z0: ARENA.z0, dist, side: Math.cos(wa) < 0 ? -1 : 1, a: wa, v: s.v || SPEED, other: b.haul[1 - i] && b.haul[1 - i].h });
+        const ev = stepHaul(h, { dt, run: s.run || 0, face, z0: ARENA.z0, dist, side: Math.cos(wa) < 0 ? -1 : 1, a: wa, v: s.v || SPEED, other: b.haul[1 - i] && b.haul[1 - i].h, lead: i === 0 });
         if (ev === 'plant' && v.g.visible) planted(v, i, face);
       }
       const hd = haulHand(BORE, h), L = hd.o[2] - S[2], bow = 0.12 + clamp((7.5 - L) / 5, 0, 1) + h.lift * 0.3; // (an elbow comes as the face hauls up to the hand)
