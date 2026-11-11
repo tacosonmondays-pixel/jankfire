@@ -1,5 +1,7 @@
 // Zombies (co-op wave survival): the rules and numbers, the shop, and what you're looking at when you hold F.
 // Shared so the server (which runs the mode) and the client (prompts, prices, your ammo) always agree.
+import './zmschool.js'; // (registers the school map: it only needs shared/map.js)
+import './zmhospital.js'; // (and the hospital)
 
 export const ZM = {
   start: 500, hit: 10, kill: 60, bonus: 100, // credits: start with 500, +10 a hit, +60 a kill, +100 for a headshot or melee kill
@@ -20,7 +22,7 @@ export function zmCount(r, players = 1) {
 }
 // their HP: one revolver shot in round 1, +22 a round to round 9, then +9% a round
 export function zmHp(r) { return r <= 9 ? 40 + 22 * (r - 1) : Math.round(216 * Math.pow(1.09, r - 9)); }
-export function zmMaxAlive(players = 1) { return Math.min(24, 14 + 6 * (Math.max(1, players) - 1)); }
+export function zmMaxAlive(players = 1) { return ZM.maxAlive || Math.min(24, 14 + 6 * (Math.max(1, players) - 1)); } // (ZM.maxAlive: a test knob)
 export function zmGap(r, players = 1) { return Math.max(450, 2000 - 150 * (r - 1)) * (players > 1 ? 0.75 : 1); } // ms between spawns
 // how one moves (roll = 0..1): shamblers early, runners from round 4, sprinters from round 9
 export function zmGait(r, roll, jitter = 0.5) {
@@ -58,7 +60,7 @@ export function zmOpenAreas(Z, open) {
 }
 // which area of the map a position is in (null: outside, e.g. in an alley)
 export function zmAreaAt(Z, p) {
-  for (const a of Z.areas) if (p[0] >= a.r[0] && p[0] <= a.r[2] && p[2] >= a.r[1] && p[2] <= a.r[3]) return a.id;
+  for (const a of Z.areas) if (p[0] >= a.r[0] && p[0] <= a.r[2] && p[2] >= a.r[1] && p[2] <= a.r[3] && (!a.y || (p[1] >= a.y[0] - 0.3 && p[1] < a.y[1]))) return a.id; // (a.y: which floor, on maps with an upstairs)
   return null;
 }
 
@@ -86,9 +88,9 @@ export function zmTarget(Z, st, e, d, slack = 0) {
     const u = to(b.at);
     if (u[3] <= 2.3 + slack && facing(u, 0.7) && front(b.at, b.n)) take({ k: 'b' + i, kind: 'buy', i, w: b.w, price: b.price }, u[3]);
   });
-  if (Z.crate) { const u = to([Z.crate.at[0], 0.7, Z.crate.at[2]]); if (u[3] <= 2.6 + slack && facing(u, 0.5)) take({ k: 'crate', kind: 'crate', price: ZM.crate }, u[3]); }
+  if (Z.crate) { const u = to([Z.crate.at[0], Z.crate.at[1] + 0.7, Z.crate.at[2]]); if (u[3] <= 2.6 + slack && facing(u, 0.5)) take({ k: 'crate', kind: 'crate', price: ZM.crate }, u[3]); }
   if (Z.power && !st.power) { const u = to(Z.power.at); if (u[3] <= 2.3 + slack && facing(u, 0.6) && front(Z.power.at, Z.power.n)) take({ k: 'power', kind: 'power' }, u[3]); }
-  if (Z.cola) { const at = [Z.cola.at[0], 1.3, Z.cola.at[2]], u = to(at); if (u[3] <= 2.4 + slack && facing(u, 0.55) && front(at, Z.cola.n)) take({ k: 'cola', kind: 'cola', price: ZM.cola }, u[3]); }
+  if (Z.cola) { const at = [Z.cola.at[0], Z.cola.at[1] + 1.3, Z.cola.at[2]], u = to(at); if (u[3] <= 2.4 + slack && facing(u, 0.55) && front(at, Z.cola.n)) take({ k: 'cola', kind: 'cola', price: ZM.cola }, u[3]); }
   return best;
 }
 
@@ -165,7 +167,7 @@ export function zmBoardTarget(Z, planks, e, d, slack = 0) {
   let best = null, bs = Infinity;
   (Z.windows || []).forEach((w, i) => {
     if (!planks || planks[i] >= ZM.planks) return;
-    const at = [w.at[0], 1.9, w.at[2]], v = [at[0] - e[0], at[1] - e[1], at[2] - e[2]], l = Math.hypot(v[0], v[1], v[2]) || 1e-6;
+    const at = [w.at[0], w.at[1], w.at[2]], v = [at[0] - e[0], at[1] - e[1], at[2] - e[2]], l = Math.hypot(v[0], v[1], v[2]) || 1e-6;
     if (l > 2.6 + slack) return;
     if ((e[0] - at[0]) * w.n[0] + (e[2] - at[2]) * w.n[2] < 0.1) return; // only from inside
     if ((v[0] * d[0] + v[1] * d[1] + v[2] * d[2]) / l < 0.45 - slack * 0.5) return;

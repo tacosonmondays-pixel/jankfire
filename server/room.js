@@ -59,7 +59,7 @@ import { ZM } from '../shared/zombies.js';
 import { installZombies } from './zombies.js';
 import { installStoryRef } from './storyref.js'; // story rooms: the OVERDUE referee's rules (enemies, sides, events)
 import { installModeStats } from './modestats.js'; // per-mode leaderboard stats
-import { inPit, pitUnder, sink, mire } from '../shared/pits.js'; // pits with something in them (the volcano's lava)
+import { inPit, pitUnder, sink, swim, mire } from '../shared/pits.js'; // pits with something in them (the volcano's lava)
 import { installPits } from './pits.js';
 import { inShredder } from '../shared/shredpit.js'; // the Warehouse's shredder pit: its teeth kill like the void
 import { installLobby } from './lobby.js'; // mode lobbies: the countdown before a match
@@ -207,6 +207,10 @@ if (process.env.JF_ZM_REST) ZM.rest = ZM.first = Number(process.env.JF_ZM_REST) 
 if (process.env.JF_ZM_SWIPE) ZM.swipe = Number(process.env.JF_ZM_SWIPE); // 0 = zombies can't hurt you (UI tests)
 if (process.env.JF_ZM_BLEED) ZM.bleed = Number(process.env.JF_ZM_BLEED) || ZM.bleed;
 if (process.env.JF_ZM_DROP) ZM.dropMul = Number(process.env.JF_ZM_DROP) || 1; // x drop chance (tests: 99 = every kill drops, still capped a round)
+if (process.env.JF_ZM_MAP) ZM.testMap = process.env.JF_ZM_MAP; // zombies starts on this map (school, hospital...)
+if (process.env.JF_ZM_POWER) ZM.powerOn = true; // the power starts on
+if (process.env.JF_ZM_OPEN) ZM.allOpen = true; // every shutter starts up
+if (process.env.JF_ZM_MAXALIVE) ZM.maxAlive = Number(process.env.JF_ZM_MAXALIVE) || 0; // at most this many zombies at once (screenshots)
 if (process.env.JF_ZM_DROPCAP) ZM.dropCap = Number(process.env.JF_ZM_DROPCAP) || ZM.dropCap;
 if (process.env.JF_ZM_MACHCD) ZM.machCd = Number(process.env.JF_ZM_MACHCD);
 if (process.env.JF_ZM_MACHSPIN) ZM.machSpin = Number(process.env.JF_ZM_MACHSPIN) || ZM.machSpin; // ms the cheat machine rolls for (screenshots)
@@ -246,8 +250,11 @@ function newDeck() {
   for (let i = d.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [d[i], d[j]] = [d[j], d[i]]; }
   return d;
 }
+// test knob: JF_CARD_HAND=s7,s2,s12,h5,c9 deals exactly that hand every time (suit + rank, j0 = joker)
+const CARD_HAND = (process.env.JF_CARD_HAND || '').split(',').map((c) => c.trim()).filter((c) => /^(?:[hscd](?:[1-9]|1[0-3])|j0)$/.test(c)).slice(0, 5);
 function deal(p) {
   if (!p.deck || p.deck.length < 5) p.deck = newDeck();
+  if (CARD_HAND.length) p.deck.unshift(...CARD_HAND, ...p.deck.splice(0, 5 - CARD_HAND.length));
   p.hand = p.deck.splice(0, 5);
   send(p, { t: 'hand', hand: p.hand, left: p.deck.length });
 }
@@ -1024,8 +1031,9 @@ class Room {
     if (b.held && n < b.held.until) { for (let i = 0; i < 3; i++) v[i] = Math.max(-30, Math.min(30, (b.held.at[i] - b.pos[i]) * 9)); b.onGround = false; } // hanging in a shredder
     const was = b.onGround;
     sink(this.map, b.pos, v); // in the deep sea: sinking, not falling
+    const fl = swim(this.map, this.boxes, b.pos, v, dt) && !!this.map.seaSwim; // in a pond: floating (fl: in the sea, where a floater can step up onto the shelf)
     mire(this.map, b.pos, v, dt, !!(b.ai && b.ai.hook)); // in lava: going down slowly
-    const res = movePlayer(b.pos, v, dt, this.boxes, was);
+    const res = movePlayer(b.pos, v, dt, this.boxes, was || fl);
     b.onGround = !!res.ground && v[1] <= 0.01;
     if (b.onGround && res.ground.pad && !b.ai.dummy) { const pd = res.ground.pad; v[0] += pd[0]; v[1] = pd[1]; v[2] += pd[2]; b.onGround = false; }
     b.f = (slipping ? 16 : 0) | (n < (b.sleepUntil || 0) ? FLAGS.SLEEP : 0); // asleep: everyone sees them lying on the floor
@@ -1311,7 +1319,7 @@ class Room {
     if (amt <= 0 || !t.alive) return false;
     if (t.trap) return false; // sealed in a soap bubble: burning, gas and the like can't get in (a real hit pops it, see hurt)
     if (this.hitBlocked(t, attacker, w, from)) return false;
-    if (this.zm) amt = this.zmDamage(t, amt, attacker); // credits for hits, claws, the cola
+    if (this.zm) amt = this.zmDamage(t, amt, attacker, w, hs); // credits for hits, claws, the cola
     if (attacker && attacker.isBot && !t.isBot && this.mode !== 'bots') amt *= 0.6; // coop bots hit softer
     if (t.body && t.body.kind === 'wreckingball') { amt = this.bodySoak(t, amt, attacker, w); if (amt <= 0) return true; } // wrecking ball: its own HP takes it (server/bodyhp.js)
     if (t.rig) { amt = this.rigSoak(t, amt, attacker, w, from); if (amt <= 0) return true; } // overdrive rig: block, then its armour
@@ -1981,8 +1989,9 @@ class Room {
     if (d && w.kind === 'bow') {
       const n = now();
       if (n - (p.lastFire.bow || 0) < w.cd * 750) return;
+      const since = n - (p.lastFire.bow || 0); // the draw is the client's word: it can't be longer than the time since the last arrow (a full draw every 0.26 s was 85 damage a click)
       p.lastFire.bow = n;
-      const c = Math.max(0.15, Math.min(1, num(m.c) || 0));
+      const c = Math.max(0.15, Math.min(1, num(m.c) || 0, since / (w.draw * 850)));
       const tip = p.tip;
       const sp = (w.speed + (w.speedMax - w.speed) * c) * (tip === 'power' ? 1.3 : 1);
       const pr = this.makeProj(p, 'bow', [o[0] + d[0] * 0.7, o[1] + d[1] * 0.7, o[2] + d[2] * 0.7], d.map((x) => x * sp), { tip, charge: c });
@@ -3146,7 +3155,7 @@ class Room {
   // switch game type (bots setup / match settings / the vote)
   setGame(g) {
     if (!has(GAMES, g)) return false;
-    if (!GAMES[g].zombies !== !(MAPS[this.cfg.map] && MAPS[this.cfg.map].zm)) { const ok = mapsFor(g, MAPS, MAP_ORDER); this.cfg.map = ok.includes('islands') ? 'islands' : ok[0]; this.smokes.clear(); } // zombies comes with its own map
+    if (!GAMES[g].zombies !== !(MAPS[this.cfg.map] && MAPS[this.cfg.map].zm)) { const ok = mapsFor(g, MAPS, MAP_ORDER); this.cfg.map = ok.includes('islands') ? 'islands' : ok.includes(ZM.testMap) ? ZM.testMap : ok[0]; this.smokes.clear(); } // zombies comes with its own map (JF_ZM_MAP: which)
     const id = mapForGame(g, MAPS, this.cfg.map), m = MAPS[id]; // a map with an S&D version: Plant & Defuse plays that, the rest the standard one
     if (GAMES[g].sites && !(m.sites && m.sites.length)) return false;
     if (GAMES[g].mapOk && !GAMES[g].mapOk(m)) return false; // e.g. floor is lava: no real floor here (or nothing to stand on)

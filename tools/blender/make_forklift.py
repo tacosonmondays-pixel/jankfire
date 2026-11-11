@@ -1,9 +1,11 @@
 # Forklift: a 3-tonne sit-down counterbalance truck (2.4 m body, big rounded counterweight, overhead guard, two-stage
 # mast, carriage + load backrest, 1.2 m forks), matching the Warehouse forklift boxes. Front (forks) = +x.
 # Grimy safety yellow, hazard-striped counterweight, an amber beacon, a sticker that lies.
-# run: blender -b --python tools/blender/make_forklift.py
+# Far LOD (lod1, from 40 m): far() below. farlod.main keeps the shipped lod0 byte for byte and adds it (--fresh: all new).
+# run: blender -b --python tools/blender/make_forklift.py -- [--qa] [--no-sheet] [--fresh]
 import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib import *
+import farlod
 
 
 def build():
@@ -71,7 +73,40 @@ def build():
         for sz in (-1, 1): P.extend(wheel(r, w, (x, r, sz * 0.66), tire, mat('fk_rim', 0xe8e8e8, rough=0.35, metal=0.3), spokes=6))
     for p in P: uv_box(p, 0.25)
     fk = join(P, 'forklift')
-    return finish('p_forklift', [fk], {'kind': 'prop', 'id': 'forklift'})
+    root = finish('p_forklift', [fk], {'kind': 'prop', 'id': 'forklift', 'lod': 40})
+    farlod.attach_far(root, [join(far(yel, cw, steel, tire, mat('fk_rim'), haz, amber), 'forklift_far')])
+    return root
 
 
-main(build, 'p_forklift')
+def far(yel, cw, steel, tire, rim, haz, amber):
+    """lod1, the forklift from 40 m on (~545 tris, the same paints): the body and counterweight outlines, the seat,
+    the guard and the mast as blocks, octagon wheels, the hazard plate and the beacon (what you see of it from behind).
+    No lamps, levers, chains or sticker: a pixel from there."""
+    F = []; A = F.append
+    A(box((0.04, 0.5, 1.1), (-1.36, 0.72, 0), haz, rot=(0, 0, 0.08), name='far_hazard'))  # (a bit thicker than lod0's: sunk in the weight)
+    A(box((0.13, 0.2, 0.13), (-0.8, 2.47, 0.36), amber, name='far_beacon'))  # (on the slat under it)
+    A(side_x([(-1.18, 0.16), (1.12, 0.16), (1.2, 0.3), (1.2, 0.88), (1.0, 1.02), (0.62, 1.0), (0.48, 0.9), (-0.42, 0.9), (-0.52, 1.02)], 1.2, (0, 0, 0), yel, name='far_body'))
+    A(box((0.3, 0.16, 0.9), (0.86, 1.08, 0), yel, name='far_dash'))
+    A(side_x([(-1.34, 0.22), (-0.48, 0.22), (-0.48, 1.06), (-0.62, 1.2), (-0.98, 1.3), (-1.24, 1.24), (-1.36, 1.0)], 1.36, (0, 0, 0), cw, name='far_counter'))
+    A(box((0.46, 0.15, 0.5), (-0.18, 0.965, 0), cw, name='far_seat'))  # (sunk into the body a bit: no gap under it)
+    A(box((0.1, 0.5, 0.48), (-0.42, 1.28, 0), cw, rot=(0, 0, 0.18), name='far_seatback'))
+    for sz in (-1, 1):
+        A(rod((0.98, 0.98, sz * 0.52), (0.86, 2.32, sz * 0.54), 0.05, steel, seg=4, name='far_post'))
+        A(rod((-0.95, 1.2, sz * 0.54), (-0.95, 2.32, sz * 0.54), 0.055, steel, seg=4, name='far_post'))
+        A(box((1.96, 0.07, 0.08), (-0.04, 2.33, sz * 0.54), steel, name='far_rail'))
+        A(box((0.1, 2.9, 0.08), (1.3, 1.6, sz * 0.42), steel, name='far_mast'))
+        A(box((0.03, 0.6, 0.03), (1.44, 1.15, sz * 0.45), steel, name='far_backrest'))
+        A(box((0.05, 0.85, 0.116), (1.47, 0.48, sz * 0.3), steel, name='far_fork'))  # (a hair narrower than the blade: no shared faces)
+        A(box((1.16, 0.06, 0.12), (2.03, 0.08, sz * 0.3), steel, name='far_fork'))
+    for x in (-0.86, -0.28, 0.3, 0.88): A(box((0.05, 0.04, 1.08), (x, 2.36, 0), steel, name='far_slat'))  # 4 of the 7
+    A(box((0.145, 0.1, 0.91), (1.2725, 0.34, 0), steel, name='far_tie'))  # (reaches back into the body: what holds the mast up)
+    for y in (1.7, 2.98): A(box((0.09, 0.1, 0.91), (1.3, y, 0), steel, name='far_tie'))  # (inside the channels' faces)
+    A(box((0.1, 0.6, 1.1), (1.4, 0.56, 0), steel, name='far_carriage'))
+    A(box((0.04, 0.04, 1.1), (1.44, 1.45, 0), steel, name='far_backrest'))
+    for x, r, w in ((0.72, 0.33, 0.24), (-0.78, 0.26, 0.2)):
+        for sz in (-1, 1): A(farlod.far_wheel(r, w, (x, r, sz * 0.66), tire, rim))
+    for p in F: uv_box(p, 0.25)
+    return F
+
+
+farlod.main(build, 'p_forklift')

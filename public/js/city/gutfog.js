@@ -23,7 +23,7 @@ import { BIG_HEART } from '/shared/city/bigheart.js';
 // reach: how far round you the wisps stand (m); holes: how patchy the sheets are (0 none .. 0.6 mostly holes);
 // color / hot: the mist at rest and what it flushes toward on the beat; glow: how hard it flushes; drift: wind;
 // near: drawn only within this of the Gut (m)
-export const GUT_FOG = { on: true, top: 1.1, puff: 0.42, cap: 0.5, reach: 38, holes: 0.32, glow: 0.8, color: 0xe07e8e, hot: 0xff3448, drift: 1, near: 110 };
+export const GUT_FOG = { on: true, top: 1.5, puff: 0.66, cap: 0.72, reach: 38, holes: 0.18, /* (thicker, taller, fewer gaps: the owner asked for fog you can see round you) */ glow: 0.8, color: 0xe07e8e, hot: 0xff3448, drift: 1, near: 110 };
 const LAYERS = [2, 2, 3, 3], PUFFS = [80, 140, 200, 280]; // sheets, wisps: per preset (Potato .. Too HD)
 const G0 = SLICE.gut.rect, GY = SLICE.gut.y, BY = SLICE.border.y, ST = SLICE.stomach;
 
