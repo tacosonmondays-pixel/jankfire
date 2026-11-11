@@ -10,7 +10,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--mute-audio'] });
-  const pg = await b.newPage({ viewport: { width: 1280, height: 720 } });
+  const pg = await b.newPage({ viewport: { width: 960, height: 540 } });
   const errs = [];
   pg.on('pageerror', (e) => errs.push('PAGEERR ' + e.message + ' ' + (e.stack || '').split('\n')[1]));
   pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });

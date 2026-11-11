@@ -530,6 +530,7 @@ function cityFor(def) {
 
 // swap the whole level (called when the server says the map changed)
 export function loadMap(id) {
+  if (city && !(MAPS[id] && MAPS[id].stream)) { ++cityGen; city.stopCity(); city = null; } // leaving the streamed city: stop it before the new map's boxes go in (it empties the box array it shares, BOXES)
   setMap(id);
   cityFor(MAPS[MAP.id]);
   marbles.clear();

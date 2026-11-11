@@ -26,6 +26,7 @@ import { TRAIN, ARENA, RP, CARS, CAR, HW, COVER, CREW, GEO0, geoFrom, armPose, a
 import { makeBloodDrive } from './blooddrive.js';
 import { makeHitStop } from './hitstop.js';
 import { makeTrainSet } from './trainset.js';
+import { PLACES } from '/shared/city/slice.js'; // where the Loop comes back out into the world (commute:tunnel_mouth, once the world has it)
 import { handFit, haulHand, haulPath, newHaul, stepHaul, armJoints, flatK, HAUL } from './armgrip.js';
 
 export const RP_ID = 'revenue_protection_1', RP_QUEST = 'm06_tickets_please';
@@ -499,7 +500,7 @@ export function makeTrainFight(ST, { playScene }) {
   // ---------------------------------------------------------------- every frame (boot.js, while a story world is on)
   T.tick = (dt) => {
     const on = !!(G.joined && G.mode === 'story' && MAP.id === TRAIN.id);
-    if (on !== T.on) { T.on = on; if (on) { if (T.set) { G.scene.add(T.set.g); setWagon(true); crew(true); } else buildSet(); load(); } else leave(); } // (the tunnel, the train and the models are built once and kept between visits)
+    if (on !== T.on) { T.on = on; fade(0, 1.1); if (on) { if (T.set) { G.scene.add(T.set.g); setWagon(true); crew(true); } else buildSet(); load(); } else leave(); } // (the tunnel, the train and the models are built once and kept between visits)
     if (!on) { BD.tick(dt, false); return; }
     if (!T.boss) load();
     if (!T.set.model || !T.set.kit) dress();
@@ -543,6 +544,7 @@ export function makeTrainFight(ST, { playScene }) {
     BD.tick(dt, ME.alive && !held && !(T.failT && !F.live), !(G.story.triggerOff && G.story.triggerOff()));
   };
   function leave() {
+    if (T.back === 'fading') setTimeout(() => { if (G.story && G.story.save) G.story.save('checkpoint'); }, 3000); // back out in the world after the end of Act I: a save right there (story/main.js)
     clearArms(); F.live = false; T.fin = null; T.said = -1; T.auto = false; T.back = null; F.rear = F.rearS = 0; T.cutBoxes = null; TS.bitten(false); crew(false); HS.clear(); T.jack = 0;
     if (T.set) { G.scene.remove(T.set.g); const w = T.set.cars.wagon; if (w) { w.visible = true; w.position.set(0, 0, 0); w.rotation.set(0, 0, 0); } } // (kept: nothing to rebuild or dispose next time)
     hideBoss();
@@ -566,22 +568,40 @@ export function makeTrainFight(ST, { playScene }) {
   T.frame = () => {
     const o = objective(), step = o ? o.step : '', now = performance.now();
     if (step !== T.step) { T.step = step; T.stepT = now; }
-    const fight = step === 'hold' || step === 'break';
-    if (fight && G.joined && G.mode === 'story' && MAP.id !== TRAIN.id && G.story.travel && !T.going && !busy()) { T.going = G.story.travel(TRAIN.id); return; } // the fight is on the train: go there (story/main.js remembers where from)
+    const fight = step === 'hold' || step === 'break', ride = step === 'ride';
+    if (!ride) T.rode = false;
+    if ((fight || ride) && G.joined && G.mode === 'story' && MAP.id !== TRAIN.id && G.story.travel && !T.going && !busy()) { // the fight is on the train: fade, then go there (story/main.js remembers where from)
+      T.going = true; fade(1, 0.5);
+      setTimeout(() => { if (!G.story.travel(TRAIN.id)) { T.going = false; fade(0, 0.4); } }, 550);
+      return;
+    }
     if (!T.on) return;
     T.going = false;
+    if (ride && !T.rode && !busy() && S().defs.scenes[RIDE]) { T.rode = true; playScene(RIDE); } // the ride in plays on the train, with the crew aboard (boarding cut you here)
     if ((fight || (TRAINQ && !o && !T.auto)) && !F.live && !T.fin && now - T.spawnT > 2500 && !busy()) { T.spawnT = now; T.auto = true; spawn(step === 'break'); } // (the room has one boss at a time: asking twice is nothing)
-    // the middle scene's [FIRE] and [TAKE] are not built yet (the scene engine cuts a "moment" at 3 s): once the scene
-    // has really played (seen on screen this visit, then over), the step is given its flags here so the fight can go
-    // on. stands in for the two buttons. a run reloaded at this step plays the scene again first
-    if (step !== 'jack') T.jack = 0;
+    // the middle scene plays in full now (a moment with a choice isn't cut at 3 s: scene.js) and its [FIRE] and [TAKE]
+    // are the mission's choices, opened by the scene. you fire: the bolt goes into Jack and the cross comes, small.
+    // once the scene is over the step gets its flag (and the choices' flags, if the scene was skipped past them).
+    // a run reloaded at this step plays the scene again first
+    const fl = S().st.flags;
+    if (step === 'jack' && fl.jack_fired && !T.jackShot) { T.jackShot = true; const a = actors.get('pallet_jack'); if (a) { bloom([a.pos[0], a.pos[1] + 1.1, a.pos[2]]); HS.hit(0.1); } }
+    if (step !== 'jack') { T.jack = 0; T.jackShot = false; }
     else if (busy()) T.jack = 2; // it is playing
     else if (T.jack === 2) { T.jack = 3; S().run(['flag:jack_fired', 'flag:jack_marrow_taken', 'flag:seen_mo_carry']); }
     else if (!T.jack && now - T.stepT > 4000 && S().defs.scenes.mo_carry_the_bit_that_works) { T.jack = 1; playScene('mo_carry_the_bit_that_works'); } // (the step's own scene never came: a reload)
     // done with the mission (or it was never on) after a trip here: back to where you came from
     const q = S().st.quests[RP_QUEST];
-    if (!o && q && q.done && !busy() && G.story.travelBack && (!F.live || (T.fin && T.fin.t > 6)) && now - T.stepT > 4000 && !T.back) T.back = G.story.travelBack() || 'nowhere';
+    if (!o && q && q.done && !busy() && G.story.travelBack && (!F.live || (T.fin && T.fin.t > 6)) && now - T.stepT > 4000 && !T.back) { T.back = 'fading'; fade(1, 0.6); setTimeout(() => { if (!G.story.travelBack(outAt())) { T.back = 'nowhere'; fade(0, 0.4); } }, 650); }
   };
+  // m06 over: the Loop comes out of the hill at the tunnel mouth (the Commute, at dusk), not back where you boarded.
+  // until the world has that spot, back where you got on (worlds.js travelHome)
+  const fade = (k, d) => { const f = document.getElementById('stFade'); if (f) { f.style.transition = `opacity ${d}s`; f.style.opacity = k; } }; // (the scene layer's black: boot.js)
+  const outAt = () => { const pl = PLACES['commute:tunnel_mouth']; return pl && Array.isArray(pl.p) ? { map: 'story_slice', p: pl.p.slice(), yaw: Number.isFinite(pl.yaw) ? pl.yaw : 0 } : null; };
+  T.outAt = outAt;
+  // the ride in (c6) is asked for when m06's ride step starts, at the service tunnel: it waits for the train, where the
+  // crew is (T.frame plays it there). anything else plays where it's asked
+  const RIDE = 'c6_mind_the_gap';
+  T.holdScene = (id) => id === RIDE && MAP.id !== TRAIN.id;
   if (typeof window !== 'undefined') window.JF_TRAIN = T; // (tests and screenshots stage it from here)
   return T;
 }

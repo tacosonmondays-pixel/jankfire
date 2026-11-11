@@ -53,9 +53,12 @@ function normScene(d) {
   const panels = [];
   let lastCam = -9, lastSay = null, shotN = 0;
   const castKeys = Object.keys(out.cast);
+  const playable = playableMoment(d); // (a moment you play through: its directions are what you'd see, so they're shown)
+  if (playable && out.cast.you && !out.cast.you.actor) out.cast.you = { ...out.cast.you, hidden: true }; // (and it's seen through your own eyes: no stand-in of you in the way)
   for (const t0 of d.tracks || []) {
     if (t0.if && !S.test(t0.if)) continue;
     const t = { ...t0 };
+    if (playable && typeof t.dir === 'string' && !t.say && !t.choice) t.say = ['', '*' + t.dir + '*'];
     delete t.if; delete t.dir;
     if (typeof t.title === 'string') t.title = [t.title, '', 2.5];
     if (t.cam) { t.cam = { ...t.cam }; if (SHOT_ALIAS[t.cam.shot]) { t.cam.from = t.cam.from || 'you'; t.cam.shot = SHOT_ALIAS[t.cam.shot]; } if (typeof t.cam.path === 'string') { t.cam = { shot: 'orbit', target: castKeys.find((k) => k !== 'you') || castKeys[0], dur: t.cam.dur || 8, turn: 0.8, r: 6, up: 2, fov: t.cam.fov }; } lastCam = t.t; }
@@ -91,9 +94,11 @@ export function playScene(id, opts = {}) {
   if (P.kind === 'panels' || P.kind === 'recap') startPanels();
   if (P.kind === 'talk') { const t = def.talk || {}; P.len = 9e9; startTalk(ST.S, t.npc, t.node || 'start', () => { P && (P.len = P.t); }); }
   if (P.kind === 'boss') { bossCard(def.boss || def); P.len = def.len ?? 4.8; }
-  if (P.kind === 'moment') P.len = Math.min(3, def.len ?? 1.6);
+  if (P.kind === 'moment' && !playableMoment(def)) P.len = Math.min(3, def.len ?? 1.6); // (a moment with a choice in it plays as long as it's written: mo_carry_the_bit_that_works)
   return true;
 }
+// a moment with a choice in it (a [FIRE], a [TAKE]): you play it through, it isn't cut at 3 s like the juice ones
+const playableMoment = (d) => !!d && d.kind === 'moment' && (d.tracks || []).some((t) => t.choice);
 function castOne(k, c) {
   if (c.actor || actors.has(k)) { const a = actors.get(c.actor || k); if (a) { P.cast.set(k, a); a.inScene = true; if (c.at) { a.pos = [...where(c.at)]; a.r.pos = a.pos; } if (c.face != null) a.yaw = a.faceTarget = ST.offYaw(c.face); } return; }
   const at = c.at ? where(c.at) : k === 'you' ? [ME.pos[0], ME.pos[1], ME.pos[2]] : [ME.pos[0], ME.pos[1], ME.pos[2] - 3];
