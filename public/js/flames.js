@@ -9,6 +9,7 @@ import { jankUniforms } from './jank.js';
 import { fx } from './fx.js';
 import { sfx } from './audio.js';
 import { dynLight } from './lighting.js';
+import { spritesOn, firePuff } from './flipbook.js';
 
 const MAX = 256;
 const U = { uTime: { value: 0 }, uSnap: jankUniforms.uSnap };
@@ -155,8 +156,13 @@ export function updateFlames(dt) {
   smokeT -= dt;
   if (P && smokeT <= 0) {
     smokeT = 0.07;
-    for (const f of stat) if (f.smoke && cam && Math.hypot(f.x - cam.x, f.z - cam.z) < 260) P.smoke.spawn(f.x + R(f.w * 0.2), f.y + f.h * 0.9, f.z + R(f.w * 0.2), R(0.6), 2 + Math.random() * 1.5, R(0.6), 3 + Math.random() * 2, f.w * 0.35, f.w * 1.1, 0x3a3434, 0x1a1616, 0.4, -0.35, 0.3);
-    for (const f of live.values()) if (f.k > 0.3 && Math.random() < 0.5) P.smoke.spawn(f.x + R(0.3), f.y + f.h, f.z + R(0.3), R(0.4), 1.6 + Math.random(), R(0.4), 2.2 + Math.random(), 0.4, f.w * 2.2, 0x2a2626, 0x0e0c0c, 0.55, -0.4, 0.4);
+    const soft = spritesOn(); // real smoke off the fire (flipbook.js) instead of dark squares, half as many puffs
+    if (soft) {
+      for (const f of stat) if (f.smoke && cam && Math.hypot(f.x - cam.x, f.z - cam.z) < 260 && Math.random() < 0.5) firePuff(f.x + R(f.w * 0.2), f.y + f.h * 0.9, f.z + R(f.w * 0.2), R(0.6), 2 + Math.random() * 1.5, R(0.6), 3 + Math.random() * 2, f.w * 0.5, f.w * 1.5);
+      for (const f of live.values()) if (f.k > 0.3 && Math.random() < 0.25) firePuff(f.x + R(0.3), f.y + f.h, f.z + R(0.3), R(0.4), 1.6 + Math.random(), R(0.4), 2.2 + Math.random(), 0.6, f.w * 2.4);
+    }
+    for (const f of stat) if (!soft && f.smoke && cam && Math.hypot(f.x - cam.x, f.z - cam.z) < 260) P.smoke.spawn(f.x + R(f.w * 0.2), f.y + f.h * 0.9, f.z + R(f.w * 0.2), R(0.6), 2 + Math.random() * 1.5, R(0.6), 3 + Math.random() * 2, f.w * 0.35, f.w * 1.1, 0x3a3434, 0x1a1616, 0.4, -0.35, 0.3);
+    for (const f of live.values()) if (!soft && f.k > 0.3 && Math.random() < 0.5) P.smoke.spawn(f.x + R(0.3), f.y + f.h, f.z + R(0.3), R(0.4), 1.6 + Math.random(), R(0.4), 2.2 + Math.random(), 0.4, f.w * 2.2, 0x2a2626, 0x0e0c0c, 0.55, -0.4, 0.4);
     const all = stat.length + live.size;
     if (all) for (let i = 0; i < 2; i++) {
       const f = Math.random() * all < stat.length ? stat[(Math.random() * stat.length) | 0] : [...live.values()][(Math.random() * live.size) | 0];

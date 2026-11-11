@@ -162,7 +162,7 @@ export function waterSplash(x, y, z, k, ride, tint = 0xffffff) {
 // cools to red, leaves rolling smoke), one big in the middle and a few smaller ones off-centre a beat later
 function boomBook() { const f = get(); if (!f.boom) f.boom = new Flipbook('boom.png', 8, 40, { sort: true, soft: true, rgb: true, inkK: 0 }); return f.boom; }
 export function boomSprite(p, radius = 4) {
-  const F = boomBook(), R = (k) => (Math.random() * 2 - 1) * k, s = Math.max(2.5, radius * 1.9);
+  const F = boomBook(), R = (k) => (Math.random() * 2 - 1) * k, s = Math.max(3.3, radius * 2.5);
   F.spawn({ p: [p[0], p[1] + s * 0.12, p[2]], v: [0, 0.5, 0], s0: s * 0.9, s1: s * 1.25, life: 1.5, a: 1, rot: R(3.14) });
   for (let i = 0; i < 3; i++) F.spawn({ p: [p[0] + R(radius * 0.4), p[1] + Math.abs(R(radius * 0.35)), p[2] + R(radius * 0.4)], v: [R(0.6), 0.6 + Math.random() * 0.6, R(0.6)], s0: s * 0.45, s1: s * 0.8, life: 1.25 + Math.random() * 0.5, a: 0.95, rot: R(3.14), spin: R(0.2) });
 }
@@ -176,6 +176,11 @@ export function muzzlePuff(a, b) {
   lastPuff = now; lastPx = a[0]; lastPz = a[2];
   const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], l = Math.hypot(dx, dy, dz) || 1, g = 0.72 + Math.random() * 0.2;
   get().soft.spawn({ p: [a[0] + dx / l * 0.15, a[1] + dy / l * 0.15, a[2] + dz / l * 0.15], v: [dx / l * 1.6, dy / l * 1.6 + 0.35, dz / l * 1.6], s0: 0.22, s1: 0.85, life: 0.55 + Math.random() * 0.25, a: 0.5, col: _c.setRGB(g, g, g).getHex(), rot: Math.random() * 6.28, spin: (Math.random() - 0.5) * 2, drag: 3.5 });
+}
+// smoke rising off a fire: the soft sheet, dark and sooty, growing as it climbs (flames.js)
+export function firePuff(x, y, z, vx, vy, vz, life, s0, s1) {
+  const g = 0.16 + Math.random() * 0.1;
+  get().soft.spawn({ p: [x, y, z], v: [vx, vy, vz], s0, s1, life, a: 0.55, col: _c.setRGB(g, g * 0.96, g * 0.94).getHex(), rot: Math.random() * 6.28, spin: (Math.random() - 0.5) * 0.4, drag: 0.3 });
 }
 // main.js, every frame (also keeps the smoke's light in step with the map)
 export function updateFlipbooks(dt) {
