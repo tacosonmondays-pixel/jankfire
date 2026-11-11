@@ -44,3 +44,16 @@ test('no place, or right after a fight: the scene plays at the step start', () =
   assert.ok(m06.find((s) => s.id === 'terminus').do.includes('scene:c6b_terminus'));
   assert.ok(overdue.quests.m01_return_to_sender.steps.find((s) => s.id === 'c1').do.includes('scene:c1_please_take_your_item'));
 });
+
+test('m02: the soup is delivered at the trade post, not the moment you hold it; the trade post talks to you there', () => {
+  const talks = [];
+  const S2 = makeStory({ content: overdue, host: { has: (i) => i === 'soup_pot', act: (a) => { if (a.do === 'talk') talks.push(a.arg); }, event() {} } });
+  S2.run(overdue.init); done(S2, 'm01_return_to_sender');
+  S2.quests.start('m02_sauce_run'); S2.quests.enterStep('m02_sauce_run', 'deliver');
+  S2.tick(1);
+  assert.equal(S2.st.quests.m02_sauce_run.step, 'deliver', 'delivered from wherever you were');
+  assert.ok(!talks.some((t) => t.includes('trade_post')), 'the trade post talk opened away from the trade post');
+  S2.emit({ type: 'reach', zone: 'gut:border' });
+  assert.ok(S2.st.quests.m02_sauce_run.done, 'delivered at the gate');
+  assert.ok(talks.some((t) => t.includes('trade_post')));
+});

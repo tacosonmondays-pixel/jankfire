@@ -112,7 +112,7 @@ function build() {
       let g;
       switch (g0.type) {
         case 'talk': g = { type: 'talk', npc: g0.who, node: talkStart(qid, g0.talk) }; routes[g0.who] = routes[g0.who] || []; routes[g0.who].push([`q.${qid}.at.${s.id}`, talkStart(qid, g0.talk)]); break;
-        case 'deliver': g = { type: 'reach', zone: g0.zone, if: `has.${g0.item}` }; post.push(`take:${g0.item}`); break;
+        case 'deliver': g = { type: 'reach', zone: g0.zone, item: g0.item }; post.push(`take:${g0.item}`); break; // (not `if: has.item`: the engine counts a goal with an `if` as done the moment it's true, so the soup was delivered from the Ring Road)
         case 'escort': g = { type: 'escort', zone: g0.zone, npc: g0.who }; break;
         case 'interact': g = { type: 'interact', thing: g0.target }; break;
         case 'photo': g = { type: 'photo', target: g0.subject || g0.target, n: g0.n }; break;
@@ -129,7 +129,9 @@ function build() {
       const arrive = arriveAt(s, steps[i - 1]);
       if (s.scene && g0.type === 'reach') post.unshift(`scene:${s.scene}`);
       else if (s.scene) pre.push(`scene:${s.scene}`);
-      if (s.talk && T[s.talk]) pre.push(`talk:${T[s.talk].with === 'change' ? 'you' : T[s.talk].with}/${talkStart(qid, s.talk)}`);
+      // a step's talk opens when it starts; a delivery's (or a step with talkAt: 'arrive') when you get there: the trade post
+      // talks to you at the trade post, not on the Ring Road
+      if (s.talk && T[s.talk]) (g0.type === 'deliver' || (s.talkAt === 'arrive' && g.type === 'reach') ? post : pre).push(`talk:${T[s.talk].with === 'change' ? 'you' : T[s.talk].with}/${talkStart(qid, s.talk)}`);
       // a step waiting for a choice's flag opens the choice
       if (g0.type === 'flag') for (const ch of choices || []) if (ch.options.some((op) => (op.do || []).includes(`flag:${g0.flag}`))) pre.push({ ...(ch.if ? { if: cond(ch.if) } : {}), do: [`talk:choice/${qid}.${ch.id}`] });
       if (s.do) post.push(...acts(s.do));
