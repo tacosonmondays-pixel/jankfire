@@ -104,24 +104,62 @@ From the content (`content/bosses.js`, `boss_fights.js`): HP 5000, the armour la
 Damage the fight does to you is what lands: the room softens every bot's hit to 0.6, so the fight asks for more.
 
 ## Screenshots
-Headless, Too HD, staged with the dev messages below (a headless frame takes seconds, so nothing here is timing).
+Headless, Too HD, FOV 80, staged with the dev messages below (a headless frame takes seconds, so nothing here is
+timing). The quest tracker in them shows mission 1 because the `&train=1` test route starts a fresh save; in the
+mission it tracks m06.
 
 | file | what |
 |---|---|
-| `fight_01_mask_arms.jpg` | the mask behind the wagon at 17 m, arms along both walls, a blue knot at each wrist |
-| `fight_02_grabber_rail.jpg` | a Grabber's hand closed over the wagon's rail, its knot above it |
-| `fight_03_severed_flinch.jpg` | four hands dropping onto the track, the eye housings open (this one is from before THE GAP panel moved to the left edge) |
+| `fight_00_start.jpg` | the start: the wider wagon, a crate, Jack's stand-in at the back rail, the mask at 22 m |
+| `fight_00b_from_the_roof.jpg` | from the tool van's roof: the flatbed (crates, the fridge, Lumps' stand-in), the wagon, the mask |
+| `fight_01_mask_arms.jpg` | the mask at 17 m, arms along the wall (charred, matt), a Grabber on the back rail |
+| `fight_02_grabber_rail.jpg` | the same Grabber: its hand over the rail, the blue knot above it |
+| `fight_03_severed_flinch.jpg` | a flinch: a hand dropping, the eye housings open and red |
 | `fight_04_plates_left_eye.jpg` | phase 2: plates gone, the left eye blown |
-| `fight_05_smile.jpg` | the lower third off: the mouth |
-| `fight_06_end_of_the_line.jpg` | phase 3: half a face, hanging |
-| `fight_07_inspector.jpg` | the Inspector in the mouth, his chest marked, from the back of the wagon at 7 m |
-| `fight_08_blood_crossed.jpg` | the finish: the cross out to the rim |
-| `fight_09_comes_apart.jpg` | the face flat on the track, the plug splitting along the cross |
+| `fight_05_inspector.jpg` | phase 3 from the back of the wagon at 7 m: the lower third gone, the Inspector's chest marked |
+| `fight_06_before_the_bite.jpg` | phase 3 from the flatbed, the wagon still on: THE GAP 12 m |
+| `fight_07_wagon_gone.jpg` | the same view after the first lunge: the wagon is gone, the mask is at the flatbed's back, 8.3 m |
+| `fight_08_blood_crossed.jpg` | the finish: the cross out to the rim (taken on the earlier, narrower wagon) |
+| `fight_09_comes_apart.jpg` | the face flat on the track, the plug splitting along the cross (the earlier wagon too) |
+
+How big the mask reads (it fills the bore at its own depth, so this is only distance): from the middle of the wagon it
+is about 19 degrees across at THE GAP 22 m, 26 at 15 m, 42 at 7 m, out of a view about 112 wide at FOV 80.
+
+## Wiring Pallet Jack in (next: his model and clips are on `claude/overdue-jack`, not merged here)
+His stand-in is spawned as `rp_pallet_jack` at `CREW[0]` (the wagon's back rail) and hides after phase 1. From
+`PALLET_JACK_MODEL.md` on that branch, the clips and marks this fight will use:
+
+| when (this fight's event) | clip | marks to hang things on |
+|---|---|---|
+| the fight starts (`state`, phase 0) | `pj_rig_up`, then `pj_fight_idle_hurt` (he arrives run through: `PJ.dmg(a, 'run_through')`) | `ready` 2.75: he can act |
+| a Grabber grips near him (`arm`, `st: 'grip'`) | `pj_rocket_punch` | `fire` 0.46, `hit` 0.56: when the room should sever that arm (a new rule: his punches) |
+| a Sweeper's tell (`arm`, `k: 'sweep'`, `st: 'tell'`), once in phase 1 | `pj_block` | `up` 0.14: the room skips that sweep's hit for whoever is behind him |
+| a Sweeper hits him | `pj_stagger` | `foot` 0.7 |
+| his bar (`gap.jack`, 1..0) | slower punches, shorter block, `pj_fight_idle_hurt`'s `vent` | |
+| phase 1 ends (`phase`, `phase: 1, invuln: true`) | `pj_armour_break_fall` | `armour` 0.06 (`armour_broken`), `down` 1.04, `fridge` 1.05 |
+| the middle scene, 26 s and [FIRE] | `pj_dying_talk`, then `pj_last_breath` | `take` 2.45, `place` 4.1 · `lets_go` 2.3, `hand_down` 3.1 |
+| [TAKE] | `PJ.dmg(a, 'marrow_taken')` | |
+| `c6b_terminus` | `pj_carried` (on Lumps) | |
+
+One thing to settle when wiring: he falls "against the fridge", and the fridge is on the flatbed (`COVER`, z 16.4), 15 m
+from his spot at the back rail. Either the Sweeper that breaks his armour throws him up the train, or his phase 1
+spot moves to the flatbed's back.
 
 ## Dev messages (`?storydev=1`)
 `G.story.send('bossdev', o)`: `calm` (no arms, lunges or Jack's clock by themselves), `want: 'grab' | 'sweep' | 'snatch'
 | 'lunge'` (+ `hi`, `side`), `grip: true` (skip the tells), `sever: true` (every arm), `gap: n`, `pin` (THE GAP holds still), `dmg: n` (+ `part`,
 `i`: where it lands; by default the part that counts in this phase). `window.JF_TRAIN` is the client's state.
+
+## Checked, and not
+- Rules: `tests/story/train.test.mjs` (14 tests: the table, spawn, THE GAP, each arm, the flinch, phases and the hold,
+  plate stages, the Inspector, the wagon bitten off, the finish, the fail, the Blood Drive, junk input, a normal room).
+- In a headless browser: the arena, the mask and arms, grips, a flinch, phase 2 and 3 looks, the wagon going, the
+  finish, and the mission's steps end to end (the trip to the train, the hold round the middle scene, the defeat,
+  the trip back).
+- Not seen in a browser, because a headless frame takes two to four seconds here: the Blood Drive actually firing
+  (the room lets the ring wind down after 1.5 s of silence, so it never gets up to speed at that frame rate), its
+  tracers and sound; a Sweeper's bar in motion; the fail's closing hands (the fight has reset before a frame draws
+  them); every sound; the hit-stop. These need a real play at a real frame rate.
 
 ## Not built
 - The Brakeman.

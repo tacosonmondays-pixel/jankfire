@@ -24,7 +24,7 @@ export const COVER = [ // [car, x, z, width, height, depth, material]: stands on
 ];
 export const CREW = [ // where the three would fight (static stand-ins for now: no AI). until: the phase they are there up to
   { id: 'pallet_jack', p: [0.9, 1.0, 1.2], yaw: 0, until: 0 }, // at the back rail
-  { id: 'lumps', p: [-0.4, 1.3, 12.6], yaw: 0, until: 2 }, // hauling crates on the flatbed
+  { id: 'lumps', p: [-1.1, 1.3, 14.2], yaw: 0, until: 2 }, // hauling crates on the flatbed (off the middle lane: you shoot down it)
   { id: 'gordo', p: [1.3, 1.3, 21.4], yaw: 0, until: 2 }, // by the van's stairs, with the blood bags
 ];
 const FAR = { p: [0, -900, 0], r: 0.1 }; // no Machine, Locker or clinic on a train
