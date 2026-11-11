@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '8.4', date: '2026-11-11', title: 'MIND THE STEP', items: [
+    'the lighthouse finally got real stairs: a proper iron stair wrapped round the tower, little steps you just stroll up, rails so you don\'t eat sand. the bots found them too.',
+  ] },
   { v: '8.3', date: '2026-11-11', title: 'FANCY DRESS', items: [
     '12 NEW COSTUMES in character > clothes > costumes. free for everyone: lifeguard, hot dog guy, budget wizard, referee, grandma, homemade astronaut, tourist, chef, gym bro and pyjamas. one of them is a sausage.',
     'the chicken mascot comes from the new POULTRY IN MOTION achievement: 25 chicken rocket kills. blowing someone off the map with a chicken counts. the bin knight comes from SWORN PROTECTOR: 50 melee kills.',
