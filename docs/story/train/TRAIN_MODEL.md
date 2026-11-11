@@ -7,10 +7,10 @@ is [FIGHT.md](FIGHT.md), the boss that chases this train is [REVENUE_PROTECTION_
 
 | file | what | size |
 |---|---|---|
-| `public/models/story/rp_train.glb` | the four cars, the eight cover pieces, the flatbed's torn end, far versions | SIZE_TRAIN |
-| `public/models/story/rp_tunnel.glb` | the tunnel kit (pieces that tile along z) and the tunnel mouth | SIZE_TUNNEL |
-| `public/models/story/rp_commuter.glb` | one carriage of the dead commuter train, its torn end, a far version | SIZE_COMMUTER |
-| `public/models/story/rp_train.parts.json` | every part's box, the table it was built to, the markers | SIZE_PARTS |
+| `public/models/story/rp_train.glb` | the four cars, the eight cover pieces, the flatbed's torn end, far versions | 2.03 MB |
+| `public/models/story/rp_tunnel.glb` | the tunnel kit (pieces that tile along z) and the tunnel mouth | 405 KB |
+| `public/models/story/rp_commuter.glb` | one carriage of the dead commuter train, its torn end, a far version | 394 KB |
+| `public/models/story/rp_train.parts.json` | every part's box, the table it was built to, the markers | 12 KB |
 | `public/js/story/trainset.js` | loads them and dresses the fight's stand-ins with them | |
 | `tools/blender/make_rp_train.py` + `rptrain_cars.py`, `rptrain_tex.py`, `rptunnel.py`, `rpcommuter.py`, `trainkit.py` | the build (Blender 5.2) | |
 | `tools/blender/rp_train_shots.cjs`, `rp_train_shots.html` | the sheets in the game's renderer, and the load check | |
@@ -141,7 +141,36 @@ One carriage in its own space: the origin on the track bed under its middle, 20 
 - `commuter`: the carriage's numbers and parts.
 
 ## Triangles and draw calls
-TRI_TABLE
+Budgets were: the four cars 45 - 60k with far versions, a tunnel length under 1.5k, a carriage under 6k (600 far),
+every file under about 4 MB, few materials. The three files are 2.81 MB together.
+
+| | triangles | far version | draw calls (meshes shown) |
+|---|---|---|---|
+| rear wagon (with its 2 crates, coupling, tail lamp) | 8,336 | 304 | 5 |
+| flatbed (with 4 cover pieces, both couplings) | 8,692 | 206 | 7 |
+| tool van (with the bench and the cable drum) | 8,964 | 280 | 5 |
+| loco | 9,482 | 354 | 4 |
+| **the four cars** | **35,474** | 1,144 | 21 |
+| of which the eight cover pieces | 3,470 | | |
+| `flat_end_bitten` (hidden until the first lunge) | 1,194 | | (+0: it swaps with `flat_end`) |
+| tunnel: `tk_lining` / `tk_lining_b` / `tk_niche` | 720 / 848 / 852 | | 1 / 2 / 2 (instanced) |
+| tunnel: `tk_track` / `tk_track_far` / `tk_cables` | 590 / 62 / 426 | | 1 each (instanced) |
+| tunnel: `tk_bulbs` + a bulb / `tk_phone` / `tk_marker` / `tk_signal` | 340 + 36 / 142 / 80 / 366 | | 1 each (instanced) |
+| `tp_portal` (the mouth, the viaduct's first 12 m) | 1,522 | | 2 |
+| dead carriage (`cm_car` + `cm_end` + `cm_glass`) | 5,882 | 130 (`cm_lod`) | 3 (1 far) |
+| the last carriage (`cm_end_torn` in place of `cm_end`) | 6,346 | | 3 |
+
+The cars come in under the 45 - 60k the brief allowed, and the headroom was left unspent on purpose: at play distance
+they read (see the before / after pictures), and the room's frame is already about 220k triangles before the train
+(the boss, its arms, the crew). The far versions are in the file but the
+fight never needs them (the train is always within 35 m of you); they are for scenes that see the train from far off.
+
+In the fight (headless Too HD, 1280 x 720, `renderer.info` summed over one frame, at the same staged moment with the models and with the old boxes switched back on):
+from the rear wagon looking back, **412 draw calls and 257,651 triangles with the models, 429 and 219,331 with the
+boxes**; from the van's roof, 549 and 307,653 against 564 and 249,251 (every render pass of one frame: the boss, its
+arms, the crew, the viewmodel). So the models cost 38 - 58k triangles more and about 15 draw calls *fewer*: the old
+bore drew each of its rings and bulbs on its own. The tunnel kit is instanced, so 30 lengths of tunnel cost the same
+dozen draw calls as one. The bulbs' glows are one `Points`.
 
 ## How it is wired (`trainset.js`, `trainfight.js`)
 - `trainfight.js` still builds the stand-in train and tunnel from the table's boxes (one group a car). When you are on
@@ -166,7 +195,31 @@ TRI_TABLE
 - Nothing in the rules changed: no size, no server code, nothing about arms or the boss.
 
 ## Sheets
-SHEETS
+All in `docs/story/train/`. In the game's renderer (three.js, the treatment `trainset.js` gives the files), made by
+`node tools/blender/rp_train_shots.cjs`:
+
+| file | what |
+|---|---|
+| `rp_train_game_turn.jpg` | the train from behind (the boss's side) and the front, side and plan against the 9.2 m bore and a 1.8 m figure, the far versions, the bitten flatbed |
+| `rp_train_game_detail.jpg` | each car close, the back rail and tail lamp, the chained fridge, under the van's roof, the roof, the cab, the head lamps, the tool board, the steps |
+| `rp_train_game_tunnel.jpg` | 60 m of kit with the fight's own lights: all bulbs lit, bulbs going out, the refuge, the track, the train in it |
+| `rp_train_game_commuter.jpg` | the dead carriage, inside, the coffee, the torn last carriage, eight far carriages, the tunnel mouth |
+
+In the real fight (`?story=1&storytest=1&train=1&storydev=1`, staged with `bossdev`), **before** (main's box stand-ins
+and the old bore, switched back on in the same frame) and **after** (the models), left and right:
+
+| file | what |
+|---|---|
+| `train_ba_1_rear_wagon.jpg` | from the rear wagon looking back at the mask, THE GAP 18 m (the best one for the tunnel) |
+| `train_ba_2_van_roof.jpg` | from the tool van's roof down the train |
+| `train_ba_3_grabber.jpg` | a Grabber on the wagon's right rail, Jack's stand-in at the back rail, MIND THE GAP on the kick board (the best one for the train) |
+| `train_ba_4_bitten.jpg` | phase 3, after the first lunge: the wagon gone, the mask at the flatbed's back |
+| `train_ba_5_bitten_end.jpg` | the flatbed's torn end after the bite (`flat_end_bitten`) |
+| `train_ba_6_van_back.jpg` | the tool van from the flatbed: NO STANDING ON ROOF, the bench, the cab's back door (the best one for the van) |
+| `train_ba_7_roof_forward.jpg` | from the van's roof forward over the loco: the lit bulbs ahead glow (main showed the room's brick end wall here) |
+| `train_ba_8_hand_truck.jpg` | Jack's hand truck behind the chained fridge, Lumps hauling, the tall crate strapped |
+
+The Blender turnaround is `tools/blender/sheets/rp_train_turnaround.jpg` (before look pass 2).
 
 ## Rebuild
 ```
@@ -182,7 +235,34 @@ z-fight places to list). The size table is read out of `shared/story/train.js` w
 size there and rebuilding moves the model with it.
 
 ## QA
-QA_TEXT
+The asset-QA gate (`-- --qa`, the `blender-asset-qa` checks: z-fighting at 1 mm, floating parts, inside-out and
+inconsistent normals, collapsed faces, n-gons) passes on all 23 groups after look pass 2: the four cars, their far
+versions, the flatbed with its torn end, every tunnel piece, the portal, the carriage, the last carriage and the far
+carriage. One accepted warning: the loco's working head lamp lens is inside its housing (`QA_ENCLOSED`), as meant.
+Earlier fixes are in the geometry, not hidden: flanges under gussets, stake pockets on their flanges, posts and masts on
+their feet, the racked tools standing on the deck.
+
+`node --test tests/story/trainmodel.test.mjs` (10 tests) measures the export: every car inside `HW` and its z range,
+the decks at the table's heights with the middle lane clear, the wagon's rail at the grip spots, the van's four steps,
+four posts, 2 m headroom and flat roof, each cover piece inside and filling its `COVER` box with its origin at the
+middle of its foot, the bitten end taking nothing of the deck, every part the parts file names a node in its `.glb`
+(train, tunnel and commuter), the markers, the budgets. `rp_train_shots.cjs` fails if a named part is missing.
 
 ## Weak spots
-WEAK
+- **The second track** is not a piece of its own: in the fight's 9.2 m bore there is no room for one, so a twin-track
+  length is the kit laid twice (see above). The dead commuter train is therefore not in the fight; it is for
+  `c6_mind_the_gap`, which needs its own wider set laid from these pieces.
+- **The tunnel mouth at dusk** is modelled (portal, wing walls, the viaduct's first span) but has no sky, valley or
+  lighting: that belongs to the ending's scene.
+- **The last carriage** is 6.3k triangles with its torn end (the budget was 6k a carriage); there is one of it.
+- **The deck shines at grazing angles** looking forward from the wagon: the fight's spot lamp on the van points back
+  down the train, so the flatbed's boards catch it edge-on. It is the room's light, not the boards (they are 0.86 rough).
+- **The front of the train is dark** from the van's roof looking forward: the room has three bulb lights, all kept near
+  the back of the train where the fight is. The lit bulbs ahead glow, the walls there do not. A head lamp light would
+  fix it at the cost of one more light on every surface.
+- **Jack's hand truck** stands upright behind the fridge; it has no collision box (nor does anything that is not in
+  `COVER`), so you can walk through it. The parts file's `lean` for it is for his idle pose and is not applied.
+- **Not seen in motion at a real frame rate**: the headless browser draws a frame every few seconds. The scroll, the
+  bulbs going out and the glows were checked frame by frame, not watched.
+- **No co-op test**: the models are only looks, so another player sees the same files, but two people on the roof
+  were not tried.
