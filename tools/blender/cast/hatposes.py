@@ -2,7 +2,8 @@
 #   --sheet=poses   one key pose a clip                          -> sheets/c_hat_lord_poses.jpg
 #   --sheet=clips   a contact strip per clip (10 frames)         -> sheets/c_hat_lord_clip_<name>.jpg   (--clip=a,b for some)
 # What the game adds on top is not here: the hat turning to look at you, and her walk laid over a clip when she moves
-# (hl_walk is shown as its own strip). --quick renders them with Workbench (flat light, no vertex colour).
+# (hl_walk is shown as its own strip). The clip strips are rendered with Workbench (flat light, no vertex colour:
+# 130 frames of EEVEE on software GL is an hour); --eevee-clips for the slow ones, --quick for everything in Workbench.
 import os, sys, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hatkit import *  # noqa
@@ -39,6 +40,6 @@ def run(H, root, sheets, SHEET_DIR, TMP, G):
             for i, t in enumerate(ts):
                 apply_pose_hl(RIG, hl_clips.evaluate(n, t))
                 mk = [m for mt, m in C['marks'] if (ts[i - 1] if i else -1) < mt <= t]
-                ps.append(view(os.path.join(TMP, 'hl_f_%s_%d.png' % (n, i)), tg, deg, dist, lens=70, res=(330, 380), up=up)); labs.append('%.2f s%s' % (t, ('  ' + ' '.join(mk)) if mk else ''))
+                ps.append(view(os.path.join(TMP, 'hl_f_%s_%d.png' % (n, i)), tg, deg, dist, lens=70, res=(330, 380), up=up, quick=not arg('eevee-clips'))); labs.append('%.2f s%s' % (t, ('  ' + ' '.join(mk)) if mk else ''))
             rpkit.contact(ps, os.path.join(SHEET_DIR, 'c_hat_lord_clip_' + n[3:]), 'MADAM CHAIR  %s  %s  (%s)' % (n, ('loop %.1f s' % C['loop']) if C['loop'] else ('%.1f s' % dur) + ('' if C['len'] else ', held'), C['note'][:110]), 5, labs)
     apply_pose_hl(RIG, G['STANCE'])

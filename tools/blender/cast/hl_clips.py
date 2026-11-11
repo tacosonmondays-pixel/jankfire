@@ -218,14 +218,16 @@ clip('hl_walk', walk_keys, loop=WALK_T, face=[(0, 'chair')], marks=[(0.0, 'stepR
      note='the stalk: two steps a loop, %.2f m a loop. hatlord.js lays its legs over any clip whenever she is moving' % STRIDE)
 
 # ------------------------------------------------------------------------------------------------ duck under a doorway
-# She does not duck. The hat turns its low wing to the front, tips up on edge and goes through first; she folds at the
-# knee and the waist and follows it; it settles back. In place: the scene walks her through while it plays.
-edge = {'hatNeck.y': 1.42, 'hat.x': 0.86, 'hat.z': 0.3, 'hatNeckB.py': 0.08, 'brimR.z': 0.08, 'brimRb.z': 0.22, 'brimL.z': -0.1, 'brimLb.z': -0.12, 'feeler.z': 0.2, 'x.look': 0.0}
-low = P(legs(0.5, 0.16, -0.08), edge, {'spine.x': -0.62, 'head.x': 0.42, 'hatNeck.x': 0.22, 'arm.z': 0.6, 'armL.z': -0.6, 'foreR.z': -0.5, 'foreL.z': 0.5, 'arm.x': -0.25, 'armL.x': -0.25})
-clip('hl_duck', [(0, P()), (0.35, P({'hat.x': -0.1, 'x.look': 0.3})), (1.0, P(edge), 'ss'), (1.9, low, 'ss'), (2.7, low), (3.5, P(edge, legs(0.04))), (4.3, P({'hat.z': 0.06}), 'back'), (4.8, P())],
-     length=4.8, marks=[(0.4, 'turn'), (1.0, 'edge'), (1.9, 'low'), (3.5, 'up'), (4.3, 'settle')], face=[(0, 'chair')],
+# She does not duck. The hat turns its long axis to the door, low wing first, comes level and folds its sides down
+# like an umbrella half shut; she turns a shoulder to the gap (the bar is 1.46 m), folds at the knee and the waist and
+# follows it through; it opens again. In place: the scene walks her through while it plays. Clears 1.25 x 2.3 m.
+fold = {'hatNeck.y': 1.45, 'hat.x': 0.24, 'hat.z': 0.22, 'brimF.x': -0.62, 'brimB.x': 0.62, 'brimR.z': -0.12, 'brimRb.z': -0.1, 'brimL.z': 0.14, 'brimLb.z': 0.2, 'feeler.z': 0.3, 'feelerB.z': 0.2, 'x.look': 0.0}
+low = P(legs(0.46, 0.2, -0.1), fold, {'spine.x': -0.5, 'spine.y': 0.62, 'head.y': -0.55, 'head.x': 0.34, 'hatNeck.x': 0.16, 'hatNeck.y': 1.98, 'hatNeckB.py': -0.02,
+                                      'arm.z': 0.55, 'armL.z': -0.5, 'foreR.z': -0.45, 'foreL.z': 0.45, 'arm.x': -0.2, 'armL.x': 0.3})
+clip('hl_duck', [(0, P()), (0.35, P({'hat.x': -0.1, 'x.look': 0.3})), (1.1, P(fold), 'ss'), (2.0, low, 'ss'), (2.8, low), (3.6, P(fold, legs(0.04), {'spine.y': 0.2})), (4.4, P({'hat.z': 0.06}), 'back'), (4.9, P())],
+     length=4.9, marks=[(0.4, 'turn'), (1.1, 'folded'), (2.0, 'low'), (3.6, 'up'), (4.4, 'open')], face=[(0, 'chair')],
      osc=[('brimRb.z', 0.02, 5.0, 0.0), ('brimLb.z', 0.02, 4.2, 1.0)],
-     note='through a doorway: the hat goes on edge with its low wing leading (1.0), she folds under the lintel (1.9-2.7), up (3.5), it settles (4.3)')
+     note='through a doorway: the hat turns end on and folds its sides down (1.1), she goes under the lintel shoulder first (2.0-2.8), up (3.6), it opens (4.4)')
 
 # ------------------------------------------------------------------------------------------------ talk
 # The hat tips to put her eyes on you and holds them there. Her face stays level. One hand turns over with the words.
@@ -265,14 +267,14 @@ clip('hl_bow', [(0, P()), (0.45, bow_in, 'in'), (1.1, bow, 'out'), (1.75, bow), 
 # the band splits. She raises one finger. Not at it. Just up. It stops, shaking, and goes back up its neck.
 fix = P({'hat.x': -0.2, 'hatNeck.x': -0.1, 'brimR.z': 0.3, 'brimRb.z': 0.42, 'brimL.z': -0.28, 'brimLb.z': -0.35, 'brimB.x': -0.2, 'brimF.x': 0.1, 'crown.x': 0.12, 'feeler.z': 0.35, 'feelerB.z': 0.25, 'hatNeckB.py': -0.0,
          'lidCa.x': 0.35, 'lidCb.x': 0.35, 'lidCc.x': 0.35, 'lidCd.x': 0.35, 'lidCe.x': 0.35, 'growthA.z': 0.1, 'growthC.z': -0.1})
-strike = P({'spine.x': -0.2, 'head.x': -0.32, 'neck.x': -0.1, 'hatNeck.x': -1.2, 'hatNeckB.py': 0.25, 'hat.py': 0.2, 'hat.x': -0.52, 'hat.z': 0.2, 'crown.x': 0.72,
+strike = P({'spine.x': -0.2, 'head.x': -0.2, 'neck.x': -0.05, 'hatNeck.x': -1.72, 'hatNeckB.py': 0.25, 'hat.py': 0.2, 'hat.x': 1.3, 'hat.z': 0.22, 'crown.x': 0.72,
             'brimR.z': -0.3, 'brimRb.z': -0.4, 'brimL.z': 0.3, 'brimLb.z': 0.42, 'brimB.x': 0.35, 'brimF.x': 0.4, 'feeler.z': -0.5, 'feelerB.z': -0.5,
             'lidCa.x': 0.4, 'lidCb.x': 0.4, 'lidCc.x': 0.4, 'lidCd.x': 0.4, 'lidCe.x': 0.4, 'growthA.z': -0.2, 'growthB.x': -0.2, 'growthC.z': 0.2, 'body.pz': -0.03})
 finger_up = {'armL.x': 0.62, 'armL.z': -0.42, 'armL.y': 0.0, 'foreL.x': 2.05, 'foreL.z': 0.0, 'handL.z': 0.0, 'handL.x': -0.12, 'idxL.x': 0.06, 'idxLb.x': 0.04, 'finL.x': -1.45, 'finLb.x': -1.7, 'thumbL.x': -0.5, 'thumbL.z': 0.7}
-held = P(strike, finger_up, {'hat.x': -0.44, 'crown.x': 0.62, 'spine.x': -0.14, 'head.x': -0.24})
-back1 = P(finger_up, {'spine.x': -0.05, 'head.x': -0.08, 'hatNeck.x': -0.5, 'hatNeckB.py': 0.12, 'hat.py': 0.08, 'hat.x': -0.3, 'crown.x': 0.3, 'brimR.z': 0.1, 'brimL.z': -0.1, 'feeler.z': 0.2})
+held = P(strike, finger_up, {'hat.x': 1.36, 'crown.x': 0.62, 'spine.x': -0.14, 'head.x': -0.14})
+back1 = P(finger_up, {'spine.x': -0.05, 'head.x': -0.06, 'hatNeck.x': -0.75, 'hatNeckB.py': 0.12, 'hat.py': 0.08, 'hat.x': 0.45, 'crown.x': 0.3, 'brimR.z': 0.1, 'brimL.z': -0.1, 'feeler.z': 0.2})
 back2 = P(finger_up, {'hat.x': -0.16, 'crown.x': 0.06, 'hatNeck.x': -0.08, 'brimRb.z': 0.12, 'brimLb.z': -0.1})
-clip('hl_lunge', [(0, P()), (0.5, fix, 'ss'), (0.72, strike, 'snap'), (1.0, P(strike, {'hat.x': -0.48}), 'lin'), (1.5, held, 'ss'), (2.0, held), (2.9, back1, 'ss'), (3.6, back2, 'ss'), (4.2, P({'hat.x': -0.14}), 'back'), (4.8, P())],
+clip('hl_lunge', [(0, P()), (0.5, fix, 'ss'), (0.72, strike, 'snap'), (1.0, P(strike, {'hat.x': 1.33}), 'lin'), (1.5, held, 'ss'), (2.0, held), (2.9, back1, 'ss'), (3.6, back2, 'ss'), (4.2, P({'hat.x': -0.14}), 'back'), (4.8, P())],
      length=4.8, marks=[(0.2, 'fix'), (0.5, 'aye'), (0.72, 'stop'), (1.5, 'finger'), (2.0, 'back'), (3.6, 'shut'), (4.2, 'home')], face=[(0, 'chair'), (0.72, 'chair_flat'), (3.6, 'chair')],
      osc=[('hat.z', 0.018, 31.0, 0.0), ('brimRb.z', 0.03, 23.0, 0.0), ('brimLb.z', 0.03, 27.0, 1.0)],
      note='the hat lunges (out at 0.72, a hand short of what it wanted) and she stops it: one finger, her left (1.5). it goes back up its neck (2.0-4.2). the shake is the hat held')

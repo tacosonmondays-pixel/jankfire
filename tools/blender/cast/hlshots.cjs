@@ -43,7 +43,9 @@ const ROOT = path.join(__dirname, '..', '..', '..');
       const a = { id: 'hlx' + n++, L, ch: c, pos: [0, 0, 0], yaw: 0, clip: null, face: L.face, lookY: 0, lookX: 0 };
       const rig = HL.rig(a); rig.manual = true; rig.manualDt = 0.25; rig.lookTo = o.look === undefined ? null : o.look;
       const clip = o.clip || 'hl_idle', t = o.t ?? 0.4;
-      for (let k = 0; k < 14; k++) CLIPS[clip].f(c, t, 1); // (the look eases in: let it arrive)
+      if (o.walk) { // her walk runs by distance: walk her there, then stand her back on the spot for the picture
+        rig.manualDt = 1 / 30; for (let tt = 0; tt <= t + 1.2; tt += 1 / 30) { a.pos[2] -= o.walk / 30; CLIPS[clip].f(c, tt, 1); } a.pos[2] = 0;
+      } else for (let k = 0; k < 14; k++) CLIPS[clip].f(c, t, 1); // (the look eases in: let it arrive)
       if (o.far) rig.vis(true);
       const F = HL.data.clips[clip].face; let face = 'chair'; for (const [ft, fn] of F) if (t >= ft) face = fn;
       L.face.set(o.face || face); for (let k = 0; k < 30; k++) { L.face.blinkT = 9; L.face.update(0.05); }
@@ -156,7 +158,7 @@ const ROOT = path.join(__dirname, '..', '..', '..');
     ['hl_reveal', 2.6, 14, 4.2, 2.7], ['hl_attack_tell', 1.0, 24, 9.6, 1.9], ['hl_strike', 0.3, 30, 9.6, 1.8], ['hl_stagger', 0.14, 60, 9.4, 1.7], ['hl_hat_off', 1.4, 40, 11.5, 2.2], ['hl_hat_off', 4.4, 40, 11.5, 1.9]];
   if (what.includes('poses')) {
     await pg.evaluate(([POSES, you]) => { const X = window.HLX; X.clear();
-      POSES.forEach(([clip, t, deg, dist, y], i) => { const sc = X.scene(0x2a1830, 6); const J = X.chair({ clip, t, look: you }); sc.add(J.c.root);
+      POSES.forEach(([clip, t, deg, dist, y], i) => { const sc = X.scene(0x2a1830, 6); const J = X.chair({ clip, t, look: you, walk: clip === 'hl_walk' ? 0.726 : 0 }); sc.add(J.c.root);
         X.cell(i, 7, 2, sc, X.orbit([0, y, -0.2], deg, dist, 0.08), clip.slice(3) + ' @' + t); }); }, [POSES, you]);
     await shot('hl_game_poses');
   }
@@ -170,7 +172,7 @@ const ROOT = path.join(__dirname, '..', '..', '..');
         for (const [mt] of C.marks) { let bi = 1, bd = 9; ts.forEach((t, i) => { if (i > 0 && i < N - 1 && Math.abs(t - mt) < bd) { bd = Math.abs(t - mt); bi = i; } }); if (mt > 0 && mt < len) ts[bi] = +(mt + 0.02).toFixed(2); } // the marks get a frame each
         ts.sort((a, b) => a - b);
         const [deg, dist, y] = view || [30, 9.4, 1.8];
-        ts.forEach((t, i) => { const sc = X.scene(0x2a1830, 6); const J = X.chair({ clip, t, look: you }); sc.add(J.c.root);
+        ts.forEach((t, i) => { const sc = X.scene(0x2a1830, 6); const J = X.chair({ clip, t, look: you, walk: clip === 'hl_walk' ? 0.726 : 0 }); sc.add(J.c.root);
           const mk = C.marks.filter(([mt]) => Math.abs(mt + 0.02 - t) < 0.011).map((m) => m[1]).join(' ');
           X.cell(i, 6, 2, sc, X.orbit([0, y, -0.2], deg, dist, 0.08), (i === 0 ? clip + '   ' : '') + t.toFixed(2) + ' s', mk ? 'mark: ' + mk : ''); }); }, [clip, VIEW[clip] || (clip === 'hl_reveal_end' ? [14, 4.2, 2.7] : null), you]);
       await shot('hl_clip_' + clip.slice(3));
