@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '8.5', date: '2026-11-11', title: 'HOT ROCKS', items: [
+    'islands plant & defuse: the volcano stopped being a pile of black boxes. big basalt columns, lava pouring down the sides, steam, and comfier stairs up the middle.',
+  ] },
   { v: '8.4', date: '2026-11-11', title: 'MIND THE STEP', items: [
     'the lighthouse finally got real stairs: a proper iron stair wrapped round the tower, little steps you just stroll up, rails so you don\'t eat sand. the bots found them too.',
   ] },

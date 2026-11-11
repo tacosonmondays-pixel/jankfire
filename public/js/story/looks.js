@@ -224,6 +224,10 @@ const LOOKS = {
       face: { eyeR: 0.028, eyeY: 0.16, iris: 0x6a5030, mouthW: 0.08, mouthY: 0.07, lip: 0xb07060, brow: 0x2a1a10, browW: 0.07 } });
     return { ...p, kind: 'normal', height: 2.55, eyeY: 2.42 };
   },
+  // UNPAID INTERN (normal, a raider, 1.75 m): office-chair-back and filing-cabinet armour plates, a lanyard, a traffic-cone
+  // helmet (b: a wastepaper-bin helmet and a cabinet-drawer chest), a laptop strapped to the left arm for a shield
+  intern() { return internLook(0); },
+  intern_b() { return internLook(1); },
   // SISTER AGENDA (puppet): a Choir robe, a face stretched into a permanent smile, a Filofax grown into her hand
   sister_agenda() {
     const SK = 0xf6e08a, robe = patMat('choirrobe', 64, 64, speckle('#5a2a7a', ['#4a1a6a', '#6a3a8a']), [2, 2], 0.8);
@@ -339,6 +343,19 @@ function generic(id, hint = {}) {
     face: { s: bigHead ? 1.5 : tinyHead ? 0.7 : 1, eyeR: huge === 'eye' ? 0.06 : 0.038, eyeY: hr[1] * 1.15, iris: pick([0xe8d030, 0x3fbf5a, 0xd0405a]), redRim: r() < 0.4, mouthW: 0.1, mouthY: hr[1] * 0.45,
       lip: pick([0xb04870, 0xd0607a, 0x7a3a8a]), teeth: pick(['needle', 'tomb', 'none']), brow: 0x2a1a3a, lidColor: SK, z: -hr[2] * 0.94 } });
   return { ...p, kind: 'puppet', height: 1.9, eyeY: 1.8 };
+}
+function internLook(v) {
+  const SK = [0xe0a882, 0xb47a58][v], black = flat(0x1e1e22), grey = skinMat(0x8a8e96, 0.5), orange = skinMat(0xff6a1a, 0.4), hoodie = flat([0x5a6a3a, 0x6a3a4a][v]);
+  const p = person({ skin: SK, legCol: 0x3a3e4a, shoe: 0x1a1a1a, s: 0.95, torsoH: 0.5, shW: 0.22, sleeveMat: hoodie, foreMat: hoodie,
+    torso: (sp, tH) => { sp.add(sph(0.2, hoodie, 0, tH * 0.55, 0, 1.15, 1.2, 0.8));
+      if (v) sp.add(box(0.36, 0.22, 0.06, grey, 0, tH * 0.5, -0.17)); else sp.add(box(0.36, 0.4, 0.04, black, 0, tH * 0.55, -0.17)); // a drawer front / a chair back on the chest
+      sp.add(box(0.03, 0.26, 0.01, flat(0x4fd8ff), 0.05, tH * 0.62, -0.2)); sp.add(box(0.06, 0.08, 0.01, flat(0xffffff), 0.05, tH * 0.46, -0.205)); }, // the lanyard and its card
+    headR: [0.11, 0.13, 0.12], neck: 0.05,
+    head: (h, r, m) => { h.add(sph(1, m, 0, r[1], 0, r[0], r[1], r[2], 14));
+      if (v) h.add(cyl(0.15, 0.13, 0.2, grey, 0, r[1] * 1.7, 0, 10)); else h.add(cyl(0.02, 0.15, 0.3, orange, 0, r[1] * 1.9, 0, 10)); }, // the bin / the traffic cone
+    face: { eyeR: 0.026, eyeY: 0.15, iris: 0x5a4030, mouthW: 0.07, mouthY: 0.07, lip: 0xa86060, brow: 0x2a1a10, browW: 0.06 } });
+  p.ch.foreL.add(box(0.04, 0.26, 0.34, grey, -0.06, -0.14, 0)); // the laptop shield
+  return { ...p, kind: 'normal', height: 1.75, eyeY: 1.65 };
 }
 const FACE_LOCK = new WeakMap();
 export const faceLocked = (face) => FACE_LOCK.get(face);
