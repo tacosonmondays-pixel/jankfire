@@ -199,6 +199,10 @@ node tools/blender/cast/hlshots.cjs <port> docs/story/cast   # the actor-path ch
 node tools/blender/cast/hlgame.cjs <port> docs/story/cast    # story mode at Too HD and Potato
 ```
 
+`hlgame.cjs` stands **her** where each shot wants her from you (it used to move you to her, and the server undoes
+that teleport). In software GL the story map runs at about 14 s a frame at Too HD once its shaders are built (10
+minutes in), so it waits for real frames before the first shot and gives each screenshot 10 minutes.
+
 If her skeleton (`HATLORD` or `EXTRA` in `hatlook.js`) changes, run `node tools/blender/cast/hljoints.cjs <port>`
 first. If a marker moves, copy the parts file's `markers` into `MK` in `hatlook.js` (the test fails until you do).
 
