@@ -36,6 +36,8 @@ const ROUTE = [
   }
   const zones = [];
   await ev(() => { const S = window.JF_STORY.S, e0 = S.emit.bind(S); window.__zones = []; S.emit = (e) => { if (e.type === 'reach') window.__zones.push(e.zone); return e0(e); }; });
+  // (the drive step opens Lumps' car-ride talk: close it, or F is "next line")
+  for (let i = 0; i < 5; i++) { await ev(async () => { const sc = await import('/js/story/scene.js'), tk = await import('/js/story/talk.js'); if (sc.playing()) sc.skipScene(); if (tk.talking()) tk.endTalk(); }); await sleep(400); }
   // the market sedan: stand by it, F
   await ev(async () => { const { ME } = await import('/js/player.js'); ME.pos = [-126, 0.3, 232]; ME.vel = [0, 0, 0]; }); await sleep(1500);
   await pg.keyboard.down('KeyF'); await sleep(80); await pg.keyboard.up('KeyF'); await sleep(1500);
