@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
   const errs = [];
   pg.on('pageerror', (e) => errs.push('PAGEERR ' + e.message + ' ' + (e.stack || '').split('\n')[1]));
   pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
-  await pg.addInitScript(() => { localStorage.setItem('jankfire', JSON.stringify({ name: 'train', jank: 2, loadout: { primary: 'ar', secondary: 'pistol', melee: 'knife', item: 'frag' } })); localStorage.setItem('jf_giftseen_all', '1'); if (!sessionStorage.getItem('tr')) { sessionStorage.setItem('tr', 1); localStorage.removeItem('jfStorySaves'); } });
+  await pg.addInitScript(() => { localStorage.setItem('jankfire', JSON.stringify({ name: 'train', jank: 1, loadout: { primary: 'ar', secondary: 'pistol', melee: 'knife', item: 'frag' } })); localStorage.setItem('jf_giftseen_all', '1'); if (!sessionStorage.getItem('tr')) { sessionStorage.setItem('tr', 1); localStorage.removeItem('jfStorySaves'); } });
   await pg.goto(`http://localhost:${PORT}/?story=1&storydev=1`); await sleep(1500);
   await pg.click('#storyBtn', { force: true }); await sleep(700); await pg.click('#storyPick .st-btn.yellow', { force: true }); await sleep(9000); await skipIntro(pg);
   const ev = (f, a) => pg.evaluate(f, a);
@@ -35,14 +35,20 @@ const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
   let s = await until((x) => x.step === 'ride', 15000); await sleep(2500); await shot('t1_ride_in'); await log('ride');
   await skipIntro(pg); // (the ride's end: the fade onto the train)
   await sleep(250); await shot('t2_fade');
-  s = await until((x) => x.map === 'story_train' && x.live, 90000); await sleep(2000); await shot('t3_on_the_train'); await log('train');
+  s = await until((x) => x.map === 'story_train', 90000); await sleep(1500); await shot('t3_arrive_train'); await log('arrive');
+  for (let i = 0; i < 40; i++) { s = await st(); if (s.live && !s.scene) break; if (s.scene) { await shot(`t3_scene_${i}`); await skipIntro(pg); } await sleep(1500); }
+  await sleep(2000); await shot('t3_on_the_train'); await log('train');
   await dev({ calm: true });
   for (let i = 0; i < 10; i++) { s = await st(); if (s.step !== 'hold') break; await dev({ dmg: 900, part: 'eye' }); await sleep(800); }
   s = await until((x) => x.scene, 15000); await sleep(4000); await shot('t4_jack_moment'); await log('jack');
+  // software GL draws a few frames a second: the scene engine's capture mode (tools/scene.cjs) moves it on 0.25 s a frame
+  const ff = (on) => ev((on) => { const ST = window.JF_STORY; clearInterval(window.__ff); ST.capture = on; if (on) window.__ff = setInterval(() => { ST.capStep = 0.25; }, 10); }, on);
+  await ff(true);
   s = await until((x) => x.talk && x.opts.length === 1, 120000, 1000); await shot('t5_fire_prompt'); await log('fire prompt');
   await pg.mouse.down(); await sleep(80); await pg.mouse.up(); await sleep(700); await shot('t6_fired'); // your own trigger
   s = await until((x) => x.talk && x.opts.length === 1 && /TAKE/.test(x.opts[0]), 60000, 1000); await shot('t7_take_prompt');
   await pg.keyboard.press('KeyF'); await sleep(1500); await shot('t8_taken'); await log('taken');
+  await ff(false);
   s = await until((x) => x.step === 'break', 60000, 1000); await log('break');
   await skipIntro(pg); await sleep(2500); await dev({ calm: true });
   for (let i = 0; i < 30; i++) { s = await st(); if (s.step !== 'break') break; if (s.live) await dev({ dmg: 900, i: i % 8 }); if (i === 4) await shot('t9_phase2'); await sleep(900); if (s.scene || s.talk) await skipIntro(pg); }

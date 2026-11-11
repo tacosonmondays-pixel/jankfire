@@ -568,14 +568,16 @@ export function makeTrainFight(ST, { playScene }) {
   T.frame = () => {
     const o = objective(), step = o ? o.step : '', now = performance.now();
     if (step !== T.step) { T.step = step; T.stepT = now; }
-    const fight = step === 'hold' || step === 'break';
-    if (fight && G.joined && G.mode === 'story' && MAP.id !== TRAIN.id && G.story.travel && !T.going && !busy()) { // the fight is on the train: fade, then go there (story/main.js remembers where from)
+    const fight = step === 'hold' || step === 'break', ride = step === 'ride';
+    if (!ride) T.rode = false;
+    if ((fight || ride) && G.joined && G.mode === 'story' && MAP.id !== TRAIN.id && G.story.travel && !T.going && !busy()) { // the fight is on the train: fade, then go there (story/main.js remembers where from)
       T.going = true; fade(1, 0.5);
       setTimeout(() => { if (!G.story.travel(TRAIN.id)) { T.going = false; fade(0, 0.4); } }, 550);
       return;
     }
     if (!T.on) return;
     T.going = false;
+    if (ride && !T.rode && !busy() && S().defs.scenes[RIDE]) { T.rode = true; playScene(RIDE); } // the ride in plays on the train, with the crew aboard (boarding cut you here)
     if ((fight || (TRAINQ && !o && !T.auto)) && !F.live && !T.fin && now - T.spawnT > 2500 && !busy()) { T.spawnT = now; T.auto = true; spawn(step === 'break'); } // (the room has one boss at a time: asking twice is nothing)
     // the middle scene plays in full now (a moment with a choice isn't cut at 3 s: scene.js) and its [FIRE] and [TAKE]
     // are the mission's choices, opened by the scene. you fire: the bolt goes into Jack and the cross comes, small.
@@ -596,6 +598,10 @@ export function makeTrainFight(ST, { playScene }) {
   const fade = (k, d) => { const f = document.getElementById('stFade'); if (f) { f.style.transition = `opacity ${d}s`; f.style.opacity = k; } }; // (the scene layer's black: boot.js)
   const outAt = () => { const pl = PLACES['commute:tunnel_mouth']; return pl && Array.isArray(pl.p) ? { map: 'story_slice', p: pl.p.slice(), yaw: Number.isFinite(pl.yaw) ? pl.yaw : 0 } : null; };
   T.outAt = outAt;
+  // the ride in (c6) is asked for when m06's ride step starts, at the service tunnel: it waits for the train, where the
+  // crew is (T.frame plays it there). anything else plays where it's asked
+  const RIDE = 'c6_mind_the_gap';
+  T.holdScene = (id) => id === RIDE && MAP.id !== TRAIN.id;
   if (typeof window !== 'undefined') window.JF_TRAIN = T; // (tests and screenshots stage it from here)
   return T;
 }

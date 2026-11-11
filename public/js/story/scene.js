@@ -54,6 +54,7 @@ function normScene(d) {
   let lastCam = -9, lastSay = null, shotN = 0;
   const castKeys = Object.keys(out.cast);
   const playable = playableMoment(d); // (a moment you play through: its directions are what you'd see, so they're shown)
+  if (playable && out.cast.you && !out.cast.you.actor) out.cast.you = { ...out.cast.you, hidden: true }; // (and it's seen through your own eyes: no stand-in of you in the way)
   for (const t0 of d.tracks || []) {
     if (t0.if && !S.test(t0.if)) continue;
     const t = { ...t0 };
