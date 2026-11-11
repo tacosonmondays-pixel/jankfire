@@ -45,8 +45,29 @@ def corrugated(w, length, pos, m, rot=None, ribs=None, amp=0.022, name='corr'):
     return [o]
 
 
+def _bake(objs):
+    bpy.context.view_layer.update()
+    for o in objs: apply_mods(o); o.data.transform(o.matrix_world); o.matrix_world = Matrix.Identity(4)
+
+
+def mirror_x(objs):
+    """the same thing the other way round (game x -> -x), faces turned back out"""
+    _bake(objs); ax = Vector(gv(1, 0, 0)).normalized(); M = (Matrix.Identity(3) - 2 * Matrix([[ax[i] * ax[j] for j in range(3)] for i in range(3)])).to_4x4()
+    for o in objs: o.data.transform(M); o.data.flip_normals()
+    return objs
+
+
+def stretch_y(objs, k):
+    """taller by k from the floor (game y)"""
+    _bake(objs); ay = Vector(gv(0, 1, 0)).normalized(); M = (Matrix.Identity(3) + (k - 1) * Matrix([[ay[i] * ay[j] for j in range(3)] for i in range(3)])).to_4x4()
+    for o in objs: o.data.transform(M)
+    return objs
+
+
+PAINT0 = 0xc8c8c8  # the paint slots' base: a bit under white, so a painted rib sits next to the map's night-lit wall (Story lane's note)
+
 # ------------------------------------------------------------------------------------------------ corner
-def build_cube_corner():
+def build_cube_corner(mirror=False):
     """the corner of a cube house: two weathered boards nailed up the corner, a rusty downpipe with brackets and a
     shoe that misses the drain, a meter box with a smiley sticker"""
     wd = wood_m('cc', 201); rs = rust_m('cc', 202)
@@ -54,36 +75,46 @@ def build_cube_corner():
     D = Atlas('cc_decal_t', 32); s = D.sub(0, 0, 16, 16); s[:] = hexrgb(YEL); smiley(s, 8, 8, 6, face=YEL, ink=INK)
     decal = mat('cc_decal', 0xffffff, rough=0.6, tex=D.image())
     O = []
-    O.append(box((0.03, 3.1, 0.16), (-0.017, 1.55, 0.08), wd, rot=(0, 0, 0.004)))  # on the -x face
-    O.append(box((0.19, 3.1, 0.03), (0.08, 1.55, -0.017), wd, rot=(0, 0, -0.006)))  # on the -z face
+    O.append(box((0.03, 3.3, 0.16), (-0.017, 1.65, 0.08), wd, rot=(0, 0, 0.004)))  # on the -x face (3.3: its top buries in the roof slab of a 2.8 / 3.0 / 3.2 cube)
+    O.append(box((0.19, 3.3, 0.03), (0.08, 1.65, -0.017), wd, rot=(0, 0, -0.006)))  # on the -z face
     px, pz = 0.34, -0.085  # the downpipe, a hand's width along the front
-    O.append(cyl(0.045, 2.8, (px, 1.6, pz), rs, axis='y', seg=8))
+    O.append(cyl(0.045, 3.0, (px, 1.7, pz), rs, axis='y', seg=8))
     O.append(sweep([(px, 0.2, pz), (px, 0.1, pz - 0.02), (px + 0.04, 0.03, pz - 0.12)], 0.045, rs, seg=8, name='shoe'))
-    O.append(sweep([(px, 3.0, pz), (px, 3.07, pz + 0.03), (px, 3.1, pz + 0.07)], 0.045, rs, seg=8, name='swan'))
+    O.append(sweep([(px, 3.2, pz), (px, 3.27, pz + 0.03), (px, 3.3, pz + 0.07)], 0.045, rs, seg=8, name='swan'))
     for y in (0.6, 1.6, 2.6): O.append(box((0.13, 0.03, 0.07), (px, y, pz + 0.03), grey))
     O.append(box((0.26, 0.34, 0.1), (0.75, 1.45, -0.05), grey, bev=0.008, seg=1))  # meter box
     O.append(uv_fit(box((0.1, 0.1, 0.003), (0.78, 1.5, -0.1015), decal, rot=(0, 0, 0.2)), D.rect(0, 0, 16, 16)))
-    O.append(rod((0.75, 1.62, -0.05), (0.75, 3.05, -0.03), 0.012, plain('cc_cable', 0x1a1a1e, rough=0.7, seed=204), seg=5))
+    O.append(rod((0.75, 1.62, -0.05), (0.75, 3.25, -0.03), 0.012, plain('cc_cable', 0x1a1a1e, rough=0.7, seed=204), seg=5))
     tiled(O, wd, 0.5); tiled(O, rs, 0.3)
-    return O, {'origin': 'cube outer corner at the floor; cube toward +x and +z', 'h': 3.1}
+    if mirror: mirror_x(O)
+    return O, {'origin': 'cube outer corner at the floor; cube toward %sx and +z' % ('-' if mirror else '+'), 'h': 3.3}
+
+
+def build_cube_corner_b(): return build_cube_corner(True)
 
 
 # ------------------------------------------------------------------------------------------------ eave
-def build_cube_eave():
+def build_cube_eave(run=2.0, rag=True):
     """2 m of roof lip: corrugated iron kicking out 0.5 and down 0.22 from under the slab, a half-round gutter, two
     brackets, a rag drying on it. open at both ends"""
-    tin = plain('ce_paint', 0xffffff, rough=0.45, metal=0.3, var=0.1, speck=0xb06a3a, p=0.06, seed=211, size=32)  # takes the house's colour
+    tin = plain('ce_paint', PAINT0, rough=0.45, metal=0.3, var=0.1, speck=0xb06a3a, p=0.06, seed=211, size=32)  # takes the house's colour
     rs = rust_m('ce', 212)
     C = Atlas('ce_cloth_t', 32); tiedye(C.sub(0, 0, 32, 32), [0xff6fae, YEL, 0x3fd6c6], seed=6, arms=3, twist=5)
     cloth = mat('ce_cloth', 0xffffff, rough=0.85, tex=C.image())
     O = []
-    O += corrugated(2.0, 0.56, (0, -0.11, -0.25), tin, rot=(0.41, 0, 0), ribs=24)
-    g = sheet_grid([[(-1.0, -0.21 + 0.07 * (1 - math.cos(a)), -0.52 - 0.07 * math.sin(a)), (1.0, -0.21 + 0.07 * (1 - math.cos(a)), -0.52 - 0.07 * math.sin(a))] for a in [k * math.pi / 5 - math.pi / 2 for k in range(6)]], rs, name='gutter')
+    h2 = run / 2
+    O += corrugated(run, 0.56, (0, -0.11, -0.25), tin, rot=(0.41, 0, 0), ribs=int(run * 12))
+    g = sheet_grid([[(-h2, -0.21 + 0.07 * (1 - math.cos(a)), -0.52 - 0.07 * math.sin(a)), (h2, -0.21 + 0.07 * (1 - math.cos(a)), -0.52 - 0.07 * math.sin(a))] for a in [k * math.pi / 5 - math.pi / 2 for k in range(6)]], rs, name='gutter')
     O += [g]
-    for x in (-0.6, 0.6): O.append(rod((x, -0.012, -0.03), (x, -0.207, -0.52), 0.014, rs, seg=5))
-    O.append(uv_fit(sheet_grid([[(0.25, -0.14, -0.59), (0.7, -0.14, -0.59)], [(0.25, -0.62, -0.6), (0.68, -0.58, -0.61)]], cloth, name='rag'), C.rect(0, 0, 32, 32), mode='front'))
+    for k in range(int(run / 1.2) + 1): x = -h2 + 0.4 + k * (run - 0.8) / max(1, int(run / 1.2)); O.append(rod((x, -0.012, -0.03), (x, -0.207, -0.52), 0.014, rs, seg=5))
+    if rag: O.append(uv_fit(sheet_grid([[(0.25, -0.14, -0.59), (0.7, -0.14, -0.59)], [(0.25, -0.62, -0.6), (0.68, -0.58, -0.61)]], cloth, name='rag'), C.rect(0, 0, 32, 32), mode='front'))
     tiled(O, tin, 0.5)
-    return O, {'paint': ['ce_paint'], 'origin': 'wall face at the roof slab underside, middle of the run', 'run': 2.0, 'open_ends': True}
+    return O, {'paint': ['ce_paint'], 'origin': 'wall face at the roof slab underside, middle of the run', 'run': run, 'rag': rag, 'open_ends': True}
+
+
+def build_cube_eave_b(): return build_cube_eave(2.0, False)
+def build_cube_eave4(): return build_cube_eave(4.0, False)
+def build_cube_eave6(): return build_cube_eave(6.0, True)
 
 
 # ------------------------------------------------------------------------------------------------ windows
@@ -133,19 +164,19 @@ def build_cube_window_c():
     O = []; frame(O, wd)
     D = 0.32
     for y in (0.0, 0.55, 1.1):
-        O.append(sweep([(-0.72, y, -0.05), (-0.72, y, -D), (0.72, y, -D), (0.72, y, -0.05)], 0.014, rs, seg=5, name='hoop'))
-    for k in range(7): x = -0.6 + k * 0.2; O.append(rod((x, 0.021, -D + 0.012), (x, 1.1, -D), 0.01, rs, seg=4))
+        O.append(sweep([(-0.72, y, -0.05), (-0.72, y, -D), (0.72, y, -D), (0.72, y, -0.05)], 0.014, rs, seg=3, name='hoop'))
+    for k in range(5): x = -0.6 + k * 0.3; O.append(rod((x, 0.021, -D + 0.012), (x, 1.1, -D), 0.01, rs, seg=3))
     O.append(box((1.4, 0.02, D - 0.04), (0, 0.01, -D / 2 - 0.03), wd))  # its floor
     bc = (-0.38, 0.03, -0.18)  # a birdcage: a ring of wires and a dome, a yellow bird
-    for k in range(8):
-        a = k * math.pi / 4
-        O.append(sweep([(bc[0] + math.cos(a) * 0.1, bc[1] + 0.022, bc[2] + math.sin(a) * 0.1), (bc[0] + math.cos(a) * 0.1, bc[1] + 0.26, bc[2] + math.sin(a) * 0.1), (bc[0], bc[1] + 0.36, bc[2])], 0.005, rs, seg=4, name='wire'))
-    O.append(cyl(0.11, 0.02, (bc[0], bc[1] + 0.01, bc[2]), rs, axis='y', seg=8))
-    O.append(ball(0.04, (bc[0], bc[1] + 0.13, bc[2]), plain('wc_bird', YEL, rough=0.5, seed=243), scale=(1, 0.9, 1.3), seg=8, rings=5))
+    for k in range(4):
+        a = k * math.pi / 2 + 0.4
+        O.append(sweep([(bc[0] + math.cos(a) * 0.1, bc[1] + 0.022, bc[2] + math.sin(a) * 0.1), (bc[0] + math.cos(a) * 0.1, bc[1] + 0.26, bc[2] + math.sin(a) * 0.1), (bc[0], bc[1] + 0.36, bc[2])], 0.006, rs, seg=3, name='wire'))
+    O.append(box((0.2, 0.02, 0.2), (bc[0], bc[1] + 0.01, bc[2]), rs, rot=(0, 0.4, 0)))
+    O.append(ball(0.04, (bc[0], bc[1] + 0.13, bc[2]), plain('wc_bird', YEL, rough=0.5, seed=243), scale=(1, 0.9, 1.3), seg=5, rings=3))
     for k, c in enumerate((GREEN, 0x9a5a2a, CYAN)):
-        O.append(cyl(0.035, 0.2, (0.05 + k * 0.1, 0.12, -0.24), plain('wc_bot%d' % k, c, rough=0.1, cc=1.0, seed=244 + k), axis='y', seg=6, r2=0.02))
-    O.append(box((0.24, 0.15, 0.1), (0.5, 0.095, -0.16), plain('wc_radio', 0xff7a1a, rough=0.3, cc=0.7, seed=247), bev=0.012, seg=1))
-    O.append(rod((0.58, 0.17, -0.16), (0.68, 0.5, -0.2), 0.004, rs, seg=4))
+        O.append(cyl(0.035, 0.2, (0.05 + k * 0.1, 0.12, -0.24), plain('wc_bot%d' % k, c, rough=0.1, cc=1.0, seed=244 + k), axis='y', seg=4, r2=0.02))
+    O.append(box((0.24, 0.15, 0.1), (0.5, 0.095, -0.16), plain('wc_radio', 0xff7a1a, rough=0.3, cc=0.7, seed=247)))
+    O.append(rod((0.58, 0.17, -0.16), (0.68, 0.5, -0.2), 0.005, rs, seg=3))
     tiled(O, wd, 0.5)
     return O, {'origin': 'wall face, bottom middle of a 1.4 x 1.1 opening', 'depth': D}
 
@@ -154,7 +185,7 @@ def build_cube_window_c():
 def build_container_doors():
     """the end of a shipping container, 2.4 x 2.6: two ribbed doors, four locking bars with their cams and handles,
     hinges, a rubber seal, a stencilled number and a notice somebody pasted on"""
-    paint = plain('cd_paint', 0xffffff, rough=0.4, metal=0.2, var=0.09, speck=0xb06a3a, p=0.05, seed=251, size=32)
+    paint = plain('cd_paint', PAINT0, rough=0.4, metal=0.2, var=0.09, speck=0xb06a3a, p=0.05, seed=251, size=32)
     steel = plain('cd_steel', 0x8a9098, rough=0.3, metal=0.9, var=0.08, speck=0x9a5a3a, p=0.06, seed=252)
     dark = plain('cd_dark', 0x18181c, rough=0.7, seed=253)
     D = Atlas('cd_decal_t', 64); n = D.sub(0, 0, 64, 12); n[:] = hexrgb(0xfbfaf6); text_px(n, 'OFSP 000 404', 2, 3, 1, INK)
@@ -175,20 +206,25 @@ def build_container_doors():
             for y in (0.7, 1.3, 1.9): O.append(box((0.09, 0.05, 0.05), (x, y, -0.09), steel))  # guides
             O.append(box((0.32, 0.045, 0.025), (x + sx * 0.13, 1.1 + (0.12 if bx > 0.5 else 0), -0.14), steel, rot=(0, 0, -0.1 * sx)))  # handle
         for y in (0.3, 0.95, 1.65, 2.3): O.append(box((0.05, 0.12, 0.05), (sx * 1.17, y, -0.07), steel))  # hinges
-    O.append(uv_fit(box((0.7, 0.13, 0.003), (0.6, 2.36, -0.0765), decal), D.rect(0, 0, 64, 12)))
-    O.append(uv_fit(box((0.36, 0.25, 0.003), (-0.58, 1.57, -0.0765), decal, rot=(0, 0, 0.06)), D.rect(0, 12, 40, 28)))
+    stretch_y(O, 3.1 / 2.6)  # (drawn at a real door's 2.6, stood up to 3.1: its top buries in the slab of the tallest cube)
+    O.append(uv_fit(box((0.7, 0.13, 0.003), (0.6, 2.82, -0.0765), decal), D.rect(0, 0, 64, 12)))
+    O.append(uv_fit(box((0.36, 0.25, 0.003), (-0.58, 1.87, -0.0765), decal, rot=(0, 0, 0.06)), D.rect(0, 12, 40, 28)))
     tiled(O, paint, 0.6)
-    return O, {'paint': ['cd_paint'], 'origin': 'wall face at the floor, middle', 'size': [2.4, 2.6]}
+    return O, {'paint': ['cd_paint'], 'origin': 'wall face at the floor, middle', 'size': [2.4, 3.1]}
 
 
-def build_container_rib():
+def build_container_rib(half=False):
     """a 1 m strip of container wall, 2.8 tall: trapezoid ribs pressed out 5 cm. no ends, top or bottom caps"""
-    paint = plain('cr2_paint', 0xffffff, rough=0.4, metal=0.2, var=0.09, speck=0xb06a3a, p=0.05, seed=261, size=32)
+    paint = plain('cr2_paint', PAINT0, rough=0.4, metal=0.2, var=0.09, speck=0xb06a3a, p=0.05, seed=261, size=32)
     pts = []
     prof = [(-0.5, 0.0), (-0.44, 0.0), (-0.38, -0.05), (-0.19, -0.05), (-0.13, 0.0), (0.06, 0.0), (0.12, -0.05), (0.31, -0.05), (0.37, 0.0), (0.5, 0.0)]
-    O = [sheet_grid([[(x, 0.0, z - 0.004), (x, 2.8, z - 0.004)] for x, z in prof[::-1]], paint, name='ribs')]
+    if half: prof = [(-0.25, 0.0), (-0.19, 0.0), (-0.13, -0.05), (0.06, -0.05), (0.12, 0.0), (0.25, 0.0)]
+    O = [sheet_grid([[(x, 0.0, z - 0.004), (x, 3.3, z - 0.004)] for x, z in prof[::-1]], paint, name='ribs')]
     tiled(O, paint, 0.6)
-    return O, {'paint': ['cr2_paint'], 'origin': 'wall face at the floor, middle of a 1 m strip', 'size': [1.0, 2.8], 'open_ends': True}
+    return O, {'paint': ['cr2_paint'], 'origin': 'wall face at the floor, middle of the strip', 'size': [0.5 if half else 1.0, 3.3], 'open_ends': True}
+
+
+def build_container_rib_half(): return build_container_rib(True)
 
 
 # ------------------------------------------------------------------------------------------------ roof junk
@@ -265,7 +301,7 @@ def build_stair_post():
     mid rail reaching 0.55 along and 0.4 up to the next post (cut it short with the next post on a shallower stair),
     a blob of weld at the foot. origin: the step top's front edge at the stair's outer side; the stair climbs +z"""
     rs = rust_m('sp2', 301)
-    paint = plain('sp2_paint', 0xffffff, rough=0.4, cc=0.4, var=0.08, speck=0x9a5a3a, p=0.08, seed=302)
+    paint = plain('sp2_paint', PAINT0, rough=0.4, cc=0.4, var=0.08, speck=0x9a5a3a, p=0.08, seed=302)
     O = []
     O.append(box((0.04, 1.0, 0.04), (0, 0.5, 0.02), rs))
     O.append(ball(0.035, (0, 0.01, 0.02), rs, scale=(1.3, 0.5, 1.3), seg=6, rings=4))
@@ -277,5 +313,6 @@ def build_stair_post():
 
 BUILDERS = [('cube_corner', build_cube_corner), ('cube_eave', build_cube_eave), ('cube_window_a', build_cube_window_a), ('cube_window_b', build_cube_window_b),
             ('cube_window_c', build_cube_window_c), ('container_doors', build_container_doors), ('container_rib', build_container_rib),
-            ('cube_roofjunk_a', build_cube_roofjunk_a), ('cube_roofjunk_b', build_cube_roofjunk_b), ('stair_step', build_stair_step), ('stair_post', build_stair_post)]
+            ('cube_roofjunk_a', build_cube_roofjunk_a), ('cube_roofjunk_b', build_cube_roofjunk_b), ('stair_step', build_stair_step), ('stair_post', build_stair_post),
+            ('cube_corner_b', build_cube_corner_b), ('cube_eave_b', build_cube_eave_b), ('cube_eave4', build_cube_eave4), ('cube_eave6', build_cube_eave6), ('container_rib_half', build_container_rib_half)]
 run(BUILDERS)

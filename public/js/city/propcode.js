@@ -77,4 +77,5 @@ const P = {
 };
 for (const [id, b] of Object.entries(P)) registerCodeProp(id, b);
 // the Bottom's house kit and Long Stairs pieces have no code stand-in: draw nothing (not the magenta box) until the model is in
-for (const id of ['cube_corner', 'cube_eave', 'cube_window_a', 'cube_window_b', 'cube_window_c', 'container_doors', 'container_rib', 'cube_roofjunk_a', 'cube_roofjunk_b', 'stair_step', 'stair_post', 'longstep_a', 'longstep_b', 'longrail', 'longpole', 'longplaque_a', 'longplaque_b']) registerCodeProp(id, []);
+for (const id of ['cube_corner', 'cube_eave', 'cube_window_a', 'cube_window_b', 'cube_window_c', 'container_doors', 'container_rib', 'cube_roofjunk_a', 'cube_roofjunk_b', 'stair_step', 'stair_post', 'longstep_a', 'longstep_b', 'longrail', 'longpole', 'longplaque_a', 'longplaque_b',
+  'cube_corner_b', 'cube_eave_b', 'cube_eave4', 'cube_eave6', 'container_rib_half', 'longrail_b', 'longpole_b']) registerCodeProp(id, []);
