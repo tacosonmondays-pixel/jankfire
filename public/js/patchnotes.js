@@ -4,6 +4,7 @@ export const PATCH_NOTES = [
   { v: '7.9', date: '2026-11-11', title: 'SHARP OBJECTS', items: [
     'knives got rebuilt in blender. real bevels, real rivets, the butterfly still flips. stab responsibly.',
     'the katana got rebuilt in blender. real hamon, real cord wrap. still grows when you feed it.',
+    'the scales of justice got rebuilt in blender too. polished brass, a heart in one pan, a feather in the other. kangaroo court is a baby toy with a kangaroo judge on top. it still convicts.',
     'JANKBURG: the dirt outside the firewall grew hills. the shacks and the plastic orchard sit on real ground now. also: trees stopped teleporting you onto their heads.',
     'the sea round islands and the rig has real wave detail now (mid and too hd). ponds are still ponds.',
   ] },
