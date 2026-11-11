@@ -3283,6 +3283,9 @@ function baitShack(B0, D0, dx, dz) {
 // gangway up each side), the quarterdeck over the captain's cabin, the crow's nest, the duck figurehead
 function wreck(B0, D0, dx, dz, st) {
   const { B, D, add, W, up } = isPiece(B0, D0, dx, dz, st); const ZA = -73.5, ZB = -64.5; // the hull's sides
+  // the ship is drawn as one Blender model (public/models/arch/wreck.glb, look only: these boxes are still what you bump
+  // into). own: what it doesn't draw (the barrels, crates and cannons are props of their own; the signs are pictures)
+  const n0 = B0.boxes.length, d0 = D0.boxes.length, mine = new Set(), own = (fn) => { const a = B0.boxes.length, b = D0.boxes.length; fn(); for (let i = a; i < B0.boxes.length; i++) mine.add(B0.boxes[i]); for (let i = b; i < D0.boxes.length; i++) mine.add(D0.boxes[i]); };
   const side = (z, x0, x1, y1, ports) => wall(W, 'x', z, x0, x1, 0, y1, 0.4, 'shiphull', ports.map((x) => ({ a: x - 0.5, b: x + 0.5, y0: 0.6, y1: 1.4 })));
   for (const z of [ZA + 0.2, ZB - 0.2]) {
     side(z, 1.5, 15.6, MD, [4, 8, 12]); side(z, -10, -1.5, MD, [-7, -4]); side(z, -18, -10, QD, [-15, -12]);
@@ -3302,29 +3305,34 @@ function wreck(B0, D0, dx, dz, st) {
   add(19.6, 2.6, -69.6, 21, 3.6, -68.4, 'toyyellow'); add(20.4, 3.6, -69.35, 21.1, 4.3, -68.65, 'toyyellow'); D.add(21.1, 3.8, -69.15, 21.6, 4.0, -68.85, 'barrelr'); // the duck
   // the stern: the transom (its windows, the name), the cabin's front wall (a door) under the quarterdeck
   wall(W, 'z', -17.8, ZA + 0.4, ZB - 0.4, 0, QD + 1, 0.4, 'shiphull', [{ a: -71, b: -69.8, y0: 5.4, y1: 6.6 }, { a: -68.2, b: -67, y0: 5.4, y1: 6.6 }]);
-  D.add(-18.08, 2.2, -71.4, -18.02, 3.4, -66.6, 'adship', { fit: 1 });
+  own(() => D.add(-18.08, 2.2, -71.4, -18.02, 3.4, -66.6, 'adship', { fit: 1 }));
   wall(W, 'z', -10.15, -71.6, ZB - 0.4, MD, QD - 0.4, 0.3, 'shipwood', [{ a: -69, b: -67.6, y0: MD, y1: MD + 2.1 }]);
   // the ways up: a gangway each side, the quarterdeck stair, the cabin's table and the captain's chest
   up(flight(B, false, -59.9, ZB, 8, 10.4, 0, MD, 'shipwood'));
   up(flight(B, false, -78.1, ZA, -4.6, -2.2, 0, MD, 'shipwood'));
   up(flight(B, true, -5.8, -10, ZA + 0.4, ZA + 1.9, MD, QD, 'shipwood'));
-  add(-15.6, MD, -69.6, -12.8, MD + 0.8, -68.4, 'wood'); add(-17.4, MD, -66.4, -16.2, MD + 0.8, -65.2, 'crate');
+  own(() => { add(-15.6, MD, -69.6, -12.8, MD + 0.8, -68.4, 'wood'); add(-17.4, MD, -66.4, -16.2, MD + 0.8, -65.2, 'crate'); });
   // the masts: the foremast with its crow's nest and the torn sail, the mizzen with the flag, the main mast fallen on the sand
   add(9.75, MD, -69.25, 10.25, 17, -68.75, 'shipwood'); add(8.6, 14.2, -70.4, 11.4, 14.5, -67.6, 'shipwood');
-  D.add(10.35, 14.5, -70.15, 11.15, 14.53, -67.85, 'missing'); // where the intern ran out of textures (secrets.js: Todd stands on it)
+  own(() => D.add(10.35, 14.5, -70.15, 11.15, 14.53, -67.85, 'missing')); // where the intern ran out of textures (secrets.js: Todd stands on it)
   for (const [x0, z0, x1, z1] of [[8.6, -70.4, 11.4, -70.2], [8.6, -67.8, 11.4, -67.6], [8.6, -70.2, 8.8, -67.8], [11.2, -70.2, 11.4, -67.8]]) add(x0, 14.5, z0, x1, 15.4, z1, 'shipwood');
   D.add(9.8, 11, -73, 10.2, 11.3, -65, 'shipwood'); D.add(10.25, 6.5, -72.4, 10.3, 11, -66.4, 'sail'); D.add(10.25, 5.5, -71.4, 10.3, 6.5, -68.6, 'sail');
   add(-14.2, QD, -69.2, -13.8, 15, -68.8, 'shipwood'); D.add(-13.8, 12.6, -69.04, -11, 14.4, -68.96, 'flagskull', { fit: 1 });
   D.add(-12.3, QD, -69.15, -12.1, QD + 1.0, -68.85, 'wood'); D.add(-12.4, QD + 0.6, -69.8, -12.0, QD + 1.4, -68.2, 'wood'); // the wheel
   add(-7, 0, -62.5, 6.5, 0.8, -61.7, 'shipwood'); D.add(-6, 0.03, -61.7, 3, 0.1, -59.4, 'sail'); // the main mast, fallen, and its sail
   // the hold: barrels, crates, two cannons at the gunports, hammocks
-  for (const [x, z] of [[3, -72], [3, -70.8], [14, -66], [-3.5, -72.2], [-16.6, -72.2], [-16.6, -71]]) B.box(x, 0.55, z, 1.1, 1.1, 1.1, 'barrel');
-  for (const [x, z] of [[6, -66.2], [7.2, -66.4], [-8, -66], [-15.5, -66.2]]) B.box(x, 0.5, z, 1, 1, 1, 'crate');
-  cannon(B, D, 12, -71.2, 0, 0, -1); cannon(B, D, -12, -66.6, 0, 0, 1);
+  own(() => {
+    for (const [x, z] of [[3, -72], [3, -70.8], [14, -66], [-3.5, -72.2], [-16.6, -72.2], [-16.6, -71]]) B.box(x, 0.55, z, 1.1, 1.1, 1.1, 'barrel');
+    for (const [x, z] of [[6, -66.2], [7.2, -66.4], [-8, -66], [-15.5, -66.2]]) B.box(x, 0.5, z, 1, 1, 1, 'crate');
+    cannon(B, D, 12, -71.2, 0, 0, -1); cannon(B, D, -12, -66.6, 0, 0, 1);
+  });
   D.add(4, 2.8, -69.3, 9, 2.9, -68.7, 'cloth'); D.add(-9, 2.8, -69.3, -4, 2.9, -68.7, 'cloth');
   for (const x of [11, -7]) { D.box(x, 3.85, -69, 0.06, 0.5, 0.06, 'metal'); D.box(x, 3.4, -69, 0.32, 0.42, 0.32, 'lantern'); } // lanterns in the hold
   // splinters at the break
   for (const [x, z, h] of [[1.5, ZA + 0.2, 1.2], [1.5, ZB - 0.2, 0.8], [-1.5, ZA + 0.2, 0.9], [-1.5, ZB - 0.2, 1.4]]) D.box(x + (x > 0 ? -0.15 : 0.15), MD + h / 2 - 0.3, z, 0.3, h, 0.42, 'shipwood');
+  B0.boxes.arch.push({ id: 'wreck', p: [dx, 0, dz], r: 0 }); const tag = { av: 'wreck', ai: B0.boxes.arch.length - 1 };
+  for (let i = n0; i < B0.boxes.length; i++) if (!mine.has(B0.boxes[i])) Object.assign(B0.boxes[i], tag);
+  for (let i = d0; i < D0.boxes.length; i++) if (!mine.has(D0.boxes[i])) Object.assign(D0.boxes[i], tag);
 }
 // the lighthouse (round 82, -6): the striped tower, the lantern; o.climb false: no stair round it and no gallery (S&D)
 function lighthouse(B0, D0, dx, dz, st, o = {}) {
