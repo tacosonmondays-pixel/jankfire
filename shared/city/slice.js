@@ -26,6 +26,7 @@ export const SLICE = {
   ribAve: { x0: -50, x1: -38, z0: -256, z1: -48 }, // the rib-arched avenue north from the gate
   choir: { x: -268, z: -214 }, // the Choir Lung
   teeth: { rect: [10, -220, 70, -170] }, // Tooth Market
+  heart: { x: -96, z: -78 }, // the Big Heart: the open ground behind Meat Mechanics, west of the old time-office plaza (bigheart.js)
   camp: { x: 236, z: 40 }, // the Unpaid raider camp under the highway
   digit: { x: 280, z: -60 }, // the fallen 13: a giant glowing orbital digit (a hot zone)
 };
@@ -69,6 +70,7 @@ export const PLACES = {
   'bottom:dale_shed': { p: [-170, 8, 180], name: "Dale's Shed (behind the Machine)" },
   'bottom:rooftops': { p: [-260, 20, 120], name: 'the Wok Roofs' },
   'gut:campus': { p: [-200, 40, -80], name: 'Gristle & Sons Campus' },
+  'gut:big_heart': { p: [-94.47, 40, -69.13], name: 'the Big Heart' }, // (its listening spot, 9 m out in front: bigheart.js)
 };
 
 const fogLight = (hemi, hemiG, hk, sun, sk) => ({ hemi: [hemi, hemiG, hk], sun: [sun, sk] });
@@ -80,11 +82,12 @@ registerCity('slice', {
   districts: [
     // order matters: the first rect that holds a point is its district (districtAt)
     { id: 'border', name: 'The Gut Border', rect: SLICE.border.rect, gen: 'border', margin: 40,
-      sky: { top: 0x2a1030, mid: 0x9a3a5a, bot: 0x3a1a28, fog: 0x8a4058 }, fogNear: 50, fogFar: 380, night: 0.6, light: fogLight(0xffb0c0, 0x6a2a3a, 1.3, 0xffc0a0, 1.4) },
+      sky: { top: 0x2a1030, mid: 0x9a3a5a, bot: 0x3a1a28, fog: 0x8a4058 }, fogNear: 50, fogFar: 380, night: 0.6, pulse: 0.35, light: fogLight(0xffb0c0, 0x6a2a3a, 1.3, 0xffc0a0, 1.4) },
     { id: 'bottom', name: 'The Bottom', rect: SLICE.bottom.rect, gen: 'bottom', margin: 40,
       sky: { top: 0x140828, mid: 0x5a2a70, bot: 0x2a1840, fog: 0x3e2452 }, fogNear: 80, fogFar: 520, night: 1, light: fogLight(0xc8b8ff, 0x7a4a6a, 1.55, 0xd8c8ff, 0.9) },
     { id: 'gut', name: 'The Gut', rect: SLICE.gut.rect, gen: 'gut', margin: 40,
-      sky: { top: 0x1a0408, mid: 0x6a1a28, bot: 0x2a0a12, fog: 0x4a1424 }, fogNear: 70, fogFar: 340, night: 0.6, light: fogLight(0xffe0d0, 0x3a1020, 1.25, 0xfff0e0, 1.6) },
+      sky: { top: 0x1a0408, mid: 0x6a1a28, bot: 0x2a0a12, fog: 0x5a1020 }, fogNear: 26, fogFar: 205, night: 0.6, pulse: 1, // a close red fog that beats (pulse 0..1: how hard the fog breathes)
+      light: fogLight(0xd09090, 0x2a0810, 0.8, 0xffc0a8, 1.0) } /* dimmer and redder than it was: the owner wants the gut haunting */,
     { id: 'commute', name: 'The Commute', rect: SLICE.commute.rect, gen: 'commute', margin: 40,
       sky: { top: 0x3a4a8a, mid: 0xe0904a, bot: 0x7a5038, fog: 0xd8a070 }, fogNear: 60, fogFar: 600, night: 0.2, light: fogLight(0xffe0b0, 0x7a5a40, 1.4, 0xffd090, 1.9) },
   ],
