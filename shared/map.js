@@ -3047,8 +3047,8 @@ void 0; // the shelves' sand, the sandbars' (a hair lower: where one runs into a
 // a flight of solid steps along x (alongX) or z, from a0 (its foot, at ya) to a1 (its head, yb), c0..c1 across.
 // rail: +1 / -1 a rail up the c1 / c0 side. returns { bot, top }: points just off each end, for the walk graph (the
 // foot's well clear of the first step: the graph keeps 0.45 m off anything you'd bump into)
-function flight(B, alongX, a0, a1, c0, c1, ya, yb, mat = 'wood', rail = 0) {
-  const n = Math.max(1, Math.ceil((yb - ya) / 0.45)), h = (yb - ya) / n, run = (a1 - a0) / n, s = Math.sign(run), cm = (c0 + c1) / 2;
+function flight(B, alongX, a0, a1, c0, c1, ya, yb, mat = 'wood', rail = 0, stepH = 0.45) {
+  const n = Math.max(1, Math.ceil((yb - ya) / stepH)), h = (yb - ya) / n, run = (a1 - a0) / n, s = Math.sign(run), cm = (c0 + c1) / 2;
   const e = rail > 0 ? Math.max(c0, c1) - 0.05 : Math.min(c0, c1) + 0.05;
   for (let i = 1; i <= n; i++) {
     const p0 = a0 + (i - 1) * run, p1 = a0 + i * run, y = ya + i * h;
@@ -3226,28 +3226,33 @@ function kaboom(B0, D0, dx, dz) {
   for (const [x, z, s] of [[-13, -10, 1.2], [11, -7.5, 1.3], [-10.5, 5, 1.0], [6.5, -12, 0.9], [-5, 5.5, 0.8], [13.5, 3, 1.1], [-20.5, -12.5, 1.0], [2, -17, 1.1]]) B.add(x - s, 0, z - s * 0.8, x + s, s * 1.2, z + s * 0.8, 'basalt'); // boulders on the flanks (cover on the way up)
   return { throat: [T[0] + dx, T[1] + dz, T[2] + dx, T[3] + dz], f };
 }
-function volcano(B0, D0, dx, dz, st, RK) { // (RK: the map's rock model tag. its terraces, lip, rim and boulders are drawn as real rock, look only)
+function volcano(B0, D0, dx, dz, st) { // (Islands S&D: drawn as one Blender model, volcano_sd.glb, over these boxes: look only)
   const { B, D, add, W, up } = isPiece(B0, D0, dx, dz, st); const T = [-2, -5, 2, -1];
-  slab(W, -15, -16, 15, 10, 0, 3, 'basalt', T, RK); slab(W, -10, -12, 10, 6, 3, 6, 'basalt', T, RK); slab(W, -6, -9, 6, 3, 6, 9, 'basalt', T, RK);
+  const n0 = B0.boxes.length;
+  // three terraces, the lower two cut across their corners (the model's basalt columns run round them), the throat through them all
+  for (const b of octoBoxes(-15, -16, 15, 10, VOLC.c1, 6, T)) add(b[0], 0, b[1], b[2], 3, b[3], 'basalt');
+  for (const b of octoBoxes(-10, -13.5, 10, 7.5, VOLC.c2, 5, T)) add(b[0], 3, b[1], b[2], 6, b[3], 'basalt'); // (deeper than the top at both ends: a landing at the foot of each stair up to the crater)
+  slab(W, -6, -9, 6, 3, 6, 9, 'basalt', T);
   add(-2, 0, -5, 2, LAVA_FLOOR, -1, 'basalt'); D.add(-2, 4.3, -5, 2, 4.5, -1, 'lava'); // down the throat: deep lava over a rock plug. fall in and you sink into it, burning (map.pits)
-  for (const [x0, z0, x1, z1] of [[-2.3, -5.3, 2.3, -5], [-2.3, -1, 2.3, -0.7], [-2.3, -5, -2, -1], [2, -5, 2.3, -1]]) add(x0, 9, z0, x1, 9.3, z1, 'basalt', RK); // its lip
+  for (const [x0, z0, x1, z1] of [[-2.3, -5.3, 2.3, -5], [-2.3, -1, 2.3, -0.7], [-2.3, -5, -2, -1], [2, -5, 2.3, -1]]) add(x0, 9, z0, x1, 9.3, z1, 'basalt'); // its lip
   D.add(-1.6, 9.3, -0.66, 1.6, 9.9, -0.6, 'advolcano', { fit: 1 });
-  for (const [x0, z0, x1, z1] of [[-6, -9, -2.2, -8.4], [2.2, -9, 6, -8.4], [-6, 2.4, -2.2, 3], [2.2, 2.4, 6, 3], [-6, -8.4, -5.4, 2.4], [5.4, -8.4, 6, 2.4]]) add(x0, 9, z0, x1, 9.9, z1, 'basalt', RK); // the rim, open at the two stairs
-  // lava down the north and west faces
-  for (const [x, w] of [[3.2, 0.7]]) { D.add(x, 6, -9.06, x + w, 9, -9, 'lava'); D.add(x, 6, -12, x + w, 6.03, -9, 'lava'); D.add(x, 3, -12.06, x + w, 6, -12, 'lava'); D.add(x, 3, -16, x + w, 3.03, -12, 'lava'); D.add(x, 0, -16.06, x + w, 3, -16, 'lava'); D.add(x, 0.03, -18.5, x + w, 0.06, -16, 'lava'); }
-  D.add(-6.06, 6, -6, -6, 9, -5.4, 'lava'); D.add(-10, 6, -6, -6, 6.03, -5.4, 'lava'); D.add(-10.06, 3, -6, -10, 6, -5.4, 'lava'); D.add(-15, 3, -6, -10, 3.03, -5.4, 'lava');
-  // the ways up: south or west onto the first terrace, east or west onto the second, north or south onto the top
-  up(flight(B, false, 14.2, 10, -2, 2, 0, 3, 'basalt'));
-  up(flight(B, true, -19.2, -15, -9, -5.5, 0, 3, 'basalt'));
-  up({ ...flight(B, true, 14.2, 10, -4, 0, 3, 6, 'basalt'), bot: [14.6, 3, -2] }); // (the terrace is narrow: their feet are right at its edge)
-  up({ ...flight(B, true, -14.2, -10, 0, 3.5, 3, 6, 'basalt'), bot: [-14.6, 3, 1.75] });
-  up({ ...flight(B, false, -11.9, -9, -2, 2, 6, 9, 'basalt'), bot: [3, 6, -11.5] });
-  up({ ...flight(B, false, 5.9, 3, -2, 2, 6, 9, 'basalt'), bot: [3, 6, 5] });
+  for (const [x0, z0, x1, z1] of [[-6, -9, -2.2, -8.4], [2.2, -9, 6, -8.4], [-6, 2.4, -2.2, 3], [2.2, 2.4, 6, 3], [-6, -8.4, -5.4, 2.4], [5.4, -8.4, 6, 2.4]]) add(x0, 9, z0, x1, 9.9, z1, 'basalt'); // the rim, open at the two stairs
+  // the ways up (stone steps 0.3 m high): south or west onto the first terrace, east or west onto the second, north or south onto the top
+  up(flight(B, false, 14.2, 10, -2, 2, 0, 3, 'basalt', 0, 0.3));
+  up(flight(B, true, -19.2, -15, -9, -5.5, 0, 3, 'basalt', 0, 0.3));
+  up({ ...flight(B, true, 14.2, 10, -4, 0, 3, 6, 'basalt', 0, 0.3), bot: [14.6, 3, -2] }); // (the terrace is narrow: their feet are right at its edge)
+  up({ ...flight(B, true, -14.2, -10, 0, 3.5, 3, 6, 'basalt', 0, 0.3), bot: [-14.6, 3, 1.75] });
+  up({ ...flight(B, false, -11.9, -9, -2, 2, 6, 9, 'basalt', 0, 0.3), bot: [0, 6, -12.6] }); // (on the landing, in a walk-graph cell that's all floor)
+  up({ ...flight(B, false, 5.9, 3, -2, 2, 6, 9, 'basalt', 0, 0.3), bot: [0, 6, 6.6] });
   D.add(3, 1.2, 10.02, 9, 2.4, 10.08, 'advolcano', { fit: 1 });
   // boulders on the terraces (cover on the way up)
-  for (const [x, z, y, s] of [[-12.5, -13, 3, 1.1], [12, -8, 3, 1.3], [-11.5, 7, 3, 1.0], [7.5, -10.5, 6, 0.9], [-8, 4, 6, 0.8]]) { add(x - s, y, z - s * 0.8, x + s, y + s * 1.2, z + s * 0.8, 'basalt', RK); }
+  for (const [x, z, y, s] of [[-12.5, -13, 3, 1.1], [12, -8, 3, 1.3], [-11.5, 7, 3, 1.0], [7.5, -10.5, 6, 0.9], [-8, 4, 6, 0.8]]) add(x - s, y, z - s * 0.8, x + s, y + s * 1.2, z + s * 0.8, 'basalt');
+  B0.boxes.arch.push({ id: 'volcano_sd', p: [dx, 0, dz], r: 0 }); const tag = { av: 'volcano_sd', ai: B0.boxes.arch.length - 1 };
+  for (let i = n0; i < B0.boxes.length; i++) Object.assign(B0.boxes[i], tag);
+  // (the throat's lava and the pictures stay the game's; the lava running down the sides is the model's)
   return [T[0] + dx, T[1] + dz, T[2] + dx, T[3] + dz];
 }
+const VOLC = { c1: 4.5, c2: 2.5 }; // S&D's volcano: how far the first and second terraces are cut across their corners
 // the tiki bar (round -13, 18): a bamboo counter under a thatched roof on four posts, stools, the back bar and its bottles
 function tikiBar(B0, D0, dx, dz, r) {
   const { B, D, add } = isPiece(B0, D0, dx, dz, []), pick = (a) => a[(r() * a.length) | 0];
