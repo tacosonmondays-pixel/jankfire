@@ -692,9 +692,9 @@ function maidHeaddress(big) { // a frilly white crescent across the top of the h
 // the seat: waistband down to the crotch, cut to the hips (the two cheeks of a big butt still show through it)
 const HIP_E = 2.6;
 function hipCut(F, E, top = 1.084) { // E: a top's surface the waist has to go round (overalls)
-  let rows = F.rows([[0.872, 0.14, 0.1, 0.106], [0.9, 0.19, 0.13, 0.138], [0.98, 0.2, 0.138, 0.144], [1.05, 0.196, 0.136, 0.14], [top, 0.19, 0.133, 0.136]], 1, 0.014, true);
-  if (E) { // (baggy down to the legs: no bucket rim)
-    const wide = rows.map(([y, w, f, b]) => { if (y < 0.89) return [y, w, f, b]; const a = E.at(Math.max(y, 1.0)), k = y < 0.97 ? 0.006 : 0.016; return [y, Math.max(w, a[0] + k), Math.max(f, a[1] + k), Math.max(b, a[2] + k)]; });
+  let rows = F.rows([[0.872, 0.14, 0.1, 0.106], [0.9, 0.19, 0.13, 0.138], [0.98, 0.2, 0.138, 0.144], ...(E ? [[1.02, 0.198, 0.137, 0.142]] : []), [1.05, 0.196, 0.136, 0.14], [top, 0.19, 0.133, 0.136]], 1, 0.014, true);
+  if (E) { // (baggy down to the legs: no bucket rim. from the hips up it's sized for the top's hem, wherever that hangs)
+    const wide = rows.map(([y, w, f, b]) => { if (y < 0.89) return [y, w, f, b]; const a = E.at(Math.max(y, 1.02)), k = y < 0.97 ? 0.006 : 0.016; return [y, Math.max(w, a[0] + k), Math.max(f, a[1] + k), Math.max(b, a[2] + k)]; });
     wide.lumps = rows.lumps; wide.gap = (E.rows.gap || rows.gap) + 0.016; rows = wide; // (round the outside of the top on a big butt too)
   }
   return shell(rows, HIP_E);
