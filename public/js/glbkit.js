@@ -293,6 +293,16 @@ export function bindAuthored(g, meta) {
   }
   if (Array.isArray(meta.handles) && meta.handles.length === 2) { const h = meta.handles.map((n) => nodeIn(g, n)); if (h.every(Boolean)) g.userData.handles = h; }
   if (Array.isArray(meta.pivot) && meta.pivot.length === 3 && meta.pivot.every(Number.isFinite)) g.userData.pivot = new THREE.Vector3(...meta.pivot);
+  // the Scales of Justice (scales.js tips the beam toward the verdict and swings each pan on its chains; the toy's body
+  // wobbles): body > beam (origin on the pin) > the two pans (origin on their hooks, hanging straight down, len long)
+  if (meta.court && Array.isArray(meta.court.pans) && meta.court.pans.length === 2 && Number.isFinite(meta.court.len)) {
+    const c = meta.court, beam = nodeIn(g, c.beam), body = nodeIn(g, c.body), pans = c.pans.map((n) => nodeIn(g, n));
+    if (beam && body && pans.every((p) => p && p.parent === beam)) {
+      for (const p of pans) p.userData.pivot = p.position.clone();
+      g.userData.court = { beam, pans, body, len: c.len, wobble: !!c.wobble };
+    }
+  }
+  if (meta.faceOn) g.userData.faceOn = true; // pictures look at it from the front
   if (meta.bow) bowRig(g, meta.bow);
   if (meta.noWrap) g.traverse((o) => { if (o.isMesh) o.userData.noWrap = true; }); // trophies (the Golden Sniper): no wrap covers them
   g.userData.parts = findParts(g, meta);
