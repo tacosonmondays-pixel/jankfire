@@ -19,67 +19,67 @@ skipped bit) · **B** / **C** (that session's part; faked in the run) · **BLOCK
 | step | goal | where | status | notes |
 |---|---|---|---|---|
 | sim | win the match (flag sim_won) | the Machine (`sims:suburb` = its terminal) | works | F at the Machine opens the sims; coming back from a match (story/main.js `onMain`) wins it and slams TRAINING COMPLETE. The e2e doesn't play a whole match headless: it comes back the way the menu does |
-| c1 | scene c1 | | works | (C1 also plays on the mission card at New Game, so this step is already done by then) |
-| tray | take your item (interact) | `bottom:machine` | | |
-| first | talk to Dale | Dale by the Machine | | |
-| name | talk to Gordo | Gordo at the returns counter | | |
-| bins | pick up a lost property weapon | `bottom:lostfound` | | |
-| vend | shoot the dead vending machine (interact) | `bottom:lostfound` | | the tutorial loot drop is a USE spot for now, not a vending machine you shoot |
-| swing | grapple onto the Wok Roofs | `bottom:rooftops`: the roofs east of the depot's yard, 10 m up | | the e2e puts you on the roof; grappling there by hand is untested headless |
-| line | ride a washing line back to the Lost & Found | `bottom:lostfound` | | any way back counts (the zone) |
-| dinner | talk to Auntie | Auntie at the fire barrel | | |
-| sleep | sleep (interact) | `bottom:lostfound` | | |
+| c1 | scene c1 | | works | (C1 also plays on the mission card at New Game, so this step passes straight through) |
+| tray | take your item (interact) | `bottom:machine` | works | F used to ALSO throw you into the sims (fixed: the story's prompt wins at the Machine) |
+| first | talk to Dale | Dale by the Machine | works | |
+| name | talk to Gordo | Gordo at the returns counter | works | |
+| bins | pick up a lost property weapon | `bottom:lostfound` | works | |
+| vend | shoot the dead vending machine (interact) | `bottom:lostfound` | stand-in | a glowing USE spot, not a vending machine you shoot (the loot drop: systems) |
+| swing | grapple onto the Wok Roofs | `bottom:rooftops`: the roof stack east of the depot's yard, 10-12 m up, wok dishes on them | works (tp) | the zone fires on the roof; the e2e teleports up there (grappling up by hand isn't driven headless). Dumpling's score is a talk only |
+| line | ride a washing line back to the Lost & Found | `bottom:lostfound` | works | walked; any way back counts |
+| dinner | talk to Auntie | Auntie at the fire barrel | works | |
+| sleep | sleep (interact) | `bottom:lostfound` | stand-in | a USE spot in the hall, not the RETURNS box bed |
 
 ## m02 SAUCE RUN
 | step | goal | where | status | notes |
 |---|---|---|---|---|
-| brief | talk to Sharon | her soup stall in the market (`bottom:soup_kitchen`) | | |
-| car | steal a car | any parked car | | getting in now tells the quest engine (it never did) |
-| pot | load the soup pot | `bottom:soup_kitchen` | | |
-| drive | drive to the Ring Road | `commute:ring_road` (the highway's foot, r 14) | | |
+| brief | talk to Sharon | her soup stall in the market (`bottom:soup_kitchen`) | works | |
+| car | steal a car | a sedan parked at the market (+ the two in the depot) | fixed, re-testing | was BLOCKED: no car near the market, no waypoint, and getting in never told the quest engine. All three fixed |
+| pot | load the soup pot | `bottom:soup_kitchen` | works | |
+| drive | drive to the Ring Road | `commute:ring_road` (the highway's foot, r 14) | works (on foot) | the zone fires; driving there is untested headless |
 | ambush | survive the Unpaid (90 s) | | C | |
-| deliver | deliver the soup | `gut:border` (the gate) | | |
+| deliver | deliver the soup | `gut:border` (the gate) | fixed, re-testing | was finishing by itself the moment you held the soup; now you have to get to the gate, and the trade post talk opens there |
 
 ## m03 SOMETHING'S DIGESTING
 | step | goal | where | status | notes |
 |---|---|---|---|---|
-| drive | drive into the Gut | `gut:peristalsis` (r 12) | | |
-| walk | follow Lumps down Peristalsis Avenue | to `gut:digester_wall` | | Lumps waits on the avenue at the step's start (cast_slice.js STAGE); him walking ahead is C's escort |
-| dot | talk to Dot | Dot IN the Digester Wall | | Dot uses c_dot.glb; Mina has no model (puppet stand-in) |
-| agenda | talk to Sister Agenda | inside the Choir Lung's door | | |
-| bishop | (reach the Choir Lung) | `gut:choir_lung` | | you're already there |
-| out | get out of the Gut | `gut:border` | | the stomach-dog chase on the way is C's |
+| drive | drive into the Gut | `gut:peristalsis` (r 12) | works | c3 now plays when you arrive (it played at the step start) |
+| walk | follow Lumps down Peristalsis Avenue | to `gut:digester_wall` | works / C | the zone works; Lumps waits on the avenue (cast_slice.js STAGE); him leading the way is C's escort |
+| dot | talk to Dot | Dot IN the Digester Wall | works | c_dot.glb; Mina has no model (puppet stand-in) |
+| agenda | talk to Sister Agenda | inside the Choir Lung's door | works | |
+| bishop | (reach the Choir Lung) | `gut:choir_lung` | works | |
+| out | get out of the Gut | `gut:border` | works / C | the stomach-dog chase on the way is C's |
 
 ## m04 CLOCKING IN
 | step | goal | where | status | notes |
 |---|---|---|---|---|
-| sunset | scene c4 | `bottom:sunset_spot` | | the scene plays when the step starts, wherever you are (not when you reach the Sunset Wall): see "for the lead" |
+| sunset__at, sunset | go to the Sunset Wall, scene c4 | `bottom:sunset_spot` | works | new arrive step: c4 plays when you get there (it used to play wherever you were); Lumps waits there |
 | fight | kill Mr. Overtime | `gut:border` | B | |
-| rip | scene: the heart rip | | | |
-| after | talk to Overtime (rescheduled) | | B | he has to be standing there after the fight |
-| truck | the truck (choice) | | C | the collectors' truck |
-| home | go back to the Lost & Found | `bottom:lostfound` | | |
+| rip | scene: the heart rip | | B | |
+| after | talk to Overtime (rescheduled) | | works / B | worked in the run (he stood by the gate); after a real fight B places him |
+| truck | the truck (choice) | | works / C | the choice opens and takes an answer; the truck itself is C's |
+| home | go back to the Lost & Found | `bottom:lostfound` | works | |
 
 ## m05 SECOND STOMACH
 | step | goal | where | status | notes |
 |---|---|---|---|---|
-| clinic | take the core to Bev | `gut:clinic_bev`: a flesh-eaten bungalow 40 m west of the gate, her back room | | |
-| install | scene c5 | | | |
-| tutorial | talk to Bev (parts) | Bev in her back room | | |
-| home | go home | `bottom:lostfound` | | |
+| clinic | take the core to Bev | `gut:clinic_bev`: a flesh-eaten bungalow 40 m west of the gate, her back room | works | |
+| install | scene c5 | | works | |
+| tutorial | talk to Bev (parts) | Bev in her back room | works | |
+| home | go home | `bottom:lostfound` | works | |
 
 ## m06 TICKETS, PLEASE
 | step | goal | where | status | notes |
 |---|---|---|---|---|
-| plan | talk to Gordo | Gordo at the returns counter | | |
-| fitted | talk to Bev (loaner) | Bev's clinic | | |
-| board | board the train | `bottom:service_tunnel`: a STAFF ONLY door under the depot, west side of its yard | | B links the train from here |
+| plan | talk to Gordo | Gordo at the returns counter | works | |
+| fitted | talk to Bev (loaner) | Bev's clinic | works | |
+| board | board the train | `bottom:service_tunnel`: a STAFF ONLY door under the depot, west side of its yard | works / B | the zone fires; the train link is B's |
 | ride | scene c6 | | B | |
 | hold | keep it off the train | on the train (`commute:underhill_loop`) | B | |
 | jack | scene: carry the bit that works | | B | |
 | break | break its face | on the train | B | |
 | terminus | scene c6b | `commute:tunnel_mouth`: the Loop's portal in the Commute's east cliff | B | |
-| p5b | scene: Employee 4417 (END OF ACT I) | | | |
+| p5b | scene: Employee 4417 (END OF ACT I) | | works | plays after the terminus |
 
 ## Places added for B and C (A)
 - `commute:underhill_loop` [311, groundY, -96]: the Loop's portal in the east cliff of the Commute (black mouth, rails, signal lamps).
@@ -91,5 +91,13 @@ skipped bit) · **B** / **C** (that session's part; faked in the run) · **BLOCK
 - `gut:clinic_bev` [-84.3, 36, -3.2]: Bev's doorstep on the Gut border.
 - Exact NPC spots and per-step moves: `shared/city/cast_slice.js` (NPC_SPOTS, STAGE).
 
-## For the lead
-- (filled in from the playthrough)
+## What's left (after run 4, 2026-11-11)
+- **A:** re-run with the car + delivery fixes (run 5); screenshots of the new places; the Wok Roofs grapple by hand
+  (headless doesn't aim a grapple); the Ring Road / Peristalsis drives in a real car.
+- **B:** the train world has no way back: after END OF ACT I you're still on the train, and the next mission
+  (m06_option_c) wants you at the Lost & Found. Coming out at `commute:tunnel_mouth` would fit the script.
+- **C:** the ambush (m02), the escort walk (m03), the stomach-dog chase (m03), the truck (m04).
+- **Systems / lead:** "shoot the dead vending machine" and "sleep" are USE spots, not the real thing.
+- `talkAt: 'arrive'` (overdue.js) is there for steps whose talk belongs at the destination: m01 swing (Dumpling scores
+  the landing), m04 home (aftermath), m05 home (night) look like they want it; m02 drive's car ride does not. Content
+  call for the lead.
