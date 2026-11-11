@@ -822,7 +822,7 @@ function star(K, m, r, cell, rot = 0) {
 }
 // a whistle on a cord round the neck, lying on the chest
 function whistle(K, S, cord, body) {
-  for (const sx of [-1, 1]) K.tube([S.f(sx * 0.075, S.y1 - 0.012, 0.008), S.f(sx * 0.052, 1.46, 0.01), S.f(0.012, 1.386, 0.012)], 0.005, 4, cord);
+  for (const sx of [-1, 1]) K.tube([S.f(sx * 0.075, S.y1 - 0.012, 0.008), ...[0.25, 0.5, 0.75].map((t) => S.f(mix(sx * 0.064, 0.016, t), mix(1.5, 1.39, t), 0.01)), S.f(0.012, 1.386, 0.012)], 0.005, 4, cord); // (points close enough to ride over a bust)
   const m = S.ff(0.012, 1.368, 0.014).multiply(T(0, 0, 0, 0, 0, 0.35));
   K.box(0.046, 0.026, 0.02, body, m).box(0.022, 0.016, 0.016, body, m.clone().multiply(T(0.03, 0.006, 0))).box(0.012, 0.008, 0.022, C.ink, m.clone().multiply(T(0.004, 0.012, 0)));
   K.cyl(0.013, 0.013, 0.021, 8, body, m.clone().multiply(T(-0.014, -0.004, 0, PI / 2)));
@@ -966,30 +966,38 @@ function fakeBeard() { // cotton wool on an elastic: a bib of fluff from the nos
   return K.piece();
 }
 function sunscreen() { // a stripe of it across the nose they don't have
-  const pc = new Kit().box(0.074, 0.034, 0.02, C.frill, T(0, 0.136, -0.134, 0.05, 0, 0.06)).box(0.03, 0.022, 0.016, C.frill, T(0.008, 0.112, -0.13, 0.05, 0, 0.06)).piece();
+  const K = new Kit().box(0.062, 0.03, 0.02, C.frill, T(0, 0.148, -0.134, 0.05, 0, 0.06)).box(0.026, 0.024, 0.016, C.frill, T(0.004, 0.124, -0.132, 0.05, 0, 0.06)); // the nose stripe..
+  for (const sx of [-1, 1]) K.box(0.034, 0.016, 0.012, C.frill, T(sx * 0.06, 0.122 + sx * 0.004, -0.116, 0, -sx * 0.5, sx * 0.2)); // ..and a smear on each cheek
+  const pc = K.piece();
   pc.flat = true; // (too small for an outline of its own)
   return pc;
 }
 // the rescue float: a fat torpedo slung across the back on a rope that goes over one shoulder and round the body.
-// thick: how far the top stands off the back (body space)
-function rescueFloat(thick) {
-  const K = new Kit(true), zb = 0.152 + thick, zf = -(0.17 + thick), F2 = new Kit();
+// E: the torso with its top on (fitOf dressed), so the float rests on the back and the rope rides over a belly or a bust
+function rescueFloat(E) {
+  const K = new Kit(true), F2 = new Kit(), c = [-0.01, 1.285], dir = [-Math.sin(0.62), -Math.cos(0.62)], L = 0.012; // (dir: from its middle to its bottom end)
   F2.lathe([[0.001, -0.3], [0.046, -0.286], [0.082, -0.24], [0.098, -0.17], [0.1, -0.16, C.white], [0.1, -0.128], [0.1, 0.1, C.white], [0.096, 0.132], [0.088, 0.2], [0.07, 0.262], [0.04, 0.29], [0.001, 0.298]], 10, C.buoy, { sy: 0.62 });
   for (const sx of [-1, 1]) F2.box(0.014, 0.034, 0.21, C.redd, T(sx * 0.097, 0, 0.015)); // the grips moulded down both edges
-  const M = T(-0.01, 1.285, zb + 0.066, 0, 0, -0.62).multiply(T(0, 0, 0, -PI / 2)); // on its end, leaning across the back, its flat side to you
+  let zb = 0; for (let t = -0.27; t < 0.28; t += 0.09) zb = Math.max(zb, E.b(c[0] + dir[0] * t, c[1] + dir[1] * t)[2]); // (on the furthest-out bit of back under it)
+  const M = T(c[0], c[1], zb + 0.064, 0, 0, -0.62).multiply(T(0, 0, 0, -PI / 2)); // on its end, leaning across the back, its flat side to you
   K.solid(() => K.add(F2, M));
   const end = (d) => { _s.set(0, 0, -d).applyMatrix4(M); return [_s.x, _s.y, _s.z + 0.01]; };
-  K.tube([end(0.27), [0.13, 1.5, zb - 0.02], [0.118, 1.556, 0], [0.09, 1.47, zf], [-0.02, 1.3, zf - 0.012], [-0.14, 1.13, zf + 0.02], [-0.215, 1.08, -0.02], [-0.17, 1.1, zb - 0.03], end(-0.27)], 0.009, 5, C.white);
-  K.box(0.03, 0.04, 0.02, C.brass, T(0.03, 1.37, zf - 0.008, 0, 0, 0.55));
+  const fr = Array.from({ length: 8 }, (_, i) => E.f(mix(0.1, -0.14, i / 7), mix(1.47, 1.12, i / 7), L)); // down the front, close enough together to ride over things
+  const side = [235, 262, 290].map((d) => E.p(1.1, d * DEG, L));
+  K.tube([end(0.27), E.b(0.13, 1.49, L), [0.118, Math.max(1.556, E.y1 + 0.006), 0], E.f(0.11, 1.52, L), ...fr, ...side, E.b(-0.17, 1.1, L), end(-0.27)], 0.009, 5, C.white);
+  K.box(0.03, 0.04, 0.02, C.brass, E.ff(0.031, 1.37, L + 0.004).multiply(T(0, 0, 0, 0, 0, 0.55))); // the buckle
   return K.piece();
 }
 const ACCS = { strawhat: strawHat, wizhat: wizHat, fakebeard: fakeBeard, sunscreen, float: rescueFloat };
-// parent: the head (hats, faces) or the body (back). col: the player's colour. thick: see rescueFloat. false: not ours
-export function wearAcc(parent, id, col, thick = 0) {
+// parent: the head (hats, faces) or the body (back). col: the player's colour. lk: the look (the float is fitted to the
+// body and the top it's on). false: not ours
+export function wearAcc(parent, id, col, lk = {}) {
   const make = typeof id === 'string' && Object.hasOwn(ACCS, id) && ACCS[id];
   if (!make) return false;
-  const pc = limb(`acc:${id}:${id === 'float' ? thick : ''}`, () => make(thick));
-  wear(parent, pc, cloth(col));
+  if (id === 'float') { // cut for the body + top, like the clothes
+    const F = fitOf(lk), top = topOf(lk.top || 'tank') ? lk.top || 'tank' : 'tank';
+    wear(parent, cut(`float|${cutKey(top, lk, F)}`, () => make(F.dressed(TOPS[top].cut(F, lk)))), cloth(col));
+  } else wear(parent, limb(`acc:${id}`, make), cloth(col));
   return true;
 }
 

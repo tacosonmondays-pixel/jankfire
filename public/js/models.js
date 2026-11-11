@@ -1652,7 +1652,7 @@ function addAccessories(ch, look, c) {
       }
       straps(0x333333);
       break;
-    case 'float': wearAcc(Bd, 'float', c, thick); break; // the Lifeguard's rescue float (clothes.js)
+    case 'float': wearAcc(Bd, 'float', c, look); break; // the Lifeguard's rescue float (clothes.js: fitted to the body + top)
     case 'cattail': catTail(ch, look, look.top === 'maid' ? 0.2 : look.bottom === 'skirt' ? 0.19 : 0.125); break; // out from under the skirt
   }
 }
