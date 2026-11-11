@@ -25,12 +25,15 @@ import json, math, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 J = json.load(open(os.path.join(HERE, 'joints.json')))['hat_lord']
 ORDER = J['order']; PAR = J['parents']; LOC = J['local']
+BASE = [J['joints']['body'][k] - J['local']['body']['p'][k] for k in range(3)]   # where the body joint's parent (the lift) puts it
 STD = ('body', 'legL', 'legR', 'kneeL', 'kneeR', 'spine', 'neck', 'head', 'armL', 'arm', 'foreL', 'foreR', 'handL', 'handR')
 LS = J['legScale']
-HIPH = J['joints']['legL'][1]; L1 = 0.44 * LS; L2 = HIPH - L1          # thigh; knee to the sole (her shoes reach the floor with the leg straight)
-# how she stands: arms out from narrow shoulders and clear of the cape, forearms dropping to hands just outside its
-# corners, fingers (a joint too long) pointing down
-REST = {'arm.z': 1.0, 'armL.z': -1.0, 'arm.x': 0.04, 'armL.x': 0.04, 'foreR.z': -0.62, 'foreL.z': 0.62, 'foreR.x': 0.08, 'foreL.x': 0.08, 'handR.z': -0.38, 'handL.z': 0.38,
+HIPH = J['joints']['legL'][1]; L1 = -LOC['kneeL']['p'][1] * LS; L2 = HIPH - L1          # thigh; knee to the sole (her heels reach the floor with the leg straight)
+# how she stands (the owner's Tripo model): arms down and a little out, clear of the cape, a soft bend at the elbow,
+# the long fingers hanging. her skeleton's rest IS the model's A-pose (hatlook.js FIT): these are absolute turns, kept
+# near it so the skin stays as it was made
+REST = {'arm.z': 0.46, 'armL.z': -0.46, 'arm.x': 0.05, 'armL.x': 0.05, 'arm.y': 0.0, 'armL.y': 0.0, 'foreR.z': 0.1, 'foreL.z': -0.1, 'foreR.x': 0.16, 'foreL.x': 0.16, 'foreR.y': 0.0, 'foreL.y': 0.0,
+        'handR.z': -0.22, 'handL.z': 0.2, 'handR.x': 0.04, 'handL.x': 0.04,
         'idxR.x': -0.06, 'idxL.x': -0.06, 'finR.x': -0.1, 'finL.x': -0.1, 'idxRb.x': -0.1, 'idxLb.x': -0.1, 'finRb.x': -0.16, 'finLb.x': -0.16, 'x.look': 1.0}
 TAU = 2 * math.pi
 
@@ -80,7 +83,7 @@ def fk(pose):
         Rl = _rot(g(n + '.x'), g(n + '.y'), g(n + '.z'))
         if n not in STD: Rl = _mm(_rot(*lr), Rl)
         par = PAR[n]
-        if par is None: out[n] = (Rl, _add(lp, d), ls)
+        if par is None: out[n] = (Rl, _add(_add(lp, d), BASE), ls)   # (the root joint rides the skeleton's lift: legs longer than the cast's raise her)
         else:
             Rp, pp, sp = out[par]
             out[n] = (_mm(Rp, Rl), _add(pp, [c * sp for c in _mv(Rp, _add(lp, d))]), sp * ls)
@@ -98,7 +101,7 @@ def dirw(pose, joint, d): return _mv(fk(pose)[joint][0], list(d))
 REACH_LOG = []
 
 
-def put(pose, chans, joint, local, target, ndir=None, nwant=None, w_n=0.25, name='', steps=(0.5, 0.2, 0.08, 0.03, 0.01, 0.004)):
+def put(pose, chans, joint, local, target, ndir=None, nwant=None, w_n=0.25, name='', steps=(0.5, 0.2, 0.08, 0.03, 0.01, 0.004), reg=None):
     """turn `chans` (a list of channels) until `local` of `joint` is on `target` (world) and, if asked, its `ndir` axis
     points along `nwant`. a plain search: small, and good to a few millimetres. returns the new pose"""
     p = dict(pose)
@@ -106,6 +109,8 @@ def put(pose, chans, joint, local, target, ndir=None, nwant=None, w_n=0.25, name
         e = _len(_sub(at(q, joint, local), target))
         if ndir is not None:
             d = dirw(q, joint, ndir); e += w_n * (1 - sum(a * b for a, b in zip(d, nwant)))
+        if reg:   # (a skinned arm twists badly: keep the twisting channels small)
+            e += sum(w * abs(q.get(ch, 0.0) - pose.get(ch, 0.0)) for ch, w in reg.items())
         return e
     best = err(p)
     for st in steps:
@@ -125,7 +130,10 @@ def cape(r, l=None): return {'capeR.y': -r, 'capeL.y': r if l is None else l}
 
 
 ARM_R = ['arm.x', 'arm.y', 'arm.z', 'foreR.x', 'foreR.z']; ARM_L = ['armL.x', 'armL.y', 'armL.z', 'foreL.x', 'foreL.z']
-PALM = (0, -0.06, 0.02)
+# the palm's middle and the way it faces, in each hand's frame (hl_fit.py: the model's hands are posed palm-in)
+PALM_N = {'R': (-0.7741, 0.2445, -0.584), 'L': (0.7652, 0.1964, -0.6131)}
+PALM = tuple(0.02 * n + o for n, o in zip(PALM_N['R'], (0, -0.13, 0))); PALM_L = tuple(0.02 * n + o for n, o in zip(PALM_N['L'], (0, -0.13, 0)))
+TWIST = {'foreR.y': 0.03, 'handR.y': 0.03, 'foreL.y': 0.03, 'handL.y': 0.03}
 
 CLIPS = {}
 
@@ -194,7 +202,7 @@ clip('hl_idle', weave({}, idle_ev, loop=8.0), loop=8.0, face=[(0, 'chair')], osc
 # ------------------------------------------------------------------------------------------------ walk
 # A long unhurried stalk, knee first, like a wading bird. One loop is two steps. The game runs it by distance travelled
 # (STRIDE metres a loop), so her feet do not slide at any speed. The hat sways against her hips and its wings trail.
-WALK_T = 2.0; DUTY = 0.62; REACH_F = 0.5; REACH_B = 0.4; STRIDE = (REACH_F + REACH_B) / DUTY
+WALK_T = 2.0; DUTY = 0.62; REACH_F = 0.6; REACH_B = 0.48; STRIDE = (REACH_F + REACH_B) / DUTY
 
 
 def _foot(ph):
@@ -207,7 +215,7 @@ def _foot(ph):
     v = -(REACH_F + REACH_B) / DUTY * (1 - DUTY)
     h00 = 2 * u ** 3 - 3 * u ** 2 + 1; h10 = u ** 3 - 2 * u ** 2 + u; h01 = -2 * u ** 3 + 3 * u ** 2; h11 = u ** 3 - u ** 2
     fwd = h00 * -REACH_B + h10 * v + h01 * REACH_F + h11 * v
-    up = 0.3 * math.sin(math.pi * u ** 0.8) ** 2
+    up = 0.36 * math.sin(math.pi * u ** 0.8) ** 2
     return fwd, up
 
 
@@ -235,9 +243,9 @@ clip('hl_walk', walk_keys, loop=WALK_T, face=[(0, 'chair')], marks=[(0.0, 'stepR
 # like an umbrella half shut; she turns a shoulder to the gap (the bar is 1.46 m), folds at the knee and the waist and
 # follows it through; it opens again. In place: the scene walks her through while it plays. Clears 1.25 x 2.3 m.
 fold = {'hatNeck.y': 1.45, 'hat.x': 0.24, 'hat.z': 0.22, 'brimF.x': -0.62, 'brimB.x': 0.62, 'brimR.z': -0.12, 'brimRb.z': -0.1, 'brimL.z': 0.14, 'brimLb.z': 0.2, 'feeler.z': 0.3, 'feelerB.z': 0.2, 'x.look': 0.0}
-low = P(legs(0.46, 0.2, -0.1), fold, cape(0.5, 0.42), {'spine.x': -0.5, 'spine.y': 0.62, 'head.y': -0.55, 'head.x': 0.34, 'hatNeck.x': 0.16, 'hatNeck.y': 1.98, 'hatNeckB.py': -0.02,
+low = P(legs(0.82, 0.3, -0.15), fold, cape(0.5, 0.42), {'spine.x': -0.72, 'spine.y': 0.62, 'head.y': -0.55, 'head.x': 0.34, 'hatNeck.x': 0.16, 'hatNeck.y': 1.98, 'hatNeckB.py': -0.02,
                                       'arm.z': 0.55, 'armL.z': -0.5, 'foreR.z': -0.45, 'foreL.z': 0.45, 'arm.x': -0.2, 'armL.x': 0.3})
-clip('hl_duck', [(0, P()), (0.35, P({'hat.x': -0.1, 'x.look': 0.3})), (1.1, P(fold), 'ss'), (2.0, low, 'ss'), (2.8, low), (3.6, P(fold, legs(0.04), cape(0.2), {'spine.y': 0.2})), (4.4, P({'hat.z': 0.06}), 'back'), (4.9, P())],
+clip('hl_duck', [(0, P()), (0.35, P({'hat.x': -0.1, 'x.look': 0.3})), (1.1, P(fold), 'ss'), (2.0, low, 'ss'), (2.8, low), (3.6, P(fold, legs(0.04), cape(0.2), {'spine.y': 0.2})), (4.4, P({'hat.z': 0.06}), 'ss'), (4.9, P())],
      length=4.9, marks=[(0.4, 'turn'), (1.1, 'folded'), (2.0, 'low'), (3.6, 'up'), (4.4, 'open')], face=[(0, 'chair')],
      osc=[('brimRb.z', 0.02, 5.0, 0.0), ('brimLb.z', 0.02, 4.2, 1.0)],
      note='through a doorway: the hat turns end on and folds its sides down (1.1), she goes under the lintel shoulder first (2.0-2.8), up (3.6), it opens (4.4)')
@@ -245,8 +253,8 @@ clip('hl_duck', [(0, P()), (0.35, P({'hat.x': -0.1, 'x.look': 0.3})), (1.1, P(fo
 # ------------------------------------------------------------------------------------------------ talk
 # The hat tips to put her eyes on you and holds them there. Her face stays level. One hand turns over with the words.
 talk0 = P({'hat.x': -0.12, 'hatNeck.x': -0.06})
-g1 = P(talk0, {'arm.x': 0.3, 'arm.z': 0.62, 'foreR.x': 0.75, 'foreR.z': -0.5, 'foreR.y': 0.9, 'handR.z': -0.1, 'handR.x': -0.2, 'idxR.x': 0.02, 'finR.x': -0.25, 'finRb.x': -0.3})
-g2 = P(talk0, {'arm.x': 0.36, 'arm.z': 0.55, 'foreR.x': 0.95, 'foreR.z': -0.42, 'foreR.y': 1.7, 'handR.z': -0.05, 'handR.x': -0.3, 'idxR.x': 0.05, 'finR.x': -0.1, 'finRb.x': -0.12, 'head.z': 0.03})
+g1 = P(talk0, {'arm.x': 0.3, 'arm.z': 0.6, 'arm.y': -0.2, 'foreR.x': 0.75, 'foreR.z': -0.4, 'foreR.y': 0.35, 'handR.y': 0.25, 'handR.z': -0.1, 'handR.x': -0.2, 'idxR.x': 0.02, 'finR.x': -0.25, 'finRb.x': -0.3})
+g2 = P(talk0, {'arm.x': 0.36, 'arm.z': 0.55, 'arm.y': -0.45, 'foreR.x': 0.95, 'foreR.z': -0.36, 'foreR.y': 0.6, 'handR.y': 0.45, 'handR.z': -0.05, 'handR.x': -0.3, 'idxR.x': 0.05, 'finR.x': -0.1, 'finRb.x': -0.12, 'head.z': 0.03})
 talk_keys = [(0, talk0), (0.5, g1), (1.5, g2, 'ss'), (2.3, g1), (3.3, talk0), (4.2, P(talk0, {'head.z': -0.03, 'finL.x': -0.3, 'finLb.x': -0.35})), (5.2, talk0), (6.0, talk0)]
 WT = TAU / 6.0
 clip('hl_talk', talk_keys, blinks=[blink(1.1, HER, 0.2, SHUT), blink(4.4, HER, 0.2, SHUT), blink(2.0, ['lidCa'], 0.24), blink(5.0, ['lidCd'], 0.14), blink(3.0, ['lidCc'], 0.5, -0.85)],
@@ -257,10 +265,10 @@ clip('hl_talk', talk_keys, blinks=[blink(1.1, HER, 0.2, SHUT), blink(4.4, HER, 0
 
 # ------------------------------------------------------------------------------------------------ the offer
 # One long hand held out, palm up, at the height of a small guest's chest. The hat looks at what is in it, then at you.
-off0 = P(cape(0.16, 0.04), {'arm.x': 0.95, 'arm.z': 0.3, 'arm.y': 0.0, 'foreR.x': 0.55, 'foreR.z': -0.1, 'foreR.y': 0.0, 'handR.y': 3.0, 'handR.z': 0.0, 'handR.x': 0.1, 'idxR.x': 0.1, 'idxRb.x': 0.06, 'finR.x': 0.08, 'finRb.x': 0.02, 'thumbR.z': -0.5,
+off0 = P(cape(0.16, 0.04), {'arm.x': 0.95, 'arm.z': 0.3, 'arm.y': 0.0, 'foreR.x': 0.55, 'foreR.z': -0.1, 'foreR.y': 0.0, 'handR.y': 0.0, 'handR.z': 0.0, 'handR.x': 0.1, 'idxR.x': 0.1, 'idxRb.x': 0.06, 'finR.x': 0.08, 'finRb.x': 0.02, 'thumbR.z': -0.5,
           'spine.x': -0.1, 'head.x': 0.06, 'hat.x': -0.22, 'hatNeck.x': -0.08, 'hatNeck.y': -0.12, 'brimF.x': -0.06})
-offer = put(off0, ARM_R + ['handR.x', 'handR.z'], 'handR', PALM, [0.17, 1.5, -0.6], ndir=(0, 0, 1), nwant=(0, 1, 0), w_n=0.35, name='offer: palm up')
-reach_ = P(offer, {'arm.x': offer['arm.x'] * 0.55, 'foreR.x': offer['foreR.x'] + 0.5, 'handR.y': 1.5, 'idxR.x': -0.3, 'finR.x': -0.5, 'finRb.x': -0.6, 'hat.x': -0.05, 'spine.x': -0.03})
+offer = put(off0, ARM_R + ['handR.x', 'handR.z', 'foreR.y', 'handR.y'], 'handR', PALM, [0.2, 1.5, -0.62], ndir=PALM_N['R'], nwant=(0, 1, 0), w_n=0.35, name='offer: palm up', reg=TWIST)
+reach_ = P(offer, {'arm.x': offer['arm.x'] * 0.55, 'foreR.x': offer['foreR.x'] + 0.5, 'handR.y': offer['handR.y'] * 0.4, 'foreR.y': offer['foreR.y'] * 0.4, 'idxR.x': -0.3, 'finR.x': -0.5, 'finRb.x': -0.6, 'hat.x': -0.05, 'spine.x': -0.03})
 clip('hl_offer', [(0, P()), (0.7, reach_, 'ss'), (1.5, offer, 'back'), (2.4, P(offer, {'hatNeck.y': 0.05, 'hat.x': -0.3})), (3.2, offer)], marks=[(0.7, 'lift'), (1.5, 'out'), (2.4, 'look')],
      face=[(0, 'chair'), (1.2, 'chair_host')], osc=[('handR.x', 0.012, 1.6, 0.0), ('brimRb.z', 0.04, 1.3, 0.0), ('brimLb.z', 0.04, 1.1, 1.0), ('feelerB.z', 0.05, 1.7, 0.0), ('growthA.z', 0.03, 2.1, 0.0)] + [],
      note='the offer: her right hand out, palm up, at 1.5 m (out at 1.5 s). held. the hat looks at the hand, then at you (2.4)')
@@ -268,10 +276,10 @@ clip('hl_offer', [(0, P()), (0.7, reach_, 'ss'), (1.5, offer, 'back'), (2.4, P(o
 # ------------------------------------------------------------------------------------------------ the bow
 # A small courteous bow. The hat does not bow: its neck straightens as she goes down, so the brim stays level and her
 # eyes stay on you the whole way.
-bow = P(cape(0.1, 0.1), {'spine.x': -0.36, 'head.x': -0.12, 'body.py': -0.02, 'hatNeck.x': 0.48, 'hatNeckB.py': 0.05, 'hat.x': 0.0, 'armL.x': 0.25, 'armL.z': -0.5, 'foreL.x': 1.5, 'foreL.z': 0.9, 'handL.z': 0.2, 'handL.y': -0.6,
+bow = P(cape(0.1, 0.1), {'spine.x': -0.36, 'head.x': -0.12, 'body.py': -0.02, 'hatNeck.x': 0.48, 'hatNeckB.py': 0.05, 'hat.x': 0.0, 'armL.x': 0.25, 'armL.z': -0.5, 'foreL.x': 1.5, 'foreL.z': 0.9, 'handL.z': 0.2, 'handL.y': 0.0,
          'arm.z': 0.8, 'arm.x': -0.05, 'brimR.z': 0.06, 'brimL.z': -0.05})
-bow = put(bow, ARM_L + ['handL.y'], 'handL', PALM, at(bow, 'spine', (0.02, 0.36, -0.15)), ndir=(0, 0, 1), nwant=dirw(bow, 'spine', (0, 0.1, 1)), w_n=0.25, name='bow: her left hand on her chest')
-bow_in = P(bow, {'spine.x': -0.1, 'head.x': -0.03, 'hatNeck.x': 0.13, 'hatNeckB.py': 0.01})
+bow = put(bow, ARM_L + ['handL.y', 'foreL.y', 'handL.x', 'handL.z'], 'handL', PALM_L, at(bow, 'spine', (0.03, 0.42, -0.17)), ndir=PALM_N['L'], nwant=dirw(bow, 'spine', (0, 0.1, 1)), w_n=0.25, name='bow: her left hand on her chest', reg=TWIST)
+bow_in = P({k: REST.get(k, 0.0) + (v - REST.get(k, 0.0)) * (0.55 if k.split('.')[0] in ('armL', 'foreL', 'handL') else 1.0) for k, v in bow.items()}, {'spine.x': -0.1, 'head.x': -0.03, 'hatNeck.x': 0.13, 'hatNeckB.py': 0.01})   # (the hand is on its way to her chest, not there yet)
 clip('hl_bow', [(0, P()), (0.45, bow_in, 'in'), (1.1, bow, 'out'), (1.75, bow), (2.6, P(), 'ss')], length=2.6, marks=[(1.1, 'low'), (1.75, 'rise')], face=[(0, 'chair'), (0.6, 'chair_host'), (2.0, 'chair')],
      osc=[('brimRb.z', 0.03, 2.4, 0.0), ('brimLb.z', 0.03, 2.0, 1.0)], note='a small bow, her left hand on her chest (low at 1.1). the hat stays level and goes on watching you')
 
@@ -283,7 +291,7 @@ fix = P({'hat.x': -0.2, 'hatNeck.x': -0.1, 'brimR.z': 0.3, 'brimRb.z': 0.42, 'br
 strike = P(cape(0.5), {'spine.x': -0.2, 'head.x': -0.2, 'neck.x': -0.05, 'hatNeck.x': -1.72, 'hatNeckB.py': 0.25, 'hat.py': 0.2, 'hat.x': 1.3, 'hat.z': 0.22, 'crown.x': 0.72,
             'brimR.z': -0.3, 'brimRb.z': -0.4, 'brimL.z': 0.3, 'brimLb.z': 0.42, 'brimB.x': 0.35, 'brimF.x': 0.4, 'feeler.z': -0.5, 'feelerB.z': -0.5,
             'lidCa.x': 0.4, 'lidCb.x': 0.4, 'lidCc.x': 0.4, 'lidCd.x': 0.4, 'lidCe.x': 0.4, 'growthA.z': -0.2, 'growthB.x': -0.2, 'growthC.z': 0.2, 'body.pz': -0.03})
-finger_up = {'armL.x': 0.62, 'armL.z': -0.42, 'armL.y': 0.0, 'foreL.x': 2.05, 'foreL.z': 0.0, 'handL.z': 0.0, 'handL.x': -0.12, 'idxL.x': 0.06, 'idxLb.x': 0.04, 'finL.x': -1.45, 'finLb.x': -1.7, 'thumbL.x': -0.5, 'thumbL.z': 0.7}
+finger_up = {'armL.x': 0.62, 'armL.z': -0.42, 'armL.y': 0.0, 'foreL.x': 1.75, 'foreL.z': 0.0, 'handL.z': 0.0, 'handL.x': -0.12, 'idxL.x': 0.12, 'idxLb.x': 0.1, 'finL.x': -1.15, 'finLb.x': -1.3, 'thumbL.x': -0.5, 'thumbL.z': 0.4}
 held = P(strike, finger_up, cape(0.3), {'hat.x': 1.36, 'crown.x': 0.62, 'spine.x': -0.14, 'head.x': -0.14})
 back1 = P(finger_up, cape(0.12), {'spine.x': -0.05, 'head.x': -0.06, 'hatNeck.x': -0.75, 'hatNeckB.py': 0.12, 'hat.py': 0.08, 'hat.x': 0.45, 'crown.x': 0.3, 'brimR.z': 0.1, 'brimL.z': -0.1, 'feeler.z': 0.2})
 back2 = P(finger_up, {'hat.x': -0.16, 'crown.x': 0.06, 'hatNeck.x': -0.08, 'brimRb.z': 0.12, 'brimLb.z': -0.1})
@@ -314,7 +322,7 @@ hit = P(cape(0.7, 0.35), {'spine.y': -0.45, 'spine.x': -0.22, 'head.y': -0.25, '
 mid = P({k: (tell.get(k, 0) + hit.get(k, 0)) / 2 for k in set(tell) | set(hit)}, {'hatNeck.x': -0.6, 'hat.z': -0.35, 'hatNeckB.py': 0.26, 'hat.py': 0.18, 'crown.x': 0.75, 'spine.x': -0.16})
 clip('hl_attack_tell', [(0, P()), (0.25, P({'hat.x': -0.2, 'crown.x': 0.1})), (0.9, tell, 'ss'), (1.2, P(tell, {'hat.z': 0.6, 'crown.x': 0.46}))], marks=[(0.25, 'aye'), (0.9, 'up')], face=[(0, 'chair')],
      osc=[('hat.x', 0.015, 19.0, 0.0), ('feelerB.z', 0.08, 13.0, 0.0)], note='the tell: the hat rears up and round to her left, low wing high (up at 0.9). held, trembling')
-clip('hl_strike', [(0, tell), (0.16, mid, 'in'), (0.3, hit, 'lin'), (0.5, P(hit, {'hatNeck.y': -1.15, 'hat.z': -0.42}), 'out'), (1.0, P({'hatNeck.y': -0.3, 'hat.x': -0.2, 'crown.x': 0.2, 'spine.y': -0.1}), 'ss'), (1.5, P(), 'back')],
+clip('hl_strike', [(0, tell), (0.16, mid, 'ss'), (0.3, hit, 'lin'), (0.5, P(hit, {'hatNeck.y': -1.15, 'hat.z': -0.42}), 'out'), (1.0, P({'hatNeck.y': -0.3, 'hat.x': -0.2, 'crown.x': 0.2, 'spine.y': -0.1}), 'ss'), (1.5, P(), 'back')],
      length=1.5, marks=[(0.16, 'sweep'), (0.3, 'hit'), (0.5, 'past'), (1.0, 'recover')], face=[(0, 'chair_flat'), (1.0, 'chair')],
      note='the strike: the wing sweeps round in front of her, left to right as you face her (hit at 0.3), and carries past (0.5). back to the stance by 1.5')
 
@@ -333,7 +341,7 @@ clip('hl_stagger', [(0, P()), (0.12, stag, 'snap'), (0.6, stag2, 'ss'), (1.0, P(
 tear = P(cape(0.35), {'hatNeck.x': 0.2, 'hatNeckB.py': 0.26, 'hat.py': 0.22, 'crown.x': 0.5, 'bandR.y': -1.2, 'bandR.z': 0.5, 'bandL.y': 1.3, 'bandL.z': -0.5, 'head.x': 0.25, 'spine.x': 0.1, 'brimR.z': 0.4, 'brimRb.z': 0.5, 'brimL.z': -0.4, 'brimLb.z': -0.5,
           'arm.z': 1.2, 'armL.z': -1.2, 'foreR.x': 0.6, 'foreL.x': 0.6, 'x.look': 0.0, 'lidHR.x': -0.2, 'lidHL.x': -0.2})
 free = P(tear, {'hat.py': 0.95, 'hat.x': 0.2, 'hat.z': 0.25, 'hatNeck.x': 0.1, 'bandR.y': -2.1, 'bandL.y': 2.1, 'crown.x': 0.2, 'head.x': 0.1, 'spine.x': 0.0, 'lidHR.x': 0.0, 'lidHL.x': 0.0})
-knees = P(free, legs(0.74, -0.2, -0.26), cape(0.8, 0.72), {'kneeL.x': -2.25, 'kneeR.x': -2.3, 'legL.x': 0.42, 'legR.x': 0.36, 'spine.x': -0.3, 'head.x': -0.45, 'hat.py': 1.75, 'hatNeck.x': 0.75, 'hat.x': 0.1,
+knees = P(free, legs(1.1, -0.2, -0.26), cape(0.8, 0.72), {'kneeL.x': -1.85, 'kneeR.x': -1.9, 'legL.x': 0.26, 'legR.x': 0.22, 'spine.x': -0.3, 'head.x': -0.45, 'hat.py': 1.75, 'hatNeck.x': 0.75, 'hat.x': 0.1,
                                           'arm.z': 0.3, 'armL.z': -0.3, 'arm.x': 0.25, 'armL.x': 0.25, 'foreR.x': 0.15, 'foreL.x': 0.15, 'foreR.z': -0.1, 'foreL.z': 0.1, 'finR.x': -0.5, 'finL.x': -0.5, 'finRb.x': -0.6, 'finLb.x': -0.6})
 clip('hl_hat_off', [(0, P()), (0.6, tear, 'in'), (1.4, free, 'out'), (2.4, free), (3.2, P(knees, {'spine.x': -0.1, 'head.x': -0.15}), 'in'), (3.9, knees, 'out'), (5.0, knees)],
      marks=[(0.6, 'tear'), (1.4, 'free'), (3.2, 'knees'), (3.9, 'down')], face=[(0, 'chair_hurt'), (1.4, 'chair_flat')],

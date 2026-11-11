@@ -58,16 +58,17 @@ def split_head_and_hat(P):
         c = f.calc_center_median(); return Vector((c.x - ax.x, c.y - ax.y)).length < R and abs(c.z - cutz) < 0.04
     A, B, cut = H.cut_split(bm, Vector((0, 0, cutz)), Vector((0, 0, 1)), ff, Vector((0.1, 0, 0.05)))
     body = H.extract(bm, A); hat = H.extract(bm, B)
+    for f in hat.faces: f.material_index = M['hl_hat']      # (0 is her skin: the hat is flesh)
     # the skull: the cut loop closed with a low dome. its top is the top of her head
     lp = [l for l in boundary_loops(body) if abs(loop_frame(l)[0].z - cutz) < 0.02 and len(l) > 20][0]
     lp = H.orient_loop(lp, Vector((0, 0, 1)))
     c = loop_frame(lp)[0]
-    faces, apex = H.dome_cap(body, lp, Vector((0, 0, 1)), 2.96 - c.z, rings=4, shape=0.8)
+    faces, apex = H.dome_cap(body, lp, Vector((0, 0, 1)), 2.96 - c.z, rings=4, shape=1.3)
     H.fix_winding(body, faces, c - Vector((0, 0, 0.3)))
     # the hat's hole: a hollow that domes up a little past her skull
     lp = [l for l in boundary_loops(hat) if abs(loop_frame(l)[0].z - cutz) < 0.02 and len(l) > 20][0]
     lp = H.orient_loop(lp, Vector((0, 0, 1)))
-    faces, apex = H.dome_cap(hat, lp, Vector((0, 0, 1)), 2.978 - c.z, rings=4, shape=0.8)
+    faces, apex = H.dome_cap(hat, lp, Vector((0, 0, 1)), 2.978 - c.z, rings=4, shape=0.45)
     H.fix_winding(hat, faces, c + Vector((0, 0, 0.5)))
     for f in faces: f.material_index = 2   # (the hollow is the hat's throat-dark underneath)
     return body, hat
@@ -129,10 +130,13 @@ def lips(bm, up, outward_sign, mats, depth, roof, name):
     lps = [l for l in boundary_loops(bm) if len(l) > 40]
     lp = max(lps, key=len); lp = H.orient_loop(lp, up)
     c = loop_frame(lp)[0]
+    if outward_sign < 0:
+        for v in lp: v.co -= up * 0.004         # (the brim's rim drops under the crown's lip: they never share a face)
     def radial(co):
         d = co - c; d = d - up * d.dot(up); return d.normalized() if d.length > 1e-6 else Vector((1, 0, 0))
     s = outward_sign
-    r1 = H.ring_from(bm, lp, lambda p: p + radial(p) * 0.016 - up * s * 0.010)                 # the lip rolls out over the seam
+    lo, ld = (0.022, 0.013) if s > 0 else (0.008, -0.004)       # (the upper lip rolls out over the lower one)
+    r1 = H.ring_from(bm, lp, lambda p: p + radial(p) * lo - up * s * ld)                       # the lip at the seam
     r2 = H.ring_from(bm, lp, lambda p: p - radial(p) * 0.010 - up * s * 0.018)                 # under it, back in
     r3 = H.ring_from(bm, lp, lambda p: p - radial(p) * 0.050 + up * s * 0.010)                 # the gum, going in
     r4 = H.ring_from(bm, lp, lambda p: p - radial(p) * 0.085 + up * s * depth)                 # where the teeth stand
@@ -202,7 +206,7 @@ def bm_sphere(bm, c, r, seg=16, rings=10, mat=0, axis=Vector((0, -1, 0)), up=Vec
     return faces, info, (x, y, z)
 
 
-def lid_shell(bm, c, r, frame, e0, span, mat, thick=0.18, seg=12, curve=0.25, side_cut=0.92):
+def lid_shell(bm, c, r, frame, e0, span, mat, thick=0.18, seg=12, curve=0.25, side_cut=0.92, r_in=1.06):
     """an eyelid: a band of sphere round the eye's own x axis (so turning on x slides it over the eye), from e0 (its
     edge, radians up from the eye's front) back over the top by span. two surfaces and their rims"""
     x, y, z = frame          # z = the way the eye looks, x across
@@ -210,7 +214,7 @@ def lid_shell(bm, c, r, frame, e0, span, mat, thick=0.18, seg=12, curve=0.25, si
         xx = u * side_cut; rho = math.sqrt(max(1e-6, 1 - xx * xx))
         return c + (x * xx + (y * math.sin(b) + z * math.cos(b)) * rho) * rr
     rows = []
-    for rr in (r * 1.06, r * (1.06 + thick)):
+    for rr in (r * r_in, r * (r_in + thick)):
         grid = []
         for j in range(5):
             row = []
@@ -332,6 +336,10 @@ def chest_socket(body, orn):
     if not lp: print('JF_WARN no socket hole'); return None, rc, rin
     lp = max(lp, key=len); c0, n0, r0 = loop_frame(lp)
     lp = lp if n0.dot(front) > 0 else lp[::-1]
+    for v in lp:     # (the triangles left a star: draw the rim round, just inside the brass)
+        d = Vector((v.co.x - rc.x, 0, v.co.z - rc.z))
+        if d.length > 1e-6: v.co = Vector((rc.x, v.co.y, rc.z)) + d.normalized() * rin * 0.9
+    c0, n0, r0 = loop_frame(lp)
     back = -front; rings = [lp]
     prof = [(0.008, 0.95, 'hl_mouth'), (0.02, 0.86, 'hl_mouth'), (0.035, 0.92, 'hl_mouth'), (0.05, 0.84, 'hl_dark'), (0.065, 0.88, 'hl_dark'), (0.08, 0.7, 'hl_dark')]
     for d, k, mname in prof:     # (ridges: the radius goes in and out like the inside of a vessel)
@@ -358,6 +366,29 @@ def hat_neck():
     return bm, pts
 
 
+def plate(bm, c, t, up, d, w, h, thick, bulge, mat, nu=4, nv=5):
+    """a curved plate: w across (t), h tall (up), its face bulging out along d, thick deep. closed"""
+    def P(i, j, out):
+        u = -0.5 + i / nu; v = -0.5 + j / nv
+        b = bulge * math.cos(math.pi * u) * math.cos(math.pi * v * 0.8) if out else 0.0
+        return c + t * u * w + up * v * h + d * (b + (thick if out else 0.0)) - d * 0.0
+    O = [[bm.verts.new(P(i, j, True)) for i in range(nu + 1)] for j in range(nv + 1)]
+    I = [[bm.verts.new(P(i, j, False)) for i in range(nu + 1)] for j in range(nv + 1)]
+    fs = []
+    def q(vs):
+        try: f = bm.faces.new(vs); f.material_index = mat; f.smooth = True; fs.append(f)
+        except ValueError: pass
+    for j in range(nv):
+        for i in range(nu):
+            q((O[j][i], O[j][i + 1], O[j + 1][i + 1], O[j + 1][i])); q((I[j][i], I[j + 1][i], I[j + 1][i + 1], I[j][i + 1]))
+    ring = [(0, i) for i in range(nu + 1)] + [(j, nu) for j in range(1, nv + 1)] + [(nv, i) for i in range(nu - 1, -1, -1)] + [(j, 0) for j in range(nv - 1, 0, -1)]
+    for k in range(len(ring)):
+        a, b = ring[k], ring[(k + 1) % len(ring)]
+        q((O[b[0]][b[1]], O[a[0]][a[1]], I[a[0]][a[1]], I[b[0]][b[1]]))
+    bm.normal_update(); H.fix_winding(bm, fs, c - d * 0.2)
+    return fs
+
+
 def clasps_and_teeth(crown, brim, hcut):
     """five brass clasps over the band at the front, the teeth: long ones down from the crown's gum, short ones up
     from the brim's"""
@@ -367,23 +398,20 @@ def clasps_and_teeth(crown, brim, hcut):
         d = fx * math.cos(math.radians(deg)) + rx * math.sin(math.radians(deg))
         return RING_C + d * (band_r(deg) + dr) + up * (hcut(deg) + dh), d
     for deg in (305, 335, 5, 35, 65):
-        p, d = at(deg, 0.022, 0.0)
+        p, d = at(deg, 0.004, 0.006)
         t = up.cross(d).normalized()
-        # a curved brass plate over the seam with a pin at each end
-        for k in range(2):
-            pass
-        pts = [p + up * (-0.05 + 0.1 * i / 4) + d * (0.006 * math.sin(math.pi * i / 4)) for i in range(5)]
-        bm_tube(cl, pts, [0.012, 0.016, 0.017, 0.016, 0.012], seg=8, mat=M['hl_brass'])
-        for e in (-0.045, 0.045):
-            bm_tube(cl, [p + up * e + d * 0.002, p + up * e + d * 0.016], [0.007, 0.006], seg=6, mat=M['hl_brass'])
-    for deg in range(0, 360, 8):
+        plate(cl, p, t, up, d, 0.05, 0.085, 0.008, 0.007, M['hl_brass'])
+        for e in (-0.03, 0.03):
+            q = p + up * e + d * 0.01
+            bm_sphere(cl, q, 0.0075, seg=8, rings=5, mat=M['hl_brass'], axis=d, up=up, squash=(1, 1, 0.55))
+    for deg in range(0, 360, 9):
         p, d = at(deg, -0.075, 0.055)
         L = 0.07 + 0.02 * math.sin(deg * 0.37)
-        bm_tube(tu, [p, p - up * L * 0.5 + d * 0.004, p - up * L], [0.011, 0.008, 0.0015], seg=6, mat=M['hl_teeth'], cap1=False)
-    for deg in range(4, 364, 8):
+        bm_tube(tu, [p, p - up * L * 0.5 + d * 0.004, p - up * L], [0.011, 0.008, 0.002], seg=5, mat=M['hl_teeth'])
+    for deg in range(4, 364, 9):
         p, d = at(deg, -0.06, -0.022)
         L = 0.03 + 0.008 * math.sin(deg * 0.53)
-        bm_tube(tl, [p, p + up * L * 0.5, p + up * L], [0.008, 0.006, 0.0012], seg=6, mat=M['hl_teeth'], cap1=False)
+        bm_tube(tl, [p, p + up * L * 0.5, p + up * L], [0.008, 0.006, 0.0016], seg=5, mat=M['hl_teeth'])
     return cl, tu, tl
 
 
@@ -402,23 +430,27 @@ def eyes(crown, blobs):
     hc, hn, hr = loop_frame(hole)
     fwd = her['out'] if hn.dot(her['out']) > 0 else her['out']
     hole = hole if hn.dot(fwd) > 0 else hole[::-1]
-    faces, apex = H.dome_cap(crown, hole, fwd, 0.012, rings=3)
+    faces, apex = H.dome_cap(crown, hole, -fwd, 0.008, rings=3)          # (a hollow: her eyes sit sunk in it)
     for f in faces: f.material_index = M['hl_skin']
     H.fix_winding(crown, faces, hc - fwd * 0.3)
-    ER = 0.018
+    ER = EYE_R
     for e, l in (('eyeHR', 'lidHR'), ('eyeHL', 'lidHL')):
         x, y, f = eye_frame(e); c = JW[e]
         bm_sphere(get(e, 'herEye'), c, ER, seg=18, rings=12, mat=M['hl_eye'], axis=f, up=y)
-        heavy = 0.30 if e == 'eyeHR' else 0.22     # (her left lid hangs lower)
-        lid_shell(get(l, 'herLid'), c, ER, (x, y, f), heavy, 1.9, M['hl_skin'], thick=0.22, seg=12)
-        # the lower lid: a wet rim, and the almond of her skin round both lids (on the crown)
+        heavy = 0.26 if e == 'eyeHR' else 0.18     # (her left lid hangs lower)
+        lid_shell(get(l, 'herLid'), c, ER, (x, y, f), heavy, 1.9, M['hl_skin'], thick=0.09, seg=14, r_in=1.065)
         o = get('crown', 'herOrbit')
-        rim = [c + (x * math.cos(a) * 1.18 + y * (-0.42 - 0.18 * math.sin(a) ** 2) * 1.0 + f * 0.62) * ER for a in [math.pi * (0.06 + 0.88 * i / 10) for i in range(11)]]
-        bm_tube(o, [c + (x * math.cos(a) * 1.12 - y * (0.45 + 0.2 * math.sin(a)) * math.sin(a) * 0.9 + f * (0.55 + 0.25 * math.sin(a))) * ER for a in [-math.pi * (0.04 + 0.92 * i / 10) for i in range(11)]],
-                [ER * 0.18 * (0.5 + 0.5 * math.sin(math.pi * i / 10)) + ER * 0.05 for i in range(11)], seg=8, mat=M['hl_mouth'])
-        # the almond: a skin ring round the eye, fat over the top (the heavy upper lid's fold), thin under
-        ring = [c + (x * math.cos(a) * (1.32 + 0.1 * math.sin(a)) + y * math.sin(a) * (1.05 + (0.35 if math.sin(a) > 0 else 0.08)) + f * (0.2 + 0.1 * math.sin(a))) * ER for a in [2 * math.pi * i / 16 for i in range(17)]]
-        bm_tube(o, ring, [ER * (0.32 if math.sin(2 * math.pi * i / 16) > 0 else 0.2) for i in range(17)], seg=8, mat=M['hl_skin'], cap0=False, cap1=False)
+        # the fold over the lid (heavy, no brow), round from corner to corner
+        A = [math.pi * (0.02 + 0.96 * i / 12) for i in range(13)]
+        bm_tube(o, [c + (x * math.cos(a) * 1.28 + y * (0.78 + 0.42 * math.sin(a)) + f * (0.05 + 0.2 * math.sin(a))) * ER for a in A],
+                [ER * (0.06 + 0.12 * math.sin(a) ** 1.5) for a in A], seg=8, mat=M['hl_skin'])
+        # the lower lid: a thin wet pink rim
+        A = [-math.pi * (0.06 + 0.88 * i / 10) for i in range(11)]
+        bm_tube(o, [c + (x * math.cos(a) * 1.1 + y * (-0.12 + 0.62 * math.sin(a)) + f * (0.55 - 0.1 * math.sin(a))) * ER for a in A],
+                [ER * (0.04 + 0.08 * math.sin(-a)) for a in A], seg=7, mat=M['hl_mouth'])
+        # and under it the skin, puffed (the shadow under the eye is the AO)
+        bm_tube(o, [c + (x * math.cos(a) * 1.25 + y * (-0.3 + 0.75 * math.sin(a)) + f * (0.25 - 0.05 * math.sin(a))) * ER for a in A],
+                [ER * (0.08 + 0.2 * math.sin(-a)) for a in A], seg=7, mat=M['hl_skin'])
     # the creature's eyes
     pal = [0xe8d84a, 0xb8c0b0, 0xd04030, 0x8ad0e0, 0xc89a40, 0x7de05a, 0xe0e0d0]
     for k, e in enumerate(B):
@@ -430,7 +462,7 @@ def eyes(crown, blobs):
         e['frame'] = frame; e['info'] = info; e['cell'] = 1 + k % 7
         if e['lid']:
             x, y, f = eye_frame(e['lid'])
-            lid_shell(get(e['lid'], 'hatLid'), JW[e['lid']], r, (x, y, f), 0.35, 1.8, M['hl_hat'], thick=0.16, seg=10)
+            lid_shell(get(e['lid'], 'hatLid'), JW[e['lid']], r, (x, y, f), 0.35, 1.8, M['hl_hat'], thick=0.07, seg=12, r_in=1.03)
     return out, B
 
 
@@ -446,6 +478,7 @@ def bands_split(bands):
             if abs(c.x) > 0.02 or r > 0.03: continue
             out_dir = Vector((-side, 0, 0))
             lp = lp if n.dot(out_dir) > 0 else lp[::-1]
+            for v in lp: v.co.x += side * 0.002          # (a hair apart, so the two hands never share a face)
             faces, a = H.dome_cap(bm, lp, out_dir, r * 0.9, rings=2)
             H.fix_winding(bm, faces, c - out_dir * 0.1)
         for f in bm.faces: f.material_index = M['hl_hat']
@@ -470,10 +503,17 @@ def cape_clean(cape):
     bmesh.ops.triangulate(cape, faces=[f for f in cape.faces if len(f.verts) > 4])
     bmesh.ops.recalc_face_normals(cape, faces=cape.faces)
     cape.normal_update()
+    # outside or lining: the cape is a U round her seen from above; the lining faces her (her middle line: over the
+    # torso, then down her legs, which lean back a little toward the ankles)
     for f in cape.faces:
-        c = f.calc_center_median(); axis = Vector((0, 0.06 - 0.2 * max(0, 2.4 - c.z), c.z))   # (her middle, the cape slanting back behind her legs)
-        out = c - Vector((0, -0.25 - 0.18 * max(0.0, 2.45 - c.z), c.z)); out.z = 0
-        f.material_index = M['hl_cape'] if f.normal.dot(out.normalized() if out.length > 1e-6 else Vector((0, -1, 0))) > -0.15 else M['hl_lining']
+        c = f.calc_center_median(); gz = 0.03 if c.z > 1.85 else 0.03 + 0.1 * (1.85 - c.z) / 1.6
+        out = c - Vector((0, -gz, c.z))
+        f.material_index = M['hl_cape'] if f.normal.dot(out.normalized()) > 0 else M['hl_lining']
+    # (a face whose neighbours are all the other side is the other side: no stray specks)
+    for _ in range(2):
+        for f in cape.faces:
+            nb = [g.material_index for e in f.edges for g in e.link_faces if g is not f]
+            if nb and sum(x != f.material_index for x in nb) >= 2: f.material_index = max(set(nb), key=nb.count)
     return cape
 
 
@@ -543,20 +583,20 @@ def textures():
         m = rng.random(px.shape[:2]) < p; px[m] = px[m] * 0.5 + hexrgb(col) * 0.5; return px
     S = 128
     n = 0.6 * _vnoise(S, 16, rng) + 0.4 * rng.random((S, S)); v = _veins(S, rng, n=7, width=1.6)
-    px = mix(0x8e1430, n, 0.16); px = px * (1 - 0.45 * v[:, :, None]) + hexrgb(0x3a0414) * 0.45 * v[:, :, None]
+    px = mix(0xb81c3c, n, 0.14); px = px * (1 - 0.5 * v[:, :, None]) + hexrgb(0x4a0418) * 0.5 * v[:, :, None]
     T['hl_hat'] = lib._image('T_hl_hat', np.clip(crust(px, 0.015, 0xd84a5a, rng), 0, 1))
     n = 0.6 * _vnoise(S, 8, rng) + 0.4 * rng.random((S, S)); v = _veins(S, rng, n=10, width=1.3, branch=5)
     px = mix(0xe28aa4, n, 0.1); px = px * (1 - 0.6 * v[:, :, None]) + hexrgb(0x7a2050) * 0.6 * v[:, :, None]
     T['hl_under'] = lib._image('T_hl_under', np.clip(crust(px, 0.01, 0xffc0d0, rng), 0, 1))
     S = 64
     n = 0.5 * _vnoise(S, 8, rng) + 0.5 * rng.random((S, S))
-    T['hl_skin'] = lib._image('T_hl_skin', np.clip(crust(mix(0xc4b8d6, n, 0.07), 0.02, 0x9a8aae, rng), 0, 1))
+    T['hl_skin'] = lib._image('T_hl_skin', np.clip(crust(mix(0xb9b0c8, n, 0.07), 0.02, 0x8e82a2, rng), 0, 1))
     n = 0.7 * _vnoise(S, 16, rng) + 0.3 * rng.random((S, S))
-    px = mix(0x5a1430, n, 0.12); y_, x_ = np.mgrid[0:S, 0:S]; px *= (0.94 + 0.06 * ((x_ + y_) % 4 < 2))[:, :, None]   # (satin twill)
+    px = mix(0x3e0c22, n, 0.12); y_, x_ = np.mgrid[0:S, 0:S]; px *= (0.94 + 0.06 * ((x_ + y_) % 4 < 2))[:, :, None]   # (satin twill)
     T['hl_suit'] = lib._image('T_hl_suit', np.clip(crust(px, 0.012, 0x2a0612, rng), 0, 1))
     S = 128
     n = 0.5 * _vnoise(S, 32, rng) + 0.5 * rng.random((S, S)); pores = rng.random((S, S)) < 0.04
-    px = mix(0x4a1026, n, 0.14); px[pores] *= 0.55
+    px = mix(0x2c0a1e, n, 0.16); px[pores] *= 0.55
     T['hl_cape'] = lib._image('T_hl_cape', np.clip(crust(px, 0.01, 0x8a2a44, rng), 0, 1))
     n = 0.6 * _vnoise(S, 8, rng) + 0.4 * rng.random((S, S)); v = _veins(S, rng, n=8, width=1.2, branch=6)
     px = mix(0xe896aa, n, 0.08); px = px * (1 - 0.55 * v[:, :, None]) + hexrgb(0x9a2a5a) * 0.55 * v[:, :, None]
@@ -572,6 +612,7 @@ def textures():
 
 
 EYE_CELLS = (4, 2)    # her eye (cell 0) and seven of the creature's
+EYE_R = 0.021         # her eyes: life size and a bit over
 
 
 def eye_atlas():
@@ -622,7 +663,7 @@ def eye_uv(o_bm, info, frame, cell):
         for l in f.loops:
             if l.vert not in info: continue
             u, w, fr = info[l.vert]
-            if fr < 0: u, w = 0.92, 0.92
+            if fr < 0: u, w = 0.84 + 0.08 * u, 0.84 + 0.08 * w
             l[uvl].uv = (cx + cw * (0.5 + 0.5 * u * 0.98), cy + ch * (0.5 + 0.5 * w * 0.98))
 
 
@@ -724,7 +765,7 @@ def cape_weights(bm):
     W = []
     for v in bm.verts:
         x, z = v.co.x, v.co.z
-        r = SK.ss(-0.05, 0.05, x); col = SK.ss(2.3, 2.47, z)
+        r = SK.ss(-0.05, 0.05, x); col = SK.ss(2.18, 2.47, z)   # (a long blend: the collar holds, the halves swing below it)
         w = {'spine': col}
         if r * (1 - col) > 1e-4: w['capeR'] = r * (1 - col)
         if (1 - r) * (1 - col) > 1e-4: w['capeL'] = (1 - r) * (1 - col)
@@ -767,8 +808,22 @@ def make_armature():
     return arm
 
 
+def fix_nm(bm):
+    """an edge shared by three faces (Tripo left a few) is split open, then every face is wound the same way"""
+    nm = [e for e in bm.edges if len(e.link_faces) > 2]
+    if nm: bmesh.ops.split_edges(bm, edges=nm)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+
+
 def skinned(name, bm, W, arm, mats):
     for f in bm.faces: f.smooth = True
+    bm.verts.index_update(); P0 = [v.co.copy() for v in bm.verts]
+    fix_nm(bm)
+    if len(bm.verts) != len(W):     # (a split edge made copies of its vertices: they take the weights of where they are)
+        kd = kdtree.KDTree(len(P0))
+        for i, p_ in enumerate(P0): kd.insert(p_, i)
+        kd.balance(); bm.verts.index_update()
+        W = [W[kd.find(v.co)[1]] for v in bm.verts]
     o = obj_from_bm(name, bm, [bpy.data.materials[m] for m in mats] if mats else ())
     W = SK.limit(W)
     for j in sorted({k for w in W for k in w}): o.vertex_groups.new(name=j)
@@ -781,6 +836,7 @@ def skinned(name, bm, W, arm, mats):
 
 def rigid(name, bm, joint, mats):
     for f in bm.faces: f.smooth = True
+    fix_nm(bm)
     o = obj_from_bm(name, bm, [bpy.data.materials[m] for m in mats] if mats else ())
     o['jf_joint'] = joint
     return o
@@ -793,17 +849,29 @@ SKIN_LABELS = ('head', 'neck', 'handR', 'handL', 'idxR', 'idxRb', 'finR', 'finRb
 def dominant(w): return max(w.items(), key=lambda e: e[1])[0]
 
 
+def neckline(co):
+    """> 0 inside her neckline: a deep V at the front down to below the socket, and everything over the base of her
+    neck. the line is cut into the mesh (V_CUT) so the suit stops on a clean edge"""
+    v = min(0.015 + (co.z - 2.1) * 0.5 - abs(co.x), (co.y - 0.06) * 2.0)
+    return max(v, co.z - 2.52)
+
+
+def cut_neckline(bm):
+    """draw the neckline into the torso as real edges (no tear): the skin and the suit meet on a straight line"""
+    torso = [f for f in bm.faces if 2.0 < f.calc_center_median().z < 2.62 and abs(f.calc_center_median().x) < 0.3 and f.material_index == M['hl_skin']]
+    H.field_cut(bm, neckline, Vector((0, 0, 2.6)), faces=torso, separate=False)
+    bm.normal_update()
+
+
 def paint_body(bm, W):
     """skin: her head and neck, a deep V down to below the socket, her hands. the suit: the rest, a burgundy satin.
     her shoes are black patent (tint), the heels and toe caps brass-dark"""
-    sock_y = None
     for f in bm.faces:
         if f.material_index != M['hl_skin']: continue
         c = f.calc_center_median(); vs = [v.index for v in f.verts]
         lab = dominant({k: sum(W[i].get(k, 0) for i in vs) for k in {k for i in vs for k in W[i]}})
         skin = lab in SKIN_LABELS
-        if lab == 'spine' and c.y > 0 and 2.1 < c.z < 2.56 and abs(c.x) < 0.015 + (c.z - 2.1) * 0.5: skin = True    # (the V)
-        if lab == 'spine' and c.z > 2.5: skin = True                                                              # (the base of her neck)
+        if lab in ('spine', 'neck', 'arm', 'armL') and neckline(c) > 0: skin = True
         f.material_index = M['hl_skin'] if skin else M['hl_suit']
     def tint(f, co):
         if f.material_index == M['hl_suit']:
@@ -824,7 +892,7 @@ def paint_hat(bm, part):
     round every socket; the feeler crimson all round"""
     X, Y, Z = hat_frame()
     for f in bm.faces:
-        if f.material_index not in (0, M['hl_hat']): continue
+        if f.material_index != M['hl_hat']: continue
         c = f.calc_center_median()
         if part == 'brim' and f.normal.dot(Y) < -0.25 and not (c.x > 1.05 and c.z < 2.55): f.material_index = M['hl_under']
         else: f.material_index = M['hl_hat']
@@ -857,18 +925,42 @@ def used_mats(bm):
     return [MATS[k] for k in ids]
 
 
+def lining_by_rays(cape, body, W):
+    """which side of the cape is the lining: a face whose outward ray meets her (her body without the arms, which hang
+    beside it) or the cape's other half is the lining; one that sees nothing is the outside"""
+    arms = ('arm', 'fore', 'hand', 'idx', 'fin', 'thumb')
+    P = [v.co.copy() for v in body.verts]
+    body.verts.index_update()
+    lab = lambda v: dominant(W[v.index]) if v.index < len(W) and W[v.index] else 'spine'
+    tris = [[v.index for v in f.verts] for f in body.faces if not any(lab(v).startswith(arms) for v in f.verts)]
+    tris += [[len(P) + v.index for v in f.verts] for f in cape.faces]
+    P += [v.co.copy() for v in cape.verts]
+    bvh = BVHTree.FromPolygons(P, tris)
+    cape.normal_update()
+    for f in cape.faces:
+        c = f.calc_center_median(); n = f.normal
+        hit = bvh.ray_cast(c + n * 0.004, n, 1.6)
+        gz = 0.03 if c.z > 1.85 else 0.03 + 0.1 * (1.85 - c.z) / 1.6; out = c - Vector((0, -gz, c.z))
+        inward = n.dot(out.normalized()) < -0.35          # (the lining by the front opening looks past her: it faces her middle line)
+        f.material_index = M['hl_lining'] if hit[0] is not None or inward else M['hl_cape']
+    for _ in range(3):
+        for f in cape.faces:
+            nb = [g.material_index for e in f.edges for g in e.link_faces if g is not f]
+            if nb and sum(x != f.material_index for x in nb) >= 2: f.material_index = max(set(nb), key=nb.count)
+
+
 def assemble(G, B):
     materials()
     arm = make_armature()
     objs = []
     # ---- the woman
     S = SK.segments(B, JW, gv)
-    body = G['body']; body.verts.index_update()
+    body = G['body']; cut_neckline(body); body.verts.index_update()
     W = SK.body_weights(body, S); W = SK.smooth(body, W, iters=2)
     paint_body(body, W); uv_box_bm(body)
     objs.append(skinned('part_spine__body', body, W, arm, used_mats(body)))
     # ---- the cape, its brooches (the yoke: the collar's brass)
-    cape = G['cape']; cape.verts.index_update(); Wc = cape_weights(cape); uv_box_bm(cape, tile=0.4)
+    cape = G['cape']; lining_by_rays(cape, body, W); cape.verts.index_update(); Wc = cape_weights(cape); uv_box_bm(cape, tile=0.4)
     tint_bm(cape, lambda f, co: (1.0, 1.0, 1.0) if f.material_index == M['hl_cape'] else (0.95, 0.9, 0.93))
     objs.append(skinned('part_capeR__cape', cape, Wc, arm, used_mats(cape)))
     yoke = bmesh.new()
@@ -916,10 +1008,10 @@ def assemble(G, B):
     return arm, objs
 
 
-def pose_scene(objs, pose, rest=None):
-    """put every part where the game would draw it for a pose (hl_clips channels)"""
+def pose_scene(objs, pose, bind=False):
+    """put every part where the game would draw it for a pose (hl_clips channels). bind = back to the rest it was made in"""
     import hl_clips
-    SM = SK.skin_mats(JD, hl_clips.fk(pose))
+    SM = {n: np.eye(4) for n in JD['order']} if bind else SK.skin_mats(JD, hl_clips.fk(pose))
     for o in objs:
         me = o.data
         if 'jf_rest' not in o: o['jf_rest'] = [x for v in me.vertices for x in v.co]
@@ -966,6 +1058,7 @@ def far_lod(objs, target=2000):
     out = []
     for j, fis in by.items():
         b2 = H.extract(bm, [bm.faces[i] for i in fis])
+        fix_nm(b2); uv_box_bm(b2, tile=0.5)
         cl_src = bm.loops.layers.float_color.get('tint'); cl_dst = b2.loops.layers.float_color.get('tint')
         o = obj_from_bm('part_%s__lod' % j, b2, list(me.materials))
         o['jf_joint'] = j; out.append(o)
@@ -1055,7 +1148,7 @@ def markers(G):
     put('hatMouthAt', 'hat', RING_C + fx * band_r(0) + up * 0.0)
     top = max((v.co for v in G['crown'].verts), key=lambda c: c.z)
     put('hatTopAt', 'hat', top)
-    ER = 0.018
+    ER = EYE_R
     fr = {e: eye_frame(e)[2] for e in ('eyeHR', 'eyeHL')}
     put('eyeHRAt', 'crown', JW['eyeHR'] + fr['eyeHR'] * ER); put('eyeHLAt', 'crown', JW['eyeHL'] + fr['eyeHL'] * ER)
     put('eyeAt', 'crown', (JW['eyeHR'] + JW['eyeHL']) / 2 + (fr['eyeHR'] + fr['eyeHL']) / 2 * ER)
@@ -1163,6 +1256,177 @@ def export(arm, objs, path):
     quantize_weights(path)
 
 
+# ================================================================================================ pictures
+SHEETS = os.path.join(ROOT, 'tools', 'blender', 'sheets')
+TMP = os.path.join(SHEETS, '_tmp_hl')
+OLD_GLB = arg('old') or os.path.join(ROOT, 'docs', 'story', 'cast_refs', '.old_c_hat_lord.glb')
+
+
+def stance():
+    import hl_clips
+    return hl_clips.P()
+
+
+def studio_eevee(H_=3.6, c=Vector((0, 0, 1.9)), bg=0x2a2233, key=1.0):
+    rpkit.clear_studio(); rpkit.world(bg, 0.55)
+    def light(e, loc, sz, col=(1, 1, 1)):
+        L = bpy.data.lights.new('pl', 'AREA'); L.energy = e * H_ * H_ * key; L.size = sz * H_; L.color = col
+        ob = bpy.data.objects.new('pl', L); link(ob); ob.location = c + Vector(loc) * H_
+        ob.rotation_euler = (c - ob.location).to_track_quat('-Z', 'Y').to_euler()
+    light(60, (0.9, 1.6, 1.0), 0.8); light(22, (-1.4, 0.8, 0.4), 1.0, (0.85, 0.9, 1.0)); light(55, (-0.5, -1.6, 0.9), 0.5, (1.0, 0.6, 0.75))
+
+
+def snap(path, target, deg, el, dist, lens=50, res=(360, 480), samples=8, quick=False):
+    """deg 0 = from her front (+y), 90 = from her right (+x); target in blender axes"""
+    sc = bpy.context.scene
+    if quick:
+        sc.render.engine = 'BLENDER_WORKBENCH'; sh = sc.display.shading; sh.light = 'STUDIO'; sh.color_type = 'TEXTURE'; sh.show_cavity = True
+    else: rpkit.eevee(samples)
+    sc.render.resolution_x, sc.render.resolution_y = res
+    a, e = math.radians(deg), math.radians(el)
+    pos = target + Vector((math.sin(a) * math.cos(e), math.cos(a) * math.cos(e), math.sin(e))) * dist
+    cam = link(bpy.data.objects.new('pc', bpy.data.cameras.new('pc'))); sc.camera = cam
+    cam.data.lens = lens; cam.data.clip_start = 0.02; cam.data.clip_end = 300
+    cam.location = pos; cam.rotation_euler = (target - pos).to_track_quat('-Z', 'Y').to_euler()
+    sc.render.filepath = path; bpy.ops.render.render(write_still=True)
+    bpy.data.objects.remove(cam, do_unlink=True)
+    return path
+
+
+def show(objs, on):
+    for o in objs: o.hide_render = not on
+
+
+def floor(r=4.0):
+    m = bpy.data.materials.get('jf_floor') or lib.mat('jf_floor', 0x3a2a40, rough=0.9)
+    bm = bmesh.new(); bmesh.ops.create_circle(bm, cap_ends=True, segments=48, radius=r)
+    o = obj_from_bm('jf_set_floor', bm, [m]); o.location.z = -0.004
+    return o
+
+
+def load_tripo_grey():
+    """the owner's Tripo model as it came (rest pose, grey), turned and scaled the way the rebuild is"""
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=H.SRC)
+    new = [o for o in bpy.data.objects if o not in before]
+    grey = lib.mat('jf_grey', 0xa8a8b0, rough=0.6)
+    keep = []
+    Mx = Matrix.Translation((H.K * H.T_CX, H.K * H.T_CY, 0)) @ Matrix.Scale(H.K, 4) @ Matrix.Rotation(math.pi, 4, 'Z')
+    for o in new:
+        if o.type == 'MESH' and o.name.startswith('tripo_node'):
+            o.modifiers.clear(); o.parent = None; o.matrix_world = Matrix.Identity(4); o.data.transform(Mx)
+            o.data.materials.clear(); o.data.materials.append(grey); o.name = 'jf_tripo'; keep.append(o)
+    for o in new:
+        if o not in keep: bpy.data.objects.remove(o, do_unlink=True)
+    return keep
+
+
+def load_old():
+    if not os.path.exists(OLD_GLB): print('JF_WARN no old model at', OLD_GLB); return []
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=OLD_GLB)
+    new = [o for o in bpy.data.objects if o not in before]
+    out = []
+    for o in new:
+        if o.type == 'MESH' and '__lod' not in o.name: out.append(o)
+    for o in new:
+        if o.type == 'MESH' and '__lod' in o.name: o.hide_render = True
+    for o in out:     # (the importer names the colour layer 'Color': show it the way the game multiplies it in)
+        if o.data.color_attributes:
+            ca = o.data.color_attributes[0]; ca.name = 'Col'
+    rpkit.colour_preview([m for o in out for m in o.data.materials if m and m.use_nodes and 'Principled BSDF' in m.node_tree.nodes])
+    return out
+
+
+def sheet_compare(objs, quick=False):
+    """three columns: the owner's Tripo model, the rebuild (in her stance), the code-built model it replaces"""
+    os.makedirs(TMP, exist_ok=True)
+    pose_scene(objs, stance())
+    tri = load_tripo_grey(); old = load_old()
+    fl = floor()
+    studio_eevee()
+    views = (('front', 0, 6), ('three quarter', 35, 8), ('her right', 90, 6), ('back', 180, 6))
+    sets = (('Tripo (the owner, as made)', tri), ('rebuilt', objs), ('the code-built model it replaces', old))
+    ps = []; labels = []
+    for vn, deg, el in views:
+        for sn, group in sets:
+            for _, g in sets: show(g, g is group)
+            ps.append(snap(os.path.join(TMP, 'cmp_%s_%d.png' % (sn[:4], deg)), Vector((0, 0.1, 1.95)), deg, el, 8.6, lens=50, res=(420, 560), quick=quick))
+            labels.append('%s: %s' % (sn, vn))
+    for _, g in sets: show(g, True)
+    for o in tri + old + [fl]:
+        try: bpy.data.objects.remove(o, do_unlink=True)
+        except ReferenceError: pass
+    return rpkit.contact(ps, os.path.join(SHEETS, 'c_hat_lord_tripo_compare'), 'MADAM CHAIR: the owner\'s Tripo model | rebuilt (skinned, painted, her stance) | the code-built model it replaces', 3, labels)
+
+
+def sheet_close(objs, G, quick=False):
+    os.makedirs(TMP, exist_ok=True)
+    import hl_clips
+    studio_eevee(1.4, JW['crown'])
+    V = []
+    def at(n, local=(0, 0, 0)): return jmat(n) @ gv(*local)
+    pose_scene(objs, stance())
+    eyes = (JW['eyeHR'] + JW['eyeHL']) / 2
+    shots = [('HER eyes: the brown pair in the crown', 'rest', eyes, 8, 4, 0.75, 70), ('her right eye', 'rest', JW['eyeHR'], 14, 4, 0.3, 70),
+             ('the hat\'s fingers laced over her face', 'rest', JW['head'] + Vector((0, 0.08, 0.16)), 18, -4, 0.85, 70),
+             ('the empty socket: brass lip, real depth', 'rest', G['socket_c'], 12, 10, 0.55, 70),
+             ('the band open: the ring of teeth (hl_lunge 1.0 s)', ('hl_lunge', 1.0), None, 55, 10, 1.9, 50),
+             ('her right hand', 'rest', JW['handR'] + Vector((0.06, 0, -0.2)), 50, 5, 0.95, 60),
+             ('one finger: "not carried." (hl_lunge 1.8 s)', ('hl_lunge', 1.8), None, 330, 5, 1.4, 50),
+             ('the cape from behind', 'rest', Vector((0, -0.4, 1.4)), 180, 8, 5.2, 50),
+             ('the eyeless reveal (hl_reveal 3.0 s)', ('hl_reveal', 3.0), None, 10, -5, 1.3, 60),
+             ('the crown\'s eyes, her right', 'rest', JW['growthA'], 70, 15, 1.4, 60),
+             ('the feeler', 'rest', JW['feelerB'], 35, 5, 1.6, 50), ('the brim\'s underside, from below', 'rest', JW['hat'], 10, -45, 3.4, 40)]
+    ps = []
+    for i, (lab, pose, tgt, deg, el, dist, lens) in enumerate(shots):
+        if pose != 'rest':
+            pose_scene(objs, hl_clips.evaluate(*pose))
+            SM = SK.skin_mats(JD, hl_clips.fk(hl_clips.evaluate(*pose)))
+            def wp(n, p=Vector()):
+                g = gof(JW[n] + p); M_ = SM[n]; q = M_ @ np.array([g[0], g[1], g[2], 1.0]); return gv(q[0], q[1], q[2])
+            tgt = {'hl_lunge': wp('crown') if 'teeth' in lab else wp('handL'), 'hl_reveal': wp('head', Vector((0, 0.06, 0.16)))}[pose[0]]
+        ps.append(snap(os.path.join(TMP, 'close_%d.png' % i), tgt, deg, el, dist, lens=lens, res=(420, 400), quick=quick))
+        if pose != 'rest': pose_scene(objs, stance())
+    return rpkit.contact(ps, os.path.join(SHEETS, 'c_hat_lord_tripo_closeups'), 'MADAM CHAIR rebuilt from the Tripo model: close up', 4, [s[0] for s in shots])
+
+
+def check_clips(objs, fps=60):
+    """every clip, frame by frame as the game plays it: the biggest one-frame jump of any vertex (a pop), and the worst
+    squash and stretch of the skin's edges (a collapsing knee or a candy-wrapper wrist shows as an edge gone short)"""
+    import hl_clips
+    sk = [o for o in objs if 'jf_w' in o]
+    data = []
+    for o in sk:
+        me = o.data; R = np.array([v.co[:] for v in me.vertices]); Pg = np.c_[R[:, 0], R[:, 2], -R[:, 1]]
+        E = np.array([e.vertices[:] for e in me.edges]); L0 = np.linalg.norm(Pg[E[:, 0]] - Pg[E[:, 1]], axis=1)
+        data.append((o.name, Pg, json.loads(o['jf_w']), E, L0))
+    rows = []
+    for name in hl_clips.CLIPS:
+        T = hl_clips.duration(name); n = int(T * fps) + 1
+        prev = None; worst = (0, 0, ''); squash = (9, 0, ''); stretch = (0, 0, '')
+        for k in range(n):
+            t = k / fps; SM = SK.skin_mats(JD, hl_clips.fk(hl_clips.evaluate(name, t)))
+            cur = []
+            for oname, Pg, W, E, L0 in data:
+                Q = SK.pose_points(Pg, W, SM); cur.append(Q)
+                if oname in ('part_spine__body', 'part_capeR__cape'):
+                    L = np.linalg.norm(Q[E[:, 0]] - Q[E[:, 1]], axis=1); r = L / np.maximum(L0, 1e-6); m = L0 > 0.004
+                    rm = np.where(m, r, 1.0); ilo, ihi = rm.argmin(), rm.argmax(); lo, hi = rm[ilo], rm[ihi]
+                    def where(ei): a_, b_ = E[ei]; w_ = W[a_]; return '%s@%s' % (max(w_, key=w_.get), [round(float(x), 2) for x in (Pg[a_] + Pg[b_]) / 2])
+                    if lo < squash[0]: squash = (lo, t, oname + ' ' + where(ilo))
+                    if hi > stretch[0]: stretch = (hi, t, oname + ' ' + where(ihi))
+            if prev is not None:
+                for (oname, *_), a, b in zip(data, prev, cur):
+                    d = np.linalg.norm(a - b, axis=1).max()
+                    if d > worst[0]: worst = (d, t, oname)
+            prev = cur
+        rows.append((name, worst, squash, stretch))
+        print('JF_CLIPCHECK %-15s biggest step %.3f m at %.2f s (%s) | shortest edge %.0f%% at %.2f s (%s) | longest %.0f%% at %.2f s (%s)' % (
+            name, worst[0], worst[1], worst[2][5:], squash[0] * 100, squash[1], squash[2][5:], stretch[0] * 100, stretch[1], stretch[2][5:]), flush=True)
+    return rows
+
+
 def main():
     for o in list(bpy.data.objects): bpy.data.objects.remove(o, do_unlink=True)
     import hl_fit
@@ -1173,15 +1437,30 @@ def main():
     tris = sum(len(o.data.polygons) for o in objs)
     print('JF_PARTS_N', len(objs), 'faces', tris)
     for o in objs: print('   JF_PART %-28s %6d tris  mats %s' % (o.name, sum(len(p.vertices) - 2 for p in o.data.polygons), [m.name for m in o.data.materials]))
+    if arg('check-clips'): check_clips(objs); lap('clip check')
+    if arg('only-check'): return
     mk = markers(G)
     print('JF_MK', {k: (j, r4(p)) for k, (j, p) in mk.items()})
     if not arg('no-ao'):
         rpkit.bake_ao(objs, dist=0.25, samples=int(arg('ao-samples') or 12), lo=0.5); lap('ao')
     lods = far_lod(objs) if not arg('no-lod') else []
     for o in objs + lods: rpkit.final_colour(o)
+    if arg('qa'):
+        res = rpkit.qa('whole', objs, eps=0.0008, tol=0.006, quiet=not arg('qa-warn'))
+        if lods: res2 = rpkit.qa('far', lods, eps=0.0008, tol=0.04, quiet=not arg('qa-warn'))
+        lap('qa')
     info = parts_json(G, objs + lods, mk)
     print('JF_SIZE height', info['height'], 'with hat', info['heightWithHat'], 'crown top', info['crownTop'], 'brim', info['brimSpan'])
     if arg('blend'): bpy.ops.wm.save_as_mainfile(filepath=arg('blend'))
+    sheets = [] if not arg('sheet') else arg('sheet').split(',')
+    if sheets:
+        rpkit.colour_preview([bpy.data.materials[m] for m in MATS])
+        for o in lods: o.hide_render = True
+        if 'compare' in sheets: print('JF_SHEET', sheet_compare([o for o in objs], quick=bool(arg('quick')))); lap('compare')
+        if 'close' in sheets: print('JF_SHEET', sheet_close(objs, G, quick=bool(arg('quick')))); lap('close')
+        pose_scene(objs, {}, bind=True)
+        rpkit.colour_preview([bpy.data.materials[m] for m in MATS], on=False)
+        for o in lods: o.hide_render = False
     if not arg('no-export'):
         if os.path.exists(OUT_PARTS):
             try:

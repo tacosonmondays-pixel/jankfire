@@ -212,7 +212,7 @@ def stats(bm):
 
 
 # ------------------------------------------------------------------------------------------------ cutting along a field
-def field_cut(bm, fn, seed_co, faces=None):
+def field_cut(bm, fn, seed_co, faces=None, separate=True):
     """split the mesh where fn(co) (a scalar, continuous) crosses zero: crossing edges are split, crossed faces
     are split between their two new verts, then the side holding the face nearest seed_co (A) is torn from the rest
     (B). returns (A, B, cut_edges). faces: only these are cut (None = all)"""
@@ -237,6 +237,7 @@ def field_cut(bm, fn, seed_co, faces=None):
             cut += [e for e in f.edges if set(e.verts) == set(nv)]
     cut = list({e for e in cut if e is not None and e.is_valid})
     bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 4])
+    if not separate: return None, None, cut      # (only draw the line into the mesh: a clean edge for a material change)
     cutset = set(cut)
     seed = min(bm.faces, key=lambda f: (f.calc_center_median() - seed_co).length)
     A = {seed}; st = [seed]

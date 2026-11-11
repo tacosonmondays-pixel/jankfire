@@ -151,7 +151,7 @@ const ROOT = path.join(__dirname, '..', '..', '..');
       ['the reveal: no eyes', { clip: 'hl_reveal', t: 2.8, look: null }, 'faceAt', [0, 0.08, 0], 10, 2.0, -0.16], ['the reveal, from her left', { clip: 'hl_reveal', t: 2.8, look: null }, 'faceAt', [0, 0.1, 0], -58, 2.6, -0.1],
       ['her right hand at rest', {}, 'palmR', [0, -0.1, 0], 50, 1.5, 0.05], ['the offer: palm up', { clip: 'hl_offer', t: 2.0, look: you }, 'palmR', [0, 0.02, 0], 55, 1.7, 0.3],
       ['one raised finger', { clip: 'hl_lunge', t: 1.8, look: you }, 'fingerTipL', [0, -0.08, 0], -35, 1.6, 0.0], ['the chest: the empty socket', {}, 'socketAt', [0.04, 0, 0], 8, 1.5, 0.05],
-      ['the bar, a hook, the collar', {}, [0.3, 2.2, 0.05], Z, 40, 2.7, 0.3], ['the cape from behind', {}, [0, 1.4, 0], Z, 180, 8.4, 0.08],
+      ['the collar: its star brooches, the lapels', {}, [0.12, 2.38, -0.08], Z, 30, 1.6, 0.2], ['the cape from behind', {}, [0, 1.4, 0], Z, 180, 8.4, 0.08],
       ['the low wing and the feeler', {}, 'brimTipR', [-0.15, 0, 0], 30, 2.6, -0.1], ['the far model, close up', { far: true }, [0, 1.75, 0], Z, 25, 9.4, 0.07]], 6, 3, 'hl_game_closeups');
   }
   const POSES = [['hl_idle', 1.75, 24, 9.2, 1.75], ['hl_walk', 0.35, 62, 9.2, 1.6], ['hl_duck', 2.2, 55, 9.2, 1.5], ['hl_talk', 1.5, 28, 6.4, 2.4], ['hl_offer', 1.9, 40, 7.4, 1.9], ['hl_bow', 1.3, 62, 8.0, 1.9], ['hl_lunge', 0.72, 60, 8.2, 2.0], ['hl_lunge', 1.7, 58, 8.2, 2.0],

@@ -42,8 +42,8 @@ def segments(B, J, gv):
         seg('thumb' + side, hand, t[0], t[1], 0.025)
         for a, b in zip(t[1:], t[2:]): seg('thumb' + side, hand, a, b, 0.0, first=False)
         leg, knee = 'leg' + side, 'knee' + side
-        seg(leg, 'body', J[leg], J[knee], 0.09)
-        seg(knee, leg, J[knee], g(B[s + 'Foot'][0]), 0.07)
+        seg(leg, 'body', J[leg], J[knee], 0.12)
+        seg(knee, leg, J[knee], g(B[s + 'Foot'][0]), 0.095)
         seg(knee, leg, g(B[s + 'Foot'][0]), g(B[s + 'ToeBase'][0]), 0.0, first=False)
         seg(knee, leg, g(B[s + 'ToeBase'][0]), g(B[s + 'Toe_End'][1]), 0.0, first=False)
     return S
@@ -53,6 +53,16 @@ def _segdist(P, a, b):
     ab = b - a; L2 = max(1e-12, ab.dot(ab))
     t = np.clip(((P - a) @ ab) / L2, 0, 1)
     return np.linalg.norm(P - (a + t[:, None] * ab), axis=1)
+
+
+REACH = (('arm', 0.1), ('fore', 0.075), ('hand', 0.07), ('thumb', 0.035), ('idx', 0.028), ('fin', 0.05), ('leg', 0.13), ('knee', 0.1), ('neck', 0.09), ('head', 0.16), ('spine', 0.3))
+
+
+def reach(label):
+    """how far from a limb's axis its own skin can be (the forward blend into a child is only for these)"""
+    for k, r in REACH:
+        if label.startswith(k): return r
+    return 0.1
 
 
 def body_weights(bm, S):
@@ -76,6 +86,7 @@ def body_weights(bm, S):
         for c_ in kids.get(L, []):
             if (v - c_['a']).length > c_['h'] * 3 + 0.04: continue
             u = (c_['b'] - c_['a']).normalized(); t = (v - c_['a']).dot(u)
+            if ((v - c_['a']) - u * t).length > reach(c_['label']): continue    # (only the limb itself, not the chest beside a shoulder)
             if t > -c_['h']:
                 c = ss(-c_['h'], c_['h'], t)
                 w = {kk: ww * (1 - c) for kk, ww in w.items()}; w[c_['label']] = w.get(c_['label'], 0) + c

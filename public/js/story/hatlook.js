@@ -68,11 +68,11 @@ export const EXTRA_NAMES = EXTRA.map((e) => e[0]);
 // prints them as JF_MK_JS; tests/story/hat_lord.test.mjs checks they still agree). eyeAt / eyeHRAt / eyeHLAt = HER eyes, on the hat: what a camera or a look-at should treat as
 // her eyes. weakA..E = the creature's five eyes. socketAt = the empty heart socket.
 const MK = {
-  mouthAt: ['head', 0.0055, 0.0582, -0.1326], faceAt: ['head', 0.0, 0.1599, -0.1597], socketAt: ['spine', 0.0055, 0.4001, -0.1817],
+  mouthAt: ['head', 0.0055, 0.0583, -0.1328], faceAt: ['head', 0.0, 0.1599, -0.1597], socketAt: ['spine', 0.0055, 0.4001, -0.1817],
   palmR: ['handR', -0.0193, -0.1239, -0.0146], fingerTipR: ['idxRb', 0.0, -0.2, 0.0001], palmL: ['handL', 0.0191, -0.1251, -0.0153], fingerTipL: ['idxLb', 0.0, -0.2, 0.0],
   feelerTip: ['feelerB', 0.368, -0.0012, 0.0191], brimTipR: ['feeler', 0.0, 0.0, 0.0], brimTipL: ['brimLb', -0.8311, -0.0268, 0.2092],
   hatMouthAt: ['hat', 0.008, 0.1435, -0.311], hatTopAt: ['hat', 0.0035, 0.403, 0.1132],
-  eyeAt: ['crown', 0.076, 0.1342, -0.8972], eyeHRAt: ['crown', 0.1204, 0.1405, -0.887], eyeHLAt: ['crown', 0.0315, 0.1279, -0.9074],
+  eyeAt: ['crown', 0.0766, 0.1344, -0.9002], eyeHRAt: ['crown', 0.1211, 0.1407, -0.89], eyeHLAt: ['crown', 0.0321, 0.128, -0.9104],
   weakA: ['lidCa', 0.0, 0.0, -0.1049], weakB: ['lidCb', 0.0, 0.0, -0.074], weakC: ['lidCc', 0.0, 0.0, -0.0639], weakD: ['lidCd', 0.0, 0.0, -0.0932],
   weakE: ['lidCe', 0.0, 0.0, -0.092],
 };
