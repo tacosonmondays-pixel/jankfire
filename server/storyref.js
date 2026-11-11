@@ -12,6 +12,7 @@
 import { WEAPONS } from '../shared/weapons.js';
 import { installStoryBoss } from './storyboss.js';
 import { installStoryTrain } from './storytrain.js'; // REVENUE PROTECTION: the train fight, and the Blood Drive
+import { installStoryEnc } from './storyenc.js'; // Act I encounters: desk war-rigs that drive and ram, interns' business cards, leaping stomach-dogs
 
 export const STORY_SIDE = 'you';
 const sideOf = (p) => (p.sk ? p.sk.side || 'enemy' : STORY_SIDE);
@@ -65,4 +66,5 @@ export function installStoryRef(Room) {
   };
   installStoryBoss(Room);
   installStoryTrain(Room);
+  installStoryEnc(Room);
 }

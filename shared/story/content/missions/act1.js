@@ -154,9 +154,9 @@ export const MISSIONS_ACT1 = {
       { id: "brief", text: "get the soup from sharon", goal: { type: "talk", who: "sharon", talk: "pot" }, marker: "bottom:soup_kitchen", scene: "p2_sauce_run" },
       { id: "car", text: "steal a car", goal: { type: "enterCar" } },
       { id: "pot", text: "load the soup pot", goal: { type: "pickup", item: "soup_pot" }, marker: "bottom:soup_kitchen" },
-      { id: "drive", text: "drive the soup to the gut border (don't spill it)", goal: { type: "reach", zone: "commute:ring_road" }, talk: "car_ride", fail: { type: "flag", flag: "soup_spilled" } },
+      { id: "drive", text: "drive the soup to the gut border (don't spill it)", goal: { type: "reach", zone: "commute:ring_road" }, talk: "car_ride", notes: "the slosh meter (public/js/story/encounters.js): a full spill sets soup_spilled; the run goes on with a pot of nothing (count_empty below)" },
       { id: "ambush", text: "survive the unpaid", goal: { type: "survive", secs: 90 }, talk: "eotm_robbery" },
-      { id: "deliver", text: "deliver the soup to the gristle & sons trade post", goal: { type: "deliver", item: "soup_pot", zone: "gut:border" }, marker: "gut:border", talk: "trade_post" },
+      { id: "deliver", text: "deliver the soup to the gristle & sons trade post", goal: { type: "deliver", item: "soup_pot", zone: "gut:border" }, marker: "gut:border", talk: "trade_post", notes: "the trade post talk opens when you get there; a spilled pot goes the 'empty' way" },
     ],
     talks: {
       pot: {
@@ -191,10 +191,16 @@ export const MISSIONS_ACT1 = {
       trade_post: {
         with: "sister_agenda", cam: "overShoulder",
         nodes: {
-          start: { say: ["*A trade post on the Gut border, where the last lamp post has grown a fingernail. A turnstile grown over with skin, a counter, a robed Choir clerk with a stretched smile who sings her words on one note. Her staff lanyard is still on, under the robe.*", "*sung* the soup, the soup, the tomato soup... *not sung* thank you. one pot. we'll count it.", "*She tips a little out and tastes it with a ladle that has a tongue.*"], opts: [["what's it for?", "for", { if: "flag:asked_sharon_soup" }], ["is this all the medicine?", "short"], ["*take the medicine*", "take"]] },
+          start: { branch: [["flag:soup_spilled", "empty"], [null, "count"]] },
+          count: { say: ["*A trade post on the Gut border, where the last lamp post has grown a fingernail. A turnstile grown over with skin, a counter, a robed Choir clerk with a stretched smile who sings her words on one note. Her staff lanyard is still on, under the robe.*", "*sung* the soup, the soup, the tomato soup... *not sung* thank you. one pot. we'll count it.", "*She tips a little out and tastes it with a ladle that has a tongue.*"], opts: [["what's it for?", "for", { if: "flag:asked_sharon_soup" }], ["is this all the medicine?", "short"], ["*take the medicine*", "take"]] },
           for: { say: ["*sung* for the mouths, for the mouths... *not sung* sorry. i'm not allowed to say. it's a supply chain thing."], next: "take" },
           short: { say: ["it's... one box is for a 'growth adjustment'. it's empty. i'm sorry. it's policy. i don't write the policy. i write it down."], do: ["flag:medicine_short"], next: "take" },
           take: { say: ["*A crate of medicine slides across the counter.*", "same time next week. the tomato. the bishop likes the tomato.", "*Somewhere behind the counter, a long way in, a truck is reversing. It beeps. She sings a little louder until it stops.*", "*Lumps is looking past her, deeper into the Gut, at the pink streets.*", ["lumps", "...it's sunday tomorrow."]], do: ["give:medicine_crate"] },
+          empty: { say: ["*The trade post on the Gut border. The robed Choir clerk takes the lid off the pot and looks in. She tips it. Nothing comes out. She tips it further.*", "*sung* the soup, the soup, the tomato... *not sung* ...this is a pot.", "i can count soup. i can't count a pot. there's no column for a pot."], opts: [["it was soup.", "was"], ["there were interns.", "interns"], ["*say nothing*", "silent"]] },
+          was: { say: ["everything was something. i can't count was.", "*She writes it down anyway, very neatly: one (1) pot. empty.*"], next: "halved" },
+          interns: { say: ["there are always interns. it's a growth sector.", "*She writes it down: one (1) pot. interns.*"], next: "halved" },
+          silent: { say: ["*She waits. You keep not saying it. She writes something down that takes longer than 'empty'.*"], next: "halved" },
+          halved: { say: ["*One box of medicine slides across the counter. She looks at it, then takes half of what's inside back out.*", "policy's per litre. i don't write the policy. i write it down.", "*Lumps looks at the box for a long time. Forty people's medicine, minus whatever half is.*", ["lumps", "...sharon's going to know which one."]], do: ["flag:medicine_short", "coupons:-100"] },
         },
       },
     },
