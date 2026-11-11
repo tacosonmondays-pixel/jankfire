@@ -162,7 +162,7 @@ export function waterSplash(x, y, z, k, ride, tint = 0xffffff) {
 // cools to red, leaves rolling smoke), one big in the middle and a few smaller ones off-centre a beat later
 function boomBook() { const f = get(); if (!f.boom) f.boom = new Flipbook('boom.png', 8, 40, { sort: true, soft: true, rgb: true, inkK: 0 }); return f.boom; }
 export function boomSprite(p, radius = 4) {
-  const F = boomBook(), R = (k) => (Math.random() * 2 - 1) * k, s = Math.max(3.3, radius * 2.5);
+  const F = boomBook(), R = (k) => (Math.random() * 2 - 1) * k, s = Math.max(4.4, radius * 3.3);
   F.spawn({ p: [p[0], p[1] + s * 0.12, p[2]], v: [0, 0.5, 0], s0: s * 0.9, s1: s * 1.25, life: 1.5, a: 1, rot: R(3.14) });
   for (let i = 0; i < 3; i++) F.spawn({ p: [p[0] + R(radius * 0.4), p[1] + Math.abs(R(radius * 0.35)), p[2] + R(radius * 0.4)], v: [R(0.6), 0.6 + Math.random() * 0.6, R(0.6)], s0: s * 0.45, s1: s * 0.8, life: 1.25 + Math.random() * 0.5, a: 0.95, rot: R(3.14), spin: R(0.2) });
 }

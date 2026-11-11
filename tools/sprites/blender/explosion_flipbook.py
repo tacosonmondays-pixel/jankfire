@@ -80,9 +80,9 @@ sc.render.use_persistent_data = True; sc.render.film_transparent = True; sc.rend
 sc.render.image_settings.file_format = 'PNG'; sc.render.image_settings.color_mode = 'RGBA'; sc.view_settings.view_transform = 'Standard'
 sheet = np.zeros((N * CELL, N * CELL, 4), dtype=np.float32)
 edgefade = np.clip((0.5 - np.abs(np.linspace(-0.5, 0.5, CELL))) * 12, 0, 1); edgefade = edgefade[None, :] * edgefade[:, None]
-for k in range(FR):
+for k in range(FR - 2):  # starts two frames in: the first two are an empty dot
     if ONLY and k not in ONLY: continue
-    sc.frame_set(1 + k); path = os.path.join(tmp, f'f{k:02d}.png'); sc.render.filepath = path
+    sc.frame_set(3 + k); path = os.path.join(tmp, f'f{k:02d}.png'); sc.render.filepath = path
     bpy.ops.render.render(write_still=True)
     img = bpy.data.images.load(path); px = np.array(img.pixels[:], dtype=np.float32).reshape(CELL, CELL, 4) * edgefade[:, :, None]; bpy.data.images.remove(img)
     r_, c_ = k // N, k % N; sheet[(N - 1 - r_) * CELL:(N - r_) * CELL, c_ * CELL:(c_ + 1) * CELL] = px
