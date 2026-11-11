@@ -79,6 +79,8 @@ def tunnel_atlas():
                                  ('lensg', 0x0c2a1c, 0.12, 0.0, 0.12), ('yellow', 0xd6a312, 0.5, 0.0, 0.08), ('moss', 0x3a4a2a, 0.9, 0.0, 0.2), ('efflo', 0xd8d4c8, 0.9, 0.0, 0.12), ('cable', 0x18181c, 0.6, 0.0, 0.12), ('void', 0x040304, 1.0, 0.0, 0.0)):
         A.put(nm, 16, 16, col, rough=ro, metal=me, var=var, seed=240 + len(nm) + (col & 15))
     rs = A.sub('rust'); rs[rng(250).random((16, 16)) < 0.15] = hexrgb(0x2a1810)
+    bp = A.put('plate', 16, 16, 0x5a3420, rough=0.85, metal=0.2, var=0.2, seed=251)                    # a baseplate from above: two bolts each side of the rail's foot
+    for (x_, y_) in ((2, 3), (2, 11), (12, 3), (12, 11)): bp[y_:y_ + 2, x_:x_ + 2] = hexrgb(0x1c1410); bp[y_, x_] = hexrgb(0x8a6a50)
     return A
 
 
@@ -155,7 +157,7 @@ def lining(name, niche=False, seed=0.0):
         ast = sorted([q for q in ast if not (at_ - 0.07 < q < ab + 0.07)] + [at_, (at_ + ab) / 2, ab]); zst = sorted([z for z in zst if not (NZ0 - 0.3 < z < NZ1 + 0.3)] + [NZ0, NZ1])
         hole = (at_, ab, NZ0, NZ1)
     barrel(b, ast, zst, hole, seed)
-    header_ring(b, ast, 0.0, 0.36, 0.07, seed)
+    header_ring(b, ast, 0.0, 0.46, 0.11, seed)
     if niche:
         k = b; xb = -(R + 0.04); arc = [q for q in ast if at_ - 1e-6 <= q <= ab + 1e-6]
         dark = lambda q: tuple(c * 0.62 for c in soot(a_of_y(min(NT, max(NB, q.y))), q.z, seed))
@@ -192,6 +194,13 @@ def phone(k, at, facing=1):
     return k
 
 
+RAIL_PROF = None
+
+
+def rail_prof(ST):
+    return [(-0.08, ST), (0.08, ST), (0.08, ST + 0.013), (0.054, ST + 0.025), (0.054, 0.16), (0.062, 0.168), (0.062, 0.205), (0.05, RAIL_Y), (-0.05, RAIL_Y), (-0.062, 0.205), (-0.062, 0.168), (-0.054, 0.16), (-0.054, ST + 0.025), (-0.08, ST + 0.013)]
+
+
 def track(name='tk_track'):
     b = KT(name); r = Rnd(301); BT = 0.05; ST = 0.085; XB = 1.9; XC = 2.3; XW = math.sqrt(R * R - CY * CY) + 0.08
     # ballast: a low bed with shoulders, laid in squares so the cell is not stretched
@@ -210,22 +219,19 @@ def track(name='tk_track'):
         for j in range(6):
             dy = r.u(0.0, 0.012)
             b.put(bx(sx * XC, 0.0, j + 0.01, sx * XW, 0.035 + dy, j + 0.99, omit=('-y', '+x' if sx > 0 else '-x')), 'conc', r.u(0.6, 0.85), 'e')
-    for i in range(28):   # stones that have rolled out onto the slabs
-        sx = r.sign(); x = sx * r.u(XC + 0.02, XC + 0.5); z = r.u(0.15, SEG - 0.15); s_ = r.u(0.03, 0.07)
-        b.put(xf(p_prism(4, s_, s_ * 0.7, s_ * 0.5, dome=s_ * 0.2), T(x, 0.04, z) @ RX(-math.pi / 2) @ RZ(r.u(0, 3))), 'ballast', r.u(0.6, 1.0))
+    for i in range(12):   # stones that have rolled out onto the slabs
+        sx = r.sign(); x = sx * r.u(XC + 0.02, XC + 0.5); z = r.u(0.15, SEG - 0.15); s_ = r.u(0.04, 0.085); a0 = r.u(0, 2)
+        b.put(p_loft([[V3((x + s_ * math.sin(a0 + 2.1 * j), 0.035, z + s_ * math.cos(a0 + 2.1 * j))) for j in range(3)]], tip1=V3((x, 0.035 + s_ * 0.8, z))), 'ballast', r.u(0.6, 1.0))
     # sleepers, baseplates, the rails
     for i in range(8):
         z = 0.375 + 0.75 * i; skew = r.u(-0.015, 0.015)
         b.put(xf(bx(-1.3, 0.0, -0.125, 1.3, ST, 0.125, omit=('-y',)), T(r.u(-0.03, 0.03), 0, z) @ RY(skew)), 'slp%d' % r.i(0, 2), r.u(0.7, 1.0), 'e')
-        for sx in (-1, 1):
-            b.box(sx * GAUGE - 0.15, ST, z - 0.1, sx * GAUGE + 0.15, ST + 0.014, z + 0.1, 'rust', 0.75, omit=('-y',))
-            for dx in (-0.115, 0.115): b.bolt((sx * GAUGE + dx, ST + 0.014, z + (0.05 if dx > 0 else -0.05)), (0, 1, 0), 'steel', 0.022, 0.018, 0.9, 5)
-    prof = [(-0.08, ST), (0.08, ST), (0.08, ST + 0.013), (0.054, ST + 0.025), (0.054, 0.16), (0.062, 0.168), (0.062, 0.205), (0.05, RAIL_Y), (-0.05, RAIL_Y), (-0.062, 0.205), (-0.062, 0.168), (-0.054, 0.16), (-0.054, ST + 0.025), (-0.08, ST + 0.013)]
+        for sx in (-1, 1): b.box(sx * GAUGE - 0.15, ST, z - 0.1, sx * GAUGE + 0.15, ST + 0.014, z + 0.1, 'rust', 0.75, omit=('-y',), faces={'+y': 'plate'})
+    prof = rail_prof(ST)
     for sx in (-1, 1):
         n = len(prof)
-        for i in range(n):
+        for i in range(1, n):   # (not its underside)
             (xa, ya), (xb_, yb) = prof[i], prof[(i + 1) % n]
-            if i == 0: continue   # (its underside)
             q = [V3((sx * GAUGE + xa, ya, 0)), V3((sx * GAUGE + xb_, yb, 0)), V3((sx * GAUGE + xb_, yb, SEG)), V3((sx * GAUGE + xa, ya, SEG))]
             top = i == 7
             b.put((q, [(0, 1, 2, 3)], [[(0, 0), (0.1, 0), (0.1, SEG), (0, SEG)]]), 'railtop' if top else 'rust', 0.75 if top else (0.9 if i in (6, 8) else 0.7))
@@ -233,13 +239,30 @@ def track(name='tk_track'):
     x0, x1 = -XC - 0.5, -XC - 0.14
     b.box(x0, 0.03, 0, x1, 0.2, SEG, 'conc', 0.7, 'u', seg=1.0, omit=('-y', '+y', '+z', '-z'))
     for j in range(6):
-        if j == 3: b.box(x0 + 0.04, 0.05, j + 0.02, x1 - 0.04, 0.13, j + 0.98, 'void', 1.0, only=('+y',)); b.rod((x0 + 0.1, 0.14, j), (x0 + 0.12, 0.14, j + 1), 0.03, 'cable', 1.0, 5, cap=False); b.rod((x0 + 0.22, 0.13, j), (x0 + 0.2, 0.13, j + 1), 0.022, 'cable', 0.8, 5, cap=False); continue
+        if j == 3:
+            b.box(x0 + 0.04, 0.05, j + 0.02, x1 - 0.04, 0.13, j + 0.98, 'void', 1.0, only=('+y',))
+            b.put(rod((x0 + 0.1, 0.14, j), (x0 + 0.12, 0.14, j + 1), 0.03, 3, cap=False), 'cable', 1.0); b.put(rod((x0 + 0.22, 0.13, j), (x0 + 0.2, 0.13, j + 1), 0.022, 3, cap=False), 'cable', 0.8); continue
         Mx = T((x0 + x1) / 2 + (0.09 if j == 4 else 0), 0.2, j + 0.5) @ RY(0.16 if j == 4 else r.u(-0.01, 0.01)) @ RZ(-0.1 if j == 4 else 0)
         b.put(xf(bx(-(x1 - x0) / 2, 0, -0.485, (x1 - x0) / 2, 0.045, 0.485, omit=('-y',)), Mx), 'conc', r.u(0.75, 0.95), 'e')
-    # a drain on the right, weeds of rust round it
+    # a drain on the right
     b.box(XC + 0.3, 0.035, 2.6, XC + 0.75, 0.05, 3.05, 'steel', 0.7, omit=('-y',)); b.box(XC + 0.34, 0.05, 2.64, XC + 0.71, 0.052, 3.01, 'void', 1.0, only=('+y',))
-    for k_ in range(5): b.box(XC + 0.34, 0.05, 2.66 + k_ * 0.075, XC + 0.71, 0.058, 2.69 + k_ * 0.075, 'rust', 0.7, omit=('-y',))
+    for k_ in range(3): b.box(XC + 0.34, 0.05, 2.68 + k_ * 0.12, XC + 0.71, 0.058, 2.73 + k_ * 0.12, 'rust', 0.7, only=('+y',))
     INFO['track'] = dict(rail_y=RAIL_Y, gauge=2 * GAUGE, sleeper_pitch=0.75, ballast_y=BT, cess_x=XC, note='one line of track. a second line is the same piece moved across (a twin-track section is two bores: the train is 4.2 m wide in a 9.2 m bore)')
+    return b
+
+
+def track_far(name='tk_track_far'):
+    """the same six metres for far down the tunnel: the bed, the cess, sleeper tops, three faces of each rail"""
+    b = KT(name); r = Rnd(301); BT = 0.05; ST = 0.085; XB = 1.9; XC = 2.3; XW = math.sqrt(R * R - CY * CY) + 0.08
+    for j in range(2): b.put(bx(-XB, 0, j * 3.0, XB, BT, (j + 1) * 3.0, only=('+y',)), 'ballast', 0.9, 'e')
+    for sx in (-1, 1):
+        q = [V3((sx * XB, BT, 0)), V3((sx * XB, BT, SEG)), V3((sx * XC, 0.012, SEG)), V3((sx * XC, 0.012, 0))]
+        b.put(orient_from((q, [(0, 1, 2, 3)], [[(0, 0), (1.2, 0), (1.2, 0.4), (0, 0.4)]]), V3((0, -5, 3))), 'ballast', 0.8, 'e')
+        b.put(bx(sx * XC, 0.0, 0, sx * XW, 0.04, SEG, only=('+y',)), 'conc', 0.72, 'u')
+        for (xa, xb_, y) in ((-0.054, 0.054, RAIL_Y),): b.put(bx(sx * GAUGE + xa, ST, 0, sx * GAUGE + xb_, y, SEG, only=('+y', '+x', '-x')), 'rust', 0.8, 'q')
+        b.put(bx(sx * GAUGE - 0.05, RAIL_Y, 0, sx * GAUGE + 0.05, RAIL_Y + 0.0005, SEG, only=('+y',)), 'railtop', 0.75, 'q')
+    for i in range(8): b.put(bx(-1.3, 0.0, 0.375 + 0.75 * i - 0.125, 1.3, ST, 0.375 + 0.75 * i + 0.125, only=('+y', '-z')), 'slp%d' % (i % 3), 0.85, 'e')
+    b.box(-XC - 0.5, 0.03, 0, -XC - 0.14, 0.245, SEG, 'conc', 0.75, 'u', omit=('-y', '+z', '-z'))
     return b
 
 
@@ -253,16 +276,14 @@ def cables(name='tk_cables'):
         for y, rr in zip(ys, rad):
             b.box(xw - 0.34, y - 0.05, z - 0.02, xw - 0.02, y - 0.02, z + 0.02, 'steel', 0.85)                    # an arm
             b.box(xw - 0.34, y - 0.05, z - 0.02, xw - 0.31, y + 0.06, z + 0.02, 'steel', 0.8)                     # its upturned end
-            b.ext_z([(xw - 0.04, y - 0.05), (xw - 0.04, y - 0.2), (xw - 0.2, y - 0.05)], z - 0.006, z + 0.006, 'steel', 0.75)
         for yy in (2.72, 3.56): b.bolt((xw - 0.04, yy, z), (-1, 0, 0), 'rust', 0.022, 0.014)
     for y, rr, sg in zip(ys, rad, sag):
         x = wx(3.15) - 0.17 - rr * 0.3; n = 5
-        for zb in (0.18, 3.18):
-            pts = [(x, y - 0.02 + rr - sg * math.sin(math.pi * i / n) * (1.0 if zb < 1 else 0.8), zb + 3.0 * i / n) for i in range(n + 1)]
-            b.put(p_tube(pts, rr, 5, up=(0, 1, 0)), 'cable', r.u(0.7, 1.0))
-    b.put(p_tube([(wx(3.15) - 0.17, 3.44, 0.0), (wx(3.15) - 0.17, 3.44, 0.18)], rad[0], 5, up=(0, 1, 0)), 'cable', 0.8)
-    for y, rr in zip(ys[1:], rad[1:]): b.put(p_tube([(wx(3.15) - 0.17 - rr * 0.3, y - 0.02 + rr, 0.0), (wx(3.15) - 0.17 - rr * 0.3, y - 0.02 + rr, 0.18)], rr, 5, up=(0, 1, 0)), 'cable', 0.8)
-    # (the first cable's run from the piece's start to its first bracket is the stub above: the others the same)
+        for zb, ln in ((0.18, 3.0), (3.18, 2.82)):
+            pts = [(x, y - 0.02 + rr - sg * math.sin(math.pi * i / n) * (1.0 if zb < 1 else 0.8), zb + ln * i / n) for i in range(n + 1)]
+            b.put(p_tube(pts, rr * 1.15, 3, up=(0, 1, 0), phase=math.pi / 2), 'cable', r.u(0.7, 1.0))
+    for y, rr in zip(ys, rad):   # from the piece's start to its first bracket (the last span of the piece before ends at 6 m)
+        x = wx(3.15) - 0.17 - rr * 0.3; b.put(p_tube([(x, y - 0.02 + rr, 0.0), (x, y - 0.02 + rr, 0.18)], rr * 1.15, 3, up=(0, 1, 0), phase=math.pi / 2), 'cable', 0.8)
     return b
 
 
@@ -275,15 +296,15 @@ def bulbs():
         b.put(xf(p_cyl(0.035, 0.1, 6, 0.028), frame(-out, (0, 0, 1), p + out * 0.1) @ RX(math.pi / 2)), 'porc', 1.0)                 # the insulator on its pin
         b.rod(tuple(p + out * 0.1), tuple(p + out * 0.02), 0.012, 'rust', 0.8, 4)
         pts = [(wx_, wy - 0.3 * math.sin(math.pi * k / 6), z0 + span * k / 6) for k in range(7)]
-        b.put(p_tube(pts, 0.012, 4, up=(0, 1, 0)), 'cable', 0.9)
+        b.put(p_tube(pts, 0.014, 3, up=(0, 1, 0), phase=math.pi / 2), 'cable', 0.9)
     # the drop at z = 0: flex, a holder, an enamel shade (green outside, white in)
     bx_, by = wx_, wy - 0.4
     b.pipe([(wx_, wy, 0.0), (wx_ + 0.01, wy - 0.12, 0.01), (bx_, by + 0.16, 0.0)], 0.009, 'cable', 1.0, 4)
     b.put(xf(p_cyl(0.03, 0.07, 6), T(bx_, by + 0.1, 0.0)), 'brass', 0.8)
-    rings = [[V3((rr * math.sin(2 * math.pi * j / 10), yy, rr * math.cos(2 * math.pi * j / 10))) for j in range(10)] for yy, rr in ((0.04, 0.24), (0.11, 0.1), (0.15, 0.035))]
+    rings = [[V3((rr * math.sin(2 * math.pi * j / 8), yy, rr * math.cos(2 * math.pi * j / 8))) for j in range(8)] for yy, rr in ((0.04, 0.24), (0.11, 0.1), (0.15, 0.035))]
     b.put(xf(p_loft(rings), T(bx_, by, 0.0)), 'green', 0.9)
     b.put(xf(p_loft([r_[::-1] for r_ in rings]), T(bx_, by - 0.004, 0.0)), 'white', 0.75)
-    glass = xf(p_ellipsoid(0.075, 0.1, 0.075, 8, 5), T(bx_, by, 0.0))
+    glass = xf(p_ellipsoid(0.08, 0.105, 0.08, 6, 4), T(bx_, by, 0.0))
     lit.add(glass, MT['on'], ('tile', 1.0)); dead.add(glass, MT['off'], ('tile', 1.0))
     INFO['bulb'] = dict(pos=[bx_, by, 0.0], pitch=BULB, angle=BULB_A, note='the bulb\'s middle in tk_bulbs / tk_bulb_lit / tk_bulb_dead (all three share one origin)')
     return b, lit, dead

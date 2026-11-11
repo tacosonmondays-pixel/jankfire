@@ -216,27 +216,24 @@ def crate(name, w, h, d, seed=1, strap=False):
 
 
 def fridge(name, w, h, d):
-    """Jack's delivery: a round-shouldered domestic fridge, door toward the lane (+x), chained down. local: y from 0"""
-    b = K(name); hw, hd = w / 2, d / 2
-    # (local +x is its front: the door. it is turned on the wagon so the door faces the middle lane)
-    b.box(-hw, 0.05, -hd, hw - 0.07, h, hd, 'fridge_s', 1.0, 'e', c=0.035, )                                  # the cabinet
-    b.box(-hw - 0.004, 0.1, -hd + 0.03, -hw + 0.02, h - 0.08, hd - 0.03, 'fridge_b', 1.0, 'e', omit=('+x',))   # the coil on its back
-    b.box(-hw + 0.04, 0.0, -hd + 0.04, hw - 0.1, 0.06, hd - 0.04, 'black', 0.8)                               # the plinth
+    """Jack's delivery: a round-shouldered fridge-freezer, its doors toward the lane (local +x), a strap round its middle
+    holding them shut. the handles and the strap stay inside the cover box. local: y from 0"""
+    b = K(name); hw, hd = w / 2, d / 2; fx = hw - 0.06; dt = 0.07     # the doors' face is set back from the box's, so the handles fit
+    b.box(-hw + 0.012, 0.05, -hd + 0.01, fx - dt, h, hd - 0.01, 'fridge_s', 1.0, 'e', c=0.035)                # the cabinet
+    b.box(-hw + 0.002, 0.1, -hd + 0.04, -hw + 0.03, h - 0.08, hd - 0.04, 'fridge_b', 1.0, 'e', omit=('+x',))   # the coil on its back
+    b.box(-hw + 0.05, 0.0, -hd + 0.05, fx - 0.1, 0.06, hd - 0.05, 'black', 0.8)                                # the plinth
     dz0 = h * 0.74
     for y0, y1 in ((0.07, dz0 - 0.008), (dz0 + 0.008, h - 0.004)):                                            # two doors: fridge under, freezer over
-        b.put(cbx(hw - 0.07, y0, -hd + 0.006, hw, y1, hd - 0.006, 0.03), 'fridge_s', 1.04, 'e')
-        b.put(bx(hw, y0 + 0.03, -hd + 0.036, hw + 0.002, y1 - 0.03, hd - 0.036, only=('+x',)), 'fridge' if y0 < 0.1 else 'white', 1.0, 'e')
-        yh = y1 - 0.2 if y0 < 0.1 else y0 + 0.08
-        b.pipe([(hw - 0.005, yh, hd - 0.1), (hw + 0.045, yh, hd - 0.1), (hw + 0.045, yh + 0.14 * (1 if y0 > 0.1 else -1) - 0.0, hd - 0.1), (hw - 0.005, yh + 0.14 * (1 if y0 > 0.1 else -1), hd - 0.1)], 0.012, 'bright', 0.9, 5)   # chrome handles
-    b.box(hw - 0.068, dz0 - 0.008, -hd + 0.012, hw - 0.01, dz0 + 0.008, hd - 0.012, 'rubber', 0.8)            # the seal between them
-    for z in (-hd + 0.06, hd - 0.06):   # hinges on the far edge
-        pass
-    # a ratchet strap round its middle, holding the doors shut
-    y = h * 0.42; t = 0.006
-    for (xa, za, xb, zb) in ((-hw - t, -hd - t, hw + t, -hd - t), (hw + t, -hd - t, hw + t, hd + t), (hw + t, hd + t, -hw - t, hd + t), (-hw - t, hd + t, -hw - t, -hd - t)):
-        a, e = V3((xa, y, za)), V3((xb, y, zb)); L = (e - a).length
+        b.put(cbx(fx - dt, y0, -hd + 0.014, fx, y1, hd - 0.014, 0.03), 'fridge_s', 1.04, 'e')
+        b.put(bx(fx, y0 + 0.03, -hd + 0.044, fx + 0.002, y1 - 0.03, hd - 0.044, only=('+x',)), 'fridge' if y0 < 0.1 else 'white', 1.0, 'e')
+        ya, yb = (y1 - 0.34, y1 - 0.2) if y0 < 0.1 else (y0 + 0.08, y0 + 0.22)
+        b.pipe([(fx - 0.005, ya, hd - 0.1), (fx + 0.04, ya, hd - 0.1), (fx + 0.04, yb, hd - 0.1), (fx - 0.005, yb, hd - 0.1)], 0.012, 'bright', 0.9, 5)   # chrome handles
+    b.box(fx - dt + 0.002, dz0 - 0.008, -hd + 0.02, fx - 0.01, dz0 + 0.008, hd - 0.02, 'rubber', 0.8)          # the seal between them
+    y = h * 0.42; t = 0.005; xa, xb, za, zb = -hw + 0.012 - t, fx + t, -hd + 0.01 - t, hd - 0.01 + t           # the strap
+    for (x0, z0, x1, z1) in ((xa, za, xb, za), (xb, za, xb, zb), (xb, zb, xa, zb), (xa, zb, xa, za)):
+        a, e = V3((x0, y, z0)), V3((x1, y, z1)); L = (e - a).length
         b.put(xf(bx(-0.004, -0.028, -L / 2, 0.004, 0.028, L / 2), frame(e - a, (0, 1, 0), (a + e) / 2)), 'strap', 1.0, 'f')
-    b.box(hw + t, y - 0.045, -0.2, hw + t + 0.018, y + 0.045, -0.1, 'bright', 0.75, c=0.006)                   # its ratchet
+    b.box(xb, y - 0.045, -0.2, xb + 0.018, y + 0.045, -0.1, 'bright', 0.75, c=0.006)                            # its ratchet
     return b
 
 
@@ -419,7 +416,7 @@ def flat_bits():
     if fr:
         _, fx, fz, fw, fh, fd, _ = fr; sgn = -1 if fx < 0 else 1
         for dz in (-fd * 0.27, fd * 0.27):
-            xs = sorted((fx - fw / 2, fx + fw / 2)); out_x = sgn * (HW - 0.12); in_x = fx - sgn * (fw / 2 + 0.3)
+            xs = sorted((fx - fw / 2, fx + fw / 2)); out_x = sgn * (HW - 0.12); in_x = fx - sgn * (fw / 2 + 0.2)
             chain_over(b, min(out_x, in_x), max(out_x, in_x), xs[0], xs[1], deck, deck + fh, fz + dz)
         for dz in (-0.3, 0.3):
             zz = min((z0 + c.L * (i + 0.5) / n for i in range(n)), key=lambda q: abs(q - (fz + dz)))
@@ -483,7 +480,7 @@ def bitten_end(c, yc):
     # the boards' ends, chewed: splinters out over the gap, lifted a little
     for k in range(26):
         x = -1.95 + 3.9 * (k + r.u(-0.3, 0.3)) / 26; L = r.u(0.12, 0.5) * (1.5 if 0.5 < x < 1.6 else 1.0)
-        t.put(xf(p_box(r.u(0.03, 0.09), r.u(0.012, 0.03), L, taper=0.12), T(x, deck - 0.02 + r.u(-0.01, 0.012), z0 - 0.0) @ RY(math.pi + r.u(-0.5, 0.5)) @ RX(r.u(-0.45, 0.25)) @ T(0, 0, L / 2 - 0.06)), 'splint', r.u(0.8, 1.1), 'f')
+        t.put(xf(p_box(r.u(0.03, 0.09), r.u(0.012, 0.03), L, taper=0.12), T(x, deck - 0.02 + r.u(-0.01, 0.012), z0 - 0.0) @ RY(math.pi + r.u(-0.5, 0.5)) @ RX(r.u(-0.12, 0.4)) @ T(0, 0, L / 2 - 0.06)), 'splint', r.u(0.8, 1.1), 'f')
     # the raves' ends peeled out and down
     for sx in (-1, 1):
         pts = [(sx * (HW - 0.035), deck - 0.1, z0 + 0.02), (sx * (HW + 0.02), deck - 0.13, z0 - 0.2), (sx * (HW + 0.16), deck - 0.3, z0 - 0.34), (sx * (HW + 0.2), deck - 0.52, z0 - 0.3)]
@@ -569,7 +566,7 @@ def van_bits():
         for y in (deck + chh + 0.25, deck + chh + 0.75): b.box(x - 0.045, y - 0.03, za, x - 0.02, y + 0.03, zb, 'pl2', 0.85, 'e')
         r = Rnd(41)
         for k, kind in enumerate(('shovel', 'pick', 'bar', 'gauge', 'shovel')):
-            z = za + (zb - za) * (k + 0.5) / 5; xt = x - 0.075; y0 = deck + chh + 0.02; ln = r.u(1.0, 1.25)
+            z = za + (zb - za) * (k + 0.5) / 5; xt = x - 0.075; y0 = deck + 0.02; ln = r.u(1.4, 1.6)                 # (they stand on the deck behind the bench, their heads under the roof)
             b.rod((xt, y0, z), (xt - 0.01, y0 + ln, z + r.u(-0.04, 0.04)), 0.017, 'handle' if kind != 'bar' else 'steel2', r.u(0.75, 1.0), 6)
             if kind == 'shovel': b.put(xf(bx(-0.01, 0, -0.1, 0.01, 0.26, 0.1), T(xt, y0 + ln - 0.02, z) @ RZ(0.03)), 'steel2', 0.8)
             elif kind == 'pick': b.put(pipe([(xt, y0 + ln, z - 0.24), (xt, y0 + ln + 0.05, z), (xt, y0 + ln, z + 0.24)], [0.012, 0.03, 0.012], 5), 'steel', 0.8)
@@ -580,7 +577,7 @@ def van_bits():
     for k in range(7): z = za + 0.2 + k * (zb - za - 0.4) / 6; b.rod((x, yU - 0.62, z), (x, yU - 0.32, z), 0.014, 'handle', 0.9, 5, cap=False)
     for z in (za + 0.3, zb - 0.3): b.pipe([(x, yU, z), (x, yU - 0.68, z), (x + 0.05, yU - 0.68, z), (x + 0.05, yU - 0.62, z)], 0.008, 'steel', 0.9, 4)
     # the hand brake by the front post, and a board with his rule on it
-    bx_, bz = -HW + 0.34, z1 - 0.3
+    bx_, bz = -HW + 0.28, z1 - 0.3
     b.rod((bx_, deck, bz), (bx_, deck + 1.02, bz), 0.03, 'steel', 0.9, 8); b.box(bx_ - 0.07, deck, bz - 0.07, bx_ + 0.07, deck + 0.02, bz + 0.07, 'steel', 0.8)
     b.put(p_ring_loop([(bx_ + 0.2 * math.cos(a), deck + 1.02, bz + 0.2 * math.sin(a)) for a in [k * math.pi / 5 for k in range(10)]], 0.016, 5), 'red', 0.9)
     for a in (0, math.pi / 2): b.rod((bx_ - 0.2 * math.cos(a), deck + 1.02, bz - 0.2 * math.sin(a)), (bx_ + 0.2 * math.cos(a), deck + 1.02, bz + 0.2 * math.sin(a)), 0.011, 'red', 0.9, 4, cap=False)

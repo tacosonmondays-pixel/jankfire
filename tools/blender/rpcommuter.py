@@ -101,13 +101,14 @@ def carriage():
             za = z0 + VEST + i * BAY; q = (BAY - DW) / 2; dz = za + q
             for (wa, wb) in ((za, dz), (dz + DW, za + BAY)):                                                    # a quarter-light each side of the door
                 wall(wa, wb, FL, SILL)
-                b.box(xa, SILL, wa, xb, HEAD + 0.2, wa + 0.06, 'white', 0.85, 'u'); b.box(xa, SILL, wb - 0.06, xb, HEAD + 0.2, wb, 'white', 0.85, 'u')
+                pz = wb - 0.06 if wa == za else wa                                                              # one pillar: the door's (the lights of two bays share a pane's edge)
+                b.box(xa, SILL, pz, xb, HEAD + 0.2, pz + 0.06, 'white', 0.85, 'u', omit=('+y', '-y'))
                 b.box(xa + sx * 0.004, SILL - 0.16, wa, xa, SILL - 0.04, wb, 'band', 1.0, 'u', only=(fo,))        # the waist band
-                if r.chance(0.86): g.add(bx(sx * (HWB - WT / 2) - 0.003, SILL, wa + 0.06, sx * (HWB - WT / 2) + 0.003, HEAD + 0.2, wb - 0.06, only=('+x', '-x')), MC['glass'], ('tile', 1.0))
+                if r.chance(0.86): g.add(bx(sx * (HWB - WT / 2) - 0.003, SILL, wa + (0.0 if wa == za else 0.06), sx * (HWB - WT / 2) + 0.003, HEAD + 0.2, wb - (0.06 if wa == za else 0.0), only=('+x', '-x')), MC['glass'], ('tile', 1.0))
             b.box(xa, FL - 0.02, dz, xb, FL + 0.02, dz + DW, 'chrome', 0.7, omit=('-y',))                        # the door's sill
             door_leaf(b, g, sx, dz, r.u(1.2, 1.6) if r.chance(0.85) else r.u(0.6, 1.0), r)                      # every door open
         b.box(xa + sx * 0.004, FL + 0.3, z0 + 0.2, xa, FL + 0.42, z0 + 0.68, 'num', 1.0, 'e', only=(fo,))
-        b.box(xa, FL - 0.02, z0, xa + sx * 0.03, FL + 0.03, z1, 'steel', 0.7, 'q', seg=3.2)                       # the solebar's lip
+        b.box(xa, FL - 0.02, z0, xa + sx * 0.03, FL + 0.03, z1, 'steel', 0.7, 'q', omit=('-x' if sx > 0 else '+x',))   # the solebar's lip
     n = 8; xs = [-(HWB + 0.02) + 2 * (HWB + 0.02) * i / n for i in range(n + 1)]
     for j in range(5):
         za, zb = z0 + j * LB / 5, z0 + (j + 1) * LB / 5
@@ -134,15 +135,13 @@ def carriage():
     xin = HWB - WT - 0.02
     for i in range(NB + 1):
         zc = z0 + VEST + i * BAY                                                                                  # the partition between two bays: bench backs either side of it
-        b.box(-xin, FL, zc - 0.03, xin, FL + 1.12, zc + 0.03, 'inner', 0.85, 'u', seg=1.4, omit=('-y',))
+        b.box(-xin, FL, zc - 0.03, xin, FL + 1.12, zc + 0.03, 'inner', 0.85, 'u', omit=('-y',))
         for s_ in (-1, 1):
             if (i == 0 and s_ < 0) or (i == NB and s_ > 0): continue
-            b.box(-xin, FL + 0.34, zc + s_ * 0.03, xin, FL + 0.46, zc + s_ * 0.5, 'moq', r.u(0.8, 1.0), 'u', seg=0.9, omit=('-y',))                   # the cushion
-            b.box(-xin, FL + 0.46, zc + s_ * 0.03, xin, FL + 1.06, zc + s_ * 0.12, 'moq', r.u(0.75, 0.95), 'u', seg=0.9, omit=('-y',))                # the back
+            b.box(-xin, FL + 0.34, zc + s_ * 0.03, xin, FL + 0.46, zc + s_ * 0.5, 'moq', r.u(0.8, 1.0), 'u', seg=1.3, omit=('-y',))   # the cushion
+            b.box(-xin, FL + 0.46, zc + s_ * 0.03, xin, FL + 1.06, zc + s_ * 0.12, 'moq', r.u(0.75, 0.95), 'u', seg=1.3, omit=('-y', '-z' if s_ > 0 else '+z'))   # the back
             b.box(-xin, FL, zc + s_ * 0.1, xin, FL + 0.34, zc + s_ * 0.46, 'black', 0.8, omit=('+y', '-y'))
-            for sx in (-1, 1): b.rod((sx * xin, FL + 1.78, zc + s_ * 0.06), (sx * xin, FL + 1.78, zc + s_ * 0.5), 0.014, 'chrome', 0.8, 4, cap=False)
-            b.rod((-xin, FL + 1.78, zc + s_ * 0.5), (xin, FL + 1.78, zc + s_ * 0.5), 0.014, 'chrome', 0.8, 4, cap=False)                             # the luggage rail
-            b.rod((-xin, FL + 1.78, zc + s_ * 0.2), (xin, FL + 1.78, zc + s_ * 0.2), 0.008, 'chrome', 0.7, 4, cap=False)
+            b.put(rod((-xin, FL + 1.78, zc + s_ * 0.42), (xin, FL + 1.78, zc + s_ * 0.42), 0.018, 3, cap=False), 'chrome', 0.8)                       # the luggage rail
     def coat(x, z, key, sx):   # a coat on a hook by a window: a lumpy sheet, sleeves, never collected
         P = [[V3((0.02 + 0.035 * math.sin(i * 1.3 + j), -0.16 * i, -0.17 + 0.17 * j + 0.02 * math.sin(i * 2.0))) for j in range(3)] for i in range(5)]
         b.put(xf(p_grid(P), T(x, HEAD + 0.1, z) @ (RY(math.pi) if sx > 0 else Matrix.Identity(4))), key, r.u(0.8, 1.0)); b.put(xf(p_grid(P, flip=True), T(x, HEAD + 0.1, z) @ (RY(math.pi) if sx > 0 else Matrix.Identity(4))), key, 0.6)
@@ -174,11 +173,11 @@ def carriage():
     for zb in (z0 + 3.0, z1 - 3.0):
         for dz in (-1.1, 1.1):
             for sx in (-1, 1):
-                b.put(p_lathe_x([(-0.07, 0.3), (-0.05, 0.43), (0.06, 0.4), (0.06, 0.0)], 10, cap0=True, cap1=False), 'steel', 0.75, M=T(sx * GAUGE, RAIL_Y + 0.4, zb + dz) @ (SC(-1, 1, 1) if sx < 0 else Matrix.Identity(4)))
+                b.put(p_lathe_x([(-0.06, 0.43), (0.06, 0.4), (0.06, 0.0)], 8, cap0=True, cap1=False), 'steel', 0.75, M=T(sx * GAUGE, RAIL_Y + 0.4, zb + dz) @ (SC(-1, 1, 1) if sx < 0 else Matrix.Identity(4)))
             b.rod((-GAUGE, RAIL_Y + 0.4, zb + dz), (GAUGE, RAIL_Y + 0.4, zb + dz), 0.06, 'rust', 0.7, 6, cap=False)
         for sx in (-1, 1):
-            b.box(sx * 1.0, RAIL_Y + 0.3, zb - 1.6, sx * 1.12, RAIL_Y + 0.6, zb + 1.6, 'steel', 0.7, c=0.02)
-            for dz in (-1.1, 1.1): b.box(sx * 0.98, RAIL_Y + 0.26, zb + dz - 0.14, sx * 1.16, RAIL_Y + 0.56, zb + dz + 0.14, 'rust', 0.7, c=0.02)
+            b.box(sx * 1.0, RAIL_Y + 0.3, zb - 1.6, sx * 1.12, RAIL_Y + 0.6, zb + 1.6, 'steel', 0.7)
+            for dz in (-1.1, 1.1): b.box(sx * 0.98, RAIL_Y + 0.26, zb + dz - 0.14, sx * 1.16, RAIL_Y + 0.56, zb + dz + 0.14, 'rust', 0.7)
             b.box(sx * 1.02, RAIL_Y + 0.6, zb - 0.3, sx * 1.1, FL - 0.14, zb + 0.3, 'black', 0.8)
         b.box(-1.0, RAIL_Y + 0.5, zb - 0.22, 1.0, RAIL_Y + 0.72, zb + 0.22, 'steel', 0.65)
     INFO.update(pitch=PITCH, body=LB, half_width=HWB, floor=FL, cantrail=CANT, crown=CROWN, bays=NB, doors=2 * NB, end_z=z1, note='a row is cm_car + cm_end + cm_glass every 20 m; the last one takes cm_end_torn for cm_end')

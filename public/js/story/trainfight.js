@@ -8,6 +8,8 @@
 //     (shared/story/train.js armPose), the blue wrist knot, the hand (fingers curl on a grip), a stump when severed
 //   - THE GAP big on the HUD, the callouts, the finish (it comes apart along a cross) and the fail
 //   - the quest glue for m06's fight steps, and the Blood Drive in your hands while you are on the train
+//   - the train and the tunnel themselves are box stand-ins built here; trainset.js swaps their looks for the Blender train
+//     and tunnel kit when those files land (?trainbox=1 keeps the boxes)
 // nothing here changes the fight: turn it off and it is still fought, just in the dark
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -23,6 +25,7 @@ import { raycast } from '/shared/physics.js';
 import { TRAIN, ARENA, RP, CARS, CAR, HW, COVER, CREW, GEO0, geoFrom, armPose, armExt, armLive, sweepZ, sweepY, rayFight, SPLIT, PLATES, ss } from '/shared/story/train.js';
 import { makeBloodDrive } from './blooddrive.js';
 import { makeHitStop } from './hitstop.js';
+import { makeTrainSet } from './trainset.js';
 
 export const RP_ID = 'revenue_protection_1', RP_QUEST = 'm06_tickets_please';
 const SPEED = 12, SEG = 1.5, R = ARENA.boreR, CY = ARENA.cy; // m/s the tunnel goes past · one arm_seg · the bore
@@ -75,6 +78,7 @@ export function makeTrainFight(ST, { playScene }) {
   const rayEnd = (o, d, max) => { const w = raycast(o, d, max, BOXES), wt = w ? w.t : max, h = F.live ? rayFight(T.geo, view(), o, d, wt) : null; return h ? { t: h.t, part: h.part, at: h.at } : { t: wt, part: w ? 'wall' : '', at: o.map((x, i) => x + d[i] * wt) }; };
   const BD = makeBloodDrive({ rayEnd, free: () => F.marrow || !!(S().st.flags.jack_marrow_taken || S().st.flags.seen_mo_carry) });
   T.drive = BD;
+  const TS = makeTrainSet(); T.model = TS; // the Blender train and tunnel kit (the looks only)
   // the train's boxes are ours to draw (world.js leaves a box alone when a prop named by its `pv` is registered): a stand-in
   // built from the same table the room collides with, one group a car, so the wagon can go when it is bitten off
   if (!AUTHORED.p_rp_train) AUTHORED.p_rp_train = { scene: new THREE.Group(), meta: { kind: 'prop', id: 'rp_train' } };
@@ -103,6 +107,7 @@ export function makeTrainFight(ST, { playScene }) {
     const w = T.set && T.set.cars.wagon;
     if (!on && !T.cutBoxes) { T.cutBoxes = []; for (let i = BOXES.length - 1; i >= 0; i--) if (BOXES[i].car === 'wagon') T.cutBoxes.push(...BOXES.splice(i, 1)); T.cutT = anim ? 0 : 9; }
     if (on && T.cutBoxes) { BOXES.push(...T.cutBoxes); T.cutBoxes = null; if (w) { w.visible = true; w.position.set(0, 0, 0); w.rotation.set(0, 0, 0); } }
+    TS.bitten(!!T.cutBoxes); // (the flatbed's torn end, on the model)
   }
 
   // ---------------------------------------------------------------- the tunnel (the train stands still: this goes past)
@@ -127,7 +132,7 @@ export function makeTrainFight(ST, { playScene }) {
     const knots = [0, 1, 2].map(() => { const l = new THREE.PointLight(0x4fd8ff, 0, 4.5, 1.6); g.add(l); return l; }); // the wrist knots' glow on what is near them: a fixed three, moved to the nearest knots (a light that comes and goes with each arm would rebuild every shader)
     const cars = buildTrain(g);
     G.scene.add(g);
-    T.set = { g, ribs, sl, bulbs, lights, lamp, knots, cars, off: 0 };
+    T.set = { g, ribs, sl, bulbs, lights, lamp, knots, cars, off: 0, bore, cable, bz: [], bon: [] };
     crew(true);
   }
   function stepSet(dt) {
@@ -141,7 +146,9 @@ export function makeTrainFight(ST, { playScene }) {
       const d = z - maskZ, on = d > 3 || (d > 0.5 && Math.sin(time * 37 + i) > 0.2); // (it flickers as the face gets to it, then it is out)
       b.material.color.setHex(on ? 0xffc070 : 0x1a1210);
       if (on) lit.push(b.position);
+      s.bz[i] = z; s.bon[i] = on;
     }
+    if (s.kit) s.kit.step(v * dt, s.bz, s.bon); // the tunnel kit goes past at the same speed, and its bulbs are these bulbs
     lit.sort((p, q) => Math.abs(p.z - 4) - Math.abs(q.z - 4));
     s.lights.forEach((l, i) => { const p = lit[i]; l.intensity = p ? 22 : 0; if (p) l.position.set(p.x * 0.8, p.y - 0.5, p.z); });
     s.lamp.target.position.set(0, CY - 0.3, -Math.max(4, Z()));
@@ -151,8 +158,17 @@ export function makeTrainFight(ST, { playScene }) {
   }
 
   // ---------------------------------------------------------------- the mask (and the arm kit)
+  const envMap = () => { if (!env && G.renderer) { const pm = new THREE.PMREMGenerator(G.renderer); env = pm.fromScene(new RoomEnvironment(), 0.04).texture; pm.dispose(); } return env; };
+  // the Blender train and the tunnel kit, when their files land: the stand-in's looks are swapped for them (a file that
+  // never comes leaves the boxes and the old bore, as before)
+  function dress() {
+    const s = T.set; if (!s || TS.off) return;
+    if (!TS.train) { TS.load(envMap()); return; }
+    if (!s.model) { s.model = TS.dress(s.cars) || null; TS.bitten(!!T.cutBoxes); }
+    if (!s.kit) s.kit = TS.lay(s.g, s) || null;
+  }
   function prep(root, k) {
-    if (!env && G.renderer) { const pm = new THREE.PMREMGenerator(G.renderer); env = pm.fromScene(new RoomEnvironment(), 0.04).texture; pm.dispose(); }
+    envMap();
     root.traverse((o) => { if (!o.isMesh) return; o.castShadow = false; o.receiveShadow = false; o.frustumCulled = false;
       for (const m of [].concat(o.material)) { // as glbkit.prepAuthored does: nearest textures, the studio reflection (dimmed: it is dark in here)
         for (const key of ['map', 'emissiveMap']) if (m[key]) { m[key].magFilter = THREE.NearestFilter; m[key].minFilter = THREE.NearestMipmapNearestFilter; m[key].anisotropy = 1; m[key].needsUpdate = true; }
@@ -426,6 +442,7 @@ export function makeTrainFight(ST, { playScene }) {
     if (on !== T.on) { T.on = on; if (on) { if (T.set) { G.scene.add(T.set.g); setWagon(true); crew(true); } else buildSet(); load(); } else leave(); } // (the tunnel, the train and the models are built once and kept between visits)
     if (!on) { BD.tick(dt, false); return; }
     if (!T.boss) load();
+    if (!T.set.model || !T.set.kit) dress();
     const held = busy(), sdt = held ? 0 : dt; // (a scene holds the room: hold the picture of it too)
     time += dt;
     stepSet(dt);
@@ -466,7 +483,7 @@ export function makeTrainFight(ST, { playScene }) {
     BD.tick(dt, ME.alive && !held && !(T.failT && !F.live), !(G.story.triggerOff && G.story.triggerOff()));
   };
   function leave() {
-    clearArms(); F.live = false; T.fin = null; T.said = -1; T.auto = false; T.back = null; F.rear = F.rearS = 0; T.cutBoxes = null; crew(false); HS.clear(); T.jack = 0;
+    clearArms(); F.live = false; T.fin = null; T.said = -1; T.auto = false; T.back = null; F.rear = F.rearS = 0; T.cutBoxes = null; TS.bitten(false); crew(false); HS.clear(); T.jack = 0;
     if (T.set) { G.scene.remove(T.set.g); const w = T.set.cars.wagon; if (w) { w.visible = true; w.position.set(0, 0, 0); w.rotation.set(0, 0, 0); } } // (kept: nothing to rebuild or dispose next time)
     hideBoss();
     if (hudEl) hudEl.classList.add('hidden'); if (failEl) { failEl.classList.remove('on'); failEl.classList.add('hidden'); }

@@ -54,7 +54,7 @@ def build_tunnel(N):
     import rptunnel as RT
     RT.tunnel_materials(); root = empty('rp_tunnel'); N['rp_tunnel'] = root
     N['tk_lining'] = mk(RT.lining('tk_lining'), 'tk_lining', root); N['tk_niche'] = mk(RT.lining('tk_niche', True, 4.0), 'tk_niche', root)
-    N['tk_track'] = mk(RT.track(), 'tk_track', root); N['tk_cables'] = mk(RT.cables(), 'tk_cables', root)
+    N['tk_track'] = mk(RT.track(), 'tk_track', root); N['tk_track_far'] = mk(RT.track_far(), 'tk_track_far', root); N['tk_cables'] = mk(RT.cables(), 'tk_cables', root, sharp=70)
     for kit in RT.bulbs(): N[kit.name] = mk(kit, kit.name, root, sharp=62)
     N['tk_phone'] = mk(RT.phone_alone(), 'tk_phone', root); N['tk_marker'] = mk(RT.marker(), 'tk_marker', root); N['tk_signal'] = mk(RT.signal(), 'tk_signal', root)
     N['tp_portal'] = mk(RT.portal(), 'tp_portal', root)
@@ -82,7 +82,7 @@ def bake_commuter(N):
         if o is not None and o.type == 'MESH': o.hide_render = False
 
 
-TILES = dict(tk_lining=6.0, tk_niche=6.0, tk_track=6.0, tk_cables=6.0, tk_bulbs=12.0)
+TILES = dict(tk_lining=6.0, tk_niche=6.0, tk_track=6.0, tk_track_far=6.0, tk_cables=6.0, tk_bulbs=12.0)
 
 
 def bake_tunnel(N):
@@ -103,7 +103,7 @@ def bake_tunnel(N):
         if L:
             also += ghosts(k, L)
             for q in ('tk_track', 'tk_lining'):
-                if q != k and q in N and k != 'tk_bulbs' and not (k == 'tk_niche' and q == 'tk_lining'): N[q].hide_render = False; also += [N[q]] + ghosts(q, 6.0)
+                if q != k and q in N and k != 'tk_bulbs' and not (k == 'tk_niche' and q == 'tk_lining') and not (k == 'tk_track_far' and q == 'tk_track'): N[q].hide_render = False; also += [N[q]] + ghosts(q, 6.0)
         o.hide_render = False; bpy.context.view_layer.update()
         bake_ao([o], dist=0.45, samples=S, lo=0.4, also=also)
         for q in also:
@@ -296,11 +296,22 @@ def finish(N):
         final_colour(o)
 
 
-def parts_json(N, RC, tris):
+def part_list(N, pred):
+    out = []
+    for k in sorted(N):
+        o = N[k]
+        if o is None or o.type != 'MESH' or not pred(k, o): continue
+        lo, hi = bounds([o]); d = dict(name=k, centre=r3((lo + hi) / 2), half=r3((hi - lo) / 2), tris=tri_count(o), materials=[m.name for m in o.data.materials])
+        if o.get('jf_hidden'): d['hidden'] = True
+        out.append(d)
+    return out
+
+
+def parts_json(N, RC, tris, RT=None, CM=None):
     parts = []; bpy.context.view_layer.update()
     for k in sorted(N):
         o = N[k]
-        if o is None or o.type != 'MESH': continue
+        if o is None or o.type != 'MESH' or not (o.parent and o.parent.name.startswith('car_')): continue
         lo, hi = bounds([o])
         d = dict(name=k, centre=r3((lo + hi) / 2), half=r3((hi - lo) / 2), group=o.parent.name if o.parent else None, tris=tri_count(o), materials=[m.name for m in o.data.materials])
         if o.get('jf_hidden'): d['hidden'] = True
@@ -322,6 +333,9 @@ def parts_json(N, RC, tris):
         materials=dict(tr_atlas='everything painted, planked and steel (one 512 px atlas with a roughness / metal map)', tr_glass='the cab windows (blended)', tr_headlamp='the working head lamp (emissive)',
                        tr_tail='the tail lamp (emissive)', tr_worklamp='the flood on the van roof and the lantern under it (emissive)'),
         parts=parts)
+    if RT: meta['tunnel'] = dict(file='rp_tunnel.glb', tiles=TILES, bore_r=RT.R, axis_y=RT.CY, info=RT.INFO, parts=part_list(N, lambda k, o: k.startswith(('tk_', 'tp_'))),
+                                 materials=dict(tk_brick='the lining (a 128 px tile: 1.5 m along, 14 times round)', tk_atlas='everything else', tk_bulb_on='a lit bulb (emissive)', tk_bulb_off='a dead one'))
+    if CM: meta['commuter'] = dict(file='rp_commuter.glb', info=CM.INFO, parts=part_list(N, lambda k, o: k.startswith('cm_')), materials=dict(cm_atlas='the carriage', cm_glass='its panes (blended)'))
     return meta
 
 
@@ -367,7 +381,7 @@ def main():
         for k, o in sorted(N.items()):
             if o is not None and o.type == 'MESH': print('JF_PART', k, tri_count(o), len(o.data.vertices), [m.name for m in o.data.materials])
     if RC:
-        meta = parts_json(N, RC, tris)
+        meta = parts_json(N, RC, tris, RT, CM)
         small = {k: v for k, v in meta.items() if k not in ('parts',)}; small['parts_file'] = 'rp_train.parts.json'; small['kind'] = 'story'
         small['hidden'] = sorted(k for k, o in N.items() if o is not None and o.type == 'MESH' and o.get('jf_hidden'))
         N['rp_train']['jf'] = json.dumps(small)
