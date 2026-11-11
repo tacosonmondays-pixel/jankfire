@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3311;
 // [x, y, z, name]: the route, waypoint by waypoint (y is only for the report)
 const ROUTE = [
   [-60, 4, 227, 'the lane east'], [30, 4, 227, 'past the gym terrace'], [96, 4, 227, 'the slip road'], [157, 2, 227, 'down the slip road'],
-  [160, 1, 234, 'the bend south'], [160, 0, 245, 'on the ramp'], [165, 0, 248, 'round the deck end'], [182, 0, 248, 'THE RING ROAD (zone)'],
+  [160, 1, 234, 'the bend south'], [160, 0, 245, 'on the ramp'], [165, 0, 248, 'round the deck end'], [176, 0, 248, 'along the foot (THE RING ROAD zone)'], [182.4, 0, 247, 'lined up on the middle gap'],
   [182.4, 0.5, 241, 'onto the deck (the gap between the dead cars)'], [182.4, 2, 220, 'the middle lane'], [182.4, 10, 150, 'up the Ring Road'], [182.4, 13, 112, 'the run-up'],
   [182.4, 16, 80, 'JUMP the collapse'], [182.4, 30, -60, 'the climb'], [182.4, 40, -150, 'the top'], [150, 40, -172, 'the west turn'], [60, 40, -164, 'into the Gut'],
   [60, 40, -188, 'avenue 60'], [-130, 40, -188, 'street -188 west'], [-130, 40, -134, 'PERISTALSIS (m03 zone)'], [-130, 40, -100, 'avenue -130 south'],
