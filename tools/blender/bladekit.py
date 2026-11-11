@@ -74,6 +74,7 @@ def blade(spine, edge, m, n=40, thick=0.004, grind=0.4, taper=0.55, edge_thick=0
         up = [max(g, min(top, v)) for v in sorted(up)]
         for k in range(1, len(up)): up[k] = max(up[k], up[k - 1] + gap)  # never two rows on one line...
         for k in range(len(up) - 1, -1, -1): up[k] = min(up[k], top - gap * (len(up) - 1 - k))  # ...and none over the spine
+        if grind > 0.995: return [k / rows for k in range(rows + 1)]  # a full flat grind: the bevel is the whole side
         return [grind * k / rows for k in range(rows)] + [grind] + up + [1.0]
     def xat(i, s, v, k, vs):
         t = half(i); e = min(et, t)
@@ -190,3 +191,40 @@ def squash(o, sx=1.0, sy=1.0):
     """an oval section: scale a lathed part across (x) and up (y)"""
     o.data.transform(Matrix.Diagonal((sx, 1.0, sy, 1.0)))  # blender axes: x, y = -game z, z = game y
     return o
+
+
+def loft_loops(loops, m, name='loft', angle=40, caps=(True, True)):
+    """a closed solid through cross-section loops: each a list of game (x, y, z) points, the same count in each.
+    consecutive loops are joined, the first and last get caps (what the code knives' bolsters and handles are)"""
+    bm = bmesh.new(); R = [[bm.verts.new(gv(*p)) for p in L] for L in loops]; n = len(loops[0])
+    for A, B2 in zip(R, R[1:]):
+        for j in range(n):
+            try: bm.faces.new((A[j], A[(j + 1) % n], B2[(j + 1) % n], B2[j]))
+            except ValueError: pass
+    for ring, on in ((R[0], caps[0]), (R[-1], caps[1])):
+        if on:  # a fan from the middle: an n-gon with points in a row triangulates into slivers
+            c = bm.verts.new(sum((v.co for v in ring), Vector()) / n)
+            for j in range(n):
+                try: bm.faces.new((ring[j], ring[(j + 1) % n], c))
+                except ValueError: pass
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-7)
+    bmesh.ops.dissolve_degenerate(bm, dist=2e-6, edges=bm.edges)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    o = _obj(name, bm, m)
+    smooth(o, angle)
+    return o
+
+
+def decollinear(pts, tol=1e-9):
+    """drop the points of a closed 2d outline that sit on the line between their neighbours (they triangulate into slivers)"""
+    out = []; n = len(pts)
+    for i, p in enumerate(pts):
+        a, b = pts[i - 1], pts[(i + 1) % n]
+        if abs((p[0] - a[0]) * (b[1] - a[1]) - (p[1] - a[1]) * (b[0] - a[0])) > tol * max(1e-9, math.hypot(b[0] - a[0], b[1] - a[1])): out.append(p)
+    return out
+
+
+def rivet(r, half, pos, m, dome=0.0007, seg=14, name='rivet'):
+    """a through-rivet across the handle (along x), each head a low dome so it never lies flat on the scale"""
+    pr = [(0, -half - dome), (r * 0.6, -half - dome * 0.72), (r, -half - dome * 0.08), (r, half + dome * 0.08), (r * 0.6, half + dome * 0.72), (0, half + dome)]
+    return lathe(pr, pos, m, seg=seg, axis='x', name=name)

@@ -69,7 +69,80 @@ def knife():
     return finish('w_knife', parts, meta)
 
 
-BUILD = {'knife': (knife, 'w_knife')}
+# ------------------------------------------------------------------------------------------------ Kitchen Knife
+def kitchen():
+    """the 20 cm forged cook's knife (public/js/blades/kitchen.js): a full flat grind with a distal taper and a honed
+    edge, the forged bolster running down into a finger guard at the heel, black riveted scales round a full tang that
+    shows along the top, the belly and the butt. made fun: a dishwasher-safe stamp it has long since disproved"""
+    Z_BACK = -0.036; SPINE_V = 12; BLADE_H = 47; EDGE_V = SPINE_V - BLADE_H; SPINE_T = 3.0; BOLSTER_L = 16
+    HEEL_U = 20.2; TIP_U = HEEL_U + 199.3; TIP_V = -3; FLAT, DROP0 = 40, 95; N = 44
+    P = lambda u, v: (Z_BACK - u * MM, v * MM); V3 = lambda x, u, v: (x * MM, v * MM, Z_BACK - u * MM)
+    Lb = TIP_U - HEEL_U; RISE = TIP_V - EDGE_V; DROP = SPINE_V - TIP_V
+    rise = lambda s: 0 if s <= FLAT else RISE * ((s - FLAT) / (Lb - FLAT)) ** 2.5
+    drop = lambda s: 0 if s <= DROP0 else DROP * ((s - DROP0) / (Lb - DROP0)) ** 2.0
+    guardBack = lambda v: 0 if v >= -12 else HEEL_U - HEEL_U * math.sqrt(max(0, 1 - ((v + 12) / (EDGE_V + 12)) ** 2))
+    PLUNGE = [(SPINE_V, BOLSTER_L), (0, 16.3), (-12, 17.0), (-24, 18.2), (-31, 19.4), (EDGE_V, HEEL_U)]
+    def guardFront(v):
+        for (va, ua), (vb, ub) in zip(PLUNGE, PLUNGE[1:]):
+            if vb <= v <= va: return ua + (ub - ua) * ((va - v) / (va - vb))
+        return BOLSTER_L if v > SPINE_V else HEEL_U
+    guardHalf = lambda v: 6.3 if v >= -12 else 0.7 + 5.6 * math.sqrt(max(0, (v - EDGE_V) / (-12 - EDGE_V)))
+    bladeHalf = lambda v: 0.25 + (SPINE_T / 2 - 0.25) * max(0, (v - EDGE_V) / BLADE_H)
+    HANDLE = [(0, 12.0, -12.0, 6.6), (-5, 12.0, -12.0, 7.6), (-13, 12.0, -12.0, 8.1), (-24, 12.0, -12.0, 8.25), (-45, 12.0, -12.05, 8.25), (-66, 12.0, -12.2, 8.25),
+              (-84, 12.0, -12.7, 8.25), (-96, 11.95, -13.6, 8.2), (-103, 11.4, -14.4, 8.0), (-108.5, 9.6, -14.3, 7.6), (-112.3, 6.4, -12.4, 6.8), (-114.6, 2.4, -8.6, 5.4), (-115.5, -1.6, -4.4, 3.2)]
+    RIVETS_U, RIVET_R, TANG_OUT = (-20, -56.5, -93), 3.0, 0.25
+    def section(u, top, bot, w):  # a rounded rectangle: flat top and bottom (the tang shows there), round corners
+        a = min(1.9, w * 0.5); r = min(4.6, (top - bot) * 0.38); pts = [(a, top)]
+        for k in range(1, 5): t = k / 5 * math.pi / 2; pts.append((a + (w - a) * math.sin(t), top - r * (1 - math.cos(t))))
+        pts += [(w, top - r), (w, bot + r)]
+        for k in range(4, 0, -1): t = k / 5 * math.pi / 2; pts.append((a + (w - a) * math.sin(t), bot + r * (1 - math.cos(t))))
+        pts.append((a, bot)); d = min(1.6, (top - bot) * 0.3)  # (the tang sits in a shallow v down the top and the belly, so nothing lies flat under it)
+        return [V3(x, u, v) for x, v in pts] + [V3(0, u, bot + d)] + [V3(-x, u, v) for x, v in pts[::-1]] + [V3(0, u, top - d)]
+    spine, edge = [], []
+    for k in range(49):
+        sv = Lb * (1 - (1 - k / 48) ** 1.35)
+        spine.append(P(HEEL_U + sv, SPINE_V - drop(sv))); edge.append(P(HEEL_U + sv, EDGE_V + rise(sv)))
+    ln = lambda pts: sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(pts, pts[1:]))
+    ds, de = ln(spine) / (N - 2) / MM, ln(edge) / (N - 2) / MM
+    spine.insert(0, P(HEEL_U - ds * 1.6, SPINE_V)); edge.insert(0, P(HEEL_U - de * 0.92, EDGE_V + de * 0.39))  # (one station back, inside the bolster)
+    L = Lines(spine, edge, N)
+    def skin(s, v, y):
+        if v < min(0.5, 1.3 * MM / L.hgt(s)) and s > 0.04: return 0xf4f6f9  # the honed edge
+        if v > 0.93: return 0xb8bfc8
+        if 0.1 < s < 0.24 and 0.55 < v < 0.75 and int(s * 220) % 3 and int(v * 40) % 2: return 0x8e959e  # the maker's stamp, mostly worn off
+        return 0xd2d8df - (0x060606 if int(v * 64 + s * 9) % 5 == 0 else 0)  # satin: the grinder's lines
+    bl_m = mat('kk_blade', 0xffffff, rough=0.22, metal=0.9, tex=paint('kk_blade_t', L, skin))
+    bl = blade(spine, edge, bl_m, n=N, thick=SPINE_T * MM, grind=1.0, taper=0.66, edge_thick=0.0005, rows=4, name='kk_blade')
+    st = mat('kk_steel', 0xffffff, rough=0.2, metal=0.95, tex=steel_tex('kk_steel_t', 0xdde2e8, var=0.04, seed=11))
+    tang_m = mat('kk_tang', 0xffffff, rough=0.3, metal=0.9, tex=steel_tex('kk_tang_t', 0xb3bac3, var=0.05, seed=12))
+    pom = mat('kk_pom', 0xffffff, rough=0.36, clearcoat=0.5, tex=tex_noise('kk_pom_t', 0x1f2023, var=0.1, size=16, speck=0x34363a, speck_p=0.08, seed=13))
+    rows = [SPINE_V + 0.12, SPINE_V - 0.9, 8, 2, -5, -12, -17, -22, -26.5, -30, -32.8, EDGE_V + 0.15]
+    cols = [0, 0.1, 0.22, 0.36, 0.5, 0.64, 0.78, 0.9, 1]
+    bol = []
+    for k, v in enumerate(rows):
+        ub, uf, hb, hf = guardBack(v), guardFront(v), guardHalf(v), bladeHalf(v) + 0.22
+        sh = 0.72 if k == 0 else 0.94 if k == 1 else 1
+        sd = [(hf + (hb - hf) * (1 - f * f * (3 - 2 * f)) * sh, ub + (uf - ub) * f) for f in cols]
+        bol.append([V3(h, u, v) for h, u in sd] + [V3(-h, u, v) for h, u in sd[::-1]])
+    bolster = loft_loops(bol, st, 'kk_bolster', angle=50)
+    grip = loft_loops([section(0.5, 11.4, -11.4, 5.6)] + [section(*h) for h in HANDLE], pom, 'kk_scales', angle=50)
+    out = [P(2.5, 11.0)] + [P(u, t + TANG_OUT) for u, t, b, w in HANDLE]  # (starting inside the bolster)
+    ue, te, be, _ = HANDLE[-1]; out.append(P(ue - TANG_OUT, (te + be) / 2))
+    out += [P(u, b - TANG_OUT) for u, t, b, w in HANDLE[::-1]]
+    out.append(P(2.5, -11.0))
+    tang = side(decollinear(out), SPINE_T * MM, (0, 0, 0), tang_m, name='kk_tang')
+    riv = []
+    for u in RIVETS_U:
+        i = next(k for k, h in enumerate(HANDLE) if h[0] < u); (u0, _, _, w0), (u1, _, _, w1) = HANDLE[i - 1], HANDLE[i]
+        w = w0 + (w1 - w0) * ((u - u0) / (u1 - u0))
+        riv.append(rivet(RIVET_R * MM, w * MM, (0, 0, Z_BACK - u * MM), st, name='kk_rivet'))
+    for o in [bolster, grip, tang] + riv: uv_box(o, 0.03)
+    meta = {'kind': 'weapon', 'id': 'knife', 'skin': 'knife_kitchen', 'paint': [], 'muzzle': [0, TIP_V * MM, Z_BACK - TIP_U * MM], 'hatAt': [[0, (SPINE_V + TANG_OUT) * MM, 0.03], 0.05]}
+    parts = zone_join([grip, tang, bolster], 'kkitchen_grip', {}, default='a') + zone_join([bl], 'kkitchen_blade', {}, default='b') + zone_join(riv, 'kkitchen_rivets', {}, default='n')
+    return finish('w_knife_kitchen', parts, meta)
+
+
+BUILD = {'knife': (knife, 'w_knife'), 'knife_kitchen': (kitchen, 'w_knife_kitchen')}
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 only = set(argv[argv.index('--only') + 1].split(',')) if '--only' in argv else None
 main_multi(lambda: [(fn(), fid) for k, (fn, fid) in BUILD.items() if not only or k in only], exposure=-0.3)
