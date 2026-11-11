@@ -3331,6 +3331,7 @@ function wreck(B0, D0, dx, dz, st) {
 // the lighthouse (round 82, -6): the striped tower, the lantern; o.climb false: no stair round it and no gallery (S&D)
 function lighthouse(B0, D0, dx, dz, st, o = {}) {
   const { B, D, add, W, up } = isPiece(B0, D0, dx, dz, st);
+  const n0 = B0.boxes.length, d0 = D0.boxes.length; // (drawn as one Blender model, lighthouse.glb / lighthouse_sd.glb without the stair: look only)
   [['white', 0], ['toyred', 4.5], ['white', 9], ['toyred', 13.5]].forEach(([m, y]) => add(79, y, -9, 85, y + 4.5, -3, m));
   if (o.climb !== false) {
     up(flight(B, true, 79, 85, -3, -1.5, 0, 4.5, 'metal', 1)); add(85, 4.05, -3, 86.5, 4.5, -1.5, 'metal');
@@ -3342,7 +3343,11 @@ function lighthouse(B0, D0, dx, dz, st, o = {}) {
   }
   add(80, 18, -8, 84, 21, -4, 'glass'); D.add(81.4, 18.6, -6.6, 82.6, 20.2, -5.4, 'light'); // the lantern
   add(79.6, 21, -8.4, 84.4, 21.5, -3.6, 'toyred'); add(80.6, 21.5, -7.4, 83.4, 22.2, -4.6, 'toyred'); D.box(82, 22.5, -6, 0.6, 0.6, 0.6, 'metal');
-  D.add(78.94, 1.6, -7.5, 79.0, 2.6, -4.5, 'adlight', { fit: 1 });
+  const id = o.climb === false ? 'lighthouse_sd' : 'lighthouse';
+  B0.boxes.arch.push({ id, p: [dx, 0, dz], r: 0 }); const tag = { av: id, ai: B0.boxes.arch.length - 1 };
+  for (let i = n0; i < B0.boxes.length; i++) Object.assign(B0.boxes[i], tag);
+  for (let i = d0; i < D0.boxes.length; i++) if (D0.boxes[i].mat !== 'light') Object.assign(D0.boxes[i], tag); // (the light itself: the game's, it glows)
+  D.add(78.94, 1.6, -7.5, 79.0, 2.6, -4.5, 'adlight', { fit: 1 }); // (the sign: the game's picture)
 }
 // the keeper's cottage (round 71, 9): its door west, windows, a bed, a table
 function cottage(B0, D0, dx, dz) {
