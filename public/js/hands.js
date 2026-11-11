@@ -42,7 +42,8 @@ function mat(color, textured = true) {
   return mats.get(k);
 }
 const hex = (c, d) => { try { return new THREE.Color(c).getHex(); } catch { return d; } };
-const SLEEVES = { hoodie: 1, jacket: 1, suit: 1, runner: 1, maid: 1, tee: 0.5, robe: 1, refshirt: 0.5, cardigan: 1, spacesuit: 1, hawaiian: 0.5, chef: 1, stringer: 0.5, pjtop: 1, chickensuit: 1, binarmour: 1 };
+const SLEEVES = { hoodie: 1, jacket: 1, suit: 1, runner: 1, maid: 1, tee: 0.5, robe: 1, refshirt: 0.5, cardigan: 1, spacesuit: 1, hawaiian: 0.5, chef: 1, stringer: 0.5, pjtop: 1, // (the stringer has no sleeve: its 'cuff' is the wristband)
+  chickensuit: 1, binarmour: 1 };
 // the wrists the clothes have (clothes.js): [the cuff, the sleeve behind it]. a top that isn't here is one colour to the end
 const dimmer = (c) => new THREE.Color(c).multiplyScalar(0.72).getHex();
 const CUFFS = { runner: (c) => [0x1c1c21, c], suit: (c) => [0xf2f1ec, c], hoodie: (c) => [dimmer(c), c], jacket: (c) => [dimmer(c), c] }; // black knit, a shirt cuff, darker ribbing, a darker band
@@ -51,7 +52,6 @@ CUFFS.chef = (c) => [dimmer(c), c]; // the turned-back cuff
 CUFFS.pjtop = (c) => [0xf2f1ec, c]; // white piping
 CUFFS.chickensuit = (c) => [dimmer(c), c]; // the wing's darker feathers
 CUFFS.binarmour = () => [0x9ea3a8, 0xc8a070]; // duct tape round a cardboard vambrace
-CUFFS.stringer = (c) => [c, 0x1c1c21]; // no sleeve: a wristband, the fingerless glove's strap behind it
 CUFFS.spacesuit = () => [0x9ea3a8, 0xc6ccd4]; // duct tape round the dryer hose
 CUFFS.robe = (c) => [new THREE.Color(c).lerp(new THREE.Color(0xffffff), 0.16).getHex(), c]; // the bathrobe's turned-back cuff, a touch paler
 export function handLook() {
