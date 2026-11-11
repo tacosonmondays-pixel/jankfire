@@ -157,6 +157,26 @@ export function waterSplash(x, y, z, k, ride, tint = 0xffffff) {
   if (k > 0.5) F.ripple.spawn({ p: [x, y + 0.04, z], s0: 1.2 + k * 2, s1: 3.4 + k * 7.5, life: 1.5 + k * 0.7, a: 0.7, col: tint, rot: Math.random() * 6.28, ride });
   if (k > 0.2) F.splash.spawn({ p: [x, y, z], s0: 0.9 + k * 1.5, s1: 1.2 + k * 2.1, life: 0.55 + k * 0.3, a: 1, col: tint });
 }
+// ---- real explosions + muzzle smoke (owner, 2026-11-11: "I want actual effects")
+// an explosion: the fireball flipbook baked in Blender (tools/sprites/blender/explosion_flipbook.py: bursts white-hot,
+// cools to red, leaves rolling smoke), one big in the middle and a few smaller ones off-centre a beat later
+function boomBook() { const f = get(); if (!f.boom) f.boom = new Flipbook('boom.png', 8, 40, { sort: true, soft: true, rgb: true, inkK: 0 }); return f.boom; }
+export function boomSprite(p, radius = 4) {
+  const F = boomBook(), R = (k) => (Math.random() * 2 - 1) * k, s = Math.max(2.5, radius * 1.9);
+  F.spawn({ p: [p[0], p[1] + s * 0.12, p[2]], v: [0, 0.5, 0], s0: s * 0.9, s1: s * 1.25, life: 1.5, a: 1, rot: R(3.14) });
+  for (let i = 0; i < 3; i++) F.spawn({ p: [p[0] + R(radius * 0.4), p[1] + Math.abs(R(radius * 0.35)), p[2] + R(radius * 0.4)], v: [R(0.6), 0.6 + Math.random() * 0.6, R(0.6)], s0: s * 0.45, s1: s * 0.8, life: 1.25 + Math.random() * 0.5, a: 0.95, rot: R(3.14), spin: R(0.2) });
+}
+// a shot: a small grey puff off the muzzle (the soft smoke sheet). not for your own gun (it would sit in your face),
+// and no more than one every 60 ms from about the same place, so an automatic doesn't lay a wall of it
+let lastPuff = 0, lastPx = 1e9, lastPz = 1e9;
+export function muzzlePuff(a, b) {
+  const now = performance.now(), cam = G.camera && G.camera.position;
+  if (!cam || Math.hypot(a[0] - cam.x, a[1] - cam.y, a[2] - cam.z) < 1.3) return;
+  if (now - lastPuff < 60 && Math.abs(a[0] - lastPx) + Math.abs(a[2] - lastPz) < 0.6) return;
+  lastPuff = now; lastPx = a[0]; lastPz = a[2];
+  const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], l = Math.hypot(dx, dy, dz) || 1, g = 0.72 + Math.random() * 0.2;
+  get().soft.spawn({ p: [a[0] + dx / l * 0.15, a[1] + dy / l * 0.15, a[2] + dz / l * 0.15], v: [dx / l * 1.6, dy / l * 1.6 + 0.35, dz / l * 1.6], s0: 0.22, s1: 0.85, life: 0.55 + Math.random() * 0.25, a: 0.5, col: _c.setRGB(g, g, g).getHex(), rot: Math.random() * 6.28, spin: (Math.random() - 0.5) * 2, drag: 3.5 });
+}
 // main.js, every frame (also keeps the smoke's light in step with the map)
 export function updateFlipbooks(dt) {
   if (!FB) return;
@@ -165,4 +185,5 @@ export function updateFlipbooks(dt) {
   LIT.value.setRGB(l, l, l);
   for (const k in FB) FB[k].update(dt, G.camera);
 }
+export const flipbooks = () => get(); // (tests: the live sheets)
 export function clearFlipbooks() { if (FB) for (const k in FB) FB[k].clear(); }
