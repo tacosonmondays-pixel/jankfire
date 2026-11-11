@@ -6,6 +6,7 @@ export const PATCH_NOTES = [
     'swim off the map and you get the RETURN TO THE MAP countdown, then you sleep with the fishes. same on Islands Plant & Defuse.',
     'bots float too. they used to drown constantly. now they have to be shot like everyone else.',
     'ZOMBIES: squad bots learned what stairs are for. they buy the upstairs shutters now, and they can find the power switch on every map.',
+    'PLANT & DEFUSE: the better bots check a corner before they walk past it. stop, aim where your head would be, step out, step back. bad bots still just walk in.',
   ] },
   { v: '7.4', date: '2026-11-10', title: 'GROUND FLOOR, AND ANOTHER FLOOR', items: [
     'two new zombies maps, both with an upstairs: JANKFIELD HIGH and SECOND OPINION GENERAL. take the stairs. or the ramp. it is a ramp, legally.',
