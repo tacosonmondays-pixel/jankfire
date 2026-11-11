@@ -98,6 +98,6 @@ skipped bit) · **B** / **C** (that session's part; faked in the run) · **BLOCK
   (m06_option_c) wants you at the Lost & Found. Coming out at `commute:tunnel_mouth` would fit the script.
 - **C:** the ambush (m02), the escort walk (m03), the stomach-dog chase (m03), the truck (m04).
 - **Systems / lead:** "shoot the dead vending machine" and "sleep" are USE spots, not the real thing.
-- `talkAt: 'arrive'` (overdue.js) is there for steps whose talk belongs at the destination: m01 swing (Dumpling scores
-  the landing), m04 home (aftermath), m05 home (night) look like they want it; m02 drive's car ride does not. Content
-  call for the lead.
+- `talkAt: 'arrive'` (overdue.js): a reach step's talk opens when you get there. On (lead's call): m01 swing (Dumpling
+  scores the landing), m04 home (aftermath), m05 home (night). Off: m02 drive (the car ride is on the way), m05 clinic
+  (moving Bev's intro would open it together with the c5 install scene).

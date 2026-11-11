@@ -57,3 +57,14 @@ test('m02: the soup is delivered at the trade post, not the moment you hold it; 
   assert.ok(S2.st.quests.m02_sauce_run.done, 'delivered at the gate');
   assert.ok(talks.some((t) => t.includes('trade_post')));
 });
+
+test("talkAt 'arrive': Dumpling scores the landing on the roof, Auntie's talks wait for home", () => {
+  for (const [q, st, talk] of [['m01_return_to_sender', 'swing', 'dumpling_score'], ['m04_clocking_in', 'home', 'aftermath'], ['m05_second_stomach', 'home', 'night']]) {
+    const steps = overdue.quests[q].steps, i = steps.findIndex((s) => s.id === st), act = `${q}.${talk}.start`;
+    assert.ok(!(steps[i].do || []).some((a) => typeof a === 'string' && a.includes(act)), `${q}/${st}: ${talk} opens at the step start`);
+    const after = i + 1 < steps.length ? steps[i + 1].do || [] : overdue.quests[q].onDone;
+    assert.ok(after.some((a) => typeof a === 'string' && a.includes(act)), `${q}/${st}: ${talk} doesn't open on arrival`);
+  }
+  // the car ride is a talk on the way: it stays at the start of the drive
+  assert.ok(overdue.quests.m02_sauce_run.steps.find((s) => s.id === 'drive').do.some((a) => typeof a === 'string' && a.includes('car_ride')));
+});

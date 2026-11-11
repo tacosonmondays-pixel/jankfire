@@ -10,7 +10,8 @@
 //   logline     one sentence
 //   beats       the story beats in order (plain prose, for the writer and the builder)
 //   reveals     { learn: [...], suspect: [...], withheld: [...] }  the mystery, bit by bit
-//   steps       [{ id, text (HUD objective, lowercase), goal: { type, ...params }, marker?, talk?, scene?, boss?, timer?, fail?, do?, if? }]
+//   steps       [{ id, text (HUD objective, lowercase), goal: { type, ...params }, marker?, talk?, talkAt?, scene?, boss?, timer?, fail?, do?, if? }]
+//               talkAt: 'arrive' = a reach step's talk opens when you get there, not when the step starts
 //               goal types (TECH_PLAN §6): reach{zone} pickup{item} deliver{item,zone} kill{who,n} killBoss{boss} talk{who,talk}
 //               enterCar{} survive{secs} escort{who,zone} photo{target} interact{target} loseFees{} flag{flag}
 //               fail: { type: 'flag', flag } or { type: 'death', who } or { type: 'timer' }
@@ -60,7 +61,7 @@ export const MISSIONS_ACT1 = {
       { id: "name", text: "", goal: { type: "talk", who: "gordo", talk: "barcode" } },
       { id: "bins", text: "grab something from the lost property bins", goal: { type: "pickup", item: "lost_property_weapon" }, marker: "bottom:lostfound", talk: "dumpling_tour" },
       { id: "vend", text: "shoot the dead vending machine", goal: { type: "interact", target: "bottom:lostfound" }, notes: "the tutorial loot drop: guaranteed rare" },
-      { id: "swing", text: "grapple onto the wok roofs (dumpling is scoring you)", goal: { type: "reach", zone: "bottom:rooftops" }, talk: "dumpling_score", notes: "teaches the grapple: swing, let go on the upswing, land; Dumpling scores the landing out of ten" },
+      { id: "swing", text: "grapple onto the wok roofs (dumpling is scoring you)", goal: { type: "reach", zone: "bottom:rooftops" }, talk: "dumpling_score", talkAt: "arrive", notes: "teaches the grapple: swing, let go on the upswing, land; Dumpling scores the landing out of ten" },
       { id: "line", text: "ride a washing line back to the lost & found", goal: { type: "reach", zone: "bottom:lostfound" }, notes: "teaches the washing-line ziplines" },
       { id: "dinner", text: "dinner at the lost & found", goal: { type: "talk", who: "auntie", talk: "dinner" }, marker: "bottom:lostfound" },
       { id: "sleep", text: "sleep", goal: { type: "interact", target: "bottom:lostfound" }, do: ["flag:act1_started"] },
@@ -304,7 +305,7 @@ export const MISSIONS_ACT1 = {
       { id: "rip", text: "", goal: { type: "flag", flag: "heart_ripped" }, scene: "mo_heart_rip", do: ["give:core_cracked_punch_clock"] },
       { id: "after", text: "", goal: { type: "talk", who: "overtime", talk: "rescheduled" } },
       { id: "truck", text: "the truck", goal: { type: "flag", flag: "truck_choice_made" }, notes: "the truck_choice choice below" },
-      { id: "home", text: "go back to the lost & found", goal: { type: "reach", zone: "bottom:lostfound" }, talk: "aftermath" },
+      { id: "home", text: "go back to the lost & found", goal: { type: "reach", zone: "bottom:lostfound" }, talk: "aftermath", talkAt: "arrive" },
     ],
     talks: {
       rescheduled: {
@@ -362,7 +363,7 @@ export const MISSIONS_ACT1 = {
       { id: "clinic", text: "take the core to the meat mechanic on the gut border", goal: { type: "reach", zone: "gut:clinic_bev" }, marker: "gut:clinic_bev", talk: "bev_intro" },
       { id: "install", text: "", goal: { type: "flag", flag: "seen_c5" }, scene: "c5_second_stomach", do: ["implant:core_cracked_punch_clock", "flag:implants_unlocked"] },
       { id: "tutorial", text: "check your new part", goal: { type: "talk", who: "bev", talk: "parts" } },
-      { id: "home", text: "go home", goal: { type: "reach", zone: "bottom:lostfound" }, talk: "night" },
+      { id: "home", text: "go home", goal: { type: "reach", zone: "bottom:lostfound" }, talk: "night", talkAt: "arrive" },
     ],
     talks: {
       bev_intro: {
