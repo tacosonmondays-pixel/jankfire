@@ -280,6 +280,19 @@ export function bindAuthored(g, meta) {
   }
   // a katana skin's blade (grows with kills, setKatana in models.js): a node straight under the root, pointing -z, katLen = origin to tip
   if (meta.katBlade && Number.isFinite(meta.katLen)) { const n = nodeIn(g, meta.katBlade); if (n) { g.userData.katBlade = n; g.userData.katLen = meta.katLen; } }
+  // the knife skins' moving parts, the hooks the code blades set (weapons.js / balisong.js drive them): the switchblade's
+  // blade on its pivot pin, the butterfly's two handles [safe, bite], the karambit's ring centre (the spin)
+  if (meta.flipBlade) {
+    const n = nodeIn(g, meta.flipBlade);
+    if (n && n.parent) { // the code blade turns inside a mirrored frame (+x folds it edge first into the handle): same rig round the node
+      const mir = new THREE.Group(), flip = new THREE.Group(), inner = new THREE.Group();
+      mir.scale.y = -1; inner.scale.y = -1; flip.position.set(n.position.x, -n.position.y, n.position.z);
+      n.parent.add(mir); mir.add(flip); flip.add(inner); n.position.set(0, 0, 0); inner.add(n);
+      g.userData.flipBlade = flip;
+    }
+  }
+  if (Array.isArray(meta.handles) && meta.handles.length === 2) { const h = meta.handles.map((n) => nodeIn(g, n)); if (h.every(Boolean)) g.userData.handles = h; }
+  if (Array.isArray(meta.pivot) && meta.pivot.length === 3 && meta.pivot.every(Number.isFinite)) g.userData.pivot = new THREE.Vector3(...meta.pivot);
   if (meta.bow) bowRig(g, meta.bow);
   if (meta.noWrap) g.traverse((o) => { if (o.isMesh) o.userData.noWrap = true; }); // trophies (the Golden Sniper): no wrap covers them
   g.userData.parts = findParts(g, meta);

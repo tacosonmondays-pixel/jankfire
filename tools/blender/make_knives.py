@@ -124,7 +124,7 @@ def kitchen():
         sh = 0.72 if k == 0 else 0.94 if k == 1 else 1
         sd = [(hf + (hb - hf) * (1 - f * f * (3 - 2 * f)) * sh, ub + (uf - ub) * f) for f in cols]
         bol.append([V3(h, u, v) for h, u in sd] + [V3(-h, u, v) for h, u in sd[::-1]])
-    bolster = loft_loops(bol, st, 'kk_bolster', angle=50)
+    bolster = loft_loops(bol, st, 'kk_bolster', angle=50, crown=(0.0006, 0.0))  # (its top a little crowned over the spine)
     grip = loft_loops([section(0.5, 11.4, -11.4, 5.6)] + [section(*h) for h in HANDLE], pom, 'kk_scales', angle=50)
     out = [P(2.5, 11.0)] + [P(u, t + TANG_OUT) for u, t, b, w in HANDLE]  # (starting inside the bolster)
     ue, te, be, _ = HANDLE[-1]; out.append(P(ue - TANG_OUT, (te + be) / 2))
@@ -239,8 +239,223 @@ def cleaver():
     return finish('w_knife_cleaver', parts, meta)
 
 
+# ------------------------------------------------------------------------------------------------ Switchblade
+def switch():
+    """the Italian-pattern side-opening automatic (public/js/blades/switch.js): a slim 4 in spear blade with a square
+    ricasso and a long swedge, nickel-silver bolsters with guard ears (the button-side one taller: the swivel's thumb
+    tab), dark horn scales, brass liners, a backspring, the domed button. the blade is its own node on the pivot pin
+    (meta flipBlade): the game swings it shut and open"""
+    CLOSED_L, BLADE_L, PIV_U, Z_F, YC, HH = 124.5, 102.5, 8, -42, 1.0, 8.7; Z_P = Z_F + PIV_U
+    SLOT, LINER, OUT, SPRING_Y0 = 2.0, 1.2, 8.2, 5.9
+    T, TAPER, FALSE_T = 3.0, 0.62, 0.5; SPINE_Y, EDGE_Y, TIP_Y = 7.3, -5.5, 1.3; SW_U, SWEDGE = 46, 2.6; RIC_U, PLUNGE_U, GRIND = 9.2, 15.5, 0.48
+    HEEL = 0.5; N = 46
+    P = lambda u, y: ((Z_F - u) * MM, y * MM); Hh = lambda u, y: ((Z_F + u) * MM, (YC + y) * MM); toM = lambda pts: [Hh(u, y) for u, y in pts]
+    sm = lambda a, b, x: (lambda t: t * t * (3 - 2 * t))(ramp(x, a, b))
+    spine = [P(-HEEL, SPINE_Y)] + curve([P(SW_U - 8, SPINE_Y), P(SW_U, SPINE_Y), P(SW_U + 6, SPINE_Y - 0.55), P(70, 4.75), P(88, 2.84), P(BLADE_L, TIP_Y)], 30)
+    edge = [P(-HEEL, EDGE_Y), P(20, EDGE_Y + 0.05)] + curve([P(40, EDGE_Y + 0.1), P(64, EDGE_Y + 0.1), P(76, -5.0), P(86, -3.6), P(94, -1.7), P(99, -0.1), P(BLADE_L, TIP_Y)], 30)
+    L = Lines(spine, edge, N); sOf = lambda u: (u + HEEL) / (BLADE_L + HEEL)
+    plunge = lambda s: sm(sOf(RIC_U + 2), sOf(PLUNGE_U), s); kOf = lambda s: ramp(s, sOf(SW_U), sOf(SW_U + 34))
+    swLo = lambda s: max(GRIND + 0.06, 1 - SWEDGE * MM * kOf(s) / L.hgt(s)) if s > sOf(SW_U) else 0.999
+    STEEL, BEVEL = 0xbac1ca, 0xe6ebf0
+
+    def skin(s, v, y):
+        if plunge(s) > 0.5 and v < GRIND * (0.4 + 0.6 * plunge(s)): return BEVEL if v > 0.07 else 0xf5f7fa
+        if s > sOf(SW_U) and v > swLo(s): return BEVEL
+        if sOf(2) < s < sOf(8.6) and abs(y - 1.2 * MM) < 1.7 * MM and int((s - sOf(2)) / (sOf(8.6) - sOf(2)) * 11) % 3 != 2 and int(y / MM * 2.5) % 2: return 0x858c96  # JANK
+        return STEEL
+    bl_m = mat('sw_blade', 0xffffff, rough=0.16, metal=0.92, tex=paint('sw_blade_t', L, skin))
+    bl = blade(spine, edge, bl_m, n=N, thick=T * MM, grind=GRIND, taper=TAPER, edge_thick=0.0003, plunge=plunge, close=0.13,
+               swedge=(swLo, lambda s: 1 - (1 - FALSE_T / T) * kOf(s)), name='sw_blade')
+    st = mat('sw_steel', 0xffffff, rough=0.3, metal=0.9, tex=steel_tex('sw_steel_t', 0x8b929b, seed=41))
+    # the tang round the pivot: behind the blade's heel, under the spring (pivot space z, y in mm)
+    TANG = [(-7.0, 5.7), (-1, 5.7), (2.6, 5.4), (5.2, 4.3), (6.6, 1.2), (6.5, -1.6), (5.1, -3.8), (3.0, -5.2), (-7.0, -5.4)]
+    tang = side([((Z_P + z) * MM, y * MM) for z, y in TANG], 2.9 * MM, (0, 0, 0), st, name='sw_tang'); uvb(tang, 0.03)
+    flip = part([bl, tang], 'kswitch_blade_wzB', pivot=(0, 0, Z_P * MM))
+    # ---- the handle's outlines (u behind the bolster face, y off the centre line)
+    ear = lambda pts, sy: [(u, sy * (HH + dy)) for u, dy in pts]
+    earTop = lambda tab: ear([(-0.7, 1.9), (0.4, 3.1), (1.9, 3.2), (3.9, 1.45), (6.6, 0.15)] if tab else [(-0.3, 1.4), (0.9, 2.3), (2.3, 2.15), (3.9, 0.95), (6.2, 0.12)], 1)
+    earBot = ear([(6.2, 0.12), (3.9, 0.95), (2.3, 2.15), (0.9, 2.3), (-0.3, 1.4)], -1)
+    R_BACK = 16.6; A_BACK = math.asin(HH / R_BACK)
+    backArc = [(PIV_U + math.cos(t * 2 * A_BACK) * R_BACK, math.sin(t * 2 * A_BACK) * R_BACK) for t in (0.5, 0.3, 0.1, -0.1, -0.3, -0.5)]
+    frontBolster = lambda tab: [(0, -HH + 0.4), (0, HH - 0.4)] + earTop(tab) + backArc + earBot
+    R_END, C_END = 17.5, 127; A_END = math.asin(HH / R_END)
+    endArc = [(C_END + math.cos(math.pi + t * 2 * A_END) * R_END, math.sin(math.pi + t * 2 * A_END) * R_END) for t in (-0.5, -0.3, -0.1, 0.1, 0.3, 0.5)]
+    BUTT = [(118, 1), (121.3, 0.886), (123.3, 0.614), (124.3, 0.295), (CLOSED_L, 0)]
+    butt = [(u, f * HH) for u, f in BUTT + [(u, -f) for u, f in BUTT[:-1][::-1]]]
+    endBolster = butt + endArc[::-1]; scale = [backArc[0]] + endArc + backArc[1:][::-1]
+    LH = HH - 0.05
+    liner = [(0.4, LH), (117.75, LH)] + [(u - 0.25, y * (HH - 0.25) / HH) for u, y in butt[1:-1]] + [(117.75, -LH), (0.4, -LH)]
+    SP, ST = SPRING_Y0 - YC, HH - 0.15
+    spring = [(1, SP), (1, ST), (117.5, ST)] + [(u - 0.5, y * (HH - 0.5) / HH) for u, y in butt[1:7]] + [(121.4, -0.8 * HH), (120.2, -0.84 * HH), (120.2, SP)]
+    nickel = mat('sw_nickel', 0xffffff, rough=0.2, metal=1.0, tex=steel_tex('sw_nickel_t', 0xe0dccf, var=0.05, seed=42, speck=0xb5b09f, p=0.03))
+    brass = mat('sw_brass', 0xffffff, rough=0.32, metal=1.0, tex=steel_tex('sw_brass_t', 0xc7a04b, var=0.07, seed=43))
+    def horn_px(px):  # dark horn: long pale streaks running down the handle
+        r = np.random.default_rng(44); base = hexrgb(0x56402f); pale = hexrgb(0x8a6d4c); dark = hexrgb(0x2e2018)
+        for row in range(32):
+            k = r.random(); t = r.random() * 6.28
+            for col in range(32): f = 0.5 + 0.5 * math.sin(col * 0.35 + t + row * 0.2); px[row, col] = (pale if k > 0.8 else dark if k < 0.25 else base) * (0.82 + 0.3 * f * r.random())
+    horn = mat('sw_horn', 0xffffff, rough=0.25, clearcoat=0.8, tex=tex_canvas('sw_horn_t', 32, 32, horn_px))
+    XI = SLOT + LINER; wide = OUT - XI; xm = (XI + OUT) / 2
+    body = []
+    for sx in (1, -1):
+        body.append(side(toM(liner), LINER * MM, (sx * (SLOT + LINER / 2) * MM, 0, 0), brass, name='sw_liner'))
+        body.append(side(toM(frontBolster(sx < 0)), wide * MM, (sx * xm * MM, 0, 0), nickel, bev=0.0005, name='sw_bolster'))
+        body.append(side(toM(endBolster), wide * MM, (sx * xm * MM, 0, 0), nickel, bev=0.0005, name='sw_endb'))
+        body.append(side(toM(scale), wide * MM, (sx * xm * MM, 0, 0), horn, bev=0.0016, seg=3, name='sw_scale'))
+    body.append(side(toM(spring), (2 * SLOT - 0.2) * MM, (0, 0, 0), st, name='sw_spring'))
+    for o in body: uvb(o, 0.03)
+    pinm = mat('sw_pin', 0xffffff, rough=0.3, metal=0.9, tex=steel_tex('sw_pin_t', 0xaaa69b, seed=45))
+    btn_m = mat('sw_button', 0xffffff, rough=0.14, metal=1.0, tex=steel_tex('sw_button_t', 0xf0ece2, var=0.03, seed=46))
+    bz, by = (Z_F + 17.6) * MM, YC * MM
+    trims = [rivet(1.55 * MM, OUT * MM, (0, 0, Z_P * MM), pinm, dome=0.0005, name='sw_pivot'),
+             rivet(1.2 * MM, OUT * MM, (0, (SPRING_Y0 + 1.0) * MM, (Z_F + 117.6) * MM), pinm, dome=0.0004, name='sw_rivet'),
+             lathe([(3.0 * MM, -(OUT - 0.4) * MM), (3.0 * MM, -(OUT + 0.2) * MM), (3.5 * MM, -(OUT + 0.5) * MM), (4.1 * MM, -(OUT + 0.15) * MM), (4.1 * MM, -(OUT - 0.4) * MM), (3.0 * MM, -(OUT - 0.4) * MM)],
+                   (0, by, bz), pinm, seg=14, axis='x', name='sw_collar', cap=False),  # (a closed ring round the button)
+             lathe([(0.0, -(OUT - 0.5) * MM), (2.9 * MM, -(OUT - 0.5) * MM), (2.9 * MM, -(OUT + 0.55) * MM), (2.3 * MM, -(OUT + 1.05) * MM), (1.3 * MM, -(OUT + 1.3) * MM), (0.0, -(OUT + 1.4) * MM)][::-1],
+                   (0, by, bz), btn_m, seg=14, axis='x', name='sw_button')]
+    for o in trims: uvb(o, 0.03)
+    meta = {'kind': 'weapon', 'id': 'knife', 'skin': 'knife_switch', 'paint': [], 'muzzle': [0, TIP_Y * MM, (Z_F - BLADE_L) * MM], 'hatAt': [[0, 0.0097, 0.03], 0.05], 'flipBlade': 'kswitch_blade_wzB'}
+    parts = zone_join(body, 'kswitch_handle', {}, default='a') + [flip] + zone_join(trims, 'kswitch_pins', {}, default='n')
+    return finish('w_knife_switch', parts, meta)
+
+
+# ------------------------------------------------------------------------------------------------ Karambit
+def karambit():
+    """the claw (public/js/blades/karambit.js): one piece of coated steel from the point to the finger ring, a curved
+    blade whose edge runs round an arc to a point facing down, jimping on the thumb ramp, a finger guard, two G10 scales
+    with machined slots and three screws, the tang's edge showing all round. meta pivot = the ring's middle (the spin)"""
+    RING_Z, RING_RO, RING_RI, HANDLE_T, STEEL_T, BEV, LINE = 64, 18, 12, 11.4, 3.0, 0.9, 0.3
+    ZF, YF = -27, -6.5; c01 = lambda v: min(1, max(0, v))
+    yc = lambda z: YF * (1 - c01((z - ZF) / (RING_Z - ZF)) ** 2)
+    top = lambda z: yc(z) + 12.3 + 3.4 * c01((z - 33) / 20) ** 2.2
+    belly = lambda z: 1.9 * math.sin(math.pi * c01((z + 20) / 72))
+    groove = lambda z: sum(1.5 * max(0, math.cos(math.pi * (z - zc) / 20)) ** 2 for zc in (39, 17, -5) if abs(z - zc) < 10)
+    bot = lambda z: yc(z) - 13 - belly(z) + groove(z)
+    DY = YF + 0.8; E0 = (-38.5, -11.2 + DY); H0, RE, TH_TIP = 24, 48, math.radians(80); C = (E0[0], E0[1] - RE)
+    Hof = lambda t: H0 * (1 - t ** 1.6)
+    Pm = lambda q: (q[0] * MM, q[1] * MM)
+    def jimping(a, b, count, depth, w=0.45):
+        dz, dy = b[0] - a[0], b[1] - a[1]; Ln = math.hypot(dz, dy); u = (dz / Ln, dy / Ln); out = []
+        for k in range(count):
+            t = (k + 0.5) / count; m = (a[0] + dz * t, a[1] + dy * t)
+            ja, jb = (0.0, 0.031, 0.008, 0.047, 0.019, 0.058)[k % 6], (0.012, 0.003, 0.041, 0.022, 0.055, 0.027)[k % 6]  # (hand filed: no three lips in a row)
+            out += [(m[0] - u[0] * w + u[1] * ja, m[1] - u[1] * w - u[0] * ja), (m[0] + u[1] * depth, m[1] - u[0] * depth), (m[0] + u[0] * w + u[1] * jb, m[1] + u[1] * w - u[0] * jb)]
+        return out
+    def meetRing(f):
+        a, b = RING_Z - 30, RING_Z - 1
+        for _ in range(40):
+            m = (a + b) / 2
+            if math.hypot(m - RING_Z, f(m)) > RING_RO: a = m
+            else: b = m
+        return a, f(a)
+    (TZ, TY), (BZ, BY) = meetRing(top), meetRing(bot)
+    TOP = []; z = ZF
+    while z < TZ - 1.5: TOP.append((z, top(z))); z += 4
+    BOT = []; z = BZ - 1.5
+    while z >= -15: BOT.append((z, bot(z))); z -= 3
+    RING_ARC = arc2(RING_Z, 0, RING_RO, math.atan2(TY, TZ - RING_Z), math.atan2(BY, BZ - RING_Z), 18)
+    GUARD = [(z, y + DY) for z, y in [(-18, -15.4), (-22, -16.7), (-25.5, -18.1), (-28.3, -19.0), (-30.8, -19.1)]]
+    GUARD_FRONT = [(z, y + DY) for z, y in [(-34.2, -16.6), (-35.0, -14.4), (-35.2, -12.4)]]
+    n = 40; spine, edge = [], []
+    for i in range(n):
+        t = i / (n - 1); th = t * TH_TIP; rs = RE + Hof(t)
+        edge.append((C[0] - RE * math.sin(th), C[1] + RE * math.cos(th))); spine.append((C[0] - rs * math.sin(th), C[1] + rs * math.cos(th)))
+    spine[-1] = edge[-1]; S0 = spine[0]
+    # ---- the steel: one plate, point side to the ring
+    rampj = jimping((S0[0] + 0.6, S0[1]), TOP[0], 6, 0.75); guardJ = jimping(GUARD[-1], GUARD_FRONT[0], 3, 0.55, 0.4)
+    notch = arc2(E0[0] + 1.5, E0[1], 1.5, 0, math.pi, 6)
+    outline = [S0] + rampj + TOP + RING_ARC + BOT + GUARD + guardJ + GUARD_FRONT + notch
+    COAT, COAT_BEVEL, SWEDGE, BARE = 0x2b2e34, 0x383c43, 0x484d55, 0xd6dce3
+    coat = mat('kr_coat', 0xffffff, rough=0.42, metal=0.7, clearcoat=0.2, tex=steel_tex('kr_coat_t', COAT, var=0.08, seed=51, speck=0x4a4f58, p=0.03))
+    hole = [Pm(q) for q in arc2(RING_Z, 0, RING_RI - LINE, 0, 2 * math.pi * (1 - 1 / 20), 20)]
+    steel = side([Pm(q) for q in decollinear(outline)], STEEL_T * MM, (0, 0, 0), coat, name='kr_steel', holes=[hole], bev=0.0002, seg=1)
+    # ---- the G10 scales: one each side of the tang, slots milled through, the ring's hole a hair wider than the steel's
+    f = lambda z, y: (z, y + DY)
+    scaleOut = [(ZF + 0.8, top(ZF + 0.8) - 0.1)] + TOP[1:] + RING_ARC + BOT + GUARD[:4] + [f(-29.8, -18.0), f(-29.0, -14.5), f(-27.9, -6), f(-27.2, 3), f(-26.6, 9)]
+    def across(z, i0, i1):
+        y0, y1 = bot(z) + i0, top(z) - i1; ym = (y0 + y1) / 2; k = lambda y: (y - ym) * 0.28
+        return [Pm(q) for q in [(z - 0.8 + k(y0), y0), (z + 0.8 + k(y0), y0), (z + 0.8 + k(y1), y1), (z - 0.8 + k(y1), y1)]]
+    slots = [across(-4, 4.2, 4.8), across(1.5, 4.3, 4.9), across(25, 4.1, 4.7), across(30.5, 4.2, 4.6)]
+    g10 = mat('kr_g10', 0xffffff, rough=0.5, clearcoat=0.25, tex=tex_noise('kr_g10_t', 0x3b3d42, var=0.12, size=16, speck=0x232529, speck_p=0.18, seed=52))
+    rhole = [Pm(q) for q in arc2(RING_Z, 0, RING_RI + LINE, 0, 2 * math.pi * (1 - 1 / 20), 20)]
+    sw = (HANDLE_T - STEEL_T) / 2; scales = []
+    for sx in (1, -1):
+        scales.append(side([Pm(q) for q in decollinear(offset2(scaleOut, -LINE))], sw * MM, (sx * (STEEL_T / 2 + sw / 2) * MM, 0, 0), g10, name='kr_scale', holes=[rhole] + slots, bev=BEV * MM))
+    scr = mat('kr_screw', 0xffffff, rough=0.35, metal=0.9, tex=steel_tex('kr_screw_t', 0x6c727b, seed=53))
+    screws = [stud(2.3 * MM, HANDLE_T / 2 * MM, 0.0006, (0, ((top(z) + bot(z)) / 2 + 0.3) * MM, z * MM), scr, sx, name='kr_screw') for z in (-16, 14, 42) for sx in (1, -1)]
+    # ---- the blade
+    N = 30; sp, ed = [Pm(q) for q in spine], [Pm(q) for q in edge]; L = Lines(sp, ed, N)
+    swLo = lambda s: max(0.56, 1 - 2.4 * MM / L.hgt(s)) if s > 0.04 else 0.999
+    def skin(s, v, y):
+        if v < min(0.45, 1.8 * MM / L.hgt(s)): return BARE
+        if s > 0.04 and v > swLo(s): return SWEDGE
+        return COAT_BEVEL if v < 0.5 else COAT
+    bl_m = mat('kr_blade', 0xffffff, rough=0.4, metal=0.72, clearcoat=0.2, tex=paint('kr_blade_t', L, skin))
+    bl = blade(sp, ed, bl_m, n=N, thick=STEEL_T * MM, grind=0.5, taper=0.4, edge_thick=0.0004, swedge=(swLo, lambda s: 0.55), name='kr_blade', close=0.12)
+    for o in [steel] + scales + screws: uv_side(o)
+    tip = edge[-1]
+    meta = {'kind': 'weapon', 'id': 'knife', 'skin': 'knife_karambit', 'paint': [], 'muzzle': [0, tip[1] * MM, tip[0] * MM], 'hatAt': [[0, top(12) * MM, 0.012], 0.042], 'pivot': [0, 0, RING_Z * MM]}
+    parts = zone_join(scales, 'kkarambit_scales', {}, default='a') + zone_join([steel, bl], 'kkarambit_steel', {}, default='b') + zone_join(screws, 'kkarambit_screws', {}, default='n')
+    return finish('w_knife_karambit', parts, meta)
+
+
+# ------------------------------------------------------------------------------------------------ Butterfly
+def butterfly():
+    """the balisong (public/js/blades/butterfly.js): a Weehawk spear-point blade with a square ricasso and kicker on a
+    round tang, two milled titanium handles with three long windows each, Torx pivots, zen pins, the spring latch on the
+    bite handle. each handle is its own node on the pivot (meta handles = [safe, bite]): the game does the flipping"""
+    IN_ = 25.4; Z_P, NOSE = -45, 8.5; HANDLE_L = 5.2 * IN_; BUTT = HANDLE_L - NOSE; Z_F = Z_P - NOSE; BLADE_L = 4.2 * IN_; HH = 9.5
+    X_IN, X_OUT = 1.8, 6.25; HX = (X_IN + X_OUT) / 2; T = 0.125 * IN_; SPINE_Y, EDGE_Y, TIP_Y, KICK_Y = 7.4, -7.6, 0.4, -8.3
+    RIC, SW_U, SWEDGE, DROP_U, TANG_R, GRIND = 7.6, 36, 2.6, 50, 7.48, 0.78; N = 40
+    P = lambda u, y: ((Z_F - u) * MM, y * MM); Lh = lambda w, y: ((Z_P + w) * MM, y * MM)
+    spine = [P(RIC, SPINE_Y), P(DROP_U - 6, SPINE_Y)] + curve([P(DROP_U, SPINE_Y), P(DROP_U + 8, SPINE_Y - 0.3), P(70, 6.3), P(82, 4.85), P(93, 3.0), P(101, 1.5), P(BLADE_L, TIP_Y)], 14)
+    edge = [P(RIC, EDGE_Y), P(58, EDGE_Y)] + curve([P(64, EDGE_Y + 0.05), P(74, -7.0), P(84, -5.9), P(93, -4.1), P(100, -2.1), P(104.5, -0.5), P(BLADE_L, TIP_Y)], 14)
+    L = Lines(spine, edge, N); sOf = lambda u: (u - RIC) / (BLADE_L - RIC); W0 = sOf(SW_U)
+    swLo = lambda s: max(GRIND + 0.03, 1 - SWEDGE * MM * ramp(s, W0, W0 + 0.2) / L.hgt(s)) if s > W0 else 0.999
+    STEEL, GROUND, EDGE, SWC = 0xbac0c9, 0xd2d7de, 0xf1f4f7, 0xe0e4ea
+
+    def skin(s, v, y):
+        if v < min(0.32, 1.2 * MM / L.hgt(s)): return EDGE
+        if s > W0 and v > swLo(s): return SWC
+        return GROUND - (0x060606 if int(s * 120) % 3 == 0 else 0) if v < GRIND else STEEL
+    bl_m = mat('bf_blade', 0xffffff, rough=0.26, metal=0.9, tex=paint('bf_blade_t', L, skin))
+    bl = blade(spine, edge, bl_m, n=N, thick=T * MM, grind=GRIND, taper=0.55, edge_thick=0.0003, swedge=(swLo, lambda s: 1 - 0.5 * ramp(s, W0, W0 + 0.2)), name='bf_blade', close=0.11)
+    st = mat('bf_steel', 0xffffff, rough=0.3, metal=0.9, tex=steel_tex('bf_steel_t', STEEL, var=0.05, seed=61))
+    pu = -NOSE
+    tang = [P(RIC, SPINE_Y + 0.08), P(pu, SPINE_Y + 0.08)] + arc2(Z_P * MM, 0, TANG_R * MM, math.pi / 2, -math.pi / 2, 9)[1:-1] + \
+           [P(pu, -TANG_R), P(-1.4, -TANG_R), P(-0.7, KICK_Y), P(2.2, KICK_Y), P(2.9, EDGE_Y - 0.08)] + arc2((Z_F - 4.85) * MM, EDGE_Y * MM, 1.85 * MM, 0, math.pi, 7)[1:-1] + [P(6.7, EDGE_Y - 0.08), P(RIC, EDGE_Y - 0.08)]
+    tg = side(decollinear(tang), 3.3 * MM, (0, 0, 0), st, name='bf_tang', bev=0.0002, seg=1)
+    dark = mat('bf_dark', 0xffffff, rough=0.4, metal=0.8, tex=steel_tex('bf_dark_t', 0x2c2f34, var=0.1, seed=62))
+    tpin = rivet(1.1 * MM, 1.65 * MM, (0, 4.6 * MM, (Z_P - 3.2) * MM), mat('bf_tpin', 0xffffff, rough=0.35, metal=0.9, tex=steel_tex('bf_tpin_t', 0x5d636c, seed=63)), dome=0.0003, seg=10, name='bf_tpin')
+    for o in (tg, tpin): uvb(o, 0.03)
+    # ---- the handles
+    R_NOSE, R_BUTT = 7, 3
+    OUT = arc2(-NOSE + R_NOSE, HH - R_NOSE, R_NOSE, math.pi / 2, math.pi, 6) + arc2(-NOSE + R_NOSE, -HH + R_NOSE, R_NOSE, math.pi, math.pi * 1.5, 6) + \
+          arc2(BUTT - R_BUTT, -HH + R_BUTT, R_BUTT, -math.pi / 2, 0, 4) + arc2(BUTT - R_BUTT, HH - R_BUTT, R_BUTT, 0, math.pi / 2, 4)
+    stadium = lambda w0, w1, h: arc2(w1 - h / 2, 0, h / 2, -math.pi / 2, math.pi / 2, 6) + arc2(w0 + h / 2, 0, h / 2, math.pi / 2, math.pi * 1.5, 6)
+    WINDOWS = [stadium(16, 45, 9), stadium(50, 79, 9), stadium(84, 111, 9)]
+    LATCH_W = 117.5; LATCH = [(LATCH_W, -2.0), (LATCH_W, 2.0), (BUTT - 0.5, 2.3), (BUTT + 1.6, 3.3), (BUTT + 2.9, 2.6), (BUTT + 3.2, 0.2), (BUTT + 2.6, -2.3), (BUTT, -2.6)]
+    ti = mat('bf_ti', 0xffffff, rough=0.46, metal=0.85, tex=steel_tex('bf_ti_t', 0xa2a7b0, var=0.07, seed=64, speck=0x8a8f98, p=0.06))
+    zen = mat('bf_zen', 0xffffff, rough=0.25, metal=0.95, tex=steel_tex('bf_zen_t', 0xc4c8ce, var=0.04, seed=65))
+    lat = mat('bf_latch', 0xffffff, rough=0.35, metal=0.9, tex=steel_tex('bf_latch_t', 0xa9afb7, var=0.05, seed=66))
+    toM = lambda pts: [Lh(w, y) for w, y in pts]; handles = []
+    for sx, bite, nm in ((1, False, 'kbfly_safe_wzA'), (-1, True, 'kbfly_bite_wzA')):
+        hs = [side(toM(OUT), (X_OUT - X_IN) * MM, (sx * HX * MM, 0, 0), ti, name='bf_handle', holes=[toM(w) for w in WINDOWS], bev=0.0006),
+              stud(3.0 * MM, X_OUT * MM, 0.0009, (0, 0, Z_P * MM), dark, sx, name='bf_pivot'),
+              stud(1.7 * MM, X_OUT * MM, 0.0006, (0, 0, (Z_P + 119.5) * MM), dark, sx, seg=10, name='bf_buttscrew')]
+        hs += [stud(1.1 * MM, X_OUT * MM, 0.0005, (0, y * MM, (Z_P + 10.5) * MM), zen, sx, seg=8, name='bf_zen') for y in (5.4, -5.4)]
+        if bite: hs.append(side(toM(LATCH), 1.3 * MM, (sx * 1.05 * MM, 0, 0), lat, name='bf_latch', bev=0.0002, seg=1))
+        for o in hs: uvb(o, 0.03)
+        handles.append(part(hs, nm, pivot=(0, 0, Z_P * MM)))
+    meta = {'kind': 'weapon', 'id': 'knife', 'skin': 'knife_butterfly', 'paint': [], 'muzzle': [0, TIP_Y * MM, (Z_F - BLADE_L) * MM], 'hatAt': [[0, HH * MM, 0.03], 0.05],
+            'handles': ['kbfly_safe_wzA', 'kbfly_bite_wzA']}
+    parts = handles + zone_join([bl, tg], 'kbfly_blade', {}, default='b') + zone_join([tpin], 'kbfly_pin', {}, default='n')
+    return finish('w_knife_butterfly', parts, meta)
+
+
 BUILD = {'knife': (knife, 'w_knife'), 'knife_kitchen': (kitchen, 'w_knife_kitchen'),
-         'knife_bowie': (bowie, 'w_knife_bowie'), 'knife_cleaver': (cleaver, 'w_knife_cleaver')}
+         'knife_bowie': (bowie, 'w_knife_bowie'), 'knife_cleaver': (cleaver, 'w_knife_cleaver'),
+         'knife_switch': (switch, 'w_knife_switch'), 'knife_karambit': (karambit, 'w_knife_karambit'), 'knife_butterfly': (butterfly, 'w_knife_butterfly')}
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 only = set(argv[argv.index('--only') + 1].split(',')) if '--only' in argv else None
 main_multi(lambda: [(fn(), fid) for k, (fn, fid) in BUILD.items() if not only or k in only], exposure=-0.3)

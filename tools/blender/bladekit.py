@@ -56,6 +56,31 @@ class Lines:
 def ramp(x, a, b): return max(0.0, min(1.0, (x - a) / (b - a))) if b != a else float(x >= a)
 
 
+def outward(bm):
+    """turn a closed shell's faces out (recalc can leave a thin blade inside out: its volume says which way it is)"""
+    vol = 0.0
+    for f in bm.faces:
+        vs = [v.co for v in f.verts]
+        for i in range(1, len(vs) - 1): vol += vs[0].dot(vs[i].cross(vs[i + 1]))
+    if vol < 0: bmesh.ops.reverse_faces(bm, faces=bm.faces)
+
+
+def clean(o):
+    """after the modifiers: take out the slivers a bevel or a cut leaves (three points in a row, two on one spot)"""
+    apply_mods(o); bm = bmesh.new(); bm.from_mesh(o.data); bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 4])
+    def bad():
+        for f in bm.faces:
+            vs = [v.co for v in f.verts]
+            for i in range(len(vs)):
+                if (vs[i] - vs[i - 1]).cross(vs[(i + 1) % len(vs)] - vs[i]).length < 2e-11: return True
+        return False
+    if bad():
+        bmesh.ops.triangulate(bm, faces=bm.faces); bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=2e-6)
+        bmesh.ops.dissolve_degenerate(bm, dist=2e-6, edges=bm.edges); bm.to_mesh(o.data)
+    bm.free()
+    return o
+
+
 def blade(spine, edge, m, n=40, thick=0.004, grind=0.4, taper=0.55, edge_thick=0.0004, grooves=(), swedge=None, name='blade', x=0.0, rows=3, plunge=None, close=0.07):
     """spine / edge: (z, y) lines from the heel to the tip (they may meet at the tip or not: a cleaver's blunt front).
     grind: where the bevel starts, as a share of the height above the edge. taper: how much thinner at the tip.
@@ -126,7 +151,7 @@ def blade(spine, edge, m, n=40, thick=0.004, grind=0.4, taper=0.55, edge_thick=0
             face([v for v, _ in q], [uv for _, uv in q])
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-7)
     bmesh.ops.dissolve_degenerate(bm, dist=2e-6, edges=bm.edges)
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces); outward(bm)
     o = _obj(name, bm, m)
     smooth(o, 28)
     return o
@@ -195,7 +220,7 @@ def squash(o, sx=1.0, sy=1.0):
     return o
 
 
-def loft_loops(loops, m, name='loft', angle=40, caps=(True, True)):
+def loft_loops(loops, m, name='loft', angle=40, caps=(True, True), crown=(0.0, 0.0)):
     """a closed solid through cross-section loops: each a list of game (x, y, z) points, the same count in each.
     consecutive loops are joined, the first and last get caps (what the code knives' bolsters and handles are)"""
     bm = bmesh.new(); R = [[bm.verts.new(gv(*p)) for p in L] for L in loops]; n = len(loops[0])
@@ -203,15 +228,16 @@ def loft_loops(loops, m, name='loft', angle=40, caps=(True, True)):
         for j in range(n):
             try: bm.faces.new((A[j], A[(j + 1) % n], B2[(j + 1) % n], B2[j]))
             except ValueError: pass
-    for ring, on in ((R[0], caps[0]), (R[-1], caps[1])):
+    mid = lambda ring: sum((v.co for v in ring), Vector()) / n
+    for ring, on, cr, nb in ((R[0], caps[0], crown[0], R[1]), (R[-1], caps[1], crown[1], R[-2])):
         if on:  # a fan from the middle: an n-gon with points in a row triangulates into slivers
-            c = bm.verts.new(sum((v.co for v in ring), Vector()) / n)
+            c = bm.verts.new(mid(ring) + (mid(ring) - mid(nb)).normalized() * cr)  # (crown: the cap's middle stands this proud)
             for j in range(n):
                 try: bm.faces.new((ring[j], ring[(j + 1) % n], c))
                 except ValueError: pass
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-7)
     bmesh.ops.dissolve_degenerate(bm, dist=2e-6, edges=bm.edges)
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces); outward(bm)
     o = _obj(name, bm, m)
     smooth(o, angle)
     return o
@@ -271,7 +297,7 @@ def bands(name, fn, w=128, h=16, grit=0.12):
 def uvb(o, size=0.03):
     """uv_box, then any face the box projection squashed to a line (a bevel's corner, seen edge on) is laid flat on
     its own plane instead"""
-    apply_mods(o)  # (the bevel's faces have to exist to be mapped)
+    clean(o)  # (the bevel's faces have to exist to be mapped)
     uv_box(o, size); me = o.data; uvl = me.uv_layers.active.data
     for p in me.polygons:
         us = [uvl[l].uv for l in p.loop_indices]; cs = [me.vertices[v].co for v in p.vertices]; k = len(us); bad = False
@@ -282,3 +308,35 @@ def uvb(o, size=0.03):
         n = p.normal; t1 = n.cross(Vector((0, 0, 1)) if abs(n.z) < 0.9 else Vector((1, 0, 0))).normalized(); t2 = n.cross(t1)
         for l, v in zip(p.loop_indices, p.vertices):
             c = me.vertices[v].co; uvl[l].uv = (c.dot(t1) / size, c.dot(t2) / size)
+
+
+def stud(r, x0, h, pos, m, sx=1, seg=12, name='stud'):
+    """a screw head / pin end standing h proud of a face at x = sx * x0 (the rest of it sunk in): domed, never flat on the face"""
+    a = lambda d: sx * (x0 + d)
+    pr = [(0.0, a(-0.0006)), (r, a(-0.0006)), (r, a(h * 0.35)), (r * 0.62, a(h * 0.85)), (0.0, a(h))]
+    return lathe(pr if sx > 0 else pr[::-1], pos, m, seg=seg, axis='x', name=name)
+
+
+def uv_side(o, tile=0.08, y0=0.058):
+    """side-on planar UVs (one tile = 8 cm, like the code karambit's): a wrap's pattern runs across the whole knife once.
+    leaned a little across the knife so the faces seen edge-on still get some of the skin"""
+    clean(o); me = o.data; uvl = (me.uv_layers.active or me.uv_layers.new(name='UVMap')).data
+    for p in me.polygons:
+        for l, v in zip(p.loop_indices, p.vertices):
+            c = me.vertices[v].co  # blender: x, y = -game z, z = game y
+            uvl[l].uv = ((c.y + 0.31 * c.x) / tile, (c.z + y0 + 0.43 * c.x) / tile)
+
+
+def offset2(pts, d):
+    """grow (d > 0) or shrink (d < 0) a closed 2d outline"""
+    n = len(pts); ar = sum(pts[i][0] * pts[(i + 1) % n][1] - pts[(i + 1) % n][0] * pts[i][1] for i in range(n)); sg = 1 if ar > 0 else -1
+    def nrm(a, b):
+        dz, dy = b[0] - a[0], b[1] - a[1]; l = math.hypot(dz, dy) or 1; return (sg * dy / l, -sg * dz / l)
+    out = []
+    for i, q in enumerate(pts):
+        n1, n2 = nrm(pts[i - 1], q), nrm(q, pts[(i + 1) % n]); mz, my = n1[0] + n2[0], n1[1] + n2[1]; ml = math.hypot(mz, my) or 1; mz /= ml; my /= ml
+        c = max(0.5, mz * n1[0] + my * n1[1]); out.append((q[0] + mz * d / c, q[1] + my * d / c))
+    return out
+
+
+def arc2(cz, cy, r, a0, a1, n=8): return [(cz + math.cos(a0 + (a1 - a0) * i / (n - 1)) * r, cy + math.sin(a0 + (a1 - a0) * i / (n - 1)) * r) for i in range(n)]
