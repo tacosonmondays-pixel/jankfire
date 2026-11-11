@@ -8,7 +8,22 @@ const C = [0, 5.85, 69], RX = 9, RY = 6.4, RZ = 9.2;  // the cranium's middle (s
 const NT = 104, NP = 52, P0 = -1, P1 = Math.PI / 2;  // columns round it, rows up it (elevation from under the sand to the crown)
 const IC = 12, JC = 4;                               // the teeth's row; the cave mouth: this many columns each side of the face's middle
 const EYE = 6, TOP = 12.5;                           // the eye sockets' floor, the crown (both walk-graph levels: shared/map.js)
-export const SKULL = { C, RX, RY, RZ, NT, NP, IC, JC, EYE, TOP, cave: { hw: 2, top: 3, back: 72.5 } }; // (the cave: 4 m wide, 3 m high, in from the mouth to z 72.5)
+export const SKULL = { C, RX, RY, RZ, NT, NP, IC, JC, EYE, TOP, cave: { hw: 2, top: 3, back: 72.5, wide: 2.7, high: 3.8, from: 68.4, len: 2.2 } }; // (the cave: a throat 4 m wide and 3 m high in from the mouth, opening out into a chamber round the chest, to z 72.5 and a little rounded beyond)
+// the cave at z: [half its width, how high its walls stand before the arch springs, the crown's height]
+export function caveProfile(z) {
+  const cv = SKULL.cave, t = sm((z - cv.from) / cv.len), w = cv.hw + (cv.wide - cv.hw) * t, h = cv.top + (cv.high - cv.top) * t;
+  return [w, h * 0.55, h];
+}
+// how far the cave's back wall reaches at x (it's rounded: deepest in the middle)
+export const caveBack = (x) => { const cv = SKULL.cave, k = Math.max(0, 1 - (x / cv.wide) ** 2); return cv.back + 0.7 * Math.sqrt(k); };
+// is (x, y, z) open air in the cave: walls up to the springing, then an arch to the crown
+export function inCave(x, y, z) {
+  if (y < -0.5 || z > caveBack(x)) return false;
+  const [w, hs, h] = caveProfile(z);
+  if (y <= hs) return Math.abs(x) < w;
+  if (y >= h) return false;
+  const k = (y - hs) / (h - hs); return Math.abs(x) < w * Math.sqrt(1 - k * k);
+}
 
 const hsh = (...a) => { let x = 0; a.forEach((v, i) => { x += Math.sin(v * (12.9898 + i * 7.233) + i * 3.17) * 43758.5453; }); return x - Math.floor(x); };
 const wrap = (a) => { const t = (a + Math.PI) % (2 * Math.PI); return (t < 0 ? t + 2 * Math.PI : t) - Math.PI; };
@@ -107,16 +122,15 @@ let SOLID = null;
 export function skullSolid() {
   if (SOLID) return SOLID;
   const G = skullGrid(), S = 0.5, X0 = -11, Z0 = 58, nx = 44, nz = 48, cv = SKULL.cave;
-  const bands = [[0, cv.top], [cv.top, 4.5], [4.5, 5.5]];
-  for (let y = 5.5; y < TOP - 0.01; y += 0.5) bands.push([y, y + 0.5]);
+  const bands = [[0, 1.5], [1.5, 2.0]]; // (the cave's walls stand straight to the arch: one layer under it, then half metres)
+  for (let y = 2.0; y < TOP - 0.01; y += 0.5) bands.push([y, y + 0.5]);
   const open = new Map(); SOLID = [];
   for (const [y0, y1] of bands) {
     const m = new Uint8Array(nx * nz), ys = [];
     for (let y = y0 + 0.25; y < y1; y += 0.25) ys.push(y); // (a tall layer: rock wherever any of its heights is)
     for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
       const x = X0 + (i + 0.5) * S, z = Z0 + (j + 0.5) * S;
-      if (y1 <= cv.top && Math.abs(x) < cv.hw && z < cv.back) continue; // the cave
-      if (ys.some((y) => inRock(G, x, y, z))) m[i * nz + j] = 1;
+      if (ys.some((y) => inRock(G, x, y, z) && !inCave(x, y, z))) m[i * nz + j] = 1; // (rock, the cave cut out of it)
     }
     const next = new Map();
     for (const r of cover(m, nx, nz)) {
