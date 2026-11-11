@@ -3343,20 +3343,52 @@ function wreck(B0, D0, dx, dz, st) {
   for (let i = d0; i < D0.boxes.length; i++) if (!mine.has(D0.boxes[i])) Object.assign(D0.boxes[i], tag);
 }
 // the lighthouse (round 82, -6): the striped tower, the lantern; o.climb false: no stair round it and no gallery (S&D)
+// an octagon over a rectangle (its flats on the rectangle's sides, each corner cut c along both sides) as boxes, every
+// one inside it: a cross, and each corner stepped n times out toward the cut. hole: a rectangle [x0, z0, x1, z1] left out
+function octoBoxes(x0, z0, x1, z1, c, n = 4, hole = null) {
+  const out = [[x0, z0 + c, x1, z1 - c], [x0 + c, z0, x1 - c, z1]];
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    const cx = sx < 0 ? x0 + c : x1 - c, cz = sz < 0 ? z0 + c : z1 - c; // the corner's inner point
+    for (let k = 1; k < n; k++) { const ax = cx + sx * c * k / n, az = cz + sz * c * (n - k) / n; out.push([Math.min(cx, ax), Math.min(cz, az), Math.max(cx, ax), Math.max(cz, az)]); }
+  }
+  if (!hole) return out;
+  const [hx0, hz0, hx1, hz1] = hole, cut = [];
+  for (const [a, b, c2, d] of out) {
+    if (c2 <= hx0 || a >= hx1 || d <= hz0 || b >= hz1) { cut.push([a, b, c2, d]); continue; }
+    if (a < hx0) cut.push([a, b, hx0, d]); if (c2 > hx1) cut.push([hx1, b, c2, d]);
+    const m0 = Math.max(a, hx0), m1 = Math.min(c2, hx1);
+    if (b < hz0) cut.push([m0, b, m1, hz0]); if (d > hz1) cut.push([m0, hz1, m1, d]);
+  }
+  return cut;
+}
+const LH = { c: 1.757, lc: 1.172 }; // the lighthouse's corner cuts: the tower (a regular octagon 6 m across), the lantern room (4 m)
 function lighthouse(B0, D0, dx, dz, st, o = {}) {
   const { B, D, add, W, up } = isPiece(B0, D0, dx, dz, st);
-  [['white', 0], ['toyred', 4.5], ['white', 9], ['toyred', 13.5]].forEach(([m, y]) => add(79, y, -9, 85, y + 4.5, -3, m));
+  const n0 = B0.boxes.length, d0 = D0.boxes.length; // (drawn as one Blender model, lighthouse.glb / lighthouse_sd.glb without the stair: look only)
+  // an octagonal tower (its flats where the old square's sides were: the stair still runs flush along them)
+  [['white', 0], ['toyred', 4.5], ['white', 9], ['toyred', 13.5]].forEach(([m, y]) => { for (const b of octoBoxes(79, -9, 85, -3, LH.c)) add(b[0], y, b[1], b[2], y + 4.5, b[3], m); });
   if (o.climb !== false) {
     up(flight(B, true, 79, 85, -3, -1.5, 0, 4.5, 'metal', 1)); add(85, 4.05, -3, 86.5, 4.5, -1.5, 'metal');
     up({ ...flight(B, false, -3, -9, 85, 86.5, 4.5, 9, 'metal', 1), bot: [85.6, 4.5, -2.4] }); add(85, 8.55, -10.5, 86.5, 9, -9, 'metal'); // (the landings are one cell)
     up({ ...flight(B, true, 85, 79, -10.5, -9, 9, 13.5, 'metal', -1), bot: [85.6, 9, -9.6] }); add(77.5, 13.05, -10.5, 79, 13.5, -9, 'metal');
     up({ ...flight(B, false, -9, -3, 77.5, 79, 13.5, 18, 'metal', -1), bot: [78.4, 13.5, -9.6] });
-    slab(W, 76, -12, 88, 0, 17.6, 18, 'metal', [77.5, -9, 85, -3]); // the gallery (open over the last flight)
-    for (const [x0, z0, x1, z1] of [[76, -12, 88, -11.9], [76, -0.1, 88, 0], [76, -11.9, 76.1, -0.1], [87.9, -11.9, 88, -0.1]]) add(x0, 18, z0, x1, 19, z1, 'metal');
+    // the gallery: an octagon 12 m across round the top (open over the last flight), a railing round it: rails on the
+    // flats, close-set posts along the cut corners (nobody squeezes between them)
+    const GC = 3.515;
+    for (const b of octoBoxes(76, -12, 88, 0, GC, 6, [77.5, -9, 85, -3])) add(b[0], 17.6, b[1], b[2], 18, b[3], 'metal');
+    for (const [x0, z0, x1, z1] of [[76 + GC, -12, 88 - GC, -11.9], [76 + GC, -0.1, 88 - GC, 0], [76, -12 + GC, 76.1, -GC], [87.9, -12 + GC, 88, -GC]]) add(x0, 18, z0, x1, 19, z1, 'metal');
+    for (const [ax, az, bx, bz] of [[76, -12 + GC, 76 + GC, -12], [88 - GC, -12, 88, -12 + GC], [76, -GC, 76 + GC, 0], [88 - GC, 0, 88, -GC]]) {
+      const n = Math.ceil(Math.hypot(bx - ax, bz - az) / 0.32);
+      for (let k = 0; k <= n; k++) { const x = ax + (bx - ax) * k / n, z = az + (bz - az) * k / n, ix = x + (x < 82 ? 0.09 : -0.09), iz = z + (z < -6 ? 0.09 : -0.09); add(ix - 0.07, 18, iz - 0.07, ix + 0.07, 19, iz + 0.07, 'metal'); }
+    }
   }
-  add(80, 18, -8, 84, 21, -4, 'glass'); D.add(81.4, 18.6, -6.6, 82.6, 20.2, -5.4, 'light'); // the lantern
-  add(79.6, 21, -8.4, 84.4, 21.5, -3.6, 'toyred'); add(80.6, 21.5, -7.4, 83.4, 22.2, -4.6, 'toyred'); D.box(82, 22.5, -6, 0.6, 0.6, 0.6, 'metal');
-  D.add(78.94, 1.6, -7.5, 79.0, 2.6, -4.5, 'adlight', { fit: 1 });
+  for (const b of octoBoxes(80, -8, 84, -4, LH.lc, 3)) add(b[0], 18, b[1], b[2], 21, b[3], 'glass'); D.add(81.4, 18.6, -6.6, 82.6, 20.2, -5.4, 'light'); // the lantern room, octagonal
+  for (const b of octoBoxes(79.6, -8.4, 84.4, -3.6, 1.406, 3)) add(b[0], 21, b[1], b[2], 21.5, b[3], 'toyred'); for (const b of octoBoxes(80.6, -7.4, 83.4, -4.6, 0.82, 2)) add(b[0], 21.5, b[1], b[2], 22.2, b[3], 'toyred'); D.box(82, 22.5, -6, 0.6, 0.6, 0.6, 'metal');
+  const id = o.climb === false ? 'lighthouse_sd' : 'lighthouse';
+  B0.boxes.arch.push({ id, p: [dx, 0, dz], r: 0 }); const tag = { av: id, ai: B0.boxes.arch.length - 1 };
+  for (let i = n0; i < B0.boxes.length; i++) Object.assign(B0.boxes[i], tag);
+  for (let i = d0; i < D0.boxes.length; i++) if (D0.boxes[i].mat !== 'light') Object.assign(D0.boxes[i], tag); // (the light itself: the game's, it glows)
+  D.add(78.94, 1.6, -7.5, 79.0, 2.6, -4.5, 'adlight', { fit: 1 }); // (the sign: the game's picture)
 }
 // the keeper's cottage (round 71, 9): its door west, windows, a bed, a table
 function cottage(B0, D0, dx, dz) {
