@@ -547,7 +547,7 @@ def van_bits():
     L = 0.045   # (look pass 2: the lips in hazard stripes, so you can see the roof's edge from up there)
     for sx in (-1, 1): b.box(sx * (HW - 0.035), roof, rz0, sx * HW, roof + L, z1, 'wasp', 1.0, 'u', omit=('-y',))
     b.box(-HW + 0.035, roof, z1 - 0.035, HW - 0.035, roof + L, z1, 'wasp', 1.0, 'u', omit=('-y',)); b.box(XS, roof, rz0, HW - 0.035, roof + L, rz0 + 0.035, 'wasp', 1.0, 'u', omit=('-y',))
-    b.box(-0.55, yU + 0.012, rz0 - 0.004, 1.55, roof - 0.02, rz0, 'nostand', 1.0, 'e', only=('-z',))                                    # NO STANDING ON ROOF, to the flatbed (and the boss)
+    b.box(-0.42, yU + 0.012, rz0 - 0.004, 1.2, roof - 0.02, rz0, 'nostand', 1.0, 'e', only=('-z',))                                    # NO STANDING ON ROOF, to the flatbed (and the boss)
     # the steps: four, the table's rise and run, tread plate with a striped nosing. solid under them (it is, in the room): lockers
     for k in range(c.stairs):
         za, zb = z0 + k * run, z0 + (k + 1) * run; y0, y1 = deck + k * rise, deck + (k + 1) * rise
@@ -604,7 +604,7 @@ def van_bits():
         b.put(xf(p_cyl(0.09, 0.24, 8, 0.13, cap1=False), T(fx_, deck + 1.02, zz)), 'red', 1.0); b.put(xf(p_cyl(0.118, 0.004, 8), T(fx_, deck + 1.2, zz)), 'soot', 1.0)
         b.pipe([(fx_ - 0.125, deck + 1.26, zz), (fx_ - 0.08, deck + 1.4, zz), (fx_ + 0.08, deck + 1.4, zz), (fx_ + 0.125, deck + 1.26, zz)], 0.007, 'bright', 0.8, 4)
     b.box(1.26, yU + 0.004, rz0 - 0.008, 1.72, yU + 0.134, rz0, 'label', 1.0, 'e', only=('-z',))
-    b.box(-0.24, yU + 0.01, rz0 - 0.008, 0.24, yU + 0.13, rz0, 'n11', 1.0, 'e', only=('-z',))
+    b.box(-0.96, yU + 0.01, rz0 - 0.008, -0.48, yU + 0.13, rz0, 'n11', 1.0, 'e', only=('-z',))   # (pass 2: moved left, out of the sign's way)
     # the flood on the roof's back edge (the game's lamp is here): one head lit, one long dead, the cable over the edge and down the post
     fx, fz = 0.4, rz0 + 0.13; fy = roof + 0.4
     b.rod((fx, roof + 0.012, fz), (fx, fy - 0.02, fz), 0.022, 'steel', 0.9, 6, cap=False); b.box(fx - 0.07, roof, fz - 0.07, fx + 0.07, roof + 0.012, fz + 0.07, 'steel', 0.8, omit=('-y',))

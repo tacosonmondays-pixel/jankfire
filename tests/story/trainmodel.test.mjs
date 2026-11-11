@@ -151,6 +151,8 @@ test('the tunnel kit: pieces that tile, at the bore\'s size', () => {
     assert.ok(rails.length && rails.every((v) => Math.abs(Math.abs(v[0]) - 0.75) < 0.07), `${k}: the rails are where the room's are`);
     assert.ok(near(Math.max(...bed.map((v) => v[1])), P.table.rail_y, 0.004), `${k}: the rail's top is what the wheels were built to`); }
   assert.deepEqual(K.nodes.tk_bulb_lit.materials, ['tk_bulb_on']); assert.deepEqual(K.nodes.tk_bulb_dead.materials, ['tk_bulb_off']);
+  for (const p of P.tunnel.parts) assert.ok(K.nodes[p.name] && K.nodes[p.name].verts.length, `the parts file's ${p.name} is not in rp_tunnel.glb`); // (trainset.js looks the pieces up by these names)
+  for (const n of Object.values(K.nodes)) if (n.verts.length) assert.ok(P.tunnel.parts.some((p) => p.name === n.name), `${n.name} is in rp_tunnel.glb and not in the parts file`);
   const wheels = Math.min(...T.nodes.wagon_body.verts.map((v) => v[1])); assert.ok(wheels > P.table.rail_y - 0.04 && wheels < P.table.rail_y + 0.01, `the wheels stand on the rail (${wheels.toFixed(3)})`);
 });
 
@@ -158,6 +160,7 @@ test('the dead commuter train: one carriage, its ends, a far one', () => {
   const C = readGlb('rp_commuter.glb');
   for (const k of ['cm_car', 'cm_end', 'cm_end_torn', 'cm_glass', 'cm_lod']) assert.ok(C.nodes[k] && C.nodes[k].verts.length, k);
   assert.ok(C.nodes.cm_end_torn.hidden && C.nodes.cm_lod.hidden);
+  for (const p of P.commuter.parts) assert.ok(C.nodes[p.name] && C.nodes[p.name].verts.length, `the parts file's ${p.name} is not in rp_commuter.glb`);
   assert.ok(C.nodes.cm_car.tris + C.nodes.cm_end.tris + C.nodes.cm_glass.tris <= 6000, `a carriage is ${C.nodes.cm_car.tris + C.nodes.cm_end.tris + C.nodes.cm_glass.tris} triangles`);
   assert.ok(C.nodes.cm_lod.tris <= 600, `far: ${C.nodes.cm_lod.tris}`);
   const b = box(C.nodes.cm_car.verts.concat(C.nodes.cm_end.verts)); assert.ok(b.hi[2] - b.lo[2] <= 20.0 && b.hi[2] - b.lo[2] > 19, 'a carriage fits its 20 m pitch');

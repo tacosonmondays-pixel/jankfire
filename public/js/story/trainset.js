@@ -101,7 +101,12 @@ export function makeTrainSet() {
     const xc = Math.sqrt(ARENA.boreR ** 2 - ARENA.cy ** 2) - 0.55, m4 = new THREE.Matrix4(), r4 = new THREE.Matrix4();
     const put = (ims, i, z, x = 0, ry = 0) => { for (const im of ims) { m4.makeTranslation(x, 0, z); if (ry) m4.multiply(r4.makeRotationY(ry)); im.setMatrixAt(i, m4.multiply(im.userData.base)); } };
     const end = (ims, n) => { for (const im of ims) { im.count = n; im.instanceMatrix.needsUpdate = true; } };
-    const L = { grp, P, old, dist: 0 };
+    // the lit bulbs glow: one Points for all of them (no light of their own, so nothing recompiles as they go out one by one)
+    const ti = S.parts && S.parts.tunnel && S.parts.tunnel.info, bp = ti && ti.bulb && v3(ti.bulb.pos) ? ti.bulb.pos : [2.24, 6.63, 0];
+    const gpos = new THREE.BufferGeometry(); gpos.setAttribute('position', new THREE.BufferAttribute(new Float32Array(nBulb * 3), 3)); gpos.setDrawRange(0, 0);
+    const glows = new THREE.Points(gpos, new THREE.PointsMaterial({ map: haloTex(), color: 0xffb060, size: 1.5, sizeAttenuation: true, transparent: true, opacity: 0.75, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+    glows.frustumCulled = false; grp.add(glows);
+    const L = { grp, P, old, dist: 0, glows };
     // dz: how far the tunnel went past this frame · bz / bon: each bulb's z and whether it is lit (trainfight's own count of them)
     L.step = (dz, bz, bon) => {
       L.dist = (L.dist + dz) % PERIOD;
@@ -116,8 +121,9 @@ export function makeTrainSet() {
       }
       end(P.lining, nl); end(P.liningB, nb); end(P.niche, nn); end(P.track, nt); if (P.far) end(P.far, nf); end(P.cables, nc); end(P.marker, nm); end(P.signal, ns);
       let on = 0, off = 0;
-      for (let i = 0; i < bz.length && i < nBulb; i++) { put(P.wire, i, bz[i]); if (bon[i]) put(P.lit, on++, bz[i]); else put(P.dead, off++, bz[i]); }
-      end(P.wire, Math.min(bz.length, nBulb)); end(P.lit, on); end(P.dead, off);
+      const ga = gpos.attributes.position;
+      for (let i = 0; i < bz.length && i < nBulb; i++) { put(P.wire, i, bz[i]); if (bon[i]) { ga.setXYZ(on, bp[0], bp[1], bz[i] + bp[2]); put(P.lit, on++, bz[i]); } else put(P.dead, off++, bz[i]); }
+      end(P.wire, Math.min(bz.length, nBulb)); end(P.lit, on); end(P.dead, off); ga.needsUpdate = true; gpos.setDrawRange(0, P.lit.length ? on : 0);
     };
     L.show = (on) => { grp.visible = on; for (const k of ['bore', 'ribs', 'sl', 'cable']) if (old[k]) old[k].visible = !on; for (const b of old.bulbs || []) b.visible = !on; };
     L.show(true);
