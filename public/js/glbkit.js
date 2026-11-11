@@ -17,10 +17,14 @@ export const AUTHORED = {}; // id -> { scene, meta }
 export const LAZY = new Map(); // id -> url
 // the gear and killstreak models (x_<thing>.glb: the rig, the wrecking ball, the camera...) and the rig's missile load
 // the same way: the first time something asks (prefetch() asks early for what your loadout will need)
-export const isLazy = (id) => { if (/^x_/.test(id) || /^p_[a-z]+kit$/.test(id) || id === 'pj_rigmissile') return true; const m = /^(?:w|pj)_(.+)$/.exec(id); return !!(m && m[1] !== 'default' && Object.hasOwn(COSMETICS.model, m[1])); };
+// the map props (p_<id>.glb) too: propfield.js asks for a map's own when that map loads (p_cart is the cart cannon's)
+export const isLazy = (id) => { if (/^x_/.test(id) || (/^p_/.test(id) && id !== 'p_cart') || id === 'pj_rigmissile') return true; const m = /^(?:w|pj)_(.+)$/.exec(id); return !!(m && m[1] !== 'default' && Object.hasOwn(COSMETICS.model, m[1])); };
 const late = { fn: null, t: 0, busy: 0, by: new Map(), seen: new Set() };
 export function onLateModel(fn) { late.fn = fn; }
 export function whenLate(id, fn) { if (!late.by.has(id)) late.by.set(id, []); late.by.get(id).push(fn); } // that model just landed: drop a cached copy built without it
+const failed = new Map();
+export function whenFailed(id, fn) { if (!failed.has(id)) failed.set(id, []); failed.get(id).push(fn); } // it never came (or wasn't a Blender model): put the old look back
+const fail = (id) => { for (const f of failed.get(id) || []) try { f(id); } catch (e) { console.warn('late model', id, e); } };
 export const lateBusy = () => late.busy; // skins still downloading (tests wait for them)
 export function prefetch(ids, pri = 1) { for (const id of ids) want(id, pri); }
 // what each item / killstreak shows: fetched as soon as it's in your loadout (killstreaks take a while to earn), so the
@@ -39,13 +43,14 @@ function fetchLate(id, pri = 3) {
   late.busy++;
   queueGlb(id, url, pri, (gltf) => {
     late.busy--;
-    if (!prepAuthored(id, gltf.scene)) { landed(id); return; }
+    if (!prepAuthored(id, gltf.scene)) { landed(id); fail(id); return; }
     for (const f of late.by.get(id) || []) try { f(id); } catch (e) { console.warn('late model', id, e); }
     landed(id);
+    if (/^p_/.test(id)) return; // (a map prop: the map redraws itself, nobody's model changed)
     if (!late.seen.has(id)) return; // fetched ahead and nothing built it yet: nothing to rebuild
     clearTimeout(late.t);
     late.t = setTimeout(() => { if (late.fn) late.fn(id); }, 120); // a few at once: one rebuild
-  }, () => { late.busy--; });
+  }, () => { late.busy--; fail(id); }); // (the queue already said why)
 }
 
 // ------------------------------------------------------------ the download queue + "is it still coming?"

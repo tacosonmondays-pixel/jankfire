@@ -5,6 +5,7 @@ import { buildNav, navPath, navLocate, navClear } from './nav.js';
 import { outOfBounds } from './bounds.js';
 import { shapeGround } from './terrain.js';
 import { prop } from './props.js';
+import { seen, propOf, spinAt } from './propcap.js'; // round 4: which boxes a Blender prop draws instead (look-only)
 export { prop, PROPS } from './props.js';
 
 function rng(seed) { // mulberry32
@@ -25,10 +26,11 @@ function builder() {
     if (z1 < z0) [z0, z1] = [z1, z0];
     if (x1 - x0 < 0.01 || y1 - y0 < 0.01 || z1 - z0 < 0.01) return;
     boxes.push(Object.assign({ min: [x0, y0, z0], max: [x1, y1, z1], mat }, extra || {}));
+    seen(boxes[boxes.length - 1], boxes); // (a kit prop's box, or a crate / barrel / container on its own: propcap.js)
   };
   const box = (cx, cy, cz, sx, sy, sz, mat, extra) => add(cx - sx / 2, cy - sy / 2, cz - sz / 2, cx + sx / 2, cy + sy / 2, cz + sz / 2, mat, extra);
   // a box turned yaw radians round its centre: RENDER-ONLY builders (map.deco) only, physics and bots never see these
-  const obb = (cx, cy, cz, sx, sy, sz, yaw, mat, extra) => { if (sx > 0.01 && sy > 0.01 && sz > 0.01) boxes.push(Object.assign({ min: [cx - sx / 2, cy - sy / 2, cz - sz / 2], max: [cx + sx / 2, cy + sy / 2, cz + sz / 2], mat, rot: yaw }, extra || {})); };
+  const obb = (cx, cy, cz, sx, sy, sz, yaw, mat, extra) => { if (sx > 0.01 && sy > 0.01 && sz > 0.01) { boxes.push(Object.assign({ min: [cx - sx / 2, cy - sy / 2, cz - sz / 2], max: [cx + sx / 2, cy + sy / 2, cz + sz / 2], mat, rot: yaw }, extra || {})); seen(boxes[boxes.length - 1], boxes); } };
   // a local frame: origin (ox, oy, oz), rotated rot*90deg. local -z is "the front".
   const local = (ox, oz, rot = 0, oy = 0) => {
     const T = (x, z) => [[x, z], [-z, x], [-x, -z], [z, -x]][rot & 3];
@@ -39,6 +41,7 @@ function builder() {
     };
     L.B = (cx, cy, cz, sx, sy, sz, mat, extra) => L(cx - sx / 2, cy - sy / 2, cz - sz / 2, cx + sx / 2, cy + sy / 2, cz + sz / 2, mat, extra);
     L.pt = (x, y, z) => { const [ax, az] = T(x, z); return [ox + ax, oy + y, oz + az]; }; // a local point in world space
+    L.yaw = -(rot & 3) * Math.PI / 2; // the frame's turn as three's rotation.y (Blender props' placements)
     // a prop model at local (x, z), turned r more quarter turns. returns the tag for the boxes it stands in for
     L.P = (id, x, z, r = 0, o = {}) => {
       const [ax, az] = T(x, z);
@@ -163,9 +166,9 @@ function shell(L, w, d, floors, F, mat, o = {}) {
 }
 
 // ------------------------------------------------------------ props
-function car(L, x, z, rot, color = 'carred') {
-  const pv = L.P && L.P('car', x, z, rot ? 1 : 0, { color }); // the Blender car, when it's loaded, stands in for these boxes
-  const C = (lx0, y0, lz0, lx1, y1, lz1, m) => (rot ? L(x + lz0, y0, z + lx0, x + lz1, y1, z + lx1, m, pv) : L(x + lx0, y0, z + lz0, x + lx1, y1, z + lz1, m, pv));
+function car(L, x, z, rot, color = 'carred') { propOf('car', L.pt(x, 0, z), L.yaw + (rot ? -Math.PI / 2 : 0), () => carBoxes(L, x, z, rot, color), { t: color }); } // (the Blender car stands in for the boxes)
+function carBoxes(L, x, z, rot, color) {
+  const C = (lx0, y0, lz0, lx1, y1, lz1, m) => (rot ? L(x + lz0, y0, z + lx0, x + lz1, y1, z + lx1, m) : L(x + lx0, y0, z + lz0, x + lx1, y1, z + lz1, m));
   C(-2.2, 0.32, -0.92, 2.2, 0.95, 0.92, color); // body
   C(-2.3, 0.3, -0.9, -2.2, 0.55, 0.9, 'chrome'); C(2.2, 0.3, -0.9, 2.3, 0.55, 0.9, 'chrome'); // bumpers
   C(-1.1, 0.95, -0.8, 0.9, 1.5, 0.8, 'glass'); // cabin glass
@@ -175,28 +178,38 @@ function car(L, x, z, rot, color = 'carred') {
   C(2.2, 0.62, -0.8, 2.26, 0.82, -0.45, 'light'); C(2.2, 0.62, 0.45, 2.26, 0.82, 0.8, 'light');
   C(-2.26, 0.62, -0.8, -2.2, 0.8, -0.5, 'tail'); C(-2.26, 0.62, 0.5, -2.2, 0.8, 0.8, 'tail');
 }
+const quarter = (L, x, z) => { const [ax, , az] = L.pt(x, 0, z); return L.yaw + Math.floor(spinAt(ax, az) / (Math.PI / 2)) * Math.PI / 2; };
 function tree(L, x, z, h = 4.5) {
-  L.B(x, h / 2, z, 0.6, h, 0.6, 'wood');
-  L.B(x, h + 0.9, z, 3.6, 1.8, 3.6, 'leaves');
-  L.B(x, h + 2.2, z, 2.4, 1.0, 2.4, 'leaves');
+  propOf('lollipop', L.pt(x, 0, z), quarter(L, x, z), () => {
+    L.B(x, h / 2, z, 0.6, h, 0.6, 'wood');
+    L.B(x, h + 0.9, z, 3.6, 1.8, 3.6, 'leaves');
+    L.B(x, h + 2.2, z, 2.4, 1.0, 2.4, 'leaves');
+  }, { t: 'leaves' });
 }
 function streetlight(L, x, z, armDir = 1) {
-  const pv = L.P && L.P('streetlight', x, z, armDir < 0 ? 2 : 0);
-  L.B(x, 3, z, 0.25, 6, 0.25, 'metal', pv);
-  L(x, 5.8, z - 0.12, x + armDir * 1.6, 6.0, z + 0.12, 'metal', pv);
-  L.B(x + armDir * 1.6, 5.8, z, 0.6, 0.25, 0.4, 'light', pv);
+  propOf('streetlight', L.pt(x, 0, z), L.yaw + (armDir < 0 ? Math.PI : 0), () => {
+    L.B(x, 3, z, 0.25, 6, 0.25, 'metal');
+    L(x, 5.8, z - 0.12, x + armDir * 1.6, 6.0, z + 0.12, 'metal');
+    L.B(x + armDir * 1.6, 5.8, z, 0.6, 0.25, 0.4, 'light');
+  });
 }
-function acUnit(L, x, z, y) { L.B(x, y + 0.7, z, 2, 1.4, 1.4, 'metal'); L.B(x, y + 1.45, z, 1.2, 0.1, 1.2, 'grid'); }
+function acUnit(L, x, z, y) { propOf('acunit', L.pt(x, y, z), L.yaw, () => { L.B(x, y + 0.7, z, 2, 1.4, 1.4, 'metal'); L.B(x, y + 1.45, z, 1.2, 0.1, 1.2, 'grid'); }); }
 function waterTower(L, x, z, y) {
-  for (const ox of [-1.3, 1.3]) for (const oz of [-1.3, 1.3]) L.B(x + ox, y + 2.5, z + oz, 0.3, 5, 0.3, 'wood');
-  L.B(x, y + 5.2, z, 3.6, 0.3, 3.6, 'wood');
-  L.B(x, y + 7, z, 3.2, 3.4, 3.2, 'wood');
-  L.B(x, y + 8.9, z, 2.4, 0.4, 2.4, 'roofg');
+  propOf('watertower', L.pt(x, y, z), L.yaw, () => {
+    for (const ox of [-1.3, 1.3]) for (const oz of [-1.3, 1.3]) L.B(x + ox, y + 2.5, z + oz, 0.3, 5, 0.3, 'wood');
+    L.B(x, y + 5.2, z, 3.6, 0.3, 3.6, 'wood');
+    L.B(x, y + 7, z, 3.2, 3.4, 3.2, 'wood');
+    L.B(x, y + 8.9, z, 2.4, 0.4, 2.4, 'roofg');
+  });
 }
+// billboards: the face (frame, catwalk, lamps; the picture stays a box) and each post are their own Blender props, so
+// every size of board fits (the posts are always 6 m, the faces aren't)
+const bbPost = (L, x, y, z, sx, sz) => propOf('billboard_post', L.pt(x, y, z), L.yaw, () => L.B(x, y + 3, z, sx, 6, sz, 'metal'));
+const bbPicture = { keep: (b) => !!b.fit };
 function billboard(L, x, z, y, along = 'x') {
   const w = 12;
-  if (along === 'x') { L.B(x - 4, y + 3, z, 0.3, 6, 0.3, 'metal'); L.B(x + 4, y + 3, z, 0.3, 6, 0.3, 'metal'); L.B(x, y + 7.5, z, w, 5, 0.4, 'billboard', { fit: 1 }); L.B(x, y + 4.9, z - 0.6, w, 0.2, 1.0, 'grid'); }
-  else { L.B(x, y + 3, z - 4, 0.3, 6, 0.3, 'metal'); L.B(x, y + 3, z + 4, 0.3, 6, 0.3, 'metal'); L.B(x, y + 7.5, z, 0.4, 5, w, 'billboard', { fit: 1 }); L.B(x - 0.6, y + 4.9, z, 1.0, 0.2, w, 'grid'); }
+  if (along === 'x') { bbPost(L, x - 4, y, z, 0.3, 0.3); bbPost(L, x + 4, y, z, 0.3, 0.3); propOf('billboard', L.pt(x, y, z), L.yaw, () => { L.B(x, y + 7.5, z, w, 5, 0.4, 'billboard', { fit: 1 }); L.B(x, y + 4.9, z - 0.6, w, 0.2, 1.0, 'grid'); }, bbPicture); }
+  else { bbPost(L, x, y, z - 4, 0.3, 0.3); bbPost(L, x, y, z + 4, 0.3, 0.3); propOf('billboard', L.pt(x, y, z), L.yaw + Math.PI / 2, () => { L.B(x, y + 7.5, z, 0.4, 5, w, 'billboard', { fit: 1 }); L.B(x - 0.6, y + 4.9, z, 1.0, 0.2, w, 'grid'); }, bbPicture); }
 }
 
 // a skyscraper: tiers with setbacks, cornices, parapets and roof stuff. returns roof top height
@@ -1439,18 +1452,23 @@ function home(B, ox, oz, rot, o, r) {
 // a lollipop tree: trunk and a few chunky stacked canopies, now and then in a colour no tree should be
 function lollipop(L, x, z, h, r) {
   const leaf = r() < 0.12 ? 'blossom' : r() < 0.35 ? 'leaves2' : 'leaves';
-  L.B(x, h / 2, z, 0.6, h, 0.6, 'wood');
-  L.B(x, h + 0.9, z, 3.6, 1.8, 3.6, leaf);
-  L.B(x, h + 2.2, z, 2.4, 1.0, 2.4, leaf);
+  propOf('lollipop', L.pt(x, 0, z), quarter(L, x, z), () => {
+    L.B(x, h / 2, z, 0.6, h, 0.6, 'wood');
+    L.B(x, h + 0.9, z, 3.6, 1.8, 3.6, leaf);
+    L.B(x, h + 2.2, z, 2.4, 1.0, 2.4, leaf);
+  }, { t: leaf });
 }
 function conifer(L, x, z, h, r) {
   const y0 = 2 + ((h * 7.31) % 0.4); // each tree's lowest branches at their own height (neighbours' undersides never in one plane)
-  L.B(x, y0 / 2, z, 0.5, y0, 0.5, 'wood');
-  for (let i = 0; i < 4; i++) L.B(x, y0 + (i + 0.5) * h / 4, z, 4.2 - i * 0.95, h / 4, 4.2 - i * 0.95, i % 2 ? 'leaves2' : 'hedge');
+  propOf('conifer', L.pt(x, 0, z), quarter(L, x, z), () => {
+    L.B(x, y0 / 2, z, 0.5, y0, 0.5, 'wood');
+    for (let i = 0; i < 4; i++) L.B(x, y0 + (i + 0.5) * h / 4, z, 4.2 - i * 0.95, h / 4, 4.2 - i * 0.95, i % 2 ? 'leaves2' : 'hedge');
+  });
 }
 
 // a stubby transit bus along +x (front at x0 + 12): you can get in by the door, shoot out through the window gaps
-function bus(B, x0, z0) {
+function bus(B, x0, z0) { propOf('transitbus', [x0, 0, z0], 0, () => busBoxes(B, x0, z0), { keep: (b) => !!b.fit }); } // (the livery stays a picture box)
+function busBoxes(B, x0, z0) {
   const z1 = z0 + 2.6, X = x0 + 12;
   for (const wx of [x0 + 2.2, x0 + 9.4]) for (const [a, b] of [[z0 - 0.08, z0 + 0.4], [z1 - 0.4, z1 + 0.08]]) B.add(wx - 0.55, 0, a, wx + 0.55, 1.1, b, 'tire');
   B.add(x0, 0.45, z0, X, 0.9, z1, 'busyellow'); // chassis, the floor inside is its top
@@ -1472,6 +1490,9 @@ function bus(B, x0, z0) {
 }
 // a box truck along +x, cab at the front: the back is open (roller door up) and a crate gets you in
 function truck(B, x0, z0, livery = 'adtruck', step = true) { // (step: the crate to climb in by; not when it's backed onto a dock)
+  propOf('boxtruck', [x0, 0, z0], 0, () => truckBoxes(B, x0, z0, livery, step), { keep: (b) => !!b.fit, skip: (b) => b.mat === 'crate' }); // (the livery stays a picture box, the step crate is a crate)
+}
+function truckBoxes(B, x0, z0, livery, step) {
   const z1 = z0 + 2.5;
   for (const wx of [x0 + 1.4, x0 + 5.6, x0 + 8.9]) for (const [a, b] of [[z0 - 0.08, z0 + 0.4], [z1 - 0.4, z1 + 0.08]]) B.add(wx - 0.5, 0, a, wx + 0.5, 1.0, b, 'tire');
   B.add(x0 + 0.3, 0.5, z0 + 0.3, x0 + 9.9, 0.95, z1 - 0.3, 'metal');
@@ -1489,10 +1510,12 @@ function truck(B, x0, z0, livery = 'adtruck', step = true) { // (step: the crate
 // a flat billboard on two legs, the ad drawn once across its face
 function adBoard(B, x, z, y, along, ad, w = 12, h = 5) {
   const L = B.local(x, z, along === 'x' ? 0 : 1, y);
-  L.B(-w / 3, 3, 0, 0.4, 6, 0.4, 'metal'); L.B(w / 3, 3, 0, 0.4, 6, 0.4, 'metal');
-  L.B(0, 6 + h / 2, 0, w + 0.4, h + 0.4, 0.3, 'metal');
-  L.B(0, 6 + h / 2, 0, w, h, 0.5, ad, { fit: 1 });
-  L.B(0, 5.9, -0.7, w, 0.2, 1.0, 'grid');
+  bbPost(L, -w / 3, 0, 0, 0.4, 0.4); bbPost(L, w / 3, 0, 0, 0.4, 0.4);
+  propOf('billboard', L.pt(0, 0, 0), L.yaw, () => {
+    L.B(0, 6 + h / 2, 0, w + 0.4, h + 0.4, 0.3, 'metal');
+    L.B(0, 6 + h / 2, 0, w, h, 0.5, ad, { fit: 1 });
+    L.B(0, 5.9, -0.7, w, 0.2, 1.0, 'grid');
+  }, bbPicture);
 }
 
 // ---- the suburb kit (both Suburb layouts)
@@ -1536,8 +1559,10 @@ function suburbOutside(B, D, r, bx, roads = [], clear = []) {
   ring(W, x0 - 3, z0 - 3, x1 + 3, z1 + 3, 6.5, 2);
   ring(Dw, x0 - 10, z0 - 10, x1 + 10, z1 + 10, 5.5, 3); ring(Dw, x0 - 17, z0 - 17, x1 + 17, z1 + 17, 6, 4);
   const fr = rng(4343), pylonZ = z0 - 100;
-  const ftree = (x, z, h, y = 0) => { const L2 = D.local(x, z, 0, y), m = fr() < 0.5 ? 'leaves' : fr() < 0.6 ? 'hedge' : 'leaves2';
-    if (fr() < 0.5) { L2.B(0, h / 2, 0, 0.6, h, 0.6, 'wood'); L2.B(0, h + 0.8, 0, 3.4 + fr(), 2.2, 3.4 + fr(), m); L2.B(0, h + 2.4, 0, 2.2, 1.2, 2.2, m); }
+  const ftree = (x, z, h, y = 0) => { const L2 = D.local(x, z, 0, y), m = fr() < 0.5 ? 'leaves' : fr() < 0.6 ? 'hedge' : 'leaves2', lolli = fr() < 0.5;
+    propOf(lolli ? 'lollipop' : 'conifer', L2.pt(0, 0, 0), quarter(L2, 0, 0), () => ftreeBoxes(L2, h, m, lolli), lolli ? { t: m } : {}); }; // (Blender: round 4's lollipop or conifer)
+  const ftreeBoxes = (L2, h, m, lolli) => {
+    if (lolli) { L2.B(0, h / 2, 0, 0.6, h, 0.6, 'wood'); L2.B(0, h + 0.8, 0, 3.4 + fr(), 2.2, 3.4 + fr(), m); L2.B(0, h + 2.4, 0, 2.2, 1.2, 2.2, m); }
     else { const y0 = 1.7 + ((h * 7.31) % 0.6); L2.B(0, y0 / 2, 0, 0.5, y0, 0.5, 'wood'); L2.B(0, y0 + h * 0.3, 0, 4.4, h * 0.6, 4.4, m); L2.B(0, y0 + h * 0.75, 0, 2.6, h * 0.5, 2.6, m); } }; // (canopy bottoms at their own heights)
   for (let x = x0 - 220; x <= x1 + 220; x += 8) for (let z = z0 - 220; z <= z1 + 220; z += 8) {
     const e = Math.max(x0 - 20 - x, x - x1 - 20, z0 - 20 - z, z - z1 - 20); // how far past the ring
@@ -1933,7 +1958,8 @@ function forklift(B, x, z, rot, lift = 0) {
 }
 // a pallet with a load strapped on (the Blender one): small cover
 function palletLoad(B, x, z, rot = 0) { prop(B.local(x, z, rot), 'pallet_load', 0, 0, 0); }
-function trailer(B, x0, z0, livery) { // a semi trailer along x on its landing legs (no cab)
+function trailer(B, x0, z0, livery) { propOf('trailer', [x0, 0, z0], 0, () => trailerBoxes(B, x0, z0, livery), bbPicture); } // (the Blender trailer, the livery stays a picture)
+function trailerBoxes(B, x0, z0, livery) { // a semi trailer along x on its landing legs (no cab)
   const z1 = z0 + 2.6;
   B.add(x0, 1.3, z0, x0 + 12.5, 4.1, z1, 'truckbox');
   B.add(x0 + 1, 1.5, z0 - 0.03, x0 + 11.5, 3.9, z0, livery, { fit: 1 }); B.add(x0 + 1, 1.5, z1, x0 + 11.5, 3.9, z1 + 0.03, livery, { fit: 1 });
@@ -1945,6 +1971,9 @@ function trailer(B, x0, z0, livery) { // a semi trailer along x on its landing l
 // a semi: trailer + cab in a local frame, rear of the trailer at local z = 0 (back it up to a dock), cab toward +z
 function semi(B, x, z, rot, livery, cab = true) {
   const L = B.local(x, z, rot);
+  propOf(cab ? 'semi' : 'semitrailer', L.pt(0, 0, 0), L.yaw, () => semiBoxes(L, livery, cab), { keep: (b) => !!b.fit }); // (the livery stays a picture box)
+}
+function semiBoxes(L, livery, cab) {
   L(-1.3, 1.3, 0, 1.3, 4.1, 12.5, 'truckbox');
   L(-1.33, 1.5, 1, -1.3, 3.9, 11.5, livery, { fit: 1 }); L(1.3, 1.5, 1, 1.33, 3.9, 11.5, livery, { fit: 1 });
   L(-1.25, 1.25, -0.05, 1.25, 1.35, 0, 'tail'); // the rear light bar
@@ -1966,8 +1995,8 @@ function cratePile(B, x, z, n, r) { // crates stacked into a rough pyramid
 
 // ---- construction machinery (each takes a builder, B for things you bump into or D for render-only, and its own frame).
 // local -z is the front
-function excavator(Bd, x, z, rot) {
-  const L = Bd.local(x, z, rot);
+function excavator(Bd, x, z, rot) { const L = Bd.local(x, z, rot); propOf('excavator', L.pt(0, 0, 0), L.yaw, () => excavatorBoxes(L)); }
+function excavatorBoxes(L) {
   L(-1.7, 0, -1.9, -0.9, 0.9, 1.9, 'tire'); L(0.9, 0, -1.9, 1.7, 0.9, 1.9, 'tire'); L(-0.9, 0.25, -1.4, 0.9, 0.9, 1.4, 'metal'); // tracks
   L(-1.5, 0.9, -1.3, 1.5, 2.1, 1.6, 'toyyellow'); L(-1.5, 0.9, 1.6, 1.5, 2.0, 2.3, 'hazard'); // the house, the counterweight
   L(-1.45, 2.1, -1.3, -0.15, 3.5, 0.4, 'toyyellow'); L(-1.47, 2.45, -1.32, -0.13, 3.3, -1.28, 'glass'); L(-1.47, 2.45, -1.0, -1.43, 3.3, 0.2, 'glass');
@@ -1996,8 +2025,8 @@ function roller(Bd, x, z, rot) {
   for (const [px, pz] of [[-0.8, -0.6], [0.7, -0.6], [-0.8, 1.2], [0.7, 1.2]]) L(px, 1.6, pz, px + 0.1, 3.0, pz + 0.1, 'metal');
   L(-0.95, 3.0, -0.7, 0.95, 3.15, 1.4, 'toyyellow'); L(-0.3, 1.6, 0.1, 0.3, 2.1, 0.7, 'seat');
 }
-function generatorTower(Bd, x, z, rot) { // a generator trailer with a fold-up light mast, lamps on
-  const L = Bd.local(x, z, rot);
+function generatorTower(Bd, x, z, rot) { const L = Bd.local(x, z, rot); propOf('generator', L.pt(0, 0, 0), L.yaw, () => generatorBoxes(L)); }
+function generatorBoxes(L) { // a generator trailer with a fold-up light mast, lamps on
   L(-1.1, 0.35, -1.6, 1.1, 1.9, 1.6, 'containerg'); L(-1.12, 0.9, -1.2, 1.12, 1.6, 1.2, 'grid'); L(0.4, 1.9, 0.6, 0.7, 2.6, 0.9, 'chrome');
   for (const sx of [-0.9, 0.6]) L(sx, 0, -0.4, sx + 0.3, 0.7, 0.4, 'tire');
   L(-0.12, 1.9, -1.3, 0.12, 8.5, -1.06, 'metal'); L(-1.2, 8.5, -1.4, 1.2, 9.3, -1.0, 'metal');
@@ -2011,7 +2040,7 @@ function gravelPile(Bd, x, z, s, m = 'sand') {
   for (let i = 0; i < 4; i++) { const k = 1 - i * 0.24; Bd.box(x + i * 0.2, (i + 0.5) * s * 0.18, z - i * 0.1, s * k, s * 0.18, s * 0.8 * k, m); }
 }
 function cones(Bd, x0, z0, x1, z1, n) {
-  for (let i = 0; i < n; i++) { const t = n > 1 ? i / (n - 1) : 0, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t; Bd.box(x, 0.06, z, 0.6, 0.12, 0.6, 'tire'); Bd.box(x, 0.45, z, 0.38, 0.7, 0.38, 'toyorange'); Bd.box(x, 0.5, z, 0.42, 0.14, 0.42, 'white'); }
+  for (let i = 0; i < n; i++) { const t = n > 1 ? i / (n - 1) : 0, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t; propOf('cone', [x, 0, z], 0, () => { Bd.box(x, 0.06, z, 0.6, 0.12, 0.6, 'tire'); Bd.box(x, 0.45, z, 0.38, 0.7, 0.38, 'toyorange'); Bd.box(x, 0.5, z, 0.42, 0.14, 0.42, 'white'); }, { spin: spinAt(x, z) }); }
 }
 
 // ------------------------------------------------------------ WAREHOUSE: the depot for every mode but Plant & Defuse.
@@ -2146,7 +2175,8 @@ function container(B, x, z, alongZ, n, mats, len = 12) {
   }
 }
 // a concrete jersey barrier: waist-high cover you can vault
-function barrier(B, x, z, alongZ, len = 3) {
+function barrier(B, x, z, alongZ, len = 3) { propOf('barrier', [x, 0, z], alongZ ? -Math.PI / 2 : 0, () => barrierBox(B, x, z, alongZ, len)); }
+function barrierBox(B, x, z, alongZ, len) {
   if (alongZ) B.add(x - 0.35, 0, z - len / 2, x + 0.35, 1.05, z + len / 2, 'concrete'); else B.add(x - len / 2, 0, z - 0.35, x + len / 2, 1.05, z + 0.35, 'concrete');
 }
 // a bomb site board (render-only): the letter, s wide, its face toward +-x ('x') or +-z ('z'), a hair off the wall
@@ -2349,35 +2379,48 @@ function warehouseSD() {
 function stall(L, x, z, rot, rv) { // a market stall: posts, a loud awning, a counter piled with goods, sometimes a rug
   const T = (lx, lz) => [[lx, lz], [-lz, lx], [-lx, -lz], [lz, -lx]][rot & 3];
   const P = (x0, y0, z0, x1, y1, z1, m, ex) => { const [ax, az] = T(x0, z0), [bx, bz] = T(x1, z1); L(x + ax, y0, z + az, x + bx, y1, z + bz, m, ex); };
-  for (const [px, pz] of [[-1.9, -1.4], [1.7, -1.4], [-1.9, 1.2], [1.7, 1.2]]) P(px, 0, pz, px + 0.2, 2.9, pz + 0.2, 'wood');
-  P(-2.3, 2.9, -1.8, 2.3, 3.05, 1.8, ['cloth', 'toypink', 'toyteal', 'toyyellow', 'leopard', 'camo'][(rv() * 6) | 0]);
-  P(-1.6, 0, -1.0, 1.6, 0.95, -0.3, 'wood');
-  const goods = ['toyorange', 'toygreen', 'toyred', 'pottery', 'shelfstock', 'cloth'];
-  for (let i = 0; i < 4; i++) { const gx = -1.4 + i * 0.75, h = 0.2 + rv() * 0.35; P(gx, 0.95, -0.95, gx + 0.6, 0.95 + h, -0.4, goods[(rv() * goods.length) | 0]); }
-  if (rv() < 0.6) P(-1.6, 0.6, 1.25, 1.6, 2.6, 1.3, ['leopard', 'camo', 'cloth', 'magenta'][(rv() * 4) | 0]); // a rug hung at the back
-  if (rv() < 0.7) pot(L, x + T(2.6, -1.2)[0], z + T(2.6, -1.2)[1], 0.8 + rv() * 0.4);
+  const o = { keep: (b) => !!b.rug }; // (the Blender stall, painted its awning's colour; the rug stays a cloth box)
+  propOf('stall', L.pt(x, 0, z), L.yaw - (rot & 3) * Math.PI / 2, () => {
+    for (const [px, pz] of [[-1.9, -1.4], [1.7, -1.4], [-1.9, 1.2], [1.7, 1.2]]) P(px, 0, pz, px + 0.2, 2.9, pz + 0.2, 'wood');
+    o.t = ['cloth', 'toypink', 'toyteal', 'toyyellow', 'leopard', 'camo'][(rv() * 6) | 0];
+    P(-2.3, 2.9, -1.8, 2.3, 3.05, 1.8, o.t);
+    P(-1.6, 0, -1.0, 1.6, 0.95, -0.3, 'wood');
+    const goods = ['toyorange', 'toygreen', 'toyred', 'pottery', 'shelfstock', 'cloth'];
+    for (let i = 0; i < 4; i++) { const gx = -1.4 + i * 0.75, h = 0.2 + rv() * 0.35; P(gx, 0.95, -0.95, gx + 0.6, 0.95 + h, -0.4, goods[(rv() * goods.length) | 0]); }
+    if (rv() < 0.6) P(-1.6, 0.6, 1.25, 1.6, 2.6, 1.3, ['leopard', 'camo', 'cloth', 'magenta'][(rv() * 4) | 0], { rug: 1 }); // a rug hung at the back
+    if (rv() < 0.7) pot(L, x + T(2.6, -1.2)[0], z + T(2.6, -1.2)[1], 0.8 + rv() * 0.4);
+  }, o);
 }
 function pot(L, x, z, s = 1) { // a big clay pot
-  L.B(x, 0.25 * s, z, 0.7 * s, 0.5 * s, 0.7 * s, 'pottery'); L.B(x, 0.7 * s, z, 0.9 * s, 0.4 * s, 0.9 * s, 'pottery'); L.B(x, 1.02 * s, z, 0.45 * s, 0.25 * s, 0.45 * s, 'pottery');
+  const [ax, , az] = L.pt(x, 0, z);
+  propOf('pot', L.pt(x, 0, z), L.yaw, () => { L.B(x, 0.25 * s, z, 0.7 * s, 0.5 * s, 0.7 * s, 'pottery'); L.B(x, 0.7 * s, z, 0.9 * s, 0.4 * s, 0.9 * s, 'pottery'); L.B(x, 1.02 * s, z, 0.45 * s, 0.25 * s, 0.45 * s, 'pottery'); }, { spin: spinAt(ax, az) || 1e-6 });
 }
-function cart(L, x, z, alongX) { // a wooden hand cart, tipped forward on its handles
+function cart(L, x, z, alongX) { propOf('handcart', L.pt(x, 0, z), L.yaw + (alongX ? 0 : -Math.PI / 2), () => cartBoxes(L, x, z, alongX), { t: ['crate', 'pottery', 'cloth', 'toyorange'][Math.abs((x * 3 + z) | 0) % 4] }); }
+function cartBoxes(L, x, z, alongX) { // a wooden hand cart, tipped forward on its handles
   if (alongX) { L(x - 1.2, 0.6, z - 0.8, x + 1.2, 1.3, z + 0.8, 'wood'); for (const s of [-1, 1]) L(x - 0.45, 0, z + s * 0.85 - 0.1, x + 0.45, 0.9, z + s * 0.85 + 0.1, 'tire'); L(x + 1.2, 0.3, z - 0.6, x + 2.6, 0.45, z - 0.45, 'wood'); L(x + 1.2, 0.3, z + 0.45, x + 2.6, 0.45, z + 0.6, 'wood'); }
   else { L(x - 0.8, 0.6, z - 1.2, x + 0.8, 1.3, z + 1.2, 'wood'); for (const s of [-1, 1]) L(x + s * 0.85 - 0.1, 0, z - 0.45, x + s * 0.85 + 0.1, 0.9, z + 0.45, 'tire'); L(x - 0.6, 0.3, z + 1.2, x - 0.45, 0.45, z + 2.6, 'wood'); L(x + 0.45, 0.3, z + 1.2, x + 0.6, 0.45, z + 2.6, 'wood'); }
   L(x - 0.6, 1.3, z - 0.6, x + 0.6, 1.8, z + 0.6, ['crate', 'pottery', 'cloth', 'toyorange'][Math.abs((x * 3 + z) | 0) % 4]);
 }
 function tent(L, x, z, c) { // a cloth tent on poles (the Bazaar camp's kind)
-  L(x - 3, 0, z - 2, x + 3, 0.05, z + 2, 'cloth');
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) L.B(x + sx * 2.8, 1.4, z + sz * 1.8, 0.2, 2.8, 0.2, 'wood');
-  L(x - 3.2, 2.8, z - 2.2, x + 3.2, 3.0, z + 2.2, c); L(x - 2.2, 3.0, z - 1.4, x + 2.2, 3.5, z + 1.4, c);
+  propOf('tent', L.pt(x, 0, z), L.yaw, () => {
+    L(x - 3, 0, z - 2, x + 3, 0.05, z + 2, 'cloth');
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) L.B(x + sx * 2.8, 1.4, z + sz * 1.8, 0.2, 2.8, 0.2, 'wood');
+    L(x - 3.2, 2.8, z - 2.2, x + 3.2, 3.0, z + 2.2, c); L(x - 2.2, 3.0, z - 1.4, x + 2.2, 3.5, z + 1.4, c);
+  }, { t: c });
 }
 function palm(L, x, z, h, r) { // a palm: a trunk that leans a little as it goes up, a crown of fronds
-  const lx = (r() - 0.5) * 0.5, lz = (r() - 0.5) * 0.5, n = Math.max(3, Math.round(h / 1.4));
-  for (let i = 0; i < n; i++) L.B(x + lx * i, (i + 0.5) * (h / n), z + lz * i, 0.55 - i * 0.02, h / n + 0.02, 0.55 - i * 0.02, i % 2 ? 'wood' : 'plywood');
-  const tx = x + lx * n, tz = z + lz * n;
-  L.B(tx, h + 0.1, tz, 1.4, 0.6, 1.4, 'leaves');
-  for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { L.B(tx + dx * 1.9, h, tz + dz * 1.9, dx ? 3 : 0.9, 0.35, dz ? 3 : 0.9, 'leaves2'); L.B(tx + dx * 3.3, h - 0.5, tz + dz * 3.3, dx ? 1.4 : 0.8, 0.3, dz ? 1.4 : 0.8, 'leaves'); }
+  const o = {}; // (the Blender palm leans along +x: turned to this one's lean)
+  propOf('palm', L.pt(x, 0, z), L.yaw, () => {
+    const lx = (r() - 0.5) * 0.5, lz = (r() - 0.5) * 0.5, n = Math.max(3, Math.round(h / 1.4));
+    o.spin = Math.atan2(-lz, lx) || 1e-6;
+    for (let i = 0; i < n; i++) L.B(x + lx * i, (i + 0.5) * (h / n), z + lz * i, 0.55 - i * 0.02, h / n + 0.02, 0.55 - i * 0.02, i % 2 ? 'wood' : 'plywood');
+    const tx = x + lx * n, tz = z + lz * n;
+    L.B(tx, h + 0.1, tz, 1.4, 0.6, 1.4, 'leaves');
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { L.B(tx + dx * 1.9, h, tz + dz * 1.9, dx ? 3 : 0.9, 0.35, dz ? 3 : 0.9, 'leaves2'); L.B(tx + dx * 3.3, h - 0.5, tz + dz * 3.3, dx ? 1.4 : 0.8, 0.3, dz ? 1.4 : 0.8, 'leaves'); }
+  }, o);
 }
-function camel(L, x, z, alongX) { // a very boxy camel. it judges you
+function camel(L, x, z, alongX) { propOf('camel', L.pt(x, 0, z), L.yaw + (alongX ? 0 : -Math.PI / 2), () => camelBoxes(L, x, z, alongX), { t: ['cloth', 'leopard', 'toypink'][Math.abs((x + z) | 0) % 3] }); }
+function camelBoxes(L, x, z, alongX) { // a very boxy camel. it judges you
   const B2 = (cx, cy, cz, sx, sy, sz, m) => (alongX ? L.B(x + cx, cy, z + cz, sx, sy, sz, m) : L.B(x + cz, cy, z + cx, sz, sy, sx, m));
   B2(0, 1.9, 0, 2.6, 1.0, 1.0, 'camel'); B2(0.1, 2.6, 0, 1.0, 0.5, 0.8, 'camel'); // body + hump
   for (const [lx, lz] of [[-1, -0.35], [-1, 0.35], [1, -0.35], [1, 0.35]]) B2(lx, 0.7, lz, 0.25, 1.4, 0.25, 'camel');
@@ -2512,10 +2555,11 @@ function ropeBridge(B, D, x0, x1, z, w = 2.6) {
     for (let x = x0 + 1.2; x < x1 - 1; x += 1.2) D.add(x - 0.02, 0, e - 0.02, x + 0.02, 0.95, e + 0.02, 'tire'); // the hangers
   }
 }
-function hay(B, x, z, n, alongX = true) { // hay bales, stacked
-  for (let i = 0; i < n; i++) { const lvl = i < 3 ? 0 : 1, k = lvl ? i - 3 : i, ox = (k - (lvl ? 0.5 : 1)) * 1.3; B.add(x + (alongX ? ox : 0) - (alongX ? 0.6 : 0.4), lvl * 0.8, z + (alongX ? 0 : ox) - (alongX ? 0.4 : 0.6), x + (alongX ? ox : 0) + (alongX ? 0.6 : 0.4), lvl * 0.8 + 0.78, z + (alongX ? 0 : ox) + (alongX ? 0.4 : 0.6), 'yellow'); }
+function hay(B, x, z, n, alongX = true) { // hay bales, stacked (each one a Blender bale)
+  for (let i = 0; i < n; i++) { const lvl = i < 3 ? 0 : 1, k = lvl ? i - 3 : i, ox = (k - (lvl ? 0.5 : 1)) * 1.3; propOf('hay', [x + (alongX ? ox : 0), lvl * 0.8, z + (alongX ? 0 : ox)], alongX ? 0 : -Math.PI / 2, () => B.add(x + (alongX ? ox : 0) - (alongX ? 0.6 : 0.4), lvl * 0.8, z + (alongX ? 0 : ox) - (alongX ? 0.4 : 0.6), x + (alongX ? ox : 0) + (alongX ? 0.6 : 0.4), lvl * 0.8 + 0.78, z + (alongX ? 0 : ox) + (alongX ? 0.4 : 0.6), 'yellow')); }
 }
-function wagon(B, D, x, z, alongX = true, cover = true) { // a covered wagon: the bed, big wheels, the canvas over hoops
+function wagon(B, D, x, z, alongX = true, cover = true) { propOf(cover ? 'wagon' : 'wagon_open', [x, 0, z], alongX ? 0 : -Math.PI / 2, () => wagonBoxes(B, D, x, z, alongX, cover)); }
+function wagonBoxes(B, D, x, z, alongX, cover) { // a covered wagon: the bed, big wheels, the canvas over hoops
   const R = (x0, y0, z0, x1, y1, z1, m, dd) => (alongX ? (dd ? D : B).add(x + x0, y0, z + z0, x + x1, y1, z + z1, m) : (dd ? D : B).add(x + z0, y0, z + x0, x + z1, y1, z + x1, m));
   R(-2.2, 0.75, -0.9, 2.2, 1.35, 0.9, 'wood');
   for (const wx of [-1.5, 1.5]) for (const s of [-1, 1]) R(wx - 0.55, 0, s * 1.0 - 0.08, wx + 0.55, 1.1, s * 1.0 + 0.08, 'wood', true);
@@ -2523,14 +2567,18 @@ function wagon(B, D, x, z, alongX = true, cover = true) { // a covered wagon: th
   R(2.2, 0.85, -0.08, 3.6, 0.95, 0.08, 'wood', true); // the tongue
 }
 function saguaro(L, x, z, h = 4) { // a cartoon saguaro: a trunk and two arms
-  L.B(x, h / 2, z, 0.6, h, 0.6, 'toygreen');
-  L.B(x + 0.6, h * 0.45, z, 0.7, 0.4, 0.4, 'toygreen'); L.B(x + 0.85, h * 0.62, z, 0.4, 0.9, 0.4, 'toygreen');
-  L.B(x - 0.55, h * 0.6, z, 0.6, 0.36, 0.36, 'toygreen'); L.B(x - 0.75, h * 0.74, z, 0.36, 0.7, 0.36, 'toygreen');
+  propOf('saguaro', L.pt(x, 0, z), L.yaw, () => {
+    L.B(x, h / 2, z, 0.6, h, 0.6, 'toygreen');
+    L.B(x + 0.6, h * 0.45, z, 0.7, 0.4, 0.4, 'toygreen'); L.B(x + 0.85, h * 0.62, z, 0.4, 0.9, 0.4, 'toygreen');
+    L.B(x - 0.55, h * 0.6, z, 0.6, 0.36, 0.36, 'toygreen'); L.B(x - 0.75, h * 0.74, z, 0.36, 0.7, 0.36, 'toygreen');
+  });
 }
 function grave(L, x, z, k) { // a headstone or a wooden cross, and the mound
-  L(x - 0.45, 0, z - 0.9, x + 0.45, 0.25, z + 0.9, 'dirt');
-  if (k % 3) L(x - 0.32, 0, z - 1.12, x + 0.32, 0.9 + (k % 2) * 0.2, z - 0.9, 'stone');
-  else { L.B(x, 0.6, z - 1.0, 0.12, 1.2, 0.12, 'wood'); L.B(x, 0.85, z - 1.0, 0.6, 0.12, 0.12, 'wood'); }
+  propOf(k % 3 ? 'grave' : 'grave_cross', L.pt(x, 0, z), L.yaw, () => {
+    L(x - 0.45, 0, z - 0.9, x + 0.45, 0.25, z + 0.9, 'dirt');
+    if (k % 3) L(x - 0.32, 0, z - 1.12, x + 0.32, 0.9 + (k % 2) * 0.2, z - 0.9, 'stone');
+    else { L.B(x, 0.6, z - 1.0, 0.12, 1.2, 0.12, 'wood'); L.B(x, 0.85, z - 1.0, 0.6, 0.12, 0.12, 'wood'); }
+  });
 }
 // a one-room adobe hut: flat roof with a low lip, a ladder up the side (bars you can climb: steps), a door and windows
 function adobeHut(B, D, x, z, rot, w = 6, d = 5, paint = 'adobe') {
@@ -2993,7 +3041,7 @@ function desertSD() {
 
 // ------------------------------------------------------------ the island kit (Islands, Islands S&D)
 // the sea is a foot deep over the sand round each island (the shelf), then it isn't: past it you sink (killY)
-const ISL = { SH: -0.55, SB: -0.6, RF: -0.65, WY: -0.25, DROWN: -2.3 }; // (DROWN: feet this low = your head's under, and that's that. it used to be 16 m down, through the sea bed)
+const ISL = { SH: -0.55, SB: -0.6, RF: -0.65, WY: -0.25, DROWN: -30 }; // (DROWN: the kill line, far under the waves. the sea doesn't kill you any more, you float in it (seaSwim). what gets you is swimming off the map: map.bounds, 30 m out past the last island)
 void 0; // the shelves' sand, the sandbars' (a hair lower: where one runs into a shelf, the shelf wins), the reef's (lower again), the sea's surface
 // a flight of solid steps along x (alongX) or z, from a0 (its foot, at ya) to a1 (its head, yb), c0..c1 across.
 // rail: +1 / -1 a rail up the c1 / c0 side. returns { bot, top }: points just off each end, for the walk graph (the
@@ -3354,7 +3402,7 @@ function islands() {
   shapeGround(B, D, { region: [-100, -90, 100, 90], mat: 'sand', seed: 3113, up: 1.6, down: 0.12, near: 0.8, far: 4, drape: ['grass'], points: [...new Set([...spawns, ...att, ...def])] });
   let graph = null;
   const map = { name: 'Islands', size: 'large', boxes: B.boxes, deco: D.boxes, killY: ISL.DROWN, floorY: -1.5, sky: SKY_SUNSET, fogNear: 110, fogFar: 380,
-    spawns, teamSpawns: { att, def }, edgeGuard: true, sea: true, seaY: ISL.WY, pits: [lavaPit(T)], // (sea: falls are 'into the sea' in the kill feed)
+    spawns, teamSpawns: { att, def }, edgeGuard: true, sea: true, seaY: ISL.WY, seaSwim: true, bounds: [-127, -115, 127, 115], pits: [lavaPit(T)], // (sea: falls are 'into the sea' in the kill feed)
     peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: -100, z0: -90, n: 196, cell: 1, levels: [ISL.SB, 3, MD, 6, QD, 9, 13.5, 18], band: 0.6, stairs: st })); },
   };
   return map;
@@ -3447,7 +3495,7 @@ function islandsSD() {
   const spawns = [...att.slice(0, 3), ...def.slice(0, 3), [6, 0.1, 2.5], [-48, 0.1, -16], [48, 0.1, -16], [-48, 0.1, -62], [48, 0.1, -56]];
   let graph = null;
   const map = { name: 'Islands', size: 'large', boxes: B.boxes, deco: D.boxes, killY: ISL.DROWN, floorY: -1.5, sky: SKY_SUNSET, fogNear: 110, fogFar: 380,
-    spawns, teamSpawns: { att, def }, edgeGuard: true, ceiling: 9.5, sea: true, seaY: ISL.WY, pits: [lavaPit(T)],
+    spawns, teamSpawns: { att, def }, edgeGuard: true, ceiling: 9.5, sea: true, seaY: ISL.WY, seaSwim: true, bounds: [-97, -117, 105, 85], pits: [lavaPit(T)],
     nav: {
       B: [
         [[0, 46], [-4, 22], [-4, 5], [-17, 3], [-19, -5], [-19, -13], [-22, -13], [-36, -13], [-40, -20], [-40, -30], [-40, -38], [-40, -44], [-42, -54]], // mid, the tiki bar's islet, the sandbar
@@ -3843,7 +3891,8 @@ function lampTower(B, D, x, z, h = 18, bands = [7.6, 11, 14.5]) {
   D.add(x - 2.8, h + 0.4, z - 0.15, x - 1.8, h + 0.7, z + 0.15, 'gold'); D.add(x - 2.8, h + 0.7, z - 0.15, x - 2.5, h + 1.6, z + 0.15, 'gold'); D.add(x - 2.5, h + 1.3, z - 0.15, x - 1.8, h + 1.6, z + 0.15, 'gold'); // the handle
 }
 // a dye vat: a stone rim you can stand on, knee-deep colour inside (render-only: jump in, wade about)
-function dyeVat(B, D, x, z, s, mat) {
+function dyeVat(B, D, x, z, s, mat) { propOf('dyevat', [x, 0, z], 0, () => dyeVatBoxes(B, D, x, z, s, mat), { t: mat }); }
+function dyeVatBoxes(B, D, x, z, s, mat) {
   const h = s / 2, t = 0.4;
   B.add(x - h, 0, z - h, x + h, 0.9, z - h + t, 'stone'); B.add(x - h, 0, z + h - t, x + h, 0.9, z + h, 'stone');
   B.add(x - h, 0, z - h + t, x - h + t, 0.9, z + h - t, 'stone'); B.add(x + h - t, 0, z - h + t, x + h, 0.9, z + h - t, 'stone');
@@ -4522,7 +4571,8 @@ function range() {
 // Plant & Defuse: attackers start at the trailhead (south-west), defenders at the ranger lot (north).
 // The Tall Guy From HR walks these woods (server/hrguy.js): map.hr says where he may stand and where he sends people
 const FOREST = { bounds: [-100, -84, 100, 84], shore: 72 };
-function pine(B, D, x, z, h, r) { // a pine: a trunk you bump into, a stack of turned tiers you only see
+function pine(B, D, x, z, h, r) { const o = {}; propOf('pine', [x, 0, z], 0, () => { o.spin = pineBoxes(B, D, x, z, h, r) || 1e-6; }, o); } // (the Blender pine, turned like its tiers)
+function pineBoxes(B, D, x, z, h, r) { // a pine: a trunk you bump into, a stack of turned tiers you only see
   const tw = 0.26 + r() * 0.16;
   B.add(x - tw, 0, z - tw, x + tw, h * 0.94, z + tw, r() < 0.15 ? 'bark2' : 'bark');
   const n = 5 + ((r() * 2) | 0), base = h * (0.3 + r() * 0.08), span = h - base, w0 = 3.4 + r() * 1.6, yaw = r() * 3;
@@ -4531,8 +4581,10 @@ function pine(B, D, x, z, h, r) { // a pine: a trunk you bump into, a stack of t
     D.obb(x, y + span / n * 0.62, z, w, span / n * 1.3, w * (0.82 + r() * 0.3), yaw + i * 0.7 + r() * 0.3, (i + ((x * 7) | 0)) % 3 ? 'pine' : 'pine2');
   }
   D.obb(x, h + 0.45, z, 0.5, 1.1, 0.5, yaw, 'pine2');
+  return yaw;
 }
-function deadTree(B, D, x, z, h, r) { // bare, grey, too many elbows
+function deadTree(B, D, x, z, h, r) { propOf('deadtree', [x, 0, z], 0, () => deadTreeBoxes(B, D, x, z, h, r), { spin: spinAt(x, z) || 1e-6 }); }
+function deadTreeBoxes(B, D, x, z, h, r) { // bare, grey, too many elbows
   B.add(x - 0.3, 0, z - 0.3, x + 0.3, h, z + 0.3, 'deadbark');
   for (let i = 0; i < 5; i++) {
     const y = h * (0.4 + i * 0.12), l = 1.2 + r() * 1.8 * (1 - i * 0.12), a = r() * 6.3;
@@ -4540,7 +4592,8 @@ function deadTree(B, D, x, z, h, r) { // bare, grey, too many elbows
     D.obb(x + Math.cos(a) * l, y + 0.45, z + Math.sin(a) * l, 0.12, 0.9, 0.12, -a, 'deadbark'); // the elbow up at the end
   }
 }
-function birch(B, D, x, z, h, r) { // white trunks: they catch the flashlight, so you think something is standing there
+function birch(B, D, x, z, h, r) { propOf('birch', [x, 0, z], 0, () => birchBoxes(B, D, x, z, h, r), { spin: spinAt(x, z) || 1e-6 }); }
+function birchBoxes(B, D, x, z, h, r) { // white trunks: they catch the flashlight, so you think something is standing there
   B.add(x - 0.2, 0, z - 0.2, x + 0.2, h, z + 0.2, 'birch');
   for (let i = 0; i < 3; i++) D.obb(x + (r() - 0.5) * 0.8, h * (0.62 + i * 0.13), z + (r() - 0.5) * 0.8, 2.4 - i * 0.5, 1.1, 2.0 - i * 0.4, r() * 3, 'birchleaf');
 }
@@ -4624,7 +4677,7 @@ function forest() {
   // the far shore across the lake: a dark line of trees in the fog
   for (let z = -300; z < 300; z += 5) for (let k = 0; k < 3; k++) pine(D, D, 230 + k * 6 + r() * 5, z + r() * 4, 10 + r() * 8, r);
   // undergrowth: ferns and bushes (only drawn: bullets go through, eyes don't)
-  for (let i = 0; i < 520; i++) { const x = bx0 - 20 + r() * (bx1 - bx0 + 40), z = bz0 - 20 + r() * (bz1 - bz0 + 40); if (x > SH - 2 || !free(x, z, -0.5)) continue; const s = 0.6 + r() * 0.8, a = r() * 3; if (r() < 0.55) { for (let k = 0; k < 3; k++) D.obb(x, s * 0.28, z, s * 1.5, s * 0.56, 0.07, a + k * 1.05, 'fern'); } else { D.obb(x, s * 0.3, z, s * 1.1, s * 0.6, s * 0.9, a, 'bush'); D.obb(x + 0.2, s * 0.75, z - 0.1, s * 0.7, s * 0.4, s * 0.6, a + 0.8, 'bush'); } } // ferns: three crossed fronds. bushes: a clump
+  for (let i = 0; i < 520; i++) { const x = bx0 - 20 + r() * (bx1 - bx0 + 40), z = bz0 - 20 + r() * (bz1 - bz0 + 40); if (x > SH - 2 || !free(x, z, -0.5)) continue; const s = 0.6 + r() * 0.8, a = r() * 3; if (r() < 0.55) { propOf('fern', [x, 0, z], 0, () => { for (let k = 0; k < 3; k++) D.obb(x, s * 0.28, z, s * 1.5, s * 0.56, 0.07, a + k * 1.05, 'fern'); }, { spin: a || 1e-6 }); } else { propOf('bush', [x, 0, z], 0, () => { D.obb(x, s * 0.3, z, s * 1.1, s * 0.6, s * 0.9, a, 'bush'); D.obb(x + 0.2, s * 0.75, z - 0.1, s * 0.7, s * 0.4, s * 0.6, a + 0.8, 'bush'); }, { spin: a || 1e-6 }); } } // ferns: three crossed fronds. bushes: a clump
   for (let i = 0; i < 70; i++) { const x = bx0 + r() * (bx1 - bx0), z = bz0 + r() * (bz1 - bz0); if (x > SH - 4 || !free(x, z, 1)) continue; if (r() < 0.55) { const l = 3 + r() * 4; r() < 0.5 ? log(B, x, z, x + l, z) : log(B, x, z, x, z + l); } else if (r() < 0.6) boulder(B, x, z, 0.6 + r() * 0.9, r, RK); else B.add(x - 0.35, 0, z - 0.35, x + 0.35, 0.5 + r() * 0.4, z + 0.35, 'logend'); }
 
   // ---- the clearing: a ring of standing stones, one dead tree, and an office chair facing away from you

@@ -15,8 +15,9 @@ import { addRig } from './rigmats.js';
 import { addZmMaps } from './zmmats.js';
 import { updateForest, forestMap } from './forest.js';
 import { shredMap, updateShredPit } from './shredpit.js'; // the Warehouse's shredder pit: the drums, the glow, the grind
-import { buildProps, hasProp } from './props.js';
-import { want, whenLate } from './glbkit.js';
+import { buildPropField, updatePropField, drawnByModel, fetchMapProps, propFieldVisible } from './propfield.js'; // Blender props, instanced (round 4)
+import { TRAFFIC } from '/shared/traffic.js';
+const trafficKinds = (def) => { const t = MAP.id && Object.hasOwn(TRAFFIC, MAP.id) ? TRAFFIC[MAP.id] : null; return t && t.mix ? Object.keys(t.mix) : null; }; // (their Blender cars come with the map)
 import { buildArch, hasArch, wantArch, setArchHaze } from './archfield.js'; // Blender architecture over the boxes
 import { liquidBox, buildLiquids, updateLiquids, liquidsMap, setLiquidQ } from './liquids.js'; // water that moves, lava that flows, splashes
 import { updateFlames } from './flames.js'; // real fire
@@ -275,8 +276,8 @@ function buildMap(scene) {
   if (def && def.chunk) { buildChunked(scene, def); return; }
   const groups = new Map();
   const push = (k, g) => { if (!groups.has(k)) groups.set(k, []); groups.get(k).push(g); };
-  // deco: drawn, never bumped into. a Blender prop stands in only for real boxes (props.js draws map.boxes.props): look-only
-  // scenery keeps its boxes (the city alone has hundreds of streetlights and cars, too many models to draw one by one)
+  // deco: drawn, never bumped into. a box tagged with a Blender prop isn't drawn while its model is loaded: the model is
+  // (propfield.js, one instanced draw per prop type, so the scenery's thousands of trees and lights can be models too)
   const TR = BOXES.terrain, real = TR ? BOXES.filter((b) => !b.ter) : BOXES; // shaped ground (shared/terrain.js): its hidden steps aren't drawn, the heightfield is (below)
   const all = def && def.deco ? [...real, ...(TR ? def.deco.filter((b) => !b.ter) : def.deco)] : real, nReal = real.length;
   const ncf = noCastFn(def), liq = [];
@@ -285,7 +286,7 @@ function buildMap(scene) {
   if (TR) (TR.mats || [TR.mat]).forEach((tm, mi) => { const tk = MAT[tm] ? tm : 'stone', g = terrainGeo(TR, MAT[tk].tile, TR.mats ? mi : -1); if (g.index.count) push(tk, terrainTint(TR, aoBake(g, false)).toNonIndexed()); });
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
-    if ((i < nReal && b.pv && hasProp(b.pv)) || (b.av && hasArch(b.av))) continue;
+    if ((b.pv && drawnByModel(b.pv)) || (b.av && hasArch(b.av))) continue;
     if (liquidBox(b)) { liq.push(b); continue; } // water, lava, fire: liquids.js / flames.js draw those
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
@@ -321,6 +322,30 @@ function buildMap(scene) {
   buildLiquids(scene, liq, shoreBoxes, def, hazify);
 }
 
+// tests (tools/blender/shots_r4.cjs): the box version of the props on top of the map as it is, the models hidden, so
+// box and Blender can be shot from the same camera without building the map again
+const propBoxMeshes = [];
+export function showPropBoxes(on) {
+  for (const m of propBoxMeshes) { G.scene.remove(m); m.geometry.dispose(); }
+  propBoxMeshes.length = 0;
+  propFieldVisible(!on);
+  if (on && MAT && MAP.id) {
+    const def = MAPS[MAP.id], all = def && def.deco ? [...BOXES, ...def.deco] : BOXES, groups = new Map();
+    for (const b of all) {
+      if (!(b.pv && drawnByModel(b.pv))) continue;
+      const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
+      const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2, mk = MAT[b.mat] ? b.mat : 'stone';
+      const g = boxGeo(sx, sy, sz);
+      if (b.rot) { if (!b.fit) worldUV(g, 0, 0, 0, MAT[mk].tile); g.rotateY(b.rot); } else if (!b.fit) worldUV(g, cx, cy, cz, MAT[mk].tile);
+      g.translate(cx, cy, cz);
+      if (!groups.has(mk)) groups.set(mk, []);
+      groups.get(mk).push(aoBake(g, aoSmall(sx, sy, sz)).toNonIndexed());
+    }
+    for (const [k, list] of groups) { const merged = mergeGeometries(list, false); for (const g of list) g.dispose(); if (!merged) continue; const m = mapMesh(G.scene, k, merged); G.scene.add(m); propBoxMeshes.push(m); }
+  }
+  lightingRefresh();
+}
+
 // huge maps (map.chunk metres): one merged mesh per material per chunk, so what's behind you or deep in the fog isn't
 // drawn. map.deco boxes are drawn too but never bumped into. boxes bigger than a chunk (floors, ceilings, the long
 // outer walls) go in one mesh per material that's always drawn, or they'd make their whole chunk impossible to cull
@@ -333,7 +358,7 @@ function buildChunked(scene, def) {
   if (TR) (TR.mats || [TR.mat]).forEach((tm, mi) => { const tk = MAT[tm] ? tm : 'stone', g = terrainGeo(TR, MAT[tk].tile, TR.mats ? mi : -1); if (g.index.count) groups.set(tk, { k: tk, nc: '', list: [terrainTint(TR, aoBake(g, false)).toNonIndexed()] }); }); // one mesh per ground material, always drawn
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
-    if ((i < nReal && b.pv && hasProp(b.pv)) || (b.av && hasArch(b.av))) continue; // (as in buildMap: only real boxes give way to a prop / a building)
+    if ((b.pv && drawnByModel(b.pv)) || (b.av && hasArch(b.av))) continue; // (as in buildMap)
     if (liquidBox(b)) { liq.push(b); continue; } // (liquids.js)
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
@@ -478,9 +503,11 @@ export function loadMap(id) {
   cityFor(MAPS[MAP.id]);
   marbles.clear();
   resetGrid(BOXES);
+  // this map's prop models: asked for first, so the map is built once, without the boxes they stand in for (they pop in
+  // when they land: only the props are redrawn; one that never comes gets its boxes back)
+  fetchMapProps(MAPS[MAP.id], trafficKinds(MAPS[MAP.id]), () => { buildPropField(G.scene, MAPS[MAP.id], MAT); lightingRefresh(); }, refreshMapVisuals);
   buildMap(G.scene);
-  buildProps(G.scene, MAPS[MAP.id] && MAPS[MAP.id].boxes.props);
-  wantKits(MAPS[MAP.id] && MAPS[MAP.id].boxes.props);
+  buildPropField(G.scene, MAPS[MAP.id], MAT);
   archFor(MAP.id);
   paintSky(MAP.sky);
   G.scene.fog.color.setHex(MAP.sky.fog);
@@ -505,21 +532,12 @@ export function loadMap(id) {
   lightingMap(MAPS[MAP.id], MAP.id, night, sun); // shadows, mood, the neon's lights (after everything above is in, the pit too)
 }
 
-// a map's furniture kit (p_<x>kit.glb) doesn't come with the startup download: ask for it when its map is drawn, redraw when it lands
-const kitAsked = new Set();
-function wantKits(list) {
-  for (const p of list || []) {
-    if (hasProp(p.id) || !/kit$/.test(p.id)) continue;
-    if (!kitAsked.has(p.id)) { kitAsked.add(p.id); whenLate('p_' + p.id, () => refreshMapVisuals()); }
-    want('p_' + p.id, 3); // (you're standing in it)
-  }
-}
 // models finished loading after the map was built: redraw the boxes + props (no gameplay state touched)
 export function refreshMapVisuals() {
   if (!MAP.id || !G.scene || !MAT) return;
+  fetchMapProps(MAPS[MAP.id], trafficKinds(MAPS[MAP.id]), () => { buildPropField(G.scene, MAPS[MAP.id], MAT); lightingRefresh(); }, refreshMapVisuals); // (the model list may have come after the map)
   buildMap(G.scene);
-  buildProps(G.scene, MAPS[MAP.id] && MAPS[MAP.id].boxes.props);
-  wantKits(MAPS[MAP.id] && MAPS[MAP.id].boxes.props); // (the model list may have landed after the map was drawn)
+  buildPropField(G.scene, MAPS[MAP.id], MAT);
   buildArch(G.scene, MAPS[MAP.id] && MAPS[MAP.id].boxes.arch);
   lightingRefresh();
 }
@@ -563,6 +581,7 @@ export function updateWorld(dt) {
 let lastT = 0;
 export function renderFrame() {
   const r = G.renderer, now = performance.now();
+  updatePropField(G.camera); // which prop copies to draw, near or far (only after a step or a turn)
   updateLighting(Math.min(0.1, (now - (lastT || now)) / 1000)); lastT = now;
   r.clear();
   r.render(G.scene, G.camera);
