@@ -1287,6 +1287,59 @@ function fingerGun(g, shadow) {
   const mz = new THREE.Vector3(); tip.getWorldPosition(mz);
   Object.assign(g.userData, { index, thumb, curl, fingertip: tip, flare, bare: arm, muzzle: mz, len: 0.2 });
 }
+// a Blender Blood Cross (meta.blood): the same rig fingerGun builds (the pivots weapons.js turns), with the Blender
+// pieces hung on it by name: bc_<finger><bone>... rides that bone, everything else stays where it is. the fingertip's
+// glow and flash are still made here, and the forearm (bc_arm) is taken out of the model, like the code one's
+function bcPivots(parent, pts) { // bcBones without the capsules
+  const piv = [];
+  let p = parent;
+  for (let i = 0; i < pts.length - 1; i++) {
+    p.updateMatrixWorld(true);
+    const j = new THREE.Group();
+    j.position.copy(p.worldToLocal(pts[i].clone()));
+    j.quaternion.copy(p.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(new THREE.Quaternion().setFromUnitVectors(BC_FWD, new THREE.Vector3().subVectors(pts[i + 1], pts[i]).normalize())));
+    p.add(j); piv.push(j); p = j;
+  }
+  return piv;
+}
+function bloodAuthored(g, mt) {
+  const b = mt && mt.blood;
+  if (!b) return;
+  const V = (a) => (Array.isArray(a) && a.length === 3 && a.every(Number.isFinite) ? bcV(a[0], a[1], a[2]) : null);
+  const P = (a) => { const o = Array.isArray(a) && a.length === 4 ? a.map(V) : null; return o && o.every(Boolean) ? o : null; };
+  const ip = P(b.index), tp = P(b.thumb), tipAt = V(b.tip);
+  const curls = Array.isArray(b.curl) && b.curl.length === 3 ? b.curl.map((c) => ({ pts: P(c && c.pts), ang: c && Array.isArray(c.ang) && c.ang.length === 3 && c.ang.every(Number.isFinite) ? c.ang : null })) : null;
+  if (!ip || !tp || !tipAt || !curls || curls.some((c) => !c.pts || !c.ang)) return;
+  const H = BC_HAND[b.look === 'shadow' ? 'shadow' : 'blood'];
+  g.updateMatrixWorld(true);
+  const pieces = [];
+  g.traverse((o) => { if (o.name && o.name.startsWith('bc_') && !(o.parent && o.parent.name && o.parent.name.startsWith('bc_'))) pieces.push(o); });
+  const hang = (pre, piv) => { piv.updateMatrixWorld(true); for (const o of pieces) if (o.name.startsWith(pre)) piv.attach(o); };
+  for (const o of pieces) if (o.name.includes('_fx')) o.traverse((c) => { c.userData.noWrap = true; }); // the glowing lines: never wrapped
+  const index = new THREE.Group(); index.position.copy(ip[0]); g.add(index);
+  const ib = bcPivots(index, ip); ib.forEach((j, i) => hang('bc_index' + i, j));
+  // the glowing point it all comes out of and the bang (as fingerGun makes them), riding the fingertip
+  const tip = new THREE.Group();
+  const bead = bcBlob(H.tip, true); bead.scale.setScalar(0.0052); bead.userData.noWrap = true; tip.add(bead);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: bcHandGlow(), color: H.halo, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+  halo.scale.setScalar(0.034); tip.add(halo);
+  const flare = new THREE.Group(), fm = new THREE.MeshBasicMaterial({ map: bcFlareTex(), color: H.halo, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false });
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.07, 0.07), fm); face.userData.noWrap = true; flare.add(face);
+  for (const r of [0, Math.PI / 2]) { const sd = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.04), fm); sd.rotation.set(0, Math.PI / 2, r); sd.position.z = -0.028; sd.userData.noWrap = true; flare.add(sd); }
+  const hot = new THREE.Sprite(new THREE.SpriteMaterial({ map: bcHandGlow(), color: H.tip, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); hot.scale.setScalar(0.04); flare.add(hot);
+  flare.userData.face = face; flare.visible = false; tip.add(flare);
+  tip.position.copy(tipAt); ib[2].updateMatrixWorld(true); ib[2].attach(tip);
+  const curl = [];
+  ['mid', 'ring', 'pinky'].forEach((nm, k) => {
+    bcPivots(g, curls[k].pts).forEach((j, i) => { curl.push({ j, q: j.quaternion.clone(), a: curls[k].ang[i] }); hang('bc_' + nm + i, j); });
+  });
+  const thumb = new THREE.Group(); thumb.position.copy(tp[0]); g.add(thumb);
+  bcPivots(thumb, tp).forEach((j, i) => hang('bc_thumb' + i, j));
+  const arm = new THREE.Group(), an = pieces.find((o) => o.name.startsWith(typeof b.arm === 'string' ? b.arm : 'bc_arm'));
+  if (an) arm.attach(an); // viewmodel only: weapons.js adds it
+  g.updateMatrixWorld(true);
+  Object.assign(g.userData, { index, thumb, curl, fingertip: tip, flare, bare: arm, muzzle: tip.getWorldPosition(new THREE.Vector3()), len: 0.2 });
+}
 WB.bloodcross = (g) => fingerGun(g, false);
 SKIN_BUILD.bloodcross_shadow = (g) => fingerGun(g, true);
 HAT_AT.bloodcross = [[0.004, 0.036, -0.05], 0.028]; // on top of the index, in front of the thumb
@@ -1419,6 +1472,7 @@ export function buildWeapon(id, skin) {
     secAuthored(id, g, mt); // the radar gun's speed readout, the water pistol's tank level, the taser's ARMED light
     laserAuthored(id, g, mt); // the laser's charge meter, lens glow, button, charm + the charge orb
     bindRifle(g, mt); // rifle pack: mag, charging handle, lever, feed cover, belt links, barrel heat
+    bloodAuthored(g, mt); // the Blood Cross: the finger rig, the fingertip's glow + flash, the forearm
     if (LASSO_MODELS[variant ? model : id]) lassoLoop(g, ropeLook(skin)); // the lasso's hanging loop is simulated rope: still ours
     if (Array.isArray(mt.glint) && mt.glint.length && mt.glint.every((a) => Array.isArray(a) && a.length === 4 && a.every(Number.isFinite))) addGlint(g, mt.glint);
     applySkin(g, skin);
