@@ -1,0 +1,136 @@
+<!doctype html>
+<!-- The train set (Dale's works train, the tunnel kit, the dead commuter train, the tunnel mouth) in the game's
+     renderer: three.js with the treatment public/js/story/trainset.js gives the files. The sheets for docs/story/train.
+     Rendered by tools/blender/rp_train_shots.cjs (?sheet=turn|detail|tunnel|commuter) -->
+<meta charset="utf-8">
+<style>
+html, body { margin: 0; background: #0b0510; color: #fff; font-family: sans-serif; }
+#wrap { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+canvas { position: absolute; left: 0; top: 0; }
+.cap { position: absolute; background: rgba(18,8,24,0.92); border: 2px solid #ff4fd8; padding: 3px 9px; font-size: 16px; font-weight: 700; color: #ffe14d; }
+h1 { position: absolute; left: 14px; top: 4px; margin: 0; font-size: 24px; color: #ffe14d; text-shadow: 2px 2px 0 #ff00dc; }
+</style>
+<div id="wrap"><canvas id="c"></canvas><div id="ui"></div></div>
+<script type="importmap">{ "imports": { "three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/" } }</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+const W = 1920, H = 1080, q = new URLSearchParams(location.search), SHEET = q.get('sheet') || 'turn';
+const ren = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true, preserveDrawingBuffer: true });
+ren.setPixelRatio(1); ren.setSize(W, H); ren.setScissorTest(true); ren.outputColorSpace = THREE.SRGBColorSpace;
+ren.toneMapping = THREE.ACESFilmicToneMapping; ren.toneMappingExposure = 1.15;
+const env = new THREE.PMREMGenerator(ren).fromScene(new RoomEnvironment(), 0.04).texture;
+const errs = []; window.addEventListener('error', (e) => errs.push(e.message));
+const load = (u) => new Promise((ok, bad) => new GLTFLoader().load(u, ok, undefined, bad));
+const prep = (root, k) => root.traverse((o) => { if (!o.isMesh) return; for (const m of [].concat(o.material)) {   // as trainset.js does
+  for (const key of ['map', 'emissiveMap', 'metalnessMap', 'roughnessMap']) if (m[key]) { m[key].magFilter = THREE.NearestFilter; m[key].minFilter = THREE.NearestMipmapNearestFilter; m[key].anisotropy = 1; m[key].needsUpdate = true; }
+  m.envMap = env; m.envMapIntensity = m.transparent ? 0.7 : k; if (m.emissive && m.emissive.getHex() && m.emissiveIntensity > 0) m.toneMapped = false; if (m.transparent) m.depthWrite = false; } });
+const [gt, gk, gc, parts] = await Promise.all([load('/models/story/rp_train.glb'), load('/models/story/rp_tunnel.glb'), load('/models/story/rp_commuter.glb'), fetch('/models/story/rp_train.parts.json').then((r) => r.json())]);
+const STUDIO = q.get('mood') !== 'tunnel';
+prep(gt.scene, 0.45); prep(gk.scene, 0.04); prep(gc.scene, 0.45);   // (the tunnel as trainset.js has it: the bulbs light it)
+const names = (root) => { const N = {}; root.traverse((o) => { if (o.name) N[o.name] = o; }); return N; };
+const TN = names(gt.scene), KN = names(gk.scene), CN = names(gc.scene);
+const missing = [];
+for (const p of parts.parts) if (!TN[p.name]) missing.push(p.name);
+for (const p of (parts.tunnel || { parts: [] }).parts) if (!KN[p.name]) missing.push(p.name);
+for (const p of (parts.commuter || { parts: [] }).parts) if (!CN[p.name]) missing.push(p.name);
+const R = 4.6, CY = 3.13, HWF = Math.sqrt(R * R - CY * CY);
+// the train's state: whole, or after the first lunge (the wagon gone, the flatbed's torn end), or the far versions
+function trainState({ bitten = false, lod = false, only = null } = {}) {
+  for (const p of parts.parts) { const o = TN[p.name]; if (!o) continue; let on = !p.hidden; if (/_lod$/.test(p.name)) on = lod; else if (lod) on = false;
+    if (p.name === 'flat_end') on = on && !bitten; if (p.name === 'flat_end_bitten') on = bitten && !lod; if (bitten && p.group === 'car_wagon') on = false; if (only && p.group !== 'car_' + only) on = false; o.visible = on; }
+}
+const std = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, ...o });
+function figure(at, sc) { const m = new THREE.Group(), mm = new THREE.MeshBasicMaterial({ color: 0x4fd8ff });
+  for (const [w, h, d, x, y] of [[0.2, 0.84, 0.2, -0.12, 0.42], [0.2, 0.84, 0.2, 0.12, 0.42], [0.5, 0.62, 0.26, 0, 1.15], [0.14, 0.62, 0.16, -0.33, 1.15], [0.14, 0.62, 0.16, 0.33, 1.15], [0.24, 0.28, 0.24, 0, 1.66]]) { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mm); b.position.set(x, y, 0); m.add(b); }
+  m.position.set(...at); sc.add(m); return m; }
+function ring(z, sc) { const t = new THREE.Mesh(new THREE.TorusGeometry(R + 0.06, 0.06, 6, 64), new THREE.MeshBasicMaterial({ color: 0xff4fd8 })); t.position.set(0, CY, z); sc.add(t); }
+function bed(sc, z0, z1) { const f = new THREE.Mesh(new THREE.BoxGeometry(HWF * 2, 0.08, z1 - z0), std(0x2a2228)); f.position.set(0, -0.04, (z0 + z1) / 2); sc.add(f); }
+function lights(sc, mood = 'studio', at = [0, 2, 16]) {
+  if (mood === 'studio') { sc.background = new THREE.Color(0x120a18); sc.add(new THREE.HemisphereLight(0xfff0f4, 0x30202c, 1.0));
+    const d = new THREE.DirectionalLight(0xfff0dd, 2.0); d.position.set(8, 10, -9); sc.add(d); const r = new THREE.DirectionalLight(0xa0c8ff, 1.0); r.position.set(-10, 4, 6); sc.add(r);
+    const b = new THREE.DirectionalLight(0xff90c0, 1.0); b.position.set(-4, 8, 14); sc.add(b); }
+  else { sc.background = new THREE.Color(0x050307); sc.fog = new THREE.Fog(0x050307, 18, 78); sc.add(new THREE.HemisphereLight(0x7a6a8a, 0x1a1012, 0.5));   // the fight's own lights (shared/story/train.js, trainfight.js buildSet)
+    const sun = new THREE.DirectionalLight(0xffe0c0, 0.15); sun.position.set(3, 8, -4); sc.add(sun);
+    const lamp = new THREE.SpotLight(0xfff0dd, 110, 95, 0.5, 0.7, 1); lamp.position.set(0.4, 3.85, 22.8); lamp.target.position.set(0, CY - 0.3, -22); sc.add(lamp, lamp.target);
+    const work = new THREE.PointLight(0xffd9a0, 10, 20, 1.1); work.position.set(0, 5.2, 13); sc.add(work); }
+}
+const ui = document.getElementById('ui');
+function panel(x, y, w, h, sc, cam, label) {
+  ren.setViewport(x, H - y - h, w, h); ren.setScissor(x, H - y - h, w, h);
+  if (cam.isPerspectiveCamera) cam.aspect = w / h; else { const s = cam.userData.s; cam.left = -s * w / h; cam.right = s * w / h; cam.top = s; cam.bottom = -s; }
+  cam.updateProjectionMatrix(); ren.render(sc, cam);
+  ui.insertAdjacentHTML('beforeend', `<div class="cap" style="left:${x + 8}px;top:${y + h - 34}px">${label}</div>`);
+}
+const pc = (fov, p, t) => { const k = new THREE.PerspectiveCamera(fov, 1, 0.05, 400); k.position.set(...p); k.lookAt(...t); return k; };
+const oc = (s, p, t, up) => { const k = new THREE.OrthographicCamera(-s, s, s, -s, 0.1, 400); k.userData.s = s; k.position.set(...p); if (up) k.up.set(...up); k.lookAt(...t); return k; };
+const title = (t) => ui.insertAdjacentHTML('beforeend', `<h1>${t}</h1>`);
+const T0 = 40;
+// the kit laid for n six-metre lengths from z0: every fourth a refuge, a bulb every 12 m (lit says which), the marker, the signal
+function layTunnel(sc, z0, n, lit = () => true, { cables = true, far = false } = {}) {
+  const g = new THREE.Group(), put = (name, z, x = 0, ry = 0) => { const o = KN[name].clone(true); o.position.set(x, 0, z); o.rotation.y = ry; g.add(o); return o; };
+  for (let i = 0; i < n; i++) { const z = z0 + i * 6; put(i % 4 === 1 ? 'tk_niche' : i % 4 === 3 ? 'tk_lining_b' : 'tk_lining', z); put(far && i > n / 2 ? 'tk_track_far' : 'tk_track', z); if (cables) put('tk_cables', z); }
+  const nb = Math.floor(n * 6 / 12), pts = [];
+  for (let i = 0; i < nb; i++) { const z = z0 + 3 + i * 12, on = lit(i, nb); put('tk_bulbs', z); put(on ? 'tk_bulb_lit' : 'tk_bulb_dead', z); if (on) pts.push(z); }
+  put('tk_marker', z0 + 15, -(HWF - 0.55), Math.PI / 2); put('tk_signal', z0 + 27, HWF - 0.65, 0);
+  const b = parts.tunnel.info.bulb.pos; for (const z of pts) { const l = new THREE.PointLight(0xffb060, 22, 15, 1.4); l.position.set(b[0] * 0.8, b[1] - 0.5, z); g.add(l); }
+  sc.add(g); return g;
+}
+function commuterRow(sc, x, z0, n, { torn = true, lod = false } = {}) {
+  const g = new THREE.Group(), pitch = parts.commuter.info.pitch;
+  for (let i = 0; i < n; i++) { const c = new THREE.Group(); c.position.set(x, 0, z0 + i * pitch);
+    if (lod) c.add(CN.cm_lod.clone(true)); else { c.add(CN.cm_car.clone(true), CN.cm_glass.clone(true), (torn && i === n - 1 ? CN.cm_end_torn : CN.cm_end).clone(true)); }
+    c.traverse((o) => { o.visible = true; }); g.add(c); }
+  sc.add(g); return g;
+}
+const calls = () => ren.info.render.calls;
+if (SHEET === 'turn') {
+  title(`DALE'S WORKS TRAIN · in the game's renderer · ${parts.tris.whole} triangles · ring = the 9.2 m bore, figure = 1.8 m`);
+  trainState(); const sc = new THREE.Scene(); lights(sc); sc.add(gt.scene); ring(-0.6, sc); bed(sc, -4, 37); figure([0.9, 1.0, 1.2], sc);
+  const h1 = (H - T0) * 0.44, h2 = (H - T0) * 0.2, h3 = H - T0 - h1 - h2;
+  panel(0, T0, W / 2, h1, sc, pc(30, [21, 11, -12], [0, 1.2, 15.5]), 'from behind (the boss\'s side)');
+  panel(W / 2, T0, W / 2, h1, sc, pc(30, [-16, 8, 44], [0, 1.4, 20]), 'from the front');
+  panel(0, T0 + h1, W, h2, sc, oc(3.4, [60, 2.4, 16.3], [0, 2.4, 16.3]), 'side: wagon 9 m · flatbed 10 m · tool van 7 m · loco 5 m');
+  const top = oc(2.9, [0, 60, 16.3], [0, 0, 16.3], [1, 0, 0]);
+  panel(0, T0 + h1 + h2, W * 0.6, h3 * 0.55, sc, top, 'plan: the deck is 4.2 m wide, the middle lane clear');
+  trainState({ lod: true }); panel(0, T0 + h1 + h2 + h3 * 0.55, W * 0.6, h3 * 0.45, sc, oc(3.2, [60, 2.4, 16.3], [0, 2.4, 16.3]), `the far versions (${parts.tris.wagon_lod + parts.tris.flat_lod + parts.tris.van_lod + parts.tris.loco_lod} triangles for all four)`);
+  trainState({ bitten: true }); panel(W * 0.6, T0 + h1 + h2, W * 0.4, h3, sc, pc(34, [5.5, 4.6, 3.2], [0, 1.0, 10.6]), 'after the first lunge: the wagon gone, the flatbed\'s torn end');
+} else if (SHEET === 'detail') {
+  title('DALE\'S WORKS TRAIN · each car, the cab, the van, the cover pieces (in the game\'s renderer)');
+  trainState(); const sc = new THREE.Scene(); lights(sc); sc.add(gt.scene); bed(sc, -4, 37); const w = W / 4, h = (H - T0) / 3;
+  const P = [[pc(34, [8.5, 5.2, -5.5], [0, 1.1, 4.7]), 'rear wagon: drop sides, the rail'], [pc(34, [9.5, 6, 6.5], [0, 1.5, 14.8]), 'flatbed'], [pc(34, [9, 5.5, 16.5], [0, 2.3, 23.9]), 'tool van'], [pc(34, [9, 4.6, 37.5], [0, 1.8, 30.5]), 'the loco'],
+    [pc(50, [3.4, 2.6, -2.6], [0.6, 1.5, 0.4]), 'the back rail, the tail lamp'], [pc(48, [1.6, 2.9, 14.2], [-1.2, 2.1, 16.4]), 'the fridge, chained down'], [pc(74, [0.4, 2.9, 22.3], [0.0, 2.3, 26.5]), 'under the van\'s roof: 2 m, the lane clear'], [pc(70, [1.2, 5.3, 28.6], [0, 3.2, 20.5]), 'on the van\'s roof'],
+    [pc(60, [0.9, 2.75, 27.6], [0.3, 2.2, 30.4]), 'the cab from the van: seat, brake, flask, kettle'], [pc(40, [-4.5, 2.6, 38.0], [0, 1.6, 32.0]), 'one head lamp works'], [pc(40, [0.6, 2.6, 25.6], [-1.5, 2.4, 22.8]), 'the tool board behind the steps'], [pc(46, [1.7, 3.0, 19.2], [-1.4, 2.4, 21.8]), 'the steps: the table\'s rise and run']];
+  P.forEach(([cam, lab], i) => panel((i % 4) * w, T0 + Math.floor(i / 4) * h, w, h, sc, cam, lab));
+} else if (SHEET === 'tunnel') {
+  title('THE UNDER-HILL LOOP · the kit tiled for 60 m, bulbs lit and dead (in the game\'s renderer, the fight\'s own lights)');
+  const w = W / 3, h = (H - T0) / 2;
+  const mk = (lit, withTrain) => { const sc = new THREE.Scene(); lights(sc, 'tunnel'); layTunnel(sc, -24, 10, lit); if (withTrain) { trainState(); sc.add(gt.scene); } return sc; };
+  let sc = mk(() => true, false);
+  panel(0, T0, w, h, sc, pc(80, [0.9, 2.4, -22.5], [0.2, 2.6, 20]), 'every bulb lit'); const c1 = calls();
+  panel(w, T0, w, h, sc, pc(60, [1.4, 1.9, -20.4], [-4.2, 1.4, -15.2]), 'the refuge: a phone, the notice');
+  panel(2 * w, T0, w, h, sc, pc(50, [2.8, 1.9, -21.0], [-1.2, 0.0, -16.5]), 'the track: ballast, sleepers, baseplates, troughing');
+  sc = mk((i, n) => i >= n - 2, false);
+  panel(0, T0 + h, w, h, sc, pc(80, [0.9, 2.4, -22.5], [0.2, 2.6, 20]), 'the bulbs go out toward you: three dead, two lit');
+  sc = mk((i, n) => i >= 2, true);
+  panel(w, T0 + h, w, h, sc, pc(80, [0.3, 4.9, 26.4], [0, 2.4, 0]), 'the train in it, from the van\'s roof');
+  { const s2 = new THREE.Scene(); lights(s2); layTunnel(s2, -24, 10, () => true); panel(2 * w, T0 + h, w, h, s2, pc(40, [26, 13, -42], [0, 2.5, 4]), 'the same 60 m from outside (studio light)'); }
+  window.CALLS = c1;
+} else if (SHEET === 'commuter') {
+  title('THE DEAD COMMUTER TRAIN and THE TUNNEL MOUTH (in the game\'s renderer)');
+  const w = W / 3, h = (H - T0) / 2; let sc = new THREE.Scene(); lights(sc); commuterRow(sc, 0, 0, 1, { torn: false }); bed(sc, -12, 12);
+  panel(0, T0, w, h, sc, pc(34, [10, 4.8, -19], [0, 2.0, -1]), 'one carriage: a ☺ on every door, every door open');
+  panel(w, T0, w, h, sc, pc(70, [0.2, 2.75, -8.6], [0.1, 2.2, 6]), 'every seat empty, coats on the hooks');
+  panel(2 * w, T0, w, h, sc, pc(40, [-0.2, 2.5, 0.75], [-1.2, 1.95, 0.0]), 'a coffee on a table, grown over');
+  sc = new THREE.Scene(); lights(sc); commuterRow(sc, 0, 0, 1, { torn: true }); bed(sc, -12, 14);
+  panel(0, T0 + h, w, h, sc, pc(38, [6.5, 4.2, 18.5], [0, 2.2, 9.8]), 'the last carriage: its end wall bent outward');
+  sc = new THREE.Scene(); lights(sc); commuterRow(sc, 0, 0, 8, { torn: true, lod: true }); commuterRow(sc, 6.2, 0, 2, { torn: false }); bed(sc, -12, 150);
+  panel(w, T0 + h, w, h, sc, pc(40, [-24, 9, -30], [0, 2, 60]), 'eight carriages, the far version (two near ones beside it)');
+  sc = new THREE.Scene(); lights(sc); const p = KN.tp_portal.clone(true); sc.add(p); figure([1.2, 0, 3], sc);
+  panel(2 * w, T0 + h, w, h, sc, pc(40, [9, 5.2, 21], [0, 3.6, 0]), 'the tunnel mouth, the viaduct\'s first span');
+}
+const cnt = (root) => { let n = 0; root.traverse((o) => { if (o.isMesh) n++; }); return n; };
+window.INFO = { sheet: SHEET, missing, errs, train: cnt(gt.scene), tunnel: cnt(gk.scene), commuter: cnt(gc.scene), calls: window.CALLS || 0, tris: ren.info.render.triangles };
+window.DONE = true;
+</script>
