@@ -1,6 +1,10 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '8.0', date: '2026-11-11', title: 'ACTUAL FIRE', items: [
+    'fire is fire now. a real rendered flame with a white-hot middle, on everything that burns, burning people included. potato keeps the cartoon one.',
+    'prefer the cartoon flame? settings > video > "real smoke, fire + splashes" turns it back.',
+  ] },
   { v: '7.9', date: '2026-11-11', title: 'SHARP OBJECTS', items: [
     'knives got rebuilt in blender. real bevels, real rivets, the butterfly still flips. stab responsibly.',
     'the katana got rebuilt in blender. real hamon, real cord wrap. still grows when you feed it.',
