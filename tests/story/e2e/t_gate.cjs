@@ -26,12 +26,12 @@ const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
   const log = async (t) => console.log(t, JSON.stringify(await st()));
   await log('start');
   // a save at m04 (m01-m03 done), standing at the sunset wall where c4 ends
-  await ev(async () => { const S = window.JF_STORY.S; for (const m of ['m01_return_to_sender', 'm02_soup_run', 'm03_somethings_digesting']) S.st.quests[m] = { done: true, step: '', t: 0 }; S.quests.start('m04_clocking_in'); });
-  await sleep(1500); await skip();
   await ev(async () => { const { ME } = await import('/js/player.js'); ME.pos = [-200, 33, 6]; ME.vel = [0, 0, 0]; ME.hold = ME.pos.slice(); });
-  await sleep(3000);
-  await ev(() => window.JF_STORY.S.run(['flag:seen_c4']));
-  await sleep(300); await shot('g1_fade'); await sleep(2500);
+  await sleep(4000);
+  await ev(async () => { const S = window.JF_STORY.S; for (const m of ['m01_return_to_sender', 'm02_soup_run', 'm03_somethings_digesting']) S.st.quests[m] = { done: true, step: '', t: 0 }; S.quests.start('m04_clocking_in'); });
+  await sleep(2500); await shot('g0_c4'); await log('c4');
+  await skip(); // (c4's end, skipped or not, is the fight: the cut to the gate)
+  await sleep(200); await shot('g1_fade'); await sleep(2500);
   await log('arrived'); await shot('g2_arrived');
   await sleep(4000); await log('settled'); await shot('g3_facing_him');
   console.log('hits on me', JSON.stringify(await ev(() => window.__ev.filter((e) => e.target === 'me' || e.who === 'me').map((e) => [e.type, e.by, e.weapon, e.dmg, e.hp]))));
