@@ -121,8 +121,8 @@ function shapeInto(S, s, lod) {
   } else if (s.kind === 'field') { // shaped ground (shared/city/ground.js): a grid of heights, H[i * (nz + 1) + j], cell m apart, col = rgb per point
     const st = lod ? 2 : 1, vz = s.nz + 1, H = s.H, cs = s.cell, base0 = S.n, ni = Math.floor(s.nx / st), nj = Math.floor(s.nz / st);
     const h = (i, j) => H[Math.max(0, Math.min(s.nx, i)) * vz + Math.max(0, Math.min(s.nz, j))];
-    for (let a = 0; a <= ni; a++) for (let c = 0; c <= nj; c++) {
-      const i = Math.min(s.nx, a * st), j = Math.min(s.nz, c * st), x = s.x0 + i * cs, z = s.z0 + j * cs, k = i * vz + j;
+    for (let ia = 0; ia <= ni; ia++) for (let c = 0; c <= nj; c++) {
+      const i = Math.min(s.nx, ia * st), j = Math.min(s.nz, c * st), x = s.x0 + i * cs, z = s.z0 + j * cs, k = i * vz + j;
       const dx = (h(i + 1, j) - h(i - 1, j)) / (2 * cs), dz = (h(i, j + 1) - h(i, j - 1)) / (2 * cs), l = Math.hypot(dx, 1, dz);
       const cr = s.col ? s.col[k * 3] : r, cg = s.col ? s.col[k * 3 + 1] : g, cb = s.col ? s.col[k * 3 + 2] : b;
       S.v(x, H[k], z, -dx / l, 1 / l, -dz / l, x / tile, z / tile, cr, cg, cb, a);

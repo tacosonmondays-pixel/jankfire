@@ -51,6 +51,7 @@ test('what you see is what you stand on: the drawn grid, the heightfield, rays a
   for (let v = 0; v < m.verts; v++) { // the drawn ground's points are the grid's points
     const x = m.pos[v * 3], y = m.pos[v * 3 + 1], z = m.pos[v * 3 + 2];
     if (!Number.isInteger((x - f.x0) / f.cell) || !Number.isInteger((z - f.z0) / f.cell) || Math.abs(T.at(x, z) - y) > 1e-4) continue;
+    assert.equal(m.col[v * 4 + 3] & 31, 0, `the ground at ${x},${z} is drawn with the wrong texture (family ${m.col[v * 4 + 3] & 31}, not dirt)`);
     hits++;
   }
   assert.ok(hits >= (f.nx + 1) * (f.nz + 1), 'the drawn ground is not the grid (' + hits + ' points match)');
