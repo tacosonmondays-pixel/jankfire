@@ -979,7 +979,13 @@ function flower(K, m, r, petal, mid, rot = 0) {
   _s.set(0, 0, 0).applyMatrix4(m);
   const c = [_s.x, _s.y, _s.z];
   for (let i = 0; i < 10; i++) K.tri(c, P(i + 1), P(i), petal);
-  K.box(r * 0.5, r * 0.5, 0.003, mid, m.clone().multiply(T(0, 0, 0.002, 0, 0, rot)));
+  flat(K, m.clone().multiply(T(0, 0, 0.002, 0, 0, rot)), r * 0.5, r * 0.5, mid);
+}
+// a flat w x h card in a frame's xy plane, facing out (+z): printed bits that don't need the 12 triangles of a box
+function flat(K, m, w, h, cell) {
+  K = K.t || K;
+  const P = (x, y) => { _s.set(x * w / 2, y * h / 2, 0).applyMatrix4(m); return [_s.x, _s.y, _s.z]; };
+  K.tri(P(-1, -1), P(1, -1), P(1, 1), cell); K.tri(P(-1, -1), P(1, 1), P(-1, 1), cell);
 }
 // where to scatter print on a body: [height, angle in degrees, size, turn], the same every time
 const scatter = (n, y0, y1, seed = 1) => Array.from({ length: n }, (_, i) => { const h = Math.sin((i + 1) * 12.9898 * seed) * 43758.5453, f = h - Math.floor(h); return [mix(y0, y1, ((i * 0.7549 + f * 0.37) % 1)), (i * 137.5 + f * 40) % 360, 0.7 + f * 0.5, f * 6]; }); // (two different steps, so height and angle don't line up)
@@ -1018,7 +1024,7 @@ function cardiganBody(F, lk, [S, D]) {
   const dl = D.lv(0.5, 0.97, [0.53]);
   loft(K, D, dl, cols(D), (y) => (y < 0.53 ? C.dressd : C.dress), { wrap: true });
   for (const [y, d, k, r] of scatter(22, 0.56, 0.86, 3)) flower(K, D.frame(y, d * DEG, 0.003), 0.028 * k, r > 3 ? C.rose : C.white, C.pencil, r);
-  for (const [y, d, k, r] of scatter(10, 0.58, 0.84, 7)) K.box(0.024 * k, 0.011, 0.003, C.leaf, D.frame(y, d * DEG, 0.003).multiply(T(0, 0, 0, 0, 0, r)));
+  for (const [y, d, k, r] of scatter(10, 0.58, 0.84, 7)) flat(K, D.frame(y, d * DEG, 0.003).multiply(T(0, 0, 0, 0, 0, r)), 0.024 * k, 0.011, C.leaf);
   return K.piece();
 }
 function cardiganSleeve(part) {
@@ -1063,7 +1069,7 @@ function spacesuitBody(F, lk, [S]) {
 }
 // dryer hose: silver ribs, darker in the folds, duct-taped to the suit at the shoulder and at the wrist
 function spacesuitSleeve(part) {
-  const K = new Kit(true), n = 10, rings = (d0, d1, r0, r1) => { const p = []; for (let d = d0, i = 0; d < d1 - 0.004; d += 0.015, i++) p.push([mix(r0, r1, (d - d0) / (d1 - d0)) - (i % 2 ? 0.01 : 0), d, i % 2 ? C.steel : C.silver]); return p; };
+  const K = new Kit(true), n = 8, rings = (d0, d1, r0, r1) => { const p = []; for (let d = d0, i = 0; d < d1 - 0.004; d += 0.021, i++) p.push([mix(r0, r1, (d - d0) / (d1 - d0)) - (i % 2 ? 0.01 : 0), d, i % 2 ? C.steel : C.silver]); return p; };
   if (part === 'up') K.lathe([[0.001, -0.094, C.base], [0.066, -0.076, C.base], [0.096, -0.03, C.base], [0.1, 0.0, C.duct], [0.098, 0.03, C.silver], ...rings(0.03, 0.3, 0.09, 0.084), [0.072, 0.318, C.silver], [0.05, 0.33]], n, C.silver);
   else K.lathe([[0.07, -0.03, C.silver], ...rings(-0.02, 0.15, 0.084, 0.076), [0.074, 0.15, C.duct], [0.074, 0.19, C.duct], [0.064, 0.192, C.deep], [0.05, 0.18]], n, C.silver);
   return K.piece('z');
@@ -1082,9 +1088,9 @@ function hawaiianBody(F, lk, [S]) {
   for (let y = 1.03; y < 1.33; y += 0.075) stud(K, S.ff(X + 0.015, y, 0.004), 0.009, C.white);
   panel(K, S, rect(-0.175, 1.27, -0.095, 1.36), 2, 2, C.base, 0.005, { rim: C.seam }); // pocket
   for (const sx of [-1, 1]) bar(K, S, [sx * 0.236, 0.975], [sx * 0.236, 1.035], 0.01, C.deep, 0.002, { uy: false, rim: false }); // side slits
-  // the print: big flowers, leaves round them (not over the open neck)
+  // the print: big flowers, leaves sticking out from under them (not over the open neck)
   const ok = (y, d) => !(y > 1.3 && Math.abs(d - 180) < 30) && !(y > 1.25 && y < 1.37 && d > 196 && d < 228);
-  scatter(44, 1.01, 1.48, 5).forEach(([y, d, k, r], i) => { if (!ok(y, d)) return; const m = S.frame(y, d * DEG, 0.004); for (const a of [0.6, 2.4, 4.4]) K.box(0.05 * k, 0.018 * k, 0.003, C.leaf, m.clone().multiply(T(Math.cos(a + r) * 0.04 * k, Math.sin(a + r) * 0.04 * k, -0.001, 0, 0, a + r))); flower(K, m, 0.042 * k, FLOWERS[i % 3], i % 3 === 2 ? C.red : C.pencil, r); });
+  scatter(44, 1.01, 1.48, 5).forEach(([y, d, k, r], i) => { if (!ok(y, d)) return; const m = S.frame(y, d * DEG, 0.004); for (const a of [0.6, 2.4, 4.4]) flat(K, m.clone().multiply(T(Math.cos(a + r) * 0.058 * k, Math.sin(a + r) * 0.058 * k, -0.001, 0, 0, a + r)), 0.062 * k, 0.022 * k, C.leaf); flower(K, m, 0.042 * k, FLOWERS[i % 3], i % 3 === 2 ? C.red : C.pencil, r); });
   return K.piece();
 }
 function hawaiianSleeve() {
