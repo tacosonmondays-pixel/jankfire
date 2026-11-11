@@ -18,6 +18,7 @@ fs.writeFileSync(pc, src0.replace(hook, hook + '  b._st = new Error().stack; // 
 const { MAPS } = await import(url.pathToFileURL(path.join(tmp, 'shared/map.js')).href);
 await import(url.pathToFileURL(path.join(tmp, 'shared/royale.js')).href);
 const models = new Set(fs.readdirSync(path.join(root, 'public/models')).filter((f) => f.endsWith('.glb')).map((f) => f.slice(0, -4)));
+const archModels = new Set(fs.readdirSync(path.join(root, 'public/models/arch')).filter((f) => f.endsWith('.glb')).map((f) => f.slice(0, -4)));
 const SRC = {}; for (const f of ['map.js', 'jankburg.js', 'royale.js', 'props.js']) SRC[f] = fs.readFileSync(path.join(tmp, 'shared', f), 'utf8').split('\n');
 const HELP = new Set(['seg', 'put', 'mer', 'pil', 'run', 'flush', 'wb', 'wd', 'side', 'post', 'beam', 'leg', 'bar', 'pane', 'tier', 'step', 'plank', 'brick', 'stud', 'rung', 'add2', 'box2']);
 const INNER = /^(?:Object\.)?(?:seen|add|box|obb|L|B|local|propOf|fn)$|^L\.B$|^Array\.|^\(anon\)$|^Module|^ModuleJob|^async$/;
@@ -30,6 +31,8 @@ for (const [mid, m] of Object.entries(MAPS)) {
   for (const [list, kind] of [[m.boxes, 'B'], [m.deco || [], 'D']]) for (const b of list) {
     if (!b._st) continue;
     if (b.pv && models.has('p_' + b.pv)) continue; // drawn by a Blender model
+    if (b.av && archModels.has(b.av)) continue; // drawn by a Blender building / rock model
+    if (b.ter || b.terr || b.hide) continue; // the shaped ground's hidden steps, collision-only boxes
     let fr = frames(b._st).filter((f) => !INNER.test(f.fn));
     if (!fr.length) continue;
     // a little helper (seg, P, R, put...) is its parent's: wall(), rail(), the ship... (the unit is the thing it builds)

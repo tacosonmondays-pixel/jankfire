@@ -258,9 +258,25 @@ function terrainGeo(T, tile, mi = -1) { // mi: only the cells painted with T.mat
   return g;
 }
 // so the shape reads: hollows a little darker, crests a little brighter, steep bits shaded (on top of the baked AO)
-function terrainTint(T, g) {
+// rock (T.rocky materials): every triangle its own flat face, so crags, ledges and gullies catch the light as edges
+function terrainFacet(T, tm, g) { if (T.rocky && T.rocky.has(tm)) g.computeVertexNormals(); return g; }
+const sm01 = (k) => { k = Math.max(0, Math.min(1, k)); return k * k * (3 - 2 * k); };
+function terrainTint(T, g, tm) {
   const col = g.attributes.color, nrm = g.attributes.normal, pos = g.attributes.position;
+  const rock = !!(T.rocky && T.rocky.has(tm)), vz = T.nz + 1, Hh = (i, j) => T.H[Math.max(0, Math.min(T.nx, i)) * vz + Math.max(0, Math.min(T.nz, j))];
   for (let i = 0; i < col.count; i++) {
+    if (rock) { // rock gets real colours by shape: mid purple-grey, steep faces dark, ash on the heights and the bench tops, rust patches, dark gully beds
+      const x = pos.getX(i), z = pos.getZ(i), y = pos.getY(i), vi = Math.round(x - T.x0), vj = Math.round(z - T.z0), c = Hh(vi, vj) - (Hh(vi - 1, vj) + Hh(vi + 1, vj) + Hh(vi, vj - 1) + Hh(vi, vj + 1)) / 4;
+      const ny = nrm.getY(i), st = sm01((0.82 - ny) / 0.2), fl = sm01((ny - 0.9) / 0.08), n1 = Math.sin(x * 0.71 + z * 0.37) * Math.sin(z * 0.83 - x * 0.29 + 1.3), n2 = Math.sin(x * 0.23 - 2.1) * Math.sin(z * 0.19 + x * 0.11 + 0.7);
+      let r = 0x6f, gg = 0x63, b = 0x79; const mix = (R, G, B, k) => { r += (R - r) * k; gg += (G - gg) * k; b += (B - b) * k; };
+      mix(0x9b, 0x91, 0x9f, Math.max(sm01((y - 0.72 * T.hi) / (0.12 * T.hi)), fl * sm01((y - 1.5) / 1.5) * 0.75)); // ash: the top fifth, and wherever it lies flat higher up
+      mix(0x7a, 0x4a, 0x3a, fl * sm01((n2 - 0.25) / 0.2) * sm01((y - 1) / 1) * 0.8); // rust, in patches on the flats
+      mix(0x4a, 0x3f, 0x55, st); // steep faces
+      mix(0x3a, 0x31, 0x42, sm01((-c - 0.18) / 0.3)); // gully beds and cracks
+      const a = (0.72 + 0.28 * col.getX(i)) * (1.12 + Math.max(-0.2, Math.min(0.45, c * 0.9)) + 0.07 * n1); // (the baked shade only lightly: on a steep slope it finds the slope itself. edges catch a bit of light; a little mottling)
+      col.setXYZ(i, a * r / 64, a * gg / 56, a * b / 70); // (over the basalt texture's own colour, about 64 56 70)
+      continue;
+    }
     const h = pos.getY(i), k = (h > 0 ? 0.11 * h / Math.max(0.5, T.hi) : 0.24 * h / Math.max(0.5, -T.lo)) - 0.5 * (1 - nrm.getY(i)) * 2.2;
     const a = col.getX(i) * (1 + k);
     col.setXYZ(i, a, a, a * (1 - Math.max(0, -k) * 0.25)); // (the dark bits a touch warmer)
@@ -283,7 +299,7 @@ function buildMap(scene) {
   const ncf = noCastFn(def), liq = [];
   aoBegin(all, ncf); setSunBoxes(all);
   const shoreBoxes = TR ? [...BOXES, ...(def && def.deco ? def.deco : [])] : all; // (the water's shore map needs the ground's steps: that's how it knows a pond is deep)
-  if (TR) (TR.mats || [TR.mat]).forEach((tm, mi) => { const tk = MAT[tm] ? tm : 'stone', g = terrainGeo(TR, MAT[tk].tile, TR.mats ? mi : -1); if (g.index.count) push(tk, terrainTint(TR, aoBake(g, false)).toNonIndexed()); });
+  if (TR) (TR.mats || [TR.mat]).forEach((tm, mi) => { const tk = MAT[tm] ? tm : 'stone', g = terrainGeo(TR, MAT[tk].tile, TR.mats ? mi : -1); if (g.index.count) push(tk, terrainFacet(TR, tm, terrainTint(TR, aoBake(g, false), tm).toNonIndexed())); });
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
     if ((b.pv && drawnByModel(b.pv)) || (b.av && hasArch(b.av))) continue;
@@ -355,7 +371,7 @@ function buildChunked(scene, def) {
   const all = def.deco ? [...real, ...(TR ? def.deco.filter((b) => !b.ter) : def.deco)] : real, nReal = real.length;
   const ncf = noCastFn(def), liq = [];
   aoBegin(all, ncf); setSunBoxes(all);
-  if (TR) (TR.mats || [TR.mat]).forEach((tm, mi) => { const tk = MAT[tm] ? tm : 'stone', g = terrainGeo(TR, MAT[tk].tile, TR.mats ? mi : -1); if (g.index.count) groups.set(tk, { k: tk, nc: '', list: [terrainTint(TR, aoBake(g, false)).toNonIndexed()] }); }); // one mesh per ground material, always drawn
+  if (TR) (TR.mats || [TR.mat]).forEach((tm, mi) => { const tk = MAT[tm] ? tm : 'stone', g = terrainGeo(TR, MAT[tk].tile, TR.mats ? mi : -1); if (g.index.count) groups.set(tk, { k: tk, nc: '', list: [terrainFacet(TR, tm, terrainTint(TR, aoBake(g, false), tm).toNonIndexed())] }); }); // one mesh per ground material, always drawn
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
     if ((b.pv && drawnByModel(b.pv)) || (b.av && hasArch(b.av))) continue; // (as in buildMap)
