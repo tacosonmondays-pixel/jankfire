@@ -212,7 +212,7 @@ await t('phase 3: END OF THE LINE at 25%; the Inspector is the crit spot, everyt
   me.pos = [0, CAR.van.roof, 25]; let sn = 0; for (let i = 0; i < 40; i++) { quiet(); B.calm = false; B.nextArm = 0; B.lungeT = Infinity; await run(0.06); if (B.arms.some((a) => a.k === 'snatch')) sn++; } quiet(); stand();
   assert.ok(sn >= 18, 'mostly Snatchers while you are on the roof: ' + sn + '/40');
   // the lunge: a tell, then it takes ground. the first one bites the rear wagon off: the fight is the flatbed and the van from here
-  const lunge = async () => { dev({ want: 'lunge' }); B.calm = false; B.nextArm = Infinity; await run(0.15); B.calm = true; assert.equal(ev('lunge').at(-1).st, 'tell'); await run(RP.lunge.tell - 0.4); };
+  const lunge = async () => { dev({ want: 'lunge' }); assert.equal(ev('lunge').at(-1).st, 'tell'); await run(RP.lunge.tell - 0.25); };
   B.gap = 12; dev({ want: 'grab' }); await lunge(); assert.equal(B.gap, 12); assert.equal(me.hp, 100); assert.equal(B.rear, 0); assert.ok(R.room.boxes.some((x) => x.car === 'wagon'));
   await run(0.5);
   const L1 = ev('lunge').at(-1); assert.deepEqual({ st: L1.st, cut: L1.cut, rear: L1.rear, bit: L1.bit, gap: L1.gap }, { st: 'hit', cut: 1, rear: ARENA.cut, bit: 1, gap: 12 - RP.lunge.gap });

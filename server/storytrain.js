@@ -305,7 +305,7 @@ export function installStoryTrain(Room) {
     if (fin(m.gap)) { B.gap = clamp(m.gap, 0.2, RP.gap.max); sendGap(this, b, B, 0); }
     if (B.state !== 'fight') return;
     if (m.want === 'grab' || m.want === 'sweep' || m.want === 'snatch') spawnArm(this, b, B, m.want, { hi: m.hi, side: m.side });
-    if (m.want === 'lunge' && B.phase === 2) B.lungeT = B.t;
+    if (m.want === 'lunge' && B.phase === 2 && !B.lunge) { B.lunge = { t: 0 }; ev(this, b, 'lunge', { st: 'tell', dur: RP.lunge.tell }); } // (now, calm or not)
     if (m.grip === true) for (const a of B.arms) if (a.st === 'reach' || a.st === 'tell') a.t = a.dur; // (skip the tells)
     if (m.sever === true) for (const a of B.arms.filter(armLive)) { B.ray = { part: 'knot', arm: a.id }; try { this.damage(b, MAXHIT, me, 'blooddrive'); } finally { B.ray = null; } }
     if (fin(m.dmg) && m.dmg > 0 && (m.part === undefined || isName(m.part))) { const part = m.part || (B.phase === 0 ? 'eye' : B.phase === 1 ? 'plate' : 'inspbody'); B.ray = { part, i: clamp(m.i | 0, 0, PLATES - 1) }; try { this.damage(b, Math.min(m.dmg, MAXHIT), me, 'blooddrive'); } finally { B.ray = null; } }
