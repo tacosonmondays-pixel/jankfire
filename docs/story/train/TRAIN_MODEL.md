@@ -212,10 +212,10 @@ and the old bore, switched back on in the same frame) and **after** (the models)
 |---|---|
 | `train_ba_1_rear_wagon.jpg` | from the rear wagon looking back at the mask, THE GAP 18 m (the best one for the tunnel) |
 | `train_ba_2_van_roof.jpg` | from the tool van's roof down the train |
-| `train_ba_3_grabber.jpg` | a Grabber on the wagon's right rail, Jack's stand-in at the back rail, MIND THE GAP on the kick board (the best one for the train) |
+| `train_ba_3_grabber.jpg` | a Grabber's hand over the wagon's back rail (left), Jack's stand-in at the rail, a LOOP STORES crate |
 | `train_ba_4_bitten.jpg` | phase 3, after the first lunge: the wagon gone, the mask at the flatbed's back |
 | `train_ba_5_bitten_end.jpg` | the flatbed's torn end after the bite (`flat_end_bitten`) |
-| `train_ba_6_van_back.jpg` | the tool van from the flatbed: NO STANDING ON ROOF, the bench, the cab's back door (the best one for the van) |
+| `train_ba_6_van_back.jpg` | the tool van from the flatbed: NO STANDING ON ROOF, the bench, the steps and their rail, the cab's back door (the best one for the train) |
 | `train_ba_7_roof_forward.jpg` | from the van's roof forward over the loco: the lit bulbs ahead glow (main showed the room's brick end wall here) |
 | `train_ba_8_hand_truck.jpg` | Jack's hand truck behind the chained fridge, Lumps hauling, the tall crate strapped |
 
