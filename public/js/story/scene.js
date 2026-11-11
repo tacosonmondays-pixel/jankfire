@@ -1,6 +1,6 @@
 // OVERDUE scene player (DESIGN §8, TECH_PLAN §6): data-driven timelines, played in-engine with the game's own models.
 // The six kinds:
-//   cinematic: camera tracks (shot presets on actors, or spline paths), letterbox bars in pink, babble subtitles + jaw
+//   cinematic: camera tracks (shot presets on actors, or spline paths), black letterbox bars, babble subtitles + jaw
 //              flap, faces, gesture clips, walks, fx / sfx, shakes, hit-stop, red impact frames, fades, titles
 //   panels:    the scene freezes into 3-6 tilted comic panels (each a render of a camera shot), halftone, captions,
 //              speech bubbles and SFX words, slammed in one by one
