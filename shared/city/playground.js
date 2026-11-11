@@ -101,10 +101,10 @@ export function playGut(B) {
   // THE WISHBONE: a bone fork up out of the avenue's median with a ledge at the top. grapple only
   const wz = -213, wy = GY + 19;
   if (B.inside(rx, wz)) {
-    for (const s of [-1, 1]) B.shape({ kind: 'tube', pts: [[rx + s * 3.2, GY - 0.5, wz], [rx + s * 2.6, GY + 8, wz], [rx + s * 1.2, GY + 15, wz], [rx, wy - 0.5, wz]], r: 0.55, seg: 8, mat: 'bone', tint: 0xf4ead0, step: 1, at: [rx, GY, wz] });
+    for (const s of [-1, 1]) B.shape({ kind: 'tube', pts: [[rx + s * 3.2, GY - 0.5, wz], [rx + s * 2.6, GY + 8, wz], [rx + s * 1.2, GY + 15, wz], [rx, wy - 0.5, wz]], r: 0.55, seg: 8, mat: 'bone', tint: 0xc4b288, step: 1, at: [rx, GY, wz] });
     for (const s of [-1, 1]) B.add(rx + s * 3.2 - 0.5, GY, wz - 0.5, rx + s * 3.2 + 0.5, GY + 7, wz + 0.5, 'bone', { hide: true });
   }
-  alcove(B, 'wishbone', rx, wy, wz, { w: 3.2, mat: 'bone', tint: 0xf4ead0 });
+  alcove(B, 'wishbone', rx, wy, wz, { w: 3.2, mat: 'bone', tint: 0xc4b288 });
   // THE RIB RUN: rib arches spanning Peristalsis Avenue from Rib Avenue west to the Big Stomach's rim, a ring in every
   // crown, lungs on the pavements between them (bounce to keep your height), down to the rim
   const P = SLICE.peri, pz = (P.z0 + P.z1) / 2, S0 = SLICE.stomach;
@@ -120,7 +120,7 @@ export function playGut(B) {
   const C = SLICE.choir;
   for (let i = 0; i < 3; i++) { const a = -0.6 + i * 0.6; hook(B, C.x + Math.sin(a) * 14, GY + 17, C.z - Math.cos(a) * 14, { s: 1.6 }); }
   const S = SLICE.stomach;
-  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2, x = S.x + Math.cos(a) * (S.r * 0.55), z = S.z + Math.sin(a) * (S.r * 0.55); if (!B.inside(x, z)) continue; B.add(x - 0.3, GY + 14, z - 0.3, x + 0.3, GY + 24, z + 0.3, 'flesh', { nc: true, tint: 0xc85a78 }); B.shape({ kind: 'blob', c: [x, GY + 24, z], r: [3, 1.4, 3], seg: 8, mat: 'flesh', tint: 0xd86a80, pulse: 4 }); hook(B, x, GY + 14, z, { s: 1.8 }); } // hanging from the membrane (tendons)
+  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2, x = S.x + Math.cos(a) * (S.r * 0.55), z = S.z + Math.sin(a) * (S.r * 0.55); if (!B.inside(x, z)) continue; B.add(x - 0.3, GY + 14, z - 0.3, x + 0.3, GY + 24, z + 0.3, 'flesh', { nc: true, tint: 0x7a121c }); B.shape({ kind: 'blob', c: [x, GY + 24, z], r: [3, 1.4, 3], seg: 8, mat: 'flesh', tint: 0x8e1622, pulse: 4 }); hook(B, x, GY + 14, z, { s: 1.8 }); } // hanging from the membrane (tendons)
 }
 
 // ---------------------------------------------------------------- the Commute

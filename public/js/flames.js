@@ -9,6 +9,7 @@ import { jankUniforms } from './jank.js';
 import { fx } from './fx.js';
 import { sfx } from './audio.js';
 import { dynLight } from './lighting.js';
+import { spritesOn, firePuff } from './flipbook.js';
 
 const MAX = 256;
 const U = { uTime: { value: 0 }, uSnap: jankUniforms.uSnap };
@@ -74,6 +75,48 @@ void main() {
   #include <colorspace_fragment>
 }`;
 
+// ---- real fire (owner, 2026-11-11: "I want actual effects"): the same cards, but playing a fire flipbook baked in
+// Blender (tools/sprites/blender/fire_flipbook.py: a noise volume rendered in Cycles, 36 looping frames) instead of the
+// cartoon shader. Same single draw. Potato, or "drawn smoke + splashes" switched off, keeps the shader flame.
+const FS_REAL = `
+uniform float uTime; uniform sampler2D uFire;
+varying vec2 vUv; varying vec4 vS; varying float vSeed;
+#include <fog_pars_fragment>
+vec4 cell(float f, vec2 uv) { return texture2D(uFire, (vec2(mod(f, 6.0), 5.0 - floor(f / 6.0)) + uv) / 6.0); }
+void main() {
+  // the card is 1.7 x 1.3 flame sizes; the picture's flame fills about 0.55 of a cell's width and all its height
+  vec2 uv = vec2(vUv.x / 1.7 * 0.94 + 0.5, (vUv.y + 0.15) / 1.3 * 1.12 - 0.02);
+  float fogK = 0.0;
+#ifdef USE_FOG
+  fogK = smoothstep(fogNear, fogFar, vFogDepth);
+#endif
+  vec4 c = vec4(0.0);
+  if (uv.x > 0.01 && uv.x < 0.99 && uv.y > 0.01 && uv.y < 0.99) {
+    float f = fract(uTime * (0.38 + vS.z * 0.08) + vSeed * 7.31) * 36.0, f0 = floor(f);
+    c = mix(cell(f0, uv), cell(mod(f0 + 1.0, 36.0), uv), f - f0); // frames melt into each other: smooth at any frame rate
+    // its foot: not a ruler line where the card meets the ground. the base thins out raggedly over the first tenth
+    // or two of its height, licking differently along its width and in time
+    float fn = 0.5 + 0.5 * sin(vUv.x * 9.0 + vSeed * 20.0 + uTime * 3.1) * sin(vUv.x * 23.0 - uTime * 5.3 + vSeed * 7.0);
+    c *= min(1.0, vS.w) * smoothstep(-0.02, 0.07 + 0.16 * fn, vUv.y); // (premultiplied; also fades in as it catches)
+  }
+  float glow = exp(-length(vec2(vUv.x * 1.15, (vUv.y - 0.32) * 0.85)) * 3.2) * 0.42 * vS.w;
+  glow *= smoothstep(0.85, 0.45, abs(vUv.x)) * smoothstep(1.15, 0.8, vUv.y) * smoothstep(-0.15, 0.05, vUv.y);
+  // hotter where the flame is thick and low (a white-yellow heart), deep red at its thin edges and tips: the bake is
+  // one orange, the heat comes from how much flame there is
+  float heat = smoothstep(0.25, 0.95, c.a) * (1.0 - 0.55 * smoothstep(0.35, 1.0, uv.y));
+  vec3 tint = mix(vec3(0.95, 0.3, 0.12), vec3(1.25, 0.95, 0.5), heat); tint = mix(tint, vec3(1.5, 1.4, 1.1), smoothstep(0.75, 1.0, heat));
+  float a = min(1.0, c.a * 1.5); // solid enough to read against a bright sky and bright sand
+  vec3 col = c.rgb * tint * (a / max(c.a, 0.001)) + vec3(1.0, 0.42, 0.08) * glow * (1.0 - a); // + a warm halo that only adds
+  if (a + glow < 0.012) discard;
+  gl_FragColor = vec4(col * (1.0 - fogK), a * 0.92 * (1.0 - fogK));
+}`;
+let realMat = null, toonMat = null, fireTex = null, fireState = 0; // 0 not asked, 1 loading, 2 ready, 3 failed
+function realFire() {
+  const S = G.settings || {};
+  if (S.jank === 0 || S.fxSprites === false || fireState === 3) return false;
+  if (!fireState) { fireState = 1; fireTex = new THREE.TextureLoader().load('/sprites/fire.png', () => { fireState = 2; }, undefined, () => { fireState = 3; }); fireTex.colorSpace = THREE.NoColorSpace; fireTex.generateMipmaps = false; fireTex.minFilter = THREE.LinearFilter; }
+  return fireState === 2;
+}
 let mesh = null, aP = null, aS = null;
 function build() {
   if (mesh) return mesh;
@@ -85,6 +128,9 @@ function build() {
   geo.setAttribute('aP', aP); geo.setAttribute('aS', aS);
   geo.instanceCount = 0;
   const mat = new THREE.ShaderMaterial({ uniforms: { ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog), ...U }, vertexShader: VS, fragmentShader: FS, fog: true,
+    transparent: true, depthWrite: false, blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor, side: THREE.DoubleSide });
+  toonMat = mat;
+  realMat = new THREE.ShaderMaterial({ uniforms: { ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog), ...U, uFire: { value: null } }, vertexShader: VS, fragmentShader: FS_REAL, fog: true,
     transparent: true, depthWrite: false, blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor, side: THREE.DoubleSide });
   mesh = new THREE.Mesh(geo, mat);
   mesh.frustumCulled = false; mesh.renderOrder = 4; mesh.userData.noShadow = true;
@@ -127,6 +173,7 @@ export function updateFlames(dt) {
   if (!mesh) return;
   const now = performance.now();
   U.uTime.value = (now / 1000) % 3600;
+  { const want = realFire() ? realMat : toonMat; if (want === realMat) realMat.uniforms.uFire.value = fireTex; if (mesh.material !== want) mesh.material = want; } // real fire or the cartoon shader (Potato / switched off / still loading)
   const cam = G.camera && G.camera.position, P = fx.parts && fx.parts();
   let n = 0, nearD = 1e9;
   const put = (f, k) => {
@@ -155,8 +202,13 @@ export function updateFlames(dt) {
   smokeT -= dt;
   if (P && smokeT <= 0) {
     smokeT = 0.07;
-    for (const f of stat) if (f.smoke && cam && Math.hypot(f.x - cam.x, f.z - cam.z) < 260) P.smoke.spawn(f.x + R(f.w * 0.2), f.y + f.h * 0.9, f.z + R(f.w * 0.2), R(0.6), 2 + Math.random() * 1.5, R(0.6), 3 + Math.random() * 2, f.w * 0.35, f.w * 1.1, 0x3a3434, 0x1a1616, 0.4, -0.35, 0.3);
-    for (const f of live.values()) if (f.k > 0.3 && Math.random() < 0.5) P.smoke.spawn(f.x + R(0.3), f.y + f.h, f.z + R(0.3), R(0.4), 1.6 + Math.random(), R(0.4), 2.2 + Math.random(), 0.4, f.w * 2.2, 0x2a2626, 0x0e0c0c, 0.55, -0.4, 0.4);
+    const soft = spritesOn(); // real smoke off the fire (flipbook.js) instead of dark squares, half as many puffs
+    if (soft) {
+      for (const f of stat) if (f.smoke && cam && Math.hypot(f.x - cam.x, f.z - cam.z) < 260 && Math.random() < 0.5) firePuff(f.x + R(f.w * 0.2), f.y + f.h * 0.9, f.z + R(f.w * 0.2), R(0.6), 2 + Math.random() * 1.5, R(0.6), 3 + Math.random() * 2, f.w * 0.5, f.w * 1.5);
+      for (const f of live.values()) if (f.k > 0.3 && Math.random() < 0.25) firePuff(f.x + R(0.3), f.y + f.h, f.z + R(0.3), R(0.4), 1.6 + Math.random(), R(0.4), 2.2 + Math.random(), 0.6, f.w * 2.4);
+    }
+    for (const f of stat) if (!soft && f.smoke && cam && Math.hypot(f.x - cam.x, f.z - cam.z) < 260) P.smoke.spawn(f.x + R(f.w * 0.2), f.y + f.h * 0.9, f.z + R(f.w * 0.2), R(0.6), 2 + Math.random() * 1.5, R(0.6), 3 + Math.random() * 2, f.w * 0.35, f.w * 1.1, 0x3a3434, 0x1a1616, 0.4, -0.35, 0.3);
+    for (const f of live.values()) if (!soft && f.k > 0.3 && Math.random() < 0.5) P.smoke.spawn(f.x + R(0.3), f.y + f.h, f.z + R(0.3), R(0.4), 1.6 + Math.random(), R(0.4), 2.2 + Math.random(), 0.4, f.w * 2.2, 0x2a2626, 0x0e0c0c, 0.55, -0.4, 0.4);
     const all = stat.length + live.size;
     if (all) for (let i = 0; i < 2; i++) {
       const f = Math.random() * all < stat.length ? stat[(Math.random() * stat.length) | 0] : [...live.values()][(Math.random() * live.size) | 0];
@@ -166,4 +218,4 @@ export function updateFlames(dt) {
   crackT -= dt;
   if (crackT <= 0 && nearD < 9) { crackT = 0.08 + Math.random() * 0.25; sfx.crackle(null, Math.max(0.15, 1 - nearD / 9)); }
 }
-export function flameInfo() { return { stat: stat.length, live: live.size, drawn: mesh ? mesh.geometry.instanceCount : 0 }; }
+export function flameInfo() { return { stat: stat.length, live: live.size, drawn: mesh ? mesh.geometry.instanceCount : 0, real: !!(mesh && mesh.material === realMat), sheet: fireState }; }

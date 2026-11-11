@@ -360,14 +360,19 @@
         <h3>video</h3>
         <label>quality <select id="jank"><option value="0">Potato</option><option value="1">Crusty</option><option value="2">Mid</option><option value="3">HD</option></select></label>
         <label>shadows <select id="shadows"><option value="auto">auto (by quality)</option><option value="off">off (blobs)</option><option value="low">low</option><option value="med">medium</option><option value="high">high (soft)</option></select></label>
+        <label>shaders <select id="fxLevel"><option value="auto">auto (by quality)</option><option value="off">off</option><option value="low">low</option><option value="med">medium</option><option value="high">high</option><option value="custom">custom</option></select></label>
+        <label>bloom <select id="fxBloom"><option value="off">off</option><option value="low">low</option><option value="med">medium</option><option value="high">high</option></select></label>
+        <label><input type="checkbox" id="fxSkin"> soft skin (light glows through)</label>
+        <label><input type="checkbox" id="fxPunch"> punchy colours</label>
         <label>fov <input id="fov" type="range" min="70" max="120" step="1"><span id="fovN"></span></label>
         <label><input type="checkbox" id="fovKick"> fov stretches with speed</label>
         <label><input type="checkbox" id="shake"> screen shake</label>
         <label>display <select id="displayMode"></select></label>
         <label>hotbar <select id="hotbarPos"></select></label>
-        <label><input type="checkbox" id="fxSprites"> drawn smoke + splashes (off = the old squares)</label>
+        <label><input type="checkbox" id="fxSprites"> real smoke, fire + splashes (off = the old cartoon ones)</label>
         <label>smoke style <select id="fxSmoke"><option value="soft">soft</option><option value="comic">comic puffs</option><option value="kenney">kenney puffs</option><option value="unity">unity wispy</option></select></label>
         <label><input type="checkbox" id="fxRipples"> painted water ripples</label>
+        <label><input type="checkbox" id="fxWaterSim"> water physics (test: ripples that really spread; mid and hd)</label>
         <label><input type="checkbox" id="showFps"> show fps</label>
         <label><input type="checkbox" id="speedLines"> speed lines when you go fast</label>
         <h3>audio</h3>

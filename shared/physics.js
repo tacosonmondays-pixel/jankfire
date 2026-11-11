@@ -115,6 +115,7 @@ export function movePlayer(pos, vel, dt, allBoxes, canStep) {
         if (!overlap(pos[0] - hw, pos[1], pos[2] - hw, pos[0] + hw, pos[1] + h, pos[2] + hw, b)) continue;
         if (T && soft(b, pos[1] + 0.3)) continue; // the heightfield is the ground here, not its steps
         if (ax === 1) {
+          if (d < 0 && T && b.min[1] > pos[1] + 1.1) continue; // shaped ground walked you up under something (a tree's crown, an awning): that's over your head, not a landing. the sideways pass stops you there
           if (d < 0) { pos[1] = b.max[1]; res.ground = b; onBox = true; } else { pos[1] = b.min[1] - h - 1e-4; res.ceil = true; }
           vel[1] = 0;
         } else {

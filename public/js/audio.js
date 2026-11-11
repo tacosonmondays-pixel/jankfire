@@ -277,6 +277,8 @@ export const sfx = {
   glorp(pos) { tone('sine', 130, 560, 0.34, 0.45, pos); tone('triangle', 85, 240, 0.42, 0.22, pos, 0.05); noise(0.35, 0.25, 'lowpass', 1200, 180, pos); },
   bigPop(pos) { noise(0.09, 1, 'highpass', 500, 3500, pos); tone('sine', 1150, 150, 0.14, 0.65, pos); tone('square', 2600, 900, 0.05, 0.12, pos); noise(0.5, 0.3, 'highpass', 5000, 9000, pos, 0.06); },
   blub(pos) { const f = 85 + Math.random() * 90; tone('sine', f, f * 2.7, 0.14, 0.3, pos); },
+  // a bubble in a bile pool letting go (city/gutgoo.js): a small wet pop, a different pitch every time
+  gooPop(pos, v = 1) { const f = 150 + Math.random() * 240; tone('sine', f, f * 3.1, 0.085, 0.24 * v, pos); noise(0.03, 0.13 * v, 'highpass', 1700, 4400, pos, 0.06); },
   // out of bounds countdown: a harsh two-tone alarm blip per second, the last one higher
   oob(last) { tone('square', last ? 1320 : 880, last ? 1300 : 860, 0.16, 0.22); tone('square', last ? 660 : 440, last ? 650 : 430, 0.16, 0.14, null, 0.08); },
   error(pos) { tone('square', 880, 880, 0.12, 0.2, pos); tone('square', 660, 660, 0.25, 0.2, pos, 0.14); },
@@ -780,4 +782,30 @@ Object.assign(sfx, {
   rpCross() { noise(0.9, 1, 'bandpass', 2600, 300, null, 0, 0.8); tone('sawtooth', 110, 28, 1.1, 0.6); tone('sine', 880, 220, 0.9, 0.22); tone('sine', 55, 30, 1.4, 0.7, null, 0.2); },
   rpClick() { tone('square', 2300, 1700, 0.018, 0.2); tone('square', 1200, 900, 0.02, 0.16, null, 0.05); }, // the Inspector's punch
   rpCaught() { tone('sine', 120, 30, 1.3, 0.7); noise(1.2, 0.5, 'lowpass', 900, 60); },
+});
+
+// the Big Heart in the Gut (city/bigheart.js): a deep, slow double thud once a beat. v 0..1 is how close you are (the
+// caller fades it to nothing by 150 m); it skips dest()'s gunshot falloff, which would leave nothing at 30 m, and is
+// only panned toward the tower. a sine dropping in pitch, an octave on top so small speakers have something to play,
+// and a little muffled noise for the meat of it; a soft 14 ms attack so it never clicks
+function thud(f0, f1, dur, v, pan, delay) {
+  const t = ac.currentTime + delay, g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.014); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  for (const [k, a] of [[1, 1], [2.02, 0.3]]) {
+    const o = ac.createOscillator(), og = ac.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(f0 * k, t); o.frequency.exponentialRampToValueAtTime(f1 * k, t + dur);
+    og.gain.value = a; o.connect(og); og.connect(g); o.start(t); o.stop(t + dur + 0.05);
+  }
+  const s = ac.createBufferSource(), lp = ac.createBiquadFilter(), ng = ac.createGain();
+  s.buffer = nbuf; lp.type = 'lowpass'; lp.frequency.value = 120; ng.gain.value = 0.6;
+  s.connect(lp); lp.connect(ng); ng.connect(g); s.start(t, Math.random() * 1.5); s.stop(t + dur + 0.05);
+  if (ac.createStereoPanner) { const p = ac.createStereoPanner(); p.pan.value = pan; g.connect(p); p.connect(master); } else g.connect(master);
+}
+Object.assign(sfx, {
+  bigHeart(v, pos, gap = 0.29) { // lub, then the dub `gap` seconds later
+    if (!ac || !(v > 0.004)) return;
+    const dx = pos ? pos[0] - L.pos[0] : 0, dz = pos ? pos[2] - L.pos[2] : 0, d = Math.hypot(dx, dz);
+    const pan = d > 2 ? Math.max(-1, Math.min(1, (dx * Math.cos(L.yaw) - dz * Math.sin(L.yaw)) / d)) * 0.45 : 0;
+    thud(58, 35, 0.26, 0.4 * v, pan, 0); thud(70, 42, 0.18, 0.25 * v, pan, gap);
+  },
 });

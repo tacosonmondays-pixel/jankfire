@@ -107,8 +107,11 @@ import { initCustomize, czMode, czOpen, czClose, czFrame, czKill, czLate, czRefr
 import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, zmModelsLoaded } from './zombies.js';
 import { zxHurt } from './zmextra.js'; // zombies: which way the claws came from
 import { zlWant } from './zmloadout.js'; // your zombies loadout
+import { gfxCmd } from './gfxguard.js'; // /gfx: the graphics readout
+import { fxUI } from './fxsettings.js';
 import { spritesOn, smokeCloud, updateFlipbooks } from './flipbook.js'; // drawn smoke + splashes
 import { setRippleMap } from './liquidmats.js';
+import { waterPhysics } from './liquids.js';
 let story = null; // OVERDUE's story engine (WP8: quests, talk, cutscenes), loaded with the story flag below. null = every hook is a no-op
 
 const $ = (id) => document.getElementById(id);
@@ -457,6 +460,7 @@ $('jank').value = String(S.jank);
 $('jank').addEventListener('change', () => { S.jank = Number($('jank').value); setJank(S.jank); saveSettings(); });
 $('shadows').value = S.shadows || 'auto'; setShadowPref(S.shadows);
 $('shadows').addEventListener('change', () => { S.shadows = $('shadows').value; setShadowPref(S.shadows); saveSettings(); });
+const fxSync = fxUI($, S, saveSettings); // shaders: bloom, soft skin, punchy colours (fxsettings.js)
 bindRange('fov', 'fov');
 bindRange('vol', 'vol', null, () => setVolume(S.vol));
 // music has its own volume (the main one still scales it). in matches it's on (quieter, its own slider) for bots, co-op
@@ -477,6 +481,7 @@ bindCheck('shake', 'shake');
 bindCheck('showFps', 'showFps');
 $('fxSprites').checked = S.fxSprites !== false; $('fxSprites').addEventListener('change', () => { S.fxSprites = $('fxSprites').checked; saveSettings(); }); // drawn smoke + splashes (flipbook.js)
 $('fxSmoke').value = ['comic', 'kenney', 'unity'].includes(S.fxSmoke) ? S.fxSmoke : 'soft'; $('fxSmoke').addEventListener('change', () => { S.fxSmoke = $('fxSmoke').value; saveSettings(); });
+$('fxWaterSim').checked = !!S.fxWaterSim; waterPhysics(!!S.fxWaterSim); $('fxWaterSim').addEventListener('change', () => { S.fxWaterSim = $('fxWaterSim').checked; waterPhysics(S.fxWaterSim); saveSettings(); }); // water physics, a test (watersim.js)
 $('fxRipples').checked = !!S.fxRipples; setRippleMap(!!S.fxRipples); $('fxRipples').addEventListener('change', () => { S.fxRipples = $('fxRipples').checked; setRippleMap(S.fxRipples); saveSettings(); });
 bindCheck('toggleAim', 'toggleAim');
 bindCheck('blood', 'blood');
@@ -1141,7 +1146,7 @@ function openChat() {
 }
 function closeChat(sendIt) {
   const v = $('chatin').value.trim();
-  if (sendIt && v) net.send({ t: 'chat', m: v });
+  if (sendIt && v && !gfxCmd(v)) net.send({ t: 'chat', m: v }); // (/gfx: the graphics readout, gfxguard.js)
   chatOpen = false;
   $('chatin').classList.add('hidden');
   $('chatin').blur();
@@ -2670,6 +2675,7 @@ $('scr-cosmetics').prepend(hubTabs('grapple', show, () => { classicLocker = true
 function applySettingsToUI() {
   $('jank').value = String(S.jank); setJank(S.jank);
   $('shadows').value = S.shadows || 'auto'; setShadowPref(S.shadows);
+  fxSync();
   for (const id of ['fov', 'vol', 'sens', 'adsSens']) { $(id).value = String(S[id]); $(id).dispatchEvent(new Event('input')); }
   for (const id of ['fovKick', 'shake', 'showFps', 'toggleAim', 'blood', 'killcam', 'showCards', 'speedLines']) $(id).checked = !!S[id];
   K.attach(S); // the profile may have brought its own key bindings

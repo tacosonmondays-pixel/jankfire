@@ -14,6 +14,7 @@ import { TEAMS } from '/shared/modes.js';
 import { fx } from './fx.js';
 import { emitSkinFx } from './skins.js';
 import { ANIMS } from './anim.js';
+import { topSize } from './clothes.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const hex = (c) => new THREE.Color(c).getHex();
@@ -112,6 +113,8 @@ function M2(color) {
 // the chest every top has is an egg (tees and hoodies a bigger one, jackets a box round it): its half width + depth at y
 const CHEST = { tee: [0.258, 0.2365, 0.159], hoodie: [0.258, 0.2365, 0.159], jacket: [0.25, 0.229, 0.152], suit: [0.25, 0.229, 0.152], runner: [0.274, 0.25, 0.186] };
 function torso(top, y) {
+  const cut = topSize(top, y); // the top as clothes.js really cuts it (the numbers below: a top it doesn't make)
+  if (cut) return cut;
   const c = CHEST[top] || [0.24, 0.22, 0.144], k = (y - 1.34) / c[1], f = Math.abs(k) < 1 ? Math.sqrt(1 - k * k) : 0;
   let w = c[0] * f, d = c[2] * f;
   if (y < 1.22) { const r = 0.1 + ((1.21 - Math.max(1.05, Math.min(1.21, y))) / 0.16) * 0.02; w = Math.max(w, r); d = Math.max(d, r); } // waist

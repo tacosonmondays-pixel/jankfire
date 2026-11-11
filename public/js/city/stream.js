@@ -249,17 +249,17 @@ export class CityStream {
   applyEnv(p) {
     const ws = districtWeights(this.city, p.x, p.z, 40);
     const fog = new THREE.Color(0, 0, 0), top = new THREE.Color(0, 0, 0), mid = new THREE.Color(0, 0, 0), bot = new THREE.Color(0, 0, 0), c = new THREE.Color();
-    let near = 0, far = 0, night = 0;
+    let near = 0, far = 0, night = 0, pulse = 0;
     const hemi = [new THREE.Color(0, 0, 0), new THREE.Color(0, 0, 0), 0], sun = [new THREE.Color(0, 0, 0), 0];
     for (const [d, w] of ws) {
       fog.add(c.setHex(d.sky.fog).multiplyScalar(w)); top.add(c.setHex(d.sky.top).multiplyScalar(w)); mid.add(c.setHex(d.sky.mid).multiplyScalar(w)); bot.add(c.setHex(d.sky.bot).multiplyScalar(w));
-      near += d.fogNear * w; far += d.fogFar * w; night += (+d.night || 0) * w;
+      near += d.fogNear * w; far += d.fogFar * w; night += (+d.night || 0) * w; pulse += (+d.pulse || 0) * w;
       const L = d.light || { hemi: [0xcfe8ff, 0x7a4a6a, 1.5], sun: [0xfff0dd, 1.8] };
       hemi[0].add(c.setHex(L.hemi[0]).multiplyScalar(w)); hemi[1].add(c.setHex(L.hemi[1]).multiplyScalar(w)); hemi[2] += L.hemi[2] * w;
       sun[0].add(c.setHex(L.sun[0]).multiplyScalar(w)); sun[1] += L.sun[1] * w;
     }
     cityUniforms.uNight.value = night; cityUniforms.uHaze.value.copy(fog).lerp(mid, 0.35);
-    this.env = { fog, top, mid, bot, near, far: Math.min(far, this.R.far + 60), night, hemi, sun, district: ws.length ? ws.reduce((a, b) => (b[1] > a[1] ? b : a))[0] : null };
+    this.env = { fog, top, mid, bot, near, far: Math.min(far, this.R.far + 60), night, pulse, hemi, sun, district: ws.length ? ws.reduce((a, b) => (b[1] > a[1] ? b : a))[0] : null };
   }
 
   stats() {

@@ -120,14 +120,15 @@ function shapeInto(S, s, lod) {
     if (n[1] >= 0 && cross(e2, e1)[1] >= 0) { S.t(base, base + 3, base + 2); S.t(base, base + 2, base + 1); } else { S.t(base, base + 1, base + 2); S.t(base, base + 2, base + 3); }
   } else if (s.kind === 'blob' || s.kind === 'lathe') {
     const prof = s.kind === 'lathe' ? s.prof : null, rows = prof ? prof.length - 1 : Math.max(3, Math.round(seg * 0.6));
-    const R = s.kind === 'blob' ? (Array.isArray(s.r) ? s.r : [s.r, s.r, s.r]) : [1, 1, 1], c = s.c, base0 = S.n;
+    const R = s.kind === 'blob' ? (Array.isArray(s.r) ? s.r : [s.r, s.r, s.r]) : (s.sc || [1, 1, 1]), c = s.c, base0 = S.n;
     for (let i = 0; i <= rows; i++) {
       let rr, y, ny0;
       if (prof) { rr = prof[i][0]; y = prof[i][1]; const pa = prof[Math.max(0, i - 1)], pb = prof[Math.min(rows, i + 1)]; const dy = pb[1] - pa[1], dr = pb[0] - pa[0]; const l = Math.hypot(dy, dr) || 1; ny0 = [dy / l, -dr / l]; } else { const ph = (i / rows) * Math.PI; rr = Math.sin(ph); y = -Math.cos(ph); ny0 = [rr, y]; }
       for (let k = 0; k <= seg; k++) {
-        const ang = (k / seg) * Math.PI * 2, ca = Math.cos(ang), sa = Math.sin(ang);
+        const ang = (k / seg) * Math.PI * 2, w0 = s.wob ? s.wob[Math.round(k / seg * s.wob.length) % s.wob.length] : 1, wb = prof && prof[i][2] != null ? 1 + (w0 - 1) * prof[i][2] : w0, ca = Math.cos(ang) * wb, sa = Math.sin(ang) * wb; // wob: a lumpy outline (puddles); a profile point's third number is how lumpy that row is (0 = round)
         const n = norm(prof ? [ny0[0] * ca, ny0[1], ny0[0] * sa] : [rr * ca / R[0], y / R[1], rr * sa / R[2]]);
-        S.v(c[0] + rr * ca * R[0], c[1] + y * R[1], c[2] + rr * sa * R[2], n[0], n[1], n[2], (k / seg) * 6.283 * Math.max(R[0], rr) / tile, (y * R[1]) / tile, r, g, b, a);
+        const vx = c[0] + rr * ca * R[0], vz = c[2] + rr * sa * R[2];
+        S.v(vx, c[1] + y * R[1], vz, n[0], n[1], n[2], s.uvxz ? vx / tile : (k / seg) * 6.283 * Math.max(R[0], rr) / tile, s.uvxz ? vz / tile : (y * R[1]) / tile, r, g, b, a); // uvxz: textured like the floor it lies on (a flat stain)
       }
     }
     for (let i = 0; i < rows; i++) for (let k = 0; k < seg; k++) {
