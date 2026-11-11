@@ -153,7 +153,7 @@ VIEWS = {  # name: (camera, target, lens or ('o', ortho scale), exposure)
     'van_board': ((0.6, 2.6, 25.6), (-1.5, 2.4, 22.8), 30, 0.6),
     'loco': ((9, 4.6, 37.5), (0, 1.8, 30.5), 35, 0.0), 'loco_back': ((3.6, 3.4, 23.2), (0, 2.1, 28.3), 30, 0.2), 'cab': ((0.9, 2.75, 28.0), (0.3, 2.2, 30.4), 20, 0.7), 'cab2': ((-1.9, 2.9, 27.2), (0.6, 2.0, 30.2), 30, 0.7),
     'loco_front': ((-4.5, 2.6, 38.0), (0, 1.6, 32.0), 35, 0.0), 'loco_side': ((60, 2.0, 30.5), (0, 2.0, 30.5), ('o', 7.5), 0.0), 'under': ((7.5, 0.9, 5.0), (0, 0.8, 9.5), 28, 0.6),
-    'bitten': ((4.5, 4.2, 4.6), (0, 1.1, 10.2), 35, 0.2), 'bitten2': ((-1.0, 2.6, 13.4), (0.1, 1.0, 9.6), 24, 0.3),
+    'bitten': ((4.5, 4.2, 4.6), (0, 1.1, 10.2), 35, 0.2), 'bitten2': ((1.1, 2.5, 12.9), (0.2, 1.0, 9.5), 24, 0.3),
     'covers': ((60, 1.0, 0), (0, 1.0, 0), ('o', 12), 0.0),
 }
 
@@ -255,9 +255,12 @@ def set_state(N, bitten=False, lod=False):
 
 def preview(N, pdir, views, bitten=False, res=(960, 600)):
     os.makedirs(pdir, exist_ok=True); colour_preview([m for m in M.values()])
+    rest = [o for k, o in N.items() if o is not None and o.type == 'MESH' and not (o.parent and o.parent.name.startswith('car_'))]   # the kit and the carriage are built at the origin too
+    for o in rest: o.hide_render = True
     set_state(N, bitten, bool(arg('lod'))); scale_set(not arg('no-set')); out = []
     for v in views: out.append(shoot(v, os.path.join(pdir, f'tr_{v}{"_b" if bitten else ""}.png'), res, int(arg('samples', 10))))
     clear_studio(); scale_set(False); set_state(N)
+    for o in rest: o.hide_render = False
     print('JF_PREVIEW', ' '.join(out))
 
 

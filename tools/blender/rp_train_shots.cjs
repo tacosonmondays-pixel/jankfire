@@ -19,8 +19,9 @@ srv.listen(0, async () => {
   for (const sheet of SHEETS) {
     const pg = await b.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
     const errs = []; pg.on('pageerror', (e) => errs.push(e.message)); pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
-    await pg.goto(`http://localhost:${srv.address().port}/rp_train_shots.html?sheet=${sheet}`);
-    await pg.waitForFunction(() => window.DONE, null, { timeout: 300000 }).catch(() => errs.push('timeout'));
+    pg.setDefaultTimeout(900000);   // software GL on a busy machine is slow: be patient
+    await pg.goto(`http://localhost:${srv.address().port}/rp_train_shots.html?sheet=${sheet}`, { timeout: 300000 });
+    await pg.waitForFunction(() => window.DONE, null, { timeout: 900000 }).catch(() => errs.push('timeout'));
     const info = await pg.evaluate(() => window.INFO).catch(() => null);
     const out = path.join(OUT, `rp_train_game_${sheet}.jpg`);
     await pg.locator('#wrap').screenshot({ path: out, type: 'jpeg', quality: 86 });
