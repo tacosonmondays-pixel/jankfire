@@ -293,7 +293,7 @@ export function stepPlayer(dt, inp, now) {
   if (!ME.onGround) ME.airMaxFall = Math.min(ME.airMaxFall, v[1]);
 
   const was = ME.onGround;
-  const res = movePlayer(p, v, dt, BOXES, was);
+  const res = movePlayer(p, v, dt, BOXES, was || !!ME.seaStep); // (floating in the sea: you can still step up onto the sand shelf beside you)
   ME.onGround = !!res.ground && v[1] <= 0.01;
   if (ME.onGround) {
     if (!was) {
