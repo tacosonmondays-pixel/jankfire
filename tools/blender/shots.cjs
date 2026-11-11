@@ -24,7 +24,7 @@ async function session(b, jank, useGlb, viewport = { width: 960, height: 600 }) 
   pg.on('pageerror', (e) => errs.push('PAGEERR ' + e.message));
   pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
   if (!useGlb) await pg.route('**/models/list', (r) => r.fulfill({ contentType: 'application/json', body: '[]' }));
-  await pg.addInitScript((jank) => localStorage.setItem('jankfire', JSON.stringify({ name: 'shots', killcam: false, jank })), jank);
+  await pg.addInitScript((jank) => { localStorage.setItem('jf_giftseen_all', '1'); localStorage.setItem('jankfire', JSON.stringify({ name: 'shots', killcam: false, jank })); }, jank); // (the gift popup would cover the menu)
   await pg.goto(`http://localhost:${port}/`); await sleep(1500);
   if (useGlb) await pg.evaluate(async (keys) => { // skin models download on first use: ask for them now and wait
     const k = await import('/js/glbkit.js');

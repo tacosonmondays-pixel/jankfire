@@ -93,7 +93,10 @@ void main() {
   if (uv.x > 0.01 && uv.x < 0.99 && uv.y > 0.01 && uv.y < 0.99) {
     float f = fract(uTime * (0.38 + vS.z * 0.08) + vSeed * 7.31) * 36.0, f0 = floor(f);
     c = mix(cell(f0, uv), cell(mod(f0 + 1.0, 36.0), uv), f - f0); // frames melt into each other: smooth at any frame rate
-    c *= min(1.0, vS.w) * smoothstep(0.0, 0.08, uv.y); // (premultiplied; fades in as it catches, no hard line at its foot)
+    // its foot: not a ruler line where the card meets the ground. the base thins out raggedly over the first tenth
+    // or two of its height, licking differently along its width and in time
+    float fn = 0.5 + 0.5 * sin(vUv.x * 9.0 + vSeed * 20.0 + uTime * 3.1) * sin(vUv.x * 23.0 - uTime * 5.3 + vSeed * 7.0);
+    c *= min(1.0, vS.w) * smoothstep(-0.02, 0.07 + 0.16 * fn, vUv.y); // (premultiplied; also fades in as it catches)
   }
   float glow = exp(-length(vec2(vUv.x * 1.15, (vUv.y - 0.32) * 0.85)) * 3.2) * 0.42 * vS.w;
   glow *= smoothstep(0.85, 0.45, abs(vUv.x)) * smoothstep(1.15, 0.8, vUv.y) * smoothstep(-0.15, 0.05, vUv.y);

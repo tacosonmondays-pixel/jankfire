@@ -62,7 +62,7 @@ Rules that came out of the proofs and the reading:
 - **Never export rain or snow as geometry.** Weather is a runtime system; Blender delivers sprites and masks.
 
 ## Proofs (made here, shown in the game)
-Both scripts run headless with `blender52`. The outputs are in `public/sprites/proof/` and are not used by the game.
+Both scripts run headless with `blender52`. The outputs are in `public/sprites/` (the ocean map is used on the seas since the ocean PR; the fire proof sheet is not used).
 
 1. **Fire flipbook without the fluid solver**: `tools/sprites/blender/fire_flipbook.py`. A box of volume; density and
    glow from 4D noise sliding up through a flame-shaped mask; Cycles, 96 px, 16 samples, 42 frames in about 3 minutes;

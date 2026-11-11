@@ -11,6 +11,7 @@
 import * as THREE from 'three';
 import { jankify } from './jank.js';
 import { G } from './ctx.js';
+import { softSkin } from './softskin.js';
 
 const PI = Math.PI;
 const W = 0.0118, TH = 0.0112; // a finger's width (along the grip) and thickness
@@ -73,7 +74,7 @@ function chain(lens, w, t, L, nailOn, fwd, sx) {
 
 export function makeHand(side = 'R', opts = {}) {
   const sx = side === 'L' ? -1 : 1, lk = handLook();
-  const L = { skinM: mat(lk.skin), knuckM: mat(lk.knuck), nailM: mat(lk.nail, false), cuffM: mat(lk.cuff) };
+  const L = { skinM: softSkin(mat(lk.skin)), knuckM: softSkin(mat(lk.knuck)), nailM: mat(lk.nail, false), cuffM: mat(lk.cuff) };
   const h = new THREE.Group(); h.userData.hand = { side, sx, fingers: {}, thumb: null, r: opts.r ?? 0.016, arm: opts.arm || [0.35, -0.3, 1] };
   const body = new THREE.Group(); h.add(body); h.userData.hand.body = body;
   // palm / back of the hand: one slab tangent to the grip at PHI_BACK
