@@ -115,6 +115,7 @@ def build_cube_eave(run=2.0, rag=True):
 def build_cube_eave_b(): return build_cube_eave(2.0, False)
 def build_cube_eave4(): return build_cube_eave(4.0, False)
 def build_cube_eave6(): return build_cube_eave(6.0, True)
+def build_cube_eave6_b(): return build_cube_eave(6.0, False)  # the 6 m run with no rag (Story lane ask)
 
 
 # ------------------------------------------------------------------------------------------------ windows
@@ -314,5 +315,6 @@ def build_stair_post():
 BUILDERS = [('cube_corner', build_cube_corner), ('cube_eave', build_cube_eave), ('cube_window_a', build_cube_window_a), ('cube_window_b', build_cube_window_b),
             ('cube_window_c', build_cube_window_c), ('container_doors', build_container_doors), ('container_rib', build_container_rib),
             ('cube_roofjunk_a', build_cube_roofjunk_a), ('cube_roofjunk_b', build_cube_roofjunk_b), ('stair_step', build_stair_step), ('stair_post', build_stair_post),
-            ('cube_corner_b', build_cube_corner_b), ('cube_eave_b', build_cube_eave_b), ('cube_eave4', build_cube_eave4), ('cube_eave6', build_cube_eave6), ('container_rib_half', build_container_rib_half)]
-run(BUILDERS)
+            ('cube_corner_b', build_cube_corner_b), ('cube_eave_b', build_cube_eave_b), ('cube_eave4', build_cube_eave4), ('cube_eave6', build_cube_eave6), ('container_rib_half', build_container_rib_half),
+            ('cube_eave6_b', build_cube_eave6_b)]
+run(BUILDERS, atlas=True)  # one atlas material per piece + its paint slot (fewer draw calls)

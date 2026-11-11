@@ -142,9 +142,9 @@ DETAIL.smilesign = 1; DETAIL.tarp = 0.6; DETAIL.lostpile = 0.5; DETAIL.sofa = 0.
 const FAR = { door_bottom: 70, shutter: 60, acunit: 60, laundry_a: 90, laundry_b: 90, pchair: 70, stringlights: 80, wokdish: 70, crate_soup: 60, scooter: 70, tooth: 60, tooth_b: 60, eyeball: 70, cone: 70, skeleton_lanyard: 70, paperdrift: 90, lostpile: 90, tarp: 90, sofa: 90, fridge: 90, smilesign: 160, filecab: 100, rubble_a: 120, rubble_b: 120, tirestack: 100 };
 // the Bottom's house kit and the Long Stairs pieces: there are hundreds a chunk, so they drop to their far model early and stop being drawn past a street or two
 Object.assign(DETAIL, { cube_eave: 0.5, cube_window_a: 0.4, cube_window_b: 0.4, cube_window_c: 0.4, cube_corner: 0.4, stair_step: 0.4, stair_post: 0.4, container_doors: 0.6, longstep_a: 0.6, longstep_b: 0.6, longrail: 0.6, longplaque_a: 0.3, longplaque_b: 0.3 });
-Object.assign(DETAIL, { cube_corner_b: 0.4, cube_eave_b: 0.5, cube_eave4: 0.5, cube_eave6: 0.5, longrail_b: 0.6 }); // (the kit's second pass)
+Object.assign(DETAIL, { cube_corner_b: 0.4, cube_eave_b: 0.5, cube_eave4: 0.5, cube_eave6: 0.5, cube_eave6_b: 0.5, longrail_b: 0.6 }); // (the kit's second pass)
 Object.assign(FAR, { cube_eave: 90, container_rib: 90, cube_window_a: 70, cube_window_b: 70, cube_window_c: 70, cube_corner: 70, stair_step: 70, stair_post: 70, container_doors: 120, cube_roofjunk_a: 120, cube_roofjunk_b: 120, longplaque_a: 40, longplaque_b: 40 });
-Object.assign(FAR, { cube_corner_b: 70, cube_eave_b: 90, cube_eave4: 90, cube_eave6: 90, container_rib_half: 90 });
+Object.assign(FAR, { cube_corner_b: 70, cube_eave_b: 90, cube_eave4: 90, cube_eave6: 90, cube_eave6_b: 90, container_rib_half: 90 });
 export const propFar = (id) => FAR[id] || Infinity;
 // hiR: instances closer than this (x the prop's DETAIL) to `at` get the full Blender model, the rest its _lod1 meshes
 // (or the code model when the file has none)
