@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '8.2', date: '2026-11-11', title: 'BOOM, SKULL', items: [
+    'explosions are actual fireballs now. a flash, then black smoke rolling over the fire, then it hangs around. guns puff smoke. fires smoke properly. potato keeps its squares.',
+    'SKULL ROCK is an actual skull now. walk in through its teeth, sit in its eyes, climb its spine to the top. the treasure is still gone.',
+    'the office stapler, ball machine and basket case skins got rebuilt in blender. the basket has a price tag. it says stolen.',
+  ] },
   { v: '8.1', date: '2026-11-11', title: 'INTAKE', items: [
     'the shredder got rebuilt in blender. a big yellow funnel, a cage of red teeth, a turbine down the throat. the wood chipper skin has wheels now. it still eats people.',
     'the blood cross hand got rebuilt in blender too. jointed mannequin fingers, veins, a cuff button. shadow cross glows violet. every weapon in the game is a proper model now.',
