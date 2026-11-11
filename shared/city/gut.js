@@ -69,7 +69,7 @@ function peri(B) {
   if (x1 <= x0) return;
   B.add(x0, GY - 0.02, P.z0, x1, GY + 0.04, P.z1, 'rib', { nc: true, tint: 0xa82430 });
   // the tube: a half-buried ribbed tube along the avenue, gaps where the avenues cross it
-  const cuts = [SLICE.stomach.x, -44, ...AVES].filter((a) => a > x0 - 6 && a < x1 + 6).sort((a, b) => a - b);
+  const cuts = [SLICE.stomach.x, -44, ...AVES, PLACES['gut:digester_wall'].p[0]].filter((a) => a > x0 - 6 && a < x1 + 6).sort((a, b) => a - b); // (+ open in front of the Digester Wall, so you see it from the avenue)
   let s = x0;
   for (const c of [...cuts, x1 + 6]) {
     const e = Math.min(x1, c - 6);

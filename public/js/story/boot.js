@@ -300,6 +300,16 @@ function fakeGoal() {
   toast(`REHEARSAL: faked <b>${(g.text || o.text || g.type).slice(0, 60)}</b>`);
   return true;
 }
+// a step that waits on a choice (the truck, [FIRE]...) opened it when it started: closed with Esc, nothing would open
+// it again and the mission would stall. after 4 s of nothing on screen it's offered again (only its own step's)
+function reoffer() {
+  const S = ST.S;
+  for (const o of S.quests.objectives()) {
+    const q = S.defs.quests[o.quest], st = q && q.steps.find((x) => x.id === o.step);
+    if (!st || !Array.isArray(st.do) || (st.scene && !S.st.seen[st.scene])) continue; // (a choice inside a scene: the scene opens it)
+    for (const x of st.do) if (x && typeof x === 'object' && Array.isArray(x.do) && x.do.some((a) => typeof a === 'string' && a.startsWith('talk:choice/')) && (!x.if || S.test(x.if))) { S.run(x.do, 'reoffer'); return; }
+  }
+}
 function autostart() { if (LAB) return; for (const id of ST.S.defs.autostart) ST.S.quests.start(id); }
 
 // ---------------------------------------------------------------- every frame
@@ -323,6 +333,7 @@ export function frame(dt, now, cam) {
     if (ST.boss && (ST.bT = (ST.bT || 0) + dt) > 0.25) { ST.bT = 0; ST.boss.frame(); }
     { const busy = !!(ST.scene && ST.scene.playing()) || talking(); if (busy !== !!ST.held) { ST.held = busy; if (G.story && G.story.send) G.story.send('hold', { all: true, on: busy }); } } // (the referee freezes enemies through cutscenes and talks)
     if (OTPREV && (ST.otW = (ST.otW || 0) + dt) > 3) { if (!ST.otPrev) { ST.otPrev = import('./otpreview.js').then((m) => { m.start(); ST.otPrevM = m; }); } else if (ST.otPrevM) ST.otPrevM.previewFrame(dt * (ST.slowmo ?? 1)); } // (?otpreview=1: overtime's rehearsal)
+    if (!LAB && (ST.chT = locked() ? 0 : (ST.chT || 0) + dt) > 4) { ST.chT = 0; reoffer(); } // a choice closed without an answer comes back
     if (ST.talkQ && ST.talkQ.length && !talking()) { const [n, node] = ST.talkQ.shift(); startTalk(ST.S, n, node, () => save('talk')); }
     if (ST.simBack && now > ST.simBack) { ST.simBack = 0; if (!S.st.flags.sim_won) { S.run(['flag:sim_won']); card('step', 'TRAINING COMPLETE', 'the machine hums. something is coming out.', '', 2.4); } }
     S.tick(dt);
