@@ -19,17 +19,17 @@ export const STORY_GRADE = {
   on: true, // master switch (settings > video > "eerie story filter" turns it off for you: today's look)
   dark: 1, desat: 1, vignette: 1, grain: 1, flicker: 1,
   cold: 0x56709c, // what the dark leans toward (moonlight blue-grey, not navy)
-  tintCol: '#9aa6c4', // the overlay's multiply colour (a cold grey: darkens and cools at once)
+  tintCol: '#7a88b0', // the overlay's multiply colour (a cold blue-grey: darkens and cools at once)
   perDistrict: {
     // the Bottom at dusk: cold and dim, the warm pools are the lamps' own lights (stream.js pickLights)
-    bottom: { light: 0.5, sky: 0.55, fogIn: 0.62, desat: 0.38, cold: 0.4, vig: 0.8, tint: 0.3, grain: 0.07, flicker: 0.07 },
+    bottom: { light: 0.32, sky: 0.32, fogIn: 0.5, desat: 0.5, cold: 0.5, vig: 1, tint: 0.55, grain: 0.09, flicker: 0.07 },
     // the Commute: grey, empty, foggy (the dusty orange is mostly gone)
-    commute: { light: 0.55, sky: 0.62, fogIn: 0.42, desat: 0.62, cold: 0.3, vig: 0.7, tint: 0.28, grain: 0.07, flicker: 0 },
+    commute: { light: 0.38, sky: 0.42, fogIn: 0.3, desat: 0.78, cold: 0.4, vig: 0.95, tint: 0.5, grain: 0.09, flicker: 0 },
     // the Gut: red-black. the red stays (it's the point), the heart's flush still reads on top of it (ingame.js)
-    gut: { light: 0.62, sky: 0.55, fogIn: 0.9, desat: 0.12, cold: 0.08, vig: 0.85, tint: 0.16, grain: 0.08, flicker: 0.09 },
-    border: { light: 0.55, sky: 0.55, fogIn: 0.75, desat: 0.3, cold: 0.25, vig: 0.8, tint: 0.24, grain: 0.07, flicker: 0.06 },
+    gut: { light: 0.42, sky: 0.36, fogIn: 0.8, desat: 0.2, cold: 0.12, vig: 1, tint: 0.4, grain: 0.09, flicker: 0.09 },
+    border: { light: 0.38, sky: 0.36, fogIn: 0.65, desat: 0.35, cold: 0.3, vig: 1, tint: 0.48, grain: 0.09, flicker: 0.07 },
     // the train tunnel: near-black between the bulbs (the fight's own lamps and the knots' glow stay as bright)
-    train: { light: 0.55, sky: 0.6, fogIn: 0.8, desat: 0.25, cold: 0.3, vig: 0.85, tint: 0.2, grain: 0.09, flicker: 0.1 },
+    train: { light: 0.45, sky: 0.6, fogIn: 0.8, desat: 0.3, cold: 0.35, vig: 1, tint: 0.4, grain: 0.1, flicker: 0.1 },
   },
 };
 const NONE = { light: 1, sky: 1, fogIn: 1, desat: 0, cold: 0, vig: 0, tint: 0, grain: 0, flicker: 0 };
@@ -46,7 +46,7 @@ export function initGrade() {
   const game = document.getElementById('game'); if (game) game.after(el); else document.body.prepend(el); // right over the canvas: everything else draws on top
   try { // the grain: one small tile of noise, made once (tiled and jittered by CSS, never redrawn)
     const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'), im = x.createImageData(128, 128);
-    for (let i = 0; i < im.data.length; i += 4) { const v = (Math.random() * 255) | 0; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; }
+    for (let i = 0; i < im.data.length; i += 4) { const v = Math.random() * 2 - 1; im.data[i] = im.data[i + 1] = im.data[i + 2] = v > 0 ? 255 : 0; im.data[i + 3] = (Math.abs(v) * 255) | 0; } // (white or black specks with alpha: a plain blend, no blend mode to pay for)
     x.putImageData(im, 0, 0); el.querySelector('.gg').style.backgroundImage = `url(${c.toDataURL()})`;
   } catch (e) { /* no grain, still graded */ }
 }
