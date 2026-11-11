@@ -261,6 +261,16 @@ export function makeTrainFight(ST, { playScene }) {
     if (a.k === 'sweep') { a.tgt[2] = sweepZ(a); a.tgt[1] = sweepY(a); }
     if (a.k === 'snatch' && (a.st === 'reach' || a.st === 'hold') && ME.alive) a.tgt = [ME.pos[0], ME.pos[1] + RP.snatch.up, ME.pos[2] - 0.2];
     const P = H || armPose(T.geo, a, gap, v.decor ? v.ext : armExt(a)), J = armJoints(BORE, P, a.mouth, SEG); // (joints every 1.5 m, kept inside the bore)
+    // a severed stump goes limp: as it pulls in, the rope sags off the wall toward the floor with a wobble (looks only:
+    // a cut arm can't be hit). f = how far along the rope: the socket stays put, the cut end drops most
+    let sw = P.wrist, sd = P.dir;
+    if (a.st === 'cut' && J.length > 1) {
+      const u = clamp(a.t / (a.dur || 1), 0, 1), drop = 1.9 * ss(Math.min(1, u * 1.7)), wob = 0.22 * (1 - u);
+      const sag = (q, f) => [q[0] * (1 - 0.14 * (drop / 1.9) * f), Math.max(0.3, q[1] - drop * f + Math.sin(time * 13 + f * 6) * wob * f), q[2] + 0.25 * drop * f];
+      for (let k = 1; k < J.length; k++) J[k] = sag(J[k], (k / (J.length - 1)) ** 1.6);
+      sw = sag(P.wrist, 1); const L = J[J.length - 2], dx = sw[0] - L[0], dy = sw[1] - L[1], dz = sw[2] - L[2], dl0 = Math.hypot(dx, dy, dz) || 1; sd = [dx / dl0, dy / dl0, dz / dl0];
+      if (Math.hypot(J[J.length - 1][0] - P.wrist[0], J[J.length - 1][1] - P.wrist[1], J[J.length - 1][2] - P.wrist[2]) < 1e-6) J[J.length - 1] = sw;
+    }
     const n = J.length - 1;
     while (v.segs.length < n) { const s = b.A.arm_seg.clone(true); v.g.add(s); v.segs.push(s); }
     for (let k = 0; k < v.segs.length; k++) {
@@ -269,9 +279,9 @@ export function makeTrainFight(ST, { playScene }) {
       s.position.set(A0[0], A0[1], A0[2]); s.up.set(rx / rl, ry / rl, 0); s.lookAt(_p.set(B0[0], B0[1], B0[2])); // (up = out from the bore's axis: the flat side lies on the wall)
       s.scale.set(1, flatK(a.mouth, k), clamp(Math.hypot(B0[0] - A0[0], B0[1] - A0[1], B0[2] - A0[2]) / SEG, 0.05, 1.05));
     }
-    const w = P.wrist, cut = a.st === 'cut', d = a.gp && a.st !== 'back' ? [a.gp[0] - w[0], a.gp[1] - w[1], a.gp[2] - w[2]] : P.dir, dl = Math.hypot(d[0], d[1], d[2]) || 1;
+    const w = sw, cut = a.st === 'cut', d = a.gp && a.st !== 'back' ? [a.gp[0] - w[0], a.gp[1] - w[1], a.gp[2] - w[2]] : P.dir, dl = Math.hypot(d[0], d[1], d[2]) || 1;
     v.hand.visible = !cut; v.stump.visible = cut;
-    if (cut) { v.stump.position.set(w[0], w[1], w[2]); v.stump.up.set(0, 1, 0); v.stump.lookAt(_p.set(w[0] + P.dir[0], w[1] + P.dir[1], w[2] + P.dir[2])); v.stump.scale.setScalar(1.15); }
+    if (cut) { v.stump.position.set(w[0], w[1], w[2]); v.stump.up.set(0, 1, 0); v.stump.lookAt(_p.set(w[0] + sd[0], w[1] + sd[1], w[2] + sd[2])); v.stump.scale.setScalar(1.15); }
     else {
       // 0.4 m past the wrist, pointing the way it goes; a hand that would go through the lining is laid on it instead
       const hf = H ? H.hand : handFit(BORE, w, [d[0] / dl, d[1] / dl, d[2] / dl], Math.abs(d[1] / dl) > 0.9 ? [0, 0, 1] : [0, 1, 0]);
@@ -351,7 +361,7 @@ export function makeTrainFight(ST, { playScene }) {
     let v = F.arms.get(m.id);
     if (m.st === 'gone') { if (v) { freeArm(v); F.arms.delete(m.id); } return; }
     if (!v3(m.tgt) || typeof m.k !== 'string' || !fin(m.sock)) return;
-    const a = { id: m.id, k: m.k, sock: clamp(m.sock | 0, 0, m.mouth ? 3 : 11), mouth: m.mouth ? 1 : 0, st: String(m.st), t: 0, dur: fin(m.dur) ? m.dur : 0, tgt: m.tgt.slice(), hi: !!m.hi, side: m.side || 0, rear: fin(m.rear) ? m.rear : 0, hp: fin(m.hp) ? m.hp : 1, max: fin(m.max) && m.max > 0 ? m.max : 1, ...(fin(m.wa) ? { wa: m.wa } : {}), ...(v3(m.gp) ? { gp: m.gp.slice() } : {}) };
+    const a = { id: m.id, k: m.k, sock: clamp(m.sock | 0, 0, m.mouth ? 3 : 11), mouth: m.mouth ? 1 : 0, st: String(m.st), t: 0, dur: fin(m.dur) ? m.dur : 0, tgt: m.tgt.slice(), hi: !!m.hi, side: m.side || 0, rear: fin(m.rear) ? m.rear : 0, hp: fin(m.hp) ? m.hp : 1, max: fin(m.max) && m.max > 0 ? m.max : 1, ...(fin(m.wa) ? { wa: m.wa } : {}), ...(v3(m.gp) ? { gp: m.gp.slice() } : {}), ...(fin(m.e0) ? { e0: clamp(m.e0, 0, 1) } : {}) };
     if (!v) { v = newArm(a); F.arms.set(m.id, v); if (a.k === 'sweep') { hud.msg(a.hi ? 'HEAD HEIGHT. GET DOWN.' : 'KNEE HEIGHT. JUMP.', 1.3, 'reverse'); sfx.rpSweep(false); } }
     else { const was = v.a.st; v.a = a; if (a.st === 'cut' && was !== 'cut') severed(v, m); if (a.st === 'grip' && was !== 'grip') { sfx.rpHaul(v.wrist, 1.4); G.shake = Math.max(G.shake, 0.2); } if (a.st === 'hold' && was !== 'hold') hud.msg('IT HAS YOU. SHOOT THE WRIST.', 2, 'reverse'); if (a.k === 'sweep' && a.st === 'sweep' && was !== 'sweep') sfx.rpSweep(true); }
   }

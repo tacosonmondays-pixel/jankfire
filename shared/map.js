@@ -3047,8 +3047,8 @@ void 0; // the shelves' sand, the sandbars' (a hair lower: where one runs into a
 // a flight of solid steps along x (alongX) or z, from a0 (its foot, at ya) to a1 (its head, yb), c0..c1 across.
 // rail: +1 / -1 a rail up the c1 / c0 side. returns { bot, top }: points just off each end, for the walk graph (the
 // foot's well clear of the first step: the graph keeps 0.45 m off anything you'd bump into)
-function flight(B, alongX, a0, a1, c0, c1, ya, yb, mat = 'wood', rail = 0) {
-  const n = Math.max(1, Math.ceil((yb - ya) / 0.45)), h = (yb - ya) / n, run = (a1 - a0) / n, s = Math.sign(run), cm = (c0 + c1) / 2;
+function flight(B, alongX, a0, a1, c0, c1, ya, yb, mat = 'wood', rail = 0, stepH = 0.45) {
+  const n = Math.max(1, Math.ceil((yb - ya) / stepH)), h = (yb - ya) / n, run = (a1 - a0) / n, s = Math.sign(run), cm = (c0 + c1) / 2;
   const e = rail > 0 ? Math.max(c0, c1) - 0.05 : Math.min(c0, c1) + 0.05;
   for (let i = 1; i <= n; i++) {
     const p0 = a0 + (i - 1) * run, p1 = a0 + i * run, y = ya + i * h;
@@ -3132,7 +3132,7 @@ function shifted(B, dx, dz) { // a builder that puts everything dx, dz over
 }
 function isPiece(B0, D0, dx, dz, st) {
   const B = shifted(B0, dx, dz), D = shifted(D0, dx, dz);
-  return { B, D, add: B.add, W: B.local(0, 0, 0), up: (f) => { st.push({ bot: [f.bot[0] + dx, f.bot[1], f.bot[2] + dz], top: [f.top[0] + dx, f.top[1], f.top[2] + dz] }); return f; } };
+  return { B, D, add: B.add, W: B.local(0, 0, 0), up: (f) => { st.push({ bot: [f.bot[0] + dx, f.bot[1], f.bot[2] + dz], top: [f.top[0] + dx, f.top[1], f.top[2] + dz], ...(f.via ? { via: f.via.map((p) => [p[0] + dx, p[1], p[2] + dz]) } : {}) }); return f; } };
 }
 // Mount Kaboom (round 0, -3): three terraces, two ways up each, the crater (its rim open at the two stairs), the throat
 // right down. returns the throat in the world (the island under it needs the same hole)
@@ -3226,28 +3226,33 @@ function kaboom(B0, D0, dx, dz) {
   for (const [x, z, s] of [[-13, -10, 1.2], [11, -7.5, 1.3], [-10.5, 5, 1.0], [6.5, -12, 0.9], [-5, 5.5, 0.8], [13.5, 3, 1.1], [-20.5, -12.5, 1.0], [2, -17, 1.1]]) B.add(x - s, 0, z - s * 0.8, x + s, s * 1.2, z + s * 0.8, 'basalt'); // boulders on the flanks (cover on the way up)
   return { throat: [T[0] + dx, T[1] + dz, T[2] + dx, T[3] + dz], f };
 }
-function volcano(B0, D0, dx, dz, st, RK) { // (RK: the map's rock model tag. its terraces, lip, rim and boulders are drawn as real rock, look only)
+function volcano(B0, D0, dx, dz, st) { // (Islands S&D: drawn as one Blender model, volcano_sd.glb, over these boxes: look only)
   const { B, D, add, W, up } = isPiece(B0, D0, dx, dz, st); const T = [-2, -5, 2, -1];
-  slab(W, -15, -16, 15, 10, 0, 3, 'basalt', T, RK); slab(W, -10, -12, 10, 6, 3, 6, 'basalt', T, RK); slab(W, -6, -9, 6, 3, 6, 9, 'basalt', T, RK);
+  const n0 = B0.boxes.length;
+  // three terraces, the lower two cut across their corners (the model's basalt columns run round them), the throat through them all
+  for (const b of octoBoxes(-15, -16, 15, 10, VOLC.c1, 6, T)) add(b[0], 0, b[1], b[2], 3, b[3], 'basalt');
+  for (const b of octoBoxes(-10, -13.5, 10, 7.5, VOLC.c2, 5, T)) add(b[0], 3, b[1], b[2], 6, b[3], 'basalt'); // (deeper than the top at both ends: a landing at the foot of each stair up to the crater)
+  slab(W, -6, -9, 6, 3, 6, 9, 'basalt', T);
   add(-2, 0, -5, 2, LAVA_FLOOR, -1, 'basalt'); D.add(-2, 4.3, -5, 2, 4.5, -1, 'lava'); // down the throat: deep lava over a rock plug. fall in and you sink into it, burning (map.pits)
-  for (const [x0, z0, x1, z1] of [[-2.3, -5.3, 2.3, -5], [-2.3, -1, 2.3, -0.7], [-2.3, -5, -2, -1], [2, -5, 2.3, -1]]) add(x0, 9, z0, x1, 9.3, z1, 'basalt', RK); // its lip
+  for (const [x0, z0, x1, z1] of [[-2.3, -5.3, 2.3, -5], [-2.3, -1, 2.3, -0.7], [-2.3, -5, -2, -1], [2, -5, 2.3, -1]]) add(x0, 9, z0, x1, 9.3, z1, 'basalt'); // its lip
   D.add(-1.6, 9.3, -0.66, 1.6, 9.9, -0.6, 'advolcano', { fit: 1 });
-  for (const [x0, z0, x1, z1] of [[-6, -9, -2.2, -8.4], [2.2, -9, 6, -8.4], [-6, 2.4, -2.2, 3], [2.2, 2.4, 6, 3], [-6, -8.4, -5.4, 2.4], [5.4, -8.4, 6, 2.4]]) add(x0, 9, z0, x1, 9.9, z1, 'basalt', RK); // the rim, open at the two stairs
-  // lava down the north and west faces
-  for (const [x, w] of [[3.2, 0.7]]) { D.add(x, 6, -9.06, x + w, 9, -9, 'lava'); D.add(x, 6, -12, x + w, 6.03, -9, 'lava'); D.add(x, 3, -12.06, x + w, 6, -12, 'lava'); D.add(x, 3, -16, x + w, 3.03, -12, 'lava'); D.add(x, 0, -16.06, x + w, 3, -16, 'lava'); D.add(x, 0.03, -18.5, x + w, 0.06, -16, 'lava'); }
-  D.add(-6.06, 6, -6, -6, 9, -5.4, 'lava'); D.add(-10, 6, -6, -6, 6.03, -5.4, 'lava'); D.add(-10.06, 3, -6, -10, 6, -5.4, 'lava'); D.add(-15, 3, -6, -10, 3.03, -5.4, 'lava');
-  // the ways up: south or west onto the first terrace, east or west onto the second, north or south onto the top
-  up(flight(B, false, 14.2, 10, -2, 2, 0, 3, 'basalt'));
-  up(flight(B, true, -19.2, -15, -9, -5.5, 0, 3, 'basalt'));
-  up({ ...flight(B, true, 14.2, 10, -4, 0, 3, 6, 'basalt'), bot: [14.6, 3, -2] }); // (the terrace is narrow: their feet are right at its edge)
-  up({ ...flight(B, true, -14.2, -10, 0, 3.5, 3, 6, 'basalt'), bot: [-14.6, 3, 1.75] });
-  up({ ...flight(B, false, -11.9, -9, -2, 2, 6, 9, 'basalt'), bot: [3, 6, -11.5] });
-  up({ ...flight(B, false, 5.9, 3, -2, 2, 6, 9, 'basalt'), bot: [3, 6, 5] });
+  for (const [x0, z0, x1, z1] of [[-6, -9, -2.2, -8.4], [2.2, -9, 6, -8.4], [-6, 2.4, -2.2, 3], [2.2, 2.4, 6, 3], [-6, -8.4, -5.4, 2.4], [5.4, -8.4, 6, 2.4]]) add(x0, 9, z0, x1, 9.9, z1, 'basalt'); // the rim, open at the two stairs
+  // the ways up (stone steps 0.3 m high): south or west onto the first terrace, east or west onto the second, north or south onto the top
+  up(flight(B, false, 14.2, 10, -2, 2, 0, 3, 'basalt', 0, 0.3));
+  up(flight(B, true, -19.2, -15, -9, -5.5, 0, 3, 'basalt', 0, 0.3));
+  up({ ...flight(B, true, 14.2, 10, -4, 0, 3, 6, 'basalt', 0, 0.3), bot: [14.6, 3, -2] }); // (the terrace is narrow: their feet are right at its edge)
+  up({ ...flight(B, true, -14.2, -10, 0, 3.5, 3, 6, 'basalt', 0, 0.3), bot: [-14.6, 3, 1.75] });
+  up({ ...flight(B, false, -11.9, -9, -2, 2, 6, 9, 'basalt', 0, 0.3), bot: [0, 6, -12.6] }); // (on the landing, in a walk-graph cell that's all floor)
+  up({ ...flight(B, false, 5.9, 3, -2, 2, 6, 9, 'basalt', 0, 0.3), bot: [0, 6, 6.6] });
   D.add(3, 1.2, 10.02, 9, 2.4, 10.08, 'advolcano', { fit: 1 });
   // boulders on the terraces (cover on the way up)
-  for (const [x, z, y, s] of [[-12.5, -13, 3, 1.1], [12, -8, 3, 1.3], [-11.5, 7, 3, 1.0], [7.5, -10.5, 6, 0.9], [-8, 4, 6, 0.8]]) { add(x - s, y, z - s * 0.8, x + s, y + s * 1.2, z + s * 0.8, 'basalt', RK); }
+  for (const [x, z, y, s] of [[-12.5, -13, 3, 1.1], [12, -8, 3, 1.3], [-11.5, 7, 3, 1.0], [7.5, -10.5, 6, 0.9], [-8, 4, 6, 0.8]]) add(x - s, y, z - s * 0.8, x + s, y + s * 1.2, z + s * 0.8, 'basalt');
+  B0.boxes.arch.push({ id: 'volcano_sd', p: [dx, 0, dz], r: 0 }); const tag = { av: 'volcano_sd', ai: B0.boxes.arch.length - 1 };
+  for (let i = n0; i < B0.boxes.length; i++) Object.assign(B0.boxes[i], tag);
+  // (the throat's lava and the pictures stay the game's; the lava running down the sides is the model's)
   return [T[0] + dx, T[1] + dz, T[2] + dx, T[3] + dz];
 }
+const VOLC = { c1: 4.5, c2: 2.5 }; // S&D's volcano: how far the first and second terraces are cut across their corners
 // the tiki bar (round -13, 18): a bamboo counter under a thatched roof on four posts, stools, the back bar and its bottles
 function tikiBar(B0, D0, dx, dz, r) {
   const { B, D, add } = isPiece(B0, D0, dx, dz, []), pick = (a) => a[(r() * a.length) | 0];
@@ -3361,21 +3366,67 @@ function octoBoxes(x0, z0, x1, z1, c, n = 4, hole = null) {
   }
   return cut;
 }
-const LH = { c: 1.757, lc: 1.172 }; // the lighthouse's corner cuts: the tower (a regular octagon 6 m across), the lantern room (4 m)
+const LH = { c: 1.757, lc: 1.172, hole: [76, -8.75, 79, -4.757] }; // the lighthouse's corner cuts: the tower (a regular octagon 6 m across), the lantern room (4 m); the gallery's hole over the stair's top
+// the lighthouse's iron stair (tools/blender/arch/make_lighthouse.py draws the same numbers): 1.8 m wide round the
+// tower's eight faces from the west / south-west corner, up the south-west face first, 9 steps a face and a little
+// landing at each corner, 0.225 m a step (80 of them to the gallery at 18). -> cells: slabs' tops [x0, z0, x1, z1, h]
+// on a grid lined up with the steps on the square faces (a step a cell there; on the cut faces each cell takes the step
+// its middle is on, so walking up them every cell you meet is the next one up), posts [x, z, h] along the open side,
+// and the walk graph's way up (bot, via, top)
+export function lhStair() {
+  const C = [82, -6], A0 = 3, A1 = 4.8, T = Math.tan(Math.PI / 8), L = A0 * T, g = 2 * L / 9, r = 18 / 80, MID = 3.95; // (MID: the bots' line, clear of the tower's corners when they cut across a landing)
+  const F = [...Array(8)].map((_, k) => { const a = (135 - 45 * k) * Math.PI / 180; return { n: [Math.cos(a), Math.sin(a)], t: [Math.sin(a), -Math.cos(a)] }; });
+  const us = (k, x, z) => { const f = F[k], px = x - C[0], pz = z - C[1]; return [px * f.n[0] + pz * f.n[1], px * f.t[0] + pz * f.t[1]]; };
+  const at = (k, u, s) => [C[0] + F[k].n[0] * u + F[k].t[0] * s, C[1] + F[k].n[1] * u + F[k].t[1] * s];
+  const H = (x, z) => { // the step (or landing) over (x, z), its top; null off the stair
+    for (let k = 0; k < 8; k++) {
+      const [u, s] = us(k, x, z);
+      if (u >= A0 && u <= A1 && s >= -L && s <= L) return (10 * k + Math.min(8, Math.floor((s + L) / g)) + 1) * r;
+      if (k < 7) { const [u2, s2] = us(k + 1, x, z); if (s > L && s2 < -L && u <= A1 && u2 <= A1) return (10 * k + 10) * r; }
+    }
+    return null;
+  };
+  const cells = [], gx = C[0] - L, gz = C[1] - L, n0 = Math.ceil((A1 + 0.3) / g) + 5;
+  for (let j = -n0; j <= n0; j++) {
+    const z0 = gz + j * g, z1 = z0 + g; let run = null;
+    for (let i = -n0; i <= n0 + 1; i++) {
+      const x0 = gx + i * g, h = i <= n0 ? H(x0 + g / 2, z0 + g / 2) : null;
+      if (run && h === run[4]) { run[2] = x0 + g; continue; }
+      if (run) cells.push(run);
+      run = h == null ? null : [x0, z0, x0 + g, z1, h];
+    }
+  }
+  const posts = [], E = A1 * T, np = Math.ceil(2 * E / 0.3);
+  for (let k = 0; k < 8; k++) for (let i = 0; i < np; i++) {
+    const s = -E + 2 * E * i / np, [x, z] = at(k, A1 + 0.07, s), [hx, hz] = at(k, A1 - 0.15, s), h = H(hx, hz); // (just outside the walk: a body's corner reaches 0.57 out on a cut face)
+    if (h != null && h > 0.7) posts.push([x, z, h]); // (none by the first three steps: you can get on from the side down there)
+  }
+  const via = [];
+  for (let k = 0; k < 8; k++) {
+    const a = at(k, MID, -L + g / 2), b = at(k, MID, L - g / 2);
+    via.push([a[0], (10 * k + 1) * r, a[1]], [b[0], (10 * k + 9) * r, b[1]]);
+    if (k < 7) { const ph = (135 - 45 * k - 22.5) * Math.PI / 180, R = A0 / Math.cos(Math.PI / 8) + 0.7; via.push([C[0] + Math.cos(ph) * R, (10 * k + 10) * r, C[1] + Math.sin(ph) * R]); }
+  }
+  const b0 = at(0, MID, -L - 1.3), t0 = at(7, MID, L + 0.8);
+  return { cells, posts, via, bot: [b0[0], 0, b0[1]], top: [t0[0], 18, t0[1]], H, r, g };
+}
 function lighthouse(B0, D0, dx, dz, st, o = {}) {
   const { B, D, add, W, up } = isPiece(B0, D0, dx, dz, st);
   const n0 = B0.boxes.length, d0 = D0.boxes.length; // (drawn as one Blender model, lighthouse.glb / lighthouse_sd.glb without the stair: look only)
   // an octagonal tower (its flats where the old square's sides were: the stair still runs flush along them)
   [['white', 0], ['toyred', 4.5], ['white', 9], ['toyred', 13.5]].forEach(([m, y]) => { for (const b of octoBoxes(79, -9, 85, -3, LH.c)) add(b[0], y, b[1], b[2], y + 4.5, b[3], m); });
   if (o.climb !== false) {
-    up(flight(B, true, 79, 85, -3, -1.5, 0, 4.5, 'metal', 1)); add(85, 4.05, -3, 86.5, 4.5, -1.5, 'metal');
-    up({ ...flight(B, false, -3, -9, 85, 86.5, 4.5, 9, 'metal', 1), bot: [85.6, 4.5, -2.4] }); add(85, 8.55, -10.5, 86.5, 9, -9, 'metal'); // (the landings are one cell)
-    up({ ...flight(B, true, 85, 79, -10.5, -9, 9, 13.5, 'metal', -1), bot: [85.6, 9, -9.6] }); add(77.5, 13.05, -10.5, 79, 13.5, -9, 'metal');
-    up({ ...flight(B, false, -9, -3, 77.5, 79, 13.5, 18, 'metal', -1), bot: [78.4, 13.5, -9.6] });
+    // the iron stair: once round all eight faces (lhStair), slabs the height of each step under it (drawn by the model,
+    // lighthouse.glb), posts along its open side, one walk-graph stair that winds round with it
+    const S = lhStair();
+    for (const [x0, z0, x1, z1, h] of S.cells) add(x0, h - 0.3, z0, x1, h, z1, 'metal');
+    for (const [x, z, h] of S.posts) add(x - 0.07, h - 0.3, z - 0.07, x + 0.07, h + 1.3, z + 0.07, 'metal'); // (taller than the 1 m rail drawn: never a step up from the stair beside it)
+    up({ bot: S.bot, top: S.top, via: S.via });
     // the gallery: an octagon 12 m across round the top (open over the last flight), a railing round it: rails on the
     // flats, close-set posts along the cut corners (nobody squeezes between them)
     const GC = 3.515;
-    for (const b of octoBoxes(76, -12, 88, 0, GC, 6, [77.5, -9, 85, -3])) add(b[0], 17.6, b[1], b[2], 18, b[3], 'metal');
+    for (const b of octoBoxes(76, -12, 88, 0, GC, 6, LH.hole)) add(b[0], 17.6, b[1], b[2], 18, b[3], 'metal');
+    add(76.1, 18, LH.hole[1] - 0.1, LH.hole[2], 19, LH.hole[1], 'metal'); add(76.1, 18, LH.hole[3], 77.05, 19, LH.hole[3] + 0.1, 'metal'); // (the stair well's rails: the way off it is its south end, over the stair's last step)
     for (const [x0, z0, x1, z1] of [[76 + GC, -12, 88 - GC, -11.9], [76 + GC, -0.1, 88 - GC, 0], [76, -12 + GC, 76.1, -GC], [87.9, -12 + GC, 88, -GC]]) add(x0, 18, z0, x1, 19, z1, 'metal');
     for (const [ax, az, bx, bz] of [[76, -12 + GC, 76 + GC, -12], [88 - GC, -12, 88, -12 + GC], [76, -GC, 76 + GC, 0], [88 - GC, 0, 88, -GC]]) {
       const n = Math.ceil(Math.hypot(bx - ax, bz - az) / 0.32);

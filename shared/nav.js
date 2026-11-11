@@ -135,6 +135,7 @@ export function buildNav(boxes, o) {
   for (const s of o.stairs || []) { // top landing <-> middle of the flight <-> bottom landing
     const a = cellOf(s.top), b = cellOf(s.bot);
     if (a < 0 || b < 0) { g.bad.push(s); continue; }
+    if (s.via) { let prev = b; for (const p of s.via) { const m = addNode(p, lvOf(p)); link(prev, m); prev = m; } link(prev, a); continue; } // (a stair that winds: its points in order, bottom to top)
     const m = addNode([(s.top[0] + s.bot[0]) / 2, (s.top[1] + s.bot[1]) / 2, (s.top[2] + s.bot[2]) / 2], lvOf(s.bot));
     link(a, m); link(m, b);
   }
