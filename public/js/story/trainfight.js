@@ -321,27 +321,28 @@ export function makeTrainFight(ST, { playScene }) {
     const h = v.h, hd = haulHand(BORE, h), tip = [0, 1, 2].map((n) => hd.o[n] + hd.f[n] * 1.7 - hd.u[n] * 0.3), k = clamp(1.4 - F.shown / 30, 0.3, 1.2);
     fx.dust(tip, 4); fx.spray(tip, 7, [0x7a3424, 0x4a2418, 0x15100e, 0x2a2220], 3.5, 0.55, 0.07, 12, 1); fx.sparks(tip, [0, 0, -1], 5, false);
     if (F.live) { sfx.rpGrip(tip, k); sfx.rpScrape(tip, clamp((h.zP - face - HAUL.let) / Math.max(1, T.set.v || SPEED), 0.3, 1.2), k); if (i === 0) sfx.rpHaul(tip, k); }
-    mark(h, tip[2] - HAUL.skid * 0.5);
+    mark(h, tip[2] - 0.05); // (under and just ahead of the fingertips: what they gouged as they bit and skidded)
   }
   // claw marks: a few dark gouges ahead of where the fingers bit, on the wall (so they go by with it) and fading. pooled
   let _claw = null;
   function clawTex() {
     if (_claw) return _claw;
     const c = document.createElement('canvas'); c.width = 64; c.height = 64; const x = c.getContext('2d');
-    x.fillStyle = 'rgba(14,8,6,0.35)'; x.beginPath(); x.ellipse(32, 34, 28, 24, 0, 0, Math.PI * 2); x.fill(); // the soot smear
-    x.strokeStyle = 'rgba(8,4,3,0.95)'; x.lineCap = 'round';
-    for (const [cx, w] of [[11, 5], [25, 6], [39, 6], [53, 5]]) { x.lineWidth = w; x.beginPath(); x.moveTo(cx, 6); x.lineTo(cx + 2, 30); x.lineTo(cx - 1, 58); x.stroke(); }
+    x.fillStyle = 'rgba(14,8,6,0.3)'; x.beginPath(); x.ellipse(32, 36, 26, 24, 0, 0, Math.PI * 2); x.fill(); // the soot smear
+    for (const [cx, w] of [[12, 4], [25, 5], [39, 5], [52, 4]]) { // a groove a finger, deep at the far end where it bit: dark, with fresh brick along one lip
+      x.fillStyle = 'rgba(214,140,96,0.55)'; x.beginPath(); x.moveTo(cx + 1, 4); x.lineTo(cx + 1 + w * 0.6, 60); x.lineTo(cx + 1 - w * 0.2, 60); x.closePath(); x.fill();
+      x.fillStyle = 'rgba(6,3,2,0.9)'; x.beginPath(); x.moveTo(cx, 4); x.lineTo(cx + w / 2, 60); x.lineTo(cx - w / 2, 60); x.closePath(); x.fill(); }
     _claw = new THREE.CanvasTexture(c); return _claw;
   }
   function mark(h, zc) {
     const s = T.set;
-    if (!s.marks) { s.marks = []; const geo = new THREE.PlaneGeometry(1.05, 0.65); for (let i = 0; i < 6; i++) { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: clawTex(), transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 })); m.visible = false; m.userData.t = 9; s.g.add(m); s.marks.push(m); } }
+    if (!s.marks) { s.marks = []; const geo = new THREE.PlaneGeometry(0.95, 0.75); for (let i = 0; i < 6; i++) { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: clawTex(), transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 })); m.visible = false; m.userData.t = 9; s.g.add(m); s.marks.push(m); } }
     const m = s.marks.reduce((p, q) => (q.userData.t > p.userData.t ? q : p)), a = h.a, r = R - 0.02;
     m.userData = { t: 0, z: zc, run: s.run || 0 }; m.visible = true;
     m.position.set(r * Math.cos(a), CY + r * Math.sin(a), zc); m.up.set(0, 0, 1); m.lookAt(_p.set(0, CY, zc)); // (faces the axis, its length along the tunnel)
   }
   function stepMarks(dt) {
-    for (const m of T.set.marks || []) { const u = m.userData; if (!m.visible) continue; u.t += dt; m.position.z = u.z - ((T.set.run || 0) - u.run); m.material.opacity = 0.85 * (1 - ss((u.t - 1.6) / 1.4)); if (u.t > 3) m.visible = false; }
+    for (const m of T.set.marks || []) { const u = m.userData; if (!m.visible) continue; u.t += dt; m.position.z = u.z - ((T.set.run || 0) - u.run); m.material.opacity = 0.75 * (1 - ss((u.t - 1.6) / 1.4)); if (u.t > 3) m.visible = false; }
   }
   function freeArm(v) { G.scene.remove(v.g); if (v.glow) v.glow.dispose(); if (v.halo) v.halo.material.dispose(); }
   function clearArms() { for (const v of F.arms.values()) freeArm(v); F.arms.clear(); }
