@@ -1,6 +1,10 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '8.1', date: '2026-11-11', title: 'INTAKE', items: [
+    'the shredder got rebuilt in blender. a big yellow funnel, a cage of red teeth, a turbine down the throat. the wood chipper skin has wheels now. it still eats people.',
+    'TEST: settings > video > "water physics (test)". ripples that actually spread and bounce off the bank when you wade, shoot or blow up the water. mid and too hd, off unless you turn it on. try the desert pond.',
+  ] },
   { v: '8.0', date: '2026-11-11', title: 'ACTUAL FIRE', items: [
     'fire is fire now. a real rendered flame with a white-hot middle, on everything that burns, burning people included. potato keeps the cartoon one.',
     'prefer the cartoon flame? settings > video > "real smoke, fire + splashes" turns it back.',
