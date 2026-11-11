@@ -179,7 +179,7 @@ function hop(make) {
   return true;
 }
 const travel = (map) => Object.hasOwn(WORLDS, map) && hop((s) => travelTo(s, map));
-const travelBack = () => hop((s) => travelHome(s));
+const travelBack = (to) => hop((s) => travelHome(s, to)); // to: { map, p, yaw } another spot to come out at (worlds.js)
 
 // ------------------------------------------------------------ saving
 function save(why) { if (G.joined && G.mode === 'story') { pendingSave = why || 'manual'; send('save', { why: pendingSave }); } }
