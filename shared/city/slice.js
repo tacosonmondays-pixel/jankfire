@@ -71,7 +71,24 @@ export const PLACES = {
   'bottom:rooftops': { p: [-260, 20, 120], name: 'the Wok Roofs' },
   'gut:campus': { p: [-200, 40, -80], name: 'Gristle & Sons Campus' },
   'gut:big_heart': { p: [-94.47, 40, -69.13], name: 'the Big Heart' }, // (its listening spot, 9 m out in front: bigheart.js)
+  // act I (the world wiring pass): every place a mission step points at. r = the zone's reach (m, flat; a zone also
+  // wants you within 4 m of its height), sized for how you arrive (on foot, by grapple, in a car)
+  'sims:suburb': { p: [-189, 8.15, 185.2], name: 'the Machine (ENTER THE SIMS)', r: 3.4 }, // the sims are in the Machine: its terminal (storyworld.js)
+  'gut:digester_wall': { p: [-87, 40, -137.4], name: 'the Digester Wall', r: 6 }, // the office block's face on the north side of Peristalsis Avenue (gut.js digesterWall)
+  'gut:clinic_bev': { p: [-84.3, 36, -3.2], name: "Bev's Clinic", r: 3.5 }, // the doorstep of a flesh-eaten bungalow on the border, 40 m west of the gate (gut.js bevClinic)
+  'bottom:service_tunnel': { p: [-205.8, 4, 206.2], name: 'the Service Tunnel', r: 3 }, // a staff door in the wall under the Lost & Found, its west yard (bottom.js serviceTunnel)
+  'commute:underhill_loop': { p: [311, 0, -96], name: 'the Under-Hill Loop', r: 6 }, // the Loop's portal in the east cliff (commute.js loopPortal); y: groundY
+  'commute:tunnel_mouth': { p: [292, 0, -96], name: 'the Tunnel Mouth', r: 8 }, // the viaduct stub out of it, where the train comes out
 };
+// act I zone sizes for places that were already here (a car arrives fast; the Lost & Found is a big hall)
+Object.assign(PLACES['commute:ring_road'], { r: 14 });
+Object.assign(PLACES['gut:peristalsis'], { r: 12 });
+Object.assign(PLACES['gut:border'], { r: 8 });
+Object.assign(PLACES['bottom:lostfound'], { r: 7 });
+Object.assign(PLACES['gut:choir_lung'], { r: 9 });
+Object.assign(PLACES['bottom:rooftops'], { p: [-163.5, 15, 208.8], r: 7 }); // the real roofs: the stack east of the Lost & Found's yard, 10 m over the lane (bottom.js wokRoofs)
+Object.assign(PLACES['bottom:soup_kitchen'], { p: [-106.5, 0, 235.2], r: 5 }); // in front of Sharon's stall (it was inside the stall)
+for (const k of ['commute:underhill_loop', 'commute:tunnel_mouth']) PLACES[k].p[1] = groundY(PLACES[k].p[0], PLACES[k].p[2]);
 
 const fogLight = (hemi, hemiG, hk, sun, sk) => ({ hemi: [hemi, hemiG, hk], sun: [sun, sk] });
 registerCity('slice', {

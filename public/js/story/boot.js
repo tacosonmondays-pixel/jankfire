@@ -15,6 +15,7 @@ import { toSave, fromSave } from '/shared/story/state.js';
 import * as lab from '/shared/story/content/test/lab.js';
 import * as overdue from '/shared/story/content/overdue.js'; // the full script, as an engine pack (PR #76)
 import { PLACES } from '/shared/city/slice.js'; // the world lane's real spots for the script's zones (the slice city)
+import { npcSpot } from '/shared/city/cast_slice.js'; // ...and where the cast stands in it (per mission step)
 import { actors, spawnActor, despawnActor, clearActors, updateActors, dropTo, play } from './actors.js';
 import { otFrame } from './overtime.js'; // (mr. overtime's clips, marks, damage and fx)
 import { startTalk, talkKey, talkFrame, talking } from './talk.js';
@@ -159,6 +160,7 @@ function stage() {
     if (ST.scene && Object.keys(ST.S.st.quests).length && ST.S.st.log.length && !ST.recapped) { ST.recapped = true; setTimeout(() => ST.scene.playScene({ id: 'recap', kind: 'recap', skip: true }), 1500); } // PREVIOUSLY ON OVERDUE
   }
   const D = ST.S.defs;
+  if (inStory() && G.story.fromSim) { G.story.fromSim = false; if (!ST.S.st.flags.sim_won) setTimeout(() => { if (ST.S.st.flags.sim_won) return; ST.S.run(['flag:sim_won']); card('step', 'TRAINING COMPLETE', 'the machine hums. something is coming out.', '', 2.4); }, 1200); } // back from a sim match (main.js onMain): you won the opening sim
   if (!LAB) { // the script: lay it out, start a new game once, offer the quests that can start
     rehearse();
     if (!ST.S.st.flags.init_done) { ST.S.run(D.init || []); ST.S.st.flags.init_done = true; for (const z of Object.values(D.zones)) if (z.district) ST.S.st.vars[`clock.${z.district}`] ??= 17 * 60 + 29; }
@@ -217,11 +219,14 @@ function rehearse() {
   for (let z = -span; z <= span; z += 6.5) for (let x = -span; x <= span; x += 6.5) if (city || (Math.hypot(x, z - 6) > 6 && Math.hypot(x, z + 12) > 6 && Math.hypot(x, z + 4) > 4)) slots.push([c0[0] + x, c0[1], c0[2] + (city ? 34 + z : z + 4)]); // (city: the rehearsal yard is the street south of the depot)
   slots.sort((a, b) => Math.hypot(a[0] - c0[0], a[2] - c0[2]) - Math.hypot(b[0] - c0[0], b[2] - c0[2])); // act I's districts sort first, so they land nearest the Lost & Found
   let i = 0;
-  for (const id of ids) { const p = fixed[id] || slots[i++] || c0.slice(); p[1] = dropTo([p[0], p[1], p[2]], 30); REH.zones[id] = p; D.zones[id].r = Math.min(D.zones[id].r || 2.5, city && fixed[id] ? 4 : 2.5); if (!fixed[id] || id === 'bottom:lostfound' || city) REH.signs.push(sign(D.zones[id].name || id, p)); }
+  for (const id of ids) { const p = fixed[id] || slots[i++] || c0.slice(); p[1] = dropTo([p[0], p[1], p[2]], 30); REH.zones[id] = p; D.zones[id].r = city && PLACES[id] && PLACES[id].r ? PLACES[id].r : Math.min(D.zones[id].r || 2.5, city && fixed[id] ? 4 : 2.5); // (a place's own reach: a car, a roof, a doorway) if (!fixed[id] || id === 'bottom:lostfound' || city) REH.signs.push(sign(D.zones[id].name || id, p)); }
   ROSTER.clear();
   const at = {};
   for (const [id, n] of Object.entries(D.npcs)) {
-    if (id === 'choice' || id === 'change' || !n.home) continue;
+    if (id === 'choice' || id === 'change') continue;
+    const sp = city && npcSpot(id, ST.S.quests.objectives()); // (the slice: an exact spot, not a ring round the place)
+    if (sp) { ROSTER.set(id, { id, n, p: sp.p.slice(), face: sp.face, spot: sp }); continue; }
+    if (!n.home) continue;
     const zp = n.home.p ? n.home.p : REH.zones[n.home.zone];
     if (!zp) continue;
     const k = (at[n.home.zone] = (at[n.home.zone] || 0) + 1) - 1, a = k * 2.1 + 0.6;
@@ -238,6 +243,10 @@ function sign(text, p) {
 }
 // people near you are in the world, the rest wait (59 of them would be a lot of draw calls)
 function roster(e) {
+  if (ST.city) { // a mission step can move someone (cast_slice.js STAGE): they're there when you arrive (not mid-talk or mid-scene)
+    const objs = ST.S.quests.objectives();
+    for (const r of ROSTER.values()) { const sp = npcSpot(r.id, objs); if (!sp || sp === r.spot) continue; const a = actors.get(r.id); if (a && (a.inScene || a.boss || talking())) continue; r.spot = sp; r.p = sp.p.slice(); r.face = sp.face; if (a) despawnActor(r.id); }
+  }
   for (const r of ROSTER.values()) {
     const d = Math.hypot(e[0] - r.p[0], e[2] - r.p[2]), a = actors.get(r.id);
     if (!a && d < 34) spawnActor(r.id, r.n, r.p, r.face);

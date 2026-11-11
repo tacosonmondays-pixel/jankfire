@@ -286,6 +286,7 @@ function onMain() {
   const bk = back();
   if (!bk || bk.state !== 'sim' || G.joined || !cur || cur.slot !== bk.slot) { label(); return false; }
   setBack(null);
+  G.story.fromSim = true; // (boot.js: the opening sim counts as won once you're back. m01's first step)
   start(cur);
   return true;
 }
