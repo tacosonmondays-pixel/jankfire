@@ -1,6 +1,7 @@
 // Particles (square, because circles cost extra), tracers, ropes, explosions.
 import * as THREE from 'three';
 import { marbles } from './marbles.js';
+import { spritesOn, boomSprite, muzzlePuff } from './flipbook.js';
 
 const VS = `
 attribute float aSize; attribute float aAlpha; attribute vec3 aColor; attribute float aTile;
@@ -242,12 +243,15 @@ export const fx = {
     m.position.set(p[0], p[1], p[2]);
     scene.add(m);
     timed.push({ mesh: m, life: 0.28, ml: 0.28, kind: 'flash', r: radius });
-    for (let i = 0; i < 70; i++) {
+    const real = spritesOn(); // a real fireball + smoke (flipbook.js) instead of the squares; a few sparks still fly
+    if (real) boomSprite(p, radius);
+    for (let i = 0; i < (real ? 22 : 70); i++) {
       const s = 4 + Math.random() * 14;
       const a = [R(), R(), R()], l = Math.hypot(...a) || 1;
-      fire.spawn(p[0], p[1], p[2], a[0] / l * s, a[1] / l * s, a[2] / l * s, 0.4 + Math.random() * 0.4, 0.6, 2.5, 0xffffaa, 0xff3300, 1, -2, 3);
+      if (real) fire.spawn(p[0], p[1], p[2], a[0] / l * s * 1.3, a[1] / l * s * 1.3 + 3, a[2] / l * s * 1.3, 0.5 + Math.random() * 0.5, 0.12, 0.04, 0xfff2b0, 0xff7a1a, 1, 14, 1.2);
+      else fire.spawn(p[0], p[1], p[2], a[0] / l * s, a[1] / l * s, a[2] / l * s, 0.4 + Math.random() * 0.4, 0.6, 2.5, 0xffffaa, 0xff3300, 1, -2, 3);
     }
-    for (let i = 0; i < 25; i++) smoke.spawn(p[0] + R(2), p[1] + R(2), p[2] + R(2), R(3), 2 + Math.random() * 2, R(3), 1.5 + Math.random(), 1, 3.5, 0x444444, 0x222222, 0.6, -0.5, 1);
+    for (let i = 0; i < (real ? 0 : 25); i++) smoke.spawn(p[0] + R(2), p[1] + R(2), p[2] + R(2), R(3), 2 + Math.random() * 2, R(3), 1.5 + Math.random(), 1, 3.5, 0x444444, 0x222222, 0.6, -0.5, 1);
     this.feathers(p, 25);
   },
   feathers(p, n) {
@@ -255,6 +259,7 @@ export const fx = {
   },
   tracer(a, b, color = 0xffffff, th = 0.06, life = 0.35) {
     if (this.onTracer) this.onTracer(a, b); // (liquids.js: a shot through water plips into it)
+    if (spritesOn()) muzzlePuff(a, b); // a puff of smoke off the muzzle (flipbook.js)
     const m = makeBeam(color, 0.99);
     setBeam(m, a, b, th);
     scene.add(m);
