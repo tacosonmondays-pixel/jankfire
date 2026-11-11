@@ -212,15 +212,16 @@ export function cubeKit(B, c, r, hid, o = {}) {
       put(m ? 'cube_corner_b' : 'cube_corner', side, ca, y, fit(h, KIT_SIZE.corner), 0); posted.add(key);
       break;
     }
-    // a tin lip under the roof slab: 6 m and 4 m runs, a 2 m one for what's left (bare; the odd one has a rag on it)
+    // a tin lip under the roof slab: 6 m and 4 m runs, a bare 2 m one for what's left. only the 6 m piece has a rag on
+    // it, so a front shows one at most (the 2 m piece with a rag, cube_eave, isn't used any more)
     if (r() < (o.eave ? o.eave[side] : 1)) {
-      const runs = eaveRuns(a1 - a0), T = runs.reduce((p, q) => p + q, 0), lap = runs.length > 1 ? Math.max(0, T - (a1 - a0)) / (runs.length - 1) : 0, rag = r() < 0.15;
+      const runs = eaveRuns(a1 - a0), T = runs.reduce((p, q) => p + q, 0), lap = runs.length > 1 ? Math.max(0, T - (a1 - a0)) / (runs.length - 1) : 0;
       if (r() < 0.5) runs.reverse();
       let e = T > a1 - a0 && runs.length > 1 ? a0 : (a0 + a1 - T) / 2;
       for (const L of runs) {
         const m = e + L / 2; e += L - lap;
         if (stair && m + L / 2 > stair[2] - 0.4 && m - L / 2 < stair[1] + 0.4) continue; // (it would poke through the steps)
-        if (seen(side, m, y + h - 0.3)) put(L === 6 ? 'cube_eave6' : L === 4 ? 'cube_eave4' : rag && !runs.includes(6) ? 'cube_eave' : 'cube_eave_b', side, m, y + h, 1, rv);
+        if (seen(side, m, y + h - 0.3)) put(L === 6 ? 'cube_eave6' : L === 4 ? 'cube_eave4' : 'cube_eave_b', side, m, y + h, 1, rv);
       }
     }
     if (!c.container || pd > 60) continue; // (ribs and doors cover the wall: only where a paint variant matches it. all five container colours have one now)

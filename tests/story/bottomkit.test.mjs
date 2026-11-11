@@ -12,7 +12,7 @@ import { KIT, KIT_SIZE, paintOf } from '../../shared/city/kit.js';
 const KIT_IDS = ['cube_corner', 'cube_eave', 'cube_window_a', 'cube_window_b', 'cube_window_c', 'container_doors', 'container_rib', 'cube_roofjunk_a', 'cube_roofjunk_b',
   'stair_step', 'stair_post', 'longstep_a', 'longstep_b', 'longrail', 'longpole', 'longplaque_a', 'longplaque_b',
   'cube_corner_b', 'cube_eave_b', 'cube_eave4', 'cube_eave6', 'container_rib_half', 'longrail_b', 'longpole_b']; // (the second line: the kit's second pass)
-const UNUSED = ['longpole']; // (made to stand on the ground beside a rail; the Long Stairs' poles stand in the rail, so they are all longpole_b)
+const UNUSED = ['longpole', 'cube_eave']; // (longpole stands on the ground beside a rail, and the Long Stairs' poles stand in the rail: they are all longpole_b. cube_eave is the 2 m lip with a rag: the 6 m one carries the rags now)
 const isKit = (p) => KIT_IDS.includes(p[0]);
 const C = CITIES.slice, all = [];
 for (let cz = C.cz0; cz < C.cz1; cz++) for (let cx = C.cx0; cx < C.cx1; cx++) all.push([cx, cz]);
