@@ -3389,7 +3389,7 @@ function skullRock(B0, D0, dx, dz, st, o = {}) {
   for (const b of skullSolid()) add(b[0], b[1], b[2], b[3], b[4], b[5], 'skullrock');
   // the spine: steep steps out of the shallows behind it to where the dome starts leaning back. a bot walks straight on up to the crown
   B0.archSince(n0, 'skullrock', dx, dz);
-  if (o.climb !== false) { const n1 = B0.boxes.length; up({ ...flight(B, false, SPINE.z0, SPINE.z1, -SPINE.hw, SPINE.hw, ISL.SH, SPINE.top, 'skullrock'), top: [0, SKT, 71] }); B0.archSince(n1, 'skullspine', dx, dz); } // (its own model: skullspine.glb)
+  if (o.climb !== false) { const n1 = B0.boxes.length; up({ ...flight(B, false, SPINE.z0, SPINE.z1, -SPINE.hw, SPINE.hw, ISL.SH, SPINE.top, 'skullrock'), top: [0, SKT, 71] }); for (let i = n1; i < B0.boxes.length; i++) { const v = B0.boxes[i]; v.min[1] = Math.max(v.min[1], v.max[1] - 0.62); } /* (each step a vertebra, open air under it: a bridge of bone, not a wedge) */ B0.archSince(n1, 'skullspine', dx, dz); } // (its own model: skullspine.glb)
   add(-1.95, 0, 69, -0.75, 0.8, 70.2, 'wood'); D.add(-1.9, 0.8, 69.05, -0.8, 0.95, 70.15, 'gold'); // the chest (empty)
   for (const [x, z] of [[-0.4, 68.6], [0.3, 70.8], [-1.2, 71.2], [0.9, 69.4]]) D.box(x, 0.04, z, 0.3, 0.08, 0.3, 'gold'); // a few coins they dropped
   D.add(-1.98, 1.0, 66, -1.94, 2.0, 68.6, 'adtreasure', { fit: 1 });
