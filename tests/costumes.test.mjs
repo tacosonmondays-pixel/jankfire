@@ -30,7 +30,9 @@ test('with every achievement: every costume goes on whole and survives the serve
 });
 test('with no achievements: locked clothes lock the costume, unearned accessories are left off, nothing locked gets through', () => {
   const locked = COSTUME_IDS.filter((id) => costumeFor(id, NONE).locked);
-  assert.deepEqual(locked.sort(), ['maid', 'nightshift']);
+  assert.deepEqual(locked.sort(), ['binknight', 'chicken', 'maid', 'nightshift']);
+  assert.match(costumeFor('chicken', NONE).needs[0].ach, /Poultry in Motion/);
+  assert.match(costumeFor('binknight', NONE).needs[0].ach, /Sworn Protector/);
   assert.equal(costumeLook('maid', NONE), null);
   assert.match(costumeFor('maid', NONE).needs[0].ach, /Board Approved/);
   assert.match(costumeFor('nightshift', NONE).needs[0].ach, /Smarty Pants/);
@@ -53,8 +55,9 @@ test('a forged look claiming a locked costume is stripped by the server', () => 
 // really built by the client (a top clothes.js doesn't know gets no shirt; an accessory models.js doesn't know is left off)
 import { readFileSync } from 'node:fs';
 const NEW = { lifeguard: 'Lifeguard', hotdog: 'Hot Dog Guy', wizard: 'Budget Wizard', referee: 'Referee', // batch 1
-  grandma: 'Grandma', astronaut: 'Homemade Astronaut', tourist: 'Tourist', chef: 'Chef' }; // batch 2
-const PIECES = { top: ['lifetank', 'hotdog', 'robe', 'refshirt', 'cardigan', 'spacesuit', 'hawaiian', 'chef'], bottom: ['cargo', 'checks'], head: ['strawhat', 'wizhat', 'boxhelmet', 'chefhat'], face: ['sunscreen', 'fakebeard', 'readers'], back: ['float', 'handbag', 'bottlepack', 'camera'] };
+  grandma: 'Grandma', astronaut: 'Homemade Astronaut', tourist: 'Tourist', chef: 'Chef', // batch 2
+  gymbro: 'Gym Bro', pyjamas: 'Pyjamas' }; // batch 3 (the free ones)
+const PIECES = { top: ['lifetank', 'hotdog', 'robe', 'refshirt', 'cardigan', 'spacesuit', 'hawaiian', 'chef', 'stringer', 'pjtop'], bottom: ['cargo', 'checks', 'pjpants'], head: ['strawhat', 'wizhat', 'boxhelmet', 'chefhat', 'sweatband', 'nightcap'], face: ['sunscreen', 'fakebeard', 'readers'], back: ['float', 'handbag', 'bottlepack', 'camera', 'shaker', 'teddy'] };
 const src = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
 test('the new costumes (batches 1 and 2) are free for everyone and go on whole', () => {
   for (const [id, name] of Object.entries(NEW)) {
@@ -83,7 +86,7 @@ test('every top is cut by clothes.js, the new ones fitted by the vest; sleeved o
     if (id !== 'none') assert.match(cut, new RegExp(`\\n  ${id}: \\{ cut: `), `clothes.js TOPS.${id}`);
   }
   for (const id of PIECES.top) assert.ok(known.includes(`'${id}'`), `econ3d KNOWN_TOPS ${id}`);
-  for (const id of ['robe', 'refshirt', 'cardigan', 'spacesuit', 'hawaiian', 'chef']) assert.match(sleeves, new RegExp(`\\b${id}: `), `hands.js SLEEVES.${id}`);
+  for (const id of ['robe', 'refshirt', 'cardigan', 'spacesuit', 'hawaiian', 'chef', 'stringer', 'pjtop']) assert.match(sleeves, new RegExp(`\\b${id}: `), `hands.js SLEEVES.${id}`);
   for (const id of Object.keys(BOTTOMS)) assert.match(block(clothes, 'const BOTTOMS = {'), new RegExp(`\\b${id}: `), `clothes.js BOTTOMS.${id}`);
   for (const slot of ['head', 'face', 'back']) for (const id of Object.keys(ACCESSORIES[slot])) if (id !== 'none') assert.ok(models.includes(`case '${id}'`), `models.js ${slot} ${id}`);
 });
@@ -97,4 +100,18 @@ test('bots dress up as the new costumes too', () => {
     assert.ok(wearing(preset, look, ALL), preset);
   }
   assert.equal(seen.size, Object.keys(NEW).length);
+});
+test('the Chicken Mascot and the Bin Knight are earned: their signature pieces are locked to the new achievements', () => {
+  const L = { poultry: { top: ['chickensuit'], bottom: ['chickenlegs'], head: ['chickenhead'] }, protector: { top: ['binarmour'], head: ['binhelm'], back: ['binlid'] } };
+  const cat = { top: TOPS, bottom: BOTTOMS, head: ACCESSORIES.head, back: ACCESSORIES.back };
+  for (const [ach, slots] of Object.entries(L)) {
+    assert.ok(ACHIEVEMENTS[ach] && ACHIEVEMENTS[ach].goal > 1, ach);
+    for (const [slot, ids] of Object.entries(slots)) for (const id of ids) {
+      assert.equal(cat[slot][id].ach, ach, `${slot}.${id}`);
+      assert.notEqual(validLook({ ...DEFAULT_LOOK, [slot]: id }, NONE)[slot], id, `${slot}.${id} stripped without ${ach}`);
+      assert.equal(validLook({ ...DEFAULT_LOOK, [slot]: id }, new Set([ach]))[slot], id, `${slot}.${id} kept with ${ach}`);
+    }
+  }
+  assert.equal(ACHIEVEMENTS.poultry.stat, 'chicken_kills'); assert.equal(ACHIEVEMENTS.poultry.goal, 25);
+  assert.equal(ACHIEVEMENTS.protector.stat, 'melee_kills'); assert.equal(ACHIEVEMENTS.protector.goal, 50);
 });

@@ -74,6 +74,9 @@ const store = new Proxy({}, { get: (_, k) => { const v = DEPS.store[k]; return t
 const COLORS = ['#ff4fd8', '#4fd8ff', '#ffe14d', '#7dff4f', '#ff7a1a', '#b07dff', '#ff4f4f', '#4fffb0', '#ffffff', '#ff9ad5'];
 const DEFAULT_NAMES = ['player', 'guy', 'someone', 'nobody', 'dude', 'person'];
 const BOT_NAMES = ['Gary', 'Linda', 'Steve', 'Brenda', 'Kevin', 'Doug', 'Karen', 'Phil', 'Tina', 'Rick', 'Deb', 'Carl', 'Pam', 'Todd', 'Barb', 'Chad'];
+// what counts as a melee kill (Sworn Protector): the killing blow from a melee-slot weapon, a katana parry included.
+// not the void, a t-bag or a scythe dash: only what you swing (or throw: the Slipper is the melee slot too)
+const MELEE_KILL = new Set([...Object.keys(WEAPONS).filter((k) => WEAPONS[k].slot === 'melee'), 'parry']);
 const BOT_GUNS = ['ar', 'ar', 'smg', 'shotgun', 'shotgun', 'sniper', 'chicken', 'banana', 'minigun', 'revolver', 'redline', 'marbles', 'laser', 'nailgun', 'tennis', 'cart'];
 BOT_GUNS.push('shredder'); // bots suck too (botShred)
 BOT_GUNS.push('water', 'taser', 'remote'); // the new secondaries (server/secondaries.js secBotFire)
@@ -1482,6 +1485,9 @@ class Room {
         if (t.isBot) stat(killer, 'bot_kills', 1), stat(killer, 'xp', 5);
         else stat(killer, 'kills', 1), stat(killer, 'xp', 20);
         if (w === 'void') stat(killer, 'void_kills', 1);
+        const kw = via || w; // knocked into the void (or traffic) by it counts as a kill with it, like the mode stats
+        if (kw === 'chicken') stat(killer, 'chicken_kills', 1); // Poultry in Motion (Chicken Strike birds are rubber chickens too)
+        if (MELEE_KILL.has(kw)) stat(killer, 'melee_kills', 1); // Sworn Protector (a Bread home run off the map too)
       }
       if (w === 'tbag' && t.acct) stat(t, 'tbags', 1);
       if (t.acct) stat(t, 'deaths', 1);

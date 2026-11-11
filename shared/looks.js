@@ -30,6 +30,8 @@ export const ACHIEVEMENTS = {
   airborne: { name: 'Never Landed', desc: 'finish a whole match without touching the ground after any spawn', stat: 'airborne', goal: 1 },
   royalty: { name: 'Sniper Royalty', desc: 'sniper kills: a 50 m+ long shot, a quick-scope or no-scope, and a headshot', stat: 'sniper_feats', goal: 3, feats: ROYAL_FEATS },
   smarty: { name: 'Smarty Pants', desc: 'get 3 pop quiz questions right (someone else has to throw them)', stat: 'quiz_right', goal: 3 },
+  poultry: { name: 'Poultry in Motion', desc: 'get 25 kills with the Chicken Rocket', stat: 'chicken_kills', goal: 25 },
+  protector: { name: 'Sworn Protector', desc: 'get 50 melee kills', stat: 'melee_kills', goal: 50 },
   // the hidden cats (shared/secrets.js). the cats stat isn't a column: the server counts the pets in inv.lore
   board: { name: 'Board Approved', desc: 'pet all 5 cats on the board of directors. they hide. press F', stat: 'cats', goal: 5 },
 };
@@ -52,6 +54,8 @@ export const ACCESSORIES = {
     hardhat: { name: 'Hard Hat', ach: 'waves' }, icepack: { name: 'Ice Pack', ach: 'knees' }, catears: { name: 'Cat Ears', ach: 'board' },
     strawhat: { name: 'Straw Hat' }, wizhat: { name: 'Cardboard Wizard Hat' },
     boxhelmet: { name: 'Box Helmet' }, chefhat: { name: 'Chef Hat' },
+    sweatband: { name: 'Sweatband' }, nightcap: { name: 'Nightcap' },
+    chickenhead: { name: 'Chicken Head', ach: 'poultry' }, binhelm: { name: 'Bin Helm', ach: 'protector' },
   },
   face: {
     none: { name: 'None' }, shades: { name: 'Sunglasses' }, mustache: { name: 'Mustache' }, clown: { name: 'Clown Nose' },
@@ -64,6 +68,7 @@ export const ACCESSORIES = {
     none: { name: 'None' }, backpack: { name: 'Backpack' }, cape: { name: 'Cape' },
     wings: { name: 'Wings', ach: 'airborne', legacy: 'oldwings' }, voidcape: { name: 'Void Cape', ach: 'void' }, jetpack: { name: 'Jetpack', ach: 'nolife' }, cattail: { name: 'Cat Tail', ach: 'board' },
     float: { name: 'Rescue Float' }, handbag: { name: 'Handbag' }, bottlepack: { name: 'Bottle Rocket Pack' }, camera: { name: 'Camera + Bum Bag' },
+    shaker: { name: 'Shaker + Towel' }, teddy: { name: 'Teddy' }, binlid: { name: 'Bin Lid + Bag Cape', ach: 'protector' },
   },
 };
 export const LOOK_SLOTS = ['head', 'face', 'back'];
@@ -75,8 +80,10 @@ export const HAIRS = { none: { name: 'Bald' }, short: { name: 'Short' }, bowl: {
 export const TOPS = { tank: { name: 'Sash' }, tee: { name: 'T-Shirt' }, hoodie: { name: 'Hoodie' }, jacket: { name: 'Jacket' }, suit: { name: 'Suit' }, runner: { name: 'Runner Jacket' }, none: { name: 'Nothing' }, maid: { name: 'Maid Dress', ach: 'board' },
   // the costume pieces (shared/costumes.js). own: what the colour picker calls a top's own colour (it isn't yours until you pick one)
   lifetank: { name: 'Lifeguard Tank' }, refshirt: { name: 'Referee Shirt', own: 'referee black' }, robe: { name: 'Bathrobe' }, hotdog: { name: 'Hot Dog Suit', own: 'sausage' },
-  cardigan: { name: 'Cardigan + Dress' }, spacesuit: { name: 'Space Suit', own: 'space white' }, hawaiian: { name: 'Holiday Shirt' }, chef: { name: 'Chef Whites + Apron', own: 'chef white' } }; // tops can be achievement-locked too
-export const BOTTOMS = { shorts: { name: 'Shorts' }, pants: { name: 'Pants' }, skirt: { name: 'Skirt' }, overalls: { name: 'Overalls', ach: 'smarty' }, cargo: { name: 'Cargo Shorts + Socks' }, checks: { name: 'Checked Trousers' } }; // bottoms can be achievement-locked too (hasAcc)
+  cardigan: { name: 'Cardigan + Dress' }, spacesuit: { name: 'Space Suit', own: 'space white' }, hawaiian: { name: 'Holiday Shirt' }, chef: { name: 'Chef Whites + Apron', own: 'chef white' },
+  stringer: { name: 'Stringer Vest' }, pjtop: { name: 'Pyjama Top' },
+  chickensuit: { name: 'Chicken Suit', ach: 'poultry', own: 'chicken white' }, binarmour: { name: 'Bin Armour', ach: 'protector', own: 'bin green' } }; // tops can be achievement-locked too
+export const BOTTOMS = { shorts: { name: 'Shorts' }, pants: { name: 'Pants' }, skirt: { name: 'Skirt' }, overalls: { name: 'Overalls', ach: 'smarty' }, cargo: { name: 'Cargo Shorts + Socks' }, checks: { name: 'Checked Trousers' }, pjpants: { name: 'Pyjama Bottoms' }, chickenlegs: { name: 'Chicken Legs', ach: 'poultry' } }; // bottoms can be achievement-locked too (hasAcc)
 export const OUTFIT = { skin: SKIN_TONES, hairColor: HAIR_COLORS, topColor: CLOTH_COLORS, bottomColor: CLOTH_COLORS };
 // joke body (free, looks only: hitboxes never change). build: the mannequin's shape. bigHead / bigButt: 0 (normal) .. JOKE_MAX
 // chest / waist / hips: how wide that band of the torso is for a build. head / butt: growth per slider step

@@ -13,6 +13,7 @@ export const STAT_KEYS = ['kills', 'deaths', 'bot_kills', 'wins', 'best_wave', '
 STAT_KEYS.push('airborne', 'wings_old'); // Never Landed + the grandfathered Wings
 STAT_KEYS.push('sniper_feats'); // Sniper Royalty (bit flags, see BIT_KEYS)
 STAT_KEYS.push('quiz_right'); // Smarty Pants: pop quiz questions answered right
+STAT_KEYS.push('chicken_kills', 'melee_kills'); // Poultry in Motion (Chicken Rocket kills) + Sworn Protector (melee kills)
 const MAX_KEYS = new Set(['best_wave', 'top_speed']); // these keep the max instead of adding up
 import { MODE_STATS, MODE_MAX, cleanModeDelta } from '../shared/modestats.js'; // per-mode leaderboards (inv.ms, no new columns)
 const BIT_KEYS = new Set(['sniper_feats']); // bit flags (Sniper Royalty feats): OR'd in, so a feat never counts twice or turns off
@@ -63,7 +64,7 @@ class FileStore {
   async get(nameLower) { const u = this.db.users[nameLower] || null; if (u && migrateInv(u.inv)) this.save?.(); return u; } // retired skins -> their new ids
   async create(u) {
     if (this.db.users[u.name_lower]) return false;
-    this.db.users[u.name_lower] = { kills: 0, deaths: 0, bot_kills: 0, wins: 0, best_wave: 0, top_speed: 0, xp: 0, playtime: 0, void_kills: 0, headshots: 0, tbags: 0, crates: 1, bags: 1, boxes: 1, inv: {}, profile: {}, created_at: new Date().toISOString(), ...u };
+    this.db.users[u.name_lower] = { kills: 0, deaths: 0, bot_kills: 0, wins: 0, best_wave: 0, top_speed: 0, xp: 0, playtime: 0, void_kills: 0, headshots: 0, tbags: 0, chicken_kills: 0, melee_kills: 0, crates: 1, bags: 1, boxes: 1, inv: {}, profile: {}, created_at: new Date().toISOString(), ...u };
     this.save();
     return true;
   }

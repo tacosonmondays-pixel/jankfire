@@ -23,7 +23,9 @@ create table if not exists jf_users (
   headshots   int  not null default 0,
   tbags       int  not null default 0,
   sniper_feats int not null default 0,
-  quiz_right  int  not null default 0
+  quiz_right  int  not null default 0,
+  chicken_kills int not null default 0,
+  melee_kills int  not null default 0
 );
 -- Lock the table down: only the game server (service key) can read or write it. Browsers never talk to it directly.
 alter table jf_users enable row level security;
@@ -44,3 +46,8 @@ alter table jf_users add column if not exists sniper_feats int not null default 
 
 -- Smarty Pants (pop quiz questions answered right; 3 unlock the Big Glasses and the Overalls). Safe to run again.
 alter table jf_users add column if not exists quiz_right int not null default 0;
+
+-- Poultry in Motion (Chicken Rocket kills: 25 unlock the Chicken Mascot) and Sworn Protector (melee kills: 50 unlock the
+-- Bin Knight). Safe to run again.
+alter table jf_users add column if not exists chicken_kills int not null default 0;
+alter table jf_users add column if not exists melee_kills int not null default 0;
