@@ -41,7 +41,7 @@ const SHOTS = [['idle_7m', 'hl_idle', 1.2, 7, 0, 0.12, false], ['talk', 'hl_talk
       for (let i = 0; i < 400; i++) { const c = await hold(); if (c && c[0] === clip && c[1] >= t) break; await pump(120); }
       await dismiss(); await hold();
       const png = path.join(OUT, `hl_ingame_${tag}_${name}.png`), jpg = png.replace(/png$/, 'jpg');
-      await pg.screenshot({ path: png }); execSync(`ffmpeg -loglevel error -y -i "${png}" -q:v 3 "${jpg}"`); fs.unlinkSync(png); console.log('wrote', jpg);
+      await pg.screenshot({ path: png, timeout: 180000 }); execSync(`ffmpeg -loglevel error -y -i "${png}" -q:v 3 "${jpg}"`); fs.unlinkSync(png); console.log('wrote', jpg);
     }
     await ctx.close();
   }
