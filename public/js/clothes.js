@@ -1,9 +1,10 @@
 // JANKFIRE clothes: the tops and bottoms on the mannequin (models.js buildCharacter calls wearTop / wearBottom).
 // Each garment is cut for the body it goes on: the build and the body sliders give a body (fitOf), a garment is rows of
 // [height, half width, front depth, back depth] round it (a shell), and its collar, pockets, zip and seams are laid on
-// that shell, so nothing floats off a big belly or sinks into one. A whole piece is ONE mesh: its colours come from a
-// tiny palette texture (the garment's own colour in a few tones + fixed colours), so a jacket is five draw calls, not
-// forty. Shapes are built once per garment + body and shared. Looks only: the server's hitboxes never hear of this.
+// that shell, so nothing floats off a big belly or sinks into one. A piece is one mesh (+ one for its small trim): its
+// colours come from a tiny palette texture (the garment's own colour in a few tones + fixed colours), so a jacket is
+// seven meshes, not twenty. Shapes are built once per garment + body and shared. Looks only: the server's hitboxes
+// never hear of this.
 import * as THREE from 'three';
 import { jankify } from './jank.js';
 import { BUILDS, JOKE, JOKE_MAX } from '/shared/looks.js';
@@ -11,14 +12,14 @@ import { BUILDS, JOKE, JOKE_MAX } from '/shared/looks.js';
 const PI = Math.PI, TAU = PI * 2, DEG = PI / 180;
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
 const T = (x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = sx, sz = sx) => new THREE.Matrix4().compose(V3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), V3(sx, sy, sz));
-const mix = (a, b, t) => a + (b - a) * t, cl01 = (t) => Math.max(0, Math.min(1, t)), ss = (a, b, x) => { const t = cl01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+const mix = (a, b, t) => a + (b - a) * t, cl01 = (t) => Math.max(0, Math.min(1, t));
 
 // ------------------------------------------------------------ palette: one tiny texture per garment colour
-// cells 0-7 come from the garment's own colour (so seams, hems and folds follow whatever you pick); the rest are fixed
+// cells 0-8 come from the garment's own colour (so seams, hems and folds follow whatever you pick); the rest are fixed
 const PW = 32;
 const C = { base: 0, panel: 1, seam: 2, deep: 3, light: 4, hi: 5, btn: 6, pop: 7, mark: 8 };
-const FIXED = { white: 0xf2f1ec, cream: 0xe2dccb, grey: 0x8f949c, ink: 0x1c1c21, coal: 0x34343c, silver: 0xc6ccd4, steel: 0x70767f, brass: 0xffc21a, red: 0xc02030, redd: 0x8a1422,
-  pink: 0xff4fd8, rose: 0xff9ad5, yellow: 0xffe14d, cyan: 0x4fd8ff, brown: 0x6b3a1a, tan: 0xd9a35b, tee: 0x2b2b31, frill: 0xffffff, pencil: 0xffd21a, eraser: 0xff7ab8, sole: 0x3a2412, shoe: 0x15121a };
+const FIXED = { white: 0xf2f1ec, cream: 0xe2dccb, ink: 0x1c1c21, coal: 0x34343c, silver: 0xc6ccd4, steel: 0x70767f, brass: 0xffc21a, red: 0xc02030, redd: 0x8a1422,
+  pink: 0xff4fd8, rose: 0xff9ad5, tan: 0xd9a35b, tee: 0x2b2b31, frill: 0xffffff, pencil: 0xffd21a, eraser: 0xff7ab8, sole: 0x3a2412, shoe: 0x15121a };
 Object.keys(FIXED).forEach((k, i) => { C[k] = 9 + i; });
 const TONES = [1, 0.87, 0.72, 0.5, 1.13, 1.3, 0.42]; // base, panel, seam, deep shadow, light, highlight, buttons
 function tone(hex, k, flip) { // in screen (sRGB) values: k < 1 darker, > 1 paler
@@ -121,9 +122,9 @@ class Kit {
     }
     return this;
   }
+  piece(axis) { return { g: this.done(axis), t: this.t && this.t.c.length ? this.t.done(axis) : null }; } // -> { the outlined shape, its trim }
   // -> a shared geometry centred on itself (outlines and gibs scale + spin about the middle). axis: centred along that
   // axis only, so a limb piece stays on its limb's own line (the body sliders fatten limbs from there)
-  piece(axis) { return { g: this.done(axis), t: this.t && this.t.c.length ? this.t.done(axis) : null }; } // -> { the outlined shape, its trim }
   done(axis) {
     const g = new THREE.BufferGeometry(), n = this.c.length, uv = new Float32Array(n * 2);
     for (let i = 0; i < n; i++) { uv[i * 2] = (this.c[i] + 0.5) / PW; uv[i * 2 + 1] = 0.5; }

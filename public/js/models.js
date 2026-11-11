@@ -1570,7 +1570,8 @@ const RUN_YELLOW = 0xffd20f; // the Runner Jacket's hi-vis yellow (the jacket it
 
 // the joke body (shared/looks.js): a build reshapes the torso in three bands, the sliders grow the head and the butt.
 // done after the outfit is on, by where each piece sits, so every top / bottom / dress gets it without knowing about it.
-// hats, hair and faces hang off the head group, so they grow with it. looks only: the server's hitboxes never hear of this
+// hats, hair and faces hang off the head group, so they grow with it. looks only: the server's hitboxes never hear of this.
+// the clothes (clothes.js fitOf) are cut round the same bands and lumps: change a number here and change it there
 function jokeBody(P, lk, seat, shirt) {
   const { body, head, arm, armL, legL, legR, kneeL, kneeR, slot } = P;
   const b = Object.hasOwn(BUILDS, lk.build || '') ? BUILDS[lk.build || ''] : BUILDS[''];
