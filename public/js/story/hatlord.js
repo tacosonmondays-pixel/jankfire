@@ -68,6 +68,7 @@ function rigOf(a) {
 }
 function makeRig(a) {
   const L = a.L, c = a.ch, own = (L.extra || []).filter((j) => c[j]);
+  if (L.blender && L.face && L.face.mouth) L.face.mouth.visible = false; // (the model has her own lips: the code mouth goes)
   const r = { a, c, own, rest: {}, name: null, t: 0, out: null, from: null, fromT: 0, markI: 0, faceI: -1, lookTo: undefined, aimY: 0, aimX: 0, eyeY: 0, eyeX: 0, gaitK: 0, walkT: 0, last: null, now: 0, far: null };
   for (const j of own) r.rest[j] = { q: c[j].quaternion.clone(), p: c[j].position.clone() };
   r.at = (name) => { const m = L.parts && L.parts[name]; return m ? m.getWorldPosition(V()) : c[name] ? c[name].getWorldPosition(V()) : c.head.getWorldPosition(V()); };
@@ -135,7 +136,7 @@ function compose(r, name, t, dt) {
   const tgt = r.lookTo !== undefined ? r.lookTo : a.lookAt || (G.camera && Math.hypot(G.camera.position.x - p[0], G.camera.position.z - p[2]) < 12 ? G.camera.position.toArray() : null);
   let wy = 0, wx = 0;
   if (tgt && lk > 0.01) {
-    const S = r.c.root.scale.y, hy = p[1] + 2.95 * S, dx = tgt[0] - p[0], dz = tgt[2] - p[2];
+    const S = r.c.root.scale.y, hy = p[1] + 3.16 * S, dx = tgt[0] - p[0], dz = tgt[2] - p[2];
     wy = clamp(wrapA(Math.atan2(-dx, -dz) - (a.yaw ?? r.c.root.rotation.y)) - (P['spine.y'] ?? 0) - (P['body.y'] ?? 0), -1.5, 1.5) * lk;
     wx = clamp(-(Math.atan2(hy - tgt[1], Math.hypot(dx, dz)) - 0.24), -0.6, 0.3) * lk; // (the hat sits tipped 0.24 down already)
   }
