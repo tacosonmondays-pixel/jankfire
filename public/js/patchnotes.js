@@ -1,6 +1,20 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '8.5', date: '2026-11-11', title: 'HOT ROCKS', items: [
+    'islands plant & defuse: the volcano stopped being a pile of black boxes. big basalt columns, lava pouring down the sides, steam, and comfier stairs up the middle.',
+  ] },
+  { v: '8.4', date: '2026-11-11', title: 'MIND THE STEP', items: [
+    'the lighthouse finally got real stairs: a proper iron stair wrapped round the tower, little steps you just stroll up, rails so you don\'t eat sand. the bots found them too.',
+  ] },
+  { v: '8.3', date: '2026-11-11', title: 'FANCY DRESS', items: [
+    '12 NEW COSTUMES in character > clothes > costumes. free for everyone: lifeguard, hot dog guy, budget wizard, referee, grandma, homemade astronaut, tourist, chef, gym bro and pyjamas. one of them is a sausage.',
+    'the chicken mascot comes from the new POULTRY IN MOTION achievement: 25 chicken rocket kills. blowing someone off the map with a chicken counts. the bin knight comes from SWORN PROTECTOR: 50 melee kills.',
+    'skull rock\'s mouth goes down a throat now. ribs and everything. its spine is made of actual vertebrae. you can walk under it. don\'t.',
+    'the lighthouse is a real lighthouse now. eight sides, a glowing lamp room, a balcony you can actually fall off. you can\'t, there\'s a railing.',
+    'the soggy biscuit got rebuilt plank by plank. it has a proper rubber duck now. still wrecked.',
+    'gun hats and grapple hooks got rebuilt in blender. the cowboy hat has a crease now. the rainbow star is puffy. the plunger still works. we don\'t know why.',
+  ] },
   { v: '8.2', date: '2026-11-11', title: 'BOOM, SKULL', items: [
     'explosions are actual fireballs now. a flash, then black smoke rolling over the fire, then it hangs around. guns puff smoke. fires smoke properly. potato keeps its squares.',
     'explosions lost the weird see-through yellow bubble. flash, then straight into the fireball.',

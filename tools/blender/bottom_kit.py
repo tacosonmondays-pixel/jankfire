@@ -385,12 +385,99 @@ def make_lod(objs, name, target, small=0.08, parts=None):
     return lod
 
 
+def _mat_px(m):
+    """a material's base colour as srgb pixels (bottom row first, like uvs): its image, or a 4x4 of its flat colour"""
+    for n in m.node_tree.nodes:
+        if n.type == 'TEX_IMAGE' and n.image:
+            w, h = n.image.size
+            return np.array(n.image.pixels[:], dtype=np.float32).reshape(h, w, 4)[:, :, :3]
+    c = m.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value
+    s = [v * 12.92 if v <= 0.0031308 else 1.055 * v ** (1 / 2.4) - 0.055 for v in c[:3]]
+    return np.ones((4, 4, 3), dtype=np.float32) * np.array(s, dtype=np.float32)
+
+
+def atlas_mats(meshes, name, keep=lambda m: 'paint' in m.name, pad=2):
+    """one material for a piece (the Story lane's draw-call ask): every material but the *paint* slots goes into one
+    image, each texture repeated as often as its widest face needs (once if its uvs never leave 0..1) with a wrapped border, so tiled crust still tiles.
+    faces are shifted by whole tiles to sit in their cell; a face wider than the cell is squeezed (crust doesn't mind).
+    meshes share the material list (the full mesh and its lod1)."""
+    mats = []
+    for o in meshes:
+        for m in o.data.materials:
+            if m and m not in mats: mats.append(m)
+    merge = [m for m in mats if not keep(m)]
+    if len(merge) < 2: return None
+    k = {}
+    for m in merge:  # repeats per cell: enough for the widest face (a big wire panel tiles its 16 px mesh 8 times), <= 128 px
+        px0 = _mat_px(m); cap = max(2, 128 // max(px0.shape[:2])); k[m] = 1
+        for o in meshes:
+            me = o.data; uv = me.uv_layers.active.data; mi = list(me.materials).index(m) if m in me.materials[:] else -1
+            for pg in me.polygons:
+                if pg.material_index != mi: continue
+                for a in (0, 1):
+                    c = [uv[li].uv[a] for li in pg.loop_indices]
+                    if min(c) < -1e-3 or max(c) > 1 + 1e-3: k[m] = max(k[m], min(cap, math.ceil(max(c) - math.floor(min(c) + 1e-4) - 1e-4)))
+    cells = []
+    for m in merge:
+        px = _mat_px(m); t = k[m]
+        tile = np.tile(px, (t, t, 1))
+        cells.append((m, px.shape[1], px.shape[0], np.pad(tile, ((pad, pad), (pad, pad), (0, 0)), mode='wrap')))
+    W = 64
+    while True:  # shelf pack, tallest first, in the narrowest power of two that keeps it roughly square
+        x = y = sh = 0; pos = {}
+        for m, w, h, c in sorted(cells, key=lambda c: -c[3].shape[0]):
+            ch, cw = c.shape[:2]
+            if cw > W: break
+            if x + cw > W: x = 0; y += sh; sh = 0
+            pos[m] = (x, y); x += cw; sh = max(sh, ch)
+        H = y + sh
+        if len(pos) == len(cells) and H <= W: break
+        W *= 2
+    H = 1 << max(2, (H - 1).bit_length())
+    img = np.ones((H, W, 3), dtype=np.float32)
+    for m, w, h, c in cells:
+        x, y = pos[m]; img[y:y + c.shape[0], x:x + c.shape[1]] = c
+    rgba = np.ones((H, W, 4), dtype=np.float32); rgba[:, :, :3] = img
+    im = bpy.data.images.new(name + '_t', W, H, alpha=False); im.pixels.foreach_set(rgba.ravel()); im.file_format = 'PNG'; im.pack()
+    area = {m: 0.0 for m in merge}
+    for o in meshes:
+        for pg in o.data.polygons:
+            m = o.data.materials[pg.material_index]
+            if m in area: area[m] += pg.area
+    tot = sum(area.values()) or 1
+    def avg(inp): return sum(m.node_tree.nodes['Principled BSDF'].inputs[inp].default_value * a for m, a in area.items()) / tot
+    A = mat(name, 0xffffff, rough=avg('Roughness'), metal=min(0.5, avg('Metallic')), tex=im)
+    info = {m: (pos[m], cells[merge.index(m)][1], cells[merge.index(m)][2]) for m in merge}
+    for o in meshes:
+        me = o.data; old = list(me.materials); uv = me.uv_layers.active.data
+        new = [A] + [m for m in old if m not in info]
+        idx = [0 if m in info else new.index(m) for m in old]
+        for pg in me.polygons:
+            m = old[pg.material_index]
+            if m in info:
+                (cx, cy), w, h = info[m]; t = k[m]
+                us = [uv[li].uv[0] for li in pg.loop_indices]; vs = [uv[li].uv[1] for li in pg.loop_indices]
+                u0, v0 = math.floor(min(us) + 1e-4), math.floor(min(vs) + 1e-4)
+                su = min(1.0, t / max(1e-6, max(us) - u0)); sv = min(1.0, t / max(1e-6, max(vs) - v0))
+                if su < 1: u0 = min(us)
+                if sv < 1: v0 = min(vs)
+                for li in pg.loop_indices:
+                    u, v = (uv[li].uv[0] - u0) * su, (uv[li].uv[1] - v0) * sv
+                    uv[li].uv = ((cx + pad + u * w) / W, (cy + pad + v * h) / H)
+        mi = [idx[pg.material_index] for pg in me.polygons]
+        me.materials.clear()  # (this zeroes the faces' slots: set them after)
+        for m in new: me.materials.append(m)
+        me.polygons.foreach_set('material_index', mi); me.update()
+    return A
+
+
 LOD_SHEETS = os.environ.get('JF_LOD_SHEETS')  # a scratch folder for the lod1 check sheets (not in the repo)
 
 
-def run(builders, sheet_kw=None):
+def run(builders, sheet_kw=None, atlas=False):
     """builders: [(id, fn)]; fn() -> (objs, meta extras). Writes public/models/story/s_<id>.glb (full mesh + a
     <id>_lod1 mesh at <= 25% of the tris) and the sheet. extras '_lod': the builder's own parts for the lod1.
+    atlas: each piece's non-paint materials become one (atlas_mats)
     flags after '--': --only a,b  --no-sheet  --no-export"""
     argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
     only = None; done = []
@@ -416,6 +503,7 @@ def run(builders, sheet_kw=None):
         body = join(objs, 's_' + pid + '_mesh')
         me = body.data
         while len(me.uv_layers) > 1: me.uv_layers.remove(me.uv_layers[-1])
+        if atlas: atlas_mats([body, lod], pid + '_atlas')
         root = finish('s_' + pid, [body, lod], {})
         tris, lt = tri_count(body), tri_count(lod)
         print('JF_DATA', body.data.name, lod.data.name, len(lod.data.loops), len(lod.data.polygons))

@@ -21,7 +21,7 @@ import { catEars, catTail } from './catwear.js'; // Board Approved: cat ears, ca
 import { RIFLE_WB, bindRifle } from './riflemodels.js'; // the rifle pack (burst rifle, lmg, marksman, lever-action, auto shotgun)
 import { pistolBuild, akimboBuild, sawnoffBuild } from './sidemodels.js'; // Plan B, Lefty & Righty, Half a Shotgun
 import { skinCopy } from './softskin.js';
-import { wearTop, wearBottom, topCap } from './clothes.js'; // the tops and bottoms
+import { wearTop, wearBottom, topCap, topOwn, topThick, wearAcc } from './clothes.js'; // the tops and bottoms (+ the costume accessories)
 
 // ------------------------------------------------------------ playing card faces (canvas, cached)
 const cardFaces = new Map();
@@ -1536,7 +1536,7 @@ function limb(r0, r1, len, color, y) { // vertical cylinder hanging down from it
 // ------------------------------------------------------------ hair (sits on the egg head; head group local, top of the egg ~y 0.31)
 function addHair(H, lk) {
   const style = lk.hair || 'none';
-  if (style === 'none' || lk.head === 'helmet') return;
+  if (style === 'none' || lk.head === 'helmet' || lk.head === 'boxhelmet' || lk.head === 'chickenhead' || lk.head === 'binhelm') return; // (in the box: it all goes in the box. same in the chicken head and the bin)
   const hc = new THREE.Color(lk.hairColor || '#1a1a1a').getHex();
   const cap = (cover = 0.45, sx = 0.9, sy = 1.18, r = 0.15) => {
     const m = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 6, 0, Math.PI * 2, 0, Math.PI * cover), M(hc));
@@ -1578,10 +1578,12 @@ function bigGlasses(H, fz) {
 function overallsColor(lk, c) { return lk && lk.bottomColor ? new THREE.Color(lk.bottomColor).getHex() : lk && lk.teamed ? c : 0x3b64a8; }
 function addAccessories(ch, look, c) {
   if (!look) return;
-  const H = ch.head, Bd = ch.body;
+  let H = ch.head; const Bd = ch.body;
   const at = (parent, m) => { parent.add(m); return m; };
   const y0 = 0.3; // top of the egg head (head group local)
-  switch (look.head) {
+  if (look.top === 'hotdog' && look.head && look.head !== 'none') { H = new THREE.Group(); H.position.y = 0.115; ch.head.add(H); } // in the Hot Dog Suit the hat sits on the end of the sausage
+  const hood = look.top === 'hotdog' ? { helmet: 1, boxhelmet: 1, bigglasses: 1, fakebeard: 1, chickenhead: 1, binhelm: 1 } : {}; // too big for the face hole: left off under the hot dog
+  switch (hood[look.head] ? 'none' : look.head) {
     case 'cap': { const d = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), M(c)); d.position.y = y0 - 0.06; H.add(d); at(H, bx(0.22, 0.02, 0.14, c, 0, y0 - 0.06, -0.15)); break; }
     case 'beanie': { const d = new THREE.Mesh(new THREE.SphereGeometry(0.155, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), M(0x2a4a8a)); d.position.y = y0 - 0.07; d.scale.y = 1.3; H.add(d); at(H, ball(0.045, 0xffffff, 0, y0 + 0.13, 0)); break; }
     case 'cowboy': { const b = cylZ(0.26, 0.02, 0x8a5a2b, 0, y0 - 0.04, 0, 10); b.rotation.x = 0; b.geometry.rotateX(Math.PI / 2); H.add(b); at(H, new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 0.14, 8), M(0x8a5a2b))).position.y = y0 + 0.04; break; }
@@ -1593,9 +1595,13 @@ function addAccessories(ch, look, c) {
     case 'hardhat': { const d = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), M(0xffd21a)); d.position.y = y0 - 0.05; H.add(d); at(H, new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.015, 10), M(0xffd21a))).position.y = y0 - 0.05; break; }
     case 'icepack': at(H, bx(0.14, 0.04, 0.14, 0x6ad0ff, 0, y0 + 0.01, 0)); break;
     case 'catears': ch.ears = catEars(H, look); break;
+    case 'strawhat': case 'wizhat': case 'boxhelmet': case 'chefhat': case 'sweatband': case 'nightcap': wearAcc(H, look.head, c); break; // (clothes.js)
+    case 'binhelm': wearAcc(H, look.head, c); break;
+    case 'chickenhead': wearAcc(H, look.head, look.top === 'chickensuit' && look.topColor ? new THREE.Color(look.topColor).getHex() : 0xf2f1ec); break; // the suit's colour
   }
+  H = ch.head;
   const fz = -0.15; // front of the face
-  switch (look.face) {
+  switch (hood[look.face] ? 'none' : look.face) {
     case 'shades': at(H, bx(0.22, 0.05, 0.02, 0x111111, 0, 0.17, fz, true)); at(H, bx(0.26, 0.015, 0.015, 0x111111, 0, 0.19, fz)); break;
     case 'mustache': at(H, bx(0.12, 0.025, 0.02, 0x4a2a10, 0, 0.09, fz + 0.01)); break;
     case 'clown': at(H, ball(0.035, 0xff2020, 0, 0.12, fz - 0.01, true)); break;
@@ -1603,6 +1609,7 @@ function addAccessories(ch, look, c) {
     case 'bandana': at(H, bx(0.22, 0.09, 0.03, 0xc02030, 0, 0.07, fz + 0.01)); break;
     case 'visor': at(H, bx(0.24, 0.05, 0.02, 0x3ee6c8, 0, 0.17, fz - 0.005, true)); break;
     case 'bigglasses': bigGlasses(H, fz); break; // Smarty Pants
+    case 'sunscreen': case 'fakebeard': case 'readers': wearAcc(H, look.face, c); break; // (clothes.js)
     case 'goggles': { // old-school flight goggles: leather strap round the head, two round amber lenses
       const s = new THREE.Mesh(new THREE.CylinderGeometry(0.153, 0.153, 0.035, 12, 1, true), M(0x6a3f1e)); s.position.y = 0.17; H.add(s);
       for (const sx of [-1, 1]) { at(H, cylZ(0.048, 0.04, 0x8a5a2b, sx * 0.058, 0.175, fz + 0.005, 10)); at(H, cylZ(0.036, 0.01, 0xffb84d, sx * 0.058, 0.175, fz - 0.016, 10, true)); }
@@ -1610,9 +1617,10 @@ function addAccessories(ch, look, c) {
     }
   }
   // back stuff hangs off the upper back (chest back surface ~z 0.15) and is strapped over the shoulders
-  const thick = look.top === 'runner' ? 0.04 : look.top === 'jacket' || look.top === 'suit' || look.top === 'hoodie' ? 0.03 : 0;
+  const thick = look.top === 'runner' ? 0.04 : look.top === 'jacket' || look.top === 'suit' || look.top === 'hoodie' ? 0.03 : topThick(look.top);
   const bk = 0.15 + thick;
-  const straps = (col) => { for (const sx of [-1, 1]) { at(Bd, bx(0.045, 0.025, 0.32, col, sx * 0.11, 1.52, 0.0)); at(Bd, bx(0.045, 0.3, 0.025, col, sx * 0.11, 1.37, -0.16 - thick)); } };
+  const fthick = look.top === 'hotdog' ? 0.072 : thick; // (the hot dog's bun sticks out at the back, not the front: the straps lie on the sausage)
+  const straps = (col) => { for (const sx of [-1, 1]) { at(Bd, bx(0.045, 0.025, 0.32, col, sx * 0.11, 1.52, 0.0)); at(Bd, bx(0.045, 0.3, 0.025, col, sx * 0.11, 1.37, -0.16 - fthick)); } };
   switch (look.back) {
     case 'backpack':
       at(Bd, bx(0.3, 0.38, 0.15, c, 0, 1.3, bk + 0.075));
@@ -1650,6 +1658,7 @@ function addAccessories(ch, look, c) {
       }
       straps(0x333333);
       break;
+    case 'float': case 'handbag': case 'bottlepack': case 'camera': case 'shaker': case 'teddy': case 'binlid': wearAcc(Bd, look.back, c, look); break; // the Lifeguard's rescue float, Grandma's handbag (clothes.js: fitted to the body + top)
     case 'cattail': catTail(ch, look, look.top === 'maid' ? 0.2 : look.bottom === 'skirt' ? 0.19 : 0.125); break; // out from under the skirt
   }
 }
@@ -1715,7 +1724,7 @@ export function buildCharacter(color, look) {
     const BOT = lk.bottomColor ? new THREE.Color(lk.bottomColor).getHex() : c;
     const top = lk.top || 'tank', bottom = lk.bottom || 'shorts';
     const WP = { body, head, arm, armL, legL, legR, kneeL, kneeR }; // what the clothes hang on (clothes.js)
-    const legs = bottom === 'pants' || bottom === 'overalls'; // full-length legs (overalls are denim unless you pick a colour)
+    const legs = bottom === 'pants' || bottom === 'overalls' || bottom === 'checks' || bottom === 'pjpants' || bottom === 'chickenlegs'; // full-length legs (overalls are denim unless you pick a colour)
     const LEG = bottom === 'overalls' ? overallsColor(lk, c) : BOT;
     // legs: hip -> thigh -> knee -> shin -> foot
     for (const [leg, knee, sx] of [[legL, kneeL, -1], [legR, kneeR, 1]]) {
@@ -1732,7 +1741,7 @@ export function buildCharacter(color, look) {
     const MAID = lk.topColor ? TOP : lk.teamed ? c : 0x17141c; // the maid dress: black unless you pick a colour
     body.add(limb(0.1, 0.12, 0.16, top === 'none' || top === 'tank' ? SK : top === 'maid' ? MAID : TOP, 1.13)); // waist
     const chest = ball(0.2, SK, 0, 1.34, 0); chest.scale.set(1.2, 1.1, 0.72); body.add(chest);
-    const TOPC = top === 'runner' ? (lk.topColor ? TOP : lk.teamed ? c : RUN_YELLOW) : top === 'maid' ? MAID : TOP; // the top's colour (teamed: the team colour)
+    const TOPC = top === 'runner' ? (lk.topColor ? TOP : lk.teamed ? c : RUN_YELLOW) : top === 'maid' ? MAID : topOwn(top) != null && !lk.topColor && !lk.teamed ? topOwn(top) : TOP; // the top's colour (teamed: the team colour)
     body.add(limb(0.045, 0.05, 0.12, SK, 1.57));
     head.position.set(0, 1.62, 0);
     const egg = ball(0.14, SK, 0, 0.14, 0); egg.scale.set(0.85, 1.22, 0.95); head.add(egg);
@@ -1755,7 +1764,7 @@ export function buildCharacter(color, look) {
     // the clothes (clothes.js): cut for this body, so jokeBody below leaves the torso ones be and fattens the limb ones
     wearTop(WP, lk, TOPC, legs);
     if (!wearBottom(WP, lk, LEG) && top !== 'maid') body.add(bx(0.34, 0.18, 0.23, LEG, 0, 0.98, 0)); // (a bottom it doesn't know: the plain seat)
-    addHair(head, lk);
+    addHair(head, top === 'hotdog' ? { ...lk, hair: 'none' } : lk); // (tucked under the hot dog)
     body.add(armL);
     jokeBody({ body, head, arm, armL, legL, legR, kneeL, kneeR, slot }, lk, top === 'maid' ? MAID : bottom === 'skirt' ? BOT : LEG, top === 'none' || top === 'tank' ? SK : TOPC);
   }

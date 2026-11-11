@@ -30,7 +30,9 @@ test('with every achievement: every costume goes on whole and survives the serve
 });
 test('with no achievements: locked clothes lock the costume, unearned accessories are left off, nothing locked gets through', () => {
   const locked = COSTUME_IDS.filter((id) => costumeFor(id, NONE).locked);
-  assert.deepEqual(locked.sort(), ['maid', 'nightshift']);
+  assert.deepEqual(locked.sort(), ['binknight', 'chicken', 'maid', 'nightshift']);
+  assert.match(costumeFor('chicken', NONE).needs[0].ach, /Poultry in Motion/);
+  assert.match(costumeFor('binknight', NONE).needs[0].ach, /Sworn Protector/);
   assert.equal(costumeLook('maid', NONE), null);
   assert.match(costumeFor('maid', NONE).needs[0].ach, /Board Approved/);
   assert.match(costumeFor('nightshift', NONE).needs[0].ach, /Smarty Pants/);
@@ -47,4 +49,69 @@ test('with no achievements: locked clothes lock the costume, unearned accessorie
 test('a forged look claiming a locked costume is stripped by the server', () => {
   const forged = validLook({ ...DEFAULT_LOOK, ...costumeLook('maid', ALL) }, NONE);
   assert.notEqual(forged.top, 'maid');
+});
+
+// the first batch of new costumes (Lifeguard, Hot Dog Guy, Budget Wizard, Referee): free, whole, and every new piece is
+// really built by the client (a top clothes.js doesn't know gets no shirt; an accessory models.js doesn't know is left off)
+import { readFileSync } from 'node:fs';
+const NEW = { lifeguard: 'Lifeguard', hotdog: 'Hot Dog Guy', wizard: 'Budget Wizard', referee: 'Referee', // batch 1
+  grandma: 'Grandma', astronaut: 'Homemade Astronaut', tourist: 'Tourist', chef: 'Chef', // batch 2
+  gymbro: 'Gym Bro', pyjamas: 'Pyjamas' }; // batch 3 (the free ones)
+const PIECES = { top: ['lifetank', 'hotdog', 'robe', 'refshirt', 'cardigan', 'spacesuit', 'hawaiian', 'chef', 'stringer', 'pjtop'], bottom: ['cargo', 'checks', 'pjpants'], head: ['strawhat', 'wizhat', 'boxhelmet', 'chefhat', 'sweatband', 'nightcap'], face: ['sunscreen', 'fakebeard', 'readers'], back: ['float', 'handbag', 'bottlepack', 'camera', 'shaker', 'teddy'] };
+const src = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
+test('the new costumes (batches 1 and 2) are free for everyone and go on whole', () => {
+  for (const [id, name] of Object.entries(NEW)) {
+    assert.equal(COSTUMES[id].name, name);
+    const f = costumeFor(id, NONE);
+    assert.ok(!f.locked && !f.missing.length, id);
+    for (let i = 0; i < 20; i++) {
+      const l = costumeLook(id, NONE, (a) => a[(Math.random() * a.length) | 0]), worn = validLook({ ...DEFAULT_LOOK, ...l }, NONE);
+      for (const [k, v] of Object.entries(l)) assert.equal(worn[k], v, `${id}.${k}`);
+      assert.ok(wearing(id, worn, NONE), id);
+    }
+  }
+});
+test('the new pieces are free, named, and in the normal pickers', () => {
+  const cat = { top: TOPS, bottom: BOTTOMS, head: ACCESSORIES.head, face: ACCESSORIES.face, back: ACCESSORIES.back };
+  for (const [slot, ids] of Object.entries(PIECES)) for (const id of ids) {
+    assert.ok(cat[slot][id] && cat[slot][id].name && !cat[slot][id].ach, `${slot}.${id}`);
+    assert.equal(validLook({ ...DEFAULT_LOOK, [slot]: id }, NONE)[slot], id, `${slot}.${id}`);
+  }
+});
+test('every top is cut by clothes.js, the new ones fitted by the vest; sleeved ones have first-person sleeves; every accessory is built', () => {
+  const clothes = src('public/js/clothes.js'), models = src('public/js/models.js'), econ = src('public/js/econ3d.js'), hands = src('public/js/hands.js');
+  const block = (s, from) => s.slice(s.indexOf(from), s.indexOf('\n};', s.indexOf(from)));
+  const cut = block(clothes, 'const TOPS = {'), known = econ.match(/const KNOWN_TOPS = new Set\(\[([^\]]*)\]\)/)[1], sleeves = hands.match(/const SLEEVES = \{([^}]*)\}/)[1];
+  for (const id of Object.keys(TOPS)) {
+    if (id !== 'none') assert.match(cut, new RegExp(`\\n  ${id}: \\{ cut: `), `clothes.js TOPS.${id}`);
+  }
+  for (const id of PIECES.top) assert.ok(known.includes(`'${id}'`), `econ3d KNOWN_TOPS ${id}`);
+  for (const id of ['robe', 'refshirt', 'cardigan', 'spacesuit', 'hawaiian', 'chef', 'stringer', 'pjtop']) assert.match(sleeves, new RegExp(`\\b${id}: `), `hands.js SLEEVES.${id}`);
+  for (const id of Object.keys(BOTTOMS)) assert.match(block(clothes, 'const BOTTOMS = {'), new RegExp(`\\b${id}: `), `clothes.js BOTTOMS.${id}`);
+  for (const slot of ['head', 'face', 'back']) for (const id of Object.keys(ACCESSORIES[slot])) if (id !== 'none') assert.ok(models.includes(`case '${id}'`), `models.js ${slot} ${id}`);
+});
+test('bots dress up as the new costumes too', () => {
+  const seen = new Set();
+  for (let s = 1; s < 20000 && seen.size < Object.keys(NEW).length; s++) {
+    const { look, preset } = botLook(s, 1);
+    if (!Object.hasOwn(NEW, preset)) continue;
+    seen.add(preset);
+    assert.equal(look.top, [].concat(COSTUMES[preset].look.top)[0], preset);
+    assert.ok(wearing(preset, look, ALL), preset);
+  }
+  assert.equal(seen.size, Object.keys(NEW).length);
+});
+test('the Chicken Mascot and the Bin Knight are earned: their signature pieces are locked to the new achievements', () => {
+  const L = { poultry: { top: ['chickensuit'], bottom: ['chickenlegs'], head: ['chickenhead'] }, protector: { top: ['binarmour'], head: ['binhelm'], back: ['binlid'] } };
+  const cat = { top: TOPS, bottom: BOTTOMS, head: ACCESSORIES.head, back: ACCESSORIES.back };
+  for (const [ach, slots] of Object.entries(L)) {
+    assert.ok(ACHIEVEMENTS[ach] && ACHIEVEMENTS[ach].goal > 1, ach);
+    for (const [slot, ids] of Object.entries(slots)) for (const id of ids) {
+      assert.equal(cat[slot][id].ach, ach, `${slot}.${id}`);
+      assert.notEqual(validLook({ ...DEFAULT_LOOK, [slot]: id }, NONE)[slot], id, `${slot}.${id} stripped without ${ach}`);
+      assert.equal(validLook({ ...DEFAULT_LOOK, [slot]: id }, new Set([ach]))[slot], id, `${slot}.${id} kept with ${ach}`);
+    }
+  }
+  assert.equal(ACHIEVEMENTS.poultry.stat, 'chicken_kills'); assert.equal(ACHIEVEMENTS.poultry.goal, 25);
+  assert.equal(ACHIEVEMENTS.protector.stat, 'melee_kills'); assert.equal(ACHIEVEMENTS.protector.goal, 50);
 });
