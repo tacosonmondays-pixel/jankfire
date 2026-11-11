@@ -21,6 +21,8 @@ const trafficKinds = (def) => { const t = MAP.id && Object.hasOwn(TRAFFIC, MAP.i
 import { buildArch, hasArch, wantArch, setArchHaze } from './archfield.js'; // Blender architecture over the boxes
 import { liquidBox, buildLiquids, updateLiquids, liquidsMap, setLiquidQ } from './liquids.js'; // water that moves, lava that flows, splashes
 import { updateFlames } from './flames.js'; // real fire
+import { gfxGuard, initGfxGuard } from './gfxguard.js';
+import { postBegin, postEnd } from './post.js';
 import { initLighting, lightingMap, lightingRefresh, updateLighting, setLightPreset, aoBegin, aoBake, aoMaterials, setSunBoxes } from './lighting.js';
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
@@ -500,6 +502,7 @@ export function initWorld(canvas) {
   buildMap(scene);
   addEventListener('resize', resize);
   resize();
+  initGfxGuard(canvas, { repaint: repaintMapTextures, relight: relightMap, mats: mapMats, preset: () => jank.name });
 }
 
 export function setJank(i) { jank = JANK[i] || JANK[1]; resize(); setLightPreset(JANK[i] ? i : 1); setLiquidQ(JANK[i] ? i : 1); }
@@ -566,6 +569,37 @@ function archFor(id) {
   wantArch(list, () => { if (MAP.id === id) refreshMapVisuals(); });
 }
 
+// ---- gfxguard.js hooks (the "everything renders black" safety net)
+// fresh canvas textures on the map materials that are already in use (same material objects, so nothing has to be rebuilt)
+export function repaintMapTextures() {
+  if (!MAT) return 0;
+  const fresh = makeMaterials();
+  let n = 0;
+  for (const [k, v] of Object.entries(fresh)) {
+    const old = MAT[k];
+    for (const slot of ['map', 'emissiveMap']) {
+      const t = v.mat[slot];
+      if (!t) continue;
+      if (old && old.mat[slot] && old.mat[slot] !== t) { old.mat[slot].dispose(); old.mat[slot] = t; old.mat.needsUpdate = true; n++; } else t.dispose();
+    }
+    v.mat.dispose();
+  }
+  return n;
+}
+// the current map's own fog, sky light and sun again (a streamed city sets its own every frame)
+export function relightMap() {
+  const def = MAPS[MAP.id];
+  if (!def || !G.scene || def.stream) return false;
+  G.scene.fog.color.setHex(MAP.sky.fog); G.scene.fog.near = MAP.fogNear; G.scene.fog.far = MAP.fogFar;
+  const hz = def.haze;
+  hazeUniforms.uHaze.value.set(hz ? hz.k : 0, hz ? hz.top : 0, hz ? hz.bottom : -1, hz ? hz.dist : 100);
+  mapLight(def);
+  lightingMap(def, MAP.id, !!def.night, sun);
+  return true;
+}
+export const mapMats = () => MAT;
+
+
 const TOUCH_MAX_PX = 1280 * 720;
 export function resize() {
   const w = innerWidth, h = innerHeight;
@@ -598,10 +632,15 @@ export function updateWorld(dt) {
 let lastT = 0;
 export function renderFrame() {
   const r = G.renderer, now = performance.now();
+  gfxGuard(now); // gfxguard.js: broken lights / fog / textures get put back before they're drawn
   updatePropField(G.camera); // which prop copies to draw, near or far (only after a step or a turn)
   updateLighting(Math.min(0.1, (now - (lastT || now)) / 1000)); lastT = now;
+  const post = postBegin(r); // post.js: bloom / colour punch (false when they're off: straight to the canvas as always)
   r.clear();
   r.render(G.scene, G.camera);
   r.clearDepth();
   r.render(G.vmScene, G.vmCamera);
+  if (post && !postEnd(r)) { // the shader pass failed and switched itself off: this frame again, the plain way
+    r.setRenderTarget(null); r.clear(); r.render(G.scene, G.camera); r.clearDepth(); r.render(G.vmScene, G.vmCamera);
+  }
 }
