@@ -84,7 +84,7 @@ body.st-talk #crosshair, body.st-talk #hitmarker, body.st-talk #hotbar, body.st-
 #stCodex .foot { font-size: 12px; color: #9a88aa; margin-top: 8px; text-align: right; }
 
 /* ---- cutscenes: letterbox bars, subtitles, skip ring, fades, impact frames */
-#stBars::before, #stBars::after { content: ''; position: absolute; left: 0; right: 0; height: 0; background: #ff4fd8; transition: height 0.45s ease; box-shadow: 0 0 0 3px #000; }
+#stBars::before, #stBars::after { content: ''; position: absolute; left: 0; right: 0; height: 0; background: #000; transition: height 0.45s ease; } /* black (the owner's ask): film bars, not UI */
 #stBars::before { top: 0; } #stBars::after { bottom: 0; }
 #stBars.on::before, #stBars.on::after { height: 11vh; }
 #stBars { position: absolute; inset: 0; }
