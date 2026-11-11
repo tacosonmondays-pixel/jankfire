@@ -10,6 +10,7 @@ import { jankify } from '../jank.js';
 import { buildFace, skinMat } from './face.js';
 import { glbLoader } from '../glbkit.js';
 import { palletJackLook } from './jacklook.js'; // (pallet jack's skeleton + code puppet live in their own file)
+import { hatLordLook } from './hatlook.js'; // (madam chair and her hat: likewise)
 
 const HIP = 0.92;
 const g = (x = 0, y = 0, z = 0) => { const o = new THREE.Group(); o.position.set(x, y, z); return o; };
@@ -320,6 +321,7 @@ const LOOKS = {
     return { ...p, parts, partsAll: all, kind: 'cyborg', height: 4.5, eyeY: 4.3 };
   },
   pallet_jack: () => palletJackLook({ person, g, sph, cap, box, cyl, flat, patMat, speckle }),
+  hat_lord: () => hatLordLook({ person, g, sph, cap, box, cyl, flat, patMat, speckle }),
 };
 // everyone else in the script gets a seeded look from their cast entry (body: mannequin / normal / puppet) until they
 // get a hand-made one: skin, clothes and pattern from the palette; puppets pick one huge + one tiny feature, and the
@@ -398,7 +400,7 @@ function dressCast(L, scene) {
   ch.root.scale.setScalar(1); ch.root.position.set(0, 0, 0); ch.root.rotation.set(0, 0, 0); ch.root.updateMatrixWorld(true);
   const keep = L.face ? L.face.root : null, inv = new THREE.Matrix4();
   scene.updateMatrixWorld(true);
-  let n = 0; const tags = new Map();
+  let n = 0; const tags = new Map(), skins = [];
   if (L.parts) for (const k of Object.keys(L.parts)) if (L.parts[k].userData.codeOnly) { delete L.parts[k]; delete L.partsAll[k]; } // (the model brings its own)
   scene.traverse((o) => {
     if (!o.isMesh) return;
@@ -410,6 +412,7 @@ function dressCast(L, scene) {
     if (!G.userData.dressed) { for (const c of [...G.children]) if ((c.isMesh && c !== keep) || c.userData.codeOnly) G.remove(c); G.userData.dressed = true; } // (codeOnly: a code group the model replaces, bev's extra arms)
     const m = o.clone(); m.matrix.copy(o.matrixWorld); m.matrix.decompose(m.position, m.quaternion, m.scale);
     inv.copy(G.matrixWorld).invert(); m.applyMatrix4(inv);
+    if (o.isSkinnedMesh) skins.push([m, o]); // (bound below, once every part is in place)
     // part_<joint>__<tag>: a named piece combat aims at (overtime's plate, heart...). lod + dmg* pieces start hidden
     const tag = /__([A-Za-z]+)/.exec(p.name); // (the exporter numbers repeats: __lod001 is lod)
     if (tag) {
@@ -419,6 +422,18 @@ function dressCast(L, scene) {
     }
     G.add(m); n++;
   });
+  // skinned parts (madam chair): their bones are this skeleton's joints, by name, bound at the rest the joints have
+  // now. a joint that moves skin loses its code meshes, like a dressed one
+  const skels = new Map();
+  for (const [m, o] of skins) {
+    let sk = skels.get(o.skeleton);
+    if (!sk) {
+      const bones = o.skeleton.bones.map((b) => ch[b.name] || ch.root);
+      for (const J of bones) if (J !== ch.root && !J.userData.dressed) { for (const c of [...J.children]) if ((c.isMesh && c !== keep) || c.userData.codeOnly) J.remove(c); J.userData.dressed = true; }
+      ch.root.updateMatrixWorld(true); sk = new THREE.Skeleton(bones); skels.set(o.skeleton, sk);
+    }
+    m.updateMatrixWorld(true); m.bind(sk, m.matrixWorld); m.frustumCulled = false;
+  }
   ch.head.rotation.z = tilt; ch.root.scale.setScalar(s); ch.root.updateMatrixWorld(true);
   L.blender = n > 0;
 }
