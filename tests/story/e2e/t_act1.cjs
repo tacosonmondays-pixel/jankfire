@@ -89,7 +89,10 @@ const OWNED = { 'm02_sauce_run.ambush': 'C', 'm03_somethings_digesting.out': 'C'
   }
 
   await skipIntro(pg);
-  await pg.mouse.click(480, 270); await sleep(300);
+  await pg.mouse.click(320, 180); await sleep(300);
+  // software GL draws the streamed city at ~1 fps: the script stops drawing (the game still runs every frame) and
+  // draws again only for a screenshot (NODRAW=0 keeps drawing)
+  if (process.env.NODRAW !== '0') await ev(async () => { const { G } = await import('/js/ctx.js'); const r = G.renderer, o = r.render.bind(r); r.render = (sc, c) => { if (!window.__noDraw) o(sc, c); }; window.__noDraw = true; });
   const rows = [];
   let last = '', same = 0;
   for (let n = 0; n < 140; n++) {
@@ -109,7 +112,7 @@ const OWNED = { 'm02_sauce_run.ambush': 'C', 'm03_somethings_digesting.out': 'C'
     else { same = 0; last = id; }
     const g = o.goal, t0 = Date.now();
     console.log(`> ${id} [${g.type}] "${o.text}" marker=${o.marker} at ${o.pos} ${o.map}`);
-    if (SHOTS) await pg.screenshot({ path: `${OUT}/act1_${String(rows.length).padStart(2, '0')}_${o.step}.png` }).catch(() => {});
+    if (SHOTS) { await ev(() => { window.__noDraw = false; }); await sleep(2500); await pg.screenshot({ path: `${OUT}/act1_${String(rows.length).padStart(2, '0')}_${o.step}.png` }).catch(() => {}); await ev(() => { window.__noDraw = true; }); }
     let how = 'real', note = '';
     if (OWNED[id]) { how = 'dev:' + OWNED[id]; note = 'faked (other lane)'; await shiftR(); }
     else if (g.type === 'flag' && g.flag === 'flag.sim_won') {
@@ -119,7 +122,7 @@ const OWNED = { 'm02_sauce_run.ambush': 'C', 'm03_somethings_digesting.out': 'C'
       const menu = await ev(() => !document.getElementById('menu').classList.contains('hidden'));
       note = menu ? 'F at the Machine opened the sims menu; came back via onMain (no match played headless)' : 'F at the Machine did NOT open the menu';
       await ev(async () => { const { G } = await import('/js/ctx.js'); sessionStorage.setItem('jfStoryBack', JSON.stringify({ slot: G.story.cur.slot, state: 'sim' })); G.story.onMain(); });
-      await sleep(9000); await pg.mouse.click(480, 270);
+      await sleep(9000); await pg.mouse.click(320, 180);
       if (!menu) how = 'BLOCKED';
     } else if (g.type === 'flag') { await sleep(2500); const tk = await ev(async () => (await import('/js/story/talk.js')).talking()); if (tk) { await talkThrough(); note = 'a choice: picked 1'; } else note = 'waited'; }
     else if (g.type === 'talk') {
@@ -130,7 +133,7 @@ const OWNED = { 'm02_sauce_run.ambush': 'C', 'm03_somethings_digesting.out': 'C'
         await sleep(600); p = await where(g.npc); await walkTo(p, 1.8, 7000); await face(p); await sleep(300);
         const prompt = await ev(() => document.getElementById('stPrompt').textContent);
         await key('KeyF'); await sleep(400); await talkThrough();
-        note = prompt ? `"${prompt}"` : 'no TALK prompt';
+        note = prompt ? `"${prompt}"` : 'no TALK prompt ' + JSON.stringify(await ev(async (id) => { const { actors } = await import('/js/story/actors.js'); const { ME } = await import('/js/player.js'); const boot = await import('/js/story/boot.js'); const a = actors.get(id); return { spawned: !!a, at: a && a.pos.map((v) => +v.toFixed(1)), me: ME.pos.map((v) => +v.toFixed(1)), hidden: a && a.hidden, locked: boot.locked(), lines: !!(window.JF_STORY.S.defs.npcs[id] || {}).lines, n: actors.size }; }, g.npc));
       }
     } else if (g.type === 'interact' || g.type === 'pickup') {
       const sp = await ev((g) => { for (const v of (window.JF_STORY.spots || new Map()).values ? window.JF_STORY.spots.values() : []) if ((g.item && v.item === g.item) || (g.thing && v.thing === g.thing)) return v.p; return null; }, g);
