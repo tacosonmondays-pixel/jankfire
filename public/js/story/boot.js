@@ -15,6 +15,8 @@ import { toSave, fromSave } from '/shared/story/state.js';
 import * as lab from '/shared/story/content/test/lab.js';
 import * as overdue from '/shared/story/content/overdue.js'; // the full script, as an engine pack (PR #76)
 import { PLACES } from '/shared/city/slice.js'; // the world lane's real spots for the script's zones (the slice city)
+import { npcSpot, HINTS } from '/shared/city/cast_slice.js';
+import { RAMP } from '/shared/city/act1set.js'; // (the Unpaid's jump ramp over the collapse: JUMP IT) // ...and where the cast stands in it (per mission step)
 import { actors, spawnActor, despawnActor, clearActors, updateActors, dropTo, play } from './actors.js';
 import { otFrame } from './overtime.js'; // (mr. overtime's clips, marks, damage and fx)
 import { startTalk, talkKey, talkFrame, talking } from './talk.js';
@@ -54,7 +56,7 @@ export async function init() {
   ST.S = makeStory({ content: merge(PACKS), state: st, host: HOST });
   ST.ready = true;
   ST.where = where; ST.offYaw = (y) => offYaw(y); ST.sync = () => sync(true); // (sync: the engine's state to the sim right now, before a travel's save)
-  window.JF_STORY = ST; // (tests drive it from here)
+  window.JF_STORY = ST; ST.spots = SPOTS; // (tests drive it from here; spots: the glowing pick-up / use spots)
   try { const sc = await import('./scene.js'); ST.scene = sc; sc.initScenes(ST); } catch (e) { console.warn('story scenes not loaded', e); }
   try { const bf = await import('./bossfight.js'); ST.boss = bf.makeBoss(ST, { where, playScene: (id, o) => ST.scene && ST.scene.playScene(id, o) }); } catch (e) { console.warn('boss hooks not loaded', e); } // (phases, cutscenes, the boss's poses)
 }
@@ -108,6 +110,7 @@ const HOST = {
       case 'questFail': card('fail', e.title); break;
       case 'stepFail': card('fail', (e.why || 'nope').toUpperCase(), 'back to the last checkpoint', '', 2); break;
       case 'stepDone': sfx.click && sfx.click(); save(); break;
+      case 'stepStart': { const h = ST.city && HINTS[`${e.quest}.${e.step}`]; if (h) setTimeout(() => { card('step', h.call, '', '', 1.8); toast(h.how.replace(/\{(\w+)\}/g, (_, k) => K.label(k)), 6); }, 900); break; } // (the tutorial's moves: cast_slice.js HINTS)
       case 'codex': if (e.entry) toast(`${e.entry.kind === 'frag' ? 'OPTION C FRAGMENT' : 'NEW IN THE BOOKS'}: <b>${e.entry.title}</b> (J)`); break;
       case 'meet': toast(`met <b>${e.name}</b>`); break;
       case 'warn': console.warn('story:', e.text); break;
@@ -159,6 +162,7 @@ function stage() {
     if (ST.scene && Object.keys(ST.S.st.quests).length && ST.S.st.log.length && !ST.recapped) { ST.recapped = true; setTimeout(() => ST.scene.playScene({ id: 'recap', kind: 'recap', skip: true }), 1500); } // PREVIOUSLY ON OVERDUE
   }
   const D = ST.S.defs;
+  if (inStory() && G.story.fromSim) { G.story.fromSim = false; ST.simBack = performance.now() + 1500; } // back from a sim match (main.js onMain): you won the opening sim (frame() sets it, after the save has loaded)
   if (!LAB) { // the script: lay it out, start a new game once, offer the quests that can start
     rehearse();
     if (!ST.S.st.flags.init_done) { ST.S.run(D.init || []); ST.S.st.flags.init_done = true; for (const z of Object.values(D.zones)) if (z.district) ST.S.st.vars[`clock.${z.district}`] ??= 17 * 60 + 29; }
@@ -217,15 +221,19 @@ function rehearse() {
   for (let z = -span; z <= span; z += 6.5) for (let x = -span; x <= span; x += 6.5) if (city || (Math.hypot(x, z - 6) > 6 && Math.hypot(x, z + 12) > 6 && Math.hypot(x, z + 4) > 4)) slots.push([c0[0] + x, c0[1], c0[2] + (city ? 34 + z : z + 4)]); // (city: the rehearsal yard is the street south of the depot)
   slots.sort((a, b) => Math.hypot(a[0] - c0[0], a[2] - c0[2]) - Math.hypot(b[0] - c0[0], b[2] - c0[2])); // act I's districts sort first, so they land nearest the Lost & Found
   let i = 0;
-  for (const id of ids) { const p = fixed[id] || slots[i++] || c0.slice(); p[1] = dropTo([p[0], p[1], p[2]], 30); REH.zones[id] = p; D.zones[id].r = Math.min(D.zones[id].r || 2.5, city && fixed[id] ? 4 : 2.5); if (!fixed[id] || id === 'bottom:lostfound' || city) REH.signs.push(sign(D.zones[id].name || id, p)); }
+  // (a real place in the city keeps its height: dropped from just above it, not from 30 m up onto a roof; and its own reach: a car, a roof, a doorway)
+  for (const id of ids) { const p = fixed[id] || slots[i++] || c0.slice(); p[1] = dropTo([p[0], p[1], p[2]], city && fixed[id] ? 1.5 : 30); REH.zones[id] = p; D.zones[id].r = city && PLACES[id] && PLACES[id].r ? PLACES[id].r : Math.min(D.zones[id].r || 2.5, city && fixed[id] ? 4 : 2.5); if (city ? fixed[id] : !fixed[id] || id === 'bottom:lostfound') REH.signs.push(sign(D.zones[id].name || id, p)); } // (the city: only real places get a sign; the rest of the script's zones wait in the yard unseen)
   ROSTER.clear();
   const at = {};
   for (const [id, n] of Object.entries(D.npcs)) {
-    if (id === 'choice' || id === 'change' || !n.home) continue;
+    if (id === 'choice' || id === 'change') continue;
+    const sp = city && npcSpot(id, ST.S.quests.objectives()); // (the slice: an exact spot, not a ring round the place)
+    if (sp) { ROSTER.set(id, { id, n, p: sp.p.slice(), face: sp.face, spot: sp }); continue; }
+    if (!n.home) continue;
     const zp = n.home.p ? n.home.p : REH.zones[n.home.zone];
     if (!zp) continue;
     const k = (at[n.home.zone] = (at[n.home.zone] || 0) + 1) - 1, a = k * 2.1 + 0.6;
-    ROSTER.set(id, { id, n, p: [zp[0] + Math.sin(a) * (k ? 1.7 : 1.2), zp[1], zp[2] + Math.cos(a) * (k ? 1.7 : 1.2)], face: a + Math.PI });
+    ROSTER.set(id, { id, n, p: [zp[0] + Math.sin(a) * (k ? 1.7 : 1.2), zp[1], zp[2] + Math.cos(a) * (k ? 1.7 : 1.2)], face: a + Math.PI, yard: city && !PLACES[n.home.zone] });
   }
 }
 function sign(text, p) {
@@ -238,8 +246,15 @@ function sign(text, p) {
 }
 // people near you are in the world, the rest wait (59 of them would be a lot of draw calls)
 function roster(e) {
+  if (ST.city) { // a mission step can move someone (cast_slice.js STAGE): they're there when you arrive (not mid-talk or mid-scene)
+    const objs = ST.S.quests.objectives();
+    for (const r of ROSTER.values()) { const sp = npcSpot(r.id, objs); if (!sp || sp === r.spot) continue; const a = actors.get(r.id); if (a && (a.inScene || a.boss || talking())) continue; r.spot = sp; r.p = sp.p.slice(); r.face = sp.face; if (a) despawnActor(r.id); }
+  }
+  // (the city: someone whose home isn't a real place yet only stands in the rehearsal yard while a step wants them)
+  const want = ST.city ? new Set(ST.S.quests.objectives().flatMap((o) => [o.marker, ...o.goals.map((g) => g.marker)])) : null;
   for (const r of ROSTER.values()) {
     const d = Math.hypot(e[0] - r.p[0], e[2] - r.p[2]), a = actors.get(r.id);
+    if (r.yard && !want.has(r.id)) { if (a && !a.inScene && !a.boss && !talking()) despawnActor(r.id); continue; }
     if (!a && d < 34) spawnActor(r.id, r.n, r.p, r.face);
     else if (a && d > 44 && !a.inScene && !a.boss && !talking()) despawnActor(r.id); // (a boss in a fight stays: the referee has him)
   }
@@ -258,7 +273,8 @@ function spots() {
   for (const [id, th] of Object.entries(D.things)) if (th.zone && REH.zones[th.zone] && !S.st.flags['used.' + id] && (!th.if || S.test(th.if)) && th.do) want.set('t:' + id, { kind: 'thing', thing: id, zone: th.zone, name: th.name || id, th });
   for (const [k, sp] of SPOTS) if (!want.has(k)) { G.scene.remove(sp.mesh); SPOTS.delete(k); }
   let n = 0;
-  for (const [k, w] of want) if (!SPOTS.has(k)) { const p = where(w.zone).slice(); const j = n++ * 1.3; p[0] += Math.sin(j) * 1.4; p[2] += Math.cos(j) * 1.4; p[1] = dropTo(p); const mesh = w.kind === 'pickup' && w.item === 'soup_pot' ? thingMesh('pot') : spotMesh(w.kind); mesh.position.set(...p); G.scene.add(mesh); SPOTS.set(k, { ...w, p, mesh }); }
+  for (const [k, w] of want) if (!SPOTS.has(k)) { const p = where(w.zone).slice(); const j = n++ * 1.3, rr = w.kind === 'thing' && ST.city ? 3 : 1.4; p[0] += Math.sin(j) * rr; p[2] += Math.cos(j) * rr; // (city: collectibles a step further out than the quest's own spot)
+     p[1] = dropTo(p); const mesh = w.kind === 'pickup' && w.item === 'soup_pot' ? thingMesh('pot') : spotMesh(w.kind); mesh.position.set(...p); G.scene.add(mesh); SPOTS.set(k, { ...w, p, mesh }); }
 }
 function spotMesh(kind) {
   const g = new THREE.Group();
@@ -306,6 +322,7 @@ export function frame(dt, now, cam) {
     { const busy = !!(ST.scene && ST.scene.playing()) || talking(); if (busy !== !!ST.held) { ST.held = busy; if (G.story && G.story.send) G.story.send('hold', { all: true, on: busy }); } } // (the referee freezes enemies through cutscenes and talks)
     if (OTPREV && (ST.otW = (ST.otW || 0) + dt) > 3) { if (!ST.otPrev) { ST.otPrev = import('./otpreview.js').then((m) => { m.start(); ST.otPrevM = m; }); } else if (ST.otPrevM) ST.otPrevM.previewFrame(dt * (ST.slowmo ?? 1)); } // (?otpreview=1: overtime's rehearsal)
     if (ST.talkQ && ST.talkQ.length && !talking()) { const [n, node] = ST.talkQ.shift(); startTalk(ST.S, n, node, () => save('talk')); }
+    if (ST.simBack && now > ST.simBack) { ST.simBack = 0; if (!S.st.flags.sim_won) { S.run(['flag:sim_won']); card('step', 'TRAINING COMPLETE', 'the machine hums. something is coming out.', '', 2.4); } }
     S.tick(dt);
     // zones: walking in / out
     for (const [id, z] of Object.entries(S.defs.zones)) {
@@ -314,6 +331,8 @@ export function frame(dt, now, cam) {
       if (inside && !ST.inZone.has(id)) { ST.inZone.add(id); S.emit({ type: 'reach', zone: id }); }
       else if (!inside && ST.inZone.has(id)) { ST.inZone.delete(id); S.emit({ type: 'leave', zone: id }); }
     }
+    // cars: getting in a driver's seat (drive.js) is the enterCar goal (m02's "steal a car")
+    { const drv = !!(G.story && G.story.hideVM && G.story.hideVM()); if (drv && !ST.drv) S.emit({ type: 'enterCar' }); ST.drv = drv; if (drv && ST.city) rampCalls(); }
     // kills: every kill on the range is a dummy (the "interns")
     if ((G.kills || 0) > ST.kills) { S.emit({ type: 'kill', kind: 'dummy', n: G.kills - ST.kills }); ST.kills = G.kills; }
     else ST.kills = G.kills || 0;
@@ -329,7 +348,8 @@ export function frame(dt, now, cam) {
         const score = d + (1 - (dx * fx + dz * fz) / Math.max(0.01, d)) * 1.5;
         if (score < bd) { bd = score; nearAct = a; }
       }
-      for (const sp of SPOTS.values()) { sp.mesh.visible = true; sp.mesh.userData.glow.material.opacity = 0.35 + Math.sin(now * 0.006) * 0.25; if (sp.mesh.userData.spin) sp.mesh.userData.spin.rotation.y += dt * 2; if (Math.hypot(ME.pos[0] - sp.p[0], ME.pos[2] - sp.p[2]) < 1.8) nearThing = { spot: sp, t: { name: sp.name.toUpperCase() } }; }
+      let sd = 1.8; // (the nearest spot gets F; a quest's spot beats a collectible lying next to it)
+      for (const sp of SPOTS.values()) { sp.mesh.visible = true; sp.mesh.userData.glow.material.opacity = 0.35 + Math.sin(now * 0.006) * 0.25; if (sp.mesh.userData.spin) sp.mesh.userData.spin.rotation.y += dt * 2; const d = Math.hypot(ME.pos[0] - sp.p[0], ME.pos[2] - sp.p[2]) + (sp.kind === 'thing' ? 0.5 : 0); if (d < sd) { sd = d; nearThing = { spot: sp, t: { name: sp.name.toUpperCase() } }; } }
       for (const t of ST.things.values()) {
         t.mesh.visible = S.test(t.t.if) && !bag.has(t.t.item);
         if (t.mesh.visible) { t.mesh.userData.glow.material.opacity = 0.35 + Math.sin(now * 0.006) * 0.25; if (Math.hypot(ME.pos[0] - t.p[0], ME.pos[2] - t.p[2]) < 1.8) nearThing = t; }
@@ -343,12 +363,31 @@ export function frame(dt, now, cam) {
   pr.classList.toggle('hidden', !txt);
   talkFrame(dt, now, e);
   if (ST.scene) ST.scene.sceneFrame(dt, now, cam);
-  questHud(S.quests.objectives(), where, cam, !ST.on || (ST.scene && ST.scene.playing()) || talking());
+  questHud(hudObjs(S), where, cam, !ST.on || (ST.scene && ST.scene.playing()) || talking());
   if (takeCamera(cam, dt)) G.vmScene.visible = false; // (the gun goes away for the shot)
   if (cardQ.length && !locked() && now > (ST.cardT || 0)) { card0(...cardQ.shift()); ST.cardT = now + 1500; }
   ST.saveT += dt;
 }
 
+// the Unpaid's ramp over the collapse: JUMP IT when you line up on it, then how the landing went
+function rampCalls() {
+  const c = G.story.car && G.story.car(); if (!c) return;
+  const R = RAMP, inLane = c.x > R.x0 - 1 && c.x < R.x1 + 1, north = Math.cos(c.h) < -0.6, J = (ST.jump ||= { t: 0 });
+  if (inLane && north && c.z > R.z1 && c.z < R.z1 + 30 && performance.now() > J.t) { J.t = performance.now() + 15000; card('step', 'JUMP IT!', 'the unpaid built a ramp. it is mostly desks.', '', 1.6); sfx.rankUp && sfx.rankUp(); }
+  if (!c.ground && c.z < R.z0 && c.z > R.exit[0] - 4 && inLane) J.air = true;
+  if (J.air && c.ground) { J.air = false; const made = c.z < R.exit[0] + 1; card('step', made ? 'NAILED IT' : 'SHORT!', made ? 'the soup is fine. probably.' : 'drive up the planks at the far end', '', 1.6); (made ? sfx.cash : sfx.hurt) && (made ? sfx.cash() : sfx.hurt()); }
+}
+// the tracked steps for the HUD, with a waypoint where the script gave none but the world has an answer: "steal a car"
+// points at the nearest parked car
+function hudObjs(S) {
+  const objs = S.quests.objectives();
+  for (const o of objs) {
+    if (o.marker) continue;
+    const q = S.defs.quests[o.quest], st = q && q.steps.find((x) => x.id === o.step);
+    if (st && (st.goals || [st.goal]).some((g) => g && g.type === 'enterCar') && G.story && G.story.carNear) { const c = G.story.carNear(); if (c) o.marker = c; }
+  }
+  return objs;
+}
 export function key(e) {
   if (!ST.ready) return false;
   if (ST.scene && ST.scene.sceneKey(e)) return true;
