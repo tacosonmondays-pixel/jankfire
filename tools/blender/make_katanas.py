@@ -138,7 +138,8 @@ def katana_blade(z_origin, name, pre='kt'):
                     vb = min(vks - 0.06, 0.0042 / W)
                     c = HAM if v < vb else NAR if v < vks else SJI if v < 0.94 else MUNE
                 px[row, col] = c * (0.985 + 0.03 * r.random())
-    bm_ = mat(pre + '_blade', 0xffffff, rough=0.1, metal=0.96, tex=tex_canvas(pre + '_blade_t', 512, 64, draw))
+    # (mostly metal, not all: full metal goes dark on the faces turned from the light and the hamon is lost)
+    bm_ = mat(pre + '_blade', 0xffffff, rough=0.18, metal=0.8, tex=tex_canvas(pre + '_blade_t', 512, 64, draw))
     o = ring_solid(rings, uvs, bm_, pre + '_blade', caps=(True, False), angle=24)
     node = part([o], name, pivot=(0, 0, z_origin))
     return node, -TIP[0], (TIP[1], z_origin + TIP[0])
