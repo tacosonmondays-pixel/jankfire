@@ -394,6 +394,7 @@ export function key(e) {
   if (!ST.ready) return false;
   if (ST.scene && ST.scene.sceneKey(e)) return true;
   if (talkKey(e)) return true;
+  if (ST.enc && ST.enc.key && ST.enc.key(e)) return true; // (an encounter's own button: pulling Lumps' staple out)
   if (e.code === 'KeyJ' && !e.repeat && e.type === 'keydown') { toggleCodex(ST.S); return true; }
   if (e.code === 'KeyR' && e.type === 'keydown' && !e.repeat && !LAB && ST.on && e.shiftKey) { fakeGoal(); return true; } // shift+R: rehearsal skip (R alone reloads)
   if (codexOpen()) { if (K.matches('menu', e)) toggleCodex(ST.S, false); return true; }
