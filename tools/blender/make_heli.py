@@ -457,9 +457,9 @@ def mat_trim(name):
     ln = cell('lens')  # the camera's glass: rings and a glint
     px_disc(ln, 8, 8, 8.5, 0x0a0a0e); px_disc(ln, 8, 8, 6.5, 0x1c3050); px_disc(ln, 8, 8, 4.5, 0x0c1420); px_disc(ln, 8, 8, 2.5, 0x3a2a6a); px_disc(ln, 5.5, 5.5, 1.3, 0xbfe8ff)
     base = lib._image(name + '_t', np.clip(px, 0, 1))
-    img = bpy.data.images.new(name + '_mr', W, H, alpha=False)
+    img = bpy.data.images.new(name + '_mr', W, H, alpha=False); img.colorspace_settings.is_data = True  # before the pixels: blender 5.2 wipes a generated image when its colour space changes
     a = np.ones((H, W, 4), np.float32); a[:, :, :3] = orm[::-1]
-    img.pixels.foreach_set(a.ravel()); img.colorspace_settings.is_data = True; img.file_format = 'PNG'; img.pack()
+    img.pixels.foreach_set(a.ravel()); img.file_format = 'PNG'; img.pack(); assert np.array(img.pixels[:], np.float32)[1::4].max() > 0, img.name + ': roughness map came out black (set the colour space before the pixels)'
     m = mat(name, 0xffffff, rough=0.5, tex=base)
     nt = m.node_tree; b = nt.nodes['Principled BSDF']
     t = nt.nodes.new('ShaderNodeTexImage'); t.image = img; t.interpolation = 'Closest'
