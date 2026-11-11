@@ -80,7 +80,7 @@ def add_far_hl(root, ratio=0.16):
         o = join(cs, 'part_%s__lod' % jn)
         islands_drop(o, small=lambda n, size: (n < 70 and size < 0.3) or size < 0.07)
         me = o.data; me.calc_loop_triangles(); n = len(me.loop_triangles)
-        if n == 0: bpy.data.objects.remove(o, do_unlink=True); continue
+        if n == 0: print('JF_FAR_EMPTY', jn); o.select_set(False); bpy.data.objects.remove(o, do_unlink=True); continue   # (deselect first: a removed object left selected breaks the export)
         if n > 40:
             d = o.modifiers.new('dec', 'DECIMATE'); d.ratio = max(ratio, min(1.0, 40 / n)); apply_mods(o)
             bm = bmesh.new(); bm.from_mesh(o.data)
@@ -263,11 +263,23 @@ def sheet_close(H, root):
     vis()
     hc = to_root('hat', (0, 0.2, 0)); ec = to_root('hat', (0, 0.22, -0.3)); fc = to_root('head', (0, 0.2, -0.1)); sk = to_root('spine', (0, 0.42, -0.1))
     hr = Vector(posed('handR', (0, -0.14, 0))); studio(1.4, gv(*hc), key=1.0)
-    V = [('the hat from above', tuple(hc), 20, 0.75, 3.6, 50), ('the underside: what you see from 1.8 m', (0, 2.72, -0.1), 12, -0.55, 3.2, 50), ('the band: its mouth, the clasps', tuple(to_root('hat', (0.1, 0.1, -0.3))), 25, 0.1, 1.35, 70),
-         ('the growths on her right of the crown', tuple(to_root('hat', (0.3, 0.22, -0.05))), 70, 0.25, 1.3, 70), ('HER eyes: the brown pair', tuple(ec), 0, 0.05, 0.75, 70), ('her face under the brim: its fingers over where her eyes would be', tuple(fc), 12, -0.12, 1.3, 70),
-         ('the low wing and the feeler', tuple(to_root('brimRb', (0.3, 0, 0))), 30, -0.1, 1.5, 70), ('her right hand', tuple(hr), 40, 0.05, 0.9, 70), ('the chest: the empty socket', tuple(sk), 8, 0.05, 1.2, 70),
-         ('the bar, a hook, the collar', (0.3, 2.2, 0.05), 40, 0.3, 1.6, 70), ('the cape from behind', (0, 1.3, 0.2), 180, 0.1, 6.0, 70), ('legs and shoes inside the cape', (0, 0.5, 0), 15, 0.1, 2.8, 70)]
-    ps = [view(os.path.join(TMP, 'hl_c%d.png' % i), t, deg, d, lens=ln, res=(440, 400), up=up) for i, (_, t, deg, up, d, ln) in enumerate(V)]
+    em = Vector(posed('crown', tuple(from_root('crown', to_root('hat', (0, 0.22, -0.29))))))
+    er = Vector(posed('crown', tuple(from_root('crown', to_root('hat', (0.043, 0.22, -0.29))))))
+    sp = Vector(posed(*H.marks['socketAt']))
+    V = [('the hat from above', tuple(hc), 20, 0.75, 3.6, 50, None), ('the underside: what you see from 1.8 m', (0, 2.72, -0.1), 12, -0.55, 3.2, 50, None), ('the band: its mouth, the clasps', tuple(to_root('hat', (0.1, 0.1, -0.3))), 25, 0.1, 1.35, 70, None),
+         ('the growths on her right of the crown', tuple(to_root('hat', (0.3, 0.22, -0.05))), 70, 0.25, 1.3, 70, None), ('HER eyes: the brown pair', tuple(em), 0, 0.05, 0.42, 70, None), ('her right eye, closer', tuple(er), 12, 0.02, 0.2, 70, None),
+         ('her face under the brim: its fingers over where her eyes would be', tuple(fc), 12, -0.12, 1.3, 70, None), ('the eyeless reveal (hl_reveal 2.6 s)', None, 10, -0.05, 1.25, 70, ('hl_reveal', 2.6)),
+         ('the growths over the back', tuple(to_root('hat', (-0.05, 0.25, 0.25))), 200, 0.35, 1.4, 70, None), ('the low wing and the feeler', tuple(to_root('brimRb', (0.3, 0, 0))), 30, -0.1, 1.5, 70, None),
+         ('her right hand', tuple(hr), 40, 0.05, 0.9, 70, None), ('the chest: the empty socket', tuple(sp), 14, 0.22, 0.55, 70, None),
+         ('the bar, a hook, the collar', (0.3, 2.2, 0.05), 40, 0.3, 1.6, 70, None), ('the cape from behind', (0, 1.3, 0.2), 180, 0.1, 6.0, 70, None), ('the hat from behind', tuple(to_root('hat', (0, 0.1, 0))), 165, 0.12, 4.4, 70, None),
+         ('legs and shoes inside the cape', (0, 0.5, 0), 15, 0.1, 2.8, 70, None)]
+    ps = []
+    for i, (_, t, deg, up, d, ln, pose) in enumerate(V):
+        if pose:
+            import hl_clips
+            apply_pose_hl(RIG, hl_clips.evaluate(*pose)); t = tuple(Vector(posed('head', (0, 0.36, -0.1))))
+        ps.append(view(os.path.join(TMP, 'hl_c%d.png' % i), t, deg, d, lens=ln, res=(440, 400), up=up))
+        if pose: apply_pose_hl(RIG, STANCE)
     return rpkit.contact(ps, os.path.join(SHEET_DIR, 'c_hat_lord_closeups'), 'MADAM CHAIR and OVERSIGHT  close up', 4, [v[0] for v in V])
 
 

@@ -173,6 +173,57 @@ def polyp(c, r, m, up=(0, 1, 0), tall=1.0, pucker=0.35, seg=8, name='polyp', see
     return o
 
 
+SAC_PROF = [(-0.06, 0.0), (-0.05, 0.5), (0.08, 1.0), (0.2, 1.1), (0.35, 1.0), (0.5, 1.0), (0.63, 0.97), (0.75, 0.8), (0.85, 0.6),
+            (0.92, 0.47), (0.975, 0.44), (0.995, 0.3), (0.95, 0.17), (0.86, 0.05), (0.82, 0.0)]   # (along, radius): foot, stalk, body, lip, down the throat
+
+
+def sac(c, r, m, up=(0, 1, 0), tall=1.4, neck=0.5, bend=0.0, wrinkles=3.0, seg=7, name='sac', seed=0, small=False):
+    """a growth that is not fruit: a stalk out of the flesh, a wrinkled sac that leans and bends, a puckered lip, and a
+    throat going down into it. c = where it leaves the surface (game), r = the sac's radius, along `up`.
+    -> (obj, foot, axis, height): enough to colour it by how far along it a point is"""
+    rr = random.Random(seed)
+    up = Vector(up).normalized(); sd = up.cross(Vector((0.3, 0.9, 0.2)) if abs(up.y) < 0.95 else Vector((1, 0, 0))).normalized(); sd2 = up.cross(sd)
+    Hh = r * 2.0 * tall; foot = Vector(c) - up * r * 0.25
+    prof = SAC_PROF if not small else [SAC_PROF[i] for i in (0, 1, 2, 5, 8, 10, 11, 13, 14)]
+    def axis(t): return foot + up * (t * Hh) + sd * (bend * r * t * t) + sd2 * (0.3 * bend * r * t * t * t)
+    def tang(t): return (axis(t + 0.01) - axis(t - 0.01)).normalized()
+    bm = bmesh.new(); rings = []
+    for t, k in prof:
+        rad = r * (neck if 0.0 < t < 0.12 and k == 1.0 else k)
+        if 0.12 < t < 0.88 and k > 0.3: rad *= 1 + 0.085 * math.sin(t * wrinkles * TAU + seed)     # wrinkles round it
+        if rad < 1e-6: rings.append([bm.verts.new(gv(*axis(t)))]); continue
+        T_ = tang(t); n1 = (sd - T_ * sd.dot(T_)).normalized(); n2 = T_.cross(n1)
+        ring = []
+        for i in range(seg):
+            a = TAU * i / seg
+            lop = 1 + 0.12 * math.sin(a * 2 + seed + t * 3) * (0.1 < t < 0.9)                    # lopsided
+            ring.append(bm.verts.new(gv(*(axis(t) + (n1 * math.cos(a) + n2 * math.sin(a)) * rad * lop))))
+        rings.append(ring)
+    for A, B in zip(rings, rings[1:]):
+        if len(A) == 1 and len(B) == 1: continue
+        if len(A) == 1:
+            for i in range(seg): bm.faces.new((A[0], B[i], B[(i + 1) % seg]))
+        elif len(B) == 1:
+            for i in range(seg): bm.faces.new((A[i], A[(i + 1) % seg], B[0]))
+        else:
+            for i in range(seg): bm.faces.new((A[i], A[(i + 1) % seg], B[(i + 1) % seg], B[i]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    o = lib_obj(name, bm, m)
+    for p in o.data.polygons: p.use_smooth = True
+    o['soft'] = 1
+    return o, foot, up, Hh
+
+
+def nose(c, nrm, up, size, m, dark, name='nose'):
+    """a human nose standing out of a surface: c = where its bridge leaves it, nrm = out, up = toward the brow. size = its length"""
+    n = Vector(nrm).normalized(); u = (Vector(up) - n * Vector(up).dot(n)).normalized(); s = u.cross(n).normalized(); c = Vector(c)
+    P = lambda a, b, h: tuple(c + s * (a * size) - u * (b * size) + n * (h * size))   # a across, b down from the bridge, h out
+    bridge = shade(sweep([P(0, -0.1, -0.05), P(0, 0.15, 0.12), P(0, 0.5, 0.26), P(0, 0.82, 0.38), P(0, 0.95, 0.34)], [size * 0.1, size * 0.11, size * 0.14, size * 0.17, size * 0.1], m, seg=6, name=name, squash=(1.0, 0.75)), 70)
+    wings = [blob(name + '_wing', P(sx * 0.15, 0.86, 0.17), (size * 0.12, size * 0.1, size * 0.12), m, seg=8, rings=6) for sx in (-1, 1)]
+    holes = [blob(name + '_hole', P(sx * 0.09, 0.97, 0.2), (size * 0.05, size * 0.03, size * 0.06), dark, seg=6, rings=4) for sx in (-1, 1)]
+    return [bridge] + wings + holes
+
+
 def finger(base, d, L, r, m, curl=0.5, side=(1, 0, 0), seg=5, name='finger', n=3, nail=None, tip=0.62):
     """a jointed finger from `base` along d, curling toward `side` x d ... each segment shorter, knuckles proud.
     returns [objs], tip point"""
@@ -292,9 +343,9 @@ def fist(c, d, size, m, nail=None, name='fist', seed=0, grip=1.25):
     out = [shade(sweep([tuple(c - d * size * 1.5), tuple(c - d * size * 0.7), tuple(c + d * size * 0.2), tuple(c + d * size * 0.75)], [size * 0.42, size * 0.4, size * 0.78, size * 0.7], m, seg=7, name=name, squash=(0.62, 1.0)), 70)]
     for k in range(4):
         t = k / 3 - 0.5
-        o, _ = finger(c + d * size * 0.7 + sx * t * size * 1.25 + nz * size * 0.1, (d + nz * 0.25).normalized(), size * (1.7 - 0.25 * abs(t) - 0.2 * (k == 3)), size * 0.2, m, curl=-grip * rr.uniform(0.9, 1.1), side=sx, seg=5, name=name + '_f', n=3, nail=nail, tip=0.7)
+        o, _ = finger(c + d * size * 0.7 + sx * t * size * 1.25 + nz * size * 0.1, (d + nz * 0.25).normalized(), size * (1.7 - 0.25 * abs(t) - 0.2 * (k == 3)), size * 0.2, m, curl=-grip * rr.uniform(0.9, 1.1), side=sx, seg=4, name=name + '_f', n=3, nail=nail, tip=0.7)
         out += o
-    o, _ = finger(c - sx * size * 0.62 + d * size * 0.1 - nz * size * 0.1, (d * 0.6 - sx * 0.2 - nz * 0.75).normalized(), size * 1.25, size * 0.23, m, curl=0.9, side=d, seg=5, name=name + '_t', n=2, nail=nail)
+    o, _ = finger(c - sx * size * 0.62 + d * size * 0.1 - nz * size * 0.1, (d * 0.6 - sx * 0.2 - nz * 0.75).normalized(), size * 1.25, size * 0.23, m, curl=0.9, side=d, seg=4, name=name + '_t', n=2, nail=nail)
     return out + o
 
 
@@ -327,7 +378,7 @@ def molars(c, nrm, along, size, gum, tooth, n=6, name='teeth', seed=0):
         t = (k + 0.5) / n - 0.5
         p = c + a * (t * L * 1.05) + nn * size * (0.7 + rr.uniform(-0.1, 0.15)) + b * size * rr.uniform(-0.15, 0.15)
         w = size * rr.uniform(0.42, 0.6)
-        o = box((w, size * rr.uniform(0.7, 1.0), w * rr.uniform(0.9, 1.2)), (0, 0, 0), tooth, bev=w * 0.22, name=name + '_m', seg=1)
+        o = box((w, size * rr.uniform(0.7, 1.0), w * rr.uniform(0.9, 1.2)), (0, 0, 0), tooth, name=name + '_m', seg=1)
         apply_mods(o)
         tilt = Quaternion(a, rr.uniform(-0.25, 0.25)) @ Quaternion(b, rr.uniform(-0.2, 0.2))
         X = tilt @ a; Y = tilt @ nn; Z = X.cross(Y)
@@ -373,13 +424,13 @@ def tex_eyes(name, size=64):
         ang = np.arctan2(yy - h / 2 + 0.5, xx - half / 2 + 0.5)
         streak = (np.sin(ang * 9) * 0.5 + 0.5)[..., None]
         # hers
-        t = np.zeros((h, half, 3), np.float32); t[:] = hexrgb(0xf0ebe2)
-        t[d > 0.8] = hexrgb(0xe6c8cc); t[(d > 0.62) & (np.sin(ang * 3 + d * 7) > 0.96)] = hexrgb(0xc8707a)   # the white goes pink toward the lids; a thread of red
-        ir = d < 0.5; t[ir] = hexrgb(0x7a4a22)
+        t = np.zeros((h, half, 3), np.float32); t[:] = hexrgb(0xe8e0d0)
+        t[d > 0.78] = hexrgb(0xd8b4b4); t[(d > 0.56) & (np.sin(ang * 5 + d * 9) > 0.9)] = hexrgb(0xb85a64)   # the white goes pink toward the lids; a thread of red
+        ir = d < 0.5; t[ir] = hexrgb(0x5e3818)
         t[ir] = (t * (0.78 + 0.34 * streak))[ir]
-        t[(d < 0.3) & (d > 0.2)] = hexrgb(0x9a6a30)                    # lighter round the pupil
+        t[(d < 0.27) & (d > 0.16)] = hexrgb(0x7a5228)                  # lighter round the pupil
         t[(d < 0.5) & (d > 0.43)] = hexrgb(0x2e1608)                    # the limbal ring
-        t[d < 0.2] = hexrgb(0x060508)
+        t[d < 0.16] = hexrgb(0x060508)
         gl = np.hypot(xx - half * 0.38, yy - h * 0.64) < half * 0.06; t[gl] = (1, 1, 1)
         px[:, :half] = t
         def beast(base, iris, ring, vein, slit=True, cloud=False):

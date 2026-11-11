@@ -47,13 +47,13 @@ export const EXTRA_NAMES = EXTRA.map((e) => e[0]);
 // checks they still agree). eyeAt / eyeHRAt / eyeHLAt = HER eyes, on the hat: what a camera or a look-at should treat as
 // her eyes. weakA..E = the creature's five eyes. socketAt = the empty heart socket.
 const MK = {
-  mouthAt: ['head', 0.0, 0.1, -0.12], faceAt: ['head', 0.0, 0.25, -0.14], socketAt: ['spine', -0.0369, 0.4301, -0.111],
-  palmL: ['handL', 0.0, -0.06, 0.02], fingerTipL: ['idxLb', 0.0, -0.108, 0.014], palmR: ['handR', 0.0, -0.06, 0.02],
-  fingerTipR: ['idxRb', 0.0, -0.108, 0.014], feelerTip: ['feelerB', 0.225, 0.0, 0.0], brimTipR: ['feeler', 0.0, 0.0, 0.0],
+  mouthAt: ['head', 0.0, 0.1, -0.12], faceAt: ['head', 0.0, 0.25, -0.14], socketAt: ['spine', -0.0185, 0.4402, -0.1114],
+  palmL: ['handL', 0.0, -0.06, 0.02], fingerTipL: ['idxLb', 0.0, -0.15, 0.029], palmR: ['handR', 0.0, -0.06, 0.02],
+  fingerTipR: ['idxRb', 0.0, -0.15, 0.029], feelerTip: ['feelerB', 0.225, 0.0, 0.0], brimTipR: ['feeler', 0.0, 0.0, 0.0],
   brimTipL: ['brimLb', -0.58, 0.0, 0.0], hatMouthAt: ['hat', 0.0, 0.07, -0.32], hatTopAt: ['hat', 0.02, 0.362, 0.0],
-  eyeAt: ['crown', -0.0, 0.17, -0.581], eyeHRAt: ['crown', 0.058, 0.17, -0.581], eyeHLAt: ['crown', -0.058, 0.17, -0.581],
-  weakA: ['lidCa', 0.0, 0.0, -0.043], weakB: ['lidCb', 0.0, 0.0, -0.03], weakC: ['lidCc', 0.0, 0.0, -0.052],
-  weakD: ['lidCd', 0.0, 0.0, -0.037], weakE: ['lidCe', 0.0, 0.0, -0.033],
+  eyeAt: ['crown', 0.0, 0.168, -0.5545], eyeHRAt: ['crown', 0.043, 0.17, -0.5545], eyeHLAt: ['crown', -0.043, 0.166, -0.5545],
+  weakA: ['lidCa', 0.0, 0.0, -0.046], weakB: ['lidCb', 0.0, 0.0, -0.022], weakC: ['lidCc', 0.0, 0.0, -0.056], weakD: ['lidCd', 0.0, 0.0, -0.034],
+  weakE: ['lidCe', 0.0, 0.0, -0.026],
 };
 
 export function hatLordLook(K) {

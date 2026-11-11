@@ -4,15 +4,15 @@
  "scale": 1,
  "units": "metres, root space at rest, feet at y 0, front -z, +x her right (boxes: c = centre, h = half size). `local` = the joint's own frame",
  "height": 2.957,
- "heightWithHat": 3.424,
- "brimSpan": 3.135,
+ "heightWithHat": 3.406,
+ "brimSpan": 3.204,
  "body": {
   "r": 0.42,
   "h": 2.957,
   "c": [
    0.0,
    1.4778,
-   0.0743
+   0.0377
   ]
  },
  "parts": {
@@ -21,54 +21,68 @@
    "c": [
     0.0,
     2.7353,
-    -0.0648
+    -0.0657
    ],
    "h": [
     0.208,
     0.1588,
-    0.0894
+    0.0903
    ],
    "note": "the hat's fingers, laced over where her eyes would be. band* swing them open"
   },
-  "eyePatch": {
-   "joint": "crown",
+  "cape": {
+   "joint": "capeL",
    "c": [
-    0.0564,
-    3.0644,
-    -0.3197
+    0.0,
+    1.1204,
+    0.088
    ],
    "h": [
-    0.1602,
-    0.0904,
-    0.0312
+    0.587,
+    1.0743,
+    0.2378
    ],
-   "note": "the patch of her own skin her eyes sit in"
+   "note": "the cape: two stiff halves hinged down her back, closed in front of her knees. cape*.y parts them"
   },
   "hatEyes": {
    "joint": "crown",
    "c": [
-    0.0701,
-    3.1106,
-    -0.0478
+    0.0724,
+    3.1124,
+    -0.0513
    ],
    "h": [
-    0.3551,
-    0.2064,
-    0.2064
+    0.3499,
+    0.195,
+    0.2007
    ],
    "note": "the creature's five eyes (weak points)"
+  },
+  "herOrbit": {
+   "joint": "crown",
+   "c": [
+    0.0551,
+    3.0927,
+    -0.3224
+   ],
+   "h": [
+    0.0956,
+    0.0427,
+    0.0207
+   ],
+   "note": "what her eyes sit in: the lower lids and their wet rims, her own skin sunk into the crown, the hat's flesh swollen round it, the scar where a brow was"
   },
   "herEye": {
    "joint": "eyeHL",
    "c": [
-    0.0534,
-    3.0915,
-    -0.3178
+    0.0529,
+    3.0913,
+    -0.3106
    ],
    "h": [
-    0.0917,
-    0.0489,
-    0.0391
+    0.0578,
+    0.0243,
+    0.0181
    ],
    "note": "HER eyes (the brown pair). turn eyeH* to look"
   },
@@ -90,13 +104,13 @@
    "joint": "hat",
    "c": [
     -0.0029,
-    2.9281,
+    2.9291,
     0.0028
    ],
    "h": [
     0.1969,
-    0.0933,
-    0.2226
+    0.092,
+    0.2213
    ],
    "note": "the ring of teeth round the hole her head goes through"
   },
@@ -117,86 +131,72 @@
   "hatLid": {
    "joint": "lidCa",
    "c": [
-    0.0731,
-    3.1341,
-    -0.0601
+    0.0763,
+    3.1303,
+    -0.06
    ],
    "h": [
-    0.3536,
-    0.1856,
-    0.1982
+    0.354,
+    0.1804,
+    0.195
    ],
    "note": "their lids: rotation.x negative shuts"
   },
   "herLid": {
    "joint": "lidHL",
    "c": [
-    0.0574,
-    3.1079,
-    -0.3347
+    0.053,
+    3.0976,
+    -0.3189
    ],
    "h": [
-    0.0982,
-    0.0374,
-    0.0283
+    0.0605,
+    0.0201,
+    0.014
    ],
-   "note": "their upper lids: rotation.x negative shuts"
-  },
-  "cape": {
-   "joint": "spine",
-   "c": [
-    0.0,
-    1.1264,
-    0.1159
-   ],
-   "h": [
-    0.632,
-    1.0683,
-    0.276
-   ],
-   "note": "the cape: a stiff shell on the spine, open at the front. it does not bend"
+   "note": "their upper lids, heavy: rotation.x negative shuts (about -0.6)"
   },
   "front": {
    "joint": "spine",
    "c": [
     0.0,
     1.8785,
-    -0.0807
+    -0.0796
    ],
    "h": [
-    0.1035,
+    0.1163,
     0.3349,
-    0.0394
+    0.04
    ],
    "note": "the V of her jacket: bare chest, satin lapels, two buttons"
   },
   "socket": {
    "joint": "spine",
    "c": [
-    -0.0372,
-    1.9901,
-    -0.1152
+    -0.0185,
+    1.9996,
+    -0.0705
    ],
    "h": [
-    0.0463,
-    0.0496,
-    0.0115
+    0.0639,
+    0.0638,
+    0.0496
    ],
-   "note": "the empty heart socket: a brass ring in her breastbone, a capped stub of artery inside"
+   "note": "the empty heart socket: a deep dark hole in her chest, a thin brass lip set into bruised skin, cut vessels at the bottom"
   },
   "yoke": {
    "joint": "spine",
    "c": [
     0.0,
-    2.1837,
-    0.0493
+    1.2469,
+    0.1036
    ],
    "h": [
     0.831,
-    0.141,
-    0.1607
+    1.0778,
+    0.215
    ],
-   "note": "the bar: the cape's yoke across her shoulders, its brass tips and hooks"
+   "note": "the bar: the cape's yoke across her shoulders, its brass tips and hooks, and the pin down her back the two halves hinge on"
   }
  },
  "joints": {
@@ -792,9 +792,9 @@
   "eyeHR": {
    "parent": "crown",
    "p": [
-    0.058,
+    0.043,
     0.17,
-    -0.545
+    -0.538
    ],
    "r": [
     0,
@@ -802,18 +802,18 @@
     0
    ],
    "at": [
-    0.1096,
-    3.0779,
-    -0.3145
+    0.0951,
+    3.0831,
+    -0.3086
    ],
    "own": true
   },
   "eyeHL": {
    "parent": "crown",
    "p": [
-    -0.058,
-    0.17,
-    -0.545
+    -0.043,
+    0.166,
+    -0.538
    ],
    "r": [
     0,
@@ -821,18 +821,18 @@
     0
    ],
    "at": [
-    -0.0029,
-    3.1052,
-    -0.3212
+    0.0107,
+    3.0996,
+    -0.3126
    ],
    "own": true
   },
   "lidHR": {
    "parent": "crown",
    "p": [
-    0.058,
+    0.043,
     0.17,
-    -0.545
+    -0.538
    ],
    "r": [
     0,
@@ -840,18 +840,18 @@
     0
    ],
    "at": [
-    0.1096,
-    3.0779,
-    -0.3145
+    0.0951,
+    3.0831,
+    -0.3086
    ],
    "own": true
   },
   "lidHL": {
    "parent": "crown",
    "p": [
-    -0.058,
-    0.17,
-    -0.545
+    -0.043,
+    0.166,
+    -0.538
    ],
    "r": [
     0,
@@ -859,9 +859,9 @@
     0
    ],
    "at": [
-    -0.0029,
-    3.1052,
-    -0.3212
+    0.0107,
+    3.0996,
+    -0.3126
    ],
    "own": true
   },
@@ -957,6 +957,44 @@
     0.0631,
     3.2822,
     0.1245
+   ],
+   "own": true
+  },
+  "capeR": {
+   "parent": "spine",
+   "p": [
+    0,
+    0,
+    0.2085
+   ],
+   "r": [
+    -0.0605,
+    0,
+    0
+   ],
+   "at": [
+    0.0,
+    1.5596,
+    0.2085
+   ],
+   "own": true
+  },
+  "capeL": {
+   "parent": "spine",
+   "p": [
+    0,
+    0,
+    0.2085
+   ],
+   "r": [
+    -0.0605,
+    0,
+    0
+   ],
+   "at": [
+    0.0,
+    1.5596,
+    0.2085
    ],
    "own": true
   },
@@ -1181,14 +1219,14 @@
   "socketAt": {
    "joint": "spine",
    "local": [
-    -0.0369,
-    0.4301,
-    -0.111
+    -0.0185,
+    0.4402,
+    -0.1114
    ],
    "at": [
-    -0.0369,
-    1.9897,
-    -0.111
+    -0.0185,
+    1.9998,
+    -0.1114
    ]
   },
   "palmL": {
@@ -1208,13 +1246,13 @@
    "joint": "idxLb",
    "local": [
     0.0,
-    -0.108,
-    0.014
+    -0.15,
+    0.029
    ],
    "at": [
-    -0.2578,
-    1.0229,
-    0.014
+    -0.2612,
+    0.981,
+    0.029
    ]
   },
   "palmR": {
@@ -1234,13 +1272,13 @@
    "joint": "idxRb",
    "local": [
     0.0,
-    -0.108,
-    0.014
+    -0.15,
+    0.029
    ],
    "at": [
-    0.2578,
-    1.0229,
-    0.014
+    0.2612,
+    0.981,
+    0.029
    ]
   },
   "feelerTip": {
@@ -1311,40 +1349,40 @@
   "eyeAt": {
    "joint": "crown",
    "local": [
-    -0.0,
-    0.17,
-    -0.581
+    0.0,
+    0.168,
+    -0.5545
    ],
    "at": [
-    0.0533,
-    3.083,
-    -0.3528
+    0.0529,
+    3.0874,
+    -0.3266
    ]
   },
   "eyeHRAt": {
    "joint": "crown",
    "local": [
-    0.058,
+    0.043,
     0.17,
-    -0.581
+    -0.5545
    ],
    "at": [
-    0.1096,
-    3.0693,
-    -0.3495
+    0.0951,
+    3.0792,
+    -0.3246
    ]
   },
   "eyeHLAt": {
    "joint": "crown",
    "local": [
-    -0.058,
-    0.17,
-    -0.581
+    -0.043,
+    0.166,
+    -0.5545
    ],
    "at": [
-    -0.0029,
-    3.0966,
-    -0.3562
+    0.0107,
+    3.0957,
+    -0.3286
    ]
   },
   "weakA": {
@@ -1352,12 +1390,12 @@
    "local": [
     0.0,
     0.0,
-    -0.043
+    -0.046
    ],
    "at": [
-    0.4049,
-    3.0292,
-    -0.1692
+    0.4068,
+    3.0277,
+    -0.1711
    ]
   },
   "weakB": {
@@ -1365,12 +1403,12 @@
    "local": [
     0.0,
     0.0,
-    -0.03
+    -0.022
    ],
    "at": [
-    0.2982,
-    2.9512,
-    -0.2257
+    0.2963,
+    2.9519,
+    -0.2179
    ]
   },
   "weakC": {
@@ -1378,12 +1416,12 @@
    "local": [
     0.0,
     0.0,
-    -0.052
+    -0.056
    ],
    "at": [
     0.0636,
-    3.2699,
-    -0.2424
+    3.2717,
+    -0.246
    ]
   },
   "weakD": {
@@ -1391,12 +1429,12 @@
    "local": [
     0.0,
     0.0,
-    -0.037
+    -0.034
    ],
    "at": [
-    -0.2694,
-    3.155,
-    -0.2435
+    -0.2675,
+    3.1555,
+    -0.2414
    ]
   },
   "weakE": {
@@ -1404,12 +1442,12 @@
    "local": [
     0.0,
     0.0,
-    -0.033
+    -0.026
    ],
    "at": [
-    0.0591,
-    3.3052,
-    0.1478
+    0.06,
+    3.3003,
+    0.1429
    ]
   }
  },
