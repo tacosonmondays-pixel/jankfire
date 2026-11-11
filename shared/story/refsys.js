@@ -25,7 +25,7 @@
 // for other systems: sim.ref (null until the room is up), sim.refSpawn(def, at) -> enemy id, sim.refEnemies()
 import { addSystem } from './sim.js';
 
-export const REF = { maxAlive: 24, near: 220, maxHp: 5000, bodyMs: 4000, step: 1 / 60, maxSteps: 8 };
+export const REF = { maxAlive: 24, near: 220, maxHp: 5000, bodyMs: 4000, step: 1 / 60, maxSteps: 8, grace: 3, warpGap: 1 };
 // enemy kinds the referee knows by itself; the story engine's own defs (hp, weapon, name, look, tags) override these
 export const ENEMY_KINDS = {
   dummy: { hp: 100, w: 'pistol', name: 'Intern', tags: ['test'] },
@@ -43,6 +43,8 @@ const PARTS = {}, PART_FILES = { overtime: 'c_overtime.parts.json', revenue_prot
 const TRAIN_BOSS = { revenue_protection: true }; // not a walking bot: server/storytrain.js runs it (arms, THE GAP)
 const MOVES = { 'Staple Gun': 'staple', 'Overtime Slam': 'slam', 'Punch In': 'punchin', 'Staple Fan': 'fan' }, REST = { 'Coffee Break': 15 };
 const BOSS_SIDE = { overtime: 'corp' }; // (his own collectors don't get stapled)
+let RWM = null; // refworld.js, once the room plays on the streamed slice
+let MARKS = null; // shared/city/marks.js: the arenas' marks (where you start a boss fight again after a death)
 async function loadJson(file) {
   if (typeof location !== 'undefined' && typeof fetch === 'function') { const r = await fetch('/models/cast/' + file); return r.ok ? r.json() : null; } // the worker
   const fs = await import('node:fs/promises'); // node (tests, co-op later)
@@ -82,10 +84,11 @@ function shimProcess() {
   if (globalThis.process && globalThis.process.env) return;
   globalThis.process = { env: {}, versions: {}, platform: 'browser', memoryUsage: () => ({ heapUsed: 0, rss: 0 }), on() {} };
 }
-// the map the room plays on: the test lot is a normal map (same builder as the client); the slice comes with the
-// worker-side city (TODO: ChunkWorld boxes around you)
+// the map the room plays on: the test lot is a normal map (same builder as the client); the slice is the streamed
+// city: its boxes are the chunks round you and round whoever's fighting you (refworld.js), built in here
 async function mapFor(zone) {
   const M = await import('../map.js');
+  if (zone === 'story_slice' && !M.MAPS.story_slice) { const { sliceMap } = await import('./refworld.js'); M.MAPS.story_slice = sliceMap(); }
   if (zone === 'story_test' && !M.MAPS.story_test) {
     const { buildTestMap } = await import('./testmap.js');
     const m = buildTestMap({ builder: M.builder, horizon: M.horizon, rng: M.rng, lollipop: M.lollipop, conifer: M.conifer });
@@ -103,10 +106,11 @@ function boot(sim) {
   if (sim.refBooting) return;
   sim.refBooting = true;
   shimProcess();
-  Promise.all([import('../../server/room.js'), mapFor(sim.zone), loadKinds(), loadBosses()]).then(([R, mapId]) => {
+  Promise.all([import('../../server/room.js'), mapFor(sim.zone), loadKinds(), loadBosses(), import('./refworld.js').then((m) => { RWM = m; }), import('../city/marks.js').then((m) => { MARKS = m; }).catch(() => {})]).then(([R, mapId]) => {
     if (!mapId || !sim.me) { sim.refOff = mapId ? '' : 'no map'; return; }
     const room = new R.Room(`story:${sim.zone}`, 'story');
     room.cfg.map = mapId; room.cfg.bots = 0; room.cfg.hr = 'off';
+    if (room.map.world) { RWM.streamTo(room.map, [sim.me.pos], 99); } // the streamed slice: the ground round you before anything stands on it
     const out = sim.raw || ((s) => sim.send(JSON.parse(s)));
     const ws = { readyState: 1, send: (s) => { if (s.startsWith('{"t":"welcome"')) return; out(s); } }; // (the sim already welcomed you)
     const me = room.addHuman(ws, { t: 'join', name: sim.me.name, item: sim.me.item || 'frag', mode: 'story' });
@@ -154,10 +158,19 @@ function reportBoss(sim, ev, by) {
   }
 }
 
+// where you come back after a death: the Machine, or while a boss is up in the slice, the arena's own start (its
+// arena.player mark: you're dispensed at the foot of the fight, not at the far end of the district)
+function checkpoint(sim, at) {
+  const map = sim.ref && sim.ref.room.map; if (!map || !map.home) return;
+  const cp = at && MARKS ? MARKS.marksNear('slice', at[0], at[2], 60, 'arena.player')[0] : null;
+  map.spawns = [cp ? cp.p.slice() : map.home.slice()];
+  sim.refCp = cp ? { p: cp.p.slice(), face: Number.isFinite(cp.face) ? cp.face : 0 } : null;
+}
 // a story enemy from a def (+ the kind's defaults), near `at`
 function spawnOne(sim, m, at) {
   const R = sim.ref; if (!R) return 0;
   if ([...R.room.players.values()].filter((p) => p.sk && p.alive).length >= REF.maxAlive) return 0;
+  if (R.room.map.world) RWM.streamTo(R.room.map, [at], 9, 1); // (the streamed slice: the ground under them first, or they fall through it)
   const boss = bossOf(m.kind);
   if (boss) return spawnBoss(sim, m, at, boss);
   const base = kindOf(m.kind);
@@ -178,6 +191,7 @@ function spawnBoss(sim, m, at, boss) {
   b.storyId = isId(m.id) ? m.id : m.kind;
   b.yaw = Math.atan2(-(R.me.pos[0] - at[0]), -(R.me.pos[2] - at[2]));
   R.boss = b;
+  checkpoint(sim, at);
   sim.sty('boss', { on: true, id: b.sk.b.id, pid: b.id, hp: b.sk.b.hp, max: b.sk.max, health: b.sk.b.def.health, name: b.name, phase: b.sk.b.def.phases[0].name, who: typeof boss.who === 'string' ? boss.who : '' });
   return b.id;
 }
@@ -197,11 +211,18 @@ addSystem({
     R.room.snapshot();
     // mirror you for the save (and the other systems), and say when you're back up
     const me = R.me; sim.me.pos = me.pos.slice(); sim.me.seq = me.seq; sim.me.yaw = me.yaw; sim.me.hp = me.hp; sim.me.alive = me.alive;
-    if (me.alive && !R.was) sim.sty('combat', { ev: { type: 'up', who: 'me' } });
+    if (me.alive && !R.was) {
+      sim.sty('combat', { ev: { type: 'up', who: 'me' } });
+      const B = R.boss && R.boss.sk.b; // back at the arena's start: he gives you a moment (he checks his watch) before the next one
+      if (B && !B.train) { B.act = null; B.shots.length = 0; B.ring = null; B.next = Math.max(B.next || 0, B.t + REF.grace); }
+      if (sim.refCp) sim.sty('cp', { yaw: sim.refCp.face });
+    }
     R.was = me.alive;
     // a beaten boss walks off in the story, not in the room; and the client hears when he's gone, however he went
     for (const p of R.bye.splice(0)) R.room.storyDespawn(p);
-    if (R.boss && R.room.players.get(R.boss.id) !== R.boss) { sim.sty('boss', { on: false, id: R.boss.sk.b.id, pid: R.boss.id }); R.boss = null; }
+    if (R.boss && R.room.players.get(R.boss.id) !== R.boss) { sim.sty('boss', { on: false, id: R.boss.sk.b.id, pid: R.boss.id }); R.boss = null; checkpoint(sim, null); }
+    // the streamed slice: the chunks round you and round everyone fighting you (a couple of new ones a tick)
+    if (R.room.map.world) RWM.streamTo(R.room.map, [me.pos, ...sim.refEnemies().filter((p) => p.alive).map((p) => p.pos)]);
     // the fallen leave after a moment
     for (const p of [...R.room.players.values()]) if (p.sk && !p.alive && sim.t >= (p.goneAt ??= sim.t + REF.bodyMs / 1000)) R.room.storyDespawn(p); // (sim time: slow-mo and cutscenes hold them too)
   },
@@ -214,7 +235,7 @@ addSystem({
   },
   msg(sim, m) {
     const R = sim.ref;
-    if (!R && (m.k === 'spawn' || m.k === 'despawn' || m.k === 'damage' || m.k === 'hold')) { if (!sim.refOff && sim.refQ.length < 32) sim.refQ.push(m); return true; } // (the room is still loading)
+    if (!R && (m.k === 'spawn' || m.k === 'despawn' || m.k === 'damage' || m.k === 'hold' || m.k === 'warp')) { if (!sim.refOff && sim.refQ.length < 32) sim.refQ.push(m); return true; } // (the room is still loading)
     switch (m.k) {
       case 'spawn': {
         if (!R || typeof m.kind !== 'string' || !isId(m.kind) || !v3(m.at)) return true;
@@ -231,6 +252,18 @@ addSystem({
       case 'hold': {
         if (!R) return true;
         for (const p of sim.refEnemies()) if (m.all === true || (isId(m.id) && idOf(sim, p) === m.id) || (isId(m.kind) && !m.id && p.sk.kind === m.kind)) p.sk.hold = m.on !== false;
+        return true;
+      }
+      case 'warp': { // the story moves you (a fight starts at its arena, a fade-cut): the room's own respawn move, no death
+        if (!R || !v3(m.at) || !R.me.alive || sim.t - (sim.warpT ?? -9) < REF.warpGap) return true;
+        const map = R.room.map, b = map.bounds;
+        if (b && (m.at[0] < b[0] || m.at[0] > b[2] || m.at[2] < b[1] || m.at[2] > b[3])) return true; // (inside this world)
+        sim.warpT = sim.t;
+        if (map.world) RWM.streamTo(map, [m.at], 99); // the ground there before you land on it
+        const me = R.me; me.seq++; me.pos = m.at.slice(); me.vel = [0, 0, 0]; me.spawnT = Date.now();
+        sim.sty('warped', { at: me.pos, yaw: Number.isFinite(m.yaw) ? m.yaw : me.yaw }); // (first: the streamed city's hold moves with you, or it pulls you back)
+        me.ws.send(JSON.stringify({ t: 'spawn', p: me.pos, q: me.seq }));
+        sim.me.pos = me.pos.slice(); sim.me.seq = me.seq;
         return true;
       }
       case 'bossdev': { // tests (?storydev=1): his next attack, and whether he only attacks when asked
