@@ -490,6 +490,11 @@ def bitten_end(c, yc):
     for k in range(26):
         x = -1.95 + 3.9 * (k + r.u(-0.3, 0.3)) / 26; L = r.u(0.12, 0.5) * (1.5 if 0.5 < x < 1.6 else 1.0)
         t.put(xf(p_box(r.u(0.03, 0.09), r.u(0.012, 0.03), L, taper=0.12), T(x, deck - 0.02 + r.u(-0.01, 0.012), z0 - 0.0) @ RY(math.pi + r.u(-0.5, 0.5)) @ RX(r.u(-0.12, 0.4)) @ T(0, 0, L / 2 - 0.06)), 'splint', r.u(0.8, 1.1), 'f')
+    # whole board ends snapped off and hanging out over the gap, pale where they broke
+    for x, w_, L, ry, rx in ((-1.55, 0.2, 0.55, 0.25, 0.5), (-0.35, 0.22, 0.5, -0.2, 0.75), (0.4, 0.2, 0.54, 0.1, 0.4), (1.1, 0.23, 0.5, -0.3, 0.9), (1.7, 0.18, 0.45, 0.35, 0.6)):
+        Mx = T(x, deck - 0.03, z0 + 0.02) @ RY(math.pi + ry) @ RX(rx)
+        t.put(xf(bx(-w_ / 2, -0.022, 0.0, w_ / 2, 0.022, L, omit=('+z',)), Mx), 'pl%d' % r.i(0, 7), r.u(0.8, 1.0), 'e')
+        t.put(xf(p_box(w_, 0.044, 0.16, taper=(0.5, 0.2)), Mx @ T(r.u(-0.03, 0.03), 0, L + 0.08)), 'splint', 1.0, 'f')
     # the raves' ends peeled out and down
     for sx in (-1, 1):
         pts = [(sx * (HW - 0.035), deck - 0.1, z0 + 0.02), (sx * (HW + 0.02), deck - 0.13, z0 - 0.2), (sx * (HW + 0.16), deck - 0.3, z0 - 0.34), (sx * (HW + 0.2), deck - 0.52, z0 - 0.3)]

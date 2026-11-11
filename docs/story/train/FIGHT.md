@@ -22,8 +22,9 @@ starts by itself. Add `&storydev=1` to stage it by hand (`G.story.send('bossdev'
 
   The deck is 4.2 m wide (`HW` 2.1), which leaves about 2 m of wall each side for the arms. Cover is never more than
   about 4 m away and the middle lane is clear. The crew's three spots (Jack at the back rail, Lumps on the flatbed,
-  Gordo by the van's stairs) have static stand-ins: no AI. The client scrolls ribs, sleepers and a string of weak
-  bulbs past the train; the bulbs go out where the mask has been.
+  Gordo by the van's stairs) have static stand-ins: no AI. The client scrolls the tunnel (the kit in
+  [TRAIN_MODEL.md](TRAIN_MODEL.md): lining, track, cables, a string of weak bulbs) past the train; the bulbs go out
+  where the mask has been.
 - **THE GAP**: the room owns it. It starts at 22 m (TRAIN.md says 30: from the wagon the mask read small at that
   distance, so the whole band is closer), every arm that has the rail closes it 1 m/s, a severed arm opens it 2 m, a
   flinch 5 m. At 0 m it has you. It is measured from the back of the train, and is the big number on the HUD.
@@ -192,7 +193,8 @@ spot moves to the flatbed's back.
   Cross base), its Blender model, the marrow's other perks.
 - Cover is only somewhere to stand behind: sweepers do not clear crates, crates do not block a sweeper, and nothing
   in this fight shoots. The crew stand-ins do nothing and can't be hurt or snatched.
-- The train is a stand-in made of the table's boxes: the Blender train comes later, built to the same table.
+- The train and the tunnel are drawn from the Blender train set where its files load ([TRAIN_MODEL.md](TRAIN_MODEL.md)); the
+  table's boxes are still the collision and the fallback (`?trainbox=1` shows them).
 - Co-op: the arena is sized for four players and the room's rules loop over every human, but only solo has been run.
 - Shots are checked against the mask as it hangs straight: its phase 3 swing (a few degrees) is only drawn.
 - The slice city has no referee yet, so the trip to the train is the only way the mission's fight can run there.

@@ -186,35 +186,55 @@ def carriage():
 
 
 def torn_end():
-    """the +z end of the last carriage, burst from inside: the wall in petals bent outward round a hole the size of the
-    gangway and more, the roof's edge peeled up, the buffers skewed. bare metal at every tear"""
-    t = KC('cm_end_torn'); r = Rnd(521); z1 = LB / 2
-    cx, cy = 0.0, FL + 1.25; rim = []; N_ = 14
-    for i in range(N_):   # the outline of the end (floor up round the roof), where each petal is still attached
-        a = 2 * math.pi * i / N_
-        x = HWB * 0.98 * math.cos(a); y = cy + (CANT - FL) * 0.62 * math.sin(a) + 0.15
-        y = max(FL + 0.02, min(roof_y(x), y)); rim.append(V3((x, y, z1)))
-    for i in range(N_):
-        p0, p1 = rim[i], rim[(i + 1) % N_]; mid = (p0 + p1) / 2; out = (mid - V3((cx, cy, z1))); L = out.length; out.normalize()
-        if mid.y < FL + 0.3: continue   # (the floor stays)
-        ln = r.u(0.55, 1.15); curl = r.u(0.5, 1.25)
-        tip = mid - out * (L * 0.1) + V3((0, 0, 1)) * ln * math.sin(curl) + out * ln * (1 - math.cos(curl)) * 0.9 + V3((r.u(-0.1, 0.1), r.u(-0.05, 0.12), 0))
-        q0 = p0.lerp(V3((cx, cy, z1)), 0.42) + V3((0, 0, 1)) * ln * 0.45 + out * 0.1; q1 = p1.lerp(V3((cx, cy, z1)), 0.42) + V3((0, 0, 1)) * ln * 0.45 + out * 0.1
-        for a_, b_, c_, d_ in ((p0, p1, q1, q0),):
-            t.add(orient_from(([a_, b_, c_, d_], [(0, 1, 2, 3)], [[(0, 0), (1, 0), (1, 1), (0, 1)]]), V3((cx, cy, z1 - 3))), MC['cm'], CA['cm'].quad('white'), None, 0.85)
-            t.add(orient_from(([a_ + V3((0, 0, -0.012)), b_ + V3((0, 0, -0.012)), c_ + out * -0.012, d_ + out * -0.012], [(3, 2, 1, 0)], [[(0, 0), (1, 0), (1, 1), (0, 1)]]), V3((cx, cy, z1 + 9))), MC['cm'], CA['cm'].quad('bright'), None, 0.7)
-        t.add(orient_from(([q0, q1, tip], [(0, 1, 2)], [[(0, 0), (1, 0), (0.5, 1)]]), V3((cx, cy, z1 - 3))), MC['cm'], CA['cm'].quad('white'), None, 0.8)
-        t.add(orient_from(([q0 + out * -0.012, q1 + out * -0.012, tip + out * -0.01], [(2, 1, 0)], [[(0, 0), (1, 0), (0.5, 1)]]), V3((cx, cy, z1 + 9))), MC['cm'], CA['cm'].quad('bright'), None, 0.75)
-    # what is left of the headstock and its buffers: pushed out, one hanging
-    t.put(xf(cbx(-HWB + 0.1, -0.11, 0, 0.2, 0.11, 0.12, 0.015), T(0, FL - 0.25, z1 - 0.12) @ RY(-0.12)), 'rust', 0.7); t.put(xf(cbx(0.35, -0.11, 0, HWB - 0.1, 0.11, 0.12, 0.015), T(0, FL - 0.27, z1 - 0.1) @ RY(0.3) @ RZ(-0.08)), 'rust', 0.7)
+    """the +z end of the last carriage, burst from inside. the wall has split along lines out of the gangway into
+    seven sheets, each still held along the body's edge and bent out and back on itself; you see their inside faces
+    (the cream lining, bare metal where it tore), the headstock pushed out, a buffer hanging by its stock"""
+    t = KC('cm_end_torn'); r = Rnd(521); z1 = LB / 2; C = V3((0.05, FL + 1.15, z1)); n = V3((0, 0, 1)); TH = 0.014
+    # (hinge a, hinge b, how far it reached in, how far round it is bent, a sideways lean)
+    top = roof_y(0.0) - 0.04
+    P = [((-HWB + 0.03, FL + 0.25, z1), (-HWB + 0.03, FL + 1.25, z1), 1.25, 2.3, 0.1), ((-HWB + 0.03, FL + 1.3, z1), (-HWB + 0.03, CANT - 0.05, z1), 1.3, 1.5, -0.15),
+         ((-HWB + 0.1, CANT + 0.02, z1), (-0.2, top, z1), 1.5, 1.9, 0.12), ((-0.1, top, z1), (HWB - 0.12, CANT + 0.02, z1), 1.55, 1.25, -0.1),
+         ((HWB - 0.03, CANT - 0.08, z1), (HWB - 0.03, FL + 1.1, z1), 1.3, 2.5, 0.1), ((HWB - 0.03, FL + 1.05, z1), (HWB - 0.03, FL + 0.25, z1), 1.15, 1.2, -0.2),
+         ((0.9, FL + 0.02, z1), (-0.7, FL + 0.02, z1), 0.95, 1.7, 0.15)]
+    for a, b_, L, bend, lean in P:
+        a, b_ = V3(a), V3(b_); mid = (a + b_) / 2; d = (C - mid); d.z = 0; d.normalize(); along = (b_ - a).normalized(); w0 = (b_ - a).length; NS = 4
+        rows = []; p = mid.copy()
+        for i in range(NS + 1):
+            u = i / NS; th = bend * u ** 0.75; w = w0 * (1 - 0.72 * u ** 1.3) * (1 + (r.u(-0.18, 0.18) if 0 < i < NS else 0))
+            c = p + along * lean * L * u * u
+            rows.append((c - along * w / 2 + n * r.u(-0.03, 0.03) * (i > 0), c + along * w / 2 + n * r.u(-0.03, 0.03) * (i > 0), th))
+            if i < NS: th2 = bend * ((i + 0.5) / NS) ** 0.75; p = p + (d * math.cos(th2) + n * math.sin(th2)) * (L / NS)
+        for i in range(NS):
+            (l0, r0, th), (l1, r1, _) = rows[i], rows[i + 1]; nn = (d * -math.sin(th) + n * math.cos(th))      # the side that was inside the carriage looks along +nn... (it faces you)
+            q = [l0, r0, r1, l1]; UVq = [[(0, i / NS), (1, i / NS), (1, (i + 1) / NS), (0, (i + 1) / NS)]]
+            t.add(orient_from((q, [(0, 1, 2, 3)], UVq), sum(q, V3()) / 4 - nn), MC['cm'], CA['cm'].fit('ceil', 1.0), None, 0.92 - 0.13 * i)
+            q2 = [v - nn * TH for v in q]
+            t.add(orient_from((q2, [(0, 1, 2, 3)], UVq), sum(q2, V3()) / 4 + nn), MC['cm'], CA['cm'].fit('white', 1.0), None, 0.85)
+            if i == NS - 1:   # the last hand's width of each sheet is bare, rusted: where it let go
+                qr = [l0 + (l1 - l0) * 0.45 + nn * 0.003, r0 + (r1 - r0) * 0.45 + nn * 0.003, r1 + nn * 0.003, l1 + nn * 0.003]; t.add(orient_from((qr, [(0, 1, 2, 3)], [[(0, 0), (1, 0), (1, 1), (0, 1)]]), sum(qr, V3()) / 4 - nn), MC['cm'], CA['cm'].quad('rust'), None, 0.9)
+            for (e0, e1) in ((l0, l1), (r0, r1)):   # the torn edges: bare metal
+                qe = [e0, e1, e1 - nn * TH, e0 - nn * TH]; t.add((qe, [(0, 1, 2, 3)], [[(0, 0), (1, 0), (1, 1), (0, 1)]]), MC['cm'], CA['cm'].quad('bright'), None, 0.9)
+                t.add((qe[::-1], [(0, 1, 2, 3)], [[(0, 0), (1, 0), (1, 1), (0, 1)]]), MC['cm'], CA['cm'].quad('bright'), None, 0.9)
+        l1, r1, th = rows[-1]; nn = (d * -math.sin(th) + n * math.cos(th)); tip = (l1 + r1) / 2 + (d * math.cos(bend) + n * math.sin(bend)) * 0.22 + along * r.u(-0.1, 0.1)   # a ragged point
+        t.add(orient_from(([l1, r1, tip], [(0, 1, 2)], [[(0, 0), (1, 0), (0.5, 1)]]), (l1 + r1 + tip) / 3 - nn), MC['cm'], CA['cm'].quad('bright'), None, 0.8)
+        t.add(orient_from(([l1 - nn * TH, r1 - nn * TH, tip - nn * TH * 0.5], [(0, 1, 2)], [[(0, 0), (1, 0), (0.5, 1)]]), (l1 + r1 + tip) / 3 + nn), MC['cm'], CA['cm'].quad('white'), None, 0.8)
+    # the corner posts and what is left of the wall along the floor and the sides: a ragged rim
+    xi = HWB - WT
+    for sx in (-1, 1): t.box(sx * xi, FL + 0.002, z1 - WT, sx * (xi - 0.07), CANT - 0.006, z1, 'white', 0.85, 'u', omit=('-z', '+x' if sx > 0 else '-x', '+y', '-y'))
+    t.box(-xi + 0.07, FL + 0.002, z1 - WT, xi - 0.07, FL + 0.06, z1, 'white', 0.8, 'u', omit=('-z', '-y', '+x', '-x'))
+    # the headstock pushed out in two pieces, one buffer hanging by its stock, the other skewed
+    t.put(xf(cbx(-HWB + 0.1, -0.11, 0, 0.2, 0.11, 0.12, 0.015), T(0, FL - 0.25, z1 - 0.12) @ RY(-0.12)), 'rust', 0.7); t.put(xf(cbx(0.35, -0.11, 0, HWB - 0.1, 0.11, 0.12, 0.015), T(0.02, FL - 0.27, z1 - 0.1) @ RY(0.3) @ RZ(-0.08)), 'rust', 0.7)
     t.put(xf(p_prism(8, 0.16, 0.03, 0.15, dome=0.015, bottom=True), frame((0.25, -0.5, 1), (0, 1, 0), (0.95, FL - 0.42, z1 + 0.42))), 'steel', 0.7); t.rod((0.9, FL - 0.25, z1 + 0.1), (0.95, FL - 0.42, z1 + 0.42), 0.06, 'steel', 0.8, 6, cap=False)
-    t.put(xf(p_prism(8, 0.16, 0.03, 0.15, dome=0.015, bottom=True), frame((-0.1, 0, 1), (0, 1, 0), (-0.86, FL - 0.2, z1 + 0.3))), 'steel', 0.7); t.rod((-0.86, FL - 0.2, z1), (-0.86, FL - 0.2, z1 + 0.3), 0.06, 'steel', 0.8, 6, cap=False)
-    # the floor's edge splintered, seat stuffing and a strap blown out with it
-    for k in range(12):
-        x = -1.2 + 2.4 * (k + r.u(-0.3, 0.3)) / 12; L = r.u(0.15, 0.5)
-        t.put(xf(p_box(r.u(0.05, 0.12), 0.02, L, taper=0.15), T(x, FL - 0.01, z1 - 0.05) @ RY(r.u(-0.4, 0.4)) @ RX(r.u(-0.5, 0.15)) @ T(0, 0, L / 2)), 'lino', r.u(0.7, 1.0))
-    t.put(xf(p_ellipsoid(0.22, 0.12, 0.2, 6, 3), T(0.6, FL + 0.1, z1 + 0.2)), 'moq', 0.9, jit=0.03)
-    INFO['torn'] = dict(z=z1, hole=[cx, cy], note='the end the last carriage shows the tunnel')
+    t.put(xf(p_prism(8, 0.16, 0.03, 0.15, dome=0.015, bottom=True), frame((-0.1, 0, 1), (0, 1, 0), (-0.86, FL - 0.2, z1 + 0.3))), 'steel', 0.7); t.rod((-0.86, FL - 0.2, z1 - 0.02), (-0.86, FL - 0.2, z1 + 0.3), 0.06, 'steel', 0.8, 6, cap=False)
+    # the gangway's frame, hanging off one side; a luggage rail and a strip of the floor out through the hole
+    Mx = T(-0.52, FL + 1.9, z1 + 0.05) @ RZ(0.5) @ RX(-0.5)
+    t.put(xf(bx(-0.04, -1.85, 0, 0.04, 0, 0.16), Mx), 'black', 0.9); t.put(xf(bx(0.04, -0.07, 0.004, 1.0, -0.004, 0.156, omit=('-x',)), Mx), 'black', 0.9)
+    t.put(pipe([(0.9, FL + 1.78, z1 - 0.3), (0.5, FL + 1.5, z1 + 0.35), (0.1, FL + 0.9, z1 + 0.7)], 0.016, 4), 'chrome', 0.8)
+    for k in range(9):
+        x = -1.1 + 2.2 * (k + r.u(-0.3, 0.3)) / 9; L = r.u(0.2, 0.55)
+        t.put(xf(p_box(r.u(0.06, 0.14), 0.02, L, taper=0.15), T(x, FL - 0.03, z1 + 0.004) @ RY(r.u(-0.4, 0.4)) @ RX(r.u(0.05, 0.6)) @ T(0, 0, L / 2)), 'lino', r.u(0.7, 1.0))
+    t.put(xf(p_ellipsoid(0.22, 0.12, 0.2, 6, 3), T(0.6, FL + 0.1, z1 + 0.16)), 'moq', 0.9, jit=0.03)
+    INFO['torn'] = dict(z=z1, hole=[C.x, C.y], note='the end the last carriage shows the tunnel: seven sheets of its end wall bent outward')
     return t
 
 

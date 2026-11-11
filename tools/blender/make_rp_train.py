@@ -224,7 +224,7 @@ def preview_tunnel(N, RT, pdir, views, res=(960, 600)):
 
 
 CVIEWS = {'q': ((9, 4.5, -19), (0, 2.0, -2), 28, 0.0), 'side': ((60, 2.2, 0), (0, 2.2, 0), ('o', 23), 0.0), 'in': ((0.2, 2.75, -8.6), (0.1, 2.2, 6), 16, 0.8), 'door': ((4.2, 2.4, -7.5), (1.3, 2.0, -3.6), 35, 0.2),
-          'torn': ((6.5, 4.2, 18.5), (0, 2.2, 9.8), 30, 0.2), 'torn_f': ((0.6, 2.6, 17.5), (0, 2.3, 9.6), 30, 0.4), 'coffee': ((-0.3, 2.5, 0.4), (-1.2, 1.95, 0.0), 35, 1.0), 'row': ((14, 6, -40), (0, 2.0, 30), 28, 0.0)}
+          'torn': ((4.0, 3.5, 15.0), (0, 2.4, 9.7), 30, 0.2), 'torn_f': ((0.4, 2.6, 14.6), (0, 2.5, 9.6), 30, 0.4), 'coffee': ((-0.3, 2.5, 0.4), (-1.2, 1.95, 0.0), 35, 1.0), 'row': ((14, 6, -40), (0, 2.0, 30), 28, 0.0)}
 
 
 def preview_commuter(N, CM, pdir, views, res=(960, 600)):
@@ -243,7 +243,7 @@ def preview_commuter(N, CM, pdir, views, res=(960, 600)):
 
 def set_state(N, bitten=False, lod=False):
     for k, o in N.items():
-        if o is None or o.type != 'MESH': continue
+        if o is None or o.type != 'MESH' or not (o.parent and o.parent.name.startswith('car_')): continue   # the train's own parts only
         hide = bool(o.get('jf_hidden'))
         if k.endswith('_lod'): hide = not lod
         elif lod and k.startswith(('wagon', 'flat', 'van', 'loco', 'cover')): hide = True
@@ -339,18 +339,72 @@ def parts_json(N, RC, tris, RT=None, CM=None):
     return meta
 
 
-def sheet_train(N, tris):
-    colour_preview([m for m in M.values()]); tmp = os.path.join(SHEETS, '_tmp'); os.makedirs(tmp, exist_ok=True); S = int(arg('samples', 12))
+def sheets(N, tris, RC=None, RT=None, CM=None):
+    """the review sheets (tools/blender/sheets/rp_train_*.jpg, rp_tunnel_kit.jpg, rp_commuter.jpg): --sheet=a,b picks some"""
+    mats = [m for m in M.values()] + ([m for m in RT.MT.values()] if RT else []) + ([m for m in CM.MC.values()] if CM else [])
+    colour_preview(mats); tmp = os.path.join(SHEETS, '_tmp'); os.makedirs(tmp, exist_ok=True); S = int(arg('samples', 12))
     want_ = arg('sheet'); want_ = set(want_.split(',')) if isinstance(want_, str) else None
-    def sheet(tag, label, views, cols, res=(900, 560), bitten=False, lod=False, labels=None, ring=True, man=(0.9, 1.0, 1.2)):
+    def only(pred):
+        for k, o in N.items():
+            if o is not None and o.type == 'MESH': o.hide_render = not pred(k, o)
+    def train(on, bitten=False, lod=False):
+        if not RC: return
+        set_state(N, bitten, lod)
+        if not on:
+            for k, o in N.items():
+                if o is not None and o.type == 'MESH' and o.parent and o.parent.name.startswith('car_'): o.hide_render = True
+    def others(on=False):
+        for k, o in N.items():
+            if o is not None and o.type == 'MESH' and k.startswith(('tk_', 'tp_', 'cm_')): o.hide_render = not on
+    def sheet(tag, label, shots, cols, res=(900, 560)):
+        """shots: [(view | (cam, target, lens, exposure), caption, setup())]"""
         if want_ is not None and tag not in want_: return
-        set_state(N, bitten, lod); scale_set(ring, man_at=man); out = []
-        for v in views: out.append(shoot(v, os.path.join(tmp, f'{tag}_{len(out)}.png'), res, S))
-        contact(out, os.path.join(SHEETS, 'rp_train_' + tag), label, cols=cols, labels=labels or [v.replace('_', ' ') if isinstance(v, str) else '' for v in views])
-    sheet('turnaround', f"DALE'S WORKS TRAIN  {tris['whole']} TRIS  WAGON {tris['wagon']}  FLATBED {tris['flat']}  TOOL VAN {tris['van']}  LOCO {tris['loco']}  RING = THE 9.2 M BORE  FIGURE = 1.8 M",
-          ['turn_q', 'turn_front', 'turn_side', 'turn_top'], 2, (1100, 560), labels=['from behind (the boss\'s side)', 'from the front', 'side', 'plan'])
-    sheet('cars', 'THE FOUR CARS', ['wagon', 'flat', 'van', 'loco'], 2, labels=['rear wagon: drop sides, the rail', 'flatbed: crates, the fridge chained down', 'tool van: steps to a flat roof, open sides', 'the loco: more of a tractor'])
-    scale_set(False); set_state(N); clear_studio()
+        out = []
+        for i, (v, cap, setup) in enumerate(shots):
+            setup(); bpy.context.view_layer.update(); out.append(shoot(v, os.path.join(tmp, f'{tag}_{i}.png'), res, S))
+        contact(out, os.path.join(SHEETS, tag), label, cols=cols, labels=[c for _, c, _ in shots])
+    if RC:
+        whole = lambda: (others(), train(True), scale_set(True))
+        sheet('rp_train_turnaround', f"DALE'S WORKS TRAIN  {tris['whole']} TRIS  WAGON {tris['wagon']}  FLATBED {tris['flat']}  TOOL VAN {tris['van']}  LOCO {tris['loco']}  RING = THE 9.2 M BORE  FIGURE = 1.8 M",
+              [('turn_q', "from behind (the boss's side)", whole), ('turn_front', 'from the front', whole), ('turn_side', 'side: 9 m / 10 m / 7 m / 5 m', whole), ('turn_top', 'plan: 4.2 m wide, the middle lane clear', whole)], 2, (1100, 560))
+        sheet('rp_train_cars', 'THE FOUR CARS', [('wagon', 'rear wagon: drop sides, the rail', whole), ('flat', 'flatbed: crates, the fridge chained down', whole), ('van', 'tool van: steps to a flat roof, open sides', whole), ('loco', 'the loco: more of a tractor', whole),
+              ('loco_side', 'the loco, side on', whole), ('turn_side', 'the far versions (%d tris for all four)' % sum(tris[c + '_lod'] for c in ('wagon', 'flat', 'van', 'loco')), lambda: (others(), train(True, lod=True), scale_set(True)))], 3)
+        bare = lambda: (others(), train(True), scale_set(False))
+        def lineup():   # the cover pieces stood in a row off the train
+            others(); train(False); scale_set(False); cs = sorted(k for k in N if k.startswith('cover_'))
+            for i, k in enumerate(cs): o = N[k]; o.hide_render = False; o['jf_keep'] = list(o.location); o.location = gv(-6.3 + i * 1.8, 0.0, -30.0)
+            b = TBuf('jf_set_floor'); b.add(bx(-8.5, -0.06, -32, 8.5, 0.0, -28), mat('jf_set_floor', 0x2a2228, rough=0.9), ('tile', 1.0)); o = b.obj(wn=False); flat_ao(o); final_colour(o); SET.append(o)
+        def unline():
+            for k in N:
+                if k.startswith('cover_') and N[k] is not None and 'jf_keep' in N[k]: N[k].location = N[k]['jf_keep']; del N[k]['jf_keep']
+        sheet('rp_train_detail', 'THE CAB  THE VAN  THE COVER PIECES  THE BITTEN END', [
+            ('cab', 'the cab from the van: seat, brake, flask, kettle', bare), ('loco_back', "the loco's back", bare), ('van_under', "under the van's roof: 2 m, the lane clear", bare), ('van_roof', "on the van's roof", bare),
+            ('van_board', 'the tool board behind the steps', bare), ('rail', 'the back rail, the tail lamp', lambda: (others(), train(True), scale_set(True))),
+            (((0.0, 2.4, -22.5), (0.0, 0.85, -30.0), 34, 0.0), 'the eight cover pieces (crates, the fridge, the bench, the cable drum)', lineup),
+            ('bitten', 'after the first lunge: the wagon gone', lambda: (unline(), others(), train(True, bitten=True), scale_set(False))), ('bitten2', 'the torn end from the flatbed', lambda: (others(), train(True, bitten=True), scale_set(False)))], 3)
+        unline(); scale_set(False); set_state(N)
+    if RT:
+        def tun(lit, with_train=False, n=10):
+            others(); train(bool(with_train) and bool(RC)); scale_set(False); lay_tunnel(N, RT, z0=-24.0, n=n, lit=lit)
+        sheet('rp_tunnel_kit', 'THE UNDER-HILL LOOP  THE KIT TILED FOR 60 M  %s' % '  '.join(f'{k[3:].upper()} {tri_count(N[k])}' for k in ('tk_lining', 'tk_niche', 'tk_track', 'tk_cables', 'tk_bulbs') if N.get(k)), [
+            (((0.9, 2.4, -22.5), (0.2, 2.6, 20), 16, 0.6), 'every bulb lit', lambda: tun(5)), (((0.9, 2.4, -22.5), (0.2, 2.6, 20), 16, 0.6), 'the far ones out: three dead, two lit', lambda: tun(2)),
+            (((1.4, 1.9, -20.4), (-4.2, 1.4, -15.2), 24, 0.8), 'the refuge: a phone, the notice', lambda: tun(5)), (((2.8, 1.9, -21.0), (-1.2, 0.0, -16.5), 28, 0.6), 'ballast, sleepers, baseplates, troughing', lambda: tun(5)),
+            (((-1.8, 2.6, -22.0), (4.3, 3.6, -14.0), 22, 0.6), 'cables on brackets, the bulb string', lambda: tun(5)), (((26, 13, -42), (0, 2.5, 4), 30, 0.2), 'the same 60 m from outside', lambda: tun(5))], 3)
+        lay_tunnel(N, RT, on=False)
+        def portal(): others(); train(False); scale_set(False); N['tp_portal'].hide_render = False
+        psh = [(TVIEWS['portal'], 'the tunnel mouth, the viaduct\'s first span', portal), (TVIEWS['portal_f'], 'face on', portal)]
+    else: psh = []
+    if CM:
+        def car(torn=False, lod=False):
+            others(); train(False); scale_set(False)
+            for k in ('cm_car', 'cm_glass'): N[k].hide_render = lod
+            N['cm_end'].hide_render = lod or torn; N['cm_end_torn'].hide_render = lod or not torn; N['cm_lod'].hide_render = not lod
+        sheet('rp_commuter', 'THE DEAD COMMUTER TRAIN  ONE CARRIAGE %d TRIS  FAR %d  ·  THE TUNNEL MOUTH' % (tri_count(N['cm_car']) + tri_count(N['cm_end']) + tri_count(N['cm_glass']), tri_count(N['cm_lod'])), [
+            (((9.5, 4.6, -18.5), (0, 2.0, -1.5), 34, 0.0), 'a ☺ on every door, every door open', car), (CVIEWS['in'], 'every seat empty, coats on the hooks', car), (CVIEWS['coffee'], 'a coffee on a table, grown over', car),
+            (CVIEWS['torn'], 'the last carriage: its end wall bent outward', lambda: car(True)), (((9.5, 4.6, -18.5), (0, 2.0, -1.5), 34, 0.0), 'the far version', lambda: car(lod=True))] + psh, 4)
+    scale_set(False); clear_studio()
+    for k, o in N.items():
+        if o is not None and o.type == 'MESH': o.hide_render = False
     try: os.rmdir(tmp)
     except OSError: pass
 
@@ -428,7 +482,7 @@ def main():
         if RT and not RC: return preview_tunnel(N, RT, pdir, arg('views', 'in').split(','), res=tuple(int(x) for x in arg('res', '960x600').split('x')))
         preview(N, pdir, arg('views', 'turn_q').split(','), bool(arg('bitten')), res=tuple(int(x) for x in arg('res', '960x600').split('x')))
         return
-    if RC and not arg('no-sheet'): sheet_train(N, tris)
+    if not arg('no-sheet'): sheets(N, tris, RC, RT, CM)
 
 
 main()
