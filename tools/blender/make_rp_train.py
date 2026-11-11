@@ -53,7 +53,7 @@ def build_train(N):
 def build_tunnel(N):
     import rptunnel as RT
     RT.tunnel_materials(); root = empty('rp_tunnel'); N['rp_tunnel'] = root
-    N['tk_lining'] = mk(RT.lining('tk_lining'), 'tk_lining', root); N['tk_niche'] = mk(RT.lining('tk_niche', True, 4.0), 'tk_niche', root)
+    N['tk_lining'] = mk(RT.lining('tk_lining'), 'tk_lining', root); N['tk_niche'] = mk(RT.lining('tk_niche', True, 4.0), 'tk_niche', root); N['tk_lining_b'] = mk(RT.lining('tk_lining_b', False, 9.0, True), 'tk_lining_b', root)
     N['tk_track'] = mk(RT.track(), 'tk_track', root); N['tk_track_far'] = mk(RT.track_far(), 'tk_track_far', root); N['tk_cables'] = mk(RT.cables(), 'tk_cables', root, sharp=70)
     for kit in RT.bulbs(): N[kit.name] = mk(kit, kit.name, root, sharp=62)
     N['tk_phone'] = mk(RT.phone_alone(), 'tk_phone', root); N['tk_marker'] = mk(RT.marker(), 'tk_marker', root); N['tk_signal'] = mk(RT.signal(), 'tk_signal', root)
@@ -82,7 +82,7 @@ def bake_commuter(N):
         if o is not None and o.type == 'MESH': o.hide_render = False
 
 
-TILES = dict(tk_lining=6.0, tk_niche=6.0, tk_track=6.0, tk_track_far=6.0, tk_cables=6.0, tk_bulbs=12.0)
+TILES = dict(tk_lining=6.0, tk_lining_b=6.0, tk_niche=6.0, tk_track=6.0, tk_track_far=6.0, tk_cables=6.0, tk_bulbs=12.0)
 
 
 def bake_tunnel(N):
@@ -103,7 +103,7 @@ def bake_tunnel(N):
         if L:
             also += ghosts(k, L)
             for q in ('tk_track', 'tk_lining'):
-                if q != k and q in N and k != 'tk_bulbs' and not (k == 'tk_niche' and q == 'tk_lining') and not (k == 'tk_track_far' and q == 'tk_track'): N[q].hide_render = False; also += [N[q]] + ghosts(q, 6.0)
+                if q != k and q in N and k != 'tk_bulbs' and not (k in ('tk_niche', 'tk_lining_b') and q == 'tk_lining') and not (k == 'tk_track_far' and q == 'tk_track'): N[q].hide_render = False; also += [N[q]] + ghosts(q, 6.0)
         o.hide_render = False; bpy.context.view_layer.update()
         bake_ao([o], dist=0.45, samples=S, lo=0.4, also=also)
         for q in also:
@@ -194,7 +194,7 @@ def lay_tunnel(N, RT, z0=-12.0, n=10, lit=2, on=True, props=True):
         o = N[k].copy(); _link(o); o.name = f'jf_set_lay_{k}_{len(LAID)}'; o.parent = None; set_game_matrix(o, T(x, 0, z) @ RY(ry)); o.hide_render = False; LAID.append(o); return o
     for i in range(n):
         z = z0 + i * 6.0
-        put('tk_niche' if i % 4 == 1 else 'tk_lining', z); put('tk_track', z); put('tk_cables', z)
+        put('tk_niche' if i % 4 == 1 else 'tk_lining_b' if i % 4 == 3 else 'tk_lining', z); put('tk_track', z); put('tk_cables', z)
     nb = int(n * 6.0 / 12.0)
     for i in range(nb):
         z = z0 + 3.0 + i * 12.0; put('tk_bulbs', z); put('tk_bulb_lit' if i >= nb - lit else 'tk_bulb_dead', z)
@@ -267,7 +267,7 @@ def bake_groups(N):
     for o in meshes.values(): o.hide_render = True
     for car in ('wagon', 'flat', 'van', 'loco'):
         grp = [o for k, o in meshes.items() if o.parent and o.parent.name == 'car_' + car and not o.get('jf_hidden')]
-        solid = [o for o in grp if not o.name.endswith(('_glass', '_tail', '_lamp', '_headlamp'))]
+        solid = [o for o in grp if not o.name.endswith(('_glass', '_tail', '_lamp', '_headlamp', '_cablamp'))]
         for o in grp: o.hide_render = False
         for o in grp:
             if o not in solid: o.hide_render = True
@@ -328,7 +328,7 @@ def parts_json(N, RC, tris, RT=None, CM=None):
         markers=dict(
             crew=[dict(id=c['id'], pos=c['p']) for c in RC.TB['CREW']], back_rail=I.get('back_rail'), rail_sides=I.get('rail_sides'), couplings=I.get('couplings'),
             cab_seat=I.get('cab_seat'), brake_handle=I.get('brake_handle'), flask=I.get('flask'), kettle=I.get('kettle'), headlamp=I.get('headlamp'), headlamp_dead=I.get('headlamp_dead'),
-            tail_lamp=I.get('tail_lamp'), work_lamp=I.get('work_lamp'), van_lantern=I.get('van_lantern'), fridge=I.get('fridge'), handtruck=I.get('handtruck'),
+            tail_lamp=I.get('tail_lamp'), work_lamp=I.get('work_lamp'), cab_lamp=I.get('cab_lamp'), van_lantern=I.get('van_lantern'), fridge=I.get('fridge'), handtruck=I.get('handtruck'),
             van_roof=dict(y=RC.VAN.roof, x=[-RC.HW, RC.HW], z=[RC.VAN.roofZ0, RC.VAN.z1]), van_steps=dict(x=[-RC.HW, -RC.HW + RC.VAN.stairW], z=[RC.VAN.z0, RC.VAN.roofZ0], n=RC.VAN.stairs)),
         materials=dict(tr_atlas='everything painted, planked and steel (one 512 px atlas with a roughness / metal map)', tr_glass='the cab windows (blended)', tr_headlamp='the working head lamp (emissive)',
                        tr_tail='the tail lamp (emissive)', tr_worklamp='the flood on the van roof and the lantern under it (emissive)'),
@@ -353,6 +353,25 @@ def sheet_train(N, tris):
     scale_set(False); set_state(N); clear_studio()
     try: os.rmdir(tmp)
     except OSError: pass
+
+
+def run_qa(N):
+    """the asset-QA gate (.claude/skills/blender-asset-qa) on every group that is shown together: each car with what
+    stands on it, the torn end with the flatbed, each far version, each kit piece, the carriage with either end"""
+    res = {}; quiet = not arg('qa-warn'); tol = float(arg('qa-tol', 0.012))
+    G = lambda pred: [o for k, o in N.items() if o is not None and o.type == 'MESH' and pred(k, o)]
+    for car in ('wagon', 'flat', 'van', 'loco'):
+        if 'car_' + car not in N: continue
+        res[car] = qa(car, G(lambda k, o: o.parent and o.parent.name == 'car_' + car and not o.get('jf_hidden')), tol=tol, quiet=quiet)
+        res[car + '_lod'] = qa(car + '_lod', [N[car + '_lod']], tol=tol, quiet=quiet)
+    if N.get('flat_end_bitten'): res['flat_bitten'] = qa('flat_bitten', [N['flat_end_bitten'], N['flat_body']], tol=0.03, quiet=quiet)
+    for k in sorted(N):
+        if k.startswith(('tk_', 'tp_')) and N[k] is not None and k not in ('tk_bulb_lit', 'tk_bulb_dead'): res[k] = qa(k, [N[k]] + ([N['tk_bulb_lit']] if k == 'tk_bulbs' else []), tol=0.03, quiet=quiet)
+    if N.get('cm_car'):
+        res['cm_car'] = qa('cm_car', [N['cm_car'], N['cm_end'], N['cm_glass']], tol=0.03, quiet=quiet)
+        res['cm_last'] = qa('cm_last', [N['cm_car'], N['cm_end_torn']], tol=0.05, quiet=quiet); res['cm_lod'] = qa('cm_lod', [N['cm_lod']], tol=0.03, quiet=quiet)
+    print('QA_SUMMARY', json.dumps({k: bool(v.get('pass')) for k, v in res.items()}))
+    return res
 
 
 def tri_stats(N):
@@ -402,6 +421,7 @@ def main():
         N['rp_commuter']['jf'] = json.dumps(dict(id='rp_commuter', kind='story', hidden=['cm_end_torn', 'cm_lod'], info=CM.INFO))
         if not arg('no-export'):
             compact_glb(export_glb(N['rp_commuter'], os.path.join(OUT, 'rp_commuter.glb'))); print('JF_GLB', glb_summary(os.path.join(OUT, 'rp_commuter.glb')))
+    if arg('qa'): run_qa(N)
     pdir = arg('preview')
     if isinstance(pdir, str):
         if CM and not RC and not RT: return preview_commuter(N, CM, pdir, arg('views', 'q').split(','), res=tuple(int(x) for x in arg('res', '960x600').split('x')))

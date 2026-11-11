@@ -181,7 +181,7 @@ def train_atlas():
     chips(ck, 79, 8, RUST, (1.0, 2.5), A.sub_orm('chk'), rough=0.85, metal=0.1); grime(ck, 80, 0.25, bottom=False)
     cbn = A.put('cabin', 64, 64, rough=0.6); base(cbn, 0x8c9c7c, 81, 0.05); cbn[40:] = cbn[40:] * 0 + hexrgb(0x5a6650)[None, None] * (0.9 + 0.2 * blocky(82, 24, 64)[:, :, None]); cbn[39] = hexrgb(0x3a4234); grime(cbn, 83, 0.3)   # the cab inside: two greens and a line
     # --- 32 high
-    for nm, col, ro, me, var, sp, spp in (('steel', 0x2c2b30, 0.62, 0.7, 0.12, RUST, 0.07), ('steel2', 0x55585c, 0.5, 0.8, 0.1, RUST, 0.05), ('bright', 0xa8aaae, 0.3, 1.0, 0.1, 0x4a4a4e, 0.1),
+    for nm, col, ro, me, var, sp, spp in (('steel', 0x3e3d44, 0.62, 0.7, 0.14, RUST, 0.1), ('steel2', 0x55585c, 0.5, 0.8, 0.1, RUST, 0.05), ('bright', 0xa8aaae, 0.3, 1.0, 0.1, 0x4a4a4e, 0.1),
                                           ('rust', 0x6e3a1e, 0.9, 0.1, 0.2, 0x2a1810, 0.2), ('black', 0x131316, 0.5, 0.0, 0.1, None, 0), ('red', 0xa8281c, 0.45, 0.0, 0.08, PRIMER, 0.05),
                                           ('rubber', 0x1a1a1c, 0.92, 0.0, 0.12, 0x2a2a2c, 0.1), ('soot', 0x0c0a0c, 0.96, 0.0, 0.3, 0x1c1618, 0.2), ('seat', 0x4a2a1c, 0.55, 0.0, 0.12, 0x2a160e, 0.12),
                                           ('cream', 0xc8c0a0, 0.5, 0.0, 0.06, 0x8a8468, 0.05), ('lens', 0x2a3034, 0.1, 0.2, 0.15, 0x9ab8bc, 0.06)):
@@ -206,6 +206,10 @@ def train_atlas():
     for i, (col, sd_) in enumerate(((0x7a5c3c, 120), (0x5c4834, 121), (0x9c7c50, 122), (0x4c3c2e, 123), (0x6a5038, 124), (0x86663e, 125), (0x70604c, 126), (0x584028, 127))): plank(A, 'pl%d' % i, 128, 16, col, sd_)
     plank(A, 'plnew', 128, 16, 0xc8a468, 128, nails=False)                                              # one Dale put in last year
     A.rm('plnew', 0.75)
+    mg_ = A.put('mind', 96, 32, rough=0.86); mg_[:16] = A.sub('pl3')[:, :96] * 0.9; mg_[16:] = A.sub('pl1')[:, :96] * 0.9                 # the wagon's kick board: two planks, what somebody wrote on them
+    for i_, ch_ in enumerate('MIND THE GAP'):
+        if ch_ != ' ': text_px(mg_, ch_, 6 + i_ * 7, 12 + (1 if i_ % 3 == 0 else 0) - (1 if i_ % 5 == 2 else 0), 1, 0xe8e4d4)
+    line_ = A.put('line', 64, 16, rough=0.6); base(line_, 0xe0b018, 131, 0.08); m_ = blocky(132, 16, 64, 2) > 0.62; line_[m_] = A.sub('pl0')[:, :64][m_]; line_[:, ::16] *= 0.6   # a yellow line painted along a deck's edge, mostly walked off
     sp_ = A.put('splint', 128, 16, rough=0.9); base(sp_, 0xc8a878, 129, 0.12); sp_[::3] *= 0.8          # fresh broken wood
     stp = A.put('strap', 128, 16, rough=0.7); base(stp, 0xc86a1a, 130, 0.06); stp[::2] *= 0.9; stp[0] = stp[-1] = hexrgb(0x7a3a0a)   # an orange ratchet strap
     # --- 16 high: small swatches

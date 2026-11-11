@@ -31,7 +31,7 @@ INFO = {}
 # ------------------------------------------------------------ paint
 def brick_tile():
     A = Atlas('tk_brick', 128, 128, rough=0.9); px = A.px; r = rng(5)
-    cols = [0x8a4a3c, 0x7a3e34, 0x96553e, 0x6e3a36, 0x844638, 0x5e3438, 0x9a6046, 0x3e3a48, 0x744038]
+    cols = [0x8a4a3c, 0x7a3e34, 0x96553e, 0x6e3a36, 0x844638, 0x5e3438, 0x9a6046, 0x56424a, 0x744038, 0x8e5040, 0xa0684a]
     px[:] = hexrgb(0x3a302e)
     for row in range(16):
         off = 8 if row % 2 else 0
@@ -42,6 +42,7 @@ def brick_tile():
     n = blocky(7, 128, 128, 2); px[:] = px * (0.88 + 0.24 * n[:, :, None])
     m = r.random((128, 128)) < 0.03; px[m] = px[m] * 0.55      # pocks
     m = r.random((128, 128)) < 0.012; px[m] = hexrgb(0xb8a898)  # lime
+    px[:] = np.clip(px * 1.12, 0, 1)
     return A
 
 
@@ -72,6 +73,7 @@ def tunnel_atlas():
     text_px(mk, '7', 11, 4, 2, 0x16161a); mk[21:23, 6:26] = hexrgb(0x16161a); text_px(mk, '1/4', 8, 24, 1, 0x16161a)
     TX.chips(mk, 220, 5, RUST, (0.8, 2.0), edge=RUST_D); grime(mk, 221, 0.3)
     sg = A.put('sigid', 32, 16, rough=0.45); base(sg, 0xe8e6dc, 222, 0.05); text_px(sg, 'UH 32', 2, 5, 1, 0x16161a); TX.chips(sg, 223, 3, RUST, (0.8, 1.6)); grime(sg, 224, 0.3)
+    wsh = A.put('wash', 48, 32, 0x5a3a30, rough=0.9); wsh[:] = hexrgb(0x6a4034)[None, None] * (0.85 + 0.3 * blocky(233, 32, 48, 2)[:, :, None]); stencil(wsh, '61', 6, 5, 0xe8e4d8, 3, 0.22, 234)   # a number in whitewash on the brick
     dt = A.put('date', 48, 32, rough=0.85); base(dt, 0x9a9488, 225, 0.06, 2); stencil(dt, 'UNDER', 9, 3, 0x3a342e, 1, 0.15, 226); stencil(dt, 'HILL', 12, 12, 0x3a342e, 1, 0.15, 227); stencil(dt, '1899', 12, 22, 0x3a342e, 1, 0.2, 228); grime(dt, 229, 0.3)
     for i, (col, sd) in enumerate(((0x3a2e26, 230), (0x44362a, 231), (0x2e2620, 232))): TX.plank(A, 'slp%d' % i, 128, 16, col, sd, nails=False)
     for nm, col, ro, me, var in (('steel', 0x2c2b30, 0.62, 0.7, 0.14), ('rust', 0x6a3a20, 0.9, 0.1, 0.22), ('railtop', 0x8a8c90, 0.35, 1.0, 0.12), ('black', 0x121214, 0.6, 0.0, 0.1), ('white', 0xe6e4da, 0.4, 0.0, 0.06),
@@ -100,16 +102,18 @@ def wall_pt(a, z, r=R): return V3((r * math.cos(a), CY + r * math.sin(a), z))
 
 
 def soot(a, z, seed=0.0, L=SEG):
-    """the lining's tone at (angle, z): soot along the crown where the exhaust went, damp low down, runs of lime where
-    water comes through. periodic along z (a segment's two ends match)"""
+    """the lining's tone at (angle, z): soot along the crown where the exhaust went, damp and green low down, runs of
+    lime where water comes through the joints. periodic along z (a segment's two ends match)"""
     cz, sz = math.cos(2 * math.pi * z / L), math.sin(2 * math.pi * z / L); s = math.sin(a); y = CY + R * s
     crown = max(0.0, s) ** 3
     n = fbm(a * 1.7 + seed, cz * 1.3 + 2.0, sz * 1.3, 3)
-    v = 0.74 - 0.36 * crown + 0.22 * n
-    damp = max(0.0, 1 - y / 1.6); col = V3((v, v * 0.97, v * 0.95)) * (1 - 0.3 * damp) + V3((0.02, 0.05, 0.03)) * damp
-    seep = fbm(a * 0.9 + 11 + seed, cz * 0.8, sz * 0.8 + 5.0, 2)
-    if seep > 0.16 and 0.4 < y < 6.5:   # efflorescence
-        k = min(1.0, (seep - 0.16) * 6.0); col = col * (1 - 0.6 * k) + V3((1.0, 0.98, 0.94)) * 0.6 * k
+    v = 0.78 - 0.42 * crown + 0.24 * n
+    damp = max(0.0, 1 - y / 1.9) ** 1.3; col = V3((v, v * 0.96, v * 0.94)) * (1 - 0.45 * damp) + V3((0.05, 0.11, 0.06)) * damp
+    seep = fbm(a * 0.9 + 11 + seed, cz * 0.9, sz * 0.9 + 5.0, 2) + 0.12 * fbm(a * 4.0 + seed, cz * 2.0, sz * 2.0, 2)
+    if seep > 0.1 and 0.5 < y < 6.8:   # efflorescence: it runs down from where it starts
+        k = min(1.0, (seep - 0.1) * 7.0); col = col * (1 - 0.72 * k) + V3((1.0, 0.98, 0.93)) * 0.72 * k
+    rust = fbm(a * 2.3 + 31 + seed, cz * 1.6 + 9.0, sz * 1.6, 2)
+    if rust > 0.2 and y > 1.0: k = min(1.0, (rust - 0.2) * 5.0) * 0.5; col = col * (1 - k) + V3((0.5, 0.27, 0.12)) * k
     return (max(0.05, min(1.0, col.x)), max(0.05, min(1.0, col.y)), max(0.05, min(1.0, col.z)))
 
 
@@ -147,7 +151,7 @@ def a_of_y(y, left=True):
     return math.pi - a if left else a
 
 
-def lining(name, niche=False, seed=0.0):
+def lining(name, niche=False, seed=0.0, pipe_=False):
     b = KT(name); na = 27
     NB, NT, NZ0, NZ1 = 0.32, 2.36, 2.55, 3.75                     # the refuge: its floor, its head, along the tunnel
     ast = [A0 + (A1 - A0) * i / na for i in range(na + 1)]; zst = [SEG * j / 6 for j in range(7)]
@@ -158,6 +162,15 @@ def lining(name, niche=False, seed=0.0):
         hole = (at_, ab, NZ0, NZ1)
     barrel(b, ast, zst, hole, seed)
     header_ring(b, ast, 0.0, 0.46, 0.11, seed)
+    if pipe_:   # this length has a cast drain pipe down the right wall from a weep hole, lime below its foot, a number in whitewash
+        zp = 3.3; ys = [5.6, 4.6, 3.6, 2.6, 1.6, 0.5]; pts = [wall_pt(a_of_y(y, False), zp, R - 0.075) for y in ys]
+        b.put(p_tube(pts, 0.06, 5, up=(0, 0, 1), cap0=True, cap1=True), 'rust', 0.8)
+        for y in (4.9, 3.1, 1.3):
+            p = wall_pt(a_of_y(y, False), zp, R - 0.075); b.box(p.x - 0.1, p.y - 0.03, zp - 0.1, p.x + 0.09, p.y + 0.03, zp + 0.1, 'steel', 0.7)
+        p = wall_pt(a_of_y(0.5, False), zp, R - 0.075); b.put(pipe([(p.x, p.y, zp), (p.x - 0.12, p.y - 0.2, zp), (p.x - 0.4, p.y - 0.42, zp)], 0.06, 5), 'rust', 0.7)
+        a0, a1 = a_of_y(2.75, False), a_of_y(2.15, False)
+        q = [wall_pt(a1, 1.2, R - 0.012), wall_pt(a1, 1.95, R - 0.012), wall_pt(a0, 1.95, R - 0.012), wall_pt(a0, 1.2, R - 0.012)]
+        b.put(orient_from((q, [(0, 1, 2, 3)], [[(0, 0), (0.75, 0), (0.75, 0.6), (0, 0.6)]]), V3((0, CY, 1.5)) * 2 - (q[0] + q[2]) / 2), 'wash', 1.0, 'e')
     if niche:
         k = b; xb = -(R + 0.04); arc = [q for q in ast if at_ - 1e-6 <= q <= ab + 1e-6]
         dark = lambda q: tuple(c * 0.62 for c in soot(a_of_y(min(NT, max(NB, q.y))), q.z, seed))

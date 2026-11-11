@@ -43,7 +43,7 @@ test('the parts file: built to today\'s table, every part a node, every marker t
   for (const p of P.parts) { assert.ok(T.nodes[p.name], `part ${p.name} is not in rp_train.glb`); assert.equal(!!p.hidden, T.nodes[p.name].hidden, `${p.name}: hidden in one and not the other`); }
   for (const n of Object.values(T.nodes)) if (n.verts.length) assert.ok(P.parts.some((p) => p.name === n.name), `${n.name} is in the file and not in the parts list`);
   for (const c of CARS) for (const k of ['car_' + c.id, c.id + '_body', c.id + '_lod']) assert.ok(T.nodes[k], k);
-  for (const k of ['flat_end', 'flat_end_bitten', 'wagon_coupling', 'wagon_tail', 'loco_headlamp', 'loco_glass', 'van_lamp']) assert.ok(T.nodes[k], k);
+  for (const k of ['flat_end', 'flat_end_bitten', 'wagon_coupling', 'wagon_tail', 'loco_headlamp', 'loco_glass', 'loco_cablamp', 'van_lamp']) assert.ok(T.nodes[k], k);
   assert.ok(T.nodes.flat_end_bitten.hidden && !T.nodes.flat_end.hidden, 'the torn end is the hidden one');
   assert.equal(T.nodes.wagon_coupling.parent, 'car_wagon', 'the wagon\'s coupling goes with the wagon');
   const m = P.markers, v3 = (a) => Array.isArray(a) && a.length === 3 && a.every(Number.isFinite);
@@ -141,8 +141,8 @@ test('budgets: triangles, materials, size', () => {
 
 test('the tunnel kit: pieces that tile, at the bore\'s size', () => {
   const K = readGlb('rp_tunnel.glb'), R = ARENA.boreR, cy = ARENA.cy;
-  for (const k of ['tk_lining', 'tk_niche', 'tk_track', 'tk_track_far', 'tk_cables', 'tk_bulbs', 'tk_bulb_lit', 'tk_bulb_dead', 'tk_phone', 'tk_marker', 'tk_signal', 'tp_portal']) assert.ok(K.nodes[k] && K.nodes[k].verts.length, k);
-  for (const k of ['tk_lining', 'tk_niche', 'tk_track', 'tk_track_far', 'tk_cables']) { const b = box(K.nodes[k].verts); assert.ok(near(b.lo[2], 0, 0.02) && near(b.hi[2], 6, 0.02), `${k} is 6 m long (${b.lo[2].toFixed(2)} .. ${b.hi[2].toFixed(2)})`); assert.ok(K.nodes[k].tris <= 1500, `${k}: ${K.nodes[k].tris} triangles`); }
+  for (const k of ['tk_lining', 'tk_lining_b', 'tk_niche', 'tk_track', 'tk_track_far', 'tk_cables', 'tk_bulbs', 'tk_bulb_lit', 'tk_bulb_dead', 'tk_phone', 'tk_marker', 'tk_signal', 'tp_portal']) assert.ok(K.nodes[k] && K.nodes[k].verts.length, k);
+  for (const k of ['tk_lining', 'tk_lining_b', 'tk_niche', 'tk_track', 'tk_track_far', 'tk_cables']) { const b = box(K.nodes[k].verts); assert.ok(near(b.lo[2], 0, 0.02) && near(b.hi[2], 6, 0.02), `${k} is 6 m long (${b.lo[2].toFixed(2)} .. ${b.hi[2].toFixed(2)})`); assert.ok(K.nodes[k].tris <= 1500, `${k}: ${K.nodes[k].tris} triangles`); }
   { const b = box(K.nodes.tk_bulbs.verts); assert.ok(near(b.lo[2], 0, 0.3) && near(b.hi[2], 12, 0.05), 'the bulb string runs 12 m'); }
   const rad = K.nodes.tk_lining.verts.map((v) => Math.hypot(v[0], v[1] - cy));
   assert.ok(near(Math.max(...rad), R, 0.02) && Math.min(...rad) > R - 0.2, `the lining is the ${2 * R} m bore (${Math.min(...rad).toFixed(2)} .. ${Math.max(...rad).toFixed(2)})`);

@@ -246,6 +246,16 @@ def leaf_spring(L, n=5, t=0.016, w=0.085, drop=0.07):
     return out
 
 
+def spring_pack(L, n=5, t=0.016, w=0.085, drop=0.07):
+    """a leaf spring as one solid along z: n leaves thick at the buckle, one at the eyes, bowed up to them. the top of its
+    middle is the origin. -> prims (the pack, its buckle)"""
+    st = 6; rings = []
+    for i in range(st + 1):
+        z = -L / 2 + L * i / st; u = abs(2 * z / L); yt = drop * u * u; th = t * (1 + (n - 1) * max(0.0, 1 - u) ** 0.8)
+        rings.append([V3((-w / 2, yt - th, z)), V3((w / 2, yt - th, z)), V3((w / 2, yt, z)), V3((-w / 2, yt, z))])
+    return [p_loft(rings, cap0=True, cap1=True), cbx(-w / 2 - 0.014, -n * t - 0.014, -0.045, w / 2 + 0.014, 0.014, 0.045, 0.008)]
+
+
 def rail_profile(top=0.215, foot_y=0.085, head_w=0.115, web_w=0.106, foot_w=0.2):
     hh = 0.048; hw = head_w / 2; ww = web_w / 2; fw = foot_w / 2
     return [(-fw, foot_y), (fw, foot_y), (fw, foot_y + 0.016), (ww, foot_y + 0.03), (ww, top - hh - 0.008), (hw, top - hh), (hw, top - 0.008), (hw - 0.012, top), (-hw + 0.012, top), (-hw, top - 0.008), (-hw, top - hh), (-ww, top - hh - 0.008), (-ww, foot_y + 0.03), (-fw, foot_y + 0.016)]
@@ -412,11 +422,15 @@ class Kit(TBuf):
 
     def put(s, prim, key, tint=1.0, how='q', M=None, mat_=None, mg=0.5, **kw):
         at = s.AT; rect = at.R[key]
-        if how == 'e':   # each face on the whole cell, the way face_quad lays it
-            V, F, UV = prim[:3]; U2 = []
-            for uv in UV:
-                us = [u for u, v in uv]; vs = [v for u, v in uv]; u0, v0 = min(us), min(vs); du = (max(us) - u0) or 1.0; dv = (max(vs) - v0) or 1.0
-                U2.append([px_uv(rect, at.tex, (u - u0) / du, (v - v0) / dv, mg) for u, v in uv])
+        if how == 'e':   # each face on the whole cell, the way face_quad lays it. a face much longer or squatter than the cell
+            V, F, UV = prim[:3]; U2 = []; cw, ch_ = rect[2] - 2 * mg, rect[3] - 2 * mg     # takes a strip of it instead (stretched paint looks like wood grain)
+            for f, uv in zip(F, UV):
+                us = [u for u, v in uv]; vs = [v for u, v in uv]; u0, v0 = min(us), min(vs); du = (max(us) - u0) or 1e-6; dv = (max(vs) - v0) or 1e-6
+                k = (du / dv) / (cw / ch_)
+                if 1 / 2.6 <= k <= 2.6: U2.append([px_uv(rect, at.tex, (u - u0) / du, (v - v0) / dv, mg) for u, v in uv]); continue
+                sc = min(cw / du, ch_ / dv); c0 = sum((V[i] for i in f), V3()) / len(f)
+                ou = (math.sin(c0.x * 12.9898 + c0.y * 78.233 + c0.z * 37.719) * 43758.5453) % 1.0 * (cw - du * sc); ov = (math.sin(c0.x * 39.3468 + c0.y * 11.135 + c0.z * 83.155) * 24634.6345) % 1.0 * (ch_ - dv * sc)
+                U2.append([px_uv(rect, at.tex, (ou + (u - u0) * sc) / cw, (ov + (v - v0) * sc) / ch_, mg) for u, v in uv])
             return s.add((V, F, U2), mat_ or s.MAT, ('tile', 1.0), M, tint, **kw)
         if how == 'u':   # each face at one size of pixel (no stretch): it takes the strip of the cell it covers, somewhere in it
             V, F, UV = prim[:3]; U2 = []; cw, ch_ = rect[2] - 2 * mg, rect[3] - 2 * mg
@@ -466,7 +480,19 @@ class Kit(TBuf):
         return s.put(p_extrude(poly_xy, min(z0, z1), max(z0, z1)), key, tint, how, **kw)
 
     def chain(s, pts, key='chain', tint=1.0, pitch=0.11, W=0.07, r=0.012, sag=0.0):
-        for pr in chain_prims(pts, pitch, W, r, sag): s.put(pr, key, tint)
+        """links along a polyline as flat open-ended plates, every other one turned a quarter (8 triangles a link)"""
+        P = [V3(p) for p in pts]; d = [0.0]
+        for a, b in zip(P, P[1:]): d.append(d[-1] + (b - a).length)
+        n = max(1, int(d[-1] / pitch)); step = d[-1] / n
+        def at(q):
+            i = 1
+            while i < len(d) - 1 and d[i] < q: i += 1
+            t = (q - d[i - 1]) / max(1e-9, d[i] - d[i - 1]); p = P[i - 1].lerp(P[i], t)
+            return p + V3((0, -sag * math.sin(math.pi * q / d[-1]), 0)) if sag else p
+        for i in range(n):
+            a, b = at(i * step), at((i + 1) * step); dz = b - a
+            up = V3((0, 1, 0)) if abs(dz.normalized().y) < 0.9 else V3((1, 0, 0)); L = step * 1.22
+            s.put(xf(bx(-W / 2, -r * 1.1, -L / 2, W / 2, r * 1.1, L / 2, omit=('+z', '-z')), frame(dz, up, (a + b) / 2) @ RZ(math.pi / 2 * (i % 2))), key, tint * (0.85 + 0.3 * (i % 2)))
         return s
 
 

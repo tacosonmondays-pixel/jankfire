@@ -3,7 +3,7 @@
 // prop loader). Nothing in this file is rules: the room's boxes stay the collision (shared/story/train.js is THE
 // TABLE both were built to), and if a file never comes the boxes and the old tunnel are simply still there.
 //   rp_train.glb   car_wagon / car_flat / car_van / car_loco, each cover_* its own node (origin = the middle of its foot)
-//   rp_tunnel.glb  tk_lining, tk_niche, tk_track (+ tk_track_far), tk_cables, tk_bulbs, tk_bulb_lit, tk_bulb_dead, ...
+//   rp_tunnel.glb  tk_lining, tk_lining_b, tk_niche, tk_track (+ tk_track_far), tk_cables, tk_bulbs, tk_bulb_lit, tk_bulb_dead, ...
 //   rp_train.parts.json  what it was built to, the markers (lamps, the back rail, the couplings, the cab)
 // tools/blender/make_rp_train.py builds all of it. docs/story/train/TRAIN_MODEL.md has the parts and the numbers.
 import * as THREE from 'three';
@@ -92,7 +92,7 @@ export function makeTrainSet() {
       n.traverse((o) => { if (!o.isMesh) return; const im = new THREE.InstancedMesh(o.geometry, o.material, count); im.frustumCulled = false; im.count = 0; im.castShadow = im.receiveShadow = false; im.userData.base = o.matrixWorld.clone(); grp.add(im); out.push(im); });
       return out;
     };
-    const P = { lining: piece('tk_lining', nSeg), niche: piece('tk_niche', nSeg), track: piece('tk_track', nSeg), far: piece('tk_track_far', nSeg), cables: piece('tk_cables', nSeg),
+    const P = { lining: piece('tk_lining', nSeg), liningB: piece('tk_lining_b', nSeg), niche: piece('tk_niche', nSeg), track: piece('tk_track', nSeg), far: piece('tk_track_far', nSeg), cables: piece('tk_cables', nSeg),
       wire: piece('tk_bulbs', nBulb), lit: piece('tk_bulb_lit', nBulb), dead: piece('tk_bulb_dead', nBulb), marker: piece('tk_marker', 4), signal: piece('tk_signal', 4) };
     if (!P.far.length) P.far = null;
     // the dark at both ends (the room's end walls are bricks: a tunnel should go on into nothing)
@@ -105,16 +105,16 @@ export function makeTrainSet() {
     // dz: how far the tunnel went past this frame · bz / bon: each bulb's z and whether it is lit (trainfight's own count of them)
     L.step = (dz, bz, bon) => {
       L.dist = (L.dist + dz) % PERIOD;
-      const sh = L.dist % SEG, k0 = Math.floor(L.dist / SEG); let nl = 0, nn = 0, nt = 0, nf = 0, nc = 0, nm = 0, ns = 0;
+      const sh = L.dist % SEG, k0 = Math.floor(L.dist / SEG); let nl = 0, nb = 0, nn = 0, nt = 0, nf = 0, nc = 0, nm = 0, ns = 0;
       for (let j = 0; j < nSeg; j++) {
         const z = ARENA.z0 + SEG * j - sh, k = (j + k0) % (PERIOD / SEG), near = z + SEG > NEAR[0] && z < NEAR[1];
-        if (k % 4 === 1 && P.niche.length) put(P.niche, nn++, z); else put(P.lining, nl++, z);
+        if (k % 4 === 1 && P.niche.length) put(P.niche, nn++, z); else if (k % 4 === 3 && P.liningB.length) put(P.liningB, nb++, z); else put(P.lining, nl++, z);
         if (near || !P.far) put(P.track, nt++, z); else put(P.far, nf++, z);
         if (near) put(P.cables, nc++, z);
         if (k === 6 && nm < 4) put(P.marker, nm++, z + 3, -xc, Math.PI / 2);
         if (k === 13 && ns < 4) put(P.signal, ns++, z + 3, xc - 0.1, 0);
       }
-      end(P.lining, nl); end(P.niche, nn); end(P.track, nt); if (P.far) end(P.far, nf); end(P.cables, nc); end(P.marker, nm); end(P.signal, ns);
+      end(P.lining, nl); end(P.liningB, nb); end(P.niche, nn); end(P.track, nt); if (P.far) end(P.far, nf); end(P.cables, nc); end(P.marker, nm); end(P.signal, ns);
       let on = 0, off = 0;
       for (let i = 0; i < bz.length && i < nBulb; i++) { put(P.wire, i, bz[i]); if (bon[i]) put(P.lit, on++, bz[i]); else put(P.dead, off++, bz[i]); }
       end(P.wire, Math.min(bz.length, nBulb)); end(P.lit, on); end(P.dead, off);
