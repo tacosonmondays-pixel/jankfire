@@ -46,18 +46,20 @@ const ROUTE = [
   if (!inCar) { console.log('ERRORS', errs.join('\n')); await b.close(); return; }
   const held = new Set(); const hold = async (k, on) => { if (on && !held.has(k)) { held.add(k); await pg.keyboard.down(k); } else if (!on && held.has(k)) { held.delete(k); await pg.keyboard.up(k); } };
   const rows = []; let stuckAt = null;
+  let prev = [-110, 4, 226.5];
   for (const [x, y, z, name] of ROUTE) {
+    const seg = [x - prev[0], z - prev[2]], segL = Math.hypot(seg[0], seg[1]) || 1; prev = [x, y, z];
     const t0 = Date.now(); let best = 1e9, bestT = Date.now(), ok = false, last = null;
     while (Date.now() - t0 < 60000) {
       const c = await ev(async () => { const { DV } = await import('/js/story/drive.js'); const c = DV.car; return c ? [c.x, c.y, c.z, c.h, Math.hypot(c.vx, c.vz)] : null; });
       if (!c) { last = 'fell out of the car'; break; }
       const d = Math.hypot(x - c[0], z - c[2]); last = c;
-      if (d < 6) { ok = true; break; }
+      if (d < 7 || ((x - c[0]) * seg[0] + (z - c[2]) * seg[1]) / segL < -2 && d < 25) { ok = true; break; } // (close, or driven past it)
       if (d < best - 1) { best = d; bestT = Date.now(); }
       if (Date.now() - bestT > 8000) break; // no progress for 8 s: stuck
       let err = Math.atan2(x - c[0], z - c[2]) - c[3]; err = Math.atan2(Math.sin(err), Math.cos(err));
       const back = Date.now() - bestT > 4000 && c[4] < 1.5; // wedged: reverse a moment
-      await hold('KeyW', !back); await hold('KeyS', back);
+      await hold('KeyW', !back && c[4] < (Math.abs(err) > 0.5 ? 9 : 22)); await hold('KeyS', back); // (a sane speed: slow into the turns)
       await hold('KeyA', (back ? -err : err) > 0.08); await hold('KeyD', (back ? -err : err) < -0.08);
       await sleep(90);
     }
