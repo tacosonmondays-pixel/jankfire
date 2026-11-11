@@ -186,7 +186,7 @@ const OWNED = { 'm02_sauce_run.ambush': 'C', 'm04_clocking_in.fight': 'B', 'm06_
   const done = await ev(() => Object.keys(window.JF_STORY.S.st.quests).filter((q) => window.JF_STORY.S.st.quests[q].done));
   console.log('\nLEDGER');
   for (const r of rows) console.log([r.q, r.s, r.type || '', r.how, r.note || ''].join(' | '));
-  const blk = rows.filter((r) => /BLOCKED/.test(r.how));
+  const blk = rows.filter((r) => r.how === 'BLOCKED'); // (BLOCKED? is a try that didn't move the step; the next try may)
   console.log('\nFIRST BLOCKER:', blk[0] ? `${blk[0].q}.${blk[0].s}: ${blk[0].note}` : 'none');
   console.log('missions done:', done.join(' '));
   console.log('ERRORS', errs.length, errs.slice(0, 10).join('\n'));
