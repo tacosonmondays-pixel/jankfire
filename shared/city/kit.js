@@ -193,7 +193,7 @@ export function cubeKit(B, c, r, hid, o = {}) {
       if (stair && e > stair[2] - 1.4 && e < stair[1] + 1.4) continue; // (it would poke through the steps)
       if (seen(side, e, y + h - 0.3)) put('cube_eave', side, e, y + h, 1, rv);
     }
-    if (!c.container) continue;
+    if (!c.container || pd > 60) continue; // (ribs and doors cover the wall: only where a paint variant matches it. pink, teal and yellow do; orange and purple don't)
     if ((side % 2) === long) { // ribs at 1 m steps along a container's long walls, cut round the openings
       const s = h / 2.8; let from = a0;
       for (const [oa, ob, oy0] of [...ops, [a1, a1, 0]]) {

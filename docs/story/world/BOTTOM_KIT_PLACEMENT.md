@@ -15,8 +15,8 @@ and is turned with the same yaw the doors and shutters already use.
 | `cube_window_a/b/c` | every 1.4 x 1.1 window opening on a dressed wall, unless the old `shutter` prop already fills that opening | on the wall face, bottom middle of the opening (`y + 1.0`). Mix b 60 % / a 30 % / c 10 % from the kit's own random stream (c is 620 triangles). An opening with an AC unit hanging low in it always gets a (the flat barred one). The glowing pane behind stays |
 | `cube_corner` | ground-floor cubes, the corner whose front is a dressed wall: the lane front and the side walls | the cube's outer corner at floor level, scaled `(h + 0.05) / 3.1` so the top buries in the roof slab (cubes are 2.8 / 3.0 / 3.2 tall). Left out when an opening starts within 1.15 m of the corner (the meter box would sit on it) or a side stair starts there |
 | `cube_eave` | the lane side and the uphill side of every real roof (the top cube of a stack) that is dressed, and the lane side of half the ground floors | on the wall face at the slab's underside, 2 m runs from one end; the last run overlaps back from the far end. Painted with the roof's tint if it has one, else the cube's. Runs above a side stair are left out (they would poke through the steps) |
-| `container_rib` | container cubes, the two long walls | at floor level, tiled from the wall's end to each opening and on after it (windows cut 0.16 m wider than the hole, doors 0.02). Scale `h / 2.8` so the ribs reach the slab; each strip is centred in its stretch of wall, the leftover (under one rib) shows the wall |
-| `container_doors` | container cubes, the two short ends, only where nothing is cut within the doors' width of the middle | wall face at floor level, middle, scale `(h - 0.15) / 2.6` |
+| `container_rib` | container cubes whose colour a paint variant matches (pink, teal, yellow: see the Art list), the two long walls | at floor level, tiled from the wall's end to each opening and on after it (windows cut 0.16 m wider than the hole, doors 0.02). Scale `h / 2.8` so the ribs reach the slab; each strip is centred in its stretch of wall, the leftover (under one rib) shows the wall |
+| `container_doors` | the same containers, the two short ends, only where nothing is cut within the doors' width of the middle | wall face at floor level, middle, scale `(h - 0.15) / 2.6` |
 | `cube_roofjunk_a/b` | 40 % of top roofs that have nothing else on them (no chair, sofa, sign or tarp) and that nobody crosses (not the roofs level with the terrace above, where the plank bridge lands) | 1.1 m in from two edges. On a back row always the lane-side corners: the uphill edge is beside the lip above, with its washing-line poles, ziplines and grapple rings. Tank 55 %, loft 45 % |
 | `stair_step` + `stair_post` | every step of a `sideStair` on the two lowest floors, unless the step is squeezed into the house next door | tread: the step top's downhill edge, middle, yaw pi (the stairs climb -z). Post: same spot, 0.58 m to the open side. The old flat render-only rail box is gone (it stood on the wall side for half the stairs) |
 | `longstep_a/b` | every step of the Long Stairs (152), a on even steps, b on odd | the step top's downhill edge, middle of the 8 m |
@@ -36,7 +36,7 @@ Two filters, both cheap and both the same on the server and every client:
    the side walls of the two lowest floors (alleys, the gap beside the Long Stairs, a floor that clears the house next
    door). Higher floors and tower fronts behind another row stay bare.
 
-Without filter 2 the kit is about 1,200 instances a chunk; with both it is about 360.
+Without filter 2 the kit is about 1,200 instances a chunk; with both it is about 300.
 
 ## Determinism (the proof)
 - The kit draws from `rng(lotSeed ^ 0x6b17)`, never from the stream that lays the boxes. `cube()` and `house()` were
@@ -53,20 +53,20 @@ Without filter 2 the kit is about 1,200 instances a chunk; with both it is about
   mark and zipline end.
 
 ## Cost
-Kit props per Bottom chunk: **average 354, least 60, most 567** (9,908 over the Bottom's 28 chunks). The district had
-217 props a chunk before, so 571 now.
+Kit props per Bottom chunk: **average 302, least 37, most 489** (8,451 over the Bottom's 28 chunks). The district had
+217 props a chunk before, so 519 now.
 
 | piece | per chunk | triangles (full / far copy) |
 |---|---|---|
-| container_rib | 115 | 18 / 18 |
 | cube_eave | 74 | 92 / 22 |
+| container_rib | 64 | 18 / 18 |
 | stair_step, stair_post | 46 + 46 | 80 / 12, 120 / 22 |
 | cube_corner | 25 | 248 / 58 |
 | cube_window_b, _a, _c | 16, 13, 2.4 | 138 / 12, 282 / 64, 620 / 142 |
 | Long Stairs pieces (332 in all, 75 - 92 in each of its 4 chunks) | 12 | 24 - 74 far |
-| container_doors, roof junk | 1.8, 3.8 | 984 / 224, 736 / 176 and 548 / 130 |
+| container_doors, roof junk | 1.0, 3.8 | 984 / 224, 736 / 176 and 548 / 130 |
 
-A chunk's kit is about 38k triangles at full detail and 9.3k as far copies. A Bottom chunk builds in about 4 - 5 ms in
+A chunk's kit is about 36.5k triangles at full detail and 8.2k as far copies. A Bottom chunk builds in about 4 - 5 ms in
 Node, up from about 2.5 ms (the hidden-wall tests).
 
 **Measured in the game, Too HD, standing on terrace 2's lane (-96, 8, 202.5): 858,799 triangles / 659 draw calls /
@@ -80,10 +80,10 @@ from the generator (instances inside the ring at three spots: the depot, a lane,
 
 | preset | kit as props.js draws it today | with the entries below |
 |---|---|---|
-| Potato | +2,500 to 3,300 instances, +67k to 88k triangles | +130 to 420, +5k to 11k |
-| Crusty | +3,600 to 4,900, +119k to 161k | +280 to 600, +14k to 26k |
-| Mid | +5,000 to 6,100, +182k to 232k | +600 to 880, +29k to 43k |
-| Too HD | +7,300 to 8,000, +316k to 351k | +1,100 to 1,400, +60k to 84k |
+| Potato | +2,200 to 2,900 instances, +61k to 79k triangles | +120 to 380, +4k to 9k |
+| Crusty | +3,200 to 4,300, +110k to 146k | +260 to 540, +12k to 24k |
+| Mid | +4,400 to 5,300, +169k to 213k | +540 to 790, +26k to 38k |
+| Too HD | +6,200 to 6,900, +290k to 327k | +1,000 to 1,250, +58k to 78k |
 
 (The count for Too HD on the lane, +325k, is a little over what the game measured, +272k.) Draw calls: +26 to 40 on
 Potato, +85 to 102 on Too HD, because the 17 pieces carry 68 materials between them (see the Art list).
@@ -118,7 +118,7 @@ rough edges.
 | `cube_corner` | one hand only: the downpipe and meter box are always on the left end of the wall they front, so a house's lane front gets them at one corner and only the plain board at the other | a mirrored `cube_corner_b` |
 | `container_rib` | 2.8 m tall, scaled up to 1.14 for the taller cubes, so the ribs get up to 14 % wider too and a strip never fills its wall exactly (the leftover, under one rib wide, shows the flat wall) | 3.3 m tall at scale 1 (buried in the slab), and a 0.5 m half strip to fill the ends |
 | `container_doors` | 2.4 x 2.6; scaled 1.02 - 1.17 to reach the slab | 3.1 tall, or a top rail piece |
-| `container_doors`, `container_rib`, `cube_eave` | paint: only 8 colours (above). Pink, teal and yellow containers match; **orange (`ff9a4d`) gets yellow ribs and purple (`9a7aff`) gets pink ones** on a wall of the true colour | not a model fault: needs the props code to take a hex, or the palette to grow orange and purple |
+| `container_doors`, `container_rib`, `cube_eave` | paint: only 8 colours (above). Pink, teal and yellow containers match a variant. **Orange (`ff9a4d`) and purple (`9a7aff`) do not** (the nearest are yellow and teal: a purple wall came out teal in the first pass), so those two colours of container get no ribs and no doors: 2 in 5 containers stay flat. Eaves take the nearest variant whatever it is (a lip in another colour reads fine) | not a model fault: needs the props code to take a hex, or the palette to grow orange and purple |
 | `stair_post` | the rail is drawn for a 0.4 rise; the side stairs rise 0.37 - 0.40 a step, so a rail ends up to 3 cm over the next post's knob (not visible from the lane) | fine as it is |
 | `cube_window_c`, `cube_roofjunk_b`, `longplaque_a` (7 materials each), `cube_roofjunk_a` (6), `cube_corner` (5) | one draw call per material per piece, full and far: the kit adds up to 108 draw calls on Too HD | one atlas material per piece plus the paint slot (the rib and `cube_window_b`'s far copy already do this) |
 | `cube_window_c` | 620 triangles for a window that repeats: the map only uses it for 1 window in 10 | 300 or under and it could be 1 in 3 |
@@ -132,7 +132,8 @@ the first. Left alone here (older props were not to move); the world lane could 
 - **Eaves on side walls and on floors above the second**, corner posts above the ground floor, window frames above
   the second floor, ribs above the second floor: all work, all switched off for the count (`dress()` in bottom.js: the
   `on` / `corner` / `eave` arrays). With `FAR` entries they could come back.
-- **Container doors are rare (51)**: a short end usually has the house door or a window in its middle, and the doors
+- **Orange and purple containers** have no ribs or doors (no paint variant matches them: the Art list).
+- **Container doors are rare (29)**: a short end usually has the house door or a window in its middle, and the doors
   only go on a clear one (they are look only: hung over a real doorway or window they would hide a way in).
 - **The Long Stairs pole's foot** cannot be shown (above).
 - **Nothing was placed in the Lost & Found, the market, the gym or the shops** (they have their own generators and
