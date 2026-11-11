@@ -14,7 +14,7 @@ How this was counted:
 
 | | Blender today | Still code |
 |---|---|---|
-| Weapons | 42 base guns + 27 skins (`w_*.glb`, 95 files) | shredder, Scales of Justice, Blood Cross, knives + katanas (on purpose), 3 skins |
+| Weapons | 42 base guns + 27 skins (`w_*.glb`, 95 files) | shredder, Blood Cross, 3 skins |
 | Projectiles | 16 (`pj_*.glb`) | tennis ball, nails, marbles |
 | Gear and streaks | 32 (`x_*.glb`) | grapple hooks, shield bubble, black hole, medkit pickups, supply crates |
 | Map props | 45 kinds in PR #71 (not merged yet), 10 on main | ~6,400 boxes of one-off set pieces |
@@ -140,9 +140,7 @@ gameplay lanes are changing bodies right now (dismemberment, body sliders), so c
 | What | Where | Note |
 |---|---|---|
 | Shredder (+ chipper skin) | `models.js`:285 / 929 | animated teeth |
-| Scales of Justice (+ kangaroo skin) | `models.js`:416 / 1100 | |
 | Blood Cross finger gun (+ shadow skin) | `models.js`:1198 | a hand: goes with the hands work |
-| knives and katanas (9 code blades) | `public/js/blades/` | code on purpose: the katana stretches |
 | skins: staple gun, ball machine, basket | `primmodels.js`:177-209 | |
 | grapple hooks (8 looks) | `grapple.js`:204 | ropes stay code |
 | shield bubble, black hole, medkit pickups | `main.js`:1453, `models.js`:1924, `econ3d.js`:306 | their `x_*.glb` exist but only draw the icons |
@@ -182,4 +180,3 @@ gameplay side skirts on trucks (65 boxes, group X in the map tables).
 ## Open questions for the owner
 - The PS1 / Cruelty Squad look (PR #115 sheets in `docs/arch-look-test/`, PR #83): OK to use it for all buildings?
   And should the existing glossy props and guns be re-baked to match, or stay glossy?
-- Knives and katanas were kept as code on purpose. Leave them, or redo them in Blender too?

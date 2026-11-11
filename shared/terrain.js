@@ -159,6 +159,22 @@ export function shapeGround(B, D, o) {
     }
     if (!any) break;
   }
+  // ---- o.coarse (a whole number of metres, huge maps): where a coarse x coarse block of cells is all ground, all one paint and has
+  // nothing pinned off the patch inside it, its inner points are put on the plane-ish patch through its four corners, so the client can draw
+  // the block as one quad (a quarter of the triangles at 2) and feet still land exactly where it's drawn. blocks[bi * nbz + bj] = 1
+  const CS = o.coarse | 0, nbx = CS > 1 ? Math.floor(nx / CS) : 0, nbz = CS > 1 ? Math.floor(nz / CS) : 0, blocks = CS > 1 ? new Uint8Array(nbx * nbz) : null;
+  for (let bi = 0; bi < nbx; bi++) for (let bj = 0; bj < nbz; bj++) {
+    const i0 = bi * CS, j0 = bj * CS; let good = true;
+    const a = H[V(i0, j0)], b = H[V(i0 + CS, j0)], c = H[V(i0, j0 + CS)], d = H[V(i0 + CS, j0 + CS)];
+    for (let u = 0; u <= CS && good; u++) for (let v = 0; v <= CS; v++) {
+      if (u < CS && v < CS && (!ok[C(i0 + u, j0 + v)] || paint[C(i0 + u, j0 + v)] !== paint[C(i0, j0)])) { good = false; break; }
+      const fu = u / CS, fv = v / CS; // (a pinned point may stay if it's already on the patch: level ground under a road is all pinned, and all one plane)
+      if (fixed[V(i0 + u, j0 + v)] && Math.abs(H[V(i0 + u, j0 + v)] - ((a * (1 - fu) + b * fu) * (1 - fv) + (c * (1 - fu) + d * fu) * fv)) > 1e-4) { good = false; break; }
+    }
+    if (!good) continue;
+    blocks[bi * nbz + bj] = 1;
+    for (let u = 0; u <= CS; u++) for (let v = 0; v <= CS; v++) { const fu = u / CS, fv = v / CS; H[V(i0 + u, j0 + v)] = (a * (1 - fu) + b * fu) * (1 - fv) + (c * (1 - fu) + d * fu) * fv; }
+  }
   const at = (x, z) => { const i = Math.floor(x - X0), j = Math.floor(z - Z0); return i < 0 || j < 0 || i >= nx || j >= nz || !ok[C(i, j)] ? null : at0(x, z); };
   for (const c of propsC) {
     let dy = 1e9;
@@ -177,7 +193,9 @@ export function shapeGround(B, D, o) {
   // ...and below the top of whatever big layer lay under the slabs (the dirt): that comes down too, or it's an unseen floor across the pond
   for (const b of B.boxes) if (!b.ter && inR(b) && b.max[1] <= -1 && b.max[1] > UNDER && b.min[1] < UNDER - 0.5 && (b.max[0] - b.min[0]) * (b.max[2] - b.min[2]) > 1000) b.max[1] = UNDER;
   const top = new Int16Array(nx * nz); // in 5 cm steps
-  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) top[C(i, j)] = Math.round((H[V(i, j)] + H[V(i + 1, j)] + H[V(i, j + 1)] + H[V(i + 1, j + 1)]) / 4 / 0.05);
+  const QS = o.step || 0.05;
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) top[C(i, j)] = Math.round((H[V(i, j)] + H[V(i + 1, j)] + H[V(i, j + 1)] + H[V(i + 1, j + 1)]) / 4 / QS);
+  // (o.step: how coarse the hidden steps are, m. 0.05 unless a huge map asks for fewer, bigger ones: bodies ride the heightfield, the steps only stop you walking into a hillside)
   const runs = new Map(); // "z0,z1,q" -> the run in the column before, still growing along x
   let nTer = 0;
   for (let i = 0; i <= nx; i++) {
@@ -192,7 +210,7 @@ export function shapeGround(B, D, o) {
     }
     for (const [key, r] of runs) if (!seen.has(key)) { flush(r); runs.delete(key); }
   }
-  function flush(r) { B.boxes.push({ min: [X0 + r.x0, BASE, Z0 + r.j], max: [X0 + r.x1, r.q * 0.05, Z0 + r.e], mat, ter: 1, ...(o.soft ? { sw: o.soft } : null) }); nTer++; }
+  function flush(r) { B.boxes.push({ min: [X0 + r.x0, BASE, Z0 + r.j], max: [X0 + r.x1, r.q * QS, Z0 + r.e], mat, ter: 1, ...(o.soft ? { sw: o.soft } : null) }); nTer++; }
   // ---- where the ground stops at a drop (the canyon's lip, the shaft): a strip of it down the face, so the lowered slab doesn't show as a gap
   let eTop = 0, eMat = mat;
   const edge = (x0, z0, x1, z1) => D.add(x0, UNDER, z0, x1, eTop, z1, eMat);
@@ -207,7 +225,7 @@ export function shapeGround(B, D, o) {
   }
   // ---- spawns and the like: onto the new ground
   for (const p of o.points || []) if (p[1] > -0.5 && p[1] < 0.6) { const g = at(p[0], p[2]); if (g != null) p[1] += g; }
-  const terrain = { x0: X0, z0: Z0, nx, nz, H, ok, mat, mats, paint, rocky, lo, hi, climb: 0.85 + ((o.soft || 0.7) - 0.7), base: BASE, at, box: { min: [X0, BASE, Z0], max: [X1, hi, Z1], mat, terr: 1 }, stats: { anchors: anchors.length, props: propsC.length, steps: nTer } };
+  const terrain = { x0: X0, z0: Z0, nx, nz, H, ok, mat, mats, paint, rocky, lo, hi, coarse: CS > 1 ? { s: CS, nbx, nbz, blocks } : null, climb: 0.85 + ((o.soft || 0.7) - 0.7), base: BASE, at, box: { min: [X0, BASE, Z0], max: [X1, hi, Z1], mat, terr: 1 }, stats: { anchors: anchors.length, props: propsC.length, steps: nTer } };
   Object.defineProperty(B.boxes, 'terrain', { value: terrain, writable: true, configurable: true, enumerable: false });
   return terrain;
 }
