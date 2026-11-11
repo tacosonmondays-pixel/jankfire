@@ -2,7 +2,7 @@
 // run: SP=<dir with pwlock.cjs> PORT=<port> node tests/story/e2e/t_act1.cjs   (needs a running server)
 // env: STOP=1 stops at the first step that can't be done for real (default: fake it, note it, keep going, so one run
 //      lists every gap); SHOTS=1 screenshots each step into $SP/shots/act1_*.png; FROM=m03_somethings_digesting starts
-//      there (the steps before it are faked)
+//      there (the steps before it are faked); UNTIL=m02 stops when that mission starts
 //
 // How each goal is played (what a player does, through the real keys and the real world):
 //   reach / escort / deliver  stand a few metres outside the zone (a short travel teleport: the walk there is checked by
@@ -77,6 +77,16 @@ const OWNED = { 'm02_sauce_run.ambush': 'C', 'm04_clocking_in.fight': 'B', 'm06_
     await tp(q || p); await sleep(500); return q || p;
   }
   async function shiftR() { await pg.keyboard.down('Shift'); await key('KeyR'); await pg.keyboard.up('Shift'); }
+  // grapple: from `from`, aim at `ring`, hold E (+ W) until we're above `top` m or 4 s pass, let go; did we land up there?
+  async function grappleUp(ring, from, top) {
+    await tp(from); await sleep(500);
+    await ev(async (r) => { const { ME } = await import('/js/player.js'); const dx = r[0] - ME.pos[0], dz = r[2] - ME.pos[2]; ME.yaw = Math.atan2(-dx, -dz); ME.pitch = Math.atan2(r[1] - ME.pos[1] - 1.6, Math.hypot(dx, dz)); }, ring);
+    await pg.keyboard.down('KeyE'); await pg.keyboard.down('KeyW');
+    let y = 0; const t0 = Date.now();
+    while (Date.now() - t0 < 4000) { y = (await pos())[1]; if (y > top) break; await sleep(60); }
+    await pg.keyboard.up('KeyE'); await sleep(700); await pg.keyboard.up('KeyW'); await sleep(1200);
+    const q = await pos(); return { ok: q[1] > top - 2.5, y: +q[1].toFixed(1) };
+  }
   // play a conversation through: F to the next line, 1 when there are answers
   async function talkThrough(max = 80) {
     for (let i = 0; i < max; i++) {
@@ -103,6 +113,7 @@ const OWNED = { 'm02_sauce_run.ambush': 'C', 'm04_clocking_in.fight': 'B', 'm06_
     if (o.scene) { await sleep(1500); await ev(async () => { const sc = await import('/js/story/scene.js'); if (sc.playing()) sc.skipScene(); }); rows.push({ q: o.quest, s: o.step, how: 'scene', note: 'watched 1.5 s, skipped' }); await sleep(800); continue; }
     if (o.talking) { await talkThrough(); await sleep(500); continue; }
     const id = o.quest + '.' + o.step;
+    if (process.env.UNTIL && o.quest.startsWith(process.env.UNTIL)) { console.log('UNTIL ' + process.env.UNTIL + ': stopping'); break; }
     if (FROM && !id.startsWith(FROM) && !rows.some((r) => r.q === FROM)) { await shiftR(); await sleep(400); rows.push({ q: o.quest, s: o.step, how: 'skip', note: 'FROM=' + FROM }); continue; }
     if (id === last) { if (++same > 3) { // the step won't move: fake it and say so
         const who = OWNED[id];
@@ -144,7 +155,19 @@ const OWNED = { 'm02_sauce_run.ambush': 'C', 'm04_clocking_in.fight': 'B', 'm06_
     } else if (g.type === 'reach' || g.type === 'escort') {
       const p = await where(g.zone), r = await ev((z) => window.JF_STORY.S.defs.zones[z].r || 2, g.zone);
       if (!p) { how = 'BLOCKED'; note = 'zone ' + g.zone + ' has no spot'; }
-      else if (g.zone === 'bottom:rooftops') { await tp([p[0], p[1] + 0.5, p[2]]); note = 'put on the roof (grapple not driven headless)'; how = 'tp'; }
+      else if (g.zone === 'bottom:rooftops') { // by hand: stand in the yard, aim at the yellow ring, hold E and run at it, let go at the top
+        const { WOK } = await ev(async () => import('/shared/city/act1set.js').then((m) => ({ WOK: m.WOK })));
+        const up = await grappleUp(WOK.ring, [-181, 4.05, 208.2], 15);
+        if (!up.ok) { await tp([p[0], p[1] + 0.5, p[2]]); note = `grapple didn't get up there (${up.y}): put on the roof`; how = 'tp'; } else note = `grappled up (top ${up.y} m)`;
+      } else if (g.zone === 'bottom:lostfound' && o.step === 'line') { // by hand: from the tall roof, F on Dumpling's washing line
+        const { WOK } = await ev(async () => import('/shared/city/act1set.js').then((m) => ({ WOK: m.WOK })));
+        await tp([WOK.line[0][0] + 0.6, 16.45, WOK.line[0][2]], Math.PI / 2); await sleep(600);
+        await key('KeyF'); await sleep(250);
+        const rode = await ev(async () => { const m = await import('/js/city/ingame.js').catch(() => null); const s = m && m.cityStream(); return s ? !!s.zip : null; });
+        await sleep(4000);
+        const q = await pos(); note = `F on the washing line (riding: ${rode}), let go at ${q.map((v) => v.toFixed(1))}`;
+        if (Math.hypot(q[0] + 189, q[2] - 200) > 7) { await standOff(p, r + 3); await walkTo(p, Math.max(0.8, r - 1), 9000); note += '; walked the rest'; }
+      }
       else { await standOff(p, r + 3); const ok = await walkTo(p, Math.max(0.8, r - 1), 9000); note = ok ? `walked in (r ${r})` : `couldn't walk in from ${r + 3} m`; }
       if (g.if && !(await ev((c) => window.JF_STORY.S.test(c), g.if))) note += `; needs ${g.if}`;
     } else if (g.type === 'enterCar') {

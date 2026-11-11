@@ -34,3 +34,9 @@ export function npcSpot(id, objs) {
   for (const o of objs || []) for (const [q, st, who] of STAGE) if (o.quest === q && o.step === st && who[id]) return who[id];
   return NPC_SPOTS[id] || null;
 }
+
+// a callout when a step starts, where the world teaches a move (the m01 tutorial). {grapple} / {use}: the player's keys
+export const HINTS = {
+  'm01_return_to_sender.swing': { call: 'GRAPPLE UP!', how: 'aim at the yellow ring on the roofs and hold <b>{grapple}</b>. let go at the top' },
+  'm01_return_to_sender.line': { call: 'RIDE IT HOME', how: 'walk to the end of the roof, <b>{use}</b> on the washing line, hang on' },
+};

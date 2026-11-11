@@ -15,7 +15,7 @@ import { toSave, fromSave } from '/shared/story/state.js';
 import * as lab from '/shared/story/content/test/lab.js';
 import * as overdue from '/shared/story/content/overdue.js'; // the full script, as an engine pack (PR #76)
 import { PLACES } from '/shared/city/slice.js'; // the world lane's real spots for the script's zones (the slice city)
-import { npcSpot } from '/shared/city/cast_slice.js'; // ...and where the cast stands in it (per mission step)
+import { npcSpot, HINTS } from '/shared/city/cast_slice.js'; // ...and where the cast stands in it (per mission step)
 import { actors, spawnActor, despawnActor, clearActors, updateActors, dropTo, play } from './actors.js';
 import { otFrame } from './overtime.js'; // (mr. overtime's clips, marks, damage and fx)
 import { startTalk, talkKey, talkFrame, talking } from './talk.js';
@@ -109,6 +109,7 @@ const HOST = {
       case 'questFail': card('fail', e.title); break;
       case 'stepFail': card('fail', (e.why || 'nope').toUpperCase(), 'back to the last checkpoint', '', 2); break;
       case 'stepDone': sfx.click && sfx.click(); save(); break;
+      case 'stepStart': { const h = ST.city && HINTS[`${e.quest}.${e.step}`]; if (h) setTimeout(() => { card('step', h.call, '', '', 1.8); toast(h.how.replace(/\{(\w+)\}/g, (_, k) => K.label(k)), 6); }, 900); break; } // (the tutorial's moves: cast_slice.js HINTS)
       case 'codex': if (e.entry) toast(`${e.entry.kind === 'frag' ? 'OPTION C FRAGMENT' : 'NEW IN THE BOOKS'}: <b>${e.entry.title}</b> (J)`); break;
       case 'meet': toast(`met <b>${e.name}</b>`); break;
       case 'warn': console.warn('story:', e.text); break;
