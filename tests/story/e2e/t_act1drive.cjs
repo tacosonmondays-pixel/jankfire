@@ -1,7 +1,7 @@
 // playwright e2e: m02's drive in a real car, the way a player does it. Gets in the sedan parked above the market (WASD
 // through the real keys, steered at a list of waypoints), drives to the Ring Road (m02 "drive the soup to the gut
-// border": the zone must fire from the driver's seat), then up the wasteland beside the highway (the deck is walled
-// in and broken at the collapse) into the Gut and down to the gate (m02 "deliver"). Reports every waypoint reached,
+// border": the zone must fire from the driver's seat), then up the Ring Road (the deck is walled
+// in, so the car goes up the deck) to the collapse, over it if it can, into the Gut and down to the gate (m02 "deliver"). Reports every waypoint reached,
 // where it got stuck and for how long, and whether the zones fired.
 // run: SP=<dir with pwlock.cjs> PORT=<port> node tests/story/e2e/t_act1drive.cjs
 require(process.env.SP + '/pwlock.cjs');
@@ -12,9 +12,10 @@ const PORT = process.env.PORT || 3311;
 // [x, y, z, name]: the route, waypoint by waypoint (y is only for the report)
 const ROUTE = [
   [-60, 4, 227, 'the lane east'], [30, 4, 227, 'past the gym terrace'], [96, 4, 227, 'the slip road'], [157, 2, 227, 'down the slip road'],
-  [160, 0.5, 249, 'the bend (round the deck end)'], [182, 0.4, 249, 'THE RING ROAD (zone)'], [206, 0.5, 249, 'past the on-ramp'], [204, 1, 236, 'beside the highway'], [204, 14, 100, 'past the collapse'],
-  [204, 30, -60, 'the climb'], [204, 40, -172, 'the top'], [100, 40, -172, 'the west turn'], [60, 40, -188, 'into the Gut'], [-44, 40, -188, 'the rib avenue'],
-  [-44, 40, -60, 'down the avenue'], [-44, 36, -30, 'down the cliff stairs'], [-44, 36, -17, 'THE GATE (zone)'],
+  [160, 1, 234, 'the bend south'], [160, 0, 245, 'on the ramp'], [165, 0, 248, 'round the deck end'], [182, 0, 248, 'THE RING ROAD (zone)'],
+  [193, 0, 246, 'the on-ramp'], [188, 2, 222, 'onto the deck'], [188, 10, 140, 'up the Ring Road'], [188, 13, 112, 'to the collapse'],
+  [188, 16, 75, 'over the collapse'], [188, 30, -60, 'the climb'], [180, 40, -172, 'the top'], [100, 40, -164, 'the west turn'], [60, 40, -188, 'into the Gut'],
+  [-44, 40, -188, 'the rib avenue'], [-44, 40, -60, 'down the avenue'], [-44, 36, -30, 'down the cliff stairs'], [-44, 36, -17, 'THE GATE (zone)'],
 ];
 
 (async () => {
