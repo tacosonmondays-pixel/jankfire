@@ -76,3 +76,5 @@ const P = {
   raidertent: [[-1.5, 0, -1.5, 1.5, 1.8, 1.5, 0x4a7a5a], [-0.4, 0, -1.55, 0.4, 1.2, -1.5, 0x1a1a1a]],
 };
 for (const [id, b] of Object.entries(P)) registerCodeProp(id, b);
+// the Bottom's house kit and Long Stairs pieces have no code stand-in: draw nothing (not the magenta box) until the model is in
+for (const id of ['cube_corner', 'cube_eave', 'cube_window_a', 'cube_window_b', 'cube_window_c', 'container_doors', 'container_rib', 'cube_roofjunk_a', 'cube_roofjunk_b', 'stair_step', 'stair_post', 'longstep_a', 'longstep_b', 'longrail', 'longpole', 'longplaque_a', 'longplaque_b']) registerCodeProp(id, []);

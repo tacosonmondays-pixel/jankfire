@@ -250,8 +250,11 @@ function newDeck() {
   for (let i = d.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [d[i], d[j]] = [d[j], d[i]]; }
   return d;
 }
+// test knob: JF_CARD_HAND=s7,s2,s12,h5,c9 deals exactly that hand every time (suit + rank, j0 = joker)
+const CARD_HAND = (process.env.JF_CARD_HAND || '').split(',').map((c) => c.trim()).filter((c) => /^(?:[hscd](?:[1-9]|1[0-3])|j0)$/.test(c)).slice(0, 5);
 function deal(p) {
   if (!p.deck || p.deck.length < 5) p.deck = newDeck();
+  if (CARD_HAND.length) p.deck.unshift(...CARD_HAND, ...p.deck.splice(0, 5 - CARD_HAND.length));
   p.hand = p.deck.splice(0, 5);
   send(p, { t: 'hand', hand: p.hand, left: p.deck.length });
 }
@@ -1028,9 +1031,9 @@ class Room {
     if (b.held && n < b.held.until) { for (let i = 0; i < 3; i++) v[i] = Math.max(-30, Math.min(30, (b.held.at[i] - b.pos[i]) * 9)); b.onGround = false; } // hanging in a shredder
     const was = b.onGround;
     sink(this.map, b.pos, v); // in the deep sea: sinking, not falling
-    swim(this.map, this.boxes, b.pos, v, dt); // in a pond: floating
+    const fl = swim(this.map, this.boxes, b.pos, v, dt) && !!this.map.seaSwim; // in a pond: floating (fl: in the sea, where a floater can step up onto the shelf)
     mire(this.map, b.pos, v, dt, !!(b.ai && b.ai.hook)); // in lava: going down slowly
-    const res = movePlayer(b.pos, v, dt, this.boxes, was);
+    const res = movePlayer(b.pos, v, dt, this.boxes, was || fl);
     b.onGround = !!res.ground && v[1] <= 0.01;
     if (b.onGround && res.ground.pad && !b.ai.dummy) { const pd = res.ground.pad; v[0] += pd[0]; v[1] = pd[1]; v[2] += pd[2]; b.onGround = false; }
     b.f = (slipping ? 16 : 0) | (n < (b.sleepUntil || 0) ? FLAGS.SLEEP : 0); // asleep: everyone sees them lying on the floor
@@ -1986,8 +1989,9 @@ class Room {
     if (d && w.kind === 'bow') {
       const n = now();
       if (n - (p.lastFire.bow || 0) < w.cd * 750) return;
+      const since = n - (p.lastFire.bow || 0); // the draw is the client's word: it can't be longer than the time since the last arrow (a full draw every 0.26 s was 85 damage a click)
       p.lastFire.bow = n;
-      const c = Math.max(0.15, Math.min(1, num(m.c) || 0));
+      const c = Math.max(0.15, Math.min(1, num(m.c) || 0, since / (w.draw * 850)));
       const tip = p.tip;
       const sp = (w.speed + (w.speedMax - w.speed) * c) * (tip === 'power' ? 1.3 : 1);
       const pr = this.makeProj(p, 'bow', [o[0] + d[0] * 0.7, o[1] + d[1] * 0.7, o[2] + d[2] * 0.7], d.map((x) => x * sp), { tip, charge: c });

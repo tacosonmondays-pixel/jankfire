@@ -9,7 +9,7 @@ export const PIT = { lava: { dmg: 10, every: 0.25, burn: 1.6, burnDmg: 4, burnEv
 // and you're gone as your head goes under (killY sits there). the client does this to you, the server to its bots
 export const SINK = { v: 1.7, from: 0.6 }; // m/s you go down at, how far under the surface your feet are before it holds you (the wading shallows are shallower than that)
 export function sink(map, pos, vel) {
-  if (map && map.seaY != null && pos[1] < map.seaY - SINK.from && vel[1] < -SINK.v) vel[1] = -SINK.v;
+  if (map && map.seaY != null && !map.seaSwim && pos[1] < map.seaY - SINK.from && vel[1] < -SINK.v) vel[1] = -SINK.v; // (a sea you float in, map.seaSwim: swim() below has you)
 }
 // the end of a long drop (the river, the street, the sea bed): you stop there. the server's kill takes a moment to
 // arrive and at 60 m/s that moment used to be several metres of falling on through the scenery (client only)
@@ -20,9 +20,18 @@ export function bottomOut(map, pos, vel) {
 // ponds you can swim in (map.pools = [{ box: [x0, z0, x1, z1], top }], on shaped ground): wade in, and once the bed
 // drops away under you the water carries you. you bob with your head out and paddle (slowly: it's air control), a
 // plunge from a height takes you under for a moment and brings you back up. client for you, server for its bots
-export const SWIM = { ride: 1.45, up: 38, rise: 2.6, plunge: 5.5, drag: 1.6, dive: 2.6 }; // m your feet hang below the surface, how hard it lifts, m/s up and down at most, how fast it eats your speed
+export const SWIM = { seaRide: 0.88, ride: 1.45, up: 38, rise: 2.6, plunge: 5.5, drag: 1.6, dive: 2.6 }; // m your feet hang below the surface, how hard it lifts, m/s up and down at most, how fast it eats your speed
 export function swim(map, boxes, pos, vel, dt, dive) { // dive: holding crouch = you let yourself go under (down to the bed, where you can walk about, slowly)
   const P = map && map.pools, T = boxes && boxes.terrain;
+  // a sea you float in (map.seaSwim, Islands): past the shallows there's no bed to stand on, so the water carries you
+  // the same way, head out. no diving here: there's nothing down there, and nobody gets to hide under the waves
+  if (map && map.seaSwim && map.seaY != null && pos[1] <= map.seaY - SWIM.seaRide + 0.02) { // (seaRide: you ride higher than in a pond, a step below the shelves, so you can climb out onto them)
+    const line = map.seaY - SWIM.seaRide;
+    vel[1] = Math.max(-SWIM.plunge, Math.min(SWIM.rise, vel[1] + SWIM.up * dt));
+    if (pos[1] > line - 0.08 && vel[1] > -1.4) { pos[1] = line; vel[1] = 0; }
+    const k = Math.max(0, 1 - SWIM.drag * dt); vel[0] *= k; vel[2] *= k;
+    return true;
+  }
   if (!P || !T) return false;
   for (const w of P) {
     if (pos[0] < w.box[0] || pos[0] > w.box[2] || pos[2] < w.box[1] || pos[2] > w.box[3]) continue;
