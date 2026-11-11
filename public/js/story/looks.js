@@ -224,6 +224,18 @@ const LOOKS = {
       face: { eyeR: 0.028, eyeY: 0.16, iris: 0x6a5030, mouthW: 0.08, mouthY: 0.07, lip: 0xb07060, brow: 0x2a1a10, browW: 0.07 } });
     return { ...p, kind: 'normal', height: 2.55, eyeY: 2.42 };
   },
+  // TIMEKEEPING COLLECTOR (mannequin, 1.85 m): Mr. Overtime's debt collectors. a grey suit on a blank mannequin, a
+  // punch card on a lanyard, a stopwatch on a chain, a clock badge on the arm, zip-tie cuffs on the belt
+  collector() {
+    const SK = 0xd8c8b0, JT = 0xa89878, suit = skinMat(0x6a6e76, 0.7), shirt = flat(0xf4f4f0), tie = flat(0x2a2a3a);
+    const p = person({ skin: SK, skinMat: flat(SK), jointMat: flat(JT), legCol: 0x5a5e66, shoe: 0x111111, s: 1.02, sleeveMat: suit, torsoH: 0.54, shW: 0.24,
+      torso: (sp, tH) => { sp.add(sph(0.2, suit, 0, tH * 0.55, 0, 1.2, 1.25, 0.8)); sp.add(box(0.1, 0.3, 0.02, shirt, 0, tH * 0.62, -0.15)); sp.add(box(0.03, 0.26, 0.01, tie, 0, tH * 0.58, -0.165));
+        sp.add(box(0.05, 0.07, 0.01, flat(0xf4e8c0), -0.07, tH * 0.42, -0.165)); }, // the punch card
+      head: (h, r, m) => { h.add(sph(1, m, 0, r[1], 0, r[0] * 0.92, r[1] * 1.1, r[2])); h.add(box(0.006, r[1] * 1.6, r[2] * 2.1, flat(JT), 0, r[1], 0)); },
+      face: { flatFace: true, eyeR: 0.022, pupil: 0x1a1a1a, mouthW: 0.07, lipR: 0.007, lip: 0x1a1a1a, brow: false, eyeY: 0.2, mouthY: 0.1 } });
+    p.face.set('grin'); FACE_LOCK.set(p.face, 'grin'); // painted on, like every temp's
+    return { ...p, kind: 'mannequin', height: 1.85, eyeY: 1.76 };
+  },
   // UNPAID INTERN (normal, a raider, 1.75 m): office-chair-back and filing-cabinet armour plates, a lanyard, a traffic-cone
   // helmet (b: a wastepaper-bin helmet and a cabinet-drawer chest), a laptop strapped to the left arm for a shield
   intern() { return internLook(0); },
