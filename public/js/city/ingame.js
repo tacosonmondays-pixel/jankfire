@@ -62,6 +62,8 @@ export function updateCity(dt) {
     if (hemi) { hemi.color.copy(e.hemi[0]); hemi.groundColor.copy(e.hemi[1]); hemi.intensity = e.hemi[2]; }
     if (sun) { sun.color.copy(e.sun[0]); sun.intensity = e.sun[1]; }
   }
+  // the server moved you (a respawn, a story cut to a fight: a new spawn seq): hold there, not where you were
+  if (ME.seq !== S.holdSeq) { const was = S.holdSeq; S.holdSeq = ME.seq; if (was !== undefined) ME.hold = ME.pos.slice(); } // (the first look is startCity's own hold)
   // the ground under you hasn't streamed in yet: wait for it (no falling through the world on a slow machine)
   if (S.holding || (ME.alive && !S.ready(ME.pos[0], ME.pos[2]))) {
     ME.vel[0] = ME.vel[1] = ME.vel[2] = 0;
