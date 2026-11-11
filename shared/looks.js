@@ -30,6 +30,8 @@ export const ACHIEVEMENTS = {
   airborne: { name: 'Never Landed', desc: 'finish a whole match without touching the ground after any spawn', stat: 'airborne', goal: 1 },
   royalty: { name: 'Sniper Royalty', desc: 'sniper kills: a 50 m+ long shot, a quick-scope or no-scope, and a headshot', stat: 'sniper_feats', goal: 3, feats: ROYAL_FEATS },
   smarty: { name: 'Smarty Pants', desc: 'get 3 pop quiz questions right (someone else has to throw them)', stat: 'quiz_right', goal: 3 },
+  poultry: { name: 'Poultry in Motion', desc: 'get 25 kills with the Chicken Rocket', stat: 'chicken_kills', goal: 25 },
+  protector: { name: 'Sworn Protector', desc: 'get 50 melee kills', stat: 'melee_kills', goal: 50 },
   // the hidden cats (shared/secrets.js). the cats stat isn't a column: the server counts the pets in inv.lore
   board: { name: 'Board Approved', desc: 'pet all 5 cats on the board of directors. they hide. press F', stat: 'cats', goal: 5 },
 };
