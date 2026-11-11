@@ -1,6 +1,7 @@
 // Settings > video > shaders: a fidelity level (auto follows the quality preset) or your own mix of bloom, soft skin and
 // punchy colours. Potato and Crusty stay off on auto: the shaders are for machines with frames to spare.
-import { setPost } from './post.js';
+import { setPost, setPostFail } from './post.js';
+import { hud } from './hud.js';
 import { skinU } from './softskin.js';
 
 const BLOOM = ['off', 'low', 'med', 'high'];
@@ -11,6 +12,7 @@ export function fxResolve(S) {
   if (lv === 'custom') return [Math.max(0, BLOOM.indexOf(S.fxBloom)), !!S.fxSkin, !!S.fxPunch];
   return FX_LEVELS[lv === 'auto' ? AUTO[S.jank] || 'off' : lv] || FX_LEVELS.off;
 }
+setPostFail(() => hud.msg('SHADERS BROKE. SHADERS OFF.', 2.6, 'brag')); // once: post.js switches itself off for the session (and /gfx says why)
 export function applyFx(S) {
   const [bloom, skin, punch] = fxResolve(S);
   setPost(bloom, punch);

@@ -12,6 +12,7 @@ import { G } from './ctx.js';
 import { MAP } from '/shared/map.js';
 import { lightingRefresh, shadowLevel } from './lighting.js';
 import { hud } from './hud.js';
+import { postInfo } from './post.js';
 
 const S = { hooks: null, lost: 0, back: 0, fixes: 0, log: [], n: 0, el: null, on: false, shaderErrs: 0, t0: 0 };
 const fin = Number.isFinite;
@@ -99,6 +100,7 @@ function lines() {
   const i = r.info;
   out.push(`drawn: ${i.render.calls} calls, ${i.render.triangles} tris · gpu memory: ${i.memory.textures} tex, ${i.memory.geometries} geo, ${i.programs ? i.programs.length : '?'} shaders`);
   out.push(`trouble now: lights/fog '${lightTrouble() || 'ok'}', textures '${texTrouble() || 'ok'}' · auto repairs: ${S.fixes}`);
+  { const p = postInfo(); out.push(`shaders: ${p.dead ? 'SWITCHED OFF: ' + p.why : p.on ? `on (bloom ${p.bloom}${p.punch ? ', punch' : ''}), buffer ${p.size[0]}x${p.size[1]}` : 'off'} · frame checks ${p.ok}/${p.checks} ok`); }
   for (const l of S.log) out.push('· ' + l);
   out.push('/gfx fix = try every repair · /gfx tex · /gfx light · /gfx shadow · /gfx = close');
   return out;

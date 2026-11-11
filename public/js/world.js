@@ -639,5 +639,7 @@ export function renderFrame() {
   r.render(G.scene, G.camera);
   r.clearDepth();
   r.render(G.vmScene, G.vmCamera);
-  if (post) postEnd(r);
+  if (post && !postEnd(r)) { // the shader pass failed and switched itself off: this frame again, the plain way
+    r.setRenderTarget(null); r.clear(); r.render(G.scene, G.camera); r.clearDepth(); r.render(G.vmScene, G.vmCamera);
+  }
 }

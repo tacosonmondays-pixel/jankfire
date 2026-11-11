@@ -14,6 +14,34 @@ const BLOOM = [null,
 ];
 const P = { bloom: 0, punch: false, rt: null, lv: [], w: 0, h: 0, bh: 0, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), mesh: null, mats: null, size: new THREE.Vector2() };
 export const postStats = { passes: 0 };
+// ---- the way out. this pass has only ever been seen on software GL, and Mid / Too HD run it by default: if anything
+// about it goes wrong on a real GPU (a throw, a buffer the GPU won't complete, a lost context, a black result while
+// the scene isn't black) it switches itself OFF for the session and the game draws the plain way, as it always did
+const SAFE = { dead: false, why: '', checks: 0, ok: 0, black: 0, onFail: null, test: '' };
+function fail(why) {
+  if (SAFE.dead) return;
+  SAFE.dead = true; SAFE.why = why;
+  console.warn('[gfx] shaders switched off for this session:', why);
+  try { if (SAFE.onFail) SAFE.onFail(why); } catch (e) { /* the toast must never be the problem */ }
+}
+export function setPostFail(fn) { SAFE.onFail = fn; }
+export function postTest(kind) { SAFE.test = kind; SAFE.checks = 0; } // tests: force a failure ('throw', 'fb', 'lost', 'black', 'blackin')
+const CHECKS = 4, PTS = [[0.5, 0.5], [0.2, 0.25], [0.8, 0.25], [0.2, 0.8], [0.8, 0.8], [0.5, 0.92], [0.5, 0.1], [0.35, 0.6], [0.65, 0.4]];
+const px = new Uint8Array(4);
+// a handful of pixels of the first few finished frames: black on screen while the scene in the buffer isn't = broken
+function sanity(r) {
+  const gl = r.getContext(), w = P.w, h = P.h;
+  let outLit = 0, inLit = 0;
+  for (const [u, v] of PTS) {
+    const x = Math.min(w - 1, Math.floor(u * w)), y = Math.min(h - 1, Math.floor(v * h));
+    gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); if (px[0] + px[1] + px[2] > 0) outLit++;
+    r.readRenderTargetPixels(P.rt, x, y, 1, 1, px); if (px[0] + px[1] + px[2] > 0) inLit++;
+  }
+  SAFE.checks++;
+  if (!outLit && inLit) { fail('the finished frame came out black'); return false; }
+  if (!inLit) { if (++SAFE.black >= 3) { fail('the frame buffer stayed black'); return false; } } else { SAFE.black = 0; SAFE.ok++; }
+  return true;
+}
 
 const VERT = 'varying vec2 vUv;\nvoid main() { vUv = uv; gl_Position = vec4( position.xy, 0.0, 1.0 ); }';
 const mat = (frag, uniforms) => new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: frag, uniforms, depthTest: false, depthWrite: false, toneMapped: false });
@@ -43,7 +71,7 @@ void main() {
   c += ( texture2D( tSrc, vUv + uDir * 3.230769 ).rgb + texture2D( tSrc, vUv - uDir * 3.230769 ).rgb ) * 0.070270;
   gl_FragColor = vec4( c, 1.0 );
 }`, { tSrc: { value: null }, uDir: { value: new THREE.Vector2() } }),
-    final: mat(`uniform sampler2D tScene; uniform sampler2D tB0; uniform sampler2D tB1; uniform sampler2D tB2; uniform vec3 uW; uniform float uPunch; varying vec2 vUv;
+    final: mat(`uniform sampler2D tScene; uniform sampler2D tB0; uniform sampler2D tB1; uniform sampler2D tB2; uniform vec3 uW; uniform float uPunch; uniform float uKill; varying vec2 vUv;
 void main() {
   vec3 c = texture2D( tScene, vUv ).rgb;
   vec3 b = texture2D( tB0, vUv ).rgb * uW.x;
@@ -58,8 +86,8 @@ void main() {
     p *= 1.0 - 0.5 * pow( dot( v, v ) * 1.9, 1.6 ); // dark comic-panel corners
     c = mix( c, clamp( p, 0.0, 1.0 ), uPunch );
   }
-  gl_FragColor = vec4( c, 1.0 );
-}`, { tScene: { value: null }, tB0: { value: null }, tB1: { value: null }, tB2: { value: null }, uW: { value: new THREE.Vector3() }, uPunch: { value: 0 } }),
+  gl_FragColor = vec4( c * ( 1.0 - uKill ), 1.0 ); // (uKill: tests only, forces a black frame)
+}`, { uKill: { value: 0 }, tScene: { value: null }, tB0: { value: null }, tB1: { value: null }, tB2: { value: null }, uW: { value: new THREE.Vector3() }, uPunch: { value: 0 } }),
   };
 }
 const target = (w, h, depth, filter) => {
@@ -87,21 +115,44 @@ function pass(r, m, to) { P.mesh.material = m; r.setRenderTarget(to); r.render(P
 // bloom: 0 off, 1 low, 2 medium, 3 high. punch: louder colours + dark corners
 export function setPost(bloom, punch) {
   P.bloom = BLOOM[bloom] ? bloom : 0; P.punch = !!punch;
-  if (!postOn() && P.rt) { P.rt.dispose(); P.rt = null; for (const l of P.lv) { l.a.dispose(); l.b.dispose(); } P.lv = []; } // off: give the memory back
+  if (!wanted() && P.rt) { P.rt.dispose(); P.rt = null; for (const l of P.lv) { l.a.dispose(); l.b.dispose(); } P.lv = []; } // off: give the memory back
 }
-export const postOn = () => P.bloom > 0 || P.punch;
-export const postInfo = () => ({ bloom: P.bloom, punch: P.punch, size: [P.w, P.h], glow: P.lv.map((l) => [l.w, l.h]) });
+export const postOn = () => !SAFE.dead && (P.bloom > 0 || P.punch);
+const wanted = () => P.bloom > 0 || P.punch;
+export const postInfo = () => ({ bloom: P.bloom, punch: P.punch, size: [P.w, P.h], glow: P.lv.map((l) => [l.w, l.h]), on: postOn(), dead: SAFE.dead, why: SAFE.why, checks: SAFE.checks, ok: SAFE.ok });
 
 // world.js renderFrame: draw the frame into our buffer instead of the canvas (false = shaders off, draw as always)
 export function postBegin(r) {
   if (!postOn()) return false;
-  if (!P.mesh) build();
-  fit(r);
-  r.setRenderTarget(P.rt);
-  return true;
+  try {
+    const gl = r.getContext();
+    if (gl.isContextLost() || SAFE.test === 'lost') { fail('the graphics context was lost'); return false; }
+    if (!P.mesh) build();
+    const fresh = !P.rt; fit(r);
+    r.setRenderTarget(P.rt);
+    if (fresh || SAFE.checks < CHECKS) { // (new buffers: ask the GPU once whether it will draw into them)
+      const st = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+      if (st !== gl.FRAMEBUFFER_COMPLETE || SAFE.test === 'fb') { r.setRenderTarget(null); fail('the frame buffer is not complete (' + st + ')'); return false; }
+    }
+    return true;
+  } catch (e) {
+    try { r.setRenderTarget(null); } catch (e2) { /* nothing left to try */ }
+    fail('begin threw: ' + (e && e.message)); return false;
+  }
 }
-// ...then glow + grade it onto the canvas
+// ...then glow + grade it onto the canvas. false = it failed: the caller draws this frame again the plain way
 export function postEnd(r) {
+  try {
+    if (SAFE.test === 'throw') throw new Error('forced');
+    compose(r);
+    if (SAFE.checks < CHECKS && !sanity(r)) return false;
+    return true;
+  } catch (e) {
+    try { r.setRenderTarget(null); } catch (e2) { /* nothing left to try */ }
+    fail('end threw: ' + (e && e.message)); return false;
+  }
+}
+function compose(r) {
   const M = P.mats, B = BLOOM[P.bloom], L = P.lv;
   postStats.passes = 0;
   if (B) {
@@ -119,6 +170,7 @@ export function postEnd(r) {
   F.tB0.value = L[0] ? L[0].a.texture : null; F.tB1.value = L[1] ? L[1].a.texture : null; F.tB2.value = L[2] ? L[2].a.texture : null;
   const k = B ? B.k : 0;
   F.uW.value.set(L[0] ? k * (L[1] ? 0.6 : 1) : 0, L[1] ? k * 0.8 : 0, L[2] ? k : 0); // more layers: a wide soft halo, not a brighter middle (signs stay readable)
-  F.uPunch.value = P.punch ? 1 : 0;
+  F.uPunch.value = P.punch ? 1 : 0; F.uKill.value = SAFE.test === 'black' ? 1 : 0;
+  if (SAFE.test === 'blackin') { r.setRenderTarget(P.rt); r.setClearColor(0x000000, 1); r.clear(); } // (tests: an empty frame buffer)
   pass(r, M.final, null);
 }
