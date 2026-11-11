@@ -1361,7 +1361,7 @@ const TOPS = {
   lifetank: { cut: tankCut, body: tankBody, thick: 0.008 },
   refshirt: { cut: teeCut, body: refBody, sleeve: refSleeve, long: false, cap: 1, own: FIXED.ink, thick: 0.008 },
   robe: { cut: robeCut, body: robeBody, sleeve: robeSleeve, cap: 1, key: legKey, dress: true, thick: 0.03 },
-  hotdog: { cut: hotdogCut, body: hotdogBody, key: (lk, F) => `${F.hd}${legKey(lk, F)}`, dress: true, own: 0xd9482f, thick: 0.12 },
+  hotdog: { cut: hotdogCut, body: hotdogBody, key: (lk, F) => `${F.hd}${legKey(lk, F)}`, dress: true, own: 0xd9482f, thick: 0.16 },
   cardigan: { cut: cardiganCut, body: cardiganBody, sleeve: cardiganSleeve, cap: 1, key: legKey, dress: true, thick: 0.03 },
   spacesuit: { cut: spacesuitCut, body: spacesuitBody, sleeve: spacesuitSleeve, cap: 1, own: FIXED.white, thick: 0.05 },
   hawaiian: { cut: hawaiianCut, body: hawaiianBody, sleeve: hawaiianSleeve, long: false, cap: 1, thick: 0.012 },

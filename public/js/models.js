@@ -1617,7 +1617,8 @@ function addAccessories(ch, look, c) {
   // back stuff hangs off the upper back (chest back surface ~z 0.15) and is strapped over the shoulders
   const thick = look.top === 'runner' ? 0.04 : look.top === 'jacket' || look.top === 'suit' || look.top === 'hoodie' ? 0.03 : topThick(look.top);
   const bk = 0.15 + thick;
-  const straps = (col) => { for (const sx of [-1, 1]) { at(Bd, bx(0.045, 0.025, 0.32, col, sx * 0.11, 1.52, 0.0)); at(Bd, bx(0.045, 0.3, 0.025, col, sx * 0.11, 1.37, -0.16 - thick)); } };
+  const fthick = look.top === 'hotdog' ? 0.072 : thick; // (the hot dog's bun sticks out at the back, not the front: the straps lie on the sausage)
+  const straps = (col) => { for (const sx of [-1, 1]) { at(Bd, bx(0.045, 0.025, 0.32, col, sx * 0.11, 1.52, 0.0)); at(Bd, bx(0.045, 0.3, 0.025, col, sx * 0.11, 1.37, -0.16 - fthick)); } };
   switch (look.back) {
     case 'backpack':
       at(Bd, bx(0.3, 0.38, 0.15, c, 0, 1.3, bk + 0.075));
