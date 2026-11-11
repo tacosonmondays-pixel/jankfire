@@ -239,11 +239,12 @@ export const fx = {
   },
   explosion(p, radius) {
     if (this.onBoom) this.onBoom(p); // (liquids.js: a bang on the water throws up a column of it)
-    const m = new THREE.Mesh(SPHERE_GEO, new THREE.MeshBasicMaterial({ color: 0xffcc33, transparent: true, opacity: 1 }));
+    const real = spritesOn(); // a real fireball + smoke (flipbook.js) instead of the squares; a few sparks still fly
+    // the old yellow ball: with the real fireball it's only a quick small white pop, so it doesn't sit over the smoke
+    const m = new THREE.Mesh(SPHERE_GEO, new THREE.MeshBasicMaterial({ color: real ? 0xfff6d0 : 0xffcc33, transparent: true, opacity: 1 }));
     m.position.set(p[0], p[1], p[2]);
     scene.add(m);
-    timed.push({ mesh: m, life: 0.28, ml: 0.28, kind: 'flash', r: radius });
-    const real = spritesOn(); // a real fireball + smoke (flipbook.js) instead of the squares; a few sparks still fly
+    timed.push({ mesh: m, life: real ? 0.08 : 0.28, ml: real ? 0.08 : 0.28, kind: 'flash', r: real ? radius * 0.5 : radius });
     if (real) boomSprite(p, radius);
     for (let i = 0; i < (real ? 22 : 70); i++) {
       const s = 4 + Math.random() * 14;
