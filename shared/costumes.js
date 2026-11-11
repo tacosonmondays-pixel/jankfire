@@ -44,6 +44,10 @@ export const COSTUMES = {
     look: { top: 'stringer', topColor: ['#1a1a1a', '#ff4fd8', '#ffe14d', '#4fd8ff'], bottom: 'shorts', bottomColor: ['#3a3a44', '#1a1a1a', '#2a4a8a'], hair: ['short', 'none', 'spiky'], head: 'sweatband', face: ['none', 'shades'], back: 'shaker' } },
   pyjamas: { name: 'Pyjamas', desc: 'Rolled out of bed and into the lobby. Brought the bear.',
     look: { top: 'pjtop', topColor: ['#2a4a8a', '#b07dff', '#ff9ad5', '#4fffb0'], bottom: 'pjpants', bottomColor: ['#2a4a8a', '#b07dff', '#ff9ad5'], hair: ['short', 'long', 'afro', 'bun'], head: 'nightcap', face: 'none', back: 'teddy' } },
+  chicken: { name: 'Chicken Mascot', desc: 'Does a little dance after every kill. Nobody asked.',
+    look: { top: 'chickensuit', topColor: ['#ffffff', '#ffe14d'], bottom: 'chickenlegs', bottomColor: ['#ffe14d', '#ff7a1a'], hair: 'none', head: 'chickenhead', face: 'none', back: 'none' } },
+  binknight: { name: 'Bin Knight', desc: 'Sworn to protect the bins. Smells like it.',
+    look: { top: 'binarmour', topColor: ['#3a6a2a', '#3a3a44', '#2a4a8a'], bottom: 'pants', bottomColor: ['#3a3a44', '#1a1a1a'], hair: 'none', head: 'binhelm', face: 'none', back: 'binlid' } },
 };
 export const COSTUME_IDS = Object.keys(COSTUMES);
 

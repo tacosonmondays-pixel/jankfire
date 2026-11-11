@@ -1536,7 +1536,7 @@ function limb(r0, r1, len, color, y) { // vertical cylinder hanging down from it
 // ------------------------------------------------------------ hair (sits on the egg head; head group local, top of the egg ~y 0.31)
 function addHair(H, lk) {
   const style = lk.hair || 'none';
-  if (style === 'none' || lk.head === 'helmet' || lk.head === 'boxhelmet') return; // (in the box: it all goes in the box)
+  if (style === 'none' || lk.head === 'helmet' || lk.head === 'boxhelmet' || lk.head === 'chickenhead' || lk.head === 'binhelm') return; // (in the box: it all goes in the box. same in the chicken head and the bin)
   const hc = new THREE.Color(lk.hairColor || '#1a1a1a').getHex();
   const cap = (cover = 0.45, sx = 0.9, sy = 1.18, r = 0.15) => {
     const m = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 6, 0, Math.PI * 2, 0, Math.PI * cover), M(hc));
@@ -1582,7 +1582,7 @@ function addAccessories(ch, look, c) {
   const at = (parent, m) => { parent.add(m); return m; };
   const y0 = 0.3; // top of the egg head (head group local)
   if (look.top === 'hotdog' && look.head && look.head !== 'none') { H = new THREE.Group(); H.position.y = 0.115; ch.head.add(H); } // in the Hot Dog Suit the hat sits on the end of the sausage
-  const hood = look.top === 'hotdog' ? { helmet: 1, boxhelmet: 1, bigglasses: 1, fakebeard: 1 } : {}; // too big for the face hole: left off under the hot dog
+  const hood = look.top === 'hotdog' ? { helmet: 1, boxhelmet: 1, bigglasses: 1, fakebeard: 1, chickenhead: 1, binhelm: 1 } : {}; // too big for the face hole: left off under the hot dog
   switch (hood[look.head] ? 'none' : look.head) {
     case 'cap': { const d = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), M(c)); d.position.y = y0 - 0.06; H.add(d); at(H, bx(0.22, 0.02, 0.14, c, 0, y0 - 0.06, -0.15)); break; }
     case 'beanie': { const d = new THREE.Mesh(new THREE.SphereGeometry(0.155, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), M(0x2a4a8a)); d.position.y = y0 - 0.07; d.scale.y = 1.3; H.add(d); at(H, ball(0.045, 0xffffff, 0, y0 + 0.13, 0)); break; }
@@ -1596,6 +1596,8 @@ function addAccessories(ch, look, c) {
     case 'icepack': at(H, bx(0.14, 0.04, 0.14, 0x6ad0ff, 0, y0 + 0.01, 0)); break;
     case 'catears': ch.ears = catEars(H, look); break;
     case 'strawhat': case 'wizhat': case 'boxhelmet': case 'chefhat': case 'sweatband': case 'nightcap': wearAcc(H, look.head, c); break; // (clothes.js)
+    case 'binhelm': wearAcc(H, look.head, c); break;
+    case 'chickenhead': wearAcc(H, look.head, look.top === 'chickensuit' && look.topColor ? new THREE.Color(look.topColor).getHex() : 0xf2f1ec); break; // the suit's colour
   }
   H = ch.head;
   const fz = -0.15; // front of the face
@@ -1656,7 +1658,7 @@ function addAccessories(ch, look, c) {
       }
       straps(0x333333);
       break;
-    case 'float': case 'handbag': case 'bottlepack': case 'camera': case 'shaker': case 'teddy': wearAcc(Bd, look.back, c, look); break; // the Lifeguard's rescue float, Grandma's handbag (clothes.js: fitted to the body + top)
+    case 'float': case 'handbag': case 'bottlepack': case 'camera': case 'shaker': case 'teddy': case 'binlid': wearAcc(Bd, look.back, c, look); break; // the Lifeguard's rescue float, Grandma's handbag (clothes.js: fitted to the body + top)
     case 'cattail': catTail(ch, look, look.top === 'maid' ? 0.2 : look.bottom === 'skirt' ? 0.19 : 0.125); break; // out from under the skirt
   }
 }
@@ -1722,7 +1724,7 @@ export function buildCharacter(color, look) {
     const BOT = lk.bottomColor ? new THREE.Color(lk.bottomColor).getHex() : c;
     const top = lk.top || 'tank', bottom = lk.bottom || 'shorts';
     const WP = { body, head, arm, armL, legL, legR, kneeL, kneeR }; // what the clothes hang on (clothes.js)
-    const legs = bottom === 'pants' || bottom === 'overalls' || bottom === 'checks' || bottom === 'pjpants'; // full-length legs (overalls are denim unless you pick a colour)
+    const legs = bottom === 'pants' || bottom === 'overalls' || bottom === 'checks' || bottom === 'pjpants' || bottom === 'chickenlegs'; // full-length legs (overalls are denim unless you pick a colour)
     const LEG = bottom === 'overalls' ? overallsColor(lk, c) : BOT;
     // legs: hip -> thigh -> knee -> shin -> foot
     for (const [leg, knee, sx] of [[legL, kneeL, -1], [legR, kneeR, 1]]) {
